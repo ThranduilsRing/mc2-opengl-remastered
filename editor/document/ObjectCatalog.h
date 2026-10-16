@@ -1,8 +1,10 @@
 #pragma once
 
 #include "FileResolver.h"
+#include <memory>
 
 namespace editor::document {
+class ResourceStrings;
 
 enum class ObjectFamily { mech, vehicle, building, turret, tree, bridge, gate, light, marker };
 enum class CatalogAppearance { mech, vehicle, building, tree };
@@ -35,7 +37,9 @@ public:
     const std::vector<CatalogEntry>& entries() const { return entries_; }
     std::vector<std::uint32_t> navMarkerObjects() const;
     std::size_t rejections() const { return rejections_; }
+    const ResourceStrings* strings() const { return strings_.get(); }
 private:
+    std::shared_ptr<const ResourceStrings> strings_;
     std::vector<CatalogEntry> entries_;
     std::size_t rejections_{};
 };

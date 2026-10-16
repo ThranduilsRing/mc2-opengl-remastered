@@ -63,18 +63,6 @@
    "count": 1
   },
   {
-   "tag": "ABL_COMPILE_FATAL",
-   "ver": -1,
-   "stream": "buffer",
-   "keys": [
-    "file",
-    "syntaxErrors",
-    "MC2_ABL_SKIP_ERRORED_MODULES",
-    "MC2_ABL_COMPILE_FATAL"
-   ],
-   "count": 1
-  },
-  {
    "tag": "ABL_COMPILE_FATAL_REPRO",
    "ver": -1,
    "stream": "stderr",
@@ -96,6 +84,43 @@
    "stream": "stderr",
    "keys": [
     "errors"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABL_FILE_LINE_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "ABL_FILE_OPEN_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "ABL_FILE_READ_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "ABL_FILE_STRING_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "ABL_LOAD_BAD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "handle"
    ],
    "count": 1
   },
@@ -161,6 +186,13 @@
    "count": 1
   },
   {
+   "tag": "ABL_SOURCE_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [],
+   "count": 1
+  },
+  {
    "tag": "ADJUDICATION_POSE",
    "ver": 1,
    "stream": "stderr",
@@ -210,6 +242,28 @@
    "stream": "stderr",
    "keys": [],
    "count": 5
+  },
+  {
+   "tag": "ANIM_TRACK_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "file",
+    "animations"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ANIM_TRACK_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "node",
+    "frames",
+    "quatBytes",
+    "posBytes"
+   ],
+   "count": 1
   },
   {
    "tag": "ASSET_SCALE",
@@ -2070,6 +2124,16 @@
     "maxDispMag"
    ],
    "count": 1
+  },
+  {
+   "tag": "COMBAT_RETIRE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "reason",
+    "type"
+   ],
+   "count": 3
   },
   {
    "tag": "CONE_AIM_DIAG",
@@ -6806,6 +6870,20 @@
    "count": 1
   },
   {
+   "tag": "OBJECTIVES",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 4
+  },
+  {
+   "tag": "OBJECTIVE_FIXTURE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
    "tag": "OBJECT_ADMISSION",
    "ver": 1,
    "stream": "stdout",
@@ -7668,13 +7746,6 @@
     "key",
     "vertexLayout"
    ],
-   "count": 1
-  },
-  {
-   "tag": "PLAYTEST",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
    "count": 1
   },
   {
@@ -8711,7 +8782,7 @@
     "reason",
     "file"
    ],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "SAVE",
@@ -9287,6 +9358,55 @@
    "count": 1
   },
   {
+   "tag": "SHAPE_COUNT_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "file",
+    "shapes",
+    "textures"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHAPE_COUNT_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "file",
+    "vertices",
+    "triangles"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHAPE_COUNT_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "textures"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHAPE_COUNT_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "triangles"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHAPE_COUNT_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "vertices"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SIMID",
    "ver": 1,
    "stream": "stdout",
@@ -9498,16 +9618,6 @@
    "keys": [
     "mission",
     "t"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SOAK",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "name",
-    "errors"
    ],
    "count": 1
   },

@@ -24,6 +24,8 @@ import subprocess
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import console_child
 LIST = os.path.join(ROOT, ".claude", "cleanup", "cxx23-step4-b4-callsites.txt")
 
 #: sub-batch -> tracked-path globs (cxx23-step4-b4-notes.md section 2). Order is the batch order.
@@ -78,7 +80,8 @@ def strip_comments(text: str) -> list[str]:
 
 
 def tracked() -> list[str]:
-    out = subprocess.run(["git", "-C", ROOT, "ls-files", "code", "mclib"], capture_output=True, text=True, check=True).stdout
+    out = subprocess.run(["git", "-C", ROOT, "ls-files", "code", "mclib"], capture_output=True, text=True, check=True,
+                         **console_child.child_kwargs(redirected=True)).stdout
     return [p for p in out.splitlines() if p]
 
 

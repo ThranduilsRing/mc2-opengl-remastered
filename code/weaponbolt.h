@@ -15,6 +15,7 @@
 // Include Files
 
 #include "combat_trace.h"
+#include "combat_retirement.h"
 #ifndef DWEAPONBOLT_H
 #include"dweaponbolt.h"
 #endif
@@ -83,6 +84,7 @@ class WeaponBoltType : public ObjectType
 		bool			arcEffect;
 		float			arcHeight;
 		float			afterHitTime;
+		mc2::combat::RetirePolicy retirePolicy;
 		float			areaEffectDmg;
 		float			areaEffectRad;
 		
@@ -121,6 +123,7 @@ class WeaponBoltType : public ObjectType
 			arcHeight = -1.0f;
 			
 			afterHitTime = 0.0f;
+			retirePolicy = {};
 			
 			areaEffectDmg = areaEffectRad = 0.0f;
 		}
@@ -131,6 +134,7 @@ class WeaponBoltType : public ObjectType
 		}
 		
 		virtual long init (FilePtr objFile, unsigned long fileSize);
+		void initRetirePolicy(long afterHitReadResult);
 		long init (FitIniFilePtr objFile);
 		
 		~WeaponBoltType (void)
@@ -179,6 +183,8 @@ typedef struct _WeaponBoltData : public GameObjectData
 	DWORD				gosTextureHandle;
 	float				startUV;
 	float				goalHeight;
+	std::uint64_t retireDeadlineTick;
+	mc2::combat::SavedDeadlineState retireDeadlineState;
 } WeaponBoltData;
 
 class WeaponBolt : public GameObject
@@ -410,6 +416,9 @@ class WeaponBolt : public GameObject
 
         // Slot generations distinguish pool reuse without changing combat or save records.
         mc2::CombatTrace combatTrace;
+        mc2::combat::RetireDeadline retireDeadline;
+        void armRetireDeadline();
+        void traceRetireDeadline(std::string_view reason, std::string_view metadata);
         void traceCombat(std::string_view event, std::string_view reason = "",
                          GameObjectPtr target = nullptr, const WeaponShotInfo* shot = nullptr);
         void traceCombatRetire(std::string_view reason);

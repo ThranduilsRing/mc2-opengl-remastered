@@ -3,7 +3,7 @@
 #include "EditorObjects_internal.h"
 
 
-// PILOT-PROFILE-PRESERVE-1: loud, unconditional data-loss warning (rare;
+// loud, unconditional data-loss warning (rare;
 // fires only when a save would blank a [WarriorN] Profile). Same log file
 // as the MC2_EDITOR_TRACE probes, but NOT gated -- data loss must be seen.
 static void PilotDataLossWarn( const char* msg )
@@ -246,7 +246,7 @@ Brain& Brain::operator=( const Brain& src )
 
 void Pilot::save( FitIniFile* file, int bGoodGuy )
 {
-	// PILOT-PROFILE-PRESERVE-1 (QUICKSTART-PILOT-DROP-RECON-1): never silently
+	// never silently
 	// blank a Profile that existed on disk. When initPilots() loads zero
 	// pilots (pilots.csv zlib-compressed inside the FST / warriors/*.fit
 	// missing), every Pilot::load falls back to s_GoodPilots[0] whose
@@ -280,7 +280,7 @@ void Pilot::load( FitIniFile* file, int bGoodGuy )
 	char buffer[256];
 	result = file->readIdString( "Profile", buffer, 256 );
 
-	// PILOT-PROFILE-PRESERVE-1: stash the raw on-disk string so save can
+	// stash the raw on-disk string so save can
 	// round-trip it even when the catalog match below fails (see
 	// Pilot::save). Cleared on read failure so a fresh unit stays empty.
 	if ( NO_ERR == result )
@@ -364,10 +364,8 @@ void Pilot::initPilots()
 			// Guard: if the FST reader ever leaks compressed bytes (historic
 			// 78 9c deflate leak), a non-printable byte in the name means the
 			// data is corrupt/binary — stop loading.
-			// EDITOR-PILOT-CATALOG-FST-1: scan only up to the NUL terminator.
-			// File::readLine returns a count that INCLUDES the '\0' it appends,
-			// so the old `ci < bytesRead` loop always hit the terminator and
-			// rejected EVERY line (goodCount=0 -> empty pilot catalog).
+			// File::readLine counts its trailing NUL; the terminator is not part
+			// of the name and must be excluded from printable-character validation.
 			{
 				bool validName = true;
 				for ( int ci = 0; ci < bytesRead && pilotFileName[ci] != 0; ++ci )
@@ -377,9 +375,8 @@ void Pilot::initPilots()
 				}
 				if ( !validName )
 				{
-					// EDITOR-PILOT-CATALOG-FST-1: loud witness — this used to fire
-					// on zlib bytes leaking through the FST reader (goodCount=0
-					// -> empty pilot picker -> PILOT-PROFILE-PRESERVE-1 fallbacks).
+					// Report binary pilot names because an empty catalog leaves the picker
+					// unusable and forces raw-profile preservation on save.
 					FILE* f = fopen( "editor-startup.log", "a" );
 					if ( f )
 					{
@@ -464,7 +461,7 @@ void Pilot::initPilots()
 
 	}
 
-	// EDITOR-PILOT-CATALOG-FST-1: startup witness. good must be > 0 for the
+	// startup witness. good must be > 0 for the
 	// pilot picker / Pilot::load catalog matching to work at all.
 	{
 		FILE* f = fopen( "editor-startup.log", "a" );
@@ -478,7 +475,7 @@ void Pilot::initPilots()
 
 void Pilot::setName( const char* newName )
 {
-	// PILOT-PROFILE-PRESERVE-1: a user reassignment must beat the stashed
+	// a user reassignment must beat the stashed
 	// on-disk string in Pilot::save, so sync rawProfile with the new match.
 	int i = 0;
 	for ( i = 0; i < goodCount; i++ )

@@ -1,4 +1,5 @@
 #include "utilities.h"
+#include "gameos_resource.hpp"
 #include "utils/mc2log.h"
 
 #include <cstring>
@@ -18,6 +19,10 @@ const char* resource(unsigned int id, HSTRRES handle, int capacity)
 {
     if (!handle) {
         report("null_handle", id, 0, capacity, 0);
+        return nullptr;
+    }
+    if (!gos_ResourceStringLength(handle, id)) {
+        report("missing_id", id, 0, capacity, 0);
         return nullptr;
     }
     const char* text = gos_GetResourceString(handle, id);

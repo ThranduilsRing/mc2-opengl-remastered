@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// UnitActionFlowPanel — ABL-FLOW-1
+// UnitActionFlowPanel
 //
 // Heuristically parses a unit's brain .abl TEXT into a readable condition ->
 // trigger -> action flow ("Unit Action Flow") and renders it INLINE inside the

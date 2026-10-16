@@ -63,7 +63,7 @@ Action* ObjectSelectionBrush::endPaint()
 	Action* pRetAction = nullptr;
 	if ( pCurAction )
 	{
-		if ( pCurAction->vertexInfoList.Count() )
+		if ( !pCurAction->vertexInfoList.empty() )
 		{
 			pRetAction = pCurAction;
 			pCurAction = nullptr;
@@ -84,7 +84,7 @@ Action* ObjectSelectionBrush::endPaint()
 bool ObjectSelectionBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
 {
 	if ( !land )
-		return false;  // EDITOR-CRASH-HARDENING-1: no terrain -> land deref below (sibling StampBrush.cpp:66)
+		return false;  // no terrain -> land deref below (sibling StampBrush.cpp:66)
 
 	Stuff::Vector4D endPos;
 	endPos.x = screenX;
@@ -194,4 +194,4 @@ EditorObjectPointerList ObjectSelectionBrush::selectedObjectPointerList()
 
 //*************************************************************************************************
 // end of file ( ObjectSelectionBrush.cpp )
- 
+

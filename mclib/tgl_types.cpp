@@ -117,9 +117,10 @@ void TG_TypeNode::destroy (void)
 TG_ShapePtr TG_TypeNode::CreateFrom (void)
 {
 	TG_ShapePtr newShape = nullptr;
-	newShape = (TG_ShapePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
+	void* memarea = TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
+	newShape = ::new(memarea) TG_Shape();
 	gosASSERT(newShape != nullptr);
-	
+
 	//listOfVertices
 	newShape->numVertices = 0;
 	newShape->listOfColors = nullptr;
@@ -232,7 +233,7 @@ long TG_TypeNode::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 	return(0);
 }	
 
-void TG_TypeNode::LoadBinaryCopy (File &binFile)
+bool TG_TypeNode::LoadBinaryCopy (File &binFile)
 {
 	//Other Data
 	nodeCenter.x = binFile.readFloat();
@@ -245,6 +246,7 @@ void TG_TypeNode::LoadBinaryCopy (File &binFile)
 	
 	binFile.read((MemoryPtr)nodeId,TG_NODE_ID);
 	binFile.read((MemoryPtr)parentId,TG_NODE_ID);
+	return true;
 }
 
 void TG_TypeNode::SaveBinaryCopy (File &binFile)
@@ -297,8 +299,8 @@ TG_ShapePtr TG_TypeShape::CreateFrom (void)
 	{
 		//These are UNIQUE to each instance and do not change much per frame.
 		// Thus, store them between frames to save processing time!
-		newShape->listOfShadowVertices = (TG_ShadowVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShadowVertex) * numTypeVertices * MAX_SHADOWS);
-		gosASSERT(newShape->listOfShadowVertices != nullptr);
+		newShape->shadowVertexStore.resize(static_cast<size_t>(numTypeVertices) * MAX_SHADOWS);
+		newShape->listOfShadowVertices = newShape->shadowVertexStore.data();
 
 		memset(newShape->listOfShadowVertices,0xff,sizeof(TG_ShadowVertex) * numTypeVertices * MAX_SHADOWS);
 		
@@ -378,7 +380,7 @@ TG_ShapePtr TG_TypeShape::CreateFrom (void)
 	return newShape;
 }
 
-void TG_TypeShape::LoadBinaryCopy (File &binFile)
+bool TG_TypeShape::LoadBinaryCopy (File &binFile)
 {
 	gosVERTEX_FORMAT_RECORD vdecl[] =
 	{ 
@@ -392,10 +394,16 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 
 	//listOfTypeVertices
 	numTypeVertices = binFile.readInt();
+	if (numTypeVertices > kMaxShapeVertices)
+	{
+		MC2_LOG(Io, Error, "[SHAPE_COUNT_BAD] vertices={} (over {}; shape left empty)", numTypeVertices, kMaxShapeVertices);
+		numTypeVertices = 0;
+		return false;
+	}
 	if (numTypeVertices)
 	{
-		listOfTypeVertices = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeVertex) * numTypeVertices);
-		gosASSERT(listOfTypeVertices != nullptr);
+		typeVertexStore.resize(numTypeVertices);
+		listOfTypeVertices = typeVertexStore.data();
 
 		binFile.read((MemoryPtr)listOfTypeVertices,sizeof(TG_TypeVertex) * numTypeVertices);
 
@@ -407,10 +415,16 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 
 	//listOfTypeTriangles
 	numTypeTriangles = binFile.readInt();
+	if (numTypeTriangles > kMaxShapeTriangles)
+	{
+		MC2_LOG(Io, Error, "[SHAPE_COUNT_BAD] triangles={} (over {}; shape left without triangles)", numTypeTriangles, kMaxShapeTriangles);
+		numTypeTriangles = 0;
+		return false;
+	}
 	if (numTypeTriangles)
 	{
-		listOfTypeTriangles = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeTriangle) * numTypeTriangles);
-		gosASSERT(listOfTypeTriangles != nullptr);
+		typeTriangleStore.resize(numTypeTriangles);
+		listOfTypeTriangles = typeTriangleStore.data();
 
 		binFile.read((MemoryPtr)listOfTypeTriangles,sizeof(TG_TypeTriangle) * numTypeTriangles);
 	}
@@ -421,10 +435,16 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 
 	//listOfTextures
 	numTextures = binFile.readInt();
+	if (numTextures > kMaxShapeTextures)
+	{
+		MC2_LOG(Io, Error, "[SHAPE_COUNT_BAD] textures={} (over {}; shape left without textures)", numTextures, kMaxShapeTextures);
+		numTextures = 0;
+		return false;
+	}
 	if (numTextures)
 	{
-		listOfTextures = (TG_TinyTexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TinyTexture) * numTextures);
-		gosASSERT(listOfTextures != nullptr);
+		tinyTextureStore.resize(numTextures);
+		listOfTextures = tinyTextureStore.data();
 
 		binFile.read((MemoryPtr)listOfTextures,sizeof(TG_TinyTexture) * numTextures);
 	}
@@ -501,6 +521,7 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 
 	binFile.read((MemoryPtr)nodeId,TG_NODE_ID);
 	binFile.read((MemoryPtr)parentId,TG_NODE_ID);
+	return true;
 }
 
 void TG_TypeShape::SaveBinaryCopy (File &binFile)
@@ -543,16 +564,13 @@ void TG_TypeShape::SaveBinaryCopy (File &binFile)
 
 void TG_TypeShape::destroy (void)
 {
-	if (listOfTypeVertices)
-		TG_Shape::tglHeap->Free(listOfTypeVertices);
+	std::vector<TG_TypeVertex>().swap(typeVertexStore);
 	listOfTypeVertices = nullptr;
 
-	if (listOfTypeTriangles)
-		TG_Shape::tglHeap->Free(listOfTypeTriangles);
+	std::vector<TG_TypeTriangle>().swap(typeTriangleStore);
 	listOfTypeTriangles = nullptr;
 
-	if (listOfTextures)
-		TG_Shape::tglHeap->Free(listOfTextures);
+	std::vector<TG_TinyTexture>().swap(tinyTextureStore);
 	listOfTextures = nullptr;
 
 	numTypeVertices = numTypeTriangles = numTextures = 0;
@@ -603,8 +621,7 @@ void TG_Shape::destroy (void)
 	listOfVisibleShadows = nullptr;
 	listOfShadowTVertices = nullptr;
 
-	if (listOfShadowVertices)
-		tglHeap->Free(listOfShadowVertices);
+	std::vector<TG_ShadowVertex>().swap(shadowVertexStore);
 	listOfShadowVertices = nullptr;
 
 	numVertices = numTriangles = numVisibleFaces = 0;

@@ -1,5 +1,5 @@
 #pragma once
-// BRAIN-DISPATCH-HARNESS-1: minimal dstd.h stub
+// minimal dstd.h stub
 // Provides common typedefs used by engine headers.
 #include <cstdint>
 #include <cstddef>

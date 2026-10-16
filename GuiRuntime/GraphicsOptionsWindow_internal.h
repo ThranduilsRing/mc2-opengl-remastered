@@ -40,7 +40,7 @@ void  gos_SetTerrainNormalsFromHeightStrength(float s);
 float gos_GetTerrainNormalsFromHeightStrength();
 void  gos_SetTerrainCliffShadowFloor(float f);
 float gos_GetTerrainCliffShadowFloor();
-// WATER-TUNING-UI-1 / WATER-DEBUG-VIEWS-1 — MDI water FS accessors (defined in
+// MDI water FS accessors (defined in
 // gameos_graphics.cpp). Debug-mode selector + runtime material tunables
 // (defaults match the former gos_terrain_water_mdi.frag consts exactly).
 int   gos_GetWaterFsDebugMode();
@@ -61,14 +61,14 @@ float gos_GetWaterSkyTintStrength();
 void  gos_SetWaterSkyTintStrength(float v);
 void  gos_GetWaterSkyTintColor(float* rgb);
 void  gos_SetWaterSkyTintColor(float r, float g, float b);
-// WATER-SKY-REFLECTION-1 — gated camera-dependent SH-L2 sky reflection.
+// gated camera-dependent SH-L2 sky reflection.
 float gos_GetWaterReflStrength();
 void  gos_SetWaterReflStrength(float v);
 int   gos_GetWaterReflectionGate();
 float gos_GetWaterRtStrength();
 void  gos_SetWaterRtStrength(float v);
 int   gos_GetWaterReflectionRtGate();
-// TERRAIN-RESAMPLE-1 — height-tex source/render/factor accessors + live
+// height-tex source/render/factor accessors + live
 // factor setter. C-linkage (declared extern "C" in gos_terrain_height_tex.h).
 extern "C" {
     int  __stdcall gos_terrainHeightSourceSide(void);
@@ -76,12 +76,12 @@ extern "C" {
     int  __stdcall gos_terrainHeightResampleFactor(void);
     void __stdcall gos_setTerrainHeightResampleFactor(int factor);
 }
-// TERRAIN-CLASSIFY-TUNING-1: colormap RGB classifier thresholds (gameos_graphics.cpp).
+// colormap RGB classifier thresholds (gameos_graphics.cpp).
 void gos_SetTerrainClassGrass(float gMinusRLo, float gMinusRHi, float gBrightLo, float gBrightHi);
 void gos_GetTerrainClassGrass(float* gMinusRLo, float* gMinusRHi, float* gBrightLo, float* gBrightHi);
 void gos_SetTerrainClassDirt(float rMinusGLo, float rMinusGHi, float rBrightLo, float rBrightHi);
 void gos_GetTerrainClassDirt(float* rMinusGLo, float* rMinusGHi, float* rBrightLo, float* rBrightHi);
-// MECH-LIGHTING-UI-1: mech ambient + specular + PBR roughness (gos_mech_batcher.cpp).
+// mech ambient + specular + PBR roughness (gos_mech_batcher.cpp).
 extern "C" int   batcher_getMechAmbientEnabled(void);
 extern "C" void  batcher_setMechAmbientEnabled(int on);
 extern "C" float batcher_getMechAmbientStrength(void);
@@ -92,7 +92,7 @@ extern "C" float batcher_getMechSpecularStrength(void);
 extern "C" void  batcher_setMechSpecularStrength(float s);
 extern "C" float batcher_getMechMetalRoughness(void);
 extern "C" void  batcher_setMechMetalRoughness(float r);
-// BT2018-MECH-MATERIAL-GAMMA-1/TUNING-1: imported-mech albedo knobs (imported only).
+// imported-mech albedo knobs (imported only).
 extern "C" float batcher_getImportedMechGamma(void);
 extern "C" void  batcher_setImportedMechGamma(float g);
 extern "C" float batcher_getImportedMechAlbedoScale(void);
@@ -121,7 +121,7 @@ extern "C" float batcher_getMechGlassRoughness(void);
 extern "C" void  batcher_setMechGlassRoughness(float r);
 extern "C" float batcher_getMechBackFillStrength(void);
 extern "C" void  batcher_setMechBackFillStrength(float v);
-// VFX-TUNING-UI-1: GPU particle debug-mode + intensity scales (defined in
+// GPU particle debug-mode + intensity scales (defined in
 // GameOS/gameos/gos_particle_bridge.cpp). All scales default 1.0 = no-op.
 extern "C" int   gos_vfx_getDebugMode(void);
 extern "C" void  gos_vfx_setDebugMode(int mode);
@@ -139,7 +139,7 @@ extern "C" int   gos_vfx_getLitEnabled(void);
 extern "C" void  gos_vfx_setLitEnabled(int e);
 extern "C" float gos_vfx_getLitStrength(void);
 extern "C" void  gos_vfx_setLitStrength(float v);
-// MISSION-VISUAL-TUNING-1: profile status accessors (defined in visual_tuning_profile.cpp)
+// profile status accessors (defined in visual_tuning_profile.cpp)
 void        visualTuning_applyProfile(const char* missionName);
 bool        visualTuning_saveCurrentToMission();
 const char* visualTuning_getProfilePath();

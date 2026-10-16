@@ -1,5 +1,5 @@
 //-------------------------------------------------------------------------------------------------
-// EditorTaskRunner.h -- reusable async task runner for the MC2 Mission Editor (Phase 1).
+// EditorTaskRunner.h -- reusable async task runner for the MC2 Mission Editor.
 //
 // Runs a long external command (e.g. terrain_gen.py) on a worker thread so the
 // MFC/GL editor UI thread never blocks.  The worker captures combined stdout/stderr,

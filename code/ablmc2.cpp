@@ -6,6 +6,7 @@
 #include "mc2fmt.h"
 #include "abl_script_events.h"
 #include "../GameOS/gameos/utils/mc2log.h"
+#include <climits>
 
 
 MoverGroupPtr			CurGroup = nullptr;
@@ -85,10 +86,10 @@ void ablSymbolFreeCallback (void* memBlock) {
 long ablFileCreateCB (void** file, const char* fName) {
 
 	auto created = std::make_unique<File>();
-	if (created->create(fName) != NO_ERR) {
-		char s[256];
-		mc2::fmt::to_buf(s, " ABL.ablFileOpenCB: unable to create file [{}] ", mc2::fmt::safe(fName));
-		Fatal(0, s);
+	*file = nullptr;
+	long result = created->create(fName);
+	if (result != NO_ERR) {
+		return result;
 	}
 	*file = created.release();
 	return(NO_ERR);
@@ -98,12 +99,14 @@ long ablFileOpenCB (void** file, const char* fName) {
 
 	auto opened = std::make_unique<File>();
 
-	//Filenames MUST be all lowercase or Hash won't find 'em!
-    char* tmpstr = strdup(fName);
-	CharLower(tmpstr);
-	if (opened->open(tmpstr) != NO_ERR)
-		STOP((" unable to open ABL File %s",fName));
-    free(tmpstr);
+	*file = nullptr;
+	// Archive lookup requires lowercase names.
+	std::string name(fName);
+	CharLower(name.data());
+	long result = opened->open(name.c_str());
+	if (result != NO_ERR) {
+		return result;
+	}
 	*file = opened.release();
 	return(NO_ERR);
 }
@@ -111,7 +114,8 @@ long ablFileOpenCB (void** file, const char* fName) {
 long ablFileCloseCB (void** file) {
 
 	std::unique_ptr<File> owned(static_cast<File*>(*file));
-	owned->close();
+	if (owned)
+		owned->close();
 	*file = nullptr;
 
 	return(0);
@@ -121,6 +125,13 @@ bool ablFileEofCB (void* file) {
 
 	return(((FilePtr)file)->eof());
 
+}
+
+long ablFileRemainingCB (void* file) {
+	auto* borrowed = static_cast<File*>(file);
+	const auto size = borrowed->getLength();
+	const auto position = borrowed->getLogicalPosition();
+	return position <= size && size - position <= LONG_MAX ? static_cast<long>(size - position) : -1;
 }
 
 long ablFileReadCB (void* file, unsigned char* buffer, long length) {
@@ -279,13 +290,8 @@ static void logAblFunctionTableCapacity (void)
 
 void initABL (void) {
 
-	// Every ABL session start (mission begin, mission load, save restore) gets a fresh per-event log budget, so a truncation in one mission is reported again in the
-	// next. One load may start two sessions and reset it twice, which only repeats a log line.
 	abl::resetEventBudgets();
 
-	// Heaps bumped 8x for mod content (Omnitech/Carver5O ABL scripts are far
-	// larger than stock). Previously 768KB/512KB/300KB — too tight, exhaustion
-	// produced silent allocation failures that downstream code NULL-deref'd.
 	AblSymbolHeap = new UserHeap;
 	long heapErr = AblSymbolHeap->init(6143999);  // was 767999
 	if (heapErr != NO_ERR)
@@ -301,9 +307,10 @@ void initABL (void) {
 	if (heapErr != NO_ERR)
 		ABL_Fatal(0, "ABLi_init: unable to create ABL code heap");
 
-	ABLi_init(65535, //AblRunTimeStackSize, was 20479
-			  1048576, //AblMaxCodeBlockSize, was 102400 (1MB now — mod scripts larger)
-			  1024, //AblMaxRegisteredModules, was 200
+	ABLFile::remainingCB = ablFileRemainingCB;
+	ABLi_init(65535, // Runtime stack slots
+			  1048576, // Code-buffer bytes; mod scripts exceed the stock limit
+			  1024, // Registered modules
 			  512, //AblMaxStaticVariables, was 100
 			  ablSystemMallocCallback,
 			  ablStackMallocCallback,
@@ -336,14 +343,12 @@ void initABL (void) {
 	ABLi_setRandomCallbacks(ablSeedRandom, RandomNumber);
 	ABLi_setEndlessStateCallback(ablEndlessStateCallback);
 
-	// ABL-BAD-NATIVE-ARG-REPRO-1: run guard repro before any scripts load.
 	runAblArgGuardRepro();
 
 	ABLi_addFunction("getid", false, nullptr, "i", execGetId);
 	ABLi_addFunction("gettime", false, nullptr, "r", execGetTime);
 	ABLi_addFunction("gettimeleft", false, nullptr, "r", execGetTimeLeft);
 	ABLi_addFunction("selectobject", false, "i", "i", execSelectObject);
-	//ABLi_addFunction("selectunit", false, "i", "i", execSelectUnit);
 	ABLi_addFunction("selectwarrior", false, "i", "i", execSelectWarrior);
 	ABLi_addFunction("getwarriorstatus", false, "i", "i", execGetWarriorStatus);
 	ABLi_addFunction("getcontacts", false, "Iii", "i", execGetContacts);
@@ -407,8 +412,6 @@ void initABL (void) {
 	ABLi_addFunction("settimer", false, "i*", "i", execSetTimer);
 	ABLi_addFunction("checktimer", false, "i", "r", execCheckTimer);
 	ABLi_addFunction("endtimer", false, "i", nullptr, execEndTimer);
-//	ABLi_addFunction("setobjectivetimer", false, "i*", "i", execSetObjectiveTimer);
-//	ABLi_addFunction("checkobjectivetimer", false, "i", "r", execCheckObjectiveTimer);
 	ABLi_addFunction("setobjectivestatus", false, "ii", "i", execSetObjectiveStatus);
 	ABLi_addFunction("checkobjectivestatus", false, "i", "i", execCheckObjectiveStatus);
 	ABLi_addFunction("setobjectivetype", false, "ii", "i", execSetObjectiveType);
@@ -479,9 +482,6 @@ void initABL (void) {
 	ABLi_addFunction("sendmessage", false, "ii", nullptr, execSendMessage);
 	ABLi_addFunction("getmessage", false, "i", "i", execGetMessage);
 	ABLi_addFunction("gethometeam", false, nullptr, "i", execGetHomeTeam);
-//	ABLi_addFunction("getstrikes", false, "ii", "i", execGetStrikes);
-//	ABLi_addFunction("setstrikes", false, "iii", NULL, execSetStrikes);
-//	ABLi_addFunction("addstrikes", false, "iii", NULL, execAddStrikes);
 	ABLi_addFunction("isserver", false, nullptr, "b", execIsServer);
 	ABLi_addFunction("calcpartid", false, "iiii", "i", execCalcPartID);
 	ABLi_addFunction("setdebugstring", false, "iiC", nullptr, execSetDebugString);
@@ -574,7 +574,6 @@ void initABL (void) {
 	ABLi_addFunction("seteject", false, "b", "b", execSetEject);
 	ABLi_addFunction("setkeepmoving", false, "b", "b", execSetKeepMoving);
 
-	//Tutorial Functions
 	ABLi_addFunction("animationcallout", false, "ibbri", "b", execAnimationCallout);
 	ABLi_addFunction("tutorialtext", false, "i", nullptr, execTutorialText);
 	ABLi_addFunction("guiisaoe", false, nullptr, "b", execGUIIsAOEStyle);
@@ -588,36 +587,13 @@ void initABL (void) {
 	ABLi_addFunction("setinvulnerable", false, "b", nullptr, execSetInvulnerable);
 	ABLi_addFunction("freezegui", false, "b", nullptr, execFreezeGUI);
 
-	// --- Omnitech ABL extensions, tier-2 (FSM primitives observed in Carver5O/MCO .abl) ---
-	// Note: PatrolState and PatrolPath are MCO-fork custom types (PatrolPath is 2D:
-	// `startBase1PatrolPath[i, j]`). WorldPosition is also distinct from bare real[].
-	// The ABL signature char `*` means PARAM_TYPE_INTEGER_REAL (scalar numeric) —
-	// NOT a wildcard. The real wildcard is `?` = PARAM_TYPE_ANYTHING (ablstd.cpp
-	// short-circuits the check). Using `?` for every arg that may bind a custom
-	// compound type.
-	// magicattack / coreguard / corepatrol / corewait are DELIBERATELY NOT
-	// registered here. They are defined as real ABL routines in the stock
-	// data/missions/corebrain.abx library (loaded at every mission start via
-	// ABLi_loadLibrary in mission.cpp). Registering native stubs with these
-	// names shadows the library implementation in the global symtable and
-	// silently breaks proactive AI in every stock mission (passive enemies,
-	// inert turrets, broken convoy chains). See:
-	// docs/observations/2026-04-25-abl-library-shadow-rule.md
-	// The future mod profile launcher must re-enable these only for content
-	// packs whose corebrain.abx does NOT define them (e.g. Omnitech/Carver5O).
-	// magicpatrol / magicguard / magicescort are DELIBERATELY NOT registered here.
-	// The genuine MCO brain library (mco-compat/corebrain.abx, loaded via
-	// MC2_MOD_DEPS=mco-compat) defines them as real routines; a native registration
-	// would shadow the library and break MCO proactive AI (same shadow rule as
-	// magicattack/coreguard/corepatrol above).
-	// docs/observations/2026-04-25-abl-library-shadow-rule.md
+	// Brain libraries supply the magic/core attack, patrol, guard and escort routines.
+	// Native registrations would shadow them and disable proactive AI.
 	ABLi_addFunction("setwillrequesthelp",   false, "b",   nullptr, execSetWillRequestHelp);
 	ABLi_addFunction("tdebugstring",         false, "C",   nullptr, execTDebugString);
 	ABLi_addFunction("isdeadorfled",         false, "i",   "b",  execIsDeadOrFled);
 	ABLi_addFunction("printteamstatus",      false, "i",   nullptr, execPrintTeamStatus);
 
-	// --- Omnitech ABL extensions ---
-	// Mission / messaging / economy
 	ABLi_addFunction("settextmsg",           false, "i*i", nullptr, execSetTextMsg);
 	ABLi_addFunction("setlargemsg",          false, "i*i", nullptr, execSetLargeMsg);
 	ABLi_addFunction("setmissiontune",       false, "i",   nullptr, execSetMissionTune);
@@ -626,7 +602,6 @@ void initABL (void) {
 	ABLi_addFunction("settxtbuildingname",   false, "iC",  nullptr, execSetTxtBuildingName);
 	ABLi_addFunction("ablprint",             false, "C*",  nullptr, execAblPrint);
 
-	// Object / mover manipulation
 	ABLi_addFunction("teleporttopoint",      false, "iR",  nullptr, execTeleportToPoint);
 	ABLi_addFunction("addmovertoplayer",     false, "iii", nullptr, execAddMoverToPlayer);
 	ABLi_addFunction("removemoverfromplayer",false, "iii", nullptr, execRemoveMoverFromPlayer);
@@ -637,7 +612,6 @@ void initABL (void) {
 	ABLi_addFunction("setmechgesture",       false, "ii",  nullptr, execSetMechGesture);
 	ABLi_addFunction("setunitforcegroup",    false, "ii",  nullptr, execSetUnitForceGroup);
 
-	// Support toggles
 	ABLi_addFunction("toggleairstrike",      false, nullptr,  nullptr, execToggleAirStrike);
 	ABLi_addFunction("togglesensorstrike",   false, nullptr,  nullptr, execToggleSensorStrike);
 	ABLi_addFunction("toggleartillerypiece", false, nullptr,  nullptr, execToggleArtilleryPiece);
@@ -646,7 +620,6 @@ void initABL (void) {
 	ABLi_addFunction("setrepairtruckenabled",  false, "b", nullptr, execSetRepairTruckEnabled);
 	ABLi_addFunction("setsalvagecraftenabled", false, "b", nullptr, execSetSalvageCraftEnabled);
 
-	// Queries
 	ABLi_addFunction("gettargetrelativeposition",    false, "iRR", nullptr, execGetTargetRelativePosition);
 	ABLi_addFunction("getrelativepositiontotarget",  false, "iriR", nullptr, execGetRelativePositionToTarget);
 	ABLi_addFunction("newdistancetoposition", false, "iR", "r", execNewDistanceToPosition);
@@ -657,7 +630,6 @@ void initABL (void) {
 	ABLi_addFunction("isrefit",              false, nullptr,  "b",  execIsRefit);
 	ABLi_addFunction("needsrefit",           false, nullptr,  "b",  execNeedsRefit);
 
-	// Pilot / brain / tactics
 	ABLi_addFunction("hirepilot",            false, "C",   nullptr, execHirePilot);
 	ABLi_addFunction("addnewpilot",          false, "iCC", nullptr, execAddNewPilot);
 	ABLi_addFunction("addnewpilottoplayer",  false, "iCC", nullptr, execAddNewPilotToPlayer);
@@ -672,10 +644,6 @@ void initABL (void) {
 	ABLi_addFunction("getcurtacordertime",   false, nullptr,  "r",  execGetCurTacOrderTime);
 	ABLi_addFunction("clearmoveorders",      false, nullptr,  nullptr, execClearMoveOrdersOmni);
 
-	//static long Godzilla = 120;
-	//static long GodzillaList[5] = {10, 20, 30, 40, 50};
-	//ABLi_registerInteger("godzilla", &Godzilla);
-	//ABLi_registerInteger("godzillalist", &GodzillaList, 5);
 
 	logAblFunctionTableCapacity();
 }

@@ -105,7 +105,8 @@ typedef enum {
 
 //***************************************************************************
 
-void syntaxError (int errCode);
+struct ABLSyntaxFailure {};
+[[noreturn]] void syntaxError (int errCode);
 void runtimeError (int errCode);
 void ABL_Fatal (long errCode, const char* s);
 void ABL_Assert (bool test, long errCode, const char* s);

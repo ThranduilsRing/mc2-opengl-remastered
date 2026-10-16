@@ -14,27 +14,22 @@
  ],
  "types": {
   "ABLFile": {
-   "delete": 6,
+   "delete": 3,
    "delete_array": 0,
    "files": {
     "mclib/ablenv.cpp": {
-     "delete": 2,
-     "new": 2
+     "delete": 1,
+     "new": 1
     },
     "mclib/ablrtn.cpp": {
      "delete": 2,
      "new": 2
-    },
-    "mclib/ablscan.cpp": {
-     "delete": 2,
-     "new": 2
     }
    },
-   "new": 6,
+   "new": 3,
    "new_array": 0,
    "owners": [
-    "",
-    "UserFile"
+    ""
    ]
   },
   "ABLModule": {
@@ -1055,21 +1050,6 @@
    "new_array": 0,
    "owners": []
   },
-  "CUnitList": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "editor/EditorObjects_unit.cpp": {
-     "delete": 1,
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": [
-    "Unit"
-   ]
-  },
   "C_RemoveStructure": {
    "delete": 1,
    "delete_array": 0,
@@ -1476,6 +1456,21 @@
     }
    },
    "new": 1,
+   "new_array": 0,
+   "owners": []
+  },
+  "CraterManager": {
+   "delete": 0,
+   "delete_array": 0,
+   "files": {
+    "code/mission_init.cpp": {
+     "new": 1
+    },
+    "code/saveload_load.cpp": {
+     "new": 1
+    }
+   },
+   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -1903,18 +1898,6 @@
     "ClipPolygon2"
    ]
   },
-  "ENode": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/elist.h": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "Editor": {
    "delete": 1,
    "delete_array": 0,
@@ -2117,25 +2100,18 @@
    "owners": []
   },
   "FitIniFile": {
-   "delete": 4,
+   "delete": 2,
    "delete_array": 0,
    "files": {
-    "code/mission_init.cpp": {
-     "new": 2
-    },
-    "code/mission_init_load.cpp": {
-     "delete": 2
-    },
     "editor/Editor.cpp": {
      "delete": 2,
      "new": 2
     }
    },
-   "new": 4,
+   "new": 2,
    "new_array": 0,
    "owners": [
-    "",
-    "Mission"
+    ""
    ]
   },
   "FlattenBrush": {
@@ -5606,10 +5582,10 @@
    "delete_array": 0,
    "files": {
     "mclib/tgl_types.cpp": {
-     "new": 1
+     "new": 2
     }
    },
-   "new": 1,
+   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -6098,6 +6074,21 @@
    "new": 2,
    "new_array": 0,
    "owners": []
+  },
+  "UserFile": {
+   "delete": 1,
+   "delete_array": 0,
+   "files": {
+    "mclib/ablenv.cpp": {
+     "delete": 1,
+     "new": 1
+    }
+   },
+   "new": 1,
+   "new_array": 0,
+   "owners": [
+    "UserFile"
+   ]
   },
   "UserHeap": {
    "delete": 16,
@@ -7682,18 +7673,16 @@
   "code/objective.cpp": 8,
   "code/objmgr.cpp": 1,
   "code/objmgr_io.cpp": 2,
-  "code/objtype.cpp": 1,
   "code/optionsarea.cpp": 3,
   "code/pilotreviewarea.cpp": 2,
   "code/salvagemecharea.cpp": 10,
-  "code/saveload.cpp": 1,
   "code/simplecamera.cpp": 3,
   "code/terrobj.cpp": 1,
   "code/warrior_queue.cpp": 2,
   "code/weaponbolt.cpp": 10,
   "code/weaponbolt_update.cpp": 36,
-  "editor/Action.cpp": 2,
-  "editor/BuildingBrush.cpp": 1,
+  "editor/Action.cpp": 5,
+  "editor/BuildingBrush.cpp": 2,
   "editor/BuildingSettingsDlg.cpp": 1,
   "editor/DlgFileOpen.cpp": 1,
   "editor/Editor.cpp": 3,
@@ -7703,8 +7692,9 @@
   "editor/EditorObjectMgr.cpp": 1,
   "editor/EditorObjects.cpp": 1,
   "editor/ObjectSelectionBrush.cpp": 1,
-  "editor/Objective.cpp": 6,
-  "editor/ObjectiveDlg.cpp": 9,
+  "editor/Objective.cpp": 7,
+  "editor/ObjectiveDlg.cpp": 13,
+  "editor/ObjectivesDlg.cpp": 1,
   "editor/ScatterBrush.cpp": 1,
   "editor/UnitSettingsDlg.cpp": 4,
   "editor/tgawnd.cpp": 1,
@@ -7712,7 +7702,7 @@
   "gui/alistbox.cpp": 2,
   "gui/asystem.cpp": 1,
   "mclib/ablenv.cpp": 1,
-  "mclib/apprtype.cpp": 3,
+  "mclib/apprtype.cpp": 4,
   "mclib/bdactor.cpp": 2,
   "mclib/bdactor_static.cpp": 4,
   "mclib/bdactor_terrain.cpp": 11,

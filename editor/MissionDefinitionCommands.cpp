@@ -14,7 +14,7 @@ class RefreshDefinitionsAction final : public Action
         std::vector<std::optional<PartDefinition>> alternatives;
         explicit UnitSnapshot(Unit& unit) : instanceId(unit.instanceId()), part(unit.partDefinition())
         {
-            for (auto it = unit.pAlternativeInstances->Begin(); !it.IsDone(); it++) alternatives.push_back((*it).partDefinition());
+            for (auto it = unit.alternatives.begin(); it != unit.alternatives.end(); it++) alternatives.push_back((*it).partDefinition());
         }
     };
     std::vector<UnitSnapshot> units;
@@ -22,7 +22,7 @@ class RefreshDefinitionsAction final : public Action
     Unit* resolveUnit(const UnitSnapshot& saved) const
     {
         const auto all = EditorObjectMgr::instance()->getUnits();
-        for (auto it = all.Begin(); !it.IsDone(); it++)
+        for (auto it = all.begin(); it != all.end(); it++)
             if ((*it)->instanceId() == saved.instanceId) return *it;
         return nullptr;
     }
@@ -31,7 +31,7 @@ public:
         teams(EditorData::instance->TeamsRef())
     {
         const auto all = EditorObjectMgr::instance()->getUnits();
-        for (auto it = all.Begin(); !it.IsDone(); it++) units.emplace_back(**it);
+        for (auto it = all.begin(); it != all.end(); it++) units.emplace_back(**it);
     }
     bool undo() override
     {
@@ -40,7 +40,7 @@ public:
         for (auto& previous : units)
         {
             auto* unit = resolveUnit(previous);
-            if (!unit || static_cast<size_t>(unit->pAlternativeInstances->Count()) != previous.alternatives.size()) return false;
+            if (!unit || static_cast<size_t>(unit->alternatives.size()) != previous.alternatives.size()) return false;
         }
         for (auto& previous : units)
         {
@@ -48,7 +48,7 @@ public:
             UnitSnapshot current(unit);
             unit.restorePartDefinition(previous.part);
             size_t index = 0;
-            for (auto it = unit.pAlternativeInstances->Begin(); !it.IsDone(); it++) (*it).restorePartDefinition(previous.alternatives[index++]);
+            for (auto it = unit.alternatives.begin(); it != unit.alternatives.end(); it++) (*it).restorePartDefinition(previous.alternatives[index++]);
             previous = std::move(current);
         }
         return teams.undo();
@@ -77,11 +77,11 @@ bool EditorInterface::refreshMissionDefinitionsFromCatalog()
     if (!EditorData::instance || !land) return false;
     auto action = std::make_unique<RefreshDefinitionsAction>();
     const auto all = EditorObjectMgr::instance()->getUnits();
-    for (auto it = all.Begin(); !it.IsDone(); it++) (*it)->refreshPartFromCatalog();
+    for (auto it = all.begin(); it != all.end(); it++) (*it)->refreshPartFromCatalog();
     for (int team = 0; team < GAME_MAX_PLAYERS; ++team)
     {
         auto& objectives = EditorData::instance->TeamsRef().TeamRef(team).ObjectivesRef();
-        for (auto it = objectives.Begin(); !it.IsDone(); it++) (*it)->refreshModelFromCatalog();
+        for (auto it = objectives.entries.begin(); it != objectives.entries.end(); it++) (*it)->refreshModelFromCatalog();
     }
     undoMgr.AddAction(action.release());
     EditorData::instance->MissionNeedsSaving(true);

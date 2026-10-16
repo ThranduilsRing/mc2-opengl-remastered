@@ -1,5 +1,5 @@
-// UI-DEFS-LOCKSTEP-HARDEN-1: pure decision logic for the data/defs/ui <-> exe
-// lockstep contract (BLACK-MENU-BISECT-1 root cause: version-skewed defs/ui
+// pure decision logic for the data/defs/ui <-> exe
+// lockstep contract (version-skewed defs/ui
 // packages loaded "successfully" but rendered zero elements, totally silently,
 // under an opaque black-clear).
 //

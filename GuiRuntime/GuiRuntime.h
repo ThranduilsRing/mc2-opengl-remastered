@@ -58,7 +58,7 @@ namespace GuiRuntime {
 
     bool IsReadyForUiText();
 
-    // BRIEFING-WRAP-1: split text into the EXACT wrapped lines DrawUiText would
+    // split text into the EXACT wrapped lines DrawUiText would
     // produce at this pixel wrap width / font / size (same CalcWordWrapPositionA
     // walk ImGui uses when rendering with a wrap_width). '\n' is honored as a
     // hard break; an empty input yields one empty line. Returns false when the

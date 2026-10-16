@@ -1,19 +1,14 @@
 B5.5-heap-owner	code/bldng.cpp:1161	asset_delete	delete appearance;
 B5.1-texture	code/controlgui_init.cpp:99	tex_acquire	int ID = mcTextureManager->loadTexture( file, gos_Texture_Alpha, 0, 0, 0x2 );
-B5.1-texture	code/controlgui_init.cpp:604	tex_release	mcTextureManager->removeTexture( gosID );
-B5.1-texture	code/controlgui_init.cpp:613	tex_release	mcTextureManager->removeTexture( gosID );
 B5.1-texture	code/controlgui_objectives.cpp:256	tex_acquire	s_frameMcH = mcTextureManager->loadTexture(
 B5.1-texture	code/gametacmap.cpp:91	tex_acquire	viewRectHandle = mcTextureManager->loadTexture(path, gos_Texture_Alpha, 0 );
 B5.1-texture	code/gametacmap.cpp:95	tex_acquire	blipHandle = mcTextureManager->loadTexture( path, gos_Texture_Alpha, 0 );
 B5.5-heap-owner	code/gate.cpp:656	asset_delete	delete appearance;
 B5.5-heap-owner	code/gvehicl.cpp:1080	asset_delete	delete appearance;
-B5.1-texture	code/infowindow.cpp:125	tex_release	mcTextureManager->removeTexture( gosID );
-B5.1-texture	code/infowindow.cpp:143	tex_release	mcTextureManager->removeTexture( gosID );
 B5.5-heap-owner	code/mech.cpp:518	asset_delete	delete appearance;
 B5.5-heap-owner	code/mech_init.cpp:162	asset_delete	delete appearance;
 B5.1-texture	code/mechicon.cpp:1857	tex_acquire	s_pilotTextureHandle = mcTextureManager->loadTexture( path, gos_Texture_Alpha, 0, 0, 0x2);
-B5.1-texture	code/mechicon.cpp:1924	tex_release	mcTextureManager->removeTexture( gosID );
-B5.1-texture	code/mechicon.cpp:1947	tex_acquire	s_pilotTextureHandle = mcTextureManager->loadTexture( path, gos_Texture_Alpha, 0, 0, 0x2);
+B5.1-texture	code/mechicon.cpp:1946	tex_acquire	s_pilotTextureHandle = mcTextureManager->loadTexture( path, gos_Texture_Alpha, 0, 0, 0x2);
 B5.5-heap-owner	code/mission.cpp:889	asset_delete	delete TG_Shape::tglHeap;
 B5.5-heap-owner	code/mission.cpp:1081	asset_delete	delete GVAppearanceType::SensorTriangleShape;
 B5.5-heap-owner	code/mission.cpp:1087	asset_delete	delete GVAppearanceType::SensorCircleShape;
@@ -30,10 +25,9 @@ B5.5-heap-owner	code/objmgr.cpp:1051	asset_delete	delete objTypeManager;
 B5.4-objecttype	code/objtype.cpp:86	class_op	void* ObjectType::operator new (size_t ourSize) {
 B5.4-objecttype	code/objtype.cpp:94	class_op	void ObjectType::operator delete (void* us) {
 B5.4-objecttype	code/objtype.cpp:94	asset_delete	void ObjectType::operator delete (void* us) {
-B5.4-objecttype	code/objtype.cpp:301	asset_delete	delete objectTypeCache;
-B5.4-objecttype	code/objtype.cpp:414	asset_new	objType = new TerrainObjectType;
-B5.4-objecttype	code/objtype.cpp:421	asset_new	objType = new TerrainObjectType;
-B5.4-objecttype	code/objtype.cpp:532	asset_delete	delete table[objTypeNum];
+B5.4-objecttype	code/objtype.cpp:299	asset_delete	delete objectTypeCache;
+B5.4-objecttype	code/objtype.cpp:412	asset_new	objType = new TerrainObjectType;
+B5.4-objecttype	code/objtype.cpp:419	asset_new	objType = new TerrainObjectType;
 B5.1-texture	code/pausewindow.cpp:346	tex_acquire	s_frameMcH = mcTextureManager->loadTexture(
 B5.1-texture	code/pausewindow.cpp:538	tex_acquire	s_dlgFrameMcH = mcTextureManager->loadTexture(
 B5.5-heap-owner	code/simplecamera.cpp:83	asset_delete	delete GVAppearanceType::SensorTriangleShape;
@@ -41,15 +35,12 @@ B5.5-heap-owner	code/simplecamera.cpp:89	asset_delete	delete GVAppearanceType::S
 B5.5-heap-owner	code/simplecamera.cpp:95	asset_delete	delete Mech3DAppearanceType::SensorSquareShape;
 B5.4-objecttype	code/terrobj.cpp:1108	asset_delete	delete appearance;
 B5.5-heap-owner	code/turret.cpp:2090	asset_delete	delete appearance;
-B5.1-texture	code/weaponbolt.cpp:580	tex_acquire	mcTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,0);
-B5.1-texture	code/weaponbolt.cpp:582	tex_acquire	mcTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap);
+B5.1-texture	code/weaponbolt.cpp:628	tex_acquire	mcTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,0);
+B5.1-texture	code/weaponbolt.cpp:630	tex_acquire	mcTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap);
 B5.1-texture	gui/UiDefs_draw.cpp:142	tex_acquire	e.textureNode = mcTextureManager->loadTexture(loadPath, gos_Texture_Alpha, 0, 0, 0x2);
 B5.1-texture	gui/abutton.cpp:373	tex_acquire	int ID = mcTextureManager->loadTexture( file, gos_Texture_Alpha, 0, 0, 0x2 );
 B5.1-texture	gui/asystem.cpp:354	tex_acquire	int ID = mcTextureManager->loadTexture( buffer, bAlpha ? gos_Texture_Alpha : gos_Texture_Keyed, 0, 0, neverFlush);
-B5.1-texture	gui/asystem.cpp:471	tex_release	mcTextureManager->removeTexture( gosID );
-B5.1-texture	gui/asystem.cpp:748	tex_release	mcTextureManager->removeTexture( gosID );
-B5.1-texture	gui/asystem.cpp:750	tex_acquire	textureHandle = mcTextureManager->loadTexture( fileName, gos_Texture_Keyed, 0, 0, 0x2);
-B5.1-texture	gui/asystem.cpp:779	tex_release	mcTextureManager->removeTexture( gosID );
+B5.1-texture	gui/asystem.cpp:744	tex_acquire	textureHandle = mcTextureManager->loadTexture( fileName, gos_Texture_Keyed, 0, 0, 0x2);
 B5.3-appearance	mclib/appear.cpp:85	class_op	void * Appearance::operator new (size_t mySize)
 B5.3-appearance	mclib/appear.cpp:90	heap_malloc	result = AppearanceTypeList::appearanceHeap->Malloc(mySize);
 B5.3-appearance	mclib/appear.cpp:97	class_op	void Appearance::operator delete (void * us)
@@ -60,24 +51,16 @@ B5.3-appearance	mclib/apprtype.cpp:78	heap_malloc	result = AppearanceTypeList::a
 B5.3-appearance	mclib/apprtype.cpp:85	class_op	void AppearanceType::operator delete (void* treePtr)
 B5.3-appearance	mclib/apprtype.cpp:85	asset_delete	void AppearanceType::operator delete (void* treePtr)
 B5.3-appearance	mclib/apprtype.cpp:90	heap_free	result = AppearanceTypeList::appearanceHeap->Free(treePtr);
-B5.3-appearance	mclib/apprtype.cpp:97	heap_malloc	name = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(fileName)+1);
-B5.3-appearance	mclib/apprtype.cpp:236	heap_free	AppearanceTypeList::appearanceHeap->Free(name);
 B5.3-appearance	mclib/apprtype.cpp:311	asset_new	appearanceType = new Mech3DAppearanceType;
 B5.3-appearance	mclib/apprtype.cpp:338	asset_new	appearanceType = new GVAppearanceType;
 B5.3-appearance	mclib/apprtype.cpp:365	asset_new	appearanceType = new TreeAppearanceType;
 B5.3-appearance	mclib/apprtype.cpp:392	asset_new	appearanceType = new GenericAppearanceType;
 B5.3-appearance	mclib/apprtype.cpp:419	asset_new	appearanceType = new BldgAppearanceType;
 B5.3-appearance	mclib/apprtype.cpp:508	asset_delete	delete appearanceType;
-B5.3-appearance	mclib/apprtype.cpp:535	asset_delete	delete appearanceHeap;
-B5.3-appearance	mclib/apprtype.cpp:540	asset_delete	delete GVAppearanceType::SensorCircleShape;
-B5.3-appearance	mclib/apprtype.cpp:546	asset_delete	delete GVAppearanceType::SensorTriangleShape;
-B5.3-appearance	mclib/apprtype.cpp:552	asset_delete	delete Mech3DAppearanceType::SensorSquareShape;
-B5.2-tg	mclib/assimp_importer.cpp:443	heap_malloc	TG_TypeVertexPtr verts = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(
-B5.2-tg	mclib/assimp_importer.cpp:445	heap_malloc	TG_TypeTrianglePtr tris = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(
-B5.2-tg	mclib/assimp_importer.cpp:510	heap_free	TG_Shape::tglHeap->Free(verts);
-B5.2-tg	mclib/assimp_importer.cpp:511	heap_free	TG_Shape::tglHeap->Free(tris);
-B5.2-tg	mclib/assimp_importer.cpp:584	heap_malloc	TG_TypeVertexPtr verts = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeVertex) * totalV);
-B5.2-tg	mclib/assimp_importer.cpp:585	heap_malloc	TG_TypeTrianglePtr tris = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeTriangle) * totalT);
+B5.3-appearance	mclib/apprtype.cpp:534	asset_delete	delete appearanceHeap;
+B5.3-appearance	mclib/apprtype.cpp:539	asset_delete	delete GVAppearanceType::SensorCircleShape;
+B5.3-appearance	mclib/apprtype.cpp:545	asset_delete	delete GVAppearanceType::SensorTriangleShape;
+B5.3-appearance	mclib/apprtype.cpp:551	asset_delete	delete Mech3DAppearanceType::SensorSquareShape;
 B5.1-texture	mclib/bdactor.cpp:280	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
 B5.1-texture	mclib/bdactor.cpp:287	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
 B5.3-appearance	mclib/bdactor.cpp:362	heap_malloc	nodeUsed = (long *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(long) * appearType->numWeaponNodes);
@@ -119,8 +102,6 @@ B5.3-appearance	mclib/bdactor_type.cpp:254	asset_delete	delete bldgDmgShape;
 B5.1-texture	mclib/bdactor_type.cpp:284	tex_acquire	DWORD gosHandle = mcTextureManager->loadTexture(
 B5.1-texture	mclib/bdactor_type.cpp:293	tex_acquire	DWORD gosHandle = mcTextureManager->loadTexture(
 B5.3-appearance	mclib/bdactor_type.cpp:360	asset_new	bdAnimData[i] = new TG_AnimateShape;
-B5.3-appearance	mclib/bdactor_type.cpp:398	heap_malloc	nodeData = (NodeData *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(NodeData)*(MAX_WEAPON_NODES));
-B5.3-appearance	mclib/bdactor_type.cpp:413	heap_malloc	nodeData[i].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(weaponName)+1);
 B5.3-appearance	mclib/bdactor_type.cpp:437	asset_delete	delete bldgShape[i];
 B5.3-appearance	mclib/bdactor_type.cpp:445	asset_delete	delete bldgRenderShape;
 B5.3-appearance	mclib/bdactor_type.cpp:468	asset_delete	delete bldgDmgShape;
@@ -138,9 +119,8 @@ B5.3-appearance	mclib/bdactor_type.cpp:758	asset_delete	delete treeShape[i];
 B5.3-appearance	mclib/bdactor_type.cpp:767	asset_delete	delete treeRenderShape[i];
 B5.3-appearance	mclib/bdactor_type.cpp:775	asset_delete	delete treeDmgShape;
 B5.1-texture	mclib/cellip.cpp:126	tex_acquire	s_textureHandle = mcTextureManager->loadTexture("data/art/ring.tga", gos_Texture_Alpha, 0 );
-B5.1-texture	mclib/cellip.cpp:138	tex_release	mcTextureManager->removeTextureNode(s_textureHandle);
-B5.1-texture	mclib/crater.cpp:165	tex_acquire	craterTextureIndices[i] = mcTextureManager->loadTexture(craterPath, gos_Texture_Keyed, gosHint_DisableMipmap);
-B5.1-texture	mclib/crater.cpp:167	tex_acquire	craterTextureIndices[i] = mcTextureManager->loadTexture(craterPath, gos_Texture_Alpha, gosHint_DisableMipmap);
+B5.1-texture	mclib/crater.cpp:162	tex_acquire	craterTextureIndices[i] = mcTextureManager->loadTexture(craterPath, gos_Texture_Keyed, gosHint_DisableMipmap);
+B5.1-texture	mclib/crater.cpp:164	tex_acquire	craterTextureIndices[i] = mcTextureManager->loadTexture(craterPath, gos_Texture_Alpha, gosHint_DisableMipmap);
 B5.3-appearance	mclib/genactor.cpp:25	asset_new	genShape = new TG_TypeMultiShape;
 B5.3-appearance	mclib/genactor.cpp:87	asset_new	genDmgShape = new TG_TypeMultiShape;
 B5.3-appearance	mclib/genactor.cpp:93	asset_delete	delete genDmgShape;
@@ -160,36 +140,29 @@ B5.3-appearance	mclib/gvactor.cpp:161	asset_new	gvShadowShape = new TG_TypeMulti
 B5.3-appearance	mclib/gvactor.cpp:180	asset_new	gvDmgShape = new TG_TypeMultiShape;
 B5.3-appearance	mclib/gvactor.cpp:186	asset_delete	delete gvDmgShape;
 B5.3-appearance	mclib/gvactor.cpp:246	asset_new	gvAnimData[i] = new TG_AnimateShape;
-B5.3-appearance	mclib/gvactor.cpp:283	heap_malloc	nodeData = (NodeData *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(NodeData)*(numWeaponNodes+numSmokeNodes+numFoot
-B5.3-appearance	mclib/gvactor.cpp:292	heap_malloc	nodeData[i-1].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(blockId)+1);
-B5.3-appearance	mclib/gvactor.cpp:304	heap_malloc	nodeData[(i-1)+numSmokeNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(blockId)+1);
-B5.3-appearance	mclib/gvactor.cpp:317	heap_malloc	nodeData[(i-1)+numSmokeNodes+numWeaponNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(blockId)
-B5.3-appearance	mclib/gvactor.cpp:331	asset_new	SensorCircleShape = new TG_TypeMultiShape;
-B5.3-appearance	mclib/gvactor.cpp:344	asset_new	SensorTriangleShape = new TG_TypeMultiShape;
-B5.3-appearance	mclib/gvactor.cpp:361	asset_delete	delete gvShape[i];
-B5.3-appearance	mclib/gvactor.cpp:368	asset_delete	delete gvShadowShape;
-B5.3-appearance	mclib/gvactor.cpp:374	asset_delete	delete gvDmgShape;
-B5.3-appearance	mclib/gvactor.cpp:388	heap_free	AppearanceTypeList::appearanceHeap->Free(nodeData[i].nodeId);
-B5.3-appearance	mclib/gvactor.cpp:392	heap_free	AppearanceTypeList::appearanceHeap->Free(nodeData);
-B5.1-texture	mclib/gvactor.cpp:781	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
-B5.1-texture	mclib/gvactor.cpp:787	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrin
-B5.1-texture	mclib/gvactor.cpp:799	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
-B5.1-texture	mclib/gvactor.cpp:805	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrin
-B5.1-texture	mclib/gvactor.cpp:839	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
-B5.1-texture	mclib/gvactor.cpp:846	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
-B5.1-texture	mclib/gvactor.cpp:881	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
-B5.1-texture	mclib/gvactor.cpp:887	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
-B5.1-texture	mclib/gvactor.cpp:917	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
-B5.1-texture	mclib/gvactor.cpp:923	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
-B5.3-appearance	mclib/gvactor.cpp:1001	heap_malloc	nodeUsed = (long *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(long) * appearType->numWeaponNodes);
-B5.3-appearance	mclib/gvactor.cpp:1005	heap_malloc	nodeRecycle = (float *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(float) * appearType->numWeaponNodes);
-B5.3-appearance	mclib/gvactor.cpp:1075	asset_delete	delete gvShape;
-B5.3-appearance	mclib/gvactor.cpp:1088	asset_delete	delete gvShape;
-B5.1-texture	mclib/gvactor.cpp:1118	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
-B5.1-texture	mclib/gvactor.cpp:1124	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrin
-B5.1-texture	mclib/gvactor.cpp:1136	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
-B5.1-texture	mclib/gvactor.cpp:1142	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrin
-B5.1-texture	mclib/gvactor_geometry.cpp:139	tex_release	mcTextureManager->removeTexture(gosHandle);
+B5.3-appearance	mclib/gvactor.cpp:321	asset_new	SensorCircleShape = new TG_TypeMultiShape;
+B5.3-appearance	mclib/gvactor.cpp:334	asset_new	SensorTriangleShape = new TG_TypeMultiShape;
+B5.3-appearance	mclib/gvactor.cpp:351	asset_delete	delete gvShape[i];
+B5.3-appearance	mclib/gvactor.cpp:358	asset_delete	delete gvShadowShape;
+B5.3-appearance	mclib/gvactor.cpp:364	asset_delete	delete gvDmgShape;
+B5.1-texture	mclib/gvactor.cpp:762	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
+B5.1-texture	mclib/gvactor.cpp:768	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrin
+B5.1-texture	mclib/gvactor.cpp:780	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
+B5.1-texture	mclib/gvactor.cpp:786	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrin
+B5.1-texture	mclib/gvactor.cpp:820	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
+B5.1-texture	mclib/gvactor.cpp:827	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
+B5.1-texture	mclib/gvactor.cpp:862	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
+B5.1-texture	mclib/gvactor.cpp:868	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
+B5.1-texture	mclib/gvactor.cpp:898	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
+B5.1-texture	mclib/gvactor.cpp:904	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
+B5.3-appearance	mclib/gvactor.cpp:982	heap_malloc	nodeUsed = (long *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(long) * appearType->numWeaponNodes);
+B5.3-appearance	mclib/gvactor.cpp:986	heap_malloc	nodeRecycle = (float *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(float) * appearType->numWeaponNodes);
+B5.3-appearance	mclib/gvactor.cpp:1056	asset_delete	delete gvShape;
+B5.3-appearance	mclib/gvactor.cpp:1069	asset_delete	delete gvShape;
+B5.1-texture	mclib/gvactor.cpp:1099	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
+B5.1-texture	mclib/gvactor.cpp:1105	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrin
+B5.1-texture	mclib/gvactor.cpp:1117	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
+B5.1-texture	mclib/gvactor.cpp:1123	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrin
 B5.1-texture	mclib/gvactor_geometry.cpp:171	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
 B5.1-texture	mclib/gvactor_geometry.cpp:193	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
 B5.3-appearance	mclib/gvactor_geometry.cpp:598	asset_delete	delete gvShape;
@@ -228,8 +201,7 @@ B5.1-texture	mclib/mech3d_init.cpp:485	tex_acquire	DWORD gosTextureHandle = mcTe
 B5.3-appearance	mclib/mech3d_init.cpp:692	heap_malloc	paintSchemata = (PaintSchemataPtr)AppearanceTypeList::appearanceHeap->Malloc(numPaintSchemata * sizeof(PaintSchemata));
 B5.1-texture	mclib/mech3d_init.cpp:917	tex_acquire	aoTextureHandle = mcTextureManager->loadTexture(aoFull, gos_Texture_Solid,
 B5.1-texture	mclib/mech3d_init.cpp:938	tex_acquire	normalTextureHandle = mcTextureManager->loadTexture(nrmFull, gos_Texture_Solid,
-B5.1-texture	mclib/mech3d_init.cpp:949	tex_release	mcTextureManager->removeTexture(gosHandle);
-B5.1-texture	mclib/mech3d_init.cpp:988	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,mechHints,paintInstance);
+B5.1-texture	mclib/mech3d_init.cpp:987	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,mechHints,paintInstance);
 B5.3-appearance	mclib/mech3d_render.cpp:346	asset_delete	delete mechShape;
 B5.3-appearance	mclib/mech3d_render.cpp:369	asset_delete	delete mechShape;
 B5.3-appearance	mclib/mech3d_type.cpp:135	asset_new	mechShape[i] = new TG_TypeMultiShape;
@@ -242,22 +214,14 @@ B5.3-appearance	mclib/mech3d_type.cpp:260	asset_delete	delete mechForwardDmgShap
 B5.3-appearance	mclib/mech3d_type.cpp:269	asset_new	mechBackwardDmgShape = new TG_TypeMultiShape;
 B5.3-appearance	mclib/mech3d_type.cpp:275	asset_delete	delete mechBackwardDmgShape;
 B5.3-appearance	mclib/mech3d_type.cpp:310	asset_new	mechAnim[i] = new TG_AnimateShape;
-B5.3-appearance	mclib/mech3d_type.cpp:373	heap_malloc	nodeData = (NodeData *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(NodeData)*(numJumpNodes+numWeaponNodes+numSmoke
-B5.3-appearance	mclib/mech3d_type.cpp:387	heap_malloc	nodeData[i].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(smokeName)+1);
-B5.3-appearance	mclib/mech3d_type.cpp:409	heap_malloc	nodeData[i+numSmokeNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(weaponName)+1);
-B5.3-appearance	mclib/mech3d_type.cpp:428	heap_malloc	nodeData[i+numSmokeNodes+numWeaponNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(jumpName)+1)
-B5.3-appearance	mclib/mech3d_type.cpp:446	heap_malloc	nodeData[i+numSmokeNodes+numWeaponNodes+numJumpNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen
-B5.3-appearance	mclib/mech3d_type.cpp:461	asset_new	SensorSquareShape = new TG_TypeMultiShape;
-B5.3-appearance	mclib/mech3d_type.cpp:474	asset_new	GVAppearanceType::SensorCircleShape = new TG_TypeMultiShape;
-B5.3-appearance	mclib/mech3d_type.cpp:486	asset_new	GVAppearanceType::SensorTriangleShape = new TG_TypeMultiShape;
-B5.3-appearance	mclib/mech3d_type.cpp:596	asset_delete	delete mechShape[i];
-B5.3-appearance	mclib/mech3d_type.cpp:603	asset_delete	delete mechShadowShape;
-B5.3-appearance	mclib/mech3d_type.cpp:621	asset_delete	delete mechForwardDmgShape;
-B5.3-appearance	mclib/mech3d_type.cpp:627	asset_delete	delete mechBackwardDmgShape;
-B5.3-appearance	mclib/mech3d_type.cpp:639	heap_free	AppearanceTypeList::appearanceHeap->Free(nodeData[i].nodeId);
-B5.3-appearance	mclib/mech3d_type.cpp:643	heap_free	AppearanceTypeList::appearanceHeap->Free(nodeData);
+B5.3-appearance	mclib/mech3d_type.cpp:449	asset_new	SensorSquareShape = new TG_TypeMultiShape;
+B5.3-appearance	mclib/mech3d_type.cpp:462	asset_new	GVAppearanceType::SensorCircleShape = new TG_TypeMultiShape;
+B5.3-appearance	mclib/mech3d_type.cpp:474	asset_new	GVAppearanceType::SensorTriangleShape = new TG_TypeMultiShape;
+B5.3-appearance	mclib/mech3d_type.cpp:584	asset_delete	delete mechShape[i];
+B5.3-appearance	mclib/mech3d_type.cpp:591	asset_delete	delete mechShadowShape;
+B5.3-appearance	mclib/mech3d_type.cpp:609	asset_delete	delete mechForwardDmgShape;
+B5.3-appearance	mclib/mech3d_type.cpp:615	asset_delete	delete mechBackwardDmgShape;
 B5.1-texture	mclib/mlr/gosimage.cpp:58	tex_acquire	mcTextureNodeIndex = mcTextureManager->loadTexture(name,gos_Texture_Detect,ipHints);
-B5.1-texture	mclib/mlr/gosimage.cpp:78	tex_release	mcTextureManager->removeTexture(mcTextureNodeIndex);
 B5.1-texture	mclib/mlr/gosimagepool.cpp:143	tex_acquire	DWORD nodeIndex = mcTextureManager->loadTexture(file_name,gos_Texture_Detect, hint);
 B5.5-heap-owner	mclib/mlr/mlrtexturepool.cpp:42	asset_delete	delete MLRTexturePool::Instance;
 B5.5-heap-owner	mclib/mlr/mlrtexturepool.cpp:76	asset_delete	delete textureArray[i];
@@ -268,47 +232,25 @@ B5.2-tg	mclib/msl.cpp:60	class_op	void TG_TypeMultiShape::operator delete (void 
 B5.2-tg	mclib/msl.cpp:60	asset_delete	void TG_TypeMultiShape::operator delete (void *us)
 B5.2-tg	mclib/msl.cpp:62	heap_free	TG_Shape::tglHeap->Free(us);
 B5.2-tg	mclib/msl.cpp:73	asset_new	newShape = new TG_MultiShape;
-B5.2-tg	mclib/msl.cpp:83	heap_malloc	newShape->listOfShapes = (TG_ShapeRecPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShapeRec) * numTG_TypeShapes);
-B5.2-tg	mclib/msl_anim.cpp:10	class_op	void *TG_AnimateShape::operator new (size_t mySize)
-B5.2-tg	mclib/msl_anim.cpp:12	heap_malloc	void *result = TG_Shape::tglHeap->Malloc(mySize);
-B5.2-tg	mclib/msl_anim.cpp:17	class_op	void TG_AnimateShape::operator delete (void *us)
-B5.2-tg	mclib/msl_anim.cpp:17	asset_delete	void TG_AnimateShape::operator delete (void *us)
-B5.2-tg	mclib/msl_anim.cpp:19	heap_free	TG_Shape::tglHeap->Free(us);
-B5.2-tg	mclib/msl_anim.cpp:67	heap_malloc	quat = (Stuff::UnitQuaternion *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::UnitQuaternion) * numFrames);
-B5.2-tg	mclib/msl_anim.cpp:75	heap_malloc	pos = (Stuff::Point3D *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::Point3D) * numFrames);
-B5.2-tg	mclib/msl_anim.cpp:97	heap_malloc	listOfAnimation = (TG_AnimationPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Animation) * count);
-B5.2-tg	mclib/msl_anim.cpp:151	heap_free	TG_Shape::tglHeap->Free( listOfAnimation[i].pos );
-B5.2-tg	mclib/msl_anim.cpp:154	heap_free	TG_Shape::tglHeap->Free( listOfAnimation[i].quat );
-B5.2-tg	mclib/msl_anim.cpp:159	heap_free	TG_Shape::tglHeap->Free(listOfAnimation);
-B5.2-tg	mclib/msl_anim.cpp:317	heap_malloc	listOfAnimation = (TG_AnimationPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Animation) * shape->GetNumShapes());
-B5.2-tg	mclib/msl_anim.cpp:400	heap_malloc	listOfAnimation[i].pos = (Stuff::Point3D *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::Point3D) * numFrames);
-B5.2-tg	mclib/msl_anim.cpp:472	heap_malloc	listOfAnimation[i].quat = (Stuff::UnitQuaternion *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::UnitQuaternion) * numFrames);
-B5.2-tg	mclib/msl_load.cpp:65	heap_malloc	listOfTextures = (TG_TexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Texture) * numTextures);
-B5.2-tg	mclib/msl_load.cpp:76	heap_malloc	listOfTypeShapes = (TG_TypeNodePtr *)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeNodePtr) * numTG_TypeShapes);
-B5.2-tg	mclib/msl_load.cpp:89	asset_new	listOfTypeShapes[i] = new TG_TypeShape;
-B5.2-tg	mclib/msl_load.cpp:96	asset_new	listOfTypeShapes[i] = new TG_TypeNode;
-B5.2-tg	mclib/msl_load.cpp:129	asset_delete	delete listOfTypeShapes[i];
-B5.2-tg	mclib/msl_load.cpp:213	heap_malloc	listOfTypeShapes = (TG_TypeNodePtr *)TG_Shape::tglHeap->Malloc(
-B5.2-tg	mclib/msl_load.cpp:223	asset_new	listOfTypeShapes[i] = new TG_TypeShape;
-B5.2-tg	mclib/msl_load.cpp:241	heap_malloc	listOfTextures = (TG_TexturePtr)TG_Shape::tglHeap->Malloc(
-B5.2-tg	mclib/msl_load.cpp:370	asset_delete	delete listOfTypeShapes[i];
-B5.2-tg	mclib/msl_load.cpp:376	heap_free	TG_Shape::tglHeap->Free(listOfTypeShapes);
-B5.2-tg	mclib/msl_load.cpp:381	heap_free	TG_Shape::tglHeap->Free(listOfTextures);
-B5.2-tg	mclib/msl_load.cpp:404	heap_free	TG_Shape::tglHeap->Free(listOfShapes[i].node);
-B5.2-tg	mclib/msl_load.cpp:409	heap_free	TG_Shape::tglHeap->Free(listOfShapes);
-B5.2-tg	mclib/msl_load.cpp:624	heap_malloc	listOfTextures = (TG_TexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Texture) * numTextures);
-B5.2-tg	mclib/msl_load.cpp:755	heap_malloc	listOfTypeShapes = (TG_TypeNodePtr *)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeNodePtr) * (numTG_TypeShapes+1));
-B5.2-tg	mclib/msl_load.cpp:768	asset_new	listOfTypeShapes[startIndex] = new TG_TypeNode;
-B5.2-tg	mclib/msl_load.cpp:844	asset_new	listOfTypeShapes[startIndex] = new TG_TypeShape;
+B5.2-tg	mclib/msl_anim.cpp:11	class_op	void *TG_AnimateShape::operator new (size_t mySize)
+B5.2-tg	mclib/msl_anim.cpp:13	heap_malloc	void *result = TG_Shape::tglHeap->Malloc(mySize);
+B5.2-tg	mclib/msl_anim.cpp:18	class_op	void TG_AnimateShape::operator delete (void *us)
+B5.2-tg	mclib/msl_anim.cpp:18	asset_delete	void TG_AnimateShape::operator delete (void *us)
+B5.2-tg	mclib/msl_anim.cpp:20	heap_free	TG_Shape::tglHeap->Free(us);
+B5.2-tg	mclib/msl_load.cpp:95	asset_new	listOfTypeShapes[i] = new TG_TypeShape;
+B5.2-tg	mclib/msl_load.cpp:109	asset_new	listOfTypeShapes[i] = new TG_TypeNode;
+B5.2-tg	mclib/msl_load.cpp:142	asset_delete	delete listOfTypeShapes[i];
+B5.2-tg	mclib/msl_load.cpp:234	asset_new	listOfTypeShapes[i] = new TG_TypeShape;
+B5.2-tg	mclib/msl_load.cpp:379	asset_delete	delete listOfTypeShapes[i];
+B5.2-tg	mclib/msl_load.cpp:410	heap_free	TG_Shape::tglHeap->Free(listOfShapes[i].node);
+B5.2-tg	mclib/msl_load.cpp:770	asset_new	listOfTypeShapes[startIndex] = new TG_TypeNode;
+B5.2-tg	mclib/msl_load.cpp:852	asset_new	listOfTypeShapes[startIndex] = new TG_TypeShape;
 B5.2-tg	mclib/msl_shape.cpp:9	class_op	void *TG_MultiShape::operator new (size_t mySize)
 B5.2-tg	mclib/msl_shape.cpp:11	heap_malloc	void *result = TG_Shape::tglHeap->Malloc(mySize);
 B5.2-tg	mclib/msl_shape.cpp:16	class_op	void TG_MultiShape::operator delete (void *us)
 B5.2-tg	mclib/msl_shape.cpp:16	asset_delete	void TG_MultiShape::operator delete (void *us)
 B5.2-tg	mclib/msl_shape.cpp:18	heap_free	TG_Shape::tglHeap->Free(us);
 B5.2-tg	mclib/msl_shape.cpp:448	asset_new	TG_MultiShapePtr resultShape = new TG_MultiShape;
-B5.2-tg	mclib/msl_shape.cpp:452	heap_malloc	resultShape->listOfShapes = (TG_ShapeRecPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShapeRec) * curShape);
-B5.2-tg	mclib/msl_shape.cpp:496	heap_malloc	TG_ShapeRecPtr newListOfShapes = (TG_ShapeRecPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShapeRec) * (numTG_Shapes - curShap
-B5.2-tg	mclib/msl_shape.cpp:514	heap_free	TG_Shape::tglHeap->Free(listOfShapes);
 B5.1-texture	mclib/quad.cpp:140	tex_acquire	mineTextureHandle = mcTextureManager->loadTexture(mineTextureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Dont
 B5.1-texture	mclib/quad.cpp:147	tex_acquire	blownTextureHandle = mcTextureManager->loadTexture(mineTextureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
 B5.1-texture	mclib/quad_setup.cpp:260	tex_acquire	mineTextureHandle = mcTextureManager->loadTexture(mineTextureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Dont
@@ -322,56 +264,23 @@ B5.1-texture	mclib/terrtxm.cpp:525	tex_acquire	textures[nextAvailable].mcTexture
 B5.1-texture	mclib/terrtxm.cpp:539	tex_acquire	textures[nextAvailable].mcTextureNodeIndex = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_Disable
 B5.1-texture	mclib/terrtxm.cpp:552	tex_acquire	textures[nextAvailable].mcTextureNodeIndex = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DontShr
 B5.1-texture	mclib/terrtxm.cpp:565	tex_acquire	textures[nextAvailable].mcTextureNodeIndex = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_Disable
-B5.1-texture	mclib/terrtxm.cpp:1297	tex_release	mcTextureManager->removeTextureNode(textures[transitions[i].baseTXMIndex].mcTextureNodeIndex);
 B5.1-texture	mclib/terrtxm.cpp:1540	tex_acquire	result = textureFromMemory(ourRAM,mipSize);
 B5.5-heap-owner	mclib/terrtxm.cpp:1730	asset_delete	delete tileRAMHeap;
-B5.1-texture	mclib/terrtxm.cpp:1754	tex_release	mcTextureManager->removeTextureNode(textures[i].mcTextureNodeIndex);
 B5.5-heap-owner	mclib/terrtxm.cpp:1763	asset_delete	delete tileHeap;
 B5.1-texture	mclib/terrtxm.h:171	tex_acquire	long textureFromMemory (MemoryPtr ourRam, long mipSize);
-B5.1-texture	mclib/terrtxm2.cpp:125	tex_release	mcTextureManager->removeTextureNode(textures[i].mcTextureNodeIndex);
-B5.1-texture	mclib/terrtxm2.cpp:136	tex_release	mcTextureManager->removeTextureNode(normalMapTextures[i].mcTextureNodeIndex);
-B5.1-texture	mclib/terrtxm2.cpp:143	tex_release	mcTextureManager->removeTextureNode(detailTextureNodeIndex);
-B5.1-texture	mclib/terrtxm2.cpp:148	tex_release	mcTextureManager->removeTextureNode(detailNormalNodeIndex);
-B5.1-texture	mclib/terrtxm2.cpp:153	tex_release	mcTextureManager->removeTextureNode(waterTextureNodeIndex);
-B5.1-texture	mclib/terrtxm2.cpp:160	tex_release	mcTextureManager->removeTextureNode(waterDetailNodeIndex[i]);
-B5.1-texture	mclib/terrtxm2_bake.cpp:806	tex_release	mcTextureManager->removeTextureNode (detailTextureNodeIndex);
-B5.1-texture	mclib/terrtxm2_bake.cpp:820	tex_acquire	detailTextureNodeIndex = mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
-B5.1-texture	mclib/terrtxm2_bake.cpp:822	tex_acquire	detailTextureNodeIndex = mcTextureManager->loadTexture(fileName,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
-B5.1-texture	mclib/terrtxm2_bake.cpp:837	tex_release	mcTextureManager->removeTextureNode (waterTextureNodeIndex);
-B5.1-texture	mclib/terrtxm2_bake.cpp:851	tex_acquire	waterTextureNodeIndex = mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1);
-B5.1-texture	mclib/terrtxm2_bake.cpp:853	tex_acquire	waterTextureNodeIndex = mcTextureManager->loadTexture(fileName,gos_Texture_Solid,0, 0, 0x1);
-B5.1-texture	mclib/terrtxm2_bake.cpp:893	tex_release	mcTextureManager->removeTextureNode (waterDetailNodeIndex[j]);
-B5.1-texture	mclib/terrtxm2_bake.cpp:900	tex_acquire	waterDetailNodeIndex[i] = mcTextureManager->loadTexture(waterFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
-B5.1-texture	mclib/terrtxm2_bake.cpp:1014	tex_release	mcTextureManager->removeTextureNode(textures[i].mcTextureNodeIndex);
-B5.1-texture	mclib/terrtxm2_bake.cpp:1019	tex_acquire	textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint
-B5.1-texture	mclib/terrtxm2_bake.cpp:1036	tex_release	mcTextureManager->removeTextureNode(textures[i].mcTextureNodeIndex);
-B5.1-texture	mclib/terrtxm2_bake.cpp:1187	tex_acquire	textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint
-B5.1-texture	mclib/terrtxm2_load.cpp:175	tex_acquire	detailTextureNodeIndex = mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
-B5.1-texture	mclib/terrtxm2_load.cpp:198	tex_acquire	waterTextureNodeIndex = mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1);
-B5.1-texture	mclib/terrtxm2_load.cpp:299	tex_acquire	textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosH
-B5.1-texture	mclib/terrtxm2_load.cpp:440	tex_acquire	textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosH
-B5.1-texture	mclib/terrtxm2_load.cpp:589	tex_acquire	normalMapTextures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw(
-B5.2-tg	mclib/tgl.h:1229	heap_free	TG_Shape::tglHeap->Free(tgVertexPool);
-B5.2-tg	mclib/tgl.h:1236	heap_malloc	tgVertexPool = (TG_VertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Vertex) * maxVertices);
-B5.2-tg	mclib/tgl.h:1318	heap_free	TG_Shape::tglHeap->Free(gVertexPool);
-B5.2-tg	mclib/tgl.h:1325	heap_malloc	gVertexPool = (gos_VERTEX *)TG_Shape::tglHeap->Malloc(sizeof(gos_VERTEX) * maxVertices);
-B5.2-tg	mclib/tgl.h:1407	heap_free	TG_Shape::tglHeap->Free(trianglePool);
-B5.2-tg	mclib/tgl.h:1414	heap_malloc	trianglePool = (TG_Triangle *)TG_Shape::tglHeap->Malloc(sizeof(TG_Triangle) * maxTriangles);
-B5.2-tg	mclib/tgl.h:1496	heap_free	TG_Shape::tglHeap->Free(tVertexPool);
-B5.2-tg	mclib/tgl.h:1503	heap_malloc	tVertexPool = (TG_ShadowVertexTempPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShadowVertexTemp) * maxVertices);
-B5.2-tg	mclib/tgl.h:1585	heap_free	TG_Shape::tglHeap->Free(triPool);
-B5.2-tg	mclib/tgl.h:1592	heap_malloc	triPool = (DWORD *)TG_Shape::tglHeap->Malloc(sizeof(DWORD) * maxTriangles);
-B5.2-tg	mclib/tgl_load_guard.cpp:66	heap_malloc	TG_TypeVertexPtr verts = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(
-B5.2-tg	mclib/tgl_load_guard.cpp:68	heap_malloc	TG_TypeTrianglePtr tris = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(
-B5.1-texture	mclib/tgl_load_guard.cpp:144	tex_acquire	s_magentaHandle = mcTextureManager->textureFromMemory(
-B5.2-tg	mclib/tgl_parse.cpp:99	heap_malloc	listOfTypeVertices = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeVertex) * numTypeVertices);
-B5.2-tg	mclib/tgl_parse.cpp:104	heap_malloc	int *vertexNormalCount = (int*)TG_Shape::tglHeap->Malloc(sizeof(int) * numTypeVertices);
-B5.2-tg	mclib/tgl_parse.cpp:149	heap_malloc	listOfTypeTriangles = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeTriangle) * numTypeTriangles);
-B5.2-tg	mclib/tgl_parse.cpp:581	heap_free	TG_Shape::tglHeap->Free(vertexNormalCount);
-B5.2-tg	mclib/tgl_parse.cpp:601	heap_malloc	BYTE *aseContents = (BYTE *)TG_Shape::tglHeap->Malloc(aseFileSize);
-B5.2-tg	mclib/tgl_parse.cpp:663	heap_malloc	listOfTextures = (TG_TinyTexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TinyTexture) * numTextures);
-B5.2-tg	mclib/tgl_parse.cpp:683	heap_free	TG_Shape::tglHeap->Free(aseContents);
-B5.2-tg	mclib/tgl_parse.cpp:696	heap_malloc	listOfTextures = (TG_TinyTexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TinyTexture) * numTextures);
+B5.1-texture	mclib/terrtxm2_bake.cpp:819	tex_acquire	detailTextureNodeIndex.reset(mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
+B5.1-texture	mclib/terrtxm2_bake.cpp:821	tex_acquire	detailTextureNodeIndex.reset(mcTextureManager->loadTexture(fileName,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
+B5.1-texture	mclib/terrtxm2_bake.cpp:849	tex_acquire	waterTextureNodeIndex.reset(mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1));
+B5.1-texture	mclib/terrtxm2_bake.cpp:851	tex_acquire	waterTextureNodeIndex.reset(mcTextureManager->loadTexture(fileName,gos_Texture_Solid,0, 0, 0x1));
+B5.1-texture	mclib/terrtxm2_bake.cpp:897	tex_acquire	waterDetailNodeIndex[i].reset(mcTextureManager->loadTexture(waterFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
+B5.1-texture	mclib/terrtxm2_bake.cpp:1016	tex_acquire	textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gos
+B5.1-texture	mclib/terrtxm2_bake.cpp:1183	tex_acquire	textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gos
+B5.1-texture	mclib/terrtxm2_load.cpp:175	tex_acquire	detailTextureNodeIndex.reset(mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
+B5.1-texture	mclib/terrtxm2_load.cpp:198	tex_acquire	waterTextureNodeIndex.reset(mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1));
+B5.1-texture	mclib/terrtxm2_load.cpp:299	tex_acquire	textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,
+B5.1-texture	mclib/terrtxm2_load.cpp:440	tex_acquire	textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,
+B5.1-texture	mclib/terrtxm2_load.cpp:589	tex_acquire	normalMapTextures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw(
+B5.1-texture	mclib/tgl_load_guard.cpp:137	tex_acquire	s_magentaHandle = mcTextureManager->textureFromMemory(
 B5.2-tg	mclib/tgl_transform.cpp:32	class_op	void *TG_Shape::operator new (size_t mySize)
 B5.2-tg	mclib/tgl_transform.cpp:34	heap_malloc	void *result = TG_Shape::tglHeap->Malloc(mySize);
 B5.2-tg	mclib/tgl_transform.cpp:38	class_op	void TG_Shape::operator delete (void *us)
@@ -382,19 +291,10 @@ B5.2-tg	mclib/tgl_types.cpp:101	heap_malloc	void *result = TG_Shape::tglHeap->Ma
 B5.2-tg	mclib/tgl_types.cpp:105	class_op	void TG_TypeNode::operator delete (void *us)
 B5.2-tg	mclib/tgl_types.cpp:105	asset_delete	void TG_TypeNode::operator delete (void *us)
 B5.2-tg	mclib/tgl_types.cpp:107	heap_free	TG_Shape::tglHeap->Free(us);
-B5.2-tg	mclib/tgl_types.cpp:120	heap_malloc	newShape = (TG_ShapePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
-B5.2-tg	mclib/tgl_types.cpp:276	heap_malloc	void* memarea = TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
-B5.2-tg	mclib/tgl_types.cpp:300	heap_malloc	newShape->listOfShadowVertices = (TG_ShadowVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShadowVertex) * numTypeVertices
-B5.2-tg	mclib/tgl_types.cpp:397	heap_malloc	listOfTypeVertices = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeVertex) * numTypeVertices);
-B5.2-tg	mclib/tgl_types.cpp:412	heap_malloc	listOfTypeTriangles = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeTriangle) * numTypeTriangles);
-B5.2-tg	mclib/tgl_types.cpp:426	heap_malloc	listOfTextures = (TG_TinyTexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TinyTexture) * numTextures);
-B5.2-tg	mclib/tgl_types.cpp:547	heap_free	TG_Shape::tglHeap->Free(listOfTypeVertices);
-B5.2-tg	mclib/tgl_types.cpp:551	heap_free	TG_Shape::tglHeap->Free(listOfTypeTriangles);
-B5.2-tg	mclib/tgl_types.cpp:555	heap_free	TG_Shape::tglHeap->Free(listOfTextures);
-B5.2-tg	mclib/tgl_types.cpp:607	heap_free	tglHeap->Free(listOfShadowVertices);
-B5.5-heap-owner	mclib/txmmgr.cpp:259	asset_delete	delete MidLevelRenderer::MLRTexturePool::Instance;
-B5.5-heap-owner	mclib/txmmgr.cpp:291	asset_delete	delete textureCacheHeap;
-B5.5-heap-owner	mclib/txmmgr.cpp:294	asset_delete	delete textureStringHeap;
-B5.5-heap-owner	mclib/txmmgr.cpp:442	asset_delete	delete MidLevelRenderer::MLRTexturePool::Instance;
-B5.1-texture	mclib/utilities.cpp:178	tex_release	mcTextureManager->removeTexture( gosID );
-B5.1-texture	mclib/utilities.cpp:306	tex_acquire	ID = mcTextureManager->loadTexture( fullPath, gos_Texture_Alpha, 0, 0, neverFlush );
+B5.2-tg	mclib/tgl_types.cpp:120	heap_malloc	void* memarea = TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
+B5.2-tg	mclib/tgl_types.cpp:278	heap_malloc	void* memarea = TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
+B5.5-heap-owner	mclib/txmmgr.cpp:261	asset_delete	delete MidLevelRenderer::MLRTexturePool::Instance;
+B5.5-heap-owner	mclib/txmmgr.cpp:293	asset_delete	delete textureCacheHeap;
+B5.5-heap-owner	mclib/txmmgr.cpp:296	asset_delete	delete textureStringHeap;
+B5.5-heap-owner	mclib/txmmgr.cpp:444	asset_delete	delete MidLevelRenderer::MLRTexturePool::Instance;
+B5.1-texture	mclib/utilities.cpp:303	tex_acquire	ID = mcTextureManager->loadTexture( fullPath, gos_Texture_Alpha, 0, 0, neverFlush );

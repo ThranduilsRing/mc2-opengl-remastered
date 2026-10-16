@@ -21,10 +21,6 @@ inline constexpr int MAX_DESC_LENGTH = 256;
 class ActionUndoMgr;
 class Action;
 
-#ifndef ELIST_H
-#include "Elist.h"
-#endif
-
 #ifndef OBJECTAPPEARANCE_H
 #include "objectappearance.h"
 #endif
@@ -64,13 +60,7 @@ struct VertexInfo
     int terrainData;
     int textureData;
     float elevation;
-
-private:
-    // make sure the list class doesn't try and use this
-    VertexInfo& operator=( const VertexInfo& );
 };
-
-typedef EList< VertexInfo, const VertexInfo& > VERTEX_INFO_LIST;
 
 // for undo redo buffer, since it deals with
 // the same stuff as the tile brush, I put
@@ -93,7 +83,7 @@ public:
     void addVertexInfo( VertexInfo& );
     bool getOldHeight( int row, int column, float& oldHeight );
 
-    VERTEX_INFO_LIST vertexInfoList;
+    std::vector<VertexInfo> vertexInfoList;
 };
 
 #ifndef EDITOROBJECTS_H
@@ -111,35 +101,12 @@ public:
     virtual void addBuildingInfo(EditorObject& info);
     virtual bool isNotNull()
     {
-        return (0 < buildingCopyPtrs.Count());
+        return !buildingCopyPtrs.empty();
     }
     virtual void updateNotedObjectPositions();
 
 private:
-    typedef EList< EditorObject *, EditorObject *> OBJ_INFO_PTR_LIST;
-
-    /*
-        Editor migration note:
-
-        The original editor stored ObjectAppearance by value here:
-
-            typedef EList< ObjectAppearance, ObjectAppearance& > OBJ_APPEAR_LIST;
-
-        That no longer works against the Remastered renderer branch because
-        ObjectAppearance is now a polymorphic appearance base with a protected
-        constructor and abstract inherited behavior. EList stores its payload
-        directly as `T m_Data`, so EList<ObjectAppearance, ...> forces the
-        compiler to construct/copy ObjectAppearance itself.
-
-        We intentionally do NOT patch Remastered's EList implementation.
-        EList is engine-wide infrastructure and the Remastered code owns it.
-
-        Instead, this editor action stores a narrow value snapshot of the
-        public ObjectAppearance state it needs for undo/redo. The migration
-        stays local to Editor/Action.*, preserves the old swap-style undo
-        behavior, and avoids forcing an abstract renderer base through value
-        semantics.
-    */
+    // Appearance state is a value snapshot; fadeTable remains borrowed.
     struct EditorAppearanceSnapshot
     {
         EditorAppearanceSnapshot();
@@ -168,20 +135,16 @@ private:
         MemoryPtr fadeTable;
     };
 
-    typedef EList< EditorAppearanceSnapshot, const EditorAppearanceSnapshot& > OBJ_APPEAR_LIST;
-
     struct CObjectID
     {
         float x;
         float y;
     };
-    typedef EList<CObjectID, CObjectID&> OBJ_ID_LIST;
+    std::vector<EditorObject*> buildingCopyPtrs;
+    std::vector<EditorAppearanceSnapshot> buildingAppearanceCopies;
 
-    OBJ_INFO_PTR_LIST buildingCopyPtrs;
-    OBJ_APPEAR_LIST buildingAppearanceCopies;
-
-    OBJ_INFO_PTR_LIST buildingPtrs;
-    OBJ_ID_LIST buildingIDs;
+    std::vector<EditorObject*> buildingPtrs;
+    std::vector<CObjectID> buildingIDs;
 };
 
 // Forward-declared only — do NOT #include "Forest.h" here. Forest.h transitively
@@ -262,11 +225,10 @@ public:
 
 private:
 
-    typedef EList< Action*, Action* > ACTION_LIST;
     typedef long ACTION_POS;
 
     void EmptyUndoList();
-    ACTION_LIST m_listUndoActions;
+    std::vector<Action*> m_listUndoActions;
     ACTION_POS m_CurrentPos;
     ACTION_POS m_PosOfLastSave;
 }; // class SActionMgr

@@ -23,11 +23,7 @@ namespace RenderWorld {
 
 // Lifecycle.
 //
-// Phase 1 / M1: a process-singleton implementation lives in
-// RenderWorld.cpp. M1 does not yet model mission scope at the
-// RenderWorld layer; static-prop slots are mission-lifetime by virtue
-// of the underlying GpuStaticPropRegistry behavior. M2+ promotes
-// begin/endMission to a real boundary call.
+// Static-prop slots follow the mission lifetime of GpuStaticPropRegistry.
 void init();
 void destroy();
 
@@ -101,8 +97,8 @@ static constexpr uint32_t kHandleIndexMask = 0xFFFFFu;
 // classifies a pixel as a MECH via:  (rawId & kHandleIndexMask) >= MechHandleIndexBase().
 // SCOPE: mechs ONLY. Vehicles render through the static-prop batcher and carry
 // static-prop-range handles (below this base) -> they are NOT classified here;
-// making vehicles engine-bearing is THERMAL-VIEW-VEHICLE-HOT-1 (needs a distinct
-// RenderObjectKind::Vehicle + handle base). Do NOT assume ">= base == any future
+// Engine-bearing vehicles would need a distinct
+// RenderObjectKind::Vehicle and handle base. Do NOT assume ">= base == any future
 // engine kind"; today it means exactly "mech".
 uint32_t MechHandleIndexBase();
 
@@ -149,7 +145,7 @@ bool IsGpuPickHoverEnabled();
 // Logs attempts/hits/fallbacks from the hover pick block.
 bool IsGpuPickHoverTraceEnabled();
 
-// GPU-GROUND-PICK-PARITY-1 (S1): ground-pick parity oracle gate
+// ground-pick parity oracle gate
 // (MC2_GPU_GROUND_PICK_PARITY=1). Requires MC2_OBJECT_ID_BUFFER=1 to have a
 // live depth+objectID attachment to read. When enabled, the missiongui hover
 // and per-click move paths run BOTH the CPU Camera::inverseProject ground pick
@@ -268,7 +264,7 @@ struct LookupResult {
     const char*                     lookupFailReason = nullptr;
 };
 
-// MODDER-DEBUG-1: handle-direct object record query.
+// handle-direct object record query.
 //
 // Returns a snapshot copy of the CPU-side record for `handle`. No GPU read-back,
 // no pixel stall. Returns true and fills `*out` on success.
@@ -319,9 +315,9 @@ LookupResult lookupAtPixel(int screenX, int screenY);
 //   kind == Mech       -> handle alone carries the identity. Callers
 //                          re-resolve via GameAdapters::Mech::findMechByHandle
 //                          to avoid stale-pointer dereference after destroyMech.
-//                          (Adversarial CRITICAL-1: no stable cookie at
-//                          syncSpawn -- partId reassigned post-init at
-//                          code/mission.cpp:2987. Handle IS the identity.)
+//                          No stable cookie exists at
+//                          syncSpawn because partId is reassigned after init.
+//                          The handle remains the identity.
 //   future kinds       -> add a tagged-union payload field at that
 //                          slice; do NOT widen the struct prematurely.
 //
@@ -347,7 +343,7 @@ struct GameplaySelectionDebugState {
 //   kind==StaticProp: recipeIndex sampled from handleToRecipeIndex
 //                     (existing M1.6 path)
 //   kind==Mech:       no kind-specific payload; handle alone identifies
-//                     the mech (CRITICAL-1 note above).
+//                     the mech.
 void setLastGameplayPick(RenderObjectKind kind,
                          const LookupResult& res,
                          int32_t mouseX, int32_t mouseY,
@@ -418,7 +414,7 @@ void clearAllMechRecords();
 // multiple consumers.
 uint64_t getMechsAliveCount();
 
-// Seq C step 1 — VisibilityRequest v0: reporting-only cull query.
+// VisibilityRequest: reporting-only cull query.
 //
 // Wraps existing visibility/cull facts. No new culling decisions;
 // no draw-submission change. Output is counts by kind only.

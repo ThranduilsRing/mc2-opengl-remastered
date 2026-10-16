@@ -8,7 +8,7 @@
 // explicit allowlist exception for the Mech3DAppearance forbidden-symbol check.
 
 #include "MechRenderAdapter.h"
-#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "mc2_diag_verbose.h"
 #include "Gates/gate.h"
 
 // Engine side.
@@ -149,7 +149,7 @@ BattleMech* findMechByHandle(RenderCore::RenderObjectHandle h) {
         // and only BattleMech sets the isMech bit, so the static_cast pair
         // below is sound on any mover that passes isMech().
         BattleMech* bm = static_cast<BattleMech*>(m);
-        // Lifecycle race (per adversarial MINOR-2): guards against
+        // Lifecycle guard protects against
         // pre-init or mid-destroy mech with NULL appearance. A mech
         // exists in ObjectManager BEFORE syncSpawn populates its
         // appearance, and AFTER destroyMech runs but BEFORE the mover
@@ -197,7 +197,7 @@ void RunMechPickSelfTest() {
     // register/destroy pair so we can assert no drift afterwards.
     const uint64_t mechsAliveBefore = RenderWorld::getMechsAliveCount();
 
-    // Step 1: register a synthetic mech.
+    // register a synthetic mech.
     RenderWorld::RenderMechDesc desc{};
     desc.mechTypeId    = 0u;
     desc.gameObjectId  = 0xC0FFEEu;
@@ -207,13 +207,13 @@ void RunMechPickSelfTest() {
         mc2::fmt::print_err("[MECH_PICK_SELFTEST v1] result=FAIL step=1 reason=register_failed\n");
         return;
     }
-    // Step 2: scan with invalid handle -> nullptr.
+    // scan with invalid handle -> nullptr.
     if (GameAdapters::Mech::findMechByHandle(RenderCore::RenderObjectHandle::invalid()) != nullptr) {
         mc2::fmt::print_err("[MECH_PICK_SELFTEST v1] result=FAIL step=2 reason=invalid_returned_nonnull\n");
         RenderWorld::destroyMech(h);
         return;
     }
-    // Step 3: scan with synthetic handle. Init-time has no real
+    // scan with synthetic handle. Init-time has no real
     // BattleMech in ObjectManager, so we expect nullptr.
     BattleMech* found = GameAdapters::Mech::findMechByHandle(h);
     if (found != nullptr) {
@@ -226,10 +226,10 @@ void RunMechPickSelfTest() {
             return;
         }
     }
-    // Step 4: destroyMech retires the handle.
+    // destroyMech retires the handle.
     RenderWorld::destroyMech(h);
 
-    // Step 5 (external-review m2): assert live-mech count returned to
+    // assert live-mech count returned to
     // baseline. A drift means destroyMech did not balance registerMech
     // and the slot leaked (would compound across init-time invocations).
     const uint64_t mechsAliveAfter = RenderWorld::getMechsAliveCount();

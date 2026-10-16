@@ -169,13 +169,15 @@ def test_orphan_source_and_undriven_target_fail():
 
 
 def test_root_seam_sources_require_a_built_and_run_target():
-    sources = {"test_authored_order_seam.cpp": "", "test_authored_movement_fixture.cpp": ""}
+    sources = {"test_authored_order_seam.cpp": "", "test_authored_movement_fixture.cpp": "",
+               "test_combat_retirement_seam.cpp": ""}
     cmakes = {
         "tests/unit/CMakeLists.txt": "",
         "CMakeLists.txt": """add_executable(engine engine.cpp)
             add_executable(order_seam EXCLUDE_FROM_ALL ${engine_sources}
                 tests/unit/test_authored_order_seam.cpp
-                tests/unit/test_authored_movement_fixture.cpp)""",
+                tests/unit/test_authored_movement_fixture.cpp
+                tests/unit/test_combat_retirement_seam.cpp)""",
     }
     build = '[cmake, "--build", bdir, "--target", "order_seam"]'
     run = 'exe = bdir / "RelWithDebInfo/order_seam.exe"'

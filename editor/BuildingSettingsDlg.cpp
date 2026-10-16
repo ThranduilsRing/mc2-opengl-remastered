@@ -18,7 +18,7 @@
 // BuildingSettingsDlg dialog
 
 
-BuildingSettingsDlg::BuildingSettingsDlg( EList< EditorObject*, EditorObject* >& newList/*=NULL*/, ActionUndoMgr &undoMgr)
+BuildingSettingsDlg::BuildingSettingsDlg( std::vector<EditorObject*>& newList/*=NULL*/, ActionUndoMgr &undoMgr)
 	: CDialog(BuildingSettingsDlg::IDD), units( newList )
 {
 	//{{AFX_DATA_INIT(BuildingSettingsDlg)
@@ -88,7 +88,7 @@ void BuildingSettingsDlg::applyChanges()
 	// swaps below (setAppearance / setDamage can swap the mesh and otherwise shift
 	// the object); restored + re-baked at the end of this function.
 	std::vector<Stuff::Vector3D> savedPos;
-	for ( EDITOROBJECT_LIST::EIterator pit = units.Begin(); !pit.IsDone(); pit++ )
+	for ( auto pit = units.begin(); pit != units.end(); pit++ )
 		savedPos.push_back( (*pit)->appearance() ? (*pit)->appearance()->position : Stuff::Vector3D() );
 
 	// get the type info from the dlg box
@@ -101,7 +101,7 @@ void BuildingSettingsDlg::applyChanges()
 
 		if ( indexInGroup != -1 )
 		{
-			for ( EDITOROBJECT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+			for ( auto iter = units.begin(); iter != units.end(); iter++ )
 			{
 				(*iter)->setAppearance( group, indexInGroup );
 			}
@@ -114,7 +114,7 @@ void BuildingSettingsDlg::applyChanges()
 
 	if ( index != -1 )
 	{
-		for ( EDITOROBJECT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+		for ( auto iter = units.begin(); iter != units.end(); iter++ )
 		{
 			(*iter)->setAlignment( index );
 		}
@@ -124,7 +124,7 @@ void BuildingSettingsDlg::applyChanges()
 	// setDamage() updates the appearance's damage state directly; the editor
 	// render loop reads appearance()->damage each frame, so no extra refresh
 	// is needed for the change to show.
-	for ( EDITOROBJECT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = units.begin(); iter != units.end(); iter++ )
 	{
 		(*iter)->setDamage( m_bDamaged ? true : false );
 	}
@@ -192,7 +192,7 @@ void BuildingSettingsDlg::applyChanges()
 	// type/damaged state does not move the building.
 	{
 		size_t si = 0;
-		for ( EDITOROBJECT_LIST::EIterator rit = units.Begin(); !rit.IsDone() && si < savedPos.size(); rit++, ++si )
+		for ( auto rit = units.begin(); rit != units.end() && si < savedPos.size(); rit++, ++si )
 		{
 			ObjectAppearance* pA = (*rit)->appearance();
 			if ( pA )
@@ -228,9 +228,9 @@ BOOL BuildingSettingsDlg::OnInitDialog()
 
 	pAction = new ModifyBuildingAction;
 
-	EDITOROBJECT_LIST::EIterator iter;
+	EDITOROBJECT_LIST::iterator iter;
 
-	for ( iter = units.Begin(); !iter.IsDone(); iter++ )
+	for ( iter = units.begin(); iter != units.end(); iter++ )
 	{
 		pAction->addBuildingInfo(*(*iter));
 	}
@@ -255,13 +255,13 @@ void BuildingSettingsDlg::updateMemberVariables()
 	long forest = -1;
 	bool bForests = true;
 
-	EditorObject* pEditorObject = units.GetHead();
+	EditorObject* pEditorObject = units.front();
 
 	m_Alignment = pEditorObject->getAlignment();
 	if (m_Alignment == -1)
 		m_Alignment = 8;			//Move it to the neutral select button
 
-	for ( EDITOROBJECT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = units.begin(); iter != units.end(); iter++ )
 	{
 		if ( ((*iter)->getAlignment() != m_Alignment) && ((*iter)->getAlignment() != -1))
 		{
@@ -314,9 +314,9 @@ void BuildingSettingsDlg::updateMemberVariables()
 	delete [] pGroups;
 
 	// make sure all the units we are editing are in the same group
-	int group = units.GetHead()->getGroup();	
-	EDITOROBJECT_LIST::EIterator iter;
-	for ( iter = units.Begin(); !iter.IsDone(); iter++ )
+	int group = units.front()->getGroup();
+	EDITOROBJECT_LIST::iterator iter;
+	for ( iter = units.begin(); iter != units.end(); iter++ )
 	{
 		if ( (*iter)->getGroup() != group )
 		{
@@ -345,9 +345,9 @@ void BuildingSettingsDlg::updateMemberVariables()
 		}
 
 		// ok, now determine if all of the mechs are the same.
-		int indexInGroup = units.GetHead()->getIndexInGroup();
+		int indexInGroup = units.front()->getIndexInGroup();
 
-		for ( iter = units.Begin(); !iter.IsDone(); iter++ )
+		for ( iter = units.begin(); iter != units.end(); iter++ )
 		{
 			if ( (*iter)->getIndexInGroup() != indexInGroup )
 			{
@@ -358,7 +358,7 @@ void BuildingSettingsDlg::updateMemberVariables()
 
 		if ( indexInGroup != -1 )
 		{
-			const char* pName = units.GetHead()->getDisplayName();
+			const char* pName = units.front()->getDisplayName();
 			index = m_Mech.FindString( -1, pName );
 
 			if ( index != -1 )
@@ -372,7 +372,7 @@ void BuildingSettingsDlg::updateMemberVariables()
 	// initialize the damaged checkbox from the building(s); if a multi-select
 	// disagrees, leave it unchecked (applyChanges only writes the explicit state on OK)
 	m_bDamaged = pEditorObject->getDamage() ? TRUE : FALSE;
-	for ( iter = units.Begin(); !iter.IsDone(); iter++ )
+	for ( iter = units.begin(); iter != units.end(); iter++ )
 	{
 		if ( ((*iter)->getDamage() ? TRUE : FALSE) != m_bDamaged )
 		{

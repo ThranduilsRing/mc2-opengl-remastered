@@ -46,7 +46,7 @@ MC2_SAVE_STRUCT_SIZE(ArtilleryData, 432);
 MC2_SAVE_STRUCT_SIZE(CarnageData, 396);
 MC2_SAVE_STRUCT_SIZE(MechData, 3992);
 MC2_SAVE_STRUCT_SIZE(GroundVehicleData, 3424);
-MC2_SAVE_STRUCT_SIZE(WeaponBoltData, 580);
+MC2_SAVE_STRUCT_SIZE(WeaponBoltData, 600);
 
 // The object manager header, the pilots, the teams and the commanders: read back by size.
 MC2_SAVE_STRUCT_SIZE(ObjectManagerData, 60);

@@ -10,7 +10,6 @@
 
 long LogisticsData::updateAvailability()
 {
-	// ---- MC2_LOG_LOGISTICS diagnostics ----
 	static FILE* s_logFileUA = nullptr;
 	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() && !s_logFileUA ) {
 		s_logFileUA = fopen("logistics_debug.log", "a");
@@ -53,7 +52,6 @@ long LogisticsData::updateAvailability()
 
 	LOG_LOGISTICS_UA("updateAvailability: purchaseFile='%s'", purchaseFileName.c_str());
 
-	// make sure its around and you can open it
 	FitIniFile file;
 	if ( NO_ERR != file.open( purchaseFileName.c_str() ) )
 	{
@@ -64,12 +62,9 @@ long LogisticsData::updateAvailability()
 	}
 	LOG_LOGISTICS_UA("updateAvailability: purchase file open OK");
 
-	// EQUIP-ADD-FILL-1 (S2): the ADD pass runs at the loadMasterList seam, which
-	// can land after the one-shot initComponents(); re-run the idempotent append
-	// here so filled rows exist in `components` before the availability loops.
+	// Master-list additions can arrive after component initialization.
 	appendEquipmentAddFillComponents();
 
-	// read in available components
 	bool available[255];
 	memset( available, 0, sizeof( bool ) * 255 );
 
@@ -102,7 +97,6 @@ long LogisticsData::updateAvailability()
 
 	}
 
-	// go through comonent list, and set 'em
 	for ( auto cIter = components.begin(); cIter != components.end(); ++cIter )
 	{
 		if ( available[(*cIter).getID()] || bAll )
@@ -118,7 +112,6 @@ long LogisticsData::updateAvailability()
  	missionInfo->getAdditionalPurachaseFiles( pFileNames, count );
 
 
-	// reset all variants to unavailable
 	for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
 	{
 		if ( (*vIter)->isAvailable()  && !((*vIter)->getID() >> 16 ))
@@ -131,10 +124,8 @@ long LogisticsData::updateAvailability()
 		appendAvailability( pFileNames[i], available );
 	}
 
-	// MC2_PURCHASE_ALL: campaign-level roster. Fold in the [Mechs]/[Pilots] of
-	// EVERY mission's purchase file across all stages, not just this mission's,
-	// so the buyable roster is the union the campaign ever offers. Components are
-	// already all available (bAll above), so every listed chassis is buildable.
+	// Purchase-all includes each campaign mission's pilots and chassis, so the
+	// roster remains bounded by campaign content.
 	if ( s_purchaseAll )
 	{
 		const char* allPF[1024];
@@ -145,13 +136,7 @@ long LogisticsData::updateAvailability()
 		LOG_LOGISTICS_UA( "updateAvailability: MC2_PURCHASE_ALL campaign-wide (%ld purchase files)", pfCount );
 	}
 
-	// EQUIP-ENABLE-WIRE-1 (equipment arc, ADD-ladder S1): first consumer of the
-	// E2 equipment registry `enabled` flag. ENABLE-ONLY union on top of the
-	// purchase.fit verdicts: a populated masterList row whose def sidecar declares
-	// `[Equipment] b Enabled=TRUE` is forced into available[] here, BEFORE the
-	// disable sweep and the [Mechs] variant loop below (so its components and any
-	// variants using them resolve normally). Gate MC2_UNIT_PROFILE_DATA; gate-OFF
-	// or zero mods -> returns 0 and this block is byte-identical no-op.
+	// Explicit equipment availability also permits variants that use those components.
 	{
 		size_t enableWireForced = applyEquipmentEnableWireIfEnabled( available, 255 );
 		if ( enableWireForced > 0 )
@@ -168,7 +153,6 @@ long LogisticsData::updateAvailability()
 		}
 	}
 
-	// go through comonent list, and set 'em
 	for ( auto cIter = components.begin(); cIter != components.end(); ++cIter )
 	{
 		if ( !available[(*cIter).getID()]  )
@@ -179,7 +163,6 @@ long LogisticsData::updateAvailability()
 
 
 
-	// go through each variant, and see if it's available
 	char chassisFileName[255];
 	long componentArray[255];
 	long componentCount;
@@ -192,7 +175,6 @@ long LogisticsData::updateAvailability()
 			break;
 		LOG_LOGISTICS_UA("updateAvailability: [Mechs] Mech%d='%s'", i, chassisFileName);
 
-		// go through each variant, if it has the same chassis, check and see if all of its components are valid
 		for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
 		{
 			const std::string& mechName = (*vIter)->getFileName();
@@ -207,10 +189,6 @@ long LogisticsData::updateAvailability()
 				{
 					if ( !available[componentArray[i]] ) // unavailable componets
 					{
-						//char errorStr[256];
-						//sprintf( errorStr, "mech %s discarded because it contains a %ld", 
-						//	chassisFileName, componentArray[i] );
-						//PAUSE(( errorStr ));
 						bRight= false;
 						break;
 					}
@@ -232,7 +210,6 @@ long LogisticsData::updateAvailability()
 	else
 		bNewMechs = false;
 
-	// add new pilots
 	char pilotName[255];
 	file.seekBlock( "Pilots" );
 	for (int i = 0; i < 255; i++ )
@@ -270,6 +247,7 @@ long LogisticsData::updateAvailability()
 		newMechAvailableCount, oldMechAvailableCount);
 #undef LOG_LOGISTICS_UA
 
+	if (auto* observation = objectiveObservation()) { observation->Finish(); }
 	return 0;
 
 }
@@ -408,13 +386,19 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 
 void LogisticsData::appendAvailability(const char* pFileName, bool* availableArray )
 {
+	auto* observation = objectiveObservation();
+	auto accepted = [&](const char* stage, const char* result, const std::string& payload) {
+		if (!observation) { return; }
+		for (const auto& technology : observation->technologies) {
+			if (technology.path == pFileName) {
+				observation->SinkResult("technology", stage, result, payload, technology.dispatch);
+			}
+		}
+	};
 	FitIniFile file;
 	if ( NO_ERR != file.open( pFileName ) )
 	{
-		// ISSUE-8: this silent return is how a purchase-file miss (e.g. the
-		// pre-fb4d2e52 backslash-vs-elfHash FST lookup failure) ate pilots /
-		// weapons unlocks with zero evidence. Env-gated trace so future
-		// purchase-file misses are visible in the field.
+		if (observation) { accepted("purchase_file", "rejected", objectiveObservationQuote(pFileName)); }
 		if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() )
 		{
 			mc2::fmt::print_out("[LOGISTICS] appendAvailability: open FAILED '{}' -- purchase file skipped\n", mc2::fmt::safe(pFileName ? pFileName : "(null)"));
@@ -422,6 +406,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 		}
 		return;
 	}
+	if (observation) { accepted("purchase_file", "opened", objectiveObservationQuote(pFileName)); }
 	long result = file.seekBlock( "Components" );
 	if ( result == NO_ERR )
 	{
@@ -444,11 +429,11 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 				if ( !pComp->isAvailable() )
 					bNewWeapons = true;
 				pComp->setAvailable( true );
+				if (observation) { accepted("component", "available", std::to_string(component)); }
 			}
 		}
 	}
 
-	// add new pilots
 	char pilotName[255];
 	char tmp[256];
 	file.seekBlock( "Pilots" );
@@ -465,6 +450,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 			{
 				(*pIter).setAvailable( true );
 				bNewPilots = true;
+				if (observation) { accepted("pilot", "available", objectiveObservationQuote(pilotKey)); }
 				
 			}
 
@@ -480,7 +466,6 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 		if ( NO_ERR != file.readIdString( tmp, chassisFileName, 255 ) )
 			break;
 
-		// go through each variant, if it has the same chassis, check and see if all of its components are valid
 		for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
 		{
 			const std::string& mechName = (*vIter)->getFileName();
@@ -497,10 +482,6 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 					LogisticsComponent* pComp = getComponent(componentArray[i]);
 					if ( !pComp->isAvailable() ) // unavailable componets
 					{
-						//char errorStr[256];
-						//sprintf( errorStr, "mech %s discarded because it contains a %ld", 
-						//	chassisFileName, componentArray[i] );
-						//PAUSE(( errorStr ));
 						bRight= false;
 						break;
 					}
@@ -510,6 +491,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 				{
 					(*vIter)->setAvailable( true );
 					newAvailableCount++;
+					if (observation) { accepted("mech", "available", objectiveObservationQuote(mechName)); }
 				}
 
 				break;

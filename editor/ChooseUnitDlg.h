@@ -9,7 +9,7 @@ ChooseUnitDlg.h		: Interface for the ChooseUnitDlg component.
 
 #include "stdafx.h"
 #include "resource.h"
-#include <elist.h>
+#include <vector>
 #include "Objective.h"
 #include "EditorObjectMgr.h"
 
@@ -41,7 +41,7 @@ private:
 	unit_ptr_type *m_pModifiedUnitPtr;
 	unit_ptr_type *m_pUnitPtr;
 	CComboBox *m_pComboBox;
-	EditorObjectMgr::UNIT_LIST m_unitList;
+	std::vector<Unit*> m_unitList;
 	CButton *m_pUsingPointerButton;
 	CButton *m_pCancelButton;
 	CButton *m_pOKButton;

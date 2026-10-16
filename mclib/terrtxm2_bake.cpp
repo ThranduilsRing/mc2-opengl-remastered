@@ -803,8 +803,7 @@ void TerrainColorMap::resetDetailTexture (const char *fileName)
 		return;
 	}
 
-	mcTextureManager->removeTextureNode (detailTextureNodeIndex);
-	detailTextureNodeIndex = 0xffffffff;
+	detailTextureNodeIndex.reset();
 
 #if 0
 	//Load up the detail texture.
@@ -817,9 +816,9 @@ void TerrainColorMap::resetDetailTexture (const char *fileName)
 	detailFile.init(texturePath,dName,".tga");
 
 	if (fileExists(detailFile))		//Otherwise, its already 0xffffffff!!
-		detailTextureNodeIndex = mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
+		detailTextureNodeIndex.reset(mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
 #else
-	detailTextureNodeIndex = mcTextureManager->loadTexture(fileName,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
+	detailTextureNodeIndex.reset(mcTextureManager->loadTexture(fileName,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
 #endif
 }
 
@@ -834,8 +833,7 @@ void TerrainColorMap::resetWaterTexture (const char *fileName)
 		return;
 	}
 
-	mcTextureManager->removeTextureNode (waterTextureNodeIndex);
-	waterTextureNodeIndex = 0xffffffff;
+	waterTextureNodeIndex.reset();
 	
 #if 0
 	//load up the water texture.
@@ -848,9 +846,9 @@ void TerrainColorMap::resetWaterTexture (const char *fileName)
 	waterFile.init(texturePath,dName,".tga");
 	
 	if (fileExists(waterFile))    //Otherwise, its already 0xffffffff!! 
-		waterTextureNodeIndex = mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1);
+		waterTextureNodeIndex.reset(mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1));
 #else
-	waterTextureNodeIndex = mcTextureManager->loadTexture(fileName,gos_Texture_Solid,0, 0, 0x1);
+	waterTextureNodeIndex.reset(mcTextureManager->loadTexture(fileName,gos_Texture_Solid,0, 0, 0x1));
 #endif
 }
 
@@ -890,14 +888,13 @@ void TerrainColorMap::resetWaterDetailTextures (const char *fileName)
 			{
 				for (long j=0;j<MAX_WATER_DETAIL_TEXTURES;j++)
 				{
-					mcTextureManager->removeTextureNode (waterDetailNodeIndex[j]);
-					waterDetailNodeIndex[j] = 0xffffffff;
+					waterDetailNodeIndex[j].reset();
 				}
 
 				numWaterDetailFrames = 0;
 			}
 
-			waterDetailNodeIndex[i] = mcTextureManager->loadTexture(waterFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
+			waterDetailNodeIndex[i].reset(mcTextureManager->loadTexture(waterFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
 			numWaterDetailFrames++;
 		}
 		else
@@ -905,7 +902,7 @@ void TerrainColorMap::resetWaterDetailTextures (const char *fileName)
 			if (!i)
 				break;		//No water detail!
 				
-			waterDetailNodeIndex[i] = 0xffffffff;
+			waterDetailNodeIndex[i].reset();
 		}
 	}
 }
@@ -1011,12 +1008,12 @@ void TerrainColorMap::recalcLight(const char *fileName)
 
 			for (unsigned long i=0;i<numTextures;i++)
 			{
-				mcTextureManager->removeTextureNode(textures[i].mcTextureNodeIndex);
+				textures[i].mcTextureNodeIndex.reset();
 
 
 				getColorMapData(txmRAM[i].ourRAM,i, colorMapInfo.width);
 
-				textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE);
+				textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
 			}
 		}
 	}
@@ -1033,8 +1030,7 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 	// the end of the file.
 	for (unsigned long i=0;i<numTextures;i++)
 	{
-		mcTextureManager->removeTextureNode(textures[i].mcTextureNodeIndex);
-		textures[i].mcTextureNodeIndex = 0xffffffff;
+		textures[i].mcTextureNodeIndex.reset();
 	}
 
 	FullPathFileName colorMapName;
@@ -1184,7 +1180,7 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 			{
 				getColorMapData(txmRAM[i].ourRAM,i, colorMapInfo.width);
 
-				textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE);
+				textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
 			}
 		}
 	}

@@ -13,6 +13,7 @@
 #include<string.h>
 #include"platform_str.h"
 #include<time.h>
+#include "../GameOS/gameos/utils/mc2log.h"
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -267,6 +268,7 @@ int32_t         level = 0;
 int32_t         lineNumber = 0;
 int32_t         FileNumber = 0;
 ABLFile*		sourceFile = nullptr;
+static ABLSourceFiles* sourceFilesOwner = nullptr; // Borrowed for one preprocessing call.
 bool			printFlag = true;
 bool			blockFlag = false;
 BlockType		blockType = BLOCK_MODULE;
@@ -303,21 +305,6 @@ extern bool		DebugCodeEnabled;
 
 extern ABLModulePtr	CurLibrary;
 
-long (*ABLFile::createCB) (void** file, const char* fName) = nullptr;
-long (*ABLFile::openCB) (void** file, const char* fName) = nullptr;
-long (*ABLFile::closeCB) (void** file) = nullptr;
-bool (*ABLFile::eofCB) (void* file) = nullptr;
-long (*ABLFile::readCB) (void* file, unsigned char* buffer, long length) = nullptr;
-int32_t (*ABLFile::readIntCB) (void* file) = nullptr;
-long (*ABLFile::readLongCB) (void* file) = nullptr;
-long (*ABLFile::readStringCB) (void* file, unsigned char* buffer) = nullptr;
-long (*ABLFile::readLineExCB) (void* file, unsigned char* buffer, long maxLength) = nullptr;
-long (*ABLFile::writeCB) (void* file, unsigned char* buffer, long length) = nullptr;
-long (*ABLFile::writeByteCB) (void* file, unsigned char byte) = nullptr;
-long (*ABLFile::writeIntCB) (void* file, int32_t val) = nullptr;
-long (*ABLFile::writeLongCB) (void* file, long value) = nullptr;
-long (*ABLFile::writeStringCB) (void* file, const char* buffer) = nullptr;
-
 //***************************************************************************
 // ABL FILE routines
 //***************************************************************************
@@ -336,155 +323,6 @@ void ABLFile::operator delete (void* us) {
 }	
 
 //---------------------------------------------------------------------------
-
-void ABLFile::init (void) {
-
-	fileName = nullptr;
-	file = nullptr;
-}
-
-//-----------------------------------------------------------------------------
-	
-void ABLFile::destroy (void) {
-
-	if (fileName) {
-		ABLSystemFreeCallback(fileName);
-		fileName = nullptr;
-	}
-	file = nullptr;
-}
-
-//---------------------------------------------------------------------------
-
-long ABLFile::create (const char* fName) {
-
-	if (fName) {
-		fileName = (char*)ABLSystemMallocCallback(static_cast<unsigned long>(strlen(fName)+1));
-		strcpy(fileName,fName);
-		return(createCB(&file, fileName));
-	}
-	return(-1);
-}
-
-//---------------------------------------------------------------------------
-
-long ABLFile::open (const char* fName) {
-
-	if (fName) {
-		fileName = (char*)ABLSystemMallocCallback(static_cast<unsigned long>(strlen(fName)+1));
-		strcpy(fileName,fName);
-		return(openCB(&file, fileName));
-	}
-	return(-1);
-}
-
-//---------------------------------------------------------------------------
-
-long ABLFile::close (void) {
-
-	if (file)
-		return(closeCB(&file));
-	return(-1);
-}
-
-//-----------------------------------------------------------------------------
-
-bool ABLFile::eof (void) {
-
-	if (file)
-		return(eofCB(file));
-	return(true);
-}
-
-//-----------------------------------------------------------------------------
-
-long ABLFile::read (unsigned char* buffer, long length) {
-
-	if (file)
-		return(readCB(file, buffer, length));
-	return(0);
-}
-
-//-----------------------------------------------------------------------------
-
-int32_t ABLFile::readInt (void) {
-
-	if (file)
-		return(readIntCB(file));
-	return(-1);
-}
-
-//-----------------------------------------------------------------------------
-
-long ABLFile::readLong (void) {
-
-	if (file)
-		return(readLongCB(file));
-	return(-1);
-}
-
-//-----------------------------------------------------------------------------
-
-long ABLFile::readString (unsigned char* buffer) {
-
-	if (file)
-		return(readStringCB(file, buffer));
-	return(0);
-}
-
-//-----------------------------------------------------------------------------
-
-long ABLFile::readLineEx (unsigned char* buffer, long maxLength) {
-
-	if (file)
-		return(readLineExCB(file, buffer, maxLength));
-	return(0);
-}
-
-//-----------------------------------------------------------------------------
-
-long ABLFile::write (unsigned char* buffer, long length) {
-
-	if (file)
-		return(writeCB(file, buffer, length));
-	return(0);
-}
-
-//-----------------------------------------------------------------------------
-
-long ABLFile::writeByte (unsigned char val) {
-
-	if (file)
-		return(writeByteCB(file, val));
-	return(0);
-}
-
-//-----------------------------------------------------------------------------
-
-long ABLFile::writeInt (int32_t val) {
-
-	if (file)
-		return(writeIntCB(file, val));
-	return(0);
-}
-
-//-----------------------------------------------------------------------------
-
-long ABLFile::writeLong (long val) {
-
-	if (file)
-		return(writeLongCB(file, val));
-	return(0);
-}
-
-//-----------------------------------------------------------------------------
-
-long ABLFile::writeString (const char* buffer) {
-
-	if (file)
-		return(writeStringCB(file, buffer));
-	return(0);
-}
 
 //***************************************************************************
 // MISC routines
@@ -518,48 +356,15 @@ long isReservedWord (void)
 // INITIALIZATION routines
 //***************************************************************************
 
-void getChar();
-
-void initScanner (char* fileName) {
-
-	//----------------------------------
-	// Initialize the character table...
-	for (long curCh = 0; curCh < 256; curCh++)
-		charTable[curCh] = CHR_SPECIAL;
-	for (long curCh = '0'; curCh <= '9'; curCh++)
-		charTable[curCh] = CHR_DIGIT;
-	for (long curCh = 'A'; curCh <= 'Z'; curCh++)
-		charTable[curCh] = CHR_LETTER;
-	for (long curCh = 'a'; curCh <= 'z'; curCh++)
-		charTable[curCh] = CHR_LETTER;
-	charTable['\"'] = CHR_DQUOTE;
-	charTable[CHAR_EOF] = CHR_EOF;
-
-	//---------------------------------------
-	// Now, let's open the ABL source file...
-	if (fileName) 
-	{
-		sourceFile = new ABLFile;
-		if (sourceFile->open(fileName) != ABL_NO_ERR) 
-		{
-			syntaxError(ABL_ERR_SYNTAX_SOURCE_FILE_OPEN);
-			curToken = TKN_ERROR;
-		}
-
-		sourceBuffer[0] = '\0';
-		bufferp = sourceBuffer;
-		getChar();
-	}
+ABLSourceFiles::ABLSourceFiles() {
+	sourceFilesOwner = this;
 }
 
-//***************************************************************************
-
-void quitScanner (void) {
-
-	sourceFile->close();
-
-	delete sourceFile;
-	sourceFile = nullptr;
+ABLSourceFiles::~ABLSourceFiles() noexcept {
+	// Includes close before their parent; callbacks remain alive throughout preprocessing.
+	while (NumOpenFiles > 0)
+		closeSourceFile();
+	sourceFilesOwner = nullptr;
 }
 
 //***************************************************************************
@@ -578,16 +383,13 @@ void skipLineComment (void) {
 
 void skipBlockComment (void) {
 
-	//----------------------------------------------------
-	// Snag the asterisk, then continue until we encounter
-	// the closing "*/"...
 	DumbGetCharOn = true;
 	getChar();
 	getChar();
 	do {
-		while ((curChar != '*') && (curChar != CHR_EOF))
+		while ((curChar != '*') && (curChar != CHAR_EOF))
 			getChar();
-		if (curChar == CHR_EOF) {
+		if (curChar == CHAR_EOF) {
 			syntaxError(ABL_ERR_SYNTAX_UNEXPECTED_EOF);
 			curToken = TKN_ERROR;
 		}
@@ -622,8 +424,6 @@ void languageDirective (void) {
 	S_strlwr(directive);
 
 	if (strcmp(directive, "include") == 0) {
-		//---------------------
-		// INCLUDE directive...
 		getChar();
 		if (curChar == '"') {
 			getChar();
@@ -634,12 +434,8 @@ void languageDirective (void) {
 				getChar();
 			}
 			fileName[fileNameLength] = '\0';
-			//-----------------------------------------------------------------------
-			// The language directive should be on a line by itself, since everything
-			// after the directive on this line is ignored...
+			// Include directives occupy a complete source line.
 			DumbGetCharOn = false;
-			//----------------------------------------------------
-			// Now that we have the file name, let's include it...
 			long openErr = ABL_NO_ERR;
 			if ((openErr = openSourceFile(fileName)) != ABL_NO_ERR) {
 				syntaxError(ABL_ERR_SYNTAX_SOURCE_FILE_OPEN);
@@ -652,8 +448,6 @@ void languageDirective (void) {
 		}
 		}
 	else if (strcmp(directive, "include_") == 0) {
-		//---------------------
-		// INCLUDE directive...
 		getChar();
 		if (curChar == '"') {
 			getChar();
@@ -664,16 +458,10 @@ void languageDirective (void) {
 				getChar();
 			}
 			fileName[fileNameLength] = '\0';
-			//-----------------------------------------------------------------------
-			// The language directive should be on a line by itself, since everything
-			// after the directive on this line is ignored...
+			// Include directives occupy a complete source line.
 			DumbGetCharOn = false;
-			//----------------------------------------------------
-			// Now that we have the file name, let's include it...
 			long openErr = ABL_NO_ERR;
 
-			//---------------------------------------
-			// What's the current module's directory?
 			char fullPath[255];
 			long curChar = static_cast<long>(strlen(SourceFiles[0]));
 #ifdef LINUX_BUILD
@@ -745,9 +533,8 @@ void languageDirective (void) {
 		if (!DebugCodeEnabled) {
 			long nestedLevel = 1;
 			getChar();
-//			getChar();
 			do {
-				while ((curChar != '#') && (curChar != CHR_EOF))
+				while ((curChar != '#') && (curChar != CHAR_EOF))
 					getChar();
 				if (curChar == '#') {
 					char directive2[32];
@@ -766,7 +553,7 @@ void languageDirective (void) {
 							stillCutting = false;
 					}
 					}
-				else if (curChar == CHR_EOF) {
+				else if (curChar == CHAR_EOF) {
 					syntaxError(ABL_ERR_SYNTAX_UNEXPECTED_EOF);
 					curToken = TKN_ERROR;
 					}
@@ -1283,8 +1070,6 @@ bool getSourceLine (void) {
 
 long openSourceFile (const char* sourceFileName) {
 
-	//---------------------------------------
-	// Now, let's open the ABL source file...
 	if (!sourceFileName)
 		return(-1);
 
@@ -1294,8 +1079,12 @@ long openSourceFile (const char* sourceFileName) {
 	if (NumSourceFiles == MAX_SOURCE_FILES)
 		return(-3);
 
-	ABLFile* sFile = nullptr;
-	sFile = new ABLFile;
+	if (!sourceFilesOwner || strlen(sourceFileName) >= MAXLEN_FILENAME) {
+		MC2_LOG(Sim, Warn, "[ABL_SOURCE_BAD] source path exceeds the scanner capacity");
+		return(-3);
+	}
+	auto owned = std::make_unique<ABLFile>();
+	ABLFile* sFile = owned.get();
 
 	if (sFile->open(sourceFileName) != ABL_NO_ERR) {
 		return(-3);
@@ -1307,6 +1096,7 @@ long openSourceFile (const char* sourceFileName) {
 	sourceFile = sFile;
 	strcpy(openFiles[NumOpenFiles].fileName, sourceFileName);
 	openFiles[NumOpenFiles].filePtr = sFile;
+	sourceFilesOwner->files[NumOpenFiles] = std::move(owned);
 	openFiles[NumOpenFiles].fileNumber = (unsigned char)FileNumber;
 	openFiles[NumOpenFiles].lineNumber = 0;
 	if (NumOpenFiles > 0)
@@ -1328,13 +1118,10 @@ long closeSourceFile (void) {
 	if (NumOpenFiles == 0)
 		return(-1);
 
-	sourceFile->close();
-
-	delete sourceFile;
-	sourceFile = nullptr;
-
+	--NumOpenFiles;
+	sourceFilesOwner->files[NumOpenFiles].reset();
 	openFiles[NumOpenFiles].filePtr = nullptr;
-	NumOpenFiles--;
+	sourceFile = nullptr;
 
 	if (NumOpenFiles > 0) {
 		sourceFile = openFiles[NumOpenFiles - 1].filePtr;

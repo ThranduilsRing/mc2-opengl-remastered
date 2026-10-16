@@ -1,0 +1,39 @@
+# Inject this manifest with runpy; the runner has no manifest CLI option.
+tier3 e6e_win duration=30 mod=objectives_e6e reason="six success/failure actions, signed rewards, activation chain, delayed win"
+tier3 e6e_loss duration=30 mod=objectives_e6e reason="primary failure stops later primary"
+# Authoring provenance: editor_document_tests --test-case="objectives/outcome family*"
+# --stock-dir STOCK --byte-grade-dir OUT plus the usual --placement-* inputs.
+# OUT/objectives_e6e/mod/data/missions contains the fresh mission pairs; compare
+# them byte-for-byte with this package before staging. Stock inputs: mc2_01.
+# Component 110 (Clan Light Ultra Autocannon) is the ONLY excluded component
+# in purchase.fit; keep MC2_PURCHASE_ALL unset and use this baseline in logistics.
+# Campaign/single-mission logistics must retain purchase.fit across settlement.
+# Stage mod/ as lane3/mods/objectives_e6e after the orchestrator's committed deploy.
+# FFmpeg opens loose video paths: also copy mod/data/movies/e6e_numbered.mp4 to
+# lane3/data/movies/e6e_numbered.mp4 and mod/data/sound/e6e_tone.wav to lane3/data/sound/.
+# Confirm prefs.cfg [MechCommander2] UseUpscaledVideos=1 (default). Unset MC2_BOOT_TO_BAY.
+# Exact serialized PowerShell launches (run from the worktree):
+# $env:MC2_DIAG_TAGS='OBJECTIVES'; $env:MC2_BOOT_VIDEO='1'; $env:MC2_ACTIVE_MOD='objectives_e6e'
+# py -3 -c "import runpy,sys; from pathlib import Path; m=runpy.run_path('scripts/run_smoke.py',run_name='fixture'); m['main'].__globals__['MANIFEST_PATH']=Path('tests/smoke/objectives_e6e/manifest.txt'); sys.argv=['scripts/run_smoke.py','--deploy','lane3','--mission','e6e_win','--objective-logistics','--duration','30','--keep-logs']; m['main']()"
+# py -3 -c "import runpy,sys; from pathlib import Path; m=runpy.run_path('scripts/run_smoke.py',run_name='fixture'); m['main'].__globals__['MANIFEST_PATH']=Path('tests/smoke/objectives_e6e/manifest.txt'); sys.argv=['scripts/run_smoke.py','--deploy','lane3','--mission','e6e_loss','--objective-logistics','--duration','30','--keep-logs']; m['main']()"
+# For EACH fresh run directory printed by run_smoke, extract only OBJECTIVES/1
+# lines from e6e_win.log or e6e_loss.log into a NEW file. Example (set RUN explicitly):
+# py -3 -c "from pathlib import Path; import sys; p=Path(sys.argv[1]); p.with_suffix('.objectives').write_text(''.join(x+'\n' for x in p.read_text(encoding='utf-8').splitlines() if x.startswith('OBJECTIVES/1 ')),encoding='utf-8')" "$RUN/e6e_win.log"
+# py -3 tools/objective_outcomes.py "$RUN/e6e_win.objectives" tests/smoke/objectives_e6e/expected.json --mission e6e_win
+# py -3 -c "from pathlib import Path; import sys; p=Path(sys.argv[1]); p.with_suffix('.objectives').write_text(''.join(x+'\n' for x in p.read_text(encoding='utf-8').splitlines() if x.startswith('OBJECTIVES/1 ')),encoding='utf-8')" "$RUN/e6e_loss.log"
+# py -3 tools/objective_outcomes.py "$RUN/e6e_loss.objectives" tests/smoke/objectives_e6e/expected.json --mission e6e_loss
+# --objective-logistics initializes the fixture campaign before quickstart and
+# settles a win before teardown. Both campaign missions retain purchase.fit.
+# MC2_SOAK_AUTOWIN, MC2_BOOT_TO_BAY and MC2_PURCHASE_ALL must be unset; the
+# fixture rejects them so objective termination and the baseline remain authoritative.
+# Negative control: repeat the win launch without --objective-logistics in a NEW
+# run directory, extract its OBJECTIVES lines, and run the same win grader above.
+# The grader MUST fail on missing settlement/availability; smoke PASS is insufficient.
+# Flag-off strict pair: unset MC2_ACTIVE_MOD and MC2_BOOT_VIDEO; use identical
+# lane3 data for the base and candidate exe. The orchestrator deploys each in turn.
+# Base: py -3 scripts/run_smoke.py --deploy lane3 --ref-commit 9e15c2ac1 --mission mc2_01 --duration 30 --sim-determinism --keep-logs
+# Candidate: py -3 scripts/run_smoke.py --deploy lane3 --mission mc2_01 --duration 30 --sim-determinism --keep-logs
+# Set RUN_BASE and RUN_NEW to their distinct fresh artifact directories, then:
+# py -3 tools/sim_determinism.py compare "$RUN_BASE/mc2_01.log" "$RUN_NEW/mc2_01.log"
+# The oracle requires movie/decoded_frame/accepted with the resolved MP4 path,
+# logistics CBills, and component 110 availability before complete.

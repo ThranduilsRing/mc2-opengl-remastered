@@ -1,4 +1,4 @@
-// BRAIN-MISSIONFIT-OPORD-CONSUMER-1: unit test for the pure mission.fit OPORD parser.
+// unit test for the pure mission.fit OPORD parser.
 // Engine-free — compiles code/brain_missionfit_oporbd.cpp only. Exit 0 = pass, 1 = fail.
 #include "brain_missionfit_oporbd.h"
 #include <cstdio>
@@ -69,7 +69,7 @@ int main() {
     check(parseMissionFitOpords("[Warrior1]\nst Profile = \"x\"\n", recs, 16) == 0, "no Brain → 0");
 
     // -----------------------------------------------------------------------------------------
-    // BRAIN-FULL-PARSE-1: full Brain{} block parse (real carver block + a simpler second warrior).
+    // full Brain{} block parse (real carver block + a simpler second warrior).
     static const char* kBrainFit =
     "[Warrior4]\n"
     "st Brain = \"\"\n"
@@ -151,7 +151,7 @@ int main() {
     check(parseMissionFitBrains("[Warrior1]\nst Brain = \"\"\n", brains, 8) == 0, "brain no block -> 0");
 
     // -----------------------------------------------------------------------------------------
-    // TECHBRAIN-PATROL-VIEWER-1: matchBrainForPos position-match + Primary-OPORD-Patrol-waypoint
+    // matchBrainForPos position-match + Primary-OPORD-Patrol-waypoint
     // proof. This IS the logic Unit::importPatrolFromBrainIfNeeded() (editor/EditorObjects.cpp)
     // runs to seed a unit's editable/drawable waypoint list, and the SAME logic the "Declarative
     // Brain" panel section (editor/UnitBrainPanel.cpp, via editor/MissionFitBrainSource.cpp) uses

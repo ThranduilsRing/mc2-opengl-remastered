@@ -17,7 +17,7 @@ MPParameterScreen.h			: Interface for the MPParameterScreen component.
 #include"alistbox.h"
 #include"attributemeter.h"
 #include"simplecamera.h"
-#include"elist.h"
+#include <vector>
 #include"multplyr.h"
 #include"mploadmap.h"
 
@@ -99,7 +99,6 @@ protected:
 	friend class MPParameterScreen;
 };
 
-class CListOfDropListPointers : public EList<aDropList *, aDropList *> {};
 
 class CFocusManager
 {
@@ -122,7 +121,7 @@ public:
 private:
 	control_species_data_type speciesOfTheControlWhichHasTheFocus;
 	aDropList *pDropListThatHasTheFocus;
-	CListOfDropListPointers listOfDropListPointers;
+	std::vector<aDropList*> listOfDropListPointers;
 };
 
 

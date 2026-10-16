@@ -567,12 +567,9 @@ class MC_TextureManager
 		void startShapes (uint32_t maxShapes = 3000);
 		
 		//------------------------------------------------------
-		// Frees a specific texture. 
-		void removeTexture (DWORD gosTextureHandle);
-		
-		//------------------------------------------------------
-		// Frees a specific textureNode.
-		void removeTextureNode (DWORD textureNode);
+		// Gives back one reference to a texture node (the count loadTexture / textureFromMemory took for the caller). The node, its GOS
+		// texture and its RAM copy are freed when the last reference goes. This is the release behind mc2::TextureRef.
+		void releaseNode (DWORD textureNode);
 
 		//------------------------------------------------------
 		// DEV-SHELL texture_refresh: re-read the source file from disk for
@@ -593,10 +590,8 @@ class MC_TextureManager
         // once per recipe at bake / invalidate re-bake, NOT per frame.
         void bakeStaticLightSlot(int32_t recipeIndex, const struct TG_HWLightsData& baked);
 
-        // Diagnostic accessors for the static-prop registry's flush trace
-        // (2026-05-05 black-billboard investigation). Read-only views of the
-        // per-frame light dedup table. Bodies in txmmgr.cpp because
-        // TG_HWLightsData is fwd-declared here (full type lives in tgl.h).
+        // Diagnostic accessors for the static-prop registry's flush trace:
+        // read-only views of the per-frame light dedup table.
         // LightSlotPeek includes the first light's type (lightDir[0].w) and
         // color (lightColor[0].rgb) so registry::flush() can identify the
         // H2 hypothesis: slot has numLights=1 but lightColor=(0,0,0) → black.

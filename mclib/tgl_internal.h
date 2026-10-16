@@ -8,6 +8,7 @@
 #ifndef TGL_H
 #include"tgl.h"
 #include "gos_crashbundle.h"
+#include "../GameOS/gameos/utils/mc2log.h"  // shape loaders reject malformed counts with a log line
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "render_contract.h"  // [RENDER_PASS v1] noteRenderPass
 #include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon-zero accumulators

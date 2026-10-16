@@ -365,15 +365,15 @@ namespace
 		};
 
 		EditorObjectMgr::BUILDING_LIST blds = mgr->getBuildings();
-		for ( EditorObjectMgr::BUILDING_LIST::EIterator it = blds.Begin(); !it.IsDone(); it++ )
+		for ( auto it = blds.begin(); it != blds.end(); it++ )
 			drawLabel( *it );
 
 		EditorObjectMgr::UNIT_LIST units = mgr->getUnits();
-		for ( EditorObjectMgr::UNIT_LIST::EIterator it = units.Begin(); !it.IsDone(); it++ )
+		for ( auto it = units.begin(); it != units.end(); it++ )
 			drawLabel( *it );
 
 		EditorObjectMgr::DROPZONE_LIST dzs = mgr->getDropZones();
-		for ( EditorObjectMgr::DROPZONE_LIST::EIterator it = dzs.Begin(); !it.IsDone(); it++ )
+		for ( auto it = dzs.begin(); it != dzs.end(); it++ )
 			drawLabel( *it );
 	}
 #endif // MC2_IMGUI
@@ -562,7 +562,7 @@ void RenderPatrolPaths( Camera* eye )
 	s_patrolVerts.clear();
 	EditorObjectMgr::UNIT_LIST units = mgr->getUnits();
 	for ( int pass = 0; pass < 2; ++pass )
-		for ( EditorObjectMgr::UNIT_LIST::EIterator it = units.Begin(); !it.IsDone(); it++ )
+		for ( auto it = units.begin(); it != units.end(); it++ )
 		{
 			Unit* u = *it;
 			if ( !u )

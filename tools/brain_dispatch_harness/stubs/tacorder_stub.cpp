@@ -1,4 +1,4 @@
-// BRAIN-DISPATCH-HARNESS-1: TacticalOrder operator new/delete stubs.
+// TacticalOrder operator new/delete stubs.
 // The real TacticalOrder uses a custom heap allocator; the harness uses standard new/delete.
 #include "tacordr.h"
 #include <cstdlib>

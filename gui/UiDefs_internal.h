@@ -102,7 +102,7 @@ struct UiElement {
     int legacyId = 0;
     int helpId = 0;             // helpDescLegacyId; hovered element sets ::helpTextID
     int legacyButtonIndex = -1;
-    std::string legacySection;   // UI-LAYER-CONTRACT-2: e.g. "Static4" / "Rect0" / "Text2" / "Button3"
+    std::string legacySection;   // e.g. "Static4" / "Rect0" / "Text2" / "Button3"
     std::string texturePath;
     int textureNode = 0;
     bool textureNodeAssigned = false;
@@ -118,7 +118,7 @@ struct UiElement {
     int uvY = 0;
     int uvW = 0;
     int uvH = 0;
-    bool uvLegacySpace = false; // uvXYWH addressed in legacy size/uvScale space (PILOT-PHOTO-UV-1)
+    bool uvLegacySpace = false; // uvXYWH addressed in legacy size/uvScale space
     unsigned int fillColor = 0x00000000;
     unsigned int borderColor = 0xff505050;
     unsigned int textColor = 0xffffffff;
@@ -221,7 +221,7 @@ struct UiElement {
 struct PageScale {
     float sx = 1.0f;
     float sy = 1.0f;
-    // UI-ASPECT-ANCHOR-1: display-pixel origin of the 16:9 UI canvas
+    // display-pixel origin of the 16:9 UI canvas
     // (pillarbox/letterbox pads); 0,0 when the canvas fills the display.
     float ox = 0.0f;
     float oy = 0.0f;

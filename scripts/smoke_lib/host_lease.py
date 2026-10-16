@@ -2,7 +2,7 @@
 """FIFO engine slots shared across worktrees, with exclusive reservations for timing proofs.
 
 MC2_HOST_CORES_PER_SLOT selects physical cores per slot (default 2).
-MC2_HOST_GAME_SLOTS selects 1..6/width slots (default 1); cores 0..1 stay reserved.
+MC2_HOST_GAME_SLOTS selects 1..6/width slots (default 2); cores 0..1 stay reserved.
 MC2_HOST_LEASE_EXCLUSIVE=1 reserves every slot. Batch hold/release keeps a reservation
 across a serial chain. Dead holders and tickets recover automatically. Private paths
 isolate tests; disabling leases requires MC2_OWNER_NO_LEASE=1.
@@ -47,7 +47,9 @@ def cores_per_slot() -> int:
 
 def slot_count() -> int:
     maximum = 6 // cores_per_slot()
-    count = int(os.environ.get("MC2_HOST_GAME_SLOTS", "1"))
+    # Two slots limit host load because three can trip the heartbeat_freeze_play smoke gate.
+    # Three remains an env override for sim-only or strict runs that grade no smoke gates.
+    count = int(os.environ.get("MC2_HOST_GAME_SLOTS", "2"))
     if not 1 <= count <= maximum:
         raise ValueError(f"MC2_HOST_GAME_SLOTS must be between 1 and {maximum}")
     return count
@@ -114,9 +116,9 @@ def _remove_records(records):
         _write_record(global_path, dict(survivors[0][1], legacy_guard=True))
         removed.discard(global_path)
     for p in removed:
-        p.unlink(missing_ok=True)
+        _retry_file_change(p.unlink, missing_ok=True)
     if not survivors and guard:
-        global_path.unlink(missing_ok=True)
+        _retry_file_change(global_path.unlink, missing_ok=True)
 
 
 def _ours(rec):
@@ -198,7 +200,8 @@ def disabled(log: Callable[[str], None] = _log_default) -> bool:
 
 def _read(path: Path) -> Optional[dict]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        data = path.read_bytes()
+        value = json.loads(data.decode("utf-8"))
         return value if isinstance(value, dict) else None
     except (OSError, ValueError):
         return None
@@ -237,12 +240,12 @@ def _try_take(path: Path, label: str) -> Tuple[bool, Optional[dict]]:
                 if _holder_alive(rec):
                     return False, rec
                 if _read(path) == rec:
-                    path.unlink(missing_ok=True)
+                    _retry_file_change(path.unlink, missing_ok=True)
                 continue
             return True, None
         return False, _read(path)
     finally:
-        tmp.unlink(missing_ok=True)
+        _retry_file_change(tmp.unlink, missing_ok=True)
 
 
 def release() -> None:
@@ -388,10 +391,23 @@ def ensure_held(label: str) -> None:
 # shell does not outlive one tool call, so no caller pid would do); runner processes started with MC2_HOST_LEASE_BATCH=<tag> enter it.
 # The lease still ends on a dead holder pid (the usual rule), on `release`, and at the TTL, so a forgotten hold cannot wedge the host.
 
+def _retry_file_change(operation, *args, **kwargs):
+    """Windows readers can briefly deny replacement or deletion of a lease record."""
+    deadline = time.monotonic() + 2.0
+    while True:
+        try:
+            return operation(*args, **kwargs)
+        except PermissionError as exc:
+            remaining = deadline - time.monotonic()
+            if getattr(exc, "winerror", None) not in (5, 32) or remaining <= 0:
+                raise
+            time.sleep(min(0.02, remaining))
+
+
 def _write_record(path: Path, rec: dict) -> None:
     tmp = path.with_name(path.name + f".{os.getpid()}.tmp")
     tmp.write_text(json.dumps(rec), encoding="utf-8")
-    os.replace(tmp, path)
+    _retry_file_change(os.replace, tmp, path)
 
 
 def holder_loop(tag: str, ttl_s: float, *, exclusive: Optional[bool] = None, log: Callable[[str], None] = _log_default, sleep: Callable[[float], None] = time.sleep,

@@ -32,7 +32,7 @@
 #include "EditorData.h"
 #endif
 
-#include "MissionFitBrainSource.h"   // TECHBRAIN-PATROL-VIEWER-1: declarative Brain{} patrol import
+#include "MissionFitBrainSource.h"   // declarative Brain{} patrol import
 
 #include "resource.h"
 

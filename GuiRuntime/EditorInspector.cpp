@@ -5,9 +5,9 @@ EditorInspector::InspectorSelection     s_selection;
 EditorInspector::StaticPropInspectorData s_staticPropData;
 EditorInspector::MechInspectorData       s_mechData;
 EditorInspector::TerrainInspectorData    s_terrainData;
-EditorInspector::TerrainPassSnapshot     s_terrainPass;   // TERRAIN-SPINE-0
-EditorInspector::ShadowPassSnapshot      s_shadowPass;    // SHADOW-SPINE-0
-EditorInspector::VfxPassSnapshot         s_vfxPass;       // VFX-SPINE-0
+EditorInspector::TerrainPassSnapshot     s_terrainPass;
+EditorInspector::ShadowPassSnapshot      s_shadowPass;
+EditorInspector::VfxPassSnapshot         s_vfxPass;
 bool s_open = false;
 bool s_featuresOpen = false;
 
@@ -32,10 +32,10 @@ static bool isEnabled() {
 }
 
 
-static bool s_frameInspectorOpen = false;   // FRAME-INSPECTOR-1
+static bool s_frameInspectorOpen = false;
 static bool s_framePrevCollect   = false;   // last SetCollect we issued
 
-// FRAME-INSPECTOR-1: standalone "Frame Inspector" window. Live per-pass render
+// standalone "Frame Inspector" window. Live per-pass render
 // stats (draws/instances/GL state) from gos_frame_pass_stats. Editor-only: the
 // collect flag is flipped on only while this window is open, so the game build
 // (env unset, tab never opened) keeps collection off = zero cost. Toggle:
@@ -180,19 +180,19 @@ void EditorInspector::setTerrainData(const TerrainInspectorData& td) {
 }
 
 void EditorInspector::setTerrainPassSnapshot(const TerrainPassSnapshot& ts) {
-    // TERRAIN-SPINE-0: pass-level snapshot. Always accept (no enable gate so the
+    // pass-level snapshot. Always accept (no enable gate so the
     // snapshot is current even when the inspector window is closed; drawImGui is
     // already gated by isEnabled()).
     s_terrainPass = ts;
 }
 
 void EditorInspector::setShadowPassSnapshot(const ShadowPassSnapshot& sp) {
-    // SHADOW-SPINE-0: same always-accept policy as the terrain snapshot.
+    // same always-accept policy as the terrain snapshot.
     s_shadowPass = sp;
 }
 
 void EditorInspector::setVfxPassSnapshot(const VfxPassSnapshot& vs) {
-    // VFX-SPINE-0: same always-accept policy as the terrain / shadow snapshots.
+    // same always-accept policy as the terrain / shadow snapshots.
     s_vfxPass = vs;
 }
 
@@ -223,7 +223,7 @@ void EditorInspector::drawImGui() {
 
     drawFeaturesWindow();
 
-    // FRAME-INSPECTOR-1: live per-pass render stats window (Ctrl+Shift+P).
+    // live per-pass render stats window (Ctrl+Shift+P).
     // Independent of the Object Inspector; runs before the s_open early-return.
     drawFrameInspectorWindow();
 
@@ -306,7 +306,7 @@ void EditorInspector::drawImGui() {
     } else if (s_selection.pickKind == InspectorPickKind::Mech) {
         drawMechData();
 
-        // MECH-DEBUG-VIEWS-1: interactive debug view combo for the mech lane.
+        // interactive debug view combo for the mech lane.
         // Shown in the Mech inspector context (a mech is picked), mirroring the
         // StaticProp combo's pick-context placement. NOT gated on
         // MC2_SNAPSHOT_MECH_EXTRACT — it is a render control, independent of
@@ -314,7 +314,7 @@ void EditorInspector::drawImGui() {
         // for all mechs), not per-picked-mech.
         drawMechDebugView();
 
-        // MECH-NORMALS-FIX-1: live normal recompute controls. Default mode 0
+        // live normal recompute controls. Default mode 0
         // (Cooked) is byte-identical to the unmodified path — no performance
         // cost, no visual change. Mode 1 (Faceted) and 2 (Smoothed) trigger
         // batcher_rebuildMechNormals() which re-uploads the geometry VBO from
@@ -323,12 +323,12 @@ void EditorInspector::drawImGui() {
         // acceptable.
         drawMechNormals();
 
-        // MECH-AMBIENT-1: gated hemisphere ambient fill. Default OFF = byte-
+        // gated hemisphere ambient fill. Default OFF = byte-
         // identical (strength 0 uploaded). Per-flush uniform — changes take
         // effect next frame, no VBO rebuild. Best paired with Smoothed normals.
         drawMechLighting();
 
-        // MECH-EXTRACTION-2: mech snapshot panel (gate: MC2_SNAPSHOT_MECH_EXTRACT=1).
+        // mech snapshot panel (gate: MC2_SNAPSHOT_MECH_EXTRACT=1).
         // Read-only view of RenderSnapshot mech counters + per-selected-mech row detail.
         drawMechSnapshot();
 
@@ -336,25 +336,25 @@ void EditorInspector::drawImGui() {
         drawTerrainData();
     }
 
-    // TERRAIN-SPINE-0: pass-level (not selection-driven) view of the terrain
+    // pass-level (not selection-driven) view of the terrain
     // render spine. Visible regardless of pick state.
     drawTerrainPass();
 
-    // SHADOW-SPINE-0: pass-level (not selection-driven) view of the shadow
+    // pass-level (not selection-driven) view of the shadow
     // render spine. Mirrors the terrain header above.
     drawShadowPass();
 
-    // VFX-SPINE-0: pass-level view of the GPU particle / VFX render spine.
+    // pass-level view of the GPU particle / VFX render spine.
     // Mirrors the Shadow Pass header above. Read-only — no GL state, no VFX
     // mutation. VFX object-IDs are prohibited and intentionally absent.
     drawVfxPass();
 
-    // RENDERPASS-CONTRACT-2.5: descriptive table of pass-lane closure state.
+    // descriptive table of pass-lane closure state.
     // Mirrors RendererFeatureRegistry: pure data, no scheduling, no callbacks.
     // Source of truth: RenderCore/RenderPassContract.h (kRenderPassContracts).
     drawRenderPassContracts();
 
-    // V-MATERIAL-STATIC-0: read-only enumeration of the StaticPropOpaque
+    // read-only enumeration of the StaticPropOpaque
     // MaterialGpu table — one row per s_materialGpuTable entry. Sourced from
     // batcher_getStaticPropMaterialInventory*; never mutates the live table.
     // Designed for Track V planning: surfaces every distinct static-prop

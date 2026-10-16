@@ -165,6 +165,19 @@ struct ObjectiveEntry {
     std::string_view policy;
 };
 inline constexpr std::size_t objectiveTextLimit = 2000;
+struct TeamFlagRow {
+    std::size_t index{};
+    std::optional<std::string> id;
+    bool value{};
+    std::string_view status;
+    std::optional<std::size_t> duplicateOf;
+};
+struct TeamFlags {
+    std::optional<NodeId> section;
+    std::size_t stop{};
+    std::vector<TeamFlagRow> rows;
+    const TeamFlagRow* resolve(std::string_view id) const;
+};
 struct ObjectiveFieldSpec {
     std::string_view key, prefix;
     std::size_t type;
@@ -184,7 +197,15 @@ struct ActionSpec {
     std::string_view name;
     std::span<const ObjectiveFieldSpec> fields;
 };
-std::span<const ActionSpec> actionSchema();
+std::span<const ActionSpec> actionSchema(bool creation = false);
+struct ActionDraft {
+    ActionSpecies species = ActionSpecies::bik;
+    std::vector<Scalar> payload;
+    bool flagIndex{};
+};
+std::expected<std::string, LoadError> encodeActionDraft(const ActionDraft& draft);
+std::expected<void, LoadError> validateObjectiveBlock(std::string_view block);
+std::string objectivePayloadWire(const ObjectiveFieldSpec& field, const Scalar& value);
 std::span<const ObjectiveFieldSpec> objectivePayloadSchema(const ObjectiveEntry& entry);
 std::expected<void, LoadError> validateObjectiveScalar(const ObjectiveFieldSpec& spec, const Scalar& value);
 struct ObjectiveScalar {
@@ -238,6 +259,7 @@ public:
     const std::vector<Entity>& entities() const { return entities_; }
     std::span<const std::uint32_t> markerObjects() const { return markerObjects_; }
     const std::vector<Objective>& objectives() const { return objectives_; }
+    TeamFlags teamFlags(std::uint32_t team) const;
     const Objective* objective(NodeId id) const;
     const ObjectiveScalar* objectiveScalar(NodeId objective, std::string_view key) const;
     const Field* field(NodeId id) const;

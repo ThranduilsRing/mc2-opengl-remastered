@@ -86,16 +86,17 @@ add_executable(mc2_tests
     test_vulkan_layout_chain.cpp  # VULKAN-LAYOUT-CHAIN-VALIDATOR-2: sampled-image layout-chain coverage/producer (offline)
     test_subgraph_contiguity.cpp  # SUBGRAPH-CONTIGUITY-GUARD-1: postprocess sub-pass contiguity rule (offline)
     test_file_inifile.cpp   # MINIMAL-VIABLE-HARNESS-1: real file/inifile/packet stack, game-free
+    ${MC2_WORKTREE_ROOT}/mclib/ablfile.cpp
     test_file_family_contract.cpp   # step 4 B3.0: the File family's name/child/buffer contract before B3.1
     test_pak_read_exact.cpp     # step 4 B4.1: mc2::pak::readExact, the size-checked packet read of the move maps (malformed pak rejected with one log line)
     test_tga_scratch.cpp        # step 4 B4.2a: the whole-file read and the TGA body-size check of the terrain texture loaders
     test_globalmap_limits.cpp   # step 4 B4.1c: the range checks of every count a global move map reads from a pak, plus the zeroed owner helper
+    test_texture_ref.cpp        # step 4 B5.1: mc2::BasicTextureRef, one release per adopted texture node reference
     test_path_permutations.cpp  # META-FIX design E: canonical-key permutation matrix (issue #8 family)
     test_csvfile.cpp        # MINIMAL-VIABLE-HARNESS-2: real csvfile.cpp (Buildings.csv-shaped)
     test_memorystream.cpp   # Stuff::MemoryStream::ReadBytes bounds check (truncated mod .fx)
     test_estring.cpp        # EString::Format sizing (ll/z/j specs) via the CRT parser; step 4 B1 characterization of the class (H1-H14)
     test_objective_text.cpp # objective text reader/writer + boolean flag table (step 4 B1.1)
-    test_elist_contract.cpp     # step 4 B2.0: EList characterization (HE1-HE12), the properties std::vector/deque replace
     test_score_sort_ties.cpp    # step 4 B2.4: the CRT qsort tie table recorded from the old SortList (golden/sortlist_ties.h) against the new rule
     test_score_sort.cpp         # step 4 B2.4: mc2::sort_scored, the ordering rule that replaces SortList (SS1-SS7)
     test_pqueue_contract.cpp    # step 4 B2.0/B2.5: the open list (mc2::OpenHeap) against the 2000 golden scripts of the removed PriorityQueue (golden/pqueue_golden.h)
@@ -378,6 +379,7 @@ target_sources(mc2_tests PRIVATE
     test_abl_outarrays.cpp
 )
 target_sources(mc2_tests PRIVATE test_editor_mission_reader.cpp)
+target_sources(mc2_tests PRIVATE test_combat_retirement.cpp)
 include("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/CMakeLists.txt")
 target_sources(vfx_lifecycle_tests PRIVATE test_vfx_frozen_clouds.cpp)
 # The frozen-cloud tests own the particle bridge capture instead of the platform sink.

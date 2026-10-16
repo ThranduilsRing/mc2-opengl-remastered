@@ -13,6 +13,7 @@ MineBrush.h			: Interface for the MineBrush component.
 
 #include "Action.h"
 #include "EditorObjects.h"
+#include <vector>
 
 
 
@@ -52,8 +53,7 @@ class MineBrush: public Brush
 				int column;
 				unsigned long mineState;
 			};
-			typedef EList< CTileMineInfo, const CTileMineInfo&> MINE_INFO_LIST;
-			MINE_INFO_LIST mineInfoList;
+			std::vector<CTileMineInfo> mineInfoList;
 
 			void AddChangedTileMineInfo( CTileMineInfo& info );
 		};

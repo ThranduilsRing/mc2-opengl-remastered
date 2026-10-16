@@ -26,7 +26,7 @@ Action* MineBrush::endPaint()
 
 	if (pAction)
 	{
-		if ( pAction->mineInfoList.Count() )
+		if ( !pAction->mineInfoList.empty() )
 			pRetAction =  pAction;
 		else
 		{
@@ -44,7 +44,7 @@ bool MineBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY  )
 		return false;  // MOVE data not built yet; can't place mines without GameMap
 
 	if (!land)
-		return false;  // EDITOR-CRASH-HARDENING-1: no terrain -> worldToTile/Cell deref NULL (sibling HeightBrush.cpp:100)
+		return false;  // no terrain -> worldToTile/Cell deref NULL (sibling HeightBrush.cpp:100)
 
 	 int tileC;
 	 int tileR;
@@ -55,10 +55,8 @@ bool MineBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY  )
 	int cellCol;
 	land->worldToCell(worldPos, cellRow, cellCol);
 
-	// EDITOR-CRASH-HARDENING-1: original guard was a tautology (always false, never
-	// returned) and checked tile coords, not the cell coords actually indexed below.
-	// Bound the real cellRow/cellCol against the GameMap cell grid (getMine/setMine
-	// also inBounds-guard internally, but reject early here too).
+	// Validate cell coordinates against the cell grid before indexing it;
+	// tile coordinates describe a different grid.
 	if (cellRow < 0 || cellRow >= GameMap->getHeight()
 		|| cellCol < 0 || cellCol >= GameMap->getWidth()) {
 		return false;
@@ -118,17 +116,11 @@ bool MineBrush::MineAction::undo()
 	if (!GameMap)
 		return true;  // MOVE data gone (e.g. map reload); treat as silent no-op
 
-	for ( MINE_INFO_LIST::EIterator iter = mineInfoList.Begin();
-		!iter.IsDone(); iter++ )
+	for (auto& info : mineInfoList)
 	{
-		// get current values
-		unsigned long lMineState = GameMap->getMine( (*iter).row, (*iter).column );
-
-		// reset to old values
-		GameMap->setMine( (*iter).row, (*iter).column, (*iter).mineState );
-
-		// save current valuds
-		(*iter).mineState = lMineState;
+		unsigned long lMineState = GameMap->getMine( info.row, info.column );
+		GameMap->setMine( info.row, info.column, info.mineState );
+		info.mineState = lMineState;
 	}
 
 	return true;
@@ -141,14 +133,13 @@ bool MineBrush::MineAction::redo()
 
 void MineBrush::MineAction::AddChangedTileMineInfo( CTileMineInfo& info )
 {
-	for( MINE_INFO_LIST::EIterator iter = mineInfoList.Begin();
-		!iter.IsDone(); iter++ )
-		{
-			if ( info.row == (*iter).row && info.column == (*iter).column )
-				return;
-		}
+	for (const auto& existing : mineInfoList)
+	{
+		if ( info.row == existing.row && info.column == existing.column )
+			return;
+	}
 
-		mineInfoList.Append( info );
+	mineInfoList.push_back( info );
 }
 
 

@@ -25,6 +25,7 @@
 #include"inifile.h"
 #endif
 #include<vector>
+#include"texture_ref.h"
 
 //---------------------------------------------------------------------------
 // Macro Definitions
@@ -39,7 +40,7 @@ inline constexpr int TOTAL_COLORMAP_TYPES = 5;
 // Class Definitions
 typedef struct _ColorMapTextures
 {
-	DWORD 		mcTextureNodeIndex;
+	mc2::TextureRef	mcTextureNodeIndex;	//Owns one reference to the texture node
 } ColorMapTextures;
 
 typedef struct _ColorMapRAM
@@ -76,22 +77,22 @@ class TerrainColorMap
 		void releaseColorMapScratch (void);
 		
 		MemoryPtr				detailTextureRAM;
-		DWORD					detailTextureNodeIndex;
+		mc2::TextureRef					detailTextureNodeIndex;
 		float					detailTextureTilingFactor;
 		
 		MemoryPtr				waterTextureRAM;
-		DWORD					waterTextureNodeIndex;
+		mc2::TextureRef					waterTextureNodeIndex;
 		float					waterTextureTilingFactor;
 		
 		DWORD					numWaterDetailFrames;
-		DWORD					waterDetailNodeIndex[MAX_WATER_DETAIL_TEXTURES];
+		mc2::TextureRef					waterDetailNodeIndex[MAX_WATER_DETAIL_TEXTURES];
 		float					waterDetailFrameRate;
 		float					waterDetailTilingFactor;
 
 		// Normal map for terrain lighting
 		ColorMapTextures		*normalMapTextures;
 		DWORD					numNormalMapTextures;
-		DWORD					detailNormalNodeIndex;
+		mc2::TextureRef					detailNormalNodeIndex;
 		bool					hasNormalMap;
 		long					lastResultTexture; // tile index from last getTextureHandle call
 
@@ -133,7 +134,7 @@ class TerrainColorMap
 		void destroy (void);
 
 		// Frees the CPU copies of the colour map and the displacement alpha once the GPU atlas holds them. The atlas builder
-		// (GameOS, lane 2) calls this in place of freeing the two buffers itself, so the pointers and sizes always agree.
+		// calls this in place of freeing the two buffers itself, so the pointers and sizes always agree.
 		void retireCpuCopies (void);
 
 		~TerrainColorMap (void)
@@ -150,36 +151,36 @@ class TerrainColorMap
 
 		DWORD peekDetailHandle (void) const
 		{
-			return detailTextureNodeIndex;
+			return detailTextureNodeIndex.get();
 		}
 
 		DWORD getNormalMapHandle (long resultTexture) {
 			if (hasNormalMap && normalMapTextures && resultTexture >= 0 && resultTexture < (long)numNormalMapTextures) {
-				tex_resolve(normalMapTextures[resultTexture].mcTextureNodeIndex);
-				return normalMapTextures[resultTexture].mcTextureNodeIndex;
+				tex_resolve(normalMapTextures[resultTexture].mcTextureNodeIndex.get());
+				return normalMapTextures[resultTexture].mcTextureNodeIndex.get();
 			}
 			return 0xffffffff;
 		}
 
 		DWORD getDetailNormalHandle (void) {
-			if (detailNormalNodeIndex != 0xffffffff)
-				tex_resolve(detailNormalNodeIndex);
-			return detailNormalNodeIndex;
+			if (detailNormalNodeIndex.get() != 0xffffffff)
+				tex_resolve(detailNormalNodeIndex.get());
+			return detailNormalNodeIndex.get();
 		}
 
 		bool getHasNormalMap (void) { return hasNormalMap; }
 
 		DWORD getDetailHandle (void)
 		{
-			tex_resolve(detailTextureNodeIndex);
-			return (detailTextureNodeIndex);
+			tex_resolve(detailTextureNodeIndex.get());
+			return (detailTextureNodeIndex.get());
 		}
 		long saveDetailTexture(const char *fileName);
 
 		DWORD getWaterTextureHandle (void)
 		{
-			tex_resolve(waterTextureNodeIndex);
-			return waterTextureNodeIndex;
+			tex_resolve(waterTextureNodeIndex.get());
+			return waterTextureNodeIndex.get();
 		}
 		long saveWaterTexture(const char *fileName);
 
@@ -187,8 +188,8 @@ class TerrainColorMap
 		{
 			if ((frameNum >= 0) && (frameNum < (long)numWaterDetailFrames))
 			{
-				tex_resolve(waterDetailNodeIndex[frameNum]);
-				return waterDetailNodeIndex[frameNum];
+				tex_resolve(waterDetailNodeIndex[frameNum].get());
+				return waterDetailNodeIndex[frameNum].get();
 			}
 			else
 				return 0xffffffff;

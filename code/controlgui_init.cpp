@@ -600,8 +600,8 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 	{
 		for ( int i = 0; i < buttonCount; i++ )
 		{
-			unsigned long gosID = mcTextureManager->get_gosTextureHandle( buttonData[i].textureHandle );
-			mcTextureManager->removeTexture( gosID );
+			if ( buttonData[i].textureHandle )
+				mcTextureManager->releaseNode( buttonData[i].textureHandle );
 		}
 	}
 
@@ -609,8 +609,8 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 	{
 		for ( int i = 0; i < LAST_VEHICLE; i++ )
 		{
-			unsigned long gosID = mcTextureManager->get_gosTextureHandle( vehicleData[i].textureHandle );
-			mcTextureManager->removeTexture( gosID );
+			if ( vehicleData[i].textureHandle )
+				mcTextureManager->releaseNode( vehicleData[i].textureHandle );
 		}
 	}
 

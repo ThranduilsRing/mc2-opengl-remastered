@@ -67,7 +67,6 @@ static void saveloadTrace(const char* op, const char* file, const char* missionF
 void Mission::save (const char *saveFileName)
 {
 	saveloadTrace("save", saveFileName, missionFileName);
-	//Check for sufficient hard Drive space on drive game is running from
 	char currentPath[1024];
 	gos_GetCurrentPath( currentPath, 1023 );
 	__int64 driveSpace = gos_GetDriveFreeSpace(currentPath);
@@ -92,18 +91,14 @@ void Mission::save (const char *saveFileName)
 	mc2UseAsyncMouse = true;			
 	AsynFunc = ProgressTimer;
 
-	//Get the campaign name for the campaign we are currently playing.
 	const std::string campaignName = LogisticsData::instance->getCampaignName();
 	const char *cmpName = campaignName.c_str();
 
-	//Open the Save File.
-	// Assume path is correct when we get here.
 	PacketFile saveFile;
 	long result = saveFile.create((char *)saveFileName);
 
 	loadProgress = 1.0f;
 
-	//A thousand packets ought to get it!!
 	saveFile.reserve(20000);
 	DWORD currentPacket = 0;
 
@@ -115,9 +110,6 @@ void Mission::save (const char *saveFileName)
 
 	loadProgress = 3.0f;
 
-	//Mission Settings
-	// Create a temp fit file and shove it into Packet 0.
-	// COmpress the Wee-wee out of it!!
 	char tmpString[2048];
 	sprintf(tmpString,"%d",timeGetTime());
 
@@ -145,7 +137,7 @@ void Mission::save (const char *saveFileName)
 
 	tempFile.writeIdLong("OperationId"							, operationId);
 	tempFile.writeIdLong("MissionId"							, missionId);
-	tempFile.writeIdLong("ABLScriptHandle"						, missionBrain->getRealId());
+	tempFile.writeIdLong("ABLScriptHandle"						, missionBrain ? missionBrain->getRealId() : -1);
 	tempFile.writeIdBoolean("Active"							, active);
 	tempFile.writeIdFloat("ActualTime"							, actualTime);
 	tempFile.writeIdFloat("RunningTime"							, runningTime);
@@ -157,15 +149,11 @@ void Mission::save (const char *saveFileName)
 	tempFile.writeBlock("Parts");
 	tempFile.writeIdULong("NumParts",numParts);
 
-	//Must save all of the part data.  Not sure if its ever used after INIT!  Better safe then sorry.
 	for (long i=0;i<numParts;i++)
 		parts[i].Save(&tempFile,i);
 
 	loadProgress = 35.0f;
 
-	//Save Support Palette data at least from here.
-	// VTOL current State, IF Needed.
-	// Karnov current State, IF Needed.
 	missionInterface->Save( &tempFile );
 
 	loadProgress = 40.0f;
@@ -195,24 +183,18 @@ void Mission::save (const char *saveFileName)
 
 	saveFile.writePacket(currentPacket,tmpRAM,fileSz,STORAGE_TYPE_ZLIB);
 	currentPacket++;
+	mc2::combat::SavedCombatClock savedClock{combatClock.ticks, combatClock.frac};
+	saveFile.writePacket(currentPacket++, reinterpret_cast<MemoryPtr>(&savedClock),
+		sizeof(savedClock), STORAGE_TYPE_RAW);
 
 	dmyFile.close();
 	DeleteFile(tmpName);
 	free(tmpRAM);
-	//---------------------------
 
-	//Terrain - NOT needed, the terrain does not change.
-//	land->save( &saveFile, currentPacket, true );
-//	currentPacket++;
-	//---------------------------
-
-	//Move Data - Needed, changes ALOT
 	currentPacket += MOVE_saveData( &saveFile, currentPacket );
-	//---------------------------
 
 	loadProgress = 75.0f;
 
-	//ABL
 	sprintf(tmpString,"%d",timeGetTime());
 
 	tmpName.init(savePath,tmpString,".abl");
@@ -224,7 +206,6 @@ void Mission::save (const char *saveFileName)
 
 	ablFile.close();
 
-	//Create a dummy file to stick in the packet file
 	result = dmyFile.open(tmpName);
 	fileSz = dmyFile.fileSize();
 	tmpRAM = (MemoryPtr)malloc(fileSz);
@@ -236,43 +217,21 @@ void Mission::save (const char *saveFileName)
 	dmyFile.close();
 	DeleteFile(tmpName);
 	free(tmpRAM);
-	//---------------------------
 
 	loadProgress = 80.0f;
 
-	//MechWarrior Manager
-	// Save Number of Warriors.
-	// Call Save for each Warrior on list.
 	currentPacket = MechWarrior::Save( &saveFile, currentPacket );
 
 	loadProgress = 85.0f;
 
-	//Team Manager
-	// Save Number of Teams
-	// Save which number is HOME
-	// Call Save for each team.
 	currentPacket = Team::Save( &saveFile, currentPacket );
 
-	//Object Manager
-	// Save numbers of objects in all object lists in game
-	// Save ClassID of objects IN the list.
-	// For each object in each list:
-	//		If NULL, save a magic Number to tell me this entry is NULL.
-	//		If NOT NULL, 
-	// 			Call Save DOWN the heirarchy.
-	//
 	currentPacket = ObjectManager->Save( &saveFile, currentPacket );
 
 	loadProgress = 95.0f;
 
-	//Commander Manager
-	// Save Number of Commanders.
-	// Save which number is HOME.
-	// Call save for each commander.
 	currentPacket = Commander::Save( &saveFile, currentPacket );
 
-	//Logistics Manager
-	// Save the Logistics Data
 	FitIniFile tmpSaveFile;
 	tmpSaveFile.create(tmpName);
 
@@ -282,7 +241,6 @@ void Mission::save (const char *saveFileName)
 
 	loadProgress = 99.0f;
 
-	//Create a dummy file to stick in the packet file
 	result = dmyFile.open(tmpName);
 	fileSz = dmyFile.fileSize();
 	tmpRAM = (MemoryPtr)malloc(fileSz);
@@ -295,27 +253,19 @@ void Mission::save (const char *saveFileName)
 
 	DeleteFile(tmpName);
 	free(tmpRAM);
-	//---------------------------
 
-	//-------------------------------------------------------------------------------------------
-	// Save the CurrentMission number in logistics cause Heidi don't save it with logisticsData.
 	long currentMissionNum = LogisticsData::instance->getCurrentMissionNum();
 	saveFile.writePacket(currentPacket,(MemoryPtr)&currentMissionNum,4,STORAGE_TYPE_RAW);
 	currentPacket++;
 
-	//-------------------------------------------------------------------------------------------
 	saveFile.writePacket(currentPacket,(MemoryPtr)"END",4,STORAGE_TYPE_RAW);
 	currentPacket++;
 
 	saveFile.close();
 
-	//YIKES!!  We could be checking the if before the null and executing after!!  Block the thread!
-	//Wait for thread to finish.
 	while (mc2IsInMouseTimer)
 		;
 
-	//ONLY set the mouse BLT data at the end of each update.  NO MORE FLICKERING THEN!!!
-	// BLOCK THREAD WHILE THIS IS HAPPENING
 	mc2IsInDisplayBackBuffer = true;
 
 	AsynFunc = NULL;
@@ -474,54 +424,25 @@ void Mission::loadPrologue(MissionLoadFrame& f) {
 bool Mission::openSaveFile(MissionLoadFrame& f) {
 	auto& loadFileName = f.loadFileName; auto& loadFile = f.loadFile; auto& result = f.result;
 	auto& currentPacket = f.currentPacket;
-	//Open the In-Mission Save packet file.
 	result = loadFile.open((char *)loadFileName);
 	if (result != NO_ERR)
-		return true;		//Can't load.  No File.  Dialog?  Probably not.
+		return true;
 
 	currentPacket = 0;
 
-	char versionCheck[1024];
-	loadFile.readPacket(currentPacket,(MemoryPtr)versionCheck);
-	currentPacket++;
-
-	if (strcmp(versionCheck,versionStamp) != 0)
-	{
-		char msg[2048];
-		cLoadString(IDS_QUICKSAVE_VERSION_WRONG,msg,2047);
-		PAUSE((msg));
-		return true;
-	}
-
+	char versionCheck[1024]{};
 	loadFile.seekPacket(currentPacket);
-	char *campName = new char [loadFile.getPacketSize()+1];
-	loadFile.readPacket(currentPacket,(MemoryPtr)(campName));
-	currentPacket++;
-
-	//Get the campaign name for the campaign we are currently playing.
-	const std::string campaignName = LogisticsData::instance->getCampaignName();
-	const char *cmpName = campaignName.c_str();
-
-	/*
-	if (stricmp(campName,cmpName) != 0)
-	{
-		char msg[2048];
-		cLoadString(IDS_QUICKSAVE_CAMPAIGN_WRONG,msg,2047);
-		PAUSE((msg,campName,cmpName));
+	const auto versionSize = strlen(versionStamp) + 1;
+	if (loadFile.getPacketSize() != versionSize ||
+		loadFile.readPacket(currentPacket, reinterpret_cast<MemoryPtr>(versionCheck)) != versionSize ||
+		memcmp(versionCheck, versionStamp, versionSize) != 0) {
+		mc2::fmt::print_err("[SAVE v1] event=reject reason=version file={}\n", mc2::fmt::safe(loadFileName));
 		return true;
 	}
-	*/
+	currentPacket = 2;
 
-	delete [] campName;
-	campName = NULL;
-
-	// A save written by another build can hold object records this build cannot read. Refuse it here, while
-	// the running mission is still intact.
 	if (const auto why = GameObjectManager::checkSavedObjects(&loadFile)) {
 		mc2::fmt::print_err("[SAVE v1] event=reject reason={} file={}\n", *why, mc2::fmt::safe(loadFileName));
-		char msg[2048];
-		cLoadString(IDS_QUICKSAVE_VERSION_WRONG,msg,2047);
-		PAUSE((msg));
 		return true;
 	}
 	return false;
@@ -571,16 +492,11 @@ void Mission::loadResetSimState(MissionLoadFrame& f) {
 	auto& tmpString = f.tmpString;
 	sprintf(tmpString,"%d",timeGetTime());
 
-	//-------------------------------------------
-	//Relationships saved with TEAMs!
 				
-	//-------------------------------------------
-	// Always reset turn at scenario start
 	turn = 0;
+	restoreCombatClock(*mc2::combat::readCombatClock(f.loadFile));
 	terminationCounterStarted = 0;
 
-	//-----------------------
-	// Init the ABL system...
 	initABL();
 
 	initBareMinimum();
@@ -791,8 +707,6 @@ void Mission::loadMissionSettings(MissionLoadFrame& f) {
 	auto& loadFileName = f.loadFileName; auto& loadFile = f.loadFile; auto& result = f.result;
 	auto& currentPacket = f.currentPacket; auto& tmpString = f.tmpString; auto& tmpName = f.tmpName;
 	auto& missionFile = f.missionFile; auto& rps = f.rps;
-	//---------------------------------------------------------------------------------
-	// OK, load up the in_mission Save mission data
 	if (loadFile.seekPacket(currentPacket) != NO_ERR)
 		STOP(("Mission Data missing from IN-Mission Save"));
 
@@ -800,7 +714,6 @@ void Mission::loadMissionSettings(MissionLoadFrame& f) {
 	
 	tmpName.init(savePath,tmpString,".fti");
 	{
-		//Create a dummy file to read the packet into.
 		File dmyFile;
 		result = dmyFile.create(tmpName);
 		DWORD fileSz = loadFile.getPacketSize();
@@ -812,15 +725,13 @@ void Mission::loadMissionSettings(MissionLoadFrame& f) {
 	
 		dmyFile.close();
 		free(tmpRAM);
-		//---------------------------
 	}
 
+	++currentPacket; // The combat clock was validated before teardown and restored before object loading.
 	result = missionFile.open(tmpName);
 	if (result != NO_ERR)
 		STOP(("Mission Data missing from IN-Mission Save 2"));
 
-	//--------------------------------
-	//Load up the mission Settings.
 	if (missionFile.seekBlock( "MissionSettings" ) != NO_ERR)
 		STOP(("MissionSettings missing from IN-Mission Save"));
 
@@ -881,11 +792,6 @@ void Mission::loadMissionSettings(MissionLoadFrame& f) {
 	if (result != NO_ERR)
 		STOP(("DropZoneZ missing from IN-Mission Save"));
 
-	//-----------------------------------
-	// Find the SKY Number and save it.
-	// If no number, i.e. an old mission file,
-	// simply make it 1 until its written out
-	// in the magical editor (tm)
 	result = missionFile.seekBlock("TheSky");
 	if (result != NO_ERR)
 		theSkyNumber = DEFAULT_SKY;

@@ -11,7 +11,7 @@
 // ResourceStringSelectionDlg.h : header file
 //
 
-#include "EList.h"
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////
 // ResourceStringSelectionDlg dialog
@@ -43,8 +43,7 @@ public:
 // Implementation
 protected:
 
-	class CIntList : public EList<int, int> {};
-	CIntList m_ResourceStringIDs;
+	std::vector<int> m_ResourceStringIDs;
 
 	// Generated message map functions
 	//{{AFX_MSG(ResourceStringSelectionDlg)

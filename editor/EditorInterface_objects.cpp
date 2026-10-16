@@ -8,10 +8,10 @@ void EditorInterface::rotateSelectedObjects( int direction )
 	ModifyBuildingAction *pAction = new ModifyBuildingAction;
 	EditorObjectMgr::EDITOR_OBJECT_LIST selectedObjects;
 	selectedObjects = EditorObjectMgr::instance()->getSelectedObjectList();
-	EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator iter = selectedObjects.Begin();
-	while (!iter.IsDone())
+	auto iter = selectedObjects.begin();
+	while (iter != selectedObjects.end())
 	{
-		// EDITOR-CRASH-HARDENING-1: appearance() can be NULL; skip (sibling applyObjectTransform:6401).
+		// appearance() can be NULL; skip.
 		if ( !(*iter) || !(*iter)->appearance() )
 		{
 			iter++;
@@ -59,8 +59,8 @@ void EditorInterface::frameSelectedObjects()
 	Stuff::Vector3D centroid;
 	centroid.x = centroid.y = centroid.z = 0.0f;
 	int count = 0;
-	for ( EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator iter = selectedObjects.Begin();
-	      !iter.IsDone(); iter++ )
+	for ( auto iter = selectedObjects.begin();
+	      iter != selectedObjects.end(); iter++ )
 	{
 		if ( !(*iter) )
 			continue;
@@ -90,10 +90,10 @@ void EditorInterface::rotateSelectedObjectsDegrees( float deg )
 	ModifyBuildingAction *pAction = new ModifyBuildingAction;
 	EditorObjectMgr::EDITOR_OBJECT_LIST selectedObjects;
 	selectedObjects = EditorObjectMgr::instance()->getSelectedObjectList();
-	EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator iter = selectedObjects.Begin();
-	while (!iter.IsDone())
+	auto iter = selectedObjects.begin();
+	while (iter != selectedObjects.end())
 	{
-		// EDITOR-CRASH-HARDENING-1: appearance() can be NULL; skip (sibling applyObjectTransform:6401).
+		// appearance() can be NULL; skip.
 		if ( !(*iter) || !(*iter)->appearance() )
 		{
 			iter++;
@@ -319,7 +319,7 @@ int EditorInterface::runPlaceOobSmoke()
 }
 
 //-------------------------------------------------------------------------------------------------
-// Phase 5 PCG foliage commands. Generate runs the Python generator's foliage pass
+// PCG foliage commands. Generate runs the Python generator's foliage pass
 // on the current generated-map recipe and loads the resulting sidecar; the rest
 // are pure overlay-state toggles. None touch terrain/save/load.
 //-------------------------------------------------------------------------------------------------

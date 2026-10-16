@@ -1,5 +1,5 @@
 #include "MissionDocument.h"
-#include "fit_number.h"
+#include "FitReader.h"
 
 #include <algorithm>
 #include <charconv>
@@ -12,36 +12,6 @@ namespace editor::document {
 namespace {
 enum class TokenKind { word, text, openSquare, closeSquare, openBrace, closeBrace, equal, comma, semi, newline, end };
 struct Token { TokenKind kind; Span span; std::string value; };
-
-std::expected<std::string, LoadError> readerText(const std::string& bytes, std::size_t equal)
-{
-    const auto start = bytes.rfind('\n', equal);
-    std::size_t at = start == bytes.npos ? 0 : start + 1;
-    const auto line = [&]() {
-        const auto begin = at;
-        while (at < bytes.size() && at - begin < 2047 && bytes[at] != '\r' && bytes[at] != '\n') ++at;
-        auto result = bytes.substr(begin, at - begin);
-        if (at < bytes.size()) ++at;
-        // RAM readLine skips the next LF even when the terminator was itself LF.
-        if (at < bytes.size() && bytes[at] == '\n') ++at;
-        return result;
-    };
-    auto assembled = line();
-    const auto separator = assembled.find('=');
-    if (separator == assembled.npos) return std::unexpected(LoadError{"literal", "reader_string_buffer_limit", equal});
-    assembled.erase(0, separator + 1);
-    const auto open = assembled.find('"');
-    if (open == assembled.npos) return std::unexpected(LoadError{"literal", "reader_string_buffer_limit", equal});
-    while (assembled.find('"', open + 1) == assembled.npos && at < bytes.size()) {
-        auto next = line();
-        if (assembled.size() + next.size() + 1 >= 2048)
-            return std::unexpected(LoadError{"literal", "reader_string_buffer_limit", equal});
-        assembled += next + '\n';
-    }
-    const auto close = assembled.find('"', open + 1);
-    if (close == assembled.npos) return std::unexpected(LoadError{"literal", "reader_string_buffer_limit", equal});
-    return assembled.substr(open + 1, close - open - 1);
-}
 
 std::expected<std::vector<Token>, LoadError> tokenize(const std::string& bytes)
 {
@@ -252,6 +222,7 @@ private:
         const auto equal = peek().span.begin;
         ++cursor_;
         prefix = identifier(prefix);
+        const bool teamFlags = identifier(result_.sections[section].name).ends_with("booleanflags");
         const bool opaque = prefix != "st" && prefix != "b" && prefix != "f" && prefix != "l" && prefix != "ul" && prefix != "c" && prefix != "uc" && prefix != "s" && prefix != "us";
         Field field{NodeId{result_.fields.size() + 1}, name, prefix, {peek().span.begin, peek().span.begin}, {}, {}, opaque};
         field.array = array;
@@ -273,24 +244,21 @@ private:
             if (i && peek().kind == TokenKind::newline) ++cursor_;
             if (peek().kind != TokenKind::word && peek().kind != TokenKind::text) return failure("missing_value");
             auto value = field.opaque ? std::expected<Scalar, LoadError>{Scalar{peek().value}} : scalar(peek(), prefix, objectiveInteger);
-            if (!array && prefix == "st" && result_.sections[section].kind == SectionKind::objective && peek().kind == TokenKind::text) {
+            if (!array && prefix == "st" && (result_.sections[section].kind == SectionKind::objective || teamFlags) && peek().kind == TokenKind::text) {
                 auto text = readerText(result_.originalBytes, equal);
                 if (text) value = Scalar{std::move(*text)};
                 else { field.opaque = true; field.warning = "reader_string_buffer_limit"; }
             }
             if (!array && result_.sections[section].kind == SectionKind::objective &&
                 (prefix == "ul" || prefix == "l" || prefix == "f")) {
-                const auto lineStart = result_.originalBytes.rfind('\n', peek().span.begin);
-                const auto lineEnd = std::min(result_.originalBytes.find_first_of("\r\n", peek().span.begin),
-                    (lineStart == std::string::npos ? 0 : lineStart + 1) + 254);
-                auto wire = result_.originalBytes.substr(peek().span.begin, lineEnd - peek().span.begin);
+                auto wire = readerNumericWire(result_.originalBytes, peek().span.begin);
                 if (value && prefix != "f" && wire.find("0x") == wire.npos && wire.find("0X") == wire.npos)
                     if (const auto* authored = std::get_if<std::int64_t>(&*value); authored &&
                         (*authored < -2147483648LL || *authored > 2147483647LL))
                         field.warning = "outside signed 32-bit range; the game reader overflows or wraps this value";
-                if (prefix == "f") value = Scalar{static_cast<double>(mc2::fit::textToFloat(wire.data()))};
-                else if (prefix == "l") value = Scalar{static_cast<std::int64_t>(mc2::fit::textToLong(wire.data()))};
-                else value = Scalar{static_cast<std::int64_t>(static_cast<std::int32_t>(mc2::fit::textToULong(wire.data())))};
+                auto actual = readerNumber(prefix, std::move(wire));
+                if (!actual) return std::unexpected(LoadError{path, std::string(actual.error()), peek().span.begin});
+                value = std::move(*actual);
                 if (prefix == "f" && !std::isfinite(std::get<double>(*value)))
                     return std::unexpected(LoadError{path, "malformed_value", peek().span.begin});
             }
@@ -305,6 +273,7 @@ private:
                 field.opaque = true;
                 value = Scalar{peek().value};
             }
+            if (!value && teamFlags) { field.opaque = true; value = Scalar{peek().value}; }
             if (!value) { auto err = value.error(); err.field = path; return std::unexpected(std::move(err)); }
             field.value.push_back(std::move(*value));
             field.syntax.end = peek().span.end;

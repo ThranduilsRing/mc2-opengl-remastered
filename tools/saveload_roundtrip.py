@@ -42,20 +42,17 @@ import sim_determinism as sd  # noqa: E402
 SAVE_AT, LOAD_AT = "1000", "1250"
 ENV = dict(sd.GATES, MC2_SMOKE_FREEZE_ANIM="1", MC2_FIXTURE_ORDER_LIVENESS="1", MC2_SIM_IDENTITY_TRACE_DETAIL="1",
            MC2_BOOT_QUICKSAVE_AT=SAVE_AT, MC2_BOOT_QUICKLOAD_AT=LOAD_AT)
-_LINE = re.compile(r"^\[SIMID v1\] simframe=(\d+) t=([\d.]+) (.*)$")
-_MOVER = re.compile(r"^\[SIMID v1 mover\] simframe=(\d+) id=(\d+) (.*)$")
+_LINE = re.compile(r"\[SIMID v1\] simframe=(\d+) t=([\d.]+) ([^\r\n\[]*)")
+_MOVER = re.compile(r"\[SIMID v1 mover\] simframe=(\d+) id=(\d+) ([^\r\n\[]*)")
 
 
 def parse(text_lines):
     """-> (frames [(simframe, t, digest text)], movers {simframe: {id: record}})"""
     frames, movers = [], {}
     for ln in text_lines:
-        m = _LINE.match(ln)
-        if m:
+        for m in _LINE.finditer(ln):
             frames.append((int(m.group(1)), float(m.group(2)), m.group(3).strip()))
-            continue
-        m = _MOVER.match(ln)
-        if m:
+        for m in _MOVER.finditer(ln):
             movers.setdefault(int(m.group(1)), {})[int(m.group(2))] = m.group(3).strip()
     return frames, movers
 

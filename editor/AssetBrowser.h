@@ -2,14 +2,13 @@
 #define ASSET_BROWSER_H
 /***************************************************************
 * FILENAME: AssetBrowser.h
-* DESCRIPTION: Modder-friendly Asset Browser Lite (Phase 1c).
+* DESCRIPTION: Modder-friendly Asset Browser Lite.
 *   Surfaces the EXISTING EditorObjectMgr object catalog (building/object
 *   groups) in one searchable ImGui panel, so a modder can pick any placeable
 *   object without diving the legacy MFC menus. Clicking an entry activates the
 *   EXISTING placement path (EditorInterface::selectBuildingObject ->
 *   BuildingBrush/ScatterBrush), so a placement is one entry in the existing
 *   undo system. No new asset database, no new placement system.
-* DATE: 2026-06-10
 ****************************************************************/
 
 class AssetBrowser

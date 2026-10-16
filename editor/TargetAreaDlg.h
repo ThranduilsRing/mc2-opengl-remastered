@@ -9,7 +9,6 @@ TargetAreaDlg.h		: Interface for the TargetAreaDlg component.
 
 #include "stdafx.h"
 #include "resource.h"
-#include <elist.h>
 #include "Objective.h"
 #include "EditorObjectMgr.h"
 
@@ -27,7 +26,7 @@ public:
 
 	BOOL OnInitDialog();
 
-	// Slice 2 -- area "Pick center" map-picker (PICKER-SELECT-POINT-RECON-1).
+	// area "Pick center" map-picker.
 	// Hands off to a one-shot terrain point pick (shared ObjectSelectOnlyMode +
 	// CObjectivesEditState handoff, tagged PICK_AREA) and re-opens this dialog with
 	// the picked X/Y written into the referenced center. Routed from OnCommand.

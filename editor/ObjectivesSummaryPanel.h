@@ -2,12 +2,11 @@
 #define OBJECTIVES_SUMMARY_PANEL_H
 /***************************************************************
 * FILENAME: ObjectivesSummaryPanel.h
-* DESCRIPTION: Read-only objectives explainer (objectives editor redesign,
-*   Phase 1). Walks EditorData::instance->TeamsRef() and renders each team's
+* DESCRIPTION: Read-only objectives explainer. Walks EditorData::instance->TeamsRef()
+*   and renders each team's
 *   CObjectives as readable "WHEN/THEN/Failure" cards. PURE-ADDITIVE: no engine
 *   model changes, no save/load, no editing. Modeled on InspectorPanel.
 *   Edit objectives via the legacy Objectives dialog.
-* DATE: 2026-06-27
 ****************************************************************/
 
 class ObjectivesSummaryPanel

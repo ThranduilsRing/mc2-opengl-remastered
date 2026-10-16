@@ -112,7 +112,7 @@ def grade_entry_edit(before, after, operation):
         count = 3
         species = "BooleanFlagIsSet" if index % 2 == 0 else "SetBooleanFlag"
         expected[base + "2"] = (f'\r\nst {suffix}SpeciesString = "{species}"\r\n'
-                                'st FlagID = ""\r\nb Value = TRUE\r\n').encode()
+                                f'st FlagID = "{"created-flag" if index % 2 else ""}"\r\nb Value = TRUE\r\n').encode()
     elif action == "delete":
         count = 1
         expected[base + "0"] = second

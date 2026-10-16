@@ -161,7 +161,8 @@ def main():
     (directory / "inputs.json").write_text(json.dumps(hashes, indent=2) + "\n", encoding="utf-8")
     env = dict(os.environ, _MSPDBSRV_ENDPOINT_=f"sol-editor-egl-{os.getpid()}",
                ASAN_OPTIONS="detect_leaks=0:halt_on_error=1")
-    commands = []
+    commands = [([sys.executable, "-B", "-m", "unittest",
+                  "editor.tests.test_placement_proofs.LegacyLinkTests"], 120, "legacy-link-order-run")]
     for target in ("editor_document_tests", "editor_document_tests_asan", "EditorShell", "EditorShellSmoke", "editor_panel_tests", "editor_objective_reader_tests"):
         if target == "editor_document_tests_asan" and not args.asan:
             continue
@@ -254,9 +255,9 @@ def main():
             print(reader.stdout + reader.stderr, end="", flush=True)
             if reader.returncode:
                 return reader.returncode
-            if not re.search(r"\[doctest\] test cases:\s+8\s+\|\s+8 passed\s+\|\s+0 failed\s+\|\s+0 skipped", reader.stdout):
+            if not re.search(r"\[doctest\] test cases:\s+16\s+\|\s+16 passed\s+\|\s+0 failed\s+\|\s+0 skipped", reader.stdout):
                 raise ValueError("real objective reader cases were skipped or omitted")
-            print("Offline proofs with installed prerequisites: widget graders and eight real FIT/text reader cases executed; species dispatch remains source-derived; rendered-widget proof awaits smoke host", flush=True)
+            print("Offline proofs with installed prerequisites: widget graders and sixteen real FIT/text/flag reader cases executed; six creation species have literal expectations; rendered-widget proof awaits smoke host", flush=True)
     if args.asan and (len(asan_cases) != 2 or sum(asan_cases) != native_cases):
         raise ValueError("ASan split did not cover the complete normal document suite")
     if args.asan:

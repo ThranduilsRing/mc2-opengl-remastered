@@ -10,6 +10,8 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include <vector>
+#include <algorithm>
 #include"platform_str.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
@@ -97,6 +99,7 @@ extern bool				AssertEnabled;
 extern bool				IncludeDebugInfo;
 extern bool				ProfileABL;
 extern bool				Crunch;
+extern bool				EnterStateSymbol;
 extern int32_t          level;
 extern int32_t		    lineNumber;
 extern int32_t		    FileNumber;
@@ -588,12 +591,97 @@ profile = true;
 
 //***************************************************************************
 
+namespace {
+// Parser allocations and shared symbol mutations belong to one compile until it succeeds.
+struct CompileTransaction;
+CompileTransaction* activeCompile = nullptr;
+struct CompileTransaction {
+	using Alloc = void* (*)(unsigned long);
+	using Free = void (*)(void*);
+	Alloc alloc[3]{ABLSymbolMallocCallback, ABLCodeMallocCallback, ABLStackMallocCallback};
+	Free release[3]{ABLSymbolFreeCallback, ABLCodeFreeCallback, ABLStackFreeCallback};
+	struct Allocation { void* address; int heap; };
+	std::vector<Allocation> allocations;
+	std::vector<SymTableNodePtr*> insertions;
+	std::vector<std::pair<TypePtr, long>> typeUses;
+	std::vector<char> savedCode;
+	SymTableNodePtr display[MAX_NESTING_LEVEL];
+	long savedEternalOffset = eternalOffset;
+	bool committed = false;
+	template<int Heap> static void* allocate(unsigned long size) {
+		auto& owner = *activeCompile;
+		void* result = owner.alloc[Heap](size);
+		try { owner.allocations.push_back({result, Heap}); }
+		catch (...) { owner.release[Heap](result); throw; }
+		return result;
+	}
+	template<int Heap> static void deallocate(void* address) {
+		auto& owner = *activeCompile;
+		for (auto& entry : owner.allocations)
+			if (entry.address == address && entry.heap == Heap) {
+				entry.address = nullptr;
+				break;
+			}
+		owner.release[Heap](address);
+	}
+	CompileTransaction() : savedCode(static_cast<size_t>(MaxCodeBufferSize)) {
+		memcpy(savedCode.data(), codeBuffer, savedCode.size());
+		std::copy_n(SymTableDisplay, MAX_NESTING_LEVEL, display);
+		activeCompile = this;
+		ABLSymbolMallocCallback = allocate<0>; ABLCodeMallocCallback = allocate<1>; ABLStackMallocCallback = allocate<2>;
+		ABLSymbolFreeCallback = deallocate<0>; ABLCodeFreeCallback = deallocate<1>; ABLStackFreeCallback = deallocate<2>;
+	}
+	~CompileTransaction() {
+		ABLSymbolMallocCallback = alloc[0]; ABLCodeMallocCallback = alloc[1]; ABLStackMallocCallback = alloc[2];
+		ABLSymbolFreeCallback = release[0]; ABLCodeFreeCallback = release[1]; ABLStackFreeCallback = release[2];
+		activeCompile = nullptr;
+		if (committed)
+			return;
+		for (auto slot = insertions.rbegin(); slot != insertions.rend(); ++slot)
+			**slot = nullptr;
+		for (auto [type, count] : typeUses)
+			type->numInstances = count;
+		std::copy_n(display, MAX_NESTING_LEVEL, SymTableDisplay);
+		for (long i = savedEternalOffset; i < eternalOffset; ++i) {
+			stack[i] = {};
+			EternalVariablesSizes[i] = 0;
+		}
+		eternalOffset = savedEternalOffset;
+		memcpy(codeBuffer, savedCode.data(), savedCode.size());
+		for (auto entry : allocations)
+			if (entry.address)
+				release[entry.heap](entry.address);
+		level = 0;
+		CurModuleIdPtr = CurRoutineIdPtr = nullptr;
+		codeBufferPtr = codeBuffer;
+		blockFlag = false;
+		DumbGetCharOn = false;
+		EnterStateSymbol = false;
+		Crunch = true;
+		NumLibrariesUsed = NumStaticVariables = NumOrderCalls = 0;
+		NumStateHandles = 1;
+		std::fill_n(StateHandleList, MAX_STATE_HANDLES_PER_MODULE, StateHandleInfo{});
+	}
+};
+}
+
+void ablRememberSymbolInsertion(SymTableNodePtr* slot) {
+	if (activeCompile)
+		activeCompile->insertions.push_back(slot);
+}
+void ablRememberTypeUse(TypePtr type) {
+	if (activeCompile && std::none_of(activeCompile->typeUses.begin(), activeCompile->typeUses.end(),
+		[type](const auto& entry) { return entry.first == type; }))
+		activeCompile->typeUses.emplace_back(type, type->numInstances);
+}
+
 int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numLinesProcessed, long* numFilesProcessed, bool printLines) {
 
+	if (numErrors) *numErrors = 0;
+	if (numLinesProcessed) *numLinesProcessed = 0;
+	if (numFilesProcessed) *numFilesProcessed = 0;
     char* source_fn = strdup(sourceFileName);
     source_fn = S_strlwr(source_fn);
-	//--------------------------------------------------------------------------------
-	// First, check if this module has already been registered into the environment...
 	for (int i = 0; i < NumModulesRegistered; i++)
     {
 		if (strcmp(source_fn, ModuleRegistry[i].fileName) == 0)
@@ -603,8 +691,10 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
         }
     }
 
-	//---------------------------------
-	// Init some important variables...
+	ABLSourceFiles sourceFiles;
+	CompileTransaction transaction;
+	try {
+
 	level = 0;
 	lineNumber = 0;
 	FileNumber = 0;
@@ -625,6 +715,7 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 	countError = false;
 	pageNumber = 0;
 	errorCount = 0;
+	DumbGetCharOn = false;
 	execStatementCount = 0;
 	eofFlag = false;
 	NumStaticVariables = 0;
@@ -635,14 +726,6 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 		StateHandleList[i].state = nullptr;
 	}
 
-	if (numErrors)
-		*numErrors = 0;
-
-	if (numLinesProcessed)
-		*numLinesProcessed = 0;
-
-	//---------------------------------------
-	// Now, let's open the ABL source file...	
 	long openErr = ABL_NO_ERR;
 	if ((openErr = openSourceFile(source_fn)) != ABL_NO_ERR)
 	{
@@ -650,49 +733,24 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 		return(openErr);
 	}
 
-	//------------------------
-	// Set up the code buffer.
 	codeBufferPtr = codeBuffer;
 
-	//------------------
-	// Get it rolling...
 	getToken();
 
 	SymTableNodePtr moduleIdPtr = moduleHeader();
 
-	//------------------------------------------------------------------------------------
-	// FAIL LOUD ON MISSING/INVALID ABL FILE (2026-06-11, missing-ABL-file playtest incident):
-	// A NULL moduleIdPtr means the source opened but parsed no module identifier -- the file is
-	// missing or its content is invalid (the open-callback's STOP() is a no-op in RelWithDebInfo,
-	// so a genuinely-missing file slips through openSourceFile with garbage in the buffer).
-	// Continuing here dereferences NULL through declarations()/analyzeBlock() (the WRITE AV at
-	// moduleHeader:1223 was this exact path).  Rather than corrupt-then-crash, emit one clear
-	// line and exit cleanly so the failure is diagnosable instead of an opaque AV.
 	if (moduleIdPtr == nullptr)
-	{
-		mc2::fmt::print_err("[PLAYTEST] FATAL: missing or invalid ABL file '{}' -- cannot preprocess module.\n", mc2::fmt::safe(source_fn ? source_fn : "(null)"));
-		fflush(stderr);
-		closeSourceFile();
-		if (source_fn)
-			free(source_fn);
-		exit(0xAB1F11E);   // distinctive code: "ABL FILE" -- clean exit, no NULL-deref AV
-	}
+		syntaxError(ABL_ERR_SYNTAX_MISSING_MODULE);
 
 	CurModuleIdPtr = moduleIdPtr;
 	CurRoutineIdPtr = moduleIdPtr;
 
-	//---------------------
-	// Error synchronize...
 	synchronize(followHeaderList, declarationStartList, statementStartList);
 	if (curToken == TKN_SEMICOLON)
 		getToken();
 	else if (tokenIn(declarationStartList) || tokenIn(statementStartList))
 		syntaxError(ABL_ERR_SYNTAX_MISSING_SEMICOLON);
 
-	//-------------------------------------------------------------
-	// Parse the module's block. Use to call block(), now we do the
-	// stuff right here...
-	//block(moduleIdPtr);
 	declarations(moduleIdPtr, true);
 	if ((moduleIdPtr->defn.info.routine.flags & ROUTINE_FLAG_FSM) == 0) {
 		synchronize(followModuleDeclsList, nullptr, nullptr);
@@ -715,8 +773,6 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 				if (curToken == endToken)
 					break;
 		
-				//------------------------------------
-				// Synchronize after possible error...
 				synchronize(statementStartList, nullptr, nullptr);
 			} while (tokenIn(statementStartList));
 	}
@@ -737,13 +793,9 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 
 	ifTokenGetElseError(TKN_PERIOD, ABL_ERR_SYNTAX_MISSING_PERIOD);
 
-	while (curToken != TKN_EOF) {
-		syntaxError(TKN_UNEXPECTED_TOKEN);
-		getToken();
-	}
+	if (curToken != TKN_EOF)
+		syntaxError(ABL_ERR_SYNTAX_UNEXPECTED_TOKEN);
 
-	//------------------------------------------
-	// Done with the source file, so close it...
 	closeSourceFile();
 
 	ModuleRegistry[NumModulesRegistered].fileName = (char*)ABLStackMallocCallback(static_cast<unsigned long>(strlen(source_fn) + 1));
@@ -793,42 +845,10 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 		memcpy(ModuleRegistry[NumModulesRegistered].stateHandles, StateHandleList, sizeof(StateHandleInfo) * NumStateHandles);
 	}
 
-	// OMNITECH-ABL-EXECEXPRESSION-RECON-1: record this module's compile error count
-	// (errorCount is this module's STOPSYNTAX total here, same value reported via numErrors
-	// below). A module that failed to compile has malformed/incomplete bytecode; executing
-	// it underflows the ABL VM stack -> READ AV (ablxexpr.cpp:501 execExpression). The gate
-	// in ABLModule::execute() skips such modules when MC2_ABL_SKIP_ERRORED_MODULES is set.
 	ModuleRegistry[NumModulesRegistered].compileErrorCount = errorCount;
-
-	// ASAN-3-ABL-COMPILE-FATAL-1 (docs/asan-follow-ups.md #3): a module that failed
-	// to compile has partial/garbage bytecode; the VM trusts its own tables, so
-	// execution later derefs a corrupt codeSegmentPtr (getCodeToken, confirmed on
-	// Exodus / Magic's-patch content: pointers like 0x127f00000001). HARD-FAIL the
-	// load NOW with a clean, attributable error instead of crashing later in an
-	// unrelated subsystem. Single choke point: every mission-init compile path
-	// (mission script, warrior brains, logistics, saveload, environment) funnels
-	// through ABLi_preProcess. Escape hatches (both leave the crash class dead or
-	// contained): MC2_ABL_SKIP_ERRORED_MODULES=1 loads the mission and skips the
-	// errored brains (DarkRain-style content); MC2_ABL_COMPILE_FATAL=0 restores the
-	// full legacy execute-anyway roulette. Stock content compiles clean -> this
-	// branch never fires on tier1 (zero behavior change).
-	{
-		static const bool s_compileFatal = mc2::gate::get<"MC2_ABL_COMPILE_FATAL">();
-		if (errorCount > 0 && s_compileFatal && !ablSkipErroredModulesEnabled()) {
-			char fatalMsg[512];
-			mc2::fmt::to_buf(fatalMsg, "[ABL_COMPILE_FATAL] file={} syntaxErrors={:d} -- refusing to load a module that failed to compile (partial bytecode corrupts the ABL VM later; docs/asan-follow-ups.md #3). Fix the script, or set MC2_ABL_SKIP_ERRORED_MODULES=1 (load mission, never execute errored brains) or MC2_ABL_COMPILE_FATAL=0 (legacy execute-anyway).", mc2::fmt::safe(ModuleRegistry[NumModulesRegistered].fileName), mc2::fmt::as_i32(errorCount));
-			mc2::fmt::print_err("{}\n", mc2::fmt::safe(fatalMsg));
-			fflush(stderr);
-			mc2::fmt::print_out("{}\n", mc2::fmt::safe(fatalMsg));
-			fflush(stdout);
-			exit(1);
-		}
-	}
 
 	NumModulesRegistered++;
 
-	//---------------------------------------------------------------
-	// Now, exit with the number of source lines processed, if any...
 	if (numLinesProcessed)
 		*numLinesProcessed = lineNumber;
 
@@ -839,74 +859,55 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 		*numErrors = errorCount;
 
 	free(source_fn);
+	transaction.committed = true;
 	return(NumModulesRegistered - 1);
+	} catch (const ABLSyntaxFailure&) {
+		if (numErrors) *numErrors = errorCount;
+		if (numLinesProcessed) *numLinesProcessed = lineNumber;
+		if (numFilesProcessed) *numFilesProcessed = NumSourceFiles;
+		free(source_fn);
+		return -1;
+	}
 }
 
 //***************************************************************************
 
-long ABLi_execute (SymTableNodePtr moduleIdPtr, SymTableNodePtr functionIdPtr, ABLParamPtr paramList, StackItemPtr returnVal) {
-
-	//insertSymTable(&SymTableDisplay[0], moduleIdPtr);
-
-	//--------------------------
-	// Execute the ABL module...
-
-	//----------------------------------------------------------------------------------
-	// NOTE: Ultimately, we want the ABL virtual machine to be set up once, and then
-	// ABL modules/routines can be called multiple times from within a program. For now,
-	// to test, let's just assume every time we run a module, it is a self-contained
-	// ABL program.
-
-	//---------------------------------
-	// Init some important variables...
-	//lineNumber = 0;
-	//printFlag = true;
-	//blockFlag = false;
-	//blockType = BLOCK_MODULE;
-	CurModuleIdPtr = nullptr;
-	CurRoutineIdPtr = nullptr;
-	//bufferOffset = 0;
-	//bufferp = sourceBuffer;
-	//tokenp = tokenString;
-	//digitCount = 0;
-	//countError = false;
+void initializeEntryFrame () {
 	errorCount = 0;
 	execStatementCount = 0;
-
 	NumExecutions++;
-
-	//------------------
-	// Init the stack...
 	stackFrameBasePtr = tos = (stack + eternalOffset);
-
-	//---------------------------------------
-	// Initialize the module's stack frame...
 	level = 1;
 	CallStackLevel = 0;
 	stackFrameBasePtr = tos + 1;
-	
-	//-------------------------
-	// Function return value...
 	pushInteger(0);
-	//---------------
-	// Static Link...
 	pushAddress(nullptr);
-	//----------------
-	// Dynamic Link...
 	pushAddress(nullptr);
-	//------------------
-	// Return Address...
 	pushAddress(nullptr);
+}
 
-	//initDebugger();
+bool pushEntryValueParameter (TypePtr formalTypePtr, const ABLParam& param) {
+	if (formalTypePtr == RealTypePtr) {
+		if (param.type == ABL_PARAM_INTEGER)
+			pushReal((float)param.integer);
+		else if (param.type == ABL_PARAM_REAL)
+			pushReal(param.real);
+	} else if (formalTypePtr == IntegerTypePtr) {
+		if (param.type == ABL_PARAM_INTEGER)
+			pushInteger(param.integer);
+		else
+			return false;
+	}
+	return true;
+}
 
-	//----------
-	// Run it...
+long ABLi_execute (SymTableNodePtr moduleIdPtr, SymTableNodePtr functionIdPtr, ABLParamPtr paramList, StackItemPtr returnVal) {
+
+	CurModuleIdPtr = nullptr;
+	CurRoutineIdPtr = nullptr;
+	initializeEntryFrame();
 
 	if (paramList) {
-		//------------------------------------------------------------------------------
-		// NOTE: Currently, parameter passing of arrays is not functioning. This MUST be
-		// done...
 		long curParam = 0;
 		for (SymTableNodePtr formalIdPtr = moduleIdPtr->defn.info.routine.params;
 			 formalIdPtr != nullptr;
@@ -916,24 +917,9 @@ long ABLi_execute (SymTableNodePtr moduleIdPtr, SymTableNodePtr functionIdPtr, A
 
 			if (formalIdPtr->defn.key == DFN_VALPARAM) {
 
-				if (formalTypePtr == RealTypePtr) {
-					if (paramList[curParam].type == ABL_PARAM_INTEGER) {
-						//---------------------------------------------
-						// Real formal parameter, but integer actual...
-						pushReal((float)(paramList[curParam].integer));
-						}
-					else if (paramList[curParam].type == ABL_PARAM_REAL)
-						pushReal(paramList[curParam].real);
-					}
-				else if (formalTypePtr == IntegerTypePtr) {
-					if (paramList[curParam].type== ABL_PARAM_INTEGER)
-						pushInteger(paramList[curParam].integer);
-					else
-						return(0);
-				}
+				if (!pushEntryValueParameter(formalTypePtr, paramList[curParam]))
+					return 0;
 
-				//----------------------------------------------------------
-				// Formal parameter is an array or record, so it gets a block of its own...
 				if (formalTypePtr->form == FRM_ARRAY/* || (formalTypePtr->form == FRM_RECORD)*/) {
 					long size = formalTypePtr->size;
 					char* dest = (char*)ABLStackMallocCallback((size_t)size);
@@ -947,16 +933,12 @@ long ABLi_execute (SymTableNodePtr moduleIdPtr, SymTableNodePtr functionIdPtr, A
 				}
 				}
 			else {
-				//-------------------------------
-				// pass by reference parameter...
 				if (formalTypePtr == RealTypePtr)
 					pushAddress((Address)&(paramList[curParam].real));
 				else if (formalTypePtr == IntegerTypePtr)
 					pushAddress((Address)&(paramList[curParam].integer));
 				else
 					return(0);
-				//SymTableNodePtr idPtr = getCodeSymTableNodePtr();
-				//execVariable(idPtr, USE_REFPARAM);
 			}
 			curParam++;
 		}
@@ -967,10 +949,6 @@ long ABLi_execute (SymTableNodePtr moduleIdPtr, SymTableNodePtr functionIdPtr, A
 	if (returnVal)
 		memcpy(returnVal, &returnValue, sizeof(StackItem));
 
-	//extractSymTable(&SymTableDisplay[0], moduleIdPtr);
-
-	//-----------
-	// Summary...
 	return(execStatementCount);
 }
 
@@ -1028,23 +1006,15 @@ void ABLi_close (void) {
 
 ABLModulePtr ABLi_loadLibrary (const char* sourceFileName, long* numErrors, long* numLinesProcessed, long* numFilesProcessed, bool printLines, bool createInstance) {
 
-	//--------------------------------------------------------------------
-	// Create an instance of it so it may be used from other modules. Note
-	// that we need this when preprocessing since all identifiers in the
-	// library should point to this module...
+	// Library symbols need their owning instance during preprocessing.
 	ABLModulePtr library = new ABLModule;
 	if (!library)
 		ABL_Fatal(0, "ABL: no RAM for library");
 
 	CurLibrary = library;
 
-	//-------------------------------------------------------------
-	// Preprocess the library. Note that a library should be loaded
-	// just once.
 	int libraryHandle = ABLi_preProcess(sourceFileName, numErrors, numLinesProcessed, numFilesProcessed, printLines);
-	if (libraryHandle < (NumModulesRegistered - 1)) {
-		//------------------
-		// Already loaded...
+	if (libraryHandle < 0 || libraryHandle < (NumModulesRegistered - 1)) {
 		delete library;
 		library = nullptr;
 		CurLibrary = nullptr;

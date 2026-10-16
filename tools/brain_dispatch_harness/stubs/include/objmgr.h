@@ -1,7 +1,7 @@
 #pragma once
 #ifndef OBJMGR_H
 #define OBJMGR_H
-// BRAIN-DISPATCH-HARNESS-1: objmgr.h stub
+// objmgr.h stub
 // Provides ObjectManager global pointer + getByWatchID.
 // No engine header dependencies.
 
@@ -12,7 +12,7 @@ class GameObjectManager {
 public:
     virtual ~GameObjectManager() = default;
     virtual GameObjectPtr getByWatchID(long watchID) { return nullptr; }
-    // HARNESS-STUB-REPAIR-1: BRAIN-ENGAGE-1 additions (handle lookup + mover walk).
+    // Handle lookup and mover iteration.
     virtual GameObjectPtr get(long /*handle*/) { return nullptr; }
     virtual long          getNumMovers() { return 0; }
     virtual MoverPtr      getMover(long /*index*/) { return nullptr; }

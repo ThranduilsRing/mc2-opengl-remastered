@@ -121,8 +121,7 @@ void InfoWindow::init( FitIniFile& file )
 	{
 		if ( skillInfos[i].textureHandle )
 		{
-			long gosID = mcTextureManager->get_gosTextureHandle( skillInfos[i].textureHandle );
-			mcTextureManager->removeTexture( gosID );
+			mcTextureManager->releaseNode( skillInfos[i].textureHandle );
 		}
 	}
 
@@ -139,8 +138,7 @@ void InfoWindow::init( FitIniFile& file )
 	{
 		if ( buttonData[i].textureHandle )
 		{
-			long gosID = mcTextureManager->get_gosTextureHandle( buttonData[i].textureHandle );
-			mcTextureManager->removeTexture( gosID );
+			mcTextureManager->releaseNode( buttonData[i].textureHandle );
 		}
 	}
 

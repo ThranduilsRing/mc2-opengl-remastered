@@ -16,8 +16,7 @@
 #include "ResourceStringSelectionDlg.h"
 
 #include "assert.h"
-#include "../MCLib/Utilities.h" /*for EditorSafeLoadString*/
-#include "EditorResourceFallback.h"
+#include "MC2Strings.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -60,56 +59,47 @@ END_MESSAGE_MAP()
 // ResourceStringSelectionDlg message handlers
 
 static BOOL CSLoadString(int resourceID, CString &targetStr) {
-	char szTmp[16384/*max string length*/];
-	EditorSafeLoadString( resourceID, szTmp, 16384/*max string length*/ );
-	targetStr = szTmp;
-	CString tmpStr;
-	tmpStr.Format("mc2res.dll:%d Not defined", resourceID);
-	if (0 == strcmp(tmpStr.GetBuffer(0), szTmp)) {
-		return (0);
-	}
-	return (!0);
+	const char* text = MC2Strings::GetByLegacyId(resourceID);
+	targetStr = text ? text : "";
+	return text && text[0];
 }
 
 BOOL ResourceStringSelectionDlg::OnInitDialog() 
 {
 	CDialog::OnInitDialog();
 	
-	m_ResourceStringIDs.Clear();
+	m_ResourceStringIDs.clear();
 	m_Combo.ResetContent();
 	unsigned long i;
 	for (i = m_BottomOfIDRange; i <= (unsigned long)m_TopOfIDRange; i += 1) {
 		CString tmpStr;
-		//BOOL result = tmpStr.LoadString(i);
 		BOOL result = CSLoadString(i, tmpStr);
 		if (0 != result) {
 			CString tmpStr2;
 			tmpStr2.Format("%d: ", i);
 			tmpStr2 += tmpStr;
 			m_Combo.AddString(tmpStr2);
-			m_ResourceStringIDs.Append(i);
+			m_ResourceStringIDs.push_back(i);
 		}
 	}
-	for (i = 0; i < m_ResourceStringIDs.Count(); i += 1) {
+	for (i = 0; i < m_ResourceStringIDs.size(); i += 1) {
 		if (m_SelectedResourceStringID == m_ResourceStringIDs[i]) {
 			m_Combo.SetCurSel(i);
 			break;
 		}
 	}
-	if (m_ResourceStringIDs.Count() == i) {
-		m_SelectedResourceStringID = -1;
+	if (m_ResourceStringIDs.size() == i) {
 		m_Combo.SetCurSel(-1);
 	}
 	
-	return TRUE;  // return TRUE unless you set the focus to a control
-	              // EXCEPTION: OCX Property Pages should return FALSE
+	return TRUE;
 }
 
 void ResourceStringSelectionDlg::OnOK() 
 {
 	unsigned long selectionIndex = m_Combo.GetCurSel();
 	if (CB_ERR != selectionIndex) {
-		assert(m_ResourceStringIDs.Count() > selectionIndex);
+		assert(m_ResourceStringIDs.size() > selectionIndex);
 		m_SelectedResourceStringID = m_ResourceStringIDs[selectionIndex];
 	}
 	

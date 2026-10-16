@@ -12,9 +12,6 @@
 
 
 
-#ifndef ELIST_H
-#include "Elist.h"
-#endif
 
 #ifndef EDITOROBJECTS_H
 #include "EditorObjects.h"
@@ -23,6 +20,9 @@
 #ifndef FOREST_H
 #include "Forest.h"
 #endif
+
+#include <deque>
+#include <vector>
 
 #include "mclib.h"
 #include "../RenderCore/Handle.h"
@@ -69,29 +69,9 @@ public:
 		HELICOPTER
 	};
 
-	class EDITOR_OBJECT_LIST : public EList< EditorObject*, EditorObject*>
-	{
-	public:
-		void AddUnique(EditorObject* item)
-		{
-			if ((0 < Count()) && (INVALID_ITERATOR != Find(item)))
-			{
-				return;
-			}
-			Append(item);
-		}
-		void RemoveIfThere(EditorObject* item)
-		{
-			if (0 < Count())
-			{
-				EIterator it = Find(item);
-				if (INVALID_ITERATOR != it)
-				{
-					Delete(it);
-				}
-			}
-		}
-	};
+	// Borrowed pointers; snapshots copy selection order without owning objects.
+	using EDITOR_OBJECT_LIST = std::vector<EditorObject*>;
+	using SelectedUnits = std::vector<Unit*>;
 
 	
 	EditorObjectMgr();  // should only be one of these
@@ -231,11 +211,11 @@ public:
 	inline const char* getTGAFileName( int ID ) const;
 	inline DWORD getTacMapColor( int ID ) const;
 
-	typedef EList< EditorObject*, EditorObject*>  BUILDING_LIST;	// buildings on the map
-	typedef EList< Unit*, Unit* > UNIT_LIST;
-	typedef EList< DropZone*, DropZone* > DROPZONE_LIST;
+	using BUILDING_LIST = std::vector<EditorObject*>;	// buildings on the map
+	using UNIT_LIST = std::vector<Unit*>;
+	using DROPZONE_LIST = std::vector<DropZone*>;
 
-	void getSelectedUnits( UNIT_LIST& );
+	void getSelectedUnits( SelectedUnits& );
 	UNIT_LIST getUnits() { return units; }
 	BUILDING_LIST getBuildings() { return buildings; }
 	DROPZONE_LIST getDropZones() { return dropZones; } // read-only snapshot (Scene Outliner)
@@ -253,7 +233,7 @@ public:
 	// RenderWorld handle via syncSpawn. Used by the ImGui mech inspector fallback.
 	Unit* findUnitByMechHandle(RenderCore::RenderObjectHandle h);
 
-	// EDITOR-OBJECTID-PICK-BRIDGE-1 (Slice 3): reverse-map a GPU ObjectID
+	// reverse-map a GPU ObjectID
 	// StaticProp recipe back to the EditorObject that owns it. The GPU pick
 	// returns a RenderObjectHandle whose index() equals the GpuStaticPropRegistry
 	// recipeIndex (identity mapping, RenderWorld.h handleToRecipeIndex); each
@@ -295,16 +275,17 @@ public:
 			~Building();
 		};
 
+		// Catalog name pointers remain valid until manager destruction. Append only.
 		struct Group
 		{
 			char							name[64];
-			EList< Building, Building& >	buildings;
+			std::deque<Building>	buildings;
 		};
 
-		typedef EList< Group, Group& >	GROUP_LIST;
-		typedef EList< BuildingLink*, BuildingLink* > LINK_LIST;
-		typedef EList< DropZone*, DropZone* > DROP_LIST;
-		typedef EList< Forest*, Forest* > FOREST_LIST;
+		using GROUP_LIST = std::deque<Group>;
+		using LINK_LIST = std::vector<BuildingLink*>;
+		using DROP_LIST = std::vector<DropZone*>;
+		using FOREST_LIST = std::vector<Forest*>;
 		
 		GROUP_LIST						groups;							// list of possible buildings
 		Group							dropZoneGroup;
@@ -314,6 +295,8 @@ public:
 		DROP_LIST						dropZones;
 		FOREST_LIST						forests;
 
+		void addToSelection(EditorObject* object);
+		void removeFromSelection(EditorObject* object);
 		EDITOR_OBJECT_LIST selectedObjects;
 		bool selectedObjectsNeedsToBeSynched;
 		void syncSelectedObjectPointerList();	// makes sure that the "selectedObjects" list corresponds to the objects marked as selected
@@ -342,13 +325,10 @@ inline unsigned long EditorObjectMgr::getIndexInGroup( long id )
 {
 	return ((id >> 8) & 0x00ff);
 }
-// EDITOR-CRASH-HARDENING-1: a dropzone/unresolved object ID decodes to an
-// out-of-range group (e.g. group=255) -> groups[group]/buildings[index] OOB.
-// Mirror the explicit bounds guard in getType() (EditorObjectMgr.cpp:2857-2863):
-// group < groups.Count() && index < buildings.Count(); return a safe sentinel.
+// Drop zones and unresolved IDs can decode outside the catalog.
 #define EOM_DECODE_INBOUNDS( ID ) \
-	( getGroup( ID ) < (unsigned long)groups.Count() \
-	  && getIndexInGroup( ID ) < (unsigned long)groups[getGroup( ID )].buildings.Count() )
+	( getGroup( ID ) < groups.size() \
+	  && getIndexInGroup( ID ) < groups[getGroup( ID )].buildings.size() )
 
 inline EditorObjectMgr::BuildingType	EditorObjectMgr::getSpecialType( int ID )
 {
@@ -373,7 +353,7 @@ inline bool EditorObjectMgr::isAlignable( int ID )
 inline int EditorObjectMgr::getAppearanceType( int ID )
 {
 	if ( !EOM_DECODE_INBOUNDS( ID ) ) return 0;
-	// EDITOR-CRASH-HARDENING-1: appearanceType can be NULL for some entries.
+	// appearanceType can be NULL for some entries.
 	AppearanceType* pAppr = groups[getGroup( ID )].buildings[getIndexInGroup( ID )].appearanceType;
 	if ( !pAppr ) return 0;
 	return pAppr->getAppearanceClass();

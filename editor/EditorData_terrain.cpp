@@ -169,26 +169,20 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	GameAdapters::Mech::beginMission();
 	EditorDataTrace("EditorData::initTerrainFromPCV: GPU batchers + registry armed for map load");
 
-	// Steps 4-9 (game lines 2804-2839): GPU cull substrate / compute / readback / lighting / shadow priming.
-	// Editor has no GameObjectManager (ObjectManager == nullptr — see editor/EditorGlobals.cpp);
-	// step 4 (setNumObjects) is skipped. Substrate / readback are sized from an editor
-	// max-actor constant equivalent to a generous game-mission worst case.
+	// The editor has no GameObjectManager; cull substrate and readback capacity
+	// include actor and static-prop headroom for placements after loading.
 	const uint32_t kEditorMaxActors = 2048u;
 	const uint32_t kStaticPropHeadroom = 8192u;
-	gpu_cull::substrate_init(kEditorMaxActors + kEditorMaxActors / 4u + kStaticPropHeadroom); // step 5 — game line 2815
-	EditorBridge::cullComputeInit();                                                          // step 6 — game line 2819
+	gpu_cull::substrate_init(kEditorMaxActors + kEditorMaxActors / 4u + kStaticPropHeadroom);
+	EditorBridge::cullComputeInit();
 	gos_terrain_lighting::mission_init(
 		static_cast<uint32_t>(Terrain::realVerticesMapSide * Terrain::realVerticesMapSide),
-		64u);                                                                                 // step 7 — game line 2825
-	gpu_cull::readback_init(kEditorMaxActors + kEditorMaxActors / 4u + kStaticPropHeadroom);  // step 8 — game line 2834
-	gos_ResetStaticShadowPriming();                                                           // step 9 — game line 2839
-	// S2.15 — game line 2840. Process-scoped shadow priming reset for the
-	// terrain shadow pre-pass. Without this the mc2srcdata staircase z-fight
-	// between water and terrain shadow surfaces stays sticky from a prior
-	// mission's primed state, contributing to depth-ordering glitches on the
-	// reverse-Z water overlay. Pure write; safe to call whether or not the
-	// shadow pass is enabled.
-	mc_ResetTerrainShadowPrimed();                                                            // step 9b — game line 2840
+		64u);
+	gpu_cull::readback_init(kEditorMaxActors + kEditorMaxActors / 4u + kStaticPropHeadroom);
+	gos_ResetStaticShadowPriming();
+	// Reset terrain shadow priming so a previous mission cannot leave stale
+	// depth ordering between water and terrain shadow surfaces.
+	mc_ResetTerrainShadowPrimed();
 	EditorDataTrace("EditorData::initTerrainFromPCV: gpu_cull substrate/compute/readback + terrain_lighting + shadow priming initialized");
 
 	EditorDataTrace("EditorData::initTerrainFromPCV: before loadMechs");
@@ -219,7 +213,7 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	}
 
 	EditorDataTrace("EditorData::initTerrainFromPCV: before EditorObjectMgr::load");
-	// Step 10 — editor's only inserted step (actor spawn).
+	// Load placed actors before registering their render resources.
 	EditorObjectMgr::instance()->load( pFile, 1 );
 	if (!EditorObjectMgr::instance()->loadNavMarkers(file))
 	{
@@ -233,7 +227,7 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	// Display-only (orderAuthored stays false) -> stock missions are not rewritten.
 	{
 		EditorObjectMgr::UNIT_LIST allUnits = EditorObjectMgr::instance()->getUnits();
-		for ( EditorObjectMgr::UNIT_LIST::EIterator it = allUnits.Begin(); !it.IsDone(); it++ )
+		for ( auto it = allUnits.begin(); it != allUnits.end(); it++ )
 			if ( *it )
 				(*it)->importPatrolFromBrainIfNeeded();
 	}
@@ -245,7 +239,7 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	EditorObjectMgr::instance()->registerStaticPropsForMissionLoad();
 	EditorDataTrace("EditorData::initTerrainFromPCV: after registerStaticPropsForMissionLoad");
 
-	// Step 10b — pre-warm ALL building AppearanceTypes from the catalogue so
+	// pre-warm ALL building AppearanceTypes from the catalogue so
 	// that object types not already present in the loaded map are registered
 	// with the GPU batcher before finalizeGeometry() is called.  Without this,
 	// placing a Bridge (or any other type absent from the starter map) hits the

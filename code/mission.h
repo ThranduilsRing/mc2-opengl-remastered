@@ -11,6 +11,7 @@
 #ifndef MISSION_H
 #define MISSION_H
 #include "save_archive.h"
+#include "combat_retirement.h"
 #include "tactical_order_queue.h"
 #include <algorithm>
 //----------------------------------------------------------------------------------
@@ -302,11 +303,13 @@ struct MissionLoadFrame;
 class Mission
 {
 	friend struct MissionPartArchiveTest;
+	friend struct CombatRetirementSeam;
 
 	//Data Members
 	//-------------
 	protected:
 		mc2::sim::MissionOrderIngress orderIngress;
+		mc2::combat::CombatClock combatClock;
 		using OrderRecipientBinding = mc2::sim::MissionRecipientBinding<Mover, MechWarrior>;
 		std::vector<OrderRecipientBinding> orderRecipients;
 		std::string authoredMissionText;
@@ -445,6 +448,10 @@ class Mission
 
 		bool calcComplexDropZones (char* missionName, char dropZoneList[MAX_MC_PLAYERS]);
 		void resetOrderIngress();
+		void advanceCombatClock(float seconds);
+		void resetCombatClock() { combatClock = {}; }
+		const mc2::combat::CombatClock& getCombatClock() const { return combatClock; }
+		void restoreCombatClock(const mc2::combat::SavedCombatClock& saved) { combatClock = {saved.ticks, saved.frac}; }
 		void admitAuthoredRoutes();
 		void recordAuthoredInstallation(const mc2::sim::OrderEnvelope&, mc2::sim::ObjectRef);
 		std::optional<mc2::sim::RouteTransition> onRouteEvent(const mc2::sim::RouteSignal&);

@@ -15,6 +15,7 @@
 #include "resource.h"
 
 #include "Objective.h"
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////
 // ObjectiveDlg dialog
@@ -45,12 +46,10 @@ public:
 	int nFailureConditionSpeciesSelectionIndex;
 	int nFailureActionSpeciesSelectionIndex;
 
-	class CConditionSpeciesList : public EList <condition_species_type, condition_species_type> {};
-	class CActionSpeciesList : public EList <action_species_type, action_species_type> {};
-	CConditionSpeciesList comboBoxItems;
-	CActionSpeciesList actionComboBoxItems;
-	CConditionSpeciesList failureConditionComboBoxItems;
-	CActionSpeciesList failureActionComboBoxItems;
+	std::vector<condition_species_type> comboBoxItems;
+	std::vector<action_species_type> actionComboBoxItems;
+	std::vector<condition_species_type> failureConditionComboBoxItems;
+	std::vector<action_species_type> failureActionComboBoxItems;
 
 	/* for persistent storage of miscellaneous working data*/
 	CObjectiveCondition *pNewCondition;
@@ -129,10 +128,10 @@ protected:
 	afx_msg void OnObjectiveViewFailureActionButton();
 	afx_msg void OnObjectiveClearLogisticsModelButton();
 	//}}AFX_MSG
-	// Slice 1 -- Marker XY map-picker. Hands off to a terrain point pick and
+	// Marker XY map-picker. Hands off to a terrain point pick and
 	// re-opens this dialog with the picked X/Y filled in (Option B handoff).
 	afx_msg void OnObjectivePickMarkerButton();
-	// Slice 3 -- Locate. Centers the editor camera on the selected SUCCESS
+	// Locate. Centers the editor camera on the selected SUCCESS
 	// condition's target (specific unit / structure) and selects it in the 3D
 	// view. No-op for non-locatable conditions (area/flag/time/all/number/group).
 	afx_msg void OnObjectiveLocateConditionButton();

@@ -11,12 +11,12 @@ ObjectSelectionBrush.h	: Interface for the ObjectSelectionBrush component.
 #include "Brush.h"
 #endif
 
-#include "elist.h"
+#include <vector>
 
 class ActionPaintTile;
 class EditorObject;
 
-using EditorObjectPointerList = EList <EditorObject *, EditorObject *>;
+using EditorObjectPointerList = std::vector<EditorObject*>;
 
 class ObjectSelectionBrush: public Brush
 {

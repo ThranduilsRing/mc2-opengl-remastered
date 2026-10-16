@@ -107,7 +107,7 @@ void drawSelectionBounds(const EditorAabb& bounds, SelectionBoundsStyle style = 
 // Overlay draw discipline: same as drawSelectionBounds.
 void drawTerrainTileOutline(const TerrainTileOverlayDesc& desc);
 
-// ---- Mission render-resource lifecycle (EDITOR-BRIDGE-GPU-FIREWALL-1) ----
+// Mission render-resource lifecycle.
 //
 // These passthroughs let editor TUs orchestrate the GPU static-prop/mech
 // batchers, the static-prop registry, and the gpu_cull compute pass WITHOUT

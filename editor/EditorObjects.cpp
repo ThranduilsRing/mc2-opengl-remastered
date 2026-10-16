@@ -14,13 +14,9 @@
 
 
 
-// EDITOR-STATIC-DEDRAW: free an editor object's appearance, invalidating its static-prop
-// RENDER recipe FIRST. Appearance::destroy() is virtual -> Bldg/TreeAppearance::destroy()
-// call invalidateStaticRegistration() (clears the GpuStaticPropRegistry RecipeRange). A
-// bare `delete appearance` runs only the (empty) ~ObjectAppearance and NEVER calls
-// destroy(), so a deleted building/tree kept rendering as a ghost once placed props began
-// registering static recipes (EDITOR-STATIC-TEXTURE-PREWARM-1). destroy() nulls what it
-// frees, so the following delete is a safe memory free with no double-free.
+// Invalidate the appearance's static render recipe before freeing it so deleted
+// props cannot remain visible. destroy() performs the virtual cleanup that the
+// base destructor omits and nulls freed resources, making the following delete safe.
 static void EditorFreeObjectAppearance( ObjectAppearance*& app )
 {
 	if ( app )

@@ -84,15 +84,11 @@ EditorObjectMgr::~EditorObjectMgr()
 		delete appearanceTypeList;
 	appearanceTypeList = nullptr;
 
-	for( GROUP_LIST::EIterator groupIter = groups.Begin();
-			!groupIter.IsDone(); groupIter++ )
+	for( auto groupIter = groups.begin(); groupIter != groups.end(); groupIter++ )
 	{
 
-		for( EList< Building, Building& >::EIterator buildIter = (*groupIter).buildings.Begin();
-			!buildIter.IsDone(); buildIter++ )
+		for( auto buildIter = (*groupIter).buildings.begin(); buildIter != (*groupIter).buildings.end(); buildIter++ )
 		{
-			Building teste = (*buildIter);
-
 			if (  (*buildIter ).varNames )
 			{
 				for ( int i = 0; i < 16; i++ )
@@ -104,8 +100,6 @@ EditorObjectMgr::~EditorObjectMgr()
 					}
 				}
 
-				//Kinda need to delete this OUTSIDE the above loop.
-				// Yum, Yum!
 				free ( ( *buildIter ).varNames );
 				( *buildIter ).varNames = nullptr;
 			}
@@ -116,52 +110,52 @@ EditorObjectMgr::~EditorObjectMgr()
 
 void EditorObjectMgr::clear()
 {
-		for ( BUILDING_LIST::EIterator iter = buildings.Begin();
-		!iter.IsDone(); iter++ )
+		for ( auto iter = buildings.begin();
+		iter != buildings.end(); iter++ )
 		{
 			delete *iter;
 		}
 
-		for ( UNIT_LIST::EIterator mIter = units.Begin();
-			!mIter.IsDone(); mIter++ )
+		for ( auto mIter = units.begin();
+			mIter != units.end(); mIter++ )
 			{
 				Unit* pMech = *mIter;
 				delete pMech;
 			}
 
 			
-		buildings.Clear();
-		units.Clear();
+		buildings.clear();
+		units.clear();
 
-		for ( LINK_LIST::EIterator liter = links.Begin(); !liter.IsDone(); liter++ )
+		for ( auto liter = links.begin(); liter != links.end(); liter++ )
 			delete *liter;
 
-		links.Clear();
+		links.clear();
 
-		selectedObjects.Clear();
+		selectedObjects.clear();
 		selectedObjectsNeedsToBeSynched = false;
 
-		for ( DROP_LIST::EIterator dIter = dropZones.Begin(); !dIter.IsDone(); dIter++ )
+		for ( auto dIter = dropZones.begin(); dIter != dropZones.end(); dIter++ )
 			delete *dIter;
 
-		dropZones.Clear();
+		dropZones.clear();
 		
 		resetAvailableSquadNums();
 		
-	for( GROUP_LIST::EIterator groupIter = groups.Begin();!groupIter.IsDone(); groupIter++ )
+	for( auto groupIter = groups.begin(); groupIter != groups.end(); groupIter++ )
 	{
-		for( EList< Building, Building& >::EIterator buildIter = (*groupIter).buildings.Begin();!buildIter.IsDone(); buildIter++ )
+		for( auto buildIter = (*groupIter).buildings.begin(); buildIter != (*groupIter).buildings.end(); buildIter++ )
 		{
 			(*buildIter).appearanceType = nullptr;
 		}
 	}
 
-	for ( FOREST_LIST::EIterator fIter = forests.Begin(); !fIter.IsDone(); fIter++ )
+	for ( auto fIter = forests.begin(); fIter != forests.end(); fIter++ )
 	{
 		delete ( *fIter );
 	}
 
-	forests.Clear();
+	forests.clear();
 
 }
 
@@ -357,25 +351,25 @@ void EditorObjectMgr::init( const char* bldgListFileName, const char* objectFile
 		if ( bldg.specialType == DROPZONE )
 		{
 			strcpy( dropZoneGroup.name, GroupName );
-			dropZoneGroup.buildings.Append( bldg );
+			dropZoneGroup.buildings.push_back( bldg );
 		}
 		else
 		{
 			bool bNeedGroup = true;		
-			for ( GROUP_LIST::EIterator iter = groups.Begin(); !iter.IsDone(); iter++ )
+			for ( auto iter = groups.begin(); iter != groups.end(); iter++ )
 			{
 				if  ( strcmp( (*iter).name, GroupName ) == 0 )
 				{
 					bNeedGroup = false;
-					(*iter).buildings.Append( bldg );
+					(*iter).buildings.push_back( bldg );
 				}
 			}
 			if ( bNeedGroup )
 			{
 				Group grp;
 				strcpy( grp.name, GroupName );
-				grp.buildings.Append( bldg );
-				groups.Append( grp );
+				grp.buildings.push_back( bldg );
+				groups.push_back( grp );
 			}
 		}
 	}
@@ -494,7 +488,7 @@ bool EditorObjectMgr::canAddBuilding( const Stuff::Vector3D& position,
 {
 	
 	if ( !land )
-		return false;  // EDITOR-CRASH-HARDENING-1: no terrain -> worldToCell derefs NULL
+		return false;  // no terrain -> worldToCell derefs NULL
 
 	int realCellI, realCellJ;
 	land->worldToCell( position, realCellJ, realCellI );
@@ -503,7 +497,7 @@ bool EditorObjectMgr::canAddBuilding( const Stuff::Vector3D& position,
 
 	if ( cellObject )
 	{
-		// EDITOR-CRASH-HARDENING-1: appearance() can be NULL; guard before ->rotation.
+		// appearance() can be NULL; guard before ->rotation.
 		if (cellObject->appearance() && cellObject->appearance()->rotation == rotation )
 			return false;
 	}
@@ -515,7 +509,7 @@ bool EditorObjectMgr::canAddDropZone( const Stuff::Vector3D& position, int align
 {
 
 	int alignmentCount = 0;
-	for ( DROP_LIST::EIterator iter = dropZones.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = dropZones.begin(); iter != dropZones.end(); iter++ )
 	{
 		if  (bVTol)
 		{
@@ -548,9 +542,9 @@ EditorObject* EditorObjectMgr::addDropZone( const Stuff::Vector3D& position, int
 	
 	DropZone* pLast = new DropZone( position, alignment, bVTol );
 	
-	dropZones.Append( pLast ) ;
+	dropZones.push_back( pLast ) ;
 
-	ObjectAppearance* pAppear = getAppearance( &dropZoneGroup.buildings.GetHead() );
+	ObjectAppearance* pAppear = getAppearance( &dropZoneGroup.buildings.front() );
 
 	pLast->appearInfo->appearance = pAppear;
 
@@ -593,20 +587,20 @@ EditorObject* EditorObjectMgr::addBuilding( const Stuff::Vector3D& position, uns
 	if ( specialType == NAV_MARKER )
 	{
 		info = new NavMarker;	
-		buildings.Append( info );
+		buildings.push_back( info );
 		info->appearInfo->appearance = getAppearance( group, indexWithinGroup );
 	}
 	else if ( (type == BLDG_TYPE) || (type == TREED_TYPE) )
 	{
 
 		info = new EditorObject;	
-		buildings.Append( info );
+		buildings.push_back( info );
 		info->appearInfo->appearance = getAppearance( group, indexWithinGroup );
 	}
 	else if ( type == GV_TYPE  || type == MECH_TYPE )
 	{
 		Unit* tmp = new Unit( alignment );
-		units.Append( tmp );
+		units.push_back( tmp );
 		info = tmp;
 		info->appearInfo->appearance = getAppearance( group, indexWithinGroup );
 
@@ -669,19 +663,9 @@ EditorObject* EditorObjectMgr::addBuilding( const Stuff::Vector3D& position, uns
 		// EditorInterface.cpp:6462). Must run AFTER final position/rotation/scale.
 		a->registerStatic();
 
-		// META-FIX part 2 (the actual invisibility): registerStatic ARMS the H4
-		// light-bake latch (needsFullBakeNextFrame). The editor's render-loop
-		// drain pass (EDITOR-STATIC-PREWARM-1, ~line 1465) that clears it is
-		// ONE-SHOT -- s_prewarmDone latches true once the LOAD-time props are
-		// baked, and never runs again. So a building placed AFTER load keeps the
-		// latch armed forever -> IsStaticNow() stays false (bdactor.cpp:4147) ->
-		// the static color path (markVisible) skips it while the shadow pass
-		// still draws the registered recipe == "shadow but no body" (the reported
-		// symptom). Drain the latch immediately for the placed prop, exactly as
-		// the game does per-object in GameObjectManager::prewarmStaticPropLightBakes
-		// (code/objmgr.cpp:1648). Post-load the camera has lights so the bake
-		// succeeds; eye->update() ran above. If lights aren't up yet the latch
-		// stays armed and the one-shot render-loop pass still covers it.
+		// registerStatic arms the light-bake latch. The load-time drain is one-shot,
+		// so objects placed after loading need an explicit bake to become static
+		// and visible to the GPU batcher.
 		if ( eye && eye->getNumLights() > 0 )
 			a->prewarmStaticLightBake( eye );
 	}
@@ -703,67 +687,61 @@ bool	EditorObjectMgr::deleteBuilding( const EditorObject* pInfo )
 			pLink->RemoveObject( pInfo );
 		}
 	}
-	if ( buildings.Count() && pInfo )
+	if (!buildings.empty() && pInfo)
 	{
-		for ( BUILDING_LIST::EIterator iter = buildings.End(); !iter.IsDone(); iter--  )
+		for (size_t index = buildings.size(); index > 0; )
 		{
+			--index;
+			auto iter = buildings.begin() + index;
 			if( pInfo->cellColumn == (*iter)->cellColumn
 				&& pInfo->cellRow == (*iter)->cellRow
 				&& pInfo->appearance() == (*iter)->appearance() )
 			{
-				// EDITOR-STATIC-DEDRAW: invalidate the static-prop RENDER recipe on
-				// scene-delete so the prop stops drawing immediately. The undo system
-				// clones/snapshots the object (sharing the appearance), so the appearance
-				// usually outlives this delete (appearInfo refCount > 1) and ~appearance's
-				// destroy()-driven invalidate never fires -> the deleted building/tree
-				// kept rendering as a ghost. invalidateStaticRegistration() is virtual +
-				// public (same as the registerStatic() the editor already calls); undo
-				// re-registers via registerStatic() (editor/Action.cpp:622).
+				// Undo snapshots share appearances, so removal must retire the recipe immediately.
 				if ( (*iter)->appearance() )
 					(*iter)->appearance()->invalidateStaticRegistration();
-				// EDITOR-CRASH-HARDENING-1: scrub drag pointer before freeing (UAF guard).
 				if ( EditorInterface::instance() )
 					EditorInterface::instance()->notifyObjectDeleted(*iter);
 				delete (*iter);
-				selectedObjects.RemoveIfThere(*iter);
+				removeFromSelection(*iter);
 				EditorData::instance->handleObjectInvalidation(*iter);
-				buildings.Delete( iter );
+				buildings.erase(iter);
 				return true;
 			}
 		}
 	}
 
-	if ( units.Count() && pInfo )
+	if (!units.empty() && pInfo)
 	{
-		for ( UNIT_LIST::EIterator mIter = units.End(); !mIter.IsDone(); mIter-- )
+		for (size_t index = units.size(); index > 0; )
 		{
+			--index;
+			auto mIter = units.begin() + index;
 			if( pInfo->cellColumn == (*mIter)->cellColumn
 				&& pInfo->cellRow == (*mIter)->cellRow )
 			{
-				// EDITOR-CRASH-HARDENING-1: scrub drag pointer before freeing (UAF guard).
 				if ( EditorInterface::instance() )
 					EditorInterface::instance()->notifyObjectDeleted(*mIter);
 				delete( *mIter );
-				selectedObjects.RemoveIfThere(*mIter);
+				removeFromSelection(*mIter);
 				EditorData::instance->handleObjectInvalidation(*mIter);
-				units.Delete( mIter );
+				units.erase(mIter);
 				return true;
 			}		
 		}
 	}
 
-	for ( DROP_LIST::EIterator dIter = dropZones.Begin(); !dIter.IsDone(); dIter++ )
+	for ( auto dIter = dropZones.begin(); dIter != dropZones.end(); dIter++ )
 	{
 			if( pInfo->cellColumn == (*dIter)->cellColumn
 				&& pInfo->cellRow == (*dIter)->cellRow )
 			{
-				// EDITOR-CRASH-HARDENING-1: scrub drag pointer before freeing (UAF guard).
 				if ( EditorInterface::instance() )
 					EditorInterface::instance()->notifyObjectDeleted(*dIter);
 				delete( *dIter );
-				selectedObjects.RemoveIfThere(*dIter);
+				removeFromSelection(*dIter);
 				EditorData::instance->handleObjectInvalidation(*dIter);
-				dropZones.Delete( dIter );
+				dropZones.erase( dIter );
 				return true;
 			}		
 	
@@ -775,25 +753,24 @@ bool	EditorObjectMgr::deleteBuilding( const EditorObject* pInfo )
 
 int EditorObjectMgr::getBuildingGroupCount() const
 {
-	return groups.Count();
+	return static_cast<int>(groups.size());
 }
 
 int EditorObjectMgr::getNumberBuildingsInGroup( int group ) const
 {
-	if ( group < 0 || group >= groups.Count() )
+	if ( group < 0 || group >= static_cast<int>(groups.size()) )
 		return 0;
 
-	return groups[group].buildings.Count();
+	return static_cast<int>(groups[group].buildings.size());
 }
 
 void EditorObjectMgr::getBuildingGroupNames( const char** names, int& NumberOfNames ) const
 {
-	if ( NumberOfNames < groups.Count() )
-		NumberOfNames = groups.Count();
+	if ( NumberOfNames < static_cast<int>(groups.size()) )
+		NumberOfNames = static_cast<int>(groups.size());
 
 	int i = 0;
-	for ( GROUP_LIST::EConstIterator iter = groups.Begin();
-		!iter.IsDone(); iter++, i++ )
+	for ( auto iter = groups.begin(); iter != groups.end(); iter++, i++ )
 		{
 			if ( i >= NumberOfNames )
 				return;
@@ -804,20 +781,19 @@ void EditorObjectMgr::getBuildingGroupNames( const char** names, int& NumberOfNa
 
 void EditorObjectMgr::getBuildingNamesInGroup( int group, const char** names, int& NumberOfNames ) const
 {
-	if ( group < 0 || group >= groups.Count() )
+	if ( group < 0 || group >= static_cast<int>(groups.size()) )
 	{
 		NumberOfNames = 0;
 		return;
 	}
 
-	Group* pGroup = &groups[group];
+	const Group* pGroup = &groups[group];
 	
-	if ( NumberOfNames < pGroup->buildings.Count() )
-		NumberOfNames = pGroup->buildings.Count();
+	if ( NumberOfNames < static_cast<int>(pGroup->buildings.size()) )
+		NumberOfNames = static_cast<int>(pGroup->buildings.size());
 
 	int i = 0;
-	for ( EList< Building, Building& >::EIterator iter = pGroup->buildings.Begin();
-		!iter.IsDone(); iter++, i++ )
+	for ( auto iter = pGroup->buildings.begin(); iter != pGroup->buildings.end(); iter++, i++ )
 		{
 			if ( i >= NumberOfNames )
 				return;
@@ -835,13 +811,11 @@ bool EditorObjectMgr::getBuildingFromID( int fitID, unsigned long& group, unsign
 	group = 0;
 	index = 0;
 	
-	for( GROUP_LIST::EIterator groupIter = groups.Begin();
-			!groupIter.IsDone(); groupIter++ )
+	for( auto groupIter = groups.begin(); groupIter != groups.end(); groupIter++ )
 			{
 				index = 0;
 
-				for( EList< Building, Building& >::EIterator buildIter = (*groupIter).buildings.Begin();
-					!buildIter.IsDone(); buildIter++ )
+				for( auto buildIter = (*groupIter).buildings.begin(); buildIter != (*groupIter).buildings.end(); buildIter++ )
 					{
 						if ( (*buildIter).fitID == fitID &&
 								( canBeMech || 
@@ -862,10 +836,9 @@ bool EditorObjectMgr::getBuildingFromID( int fitID, unsigned long& group, unsign
 
 int	EditorObjectMgr::getFitID( int id ) const
 {
-	// EDITOR-CRASH-HARDENING-1: dropzone/unresolved id decodes OOB group/index.
-	// Mirror getType() guard (EditorObjectMgr.cpp:2857-2863).
-	if ( getGroup(id) >= groups.Count()
-		|| getIndexInGroup(id) >= groups[getGroup(id)].buildings.Count() )
+	// Drop zones and unresolved IDs can decode outside the catalog.
+	if ( getGroup(id) >= static_cast<int>(groups.size())
+		|| getIndexInGroup(id) >= static_cast<int>(groups[getGroup(id)].buildings.size()) )
 		return 0;
 	return groups[getGroup(id)].buildings[getIndexInGroup(id)].fitID;
 }
@@ -873,27 +846,27 @@ int	EditorObjectMgr::getFitID( int id ) const
 
 bool EditorObjectMgr::getBlocksLineOfFire( int id ) const
 {
-	// EDITOR-CRASH-HARDENING-1: dropzone/unresolved id decodes OOB group/index.
-	if ( getGroup(id) >= groups.Count()
-		|| getIndexInGroup(id) >= groups[getGroup(id)].buildings.Count() )
+	// Drop zones and unresolved IDs can decode outside the catalog.
+	if ( getGroup(id) >= static_cast<int>(groups.size())
+		|| getIndexInGroup(id) >= static_cast<int>(groups[getGroup(id)].buildings.size()) )
 		return false;
 	return groups[getGroup(id)].buildings[getIndexInGroup(id)].blocksLineOfFire;
 
 }
 bool EditorObjectMgr::getIsHoverCraft( int id ) const
 {
-	// EDITOR-CRASH-HARDENING-1: dropzone/unresolved id decodes OOB group/index.
-	if ( getGroup(id) >= groups.Count()
-		|| getIndexInGroup(id) >= groups[getGroup(id)].buildings.Count() )
+	// Drop zones and unresolved IDs can decode outside the catalog.
+	if ( getGroup(id) >= static_cast<int>(groups.size())
+		|| getIndexInGroup(id) >= static_cast<int>(groups[getGroup(id)].buildings.size()) )
 		return false;
 	return groups[getGroup(id)].buildings[getIndexInGroup(id)].isHoverCraft;
 
 }
 __int64	EditorObjectMgr::getImpassability( int id )
 {
-	// EDITOR-CRASH-HARDENING-1: dropzone/unresolved id decodes OOB group/index.
-	if ( getGroup(id) >= groups.Count()
-		|| getIndexInGroup(id) >= groups[getGroup(id)].buildings.Count() )
+	// Drop zones and unresolved IDs can decode outside the catalog.
+	if ( getGroup(id) >= static_cast<int>(groups.size())
+		|| getIndexInGroup(id) >= static_cast<int>(groups[getGroup(id)].buildings.size()) )
 		return 0;
 	return groups[getGroup(id)].buildings[getIndexInGroup(id)].impassability;
 }
@@ -903,12 +876,12 @@ int EditorObjectMgr::getType( unsigned long group, unsigned long indexWithinGrou
 	// gosASSERT is a no-op in this build, so it provides no real bounds
 	// protection; an unresolved mission object ID (caller passed past-the-end
 	// group/index) would OOB-deref here. Guard explicitly.
-	if ( group >= groups.Count() )
+	if ( group >= static_cast<int>(groups.size()) )
 		return -1;
 	Group* pGroup = &groups[group];
 
-	gosASSERT( pGroup->buildings.Count() > indexWithinGroup );
-	if ( indexWithinGroup >= pGroup->buildings.Count() )
+	gosASSERT( static_cast<int>(pGroup->buildings.size()) > indexWithinGroup );
+	if ( indexWithinGroup >= static_cast<int>(pGroup->buildings.size()) )
 		return -1;
 	Building* pBuilding = &pGroup->buildings[indexWithinGroup];
 
@@ -961,8 +934,8 @@ bool EditorObjectMgr::moveBuilding( EditorObject* pInfo, long cellJ, long cellI 
 
 EditorObject* EditorObjectMgr::getObjectAtCell( long realCellJ, long realCellI )
 {
-	for( BUILDING_LIST::EIterator iter = buildings.Begin();
-		!iter.IsDone(); iter++ )
+	for( auto iter = buildings.begin();
+		iter != buildings.end(); iter++ )
 		{
 			if (  labs( realCellI - ((*iter)->cellColumn - 4)) <= 8
 				&& labs( realCellJ - ((*iter)->cellRow - 4)) <= 8 )
@@ -978,8 +951,8 @@ EditorObject* EditorObjectMgr::getObjectAtCell( long realCellJ, long realCellI )
 
 		}
 
-		for( UNIT_LIST::EIterator uIter = units.Begin();
-		!uIter.IsDone(); uIter++ )
+		for( auto uIter = units.begin();
+		uIter != units.end(); uIter++ )
 		{
 			if (  labs( realCellI - ((*uIter)->cellColumn - 4)) <= 8
 				&& labs( realCellJ - ((*uIter)->cellRow - 4)) <= 8 )
@@ -1001,7 +974,7 @@ EditorObject* EditorObjectMgr::getObjectAtCell( long realCellJ, long realCellI )
 
 EditorObject* EditorObjectMgr::getBuilding( const EditorObject &building )
 {
-	for( BUILDING_LIST::EIterator iter = buildings.Begin(); !iter.IsDone(); iter++ )
+	for( auto iter = buildings.begin(); iter != buildings.end(); iter++ )
 	{
 		if( building.cellColumn == (*iter)->cellColumn
 			&& building.cellRow == (*iter)->cellRow )
@@ -1014,7 +987,7 @@ EditorObject* EditorObjectMgr::getBuilding( const EditorObject &building )
 
 BuildingLink* EditorObjectMgr::getLinkWithBuilding( const EditorObject* pObj )
 {
-	for ( LINK_LIST::EIterator iter = links.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = links.begin(); iter != links.end(); iter++ )
 	{
 		if ( (*iter)->HasParent( pObj ) || (*iter)->HasChild( pObj ) )
 			return *iter;
@@ -1025,7 +998,7 @@ BuildingLink* EditorObjectMgr::getLinkWithBuilding( const EditorObject* pObj )
 
 BuildingLink* EditorObjectMgr::getLinkWithParent( const EditorObject* pObj )
 {
-	for ( LINK_LIST::EIterator iter = links.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = links.begin(); iter != links.end(); iter++ )
 	{
 		if ( (*iter)->HasParent( pObj ) )
 			return *iter;
@@ -1036,7 +1009,7 @@ BuildingLink* EditorObjectMgr::getLinkWithParent( const EditorObject* pObj )
 
 BuildingLink* EditorObjectMgr::getLinkWithChild( const EditorObject* pObj )
 {
-	for ( LINK_LIST::EIterator iter = links.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = links.begin(); iter != links.end(); iter++ )
 	{
 		if ( (*iter)->HasChild( pObj ) )
 			return *iter;
@@ -1047,24 +1020,24 @@ BuildingLink* EditorObjectMgr::getLinkWithChild( const EditorObject* pObj )
 
 void EditorObjectMgr::addLink( BuildingLink* pLink )
 {
-	for ( LINK_LIST::EIterator iter = links.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = links.begin(); iter != links.end(); iter++ )
 	{
 		if ( (*iter) == pLink )
 			return;
 	}
 
-	links.Append( pLink );
+	links.push_back( pLink );
 }
 
 void EditorObjectMgr::deleteLink( BuildingLink* pLink )
 {
-	for ( LINK_LIST::EIterator iter = links.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = links.begin(); iter != links.end(); iter++ )
 	{
 		if ( (*iter) == pLink )
 		{
 			delete (*iter);
 
-			links.Delete( iter );
+			links.erase( iter );
 			return;
 		}
 	}
@@ -1075,10 +1048,10 @@ const char*	EditorObjectMgr::getObjectName( int ID ) const
 	unsigned long group = getGroup(ID);
 	unsigned long index = getIndexInGroup(ID);
 
-	if ( group >= groups.Count() )
+	if ( group >= static_cast<int>(groups.size()) )
 		return "Unknown Object";
 
-	if ( index >= groups[group].buildings.Count() )
+	if ( index >= static_cast<int>(groups[group].buildings.size()) )
 		return "Unknown Object";
 
 	const char* name = groups[group].buildings[index].name;
@@ -1087,7 +1060,7 @@ const char*	EditorObjectMgr::getObjectName( int ID ) const
 
 const char* EditorObjectMgr::getGroupName( int ID ) const
 {
-	if ( ID < 0 || ID >= groups.Count() )
+	if ( ID < 0 || ID >= static_cast<int>(groups.size()) )
 		return "Unknown Group";
 
 	const char* name = groups[ID].name;
@@ -1099,9 +1072,9 @@ void EditorObjectMgr::getUnitGroupNames( const char** names, int* ids, int& numb
 	int counter = 0;
 	int index = 0;
 	
-	for ( GROUP_LIST::EConstIterator iter = groups.Begin(); !iter.IsDone(); index++, iter++ )
+	for ( auto iter = groups.begin(); iter != groups.end(); index++, iter++ )
 	{
-		if ( (*iter).buildings.Count() && ((*iter).buildings.GetHead().type == MECH_TYPE || (*iter).buildings.GetHead().type == GV_TYPE ) )
+		if ( static_cast<int>((*iter).buildings.size()) && ((*iter).buildings.front().type == MECH_TYPE || (*iter).buildings.front().type == GV_TYPE ) )
 		{
 			if ( counter < numberOfEm )
 			{
@@ -1120,9 +1093,9 @@ int EditorObjectMgr::getUnitGroupCount( ) const
 {
 	int counter = 0;
 	
-	for ( GROUP_LIST::EConstIterator iter = groups.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = groups.begin(); iter != groups.end(); iter++ )
 	{
-		if ( (*iter).buildings.Count() && ( (*iter).buildings.GetHead().type == MECH_TYPE ||(*iter).buildings.GetHead().type == GV_TYPE ) )
+		if ( static_cast<int>((*iter).buildings.size()) && ( (*iter).buildings.front().type == MECH_TYPE ||(*iter).buildings.front().type == GV_TYPE ) )
 		{
 			counter++;
 		}
@@ -1133,12 +1106,12 @@ int EditorObjectMgr::getUnitGroupCount( ) const
 
 }
 
-void EditorObjectMgr::getSelectedUnits( UNIT_LIST& selUnits )
+void EditorObjectMgr::getSelectedUnits( SelectedUnits& selUnits )
 {
-	for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = units.begin(); iter != units.end(); iter++ )
 	{
 		if ( (*iter)->isSelected() )
-			selUnits.Append( (*iter) );
+			selUnits.push_back( (*iter) );
 	}
 }
 
@@ -1187,7 +1160,7 @@ void EditorObjectMgr::registerSquadNum(unsigned long squadNum)
 
 Unit* EditorObjectMgr::findUnitByMechHandle(RenderCore::RenderObjectHandle h)
 {
-	for (BUILDING_LIST::EIterator iter = buildings.Begin(); !iter.IsDone(); iter++)
+	for (auto iter = buildings.begin(); iter != buildings.end(); iter++)
 	{
 		EditorObject* obj = *iter;
 		if (!obj || !obj->appearance())

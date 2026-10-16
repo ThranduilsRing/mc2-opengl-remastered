@@ -1,4 +1,4 @@
-// MECH-IMPORT-TGDUMP-1 — link seams.
+// link seams.
 //
 // Definitions for a handful of globals/functions that the current tgl.cpp /
 // msl.cpp reference from render / frame-jobs / txmmgr-trace code paths the

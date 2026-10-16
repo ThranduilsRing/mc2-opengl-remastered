@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// UnitActionFlowPanel — ABL-FLOW-1. See header.
+// UnitActionFlowPanel. See header.
 //------------------------------------------------------------------------------
 #include "stdafx.h"             // first: winsock2/windows include order
 

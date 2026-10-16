@@ -89,7 +89,8 @@ def data_fingerprint(install: str = INSTALL_DIR) -> dict:
 def load_simid(path: str) -> list:
     """The SIMID lines of a log, newline stripped, in order."""
     with open(path, encoding="utf-8", errors="replace") as fh:
-        return [ln.rstrip("\r\n") for ln in fh if ln.startswith(PREFIX)]
+        return [m.group().rstrip() for ln in fh
+                for m in re.finditer(re.escape(PREFIX) + r"[^\r\n\[]*", ln)]
 
 
 def chain(lines, frames: int | None = None) -> str:

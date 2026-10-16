@@ -143,11 +143,8 @@ long CraterManager::init (long numCraters, unsigned long craterTypeSize, const c
 	numCraterTextures = MAX_CRATER_TEXTURES;
 	//---------------------------------------------------------
 	// Setup Crater Texture handles
-	craterTextureHandles = (DWORD *)malloc(sizeof(DWORD) * numCraterTextures);
-	memset((MemoryPtr)craterTextureHandles,0xff,sizeof(DWORD) * numCraterTextures);
-
-	craterTextureIndices = (DWORD *)malloc(sizeof(DWORD) * numCraterTextures);
-	memset((MemoryPtr)craterTextureIndices,0xff,sizeof(DWORD) * numCraterTextures);
+	craterTextureHandles.assign(numCraterTextures, 0xffffffffu);
+	craterTextureIndices.assign(numCraterTextures, 0xffffffffu);
 
 	//-----------------------------------------------------
 	// Preload all of the craters for the mission.
@@ -198,11 +195,8 @@ void CraterManager::destroy (void)
 	craterList = nullptr;
 	currentCrater = 0;
 
-	free(craterTextureHandles);
-	craterTextureHandles = nullptr;
-
-	free(craterTextureIndices);
-	craterTextureIndices = nullptr;
+	std::vector<DWORD>().swap(craterTextureHandles);
+	std::vector<DWORD>().swap(craterTextureIndices);
 }			
 
 //---------------------------------------------------------------------
@@ -272,7 +266,7 @@ long CraterManager::addCrater (long craterType, Stuff::Vector3D &position, float
 			bool isCrater = (craterType > TURKINA_FOOTPRINT);
 			int texIdxSlot = isCrater ? 0 : 1;
 			DWORD gosHandle = 0;
-			if (craterTextureIndices)
+			if (!craterTextureIndices.empty())
 				gosHandle = mcTextureManager->get_gosTextureHandle(craterTextureIndices[texIdxSlot]);
 			// cRotation is in degrees; spawn() stores radians for cosf/sinf.
 			const float kDegToRad = 3.14159265f / 180.0f;

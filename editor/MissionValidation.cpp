@@ -154,7 +154,7 @@ std::vector<MissionCheck> MissionValidator::ValidateForPakSave() {
         int totalUnits = 0;
         if (EditorObjectMgr::instance()) {
             EditorObjectMgr::UNIT_LIST units = EditorObjectMgr::instance()->getUnits();
-            for (EditorObjectMgr::UNIT_LIST::EIterator it = units.Begin(); !it.IsDone(); it++) {
+            for (auto it = units.begin(); it != units.end(); it++) {
                 Unit* u = (*it);
                 if (!u || !u->appearance())   // alignment read is unsafe without appearance
                     continue;
@@ -254,7 +254,7 @@ std::vector<MissionCheck> MissionValidator::ValidateForPakSave() {
         if (EditorObjectMgr::instance()) {
             // Buildings
             EditorObjectMgr::BUILDING_LIST buildings = EditorObjectMgr::instance()->getBuildings();
-            for (EditorObjectMgr::BUILDING_LIST::EIterator it = buildings.Begin(); !it.IsDone(); it++) {
+            for (auto it = buildings.begin(); it != buildings.end(); it++) {
                 EditorObject* b = (*it);
                 if (b && !b->appearance())
                     ++nullAppCount;
@@ -262,7 +262,7 @@ std::vector<MissionCheck> MissionValidator::ValidateForPakSave() {
 
             // Units (reuse already-iterated pattern from pilot_count above)
             EditorObjectMgr::UNIT_LIST units2 = EditorObjectMgr::instance()->getUnits();
-            for (EditorObjectMgr::UNIT_LIST::EIterator it = units2.Begin(); !it.IsDone(); it++) {
+            for (auto it = units2.begin(); it != units2.end(); it++) {
                 Unit* u = (*it);
                 if (u && !u->appearance())
                     ++nullAppCount;
@@ -298,7 +298,7 @@ std::vector<MissionCheck> MissionValidator::ValidateForPakSave() {
         if (EditorObjectMgr::instance() && halfExtent > 0.f) {
             // Buildings
             EditorObjectMgr::BUILDING_LIST buildings = EditorObjectMgr::instance()->getBuildings();
-            for (EditorObjectMgr::BUILDING_LIST::EIterator it = buildings.Begin(); !it.IsDone(); it++) {
+            for (auto it = buildings.begin(); it != buildings.end(); it++) {
                 EditorObject* b = (*it);
                 if (!b || !b->appearance()) continue;
                 const Stuff::Vector3D& pos = b->getPosition();
@@ -309,7 +309,7 @@ std::vector<MissionCheck> MissionValidator::ValidateForPakSave() {
 
             // Units
             EditorObjectMgr::UNIT_LIST units3 = EditorObjectMgr::instance()->getUnits();
-            for (EditorObjectMgr::UNIT_LIST::EIterator it = units3.Begin(); !it.IsDone(); it++) {
+            for (auto it = units3.begin(); it != units3.end(); it++) {
                 Unit* u = (*it);
                 if (!u || !u->appearance()) continue;
                 const Stuff::Vector3D& pos = u->getPosition();
@@ -346,7 +346,7 @@ std::vector<MissionCheck> MissionValidator::ValidateForPakSave() {
 
         if (EditorObjectMgr::instance()) {
             EditorObjectMgr::UNIT_LIST units4 = EditorObjectMgr::instance()->getUnits();
-            for (EditorObjectMgr::UNIT_LIST::EIterator it = units4.Begin(); !it.IsDone(); it++) {
+            for (auto it = units4.begin(); it != units4.end(); it++) {
                 Unit* u = (*it);
                 if (!u || !u->appearance()) continue;   // null appearance already flagged
                 const int a = u->getAlignment();

@@ -20,7 +20,7 @@ PageScale currentPageScale(int localWidth, int localHeight)
         dw = static_cast<float>(Environment.screenWidth);
         dh = static_cast<float>(Environment.screenHeight);
     }
-    // UI-ASPECT-ANCHOR-1: scale into the centered 16:9 UI canvas instead of
+    // scale into the centered 16:9 UI canvas instead of
     // stretching to the full display (matches the legacy layer's canvas
     // transform in flushHUDBatch). Identity at exactly 16:9; inactive frames
     // (mission) and MC2_UI_ASPECT_ANCHOR=0 keep the full-stretch behavior.
@@ -182,7 +182,7 @@ static void textureUVs(UiElement& e, float& u1, float& v1, float& u2, float& v2)
         }
     }
 
-    // PILOT-PHOTO-UV-1: two UV-authoring spaces exist.
+    // two UV-authoring spaces exist.
     //   - Defs-fit and runtime PNG-space sub-rects address the LOGICAL texture
     //     size (the modder authored coords straight off the PNG) — divide by
     //     logical size (default, unchanged).
@@ -282,7 +282,7 @@ bool drawUiImageElement(UiElement& e, int xOffset, int yOffset, const PageScale&
 
     FRect r = scaledRect(e.rect, xOffset, yOffset, s);
 
-    // PILOT-PHOTO-UV-1 diagnostic: full number dump for the pilot portrait
+    // Full number dump for the pilot portrait
     // element (red-striped-panel bug). Env-gated, one line per texture change.
     if (mc2::gate::get<"MC2_LOG_PREVIEW">() && e.key.find("this_rect_defines") != std::string::npos) {
         static std::string s_lastDump;

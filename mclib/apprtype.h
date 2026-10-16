@@ -27,6 +27,7 @@
 #endif
 
 #include<stuff/stuffheaders.hpp>
+#include<string>
 
 //---------------------------------------------------------------------------
 // Macro definitions
@@ -47,7 +48,8 @@ class AppearanceType
 		unsigned long		appearanceNum;		//What kind am I.
 		AppearanceTypePtr	next;				//Pointer to next type in list.
 
-		char 				*name;				//Appearance Base FileName.
+		char 				*name;				//Appearance Base FileName.  A view of nameStore.
+		std::string			nameStore;			//Owns the name text; a type is never copied or moved, so the view stays valid.
 	
 		Stuff::Vector3D		typeUpperLeft;		//For Designer defined extents of objects
 		Stuff::Vector3D		typeLowerRight;		//For Designer defined extents of objects

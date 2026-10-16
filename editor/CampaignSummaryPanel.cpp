@@ -135,8 +135,8 @@ static bool campIsStandin(const CString& s)
 static unsigned long campTotalMissions(const CCampaignData& camp)
 {
     unsigned long total = 0;
-    for (CGroupList::EConstIterator git = camp.m_GroupList.Begin(); !git.IsDone(); git++)
-        total += (*git).m_MissionList.Count();
+    for (const CGroupData& group : camp.m_GroupList)
+        total += static_cast<unsigned long>(group.m_MissionList.size());
     return total;
 }
 
@@ -184,7 +184,7 @@ void CampaignSummaryPanel::Draw()
         return;
     }
 
-    const unsigned long opCount      = s_campaign.m_GroupList.Count();
+    const unsigned long opCount      = static_cast<unsigned long>(s_campaign.m_GroupList.size());
     const unsigned long totalMissions = campTotalMissions(s_campaign);
 
     // -- Campaign summary block (designer labels) ---------------------------
@@ -202,9 +202,7 @@ void CampaignSummaryPanel::Draw()
     ImGui::Separator();
 
     // -- Aggregated warnings roll-up ----------------------------------------
-    // Collected campaign-level + per-operation; data-only, cheap. Mirrors the
-    // inline per-op badges below so a designer can triage the whole campaign
-    // from the top of the panel.
+    // Campaign and operation warnings let designers triage the whole campaign.
     ImGui::TextColored(kInfoCol, "WARNINGS");
     {
         int warnCount = 0;
@@ -220,45 +218,42 @@ void CampaignSummaryPanel::Draw()
             ++warnCount;
         }
 
-        int opIdx = 0;
-        for (CGroupList::EConstIterator git = s_campaign.m_GroupList.Begin();
-             !git.IsDone(); git++, ++opIdx)
+        for (size_t opIdx = 0; opIdx < s_campaign.m_GroupList.size(); ++opIdx)
         {
-            const CGroupData& grp = *git;
-            const unsigned long mc = grp.m_MissionList.Count();
+            const CGroupData& grp = s_campaign.m_GroupList[opIdx];
+            const unsigned long mc = static_cast<unsigned long>(grp.m_MissionList.size());
 
             if (mc == 0)
             {
-                campWarn("Operation %d: no missions.", opIdx);
+                campWarn("Operation %zu: no missions.", opIdx);
                 ++warnCount;
             }
             if ((unsigned long)grp.m_NumMissionsToComplete > mc)
             {
-                campWarn("Operation %d: requires %d missions but only %lu exist.",
+                campWarn("Operation %zu: requires %d missions but only %lu exist.",
                          opIdx, grp.m_NumMissionsToComplete, mc);
                 ++warnCount;
             }
             if (campEmpty(grp.m_Label))
             {
-                campWarn("Operation %d: no label.", opIdx);
+                campWarn("Operation %zu: no label.", opIdx);
                 ++warnCount;
             }
             if (campIsStandin(grp.m_PreVideoFile))
             {
-                campWarn("Operation %d: briefing video is a STANDIN placeholder.", opIdx);
+                campWarn("Operation %zu: briefing video is a STANDIN placeholder.", opIdx);
                 ++warnCount;
             }
             if (campIsStandin(grp.m_VideoFile))
             {
-                campWarn("Operation %d: operation/debrief video is a STANDIN placeholder.", opIdx);
+                campWarn("Operation %zu: operation/debrief video is a STANDIN placeholder.", opIdx);
                 ++warnCount;
             }
-            for (CMissionList::EConstIterator mit = grp.m_MissionList.Begin();
-                 !mit.IsDone(); mit++)
+            for (const CMissionData& mission : grp.m_MissionList)
             {
-                if (campEmpty((*mit).m_MissionFile))
+                if (campEmpty(mission.m_MissionFile))
                 {
-                    campWarn("Operation %d: has a mission with an empty filename.", opIdx);
+                    campWarn("Operation %zu: has a mission with an empty filename.", opIdx);
                     ++warnCount;
                     break;
                 }
@@ -274,12 +269,10 @@ void CampaignSummaryPanel::Draw()
     // -- Operation cards ----------------------------------------------------
     ImGui::TextColored(kInfoCol, "OPERATIONS");
 
-    int opIndex = 0;
-    for (CGroupList::EConstIterator git = s_campaign.m_GroupList.Begin();
-         !git.IsDone(); git++, ++opIndex)
+    for (size_t opIndex = 0; opIndex < s_campaign.m_GroupList.size(); ++opIndex)
     {
-        const CGroupData& grp = *git;
-        const unsigned long missionCount = grp.m_MissionList.Count();
+        const CGroupData& grp = s_campaign.m_GroupList[opIndex];
+        const unsigned long missionCount = static_cast<unsigned long>(grp.m_MissionList.size());
         const bool unnamed   = campEmpty(grp.m_Label);
         const bool standinPre = campIsStandin(grp.m_PreVideoFile);
         const bool standinVid = campIsStandin(grp.m_VideoFile);
@@ -288,7 +281,7 @@ void CampaignSummaryPanel::Draw()
             ((unsigned long)grp.m_NumMissionsToComplete > missionCount);
 
         char opHdr[160];
-        std::snprintf(opHdr, sizeof(opHdr), "Operation %d: %s###op%d",
+        std::snprintf(opHdr, sizeof(opHdr), "Operation %zu: %s###op%zu",
                       opIndex,
                       unnamed ? "Unnamed" : campStr(grp.m_Label),
                       opIndex);
@@ -349,10 +342,8 @@ void CampaignSummaryPanel::Draw()
         else
         {
             ImGui::Text("Missions:");
-            for (CMissionList::EConstIterator mit = grp.m_MissionList.Begin();
-                 !mit.IsDone(); mit++)
+            for (const CMissionData& m : grp.m_MissionList)
             {
-                const CMissionData& m = *mit;
                 ImGui::BulletText("%s",
                     campEmpty(m.m_MissionFile) ? "(empty filename)" : campStr(m.m_MissionFile));
             }

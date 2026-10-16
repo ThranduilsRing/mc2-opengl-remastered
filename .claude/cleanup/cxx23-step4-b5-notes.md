@@ -83,3 +83,42 @@ Sealed census 400 sites; each batch states its own before / after. Expected: B5.
 1. The render-proof assignment for B5.1b onward (section 4): stands as for B4, or lane 6 / lane 2 runs it.
 2. B5.5 needs the `code/mission.cpp` owner sites: Sol's claim.
 3. Whether the editor E-batches take the editor's `removeTexture*` / asset-heap rows (none today use the texture release APIs: `git grep` over `editor/` finds no call).
+
+## 9. Results (lane 1, 2026-10-16 fifth session)
+| batch | sha | content | census |
+|---|---|---|---|
+| review fixes | 7e8d96bea | BUGS row 47, node-0 guards, `releaseNode` double-release log line, census input errors (exit 2), `releaseThrough` null-manager doctest | |
+| B5.1c | ef02d3a14, 3b87c4835 | colour map node members are `TextureRef` (include-only first, objhash 0 differing bytes); `removeTextureNode` deleted; the tile arena struct and cellip's file-static keep an index and call `releaseNode` (rule F9: no uninitialised or static-duration owner) | 388 -> 374 |
+| B5.2a | 2f4bd7996 | the five per-frame TG pools own `unique_ptr<T[]>` made uninitialised; ASE parser scratch to vectors | 374 -> 360 |
+| B5.2b | a73817ce7 | `TG_Animation` tracks and `TG_AnimateShape` list are vectors; `.anm` loader checks counts and track sizes (`[ANIM_TRACK_BAD]`) | 360 -> 351 |
+Include-only commits: `<memory>`, `<vector>` in tgl.h, mc2log.h in msl_anim.cpp (objhash: executable bytes identical; the msl_anim.cpp object differs only in four std::numpunct comdat instantiations that the logging header pulls in). Open in B5.2: the msl_load / tgl_types / msl_shape type and texture arrays and the class `operator new/delete` rows (B5.5). B5.3 (appearance types, registry teardown order: the one place the review asks for an Opus read) not started.
+Baselines: the four saveload baselines other than mc2_10 carried the same WeaponBolt handle bytes and were re-recorded on the final exe (BUGS row 45 cause); the cxx17 baseline is rewritten with one own rise, LG05 +2 in `msl_anim.cpp` (the two `return -1` refusals of `TG_AnimateShape::LoadBinaryCopy`, a function that already returned -1 for a bad version).
+Proof on the final exe (a73817ce7): ninja + doctest rc 0, sim pair mc2_03 / mc2_24 PASS, saveload mc2_10 PASS (then mc2_01/03/16/24 re-recorded and confirmed), tier1 5/5, campaign round trip (same lossy diff as before), ASan doctest rc 0, VK capture pair mc2_01 day and mc2_10 night: `verify.py --golden current` PASS (11 regions, 2 poses) on both runs, frames viewed (`A:/Games/mc2-capture-evidence/l1s5`).
+
+## 10. Teardown order of the appearance types (B5.3 pre-note, lane 1, 2026-10-16 sixth session)
+1. Creation: `AppearanceTypeList::getAppearance` news a type (class `operator new` routes to `appearanceHeap`), links it into the `head`/`last` list and counts users; the type's `init(file)` loads TG shapes from `tglHeap` and takes texture node references.
+2. Release while the mission runs: `removeAppearance` unlinks the type at `numUsers == 0` and `delete`s it, so the virtual destructor chain (each subclass `~X` calls its own `destroy()`, then `~AppearanceType` frees the name) is exercised today.
+3. Mission end (`code/mission.cpp` 1142, Sol's file; `simplecamera.cpp` for the viewer): `~appearanceTypeList` -> `AppearanceTypeList::destroy()` calls the virtual `destroy()` of every remaining type and then DROPS `appearanceHeap`; no destructor runs, the type objects die with the heap. Then the Sensor shapes are deleted, then `tglHeap` is destroyed (`mission.cpp` 1150-1190), then the texture manager at application exit (`mechcmd2_frame.cpp` 240).
+4. Order any conversion must keep: types before `appearanceHeap` (they free their names through it) and before `tglHeap` (their shapes live there); the texture manager outlives all of them (`TextureRef` release is null-safe in any case, review s5 S5: `mcTextureManager` is nulled only after `delete`, so a `TextureRef` member released inside `~MC_TextureManager` would see a half-destroyed manager; none is today).
+5. Hazard checked: making the list `delete` each remaining type (one destroy via the destructor, the removeAppearance path) is the only change B5.3 needs there; calling `destroy()` first and then `delete` would run each subclass `destroy()` twice. `pointerCanBeDeleted` (`simplecamera.cpp`) tests an APPEARANCE INSTANCE's address against `appearanceHeap`, so it stays valid while `Appearance::operator new` routes there (deleted with the heap in B5.5, not B5.3).
+Verdict: no ordering hazard; B5.3 proceeds with the list `delete`-ing each type once.
+
+## 11. Results (lane 1, 2026-10-16 sixth session)
+| batch | content | census |
+|---|---|---|
+| s5 review | `TG_AnimateShape::destroy` resets `count` (S1); `[ANIM_TRACK_BAD]` logs every rejection (S2); null-after-delete note in section 10 item 4 (S5) | |
+| B5.2c-1 | `TG_TypeShape` vertex / triangle / texture lists are vector stores with views; `InitFromImportedMesh` takes vectors by move; shape files reject oversized counts (`[SHAPE_COUNT_BAD]`) | 351 -> 333 |
+| B5.2c-2 | `TG_TypeMultiShape` node-pointer array and texture list, `TG_MultiShape` shape records are vector stores; multi-shape count checks | 333 -> 320 |
+| B5.3a-c | `NodeData` owns its id text, the three type classes own their node tables; `AppearanceType::name` is a `std::string`; `AppearanceTypeList::destroy` deletes each type once (section 10: no ordering hazard) | 320 -> 303 |
+| B5.4a | `ObjectTypeManager` table is a vector; `ObjectType::appearName` is a `std::string` | 303 |
+Left in B5.2/B5.3: `TG_Shape::listOfShadowVertices` (raw instance memory), the per-instance `nodeUsed` / `nodeRecycle` / `paintSchemata` tables (instances, B7), the node objects the multi-shape pointer array points at, and every class `operator new/delete` (B5.5). Include-only commits this session (objhash: executable bytes identical; std comdat instantiations from the logging header differ in `tgl_types` and `msl_shape`): mc2log.h in tgl_internal.h / msl_internal.h, `<string>` in apprtype.h, `<memory>` and `<string>` in objectappearance.h, `<vector>` in objtype.h.
+
+## 12. B5.5 prep (no code; lane 1, 2026-10-16 seventh session; census 300)
+What is left of the two class-routed asset heaps, from the sealed list (16 class operator rows, 16 `heap_malloc`, 11 `heap_free`):
+| heap | remaining users | what removes them |
+|---|---|---|
+| `tglHeap` | `operator new/delete` of `TG_TypeNode` (and so `TG_TypeShape`), `TG_TypeMultiShape`, `TG_AnimateShape`, `TG_MultiShape`, `TG_Shape` (10 rows); the instance memory of `TG_Shape` (`CreateFrom` x2, `msl_load.cpp` raw `Free(node)`) | give each class a plain `new` (delete the operators) and let the shape own its nodes with `unique_ptr`; the raw instance `Malloc` / `Free` pair becomes `new TG_Shape` / `delete` |
+| `appearanceHeap` | `operator new/delete` of `Appearance` and `AppearanceType` (4 rows); the per-instance `nodeUsed`, `nodeRecycle`, `paintSchemata` tables of the actor classes (`bdactor.cpp`, `gvactor.cpp`, `mech3d.cpp`, `mech3d_init.cpp`, 9 rows: B7, they belong to the instances) | the instance tables go with the actors in B7; then the two operator pairs |
+| `objectCache` (B7) | `ObjectType::operator new/delete` and every game object | not B5 |
+Owner sites that need Sol's `code/mission.cpp` (claimed): creating, sizing (128 MiB game / 48 MiB `mission2.cpp`) and destroying `tglHeap` (lines 847-908 and 1150-1191), `delete appearanceTypeList`, and the Sensor shape deletes; `code/simplecamera.cpp` deletes the Sensor shapes a third time and calls `pointerCanBeDeleted` (the provenance test against `appearanceHeap`, which disappears with the heap: its four callers become an owner check). `code/mission2.cpp` is not on the Sol list. `AppearanceTypeList::init(heapSize)` and `pointerOnHeap` go in the same batch, and the editor (`Editor.cpp`) creates its own `tglHeap` and pools: an E-batch row.
+Order: (1) instance tables to the actors (B7) or leave the `appearanceHeap` until then; (2) the TG operators and node ownership; (3) the heap objects and their sizing in `mission.cpp` / `mission2.cpp` after the claim lifts; (4) `pointerCanBeDeleted`. Proof: `build_all_targets`, sim pair, tier1, mission reload delta (H2), VK pair.

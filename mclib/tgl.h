@@ -23,6 +23,8 @@
 #include<stuff/stuff.hpp>
 #include<gameos.hpp>
 #include <cstdint>  // uint64_t (Tier-1 instrumentation, stability spec §2)
+#include <memory>   // the per-frame pools own their storage
+#include <vector>   // an animation owns its key tracks
 #include "../RenderCore/gpu_abi/GpuObjectLights.h"  // single-source per-object light record
 
 //-------------------------------------------------------------------------------
@@ -397,6 +399,12 @@ typedef struct _TG_TinyTexture
 typedef TG_TinyTexture* TG_TinyTexturePtr;
 
 class TG_Shape;
+
+// Ceilings for the counts a shape file claims (mod content): no stock shape comes near them, a larger count is a corrupt file.
+inline constexpr DWORD kMaxShapeVertices = 1u << 20;
+inline constexpr DWORD kMaxShapeTriangles = 1u << 20;
+inline constexpr DWORD kMaxShapeTextures = 4096;
+inline constexpr int kMaxMultiShapeNodes = 4096;
 //-------------------------------------------------------------------------------
 // TG_Animation
 typedef struct _TG_Animation
@@ -406,11 +414,21 @@ typedef struct _TG_Animation
 	DWORD						numFrames;				//Number of Frames of animation.
 	float 						frameRate;				//Number of Frames Per Second.
 	float						tickRate;				//Number of Ticks Per Second.
-	Stuff::UnitQuaternion		*quat;					//Stores animation offset in Quaternion rotation.
-	Stuff::Point3D				*pos;					//Stores Positional offsets if present.  OTHERWISE NULL!!!!!!!!
-	
+	Stuff::UnitQuaternion		*quat = nullptr;		//Stores animation offset in Quaternion rotation.  A view of quatStore.
+	Stuff::Point3D				*pos = nullptr;			//Stores Positional offsets if present.  OTHERWISE NULL!!!!!!!!  A view of posStore.
+	std::vector<Stuff::UnitQuaternion>	quatStore;		//Owns the rotation track; sized once (numFrames) before quat is taken.
+	std::vector<Stuff::Point3D>			posStore;		//Owns the position track.
+
+	// A copy would leave the views pointing at the original's tracks; a move keeps the buffers.
+	_TG_Animation (void) = default;
+	_TG_Animation (const _TG_Animation&) = delete;
+	_TG_Animation& operator= (const _TG_Animation&) = delete;
+	_TG_Animation (_TG_Animation&&) noexcept = default;
+	_TG_Animation& operator= (_TG_Animation&&) noexcept = default;
+
 	void SaveBinaryCopy (File *binFile);
-	void LoadBinaryCopy (File *binFile);
+	// False when the file claims a frame count or track size the animation cannot hold; the animation is left empty.
+	bool LoadBinaryCopy (File *binFile);
 	
 } TG_Animation;
 
@@ -584,8 +602,9 @@ class TG_TypeNode
 		virtual void SetLightRGBs (DWORD hPink, DWORD hGreen, DWORD hYellow)
 		{
 		}
-		
- 		virtual void LoadBinaryCopy (File &binFile);
+
+		// False when the file claims a count this node cannot hold; the stream is then mid-node and the caller must stop reading it.
+ 		virtual bool LoadBinaryCopy (File &binFile);
 		virtual void SaveBinaryCopy (File &binFile);
 
 };
@@ -622,6 +641,11 @@ class TG_TypeShape : public TG_TypeNode
 		TG_TypeVertexPtr		listOfTypeVertices;			//Memory holding all vertex data
 		TG_TypeTrianglePtr		listOfTypeTriangles;		//Memory holding all triangle data
 		TG_TinyTexturePtr		listOfTextures;				//List of texture Structures for this shape.
+
+		// The three lists above are views of these stores, which own the memory; each is sized once (from a checked count) before its view is taken.
+		std::vector<TG_TypeVertex>		typeVertexStore;
+		std::vector<TG_TypeTriangle>	typeTriangleStore;
+		std::vector<TG_TinyTexture>		tinyTextureStore;
 
 		DWORD					hotPinkRGB;					//Stores the value for this shape to replace hot Pink With
 		DWORD					hotYellowRGB;				//Stores the value for this shape to replace hot Yellow With 
@@ -789,11 +813,10 @@ class TG_TypeShape : public TG_TypeNode
 		// No Assimp types appear in this signature — header stays clean.
 		void InitFromImportedMesh(const char* nodeIdIn, const char* parentIdIn,
 		                          const Stuff::Point3D& center,
-		                          DWORD numVerts, DWORD numTris,
-		                          TG_TypeVertexPtr vertexBuf,
-		                          TG_TypeTrianglePtr triangleBuf);
+		                          std::vector<TG_TypeVertex>&& vertices,
+		                          std::vector<TG_TypeTriangle>&& triangles);
 
- 		virtual void LoadBinaryCopy (File &binFile);
+ 		virtual bool LoadBinaryCopy (File &binFile);
 		virtual void SaveBinaryCopy (File &binFile);
 };
 
@@ -845,7 +868,8 @@ class TG_Shape
 		Stuff::Matrix4D			cur_shape2clip;
         TG_HWLightsData         lightData_;
 
-		TG_ShadowVertexPtr		listOfShadowVertices;		//Stores shadow vertex information for the shape.
+		std::vector<TG_ShadowVertex>	shadowVertexStore;	//Owns the shadow vertices (built in CreateFrom, released in destroy(): the instance memory is freed without a destructor).
+		TG_ShadowVertexPtr		listOfShadowVertices;		//Stores shadow vertex information for the shape.  A view of shadowVertexStore.
 															//We just use existing listOfTriangles to draw!
 															
 		TG_ShadowVertexTempPtr	listOfShadowTVertices;		//Stores just the Volatile data.  Comes from a pool!!
@@ -1179,6 +1203,7 @@ class TG_VertexPool
 {
 	protected:
 		TG_Vertex 	*tgVertexPool;
+		std::unique_ptr<TG_Vertex[]>	tgVertexPoolStore;	// owns the pool; tgVertexPool is a view of it
 		TG_Vertex 	*nextVertex;
 
 		DWORD		totalVertices;
@@ -1226,14 +1251,15 @@ class TG_VertexPool
 		
 		void destroy (void)
 		{
-			TG_Shape::tglHeap->Free(tgVertexPool);
+			tgVertexPoolStore.reset();
 			tgVertexPool = nextVertex = NULL;
 			totalVertices = numVertices = 0;
 		}
 		
 		void init (DWORD maxVertices)
 		{
-			tgVertexPool = (TG_VertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Vertex) * maxVertices);
+			tgVertexPoolStore = std::make_unique_for_overwrite<TG_Vertex[]>(maxVertices);
+			tgVertexPool = tgVertexPoolStore.get();
 			gosASSERT(tgVertexPool != NULL);
 			
 			nextVertex = tgVertexPool;
@@ -1268,6 +1294,7 @@ class TG_GOSVertexPool
 {
 	protected:
 		gos_VERTEX 	*gVertexPool;
+		std::unique_ptr<gos_VERTEX[]>	gVertexPoolStore;	// owns the pool; gVertexPool is a view of it
 		gos_VERTEX 	*nextVertex;
 
 		DWORD		totalVertices;
@@ -1315,14 +1342,15 @@ class TG_GOSVertexPool
 		
 		void destroy (void)
 		{
-			TG_Shape::tglHeap->Free(gVertexPool);
+			gVertexPoolStore.reset();
 			gVertexPool = nextVertex = NULL;
 			totalVertices = numVertices = 0;
 		}
 		
 		void init (DWORD maxVertices)
 		{
-			gVertexPool = (gos_VERTEX *)TG_Shape::tglHeap->Malloc(sizeof(gos_VERTEX) * maxVertices);
+			gVertexPoolStore = std::make_unique_for_overwrite<gos_VERTEX[]>(maxVertices);
+			gVertexPool = gVertexPoolStore.get();
 			gosASSERT(gVertexPool != NULL);
 			
 			nextVertex = gVertexPool;
@@ -1357,6 +1385,7 @@ class TG_TrianglePool
 {
 	protected:
 		TG_Triangle *trianglePool;
+		std::unique_ptr<TG_Triangle[]>	trianglePoolStore;	// owns the pool; trianglePool is a view of it
 		TG_Triangle	*nextTriangle;
 
 		DWORD		totalTriangles;
@@ -1404,14 +1433,15 @@ class TG_TrianglePool
 		
 		void destroy (void)
 		{
-			TG_Shape::tglHeap->Free(trianglePool);
+			trianglePoolStore.reset();
 			trianglePool = nextTriangle = NULL;
 			totalTriangles = numTriangles = 0;
 		}
 		
 		void init (DWORD maxTriangles)
 		{
-			trianglePool = (TG_Triangle *)TG_Shape::tglHeap->Malloc(sizeof(TG_Triangle) * maxTriangles);
+			trianglePoolStore = std::make_unique_for_overwrite<TG_Triangle[]>(maxTriangles);
+			trianglePool = trianglePoolStore.get();
 			gosASSERT(trianglePool != NULL);
 			
 			nextTriangle = trianglePool;
@@ -1446,6 +1476,7 @@ class TG_ShadowPool
 {
 	protected:
 		TG_ShadowVertexTemp 	*tVertexPool;
+		std::unique_ptr<TG_ShadowVertexTemp[]>	tVertexPoolStore;	// owns the pool; tVertexPool is a view of it
 		TG_ShadowVertexTemp 	*nextVertex;
 
 		DWORD					totalVertices;
@@ -1493,14 +1524,15 @@ class TG_ShadowPool
 		
 		void destroy (void)
 		{
-			TG_Shape::tglHeap->Free(tVertexPool);
+			tVertexPoolStore.reset();
 			tVertexPool = nextVertex = NULL;
 			totalVertices = numVertices = 0;
 		}
 		
 		void init (DWORD maxVertices)
 		{
-			tVertexPool = (TG_ShadowVertexTempPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShadowVertexTemp) * maxVertices);
+			tVertexPoolStore = std::make_unique_for_overwrite<TG_ShadowVertexTemp[]>(maxVertices);
+			tVertexPool = tVertexPoolStore.get();
 			gosASSERT(tVertexPool != NULL);
 			
 			nextVertex = tVertexPool;
@@ -1535,6 +1567,7 @@ class TG_DWORDPool
 {
 	protected:
 		DWORD 	*triPool;
+		std::unique_ptr<DWORD[]>	triPoolStore;	// owns the pool; triPool is a view of it
 		DWORD	*nextTri;
 
 		DWORD	totalTriangles;
@@ -1582,14 +1615,15 @@ class TG_DWORDPool
 		
 		void destroy (void)
 		{
-			TG_Shape::tglHeap->Free(triPool);
+			triPoolStore.reset();
 			triPool = nextTri = NULL;
 			totalTriangles = numTriangles = 0;
 		}
 		
 		void init (DWORD maxTriangles)
 		{
-			triPool = (DWORD *)TG_Shape::tglHeap->Malloc(sizeof(DWORD) * maxTriangles);
+			triPoolStore = std::make_unique_for_overwrite<DWORD[]>(maxTriangles);
+			triPool = triPoolStore.get();
 			gosASSERT(triPool != NULL);
 			
 			nextTri = triPool;

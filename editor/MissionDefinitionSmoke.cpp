@@ -70,8 +70,8 @@ bool EditorInterface::runDefinitionSmoke()
         && replaceValue(authored, "Cameras", "NewScale", "0.375")
         && replaceValue(authored, "Cameras", "ZoomMax", "1.25");
     if (!ok || !writeFixture(fit, authored) || !EditorData::initTerrainFromPCV(pak)) return false;
-    auto getUnit = [] { return *EditorObjectMgr::instance()->getUnits().Begin(); };
-    auto getObjective = [] { return *EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().Begin(); };
+    auto getUnit = [] { return EditorObjectMgr::instance()->getUnits().front(); };
+    auto getObjective = [] { return *EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().entries.begin(); };
     const auto storedPart = getUnit()->partDefinition();
     const auto storedModel = getObjective()->ModelDefinition();
     ok = storedPart && storedPart->controlDataType == 7 && storedPart->objectProfile == "Authored_Profile"
@@ -126,13 +126,13 @@ bool EditorInterface::runDefinitionSmoke()
     };
     NavMarker* marker = nullptr;
     const auto buildings = EditorObjectMgr::instance()->getBuildings();
-    for (auto it = buildings.Begin(); !it.IsDone() && !marker; it++) marker = dynamic_cast<NavMarker*>(*it);
+    for (auto it = buildings.begin(); it != buildings.end() && !marker; it++) marker = dynamic_cast<NavMarker*>(*it);
     ok = verifyTransform(marker, [marker](FitIniFile& file) { return marker->save(&file, 0); },
         "NavMarker0", "xPos", "yPos") && ok;
     CSpecificStructureObjectiveCondition* targetCondition = nullptr;
     auto& objectives = EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef();
-    for (auto objective = objectives.Begin(); !objective.IsDone() && !targetCondition; objective++)
-        for (auto condition = (*objective)->Begin(); !condition.IsDone() && !targetCondition; condition++)
+    for (auto objective = objectives.entries.begin(); objective != objectives.entries.end() && !targetCondition; objective++)
+        for (auto condition = (*objective)->m_conditions.entries.begin(); condition != (*objective)->m_conditions.entries.end() && !targetCondition; condition++)
             targetCondition = dynamic_cast<CSpecificStructureObjectiveCondition*>(*condition);
     ok = verifyTransform(targetCondition ? targetCondition->BuildingPtr() : nullptr,
         [targetCondition](FitIniFile& file) { file.writeBlock("Reference"); return targetCondition->Save(&file); },
@@ -147,7 +147,7 @@ bool EditorInterface::runDefinitionSmoke()
         && EditorData::initTerrainFromPCV("terrain_gen_out/ew_moved.pak");
     bool foundMovedMarker = false;
     const auto loadedBuildings = EditorObjectMgr::instance()->getBuildings();
-    for (auto it = loadedBuildings.Begin(); !it.IsDone(); it++)
+    for (auto it = loadedBuildings.begin(); it != loadedBuildings.end(); it++)
         if (dynamic_cast<NavMarker*>(*it) && (*it)->getPosition().x == authoredMarkerPosition.x
             && (*it)->getPosition().y == authoredMarkerPosition.y) foundMovedMarker = true;
     markerReloaded = markerReloaded && foundMovedMarker;
@@ -173,7 +173,7 @@ bool EditorInterface::runDefinitionSmoke()
     fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=catalog_command_undo_redo_reload ok=%d\n", ok);
 
     // Oversized fields are ignored without discarding the rest of the mission.
-    const auto expectedObjectives = EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().Count();
+    const auto expectedObjectives = EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().entries.size();
     for (const char* field : {"Title", "Description", "ActivateFlagID", "ResetStatusFlagID", "ObjectiveModel"})
     {
         std::string malformed = original;
@@ -188,10 +188,10 @@ bool EditorInterface::runDefinitionSmoke()
             : std::string_view(field) == "ResetStatusFlagID" ? objective->ResetStatusFlagID()
             : objective->ModelDefinition().name;
         const bool rejected = value.empty();
-        auto after = EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().Begin();
+        auto after = EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().entries.begin();
         after++;
-        const bool following = !after.IsDone() && (*after)->Title() == "after_objective"
-            && getUnit() && EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().Count() == expectedObjectives;
+        const bool following = after != EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().entries.end() && (*after)->Title() == "after_objective"
+            && getUnit() && EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().entries.size() == expectedObjectives;
         ok = continued && rejected && following && ok;
         fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=oversized_text field=%s rejected=%d continued=%d ok=%d\n",
             field, rejected, continued && following, ok);
@@ -222,9 +222,9 @@ bool EditorInterface::runDefinitionSmoke()
             : std::string_view(field) == "Blurb2" ? "keep_blurb2"
             : std::string_view(field) == "AVIFilename" ? "keep_video" : "keep_url";
         const bool rejected = value == expected;
-        auto after = EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().Begin();
+        auto after = EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().entries.begin();
         after++;
-        const bool following = !after.IsDone() && (*after)->Title() == "after_objective";
+        const bool following = after != EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().entries.end() && (*after)->Title() == "after_objective";
         ok = continued && rejected && following && getUnit() && ok;
         fprintf(stderr, "[EDITOR_DEFINITIONS v1] stage=oversized_text field=%s rejected=%d continued=%d ok=%d\n",
             field, rejected, continued && following, ok);

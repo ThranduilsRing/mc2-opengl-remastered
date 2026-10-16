@@ -29,6 +29,9 @@
 #include <vector>
 #include "../GameOS/gameos/utils/mc2log.h"
 
+bool objectiveObservationEnabled();
+void objectiveObservationWav(const char*, const char*, int, const char*, bool);
+
 //---------------------------------------------------------------------------
 // static globals
 bool useSound = TRUE;
@@ -824,22 +827,20 @@ long SoundSystem::playDigitalMusic (long musicId)
 //---------------------------------------------------------------------------
 long SoundSystem::playDigitalStream (const char *streamName)
 {
-	//-------------------------------------------------------------------
-	// Make sure we have a real music filename.
+	const char* accepted = "disabled";
+	std::string resourcePath;
+	bool resourceAccepted = false;
+	long result = NO_ERR;
 	if (useSound)
 	{
 		char actualName[1024];
 		_splitpath(streamName,nullptr,nullptr,actualName,nullptr);
 
-		//---------------------------------------------------------------------------------------------
-		// Just start tune.  No fade necessary.  Set fadeTime to 0.0 to tell update to leave it alone.
-		// Use Stream1 by default.
 		FullPathFileName digitalStream;
 		digitalStream.init(soundPath,actualName,".wav");
+		if (objectiveObservationEnabled()) { resourcePath = digitalStream; }
 
-		//---------------------------------------------
-		// Gotta check if music file is there
-		// new sound system can't handle it if its not.
+		accepted = "missing";
 		if (fileExists(digitalStream))
 		{
 			if (!stream3Active)
@@ -857,15 +858,19 @@ long SoundSystem::playDigitalStream (const char *streamName)
 				gosAudio_AssignResourceToChannel( STREAM3CHANNEL, stream3Handle );
 				gosAudio_SetChannelSlider( STREAM3CHANNEL,gosAudio_Volume, digitalMasterVolume * bettyVolume );
 				gosAudio_SetChannelSlider( STREAM3CHANNEL, gosAudio_Panning,0.0f );
+				accepted = stream3Handle ? "resource_created_channel_assigned" : "resource_rejected";
+				resourceAccepted = stream3Handle != nullptr;
 			}
 			else
 			{
-				return(-1);
+				accepted = "busy";
+				result = -1;
 			}
 		}
 	}
 
-	return(NO_ERR);
+	objectiveObservationWav(streamName, resourcePath.c_str(), STREAM3CHANNEL, accepted, resourceAccepted);
+	return result;
 }
 
 //---------------------------------------------------------------------------

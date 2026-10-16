@@ -96,15 +96,19 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 	numTypeTriangles = atol(faceCount);
 	gosASSERT(numTypeTriangles != 0);
 
-	listOfTypeVertices = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeVertex) * numTypeVertices);
-	gosASSERT(listOfTypeVertices != nullptr);
+	if (numTypeVertices > kMaxShapeVertices || numTypeTriangles > kMaxShapeTriangles)
+	{
+		MC2_LOG(Io, Error, "[SHAPE_COUNT_BAD] file={} vertices={} triangles={} (over {} / {}; node skipped)", fileName, numTypeVertices, numTypeTriangles, kMaxShapeVertices, kMaxShapeTriangles);
+		init();
+		return (-1);
+	}
+
+	typeVertexStore.resize(numTypeVertices);
+	listOfTypeVertices = typeVertexStore.data();
 
 	memset(listOfTypeVertices,0xff,sizeof(TG_TypeVertex) * numTypeVertices);
 
-	int *vertexNormalCount = (int*)TG_Shape::tglHeap->Malloc(sizeof(int) * numTypeVertices);
-	gosASSERT(vertexNormalCount != nullptr);
-
-	memset(vertexNormalCount,0,sizeof(int) * numTypeVertices);
+	std::vector<int> vertexNormalCount(numTypeVertices, 0);
 
 	for (int i=0;i<numTypeVertices;i++)
 	{
@@ -146,8 +150,8 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 
 	}
 
-	listOfTypeTriangles = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeTriangle) * numTypeTriangles);
-	gosASSERT(listOfTypeTriangles != nullptr);
+	typeTriangleStore.resize(numTypeTriangles);
+	listOfTypeTriangles = typeTriangleStore.data();
 
 	memset(listOfTypeTriangles,0xff,sizeof(TG_TypeTriangle) * numTypeTriangles);
 
@@ -578,7 +582,6 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		}
 	}
 
-	TG_Shape::tglHeap->Free(vertexNormalCount);
 	return(0);
 }	
 
@@ -598,8 +601,9 @@ int TG_TypeShape::LoadTGShapeFromASE (const char *fileName)
 	long aseFileSize = gos_FileSize(fileName);
 	gosASSERT(aseFileSize > 0);
 
-	BYTE *aseContents = (BYTE *)TG_Shape::tglHeap->Malloc(aseFileSize);
-	gosASSERT(aseContents != nullptr);
+	// One zero byte past the file: the header and texture searches below run string functions over the contents.
+	std::vector<BYTE> aseStore(static_cast<size_t>(aseFileSize) + 1, 0);
+	BYTE *aseContents = aseStore.data();
 
 	HGOSFILE aseFile;
 	gos_OpenFile(&aseFile,fileName,READONLY);
@@ -660,10 +664,8 @@ int TG_TypeShape::LoadTGShapeFromASE (const char *fileName)
 		aseBuffer = (unsigned char *)textureData;
 	}
 
-	listOfTextures = (TG_TinyTexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TinyTexture) * numTextures);
-	gosASSERT(listOfTextures != nullptr);
-
-	memset(listOfTextures,0x0,sizeof(TG_TinyTexture) * numTextures);
+	tinyTextureStore.assign(numTextures, TG_TinyTexture{});
+	listOfTextures = tinyTextureStore.data();
 
 	for (long i=0;i<numTextures;i++)
 	{
@@ -680,9 +682,6 @@ int TG_TypeShape::LoadTGShapeFromASE (const char *fileName)
 	// Calling from top will load just first GEOMOBJECT!
 	long parseResult = ParseASEFile(aseContents,fileName);
 
-	TG_Shape::tglHeap->Free(aseContents);
-	aseContents = nullptr;
-
 	return(parseResult);
 }	
 
@@ -693,9 +692,9 @@ void TG_TypeShape::CreateListOfTextures (TG_TexturePtr list, DWORD numTxms)
 	numTextures = numTxms;
 	if (numTextures)
 	{
-		listOfTextures = (TG_TinyTexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TinyTexture) * numTextures);
-		gosASSERT(listOfTextures != nullptr);
-   
+		tinyTextureStore.resize(numTextures);
+		listOfTextures = tinyTextureStore.data();
+
 	   for (long i=0;i<numTextures;i++)
 	   {
 		   //-------------------------------------------------------------------------------
@@ -742,15 +741,13 @@ long TG_TypeShape::SetTextureAlpha (DWORD textureNum, bool alphaFlag)
 
 //-------------------------------------------------------------------------------
 // Track D — populate this shape from a format-agnostic importer (FBX/GLB).
-// Caller pre-allocates vertexBuf/triangleBuf from TG_Shape::tglHeap and transfers
-// ownership; we just store pointers + counts and copy node identity. The shape's
+// The caller moves in its vertex and triangle vectors; the shape owns them and copies node identity. The shape's
 // init() defaults (alphaTestOn=false, filterOn=true, hot* sentinels) remain
 // in place; callers that need different values use the existing setters.
 void TG_TypeShape::InitFromImportedMesh(const char* nodeIdIn, const char* parentIdIn,
                                         const Stuff::Point3D& center,
-                                        DWORD numVerts, DWORD numTris,
-                                        TG_TypeVertexPtr vertexBuf,
-                                        TG_TypeTrianglePtr triangleBuf)
+                                        std::vector<TG_TypeVertex>&& vertices,
+                                        std::vector<TG_TypeTriangle>&& triangles)
 {
 	// Node identity. VALIDATE-SCENE-ASSIMP-NAME-LEN-1: GLB node names may exceed
 	// the fixed TG_NODE_ID field; strncpy truncates safely. Log original->truncated
@@ -773,9 +770,11 @@ void TG_TypeShape::InitFromImportedMesh(const char* nodeIdIn, const char* parent
 	nodeCenter = center;
 	relativeNodeCenter = center;
 
-	// Take ownership of caller-allocated geometry buffers.
-	numTypeVertices    = numVerts;
-	numTypeTriangles   = numTris;
-	listOfTypeVertices  = vertexBuf;
-	listOfTypeTriangles = triangleBuf;
+	// Take ownership of the caller's geometry; the lists stay views of the stores.
+	typeVertexStore    = std::move(vertices);
+	typeTriangleStore  = std::move(triangles);
+	numTypeVertices    = static_cast<DWORD>(typeVertexStore.size());
+	numTypeTriangles   = static_cast<DWORD>(typeTriangleStore.size());
+	listOfTypeVertices  = typeVertexStore.data();
+	listOfTypeTriangles = typeTriangleStore.data();
 }

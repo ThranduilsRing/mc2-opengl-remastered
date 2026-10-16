@@ -19,6 +19,8 @@
 #endif
 
 #include<cstddef>
+#include<memory>
+#include<string>
 #include<stdint.h>
 
 //***************************************************************************
@@ -164,13 +166,14 @@ class ABLFile {
 
     public:
 
-		char*		fileName;
+		std::string fileName;
 		void*		file;
 
 		static long (*createCB) (void** file, const char* fName);
 		static long (*openCB) (void** file, const char* fName);
 		static long (*closeCB) (void** file);
 		static bool (*eofCB) (void* file);
+		static long (*remainingCB) (void* file);
 		static long (*readCB) (void* file, unsigned char* buffer, long length);
 		static int32_t (*readIntCB) (void* file);
 		static long (*readLongCB) (void* file);
@@ -194,13 +197,18 @@ class ABLFile {
 			init();
 		}
 
-		void destroy (void);
+		void destroy (void) noexcept;
 
-		~ABLFile (void) {
+		~ABLFile (void) noexcept {
 			destroy();
 		}
 		
+		ABLFile(const ABLFile&) = delete;
+		ABLFile& operator=(const ABLFile&) = delete;
+
+		// Adopts the opaque callback handle; close releases it before the name.
 		void set (void* fPtr) {
+			close();
 			file = fPtr;
 		}
 
@@ -222,7 +230,7 @@ class ABLFile {
 
 		long readLong (void);
 
-		long readString (unsigned char* buffer);
+		long readString (unsigned char* buffer, long capacity);
 
 		long readLineEx (unsigned char* buffer, long maxLength);
 
@@ -239,13 +247,22 @@ class ABLFile {
 
 //***************************************************************************
 
+// The preprocessing call owns every include; the scanner globals only borrow them.
+class ABLSourceFiles {
+public:
+	std::unique_ptr<ABLFile> files[MAX_INCLUDE_DEPTH];
+	ABLSourceFiles();
+	~ABLSourceFiles() noexcept;
+	ABLSourceFiles(const ABLSourceFiles&) = delete;
+	ABLSourceFiles& operator=(const ABLSourceFiles&) = delete;
+};
+
 //----------
 // FUNCTIONS
 
 inline CharCodeType calcCharCode (long ch);
 long isReservedWord (void);
-void initScanner (char* fileName);
-void quitScanner (void);
+
 void skipComment (void);
 void skipBlanks (void);
 void getChar(void);

@@ -16,10 +16,9 @@
 #include "UserTextEdit.h"
 
 #include "assert.h"
-#include "../MCLib/Utilities.h" /*for EditorSafeLoadString*/
 #include "TextMessageDlg.h"
 #include "ResourceStringSelectionDlg.h"
-#include "EditorResourceFallback.h"
+#include "MC2Strings.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -65,15 +64,9 @@ END_MESSAGE_MAP()
 // CUserTextEdit message handlers
 
 static BOOL CSLoadString(int resourceID, CString &targetStr) {
-	char szTmp[16384/*max string length*/];
-	EditorSafeLoadString( resourceID, szTmp, 16384/*max string length*/ );
-	targetStr = szTmp;
-	CString tmpStr;
-	tmpStr.Format("mc2res.dll:%d Not defined", resourceID);
-	if (0 == strcmp(tmpStr.GetBuffer(0), szTmp)) {
-		return (0);
-	}
-	return (!0);
+	const char* text = MC2Strings::GetByLegacyId(resourceID);
+	targetStr = text ? text : "";
+	return text && text[0];
 }
 
 void CUserTextEdit::UpdateTextDisplay() {
@@ -83,6 +76,7 @@ void CUserTextEdit::UpdateTextDisplay() {
 		int ret = CSLoadString(m_ResourceStringID, m_Edit);
 		if (0 == ret) {
 			m_Edit = _TEXT("");
+			m_ResourceStringIDEdit += _TEXT(" (missing ID)");
 		}
 	} else {
 		m_ResourceStringIDEdit = _TEXT("");

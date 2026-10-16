@@ -7,6 +7,7 @@
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #include <optional>
+#include <format>
 
 
 void LogisticsData::removeMechsInForceGroup()
@@ -451,11 +452,15 @@ long LogisticsData::loadMech( FitIniFile& file, int& count )
 void	LogisticsData::setMissionCompleted( )
 {
 #ifndef VIEWER
+	const auto observation = objectiveObservation();
+	const int beforeMission = observation ? getCBills() : 0;
 	missionInfo->setMissionComplete();
+	if (observation) {
+		observation->Emit("resolve", 0, std::format("{{\"scope\":\"cbills\",\"stage\":\"mission\",\"old\":{},\"new\":{}}}", beforeMission, getCBills()));
+	}
 
 	rpJustAdded = 0;
 
-	// first set all pilots as not just dead
 	for ( auto iter = pilots.begin(); iter != pilots.end(); ++iter )
 		{
 			(*iter).setUsed( 0 );
@@ -465,11 +470,19 @@ void	LogisticsData::setMissionCompleted( )
 	{
 		if ( pObjective->Status(Team::home->objectives) == OS_SUCCESSFUL )
 		{
+			const int beforeObjective = observation ? getCBills() : 0;
 			addCBills( pObjective->ResourcePoints() );
+			if (observation) {
+				pObjective->ObserveCBills(beforeObjective, getCBills());
+			}
 		}
 	}
 
-	// need to go find out which pilots died.
+	if (observation) {
+		observation->settled = true;
+		if (missionInfo->campaignOver()) { observation->Finish(); }
+	}
+	// Recover surviving pilots and their vehicles for the next mission.
 	Team* pTeam = Team::home;
 
 	int ForceGroupCount = 1;
@@ -480,11 +493,7 @@ void	LogisticsData::setMissionCompleted( )
 		{
 			Mover* pMover = (Mover*)pTeam->getMover( i );
 
-			// LOGISTICS-PILOT-SKIP-UNIT-LOSS-RECON-1 (T4): per-unit carry-over decision.
-			// Emits, for every roster unit at mission completion, the exact reason it is
-			// re-added or dropped — so we can see which check a vanished TM vehicle fails
-			// (on_gui / type_class / move_type AIR). Gate MC2_LOG_LOGISTICS_FLOW +
-			// MC2_DIAG_TAGS=LOGISTICS; read via get_diagnostic_events("LOGISTICS"). No behavior change.
+			// Carry-over diagnostics distinguish filtering from inventory recovery failure.
 			{
 				static const bool s_logiFlowTrace = mc2::gate::get<"MC2_LOG_LOGISTICS_FLOW">();
 				if ( s_logiFlowTrace && pMover && mc2_diag::tagEnabled("LOGISTICS") )
@@ -505,7 +514,6 @@ void	LogisticsData::setMissionCompleted( )
 				}
 			}
 
-			//Must check if we ever linked up with the mech!!
 			if ( pMover->isOnGUI() &&
 				 (pMover->getObjectType()->getObjectTypeClass() == BATTLEMECH_TYPE) && 
 				 (pMover->getCommanderId() == Commander::home->getId()) &&
@@ -517,10 +525,6 @@ void	LogisticsData::setMissionCompleted( )
 				((Mech3DAppearance*)pMover->getAppearance())->getPaintScheme( base, highlight1, highlight2 );
 				LogisticsPilot* pPilot = getPilot( pMover->getPilot()->getName() );
 
-				// LOGISTICS T4b: re-add resolution outcome for a filter-passing mech.
-				// Shows whether the inventory mech (pMech) and the pilot round-trip
-				// (pPilot) survive — a pilotless re-add or a getMech miss is how a
-				// surviving Mad Dog still vanishes. Gate MC2_LOG_LOGISTICS_FLOW.
 				{
 					static const bool s_lfResolve = mc2::gate::get<"MC2_LOG_LOGISTICS_FLOW">();
 					if ( s_lfResolve && mc2_diag::tagEnabled("LOGISTICS") )
@@ -556,21 +560,14 @@ void	LogisticsData::setMissionCompleted( )
 				{
 					if ( !pMover->isDestroyed() && !pMover->isDisabled() )
 					{
-						// find the variant with this mech's info
 						const char* vname = ((BattleMech*)pMover)->variantName;
 						LogisticsVariant* pVariant = getVariant( vname );
 						if ( !pVariant )
 						{
-							// getVariant failed: variantName not in the loaded variants list.
-							// This happens for mod-purchased mechs whose variant was added at
-							// runtime (not in the campaign's base variant CSV).  Fall back to
-							// the pre-removal snapshot captured by removeMechsInForceGroup().
-							// The pVariant pointer in the snapshot is still valid -- LogisticsVariant
-							// objects are owned by the variants list, not by LogisticsMech.
+							// Runtime variants can be absent from the base CSVs. Deployed snapshots
+							// retain variant owners after their inventory mechs are removed.
 							for ( const DeployedMechSnapshot& snap : deployedMechSnapshot )
 							{
-								// Variant names match ignoring ASCII case, like every other variant lookup;
-								// BattleMech::variantName is set from LogisticsVariant::getName() at deploy.
 								if ( mc2::str::iequals( snap.variantName, mc2::str::from_c( vname ) ) && snap.pVariant )
 								{
 									pVariant = snap.pVariant;
@@ -579,12 +576,10 @@ void	LogisticsData::setMissionCompleted( )
 							}
 							if ( !pVariant )
 							{
-								// Still NULL: genuine missing variant (corrupt save / unknown mech).
-								// Log and skip rather than Assert no-op (Assert is a no-op in RelWithDebInfo).
+								// A missing variant cannot be restored to inventory.
 								mc2::fmt::print_out( "[LOGISTICS] setMissionCompleted: no variant for surviving mech '{}' -- mech lost\n",
 								        mc2::fmt::safe(vname) );
 								fflush( stdout );
-								// LOGISTICS T4c: the actual deletion — variant unresolved, mech dropped.
 								if ( mc2::gate::get<"MC2_LOG_LOGISTICS_FLOW">() && mc2_diag::tagEnabled("LOGISTICS") )
 								{
 									char _ml_vn[80]; const char* _ml_s = vname ? vname : "";
@@ -608,8 +603,6 @@ void	LogisticsData::setMissionCompleted( )
   				if ( pPilot )
 				{
 					pPilot->update( pMover->getPilot() );
-//					if ( pMover->isDestroyed() || pMover->isDisabled() )
-//						pPilot->setUsed( false );
 
 				}
 			}

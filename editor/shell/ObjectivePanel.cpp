@@ -1,4 +1,5 @@
 #include "EntityPanels.h"
+#include "ObjectivePresentation.h"
 #include <misc/cpp/imgui_stdlib.h>
 #include <format>
 #include <algorithm>
@@ -23,11 +24,33 @@ void EntityPanels::objectives()
             }
         ImGui::EndCombo();
     }
+    const auto flags = document_.teamFlags(objectiveTeam_);
+    if (ImGui::TreeNode("Team BooleanFlags (read-only)")) {
+        ImGui::TextWrapped("Missing lookups read false. SetBooleanFlag updates the first case-insensitive match or creates a runtime flag.");
+        for (std::uint32_t team = 0; team < 8; ++team) {
+            const auto table = document_.teamFlags(team);
+            if (!table.section && team != objectiveTeam_) continue;
+            ImGui::TextWrapped("Team %u: first absent/unreadable BooleanString%zu ends loading.", team, table.stop);
+            if (!table.section) ImGui::TextUnformatted("No flag table initialized.");
+            for (const auto& flag : table.rows) {
+                ImGui::TextWrapped("BooleanString%zu: %s; value: %s; %s", flag.index,
+                    flag.id ? flag.id->c_str() : "<unreadable/oversized>", flag.value ? "true" : "false", flag.status.data());
+                if (flag.duplicateOf) ImGui::TextWrapped("Duplicate ID of BooleanString%zu (first initialized case-insensitive match wins).", *flag.duplicateOf);
+            }
+            if (table.section) {
+                const auto span = document_.section(*table.section)->syntax;
+                const auto& source = document_.syntax().originalBytes;
+                ImGui::TextUnformatted(source.data() + span.begin, source.data() + span.end);
+            }
+        }
+        ImGui::TreePop();
+    }
     if (button("objective.add", "Add objective")) {
         const auto result = history_.addObjective(objectiveTeam_);
         if (result) { objective_ = *result; status_ = "Applied"; }
         else status_ = result.error().reason;
     }
+    objectiveTemplates();
     const auto* selected = document_.objective(objective_);
     if (!selected) {
         for (const auto& item : document_.objectives()) if (item.team == objectiveTeam_) {
@@ -71,6 +94,9 @@ void EntityPanels::objectives()
     if (button("objective.entries", showObjectiveEntries_ ? "Show objective fields and references" : "Edit condition/action entries"))
         showObjectiveEntries_ = !showObjectiveEntries_;
     if (!showObjectiveEntries_) {
+        const auto revision = document_.revision();
+        objectivePresentation();
+        if (revision != document_.revision()) { ImGui::PopID(); return; }
         const auto entityName = [&](const Entity& entity) {
             std::string name = entity.csvFile.value_or(entity.objectProfile.value_or("Object " + std::to_string(entity.objectNumber)));
             if (catalog_) for (const auto& item : catalog_->entries())
@@ -135,7 +161,7 @@ void EntityPanels::objectives()
         bool changed{};
         if (auto* value = std::get_if<std::string>(&objectiveDraft_)) {
             if (spec.key == "Title" || spec.key == "Description")
-                changed = ImGui::InputTextMultiline("Value", value, ImVec2(-1, 96), ImGuiInputTextFlags_CtrlEnterForNewLine);
+                changed = textControl("Value", *value);
             else changed = ImGui::InputText("Value", value);
         }
         else if (auto* value = std::get_if<bool>(&objectiveDraft_)) changed = ImGui::Checkbox("Value", value);
@@ -193,18 +219,66 @@ void EntityPanels::objectives()
                     ImGui::EndCombo();
                 }
             }
-            if (button((key + ".add").c_str(), i % 2 == 0 ? (conditionCreation_ == 0 ? "Add BooleanFlagIsSet" : "Add selected condition") : "Add SetBooleanFlag")) {
-                const auto result = i % 2 == 0 && conditionCreation_ != 0 ?
+            auto& draft = actionCreation_[i / 2];
+            if (i % 2 != 0 && button((key + ".creation").c_str(), "New action payload"))
+                actionCreationOpen_[i / 2] = !actionCreationOpen_[i / 2];
+            if (i % 2 != 0 && actionCreationOpen_[i / 2]) {
+                const auto schema = actionSchema(true);
+                auto spec = std::ranges::find(schema, draft.species, &ActionSpec::species);
+                const bool speciesOpen = ImGui::BeginCombo("Action species", spec->name.data(), ImGuiComboFlags_HeightLargest);
+                record(key + ".species", speciesOpen);
+                if (speciesOpen) {
+                    for (const auto& candidate : schema)
+                        if (choice(key + ".species." + std::string(candidate.name), candidate.name.data(), draft.species == candidate.species)) {
+                            draft = ActionDraft{candidate.species};
+                        }
+                    ImGui::EndCombo();
+                    spec = std::ranges::find(schema, draft.species, &ActionSpec::species);
+                }
+                if (draft.payload.empty()) for (const auto& field : spec->fields) {
+                    if (field.type == 3) draft.payload.emplace_back(std::string{});
+                    else if (field.type == 2) draft.payload.emplace_back(false);
+                    else draft.payload.emplace_back(std::int64_t{});
+                }
+                if (draft.species == ActionSpecies::flag && ImGui::Checkbox("New flag uses FlagIndex", &draft.flagIndex))
+                    draft.payload[0] = draft.flagIndex ? Scalar{std::int64_t{}} : Scalar{std::string{}};
+                for (std::size_t f = 0; f < spec->fields.size(); ++f) {
+                    auto name = std::string(spec->fields[f].key);
+                    if (draft.flagIndex && f == 0) name = "FlagIndex";
+                    bool changed{};
+                    if (auto* value = std::get_if<std::string>(&draft.payload[f])) changed = textControl(("New " + name).c_str(), *value, 55);
+                    else if (auto* value = std::get_if<bool>(&draft.payload[f])) changed = ImGui::Checkbox(("New " + name).c_str(), value);
+                    else changed = ImGui::InputScalar(("New " + name).c_str(), ImGuiDataType_S64, &std::get<std::int64_t>(draft.payload[f]));
+                    record(key + ".new." + name, changed || ImGui::IsItemActivated());
+                    if (draft.species == ActionSpecies::resourceText) resourceDraft(key + ".resource", std::get<std::int64_t>(draft.payload[f]));
+                }
+            }
+            const auto validation = i % 2 == 0 ? std::expected<std::string, LoadError>{std::string{}} : encodeActionDraft(draft);
+            if (i % 2 != 0 && !actionCreationOpen_[i / 2]) ImGui::SameLine();
+            ImGui::BeginDisabled(!validation);
+            if (button((key + ".add").c_str(), i % 2 == 0 ? (conditionCreation_ == 0 ? "Add BooleanFlagIsSet" : "Add selected condition") : "Add selected action")) {
+                const auto result = i % 2 != 0 ? history_.addObjectiveAction(objective_, i, draft) : conditionCreation_ != 0 ?
                     history_.addObjectiveCondition(objective_, i, conditionSchema()[conditionCreation_ - 1].species, conditionTarget_) :
                     history_.addObjectiveEntry(objective_, i);
-                if (result) { objectiveEntry_ = *result; status_ = "Applied"; } else status_ = result.error().reason;
-                ImGui::PopID(); ImGui::PopID(); return;
+                if (result) { objectiveEntry_ = *result; status_ = "Applied"; actionCreationOpen_[i / 2] = false; }
+                else status_ = result.error().reason;
+                ImGui::EndDisabled(); ImGui::PopID(); ImGui::PopID(); return;
+            }
+            ImGui::EndDisabled();
+            if (!validation) {
+                ImGui::TextWrapped("%s", validation.error().reason.c_str());
+                record(key + ".refusal." + validation.error().reason);
             }
             for (std::size_t j = 0; j < selected->entries[i].size(); ++j) {
                 const auto& entry = selected->entries[i][j];
-                const auto row = document_.section(entry.section)->name;
+                const auto row = document_.section(entry.section)->name + (entry.policy.empty() ? "" : " [" + std::string(entry.policy) + "]");
                 if (choice(key + ".select." + std::to_string(j), row.c_str(), objectiveEntry_ == entry.section)) {
                     objectiveEntry_ = entry.section; entryRevision_ = ~std::uint64_t{};
+                }
+                if (entry.flag && entry.flag->id) {
+                    const auto* resolved = flags.resolve(*entry.flag->id);
+                    if (resolved) ImGui::TextWrapped("Resolves to Team%uBooleanFlags / BooleanString%zu: %s (initial value %s)", selected->team, resolved->index, resolved->id->c_str(), resolved->value ? "true" : "false");
+                    else ImGui::TextUnformatted("not initialized: reads false");
                 }
                 if (objectiveEntry_ != entry.section) continue;
                 if (!entry.policy.empty()) ImGui::TextWrapped("%s", entry.policy.data());
@@ -237,10 +311,17 @@ void EntityPanels::objectives()
                     if (flagUseIndex_) record(key + ".index", ImGui::InputScalar("FlagIndex", ImGuiDataType_S64, &flagIndexDraft_));
                     else record(key + ".id", ImGui::InputTextMultiline("FlagID", &flagDraft_, ImVec2(-1, 55), ImGuiInputTextFlags_CtrlEnterForNewLine));
                     record(key + ".value", ImGui::Checkbox("Flag Value", &flagValueDraft_));
+                    const ObjectiveFieldSpec field = flagUseIndex_ ? ObjectiveFieldSpec{"FlagIndex", "ul", 0, -2147483648.0, 2147483647.0} : ObjectiveFieldSpec{"FlagID", "st", 3};
+                    const Scalar value = flagUseIndex_ ? Scalar{flagIndexDraft_} : Scalar{flagDraft_};
+                    auto validation = validateObjectiveScalar(field, value);
+                    if (validation) validation = validateObjectiveBlock("[Flag]\r\n" + std::string(field.prefix) + " " + std::string(field.key) + " = " + objectivePayloadWire(field, value));
+                    ImGui::BeginDisabled(!validation);
                     if (button((key + ".apply").c_str(), "Apply flag payload")) {
                         report(history_.setObjectiveFlag(entry.section, flagUseIndex_ ? std::nullopt : std::optional{flagDraft_}, flagIndexDraft_, flagValueDraft_));
-                        ImGui::EndDisabled(); ImGui::PopID(); ImGui::PopID(); return;
+                        ImGui::EndDisabled(); ImGui::EndDisabled(); ImGui::PopID(); ImGui::PopID(); return;
                     }
+                    ImGui::EndDisabled();
+                    if (!validation) ImGui::TextWrapped("%s", validation.error().reason.c_str());
                     ImGui::EndDisabled();
                 } else if (entry.policy.empty()) {
                     const auto fields = objectivePayloadSchema(entry);
@@ -256,11 +337,17 @@ void EntityPanels::objectives()
                             if (!source->warning.empty()) ImGui::TextWrapped("%s: %s; authored bytes preserved", field.key.data(), source->warning.data());
                             if (field.type == 0) record(key + "." + std::string(field.key), ImGui::InputScalar(field.key.data(), ImGuiDataType_S64, &std::get<std::int64_t>(payloadDraft_[f])));
                             else if (field.type == 1) record(key + "." + std::string(field.key), ImGui::InputScalar(field.key.data(), ImGuiDataType_Double, &std::get<double>(payloadDraft_[f]), nullptr, nullptr, "%.9g"));
-                            else record(key + "." + std::string(field.key), ImGui::InputTextMultiline(field.key.data(), &std::get<std::string>(payloadDraft_[f]), ImVec2(-1, 96), ImGuiInputTextFlags_CtrlEnterForNewLine));
+                            else record(key + "." + std::string(field.key), textControl(field.key.data(), std::get<std::string>(payloadDraft_[f])));
+                            if (field.key == "ResourceStringID") resourceDraft(key + ".resource", std::get<std::int64_t>(payloadDraft_[f]));
+                            auto validation = validateObjectiveScalar(field, payloadDraft_[f]);
+                            if (validation) validation = validateObjectiveBlock("[Payload]\r\n" + std::string(field.prefix) + " " + std::string(field.key) + " = " + objectivePayloadWire(field, payloadDraft_[f]));
+                            ImGui::BeginDisabled(!validation);
                             if (button((key + ".apply." + std::string(field.key)).c_str(), ("Apply " + std::string(field.key)).c_str())) {
                                 report(history_.setObjectivePayload(entry.section, field.key, payloadDraft_[f]));
-                                ImGui::PopID(); ImGui::PopID(); return;
+                                ImGui::EndDisabled(); ImGui::PopID(); ImGui::PopID(); return;
                             }
+                            ImGui::EndDisabled();
+                            if (!validation) ImGui::TextWrapped("%s", validation.error().reason.c_str());
                         }
                     } else if (entry.reference.kind != ReferenceKind::none) ImGui::TextUnformatted("Use the objective reference rows to resolve the target.");
                     else ImGui::TextUnformatted("Payload authoring for this species is deferred.");
@@ -292,7 +379,7 @@ void EntityPanels::objectives()
             }
             ImGui::PopID();
         }
-        ImGui::TextWrapped("Team BooleanFlags and saved runtime state are preserved. Quarantined or skipped entries can be deleted explicitly; individual editing and reordering are refused.");
+        ImGui::TextWrapped("Team BooleanFlags are read-only; saved runtime state is preserved. Quarantined or skipped entries can be deleted explicitly; individual editing and reordering are refused.");
     }
     ImGui::PopID();
 }

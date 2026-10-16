@@ -668,6 +668,40 @@ def crud_edit_fixture(original, operation):
     """Synthetic saves exercise the Python gate without invoking a native binary."""
     from editor.tests.objective_crud import blocks, NEW_FIELDS
     prefix, sections, ending = blocks(original)
+    if operation is None or operation.startswith("entry-"):
+        suffixes = ("Condition", "Action", "FailureCondition", "FailureAction")
+        owner = "Team0Objective1"
+        if operation is None:
+            for index, suffix in enumerate(suffixes):
+                key = "Num" + suffix + "s"
+                sections[owner] = re.sub(rb"(ul " + key.encode() + rb" = )\d+", rb"\g<1>2", sections[owner])
+                for name in list(sections):
+                    if re.fullmatch(owner + suffix + r"\d+", name):
+                        del sections[name]
+                species = "BooleanFlagIsSet" if index % 2 == 0 else "SetBooleanFlag"
+                for number, flag in enumerate(("first", "second")):
+                    sections[f"{owner}{suffix}{number}"] = (
+                        f'\r\nst {suffix}SpeciesString = "{species}"\r\nst FlagID = "e6c-{flag}"\r\nb Value = {"TRUE" if number else "FALSE"}\r\n').encode()
+        else:
+            _, index, action = operation.split("-")
+            suffix = suffixes[int(index)]
+            base = owner + suffix
+            count = 2
+            if action == "add":
+                count = 3
+                species = "BooleanFlagIsSet" if int(index) % 2 == 0 else "SetBooleanFlag"
+                sections[base + "2"] = f'\r\nst {suffix}SpeciesString = "{species}"\r\nst FlagID = ""\r\nb Value = TRUE\r\n'.encode()
+            elif action == "delete":
+                count = 1
+                sections[base + "0"] = sections.pop(base + "1")
+            elif action in ("up", "down"):
+                sections[base + "0"], sections[base + "1"] = sections[base + "1"], sections[base + "0"]
+            elif action == "flag":
+                sections[base + "0"] = sections[base + "0"].replace(b'e6c-first', f'e6c-edited-{index}'.encode()).replace(b'Value = FALSE', b'Value = TRUE')
+            else:
+                raise ValueError(operation)
+            sections[owner] = sections[owner].replace(f"Num{suffix}s = 2".encode(), f"Num{suffix}s = {count}".encode())
+        return prefix + b"".join(b"[" + name.encode() + b"]" + body for name, body in sections.items()) + ending
     count = int(re.search(rb"NumObjectives = (\d+)", sections["Team0Objectives"])[1])
     output = []
     copies = []
@@ -831,6 +865,53 @@ class ObjectiveCrudGradingTests(unittest.TestCase):
                 retained.rename(path)
 
 
+def objective_panel_fixture(original):
+    from editor.tests.objective_crud import blocks
+    from editor.tests.objective_census import ACTION_PAYLOADS
+    prefix, sections, ending = blocks(crud_edit_fixture(original, "objective-add"))
+    owner = "Team0Objective1"
+    for name in list(sections):
+        if re.fullmatch(owner + r"(?:Condition|Action|FailureAction)\d+", name):
+            del sections[name]
+    for key, count in (("NumConditions", 3), ("NumActions", 5), ("NumFailureActions", 5)):
+        sections[owner] = re.sub(rb"(ul " + key.encode() + rb" = )\d+", lambda m: m[1] + str(count).encode(), sections[owner])
+    fields = smoke.fit_fields(original)
+    x = fields["Part1/PositionX"][0].split(" ", 1)[1]
+    y = fields["Part1/PositionY"][0].split(" ", 1)[1]
+    for index in range(3):
+        sections[f"{owner}Condition{index}"] = (f'\r\nst ConditionSpeciesString = "DestroySpecificEnemyUnit"\r\nf PositionX = {x if index else "-1e30"}\r\nf PositionY = {y if index else "-1e30"}\r\n').encode()
+    for suffix in ("Action", "FailureAction"):
+        for index, (species, key) in enumerate(ACTION_PAYLOADS):
+            sections[f"{owner}{suffix}{index}"] = (f'\r\nst {suffix}SpeciesString = "{species}"\r\n' +
+                (f'ul {key} = 7\r\n' if key == "ResourceStringID" else f'st {key} = "original"\r\n')).encode()
+    for suffix in ("Condition", "FailureCondition"):
+        sections["Team0Objective9"] = sections["Team0Objective9"].replace(f"Num{suffix}s = 0".encode(), f"Num{suffix}s = 3".encode())
+        for index, values in enumerate(("ul Num = 1", "f Time = 1", "f TargetCenterX = 1\r\nf TargetCenterY = 2\r\nf TargetRadius = 3")):
+            sections[f"Team0Objective9{suffix}{index}"] = ("\r\n" + values + "\r\n").encode()
+    original = prefix + b"".join(b"[" + name.encode() + b"]" + body for name, body in sections.items()) + ending
+    outputs = {}
+    start = original.index(b"[Team0Objective1Condition0]")
+    end = original.index(b"\n[", start)
+    outputs["objective-resolve"] = original[:start] + original[start:end].replace(b"-1e30", x.encode(), 1).replace(b"-1e30", y.encode(), 1) + original[end:]
+    for listing, suffix in ((0, "Condition"), (2, "FailureCondition"), (1, "Action"), (3, "FailureAction")):
+        keys = ("Num", "Time", "TargetCenterX", "TargetCenterY", "TargetRadius") if listing % 2 == 0 else tuple(key for _, key in ACTION_PAYLOADS)
+        for index, key in enumerate(keys):
+            block = f"Team0Objective9{suffix}{min(index, 2)}" if listing % 2 == 0 else f"{owner}{suffix}{index}"
+            start = original.index(b"[" + block.encode() + b"]")
+            end = original.index(b"\n[", start) if b"\n[" in original[start:] else original.index(b"FITend", start)
+            text = key in ("AVIFileName", "WAVFileName", "Message", "PurchaseFileName")
+            value = b'"\r\n../Exact/Name\r\n\r\nsecond line\r\n"' if text else b"-17" if key in ("Num", "ResourceStringID") else b"-1.25"
+            body = re.sub(rb"(?m)(^\w+ " + key.encode() + rb" = )[^\r\n]*", lambda m: m[1] + value, original[start:end])
+            outputs[f"widget-payload-{listing}-{key}"] = original[:start] + body + original[end:]
+        if listing % 2 == 0:
+            start = original.index(b"[Team0Objective9]")
+            end = original.index(b"\n[", start)
+            body = original[start:end].replace(f"Num{suffix}s = 3".encode(), f"Num{suffix}s = 4".encode())
+            added = (f'[Team0Objective9{suffix}3]\r\nst {suffix}SpeciesString = "DestroySpecificEnemyUnit"\r\nf PositionX = {x}\r\nf PositionY = {y}\r\n').encode()
+            outputs[f"widget-payload-{listing}-create"] = (original[:start] + body + original[end:]).replace(b"FITend", added + b"FITend")
+    return original, outputs
+
+
 class PanelGateTests(unittest.TestCase):
     def fixture(self, name):
         directory = TEMP_ROOT / ("e3b-panel-" + uuid.uuid4().hex)
@@ -838,8 +919,13 @@ class PanelGateTests(unittest.TestCase):
         original = b'FITini\nfixture\nFITend\n'
         if name in ("objectives_panel", "objectives_crud_panel"):
             original = (SCRIPT.parents[1] / "editor/tests/goldens/e5a-stock/e5_reference_before.fit").read_bytes()
+        if name == "objectives_crud_panel":
+            original = crud_edit_fixture(original, None)
+        objective_outputs = {}
+        if name == "objectives_panel":
+            original, objective_outputs = objective_panel_fixture(original)
         pak = ((SCRIPT.parents[1] / "editor/tests/goldens/e5a-stock/e5_reference_before.pak").read_bytes()
-               if name == "objectives_crud_panel" else b"original pak")
+               if name in ("objectives_panel", "objectives_crud_panel") else b"original pak")
         hybrid = b'FITini\ncompatibilityMode = "Hybrid";\nFITend\n'
         for stage, fit in (("fixture", original), ("existing-hybrid", hybrid), ("hybrid-roundtrip", hybrid)):
             (directory / f"{stage}.fit").write_bytes(fit)
@@ -850,7 +936,9 @@ class PanelGateTests(unittest.TestCase):
         for operation in smoke.PANEL_OPERATIONS[name]:
             before = hybrid if operation == "brain-Legacy" else original
             edited = hybrid if operation == "brain-Hybrid" else before + b"authored change"
-            if name == "objectives_panel":
+            if operation in objective_outputs:
+                edited = objective_outputs[operation]
+            elif name == "objectives_panel":
                 from editor.tests.objective_census import objective_fields
                 key = operation.removeprefix("objective-").replace("_", " ")
                 kind, old = objective_fields(original)["Team0Objective1/" + key][0].split(" ", 1)
@@ -871,6 +959,12 @@ class PanelGateTests(unittest.TestCase):
         if name in ("objectives_panel", "objectives_crud_panel"):
             (directory / "widget-save.fit").write_bytes(edited)
         (directory / "shell.log").write_text("\n".join(lines))
+        if name == "objectives_panel":
+            fields = smoke.fit_fields(original)
+            target = fields["Part1/CSVFile"][0][4:-1] + " / Part 1"
+            for stem in ("before", "resolved"):
+                rows = [f"Team0Objective1Condition{i}\t{'Missing' if i == 0 and stem == 'before' else 'Resolved'}\t{'' if i == 0 and stem == 'before' else target}\t{'no eligible XY target' if i == 0 and stem == 'before' else 'unique eligible XY target'}" for i in range(3)]
+                (directory / f"objective-rows-{stem}.tsv").write_text("\n".join(rows))
         (directory / "panels.bmp").write_bytes(b"BM" + bytes(52) + (bytes(range(256)) * (1440 * 960 * 3 // 256)))
         return directory
 

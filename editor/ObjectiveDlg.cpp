@@ -130,8 +130,8 @@ END_MESSAGE_MAP()
 static void syncConditionsListWithListBox(const CObjective::condition_list_type *pConditionList, CListBox *pList) {
 	pList->ResetContent();
 	std::string tmpStr;
-	CObjective::condition_list_type::EConstIterator it = pConditionList->Begin();
-	while (!it.IsDone())
+	auto it = pConditionList->entries.begin();
+	while (it != pConditionList->entries.end())
 	{
 		tmpStr = objReadableCondition(*it);
 		pList->AddString(tmpStr.c_str());
@@ -142,8 +142,8 @@ static void syncConditionsListWithListBox(const CObjective::condition_list_type 
 static void syncActionsListWithListBox(const CObjective::action_list_type *pActionList, CListBox *pList) {
 	pList->ResetContent();
 	std::string tmpStr;
-	CObjective::action_list_type::EConstIterator it = pActionList->Begin();
-	while (!it.IsDone())
+	auto it = pActionList->entries.begin();
+	while (it != pActionList->entries.end())
 	{
 		tmpStr = objReadableAction(*it);
 		pList->AddString(tmpStr.c_str());
@@ -258,12 +258,8 @@ void ObjectiveDlg::LoadDialogValues() {
 	}
 	m_ResetStatusFlagIDEdit = m_ModifiedObjective.ResetStatusFlagID().c_str();
 
-	syncConditionsListWithListBox((&m_ModifiedObjective), (&m_List));
-	// BUG B fix: pre-select the first success condition so "Locate" (which acts on
-	// the success list selection, m_List) has a target. LoadDialogValues never
-	// SetCurSel'd the list, so a lone/first condition left GetCurSel()==LB_ERR and
-	// Locate silently no-op'd. Only default when the list has items and nothing is
-	// already selected. Locate serves the success list only, so only m_List needs it.
+	syncConditionsListWithListBox((&m_ModifiedObjective.m_conditions), (&m_List));
+	// Give Locate a target when success conditions exist.
 	if ((m_List.GetCount() > 0) && (LB_ERR == m_List.GetCurSel())) {
 		m_List.SetCurSel(0);
 	}
@@ -447,103 +443,95 @@ BOOL ObjectiveDlg::OnInitDialog()
 	{
 
 		{
-			comboBoxItems.Clear();
-			comboBoxItems.Append(DESTROY_ALL_ENEMY_UNITS);
-			comboBoxItems.Append(DESTROY_NUMBER_OF_ENEMY_UNITS);
-			comboBoxItems.Append(DESTROY_SPECIFIC_ENEMY_UNIT);
-			comboBoxItems.Append(DESTROY_SPECIFIC_STRUCTURE);
-			comboBoxItems.Append(CAPTURE_OR_DESTROY_ALL_ENEMY_UNITS);
-			comboBoxItems.Append(CAPTURE_OR_DESTROY_NUMBER_OF_ENEMY_UNITS);
-			comboBoxItems.Append(CAPTURE_OR_DESTROY_SPECIFIC_ENEMY_UNIT);
-			comboBoxItems.Append(CAPTURE_OR_DESTROY_SPECIFIC_STRUCTURE);
-			comboBoxItems.Append(DEAD_OR_FLED_ALL_ENEMY_UNITS);
-			comboBoxItems.Append(DEAD_OR_FLED_NUMBER_OF_ENEMY_UNITS);
-			comboBoxItems.Append(DEAD_OR_FLED_SPECIFIC_ENEMY_UNIT);
-			comboBoxItems.Append(CAPTURE_UNIT);
-			comboBoxItems.Append(CAPTURE_STRUCTURE);
-			comboBoxItems.Append(GUARD_SPECIFIC_UNIT);
-			comboBoxItems.Append(GUARD_SPECIFIC_STRUCTURE);
-			comboBoxItems.Append(MOVE_ANY_UNIT_TO_AREA);
-			comboBoxItems.Append(MOVE_ALL_UNITS_TO_AREA);
-			comboBoxItems.Append(MOVE_ALL_SURVIVING_UNITS_TO_AREA);
-			comboBoxItems.Append(MOVE_ALL_SURVIVING_MECHS_TO_AREA);
-			comboBoxItems.Append(BOOLEAN_FLAG_IS_SET);
-			comboBoxItems.Append(ELAPSED_MISSION_TIME);
+			comboBoxItems.clear();
+			comboBoxItems.push_back(DESTROY_ALL_ENEMY_UNITS);
+			comboBoxItems.push_back(DESTROY_NUMBER_OF_ENEMY_UNITS);
+			comboBoxItems.push_back(DESTROY_SPECIFIC_ENEMY_UNIT);
+			comboBoxItems.push_back(DESTROY_SPECIFIC_STRUCTURE);
+			comboBoxItems.push_back(CAPTURE_OR_DESTROY_ALL_ENEMY_UNITS);
+			comboBoxItems.push_back(CAPTURE_OR_DESTROY_NUMBER_OF_ENEMY_UNITS);
+			comboBoxItems.push_back(CAPTURE_OR_DESTROY_SPECIFIC_ENEMY_UNIT);
+			comboBoxItems.push_back(CAPTURE_OR_DESTROY_SPECIFIC_STRUCTURE);
+			comboBoxItems.push_back(DEAD_OR_FLED_ALL_ENEMY_UNITS);
+			comboBoxItems.push_back(DEAD_OR_FLED_NUMBER_OF_ENEMY_UNITS);
+			comboBoxItems.push_back(DEAD_OR_FLED_SPECIFIC_ENEMY_UNIT);
+			comboBoxItems.push_back(CAPTURE_UNIT);
+			comboBoxItems.push_back(CAPTURE_STRUCTURE);
+			comboBoxItems.push_back(GUARD_SPECIFIC_UNIT);
+			comboBoxItems.push_back(GUARD_SPECIFIC_STRUCTURE);
+			comboBoxItems.push_back(MOVE_ANY_UNIT_TO_AREA);
+			comboBoxItems.push_back(MOVE_ALL_UNITS_TO_AREA);
+			comboBoxItems.push_back(MOVE_ALL_SURVIVING_UNITS_TO_AREA);
+			comboBoxItems.push_back(MOVE_ALL_SURVIVING_MECHS_TO_AREA);
+			comboBoxItems.push_back(BOOLEAN_FLAG_IS_SET);
+			comboBoxItems.push_back(ELAPSED_MISSION_TIME);
 			std::string tmpEStr;
-			CConditionSpeciesList::EConstIterator it = comboBoxItems.Begin();
-			while (!it.IsDone()) {
-				tmpEStr = m_ModifiedObjective.DescriptionOfConditionSpecies(*it);
+			for (const auto species : comboBoxItems) {
+				tmpEStr = m_ModifiedObjective.DescriptionOfConditionSpecies(species);
 				(&m_ComboBox)->AddString(tmpEStr.c_str());
-				it++;
 			}
 			(&m_ComboBox)->SetCurSel(0);
 		}
 
 		{
-			actionComboBoxItems.Clear();
-			actionComboBoxItems.Append(PLAY_BIK);
-			actionComboBoxItems.Append(PLAY_WAV);
-			actionComboBoxItems.Append(DISPLAY_TEXT_MESSAGE);
-			actionComboBoxItems.Append(DISPLAY_RESOURCE_TEXT_MESSAGE);
-			actionComboBoxItems.Append(SET_BOOLEAN_FLAG);
-			actionComboBoxItems.Append(MAKE_NEW_TECHNOLOGY_AVAILABLE);
+			actionComboBoxItems.clear();
+			actionComboBoxItems.push_back(PLAY_BIK);
+			actionComboBoxItems.push_back(PLAY_WAV);
+			actionComboBoxItems.push_back(DISPLAY_TEXT_MESSAGE);
+			actionComboBoxItems.push_back(DISPLAY_RESOURCE_TEXT_MESSAGE);
+			actionComboBoxItems.push_back(SET_BOOLEAN_FLAG);
+			actionComboBoxItems.push_back(MAKE_NEW_TECHNOLOGY_AVAILABLE);
 			std::string tmpEStr;
-			CActionSpeciesList::EConstIterator it = actionComboBoxItems.Begin();
-			while (!it.IsDone()) {
-				tmpEStr = m_ModifiedObjective.DescriptionOfActionSpecies(*it);
+			for (const auto species : actionComboBoxItems) {
+				tmpEStr = m_ModifiedObjective.DescriptionOfActionSpecies(species);
 				(&m_ActionComboBox)->AddString(tmpEStr.c_str());
-				it++;
 			}
 			(&m_ActionComboBox)->SetCurSel(0);
 		}
 
 		{
-			failureConditionComboBoxItems.Clear();
-			failureConditionComboBoxItems.Append(DESTROY_ALL_ENEMY_UNITS);
-			failureConditionComboBoxItems.Append(DESTROY_NUMBER_OF_ENEMY_UNITS);
-			failureConditionComboBoxItems.Append(DESTROY_SPECIFIC_ENEMY_UNIT);
-			failureConditionComboBoxItems.Append(DESTROY_SPECIFIC_STRUCTURE);
-			failureConditionComboBoxItems.Append(CAPTURE_OR_DESTROY_ALL_ENEMY_UNITS);
-			failureConditionComboBoxItems.Append(CAPTURE_OR_DESTROY_NUMBER_OF_ENEMY_UNITS);
-			failureConditionComboBoxItems.Append(CAPTURE_OR_DESTROY_SPECIFIC_ENEMY_UNIT);
-			failureConditionComboBoxItems.Append(CAPTURE_OR_DESTROY_SPECIFIC_STRUCTURE);
-			failureConditionComboBoxItems.Append(DEAD_OR_FLED_ALL_ENEMY_UNITS);
-			failureConditionComboBoxItems.Append(DEAD_OR_FLED_NUMBER_OF_ENEMY_UNITS);
-			failureConditionComboBoxItems.Append(DEAD_OR_FLED_SPECIFIC_ENEMY_UNIT);
-			failureConditionComboBoxItems.Append(CAPTURE_UNIT);
-			failureConditionComboBoxItems.Append(CAPTURE_STRUCTURE);
-			failureConditionComboBoxItems.Append(GUARD_SPECIFIC_UNIT);
-			failureConditionComboBoxItems.Append(GUARD_SPECIFIC_STRUCTURE);
-			failureConditionComboBoxItems.Append(MOVE_ANY_UNIT_TO_AREA);
-			failureConditionComboBoxItems.Append(MOVE_ALL_UNITS_TO_AREA);
-			failureConditionComboBoxItems.Append(MOVE_ALL_SURVIVING_UNITS_TO_AREA);
-			failureConditionComboBoxItems.Append(MOVE_ALL_SURVIVING_MECHS_TO_AREA);
-			failureConditionComboBoxItems.Append(BOOLEAN_FLAG_IS_SET);
-			failureConditionComboBoxItems.Append(ELAPSED_MISSION_TIME);
+			failureConditionComboBoxItems.clear();
+			failureConditionComboBoxItems.push_back(DESTROY_ALL_ENEMY_UNITS);
+			failureConditionComboBoxItems.push_back(DESTROY_NUMBER_OF_ENEMY_UNITS);
+			failureConditionComboBoxItems.push_back(DESTROY_SPECIFIC_ENEMY_UNIT);
+			failureConditionComboBoxItems.push_back(DESTROY_SPECIFIC_STRUCTURE);
+			failureConditionComboBoxItems.push_back(CAPTURE_OR_DESTROY_ALL_ENEMY_UNITS);
+			failureConditionComboBoxItems.push_back(CAPTURE_OR_DESTROY_NUMBER_OF_ENEMY_UNITS);
+			failureConditionComboBoxItems.push_back(CAPTURE_OR_DESTROY_SPECIFIC_ENEMY_UNIT);
+			failureConditionComboBoxItems.push_back(CAPTURE_OR_DESTROY_SPECIFIC_STRUCTURE);
+			failureConditionComboBoxItems.push_back(DEAD_OR_FLED_ALL_ENEMY_UNITS);
+			failureConditionComboBoxItems.push_back(DEAD_OR_FLED_NUMBER_OF_ENEMY_UNITS);
+			failureConditionComboBoxItems.push_back(DEAD_OR_FLED_SPECIFIC_ENEMY_UNIT);
+			failureConditionComboBoxItems.push_back(CAPTURE_UNIT);
+			failureConditionComboBoxItems.push_back(CAPTURE_STRUCTURE);
+			failureConditionComboBoxItems.push_back(GUARD_SPECIFIC_UNIT);
+			failureConditionComboBoxItems.push_back(GUARD_SPECIFIC_STRUCTURE);
+			failureConditionComboBoxItems.push_back(MOVE_ANY_UNIT_TO_AREA);
+			failureConditionComboBoxItems.push_back(MOVE_ALL_UNITS_TO_AREA);
+			failureConditionComboBoxItems.push_back(MOVE_ALL_SURVIVING_UNITS_TO_AREA);
+			failureConditionComboBoxItems.push_back(MOVE_ALL_SURVIVING_MECHS_TO_AREA);
+			failureConditionComboBoxItems.push_back(BOOLEAN_FLAG_IS_SET);
+			failureConditionComboBoxItems.push_back(ELAPSED_MISSION_TIME);
 			std::string tmpEStr;
-			CConditionSpeciesList::EConstIterator it = failureConditionComboBoxItems.Begin();
-			while (!it.IsDone()) {
-				tmpEStr = m_ModifiedObjective.DescriptionOfConditionSpecies(*it);
+			for (const auto species : failureConditionComboBoxItems) {
+				tmpEStr = m_ModifiedObjective.DescriptionOfConditionSpecies(species);
 				(&m_FailureConditionComboBox)->AddString(tmpEStr.c_str());
-				it++;
 			}
 			(&m_FailureConditionComboBox)->SetCurSel(0);
 		}
 
 		{
-			failureActionComboBoxItems.Clear();
-			failureActionComboBoxItems.Append(PLAY_BIK);
-			failureActionComboBoxItems.Append(PLAY_WAV);
-			failureActionComboBoxItems.Append(DISPLAY_TEXT_MESSAGE);
-			failureActionComboBoxItems.Append(DISPLAY_RESOURCE_TEXT_MESSAGE);
-			failureActionComboBoxItems.Append(SET_BOOLEAN_FLAG);
-			failureActionComboBoxItems.Append(MAKE_NEW_TECHNOLOGY_AVAILABLE);
+			failureActionComboBoxItems.clear();
+			failureActionComboBoxItems.push_back(PLAY_BIK);
+			failureActionComboBoxItems.push_back(PLAY_WAV);
+			failureActionComboBoxItems.push_back(DISPLAY_TEXT_MESSAGE);
+			failureActionComboBoxItems.push_back(DISPLAY_RESOURCE_TEXT_MESSAGE);
+			failureActionComboBoxItems.push_back(SET_BOOLEAN_FLAG);
+			failureActionComboBoxItems.push_back(MAKE_NEW_TECHNOLOGY_AVAILABLE);
 			std::string tmpEStr;
-			CActionSpeciesList::EConstIterator it = failureActionComboBoxItems.Begin();
-			while (!it.IsDone()) {
-				tmpEStr = m_ModifiedObjective.DescriptionOfActionSpecies(*it);
+			for (const auto species : failureActionComboBoxItems) {
+				tmpEStr = m_ModifiedObjective.DescriptionOfActionSpecies(species);
 				(&m_FailureActionComboBox)->AddString(tmpEStr.c_str());
-				it++;
 			}
 			(&m_FailureActionComboBox)->SetCurSel(0);
 		}
@@ -551,32 +539,21 @@ BOOL ObjectiveDlg::OnInitDialog()
 
 	LoadDialogValues();
 
-	// Slice 1 -- Marker XY map-picker result delivery. If we just returned from a
-	// terrain point pick (handleLeftButtonDown set pendingPickResultReady), write
-	// the captured world XY into the marker fields, settle the editor out of the
-	// object-select handoff, and stop -- do NOT fall through to the condition-pick
-	// re-post below (this re-entry is for the marker pick, not a condition pick).
+	// A delivered marker pick must not reopen a condition picker.
 	{
 		EditorInterface *pEditor = EditorInterface::instance();
-		// Only consume a MARKER pick here. The area-center pick (Slice 2) shares the
-		// same pending-pick fields but is consumed by TargetAreaDlg::OnInitDialog;
-		// swallowing it here would corrupt the objective marker and the re-entry would
-		// never re-reach TargetAreaDlg. The discriminator keeps the two disjoint.
+		// Area picks belong to TargetAreaDlg; consuming one here would corrupt the marker.
 		if ((0 != pEditor) && pEditor->objectivesEditState.pendingPickResultReady &&
 		    (CObjectivesEditState::PICK_MARKER == pEditor->objectivesEditState.pendingPickTarget)) {
 			m_XEdit = pEditor->objectivesEditState.pendingPickX;
 			m_YEdit = pEditor->objectivesEditState.pendingPickY;
 			m_ModifiedObjective.MarkerX(m_XEdit);
 			m_ModifiedObjective.MarkerY(m_YEdit);
-			// Picking a point implies the user wants the marker shown -- turn the
-			// Display Marker checkbox on (both the objective field and the DDX member
-			// bound to IDC_OBJECTIVE_DISPLAY_MARKER_CHECK) before UpdateData pushes it.
+			// A picked marker should be visible.
 			m_ModifiedObjective.DisplayMarker(true);
 			m_DisplayMarkerCheckButton = TRUE;
 			UpdateData(FALSE);
 
-			// One-shot: clear the result flag and leave object-select-only mode so
-			// the normal modal accept/cancel flow resumes from here.
 			pEditor->objectivesEditState.pendingPickResultReady = false;
 			pEditor->objectivesEditState.pendingPickPoint = false;
 			pEditor->objectivesEditState.pendingPickTarget = CObjectivesEditState::PICK_NONE;
@@ -585,12 +562,7 @@ BOOL ObjectiveDlg::OnInitDialog()
 		}
 	}
 
-	// Marker-pick was armed but no point was delivered (user cancelled/ESC before
-	// clicking the map). Disarm cleanly and do NOT fall into the condition re-post.
-	// Restrict to a MARKER pick: an AREA pick (armed/cancelled) must keep its pending
-	// state here so the condition re-post below re-reaches TargetAreaDlg, which owns
-	// the area pick's consume/disarm. Only the marker pick is consumed/disarmed in
-	// this dialog.
+	// A cancelled marker pick leaves the normal dialog active; area picks remain pending.
 	if (EditorInterface::instance() &&
 	    EditorInterface::instance()->objectivesEditState.pendingPickPoint &&
 	    !EditorInterface::instance()->objectivesEditState.pendingPickResultReady &&
@@ -599,16 +571,12 @@ BOOL ObjectiveDlg::OnInitDialog()
 		EditorInterface::instance()->objectivesEditState.pendingPickPoint = false;
 		EditorInterface::instance()->objectivesEditState.pendingPickTarget = CObjectivesEditState::PICK_NONE;
 		EditorInterface::instance()->ObjectSelectOnlyMode(false);
-		// fall through to normal (non-select-only) init below
 	}
 
 	if (EditorInterface::instance()->ObjectSelectOnlyMode()) {
-		/* The dialog is already initialized. */
 		if (CObjectivesEditState::SUCCESS_CONDITION == EditorInterface::instance()->objectivesEditState.listID) {
-			// post a message that the "Add (Success) Condition" button was pressed
 			PostMessage(WM_COMMAND, MAKEWPARAM(IDC_OBJECTIVE_ADD_CONDITION_BUTTON, BN_CLICKED), (LPARAM)((&m_AddButton)->m_hWnd));
 		} else {
-			// post a message that the "Add (Failure) Condition" button was pressed
 			PostMessage(WM_COMMAND, MAKEWPARAM(IDC_OBJECTIVE_ADD_FAILURE_CONDITION_BUTTON, BN_CLICKED), (LPARAM)((&m_AddFailureConditionButton)->m_hWnd));
 		}
 	} else {
@@ -618,7 +586,7 @@ BOOL ObjectiveDlg::OnInitDialog()
 	return TRUE;  // return TRUE unless you set the focus to a control
 }
 
-// Slice 1 -- Marker XY map-picker (PICKER-SELECT-POINT-RECON-1, Option B).
+// Marker XY map-picker.
 // Mirrors the ObjectSelectOnlyMode handoff used by the condition object pickers
 // (OnObjectiveAddConditionButton): save the in-progress objective into the
 // editor singleton, flip the editor into selection mode, then EndDialog so the
@@ -669,25 +637,7 @@ void ObjectiveDlg::OnObjectivePickMarkerButton()
 	EndDialog(IDOK);
 }
 
-// Slice 3 -- Locate (PICKER-SELECT-POINT-RECON-1 section 6). Center the editor
-// camera on the selected SUCCESS condition's target and (when safe) select it.
-// Locatable conditions are the specific-unit and specific-structure species;
-// every other species (area / flag / time / all / number / group) is a no-op.
-//
-// The camera move + select cannot happen inside this modal handler (the editor
-// render loop is frozen until the dialog returns). We follow the same B-pattern
-// handoff as the marker pick: stash the target into objectivesEditState.pending-
-// Locate*, enter ObjectSelectOnlyMode, save the dialog state (so the chain can
-// re-open exactly like the marker pick), and EndDialog(IDOK). The actual
-// unselectAll / select / setPosition run later, with NO map click, in
-// EditorInterface::update() once the modal stack has unwound; it then reopens the
-// objectives dialog via Team(alignment) so the user lands back in the editor.
-//
-// Target extraction is fully guarded: the live EditorObject* (UnitPtr/BuildingPtr)
-// is a raw pointer that may dangle and whose appearance() may be null
-// (EditorObject::getPosition derefs appearance()->position unguarded). We only
-// carry the live ptr forward when it is non-null AND appearance() != null; the
-// camera target always falls back to the always-valid NotedX()/NotedY() floats.
+// Locate returns to the map before moving the camera so the modal dialog cannot block it.
 void ObjectiveDlg::OnObjectiveLocateConditionButton()
 {
 	EditorInterface *pEditor = EditorInterface::instance();
@@ -695,19 +645,15 @@ void ObjectiveDlg::OnObjectiveLocateConditionButton()
 		return;
 	}
 
-	// Resolve the selected SUCCESS condition by advancing the iterator to the
-	// listbox selection index (same safe pattern as OnObjectiveViewConditionButton).
 	int nSelectionIndex = m_List.GetCurSel();
 	if ((LB_ERR == nSelectionIndex) || (0 > nSelectionIndex) ||
-	    (m_ModifiedObjective.Count() <= nSelectionIndex)) {
-		// BUG B fix: no condition selected -> tell the user instead of silently
-		// doing nothing (the old no-op made Locate look broken).
+	    (m_ModifiedObjective.m_conditions.entries.size() <= nSelectionIndex)) {
 		AfxMessageBox(_T("Select a condition first, then Locate."));
 		return;
 	}
-	CObjective::condition_list_type::EConstIterator it = m_ModifiedObjective.Begin();
-	for (int i = 0; i < nSelectionIndex && !it.IsDone(); ++i) it++;
-	if (it.IsDone()) {
+	auto it = m_ModifiedObjective.m_conditions.entries.begin();
+	for (int i = 0; i < nSelectionIndex && it != m_ModifiedObjective.m_conditions.entries.end(); ++i) it++;
+	if (it == m_ModifiedObjective.m_conditions.entries.end()) {
 		return;
 	}
 	CObjectiveCondition *pCond = *it;
@@ -749,33 +695,25 @@ void ObjectiveDlg::OnObjectiveLocateConditionButton()
 		}
 	} else if (CAreaObjectiveCondition *pA =
 			dynamic_cast<CAreaObjectiveCondition *>(pCond)) {
-		// BUG B fix (2): an AREA condition's location is its target center (set via
-		// "Pick center"). There is no object to select -- camera move only, so
-		// pLocObj stays null. TargetCenterX/Y are plain floats, always valid.
+		// Area targets have a location without a selectable object.
 		locX = pA->TargetCenterX();
 		locY = pA->TargetCenterY();
 		haveTarget = true;
 	}
 
 	if (!haveTarget && (0 != m_ModifiedObjective.DisplayMarker())) {
-		// BUG B fix (3): the condition itself is not locatable, but the objective has
-		// a display marker (set via "Pick from map"). Locate the marker -- camera
-		// move only, no object to select. MarkerX/Y are plain floats, always valid.
+		// The objective marker supplies a location when the condition has none.
 		locX = m_ModifiedObjective.MarkerX();
 		locY = m_ModifiedObjective.MarkerY();
 		haveTarget = true;
 	}
 
 	if (!haveTarget) {
-		// BUG B fix: no map location at all -- the condition species is not locatable
-		// (unit/structure/area) and the objective has no display marker. Say so
-		// instead of a bare beep, which gave the user no idea why nothing happened.
 		AfxMessageBox(_T("This condition type has no map location to locate."));
 		return;
 	}
 
-	// Save the in-progress objective + combo selections so the re-opened dialog
-	// chain restores to the same state (mirrors OnObjectivePickMarkerButton).
+	// Keep dialog edits while Locate temporarily returns control to the map.
 	SaveDialogValues();
 	pEditor->objectivesEditState.ModifiedObjective = m_ModifiedObjective;
 	pEditor->objectivesEditState.listID = CObjectivesEditState::SUCCESS_CONDITION;
@@ -784,8 +722,7 @@ void ObjectiveDlg::OnObjectiveLocateConditionButton()
 	pEditor->objectivesEditState.nFailureConditionSpeciesSelectionIndex = (&m_FailureConditionComboBox)->GetCurSel();
 	pEditor->objectivesEditState.nFailureActionSpeciesSelectionIndex = (&m_FailureActionComboBox)->GetCurSel();
 
-	// Arm the no-click Locate. Consumed by EditorInterface::update() (NOT a map
-	// click). Distinct from the pick fields -- Locate is its own operation.
+	// Locate runs after the modal dialog returns, when the map is available.
 	pEditor->objectivesEditState.pendingLocate = true;
 	pEditor->objectivesEditState.pendingLocateX = locX;
 	pEditor->objectivesEditState.pendingLocateY = locY;
@@ -801,8 +738,8 @@ void ObjectiveDlg::OnObjectiveAddConditionButton()
 {
 	{
 		DWORD comboboxSelection = (&m_ComboBox)->GetCurSel();
-		if ((0 <= comboboxSelection) && (comboBoxItems.Count() > comboboxSelection)) {
-			condition_species_type species = *(comboBoxItems.Iterator(comboboxSelection));
+		if ((0 <= comboboxSelection) && (comboBoxItems.size() > comboboxSelection)) {
+			condition_species_type species = comboBoxItems[comboboxSelection];
 			pNewCondition = CObjective::new_CObjectiveCondition(species, m_ModifiedObjective.Alignment());
 		} else {
 			return;
@@ -810,12 +747,10 @@ void ObjectiveDlg::OnObjectiveAddConditionButton()
 	}
 	assert(pNewCondition);
 
-	/* This call may set the editor into ObjectSelectOnlyMode (i.e.: set the  value of
-	EditorInterface::instance()->ObjectSelectOnlyMode() to true) */
+	// Editing a condition or action may require a map selection.
 	bool result = pNewCondition->EditDialog();
 
 	if (EditorInterface::instance()->ObjectSelectOnlyMode()) {
-		/* close the dialog and enter ObjectSelectOnlyMode */
 		SaveDialogValues();
 		EditorInterface::instance()->objectivesEditState.ModifiedObjective = m_ModifiedObjective;
 		EditorInterface::instance()->objectivesEditState.listID = CObjectivesEditState::SUCCESS_CONDITION;
@@ -828,9 +763,9 @@ void ObjectiveDlg::OnObjectiveAddConditionButton()
 		return;
 	} else {
 		if (true == result) {
-			m_ModifiedObjective.Append(pNewCondition);
+			m_ModifiedObjective.m_conditions.entries.push_back(pNewCondition);
 			m_List.SetCurSel(m_List.GetCount() - 1);
-			syncConditionsListWithListBox((&m_ModifiedObjective), (&m_List));
+			syncConditionsListWithListBox((&m_ModifiedObjective.m_conditions), (&m_List));
 		} else {
 			delete pNewCondition; pNewCondition = 0;
 		}
@@ -841,11 +776,10 @@ void ObjectiveDlg::OnObjectiveAddConditionButton()
 void ObjectiveDlg::OnObjectiveRemoveConditionButton() 
 {
 	int nSelectionIndex = (&m_List)->GetCurSel();
-	if ((0 <= nSelectionIndex) && (m_ModifiedObjective.Count() > nSelectionIndex)) {
-		// should put up confirmation box here
-		delete *(m_ModifiedObjective.Iterator(nSelectionIndex));
-		m_ModifiedObjective.Delete(nSelectionIndex);
-		syncConditionsListWithListBox((&m_ModifiedObjective), (&m_List));
+	if ((0 <= nSelectionIndex) && (m_ModifiedObjective.m_conditions.entries.size() > nSelectionIndex)) {
+		delete m_ModifiedObjective.m_conditions.entries[nSelectionIndex];
+		m_ModifiedObjective.m_conditions.entries.erase(m_ModifiedObjective.m_conditions.entries.begin() + nSelectionIndex);
+		syncConditionsListWithListBox((&m_ModifiedObjective.m_conditions), (&m_List));
 		if (0 < m_List.GetCount()) {
 			if (m_List.GetCount() <= (long)nSelectionIndex) {
 				nSelectionIndex = m_List.GetCount() - 1;
@@ -859,8 +793,8 @@ void ObjectiveDlg::OnObjectiveAddActionButton()
 {
 	{
 		DWORD actionComboboxSelection = (&m_ActionComboBox)->GetCurSel();
-		if ((0 <= actionComboboxSelection) && (actionComboBoxItems.Count() > actionComboboxSelection)) {
-			action_species_type species = *(actionComboBoxItems.Iterator(actionComboboxSelection));
+		if ((0 <= actionComboboxSelection) && (actionComboBoxItems.size() > actionComboboxSelection)) {
+			action_species_type species = actionComboBoxItems[actionComboboxSelection];
 			pNewAction = CObjective::new_CObjectiveAction(species, m_ModifiedObjective.Alignment());
 		} else {
 			return;
@@ -868,12 +802,10 @@ void ObjectiveDlg::OnObjectiveAddActionButton()
 	}
 	assert(pNewAction);
 
-	/* This call may set the editor into ObjectSelectOnlyMode (i.e.: set the  value of
-	EditorInterface::instance()->ObjectSelectOnlyMode() to true) */
+	// Editing a condition or action may require a map selection.
 	bool result = pNewAction->EditDialog();
 
 	if (EditorInterface::instance()->ObjectSelectOnlyMode()) {
-		/* close the dialog and enter ObjectSelectOnlyMode */
 		SaveDialogValues();
 		EditorInterface::instance()->objectivesEditState.ModifiedObjective = m_ModifiedObjective;
 		EditorInterface::instance()->objectivesEditState.nConditionSpeciesSelectionIndex = (&m_ComboBox)->GetCurSel();
@@ -885,7 +817,7 @@ void ObjectiveDlg::OnObjectiveAddActionButton()
 		return;
 	} else {
 		if (true == result) {
-			m_ModifiedObjective.m_actionList.Append(pNewAction);
+			m_ModifiedObjective.m_actionList.entries.push_back(pNewAction);
 			m_ActionList.SetCurSel(m_ActionList.GetCount() - 1);
 			syncActionsListWithListBox(&(m_ModifiedObjective.m_actionList), (&m_ActionList));
 		} else {
@@ -898,10 +830,9 @@ void ObjectiveDlg::OnObjectiveAddActionButton()
 void ObjectiveDlg::OnObjectiveRemoveActionButton() 
 {
 	int nSelectionIndex = (&m_ActionList)->GetCurSel();
-	if ((0 <= nSelectionIndex) && (m_ModifiedObjective.m_actionList.Count() > nSelectionIndex)) {
-		// should put up confirmation box here
-		delete *(m_ModifiedObjective.m_actionList.Iterator(nSelectionIndex));
-		m_ModifiedObjective.m_actionList.Delete(nSelectionIndex);
+	if ((0 <= nSelectionIndex) && (m_ModifiedObjective.m_actionList.entries.size() > nSelectionIndex)) {
+		delete m_ModifiedObjective.m_actionList.entries[nSelectionIndex];
+		m_ModifiedObjective.m_actionList.entries.erase(m_ModifiedObjective.m_actionList.entries.begin() + nSelectionIndex);
 		syncActionsListWithListBox(&(m_ModifiedObjective.m_actionList), (&m_ActionList));
 		if (0 < m_ActionList.GetCount()) {
 			if (m_ActionList.GetCount() <= (long)nSelectionIndex) {
@@ -1151,8 +1082,8 @@ void ObjectiveDlg::OnObjectiveAddFailureConditionButton()
 {
 	{
 		DWORD comboboxSelection = (&m_FailureConditionComboBox)->GetCurSel();
-		if ((0 <= comboboxSelection) && (failureConditionComboBoxItems.Count() > comboboxSelection)) {
-			condition_species_type species = *(failureConditionComboBoxItems.Iterator(comboboxSelection));
+		if ((0 <= comboboxSelection) && (failureConditionComboBoxItems.size() > comboboxSelection)) {
+			condition_species_type species = failureConditionComboBoxItems[comboboxSelection];
 			pNewCondition = CObjective::new_CObjectiveCondition(species, m_ModifiedObjective.Alignment());
 		} else {
 			return;
@@ -1160,12 +1091,10 @@ void ObjectiveDlg::OnObjectiveAddFailureConditionButton()
 	}
 	assert(pNewCondition);
 
-	/* This call may set the editor into ObjectSelectOnlyMode (i.e.: set the  value of
-	EditorInterface::instance()->ObjectSelectOnlyMode() to true) */
+	// Editing a condition or action may require a map selection.
 	bool result = pNewCondition->EditDialog();
 
 	if (EditorInterface::instance()->ObjectSelectOnlyMode()) {
-		/* close the dialog and enter ObjectSelectOnlyMode */
 		SaveDialogValues();
 		EditorInterface::instance()->objectivesEditState.ModifiedObjective = m_ModifiedObjective;
 		EditorInterface::instance()->objectivesEditState.listID = CObjectivesEditState::FAILURE_CONDITION;
@@ -1178,7 +1107,7 @@ void ObjectiveDlg::OnObjectiveAddFailureConditionButton()
 		return;
 	} else {
 		if (true == result) {
-			m_ModifiedObjective.m_failureConditionList.Append(pNewCondition);
+			m_ModifiedObjective.m_failureConditionList.entries.push_back(pNewCondition);
 			m_FailureConditionList.SetCurSel(m_FailureConditionList.GetCount() - 1);
 			syncConditionsListWithListBox(&(m_ModifiedObjective.m_failureConditionList), (&m_FailureConditionList));
 		} else {
@@ -1191,10 +1120,9 @@ void ObjectiveDlg::OnObjectiveAddFailureConditionButton()
 void ObjectiveDlg::OnObjectiveRemoveFailureConditionButton() 
 {
 	int nSelectionIndex = (&m_FailureConditionList)->GetCurSel();
-	if ((0 <= nSelectionIndex) && (m_ModifiedObjective.m_failureConditionList.Count() > nSelectionIndex)) {
-		// should put up confirmation box here
-		delete *(m_ModifiedObjective.m_failureConditionList.Iterator(nSelectionIndex));
-		m_ModifiedObjective.m_failureConditionList.Delete(nSelectionIndex);
+	if ((0 <= nSelectionIndex) && (m_ModifiedObjective.m_failureConditionList.entries.size() > nSelectionIndex)) {
+		delete m_ModifiedObjective.m_failureConditionList.entries[nSelectionIndex];
+		m_ModifiedObjective.m_failureConditionList.entries.erase(m_ModifiedObjective.m_failureConditionList.entries.begin() + nSelectionIndex);
 		syncConditionsListWithListBox(&(m_ModifiedObjective.m_failureConditionList), (&m_FailureConditionList));
 		if (0 < m_FailureConditionList.GetCount()) {
 			if (m_FailureConditionList.GetCount() <= (long)nSelectionIndex) {
@@ -1209,8 +1137,8 @@ void ObjectiveDlg::OnObjectiveAddFailureActionButton()
 {
 	{
 		DWORD actionComboboxSelection = (&m_FailureActionComboBox)->GetCurSel();
-		if ((0 <= actionComboboxSelection) && (failureActionComboBoxItems.Count() > actionComboboxSelection)) {
-			action_species_type species = *(failureActionComboBoxItems.Iterator(actionComboboxSelection));
+		if ((0 <= actionComboboxSelection) && (failureActionComboBoxItems.size() > actionComboboxSelection)) {
+			action_species_type species = failureActionComboBoxItems[actionComboboxSelection];
 			pNewAction = CObjective::new_CObjectiveAction(species, m_ModifiedObjective.Alignment());
 		} else {
 			return;
@@ -1218,12 +1146,10 @@ void ObjectiveDlg::OnObjectiveAddFailureActionButton()
 	}
 	assert(pNewAction);
 
-	/* This call may set the editor into ObjectSelectOnlyMode (i.e.: set the  value of
-	EditorInterface::instance()->ObjectSelectOnlyMode() to true) */
+	// Editing a condition or action may require a map selection.
 	bool result = pNewAction->EditDialog();
 
 	if (EditorInterface::instance()->ObjectSelectOnlyMode()) {
-		/* close the dialog and enter ObjectSelectOnlyMode */
 		SaveDialogValues();
 		EditorInterface::instance()->objectivesEditState.ModifiedObjective = m_ModifiedObjective;
 		EditorInterface::instance()->objectivesEditState.nConditionSpeciesSelectionIndex = (&m_ComboBox)->GetCurSel();
@@ -1235,7 +1161,7 @@ void ObjectiveDlg::OnObjectiveAddFailureActionButton()
 		return;
 	} else {
 		if (true == result) {
-			m_ModifiedObjective.m_failureActionList.Append(pNewAction);
+			m_ModifiedObjective.m_failureActionList.entries.push_back(pNewAction);
 			m_FailureActionList.SetCurSel(m_FailureActionList.GetCount() - 1);
 			syncActionsListWithListBox(&(m_ModifiedObjective.m_failureActionList), (&m_FailureActionList));
 		} else {
@@ -1248,10 +1174,9 @@ void ObjectiveDlg::OnObjectiveAddFailureActionButton()
 void ObjectiveDlg::OnObjectiveRemoveFailureActionButton() 
 {
 	int nSelectionIndex = (&m_FailureActionList)->GetCurSel();
-	if ((0 <= nSelectionIndex) && (m_ModifiedObjective.m_failureActionList.Count() > nSelectionIndex)) {
-		// should put up confirmation box here
-		delete *(m_ModifiedObjective.m_failureActionList.Iterator(nSelectionIndex));
-		m_ModifiedObjective.m_failureActionList.Delete(nSelectionIndex);
+	if ((0 <= nSelectionIndex) && (m_ModifiedObjective.m_failureActionList.entries.size() > nSelectionIndex)) {
+		delete m_ModifiedObjective.m_failureActionList.entries[nSelectionIndex];
+		m_ModifiedObjective.m_failureActionList.entries.erase(m_ModifiedObjective.m_failureActionList.entries.begin() + nSelectionIndex);
 		syncActionsListWithListBox(&(m_ModifiedObjective.m_failureActionList), (&m_FailureActionList));
 		if (0 < m_FailureActionList.GetCount()) {
 			if (m_FailureActionList.GetCount() <= (long)nSelectionIndex) {
@@ -1265,10 +1190,10 @@ void ObjectiveDlg::OnObjectiveRemoveFailureActionButton()
 void ObjectiveDlg::OnObjectiveViewConditionButton() 
 {
 	int nSelectionIndex = m_List.GetCurSel();
-	if ((LB_ERR != nSelectionIndex) && (0 <= nSelectionIndex) && (m_ModifiedObjective.Count() > nSelectionIndex)) {
-		CObjective::condition_list_type::EConstIterator it = m_ModifiedObjective.Begin();
-		for (int i = 0; i < nSelectionIndex && !it.IsDone(); ++i) it++;
-		if (!it.IsDone()) {
+	if ((LB_ERR != nSelectionIndex) && (0 <= nSelectionIndex) && (m_ModifiedObjective.m_conditions.entries.size() > nSelectionIndex)) {
+		auto it = m_ModifiedObjective.m_conditions.entries.begin();
+		for (int i = 0; i < nSelectionIndex && it != m_ModifiedObjective.m_conditions.entries.end(); ++i) it++;
+		if (it != m_ModifiedObjective.m_conditions.entries.end()) {
 			std::string tmpEStr = objReadableCondition(*it);
 			ViewConditionOrActionDlg viewDlg;
 			viewDlg.m_Edit = tmpEStr.c_str();
@@ -1280,10 +1205,10 @@ void ObjectiveDlg::OnObjectiveViewConditionButton()
 void ObjectiveDlg::OnObjectiveViewActionButton() 
 {
 	int nSelectionIndex = m_ActionList.GetCurSel();
-	if ((LB_ERR != nSelectionIndex) && (0 <= nSelectionIndex) && (m_ModifiedObjective.m_actionList.Count() > nSelectionIndex)) {
-		CObjective::action_list_type::EConstIterator it = m_ModifiedObjective.m_actionList.Begin();
-		for (int i = 0; i < nSelectionIndex && !it.IsDone(); ++i) it++;
-		if (!it.IsDone()) {
+	if ((LB_ERR != nSelectionIndex) && (0 <= nSelectionIndex) && (m_ModifiedObjective.m_actionList.entries.size() > nSelectionIndex)) {
+		auto it = m_ModifiedObjective.m_actionList.entries.begin();
+		for (int i = 0; i < nSelectionIndex && it != m_ModifiedObjective.m_actionList.entries.end(); ++i) it++;
+		if (it != m_ModifiedObjective.m_actionList.entries.end()) {
 			std::string tmpEStr = objReadableAction(*it);
 			ViewConditionOrActionDlg viewDlg;
 			viewDlg.m_Edit = tmpEStr.c_str();
@@ -1295,10 +1220,10 @@ void ObjectiveDlg::OnObjectiveViewActionButton()
 void ObjectiveDlg::OnObjectiveViewFailureConditionButton() 
 {
 	int nSelectionIndex = m_FailureConditionList.GetCurSel();
-	if ((LB_ERR != nSelectionIndex) && (0 <= nSelectionIndex) && (m_ModifiedObjective.m_failureConditionList.Count() > nSelectionIndex)) {
-		CObjective::condition_list_type::EConstIterator it = m_ModifiedObjective.m_failureConditionList.Begin();
-		for (int i = 0; i < nSelectionIndex && !it.IsDone(); ++i) it++;
-		if (!it.IsDone()) {
+	if ((LB_ERR != nSelectionIndex) && (0 <= nSelectionIndex) && (m_ModifiedObjective.m_failureConditionList.entries.size() > nSelectionIndex)) {
+		auto it = m_ModifiedObjective.m_failureConditionList.entries.begin();
+		for (int i = 0; i < nSelectionIndex && it != m_ModifiedObjective.m_failureConditionList.entries.end(); ++i) it++;
+		if (it != m_ModifiedObjective.m_failureConditionList.entries.end()) {
 			std::string tmpEStr = objReadableCondition(*it);
 			ViewConditionOrActionDlg viewDlg;
 			viewDlg.m_Edit = tmpEStr.c_str();
@@ -1310,10 +1235,10 @@ void ObjectiveDlg::OnObjectiveViewFailureConditionButton()
 void ObjectiveDlg::OnObjectiveViewFailureActionButton() 
 {
 	int nSelectionIndex = m_FailureActionList.GetCurSel();
-	if ((LB_ERR != nSelectionIndex) && (0 <= nSelectionIndex) && (m_ModifiedObjective.m_failureActionList.Count() > nSelectionIndex)) {
-		CObjective::action_list_type::EConstIterator it = m_ModifiedObjective.m_failureActionList.Begin();
-		for (int i = 0; i < nSelectionIndex && !it.IsDone(); ++i) it++;
-		if (!it.IsDone()) {
+	if ((LB_ERR != nSelectionIndex) && (0 <= nSelectionIndex) && (m_ModifiedObjective.m_failureActionList.entries.size() > nSelectionIndex)) {
+		auto it = m_ModifiedObjective.m_failureActionList.entries.begin();
+		for (int i = 0; i < nSelectionIndex && it != m_ModifiedObjective.m_failureActionList.entries.end(); ++i) it++;
+		if (it != m_ModifiedObjective.m_failureActionList.entries.end()) {
 			std::string tmpEStr = objReadableAction(*it);
 			ViewConditionOrActionDlg viewDlg;
 			viewDlg.m_Edit = tmpEStr.c_str();

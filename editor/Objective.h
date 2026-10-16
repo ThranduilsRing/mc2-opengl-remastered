@@ -7,7 +7,7 @@ Objective.h			: Interface for the Objective component.
 //===========================================================================//
 \*************************************************************************************************/
 
-#include "elist.h"
+#include <vector>
 #include <string>
 #include <utility>
 #include "tchar.h"
@@ -324,9 +324,9 @@ public:
 	float TargetCenterX() { return m_targetCenterX; }
 	float TargetCenterY() { return m_targetCenterY; }
 	float TargetRadius()  { return m_targetRadius; }
-	// Slice 2 -- area "Pick center" map-picker setters (additive). TargetAreaDlg
+	// area "Pick center" map-picker setters (additive). TargetAreaDlg
 	// writes the picked world XY into the referenced center on pick re-entry;
-	// radius is left untouched. Also needed by the templates slice.
+	// radius is left untouched. Templates can also set these values.
 	void TargetCenterX(float v) { m_targetCenterX = v; }
 	void TargetCenterY(float v) { m_targetCenterY = v; }
 	void TargetRadius(float v)  { m_targetRadius  = v; }
@@ -545,25 +545,30 @@ public:
 	const std::string& PurchaseFile() const { return m_purchaseFilePathname; }
 };
 
-class  CObjectiveConditionList : public EList <CObjectiveCondition *, CObjectiveCondition *> {
+class  CObjectiveConditionList {
 public:
-	virtual ~CObjectiveConditionList() { Clear(); }
-	virtual CObjectiveConditionList &operator=(const CObjectiveConditionList &master);
-	virtual bool operator==(const CObjectiveConditionList &rhs) const;
-	virtual void Clear();
+	std::vector<CObjectiveCondition*> entries;
+	CObjectiveConditionList() = default;
+	CObjectiveConditionList(const CObjectiveConditionList& master) { *this = master; }
+	~CObjectiveConditionList() { Clear(); }
+	CObjectiveConditionList &operator=(const CObjectiveConditionList &master);
+	bool operator==(const CObjectiveConditionList &rhs) const;
+	void Clear();
 };
 
-class  CObjectiveActionList : public EList <CObjectiveAction *, CObjectiveAction *> {
+class  CObjectiveActionList {
 public:
-	virtual ~CObjectiveActionList() { Clear(); }
-	virtual CObjectiveActionList &operator=(const CObjectiveActionList &master);
-	virtual bool operator==(const CObjectiveActionList &rhs) const;
-	virtual void Clear();
+	std::vector<CObjectiveAction*> entries;
+	CObjectiveActionList() = default;
+	CObjectiveActionList(const CObjectiveActionList& master) { *this = master; }
+	~CObjectiveActionList() { Clear(); }
+	CObjectiveActionList &operator=(const CObjectiveActionList &master);
+	bool operator==(const CObjectiveActionList &rhs) const;
+	void Clear();
 };
 
-class CObjective : public/*maybe protected*/ CObjectiveConditionList {
+class CObjective {
 private:
-	typedef CObjectiveConditionList inherited;
 	int m_alignment;
 	std::string m_title;
 	bool m_titleUseResourceString;
@@ -597,6 +602,7 @@ public: /* we could make this protected if only the editdialog is to acces these
 public:
 	typedef CObjectiveConditionList condition_list_type;
 	typedef CObjectiveActionList action_list_type;
+	condition_list_type m_conditions;
 	action_list_type m_actionList;
 	condition_list_type m_failureConditionList;
 	action_list_type m_failureActionList;
@@ -617,7 +623,7 @@ public:
 	bool EditDialog();
 	bool NoteThePositionsOfObjectsReferenced();
 	bool RestoreObjectPointerReferencesFromNotedPositions();
-	bool ThisObjectiveHasNoConditions() { return ((0 == Count()) && (0 == m_failureConditionList.Count())); }
+	bool ThisObjectiveHasNoConditions() { return (m_conditions.entries.empty() && m_failureConditionList.entries.empty()); }
 	const std::string& Title() const { return m_title; }
 	void Title(std::string title) { m_title = std::move(title); }
 	bool TitleUseResourceString() const { return m_titleUseResourceString; }
@@ -668,11 +674,11 @@ public:
 	const ObjectiveModelDefinition& ModelDefinition() const { return m_modelDefinition; }
 };
 
-class CObjectives : public/*maybe protected*/ EList <CObjective *, CObjective *> {
+class CObjectives {
 private:
-	typedef EList <CObjective *, CObjective *> inherited;
 	int m_alignment;
 public:
+	std::vector<CObjective*> entries;
 	CObjectives() { m_alignment = 0; }
 	CObjectives(int alignment) { m_alignment = alignment; }
 	CObjectives(const CObjectives &master) { (*this) = master; }
@@ -719,7 +725,7 @@ public:
 	void *pModifiedUnitPtr;
 	void *pModifiedBuildingPtr;
 
-	/* Slice 1 -- Marker XY map-picker (PICKER-SELECT-POINT-RECON-1, Option B).
+	/* Marker XY map-picker.
 	pendingPickPoint: set true when the objective dialog hands off for a terrain
 	point pick; consumed by EditorInterface::handleLeftButtonDown which writes the
 	clicked world XY into pendingPickX/Y and sets pendingPickResultReady so the
@@ -729,7 +735,7 @@ public:
 	float pendingPickX;
 	float pendingPickY;
 
-	/* Slice 2 fix (BUG A) -- defer the pick re-open to EditorInterface::update().
+	/* defer the pick re-open to EditorInterface::update().
 	handleLeftButtonDown captures the click on mouse-DOWN while MFC still holds
 	SetCapture(); re-entering a nested DoModal from there (the old direct Team()
 	call) lost the WM_LBUTTONUP and forced the user to ESC several times. Mirror
@@ -739,8 +745,8 @@ public:
 	BOTH the marker pick and the area "Pick center" pick (shared capture block). */
 	bool  pendingPickReopen;
 
-	/* Slice 2 -- area "Pick center" map-picker (PICKER-SELECT-POINT-RECON-1).
-	The marker pick (Slice 1) and the area-center pick share pendingPickPoint/
+	/* area "Pick center" map-picker.
+	The marker pick and the area-center pick share pendingPickPoint/
 	pendingPickResultReady/pendingPickX/Y (only one pick is in flight at a time),
 	so a discriminator is required: the re-opened ObjectiveDlg::OnInitDialog marker
 	consumer must NOT swallow an area pick result (it would corrupt the objective
@@ -755,7 +761,7 @@ public:
 	using enum pick_target_type;
 	pick_target_type pendingPickTarget;
 
-	/* Slice 3 -- Locate (PICKER-SELECT-POINT-RECON-1 section 6). Distinct from the
+	/* Locate. Distinct from the
 	pick fields above: Locate is a read-only "center camera on + select the target
 	of the selected condition" operation, NOT a map pick. The ObjectiveDlg "Locate"
 	handler extracts the target world XY (and, when safe, the live EditorObject*)

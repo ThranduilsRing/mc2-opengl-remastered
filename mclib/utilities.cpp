@@ -172,11 +172,8 @@ void drawEmptyRect( const GUI_RECT& area, unsigned long leftTopBorderColor,
 
 StaticInfo::~StaticInfo()
 {
-	if (mcTextureManager)
-	{
-		unsigned long gosID = mcTextureManager->get_gosTextureHandle( textureHandle );
-		mcTextureManager->removeTexture( gosID );
-	}
+	if (mcTextureManager && textureHandle)
+		mcTextureManager->releaseNode( textureHandle );
 }
 
 void StaticInfo::render()

@@ -1,6 +1,6 @@
 #ifndef MC2_MODLINT_REGISTRY_H
 #define MC2_MODLINT_REGISTRY_H
-// UNIT-MODLINT-CLI-1 (Phase-3 slice 3). The executor registry modlint validates
+// The executor registry modlint validates
 // against — the SAME binding the engine's theActionExecutorRegistry() installs
 // (action_executor_registry.h): UnitAction::Jump -> kMechJumpExecutor, compatible
 // ONLY with LOCO_MECH_WALKER. Reproduced here because the engine .cpp that owns

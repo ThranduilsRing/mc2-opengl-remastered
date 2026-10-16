@@ -1,7 +1,7 @@
 //-------------------------------------------------------------------------------------------------
-// FoliageRender.h -- editor-side PCG foliage billboard preview (Phase 5).
+// FoliageRender.h -- editor-side PCG foliage billboard preview.
 //
-// Loads the generator's {name}.foliage.json sidecar (Phase 4 PCG output) and
+// Loads the generator's {name}.foliage.json sidecar and
 // draws each instance as a screen-space, ground-anchored billboard over the
 // terrain. Self-contained: owns its own instance list + sprite-texture cache and
 // is driven by 4 editor menu commands (Generate / Clear / Toggle / Regenerate).

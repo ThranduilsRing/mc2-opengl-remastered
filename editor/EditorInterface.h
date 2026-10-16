@@ -73,7 +73,7 @@ private:
 public:
 
 	static EditorInterface* instance(){ return s_instance; }
-	// EDITOR-CRASH-HARDENING-1: called from the object-delete broadcast
+	// called from the object-delete broadcast
 	// (EditorObjectMgr::deleteBuilding/deleteSelectedObjects) so a delete that
 	// happens while a drag pointer is held cannot leave m_pDragObject dangling
 	// (UAF: set ~:1632, derefed ~:1764/1855/1864). Mirrors the selection-cache
@@ -86,13 +86,13 @@ public:
 	void renderObjectCompanionPanel();
 	void renderObjectInfoPanel();
 
-	// Modder-friendly wrapper panels (Phase 1d). Each surfaces EXISTING editor
+	// Modder-friendly wrapper panels. Each surfaces EXISTING editor
 	// state/flows through ImGui; no new placement/launch/package systems.
 	void renderPlacePanelImGui();    // scatter mode + params + active brush + clear
 	void renderMissionToolsImGui();  // Test Mission (launch game) + Build Mod Package
 	void setSculptBrush( int mode );
 	void setStampBrush( int type );
-	// TERRAIN-MATERIAL-PAINT-1 (Slice 1): surface the dormant TerrainBrush. Installs
+	// Material painting installs
 	// a TerrainBrush painting the given TerrainType via the single-source setActiveBrush
 	// path (same as setSculptBrush/setStampBrush). 'terrainType' is a TerrainType enum
 	// value (mclib/dmapdata.h); brushId/menuId use a synthetic-negative range.
@@ -379,7 +379,7 @@ private:
 	float						m_stampRadius;
 	float						m_stampStrength;
 	int							m_paintMaterialType;   // active Paint-Material TerrainType (for button highlight)
-	float						m_paintMaterialSize;   // Paint-Material brush Size (reserved; TerrainBrush is single-vertex in Slice 1)
+	float						m_paintMaterialSize;   // Material-paint brush radius.
 	float						m_waterHeight;     // live water-elevation slider value
 	bool						m_pendGenerateMission; // deferred: run generator outside the ImGui pass
 
@@ -398,7 +398,7 @@ private:
 	long						lastKey;
 	bool 						bObjectSelectOnlyMode;
 	CMenu**						menus;
-	// EDITOR-EXIT-CRASH-1 (#2): number of entries actually allocated into
+	// number of entries actually allocated into
 	// menus[] by addBuildingsToNewMenu() (groupCount+2 at alloc time). menus
 	// is NULL until that call runs (it's skipped when land==NULL at init()
 	// time, e.g. the map-generator path). terminate() must free exactly this

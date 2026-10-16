@@ -31,7 +31,6 @@
 #       1  code/mploadmap.h
 #       1  code/mpprefs.h
 #       1  gui/alistbox.h
-# file:line:kind
 # blob 6555a71866405bdaee5871d3026b0d4c4ba758da code/mpconnectiontype.cpp
 # blob 8ba431450c640fc04ba8ca7c615fc59e01dd2ed6 code/mpgamebrowser.cpp
 # blob 656f75b4ecdcd75116f9ca909159ef1010e982c5 code/mphostgame.cpp
@@ -44,8 +43,9 @@
 # blob 70a7ec861f40c764ce45417ab619736ef289ffef gui/aanim.cpp
 # blob 9141cfafbbcd405fafdc2f15628cb5d801377d7e gui/aedit.cpp
 # blob ef34efdc94fac2c261fd223d6906b363c332f882 gui/alistbox.cpp
-# blob 7cc05c8f3ea7576da1d00e9b1aa3bb82859eaa0f gui/alistbox.h
+# blob 5b14be7100bce3de73dc4af51d5ace425fec2984 gui/alistbox.h
 # blob 6306ad7160d8610cd9eabd176a16c27af66e9294 gui/asystem.cpp
+# file:line:kind
 code/mpconnectiontype.cpp:644:operator ECHARPTR
 code/mpconnectiontype.cpp:768:Find
 code/mpconnectiontype.cpp:797:operator ECHARPTR
@@ -131,7 +131,7 @@ gui/alistbox.cpp:1344:operator ECHARPTR
 gui/alistbox.cpp:1353:operator ECHARPTR
 gui/alistbox.cpp:1359:operator ECHARPTR
 gui/alistbox.cpp:1375:operator ECHARPTR
-gui/alistbox.h:134:operator ECHARPTR
+gui/alistbox.h:138:operator ECHARPTR
 gui/asystem.cpp:1068:operator ECHARPTR
 gui/asystem.cpp:1077:operator ECHARPTR
 gui/asystem.cpp:1081:operator ECHARPTR

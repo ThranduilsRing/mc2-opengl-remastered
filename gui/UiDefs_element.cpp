@@ -181,7 +181,7 @@ UiElement makeElement(const Block& b)
     if (e.legacyId == 0)
         parseInt(field(b.fields, "controlValue", "0"), e.legacyId);
     e.legacyButtonIndex = parseLegacyButtonIndex(b.fields);
-    // UI-LAYER-CONTRACT-2: remember which legacy control this element mirrors
+    // remember which legacy control this element mirrors
     // so LogisticsScreen can suppress the legacy twin (coverage query).
     e.legacySection = field(b.fields, "legacySection");
     if (e.legacySection.empty())

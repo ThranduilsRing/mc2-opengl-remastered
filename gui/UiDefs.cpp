@@ -8,7 +8,7 @@ struct UiDefs::GameOSPage::Impl {
     int localWidth = 800;
     int localHeight = 600;
     bool renderScaleTraced = false;
-    // ENCYCLO-3D-2: page-local -> screen transform needs the same offsets
+    // page-local -> screen transform needs the same offsets
     // render() was last called with; getElementScreenRect used (0,0) and
     // returned page-local coords, so the mech-preview composite landed at the
     // wrong screen position (e.g. mechlopedia's (285,58) page offset lost).
@@ -16,7 +16,7 @@ struct UiDefs::GameOSPage::Impl {
     int lastRenderYOffset = 0;
     bool suppressAnimationElements = false;
     bool legacyPassthrough = false;
-    // UI-DEFS-LOCKSTEP-HARDEN-1: draw-output telemetry for the zero-draw
+    // draw-output telemetry for the zero-draw
     // fail-soft (LogisticsScreen falls back to legacy when a rendered
     // non-passthrough page emitted no draw commands).
     bool hasRendered = false;
@@ -57,14 +57,14 @@ std::string UiDefs::replacementPathForLegacyFit(const char* legacyFitPath)
     if (stem.empty())
         return std::string();
 
-    // RESULTS-LEGACY-FALLBACK-1: the mission-results defs page
+    // the mission-results defs page
     // (mcui_mr_layout: salvage / pilot review / promotion) is UNFINISHED
     // modder content — the game-side screens were explicitly not done in the
     // ImGui-port handoff, and the generated page breaks the AAR while pure
     // legacy renders it correctly. Keep the AAR on the legacy path until the
     // page is actually authored. MC2_UI_DEFS_RESULTS=1 opts the page back in
     // for iterating on it.
-    // LOADSCREEN-LEGACY-FALLBACK-1: same ruling as the AAR — the generated
+    // The generated
     // loading-screen pages (mcl_loadingscreen*) regressed the load sequence
     // (door art shifted to the top-left instead of centered, residual
     // logo/hourglass banner art over pilot-ready and mission start) while
@@ -129,7 +129,7 @@ bool UiDefs::GameOSPage::load(const char* path)
     if (!path || !path[0])
         return false;
 
-    // UI-DEFS-LOCKSTEP-HARDEN-1: version-skewed package => refuse every page
+    // version-skewed package => refuse every page
     // (loud, once) so the caller falls back to the legacy screen path.
     if (!uiPackageVersionCheckPassed()) {
         uiDefsTrace("page load refused (package version gate): %s", path);
@@ -182,9 +182,9 @@ bool UiDefs::GameOSPage::load(const char* path)
             impl->elements.push_back(e);
     }
 
-    // UI-DEFS-LOCKSTEP-HARDEN-1: a page with zero elements can never draw
+    // a page with zero elements can never draw
     // anything; accepting it would arm the black-clear over an empty page
-    // (BLACK-MENU-BISECT-1). Fail loud so the legacy screen renders instead.
+    // Fail loud so the legacy screen renders instead.
     if (!pageElementCountAcceptable(impl->elements.size())) {
         uiDefsLog("page load FAILED (zero elements): key=%s path=%s -- falling back to legacy screen",
                   impl->key.empty() ? "<none>" : impl->key.c_str(), path);
@@ -257,7 +257,7 @@ bool UiDefs::GameOSPage::setElementTexture(const std::string& key, const std::st
             if (e.texturePath != texturePath) {
                 e.texturePath = texturePath;
                 e.textureNodeAssigned = false;
-                // PILOT-PHOTO-UV-1: the fit-authored pixel sub-rect (uvX/Y/W/H)
+                // the fit-authored pixel sub-rect (uvX/Y/W/H)
                 // and cached texture size belong to the PREVIOUS texture. Left
                 // stale, a runtime swap (e.g. per-pilot portrait) crops the new
                 // texture with the old sheet's sub-rect -> striped garbage.
@@ -299,7 +299,7 @@ bool UiDefs::GameOSPage::setElementTextureNode(const std::string& key, long text
     return false;
 }
 
-// UI-LAYER-CONTRACT-2: does this page carry an element mirroring the given
+// does this page carry an element mirroring the given
 // legacy control section ("Static4" / "Rect0" / "Text2" / "Button3")? Used by
 // LogisticsScreen's inverted bridging: legacy widgets WITHOUT page coverage
 // render through the gui bridge; covered ones stand down (page owns them).
@@ -312,7 +312,7 @@ bool UiDefs::GameOSPage::coversLegacySection(const char* section) const
     return false;
 }
 
-// UI-LAYER-CONTRACT-2: kind+index coverage. Legacy section names are NOT
+// kind+index coverage. Legacy section names are NOT
 // uniform across screens ("Text13" in some fits, "MechBayTextEntry13" in
 // others), so match by kind substring + trailing integer instead of exact
 // string. kind is "Rect" / "Static" / "Text" / "Button".
@@ -386,7 +386,7 @@ bool UiDefs::GameOSPage::setElementImageRegion(const std::string& key,
         // destination rect -- e.g. the encyclopedia weapon icon, sized
         // cellW*48 x cellH*32 of its icon sheet, centered in the icon box.
         // legacyUvSpace: uv coords are in the legacy size/uvScale addressing
-        // space (old setUVs math), not the logical PNG space (PILOT-PHOTO-UV-1).
+        // space (old setUVs math), not the logical PNG space.
         if (e.texturePath != texturePath) {
             e.texturePath = texturePath;
             e.textureNodeAssigned = false;        // force reload
@@ -706,7 +706,7 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
     //   6. text
     // Reproduce that here; within a pass, file order holds.
     enum Pass { OpaqueFills, Images, Outlines, TransparentFills, Buttons, Texts, Popups, PassCount };
-    // UI-DEFS-LOCKSTEP-HARDEN-1: count draw-emitting element visits this frame.
+    // count draw-emitting element visits this frame.
     // Suppressed animation elements count as output: their content IS on
     // screen, drawn by the live legacy animObject twins through the aObject
     // GUI bridge (e.g. the splash intro page is ONLY animation elements --
@@ -975,7 +975,7 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
         }
     }
 
-    // UI-DEFS-LOCKSTEP-HARDEN-1: commit draw-output telemetry. A loaded
+    // commit draw-output telemetry. A loaded
     // non-passthrough page that emitted zero draw commands means the owning
     // screen would show only the black-clear -- log once, loud; the owning
     // LogisticsScreen consults lastRenderProducedOutput() next frame and
@@ -1047,7 +1047,7 @@ bool UiDefs::GameOSPage::setListItems(const std::string& elementKey, const std::
     return false;
 }
 
-// BRIEFING-WRAP-1: pre-wrap helper for screens that push paragraph text into a
+// pre-wrap helper for screens that push paragraph text into a
 // fixed-row-height GuiList. drawUiListElement draws each row via DrawUiText with
 // wrapWidth = the row rect width in DISPLAY pixels and fontSize scaled by sy; a
 // char-count pre-wrap (e.g. the old 88-char briefing wrap) disagrees with that

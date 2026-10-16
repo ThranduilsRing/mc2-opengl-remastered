@@ -1,5 +1,5 @@
 //-------------------------------------------------------------------------------------------------
-// EditorDebugOverlay.h -- reusable editor debug/overlay layer (Phase 2).
+// EditorDebugOverlay.h -- reusable editor debug/overlay layer.
 //
 // Draws diagnostic world overlays (chunk grid, superchunk grid, water plane bounds)
 // on top of the already-rendered terrain, plus an ImGui control/stats panel.  Built

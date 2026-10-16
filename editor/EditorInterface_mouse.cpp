@@ -19,7 +19,7 @@ void EditorInterface::handleLeftButtonDown( int PosX, int PosY )
 	Stuff::Vector2DOf<long> v2( PosX, PosY );
 	eye->inverseProject( v2, vector );
 
-	// Slice 1 -- Marker XY map-picker (PICKER-SELECT-POINT-RECON-1, Option B).
+	// Marker XY map-picker.
 	// The Objective dialog's "Pick from map" button armed pendingPickPoint and
 	// unwound the modal stack. This one click delivers the world XY (vector, set
 	// by inverseProject above). Capture it, disarm the pick, flag the result, and
@@ -31,10 +31,10 @@ void EditorInterface::handleLeftButtonDown( int PosX, int PosY )
 	if ( ObjectSelectOnlyMode() && objectivesEditState.pendingPickPoint )
 	{
 		// inverseProject ALWAYS yields a usable on-map world coord: it returns 0 on a
-		// real terrain hit (camera.cpp:1488) and 1 on an off-map miss that still
-		// clamps to the nearest on-map vertex (camera.cpp:1482) -- BOTH are valid
+		// real terrain hit and 1 on an off-map miss that still
+		// clamps to the nearest on-map vertex -- BOTH are valid
 		// points to accept. The only degenerate is the camera-not-ready case
-		// (turn < 4), which zeroes the point (camera.cpp:997) and is unreachable
+		// (turn < 4), which zeroes the point and is unreachable
 		// during an interactive pick. So guard on the zeroed POINT, not the return
 		// code (return 0 is the COMMON hit case -- gating on it would reject every
 		// valid click). Skip only an exact (0,0) so a later real click can deliver.
@@ -100,8 +100,8 @@ void EditorInterface::handleLeftButtonDown( int PosX, int PosY )
 			if ( pHit->isSelected() && pDragMgr->getSelectionCount() > 1 )
 			{
 				EditorObjectMgr::EDITOR_OBJECT_LIST sel = pDragMgr->getSelectedObjectList();
-				for ( EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = sel.Begin();
-					!it.IsDone(); it++ )
+				for ( auto it = sel.begin();
+					it != sel.end(); it++ )
 					if ( *it && (*it)->appearance() )
 						m_pDragAction->addBuildingInfo( **it );
 			}
@@ -270,14 +270,14 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 			pApp->registerStatic();
 		};
 
-		// BUG3 (group drag): if the grabbed object is part of a multi-selection, move
+		// if the grabbed object is part of a multi-selection, move
 		// the WHOLE selection by the same world delta. Otherwise move just the grab.
 		EditorObjectMgr* pMoveMgr = EditorObjectMgr::instance();
 		if ( m_pDragObject->isSelected() && pMoveMgr->getSelectionCount() > 1 )
 		{
 			EditorObjectMgr::EDITOR_OBJECT_LIST sel = pMoveMgr->getSelectedObjectList();
-			for ( EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = sel.Begin();
-				!it.IsDone(); it++ )
+			for ( auto it = sel.begin();
+				it != sel.end(); it++ )
 				dragMoveOne( *it );
 		}
 		else
@@ -386,12 +386,12 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 	if (selectionCount)
 	{
 		EditorObjectMgr::EDITOR_OBJECT_LIST selectedObjectsList = EditorObjectMgr::instance()->getSelectedObjectList();
-		EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = selectedObjectsList.Begin();
+		auto it = selectedObjectsList.begin();
 		const EditorObject* pInfo = (*it);
 		const ObjectAppearance* pAppearance = pInfo ? pInfo->appearance() : nullptr;
 		if ( pAppearance )
 		{
-			// by Methuselas: selected-object distance is updated during mouse move,
+			// selected-object distance is updated during mouse move,
 			// including immediately after left-click selection.  Guard the legacy
 			// appearance pointer so restored mouse routing cannot crash the status
 			// bar when a catalog object is only partially initialized.
@@ -411,7 +411,7 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 
 
 
-// EDITOR-CRASH-HARDENING-1: scrub the drag pointer when the object it points at
+// scrub the drag pointer when the object it points at
 // is being deleted (e.g. delete-during-drag), so the next handleMouseMove cannot
 // deref a freed object. Discard the in-flight drag undo action too — it captured a
 // snapshot of the now-dead object and its undo() would relocate a freed pointer.
@@ -480,7 +480,7 @@ static bool EditorInterface_IsDoubleClickDistance(int x1, int y1, int x2, int y2
 	return abs(x2 - x1) <= cx && abs(y2 - y1) <= cy;
 }
 
-// EDITOR-OBJECTID-PICK-BRIDGE-1 (Slice 3): GPU ObjectID pick is the PRIMARY
+// GPU ObjectID pick is the PRIMARY
 // editor object-selection path; the legacy CPU forward-projection picker is the
 // documented killswitch fallback. Default ON; set MC2_EDITOR_GPU_PICK=0 to fall
 // back to CPU forward-project (e.g. if the GPU readback regresses on a vendor).
@@ -575,7 +575,7 @@ EditorObject* EditorInterface_PickObjectAtScreenPoint(int screenX, int screenY)
 	return EditorInterface_PickObjectAtScreenPoint_CPU(screenX, screenY);
 }
 
-// EDITOR-BRUSH-SCREENPICK-1: public seam so the brushes (eraser/damage/link) pick the
+// public seam so the brushes (eraser/damage/link) pick the
 // SAME way the Select tool does -- GPU ObjectID readback primary (pixel-exact: handles a
 // zoomed-in click on a prop's edge, which the CPU center+tolerance picker misses), with
 // CPU forward-projection fallback. screenX/screenY must be viewport-local (the brush
@@ -970,9 +970,9 @@ BOOL EditorInterface::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 	if (selectionCount)
 	{
 		EditorObjectMgr::EDITOR_OBJECT_LIST selectedObjectsList = EditorObjectMgr::instance()->getSelectedObjectList();
-		EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = selectedObjectsList.Begin();
+		auto it = selectedObjectsList.begin();
 		const EditorObject* pInfo = (*it);
-		// EDITOR-CRASH-HARDENING-1: appearance() can be NULL; guard before ->position
+		// appearance() can be NULL; guard before ->position
 		// (mirror sibling readout ~line 1975).
 		const ObjectAppearance* pAppearance = pInfo ? pInfo->appearance() : nullptr;
 		if ( pAppearance )
@@ -1080,17 +1080,13 @@ void EditorInterface::setStampBrush( int type )
 	setActiveBrush( new StampBrush( (StampBrush::Type)type, m_stampRadius, m_stampStrength ), brushId, brushId );
 }
 
-// TERRAIN-MATERIAL-PAINT-1 (Slice 1): revive the dormant editor/TerrainBrush.h in the
-// modern Tools panel. TerrainBrush takes only a TerrainType (mclib/dmapdata.h) and is
-// single-vertex (no radius/strength) -- Slice 2 adds a radius loop. Install via the same
-// single-source setActiveBrush path setSculptBrush/setStampBrush use so the active-tool
-// (currentBrushID/currentBrushMenuID) state stays correct. Synthetic-negative brushId
-// (distinct from the sculpt -100.. and stamp -200.. ranges).
+// Material painting uses the shared brush activation path so tool labels
+// and the active-button highlight stay consistent with Sculpt and Stamp.
 void EditorInterface::setPaintMaterialBrush( int terrainType )
 {
 	const int brushId = -300 - terrainType;
 	TerrainBrush* tb = new TerrainBrush( terrainType );
-	tb->setRadius( m_paintMaterialSize );   // Slice 0: radius-fill (mirrors sculpt)
+	tb->setRadius( m_paintMaterialSize );   // radius-fill (mirrors sculpt)
 	setActiveBrush( tb, brushId, brushId );
 	m_paintMaterialType = terrainType;   // drives the active-button highlight
 }

@@ -62,7 +62,7 @@ struct TerrainInspectorData {
     int   terrainType = -1;
 };
 
-// TERRAIN-SPINE-0: pass-level (not selection-level) snapshot of the terrain
+// pass-level (not selection-level) snapshot of the terrain
 // render spine. Filled per frame in gameosmain; displayed in the Object
 // Inspector window. Read-only — no GL state, no mutation of any render path.
 struct TerrainPassSnapshot {
@@ -89,9 +89,9 @@ void setPickResult(int mouseX, int mouseY, const RenderWorld::LookupResult& look
 void setStaticPropData(const StaticPropInspectorData& sd);
 void setMechData(const MechInspectorData& md);
 void setTerrainData(const TerrainInspectorData& td);
-void setTerrainPassSnapshot(const TerrainPassSnapshot& ts);  // TERRAIN-SPINE-0
+void setTerrainPassSnapshot(const TerrainPassSnapshot& ts);
 
-// SHADOW-SPINE-0: pass-level snapshot of the shadow-pass render spine. Filled
+// pass-level snapshot of the shadow-pass render spine. Filled
 // per frame in gameosmain; displayed in the Object Inspector window.
 // Read-only — no GL state, no mutation of any shadow path.
 struct ShadowPassSnapshot {
@@ -113,9 +113,9 @@ struct ShadowPassSnapshot {
     // so the closure-audit gap is visible in the inspector.
     bool     viewUniformsBoundForShadow = false;
 };
-void setShadowPassSnapshot(const ShadowPassSnapshot& sp);  // SHADOW-SPINE-0
+void setShadowPassSnapshot(const ShadowPassSnapshot& sp);
 
-// VFX-SPINE-0: pass-level snapshot of the GPU particle / VFX render spine.
+// pass-level snapshot of the GPU particle / VFX render spine.
 // Filled per frame in gameosmain; displayed in the Object Inspector window.
 // Read-only — no GL state, no mutation of any VFX path, no object-IDs.
 struct VfxPassSnapshot {
@@ -132,7 +132,7 @@ struct VfxPassSnapshot {
     bool     overflowReported           = false;   // last frame staging overflowed
     // Process-lifetime aggregates (from anonymous-namespace counters in batcher.cpp).
     // Per-frame counts are not exposed by the existing instrumentation — would
-    // require a new counter and is out of scope for VFX-SPINE-0.
+    // require a separate counter.
     unsigned long long emitTotal             = 0;
     unsigned long long flushTotal            = 0;
     unsigned long long nonemptyFlushTotal    = 0;
@@ -143,11 +143,11 @@ struct VfxPassSnapshot {
     // v1: VFX shaders do NOT consume ViewUniforms (binding=3). Hard-coded so
     // the closure-audit gap is visible in the inspector.
     bool     viewUniformsBoundForVfx    = false;
-    // VFX-DEBUG-VIEWS-1: active particle debug mode (gos_vfx_getDebugMode).
+    // active particle debug mode (gos_vfx_getDebugMode).
     // 0=Final, 1=Albedo, 2=Alpha, 3=ParticleKind, 4=Overdraw. Read-only display.
     int      debugMode                  = 0;
 };
-void setVfxPassSnapshot(const VfxPassSnapshot& vs);  // VFX-SPINE-0
+void setVfxPassSnapshot(const VfxPassSnapshot& vs);
 
 void flushDebugHighlight();
 void drawImGui();                                 // called by GuiRuntime::Render() each frame

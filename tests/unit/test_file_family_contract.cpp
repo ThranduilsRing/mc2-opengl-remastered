@@ -17,12 +17,14 @@
 #include "file.h"
 #include "inifile.h"
 #include "packet.h"
+#include "ablscan.h"
 
 #include "../../GameOS/gameos/utils/mc2log.h"
 
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <climits>
 
 extern bool g_mc2TestStopFatal;   // tests/unit/heap_shim.cpp: STOP counts and continues instead of aborting
 extern int  g_mc2TestStopCount;
@@ -230,3 +232,185 @@ TEST_CASE("FC8 a fit file with no blocks opens and finds no block")
 }
 
 } // TEST_SUITE
+
+namespace {
+struct AblMemory {
+	unsigned char bytes[4] = {42, 0, 0, 0};
+	long length = 4;
+	long position = 0;
+	int reads = 0;
+	int closes = 0;
+};
+
+struct AblCallbacks {
+	decltype(ABLFile::remainingCB) remaining = ABLFile::remainingCB;
+	decltype(ABLFile::readCB) read = ABLFile::readCB;
+	decltype(ABLFile::openCB) open = ABLFile::openCB;
+	decltype(ABLFile::closeCB) close = ABLFile::closeCB;
+
+	AblCallbacks() {
+		ABLFile::remainingCB = [](void* h) { auto& m = *static_cast<AblMemory*>(h); return m.length - m.position; };
+		ABLFile::readCB = [](void* h, unsigned char* out, long n) {
+			auto& m = *static_cast<AblMemory*>(h);
+			++m.reads;
+			memcpy(out, m.bytes + m.position, n);
+			m.position += n;
+			return n;
+		};
+		ABLFile::openCB = [](void** h, const char*) { *h = nullptr; return -7L; };
+		ABLFile::closeCB = [](void** h) { ++static_cast<AblMemory*>(*h)->closes; *h = nullptr; return 0L; };
+	}
+	~AblCallbacks() {
+		ABLFile::remainingCB = remaining; ABLFile::readCB = read;
+		ABLFile::openCB = open; ABLFile::closeCB = close;
+	}
+};
+
+struct AblRamCallbacks {
+	decltype(ABLFile::remainingCB) remaining = ABLFile::remainingCB;
+	decltype(ABLFile::readCB) read = ABLFile::readCB;
+	decltype(ABLFile::readStringCB) string = ABLFile::readStringCB;
+	decltype(ABLFile::readLineExCB) line = ABLFile::readLineExCB;
+	decltype(ABLFile::closeCB) close = ABLFile::closeCB;
+	AblRamCallbacks() {
+		ABLFile::remainingCB = [](void* h) -> long { auto& f = *static_cast<File*>(h); return f.getLength() - f.getLogicalPosition(); };
+		ABLFile::readCB = [](void* h, unsigned char* out, long n) { return static_cast<File*>(h)->read(out, n); };
+		ABLFile::readStringCB = [](void* h, unsigned char* out) { return static_cast<File*>(h)->readString(out); };
+		ABLFile::readLineExCB = [](void* h, unsigned char* out, long n) { return static_cast<File*>(h)->readLineEx(out, n); };
+		ABLFile::closeCB = [](void**) { return 0L; };
+	}
+	~AblRamCallbacks() {
+		ABLFile::remainingCB = remaining; ABLFile::readCB = read;
+		ABLFile::readStringCB = string; ABLFile::readLineExCB = line; ABLFile::closeCB = close;
+	}
+};
+
+struct AblReadLog {
+	std::FILE* capture = std::tmpfile();
+	AblReadLog() {
+		REQUIRE(capture != nullptr);
+		mc2::log::setSpec("*:info");
+		mc2::log::setStreamOverrideForTest(mc2::log::Stream::Err, capture);
+	}
+	~AblReadLog() {
+		mc2::log::setStreamOverrideForTest(mc2::log::Stream::Err, nullptr);
+		std::fclose(capture);
+	}
+	void checkOne(const char* tag) {
+		std::rewind(capture);
+		std::string logged;
+		char line[512];
+		while (std::fgets(line, sizeof(line), capture)) logged += line;
+		const auto first = logged.find(tag);
+		REQUIRE(first != std::string::npos);
+		CHECK(logged.find(tag, first + 1) == std::string::npos);
+	}
+};
+}
+
+TEST_CASE("FileFamilyContract/ABL final line stops at the RAM image boundary") {
+	AblRamCallbacks callbacks;
+	char image[] = "first\nlastX\n";
+	File ram;
+	REQUIRE(ram.open(image, 10) == NO_ERR);
+	ABLFile file;
+	file.set(&ram);
+	unsigned char out[32] = {};
+	CHECK(file.readLineEx(out, sizeof(out)) == 7);
+	CHECK(std::string(reinterpret_cast<char*>(out)) == "first\n");
+	CHECK(file.readLineEx(out, sizeof(out)) == 5);
+	CHECK(std::string(reinterpret_cast<char*>(out)) == "last");
+	CHECK(ram.getLogicalPosition() == 10);
+}
+
+TEST_CASE("FileFamilyContract/ABL overlong line cannot overwrite its destination") {
+	AblRamCallbacks callbacks;
+	AblReadLog log;
+	std::string image(MAXLEN_SOURCELINE, 'a');
+	image += "\n";
+	File ram;
+	REQUIRE(ram.open(image.data(), static_cast<int>(image.size())) == NO_ERR);
+	ABLFile file;
+	file.set(&ram);
+	unsigned char out[MAXLEN_SOURCELINE + 2] = {};
+	out[MAXLEN_SOURCELINE] = 0x5a;
+	out[MAXLEN_SOURCELINE + 1] = 0x5a;
+	CHECK(file.readLineEx(out, MAXLEN_SOURCELINE) == 0);
+	CHECK(out[MAXLEN_SOURCELINE] == 0x5a);
+	CHECK(out[MAXLEN_SOURCELINE + 1] == 0x5a);
+	log.checkOne("[ABL_FILE_LINE_BAD]");
+	image.resize(MAXLEN_SOURCELINE - 1);
+	ram.close();
+	REQUIRE(ram.open(image.data(), static_cast<int>(image.size())) == NO_ERR);
+	CHECK(file.readLineEx(out, MAXLEN_SOURCELINE) == MAXLEN_SOURCELINE);
+	CHECK(std::string(reinterpret_cast<char*>(out)) == image);
+}
+
+TEST_CASE("FileFamilyContract/ABL oversized or unterminated string is rejected") {
+	AblRamCallbacks callbacks;
+	for (const bool terminated : {true, false}) {
+		AblReadLog log;
+		std::string image(terminated ? 1024 : 3, 'a');
+		image += '\0';
+		File ram;
+		REQUIRE(ram.open(image.data(), static_cast<int>(image.size() - (terminated ? 0 : 1))) == NO_ERR);
+		ABLFile file;
+		file.set(&ram);
+		unsigned char out[1026] = {};
+		out[1024] = 0x5a;
+		CHECK(file.readString(out, 1024) == -1);
+		CHECK(out[1024] == 0x5a);
+		CHECK(ram.getLogicalPosition() <= ram.getLength());
+		log.checkOne("[ABL_FILE_STRING_BAD]");
+	}
+	std::string image(1023, 'a');
+	image += '\0';
+	File ram;
+	REQUIRE(ram.open(image.data(), static_cast<int>(image.size())) == NO_ERR);
+	ABLFile file;
+	file.set(&ram);
+	unsigned char out[1024] = {};
+	CHECK(file.readString(out, sizeof(out)) == 1023);
+	CHECK(std::memcmp(out, image.data(), image.size()) == 0);
+}
+
+TEST_CASE("FileFamilyContract/ABL truncation and oversized reads never reach the unchecked callback") {
+	AblCallbacks callbacks;
+	AblMemory complete, truncated;
+	truncated.length = 3;
+	std::FILE* capture = std::tmpfile();
+	REQUIRE(capture != nullptr);
+	mc2::log::setSpec("*:info");
+	mc2::log::setStreamOverrideForTest(mc2::log::Stream::Err, capture);
+	const int stops = g_mc2TestStopCount;
+	{
+		ABLFile valid, bad, missing;
+		valid.set(&complete);
+		CHECK(valid.readInt() == 42);
+		CHECK(complete.reads == 1);
+		bad.set(&truncated);
+		CHECK(bad.readInt() == -1);
+		unsigned char guard[4] = {1, 2, 3, 4};
+		CHECK(bad.read(guard, LONG_MAX) == 0);
+		CHECK(truncated.reads == 0);
+		CHECK(guard[0] == 1);
+		CHECK(guard[3] == 4);
+		CHECK(missing.open("missing.abl") == -7);
+		CHECK(missing.get() == nullptr);
+	}
+	CHECK(complete.closes == 1);
+	CHECK(truncated.closes == 1);
+	CHECK(g_mc2TestStopCount == stops);
+	mc2::log::setStreamOverrideForTest(mc2::log::Stream::Err, nullptr);
+	std::rewind(capture);
+	std::string logged;
+	char line[512];
+	while (std::fgets(line, sizeof(line), capture)) logged += line;
+	std::fclose(capture);
+	const auto first = logged.find("[ABL_FILE_READ_BAD]");
+	REQUIRE(first != std::string::npos);
+	const auto second = logged.find("[ABL_FILE_READ_BAD]", first + 1);
+	REQUIRE(second != std::string::npos);
+	CHECK(logged.find("[ABL_FILE_READ_BAD]", second + 1) == std::string::npos);
+	CHECK(logged.find("[ABL_FILE_OPEN_BAD]") != std::string::npos);
+}

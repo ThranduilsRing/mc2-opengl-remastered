@@ -7,15 +7,10 @@
 // the small flat foliage JSON rather than pull in nlohmann/json -- that header is
 // isolation-locked to a single engine TU (scripts/check-json-isolation.sh).
 //
-// v1 scope (intentionally minimal, "do not overbuild"):
-//   * screen-space ground-anchored billboards, distance-scaled
-//   * per-instance frustum cull via projectForScreenXY's admit return
-//   * sprite texture per kind if present, else a flat colored quad fallback so
-//     the preview is visible without shipping any sprite art
-//   * ZCompare left OFF so sprites are always visible in the editor preview
-//     (they are anchored on the terrain surface; precise depth occlusion +
-//     per-superchunk culling are deferred to Phase 6)
-//-------------------------------------------------------------------------------------------------
+// Preview supports ground-anchored, distance-scaled billboards with
+// per-instance frustum culling and optional sprite textures. Flat colored
+// quads keep the preview usable without sprite art. Depth occlusion and
+// per-superchunk culling are not implemented.
 #include "stdafx.h"
 #include "FoliageRender.h"
 

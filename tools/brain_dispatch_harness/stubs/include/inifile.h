@@ -1,5 +1,5 @@
 #pragma once
-// BRAIN-DISPATCH-HARNESS-1: inifile.h stub
+// inifile.h stub
 // Provides FitIniFile — only what parseBrainSpecialBody_FitIni calls.
 // Implements a minimal bracket-form [Section]/Key=Value parser (no engine deps).
 

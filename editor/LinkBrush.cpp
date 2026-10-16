@@ -13,7 +13,7 @@
 #include "EditorObjectMgr.h"
 #include "Camera.h"
 
-// EDITOR-BRUSH-SCREENPICK-1: GPU-primary object pick (defined in EditorInterface.cpp),
+// GPU-primary object pick (defined in EditorInterface.cpp),
 // same picker the Select tool uses. Avoids pulling the heavy EditorInterface.h in here.
 extern EditorObject* EditorPickObjectAtScreen(int screenX, int screenY);
 
@@ -56,7 +56,7 @@ bool LinkBrush::beginPaint()
 
 Action* LinkBrush::endPaint()
 {
-	if ( pAction && pAction->changedLinks.Count() )
+	if ( pAction && !pAction->changedLinks.empty() )
 	{
 		return pAction;
 	}
@@ -71,7 +71,7 @@ bool LinkBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
 	if ( !bLink )
 		return unPaint( worldPos, screenX, screenY );
 	
-	const EditorObject* pObject = EditorPickObjectAtScreen( screenX, screenY );  // EDITOR-BRUSH-SCREENPICK-1
+	const EditorObject* pObject = EditorPickObjectAtScreen( screenX, screenY );
 
 	if ( !pObject )
 		return 0;
@@ -150,7 +150,7 @@ bool LinkBrush::canPaint( Stuff::Vector3D& pos, int x, int y, int flags )
 	if ( !bLink )
 		return canUnPaint( pos, x, y, flags );
 	
-	const EditorObject* pObject = EditorPickObjectAtScreen( x, y );  // EDITOR-BRUSH-SCREENPICK-1
+	const EditorObject* pObject = EditorPickObjectAtScreen( x, y );
 
 	if ( !pObject )
 		return false;
@@ -173,7 +173,7 @@ bool LinkBrush::canPaint( Stuff::Vector3D& pos, int x, int y, int flags )
 bool LinkBrush::canUnPaint( Stuff::Vector3D& pos, int x, int y, int flags )
 { 
 
-	const EditorObject* pBuilding = EditorPickObjectAtScreen( x, y );  // EDITOR-BRUSH-SCREENPICK-1
+	const EditorObject* pBuilding = EditorPickObjectAtScreen( x, y );
 
 	if ( !pBuilding )
 		return false;
@@ -191,16 +191,15 @@ bool LinkBrush::canUnPaint( Stuff::Vector3D& pos, int x, int y, int flags )
 
 void LinkBrush::LinkAction::AddToListOnce( const LinkBrush::LinkInfo& Info )
 {
-	for( EList< LinkInfo, const LinkInfo& >::EIterator iter = changedLinks.Begin();
-	!iter.IsDone(); iter++ )
+	for ( const auto& changed : changedLinks )
 	{
-		if ( (*iter).m_LinkCopy.GetParentPosition() == Info.m_LinkCopy.GetParentPosition() )
+		if ( changed.m_LinkCopy.GetParentPosition() == Info.m_LinkCopy.GetParentPosition() )
 		{
 			return;  // assume if parents are in the same place, we have the same link
 		}
 	}
 
-	changedLinks.Append( Info );
+	changedLinks.push_back( Info );
 }
 
 LinkBrush::LinkAction::LinkAction( )
@@ -210,8 +209,7 @@ LinkBrush::LinkAction::LinkAction( )
 
 bool LinkBrush::LinkAction::undo( )
 {
-	for ( EList<LinkInfo, const LinkInfo& >::EIterator iter = changedLinks.End(); 
-	 !iter.IsDone(); iter-- )
+	for ( auto iter = changedLinks.rbegin(); iter != changedLinks.rend(); ++iter )
 	{
 		 if ( (*iter).type == LinkInfo::ADD )
 		{
@@ -265,9 +263,6 @@ bool LinkBrush::LinkAction::undo( )
 		}
 		else if ( (*iter).type == LinkInfo::EDIT )
 		{
-			// need to find the original link, look for one with matching
-			// parents
-
 			Stuff::Vector3D pos = (*iter).m_LinkCopy.GetParentPosition();
 			const EditorObject* pBuilding = EditorObjectMgr::instance()->getObjectAtLocation( pos.x, pos.y );
 			if ( pBuilding )
@@ -299,7 +294,7 @@ bool LinkBrush::LinkAction::undo( )
 bool LinkBrush::unPaint( Stuff::Vector3D& pos, int XPos, int yPos )
 {
  
-	const EditorObject* pBuilding = EditorPickObjectAtScreen( XPos, yPos );  // EDITOR-BRUSH-SCREENPICK-1
+	const EditorObject* pBuilding = EditorPickObjectAtScreen( XPos, yPos );
 
 	if ( pBuilding )
 	{

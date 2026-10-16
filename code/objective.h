@@ -351,6 +351,8 @@ class CObjectiveAction {
 private:
 	int m_alignment;
 public:
+	int observationOrdinal = -1;
+	std::string observationPayload = "null";
 	CObjectiveAction(int alignment) { m_alignment = alignment; }
 	virtual ~CObjectiveAction() {}
 	int Alignment() { return m_alignment; }
@@ -505,6 +507,10 @@ using CObjectiveActionList = CObjectiveOwnedList<CObjectiveAction>;
 
 class CObjective {
 private:
+	int m_fitOrdinal = -1;
+	unsigned long long m_observationState = 0;
+	void ObserveState(const char* kind, int oldState, int newState);
+	void Dispatch(CObjectiveAction& action, const char* list);
 	int m_alignment;
 	objective_text::Fields m_text;
 	bool m_titleUseResourceString;
@@ -601,7 +607,8 @@ public:
 	void MarkerY(float markerY) { m_markerY = markerY; }
 	void IsHiddenTrigger(bool isHiddenTrigger) { m_isHiddenTrigger = isHiddenTrigger; }
 	bool IsHiddenTrigger() { return m_isHiddenTrigger; }
-	void IsActive(bool isActive) { m_isActive = isActive; }
+	void IsActive(bool isActive);
+	void ObserveCBills(int before, int after);
 	bool IsActive() { return m_isActive; }
 	void ActivateOnFlag(bool activateOnFlag) { m_activateOnFlag = activateOnFlag; }
 	bool ActivateOnFlag() { return m_activateOnFlag; }
@@ -633,11 +640,31 @@ public:
 	void RenderOverviewMarker (Camera* eye, float alpha);
 
 	friend class Mission;
+	friend struct ObjectiveObservationFixture;
 };
 
 class CObjectives {
 	CObjectiveOwnedList<CObjective> m_list;
 public:
+	struct Observation {
+		struct Sink { unsigned long long cause; std::string data; };
+		struct Technology { const char* path; unsigned long long dispatch; };
+		std::string missionHash;
+		unsigned long long sequence = 0, nextId = 1, dispatch = 0;
+		unsigned long long traversal = 0, nextTraversal = 1;
+		const char* traversalSource = "write";
+		// Sink evidence requires its completed dispatch as an earlier cause.
+		std::vector<Sink> pendingSinks;
+		std::vector<Technology> technologies;
+		int finalResult = -1;
+		bool completed = false, rejected = false, settled = false;
+		void Begin(FitIniFile& file);
+		unsigned long long Emit(const char* kind, unsigned long long cause, const std::string& data,
+		                        unsigned long long id = 0);
+		void SinkResult(const char* sink, const char* stage, const char* result, const std::string& payload,
+		                unsigned long long cause = 0);
+		void Finish();
+	} observation;
 	using const_iterator = CObjectiveOwnedList<CObjective>::const_iterator;
 	const_iterator begin() const { return m_list.begin(); }
 	const_iterator end() const { return m_list.end(); }
@@ -658,6 +685,12 @@ public:
 private:
 	int m_alignment;
 };
+
+bool objectiveObservationEnabled();
+std::string objectiveObservationQuote(std::string_view text);
+CObjectives::Observation* objectiveObservation();
+void objectiveObservationSink(const char* sink, const char* stage, const char* result, const char* payload);
+void objectiveObservationWav(const char* requested, const char* resource, int channel, const char* result, bool accepted);
 
 /* Reads Nav Marker info and adds appropriate "hidden trigger" objectives. */
 bool ReadNavMarkers( FitIniFile* missionFile, CObjectives &objectives );

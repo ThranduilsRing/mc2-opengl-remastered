@@ -8,6 +8,16 @@
 #define MC2VIDEO_H
 
 #include <cstdint>
+#include <string>
+
+// A decoder receipt retains its initiating action across asynchronous updates.
+struct VideoObjectiveReceipt {
+    unsigned long long cause = 0;
+    std::string missionHash;
+    std::string path;
+    void capture(const char* resolvedPath);
+    void decoded();
+};
 
 struct VideoSession;          // opaque
 

@@ -280,19 +280,15 @@ void GVAppearanceType::init (const char * fileName)
 	numWeaponNodes = MAX_WEAPON_NODES;
 	numFootNodes = MAX_FOOT_NODES;
 		
-	nodeData = (NodeData *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(NodeData)*(numWeaponNodes+numSmokeNodes+numFootNodes));
-	gosASSERT(nodeData != nullptr);
-	memset(nodeData,0,sizeof(NodeData)*(numWeaponNodes+numSmokeNodes+numFootNodes));
+	nodeDataStore = std::make_unique<NodeData[]>(numWeaponNodes+numSmokeNodes+numFootNodes);
+	nodeData = nodeDataStore.get();
 		
 	for (int i=1;i<=numSmokeNodes;i++)
 	{
 		char blockId[512];
 		mc2::fmt::to_buf(blockId, "Smoke_{:02d}", mc2::fmt::as_i32(i));
 			
-		nodeData[i-1].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(blockId)+1); 
-		gosASSERT(nodeData[i-1].nodeId != nullptr);
-			
-		strcpy(nodeData[i-1].nodeId,blockId);
+		nodeData[i-1].setNodeId(blockId);
 		nodeData[i-1].weaponType = MECH3D_WEAPONTYPE_NONE;
 	}
 		
@@ -301,10 +297,7 @@ void GVAppearanceType::init (const char * fileName)
 		char blockId[512];
 		mc2::fmt::to_buf(blockId, "Weapon_{:02d}", mc2::fmt::as_i32(i));
 		
-		nodeData[(i-1)+numSmokeNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(blockId)+1);
-		gosASSERT(nodeData[(i-1)+numSmokeNodes].nodeId != nullptr);
-		
-		strcpy(nodeData[(i-1)+numSmokeNodes].nodeId,blockId);
+		nodeData[(i-1)+numSmokeNodes].setNodeId(blockId);
 		nodeData[(i-1)+numSmokeNodes].weaponType = MECH3D_WEAPONTYPE_ANY;
 		
 	}
@@ -314,10 +307,7 @@ void GVAppearanceType::init (const char * fileName)
 		char blockId[512];
 		mc2::fmt::to_buf(blockId, "FootNode_{:02d}", mc2::fmt::as_i32(i));
 			
-		nodeData[(i-1)+numSmokeNodes+numWeaponNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(blockId)+1);       
-		gosASSERT(nodeData[(i-1)+numSmokeNodes+numWeaponNodes].nodeId != nullptr);
-			
-		strcpy(nodeData[(i-1)+numSmokeNodes+numWeaponNodes].nodeId,blockId);
+		nodeData[(i-1)+numSmokeNodes+numWeaponNodes].setNodeId(blockId);
 		nodeData[(i-1)+numSmokeNodes+numWeaponNodes].weaponType = MECH3D_WEAPONTYPE_NONE;
 	}
  	
@@ -381,17 +371,8 @@ void GVAppearanceType::destroy (void)
 		gvAnimData[i] = nullptr;
 	}
 
-	if (nodeData)
-	{
-		for (int i=0;i<getTotalNodes();i++)
-		{
-			AppearanceTypeList::appearanceHeap->Free(nodeData[i].nodeId);
-			nodeData[i].nodeId = nullptr;
-		}
-		
-		AppearanceTypeList::appearanceHeap->Free(nodeData);
-		nodeData = nullptr;
-	}
+	nodeDataStore.reset();
+	nodeData = nullptr;
 }
 
 //-----------------------------------------------------------------------------

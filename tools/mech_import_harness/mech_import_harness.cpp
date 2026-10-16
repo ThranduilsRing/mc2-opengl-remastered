@@ -369,8 +369,8 @@ int doGpuBones(const aiScene* s, const std::string& clipName, int frame, const s
     std::string label = clipName;
     if (rest) {
         // Rest pose (no clip) — the joint-globals the engine's 1A bind-pose bake
-        // consumes. Parity target for MECH-BONE-PARITY-GATE-1 (engine dumps the
-        // same via MC2_MECH_SKEL_BONE_DUMP).
+        // consumes. The engine exposes the same matrices through
+        // MC2_MECH_SKEL_BONE_DUMP.
         std::vector<std::array<float, 16>> invBind;
         mc2skel::BuildSkeleton(s, names, parents, invBind);
         mc2skel::EvaluateRestGpuBones(s, names, bones);

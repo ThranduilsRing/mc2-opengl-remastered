@@ -90,7 +90,8 @@ class BldgAppearanceType : public AppearanceType
 		float						terrainLightOuterRadius;
 		
 		long						numWeaponNodes;
-		NodeData					*nodeData;
+		NodeData					*nodeData;			//View of nodeDataStore
+		std::unique_ptr<NodeData[]>	nodeDataStore;		//Owns the node table, built once by init(file)
 		
 	public:
 	

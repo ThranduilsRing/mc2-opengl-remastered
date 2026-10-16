@@ -4,15 +4,13 @@
 #include "saveload_internal.h"
 #include "mission_load_frame.h"
 #include "mc2fmt.h"
+#include <new>
 
 
 // Create the trigger-area, crater and object managers.
 void Mission::loadAblAndManagers(MissionLoadFrame& f) {
 	auto& result = f.result; auto& missionFile = f.missionFile;
 #ifndef USE_ABL_LOAD
-	//Start the scenario script the old fashion way for now.
-	//----------------------
-	// Load ABL Libraries...
 	long numErrors, numLinesProcessed;
 	FullPathFileName libraryFileName;
 	libraryFileName.init(missionPath, "orders", ".abx");
@@ -37,7 +35,6 @@ void Mission::loadAblAndManagers(MissionLoadFrame& f) {
 	missionBrain->init(missionScriptHandle);
 
 	missionBrain->setName("Mission");
-	//MissionBrain->setStep(TRUE);
 
 	missionBrainParams = new ABLParam;
 	gosASSERT(missionBrainParams != nullptr);
@@ -45,30 +42,23 @@ void Mission::loadAblAndManagers(MissionLoadFrame& f) {
 	missionBrainCallback = missionBrain->findFunction("handlemessage", TRUE);
 #endif
 
-	//-----------------------------
-	// Init Trigger Area Manager...
 	Mover::triggerAreaMgr = new TriggerAreaManager;
 	if (Mover::triggerAreaMgr == nullptr)
 		STOP(("Mission.Load: unable to init triggerAreaMgr "));
 
-	//-----------------------------------------
-	// Startup the Crater Manager.
 	craterManager = (CraterManagerPtr)missionHeap->Malloc(sizeof(CraterManager));
 	gosASSERT(craterManager != nullptr);
+	::new (craterManager) CraterManager;
 		
 	result = craterManager->init(1000,20479,"feet");
 	gosASSERT(result == NO_ERR);
 	
-	//-----------------------------------------------------------------
-	// Start the object system next.	
 	ObjectManager = new GameObjectManager;
 	if (!ObjectManager)
 		Fatal(0, " Mission.init: unable to create ObjectManager ");
 	ObjectManager->init("object2", 716799, 3072000);
 	gosASSERT(result == NO_ERR);
 
-	//-----------------------------------------------------------------
-	// Start the collision detection system. -- Doesn't need objects?
 	ObjectManager->initCollisionSystem(&missionFile);
 }
 
@@ -161,13 +151,6 @@ void Mission::loadMovement(MissionLoadFrame& f) {
 void Mission::loadMissionScript(MissionLoadFrame& f) {
 	auto& loadFile = f.loadFile; auto& result = f.result; auto& currentPacket = f.currentPacket;
 	auto& tmpString = f.tmpString;
-	//----------------------
-	// Load ABL Libraries...
-	// ASS U ME that these are loaded when I call ABLi_Load
-	
-	//---------------------------
-	// Load the mission script...
-	//Create a dummy file to read the packet into.
 	FullPathFileName dmpName;
 	dmpName.init(savePath,tmpString,".abl");
 
@@ -175,7 +158,6 @@ void Mission::loadMissionScript(MissionLoadFrame& f) {
 		STOP(("ABL SaveData missing from IN-Mission Save"));
 
 	{
-		//Create a dummy file to read the packet into.
 		File dmyFile;
 		result = dmyFile.create(dmpName);
 		DWORD fileSz = loadFile.getPacketSize();
@@ -187,7 +169,6 @@ void Mission::loadMissionScript(MissionLoadFrame& f) {
 	
 		dmyFile.close();
 		free(tmpRAM);
-		//---------------------------
 	}
 
 	ABLFile ablFile;
@@ -202,8 +183,13 @@ void Mission::loadMissionScript(MissionLoadFrame& f) {
 
 #ifdef USE_ABL_LOAD
 	missionBrain = ABLi_getModule(missionScriptHandle);
-	if (!missionBrain)
-		STOP(("Could not find mission brain in In-Mission Save"));
+	if (!missionBrain) {
+		if (missionScriptHandle != -1)
+			mc2::fmt::print_err("[ABL_LOAD_BAD] missing mission brain handle={}\n", missionScriptHandle);
+		missionBrainParams = nullptr;
+		missionBrainCallback = nullptr;
+		return;
+	}
 
 	missionBrain->setName("Mission");
 

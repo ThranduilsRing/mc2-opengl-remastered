@@ -72,7 +72,8 @@ class GVAppearanceType : public AppearanceType
 		long						numSmokeNodes;		//Where damage smoke comes from.
 		long						numWeaponNodes;		//Where weapons fire from.
 		long						numFootNodes;		//Where dust trail, contrail comes out of.
-		NodeData					*nodeData;
+		NodeData					*nodeData;			//View of nodeDataStore
+		std::unique_ptr<NodeData[]>	nodeDataStore;		//Owns the node table, built once by init(file)
 		
 		static TG_TypeMultiShapePtr	SensorTriangleShape;
 		static TG_TypeMultiShapePtr	SensorCircleShape;

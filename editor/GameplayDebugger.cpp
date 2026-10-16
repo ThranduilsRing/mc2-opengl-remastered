@@ -74,8 +74,8 @@ bool GameplayDebugger::SmokeProbe(char* outType, unsigned int cap)
         return false;
 
     EditorObjectMgr::EDITOR_OBJECT_LIST sel = mgr->getSelectedObjectList();
-    EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = sel.Begin();
-    if (it.IsDone() || !(*it))
+    auto it = sel.begin();
+    if (it == sel.end() || !(*it))
         return false;
 
     EditorObject* obj = *it;
@@ -204,8 +204,8 @@ void GameplayDebugger::Draw()
     EditorObjectMgr::EDITOR_OBJECT_LIST sel = mgr->getSelectedObjectList();
     EditorObject* obj = nullptr;
     {
-        EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = sel.Begin();
-        if (!it.IsDone())
+        auto it = sel.begin();
+        if (it != sel.end())
             obj = *it;
     }
 

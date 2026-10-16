@@ -15,7 +15,7 @@
 #include "UnitBrainPanel.h"
 
 #include "imgui.h"
-#include "UnitActionFlowPanel.h"   // ABL-FLOW-1 inline flow
+#include "UnitActionFlowPanel.h"   // Inline condition/trigger/action flow
 
 #include "EditorObjectMgr.h"
 #include "EditorObjects.h"
@@ -52,7 +52,7 @@ Unit* findUnitById( long id )
 	if ( !mgr )
 		return nullptr;
 	EditorObjectMgr::UNIT_LIST list = mgr->getUnits();
-	for ( EditorObjectMgr::UNIT_LIST::EIterator it = list.Begin(); !it.IsDone(); it++ )
+	for ( auto it = list.begin(); it != list.end(); it++ )
 		if ( *it && (*it)->getID() == id )
 			return *it;
 	return nullptr;
@@ -87,8 +87,8 @@ EditorObject* firstSelected(int* outCount)
 	if (mgr)
 	{
 		EditorObjectMgr::EDITOR_OBJECT_LIST sel = mgr->getSelectedObjectList();
-		for (EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = sel.Begin();
-			!it.IsDone(); it++)
+		for (auto it = sel.begin();
+			it != sel.end(); it++)
 		{
 			if (*it)
 			{
@@ -320,7 +320,7 @@ void UnitBrainPanel::Draw()
 			ImGui::TreePop();
 		}
 
-		// ABL-FLOW-1: condition/trigger/action flow extracted from the .abl text.
+		// condition/trigger/action flow extracted from the .abl text.
 		UnitActionFlowPanel::DrawInline((bn && bn[0]) ? loadBrainText(bn) : "");
 	}
 

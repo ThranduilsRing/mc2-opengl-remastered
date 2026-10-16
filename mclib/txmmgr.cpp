@@ -9,6 +9,8 @@
 //===========================================================================//
 
 #include "txmmgr_internal.h"
+#include "texture_ref.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 // NS3 boundary: effectStream belongs to the texture/effect subsystem, not
 // to whatever game/tool main links it. Previously redefined in every main.
@@ -499,52 +501,28 @@ void MC_TextureManager::flush (bool justTextures)
 	gos_PopCurrentHeap();
 }
 
-void MC_TextureManager::removeTextureNode (DWORD textureNode)
+void MC_TextureManager::releaseNode (DWORD textureNode)
 {
-	if (textureNode != 0xffffffff)
+	if (textureNode >= MC_MAXTEXTURES)
 	{
-		masterTextureNodes[textureNode].destroy();
-		if (masterTextureNodes[textureNode].textureData)
-		{
-			textureCacheHeap->Free(masterTextureNodes[textureNode].textureData);
-			masterTextureNodes[textureNode].textureData = nullptr;
-
-			if (masterTextureNodes[textureNode].nodeName)
-			{
-				textureStringHeap->Free(masterTextureNodes[textureNode].nodeName);
-				masterTextureNodes[textureNode].nodeName = nullptr;
-			}
-		}
+		MC2_LOG_ONCE(Render, Warn, "[TEXTURE_RELEASE_BAD] node={} (not a texture node index; ignored)", textureNode);
+		return;
 	}
+
+	MC_TextureNode& node = masterTextureNodes[textureNode];
+	if (node.numUsers == 0)
+	{
+		MC2_LOG_ONCE(Render, Warn, "[TEXTURE_RELEASE_BAD] node={} (released with no reference counted; ignored)", textureNode);
+		return;
+	}
+
+	if (--node.numUsers == 0)
+		node.destroy();
 }
 
-void MC_TextureManager::removeTexture (DWORD gosHandle)
+void mc2::ManagerTextureRelease::operator() (std::uint32_t node) const noexcept
 {
-    long i = 0;
-	for (;i<MC_MAXTEXTURES;i++)
-	{
-		if (masterTextureNodes[i].gosTextureHandle == gosHandle)
-		{
-			masterTextureNodes[i].numUsers--;
-			break;			
-		}
-	}
-	
-	if (i < MC_MAXTEXTURES && masterTextureNodes[i].numUsers == 0)
-	{
-		masterTextureNodes[i].destroy();
-		if (masterTextureNodes[i].textureData)
-		{
-			textureCacheHeap->Free(masterTextureNodes[i].textureData);
-			masterTextureNodes[i].textureData = nullptr;
-
-			if (masterTextureNodes[i].nodeName)
-			{
-				textureStringHeap->Free(masterTextureNodes[i].nodeName);
-				masterTextureNodes[i].nodeName = nullptr;
-			}
-		}
-	}
+	mc2::releaseThrough(mcTextureManager, node);
 }
 
 constexpr int cache_Threshold = 150;

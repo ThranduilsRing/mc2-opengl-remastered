@@ -27,6 +27,8 @@ public:
         unit_ = {}; building_ = {}; player_ = {}; unitDraft_ = {}; buildingDraft_ = {};
         module_.clear(); status_.clear(); revision_ = ~std::uint64_t{};
         objective_ = {}; objectiveRevision_ = ~std::uint64_t{};
+        presentationObjective_ = {}; presentationRevision_ = ~std::uint64_t{}; modelDraft_.reset();
+        templateDraft_ = document::objectiveTemplateDraft(document::ObjectiveTemplate::hiddenTrigger);
         objectiveEntry_ = {}; entryRevision_ = ~std::uint64_t{}; showObjectiveEntries_ = false;
         refresh();
     }
@@ -77,6 +79,8 @@ private:
     bool showObjectiveEntries_{};
     std::size_t objectiveList_{};
     int conditionCreation_{};
+    std::array<document::ActionDraft, 2> actionCreation_;
+    std::array<bool, 2> actionCreationOpen_{};
     std::optional<document::EntityId> conditionTarget_;
     std::array<document::Scalar, 3> payloadDraft_{};
     std::vector<document::CatalogSource> placementSources_;
@@ -100,5 +104,16 @@ private:
         const document::Transform& transform, unsigned variant);
     void chooser();
     void objectives();
+    void objectivePresentation();
+    void objectiveTemplates();
+    void objectiveTextControls(const std::string& key, document::ObjectiveTextDraft& draft);
+    void objectiveModelControls(const std::string& key, std::optional<document::ObjectiveModelDraft>& draft);
+    void resourceDraft(const std::string& key, std::int64_t& id);
+    document::NodeId presentationObjective_;
+    std::uint64_t presentationRevision_ = ~std::uint64_t{};
+    std::array<document::ObjectiveTextDraft, 2> textDrafts_;
+    std::optional<document::ObjectiveModelDraft> modelDraft_;
+    document::ObjectiveTemplateDraft templateDraft_ = document::objectiveTemplateDraft(document::ObjectiveTemplate::hiddenTrigger);
+    std::string resourceSearch_, modelSearch_;
 };
 }

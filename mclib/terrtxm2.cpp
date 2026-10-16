@@ -41,18 +41,18 @@ void TerrainColorMap::init (void)
 	colorMapStarted = false;
 	
 	detailTextureRAM = nullptr;
-	detailTextureNodeIndex = 0xffffffff;
+	detailTextureNodeIndex.reset();
 	detailTextureTilingFactor = 30.0f;
 
 	waterTextureRAM = nullptr;
-	waterTextureNodeIndex = 0xffffffff;
+	waterTextureNodeIndex.reset();
 	waterTextureTilingFactor = 48.0f;
 
 	numWaterDetailFrames = 0;
 	int i;
 	for (i = 0; i < MAX_WATER_DETAIL_TEXTURES; i++)
 	{
-		waterDetailNodeIndex[i] = 0xffffffff;
+		waterDetailNodeIndex[i].reset();
 	}
 	waterDetailFrameRate = 8;
 	waterDetailTilingFactor = 45.0f;
@@ -62,7 +62,7 @@ void TerrainColorMap::init (void)
 
 	normalMapTextures = nullptr;
 	numNormalMapTextures = 0;
-	detailNormalNodeIndex = 0xffffffff;
+	detailNormalNodeIndex.reset();
 	hasNormalMap = false;
 	lastResultTexture = -1;
 	cpuDispAlpha = nullptr;
@@ -81,7 +81,7 @@ MemoryPtr TerrainColorMap::ownColorMap (size_t bytes)
 
 void TerrainColorMap::ownTextureHandles (DWORD count)
 {
-	texturesStore.assign(count ? count : 1, ColorMapTextures{0xffffffff});
+	texturesStore = std::vector<ColorMapTextures>(count ? count : 1);
 	textures = texturesStore.data();
 }
 
@@ -110,7 +110,7 @@ void TerrainColorMap::destroy (void)
 	// [TXMMGR-TEXTURE-LEAK-FIX-1] Release the master texture-node slots this
 	// per-mission colormap allocated. The colormap tile + normal-map nodes are
 	// pinned neverFLUSH (setTextureNeverFlush, see init()), so the per-mission
-	// flush() skips them; without an explicit removeTextureNode() here their
+	// flush() skips them; without an explicit release here their
 	// 4096-slot masterTextureNodes[] entries accumulate every mission and
 	// eventually STOP("TOO Many textures"). These textures are rebuilt next
 	// mission in init(fileName), so freeing them on unload is correct.
@@ -120,46 +120,22 @@ void TerrainColorMap::destroy (void)
 		{
 			for (unsigned long i=0;i<numTextures;i++)
 			{
-				if (textures[i].mcTextureNodeIndex != 0xffffffff)
-				{
-					mcTextureManager->removeTextureNode(textures[i].mcTextureNodeIndex);
-					textures[i].mcTextureNodeIndex = 0xffffffff;
-				}
+				textures[i].mcTextureNodeIndex.reset();
 			}
 		}
 		if (normalMapTextures)
 		{
 			for (unsigned long i=0;i<numNormalMapTextures;i++)
 			{
-				if (normalMapTextures[i].mcTextureNodeIndex != 0xffffffff)
-				{
-					mcTextureManager->removeTextureNode(normalMapTextures[i].mcTextureNodeIndex);
-					normalMapTextures[i].mcTextureNodeIndex = 0xffffffff;
-				}
+				normalMapTextures[i].mcTextureNodeIndex.reset();
 			}
 		}
-		if (detailTextureNodeIndex != 0xffffffff)
-		{
-			mcTextureManager->removeTextureNode(detailTextureNodeIndex);
-			detailTextureNodeIndex = 0xffffffff;
-		}
-		if (detailNormalNodeIndex != 0xffffffff)
-		{
-			mcTextureManager->removeTextureNode(detailNormalNodeIndex);
-			detailNormalNodeIndex = 0xffffffff;
-		}
-		if (waterTextureNodeIndex != 0xffffffff)
-		{
-			mcTextureManager->removeTextureNode(waterTextureNodeIndex);
-			waterTextureNodeIndex = 0xffffffff;
-		}
+		detailTextureNodeIndex.reset();
+		detailNormalNodeIndex.reset();
+		waterTextureNodeIndex.reset();
 		for (DWORD i=0;i<numWaterDetailFrames;i++)
 		{
-			if (waterDetailNodeIndex[i] != 0xffffffff)
-			{
-				mcTextureManager->removeTextureNode(waterDetailNodeIndex[i]);
-				waterDetailNodeIndex[i] = 0xffffffff;
-			}
+			waterDetailNodeIndex[i].reset();
 		}
 	}
 
@@ -327,9 +303,9 @@ DWORD TerrainColorMap::resolveTextureHandle (VertexPtr vMin, VertexPtr vMax, Ter
 		if (realizeTexture)
 		{
 			ZoneScopedN("TerrainColorMap::getTextureHandle realizeTexture");
-			tex_resolve(textures[resultTexture].mcTextureNodeIndex);
+			tex_resolve(textures[resultTexture].mcTextureNodeIndex.get());
 		}
-		return textures[resultTexture].mcTextureNodeIndex;
+		return textures[resultTexture].mcTextureNodeIndex.get();
 	}
 
 	lastResultTexture = -1;
@@ -351,7 +327,7 @@ long TerrainColorMap::saveDetailTexture(const char *fileName)
 	mc2::fmt::to_buf(dName, "{}.detail", mc2::fmt::safe(fileName));
 	FullPathFileName detailFile;
 	detailFile.init(texturePath,dName,".tga");
-	return mcTextureManager->saveTexture(detailTextureNodeIndex, detailFile);
+	return mcTextureManager->saveTexture(detailTextureNodeIndex.get(), detailFile);
 }
 
 long TerrainColorMap::saveWaterTexture(const char *fileName)
@@ -360,7 +336,7 @@ long TerrainColorMap::saveWaterTexture(const char *fileName)
 	mc2::fmt::to_buf(dName, "{}.water", mc2::fmt::safe(fileName));
 	FullPathFileName waterFile;
 	waterFile.init(texturePath,dName,".tga");
-	return mcTextureManager->saveTexture(waterTextureNodeIndex, waterFile);
+	return mcTextureManager->saveTexture(waterTextureNodeIndex.get(), waterFile);
 }
 
 long TerrainColorMap::saveWaterDetail(const char *fileName)
@@ -373,7 +349,7 @@ long TerrainColorMap::saveWaterDetail(const char *fileName)
 		mc2::fmt::to_buf(dName, "{}.water{:04d}", mc2::fmt::safe(fileName), mc2::fmt::as_i32(i));
 		FullPathFileName waterDetailFile;
 		waterDetailFile.init(texturePath,dName,".tga");
-		long lResult = mcTextureManager->saveTexture(waterDetailNodeIndex[i], waterDetailFile);
+		long lResult = mcTextureManager->saveTexture(waterDetailNodeIndex[i].get(), waterDetailFile);
 		if (NO_ERR != lResult)
 		{
 			result = lResult;

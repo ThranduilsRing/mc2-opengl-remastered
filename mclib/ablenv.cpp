@@ -264,10 +264,8 @@ void UserFile::operator delete (void* us) {
 
 void UserFile::dump (void) {
 
-	//----------------
-	// Dump to file...
 	for (long i = 0; i < numLines; i++)
-		filePtr->writeString(lines[i]);
+		filePtr.writeString(lines[i]);
 	numLines = 0;
 }
 
@@ -275,12 +273,12 @@ void UserFile::dump (void) {
 
 void UserFile::close (void) {
 
-	if (filePtr && inUse) {
+	if (inUse) {
 		dump();
 		char s[512];
 		sprintf(s, "\nNum Total Lines = %d\n", totalLines);
-		filePtr->writeString(s);
-		filePtr->close();
+		filePtr.writeString(s);
+		filePtr.close();
 		inUse = false;
 		numLines = 0;
 		totalLines = 0;
@@ -293,7 +291,7 @@ long UserFile::open (const char* fileName) {
 
 	numLines = 0;
 	totalLines = 0;
-	if (filePtr->create(fileName) != ABL_NO_ERR)
+	if (filePtr.create(fileName) != ABL_NO_ERR)
 		return(-1);
 
 	inUse = true;
@@ -347,13 +345,10 @@ UserFile* UserFile::getNewFile (void) {
 void UserFile::setup (void) {
 
 	for (long i = 0; i < MAX_USER_FILES; i++) {
-		files[i] = (UserFile*)ABLSystemMallocCallback(sizeof(UserFile));
-		files[i]->init();
+		files[i] = new UserFile;
 		files[i]->handle = i;
 		files[i]->inUse = false;
-		files[i]->filePtr = new ABLFile;
-		if (!files[i]->filePtr)
-			ABL_Fatal(0, " ABL: Unable to malloc UserFiles ");
+
 	}
 }
 
@@ -366,11 +361,7 @@ void UserFile::cleanup (void) {
 		if (files[i]) {
 			if (files[i]->inUse)
 				files[i]->close();
-			//Should actually free the memory allocated above here!
-			delete files[i]->filePtr;
-			files[i]->filePtr = nullptr;
-
-			ABLSystemFreeCallback(files[i]);
+			delete files[i];
 			files[i] = nullptr;
 		}
 	}
@@ -660,34 +651,34 @@ void ABLModule::write (ABLFile* moduleFile) {
 
 void ABLModule::read (ABLFile* moduleFile) {
 
-	//----------------------------------------------------------------------------
-	// If this is called on a newly init'd module, then it will do all appropriate
-	// memory alloc, etc. If it's being called on a module that's already been
-	// setup (via a call to init(moduleHandle)), then it simply loads the
-	// module's data...
+	// Existing modules retain their allocations while their saved data is restored.
 	bool fresh = (id == -1);
 	if (fresh) {
 		id = NumModules++;
-		moduleFile->readString((unsigned char*)name);
+		if (moduleFile->readString((unsigned char*)name, sizeof(name)) < 0)
+			return;
 		handle = moduleFile->readInt();
 		staticData = nullptr;
 		}
 	else {
 		char tempName[1024];
-		moduleFile->readString((unsigned char*)tempName);
+		if (moduleFile->readString((unsigned char*)tempName, sizeof(tempName)) < 0)
+			return;
 		long ignore = moduleFile->readInt();
         (void)ignore;
 	}
 
 	char stateName[256];
 	memset(stateName,0,256);
-	moduleFile->readString((unsigned char*)stateName);
+	if (moduleFile->readString((unsigned char*)stateName, sizeof(stateName)) < 0)
+		return;
 	prevState = nullptr;
 	if (strcmp(stateName, "NULLPrevState"))
 		prevState = findState(stateName);
 	
 	memset(stateName,0,256);
-	moduleFile->readString((unsigned char*)stateName);
+	if (moduleFile->readString((unsigned char*)stateName, sizeof(stateName)) < 0)
+		return;
 	state = nullptr;
 	if (strcmp(stateName, "NULLState"))
 		state = findState(stateName);
@@ -750,8 +741,6 @@ void ABLModule::read (ABLFile* moduleFile) {
 		ModuleRegistry[handle].numInstances++;
 		initCalled = savedInitCalled;
 
-		//------------------------------------------------------
-		// This Active Module is now on the instance registry...
 		ModuleInstanceRegistry[NumModuleInstances++] = this;
 
 		if (debugger) {
@@ -875,10 +864,7 @@ static void ablReportSkippedErroredModule (long handle, const char* fileName, lo
 
 long ABLModule::execute (ABLParamPtr paramList) {
 
-	// OMNITECH-ABL-EXECEXPRESSION-RECON-1: a module that failed to compile (STOPSYNTAX) has
-	// malformed bytecode; running it underflows the VM stack -> READ AV at ablxexpr.cpp:501.
-	// Skip execution of errored modules when MC2_ABL_SKIP_ERRORED_MODULES is set (default OFF
-	// = legacy behaviour). One-shot log per module handle.
+	// Errored modules may contain malformed bytecode that underflows the VM stack.
 	if (ablSkipErroredModulesEnabled() && ModuleRegistry[handle].compileErrorCount > 0) {
 		ablReportSkippedErroredModule(handle, ModuleRegistry[handle].fileName, ModuleRegistry[handle].compileErrorCount);
 		return 0;
@@ -888,8 +874,6 @@ long ABLModule::execute (ABLParamPtr paramList) {
 	if (debugger)
 		debugger->setModule(this);
 
-	//--------------------------
-	// Execute the ABL module...
 	SymTableNodePtr moduleIdPtr = ModuleRegistry[handle].moduleIdPtr;
 	if (moduleIdPtr->defn.info.routine.flags & ROUTINE_FLAG_FSM)
 		CurFSM = this;
@@ -897,52 +881,15 @@ long ABLModule::execute (ABLParamPtr paramList) {
 		CurFSM = nullptr;
 	NumStateTransitions = 0;
 
-	//--------------------------------------------
-	// Point to this module's static data space...
 	StaticDataPtr = staticData;
 	OrderCompletionFlags = orderCallFlags;
 
-	//---------------------------------
-	// Init some important variables...
 	CurModuleIdPtr = nullptr;
 	CurRoutineIdPtr = nullptr;
 	FileNumber = -1;
-	errorCount = 0;
-	execStatementCount = 0;
-	NumExecutions++;
-
-	//------------------
-	// Init the stack...
-	stackFrameBasePtr = tos = (stack + eternalOffset);
-
-	//---------------------------------------
-	// Initialize the module's stack frame...
-	level = 1;
-	CallStackLevel = 0;
-	stackFrameBasePtr = tos + 1;
-	
-	//-------------------------
-	// Function return value...
-	pushInteger(0);
-	//---------------
-	// Static Link...
-	pushAddress(nullptr);
-	//----------------
-	// Dynamic Link...
-	pushAddress(nullptr);
-	//------------------
-	// Return Address...
-	pushAddress(nullptr);
-
-	//initDebugger();
-
-	//----------
-	// Run it...
+	initializeEntryFrame();
 
 	if (paramList) {
-		//------------------------------------------------------------------------------
-		// NOTE: Currently, parameter passing of arrays is not functioning. This MUST be
-		// done...
 		long curParam = 0;
 		for (SymTableNodePtr formalIdPtr = moduleIdPtr->defn.info.routine.params;
 			 formalIdPtr != nullptr;
@@ -952,28 +899,10 @@ long ABLModule::execute (ABLParamPtr paramList) {
 
 			if (formalIdPtr->defn.key == DFN_VALPARAM) {
 
-				if (formalTypePtr == RealTypePtr) {
-					if (paramList[curParam].type == ABL_PARAM_INTEGER) {
-						//---------------------------------------------
-						// Real formal parameter, but integer actual...
-						pushReal((float)(paramList[curParam].integer));
-						}
-					else if (paramList[curParam].type == ABL_PARAM_REAL)
-						pushReal(paramList[curParam].real);
-					}
-				else if (formalTypePtr == IntegerTypePtr) {
-					if (paramList[curParam].type== ABL_PARAM_INTEGER)
-						pushInteger(paramList[curParam].integer);
-					else
-						return(0);
-				}
+				if (!pushEntryValueParameter(formalTypePtr, paramList[curParam]))
+					return 0;
 
-				//----------------------------------------------------------
-				// Formal parameter is an array or record, so make a copy...
 				if (formalTypePtr->form == FRM_ARRAY/* || (formalTypePtr->form == FRM_RECORD)*/) {
-					//------------------------------------------------------------------------------
-					// The following is a little inefficient, but is kept this way to keep it clear.
-					// Once it's verified to work, optimize...
 					long size = formalTypePtr->size;
 					char* dest = (char*)ABLStackMallocCallback((size_t)size);
 					if (!dest) {
@@ -988,16 +917,12 @@ long ABLModule::execute (ABLParamPtr paramList) {
 				}
 				}
 			else {
-				//-------------------------------
-				// pass by reference parameter...
 				if (formalTypePtr == RealTypePtr)
 					pushAddress((Address)&(paramList[curParam].real));
 				else if (formalTypePtr == IntegerTypePtr)
 					pushAddress((Address)&(paramList[curParam].integer));
 				else
 					return(0);
-				//SymTableNodePtr idPtr = getCodeSymTableNodePtr();
-				//execVariable(idPtr, USE_REFPARAM);
 			}
 			curParam++;
 		}
@@ -1005,7 +930,6 @@ long ABLModule::execute (ABLParamPtr paramList) {
 
 	CurModuleHandle = handle;
 
-	//--------------------------------------------------------------------
 	// No init function in FSM. Put all init stuff into the start state...
 	CallModuleInit = !initCalled;
 	initCalled = true;
@@ -1015,8 +939,6 @@ long ABLModule::execute (ABLParamPtr paramList) {
 
 	memcpy(&returnVal, &returnValue, sizeof(StackItem));
 
-	//-----------
-	// Summary...
 	return(execStatementCount);	
 }
 
@@ -1542,7 +1464,9 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 
 	for (int i = 0; i < numLibs; i++) {
 		unsigned char fileName[1024];
-		long result = ablFile->readString(fileName);
+		long result = ablFile->readString(fileName, sizeof(fileName));
+		if (result < 0)
+			return;
 		if (!result) {
 			char err[255];
 			sprintf(err, "ABLi_loadEnvironment: Unable to read filename [Module %d]", i);
@@ -1561,7 +1485,9 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 
 	for (int i = 0; i < (numModsRegistered - numLibs); i++) {
 		unsigned char fileName[1024];
-		long result = ablFile->readString(fileName);
+		long result = ablFile->readString(fileName, sizeof(fileName));
+		if (result < 0)
+			return;
 		if (!result) {
 			char err[255];
 			sprintf(err, "ABLi_loadEnvironment: Unable to read filename [Module %d]", i);
