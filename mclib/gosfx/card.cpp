@@ -495,23 +495,9 @@ void gosFX::Card::Draw(DrawInfo *info)
 	Check_Object(this);
 	Check_Object(info);
 
-	// GPU render path (Stage 2'): re-emit this card to the batcher on every
-	// Draw() call. This matches the legacy path which submits card geometry to
-	// MLR render lists each frame. SpawnCard samples spec curves at
-	// resolveSampleAge(m_age) — 0.5 when MC2_VFX_AGE_SAMPLE is off (legacy),
-	// size/color are consistent frame-to-frame. Singleton::Draw propagates up
-	// the chain for EffectCloud children; it does not render card geometry.
-	//
-	// NOTE: GPU spawn moved from Start() to here. Start()-based emission only
-	// filled the batcher for one frame (until the first Flush()), leaving the
-	// batcher empty for all subsequent frames.
+	// CPU updates retain the authored card state for GPU rendering each frame.
 	if (mc2::particles::Batcher::is_enabled()) {
-		if (mc2::particles::Batcher::is_oracle_render_enabled()) {
-			// VFX-CARD-ORACLE-HARVEST-1: CPU-oracle render for Card, mirroring
-			// the CardCloud bridge. Card is a single-particle singleton per effect
-			// instance. Execute() (runs every frame) keeps m_halfX/Y, m_scale,
-			// m_color current. Position is the effect world origin from m_localToWorld.
-			// Card has no rotation field (not a SpinningCloud subclass), so spin=0.
+		{
 			Specification *spec = GetSpecification();
 			Check_Object(spec);
 			const uint32_t mlrTex =
@@ -525,9 +511,7 @@ void gosFX::Card::Draw(DrawInfo *info)
 					blendMode = 1;
 			}
 
-			// VFX-CARD-ORACLE-HARVEST-1: read spec UV rect from ConstantCurve fields.
-			// ConstantCurve.ComputeValue(age, seed) returns the constant value.
-			// For animated atlases, pass atlasColumns = m_width (if m_animated && m_width>1).
+			// Authored atlas tile bounds are constant over the card's lifetime.
 			const float tileU0 = static_cast<float>(
 				spec->m_UOffset.ComputeValue(0.0f, 0.0f));
 			const float tileV0 = static_cast<float>(
@@ -549,7 +533,7 @@ void gosFX::Card::Draw(DrawInfo *info)
 			// Card world position: translation column of m_localToWorld.
 			const Stuff::Point3D wc(m_localToWorld);
 
-			// Per-particle atlas frame from m_index curve (matches Card::Execute logic).
+			// The live atlas frame matches Card::Execute.
 			uint32_t atlasFrame = 0u;
 			if (atlasColumns > 1u) {
 				const float fIdx = static_cast<float>(
@@ -573,13 +557,11 @@ void gosFX::Card::Draw(DrawInfo *info)
 				Stuff::Sqrt(m_halfX * m_halfX + m_halfY * m_halfY);
 			gp.size        = static_cast<float>(m_scale * radius);
 			gp.atlasIndex  = atlasFrame;
-			// VFX-CARD-ORACLE-HARVEST-1: pack (sizeX, sizeY, spinAngle) into velocity.
-			// Card has no rotation field (Singleton, not SpinningCloud), so spin=0.
+			// Cards have authored half-extents and no spin.
 			gp.velocity[0] = static_cast<float>(m_scale * m_halfX);
 			gp.velocity[1] = static_cast<float>(m_scale * m_halfY);
 			gp.velocity[2] = 0.0f;
-			// VFX-AGE-LIFETIME-UPLOAD-1: upload normalized age and lifetime sentinel.
-			// Card is a Singleton; m_age lives on the Effect base class, normalized [0,1].
+			// Singleton age is normalized to [0,1].
 			gp.age         = static_cast<float>(m_age);   // normalized [0,1]
 			gp.lifetime    = 1.0f;                         // normalized sentinel (real seconds = 1.0f/m_ageRate)
 			batcher.Emit(gp);
@@ -593,11 +575,8 @@ void gosFX::Card::Draw(DrawInfo *info)
 					std::fflush(stderr);
 				}
 			}
-		} else {
-			(void)mc2::particles::Spawn(GetSpecification(), &m_localToWorld, (float)m_seed, (float)m_age);
 		}
-		// VFX-WEAPON-FX-RESTORE-OPUS-1: Effect::Draw propagates to children only;
-		// avoids re-submitting to MLR now that the gate is re-enabled.
+		// Children still draw; this card's geometry belongs to the GPU batcher.
 		Effect::Draw(info);
 		return;
 	}
