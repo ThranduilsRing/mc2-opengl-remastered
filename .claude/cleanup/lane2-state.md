@@ -1,5 +1,37 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## THIRTY-EIGHTH session (2026-10-16, Sonnet 5.5) -- VK VFX parity row 29 (cause found, not fixed), VFX oracle and capture_ab GL arms deleted, empty POPPED_ENV accepted, s37 review folded; nifty not merged
+
+### Commits (after 05f081b35; code tip 1d8be954e, later commit = baselines/docs only)
+85cdc3bc3 cherry-pick of Codex's d3787704e (the oracle VK arm was not on this branch) | 62652a62e parity row 29 + oracle `--install` | 488e402c8 oracle and capture_ab lose their GL arms | (check-env-drive-guard commit) | 1d8be954e s37 review fold (S1-S6) | baselines/docs commit. MERGEABLE TIP = the commit carrying this line.
+
+### Proof
+| Evidence | Result |
+|---|---|
+| row 29: oracle, VK both arms, mc2_24 ppc frame 154, exe 85cdc3bc3 (`scratch/vo38/`) | both arms DEPLOY_FINGERPRINT OK, same-arm repeats byte-equal; crop 650x370: 8,800 px differ (7,471 over 8 levels), grade DIAGNOSTIC; montage viewed. Cause: the VK VFX island is untextured by design (radial falloff of vertex colour), the MLR arm draws the textured sprite atlas through the HUD tail. The white squares of Codex's run do not reproduce on this exe. Fix recipe ~250 lines (atlas import + shader), written in `.claude/VK-PARITY-GAPS.md` row 29, not attempted |
+| item 2/3 tooling | pytest oracle + visual_verify + anti_churn + tests/smoke: green except `test_tracy_capture_compare` / `test_tracy_driver_builds_the_pinned_env` (known); one more red in `scripts/tests/test_build_compiler_presets.py::test_default_corpus_commands_and_output_unchanged[False]` (the harness corpus now has an extra `order_seam` cmake pair; neither file is in this diff, not investigated); `check-env-drive-guard` selftest + check PASS (0 popped) |
+| harnesses + doctest at the fold | `build_contract_harnesses --run --unit` exit 0, doctest 3273 cases (3 new: screenshot slot) |
+| VK tier1 + validation, final exe 1d8be954e (`scratch/t38.log`, run 2026-10-16T16-08-13) | 5/5 PASS, DEPLOY_FINGERPRINT OK x5, validation errors 0 warnings 0 on all five |
+| debug overlay with the owned queue: VK mc2_01 `MC2_DEBUG_RENDERER=1 MC2_DEBUG_RENDERER_TEST=1 MC2_VK_IMGUI=1` + validation (`scratch/d38.log`) | PASS, 0/0, `[DEBUGDRAW v1] event=first_draw queued=67` (same count as session 37) |
+| ratchets | dup-lines OK (55274, no rewrite); log-tag census OK; own_inventory OK (0 rose); callers.json and background-launch inventory regenerated (the two background-launch findings are the same two files as session 37, not from this diff) |
+| not run | GL tier1 (no GL draw path moved), `check-contracts.sh`, the oracle re-run (no fix landed) |
+
+### Deleted
+VFX oracle GL arm (`--backend` flag, `gl_fbo` readback acceptance, GL tests), `capture_ab.py --gl-arm` and the `<TAG>-gl` set, the retired `MC2_GL_ERROR_DRAIN_SILENT` name from POPPED_ENV. Kept on purpose: `smoke_lib/capture_backend.py` still recognises the `gl_fbo` spelling (it must reject an old GL sidecar).
+
+### Review s37 folded (1d8be954e)
+S1 one-frame overlay lag in the comment and inventory section 19; S5 `DebugRenderer::Queue` owned by `gosRenderer` (free functions act on the live instance); S6 failed/timed-out fence wait recorded before the present declines; S2 `gos::screenshot::Slot` (header-only, doctests) and `tick()` before the Vulkan block; S3 printf corpus is a frozen format-equivalence corpus generated from its jsonl, left; S4 the dup-lines reason goes in the commit body whenever a baseline is rewritten (none this session).
+
+### Open
+- Row 29 fix (textured VFX island); MLR retirement waits on it or on an owner ruling that the untextured island is the standard.
+- Section 16 (b): lost-draws tracker + `MC2_VK_SCENE_GL_PRODUCER_QUERY`, `gos_object_parity` GL readback, HZB probe, input probe GL reads, dev-shell `reload_shaders` GL path, terrain `tessDebug`.
+- `MC2_VK_IMGUI` default-off hides the debug overlay in a default VK run.
+- Scratch (mine, deletable): `scratch/` b38*.log, h38.log, t38.log, d38.log, vo38/ (oracle captures, ~100 MB).
+
+### Lessons (38)
+- The oracle's `--install` was parsed but unused (the exe path was a lane3 constant): check that a flag reaches the command before trusting a run's provenance.
+- A grader that stops reading sidecars for one backend hides an unchecked path: deleting the GL arm made the sidecar check unconditional and the old fixtures needed a sidecar.
+
 ## THIRTY-SEVENTH session (2026-10-16, Sonnet 5.5) -- hitch trace and debug renderer off GL, two gate rows retired, s36 review folded; nifty not merged
 
 ### Commits (after b951f2ca5; code tip 3b90168bd, later commit = docs/baselines only)

@@ -3173,7 +3173,7 @@
         },
         {
           "path": "tools/visual_verify/capture_ab.py",
-          "line": 30,
+          "line": 28,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
@@ -3453,7 +3453,7 @@
         },
         {
           "path": "scripts/smoke_lib/runner.py",
-          "line": 177,
+          "line": 175,
           "evidence": "import",
           "reference": "gate_table_reader",
           "text": "import gate_table_reader"
@@ -8709,7 +8709,7 @@
         },
         {
           "path": "tools/repo_intel/test_anti_churn.py",
-          "line": 464,
+          "line": 467,
           "evidence": "import",
           "reference": "dead_gate_scan",
           "text": "import dead_gate_scan as dgs"
@@ -8731,28 +8731,28 @@
         },
         {
           "path": "tools/repo_intel/test_anti_churn.py",
-          "line": 353,
+          "line": 356,
           "evidence": "import",
           "reference": "deploy_status",
           "text": "import deploy_status as ds"
         },
         {
           "path": "tools/repo_intel/test_anti_churn.py",
-          "line": 372,
+          "line": 375,
           "evidence": "import",
           "reference": "deploy_status",
           "text": "import deploy_status as ds"
         },
         {
           "path": "tools/repo_intel/test_anti_churn.py",
-          "line": 378,
+          "line": 381,
           "evidence": "import",
           "reference": "deploy_status",
           "text": "import deploy_status as ds"
         },
         {
           "path": "tools/repo_intel/test_anti_churn.py",
-          "line": 394,
+          "line": 397,
           "evidence": "import",
           "reference": "deploy_status",
           "text": "import deploy_status as ds"
@@ -8889,7 +8889,7 @@
         },
         {
           "path": "tools/repo_intel/test_anti_churn.py",
-          "line": 395,
+          "line": 398,
           "evidence": "import",
           "reference": "lane_model",
           "text": "import lane_model"
@@ -8962,7 +8962,7 @@
         },
         {
           "path": "tools/repo_intel/test_anti_churn.py",
-          "line": 419,
+          "line": 422,
           "evidence": "import",
           "reference": "mission_facts",
           "text": "import mission_facts as mf"
@@ -11797,7 +11797,7 @@
       "callers_by_stem": [
         {
           "path": "tools/visual_verify/capture_ab.py",
-          "line": 31,
+          "line": 29,
           "evidence": "import",
           "reference": "montage_compact",
           "text": "import montage_compact as mc  # noqa: E402"
