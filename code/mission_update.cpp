@@ -1,6 +1,7 @@
 // Mission: the per-frame Mission::update with its MC2_MISSION_SPLIT timing, mover bridge, soak hooks and coherence audit.
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 
 // FREEZE-MOVERS-1: ONE predicate for "the simulation tick is suspended".
@@ -418,45 +419,31 @@ void Mission::updateTerrainGeometry() {
 	{ ZoneScopedN("GameLogic.Mission.TerrainGeometry"); MisScope _ms(MS_GEOMETRY); land->geometry(); }
 }
 
+void Mission::advanceCombatClock(float seconds)
+{
+	const auto result = combatClock.advance(seconds);
+	if (result != mc2::combat::ClockStep::advanced && !combatClock.rejectionReported) {
+		combatClock.rejectionReported = true;
+		MC2_EVENT(Core, "COMBAT_RETIRE", 1, "reject reason={} type=-",
+			result == mc2::combat::ClockStep::clock_step ? "clock_step" : "clock_overflow");
+	}
+}
+
 // Begin the GPU cull frame and update the objects, or only their appearances while frozen.
 void Mission::updateObjectManager() {
-	// 2026-05-13: begin GPU cull substrate frame BEFORE the pause-branch.
-	// Was inside GameObjectManager::update (objmgr.cpp), which is
-	// pause-gated.  Render-time submits (BldgAppearance/TreeAppearance::
-	// render and GpuStaticPropRegistry::flush) keep appending substrate
-	// records every frame regardless of pause, so this reset must also
-	// run every frame to keep the ring slot and per-frame counter in
-	// sync.  Calling without isEnabled gating is safe — substrate_frameBegin
-	// internally checks isEnabled() and is a no-op when disabled.
-	// Fixes the pause-smear bug where paused frames accumulated
-	// substrate records across the un-reset ring slot, inflating
-	// per-bucket instanceCount in compute cull and causing coalesce
-	// multi-draw to render copies of other types' geometry at every
-	// prop's origin.
+	// Render submissions continue while paused; stale substrate records would smear props.
 	gpu_cull::substrate_frameBegin();
 
-	// FREEZE-MOVERS-1: the `freeze_movers` driver verb rides the EXISTING
-	// pause branch rather than adding a second freeze mechanism.
-	// updateAppearancesOnly() (objmgr.cpp:4857) still runs recalcBounds +
-	// setObjectParameters + updateGeometry so frozen actors keep drawing,
-	// calls Appearance::update(false) so the gait does not advance, and
-	// never calls setMoverParameters so torso/turret aim holds its last
-	// value -- the drift that invalidated an earlier vehicle-vs-mech
-	// luma A/B. mc2FreezeMoversActive() is 0 unless the verb or
-	// MC2_FREEZE_MOVERS_AT armed it, so the default path is unchanged.
+	// Frozen actors keep drawing while gameplay, gait and aim remain suspended.
 	if ( mc2SimTickFrozen(missionInterface) && !MPlayer )
 		ObjectManager->updateAppearancesOnly( true, true, true );
 	else
 		{ // Ingress precedes actor updates so orders belong to this simulation tick.
 			beginOrderSimulationTick();
+			advanceCombatClock(frameLength);
 			MisScope _ms(MS_OBJMGR); ObjectManager->update(true, true, true); }
 
-	// C1b GPU authority flip: compute_dispatch() has been MOVED to txmmgr.cpp
-	// (between GpuStaticPropRegistry::flush() and GpuStaticPropBatcher::flush())
-	// so that static prop substrate records appended during registry flush are
-	// visible to the cull shader. compute_emitParitySummary() still runs here
-	// (no static-prop records yet in the substrate; summary is for dynamic actors
-	// from substrate_flushUpload earlier this frame — timing is acceptable).
+	// Dynamic actor parity is available before the render-time static prop flush.
 	if (gpu_cull::compute_isEnabled()) {
 		gpu_cull::compute_emitParitySummary();
 	}

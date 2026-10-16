@@ -371,6 +371,7 @@ target_sources(mc2_tests PRIVATE
     test_abl_outarrays.cpp
 )
 target_sources(mc2_tests PRIVATE test_editor_mission_reader.cpp)
+target_sources(mc2_tests PRIVATE test_combat_retirement.cpp)
 include("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/CMakeLists.txt")
 target_sources(vfx_lifecycle_tests PRIVATE test_vfx_frozen_clouds.cpp)
 # The frozen-cloud tests own the particle bridge capture instead of the platform sink.

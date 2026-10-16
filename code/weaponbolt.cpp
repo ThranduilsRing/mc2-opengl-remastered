@@ -13,6 +13,7 @@
 #include <bit>
 #include <cstring>
 #include "diagnostic_trace.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 
 //---------------------------------------------------------------------------
@@ -47,6 +48,7 @@ DWORD bgrTorgb (DWORD frontRGB);
 long WeaponBoltType::init (FilePtr objFile, unsigned long fileSize)
 {
 	long result = 0;
+	long afterHitReadResult = VARIABLE_NOT_FOUND;
 	
 	FitIniFile bullFile;
 	result = bullFile.open(objFile,fileSize);
@@ -231,6 +233,7 @@ long WeaponBoltType::init (FilePtr objFile, unsigned long fileSize)
 			arcHeight = -1.0f;
 
 		result = bullFile.readIdFloat("AfterHitTime",afterHitTime);
+		afterHitReadResult = result;
 		if (result != NO_ERR)
 			afterHitTime = 0.0f;
 			
@@ -272,8 +275,19 @@ long WeaponBoltType::init (FilePtr objFile, unsigned long fileSize)
 	
 	//------------------------------------------------------------------
 	result = ObjectType::init(&bullFile);
+	initRetirePolicy(afterHitReadResult);
 	
 	return(result);
+}
+
+void WeaponBoltType::initRetirePolicy(long afterHitReadResult)
+{
+	retirePolicy = mc2::combat::RetirePolicy::fromAfterHit(
+		isBeam, afterHitReadResult != VARIABLE_NOT_FOUND, afterHitTime);
+	if (!isBeam && afterHitReadResult != NO_ERR && afterHitReadResult != VARIABLE_NOT_FOUND)
+		retirePolicy.ticks.reset();
+	if (!retirePolicy.ticks)
+		MC2_EVENT(Core, "COMBAT_RETIRE", 1, "reject reason=policy type={}", whatAmI());
 }
 	
 //---------------------------------------------------------------------------
@@ -339,8 +353,41 @@ void WeaponBolt::traceCombat(std::string_view event, std::string_view reason,
 
 void WeaponBolt::traceCombatRetire(std::string_view reason)
 {
+    if (combatTrace.live && mc2_diag::tagEnabled("VFX_COMBAT")) {
+        const auto now = mission ? mission->getCombatClock().ticks : 0;
+        const auto gap = !retireDeadline.armed ? std::string("null") :
+            now >= retireDeadline.tick ? std::format("{}", now - retireDeadline.tick) :
+            std::format("-{}", retireDeadline.tick - now);
+        traceRetireDeadline("retire", std::format(
+            "\"combat_tick\":{},\"armed\":{},\"gap_ticks\":{}", now, retireDeadline.armed, gap));
+    }
     traceCombat("retire", reason);
     combatTrace.live = false;
+}
+
+void WeaponBolt::traceRetireDeadline(std::string_view reason, std::string_view metadata)
+{
+    const auto tick = retireDeadline.armed ? std::format("{}", retireDeadline.tick) : std::string("null");
+    const auto fields = std::format(
+        ",\"deadline_source\":\"{}\",\"deadline_tick\":{},\"deadline_metadata\":{{{}}}",
+        retireDeadline.source, tick, metadata);
+    combatTrace.write("bolt", getHandle(), turn, "deadline", reason, position,
+        [this] { return getFlag(OBJECT_FLAG_JUSTCREATED) ? nullptr : &laserPosition; },
+        static_cast<GameObjectPtr>(nullptr), static_cast<const WeaponShotInfo*>(nullptr), fields);
+}
+
+void WeaponBolt::armRetireDeadline()
+{
+    const auto& policy = static_cast<WeaponBoltType*>(getObjectType())->retirePolicy;
+    const auto now = mission ? mission->getCombatClock().ticks : 0;
+    const auto result = retireDeadline.arm(now, policy);
+    if (result == mc2::combat::ArmResult::already_attempted) return;
+    if (result != mc2::combat::ArmResult::armed)
+        MC2_EVENT(Core, "COMBAT_RETIRE", 1, "reject reason={} type={}",
+            result == mc2::combat::ArmResult::policy ? "policy" : "deadline_overflow", getObjectType()->whatAmI());
+    if (combatTrace.live && mc2_diag::tagEnabled("VFX_COMBAT"))
+        traceRetireDeadline("arm", std::format("\"combat_tick\":{},\"policy_ticks\":{}", now,
+            policy.ticks ? std::format("{}", *policy.ticks) : std::string("null")));
 }
 
 // Only the authoritative side submits damage; its trace must precede the target's response.
@@ -445,6 +492,7 @@ static bool gpuTrailKindProven(mc2::particles::GpuTrailKind k)
 void WeaponBolt::init (bool create, ObjectTypePtr _type)
 {
 	traceCombatRetire("reinit");
+	retireDeadline = {};
 	GameObject::init(create, _type);
 
 	setFlag(OBJECT_FLAG_JUSTCREATED, true);
@@ -702,6 +750,11 @@ void WeaponBolt::Load (WeaponBoltData *data)
 
 	effectId = data->effectId;
 	hitTarget = data->hitTarget;
+	retireDeadline = {};
+	if (hitTarget) {
+		retireDeadline.attempted = true;
+		retireDeadline.source = "restore_unsaved";
+	}
 
 	timeLeft = data->timeLeft;
 	hsPos = data->hsPos;
@@ -711,6 +764,9 @@ void WeaponBolt::Load (WeaponBoltData *data)
 	goalHeight = data->goalHeight;
 	combatTrace.effect = effectId;
 	traceCombat("restore");
+	if (hitTarget && combatTrace.live && mc2_diag::tagEnabled("VFX_COMBAT"))
+		traceRetireDeadline("restore", std::format("\"combat_tick\":{},\"armed\":false",
+			mission ? mission->getCombatClock().ticks : 0));
 	if (!getExists()) traceCombatRetire("loaded_inactive");
 }
 
