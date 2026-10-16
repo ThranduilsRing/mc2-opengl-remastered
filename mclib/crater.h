@@ -18,7 +18,7 @@
 #include"packet.h"
 #endif
 
-
+#include<vector>
 #include<stuff/stuff.hpp>
 
 //---------------------------------------------------------------------

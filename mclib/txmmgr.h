@@ -27,7 +27,7 @@
 #ifndef HEAP_H
 #include"heap.h"
 #endif
-
+#include<vector>
 #include<string.h>
 #include<gameos.hpp>
 #include<mutex>  // std::recursive_mutex — FRAME-JOBS-2 precondition (vertex node allocators)
