@@ -76,6 +76,15 @@ layout(location = 6) in vec3 vWorldPos;
 flat layout(location = 7) in vec3 vSunDirStuff;
 flat layout(location = 8) in vec3 vSunColor;
 
+// The vertex stage's push block; the FS reads only packetAlphaTest.
+layout(push_constant) uniform PacketLayerPC {
+    int   packetLayerOff;
+    int   packetLayerOn;
+    float packetUvScaleX;
+    float packetUvScaleY;
+    int   packetAlphaTest;
+} uPacket;
+
 layout(location = 0) out vec4 oColor;     // MRT0 lit color
 layout(location = 1) out vec4 oGBuffer1;  // MRT1 normal + shadow class
 
@@ -163,11 +172,19 @@ void main() {
         // static_prop.frag:206 `fract(v_uv) * vec2(uvScaleX, uvScaleY)` verbatim;
         // uvScale defaults to 1.0 for the common single-texture types so this is a
         // no-op there).
-        vec3 albedo = texture(uAlbedo, vec3(fract(vUv) * vUvScale, float(vLayer))).rgb;
+        vec4 texOff = texture(uAlbedo, vec3(fract(vUv) * vUvScale, float(vLayer)));
+        vec3 albedo = texOff.rgb;
 
         // GL DEFAULT PROP MODEL (static_prop.frag:346): tex_color * v_argb, where v_argb
         // is the VERTEX-BAKED lit color (base_light seed + ambient + sun*NdotL). NOT PBR.
         rgb = albedo * vArgb;
+        // A packet GL alpha-tests although its type sits in the alpha-OFF group (its texture's alpha flag is set after the arrays
+        // were built, e.g. the hex lattice props): GL's dither discard, its alpha-test light floor and its alpha-test shadow class.
+        if (uPacket.packetAlphaTest != 0) {
+            if (propBayerDitherDiscard(texOff.a, gl_FragCoord.xy)) discard;
+            rgb = albedo * max(vArgb, vec3(0.5));
+            alphaTestClass = true;
+        }
         if (uFrame.pbrV1Strength > 0.0) rgb += propSunSpecular(albedo) * uFrame.pbrV1Strength;
     } else {
         // Fail-soft flat teal placeholder. IN-PLACE opaque write.

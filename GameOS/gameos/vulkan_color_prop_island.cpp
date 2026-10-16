@@ -1083,7 +1083,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // pack into half floats or move to the per-instance SSBO path.
         VkPushConstantRange pcr{};
         pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        pcr.offset = 0; pcr.size = 16; // int32 packetLayerOff, int32 packetLayerOn, float uvScaleX, float uvScaleY
+        pcr.offset = 0; pcr.size = 20; // int32 packetLayerOff, int32 packetLayerOn, float uvScaleX, float uvScaleY, int32 packetAlphaTest
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -1681,11 +1681,12 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                     // FENCE-UVSCALE-1: push this packet's own uvScaleX/Y alongside
                     // its layer -- default 1.0 (no crop) matches pre-fix behavior
                     // for any packet the feed didn't cover.
-                    struct { int32_t layerOff, layerOn; float uvScaleX, uvScaleY; } pc = {
+                    struct { int32_t layerOff, layerOn; float uvScaleX, uvScaleY; int32_t alphaTest; } pc = {
                         (pk < s->packetLayerOff.size())  ? s->packetLayerOff[pk]  : -1,
                         (pk < s->packetLayerOn.size())   ? s->packetLayerOn[pk]   : -1,
                         (pk < s->packetUvScaleX.size())  ? s->packetUvScaleX[pk]  : 1.0f,
                         (pk < s->packetUvScaleY.size())  ? s->packetUvScaleY[pk]  : 1.0f,
+                        mc2_static_prop_packet_alpha_test(pk),
                     };
                     if (s_pktDump)
                         std::fprintf(s_pktDump, "%u,%u,%d,%d,%.4f,%.4f,%u,%u,%d,%u,%u\n",

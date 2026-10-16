@@ -1054,6 +1054,19 @@ void GpuStaticPropBatcher::finalizeGeometry() {
     armCoalesce(f);
 }
 
+bool GpuStaticPropBatcher::packetAlphaTest(uint32_t packet) const {
+    if (!s_geometryFinalized || packet >= s_packets.size()) return false;
+    const auto& pkt = s_packets[packet];
+    if (pkt.materialFlags & STATIC_PROP_FLAG_ALPHA_TEST) return true;
+    if (pkt.owningTypeID >= s_types.size()) return false;
+    const TG_TypeShape* src = s_types[pkt.owningTypeID].source;
+    return src && src->listOfTextures && pkt.textureSlot < src->numTextures && src->listOfTextures[pkt.textureSlot].textureAlpha;
+}
+
+extern "C" int mc2_static_prop_packet_alpha_test(uint32_t packet) {
+    return GpuStaticPropBatcher::instance().packetAlphaTest(packet) ? 1 : 0;
+}
+
 extern "C" int mc2_static_prop_geometry_cpu(const void** vbo, uint64_t* vboBytes, const void** ibo, uint64_t* iboBytes) {
     if (!vbo || !vboBytes || !ibo || !iboBytes) return 0;
     if (!s_geometryFinalized || s_fatalRegistrationFailure || s_stagingVbo.empty() || s_stagingIbo.empty()) return 0;

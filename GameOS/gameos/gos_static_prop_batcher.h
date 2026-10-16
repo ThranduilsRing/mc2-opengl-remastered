@@ -190,6 +190,9 @@ private:
     bool reportMaterialCacheAndBaseInstances(StaticPropFinalizeFrame& f);
     void armCoalesce(StaticPropFinalizeFrame& f);
 public:
+    // True when GL alpha-tests packet `packet` of the shared geometry this frame: its material's ALPHA_TEST bit or its texture's live alpha
+    // flag (set after load for some textures, so it can differ from the packet's group).
+    bool packetAlphaTest(uint32_t packet) const;
 
     // Per-frame submission. shape->listOfColors must be fresh (set by
     // TransformMultiShape earlier in the frame).
