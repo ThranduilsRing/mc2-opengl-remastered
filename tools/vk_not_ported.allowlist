@@ -86,3 +86,6 @@ MC2_SHADER_PATH_TINT | shaders/terrain_lod_chunk.frag | uniform u_pathTint: no s
 MC2_TERRAIN_LOD_CHUNK_DIAG | shaders/terrain_lod_chunk.frag | uniform u_diag: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
 MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR | shaders/terrain_lod_chunk.frag | uniform u_forceColor: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
 MC2_WATER_DEBUG_MODE | shaders/gos_terrain_water_mdi.frag | uniform u_waterDebugMode: no such name in the VK twin (shaders/vulkan/water_geom.*) shader, island C++ or gpu_abi
+# --- The static sun map's terrain casters (row 17): the VK port draws untessellated world positions with the static matrix
+MC2_PROP_FIXB_MVP | shaders/shadow_terrain.vert | uniform mvp: the GL VS writes a screen-space position the TES overrides; the static map depth never reads it (GL/VK static depth dumps match)
+MC2_TERRAIN_NORMAL_ARRAY | shaders/shadow_terrain.tese | define TERRAIN_NORMAL_ARRAY: selects the dirt displacement source; the GL static build samples it at uv 0, so the VK port leaves displacement out (GL/VK static depth dumps match)

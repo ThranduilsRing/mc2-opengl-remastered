@@ -51,16 +51,16 @@
    "LG02": 191,
    "LG03": 265,
    "LG04": 6,
-   "LG05": 122,
-   "LG06": 506,
+   "LG05": 124,
+   "LG06": 509,
    "LG07": 0,
-   "LG08": 257,
-   "LG09": 1979,
-   "LG10": 39,
+   "LG08": 261,
+   "LG09": 1971,
+   "LG10": 42,
    "LG11": 101,
    "LG12a": 95,
    "LG12b": 30,
-   "LG13": 315,
+   "LG13": 317,
    "LG14": 61,
    "LG15": 0,
    "LG16": 7,
@@ -196,7 +196,7 @@
    "LG09": 2115,
    "LG10": 33,
    "LG11": 67,
-   "LG12a": 210,
+   "LG12a": 209,
    "LG12b": 237,
    "LG13": 449,
    "LG14": 113,
@@ -435,6 +435,7 @@
    "LG18": 1
   },
   "GameOS/gameos/gameos_graphics_shadow.cpp": {
+   "LG05": 1,
    "LG06": 2,
    "LG09": 10,
    "LG10": 1,
@@ -552,6 +553,7 @@
    "LG05": 1,
    "LG06": 2,
    "LG09": 9,
+   "LG10": 3,
    "LG17": 1
   },
   "GameOS/gameos/gos_hdri.h": {
@@ -626,11 +628,12 @@
    "LG09": 9
   },
   "GameOS/gameos/gos_postprocess.cpp": {
+   "LG06": 1,
    "LG09": 7,
    "LG20": 8
   },
   "GameOS/gameos/gos_postprocess.h": {
-   "LG06": 2
+   "LG06": 3
   },
   "GameOS/gameos/gos_postprocess_blur.cpp": {
    "LG03": 3,
@@ -1004,6 +1007,9 @@
    "LG06": 2,
    "LG17": 1
   },
+  "GameOS/gameos/static_shadow_spec.h": {
+   "LG05": 1
+  },
   "GameOS/gameos/terrain_field_store.cpp": {
    "LG09": 6,
    "LG17": 1
@@ -1144,6 +1150,9 @@
   "GameOS/gameos/vk_gpu_timestamps.h": {
    "LG09": 2
   },
+  "GameOS/gameos/vk_hdri_source.h": {
+   "LG08": 2
+  },
   "GameOS/gameos/vk_image_resource.cpp": {
    "LG06": 2
   },
@@ -1223,6 +1232,10 @@
    "LG13": 2,
    "LG17": 5
   },
+  "GameOS/gameos/vulkan_shadow_static_map.cpp": {
+   "LG06": 1,
+   "LG13": 2
+  },
   "GameOS/gameos/vulkan_shared_scene_color.cpp": {
    "LG03": 1,
    "LG06": 2,
@@ -1238,8 +1251,8 @@
   },
   "GameOS/gameos/vulkan_sky_island.cpp": {
    "LG06": 2,
-   "LG08": 1,
-   "LG09": 12,
+   "LG08": 2,
+   "LG09": 9,
    "LG11": 1,
    "LG13": 2
   },
@@ -1248,7 +1261,7 @@
    "LG11": 1
   },
   "GameOS/gameos/vulkan_terrain_island_images.cpp": {
-   "LG09": 27
+   "LG09": 25
   },
   "GameOS/gameos/vulkan_terrain_island_internal.h": {
    "LG06": 1,
@@ -1279,8 +1292,8 @@
    "LG11": 1
   },
   "GameOS/gameos/vulkan_water_island_images.cpp": {
-   "LG08": 1,
-   "LG09": 12
+   "LG08": 2,
+   "LG09": 9
   },
   "GameOS/gameos/vulkan_water_island_init.cpp": {
    "LG09": 4
@@ -4299,7 +4312,7 @@
    "LG03": 24,
    "LG09": 16,
    "LG11": 1,
-   "LG12a": 10,
+   "LG12a": 9,
    "LG16": 15,
    "LG17": 1
   },
@@ -5116,7 +5129,7 @@
    "LG20": 3
   }
  },
- "head": "e84b5409f",
+ "head": "9e012d3f0",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

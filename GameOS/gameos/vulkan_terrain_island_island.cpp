@@ -203,12 +203,12 @@ void write_descriptors(TerrainIsland* s) {
         w[n].dstBinding = 4; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &ceBuf; ++n;
     }
-    // VK-TERRAIN-LIGHTING: binding 5 static shadow sampler2DShadow — always written once
-    // the (dummy or real) depth-compare image + sampler exist (uT.enableShadows gates use).
+    // Binding 5 static shadow sampler2DShadow: the shadow island's static map when this frame has it, else the dummy (uT.enableShadows gates use).
     VkDescriptorImageInfo shInfo{};
-    if (s->shadowView && s->shadowSamp) {
-        shInfo.sampler = s->shadowSamp.get(); shInfo.imageView = s->shadowView.get();
-        shInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    const VkImageView staticView = (s->shadowExternalView != VK_NULL_HANDLE) ? s->shadowExternalView : s->shadowView.get();
+    if (staticView != VK_NULL_HANDLE && s->shadowSamp) {
+        shInfo.sampler = s->shadowSamp.get(); shInfo.imageView = staticView;
+        shInfo.imageLayout = (s->shadowExternalView != VK_NULL_HANDLE) ? kDirectShadowLayout : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 5; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &shInfo; ++n;

@@ -1156,7 +1156,11 @@ PANEL_OPERATIONS = {
         "AllPreviousPrimaryObjectivesMustBeComplete", "DisplayMarker", "MarkerX", "MarkerY", "HiddenTrigger",
         "ActivateOnFlag", "ActivateFlagID", "ResetStatusOnFlag", "ResetStatusFlagID", "TitleUseResourceString",
         "TitleResourceStringID", "DescriptionUseResourceString", "DescriptionResourceStringID", "ObjectiveModel",
-        "ModelType", "BaseColor", "HighlightColor", "HighlightColor2", "ModelScale", "ModelID", "ModelID Version")),
+        "ModelType", "BaseColor", "HighlightColor", "HighlightColor2", "ModelScale", "ModelID", "ModelID Version")) +
+        tuple(f"widget-payload-{listing}-{key}" for listing in (1, 3)
+              for key in ("AVIFileName", "WAVFileName", "Message", "PurchaseFileName", "ResourceStringID")) +
+        tuple(f"widget-payload-{listing}-{key}" for listing in (0, 2)
+              for key in ("Num", "Time", "TargetCenterX", "TargetCenterY", "TargetRadius", "create")),
     "unit_panel": ("unit-transform", "unit-team", "unit-place", "unit-delete"),
     "building_panel": ("building-transform", "building-team", "building-place", "building-delete"),
     "player_panel": ("player-alignment",),
@@ -1259,11 +1263,26 @@ def grade_panel(name: str, directory: Path, rc: int, require_render=True) -> Non
     elif name == "marker_panel":
         grade_marker_edits(directory)
     elif name == "objectives_panel":
-        from editor.tests.objective_census import AUTHORING_KEYS, grade_objective_edit, grade_reference_rows
+        from editor.tests.objective_census import AUTHORING_KEYS, grade_objective_edit, grade_reference_rows, grade_payload_edit, grade_condition_creation, objective_fields
         grade_reference_rows(directory)
         for key in AUTHORING_KEYS:
             grade_objective_edit((directory / "fixture.fit").read_bytes(),
                                  (directory / ("objective-" + key.replace(" ", "_") + "-edited.fit")).read_bytes(), key)
+        baseline = (directory / "fixture.fit").read_bytes()
+        fields = objective_fields(baseline)
+        for listing, suffix in ((0, "Condition"), (2, "FailureCondition")):
+            for key in ("Num", "Time", "TargetCenterX", "TargetCenterY", "TargetRadius"):
+                candidates = [path.partition("/")[0] for path in fields if path.endswith("/" + key)
+                              and re.fullmatch(r"Team0Objective\d+" + suffix + r"\d+", path.partition("/")[0])]
+                block = max(candidates, key=lambda name: int(re.search(r"Objective(\d+)", name)[1]))
+                grade_payload_edit(baseline, (directory / f"widget-payload-{listing}-{key}-edited.fit").read_bytes(), block, key)
+            owner = re.match(r"Team0Objective\d+", block)[0]
+            grade_condition_creation(baseline, (directory / f"widget-payload-{listing}-create-edited.fit").read_bytes(), owner, suffix)
+        from editor.tests.objective_census import ACTION_PAYLOADS
+        for listing, suffix in ((1, "Action"), (3, "FailureAction")):
+            for index, (_, key) in enumerate(ACTION_PAYLOADS):
+                grade_payload_edit(baseline, (directory / f"widget-payload-{listing}-{key}-edited.fit").read_bytes(),
+                                   f"Team0Objective1{suffix}{index}", key)
     elif name == "objectives_crud_panel":
         from editor.tests.objective_crud import grade_crud_panel
         grade_crud_panel(directory)
@@ -1437,6 +1456,24 @@ def objective_negative_controls(directory):
             for path, original in zip(resolve_paths, resolved): path.write_bytes(original)
         if not caught:
             raise ValueError("objective missing row/wrong target/no-op resolve was accepted")
+    for listing in (0, 2):
+        paths = [directory / f"widget-payload-{listing}-create-{stage}.fit" for stage in ("edited", "redone")]
+        originals = [path.read_bytes() for path in paths]
+        begin = originals[0].rfind(b"f PositionX = ")
+        end = originals[0].find(b"\r\n", begin)
+        if begin < 0 or end < 0:
+            raise ValueError("specific creation negative control lacks XY")
+        skipped = originals[0][:begin] + b"f PositionX = -1e30" + originals[0][end:]
+        caught = False
+        try:
+            for path in paths: path.write_bytes(skipped)
+            grade_panel("objectives_panel", directory, 0, require_render=rendered)
+        except ValueError:
+            caught = True
+        finally:
+            for path, original in zip(paths, originals): path.write_bytes(original)
+        if not caught:
+            raise ValueError("game-skipped specific condition creation was accepted")
 
 
 def crud_negative_controls(directory):

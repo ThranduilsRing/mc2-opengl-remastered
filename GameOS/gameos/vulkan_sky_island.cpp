@@ -20,6 +20,7 @@
 #include "vk_island_util.h"
 #include "vulkan_context.h"
 #include "vulkan_sky_island.h"
+#include "vk_hdri_source.h"
 #include "vk_shared_gbuffer_gate.h"
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
@@ -87,7 +88,7 @@ struct Island : mc2vk::IslandState {
     struct VkImageResource* depthRes = nullptr;
     VkDescriptorSet set = VK_NULL_HANDLE;   // allocated from `pool`, freed with it
     VkCommandBuffer cbuf[2] = {};           // allocated from `cpool`, freed with it
-    unsigned int hdriGlTex = 0; bool hdriAttempted = false, hdriReal = false;
+    uint64_t hdriGeneration = 0; bool hdriAttempted = false, hdriReal = false;   // the CPU HDRI generation imported
 
     mc2vk::OwnedCommandPool cpool;
     mc2vk::OwnedSampler samp;
@@ -149,12 +150,13 @@ bool submit_once(Island* s, const std::function<void(VkCommandBuffer)>& record) 
     return ok;
 }
 
-// Copy-once HDRI import (mirrors vulkan_water_island.cpp ensure_hdri). Called on the GL
-// thread BEFORE recording. On failure/absence a 1x1 black dummy is bound (sky = black,
-// the same as GL's "no HDRI" baseline).
+// Copy-once HDRI import from the engine's CPU copy (the water island's ensure_hdri does the same). Called before recording.
+// On failure/absence a 1x1 black dummy is bound (sky = black, the same as GL's "no HDRI" baseline).
 bool ensure_hdri(Island* s, unsigned int glTex) {
-    if (s->hdriAttempted && s->hdriGlTex == glTex) return static_cast<bool>(s->hdriView);
-    s->hdriAttempted = true; s->hdriGlTex = glTex; s->hdriReal = false;
+    // Keyed on the CPU copy's load generation: a reloaded HDRI can come back under the same GL name.
+    const uint64_t generation = glTex != 0 ? mc2vk::hdriCpuGeneration() : 0;
+    if (s->hdriAttempted && s->hdriGeneration == generation) return static_cast<bool>(s->hdriView);
+    s->hdriAttempted = true; s->hdriGeneration = generation; s->hdriReal = false;
     if (s->hdriView || s->hdriImg) { vkDeviceWaitIdle(s->device); destroy_hdri(s); }
 
     VkFormat fmt = VK_FORMAT_R16G16B16A16_SFLOAT;
@@ -162,51 +164,12 @@ bool ensure_hdri(Island* s, unsigned int glTex) {
     std::vector<std::vector<unsigned char>> levels;
     std::vector<std::pair<int,int>> dims;
     bool haveReal = false;
-    if (glTex != 0) {
-        GLint prevTex = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTex);
-        glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
-        GLint ifmt = 0, compressed = 0, w0 = 0, h0 = 0, maxLevel = 1000;
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &ifmt);
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED, &compressed);
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &w0);
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h0);
-        glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, &maxLevel);
-        if (w0 > 0 && h0 > 0) {
-            if (compressed && (ifmt == GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT ||
-                               ifmt == GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT)) {
-                VkPhysicalDeviceFeatures feats{};
-                vkGetPhysicalDeviceFeatures(s->phys, &feats);
-                if (feats.textureCompressionBC) {
-                    fmt = (ifmt == GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT)
-                        ? VK_FORMAT_BC6H_SFLOAT_BLOCK : VK_FORMAT_BC6H_UFLOAT_BLOCK;
-                    GLint sz = 0;
-                    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &sz);
-                    if (sz > 0) {
-                        levels.emplace_back((size_t)sz);
-                        glGetCompressedTexImage(GL_TEXTURE_2D, 0, levels[0].data());
-                        dims.emplace_back(w0, h0);
-                        w = w0; h = h0; mips = 1;
-                        haveReal = (glGetError() == GL_NO_ERROR);
-                    }
-                } else vlog("device lacks textureCompressionBC -- black sky.");
-            } else if (ifmt == GL_RGBA16F) {
-                fmt = VK_FORMAT_R16G16B16A16_SFLOAT; w = w0; h = h0;
-                for (int lvl = 0; lvl <= maxLevel; ++lvl) {
-                    GLint tw = 0;
-                    glGetTexLevelParameteriv(GL_TEXTURE_2D, lvl, GL_TEXTURE_WIDTH, &tw);
-                    if (tw <= 0) break;
-                    const int lw = (w0 >> lvl) > 0 ? (w0 >> lvl) : 1;
-                    const int lh = (h0 >> lvl) > 0 ? (h0 >> lvl) : 1;
-                    levels.emplace_back((size_t)lw * lh * 8);
-                    glGetTexImage(GL_TEXTURE_2D, lvl, GL_RGBA, GL_HALF_FLOAT, levels.back().data());
-                    dims.emplace_back(lw, lh);
-                    if (lw == 1 && lh == 1) break;
-                }
-                mips = (uint32_t)levels.size();
-                haveReal = (mips > 0) && (glGetError() == GL_NO_ERROR);
-            } else vlog("unexpected GL HDRI internal format 0x%x -- black sky.", ifmt);
-        }
-        glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
+    if (generation != 0) {
+        uint64_t gotGeneration = 0;
+        const char* reason = "";
+        haveReal = mc2vk::hdriFromCpu(s->phys, fmt, levels, dims, gotGeneration, reason);
+        if (haveReal) { w = dims[0].first; h = dims[0].second; mips = static_cast<uint32_t>(levels.size()); }
+        else vlog("HDRI not imported (%s) -- black sky.", reason);
     }
     if (!haveReal) {
         fmt = VK_FORMAT_R16G16B16A16_SFLOAT; w = 1; h = 1; mips = 1;

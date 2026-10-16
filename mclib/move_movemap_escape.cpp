@@ -442,7 +442,7 @@ void MoveMap::writeDebug (File* debugFile) {
 
 void MoveMap::destroy (void) {
 
-	// Releases the grid now (not at the destructor): a destroyed map is re-sized by its next solve.
+	// Frees the grid now; the next solve re-sizes it.
 	map = {};
 	mapRowStartTable = {};
 	mapRowTable = {};

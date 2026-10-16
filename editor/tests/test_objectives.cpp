@@ -5,10 +5,12 @@
 #include <chrono>
 #include <bit>
 #include <cmath>
+#include <cstdlib>
 #include <fstream>
 #include <format>
 #include <limits>
 #include <tuple>
+#include <sstream>
 
 using namespace editor::document;
 namespace {
@@ -54,6 +56,76 @@ Scalar replacement(const ObjectiveFieldSpec& spec)
     if (spec.type == 2) return true;
     return std::string("Changed objective\nsecond line");
 }
+}
+
+namespace {
+std::string messageFixture(std::string wire = "\"old\"")
+{
+    auto fit = fixture();
+    const auto begin = fit.find("st ActionSpeciesString");
+    const auto end = fit.find("[Team0Objective0FailureCondition0]", begin);
+    fit.replace(begin, end - begin, "st ActionSpeciesString = \"DisplayTextMessage\"\r\nst Message = " + wire + "\r\n");
+    return fit;
+}
+}
+
+TEST_CASE("objectives/message assembly limit includes retained whitespace")
+{
+    auto fit = messageFixture();
+    fit.insert(fit.find("\"old\""), 100, ' ');
+    std::vector<std::string> logs;
+    auto doc = MissionDocument::decode(fit, packet(), "buffer", {}); REQUIRE(doc);
+    CommandHistory history(*doc, 32 * 1024 * 1024, [&](auto line) { logs.push_back(line); });
+    const auto id = doc->objectives()[0].entries[1][0].section;
+    const auto result = history.setObjectivePayload(id, "Message", std::string(1998, 'x') + "\ny");
+    REQUIRE_FALSE(result);
+    CHECK(result.error().reason == "reader_string_buffer_limit");
+    CHECK(logs.size() == 1);
+    CHECK(doc->fitBytes() == fit);
+    CHECK_FALSE(history.canUndo());
+    REQUIRE(history.setObjectivePayload(id, "Message", std::string(1900, 'x') + "\ny"));
+    REQUIRE(history.undo());
+    const auto title = doc->find(doc->objectives()[0].section, "Title"); REQUIRE(title);
+    auto padded = fit;
+    padded.insert(title->syntax.begin, 100, ' ');
+    auto scalarDoc = MissionDocument::decode(padded, packet(), "scalar-buffer", {}); REQUIRE(scalarDoc);
+    CommandHistory scalarHistory(*scalarDoc, 32 * 1024 * 1024, [&](auto line) { logs.push_back(line); });
+    logs.clear();
+    const auto scalarResult = scalarHistory.setObjectiveScalar(scalarDoc->objectives()[0].section, "Title", std::string(1998, 'x') + "\ny");
+    REQUIRE_FALSE(scalarResult); CHECK(scalarResult.error().reason == "reader_string_buffer_limit");
+    CHECK(logs.size() == 1); CHECK(scalarDoc->fitBytes() == padded);
+}
+
+TEST_CASE("objectives/LF blank line collapse matches the RAM reader")
+{
+    const auto fit = messageFixture("\"a\n\nb\"");
+    auto doc = MissionDocument::decode(fit, packet(), "lf", {}); REQUIRE(doc);
+    CHECK(doc->objectives()[0].entries[1][0].payload[0] == Scalar{std::string("ab")});
+    CHECK(doc->fitBytes() == fit);
+}
+
+TEST_CASE("objectives/quoted declaration lines remain authorable message text")
+{
+    auto doc = MissionDocument::decode(messageFixture(), packet(), "declaration", {}); REQUIRE(doc);
+    CommandHistory history(*doc);
+    const auto id = doc->objectives()[0].entries[1][0].section;
+    const std::string text = "hello\nul Count = 1";
+    REQUIRE(history.setObjectivePayload(id, "Message", text));
+    CHECK(doc->objectives()[0].entries[1][0].payload[0] == Scalar{text});
+}
+
+TEST_CASE("objectives/imported closing quote keeps trailing bytes through edits")
+{
+    const auto fit = messageFixture("\"one\"two\"");
+    auto doc = MissionDocument::decode(fit, packet(), "quote", {}); REQUIRE(doc);
+    CHECK(doc->objectives()[0].entries[1][0].payload[0] == Scalar{std::string("one")});
+    CHECK(doc->fitBytes() == fit);
+    CommandHistory history(*doc);
+    REQUIRE(history.setObjectivePayload(doc->objectives()[0].entries[1][0].section, "Message", std::string("new")));
+    auto expected = fit;
+    expected.replace(expected.find("\"one\""), 5, "\"new\"");
+    CHECK(doc->fitBytes() == expected);
+    REQUIRE(history.undo()); CHECK(doc->fitBytes() == fit);
 }
 
 TEST_CASE("objectives/all authoring scalars have independent defaults and exact commands")
@@ -107,8 +179,7 @@ TEST_CASE("objectives/all authoring scalars have independent defaults and exact 
         auto parsed = decodeFit(bytes(output / "edited.fit")); REQUIRE(parsed);
         const auto actual = std::ranges::find(parsed->fields, oldSource.value_or(std::string(spec.key)), &Field::name);
         REQUIRE(actual != parsed->fields.end());
-        const auto wireValue = spec.type == 3 ? Scalar{std::string("\nChanged objective\nsecond line")} : value;
-        CHECK(actual->value == Value{wireValue});
+        CHECK(actual->value == Value{value});
         auto reopened = MissionDocument::read(output / "edited.fit", output / "edited.pak", log); REQUIRE(reopened);
         CHECK(reopened->objectiveScalar(reopened->objectives()[0].section, spec.key)->value == value);
         REQUIRE(history.undo()); CHECK(doc->fitBytes() == original); CHECK(doc->objective(id));
@@ -444,6 +515,7 @@ TEST_CASE("objectives/version two action names follow the reader and keep ignore
     CHECK(copiedFlag.idSource != doc->objective(owner)->entries[1][0].flag->idSource);
     REQUIRE(copiedFlag.valueSource); CHECK(doc->field(*copiedFlag.valueSource)->name == "Value");
     CHECK(doc->find("Objective1Action0", "FlagID")->value == Value{std::string("ignored-alias")});
+    CHECK(doc->fitBytes().find(ignored) != std::string::npos);
     REQUIRE(history.undo()); CHECK(doc->fitBytes() == fit);
 }
 
@@ -546,6 +618,191 @@ TEST_CASE("objectives/policy and collision rejection cannot consume history or f
             "ul FailureActionSpecies = 4\r\nst FlagID = \"numeric\"");
         auto loaded = MissionDocument::decode(numeric, packet(), "numeric", {}); REQUIRE(loaded);
         CHECK(loaded->objectives()[0].entries[list][0].flag.has_value() == (list == 0));
+    }
+}
+
+TEST_CASE("objectives/condition payload edits preserve reader values and reject atomic conversion changes")
+{
+    const auto& paths = editor::tests::inputs();
+    const auto output = paths.byteGradeDirectory.empty() ? scratch() : paths.byteGradeDirectory;
+    std::filesystem::create_directories(output);
+    for (const auto list : {0U, 2U}) for (const auto& spec : conditionSchema()) {
+        auto doc = MissionDocument::decode(fixture(), packet(), "payload", {}); REQUIRE(doc);
+        std::vector<std::string> logs;
+        CommandHistory history(*doc, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
+        const auto owner = doc->objectives()[0].section;
+        const auto original = doc->fitBytes();
+        if (spec.reference) {
+            CHECK_FALSE(history.addObjectiveCondition(owner, list, spec.species));
+            CHECK(doc->fitBytes() == original); CHECK_FALSE(history.canUndo());
+            continue;
+        }
+        const auto added = history.addObjectiveCondition(owner, list, spec.species); REQUIRE(added);
+        const auto created = doc->fitBytes();
+        CHECK(doc->objective(owner)->entries[list].back().species == decltype(ObjectiveEntry::species){spec.species});
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == created);
+        for (const auto& field : spec.fields) {
+            CAPTURE(spec.name, field.key, list);
+            const auto stem = std::format("payload-{}-{}-{}", list, spec.name, field.key);
+            REQUIRE(doc->save(output / (stem + "-before"), {}));
+            const Scalar changed = field.type == 0 ? Scalar{std::int64_t{-17}} : Scalar{-1.25};
+            REQUIRE(history.setObjectivePayload(*added, field.key, changed));
+            CHECK(doc->find(*added, field.key)->value == Value{changed});
+            REQUIRE(doc->save(output / (stem + "-after"), {}));
+            auto reopened = MissionDocument::read(output / (stem + "-after.fit"), output / (stem + "-after.pak"), {}); REQUIRE(reopened);
+            CHECK(reopened->fitBytes() == doc->fitBytes());
+            const auto edited = doc->fitBytes();
+            REQUIRE(history.undo()); CHECK(doc->fitBytes() == created);
+            REQUIRE(history.redo()); CHECK(doc->fitBytes() == edited);
+            REQUIRE(history.undo());
+            const std::vector<Scalar> accepted = field.type == 0 ?
+                std::vector<Scalar>{std::int64_t{-2147483648LL}, std::int64_t{2147483647}} :
+                std::vector<Scalar>{-1.0, 0.0, -0.0, static_cast<double>(std::numeric_limits<float>::denorm_min()),
+                    static_cast<double>(std::numeric_limits<float>::max())};
+            for (const auto& value : accepted) {
+                REQUIRE(history.setObjectivePayload(*added, field.key, value));
+                CHECK(doc->find(*added, field.key)->value == Value{value});
+                if (field.type == 1) CHECK(std::signbit(std::get<double>(doc->find(*added, field.key)->value[0])) == std::signbit(std::get<double>(value)));
+                if (doc->fitBytes() != created) { REQUIRE(history.undo()); CHECK(doc->fitBytes() == created); }
+            }
+            const std::vector<Scalar> rejected = field.type == 0 ?
+                std::vector<Scalar>{std::int64_t{-2147483649LL}, std::int64_t{2147483648LL}, 1.0} :
+                std::vector<Scalar>{std::numeric_limits<double>::infinity(), std::int64_t{1}};
+            for (const auto& value : rejected) {
+                const auto revision = doc->revision(); logs.clear();
+                CHECK_FALSE(history.setObjectivePayload(*added, field.key, value));
+                CHECK(logs.size() == 1); CHECK(doc->revision() == revision); CHECK(doc->fitBytes() == created);
+                CHECK(history.canRedo());
+            }
+            auto wrong = created;
+            const auto* source = doc->find(*added, field.key);
+            const auto start = wrong.rfind('\n', source->syntax.begin) + 1;
+            wrong.replace(start, field.prefix.size(), field.type == 0 ? "l" : "ul");
+            auto ignored = MissionDocument::decode(wrong, packet(), "ignored", {}); REQUIRE(ignored);
+            const auto entry = ignored->objectives()[0].entries[list].back().section;
+            CommandHistory ignoredHistory(*ignored, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
+            logs.clear(); CHECK_FALSE(ignoredHistory.setObjectivePayload(entry, field.key, changed));
+            CHECK(logs.size() == 1); CHECK(ignored->fitBytes() == wrong); CHECK_FALSE(ignoredHistory.canUndo());
+            CommandHistory tiny(*doc, 1); CHECK_FALSE(tiny.setObjectivePayload(*added, field.key, changed));
+            CHECK(doc->fitBytes() == created);
+        }
+        CHECK_FALSE(history.addObjectiveCondition(owner, 1, spec.species));
+        CHECK_FALSE(history.addObjectiveCondition(owner, 3, spec.species));
+        CHECK(doc->fitBytes() == created);
+    }
+}
+
+TEST_CASE("objectives/action payloads preserve paths and reject invalid text without changing history")
+{
+    const auto& paths = editor::tests::inputs();
+    const auto output = paths.byteGradeDirectory.empty() ? scratch() : paths.byteGradeDirectory;
+    std::filesystem::create_directories(output);
+    for (const auto list : {1U, 3U}) for (const auto& spec : actionSchema()) {
+        const auto& field = spec.fields.front();
+        auto fit = fixture();
+        const auto block = std::string("Team0Objective0") + (list == 1 ? "Action0" : "FailureAction0");
+        const auto begin = fit.find("[" + block + "]");
+        const auto end = fit.find('[', begin + 1);
+        fit.replace(begin, end - begin, "[" + block + "]\r\nst " + (list == 1 ? "Action" : "FailureAction") +
+            "SpeciesString = \"" + std::string(spec.name) + "\"\r\n" + std::string(field.prefix) + " " +
+            std::string(field.key) + (field.type == 3 ? " = \"../Original/Name.ext\"\r\n" : " = 7\r\n"));
+        auto doc = MissionDocument::decode(fit, packet(), "actions", {}); REQUIRE(doc);
+        const auto id = doc->objectives()[0].entries[list][0].section;
+        std::vector<std::string> logs;
+        CommandHistory history(*doc, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
+        const auto stem = std::format("payload-{}-{}-{}", list, spec.name, field.key);
+        REQUIRE(doc->save(output / (stem + "-before"), {}));
+        const Scalar changed = field.type == 3 ? Scalar{std::string("../Exact/Name\n\nsecond line\n")} : Scalar{std::int64_t{-17}};
+        REQUIRE(history.setObjectivePayload(id, field.key, changed));
+        CHECK(doc->objectives()[0].entries[list][0].payload[0] == changed);
+        REQUIRE(doc->save(output / (stem + "-after"), {}));
+        auto reopened = MissionDocument::read(output / (stem + "-after.fit"), output / (stem + "-after.pak"), {}); REQUIRE(reopened);
+        CHECK(reopened->objectives()[0].entries[list][0].payload[0] == changed);
+        const auto edited = doc->fitBytes();
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == fit);
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == edited);
+        REQUIRE(history.undo());
+        const auto reject = [&](Scalar value) {
+            const auto revision = doc->revision(); const auto dirty = doc->modified(); const auto cost = history.bytesUsed(); logs.clear();
+            CHECK_FALSE(history.setObjectivePayload(id, field.key, std::move(value)));
+            CHECK(logs.size() == 1); CHECK(doc->fitBytes() == fit); CHECK(doc->revision() == revision);
+            CHECK(doc->modified() == dirty); CHECK(history.bytesUsed() == cost); CHECK_FALSE(history.canUndo()); CHECK(history.canRedo());
+        };
+        if (field.type == 3) {
+            for (const auto size : {1999U, 2000U}) {
+                auto text = std::string(size - 2, 'x') + "\r\ny";
+                REQUIRE(history.setObjectivePayload(id, field.key, text));
+                text.erase(text.find('\r'), 1);
+                CHECK(doc->objectives()[0].entries[list][0].payload[0] == Scalar{text});
+                REQUIRE(history.undo()); CHECK(doc->fitBytes() == fit);
+            }
+            for (const auto& text : {std::string(2001, 'x'), std::string("a\"b"), std::string("a\rb"), std::string("a\0b", 3)}) reject(text);
+            reject(std::int64_t{3});
+        } else {
+            for (const auto n : {-2147483648LL, 2147483647LL}) {
+                REQUIRE(history.setObjectivePayload(id, field.key, std::int64_t{n})); REQUIRE(history.undo());
+            }
+            reject(std::int64_t{2147483648LL}); reject(std::int64_t{-2147483649LL}); reject(std::string("7"));
+        }
+        auto wrong = fit;
+        const auto declaration = std::string(field.prefix) + " " + std::string(field.key);
+        wrong.replace(wrong.find(declaration), field.prefix.size(), "l");
+        auto ignored = MissionDocument::decode(wrong, packet(), "ignored-action", {}); REQUIRE(ignored);
+        CommandHistory ignoredHistory(*ignored, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
+        logs.clear(); CHECK_FALSE(ignoredHistory.setObjectivePayload(ignored->objectives()[0].entries[list][0].section, field.key, changed));
+        CHECK(logs.size() == 1); CHECK(ignored->fitBytes() == wrong); CHECK_FALSE(ignoredHistory.canUndo());
+    }
+}
+
+TEST_CASE("objectives/decimal payload authoring records the finite game float including underflow")
+{
+    auto doc = MissionDocument::decode(fixture(), packet(), "decimal", {}); REQUIRE(doc);
+    CommandHistory history(*doc);
+    const auto entry = history.addObjectiveCondition(doc->objectives()[0].section, 0, ConditionSpecies::elapsed); REQUIRE(entry);
+    for (const double number : {0.1, 2.3, 1234.56, 1e-50, -1e-50, 0.100000001}) {
+        REQUIRE(history.setObjectivePayload(*entry, "Time", number));
+        CHECK(std::get<double>(doc->find(*entry, "Time")->value[0]) == static_cast<double>(static_cast<float>(number)));
+        auto reopened = MissionDocument::decode(doc->fitBytes(), packet(), "decimal", {}); REQUIRE(reopened);
+        CHECK(reopened->find(reopened->objectives()[0].entries[0].back().section, "Time")->value == doc->find(*entry, "Time")->value);
+    }
+}
+
+TEST_CASE("objectives/required unreadable payloads quarantine only their entry byte exactly")
+{
+    for (const auto payload : {"", "l Time = 3\r\n", "f[1] Time = 3\r\n"}) {
+        auto text = fixture();
+        const auto begin = text.find("[Objective0Condition0]"), end = text.find("[Team0Objective0Action0]");
+        text.replace(begin, end - begin, std::string("[Objective0Condition0]\r\nst ConditionSpeciesString = \"ElapsedMissionTime\"\r\n") + payload);
+        auto doc = MissionDocument::decode(text, packet(), "unreadable", {}); REQUIRE(doc);
+        const auto& entry = doc->objectives()[0].entries[0][0];
+        CHECK(entry.policy.find("game skips entry") != entry.policy.npos);
+        CommandHistory history(*doc); CHECK_FALSE(history.setObjectivePayload(entry.section, "Time", 2.3));
+        CHECK(doc->fitBytes() == text);
+    }
+    auto text = fixture();
+    const auto begin = text.find("[Team0Objective0Action0]"), end = text.find("[Team0Objective0FailureCondition0]");
+    text.replace(begin, end - begin, "[Team0Objective0Action0]\r\nst ActionSpeciesString = \"PlayBIK\"\r\n");
+    auto doc = MissionDocument::decode(text, packet(), "movie", {}); REQUIRE(doc);
+    CHECK_FALSE(doc->objectives()[0].entries[1][0].policy.empty()); CHECK(doc->fitBytes() == text);
+}
+
+TEST_CASE("objectives/case mismatched ignored blocks stay ignored through sibling and owner renames")
+{
+    for (const std::string ignoredName : {"Objective0condition0", "Objective0Condition0 "}) {
+    auto text = fixture();
+    text.replace(text.find("Objective0Condition0]"), std::string("Objective0Condition0]").size(), ignoredName + "]");
+    const auto ignored = text.substr(text.find("[" + ignoredName + "]"), text.find("[Team0Objective0Action0]") - text.find("[" + ignoredName + "]"));
+    auto doc = MissionDocument::decode(text, packet(), "case", {}); REQUIRE(doc);
+    CHECK(doc->objectives()[0].entries[0].empty());
+    CommandHistory history(*doc);
+    if (ignoredName.back() == ' ') {
+        REQUIRE(history.addObjectiveEntry(doc->objectives()[0].section, 0)); REQUIRE(history.undo());
+    } else CHECK_FALSE(history.addObjectiveEntry(doc->objectives()[0].section, 0));
+    const auto copy = history.copyObjective(doc->objectives()[0].section); REQUIRE(copy);
+    CHECK_FALSE(history.reorderObjective(*copy, 0));
+    CHECK(doc->fitBytes().find(ignored) != std::string::npos);
+    CHECK(doc->fitBytes().find("[Objective1Condition0]") == std::string::npos);
     }
 }
 
@@ -887,12 +1144,25 @@ ExpectedReference targetOracle(const ReferenceFixture& fixture) {
 ExpectedReference outputOracle(const std::string& fit, std::span<const std::byte> pak,
     const std::string& entry, int alignment = 0)
 {
-    auto syntax = decodeFit(fit); REQUIRE(syntax);
     const auto value = [&](const std::string& section, const std::string& key) -> Scalar {
-        const auto block = std::ranges::find(syntax->sections, section, &Section::name); REQUIRE(block != syntax->sections.end());
-        for (const auto id : block->fields) {
-            const auto field = std::ranges::find(syntax->fields, id, &Field::id);
-            if (field->name == key) return field->value[0];
+        const auto begin = fit.find("[" + section + "]"); REQUIRE(begin != fit.npos);
+        const auto end = fit.find('[', begin + 1);
+        std::istringstream lines(fit.substr(begin, end - begin));
+        std::string line;
+        while (std::getline(lines, line)) {
+            std::istringstream tokens(line);
+            std::string prefix, name, equals;
+            tokens >> prefix >> name >> equals;
+            if (name != key || equals != "=") continue;
+            std::string wire; std::getline(tokens, wire);
+            if (prefix == "st") {
+                const auto quote = wire.find('"');
+                return wire.substr(quote + 1, wire.find('"', quote + 1) - quote - 1);
+            }
+            if (prefix == "f") return static_cast<double>(static_cast<float>(std::strtod(wire.c_str(), nullptr)));
+            const auto hex = wire.find("0x");
+            if (hex == wire.npos) return static_cast<std::int64_t>(std::strtol(wire.c_str(), nullptr, 10));
+            return static_cast<std::int64_t>(static_cast<std::int32_t>(std::strtoul(wire.c_str() + hex + 2, nullptr, 16)));
         }
         FAIL("oracle field missing: " << section << "/" << key); return {};
     };
@@ -979,7 +1249,7 @@ TEST_CASE("objectives/readable WIDs bypass absent and malformed XY but unreadabl
         input.targets = {{unit, 0, 0, 0}}; input.x = input.y = xy;
         input.wid = std::string(prefix) + (unit ? " MoverWID = " : " BuildingWID = ") + (prefix == std::string_view("st") ? "\"7\"" : "7") + "\r\n";
         auto document = MissionDocument::decode(input.fit(), input.pak(), "wid", {});
-        if (prefix != std::string_view("l") && xy == std::string_view("")) { CHECK_FALSE(document); continue; }
+        if (prefix != std::string_view("l") && xy == std::string_view("")) { REQUIRE(document); CHECK_FALSE(document->objectives()[0].entries[0][0].policy.empty()); continue; }
         REQUIRE(document);
         if (xy == std::string_view("broken")) input.x = input.y = "0";
         CHECK(targetOracle(input).accepts(reference(*document)));
@@ -1002,7 +1272,7 @@ TEST_CASE("objectives/array WIDs use XY while malformed signed WIDs read as zero
             REQUIRE(doc); CHECK(reference(*doc).status == ReferenceStatus::RuntimeOnlyWid);
             CHECK(doc->fitBytes() == input.fit()); continue;
         }
-        if (!xy) { CHECK_FALSE(doc); continue; }
+        if (!xy) { REQUIRE(doc); CHECK_FALSE(doc->objectives()[0].entries[0][0].policy.empty()); continue; }
         REQUIRE(doc); CHECK(reference(*doc).status == ReferenceStatus::Resolved);
         CHECK(reference(*doc).target == EntityId{1}); CHECK(doc->fitBytes() == input.fit());
     }
@@ -1052,6 +1322,7 @@ TEST_CASE("objectives/transforms retain each unchanged referring coordinate lexe
         CommandHistory history(*doc);
         Transform transform{{1.25, -4.5, 0}, axis == -1 ? 90.0 : 0.0};
         if (axis >= 0) transform.position[axis] += 1;
+        if (axis == 0 || axis == 1) { CHECK_FALSE(history.transform(EntityId{1}, transform)); continue; }
         REQUIRE(history.transform(EntityId{1}, transform));
         for (const auto& source : reference(*doc).sources) {
             if (source.key == "PositionX" && axis != 0) CHECK(source.lexeme == input.x);
@@ -1079,14 +1350,19 @@ TEST_CASE("objectives/structural edits preserve missing ambiguous and noncontigu
         input.targets = {{true, ambiguous ? 50.0f : 0.0f, 0, 0}, {true, 50, 0, 0}};
         if (!ambiguous) input.targets[1].x = 10;
         doc = MissionDocument::decode(input.fit(), input.pak(), "carry", {}); REQUIRE(doc);
-        CommandHistory edits(*doc);
+        std::vector<std::string> logs;
+        CommandHistory edits(*doc, 32 * 1024 * 1024, [&](const auto& line) { logs.push_back(line); });
         const auto expected = targetOracle(input); CHECK(expected.accepts(reference(*doc)));
-        REQUIRE(edits.transform(doc->entities()[0].id, {{ambiguous ? 70.0 : 50.0, 0, 0}, 0}));
+        CHECK_FALSE(edits.transform(doc->entities()[0].id, {{ambiguous ? 70.0 : 50.0, 0, 0}, 0}));
+        REQUIRE(logs.size() == 1); logs.clear();
+        if (ambiguous) { CHECK_FALSE(edits.erase(doc->entities()[0].id)); REQUIRE(logs.size() == 1); logs.clear(); }
+        UnitPlacement unit; unit.transform.position = {50, 0, 0};
+        unit.objectProfile = unit.csvFile = unit.warriorProfile = unit.legacyBrain = "unit";
+        CHECK_FALSE(edits.insertUnit(unit)); REQUIRE(logs.size() == 1);
         CHECK(expected.accepts(reference(*doc)));
         auto fresh = MissionDocument::decode(doc->fitBytes(), input.pak(), "fresh", {}); REQUIRE(fresh);
-        CHECK(reference(*fresh).status == ReferenceStatus::Resolved);
-        REQUIRE(edits.undo()); CHECK(expected.accepts(reference(*doc)));
-        REQUIRE(edits.redo()); CHECK(expected.accepts(reference(*doc)));
+        CHECK(reference(*fresh).status == expected.status);
+        CHECK_FALSE(edits.canUndo());
         const auto copy = edits.copyObjective(doc->objectives()[0].section); REQUIRE(copy);
         CHECK(expected.accepts(doc->objective(*copy)->entries[0][0].reference));
         REQUIRE(edits.reorderObjective(*copy, 0));
@@ -1127,13 +1403,14 @@ TEST_CASE("objectives/referenced deletes reject once and resolved moves undo exa
         REQUIRE(history.undo()); REQUIRE(history.undo());
         CommandHistory controlHistory(control);
         const auto expectedCopy = controlHistory.copyObjective(objective); REQUIRE(expectedCopy); CHECK(*copied == *expectedCopy);
-        REQUIRE(history.transform(target, {{12, 34, 0}, 0}));
-        if (marker) CHECK(doc->find("NavMarker0", "xPos")->value == Value{12.0});
+        CHECK_FALSE(history.transform(target, {{12, 34, 0}, 0}));
+        REQUIRE(history.transform(target, {{1.25, -4.5, 1}, 0}));
+        if (marker) CHECK(doc->find("NavMarker0", "xPos")->value == Value{1.25});
         for (const auto& item : doc->objectives()) {
             for (const auto list : {0, 2}) {
                 const auto entry = item.entries[list][0].section;
-                CHECK(doc->find(entry, "PositionX")->value == Value{12.0});
-                CHECK(doc->find(entry, "PositionY")->value == Value{34.0});
+                CHECK(doc->find(entry, "PositionX")->value == Value{1.25});
+                CHECK(doc->find(entry, "PositionY")->value == Value{-4.5});
                 CHECK(doc->find(entry, "Commander")->value == Value{std::int64_t{7}});
                 CHECK(item.entries[list][0].reference.target == target);
             }
@@ -1197,7 +1474,8 @@ TEST_CASE("objectives/resolve replaces carried status with a unique exported tar
         CommandHistory history(*doc);
         const auto entry = doc->objectives()[0].entries[0][0].section;
         const auto original = reference(*doc);
-        REQUIRE(history.transform(EntityId{1}, {{20, 0, 0}, 0}));
+        if (ambiguous) CHECK_FALSE(history.transform(EntityId{1}, {{20, 0, 0}, 0}));
+        else REQUIRE(history.transform(EntityId{1}, {{20, 0, 0}, 0}));
         CHECK(reference(*doc).status == original.status);
         const auto before = doc->fitBytes(); const auto old = reference(*doc).sources;
         const auto resolvedCommand = history.resolveObjectiveEntry(entry, EntityId{3});
@@ -1258,6 +1536,11 @@ TEST_CASE("objectives/refused resolve logs once and preserves bytes revision dir
         CHECK(*copy == *expected);
         BuildingPlacement building; building.transform.position = {90, 0, 0};
         const auto inserted = retry.insertBuilding(building), controlInserted = control.insertBuilding(building);
+        if (shape == 3) {
+            REQUIRE_FALSE(inserted); REQUIRE_FALSE(controlInserted);
+            CHECK(inserted.error().reason == "objective_reference");
+            continue;
+        }
         REQUIRE(inserted); REQUIRE(controlInserted); CHECK(*inserted == *controlInserted);
     }
 }

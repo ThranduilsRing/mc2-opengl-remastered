@@ -4214,7 +4214,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 8
+   "count": 7
   },
   {
    "tag": "GPUPROPS",
@@ -4236,6 +4236,15 @@
     "multi_packet",
     "alpha_on_fallback",
     "no_primary"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPUPROPS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "cpu_geometry_bytes"
    ],
    "count": 1
   },
@@ -6554,7 +6563,7 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [],
-   "count": 7
+   "count": 6
   },
   {
    "tag": "MOVE_BD",
@@ -9238,6 +9247,16 @@
     "nabl",
     "abl",
     "rng"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SIM_SPEED",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "steps_per_frame",
+    "frame"
    ],
    "count": 1
   },
@@ -12209,7 +12228,7 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [],
-   "count": 5
+   "count": 6
   },
   {
    "tag": "VK_SHADOW_MATRIX",
@@ -12259,7 +12278,7 @@
    "keys": [
     "ok"
    ],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "VK_SHADOW_MATRIX",
@@ -12281,6 +12300,26 @@
    "stream": "stderr",
    "keys": [],
    "count": 10
+  },
+  {
+   "tag": "VK_SHADOW_STATIC",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 5
+  },
+  {
+   "tag": "VK_SHADOW_STATIC",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "generation",
+    "size",
+    "terrain_tris",
+    "building_instances",
+    "building_draws"
+   ],
+   "count": 1
   },
   {
    "tag": "VK_SHARED_SCENE_COLOR",

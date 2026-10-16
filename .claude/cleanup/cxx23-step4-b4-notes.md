@@ -1,8 +1,11 @@
 <!-- doc-status: current | reviewed:2026-10-15 -->
-# C++23 step 4, batch B4 (raw-buffer heaps): batch notes (census only; written by lane 1 on 2026-10-15, NOT yet read by a before-review, no code)
-BATCH STATUS (2026-10-15 night, lane 1): B4.0 DONE (a3d8ce85a: sealed census, before-review `cxx23-step4-b4-before-review.md`); B4.1a DONE (a2651bba3, MoveMap grid);
-B4.1b DONE (2f13054fc include-only, objhash identical; 8e49ebe5d + 889bd02fc, MissionMap grid and mine counts, size-checked pak reads). Census 331 -> 317. NEXT: B4.1c GlobalMap
-(about 58 sites, the pak counts need the malformed-pak test of before-review invariant 2). Proofs: `lane1-state.md`.
+# C++23 step 4, batch B4 (raw-buffer heaps): batch notes (lane 1, 2026-10-15; before-review `cxx23-step4-b4-before-review.md`)
+BATCH STATUS (2026-10-15 late, lane 1): B4.0 DONE (a3d8ce85a: sealed census, before-review `cxx23-step4-b4-before-review.md`); B4.1a DONE (a2651bba3, MoveMap grid);
+B4.1b DONE for the MissionMap grid and mine counts (2f13054fc include-only, objhash identical; 8e49ebe5d + 889bd02fc; 059366c0e: a rejected map packet refuses the
+mission load, the size-checked read is `mc2::pak::readExact` with its malformed-pak doctest `tests/unit/test_pak_read_exact.cpp`). Census 331 -> 317.
+MOVED TO B4.1c: the special-area footprint scratch `tempSpecialAreaFootPrints` (move.cpp, 4 sites: MOVE_buildData copy, MOVE_readData read, two frees); B4.1b planned it
+(before-review section 4) but did not convert it. NEXT: B4.1c GlobalMap (about 58 sites plus the footprint scratch; every pak count needs a bound check and a case in
+the malformed-pak doctest, invariant 2). Proofs: `lane1-state.md`.
 
 WHAT: the scope and census of B4, the batch after B3 in the ownership plan's order (`cxx23-step4-ownership-plan.md` section 6: "B4 RAW-BUFFER heaps only
 (move_globalmap_* first, terrain, tile/colorMap, txm caches, crater, bitflag, sound, radio, collision)"). B4 moves buffers that a subsystem allocates from a named

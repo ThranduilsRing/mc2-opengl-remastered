@@ -117,14 +117,16 @@ void GpuStaticPropBatcher::uploadPerTypeAndPublish() {
     }
 
     // The staging bytes stay for the map's lifetime: they are the CPU copy of the shared VBO / IBO the Vulkan islands build
-    // their own buffers from (mc2_static_prop_geometry_cpu); onMapLoad clears them.
+    // their own buffers from (mc2_static_prop_geometry_cpu); onMapLoad clears them. GL-only runs keep them too: an accepted
+    // cost (the size is in the finalize line below) because GL is deleted once the Vulkan port reaches parity.
     s_sharedVboBytes = (uint64_t)s_stagingVbo.size();
     s_sharedIboBytes = (uint64_t)s_stagingIbo.size() * sizeof(uint32_t);
     s_stagingVbo.shrink_to_fit();
     s_stagingIbo.shrink_to_fit();
 
-    mc2::fmt::print_err("[GPUPROPS] finalize: {:d} types, {:d} packets\n",
-                 mc2::fmt::as_size(s_types.size()), mc2::fmt::as_size(s_packets.size()));
+    mc2::fmt::print_err("[GPUPROPS] finalize: {:d} types, {:d} packets, cpu_geometry_bytes={:d}\n",
+                 mc2::fmt::as_size(s_types.size()), mc2::fmt::as_size(s_packets.size()),
+                 mc2::fmt::as_u64(s_sharedVboBytes + s_sharedIboBytes));
 
     if (s_gpuPropsTrace) {
         mc2::fmt::print_err("[GPUPROPS v1] event=register_summary path={:d} regCalls[init={:d} ims={:d} splog={:d} unk={:d}] lateDrops[init={:d} ims={:d} splog={:d} unk={:d}] typeIndexSize={:d}\n",

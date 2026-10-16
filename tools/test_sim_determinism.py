@@ -71,12 +71,13 @@ def test_cli_selects_install_for_runner_and_fingerprint(monkeypatch, command, in
 ])
 def test_runner_passes_selected_install_to_both_mocked_launches(monkeypatch, install, target):
     commands = []
-    monkeypatch.setattr(sd.subprocess, "run", lambda cmd, **kwargs: commands.append(cmd) or SimpleNamespace(returncode=0, stdout=""))
-    monkeypatch.setattr(sd.glob, "glob", lambda pattern: [HERE])
-    monkeypatch.setattr(sd.shutil, "rmtree", lambda *args, **kwargs: None)
-    monkeypatch.setattr(sd.shutil, "copytree", lambda *args: None)
+    monkeypatch.setattr(sd.subprocess, "run", lambda cmd, **kwargs: commands.append(cmd) or
+                        SimpleNamespace(returncode=0, stdout=f"[runner] artifacts: {HERE}"))
+    copied = []
+    monkeypatch.setattr(sd.shutil, "copytree", lambda source, dest: copied.append(source))
     assert len(sd.run_mission("mc2_03", "20", "unused", install=install)) == 2
     assert len(commands) == 2
+    assert copied == [HERE, HERE]
     for cmd in commands:
         assert cmd[-4:-2] == target  # the install selector sits before --keep-logs --sim-determinism
         assert cmd[-2:] == ["--keep-logs", "--sim-determinism"]

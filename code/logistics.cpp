@@ -165,7 +165,8 @@ void Logistics::start (long startMode)
 
 			// On the main thread: FastFile archives read through one shared FILE* and LZ
 			// buffer, so a concurrent reader corrupts the parse (BUGS row 37's race class).
-			// MissionSelectionScreen::begin() below needs the logistics data populated.
+			// MissionSelectionScreen::begin() below needs the logistics data populated. The serial parse
+			// costs about 150 ms once per load (BUGS row 37), so the intro movie starts that much later.
 			initializeLogData();
 
 			bool bTestScript = false;

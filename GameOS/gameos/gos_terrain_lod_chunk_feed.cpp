@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_terrain_lod_chunk_internal.h.
 #include "gos_terrain_lod_chunk_internal.h"
 #include "mc2fmt.h"
+#include "static_shadow_spec.h"
 #include "terrain_field_store.h"
 
 #ifdef MC2_VULKAN_ISLAND
@@ -105,24 +106,17 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         float lx = 0.f, ly = 0.f, lz = 1.f;
         gos_GetTerrainLightDir(&lx, &ly, &lz);
         out->terrainLightDir[0] = lx; out->terrainLightDir[1] = ly; out->terrainLightDir[2] = lz;
-        // Default: no shadow (lit-only) until the GL static shadow map is live.
+        // Default: no shadow (lit-only) until the engine's static light matrix exists.
         out->shadowsEnabled     = 0;
-        out->glStaticShadowTex  = 0;
-        out->staticShadowSize   = 0;
         out->staticShadowGeneration = 0;
         out->shadowSoftness     = 2.5f;   // shadow.hglsl default
         std::memset(out->staticLightSpaceMatrix, 0, sizeof(out->staticLightSpaceMatrix));
         gosPostProcess* pp = getGosPostProcess();
-        if (lightingOn && pp && pp->shadowsEnabled_) {
-            const GLuint sTex = pp->getShadowTexture();
-            if (sTex != 0) {
-                out->shadowsEnabled    = 1;
-                out->glStaticShadowTex = static_cast<uint32_t>(sTex);
-                out->staticShadowSize  = 4096;   // gos_postprocess.cpp:5113 shadowMapSize_
-                out->staticShadowGeneration = gos_GetStaticShadowGeneration();
-                std::memcpy(out->staticLightSpaceMatrix, pp->getLightSpaceMatrix(),
-                            sizeof(out->staticLightSpaceMatrix));
-            }
+        StaticShadowSpec staticSpec;
+        if (lightingOn && pp && gos_GetStaticShadowSpec(&staticSpec)) {
+            out->shadowsEnabled = 1;
+            out->staticShadowGeneration = staticSpec.generation;
+            std::memcpy(out->staticLightSpaceMatrix, staticSpec.lightSpace, sizeof(out->staticLightSpaceMatrix));
         }
 
         // VK-TERRAIN-DYNSHADOW: the DYNAMIC (building/mech) shadow map. Mirrors the GL

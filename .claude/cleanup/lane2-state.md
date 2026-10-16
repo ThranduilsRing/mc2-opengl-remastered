@@ -1,5 +1,39 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## TWENTY-SECOND session (2026-10-15 ~15:30-20:30 CDT, cap 5 h, Opus 5.5) -- nifty merged (lane 6 field store), review fixes, row 17 implemented, row 20 narrowed (negative oracle), T14 HDRI producer
+
+### Commits (after 56c7fb27f)
+merge of nifty (1aa7ec654: lane 6 terrain_field_store / texture_decode; nothing to regenerate at the merge) | 3fe58fdad review should-fix + nit 5 | 8c0b8cfe5 row 17 static map + row 20 dump timing | 7a158ef3e T14 HDRI | 367a67098 diag static dump + receipt | 2a5969a3d diag after-submit + contracts (twin map, split-path island row, allowlist, regenerated gl_shader_variants / gated-layout-macros) | 450549755 + 5d301755f TEMP row-20 channel dumps, reverted by 0606adf30 + 8ffedb00c | 2bb62014c VK guard takes the clamped sun | this state/gaps commit. MERGEABLE TIP = the commit carrying this line (code = 2bb62014c).
+
+### Task 1 (review): should-fix = accepted cost. The CPU prop geometry stays for the map in every run (GL is deleted after parity, and row 17's building draws read it too); the size is now in the finalize line (`[GPUPROPS] finalize: ... cpu_geometry_bytes=N`). Nits: the process-lifetime flag comment reworded, the colour island's mismatch check gains the zero test (both checks identical), row 17's empty `WAS:` replaced. Nits 3 (accessor in a VK header) and 4 (mech readback row) stay for the merge with lane 6 / a producer row.
+
+### Row 17: see VK-PARITY-GAPS row 17 (FIXED except the destroy-rebake pose). Design as written in session 21, with one change: the generation is the engine's static-map generation (the engine still builds its light matrix and latch; the island reads them as CPU data through `gos_GetStaticShadowSpec`), so P11 has not moved to a no-GL TU.
+
+### Row 20: see VK-PARITY-GAPS row 20 (negative oracle; cause narrowed to the receiver's N.L on prop pixels).
+
+### T14 HDRI (7a158ef3e): `loadHdriTexture` fills an `HdriCpuImage` (BC6H mip 0, or RGBA16F with a CPU 2x2 box mip chain, round-to-nearest-even halves) owned by gosPostProcess (`hdriCpu_`, kept only while the VK umbrella is armed: ~24 MB BC6H / ~85 MB RGBA16F); the sky and water islands read it through `vk_hdri_source.h` (one validating reader, rejects malformed sizes with a log line) and key re-imports on its load generation (a reloaded HDRI could reuse the GL name). No GL in either island's import any more. Seam with lane 6: none (no lane 6 file touched). Proof: VK captures log `[VK_SKY] HDRI REAL import: 16384x8192 fmt=143` and the water twin, full-frame distances unchanged (205644 water/sky 1.165). NOT exercised: the RGBA16F CPU mip chain (the field default is BC6H; run with MC2_HDRI_BC6H=0 to test it).
+
+### Proof
+| Evidence | Result |
+|---|---|
+| ninja -j2 (MC2_BUILD_JOBS=2) | exit 0 at every commit |
+| build_contract_harnesses --run --unit (`scratch/harn22.log`, at 7a158ef3e) | rc 0, doctest 3209/3209 (+ the intended fatal_if_aborts case) |
+| check-contracts (`scratch/cc_s22.log`, before the contract fixes) | 13 failed; mine fixed in 2a5969a3d (vk-pipeline-layout OK, split-path RULE4 OK, gl_vk_feature_coverage 0 new 0 stale, gl_shader_variants + gated-layout-macros regenerated); not mine: background-launch (tests/analyze/b4_heap_census.py from nifty), test_build_compiler_presets, test_contract_harness_migration, test_editor_smoke x3, test_tracy_capture_compare x3 |
+| VK captures + validation (s22-vk, s22c-vk-psr0) | errors=0 on 11 captures; static map built (mc2_01 257 buildings / 19,602 terrain tris, mc2_10 477 / 28,322) |
+| oracle | rows 17 / 20 in the gaps file |
+| tier1 VK+validation / GL on 2bb62014c (`scratch/b22_{vk,gl}_t1.log`) | exe 2bb62014c, DEPLOY_FINGERPRINT OK: VK 5/5 PASS, errors=0 warnings=0 on all five (156/128/76/124/113 fps); GL 5/5 PASS (143/107/140/142/127 fps), +0 destroys |
+
+### BUGS rows proposed: none fixed this session that a player sees (row 20's VK prop receive is still open).
+
+### Open
+1. Row 20: the prop GBuffer1 normal vs GL at one tent texel. 2. Row 17 destroy-rebake pose. 3. HDRI RGBA16F path unproven at runtime. 4. `terrainNoInteropStrict` / `terrainPerFrameReadback` (vulkan_terrain_island.cpp) are now unread; their gate MC2_VK_NO_GL_INTEROP_STRICT needs a gate-table deletion. 5. Session 20 items 4, 7, 8.
+6. Scratch (mine): `scratch/` battery22.sh/.out, diag22.sh/.out, diag22b.sh/.out, psrc.sh/.out, t1_22.sh/.out, r17an.py, psr22.py, psr22c.py, build_s22*.log, deploy_s22*.log, harn22.log, cc_s22.log, b22_*_t1.log; `.claude/l2cap/s22*` (s22-depthdump is ~3 GB of .f32 dumps: delete first), montages `s22-*`.
+
+### Lessons (22)
+- A dump that never fires: check when the harness ends the process before suspecting the branch.
+- A diagnostic read before the frame's submit shows the previous frame; camera-fitted maps then look shifted.
+- Channel-encode the suspect terms (N.L, the guard) into the pass output once; it ended a day of hypotheses about depth.
+
 ## TWENTY-FIRST session (2026-10-15 ~12:00-15:00 CDT, cap 5 h, Opus 5.5) -- review fixes, lane 6 geometry seam, census T12-T14, row 20 narrowed, row 17 design; nifty NOT merged ("merge lane2 5135a6d04" absent from mc2-main at the checkpoints)
 
 ### Commits (after 5135a6d04)

@@ -104,18 +104,11 @@ void gosPostProcess::setSkyNumber(int skyNumber)
         "[HDRI_SKY v1] setSkyNumber sky=%d mood=%s path=%s\n",
         skyNumber, hdriSet.name, newPath);
 
-    // Delete the old texture before loading the new one.
-    if (hdriTex_) {
-        glDeleteTextures(1, &hdriTex_);
-        hdriTex_ = 0;
-    }
-
     float newSunAz = 0.0f;
     bool  newSunValid = false;
-    GLuint newTex = loadHdriTexture(newPath, &newSunAz, &newSunValid);
+    loadHdri(newPath, &newSunAz, &newSunValid);   // deletes the old texture first
 
-    if (newTex) {
-        hdriTex_          = newTex;
+    if (hdriTex_) {
         hdriBakedSunAz_   = newSunAz;
         hdriBakedSunValid_ = newSunValid;
         std::strncpy(hdriCurrentPath_, newPath, sizeof(hdriCurrentPath_) - 1);
@@ -128,6 +121,32 @@ void gosPostProcess::setSkyNumber(int skyNumber)
             "[HDRI_SKY v1] setSkyNumber sky=%d load_failed path=%s\n",
             skyNumber, newPath);
     }
+}
+
+void gosPostProcess::loadHdri(const char* path, float* outSunAz, bool* outSunValid)
+{
+    if (hdriTex_) {
+        glDeleteTextures(1, &hdriTex_);
+        hdriTex_ = 0;
+    }
+    hdriCpu_.reset();
+    // Only a Vulkan consumer reads the CPU copy (about 85 MB for a 4K RGBA16F chain), so GL-only runs do not keep one.
+    bool wantCpu = false;
+#ifdef MC2_VULKAN_ISLAND
+    wantCpu = mc2vkgate::umbrellaOn();
+#endif
+    auto cpu = wantCpu ? std::make_shared<HdriCpuImage>() : nullptr;
+    hdriTex_ = loadHdriTexture(path, outSunAz, outSunValid, cpu.get());
+    if (hdriTex_ && cpu && !cpu->levels.empty()) {
+        cpu->generation = ++hdriCpuGeneration_;
+        hdriCpu_ = std::move(cpu);
+    }
+}
+
+const HdriCpuImage* gos_GetHdriCpuImage()
+{
+    gosPostProcess* pp = getGosPostProcess();
+    return pp ? pp->getHdriCpu() : nullptr;
 }
 
 // Free-function bridge: GameAdapters or profile code calls this without
@@ -323,7 +342,7 @@ void gosPostProcess::init(int w, int h)
             const char* hdrPath = "data/hdr/DaySkyHDRI063B_4K.exr";
             // Item 2: also scan for the baked sun azimuth (read-only; used only
             // when sun-sync is enabled at draw time).
-            hdriTex_ = loadHdriTexture(hdrPath, &hdriBakedSunAz_, &hdriBakedSunValid_);  // logs failures internally
+            loadHdri(hdrPath, &hdriBakedSunAz_, &hdriBakedSunValid_);  // logs failures internally
             if (hdriTex_) {
                 std::strncpy(hdriCurrentPath_, hdrPath, sizeof(hdriCurrentPath_) - 1);
                 hdriCurrentPath_[sizeof(hdriCurrentPath_) - 1] = '\0';

@@ -5,6 +5,7 @@
 #include <cstdlib>  // for free()
 #include <cmath>    // for atan2, fabsf, cosf, sinf
 #include <cstring>  // for strlen, memcpy
+#include <cstddef>
 #include <vector>
 #include <algorithm>
 
@@ -109,11 +110,84 @@ static bool deriveSidecarKtx2(const char* exrPath, char* outBuf, size_t outBufLe
     return true;
 }
 
+namespace {
+
+// IEEE half from float, round to nearest even (the conversion a GL_FLOAT upload into GL_RGBA16F performs on the drivers we run).
+uint16_t floatToHalf(float f)
+{
+    uint32_t x = 0;
+    std::memcpy(&x, &f, sizeof(x));
+    const uint32_t sign = (x >> 16) & 0x8000u;
+    const uint32_t biased = (x >> 23) & 0xFFu;
+    uint32_t mant = x & 0x7FFFFFu;
+    if (biased == 0xFFu) return static_cast<uint16_t>(sign | 0x7C00u | (mant ? 0x200u : 0u));   // inf / NaN
+    const int32_t exp = static_cast<int32_t>(biased) - 127 + 15;
+    if (exp >= 31) return static_cast<uint16_t>(sign | 0x7C00u);                                 // overflow -> inf
+    if (exp <= 0) {                                                                              // subnormal or zero
+        if (exp < -10) return static_cast<uint16_t>(sign);
+        mant |= 0x800000u;
+        const uint32_t shift = static_cast<uint32_t>(14 - exp);
+        uint32_t h = mant >> shift;
+        const uint32_t rem = mant & ((1u << shift) - 1u), halfway = 1u << (shift - 1u);
+        if (rem > halfway || (rem == halfway && (h & 1u))) ++h;
+        return static_cast<uint16_t>(sign | h);
+    }
+    uint32_t h = (static_cast<uint32_t>(exp) << 10) | (mant >> 13);
+    const uint32_t rem = mant & 0x1FFFu;
+    if (rem > 0x1000u || (rem == 0x1000u && (h & 1u))) ++h;   // a carry into the exponent is the correct rounding
+    return static_cast<uint16_t>(sign | h);
+}
+
+void appendHalfLevel(HdriCpuImage& out, const std::vector<float>& rgba, int w, int h)
+{
+    std::vector<uint8_t> bytes(static_cast<size_t>(w) * h * 8);
+    for (size_t i = 0; i < rgba.size(); ++i) {
+        const uint16_t v = floatToHalf(rgba[i]);
+        std::memcpy(bytes.data() + i * 2, &v, 2);
+    }
+    out.levels.push_back(std::move(bytes));
+    out.dims.emplace_back(w, h);
+}
+
+// The RGBA16F image and its full mip chain, each level the 2x2 box average of the one above (edge texels repeat when a
+// dimension is odd or already 1).
+void buildRgba16fChain(HdriCpuImage& out, const float* pixels, int w, int h)
+{
+    out.format = HdriCpuImage::Format::Rgba16f;
+    out.levels.clear();
+    out.dims.clear();
+    std::vector<float> level(pixels, pixels + static_cast<size_t>(w) * h * 4);
+    appendHalfLevel(out, level, w, h);
+    while (w > 1 || h > 1) {
+        const int nw = std::max(1, w >> 1), nh = std::max(1, h >> 1);
+        std::vector<float> next(static_cast<size_t>(nw) * nh * 4);
+        for (int y = 0; y < nh; ++y) {
+            const int y0 = std::min(2 * y, h - 1), y1 = std::min(2 * y + 1, h - 1);
+            for (int x = 0; x < nw; ++x) {
+                const int x0 = std::min(2 * x, w - 1), x1 = std::min(2 * x + 1, w - 1);
+                for (int c = 0; c < 4; ++c) {
+                    const float sum = level[(static_cast<size_t>(y0) * w + x0) * 4 + c] + level[(static_cast<size_t>(y0) * w + x1) * 4 + c]
+                                    + level[(static_cast<size_t>(y1) * w + x0) * 4 + c] + level[(static_cast<size_t>(y1) * w + x1) * 4 + c];
+                    next[(static_cast<size_t>(y) * nw + x) * 4 + c] = 0.25f * sum;
+                }
+            }
+        }
+        level.swap(next);
+        w = nw;
+        h = nh;
+        appendHalfLevel(out, level, w, h);
+    }
+}
+
+}  // namespace
+
 GLuint loadHdriTexture(const char* path,
                        float* outSunAzGL,
-                       bool*  outSunValid)
+                       bool*  outSunValid,
+                       HdriCpuImage* outCpu)
 {
     if (outSunValid) *outSunValid = false;
+    if (outCpu) { outCpu->levels.clear(); outCpu->dims.clear(); }
     if (!path || !*path) {
         MC2_DIAGFE(stderr, "[HDRI_SKY v1] enabled=0 reason=path_empty\n");
         return 0;
@@ -180,6 +254,12 @@ GLuint loadHdriTexture(const char* path,
                         // Fall through to tinyexr below.
                     } else {
                         mc2::fmt::print_err("[HDRI_SKY] bc6h: ON (default) sidecar={} w={:d} h={:d} glIF=0x{:x} bytes={:d} tex={:d}\n", mc2::fmt::safe(sidecarPath), mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_u32((unsigned)glIF), mc2::fmt::as_size(mip0Bytes), mc2::fmt::as_u32((unsigned)tex));
+                        if (outCpu) {
+                            outCpu->format = (img.vkFormat == 144) ? HdriCpuImage::Format::Bc6hSfloat : HdriCpuImage::Format::Bc6hUfloat;
+                            const size_t n = std::min(mip0Bytes, img.pixels.size());
+                            outCpu->levels.emplace_back(img.pixels.begin(), img.pixels.begin() + static_cast<std::ptrdiff_t>(n));
+                            outCpu->dims.emplace_back(img.width, img.height);
+                        }
 
                         // Sun scan: still load the EXR briefly to find the sun.
                         if (outSunAzGL) {
@@ -284,6 +364,7 @@ GLuint loadHdriTexture(const char* path,
         }
     }
 
+    if (outCpu) buildRgba16fChain(*outCpu, pixels, w, h);
     free(pixels);  // tinyexr uses plain malloc; free with free() not delete
 
     const GLenum glErr = glGetError();
@@ -292,6 +373,7 @@ GLuint loadHdriTexture(const char* path,
             "[HDRI_SKY v1] enabled=0 reason=gl_error path=%s err=0x%x\n",
             path, glErr);
         glDeleteTextures(1, &tex);
+        if (outCpu) { outCpu->levels.clear(); outCpu->dims.clear(); }
         return 0;
     }
 

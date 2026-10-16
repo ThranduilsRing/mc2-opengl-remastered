@@ -478,7 +478,7 @@ void LogisticsData::initVariants()
 				job.varList.push_back(pVariant);
 			else
 			{
-				MC2_LOG(Io, Warn, "logistics: mech file {} variant {} (row {}) is malformed and is skipped", job.path, varCount, row);
+				MC2_LOG(Io, Warn, "logistics: mech file {} variant {} (CSV row {}) is malformed and is skipped", job.path, varCount, row);
 				delete pVariant;
 			}
 			varCount++;

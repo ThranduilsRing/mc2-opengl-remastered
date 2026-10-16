@@ -794,8 +794,6 @@ void BattleMech::render (void)
 			}
 		}
 	}
-	
-	damageThisFrame = 0.0f;		//always reset here for the next frame.
 }
 
 void BattleMech::renderShadows (void)
