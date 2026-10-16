@@ -5,6 +5,7 @@ add_library(editor_document STATIC
     document/ObjectiveFields.cpp
     document/FitReader.cpp
     document/ObjectiveCommands.cpp
+    document/ObjectivePresentationCommands.cpp
     document/MissionSyntax.cpp
     document/MissionPackets.cpp
     document/MissionStructure.cpp
@@ -22,7 +23,7 @@ target_include_directories(editor_document PRIVATE "${CMAKE_SOURCE_DIR}/mclib")
 target_link_libraries(editor_document PRIVATE ZLIB::ZLIB)
 
 function(add_editor_shell target)
-    add_executable(${target} WIN32 shell/main.cpp shell/EntityPanels.cpp shell/ObjectivePanel.cpp shell/FileWorkflow.cpp
+    add_executable(${target} WIN32 shell/main.cpp shell/EntityPanels.cpp shell/ObjectivePanel.cpp shell/ObjectivePresentation.cpp shell/FileWorkflow.cpp
         "${CMAKE_SOURCE_DIR}/3rdparty/imgui/misc/cpp/imgui_stdlib.cpp")
     add_dependencies(${target} build_fingerprint)
     target_compile_features(${target} PRIVATE cxx_std_23)
@@ -70,7 +71,7 @@ target_include_directories(editor_resource_tests PRIVATE
     "${CMAKE_SOURCE_DIR}/GameOS/gameos" "${CMAKE_SOURCE_DIR}/GameOS/include")
 target_link_libraries(editor_resource_tests PRIVATE editor_document mc2_gate SDL2::SDL2)
 
-add_executable(editor_panel_tests tests/test_main.cpp tests/test_panels.cpp tests/test_files.cpp shell/EntityPanels.cpp shell/ObjectivePanel.cpp shell/PanelProof.cpp shell/ObjectiveProof.cpp shell/FileWorkflow.cpp shell/FileProof.cpp
+add_executable(editor_panel_tests tests/test_main.cpp tests/test_panels.cpp tests/test_files.cpp shell/EntityPanels.cpp shell/ObjectivePanel.cpp shell/ObjectivePresentation.cpp shell/PanelProof.cpp shell/ObjectiveProof.cpp shell/FileWorkflow.cpp shell/FileProof.cpp
     "${CMAKE_SOURCE_DIR}/3rdparty/imgui/misc/cpp/imgui_stdlib.cpp")
 target_compile_features(editor_panel_tests PRIVATE cxx_std_23)
 target_compile_definitions(editor_panel_tests PRIVATE MC2_EDITOR_SMOKE_HOST=1)

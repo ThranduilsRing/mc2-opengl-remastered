@@ -19,6 +19,7 @@
 #include "gamesound.h"
 #include "logisticsdata.h"
 #include "paths.h"
+#include "mc2video.h"
 #include <chrono>
 #include <fstream>
 
@@ -43,7 +44,7 @@ struct ObjectiveObservationFixture {
     ~ObjectiveObservationFixture() { CObjective::s_markerFont = previous; }
 };
 
-TEST_CASE("ObjectiveObservation/skipped ordinals and replay preserve payloads and causes; completed availability emits nothing") {
+TEST_CASE("ObjectiveObservation/replay preserves causes; decoded frames emit once; stale movies and completed availability emit nothing") {
     struct CountedCondition : CObjectiveCondition {
         int& count;
         explicit CountedCondition(int& value) : CObjectiveCondition(0), count(value) {}
@@ -53,6 +54,7 @@ TEST_CASE("ObjectiveObservation/skipped ordinals and replay preserve payloads an
     };
     struct SinkAction : CObjectiveAction {
         bool movie;
+        VideoObjectiveReceipt receipt;
         explicit SinkAction(bool value) : CObjectiveAction(0), movie(value) {
             observationOrdinal = movie ? 5 : 4;
             observationPayload = movie ? "\"briefing.bik\"" : "\"ready\"";
@@ -62,6 +64,7 @@ TEST_CASE("ObjectiveObservation/skipped ordinals and replay preserve payloads an
         bool Read(FitIniFile*) override { return true; }
         bool Save(FitIniFile*) override { return true; }
         int Execute() override {
+            if (movie) { receipt.capture("./briefing.mp4"); }
             objectiveObservationSink(movie ? "movie" : "chat", movie ? "gui" : "stored",
                                      movie ? "boot_to_bay" : "accepted", movie ? "./briefing.bik" : "ready");
             return true;
@@ -156,7 +159,8 @@ TEST_CASE("ObjectiveObservation/skipped ordinals and replay preserve payloads an
         REQUIRE(objective->m_actionList.Count() == 3);
         CHECK((*objective->m_actionList.begin())->observationOrdinal == 1);
         objective->m_actionList.Append(new SinkAction(false));
-        objective->m_actionList.Append(new SinkAction(true));
+        auto* movie = new SinkAction(true);
+        objective->m_actionList.Append(movie);
         int evaluations = 0;
         objective->m_conditionList.Append(new CountedCondition(evaluations));
         CHECK_FALSE(objective->IsActive());
@@ -172,18 +176,30 @@ TEST_CASE("ObjectiveObservation/skipped ordinals and replay preserve payloads an
         auto& observation = team.objectives.observation;
         CHECK(observation.sequence == (enabled ? 24 : 0));
         objective->ObserveCBills(100, 350);
+        CHECK(movie->receipt.cause == (enabled ? 23 : 0));
+        CHECK(movie->receipt.path.empty() == !enabled);
+        VideoObjectiveReceipt unrelated;
+        unrelated.capture("./unrelated.mp4");
+        unrelated.decoded();
+        auto stale = movie->receipt;
+        stale.missionHash = "different-mission";
+        stale.decoded();
+        CHECK(observation.sequence == (enabled ? 25 : 0));
+        movie->receipt.decoded();
+        movie->receipt.decoded();
+        CHECK(observation.sequence == (enabled ? 26 : 0));
         if (enabled) {
             observation.finalResult = 5;
             observation.Finish();
-            CHECK(observation.sequence == 25);
+            CHECK(observation.sequence == 26);
             CHECK_FALSE(observation.completed);
             observation.settled = true;
             CHECK(logistics.updateAvailability() == 0);
-            CHECK(observation.sequence == 28);
+            CHECK(observation.sequence == 29);
             CHECK(observation.completed);
             observation.Finish();
             CHECK(logistics.updateAvailability() == 0);
-            CHECK(observation.sequence == 28);
+            CHECK(observation.sequence == 29);
         }
         file.close();
         return evaluations;
@@ -227,9 +243,10 @@ TEST_CASE("ObjectiveObservation/skipped ordinals and replay preserve payloads an
         {"dispatch", "\"o14\"", R"({"team":0,"objective":1,"list":"success","entry":5,"species":"PlayBIK","payload":"briefing.bik","result":1})"},
         {"sink", "\"o23\"", R"({"sink":"movie","stage":"gui","result":"boot_to_bay","payload":"./briefing.bik"})"},
         {"resolve", "\"o14\"", R"({"scope":"cbills","team":0,"objective":1,"old":100,"new":350})"},
+        {"sink", "\"o23\"", R"({"sink":"movie","stage":"decoded_frame","result":"accepted","payload":"./briefing.mp4"})"},
         {"sink", "\"o7\"", R"({"sink":"technology","stage":"purchase_file","result":"opened","payload":"mvh_scratch_objective_bonus.fit"})"},
         {"sink", "\"o19\"", R"({"sink":"technology","stage":"purchase_file","result":"opened","payload":"mvh_scratch_objective_bonus.fit"})"},
-        {"complete", "null", R"({"count":27,"result":5})"},
+        {"complete", "null", R"({"count":28,"result":5})"},
     };
     REQUIRE(records.size() == expected.size());
     std::ofstream extracted(stem + ".trace", std::ios::binary);

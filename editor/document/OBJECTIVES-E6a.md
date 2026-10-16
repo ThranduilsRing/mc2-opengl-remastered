@@ -64,6 +64,8 @@ Independent typed decoding and expected changed outputs are required; passthroug
 
 ## Follow-ups
 
+The [outcome package](../../tests/smoke/objectives_e6e/manifest.txt) retains two command-authored missions, media recipes/hashes and independent family expectations (`objective_outcomes.py TRACE expected.json --mission e6e_win|e6e_loss`). Its native save/reopen proof runs in the stock-fixture suite; synthetic negatives cover predicate/activation/setter/media omissions. Family v2 binds occurrence IDs, integer traversal/balance ranges and mounted path suffixes before applying the v1 comparator, causal/time bounds and signed settlement deltas. Runtime acceptance still requires lane3 logistics progression and the missing `movie/decoded_frame/accepted` receipt; no dispatch-only pass is provided.
+
 E6c closed: four-list payload authoring and species-selectable creation, read-only team-flag initialization/resolution, per-entry unknown-species quarantine and skipped-group display. Team-flag authoring and `_RemoveStructure` authoring remain deferred; bytes stay exact. Templates/localization remain E6d; actual trigger/reward/video outcomes remain E6e.
 Unknown condition/action strings quarantine that entry with the actual DestroyAllEnemyUnits/PlayBIK fallback shown.
 Group predicates remain preserved and shown as skipped; numeric species fallback applies only to success conditions.

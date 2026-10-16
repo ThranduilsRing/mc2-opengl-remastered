@@ -1,0 +1,4 @@
+module mc2_01 : integer;
+    code
+        return (0);
+endmodule.

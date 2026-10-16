@@ -97,6 +97,319 @@ TEST_CASE("objectives/message assembly limit includes retained whitespace")
     CHECK(logs.size() == 1); CHECK(scalarDoc->fitBytes() == padded);
 }
 
+TEST_CASE("objectives/outcome family saves commanded predicates actions and ordering" * doctest::test_suite("stock-fixture"))
+{
+    const auto& paths = editor::tests::inputs();
+    const auto output = (paths.byteGradeDirectory.empty() ? scratch() : paths.byteGradeDirectory) / "objectives_e6e/mod/data/missions";
+    std::filesystem::create_directories(output);
+    for (const bool loss : {false, true}) {
+        auto doc = MissionDocument::read(paths.stockDirectory / "mc2_01.fit", paths.stockDirectory / "mc2_01.pak", {}, paths.markerObjects);
+        INFO((doc ? "loaded" : doc.error().field + ": " + doc.error().reason));
+        REQUIRE(doc);
+        CommandHistory history(*doc);
+        while (!doc->objectives().empty()) REQUIRE(history.deleteObjective(doc->objectives().back().section));
+        std::vector<EntityId> enemies;
+        for (const auto& entity : doc->entities())
+            if (entity.exportedPart && entity.team != 0) enemies.push_back(entity.id);
+        for (const auto id : enemies) REQUIRE(history.erase(id));
+        const auto scalar = [&](NodeId id, std::string_view key, Scalar value) {
+            REQUIRE(history.setObjectiveScalar(id, key, std::move(value)));
+        };
+        const auto objective = [&](std::string title, int priority, int reward) {
+            const auto id = history.addObjective(0); REQUIRE(id);
+            scalar(*id, "Title", std::move(title));
+            scalar(*id, "Priority", std::int64_t{priority});
+            scalar(*id, "ResourcePoints", std::int64_t{reward});
+            scalar(*id, "HiddenTrigger", true);
+            return *id;
+        };
+        const auto time = [&](NodeId owner, std::size_t list, double seconds) {
+            const auto id = history.addObjectiveCondition(owner, list, ConditionSpecies::elapsed); REQUIRE(id);
+            REQUIRE(history.setObjectivePayload(*id, "Time", seconds));
+        };
+        const auto flag = [&](NodeId owner, std::string name) {
+            const auto id = history.addObjectiveEntry(owner, 0); REQUIRE(id);
+            REQUIRE(history.setObjectiveFlag(*id, std::move(name), 0, true));
+        };
+        const auto actions = [&](NodeId owner, std::size_t list, std::string suffix) {
+            for (const auto& draft : std::vector<ActionDraft>{
+                {ActionSpecies::bik, {std::string("e6e_numbered.bik")}},
+                {ActionSpecies::wav, {std::string("e6e_tone.wav")}},
+                {ActionSpecies::text, {std::string("E6e ") + suffix}},
+                {ActionSpecies::resourceText, {std::int64_t{10000}}},
+                {ActionSpecies::flag, {std::string("e6e_") + suffix, true}},
+                {ActionSpecies::technology, {std::string("data/missions/e6e_unlock_") + suffix + ".fit"}}})
+                REQUIRE(history.addObjectiveAction(owner, list, draft));
+        };
+        if (loss) {
+            const auto fail = objective("Primary failure", 1, 0);
+            flag(fail, "e6e_never"); time(fail, 2, 3);
+            REQUIRE(history.addObjectiveAction(fail, 3, {ActionSpecies::text, {std::string("E6e primary failed")}}));
+            const auto blocked = objective("Blocked after primary failure", 1, 0);
+            scalar(blocked, "PreviousPrimaryObjectiveMustBeComplete", true); time(blocked, 0, 0);
+        } else {
+            const auto start = objective("Timed positive reward", 1, 1250);
+            time(start, 0, 2); actions(start, 1, "success");
+            const auto chained = objective("Activated negative reward", 1, -250);
+            scalar(chained, "ActivateOnFlag", true); scalar(chained, "ActivateFlagID", std::string("e6e_success"));
+            scalar(chained, "PreviousPrimaryObjectiveMustBeComplete", true); flag(chained, "e6e_success");
+            REQUIRE(history.addObjectiveAction(chained, 1, {ActionSpecies::flag, {std::string("e6e_chain"), true}}));
+            const auto secondary = objective("Secondary failure actions", 2, 0);
+            flag(secondary, "e6e_never"); time(secondary, 2, 6); actions(secondary, 3, "failure");
+            const auto inactive = objective("Inactive sentinel", 2, 0);
+            scalar(inactive, "ActivateOnFlag", true); scalar(inactive, "ActivateFlagID", std::string("e6e_omitted"));
+            time(inactive, 0, 0);
+            const auto never = objective("Never satisfied sentinel", 2, 0); flag(never, "e6e_never");
+            const auto final = objective("Delayed final primary", 1, 0);
+            scalar(final, "AllPreviousPrimaryObjectivesMustBeComplete", true);
+            flag(final, "e6e_chain"); time(final, 0, 10);
+        }
+        const auto stem = loss ? "e6e_loss" : "e6e_win";
+        REQUIRE(doc->save(output / stem, {}));
+        auto reopened = MissionDocument::read(output / (std::string(stem) + ".fit"), output / (std::string(stem) + ".pak"), {}, paths.markerObjects);
+        REQUIRE(reopened);
+        CHECK(reopened->fitBytes() == doc->fitBytes());
+        CHECK(reopened->find("Script", "ScenarioScript")->value == Value{std::string("mc2_01")});
+        REQUIRE(reopened->objectives().size() == (loss ? 2 : 6));
+        const auto& roots = reopened->objectives();
+        const auto value = [&](std::size_t index, std::string_view key) { return reopened->objectiveScalar(roots[index].section, key)->value; };
+        const auto checkTime = [&](std::size_t index, std::size_t list, double expected) {
+            const auto& entry = roots[index].entries[list].back();
+            CHECK(std::get<ConditionSpecies>(entry.species) == ConditionSpecies::elapsed);
+            CHECK(entry.payload == std::vector<Scalar>{expected});
+        };
+        CHECK(value(0, "Priority") == Scalar{std::int64_t{1}});
+        CHECK(value(1, "PreviousPrimaryObjectiveMustBeComplete") == Scalar{true});
+        if (loss) {
+            checkTime(0, 2, 3); checkTime(1, 0, 0);
+            CHECK(roots[0].entries[0][0].flag->id == "e6e_never");
+            CHECK(roots[0].entries[3][0].payload == std::vector<Scalar>{std::string("E6e primary failed")});
+        } else {
+            CHECK(value(0, "ResourcePoints") == Scalar{std::int64_t{1250}});
+            CHECK(value(1, "ResourcePoints") == Scalar{std::int64_t{-250}});
+            CHECK(value(1, "ActivateOnFlag") == Scalar{true});
+            CHECK(value(1, "ActivateFlagID") == Scalar{std::string("e6e_success")});
+            CHECK(roots[1].entries[0][0].flag->id == "e6e_success");
+            CHECK(roots[1].entries[1][0].flag->id == "e6e_chain");
+            CHECK(value(2, "Priority") == Scalar{std::int64_t{2}});
+            CHECK(value(3, "ActivateOnFlag") == Scalar{true});
+            CHECK(value(3, "ActivateFlagID") == Scalar{std::string("e6e_omitted")});
+            CHECK(roots[4].entries[0][0].flag->id == "e6e_never");
+            CHECK(value(5, "AllPreviousPrimaryObjectivesMustBeComplete") == Scalar{true});
+            CHECK(roots[5].entries[0][0].flag->id == "e6e_chain");
+            checkTime(0, 0, 2); checkTime(2, 2, 6); checkTime(3, 0, 0); checkTime(5, 0, 10);
+            const std::vector<std::vector<Scalar>> payloads{
+                {std::string("e6e_numbered.bik")}, {std::string("e6e_tone.wav")},
+                {std::string("E6e success")}, {std::int64_t{10000}},
+                {std::string("e6e_success"), true}, {std::string("data/missions/e6e_unlock_success.fit")}};
+            for (const auto [root, list] : {std::pair{0, 1}, std::pair{2, 3}}) {
+                REQUIRE(roots[root].entries[list].size() == 6);
+                for (std::size_t i = 0; i < 6; ++i) {
+                    const auto& entry = roots[root].entries[list][i];
+                    CHECK(std::get<ActionSpecies>(entry.species) == static_cast<ActionSpecies>(i));
+                    auto expected = payloads[i];
+                    if (root == 2 && i == 2) expected = {std::string("E6e failure")};
+                    if (root == 2 && i == 4) expected = {std::string("e6e_failure"), true};
+                    if (root == 2 && i == 5) expected = {std::string("data/missions/e6e_unlock_failure.fit")};
+                    if (i == 4) {
+                        REQUIRE(entry.flag);
+                        CHECK(entry.flag->id == (root == 2 ? "e6e_failure" : "e6e_success"));
+                        CHECK(entry.flag->value);
+                    } else CHECK(entry.payload == expected);
+                }
+            }
+        }
+        CHECK(std::ranges::count_if(reopened->entities(), [](const auto& entity) { return entity.exportedPart && entity.team == 0; }) >= 3);
+        CHECK(std::ranges::none_of(reopened->entities(), [](const auto& entity) { return entity.exportedPart && entity.team != 0; }));
+    }
+}
+
+namespace {
+MissionDocument savedTemplate(const ObjectiveTemplateDraft& draft, bool v3)
+{
+    auto fit = fixture();
+    if (v3) {
+        fit.erase(fit.find("[Objectives Version]"));
+        fit += "[Objectives Version]\r\nul Version = 3\r\n";
+        for (unsigned team = 0; team < 8; ++team)
+            fit += std::format("[Team{}Objectives]\r\nul NumObjectives = 0\r\n", team);
+        fit += "FITend\r\n";
+    }
+    auto doc = MissionDocument::decode(fit, packet(), "templates", {});
+    if (!doc) INFO(doc.error().reason);
+    REQUIRE(doc);
+    CommandHistory history(*doc);
+    const auto added = history.addObjectiveTemplate(v3 ? 7 : 0, draft); REQUIRE(added);
+    const auto path = scratch() / "template";
+    REQUIRE(doc->save(path, {}));
+    auto reopened = MissionDocument::read(path.string() + ".fit", path.string() + ".pak", {}); REQUIRE(reopened);
+    CHECK(reopened->fitBytes() == doc->fitBytes());
+    CHECK(std::ranges::equal(reopened->pakBytes(), packet()));
+    REQUIRE(reopened->objectives().size() == (v3 ? 1 : 2));
+    const auto& objective = reopened->objectives().back();
+    CHECK(objective.team == (v3 ? 7 : 0));
+    REQUIRE(objective.entries[0].size() == 1);
+    CHECK(objective.entries[2].empty()); CHECK(objective.entries[3].empty());
+    CHECK(reopened->objectiveScalar(objective.section, "Priority")->value == Scalar{std::int64_t{1}});
+    return std::move(*reopened);
+}
+}
+
+TEST_CASE("objectives/template hidden trigger saves the flag predicate and success action")
+{
+    for (const bool v3 : {false, true}) for (const bool custom : {false, true}) {
+        auto draft = objectiveTemplateDraft(ObjectiveTemplate::hiddenTrigger);
+        if (custom) { draft.conditionFlag = "ready"; draft.conditionValue = false; draft.actionFlag = "done"; draft.actionValue = false; }
+        const auto doc = savedTemplate(draft, v3);
+        const auto& objective = doc.objectives().back();
+        const auto& condition = objective.entries[0][0];
+        CHECK(std::get<ConditionSpecies>(condition.species) == ConditionSpecies::flag);
+        REQUIRE(condition.flag);
+        CHECK(condition.flag->id == (custom ? "ready" : "flag0")); CHECK(condition.flag->value == !custom);
+        REQUIRE(objective.entries[1].size() == 1);
+        const auto& action = objective.entries[1][0];
+        CHECK(std::get<ActionSpecies>(action.species) == ActionSpecies::flag);
+        REQUIRE(action.flag);
+        CHECK(action.flag->id == (custom ? "done" : "flag0")); CHECK(action.flag->value == !custom);
+        CHECK(doc.objectiveScalar(objective.section, "HiddenTrigger")->value == Scalar{true});
+        CHECK(doc.objectiveScalar(objective.section, "Title")->value == Scalar{std::string("Hidden trigger")});
+        CHECK(doc.objectiveScalar(objective.section, "Description")->value == Scalar{std::string("Flag-driven hidden trigger. Set the activation/condition flags.")});
+        const auto wire = doc.fitBytes(); const FitReader reader(wire);
+        CHECK(reader.read(v3 ? "Team7Objective0Condition0" : "Objective1Condition0", "st", "ConditionSpeciesString") ==
+            std::expected<Scalar, std::string_view>{std::string("BooleanFlagIsSet")});
+        CHECK(reader.read(v3 ? "Team7Objective0Action0" : "Team0Objective1Action0", "st", "ActionSpeciesString") ==
+            std::expected<Scalar, std::string_view>{std::string("SetBooleanFlag")});
+    }
+}
+
+TEST_CASE("objectives/template destroy enemies saves the requested count and presentation")
+{
+    for (const bool v3 : {false, true}) for (const bool custom : {false, true}) {
+        auto draft = objectiveTemplateDraft(ObjectiveTemplate::destroyEnemies);
+        if (custom) {
+            draft.count = 7; draft.title = {true, "Fallback title", 123};
+            draft.description = {false, "First\n\nlast\n", 456}; draft.model = ObjectiveModelDraft{"atlas", 13, 53, 2, 1.5};
+        }
+        const auto doc = savedTemplate(draft, v3);
+        const auto& objective = doc.objectives().back();
+        CHECK(std::get<ConditionSpecies>(objective.entries[0][0].species) == ConditionSpecies::destroyNumber);
+        CHECK(objective.entries[0][0].payload == std::vector<Scalar>{std::int64_t{custom ? 7 : 1}});
+        CHECK(objective.entries[1].empty());
+        CHECK(doc.objectiveScalar(objective.section, "HiddenTrigger")->value == Scalar{false});
+        CHECK(doc.objectiveScalar(objective.section, "Title")->value == Scalar{std::string(custom ? "Fallback title" : "Destroy enemy units")});
+        CHECK(doc.objectiveScalar(objective.section, "Description")->value == Scalar{std::string(custom ? "First\n\nlast\n" : "Destroy the required number of enemy units.")});
+        CHECK(doc.objectiveScalar(objective.section, "TitleUseResourceString")->value == Scalar{custom});
+        CHECK(doc.objectiveScalar(objective.section, "TitleResourceStringID")->value == Scalar{std::int64_t{custom ? 123 : 0}});
+        CHECK(doc.objectiveScalar(objective.section, "ObjectiveModel")->value == Scalar{std::string(custom ? "atlas" : "")});
+        CHECK(doc.objectiveScalar(objective.section, "ModelType")->value == Scalar{std::int64_t{custom ? 13 : 0}});
+        CHECK(doc.objectiveScalar(objective.section, "ModelScale")->value == Scalar{custom ? 1.5 : 1.0});
+        CHECK(doc.objectiveScalar(objective.section, "ModelID")->value == Scalar{std::int64_t{custom ? 53 : -1}});
+        const auto wire = doc.fitBytes(); const FitReader reader(wire);
+        CHECK(reader.read(v3 ? "Team7Objective0Condition0" : "Objective1Condition0", "st", "ConditionSpeciesString") ==
+            std::expected<Scalar, std::string_view>{std::string("DestroyNumberOfEnemyUnits")});
+    }
+}
+
+TEST_CASE("objectives/template move to area saves its center and nonzero default radius")
+{
+    for (const bool v3 : {false, true}) for (const bool custom : {false, true}) {
+        auto draft = objectiveTemplateDraft(ObjectiveTemplate::moveToArea);
+        if (custom) { draft.centerX = 12.5; draft.centerY = -9.25; draft.radius = 64; }
+        const auto doc = savedTemplate(draft, v3);
+        const auto& objective = doc.objectives().back();
+        CHECK(std::get<ConditionSpecies>(objective.entries[0][0].species) == ConditionSpecies::moveAny);
+        CHECK(objective.entries[0][0].payload == std::vector<Scalar>{custom ? 12.5 : 0.0, custom ? -9.25 : 0.0, custom ? 64.0 : 256.0});
+        CHECK(objective.entries[1].empty());
+        CHECK(doc.objectiveScalar(objective.section, "Title")->value == Scalar{std::string("Move to area")});
+        CHECK(doc.objectiveScalar(objective.section, "Description")->value == Scalar{std::string("Move any unit into the target area. Set the area center via Edit.")});
+        const auto wire = doc.fitBytes(); const FitReader reader(wire);
+        CHECK(reader.read(v3 ? "Team7Objective0Condition0" : "Objective1Condition0", "st", "ConditionSpeciesString") ==
+            std::expected<Scalar, std::string_view>{std::string("MoveAnyUnitToArea")});
+    }
+}
+
+TEST_CASE("objectives/template add undoes the whole recipe and rejects partial additions")
+{
+    auto doc = MissionDocument::decode(fixture(), packet(), "templates", {}); REQUIRE(doc);
+    CommandHistory history(*doc);
+    for (const auto recipe : {ObjectiveTemplate::hiddenTrigger, ObjectiveTemplate::destroyEnemies, ObjectiveTemplate::moveToArea}) {
+        auto draft = objectiveTemplateDraft(recipe);
+        REQUIRE(history.addObjectiveTemplate(0, draft));
+        const auto added = doc->fitBytes();
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == fixture()); CHECK_FALSE(history.canUndo());
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == added); REQUIRE(history.undo());
+        if (recipe == ObjectiveTemplate::hiddenTrigger) draft.actionFlag = "bad\"flag";
+        else if (recipe == ObjectiveTemplate::destroyEnemies) draft.count = 2147483648LL;
+        else draft.radius = std::numeric_limits<double>::infinity();
+        CHECK_FALSE(history.addObjectiveTemplate(0, draft));
+        CHECK(doc->fitBytes() == fixture()); CHECK_FALSE(history.canUndo()); CHECK(history.canRedo());
+    }
+}
+
+TEST_CASE("objectives/text source apply is atomic and retains missing IDs and empty final lines")
+{
+    auto doc = MissionDocument::decode(fixture(), packet(), "presentation", {}); REQUIRE(doc);
+    const auto id = doc->objectives()[0].section;
+    const auto original = doc->fitBytes();
+    CommandHistory history(*doc);
+    for (const auto& literal : {std::string{}, std::string("\n"), std::string("first\n\nlast\n\n"), std::string(2000, 'x')}) {
+        REQUIRE(history.setObjectiveText(id, "Title", {true, literal, -2147483648LL}));
+        const auto saved = doc->fitBytes();
+        FitReader reader(saved);
+        CHECK(reader.read("Objective0", "st", "Title") == std::expected<Scalar, std::string_view>{literal});
+        CHECK(doc->objectiveScalar(id, "TitleResourceStringID")->value == Scalar{std::int64_t{-2147483648LL}});
+        CHECK(doc->objectiveScalar(id, "TitleUseResourceString")->value == Scalar{true});
+        auto reopened = MissionDocument::decode(saved, packet(), "reopen", {}); REQUIRE(reopened);
+        CHECK(reopened->objectiveScalar(reopened->objectives()[0].section, "Title")->value == Scalar{literal});
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == saved);
+        REQUIRE(history.undo());
+    }
+    REQUIRE(history.setObjectiveText(id, "Description", {false, "literal\n", 2147483647LL}));
+    REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+    CHECK_FALSE(history.setObjectiveText(id, "Title", {true, "changed", 2147483648LL}));
+    CHECK_FALSE(history.setObjectiveText(id, "Title", {false, std::string(2001, 'x'), 0}));
+    CHECK(doc->fitBytes() == original); CHECK_FALSE(history.canUndo());
+}
+
+TEST_CASE("objectives/model preview applies appearance types atomically without rewriting colors or custom fields")
+{
+    auto doc = MissionDocument::decode(fixture(), packet(), "models", {}); REQUIRE(doc);
+    const auto id = doc->objectives()[0].section;
+    CommandHistory history(*doc);
+    REQUIRE(history.setObjectiveScalar(id, "ObjectiveModel", std::string("custom")));
+    REQUIRE(history.setObjectiveScalar(id, "ModelID", std::int64_t{-123}));
+    const auto original = doc->fitBytes();
+    const std::pair<CatalogAppearance, std::int64_t> types[] = {
+        {CatalogAppearance::mech, 13}, {CatalogAppearance::vehicle, 5},
+        {CatalogAppearance::building, 14}, {CatalogAppearance::tree, 15}};
+    for (const auto& [appearance, camera] : types) {
+        CatalogEntry entry; entry.id = 117; entry.stem = "catalog"; entry.appearance = "different";
+        entry.appearanceType = appearance; entry.runtimeClass = 999; entry.scale = 0.75;
+        auto preview = objectiveModel(entry); REQUIRE(preview);
+        CHECK(doc->fitBytes() == original);
+        CHECK(preview->type == camera); CHECK(preview->name == "catalog"); CHECK(preview->id == 117);
+        REQUIRE(history.setObjectiveModel(id, *preview));
+        const auto saved = doc->fitBytes();
+        FitReader reader(saved);
+        CHECK(std::get<std::int64_t>(*reader.read("Objective0", "l", "ModelType")) == camera);
+        CHECK(doc->objectiveScalar(id, "BaseColor")->value == Scalar{std::int64_t{-1}});
+        auto reopened = MissionDocument::decode(saved, packet(), "reopen", {}); REQUIRE(reopened);
+        CHECK(reopened->objectiveScalar(reopened->objectives()[0].section, "ObjectiveModel")->value == Scalar{std::string("catalog")});
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+        REQUIRE(history.redo()); CHECK(doc->fitBytes() == saved);
+        REQUIRE(history.undo());
+    }
+    for (const double scale : {0.0, -2.0}) {
+        REQUIRE(history.setObjectiveModel(id, {"custom", 14, -123, 1, scale}));
+        CHECK(doc->objectiveScalar(id, "ModelScale")->value == Scalar{scale});
+        REQUIRE(history.undo()); CHECK(doc->fitBytes() == original);
+    }
+    CHECK_FALSE(history.setObjectiveModel(id, {"invalid", 6, 117, 2, 1}));
+    CHECK_FALSE(history.setObjectiveModel(id, {"invalid", 14, 2147483648LL, 2, 1}));
+    CHECK(doc->fitBytes() == original);
+}
+
 TEST_CASE("objectives/LF blank line collapse matches the RAM reader")
 {
     const auto fit = messageFixture("\"a\n\nb\"");

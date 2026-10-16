@@ -1,5 +1,6 @@
 #pragma once
 #include "MissionDocument.h"
+#include "ObjectivePresentation.h"
 
 #include <deque>
 
@@ -23,7 +24,10 @@ public:
     CommandHistory& operator=(const CommandHistory&) = delete;
     std::expected<void, LoadError> setText(NodeId field, std::string text, std::string label);
     std::expected<void, LoadError> setObjectiveScalar(NodeId objective, std::string_view key, Scalar value);
+    std::expected<void, LoadError> setObjectiveText(NodeId objective, std::string_view key, const ObjectiveTextDraft& draft);
+    std::expected<void, LoadError> setObjectiveModel(NodeId objective, const ObjectiveModelDraft& draft);
     std::expected<NodeId, LoadError> addObjective(std::uint32_t team);
+    std::expected<NodeId, LoadError> addObjectiveTemplate(std::uint32_t team, const ObjectiveTemplateDraft& draft);
     std::expected<NodeId, LoadError> copyObjective(NodeId objective);
     std::expected<void, LoadError> deleteObjective(NodeId objective);
     std::expected<void, LoadError> reorderObjective(NodeId objective, std::uint32_t index);
@@ -61,6 +65,8 @@ private:
     Diagnostic log_;
     enum class ObjectiveEdit { add, copy, erase, reorder };
     LoadError rejectObjective(std::string reason);
+    std::expected<void, LoadError> setObjectivePresentation(NodeId objective,
+        std::span<const std::pair<std::string_view, Scalar>> changes, std::string label);
     std::expected<NodeId, LoadError> editObjectiveEntries(ObjectiveEdit edit, NodeId objective,
         std::size_t list, NodeId entry = {}, std::uint32_t index = 0,
         std::optional<ConditionSpecies> species = {}, std::optional<EntityId> target = {},

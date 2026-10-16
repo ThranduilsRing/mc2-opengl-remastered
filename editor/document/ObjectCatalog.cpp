@@ -1,4 +1,5 @@
 #include "ObjectCatalog.h"
+#include "ResourceStrings.h"
 
 #include <algorithm>
 #include <charconv>
@@ -186,6 +187,7 @@ std::string_view familyName(ObjectFamily family)
 ObjectCatalog ObjectCatalog::load(const FileResolver& resolver, Diagnostic log, ResourceName names)
 {
     ObjectCatalog result;
+    result.strings_ = std::make_shared<ResourceStrings>(ResourceStrings::load(resolver, log));
     const auto reject = [&](std::size_t row, std::string reason) {
         ++result.rejections_;
         if (log) log("[EDITOR_CATALOG_REJECT v1] row=" + std::to_string(row) + " reason=" + reason);
@@ -200,7 +202,10 @@ ObjectCatalog ObjectCatalog::load(const FileResolver& resolver, Diagnostic log, 
         for (std::size_t i = 4; i < definitions->bytes.size(); ++i) checksum += std::to_integer<unsigned>(definitions->bytes[i]);
         if (checksum != word(definitions->bytes, 0)) { reject(0, "object2.pak:checksum_mismatch"); return result; }
     }
-    if (!names) names = resourceNames(resolver, log);
+    if (!names) names = [strings = result.strings_](std::int64_t id) -> std::optional<std::string> {
+        auto value = strings->resolve(id);
+        return value.found ? std::optional{std::move(value.text)} : std::nullopt;
+    };
     const auto content = text(enumeration->bytes);
     const auto rows = lines(content);
     if (rows.size() > nodeLimit) { reject(0, "row_count_limit"); return result; }

@@ -1,4 +1,5 @@
 #include "EntityPanels.h"
+#include "ObjectivePresentation.h"
 #include <misc/cpp/imgui_stdlib.h>
 #include <format>
 #include <algorithm>
@@ -49,6 +50,7 @@ void EntityPanels::objectives()
         if (result) { objective_ = *result; status_ = "Applied"; }
         else status_ = result.error().reason;
     }
+    objectiveTemplates();
     const auto* selected = document_.objective(objective_);
     if (!selected) {
         for (const auto& item : document_.objectives()) if (item.team == objectiveTeam_) {
@@ -92,6 +94,9 @@ void EntityPanels::objectives()
     if (button("objective.entries", showObjectiveEntries_ ? "Show objective fields and references" : "Edit condition/action entries"))
         showObjectiveEntries_ = !showObjectiveEntries_;
     if (!showObjectiveEntries_) {
+        const auto revision = document_.revision();
+        objectivePresentation();
+        if (revision != document_.revision()) { ImGui::PopID(); return; }
         const auto entityName = [&](const Entity& entity) {
             std::string name = entity.csvFile.value_or(entity.objectProfile.value_or("Object " + std::to_string(entity.objectNumber)));
             if (catalog_) for (const auto& item : catalog_->entries())
@@ -156,7 +161,7 @@ void EntityPanels::objectives()
         bool changed{};
         if (auto* value = std::get_if<std::string>(&objectiveDraft_)) {
             if (spec.key == "Title" || spec.key == "Description")
-                changed = ImGui::InputTextMultiline("Value", value, ImVec2(-1, 96), ImGuiInputTextFlags_CtrlEnterForNewLine);
+                changed = textControl("Value", *value);
             else changed = ImGui::InputText("Value", value);
         }
         else if (auto* value = std::get_if<bool>(&objectiveDraft_)) changed = ImGui::Checkbox("Value", value);
@@ -241,10 +246,11 @@ void EntityPanels::objectives()
                     auto name = std::string(spec->fields[f].key);
                     if (draft.flagIndex && f == 0) name = "FlagIndex";
                     bool changed{};
-                    if (auto* value = std::get_if<std::string>(&draft.payload[f])) changed = ImGui::InputTextMultiline(("New " + name).c_str(), value, ImVec2(-1, 55), ImGuiInputTextFlags_CtrlEnterForNewLine);
+                    if (auto* value = std::get_if<std::string>(&draft.payload[f])) changed = textControl(("New " + name).c_str(), *value, 55);
                     else if (auto* value = std::get_if<bool>(&draft.payload[f])) changed = ImGui::Checkbox(("New " + name).c_str(), value);
                     else changed = ImGui::InputScalar(("New " + name).c_str(), ImGuiDataType_S64, &std::get<std::int64_t>(draft.payload[f]));
                     record(key + ".new." + name, changed || ImGui::IsItemActivated());
+                    if (draft.species == ActionSpecies::resourceText) resourceDraft(key + ".resource", std::get<std::int64_t>(draft.payload[f]));
                 }
             }
             const auto validation = i % 2 == 0 ? std::expected<std::string, LoadError>{std::string{}} : encodeActionDraft(draft);
@@ -331,7 +337,8 @@ void EntityPanels::objectives()
                             if (!source->warning.empty()) ImGui::TextWrapped("%s: %s; authored bytes preserved", field.key.data(), source->warning.data());
                             if (field.type == 0) record(key + "." + std::string(field.key), ImGui::InputScalar(field.key.data(), ImGuiDataType_S64, &std::get<std::int64_t>(payloadDraft_[f])));
                             else if (field.type == 1) record(key + "." + std::string(field.key), ImGui::InputScalar(field.key.data(), ImGuiDataType_Double, &std::get<double>(payloadDraft_[f]), nullptr, nullptr, "%.9g"));
-                            else record(key + "." + std::string(field.key), ImGui::InputTextMultiline(field.key.data(), &std::get<std::string>(payloadDraft_[f]), ImVec2(-1, 96), ImGuiInputTextFlags_CtrlEnterForNewLine));
+                            else record(key + "." + std::string(field.key), textControl(field.key.data(), std::get<std::string>(payloadDraft_[f])));
+                            if (field.key == "ResourceStringID") resourceDraft(key + ".resource", std::get<std::int64_t>(payloadDraft_[f]));
                             auto validation = validateObjectiveScalar(field, payloadDraft_[f]);
                             if (validation) validation = validateObjectiveBlock("[Payload]\r\n" + std::string(field.prefix) + " " + std::string(field.key) + " = " + objectivePayloadWire(field, payloadDraft_[f]));
                             ImGui::BeginDisabled(!validation);
