@@ -19,9 +19,9 @@ from typing import Mapping, Optional
 PINNED_WIDTH = 1920
 PINNED_HEIGHT = 1080
 
-#: The golden set (tests/visual/goldens/<name>) blessed at the pinned size; `verify.py --golden current` and `check-capture-resolution.py --current`
-#: resolve to it. The 3840x2160 set `reset-50331d5` stays on disk under its own name (it can no longer be graded against: wrong size).
-CURRENT_GOLDEN = "golden-e9e3f19d6-1080p"
+#: The VK golden set (tests/visual/goldens/<name>) blessed at the pinned size; `verify.py --golden current` and `check-capture-resolution.py --current`
+#: resolve to it. The GL sets (`golden-e9e3f19d6-1080p`, `reset-50331d5`) are retired (tests/visual/goldens/RETIRED.md): a GL capture cannot grade against it.
+CURRENT_GOLDEN = "golden-d9e1f3801716-vk-1080p"
 
 #: The sizes the weekly `resolution` smoke tier runs one mission at: the pinned size and the 4K size a stock install is configured for.
 RESOLUTION_TIER_SIZES = ((PINNED_WIDTH, PINNED_HEIGHT), (3840, 2160))

@@ -126,5 +126,5 @@ def test_the_current_golden_records_the_options_the_backend_and_the_frozen_anima
     env = json.loads((ccr.current_golden_dir() / "golden.json").read_text(encoding="utf-8"))["capture_env"]
     assert len(env["render_options"]) == 17
     assert env["declared_env"].get("MC2_SMOKE_FREEZE_ANIM") == "1"
-    assert env["backend"] == {"requested": "gl", "drew": ["gl"]}
+    assert env["backend"] == {"requested": "vulkan", "drew": ["vulkan"]}
     assert env["resolution"] == f"{render_resolution.PINNED_WIDTH}x{render_resolution.PINNED_HEIGHT}"

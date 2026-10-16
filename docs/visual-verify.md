@@ -127,11 +127,10 @@ they live in-repo cheaply and diff exactly. Each set carries a `golden.json`
 identity block (install, exe, frame, per-crop sha256, source capture manifest).
 
 **Resolution.** Captures, Tracy traces and tier1 smoke runs are pinned to 1920x1080 (`scripts/smoke_lib/render_resolution.py`). The current golden set is
-`tests/visual/goldens/golden-e9e3f19d6-1080p` (`render_resolution.CURRENT_GOLDEN`; `verify.py --golden current` and `check-capture-resolution.py --current`
-resolve to it): three frozen-animation runs on the lane install, blessed at 1920x1080 with the 17 render options, the declared environment and the backend
+`tests/visual/goldens/golden-d9e1f3801716-vk-1080p` (`render_resolution.CURRENT_GOLDEN`; `verify.py --golden current` and `check-capture-resolution.py --current`
+resolve to it): three frozen-animation Vulkan runs on the lane install, blessed at 1920x1080 with the 17 render options, the declared environment and the backend
 recorded in `golden.json` (`capture_env`). `verify.py` refuses a candidate whose render options differ from the golden's unless `--vary Key,Key` names
-them, and the report records both. The older 3840x2160 set `reset-50331d5` stays on disk under its own name; `check-capture-resolution.py` refuses every
-1080p capture against it. To re-bless: capture three runs with `tools/visual_verify/capture.py` (`--env MC2_SMOKE_FREEZE_ANIM=1`), then `bless.py` below, then
+them, and the report records both. The GL sets (`golden-e9e3f19d6-1080p`, `reset-50331d5`) are retired (`tests/visual/goldens/RETIRED.md`). To re-bless: capture three runs with `tools/visual_verify/capture.py` (`--env MC2_SMOKE_FREEZE_ANIM=1`), then `bless.py` below, then
 point `CURRENT_GOLDEN` at the new directory. The render options (`render_options` in `capture_run.json`) are an input of every
 capture too; `capture_ab.py compare` refuses sets whose options differ unless `--vary Key,Key` names them, and refuses a set that was not drawn by the backend
 its name says (a `-vk` set whose sidecars say GL is "VK arm UNPROVEN"). `.claude/l2cap/ledger.json` (`tools/visual_verify/capture_index.py`, rendered as `index.md`) is the committed
