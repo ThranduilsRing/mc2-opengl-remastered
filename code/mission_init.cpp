@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
 #include "mission_init_frame.h"
+#include <new>
 
 
 // SIM-SPEED-BUTTON-1: dev-shell `sim_speed [--value V]` command — get (no
@@ -715,11 +716,9 @@ void Mission::initTriggerAndDropZone(MissionInitFrame& f) {
 void Mission::initMissionSettings(MissionInitFrame& f) {
 	auto& result = f.result;
 	result = missionFile->seekBlock("MissionSettings");
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: mission .fit missing [MissionSettings] block");
 
 	result = missionFile->readIdUChar("scenarioTuneNum",missionTuneNum);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: [MissionSettings] missing scenarioTuneNum");
 
 	long numRPoints;
@@ -742,6 +741,7 @@ void Mission::initMissionSettings(MissionInitFrame& f) {
 
 	craterManager = (CraterManagerPtr)missionHeap->Malloc(sizeof(CraterManager));
 	gosASSERT(craterManager != NULL);
+	::new (craterManager) CraterManager;
 		
 	result = craterManager->init(1000,20479,"feet");
 	gosASSERT(result == NO_ERR);

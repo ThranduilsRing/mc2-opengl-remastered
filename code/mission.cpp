@@ -1107,7 +1107,7 @@ void Mission::destroy (bool initLogistics)
 
 	if ( craterManager )
 	{
-		craterManager->destroy();
+		craterManager->~CraterManager();
 		missionHeap->Free( craterManager );
 		craterManager = nullptr;
 	}
