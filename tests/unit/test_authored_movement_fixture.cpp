@@ -186,7 +186,7 @@ struct MovementWorld {
         return result;
     }
     bool ready() const {
-        return GameMap && GameMap->map && land && Terrain::mapData && Terrain::mapData->getBlocks() &&
+        return GameMap && !GameMap->map.empty() && land && Terrain::mapData && Terrain::mapData->getBlocks() &&
             ObjectManager && ObjectTypeManager::objectCache && pilot->getVehicle() == mech.get() &&
             PathManager && PathFindMap[0] && PathFindMap[1] &&
             GlobalMoveMap[0] && GlobalMoveMap[0]->areas && GlobalMoveMap[0]->doors;

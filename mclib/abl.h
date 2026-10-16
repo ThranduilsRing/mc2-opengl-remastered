@@ -82,9 +82,8 @@ int32_t ABLi_preProcess (const char* sourceFileName,
 					  long* numFilesProcessed = NULL,
 					  bool printLines = false);
 
-// ASAN-3-ABL-COMPILE-FATAL-1: opt-in playability gate (MC2_ABL_SKIP_ERRORED_MODULES;
-// ablenv.cpp). When set, modules with compile errors are registered but never
-// executed — so the load-time compile-error fatal in ABLi_preProcess stands down.
+// Execution guard for modules carrying a compile-error count. New compiles reject
+// syntax errors before registration.
 bool ablSkipErroredModulesEnabled (void);
 
 ABLModulePtr ABLi_loadLibrary (const char* sourceFileName,

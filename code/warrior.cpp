@@ -1269,21 +1269,18 @@ long MechWarrior::setBrain (long brainHandle) {
 	if (brain) {
 		delete brain;
 		brain = nullptr;
-		// Clear the pilot alarm callback table...
 		for (long i = 0; i < NUM_PILOT_ALARMS; i++)
 			brainAlarmCallback[i] = nullptr;
 	}
-	
+	warriorBrainHandle = brainHandle;
 	if (brainHandle > -1) 
 	{
-		warriorBrainHandle = brainHandle;
 		brain = new ABLModule;
 		brainErr = brain->init(brainHandle);
 		if (brainErr == NO_ERR) {
 			char brainName[500];
 			mc2::fmt::to_buf(brainName, "Pilot {}", mc2::fmt::safe(name));
 			brain->setName(brainName);
-			// Set up the pilot alarm callback table...
 			for (long i = 0; i < NUM_PILOT_ALARMS; i++)
 				brainAlarmCallback[i] = brain->findFunction(pilotAlarmFunctionName[i], true);
 		}

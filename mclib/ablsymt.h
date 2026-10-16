@@ -69,6 +69,9 @@ typedef enum {
 typedef struct _SymTableNode*	SymTableNodePtr;
 typedef	struct _Type*			TypePtr;
 
+void ablRememberSymbolInsertion(SymTableNodePtr* slot);
+void ablRememberTypeUse(TypePtr type);
+
 typedef struct {
 	Value					value;
 } Constant;

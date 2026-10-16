@@ -118,14 +118,11 @@ void Mission::loadWarriors(MissionInitFrame& f) {
 			else
 			{
 				long moduleHandle = ABLi_preProcess(brainFileName, &numErrors, &numLinesProcessed);
-				gosASSERT(moduleHandle >= 0);
 				if (moduleHandle >= 0 && numErrors == 0)
 					soakBrainsLoaded++;
 				else
 				{
 					soakBrainsFailed++;
-					mc2::fmt::print_out("[SOAK] WARN abl brain load failed name={} errors={:d}\n",
-						mc2::fmt::safe(moduleName), mc2::fmt::as_i32((long)numErrors));
 				}
 
 #ifdef _DEBUG

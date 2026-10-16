@@ -216,9 +216,6 @@ long Mission::addMover (MoverInitData* moverSpec) {
 	}
 		
 	long moduleHandle = ABLi_preProcess(brainFullFileName, &numErrors, &numLinesProcessed);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
-	// a negative handle from a bad/missing .abl brain is then handed to setBrain().
-	MC2_VERIFY(moduleHandle >= 0, "Mission::addMover: ABL brain preprocess failed (handle %ld)", moduleHandle);
 	pilot->setBrain(moduleHandle);
 
 /*

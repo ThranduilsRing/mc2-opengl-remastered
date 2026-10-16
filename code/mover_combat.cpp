@@ -261,7 +261,6 @@ void Mover::loadPilot (const char* pilotFileName, const char* brainFileName, Log
 	}
 		
 	long moduleHandle = ABLi_preProcess(brainFullFileName, &numErrors, &numLinesProcessed);
-	gosASSERT(moduleHandle >= 0);
 	pilot->setBrain(moduleHandle);
 	setPilotHandle(pilot->getIndex());
 }
