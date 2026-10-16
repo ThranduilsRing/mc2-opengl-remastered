@@ -86,6 +86,9 @@ to give the GL-arm removal a VK reference; the final set is re-blessed after the
 
 ## 3. Blessed 2026-10-16: `golden-e350d0b4a5c6-vk-1080p` (interim, not CURRENT_GOLDEN)
 
+Retired the same day (superseded by the section 4 set): archived under `E:/mc2-archive-2026-10/docs/vk-interim-golden-2026-10-16/`,
+row in `tests/visual/goldens/RETIRED.md`. The record below is kept as the provenance of the bless method.
+
 | item | value |
 |---|---|
 | runs | `.claude/l2cap/vkgold26-r{1,2,3}`, exe e350d0b4a5c6 (clean), lane install, the 10 poses of section 2, umbrella pair + `MC2_SMOKE_FREEZE_ANIM=1`, validation off |

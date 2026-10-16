@@ -199,6 +199,9 @@ RETIRED_SETS = {
     "reset-50331d5": (
         "Retired by the 2026-10-16 CURRENT_GOLDEN switch: a GL set at 3840x2160 (ungradeable at the pinned size), "
         "superseded by golden-d9e1f3801716-vk-1080p. Copy at E:/mc2-archive-2026-10/docs/gl-goldens-2026-10-16."),
+    "golden-e350d0b4a5c6-vk-1080p": (
+        "Retired 2026-10-16: the interim Vulkan set, blessed before the row 1 and row 9 ports; superseded by "
+        "golden-d9e1f3801716-vk-1080p (CURRENT_GOLDEN). Copy at E:/mc2-archive-2026-10/docs/vk-interim-golden-2026-10-16."),
 }
 
 
