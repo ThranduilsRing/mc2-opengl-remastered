@@ -63,14 +63,8 @@ void populatePlaceholder(TG_TypeMultiShape* shape)
 
 	const int kNumVerts = 8;
 	const int kNumTris  = 12;
-	TG_TypeVertexPtr verts = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(
-		sizeof(TG_TypeVertex) * kNumVerts);
-	TG_TypeTrianglePtr tris = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(
-		sizeof(TG_TypeTriangle) * kNumTris);
-	if (!verts || !tris)
-		return;
-	memset(verts, 0, sizeof(TG_TypeVertex) * kNumVerts);
-	memset(tris, 0, sizeof(TG_TypeTriangle) * kNumTris);
+	std::vector<TG_TypeVertex> verts(kNumVerts);
+	std::vector<TG_TypeTriangle> tris(kNumTris);
 
 	// Box corners: x/y in [-6,6], z in [0,20] (visible whichever axis is
 	// "up" in the local shape space).
@@ -122,8 +116,7 @@ void populatePlaceholder(TG_TypeMultiShape* shape)
 
 	Stuff::Point3D zero;
 	zero.x = zero.y = zero.z = 0.0f;
-	ts->InitFromImportedMesh("mc2_load_placeholder", "None", zero,
-		kNumVerts, kNumTris, verts, tris);
+	ts->InitFromImportedMesh("mc2_load_placeholder", "None", zero, std::move(verts), std::move(tris));
 
 	// Bounding volume (CreateFrom/cull path reads these).
 	shape->minBox.x = -kHx; shape->minBox.y = -kHy; shape->minBox.z = kZ0;

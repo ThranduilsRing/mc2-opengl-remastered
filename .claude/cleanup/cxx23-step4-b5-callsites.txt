@@ -64,12 +64,6 @@ B5.3-appearance	mclib/apprtype.cpp:535	asset_delete	delete appearanceHeap;
 B5.3-appearance	mclib/apprtype.cpp:540	asset_delete	delete GVAppearanceType::SensorCircleShape;
 B5.3-appearance	mclib/apprtype.cpp:546	asset_delete	delete GVAppearanceType::SensorTriangleShape;
 B5.3-appearance	mclib/apprtype.cpp:552	asset_delete	delete Mech3DAppearanceType::SensorSquareShape;
-B5.2-tg	mclib/assimp_importer.cpp:443	heap_malloc	TG_TypeVertexPtr verts = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(
-B5.2-tg	mclib/assimp_importer.cpp:445	heap_malloc	TG_TypeTrianglePtr tris = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(
-B5.2-tg	mclib/assimp_importer.cpp:510	heap_free	TG_Shape::tglHeap->Free(verts);
-B5.2-tg	mclib/assimp_importer.cpp:511	heap_free	TG_Shape::tglHeap->Free(tris);
-B5.2-tg	mclib/assimp_importer.cpp:584	heap_malloc	TG_TypeVertexPtr verts = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeVertex) * totalV);
-B5.2-tg	mclib/assimp_importer.cpp:585	heap_malloc	TG_TypeTrianglePtr tris = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeTriangle) * totalT);
 B5.1-texture	mclib/bdactor.cpp:280	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
 B5.1-texture	mclib/bdactor.cpp:287	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
 B5.3-appearance	mclib/bdactor.cpp:362	heap_malloc	nodeUsed = (long *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(long) * appearType->numWeaponNodes);
@@ -317,13 +311,7 @@ B5.1-texture	mclib/terrtxm2_load.cpp:198	tex_acquire	waterTextureNodeIndex.reset
 B5.1-texture	mclib/terrtxm2_load.cpp:299	tex_acquire	textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,
 B5.1-texture	mclib/terrtxm2_load.cpp:440	tex_acquire	textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,
 B5.1-texture	mclib/terrtxm2_load.cpp:589	tex_acquire	normalMapTextures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw(
-B5.2-tg	mclib/tgl_load_guard.cpp:66	heap_malloc	TG_TypeVertexPtr verts = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(
-B5.2-tg	mclib/tgl_load_guard.cpp:68	heap_malloc	TG_TypeTrianglePtr tris = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(
-B5.1-texture	mclib/tgl_load_guard.cpp:144	tex_acquire	s_magentaHandle = mcTextureManager->textureFromMemory(
-B5.2-tg	mclib/tgl_parse.cpp:99	heap_malloc	listOfTypeVertices = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeVertex) * numTypeVertices);
-B5.2-tg	mclib/tgl_parse.cpp:146	heap_malloc	listOfTypeTriangles = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeTriangle) * numTypeTriangles);
-B5.2-tg	mclib/tgl_parse.cpp:660	heap_malloc	listOfTextures = (TG_TinyTexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TinyTexture) * numTextures);
-B5.2-tg	mclib/tgl_parse.cpp:690	heap_malloc	listOfTextures = (TG_TinyTexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TinyTexture) * numTextures);
+B5.1-texture	mclib/tgl_load_guard.cpp:137	tex_acquire	s_magentaHandle = mcTextureManager->textureFromMemory(
 B5.2-tg	mclib/tgl_transform.cpp:32	class_op	void *TG_Shape::operator new (size_t mySize)
 B5.2-tg	mclib/tgl_transform.cpp:34	heap_malloc	void *result = TG_Shape::tglHeap->Malloc(mySize);
 B5.2-tg	mclib/tgl_transform.cpp:38	class_op	void TG_Shape::operator delete (void *us)
@@ -337,13 +325,7 @@ B5.2-tg	mclib/tgl_types.cpp:107	heap_free	TG_Shape::tglHeap->Free(us);
 B5.2-tg	mclib/tgl_types.cpp:120	heap_malloc	newShape = (TG_ShapePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
 B5.2-tg	mclib/tgl_types.cpp:276	heap_malloc	void* memarea = TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
 B5.2-tg	mclib/tgl_types.cpp:300	heap_malloc	newShape->listOfShadowVertices = (TG_ShadowVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShadowVertex) * numTypeVertices
-B5.2-tg	mclib/tgl_types.cpp:397	heap_malloc	listOfTypeVertices = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeVertex) * numTypeVertices);
-B5.2-tg	mclib/tgl_types.cpp:412	heap_malloc	listOfTypeTriangles = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeTriangle) * numTypeTriangles);
-B5.2-tg	mclib/tgl_types.cpp:426	heap_malloc	listOfTextures = (TG_TinyTexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TinyTexture) * numTextures);
-B5.2-tg	mclib/tgl_types.cpp:547	heap_free	TG_Shape::tglHeap->Free(listOfTypeVertices);
-B5.2-tg	mclib/tgl_types.cpp:551	heap_free	TG_Shape::tglHeap->Free(listOfTypeTriangles);
-B5.2-tg	mclib/tgl_types.cpp:555	heap_free	TG_Shape::tglHeap->Free(listOfTextures);
-B5.2-tg	mclib/tgl_types.cpp:607	heap_free	tglHeap->Free(listOfShadowVertices);
+B5.2-tg	mclib/tgl_types.cpp:622	heap_free	tglHeap->Free(listOfShadowVertices);
 B5.5-heap-owner	mclib/txmmgr.cpp:261	asset_delete	delete MidLevelRenderer::MLRTexturePool::Instance;
 B5.5-heap-owner	mclib/txmmgr.cpp:293	asset_delete	delete textureCacheHeap;
 B5.5-heap-owner	mclib/txmmgr.cpp:296	asset_delete	delete textureStringHeap;

@@ -635,6 +635,11 @@ class TG_TypeShape : public TG_TypeNode
 		TG_TypeTrianglePtr		listOfTypeTriangles;		//Memory holding all triangle data
 		TG_TinyTexturePtr		listOfTextures;				//List of texture Structures for this shape.
 
+		// The three lists above are views of these stores, which own the memory; each is sized once (from a checked count) before its view is taken.
+		std::vector<TG_TypeVertex>		typeVertexStore;
+		std::vector<TG_TypeTriangle>	typeTriangleStore;
+		std::vector<TG_TinyTexture>		tinyTextureStore;
+
 		DWORD					hotPinkRGB;					//Stores the value for this shape to replace hot Pink With
 		DWORD					hotYellowRGB;				//Stores the value for this shape to replace hot Yellow With 
 		DWORD					hotGreenRGB;            	//Stores the value for this shape to replace hot Green With 
@@ -801,9 +806,8 @@ class TG_TypeShape : public TG_TypeNode
 		// No Assimp types appear in this signature — header stays clean.
 		void InitFromImportedMesh(const char* nodeIdIn, const char* parentIdIn,
 		                          const Stuff::Point3D& center,
-		                          DWORD numVerts, DWORD numTris,
-		                          TG_TypeVertexPtr vertexBuf,
-		                          TG_TypeTrianglePtr triangleBuf);
+		                          std::vector<TG_TypeVertex>&& vertices,
+		                          std::vector<TG_TypeTriangle>&& triangles);
 
  		virtual void LoadBinaryCopy (File &binFile);
 		virtual void SaveBinaryCopy (File &binFile);

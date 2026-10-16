@@ -439,14 +439,9 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		center = toMC2Pos(pos);
 	}
 
-	// Allocate vertex + triangle buffers from the project's master allocator.
-	TG_TypeVertexPtr verts = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(
-		sizeof(TG_TypeVertex) * mesh->mNumVertices);
-	TG_TypeTrianglePtr tris = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(
-		sizeof(TG_TypeTriangle) * mesh->mNumFaces);
-	gosASSERT(verts != nullptr && tris != nullptr);
-	memset(verts, 0, sizeof(TG_TypeVertex) * mesh->mNumVertices);
-	memset(tris,  0, sizeof(TG_TypeTriangle) * mesh->mNumFaces);
+	// Zeroed vertex + triangle vectors, moved into the shape once filled.
+	std::vector<TG_TypeVertex> verts(mesh->mNumVertices);
+	std::vector<TG_TypeTriangle> tris(mesh->mNumFaces);
 
 	// Per-vertex: position + normal in MC2 space; aRGBLight init to opaque
 	// black (matches ParseASEFile's default — engine's lighting kernel
@@ -507,8 +502,6 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		if (face.mNumIndices != 3) {
 			PAUSE(("[importer] mesh %u face %u has %u indices (expected 3)",
 			       meshIdx, f, face.mNumIndices));
-			TG_Shape::tglHeap->Free(verts);
-			TG_Shape::tglHeap->Free(tris);
 			return -1;
 		}
 		TG_TypeTriangle& t = tris[f];
@@ -548,10 +541,8 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		}
 	}
 
-	// Hand ownership of the buffers to the shape (no copy).
-	outShape->InitFromImportedMesh(nodeNm, parentNm, center,
-	                               mesh->mNumVertices, mesh->mNumFaces,
-	                               verts, tris);
+	// Hand ownership of the vectors to the shape (no copy).
+	outShape->InitFromImportedMesh(nodeNm, parentNm, center, std::move(verts), std::move(tris));
 	return 0;
 }
 
@@ -581,11 +572,8 @@ long PopulateMergedSkinnedShape(const aiScene* scene, TG_TypeMultiShape* out, Sk
 	if (!slot || slot->GetNodeType() != SHAPE_NODE) return -1;
 	TG_TypeShape* shape = static_cast<TG_TypeShape*>(slot);
 
-	TG_TypeVertexPtr verts = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeVertex) * totalV);
-	TG_TypeTrianglePtr tris = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeTriangle) * totalT);
-	gosASSERT(verts != nullptr && tris != nullptr);
-	memset(verts, 0, sizeof(TG_TypeVertex) * totalV);
-	memset(tris, 0, sizeof(TG_TypeTriangle) * totalT);
+	std::vector<TG_TypeVertex> verts(totalV);
+	std::vector<TG_TypeTriangle> tris(totalT);
 
 	DWORD vOff = 0, tOff = 0;
 	for (unsigned m : parts) {
@@ -662,7 +650,7 @@ long PopulateMergedSkinnedShape(const aiScene* scene, TG_TypeMultiShape* out, Sk
 	}
 
 	Stuff::Point3D zero; zero.x = zero.y = zero.z = 0.0f;
-	shape->InitFromImportedMesh("imported_mech", "None", zero, totalV, totalT, verts, tris);
+	shape->InitFromImportedMesh("imported_mech", "None", zero, std::move(verts), std::move(tris));
 	return 0;
 }
 
