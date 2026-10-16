@@ -123,11 +123,10 @@ void CGroupDialog::OnGrVideoFileBrowseButton() {
 
 static void setMissionListBoxValues(CListBox &MissionListBox, const CMissionList &MissionList) {
 	MissionListBox.ResetContent();
-	CMissionList::EConstIterator it;
-	for (it = MissionList.Begin(); !it.IsDone(); it++) {
+	for (const CMissionData& mission : MissionList) {
 		CString tmpCStr;
 		tmpCStr = _TEXT("[");
-		tmpCStr += ((*it).m_MissionFile);
+		tmpCStr += mission.m_MissionFile;
 		tmpCStr += _TEXT("] ");
 		MissionListBox.AddString(tmpCStr);
 	}
@@ -171,7 +170,7 @@ void CGroupDialog::OnGrAddButton()
 	int ret = missionDialog.DoModal();
 	if (IDOK == ret) {
 		setMissionDataValues(missionData, missionDialog);
-		m_MissionList.Append(missionData);
+		m_MissionList.push_back(missionData);
 		UpdateData(TRUE);
 		setMissionListBoxValues(m_MissionListControl, m_MissionList);
 		m_MissionListControl.SetCurSel(m_MissionListControl.GetCount() - 1);
@@ -182,15 +181,8 @@ void CGroupDialog::OnGrAddButton()
 void CGroupDialog::OnGrRemoveButton() 
 {
 	unsigned long selectedItemIndex = m_MissionListControl.GetCurSel();
-	if ((0 <= selectedItemIndex) && (m_MissionList.Count() > selectedItemIndex)) {
-		// should put up confirmation box here
-		CMissionList::EIterator it = m_MissionList.Begin();
-		unsigned long index;
-		for (index = 0; index < selectedItemIndex; index++) {
-			it++;
-			assert(!it.IsDone());
-		}
-		m_MissionList.Delete(it);
+	if ((0 <= selectedItemIndex) && (m_MissionList.size() > selectedItemIndex)) {
+		m_MissionList.erase(m_MissionList.begin() + selectedItemIndex);
 		UpdateData(TRUE);
 		int selectedItemIndex = m_MissionListControl.GetCurSel();
 		setMissionListBoxValues(m_MissionListControl, m_MissionList);
@@ -207,7 +199,7 @@ void CGroupDialog::OnGrRemoveButton()
 void CGroupDialog::OnGrEditButton() 
 {
 	unsigned long selectedItemIndex = m_MissionListControl.GetCurSel();
-	if ((0 <= selectedItemIndex) && (m_MissionList.Count() > selectedItemIndex)) {
+	if ((0 <= selectedItemIndex) && (m_MissionList.size() > selectedItemIndex)) {
 		CMissionData &missionDataRef = m_MissionList[selectedItemIndex];
 		CMissionDialog missionDialog;
 		setMissionDialogValues(missionDialog, missionDataRef);

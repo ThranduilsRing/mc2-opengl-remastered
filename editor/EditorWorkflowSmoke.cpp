@@ -241,14 +241,14 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 	CampaignSummaryPanel::Open();
 	CCampaignData campaign;
 	bool linked = false;
-	if (campaign.Read(campaignPath) && campaign.m_GroupList.Count() > 0)
+	if (campaign.Read(campaignPath) && !campaign.m_GroupList.empty())
 	{
 		const CCampaignData beforeCampaign(campaign);
-		auto group = campaign.m_GroupList.Begin();
+		auto group = campaign.m_GroupList.begin();
 		CMissionData mission;
 		mission.m_MissionFile = "mc2_24";
 		mission.m_PurchaseFile = "Purchase24";
-		(*group).m_MissionList.Append(mission);
+		(*group).m_MissionList.push_back(mission);
 		CCampaignData loaded;
 		linked = campaign.Save("terrain_gen_out/e0_campaign.fit")
 			&& loaded.Read("terrain_gen_out/e0_campaign.fit") && loaded == campaign

@@ -16,6 +16,7 @@
 #include "CampaignData.h"
 #include "GroupDialog.h"
 #include "assert.h"
+#include <utility>
 #include "../MCLib/Utilities.h" /*for EditorSafeLoadString*/
 #include "UserTextEdit.h"
 #include "../MCLib/Paths.h"
@@ -96,22 +97,11 @@ void CCampaignDialog::OnCaExit()
 
 static void setGroupListBoxValues(CListBox &GroupListBox, const CGroupList &GroupList) {
 	GroupListBox.ResetContent();
-	CGroupList::EConstIterator it;
 	int opIndex = 0;
-	for (it = GroupList.Begin(); !it.IsDone(); it++) {
-		// CRASH FIX (UAF): CGroupList::EConstIterator operator*() returns CGroupData
-		// BY VALUE, so calling .m_MissionList.Begin() on `(*it)` directly returns an
-		// iterator into a TEMPORARY destroyed at end-of-statement. Bind the group to
-		// a named const reference once (lifetime-extends the temporary across the
-		// whole loop body) and use THAT for every member access below.
-		const CGroupData & grp = *it;
+	for (const CGroupData& grp : GroupList) {
 		++opIndex;
 
-		// Row label: show the operation NAME (m_Label). Operations are just mission
-		// groupings with no special in-game meaning, so when unnamed (the stock
-		// case) fall back to "Operation N" by index -- NOT the mission list (the
-		// missions are shown in the Group editor's Mission List). Labeled ops read
-		// "Operation N: <label>".
+		// Unnamed operations use their campaign position as the display label.
 		CString tmpCStr;
 		if (grp.m_Label.IsEmpty()) {
 			tmpCStr.Format(_TEXT("Operation %d"), opIndex);
@@ -125,13 +115,13 @@ static void setGroupListBoxValues(CListBox &GroupListBox, const CGroupList &Grou
 		CString warnCStr;
 		bool firstWarn = true;
 		// 1. No missions in this operation.
-		if (0 == grp.m_MissionList.Count()) {
+		if (grp.m_MissionList.empty()) {
 			if (!firstWarn) { warnCStr += _TEXT("; "); }
 			warnCStr += _TEXT("no missions");
 			firstWarn = false;
 		}
 		// 2. Completion requirement exceeds the number of missions present.
-		if (grp.m_NumMissionsToComplete > (int)grp.m_MissionList.Count()) {
+		if (grp.m_NumMissionsToComplete > (int)grp.m_MissionList.size()) {
 			if (!firstWarn) { warnCStr += _TEXT("; "); }
 			warnCStr += _TEXT("requires more missions than exist");
 			firstWarn = false;
@@ -139,9 +129,8 @@ static void setGroupListBoxValues(CListBox &GroupListBox, const CGroupList &Grou
 		// 3. Any mission with an empty filename.
 		{
 			bool emptyMissionFile = false;
-			CMissionList::EConstIterator vmit;
-			for (vmit = grp.m_MissionList.Begin(); !vmit.IsDone(); vmit++) {
-				if ((*vmit).m_MissionFile.IsEmpty()) { emptyMissionFile = true; break; }
+			for (const CMissionData& mission : grp.m_MissionList) {
+				if (mission.m_MissionFile.IsEmpty()) { emptyMissionFile = true; break; }
 			}
 			if (emptyMissionFile) {
 				if (!firstWarn) { warnCStr += _TEXT("; "); }
@@ -149,9 +138,7 @@ static void setGroupListBoxValues(CListBox &GroupListBox, const CGroupList &Grou
 				firstWarn = false;
 			}
 		}
-		// 4. Placeholder/stand-in briefing video. The stock placeholder convention is
-		//    "standin" (e.g. standin.bik, see code/controlgui.cpp). Could not confirm a
-		//    single canonical token, so assume any case-insensitive "standin" substring.
+		// Stock placeholder videos contain "standin" in their names.
 		{
 			CString preVid = grp.m_PreVideoFile; preVid.MakeLower();
 			CString vid    = grp.m_VideoFile;    vid.MakeLower();
@@ -198,7 +185,7 @@ void CCampaignDialog::OnCaAddButton()
 	int ret = groupDialog.DoModal();
 	if (IDOK == ret) {
 		setGroupDataValues(groupData, groupDialog);
-		m_CampaignData.m_GroupList.Append(groupData);
+		m_CampaignData.m_GroupList.push_back(groupData);
 		UpdateData(TRUE);
 		setGroupListBoxValues(m_GroupListControl, m_CampaignData.m_GroupList);
 		m_GroupListControl.SetCurSel(m_GroupListControl.GetCount() - 1);
@@ -285,7 +272,7 @@ void CCampaignDialog::OnCaLoadButton()
 void CCampaignDialog::OnCaEditButton() 
 {
 	int selectedItemIndex = m_GroupListControl.GetCurSel();
-	if ((0 <= selectedItemIndex) && ((int)m_CampaignData.m_GroupList.Count() > selectedItemIndex)) {
+	if ((0 <= selectedItemIndex) && ((int)m_CampaignData.m_GroupList.size() > selectedItemIndex)) {
 		CGroupData &groupDataRef = m_CampaignData.m_GroupList[selectedItemIndex];
 		CGroupDialog groupDialog;
 		setGroupDialogValues(groupDialog, groupDataRef);
@@ -301,15 +288,8 @@ void CCampaignDialog::OnCaEditButton()
 void CCampaignDialog::OnCaRemoveButton() 
 {
 	int selectedItemIndex = m_GroupListControl.GetCurSel();
-	if ((0 <= selectedItemIndex) && ((int)m_CampaignData.m_GroupList.Count() > selectedItemIndex)) {
-		// should put up confirmation box here
-		CGroupList::EIterator it = m_CampaignData.m_GroupList.Begin();
-		int index;
-		for (index = 0; index < selectedItemIndex; index++) {
-			it++;
-			assert(!it.IsDone());
-		}
-		m_CampaignData.m_GroupList.Delete(it);
+	if ((0 <= selectedItemIndex) && ((int)m_CampaignData.m_GroupList.size() > selectedItemIndex)) {
+		m_CampaignData.m_GroupList.erase(m_CampaignData.m_GroupList.begin() + selectedItemIndex);
 		UpdateData(TRUE);
 		int selectedItemIndex = m_GroupListControl.GetCurSel();
 		setGroupListBoxValues(m_GroupListControl, m_CampaignData.m_GroupList);
@@ -326,12 +306,8 @@ void CCampaignDialog::OnCaRemoveButton()
 void CCampaignDialog::OnCaMoveUpButton() 
 {
 	int selectedItemIndex = m_GroupListControl.GetCurSel();
-	if ((1 <= selectedItemIndex) && ((int)m_CampaignData.m_GroupList.Count() > selectedItemIndex)) {
-		CGroupData tmpGroupData;
-		tmpGroupData = (*m_CampaignData.m_GroupList.Iterator(selectedItemIndex));
-
-		m_CampaignData.m_GroupList.Delete(selectedItemIndex);
-		m_CampaignData.m_GroupList.Insert(tmpGroupData, selectedItemIndex - 1);
+	if ((1 <= selectedItemIndex) && ((int)m_CampaignData.m_GroupList.size() > selectedItemIndex)) {
+		std::swap(m_CampaignData.m_GroupList[selectedItemIndex], m_CampaignData.m_GroupList[selectedItemIndex - 1]);
 		UpdateData(TRUE);
 		setGroupListBoxValues(m_GroupListControl, m_CampaignData.m_GroupList);
 		m_GroupListControl.SetCurSel(selectedItemIndex - 1);
@@ -342,16 +318,8 @@ void CCampaignDialog::OnCaMoveUpButton()
 void CCampaignDialog::OnCaMoveDownButton() 
 {
 	int selectedItemIndex = m_GroupListControl.GetCurSel();
-	if ((0 <= selectedItemIndex) && ((int)m_CampaignData.m_GroupList.Count() - 1 > selectedItemIndex)) {
-		CGroupData tmpGroupData;
-		tmpGroupData = (*m_CampaignData.m_GroupList.Iterator(selectedItemIndex));
-
-		m_CampaignData.m_GroupList.Delete(selectedItemIndex);
-		if ((int)m_CampaignData.m_GroupList.Count() -1 == selectedItemIndex) {
-			m_CampaignData.m_GroupList.Append(tmpGroupData);
-		} else {
-			m_CampaignData.m_GroupList.Insert(tmpGroupData, selectedItemIndex + 1);
-		}
+	if ((0 <= selectedItemIndex) && ((int)m_CampaignData.m_GroupList.size() - 1 > selectedItemIndex)) {
+		std::swap(m_CampaignData.m_GroupList[selectedItemIndex], m_CampaignData.m_GroupList[selectedItemIndex + 1]);
 		UpdateData(TRUE);
 		setGroupListBoxValues(m_GroupListControl, m_CampaignData.m_GroupList);
 		m_GroupListControl.SetCurSel(selectedItemIndex + 1);

@@ -317,8 +317,7 @@ void Editor::resaveAll (void)
 		eye = new EditorCamera;
 
 	CoInitialize(nullptr);
-	// by Methuselas: EditorInterface joins the Editor-owned SemVer lane;
-	// do not reintroduce the legacy provider identity here.
+	// Asset exports use the editor's version identity.
 	armProvider = CreateProviderEngine("MC2Editor", (char*)EditorVersion_GetSemVer());
 	silentMode = true; // shut up the warnings from tgl export
 
@@ -338,8 +337,7 @@ void Editor::resaveAll (void)
 		int count = 0;
 		char buf[512] = {0};
 		
-		for ( EList<CGroupData, CGroupData>::EConstIterator iter = campaignData.m_GroupList.Begin();
-			!iter.IsDone(); count++, iter++ )
+		for (auto iter = campaignData.m_GroupList.cbegin(); iter != campaignData.m_GroupList.cend(); ++count, ++iter)
 		{
 			CGroupData groupData = (*iter);
 
@@ -379,7 +377,7 @@ void Editor::resaveAll (void)
 			{
 				strcpy(buf, "Data\\Movies\\");
 				strcat(buf, groupData.m_PreVideoFile.GetBuffer());
-				// The only instances of PreVideoFile I've seen had the extension already
+				// Briefing video filenames already include their extension.
 				groupAssetPtr->AddRelationship("PreVideo", buf);			
 			}
 
@@ -391,8 +389,7 @@ void Editor::resaveAll (void)
 				groupAssetPtr->AddRelationship("Video", buf);			
 			}
 
-			for ( EList<CMissionData, CMissionData>::EConstIterator iter2 = groupData.m_MissionList.Begin();
-				!iter2.IsDone(); iter2++ )
+			for (auto iter2 = groupData.m_MissionList.cbegin(); iter2 != groupData.m_MissionList.cend(); ++iter2)
 			{
 				CMissionData missionData = *(iter2);
 
@@ -463,10 +460,6 @@ void Editor::resaveAll (void)
 
 				printf( "Resaved Map %s", (const char*)pakName );
 
-				//Force Back to RO!
-				//Leave RW per bug 1252
-//				SetFileAttributes(pakName,FILE_ATTRIBUTE_READONLY);
-//				SetFileAttributes(fitName,FILE_ATTRIBUTE_READONLY);
 			}
 		}
 	} while (FindNextFile(searchHandle,&findResult) != 0);

@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 import uuid
 import subprocess
+import tempfile
 from scripts.console_child import child_kwargs
 
 from editor.tests.legacy_reference import (FROZEN, PLACEMENTS, buildings, compare_frozen,
@@ -16,6 +17,168 @@ from editor.tests.legacy_reference import (FROZEN, PLACEMENTS, buildings, compar
 
 
 class LegacyLinkTests(unittest.TestCase):
+    def test_campaign_bytes_nested_copies_and_first_last_moves(self):
+        root = Path(__file__).resolve().parents[2]
+        output = Path(tempfile.gettempdir()) / "mc2-el3-campaign" / uuid.uuid4().hex
+        output.mkdir(parents=True)
+
+        def method(source, signature):
+            start = source.index(signature)
+            opening = source.index("{", start)
+            depth, end = 1, opening + 1
+            while depth:
+                depth += (source[end] == "{") - (source[end] == "}")
+                end += 1
+            return source[start:end] + "\n"
+
+        def original(path):
+            result = subprocess.run(['git', 'show', 'ab843f226:' + path], cwd=root,
+                                    capture_output=True, text=True, timeout=30,
+                                    **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            return result.stdout
+
+        def fixture(header, campaign, dialog):
+            legacy = 'public EList' in header
+            source = r'''
+#include <algorithm>
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <format>
+#include <string>
+#include <vector>
+#include "GameOS/include/mc2fmt.h"
+#define gosASSERT(x) assert(x)
+#define PAUSE(x) assert(false)
+constexpr int NO_ERR = 0;
+constexpr bool TRUE = true, FALSE = false;
+using MemoryPtr = unsigned char*;
+struct CString {
+    std::string value;
+    CString() = default;
+    CString(const char* s) : value(s) {}
+    char* GetBuffer(int = 0) { return value.data(); }
+    bool IsEmpty() const { return value.empty(); }
+    bool operator==(const CString&) const = default;
+};
+struct FitIniFile {
+    std::ofstream file;
+    int create(char* path) { file.open(path, std::ios::binary); file << "FITini \r\n"; return file ? 0 : 1; }
+    void close() { file << "FITend \r\n"; file.close(); }
+    long write(MemoryPtr data, size_t size) { file.write((char*)data, size); return size; }
+    long writeBlock(const char*);
+    long writeIdBoolean(const char*, bool);
+    long writeIdLong(const char*, long);
+    long writeIdString(const char*, const char*);
+};
+'''
+            writer = (root / 'mclib/inifile.cpp').read_text()
+            for name in ('writeBlock', 'writeIdBoolean', 'writeIdLong', 'writeIdString'):
+                source += method(writer, 'long FitIniFile::' + name)
+            if legacy:
+                source += 'struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } };\n'
+                source += 'Heap* systemHeap;\n'
+                source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(), flags=re.M)
+            source += re.sub(r'^#include.*$', '', header, flags=re.M)
+            for signature in ('CMissionData::CMissionData()', 'bool CMissionData::operator==',
+                              'bool CMissionData::Save', 'CGroupData::CGroupData()',
+                              'bool CGroupData::operator==', 'bool CGroupData::Save',
+                              'CCampaignData::CCampaignData()', 'bool CCampaignData::operator==',
+                              'bool CCampaignData::Save'):
+                source += method(campaign, signature)
+            source += r'''
+struct CListBox { int selected = 0; int GetCurSel() { return selected; } void SetCurSel(int n) { selected = n; } };
+void setGroupListBoxValues(CListBox&, const CGroupList&) {}
+struct CCampaignDialog {
+    CCampaignData m_CampaignData;
+    CListBox m_GroupListControl;
+    void UpdateData(bool) {}
+    void OnCaMoveUpButton(); void OnCaMoveDownButton();
+};
+'''
+            for name in ('OnCaMoveUpButton', 'OnCaMoveDownButton'):
+                source += method(dialog, 'void CCampaignDialog::' + name)
+            main = r'''
+int main(int argc, char** argv) {
+    assert(argc == 2);
+    CCampaignDialog dialog;
+    auto& campaign = dialog.m_CampaignData;
+    campaign.m_Name = "Order fixture";
+    campaign.m_CBills = 54321;
+    campaign.m_FinalVideo = "final.bik";
+    for (auto label : {"A", "B", "C"}) {
+        CGroupData group; group.m_Label = label;
+        group.m_ABLScript = "script";
+        for (auto filename : {"mc2_24", "mc2_01", "mc2_24", "mc2_03"}) {
+            CMissionData mission; mission.m_MissionFile = filename;
+            mission.m_IsMandatory = false;
+            group.m_MissionList.APPEND(mission);
+        }
+        campaign.m_GroupList.APPEND(group);
+    }
+    const CCampaignData snapshot = campaign;
+    campaign.m_GroupList[0].m_MissionList[0].m_MissionFile = "changed";
+    assert(snapshot.m_GroupList[0].m_MissionList[0].m_MissionFile == CString("mc2_24"));
+    campaign = snapshot;
+    auto save = [&](const char* suffix) {
+        CString path; path.value = std::string(argv[1]) + suffix; assert(campaign.Save(path));
+    };
+    auto order = [&](const char* a, const char* b, const char* c, int selected) {
+        assert(campaign.m_GroupList[0].m_Label == CString(a));
+        assert(campaign.m_GroupList[1].m_Label == CString(b));
+        assert(campaign.m_GroupList[2].m_Label == CString(c));
+        assert(dialog.m_GroupListControl.selected == selected);
+    };
+    save("-null.fit");
+    dialog.m_GroupListControl.selected = 0; dialog.OnCaMoveUpButton(); order("A","B","C",0);
+    dialog.OnCaMoveDownButton(); order("B","A","C",1); save("-first-down.fit");
+    dialog.OnCaMoveUpButton(); order("A","B","C",0);
+    dialog.m_GroupListControl.selected = 2; dialog.OnCaMoveDownButton(); order("A","B","C",2);
+    dialog.OnCaMoveUpButton(); order("A","C","B",1); save("-last-up.fit");
+    dialog.OnCaMoveDownButton(); order("A","B","C",2); save("-restored.fit");
+    assert(campaign == snapshot);
+}
+'''
+            if legacy:
+                main = main.replace('    CCampaignDialog dialog;', '    Heap heap; systemHeap = &heap;\n    CCampaignDialog dialog;')
+            return source + main.replace('APPEND', 'Append' if legacy else 'push_back')
+
+        def run(source, label, succeeds=True):
+            cpp = output / (label + '.cpp'); cpp.write_text(source)
+            exe = output / (label + '.exe')
+            result = subprocess.run(['clang++', '-std=c++23', '-I', str(root), str(cpp), '-o', str(exe)],
+                                    capture_output=True, text=True, timeout=90, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            result = subprocess.run([str(exe), str(output / label)], capture_output=True, timeout=30,
+                                    **child_kwargs(redirected=True))
+            if succeeds:
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            else:
+                self.assertNotEqual(result.returncode, 0)
+
+        paths = ('editor/campaignData.h', 'editor/CampaignData.cpp', 'editor/CampaignDialog.cpp')
+        run(fixture(*(original(p) for p in paths)), 'old')
+        source = fixture(*((root / p).read_text() for p in paths))
+        run(source, 'current')
+        for suffix in ('null', 'first-down', 'last-up', 'restored'):
+            self.assertEqual((output / f'old-{suffix}.fit').read_bytes(),
+                             (output / f'current-{suffix}.fit').read_bytes())
+        self.assertEqual((output / 'current-null.fit').read_bytes(), (output / 'current-restored.fit').read_bytes())
+        if 'public EList' not in (root / paths[0]).read_text():
+            for member in ('m_GroupList', 'm_MissionList'):
+                wrong = source.replace(member + '.begin()', member + '.rbegin()').replace(member + '.end()', member + '.rend()')
+                self.assertNotEqual(source, wrong)
+                label = 'wrong-save-order-' + member
+                run(wrong, label)
+                self.assertNotEqual((output / 'current-null.fit').read_bytes(), (output / (label + '-null.fit')).read_bytes())
+            for direction, offset in (('up', '- 1'), ('down', '+ 1')):
+                expression = f'm_GroupList[selectedItemIndex {offset}]'
+                self.assertIn(expression, source)
+                run(source.replace(expression, 'm_GroupList[selectedItemIndex]'), 'wrong-move-' + direction, False)
+        print(f'Campaign fixture artifacts: {output}')
+
     def test_child_order_snapshots_and_reverse_undo(self):
         root = Path(__file__).resolve().parents[2]
         output = root / "scratch/el2-links" / uuid.uuid4().hex

@@ -1,20 +1,19 @@
 # Step 4 B2 container call sites from a [[deprecated("B2")]] build (tests/analyze/container_callsites.py); a batch commit removes its rows.
-# total 881 sites in 57 files
+# total 831 sites in 51 files
 # per kind:
-#     248  EList::Begin
-#     177  EList
-#     158  EList::Count
-#     112  EList::Append
+#     234  EList::Begin
+#     173  EList
+#     143  EList::Count
+#     107  EList::Append
 #      39  EList::~EList
-#      28  EList::operator[]
-#      27  EList::Delete
-#      23  EList::Iterator
+#      26  EList::operator[]
+#      23  EList::Delete
+#      21  EList::Iterator
 #      19  EList::Clear
 #      18  EList::EList
 #      12  EList::End
 #      10  EList::GetHead
-#       4  EList::Insert
-#       2  EList::operator==
+#       2  EList::Insert
 #       1  EList::DeleteTail
 #       1  EList::operator=
 #       1  EList::Find
@@ -22,8 +21,8 @@
 # per batch (cxx23-step4-b2-files.json):
 #       1  B2.3
 #       6  B6
-#     288  E1
-#     418  E2
+#     245  E1
+#     411  E2
 #      20  E3
 #     148  E4
 # sites in files the batch table does NOT list (includers the compiler forces, or the PCH): 0 in 0 files
@@ -40,24 +39,19 @@
 #      27  editor/ObjectivesDlg.cpp
 #      23  editor/BuildingSettingsDlg.cpp
 #      22  editor/EditorObjectMgr_pick.cpp
-#      20  editor/CampaignDialog.cpp
 #      20  editor/ObjectivesSummaryPanel.cpp
 #      18  editor/SceneOutliner.cpp
 #      12  editor/MissionValidation.cpp
 #      11  editor/ChooseBuildingDlg.cpp
 #      11  editor/Objective.h
 #      10  editor/ChooseUnitDlg.cpp
-#       9  editor/CampaignSummaryPanel.cpp
 #       9  editor/EditorData_save.cpp
 #       8  editor/Action.h
-#       8  editor/CampaignData.cpp
 #       8  editor/EditorDebugOverlay.cpp
 #       8  editor/Objective_conditions.cpp
 #       7  editor/EditorInterface_wnd.cpp
-#       7  editor/GroupDialog.cpp
 #       5  code/mpparameterscreen.cpp
 #       4  editor/BuildingBrush.cpp
-#       4  editor/EditorInterface_editor.cpp
 #       4  editor/EditorInterface_mouse.cpp
 #       3  editor/BuildingBrush.h
 #       3  editor/EditorInterface_objects.cpp
@@ -73,7 +67,6 @@
 #       2  editor/ObjectiveDlg.h
 #       2  editor/SelectionBrush.cpp
 #       2  editor/UnitSettingsDlg.h
-#       2  editor/campaignData.h
 #       1  code/mission_update.cpp
 #       1  code/mpparameterscreen.h
 #       1  editor/DamageBrush.cpp
@@ -94,9 +87,6 @@
 # blob ffba17cb457c4844b67e5b8344a8854efded1cf4 editor/BuildingBrush.h
 # blob a7df5ac1a2d8e07091214366b2e3b6996f1b28a6 editor/BuildingSettingsDlg.cpp
 # blob 1edc9812c84eab22d662e03a49b712b36ac952ac editor/BuildingSettingsDlg.h
-# blob fe00343fdcd0a409f689a5a81b45cdcfef0e77c2 editor/CampaignData.cpp
-# blob 8e2fc2a729fc41566de064d518e5ff8783c8c584 editor/CampaignDialog.cpp
-# blob bf5524c22ef744917ec5c84d466151a70e631ad5 editor/CampaignSummaryPanel.cpp
 # blob a6f769cf0e1eb38edaddb4e103b56db8eccd6fff editor/ChooseBuildingDlg.cpp
 # blob ee159cbc3253a7f5ee1c8529e521c6cba717beb4 editor/ChooseUnitDlg.cpp
 # blob 43f0433708c4050d048d49c3335d54db38221f6f editor/DamageBrush.cpp
@@ -104,7 +94,6 @@
 # blob edf0a3f5b95585f6371217a745051b07ff3f606f editor/EditorData_terrain.cpp
 # blob 29c714c6f11a513a38e844528206dc52f49c4768 editor/EditorDebugOverlay.cpp
 # blob 67f0776053071494af361e91f9ed592c1e1d1943 editor/EditorInterface.cpp
-# blob e3a520b20d7589109381d6fa502797174089cdf0 editor/EditorInterface_editor.cpp
 # blob 94b98b1ca810253a88b7dfc72c0a1d990751d4fb editor/EditorInterface_imgui.cpp
 # blob 376032fca1beb7a3a47f8728df74c0520b3468f2 editor/EditorInterface_mouse.cpp
 # blob 514cc4bb4ea79056008c83ae564c1e67d3ee807f editor/EditorInterface_objects.cpp
@@ -119,7 +108,6 @@
 # blob 18734ac4e8ac5a3942f4c425aa1c4b7604868e22 editor/EditorObjects_unit.cpp
 # blob 3653e5921154cc44d905ee0622acc0e700f26d4b editor/FlattenBrush.cpp
 # blob ff740c13ca3709a3480c2c769ace041b33312484 editor/GameplayDebugger.cpp
-# blob 7fe708a411675e9db2c1f20f1b3e1bd1f0e3b512 editor/GroupDialog.cpp
 # blob cfccb98b3478c7f5cba34acacfb7fe73b8aee829 editor/HeightBrush.cpp
 # blob ce78979d26d339bc9bdaf034338fefc8e60e20b4 editor/InspectorPanel.cpp
 # blob 12d303e40ff570baf923ab693f5fb42761a867e4 editor/MissionValidation.cpp
@@ -140,7 +128,6 @@
 # blob d86529592c91137c96c85a9dd6a7c07c0d21eeec editor/UnitBrainPanel.cpp
 # blob b557cf5e488f4035bb350b1edb2095ffe3282a01 editor/UnitSettingsDlg.cpp
 # blob 74ef015b489c98a38a7b9d374e843fb92fbcabb9 editor/UnitSettingsDlg.h
-# blob 619210428008117dc1f29936615705e39b76bd39 editor/campaignData.h
 # blob c931869d1cfab7b3f3de2e51d23993c7a1c476cd editor/eraser.cpp
 # mentions inside inactive #if branches (grep, the compiler cannot see them): 2
 #   editor/EditorObjectMgr_select.cpp:174 (branch opened at 167): for ( BUILDING_LIST::EConstIterator iter = buildings.Begin();
@@ -251,43 +238,6 @@ editor/BuildingSettingsDlg.cpp:361:EList::GetHead
 editor/BuildingSettingsDlg.cpp:375:EList::Begin
 editor/BuildingSettingsDlg.h:24:EList
 editor/BuildingSettingsDlg.h:61:EList
-editor/CampaignData.cpp:105:EList::operator==
-editor/CampaignData.cpp:126:EList::Count
-editor/CampaignData.cpp:133:EList::Begin
-editor/CampaignData.cpp:164:EList::Append
-editor/CampaignData.cpp:177:EList::operator==
-editor/CampaignData.cpp:206:EList::Count
-editor/CampaignData.cpp:210:EList::Begin
-editor/CampaignData.cpp:248:EList::Append
-editor/CampaignDialog.cpp:101:EList::Begin
-editor/CampaignDialog.cpp:128:EList::Count
-editor/CampaignDialog.cpp:134:EList::Count
-editor/CampaignDialog.cpp:143:EList::Begin
-editor/CampaignDialog.cpp:201:EList::Append
-editor/CampaignDialog.cpp:288:EList::Count
-editor/CampaignDialog.cpp:289:EList::operator[]
-editor/CampaignDialog.cpp:304:EList::Count
-editor/CampaignDialog.cpp:306:EList::Begin
-editor/CampaignDialog.cpp:312:EList::Delete
-editor/CampaignDialog.cpp:329:EList::Count
-editor/CampaignDialog.cpp:331:EList::Iterator
-editor/CampaignDialog.cpp:333:EList::Delete
-editor/CampaignDialog.cpp:334:EList::Insert
-editor/CampaignDialog.cpp:345:EList::Count
-editor/CampaignDialog.cpp:347:EList::Iterator
-editor/CampaignDialog.cpp:349:EList::Delete
-editor/CampaignDialog.cpp:350:EList::Count
-editor/CampaignDialog.cpp:351:EList::Append
-editor/CampaignDialog.cpp:353:EList::Insert
-editor/CampaignSummaryPanel.cpp:138:EList::Begin
-editor/CampaignSummaryPanel.cpp:139:EList::Count
-editor/CampaignSummaryPanel.cpp:187:EList::Count
-editor/CampaignSummaryPanel.cpp:224:EList::Begin
-editor/CampaignSummaryPanel.cpp:228:EList::Count
-editor/CampaignSummaryPanel.cpp:256:EList::Begin
-editor/CampaignSummaryPanel.cpp:278:EList::Begin
-editor/CampaignSummaryPanel.cpp:282:EList::Count
-editor/CampaignSummaryPanel.cpp:352:EList::Begin
 editor/ChooseBuildingDlg.cpp:26:EList::EList
 editor/ChooseBuildingDlg.cpp:56:EList::Clear
 editor/ChooseBuildingDlg.cpp:57:EList::~EList
@@ -330,10 +280,6 @@ editor/EditorDebugOverlay.cpp:376:EList::Begin
 editor/EditorDebugOverlay.cpp:563:EList::~EList
 editor/EditorDebugOverlay.cpp:565:EList::Begin
 editor/EditorInterface.cpp:224:EList::Begin
-editor/EditorInterface_editor.cpp:341:EList
-editor/EditorInterface_editor.cpp:341:EList::Begin
-editor/EditorInterface_editor.cpp:394:EList
-editor/EditorInterface_editor.cpp:394:EList::Begin
 editor/EditorInterface_imgui.cpp:877:EList::Begin
 editor/EditorInterface_mouse.cpp:103:EList::Begin
 editor/EditorInterface_mouse.cpp:279:EList::Begin
@@ -697,13 +643,6 @@ editor/EditorObjects_unit.cpp:546:EList::Begin
 editor/FlattenBrush.cpp:34:EList::Count
 editor/GameplayDebugger.cpp:77:EList::Begin
 editor/GameplayDebugger.cpp:207:EList::Begin
-editor/GroupDialog.cpp:127:EList::Begin
-editor/GroupDialog.cpp:174:EList::Append
-editor/GroupDialog.cpp:185:EList::Count
-editor/GroupDialog.cpp:187:EList::Begin
-editor/GroupDialog.cpp:193:EList::Delete
-editor/GroupDialog.cpp:210:EList::Count
-editor/GroupDialog.cpp:211:EList::operator[]
 editor/HeightBrush.cpp:56:EList::Count
 editor/InspectorPanel.cpp:61:EList::Count
 editor/InspectorPanel.cpp:62:EList::Begin
@@ -1022,8 +961,6 @@ editor/UnitSettingsDlg.cpp:839:EList
 editor/UnitSettingsDlg.cpp:839:EList::Begin
 editor/UnitSettingsDlg.h:24:EList
 editor/UnitSettingsDlg.h:69:EList
-editor/campaignData.h:29:EList
-editor/campaignData.h:49:EList
 editor/eraser.cpp:44:EList::Count
 editor/eraser.cpp:184:EList::Begin
 editor/eraser.cpp:203:EList::Begin
