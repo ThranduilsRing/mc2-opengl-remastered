@@ -72,6 +72,10 @@ unsigned int gos_GetTerrainNormalArrayTex() {
     gosRenderer* r = getGosRenderer();
     return r ? r->getTerrainNormalArrayTexEnsureBuilt() : 0u;
 }
+const mc2tex::TextureArrayCpu* gos_GetTerrainNormalArrayCpu() {
+    gosRenderer* r = getGosRenderer();
+    return r && !r->getTerrainNormalArrayCpu().levels.empty() ? &r->getTerrainNormalArrayCpu() : nullptr;
+}
 
 // ─── gos_terrain_bridge implementation ────────────────────────────────────
 // Defined here because the full gosRenderer type is visible in this TU.

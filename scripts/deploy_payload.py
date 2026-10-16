@@ -1285,10 +1285,11 @@ TARGET_PRESETS = {
 # install is ~5GB; spinning up a per-lane/per-experiment deploy folder (e.g.
 # mc2-<lane>-test) bloats A:/Games/mc2-opengl by tens of GB. Deploy is REFUSED to any
 # target not in this set unless --allow-new-target is passed (deliberate new install /
-# release cut). The 5 folders below are the shared dev deploy targets -- pick a free one
+# release cut). The folders below are the shared dev deploy targets -- pick a free one
 # (md5-verify after; a sibling may hold the lease).
 DEPLOY_ALLOWLIST = {
     "mc2-win64-v0.4",
+    "mc2-win64-lane2",
     "mc2-win64-lane3",
     "mc2-win64-v0.4c",
     "mc2-win64-0.4c",

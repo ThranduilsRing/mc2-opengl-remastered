@@ -76,6 +76,15 @@ layout(location = 6) in vec3 vWorldPos;
 flat layout(location = 7) in vec3 vSunDirStuff;
 flat layout(location = 8) in vec3 vSunColor;
 
+// The vertex stage's push block; the FS reads only packetAlphaTest.
+layout(push_constant) uniform PacketLayerPC {
+    int   packetLayerOff;
+    int   packetLayerOn;
+    float packetUvScaleX;
+    float packetUvScaleY;
+    int   packetAlphaTest;
+} uPacket;
+
 layout(location = 0) out vec4 oColor;     // MRT0 lit color
 layout(location = 1) out vec4 oGBuffer1;  // MRT1 normal + shadow class
 
@@ -110,41 +119,17 @@ void main() {
         // SAME 0.5 alpha-test discard the GL producer uses (static_prop.frag:236:
         // (materialFlags & ALPHA_TEST_BIT) && tex_color.a < 0.5 -> discard). A discarded
         // fragment leaves the LOADed terrain GBuffer pixel untouched (in-place co-write).
-        // ADJUDICATION-1 FENCE FIX: fract() BEFORE sampling destroys screen-space
-        // derivatives at the UV wrap seam (0.99->0.01 jump -> fwidth explodes ->
-        // implicit LOD slams toward the tiniest mip -> minified alpha aliases <0.5
-        // -> panel discards). At fence minification each panel spans only a few
-        // pixels, so one seam-crossing quad can kill a panel's entire footprint;
-        // whether a panel's pixels straddle a seam depends on UV phase -> the
-        // ALTERNATING panel dropout. GL shows the same fract() in text but its
-        // implicit-derivative behavior (coarse/fine choice, quad packing) is
-        // implementation-defined and its compiler path happens to survive; the VK
-        // path does not. Fix: gradients from the UNWRAPPED vUv (smooth everywhere),
-        // wrapped coord for addressing, via textureGrad — not a control-flow
-        // construct, so uniform control flow is preserved.
-        // Bisect proof (this session): forcing LOD 0 restored every dropped panel,
-        // while textureGrad with smooth gradients did NOT -> the kill mechanism is
-        // the minified mip chain's alpha decaying below the 0.5 test (naive
-        // glGenerateMipmap box filter halves thin-wire coverage per level), with
-        // VK's LOD selection landing deeper than GL's for the same footprint.
-        // Fix: deterministic LOD from the UNWRAPPED vUv gradients (no fract-seam
-        // spikes, no driver-implicit divergence), CLAMPED to <=1.0 for this
-        // alpha-test class so chain-link/foliage alpha coverage survives the test
-        // (LOD<=1 proven panel-preserving by the bisect). Uniform control flow
-        // preserved (explicit-LOD sample, no control-flow construct).
-        // FENCE-UVSCALE-1: crop to this packet's sub-region within the group's
-        // max-dims array layer — mirrors GL's static_prop.frag:206
-        // `fract(v_uv) * vec2(uvScaleX, uvScaleY)` verbatim. Gradients are taken
-        // from the SCALED coordinate (uvSampledOn) so the deterministic-LOD calc
-        // below (ADJUDICATION-1 fence fix) measures the sub-region's actual texel
-        // footprint, not the full-layer one -- otherwise a narrow sub-region would
-        // get an under-estimated LOD and reintroduce alpha-test aliasing.
+        // Explicit LOD from the sub-region-scaled UV gradients, not clamped above: GL samples the deep box-filtered mips too, whose averaged alpha
+        // the Bayer dither below turns into the see-through stipple of thin lattices (hex props, fences) at distance; a level-1 clamp
+        // kept the lattice bars opaque and dark where GL reads see-through.
+        // FENCE-UVSCALE-1: the crop to this packet's sub-region of the group's max-dims layer mirrors GL's
+        // `fract(v_uv) * vec2(uvScaleX, uvScaleY)`.
         vec2  uvSampledOn = fract(vUv) * vUvScale;
         vec2  tsOn = vec2(textureSize(uAlbedoOn, 0).xy);
         vec2  duv1 = dFdx(uvSampledOn) * tsOn;
         vec2  duv2 = dFdy(uvSampledOn) * tsOn;
         float lodOn = 0.5 * log2(max(max(dot(duv1, duv1), dot(duv2, duv2)), 1e-12));
-        lodOn = clamp(lodOn, 0.0, 1.0);
+        lodOn = max(lodOn, 0.0);
         vec4 texc = textureLod(uAlbedoOn, vec3(uvSampledOn, float(vLayerOn)), lodOn);
         // BUILDING-GLASS-1 parity with GL static_prop.frag: Bayer 4x4 ordered dither
         // (thresholds (index+0.5)/16, gl_FragCoord-based) so partial-alpha leaf/edge
@@ -163,11 +148,19 @@ void main() {
         // static_prop.frag:206 `fract(v_uv) * vec2(uvScaleX, uvScaleY)` verbatim;
         // uvScale defaults to 1.0 for the common single-texture types so this is a
         // no-op there).
-        vec3 albedo = texture(uAlbedo, vec3(fract(vUv) * vUvScale, float(vLayer))).rgb;
+        vec4 texOff = texture(uAlbedo, vec3(fract(vUv) * vUvScale, float(vLayer)));
+        vec3 albedo = texOff.rgb;
 
         // GL DEFAULT PROP MODEL (static_prop.frag:346): tex_color * v_argb, where v_argb
         // is the VERTEX-BAKED lit color (base_light seed + ambient + sun*NdotL). NOT PBR.
         rgb = albedo * vArgb;
+        // A packet GL alpha-tests although its type sits in the alpha-OFF group (its texture's alpha flag is set after the arrays
+        // were built, e.g. the hex lattice props): GL's dither discard, its alpha-test light floor and its alpha-test shadow class.
+        if (uPacket.packetAlphaTest != 0) {
+            if (propBayerDitherDiscard(texOff.a, gl_FragCoord.xy)) discard;
+            rgb = albedo * max(vArgb, vec3(0.5));
+            alphaTestClass = true;
+        }
         if (uFrame.pbrV1Strength > 0.0) rgb += propSunSpecular(albedo) * uFrame.pbrV1Strength;
     } else {
         // Fail-soft flat teal placeholder. IN-PLACE opaque write.

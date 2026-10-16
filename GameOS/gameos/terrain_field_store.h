@@ -54,6 +54,11 @@ public:
     const FieldImage<uint8_t>& shorelineMask() const { return shorelineMask_; }   // 4 bytes a texel
     const FieldImage<float>& waterShoreHeight() const { return waterShoreHeight_; }
 
+    // The cement / road overlay atlas of the loaded mission (RGBA8, R first), as the GL atlas was uploaded. Rejected (with a log
+    // line, previous image kept) on a null or out-of-range size.
+    bool setCementAtlas(const uint8_t* rgba, int width, int height);
+    const FieldImage<uint8_t>& cementAtlas() const { return cementAtlas_; }   // 4 bytes a texel
+
 private:
     std::vector<float> height_;
     int mapSide_ = 0;
@@ -66,6 +71,7 @@ private:
     uint64_t visualVersion_ = 0;
     FieldImage<uint8_t> shorelineMask_;
     FieldImage<float> waterShoreHeight_;
+    FieldImage<uint8_t> cementAtlas_;
 };
 
 }  // namespace mc2terrain

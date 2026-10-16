@@ -64,6 +64,13 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     const bool cementLive  = cementReady && s_cementSsbo.created();
     out->glCementAtlasTex   = static_cast<uint32_t>(gos_terrain_indirect_getCementAtlasGLTex());
     out->cementGridSide     = gos_terrain_indirect_getCementAtlasGridSide();
+    {
+        const auto& atlas = fields->cementAtlas();
+        const bool have = !atlas.texels.empty() && atlas.width == atlas.height;
+        out->cementAtlasRgba    = have ? atlas.texels.data() : nullptr;
+        out->cementAtlasSide    = have ? atlas.width : 0;
+        out->cementAtlasVersion = have ? atlas.version : 0;
+    }
     out->cementWUPT         = 128.0f;  // Terrain::worldUnitsPerVertex (GL uploads 128.0)
     out->useCement          = cementLive ? 1 : 0;
     out->useTransitionMask  = gos_terrain_indirect_isTransitionMaskReady() ? 1 : 0;
@@ -252,6 +259,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
             detailOn = mc2vkgate::umbrellaOn() ? 1 : 0;
         out->detailEnabled       = detailOn;
         out->glMatNormalArrayTex = detailOn ? (uint32_t)gos_GetTerrainNormalArrayTex() : 0u;
+        out->matNormalArrayCpu   = out->glMatNormalArrayTex ? gos_GetTerrainNormalArrayCpu() : nullptr;
         // GL uniform values (gameos_graphics.cpp member defaults; all 1.0). The VK frag
         // bakes per-material tiling/boost/class thresholds as const, so only these three
         // scalars flow through the UBO. See terrain_tier1.frag MATV_* consts.

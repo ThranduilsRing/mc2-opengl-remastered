@@ -866,6 +866,11 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
     // built). typeAlbedoLayer[] already carries the group-relative layer for class-1
     // types, so the island routes them into this array with the same layer table.
     out->glTexArrayOn    = s_texArrayOn;
+    {
+        const auto& batcher = GpuStaticPropBatcher::instance();
+        out->albedoOff = batcher.albedoArray(0).levels.empty() ? nullptr : &batcher.albedoArray(0);
+        out->albedoOn  = batcher.albedoArray(1).levels.empty() ? nullptr : &batcher.albedoArray(1);
+    }
     // BC7-bucketed: per-bucket sibling arrays with bucket-relative layers. The
     // single-array (group-relative) import + layer table below do not describe that
     // layout, so signal the island to fail soft (keep teal) rather than mis-sample.

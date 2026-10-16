@@ -190,3 +190,15 @@ TEST_CASE("mip box filter: non-square and 1-texel edges, malformed input rejecte
     CHECK(mc2tex::boxDownsampleRgba8(row, 4, 2).empty());   // byte count does not match the size
     CHECK(mc2tex::boxDownsampleRgba8({}, 0, 0).empty());
 }
+
+TEST_CASE("texture array level sizes: every layer per level, RGBA8 and BC7, unknown format 0") {
+    mc2tex::TextureArrayCpu a;
+    a.width = 64; a.height = 32; a.layers = 3; a.vkFormat = mc2tex::kVkFormatRgba8Unorm;
+    CHECK(mc2tex::textureArrayLevelBytes(a, 0) == size_t{64} * 32 * 4 * 3);
+    CHECK(mc2tex::textureArrayLevelBytes(a, 6) == size_t{1} * 1 * 4 * 3);   // 64x32 -> level 6 is 1x1
+    a.vkFormat = mc2tex::kVkFormatBc7Unorm;
+    CHECK(mc2tex::textureArrayLevelBytes(a, 0) == size_t{16} * 8 * 16 * 3);
+    CHECK(mc2tex::textureArrayLevelBytes(a, 5) == size_t{16} * 3);        // 2x1 still takes one block
+    a.vkFormat = 0;
+    CHECK(mc2tex::textureArrayLevelBytes(a, 0) == 0);
+}

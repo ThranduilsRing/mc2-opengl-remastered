@@ -1,5 +1,47 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## TWENTY-FOURTH session (2026-10-15 night, cap 5 h, Opus 5.5) -- row 20 negative (images agree, GL compare is the odd reading), row 17 edge closed, row 23 narrowed, census T3 / T8 / T9 closed (T9 with a cost question); nifty fast-forwarded at the start (21ad1da90)
+
+### Commits (after 21ad1da90)
+6772f7f38 deploy_payload: mc2-win64-lane2 canonical (no --allow-new-target) | 31c456762 + c84beb221 TEMP row-20 raw-depth diags, reverted by 3696120d3 (`git diff 31c456762^ 3696120d3` empty on the four files) | 36abd3d24 row 17 edge | ab495bceb row 23 live alpha flag | 39c1ca805 T3 | beb634d96 TEMP row-17 scratch, reverted 7c0d0b982 | c63b3df73 T8 | 5be553c44 T9 | 38655dc49 row 23 alpha-ON LOD | acce838f5 LG08 fix + MC2_VK_PROP_MIP_PROBE row deleted + log-tag baseline | this state/gaps/census commit.
+
+### Rows
+- Row 20: NEGATIVE (gaps row 20). Raw (non-compare) reads of the bound images agree GL vs VK; nearer-than-biased-reference counts bldgB GL 0 / VK 0, 205644 GL 9,885 / VK 5,008; cascade selection 99.89% / 99.73% agree. GL's compare/PCF result contradicts its own raw depth; next is a per-tap GL encode, then an owner ruling on which backend is right.
+- Row 17 edge: CLOSED (gaps row 17): `building_instances=0 terrain_tris=19602` static build with no prop geometry, validation 0.
+- Row 23: narrowed, not closed (gaps row 23): neither the live alpha flag nor the LOD clamp is the hex cause; full-frame VK-GL 1.750 -> 1.695.
+- Rows 14, 5: not entered (time).
+
+### Census (status table moved into `vk-producer-census-2026-10-15.md`)
+T3 CLOSED (GL before/after 26 px, mean 0.008; resident 11.6 MB mc2_10 / 4.8 MB mc2_01, accepted like the geometry copy). T8 CLOSED (4 MB; the store exists at atlas build on mc2_01 and mc2_10). T9 CLOSED WITH A COST QUESTION: about 200 MB resident (2048^2 x 9 RGBA8 with mips) in every run; ruling needed (level 0 only = 151 MB, or the island reads the slot textures through gos_GetTextureTexels). T7 OPEN.
+
+### Proof
+| Evidence | Result |
+|---|---|
+| ninja -j2 | exit 0 at every commit (the acce838f5 exe rebuilt after its commit so the fingerprint is clean) |
+| build_contract_harnesses --run --unit (`scratch/harn24.log`) | doctest 3238/3238 cases; FAIL mc2_authored_order_seam (the nifty compile error at tests/unit/test_authored_movement_fixture.cpp:189, not this lane) |
+| cxx17 ratchet --check --worktree (`scratch/cxx17_24.log`) | OK after acce838f5 (LG08 +1 from the T3 loop fixed, not baselined) |
+| gate_gen --check | consistent (977 gates) |
+| check-contracts (`scratch/cc_s24.log`, before acce838f5) | this lane's reds fixed in acce838f5 (cxx17 LG08, log_tag_census, gate table); not this lane: estring/container callsites, background-launch, tracy_capture_compare, sim_include_firewall, journal_comment_ratchet duplicate row + callers.json, build_compiler_presets, editor_smoke, vk_pipeline_layout fixture, mc2_authored_order_seam |
+| row 20 diag pairs (s24a, s24c) | numbers above |
+| row 17 scratch (s24d-vk-r17) | validation_errors=0; montage `s24-r17-noprops.png` viewed |
+| row 23 / T3 pairs (s24b, s24d, s24e on mc2_10 204523) | montages `s24-r23-hex-gl-vk-before-after.png` viewed; GL T3 before/after 26 px |
+| same-exe GL vs VK (s24e, mc2_01 205644 + bldgB, VK validation on) | 205644 3.491 -> 2.671, bldgB 1.756; montage `s24-final-gl-vk.png` viewed (cement, roads, detail normals intact); validation_errors=0 on every VK capture |
+| tier1 VK+validation / GL on the final exe (`scratch/b24_{vk,gl}_t1.log`) | VK 5/5 PASS, validation errors=0 warnings=0 on all five (143/114/108/121/104 fps), DEPLOY_FINGERPRINT PASS; GL 5/5 PASS (143/117/143/142/124 fps), +0 destroys; exe acce838f5 |
+
+### BUGS rows proposed
+none fixed this session that is player-visible on stock maps (row 17 edge: only a map without registry props; candidate row once a modded map shows it).
+
+### Open
+1. Row 20: per-tap GL compare vs raw encode; owner ruling on which backend the prop self-shadow oracle follows. 2. Row 23: packet dump of the hex type. 3. T9 resident cost ruling; T7 colormap atlas. 4. Rows 14, 5 not entered. 5. Not this lane: mc2_authored_order_seam compile error, callers.json / journal ratchet duplicate row from the nifty merge.
+6. Deleted this session (mine, untracked, unreferenced by any doc): 253 old `.claude/l2cap/*` capture dirs (13 GB; A: had 3.3 GB free). This included `s21-{gl,vk}-psr0`, which gaps row 23 (lane 6 text) cites with a brace pattern my reference check missed; s24b / s24d / s24e replace it as evidence.
+7. Scratch (mine): `scratch/` r24a/b/c/d/e .sh/.out/.py, t3_new.txt, t1_24.sh/.out, build_s24*.log, deploy_s24*.log, harn24.log, cc_s24.log, cxx17_24.log, b24_*_t1.log; `.claude/l2cap/s24*`; montages `s24-*.png` (keep).
+
+### Lessons (24)
+- An encode that samples one cascade outside the shader's own selection measures the clamp/border, not the image: replicate the selection loop in the diag.
+- Commit before the build that gets deployed: a build started before its commit embeds a dirty fingerprint.
+- A same-pose GL before/after is the cheapest proof for a CPU-side texel producer (26 px for T3).
+
+
 ## TWENTY-THIRD session (2026-10-15 evening, cap 5 h, Opus 5.5) -- gate cleanup, row 20 narrowed to the cascade compare, row 17 rebake proven, HDRI RGBA16F finding; nifty merged twice
 
 ### Commits (after bff0b72f7)

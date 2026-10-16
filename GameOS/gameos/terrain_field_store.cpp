@@ -107,4 +107,8 @@ bool TerrainFieldStore::setWaterShoreHeight(const float* heights, int width, int
     return setImage(waterShoreHeight_, heights, width, height, 1);
 }
 
+bool TerrainFieldStore::setCementAtlas(const uint8_t* rgba, int width, int height) {
+    return setImage(cementAtlas_, rgba, width, height, 4);
+}
+
 }  // namespace mc2terrain

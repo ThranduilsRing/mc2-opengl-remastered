@@ -87,3 +87,18 @@ TEST_CASE("terrain fields: a recreated store never repeats a version an earlier 
     REQUIRE(again.setHeight(map.data(), 2));
     CHECK(again.heightVersion() > first);
 }
+
+TEST_CASE("terrain field store: the cement atlas is kept with a fresh version, malformed input keeps the previous one") {
+    mc2terrain::TerrainFieldStore store;
+    const uint8_t px[2 * 2 * 4] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+    REQUIRE(store.setCementAtlas(px, 2, 2));
+    const uint64_t v = store.cementAtlas().version;
+    CHECK(v != 0);
+    CHECK(store.cementAtlas().texels.size() == 16);
+    CHECK(store.cementAtlas().texels[15] == 16);
+    CHECK_FALSE(store.setCementAtlas(nullptr, 2, 2));
+    CHECK_FALSE(store.setCementAtlas(px, 0, 2));
+    CHECK(store.cementAtlas().version == v);
+    REQUIRE(store.setCementAtlas(px, 2, 2));
+    CHECK(store.cementAtlas().version != v);
+}

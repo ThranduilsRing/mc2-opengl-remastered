@@ -181,7 +181,7 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::OwnedImage       cementImg;
     mc2vk::OwnedImageView   cementView;
     mc2vk::OwnedSampler     cementSamp;   // REPEAT/LINEAR (GL_REPEAT wrap)
-    uint32_t      cementTexImported = 0;          // GL cement tex name last imported (0 = none)
+    uint64_t      cementVersionImported = 0;      // field-store cement atlas version last imported (0 = none)
     bool          cementReady = false;            // set once the cement image is live
     mc2vk::OwnedBuffer      cementBuf;
     VkDeviceSize  cementCapBytes = 0;

@@ -226,6 +226,7 @@ void GpuStaticPropBatcher::onMapUnload() {
 
     if (s_texArrayOff)     { glDeleteTextures(1, &s_texArrayOff);     s_texArrayOff     = 0; }
     if (s_texArrayOn)      { glDeleteTextures(1, &s_texArrayOn);      s_texArrayOn      = 0; }
+    for (auto& a : albedoArrays_) a = {};   // released with the GL arrays they mirror, not just cleared
     staticPropReleaseBuckets();  // COMPRESSION-BC7-STATICPROP-2 (no-op when gate OFF)
     if (s_perDrawSsbo)      { glDeleteBuffers(1,  &s_perDrawSsbo);      s_perDrawSsbo      = 0; }
     if (s_permutationSsbo)  { glDeleteBuffers(1,  &s_permutationSsbo);  s_permutationSsbo  = 0; }

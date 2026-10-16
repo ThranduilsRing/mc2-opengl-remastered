@@ -23,6 +23,8 @@
 
 #include <cstdint>
 
+namespace mc2tex { struct TextureArrayCpu; }
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -85,6 +87,9 @@ struct Mc2TerrainTier1Feed {
     // LOD-chunk frag reads (gos_terrain_lod_chunk.cpp:1122-1143). All 0/false when the
     // cement atlas isn't ready -> VK frag falls back to the colormap base (no hole).
     uint32_t                    glCementAtlasTex;      // GL name of g_cementAtlasGLTex (0 = not ready)
+    const uint8_t*              cementAtlasRgba;       // the field store's CPU atlas (RGBA8, side^2 texels); null = none
+    int32_t                     cementAtlasSide;
+    uint64_t                    cementAtlasVersion;    // changes on every rebuild; the island re-imports on a change
     int32_t                     cementGridSide;        // gos_terrain_indirect_getCementAtlasGridSide()
     float                       cementWUPT;            // world units per cement tile (== 128)
     int32_t                     useCement;             // 1 iff cement atlas ready AND cement SSBO live
@@ -119,7 +124,8 @@ struct Mc2TerrainTier1Feed {
     // (requires MC2_VK_TERRAIN_LIGHTING). detailEnabled=0 -> VK terrain N stays flat-up
     // (byte-identical to the lighting-only frame).
     int32_t                     detailEnabled;         // 1 iff MC2_VK_TERRAIN_DETAIL gate on
-    uint32_t                    glMatNormalArrayTex;   // GL name of terrain_normal_array_tex_ (0 = not built)
+    uint32_t                    glMatNormalArrayTex;   // GL name of terrain_normal_array_tex_ (0 = not built); the island's re-import key
+    const mc2tex::TextureArrayCpu* matNormalArrayCpu;  // its CPU copy (null = none), the bytes the island imports
     float                       nfhStrength;           // terrainNormalsFromHeightStrength (GL default 1.0)
     float                       detailTiling;          // detailNormalTiling.x (GL default 1.0)
     float                       detailStrength;        // detailNormalStrength.x (GL default 1.0)

@@ -37,6 +37,7 @@
 #include "vulkan_context.h"
 #include "vulkan_shadow_island_live.h"   // Mc2ShadowGeomFeed + Mc2ColorPropFeed contracts
 #include "vulkan_color_prop_island.h"
+#include "texture_decode.h"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
@@ -659,97 +660,48 @@ bool cp_ensure_dummy_albedo(ColorPropIsland* s, const AlbedoTarget& tgt) {
                                   px, sizeof(px), rgn);
 }
 
-// Copy-once import the GL alpha-OFF albedo 2D_ARRAY. Re-imports only when the GL tex
-// name changes. Sets s->materialReady on success. Fail-soft: leaves the dummy bound
-// (materialReady=false -> FS keeps teal). Returns true if a NEW real import landed.
-bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_t glTexArray) {
-    const uint32_t glTexArrayOff = glTexArray;
-    if (glTexArrayOff == 0) return false;
-    if (glTexArrayOff == *tgt.importedGlName && *tgt.ready) return false; // already
-
-    glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)glTexArrayOff);
-    GLint w = 0, h = 0, layers = 0, internalFmt = 0;
-    glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_WIDTH, &w);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_HEIGHT, &h);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_DEPTH, &layers);   // array layer count
-    glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFmt);
-    if (w <= 0 || h <= 0 || layers <= 0) { glBindTexture(GL_TEXTURE_2D_ARRAY, 0); return false; }
-
-    // Full mip chain (match GL: LINEAR_MIPMAP_LINEAR needs the levels present).
-    uint32_t mips = 1;
-    { uint32_t mw = (uint32_t)w, mh = (uint32_t)h;
-      while (mw > 1 || mh > 1) { mw = mw > 1 ? mw >> 1 : 1; mh = mh > 1 ? mh >> 1 : 1; ++mips; } }
-    // Only trust mips that actually exist on the GL texture (a non-mipped array
-    // reports level-0 only). Probe level 1; if absent, single mip.
-    { GLint w1 = 0; glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 1, GL_TEXTURE_WIDTH, &w1);
-      if (w1 <= 0) mips = 1; }
-
-    // ADJUDICATION-1 FENCE-RECON: one-shot mip-count-parity verdict. GL's own
-    // GL_TEXTURE_MAX_LEVEL (set at gos_static_prop_batcher.cpp:3094 from the same
-    // w/h halving loop) vs this import's computed `mips` vs the sampler's maxLod
-    // that will be created below. Mismatch here would mean VK samples a mip level
-    // GL's own state clamps away (or vice versa).
-    if (mc2::gate::get<"MC2_VK_PROP_MIP_PROBE">()) {
-        GLint glMaxLevel = -1;
-        glGetTexParameteriv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, &glMaxLevel);
-        std::fprintf(stderr,
-            "[PROP_MIP_PROBE v1] tag=%s glTexArray=%u w=%d h=%d layers=%d "
-            "glTexMaxLevel=%d vkComputedMips=%u vkSamplerMaxLod=%.1f\n",
-            tgt.tag, glTexArrayOff, (int)w, (int)h, (int)layers,
-            (int)glMaxLevel, mips, (mips > 0) ? (float)(mips - 1) : 0.0f);
-        std::fflush(stderr);
+// Copy-once import of one albedo group array from the batcher's CPU copy (every level, as GL uploaded it). `changeKey` is the GL
+// array's name, used only to notice a rebuilt array (a new map). Sets *tgt.ready on success; a malformed copy is rejected with a log
+// line and leaves the dummy bound (the FS keeps teal). Returns true if a NEW import landed.
+bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_t changeKey, const mc2tex::TextureArrayCpu* a) {
+    if (changeKey == 0 || !a) return false;
+    if (changeKey == *tgt.importedGlName && *tgt.ready) return false; // already
+    const bool bc7 = a->vkFormat == mc2tex::kVkFormatBc7Unorm || a->vkFormat == mc2tex::kVkFormatBc7Srgb;
+    if (a->width == 0 || a->height == 0 || a->layers == 0 || a->levels.empty() || (!bc7 && a->vkFormat != mc2tex::kVkFormatRgba8Unorm)) {
+        vlog("%s albedo array rejected: %ux%u layers=%u levels=%zu format=%u.", tgt.tag, a->width, a->height, a->layers, a->levels.size(), a->vkFormat);
+        return false;
     }
-
-    const bool bc7 = (internalFmt == GL_COMPRESSED_RGBA_BPTC_UNORM ||
-                      internalFmt == GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM);
-    const VkFormat vkFmt = bc7
-        ? ((internalFmt == GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM) ? VK_FORMAT_BC7_SRGB_BLOCK
-                                                                : VK_FORMAT_BC7_UNORM_BLOCK)
-        : VK_FORMAT_R8G8B8A8_UNORM;
-
-    // Gather every mip level (all layers contiguous per level) into one blob + regions.
+    const uint32_t mips = static_cast<uint32_t>(a->levels.size());
     std::vector<uint8_t> blob;
     std::vector<VkBufferImageCopy> regions;
     regions.reserve(mips);
-    bool ok = true;
-    for (uint32_t m = 0; m < mips && ok; ++m) {
-        GLint lw = 0, lh = 0;
-        glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, (GLint)m, GL_TEXTURE_WIDTH, &lw);
-        glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, (GLint)m, GL_TEXTURE_HEIGHT, &lh);
-        if (lw <= 0 || lh <= 0) { mips = m; break; }
-        const VkDeviceSize off = blob.size();
-        if (bc7) {
-            GLint compBytes = 0;
-            glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, (GLint)m, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &compBytes);
-            if (compBytes <= 0) { ok = false; break; }  // all layers this level
-            blob.resize((size_t)off + (size_t)compBytes);
-            glGetCompressedTexImage(GL_TEXTURE_2D_ARRAY, (GLint)m, blob.data() + off);
-        } else {
-            const size_t bytes = (size_t)lw * (size_t)lh * (size_t)layers * 4u;
-            blob.resize(off + bytes);
-            glGetTexImage(GL_TEXTURE_2D_ARRAY, (GLint)m, GL_RGBA, GL_UNSIGNED_BYTE, blob.data() + off);
+    for (uint32_t m = 0; m < mips; ++m) {
+        const size_t want = mc2tex::textureArrayLevelBytes(*a, m);
+        if (want == 0 || a->levels[m].size() != want) {
+            vlog("%s albedo array rejected: level %u holds %zu bytes, %zu expected.", tgt.tag, m, a->levels[m].size(), want);
+            return false;
         }
         VkBufferImageCopy r{};
-        r.bufferOffset = off;
-        r.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, m, 0, (uint32_t)layers};
-        r.imageExtent = {(uint32_t)lw, (uint32_t)lh, 1};
+        r.bufferOffset = blob.size();
+        r.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, m, 0, a->layers};
+        r.imageExtent = {mc2tex::mipExtent(a->width, m), mc2tex::mipExtent(a->height, m), 1};
         regions.push_back(r);
+        blob.insert(blob.end(), a->levels[m].begin(), a->levels[m].end());
     }
-    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-    if (!ok || regions.empty()) return false;
+    const VkFormat vkFmt = static_cast<VkFormat>(a->vkFormat);
 
     // (Re)create sampler with the real mip count.
     tgt.samp->reset();
     if (!cp_make_albedo_sampler(s, tgt.samp, mips)) return false;
 
-    if (!cp_upload_albedo_array(s, tgt, vkFmt, (uint32_t)w, (uint32_t)h, (uint32_t)layers,
+    if (!cp_upload_albedo_array(s, tgt, vkFmt, a->width, a->height, a->layers,
                                 mips, bc7, blob.data(), (VkDeviceSize)blob.size(), regions)) {
         return false;
     }
-    *tgt.importedGlName = glTexArrayOff;
+    *tgt.importedGlName = changeKey;
     *tgt.ready = true;
-    vlog("%s albedo 2D_ARRAY imported: %dx%d layers=%d mips=%u fmt=%s (%llu B).",
-         tgt.tag, w, h, layers, mips, bc7 ? "BC7" : "RGBA8", (unsigned long long)blob.size());
+    vlog("%s albedo 2D_ARRAY imported: %ux%u layers=%u mips=%u fmt=%s (%zu B).",
+         tgt.tag, a->width, a->height, a->layers, mips, bc7 ? "BC7" : "RGBA8", blob.size());
     return true;
 }
 
@@ -1083,7 +1035,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // pack into half floats or move to the per-instance SSBO path.
         VkPushConstantRange pcr{};
         pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        pcr.offset = 0; pcr.size = 16; // int32 packetLayerOff, int32 packetLayerOn, float uvScaleX, float uvScaleY
+        pcr.offset = 0; pcr.size = 20; // int32 packetLayerOff, int32 packetLayerOn, float uvScaleX, float uvScaleY, int32 packetAlphaTest
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -1381,7 +1333,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                     if (mf.typeAlphaClass[t] == 0 && mf.typeAlbedoLayer[t] >= 0)
                         layerTbl[t] = mf.typeAlbedoLayer[t];
                 }
-                if (cp_import_albedo_array(s, cp_target_off(s), mf.glTexArrayOff)) {
+                if (cp_import_albedo_array(s, cp_target_off(s), mf.glTexArrayOff, mf.albedoOff)) {
                     cp_upload_layer_table(s, layerTbl.data(), mf.typeCount);
                     changed = true;
                     vlog("material feed active: alpha-OFF %u types textured (sun=%.2f,%.2f,%.2f).",
@@ -1425,7 +1377,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                     if (mf.typeAlphaClass[t] == 1 && mf.typeAlbedoLayer[t] >= 0)
                         layerOnTbl[t] = mf.typeAlbedoLayer[t];
                 }
-                if (cp_import_albedo_array(s, cp_target_on(s), mf.glTexArrayOn)) {
+                if (cp_import_albedo_array(s, cp_target_on(s), mf.glTexArrayOn, mf.albedoOn)) {
                     cp_upload_layer_table_on(s, layerOnTbl.data(), mf.typeCount);
                     changed = true;
                     vlog("material feed active: alpha-ON %u types textured (alpha-test 0.5).",
@@ -1681,11 +1633,12 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                     // FENCE-UVSCALE-1: push this packet's own uvScaleX/Y alongside
                     // its layer -- default 1.0 (no crop) matches pre-fix behavior
                     // for any packet the feed didn't cover.
-                    struct { int32_t layerOff, layerOn; float uvScaleX, uvScaleY; } pc = {
+                    struct { int32_t layerOff, layerOn; float uvScaleX, uvScaleY; int32_t alphaTest; } pc = {
                         (pk < s->packetLayerOff.size())  ? s->packetLayerOff[pk]  : -1,
                         (pk < s->packetLayerOn.size())   ? s->packetLayerOn[pk]   : -1,
                         (pk < s->packetUvScaleX.size())  ? s->packetUvScaleX[pk]  : 1.0f,
                         (pk < s->packetUvScaleY.size())  ? s->packetUvScaleY[pk]  : 1.0f,
+                        mc2_static_prop_packet_alpha_test(pk),
                     };
                     if (s_pktDump)
                         std::fprintf(s_pktDump, "%u,%u,%d,%d,%.4f,%.4f,%u,%u,%d,%u,%u\n",

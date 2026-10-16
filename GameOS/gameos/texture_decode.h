@@ -73,6 +73,20 @@ constexpr uint32_t mipExtent(uint32_t size, uint32_t level) {
 // Empty when `src` is not width * height * 4 bytes or an edge is 0 or above RenderCore::kKtxMaxEdge.
 std::vector<uint8_t> boxDownsampleRgba8(const std::vector<uint8_t>& src, uint32_t width, uint32_t height);
 
+// A 2D texture array as CPU levels: level n holds every layer at mipExtent(width, n) x mipExtent(height, n), layer after layer,
+// RGBA8 texels (R first) or BC7 blocks. WHY: the producer that assembles an array keeps it in this form, so each backend uploads
+// the same bytes and none reads another's texture object back.
+struct TextureArrayCpu {
+    uint32_t width = 0;
+    uint32_t height = 0;
+    uint32_t layers = 0;
+    uint32_t vkFormat = 0;  // kVkFormatRgba8Unorm, kVkFormatBc7Unorm or kVkFormatBc7Srgb
+    std::vector<std::vector<uint8_t>> levels;
+};
+
+// The byte size one level of `a` must have (all layers); 0 for an unknown format.
+size_t textureArrayLevelBytes(const TextureArrayCpu& a, uint32_t level);
+
 }  // namespace mc2tex
 
 // The level-0 texels of a gos texture handle as its upload took them, for a backend that uploads its own copy: RGBA8 for decoded

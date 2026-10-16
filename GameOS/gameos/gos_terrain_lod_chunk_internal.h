@@ -66,6 +66,9 @@ extern "C" const float* gos_terrain_indirect_getDispatchMvp16();
 #endif
 
 extern unsigned int gos_GetTerrainNormalArrayTex();
+namespace mc2tex { struct TextureArrayCpu; }
+// The CPU copy of the array gos_GetTerrainNormalArrayTex built; null before the first build.
+const mc2tex::TextureArrayCpu* gos_GetTerrainNormalArrayCpu();
 
 extern void  gos_GetTerrainMatTiling(float*, float*, float*, float*, float*);
 
