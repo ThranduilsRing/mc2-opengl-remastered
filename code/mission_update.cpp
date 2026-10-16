@@ -543,6 +543,8 @@ void Mission::updateTraceHooks() {
 
 // Decide whether the mission is over and start the termination countdown.
 void Mission::updateTermination() {
+	const auto oldTermination = terminationResult;
+	const bool oldStarted = terminationCounterStarted;
 	if (!MPlayer && !terminationCounterStarted)
 	{
 		bool playerForceAllDead = true;
@@ -658,6 +660,11 @@ void Mission::updateTermination() {
 			terminationCounterStarted = true;
 			missionTerminationTime = actualTime + 5.0/*seconds*/;
 		}
+	}
+	if (auto* observation = objectiveObservation(); observation &&
+	    (oldTermination != terminationResult || oldStarted != terminationCounterStarted)) {
+		observation->Emit("resolve", 0, std::format("{{\"scope\":\"mission\",\"stage\":\"termination\",\"old\":{},\"new\":{},\"started\":{}}}",
+			oldTermination, terminationResult, terminationCounterStarted));
 	}
 }
 
@@ -1161,13 +1168,17 @@ long Mission::update (void)
 				ablFire.record(ablStmts, NumStateTransitions);
 				long missionResult = missionBrain->getInteger();
 				if (missionResult == 9999)
-					return(terminationResult = 9999);
+				{
+					terminationResult = 9999;
+					if (auto* observation = objectiveObservation()) {
+						observation->Emit("resolve", 0, std::format("{{\"scope\":\"mission\",\"stage\":\"final\",\"old\":{},\"new\":9999}}", observation->finalResult));
+						observation->finalResult = 9999;
+					}
+					return terminationResult;
+				}
 				if (!MPlayer)
 					terminationResult = missionResult;
-				// GAMEPLAY-DRIVER-2: re-assert a forced outcome. The line above
-				// is the documented point where the mission brain trashes
-				// terminationResult; a forced result set from the command
-				// channel would otherwise live exactly one frame.
+				// A forced outcome must survive the mission brain's result.
 				if (forcedTerminationResult != mis_PLAYING) {
 					terminationResult = forcedTerminationResult;
 					terminationCounterStarted = true;
@@ -1221,5 +1232,11 @@ long Mission::update (void)
 #endif
 	}
 
+	if (auto* observation = objectiveObservation(); observation && scenarioResult != mis_PLAYING &&
+	    observation->finalResult != static_cast<int>(scenarioResult)) {
+		observation->Emit("resolve", 0, std::format("{{\"scope\":\"mission\",\"stage\":\"final\",\"old\":{},\"new\":{}}}",
+			observation->finalResult, scenarioResult));
+		observation->finalResult = static_cast<int>(scenarioResult);
+	}
 	return scenarioResult;
 }

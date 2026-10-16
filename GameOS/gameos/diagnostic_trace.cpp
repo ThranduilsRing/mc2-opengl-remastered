@@ -43,6 +43,8 @@ const std::unordered_set<std::string>& knownTags() {
         "OVERLAY_MAGENTA",
         "ANIM_CADENCE",
         "TARGETING",
+
+        "OBJECTIVES",
         "COMBAT",   // COMBAT-TRACE-1: weapon-fire events (attacker/target wid+team). Opt-in.
         "VK_SHUTDOWN", // VK shutdown-order trace: one line per island retire and per image-owner destroy ([VK_ENGINE_CONTEXT] / [VK_IMAGE_RESOURCE]). Opt-in.
         "RNG",      // DETERMINISTIC-RNG-1: per gos_rand() result (compile-gated by MC2_RNG_TRACE). Opt-in.

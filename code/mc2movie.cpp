@@ -30,6 +30,7 @@
 #include"gameos.hpp"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "objective.h"
 
 // Frame-rate averaging globals referenced by mechcmd2.cpp.
 // Defined here to keep them co-located with the movie subsystem.
@@ -59,7 +60,6 @@ MC2Movie::~MC2Movie (void)
 // Class MC2Movie
 void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
 {
-    // Copy the short-name from the full path.
     char shortName[1024];
     _splitpath(MC2Name, nullptr, nullptr, shortName, nullptr);
 
@@ -81,16 +81,13 @@ void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
     }
 
     if (SmokeMode::state().enabled) {
-        // VIDEO-CAPTURE fixture: MC2_BOOT_VIDEO=1 overrides the smoke-mode
-        // movie skip so the in-mission comm-video panel is reachable headless
-        // (mc2_01 ABL plays V1A.bik ~frame 1600 under MC2_SMOKE_MODE, but this
-        // early-out swallowed it). Registered Trace, default unset ->
-        // byte-identical (skip preserved).
+        // Video capture can opt into decoding during a headless run.
         static const bool s_bootVideo = mc2::gate::get<"MC2_BOOT_VIDEO">();
         if (!s_bootVideo) {
             mc2::fmt::print_out("[VIDEO] init: smoke mode active, skipping movie '{}'\n", mc2::fmt::safe(shortName));
             stillPlaying  = false;
             m_sessionDone = true;
+			objectiveObservationSink("movie", "decoder", "smoke_skip", MC2Name);
             return;
         }
         mc2::fmt::print_out("[BOOT_VIDEO] smoke-mode movie skip overridden for '{}'\n", mc2::fmt::safe(shortName));
@@ -101,12 +98,11 @@ void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
         mc2::fmt::print_out("[VIDEO] init: FFmpeg unavailable, skipping movie '{}'\n", mc2::fmt::safe(shortName));
         stillPlaying  = false;
         m_sessionDone = true;
+		objectiveObservationSink("movie", "decoder", "unavailable", MC2Name);
         return;
     }
 
-    // Enumerate every candidate in the resolver's chain until one
-    // opens successfully. Each failure fully tears down the failed
-    // decoder state before the next attempt.
+    // Decoder failure permits the next resolver candidate.
     const bool preferUpscaled = prefs.UseUpscaledVideos;
     for (int candidateIndex = 0; ; ++candidateIndex) {
         char resolvedPath[1024];
@@ -128,6 +124,7 @@ void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
         m_session = video_open(p, &r);
         if (m_session) {
             stillPlaying = true;
+			objectiveObservationSink("movie", "decoder", "accepted", resolvedPath);
             mc2::fmt::print_out("[VIDEO] init: opened {} ({:d}x{:d}, fps={:.2f}, audio={:d})\n", mc2::fmt::safe(resolvedPath), mc2::fmt::as_i32(r.srcW), mc2::fmt::as_i32(r.srcH), r.fps, mc2::fmt::as_i32((int)r.hasAudio));
             return;
         }
@@ -135,10 +132,10 @@ void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
         mc2::fmt::print_out("[VIDEO] init: open failed for '{}' (idx={:d}), trying next candidate\n", mc2::fmt::safe(resolvedPath), mc2::fmt::as_i32(candidateIndex));
     }
 
-    // All candidates exhausted.
     mc2::fmt::print_out("[VIDEO] init: no playable candidate for '{}'\n", mc2::fmt::safe(shortName));
     stillPlaying  = false;
     m_sessionDone = true;
+	objectiveObservationSink("movie", "decoder", "rejected", MC2Name);
 }
 
 //-----------------------------------------------------------------------

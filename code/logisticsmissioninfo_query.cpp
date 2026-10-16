@@ -2,6 +2,8 @@
 // Declared in the class headers; shared names in logisticsmissioninfo_internal.h.
 #include "logisticsmissioninfo_internal.h"
 #include "mc2str.h"
+#include "objective.h"
+#include "team.h"
 
 
 LogisticsMissionInfo::MissionInfo::~MissionInfo()
@@ -235,6 +237,10 @@ void				LogisticsMissionInfo::addBonusPurchaseFile( const char* fileName )
 	strcpy( pNewFile, fileName ); 
 
  	additionalPurchaseFiles.push_back( pNewFile );
+	if (auto* observation = objectiveObservation(); observation && observation->dispatch) {
+		observation->technologies.push_back({pNewFile, observation->dispatch});
+		observation->SinkResult("technology", "queued", "accepted", objectiveObservationQuote(pNewFile));
+	}
 }
 
 bool	LogisticsMissionInfo::skipLogistics()

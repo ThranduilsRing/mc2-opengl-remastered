@@ -10,6 +10,15 @@
 #include "move_internal.h"
 #include "mover_internal.h"
 #include "comndr.h"
+#include "objective.h"
+#include "afont.h"
+#include "inifile.h"
+#include "timing.h"
+#include "Gates/gate_cold.h"
+#include "GameOS/gameos/diagnostic_trace.h"
+#include "gamesound.h"
+#include <chrono>
+#include <fstream>
 
 #include <array>
 #include <cstring>
@@ -24,6 +33,138 @@
 #include <filesystem>
 
 extern long LastMoveCalcErr;
+
+struct ObjectiveObservationFixture {
+    aFont font;
+    aFont* previous = CObjective::s_markerFont;
+    ObjectiveObservationFixture() { CObjective::s_markerFont = &font; }
+    ~ObjectiveObservationFixture() { CObjective::s_markerFont = previous; }
+};
+
+TEST_CASE("ObjectiveObservation/skipped FIT ordinals, reset replay and sink ordering preserve evaluation counts") {
+    struct CountedCondition : CObjectiveCondition {
+        int& count;
+        explicit CountedCondition(int& value) : CObjectiveCondition(0), count(value) {}
+        condition_species_type Species() override { return ELAPSED_MISSION_TIME; }
+        bool Save(FitIniFile*) override { return true; }
+        objective_status_type Status() override { ++count; return OS_SUCCESSFUL; }
+    };
+    const std::string fitText =
+        "FITini\r\n[Objectives Version]\r\nul Version = 3\r\n"
+        "[Team0Objectives]\r\nul NumObjectives = 2\r\n"
+        "[Team0BooleanFlags]\r\nst BooleanString0 = \"ready\"\r\nb BooleanValue0 = true\r\n"
+        "[Team0Objective0]\r\nst Title = \"malformed\"\r\nb DisplayMarker = false\r\n"
+        "[Team0Objective1]\r\nst Title = \"fixture\"\r\nb DisplayMarker = false\r\n"
+        "b HiddenTrigger = true\r\nb ActivateOnFlag = true\r\nst ActivateFlagID = \"ready\"\r\n"
+        "ul NumConditions = 0\r\nul NumActions = 3\r\n"
+        "[Team0Objective1Action0]\r\nst ActionSpeciesString = \"PlayWAV\"\r\n"
+        "[Team0Objective1Action1]\r\nst ActionSpeciesString = \"SetBooleanFlag\"\r\n"
+        "st FlagID = \"signal\"\r\nb Value = true\r\n"
+        "[Team0Objective1Action2]\r\nst ActionSpeciesString = \"PlayWAV\"\r\n"
+        "st WAVFileName = \"unavailable.wav\"\r\nFITend\r\n";
+    const std::string stem = "mvh_scratch_objective_observation";
+    { std::ofstream fit(stem + ".fit", std::ios::binary); fit << fitText; REQUIRE(fit.good()); }
+    { std::ofstream pak(stem + ".pak", std::ios::binary); pak << "controlled-pak"; REQUIRE(pak.good()); }
+    mc2::gate::ScopedOverride<"MC2_DIAG_TAGS"> tags("OBJECTIVES");
+    const auto diagnostic = "debug_state/objective-observation-" +
+        std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".jsonl";
+    mc2::gate::ScopedOverride<"MC2_DIAGNOSTIC_TRACE_FILE"> trace(diagnostic.c_str());
+    mc2_diag::init("objective-observation", 0);
+    REQUIRE(mc2_diag::tagEnabled("OBJECTIVES"));
+
+    auto run = [&](bool enabled) {
+        mc2::gate::ScopedOverride<"MC2_DIAG_TAGS"> mode(enabled ? "OBJECTIVES" : "none");
+        UserHeap heap;
+        heap.init(1024 * 1024, "objective-observation");
+        auto* previousHeap = systemHeap;
+        systemHeap = &heap;
+        auto* previousTeam = Team::teams[0];
+        const auto previousTeamCount = Team::numTeams;
+        const auto previousTurn = turn;
+        turn = 40;
+        struct Restore {
+            UserHeap* heap;
+            Team* team;
+            long count, frame;
+            GameSoundSystem* sound;
+            bool audio;
+            ~Restore() {
+                systemHeap = heap; Team::teams[0] = team; Team::numTeams = count; turn = frame;
+                soundSystem = sound; useSound = audio;
+            }
+        } restore{previousHeap, previousTeam, previousTeamCount, previousTurn, soundSystem, useSound};
+        ObjectiveObservationFixture marker;
+        GameSoundSystem controlledSound;
+        soundSystem = &controlledSound;
+        useSound = false;
+        Team team;
+        Team::teams[0] = &team;
+        team.objectives.Alignment(0);
+        FitIniFile file;
+        REQUIRE(file.open((stem + ".fit").c_str()) == NO_ERR);
+        REQUIRE(team.objectives.Read(&file));
+        REQUIRE(team.objectives.Count() == 1);
+        auto* objective = *team.objectives.begin();
+        REQUIRE(objective->m_actionList.Count() == 2);
+        CHECK((*objective->m_actionList.begin())->observationOrdinal == 1);
+        int evaluations = 0;
+        objective->m_conditionList.Append(new CountedCondition(evaluations));
+        CHECK_FALSE(objective->IsActive());
+        objective->IsActive(true);
+        CHECK(evaluations == 0);
+        CHECK(team.objectives.Status() == OS_SUCCESSFUL);
+        CHECK(team.objectives.Status() == OS_SUCCESSFUL);
+        CHECK(evaluations == 1);
+        CHECK(team.objectives.boolFlags.getElementValue("signal"));
+        objective->Status(OS_UNDETERMINED);
+        CHECK(objective->Status(team.objectives) == OS_SUCCESSFUL);
+        CHECK(evaluations == 2);
+        auto& observation = team.objectives.observation;
+        CHECK(observation.sequence == (enabled ? 12 : 0));
+        if (enabled) {
+            observation.finalResult = 5;
+            observation.Finish();
+            CHECK(observation.sequence == 12);
+            CHECK_FALSE(observation.completed);
+            observation.settled = true;
+            observation.Finish();
+            CHECK(observation.sequence == 13);
+            CHECK(observation.completed);
+            observation.Finish();
+            CHECK(observation.sequence == 13);
+        }
+        file.close();
+        return evaluations;
+    };
+    const int disabledEvaluations = run(false);
+    CHECK(disabledEvaluations == run(true));
+    mc2_diag::flush();
+    std::ifstream input(diagnostic);
+    std::vector<std::string> records;
+    for (std::string line; std::getline(input, line);) {
+        if (line.find("\"tag\":\"OBJECTIVES\"") == std::string::npos) { continue; }
+        auto start = line.find("\"data\":");
+        REQUIRE(start != std::string::npos);
+        records.push_back(line.substr(start + 7, line.size() - start - 8));
+    }
+    REQUIRE(records.size() == 13);
+    const char* kinds[] = {"activate", "resolve", "dispatch", "sink", "dispatch", "sink", "reset", "resolve", "dispatch", "sink", "dispatch", "sink", "complete"};
+    std::ofstream extracted(stem + ".trace", std::ios::binary);
+    for (size_t i = 0; i < records.size(); ++i) {
+        CHECK(records[i].find(std::string("\"kind\":\"") + kinds[i] + "\"") != std::string::npos);
+        CHECK(records[i].find("\"id\":\"o" + std::to_string(i + 1) + "\"") != std::string::npos);
+        extracted << "OBJECTIVES/1 " << records[i] << '\n';
+    }
+    CHECK(records[2].find("\"objective\":1,\"list\":\"success\",\"entry\":1") != std::string::npos);
+    CHECK(records[3].find("\"cause\":\"o3\"") != std::string::npos);
+    CHECK(records[4].find("\"result\":1") != std::string::npos);
+    CHECK(records[5].find("\"result\":\"disabled\"") != std::string::npos);
+    CHECK(records[8].find("\"cause\":\"o8\"") != std::string::npos);
+    CHECK(records[9].find("\"cause\":\"o9\"") != std::string::npos);
+    CHECK(records[7].find("\"source\":\"context\"") != std::string::npos);
+    CHECK(extracted.good());
+}
+
 
 namespace {
 struct SavedGlobals {
@@ -186,7 +327,7 @@ struct MovementWorld {
         return result;
     }
     bool ready() const {
-        return GameMap && GameMap->map && land && Terrain::mapData && Terrain::mapData->getBlocks() &&
+        return GameMap && !GameMap->map.empty() && land && Terrain::mapData && Terrain::mapData->getBlocks() &&
             ObjectManager && ObjectTypeManager::objectCache && pilot->getVehicle() == mech.get() &&
             PathManager && PathFindMap[0] && PathFindMap[1] &&
             GlobalMoveMap[0] && GlobalMoveMap[0]->areas && GlobalMoveMap[0]->doors;
