@@ -1,19 +1,17 @@
 B4.1-move	mclib/move.cpp:469	heap_free	systemHeap	systemHeap->Free(tempSpecialAreaFootPrints);
 B4.1-move	mclib/move.cpp:474	heap_malloc	systemHeap	tempSpecialAreaFootPrints = (GameObjectFootPrint*)systemHeap->Malloc(sizeof(GameObjectFootPrint) * tempNumSpecialAreas);
-B4.1-move	mclib/move.cpp:621	heap_free	systemHeap	systemHeap->Free(tempSpecialAreaFootPrints);
-B4.1-move	mclib/move.cpp:637	heap_malloc	systemHeap	tempSpecialAreaFootPrints = (GameObjectFootPrint*)systemHeap->Malloc(allocSize);
-B4.1-move	mclib/move.cpp:700	heap_malloc	systemHeap	void* result = systemHeap->Malloc(ourSize);
-B4.1-move	mclib/move.cpp:706	heap_free	systemHeap	systemHeap->Free(us);
-B4.1-move	mclib/move.cpp:1028	heap_malloc	systemHeap	result = systemHeap->Malloc(ourSize);
-B4.1-move	mclib/move.cpp:1034	heap_free	systemHeap	systemHeap->Free(us);
+B4.1-move	mclib/move.cpp:624	heap_free	systemHeap	systemHeap->Free(tempSpecialAreaFootPrints);
+B4.1-move	mclib/move.cpp:640	heap_malloc	systemHeap	tempSpecialAreaFootPrints = (GameObjectFootPrint*)systemHeap->Malloc(allocSize);
+B4.1-move	mclib/move.cpp:706	heap_malloc	systemHeap	void* result = systemHeap->Malloc(ourSize);
+B4.1-move	mclib/move.cpp:712	heap_free	systemHeap	systemHeap->Free(us);
+B4.1-move	mclib/move.cpp:1034	heap_malloc	systemHeap	result = systemHeap->Malloc(ourSize);
+B4.1-move	mclib/move.cpp:1040	heap_free	systemHeap	systemHeap->Free(us);
 B4.1-move	mclib/move_globalmap_build.cpp:58	heap_malloc	systemHeap	void* result = systemHeap->Malloc(ourSize);
 B4.1-move	mclib/move_globalmap_build.cpp:64	heap_free	systemHeap	systemHeap->Free(us);
 B4.1-move	mclib/move_movemap_goals.cpp:9	heap_malloc	systemHeap	void* result = systemHeap->Malloc(ourSize);
 B4.1-move	mclib/move_movemap_goals.cpp:15	heap_free	systemHeap	systemHeap->Free(us);
 B4.2-terrain	mclib/mapdata.cpp:141	heap_malloc	terrainHeap	void *result = Terrain::terrainHeap->Malloc(mySize);
 B4.2-terrain	mclib/mapdata.cpp:148	heap_free	terrainHeap	Terrain::terrainHeap->Free(us);
-B4.2-terrain	mclib/mapdata.cpp:230	heap_free	terrainHeap	Terrain::terrainHeap->Free(terrainFaceCache);
-B4.2-terrain	mclib/mapdata.cpp:259	heap_malloc	terrainHeap	terrainFaceCache = (WorldQuadTerrainCacheEntry*)Terrain::terrainHeap->Malloc(sizeof(WorldQuadTerrainCacheEntry) * cacheC
 B4.2-terrain	mclib/terrain.cpp:303	heap_malloc	terrainHeap	tileRowToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide);
 B4.2-terrain	mclib/terrain.cpp:309	heap_malloc	terrainHeap	tileColToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide);
 B4.2-terrain	mclib/terrain.cpp:315	heap_malloc	terrainHeap	cellToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * MAPCELL_DIM);
@@ -75,51 +73,16 @@ B4.2-terrain	mclib/terrtxm.cpp:754	heap_malloc	tileRAMHeap	MemoryPtr ourRAM = (M
 B4.2-terrain	mclib/terrtxm.cpp:874	heap_malloc	tileRAMHeap	MemoryPtr ourRAM = (MemoryPtr)tileRAMHeap->Malloc(mipSize * mipSize * sizeof(DWORD));
 B4.2-terrain	mclib/terrtxm.cpp:1426	heap_malloc	tileRAMHeap	MemoryPtr ourRAM = (MemoryPtr)tileRAMHeap->Malloc(mipSize * mipSize * sizeof(DWORD));
 B4.2-terrain	mclib/terrtxm.cpp:1573	heap_free	tileRAMHeap	tileRAMHeap->Free(ourRAM);
-B4.2-terrain	mclib/terrtxm2.cpp:137	heap_free	colorMapHeap	colorMapHeap->Free(textures);
-B4.2-terrain	mclib/terrtxm2.cpp:145	heap_free	colorMapRAMHeap	colorMapRAMHeap->Free(txmRAM[i].ourRAM);
-B4.2-terrain	mclib/terrtxm2.cpp:149	heap_free	colorMapRAMHeap	colorMapRAMHeap->Free(txmRAM);
-B4.2-terrain	mclib/terrtxm2.cpp:155	heap_free	colorMapRAMHeap	colorMapRAMHeap->Free(ColorMap);
-B4.2-terrain	mclib/terrtxm2.cpp:173	c_free	-	if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = nullptr; }
-B4.2-terrain	mclib/terrtxm2.cpp:175	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
-B4.2-terrain	mclib/terrtxm2_bake.cpp:951	heap_malloc	colorMapRAMHeap	ColorMap = (MemoryPtr)colorMapRAMHeap->Malloc(colorMapInfo.width * colorMapInfo.width * sizeof(DWORD));
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1011	heap_malloc	colorMapRAMHeap	txmRAM = (ColorMapRAM *)colorMapRAMHeap->Malloc(sizeof(ColorMapRAM) * numTextures);
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1021	heap_malloc	colorMapRAMHeap	txmRAM[i].ourRAM = (MemoryPtr)colorMapRAMHeap->Malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1035	heap_free	colorMapRAMHeap	colorMapRAMHeap->Free(txmRAM[i].ourRAM);
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1039	heap_free	colorMapRAMHeap	colorMapRAMHeap->Free(txmRAM);
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1043	heap_free	colorMapRAMHeap	colorMapRAMHeap->Free(ColorMap);
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1117	c_alloc	-	tgaFileImage = (MemoryPtr)malloc(colorMapFile.fileSize());
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1136	heap_malloc	colorMapRAMHeap	ColorMap = (MemoryPtr)colorMapRAMHeap->Malloc(colorMapInfo.width * colorMapInfo.width * sizeof(DWORD));
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1168	c_free	-	free(tgaFileImage);
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1202	heap_malloc	colorMapHeap	textures = (ColorMapTextures *)colorMapHeap->Malloc(sizeof(ColorMapTextures) * numTextures);
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1205	heap_malloc	colorMapRAMHeap	txmRAM = (ColorMapRAM *)colorMapRAMHeap->Malloc(sizeof(ColorMapRAM) * numTextures);
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1213	heap_malloc	colorMapRAMHeap	txmRAM[i].ourRAM = (MemoryPtr)colorMapRAMHeap->Malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1226	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1228	c_alloc	-	cpuColorMap = (unsigned char*)malloc(pixels * 4);
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1257	heap_free	colorMapRAMHeap	colorMapRAMHeap->Free(txmRAM[i].ourRAM);
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1261	heap_free	colorMapRAMHeap	colorMapRAMHeap->Free(txmRAM);
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1265	heap_free	colorMapRAMHeap	colorMapRAMHeap->Free(ColorMap);
-B4.2-terrain	mclib/terrtxm2_internal.h:93	c_alloc	-	unsigned char* jpgBytes = (unsigned char*)malloc((size_t)jFileSize);
-B4.2-terrain	mclib/terrtxm2_internal.h:102	c_free	-	free(jpgBytes);
-B4.2-terrain	mclib/terrtxm2_internal.h:111	c_free	-	free(jpgBytes);
-B4.2-terrain	mclib/terrtxm2_internal.h:125	heap_malloc	ramHeap	MemoryPtr colorMap = (MemoryPtr)ramHeap->Malloc(cmapBytes);
-B4.2-terrain	mclib/terrtxm2_load.cpp:65	heap_malloc	colorMapRAMHeap	ColorMap = (MemoryPtr)colorMapRAMHeap->Malloc(colorMapInfo.width * colorMapInfo.width * sizeof(DWORD));
-B4.2-terrain	mclib/terrtxm2_load.cpp:299	heap_malloc	colorMapHeap	textures = (ColorMapTextures *)colorMapHeap->Malloc(sizeof(ColorMapTextures) * numTextures);
-B4.2-terrain	mclib/terrtxm2_load.cpp:302	heap_malloc	colorMapRAMHeap	txmRAM = (ColorMapRAM *)colorMapRAMHeap->Malloc(sizeof(ColorMapRAM) * numTextures);
-B4.2-terrain	mclib/terrtxm2_load.cpp:313	heap_malloc	colorMapRAMHeap	txmRAM[i].ourRAM = (MemoryPtr)colorMapRAMHeap->Malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
-B4.2-terrain	mclib/terrtxm2_load.cpp:335	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
-B4.2-terrain	mclib/terrtxm2_load.cpp:337	c_alloc	-	cpuColorMap = (unsigned char*)malloc(pixels * 4);
-B4.2-terrain	mclib/terrtxm2_load.cpp:383	heap_malloc	colorMapRAMHeap	ColorMap = (MemoryPtr)colorMapRAMHeap->Malloc(cmapBytes);
-B4.2-terrain	mclib/terrtxm2_load.cpp:448	heap_malloc	colorMapHeap	textures = (ColorMapTextures *)colorMapHeap->Malloc(sizeof(ColorMapTextures) * numTextures);
-B4.2-terrain	mclib/terrtxm2_load.cpp:451	heap_malloc	colorMapRAMHeap	txmRAM = (ColorMapRAM *)colorMapRAMHeap->Malloc(sizeof(ColorMapRAM) * numTextures);
-B4.2-terrain	mclib/terrtxm2_load.cpp:463	heap_malloc	colorMapRAMHeap	txmRAM[i].ourRAM = (MemoryPtr)colorMapRAMHeap->Malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
-B4.2-terrain	mclib/terrtxm2_load.cpp:491	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
-B4.2-terrain	mclib/terrtxm2_load.cpp:493	c_alloc	-	cpuColorMap = (unsigned char*)malloc(pixels * 4);
-B4.2-terrain	mclib/terrtxm2_load.cpp:524	heap_free	colorMapRAMHeap	colorMapRAMHeap->Free(txmRAM[i].ourRAM);
-B4.2-terrain	mclib/terrtxm2_load.cpp:528	heap_free	colorMapRAMHeap	colorMapRAMHeap->Free(txmRAM);
-B4.2-terrain	mclib/terrtxm2_load.cpp:539	heap_free	colorMapRAMHeap	colorMapRAMHeap->Free(ColorMap);
-B4.2-terrain	mclib/terrtxm2_load.cpp:611	c_alloc	-	normalMapTextures = (ColorMapTextures *)malloc(sizeof(ColorMapTextures) * numNormalMapTextures);
-B4.2-terrain	mclib/terrtxm2_load.cpp:851	c_free	-	if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = nullptr; }
-B4.2-terrain	mclib/terrtxm2_load.cpp:853	c_alloc	-	cpuDispAlpha = (unsigned char*)malloc(pixels);
+B4.2-terrain	mclib/terrtxm2.cpp:174	c_free	-	if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = nullptr; }
+B4.2-terrain	mclib/terrtxm2.cpp:176	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
+B4.2-terrain	mclib/terrtxm2_bake.cpp:1194	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
+B4.2-terrain	mclib/terrtxm2_bake.cpp:1196	c_alloc	-	cpuColorMap = (unsigned char*)malloc(pixels * 4);
+B4.2-terrain	mclib/terrtxm2_load.cpp:312	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
+B4.2-terrain	mclib/terrtxm2_load.cpp:314	c_alloc	-	cpuColorMap = (unsigned char*)malloc(pixels * 4);
+B4.2-terrain	mclib/terrtxm2_load.cpp:459	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
+B4.2-terrain	mclib/terrtxm2_load.cpp:461	c_alloc	-	cpuColorMap = (unsigned char*)malloc(pixels * 4);
+B4.2-terrain	mclib/terrtxm2_load.cpp:794	c_free	-	if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = nullptr; }
+B4.2-terrain	mclib/terrtxm2_load.cpp:796	c_alloc	-	cpuDispAlpha = (unsigned char*)malloc(pixels);
 B4.3-txm	mclib/txmmgr.cpp:223	new_array	-	lightData_ = new TG_HWLightsData[lightDataStructuresCapacity];
 B4.3-txm	mclib/txmmgr.cpp:299	delete_array	-	delete[] lightData_;
 B4.3-txm	mclib/txmmgr.cpp:320	heap_free	textureCacheHeap	textureCacheHeap->Free(lzBuffer1);
@@ -187,13 +150,7 @@ B4.5-crater	mclib/crater.cpp:146	c_alloc	-	craterTextureHandles = (DWORD *)mallo
 B4.5-crater	mclib/crater.cpp:149	c_alloc	-	craterTextureIndices = (DWORD *)malloc(sizeof(DWORD) * numCraterTextures);
 B4.5-crater	mclib/crater.cpp:201	c_free	-	free(craterTextureHandles);
 B4.5-crater	mclib/crater.cpp:204	c_free	-	free(craterTextureIndices);
-B4.6-collision	code/collsn.cpp:60	heap_malloc	systemHeap	collisionAlerts = (CollisionAlertRecordPtr)systemHeap->Malloc(sizeof(CollisionAlertRecord) * maxAlerts);
-B4.6-collision	code/collsn.cpp:71	heap_free	systemHeap	systemHeap->Free(collisionAlerts);
 B4.6-collision	code/collsn.cpp:149	heap_malloc	collisionHeap	result = CollisionSystem::collisionHeap->Malloc(mySize);
 B4.6-collision	code/collsn.cpp:158	heap_free	collisionHeap	CollisionSystem::collisionHeap->Free(us);
-B4.6-collision	code/collsn.cpp:180	heap_malloc	collisionHeap	grid = (CollisionGridNodePtr *)CollisionSystem::collisionHeap->Malloc(gridSize);
-B4.6-collision	code/collsn.cpp:185	heap_malloc	collisionHeap	nodes = (CollisionGridNodePtr)CollisionSystem::collisionHeap->Malloc(nodeSize);
-B4.6-collision	code/collsn.cpp:218	heap_free	collisionHeap	CollisionSystem::collisionHeap->Free(nodes);
-B4.6-collision	code/collsn.cpp:221	heap_free	collisionHeap	CollisionSystem::collisionHeap->Free(grid);
-B4.6-collision	code/collsn.cpp:418	heap_malloc	systemHeap	result = systemHeap->Malloc(mySize);
-B4.6-collision	code/collsn.cpp:426	heap_free	systemHeap	systemHeap->Free(us);
+B4.6-collision	code/collsn.cpp:407	heap_malloc	systemHeap	result = systemHeap->Malloc(mySize);
+B4.6-collision	code/collsn.cpp:415	heap_free	systemHeap	systemHeap->Free(us);
