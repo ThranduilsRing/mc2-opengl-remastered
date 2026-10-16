@@ -821,8 +821,8 @@ void main() {
 
     // Step 5c: cement catalog override.
     // cw bit layout: bit31=VALID, bit30=IS_TRANSITION, bits29:24=maskId,
-    //                bit23=OWN_ALPHA (CEMENT-ALPHA-LAND-1), bits19:16=edge-blend
-    //                open-border mask, bits15:0=layerIdx.
+    //                bit23=OWN_ALPHA (CEMENT-ALPHA-LAND-1), bit22=PAVED_FLAT,
+    //                bits21:16 unused, bits15:0=layerIdx.
     bool cementHit = false;
     float cementTransAlpha = 0.0;  // CEMENT-HARD-EDGE-1: neighbor-derived transition coverage
     // CEMENT-CLASS-DIAG-1 (u_diag & 32768): which code path coloured this pixel's

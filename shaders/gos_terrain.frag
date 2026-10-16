@@ -463,9 +463,9 @@ void main(void)
                 // record and has no such neighbour access, so the dilation lives
                 // only on the LIVE LOD-chunk path (shaders/terrain_lod_chunk.frag).
                 // Here we simply no longer erode: solid cement stays crisp and
-                // full, exactly as stock, on both gate states. The CPU mask bake
-                // (killswitch MC2_RUNWAY_EDGE_BLEND) is unchanged and is consumed
-                // by the chunk shader.
+                // full, exactly as stock. The outward dilation and its CPU mask
+                // bake were later deleted (gate amnesty wave 1, then the dead
+                // shader arm in 2026-10-16), so neither path grows the apron now.
                 texColor = cementColor;
             }
         }
