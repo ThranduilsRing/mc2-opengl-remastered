@@ -257,20 +257,11 @@ B5.2-tg	mclib/msl.cpp:60	asset_delete	void TG_TypeMultiShape::operator delete (v
 B5.2-tg	mclib/msl.cpp:62	heap_free	TG_Shape::tglHeap->Free(us);
 B5.2-tg	mclib/msl.cpp:73	asset_new	newShape = new TG_MultiShape;
 B5.2-tg	mclib/msl.cpp:83	heap_malloc	newShape->listOfShapes = (TG_ShapeRecPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShapeRec) * numTG_TypeShapes);
-B5.2-tg	mclib/msl_anim.cpp:10	class_op	void *TG_AnimateShape::operator new (size_t mySize)
-B5.2-tg	mclib/msl_anim.cpp:12	heap_malloc	void *result = TG_Shape::tglHeap->Malloc(mySize);
-B5.2-tg	mclib/msl_anim.cpp:17	class_op	void TG_AnimateShape::operator delete (void *us)
-B5.2-tg	mclib/msl_anim.cpp:17	asset_delete	void TG_AnimateShape::operator delete (void *us)
-B5.2-tg	mclib/msl_anim.cpp:19	heap_free	TG_Shape::tglHeap->Free(us);
-B5.2-tg	mclib/msl_anim.cpp:67	heap_malloc	quat = (Stuff::UnitQuaternion *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::UnitQuaternion) * numFrames);
-B5.2-tg	mclib/msl_anim.cpp:75	heap_malloc	pos = (Stuff::Point3D *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::Point3D) * numFrames);
-B5.2-tg	mclib/msl_anim.cpp:97	heap_malloc	listOfAnimation = (TG_AnimationPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Animation) * count);
-B5.2-tg	mclib/msl_anim.cpp:151	heap_free	TG_Shape::tglHeap->Free( listOfAnimation[i].pos );
-B5.2-tg	mclib/msl_anim.cpp:154	heap_free	TG_Shape::tglHeap->Free( listOfAnimation[i].quat );
-B5.2-tg	mclib/msl_anim.cpp:159	heap_free	TG_Shape::tglHeap->Free(listOfAnimation);
-B5.2-tg	mclib/msl_anim.cpp:317	heap_malloc	listOfAnimation = (TG_AnimationPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Animation) * shape->GetNumShapes());
-B5.2-tg	mclib/msl_anim.cpp:400	heap_malloc	listOfAnimation[i].pos = (Stuff::Point3D *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::Point3D) * numFrames);
-B5.2-tg	mclib/msl_anim.cpp:472	heap_malloc	listOfAnimation[i].quat = (Stuff::UnitQuaternion *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::UnitQuaternion) * numFrames);
+B5.2-tg	mclib/msl_anim.cpp:11	class_op	void *TG_AnimateShape::operator new (size_t mySize)
+B5.2-tg	mclib/msl_anim.cpp:13	heap_malloc	void *result = TG_Shape::tglHeap->Malloc(mySize);
+B5.2-tg	mclib/msl_anim.cpp:18	class_op	void TG_AnimateShape::operator delete (void *us)
+B5.2-tg	mclib/msl_anim.cpp:18	asset_delete	void TG_AnimateShape::operator delete (void *us)
+B5.2-tg	mclib/msl_anim.cpp:20	heap_free	TG_Shape::tglHeap->Free(us);
 B5.2-tg	mclib/msl_load.cpp:65	heap_malloc	listOfTextures = (TG_TexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Texture) * numTextures);
 B5.2-tg	mclib/msl_load.cpp:76	heap_malloc	listOfTypeShapes = (TG_TypeNodePtr *)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeNodePtr) * numTG_TypeShapes);
 B5.2-tg	mclib/msl_load.cpp:89	asset_new	listOfTypeShapes[i] = new TG_TypeShape;
