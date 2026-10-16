@@ -70,7 +70,7 @@ bool EditorInterface::runDefinitionSmoke()
         && replaceValue(authored, "Cameras", "NewScale", "0.375")
         && replaceValue(authored, "Cameras", "ZoomMax", "1.25");
     if (!ok || !writeFixture(fit, authored) || !EditorData::initTerrainFromPCV(pak)) return false;
-    auto getUnit = [] { return *EditorObjectMgr::instance()->getUnits().Begin(); };
+    auto getUnit = [] { return EditorObjectMgr::instance()->getUnits().front(); };
     auto getObjective = [] { return *EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef().Begin(); };
     const auto storedPart = getUnit()->partDefinition();
     const auto storedModel = getObjective()->ModelDefinition();

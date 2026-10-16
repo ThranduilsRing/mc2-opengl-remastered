@@ -116,8 +116,8 @@ void EditorObjectMgr::clear()
 			delete *iter;
 		}
 
-		for ( UNIT_LIST::EIterator mIter = units.Begin();
-			!mIter.IsDone(); mIter++ )
+		for ( auto mIter = units.begin();
+			mIter != units.end(); mIter++ )
 			{
 				Unit* pMech = *mIter;
 				delete pMech;
@@ -125,7 +125,7 @@ void EditorObjectMgr::clear()
 
 			
 		buildings.Clear();
-		units.Clear();
+		units.clear();
 
 		for ( LINK_LIST::EIterator liter = links.Begin(); !liter.IsDone(); liter++ )
 			delete *liter;
@@ -600,7 +600,7 @@ EditorObject* EditorObjectMgr::addBuilding( const Stuff::Vector3D& position, uns
 	else if ( type == GV_TYPE  || type == MECH_TYPE )
 	{
 		Unit* tmp = new Unit( alignment );
-		units.Append( tmp );
+		units.push_back( tmp );
 		info = tmp;
 		info->appearInfo->appearance = getAppearance( group, indexWithinGroup );
 
@@ -727,10 +727,12 @@ bool	EditorObjectMgr::deleteBuilding( const EditorObject* pInfo )
 		}
 	}
 
-	if ( units.Count() && pInfo )
+	if ( static_cast<int>(units.size()) && pInfo )
 	{
-		for ( UNIT_LIST::EIterator mIter = units.End(); !mIter.IsDone(); mIter-- )
+		for (size_t index = units.size(); index > 0; )
 		{
+			--index;
+			auto mIter = units.begin() + index;
 			if( pInfo->cellColumn == (*mIter)->cellColumn
 				&& pInfo->cellRow == (*mIter)->cellRow )
 			{
@@ -740,7 +742,7 @@ bool	EditorObjectMgr::deleteBuilding( const EditorObject* pInfo )
 				delete( *mIter );
 				removeFromSelection(*mIter);
 				EditorData::instance->handleObjectInvalidation(*mIter);
-				units.Delete( mIter );
+				units.erase(mIter);
 				return true;
 			}		
 		}
@@ -967,8 +969,8 @@ EditorObject* EditorObjectMgr::getObjectAtCell( long realCellJ, long realCellI )
 
 		}
 
-		for( UNIT_LIST::EIterator uIter = units.Begin();
-		!uIter.IsDone(); uIter++ )
+		for( auto uIter = units.begin();
+		uIter != units.end(); uIter++ )
 		{
 			if (  labs( realCellI - ((*uIter)->cellColumn - 4)) <= 8
 				&& labs( realCellJ - ((*uIter)->cellRow - 4)) <= 8 )
@@ -1124,7 +1126,7 @@ int EditorObjectMgr::getUnitGroupCount( ) const
 
 void EditorObjectMgr::getSelectedUnits( SelectedUnits& selUnits )
 {
-	for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = units.begin(); iter != units.end(); iter++ )
 	{
 		if ( (*iter)->isSelected() )
 			selUnits.push_back( (*iter) );

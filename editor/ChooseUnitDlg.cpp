@@ -57,8 +57,8 @@ BOOL ChooseUnitDlg::OnInitDialog()
 
 	EditorObjectMgr::UNIT_LIST completeUnitList = EditorObjectMgr::instance()->getUnits();
 	{
-		EditorObjectMgr::UNIT_LIST::EConstIterator it = completeUnitList.Begin();
-		while (!it.IsDone()) {
+		auto it = completeUnitList.begin();
+		while (it != completeUnitList.end()) {
 			if ((*it)->getAlignment() != m_alignmentToExclude) {
 				m_unitList.push_back(*it);
 			}

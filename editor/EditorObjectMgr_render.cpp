@@ -60,8 +60,8 @@ void EditorObjectMgr::update()
 	}
 
 		const bool moverRefresh = editorMoverRefreshOn();
-		for ( UNIT_LIST::EIterator mIter = units.Begin();
-		!mIter.IsDone(); mIter++ )
+		for ( auto mIter = units.begin();
+		mIter != units.end(); mIter++ )
 		{
 			EditorObject* pObj = (*mIter);
 			currentFloatHelp = 0;
@@ -105,7 +105,7 @@ void EditorObjectMgr::render()
 	// batcher; the flush happens later via mcTextureManager->renderLists().
 	// See docs/superpowers/plans/2026-05-25-editor-rebuild.md S2 followup.
 
-	// EDITOR-STATIC-PREWARM-1: the editor registers static props (registerStatic
+	// the editor registers static props (registerStatic
 	// arms needsFullBakeNextFrame) but, unlike the game's Mission::init -> objmgr
 	// prewarmStaticPropLightBakes, NEVER drains the H4 latch. A static editor scene
 	// never re-bakes in-view, so a prop's per-instance lightDataIndex is captured by
@@ -151,7 +151,7 @@ void EditorObjectMgr::render()
 	if (s_emrLog)
 		EditorObjMgrTrace("EditorObjectMgr::render frame=%ld renderObjects=%d renderTrees=%d buildings=%ld units=%ld links=%ld dropZones=%ld",
 			s_emrFrame, renderObjects ? 1 : 0, renderTrees ? 1 : 0,
-			(long)buildings.Count(), (long)units.Count(),
+			(long)buildings.Count(), (long)static_cast<int>(units.size()),
 			(long)links.Count(), (long)dropZones.Count());
 
 	long bTreeFiltered = 0;
@@ -202,9 +202,9 @@ void EditorObjectMgr::render()
 	long uRendered = 0;
 	if (s_emrLog)
 		EditorObjMgrTrace("EditorObjectMgr::render frame=%ld units-loop enter count=%ld",
-			s_emrFrame, (long)units.Count());
-	for ( UNIT_LIST::EIterator mIter = units.Begin();
-		!mIter.IsDone(); mIter++ )
+			s_emrFrame, (long)static_cast<int>(units.size()));
+	for ( auto mIter = units.begin();
+		mIter != units.end(); mIter++ )
 	{
 		EditorObject* pObj = (*mIter);
 		currentFloatHelp = 0;
@@ -394,7 +394,7 @@ EditorObject* EditorObjectMgr::findObjectByStaticRecipeIndex(int32_t recipeIndex
 		if (obj->appearance()->getStaticRecipeIndex() == recipeIndex)
 			return obj;
 	}
-	for (UNIT_LIST::EIterator mIter = units.Begin(); !mIter.IsDone(); mIter++)
+	for (auto mIter = units.begin(); mIter != units.end(); mIter++)
 	{
 		Unit* unit = *mIter;
 		if (!unit || !unit->appearance())

@@ -7,7 +7,6 @@
 
 Unit::Unit( int align )
 {
-	pAlternativeInstances = new CUnitList;
 	unsigned long squadNum = EditorObjectMgr::instance()->getNextAvailableSquadNum();
 	setSquad(squadNum);
 	EditorObjectMgr::instance()->registerSquadNum(squadNum);
@@ -27,7 +26,7 @@ Unit::Unit( int align )
 
 Unit::~Unit()
 {
-	delete pAlternativeInstances;
+	alternatives.clear();
 }
 
 Unit::Unit( const Unit& src ) : EditorObject( src )
@@ -45,8 +44,7 @@ Unit::Unit( const Unit& src ) : EditorObject( src )
 		setColors(color1, color2, color3);
 		setSelfRepairBehaviorEnabled(src.getSelfRepairBehaviorEnabled());
 		setVariant(src.getVariant());
-		pAlternativeInstances = new CUnitList;
-		(*pAlternativeInstances) = *(src.pAlternativeInstances);
+		alternatives.insert(alternatives.end(), src.alternatives.begin(), src.alternatives.end());
 		squad = src.squad;
 		orderType = src.orderType;
 		stance = src.stance;
@@ -79,7 +77,7 @@ void Unit::refreshPartFromCatalog()
 	const char* csv = EditorObjectMgr::instance()->getFileName(id);
 	authoredPart = PartDefinition{vehicle ? 2ul : 1ul,
 		vehicle ? (player ? "pv20600" : "pv20500") : (player ? "PM207300" : "PM101100"), csv ? csv : ""};
-	for (auto it = pAlternativeInstances->Begin(); !it.IsDone(); it++)
+	for (auto it = alternatives.begin(); it != alternatives.end(); it++)
 		(*it).refreshPartFromCatalog();
 }
 
@@ -170,7 +168,7 @@ bool Unit::save( FitIniFile* file, int WarriorNumber )
 	file->writeIdULong( "VariantNumber", variant );
 
 	file->writeIdULong( "SquadNum", getSquad() );
-	file->writeIdULong( "NumAlternatives", pAlternativeInstances->Count() );
+	file->writeIdULong( "NumAlternatives", static_cast<unsigned long>(alternatives.size()) );
 
 	// Patrol/Move order authoring (additive — only written when the user has
 	// AUTHORED an order in-editor, so stock missions whose patrol lives in the
@@ -339,7 +337,8 @@ Unit& Unit::operator=( const Unit& src )
 		setColors(color1, color2, color3);
 		setSelfRepairBehaviorEnabled(src.getSelfRepairBehaviorEnabled());
 		setVariant(src.getVariant());
-		(*pAlternativeInstances) = *(src.pAlternativeInstances);
+		alternatives.clear();
+		alternatives.insert(alternatives.end(), src.alternatives.begin(), src.alternatives.end());
 		squad = src.squad;
 		orderType = src.orderType;
 		stance = src.stance;
@@ -543,8 +542,8 @@ void Unit::importPatrolFromBrainIfNeeded()
 
 void Unit::setSquad(unsigned long newSquad) {
 	squad = newSquad;
-	CUnitList::EIterator iter = pAlternativeInstances->Begin();
-	while (!iter.IsDone())
+	auto iter = alternatives.begin();
+	while (iter != alternatives.end())
 	{
 		(*iter).setSquad(newSquad);
 		iter++;

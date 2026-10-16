@@ -233,7 +233,7 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	// Display-only (orderAuthored stays false) -> stock missions are not rewritten.
 	{
 		EditorObjectMgr::UNIT_LIST allUnits = EditorObjectMgr::instance()->getUnits();
-		for ( EditorObjectMgr::UNIT_LIST::EIterator it = allUnits.Begin(); !it.IsDone(); it++ )
+		for ( auto it = allUnits.begin(); it != allUnits.end(); it++ )
 			if ( *it )
 				(*it)->importPatrolFromBrainIfNeeded();
 	}

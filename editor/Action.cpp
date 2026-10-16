@@ -598,7 +598,7 @@ bool ModifyUnitOrderAction::apply( const Snap& s )
 	if ( !mgr )
 		return false;
 	EditorObjectMgr::UNIT_LIST list = mgr->getUnits();
-	for ( EditorObjectMgr::UNIT_LIST::EIterator it = list.Begin(); !it.IsDone(); it++ )
+	for ( auto it = list.begin(); it != list.end(); it++ )
 	{
 		Unit* u = *it;
 		if ( !u || u->getID() != m_unitId )

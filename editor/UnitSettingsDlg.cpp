@@ -530,9 +530,9 @@ int UnitSettingsDlg::getPossibilityIndex()
 		return 0;
 	}
 	int i;
-	for (i = 0; i < (int)pFirstPossibility->pAlternativeInstances->Count(); i++)
+	for (i = 0; i < (int)pFirstPossibility->alternatives.size(); i++)
 	{
-		if (pUnit == &(*(pFirstPossibility->pAlternativeInstances->Iterator(i))))
+		if (pUnit == &(*std::next(pFirstPossibility->alternatives.begin(), i)))
 		{
 			return i + 1;
 		}

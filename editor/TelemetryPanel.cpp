@@ -60,7 +60,7 @@ void TelemetryPanel::Draw()
     {
         // getUnits/getBuildings/getDropZones return EList COPIES (O(n) each) --
         // acceptable once per frame for an editor map.
-        const long nUnits     = (long)mgr->getUnits().Count();
+        const long nUnits     = (long)mgr->getUnits().size();
         const long nBuildings = (long)mgr->getBuildings().Count();
         const long nDropZones = (long)mgr->getDropZones().Count();
         const long nTotal     = nUnits + nBuildings + nDropZones;

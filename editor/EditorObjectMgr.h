@@ -215,7 +215,7 @@ public:
 	inline DWORD getTacMapColor( int ID ) const;
 
 	typedef EList< EditorObject*, EditorObject*>  BUILDING_LIST;	// buildings on the map
-	typedef EList< Unit*, Unit* > UNIT_LIST;
+	using UNIT_LIST = std::vector<Unit*>;
 	typedef EList< DropZone*, DropZone* > DROPZONE_LIST;
 
 	void getSelectedUnits( SelectedUnits& );

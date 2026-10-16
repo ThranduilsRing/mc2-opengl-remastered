@@ -140,7 +140,7 @@ OutlinerCounts SceneOutliner::ComputeCounts()
         return c;
 
     EditorObjectMgr::UNIT_LIST units = mgr->getUnits();
-    c.units = (int)units.Count();
+    c.units = static_cast<int>(units.size());
 
     EditorObjectMgr::BUILDING_LIST buildings = mgr->getBuildings();
     for (EditorObjectMgr::BUILDING_LIST::EIterator it = buildings.Begin();
@@ -172,7 +172,7 @@ bool SceneOutliner::SelectFirstObject()
         return false;
 
     EditorObjectMgr::UNIT_LIST units = mgr->getUnits();
-    for (EditorObjectMgr::UNIT_LIST::EIterator it = units.Begin(); !it.IsDone(); it++)
+    for (auto it = units.begin(); it != units.end(); it++)
     {
         if (*it)
         {
@@ -272,7 +272,7 @@ void SceneOutliner::Draw()
         if (ImGui::CollapsingHeader(header))
         {
             EditorObjectMgr::UNIT_LIST units = mgr->getUnits();
-            for (EditorObjectMgr::UNIT_LIST::EIterator it = units.Begin(); !it.IsDone(); it++)
+            for (auto it = units.begin(); it != units.end(); it++)
             {
                 EditorObject* obj = (*it);
                 char label[160];

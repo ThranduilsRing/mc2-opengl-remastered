@@ -112,7 +112,7 @@ EditorObject* EditorObjectMgr::getObjectAtPosition( const Stuff::Vector3D& posit
 		if ( d <= r * r && d < bestDistSq ) { bestDistSq = d; pBest = o; }
 	}
 
-	for ( UNIT_LIST::EIterator mIter = units.Begin(); !mIter.IsDone(); mIter++ )
+	for ( auto mIter = units.begin(); mIter != units.end(); mIter++ )
 	{
 		EditorObject* o = (*mIter);
 		if ( !o || !o->appearance() ) continue;
@@ -304,7 +304,7 @@ EditorObject* EditorObjectMgr::getObjectAtScreenPosition( int screenX, int scree
 	for( BUILDING_LIST::EIterator iter = buildings.Begin(); !iter.IsDone(); iter++ )
 		EditorObjectMgr_ConsiderScreenPick(*iter, clickX, clickY, pixelFloor, bestPixSq, pBest);
 
-	for( UNIT_LIST::EIterator mIter = units.Begin(); !mIter.IsDone(); mIter++ )
+	for( auto mIter = units.begin(); mIter != units.end(); mIter++ )
 		EditorObjectMgr_ConsiderScreenPick(*mIter, clickX, clickY, pixelFloor, bestPixSq, pBest);
 
 	for ( DROP_LIST::EIterator dIter = dropZones.Begin(); !dIter.IsDone(); dIter++ )
@@ -331,7 +331,7 @@ EditorObject* EditorObjectMgr::getObjectAtScreenPosition( int screenX, int scree
 				float dx = sp.x - clickX, dy = sp.y - clickY, d2 = dx*dx + dy*dy;
 				if ( d2 < nbest ) { nbest = d2; nWorld = wp; nSx = sp.x; nSy = sp.y; nKind = "bldg"; }
 			}
-			for ( UNIT_LIST::EIterator i = units.Begin(); !i.IsDone(); i++ )
+			for ( auto i = units.begin(); i != units.end(); i++ )
 			{
 				if ( !(*i) || !(*i)->appearance() ) continue;
 				Stuff::Vector3D wp = (*i)->appearance()->position; Stuff::Vector4D sp;
@@ -379,7 +379,7 @@ EditorObject* EditorObjectMgr::getObjectAtLocation( float x, float y )
 		}
 	}
 
-	for( UNIT_LIST::EIterator mIter = units.Begin(); !mIter.IsDone(); mIter++ )
+	for( auto mIter = units.begin(); mIter != units.end(); mIter++ )
 	{
 		if (areCloseEnough((*mIter)->getPosition().x, x) && areCloseEnough((*mIter)->getPosition().y, y))
 		{

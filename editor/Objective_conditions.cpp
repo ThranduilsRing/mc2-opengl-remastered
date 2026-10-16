@@ -115,14 +115,14 @@ bool CSpecificUnitObjectiveCondition::Read( FitIniFile* missionFile )
 		return true;
 	}
 	EditorObjectMgr::UNIT_LIST units = EditorObjectMgr::instance()->getUnits();
-	EditorObjectMgr::UNIT_LIST::EConstIterator it = units.Begin();
-	while (!it.IsDone()) {
+	auto it = units.begin();
+	while (it != units.end()) {
 		if (areCloseEnough((*it)->getPosition().x, positionX)  && areCloseEnough((*it)->getPosition().y, positionY)) {
 			break;
 		}
 		it++;
 	}
-	if (it.IsDone()) return EditorFit::reject("objective unit reference");
+	if (it == units.end()) return EditorFit::reject("objective unit reference");
 	m_pUnit = (*it);
 	m_authoredPosition.read(positionX, positionY, m_pUnit->getPosition().x, m_pUnit->getPosition().y);
 	if (m_pUnit) {
@@ -201,14 +201,14 @@ bool CSpecificUnitObjectiveCondition::NoteThePositionsOfObjectsReferenced() {
 
 bool CSpecificUnitObjectiveCondition::RestoreObjectPointerReferencesFromNotedPositions() {
 	EditorObjectMgr::UNIT_LIST units = EditorObjectMgr::instance()->getUnits();
-	EditorObjectMgr::UNIT_LIST::EConstIterator it = units.Begin();
-	while (!it.IsDone()) {
+	auto it = units.begin();
+	while (it != units.end()) {
 		if (areCloseEnough((*it)->getPosition().x, m_LastNotedPositionX)  && areCloseEnough((*it)->getPosition().y, m_LastNotedPositionY)) {
 			break;
 		}
 		it++;
 	}
-	if (it.IsDone()) return EditorFit::reject("objective unit reference");
+	if (it == units.end()) return EditorFit::reject("objective unit reference");
 	if (!m_pUnit)
 		m_authoredPosition.read(m_LastNotedPositionX, m_LastNotedPositionY, (*it)->getPosition().x, (*it)->getPosition().y);
 	m_pUnit = (*it);

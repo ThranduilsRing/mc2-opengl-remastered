@@ -17,6 +17,136 @@ from editor.tests.legacy_reference import (FROZEN, PLACEMENTS, buildings, compar
 
 
 class LegacyLinkTests(unittest.TestCase):
+    def save_order_fixture(self, name, main, mutation):
+        root = Path(__file__).resolve().parents[2]
+        output = Path(tempfile.gettempdir()) / ('mc2-' + name) / uuid.uuid4().hex
+        output.mkdir(parents=True)
+        prefix = r'''
+#include <cassert>
+#include <climits>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <new>
+#include <vector>
+#include <list>
+#include <string>
+#include <format>
+#include <malloc.h>
+#define gosASSERT(x) assert(x)
+struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } } heap;
+Heap* systemHeap = &heap;
+'''
+        prefix += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(encoding='utf-8'), flags=re.M)
+        prefix += r'''
+struct FitIniFile {
+    std::string bytes;
+    const char* getFilename() { return "fixture.fit"; }
+    void writeBlock(const char* s) { bytes += std::string("[") + s + "]\n"; }
+    void writeIdULong(const char* s, unsigned long n) { bytes += std::format("{}={}\n", s, n); }
+    void writeIdLongArray(const char* s, long* v, int n) {
+        bytes += s; for (int i = 0; i < n; ++i) bytes += std::format(",{}", v[i]); bytes += '\n';
+    }
+};
+struct EditorObject {
+    int id; bool nav = true; int label = 0;
+    int getID() { return id; }
+    bool save(FitIniFile* f, int n) {
+        if (nav) { f->writeIdULong(std::format("nav{}", n).c_str(), id);
+            f->writeIdULong("label", label); } return nav;
+    }
+};
+using DropZone = EditorObject;
+struct Unit {
+    int id, player, squad; int lance = -1, mate = -1;
+    ALTERNATIVES alternatives;
+    int getAlignment() { return player; } int getSquad() { return squad; }
+    void setLanceInfo(int l, int m) { lance = l; mate = m; }
+    void save(FitIniFile* f, int n) { f->writeIdULong(std::format("unit{}", n).c_str(), id); }
+};
+struct Asset { void AddRelationship(const char*, const char*) {} void Close() {} } asset;
+using IProviderAsset = Asset; using IProviderAssetPtr = Asset*;
+enum AssetType { unused }; constexpr int ProviderType_Primary = 0;
+struct Provider { Asset* OpenAsset(const char*, AssetType, int) { return &asset; } } provider;
+Asset* mapAsset = &asset; Asset* mechAsset = nullptr; Provider* armProvider = &provider;
+bool justResaveAllMaps = true;
+struct Player { int DefaultTeam() { return 0; } };
+struct Players { Player PlayerRef(int) { return {}; } };
+struct EditorData { static EditorData* instance; bool IsSinglePlayer() { return true; }
+    Players PlayersRef() { return {}; } int MaxPlayers() { return 8; } } data;
+EditorData* EditorData::instance = &data;
+constexpr int IDS_NO_ENEMY_UNITS = 0, IDS_WARNING = 0, IDS_NO_PLAYER_UNITS = 0,
+    IDS_PLAYERS_WITH_NO_UNITS = 0, IDS_TOO_MANY_PILOTS = 0;
+void EMessageBox(int, int, int) {} constexpr int MB_OK = 0;
+void EditorObjMgrTrace(const char*, ...) {}
+namespace mc2::fmt { int as_i32(int n) { return n; }
+    void to_buf_n(char* p, size_t n, const char*, int v) { snprintf(p, n, "warrior%02d", v); } }
+class EditorObjectMgr { public:
+    USING_UNIT
+    USING_BUILDING
+    USING_DROP
+    UNIT_LIST units; BUILDING_LIST buildings; DROP_LIST dropZones;
+    int getFitID(int n) { return n; }
+    bool saveMechs(FitIniFile&); bool saveDropZones(FitIniFile&);
+};
+'''
+
+        def source(old):
+            def read(path):
+                return (subprocess.check_output(['git', 'show', '4bf149ed0:' + path], cwd=root,
+                        **child_kwargs(redirected=True)).decode('utf-8') if old else
+                        (root / path).read_text(encoding='utf-8'))
+            header, implementation = read('editor/EditorObjectMgr.h'), read('editor/EditorObjectMgr_io.cpp')
+            text = prefix
+            for token, alias in [('USING_UNIT', 'UNIT_LIST'), ('USING_BUILDING', 'BUILDING_LIST'), ('USING_DROP', 'DROP_LIST')]:
+                text = text.replace(token, next(line.strip().split('//')[0] for line in header.splitlines()
+                    if re.search(r'(typedef|using).*\b' + alias + r'\b', line)))
+            legacy = 'typedef EList< Unit*' in header
+            text = text.replace('ALTERNATIVES', 'EList<Unit, Unit&>' if legacy else 'std::list<Unit>')
+            signature = 'EditorObjectMgr::' + name
+            start = implementation.index('bool', implementation.index(signature) - 10)
+            opening = implementation.index('{', start)
+            depth, end = 1, opening + 1
+            while depth:
+                depth += (implementation[end] == '{') - (implementation[end] == '}')
+                end += 1
+            body = implementation[start:end]
+            if legacy:
+                body = body.replace('pAlternativeInstances->', 'alternatives.').replace('(*((*iter)->pAlternativeInstances))[i]', '(*iter)->alternatives[i]')
+            return text + body + main.replace('APPEND', 'Append' if legacy else 'push_back')
+
+        def run(text, label):
+            cpp, exe = output / (label + '.cpp'), output / (label + '.exe')
+            cpp.write_text(text, encoding='utf-8')
+            result = subprocess.run(['clang++', '-std=c++23', str(cpp), '-o', str(exe)], capture_output=True,
+                                    text=True, timeout=90, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            result = subprocess.run([str(exe)], capture_output=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            (output / (label + '.fit')).write_bytes(result.stdout)
+            return result.stdout
+
+        before = run(source(True), 'old')
+        current = source(False)
+        self.assertEqual(before, run(current, 'current'))
+        changed = mutation(current)
+        self.assertNotEqual(current, changed)
+        self.assertNotEqual(before, run(changed, 'wrong-order'))
+        print(f'Save order fixture artifacts: {output}')
+
+    def test_equal_squad_export_preserves_first_minimum_and_player_order(self):
+        self.save_order_fixture('saveMechs', r'''
+int main() {
+    EditorObjectMgr mgr; Unit a{10,1,2}, b{11,0,3}, c{12,1,2}, d{13,0,1}, e{14,0,3};
+    Unit alternative{15,0,3}; b.alternatives.APPEND(alternative);
+    for (auto* u : {&a,&b,&c,&d,&e}) mgr.units.APPEND(u);
+    FitIniFile file; mgr.saveMechs(file); fwrite(file.bytes.data(), 1, file.bytes.size(), stdout);
+}
+''', lambda text: text.replace('unitsByPlayer[alignment].Append((*iter));',
+                               'if (unitsByPlayer[alignment].Count()) unitsByPlayer[alignment].Insert((*iter), 0UL); else unitsByPlayer[alignment].Append((*iter));').replace(
+                               'unitsByPlayer[alignment].push_back((*iter));',
+                               'unitsByPlayer[alignment].insert(unitsByPlayer[alignment].begin(), (*iter));'))
+
     def test_selection_preserves_borrowed_copies_unique_order_and_roster_sync(self):
         root = Path(__file__).resolve().parents[2]
         output = Path(tempfile.gettempdir()) / 'mc2-el9-selection' / uuid.uuid4().hex
@@ -47,8 +177,10 @@ class LegacyLinkTests(unittest.TestCase):
                        'class EditorObjectMgr { public:\n')
             start = header.index('\tclass EDITOR_OBJECT_LIST' if legacy else '\tusing EDITOR_OBJECT_LIST')
             source += header[start:header.index('\tEditorObjectMgr();', start)]
+            roster_vector = 'using UNIT_LIST = std::vector' in header
             source += ('using BUILDING_LIST = EList<EditorObject*, EditorObject*>; '
-                       'using UNIT_LIST = EList<Unit*, Unit*>; using DROP_LIST = BUILDING_LIST;\n'
+                       + ('using UNIT_LIST = std::vector<Unit*>; ' if roster_vector else 'using UNIT_LIST = EList<Unit*, Unit*>; ')
+                       + 'using DROP_LIST = BUILDING_LIST;\n'
                        'BUILDING_LIST buildings, dropZones; UNIT_LIST units; EDITOR_OBJECT_LIST selectedObjects; '
                        'bool selectedObjectsNeedsToBeSynched = false;\n')
             signatures = ['void EditorObjectMgr::select( EditorObject &',
@@ -103,6 +235,8 @@ int main() {
     filter(mixed); assert(mixed.SIZE() == 3 && mixed[0] == &a && mixed[1] == &missing && mixed[2] == &a);
 }
 '''
+            if roster_vector:
+                main = main.replace('mgr.units.Append', 'mgr.units.push_back')
             return source + main.replace('EMPTY_FILTER', '' if legacy else 'filter(mixed); assert(mixed.size() == 0);').replace('SIZE', 'Count' if legacy else 'size').replace('CLEAR', 'Clear' if legacy else 'clear').replace('APPEND', 'Append' if legacy else 'push_back').replace('SELECTED_UNITS', 'EditorObjectMgr::UNIT_LIST' if legacy else 'EditorObjectMgr::SelectedUnits')
 
         def run(source, label, succeeds=True):

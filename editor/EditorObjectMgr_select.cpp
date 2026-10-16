@@ -52,8 +52,8 @@ void EditorObjectMgr::select( const Stuff::Vector4D& pos1, const Stuff::Vector4D
 			}
 		}
 
-		for ( UNIT_LIST::EIterator mIter = units.Begin();
-		!mIter.IsDone(); mIter++ )
+		for ( auto mIter = units.begin();
+		mIter != units.end(); mIter++ )
 		{
 			EditorObject* pObject = (*mIter);
 			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
@@ -127,8 +127,8 @@ void EditorObjectMgr::unselectAll()
 			if ( pAppearance )
 				pAppearance->selected = false;
 		}
-		for ( UNIT_LIST::EIterator mIter = units.Begin();
-		!mIter.IsDone(); mIter++ )
+		for ( auto mIter = units.begin();
+		mIter != units.end(); mIter++ )
 		{
 			EditorObject* pObject = (*mIter);
 			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
@@ -164,8 +164,8 @@ bool EditorObjectMgr::hasSelection()
 			if ((*iter)->appearance()->selected )				
 				return true;
 		}
-		for ( UNIT_LIST::EConstIterator mIter = units.Begin();
-		!mIter.IsDone(); mIter++ )
+		for ( auto mIter = units.begin();
+		mIter != units.end(); mIter++ )
 		{
 			if ((*mIter)->appearance()->selected )				
 				return true;
@@ -188,8 +188,8 @@ int EditorObjectMgr::getSelectionCount()
 			if ((*iter)->appearance()->selected )				
 				counter++;
 		}
-		for ( UNIT_LIST::EConstIterator mIter = units.Begin();
-		!mIter.IsDone(); mIter++ )
+		for ( auto mIter = units.begin();
+		mIter != units.end(); mIter++ )
 		{
 			if ((*mIter)->appearance()->selected )				
 				counter++;
@@ -220,8 +220,8 @@ void EditorObjectMgr::syncSelectedObjectPointerList()
 		if (pAppearance && pAppearance->selected )				
 			selectedObjects.push_back(*iter);
 	}
-	for ( UNIT_LIST::EConstIterator mIter = units.Begin();
-	!mIter.IsDone(); mIter++ )
+	for ( auto mIter = units.begin();
+	mIter != units.end(); mIter++ )
 	{
 		const EditorObject* pObject = (*mIter);
 		const ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
@@ -260,21 +260,18 @@ void EditorObjectMgr::deleteSelectedObjects()
 				iter--;
 		}
 
-		for ( UNIT_LIST::EIterator uIter = units.End();
-		!uIter.IsDone(); )
+		for (size_t index = units.size(); index > 0; )
 		{
+			--index;
+			auto uIter = units.begin() + index;
 			// appearance() can be NULL; guard before ->selected.
 			if ( (*uIter)->appearance() && (*uIter)->appearance()->selected )
 			{
 				// scrub drag pointer for removed object (UAF guard).
 				if ( EditorInterface::instance() )
 					EditorInterface::instance()->notifyObjectDeleted(*uIter);
-				UNIT_LIST::EIterator tmpIter = uIter;
-				uIter --;
-				units.Delete( tmpIter );
+				units.erase(uIter);
 			}
-			else
-				uIter--;
 		}
 
 		for ( DROP_LIST::EIterator dIter = dropZones.End();
@@ -315,7 +312,7 @@ void EditorObjectMgr::adjustObjectsToNewTerrainHeights()
 		(*lIter)->FixHeights();	
 	}
 
-	for ( UNIT_LIST::EIterator uIter = units.Begin(); !uIter.IsDone(); uIter++ )
+	for ( auto uIter = units.begin(); uIter != units.end(); uIter++ )
 	{
 		float Z = land->getTerrainElevation( (*uIter)->appearance()->position );
 		(*uIter)->appearance()->position.z = Z;
