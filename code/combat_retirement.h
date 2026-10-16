@@ -46,6 +46,32 @@ struct CombatClock {
     }
 };
 
+// The native interim save keeps the binary64 remainder, independent of mission time.
+struct SavedCombatClock {
+    std::uint64_t ticks;
+    double frac;
+
+    bool valid() const {
+        return ticks != invalidTick && std::isfinite(frac) && frac >= 0 && frac < 1;
+    }
+};
+
+inline constexpr int combatClockPacket = 3;
+
+template<class Packet>
+std::optional<SavedCombatClock> readCombatClock(Packet& file)
+{
+    if (file.getNumPackets() <= combatClockPacket) return std::nullopt;
+    SavedCombatClock saved{};
+    const auto resume = file.getCurrentPacket();
+    const bool valid = file.seekPacket(combatClockPacket) == 0 &&
+        file.getPacketSize() == sizeof(saved) &&
+        file.readPacket(combatClockPacket, reinterpret_cast<unsigned char*>(&saved)) == sizeof(saved) &&
+        saved.valid();
+    file.seekPacket(resume);
+    return valid ? std::optional(saved) : std::nullopt;
+}
+
 struct RetirePolicy {
     std::optional<std::uint64_t> ticks = 0;
     std::string_view source = "absent_default";
@@ -59,12 +85,39 @@ struct RetirePolicy {
 };
 
 enum class ArmResult { armed, already_attempted, policy, deadline_overflow };
+enum class SavedDeadlineState : std::uint8_t { unattempted, armed, invalid_policy, overflow };
+
+inline bool validSavedDeadline(std::uint64_t tick, SavedDeadlineState state)
+{
+    switch (state) {
+    case SavedDeadlineState::armed: return tick != invalidTick;
+    case SavedDeadlineState::unattempted:
+    case SavedDeadlineState::invalid_policy:
+    case SavedDeadlineState::overflow: return tick == 0;
+    }
+    return false;
+}
 
 struct RetireDeadline {
     std::uint64_t tick = 0;
     bool armed = false;
     bool attempted = false;
     std::string_view source = "unarmed";
+
+    SavedDeadlineState savedState() const {
+        if (armed) return SavedDeadlineState::armed;
+        if (!attempted) return SavedDeadlineState::unattempted;
+        return source == "invalid_policy" ? SavedDeadlineState::invalid_policy : SavedDeadlineState::overflow;
+    }
+
+    static RetireDeadline restore(std::uint64_t tick, SavedDeadlineState state, const RetirePolicy& policy) {
+        switch (state) {
+        case SavedDeadlineState::armed: return {tick, true, true, policy.source};
+        case SavedDeadlineState::invalid_policy: return {0, false, true, "invalid_policy"};
+        case SavedDeadlineState::overflow: return {0, false, true, "deadline_overflow"};
+        default: return {};
+        }
+    }
 
     ArmResult arm(std::uint64_t now, const RetirePolicy& policy)
     {

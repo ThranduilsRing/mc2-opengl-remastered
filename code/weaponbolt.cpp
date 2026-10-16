@@ -674,7 +674,6 @@ void WeaponBolt::Save (PacketFilePtr file, long packetNum)
 	MC2_SAVE_STRUCT(WeaponBoltData, data);
 	CopyTo(&data);
 
-	//PacketNum incremented in ObjectManager!!
 	file->writePacket(packetNum,(MemoryPtr)&data,sizeof(WeaponBoltData),STORAGE_TYPE_ZLIB);
 }
 
@@ -715,6 +714,13 @@ void WeaponBolt::CopyTo (WeaponBoltData *data)
 	data->gosTextureHandle = 0; // Runtime texture creation order must not affect saves; Load ignores this field.
 	data->startUV = startUV;
 	data->goalHeight = goalHeight;
+	data->retireDeadlineTick = retireDeadline.tick;
+	data->retireDeadlineState = retireDeadline.savedState();
+	if (mission && combatTrace.live && mc2_diag::tagEnabled("VFX_COMBAT")) {
+		const auto& clock = mission->getCombatClock();
+		traceRetireDeadline("save", std::format("\"combat_tick\":{},\"fraction_bits\":{},\"armed\":{},\"attempted\":{}",
+			clock.ticks, std::bit_cast<std::uint64_t>(clock.frac), retireDeadline.armed, retireDeadline.attempted));
+	}
 
 	GameObject::CopyTo(data);
 }
@@ -750,11 +756,8 @@ void WeaponBolt::Load (WeaponBoltData *data)
 
 	effectId = data->effectId;
 	hitTarget = data->hitTarget;
-	retireDeadline = {};
-	if (hitTarget) {
-		retireDeadline.attempted = true;
-		retireDeadline.source = "restore_unsaved";
-	}
+	retireDeadline = mc2::combat::RetireDeadline::restore(data->retireDeadlineTick,
+		data->retireDeadlineState, static_cast<WeaponBoltType*>(getObjectType())->retirePolicy);
 
 	timeLeft = data->timeLeft;
 	hsPos = data->hsPos;
@@ -764,9 +767,11 @@ void WeaponBolt::Load (WeaponBoltData *data)
 	goalHeight = data->goalHeight;
 	combatTrace.effect = effectId;
 	traceCombat("restore");
-	if (hitTarget && combatTrace.live && mc2_diag::tagEnabled("VFX_COMBAT"))
-		traceRetireDeadline("restore", std::format("\"combat_tick\":{},\"armed\":false",
-			mission ? mission->getCombatClock().ticks : 0));
+	if (mission && combatTrace.live && mc2_diag::tagEnabled("VFX_COMBAT")) {
+		const auto& clock = mission->getCombatClock();
+		traceRetireDeadline("restore", std::format("\"combat_tick\":{},\"fraction_bits\":{},\"armed\":{},\"attempted\":{}",
+			clock.ticks, std::bit_cast<std::uint64_t>(clock.frac), retireDeadline.armed, retireDeadline.attempted));
+	}
 	if (!getExists()) traceCombatRetire("loaded_inactive");
 }
 

@@ -664,6 +664,8 @@ std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFile
 	sizes.pureMover = sizeof(MoverData);
 
 	const long resume = file->getCurrentPacket();
+	if (!mc2::combat::readCombatClock(*file))
+		return "invalid_combat_clock";
 	const long numPackets = file->getNumPackets();
 	auto sizeAt = [file](uint32_t packet) -> uint32_t {
 		file->seekPacket(static_cast<int>(packet));
@@ -697,6 +699,16 @@ std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFile
 			if (headerPacket)
 				*headerPacket = p;
 			verdict = std::nullopt;
+			for (long slot = 0; slot <= slotCount(h); ++slot) {
+				const auto packet = static_cast<int>(p + 1 + slot);
+				if (sizeAt(packet) != sizeof(WeaponBoltData)) continue;
+				WeaponBoltData bolt{};
+				if (file->readPacket(packet, reinterpret_cast<MemoryPtr>(&bolt)) != sizeof(bolt) ||
+					!mc2::combat::validSavedDeadline(bolt.retireDeadlineTick, bolt.retireDeadlineState)) {
+					verdict = "invalid_bolt_deadline";
+					break;
+				}
+			}
 			break;
 		}
 		verdict = why;
