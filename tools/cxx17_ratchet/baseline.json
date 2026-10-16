@@ -51,13 +51,13 @@
    "LG02": 192,
    "LG03": 263,
    "LG04": 6,
-   "LG05": 124,
-   "LG06": 510,
+   "LG05": 125,
+   "LG06": 512,
    "LG07": 0,
    "LG08": 259,
    "LG09": 1949,
    "LG10": 42,
-   "LG11": 101,
+   "LG11": 89,
    "LG12a": 93,
    "LG12b": 30,
    "LG13": 317,
@@ -144,7 +144,7 @@
    "LG03": 872,
    "LG04": 21,
    "LG05": 198,
-   "LG06": 468,
+   "LG06": 470,
    "LG07": 2,
    "LG08": 17,
    "LG09": 2275,
@@ -309,7 +309,11 @@
   "GameOS/gameos/asset_scale.h": {
    "LG06": 2
   },
+  "GameOS/gameos/debug_line_project.h": {
+   "LG05": 1
+  },
   "GameOS/gameos/debug_renderer.cpp": {
+   "LG06": 1,
    "LG09": 6,
    "LG10": 3
   },
@@ -333,8 +337,7 @@
    "LG06": 4,
    "LG08": 8,
    "LG09": 55,
-   "LG10": 2,
-   "LG11": 1
+   "LG10": 2
   },
   "GameOS/gameos/gameos.cpp": {
    "LG03": 11,
@@ -700,6 +703,9 @@
    "LG06": 1
   },
   "GameOS/gameos/gos_screenshot.h": {
+   "LG06": 1
+  },
+  "GameOS/gameos/gos_screenshot_slot.h": {
    "LG06": 2
   },
   "GameOS/gameos/gos_smoke.cpp": {
@@ -1151,7 +1157,8 @@
    "LG06": 2
   },
   "GameOS/gameos/vk_island_util.h": {
-   "LG06": 3
+   "LG06": 3,
+   "LG11": 1
   },
   "GameOS/gameos/vk_render_pass_timer.cpp": {
    "LG06": 1
@@ -1172,7 +1179,6 @@
    "LG06": 2,
    "LG09": 28,
    "LG10": 1,
-   "LG11": 1,
    "LG13": 4,
    "LG17": 2
   },
@@ -1188,7 +1194,6 @@
    "LG06": 2,
    "LG08": 2,
    "LG09": 10,
-   "LG11": 1,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_legacy_shape_island.h": {
@@ -1197,41 +1202,35 @@
   "GameOS/gameos/vulkan_mech_island.cpp": {
    "LG06": 2,
    "LG09": 19,
-   "LG11": 1,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_post_fog_native.cpp": {
    "LG03": 2,
    "LG06": 2,
    "LG09": 20,
-   "LG11": 1,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_post_hzb_native.cpp": {
    "LG03": 1,
    "LG06": 2,
    "LG09": 17,
-   "LG11": 1,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_post_screenfx_native.cpp": {
    "LG03": 3,
    "LG06": 3,
    "LG09": 34,
-   "LG11": 1,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_post_ssao_native.cpp": {
    "LG03": 2,
    "LG06": 2,
    "LG09": 31,
-   "LG11": 1,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_shadow_island_live.cpp": {
    "LG06": 5,
    "LG09": 32,
-   "LG11": 1,
    "LG13": 2,
    "LG17": 5
   },
@@ -1256,12 +1255,10 @@
    "LG06": 2,
    "LG08": 2,
    "LG09": 9,
-   "LG11": 1,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_terrain_island.cpp": {
-   "LG06": 1,
-   "LG11": 1
+   "LG06": 1
   },
   "GameOS/gameos/vulkan_terrain_island_images.cpp": {
    "LG09": 19
@@ -1287,12 +1284,10 @@
   "GameOS/gameos/vulkan_vfx_island.cpp": {
    "LG06": 2,
    "LG09": 8,
-   "LG11": 1,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_water_island.cpp": {
-   "LG06": 1,
-   "LG11": 1
+   "LG06": 1
   },
   "GameOS/gameos/vulkan_water_island_images.cpp": {
    "LG08": 2,
@@ -2135,11 +2130,11 @@
   },
   "code/logistics.cpp": {
    "LG03": 11,
-   "LG06": 1,
+   "LG06": 2,
    "LG09": 1
   },
   "code/logistics.h": {
-   "LG06": 2
+   "LG06": 3
   },
   "code/logistics_begin.cpp": {
    "LG03": 1,
@@ -5132,7 +5127,7 @@
    "LG20": 3
   }
  },
- "head": "4198b2dc6",
+ "head": "7fcca45de",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

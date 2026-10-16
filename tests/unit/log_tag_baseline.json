@@ -244,6 +244,28 @@
    "count": 5
   },
   {
+   "tag": "ANIM_TRACK_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "file",
+    "animations"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ANIM_TRACK_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "node",
+    "frames",
+    "quatBytes",
+    "posBytes"
+   ],
+   "count": 1
+  },
+  {
    "tag": "ASSET_SCALE",
    "ver": 1,
    "stream": "file",
@@ -6855,6 +6877,13 @@
    "count": 4
   },
   {
+   "tag": "OBJECTIVE_FIXTURE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
    "tag": "OBJECT_ADMISSION",
    "ver": 1,
    "stream": "stdout",
@@ -9325,6 +9354,55 @@
     "tileC",
     "inline",
     "cached"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHAPE_COUNT_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "file",
+    "shapes",
+    "textures"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHAPE_COUNT_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "file",
+    "vertices",
+    "triangles"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHAPE_COUNT_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "textures"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHAPE_COUNT_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "triangles"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHAPE_COUNT_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "vertices"
    ],
    "count": 1
   },

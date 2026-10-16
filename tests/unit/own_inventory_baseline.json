@@ -7704,7 +7704,7 @@
   "gui/alistbox.cpp": 2,
   "gui/asystem.cpp": 1,
   "mclib/ablenv.cpp": 1,
-  "mclib/apprtype.cpp": 3,
+  "mclib/apprtype.cpp": 4,
   "mclib/bdactor.cpp": 2,
   "mclib/bdactor_static.cpp": 4,
   "mclib/bdactor_terrain.cpp": 11,
