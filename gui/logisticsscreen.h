@@ -21,7 +21,7 @@ class aEdit;
 class aAnimObject;
 namespace UiDefs { class GameOSPage; }
 
-// EQUIP-ADD-UI-NAME-1 (S3): optional help-text resolver hook. The gui layer
+// optional help-text resolver hook. The gui layer
 // cannot link the game-side equipment engine (EditRel links gui without code/),
 // so the game installs equipmentAddUiTextForStringId here at the S2 ADD-fill
 // seam. Null (default, and always in EditRel/tools) or a null return -> the
@@ -92,15 +92,15 @@ class LogisticsScreen : public aObject
 	// composited UNDER the ImGui layer and double-drawn.
 	bool hasDefsUiPage() const;
 
-	// UI-DEFS-LOCKSTEP-HARDEN-1: loaded AND actually producing draw output
+	// loaded AND actually producing draw output
 	// (or legacy-passthrough). False => render/update use the legacy path
 	// (fail-soft: degraded but visible, never a black quad over nothing).
 	bool defsUiPageUsable() const;
 
-	// LEGACY-FRONTEND-COMPOSITE-1: true only when this screen's visible
+	// true only when this screen's visible
 	// content is drawn in the ImGui layer (usable defs page, NOT legacy
 	// passthrough). Callers that submit ImGui-layer backdrops/dims beneath
-	// this screen's page (MissionBegin MENU-STALE-CLEAR-2) must gate on
+	// This screen's page (MissionBegin) must gate on
 	// this: when false the screen renders through the legacy GameOS HUD
 	// layer, which composites UNDER ImGui, so an ImGui-layer backdrop
 	// would black out the whole screen.
@@ -115,7 +115,7 @@ class LogisticsScreen : public aObject
 	// Forward list data into the defsUiPage for screens that embed a GuiList
 	// inside their main FIT.  No-ops when hasDefsUiPage() is false.
 	bool setDefsListItems(const std::string& key, const std::vector<std::string>& items);
-	// BRIEFING-WRAP-1: wrap text exactly as one row of the defs GuiList would at
+	// wrap text exactly as one row of the defs GuiList would at
 	// the current display scale (see UiDefs::GameOSPage::wrapListItemText).
 	bool wrapDefsListText(const std::string& key, const std::string& text,
 		std::vector<std::string>& outLines);
@@ -123,7 +123,7 @@ class LogisticsScreen : public aObject
 	bool setDefsListItemColors(const std::string& key, const std::vector<unsigned int>& colors);
 	// Screen-rect of a defs element + an ImGui-layer rect draw, for overlaying dynamic
 	// content (mission-briefing objective markers) on top of a defs image, aligned to it.
-	// UI-LAYER-CONTRACT-2: bridge-render legacy widgets the defs page does not mirror.
+	// bridge-render legacy widgets the defs page does not mirror.
 	void renderUncoveredLegacyWidgets( int xOffset, int yOffset );
 	bool getDefsElementScreenRect(const std::string& key, float& x, float& y, float& w, float& h);
 	void drawDefsRect(float x, float y, float w, float h, unsigned int color, bool filled);

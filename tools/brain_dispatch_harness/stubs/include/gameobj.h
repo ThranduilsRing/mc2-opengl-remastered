@@ -1,7 +1,7 @@
 #pragma once
 #ifndef GAMEOBJ_H
 #define GAMEOBJ_H
-// BRAIN-DISPATCH-HARNESS-1: gameobj.h stub
+// gameobj.h stub
 // Provides just enough for brain_special_dispatch.cpp to compile.
 // Replaces the engine gameobj.h (which pulls mclib.h and the whole world).
 
@@ -21,7 +21,6 @@ public:
     virtual ~GameObject() = default;
     virtual long    getWatchID(bool assign = true) { return 0; }
     virtual TeamPtr getTeam() { return nullptr; }
-    // HARNESS-STUB-REPAIR-1: BRAIN-ENGAGE-1 / BRAIN-OPORD-MOVE-1 additions.
     virtual bool    isDisabled() { return false; }
     virtual Stuff::Vector3D getPosition() { return {}; }
 };

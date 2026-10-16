@@ -1,4 +1,4 @@
-// BRAIN-DISPATCH-HARNESS-1: dispatch wrapper.
+// dispatch wrapper.
 // Includes stub headers BEFORE the real brain_special_dispatch.cpp so that
 // stub warrior.h/tacordr.h/gameobj.h/objmgr.h/inifile.h win over the engine
 // versions in code/ (which MSVC would otherwise prefer since the .cpp is in code/).
@@ -12,8 +12,8 @@
 #include "gameobj.h"    // stub GameObject, GameObjectPtr
 #include "objmgr.h"     // stub ObjectManager global
 #include "inifile.h"    // stub FitIniFile
-// HARNESS-STUB-REPAIR-1: BRAIN-ENGAGE-1 added mover/dcontact/contact includes to the
-// dispatch TU. Pull the stubs first so MOVER_H/DCONTACT_H/CONTACT_H are defined and the
+// The dispatch TU requires mover/dcontact/contact types.
+// Stubs must precede engine headers so MOVER_H/DCONTACT_H/CONTACT_H are defined and the
 // engine headers (which drag mclib.h) are skipped.
 #include "mover.h"      // stub Mover/MoverPtr
 #include "dcontact.h"   // MAX_CONTACTS_PER_SENSOR, CONTACT_SORT_*

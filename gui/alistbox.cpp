@@ -291,7 +291,7 @@ void aListBox::render()
 		long topHeight = 0;
 		long bottomHeight = 0;
 
-		// DEFS-LIST-CLIP-1: when this list renders through the GUI bridge (ImGui
+		// when this list renders through the GUI bridge (ImGui
 		// layer over a defs page), partially-scrolled edge items must clip at the
 		// box bounds. The legacy technique below -- painting black cover rects
 		// OVER the spill -- would black out defs page art, so bridge mode uses a

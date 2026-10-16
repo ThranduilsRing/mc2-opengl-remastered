@@ -515,8 +515,7 @@ void drawGBufferPreview() {
     }
 
     // ── Water Reflection (1/4-res RGBA16F) ────────────────────────────────────
-    // WATER-REFLECTION-RESOURCE-1: substrate target. Renders BLACK until Phase C
-    // (WATER-TERRAIN-REFLECTION-1) renders sky+terrain into it.
+    // Reflection preview stays black without sky and terrain content.
     {
         unsigned int tex = pp->getWaterReflectionTexture();
         ImGui::Spacing();
@@ -532,7 +531,7 @@ void drawGBufferPreview() {
         }
     }
 
-    // ── HZB depth pyramid (HZB-DEBUG-PREVIEW-1) ───────────────────────────────
+    // ── HZB depth pyramid  ───────────────────────────────
     // Diagnostic preview of the reverse-Z Hi-Z pyramid. Each level is its own
     // R32F texture, so ImGui::Image previews a chosen level directly. R32F shows
     // in the red channel: reverse-Z near=1.0 = bright red, far/sky=0.0 = black.

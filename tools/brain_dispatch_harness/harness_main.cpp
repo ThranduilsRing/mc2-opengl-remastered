@@ -1,16 +1,15 @@
-// BRAIN-DISPATCH-HARNESS-V2: offline dispatch harness main.
+// Offline dispatch checks and gate-controlled order-effect comparison.
 //
-// V1 (BRAIN-DISPATCH-HARNESS-1): parse + bodyHasX + TraceOnly — 15 checks.
-// V2 (BRAIN-DISPATCH-HARNESS-V2): adds Apply A/B effect-identity mode:
+// Parse, bodyHasX and TraceOnly checks.
+// Apply A/B effect-identity mode:
 //   --apply-mode: run executeSpecialBody_Apply + commitBrainIntents per fixture,
 //   capture TacOrderSink contents, assert apply_expectation from manifest.
 //   Gate state (OFF/ON) is determined by MC2_BRAIN_INTENT_QUEUE env var at startup.
 //   Run twice (gate-OFF then gate-ON) from scripts/run_brain_apply_ab.sh to prove
 //   A/B identity: gate-OFF orders == gate-ON committed orders.
 //
-// V1 mode (default, no --apply-mode):
-//   Same as BRAIN-DISPATCH-HARNESS-1: 15 parse/bodyHasX/TraceOnly checks.
-//   Back-compat: v1 15/15 always pass; v2 is additive.
+// Default mode (no --apply-mode):
+//   Parse, bodyHasX and TraceOnly checks.
 //
 // CLI: brain_dispatch_harness --manifest <path> [--fixture-dir <dir>] [--json] [--apply-mode]
 //
@@ -31,9 +30,9 @@
 // Real dispatch API (code/brain_special_dispatch.h — LEAF, no engine deps)
 #include "brain_special_dispatch.h"
 #include "mech_brain_runtime.h"
-#include "fitblockwriter.h"   // FITBLOCK-WRITER-1: writer round-trip self-test
+#include "fitblockwriter.h"   // writer round-trip self-test
 
-// BRAINSPECIAL-FLOW-WAIT-1: settable brain-time (stubs/brain_tick_stub.cpp).
+// settable brain-time (stubs/brain_tick_stub.cpp).
 extern void harnessSetBrainTimeMs(uint32_t ms);
 
 #include <algorithm>
@@ -241,7 +240,7 @@ enum class AttackRole {
 struct ApplyExpectation {
     bool          hasExpectation     = false;
 
-    // HARNESS-INTENT-GATE-SCOPE-1: fixture's order emission REQUIRES the intent queue
+    // fixture's order emission REQUIRES the intent queue
     // (e.g. patrol — emits only via emitBrainIntent, no direct setGeneralTacOrder fallback).
     // When true, apply assertions are SKIPPED in a gate-OFF process (the order legitimately
     // cannot be emitted without the queue), keeping the A/B gate-OFF control meaningful for
@@ -265,7 +264,7 @@ struct ApplyExpectation {
     // Once-guard: body fires exactly once per run.
     // (proven by expectedCount=1 even if body has the verb)
 
-    // BRAIN-OPORD-COREPATROL-1: apply-path trace substring checks.
+    // apply-path trace substring checks.
     // Checked against ar.traceOutput (Apply stderr capture), NOT TraceOnly.
     // Use this for verbs whose trace is emitted by executeSpecialBody_Apply only.
     std::vector<std::string> applyTraceSubstrings;
@@ -299,7 +298,7 @@ struct FixtureEntry {
     // Trace substrings are checked against the combined Apply trace output.
     bool fsmSequential = false;
 
-    // BRAINSPECIAL-FLOW-WAIT-1: flow_sequential fixture type.
+    // flow_sequential fixture type.
     // When true, harness runs ALL index bodies on one persistent FsmMechWarrior for
     // THREE passes with the stub brain time advanced 0 -> 1000 -> 6000 ms (so a
     // "WAIT 5" arms on pass 1 and latches open on pass 3). Trace substrings are
@@ -345,13 +344,13 @@ static ApplyExpectation applyExpFromJson(const JsonValue& jv) {
     }
     if (jv.has("attack_fake_obj_wid")) e.attackFakeObjWID = (long)jv.at("attack_fake_obj_wid").nval;
 
-    // BRAIN-OPORD-COREPATROL-1: apply-path trace substring checks.
+    // apply-path trace substring checks.
     if (jv.has("apply_trace_substrings")) {
         for (const JsonValue& sv : jv.at("apply_trace_substrings").arr())
             e.applyTraceSubstrings.push_back(sv.str());
     }
 
-    // HARNESS-INTENT-GATE-SCOPE-1: intent-queue-only fixtures (patrol) opt out of the gate-OFF check.
+    // intent-queue-only fixtures (patrol) opt out of the gate-OFF check.
     if (jv.has("requires_intent_queue"))
         e.requiresIntentQueue = jv.at("requires_intent_queue").isBoolTrue();
 
@@ -385,7 +384,7 @@ static FixtureEntry entryFromJson(const JsonValue& jv) {
     if (jv.has("fsm_sequential"))
         e.fsmSequential = jv.at("fsm_sequential").isBoolTrue();
 
-    // BRAINSPECIAL-FLOW-WAIT-1: flow_sequential flag.
+    // flow_sequential flag.
     if (jv.has("flow_sequential"))
         e.flowSequential = jv.at("flow_sequential").isBoolTrue();
 
@@ -473,7 +472,7 @@ static ApplyRunResult runApply(const BrainSpecialBody& body, const SpecialIndex&
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// FITBLOCK-WRITER-1: writer round-trip self-test (--fitwriter-selftest).
+// writer round-trip self-test (--fitwriter-selftest).
 //
 // 1. Emit a specials file (Aliases block + TechSpecial blocks with alias= /
 //    variantOf= / quoted DO args / WAIT / STOP) with FitBlockWriter.
@@ -612,28 +611,27 @@ int main(int argc, char** argv) {
     (void)_putenv("MC2_BRAIN_DISPATCH_VAR=1");
     // TECHSCRIPT-DISPATCH-1D-M: enable mission-scope Var store for varmission-roundtrip fixture.
     (void)_putenv("MC2_BRAIN_VAR_MISSION=1");
-    // BRAIN-OPORD-COREPATROL-1: enable patrol verb handler for patrol fixtures.
+    // enable patrol verb handler for patrol fixtures.
     (void)_putenv("MC2_BRAIN_PATROL=1");
-    // HARNESS-INTENT-GATE-SCOPE-1: do NOT force MC2_BRAIN_INTENT_QUEUE globally — that
-    // overrode the A/B runner's gate-OFF pass. Default it ON only when the caller did not
+    // Preserve the A/B runner's gate-OFF control. Default the queue ON only when the caller did not
     // set it (so a bare harness run still exercises patrol + the intent path), but an
     // explicit caller value (the A/B runner sets =0 for the OFF pass) is respected.
     if (!mc2::gate::isSet<"MC2_BRAIN_INTENT_QUEUE">())
         (void)_putenv("MC2_BRAIN_INTENT_QUEUE=1");
     // BRAIN-FSM-1K-A/B: enable FSM verbs for fsm-* fixtures.
     (void)_putenv("MC2_BRAIN_FSM=1");
-    // BRAINSPECIAL-ALIAS-1: enable the alias registry for the alias-registry fixture.
+    // enable the alias registry for the alias-registry fixture.
     // Safe for all other fixtures: resolution only rewrites tokens that match the
     // registry or the catalog case-insensitively; exact canonical spellings pass through.
     (void)_putenv("MC2_BRAIN_ALIAS=1");
-    // BRAINSPECIAL-SCOPE-GLOBAL-1: merge global_specials.fit into every fixture parse.
+    // merge global_specials.fit into every fixture parse.
     // Safe for all other fixtures: global keys are namespaced global.* (no collisions),
     // and merge only appends Call targets — entry-body selection is unaffected.
     (void)_putenv("MC2_BRAIN_SCOPE_GLOBAL=1");
-    // BRAINSPECIAL-VARIANTOF-1: resolve variantOf inheritance for the variantof-* fixtures.
+    // resolve variantOf inheritance for the variantof-* fixtures.
     // Safe for all other fixtures: resolution only touches entries carrying a variantOf field.
     (void)_putenv("MC2_BRAIN_VARIANTOF=1");
-    // BRAINSPECIAL-FLOW-WAIT-1: enable flow verbs for the flow-* fixtures.
+    // enable flow verbs for the flow-* fixtures.
     // Other fixtures gain a trailing "STOP" verb (their STOP sentinels become verbs) —
     // harmless: STOP is the last body line by convention and is not an effect verb.
     (void)_putenv("MC2_BRAIN_FLOW=1");
@@ -647,7 +645,7 @@ int main(int argc, char** argv) {
     // Detect intent queue gate state (read BEFORE first static-init call).
     bool intentQueueGateOn = mc2::gate::get<"MC2_BRAIN_INTENT_QUEUE">();
 
-    // FITBLOCK-WRITER-1: writer round-trip self-test (needs the gates set above:
+    // writer round-trip self-test (needs the gates set above:
     // ALIAS for alias= lookup, VARIANTOF for inheritance, FLOW for WAIT/STOP verbs).
     if (fitWriterSelfTest)
         return runFitWriterSelfTest();
@@ -786,7 +784,7 @@ int main(int argc, char** argv) {
             }
         }
 
-        // --- BRAINSPECIAL-FLOW-WAIT-1: flow sequential run ---
+        // Flow sequential run.
         // Three passes at stub brain time 0 / 1000 / 6000 ms over ALL index bodies (in
         // index order) on one persistent FsmMechWarrior. WAIT latches open once the stub
         // time passes its deadline; WAIT_UNTIL latches when its Var condition holds; the
@@ -828,7 +826,7 @@ int main(int argc, char** argv) {
         // --- V2 Apply assertions (only in --apply-mode, only if fixture has apply_expectation) ---
         if (applyMode && fix.applyExp.hasExpectation && body.loaded && !fix.flowSequential
             && !(fix.applyExp.requiresIntentQueue && !intentQueueGateOn)) {
-            // HARNESS-INTENT-GATE-SCOPE-1: skip intent-queue-only fixtures (patrol) in a
+            // skip intent-queue-only fixtures (patrol) in a
             // gate-OFF process — their order can't be emitted without the queue, so asserting
             // it there would falsely fail. The 6 dual-path effect verbs still run both gates.
             res.mode = "v2-apply";
@@ -900,7 +898,7 @@ int main(int argc, char** argv) {
                 res.failures.push_back(buf);
             }
 
-            // BRAIN-OPORD-COREPATROL-1: apply-path trace substring checks.
+            // apply-path trace substring checks.
             // Checked against ar.traceOutput (executeSpecialBody_Apply stderr capture).
             for (const std::string& sub : ae.applyTraceSubstrings) {
                 if (ar.traceOutput.find(sub) == std::string::npos) {

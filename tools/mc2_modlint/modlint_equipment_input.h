@@ -1,6 +1,6 @@
 #ifndef MC2_MODLINT_EQUIPMENT_INPUT_H
 #define MC2_MODLINT_EQUIPMENT_INPUT_H
-// WEAPON-MODLINT-1 (equipment arc, slice 7). Facts-JSON -> EquipmentValidationInputs.
+// Facts-JSON -> EquipmentValidationInputs.
 //
 // The modder feeds modlint a small JSON describing an equipment component's
 // already-extracted facts (the equipment converter did the impure compbas.csv
@@ -177,7 +177,7 @@ equipmentFactsFromJson(const MlJson& root, std::string* label = nullptr) {
             in.hardpointContext.push_back(prof);
         }
 
-    // EQUIP-ENABLE-WIRE-1 facts: "enabled" (def declares Enabled=TRUE),
+    // Facts: "enabled" (def declares Enabled=TRUE),
     // "legacy_master_id" (the purchase ordinal alias), and the optional
     // "populated_legacy_ordinals" context (ordinals the load loop populates;
     // empty/absent -> only the range half of EQV_ENABLE_UNRESOLVED runs).
@@ -187,7 +187,7 @@ equipmentFactsFromJson(const MlJson& root, std::string* label = nullptr) {
         for (const MlJson& p : po->arr)
             in.populatedLegacyOrdinals.push_back((long)p.n);
 
-    // EQUIP-ADD-FILL-1 facts (ADD-ladder S2): "add_fill" declares the def as an
+    // "add_fill" declares the def as an
     // ADD (targets a NEW row on a free ordinal; default false -> checks skipped);
     // "has_display_name"/"has_icon" assert the two fields BOTH row consumers
     // need (default true); "ammo_master_id" is the linked ammo ordinal (0=none),
@@ -243,7 +243,7 @@ equipmentFromConverterEntry(const MlJson& c, std::string* label = nullptr) {
     }
     e.kind = kind;   // explicit converter kind (drives kind/facet mismatch check)
 
-    // EQUIP-ENABLE-WIRE-1: converter report may carry legacy_master_id +
+    // converter report may carry legacy_master_id +
     // enabled; wire them so roster runs get the enable-resolution check too.
     if (const MlJson* lm = c.find("legacy_master_id")) e.legacyMasterId = (int)lm->n;
     if (const MlJson* en = c.find("enabled")) in.enableDeclared = en->asBool(false);

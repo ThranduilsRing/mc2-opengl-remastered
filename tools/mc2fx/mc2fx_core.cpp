@@ -704,7 +704,7 @@ namespace {
 //   { "edits": [ { "effect": "...", "set": { "<field>": { "type":"constant",
 //                  "value": <num> }, ... } }, ... ] }
 // Tolerant of whitespace; does NOT validate the whole grammar — it pulls the
-// string/number tokens it needs in document order. Sufficient for slice 1.
+// string/number tokens it needs in document order.
 struct Scanner {
     const char* p;
     const char* end;

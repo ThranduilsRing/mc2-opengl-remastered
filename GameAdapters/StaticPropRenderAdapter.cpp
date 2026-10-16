@@ -3,7 +3,7 @@
 // Slice M1: the bridge .cpp. Includes BOTH sides.
 
 #include "StaticPropRenderAdapter.h"
-#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "mc2_diag_verbose.h"
 #include "Gates/gate.h"
 
 // Engine side.
@@ -59,7 +59,7 @@ void beginMissionEarly() {
 
 // Post-mech-batcher static-prop init. Called AFTER GpuMechBatcher::onMapLoad().
 // Absorbs (in order):
-//   GpuStaticPropBatcher::setMissionForIbl(missionName)  ← V-IBL-STATIC-2
+//   GpuStaticPropBatcher::setMissionForIbl(missionName)
 //   GpuStaticPropRegistry::init()                         ← Stage 3.C
 //   RenderWorld::init()                                   ← old thin beginMission()
 // missionName may be nullptr/empty — falls back to "default" IBL set.
@@ -200,7 +200,7 @@ void getRecipeShapeName(int32_t recipeIndex, char* out, size_t outLen) {
     out[outLen - 1] = '\0';
 }
 
-// RENDERER-INPUT-READBACK-1: pass-through recipe readback. See the contract
+// pass-through recipe readback. See the contract
 // block in StaticPropRenderAdapter.h. The `recipeIndex < 0` guard is the
 // sentinel-translation rule at this seam (-1 == invalid); the registry
 // accessors range-check and tombstone-check on their own side, so a false

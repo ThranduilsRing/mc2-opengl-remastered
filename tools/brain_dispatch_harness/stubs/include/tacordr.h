@@ -1,7 +1,7 @@
 #pragma once
 #ifndef TACORDR_H
 #define TACORDR_H
-// BRAIN-DISPATCH-HARNESS-1: tacordr.h stub
+// tacordr.h stub
 // Provides TacticalOrder, enums, LocationNode for brain_special_dispatch.cpp.
 // No engine header dependencies.
 
@@ -12,7 +12,7 @@
 // ---- Constants ----
 #define MAX_WAYPTS 15
 
-// BRAIN-OPORD-COREPATROL-1: arrival status codes.
+// arrival status codes.
 // In the real engine (tacordr.h), TACORDER_SUCCESS is defined as 1.
 // Stub provides the same value; status() always returns TACORDER_RUNNING so
 // the harness never triggers cursor advance (arrival is smoke-only).
@@ -148,7 +148,7 @@ public:
 
     void destroy() {}
 
-    // BRAIN-OPORD-COREPATROL-1: arrival poll.
+    // arrival poll.
     // Stub always returns TACORDER_RUNNING — arrival detection is smoke-only.
     // The harness never triggers tickPatrolAdvance cursor advance.
     long status(void* /*warrior*/) const { return TACORDER_RUNNING; }

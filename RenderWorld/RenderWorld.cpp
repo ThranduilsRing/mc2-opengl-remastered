@@ -11,7 +11,7 @@
 // Section 10 amendment 2026-05-22: two seams in M1.)
 
 #include "RenderWorld.h"
-#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "mc2_diag_verbose.h"
 #include "Gates/gate.h"
 
 // C1 fix: this TU MUST NOT include gos_static_prop_batcher.h (it
@@ -299,7 +299,7 @@ void runSubstrateSelfTest() {
 
     // Use a high handle index unlikely to collide with real registrations.
     const uint32_t kTestIndex = 0xFFFFEu;  // 20-bit max minus one
-    // Step 1: populate
+    // populate
     populateRecord(kTestIndex, 1u, 0xCAFEu);
 
     {
@@ -328,7 +328,7 @@ void runSubstrateSelfTest() {
         }
     }
 
-    // Step 2: retire
+    // retire
     retireRecord(kTestIndex);
 
     {
@@ -347,7 +347,7 @@ void runSubstrateSelfTest() {
         }
     }
 
-    // Step 3: re-populate with new generation
+    // re-populate with new generation
     populateRecord(kTestIndex, 2u, 0xBEEFu);
 
     {
@@ -414,7 +414,7 @@ void RunMechObjectIdSelfTest() {
         return;
     }
 
-    // Step 1: register a synthetic mech, validate handle + record.
+    // register a synthetic mech, validate handle + record.
     RenderWorld::RenderMechDesc desc;
     desc.mechTypeId   = 0u;
     desc.gameObjectId = 0xC0FFEEu;
@@ -428,7 +428,7 @@ void RunMechObjectIdSelfTest() {
     const uint32_t idx = h.index();
     const uint16_t gen = static_cast<uint16_t>(h.generation());
 
-    // Step 2: validate record kind=Mech and alive=true.
+    // validate record kind=Mech and alive=true.
     {
         std::lock_guard<std::mutex> lk(s_objectRecordsMutex);
         if (idx >= s_objectRecords.size()) {
@@ -466,7 +466,7 @@ void RunMechObjectIdSelfTest() {
         }
     }
 
-    // Step 3: handle round-trip. handle.raw() carries idx+gen; rebuilding
+    // handle round-trip. handle.raw carries idx+gen; rebuilding
     // via the canonical production constructor MUST recover the same raw bits.
     // Per adversarial m3: RenderObjectHandle::make(idx, gen) is the
     // production path (RenderCore/Handle.h:32); use it unconditionally rather
@@ -481,7 +481,7 @@ void RunMechObjectIdSelfTest() {
         return;
     }
 
-    // Step 4: destroyMech bumps generation and clears alive.
+    // destroyMech bumps generation and clears alive.
     RenderWorld::destroyMech(h);
     {
         std::lock_guard<std::mutex> lk(s_objectRecordsMutex);
@@ -585,7 +585,7 @@ RenderCore::RenderObjectHandle upsertStaticProp(RenderCore::StaticPropDesc desc)
     s_upsertOk.fetch_add(1, std::memory_order_relaxed);
     RenderCore::RenderObjectHandle h = RenderCore::RenderObjectHandle::make(
         recipeIndexToHandleIndex(r), 1u);
-    // BRIDGE-1: adapter doesn't thread a game-object id through syncStaticProp,
+    // adapter doesn't thread a game-object id through syncStaticProp,
     // so echo the handle index (== recipe index) when no id was supplied.
     // This makes lookupAtPixel return a stable, nonzero gameObjectId for every
     // static prop/building with recipe index > 0. Recipe 0 edge case: index==0
@@ -610,7 +610,7 @@ RenderCore::RenderObjectHandle adoptStaticPropRecipe(int32_t recipeIndex) {
     RenderCore::RenderObjectHandle h = RenderCore::RenderObjectHandle::make(
         recipeIndexToHandleIndex(recipeIndex), 1u);
     // M1.5: late-spawn populates the record table too.
-    // BRIDGE-1: echo handle index as gameObjectId (same convention as upsertStaticProp).
+    // echo handle index as gameObjectId (same convention as upsertStaticProp).
     populateRecord(h.index(),
                    static_cast<uint16_t>(h.generation()),
                    h.index());

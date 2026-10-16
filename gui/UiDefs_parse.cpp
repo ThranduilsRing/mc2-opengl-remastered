@@ -40,8 +40,8 @@ void uiDefsTrace(const char* fmt, ...)
     std::fprintf(stderr, "\n");
 }
 
-// UI-DEFS-LOCKSTEP-HARDEN-1: ALWAYS-ON log line for defs/ui page-load and
-// render failures. BLACK-MENU-BISECT-1: a version-skewed defs/ui package
+// ALWAYS-ON log line for defs/ui page-load and
+// render failures. A version-skewed defs/ui package
 // produced a black screen with ZERO log output even under MC2_LOG=1 -- every
 // failure path must emit exactly one clear [UI-DEFS] line, unconditionally.
 void uiDefsLog(const char* fmt, ...)
@@ -281,7 +281,7 @@ bool fileExistsPath(const std::filesystem::path& p)
     return std::filesystem::exists(p, ec);
 }
 
-// UI-DEFS-LOCKSTEP-HARDEN-1: defs/ui package version gate. The package ships
+// defs/ui package version gate. The package ships
 // a tiny manifest (data/defs/ui/PACKAGE.fit, "Version = N"); the exe carries
 // kExpectedUiPackageVersion (gui/UiDefsLockstep.h). Missing or mismatched =>
 // every page load is treated as a failure => LogisticsScreen renders the

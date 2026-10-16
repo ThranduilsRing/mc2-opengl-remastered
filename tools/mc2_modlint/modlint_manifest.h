@@ -1,6 +1,5 @@
 #ifndef MC2_MODLINT_MANIFEST_H
 #define MC2_MODLINT_MANIFEST_H
-// MOD-PACKAGE-MANIFEST-1 (MODDABILITY phase, unit-profile arc).
 //
 // Pure mod.json manifest validation for mc2_modlint --manifest. This validates
 // the EXISTING mod package manifest (mods/<id>/mod.json — the one the engine

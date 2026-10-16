@@ -39,21 +39,18 @@ void draw() {
                 ImGui::SetTooltip("MC2_SSAO. Half-res grounding AO.\nIndependent of the HDR master gate.");
             if (pp->ssaoEnabled_) {
                 ImGui::Indent();
-                // SSAO-BLUR-1 clamp fix. The old 0.1..32 range was calibrated for
-                // a world scale ~40x smaller than MC2's: one map cell is 42.67 wu
+                // The radius range accounts for the MC2 world scale:
+                // one map cell is 42.67 wu
                 // (worldUnitsPerVertex 128 / MAPCELL_DIM 3), and the baked kernel
                 // is not unit-normalised (mean |v| 0.289), so this slider's value
-                // is ~3.5x the actual mean sample reach. The useful band is ~12-48,
-                // which the old max could barely reach. NOTE this slider writes
-                // aoRadius_ DIRECTLY and never goes through gos_SetSsaoRadius, so
-                // the setter's 64.0 clamp never applied here -- the 32.0 above was
-                // the real cap. Both now agree at 64 wu (~1.5 map cells), past which
+                // is ~3.5x the actual mean sample reach. The useful band is ~12-48.
+                // Both this slider and gos_SetSsaoRadius cap the radius at
+                // 64 wu (~1.5 map cells), past which
                 // AO stops being a contact term and competes with the shadow cascades.
                 ImGui::SliderFloat("Radius (wu)##ssao", &pp->aoRadius_,   0.1f, 64.0f);
                 ImGui::SliderFloat("Strength##ssao",    &pp->aoStrength_, 0.0f, 2.0f);
                 ImGui::SliderFloat("Bias##ssao",        &pp->aoBias_,     0.0f, 0.05f, "%.4f");
                 ImGui::SliderFloat("Power##ssao",       &pp->aoPower_,    0.1f, 4.0f);
-                // SSAO-BLUR-1 denoise controls.
                 ImGui::Checkbox("Bilateral blur##ssao", &pp->ssaoBlurEnabled_);
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("OFF reproduces the pre-SSAO-BLUR-1 chain,\n"
@@ -69,11 +66,9 @@ void draw() {
                     pp->ssaoDebug_ = ssaoDbg ? 1 : 0;
                 ImGui::SameLine();
                 if (ImGui::SmallButton("Reset##ssao")) {
-                    // SSAO-BLUR-1: reset to the SHIPPING defaults. This used to
-                    // restore radius 3.0, which is the structurally-dead value
-                    // (mean tap reach 0.87 wu => every tap reads the centre depth
-                    // texel => occlusion identically zero), so "Reset" silently
-                    // turned the feature off.
+                    // Restore defaults with a nonzero AO sample footprint.
+                    // Radius 3.0 puts every tap in the centre depth texel
+                    // (mean reach 0.87 wu), producing zero occlusion.
                     pp->aoRadius_ = 24.0f; pp->aoStrength_ = 0.7f;
                     pp->aoBias_ = 0.0025f; pp->aoPower_ = 1.5f;
                     pp->ssaoBlurEnabled_ = true; pp->aoBlurDepthSigma_ = 0.10f;
@@ -81,7 +76,7 @@ void draw() {
                 ImGui::Unindent();
             }
 
-            // POST-FX-FXAA-1: post anti-aliasing tunables. pp->fxaa* members are
+            // post anti-aliasing tunables. pp->fxaa* members are
             // read every frame by endScene(), so edits take effect immediately.
             // Env (MC2_FXAA / _SUBPIX / _EDGE_THRESHOLD / _EDGE_THRESHOLD_MIN)
             // seeds startup; these sliders override live.
@@ -112,7 +107,7 @@ void draw() {
             }
             ImGui::EndDisabled();
 
-            // VIEWMODE-POSTPROCESS-PRESENTATION-1: view-mode selector.
+            // view-mode selector.
             // Gated on MC2_VIEWMODE_FRAMEWORK (resolved once at init); when OFF
             // the combo is hidden and endScene() forces Visual (byte-identical).
             if (gos_IsViewmodeFrameworkEnabled()) {
@@ -141,7 +136,7 @@ void draw() {
                         "Thermal: luminance->iron-palette PLACEHOLDER (not real IR).\n"
                         "Infrared: no implementer (passthrough).\n"
                         "Low Light: night-vision luminance boost + green tint.");
-                // LOWLIGHT-NIGHTVISION-MVP-1: live tuners (only meaningful in Low Light).
+                // live tuners (only meaningful in Low Light).
                 if (curMode == 5) {
                     ImGui::Indent();
                     float gain = gos_GetLowLightGain();

@@ -1,6 +1,6 @@
 #ifndef MC2_MODLINT_EQUIPMENT_REPORT_H
 #define MC2_MODLINT_EQUIPMENT_REPORT_H
-// WEAPON-MODLINT-1 (equipment arc, slice 7). Pure EquipmentFinding -> modder text.
+// Pure EquipmentFinding -> modder text.
 //
 // Turns the authoritative validator's std::vector<EquipmentFinding> into the lines
 // a modder reads, using the ONE EQV_ reason-code -> message table
