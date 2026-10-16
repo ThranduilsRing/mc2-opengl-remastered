@@ -256,6 +256,8 @@ long ObjectTypeManager::init (const char* objectFileName, long objectTypeCacheSi
 	numObjectTypes = maxObjectTypes;
 	tableStore.assign(static_cast<size_t>(numObjectTypes), nullptr);
 	table = tableStore.data();
+	typeStore.clear();
+	typeStore.resize(static_cast<size_t>(numObjectTypes));
 
 	//---------------------------------------------------------------------------
 	// Since MC1 handled all of these MiscTerrainObjectTypes with one ObjectType,
@@ -278,6 +280,8 @@ void ObjectTypeManager::destroy(void)
 {
 	if (table) 
 	{
+		// The types are deleted while objectCache still exists: their destructors release their name text and anything they took from it.
+		std::vector<std::unique_ptr<ObjectType>>().swap(typeStore);
 		std::vector<ObjectTypePtr>().swap(tableStore);
 		table = nullptr;
 		numObjectTypes = 0;
@@ -508,6 +512,10 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			load(objType->getExplosionObject());
 	}
 
+	// A forced reload over a loaded slot leaves the old type to its users (objects still point at it), as before.
+	if (typeStore[objTypeNum])
+		typeStore[objTypeNum].release();
+	typeStore[objTypeNum].reset(objType);
 	table[objTypeNum] = objType;
 
 	return(objType);
@@ -523,7 +531,7 @@ void ObjectTypeManager::remove (long objTypeNum) {
 	if (table[objTypeNum]) {
 		table[objTypeNum]->removeUser();
 		if (!table[objTypeNum]->inUse() && !table[objTypeNum]->lovable()) {
-			delete table[objTypeNum];
+			typeStore[objTypeNum].reset();
 			table[objTypeNum] = nullptr;
 		}
 	}
