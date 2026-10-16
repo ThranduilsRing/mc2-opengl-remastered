@@ -293,5 +293,6 @@
   "scripts/check-deploy-target.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track.",
   "scripts/check_shader_bom.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track.",
   "scripts/smoke_lib/baselines.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track.",
-  "scripts/smoke_lib/crash_evidence.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track."
+  "scripts/smoke_lib/crash_evidence.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track.",
+  "scripts/tests/test_journal_comment_ratchet.py": "Pytest-discovered module through the scripts_tests board row."
 }
