@@ -15,15 +15,8 @@
 # does not differ from VK there.
 
 # --- Default-ON GL features VK lacks: OPEN parity rows (.claude/VK-PARITY-GAPS.md)
-MC2_CEMENT_ATLAS_SEAM_FIX | shaders/terrain_lod_chunk.frag | gaps row 25: GL insets the cement atlas sample by half a texel (CEMENT-ATLAS-SEAM-1); VK terrain_tier1.frag samples the raw tile UV
-MC2_TERRAIN_SHORELINE | shaders/terrain_lod_chunk.frag | gaps row 26: GL terrain FS draws the wet / foam elevation bands above the waterline (u_useShorelineMask, default ON); VK terrain_tier1.frag has no band block
-MC2_TERRAIN_SHORELINE_EDGE_JITTER | shaders/terrain_lod_chunk.frag | gaps row 26: knob of the shoreline band block
-MC2_TERRAIN_SHORELINE_FOAM | shaders/terrain_lod_chunk.frag | gaps row 26: knob of the shoreline band block
-MC2_TERRAIN_SHORELINE_FOAM_HEIGHT | shaders/terrain_lod_chunk.frag | gaps row 26: knob of the shoreline band block
-MC2_TERRAIN_SHORELINE_FOAM_RUN | shaders/terrain_lod_chunk.frag | gaps row 26: knob of the shoreline band block
-MC2_TERRAIN_SHORELINE_STRENGTH | shaders/terrain_lod_chunk.frag | gaps row 26: knob of the shoreline band block
-MC2_TERRAIN_SHORELINE_WET_HEIGHT | shaders/terrain_lod_chunk.frag | gaps row 26: knob of the shoreline band block
-MC2_TERRAIN_SHORELINE_WET_RUN | shaders/terrain_lod_chunk.frag | gaps row 26: knob of the shoreline band block
+# (none: rows 25 and 26 were ported 2026-10-16; the coverage tool cannot see row 27, the runway edge blend, because it
+#  is driven by cement-word bits, not a gate)
 
 # --- Default-ON knobs whose GL block is off by default: no GL pixel depends on them
 MC2_MECH_IBL_SH | shaders/mech.frag | read only inside the StandardLit block (u_standardLitEnabled, MC2_STANDARD_LIT_V1 default OFF)
@@ -53,6 +46,7 @@ MC2_OBJECT_ID_BUFFER | shaders/static_prop.vert | editor GPU pick id attachment;
 MC2_OBJECT_ID_BUFFER | shaders/static_prop_depth.frag | editor GPU pick id attachment; no game pixel
 
 # --- Default-OFF gates: flipping one ON changes GL only (no parity obligation; the gaps file's default-OFF list)
+# MC2_MECH_SURFACE_MATERIAL is a string / mode gate whose table default is empty; empty selects the off path in its reader.
 MC2_MECH_BACK_FILL | shaders/mech.frag | uniform u_mechBackFillStrength: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi
 MC2_MECH_SURFACE_MATERIAL | shaders/mech.frag | uniform u_pbrMetallicInfluence, uniform u_pbrRoughnessMax, uniform u_pbrRoughnessMin, uniform u_pbrTileScale, uniform u_pbrWearStrength: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi
 MC2_PBR_METALLIC_INFLUENCE | shaders/mech.frag | uniform u_pbrMetallicInfluence: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi

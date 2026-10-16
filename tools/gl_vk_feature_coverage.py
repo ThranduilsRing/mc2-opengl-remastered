@@ -51,10 +51,19 @@ VK_CPP_GLOBS = (("GameOS/gameos/vulkan_", (".cpp", ".h")), ("GameOS/gameos/engin
 MIN_STEM = 6            # shorter stems ("tex", "mode") match too much to count as evidence
 # GL features a closed parity row proved ported under a VK spelling no stem rule derives: GL name -> (the VK identifier
 # that must still appear in the twin family, the row of .claude/VK-PARITY-GAPS.md whose oracle proved it). The VK
-# identifier is re-checked on every run, so deleting the port turns the row NOT_PORTED again.
+# identifier is re-checked on every run, so deleting the port turns the row NOT_PORTED again; with its allowlist entry
+# gone, that row then fails the check as a NEW gap, which is how a vanished port is caught.
 PORTED_AS = {
     "u_edgeFeather": ("edgeFeatherStrength", "row 9"),
     "MC2_SHADOW_STATIC_BANDFIX_V2": ("LSVK_KNOB_BANDFIX_V2", "row 4"),
+    # Row 26: the shoreline bands read TerrainFrameUBO fields named for what they hold (runs, not heights).
+    "u_useShorelineMask": ("shorelineOn", "row 26"),
+    "u_hasShorelineMask": ("shorelineHasMask", "row 26"),
+    "u_shorelineBounds": ("shorelineBoundsX", "row 26"),
+    "u_shorelineWetHeight": ("shorelineWetRun", "row 26"),
+    "u_shorelineFoamHeight": ("shorelineFoamRun", "row 26"),
+    "u_shaderTime": ("shorelineTime", "row 26"),
+    "u_waterElevation": ("shorelineWaterElev", "row 26"),
 }
 RANK = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
 _IDENT = re.compile(r"[A-Za-z_]\w*")

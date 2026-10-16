@@ -7,9 +7,9 @@ weaker of how directly the gate reaches the setter and how firm the VK evidence 
 
 | status | HIGH | MEDIUM | LOW |
 |---|---|---|---|
-| PORTED | 13 | 95 | 0 |
-| NOT_PORTED | 74 | 39 | 0 |
-| NO_TWIN | 24 | 50 | 0 |
+| PORTED | 42 | 133 | 0 |
+| NOT_PORTED | 65 | 30 | 0 |
+| NO_TWIN | 24 | 57 | 0 |
 
 ## NOT_PORTED: the VK twin lacks the feature
 
@@ -17,7 +17,6 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 
 | gate | default | GL shader | feature | VK twin | confidence | allowlisted |
 |---|---|---|---|---|---|---|
-| `MC2_CEMENT_ATLAS_SEAM_FIX` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_cementAtlasSeamFix` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_DEBUG_RENDERER` | OFF | `shaders/mech.frag` | `MC2_OBJECT_ID_BUFFER` (define) | shaders/vulkan/mech_tier1.* | HIGH | yes |
 | `MC2_DEBUG_RENDERER` | OFF | `shaders/mech.vert` | `MC2_OBJECT_ID_BUFFER` (define) | shaders/vulkan/mech_tier1.* | HIGH | yes |
 | `MC2_DEBUG_RENDERER` | OFF | `shaders/static_prop.frag` | `MC2_OBJECT_ID_BUFFER` (define) | shaders/vulkan/color_prop_tier1.* | HIGH | yes |
@@ -89,23 +88,6 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_TERRAIN_NORMAL_ARRAY` | **ON (live drift)** | `shaders/gos_terrain.frag` | `TERRAIN_NORMAL_ARRAY` (define) | shaders/vulkan/terrain_tier1.* | HIGH | yes |
 | `MC2_TERRAIN_NORMAL_ARRAY` | **ON (live drift)** | `shaders/gos_terrain.tese` | `TERRAIN_NORMAL_ARRAY` (define) | shaders/vulkan/terrain_tier1.* | HIGH | yes |
 | `MC2_TERRAIN_NORMAL_ARRAY` | **ON (live drift)** | `shaders/shadow_terrain.tese` | `TERRAIN_NORMAL_ARRAY` (define) | shaders/vulkan/shadow_terrain_static.* | HIGH | yes |
-| `MC2_TERRAIN_SHORELINE` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_hasShorelineMask` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | yes |
-| `MC2_TERRAIN_SHORELINE` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shaderTime` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | yes |
-| `MC2_TERRAIN_SHORELINE` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineBounds` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | yes |
-| `MC2_TERRAIN_SHORELINE` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineEdgeJitter` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | yes |
-| `MC2_TERRAIN_SHORELINE` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamHeight` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | yes |
-| `MC2_TERRAIN_SHORELINE` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamStrength` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | yes |
-| `MC2_TERRAIN_SHORELINE` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineStrength` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | yes |
-| `MC2_TERRAIN_SHORELINE` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineWetHeight` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | yes |
-| `MC2_TERRAIN_SHORELINE` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_useShorelineMask` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
-| `MC2_TERRAIN_SHORELINE` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_waterElevation` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | yes |
-| `MC2_TERRAIN_SHORELINE_EDGE_JITTER` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineEdgeJitter` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
-| `MC2_TERRAIN_SHORELINE_FOAM` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamStrength` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
-| `MC2_TERRAIN_SHORELINE_FOAM_HEIGHT` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamHeight` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
-| `MC2_TERRAIN_SHORELINE_FOAM_RUN` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamHeight` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
-| `MC2_TERRAIN_SHORELINE_STRENGTH` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineStrength` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
-| `MC2_TERRAIN_SHORELINE_WET_HEIGHT` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineWetHeight` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
-| `MC2_TERRAIN_SHORELINE_WET_RUN` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineWetHeight` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_TERRAIN_SLOPE_BIAS` | OFF | `shaders/terrain_lod_chunk.frag` | `useRockSlopeBias` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_TERRAIN_SLOPE_BIAS_STRENGTH` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `rockSlopeBiasStrength` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_TERRAIN_VISUAL_DISPLACE` | OFF | `shaders/terrain_lod_chunk.frag` | `u_lodStep` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | no |
@@ -131,13 +113,14 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_WATER_SHORE_MEANDER_FREQ` | **ON (live drift)** | `shaders/gos_terrain_water_mdi.frag` | `u_shoreMeanderFreq` (uniform) | shaders/vulkan/water_geom.* | HIGH | yes |
 | `MC2_WATER_SHORE_MODE` | OFF | `shaders/gos_terrain_water_fast_mdi.vert` | `u_shoreDepthK` (uniform) | shaders/vulkan/water_geom.* | MEDIUM | no |
 
-- NOT_PORTED pairs: 93, of which already default ON: 38
+- NOT_PORTED pairs: 84, of which already default ON: 29
 - NEW gaps (not allowlisted): 0, STALE allowlist entries: 0
 
 ## PORTED
 
 | gate | GL shader | feature | VK twin | confidence |
 |---|---|---|---|---|
+| `MC2_CEMENT_ATLAS_SEAM_FIX` | `shaders/terrain_lod_chunk.frag` | `u_cementAtlasSeamFix` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
 | `MC2_HDRI_SKY_AZ_OFFSET` | `shaders/hdri_skybox.frag` | `skyYaw` | `shaders/vulkan/hdri_sky.frag` | MEDIUM |
 | `MC2_LIGHT_POOL_COMPRESS` | `shaders/terrain_lod_chunk.frag` | `u_lightPoolCompress` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
 | `MC2_LIGHT_POOL_COMPRESS` | `shaders/terrain_overlay.frag` | `u_lightPoolCompress` | `shaders/vulkan/terrain_decal_tier1.frag` | MEDIUM |
@@ -198,6 +181,72 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_TERRAIN_LOD_CHECKER_DIAG` | `shaders/terrain_lod_chunk.frag` | `u_skirtDepth` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
 | `MC2_TERRAIN_LOD_CHECKER_DIAG` | `shaders/terrain_lod_chunk.vert` | `u_skirtDepth` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
 | `MC2_TERRAIN_SHORELINE` | `shaders/edge_fog.frag` | `u_waterElevation` | `shaders/vulkan/edge_fog.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE` | `shaders/terrain_lod_chunk.frag` | `u_hasShorelineMask` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE` | `shaders/terrain_lod_chunk.frag` | `u_shaderTime` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE` | `shaders/terrain_lod_chunk.frag` | `u_shorelineBounds` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE` | `shaders/terrain_lod_chunk.frag` | `u_shorelineEdgeJitter` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE` | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamHeight` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE` | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamStrength` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE` | `shaders/terrain_lod_chunk.frag` | `u_shorelineStrength` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE` | `shaders/terrain_lod_chunk.frag` | `u_shorelineWetHeight` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE` | `shaders/terrain_lod_chunk.frag` | `u_useShorelineMask` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE` | `shaders/terrain_lod_chunk.frag` | `u_waterElevation` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_EDGE_JITTER` | `shaders/edge_fog.frag` | `u_waterElevation` | `shaders/vulkan/edge_fog.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_EDGE_JITTER` | `shaders/terrain_lod_chunk.frag` | `u_shaderTime` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_EDGE_JITTER` | `shaders/terrain_lod_chunk.frag` | `u_shorelineEdgeJitter` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_EDGE_JITTER` | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamHeight` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_EDGE_JITTER` | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamStrength` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_EDGE_JITTER` | `shaders/terrain_lod_chunk.frag` | `u_shorelineStrength` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_EDGE_JITTER` | `shaders/terrain_lod_chunk.frag` | `u_shorelineWetHeight` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_EDGE_JITTER` | `shaders/terrain_lod_chunk.frag` | `u_waterElevation` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_FOAM` | `shaders/edge_fog.frag` | `u_waterElevation` | `shaders/vulkan/edge_fog.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_FOAM` | `shaders/terrain_lod_chunk.frag` | `u_shaderTime` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_FOAM` | `shaders/terrain_lod_chunk.frag` | `u_shorelineEdgeJitter` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_FOAM` | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamHeight` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_FOAM` | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamStrength` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_FOAM` | `shaders/terrain_lod_chunk.frag` | `u_shorelineStrength` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_FOAM` | `shaders/terrain_lod_chunk.frag` | `u_shorelineWetHeight` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_FOAM` | `shaders/terrain_lod_chunk.frag` | `u_waterElevation` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_FOAM_HEIGHT` | `shaders/edge_fog.frag` | `u_waterElevation` | `shaders/vulkan/edge_fog.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_FOAM_HEIGHT` | `shaders/terrain_lod_chunk.frag` | `u_shaderTime` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_FOAM_HEIGHT` | `shaders/terrain_lod_chunk.frag` | `u_shorelineEdgeJitter` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_FOAM_HEIGHT` | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamHeight` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_FOAM_HEIGHT` | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamStrength` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_FOAM_HEIGHT` | `shaders/terrain_lod_chunk.frag` | `u_shorelineStrength` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_FOAM_HEIGHT` | `shaders/terrain_lod_chunk.frag` | `u_shorelineWetHeight` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_FOAM_HEIGHT` | `shaders/terrain_lod_chunk.frag` | `u_waterElevation` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_FOAM_RUN` | `shaders/edge_fog.frag` | `u_waterElevation` | `shaders/vulkan/edge_fog.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_FOAM_RUN` | `shaders/terrain_lod_chunk.frag` | `u_shaderTime` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_FOAM_RUN` | `shaders/terrain_lod_chunk.frag` | `u_shorelineEdgeJitter` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_FOAM_RUN` | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamHeight` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_FOAM_RUN` | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamStrength` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_FOAM_RUN` | `shaders/terrain_lod_chunk.frag` | `u_shorelineStrength` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_FOAM_RUN` | `shaders/terrain_lod_chunk.frag` | `u_shorelineWetHeight` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_FOAM_RUN` | `shaders/terrain_lod_chunk.frag` | `u_waterElevation` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_STRENGTH` | `shaders/edge_fog.frag` | `u_waterElevation` | `shaders/vulkan/edge_fog.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_STRENGTH` | `shaders/terrain_lod_chunk.frag` | `u_shaderTime` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_STRENGTH` | `shaders/terrain_lod_chunk.frag` | `u_shorelineEdgeJitter` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_STRENGTH` | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamHeight` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_STRENGTH` | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamStrength` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_STRENGTH` | `shaders/terrain_lod_chunk.frag` | `u_shorelineStrength` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_STRENGTH` | `shaders/terrain_lod_chunk.frag` | `u_shorelineWetHeight` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_STRENGTH` | `shaders/terrain_lod_chunk.frag` | `u_waterElevation` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_WET_HEIGHT` | `shaders/edge_fog.frag` | `u_waterElevation` | `shaders/vulkan/edge_fog.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_WET_HEIGHT` | `shaders/terrain_lod_chunk.frag` | `u_shaderTime` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_WET_HEIGHT` | `shaders/terrain_lod_chunk.frag` | `u_shorelineEdgeJitter` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_WET_HEIGHT` | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamHeight` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_WET_HEIGHT` | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamStrength` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_WET_HEIGHT` | `shaders/terrain_lod_chunk.frag` | `u_shorelineStrength` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_WET_HEIGHT` | `shaders/terrain_lod_chunk.frag` | `u_shorelineWetHeight` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_WET_HEIGHT` | `shaders/terrain_lod_chunk.frag` | `u_waterElevation` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_WET_RUN` | `shaders/edge_fog.frag` | `u_waterElevation` | `shaders/vulkan/edge_fog.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_WET_RUN` | `shaders/terrain_lod_chunk.frag` | `u_shaderTime` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_WET_RUN` | `shaders/terrain_lod_chunk.frag` | `u_shorelineEdgeJitter` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_WET_RUN` | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamHeight` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_WET_RUN` | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamStrength` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_WET_RUN` | `shaders/terrain_lod_chunk.frag` | `u_shorelineStrength` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
+| `MC2_TERRAIN_SHORELINE_WET_RUN` | `shaders/terrain_lod_chunk.frag` | `u_shorelineWetHeight` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
+| `MC2_TERRAIN_SHORELINE_WET_RUN` | `shaders/terrain_lod_chunk.frag` | `u_waterElevation` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
 | `MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN` | `shaders/gos_terrain.frag` | `snowBrightnessDampen` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
 | `MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN` | `shaders/terrain_lod_chunk.frag` | `snowBrightnessDampen` | `shaders/vulkan/terrain_tier1.frag` | HIGH |
 | `MC2_TERRAIN_VISUAL_DISPLACE` | `shaders/terrain_lod_chunk.frag` | `u_skirtDepth` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
@@ -262,4 +311,4 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `shaders/gos_vegetation_card.vert` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
 | `shaders/gpu_cull_patch.comp` | `MC2_STATIC_PROP_GLOBAL_POOL_LEGACY` |
 | `shaders/gpu_driven_terrain_solid.comp` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST`, `MC2_WATER_FULL_RECIPE_SPIKE`, `MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE`, `MC2_WATER_GPU_FULL_RECIPE_CULL` |
-| `shaders/gpu_driven_water.comp` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_TERRAIN_SHORELINE`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST`, `MC2_WATER_BIAS_LEGACY`, `MC2_WATER_FULL_RECIPE_SPIKE`, `MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE`, `MC2_WATER_GPU_FULL_RECIPE_CULL` |
+| `shaders/gpu_driven_water.comp` | `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_TERRAIN_SHORELINE`, `MC2_TERRAIN_SHORELINE_EDGE_JITTER`, `MC2_TERRAIN_SHORELINE_FOAM`, `MC2_TERRAIN_SHORELINE_FOAM_HEIGHT`, `MC2_TERRAIN_SHORELINE_FOAM_RUN`, `MC2_TERRAIN_SHORELINE_STRENGTH`, `MC2_TERRAIN_SHORELINE_WET_HEIGHT`, `MC2_TERRAIN_SHORELINE_WET_RUN`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST`, `MC2_WATER_BIAS_LEGACY`, `MC2_WATER_FULL_RECIPE_SPIKE`, `MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE`, `MC2_WATER_GPU_FULL_RECIPE_CULL` |
