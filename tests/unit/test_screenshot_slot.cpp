@@ -3,6 +3,8 @@
 
 #include "gos_screenshot_slot.h"
 
+#include <string>
+
 using gos::screenshot::Slot;
 
 namespace {

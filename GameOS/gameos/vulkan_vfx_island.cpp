@@ -146,6 +146,9 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedDescriptorSetLayout spriteDsl;
     mc2vk::OwnedDescriptorPool spritePool;
     std::unordered_map<uint32_t, SpritePage> pages;   // keyed on gos texture handle; after the pool so pages release first
+    // Texel vector whose import failed, per handle: the same vector is not retried (a replaced texture publishes a new one).
+    std::unordered_map<uint32_t, std::shared_ptr<const std::vector<uint8_t>>> failedSource;
+    bool pageCapLogged = false;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline alphaPipe;
     mc2vk::OwnedPipeline addPipe;
@@ -263,11 +266,20 @@ const SpritePage* get_page(VfxIsland* s, uint32_t handle) {
     auto it = s->pages.find(handle);
     if (it != s->pages.end() && it->second.source == t.bytes) return &it->second;
 
+    const auto failed = s->failedSource.find(handle);
+    if (failed != s->failedSource.end() && failed->second == t.bytes) return nullptr;
+
     SpritePage page;
     if (it != s->pages.end()) {
         page.set = it->second.set;   // sets live as long as the pool; the replacement reuses the slot
     } else {
-        if (s->pages.size() >= kMaxSpritePages) return nullptr;
+        if (s->pages.size() >= kMaxSpritePages) {
+            if (!s->pageCapLogged) {
+                s->pageCapLogged = true;
+                vlog("sprite page cap reached (%u): groups on further textures are not drawn.", kMaxSpritePages);
+            }
+            return nullptr;
+        }
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         dsai.descriptorPool = s->spritePool.get(); dsai.descriptorSetCount = 1;
@@ -277,7 +289,8 @@ const SpritePage* get_page(VfxIsland* s, uint32_t handle) {
     }
     if (!upload_page(s, page, t)) {
         vlog("sprite import failed: handle=%u %ux%u.", handle, t.width, t.height);
-        if (it == s->pages.end()) vkFreeDescriptorSets(s->device, s->spritePool.get(), 1, &page.set);   // a retry must not use up the pool
+        s->failedSource[handle] = t.bytes;
+        if (it == s->pages.end()) vkFreeDescriptorSets(s->device, s->spritePool.get(), 1, &page.set);   // the failed vector is not retried, and the slot returns to the pool
         return nullptr;
     }
     page.source = t.bytes;
