@@ -87,10 +87,8 @@ B4.3-txm	mclib/txmmgr.cpp:321	heap_free	textureCacheHeap	textureCacheHeap->Free(
 B4.3-txm	mclib/txmmgr.cpp:322	heap_free	textureCacheHeap	textureCacheHeap->Free(lzBuffer2);
 B4.3-txm	mclib/txmmgr.cpp:511	heap_free	textureCacheHeap	textureCacheHeap->Free(masterTextureNodes[textureNode].textureData);
 B4.3-txm	mclib/txmmgr.cpp:516	heap_free	textureStringHeap	textureStringHeap->Free(masterTextureNodes[textureNode].nodeName);
-B4.3-txm	mclib/txmmgr.cpp:540	heap_free	textureCacheHeap	textureCacheHeap->Free(masterTextureNodes[i].textureData);
-B4.3-txm	mclib/txmmgr.cpp:545	heap_free	textureStringHeap	textureStringHeap->Free(masterTextureNodes[i].nodeName);
-B4.3-txm	mclib/txmmgr.cpp:966	heap_free	textureStringHeap	mcTextureManager->textureStringHeap->Free(nodeName);
-B4.3-txm	mclib/txmmgr.cpp:967	heap_free	textureCacheHeap	mcTextureManager->textureCacheHeap->Free(textureData);
+B4.3-txm	mclib/txmmgr.cpp:961	heap_free	textureStringHeap	mcTextureManager->textureStringHeap->Free(nodeName);
+B4.3-txm	mclib/txmmgr.cpp:962	heap_free	textureCacheHeap	mcTextureManager->textureCacheHeap->Free(textureData);
 B4.3-txm	mclib/txmmgr_texture.cpp:105	heap_malloc	textureCacheHeap	lzBuffer1 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
 B4.3-txm	mclib/txmmgr_texture.cpp:108	heap_malloc	textureCacheHeap	lzBuffer2 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
 B4.3-txm	mclib/txmmgr_texture.cpp:123	heap_malloc	textureCacheHeap	masterTextureNodes[i].textureData = (DWORD *)textureCacheHeap->Malloc(txmCompressSize);
@@ -106,10 +104,6 @@ B4.3-txm	mclib/txmmgr_texture.cpp:500	heap_free	textureCacheHeap	textureCacheHea
 B4.3-txm	mclib/txmmgr_texture.cpp:556	heap_malloc	textureCacheHeap	masterTextureNodes[i].textureData = (DWORD *)textureCacheHeap->Malloc(txmSize);
 B4.4-sound	code/radio.cpp:67	heap_malloc	radioHeap	void *result = radioHeap->Malloc(mySize);
 B4.4-sound	code/radio.cpp:74	heap_free	radioHeap	radioHeap->Free(us);
-B4.5-crater	mclib/crater.cpp:146	c_alloc	-	craterTextureHandles = (DWORD *)malloc(sizeof(DWORD) * numCraterTextures);
-B4.5-crater	mclib/crater.cpp:149	c_alloc	-	craterTextureIndices = (DWORD *)malloc(sizeof(DWORD) * numCraterTextures);
-B4.5-crater	mclib/crater.cpp:201	c_free	-	free(craterTextureHandles);
-B4.5-crater	mclib/crater.cpp:204	c_free	-	free(craterTextureIndices);
 B4.6-collision	code/collsn.cpp:149	heap_malloc	collisionHeap	result = CollisionSystem::collisionHeap->Malloc(mySize);
 B4.6-collision	code/collsn.cpp:158	heap_free	collisionHeap	CollisionSystem::collisionHeap->Free(us);
 B4.6-collision	code/collsn.cpp:407	heap_malloc	systemHeap	result = systemHeap->Malloc(mySize);

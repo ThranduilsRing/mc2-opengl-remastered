@@ -77,8 +77,9 @@ class CraterManager
 		CraterDataPtr		craterList;
 		long				numCraterTextures;
 
-		DWORD				*craterTextureIndices;
-		DWORD				*craterTextureHandles;
+		// Texture node per crater texture, and the GOS handle cached for it this frame; sized by init(), empty until then.
+		std::vector<DWORD>	craterTextureIndices;
+		std::vector<DWORD>	craterTextureHandles;
 				
 	//Member Functions
 	//-----------------
@@ -98,8 +99,8 @@ class CraterManager
 
 			numCraterTextures = 0;
 			
-			craterTextureHandles = NULL;
-			craterTextureIndices = NULL;
+			craterTextureHandles.clear();
+			craterTextureIndices.clear();
 			
 			craterFile = NULL;
 		}
