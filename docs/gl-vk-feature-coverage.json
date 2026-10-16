@@ -4220,9 +4220,9 @@
    "gate_evidence": "ungated census, row 28",
    "gl_shader": "shaders/static_prop.vert",
    "kind": "ungated",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/color_prop_tier1.*"
+   "status": "PORTED",
+   "vk_evidence": "member-read:aRGBHighlight",
+   "vk_twin": "shaders/vulkan/color_prop_tier1.vert"
   }
  ]
 }
