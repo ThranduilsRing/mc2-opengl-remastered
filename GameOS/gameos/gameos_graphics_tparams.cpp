@@ -77,7 +77,7 @@ static void uploadDynamicShadowUniforms(const Locs& tl, gosPostProcess* pp, GLin
 //
 // DEBUG-VIEW-SWEEP-1: gos_SetGlobalDebugView() retargets the shared channel at
 // runtime (command-channel `debugview N`); -1 = no channel.
-static int g_mc2LightingDebugOverride = [] { const char* e = std::getenv("MC2_TEMP_LIGHTING_DEBUG"); return e ? std::atoi(e) : -1; }();   // TEMP row-14 diag
+static int g_mc2LightingDebugOverride = -1;
 int mc2LightingDebugMode()
 {
     return g_mc2LightingDebugOverride;
