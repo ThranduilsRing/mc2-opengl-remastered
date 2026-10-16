@@ -9,7 +9,7 @@ ChooseBuildingDlg.h		: Interface for the ChooseBuildingDlg component.
 
 #include "stdafx.h"
 #include "resource.h"
-#include <elist.h>
+#include <vector>
 #include "Objective.h"
 #include "EditorObjectMgr.h"
 
@@ -40,7 +40,7 @@ private:
 	building_ptr_type *m_pModifiedBuildingPtr;
 	building_ptr_type *m_pBuildingPtr;
 	CComboBox *m_pComboBox;
-	EditorObjectMgr::BUILDING_LIST m_buildingList;
+	std::vector<EditorObject*> m_buildingList;
 	CButton *m_pUsingPointerButton;
 	CButton *m_pCancelButton;
 	CButton *m_pOKButton;

@@ -17,6 +17,112 @@ from editor.tests.legacy_reference import (FROZEN, PLACEMENTS, buildings, compar
 
 
 class LegacyLinkTests(unittest.TestCase):
+    def test_catalog_append_retains_names_order_first_match_and_value_copies(self):
+        root = Path(__file__).resolve().parents[2]
+        output = Path(tempfile.gettempdir()) / 'mc2-el8-catalog' / uuid.uuid4().hex
+        output.mkdir(parents=True)
+
+        def method(source, signature):
+            start = source.index(signature)
+            opening = source.index('{', start)
+            depth, end = 1, opening + 1
+            while depth:
+                depth += (source[end] == '{') - (source[end] == '}')
+                end += 1
+            return source[start:end] + '\n'
+
+        def fixture(header, implementation):
+            legacy = 'EList< Group' in header
+            source = ('#include <cassert>\n#include <cstdlib>\n#include <cstring>\n'
+                      '#include <new>\n#include <deque>\n#include <vector>\n'
+                      '#define gosASSERT(x) assert(x)\n')
+            if legacy:
+                source += ('struct Heap { void* Malloc(size_t n) { return malloc(n); } '
+                           'void Free(void* p) { free(p); } }; Heap heap; Heap* systemHeap = &heap;\n')
+                source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(encoding='utf-8'), flags=re.M)
+            source += ('struct AppearanceType {}; using DWORD = unsigned long;\n'
+                       'constexpr int MECH_TYPE = 1, GV_TYPE = 2;\nclass EditorObjectMgr { public:\n')
+            source += header[header.index('\tenum BuildingType'):header.index('\tclass EDITOR_OBJECT_LIST')]
+            source += header[header.index('\t\tstruct Building\n'):header.index('\t\ttypedef EList< BuildingLink*')]
+            source += 'GROUP_LIST groups;\n'
+            signatures = ('int EditorObjectMgr::getBuildingGroupCount',
+                          'int EditorObjectMgr::getNumberBuildingsInGroup',
+                          'void EditorObjectMgr::getBuildingGroupNames',
+                          'void EditorObjectMgr::getBuildingNamesInGroup',
+                          'bool EditorObjectMgr::getBuildingFromID',
+                          'void EditorObjectMgr::getUnitGroupNames',
+                          'int EditorObjectMgr::getUnitGroupCount')
+            methods = [method(implementation, signature) for signature in signatures]
+            source += ''.join(m[:m.index('{')].replace('EditorObjectMgr::', '') + ';\n' for m in methods)
+            source += '};\nEditorObjectMgr::Building::~Building() {}\n' + ''.join(methods)
+            main = r'''
+int main() {
+    EditorObjectMgr mgr;
+    const char* names[4096]{}; int count = 4096;
+    mgr.getBuildingGroupNames(names, count); assert(count == 4096);
+    assert(mgr.getNumberBuildingsInGroup(-1) == 0);
+    char* variants[16]{};
+    EditorObjectMgr::Building building{}; strcpy(building.name, "first"); building.fitID = 7; building.varNames = variants;
+    EditorObjectMgr::Group group{}; strcpy(group.name, "structures");
+    group.buildings.APPEND(building); mgr.groups.APPEND(group);
+    building.type = MECH_TYPE; strcpy(building.name, "mech");
+    group.buildings.APPEND(building); strcpy(group.name, "mixed"); mgr.groups.APPEND(group);
+    EditorObjectMgr::Group movers{}; strcpy(movers.name, "movers");
+    movers.buildings.APPEND(building); mgr.groups.APPEND(movers);
+    count = 4096; mgr.getBuildingGroupNames(names, count);
+    assert(!strcmp(names[0], "structures") && !strcmp(names[1], "mixed") && !strcmp(names[2], "movers"));
+    const char* groupName = names[0];
+    count = 0; mgr.getBuildingNamesInGroup(0, names, count);
+    assert(count == 1 && !strcmp(names[0], "first")); const char* buildingName = names[0];
+    unsigned long g = 99, b = 99;
+    assert(mgr.getBuildingFromID(7, g, b, true) && g == 0 && b == 0);
+    assert(mgr.getBuildingFromID(7, g, b, false) && g == 0 && b == 0);
+    assert(!mgr.getBuildingFromID(999, g, b, true) && g == 3 && b == 1);
+    int ids[4]{-1,-1,-1,-1}; count = 0; mgr.getUnitGroupNames(names, ids, count);
+    assert(count == 1 && ids[0] == -1 && mgr.getUnitGroupCount() == 1);
+    count = 4; mgr.getUnitGroupNames(names, ids, count);
+    assert(count == 1 && ids[0] == 2 && !strcmp(names[0], "movers"));
+    auto copy = mgr.groups;
+    assert(copy[0].buildings[0].varNames == variants);
+    strcpy(copy[0].name, "copy"); strcpy(copy[0].buildings[0].name, "changed");
+    assert(!strcmp(groupName, "structures") && !strcmp(buildingName, "first"));
+    for (int i = 0; i < 2048; ++i) mgr.groups[0].buildings.APPEND(building);
+    count = 4096; mgr.getBuildingNamesInGroup(0, names, count);
+    assert(names[0] == buildingName);
+    for (int i = 0; i < 2048; ++i) mgr.groups.APPEND(movers);
+    count = 4096; mgr.getBuildingGroupNames(names, count);
+    assert(names[0] == groupName);
+    assert(!strcmp(groupName, "structures") && !strcmp(buildingName, "first"));
+}
+'''
+            return source + main.replace('APPEND', 'Append' if legacy else 'push_back')
+
+        def run(source, label, succeeds=True):
+            cpp, exe = output / (label + '.cpp'), output / (label + '.exe')
+            cpp.write_text(source, encoding='utf-8')
+            built = subprocess.run(['clang++', '-std=c++23', str(cpp), '-o', str(exe)],
+                                   capture_output=True, text=True, timeout=90, **child_kwargs(redirected=True))
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            result = subprocess.run([str(exe)], capture_output=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode == 0, succeeds, result.stdout + result.stderr)
+
+        old = []
+        for path in ('editor/EditorObjectMgr.h', 'editor/EditorObjectMgr.cpp'):
+            result = subprocess.run(['git', 'show', '9f77631c7:' + path], cwd=root,
+                                    capture_output=True, text=True, timeout=30, **child_kwargs(redirected=True))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            old.append(result.stdout)
+        run(fixture(*old), 'old')
+        header, implementation = ((root / path).read_text(encoding='utf-8') for path in
+                                  ('editor/EditorObjectMgr.h', 'editor/EditorObjectMgr.cpp'))
+        run(fixture(header, implementation), 'current')
+        if 'std::deque' in header:
+            for old_type in ('std::deque<Building>', 'std::deque<Group>'):
+                mutated = header.replace(old_type, old_type.replace('deque', 'vector'))
+                self.assertNotEqual(mutated, header)
+                run(fixture(mutated, implementation), 'reallocated-' + old_type[11:-1], False)
+        print(f'Catalog fixture artifacts: {output}')
+
     def test_species_reordering_cannot_change_combo_selection(self):
         root = Path(__file__).resolve().parents[2]
         output = Path(tempfile.gettempdir()) / "mc2-el5-species" / uuid.uuid4().hex

@@ -60,15 +60,15 @@ BOOL ChooseUnitDlg::OnInitDialog()
 		EditorObjectMgr::UNIT_LIST::EConstIterator it = completeUnitList.Begin();
 		while (!it.IsDone()) {
 			if ((*it)->getAlignment() != m_alignmentToExclude) {
-				m_unitList.Append(*it);
+				m_unitList.push_back(*it);
 			}
 			it++;
 		}
 	}
 
 	{
-		EditorObjectMgr::UNIT_LIST::EConstIterator it = m_unitList.Begin();
-		while (!it.IsDone()) {
+		auto it = m_unitList.begin();
+		while (it != m_unitList.end()) {
 			std::string tmpEStr;
 			Stuff::Vector3D pos = (*it)->getPosition();
 			const char *szDisplayName = (*it)->getDisplayName(); // nb: localization
@@ -79,7 +79,7 @@ BOOL ChooseUnitDlg::OnInitDialog()
 		}
 	}
 
-	if (1 <= m_unitList.Count()) {
+	if (!m_unitList.empty()) {
 		m_pComboBox->SetCurSel(0);
 	} else {
 		AfxMessageBox(IDS_NO_UNITS);
@@ -137,8 +137,8 @@ void ChooseUnitDlg::OnUsePointer()
 		EditorObjectMgr::EDITOR_OBJECT_LIST::EConstIterator it = selectedObjects.Begin();
 		while (!it.IsDone()) {
 			int index = 0;
-			EditorObjectMgr::UNIT_LIST::EConstIterator it2 = m_unitList.Begin();
-			while (!it2.IsDone()) {
+			auto it2 = m_unitList.begin();
+			while (it2 != m_unitList.end()) {
 				if ((*it) == (*it2)) {
 					num_units_selected += 1;
 					validObjectIndex = index;
@@ -170,8 +170,7 @@ void ChooseUnitDlg::OnOK()
 {
 	int nSelectionIndex = m_pComboBox->GetCurSel();
 	assert(0 <= nSelectionIndex);
-	//(*m_pModifiedUnitPtr) = m_unitList[nSelectionIndex];
-	(*m_pModifiedUnitPtr) = *(m_unitList.Iterator(nSelectionIndex));
+	(*m_pModifiedUnitPtr) = m_unitList[nSelectionIndex];
 
 	(*m_pUnitPtr) = (*m_pModifiedUnitPtr);
 	delete m_pModifiedUnitPtr;

@@ -627,9 +627,8 @@ void EditorObjectMgr::getRandomTreeFromGroup( int treeGroup, int& group, int& in
 	Group* pGroup = &groups[TREE_GROUP];
 	if ( pGroup )
 	{
-		EList< Building, Building& >::EIterator buildIter;
-		for( buildIter = groups[group].buildings.Begin();
-			!buildIter.IsDone(); buildIter++ )
+		for( auto buildIter = groups[group].buildings.begin();
+			buildIter != groups[group].buildings.end(); buildIter++ )
 			{
 				if ( (*buildIter).forestId == treeGroup )
 					treeCount++;
@@ -639,8 +638,8 @@ void EditorObjectMgr::getRandomTreeFromGroup( int treeGroup, int& group, int& in
 		treeCount = 0;
 
 		int counter = 0;
-		for( buildIter = groups[group].buildings.Begin();
-			!buildIter.IsDone(); buildIter++, counter++ )
+		for( auto buildIter = groups[group].buildings.begin();
+			buildIter != groups[group].buildings.end(); buildIter++, counter++ )
 			{
 				if ( (*buildIter).forestId == treeGroup  )
 				{

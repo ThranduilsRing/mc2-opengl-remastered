@@ -24,6 +24,8 @@
 #include "Forest.h"
 #endif
 
+#include <deque>
+
 #include "mclib.h"
 #include "../RenderCore/Handle.h"
 
@@ -295,13 +297,14 @@ public:
 			~Building();
 		};
 
+		// Catalog name pointers remain valid until manager destruction. Append only.
 		struct Group
 		{
 			char							name[64];
-			EList< Building, Building& >	buildings;
+			std::deque<Building>	buildings;
 		};
 
-		typedef EList< Group, Group& >	GROUP_LIST;
+		using GROUP_LIST = std::deque<Group>;
 		typedef EList< BuildingLink*, BuildingLink* > LINK_LIST;
 		typedef EList< DropZone*, DropZone* > DROP_LIST;
 		typedef EList< Forest*, Forest* > FOREST_LIST;
@@ -342,13 +345,10 @@ inline unsigned long EditorObjectMgr::getIndexInGroup( long id )
 {
 	return ((id >> 8) & 0x00ff);
 }
-// EDITOR-CRASH-HARDENING-1: a dropzone/unresolved object ID decodes to an
-// out-of-range group (e.g. group=255) -> groups[group]/buildings[index] OOB.
-// Mirror the explicit bounds guard in getType() (EditorObjectMgr.cpp:2857-2863):
-// group < groups.Count() && index < buildings.Count(); return a safe sentinel.
+// Drop zones and unresolved IDs can decode outside the catalog.
 #define EOM_DECODE_INBOUNDS( ID ) \
-	( getGroup( ID ) < (unsigned long)groups.Count() \
-	  && getIndexInGroup( ID ) < (unsigned long)groups[getGroup( ID )].buildings.Count() )
+	( getGroup( ID ) < groups.size() \
+	  && getIndexInGroup( ID ) < groups[getGroup( ID )].buildings.size() )
 
 inline EditorObjectMgr::BuildingType	EditorObjectMgr::getSpecialType( int ID )
 {

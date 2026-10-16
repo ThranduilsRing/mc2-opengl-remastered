@@ -84,15 +84,11 @@ EditorObjectMgr::~EditorObjectMgr()
 		delete appearanceTypeList;
 	appearanceTypeList = nullptr;
 
-	for( GROUP_LIST::EIterator groupIter = groups.Begin();
-			!groupIter.IsDone(); groupIter++ )
+	for( auto groupIter = groups.begin(); groupIter != groups.end(); groupIter++ )
 	{
 
-		for( EList< Building, Building& >::EIterator buildIter = (*groupIter).buildings.Begin();
-			!buildIter.IsDone(); buildIter++ )
+		for( auto buildIter = (*groupIter).buildings.begin(); buildIter != (*groupIter).buildings.end(); buildIter++ )
 		{
-			Building teste = (*buildIter);
-
 			if (  (*buildIter ).varNames )
 			{
 				for ( int i = 0; i < 16; i++ )
@@ -104,8 +100,6 @@ EditorObjectMgr::~EditorObjectMgr()
 					}
 				}
 
-				//Kinda need to delete this OUTSIDE the above loop.
-				// Yum, Yum!
 				free ( ( *buildIter ).varNames );
 				( *buildIter ).varNames = nullptr;
 			}
@@ -148,9 +142,9 @@ void EditorObjectMgr::clear()
 		
 		resetAvailableSquadNums();
 		
-	for( GROUP_LIST::EIterator groupIter = groups.Begin();!groupIter.IsDone(); groupIter++ )
+	for( auto groupIter = groups.begin(); groupIter != groups.end(); groupIter++ )
 	{
-		for( EList< Building, Building& >::EIterator buildIter = (*groupIter).buildings.Begin();!buildIter.IsDone(); buildIter++ )
+		for( auto buildIter = (*groupIter).buildings.begin(); buildIter != (*groupIter).buildings.end(); buildIter++ )
 		{
 			(*buildIter).appearanceType = nullptr;
 		}
@@ -357,25 +351,25 @@ void EditorObjectMgr::init( const char* bldgListFileName, const char* objectFile
 		if ( bldg.specialType == DROPZONE )
 		{
 			strcpy( dropZoneGroup.name, GroupName );
-			dropZoneGroup.buildings.Append( bldg );
+			dropZoneGroup.buildings.push_back( bldg );
 		}
 		else
 		{
 			bool bNeedGroup = true;		
-			for ( GROUP_LIST::EIterator iter = groups.Begin(); !iter.IsDone(); iter++ )
+			for ( auto iter = groups.begin(); iter != groups.end(); iter++ )
 			{
 				if  ( strcmp( (*iter).name, GroupName ) == 0 )
 				{
 					bNeedGroup = false;
-					(*iter).buildings.Append( bldg );
+					(*iter).buildings.push_back( bldg );
 				}
 			}
 			if ( bNeedGroup )
 			{
 				Group grp;
 				strcpy( grp.name, GroupName );
-				grp.buildings.Append( bldg );
-				groups.Append( grp );
+				grp.buildings.push_back( bldg );
+				groups.push_back( grp );
 			}
 		}
 	}
@@ -550,7 +544,7 @@ EditorObject* EditorObjectMgr::addDropZone( const Stuff::Vector3D& position, int
 	
 	dropZones.Append( pLast ) ;
 
-	ObjectAppearance* pAppear = getAppearance( &dropZoneGroup.buildings.GetHead() );
+	ObjectAppearance* pAppear = getAppearance( &dropZoneGroup.buildings.front() );
 
 	pLast->appearInfo->appearance = pAppear;
 
@@ -775,25 +769,24 @@ bool	EditorObjectMgr::deleteBuilding( const EditorObject* pInfo )
 
 int EditorObjectMgr::getBuildingGroupCount() const
 {
-	return groups.Count();
+	return static_cast<int>(groups.size());
 }
 
 int EditorObjectMgr::getNumberBuildingsInGroup( int group ) const
 {
-	if ( group < 0 || group >= groups.Count() )
+	if ( group < 0 || group >= static_cast<int>(groups.size()) )
 		return 0;
 
-	return groups[group].buildings.Count();
+	return static_cast<int>(groups[group].buildings.size());
 }
 
 void EditorObjectMgr::getBuildingGroupNames( const char** names, int& NumberOfNames ) const
 {
-	if ( NumberOfNames < groups.Count() )
-		NumberOfNames = groups.Count();
+	if ( NumberOfNames < static_cast<int>(groups.size()) )
+		NumberOfNames = static_cast<int>(groups.size());
 
 	int i = 0;
-	for ( GROUP_LIST::EConstIterator iter = groups.Begin();
-		!iter.IsDone(); iter++, i++ )
+	for ( auto iter = groups.begin(); iter != groups.end(); iter++, i++ )
 		{
 			if ( i >= NumberOfNames )
 				return;
@@ -804,20 +797,19 @@ void EditorObjectMgr::getBuildingGroupNames( const char** names, int& NumberOfNa
 
 void EditorObjectMgr::getBuildingNamesInGroup( int group, const char** names, int& NumberOfNames ) const
 {
-	if ( group < 0 || group >= groups.Count() )
+	if ( group < 0 || group >= static_cast<int>(groups.size()) )
 	{
 		NumberOfNames = 0;
 		return;
 	}
 
-	Group* pGroup = &groups[group];
+	const Group* pGroup = &groups[group];
 	
-	if ( NumberOfNames < pGroup->buildings.Count() )
-		NumberOfNames = pGroup->buildings.Count();
+	if ( NumberOfNames < static_cast<int>(pGroup->buildings.size()) )
+		NumberOfNames = static_cast<int>(pGroup->buildings.size());
 
 	int i = 0;
-	for ( EList< Building, Building& >::EIterator iter = pGroup->buildings.Begin();
-		!iter.IsDone(); iter++, i++ )
+	for ( auto iter = pGroup->buildings.begin(); iter != pGroup->buildings.end(); iter++, i++ )
 		{
 			if ( i >= NumberOfNames )
 				return;
@@ -835,13 +827,11 @@ bool EditorObjectMgr::getBuildingFromID( int fitID, unsigned long& group, unsign
 	group = 0;
 	index = 0;
 	
-	for( GROUP_LIST::EIterator groupIter = groups.Begin();
-			!groupIter.IsDone(); groupIter++ )
+	for( auto groupIter = groups.begin(); groupIter != groups.end(); groupIter++ )
 			{
 				index = 0;
 
-				for( EList< Building, Building& >::EIterator buildIter = (*groupIter).buildings.Begin();
-					!buildIter.IsDone(); buildIter++ )
+				for( auto buildIter = (*groupIter).buildings.begin(); buildIter != (*groupIter).buildings.end(); buildIter++ )
 					{
 						if ( (*buildIter).fitID == fitID &&
 								( canBeMech || 
@@ -862,10 +852,9 @@ bool EditorObjectMgr::getBuildingFromID( int fitID, unsigned long& group, unsign
 
 int	EditorObjectMgr::getFitID( int id ) const
 {
-	// EDITOR-CRASH-HARDENING-1: dropzone/unresolved id decodes OOB group/index.
-	// Mirror getType() guard (EditorObjectMgr.cpp:2857-2863).
-	if ( getGroup(id) >= groups.Count()
-		|| getIndexInGroup(id) >= groups[getGroup(id)].buildings.Count() )
+	// Drop zones and unresolved IDs can decode outside the catalog.
+	if ( getGroup(id) >= static_cast<int>(groups.size())
+		|| getIndexInGroup(id) >= static_cast<int>(groups[getGroup(id)].buildings.size()) )
 		return 0;
 	return groups[getGroup(id)].buildings[getIndexInGroup(id)].fitID;
 }
@@ -873,27 +862,27 @@ int	EditorObjectMgr::getFitID( int id ) const
 
 bool EditorObjectMgr::getBlocksLineOfFire( int id ) const
 {
-	// EDITOR-CRASH-HARDENING-1: dropzone/unresolved id decodes OOB group/index.
-	if ( getGroup(id) >= groups.Count()
-		|| getIndexInGroup(id) >= groups[getGroup(id)].buildings.Count() )
+	// Drop zones and unresolved IDs can decode outside the catalog.
+	if ( getGroup(id) >= static_cast<int>(groups.size())
+		|| getIndexInGroup(id) >= static_cast<int>(groups[getGroup(id)].buildings.size()) )
 		return false;
 	return groups[getGroup(id)].buildings[getIndexInGroup(id)].blocksLineOfFire;
 
 }
 bool EditorObjectMgr::getIsHoverCraft( int id ) const
 {
-	// EDITOR-CRASH-HARDENING-1: dropzone/unresolved id decodes OOB group/index.
-	if ( getGroup(id) >= groups.Count()
-		|| getIndexInGroup(id) >= groups[getGroup(id)].buildings.Count() )
+	// Drop zones and unresolved IDs can decode outside the catalog.
+	if ( getGroup(id) >= static_cast<int>(groups.size())
+		|| getIndexInGroup(id) >= static_cast<int>(groups[getGroup(id)].buildings.size()) )
 		return false;
 	return groups[getGroup(id)].buildings[getIndexInGroup(id)].isHoverCraft;
 
 }
 __int64	EditorObjectMgr::getImpassability( int id )
 {
-	// EDITOR-CRASH-HARDENING-1: dropzone/unresolved id decodes OOB group/index.
-	if ( getGroup(id) >= groups.Count()
-		|| getIndexInGroup(id) >= groups[getGroup(id)].buildings.Count() )
+	// Drop zones and unresolved IDs can decode outside the catalog.
+	if ( getGroup(id) >= static_cast<int>(groups.size())
+		|| getIndexInGroup(id) >= static_cast<int>(groups[getGroup(id)].buildings.size()) )
 		return 0;
 	return groups[getGroup(id)].buildings[getIndexInGroup(id)].impassability;
 }
@@ -903,12 +892,12 @@ int EditorObjectMgr::getType( unsigned long group, unsigned long indexWithinGrou
 	// gosASSERT is a no-op in this build, so it provides no real bounds
 	// protection; an unresolved mission object ID (caller passed past-the-end
 	// group/index) would OOB-deref here. Guard explicitly.
-	if ( group >= groups.Count() )
+	if ( group >= static_cast<int>(groups.size()) )
 		return -1;
 	Group* pGroup = &groups[group];
 
-	gosASSERT( pGroup->buildings.Count() > indexWithinGroup );
-	if ( indexWithinGroup >= pGroup->buildings.Count() )
+	gosASSERT( static_cast<int>(pGroup->buildings.size()) > indexWithinGroup );
+	if ( indexWithinGroup >= static_cast<int>(pGroup->buildings.size()) )
 		return -1;
 	Building* pBuilding = &pGroup->buildings[indexWithinGroup];
 
@@ -1075,10 +1064,10 @@ const char*	EditorObjectMgr::getObjectName( int ID ) const
 	unsigned long group = getGroup(ID);
 	unsigned long index = getIndexInGroup(ID);
 
-	if ( group >= groups.Count() )
+	if ( group >= static_cast<int>(groups.size()) )
 		return "Unknown Object";
 
-	if ( index >= groups[group].buildings.Count() )
+	if ( index >= static_cast<int>(groups[group].buildings.size()) )
 		return "Unknown Object";
 
 	const char* name = groups[group].buildings[index].name;
@@ -1087,7 +1076,7 @@ const char*	EditorObjectMgr::getObjectName( int ID ) const
 
 const char* EditorObjectMgr::getGroupName( int ID ) const
 {
-	if ( ID < 0 || ID >= groups.Count() )
+	if ( ID < 0 || ID >= static_cast<int>(groups.size()) )
 		return "Unknown Group";
 
 	const char* name = groups[ID].name;
@@ -1099,9 +1088,9 @@ void EditorObjectMgr::getUnitGroupNames( const char** names, int* ids, int& numb
 	int counter = 0;
 	int index = 0;
 	
-	for ( GROUP_LIST::EConstIterator iter = groups.Begin(); !iter.IsDone(); index++, iter++ )
+	for ( auto iter = groups.begin(); iter != groups.end(); index++, iter++ )
 	{
-		if ( (*iter).buildings.Count() && ((*iter).buildings.GetHead().type == MECH_TYPE || (*iter).buildings.GetHead().type == GV_TYPE ) )
+		if ( static_cast<int>((*iter).buildings.size()) && ((*iter).buildings.front().type == MECH_TYPE || (*iter).buildings.front().type == GV_TYPE ) )
 		{
 			if ( counter < numberOfEm )
 			{
@@ -1120,9 +1109,9 @@ int EditorObjectMgr::getUnitGroupCount( ) const
 {
 	int counter = 0;
 	
-	for ( GROUP_LIST::EConstIterator iter = groups.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = groups.begin(); iter != groups.end(); iter++ )
 	{
-		if ( (*iter).buildings.Count() && ( (*iter).buildings.GetHead().type == MECH_TYPE ||(*iter).buildings.GetHead().type == GV_TYPE ) )
+		if ( static_cast<int>((*iter).buildings.size()) && ( (*iter).buildings.front().type == MECH_TYPE ||(*iter).buildings.front().type == GV_TYPE ) )
 		{
 			counter++;
 		}
