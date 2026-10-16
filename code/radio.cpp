@@ -18,6 +18,8 @@
 #include"radio.h"
 #endif
 
+#include"../GameOS/gameos/utils/mc2log.h"
+
 #ifndef GAMESOUND_H
 #include"gamesound.h"
 #endif
