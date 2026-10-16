@@ -68,30 +68,26 @@ void ControlGui::switchTabs(int direction)
 void ControlGui::playMovie( const char* fileName )
 {
 	if (moviePlaying)
-		return;
-
-	// Headless harness: mission-objective briefing videos (CPlayBIK) reach here,
-	// bypassing the MC2_BOOT_TO_BAY gate in Logistics::playFullScreenVideo. Skip
-	// them too so the boot-to-purchase capture is not blocked by standin.bik.
-	if ( mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">() )
 	{
-		MC2_EVENT(Core, "VIDEO", 1, "event=skip name={} reason=boot_to_bay", mc2::str::from_c( fileName ));
+		objectiveObservationSink("movie", "gui", "busy", fileName);
 		return;
 	}
 
-	// Apply hiResOffsetX/Y at use time — they were still 0 when
-	// initStatics read videoRect from the layout file (swapResolutions
-	// runs later and mutates them). See the note at the VideoWindow
-	// block read for the full story.
+	// Briefing videos must not block a boot-to-purchase capture.
+	if ( mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">() )
+	{
+		MC2_EVENT(Core, "VIDEO", 1, "event=skip name={} reason=boot_to_bay", mc2::str::from_c( fileName ));
+		objectiveObservationSink("movie", "gui", "boot_to_bay", fileName);
+		return;
+	}
+
+	// The layout predates the current resolution offsets.
 	RECT vRect;
 	vRect.left   = videoRect.left   + hiResOffsetX;
 	vRect.right  = videoRect.right  + hiResOffsetX;
 	vRect.top    = videoRect.top    + hiResOffsetY;
 	vRect.bottom = videoRect.bottom + hiResOffsetY;
 
-	//Chop everything but the actual name.
-	// Assume extension is BIK.
-	// Assume the movie is in data\movies.
 	char realName[1024];
 	_splitpath(fileName,nullptr,nullptr,realName,nullptr);
 
@@ -99,23 +95,22 @@ void ControlGui::playMovie( const char* fileName )
 	movieName.init(moviePath,realName,".bik");
 	bMovie = new MC2Movie;
 	bMovie->init(movieName,vRect,true);
-	// The in-mission video surface (objective and ABL play-video actions): one line per movie REQUESTED of the player, so a harness run shows that the
-	// request path was reached. It is logged before the frame-rate check below, which may still discard the movie; a headless run never decodes one.
+	// Requests remain distinct from decoder and GUI acceptance.
 	MC2_EVENT(Core, "VIDEO", 1, "event=play_requested name={}", std::string_view( realName ));
 
-	//Maybe not enough frames to run.  Do not flash the border!
-	// Do ONE update to make sure the damned sound starts at least!!
+	// A rejected movie must not flash the video border.
 	bMovie->update();
 	if (bMovie->isPlaying())
 	{
 		moviePlaying = true;
+		objectiveObservationSink("movie", "gui", "accepted", movieName);
 	}
 	else
 	{
-		//If we couldn't play it cause of the frame Rate, TOSS it!!
 		moviePlaying = false;
 		delete bMovie;
 		bMovie = nullptr;
+		objectiveObservationSink("movie", "gui", "rejected", movieName);
 	}
 }
 
@@ -246,6 +241,7 @@ void ControlGui::setChatText( const char* playerName, const char* message, unsig
 	strcpy( chatInfos[i].playerName, playerName );
 	chatInfos[i].time = scenarioTime;
 	chatInfos[i].chatTextColor = chatColor;
+	objectiveObservationSink("chat", "stored", "accepted", chatInfos[i].message);
 
 	long totalHeight = chatEdit.font.height( message, chatEdit.width() );
 	long lineHeight = chatEdit.font.height( "A", chatEdit.width() );

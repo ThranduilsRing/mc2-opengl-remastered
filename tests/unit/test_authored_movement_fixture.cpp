@@ -10,6 +10,17 @@
 #include "move_internal.h"
 #include "mover_internal.h"
 #include "comndr.h"
+#include "objective.h"
+#include "afont.h"
+#include "inifile.h"
+#include "timing.h"
+#include "Gates/gate_cold.h"
+#include "GameOS/gameos/diagnostic_trace.h"
+#include "gamesound.h"
+#include "logisticsdata.h"
+#include "paths.h"
+#include <chrono>
+#include <fstream>
 
 #include <array>
 #include <cstring>
@@ -24,6 +35,215 @@
 #include <filesystem>
 
 extern long LastMoveCalcErr;
+
+struct ObjectiveObservationFixture {
+    aFont font;
+    aFont* previous = CObjective::s_markerFont;
+    ObjectiveObservationFixture() { CObjective::s_markerFont = &font; }
+    ~ObjectiveObservationFixture() { CObjective::s_markerFont = previous; }
+};
+
+TEST_CASE("ObjectiveObservation/skipped ordinals and replay preserve payloads and causes; completed availability emits nothing") {
+    struct CountedCondition : CObjectiveCondition {
+        int& count;
+        explicit CountedCondition(int& value) : CObjectiveCondition(0), count(value) {}
+        condition_species_type Species() override { return ELAPSED_MISSION_TIME; }
+        bool Save(FitIniFile*) override { return true; }
+        objective_status_type Status() override { ++count; return OS_SUCCESSFUL; }
+    };
+    struct SinkAction : CObjectiveAction {
+        bool movie;
+        explicit SinkAction(bool value) : CObjectiveAction(0), movie(value) {
+            observationOrdinal = movie ? 5 : 4;
+            observationPayload = movie ? "\"briefing.bik\"" : "\"ready\"";
+        }
+        action_species_type Species() override { return movie ? PLAY_BIK : DISPLAY_TEXT_MESSAGE; }
+        bool Init() override { return true; }
+        bool Read(FitIniFile*) override { return true; }
+        bool Save(FitIniFile*) override { return true; }
+        int Execute() override {
+            objectiveObservationSink(movie ? "movie" : "chat", movie ? "gui" : "stored",
+                                     movie ? "boot_to_bay" : "accepted", movie ? "./briefing.bik" : "ready");
+            return true;
+        }
+    };
+    const std::string fitText =
+        "FITini\r\n[Objectives Version]\r\nul Version = 3\r\n"
+        "[Team0Objectives]\r\nul NumObjectives = 2\r\n"
+        "[Team0BooleanFlags]\r\nst BooleanString0 = \"ready\"\r\nb BooleanValue0 = true\r\n"
+        "[Team0Objective0]\r\nst Title = \"malformed\"\r\nb DisplayMarker = false\r\n"
+        "[Team0Objective1]\r\nst Title = \"fixture\"\r\nb DisplayMarker = false\r\n"
+        "b HiddenTrigger = true\r\nb ActivateOnFlag = true\r\nst ActivateFlagID = \"ready\"\r\n"
+        "ul NumConditions = 0\r\nul NumActions = 4\r\n"
+        "[Team0Objective1Action0]\r\nst ActionSpeciesString = \"PlayWAV\"\r\n"
+        "[Team0Objective1Action1]\r\nst ActionSpeciesString = \"SetBooleanFlag\"\r\n"
+        "st FlagID = \"signal\"\r\nb Value = true\r\n"
+        "[Team0Objective1Action2]\r\nst ActionSpeciesString = \"PlayWAV\"\r\n"
+        "st WAVFileName = \"unavailable.wav\"\r\n"
+        "[Team0Objective1Action3]\r\nst ActionSpeciesString = \"MakeNewTechnologyAvailable\"\r\n"
+        "st PurchaseFileName = \"mvh_scratch_objective_bonus.fit\"\r\nFITend\r\n";
+    const std::string stem = "mvh_scratch_objective_observation";
+    { std::ofstream fit(stem + ".fit", std::ios::binary); fit << fitText; REQUIRE(fit.good()); }
+    { std::ofstream pak(stem + ".pak", std::ios::binary); pak << "controlled-pak"; REQUIRE(pak.good()); }
+    { std::ofstream bonus("mvh_scratch_objective_bonus.fit", std::ios::binary);
+      bonus << "FITini\r\n[Components]\r\n[Mechs]\r\n[Pilots]\r\nFITend\r\n"; REQUIRE(bonus.good()); }
+    const auto scratch = std::filesystem::absolute(stem + "_logistics");
+    std::filesystem::create_directories(scratch / "data/campaign");
+    { std::ofstream campaign(scratch / "data/campaign/campaign.fit", std::ios::binary);
+      campaign << "FITini\r\n[Campaign]\r\nst CampaignName = \"fixture\"\r\nl GroupCount = 1\r\nl CBills = 100\r\n"
+                  "[Group0]\r\nl MissionCount = 1\r\nst Video = \"\"\r\n"
+                  "[Group0Mission0]\r\nst FileName = \"mission\"\r\nst PurchaseFile = \"purchase\"\r\nFITend\r\n";
+      REQUIRE(campaign.good()); }
+    { std::ofstream missionFile(scratch / "mission.fit", std::ios::binary);
+      missionFile << "FITini\r\n[MissionSettings]\r\nst MissionName = \"fixture\"\r\nst Blurb2 = \"fixture\"\r\nFITend\r\n";
+      REQUIRE(missionFile.good()); }
+    { std::ofstream purchase(scratch / "purchase.fit", std::ios::binary);
+      purchase << "FITini\r\n[Components]\r\nb AllComponents = false\r\n[Mechs]\r\n[Pilots]\r\nFITend\r\n";
+      REQUIRE(purchase.good()); }
+    mc2::gate::ScopedOverride<"MC2_DIAG_TAGS"> tags("OBJECTIVES");
+    const auto diagnostic = "debug_state/objective-observation-" +
+        std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".jsonl";
+    mc2::gate::ScopedOverride<"MC2_DIAGNOSTIC_TRACE_FILE"> trace(diagnostic.c_str());
+    mc2_diag::init("objective-observation", 0);
+    REQUIRE(mc2_diag::tagEnabled("OBJECTIVES"));
+
+    auto run = [&](bool enabled) {
+        mc2::gate::ScopedOverride<"MC2_DIAG_TAGS"> mode(enabled ? "OBJECTIVES" : "none");
+        UserHeap heap;
+        heap.init(1024 * 1024, "objective-observation");
+        auto* previousHeap = systemHeap;
+        systemHeap = &heap;
+        auto* previousTeam = Team::teams[0];
+        const auto previousTeamCount = Team::numTeams;
+        const auto previousTurn = turn;
+        turn = 40;
+        struct Restore {
+            UserHeap* heap;
+            Team* team;
+            long count, frame;
+            GameSoundSystem* sound;
+            bool audio;
+            LogisticsData* logistics;
+            std::string path = missionPath;
+            std::filesystem::path cwd = std::filesystem::current_path();
+            ~Restore() {
+                systemHeap = heap; Team::teams[0] = team; Team::numTeams = count; turn = frame;
+                soundSystem = sound; useSound = audio;
+                LogisticsData::instance = logistics;
+                std::strcpy(missionPath, path.c_str());
+                std::filesystem::current_path(cwd);
+            }
+        } restore{previousHeap, previousTeam, previousTeamCount, previousTurn, soundSystem, useSound,
+                  LogisticsData::instance};
+        ObjectiveObservationFixture marker;
+        GameSoundSystem controlledSound;
+        soundSystem = &controlledSound;
+        useSound = false;
+        Team team;
+        Team::teams[0] = &team;
+        team.objectives.Alignment(0);
+        LogisticsData::instance = nullptr;
+        LogisticsData logistics;
+        std::strcpy(missionPath, (scratch.generic_string() + "/").c_str());
+        std::filesystem::current_path(scratch);
+        logistics.initFast();
+        std::filesystem::current_path(restore.cwd);
+        FitIniFile file;
+        REQUIRE(file.open((stem + ".fit").c_str()) == NO_ERR);
+        REQUIRE(team.objectives.Read(&file));
+        REQUIRE(team.objectives.Count() == 1);
+        auto* objective = *team.objectives.begin();
+        REQUIRE(objective->m_actionList.Count() == 3);
+        CHECK((*objective->m_actionList.begin())->observationOrdinal == 1);
+        objective->m_actionList.Append(new SinkAction(false));
+        objective->m_actionList.Append(new SinkAction(true));
+        int evaluations = 0;
+        objective->m_conditionList.Append(new CountedCondition(evaluations));
+        CHECK_FALSE(objective->IsActive());
+        objective->IsActive(true);
+        CHECK(evaluations == 0);
+        CHECK(team.objectives.Status() == OS_SUCCESSFUL);
+        CHECK(team.objectives.Status() == OS_SUCCESSFUL);
+        CHECK(evaluations == 1);
+        CHECK(team.objectives.boolFlags.getElementValue("signal"));
+        objective->Status(OS_UNDETERMINED);
+        CHECK(objective->Status(team.objectives) == OS_SUCCESSFUL);
+        CHECK(evaluations == 2);
+        auto& observation = team.objectives.observation;
+        CHECK(observation.sequence == (enabled ? 24 : 0));
+        objective->ObserveCBills(100, 350);
+        if (enabled) {
+            observation.finalResult = 5;
+            observation.Finish();
+            CHECK(observation.sequence == 25);
+            CHECK_FALSE(observation.completed);
+            observation.settled = true;
+            CHECK(logistics.updateAvailability() == 0);
+            CHECK(observation.sequence == 28);
+            CHECK(observation.completed);
+            observation.Finish();
+            CHECK(logistics.updateAvailability() == 0);
+            CHECK(observation.sequence == 28);
+        }
+        file.close();
+        return evaluations;
+    };
+    const int disabledEvaluations = run(false);
+    CHECK(disabledEvaluations == run(true));
+    mc2_diag::flush();
+    std::ifstream input(diagnostic);
+    std::vector<std::string> records;
+    for (std::string line; std::getline(input, line);) {
+        if (line.find("\"tag\":\"OBJECTIVES\"") == std::string::npos) { continue; }
+        auto start = line.find("\"data\":");
+        REQUIRE(start != std::string::npos);
+        records.push_back(line.substr(start + 7, line.size() - start - 8));
+    }
+    // The sink boundary is controlled; the technology queue and availability pass are production code.
+    struct Expected { const char* kind; const char* cause; const char* data; };
+    const std::vector<Expected> expected = {
+        {"activate", "null", R"({"team":0,"objective":1,"old":0,"new":1,"traversal":0,"source":"write"})"},
+        {"resolve", "\"o1\"", R"({"team":0,"objective":1,"old":0,"new":1,"traversal":1,"source":"team"})"},
+        {"dispatch", "\"o2\"", R"({"team":0,"objective":1,"list":"success","entry":1,"species":"SetBooleanFlag","payload":{"FlagID":"signal","Value":true},"result":1})"},
+        {"sink", "\"o3\"", R"({"sink":"flag","stage":"written","result":"true","payload":"signal"})"},
+        {"dispatch", "\"o2\"", R"({"team":0,"objective":1,"list":"success","entry":2,"species":"PlayWAV","payload":"unavailable.wav","result":1})"},
+        {"sink", "\"o5\"", R"({"sink":"wav","stage":"resource_channel","result":"disabled","payload":{"requested":"./unavailable.wav","resource":"","channel":18,"resourceAccepted":false,"channelAssigned":false}})"},
+        {"dispatch", "\"o2\"", R"({"team":0,"objective":1,"list":"success","entry":3,"species":"MakeNewTechnologyAvailable","payload":"mvh_scratch_objective_bonus.fit","result":1})"},
+        {"sink", "\"o7\"", R"({"sink":"technology","stage":"queued","result":"accepted","payload":"mvh_scratch_objective_bonus.fit"})"},
+        {"dispatch", "\"o2\"", R"({"team":0,"objective":1,"list":"success","entry":4,"species":"DisplayTextMessage","payload":"ready","result":1})"},
+        {"sink", "\"o9\"", R"({"sink":"chat","stage":"stored","result":"accepted","payload":"ready"})"},
+        {"dispatch", "\"o2\"", R"({"team":0,"objective":1,"list":"success","entry":5,"species":"PlayBIK","payload":"briefing.bik","result":1})"},
+        {"sink", "\"o11\"", R"({"sink":"movie","stage":"gui","result":"boot_to_bay","payload":"./briefing.bik"})"},
+        {"reset", "\"o2\"", R"({"team":0,"objective":1,"old":1,"new":0,"traversal":0,"source":"write"})"},
+        {"resolve", "\"o13\"", R"({"team":0,"objective":1,"old":0,"new":1,"traversal":3,"source":"context"})"},
+        {"dispatch", "\"o14\"", R"({"team":0,"objective":1,"list":"success","entry":1,"species":"SetBooleanFlag","payload":{"FlagID":"signal","Value":true},"result":1})"},
+        {"sink", "\"o15\"", R"({"sink":"flag","stage":"written","result":"true","payload":"signal"})"},
+        {"dispatch", "\"o14\"", R"({"team":0,"objective":1,"list":"success","entry":2,"species":"PlayWAV","payload":"unavailable.wav","result":1})"},
+        {"sink", "\"o17\"", R"({"sink":"wav","stage":"resource_channel","result":"disabled","payload":{"requested":"./unavailable.wav","resource":"","channel":18,"resourceAccepted":false,"channelAssigned":false}})"},
+        {"dispatch", "\"o14\"", R"({"team":0,"objective":1,"list":"success","entry":3,"species":"MakeNewTechnologyAvailable","payload":"mvh_scratch_objective_bonus.fit","result":1})"},
+        {"sink", "\"o19\"", R"({"sink":"technology","stage":"queued","result":"accepted","payload":"mvh_scratch_objective_bonus.fit"})"},
+        {"dispatch", "\"o14\"", R"({"team":0,"objective":1,"list":"success","entry":4,"species":"DisplayTextMessage","payload":"ready","result":1})"},
+        {"sink", "\"o21\"", R"({"sink":"chat","stage":"stored","result":"accepted","payload":"ready"})"},
+        {"dispatch", "\"o14\"", R"({"team":0,"objective":1,"list":"success","entry":5,"species":"PlayBIK","payload":"briefing.bik","result":1})"},
+        {"sink", "\"o23\"", R"({"sink":"movie","stage":"gui","result":"boot_to_bay","payload":"./briefing.bik"})"},
+        {"resolve", "\"o14\"", R"({"scope":"cbills","team":0,"objective":1,"old":100,"new":350})"},
+        {"sink", "\"o7\"", R"({"sink":"technology","stage":"purchase_file","result":"opened","payload":"mvh_scratch_objective_bonus.fit"})"},
+        {"sink", "\"o19\"", R"({"sink":"technology","stage":"purchase_file","result":"opened","payload":"mvh_scratch_objective_bonus.fit"})"},
+        {"complete", "null", R"({"count":27,"result":5})"},
+    };
+    REQUIRE(records.size() == expected.size());
+    std::ofstream extracted(stem + ".trace", std::ios::binary);
+    for (size_t i = 0; i < records.size(); ++i) {
+        const auto number = std::to_string(i + 1);
+        const std::string record = "{\"mission\":\"67b93cd668baabf9c46c9eca87f8acc510346e5910b7361b1e08f2237f32346d\",\"seq\":" + number +
+            ",\"id\":\"o" + number + "\",\"frame\":40,\"time\":0,\"kind\":\"" + expected[i].kind +
+            "\",\"cause\":" + expected[i].cause + ",\"data\":" + expected[i].data + "}";
+        CHECK(records[i] == record);
+        extracted << "OBJECTIVES/1 " << records[i] << '\n';
+    }
+    CHECK(extracted.good());
+}
+
 
 namespace {
 struct SavedGlobals {

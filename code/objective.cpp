@@ -55,6 +55,183 @@ Objective.cpp			: Implementation of the Objective component.
 #include <format>
 #include <optional>
 #include <string>
+#include <cmath>
+#include <filesystem>
+#include "save_archive.h"
+#include "timing.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
+
+static const char *g_actionSpeciesStringArray[] = {
+	"PlayBIK", "PlayWAV", "DisplayTextMessage", "DisplayResourceTextMessage",
+	"SetBooleanFlag", "MakeNewTechnologyAvailable", "_RemoveStructure",
+};
+
+bool objectiveObservationEnabled() {
+	return mc2_diag::tagEnabled("OBJECTIVES") && mc2_diag::tagRequested("OBJECTIVES");
+}
+
+std::string objectiveObservationQuote(std::string_view text) {
+	std::string result = "\"";
+	for (unsigned char c : text) {
+		if (c == '\"' || c == '\\') { result += '\\'; result += static_cast<char>(c); }
+		else if (c < 32) { result += std::format("\\u{:04x}", c); }
+		else { result += static_cast<char>(c); }
+	}
+	return result + '"';
+}
+
+CObjectives::Observation* objectiveObservation() {
+	if (!objectiveObservationEnabled() || !Team::teams[0]) { return nullptr; }
+	return &Team::teams[0]->objectives.observation;
+}
+
+namespace {
+struct ObservationTraversal {
+	CObjectives::Observation* observation = objectiveObservation();
+	bool outer = observation && !observation->traversal;
+	ObservationTraversal(const char* source) {
+		if (outer) {
+			observation->traversal = observation->nextTraversal++;
+			observation->traversalSource = source;
+		}
+	}
+	~ObservationTraversal() {
+		if (outer) { observation->traversal = 0; observation->traversalSource = "write"; }
+	}
+};
+}
+
+void CObjectives::Observation::Begin(FitIniFile& file) {
+	*this = Observation{};
+	if (!objectiveObservationEnabled()) { return; }
+	mc2::save::Bytes bytes;
+	const char domain[] = "MC2-OBJECTIVES/1";
+	bytes.insert(bytes.end(), domain, domain + sizeof(domain));
+	auto append = [&](File& input) {
+		const auto length = input.getLength();
+		for (int i = 0; i < 8; ++i) { bytes.push_back(static_cast<std::uint8_t>(static_cast<std::uint64_t>(length) >> (8 * i))); }
+		const auto offset = bytes.size();
+		bytes.resize(offset + length);
+		const auto position = input.getLogicalPosition();
+		const bool read = input.read(0, bytes.data() + offset, length) == static_cast<long>(length);
+		input.seek(position);
+		return read;
+	};
+	File pak;
+	const auto pakPath = std::filesystem::path(file.getFilename() ? file.getFilename() : "").replace_extension(".pak").string();
+	if (!append(file) || pak.open(pakPath.c_str()) != NO_ERR || !append(pak)) {
+		rejected = true;
+		mc2::fmt::print_err("[OBJECTIVES] rejected: exact FIT/PAK inputs unavailable\n");
+		return;
+	}
+	for (auto byte : mc2::save::sha256(bytes)) { missionHash += std::format("{:02x}", byte); }
+}
+
+unsigned long long CObjectives::Observation::Emit(const char* kind, unsigned long long cause,
+                                                 const std::string& data, unsigned long long id) {
+	if (!objectiveObservationEnabled() || completed || rejected || missionHash.empty()) { return 0; }
+	const double time = mission ? mission->actualTime : 0;
+	if (!std::isfinite(time) || time < 0 || turn < 0) {
+		rejected = true;
+		mc2::fmt::print_err("[OBJECTIVES] rejected: invalid simulation clock\n");
+		return 0;
+	}
+	if (!id) { id = nextId++; }
+	const std::string record = std::format("{{\"mission\":\"{}\",\"seq\":{},\"id\":\"o{}\",\"frame\":{},\"time\":{},\"kind\":\"{}\",\"cause\":{},\"data\":{}}}",
+		missionHash, sequence + 1, id, turn, time, kind,
+		cause ? std::format("\"o{}\"", cause) : "null", data);
+	if (record.size() + sizeof("OBJECTIVES/1 ") - 1 > 16384) {
+		rejected = true;
+		mc2::fmt::print_err("[OBJECTIVES] rejected: oversized observation\n");
+		return 0;
+	}
+	if (!mc2_diag::writeEvent("OBJECTIVES", 1, turn, record.c_str())) {
+		rejected = true;
+		mc2::fmt::print_err("[OBJECTIVES] rejected: diagnostic write failed\n");
+		return 0;
+	}
+	++sequence;
+	mc2::fmt::print_out("OBJECTIVES/1 {}\n", record);
+	fflush(stdout);
+	return id;
+}
+
+void CObjectives::Observation::SinkResult(const char* sink, const char* stage, const char* result,
+                                          const std::string& payload, unsigned long long cause) {
+	if (!cause) { cause = dispatch; }
+	if (!cause || rejected) { return; }
+	const std::string data = std::format("{{\"sink\":{},\"stage\":{},\"result\":{},\"payload\":{}}}",
+		objectiveObservationQuote(sink), objectiveObservationQuote(stage), objectiveObservationQuote(result), payload);
+	if (dispatch) { pendingSinks.push_back({cause, data}); }
+	else { Emit("sink", cause, data); }
+}
+
+void objectiveObservationSink(const char* sink, const char* stage, const char* result, const char* payload) {
+	if (auto* observation = objectiveObservation()) {
+		observation->SinkResult(sink, stage, result, objectiveObservationQuote(payload ? payload : ""));
+	}
+}
+
+void objectiveObservationWav(const char* requested, const char* resource, int channel, const char* result, bool accepted) {
+	if (auto* observation = objectiveObservation()) {
+		observation->SinkResult("wav", "resource_channel", result,
+			std::format("{{\"requested\":{},\"resource\":{},\"channel\":{},\"resourceAccepted\":{},\"channelAssigned\":{}}}",
+				objectiveObservationQuote(requested), objectiveObservationQuote(resource), channel, accepted, accepted));
+	}
+}
+
+void CObjectives::Observation::Finish() {
+	if (finalResult == -1 || dispatch || completed || (finalResult == mis_PLAYER_WIN_BIG && !settled)) { return; }
+	if (Emit("complete", 0, std::format("{{\"count\":{},\"result\":{}}}", sequence, finalResult))) { completed = true; }
+}
+
+void CObjective::ObserveState(const char* kind, int oldState, int newState) {
+	if (m_fitOrdinal < 0) { return; }
+	if (auto* observation = objectiveObservation()) {
+		m_observationState = observation->Emit(kind, m_observationState,
+			std::format("{{\"team\":{},\"objective\":{},\"old\":{},\"new\":{},\"traversal\":{},\"source\":\"{}\"}}",
+			m_alignment, m_fitOrdinal, oldState, newState, observation->traversal, observation->traversalSource));
+	}
+}
+
+void CObjective::IsActive(bool active) {
+	const bool old = m_isActive;
+	m_isActive = active;
+	if (old != active) { ObserveState("activate", old, active); }
+}
+
+void CObjective::ObserveCBills(int before, int after) {
+	if (m_fitOrdinal >= 0) {
+		if (auto* observation = objectiveObservation()) {
+			observation->Emit("resolve", m_observationState,
+				std::format("{{\"scope\":\"cbills\",\"team\":{},\"objective\":{},\"old\":{},\"new\":{}}}",
+				m_alignment, m_fitOrdinal, before, after));
+		}
+	}
+}
+
+void CObjective::Dispatch(CObjectiveAction& action, const char* list) {
+	auto* observation = m_fitOrdinal >= 0 ? objectiveObservation() : nullptr;
+	if (!observation || !m_observationState || observation->rejected) {
+		action.Execute();
+		return;
+	}
+	const auto parentDispatch = observation->dispatch;
+	const auto id = observation->nextId++;
+	observation->dispatch = id;
+	const auto firstSink = observation->pendingSinks.size();
+	const int result = action.Execute();
+	observation->Emit("dispatch", m_observationState,
+		std::format("{{\"team\":{},\"objective\":{},\"list\":\"{}\",\"entry\":{},\"species\":{},\"payload\":{},\"result\":{}}}",
+			m_alignment, m_fitOrdinal, list, action.observationOrdinal,
+			objectiveObservationQuote(g_actionSpeciesStringArray[action.Species()]), action.observationPayload, result), id);
+	observation->dispatch = parentDispatch;
+	for (auto i = firstSink; i < observation->pendingSinks.size(); ++i) {
+		const auto& sink = observation->pendingSinks[i];
+		observation->Emit("sink", sink.cause, sink.data);
+	}
+	observation->pendingSinks.resize(firstSink);
+}
 
 float CObjective::s_blinkLength = .5;
 float CObjective::s_lastBlinkTime = 0.f;
@@ -62,15 +239,6 @@ unsigned long CObjective::s_blinkColor = SB_YELLOW;
 aFont* CObjective::s_markerFont = nullptr;
 float MaxExtractUnitDistance = 0.0f;
 
-static const char *g_actionSpeciesStringArray[] = {
-	"PlayBIK",
-	"PlayWAV",
-	"DisplayTextMessage",
-	"DisplayResourceTextMessage",
-	"SetBooleanFlag",
-	"MakeNewTechnologyAvailable",
-	"_RemoveStructure",
-};
 
 const char *g_conditionSpeciesStringArray[] = {
 	"DestroyAllEnemyUnits",
@@ -1014,6 +1182,7 @@ bool CPlayBIK::Read( FitIniFile* missionFile )
 	std::optional<std::string> fileName = objective_text::read(*missionFile, "AVIFileName");
 	if (!fileName) { return false; }
 	m_pathname = "./" + *fileName;
+	if (objectiveObservationEnabled()) { observationPayload = objectiveObservationQuote(*fileName); }
 	return true;
 }
 
@@ -1028,6 +1197,7 @@ bool CPlayWAV::Read( FitIniFile* missionFile )
 	std::optional<std::string> fileName = objective_text::read(*missionFile, "WAVFileName");
 	if (!fileName) { return false; }
 	m_pathname = "./" + *fileName;
+	if (objectiveObservationEnabled()) { observationPayload = objectiveObservationQuote(*fileName); }
 	return true;
 }
 
@@ -1042,6 +1212,7 @@ bool CDisplayTextMessage::Read( FitIniFile* missionFile )
 	std::optional<std::string> message = objective_text::read(*missionFile, "Message");
 	if (!message) { return false; }
 	m_message = std::move(*message);
+	if (objectiveObservationEnabled()) { observationPayload = objectiveObservationQuote(m_message); }
 	return true;
 }
 
@@ -1056,6 +1227,7 @@ bool CDisplayResourceTextMessage::Read( FitIniFile* missionFile )
 	long result = 0;
 	result = sReadIdWholeNum(missionFile, "ResourceStringID", m_resourceStringID);
 	if (NO_ERR != result) { return false; }
+	if (objectiveObservationEnabled()) { observationPayload = std::to_string(m_resourceStringID); }
 	return true;
 }
 
@@ -1080,13 +1252,16 @@ bool CSetBooleanFlag::Read( FitIniFile* missionFile )
 	if (!flagID) { return false; }
 	m_flagID = std::move(*flagID);
 	sReadIdBoolean(missionFile, "Value", m_value);
+	if (objectiveObservationEnabled()) {
+		observationPayload = std::format("{{\"FlagID\":{},\"Value\":{}}}", objectiveObservationQuote(m_flagID), m_value);
+	}
 	return true;
 }
 
 int CSetBooleanFlag::Execute()
 {
-	//mission->missionObjectives.boolFlags.setElementValue(m_flagID, m_value);
 	Team::teams[Alignment()]->objectives.boolFlags.setElementValue(m_flagID, m_value);
+	objectiveObservationSink("flag", "written", m_value ? "true" : "false", m_flagID.c_str());
 	return true;
 }
 
@@ -1095,6 +1270,7 @@ bool CMakeNewTechnologyAvailable::Read( FitIniFile* missionFile )
 	std::optional<std::string> fileName = objective_text::read(*missionFile, "PurchaseFileName");
 	if (!fileName) { return false; }
 	m_purchaseFilePathname = std::move(*fileName);
+	if (objectiveObservationEnabled()) { observationPayload = objectiveObservationQuote(m_purchaseFilePathname); }
 	return true;
 }
 
@@ -1132,6 +1308,9 @@ bool C_RemoveStructure::Read( FitIniFile* missionFile )
 	long result = 0;
 
 	result = missionFile->readIdLong("BuildingWID",m_pBuildingWID);
+	if (result == NO_ERR && objectiveObservationEnabled()) {
+		observationPayload = std::format("{{\"BuildingWID\":{}}}", m_pBuildingWID);
+	}
 	if (result != NO_ERR)
 	{
 		float positionX, positionY;
@@ -1139,6 +1318,9 @@ bool C_RemoveStructure::Read( FitIniFile* missionFile )
 		if (NO_ERR != result) { return false; }
 		result = sReadIdFloat(missionFile, "PositionY", positionY);
 		if (NO_ERR != result) { return false; }
+		if (objectiveObservationEnabled()) {
+			observationPayload = std::format("{{\"PositionX\":{},\"PositionY\":{}}}", static_cast<double>(positionX), static_cast<double>(positionY));
+		}
 		BuildingPtr pBuilding = nullptr;
 		if (ObjectManager) {
 			pBuilding = ObjectManager->getBuilding(0);
@@ -1242,6 +1424,8 @@ CObjective::CObjective(int alignment) {
 
 CObjective &CObjective::operator=(const CObjective &master) {
 	Clear();
+	m_fitOrdinal = master.m_fitOrdinal;
+	m_observationState = 0;
 	m_alignment = master.m_alignment;
 	m_text = master.m_text;
 	m_titleUseResourceString = master.m_titleUseResourceString;
@@ -1275,8 +1459,7 @@ CObjective &CObjective::operator=(const CObjective &master) {
 		for (auto* const pItem : master.m_conditionList) {
 			condition_species_type conditionSpecies = pItem->Species();
 			CObjectiveCondition *pTmpCondition = new_CObjectiveCondition(conditionSpecies, m_alignment);
-			// CRASH-HARDEN-OBJECTIVE-ICON-1: factory returns null for unimplemented
-			// (bad/mod-asset) condition species -> skip instead of null-deref.
+			// Unimplemented species have no runtime instance to copy.
 			if (pTmpCondition) {
 				(*pTmpCondition).CastAndCopy(pItem);
 				m_conditionList.Append(pTmpCondition);
@@ -1300,8 +1483,7 @@ CObjective &CObjective::operator=(const CObjective &master) {
 		for (auto* const pItem : master.m_failureConditionList) {
 			condition_species_type conditionSpecies = pItem->Species();
 			CObjectiveCondition *pTmpCondition = new_CObjectiveCondition(conditionSpecies, m_alignment);
-			// CRASH-HARDEN-OBJECTIVE-ICON-1: factory returns null for unimplemented
-			// (bad/mod-asset) condition species -> skip instead of null-deref.
+			// Unimplemented species have no runtime instance to copy.
 			if (pTmpCondition) {
 				(*pTmpCondition).CastAndCopy(pItem);
 				m_failureConditionList.Append(pTmpCondition);
@@ -1390,12 +1572,11 @@ static action_species_type ActionSpeciesMap(const char *speciesString) {
 
 bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, int MarkerNum, char secondary )
 {
-	//Load this up here to make assert at program start go away!
+	m_fitOrdinal = objectiveNum;
 
 	if ( !s_markerFont )
 	{
 		s_markerFont = new aFont;
-		// need to use this one arialBlack9.d3f
 		s_markerFont->init( IDS_OBJECTIVE_MARKER_FONT );
 	}
 
@@ -1508,6 +1689,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 			if (!pNewObjectiveAction) { assert(false); delete pNewObjectiveAction; continue; }
 			bool bresult = pNewObjectiveAction->Read(missionFile);
 			if (true != bresult) { assert(false); delete pNewObjectiveAction; continue; }
+			pNewObjectiveAction->observationOrdinal = i;
 			m_actionList.Append(pNewObjectiveAction);
 		}
 	}
@@ -1544,6 +1726,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 			if (!pNewObjectiveFailureAction) { assert(false); delete pNewObjectiveFailureAction; continue; }
 			bool bresult = pNewObjectiveFailureAction->Read(missionFile);
 			if (true != bresult) { assert(false); delete pNewObjectiveFailureAction; continue; }
+			pNewObjectiveFailureAction->observationOrdinal = i;
 			m_failureActionList.Append(pNewObjectiveFailureAction);
 		}
 	}
@@ -1551,8 +1734,8 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 }
 
 objective_status_type CObjective::Status() {
+	ObservationTraversal traversal("direct");
 	if (!IsActive()) {
-		//assert(false);
 		return OS_UNDETERMINED;
 	}
 	if (m_resolved) {
@@ -1560,7 +1743,6 @@ objective_status_type CObjective::Status() {
 	} else { 
 		objective_status_type objectiveStatus = OS_SUCCESSFUL;
 		{
-			/*evaluate the status of the success conditions*/
 			for (auto* const pItem : m_conditionList) {
 				objective_status_type conditionStatus = pItem->Status();
 				if (OS_FAILED == conditionStatus) {
@@ -1572,7 +1754,6 @@ objective_status_type CObjective::Status() {
 			}
 		}
 		if ((OS_FAILED != objectiveStatus) && (0 < m_failureConditionList.Count())) {
-			/*evaluate the status of the failure conditions*/
 			objective_status_type failureStatus = OS_SUCCESSFUL;
 			for (auto* const pItem : m_failureConditionList) {
 				objective_status_type conditionStatus = pItem->Status();
@@ -1585,7 +1766,6 @@ objective_status_type CObjective::Status() {
 				}
 			}
 			if (OS_SUCCESSFUL == failureStatus) {
-				/*the failure conditions are satisfied*/
 				objectiveStatus = OS_FAILED;
 			}
 		}
@@ -1595,22 +1775,24 @@ objective_status_type CObjective::Status() {
 			m_resolved = true;
 			m_changedStatus = true;
 			m_resolvedStatus = OS_FAILED;
+			ObserveState("resolve", OS_UNDETERMINED, m_resolvedStatus);
 			if (!IsHiddenTrigger()) {
 				soundSystem->playBettySample(BETTY_CANNOT_COMP_OBJ);
 			}
 			for (auto* const pItem : m_failureActionList) {
-				pItem->Execute();
+				Dispatch(*pItem, "failure");
 			}
 			return m_resolvedStatus;
 		} else {
 			m_resolved = true;
 			m_changedStatus = true;
 			m_resolvedStatus = OS_SUCCESSFUL;
+			ObserveState("resolve", OS_UNDETERMINED, m_resolvedStatus);
 			if (!IsHiddenTrigger()) {
 				soundSystem->playBettySample(BETTY_OBJECTIVE_COMPLETE);
 			}
 			for (auto* const pItem : m_actionList) {
-				pItem->Execute();
+				Dispatch(*pItem, "success");
 			}
 			return m_resolvedStatus;
 		}
@@ -1618,8 +1800,8 @@ objective_status_type CObjective::Status() {
 }
 
 objective_status_type CObjective::Status(CObjectives &objectives) {
+	ObservationTraversal traversal("context");
 	if (!IsActive()) {
-		//assert(false);
 		return OS_UNDETERMINED;
 	}
 
@@ -1663,6 +1845,7 @@ objective_status_type CObjective::Status(CObjectives &objectives) {
 }
 
 void CObjective::Status(objective_status_type newStatus) {
+	const auto oldStatus = m_resolved ? m_resolvedStatus : OS_UNDETERMINED;
 	if (OS_UNDETERMINED == newStatus) {
 		m_resolved = false;
 	} else {
@@ -1670,6 +1853,7 @@ void CObjective::Status(objective_status_type newStatus) {
 	}
 	m_resolvedStatus = newStatus;
 	m_changedStatus = true;
+	ObserveState(newStatus == OS_UNDETERMINED ? "reset" : "resolve", oldStatus, newStatus);
 }
 
 bool CObjective::StatusChangedSuccess (void)
@@ -1730,8 +1914,10 @@ CObjectives &CObjectives::operator=(const CObjectives &master) {
 }
 
 void CObjectives::Clear() {
+	observation.Finish();
 	m_list.Clear();
 	boolFlags.Clear();
+	observation = Observation{};
 }
 
 void CObjectives::Alignment(int alignment) {
@@ -1743,6 +1929,7 @@ void CObjectives::Alignment(int alignment) {
 
 bool CObjectives::Read( FitIniFile* missionFile )
 {
+	if (Alignment() == 0) { observation.Begin(*missionFile); }
 	long result = 0;
 	result = missionFile->seekBlock("Objectives Version");
 	if (NO_ERR != result) { assert(false); }
@@ -1758,7 +1945,7 @@ bool CObjectives::Read( FitIniFile* missionFile )
 		{
 			if (0 != Alignment()) 
 			{
-				// assign version 2 objectives to team1 only
+				// Version 2 stores objectives for team 0 only.
 				return true;
 			}
 			result = missionFile->seekBlock("Objectives");
@@ -1806,17 +1993,16 @@ bool CObjectives::Read( FitIniFile* missionFile )
 }
 
 objective_status_type CObjectives::Status() {
+	ObservationTraversal traversal("team");
 	objective_status_type retval = OS_SUCCESSFUL;
 	objective_status_type statusOfPreviousPrimaryObjective = OS_SUCCESSFUL;
 	bool allPreviousPrimaryObjectivesHaveBeenCompleted = true;
 	for (auto* const pItem : *this) {
 		if (pItem->IsActive()) {
-			/* check if objective status needs to be reset */
 			if (pItem->ResetStatusOnFlag()) {
 				if (Team::teams[Alignment()]->objectives.boolFlags.getElementValue(pItem->ResetStatusFlagID())) {
 					Team::teams[Alignment()]->objectives.boolFlags.setElementValue(pItem->ResetStatusFlagID(), false);
 					pItem->Status(OS_UNDETERMINED);
-					//mission->missionInterface->showObjectives(true);
 				}
 			}
 			objective_status_type status;
@@ -1843,18 +2029,15 @@ objective_status_type CObjectives::Status() {
 				statusOfPreviousPrimaryObjective = status;
 			}
 		} else {
-			/* check if inactive objective needs to become active */
 			if (pItem->ActivateOnFlag()) {
 				if (1 == pItem->Priority()) {
 					/* do not end the mission if a primary objective is still inactive */
 					retval = OS_UNDETERMINED;
 				}
-				//if (mission->missionObjectives.boolFlags.getElementValue(pItem->ActivateFlagID())) {
 				if (Team::teams[Alignment()]->objectives.boolFlags.getElementValue(pItem->ActivateFlagID())) {
 					pItem->IsActive(true);
 					pItem->ActivationTime(mission->actualTime);
 					mission->missionInterface->showObjectives(true);
-					//mission->missionInterface->controlGui.handleClick(OBJECTIVES_COMMAND);
 				}
 			}
 		}
@@ -2047,6 +2230,9 @@ int C_RemoveStructure::Execute()
 	Building * m_pBuilding = (Building *)ObjectManager->getByWatchID(m_pBuildingWID);
 	m_pBuilding->position = ludicrousPos;
 	m_pBuilding->update();
+	if (objectiveObservationEnabled()) {
+		objectiveObservationSink("structure", "updated", "removed", std::to_string(m_pBuildingWID).c_str());
+	}
 	return true;
 }
 
