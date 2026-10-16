@@ -262,6 +262,28 @@ def test_gl_arm_is_refused_before_anything_runs():
         capture.game_env("gl", False, 0, None, [])
 
 
+def test_vk_measurement_without_the_backend_receipt_is_refused(tmp_path):
+    log = tmp_path / "run.game.log"
+    log.write_text("[BOOT] engine up\n", encoding="utf-8")
+    with pytest.raises(SystemExit, match="Vulkan backend selected"):
+        capture.assert_drew_vk(log)
+
+
+def test_vk_measurement_that_fell_back_to_gl_is_refused(tmp_path):
+    log = tmp_path / "run.game.log"
+    log.write_text("Vulkan backend selected\n[RENDER_BACKEND] fail-soft to GL\n", encoding="utf-8")
+    with pytest.raises(SystemExit, match="REFUSING"):
+        capture.assert_drew_vk(log)
+
+
+def test_measure_pose_refuses_a_run_that_did_not_draw_vk(tmp_path, monkeypatch):
+    monkeypatch.setattr(capture, "capture_trace", lambda *a, **k: None)
+    monkeypatch.setattr(capture, "assert_window_was_visible", lambda *a, **k: None)
+    (tmp_path / "p.game.log").write_text("[BOOT] engine up\n", encoding="utf-8")
+    with pytest.raises(SystemExit, match="Vulkan backend selected"):
+        capture._measure_pose(Path("inst"), tmp_path, "p", "mc2_10", "", 5, [], Path("exp"), "DrawScreen")
+
+
 def test_selfcheck_pair_is_the_two_resolution_tiers():
     assert capture.SELFCHECK_SIZES == ((1920, 1080), (3840, 2160))
 

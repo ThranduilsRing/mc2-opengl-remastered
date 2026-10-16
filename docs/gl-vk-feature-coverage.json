@@ -1304,9 +1304,9 @@
    "gate_evidence": "GameOS/gameos/gameos_graphics.cpp (1 hop)",
    "gl_shader": "shaders/shadow_terrain.vert",
    "kind": "uniform",
-   "status": "NO_TWIN",
-   "vk_evidence": "",
-   "vk_twin": ""
+   "status": "NOT_PORTED",
+   "vk_evidence": "absent",
+   "vk_twin": "shaders/vulkan/shadow_terrain_static.*"
   },
   {
    "confidence": "MEDIUM",
@@ -1532,9 +1532,9 @@
    "gate_evidence": "GameOS/gameos/gameos_graphics.cpp group 'if (mc2ShadowStaticBandFixV2Enabled())' (1 hop)",
    "gl_shader": "shaders/gos_terrain.frag",
    "kind": "define",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/terrain_tier1.*"
+   "status": "PORTED",
+   "vk_evidence": "ported-as row 4:LSVK_KNOB_BANDFIX_V2",
+   "vk_twin": "shaders/vulkan/terrain_tier1.frag"
   },
   {
    "confidence": "HIGH",
@@ -1544,9 +1544,9 @@
    "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp group 'if (mc2ShadowStaticBandFixV2Enabled())' (1 hop)",
    "gl_shader": "shaders/terrain_lod_chunk.frag",
    "kind": "define",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
+   "status": "PORTED",
+   "vk_evidence": "ported-as row 4:LSVK_KNOB_BANDFIX_V2",
+   "vk_twin": "shaders/vulkan/terrain_tier1.frag"
   },
   {
    "confidence": "HIGH",
@@ -1748,21 +1748,21 @@
    "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (1 hop)",
    "gl_shader": "shaders/terrain_lod_chunk.frag",
    "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
+   "status": "PORTED",
+   "vk_evidence": "ported-as row 9:edgeFeatherStrength",
+   "vk_twin": "shaders/vulkan/terrain_tier1.frag"
   },
   {
-   "confidence": "HIGH",
+   "confidence": "MEDIUM",
    "feature": "u_edgeFeatherStrength",
    "gate": "MC2_TERRAIN_EDGE_FEATHER_STRENGTH",
    "gate_default_on": true,
    "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (1 hop)",
    "gl_shader": "shaders/terrain_lod_chunk.frag",
    "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
+   "status": "PORTED",
+   "vk_evidence": "stem:edgeFeatherStrength",
+   "vk_twin": "shaders/vulkan/terrain_tier1.frag"
   },
   {
    "confidence": "MEDIUM",
@@ -1916,9 +1916,9 @@
    "gate_evidence": "GameOS/gameos/gameos_graphics.cpp group 'if (terrainNormalArrayEnabled())' (1 hop)",
    "gl_shader": "shaders/shadow_terrain.tese",
    "kind": "define",
-   "status": "NO_TWIN",
-   "vk_evidence": "",
-   "vk_twin": ""
+   "status": "NOT_PORTED",
+   "vk_evidence": "absent",
+   "vk_twin": "shaders/vulkan/shadow_terrain_static.*"
   },
   {
    "confidence": "MEDIUM",

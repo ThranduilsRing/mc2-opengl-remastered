@@ -807,9 +807,10 @@ def cmd_regress(args: argparse.Namespace) -> int:
 
 # Two drawable sizes that MUST measure apart: the 4K arm shades four times the
 # fragments of the pinned 1080p arm with the same scene, so the pair is a known
-# fragment-bound cost on the VK frame (the shipped backend). The former pair, the
-# GL light-pool cap 64 vs 256, does not move the VK frame (1.3% apart on mc2_10,
-# lane 2 session 30), so it could not prove a VK harness.
+# fragment-bound cost on the VK frame (the shipped backend): 33.0% p50 apart on
+# mc2_10 (2026-10-16), against the selfcheck's 8% bar. The former pair, the GL
+# light-pool cap 64 vs 256, moves the VK frame only 1.3%, so it could not prove a
+# VK harness.
 SELFCHECK_SIZES = (render_resolution.RESOLUTION_TIER_SIZES[0], render_resolution.RESOLUTION_TIER_SIZES[1])
 # Minimum p50 separation (%) we require between those two arms before we are
 # willing to believe this harness can see a fragment-bound cost at all.

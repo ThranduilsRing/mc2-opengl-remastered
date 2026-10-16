@@ -55,8 +55,8 @@ recorder.
 - **VK arm needs a visible, non-minimized window.** A minimized window gives the
   VK present path a zero surface extent and it fail-softs to GL — you would then
   profile the GL present path while thinking you measured VK.
-- **Pin the pose.** `baseline`/`regress` set `MC2_CAMERA_PARK` so both arms —
-  and a later re-run — measure the exact same scene.
+- **Pin the pose.** `baseline`/`regress` set `MC2_CAMERA_PARK` so a baseline
+  and a later re-run measure the exact same scene.
 - **The drawable is pinned to 1920x1080** (`MC2_WIDTH`/`MC2_HEIGHT` from `scripts/smoke_lib/render_resolution.py`; `--env MC2_WIDTH=... --env
   MC2_HEIGHT=...` overrides one run). Before 2026-10-12 a trace took whatever the install's options.cfg said, which is 3840x2160 on every install
   on this host, so traces and `release_assets/tracy-baselines` taken before that date are 4K and are **not comparable** with a new trace: re-take
@@ -73,11 +73,12 @@ recorder.
   `VRAM:` line per mission (`scripts/smoke_lib/vram.py`), and the debug-state dump has a `gpu_memory` object. A trace taken with an exe that predates the
   plot says so instead of staying silent.
 
-## The two arms
+## The arm
+
+One arm, `vk`; the GL arm was retired on 2026-10-16 (`game_env` refuses it) because GL is deleted after VK parity.
 
 | arm | env applied | measures |
 |---|---|---|
-| `gl` | (default backend) | the OpenGL frame |
 | `vk` | `MC2_RENDER_BACKEND=vulkan`, `MC2_VK_SHARED_GBUFFER=1`, `MC2_VK_SHADOW_INTEROP=0` | the Vulkan present path + shared-gbuffer island umbrella, the user's real config |
 
 The `vk` arm reflects the user's former config (backend + umbrella, shadow
@@ -89,7 +90,7 @@ frame (the tool's own `=0` default is `tools/tracy_capture_compare.py`, not chan
 > **Scope note:** the VK interop islands (water/shadow/terrain) have **no Tracy
 > zones**. Their per-island timings come from `[VK_*_PERF]` log receipts parsed
 > by `.claude/fence-defer/measure.py` — out of scope for this tool. The default
-> zone allowlist covers the GL-side frame: `DrawScreen`, `renderWaterFastPath`,
+> zone allowlist covers the CPU frame zones shared by both backends: `DrawScreen`, `renderWaterFastPath`,
 > `SwapWindow.SDL`, `Camera.UpdateRenderers`, `Terrain::IndirectDraw`.
 
 ## Zones and the frame-count proxy
@@ -141,7 +142,7 @@ baseline, pass `--out-dir release_assets/<version>/tracy` — see
 
 ### `regress` — re-capture + compare against a baseline
 
-Re-captures both arms with the baseline's exact settings and diffs against it.
+Re-captures the VK arm with the baseline's exact settings and diffs against it.
 
 ```sh
 py -3 tools/tracy_capture_compare.py regress \
@@ -158,7 +159,7 @@ Thresholds (on frame-count **drop**, per arm):
 | > 10% | FAIL | 2 |
 
 Tune with `--warn-pct` / `--fail-pct`. The report (`regress.md` in the output
-dir) also carries the per-zone mean deltas for both arms, so a WARN/FAIL can be
+dir) also carries the per-zone mean deltas, so a WARN/FAIL can be
 attributed to a specific zone.
 
 ## Lane / safety notes

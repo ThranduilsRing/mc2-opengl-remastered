@@ -250,6 +250,17 @@ void main() { outColor = vec4(float(U.fooEnabled) + U.f8.x); }
         == ("PORTED", "packed:f8")
 
 
+def test_ported_as_entry_counts_only_while_its_vk_identifier_is_in_the_twin(monkeypatch):
+    monkeypatch.setitem(cov.PORTED_AS, "u_fooEnabled", ("fooOnUnderAnotherName", "row 0"))
+    vk = "#version 450\nlayout(set = 0, binding = 0) uniform P { int fooOnUnderAnotherName; } U;\n" \
+         "void main() { outColor = vec4(float(U.fooOnUnderAnotherName)); }\n"
+    _, rows = rows_for(repo(vk_foo=vk))
+    r = by_key(rows)[("MC2_FOO", "u_fooEnabled")]
+    assert (r["status"], r["confidence"], r["vk_evidence"]) == ("PORTED", "HIGH", "ported-as row 0:fooOnUnderAnotherName")
+    _, rows = rows_for(repo())
+    assert by_key(rows)[("MC2_FOO", "u_fooEnabled")]["status"] == "NOT_PORTED"
+
+
 def test_name_only_in_a_vk_comment_is_not_ported():
     vk = "// u_fooEnabled is handled elsewhere\nvoid main() {}\n"
     _, rows = rows_for(repo(vk_foo=vk))

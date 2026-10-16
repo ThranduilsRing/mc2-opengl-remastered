@@ -1,5 +1,36 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## THIRTY-FIRST session (2026-10-16, cap 5 h, Opus 5.5) -- nifty merged (76195d1b2), row 24 closed (VK reference, GL compare defect), row 3 closed by term oracle, rows 11/12 closed as no default gap, allowlist audited (rows 25/26 opened), parity-state header, tracy review should-fix
+
+### Commits (after 39fc9203f + nifty merge 76195d1b2; code exe = b44a12842 = merge tip code, the TEMP pairs net to zero)
+f3b3f3d13 TEMP per-tap diag on mech px / 1e9740df1 revert | 409b7242e TEMP sampler probe / b44a12842 revert | 1512d173c tracy review should-fix 1+2, nit N1 | ff341a1f3 provers audit + PORTED_AS | b1fde3d8d gaps rows 3/11/12/24 closed, 25/26 opened, PARITY STATE, BUGS 43, inventory 15 | 28a50ffa7 callers.json regen | this state commit. MERGEABLE TIP = the commit carrying this line.
+
+### Rows
+- 24 CLOSED: per-tap test on mech px at mechnight (GL): darkened faces 52,553 px, GL compare occluded 52,553, GL raw depth occluded 0. VK is the reference; BUGS 43 extended. Sampler-on-unit-3/4 hypothesis refuted (both 0, no pixel moves). Caster classes: both backends cast static props + mechs (VK 624 packets / 9,240 mech verts; GL 2056 -> 1409 after cull); per-cascade census skipped as moot.
+- 3 CLOSED: MC2_TERRAIN_AMBIENT_FLOOR=0 vs default, 10 poses both backends: 205644 GL 1,041,136 / VK 1,042,012 / shared 1,039,512 px, VK term error 0.95 on 49.33; night poses no term.
+- 11 CLOSED (billboard residual gated by MC2_LIGHT_BILLBOARD_FACING, default OFF), 12 CLOSED (SSAO/cloud shadow default OFF in GL).
+- 25 OPEN (cement atlas seam inset, default ON, VK lacks), 26 OPEN (terrain shoreline wet/foam bands, MC2_TERRAIN_SHORELINE default ON; the gaps file had it wrongly as default-off). Owner lane 2. Plus row 20's ShadowCSM=FALSE VK defect, row 18 (owner ruling).
+
+### Proof
+| Evidence | Result |
+|---|---|
+| build -j2 + deploy (`scratch/build_s31c.log`) | exit 0 at b44a12842 (full rebuild after the merge) |
+| golden `.claude/l2cap/s31-vk` vs `--golden current` (`scratch/verify31.log`) | 36/36 regions, 10/10 poses PASS, validation_errors=0 on all logs |
+| tier1 VK + validation, first run (`scratch/b31_vk_t1.log`) | 4/5: mc2_24 `heartbeat_freeze_play` = clean `mission_quit` at 135.9 s, 5,070 frames, exit 0, no crash; host loaded by two other lanes |
+| tier1 VK + validation, rerun (`scratch/b31b_vk_t1.log`) | 5/5 PASS, errors=0 warnings=0 all five, 135/93/86/102/86 fps (lower than s30's 147/126/114/119/105: concurrent lanes on the host) |
+| tier1 GL (`scratch/b31_gl_t1.log`) | 5/5 PASS, 142/113/109/82/133 fps, +0 destroys, fingerprint PASS |
+| provers | gl_vk_feature_coverage --check 0 new 0 stale (68 NOT_PORTED pairs, 9 of them parity rows 25/26); glsl_port_diff --all exit 0 (one pin, waterBaseColor = default-OFF meander); pytest coverage 27 pass, tracy 14 pass + the same 9 pre-existing failures (lease/warmup signature drift: test_lease_precedes_both_children_and_covers_normal_exit[True/False], test_wait_failure_reaps_both_children_and_releases, test_trivial_trace_releases_on_system_exit, test_timeout_reaps_children_before_release[recorder/game], test_warmup_launch_runs_under_the_lease_before_the_recorder, test_held_chain_lease_is_not_released_by_a_capture, test_main_holds_the_lease_for_the_whole_command_and_compare_takes_none) |
+| board (`scratch/cc_s31.log`) | gate_gen consistent, gpu_abi 14 match, dup_lines 55326 = baseline, file_size 49 = baseline, journal 6463 <= 6497, quiet-ratchet OK. Reds, none this lane's: estring_callsites, container_callsites, vk_pipeline_layout split-unit test, background-launch, callers (test_journal_comment_ratchet.py uncalled), editor_smoke / build_compiler_presets / contract_harness_migration tests |
+
+### Open
+- Rows 25, 26 (ports + same-exe GL oracle), row 18 ruling, row 20 ShadowCSM=FALSE VK defect; tracy review nits N2 (`baseline --arms` help), N4 (docstring "GL-side frame").
+- Scratch (mine, deletable): `scratch/` s31a-d.sh/.out, r31a.py, r31b.py, build_s31*.log, deploy_s31*.log, verify31.log, b31*_t1.log, cc_s31.log; `.claude/l2cap/` s31-vk, s31-gl, s31-vk-amb0, s31-gl-amb0, s31-gl-diag, s31-gl-unbind (KEEP the last four while gaps rows 3 and 24 cite them). s30-gl/vk/vk-glss still cited by row 24.
+
+### Lessons (31)
+- Replaying a reverted TEMP diag (`git show <sha> -- files | git apply`) and retargeting one condition answered row 24 in one build; check a prior row's proven defect before a fresh census.
+- A VK include can be generated (gpu_abi): run `gpu_abi_gen --check` before editing anything under shaders/vulkan/include.
+- Read gate defaults from `Gates/gate_table.json` before trusting a doc's "default-OFF" list (row 26 was mislisted).
+
 ## THIRTIETH session (2026-10-16, cap 5 h, Opus 5.5) -- Tracy GL arm retired (VK selfcheck on 1080p vs 4K), interim VK golden archived, row 24 GL term named, step-1 GameOS half STOPPED with readers listed, goldenswitch review should-fix; nifty NOT merged ("merge lane2 56f0426c1" absent from mc2-main)
 
 ### Commits (after 56f0426c1; no C++ change, the exe is still f77062b02)

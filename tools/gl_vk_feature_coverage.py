@@ -49,6 +49,13 @@ CPP_DIRS = ("GameOS/", "mclib/", "code/", "RenderCore/", "RenderWorld/", "GameAd
 VK_CPP_GLOBS = (("GameOS/gameos/vulkan_", (".cpp", ".h")), ("GameOS/gameos/engine_present_vk", (".cpp", ".h")),
                 ("RenderCore/gpu_abi/", (".h",)))
 MIN_STEM = 6            # shorter stems ("tex", "mode") match too much to count as evidence
+# GL features a closed parity row proved ported under a VK spelling no stem rule derives: GL name -> (the VK identifier
+# that must still appear in the twin family, the row of .claude/VK-PARITY-GAPS.md whose oracle proved it). The VK
+# identifier is re-checked on every run, so deleting the port turns the row NOT_PORTED again.
+PORTED_AS = {
+    "u_edgeFeather": ("edgeFeatherStrength", "row 9"),
+    "MC2_SHADOW_STATIC_BANDFIX_V2": ("LSVK_KNOB_BANDFIX_V2", "row 4"),
+}
 RANK = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
 _IDENT = re.compile(r"[A-Za-z_]\w*")
 _SLOT_RE = re.compile(r"^[ \t]*(?:[iu]?vec[234]|mat[234]|float|int|uint)[ \t]+([A-Za-z_]\w*)(?:\[[^\]]*\])?"
@@ -152,6 +159,8 @@ class VkEvidence:
         forms = [(name, "exact")]
         if kind == "uniform":
             forms += [(s, "stem") for s in stems_of(name)]
+        if name in PORTED_AS:
+            forms.append((PORTED_AS[name][0], "ported-as " + PORTED_AS[name][1]))
         files = self.family_files(gl_path)
         for f in files:
             toks = self.shader_tokens(f)
