@@ -577,6 +577,7 @@ void Mission::loadResetSimState(MissionLoadFrame& f) {
 	//-------------------------------------------
 	// Always reset turn at scenario start
 	turn = 0;
+	resetCombatClock();
 	terminationCounterStarted = 0;
 
 	//-----------------------

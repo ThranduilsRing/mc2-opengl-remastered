@@ -133,8 +133,9 @@ void Mission::initTeamRelations(long loadType) {
 	}
 				
 	turn = 0;
+	resetCombatClock();
 	terminationCounterStarted = 0;
-	// GAMEPLAY-DRIVER-2: scope a forced outcome to the mission that forced it.
+	// A forced outcome belongs only to the mission that requested it.
 	forcedTerminationResult = mis_PLAYING;
 }
 

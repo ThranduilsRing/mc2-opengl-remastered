@@ -28,7 +28,8 @@ struct CombatTrace {
 
     template<class Vector, class Flight, class Target, class Shot>
     void write(std::string_view kind, long slot, long tick, std::string_view event, std::string_view reason,
-               const Vector& position, Flight getFlight, Target target, const Shot* shot)
+               const Vector& position, Flight getFlight, Target target, const Shot* shot,
+               std::string_view metadata = {})
     {
         if (!live || !mc2_diag::tagEnabled("VFX_COMBAT")) return;
         // Birth omits position: pooled objects have not acquired their new coordinates yet.
@@ -54,8 +55,8 @@ struct CombatTrace {
         // Complete JSON preserves sequence and field order; fixed buffers risk truncation.
         const auto data = std::format(
             "{{\"kind\":\"{}\",\"slot\":{},\"generation\":{},\"seq\":{},\"tick\":{},"
-            "\"event\":\"{}\",\"reason\":\"{}\",\"effect_id\":{},\"type\":{}{}{}{}}}",
-            kind, slot, generation, sequence++, tick, event, reason, effect, type, snapshot, extra, damage);
+            "\"event\":\"{}\",\"reason\":\"{}\",\"effect_id\":{},\"type\":{}{}{}{}{}}}",
+            kind, slot, generation, sequence++, tick, event, reason, effect, type, snapshot, extra, damage, metadata);
         mc2_diag::writeEvent("VFX_COMBAT", 1, 0, data.c_str());
     }
 };

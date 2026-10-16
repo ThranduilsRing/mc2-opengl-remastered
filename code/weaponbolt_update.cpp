@@ -171,9 +171,6 @@ long WeaponBolt::update (void)
 		goalHeight *= 10.0f;
 	}
 
-	// B2 P2: prev_position snapshot — no longer used after ring-buffer fix.
-	// Field kept for future velocity-based shader fades; assignment removed.
-	// prev_position = position;
 
 	GameObjectPtr myOwner = ObjectManager->getByWatchID(ownerWID);
 	if (myOwner)
@@ -237,9 +234,7 @@ long WeaponBolt::update (void)
 	float velMag = ((WeaponBoltTypePtr)getObjectType())->velocity;
 	velMag *= frameLength;
 
-	// PPC-SPEED: scale DIRECT-FIRE (non-arc) bolt travel speed (PPC/AC/gauss).
-	// MC2_PROJECTILE_SPEED_MULT default 1.0 (=stock); clamped (0,10]. Hit/miss is
-	// pre-rolled and damage applies on proximity, so speed doesn't alter outcomes.
+	// Direct-fire travel speed preserves the pre-rolled hit/miss outcome.
 	if (!((WeaponBoltTypePtr)getObjectType())->arcEffect)
 		velMag *= directFireSpeedMult();
 
@@ -262,10 +257,6 @@ long WeaponBolt::update (void)
 		}
 	}
 
-	//-------------------------------------------------------------------
-	// Make the bullets go away when they get close enough to the target.
-	// This is determined by checking the distanceToTarget.  A soon as it
-	// starts to get bigger, we have passed the target and "hit" it.
 	if (!hitTarget)
 	{
 		if (!((WeaponBoltTypePtr)getObjectType())->isBeam)
@@ -286,10 +277,7 @@ long WeaponBolt::update (void)
 				if (target) traceCombat("impact", "hit");
 				hitLeft = ((WeaponBoltTypePtr)getObjectType())->afterHitTime;
 
-				// VFX-WEAPON-FX-RESTORE-OPUS-1: kill trail gosEffect immediately on impact.
-				// The oracle renders gosEffect particles at the hit position; without this
-				// kill the lozenge/bolt-head card floats at the target for several seconds.
-				// hitEffect provides the actual impact visual.
+				// Only the impact effect remains visible after arrival.
 				if (gosEffect) {
 					gosEffect->Kill();
 					delete gosEffect;
@@ -461,8 +449,7 @@ long WeaponBolt::update (void)
 							waterMissEffect = nullptr;
 						}
 						
-						//Create the explosion here.  HIT or MISS, its the same one!!
-						// Damage is done by explosion NOT by hit!
+						// The explosion owns area damage for both hits and misses.
 						ObjectManager->createExplosion(((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum,
 														nullptr,*targetPosition,
 														((WeaponBoltTypePtr)getObjectType())->areaEffectDmg,
@@ -486,9 +473,6 @@ long WeaponBolt::update (void)
 					if (missEffect)		//We missed and hit land.  Otherwise, we hit water, do NOT add crater
 						craterManager->addCrater(CRATER_1+randomCrater,*targetPosition,mc2_appearance_rng::randomNumber(180));
 		
-					//if (MasterComponentList[weaponShot.masterId].getWeaponAmmoType() != WEAPON_AMMO_NONE)	
-					// energy weapons don't set off mines
-					// Yes, they should DT, 5/30/98
 					{
 						int cellRow, cellCol;
 		
@@ -525,21 +509,19 @@ long WeaponBolt::update (void)
 							waterMissEffect = nullptr;
 						}
 
-						// ISSUE-9 S2 (MC2_CALLED_SHOT_FIX): successful aimed shot —
-						// deliver located damage to the aimed target and keep the
-						// explosion cosmetic (0 damage). Stock path otherwise.
+						// Located aimed damage leaves the explosion cosmetic to avoid duplicate damage.
 						float areaDmg = ((WeaponBoltTypePtr)getObjectType())->areaEffectDmg;
 						if (deliverAimedAreaHit())
 							areaDmg = 0.0f;
 
-						//Create the explosion here.  HIT or MISS, its the same one!!
-						// Damage is done by explosion NOT by hit!
+						// The explosion owns area damage for both hits and misses.
 						ObjectManager->createExplosion(((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum,
 														nullptr,*targetPosition,
 														areaDmg,
 														((WeaponBoltTypePtr)getObjectType())->areaEffectRad);
 					}
 				}
+				armRetireDeadline();
 			}
 		}
 		else
@@ -549,11 +531,7 @@ long WeaponBolt::update (void)
 				hitTarget = TRUE;
 				if (target) traceCombat("impact", "hit");
 
-					// VFX-WEAPON-FX-RESTORE-OPUS-1: kill gosEffect here too.
-					// The primary hit path (line 622) kills gosEffect, but this
-					// timeout/secondary path did not — leaving gosEffect alive with
-					// hitTarget=TRUE causes oracle to keep emitting cards at laserPosition
-					// for the full afterHitTime duration.
+					// The beam head must not remain visible through the impact tail.
 					if (gosEffect) {
 						gosEffect->Kill();
 						delete gosEffect;
@@ -718,8 +696,7 @@ long WeaponBolt::update (void)
 							waterMissEffect = nullptr;
 						}
 						
- 						//Create the explosion here.  HIT or MISS, its the same one!!
-						// Damage is done by explosion NOT by hit!
+						// The explosion owns area damage for both hits and misses.
 						ObjectManager->createExplosion(((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum,
 														nullptr,*targetPosition,
 														((WeaponBoltTypePtr)getObjectType())->areaEffectDmg,
@@ -743,9 +720,6 @@ long WeaponBolt::update (void)
  					if (missEffect)
 						craterManager->addCrater(CRATER_1+randomCrater,*targetPosition,mc2_appearance_rng::randomNumber(180));
 		
-					//if (MasterComponentList[weaponShot.masterId].getWeaponAmmoType() != WEAPON_AMMO_NONE)	
-					// energy weapons don't set off mines
-					// Yes, they should DT, 5/30/98
 					{
 						int cellRow, cellCol;
 		
@@ -782,14 +756,14 @@ long WeaponBolt::update (void)
 							waterMissEffect = nullptr;
 						}
 						
- 						//Create the explosion here.  HIT or MISS, its the same one!!
-						// Damage is done by explosion NOT by hit!
+						// The explosion owns area damage for both hits and misses.
 						ObjectManager->createExplosion(((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum,
 														nullptr,*targetPosition,
 														((WeaponBoltTypePtr)getObjectType())->areaEffectDmg,
 														((WeaponBoltTypePtr)getObjectType())->areaEffectRad);
 					}
 				}
+				armRetireDeadline();
 			}
 		}
 	}
@@ -1246,31 +1220,16 @@ long WeaponBolt::update (void)
 			inView = false;
 	}
 	
-	// B2 P2 fix: ring-buffer trail. Push current position into the ring, then
-	// re-stamp the entire trail between every consecutive pair. Required because
-	// Batcher::Flush() clears each frame — per-frame segments alone are invisible.
-	// VFX-WEAPON-FX-RESTORE-OPUS-1: skip GPU trail when gosEffect is active —
-	// gosEffect oracle provides the original animation; dual-trail suppressed here.
-	// VFX-WEAPON-FX-RESTORE-OPUS-1: also gate on !hitTarget — after impact gosEffect
-	// is killed (NULL) so the !gosEffect check passes, causing the GPU trail to emit
-	// a static particle at laserPosition (target mech) every frame for the bolt's
-	// afterHitTime duration, producing the persistent blue card at the impact site.
+	// Trail history survives the batcher's per-frame flush. CPU effects and impact tails
+	// own their presentation, so GPU trails are limited to otherwise unrepresented flight.
 	if (gpu_trail_kind != mc2::particles::GpuTrailKind::None && !gosEffect && !hitTarget) {
-		// Push current position into ring buffer.
-		// B2 P2 fix: use laserPosition (the integrated in-flight world position),
-		// NOT position (which tracks the launcher hotspot via getPositionFromHS).
-		// Apply the same Stuff->render axis swap that gosFX uses at lines ~411-413,
-		// so the trail particles land in the render-space coordinate system the
-		// shader expects (matches the swap baked into parentToWorld for spawn_card).
+		// Trail positions belong to the projectile in render space, not the launcher hotspot.
 		Stuff::Vector3D swapped;
 		mc2ToRender(swapped, laserPosition);
 		trail_history[trail_head] = swapped;
 		trail_head = static_cast<uint8_t>((trail_head + 1) % kTrailHistoryMax);
 		if (trail_count < kTrailHistoryMax) ++trail_count;
 
-		// Walk the ring oldest → newest, stamping segments between consecutive
-		// positions. Oldest index = (trail_head - trail_count + kTrailHistoryMax)
-		// mod kTrailHistoryMax. Stop at trail_head - 1 (most recent stored).
 		if (trail_count >= 2) {
 			int oldest = (static_cast<int>(trail_head) - static_cast<int>(trail_count)
 			              + kTrailHistoryMax) % kTrailHistoryMax;
