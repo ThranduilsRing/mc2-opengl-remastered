@@ -1,5 +1,23 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FORTIETH session (2026-10-16, Sonnet 5.5) -- row 29 diagnosed (not fixed), s39 review folded; nifty not merged
+
+### Commits (after 9113a4554)
+fc5ba5e83 s39 review fold (island negative cache for failed imports, page-cap log once, `<string>` include, bridge comment shortened) | row 29 docs + state commit. MERGEABLE TIP = the commit carrying this line.
+
+### Proof
+| Evidence | Result |
+|---|---|
+| build + doctest at fc5ba5e83 | ninja exit 0; `build_contract_harnesses --run --unit` exit 0 |
+| row 29 diagnosis (VK GPU arm, mc2_24 ppc frame 154, `--fixture 1`, `scratch/vo40*`) | a temporary per-group dump of the frame-154 flush (reverted) shows the four beam heads ARE in the stream as placeholder Card particles (age-0.5 sampling, 8 wu floor); under GEQUAL they fail the depth the tubes wrote (forced ALWAYS: they appear), and visible they show the wrong flipbook tile (V flip tried: different wrong tile). Muzzle residual = same placeholder stream; shaders are line-equal to GL. Both experiments reverted; the oracle diff stayed 8,3xx-8,5xx px (8,381 baseline) in every variant, so no code change shipped |
+| GL reference (item 2) | `E:/mc2-archive-2026-10/vfx-oracle-q2/final/ppc` (GL backend, same bookmark and frame): arms differ 213 px over 8 levels but the frame holds NO weapon fire, so it cannot grade muzzle size; row 29 stays OPEN with a recipe (card.cpp is in the never-touch gosfx set) |
+| VK tier1 + validation, final exe | see the line below if present; otherwise not run |
+
+### Lessons (40)
+- The oracle needs `--fixture 1` to reproduce the session 39 stream (default `loop` spawns a different sequence: 10 particles, no beams at frame 154); and an arm's `MC2_FX_FORCE_SPAWN` value is the first thing to diff when a rerun does not match.
+- An old GL evidence set that "matches" proves nothing when the frame has no content: look at the picture before reading the pixel counts.
+- Scratch (mine, deletable): `scratch/` vo40diag, vo40b, vo40c, vo40d, vo40e, vo40cmp*.png, b40*.log, h40a.log.
+
 ## THIRTY-NINTH session (2026-10-16, Sonnet 5.5) -- VK VFX island textured (row 29 partly closed), s38 review folded; nifty not merged
 
 ### Commits (after 21d247eed; code tip f796fe717 + docs, later commit = state/baselines only)
