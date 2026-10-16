@@ -549,6 +549,28 @@ void MC_TextureManager::removeTexture (DWORD gosHandle)
 	}
 }
 
+void MC_TextureManager::releaseNode (DWORD textureNode)
+{
+	if (textureNode >= MC_MAXTEXTURES)
+	{
+		MC2_LOG_ONCE(Render, Warn, "[TEXTURE_RELEASE_BAD] node={} (not a texture node index; ignored)", textureNode);
+		return;
+	}
+
+	MC_TextureNode& node = masterTextureNodes[textureNode];
+	if (node.numUsers == 0)
+		return;
+
+	if (--node.numUsers == 0)
+		node.destroy();
+}
+
+void mc2::ManagerTextureRelease::operator() (std::uint32_t node) const noexcept
+{
+	if (mcTextureManager)
+		mcTextureManager->releaseNode(node);
+}
+
 constexpr int cache_Threshold = 150;
 bool MC_TextureManager::flushCache (void)
 {
