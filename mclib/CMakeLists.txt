@@ -73,6 +73,7 @@ set(SOURCES ${SOURCES}
     ablexpr.cpp
     ablrtn.cpp
     ablscan.cpp
+    ablfile.cpp
     ablstd.cpp
     ablstmt.cpp
     ablsymt.cpp

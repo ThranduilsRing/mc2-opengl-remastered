@@ -264,10 +264,8 @@ void UserFile::operator delete (void* us) {
 
 void UserFile::dump (void) {
 
-	//----------------
-	// Dump to file...
 	for (long i = 0; i < numLines; i++)
-		filePtr->writeString(lines[i]);
+		filePtr.writeString(lines[i]);
 	numLines = 0;
 }
 
@@ -275,12 +273,12 @@ void UserFile::dump (void) {
 
 void UserFile::close (void) {
 
-	if (filePtr && inUse) {
+	if (inUse) {
 		dump();
 		char s[512];
 		sprintf(s, "\nNum Total Lines = %d\n", totalLines);
-		filePtr->writeString(s);
-		filePtr->close();
+		filePtr.writeString(s);
+		filePtr.close();
 		inUse = false;
 		numLines = 0;
 		totalLines = 0;
@@ -293,7 +291,7 @@ long UserFile::open (const char* fileName) {
 
 	numLines = 0;
 	totalLines = 0;
-	if (filePtr->create(fileName) != ABL_NO_ERR)
+	if (filePtr.create(fileName) != ABL_NO_ERR)
 		return(-1);
 
 	inUse = true;
@@ -347,13 +345,10 @@ UserFile* UserFile::getNewFile (void) {
 void UserFile::setup (void) {
 
 	for (long i = 0; i < MAX_USER_FILES; i++) {
-		files[i] = (UserFile*)ABLSystemMallocCallback(sizeof(UserFile));
-		files[i]->init();
+		files[i] = new UserFile;
 		files[i]->handle = i;
 		files[i]->inUse = false;
-		files[i]->filePtr = new ABLFile;
-		if (!files[i]->filePtr)
-			ABL_Fatal(0, " ABL: Unable to malloc UserFiles ");
+
 	}
 }
 
@@ -366,11 +361,7 @@ void UserFile::cleanup (void) {
 		if (files[i]) {
 			if (files[i]->inUse)
 				files[i]->close();
-			//Should actually free the memory allocated above here!
-			delete files[i]->filePtr;
-			files[i]->filePtr = nullptr;
-
-			ABLSystemFreeCallback(files[i]);
+			delete files[i];
 			files[i] = nullptr;
 		}
 	}

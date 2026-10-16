@@ -58,7 +58,8 @@ class UserFile {
 		long					handle;
 		bool					inUse;
 		char					fileName[MAXLEN_FILENAME];
-		ABLFile*				filePtr;
+		// close flushes buffered lines before the file member releases its handle.
+		ABLFile filePtr;
 		long					numLines;
 		int                     totalLines;
 		char					lines[MAX_USER_FILE_LINES][MAX_USER_FILE_LINELEN];
@@ -75,7 +76,7 @@ class UserFile {
 			handle = -1;
 			inUse = false;
 			fileName[0] = '\0';
-			filePtr = NULL;
+			filePtr.close();
 			numLines = 0;
 			totalLines = 0;
 			for (long i = 0; i < MAX_USER_FILE_LINES; i++)
@@ -86,7 +87,7 @@ class UserFile {
 			init();
 		}
 
-		void destroy (void);
+		void destroy (void) noexcept { close(); }
 
 		~UserFile (void) {
 			destroy();
