@@ -137,5 +137,14 @@ floor on two VK arms; the owner's fail-soft ruling (inventory section 14 questio
 
 ## 5. Follow-ups (not done here)
 - DONE 908e2ad90: `verify.py` refuses a candidate whose backend differs from the golden's.
-- `capture_ab.py` uses two GL arms as its noise floor; switch to two VK arms (inventory section 12).
+- DONE 2026-10-16 (session 29): `capture_ab.py` noise floor is two VK arms; the GL arm is behind `--gl-arm`.
 - `tests/callers.json` is stale at the lane base 06f3e7296 (`tools/callers.py --check`); regenerate at merge.
+
+## 6. Switched 2026-10-16 (session 29) and the owner rulings
+
+- `render_resolution.CURRENT_GOLDEN` = `golden-d9e1f3801716-vk-1080p`; `RETIRED.md` rows and `RETIRED_SETS` entries for `golden-e9e3f19d6-1080p` and
+  `reset-50331d5`; the directories left the tree (tarball + sha256 at `E:/mc2-archive-2026-10/docs/gl-goldens-2026-10-16/`, extraction diffed against the tree
+  before removal). `verify.py --golden current` now grades only Vulkan captures, and refuses a golden that records no backend.
+- Owner ruling (2026-10-16): once GL is deleted, a failed Vulkan init shows a clear message and exits. There is no fallback to another renderer, so the
+  fail-soft paths (`forceGLFallback`, the smoke `capture_backend` mismatch check, the VK present fail-soft notes in `tracy_capture_compare.py`) go with GL.
+- GL deletion step 1 status: see `.claude/cleanup/gl-retirement-inventory-2026-10-15.md` section 15.

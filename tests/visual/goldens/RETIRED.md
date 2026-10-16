@@ -111,3 +111,15 @@ Replacement: `reset-50331d5` -- 3 deterministic runs of the same 13 poses on
 exe `50331d530e1c` (dev lane), 24 regions blessed, 11 refused as unstable
 (night lights / lamp cones / runway lights on mc2_10 flicker run-to-run) and the
 degenerate crop refused.
+
+## 2026-10-16 CURRENT_GOLDEN switch: `golden-e9e3f19d6-1080p`, `reset-50331d5`
+
+Both are GL-drawn sets. `render_resolution.CURRENT_GOLDEN` now names the Vulkan set `golden-d9e1f3801716-vk-1080p` (36 of 36 regions blessed,
+three runs, see `tools/visual_verify/vk_golden_plan.md` section 4), and `verify.py` refuses a candidate drawn by another backend.
+
+- `golden-e9e3f19d6-1080p`: GL at 1920x1080, superseded by the VK set (GL is deleted after VK parity).
+- `reset-50331d5`: GL at 3840x2160; already ungradeable at the pinned size.
+
+The directories left the tree in the GL-golden archive commit (tarball + sha256 under
+`E:/mc2-archive-2026-10/docs/gl-goldens-2026-10-16/`, `RETIRED_SETS` entries in `scripts/check-golden-coverage.py`).
+Restore: extract the tarball into `tests/visual/goldens/` and remove the two `RETIRED_SETS` entries.

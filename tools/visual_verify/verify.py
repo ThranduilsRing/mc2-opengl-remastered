@@ -205,7 +205,8 @@ def golden_backend(golden_json: dict) -> "str | None":
 def check_backend(golden_dir: Path, cap: dict, allow_mismatch: bool) -> dict:
     """The candidate must have been drawn by the golden's backend alone: a GL frame graded against a VK golden (or the reverse) measures the
     backend gap, not a regression. Raises SystemExit on a mismatch or an unrecorded candidate backend unless `allow_mismatch`, which is logged
-    and carried in the report. A golden without a backend record is graded as before, with a log line."""
+    and carried in the report. A golden with no backend record is refused the same way: it cannot say which backend it is the reference for, so
+    the guard would be silently off for it."""
     try:
         gj = json.loads((Path(golden_dir) / "golden.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -214,7 +215,11 @@ def check_backend(golden_dir: Path, cap: dict, allow_mismatch: bool) -> dict:
     drew = (cap.get("backend") or {}).get("drew")
     record = {"golden": want, "candidate_drew": drew, "mismatch_allowed": False}
     if want is None:
-        print(f"[vv-verify] golden {Path(golden_dir).name} records no backend; backend not checked", file=sys.stderr)
+        if not allow_mismatch:
+            raise SystemExit(f"[vv-verify] BACKEND UNRECORDED: golden {Path(golden_dir).name} records no backend, so a candidate cannot be checked "
+                             f"against it; re-bless it with bless.py --backend, or pass --allow-backend-mismatch to grade it unchecked.")
+        print(f"[vv-verify] WARNING --allow-backend-mismatch: golden {Path(golden_dir).name} records no backend; backend not checked", file=sys.stderr)
+        record["mismatch_allowed"] = True
         return record
     if drew == [want]:
         return record
