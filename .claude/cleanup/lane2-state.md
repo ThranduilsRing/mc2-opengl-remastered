@@ -1,5 +1,55 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## TWENTY-SEVENTH session (2026-10-16 01:55-04:30 CDT, cap 5 h, Opus 5.5) -- parity rows 1 and 9 ported (prop night pools, map-edge feather), rows 4, 6, 7 proven and closed, row 2 ported but not proven, VK golden re-blessed (interim), CURRENT_GOLDEN decision written, row-5 review should-fix 1 + note 3; nifty NOT merged ("merge lane2 f0fffa457" absent from mc2-main)
+
+### Commits (after f0fffa457)
+bcb9b5623 row 1 prop pool term | af54408bd review row5 should-fix 1 + note 3 (harness env in the golden) | 8d7f14ec8 row 9 edge feather | d9e1f3801 row 1 typed casts (LG09 back to baseline) | b7392551f golden `golden-d9e1f3801716-vk-1080p` + gaps rows 1/2/4/6/7/9 + plan section 4 + montages | 64084214e row 1 perf (pool SSBO memory) | this state commit. MERGEABLE TIP = the commit carrying this line (code = 64084214e).
+
+### Rows (numbers in `.claude/VK-PARITY-GAPS.md`)
+- Row 1 CLOSED: the terrain and mech pool terms were already ported; the missing piece was the OBJECT pool term on static props (GL `static_prop.frag` POOL-CONSUMERS-1). Ported with the shared `object_light_pool.hglsl` body, same pool array and knobs via the prop light feed (binding 8). Same-exe VK-GL: nightlow a 4.665 -> 1.252, c 5.013 -> 0.519; golden poses 205843 6.07 -> 4.52, 204753 3.75 -> 2.01, 212019 4.17 -> 2.42, 212258 3.04 -> 1.57; day 0 change beyond noise.
+- Perf found by the tier1 and fixed before closing: the pool SSBO was allocated `HOST_ACCESS_RANDOM` (system memory) and every prop fragment walks ~142 lights on mc2_10: VK tier1 mc2_10 31 fps (p1 7). `HOST_ACCESS_SEQUENTIAL_WRITE` (device-local host-visible): 122 fps (p1 101); pixels unchanged (verify 36/36 on the fixed exe). The mech island's pool buffer has the same allocation (mechs are few pixels; not changed here).
+- Row 9 CLOSED for the default-ON members: VK lacked TERRAIN-EDGE-FEATHER-1 (GL default ON); 8d7f14ec8 ports it. 205952 9.932 -> 2.787 (the "white GL map-edge skirt"), 205843 4.522 -> 0.519, 204907 3.994 -> 1.992. Macro variation, control map, material library: default OFF in GL.
+- Rows 4 and 7 CLOSED by a term oracle (`scratch/r27term.py`: each backend with the term off and on, same exe, compare the two terms on GL's term pixels): row 4 VK term error 0.35-5.01 on 24.9-67.4 terms (mc2_01 day 13.12 / 34.56 worst, fade edge a few px apart); row 7 1.39 / 76.19 at 204523, 3.40 / 145.30 at 205952, 0.64 / 29.32 at 212258.
+- Row 6 CLOSED for the default path: overlay pass ported earlier; the OVERLAY-V2 sidecar composite is behind `MC2_TERRAIN_OVERLAY_V2` (default OFF).
+- Row 2 PORTED, NOT PROVEN: the spec-term oracle at golden-pose scale covers 23-220 px with partial overlap (negative result, numbers in the row). Needs a close-up mech bookmark.
+- Row 22 metallic: no lead (the VK prop specular uses the same swizzled world frame as GL; metallic still the literal 0 without per-material scalars).
+
+### Golden
+- `golden-d9e1f3801716-vk-1080p` blessed (`vkgold27-r{1,2,3}`, 36/36, 0 refused, `capture_env.harness_env` records the RNG seed); r2 against the section-3 set: 14 FAIL, all legitimate (11 row 1, 3 row 9 on 205843), each measured toward GL in its rect (plan section 4). Final exe (64084214e) VK capture `s27d-vk`: 36/36 PASS.
+- CURRENT_GOLDEN: NOT switched; decision and the GL deletion step 1 needs written in `vk_golden_plan.md` section 4 (blocked on row 2 proof, then the verify.py backend refusal).
+
+### Review lane2-2026-10-16-row5-cleanup.md
+Should-fix 1 fixed (af54408bd): capture.py records the harness-set env per sweep (`harness_env`, per-pose paths dropped) and its key list (`effective_mc2_env`); bless.py carries `harness_env` into `golden.json`; two pytest cases. Note 3 fixed (docstring). Notes 1, 2, 4 not taken (no change needed / follow-up stays in plan section 5).
+
+### BUGS rows proposed (BUGS-FOUND-FIXED.md shape; numbers to the orchestrator)
+| # | Found | Bug (symptom) | Root cause | Fix (sha) | Proof | Status |
+|---|---|---|---|---|---|---|
+| ? | 2026-10-16 | under VK, props and vehicles near night lamps stayed dark where GL lights them (mc2_10 airbase, 99.4% of the night VK-GL residue) | the VK colour prop FS never received GL's object light-pool term (POOL-CONSUMERS-1) | bcb9b5623 + 64084214e | nightlow a 4.665 -> 1.252, c 5.013 -> 0.519 mean abs RGB sum to the same-exe GL frame; VK tier1 mc2_10 122 fps, validation 0 | fixed |
+| ? | 2026-10-16 | under VK the map perimeter cut a hard dark edge against the sky where GL hazes it out | VK terrain FS lacked TERRAIN-EDGE-FEATHER-1 (GL default on) | 8d7f14ec8 | mc2_10 205952 9.932 -> 2.787, mc2_05 205843 4.522 -> 0.519 | fixed |
+
+### Proof
+| Evidence | Result |
+|---|---|
+| ninja -j2 (`scratch/build_s27{a,b,c,d}.log`) | exit 0 at bcb9b5623, 8d7f14ec8, d9e1f3801, 64084214e; every exe built after its commit |
+| build_contract_harnesses --run --unit (`scratch/harn27a.log`, at 8d7f14ec8) | doctest 3242/3242 cases (10 failed assertions inside passing cases, same as session 26's `harn26b.log`); FAIL mc2_authored_order_seam (nifty compile error, not this lane) |
+| pytest test_bless_backend.py | 9 passed (+2) |
+| cxx17 (--worktree) / log_tag_census / own_inventory / gpu_abi_gen / gate_gen | OK; file_size: vulkan_color_prop_island.cpp 1779 -> 1814 WARNING (within the 49-file baseline) |
+| oracle | rows 1 / 9 same-exe VK-GL full frame + per region; rows 4 / 7 / 2 term oracle; VK validation_errors=0 on every capture (`s27a-vk`, `s27b-vk`) |
+| montages viewed | `s27-r1-nightlow-gl-vkb-vka.png`, `s27-r1-golden-gl-vkb-vka.png`, `s27-r9-edge-gl-vkb-vka.png`, `s27-vkgold-gl-vk.png` (committed) |
+| golden | bless 36/0; verify r2 36/36; final exe `s27d-vk` 36/36 |
+| tier1 VK + validation, final exe 64084214e (`scratch/b27d_vk_t1.log`, rerun `scratch/b27e_vk_t1.log`) | 5/5 PASS both runs, errors=0 warnings=0 on all five; rerun 145/140/122/128/112 fps (first run mc2_01 101, p1 22: a one-off hitch); DEPLOY_FINGERPRINT OK |
+| tier1 GL, final exe (`scratch/b27d_gl_t1.log`) | 5/5 PASS (143/114/142/143/133 fps), +0 destroys, DEPLOY_FINGERPRINT OK |
+| tier1 on d9e1f3801 (`scratch/b27_{vk,gl}_t1.log`) | VK 5/5 but mc2_10 31 fps (the perf bug above); GL 4/5, mc2_17 heartbeat_freeze_play (flake class of `tier1-flake-log.md`; GL code unchanged; passed on 64084214e) |
+
+### Open
+1. Row 2 proof on a close-up mech pose, then re-bless if it moves pixels, then CURRENT_GOLDEN (plan section 4). 2. Mech island pool buffer uses the same random-access host allocation (perf only up close). 3. `verify.py` backend refusal (plan section 5). 4. Carried: T7 / T9 VK resident cost; row 20 GL cause; row 18 (no content); not this lane: mc2_authored_order_seam.
+5. Scratch (mine, deletable): `scratch/` b27*.sh, c27*.sh/.out, f27.sh/.out, g27.sh/.out, h27.sh, v27e.sh/.out, r27.py, r27reg.py, r27term.py, build_s27*.log, deploy_s27*.log, harn27a.log, verify27*.log, bless27.log, b27*_t1.log; `.claude/l2cap/` s27a-*, s27b-*, s27d-vk (KEEP vkgold27-r1..3 and s27b-gl while the plan cites them); the section-3 runs vkgold26-r* and gl26-r1 can go once `golden-e350d0b4a5c6-vk-1080p` is retired.
+
+### Lessons (27)
+- A row's recon text can be stale by many commits: grep the VK tree for the GL term before porting; four of six rows were already ported and needed a proof, not code.
+- Term oracle (term off vs on in each backend, compare the two deltas on GL's pixels) proves a port independently of every other open gap.
+- A per-fragment loop over a host-written SSBO must not live in system memory: tier1 fps, not the pixel oracle, caught it.
+
 ## TWENTY-SIXTH session (2026-10-16 00:10-02:15 CDT, cap 5 h, Opus 5.5) -- night capture determinism (P1) found and fixed in the harness, row 5 closed, row 22 residual fixed, VK golden set blessed (interim), review should-fix 1 + NOTE 1, static-map doctest; nifty NOT merged ("merge lane2 c0cfd7070" absent from mc2-main)
 
 ### Commits (after c0cfd7070)
