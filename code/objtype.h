@@ -27,6 +27,7 @@
 
 #ifndef STUFF_HPP
 #include<stuff/stuff.hpp>
+#include<string>
 #include<vector>
 #endif
 
@@ -48,7 +49,8 @@ class ObjectType {
 		ObjectTypeNumber		destroyedObject;		//What I turn into when I die.
 		ObjectTypeNumber		explosionObject;		//How I blow up
 		bool					potentialContact;		//Can I can be a contact?
-		char					*appearName;			//Base Name of appearance Files.
+		char					*appearName;			//Base Name of appearance Files.  A view of appearNameStore.
+		std::string				appearNameStore;		//Owns the name text; an object type is never copied or moved.
 		float					extentRadius;			//Smallest sphere which will hold me.
 		bool					keepMe;					//Do not EVER cache this objType out.
 		long					iconNumber;				//my index into the big strip o' icons
@@ -210,7 +212,8 @@ class ObjectTypeManager {
 	public:
 
 		long					numObjectTypes;
-		ObjectTypePtr*			table;
+		ObjectTypePtr*			table;			// view of tableStore
+		std::vector<ObjectTypePtr>	tableStore;	// owns the table of type slots; sized once by init(file), the types themselves still live in objectCache
 
 	private:
 		// The object .pak. Declared before the first use by destroy(), which closes it and clears the view before the member goes.

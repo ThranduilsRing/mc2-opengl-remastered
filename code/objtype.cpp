@@ -114,7 +114,7 @@ GameObjectPtr ObjectType::createInstance (void) {
 void ObjectType::destroy (void) {
 
 	// Nothing at the moment!
-	ObjectTypeManager::objectTypeCache->Free(appearName);
+	std::string().swap(appearNameStore);
 	appearName = nullptr;
 }
 		
@@ -143,8 +143,8 @@ long ObjectType::init (FitIniFilePtr objFile) {
 	result = objFile->readIdString("AppearanceName",apprName,511);
 	if (result == NO_ERR)
 	{
-		appearName = (char *)ObjectTypeManager::objectTypeCache->Malloc(strlen(apprName)+1);
-		strcpy(appearName,apprName);
+		appearNameStore = apprName;
+		appearName = appearNameStore.data();
 	}
 
 	result = objFile->readIdLong("ExplosionObject",explosionObject);
@@ -217,11 +217,8 @@ bool ObjectType::handleDestruction (GameObjectPtr collidee, GameObjectPtr collid
 void ObjectType::setAppearanceTypeName (const char* name)
 {
 	if (!name) return;
-	size_t n = strlen(name);
-	appearName = (char*)ObjectTypeManager::objectTypeCache->Malloc(n + 1);
-	if (appearName) {
-		strcpy(appearName, name);
-	}
+	appearNameStore = name;
+	appearName = appearNameStore.data();
 }
 
 //***************************************************************************
@@ -257,11 +254,8 @@ long ObjectTypeManager::init (const char* objectFileName, long objectTypeCacheSi
 		return(result);
 
 	numObjectTypes = maxObjectTypes;
-	table = (ObjectTypePtr*)objectTypeCache->Malloc(sizeof(ObjectTypePtr) * numObjectTypes);
-	if (!table)
-		Fatal(0, " ObjectTypeManager.init: unable to create table ");
-	for (long i = 0; i < numObjectTypes; i++)
-		table[i] = nullptr;
+	tableStore.assign(static_cast<size_t>(numObjectTypes), nullptr);
+	table = tableStore.data();
 
 	//---------------------------------------------------------------------------
 	// Since MC1 handled all of these MiscTerrainObjectTypes with one ObjectType,
@@ -284,7 +278,7 @@ void ObjectTypeManager::destroy(void)
 {
 	if (table) 
 	{
-		objectTypeCache->Free(table);
+		std::vector<ObjectTypePtr>().swap(tableStore);
 		table = nullptr;
 		numObjectTypes = 0;
 	}

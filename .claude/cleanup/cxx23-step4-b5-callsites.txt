@@ -25,10 +25,10 @@ B5.5-heap-owner	code/objmgr.cpp:1051	asset_delete	delete objTypeManager;
 B5.4-objecttype	code/objtype.cpp:86	class_op	void* ObjectType::operator new (size_t ourSize) {
 B5.4-objecttype	code/objtype.cpp:94	class_op	void ObjectType::operator delete (void* us) {
 B5.4-objecttype	code/objtype.cpp:94	asset_delete	void ObjectType::operator delete (void* us) {
-B5.4-objecttype	code/objtype.cpp:301	asset_delete	delete objectTypeCache;
-B5.4-objecttype	code/objtype.cpp:414	asset_new	objType = new TerrainObjectType;
-B5.4-objecttype	code/objtype.cpp:421	asset_new	objType = new TerrainObjectType;
-B5.4-objecttype	code/objtype.cpp:532	asset_delete	delete table[objTypeNum];
+B5.4-objecttype	code/objtype.cpp:295	asset_delete	delete objectTypeCache;
+B5.4-objecttype	code/objtype.cpp:408	asset_new	objType = new TerrainObjectType;
+B5.4-objecttype	code/objtype.cpp:415	asset_new	objType = new TerrainObjectType;
+B5.4-objecttype	code/objtype.cpp:526	asset_delete	delete table[objTypeNum];
 B5.1-texture	code/pausewindow.cpp:346	tex_acquire	s_frameMcH = mcTextureManager->loadTexture(
 B5.1-texture	code/pausewindow.cpp:538	tex_acquire	s_dlgFrameMcH = mcTextureManager->loadTexture(
 B5.5-heap-owner	code/simplecamera.cpp:83	asset_delete	delete GVAppearanceType::SensorTriangleShape;
