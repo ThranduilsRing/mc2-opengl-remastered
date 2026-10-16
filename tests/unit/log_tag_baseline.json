@@ -100,6 +100,34 @@
    "count": 1
   },
   {
+   "tag": "ABL_FILE_LINE_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "ABL_FILE_OPEN_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "ABL_FILE_READ_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "ABL_FILE_STRING_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [],
+   "count": 1
+  },
+  {
    "tag": "ABL_REPRO",
    "ver": -1,
    "stream": "stdout",
@@ -158,6 +186,13 @@
     "line",
     "errCode"
    ],
+   "count": 1
+  },
+  {
+   "tag": "ABL_SOURCE_BAD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [],
    "count": 1
   },
   {
@@ -2054,6 +2089,16 @@
     "maxDispMag"
    ],
    "count": 1
+  },
+  {
+   "tag": "COMBAT_RETIRE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "reason",
+    "type"
+   ],
+   "count": 3
   },
   {
    "tag": "CONE_AIM_DIAG",
@@ -6836,6 +6881,13 @@
     "scale"
    ],
    "count": 1
+  },
+  {
+   "tag": "OBJECTIVES",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 4
   },
   {
    "tag": "OBJECT_ADMISSION",

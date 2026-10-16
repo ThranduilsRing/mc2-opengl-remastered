@@ -36,7 +36,7 @@
   "code/mover.h": 1908,
   "code/mpparameterscreen.cpp": 2415,
   "code/multplyr.h": 1849,
-  "code/objective.cpp": 2259,
+  "code/objective.cpp": 2437,
   "code/optionsarea.cpp": 1842,
   "code/pilotreviewarea.cpp": 1844,
   "code/tacordr.cpp": 2117,
@@ -44,7 +44,7 @@
   "code/turret.cpp": 2338,
   "code/warrior.cpp": 2686,
   "code/warrior.h": 2173,
-  "editor/tests/test_objectives.cpp": 1601,
+  "editor/tests/test_objectives.cpp": 1683,
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1608,
   "mclib/ablrtn.cpp": 1735,
@@ -61,9 +61,9 @@
   "mclib/stuff/rotation.cpp": 1672,
   "mclib/terrtxm.cpp": 1771,
   "mclib/tgl.h": 1702,
-  "shaders/terrain_lod_chunk.frag": 2176
+  "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "13f2efe43",
+ "head": "c067f2b1b",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -96,16 +96,16 @@
    "max_lines": 1116
   },
   "code": {
-   "files": 404,
+   "files": 405,
    "files_over_1500": 22,
    "files_over_3000": 0,
    "max_lines": 2770
   },
   "editor": {
-   "files": 276,
+   "files": 280,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 1601
+   "max_lines": 1683
   },
   "gui": {
    "files": 25,
@@ -123,7 +123,7 @@
    "files": 176,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 2176
+   "max_lines": 2096
   }
  },
  "thresholds": [
@@ -156,6 +156,10 @@
    "lines": 2599
   },
   {
+   "file": "code/objective.cpp",
+   "lines": 2437
+  },
+  {
    "file": "code/mpparameterscreen.cpp",
    "lines": 2415
   },
@@ -170,14 +174,6 @@
   {
    "file": "code/gameobj.cpp",
    "lines": 2259
-  },
-  {
-   "file": "code/objective.cpp",
-   "lines": 2259
-  },
-  {
-   "file": "shaders/terrain_lod_chunk.frag",
-   "lines": 2176
   },
   {
    "file": "code/warrior.h",
@@ -198,6 +194,10 @@
   {
    "file": "mclib/mlr/mlrtriangleclipping.hpp",
    "lines": 2112
+  },
+  {
+   "file": "shaders/terrain_lod_chunk.frag",
+   "lines": 2096
   },
   {
    "file": "code/mechicon.cpp",
@@ -253,7 +253,7 @@
   }
  ],
  "total": {
-  "files": 1909,
+  "files": 1914,
   "files_over_1500": 49,
   "files_over_3000": 1,
   "max_lines": 3757
