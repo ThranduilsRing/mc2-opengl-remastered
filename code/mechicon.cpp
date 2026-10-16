@@ -1920,8 +1920,7 @@ void PilotIcon::swapResolutions( bool bForce)
 {
 	if ( s_pilotTextureHandle )
 	{
-		int gosID = mcTextureManager->get_gosTextureHandle( s_pilotTextureHandle );
-		mcTextureManager->removeTexture( gosID );
+		mcTextureManager->releaseNode( s_pilotTextureHandle );
 	}
 	s_pilotTextureHandle = 0;
 

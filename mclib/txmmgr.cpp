@@ -520,35 +520,6 @@ void MC_TextureManager::removeTextureNode (DWORD textureNode)
 	}
 }
 
-void MC_TextureManager::removeTexture (DWORD gosHandle)
-{
-    long i = 0;
-	for (;i<MC_MAXTEXTURES;i++)
-	{
-		if (masterTextureNodes[i].gosTextureHandle == gosHandle)
-		{
-			masterTextureNodes[i].numUsers--;
-			break;			
-		}
-	}
-	
-	if (i < MC_MAXTEXTURES && masterTextureNodes[i].numUsers == 0)
-	{
-		masterTextureNodes[i].destroy();
-		if (masterTextureNodes[i].textureData)
-		{
-			textureCacheHeap->Free(masterTextureNodes[i].textureData);
-			masterTextureNodes[i].textureData = nullptr;
-
-			if (masterTextureNodes[i].nodeName)
-			{
-				textureStringHeap->Free(masterTextureNodes[i].nodeName);
-				masterTextureNodes[i].nodeName = nullptr;
-			}
-		}
-	}
-}
-
 void MC_TextureManager::releaseNode (DWORD textureNode)
 {
 	if (textureNode >= MC_MAXTEXTURES)

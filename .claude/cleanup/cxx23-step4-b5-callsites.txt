@@ -1,19 +1,14 @@
 B5.5-heap-owner	code/bldng.cpp:1161	asset_delete	delete appearance;
 B5.1-texture	code/controlgui_init.cpp:99	tex_acquire	int ID = mcTextureManager->loadTexture( file, gos_Texture_Alpha, 0, 0, 0x2 );
-B5.1-texture	code/controlgui_init.cpp:604	tex_release	mcTextureManager->removeTexture( gosID );
-B5.1-texture	code/controlgui_init.cpp:613	tex_release	mcTextureManager->removeTexture( gosID );
 B5.1-texture	code/controlgui_objectives.cpp:256	tex_acquire	s_frameMcH = mcTextureManager->loadTexture(
 B5.1-texture	code/gametacmap.cpp:91	tex_acquire	viewRectHandle = mcTextureManager->loadTexture(path, gos_Texture_Alpha, 0 );
 B5.1-texture	code/gametacmap.cpp:95	tex_acquire	blipHandle = mcTextureManager->loadTexture( path, gos_Texture_Alpha, 0 );
 B5.5-heap-owner	code/gate.cpp:656	asset_delete	delete appearance;
 B5.5-heap-owner	code/gvehicl.cpp:1080	asset_delete	delete appearance;
-B5.1-texture	code/infowindow.cpp:125	tex_release	mcTextureManager->removeTexture( gosID );
-B5.1-texture	code/infowindow.cpp:143	tex_release	mcTextureManager->removeTexture( gosID );
 B5.5-heap-owner	code/mech.cpp:518	asset_delete	delete appearance;
 B5.5-heap-owner	code/mech_init.cpp:162	asset_delete	delete appearance;
 B5.1-texture	code/mechicon.cpp:1857	tex_acquire	s_pilotTextureHandle = mcTextureManager->loadTexture( path, gos_Texture_Alpha, 0, 0, 0x2);
-B5.1-texture	code/mechicon.cpp:1924	tex_release	mcTextureManager->removeTexture( gosID );
-B5.1-texture	code/mechicon.cpp:1947	tex_acquire	s_pilotTextureHandle = mcTextureManager->loadTexture( path, gos_Texture_Alpha, 0, 0, 0x2);
+B5.1-texture	code/mechicon.cpp:1946	tex_acquire	s_pilotTextureHandle = mcTextureManager->loadTexture( path, gos_Texture_Alpha, 0, 0, 0x2);
 B5.5-heap-owner	code/mission.cpp:889	asset_delete	delete TG_Shape::tglHeap;
 B5.5-heap-owner	code/mission.cpp:1081	asset_delete	delete GVAppearanceType::SensorTriangleShape;
 B5.5-heap-owner	code/mission.cpp:1087	asset_delete	delete GVAppearanceType::SensorCircleShape;
@@ -46,10 +41,7 @@ B5.1-texture	code/weaponbolt.cpp:582	tex_acquire	mcTextureHandle = mcTextureMana
 B5.1-texture	gui/UiDefs_draw.cpp:142	tex_acquire	e.textureNode = mcTextureManager->loadTexture(loadPath, gos_Texture_Alpha, 0, 0, 0x2);
 B5.1-texture	gui/abutton.cpp:373	tex_acquire	int ID = mcTextureManager->loadTexture( file, gos_Texture_Alpha, 0, 0, 0x2 );
 B5.1-texture	gui/asystem.cpp:354	tex_acquire	int ID = mcTextureManager->loadTexture( buffer, bAlpha ? gos_Texture_Alpha : gos_Texture_Keyed, 0, 0, neverFlush);
-B5.1-texture	gui/asystem.cpp:471	tex_release	mcTextureManager->removeTexture( gosID );
-B5.1-texture	gui/asystem.cpp:748	tex_release	mcTextureManager->removeTexture( gosID );
-B5.1-texture	gui/asystem.cpp:750	tex_acquire	textureHandle = mcTextureManager->loadTexture( fileName, gos_Texture_Keyed, 0, 0, 0x2);
-B5.1-texture	gui/asystem.cpp:779	tex_release	mcTextureManager->removeTexture( gosID );
+B5.1-texture	gui/asystem.cpp:744	tex_acquire	textureHandle = mcTextureManager->loadTexture( fileName, gos_Texture_Keyed, 0, 0, 0x2);
 B5.3-appearance	mclib/appear.cpp:85	class_op	void * Appearance::operator new (size_t mySize)
 B5.3-appearance	mclib/appear.cpp:90	heap_malloc	result = AppearanceTypeList::appearanceHeap->Malloc(mySize);
 B5.3-appearance	mclib/appear.cpp:97	class_op	void Appearance::operator delete (void * us)
@@ -189,15 +181,14 @@ B5.1-texture	mclib/gvactor.cpp:1118	tex_acquire	localTextureHandle = mcTextureMa
 B5.1-texture	mclib/gvactor.cpp:1124	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrin
 B5.1-texture	mclib/gvactor.cpp:1136	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
 B5.1-texture	mclib/gvactor.cpp:1142	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrin
-B5.1-texture	mclib/gvactor_geometry.cpp:139	tex_release	mcTextureManager->removeTexture(gosHandle);
-B5.1-texture	mclib/gvactor_geometry.cpp:171	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
-B5.1-texture	mclib/gvactor_geometry.cpp:193	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
-B5.3-appearance	mclib/gvactor_geometry.cpp:598	asset_delete	delete gvShape;
-B5.1-texture	mclib/gvactor_geometry.cpp:622	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
-B5.1-texture	mclib/gvactor_geometry.cpp:629	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
-B5.3-appearance	mclib/gvactor_geometry.cpp:651	asset_delete	delete gvShape;
-B5.1-texture	mclib/gvactor_geometry.cpp:672	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
-B5.1-texture	mclib/gvactor_geometry.cpp:679	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
+B5.1-texture	mclib/gvactor_geometry.cpp:170	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
+B5.1-texture	mclib/gvactor_geometry.cpp:192	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
+B5.3-appearance	mclib/gvactor_geometry.cpp:597	asset_delete	delete gvShape;
+B5.1-texture	mclib/gvactor_geometry.cpp:621	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
+B5.1-texture	mclib/gvactor_geometry.cpp:628	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
+B5.3-appearance	mclib/gvactor_geometry.cpp:650	asset_delete	delete gvShape;
+B5.1-texture	mclib/gvactor_geometry.cpp:671	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
+B5.1-texture	mclib/gvactor_geometry.cpp:678	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
 B5.3-appearance	mclib/gvactor_update.cpp:706	asset_delete	delete gvShape;
 B5.3-appearance	mclib/gvactor_update.cpp:712	asset_delete	delete gvShadowShape;
 B5.3-appearance	mclib/gvactor_update.cpp:718	asset_delete	delete sensorCircleShape;
@@ -228,8 +219,7 @@ B5.1-texture	mclib/mech3d_init.cpp:485	tex_acquire	DWORD gosTextureHandle = mcTe
 B5.3-appearance	mclib/mech3d_init.cpp:692	heap_malloc	paintSchemata = (PaintSchemataPtr)AppearanceTypeList::appearanceHeap->Malloc(numPaintSchemata * sizeof(PaintSchemata));
 B5.1-texture	mclib/mech3d_init.cpp:917	tex_acquire	aoTextureHandle = mcTextureManager->loadTexture(aoFull, gos_Texture_Solid,
 B5.1-texture	mclib/mech3d_init.cpp:938	tex_acquire	normalTextureHandle = mcTextureManager->loadTexture(nrmFull, gos_Texture_Solid,
-B5.1-texture	mclib/mech3d_init.cpp:949	tex_release	mcTextureManager->removeTexture(gosHandle);
-B5.1-texture	mclib/mech3d_init.cpp:988	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,mechHints,paintInstance);
+B5.1-texture	mclib/mech3d_init.cpp:987	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,mechHints,paintInstance);
 B5.3-appearance	mclib/mech3d_render.cpp:346	asset_delete	delete mechShape;
 B5.3-appearance	mclib/mech3d_render.cpp:369	asset_delete	delete mechShape;
 B5.3-appearance	mclib/mech3d_type.cpp:135	asset_new	mechShape[i] = new TG_TypeMultiShape;
@@ -257,7 +247,6 @@ B5.3-appearance	mclib/mech3d_type.cpp:627	asset_delete	delete mechBackwardDmgSha
 B5.3-appearance	mclib/mech3d_type.cpp:639	heap_free	AppearanceTypeList::appearanceHeap->Free(nodeData[i].nodeId);
 B5.3-appearance	mclib/mech3d_type.cpp:643	heap_free	AppearanceTypeList::appearanceHeap->Free(nodeData);
 B5.1-texture	mclib/mlr/gosimage.cpp:58	tex_acquire	mcTextureNodeIndex = mcTextureManager->loadTexture(name,gos_Texture_Detect,ipHints);
-B5.1-texture	mclib/mlr/gosimage.cpp:78	tex_release	mcTextureManager->removeTexture(mcTextureNodeIndex);
 B5.1-texture	mclib/mlr/gosimagepool.cpp:143	tex_acquire	DWORD nodeIndex = mcTextureManager->loadTexture(file_name,gos_Texture_Detect, hint);
 B5.5-heap-owner	mclib/mlr/mlrtexturepool.cpp:42	asset_delete	delete MLRTexturePool::Instance;
 B5.5-heap-owner	mclib/mlr/mlrtexturepool.cpp:76	asset_delete	delete textureArray[i];
@@ -392,9 +381,8 @@ B5.2-tg	mclib/tgl_types.cpp:547	heap_free	TG_Shape::tglHeap->Free(listOfTypeVert
 B5.2-tg	mclib/tgl_types.cpp:551	heap_free	TG_Shape::tglHeap->Free(listOfTypeTriangles);
 B5.2-tg	mclib/tgl_types.cpp:555	heap_free	TG_Shape::tglHeap->Free(listOfTextures);
 B5.2-tg	mclib/tgl_types.cpp:607	heap_free	tglHeap->Free(listOfShadowVertices);
-B5.5-heap-owner	mclib/txmmgr.cpp:259	asset_delete	delete MidLevelRenderer::MLRTexturePool::Instance;
-B5.5-heap-owner	mclib/txmmgr.cpp:291	asset_delete	delete textureCacheHeap;
-B5.5-heap-owner	mclib/txmmgr.cpp:294	asset_delete	delete textureStringHeap;
-B5.5-heap-owner	mclib/txmmgr.cpp:442	asset_delete	delete MidLevelRenderer::MLRTexturePool::Instance;
-B5.1-texture	mclib/utilities.cpp:178	tex_release	mcTextureManager->removeTexture( gosID );
-B5.1-texture	mclib/utilities.cpp:306	tex_acquire	ID = mcTextureManager->loadTexture( fullPath, gos_Texture_Alpha, 0, 0, neverFlush );
+B5.5-heap-owner	mclib/txmmgr.cpp:261	asset_delete	delete MidLevelRenderer::MLRTexturePool::Instance;
+B5.5-heap-owner	mclib/txmmgr.cpp:293	asset_delete	delete textureCacheHeap;
+B5.5-heap-owner	mclib/txmmgr.cpp:296	asset_delete	delete textureStringHeap;
+B5.5-heap-owner	mclib/txmmgr.cpp:444	asset_delete	delete MidLevelRenderer::MLRTexturePool::Instance;
+B5.1-texture	mclib/utilities.cpp:303	tex_acquire	ID = mcTextureManager->loadTexture( fullPath, gos_Texture_Alpha, 0, 0, neverFlush );

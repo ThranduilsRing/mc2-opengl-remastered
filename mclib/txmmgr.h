@@ -567,10 +567,6 @@ class MC_TextureManager
 		void startShapes (uint32_t maxShapes = 3000);
 		
 		//------------------------------------------------------
-		// Frees a specific texture. 
-		void removeTexture (DWORD gosTextureHandle);
-		
-		//------------------------------------------------------
 		// Frees a specific textureNode.
 		void removeTextureNode (DWORD textureNode);
 

@@ -143,7 +143,7 @@ static unsigned char s_textureManagerSentinel[sizeof(MC_TextureManager)] = {0};
 MC_TextureManager* mcTextureManager =
     reinterpret_cast<MC_TextureManager*>(s_textureManagerSentinel);
 DWORD MC_TextureManager::loadTexture(const char*, gos_TextureFormat, DWORD, DWORD, DWORD) { return 0; }
-void  MC_TextureManager::removeTexture(DWORD) {}
+void  MC_TextureManager::releaseNode(DWORD) {}
 DWORD MC_TextureNode::get_gosTextureHandle() { return 0; }
 
 // ---------------------------------------------------------------------------
