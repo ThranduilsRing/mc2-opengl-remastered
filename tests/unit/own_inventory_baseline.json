@@ -5582,10 +5582,10 @@
    "delete_array": 0,
    "files": {
     "mclib/tgl_types.cpp": {
-     "new": 1
+     "new": 2
     }
    },
-   "new": 1,
+   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -7673,11 +7673,9 @@
   "code/objective.cpp": 8,
   "code/objmgr.cpp": 1,
   "code/objmgr_io.cpp": 2,
-  "code/objtype.cpp": 1,
   "code/optionsarea.cpp": 3,
   "code/pilotreviewarea.cpp": 2,
   "code/salvagemecharea.cpp": 10,
-  "code/saveload.cpp": 1,
   "code/simplecamera.cpp": 3,
   "code/terrobj.cpp": 1,
   "code/warrior_queue.cpp": 2,
