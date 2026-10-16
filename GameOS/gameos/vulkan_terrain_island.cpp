@@ -158,11 +158,7 @@ bool terrainVisualDisplaceFarRequested() {
     return state == 1;
 }
 
-std::string spv_dir() {
-    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default "shaders/vulkan" (also for an empty value)
-    if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
-    return d;
-}
+std::string spv_dir() { return vk_island_util::spvDir(); }
 
 mc2vk::OwnedShaderModule load_spv(VkDevice device, std::string_view path) {
     return mc2vk::OwnedShaderModule(device, vk_island_util::loadSpv(device, path, vlog));

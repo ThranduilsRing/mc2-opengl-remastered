@@ -137,11 +137,7 @@ float shadow_softness_default() {
     return s_s;
 }
 
-std::string spv_dir() {
-    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default shaders/vulkan, empty reads the default
-    if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
-    return d;
-}
+std::string spv_dir() { return vk_island_util::spvDir(); }
 
 VkShaderModule load_spv(VkDevice device, const std::string& path) {
     return vk_island_util::loadSpv(device, path, vlog);

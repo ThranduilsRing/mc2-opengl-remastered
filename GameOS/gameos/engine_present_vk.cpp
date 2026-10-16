@@ -19,6 +19,7 @@
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 #include "mc2fmt.h"
 #include "mc2_hitch_trace.h"   // frame-fence wait attribution for the hitch trace
+#include "vk_island_util.h"
 
 #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
 
@@ -346,11 +347,7 @@ void presentNativeStrictAbort(const char* reason) {
     std::abort();
 }
 
-std::string spv_dir() {
-    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default shaders/vulkan, empty reads the default
-    if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
-    return d;
-}
+std::string spv_dir() { return vk_island_util::spvDir(); }
 
 mc2vk::OwnedShaderModule loadSpv(VkDevice device, const std::string& path) {
     std::FILE* f = std::fopen(path.c_str(), "rb");

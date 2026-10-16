@@ -154,11 +154,7 @@ bool csmArrayInteropGateRequested() {
 // documenting that the depth images are non-exportable and consumed via VkImageView only.
 constexpr bool kShadowDirectChain = true;
 
-std::string spv_dir() {
-    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default shaders/vulkan, empty reads the default
-    if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
-    return d;
-}
+std::string spv_dir() { return vk_island_util::spvDir(); }
 
 VkShaderModule load_spv(VkDevice device, std::string_view path) {
     return vk_island_util::loadSpv(device, path, vlog);

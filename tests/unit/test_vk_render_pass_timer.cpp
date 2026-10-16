@@ -98,6 +98,22 @@ TEST_CASE("vk pass timer: the submit guard cancels on every exit that did not su
     CHECK(cancels == 2);
 }
 
+TEST_CASE("vk pass timer ring: a frame whose brackets were all cancelled publishes nothing") {
+    TestRing r(8);
+    FakeGpu gpu;
+    r.begin(0);
+    r.end(0);
+    r.cancel(0);
+    r.begin(1);
+    r.cancel(1);   // cancelled while open
+    const auto c = gpu.frameEnd(r);
+    CHECK(c.published == 0);
+    CHECK(c.dropped == 0);
+    CHECK(c.errors == 0);
+    CHECK(gpu.published.empty());
+    CHECK(gpu.reads.empty());
+}
+
 TEST_CASE("vk pass timer ring: cancelling a still-open bracket, or twice, never publishes it") {
     TestRing r(8);
     FakeGpu gpu;
