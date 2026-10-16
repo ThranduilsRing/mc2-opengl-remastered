@@ -15,8 +15,8 @@
 # does not differ from VK there.
 
 # --- Default-ON GL features VK lacks: OPEN parity rows (.claude/VK-PARITY-GAPS.md)
-# (none: rows 25 and 26 were ported 2026-10-16; the coverage tool cannot see row 27, the runway edge blend, because it
-#  is driven by cement-word bits, not a gate)
+# Ungated features (UNGATED_FEATURES in the tool) are graded under the pseudo-gate UNGATED.
+UNGATED | shaders/static_prop.vert | gaps row 28: GL adds the per-instance objective / selection highlight (inst.aRGBHighlight) to static props in the VS and FS; the VK prop island never reads it
 
 # --- Default-ON knobs whose GL block is off by default: no GL pixel depends on them
 MC2_MECH_IBL_SH | shaders/mech.frag | read only inside the StandardLit block (u_standardLitEnabled, MC2_STANDARD_LIT_V1 default OFF)

@@ -4211,6 +4211,18 @@
    "status": "PORTED",
    "vk_evidence": "packed:f8",
    "vk_twin": "shaders/vulkan/water_geom.frag"
+  },
+  {
+   "confidence": "HIGH",
+   "feature": "aRGBHighlight",
+   "gate": "UNGATED",
+   "gate_default_on": true,
+   "gate_evidence": "ungated census, row 28",
+   "gl_shader": "shaders/static_prop.vert",
+   "kind": "ungated",
+   "status": "NOT_PORTED",
+   "vk_evidence": "absent",
+   "vk_twin": "shaders/vulkan/color_prop_tier1.*"
   }
  ]
 }

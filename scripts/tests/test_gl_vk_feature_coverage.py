@@ -261,6 +261,17 @@ def test_ported_as_entry_counts_only_while_its_vk_identifier_is_in_the_twin(monk
     assert by_key(rows)[("MC2_FOO", "u_fooEnabled")]["status"] == "NOT_PORTED"
 
 
+def test_ungated_feature_is_ported_only_where_the_twin_reads_the_member(monkeypatch):
+    monkeypatch.setattr(cov, "UNGATED_FEATURES", (("shaders/foo.frag", "glowTint", "row 0"),))
+    declared_only = "#version 450\nstruct I { vec4 glowTint; };\nvoid main() { outColor = vec4(1.0); }\n"
+    _, rows = rows_for(repo(vk_foo=declared_only))
+    r = by_key(rows)[(cov.UNGATED_GATE, "glowTint")]
+    assert (r["status"], r["confidence"]) == ("NOT_PORTED", "HIGH")
+    read = "#version 450\nstruct I { vec4 glowTint; };\nvoid main() { I inst; outColor = inst.glowTint; }\n"
+    _, rows = rows_for(repo(vk_foo=read))
+    assert by_key(rows)[(cov.UNGATED_GATE, "glowTint")]["status"] == "PORTED"
+
+
 def test_name_only_in_a_vk_comment_is_not_ported():
     vk = "// u_fooEnabled is handled elsewhere\nvoid main() {}\n"
     _, rows = rows_for(repo(vk_foo=vk))
