@@ -66,7 +66,7 @@ Action* TerrainBrush::endPaint()
 	// Rebuild the legacy/indirect face cache + decal VBO for the painted cells
 	// (so they don't go black on the legacy path), AND re-upload the per-vertex
 	// type SSBO consumed by the live LOD-chunk frag so painted material appears
-	// immediately instead of only after a mission reload (Slice 0 BUG 1).
+	// immediately instead of only after a mission reload.
 	EditorData::refreshTerrainAfterEdit();
 	if ( land )
 		land->refreshTerrainTypeSSBO();

@@ -7,7 +7,7 @@
 
 #define EDITOROBJECTMGR_CPP
 #include "stdafx.h"
-#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "mc2_diag_verbose.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -27,7 +27,7 @@
 #include "../EditorBridge/EditorRenderBridge.h"  // GPU static-prop batcher/registry (firewall)
 
 #ifndef EDITORINTERFACE_H
-#include "EditorInterface.h"  // EDITOR-CRASH-HARDENING-1: notifyObjectDeleted (drag-pointer UAF scrub)
+#include "EditorInterface.h"  // notifyObjectDeleted (drag-pointer UAF scrub)
 #endif
 
 

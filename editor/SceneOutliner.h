@@ -2,12 +2,11 @@
 #define SCENE_OUTLINER_H
 /***************************************************************
 * FILENAME: SceneOutliner.h
-* DESCRIPTION: Read-only modder-friendly Scene Outliner Lite (Phase 1).
+* DESCRIPTION: Read-only modder-friendly Scene Outliner Lite.
 *   Lists placed mission objects grouped by type with per-group counts,
 *   a search filter, and single-click selection through the existing
 *   EditorObjectMgr selection mechanism. No mutation except selection.
 *   Does NOT touch save/load or PacketFile.
-* DATE: 2026-06-09
 ****************************************************************/
 
 // Per-group object tallies, also consumed by the -smoke-outliner case.

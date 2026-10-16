@@ -716,7 +716,7 @@ void Start()
 		}
 	}
 
-	// --- mod-root detection (Slice 2) -------------------------------------------------
+	// --- mod-root detection -------------------------------------------------
 	// Reset per-run mod context, then detect whether the saved mission lives inside a
 	// `...\mods\<id>\...` layout.  When it does, the child gets MC2_ACTIVE_MOD + state
 	// dump, and logs archive under the mod's .modproject tree.

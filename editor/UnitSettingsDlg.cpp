@@ -794,7 +794,7 @@ void UnitSettingsDlg::updateMemberVariables()
 
 void UnitSettingsDlg::OnCancel()
 {
-	// EDITOR-CRASH-HARDENING-1: pAction can be NULL (ctor sets it NULL; only
+	// pAction can be NULL (ctor sets it NULL; only
 	// assigned in OnInitDialog) if dialog is dismissed before init.
 	if ( pAction )
 	{

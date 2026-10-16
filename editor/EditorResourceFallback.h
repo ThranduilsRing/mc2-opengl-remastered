@@ -127,8 +127,7 @@ static inline void EditorSafeLoadString(long resourceID, char* buffer, long buff
         return;
 
     /*
-        Layer 1: Engine FIT bridge. Handles all legacy mc2res IDs that
-        were migrated to data/defs/text/en_us/ in the Phase 1 patch.
+        Engine FIT strings resolve legacy mc2res IDs from data/defs/text/en_us/.
     */
     if (MC2Strings::IsLoaded())
     {

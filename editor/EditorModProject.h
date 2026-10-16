@@ -1,5 +1,5 @@
 //-------------------------------------------------------------------------------------------------
-// EditorModProject.h -- "Mod Project" concept for the MC2 Mission Editor (Slice 3).
+// EditorModProject.h -- "Mod Project" concept for the MC2 Mission Editor.
 //
 // A Mod Project binds the editor session to a `mods/<id>/` folder so that:
 //   * File save dialogs default to <root>\data\missions\ (only when a project is active;

@@ -54,7 +54,7 @@ BOOL TargetAreaDlg::OnInitDialog()
 	m_pPickCenterButton = (CButton *)GetDlgItem(IDC_TARGET_AREA_PICK_CENTER_BUTTON);
 	assert( m_pPickCenterButton );
 
-	// Slice 2 -- area "Pick center" map-picker result delivery. If we just returned
+	// area "Pick center" map-picker result delivery. If we just returned
 	// from a terrain point pick tagged PICK_AREA, write the captured world XY into
 	// the referenced center (radius untouched) BEFORE populating the edit boxes, so
 	// the boxes show the picked values and OnOK persists them. Mirrors the marker
@@ -104,7 +104,7 @@ BOOL TargetAreaDlg::OnCommand(WPARAM wParam, LPARAM lParam) // called by child c
 	assert( m_pCancelButton );
 	assert( m_pOKButton );
 
-	// Slice 2 -- route the "Pick center" button (no DECLARE_MESSAGE_MAP on this
+	// route the "Pick center" button (no DECLARE_MESSAGE_MAP on this
 	// dialog, so dispatch here, mirroring the OK/Cancel handling MFC does for us).
 	if ((BN_CLICKED == HIWORD(wParam)) &&
 	    (IDC_TARGET_AREA_PICK_CENTER_BUTTON == LOWORD(wParam))) {
@@ -147,7 +147,7 @@ void TargetAreaDlg::OnOK()
 	EndDialog(IDOK);
 }
 
-// Slice 2 -- area "Pick center" map-picker (PICKER-SELECT-POINT-RECON-1, Option B).
+// area "Pick center" map-picker.
 // Mirrors the marker picker (ObjectiveDlg::OnObjectivePickMarkerButton): save the
 // in-progress dialog values back to the referenced center/radius, arm a one-shot
 // terrain point pick tagged PICK_AREA, flip the editor into selection mode, then

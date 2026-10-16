@@ -1,7 +1,7 @@
 #ifndef MISSION_FIT_BRAIN_SOURCE_H
 #define MISSION_FIT_BRAIN_SOURCE_H
 //------------------------------------------------------------------------------
-// MissionFitBrainSource — TECHBRAIN-PATROL-VIEWER-1
+// MissionFitBrainSource
 //
 // Shared cache of the CURRENT mission.fit's inline declarative Brain{} blocks
 // (parsed by parseMissionFitBrains, code/brain_missionfit_oporbd.h), re-read

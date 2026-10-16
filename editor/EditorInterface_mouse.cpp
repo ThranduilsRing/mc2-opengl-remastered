@@ -19,7 +19,7 @@ void EditorInterface::handleLeftButtonDown( int PosX, int PosY )
 	Stuff::Vector2DOf<long> v2( PosX, PosY );
 	eye->inverseProject( v2, vector );
 
-	// Slice 1 -- Marker XY map-picker (PICKER-SELECT-POINT-RECON-1, Option B).
+	// Marker XY map-picker.
 	// The Objective dialog's "Pick from map" button armed pendingPickPoint and
 	// unwound the modal stack. This one click delivers the world XY (vector, set
 	// by inverseProject above). Capture it, disarm the pick, flag the result, and
@@ -411,7 +411,7 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 
 
 
-// EDITOR-CRASH-HARDENING-1: scrub the drag pointer when the object it points at
+// scrub the drag pointer when the object it points at
 // is being deleted (e.g. delete-during-drag), so the next handleMouseMove cannot
 // deref a freed object. Discard the in-flight drag undo action too — it captured a
 // snapshot of the now-dead object and its undo() would relocate a freed pointer.
@@ -480,7 +480,7 @@ static bool EditorInterface_IsDoubleClickDistance(int x1, int y1, int x2, int y2
 	return abs(x2 - x1) <= cx && abs(y2 - y1) <= cy;
 }
 
-// EDITOR-OBJECTID-PICK-BRIDGE-1 (Slice 3): GPU ObjectID pick is the PRIMARY
+// GPU ObjectID pick is the PRIMARY
 // editor object-selection path; the legacy CPU forward-projection picker is the
 // documented killswitch fallback. Default ON; set MC2_EDITOR_GPU_PICK=0 to fall
 // back to CPU forward-project (e.g. if the GPU readback regresses on a vendor).
@@ -575,7 +575,7 @@ EditorObject* EditorInterface_PickObjectAtScreenPoint(int screenX, int screenY)
 	return EditorInterface_PickObjectAtScreenPoint_CPU(screenX, screenY);
 }
 
-// EDITOR-BRUSH-SCREENPICK-1: public seam so the brushes (eraser/damage/link) pick the
+// public seam so the brushes (eraser/damage/link) pick the
 // SAME way the Select tool does -- GPU ObjectID readback primary (pixel-exact: handles a
 // zoomed-in click on a prop's edge, which the CPU center+tolerance picker misses), with
 // CPU forward-projection fallback. screenX/screenY must be viewport-local (the brush
@@ -1080,17 +1080,13 @@ void EditorInterface::setStampBrush( int type )
 	setActiveBrush( new StampBrush( (StampBrush::Type)type, m_stampRadius, m_stampStrength ), brushId, brushId );
 }
 
-// TERRAIN-MATERIAL-PAINT-1 (Slice 1): revive the dormant editor/TerrainBrush.h in the
-// modern Tools panel. TerrainBrush takes only a TerrainType (mclib/dmapdata.h) and is
-// single-vertex (no radius/strength) -- Slice 2 adds a radius loop. Install via the same
-// single-source setActiveBrush path setSculptBrush/setStampBrush use so the active-tool
-// (currentBrushID/currentBrushMenuID) state stays correct. Synthetic-negative brushId
-// (distinct from the sculpt -100.. and stamp -200.. ranges).
+// Material painting uses the shared brush activation path so tool labels
+// and the active-button highlight stay consistent with Sculpt and Stamp.
 void EditorInterface::setPaintMaterialBrush( int terrainType )
 {
 	const int brushId = -300 - terrainType;
 	TerrainBrush* tb = new TerrainBrush( terrainType );
-	tb->setRadius( m_paintMaterialSize );   // Slice 0: radius-fill (mirrors sculpt)
+	tb->setRadius( m_paintMaterialSize );   // radius-fill (mirrors sculpt)
 	setActiveBrush( tb, brushId, brushId );
 	m_paintMaterialType = terrainType;   // drives the active-button highlight
 }

@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// BeautySidecarPreview — EDITOR-SIDECAR-PREVIEW-1 (B7a)
+// BeautySidecarPreview
 //
 // Loads a terrain "beauty sidecar" (offline per-vertex elevation delta produced
 // by tools/terrain_beautify/mission_sidecar.py) and applies it to the LIVE editor

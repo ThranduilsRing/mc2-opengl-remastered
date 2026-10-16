@@ -1,11 +1,10 @@
 /***************************************************************
 * FILENAME: SceneOutliner.cpp
-* DESCRIPTION: Read-only Scene Outliner Lite (Phase 1 modder usability).
+* DESCRIPTION: Read-only Scene Outliner Lite.
 *   See SceneOutliner.h. Lists placed mission objects grouped by type,
 *   with counts, a search filter, and click-to-select via the existing
 *   EditorObjectMgr selection path. No save/load, no PacketFile, no
 *   property editing -- selection is the only state mutation.
-* DATE: 2026-06-09
 ****************************************************************/
 
 #include "stdafx.h"

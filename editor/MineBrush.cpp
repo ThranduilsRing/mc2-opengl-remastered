@@ -44,7 +44,7 @@ bool MineBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY  )
 		return false;  // MOVE data not built yet; can't place mines without GameMap
 
 	if (!land)
-		return false;  // EDITOR-CRASH-HARDENING-1: no terrain -> worldToTile/Cell deref NULL (sibling HeightBrush.cpp:100)
+		return false;  // no terrain -> worldToTile/Cell deref NULL (sibling HeightBrush.cpp:100)
 
 	 int tileC;
 	 int tileR;
@@ -55,10 +55,8 @@ bool MineBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY  )
 	int cellCol;
 	land->worldToCell(worldPos, cellRow, cellCol);
 
-	// EDITOR-CRASH-HARDENING-1: original guard was a tautology (always false, never
-	// returned) and checked tile coords, not the cell coords actually indexed below.
-	// Bound the real cellRow/cellCol against the GameMap cell grid (getMine/setMine
-	// also inBounds-guard internally, but reject early here too).
+	// Validate cell coordinates against the cell grid before indexing it;
+	// tile coordinates describe a different grid.
 	if (cellRow < 0 || cellRow >= GameMap->getHeight()
 		|| cellCol < 0 || cellCol >= GameMap->getWidth()) {
 		return false;

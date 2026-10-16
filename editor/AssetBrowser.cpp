@@ -1,11 +1,10 @@
 /***************************************************************
 * FILENAME: AssetBrowser.cpp
-* DESCRIPTION: Asset Browser Lite (Phase 1c modder usability).
+* DESCRIPTION: Asset Browser Lite.
 *   See AssetBrowser.h. A searchable, grouped view of the existing
 *   EditorObjectMgr object catalog. Clicking an entry calls the existing
 *   EditorInterface::selectBuildingObject placement path -- no new catalog,
 *   no new placement/undo system.
-* DATE: 2026-06-10
 ****************************************************************/
 
 #include "stdafx.h"

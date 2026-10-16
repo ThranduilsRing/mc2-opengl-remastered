@@ -14,7 +14,7 @@
 #include "Objective.h"
 
 /////////////////////////////////////////////////////////////////////////////
-// CObjectiveTemplateDlg dialog -- tiny modal preset picker (Slice 1).
+// CObjectiveTemplateDlg dialog -- tiny modal preset picker.
 // Presets are PICK-FREE (no map pick). The selected preset index is read back
 // via SelectedPreset() after DoModal() returns IDOK.
 

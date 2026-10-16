@@ -15,7 +15,7 @@
 #include "UnitBrainPanel.h"
 
 #include "imgui.h"
-#include "UnitActionFlowPanel.h"   // ABL-FLOW-1 inline flow
+#include "UnitActionFlowPanel.h"   // Inline condition/trigger/action flow
 
 #include "EditorObjectMgr.h"
 #include "EditorObjects.h"
@@ -320,7 +320,7 @@ void UnitBrainPanel::Draw()
 			ImGui::TreePop();
 		}
 
-		// ABL-FLOW-1: condition/trigger/action flow extracted from the .abl text.
+		// condition/trigger/action flow extracted from the .abl text.
 		UnitActionFlowPanel::DrawInline((bn && bn[0]) ? loadBrainText(bn) : "");
 	}
 

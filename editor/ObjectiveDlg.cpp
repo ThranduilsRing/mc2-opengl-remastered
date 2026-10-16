@@ -586,7 +586,7 @@ BOOL ObjectiveDlg::OnInitDialog()
 	return TRUE;  // return TRUE unless you set the focus to a control
 }
 
-// Slice 1 -- Marker XY map-picker (PICKER-SELECT-POINT-RECON-1, Option B).
+// Marker XY map-picker.
 // Mirrors the ObjectSelectOnlyMode handoff used by the condition object pickers
 // (OnObjectiveAddConditionButton): save the in-progress objective into the
 // editor singleton, flip the editor into selection mode, then EndDialog so the

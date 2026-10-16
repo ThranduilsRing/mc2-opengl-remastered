@@ -79,20 +79,9 @@ EditorData::EditorData()
 
 EditorData::~EditorData()
 {
-	// EDITOR-EXIT-CRASH-1 (#1): route through the SAME S2 mission-unload chain
-	// clear() runs (GpuStaticPropBatcher/GpuMechBatcher onMapUnload, cull
-	// substrate/readback shutdown, EditorObjectMgr::clear(), land->destroy()+
-	// delete). Historically this destructor only did `delete land`, so any
-	// exit path that reached ~EditorData WITHOUT a prior explicit clear() call
-	// (no map loaded, or a generator-path exit where beginMissionRenderResources
-	// armed the batchers but the happy-path clear() never re-ran) left GPU
-	// batcher state (SSBOs/textures/VAOs) unfreed while the GL context was
-	// still alive to free it, and any lingering batcher pointer into a
-	// just-freed actor TG_MultiShape became a UAF at context teardown.
-	// clear() is idempotent by construction (every step below is null/instance
-	// guarded), so calling it again here when Editor::destroy() already called
-	// it is a cheap no-op, not a double-free. Must run BEFORE `instance = NULL`
-	// below: clear() dereferences EditorData::instance throughout.
+	// Release mission render resources before clearing the singleton so GPU
+	// batchers cannot retain pointers into destroyed actors. clear() is
+	// idempotent and requires EditorData::instance to remain valid.
 	EditorDataTrace("[EDITOR_SHUTDOWN] phase=~EditorData_enter");
 	clear();
 
