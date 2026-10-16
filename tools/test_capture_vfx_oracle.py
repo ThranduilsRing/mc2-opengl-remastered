@@ -10,15 +10,21 @@ import capture_vfx_oracle as runner
 
 
 @pytest.mark.parametrize("arm", ["mlr", "gpu"])
-def test_capture_command_pins_lane_freeze_seed_and_two_repeats(arm):
-    cmd = command(Path("poses.json"), Path("captures"), 164, arm)
+@pytest.mark.parametrize("backend", ["gl", "vulkan"])
+def test_capture_command_pins_lane_freeze_seed_and_two_repeats(arm, backend):
+    cmd = command(Path("poses.json"), Path("captures"), 164, arm, backend=backend)
     assert cmd[cmd.index("--exe") + 1].replace(chr(92), "/") == "A:/Games/mc2-opengl/mc2-win64-lane3/mc2.exe"
     assert cmd[cmd.index("--duration") + 1] == "30"
     assert cmd[cmd.index("--runs") + 1] == "2"
     assert cmd[cmd.index("--trigger-frame") + 1] == "164"
     assert "MC2_SMOKE_FREEZE_ANIM=1" in cmd
     assert "MC2_DETERMINISTIC_RNG=1" in cmd and "MC2_RNG_SEED=0xC0FFEE" in cmd
-    assert "MC2_RENDER_BACKEND=gl" in cmd
+    assert f"MC2_RENDER_BACKEND={backend}" in cmd
+    assert ("MC2_VK_SHARED_GBUFFER=1" in cmd) == (backend == "vulkan")
+    env = dict(cmd[i + 1].split("=", 1) for i, arg in enumerate(cmd) if arg == "--env-declare")
+    effective, _ = runner.run_visual_capture.build_capture_env(Path("poses.json"), Path("captures"), 164, 8, True, env)
+    assert effective["MC2_SMOKE_FIXED_TIMESTEP"] == "1"
+    assert effective["MC2_SMOKE_SEED"] == "0xC0FFEE"
     assert ("MC2_GPU_PARTICLES=1" in cmd) == (arm == "gpu")
     assert ("MC2_GPU_PARTICLES=0" in cmd) == (arm == "mlr")
     assert all(f"{name}=0" in cmd for name in
@@ -95,10 +101,19 @@ def test_plan_collects_all_scenes_and_propagates_failure(monkeypatch):
         calls.append(argv)
         return 1 if len(calls) == 1 else 0
     monkeypatch.setattr(runner, "main", child)
-    assert root_main(["--plan", "plan.json", "--out", "captures"]) == 1
+    assert root_main(["--plan", "plan.json", "--out", "captures", "--backend", "vulkan", "--install", "lane3"]) == 1
     assert len(calls) == 2
     assert calls[0][calls[0].index("--frame") + 1] == "154"
     assert calls[1][calls[1].index("--frame") + 1] == "184"
+    assert all(argv[argv.index("--backend") + 1] == "vulkan" for argv in calls)
+
+
+def test_existing_capture_output_is_rejected_before_launch(monkeypatch):
+    monkeypatch.setattr(Path, "exists", lambda path: True)
+    monkeypatch.setattr(Path, "iterdir", lambda path: iter([Path("stale.png")]))
+    monkeypatch.setattr(runner, "capture", lambda cmd: pytest.fail("stale capture launched"))
+    with pytest.raises(SystemExit):
+        runner.main(["poses.json", "--frame", "154", "--out", "captures"])
 
 
 def test_duplicate_plan_ids_fail_before_any_capture(monkeypatch):
