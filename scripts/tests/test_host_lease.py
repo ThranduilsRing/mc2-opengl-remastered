@@ -18,6 +18,8 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 
 @pytest.fixture()
 def lease(tmp_path, monkeypatch):
+    monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "1")
+    monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "1")
     monkeypatch.setenv("MC2_HOST_LEASE_PATH", str(tmp_path / "lease.json"))
     monkeypatch.setattr(host_lease, "_registered", False)
     monkeypatch.setattr(host_lease, "_off_logged", False)
@@ -37,10 +39,73 @@ def test_free_host_takes_the_lease(lease):
     assert not lease.exists()
 
 
-def test_a_live_holder_blocks_with_no_wait(lease):
+@pytest.mark.parametrize("exclusive", [False, True])
+def test_a_live_holder_blocks_with_no_wait(lease, monkeypatch, exclusive):
+    monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "3")
     _foreign_holder(lease, os.getppid())
     with pytest.raises(host_lease.HostLeaseBusy, match="held by other lane"):
-        host_lease.acquire("t", wait=False, scan=lambda: [], log=lambda m: None)
+        host_lease.acquire("t", wait=False, scan=lambda: [], log=lambda m: None, exclusive=exclusive)
+    assert not any(host_lease.slot_path(i).exists() for i in range(1, 6))
+
+
+def test_exclusive_retries_legacy_release_and_partial_allocation(lease, monkeypatch):
+    _foreign_holder(lease, os.getppid())
+    original = host_lease._try_take
+    attempts, sleeps = [], []
+
+    def take(path, label):
+        attempts.append(path)
+        if attempts == [lease]:
+            _foreign_holder(lease, os.getppid())
+        elif len(attempts) == 3:
+            _foreign_holder(path, os.getppid())
+        return original(path, label)
+
+    def release_holder(_):
+        assert not any(r and r.get("pid") == os.getpid() for _, r in host_lease._records())
+        for path, rec in host_lease._records():
+            if rec and rec.get("pid") == os.getppid():
+                path.unlink()
+        sleeps.append(True)
+
+    monkeypatch.setattr(host_lease, "_try_take", take)
+    host_lease.acquire("exclusive", exclusive=True, sleep=release_holder, timeout_s=10, log=lambda m: None)
+    assert len(sleeps) == 3
+    assert len([r for _, r in host_lease._records() if r and r.get("pid") == os.getpid()]) == 6
+
+
+def test_lease_publication_never_exposes_empty_record(lease, monkeypatch):
+    original = os.link
+    published = []
+
+    def publish(source, target):
+        published.append(host_lease._read(source))
+        return original(source, target)
+
+    monkeypatch.setattr(os, "link", publish)
+    host_lease.acquire("complete record", wait=False)
+    assert len(published) == 1 and published[0]["pid"] == os.getpid()
+
+
+def test_legacy_acquirer_waits_after_slot_zero_releases(lease, monkeypatch):
+    monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "2")
+    host_lease.acquire("slot zero")
+    neighbor = dict(host_lease._read(lease), pid=os.getppid(), created=None, slot=1)
+    host_lease._write_record(host_lease.slot_path(1), neighbor)
+    host_lease.release()
+    assert host_lease._read(lease)["legacy_guard"]
+    assert not host_lease._records()[0][1]
+    assert host_lease._holder_alive(host_lease._read(lease))
+    assert not host_lease._try_take(lease, "legacy single-file acquirer")[0]
+    host_lease.acquire("reuse slot zero", wait=False)
+    assert host_lease._read(lease)["slot"] == 0 and not host_lease._read(lease).get("legacy_guard")
+    host_lease.release()
+    host_lease._remove_records([(host_lease.slot_path(1), neighbor)])
+    assert not lease.exists()
+    host_lease._write_record(host_lease.slot_path(1), neighbor)
+    host_lease._remove_records([])
+    assert host_lease._read(lease)["legacy_guard"]
+    assert not host_lease._try_take(lease, "legacy single-file acquirer")[0]
 
 
 def test_a_dead_holder_is_taken_over(lease, monkeypatch):
@@ -167,6 +232,7 @@ def test_two_lanes_from_two_worktree_copies_share_one_lease(tmp_path, monkeypatc
     """Lane B, run from its own worktree copy, must queue behind lane A's lease and print the countdown; it gets the lease only after
     A releases. The lease file is one shared path, not something under either worktree."""
     lease_file = tmp_path / "host" / "lease.json"
+    monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "1")
     lane_a, lane_b = _worktree_copy(tmp_path, "laneA"), _worktree_copy(tmp_path, "laneB")
     env = dict(os.environ, MC2_HOST_LEASE_PATH=str(lease_file), MC2_CURSOR_GUARD_OFF="1", PYTHONIOENCODING="utf-8")
 
@@ -185,7 +251,11 @@ def test_two_lanes_from_two_worktree_copies_share_one_lease(tmp_path, monkeypatc
         assert status.returncode == 1 and "lane laneA" in status.stdout and "ALIVE" in status.stdout
         b = lane(lane_b, "b")
         try:
-            time.sleep(1.0)
+            deadline = time.monotonic() + 20
+            while not (tmp_path / "b.log").stat().st_size:
+                assert b.poll() is None, "lane B exited before waiting for the lease"
+                assert time.monotonic() < deadline, "lane B never reported lease contention"
+                time.sleep(0.05)
             assert b.poll() is None and not (tmp_path / "b.held").exists(), "lane B took the lease while lane A held it"
             (tmp_path / "a.go").write_text("go", encoding="utf-8")
             assert a.wait(timeout=20) == 0
@@ -202,3 +272,175 @@ def test_two_lanes_from_two_worktree_copies_share_one_lease(tmp_path, monkeypatc
     finally:
         if a.poll() is None:
             a.kill()
+
+
+@pytest.mark.parametrize("exclusive", [False, True])
+def test_fifo_exclusive_barrier_and_disjoint_slots(lease, monkeypatch, tmp_path, exclusive):
+    monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "4")
+    host_lease.acquire("initial")
+    script = """
+import json, sys, time
+from pathlib import Path
+from scripts.smoke_lib import host_lease as h
+h.POLL_S = 0.03
+tag, root, exclusive = sys.argv[1:]
+h.acquire(tag, exclusive=exclusive == 'True', timeout_s=15, log=lambda m: None)
+root = Path(root)
+records = [r for _, r in h._records() if r and r['pid'] == __import__('os').getpid()]
+(root / (tag + '.held')).write_text(json.dumps(records))
+while not (root / (tag + '.go')).exists():
+    time.sleep(0.03)
+h.release()
+"""
+    children = []
+
+    def start(tag, exclusive=False):
+        proc = subprocess.Popen([sys.executable, "-c", script, tag, str(tmp_path), str(exclusive)],
+                                cwd=ROOT, env=dict(os.environ),
+                                **console_child.child_kwargs(redirected=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        children.append(proc)
+        return proc
+
+    def queued(pid):
+        end = time.monotonic() + 10
+        while time.monotonic() < end:
+            tickets = (host_lease._read(lease.with_suffix(".queue.json")) or {}).get("tickets", [])
+            if any(t["pid"] == pid for t in tickets):
+                return
+            time.sleep(0.03)
+        pytest.fail("waiter never entered queue")
+
+    try:
+        occupants = [start(str(i)) for i in range(3)]
+        for i in range(3):
+            _wait_for(tmp_path / f"{i}.held")
+        records = [r for _, r in host_lease._records() if r]
+        assert len(records) == 4 and len({r["slot"] for r in records}) == 4
+        if exclusive:
+            first = start("first", True)
+            queued(first.pid)
+            later = start("later")
+            queued(later.pid)
+            assert not (tmp_path / "later.held").exists()
+            host_lease.release()
+            time.sleep(0.15)
+            assert not (tmp_path / "first.held").exists()
+            for i, proc in enumerate(occupants):
+                (tmp_path / f"{i}.go").touch()
+                assert proc.wait(timeout=10) == 0
+            _wait_for(tmp_path / "first.held")
+            records = json.loads((tmp_path / "first.held").read_text())
+            assert len(records) == 6
+            assert not (tmp_path / "later.held").exists()
+            (tmp_path / "first.go").touch()
+            assert first.wait(timeout=10) == 0
+            _wait_for(tmp_path / "later.held")
+        else:
+            first = start("first")
+            queued(first.pid)
+            later = start("later")
+            queued(later.pid)
+            host_lease.release()
+            _wait_for(tmp_path / "first.held")
+            assert not (tmp_path / "later.held").exists()
+            (tmp_path / "first.go").touch()
+            assert first.wait(timeout=10) == 0
+            _wait_for(tmp_path / "later.held")
+    finally:
+        for proc in children:
+            if proc.poll() is None:
+                proc.kill()
+            proc.communicate(timeout=10)
+
+
+def test_dead_ticket_and_holder_do_not_block_queue(lease):
+    dead = {"pid": 2 ** 22 + 12345, "created": None}
+    lease.write_text(json.dumps(dead))
+    lease.with_suffix(".queue.json").write_text(json.dumps({"tickets": [dead]}))
+    host_lease.acquire("recovered", wait=False)
+    assert host_lease.holds()
+    assert host_lease._read(lease.with_suffix(".queue.json"))["tickets"] == []
+
+
+def test_dead_queue_lock_owner_cannot_wedge_waiters(lease, tmp_path):
+    flag = tmp_path / "locked"
+    script = """
+import sys, time
+from pathlib import Path
+from scripts.smoke_lib import host_lease as h
+with h._queue_lock():
+    Path(sys.argv[1]).touch()
+    time.sleep(20)
+"""
+    proc = subprocess.Popen([sys.executable, "-c", script, str(flag)], cwd=ROOT,
+                            **console_child.child_kwargs(redirected=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+    try:
+        _wait_for(flag)
+    finally:
+        proc.kill()
+        proc.communicate(timeout=10)
+    host_lease.acquire("after crash", wait=False)
+    assert host_lease.holds()
+
+
+def test_registered_batch_engine_allows_another_slot_but_reused_pid_blocks(lease, monkeypatch):
+    monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "2")
+    holder = {"pid": os.getppid(), "created": None, "slot": 0}
+    lease.write_text(json.dumps(holder))
+    original = host_lease.child_registry.process_create_time
+    monkeypatch.setattr(host_lease.child_registry, "process_create_time", lambda pid: 123 if pid == 4242 else original(pid))
+    record = {"runner_pid": 9999, "create_time": 123, "lease_holder": {"pid": os.getppid(), "created": None}}
+    monkeypatch.setattr(host_lease.child_registry, "read_record", lambda pid: record)
+    host_lease.acquire("neighbor", wait=False, scan=lambda: [(4242, "mc2.exe")])
+    assert host_lease._read(host_lease.slot_path(1))["pid"] == os.getpid()
+    host_lease.release()
+    monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "2")
+    with pytest.raises(host_lease.HostLeaseBusy):
+        host_lease.acquire("incompatible core layout", wait=False, scan=lambda: [])
+    monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "1")
+    record["create_time"] = 456
+    with pytest.raises(host_lease.HostLeaseBusy, match="mc2.exe pid 4242"):
+        host_lease.acquire("reused engine pid", wait=False, scan=lambda: [(4242, "mc2.exe")])
+
+
+def test_affinity_reserves_only_physical_game_cores(monkeypatch):
+    monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "1")
+    assert [host_lease.affinity_mask(i) for i in range(6)] == [0x30, 0xC0, 0x300, 0xC00, 0x3000, 0xC000]
+    monkeypatch.delenv("MC2_HOST_GAME_SLOTS", raising=False)
+    monkeypatch.delenv("MC2_HOST_CORES_PER_SLOT", raising=False)
+    assert host_lease.slot_count() == 1
+    assert host_lease.cores_per_slot() == 2
+    assert [host_lease.affinity_mask(i) for i in range(3)] == [0xF0, 0xF00, 0xF000]
+    with pytest.raises(ValueError):
+        host_lease.affinity_mask(3)
+    for invalid in ("0", "4"):
+        monkeypatch.setenv("MC2_HOST_GAME_SLOTS", invalid)
+        with pytest.raises(ValueError):
+            host_lease.slot_count()
+    monkeypatch.delenv("MC2_HOST_GAME_SLOTS", raising=False)
+    for invalid in ("0", "7"):
+        monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", invalid)
+        with pytest.raises(ValueError):
+            host_lease.slot_count()
+
+
+@pytest.mark.parametrize("width,exclusive,expected", [(1, False, 0x30), (2, False, 0xF0), (2, True, 0xFFF0)])
+def test_slot_affinity_reaches_child_process(lease, monkeypatch, width, exclusive, expected):
+    import ctypes
+    from ctypes import wintypes
+
+    monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", str(width))
+    host_lease.acquire("affinity", exclusive=exclusive)
+    proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(20)"],
+                            **console_child.child_kwargs(redirected=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+    try:
+        host_lease.apply_affinity(proc)
+        get_mask = ctypes.WinDLL("kernel32", use_last_error=True).GetProcessAffinityMask
+        get_mask.argtypes = [wintypes.HANDLE, ctypes.POINTER(ctypes.c_size_t), ctypes.POINTER(ctypes.c_size_t)]
+        get_mask.restype = wintypes.BOOL
+        process_mask, system_mask = ctypes.c_size_t(), ctypes.c_size_t()
+        assert get_mask(int(proc._handle), ctypes.byref(process_mask), ctypes.byref(system_mask))
+        assert process_mask.value == expected
+    finally:
+        proc.kill()
+        proc.communicate(timeout=10)

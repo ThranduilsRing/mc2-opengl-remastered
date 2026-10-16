@@ -397,7 +397,11 @@ def test_pid_alive_never_signals_on_windows(monkeypatch):
 
 
 def test_nofocus_records_only_engine_children(tmp_path, monkeypatch):
+    from smoke_lib import host_lease
+
     seen = []
+    pinned = []
+    monkeypatch.setattr(host_lease, "apply_affinity", lambda proc: pinned.append(proc.pid))
     monkeypatch.setattr(child_registry, "record", lambda pid, exe, **k: seen.append((pid, str(exe))))
     monkeypatch.setattr(subprocess, "Popen", lambda argv, **k: types.SimpleNamespace(pid=7, poll=lambda: 0))
     nofocus.spawn([sys.executable, "-c", "pass"])
@@ -406,6 +410,7 @@ def test_nofocus_records_only_engine_children(tmp_path, monkeypatch):
     monkeypatch.setattr(nofocus, "_vet_engine_exe", lambda argv: None)
     nofocus.spawn([str(exe)])
     assert seen == [(7, str(exe))]
+    assert pinned == [7]
 
 
 # ------------------------------------------------- synthetic input needs a user-present session
