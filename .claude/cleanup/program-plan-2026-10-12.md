@@ -51,7 +51,7 @@ Lanes: lane 1 = `A:/Games/mc2-main` (install `mc2-win64-v0.4`), lane 2 = `A:/Gam
 | T1 | 1 | Mon 12 - Tue 13 | Step 3.5 close-out + step 4 B0 harness | 10 |
 | T2 | 2 | Mon 12 - Tue 13 | Gate amnesty wave 1 (render-side files) | 8 |
 | T3 | 1 | Wed 14 - Thu 15 | Step 4 B1: EString -> std::string for non-widget callers | 10 |
-| T4 | 2 | Wed 14 - Thu 15 | Step 4 B4: raw-buffer heaps -> owned buffers (mclib) | 10 |
+| T4 | 2 | Wed 14 - Thu 15 | Step 4 B4: raw-buffer heaps -> owned buffers (mclib) **[CLOSED 2026-10-16 except the Sol items (16 rows) and the rows carried to B5-B7 / lane 2: `cxx23-step4-b4-after-review.md`, dispositions in `cxx23-step4-b4-notes.md` section 4; next B5, `cxx23-step4-b5-notes.md`: B5.0 sealed census 400 sites, B5.1a, B5.1b done (census 388), B5.1c next]** | 10 |
 | T5 | 1 | Fri 16 - Sat 17 | Step 4 B2: EList and value containers, SortList total order **[CLOSED 2026-10-14 for the game code: `cxx23-step4-b2-after-review.md`; the editor E-batches and B2.2c stay open]** | 10 |
 | T6 | 2 | Fri 16 - Sat 17 | mc2_15 writer fix (if page heap gave a stack) ELSE step 3 remainder (facade P3, value-used, lane-2 tags) | 8 |
 | T7 | 1 | Sun 18 | Step 4 B3 files/streams (if tier3 unblocked) ELSE B5 prep: one `TextureRef` behind the two release APIs **[CLOSED 2026-10-15 except the Sol / Codex / editor items: `cxx23-step4-b3-after-review.md`; next B4, census in `cxx23-step4-b4-notes.md`]** | 8 |
