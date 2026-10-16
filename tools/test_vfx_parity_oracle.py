@@ -141,6 +141,29 @@ def test_proven_nonempty_family_and_four_family_set_accept_parity(parity_case):
     assert summarize(rows[:-1])["missing_families"] == ["smoke"]
 
 
+@pytest.mark.parametrize("sidecar,accepted", [
+    ({"backend": "vulkan", "readback_source": "vk_present", "deterministic": True, "seed": 0xC0FFEE}, True),
+    ({"backend": "gl", "readback_source": "gl_fbo", "deterministic": True, "seed": 0xC0FFEE}, False),
+    ({"backend": "vulkan", "readback_source": "gl_fbo", "deterministic": True, "seed": 0xC0FFEE}, False),
+    ({"backend": "vulkan", "readback_source": "vk_present", "deterministic": False, "seed": 0xC0FFEE}, False),
+    ({"backend": "vulkan", "readback_source": "vk_present", "deterministic": True, "seed": 42}, False),
+    ({}, False), ([], False),
+])
+def test_vulkan_parity_requires_present_readback_fixed_clock_and_seed(parity_case, monkeypatch, sidecar, accepted):
+    effect, crops, _ = parity_case
+    for arm in ("mlr", "gpu"):
+        for record in [*effect["evidence"]["captures"][arm],
+                       effect["evidence"]["effect_free"][arm], effect["evidence"]["suppressed"][arm]]:
+            record["runtime"]["backend"] = {"requested": "vulkan", "drawn": "vulkan", "readback": "vk_present"}
+    monkeypatch.setattr(Path, "read_text", lambda path, **kw: json.dumps(sidecar))
+    result = acceptance(effect, crops, Path("."), (8, 8), backend="vulkan")
+    assert result["parity_accepted"] is accepted
+    assert result["status"] == ("PARITY" if accepted else "DIAGNOSTIC")
+    if accepted:
+        effect["evidence"]["captures"]["gpu"][0]["runtime"]["backend"]["drawn"] = "gl"
+        assert not acceptance(effect, crops, Path("."), (8, 8), backend="vulkan")["parity_accepted"]
+
+
 def test_empty_effect_region_fails_even_with_repeatable_equal_arms(parity_case):
     effect, crops, controls = parity_case
     for path in controls:
@@ -345,9 +368,13 @@ def test_todays_fixture_is_diagnostic_even_if_every_repeat_matches():
     assert summarize(rows) == {"status": "DIAGNOSTIC", "parity_accepted": False, "missing_families": []}
 
 
-def test_cli_never_exits_success_for_todays_fixture_even_with_matching_pixels(monkeypatch, capsys):
+@pytest.mark.parametrize("backend", ["gl", "vulkan"])
+def test_cli_never_exits_success_for_todays_fixture_even_with_matching_pixels(monkeypatch, capsys, backend):
     path = Path(__file__).parent / "vfx_oracle" / "regions.json"
-    monkeypatch.setattr(sys, "argv", ["vfx_parity_oracle.py", str(path), "--out", "unused-output"])
+    read_text = Path.read_text
+    sidecar = {"backend": "vulkan", "readback_source": "vk_present", "deterministic": True, "seed": 0xC0FFEE}
+    monkeypatch.setattr(Path, "read_text", lambda self, **kw: read_text(self, **kw) if self == path else json.dumps(sidecar))
+    monkeypatch.setattr(sys, "argv", ["vfx_parity_oracle.py", str(path), "--out", "unused-output", "--backend", backend])
     monkeypatch.setattr(Image, "open", lambda path: Image.new("RGB", (1920, 1080)))
     monkeypatch.setattr(Image.Image, "save", lambda *a, **k: None)
     monkeypatch.setattr(Path, "mkdir", lambda *a, **k: None)
@@ -355,5 +382,8 @@ def test_cli_never_exits_success_for_todays_fixture_even_with_matching_pixels(mo
     monkeypatch.setattr(Path, "write_text", lambda self, text, **k: written.append(json.loads(text)))
     assert oracle.main() == 1
     assert written[0]["status"] == "DIAGNOSTIC" and not written[0]["parity_accepted"]
+    assert written[0]["backend"] == backend
+    assert all(row["parity_failures"] == ["family demonstration, provenance, effect-free and suppressed controls absent"]
+               for row in written[0]["effects"])
     assert all(row["repeatable"] and row["cross_arm_equal"] for row in written[0]["effects"])
     assert "DIAGNOSTIC: parity_accepted=False" in capsys.readouterr().out
