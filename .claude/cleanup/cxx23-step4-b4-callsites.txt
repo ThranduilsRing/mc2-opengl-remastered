@@ -1,11 +1,11 @@
 B4.1-move	mclib/move.cpp:469	heap_free	systemHeap	systemHeap->Free(tempSpecialAreaFootPrints);
 B4.1-move	mclib/move.cpp:474	heap_malloc	systemHeap	tempSpecialAreaFootPrints = (GameObjectFootPrint*)systemHeap->Malloc(sizeof(GameObjectFootPrint) * tempNumSpecialAreas);
-B4.1-move	mclib/move.cpp:624	heap_free	systemHeap	systemHeap->Free(tempSpecialAreaFootPrints);
-B4.1-move	mclib/move.cpp:640	heap_malloc	systemHeap	tempSpecialAreaFootPrints = (GameObjectFootPrint*)systemHeap->Malloc(allocSize);
-B4.1-move	mclib/move.cpp:706	heap_malloc	systemHeap	void* result = systemHeap->Malloc(ourSize);
-B4.1-move	mclib/move.cpp:712	heap_free	systemHeap	systemHeap->Free(us);
-B4.1-move	mclib/move.cpp:1034	heap_malloc	systemHeap	result = systemHeap->Malloc(ourSize);
-B4.1-move	mclib/move.cpp:1040	heap_free	systemHeap	systemHeap->Free(us);
+B4.1-move	mclib/move.cpp:625	heap_free	systemHeap	systemHeap->Free(tempSpecialAreaFootPrints);
+B4.1-move	mclib/move.cpp:641	heap_malloc	systemHeap	tempSpecialAreaFootPrints = (GameObjectFootPrint*)systemHeap->Malloc(allocSize);
+B4.1-move	mclib/move.cpp:707	heap_malloc	systemHeap	void* result = systemHeap->Malloc(ourSize);
+B4.1-move	mclib/move.cpp:713	heap_free	systemHeap	systemHeap->Free(us);
+B4.1-move	mclib/move.cpp:1035	heap_malloc	systemHeap	result = systemHeap->Malloc(ourSize);
+B4.1-move	mclib/move.cpp:1041	heap_free	systemHeap	systemHeap->Free(us);
 B4.1-move	mclib/move_globalmap_build.cpp:58	heap_malloc	systemHeap	void* result = systemHeap->Malloc(ourSize);
 B4.1-move	mclib/move_globalmap_build.cpp:64	heap_free	systemHeap	systemHeap->Free(us);
 B4.1-move	mclib/move_movemap_goals.cpp:9	heap_malloc	systemHeap	void* result = systemHeap->Malloc(ourSize);
@@ -73,33 +73,24 @@ B4.2-terrain	mclib/terrtxm.cpp:754	heap_malloc	tileRAMHeap	MemoryPtr ourRAM = (M
 B4.2-terrain	mclib/terrtxm.cpp:874	heap_malloc	tileRAMHeap	MemoryPtr ourRAM = (MemoryPtr)tileRAMHeap->Malloc(mipSize * mipSize * sizeof(DWORD));
 B4.2-terrain	mclib/terrtxm.cpp:1426	heap_malloc	tileRAMHeap	MemoryPtr ourRAM = (MemoryPtr)tileRAMHeap->Malloc(mipSize * mipSize * sizeof(DWORD));
 B4.2-terrain	mclib/terrtxm.cpp:1573	heap_free	tileRAMHeap	tileRAMHeap->Free(ourRAM);
-B4.2-terrain	mclib/terrtxm2.cpp:174	c_free	-	if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = nullptr; }
-B4.2-terrain	mclib/terrtxm2.cpp:176	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1194	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
-B4.2-terrain	mclib/terrtxm2_bake.cpp:1196	c_alloc	-	cpuColorMap = (unsigned char*)malloc(pixels * 4);
+B4.2-terrain	mclib/terrtxm2.cpp:180	c_free	-	if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = nullptr; }
+B4.2-terrain	mclib/terrtxm2.cpp:182	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
+B4.2-terrain	mclib/terrtxm2_bake.cpp:1195	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
+B4.2-terrain	mclib/terrtxm2_bake.cpp:1197	c_alloc	-	cpuColorMap = (unsigned char*)malloc(pixels * 4);
 B4.2-terrain	mclib/terrtxm2_load.cpp:312	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
 B4.2-terrain	mclib/terrtxm2_load.cpp:314	c_alloc	-	cpuColorMap = (unsigned char*)malloc(pixels * 4);
 B4.2-terrain	mclib/terrtxm2_load.cpp:459	c_free	-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
 B4.2-terrain	mclib/terrtxm2_load.cpp:461	c_alloc	-	cpuColorMap = (unsigned char*)malloc(pixels * 4);
 B4.2-terrain	mclib/terrtxm2_load.cpp:794	c_free	-	if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = nullptr; }
 B4.2-terrain	mclib/terrtxm2_load.cpp:796	c_alloc	-	cpuDispAlpha = (unsigned char*)malloc(pixels);
-B4.3-txm	mclib/txmmgr.cpp:223	new_array	-	lightData_ = new TG_HWLightsData[lightDataStructuresCapacity];
-B4.3-txm	mclib/txmmgr.cpp:299	delete_array	-	delete[] lightData_;
-B4.3-txm	mclib/txmmgr.cpp:320	heap_free	textureCacheHeap	textureCacheHeap->Free(lzBuffer1);
-B4.3-txm	mclib/txmmgr.cpp:321	heap_free	textureCacheHeap	textureCacheHeap->Free(lzBuffer2);
-B4.3-txm	mclib/txmmgr.cpp:510	heap_free	textureCacheHeap	textureCacheHeap->Free(masterTextureNodes[textureNode].textureData);
-B4.3-txm	mclib/txmmgr.cpp:515	heap_free	textureStringHeap	textureStringHeap->Free(masterTextureNodes[textureNode].nodeName);
-B4.3-txm	mclib/txmmgr.cpp:539	heap_free	textureCacheHeap	textureCacheHeap->Free(masterTextureNodes[i].textureData);
-B4.3-txm	mclib/txmmgr.cpp:544	heap_free	textureStringHeap	textureStringHeap->Free(masterTextureNodes[i].nodeName);
-B4.3-txm	mclib/txmmgr.cpp:965	heap_free	textureStringHeap	mcTextureManager->textureStringHeap->Free(nodeName);
-B4.3-txm	mclib/txmmgr.cpp:966	heap_free	textureCacheHeap	mcTextureManager->textureCacheHeap->Free(textureData);
-B4.3-txm	mclib/txmmgr.h:116	c_free	-	if (extras) { free(extras); extras = NULL; currentExtra = NULL; }
-B4.3-txm	mclib/txmmgr.h:1306	c_alloc	-	node->extras = (gos_TERRAIN_EXTRA*)malloc(node->numVertices * sizeof(gos_TERRAIN_EXTRA));
-B4.3-txm	mclib/txmmgr.h:1328	c_free	-	free(masterVertexNodes[j].extras);
-B4.3-txm	mclib/txmmgr_lights.cpp:524	new_array	-	TG_HWLightsData* new_lights_data = new TG_HWLightsData[lightDataStructuresCapacity + 128];
-B4.3-txm	mclib/txmmgr_lights.cpp:526	delete_array	-	delete[] lightData_;
-B4.3-txm	mclib/txmmgr_lights.cpp:656	new_array	-	TG_HWLightsData* grown = new TG_HWLightsData[newCap];
-B4.3-txm	mclib/txmmgr_lights.cpp:660	delete_array	-	delete[] lightData_;
+B4.3-txm	mclib/txmmgr.cpp:321	heap_free	textureCacheHeap	textureCacheHeap->Free(lzBuffer1);
+B4.3-txm	mclib/txmmgr.cpp:322	heap_free	textureCacheHeap	textureCacheHeap->Free(lzBuffer2);
+B4.3-txm	mclib/txmmgr.cpp:511	heap_free	textureCacheHeap	textureCacheHeap->Free(masterTextureNodes[textureNode].textureData);
+B4.3-txm	mclib/txmmgr.cpp:516	heap_free	textureStringHeap	textureStringHeap->Free(masterTextureNodes[textureNode].nodeName);
+B4.3-txm	mclib/txmmgr.cpp:540	heap_free	textureCacheHeap	textureCacheHeap->Free(masterTextureNodes[i].textureData);
+B4.3-txm	mclib/txmmgr.cpp:545	heap_free	textureStringHeap	textureStringHeap->Free(masterTextureNodes[i].nodeName);
+B4.3-txm	mclib/txmmgr.cpp:966	heap_free	textureStringHeap	mcTextureManager->textureStringHeap->Free(nodeName);
+B4.3-txm	mclib/txmmgr.cpp:967	heap_free	textureCacheHeap	mcTextureManager->textureCacheHeap->Free(textureData);
 B4.3-txm	mclib/txmmgr_texture.cpp:105	heap_malloc	textureCacheHeap	lzBuffer1 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
 B4.3-txm	mclib/txmmgr_texture.cpp:108	heap_malloc	textureCacheHeap	lzBuffer2 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
 B4.3-txm	mclib/txmmgr_texture.cpp:123	heap_malloc	textureCacheHeap	masterTextureNodes[i].textureData = (DWORD *)textureCacheHeap->Malloc(txmCompressSize);
@@ -113,39 +104,8 @@ B4.3-txm	mclib/txmmgr_texture.cpp:479	heap_malloc	textureCacheHeap	lzBuffer2 = (
 B4.3-txm	mclib/txmmgr_texture.cpp:491	heap_malloc	textureCacheHeap	DWORD *fresh = (DWORD *)textureCacheHeap->Malloc(cacheBytes);
 B4.3-txm	mclib/txmmgr_texture.cpp:500	heap_free	textureCacheHeap	textureCacheHeap->Free(node.textureData);
 B4.3-txm	mclib/txmmgr_texture.cpp:556	heap_malloc	textureCacheHeap	masterTextureNodes[i].textureData = (DWORD *)textureCacheHeap->Malloc(txmSize);
-B4.4-sound	code/gamesound.cpp:109	heap_free	msgHeap	msgHeap->Free(queue[msgNumber]->data[i]);
-B4.4-sound	code/gamesound.cpp:115	heap_free	msgHeap	msgHeap->Free(queue[msgNumber]->noise[i]);
-B4.4-sound	code/gamesound.cpp:119	heap_free	msgHeap	msgHeap->Free(queue[msgNumber]);
-B4.4-sound	code/gamesound.cpp:198	heap_free	msgHeap	msgHeap->Free(currentMessage->data[j]);
-B4.4-sound	code/gamesound.cpp:203	heap_free	msgHeap	msgHeap->Free(currentMessage->noise[j]);
-B4.4-sound	code/gamesound.cpp:207	heap_free	msgHeap	msgHeap->Free(currentMessage);
-B4.4-sound	code/radio.cpp:65	heap_malloc	radioHeap	void *result = radioHeap->Malloc(mySize);
-B4.4-sound	code/radio.cpp:72	heap_free	radioHeap	radioHeap->Free(us);
-B4.4-sound	code/radio.cpp:163	heap_malloc	radioHeap	RadioData *msgData = (RadioData *)radioHeap->Malloc(sizeof(RadioData));
-B4.4-sound	code/radio.cpp:216	heap_malloc	radioHeap	msgData->data[fragmentNum] = (MemoryPtr)radioHeap->Malloc(messageSize);
-B4.4-sound	code/radio.cpp:219	heap_free	radioHeap	radioHeap->Free(msgData);
-B4.4-sound	code/radio.cpp:231	heap_malloc	radioHeap	msgData->data[fragmentNum] = (MemoryPtr)radioHeap->Malloc(messageSize);
-B4.4-sound	code/radio.cpp:236	heap_free	radioHeap	radioHeap->Free(msgData->data[fragmentNum]);
-B4.4-sound	code/radio.cpp:239	heap_free	radioHeap	radioHeap->Free(msgData);
-B4.4-sound	code/radio.cpp:247	heap_free	radioHeap	radioHeap->Free(msgData->data[fragmentNum]);
-B4.4-sound	code/radio.cpp:255	heap_malloc	radioHeap	msgData->noise[0] = (MemoryPtr)radioHeap->Malloc(messageSize);
-B4.4-sound	code/radio.cpp:258	heap_free	radioHeap	radioHeap->Free(msgData);
-B4.4-sound	code/radio.cpp:260	heap_free	radioHeap	radioHeap->Free(msgData->data[0]);
-B4.4-sound	code/radio.cpp:269	heap_free	radioHeap	radioHeap->Free(msgData->noise[0]);
-B4.4-sound	code/radio.cpp:286	heap_free	radioHeap	radioHeap->Free(msgData->data[j]);
-B4.4-sound	code/radio.cpp:289	heap_free	radioHeap	radioHeap->Free(msgData->noise[j]);
-B4.4-sound	code/radio.cpp:294	heap_free	radioHeap	radioHeap->Free(msgData);
-B4.4-sound	mclib/soundsys.cpp:181	heap_malloc	soundHeap	sounds = (SoundBite *)soundHeap->Malloc(sizeof(SoundBite) * numSoundBites);
-B4.4-sound	mclib/soundsys.cpp:225	heap_malloc	soundHeap	digitalMusicIds = (char **)soundHeap->Malloc(sizeof(char *) * numDMS);
-B4.4-sound	mclib/soundsys.cpp:228	heap_malloc	soundHeap	digitalMusicLoopFlags = (bool *)soundHeap->Malloc(sizeof(bool)*numDMS);
-B4.4-sound	mclib/soundsys.cpp:231	heap_malloc	soundHeap	digitalMusicVolume = (float *)soundHeap->Malloc(sizeof(float) * numDMS);
-B4.4-sound	mclib/soundsys.cpp:244	heap_malloc	soundHeap	digitalMusicIds[i] = (char *)soundHeap->Malloc(30);
-B4.4-sound	mclib/soundsys.cpp:405	heap_malloc	soundHeap	thisSoundBite->biteData = (MemoryPtr)soundHeap->Malloc(packetSize);
-B4.4-sound	mclib/soundsys.cpp:487	heap_free	soundHeap	soundHeap->Free(bettySoundBite);
-B4.4-sound	mclib/soundsys.cpp:501	heap_free	soundHeap	soundHeap->Free(supportSoundBite);
-B4.4-sound	mclib/soundsys.cpp:890	heap_malloc	soundHeap	bettySoundBite = (MemoryPtr)soundHeap->Malloc(bettySize);
-B4.4-sound	mclib/soundsys.cpp:958	heap_malloc	soundHeap	supportSoundBite = (MemoryPtr)soundHeap->Malloc(supportSize);
-B4.4-sound	mclib/soundsys.cpp:1177	heap_free	soundHeap	soundHeap->Free(bettySoundBite);
+B4.4-sound	code/radio.cpp:67	heap_malloc	radioHeap	void *result = radioHeap->Malloc(mySize);
+B4.4-sound	code/radio.cpp:74	heap_free	radioHeap	radioHeap->Free(us);
 B4.5-crater	mclib/crater.cpp:146	c_alloc	-	craterTextureHandles = (DWORD *)malloc(sizeof(DWORD) * numCraterTextures);
 B4.5-crater	mclib/crater.cpp:149	c_alloc	-	craterTextureIndices = (DWORD *)malloc(sizeof(DWORD) * numCraterTextures);
 B4.5-crater	mclib/crater.cpp:201	c_free	-	free(craterTextureHandles);
