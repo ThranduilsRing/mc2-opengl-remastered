@@ -61,6 +61,7 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 | Memory | 1 |
 | Pipeline | 1 |
 | PipelineLayout | 1 |
+| QueryPool | 1 |
 | RenderPass | 1 |
 | Sampler | 1 |
 | Semaphore | 1 |
