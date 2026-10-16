@@ -1,4 +1,4 @@
-"""Run the Q2 GL master-gate comparison on lane3 through the existing harness."""
+"""Run the VFX comparison on lane3 through the existing capture harness."""
 from __future__ import annotations
 
 import argparse
@@ -25,18 +25,23 @@ def park_value(pose: dict) -> str:
 
 
 def command(bookmarks: Path, out: Path, frame: int, arm: str, fixture: str = "loop",
-            camera_park: str | None = None, experiment: str = "master") -> list[str]:
+            camera_park: str | None = None, experiment: str = "master",
+            backend: str = "gl") -> list[str]:
+    if backend not in {"gl", "vulkan"}:
+        raise ValueError("unknown render backend")
     if arm not in {"mlr", "gpu"} or frame < 0 or fixture not in {"loop", "1"}:
         raise ValueError("unknown arm/fixture or negative frame")
     cmd = [sys.executable, str(ROOT / "scripts/run_visual_capture.py"),
            "--exe", str(INSTALL / "mc2.exe"), "--bookmarks", str(bookmarks),
            "--out-dir", str(out), "--trigger-frame", str(frame),
            "--settle", "8", "--duration", "30", "--runs", "2"]
-    env = {"MC2_RENDER_BACKEND": "gl", "MC2_SMOKE_FREEZE_ANIM": "1",
+    env = {"MC2_RENDER_BACKEND": backend, "MC2_SMOKE_FREEZE_ANIM": "1",
            "MC2_DETERMINISTIC_RNG": "1", "MC2_RNG_SEED": "0xC0FFEE",
            "MC2_FX_FORCE_SPAWN": fixture, "MC2_GPU_PARTICLES_LOG": "1",
            "MC2_GPU_PARTICLES": "1" if arm == "gpu" else "0"}
     env.update(gate_vector(arm, experiment))
+    if backend == "vulkan":
+        env["MC2_VK_SHARED_GBUFFER"] = "1"
     if camera_park is not None:
         env["MC2_CAMERA_PARK"] = camera_park
     for key, value in env.items():
@@ -69,6 +74,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--arm", choices=("mlr", "gpu", "both"), default="both")
     parser.add_argument("--fixture", choices=("loop", "1"), default="loop")
     parser.add_argument("--experiment", choices=("master", "harvested"), default="master")
+    parser.add_argument("--backend", choices=("gl", "vulkan"), default="gl")
+    parser.add_argument("--install", choices=("lane3",), default="lane3")
     args = parser.parse_args(argv)
     if bool(args.bookmarks) == bool(args.plan):
         parser.error("provide one bookmark file or --plan")
@@ -88,10 +95,13 @@ def main(argv: list[str] | None = None) -> int:
             failed |= main([str(args.plan.parent / scene["bookmarks"]),
                             "--frame", str(scene["frame"]), "--fixture", scene["fixture"],
                             "--out", str(args.out / name), "--arm", args.arm,
-                            "--experiment", args.experiment]) != 0
+                            "--experiment", args.experiment, "--backend", args.backend,
+                            "--install", args.install]) != 0
         return int(failed)
     if args.frame is None:
         parser.error("--frame is required for a bookmark file")
+    if args.out.exists() and any(args.out.iterdir()):
+        parser.error("capture output must be empty; stale evidence cannot be reused")
     args.out.mkdir(parents=True, exist_ok=True)
     bookmarks = json.loads(args.bookmarks.read_text(encoding="utf-8"))
     mission = bookmarks["mission"]
@@ -104,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
     fingerprint_checks = []
     for arm in (("mlr", "gpu") if args.arm == "both" else (args.arm,)):
         cmd = command(args.bookmarks.resolve(), (args.out / arm).resolve(), args.frame, arm,
-                      args.fixture, camera_park, args.experiment)
+                      args.fixture, camera_park, args.experiment, args.backend)
         (args.out / f"{arm}-command.json").write_text(json.dumps(cmd, indent=2) + "\n", encoding="utf-8")
         rc = capture(cmd)
         failed |= rc != 0
@@ -113,7 +123,8 @@ def main(argv: list[str] | None = None) -> int:
             log_text = log.read_text(encoding="utf-8", errors="replace") if log.exists() else ""
             diagnostic = {**extract(log_text), "log": str(log.resolve()),
                           "log_sha256": hashlib.sha256(log.read_bytes()).hexdigest() if log.exists() else None,
-                          "experiment": args.experiment, "gates": gate_vector(arm, args.experiment)}
+                          "experiment": args.experiment, "backend": args.backend,
+                          "gates": gate_vector(arm, args.experiment)}
             (args.out / f"{arm}-r{repeat}-runtime.json").write_text(
                 json.dumps(diagnostic, indent=2) + "\n", encoding="utf-8")
             lines, bad = validate_fingerprint(log_text, head)
