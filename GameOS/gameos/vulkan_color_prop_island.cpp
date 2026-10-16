@@ -180,8 +180,8 @@ VkShaderModule load_spv(VkDevice device, std::string_view path) {
 const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT; // MainColor-compatible
 const VkFormat kDepthFmt = VK_FORMAT_D32_SFLOAT;          // VK-owned (non-exported)
 // Night light-pool SSBO: GpuTerrainLight is 48 B; 256 is the GL object pool cap.
-const uint32_t     kMaxPoolLights = 256;
-const VkDeviceSize kPoolBytes = (VkDeviceSize)kMaxPoolLights * 48ull;
+const int          kMaxPoolLights = 256;
+const VkDeviceSize kPoolBytes = VkDeviceSize{kMaxPoolLights} * 48ull;
 
 // Per-type packet (subset of GpuStaticPropPacket the draw loop needs).
 struct TypeRun {
@@ -1538,11 +1538,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = haveLightFeed ? lightFeed.cameraWorldPos[k] : 0.0f;
         // Night light pools: this frame's pool copy (GL caps the set at 256); a failed map turns the term off.
         int poolN = (haveLightFeed && lightFeed.poolLights48 && lightFeed.numPoolLights > 0) ? lightFeed.numPoolLights : 0;
-        if (poolN > (int)kMaxPoolLights) poolN = (int)kMaxPoolLights;
+        if (poolN > kMaxPoolLights) poolN = kMaxPoolLights;
         if (poolN > 0) {
             void* pp = s->poolBuf[par] ? s->poolBuf[par].map() : nullptr;
             if (pp) {
-                std::memcpy(pp, lightFeed.poolLights48, (size_t)poolN * 48u);
+                std::memcpy(pp, lightFeed.poolLights48, static_cast<size_t>(poolN) * 48u);
                 s->poolBuf[par].unmap();
             } else {
                 poolN = 0;
