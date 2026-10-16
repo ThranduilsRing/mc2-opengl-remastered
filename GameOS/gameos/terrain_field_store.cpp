@@ -82,11 +82,12 @@ bool TerrainFieldStore::setVisualHeight(const float* fine, int side, const float
 
 namespace {
 
-// A shore sidecar covers the map at most a few texels per vertex; beyond kMaxSide * 4 on an edge it is malformed.
+// A field image (shore sidecar, cement atlas) covers the map at most a few texels per vertex; beyond kMaxSide * 4 on an edge it
+// is malformed.
 template <typename Texel>
 bool setImage(FieldImage<Texel>& image, const Texel* texels, int width, int height, size_t texelsPerPixel) {
     if (!texels || width <= 0 || height <= 0 || width > kMaxSide * 4 || height > kMaxSide * 4) {
-        MC2_LOG(Core, Warn, "[TERRAIN_FIELDS v1] rejected a shore sidecar of {:d}x{:d}", mc2::fmt::as_i32(width),
+        MC2_LOG(Core, Warn, "[TERRAIN_FIELDS v1] rejected a field image of {:d}x{:d}", mc2::fmt::as_i32(width),
                 mc2::fmt::as_i32(height));
         return false;
     }
