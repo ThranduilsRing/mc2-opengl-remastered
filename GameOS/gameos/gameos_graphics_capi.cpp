@@ -1,7 +1,10 @@
 // gameos_graphics: the gos_* C API: renderer lifecycle, fonts, textures, screen mode, buffers, materials and the camera preview.
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
+#include "KtxLoader.h"          // kKtxMaxEdge: the edge bound every pre-compressed texture shares with the KTX2 parser
 #include "mc2fmt.h"
+#include "texture_decode.h"
+#include "utils/mc2log.h"
 
 
 
@@ -186,12 +189,22 @@ DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, const char* 
 // gosHint_DisableMipmap), so GL_TEXTURE_MAX_LEVEL=0 and GL_LINEAR filtering.
 // Returns INVALID_TEXTURE_ID on GL failure (caller falls through to the RGBA8
 // path). The internal format is passed in by the caller (sRGB BPTC for albedo).
+// Only BC7 is accepted, with exactly one level's worth of blocks; the blocks stay with the handle as its CPU texels, so other
+// backends import them as they are (gos_GetTextureTexels).
 DWORD __stdcall gos_NewCompressedTexture2D( uint32_t glInternalFormat, int w, int h,
                                             const uint8_t* blockData, size_t byteLen,
                                             const char* name )
 {
-    if(!blockData || byteLen == 0 || w <= 0 || h <= 0)
+    const bool bc7 = glInternalFormat == GL_COMPRESSED_RGBA_BPTC_UNORM || glInternalFormat == GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM;
+    if(!blockData || !bc7 || w <= 0 || h <= 0 || w > (int)RenderCore::kKtxMaxEdge || h > (int)RenderCore::kKtxMaxEdge ||
+       byteLen != mc2tex::bc7LevelBytes((uint32_t)w, (uint32_t)h)) {
+        MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected compressed texture {}: format 0x{:x}, {:d}x{:d}, {:d} bytes",
+                mc2::fmt::safe(name ? name : "<null>"), mc2::fmt::as_u32(glInternalFormat), mc2::fmt::as_i32(w),
+                mc2::fmt::as_i32(h), mc2::fmt::as_size(byteLen));
         return INVALID_TEXTURE_ID;
+    }
+    const uint32_t blockVkFormat =
+        glInternalFormat == GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM ? mc2tex::kVkFormatBc7Srgb : mc2tex::kVkFormatBc7Unorm;
 
     while(glGetError() != GL_NO_ERROR) { /* drain */ }
 
@@ -231,7 +244,8 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t glInternalFormat, int w, in
     tex.format = (GLenum)glInternalFormat;
     tex.has_mipmaps = false;
 
-    gosTexture* ptex = new gosTexture(tex, gos_Texture_Solid, name);
+    auto blocks = std::make_shared<const std::vector<uint8_t>>(blockData, blockData + byteLen);
+    gosTexture* ptex = new gosTexture(tex, gos_Texture_Solid, name, blockVkFormat, std::move(blocks));
     return g_gos_renderer->addTexture(ptex);
 }
 

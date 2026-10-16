@@ -14,6 +14,7 @@
 #include "mc2fmt.h"
 #include "../GameOS/gameos/gos_dev_shell.h"
 #include <algorithm>
+#include <limits>
 
 namespace {
 struct MissionOrderAccess {
@@ -62,6 +63,9 @@ void Mission::resetOrderIngress() {
     authoredMissionText.clear();
     authoredOpordPilots.clear();
     authoredRoutes.clear();
+    routeExecutions.clear();
+    rejectedRouteSignals.clear();
+    nextPartIncarnation = nextPilotIncarnation = nextRouteExecution = nextOrderRevision = 1;
     authoredDiagnostics.clear();
     orderFixtureReceipt.reset();
     orderFixtureApplied = false;
@@ -69,14 +73,25 @@ void Mission::resetOrderIngress() {
     orderIngress.reset();
 }
 void Mission::bindOrderRecipients() {
-    // Each slot belongs to one initial Part incarnation; replacements never inherit its orders.
+    // Session tokens isolate recipient slots; route identities belong to this mission.
     if (!orderRecipients.empty()) return;
     for (long partId = 1; partId <= numParts; ++partId) {
         auto* object = ObjectManager->getByWatchID(parts[partId].objectWID);
         if (!object || !object->isMover() || !object->getPilot() || !object->getExists()) continue;
         auto* mover = static_cast<MoverPtr>(object);
+        if (nextPartIncarnation == std::numeric_limits<std::uint64_t>::max() ||
+            nextPilotIncarnation == std::numeric_limits<std::uint64_t>::max()) {
+            for (auto& route : authoredRoutes) {
+                if (route.originalPart != partId || route.diagnosed) continue;
+                diagnoseAuthoredRoute(route.originalPart, route.selectedPart, route.pilot, "Rejected", "identity");
+                route.diagnosed = true;
+            }
+            continue;
+        }
         orderRecipients.push_back({{static_cast<std::uint32_t>(orderRecipients.size() + 1), 1},
             partId, static_cast<std::uint32_t>(parts[partId].objectWID), mover, mover->getPilot()});
+        orderRecipients.back().partIncarnation = nextPartIncarnation++;
+        orderRecipients.back().pilotIncarnation = nextPilotIncarnation++;
     }
     gos_dev_shell::registerCommand("order_ingress_fixture_submit", submitOrderFixture);
     gos_dev_shell::registerCommand("order_ingress_fixture_check", checkOrderFixture);
@@ -87,6 +102,7 @@ void Mission::bindOrderRecipients() {
 void Mission::admitAuthoredRoutes() {
     using namespace mc2::sim;
     for (auto& route : authoredRoutes) {
+        if (route.diagnosed) continue;
         const auto ref = orderRecipient(route.originalPart);
         auto* mover = ref ? resolveOrderRecipient(*ref) : nullptr;
         if (!mover || mover->getCommanderId() < 0 || route.pilot >= MAX_WARRIORS ||
@@ -118,12 +134,125 @@ void Mission::recordAuthoredInstallation(const mc2::sim::OrderEnvelope& e, mc2::
         if (!route.receiptId || route.installed || route.diagnosed || route.originalPart != e.payload.orderId ||
             e.sourceId != 1 || orderRecipient(route.originalPart) != ref) continue;
         auto* mover = resolveOrderRecipient(ref);
-        // Installation evidence must precede ABL's next general-slot replacement.
         if (!mover || route.pilot >= MAX_WARRIORS || mover->getPilot() != MechWarrior::warriorList[route.pilot]) continue;
+        if (nextRouteExecution == std::numeric_limits<std::uint64_t>::max() ||
+            nextOrderRevision == std::numeric_limits<std::uint64_t>::max()) {
+            diagnoseAuthoredRoute(route.originalPart, route.selectedPart, route.pilot, "Rejected", "identity");
+            route.diagnosed = true;
+            continue;
+        }
+        const auto& binding = orderRecipients[ref.slot - 1];
+        mc2::sim::RouteExecution execution;
+        execution.key = {binding.partIncarnation, nextRouteExecution++};
+        execution.pilotIncarnation = binding.pilotIncarnation;
+        execution.originalPart = route.originalPart;
+        execution.selectedPart = route.selectedPart;
+        execution.pilot = route.pilot;
+        execution.stance = route.stance;
+        execution.commander = mover->getCommanderId();
+        execution.kind = route.kind;
+        execution.path = route.path;
+        execution.revision = nextOrderRevision++;
+        execution.lastTransitionTick = e.applyTick;
+        routeExecutions.push_back(std::move(execution));
         route.installed = true;
         mc2::fmt::print_err("[AUTHORED_ORDER v1] status=Installed original={} selected={} pilot={} stance={} points={}\n",
             route.originalPart, route.selectedPart, route.pilot, route.stance, route.path.points.size());
     }
+}
+bool Mission::routeLive(const mc2::sim::RouteExecution& route) {
+    const auto binding = std::ranges::find(orderRecipients, route.key.partIncarnation,
+        &OrderRecipientBinding::partIncarnation);
+    if (binding == orderRecipients.end()) return false;
+    auto* mover = resolveOrderRecipient(binding->ref);
+    return mover && !mover->isDisabled() && route.pilot < MAX_WARRIORS &&
+        binding->pilotIncarnation == route.pilotIncarnation &&
+        mover->getPilot() == MechWarrior::warriorList[route.pilot] &&
+        mover->getPilot()->getStatus() == WARRIOR_STATUS_NORMAL && mover->getCommanderId() == route.commander;
+}
+mc2::sim::RouteExecution* Mission::ownedRoute(const MechWarrior* pilot) {
+    if (routeExecutions.empty()) return nullptr;
+    for (auto& route : routeExecutions) {
+        if (route.terminal()) continue;
+        const auto binding = std::ranges::find(orderRecipients, route.key.partIncarnation,
+            &OrderRecipientBinding::partIncarnation);
+        if (binding == orderRecipients.end() || binding->pilot != pilot ||
+            binding->pilotIncarnation != route.pilotIncarnation) continue;
+        if (!routeLive(route)) {
+            signalRoute(route, mc2::sim::RouteAction::Removed);
+            return nullptr;
+        }
+        return &route;
+    }
+    return nullptr;
+}
+bool Mission::routeMapsReady(MechWarrior* pilot) const {
+    const auto level = pilot->getVehicle()->getMoveLevel();
+    return PathFindMap[SECTOR_PATHMAP] && PathFindMap[SIMPLE_PATHMAP] &&
+        GlobalMoveMap[level] && !GlobalMoveMap[level]->badLoad && GlobalMoveMap[level]->areas;
+}
+bool Mission::endedRouteOrder(MechWarrior* pilot) const {
+    if (pilot->getOrderState() != ORDERSTATE_GENERAL) return false;
+    const auto* order = pilot->getCurTacOrder();
+    if (order->stage != 2) return false;
+    for (const auto& route : routeExecutions) {
+        if (!route.terminal() || order->code != static_cast<int>(route.kind)) continue;
+        const auto binding = std::ranges::find(orderRecipients, route.key.partIncarnation,
+            &OrderRecipientBinding::partIncarnation);
+        if (binding != orderRecipients.end() && binding->pilot == pilot) return true;
+    }
+    return false;
+}
+void Mission::signalRoute(mc2::sim::RouteExecution& route, mc2::sim::RouteAction action, bool mapsReady) {
+    onRouteEvent({route.key, route.revision, route.eventSequence + 1,
+        orderIngress.queue().executingTick().value_or(orderIngress.queue().completedTick()),
+        action, mapsReady, mapsReady, true, route.pilotIncarnation});
+}
+const mc2::sim::RouteExecution* Mission::routeExecution(mc2::sim::RouteKey key) const {
+    const auto found = std::ranges::find(routeExecutions, key, &mc2::sim::RouteExecution::key);
+    return found == routeExecutions.end() ? nullptr : &*found;
+}
+std::optional<mc2::sim::RouteTransition> Mission::onRouteEvent(const mc2::sim::RouteSignal& signal) {
+    auto found = std::ranges::find(routeExecutions, signal.key, &mc2::sim::RouteExecution::key);
+    if (found != routeExecutions.end()) {
+        auto current = signal;
+        if (!routeLive(*found)) current.action = mc2::sim::RouteAction::Removed;
+        if (auto event = found->transition(current)) {
+            found->retryPending = event->event == mc2::sim::RouteEventKind::Retrying;
+            if (found->terminal() || found->state == mc2::sim::RouteState::Suspended)
+                found->pendingSegment.reset();
+            if (found->terminal()) {
+                const auto binding = std::ranges::find(orderRecipients, found->key.partIncarnation,
+                    &OrderRecipientBinding::partIncarnation);
+                if (binding != orderRecipients.end() && binding->pilot) {
+                    auto* pilot = binding->pilot;
+                    if (PathManager) PathManager->remove(pilot);
+                    pilot->setMoveGoal(MOVEGOAL_NONE, nullptr);
+                    pilot->setMoveWayPath(nullptr);
+                    pilot->setMoveGlobalPath(nullptr, 0);
+                    for (long buffer = 0; buffer < 2; ++buffer) pilot->clearMovePath(buffer);
+                    // Retired route orders must not resume through legacy path handling.
+                    for (auto* order : {pilot->getCurTacOrder(), pilot->getTacOrder(ORDERSTATE_GENERAL)})
+                        if (order->code == static_cast<int>(found->kind)) order->setStage(2);
+                }
+            }
+            mc2::fmt::print_err("[ROUTE_EXECUTION v1] execution={} revision={} sequence={} tick={} event={} reason={}\n",
+                event->key.executionId, event->revision, event->sequence, event->tick,
+                static_cast<int>(event->event), static_cast<int>(event->reason));
+            return event;
+        }
+    }
+    if (found == routeExecutions.end()) return {};
+    const auto rejected = std::ranges::find(rejectedRouteSignals, signal.key, &mc2::sim::RouteSignal::key);
+    const auto duplicate = rejected != rejectedRouteSignals.end() &&
+        rejected->revision == signal.revision && rejected->sequence == signal.sequence && rejected->action == signal.action;
+    if (!duplicate) {
+        if (rejected == rejectedRouteSignals.end()) rejectedRouteSignals.push_back(signal);
+        else *rejected = signal;
+        mc2::fmt::print_err("[ROUTE_EXECUTION v1] rejected execution={} revision={} sequence={} tick={} action={}\n",
+            signal.key.executionId, signal.revision, signal.sequence, signal.tick, static_cast<int>(signal.action));
+    }
+    return {};
 }
 std::string Mission::authoredRouteEvidence() const {
     std::string result = "{\"installations\":[";
@@ -169,6 +298,27 @@ void Mission::beginOrderSimulationTick() {
     MissionOrderApplication application(MissionOrderAccess{*this});
     const auto result = orderIngress.beginSimulationTick(true, false, MPlayer != nullptr, application);
     if (!result) mc2::fmt::print_err("[ORDER_INGRESS v1] begin_error={}\n", static_cast<int>(result.error()));
+    using namespace mc2::sim;
+    for (auto& route : routeExecutions) {
+        if (route.terminal()) continue;
+        if (!routeLive(route)) { signalRoute(route, RouteAction::Removed); continue; }
+        auto* pilot = MechWarrior::warriorList[route.pilot];
+        const auto team = pilot->getTeam() ? pilot->getTeam()->getId() : -1;
+        if (team < 0 || team >= MAX_TEAMS || !MechWarrior::brainsEnabled[team] ||
+            ((route.state == RouteState::Active || route.state == RouteState::Pending) &&
+             pilot->getTacOrder(ORDERSTATE_GENERAL)->code != static_cast<int>(route.kind))) {
+            signalRoute(route, RouteAction::Removed);
+            continue;
+        }
+        if (pilot->getOrderState() != ORDERSTATE_GENERAL || route.state == RouteState::Suspended ||
+            !routeMapsReady(pilot)) continue;
+        if (route.state == RouteState::Pending && route.awaitingMaps) {
+            signalRoute(route, RouteAction::Ready, true);
+            if (!route.terminal()) dispatchOwnedRoute(pilot, route);
+        } else if (route.state == RouteState::Active && (route.retryPending || route.awaitingMaps)) {
+            dispatchOwnedRoute(pilot, route);
+        }
+    }
 }
 void Mission::completeOrderSimulationTick() {
     const auto result = orderIngress.completeSimulationTick();
@@ -847,81 +997,53 @@ void Mission::resetTeamsAndCommanders()
 void Mission::destroy (bool initLogistics)
 {
     orderRecipients.clear();
+    authoredRoutes.clear();
+    routeExecutions.clear();
+    rejectedRouteSignals.clear();
+    nextPartIncarnation = nextPilotIncarnation = nextRouteExecution = nextOrderRevision = 1;
     orderFixtureReceipt.reset();
     orderFixtureApplied = false;
     orderFixtureSubmitted = orderFixtureCompleted = 0;
     orderIngress.close();
-	// MC2-VERIFY-LIVE-1: [VERIFY] counter line at mission end (soak evidence:
-	// fires=0 expected on stock missions). Silent when MC2_VERIFY_MODE=off.
 	mc2verify::MissionSummary(missionFileName);
 
-	gos_SetHudScaleActive(false);  // back to 100% for menus/logistics
-	gos_SetHudCanvasActive(false); // UI-ASPECT-ANCHOR-1: canvas off with the shrink
+	gos_SetHudScaleActive(false);
+	gos_SetHudCanvasActive(false);
 
-	// C2: release async readback ring buffer at mission teardown.
 	gpu_cull::readback_shutdown();
-	// C1a: release GPU compute resources at mission teardown.
-	frameJobsShutdown();  // FRAME-JOBS-1: join workers before any GPU teardown (LIFO vs init)
+	frameJobsShutdown();
 	gpu_cull::compute_shutdown();
-	// C0-3: release GPU cull substrate SSBO at mission teardown.
-	// substrate_init() handles re-init on next mission load (calls shutdown internally).
 	gpu_cull::substrate_shutdown();
 
-	// Release GPU resources at mission shutdown.
-	// M1 Task 13 (order-correct split): call order is byte-identical to original:
-	//   1. GpuStaticPropBatcher::onMapUnload()  ← endMissionEarly()
-	//   2. GpuMechBatcher::onMapUnload()
-	//   3. GpuStaticPropRegistry::destroy() + RenderWorld::destroy() ← endMissionLate()
-	//   4. Mech::endMission()
-	GameAdapters::StaticProp::endMissionEarly();   // M1 Task 13
+	GameAdapters::StaticProp::endMissionEarly();
 	GpuMechBatcher::instance().onMapUnload();
-	GameAdapters::StaticProp::endMissionLate();    // M1 Task 13
-	GameAdapters::Mech::endMission();               // M2: mech lifecycle
-	GameAdapters::Vegetation::missionUnloaded();    // vegetation card system teardown
+	GameAdapters::StaticProp::endMissionLate();
+	GameAdapters::Mech::endMission();
+	GameAdapters::Vegetation::missionUnloaded();
 
-	//---------------------------------------------------------------
-	// Shutdown the Mission Interface
 	if (missionInterface)
 	{
-		// MISSION-START-HOVER-TARGET-LIFETIME-1: clear the static `target` pointer and the
-		// file-scope hover caches at teardown (end boundary). The objects they reference are
-		// about to be freed; suppress picking so nothing dereferences them before the next
-		// mission arms hover again.
 		MissionInterfaceManager::invalidateHoverTarget();
 		missionInterface->destroy();
 
 		delete missionInterface;
 		missionInterface = nullptr;
 	}
-	
+
 	delete missionBrain;
 	missionBrain = nullptr;
 
 	delete missionBrainParams;
 	missionBrainParams = nullptr;
 
-	//Team::home->objectives.Clear();
 
-	//---------------------------------------------------------------
-	// End the Camera and Lists
 	if (eye)
 	{
 		eye->destroy();
 
 		delete eye;
 		eye = nullptr;
-		// Null the static TG_Shape camera-matrix aliases that TG_Shape::
-		// SetCameraMatrices() (tgl.cpp:1619-1620) populated with raw pointers
-		// into the now-freed eye object. Both `s_cameraOrigin` and
-		// `s_cameraToClip` outlive their owner; if a subsequent code path
-		// (e.g. Mission::load -> MechWarrior::Load -> registerStaticProp ->
-		// TG_MultiShape::TransformMultiShape at msl.cpp:1438) dereferences
-		// the stale pointer before eye->update() re-primes them, the dereference
-		// reads freed heap (latent UB; reliably crashed 2026-05-20 after Block A
-		// allocations stomped the freed eye block first). The next eye->update()
-		// in Mission::init / Mission::load re-populates both via
-		// SetCameraMatrices(). quad.cpp:2008 carries the same dereference and
-		// is also covered by this nulling.
+		// Camera aliases outlive the camera and must not expose freed matrices during load.
 		TG_Shape::s_cameraOrigin = nullptr;
 		TG_Shape::s_cameraToClip = nullptr;
 	}
@@ -934,12 +1056,10 @@ void Mission::destroy (bool initLogistics)
 	MOVE_cleanup();
 
 	MechWarrior::shutdown();
-	
+
 	delete weather;
 	weather = nullptr;
 
-	//------------------------------------------------------------
-	// End the Terrain System
 	if (land)
 	{
 		land->destroy();
@@ -948,27 +1068,20 @@ void Mission::destroy (bool initLogistics)
 		land = nullptr;
 	}
 
-	//--------------------------------------------------------------
-	// Shut down the object system
-	// CANNOT just delete heaps do to our ASSHOLE MUNGA/ADEPT
-	// CODE which cannot be shutdown and restarted more then once.
-	//
-	// I wish I could just do demos and call that game experience!!!!
-	//
 	if (ObjectManager)
 	{
 		ObjectManager->destroy();
 		delete ObjectManager;
 		ObjectManager = nullptr;
 	}
-	
+
 
 	if (GVAppearanceType::SensorTriangleShape)
 	{
 		delete GVAppearanceType::SensorTriangleShape;
 		GVAppearanceType::SensorTriangleShape = nullptr;
 	}
-	
+
 	if (GVAppearanceType::SensorCircleShape)
 	{
 		delete GVAppearanceType::SensorCircleShape;
@@ -980,14 +1093,12 @@ void Mission::destroy (bool initLogistics)
 		delete Mech3DAppearanceType::SensorSquareShape;
 		Mech3DAppearanceType::SensorSquareShape = nullptr;
 	}
-	
-	if (MasterComponent::masterList) 
+
+	if (MasterComponent::masterList)
 	{
 		MasterComponent::freeMasterList();
 	}
 
-	//-----------------------------------
-	// Get rid of the Effects manager
 	if (weaponEffects)
 		weaponEffects->destroy();
 
@@ -1001,19 +1112,7 @@ void Mission::destroy (bool initLogistics)
 		craterManager = nullptr;
 	}
 
-	//-----------------------------------
-	// Sensors now stored in the missionHeap
-	// Which goes away several lines below this
-	//if (SensorManager)
-	//{
-	//	SensorManager->destroy();
-	//	delete SensorManager;
-	//	SensorManager = NULL;
-	//}
 
-	// TEAM-COMMANDER-OWNERSHIP-1: single teardown authority (was a duplicated
-	// inline free loop; see resetTeamsAndCommanders()). Also nulls the
-	// Team::home/Commander::home aliases.
 	Mission::resetTeamsAndCommanders();
 
 	if (Mover::triggerAreaMgr) {
@@ -1029,33 +1128,28 @@ void Mission::destroy (bool initLogistics)
 
 	closeABL();
 
-	//------------------------------------------------------------
-	// End the Mission Heap
 	if (missionHeap)
 	{
 		missionHeap->destroy();
-		
+
 		delete missionHeap;
 		missionHeap = nullptr;
 	}
-	
+
 	if ( appearanceTypeList )
 	{
 		appearanceTypeList->destroy();
 		delete appearanceTypeList;
 		appearanceTypeList = nullptr;
 	}
-	
+
 	if (initLogistics)
 		initTGLForLogistics();
 	else
 	{
-		//---------------------------------------------------------
-		// End the Tiny Geometry Layer Heap for Logistics
 		if (TG_Shape::tglHeap)
 		{
 			logTglPoolPeaks("mission_unload");
-			//Shut down the TGL RAM pools.
 			if (colorPool)
 			{
 				colorPool->destroy();
@@ -1097,40 +1191,33 @@ void Mission::destroy (bool initLogistics)
 			TG_Shape::tglHeap = nullptr;
 		}
 	}
-	
-//	userInput->mouseOff();
+
 
 	active = FALSE;
-	scenarioResult = mis_PLAYING;		//We've completed the mission.  Set it back to playing!
+	scenarioResult = mis_PLAYING;
 	GeneralAlarm = false;
 
 	EllipseElement::removeTextureHandle();
 
-	//The flush below will remove this one.
 	Mover::holdFireIconHandle = 0;
 
-	mcTextureManager->flush();
-	mcTextureManager->freeVertices();
-	mcTextureManager->freeShapes();
+	if (mcTextureManager) {
+		mcTextureManager->flush();
+		mcTextureManager->freeVertices();
+		mcTextureManager->freeShapes();
+	}
 
-	soundSystem->purgeSoundSystem();
+	if (soundSystem) soundSystem->purgeSoundSystem();
 
 	missionFileName[0] = 0;
-	
+
 	if (CObjective::s_markerFont)
 	{
 		delete CObjective::s_markerFont;
 		CObjective::s_markerFont = nullptr;
 	}
 
-	//Heading back to logistics now.  Change screen back to 800x600
-//	if (renderer == 3)
-//		gos_SetScreenMode(800,600,16,0,0,0,true,false,0,false,0,renderer);
-//	else
-//		gos_SetScreenMode(800,600,16,0,0,0,0,false,0,false,0,renderer);
 
-	//Start finding the Leaks
-	//systemHeap->dumpRecordLog();
 }
 
 //----------------------------------------------------------------------------------

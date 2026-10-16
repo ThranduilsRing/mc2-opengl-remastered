@@ -165,7 +165,7 @@ NOFOCUS_ENV = {
 #: (golden captures, scripts/check-capture-resolution.py, the #49 resolution
 #: matrix) keeps full control by setting MC2_WIDTH/MC2_HEIGHT explicitly.
 SMALL_WINDOW_ENV = {
-    "MC2_WIDTH": "640",
+    "MC2_WIDTH": "854",
     "MC2_HEIGHT": "480",
 }
 
@@ -346,12 +346,13 @@ def _desktop_blocked(what: str) -> bool:
 def _record_child(proc, argv: Sequence[str]) -> None:
     """Note an engine child so a later run may end it if its runner died (see child_registry)."""
     try:
-        from . import exe_guard, child_registry
+        from . import exe_guard, child_registry, host_lease
     except ImportError:
-        from smoke_lib import exe_guard, child_registry
+        from smoke_lib import exe_guard, child_registry, host_lease
     if argv and exe_guard.engine_kind(argv[0]) is not None:
-        child_registry.record(proc.pid, argv[0])
-    # (a launcher that starts the engine for us, e.g. renderdoccmd, is not recorded: its child pid is unknown)
+        holder = next((r for _, r in host_lease._records() if host_lease._ours(r)), None)
+        identity = {key: holder[key] for key in ("pid", "created")} if holder else None
+        child_registry.record(proc.pid, argv[0], lease_holder=identity)
 
 
 class ExeRefused(RuntimeError):
@@ -414,7 +415,7 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
     unconditionally; only a desktop-composite capture harness passes False,
     and only a user-present session is granted it (see apply_env).
 
-    `small_window=False` skips the 640x480 MC2_WIDTH/MC2_HEIGHT default for
+    `small_window=False` skips the 854x480 MC2_WIDTH/MC2_HEIGHT default for
     harnesses whose output resolution is graded (golden captures at options.cfg
     size, perf runs); position is still offscreen, so nothing is on the desktop.
     """
@@ -427,6 +428,12 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
         env=apply_env(env, small_window=small_window, offscreen=offscreen),
         **popen_kwargs(show_window=show_window, **kw))
     _record_child(proc, argv)
+    try:
+        from . import exe_guard, host_lease
+    except ImportError:
+        from smoke_lib import exe_guard, host_lease
+    if any(exe_guard.engine_kind(a) is not None for a in argv):
+        host_lease.apply_affinity(proc)
     return proc
 
 
@@ -442,6 +449,29 @@ def run(argv: Sequence[str], *, show_window: bool = False,
         offscreen = True
     _vet_engine_exe(argv)
     _hold_host_lease(argv)
+    try:
+        from . import exe_guard
+    except ImportError:
+        from smoke_lib import exe_guard
+    if any(exe_guard.engine_kind(a) is not None for a in argv):
+        timeout = kw.pop("timeout", None)
+        check = kw.pop("check", False)
+        input_data = kw.pop("input", None)
+        if input_data is not None:
+            kw["stdin"] = subprocess.PIPE
+        if kw.pop("capture_output", False):
+            kw["stdout"] = kw["stderr"] = subprocess.PIPE
+        with spawn(argv, show_window=show_window, offscreen=offscreen, small_window=small_window, env=env, **kw) as proc:
+            try:
+                stdout, stderr = proc.communicate(input_data, timeout=timeout)
+            except BaseException:
+                proc.kill()
+                proc.communicate()
+                raise
+            result = subprocess.CompletedProcess(list(argv), proc.returncode, stdout, stderr)
+            if check:
+                result.check_returncode()
+            return result
     return subprocess.run(
         list(argv),
         env=apply_env(env, small_window=small_window, offscreen=offscreen),

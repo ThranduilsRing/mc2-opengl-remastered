@@ -1,8 +1,15 @@
 // MechWarrior: tactical-order switching, pilot alarms and event history.
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
+#include "mission.h"
+#include "mc2fmt.h"
 
 
+
+void suspendAuthoredRoute(MechWarrior* warrior) {
+    if (mission) if (auto* r = mission->ownedRoute(warrior))
+        mission->signalRoute(*r, mc2::sim::RouteAction::Alarm);
+}
 
 void MechWarrior::clearCurTacOrder (bool updateTacOrder) {
 
@@ -127,12 +134,21 @@ void MechWarrior::setCurTacOrder (TacticalOrder newTacOrder) {
 
 void MechWarrior::setGeneralTacOrder (TacticalOrder newTacOrder) {
 
+    if (mission) if (auto* r = mission->ownedRoute(this)) {
+        if (!r->generalWriteDiagnosed) {
+            mc2::fmt::print_err("[ROUTE_EXECUTION v1] general_write_absorbed execution={}\n", r->key.executionId);
+            r->generalWriteDiagnosed = true;
+        }
+        return;
+    }
 	tacOrder[ORDERSTATE_GENERAL] = newTacOrder;
 	newTacOrderReceived[ORDERSTATE_GENERAL] = true;
 }
 
 void MechWarrior::setPlayerTacOrder (TacticalOrder newTacOrder, bool fromQueue) {
 
+    if (mission) if (auto* r = mission->ownedRoute(this))
+        mission->signalRoute(*r, mc2::sim::RouteAction::PlayerOrder);
 	tacOrder[ORDERSTATE_PLAYER] = newTacOrder;
 	newTacOrderReceived[ORDERSTATE_PLAYER] = true;
 	curPlayerOrderFromQueue = fromQueue;

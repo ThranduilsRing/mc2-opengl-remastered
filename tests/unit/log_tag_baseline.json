@@ -4214,7 +4214,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 8
+   "count": 7
   },
   {
    "tag": "GPUPROPS",
@@ -4236,6 +4236,15 @@
     "multi_packet",
     "alpha_on_fallback",
     "no_primary"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPUPROPS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "cpu_geometry_bytes"
    ],
    "count": 1
   },
@@ -10218,7 +10227,7 @@
    "ver": 1,
    "stream": "log",
    "keys": [],
-   "count": 4
+   "count": 5
   },
   {
    "tag": "TERRAIN_HEIGHT_TEX",
@@ -10719,7 +10728,14 @@
    "ver": 1,
    "stream": "log",
    "keys": [],
-   "count": 6
+   "count": 10
+  },
+  {
+   "tag": "TEXTURE_DECODE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
   },
   {
    "tag": "TEXTURE_RGBA",
@@ -11921,25 +11937,6 @@
    "count": 1
   },
   {
-   "tag": "VK_HUD_MIRROR",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "id"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_HUD_MIRROR",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "id",
-    "err"
-   ],
-   "count": 1
-  },
-  {
    "tag": "VK_HUD_SKIP",
    "ver": 1,
    "stream": "stderr",
@@ -12238,7 +12235,7 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [],
-   "count": 5
+   "count": 6
   },
   {
    "tag": "VK_SHADOW_MATRIX",
@@ -12288,7 +12285,7 @@
    "keys": [
     "ok"
    ],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "VK_SHADOW_MATRIX",
@@ -12310,6 +12307,26 @@
    "stream": "stderr",
    "keys": [],
    "count": 10
+  },
+  {
+   "tag": "VK_SHADOW_STATIC",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 5
+  },
+  {
+   "tag": "VK_SHADOW_STATIC",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "generation",
+    "size",
+    "terrain_tris",
+    "building_instances",
+    "building_draws"
+   ],
+   "count": 1
   },
   {
    "tag": "VK_SHARED_SCENE_COLOR",

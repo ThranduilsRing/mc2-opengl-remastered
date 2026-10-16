@@ -25,7 +25,6 @@ prefix is compared.
 from __future__ import annotations
 
 import argparse
-import glob
 import hashlib
 import json
 import os
@@ -226,25 +225,28 @@ def add_ref_args(p) -> None:
 
 def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = None, install: str = INSTALL_DIR,
                 ref_exe: str | None = None, ref_commit: str | None = None, sim_speed: int = 1) -> list:
-    """Launch the mission twice under the determinism gates. -> [log path a, log path b]. The smoke lease is host wide and waited for.
-    `extra_env` maps "a" / "b" to variables set for that run only: the way to ask whether something that must not matter to the simulation
-    (the camera pose, an effects option) really does not; its "both" entry applies to the two runs (a mission fixture)."""
+    """Launch two fresh determinism runs under host slots and retain their own logs.
+
+    `extra_env` maps a/b to per-run variables and both to a shared fixture.
+    """
     if int(duration) > MAX_DURATION:
         sys.exit(f"sim_determinism: --duration {duration} exceeds the {MAX_DURATION} s cap")
     target = smoke_target(install, ref_exe, ref_commit)
     logs = []
     for tag in ("a", "b"):
+        dest = os.path.join(out, tag)
+        if os.path.exists(dest):
+            sys.exit(f"sim_determinism: output already exists: {dest}; use a fresh --out")
         env = dict(os.environ, **GATES, **(extra_env or {}).get("both", {}), **(extra_env or {}).get(tag, {}))
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", duration,
                             *target, "--keep-logs", "--sim-determinism", *(["--sim-speed", str(sim_speed)] if sim_speed > 1 else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                            errors="replace", **console_child.child_kwargs(redirected=True))
-        arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
+        arts = [line.removeprefix("[runner] artifacts: ").strip() for line in r.stdout.splitlines()
+                if line.startswith("[runner] artifacts: ")]
         if r.returncode and arts and os.path.exists(os.path.join(arts[-1], mission + ".log")):
             print(f"sim_determinism: note: smoke run {tag} returned {r.returncode} (a smoke gate verdict); its SIMID stream is still compared")
         elif r.returncode or not arts:
             sys.exit(f"sim_determinism: smoke run {tag} failed (rc={r.returncode}):\n" + "\n".join(r.stdout.splitlines()[-8:]))
-        dest = os.path.join(out, tag)
-        shutil.rmtree(dest, ignore_errors=True)
         shutil.copytree(arts[-1], dest)
         logs.append(os.path.join(dest, mission + ".log"))
     return logs

@@ -51,16 +51,16 @@
    "LG02": 191,
    "LG03": 265,
    "LG04": 6,
-   "LG05": 122,
-   "LG06": 506,
+   "LG05": 120,
+   "LG06": 509,
    "LG07": 0,
-   "LG08": 257,
-   "LG09": 1979,
-   "LG10": 39,
+   "LG08": 261,
+   "LG09": 1966,
+   "LG10": 42,
    "LG11": 101,
    "LG12a": 95,
    "LG12b": 30,
-   "LG13": 315,
+   "LG13": 317,
    "LG14": 61,
    "LG15": 0,
    "LG16": 7,
@@ -101,7 +101,7 @@
    "LG06": 15,
    "LG07": 0,
    "LG08": 0,
-   "LG09": 35,
+   "LG09": 40,
    "LG10": 0,
    "LG11": 0,
    "LG12a": 2,
@@ -143,7 +143,7 @@
    "LG02": 204,
    "LG03": 876,
    "LG04": 21,
-   "LG05": 196,
+   "LG05": 198,
    "LG06": 452,
    "LG07": 2,
    "LG08": 17,
@@ -196,7 +196,7 @@
    "LG09": 2115,
    "LG10": 33,
    "LG11": 67,
-   "LG12a": 210,
+   "LG12a": 209,
    "LG12b": 237,
    "LG13": 449,
    "LG14": 113,
@@ -358,7 +358,7 @@
   "GameOS/gameos/gameos_graphics.cpp": {
    "LG03": 7,
    "LG06": 2,
-   "LG09": 20,
+   "LG09": 22,
    "LG11": 1,
    "LG12b": 1,
    "LG17": 1
@@ -370,7 +370,7 @@
    "LG03": 7,
    "LG05": 6,
    "LG06": 10,
-   "LG09": 6,
+   "LG09": 7,
    "LG17": 1
   },
   "GameOS/gameos/gameos_graphics_draw.cpp": {
@@ -395,7 +395,7 @@
   "GameOS/gameos/gameos_graphics_internal.h": {
    "LG03": 9,
    "LG06": 5,
-   "LG09": 9,
+   "LG09": 8,
    "LG16": 4,
    "LG17": 1
   },
@@ -435,6 +435,7 @@
    "LG18": 1
   },
   "GameOS/gameos/gameos_graphics_shadow.cpp": {
+   "LG05": 1,
    "LG06": 2,
    "LG09": 10,
    "LG10": 1,
@@ -552,6 +553,7 @@
    "LG05": 1,
    "LG06": 2,
    "LG09": 9,
+   "LG10": 3,
    "LG17": 1
   },
   "GameOS/gameos/gos_hdri.h": {
@@ -626,11 +628,12 @@
    "LG09": 9
   },
   "GameOS/gameos/gos_postprocess.cpp": {
+   "LG06": 1,
    "LG09": 7,
    "LG20": 8
   },
   "GameOS/gameos/gos_postprocess.h": {
-   "LG06": 2
+   "LG06": 3
   },
   "GameOS/gameos/gos_postprocess_blur.cpp": {
    "LG03": 3,
@@ -1004,8 +1007,11 @@
    "LG06": 2,
    "LG17": 1
   },
+  "GameOS/gameos/static_shadow_spec.h": {
+   "LG05": 1
+  },
   "GameOS/gameos/terrain_field_store.cpp": {
-   "LG09": 6,
+   "LG09": 7,
    "LG17": 1
   },
   "GameOS/gameos/terrain_field_store.h": {
@@ -1021,13 +1027,11 @@
    "LG06": 1
   },
   "GameOS/gameos/texture_decode.cpp": {
-   "LG05": 2,
    "LG06": 5,
-   "LG09": 7,
+   "LG09": 10,
    "LG17": 3
   },
   "GameOS/gameos/texture_decode.h": {
-   "LG05": 2,
    "LG06": 2,
    "LG17": 1
   },
@@ -1144,6 +1148,9 @@
   "GameOS/gameos/vk_gpu_timestamps.h": {
    "LG09": 2
   },
+  "GameOS/gameos/vk_hdri_source.h": {
+   "LG08": 2
+  },
   "GameOS/gameos/vk_image_resource.cpp": {
    "LG06": 2
   },
@@ -1158,7 +1165,7 @@
   },
   "GameOS/gameos/vulkan_color_prop_island.cpp": {
    "LG06": 2,
-   "LG09": 39,
+   "LG09": 37,
    "LG10": 1,
    "LG11": 1,
    "LG13": 4,
@@ -1184,7 +1191,7 @@
   },
   "GameOS/gameos/vulkan_mech_island.cpp": {
    "LG06": 2,
-   "LG09": 30,
+   "LG09": 20,
    "LG11": 1,
    "LG13": 2
   },
@@ -1223,6 +1230,10 @@
    "LG13": 2,
    "LG17": 5
   },
+  "GameOS/gameos/vulkan_shadow_static_map.cpp": {
+   "LG06": 1,
+   "LG13": 2
+  },
   "GameOS/gameos/vulkan_shared_scene_color.cpp": {
    "LG03": 1,
    "LG06": 2,
@@ -1238,8 +1249,8 @@
   },
   "GameOS/gameos/vulkan_sky_island.cpp": {
    "LG06": 2,
-   "LG08": 1,
-   "LG09": 12,
+   "LG08": 2,
+   "LG09": 9,
    "LG11": 1,
    "LG13": 2
   },
@@ -1248,7 +1259,7 @@
    "LG11": 1
   },
   "GameOS/gameos/vulkan_terrain_island_images.cpp": {
-   "LG09": 27
+   "LG09": 25
   },
   "GameOS/gameos/vulkan_terrain_island_internal.h": {
    "LG06": 1,
@@ -1279,8 +1290,8 @@
    "LG11": 1
   },
   "GameOS/gameos/vulkan_water_island_images.cpp": {
-   "LG08": 1,
-   "LG09": 12
+   "LG08": 2,
+   "LG09": 10
   },
   "GameOS/gameos/vulkan_water_island_init.cpp": {
    "LG09": 4
@@ -1466,7 +1477,8 @@
   },
   "RenderCore/KtxLoader.cpp": {
    "LG05": 1,
-   "LG06": 1
+   "LG06": 1,
+   "LG09": 5
   },
   "RenderCore/KtxLoader.h": {
    "LG05": 1,
@@ -2429,7 +2441,7 @@
   },
   "code/mission.cpp": {
    "LG03": 36,
-   "LG05": 1,
+   "LG05": 3,
    "LG09": 11,
    "LG10": 1
   },
@@ -4299,7 +4311,7 @@
    "LG03": 24,
    "LG09": 16,
    "LG11": 1,
-   "LG12a": 10,
+   "LG12a": 9,
    "LG16": 15,
    "LG17": 1
   },
@@ -5116,7 +5128,7 @@
    "LG20": 3
   }
  },
- "head": "fd64472aa",
+ "head": "a0614d7d2",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

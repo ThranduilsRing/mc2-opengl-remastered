@@ -53,16 +53,10 @@ struct Mc2MechDrawRun {
     uint32_t normalTex;     // gos texture handle of the per-type normal map (0 = none)
 };
 
-// Copy-ONCE geometry feed: the shared mech VBO/IBO GL names + 48B stride.
-// VK-RUNG8 item-9: vboCpu/iboCpu are the CPU-side byte sources of the SAME buffers
-// (vboCpu = the exact normals-recomputed `work` blob uploaded to s_sharedVbo; iboCpu =
-// s_stagingIbo, uploaded verbatim). These are now the ONLY geometry feed: populated
-// whenever the VK mech island is active. The GL glGetBufferSubData readback fallback
-// was deleted; vboCpu may still be transiently null if a normals rebuild raced the
-// accessor, in which case the island declines the frame and retries.
+// Copy-once geometry feed: the batcher's CPU bytes of this map's mech VBO / IBO (the exact bytes the GL buffers were
+// created from: the normals-recomputed vertex blob and the staged indices) and the 48-byte stride. No GL names, so the VK
+// island needs no GL buffer. vboCpu is null while a normals rebuild is in flight; the island then retries next frame.
 struct Mc2MechGeomFeed {
-    uint32_t glVbo;         // s_sharedVbo (GpuMechVertex[])
-    uint32_t glIbo;         // s_sharedIbo (uint32[])
     uint64_t vboBytes;
     uint64_t iboBytes;
     uint32_t vertexStride;  // sizeof(GpuMechVertex) == 48
@@ -81,15 +75,8 @@ struct Mc2MechFrameFeed {
     uint32_t     runCount;
     float        worldToClipGL[16]; // kAxisSwapMC2toGL * worldToClip (row-major, GL_FALSE)
     float        objectDepthBias;    // OBJECT_DEPTH_BIAS
-    // VK-MECH-MATERIAL-LIGHTING-1: calc_light + fog parity feed.
-    uint32_t     lightDataGlSsbo;    // live LightsData GL SSBO name (binding 20) to copy
-    uint64_t     lightDataBytes;     // its byte size (ObjectLights[] * 3600B, grow-once)
     float        fogColorRGB[3];     // g_scene.fogColor.rgb (mech.frag fog mix source)
-    // VK-RUNG8 item-9: the game's CPU LightsData array (mcTextureManager->lightData_,
-    // the byte SOURCE of the GL SSBO upload) is now the ONLY per-frame lighting feed:
-    // populated whenever mcTextureManager exists. The per-frame glGetBufferSubData GL
-    // SSBO readback fallback was deleted. lightDataGlSsbo/Bytes above remain only for
-    // the verification-only FEED-AUDIT byte-compare.
+    // The game's CPU LightsData array (the bytes the GL SSBO is uploaded from); null before the texture manager exists.
     const void*  lightDataCpu;       // TG_HWLightsData[count] (3600B each) or null
     uint64_t     lightDataCpuBytes;  // count * sizeof(GpuObjectLights)
     // VK-PARITY-MECH-1: default mech FS shading inputs, from the SAME producers the

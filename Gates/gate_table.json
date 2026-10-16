@@ -1,6 +1,6 @@
 {
  "version": 1,
- "count": 979,
+ "count": 978,
  "gates": [
   {"name": "MC2_3DVIEW_DIAG", "kind": "Bool", "rule": "Presence", "default": false, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_ABL_ARG_GUARD", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -...", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
@@ -893,7 +893,6 @@
   {"name": "MC2_VK_HUD_DRAW_DUMP", "kind": "Bool", "rule": "Presence", "default": false, "owner": "gameos", "retireBy": "", "doc": "Env-token-only memo (no disarm interaction): the env block is process-static, so one getenv per process is exact.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_VK_IMGUI", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "VK-IMGUI-NATIVE-1 (rung 8.6): default-OFF ImGui Vulkan renderer gate.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": {"featureId": "MC2_FEATURE_VK_IMGUI", "kind": "Feature", "order": -1, "defaultOn": false}, "logTopic": ""},
   {"name": "MC2_VK_LIGHTFEED_DEDUP", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "vk", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
-  {"name": "MC2_VK_MECH_FEED_AUDIT", "kind": "Bool", "rule": "Exact1", "default": false, "owner": "vk", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_VK_MECH_FEED_NATIVE", "kind": "Bool", "rule": "Is01", "default": false, "owner": "mech", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_VK_MECH_FENCE_DEFER", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "vk", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_VK_MECH_PERF", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "vk", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},

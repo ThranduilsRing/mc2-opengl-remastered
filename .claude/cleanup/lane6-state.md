@@ -49,22 +49,41 @@ switch listed under "Seams needed from lane 2" below (that seam is closed once b
 | check-contracts other FAILs | container_callsites (editor/ObjectivesSummaryPanel.cpp), background-launch inventory, gated_layout_macros (fails on the base too), tools_tests row for the variants check: none in lane 6 files |
 | GL tier1 + VK tier1 (MC2_VULKAN_VALIDATION=1) + [VRAM v1] before/after | NOT RUN: the host lease was held by lane 1 (batch, pid 616) on mc2-win64-v0.4 for the whole window |
 
+## Session 2 (2026-10-15 16:03-18:xx, Opus 5.5; merged nifty dea1868a5 then 7daec782c, both fast-forward/clean)
+Commits: 3c5172001 review nits N1-N4 (prop staging released at map change, colour-prop retry frees its buffers, decode
+failures at Warn, field-store versions unique per process); fe0de149c mech island geometry only from the CPU copy, FEED-AUDIT
+readbacks + `MC2_VK_MECH_FEED_AUDIT` deleted; e80153837 KTX2 `ktxParse` (bounded, doctests), BC7 blocks kept by the gos
+handle, `gos_GetTextureTexels` (tri-state, review S1), islands create BC7 images, HUD decodes BC7 on the CPU,
+`ensureRgbaMirrorFromGpu` deleted, texture_decode returns `std::optional` (clears the LG05 rise routed here);
+970156084 census T10/T11 shore sidecars in the field store. Census status table + accepted geometry cost: census file.
+
+| proof (exe 970156084, install v0.4, batch lease lane6) | result |
+|---|---|
+| ninja mc2 / doctest | PASS / 3217 cases |
+| cxx17, dup_lines ratchets (worktree) | OK, both below baseline |
+| VK tier1 + validation 17:43 | 5/5, errors=0 warnings=0 all five; fingerprint OK |
+| GL tier1 17:30 | 5/5; fingerprint OK |
+| VK tier1 17:15 | VOID: another deploy replaced v0.4's exe (6d4ff1bb3) inside my lease; rerun above |
+| [VRAM v1] VK run_end vs the 6d4ff1bb3 exe (void run) | 4057/4157/4175/4242/4607 vs 4057/4157/4175/4240/4607 MiB: unchanged |
+| [VRAM v1] GL run_end vs session-1 rerun | 3782/3901/3893/3957/4069 vs 3782/3901/3902/3957/4069: unchanged |
+| build_all_targets --root-only | PASS (rc 0, 18:09) |
+| GL vs VK capture pair, mc2_10_saved_204523 --clean, same exe, 18:28-18:41 (viewed) | terrain, water, shoreline foam band and the base props match; the small hex props around the base read as wireframe-like in GL and solid in VK (no earlier pair to say whether this is new; next session: one pair on the 6d4ff1bb3 exe to bisect) |
+
+Tier1 imported no BC7 handle in any island (all `format=37`): the BC7 island path is unexercised by tier1; the HUD CPU decode
+is (FX sprites are BC7). The capture pair is what proves it.
+
 ## Open (next session, in order)
-1. Runtime proof of 242b9582c: take the batch lease (`--tag lane6`) on mc2-win64-v0.4, deploy, GL tier1 + VK tier1 with
-   validation (errors=0 warnings=0), compare `[VRAM v1]` against the e6f9ac11e exe. Expect CPU RSS up by the retained prop
-   staging + terrain fields (a few MB), VRAM unchanged.
-2. Pre-compressed (`.ktx2` BC7) gos textures still reach VK through a one-time GL readback inside
-   `gosTexture::ensureRgbaMirrorFromGpu`: needs a CPU KTX2 path (keep the blocks, VK uploads BC7 directly).
-3. T3 / T7 / T9 (prop albedo arrays, colormap atlas, terrain normal array): neutral array / atlas builders with CPU blobs.
-4. T8 cement atlas, T10 / T11 water shore height + shoreline mask (field store).
-5. Owners are still static-duration unique_ptr / file statics (terrain store lives Init..Destroy; prop staging is a file
-   static): fold into a subsystem object with step 4 ownership.
+1. Bisect the hex-prop look difference in the capture pair: the same pair on the 6d4ff1bb3 (nifty) exe; if it is new, the
+   suspect is the BC7_SRGB view in the islands (previously R8G8B8A8_UNORM of a readback). An effects-heavy bookmark for the
+   HUD CPU BC7 decode.
+2. T3 prop albedo arrays (GL mips by glGenerateMipmap: texel change, capture needed), T7 colormap atlas, T9 normal array,
+   T8 cement atlas.
+3. Owners are still static-duration (terrain store, prop staging file static): fold into subsystem objects with step 4.
+4. callers.json reads "stale" in this worktree only because the inventory embeds the worktree root (A:/Games/mc2-main) in
+   `reference`: a tool bug in non-main worktrees, not a real change.
 
 ## Seams needed from lane 2
-- `vulkan_shadow_island_live.cpp:815-836` (shadow geometry upload): replace the `glGetBufferSubData` of `feed.glVbo/glIbo`
-  with `mc2_static_prop_geometry_cpu` (declared in `vulkan_color_prop_island.h`), then drop `glVbo`/`glIbo` from
-  `Mc2ShadowGeomFeed` (`vulkan_shadow_island_live.h:37`). Lane 6 then deletes nothing more there; the GL buffers stay for GL.
-- T12-T14 (static / dynamic / CSM shadow maps, HDRI) are lane 2 producers.
+- None open from lane 6. T12-T14 (static / dynamic / CSM shadow maps, HDRI) are lane 2 producers.
 
 ## Scratch
 Mine (session scratchpad, deleted by the harness): cfg/build/unit/cc logs. In the worktree: `build64-ninja/`,

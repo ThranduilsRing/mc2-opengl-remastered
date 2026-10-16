@@ -36,6 +36,15 @@ bool OwnedBuffer::createHostWritable(VmaAllocator allocator, VkDevice device, Vk
     return create(allocator, device, bci, aci, name, i0, i1);
 }
 
+bool OwnedBuffer::createFilled(VmaAllocator allocator, VkDevice device, const void* src, VkDeviceSize bytes, VkBufferUsageFlags usage,
+                               std::string_view name) {
+    if (!src || bytes == 0 || !createHostWritable(allocator, device, bytes, usage, name) || !upload(src, bytes)) {
+        reset();
+        return false;
+    }
+    return true;
+}
+
 void OwnedBuffer::reset() noexcept {
     if (buffer_ != VK_NULL_HANDLE) vmaDestroyBuffer(allocator_, buffer_, allocation_);
     buffer_ = VK_NULL_HANDLE;
@@ -59,6 +68,24 @@ bool OwnedBuffer::upload(const void* src, VkDeviceSize bytes, VkDeviceSize offse
     vmaFlushAllocation(allocator_, allocation_, offset, bytes);
     unmap();
     return true;
+}
+
+bool OwnedImage::createSampled2D(VmaAllocator allocator, VkDevice device, VkFormat format, uint32_t width, uint32_t height,
+                                 uint32_t mipLevels, VkImageUsageFlags extraUsage, std::string_view name) {
+    VkImageCreateInfo ici{};
+    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    ici.imageType = VK_IMAGE_TYPE_2D;
+    ici.format = format;
+    ici.extent = {width, height, 1};
+    ici.mipLevels = mipLevels;
+    ici.arrayLayers = 1;
+    ici.samples = VK_SAMPLE_COUNT_1_BIT;
+    ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | extraUsage;
+    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VmaAllocationCreateInfo aci{};
+    aci.usage = VMA_MEMORY_USAGE_AUTO;
+    return create(allocator, device, ici, aci, name);
 }
 
 bool OwnedImage::create(VmaAllocator allocator, VkDevice device, const VkImageCreateInfo& info, const VmaAllocationCreateInfo& alloc, std::string_view name,

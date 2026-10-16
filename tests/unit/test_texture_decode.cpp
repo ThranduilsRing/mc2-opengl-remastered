@@ -74,8 +74,9 @@ TEST_CASE("texture decode: PNG magenta becomes transparent black only when keyed
 TEST_CASE("texture decode: a 24-bit TGA decodes to RGB8 top-down, R first") {
     // Bottom row (first in the file) blue, top row red.
     const auto file = tga(1, 2, 24, {255, 0, 0, /* top: */ 0, 0, 255});
-    mc2tex::DecodedTexture t;
-    REQUIRE(mc2tex::decodeMemory(file.data(), file.size(), "unit.tga", gos_Texture_Detect, 0, t));
+    const auto decoded = mc2tex::decodeMemory(file.data(), file.size(), "unit.tga", gos_Texture_Detect, 0);
+    REQUIRE(decoded);
+    const mc2tex::DecodedTexture& t = *decoded;
     CHECK(t.width == 1);
     CHECK(t.height == 2);
     CHECK(t.layout == mc2tex::PixelLayout::RGB8);
@@ -86,28 +87,26 @@ TEST_CASE("texture decode: a 24-bit TGA decodes to RGB8 top-down, R first") {
 }
 
 TEST_CASE("texture decode: malformed sources are rejected, not trusted") {
-    mc2tex::DecodedTexture t;
     auto truncated = tga(4, 4, 32, {1, 2, 3, 4});
-    CHECK_FALSE(mc2tex::decodeMemory(truncated.data(), truncated.size(), "short.tga", gos_Texture_Detect, 0, t));
+    CHECK_FALSE(mc2tex::decodeMemory(truncated.data(), truncated.size(), "short.tga", gos_Texture_Detect, 0));
     auto grey = tga(1, 1, 8, {7});
-    CHECK_FALSE(mc2tex::decodeMemory(grey.data(), grey.size(), "grey.tga", gos_Texture_Detect, 0, t));
+    CHECK_FALSE(mc2tex::decodeMemory(grey.data(), grey.size(), "grey.tga", gos_Texture_Detect, 0));
     const uint8_t tiny[4] = {0, 0, 2, 0};
-    CHECK_FALSE(mc2tex::decodeMemory(tiny, sizeof(tiny), "tiny.tga", gos_Texture_Detect, 0, t));
-    CHECK_FALSE(mc2tex::decodeMemory(nullptr, 0, "none", gos_Texture_Detect, 0, t));
+    CHECK_FALSE(mc2tex::decodeMemory(tiny, sizeof(tiny), "tiny.tga", gos_Texture_Detect, 0));
+    CHECK_FALSE(mc2tex::decodeMemory(nullptr, 0, "none", gos_Texture_Detect, 0));
 }
 
 TEST_CASE("texture decode: RLE headers the loader cannot size safely are rejected") {
-    mc2tex::DecodedTexture t;
     // 16-bit RLE: the loader would size 2 bytes per pixel and write 4.
     auto rle16 = tga(64, 64, 16, std::vector<uint8_t>(64, 0x80));
     rle16[2] = 10;
-    CHECK_FALSE(mc2tex::decodeMemory(rle16.data(), rle16.size(), "rle16.tga", gos_Texture_Detect, 0, t));
+    CHECK_FALSE(mc2tex::decodeMemory(rle16.data(), rle16.size(), "rle16.tga", gos_Texture_Detect, 0));
     // An edge over the cap (its byte count would wrap the loader's int arithmetic near 32768 x 32768).
     auto huge = tga(0, 0, 32, std::vector<uint8_t>(64, 0x80));
     huge[2] = 10;
     huge[12] = 0x20; huge[13] = 0x4E;   // 20000
     huge[14] = 0x20; huge[15] = 0x4E;
-    CHECK_FALSE(mc2tex::decodeMemory(huge.data(), huge.size(), "huge.tga", gos_Texture_Detect, 0, t));
+    CHECK_FALSE(mc2tex::decodeMemory(huge.data(), huge.size(), "huge.tga", gos_Texture_Detect, 0));
 }
 
 TEST_CASE("texture decode: a TGA file goes through the same header check") {
@@ -117,8 +116,7 @@ TEST_CASE("texture decode: a TGA file goes through the same header check") {
     REQUIRE(f);
     std::fwrite(truncated.data(), 1, truncated.size(), f);
     std::fclose(f);
-    mc2tex::DecodedTexture t;
-    CHECK_FALSE(mc2tex::decodeFile(path, gos_Texture_Detect, 0, t));
+    CHECK_FALSE(mc2tex::decodeFile(path, gos_Texture_Detect, 0));
     std::remove(path);
 
     const auto good = tga(1, 2, 24, {255, 0, 0, 0, 0, 255});
@@ -127,16 +125,29 @@ TEST_CASE("texture decode: a TGA file goes through the same header check") {
     REQUIRE(f);
     std::fwrite(good.data(), 1, good.size(), f);
     std::fclose(f);
-    CHECK(mc2tex::decodeFile(goodPath, gos_Texture_Detect, 0, t));
-    CHECK(t.pixels.size() == 6);
+    const auto decoded = mc2tex::decodeFile(goodPath, gos_Texture_Detect, 0);
+    REQUIRE(decoded);
+    CHECK(decoded->pixels.size() == 6);
     std::remove(goodPath);
 }
 
 TEST_CASE("texture decode: a placeholder keeps the requested format and refuses a zero size") {
-    mc2tex::DecodedTexture t;
-    REQUIRE(mc2tex::makePlaceholder(2, 1, gos_Texture_Keyed, gosHint_MipmapFilter0, t));
-    CHECK(t.format == gos_Texture_Keyed);
-    CHECK(t.wantMipmaps);
-    CHECK(t.pixels == std::vector<uint8_t>{255, 255, 0, 255, 255, 255, 0, 255});
-    CHECK_FALSE(mc2tex::makePlaceholder(0, 4, gos_Texture_Solid, 0, t));
+    const auto t = mc2tex::makePlaceholder(2, 1, gos_Texture_Keyed, gosHint_MipmapFilter0);
+    REQUIRE(t);
+    CHECK(t->format == gos_Texture_Keyed);
+    CHECK(t->wantMipmaps);
+    CHECK(t->pixels == std::vector<uint8_t>{255, 255, 0, 255, 255, 255, 0, 255});
+    CHECK_FALSE(mc2tex::makePlaceholder(0, 4, gos_Texture_Solid, 0));
+}
+
+TEST_CASE("texture decode: BC7 blocks decode to RGBA8 only when the byte count matches the size") {
+    CHECK(mc2tex::bc7LevelBytes(8, 6) == 64);   // 2 x 2 blocks
+    CHECK(mc2tex::bc7LevelBytes(1, 1) == 16);
+    // Mode 6 block, all-zero payload: a valid block that decodes to one colour.
+    std::vector<uint8_t> block(16, 0);
+    block[0] = 0x40;
+    const auto rgba = mc2tex::decodeBc7(block, 4, 4);
+    CHECK(rgba.size() == 4 * 4 * 4);
+    CHECK(mc2tex::decodeBc7(block, 8, 8).empty());   // 4 blocks needed, 1 given
+    CHECK(mc2tex::decodeBc7(block, 0, 4).empty());
 }

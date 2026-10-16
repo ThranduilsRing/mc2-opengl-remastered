@@ -26,6 +26,7 @@
 #include "vk_hdri_source.h"
 #include "vulkan_context.h"
 #include "gos_terrain_water_stream.h"
+#include "terrain_field_store.h"   // the shore sidecars' CPU copies
 
 #include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
 
@@ -55,9 +56,8 @@
 // ---------------------------------------------------------------------------
 // Health snapshot (mirrors the SSAO island's) — read by debug_state_dump.cpp.
 // ---------------------------------------------------------------------------
-// VK-PARITY-WATER-SHORE-1: shore data producers (gos_terrain_lod_chunk.cpp, C++ linkage).
-unsigned int gos_TerrainLodChunk_ShorelineMaskTex();
-unsigned int gos_TerrainLodChunk_WaterShoreHeightTex();
+// VK-PARITY-WATER-SHORE-1: the shore sidecars' CPU copies live in the terrain field store; the generation (gos_terrain_lod_chunk.cpp)
+// changes whenever either is rewritten.
 unsigned int gos_TerrainLodChunk_WaterShoreDataGeneration();
 
 namespace vk_water_detail {
@@ -237,7 +237,8 @@ void write_descriptors(WaterIsland* s);
 bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes);
 bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& record);
 bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex);
-bool import_shore_tex(WaterIsland* s, unsigned int glTex, bool isFloat, mc2vk::OwnedImage& img, mc2vk::OwnedImageView& view, bool* real);
+bool import_shore_tex(WaterIsland* s, const void* texels, int texelsW, int texelsH, bool isFloat, mc2vk::OwnedImage& img,
+                      mc2vk::OwnedImageView& view, bool* real);
 bool ensure_shore(WaterIsland* s);
 bool init_island(WaterIsland* s, int w, int h);
 }  // namespace vk_water_detail

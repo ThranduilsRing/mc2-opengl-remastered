@@ -18,7 +18,7 @@
 #include <volk.h>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
-#include "texture_decode.h"   // gos_GetTextureRgba
+#include "texture_decode.h"   // gos_GetTextureTexels
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -189,20 +189,13 @@ void cp_end(Island* s, VkCommandBuffer cb) {
     vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
 }
 
-bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, const void* bytes, VkDeviceSize byteCount) {
+// One level of RGBA8 or BC7 texels, copied as they are into a sampled image of `fmt`.
+bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, VkFormat fmt, const void* bytes, VkDeviceSize byteCount) {
     mc2vk::OwnedBuffer stg;   // released on return; cp_end has waited for the copy by then
     if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "legacyshape.staging")) return false;
     if (!upload_host(stg, bytes, (size_t)byteCount)) return false;
 
-    VkImageCreateInfo ici{};
-    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    ici.imageType = VK_IMAGE_TYPE_2D; ici.format = VK_FORMAT_R8G8B8A8_UNORM;
-    ici.extent = {w, h, 1}; ici.mipLevels = 1; ici.arrayLayers = 1;
-    ici.samples = VK_SAMPLE_COUNT_1_BIT; ici.tiling = VK_IMAGE_TILING_OPTIMAL;
-    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (!e.img.create(s->allocator, s->device, ici, aci, "legacyshape.texture")) return false;
+    if (!e.img.createSampled2D(s->allocator, s->device, fmt, w, h, 1, 0, "legacyshape.texture")) return false;
     VkCommandBuffer cb = cp_begin(s);
     if (cb == VK_NULL_HANDLE) return false;
     VkImageMemoryBarrier bar{};
@@ -225,7 +218,7 @@ bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, const void* by
 
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = e.img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_R8G8B8A8_UNORM;
+    vci.image = e.img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = fmt;
     vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
     return mc2vk::create(e.view, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
 }
@@ -258,19 +251,20 @@ TexEntry* get_tex(Island* s, uint32_t texNode, uint32_t gosHandle) {
     auto it = s->texs.find(texNode);
     if (it != s->texs.end()) return &it->second;
     if (s->texs.size() >= kMaxTextures) return &s->dummyTex;
-    uint32_t w = 0, h = 0;
-    const auto rgba = gos_GetTextureRgba(gosHandle, &w, &h);
-    if (!rgba) return &s->dummyTex;    // not resident yet; retry next frame
+    const GosTexels texels = gos_GetTextureTexels(gosHandle);
+    if (texels.status != GosTexels::Status::Ready) return &s->dummyTex;    // not resident yet; retry next frame
+    const uint32_t w = texels.width, h = texels.height;
     if (w == 0 || h == 0 || w > 8192 || h > 8192) return &s->dummyTex;
 
     TexEntry t;
-    if (!upload_image(s, t, w, h, rgba->data(), (VkDeviceSize)rgba->size()) ||
+    if (!upload_image(s, t, w, h, mc2vk::texelFormat(texels.vkFormat), texels.bytes->data(),
+                      (VkDeviceSize)texels.bytes->size()) ||
         !alloc_tex_sets(s, t)) {
         return &s->dummyTex;   // `t` releases whatever it created
     }
     ++g_health.texUploads;
     auto ins = s->texs.emplace(texNode, std::move(t));
-    vlog("texture cached: node=%u handle=%u %ux%u (%zu/%u).", texNode, gosHandle, w, h,
+    vlog("texture cached: node=%u handle=%u %ux%u format=%u (%zu/%u).", texNode, gosHandle, w, h, texels.vkFormat,
          s->texs.size(), kMaxTextures);
     return &ins.first->second;
 }
@@ -396,7 +390,7 @@ bool init_island(Island* s, int w, int h) {
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) { setFallback("pool_failed"); return false; }
 
         const uint8_t px[4] = {255, 255, 255, 255};
-        if (!upload_image(s, s->dummyTex, 1, 1, px, sizeof(px)) || !alloc_tex_sets(s, s->dummyTex)) {
+        if (!upload_image(s, s->dummyTex, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, px, sizeof(px)) || !alloc_tex_sets(s, s->dummyTex)) {
             setFallback("dummy_tex_failed"); return false;
         }
     }

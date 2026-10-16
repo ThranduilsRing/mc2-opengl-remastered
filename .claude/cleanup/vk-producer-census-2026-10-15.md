@@ -51,6 +51,30 @@ Not consumed by any island (answers lane 5 open question 4): the GL compute cull
 store (`gos_static_prop_batcher_shadow.cpp:754-775`, population-agnostic), not the culled visible set, and no island reads the light
 grid (VK-PARITY-GAPS row 1 is open for that reason).
 
+## Status (lane 6, updated 2026-10-15 evening)
+
+| row | state | commit |
+|---|---|---|
+| T1 | CLOSED: decoded handles carry their RGBA8 (`gos_GetTextureTexels`); pre-compressed `.ktx2` handles carry their BC7 blocks and the islands create BC7 images from them; the texture-object readback is deleted | 242b9582c, e80153837 |
+| T2 | CLOSED: both consumers (colour prop, lane 2's shadow island) copy from `mc2_static_prop_geometry_cpu` | 242b9582c, lane 2 e1e21176b |
+| T4-T6 | CLOSED: terrain field store | 242b9582c |
+| T10 / T11 | CLOSED: shore sidecars in the field store | 970156084 |
+| P4 / P7 | CLOSED: mech feeds carry no GL names; the FEED-AUDIT readbacks and `MC2_VK_MECH_FEED_AUDIT` are deleted | fe0de149c |
+| T3, T7, T8, T9 | OPEN (see below) | |
+
+Accepted cost (lane 2 review should-fix 1): the static-prop CPU geometry copy (the shared VBO + IBO staging) stays resident for
+the map's lifetime in every run, GL-only runs included, where nothing reads it. Measured from the `[VK_COLOR_PROP_ISLAND] prop
+geometry uploaded once` lines of the VK tier1 run 2026-10-15T17-43-41 (exe 970156084): mc2_01 1.04 MB, mc2_03 2.33 MB, mc2_10
+1.91 MB, mc2_17 2.01 MB, mc2_24 2.74 MB (VBO + IBO). Accepted rather than freed per backend: it is about 0.1 % of the process, GL is deleted after VK parity,
+and freeing it would put a backend branch in the batcher. It is released (not just cleared) at map change.
+
+Open, in the order to take them:
+- T3 prop albedo arrays (largest: up to 47 MB for a 256x256x134 RGBA8 alpha-ON array on mc2_10, 2-9 MB elsewhere): GL builds
+  the mips with `glGenerateMipmap`, so a CPU array builder changes texels unless it reproduces the driver's filter, or VK builds
+  its own mips. Either is a texel change: needs the GL vs VK capture pair.
+- T7 terrain colormap atlas (BC7 or RGBA8, image not retained), T9 terrain detail-normal array, T8 cement atlas: neutral
+  atlas/array owner keeping the decoded image; T7 BC7 can reuse the T1 block path.
+
 ## Totals
 
 - TRUE dependencies: **14** (L6: 11 = T1-T11; L2: 3 = T12-T14).
