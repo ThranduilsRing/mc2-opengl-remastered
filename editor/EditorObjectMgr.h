@@ -12,9 +12,6 @@
 
 
 
-#ifndef ELIST_H
-#include "Elist.h"
-#endif
 
 #ifndef EDITOROBJECTS_H
 #include "EditorObjects.h"

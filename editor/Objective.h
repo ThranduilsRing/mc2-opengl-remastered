@@ -7,7 +7,6 @@ Objective.h			: Interface for the Objective component.
 //===========================================================================//
 \*************************************************************************************************/
 
-#include "elist.h"
 #include <vector>
 #include <string>
 #include <utility>

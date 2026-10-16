@@ -1,29 +1,8 @@
 # Step 4 B2 container call sites from a [[deprecated("B2")]] build (tests/analyze/container_callsites.py); a batch commit removes its rows.
-# total 7 sites in 3 files
+# total 0 sites in 0 files
 # per kind:
-#       2  EList::Begin
-#       1  EList::Count
-#       1  EList::Clear
-#       1  EList::Append
-#       1  EList::Delete
-#       1  EList
 # per batch (cxx23-step4-b2-files.json):
-#       1  B2.3
-#       6  B6
 # sites in files the batch table does NOT list (includers the compiler forces, or the PCH): 0 in 0 files
 # per file:
-#       5  code/mpparameterscreen.cpp
-#       1  code/mission_update.cpp
-#       1  code/mpparameterscreen.h
-# blob e5eb973f75d5b9dd9a5f240099990aabe605157c code/mission_update.cpp
-# blob 214f712990422b697f5e1b20d2f2a5d3d829b6ba code/mpparameterscreen.cpp
-# blob 4e02cd4390c36d910612ccca87ddaea784911336 code/mpparameterscreen.h
 # mentions inside inactive #if branches (grep, the compiler cannot see them): 0
 # file:line:kind
-code/mission_update.cpp:625:EList::Count
-code/mpparameterscreen.cpp:2312:EList::Clear
-code/mpparameterscreen.cpp:2317:EList::Append
-code/mpparameterscreen.cpp:2323:EList::Delete
-code/mpparameterscreen.cpp:2351:EList::Begin
-code/mpparameterscreen.cpp:2369:EList::Begin
-code/mpparameterscreen.h:102:EList

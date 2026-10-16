@@ -16,6 +16,15 @@ from editor.tests.legacy_reference import (FROZEN, PLACEMENTS, buildings, compar
     packet, reference_evidence, verify_frozen)
 
 
+def legacy_elist(root):
+    result = subprocess.run(['git', 'show', '2f4bd7996:mclib/elist.h'], cwd=root,
+                            capture_output=True, text=True, timeout=30,
+                            **child_kwargs(redirected=True))
+    if result.returncode:
+        raise RuntimeError(result.stderr)
+    return re.sub(r'^#include.*$', '', result.stdout, flags=re.M)
+
+
 class LegacyLinkTests(unittest.TestCase):
     def test_objective_clone_keeps_numbering_and_empty_invalidation(self):
         root = Path(__file__).resolve().parents[2]
@@ -90,7 +99,7 @@ struct CObjectiveAction : CObjectiveCondition {
 };
 '''
             if 'EList' in header:
-                source += re.sub(r'^#include.*$', '', original('mclib/elist.h'), flags=re.M)
+                source += legacy_elist(root)
             source += header[header.index('class  CObjectiveConditionList'):header.index('class CObjectivesEditState')]
             for cls in ('CObjectiveConditionList', 'CObjectiveActionList', 'CObjectives'):
                 for member in ('operator=', 'operator==', 'Clear'):
@@ -191,7 +200,7 @@ int main(int argc, char** argv) {
 struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } } heap;
 Heap* systemHeap = &heap;
 '''
-        prefix += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(encoding='utf-8'), flags=re.M)
+        prefix += legacy_elist(root)
         prefix += r'''
 struct FitIniFile {
     std::string bytes;
@@ -331,7 +340,7 @@ int main() {
                       '#include <vector>\n#include <algorithm>\n#define gosASSERT(x) assert(x)\n'
                       'struct Heap { void* Malloc(size_t n) { return malloc(n); } '
                       'void Free(void* p) { free(p); } }; Heap heap; Heap* systemHeap = &heap;\n')
-            source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(encoding='utf-8'), flags=re.M)
+            source += legacy_elist(root)
             source += ('constexpr int DRAW_BARS = 1; struct ObjectAppearance { int selected = 0; };\n'
                        'struct EditorObject { virtual ~EditorObject() = default; '
                        'ObjectAppearance state; bool present = true; bool isSelected() { return state.selected; } '
@@ -453,7 +462,7 @@ int main() {
             if legacy:
                 source += ('struct Heap { void* Malloc(size_t n) { return malloc(n); } '
                            'void Free(void* p) { free(p); } }; Heap heap; Heap* systemHeap = &heap;\n')
-                source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(encoding='utf-8'), flags=re.M)
+                source += legacy_elist(root)
             source += ('struct AppearanceType {}; using DWORD = unsigned long;\n'
                        'constexpr int MECH_TYPE = 1, GV_TYPE = 2;\nclass EditorObjectMgr { public:\n')
             source += header[header.index('\tenum BuildingType'):header.index('\tclass EDITOR_OBJECT_LIST' if 'class EDITOR_OBJECT_LIST' in header else '\t// Borrowed pointers;')]
@@ -561,7 +570,7 @@ int main() {
             if 'public EList' in header:
                 source += 'struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } };\n'
                 source += 'Heap heap; Heap* systemHeap = &heap;\n#define gosASSERT(x) assert(x)\n'
-                source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(), flags=re.M)
+                source += legacy_elist(root)
             source += '''
 struct Combo {
     std::vector<int> items; int selected = -1;
@@ -638,7 +647,7 @@ struct Dialog {
             if 'EList< Action*' in header:
                 source += 'struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } };\n'
                 source += 'Heap heap; Heap* systemHeap = &heap;\n'
-                source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(), flags=re.M)
+                source += legacy_elist(root)
             source += 'constexpr int MAX_DESC_LENGTH = 256;\n'
             source += header[header.index('class Action\n{'):header.index('struct VertexInfo')]
             source += header[header.index('class ActionUndoMgr\n{'):header.index('}; // class SActionMgr') + 2]
@@ -797,7 +806,7 @@ struct FitIniFile {
             if legacy:
                 source += 'struct Heap { void* Malloc(size_t n) { return malloc(n); } void Free(void* p) { free(p); } };\n'
                 source += 'Heap* systemHeap;\n'
-                source += re.sub(r'^#include.*$', '', (root / 'mclib/elist.h').read_text(), flags=re.M)
+                source += legacy_elist(root)
             source += re.sub(r'^#include.*$', '', header, flags=re.M)
             for signature in ('CMissionData::CMissionData()', 'bool CMissionData::operator==',
                               'bool CMissionData::Save', 'CGroupData::CGroupData()',
