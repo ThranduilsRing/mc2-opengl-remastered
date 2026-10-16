@@ -1,0 +1,29 @@
+{
+ "schema_v": 1,
+ "mission": "mc2_10",
+ "_note": "mech close-up, night: the mover at (-2880,2752) fills about a quarter of the frame height (parity row 2, mech specular oracle)",
+ "bookmarks": [
+  {
+   "name": "saved_mechnight",
+   "pos": [
+    -2880.0,
+    2752.0,
+    0.0
+   ],
+   "rot": -135.0,
+   "proj": 24.0,
+   "alt": 200.0
+  },
+  {
+   "name": "saved_mechnight_dup",
+   "pos": [
+    -2880.0,
+    2752.0,
+    0.0
+   ],
+   "rot": -135.0,
+   "proj": 24.0,
+   "alt": 200.0
+  }
+ ]
+}

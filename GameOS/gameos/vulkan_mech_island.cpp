@@ -287,14 +287,18 @@ MechIsland* parkedIsland() { return static_cast<MechIsland*>(islandSlot().get())
 static bool g_mechSessionDeclined  = false;
 static int  g_mechInitReachedBuild = 0;
 
+// gpuReadHeavy: a host-written buffer the GPU reads many times per frame (the night pool, walked by every mech fragment) is written
+// sequentially so VMA can place it in device-local, host-visible memory instead of system memory read across the bus.
 bool make_buffer(MechIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible,
-                 std::string_view name, int i0 = -1, int i1 = -1) {
+                 std::string_view name, int i0 = -1, int i1 = -1, bool gpuReadHeavy = false) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO;
-    aci.flags = hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : 0;
+    aci.flags = !hostVisible ? 0
+              : gpuReadHeavy ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
+                             : VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
     if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
         vlog("buffer creation failed (%.*s).", static_cast<int>(name.size()), name.data()); return false;
     }
@@ -618,7 +622,7 @@ bool init_island(MechIsland* s, int w, int h) {
     if (!ensure_buf_capacity(s, s->lightBuf[i], &s->lightCap[i], 32 * 1024, "mech.lightBuf", static_cast<int>(i))) return false;
     if (!make_buffer(s, s->ubo[i], sizeof(MechFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "mech.ubo", static_cast<int>(i))) return false;
     // VK-PARITY-MECH-1: fixed-size object light-pool SSBO (256 x 48B).
-    if (!make_buffer(s, s->poolBuf[i], kPoolBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "mech.poolBuf", static_cast<int>(i))) return false;
+    if (!make_buffer(s, s->poolBuf[i], kPoolBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "mech.poolBuf", static_cast<int>(i), -1, true)) return false;
     }
     // Pre-create tiny inst/bone SSBOs so scheme descriptor sets never bind a null buffer
     // (they grow in run() via ensure_buf_capacity, which rewrites all cached sets).
