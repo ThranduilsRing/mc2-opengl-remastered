@@ -375,7 +375,9 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                     if (condition) value.species = static_cast<ConditionSpecies>(species);
                     else value.species = static_cast<ActionSpecies>(species);
                     if (!ignoredPayload) for (const auto& field : objectivePayloadSchema(value)) {
-                        value.payload.push_back(*reader.read(entry, field.prefix, field.key));
+                        auto payload = reader.read(entry, field.prefix, field.key);
+                        if (!payload) return reject(entry + "/" + std::string(field.key), "required_payload_unreadable");
+                        value.payload.push_back(std::move(*payload));
                     }
                     if (kind == "BooleanFlagIsSet" || kind == "SetBooleanFlag") {
                         value.flag.emplace();

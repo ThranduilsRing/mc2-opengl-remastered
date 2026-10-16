@@ -1,6 +1,7 @@
 #include "../../tests/unit/doctest.h"
 #include "TestInputs.h"
 #include "CommandHistory.h"
+#include "FitReader.h"
 #include <algorithm>
 #include <chrono>
 #include <bit>
@@ -838,6 +839,34 @@ TEST_CASE("objectives/required unreadable payloads quarantine only their entry b
     text.replace(begin, end - begin, "[Team0Objective0Action0]\r\nst ActionSpeciesString = \"PlayBIK\"\r\n");
     auto doc = MissionDocument::decode(text, packet(), "movie", {}); REQUIRE(doc);
     CHECK_FALSE(doc->objectives()[0].entries[1][0].policy.empty()); CHECK(doc->fitBytes() == text);
+}
+
+TEST_CASE("objectives/oversized hex rejects before legacy numeric shifts")
+{
+    for (const auto prefix : {"ul", "l"}) {
+        auto text = fixture();
+        text.insert(text.find("ul NumConditions"), std::string(prefix) + " ModelID = 0x100000000\r\n");
+        std::vector<std::string> logs;
+        auto doc = MissionDocument::decode(text, packet(), "hex", [&](auto line) { logs.push_back(line); });
+        REQUIRE_FALSE(doc);
+        CHECK(doc.error().reason == "hex_digit_limit");
+        REQUIRE(logs.size() == 1);
+        CHECK(logs.front().find("rejected=1") != logs.front().npos);
+    }
+}
+
+TEST_CASE("objectives/scanner numeric hex rejects oversized and non-ASCII digits")
+{
+    for (const auto prefix : {"ul", "l"}) for (const auto wire : {std::string("0x100000000"), std::string("0x1") + char(0xff)}) {
+        const auto text = "FITini\r\n[Objective0]\r\n" + std::string(prefix) + " ModelID = " + wire + "\r\nFITend\r\n";
+        const FitReader reader(text);
+        const auto value = reader.read("Objective0", prefix, "ModelID");
+        REQUIRE_FALSE(value);
+        CHECK(value.error() == (wire.back() == char(0xff) ? "malformed_hex" : "hex_digit_limit"));
+    }
+    const auto value = readerNumber("ul", "0xffffffff // retained");
+    REQUIRE(value);
+    CHECK(std::get<std::int64_t>(*value) == -1);
 }
 
 TEST_CASE("objectives/case mismatched ignored blocks stay ignored through sibling and owner renames")

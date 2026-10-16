@@ -13,6 +13,6 @@ private:
     std::vector<std::pair<std::string, Span>> blocks_;
 };
 std::expected<std::string, LoadError> readerText(std::string_view bytes, std::size_t equal);
-Scalar readerNumber(std::string_view prefix, std::string wire);
+std::expected<Scalar, std::string_view> readerNumber(std::string_view prefix, std::string wire);
 std::string readerNumericWire(std::string_view bytes, std::size_t value);
 }

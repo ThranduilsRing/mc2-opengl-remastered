@@ -91,9 +91,19 @@ std::expected<std::string, LoadError> readerText(std::string_view bytes, std::si
     auto first = std::string(line(bytes, at, 2047));
     return textValue(bytes, std::move(first), at, bytes.size());
 }
-Scalar readerNumber(std::string_view prefix, std::string wire)
+std::expected<Scalar, std::string_view> readerNumber(std::string_view prefix, std::string wire)
 {
     if (prefix == "f") return static_cast<double>(mc2::fit::textToFloat(wire.data()));
+    // The legacy hex converter shifts 32-bit digits and requires nonnegative ctype inputs.
+    if (const auto hex = wire.find("0x"); hex != wire.npos) {
+        std::size_t digits{};
+        for (std::size_t at = hex + 2; at < wire.size(); ++at) {
+            const auto c = static_cast<unsigned char>(wire[at]);
+            if (c >= 128) return std::unexpected("malformed_hex");
+            if (!std::isxdigit(c)) break;
+            if (++digits > 8) return std::unexpected("hex_digit_limit");
+        }
+    }
     if (prefix == "l") return static_cast<std::int64_t>(mc2::fit::textToLong(wire.data()));
     return static_cast<std::int64_t>(static_cast<std::int32_t>(mc2::fit::textToULong(wire.data())));
 }

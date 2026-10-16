@@ -256,7 +256,9 @@ private:
                     if (const auto* authored = std::get_if<std::int64_t>(&*value); authored &&
                         (*authored < -2147483648LL || *authored > 2147483647LL))
                         field.warning = "outside signed 32-bit range; the game reader overflows or wraps this value";
-                value = readerNumber(prefix, std::move(wire));
+                auto actual = readerNumber(prefix, std::move(wire));
+                if (!actual) return std::unexpected(LoadError{path, std::string(actual.error()), peek().span.begin});
+                value = std::move(*actual);
                 if (prefix == "f" && !std::isfinite(std::get<double>(*value)))
                     return std::unexpected(LoadError{path, "malformed_value", peek().span.begin});
             }
