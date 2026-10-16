@@ -9,11 +9,12 @@
 // top honoring the shared depth, and STOREs — no offscreen target, no composite, no
 // GL<->VK interop.
 //
-// SCOPE (honest): UNTEXTURED — per-particle color + a radial soft falloff (the FS
-// approximates a generic soft sprite). Two blend pipelines (alpha + additive) mirror
-// the GL particle bridge's per-group blend. DEFERRED remainder (documented): textured
-// sprite atlases, the tube-ribbon beam path (gos_tube_ribbon_flush_deferred), and the
-// gosFX MESH shapes (gos_vfx_mesh_flush). The whole TU compiles to nothing unless
+// SCOPE (honest): textured — each group samples its sprite page (imported once per
+// gos texture handle from the texels the GL path uploads) times the per-particle
+// tint. Two blend pipelines (alpha + additive) mirror the GL particle bridge's
+// per-group blend. DEFERRED remainder (documented): the tube-ribbon beam path
+// (gos_tube_ribbon_flush_deferred), and the gosFX MESH shapes
+// (gos_vfx_mesh_flush). The whole TU compiles to nothing unless
 // MC2_VULKAN_ISLAND is defined (same discipline as the other island TUs).
 
 #ifdef MC2_VULKAN_ISLAND
@@ -41,6 +42,7 @@
 #include "vulkan_shared_scene_depth.h"
 #include "vk_shared_gbuffer_gate.h"
 #include "vulkan_vfx_island.h"
+#include "texture_decode.h"   // gos_GetTextureTexels
 
 #include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
 
@@ -50,7 +52,9 @@
 #include <cstdarg>
 #include <cstdint>
 #include <cstddef>   // offsetof (M2 layout asserts)
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace {
@@ -96,6 +100,25 @@ struct VfxVsParams {
 static_assert(sizeof(VfxVsParams) == 96, "VfxVsParams std140 size (vfx_particle.vert)");
 static_assert(offsetof(VfxVsParams, camRight) == 64 && offsetof(VfxVsParams, camUp) == 80, "VfxVsParams offsets");
 
+// Push constants: the group's atlas sub-rect — LOCKSTEP with VfxGroupPush in vfx_particle.vert.
+struct VfxGroupPush {
+    float    uvOffset[2];
+    float    uvSize[2];
+    uint32_t atlasColumns;
+};
+static_assert(sizeof(VfxGroupPush) == 20, "VfxGroupPush push-constant size (vfx_particle.vert)");
+
+constexpr uint32_t kMaxSpritePages = 64;   // descriptor-set budget for the sprite pages
+
+// One sprite page. The view is declared after the image so it is released first; `source` keeps the texel
+// vector alive so its address stays a valid change marker (a new upload publishes a new vector).
+struct SpritePage {
+    mc2vk::OwnedImage img;
+    mc2vk::OwnedImageView view;
+    VkDescriptorSet set = VK_NULL_HANDLE;   // allocated from the island's sprite pool
+    std::shared_ptr<const std::vector<uint8_t>> source;
+};
+
 struct VfxIsland : mc2vk::IslandState {
     VkInstance       instance = VK_NULL_HANDLE;
     VkPhysicalDevice phys     = VK_NULL_HANDLE;
@@ -119,6 +142,10 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedDescriptorPool pool;
     VkDescriptorSet  set   = VK_NULL_HANDLE;
     mc2vk::OwnedShaderModule vert, frag;
+    mc2vk::OwnedSampler samp;
+    mc2vk::OwnedDescriptorSetLayout spriteDsl;
+    mc2vk::OwnedDescriptorPool spritePool;
+    std::unordered_map<uint32_t, SpritePage> pages;   // keyed on gos texture handle; after the pool so pages release first
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline alphaPipe;
     mc2vk::OwnedPipeline addPipe;
@@ -169,6 +196,96 @@ bool ensure_ssbo(VfxIsland* s, VkDeviceSize bytes) {
     s->ssboBytes = cap;
     write_descriptors(s);
     return true;
+}
+
+// Copy one level of RGBA8 / BC7 texels into `page.img` and point `page.set` at it. Runs before the frame is
+// recorded: it borrows the frame's command buffer and fence and waits for the copy, so no frame work is in flight.
+bool upload_page(VfxIsland* s, SpritePage& page, const GosTexels& t) {
+    const VkFormat fmt = mc2vk::texelFormat(t.vkFormat);
+    mc2vk::OwnedBuffer stg;
+    if (!make_buffer(s, t.bytes->size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stg, "vfx.staging")) return false;
+    if (!stg.upload(t.bytes->data(), t.bytes->size())) return false;
+    if (!page.img.createSampled2D(s->allocator, s->device, fmt, t.width, t.height, 1, 0, "vfx.sprite")) return false;
+
+    vkResetCommandBuffer(s->cbuf, 0);
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(s->cbuf, &bi) != VK_SUCCESS) return false;
+    VkImageMemoryBarrier bar{};
+    bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = page.img.get();
+    bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    vkCmdPipelineBarrier(s->cbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
+    VkBufferImageCopy r{};
+    r.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+    r.imageExtent = {t.width, t.height, 1};
+    vkCmdCopyBufferToImage(s->cbuf, stg.get(), page.img.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &r);
+    bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    vkCmdPipelineBarrier(s->cbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
+    if (vkEndCommandBuffer(s->cbuf) != VK_SUCCESS) return false;
+    const VkFence fence = s->fence.get();
+    vkResetFences(s->device, 1, &fence);
+    VkSubmitInfo si{};
+    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.commandBufferCount = 1; si.pCommandBuffers = &s->cbuf;
+    if (vkQueueSubmit(s->queue, 1, &si, fence) != VK_SUCCESS) return false;
+    if (vkWaitForFences(s->device, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
+        vlog("sprite upload fence wait failed.");
+        s->disabled = true;   // the copy may still be reading the staging buffer: do not draw again
+        return false;
+    }
+
+    VkImageViewCreateInfo vci{};
+    vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    vci.image = page.img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = fmt;
+    vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    if (!mc2vk::create(page.view, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vci, nullptr, h); })) return false;
+
+    VkDescriptorImageInfo ii{ s->samp.get(), page.view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+    VkWriteDescriptorSet w{};
+    w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w.dstSet = page.set; w.dstBinding = 0; w.descriptorCount = 1;
+    w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo = &ii;
+    vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
+    return true;
+}
+
+// The sprite page for a gos texture handle: imported on first sight and again when the handle's texels are
+// replaced; null while the texture is not resident (the group is skipped this frame, as the GL path does).
+// Call before recording the frame.
+const SpritePage* get_page(VfxIsland* s, uint32_t handle) {
+    if (handle == 0 || handle == 0xffffffffu) return nullptr;
+    const GosTexels t = gos_GetTextureTexels(handle);
+    if (t.status != GosTexels::Status::Ready || !t.bytes || t.width == 0 || t.height == 0 || t.width > 8192 || t.height > 8192) return nullptr;
+    auto it = s->pages.find(handle);
+    if (it != s->pages.end() && it->second.source == t.bytes) return &it->second;
+
+    SpritePage page;
+    if (it != s->pages.end()) {
+        page.set = it->second.set;   // sets live as long as the pool; the replacement reuses the slot
+    } else {
+        if (s->pages.size() >= kMaxSpritePages) return nullptr;
+        VkDescriptorSetAllocateInfo dsai{};
+        dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        dsai.descriptorPool = s->spritePool.get(); dsai.descriptorSetCount = 1;
+        const VkDescriptorSetLayout dsl = s->spriteDsl.get();
+        dsai.pSetLayouts = &dsl;
+        if (vkAllocateDescriptorSets(s->device, &dsai, &page.set) != VK_SUCCESS) return nullptr;
+    }
+    if (!upload_page(s, page, t)) {
+        vlog("sprite import failed: handle=%u %ux%u.", handle, t.width, t.height);
+        if (it == s->pages.end()) vkFreeDescriptorSets(s->device, s->spritePool.get(), 1, &page.set);   // a retry must not use up the pool
+        return nullptr;
+    }
+    page.source = t.bytes;
+    vlog("sprite page cached: handle=%u %ux%u format=%u (%zu/%u).", handle, t.width, t.height, t.vkFormat,
+         s->pages.size() + (it == s->pages.end() ? 1u : 0u), kMaxSpritePages);
+    SpritePage& slot = s->pages[handle];
+    slot = std::move(page);
+    return &slot;
 }
 
 mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive) {
@@ -355,10 +472,33 @@ bool init_island(VfxIsland* s, int w, int h) {
         s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_particle.vert.spv"));
         s->frag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_particle.frag.spv"));
         if (!s->vert || !s->frag) { setFallback("spv_load_failed"); return false; }
+        // Sprite pages: set 1 = one combined sampler (LINEAR, no mips -- the FS samples level 0 like the GL path).
+        VkSamplerCreateInfo sci{};
+        sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
+        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        if (!mc2vk::create(s->samp, s->device, [&](VkSampler* o) { return vkCreateSampler(s->device, &sci, nullptr, o); })) { vlog("vkCreateSampler failed."); return false; }
+        VkDescriptorSetLayoutBinding sb{};
+        sb.binding = 0; sb.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        sb.descriptorCount = 1; sb.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutCreateInfo slci{};
+        slci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        slci.bindingCount = 1; slci.pBindings = &sb;
+        if (!mc2vk::create(s->spriteDsl, s->device, [&](VkDescriptorSetLayout* o) { return vkCreateDescriptorSetLayout(s->device, &slci, nullptr, o); })) { vlog("vkCreateDescriptorSetLayout(sprite) failed."); return false; }
+        VkDescriptorPoolSize spriteSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, kMaxSpritePages };
+        VkDescriptorPoolCreateInfo spci{};
+        spci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        spci.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+        spci.maxSets = kMaxSpritePages; spci.poolSizeCount = 1; spci.pPoolSizes = &spriteSize;
+        if (!mc2vk::create(s->spritePool, s->device, [&](VkDescriptorPool* o) { return vkCreateDescriptorPool(s->device, &spci, nullptr, o); })) { vlog("vkCreateDescriptorPool(sprite) failed."); return false; }
+
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        const VkDescriptorSetLayout dslHandle = s->dsl.get();
-        plci.setLayoutCount = 1; plci.pSetLayouts = &dslHandle;
+        const VkDescriptorSetLayout dslHandles[2] = { s->dsl.get(), s->spriteDsl.get() };
+        plci.setLayoutCount = 2; plci.pSetLayouts = dslHandles;
+        const VkPushConstantRange pcr{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VfxGroupPush) };
+        plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
         if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* o) { return vkCreatePipelineLayout(s->device, &plci, nullptr, o); })) { vlog("vkCreatePipelineLayout failed."); return false; }
         s->alphaPipe = make_pipeline(s, w, h, /*additive=*/false);
         s->addPipe   = make_pipeline(s, w, h, /*additive=*/true);
@@ -383,7 +523,7 @@ bool init_island(VfxIsland* s, int w, int h) {
     s->inited = true;
     setFallback("");
     vlog("island initialized %dx%d (shared scene GBuffer co-write; procedural billboard VS; "
-         "GEQUAL reverse-Z depth-test no-write; alpha+additive blend; untextured).", w, h);
+         "GEQUAL reverse-Z depth-test no-write; alpha+additive blend; textured sprite pages).", w, h);
     return true;
 }
 
@@ -452,6 +592,13 @@ extern "C" int mc2_vk_vfx_island_run(
         }
     }
 
+    // Resolve every group's sprite page first: an import records and waits on its own submit.
+    std::vector<const SpritePage*> groupPage(drawCount, nullptr);
+    for (uint32_t gi = 0; gi < drawCount; ++gi) {
+        if (draws[gi].count != 0) groupPage[gi] = get_page(s, draws[gi].texture);
+    }
+    if (s->disabled) return 0;
+
     // Record: one renderpass, per-group pipeline + sub-range draw.
     vkResetCommandBuffer(s->cbuf, 0);
     VkCommandBufferBeginInfo bi{};
@@ -474,8 +621,12 @@ extern "C" int mc2_vk_vfx_island_run(
         const VfxParticleDraw& d = draws[gi];
         if (d.count == 0) continue;
         if ((uint64_t)d.start + d.count > particleCount) continue;   // clamp bad ranges
+        if (!groupPage[gi]) continue;   // no resident texture: skipped, as the GL path does
         VkPipeline want = d.additive ? s->addPipe.get() : s->alphaPipe.get();
         if (want != bound) { vkCmdBindPipeline(s->cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }
+        vkCmdBindDescriptorSets(s->cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groupPage[gi]->set, 0, nullptr);
+        const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns };
+        vkCmdPushConstants(s->cbuf, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
         vkCmdDraw(s->cbuf, d.count * 6u, 1, d.start * 6u, 0);
         ++groupsDrawn;
     }

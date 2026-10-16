@@ -14,9 +14,9 @@
 //     column_major (std140 default) -> gl_Position = M * worldPos, exactly like
 //     the water island (no transpose, no Y-flip in-shader; the shared GBuffer is
 //     authored in GL clip by every island, so consistency is what matters).
-//   - UNTEXTURED slice: uv/atlas dropped; the FS shades v_color with a soft
-//     radial falloff from v_corner (round soft blob). Textured sprite fidelity is
-//     the documented deferred remainder.
+//   - Atlas uv: group sub-rect (push constants) plus the per-particle flipbook
+//     frame when atlasColumns > 1, as the GL VS computes v_uv; head flag from
+//     kind_flags bit 0.
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #include "../include/axis.hglsl"
@@ -38,14 +38,22 @@ layout(set = 0, binding = 0, std140) uniform VfxVsParams {
     vec4 camUp;           // xyz = GL-world-space camera up    (w unused)
 } U;
 
+// Per-group atlas sub-rect; LOCKSTEP with VfxGroupPush in vulkan_vfx_island.cpp.
+layout(push_constant) uniform VfxGroupPush {
+    vec2 uvOffset;
+    vec2 uvSize;
+    uint atlasColumns;   // 0 / 1 = static, > 1 = flipbook (frame = atlasIndex)
+} G;
+
 // Atlas UVs for the four billboard corners (normalized [0,1]).
 const vec2 kCornerUv[4] = vec2[](
     vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(0.0, 1.0), vec2(1.0, 1.0));
 // Two CCW triangles per quad (matches the GL VS winding fix).
 const int kCornerIdx[6] = int[](0, 1, 2, 2, 3, 1);
 
-layout(location = 0) out vec4 v_color;
-layout(location = 1) out vec2 v_corner;   // [0,1] corner uv for the soft-blob FS
+layout(location = 0) out vec2 v_uv;
+layout(location = 1) out vec4 v_color;
+layout(location = 2) flat out uint v_is_head;
 
 void main() {
     uint particleId = uint(gl_VertexIndex) / 6u;
@@ -72,6 +80,11 @@ void main() {
 
     gl_Position = U.worldToClipGL * vec4(worldPos, 1.0);
 
-    v_color  = p.color;
-    v_corner = kCornerUv[cornerIdx];
+    vec2 frameOffset = vec2(0.0);
+    if (G.atlasColumns > 1u) {
+        frameOffset = vec2(float(p.atlasIndex % G.atlasColumns), float(p.atlasIndex / G.atlasColumns));
+    }
+    v_uv      = G.uvOffset + (frameOffset + kCornerUv[cornerIdx]) * G.uvSize;
+    v_color   = p.color;
+    v_is_head = p.kind_flags & 1u;
 }
