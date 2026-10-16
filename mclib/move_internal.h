@@ -28,6 +28,10 @@
 #include"move_recon.h"  // MC2_MOVE_RECON per-frame pathfinding cost instrumentation
 #include"path_trace.h"  // PATHFINDING-FACTS-1 Stage 1 gated PATH telemetry
 #include"move_solvectx.h"  // PATHFINDING-SOLVER-ISOLATION-1 per-solve SolveContext
+#include"globalmap_limits.h"   // the range checks of the counts a global move map reads from a pak
+
+static_assert(mc2::globalmap::kMaxAreas == MAX_GLOBALMAP_AREAS && mc2::globalmap::kMaxDoors == MAX_GLOBALMAP_DOORS &&
+              mc2::globalmap::kMaxCellsPerSide == MAX_MAP_CELL_WIDTH, "globalmap_limits.h must name the builder's limits");
 
 
 #ifndef TEAM_H
