@@ -1610,7 +1610,22 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                 s_dumped = true;
                 s_pktDump = std::fopen(dp, "w");
                 if (s_pktDump)
-                    std::fprintf(s_pktDump, "typeID,packet,layerOff,layerOn,uvScaleX,uvScaleY,indexCount,firstIndex,baseVertex,instCount,firstInstance\n");
+                    std::fprintf(s_pktDump, "typeID,packet,layerOff,layerOn,uvScaleX,uvScaleY,indexCount,firstIndex,baseVertex,instCount,firstInstance,alphaTest\n");
+                // TEMP row-23 diag: each drawn instance's origin on screen, so a type is found by where it draws.
+                if (FILE* fi = s_pktDump ? std::fopen((std::string(dp) + ".inst.csv").c_str(), "w") : nullptr) {
+                    std::fprintf(fi, "inst,typeID,sx,sy,w\n");
+                    const float* W = feed.worldToClipGL;
+                    for (uint32_t ii = 0; ii < instanceCount; ++ii) {
+                        const float* m = insts[ii].modelMatrix;
+                        const float p[4] = {-m[3], m[11], m[7], 1.0f};
+                        float c[4];
+                        for (int r = 0; r < 4; ++r) c[r] = W[r] * p[0] + W[4 + r] * p[1] + W[8 + r] * p[2] + W[12 + r] * p[3];
+                        if (c[3] <= 0.0f) continue;
+                        std::fprintf(fi, "%u,%u,%.1f,%.1f,%.3f\n", ii, insts[ii].typeID, (c[0] / c[3] * 0.5f + 0.5f) * (float)w,
+                                     (1.0f - (c[1] / c[3] * 0.5f + 0.5f)) * (float)h, c[3]);
+                    }
+                    std::fclose(fi);
+                }
             }
         }
 
@@ -1641,10 +1656,10 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                         mc2_static_prop_packet_alpha_test(pk),
                     };
                     if (s_pktDump)
-                        std::fprintf(s_pktDump, "%u,%u,%d,%d,%.4f,%.4f,%u,%u,%d,%u,%u\n",
+                        std::fprintf(s_pktDump, "%u,%u,%d,%d,%.4f,%.4f,%u,%u,%d,%u,%u,%d\n",
                                      tid, pk, pc.layerOff, pc.layerOn, pc.uvScaleX, pc.uvScaleY,
                                      pkt.indexCount, pkt.firstIndex,
-                                     (int32_t)pkt.baseVertex, instCount, i);
+                                     (int32_t)pkt.baseVertex, instCount, i, pc.alphaTest);
                     vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                                         0, sizeof(pc), &pc);
                     vkCmdDrawIndexed(cb, pkt.indexCount, instCount,
