@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in msl_internal.h.
 #include "msl_internal.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 
 //-------------------------------------------------------------------------------
