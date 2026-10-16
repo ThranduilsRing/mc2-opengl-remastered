@@ -171,7 +171,6 @@ void MC_TextureManager::start (void)
 		
 	masterVertexNodeStore.assign(MC_MAXTEXTURES, MC_VertexArrayNode{});
 	masterVertexNodes = masterVertexNodeStore.data();
-	vertexNodeExtras.assign(MC_MAXTEXTURES, std::vector<gos_TERRAIN_EXTRA>());
 
 	masterHardwareVertexNodeStore.assign(MC_MAXTEXTURES, MC_HardwareVertexArrayNode{});
 	masterHardwareVertexNodes = masterHardwareVertexNodeStore.data();
@@ -286,7 +285,6 @@ void MC_TextureManager::destroy (void)
 	indexArray = nullptr;
 	std::vector<MC_TextureNode>().swap(masterTextureNodeStore);
 	std::vector<MC_VertexArrayNode>().swap(masterVertexNodeStore);
-	std::vector<std::vector<gos_TERRAIN_EXTRA>>().swap(vertexNodeExtras);
 	std::vector<MC_HardwareVertexArrayNode>().swap(masterHardwareVertexNodeStore);
 	std::vector<WORD>().swap(indexArrayStore);
 	

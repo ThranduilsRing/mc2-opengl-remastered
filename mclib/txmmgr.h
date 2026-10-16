@@ -99,7 +99,6 @@ typedef struct _MC_VertexArrayNode
 		long				numVertices;				//Number of vertices this texture will be used to draw this frame.
 		gos_VERTEX			*currentVertex;				//CurrentVertex data being added.
 		gos_VERTEX			*vertices;					//Pointer into the vertex Pool for this texture to draw.
-		long				numExtras;					//Terrain extra records written to this node's store (MC_TextureManager::vertexNodeExtras)
 
 	void init (void)
 	{
@@ -108,7 +107,6 @@ typedef struct _MC_VertexArrayNode
 		currentVertex = 0;
 		vertices = NULL;
 		textureIndex = 0;
-		numExtras = 0;
 	}
 
 } MC_VertexArrayNode;
@@ -391,9 +389,6 @@ class MC_TextureManager
 		long							peakUsedTextures;			//Mission high-water mark for currentUsedTextures.
 													
 		MC_VertexArrayNode 				*masterVertexNodes;			//Dynamically allocated from an MC Heap.
-		// Terrain extra data (world pos + normal) per vertex node, in step with masterVertexNodes. The nodes are zero-filled each
-		// frame, so the owning stores sit beside them; clearArrays empties a store and keeps its capacity.
-		std::vector<std::vector<gos_TERRAIN_EXTRA>>	vertexNodeExtras;
 		long							nextAvailableVertexNode;	//index to next available vertex Node
 
 		MC_HardwareVertexArrayNode 		*masterHardwareVertexNodes;			//Dynamically allocated from an MC Heap.
@@ -1282,34 +1277,6 @@ class MC_TextureManager
 			}
 		}
 
-		// Add terrain extra data (world pos + normal) to the same node slot as addVertices
-		void addTerrainExtra (DWORD nodeId, const gos_TERRAIN_EXTRA *data, DWORD flags)
-		{
-			if (nodeId >= MC_MAXTEXTURES) return;
-			MC_VertexArrayNode *node = NULL;
-			if (masterTextureNodes[nodeId].vertexData &&
-				masterTextureNodes[nodeId].vertexData->flags == flags)
-				node = masterTextureNodes[nodeId].vertexData;
-			else if (masterTextureNodes[nodeId].vertexData2 &&
-					 masterTextureNodes[nodeId].vertexData2->flags == flags)
-				node = masterTextureNodes[nodeId].vertexData2;
-			else if (masterTextureNodes[nodeId].vertexData3 &&
-					 masterTextureNodes[nodeId].vertexData3->flags == flags)
-				node = masterTextureNodes[nodeId].vertexData3;
-			if (!node) return;
-
-			// The store is sized to the node's vertex capacity on the first extra; a triangle that would not fit is dropped.
-			const size_t nodeIndex = (size_t)(node - masterVertexNodes);
-			if (nodeIndex >= vertexNodeExtras.size()) return;
-			std::vector<gos_TERRAIN_EXTRA>& store = vertexNodeExtras[nodeIndex];
-			if (store.empty() && node->numVertices > 0)
-				store.resize((size_t)node->numVertices);
-			if ((size_t)node->numExtras + 3 <= store.size()) {
-				memcpy(&store[(size_t)node->numExtras], data, sizeof(gos_TERRAIN_EXTRA) * 3);
-				node->numExtras += 3;
-			}
-		}
-
 		void addRenderShape(DWORD nodeId, TG_RenderShape* render_shape, DWORD flags);
 
         // returns index at which this light structure was added
@@ -1319,10 +1286,6 @@ class MC_TextureManager
 
 		void clearArrays (void)
 		{
-			// The extra stores are emptied (capacity kept) before the nodes are zero-filled
-			for (long j=0;j<nextAvailableVertexNode && j<(long)vertexNodeExtras.size();j++)
-				vertexNodeExtras[j].clear();
-
 			for (long i=0;i<MC_MAXTEXTURES;i++)
 			{
 				masterTextureNodes[i].vertexData = NULL;

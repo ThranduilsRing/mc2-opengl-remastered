@@ -435,7 +435,7 @@ void MC_TextureManager::renderListsTerrainSolid ([[maybe_unused]] const RenderLi
 		// Modern path. flush() returns true on success and false on overflow
 		// / not-ready / not-killswitched. On false we fall through to the
 		// legacy loop for the WHOLE FRAME — never partial-frame. The legacy
-		// ring data has been kept in sync by addVertices/fillTerrainExtra
+		// ring data has been kept in sync by addVertices
 		// running unconditionally in quad.cpp.
 		// Bucket-census instrumentation (env-gated MC2_BUCKET_CENSUS=1).
 		// Count legacy-eligible nodes BEFORE flush() runs (both the legacy

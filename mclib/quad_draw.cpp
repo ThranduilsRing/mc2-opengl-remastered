@@ -36,23 +36,8 @@ static int  s_m2dPzParityEmitted = 0;       // first-N detail lines emitted so f
 static bool s_m2dPzParityArmLogged = false; // one-shot arm/scope-assertion line
 static const int s_m2dPzParityEmitCap = 32; // first-N detail-line cap
 
-// Fill terrain extra data for tessellation — routed to per-node storage via texture manager
-static void fillTerrainExtra(DWORD texHandle, DWORD flags, VertexPtr v0, VertexPtr v1, VertexPtr v2) {
-    gos_TERRAIN_EXTRA textra[3];
-    textra[0].wx = v0->vx; textra[0].wy = v0->vy; textra[0].wz = v0->pVertex->elevation;
-    textra[0].nx = v0->pVertex->vertexNormal.x; textra[0].ny = v0->pVertex->vertexNormal.y; textra[0].nz = v0->pVertex->vertexNormal.z;
-    textra[1].wx = v1->vx; textra[1].wy = v1->vy; textra[1].wz = v1->pVertex->elevation;
-    textra[1].nx = v1->pVertex->vertexNormal.x; textra[1].ny = v1->pVertex->vertexNormal.y; textra[1].nz = v1->pVertex->vertexNormal.z;
-    textra[2].wx = v2->vx; textra[2].wy = v2->vy; textra[2].wz = v2->pVertex->elevation;
-    textra[2].nx = v2->pVertex->vertexNormal.x; textra[2].ny = v2->pVertex->vertexNormal.y; textra[2].nz = v2->pVertex->vertexNormal.z;
-    mcTextureManager->addTerrainExtra(texHandle, textra, flags);
-}
-
-// Builds the same 3-element gos_TERRAIN_EXTRA[3] that fillTerrainExtra
-// would push to addTerrainExtra, but returns it by value so the modern
-// patch stream can mirror-write the bytes without re-reading the verts.
-// Keeping the math identical to fillTerrainExtra is the BR-byte-parity
-// guarantee for shadow / grass behavior.
+// Builds the gos_TERRAIN_EXTRA[3] (world position and normal per corner) of one
+// triangle by value, so the patch stream can write the bytes without re-reading the verts.
 static inline void buildTerrainExtraTriple(VertexPtr v0, VertexPtr v1, VertexPtr v2,
                                            gos_TERRAIN_EXTRA out[3])
 {
@@ -640,7 +625,6 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 				// sebi: beware this will be drawn with alpha blending, so need to make sure that alpha is not zero, because this is a base terrain layer!
 				if(terrainHandle!=0 && !TerrainPatchStream::isFastPathActive()) {
 					mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
-					fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[1], vertices[2]);
 					// PatchStream append moved to appendQuad after both pz gates.
 				}
 
@@ -787,7 +771,6 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 			{
 				if(terrainHandle!=0 && !TerrainPatchStream::isFastPathActive()) {
 					mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
-					fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[2], vertices[3]);
 					// PatchStream append moved to appendQuad below.
 				}
 
@@ -1010,7 +993,6 @@ void TerrainQuad::drawLegacyBottomLeft(QuadDrawFrame& f) {
 			{
 				if(terrainHandle!=0 && !TerrainPatchStream::isFastPathActive()) {
 					mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
-					fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[1], vertices[3]);
 					// PatchStream append moved to appendQuad after both pz gates.
 				}
 
@@ -1155,7 +1137,6 @@ void TerrainQuad::drawLegacyBottomLeft(QuadDrawFrame& f) {
 			{
 				if(terrainHandle!=0 && !TerrainPatchStream::isFastPathActive()) {
 					mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
-					fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[1], vertices[2], vertices[3]);
 					// PatchStream append moved to appendQuad below.
 				}
 
