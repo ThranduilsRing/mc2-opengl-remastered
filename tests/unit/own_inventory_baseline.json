@@ -6119,7 +6119,7 @@
    "owners": []
   },
   "UserHeap": {
-   "delete": 23,
+   "delete": 17,
    "delete_array": 0,
    "files": {
     "code/ablmc2.cpp": {
@@ -6178,23 +6178,12 @@
      "delete": 2,
      "new": 2
     },
-    "mclib/terrtxm2.cpp": {
-     "delete": 2
-    },
-    "mclib/terrtxm2_bake.cpp": {
-     "delete": 2,
-     "new": 2
-    },
-    "mclib/terrtxm2_load.cpp": {
-     "delete": 2,
-     "new": 3
-    },
     "mclib/txmmgr.cpp": {
      "delete": 2,
      "new": 2
     }
    },
-   "new": 27,
+   "new": 22,
    "new_array": 0,
    "owners": [
     "",
@@ -6205,7 +6194,6 @@
     "ObjectTypeManager",
     "SoundSystem",
     "Terrain",
-    "TerrainColorMap",
     "TerrainTextures"
    ]
   },
