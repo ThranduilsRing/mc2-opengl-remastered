@@ -33,8 +33,8 @@ void EditorObjectMgr::select( const Stuff::Vector4D& pos1, const Stuff::Vector4D
 
 	Stuff::Vector4D screenPos;
 
-	for ( BUILDING_LIST::EIterator iter = buildings.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = buildings.begin();
+		iter != buildings.end(); iter++ )
 		{
 			EditorObject* pObject = (*iter);
 			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
@@ -71,8 +71,8 @@ void EditorObjectMgr::select( const Stuff::Vector4D& pos1, const Stuff::Vector4D
 			}
 		}
 
-		for ( DROP_LIST::EIterator dIter = dropZones.Begin();
-		!dIter.IsDone(); dIter++ )
+		for ( auto dIter = dropZones.begin();
+		dIter != dropZones.end(); dIter++ )
 		{
 			EditorObject* pObject = (*dIter);
 			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
@@ -119,8 +119,8 @@ void EditorObjectMgr::select( EditorObject &object, bool bSelect )
 
 void EditorObjectMgr::unselectAll()
 {
-	for ( BUILDING_LIST::EIterator iter = buildings.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = buildings.begin();
+		iter != buildings.end(); iter++ )
 		{
 			EditorObject* pObject = (*iter);
 			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
@@ -136,8 +136,8 @@ void EditorObjectMgr::unselectAll()
 				pAppearance->selected = false;
 		}
 
-		for ( DROP_LIST::EIterator dIter = dropZones.Begin();
-		!dIter.IsDone(); dIter++ )
+		for ( auto dIter = dropZones.begin();
+		dIter != dropZones.end(); dIter++ )
 		{
 			EditorObject* pObject = (*dIter);
 			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
@@ -158,8 +158,8 @@ bool EditorObjectMgr::hasSelection()
 		return true;
 	}
 #else
-	for ( BUILDING_LIST::EConstIterator iter = buildings.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = buildings.begin();
+		iter != buildings.end(); iter++ )
 		{
 			if ((*iter)->appearance()->selected )				
 				return true;
@@ -182,8 +182,8 @@ int EditorObjectMgr::getSelectionCount()
 	return static_cast<int>(selectedObjects.size());
 #else
 	int counter = 0;
-	for ( BUILDING_LIST::EConstIterator iter = buildings.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = buildings.begin();
+		iter != buildings.end(); iter++ )
 		{
 			if ((*iter)->appearance()->selected )				
 				counter++;
@@ -212,8 +212,8 @@ void EditorObjectMgr::syncSelectedObjectPointerList()
 		return;
 	}
 	selectedObjects.clear();
-	for ( BUILDING_LIST::EConstIterator iter = buildings.Begin()
-		;!iter.IsDone(); iter++ )
+	for ( auto iter = buildings.begin()
+		;iter != buildings.end(); iter++ )
 	{
 		const EditorObject* pObject = (*iter);
 		const ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
@@ -228,8 +228,8 @@ void EditorObjectMgr::syncSelectedObjectPointerList()
 		if (pAppearance && pAppearance->selected )				
 			selectedObjects.push_back(*mIter);
 	}
-	for ( DROP_LIST::EIterator dIter = dropZones.Begin();
-	!dIter.IsDone(); dIter++ )
+	for ( auto dIter = dropZones.begin();
+	dIter != dropZones.end(); dIter++ )
 	{
 		const EditorObject* pObject = (*dIter);
 		const ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
@@ -242,72 +242,59 @@ void EditorObjectMgr::syncSelectedObjectPointerList()
 
 void EditorObjectMgr::deleteSelectedObjects()
 {
-	for ( BUILDING_LIST::EIterator iter = buildings.End();
-		!iter.IsDone();  )
+	for (size_t index = buildings.size(); index > 0; )
+	{
+		--index;
+		auto iter = buildings.begin() + index;
+		if ((*iter)->appearance() && (*iter)->appearance()->selected)
 		{
-			if ( (*iter)->appearance() && (*iter)->appearance()->selected )
-			{
-				// Undo-held appearances outlive removal; their static recipes must stop drawing.
-				(*iter)->appearance()->invalidateStaticRegistration();
-				// scrub drag pointer for removed object (UAF guard).
-				if ( EditorInterface::instance() )
-					EditorInterface::instance()->notifyObjectDeleted(*iter);
-				BUILDING_LIST::EIterator tmpIter = iter;
-				iter --;
-				buildings.Delete( tmpIter );
-			}
-			else
-				iter--;
+			// Undo-held appearances outlive removal; their static recipes must stop drawing.
+			(*iter)->appearance()->invalidateStaticRegistration();
+			if (EditorInterface::instance())
+				EditorInterface::instance()->notifyObjectDeleted(*iter);
+			buildings.erase(iter);
 		}
+	}
 
-		for (size_t index = units.size(); index > 0; )
+	for (size_t index = units.size(); index > 0; )
+	{
+		--index;
+		auto uIter = units.begin() + index;
+		if ((*uIter)->appearance() && (*uIter)->appearance()->selected)
 		{
-			--index;
-			auto uIter = units.begin() + index;
-			// appearance() can be NULL; guard before ->selected.
-			if ( (*uIter)->appearance() && (*uIter)->appearance()->selected )
-			{
-				// scrub drag pointer for removed object (UAF guard).
-				if ( EditorInterface::instance() )
-					EditorInterface::instance()->notifyObjectDeleted(*uIter);
-				units.erase(uIter);
-			}
+			if (EditorInterface::instance())
+				EditorInterface::instance()->notifyObjectDeleted(*uIter);
+			units.erase(uIter);
 		}
+	}
 
-		for ( DROP_LIST::EIterator dIter = dropZones.End();
-		!dIter.IsDone(); )
+	for (size_t index = dropZones.size(); index > 0; )
+	{
+		--index;
+		auto dIter = dropZones.begin() + index;
+		if ((*dIter)->appearance() && (*dIter)->appearance()->selected)
 		{
-			// appearance() can be NULL; guard before ->selected.
-			if ( (*dIter)->appearance() && (*dIter)->appearance()->selected )
-			{
-				// invalidate the static-prop recipe before removal.
-				(*dIter)->appearance()->invalidateStaticRegistration();
-				// scrub drag pointer for removed object (UAF guard).
-				if ( EditorInterface::instance() )
-					EditorInterface::instance()->notifyObjectDeleted(*dIter);
-				DROP_LIST::EIterator tmpIter = dIter;
-				dIter --;
-				dropZones.Delete( tmpIter );
-			}
-			else
-				dIter--;
-		
+			(*dIter)->appearance()->invalidateStaticRegistration();
+			if (EditorInterface::instance())
+				EditorInterface::instance()->notifyObjectDeleted(*dIter);
+			dropZones.erase(dIter);
 		}
+	}
 
-		selectedObjects.clear();
+	selectedObjects.clear();
 }
 
 void EditorObjectMgr::adjustObjectsToNewTerrainHeights()
 {
-	for ( BUILDING_LIST::EIterator iter = buildings.End();
-		!iter.IsDone(); iter++  )
+	if (!buildings.empty())
 	{
+		auto iter = std::prev(buildings.end());
 		float Z = land->getTerrainElevation( (*iter)->appearance()->position );
 		(*iter)->appearance()->position.z = Z;
 		(*iter)->appearance()->update();
 	}
 
-	for ( LINK_LIST::EIterator lIter = links.Begin(); !lIter.IsDone(); lIter++ )
+	for ( auto lIter = links.begin(); lIter != links.end(); lIter++ )
 	{
 		(*lIter)->FixHeights();	
 	}
@@ -325,7 +312,7 @@ int EditorObjectMgr::getNextAvailableForestID()
 {
 	int max = -1;
 
-	for ( FOREST_LIST::EIterator iter = forests.Begin(); !iter.IsDone(); iter++)
+	for ( auto iter = forests.begin(); iter != forests.end(); iter++)
 	{
 		if ( (*iter)->getID() > max )
 		{
@@ -347,7 +334,7 @@ long EditorObjectMgr::createForest( const Forest& forest )
 	if ( !strstr( pForest->getFileName(), ".fit" ) )
 		pForest->setFileName( oldForestName );
 
-	forests.Append( pForest );
+	forests.push_back( pForest );
 	
 	doForest( *pForest );
 
@@ -359,8 +346,10 @@ void EditorObjectMgr::editForest( long& oldID, const Forest& forest )
 {
 	land->unselectAll();
 
-	for ( BUILDING_LIST::EIterator bIter = buildings.End(); !bIter.IsDone();  )
+	for (size_t index = buildings.size(); index > 0; )
 	{
+		--index;
+		auto bIter = buildings.begin() + index;
 		if ( (*bIter)->getForestID() == oldID )
 		{
 			long cellI, cellJ;
@@ -371,16 +360,11 @@ void EditorObjectMgr::editForest( long& oldID, const Forest& forest )
 			land->selectVertex( tileJ, tileI, true );
 
 			delete *bIter;
-
-			BUILDING_LIST::EIterator tmpIter = bIter;
-			bIter --;
-			buildings.Delete( tmpIter );
+			buildings.erase(bIter);
 		}
-		else
-			bIter--;
 	}
 
-	for ( FOREST_LIST::EIterator iter = forests.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = forests.begin(); iter != forests.end(); iter++ )
 	{
 		if ( (*iter)->getID() == oldID )
 		{
@@ -397,27 +381,23 @@ void EditorObjectMgr::editForest( long& oldID, const Forest& forest )
 void EditorObjectMgr::removeForest( const Forest& forest )
 {
 	unselectAll();
-	for ( BUILDING_LIST::EIterator bIter = buildings.End(); !bIter.IsDone();  )
+	for (size_t index = buildings.size(); index > 0; )
 	{
+		--index;
+		auto bIter = buildings.begin() + index;
 		if ( (*bIter)->getForestID() == forest.getID() )
 		{
 			delete *bIter;
-			BUILDING_LIST::EIterator tmpIter = bIter;
-			bIter--;
-			buildings.Delete( tmpIter );
-		}
-		else
-		{
-			bIter--;
+			buildings.erase(bIter);
 		}
 	}
 
-	for ( FOREST_LIST::EIterator iter = forests.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = forests.begin(); iter != forests.end(); iter++ )
 	{
 		if ( (*iter)->getID() == forest.getID() )
 		{
 			delete (*iter);
-			forests.Delete( iter );
+			forests.erase( iter );
 			return;
 		}
 	}
@@ -427,7 +407,7 @@ void EditorObjectMgr::selectForest( long ID )
 {
 	unselectAll();
 
-	for ( BUILDING_LIST::EIterator bIter = buildings.Begin(); !bIter.IsDone(); bIter++  )
+	for ( auto bIter = buildings.begin(); bIter != buildings.end(); bIter++  )
 	{
 		if ( (*bIter)->getForestID() == ID )
 		{
@@ -568,7 +548,7 @@ void EditorObjectMgr::doForest( const Forest& forest )
 
 const Forest* EditorObjectMgr::getForest( long ID )
 {
-	for ( FOREST_LIST::EIterator iter = forests.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = forests.begin(); iter != forests.end(); iter++ )
 		{
 			if ( (*iter)->getID() == ID )
 				return (*iter);
@@ -582,15 +562,15 @@ const Forest* EditorObjectMgr::getForest( long ID )
 long EditorObjectMgr::getForests( Forest** pForests, long& count )
 {
 
-	if ( forests.Count() > count )
+	if ( static_cast<int>(forests.size()) > count )
 	{
-		count = forests.Count();
+		count = static_cast<int>(forests.size());
 		return -1;
 	}
 
 	count = 0;
 
-	for ( FOREST_LIST::EIterator iter = forests.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = forests.begin(); iter != forests.end(); iter++ )
 	{
 		pForests[count++] = (*iter);
 	}

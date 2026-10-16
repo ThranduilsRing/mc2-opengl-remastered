@@ -55,8 +55,8 @@ BOOL ChooseBuildingDlg::OnInitDialog()
 
 	m_buildingList.clear();
 	EditorObjectMgr::BUILDING_LIST completeBuildingList = EditorObjectMgr::instance()->getBuildings();
-	EditorObjectMgr::BUILDING_LIST::EConstIterator it2 = completeBuildingList.Begin();
-	while (!it2.IsDone()) {
+	auto it2 = completeBuildingList.begin();
+	while (it2 != completeBuildingList.end()) {
 		m_buildingList.push_back(*it2);
 		it2++;
 	}

@@ -147,6 +147,16 @@ int main() {
                                'unitsByPlayer[alignment].push_back((*iter));',
                                'unitsByPlayer[alignment].insert(unitsByPlayer[alignment].begin(), (*iter));'))
 
+    def test_nav_export_preserves_custom_swap_permutation(self):
+        self.save_order_fixture('saveDropZones', r'''
+int main() {
+    EditorObjectMgr mgr; EditorObject a{3,true,10}, b{2,true,11}, c{1,true,12}, d{2,true,13}, e{0,false}, zone{9};
+    for (auto* o : {&a,&b,&c,&d,&e}) mgr.buildings.APPEND(o);
+    mgr.dropZones.APPEND(&zone);
+    FitIniFile file; mgr.saveDropZones(file); fwrite(file.bytes.data(), 1, file.bytes.size(), stdout);
+}
+''', lambda text: text.replace('break;', 'cur = pObjects[i];'))
+
     def test_selection_preserves_borrowed_copies_unique_order_and_roster_sync(self):
         root = Path(__file__).resolve().parents[2]
         output = Path(tempfile.gettempdir()) / 'mc2-el9-selection' / uuid.uuid4().hex
@@ -178,7 +188,8 @@ int main() {
             start = header.index('\tclass EDITOR_OBJECT_LIST' if legacy else '\tusing EDITOR_OBJECT_LIST')
             source += header[start:header.index('\tEditorObjectMgr();', start)]
             roster_vector = 'using UNIT_LIST = std::vector' in header
-            source += ('using BUILDING_LIST = EList<EditorObject*, EditorObject*>; '
+            building_vector = 'using BUILDING_LIST = std::vector' in header
+            source += (('using BUILDING_LIST = std::vector<EditorObject*>; ' if building_vector else 'using BUILDING_LIST = EList<EditorObject*, EditorObject*>; ')
                        + ('using UNIT_LIST = std::vector<Unit*>; ' if roster_vector else 'using UNIT_LIST = EList<Unit*, Unit*>; ')
                        + 'using DROP_LIST = BUILDING_LIST;\n'
                        'BUILDING_LIST buildings, dropZones; UNIT_LIST units; EDITOR_OBJECT_LIST selectedObjects; '
@@ -235,6 +246,8 @@ int main() {
     filter(mixed); assert(mixed.SIZE() == 3 && mixed[0] == &a && mixed[1] == &missing && mixed[2] == &a);
 }
 '''
+            if building_vector:
+                main = main.replace('mgr.buildings.Append', 'mgr.buildings.push_back').replace('mgr.dropZones.Append', 'mgr.dropZones.push_back')
             if roster_vector:
                 main = main.replace('mgr.units.Append', 'mgr.units.push_back')
             return source + main.replace('EMPTY_FILTER', '' if legacy else 'filter(mixed); assert(mixed.size() == 0);').replace('SIZE', 'Count' if legacy else 'size').replace('CLEAR', 'Clear' if legacy else 'clear').replace('APPEND', 'Append' if legacy else 'push_back').replace('SELECTED_UNITS', 'EditorObjectMgr::UNIT_LIST' if legacy else 'EditorObjectMgr::SelectedUnits')
@@ -290,7 +303,7 @@ int main() {
             source += ('struct AppearanceType {}; using DWORD = unsigned long;\n'
                        'constexpr int MECH_TYPE = 1, GV_TYPE = 2;\nclass EditorObjectMgr { public:\n')
             source += header[header.index('\tenum BuildingType'):header.index('\tclass EDITOR_OBJECT_LIST' if 'class EDITOR_OBJECT_LIST' in header else '\t// Borrowed pointers;')]
-            source += header[header.index('\t\tstruct Building\n'):header.index('\t\ttypedef EList< BuildingLink*')]
+            source += header[header.index('\t\tstruct Building\n'):header.index('\t\tusing LINK_LIST' if 'using LINK_LIST' in header else '\t\ttypedef EList< BuildingLink*')]
             source += 'GROUP_LIST groups;\n'
             signatures = ('int EditorObjectMgr::getBuildingGroupCount',
                           'int EditorObjectMgr::getNumberBuildingsInGroup',

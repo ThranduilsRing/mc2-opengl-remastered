@@ -143,8 +143,8 @@ OutlinerCounts SceneOutliner::ComputeCounts()
     c.units = static_cast<int>(units.size());
 
     EditorObjectMgr::BUILDING_LIST buildings = mgr->getBuildings();
-    for (EditorObjectMgr::BUILDING_LIST::EIterator it = buildings.Begin();
-         !it.IsDone(); it++)
+    for (auto it = buildings.begin();
+         it != buildings.end(); it++)
     {
         EditorObject* obj = (*it);
         if (!obj)
@@ -156,7 +156,7 @@ OutlinerCounts SceneOutliner::ComputeCounts()
     }
 
     EditorObjectMgr::DROPZONE_LIST dropZones = mgr->getDropZones();
-    c.dropZones = (int)dropZones.Count();
+    c.dropZones = static_cast<int>(dropZones.size());
 
     std::vector<Forest*> forests;
     outlinerGatherForests(forests);
@@ -182,8 +182,8 @@ bool SceneOutliner::SelectFirstObject()
     }
 
     EditorObjectMgr::BUILDING_LIST buildings = mgr->getBuildings();
-    for (EditorObjectMgr::BUILDING_LIST::EIterator it = buildings.Begin();
-         !it.IsDone(); it++)
+    for (auto it = buildings.begin();
+         it != buildings.end(); it++)
     {
         if (*it)
         {
@@ -193,8 +193,8 @@ bool SceneOutliner::SelectFirstObject()
     }
 
     EditorObjectMgr::DROPZONE_LIST dropZones = mgr->getDropZones();
-    for (EditorObjectMgr::DROPZONE_LIST::EIterator it = dropZones.Begin();
-         !it.IsDone(); it++)
+    for (auto it = dropZones.begin();
+         it != dropZones.end(); it++)
     {
         if (*it)
         {
@@ -217,7 +217,7 @@ static void outlinerDrawObjectGroup(const char* groupLabel, int count,
         return;
 
     int row = 0;
-    for (EditorObjectMgr::BUILDING_LIST::EIterator it = list.Begin(); !it.IsDone(); it++, ++row)
+    for (auto it = list.begin(); it != list.end(); it++, ++row)
     {
         EditorObject* obj = (*it);
         const bool isNav = outlinerIsNavMarker(obj);
@@ -299,8 +299,8 @@ void SceneOutliner::Draw()
         if (ImGui::CollapsingHeader(header))
         {
             EditorObjectMgr::DROPZONE_LIST dropZones = mgr->getDropZones();
-            for (EditorObjectMgr::DROPZONE_LIST::EIterator it = dropZones.Begin();
-                 !it.IsDone(); it++)
+            for (auto it = dropZones.begin();
+                 it != dropZones.end(); it++)
             {
                 DropZone* dz = (*it);
                 char label[160];

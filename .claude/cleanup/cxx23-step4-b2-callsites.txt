@@ -1,72 +1,40 @@
 # Step 4 B2 container call sites from a [[deprecated("B2")]] build (tests/analyze/container_callsites.py); a batch commit removes its rows.
-# total 339 sites in 21 files
+# total 149 sites in 8 files
 # per kind:
-#     109  EList::Begin
-#      70  EList
-#      59  EList::Count
-#      29  EList::Append
-#      18  EList::Delete
-#      17  EList::~EList
+#      46  EList::Begin
+#      43  EList::Count
+#      21  EList::Append
+#      10  EList::Delete
 #      10  EList::Iterator
-#       8  EList::Clear
-#       8  EList::EList
-#       8  EList::End
+#       5  EList
+#       4  EList::Clear
+#       3  EList::~EList
+#       3  EList::EList
+#       2  EList::End
 #       2  EList::Insert
-#       1  EList::operator=
 # per batch (cxx23-step4-b2-files.json):
 #       1  B2.3
 #       6  B6
-#     155  E1
-#     156  E2
-#       1  E3
-#      20  E4
+#     142  E1
 # sites in files the batch table does NOT list (includers the compiler forces, or the PCH): 0 in 0 files
 # per file:
 #      56  editor/Objective.cpp
-#      48  editor/EditorObjectMgr_select.cpp
-#      44  editor/EditorObjectMgr.cpp
 #      28  editor/ObjectiveDlg.cpp
 #      27  editor/ObjectivesDlg.cpp
-#      25  editor/EditorObjectMgr_io.cpp
 #      20  editor/ObjectivesSummaryPanel.cpp
-#      18  editor/EditorObjectMgr_render.cpp
-#      14  editor/EditorObjectMgr_pick.cpp
-#      12  editor/SceneOutliner.cpp
 #      11  editor/Objective.h
-#       9  editor/EditorData_save.cpp
-#       7  editor/EditorObjectMgr.h
 #       5  code/mpparameterscreen.cpp
-#       4  editor/EditorDebugOverlay.cpp
-#       4  editor/Objective_conditions.cpp
-#       2  editor/ChooseBuildingDlg.cpp
-#       2  editor/TelemetryPanel.cpp
 #       1  code/mission_update.cpp
 #       1  code/mpparameterscreen.h
-#       1  editor/ObjectSelectionBrush.cpp
 # blob e5eb973f75d5b9dd9a5f240099990aabe605157c code/mission_update.cpp
 # blob 214f712990422b697f5e1b20d2f2a5d3d829b6ba code/mpparameterscreen.cpp
 # blob 4e02cd4390c36d910612ccca87ddaea784911336 code/mpparameterscreen.h
-# blob 86575ffe12bbaa930d7c7b8de316fb90657dcb15 editor/ChooseBuildingDlg.cpp
-# blob f9650f9463f73fbbc72b21d6563bed4734b3736b editor/EditorData_save.cpp
-# blob 8edbcda8da459f56bb8f9233cae78dbe431dca81 editor/EditorDebugOverlay.cpp
-# blob 8a01643fd6c53a42dd1cf1949075198c55414c0b editor/EditorObjectMgr.cpp
-# blob e4d0c53c3142cdb2c3c6f6f18e0dce400e1324b9 editor/EditorObjectMgr.h
-# blob 9b124715174b0021d2741b6aa71e03c1eb10357a editor/EditorObjectMgr_io.cpp
-# blob 829794c205ca7f3f0dbc693e4b0353bdc2cefd83 editor/EditorObjectMgr_pick.cpp
-# blob 3029527565a7452adfa211c4e8417948e81a923d editor/EditorObjectMgr_render.cpp
-# blob e70c096f4099c5e61ef191846f6e9fe2a91a152d editor/EditorObjectMgr_select.cpp
-# blob 01b34a4860bbeffe43ecaff6ff91e8b1a098405f editor/ObjectSelectionBrush.cpp
 # blob 1ed87ad1d854026d0cfe4055ddec68c11cafbba7 editor/Objective.cpp
 # blob e66ca41422e6bff99c5fcb9d38c9bbc7449bb722 editor/Objective.h
 # blob 7e7ab4592f2e735a68be2b3a8f5ec2eaafd75857 editor/ObjectiveDlg.cpp
-# blob 8fd1cdfe958c4d23b27f158d6f4537ae7a3dae8c editor/Objective_conditions.cpp
 # blob 945de4f932649474771b7eaacf9aedc6c6faa4a9 editor/ObjectivesDlg.cpp
 # blob 40a6e8664fb78547a7de3d2f8c722247ed94ea1f editor/ObjectivesSummaryPanel.cpp
-# blob 3ff1e1c54803bebe675b50f99d0b7f7ee3c7df1b editor/SceneOutliner.cpp
-# blob 651d239440f47a898d0372e7679cfc9dd7b3fa75 editor/TelemetryPanel.cpp
-# mentions inside inactive #if branches (grep, the compiler cannot see them): 2
-#   editor/EditorObjectMgr_select.cpp:161 (branch opened at 154): for ( BUILDING_LIST::EConstIterator iter = buildings.Begin();
-#   editor/EditorObjectMgr_select.cpp:185 (branch opened at 180): for ( BUILDING_LIST::EConstIterator iter = buildings.Begin();
+# mentions inside inactive #if branches (grep, the compiler cannot see them): 0
 # file:line:kind
 code/mission_update.cpp:625:EList::Count
 code/mpparameterscreen.cpp:2312:EList::Clear
@@ -75,178 +43,6 @@ code/mpparameterscreen.cpp:2323:EList::Delete
 code/mpparameterscreen.cpp:2351:EList::Begin
 code/mpparameterscreen.cpp:2369:EList::Begin
 code/mpparameterscreen.h:102:EList
-editor/ChooseBuildingDlg.cpp:57:EList::~EList
-editor/ChooseBuildingDlg.cpp:58:EList::Begin
-editor/EditorData_save.cpp:224:EList::~EList
-editor/EditorData_save.cpp:225:EList::Count
-editor/EditorData_save.cpp:227:EList::Begin
-editor/EditorData_save.cpp:242:EList::operator=
-editor/EditorData_save.cpp:243:EList::Count
-editor/EditorData_save.cpp:245:EList::Begin
-editor/EditorData_save.cpp:578:EList::~EList
-editor/EditorData_save.cpp:579:EList::Count
-editor/EditorData_save.cpp:581:EList::Begin
-editor/EditorDebugOverlay.cpp:367:EList::~EList
-editor/EditorDebugOverlay.cpp:368:EList::Begin
-editor/EditorDebugOverlay.cpp:375:EList::~EList
-editor/EditorDebugOverlay.cpp:376:EList::Begin
-editor/EditorObjectMgr.cpp:74:EList::EList
-editor/EditorObjectMgr.cpp:80:EList::~EList
-editor/EditorObjectMgr.cpp:113:EList
-editor/EditorObjectMgr.cpp:113:EList::Begin
-editor/EditorObjectMgr.cpp:127:EList::Clear
-editor/EditorObjectMgr.cpp:130:EList
-editor/EditorObjectMgr.cpp:130:EList::Begin
-editor/EditorObjectMgr.cpp:133:EList::Clear
-editor/EditorObjectMgr.cpp:138:EList
-editor/EditorObjectMgr.cpp:138:EList::Begin
-editor/EditorObjectMgr.cpp:141:EList::Clear
-editor/EditorObjectMgr.cpp:153:EList
-editor/EditorObjectMgr.cpp:153:EList::Begin
-editor/EditorObjectMgr.cpp:158:EList::Clear
-editor/EditorObjectMgr.cpp:512:EList
-editor/EditorObjectMgr.cpp:512:EList::Begin
-editor/EditorObjectMgr.cpp:545:EList::Append
-editor/EditorObjectMgr.cpp:590:EList::Append
-editor/EditorObjectMgr.cpp:597:EList::Append
-editor/EditorObjectMgr.cpp:700:EList::Count
-editor/EditorObjectMgr.cpp:702:EList
-editor/EditorObjectMgr.cpp:702:EList::End
-editor/EditorObjectMgr.cpp:724:EList::Delete
-editor/EditorObjectMgr.cpp:751:EList
-editor/EditorObjectMgr.cpp:751:EList::Begin
-editor/EditorObjectMgr.cpp:762:EList::Delete
-editor/EditorObjectMgr.cpp:955:EList
-editor/EditorObjectMgr.cpp:955:EList::Begin
-editor/EditorObjectMgr.cpp:995:EList
-editor/EditorObjectMgr.cpp:995:EList::Begin
-editor/EditorObjectMgr.cpp:1008:EList
-editor/EditorObjectMgr.cpp:1008:EList::Begin
-editor/EditorObjectMgr.cpp:1019:EList
-editor/EditorObjectMgr.cpp:1019:EList::Begin
-editor/EditorObjectMgr.cpp:1030:EList
-editor/EditorObjectMgr.cpp:1030:EList::Begin
-editor/EditorObjectMgr.cpp:1041:EList
-editor/EditorObjectMgr.cpp:1041:EList::Begin
-editor/EditorObjectMgr.cpp:1047:EList::Append
-editor/EditorObjectMgr.cpp:1052:EList
-editor/EditorObjectMgr.cpp:1052:EList::Begin
-editor/EditorObjectMgr.cpp:1058:EList::Delete
-editor/EditorObjectMgr.cpp:1181:EList
-editor/EditorObjectMgr.cpp:1181:EList::Begin
-editor/EditorObjectMgr.h:217:EList
-editor/EditorObjectMgr.h:219:EList
-editor/EditorObjectMgr.h:223:EList::EList
-editor/EditorObjectMgr.h:224:EList::EList
-editor/EditorObjectMgr.h:289:EList
-editor/EditorObjectMgr.h:290:EList
-editor/EditorObjectMgr.h:291:EList
-editor/EditorObjectMgr_io.cpp:12:EList::Count
-editor/EditorObjectMgr_io.cpp:18:EList::Count
-editor/EditorObjectMgr_io.cpp:20:EList::Count
-editor/EditorObjectMgr_io.cpp:25:EList::Count
-editor/EditorObjectMgr_io.cpp:29:EList
-editor/EditorObjectMgr_io.cpp:29:EList::Begin
-editor/EditorObjectMgr_io.cpp:101:EList
-editor/EditorObjectMgr_io.cpp:101:EList::Begin
-editor/EditorObjectMgr_io.cpp:191:EList
-editor/EditorObjectMgr_io.cpp:191:EList::Begin
-editor/EditorObjectMgr_io.cpp:206:EList::Append
-editor/EditorObjectMgr_io.cpp:216:EList::EList
-editor/EditorObjectMgr_io.cpp:219:EList
-editor/EditorObjectMgr_io.cpp:219:EList::Begin
-editor/EditorObjectMgr_io.cpp:238:EList::Append
-editor/EditorObjectMgr_io.cpp:242:EList
-editor/EditorObjectMgr_io.cpp:242:EList::Begin
-editor/EditorObjectMgr_io.cpp:575:EList
-editor/EditorObjectMgr_io.cpp:575:EList::Begin
-editor/EditorObjectMgr_io.cpp:606:EList::Append
-editor/EditorObjectMgr_io.cpp:619:EList
-editor/EditorObjectMgr_io.cpp:619:EList::Begin
-editor/EditorObjectMgr_io.cpp:628:EList::Count
-editor/EditorObjectMgr_io.cpp:630:EList
-editor/EditorObjectMgr_io.cpp:630:EList::Begin
-editor/EditorObjectMgr_pick.cpp:103:EList
-editor/EditorObjectMgr_pick.cpp:103:EList::Begin
-editor/EditorObjectMgr_pick.cpp:127:EList
-editor/EditorObjectMgr_pick.cpp:127:EList::Begin
-editor/EditorObjectMgr_pick.cpp:304:EList
-editor/EditorObjectMgr_pick.cpp:304:EList::Begin
-editor/EditorObjectMgr_pick.cpp:310:EList
-editor/EditorObjectMgr_pick.cpp:310:EList::Begin
-editor/EditorObjectMgr_pick.cpp:326:EList
-editor/EditorObjectMgr_pick.cpp:326:EList::Begin
-editor/EditorObjectMgr_pick.cpp:373:EList
-editor/EditorObjectMgr_pick.cpp:373:EList::Begin
-editor/EditorObjectMgr_pick.cpp:390:EList
-editor/EditorObjectMgr_pick.cpp:390:EList::Begin
-editor/EditorObjectMgr_render.cpp:34:EList
-editor/EditorObjectMgr_render.cpp:34:EList::Begin
-editor/EditorObjectMgr_render.cpp:127:EList
-editor/EditorObjectMgr_render.cpp:127:EList::Begin
-editor/EditorObjectMgr_render.cpp:136:EList
-editor/EditorObjectMgr_render.cpp:136:EList::Begin
-editor/EditorObjectMgr_render.cpp:155:EList::Count
-editor/EditorObjectMgr_render.cpp:164:EList::Count
-editor/EditorObjectMgr_render.cpp:165:EList
-editor/EditorObjectMgr_render.cpp:165:EList::Begin
-editor/EditorObjectMgr_render.cpp:234:EList
-editor/EditorObjectMgr_render.cpp:234:EList::Begin
-editor/EditorObjectMgr_render.cpp:241:EList
-editor/EditorObjectMgr_render.cpp:241:EList::Begin
-editor/EditorObjectMgr_render.cpp:389:EList
-editor/EditorObjectMgr_render.cpp:389:EList::Begin
-editor/EditorObjectMgr_render.cpp:414:EList
-editor/EditorObjectMgr_render.cpp:414:EList::Begin
-editor/EditorObjectMgr_select.cpp:36:EList
-editor/EditorObjectMgr_select.cpp:36:EList::Begin
-editor/EditorObjectMgr_select.cpp:74:EList
-editor/EditorObjectMgr_select.cpp:74:EList::Begin
-editor/EditorObjectMgr_select.cpp:122:EList
-editor/EditorObjectMgr_select.cpp:122:EList::Begin
-editor/EditorObjectMgr_select.cpp:139:EList
-editor/EditorObjectMgr_select.cpp:139:EList::Begin
-editor/EditorObjectMgr_select.cpp:215:EList
-editor/EditorObjectMgr_select.cpp:215:EList::Begin
-editor/EditorObjectMgr_select.cpp:231:EList
-editor/EditorObjectMgr_select.cpp:231:EList::Begin
-editor/EditorObjectMgr_select.cpp:245:EList
-editor/EditorObjectMgr_select.cpp:245:EList::End
-editor/EditorObjectMgr_select.cpp:255:EList
-editor/EditorObjectMgr_select.cpp:257:EList::Delete
-editor/EditorObjectMgr_select.cpp:277:EList
-editor/EditorObjectMgr_select.cpp:277:EList::End
-editor/EditorObjectMgr_select.cpp:288:EList
-editor/EditorObjectMgr_select.cpp:290:EList::Delete
-editor/EditorObjectMgr_select.cpp:302:EList
-editor/EditorObjectMgr_select.cpp:302:EList::End
-editor/EditorObjectMgr_select.cpp:310:EList
-editor/EditorObjectMgr_select.cpp:310:EList::Begin
-editor/EditorObjectMgr_select.cpp:328:EList
-editor/EditorObjectMgr_select.cpp:328:EList::Begin
-editor/EditorObjectMgr_select.cpp:350:EList::Append
-editor/EditorObjectMgr_select.cpp:362:EList
-editor/EditorObjectMgr_select.cpp:362:EList::End
-editor/EditorObjectMgr_select.cpp:375:EList
-editor/EditorObjectMgr_select.cpp:377:EList::Delete
-editor/EditorObjectMgr_select.cpp:383:EList
-editor/EditorObjectMgr_select.cpp:383:EList::Begin
-editor/EditorObjectMgr_select.cpp:400:EList
-editor/EditorObjectMgr_select.cpp:400:EList::End
-editor/EditorObjectMgr_select.cpp:405:EList
-editor/EditorObjectMgr_select.cpp:407:EList::Delete
-editor/EditorObjectMgr_select.cpp:415:EList
-editor/EditorObjectMgr_select.cpp:415:EList::Begin
-editor/EditorObjectMgr_select.cpp:420:EList::Delete
-editor/EditorObjectMgr_select.cpp:430:EList
-editor/EditorObjectMgr_select.cpp:430:EList::Begin
-editor/EditorObjectMgr_select.cpp:571:EList
-editor/EditorObjectMgr_select.cpp:571:EList::Begin
-editor/EditorObjectMgr_select.cpp:585:EList::Count
-editor/EditorObjectMgr_select.cpp:587:EList::Count
-editor/EditorObjectMgr_select.cpp:593:EList
-editor/EditorObjectMgr_select.cpp:593:EList::Begin
-editor/ObjectSelectionBrush.cpp:191:EList::EList
 editor/Objective.cpp:28:EList::Begin
 editor/Objective.cpp:33:EList::Append
 editor/Objective.cpp:41:EList::Count
@@ -342,10 +138,6 @@ editor/ObjectiveDlg.cpp:1262:EList::Count
 editor/ObjectiveDlg.cpp:1263:EList::Begin
 editor/ObjectiveDlg.cpp:1277:EList::Count
 editor/ObjectiveDlg.cpp:1278:EList::Begin
-editor/Objective_conditions.cpp:261:EList::~EList
-editor/Objective_conditions.cpp:262:EList::Begin
-editor/Objective_conditions.cpp:341:EList::~EList
-editor/Objective_conditions.cpp:342:EList::Begin
 editor/ObjectivesDlg.cpp:111:EList::Begin
 editor/ObjectivesDlg.cpp:141:EList::Count
 editor/ObjectivesDlg.cpp:219:EList::Append
@@ -393,17 +185,3 @@ editor/ObjectivesSummaryPanel.cpp:462:EList::Begin
 editor/ObjectivesSummaryPanel.cpp:480:EList::Begin
 editor/ObjectivesSummaryPanel.cpp:534:EList::Count
 editor/ObjectivesSummaryPanel.cpp:540:EList::Count
-editor/SceneOutliner.cpp:145:EList::~EList
-editor/SceneOutliner.cpp:146:EList::Begin
-editor/SceneOutliner.cpp:158:EList::~EList
-editor/SceneOutliner.cpp:159:EList::Count
-editor/SceneOutliner.cpp:184:EList::~EList
-editor/SceneOutliner.cpp:185:EList::Begin
-editor/SceneOutliner.cpp:195:EList::~EList
-editor/SceneOutliner.cpp:196:EList::Begin
-editor/SceneOutliner.cpp:220:EList::Begin
-editor/SceneOutliner.cpp:292:EList::~EList
-editor/SceneOutliner.cpp:301:EList::~EList
-editor/SceneOutliner.cpp:302:EList::Begin
-editor/TelemetryPanel.cpp:64:EList::Count
-editor/TelemetryPanel.cpp:65:EList::Count

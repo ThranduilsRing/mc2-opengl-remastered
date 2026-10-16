@@ -58,11 +58,10 @@ void TelemetryPanel::Draw()
     EditorObjectMgr* mgr = EditorObjectMgr::instance();
     if (mgr)
     {
-        // getUnits/getBuildings/getDropZones return EList COPIES (O(n) each) --
-        // acceptable once per frame for an editor map.
+        // These snapshots copy borrowed pointers, preserving the manager's order.
         const long nUnits     = (long)mgr->getUnits().size();
-        const long nBuildings = (long)mgr->getBuildings().Count();
-        const long nDropZones = (long)mgr->getDropZones().Count();
+        const long nBuildings = (long)mgr->getBuildings().size();
+        const long nDropZones = (long)mgr->getDropZones().size();
         const long nTotal     = nUnits + nBuildings + nDropZones;
         ImGui::Text("Selected:   %d", mgr->getSelectionCount());
         ImGui::Text("Objects:    %ld", nTotal);

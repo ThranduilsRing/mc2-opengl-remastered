@@ -365,7 +365,7 @@ namespace
 		};
 
 		EditorObjectMgr::BUILDING_LIST blds = mgr->getBuildings();
-		for ( EditorObjectMgr::BUILDING_LIST::EIterator it = blds.Begin(); !it.IsDone(); it++ )
+		for ( auto it = blds.begin(); it != blds.end(); it++ )
 			drawLabel( *it );
 
 		EditorObjectMgr::UNIT_LIST units = mgr->getUnits();
@@ -373,7 +373,7 @@ namespace
 			drawLabel( *it );
 
 		EditorObjectMgr::DROPZONE_LIST dzs = mgr->getDropZones();
-		for ( EditorObjectMgr::DROPZONE_LIST::EIterator it = dzs.Begin(); !it.IsDone(); it++ )
+		for ( auto it = dzs.begin(); it != dzs.end(); it++ )
 			drawLabel( *it );
 	}
 #endif // MC2_IMGUI

@@ -9,25 +9,25 @@ bool EditorObjectMgr::save( PacketFile& PakFile, int whichPacket )
 {
 	File file;
 	
-	if ( !buildings.Count() )
+	if ( !static_cast<int>(buildings.size()) )
 	{
 		PakFile.writePacket( whichPacket, NULL );
 		PakFile.writePacket( whichPacket + 1, NULL );
 	}
 
-	int bufferSize = buildings.Count() * (4 * sizeof(float) + 6 * sizeof(long) ) + 2 * sizeof(long);
+	int bufferSize = static_cast<int>(buildings.size()) * (4 * sizeof(float) + 6 * sizeof(long) ) + 2 * sizeof(long);
 	char* pBuffer = (char *) malloc( bufferSize );
-	long* pTacMapPoints = (long *)malloc( sizeof(long) * ( buildings.Count() * 2 + 1 ) );
+	long* pTacMapPoints = (long *)malloc( sizeof(long) * ( static_cast<int>(buildings.size()) * 2 + 1 ) );
 	long* pPoints = pTacMapPoints + 1;
 	long pointCounter = 0;
 	
 	file.open(pBuffer, bufferSize );
-	file.writeLong( buildings.Count() );
+	file.writeLong( static_cast<int>(buildings.size()) );
 
 	gos_VERTEX point;
 	
-	for ( BUILDING_LIST::EIterator iter = buildings.Begin();
-		!iter.IsDone(); iter++ )
+	for ( auto iter = buildings.begin();
+		iter != buildings.end(); iter++ )
 		{
 			int id = (*iter)->id;
 			Building& bldg = groups[(id >> 16) & 0x000000ff].buildings[(id >> 8) & 0x000000ff];
@@ -55,13 +55,11 @@ bool EditorObjectMgr::save( PacketFile& PakFile, int whichPacket )
 			if ( pLink )
 			{
 				Stuff::Vector3D pos = pLink->GetParentPosition();
-				// convert to cells
 				int cellI, cellJ;
 				land->worldToCell( pos, cellJ, cellI );
 
 				long val = (cellJ << 16) | cellI;
 
-				//How about BEFORE we write this, we make sure there's really a building there!
 				EditorObject* pObject = getObjectAtCell( cellJ, cellI );
 				if (!pObject)
 				{
@@ -98,7 +96,7 @@ bool EditorObjectMgr::save( PacketFile& PakFile, int whichPacket )
 
 	if (!justResaveAllMaps) {
 		int numTurrets = 0;
-		for ( BUILDING_LIST::EIterator iter = buildings.Begin(); !iter.IsDone(); iter++ )
+		for ( auto iter = buildings.begin(); iter != buildings.end(); iter++ )
 		{
 			switch ((*iter)->getSpecialType())
 			{
@@ -188,8 +186,8 @@ bool EditorObjectMgr::load( PacketFile& PakFile, int whichPacket )
 			pos.z = land->getTerrainElevation( pos );
 
 			bool bFound = false;
-			for ( LINK_LIST::EIterator iter = links.Begin();
-			!iter.IsDone(); iter++ )
+			for ( auto iter = links.begin();
+			iter != links.end(); iter++ )
 			{
 				if ( (*iter)->GetParentPosition() == pos )
 				{
@@ -203,7 +201,7 @@ bool EditorObjectMgr::load( PacketFile& PakFile, int whichPacket )
 			{
 				BuildingLink* pLink = new BuildingLink( pos );
 				pLink->AddChild( pInfo );
-				links.Append( pLink );       
+				links.push_back( pLink );
 			}
 		}
 
@@ -215,17 +213,12 @@ bool EditorObjectMgr::load( PacketFile& PakFile, int whichPacket )
 
 	LINK_LIST linksToDelete;
 
-	// gotta go through all the links and make sure they have id's
-	for ( LINK_LIST::EIterator iter = links.Begin();
-			!iter.IsDone(); iter++ )
+	for ( auto iter = links.begin();
+			iter != links.end(); iter++ )
 			{
 				if ( (*iter)->parent.m_ID == -1 )
 				{
-					// This absolutely positively could never have worked!
-					// Why?  Because getObjectAtPosition depends upon the object BEING ON SCREEN!!!!!!!
-					// At this point, we're still loading!!!
-					// We should, instead, be checking getObjectAtCell which ALWAYS works!
-					// -fs
+					// Loading resolves links without depending on screen visibility.
 					int cellR, cellC;
 					land->worldToCell((*iter)->parent.pos,cellR,cellC);
 
@@ -235,11 +228,11 @@ bool EditorObjectMgr::load( PacketFile& PakFile, int whichPacket )
 					if ( pObject )
 						(*iter)->parent.m_ID = pObject->getID();
 					else
-						linksToDelete.Append( *iter );
+						linksToDelete.push_back( *iter );
 				}
 			}
 
-	for ( LINK_LIST::EIterator iter = linksToDelete.Begin();	!iter.IsDone(); iter++ )
+	for ( auto iter = linksToDelete.begin();	iter != linksToDelete.end(); iter++ )
 	{
 		deleteLink( *iter );
 	}
@@ -572,7 +565,7 @@ bool EditorObjectMgr::saveForests( FitIniFile& file )
 {
 	long counter = 0;
 	char header[256];
-	for ( FOREST_LIST::EIterator iter = forests.Begin(); !iter.IsDone(); iter++, counter++)
+	for ( auto iter = forests.begin(); iter != forests.end(); iter++, counter++)
 	{
 		sprintf( header, "Forest%ld", counter );
 		file.writeBlock( header );
@@ -603,7 +596,7 @@ bool EditorObjectMgr::loadForests( FitIniFile& file )
 		pForest->init( file );
 		pForest->ID = counter;
 
-		forests.Append( pForest );
+		forests.push_back( pForest );
 		counter++;
 	}
 
@@ -616,23 +609,17 @@ bool EditorObjectMgr::saveDropZones( FitIniFile& file )
 	int counter = 0;
 	char Header[256];
 
-	for ( DROP_LIST::EIterator iter = dropZones.Begin(); !iter.IsDone(); iter++, counter++ )
+	for ( auto iter = dropZones.begin(); iter != dropZones.end(); iter++, counter++ )
 	{
 		sprintf( Header, "DropZone%ld", counter );
 		file.writeBlock( Header );
 		(*iter)->save( &file, counter );
 	}
 
-	// going to do nav markers here
-	// need to sort this list first.  ick.
-	EditorObject** pObjects = (EditorObject**)_alloca( sizeof( EditorObject* )  * buildings.Count() );
-	int i = 0;
-	for ( BUILDING_LIST::EIterator bIter = buildings.Begin(); !bIter.IsDone(); bIter++ )
-	{
-		pObjects[i++] = *bIter;
-	}
-
-	long count = i;
+	// Nav export retains the authored swap permutation, including equal IDs.
+	std::vector<EditorObject*> pObjects(buildings.begin(), buildings.end());
+	long count = static_cast<long>(pObjects.size());
+	int i;
 
 	for ( i = 1; i < count; ++i )
 	{
@@ -655,7 +642,6 @@ bool EditorObjectMgr::saveDropZones( FitIniFile& file )
 			counter++;
 	}
 
-	// so  it writes out afterward....
 	file.writeBlock( "NavMarkers" );
 	file.writeIdULong( "NumNavMarkers", counter );
 
@@ -700,10 +686,10 @@ bool EditorObjectMgr::loadNavMarkers(FitIniFile& file)
 {
 	if (file.seekBlock("NavMarkers") != NO_ERR) return true;
 	long count = 0;
-	if (!EditorFit::longValue(file, "NumNavMarkers", count, true) || count > buildings.Count())
+	if (!EditorFit::longValue(file, "NumNavMarkers", count, true) || count > static_cast<int>(buildings.size()))
 		return EditorFit::reject("NavMarker count");
 	std::vector<NavMarker*> markers;
-	for (auto it = buildings.Begin(); !it.IsDone(); it++)
+	for (auto it = buildings.begin(); it != buildings.end(); it++)
 		if (auto* marker = dynamic_cast<NavMarker*>(*it)) markers.push_back(marker);
 	if (static_cast<size_t>(count) != markers.size()) return EditorFit::reject("NavMarker count mismatch");
 	for (long i = 0; i < count; ++i)

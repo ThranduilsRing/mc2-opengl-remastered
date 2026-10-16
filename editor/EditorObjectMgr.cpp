@@ -110,8 +110,8 @@ EditorObjectMgr::~EditorObjectMgr()
 
 void EditorObjectMgr::clear()
 {
-		for ( BUILDING_LIST::EIterator iter = buildings.Begin();
-		!iter.IsDone(); iter++ )
+		for ( auto iter = buildings.begin();
+		iter != buildings.end(); iter++ )
 		{
 			delete *iter;
 		}
@@ -124,21 +124,21 @@ void EditorObjectMgr::clear()
 			}
 
 			
-		buildings.Clear();
+		buildings.clear();
 		units.clear();
 
-		for ( LINK_LIST::EIterator liter = links.Begin(); !liter.IsDone(); liter++ )
+		for ( auto liter = links.begin(); liter != links.end(); liter++ )
 			delete *liter;
 
-		links.Clear();
+		links.clear();
 
 		selectedObjects.clear();
 		selectedObjectsNeedsToBeSynched = false;
 
-		for ( DROP_LIST::EIterator dIter = dropZones.Begin(); !dIter.IsDone(); dIter++ )
+		for ( auto dIter = dropZones.begin(); dIter != dropZones.end(); dIter++ )
 			delete *dIter;
 
-		dropZones.Clear();
+		dropZones.clear();
 		
 		resetAvailableSquadNums();
 		
@@ -150,12 +150,12 @@ void EditorObjectMgr::clear()
 		}
 	}
 
-	for ( FOREST_LIST::EIterator fIter = forests.Begin(); !fIter.IsDone(); fIter++ )
+	for ( auto fIter = forests.begin(); fIter != forests.end(); fIter++ )
 	{
 		delete ( *fIter );
 	}
 
-	forests.Clear();
+	forests.clear();
 
 }
 
@@ -509,7 +509,7 @@ bool EditorObjectMgr::canAddDropZone( const Stuff::Vector3D& position, int align
 {
 
 	int alignmentCount = 0;
-	for ( DROP_LIST::EIterator iter = dropZones.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = dropZones.begin(); iter != dropZones.end(); iter++ )
 	{
 		if  (bVTol)
 		{
@@ -542,7 +542,7 @@ EditorObject* EditorObjectMgr::addDropZone( const Stuff::Vector3D& position, int
 	
 	DropZone* pLast = new DropZone( position, alignment, bVTol );
 	
-	dropZones.Append( pLast ) ;
+	dropZones.push_back( pLast ) ;
 
 	ObjectAppearance* pAppear = getAppearance( &dropZoneGroup.buildings.front() );
 
@@ -587,14 +587,14 @@ EditorObject* EditorObjectMgr::addBuilding( const Stuff::Vector3D& position, uns
 	if ( specialType == NAV_MARKER )
 	{
 		info = new NavMarker;	
-		buildings.Append( info );
+		buildings.push_back( info );
 		info->appearInfo->appearance = getAppearance( group, indexWithinGroup );
 	}
 	else if ( (type == BLDG_TYPE) || (type == TREED_TYPE) )
 	{
 
 		info = new EditorObject;	
-		buildings.Append( info );
+		buildings.push_back( info );
 		info->appearInfo->appearance = getAppearance( group, indexWithinGroup );
 	}
 	else if ( type == GV_TYPE  || type == MECH_TYPE )
@@ -697,37 +697,31 @@ bool	EditorObjectMgr::deleteBuilding( const EditorObject* pInfo )
 			pLink->RemoveObject( pInfo );
 		}
 	}
-	if ( buildings.Count() && pInfo )
+	if (!buildings.empty() && pInfo)
 	{
-		for ( BUILDING_LIST::EIterator iter = buildings.End(); !iter.IsDone(); iter--  )
+		for (size_t index = buildings.size(); index > 0; )
 		{
+			--index;
+			auto iter = buildings.begin() + index;
 			if( pInfo->cellColumn == (*iter)->cellColumn
 				&& pInfo->cellRow == (*iter)->cellRow
 				&& pInfo->appearance() == (*iter)->appearance() )
 			{
-				// invalidate the static-prop RENDER recipe on
-				// scene-delete so the prop stops drawing immediately. The undo system
-				// clones/snapshots the object (sharing the appearance), so the appearance
-				// usually outlives this delete (appearInfo refCount > 1) and ~appearance's
-				// destroy()-driven invalidate never fires -> the deleted building/tree
-				// kept rendering as a ghost. invalidateStaticRegistration() is virtual +
-				// public (same as the registerStatic() the editor already calls); undo
-				// re-registers via registerStatic().
+				// Undo snapshots share appearances, so removal must retire the recipe immediately.
 				if ( (*iter)->appearance() )
 					(*iter)->appearance()->invalidateStaticRegistration();
-				// scrub drag pointer before freeing (UAF guard).
 				if ( EditorInterface::instance() )
 					EditorInterface::instance()->notifyObjectDeleted(*iter);
 				delete (*iter);
 				removeFromSelection(*iter);
 				EditorData::instance->handleObjectInvalidation(*iter);
-				buildings.Delete( iter );
+				buildings.erase(iter);
 				return true;
 			}
 		}
 	}
 
-	if ( static_cast<int>(units.size()) && pInfo )
+	if (!units.empty() && pInfo)
 	{
 		for (size_t index = units.size(); index > 0; )
 		{
@@ -736,7 +730,6 @@ bool	EditorObjectMgr::deleteBuilding( const EditorObject* pInfo )
 			if( pInfo->cellColumn == (*mIter)->cellColumn
 				&& pInfo->cellRow == (*mIter)->cellRow )
 			{
-				// scrub drag pointer before freeing (UAF guard).
 				if ( EditorInterface::instance() )
 					EditorInterface::instance()->notifyObjectDeleted(*mIter);
 				delete( *mIter );
@@ -748,18 +741,17 @@ bool	EditorObjectMgr::deleteBuilding( const EditorObject* pInfo )
 		}
 	}
 
-	for ( DROP_LIST::EIterator dIter = dropZones.Begin(); !dIter.IsDone(); dIter++ )
+	for ( auto dIter = dropZones.begin(); dIter != dropZones.end(); dIter++ )
 	{
 			if( pInfo->cellColumn == (*dIter)->cellColumn
 				&& pInfo->cellRow == (*dIter)->cellRow )
 			{
-				// scrub drag pointer before freeing (UAF guard).
 				if ( EditorInterface::instance() )
 					EditorInterface::instance()->notifyObjectDeleted(*dIter);
 				delete( *dIter );
 				removeFromSelection(*dIter);
 				EditorData::instance->handleObjectInvalidation(*dIter);
-				dropZones.Delete( dIter );
+				dropZones.erase( dIter );
 				return true;
 			}		
 	
@@ -952,8 +944,8 @@ bool EditorObjectMgr::moveBuilding( EditorObject* pInfo, long cellJ, long cellI 
 
 EditorObject* EditorObjectMgr::getObjectAtCell( long realCellJ, long realCellI )
 {
-	for( BUILDING_LIST::EIterator iter = buildings.Begin();
-		!iter.IsDone(); iter++ )
+	for( auto iter = buildings.begin();
+		iter != buildings.end(); iter++ )
 		{
 			if (  labs( realCellI - ((*iter)->cellColumn - 4)) <= 8
 				&& labs( realCellJ - ((*iter)->cellRow - 4)) <= 8 )
@@ -992,7 +984,7 @@ EditorObject* EditorObjectMgr::getObjectAtCell( long realCellJ, long realCellI )
 
 EditorObject* EditorObjectMgr::getBuilding( const EditorObject &building )
 {
-	for( BUILDING_LIST::EIterator iter = buildings.Begin(); !iter.IsDone(); iter++ )
+	for( auto iter = buildings.begin(); iter != buildings.end(); iter++ )
 	{
 		if( building.cellColumn == (*iter)->cellColumn
 			&& building.cellRow == (*iter)->cellRow )
@@ -1005,7 +997,7 @@ EditorObject* EditorObjectMgr::getBuilding( const EditorObject &building )
 
 BuildingLink* EditorObjectMgr::getLinkWithBuilding( const EditorObject* pObj )
 {
-	for ( LINK_LIST::EIterator iter = links.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = links.begin(); iter != links.end(); iter++ )
 	{
 		if ( (*iter)->HasParent( pObj ) || (*iter)->HasChild( pObj ) )
 			return *iter;
@@ -1016,7 +1008,7 @@ BuildingLink* EditorObjectMgr::getLinkWithBuilding( const EditorObject* pObj )
 
 BuildingLink* EditorObjectMgr::getLinkWithParent( const EditorObject* pObj )
 {
-	for ( LINK_LIST::EIterator iter = links.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = links.begin(); iter != links.end(); iter++ )
 	{
 		if ( (*iter)->HasParent( pObj ) )
 			return *iter;
@@ -1027,7 +1019,7 @@ BuildingLink* EditorObjectMgr::getLinkWithParent( const EditorObject* pObj )
 
 BuildingLink* EditorObjectMgr::getLinkWithChild( const EditorObject* pObj )
 {
-	for ( LINK_LIST::EIterator iter = links.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = links.begin(); iter != links.end(); iter++ )
 	{
 		if ( (*iter)->HasChild( pObj ) )
 			return *iter;
@@ -1038,24 +1030,24 @@ BuildingLink* EditorObjectMgr::getLinkWithChild( const EditorObject* pObj )
 
 void EditorObjectMgr::addLink( BuildingLink* pLink )
 {
-	for ( LINK_LIST::EIterator iter = links.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = links.begin(); iter != links.end(); iter++ )
 	{
 		if ( (*iter) == pLink )
 			return;
 	}
 
-	links.Append( pLink );
+	links.push_back( pLink );
 }
 
 void EditorObjectMgr::deleteLink( BuildingLink* pLink )
 {
-	for ( LINK_LIST::EIterator iter = links.Begin(); !iter.IsDone(); iter++ )
+	for ( auto iter = links.begin(); iter != links.end(); iter++ )
 	{
 		if ( (*iter) == pLink )
 		{
 			delete (*iter);
 
-			links.Delete( iter );
+			links.erase( iter );
 			return;
 		}
 	}
@@ -1178,7 +1170,7 @@ void EditorObjectMgr::registerSquadNum(unsigned long squadNum)
 
 Unit* EditorObjectMgr::findUnitByMechHandle(RenderCore::RenderObjectHandle h)
 {
-	for (BUILDING_LIST::EIterator iter = buildings.Begin(); !iter.IsDone(); iter++)
+	for (auto iter = buildings.begin(); iter != buildings.end(); iter++)
 	{
 		EditorObject* obj = *iter;
 		if (!obj || !obj->appearance())

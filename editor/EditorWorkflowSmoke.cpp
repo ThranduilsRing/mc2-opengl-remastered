@@ -34,7 +34,7 @@ void EditorInterface::runCatalogReferenceSmoke()
 		// The fixed team and ordinary brush isolate reference values from UI selection state.
 		if (identified) setActiveBrush(new BuildingBrush(group, index, 0), -500, -500);
 		auto* brush = identified ? dynamic_cast<BuildingBrush*>(curBrush) : nullptr;
-		const auto count = mgr->getBuildings().Count() + mgr->getUnits().size();
+		const auto count = mgr->getBuildings().size() + mgr->getUnits().size();
 		EditorObject* placed{};
 		Stuff::Vector3D position{};
 		bool painted{}, undone{}, redone{}, saved{}, removed{}, reloaded{};
@@ -53,11 +53,11 @@ void EditorInterface::runCatalogReferenceSmoke()
 		if (placed) {
 			position = placed->getPosition();
 			painted = painted && mgr->getFitID(objectId) == spec.fitId
-				&& mgr->getBuildings().Count() + mgr->getUnits().size() == count + 1;
+				&& mgr->getBuildings().size() + mgr->getUnits().size() == count + 1;
 			undone = undoMgr.Undo() && !mgr->getObjectAtLocation(position.x, position.y)
-				&& mgr->getBuildings().Count() + mgr->getUnits().size() == count;
+				&& mgr->getBuildings().size() + mgr->getUnits().size() == count;
 			redone = undoMgr.Redo() && mgr->getObjectAtLocation(position.x, position.y)
-				&& mgr->getBuildings().Count() + mgr->getUnits().size() == count + 1;
+				&& mgr->getBuildings().size() + mgr->getUnits().size() == count + 1;
 		}
 		char path[128];
 		snprintf(path, sizeof(path), "terrain_gen_out/e5_reference_%s.pak", spec.family);
@@ -69,7 +69,7 @@ void EditorInterface::runCatalogReferenceSmoke()
 			mgr = EditorObjectMgr::instance();
 			auto* loaded = reloaded ? mgr->getObjectAtLocation(position.x, position.y) : nullptr;
 			reloaded = loaded && loaded->getID() == objectId && mgr->getFitID(loaded->getID()) == spec.fitId
-				&& loaded->getAlignment() == expectedTeam && mgr->getBuildings().Count() + mgr->getUnits().size() == count + 1;
+				&& loaded->getAlignment() == expectedTeam && mgr->getBuildings().size() + mgr->getUnits().size() == count + 1;
 		}
 		if (auto* log = fopen("editor-startup.log", "a")) {
 			fprintf(log, "[EDITOR_LEGACY_PLACEMENT v1] family=%s fit_id=%ld stem=%s x=%.9g y=%.9g z=%.9g input_team=0 team=%d painted=%d undo=%d redo=%d saved=%d removed=%d reopened=%d\n",
@@ -127,18 +127,18 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 				point.z = land->getTerrainElevation(point);
 				if (!placement->canPaint(point, 0, 0, 0))
 					continue;
-				const auto count = mgr->getBuildings().Count();
+				const auto count = mgr->getBuildings().size();
 				placement->beginPaint();
 				const bool paintedObject = placement->paint(point, 0, 0);
 				undoMgr.AddAction(placement->endPaint());
 				placed = mgr->getObjectAtLocation(point.x, point.y);
-				if (!paintedObject || !placed || mgr->getBuildings().Count() != count + 1)
+				if (!paintedObject || !placed || mgr->getBuildings().size() != count + 1)
 				{
 					placed = nullptr;
 					continue;
 				}
 				placedPosition = placed->getPosition();
-				placementUndo = undoMgr.Undo() && mgr->getBuildings().Count() == count
+				placementUndo = undoMgr.Undo() && mgr->getBuildings().size() == count
 					&& !mgr->getObjectAtLocation(placedPosition.x, placedPosition.y);
 				const bool redone = undoMgr.Redo();
 				placed = redone ? mgr->getObjectAtLocation(placedPosition.x, placedPosition.y) : nullptr;

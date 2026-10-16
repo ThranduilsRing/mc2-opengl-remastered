@@ -259,14 +259,14 @@ bool CSpecificStructureObjectiveCondition::Read( FitIniFile* missionFile )
 		return true;
 	}
 	EditorObjectMgr::BUILDING_LIST buildings = EditorObjectMgr::instance()->getBuildings();
-	EditorObjectMgr::BUILDING_LIST::EConstIterator it = buildings.Begin();
-	while (!it.IsDone()) {
+	auto it = buildings.begin();
+	while (it != buildings.end()) {
 		if (areCloseEnough((*it)->getPosition().x, positionX)  && areCloseEnough((*it)->getPosition().y, positionY)) {
 			break;
 		}
 		it++;
 	}
-	if (it.IsDone()) return EditorFit::reject("objective structure reference");
+	if (it == buildings.end()) return EditorFit::reject("objective structure reference");
 	m_pBuilding = (*it);
 	m_authoredPosition.read(positionX, positionY, m_pBuilding->getPosition().x, m_pBuilding->getPosition().y);
 	if (m_pBuilding) {
@@ -339,14 +339,14 @@ bool CSpecificStructureObjectiveCondition::NoteThePositionsOfObjectsReferenced()
 
 bool CSpecificStructureObjectiveCondition::RestoreObjectPointerReferencesFromNotedPositions() {
 	EditorObjectMgr::BUILDING_LIST buildings = EditorObjectMgr::instance()->getBuildings();
-	EditorObjectMgr::BUILDING_LIST::EConstIterator it = buildings.Begin();
-	while (!it.IsDone()) {
+	auto it = buildings.begin();
+	while (it != buildings.end()) {
 		if (areCloseEnough((*it)->getPosition().x, m_LastNotedPositionX)  && areCloseEnough((*it)->getPosition().y, m_LastNotedPositionY)) {
 			break;
 		}
 		it++;
 	}
-	if (it.IsDone()) return EditorFit::reject("objective structure reference");
+	if (it == buildings.end()) return EditorFit::reject("objective structure reference");
 	if (!m_pBuilding)
 		m_authoredPosition.read(m_LastNotedPositionX, m_LastNotedPositionY, (*it)->getPosition().x, (*it)->getPosition().y);
 	m_pBuilding = (*it);

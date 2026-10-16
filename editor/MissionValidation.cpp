@@ -254,7 +254,7 @@ std::vector<MissionCheck> MissionValidator::ValidateForPakSave() {
         if (EditorObjectMgr::instance()) {
             // Buildings
             EditorObjectMgr::BUILDING_LIST buildings = EditorObjectMgr::instance()->getBuildings();
-            for (EditorObjectMgr::BUILDING_LIST::EIterator it = buildings.Begin(); !it.IsDone(); it++) {
+            for (auto it = buildings.begin(); it != buildings.end(); it++) {
                 EditorObject* b = (*it);
                 if (b && !b->appearance())
                     ++nullAppCount;
@@ -298,7 +298,7 @@ std::vector<MissionCheck> MissionValidator::ValidateForPakSave() {
         if (EditorObjectMgr::instance() && halfExtent > 0.f) {
             // Buildings
             EditorObjectMgr::BUILDING_LIST buildings = EditorObjectMgr::instance()->getBuildings();
-            for (EditorObjectMgr::BUILDING_LIST::EIterator it = buildings.Begin(); !it.IsDone(); it++) {
+            for (auto it = buildings.begin(); it != buildings.end(); it++) {
                 EditorObject* b = (*it);
                 if (!b || !b->appearance()) continue;
                 const Stuff::Vector3D& pos = b->getPosition();

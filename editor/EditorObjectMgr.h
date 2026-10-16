@@ -214,9 +214,9 @@ public:
 	inline const char* getTGAFileName( int ID ) const;
 	inline DWORD getTacMapColor( int ID ) const;
 
-	typedef EList< EditorObject*, EditorObject*>  BUILDING_LIST;	// buildings on the map
+	using BUILDING_LIST = std::vector<EditorObject*>;	// buildings on the map
 	using UNIT_LIST = std::vector<Unit*>;
-	typedef EList< DropZone*, DropZone* > DROPZONE_LIST;
+	using DROPZONE_LIST = std::vector<DropZone*>;
 
 	void getSelectedUnits( SelectedUnits& );
 	UNIT_LIST getUnits() { return units; }
@@ -286,9 +286,9 @@ public:
 		};
 
 		using GROUP_LIST = std::deque<Group>;
-		typedef EList< BuildingLink*, BuildingLink* > LINK_LIST;
-		typedef EList< DropZone*, DropZone* > DROP_LIST;
-		typedef EList< Forest*, Forest* > FOREST_LIST;
+		using LINK_LIST = std::vector<BuildingLink*>;
+		using DROP_LIST = std::vector<DropZone*>;
+		using FOREST_LIST = std::vector<Forest*>;
 		
 		GROUP_LIST						groups;							// list of possible buildings
 		Group							dropZoneGroup;

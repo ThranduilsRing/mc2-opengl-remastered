@@ -31,8 +31,8 @@ void EditorObjectMgr::update()
 	static long homeRelations[9] = {0, 0, 2, 1, 1, 1, 1, 1, 1};
 	if (renderObjects)
 	{
-		for ( BUILDING_LIST::EIterator iter = buildings.Begin();
-			!iter.IsDone(); iter++ )
+		for ( auto iter = buildings.begin();
+			iter != buildings.end(); iter++ )
 			{
 				currentFloatHelp = 0;
 				ObjectAppearance* pBAppr = (*iter) ? (*iter)->appearance() : nullptr;
@@ -124,7 +124,7 @@ void EditorObjectMgr::render()
 		if (!s_prewarmDone && !s_prewarmOff && eye && eye->getNumLights() > 0)
 		{
 			int attempted = 0, baked = 0, remaining = 0;
-			for (BUILDING_LIST::EIterator it = buildings.Begin(); !it.IsDone(); it++)
+			for (auto it = buildings.begin(); it != buildings.end(); it++)
 			{
 				EditorObject* o = *it;
 				if (!o || !o->appearance()) continue;
@@ -133,7 +133,7 @@ void EditorObjectMgr::render()
 				++attempted;
 				if (a->prewarmStaticLightBake(eye)) ++baked;
 			}
-			for (BUILDING_LIST::EIterator it = buildings.Begin(); !it.IsDone(); it++)
+			for (auto it = buildings.begin(); it != buildings.end(); it++)
 			{
 				EditorObject* o = *it;
 				if (o && o->appearance() && o->appearance()->needsPrewarmBake()) ++remaining;
@@ -151,8 +151,8 @@ void EditorObjectMgr::render()
 	if (s_emrLog)
 		EditorObjMgrTrace("EditorObjectMgr::render frame=%ld renderObjects=%d renderTrees=%d buildings=%ld units=%ld links=%ld dropZones=%ld",
 			s_emrFrame, renderObjects ? 1 : 0, renderTrees ? 1 : 0,
-			(long)buildings.Count(), (long)static_cast<int>(units.size()),
-			(long)links.Count(), (long)dropZones.Count());
+			static_cast<long>(buildings.size()), static_cast<long>(units.size()),
+			static_cast<long>(links.size()), static_cast<long>(dropZones.size()));
 
 	long bTreeFiltered = 0;
 	long bRecalcPassed = 0;
@@ -161,9 +161,9 @@ void EditorObjectMgr::render()
 	{
 		if (s_emrLog)
 			EditorObjMgrTrace("EditorObjectMgr::render frame=%ld buildings-loop enter count=%ld",
-				s_emrFrame, (long)buildings.Count());
-		for ( BUILDING_LIST::EIterator iter = buildings.Begin();
-			!iter.IsDone(); iter++ )
+				s_emrFrame, static_cast<long>(buildings.size()));
+		for ( auto iter = buildings.begin();
+			iter != buildings.end(); iter++ )
 		{
 			currentFloatHelp = 0;
 			const bool passTreeFilter =
@@ -202,7 +202,7 @@ void EditorObjectMgr::render()
 	long uRendered = 0;
 	if (s_emrLog)
 		EditorObjMgrTrace("EditorObjectMgr::render frame=%ld units-loop enter count=%ld",
-			s_emrFrame, (long)static_cast<int>(units.size()));
+			s_emrFrame, static_cast<long>(units.size()));
 	for ( auto mIter = units.begin();
 		mIter != units.end(); mIter++ )
 	{
@@ -231,15 +231,15 @@ void EditorObjectMgr::render()
 			s_emrFrame, uRecalcPassed, uRendered);
 
 	// Building links -- 2D overlay, NOT batcher scope.
-	for ( LINK_LIST::EIterator lIter = links.Begin();
-		!lIter.IsDone(); lIter++ )
+	for ( auto lIter = links.begin();
+		lIter != links.end(); lIter++ )
 	{
 		(*lIter)->render();
 	}
 
 	// Drop zones -- 2D overlay, NOT batcher scope.
-	for ( DROP_LIST::EIterator dIter = dropZones.Begin();
-		!dIter.IsDone(); dIter++ )
+	for ( auto dIter = dropZones.begin();
+		dIter != dropZones.end(); dIter++ )
 	{
 		Stuff::Vector3D pos = (*dIter)->getPosition();
 		Stuff::Vector4D screen;
@@ -386,7 +386,7 @@ EditorObject* EditorObjectMgr::findObjectByStaticRecipeIndex(int32_t recipeIndex
 	if (recipeIndex < 0)
 		return nullptr;
 
-	for (BUILDING_LIST::EIterator iter = buildings.Begin(); !iter.IsDone(); iter++)
+	for (auto iter = buildings.begin(); iter != buildings.end(); iter++)
 	{
 		EditorObject* obj = *iter;
 		if (!obj || !obj->appearance())
@@ -411,7 +411,7 @@ void EditorObjectMgr::registerStaticPropsForMissionLoad()
 		return;
 	static const long homeRelations[9] = {0, 0, 2, 1, 1, 1, 1, 1, 1};
 	int total = 0, registered = 0;
-	for (BUILDING_LIST::EIterator iter = buildings.Begin(); !iter.IsDone(); iter++)
+	for (auto iter = buildings.begin(); iter != buildings.end(); iter++)
 	{
 		EditorObject* obj = *iter;
 		if (!obj || !obj->appearance())
