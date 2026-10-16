@@ -101,10 +101,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 
 	memset(listOfTypeVertices,0xff,sizeof(TG_TypeVertex) * numTypeVertices);
 
-	int *vertexNormalCount = (int*)TG_Shape::tglHeap->Malloc(sizeof(int) * numTypeVertices);
-	gosASSERT(vertexNormalCount != nullptr);
-
-	memset(vertexNormalCount,0,sizeof(int) * numTypeVertices);
+	std::vector<int> vertexNormalCount(numTypeVertices, 0);
 
 	for (int i=0;i<numTypeVertices;i++)
 	{
@@ -578,7 +575,6 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		}
 	}
 
-	TG_Shape::tglHeap->Free(vertexNormalCount);
 	return(0);
 }	
 
@@ -598,8 +594,9 @@ int TG_TypeShape::LoadTGShapeFromASE (const char *fileName)
 	long aseFileSize = gos_FileSize(fileName);
 	gosASSERT(aseFileSize > 0);
 
-	BYTE *aseContents = (BYTE *)TG_Shape::tglHeap->Malloc(aseFileSize);
-	gosASSERT(aseContents != nullptr);
+	// One zero byte past the file: the header and texture searches below run string functions over the contents.
+	std::vector<BYTE> aseStore(static_cast<size_t>(aseFileSize) + 1, 0);
+	BYTE *aseContents = aseStore.data();
 
 	HGOSFILE aseFile;
 	gos_OpenFile(&aseFile,fileName,READONLY);
@@ -679,9 +676,6 @@ int TG_TypeShape::LoadTGShapeFromASE (const char *fileName)
 	//---------------------------------------------------
 	// Calling from top will load just first GEOMOBJECT!
 	long parseResult = ParseASEFile(aseContents,fileName);
-
-	TG_Shape::tglHeap->Free(aseContents);
-	aseContents = nullptr;
 
 	return(parseResult);
 }	

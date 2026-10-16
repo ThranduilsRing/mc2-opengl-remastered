@@ -1180,6 +1180,7 @@ class TG_VertexPool
 {
 	protected:
 		TG_Vertex 	*tgVertexPool;
+		std::unique_ptr<TG_Vertex[]>	tgVertexPoolStore;	// owns the pool; tgVertexPool is a view of it
 		TG_Vertex 	*nextVertex;
 
 		DWORD		totalVertices;
@@ -1227,14 +1228,15 @@ class TG_VertexPool
 		
 		void destroy (void)
 		{
-			TG_Shape::tglHeap->Free(tgVertexPool);
+			tgVertexPoolStore.reset();
 			tgVertexPool = nextVertex = NULL;
 			totalVertices = numVertices = 0;
 		}
 		
 		void init (DWORD maxVertices)
 		{
-			tgVertexPool = (TG_VertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Vertex) * maxVertices);
+			tgVertexPoolStore = std::make_unique_for_overwrite<TG_Vertex[]>(maxVertices);
+			tgVertexPool = tgVertexPoolStore.get();
 			gosASSERT(tgVertexPool != NULL);
 			
 			nextVertex = tgVertexPool;
@@ -1269,6 +1271,7 @@ class TG_GOSVertexPool
 {
 	protected:
 		gos_VERTEX 	*gVertexPool;
+		std::unique_ptr<gos_VERTEX[]>	gVertexPoolStore;	// owns the pool; gVertexPool is a view of it
 		gos_VERTEX 	*nextVertex;
 
 		DWORD		totalVertices;
@@ -1316,14 +1319,15 @@ class TG_GOSVertexPool
 		
 		void destroy (void)
 		{
-			TG_Shape::tglHeap->Free(gVertexPool);
+			gVertexPoolStore.reset();
 			gVertexPool = nextVertex = NULL;
 			totalVertices = numVertices = 0;
 		}
 		
 		void init (DWORD maxVertices)
 		{
-			gVertexPool = (gos_VERTEX *)TG_Shape::tglHeap->Malloc(sizeof(gos_VERTEX) * maxVertices);
+			gVertexPoolStore = std::make_unique_for_overwrite<gos_VERTEX[]>(maxVertices);
+			gVertexPool = gVertexPoolStore.get();
 			gosASSERT(gVertexPool != NULL);
 			
 			nextVertex = gVertexPool;
@@ -1358,6 +1362,7 @@ class TG_TrianglePool
 {
 	protected:
 		TG_Triangle *trianglePool;
+		std::unique_ptr<TG_Triangle[]>	trianglePoolStore;	// owns the pool; trianglePool is a view of it
 		TG_Triangle	*nextTriangle;
 
 		DWORD		totalTriangles;
@@ -1405,14 +1410,15 @@ class TG_TrianglePool
 		
 		void destroy (void)
 		{
-			TG_Shape::tglHeap->Free(trianglePool);
+			trianglePoolStore.reset();
 			trianglePool = nextTriangle = NULL;
 			totalTriangles = numTriangles = 0;
 		}
 		
 		void init (DWORD maxTriangles)
 		{
-			trianglePool = (TG_Triangle *)TG_Shape::tglHeap->Malloc(sizeof(TG_Triangle) * maxTriangles);
+			trianglePoolStore = std::make_unique_for_overwrite<TG_Triangle[]>(maxTriangles);
+			trianglePool = trianglePoolStore.get();
 			gosASSERT(trianglePool != NULL);
 			
 			nextTriangle = trianglePool;
@@ -1447,6 +1453,7 @@ class TG_ShadowPool
 {
 	protected:
 		TG_ShadowVertexTemp 	*tVertexPool;
+		std::unique_ptr<TG_ShadowVertexTemp[]>	tVertexPoolStore;	// owns the pool; tVertexPool is a view of it
 		TG_ShadowVertexTemp 	*nextVertex;
 
 		DWORD					totalVertices;
@@ -1494,14 +1501,15 @@ class TG_ShadowPool
 		
 		void destroy (void)
 		{
-			TG_Shape::tglHeap->Free(tVertexPool);
+			tVertexPoolStore.reset();
 			tVertexPool = nextVertex = NULL;
 			totalVertices = numVertices = 0;
 		}
 		
 		void init (DWORD maxVertices)
 		{
-			tVertexPool = (TG_ShadowVertexTempPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShadowVertexTemp) * maxVertices);
+			tVertexPoolStore = std::make_unique_for_overwrite<TG_ShadowVertexTemp[]>(maxVertices);
+			tVertexPool = tVertexPoolStore.get();
 			gosASSERT(tVertexPool != NULL);
 			
 			nextVertex = tVertexPool;
@@ -1536,6 +1544,7 @@ class TG_DWORDPool
 {
 	protected:
 		DWORD 	*triPool;
+		std::unique_ptr<DWORD[]>	triPoolStore;	// owns the pool; triPool is a view of it
 		DWORD	*nextTri;
 
 		DWORD	totalTriangles;
@@ -1583,14 +1592,15 @@ class TG_DWORDPool
 		
 		void destroy (void)
 		{
-			TG_Shape::tglHeap->Free(triPool);
+			triPoolStore.reset();
 			triPool = nextTri = NULL;
 			totalTriangles = numTriangles = 0;
 		}
 		
 		void init (DWORD maxTriangles)
 		{
-			triPool = (DWORD *)TG_Shape::tglHeap->Malloc(sizeof(DWORD) * maxTriangles);
+			triPoolStore = std::make_unique_for_overwrite<DWORD[]>(maxTriangles);
+			triPool = triPoolStore.get();
 			gosASSERT(triPool != NULL);
 			
 			nextTri = triPool;
