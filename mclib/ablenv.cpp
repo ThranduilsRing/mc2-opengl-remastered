@@ -864,10 +864,7 @@ static void ablReportSkippedErroredModule (long handle, const char* fileName, lo
 
 long ABLModule::execute (ABLParamPtr paramList) {
 
-	// OMNITECH-ABL-EXECEXPRESSION-RECON-1: a module that failed to compile (STOPSYNTAX) has
-	// malformed bytecode; running it underflows the VM stack -> READ AV at ablxexpr.cpp:501.
-	// Skip execution of errored modules when MC2_ABL_SKIP_ERRORED_MODULES is set (default OFF
-	// = legacy behaviour). One-shot log per module handle.
+	// Errored modules may contain malformed bytecode that underflows the VM stack.
 	if (ablSkipErroredModulesEnabled() && ModuleRegistry[handle].compileErrorCount > 0) {
 		ablReportSkippedErroredModule(handle, ModuleRegistry[handle].fileName, ModuleRegistry[handle].compileErrorCount);
 		return 0;
@@ -877,8 +874,6 @@ long ABLModule::execute (ABLParamPtr paramList) {
 	if (debugger)
 		debugger->setModule(this);
 
-	//--------------------------
-	// Execute the ABL module...
 	SymTableNodePtr moduleIdPtr = ModuleRegistry[handle].moduleIdPtr;
 	if (moduleIdPtr->defn.info.routine.flags & ROUTINE_FLAG_FSM)
 		CurFSM = this;
@@ -886,52 +881,15 @@ long ABLModule::execute (ABLParamPtr paramList) {
 		CurFSM = nullptr;
 	NumStateTransitions = 0;
 
-	//--------------------------------------------
-	// Point to this module's static data space...
 	StaticDataPtr = staticData;
 	OrderCompletionFlags = orderCallFlags;
 
-	//---------------------------------
-	// Init some important variables...
 	CurModuleIdPtr = nullptr;
 	CurRoutineIdPtr = nullptr;
 	FileNumber = -1;
-	errorCount = 0;
-	execStatementCount = 0;
-	NumExecutions++;
-
-	//------------------
-	// Init the stack...
-	stackFrameBasePtr = tos = (stack + eternalOffset);
-
-	//---------------------------------------
-	// Initialize the module's stack frame...
-	level = 1;
-	CallStackLevel = 0;
-	stackFrameBasePtr = tos + 1;
-	
-	//-------------------------
-	// Function return value...
-	pushInteger(0);
-	//---------------
-	// Static Link...
-	pushAddress(nullptr);
-	//----------------
-	// Dynamic Link...
-	pushAddress(nullptr);
-	//------------------
-	// Return Address...
-	pushAddress(nullptr);
-
-	//initDebugger();
-
-	//----------
-	// Run it...
+	initializeEntryFrame();
 
 	if (paramList) {
-		//------------------------------------------------------------------------------
-		// NOTE: Currently, parameter passing of arrays is not functioning. This MUST be
-		// done...
 		long curParam = 0;
 		for (SymTableNodePtr formalIdPtr = moduleIdPtr->defn.info.routine.params;
 			 formalIdPtr != nullptr;
@@ -941,28 +899,10 @@ long ABLModule::execute (ABLParamPtr paramList) {
 
 			if (formalIdPtr->defn.key == DFN_VALPARAM) {
 
-				if (formalTypePtr == RealTypePtr) {
-					if (paramList[curParam].type == ABL_PARAM_INTEGER) {
-						//---------------------------------------------
-						// Real formal parameter, but integer actual...
-						pushReal((float)(paramList[curParam].integer));
-						}
-					else if (paramList[curParam].type == ABL_PARAM_REAL)
-						pushReal(paramList[curParam].real);
-					}
-				else if (formalTypePtr == IntegerTypePtr) {
-					if (paramList[curParam].type== ABL_PARAM_INTEGER)
-						pushInteger(paramList[curParam].integer);
-					else
-						return(0);
-				}
+				if (!pushEntryValueParameter(formalTypePtr, paramList[curParam]))
+					return 0;
 
-				//----------------------------------------------------------
-				// Formal parameter is an array or record, so make a copy...
 				if (formalTypePtr->form == FRM_ARRAY/* || (formalTypePtr->form == FRM_RECORD)*/) {
-					//------------------------------------------------------------------------------
-					// The following is a little inefficient, but is kept this way to keep it clear.
-					// Once it's verified to work, optimize...
 					long size = formalTypePtr->size;
 					char* dest = (char*)ABLStackMallocCallback((size_t)size);
 					if (!dest) {
@@ -977,16 +917,12 @@ long ABLModule::execute (ABLParamPtr paramList) {
 				}
 				}
 			else {
-				//-------------------------------
-				// pass by reference parameter...
 				if (formalTypePtr == RealTypePtr)
 					pushAddress((Address)&(paramList[curParam].real));
 				else if (formalTypePtr == IntegerTypePtr)
 					pushAddress((Address)&(paramList[curParam].integer));
 				else
 					return(0);
-				//SymTableNodePtr idPtr = getCodeSymTableNodePtr();
-				//execVariable(idPtr, USE_REFPARAM);
 			}
 			curParam++;
 		}
@@ -994,7 +930,6 @@ long ABLModule::execute (ABLParamPtr paramList) {
 
 	CurModuleHandle = handle;
 
-	//--------------------------------------------------------------------
 	// No init function in FSM. Put all init stuff into the start state...
 	CallModuleInit = !initCalled;
 	initCalled = true;
@@ -1004,8 +939,6 @@ long ABLModule::execute (ABLParamPtr paramList) {
 
 	memcpy(&returnVal, &returnValue, sizeof(StackItem));
 
-	//-----------
-	// Summary...
 	return(execStatementCount);	
 }
 
