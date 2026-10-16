@@ -1,0 +1,15 @@
+{
+  "recipe": "8 decimal-numbered RGB frames, 4 fps; 0.5s mono s16 22050Hz 440Hz amplitude 8192",
+  "sha256": {
+    "assets-source/frame00.ppm": "62f8f186c59bd9f75142655ecef37132f68d24b5902d466231a03cf427fa76a1",
+    "assets-source/frame01.ppm": "ede7f73c8caf57a89a48bea474a2fb7c11005864eb463f9e62d285046fea55e5",
+    "assets-source/frame02.ppm": "625c16bcb59ef2ce0fe3798f37cf7d8a28ff98dc97e42533f92b728d43c90674",
+    "assets-source/frame03.ppm": "8edabc6690f534bc489b8d90b4aaaf841a5c9cfaef10bee738cfa95a6533071d",
+    "assets-source/frame04.ppm": "1d121eb886d18ae0de09e1709537cd96a9ac980afca7738569655fd5be0dbb81",
+    "assets-source/frame05.ppm": "29943b88a5964411e85b7e580026cc1e8525b4db948bb2e32b72d5ddbd816a43",
+    "assets-source/frame06.ppm": "843adc6130b5242afd6c4db7b0e478b4be1b6470ecab5f1d70f378237a5429d4",
+    "assets-source/frame07.ppm": "94292ceb515344c5820af3b7887c5fba7e5cd74c25205db734876ac6e091d70e",
+    "mod/data/movies/e6e_numbered.mp4": "2c95e3c604f61a613f48a375380c5ba4ba1ff4bf5ff4d3e990869c71d31d7d65",
+    "mod/data/sound/e6e_tone.wav": "7ea0e9d6b68432e7280ffb4c760cdf094d88ce10bb9dc428518d8ea93c09684d"
+  }
+}

@@ -1,0 +1,31 @@
+FITini
+[Campaign]
+l GroupCount = 1
+l CBills = 10000
+l NameID = 60021
+st FinalVideo = ""
+[Group0]
+l NumberToComplete = 2
+l MissionCount = 2
+st OperationFile = "MCL_CM_op1_1"
+st Video = ""
+l Tune = 0
+[Group0Mission0]
+st FileName = "e6e_win"
+b Mandatory = FALSE
+st PurchaseFile = "purchase"
+b PlayLogistics = FALSE
+b PlaySalvage = FALSE
+b PlayPilotPromotion = FALSE
+b PlayPurchasing = FALSE
+b PlaySelection = FALSE
+[Group0Mission1]
+st FileName = "e6e_loss"
+b Mandatory = FALSE
+st PurchaseFile = "purchase"
+b PlayLogistics = FALSE
+b PlaySalvage = FALSE
+b PlayPilotPromotion = FALSE
+b PlayPurchasing = FALSE
+b PlaySelection = FALSE
+FITend

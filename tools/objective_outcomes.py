@@ -130,16 +130,84 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("trace", type=Path)
     parser.add_argument("expected", type=Path)
+    parser.add_argument("--mission", help="case in an authored fixture family")
     args = parser.parse_args(argv)
     try:
         expected = decode(args.expected.read_text(encoding="utf-8"))
         with args.trace.open(encoding="utf-8", newline="") as stream:
-            count = compare((line.removesuffix("\n") for line in stream), expected)
+            lines = [line.removesuffix("\n") for line in stream]
+        if args.mission:
+            count = compare_family(lines, expected, args.mission, args.expected.parent)
+        else:
+            count = compare(lines, expected)
     except (OSError, ValueError, TypeError, KeyError, OverflowError, RecursionError) as error:
         print(f"FAIL: {error}", file=sys.stderr)
         return 1
     print(f"PASS: {count} observations match (no runtime outcome claim)")
     return 0
+
+
+def matches(actual, pattern):
+    """Only declared volatile clocks, traversal identities and mounted paths vary."""
+    if isinstance(pattern, dict):
+        if set(pattern) == {"$integer"}:
+            return type(actual) is int and pattern["$integer"][0] <= actual <= pattern["$integer"][1]
+        if set(pattern) == {"$oneOf"}:
+            return any(type(actual) is type(item) and actual == item for item in pattern["$oneOf"])
+        if set(pattern) == {"$path"}:
+            return isinstance(actual, str) and actual.replace("\\", "/").lower().endswith(pattern["$path"])
+        return isinstance(actual, dict) and actual.keys() == pattern.keys() and all(
+            matches(actual[key], value) for key, value in pattern.items())
+    return type(actual) is type(pattern) and actual == pattern
+
+
+def compare_family(lines, family, case, directory):
+    import hashlib
+    import struct
+    require(family.get("version") == 2 and case in family["cases"], "unknown fixture case")
+    expected = family["cases"][case]
+    digest = hashlib.sha256(b"MC2-OBJECTIVES/1\0")
+    for extension in ("fit", "pak"):
+        data = (directory / "mod/data/missions" / f"{case}.{extension}").read_bytes()
+        require(hashlib.sha256(data).hexdigest() == expected["inputs"][extension], "fixture input changed")
+        digest.update(struct.pack("<Q", len(data)))
+        digest.update(data)
+    require(digest.hexdigest() == expected["mission"], "fixture fingerprint changed")
+    for name, digest in family["support"].items():
+        require(hashlib.sha256((directory / name).read_bytes()).hexdigest() == digest, "fixture support changed")
+    observed = []
+    for line in lines:
+        require(isinstance(line, str) and line.startswith(PREFIX) and
+                len(line.encode("utf-8")) <= MAX_RECORD_BYTES, "invalid observation")
+        observed.append(decode(line[len(PREFIX):]))
+    require(len(observed) == len(expected["events"]), "missing/extra fixture observations")
+    bound, used, materialized = {}, set(), []
+    for pattern in expected["events"]:
+        cause = None if pattern["cause"] is None else bound.get(pattern["cause"])
+        require(pattern["cause"] is None or cause is not None, "oracle cause must precede dependent")
+        candidates = [event for event in observed if event["id"] not in used and
+                      event["kind"] == pattern["kind"] and event["cause"] == cause and
+                      matches(event["data"], pattern["data"])]
+        require(len(candidates) == 1, f"missing/ambiguous fixture event: {pattern['id']}")
+        event = candidates[0]
+        bound[pattern["id"]] = event["id"]
+        used.add(event["id"])
+        materialized.append(semantic(event))
+    oracle = {"version": 1, "mission": expected["mission"], "events": materialized,
+              "before": [[bound[a], bound[b]] for a, b in expected["before"]],
+              "timing": {bound[key]: value for key, value in expected["timing"].items()}}
+    count = compare(lines, oracle)
+    by_id = {event["id"]: event for event in observed}
+    for name, delta in expected.get("cbills", {}).items():
+        data = by_id[bound[name]]["data"]
+        require(data["new"] - data["old"] == delta, "wrong objective C-Bill delta")
+    for earlier, later in zip(expected.get("cbills", {}), list(expected.get("cbills", {}))[1:]):
+        require(by_id[bound[earlier]]["data"]["new"] == by_id[bound[later]]["data"]["old"],
+                "discontinuous C-Bill settlement")
+    for earlier, later in expected.get("later_traversal", []):
+        require(by_id[bound[earlier]]["data"]["traversal"] < by_id[bound[later]]["data"]["traversal"],
+                "activation must precede resolution in a later traversal")
+    return count
 
 
 if __name__ == "__main__":
