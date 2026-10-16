@@ -365,12 +365,4 @@ void main()
 
     float combined = shadow;
     FragColor = vec4(combined, combined, combined, 1.0);
-    if (isStaticProp && propShadowReceive != 0)
-    {
-        vec4 lp = dynamicCascadeMatrices[0] * vec4(worldPos, 1.0);
-        vec3 pc = lp.xyz / lp.w; pc.xy = pc.xy * 0.5 + 0.5;
-        FragColor = vec4(texture(dynamicShadowArray, vec4(pc.xy, 0.0, pc.z - 0.002)) < 0.5 ? 1.0 : 0.0,
-                         texture(dynamicShadowArray, vec4(pc.xy, 0.0, pc.z + 0.01)) < 0.5 ? 1.0 : 0.0,
-                         texture(dynamicShadowArray, vec4(pc.xy, 0.0, pc.z + 0.2)) < 0.5 ? 1.0 : 0.0, 1.0);
-    }
 }

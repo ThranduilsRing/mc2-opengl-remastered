@@ -156,12 +156,4 @@ void main()
     else if (u.enableDynamicShadows == 1 && u.propShadowReceive != 0 && !rc_isAlphaTestProp(normalData))
         shadow = min(shadow, sampleDynamicShadow(worldPos, objN, u.mechSoft, 0.4));
     FragColor = vec4(shadow, shadow, shadow, 1.0);
-    if (isStaticProp && u.propShadowReceive != 0)
-    {
-        vec4 lp = u.dynamicCascadeMatrices[0] * vec4(worldPos, 1.0);
-        vec3 pc = lp.xyz / lp.w; pc.xy = pc.xy * 0.5 + 0.5;
-        FragColor = vec4(texture(dynamicShadowArray, vec4(pc.xy, 0.0, pc.z - 0.002)) < 0.5 ? 1.0 : 0.0,
-                         texture(dynamicShadowArray, vec4(pc.xy, 0.0, pc.z + 0.01)) < 0.5 ? 1.0 : 0.0,
-                         texture(dynamicShadowArray, vec4(pc.xy, 0.0, pc.z + 0.2)) < 0.5 ? 1.0 : 0.0, 1.0);
-    }
 }
