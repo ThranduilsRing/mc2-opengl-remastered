@@ -1,21 +1,20 @@
 # Step 4 B3 file-and-stream ownership sites from a [[deprecated("B3")]] build (tests/analyze/file_callsites.py); a batch commit removes its rows.
-# total 28 sites in 20 files
+# total 24 sites in 19 files
 # per kind:
 #      18  FitIniFile::open
-#       4  File::operator delete
-#       4  File::operator new
+#       2  File::operator delete
+#       2  File::operator new
 #       1  KEEP-static::ProfileLog
 #       1  File::readRAW
 # per batch (cxx23-step4-b3-files.json):
 #       2  B3.3 (done)
-#       5  B3.4
+#       1  B3.4
 #       1  B3.5
 #       1  B4 (heap-routed raw read, handed over)
 #       5  E-B3
 #      14  KEEP-child
 # sites in files the batch table does NOT list: 0 in 0 files
 # per file:
-#       4  code/mission_init.cpp
 #       4  editor/Editor.cpp
 #       2  code/carnage.cpp
 #       2  code/mission_movers.cpp
@@ -45,7 +44,6 @@
 # blob 8413920270f8a05c56f7b225084e5652fcac8013 code/logisticsdata.cpp
 # blob 65d9b7427a75b01d0a18686d6ad1027ead599036 code/logisticsdata_init.cpp
 # blob e4c01f7f531b7086d3f3508a3da522a4583008b2 code/mech_type.cpp
-# blob c45f805f4979bda5847106e091676241140cffeb code/mission_init.cpp
 # blob 236c9c677b163b1aa7d4071b52f5d0f3abd2c98a code/mission_movers.cpp
 # blob 46dfdac24e5140e095f7a6d3a1ccdc8081592686 code/objtype.cpp
 # blob 8ae3848ceb0a4fa6f8de23525fc74454df18a517 code/terrobj.cpp
@@ -68,10 +66,6 @@ code/light.cpp:56:FitIniFile::open
 code/logisticsdata.cpp:324:FitIniFile::open
 code/logisticsdata_init.cpp:534:FitIniFile::open
 code/mech_type.cpp:166:FitIniFile::open
-code/mission_init.cpp:170:File::operator delete
-code/mission_init.cpp:170:File::operator new
-code/mission_init.cpp:420:File::operator delete
-code/mission_init.cpp:420:File::operator new
 code/mission_movers.cpp:54:FitIniFile::open
 code/mission_movers.cpp:279:FitIniFile::open
 code/objtype.cpp:363:FitIniFile::open

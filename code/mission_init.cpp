@@ -167,43 +167,32 @@ void Mission::initGameSystemRanges(MissionInitFrame& f) {
 	FullPathFileName fullGameSystemName;
 	fullGameSystemName.init(missionPath, "gamesys", ".fit");
 	
-	gameSystemFile = new FitIniFile;
-	gosASSERT(gameSystemFile != NULL);
+	gameSystemFile = std::make_unique<FitIniFile>();
 		
 	result = gameSystemFile->open(fullGameSystemName);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
-	// gamesys.fit is a required per-mission data file; if it fails to open every
-	// subsequent readId below reads uninitialized WeaponRanges/ranges/mine/smoke
-	// values used unconditionally. fatal mode STOPs at the contract violation;
-	// log mode logs and preserves the legacy (garbage-read) path bit-for-bit.
 	MC2_VERIFY(result == NO_ERR, "Mission::init: gamesys.fit open failed (%ld): %s",
 		result, (const char*)fullGameSystemName);
 
 	result = gameSystemFile->seekBlock("WeaponRanges");
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: gamesys.fit missing [WeaponRanges] block");
 
 	float span[2];
 	result = gameSystemFile->readIdFloatArray("Short", span, 2);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: [WeaponRanges] missing Short");
 	WeaponRanges[WEAPON_RANGE_SHORT][0] = span[0];
 	WeaponRanges[WEAPON_RANGE_SHORT][1] = span[1];
 
 	result = gameSystemFile->readIdFloatArray("Medium", span, 2);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: [WeaponRanges] missing Medium");
 	WeaponRanges[WEAPON_RANGE_MEDIUM][0] = span[0];
 	WeaponRanges[WEAPON_RANGE_MEDIUM][1] = span[1];
 
 	result = gameSystemFile->readIdFloatArray("Long", span, 2);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: [WeaponRanges] missing Long");
 	WeaponRanges[WEAPON_RANGE_LONG][0] = span[0];
 	WeaponRanges[WEAPON_RANGE_LONG][1] = span[1];
 
 	result = gameSystemFile->readIdFloatArray("OptimalRangePoints", OptimalRangePoints, 5);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: [WeaponRanges] missing OptimalRangePoints");
 
 	for (long i = 0; i < 5; i++)
@@ -215,16 +204,13 @@ void Mission::initGameSystemRanges(MissionInitFrame& f) {
 		}
 
 	result = gameSystemFile->seekBlock("General");
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: gamesys.fit missing [General] block");
 
 	result = gameSystemFile->readIdFloat("MaxVisualRange",maxVisualRange);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: [General] missing MaxVisualRange");
 	MaxVisualRadius = maxVisualRange * 1.4142;
 
 	result = gameSystemFile->readIdFloat("FireVisualRange",fireVisualRange);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: [General] missing FireVisualRange");
 
 	result = gameSystemFile->readIdULong("MaxTreeLOSBlock",MaxTreeLOSCellBlock);
@@ -232,7 +218,6 @@ void Mission::initGameSystemRanges(MissionInitFrame& f) {
 		MaxTreeLOSCellBlock = 5;
 
 	result = gameSystemFile->readIdFloatArray("WeaponRange", WeaponRange, NUM_FIRERANGES);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: [General] missing WeaponRange");
 
 	result = gameSystemFile->readIdFloat("DefaultAttackRange", DefaultAttackRange);
@@ -240,11 +225,9 @@ void Mission::initGameSystemRanges(MissionInitFrame& f) {
 		DefaultAttackRange = 75.0;
 
 	result = gameSystemFile->readIdFloat("BaseSensorRange",baseSensorRange);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: [General] missing BaseSensorRange");
 
 	result = gameSystemFile->readIdLongArray("VisualRangeTable",visualRangeTable,256);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: [General] missing VisualRangeTable");
 
 	result = gameSystemFile->readIdFloat("BaseHeadShotElevation",BaseHeadShotElevation);
@@ -252,7 +235,6 @@ void Mission::initGameSystemRanges(MissionInitFrame& f) {
 		BaseHeadShotElevation = 1.0f;
 
 	result = gameSystemFile->readIdLong("ForestMoveCost", forestMoveCost);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: [General] missing ForestMoveCost");
 
 	result = gameSystemFile->readIdFloat("MaxUnitExtractDistance",MaxExtractUnitDistance);
@@ -272,22 +254,10 @@ void Mission::initGameSystemGeneral(MissionInitFrame& f) {
 		    MasterComponent::loadMasterList(compFileName, 255, baseSensorRange);
 		gosASSERT(loadErr == NO_ERR);
 
-		// EQUIPMENT-SOURCE-FLIP-SWITCH-1: gated stat overlay (MC2_EQUIPMENT_
-		// DEFINITION_SOURCE=generated; DEFAULT legacy). Overwrites ONLY the green
-		// weapon stat fields on matched rows from the generated defs; gate-OFF is
-		// a no-op with zero I/O (byte-identical). Firing reads masterList as always.
 		overlayGeneratedEquipmentStatsIfEnabled();
 
-		// EQUIP-ADD-FILL-1 (S2): gated ADD pass -- mod defs with an explicit
-		// LegacyMasterId on an UNDEFINED compbas ordinal materialize as live
-		// MasterComponent rows (MC2_EQUIPMENT_ADD + MC2_UNIT_PROFILE_DATA, both
-		// default OFF -> no-op). Runs BEFORE the registry rebuild below so the
-		// filled rows register under their namespaced mod ids.
 		applyEquipmentAddFillIfEnabled(baseSensorRange);
 
-		// EQUIPMENT-REGISTRY-FACADE-1: build the parallel core:<slug> <-> ordinal
-		// registry beside masterList (gated MC2_UNIT_PROFILE_DATA; gate-OFF no-op).
-		// Additive -- reads masterList only, changes no gameplay path.
 		buildAndDumpEquipmentRegistryIfEnabled();
 		dumpFireExecutorProofIfEnabled();
 	}
@@ -306,11 +276,9 @@ void Mission::initGameSystemGeneral(MissionInitFrame& f) {
 		footPrints = 1;
 
 	result = gameSystemFile->readIdLong("BonusTonnageDivisor",tonnageDivisor);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: [General] missing BonusTonnageDivisor");
 
 	result = gameSystemFile->readIdLong("BonusPointsPerTon",resourcesPerTonDivided);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: [General] missing BonusPointsPerTon");
 	
 #ifndef FINAL
@@ -319,23 +287,20 @@ void Mission::initGameSystemGeneral(MissionInitFrame& f) {
 		CheatHitDamage = 5.0f;
 #endif
 	
-	InitDifficultySettings(gameSystemFile);
+	InitDifficultySettings(gameSystemFile.get());
 
-	result = Mover::loadGameSystem(gameSystemFile, maxVisualRange);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	result = Mover::loadGameSystem(gameSystemFile.get(), maxVisualRange);
 	MC2_VERIFY(result == NO_ERR, "Mission::init: Mover::loadGameSystem failed (%ld)", result);
 
 
-	result = BattleMech::loadGameSystem(gameSystemFile);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	result = BattleMech::loadGameSystem(gameSystemFile.get());
 	MC2_VERIFY(result == NO_ERR, "Mission::init: BattleMech::loadGameSystem failed (%ld)", result);
 
-	result = GroundVehicle::loadGameSystem(gameSystemFile);
-	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	result = GroundVehicle::loadGameSystem(gameSystemFile.get());
 	MC2_VERIFY(result == NO_ERR, "Mission::init: GroundVehicle::loadGameSystem failed (%ld)", result);
 
 #ifdef USE_ELEMENTALS
-	result = loadElementalGameSystem(gameSystemFile);
+	result = loadElementalGameSystem(gameSystemFile.get());
 	gosASSERT(result == NO_ERR);
 #endif
 }
@@ -417,8 +382,8 @@ void Mission::initMissionFile(Stuff::Vector3D* dropZoneList, MissionInitFrame& f
 
 	duration = 60;
 
-	missionFile = new FitIniFile;
-	gosASSERT(missionFile != NULL);
+	f.missionFile = std::make_unique<FitIniFile>();
+	missionFile = f.missionFile.get();
 
 	result = missionFile->open(missionFileName);
 	if (result != NO_ERR)
@@ -985,6 +950,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	extern int g_lightProbeSetupPath; g_lightProbeSetupPath = 1; // [GPUPROPS v1]
 	ZoneScopedN("Mission::init");
 	MissionInitFrame f;
+	f.missionFileView = &missionFile;
 	f.missionName = missionName;
 	resetOrderIngress(); // Old tokens cannot cross reinitialization.
 	initPrologue(f);
