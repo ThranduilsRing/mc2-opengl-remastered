@@ -206,22 +206,23 @@ std::vector<uint8_t> decodeBc7(const std::vector<uint8_t>& blocks, uint32_t widt
 
 std::vector<uint8_t> boxDownsampleRgba8(const std::vector<uint8_t>& src, uint32_t width, uint32_t height) {
     if (width == 0 || height == 0 || width > RenderCore::kKtxMaxEdge || height > RenderCore::kKtxMaxEdge ||
-        src.size() != (size_t)width * height * 4u)
+        src.size() != size_t{width} * height * 4u)
         return {};
     const uint32_t dw = mipExtent(width, 1), dh = mipExtent(height, 1);
-    std::vector<uint8_t> dst((size_t)dw * dh * 4u);
+    auto at = [](uint32_t x, uint32_t y, uint32_t rowTexels) { return (size_t{y} * rowTexels + x) * 4u; };
+    std::vector<uint8_t> dst(size_t{dw} * dh * 4u);
     for (uint32_t y = 0; y < dh; ++y) {
         const uint32_t y0 = 2u * y < height ? 2u * y : height - 1u;
         const uint32_t y1 = y0 + 1u < height ? y0 + 1u : y0;
         for (uint32_t x = 0; x < dw; ++x) {
             const uint32_t x0 = 2u * x < width ? 2u * x : width - 1u;
             const uint32_t x1 = x0 + 1u < width ? x0 + 1u : x0;
-            const uint8_t* a = &src[((size_t)y0 * width + x0) * 4u];
-            const uint8_t* b = &src[((size_t)y0 * width + x1) * 4u];
-            const uint8_t* c = &src[((size_t)y1 * width + x0) * 4u];
-            const uint8_t* d = &src[((size_t)y1 * width + x1) * 4u];
-            uint8_t* o = &dst[((size_t)y * dw + x) * 4u];
-            for (int ch = 0; ch < 4; ++ch) o[ch] = (uint8_t)((a[ch] + b[ch] + c[ch] + d[ch] + 2u) / 4u);
+            const uint8_t* a = &src[at(x0, y0, width)];
+            const uint8_t* b = &src[at(x1, y0, width)];
+            const uint8_t* c = &src[at(x0, y1, width)];
+            const uint8_t* d = &src[at(x1, y1, width)];
+            uint8_t* o = &dst[at(x, y, dw)];
+            for (int ch = 0; ch < 4; ++ch) o[ch] = static_cast<uint8_t>((a[ch] + b[ch] + c[ch] + d[ch] + 2u) / 4u);
         }
     }
     return dst;
