@@ -51,11 +51,11 @@
    "LG02": 191,
    "LG03": 265,
    "LG04": 6,
-   "LG05": 124,
+   "LG05": 120,
    "LG06": 509,
    "LG07": 0,
    "LG08": 261,
-   "LG09": 1971,
+   "LG09": 1966,
    "LG10": 42,
    "LG11": 101,
    "LG12a": 95,
@@ -101,7 +101,7 @@
    "LG06": 15,
    "LG07": 0,
    "LG08": 0,
-   "LG09": 35,
+   "LG09": 40,
    "LG10": 0,
    "LG11": 0,
    "LG12a": 2,
@@ -143,7 +143,7 @@
    "LG02": 204,
    "LG03": 876,
    "LG04": 21,
-   "LG05": 196,
+   "LG05": 198,
    "LG06": 452,
    "LG07": 2,
    "LG08": 17,
@@ -358,7 +358,7 @@
   "GameOS/gameos/gameos_graphics.cpp": {
    "LG03": 7,
    "LG06": 2,
-   "LG09": 20,
+   "LG09": 22,
    "LG11": 1,
    "LG12b": 1,
    "LG17": 1
@@ -370,7 +370,7 @@
    "LG03": 7,
    "LG05": 6,
    "LG06": 10,
-   "LG09": 6,
+   "LG09": 7,
    "LG17": 1
   },
   "GameOS/gameos/gameos_graphics_draw.cpp": {
@@ -395,7 +395,7 @@
   "GameOS/gameos/gameos_graphics_internal.h": {
    "LG03": 9,
    "LG06": 5,
-   "LG09": 9,
+   "LG09": 8,
    "LG16": 4,
    "LG17": 1
   },
@@ -1011,7 +1011,7 @@
    "LG05": 1
   },
   "GameOS/gameos/terrain_field_store.cpp": {
-   "LG09": 6,
+   "LG09": 7,
    "LG17": 1
   },
   "GameOS/gameos/terrain_field_store.h": {
@@ -1027,13 +1027,11 @@
    "LG06": 1
   },
   "GameOS/gameos/texture_decode.cpp": {
-   "LG05": 2,
    "LG06": 5,
-   "LG09": 7,
+   "LG09": 10,
    "LG17": 3
   },
   "GameOS/gameos/texture_decode.h": {
-   "LG05": 2,
    "LG06": 2,
    "LG17": 1
   },
@@ -1167,7 +1165,7 @@
   },
   "GameOS/gameos/vulkan_color_prop_island.cpp": {
    "LG06": 2,
-   "LG09": 39,
+   "LG09": 37,
    "LG10": 1,
    "LG11": 1,
    "LG13": 4,
@@ -1193,7 +1191,7 @@
   },
   "GameOS/gameos/vulkan_mech_island.cpp": {
    "LG06": 2,
-   "LG09": 30,
+   "LG09": 20,
    "LG11": 1,
    "LG13": 2
   },
@@ -1293,7 +1291,7 @@
   },
   "GameOS/gameos/vulkan_water_island_images.cpp": {
    "LG08": 2,
-   "LG09": 9
+   "LG09": 10
   },
   "GameOS/gameos/vulkan_water_island_init.cpp": {
    "LG09": 4
@@ -1479,7 +1477,8 @@
   },
   "RenderCore/KtxLoader.cpp": {
    "LG05": 1,
-   "LG06": 1
+   "LG06": 1,
+   "LG09": 5
   },
   "RenderCore/KtxLoader.h": {
    "LG05": 1,
@@ -2442,7 +2441,7 @@
   },
   "code/mission.cpp": {
    "LG03": 36,
-   "LG05": 1,
+   "LG05": 3,
    "LG09": 11,
    "LG10": 1
   },
@@ -5129,7 +5128,7 @@
    "LG20": 3
   }
  },
- "head": "9e012d3f0",
+ "head": "a0614d7d2",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
