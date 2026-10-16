@@ -3,8 +3,9 @@
 
 WHAT: how the Vulkan golden set is blessed from Vulkan captures, and what happens to the 14 regions the GL 1080p set refused.
 WHY: GL deletion step 1 (the capture and tooling GL arms, `.claude/cleanup/gl-retirement-inventory-2026-10-15.md` sections 11-13) needs a
-golden that was drawn by VK. Today `render_resolution.CURRENT_GOLDEN` = `golden-e9e3f19d6-1080p`, blessed from three GL runs
-(`capture_env.backend = {requested: gl, drew: [gl]}`); every later VK candidate graded against it measures the GL/VK gap, not a regression.
+golden that was drawn by VK. Until 2026-10-16 `render_resolution.CURRENT_GOLDEN` was `golden-e9e3f19d6-1080p`, blessed from three GL runs
+(`capture_env.backend = {requested: gl, drew: [gl]}`), so a VK candidate graded against it measured the GL/VK gap, not a regression.
+Switched on 2026-10-16 to `golden-d9e1f3801716-vk-1080p` (section 4; done, see section 6).
 
 ## 1. The 14 refused regions of `golden-e9e3f19d6-1080p`
 
@@ -86,6 +87,9 @@ to give the GL-arm removal a VK reference; the final set is re-blessed after the
 
 ## 3. Blessed 2026-10-16: `golden-e350d0b4a5c6-vk-1080p` (interim, not CURRENT_GOLDEN)
 
+Retired the same day (superseded by the section 4 set): archived under `E:/mc2-archive-2026-10/docs/vk-interim-golden-2026-10-16/`,
+row in `tests/visual/goldens/RETIRED.md`. The record below is kept as the provenance of the bless method.
+
 | item | value |
 |---|---|
 | runs | `.claude/l2cap/vkgold26-r{1,2,3}`, exe e350d0b4a5c6 (clean), lane install, the 10 poses of section 2, umbrella pair + `MC2_SMOKE_FREEZE_ANIM=1`, validation off |
@@ -98,7 +102,7 @@ to give the GL-arm removal a VK reference; the final set is re-blessed after the
 | viewed | every pose of r1 next to the same-exe GL capture `gl26-r1`: `.claude/l2cap/montages/s26-vkgold-gl-vk-{1,2}.png` (GL left, VK right); VK-GL mean 205644 2.49, 205843 6.07, 204523 1.67, 204611 3.53, 204753 3.75, 204907 5.14, 205952 10.1 (the white GL map-edge skirt), 212019 4.17, 212140 3.11, 212258 3.04 |
 | why interim | parity rows that change these poses are still open (1, 2, 4, 6, 7, 9 at least), so this set is the VK reference for GL deletion step 1, not the final golden; re-bless after the last row closes and then point `CURRENT_GOLDEN` at it |
 
-## 4. Re-blessed 2026-10-16: `golden-d9e1f3801716-vk-1080p` (interim, not CURRENT_GOLDEN)
+## 4. Re-blessed 2026-10-16: `golden-d9e1f3801716-vk-1080p` (CURRENT_GOLDEN since the 2026-10-16 switch)
 
 | item | value |
 |---|---|
@@ -126,7 +130,7 @@ code change; (2) so no golden pose moves and no re-bless is needed: the final ex
 d37588c7c did (`s28c-vk`, every pose within the noise floor of `s27d-vk`); (3) open rows that could move these poses: 24 (GL-only face
 darkening, mechs are a few dozen px here) and 18 (no stock content), neither a VK change pending; (4) `verify.py` refuses a candidate drawn
 by another backend (908e2ad90, `--allow-backend-mismatch` to override, logged; pytest `test_verify_backend.py`).
-The switch commit (orchestrator, not a lane): in `scripts/smoke_lib/render_resolution.py` replace
+DONE 2026-10-16 (324fa2a36, section 6); the recipe below is kept as the record of what the switch commit did. The switch commit: in `scripts/smoke_lib/render_resolution.py` replace
 `CURRENT_GOLDEN = "golden-e9e3f19d6-1080p"` with `CURRENT_GOLDEN = "golden-d9e1f3801716-vk-1080p"` and the comment line above it with
 "the VK set blessed at the pinned size; the GL sets are retired (RETIRED.md)"; add `RETIRED.md` rows for `golden-e9e3f19d6-1080p` (GL,
 superseded by the VK set) and `reset-50331d5` (GL, 4K); run `tests/smoke/test_resolution_tier.py` and

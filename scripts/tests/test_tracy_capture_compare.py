@@ -89,7 +89,7 @@ def harness(monkeypatch):
     monkeypatch.setattr(capture.time, "sleep", Mock())
     monkeypatch.setattr(capture.render_options_pin, "record", Mock(return_value={"rejected": []}))
     monkeypatch.setattr(capture.render_options_pin, "write", Mock())
-    h.run = lambda show_window=True: capture.capture_trace(h.install, "gl", "mc2_01", 15, h.out,
+    h.run = lambda show_window=True: capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out,
                                                           show_window=show_window)
     return h
 
@@ -241,7 +241,7 @@ def test_vk_arm_leaves_island_defaults_to_the_engine(monkeypatch):
 
 def test_warmup_launch_runs_under_the_lease_before_the_recorder(harness):
     h = harness
-    assert capture.capture_trace(h.install, "gl", "mc2_01", 15, h.out, warmup_s=7) == 0
+    assert capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, warmup_s=7) == 0
     assert h.events[:4] == ["acquire", "game.spawn", "game.wait", "recorder.spawn"]
     warm_argv = h.game_spawn.call_args_list[0].args[0]
     assert warm_argv[warm_argv.index("--duration") + 1] == "7"
@@ -251,10 +251,19 @@ def test_warmup_launch_runs_under_the_lease_before_the_recorder(harness):
 def test_held_chain_lease_is_not_released_by_a_capture(harness):
     h = harness
     h.held = True                                   # main() took it for the whole command
-    assert capture.capture_trace(h.install, "gl", "mc2_01", 15, h.out) == 0
+    assert capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out) == 0
     h.acquire.assert_not_called()
     h.release.assert_not_called()
     assert h.held
+
+
+def test_gl_arm_is_refused_before_anything_runs():
+    with pytest.raises(SystemExit, match="GL arm was retired"):
+        capture.game_env("gl", False, 0, None, [])
+
+
+def test_selfcheck_pair_is_the_two_resolution_tiers():
+    assert capture.SELFCHECK_SIZES == ((1920, 1080), (3840, 2160))
 
 
 def test_main_holds_the_lease_for_the_whole_command_and_compare_takes_none(monkeypatch):

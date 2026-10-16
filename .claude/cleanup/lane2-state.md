@@ -1,5 +1,36 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## THIRTIETH session (2026-10-16, cap 5 h, Opus 5.5) -- Tracy GL arm retired (VK selfcheck on 1080p vs 4K), interim VK golden archived, row 24 GL term named, step-1 GameOS half STOPPED with readers listed, goldenswitch review should-fix; nifty NOT merged ("merge lane2 56f0426c1" absent from mc2-main)
+
+### Commits (after 56f0426c1; no C++ change, the exe is still f77062b02)
+91c1e0502 interim golden archived | 27887bacc goldenswitch review should-fix 1 | f4d0204b4 tracy VK selfcheck + GL arm retired | 6c61587b3 row 24 + inventory section 15 | this state commit. MERGEABLE TIP = the commit carrying this line.
+
+### Step 1, GameOS half: nothing removed (each item blinds a proof or has a live reader/ruling; list in inventory section 15)
+- `gl_fbo` capture arm: the only GL-frame readback; every open parity row (row 24 used it today) and the VFX oracle need it.
+- Lost-draws tracker + `MC2_VK_SCENE_GL_PRODUCER_QUERY`: full deletion made (15 files, -215 lines), REVERTED on finding the 2026-10-12 orchestrator KEEP ruling (gate-amnesty-wave1.md row 395).
+- pass timer/stats (editor Frame Inspector, dev-shell framegraph), dev shell, debug_renderer (KEEP-LIVE), HZB probe (KEEP-LIVE), gpu_memory_report (vram.py), gos_validate (runner.py), renderer_input_probe (UI probes), object_parity (prop producer VK consumes), hitch_trace (no VK equivalent).
+
+### Rows
+- Row 24: GL term = `shadow_screen.frag` sampleDynamicShadow mech floor 0.55; GL/VK 0.553 median on 52,546 px; VK screen-shadow term 1.000 there (pass active: moves 50,831 other px). Occlusion (left shin same normal, untouched). Reference NOT decided; next GL cascade caster census (`MC2_SHADOW_DIAG`). No BUGS row.
+
+### Proof
+| Evidence | Result |
+|---|---|
+| tracy selfcheck VK (`scratch/s30_tsc3.out`) | 1080p p50 7.886 ms vs 4K 10.485 ms = 33.0% (bar 8%) PASS; pool cap 64 vs 256 on VK 1.3% (`s30_tsc2.out`), the reason the knob was replaced |
+| golden: `.claude/l2cap/s30-vkgold2` vs `--golden current` | 36/36 regions, 10 poses PASS, validation_errors=0 on all 41 logs (`scratch/verify30b.log`). First run `s30-vkgold` refused: A: was full (98%), 204907 PNG/sidecar written 0 bytes |
+| tier1 VK + validation (`scratch/b30_vk_t1.log`) | 5/5 PASS, errors=0 warnings=0 all five, 147/126/114/119/105 fps, DEPLOY_FINGERPRINT PASS (f77062b02, doc-only since) |
+| tier1 GL (`scratch/b30_gl_t1.log`) | 5/5 PASS, 143/113/142/142/135 fps, +0 destroys, fingerprint PASS |
+| board | gate_gen --check consistent; log_tag_census OK; dup_lines OK (55571 = baseline); check-golden-coverage PASS; background-launch red = pre-existing test_host_lease_batch.py:69 os.kill (not this lane); tracy pytest 11 pass / same 9 pre-existing failures |
+
+### Open
+- Row 24 caster census; VFX oracle VK arm; gl_fbo arm and debug views need VK ports or owner decisions (inventory section 14 question 3).
+- Scratch (mine, deletable): `scratch/` s30_tsc*.sh/.out, s30_selfcheck3/, s30_r24.sh/.out, r30term.py, f30*.sh/.out, verify30*.log, b30_*_t1.log; `.claude/l2cap/` s30-vkgold (broken run), s30-vkgold2, s30-gl, s30-vk, s30-vk-glss (KEEP s30-gl/vk/vk-glss while gaps row 24 cites them).
+
+### Lessons (30)
+- Read the gate-amnesty ledger for rulings BEFORE deleting a gated diagnostic: a 25-minute deletion was reverted.
+- Edit with an empty new_string also eats the following newline; anchor deletions on a neighbouring line.
+- A "known cost" must be measured on the backend it proves: the GL pool knob is 1.3% on VK.
+
 ## TWENTY-NINTH session (2026-10-16, cap 5 h, Sonnet 5.5) -- CURRENT_GOLDEN switched to the VK set, capture_ab on two VK arms, GL goldens archived, row2 review fixed; nifty NOT merged (waits for "merge lane2 cbfac5d8e")
 
 ### Commits (after cbfac5d8e; code exe = f77062b02, everything later is scripts/docs/baselines)

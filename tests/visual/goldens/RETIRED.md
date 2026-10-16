@@ -123,3 +123,13 @@ three runs, see `tools/visual_verify/vk_golden_plan.md` section 4), and `verify.
 The directories left the tree in the GL-golden archive commit (tarball + sha256 under
 `E:/mc2-archive-2026-10/docs/gl-goldens-2026-10-16/`, `RETIRED_SETS` entries in `scripts/check-golden-coverage.py`).
 Restore: extract the tarball into `tests/visual/goldens/` and remove the two `RETIRED_SETS` entries.
+
+## 2026-10-16: `golden-e350d0b4a5c6-vk-1080p` (interim Vulkan set)
+
+**Superseded by:** `golden-d9e1f3801716-vk-1080p` (CURRENT_GOLDEN). The interim set was blessed before the row 1 (prop night pools) and
+row 9 (map-edge feather) ports moved 14 of its regions toward GL (`tools/visual_verify/vk_golden_plan.md` sections 3 and 4); it was never
+CURRENT_GOLDEN and nothing grades against it. 37 tracked files.
+
+**Archive:** `E:/mc2-archive-2026-10/docs/vk-interim-golden-2026-10-16/golden-e350d0b4a5c6-vk-1080p.tar.gz`, sha256
+`04d3298eef9d2bef3d76b7e54381b7f2db4f679e1ee08392cd5bc5044bbe22d1` (extraction diffed against the tree before removal: identical).
+Restore: extract it into `tests/visual/goldens/` and remove its `RETIRED_SETS` entry.

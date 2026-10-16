@@ -105,8 +105,8 @@ recording window is the FPS proxy (`fps = frames / seconds`).
 
 ```sh
 py -3 tools/tracy_capture_compare.py capture \
-    --install A:/Games/mc2-opengl/mc2-win64-0.4c --arm gl \
-    --mission mc2_01 --seconds 30 -o gl_before.tracy
+    --install A:/Games/mc2-opengl/mc2-win64-0.4c --arm vk \
+    --mission mc2_01 --seconds 30 -o vk_before.tracy
 # add --free-timestep --fps-cap 0 --pose "x,y,rot,proj,alt@600" for FPS work
 ```
 
@@ -117,16 +117,16 @@ py -3 tools/tracy_capture_compare.py compare before.tracy after.tracy \
     [--zones DrawScreen,SwapWindow.SDL]
 ```
 
-### `baseline` — capture BOTH arms at a pose → dated baseline dir
+### `baseline` — capture the VK arm at a pose → dated baseline dir
 
-Records `gl` + `vk` at the canonical pose, uncapped free-timestep, and writes a
-baseline directory with the two traces, a machine-readable `baseline.json`, and
+Records `vk` (the only arm; the GL arm was retired with GL deletion step 1) at the canonical pose, uncapped
+free-timestep, and writes a baseline directory with the trace, a machine-readable `baseline.json`, and
 a human `summary.md` table.
 
 ```sh
 py -3 tools/tracy_capture_compare.py baseline \
     --install A:/Games/mc2-opengl/mc2-win64-0.4c
-# defaults: --mission mc2_10, the mc2_10 corner-park pose, 15s, arm vk (--arms gl,vk adds GL),
+# defaults: --mission mc2_10, the mc2_10 corner-park pose, 15s, arm vk,
 #           --name <UTC date>, out-dir release_assets/tracy-baselines/<name>
 ```
 
