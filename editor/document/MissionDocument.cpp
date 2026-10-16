@@ -1,4 +1,5 @@
 #include "MissionDocument.h"
+#include "FitReader.h"
 
 #include <algorithm>
 #include <bit>
@@ -260,11 +261,10 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
             }
         }
     }
-    const auto whole = [&](std::string_view block, std::string_view key) {
-        return typed(block, key, 0) && find(block, key)->prefix == "ul";
-    };
-    const auto version = number(find("Objectives Version", "Version"));
-    if (!whole("Objectives Version", "Version") || !version || (*version != 2 && *version != 3)) return reject("Objectives Version/Version", "unsupported_or_missing_version");
+    const FitReader reader(syntax_.originalBytes);
+    const auto versionRead = reader.read("Objectives Version", "ul", "Version");
+    const auto version = versionRead ? std::optional{std::get<std::int64_t>(*versionRead)} : std::nullopt;
+    if (!version || (*version != 2 && *version != 3)) return reject("Objectives Version/Version", "unsupported_or_missing_version");
     const std::array<std::string_view, 24> conditions = {"DestroyAllEnemyUnits", "DestroyNumberOfEnemyUnits", "DestroyEnemyUnitGroup", "DestroySpecificEnemyUnit", "DestroySpecificStructure",
         "CaptureOrDestroyAllEnemyUnits", "CaptureOrDestroyNumberOfEnemyUnits", "CaptureOrDestroyEnemyUnitGroup", "CaptureOrDestroySpecificEnemyUnit", "CaptureOrDestroySpecificStructure",
         "DeadOrFledAllEnemyUnits", "DeadOrFledNumberOfEnemyUnits", "DeadOrFledEnemyUnitGroup", "DeadOrFledSpecificEnemyUnit", "CaptureSpecificUnit", "CaptureSpecificStructure",
@@ -274,12 +274,13 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
     const std::array<std::string_view, 4> suffixes = {"Condition", "Action", "FailureCondition", "FailureAction"};
     for (std::uint32_t team = 0; team < (*version == 2 ? 1U : 8U); ++team) {
         const auto block = *version == 2 ? std::string("Objectives") : std::format("Team{}Objectives", team);
-        const auto count = number(find(block, "NumObjectives"));
-        if (!whole(block, "NumObjectives") || !count || *count < 0 || *count > nodeLimit || *count > syntax_.sections.size()) return reject(block + "/NumObjectives", "invalid_or_missing_count");
+        const auto countRead = reader.read(block, "ul", "NumObjectives");
+        const auto count = countRead ? std::optional{std::get<std::int64_t>(*countRead)} : std::nullopt;
+        if (!count || *count < 0 || *count > nodeLimit || static_cast<std::uint64_t>(*count) > syntax_.sections.size()) return reject(block + "/NumObjectives", "invalid_or_missing_count");
         for (std::uint32_t i = 0; i < *count; ++i) {
             const auto name = *version == 2 ? std::format("Objective{}", i) : std::format("Team{}Objective{}", team, i);
             Objective objective{sectionId(name), team, i, {}};
-            if (!objective.section.value) return reject(name, "missing_objective_block");
+            if (!objective.section.value || !reader.block(name)) return reject(name, "missing_objective_block");
             if (const auto* alias = find(name, "PreviousObjectiveMustBeComplete"); alias &&
                 (alias->prefix != "b" || !typed(name, "PreviousObjectiveMustBeComplete", 2)))
                 preserveObjectiveField(alias->id, "ignored by the game");
@@ -292,14 +293,14 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                         "outside signed 32-bit range; the game reader overflows or wraps this value");
             }
             if (auto scalars = decodeObjectiveScalars(objective); !scalars) return scalars;
-            if (!whole(name, "NumConditions")) return reject(name + "/NumConditions", "missing_required");
+            if (!reader.read(name, "ul", "NumConditions")) return reject(name + "/NumConditions", "missing_required");
             for (std::size_t list = 0; list < 4; ++list) {
                 const auto* countField = find(name, counts[list]);
                 const bool ignored = list != 0 && countField && countField->prefix != "ul";
                 if (ignored) preserveObjectiveField(countField->id, "ignored by the game");
-                const auto entries = ignored ? 0 : number(countField).value_or(0);
-                if (countField && !ignored && !whole(name, counts[list])) return reject(name + "/" + std::string(counts[list]), "malformed_count");
-                if (entries < 0 || entries > nodeLimit || entries > syntax_.sections.size() || std::floor(entries) != entries) return reject(name + "/" + std::string(counts[list]), "invalid_count");
+                const auto entriesRead = reader.read(name, "ul", counts[list]);
+                const auto entries = entriesRead ? std::get<std::int64_t>(*entriesRead) : 0;
+                if (entries < 0 || entries > nodeLimit || static_cast<std::uint64_t>(entries) > syntax_.sections.size()) return reject(name + "/" + std::string(counts[list]), "invalid_count");
                 const bool condition = list % 2 == 0;
                 const std::span<const std::string_view> names = condition ? std::span<const std::string_view>(conditions) : std::span<const std::string_view>(actions);
                 for (std::uint32_t j = 0; j < entries; ++j) {
@@ -318,10 +319,7 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                     std::size_t species = names.size();
                     std::string_view policy;
                     std::optional<std::string> speciesText;
-                    if (speciesField && !speciesField->array && speciesField->prefix == "st" && typed(entry, speciesKey, 3)) {
-                        auto text = std::get<std::string>(speciesField->value[0]);
-                        if (text.size() <= objectiveTextLimit) speciesText = std::move(text);
-                    }
+                    if (auto text = reader.read(entry, "st", speciesKey)) speciesText = std::get<std::string>(std::move(*text));
                     if (speciesText) {
                         // Species names match the game exactly; near matches remain unsupported data.
                         for (std::size_t k = 0; k < names.size(); ++k) if (*speciesText == names[k]) species = k;
@@ -330,8 +328,11 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                             "unknown action: game falls back to PlayBIK; entry read-only";
                     } else if (list == 0) {
                         const auto key = std::string(suffixes[list]) + "Species";
-                        const auto legacy = number(find(entry, key));
-                        if (whole(entry, key) && legacy && *legacy >= 0 && *legacy < names.size() && std::floor(*legacy) == *legacy) species = static_cast<std::size_t>(*legacy);
+                        const auto legacy = reader.read(entry, "ul", key);
+                        if (legacy) {
+                            const auto number = std::get<std::int64_t>(*legacy);
+                            if (number >= 0 && number < static_cast<std::int64_t>(names.size())) species = static_cast<std::size_t>(number);
+                        }
                         if (species == names.size()) policy = speciesField ?
                             "unreadable species string and no supported numeric fallback; game skips entry" :
                             "missing species string and no supported numeric fallback; game skips entry";
@@ -356,24 +357,17 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                     else if (kind.find("NumberOf") != std::string_view::npos) required = {"Num"};
                     else if (kind.starts_with("Move")) required = {"TargetCenterX", "TargetCenterY", "TargetRadius"};
                     else if (kind.find("Specific") != std::string_view::npos) {
-                        const auto* wid = find(entry, kind.ends_with("Structure") ? "BuildingWID" : "MoverWID");
-                        if (!wid || wid->array || wid->opaque || wid->prefix != "l" || wid->value.size() != 1 ||
-                            !std::holds_alternative<std::int64_t>(wid->value[0])) required = {"PositionX", "PositionY"};
+                        if (!reader.read(entry, "l", kind.ends_with("Structure") ? "BuildingWID" : "MoverWID")) required = {"PositionX", "PositionY"};
                     }
                     bool ignoredPayload{};
                     for (const auto key : required) {
                         const auto type = key == "AVIFileName" || key == "WAVFileName" || key == "Message" || key == "PurchaseFileName" || key == "FlagID" ? 3U : key == "ResourceStringID" || key == "Num" ? 0U : 1U;
                         const auto* payload = find(entry, key);
                         const auto prefix = type == 0 ? "ul" : type == 1 ? "f" : "st";
-                        if (!payload || payload->opaque || payload->prefix != prefix || payload->array ||
-                            !(type == 0 ? whole(entry, key) : typed(entry, key, type))) {
+                        if (!reader.read(entry, prefix, key)) {
                             if (payload) preserveObjectiveField(payload->id, "ignored by the game; required payload unreadable");
                             ignoredPayload = true;
                             continue;
-                        }
-                        if (type == 3) {
-                            auto text = std::get<std::string>(payload->value[0]);
-                            if (text.size() > objectiveTextLimit) ignoredPayload = true;
                         }
                     }
                     ObjectiveEntry value{sectionId(entry), ConditionSpecies{}};
@@ -381,25 +375,23 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                     if (condition) value.species = static_cast<ConditionSpecies>(species);
                     else value.species = static_cast<ActionSpecies>(species);
                     if (!ignoredPayload) for (const auto& field : objectivePayloadSchema(value)) {
-                        auto scalar = find(entry, field.key)->value[0];
-                        value.payload.push_back(std::move(scalar));
+                        value.payload.push_back(*reader.read(entry, field.prefix, field.key));
                     }
                     if (kind == "BooleanFlagIsSet" || kind == "SetBooleanFlag") {
                         value.flag.emplace();
                         auto& flag = *value.flag;
                         const auto* id = find(entry, "FlagID");
-                        if (id && !id->array && id->prefix == "st" && typed(entry, "FlagID", 3)) {
-                            auto text = std::get<std::string>(id->value[0]);
-                            if (text.size() <= objectiveTextLimit) { flag.id = std::move(text); flag.idSource = id->id; }
+                        if (auto text = reader.read(entry, "st", "FlagID")) {
+                            flag.id = std::get<std::string>(std::move(*text));
+                            if (id) flag.idSource = id->id;
                         }
                         const auto* index = find(entry, "FlagIndex");
-                        if (!flag.id && index && !index->array && index->prefix == "ul") {
-                            const auto n = std::get<std::int64_t>(index->value[0]);
-                            flag.id = std::to_string(n);
-                            flag.idSource = index->id; flag.indexFallback = true;
-                            flag.warning = index->warning;
-                            if (index->opaque || (std::get_if<std::int64_t>(&index->value[0]) && n != std::get<std::int64_t>(index->value[0])))
-                                flag.warning = "noncanonical FlagIndex; reader conversion shown; bytes preserved";
+                        if (!flag.id) {
+                            if (auto n = reader.read(entry, "ul", "FlagIndex")) {
+                                flag.id = std::to_string(std::get<std::int64_t>(*n));
+                                flag.indexFallback = true;
+                                if (index) { flag.idSource = index->id; flag.warning = index->warning; }
+                            }
                         }
                         if (!flag.id) {
                             flag.warning = "no readable FlagID or FlagIndex; game skips entry";
@@ -408,11 +400,12 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
                         else if (id && flag.indexFallback) flag.warning += " FlagID unreadable or oversized; FlagIndex supplies ID";
                         else if (index && !flag.indexFallback) flag.warning += " FlagIndex ignored because readable FlagID wins (including empty ID)";
                         const auto* state = find(entry, "Value");
-                        if (state && !state->array && state->prefix == "b") {
-                            const auto wire = std::string_view(syntax_.originalBytes).substr(state->syntax.begin, state->syntax.end - state->syntax.begin);
-                            flag.value = wire.empty() || (wire.front() != '0' && wire.front() != 'f' && wire.front() != 'F');
-                            flag.valueSource = state->id;
-                            if (state->opaque) flag.warning += " noncanonical Value; reader conversion shown; bytes preserved";
+                        if (auto actual = reader.read(entry, "b", "Value")) {
+                            flag.value = std::get<bool>(*actual);
+                            if (state) {
+                                flag.valueSource = state->id;
+                                if (state->opaque) flag.warning += " noncanonical Value; reader conversion shown; bytes preserved";
+                            }
                         } else flag.warning += " Value absent or unreadable; defaults true";
                     }
                     objective.entries[list].push_back(value);

@@ -1,5 +1,6 @@
 #include "MissionDocument.h"
 #include "CommandHistory.h"
+#include "FitReader.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -23,12 +24,14 @@ const TeamFlagRow* TeamFlags::resolve(std::string_view id) const
 TeamFlags MissionDocument::teamFlags(std::uint32_t team) const
 {
     TeamFlags result;
-    const auto block = identifier(std::format("Team{}BooleanFlags", team));
+    const auto block = std::format("Team{}BooleanFlags", team);
+    const auto bytes = fitBytes();
+    const FitReader reader(bytes);
+    if (!reader.block(block)) return result;
     for (const auto& candidate : syntax().sections)
-        if (!candidate.parent && identifier(candidate.name) == block) { result.section = candidate.id; break; }
-    if (!result.section) return result;
+        if (!candidate.parent && candidate.name == block) { result.section = candidate.id; break; }
     std::set<std::size_t> indices;
-    for (const auto node : section(*result.section)->fields) {
+    if (result.section) for (const auto node : section(*result.section)->fields) {
         const auto name = identifier(field(node)->name);
         for (const std::string_view prefix : {"booleanstring", "booleanvalue"}) {
             if (!name.starts_with(prefix)) continue;
@@ -38,23 +41,23 @@ TeamFlags MissionDocument::teamFlags(std::uint32_t team) const
             if (parsed.ec == std::errc{} && parsed.ptr == suffix.data() + suffix.size() && suffix == std::to_string(index)) indices.insert(index);
         }
     }
+    for (std::size_t index = 0; index < nodeLimit; ++index) {
+        const auto id = reader.read(block, "st", std::format("BooleanString{}", index));
+        if (!id && id.error() == "absent") break;
+        indices.insert(index);
+    }
     bool stopped{};
     for (const auto index : indices) {
         if (index != result.stop) stopped = true;
-        const auto* id = find(*result.section, std::format("BooleanString{}", index));
-        const auto* value = find(*result.section, std::format("BooleanValue{}", index));
+        const auto id = reader.read(block, "st", std::format("BooleanString{}", index));
+        const auto value = reader.read(block, "b", std::format("BooleanValue{}", index));
         TeamFlagRow row{index};
-        if (id && !id->array && id->prefix == "st" && !id->opaque && id->value.size() == 1)
-            if (const auto* text = std::get_if<std::string>(&id->value[0]); text && text->size() <= objectiveTextLimit) {
-                row.id.emplace();
-                for (const auto c : *text) { if (c == '\n') *row.id += '\r'; *row.id += c; }
-            }
-        const bool oversized = id && !id->array && id->prefix == "st" && (id->warning == "reader_string_buffer_limit" ||
-            (id->value.size() == 1 && std::get_if<std::string>(&id->value[0]) && std::get<std::string>(id->value[0]).size() > objectiveTextLimit));
-        if (value && !value->array && value->prefix == "b") {
-            const auto wire = std::string_view(syntax().originalBytes).substr(value->syntax.begin, value->syntax.end - value->syntax.begin);
-            row.value = wire.empty() || (wire.front() != '0' && wire.front() != 'f' && wire.front() != 'F');
+        if (id) {
+            row.id.emplace();
+            for (const auto c : std::get<std::string>(*id)) { if (c == '\n') *row.id += '\r'; *row.id += c; }
         }
+        const bool oversized = !id && id.error() == "reader_string_buffer_limit";
+        if (value) row.value = std::get<bool>(*value);
         if (stopped) row.status = "ignored tail after first absent ID";
         else if (oversized) { row.status = "oversized ID skipped"; ++result.stop; }
         else if (!row.id) { row.status = "absent/unreadable ID ends loading"; stopped = true; }
@@ -67,30 +70,6 @@ TeamFlags MissionDocument::teamFlags(std::uint32_t team) const
         result.rows.push_back(std::move(row));
     }
     return result;
-}
-
-std::expected<void, LoadError> validateObjectiveBlock(std::string_view block)
-{
-    auto syntax = decodeFit("FITini\r\n" + std::string(block) + "\r\nFITend\r\n");
-    if (!syntax) return std::unexpected(syntax.error());
-    // FIT scans every physical line, including quoted payloads, for blocks and keys.
-    for (const auto& field : syntax->fields) {
-        auto wire = std::string_view(syntax->originalBytes).substr(field.syntax.begin, field.syntax.end - field.syntax.begin);
-        if (!wire.starts_with('"')) continue;
-        for (auto at = wire.find('\n'); at != wire.npos; at = wire.find('\n', at + 1)) {
-            const auto line = wire.substr(at + 1, wire.find_first_of("\r\n", at + 1) - at - 1);
-            bool collision = line.starts_with('[');
-            const auto lower = identifier(line);
-            for (const auto prefix : {"b ", "c ", "uc ", "s ", "us ", "l ", "ul ", "f ", "st "}) {
-                if (!lower.starts_with(prefix)) continue;
-                const auto equal = line.find('=');
-                if (equal != line.npos && line.substr(std::string_view(prefix).size(), equal - std::string_view(prefix).size()).find_first_not_of(" \t") != line.npos)
-                    collision = true;
-            }
-            if (collision) return std::unexpected(LoadError{field.name, "reader_scanner_collision", field.syntax.begin + at + 1});
-        }
-    }
-    return {};
 }
 
 std::span<const ActionSpec> actionSchema(bool creation)
@@ -138,7 +117,7 @@ std::expected<std::string, LoadError> encodeActionDraft(const ActionDraft& draft
         auto value = draft.payload[i];
         if (auto* text = std::get_if<std::string>(&value)) {
             for (auto at = text->find("\r\n"); at != text->npos; at = text->find("\r\n", at)) text->erase(at, 1);
-            if (text->empty()) return reject("required_action_text");
+            if (text->empty() && field.key != "FlagID") return reject("required_action_text");
         }
         if (auto valid = validateObjectiveScalar(field, value); !valid) return std::unexpected(valid.error());
         const auto wire = objectivePayloadWire(field, value);
@@ -262,6 +241,8 @@ void MissionDocument::preserveObjectiveField(NodeId id, std::string_view warning
 }
 std::expected<void, LoadError> MissionDocument::decodeObjectiveScalars(Objective& item)
 {
+    const FitReader reader(syntax_.originalBytes);
+    const auto& block = section(item.section)->name;
     for (const auto& spec : objectiveSchema()) {
         const auto* field = find(item.section, spec.key);
         if (!field && spec.key == "PreviousPrimaryObjectiveMustBeComplete") field = find(item.section, "PreviousObjectiveMustBeComplete");
@@ -301,17 +282,18 @@ std::expected<void, LoadError> MissionDocument::decodeObjectiveScalars(Objective
                 return valid;
             }
         }
-        // Activation indices supply fallback IDs without losing authored spelling.
-        if ((!field || !warning.empty()) && spec.key == "ActivateFlagID")
-            if (const auto* legacy = find(item.section, "ActivateFlagIndex")) {
-                if (legacy->prefix == "ul" && legacy->value.size() == 1 && std::holds_alternative<std::int64_t>(legacy->value[0])) {
-                    value = std::to_string(std::get<std::int64_t>(legacy->value[0]));
-                }
-                if (!field && !legacy->warning.empty()) { field = legacy; warning = legacy->warning; }
-            }
-        if (!warning.empty() && spec.key == "PreviousPrimaryObjectiveMustBeComplete")
-            if (const auto* legacy = find(item.section, "PreviousObjectiveMustBeComplete"); legacy && legacy->prefix == "b" &&
-                legacy->value.size() == 1 && std::holds_alternative<bool>(legacy->value[0])) value = legacy->value[0];
+        auto actual = reader.read(block, spec.prefix, spec.key);
+        if (!actual && spec.key == "PreviousPrimaryObjectiveMustBeComplete") actual = reader.read(block, "b", "PreviousObjectiveMustBeComplete");
+        if (actual) value = std::move(*actual);
+        else {
+            if (spec.type == 0) value = spec.integerDefault;
+            else if (spec.type == 1) value = static_cast<double>(spec.integerDefault);
+            else if (spec.type == 2) value = false;
+            else value = spec.key == "Description" ? item.scalars.front().value : Scalar{std::string{}};
+            if (field) warning = "ignored by the game";
+            if (spec.key == "ActivateFlagID")
+                if (auto index = reader.read(block, "ul", "ActivateFlagIndex")) value = std::to_string(std::get<std::int64_t>(*index));
+        }
         if (field && !warning.empty()) preserveObjectiveField(field->id, warning);
         item.scalars.push_back({spec.key, field ? std::optional{field->id} : std::nullopt, std::move(value), warning});
     }

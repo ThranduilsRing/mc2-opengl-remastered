@@ -632,7 +632,7 @@ TEST_CASE("objectives/policy and collision rejection cannot consume history or f
                     rejected([&] { return history.addObjectiveAction(owner, list, {spec.species, {text}}); });
         }
         for (const ActionDraft draft : {
-                ActionDraft{ActionSpecies::flag, {std::string{}, true}},
+                ActionDraft{ActionSpecies::flag, {std::string("bad\"quote"), true}},
                 ActionDraft{ActionSpecies::flag, {std::string(2001, 'x'), true}},
                 ActionDraft{ActionSpecies::flag, {std::string("id")}},
                 ActionDraft{ActionSpecies::flag, {std::string("id"), std::int64_t{1}}},

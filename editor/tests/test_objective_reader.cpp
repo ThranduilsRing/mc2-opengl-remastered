@@ -14,6 +14,90 @@
 extern bool g_mc2TestStopFatal;
 namespace { std::string bytes(const std::filesystem::path& path); }
 
+TEST_CASE("reader/regression 255-byte resume rejects a hidden false action value")
+{
+    using namespace editor::document;
+    const auto id = std::string(242, 'x') + "b Value = FALSE";
+    const auto wire = "FITini\r\n[Action]\r\nst ActionSpeciesString = \"SetBooleanFlag\"\r\nst FlagID = \"" + id + "\"\r\nb Value = TRUE\r\nFITend\r\n";
+    FitIniFile reader; REQUIRE(reader.open(wire.data(), static_cast<int>(wire.size())) == NO_ERR);
+    REQUIRE(reader.seekBlock("Action") == NO_ERR);
+    bool state = true; REQUIRE(reader.readIdBoolean("Value", state) == NO_ERR); CHECK_FALSE(state);
+    CHECK_FALSE(encodeActionDraft({ActionSpecies::flag, {id, true}}));
+    auto control = wire; control.erase(control.find(std::string(242, 'x')), 1);
+    FitIniFile safe; REQUIRE(safe.open(control.data(), static_cast<int>(control.size())) == NO_ERR);
+    REQUIRE(safe.seekBlock("Action") == NO_ERR);
+    REQUIRE(safe.readIdBoolean("Value", state) == NO_ERR); CHECK(state);
+    CHECK(encodeActionDraft({ActionSpecies::flag, {std::string(241, 'x') + "b Value = FALSE", true}}));
+    const auto& fixtures = editor::tests::inputs().byteGradeDirectory;
+    auto doc = MissionDocument::read(fixtures / "fixture.fit", fixtures / "fixture.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(doc);
+    CommandHistory history(*doc);
+    auto action = history.addObjectiveAction(doc->objectives()[1].section, 1, {ActionSpecies::flag, {std::string("seed"), true}}); REQUIRE(action);
+    const auto before = doc->fitBytes();
+    CHECK_FALSE(history.setObjectiveFlag(*action, id, 0, true));
+    CHECK(doc->fitBytes() == before);
+}
+
+TEST_CASE("reader/regression lowercase team block never initializes flags")
+{
+    using namespace editor::document;
+    const auto& fixtures = editor::tests::inputs().byteGradeDirectory;
+    auto base = MissionDocument::read(fixtures / "fixture.fit", fixtures / "fixture.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(base);
+    auto wire = base->fitBytes();
+    wire.insert(wire.find("FITend"), "[team7booleanflags]\r\nst BooleanString0 = \"case-test\"\r\nb BooleanValue0 = TRUE\r\n");
+    FitIniFile reader; REQUIRE(reader.open(wire.data(), static_cast<int>(wire.size())) == NO_ERR);
+    CHECK(reader.seekBlock("Team7BooleanFlags") != NO_ERR);
+    CBooleanArray game; game.load(7, &reader); CHECK_FALSE(game.getElementValue("case-test"));
+    auto doc = MissionDocument::decode(wire, {base->pakBytes().begin(), base->pakBytes().end()}, "case", {}, base->markerObjects()); REQUIRE(doc);
+    CHECK_FALSE(doc->teamFlags(7).resolve("case-test"));
+}
+
+TEST_CASE("reader/regression multiline strings expose keys and blocks to flag readers")
+{
+    using namespace editor::document;
+    const auto& fixtures = editor::tests::inputs().byteGradeDirectory;
+    auto base = MissionDocument::read(fixtures / "fixture.fit", fixtures / "fixture.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(base);
+    CommandHistory history(*base);
+    auto action = history.addObjectiveAction(base->objectives()[1].section, 1, {ActionSpecies::flag, {std::string("seed"), true}}); REQUIRE(action);
+    for (const bool embeddedBlock : {false, true}) {
+        auto wire = base->fitBytes();
+        const auto* id = base->find(*action, "FlagID"); REQUIRE(id);
+        wire.replace(id->syntax.begin, id->syntax.end - id->syntax.begin,
+            embeddedBlock ? "\"seed\"\r\nst Vendor = \"\r\n[Hidden]\r\nend\"" : "\"\r\nb Value = FALSE\r\nend\"");
+        wire.insert(wire.find("FITend"), embeddedBlock ?
+            "[Team7BooleanFlags]\r\nst BooleanString0 = \"seed\"\r\nst Vendor = \"\r\n[HiddenFlags]\r\nend\"\r\nb BooleanValue0 = TRUE\r\n" :
+            "[Team7BooleanFlags]\r\nst BooleanString0 = \"\r\nb BooleanValue0 = FALSE\r\nend\"\r\nb BooleanValue0 = TRUE\r\n");
+        FitIniFile reader; REQUIRE(reader.open(wire.data(), static_cast<int>(wire.size())) == NO_ERR);
+        CBooleanArray game; game.load(7, &reader);
+        REQUIRE(reader.seekBlock("Team7BooleanFlags") == NO_ERR);
+        const auto flag = objective_text::read(reader, "BooleanString0"); REQUIRE(flag);
+        CHECK_FALSE(game.getElementValue(*flag));
+        REQUIRE(reader.seekBlock(base->section(*action)->name.c_str()) == NO_ERR);
+        bool state = true, actual{};
+        if (reader.readIdBoolean("Value", actual) == NO_ERR) state = actual;
+        CHECK(state == embeddedBlock);
+        auto doc = MissionDocument::decode(wire, {base->pakBytes().begin(), base->pakBytes().end()}, "multiline", {}, base->markerObjects()); REQUIRE(doc);
+        const auto flags = doc->teamFlags(7);
+        REQUIRE(flags.rows.size() == 1); CHECK_FALSE(flags.rows[0].value);
+        CHECK(doc->objectives()[1].entries[1].back().flag->value == state);
+    }
+}
+
+TEST_CASE("reader/regression empty flag IDs remain authorable and resolve in the runtime table")
+{
+    using namespace editor::document;
+    const std::string wire = "FITini\r\n[Action]\r\nst FlagID = \"\"\r\nb Value = TRUE\r\n[Team0BooleanFlags]\r\nst BooleanString0 = \"\"\r\nb BooleanValue0 = TRUE\r\nFITend\r\n";
+    FitIniFile reader; REQUIRE(reader.open(wire.data(), static_cast<int>(wire.size())) == NO_ERR);
+    REQUIRE(reader.seekBlock("Action") == NO_ERR);
+    CHECK(objective_text::readFlagID(reader, "FlagID", "FlagIndex") == std::optional{std::string{}});
+    CBooleanArray game; game.load(0, &reader); CHECK(game.getElementValue(""));
+    CHECK(encodeActionDraft({ActionSpecies::flag, {std::string{}, true}}));
+    const auto& fixtures = editor::tests::inputs().byteGradeDirectory;
+    auto doc = MissionDocument::read(fixtures / "fixture.fit", fixtures / "fixture.pak", {}, editor::tests::inputs().markerObjects); REQUIRE(doc);
+    CommandHistory history(*doc);
+    REQUIRE(history.addObjectiveAction(doc->objectives()[1].section, 1, {ActionSpecies::flag, {std::string{}, true}}));
+    CHECK(doc->objectives()[1].entries[1].back().flag->id == std::optional{std::string{}});
+}
+
 TEST_CASE("reader/team flag gaps duplicates oversized IDs and default values match the runtime table")
 {
     using namespace editor::document;
