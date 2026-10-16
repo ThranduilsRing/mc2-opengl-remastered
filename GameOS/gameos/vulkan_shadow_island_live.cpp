@@ -804,7 +804,6 @@ void release_geometry(ShadowIsland* s) {
 // feed (B): VK owns a copy — simplest working feed). Also caches the per-type
 // packet ranges. Returns false if the geometry feed is unavailable this frame.
 bool upload_geometry_once(ShadowIsland* s) {
-    if (std::getenv("MC2_TEMP_ROW17_NO_PROP_GEOM")) return false;
     if (s->geomUploaded) return true;
     release_geometry(s);   // drop any half-built buffers from a failed earlier attempt
     Mc2ShadowGeomFeed feed{};
