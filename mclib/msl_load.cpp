@@ -62,6 +62,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 		{
 			MC2_LOG(Io, Error, "[SHAPE_COUNT_BAD] file={} shapes={} textures={} (over {} / {}; multi-shape rejected)", fileName, numTG_TypeShapes, numTextures, kMaxMultiShapeNodes, kMaxShapeTextures);
 			numTG_TypeShapes = numTextures = 0;
+			mslAssetLoadEvent("parse_fail", "binary", "bad_count", fileName);
 			return -1;
 		}
 
@@ -83,6 +84,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 		listOfTypeShapes = typeNodeStore.data();
 
 		bool aborted = false;
+		const char* abortReason = "unknown_node_type";
 		long loadedShapes = 0;
 		for (long i=0;i<numTG_TypeShapes;i++)
 		{
@@ -92,8 +94,15 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 			{
 				listOfTypeShapes[i] = new TG_TypeShape;
 				listOfTypeShapes[i]->init();
-				listOfTypeShapes[i]->LoadBinaryCopy(binFile);
+				const bool nodeOK = listOfTypeShapes[i]->LoadBinaryCopy(binFile);
 				loadedShapes++;
+				if (!nodeOK)
+				{
+					// The stream stopped mid-node: reading on would take the next node's type from its bytes.
+					abortReason = "bad_count";
+					aborted = true;
+					break;
+				}
 			}
 			else if (nodeType == TYPE_NODE)
 			{
@@ -136,7 +145,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 			}
 			numTG_TypeShapes = 0;
 			// META-FIX design B PART 0: file existed, content bad -> always-on.
-			mslAssetLoadEvent("parse_fail", "binary", "unknown_node_type", fileName);
+			mslAssetLoadEvent("parse_fail", "binary", abortReason, fileName);
 			return -1;
 		}
 
@@ -791,7 +800,10 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 				{
 					long parseResult = listOfTypeShapes[startIndex]->MakeFromHelper((unsigned char *)aseData,fileName);
 					if (parseResult != 0)
+					{
+						mslAssetLoadEvent("parse_fail", "ase", "node_parse_fail", fileName);
 						return(parseResult);
+					}
 	
 					startIndex++;
 				}
@@ -818,7 +830,10 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 					//-------------------------------------------------------------------
 					long parseResult = listOfTypeShapes[startIndex]->MakeFromHelper((unsigned char *)aseScan,fileName);
 					if (parseResult != 0)
+					{
+						mslAssetLoadEvent("parse_fail", "ase", "node_parse_fail", fileName);
 						return(parseResult);
+					}
 	
 					startIndex++;
 				}
@@ -852,7 +867,10 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 				
 				long parseResult = listOfTypeShapes[startIndex]->ParseASEFile((unsigned char *)aseData,fileName);
 				if (parseResult != 0)
+				{
+					mslAssetLoadEvent("parse_fail", "ase", "node_parse_fail", fileName);
 					return(parseResult);
+				}
 	
 				free(aseData);
 			}
@@ -860,7 +878,10 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 			{
 				long parseResult = listOfTypeShapes[startIndex]->ParseASEFile((unsigned char *)aseScan,fileName);
 				if (parseResult != 0)
+				{
+					mslAssetLoadEvent("parse_fail", "ase", "node_parse_fail", fileName);
 					return(parseResult);
+				}
 			}
 	
 			startIndex++;

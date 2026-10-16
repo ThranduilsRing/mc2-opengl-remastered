@@ -602,8 +602,9 @@ class TG_TypeNode
 		virtual void SetLightRGBs (DWORD hPink, DWORD hGreen, DWORD hYellow)
 		{
 		}
-		
- 		virtual void LoadBinaryCopy (File &binFile);
+
+		// False when the file claims a count this node cannot hold; the stream is then mid-node and the caller must stop reading it.
+ 		virtual bool LoadBinaryCopy (File &binFile);
 		virtual void SaveBinaryCopy (File &binFile);
 
 };
@@ -815,7 +816,7 @@ class TG_TypeShape : public TG_TypeNode
 		                          std::vector<TG_TypeVertex>&& vertices,
 		                          std::vector<TG_TypeTriangle>&& triangles);
 
- 		virtual void LoadBinaryCopy (File &binFile);
+ 		virtual bool LoadBinaryCopy (File &binFile);
 		virtual void SaveBinaryCopy (File &binFile);
 };
 

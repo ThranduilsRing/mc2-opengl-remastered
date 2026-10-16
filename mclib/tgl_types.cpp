@@ -232,7 +232,7 @@ long TG_TypeNode::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 	return(0);
 }	
 
-void TG_TypeNode::LoadBinaryCopy (File &binFile)
+bool TG_TypeNode::LoadBinaryCopy (File &binFile)
 {
 	//Other Data
 	nodeCenter.x = binFile.readFloat();
@@ -245,6 +245,7 @@ void TG_TypeNode::LoadBinaryCopy (File &binFile)
 	
 	binFile.read((MemoryPtr)nodeId,TG_NODE_ID);
 	binFile.read((MemoryPtr)parentId,TG_NODE_ID);
+	return true;
 }
 
 void TG_TypeNode::SaveBinaryCopy (File &binFile)
@@ -378,7 +379,7 @@ TG_ShapePtr TG_TypeShape::CreateFrom (void)
 	return newShape;
 }
 
-void TG_TypeShape::LoadBinaryCopy (File &binFile)
+bool TG_TypeShape::LoadBinaryCopy (File &binFile)
 {
 	gosVERTEX_FORMAT_RECORD vdecl[] =
 	{ 
@@ -396,7 +397,7 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 	{
 		MC2_LOG(Io, Error, "[SHAPE_COUNT_BAD] vertices={} (over {}; shape left empty)", numTypeVertices, kMaxShapeVertices);
 		numTypeVertices = 0;
-		return;
+		return false;
 	}
 	if (numTypeVertices)
 	{
@@ -417,7 +418,7 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 	{
 		MC2_LOG(Io, Error, "[SHAPE_COUNT_BAD] triangles={} (over {}; shape left without triangles)", numTypeTriangles, kMaxShapeTriangles);
 		numTypeTriangles = 0;
-		return;
+		return false;
 	}
 	if (numTypeTriangles)
 	{
@@ -437,7 +438,7 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 	{
 		MC2_LOG(Io, Error, "[SHAPE_COUNT_BAD] textures={} (over {}; shape left without textures)", numTextures, kMaxShapeTextures);
 		numTextures = 0;
-		return;
+		return false;
 	}
 	if (numTextures)
 	{
@@ -519,6 +520,7 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 
 	binFile.read((MemoryPtr)nodeId,TG_NODE_ID);
 	binFile.read((MemoryPtr)parentId,TG_NODE_ID);
+	return true;
 }
 
 void TG_TypeShape::SaveBinaryCopy (File &binFile)
