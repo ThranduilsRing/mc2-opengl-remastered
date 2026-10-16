@@ -478,6 +478,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
     vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_TerrainChunk);
+    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_TerrainChunk);
 
     // VK-DRAW-PERF-1: reset the query pool (outside the render pass) + stamp pass-start.
     s->gpuTimer.reset(cb);
@@ -562,6 +563,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     { ZoneScopedN("VKIsl.Terrain.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
       if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+    timerGuard.submitted();
 
     // VK-TERRAIN-FENCE-DEFER-1: the inline retire wait is GONE — the submit's fence
     // (the shared parity-slot fence) is waited at the slot's next

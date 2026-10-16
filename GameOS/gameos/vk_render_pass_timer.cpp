@@ -145,7 +145,7 @@ void FrameEnd() {
     }
 }
 
-#else   // no Vulkan islands in this build: the GL timer stays the only source
+#else   // no Vulkan islands in this build: nothing is timed
 
 bool Active() { return false; }
 void Begin(VkCommandBuffer, gos_render_pass_timer::Pass) {}

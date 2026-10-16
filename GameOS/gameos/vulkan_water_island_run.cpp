@@ -175,6 +175,8 @@ extern "C" int mc2_vk_water_island_run(
         VkCommandBuffer cb = s->cbuf[par];
 
         const clk::time_point tRender0 = clk::now();
+        // Declared ahead of the record scope: the bracket opened inside it must be cancelled by any return up to the submit.
+        vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_Water);
         {
         ZoneScopedN("VKIsl.Water.Record");   // VK-ISLAND-TRACY-1: command-buffer record
         vkResetCommandBuffer(cb, 0);
@@ -211,6 +213,7 @@ extern "C" int mc2_vk_water_island_run(
         const clk::time_point tSubmit0 = clk::now();
         { ZoneScopedN("VKIsl.Water.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
           if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+        timerGuard.submitted();
         us_submit = usSince(tSubmit0);
 
         us_sem_wait = 0.0;

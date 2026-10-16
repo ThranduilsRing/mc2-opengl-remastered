@@ -74,6 +74,41 @@ TEST_CASE("vk pass timer ring: a bracket on an unsubmitted command buffer is nev
     }
 }
 
+TEST_CASE("vk pass timer: the submit guard cancels on every exit that did not submit") {
+    int cancels = 0;
+    auto cancel = [&] { ++cancels; };
+    {
+        vk_render_pass_timer::SubmitGuard<decltype(cancel)> g(cancel);   // an error return before the submit
+    }
+    CHECK(cancels == 1);
+    {
+        vk_render_pass_timer::SubmitGuard<decltype(cancel)> g(cancel);
+        g.submitted();                                                   // the queue accepted the buffer
+    }
+    CHECK(cancels == 1);
+    auto early = [&](bool fail) {
+        vk_render_pass_timer::SubmitGuard<decltype(cancel)> g(cancel);
+        if (fail) return false;
+        g.submitted();
+        return true;
+    };
+    CHECK(!early(true));
+    CHECK(cancels == 2);
+    CHECK(early(false));
+    CHECK(cancels == 2);
+}
+
+TEST_CASE("vk pass timer ring: cancelling a still-open bracket, or twice, never publishes it") {
+    TestRing r(8);
+    FakeGpu gpu;
+    const auto q = r.begin(1);
+    gpu.ready.insert(static_cast<uint32_t>(q));
+    r.cancel(1);   // cancelled before End
+    r.cancel(1);   // and again
+    gpu.frameEnd(r);
+    for (uint32_t read : gpu.reads) CHECK(read != static_cast<uint32_t>(q));
+}
+
 TEST_CASE("vk pass timer ring: the slot about to be reused is dropped while unfinished; younger slots wait") {
     TestRing r(8);
     FakeGpu gpu;

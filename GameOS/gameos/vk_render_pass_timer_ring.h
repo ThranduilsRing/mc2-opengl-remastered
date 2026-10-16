@@ -18,6 +18,21 @@ namespace vk_render_pass_timer {
 
 enum class ReadResult { Ready, NotReady, Error };
 
+// Runs `cancel` when the scope ends unless submitted() was called: an error return between a bracket's End and the queue
+// submit must cancel the bracket, and one guard serves every island instead of a Cancel before each return.
+template <class CancelFn>
+class SubmitGuard {
+public:
+    explicit SubmitGuard(CancelFn cancel) : cancel_(cancel) {}
+    ~SubmitGuard() { if (!submitted_) cancel_(); }
+    void submitted() { submitted_ = true; }
+    SubmitGuard(const SubmitGuard&) = delete;
+    SubmitGuard& operator=(const SubmitGuard&) = delete;
+private:
+    CancelFn cancel_;
+    bool submitted_ = false;
+};
+
 template <int kPasses, int kRing>
 class Ring {
 public:

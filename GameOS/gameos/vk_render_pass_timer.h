@@ -10,6 +10,7 @@
 // Zero cost when gos_render_pass_timer::Enabled() is false: no pool is created and every entry returns at once.
 
 #include "gos_render_pass_timer.h"
+#include "vk_render_pass_timer_ring.h"
 
 // The Vulkan handle type, declared as vulkan_core.h declares it, so GL-side includers need no Vulkan headers.
 typedef struct VkCommandBuffer_T* VkCommandBuffer;
@@ -25,7 +26,7 @@ inline double TicksToMs(uint64_t begin, uint64_t end, uint64_t validMask, double
     return static_cast<double>(ticks) * nsPerTick / 1.0e6;
 }
 
-// True when the VK backend drew this session and the pass timer collects: the GL timer then skips its own queries.
+// True when the VK backend drew this session and the pass timer collects.
 bool Active();
 
 // Bracket the work an island records on `cb` for pass `p`; Begin goes outside a render pass. A pass bracketed more than
@@ -35,6 +36,18 @@ void End(VkCommandBuffer cb, gos_render_pass_timer::Pass p);
 // The island decided not to submit the command buffer that holds the pass's latest bracket: that bracket's queries keep
 // an older frame's results, so it must never be read (it would publish a stale time as current).
 void Cancel(gos_render_pass_timer::Pass p);
+
+// Guards one bracket against every return that leaves its command buffer unsubmitted: construct it right after Begin, call
+// submitted() once vkQueueSubmit has accepted the buffer; on any other scope exit the destructor cancels the pass, so an error
+// return can never leave a closed bracket whose slot still holds an older frame's results.
+struct CancelPass {
+    gos_render_pass_timer::Pass pass;
+    void operator()() const { Cancel(pass); }
+};
+class CancelUnlessSubmitted : public SubmitGuard<CancelPass> {
+public:
+    explicit CancelUnlessSubmitted(gos_render_pass_timer::Pass p) : SubmitGuard<CancelPass>(CancelPass{p}) {}
+};
 
 // Once per frame from gos_render_pass_timer::FrameEnd: closes the frame's slot, harvests every finished older slot into
 // gos_render_pass_timer::SubmitBackendFrame, and counts a slot still unfinished when it comes round again as dropped.

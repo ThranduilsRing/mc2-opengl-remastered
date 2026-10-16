@@ -18,14 +18,21 @@ uint32_t captureForcedBuildingHighlight()
 		if (!mc2::gate::isSet<"MC2_VISUAL_BOOKMARK_CAPTURE">()) return 0u;
 		const std::string v = mc2::gate::str<"MC2_CAPTURE_FORCE_BUILDING_HIGHLIGHT">();
 		if (v.empty()) return 0u;
-		char* end = nullptr;
-		const unsigned long argb = std::strtoul(v.c_str(), &end, 16);
-		if (end == v.c_str() || *end != '\0' || argb > 0xFFFFFFFFul) {
-			mc2::fmt::print_err("[CAPTURE_HIGHLIGHT v1] rejected MC2_CAPTURE_FORCE_BUILDING_HIGHLIGHT=\"{}\" (want hex ARGB)\n", mc2::fmt::safe(v.c_str()));
+		// Exactly eight hex digits: no sign, space, 0x prefix, short or overlong value.
+		uint32_t argb = 0u;
+		bool valid = v.size() == 8u;
+		for (size_t i = 0; valid && i < v.size(); ++i) {
+			const char c = v[i];
+			const int digit = (c >= '0' && c <= '9') ? c - '0' : (c >= 'a' && c <= 'f') ? c - 'a' + 10 : (c >= 'A' && c <= 'F') ? c - 'A' + 10 : -1;
+			if (digit < 0) valid = false;
+			else argb = (argb << 4) | static_cast<uint32_t>(digit);
+		}
+		if (!valid) {
+			mc2::fmt::print_err("[CAPTURE_HIGHLIGHT v1] rejected MC2_CAPTURE_FORCE_BUILDING_HIGHLIGHT=\"{}\" (want exactly 8 hex digits, ARGB)\n", mc2::fmt::safe(v.c_str()));
 			return 0u;
 		}
-		mc2::fmt::print_out("[CAPTURE_HIGHLIGHT v1] forcing building highlight 0x{:08x}\n", mc2::fmt::as_u32(static_cast<uint32_t>(argb)));
-		return static_cast<uint32_t>(argb);
+		mc2::fmt::print_out("[CAPTURE_HIGHLIGHT v1] forcing building highlight 0x{:08x}\n", mc2::fmt::as_u32(argb));
+		return argb;
 	}();
 	return s_forced;
 }

@@ -1410,6 +1410,7 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
         s->disabled = true;
         g_dynShadowReadyThisFrame = g_csmFullMapReadyThisFrame = g_csmArrayReadyThisFrame = false;
     };
+    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_ShadowDyn);
     vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_ShadowDyn);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); disableFrame(); return; }
     const VkFence fence = s->frameFence[s->parity].get();
@@ -1420,6 +1421,7 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
     si.pCommandBuffers = &cb;
     ZoneScopedN("VKIsl.Shadow.Submit");
     if (vkQueueSubmit(s->queue, 1, &si, fence) != VK_SUCCESS) { setFallback("submit_failed"); disableFrame(); return; }
+    timerGuard.submitted();
     s->staticMap.markSubmitted();
     if (g_diagVkDumpPending) { g_diagVkDumpPending = false; diagDumpVk(s); }
 }

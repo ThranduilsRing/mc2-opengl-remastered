@@ -827,6 +827,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         setFallback("record_failed"); return false;
     }
     vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_Post);
+    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_Post);
 
     auto barrier = [&](VkImage image, VkImageAspectFlags aspect,
                        VkImageLayout oldL, VkImageLayout newL,
@@ -897,6 +898,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     if (vkQueueSubmit(s->queue, 1, &si, s->submitFence.get()) != VK_SUCCESS) {
         setFallback("submit_failed"); return false;
     }
+    timerGuard.submitted();
 
     // Slot-recycle guard: this frame's command buffer must be retired before reuse
     // next frame (per-submit fence; QWI only as the fence-creation fail-soft).
@@ -1019,6 +1021,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
         setFallback("record_failed"); s->disabled = true; return 0;
     }
     vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_Post);
+    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_Post);
 
     auto depthBarrier = [&](VkImageLayout oldL, VkImageLayout newL,
                             VkAccessFlags srcA, VkAccessFlags dstA,
@@ -1108,6 +1111,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     if (vkQueueSubmit(s->queue, 1, &si, s->submitFence.get()) != VK_SUCCESS) {
         setFallback("submit_failed"); s->disabled = true; return 0;
     }
+    timerGuard.submitted();
 
     // Slot-recycle guard: this frame's command buffer must be retired before reuse
     // next frame (per-submit fence; QWI only as the fence-creation fail-soft).
