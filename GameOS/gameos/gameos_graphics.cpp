@@ -737,6 +737,7 @@ void gosRenderer::destroy() {
         glDeleteTextures(1, &terrain_normal_array_tex_);
         terrain_normal_array_tex_ = 0;
     }
+    terrain_normal_array_cpu_ = {};
 
     glDeleteVertexArrays(1, &gVAO);
 

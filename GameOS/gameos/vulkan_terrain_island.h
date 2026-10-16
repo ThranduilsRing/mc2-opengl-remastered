@@ -23,6 +23,8 @@
 
 #include <cstdint>
 
+namespace mc2tex { struct TextureArrayCpu; }
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -122,7 +124,8 @@ struct Mc2TerrainTier1Feed {
     // (requires MC2_VK_TERRAIN_LIGHTING). detailEnabled=0 -> VK terrain N stays flat-up
     // (byte-identical to the lighting-only frame).
     int32_t                     detailEnabled;         // 1 iff MC2_VK_TERRAIN_DETAIL gate on
-    uint32_t                    glMatNormalArrayTex;   // GL name of terrain_normal_array_tex_ (0 = not built)
+    uint32_t                    glMatNormalArrayTex;   // GL name of terrain_normal_array_tex_ (0 = not built); the island's re-import key
+    const mc2tex::TextureArrayCpu* matNormalArrayCpu;  // its CPU copy (null = none), the bytes the island imports
     float                       nfhStrength;           // terrainNormalsFromHeightStrength (GL default 1.0)
     float                       detailTiling;          // detailNormalTiling.x (GL default 1.0)
     float                       detailStrength;        // detailNormalStrength.x (GL default 1.0)

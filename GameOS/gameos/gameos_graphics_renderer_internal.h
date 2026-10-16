@@ -573,6 +573,9 @@ class gosRenderer {
             // neutral normal (128,128,255,255) so sampling them is always valid.
             std::vector<uint8_t> pixels;
             int levelsCopied = 0;
+            terrain_normal_array_cpu_ = {};
+            terrain_normal_array_cpu_.layers = 9;
+            terrain_normal_array_cpu_.vkFormat = mc2tex::kVkFormatRgba8Unorm;
             for (int level = baseLevel; level < baseLevel + numLevels; ++level) {
                 GLint mipW = 0, mipH = 0;
                 glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[0]);
@@ -588,6 +591,8 @@ class gosRenderer {
 
                 const size_t mipBytes = (size_t)mipW * mipH * 4;
                 pixels.resize(mipBytes);
+                if (levelsCopied == 1) { terrain_normal_array_cpu_.width = (uint32_t)mipW; terrain_normal_array_cpu_.height = (uint32_t)mipH; }
+                std::vector<uint8_t>& cpuLevel = terrain_normal_array_cpu_.levels.emplace_back(mipBytes * 9u);
 
                 for (int layer = 0; layer < 9; ++layer) {
                     if (terrain_mat_normal_[layer] != 0) {
@@ -605,6 +610,7 @@ class gosRenderer {
                                     0, 0, layer,
                                     mipW, mipH, 1,
                                     GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+                    std::memcpy(cpuLevel.data() + (size_t)layer * mipBytes, pixels.data(), mipBytes);
                 }
             }
 
@@ -631,6 +637,8 @@ class gosRenderer {
         // legacy terrain uses. Builds lazily if dirty/never-built; returns 0 until
         // required slots 0-4 are populated (slots 5-8 optional). GL context assumed
         // live (call from a draw, like the legacy bind sites).
+        // The CPU copy of the array (its copied levels from the base level on, every layer), for a backend that uploads its own.
+        const mc2tex::TextureArrayCpu& getTerrainNormalArrayCpu() const { return terrain_normal_array_cpu_; }
         GLuint getTerrainNormalArrayTexEnsureBuilt() {
             if (terrain_normal_array_dirty_ || terrain_normal_array_tex_ == 0)
                 buildTerrainNormalArray();
@@ -892,6 +900,7 @@ class gosRenderer {
         GLuint terrain_mat_normal_[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
         GLuint terrain_normal_array_tex_   = 0;     // GL_TEXTURE_2D_ARRAY; 0 = not built
         bool   terrain_normal_array_dirty_ = false; // rebuild needed at next bind
+        mc2tex::TextureArrayCpu terrain_normal_array_cpu_;   // the texels uploaded to terrain_normal_array_tex_
         float terrain_cell_scale_ = 8.0f;
         float terrain_cell_jitter_ = 0.8f;
         float terrain_cell_rotation_ = 1.0f;
