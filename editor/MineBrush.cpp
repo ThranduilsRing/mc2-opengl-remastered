@@ -26,7 +26,7 @@ Action* MineBrush::endPaint()
 
 	if (pAction)
 	{
-		if ( pAction->mineInfoList.Count() )
+		if ( !pAction->mineInfoList.empty() )
 			pRetAction =  pAction;
 		else
 		{
@@ -118,17 +118,11 @@ bool MineBrush::MineAction::undo()
 	if (!GameMap)
 		return true;  // MOVE data gone (e.g. map reload); treat as silent no-op
 
-	for ( MINE_INFO_LIST::EIterator iter = mineInfoList.Begin();
-		!iter.IsDone(); iter++ )
+	for (auto& info : mineInfoList)
 	{
-		// get current values
-		unsigned long lMineState = GameMap->getMine( (*iter).row, (*iter).column );
-
-		// reset to old values
-		GameMap->setMine( (*iter).row, (*iter).column, (*iter).mineState );
-
-		// save current valuds
-		(*iter).mineState = lMineState;
+		unsigned long lMineState = GameMap->getMine( info.row, info.column );
+		GameMap->setMine( info.row, info.column, info.mineState );
+		info.mineState = lMineState;
 	}
 
 	return true;
@@ -141,14 +135,13 @@ bool MineBrush::MineAction::redo()
 
 void MineBrush::MineAction::AddChangedTileMineInfo( CTileMineInfo& info )
 {
-	for( MINE_INFO_LIST::EIterator iter = mineInfoList.Begin();
-		!iter.IsDone(); iter++ )
-		{
-			if ( info.row == (*iter).row && info.column == (*iter).column )
-				return;
-		}
+	for (const auto& existing : mineInfoList)
+	{
+		if ( info.row == existing.row && info.column == existing.column )
+			return;
+	}
 
-		mineInfoList.Append( info );
+	mineInfoList.push_back( info );
 }
 
 

@@ -1,16 +1,16 @@
 # Step 4 B2 container call sites from a [[deprecated("B2")]] build (tests/analyze/container_callsites.py); a batch commit removes its rows.
-# total 938 sites in 66 files
+# total 917 sites in 61 files
 # per kind:
-#     259  EList::Begin
-#     195  EList
-#     167  EList::Count
-#     118  EList::Append
-#      41  EList::~EList
-#      30  EList::operator[]
+#     257  EList::Begin
+#     189  EList
+#     162  EList::Count
+#     115  EList::Append
+#      40  EList::~EList
 #      28  EList::Delete
-#      23  EList::EList
+#      28  EList::operator[]
 #      23  EList::Iterator
-#      21  EList::Clear
+#      22  EList::EList
+#      20  EList::Clear
 #      13  EList::End
 #      10  EList::GetHead
 #       4  EList::Insert
@@ -22,9 +22,9 @@
 # per batch (cxx23-step4-b2-files.json):
 #       1  B2.3
 #       6  B6
-#     295  E1
+#     288  E1
 #     445  E2
-#      43  E3
+#      29  E3
 #     148  E4
 # sites in files the batch table does NOT list (includers the compiler forces, or the PCH): 0 in 0 files
 # per file:
@@ -57,9 +57,6 @@
 #       7  editor/EditorInterface_wnd.cpp
 #       7  editor/GroupDialog.cpp
 #       7  editor/LinkBrush.cpp
-#       6  editor/MineBrush.cpp
-#       6  editor/OverlayBrush.cpp
-#       6  editor/ResourceStringSelectionDlg.cpp
 #       5  code/mpparameterscreen.cpp
 #       4  editor/BuildingBrush.cpp
 #       4  editor/EditorInterface_editor.cpp
@@ -75,7 +72,6 @@
 #       2  editor/GameplayDebugger.cpp
 #       2  editor/InspectorPanel.cpp
 #       2  editor/LinkBrush.h
-#       2  editor/MineBrush.h
 #       2  editor/ObjectSelectionBrush.cpp
 #       2  editor/ObjectiveDlg.h
 #       2  editor/SelectionBrush.cpp
@@ -91,7 +87,6 @@
 #       1  editor/FlattenBrush.cpp
 #       1  editor/HeightBrush.cpp
 #       1  editor/ObjectSelectionBrush.h
-#       1  editor/ResourceStringSelectionDlg.h
 #       1  editor/ScatterBrush.cpp
 #       1  editor/StampBrush.cpp
 # blob e5eb973f75d5b9dd9a5f240099990aabe605157c code/mission_update.cpp
@@ -135,8 +130,6 @@
 # blob ce78979d26d339bc9bdaf034338fefc8e60e20b4 editor/InspectorPanel.cpp
 # blob acd57f65f4f2192d2fe1381d1a57c5d8ff16c543 editor/LinkBrush.cpp
 # blob 827751d68ba116ce91878f98d307f1b5219f4c61 editor/LinkBrush.h
-# blob 5054b74408d10ff3611196fa4909cc176d675a3a editor/MineBrush.cpp
-# blob 9b64c18b8fb2855c646481a8ecc1f96a5a977948 editor/MineBrush.h
 # blob 12d303e40ff570baf923ab693f5fb42761a867e4 editor/MissionValidation.cpp
 # blob f5bc0d48faff08df66c80bc4467224f71aeadccd editor/ObjectSelectionBrush.cpp
 # blob 60fc1db428d58d4068d0612e0a34840172e52047 editor/ObjectSelectionBrush.h
@@ -147,9 +140,6 @@
 # blob af2eb82892266fc51e47ab1c33aec1f8b22934d3 editor/Objective_conditions.cpp
 # blob 945de4f932649474771b7eaacf9aedc6c6faa4a9 editor/ObjectivesDlg.cpp
 # blob 40a6e8664fb78547a7de3d2f8c722247ed94ea1f editor/ObjectivesSummaryPanel.cpp
-# blob c32ebc0551159bf1c213290bb115ef5e07e54140 editor/OverlayBrush.cpp
-# blob e586a810bdc2a5b14cb3894d1675283dc8201ae0 editor/ResourceStringSelectionDlg.cpp
-# blob a5093b7b8d59e75dfba41f0d5ba3a90497f642ef editor/ResourceStringSelectionDlg.h
 # blob dfac67d130e5adfb2af5c179faae53b90d7000d9 editor/ScatterBrush.cpp
 # blob f5dff2d7511d3e178d450c145ff3eabf1b546021 editor/SceneOutliner.cpp
 # blob b3c487752565c75a1004f5105a8c50c8ab37d2ef editor/SelectionBrush.cpp
@@ -761,14 +751,6 @@ editor/LinkBrush.cpp:213:EList
 editor/LinkBrush.cpp:213:EList::End
 editor/LinkBrush.h:77:EList::~EList
 editor/LinkBrush.h:82:EList
-editor/MineBrush.cpp:29:EList::Count
-editor/MineBrush.cpp:121:EList
-editor/MineBrush.cpp:121:EList::Begin
-editor/MineBrush.cpp:144:EList
-editor/MineBrush.cpp:144:EList::Begin
-editor/MineBrush.cpp:151:EList::Append
-editor/MineBrush.h:46:EList::~EList
-editor/MineBrush.h:55:EList
 editor/MissionValidation.cpp:156:EList::~EList
 editor/MissionValidation.cpp:157:EList::Begin
 editor/MissionValidation.cpp:256:EList::~EList
@@ -1006,19 +988,6 @@ editor/ObjectivesSummaryPanel.cpp:462:EList::Begin
 editor/ObjectivesSummaryPanel.cpp:480:EList::Begin
 editor/ObjectivesSummaryPanel.cpp:534:EList::Count
 editor/ObjectivesSummaryPanel.cpp:540:EList::Count
-editor/OverlayBrush.cpp:70:EList
-editor/OverlayBrush.cpp:70:EList::EList
-editor/OverlayBrush.cpp:75:EList
-editor/OverlayBrush.cpp:75:EList::Count
-editor/OverlayBrush.cpp:76:EList::Append
-editor/OverlayBrush.cpp:80:EList::Count
-editor/ResourceStringSelectionDlg.cpp:78:EList::Clear
-editor/ResourceStringSelectionDlg.cpp:90:EList::Append
-editor/ResourceStringSelectionDlg.cpp:93:EList::Count
-editor/ResourceStringSelectionDlg.cpp:94:EList::operator[]
-editor/ResourceStringSelectionDlg.cpp:99:EList::Count
-editor/ResourceStringSelectionDlg.cpp:113:EList::operator[]
-editor/ResourceStringSelectionDlg.h:46:EList
 editor/ScatterBrush.cpp:75:EList::Count
 editor/SceneOutliner.cpp:142:EList::~EList
 editor/SceneOutliner.cpp:143:EList::Count
