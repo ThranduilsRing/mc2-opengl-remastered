@@ -297,6 +297,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->tintStrengthScale = gos_GetTerrainTintStrengthScale();
         out->snowBrightnessDampen = gos_TerrainSnowBrightnessDampen();
     }
+    out->edgeFeatherStrength = kTglcEdgeFeather ? kTglcEdgeFeatherStr : 0.0f;   // the GL u_edgeFeather / u_edgeFeatherStrength pair
     {
         float fr = 1.f, fg = 1.f, fb = 1.f;
         gos_GetTerrainMissionFlatLight(&fr, &fg, &fb);

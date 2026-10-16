@@ -18,6 +18,7 @@ Engine contract (gos_visual_capture.cpp):
   MC2_SMOKE_MODE=1               required (mission/seed determinism only defined here)
   MC2_SMOKE_SEED=0xC0FFEE        fixed RNG seed
   MC2_SMOKE_FIXED_TIMESTEP=1     fixed-step clock -> cross-run byte-stability
+  MC2_DETERMINISTIC_RNG=1        per-mission simulation RNG seed (with the fixed clock)
   MC2_VISUAL_BOOKMARK_CAPTURE    path to the bookmark JSON (arms the sweep)
   MC2_VISUAL_CAPTURE_DIR         output dir for <mission>_<bookmark>.{png,json}
   MC2_VISUAL_CAPTURE_FRAME       deterministic trigger frame (default 120)

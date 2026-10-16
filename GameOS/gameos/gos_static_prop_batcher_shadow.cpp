@@ -942,6 +942,17 @@ extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) 
     out->pbrV1RoughnessOverride = g_pbrV1RoughnessOverrideEnabled ? g_pbrV1RoughnessOverrideValue : -1.0f;
     const RenderCore::ViewUniforms& vu = RenderCore::getCurrentView().viewUniforms;
     for (int k = 0; k < 4; ++k) out->cameraWorldPos[k] = vu.cameraWorldPos[k];
+    // The same pool set and knobs GL static_prop.frag receives (UploadObjectLightPoolUniforms).
+    gos_terrain_lighting::ObjectLightPoolParams pp{};
+    gos_terrain_lighting::GetObjectLightPoolParams(&pp);
+    out->poolLights48   = pp.pool;
+    out->numPoolLights  = pp.pool ? pp.count : 0;
+    out->poolSoft       = pp.soft;
+    out->poolMoverDim   = pp.moverDim;
+    out->poolMoverScale = pp.moverScale;
+    out->poolMoverMax   = pp.moverMax;
+    out->poolCompress   = pp.compress;
+    out->poolObjScale   = pp.objScale;
     return 1;
 }
 #endif // MC2_VULKAN_ISLAND

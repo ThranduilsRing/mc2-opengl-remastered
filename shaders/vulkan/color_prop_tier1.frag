@@ -91,6 +91,31 @@ layout(location = 1) out vec4 oGBuffer1;  // MRT1 normal + shadow class
 #include "../include/prop_dither.hglsl"
 #include "../include/axis.hglsl"
 
+// Night light pools: CPU copy of the GL binding-28 pool array (GpuTerrainLight, 48B), the same set GL static_prop.frag reads.
+struct PoolLight {
+    vec3  position;
+    uint  lightType;
+    vec3  color;
+    float closeDistance;
+    float farDistance;
+    float oneOverDistance;
+    float _plPad1;
+    float _plPad2;
+};
+layout(set = 0, binding = 8, std430) readonly buffer PropPoolLightsVK {
+    PoolLight poolLights[];
+};
+#include "../include/object_light_pool.hglsl"
+
+// GL static_prop.frag's pool term: albedo-modulated additive pool light at the MC2-frame world position.
+vec3 propPoolLight(vec3 albedo) {
+    if (uFrame.poolI.x <= 0) return vec3(0.0);
+    return albedo * olp_objectPoolLight(vWorldPos, uFrame.poolI.x, uFrame.poolI.y,
+                                        uFrame.poolF.x, uFrame.poolF.y,
+                                        uFrame.poolI.z, uFrame.poolI.w,
+                                        uFrame.poolF.z);
+}
+
 // StaticPropPbr option: Schlick-Fresnel sun specular added to the lit prop colour. The albedo-tinted F0 and the power lobe are the GL terms; metallic 0 and roughness 1
 // are the GL literal defaults, because the island carries no per-material scalars; the GL roughness override (on at 0.95 by default) replaces the roughness as in GL.
 vec3 propSunSpecular(vec3 albedo) {
@@ -141,6 +166,7 @@ void main() {
         // read pure black. VK omitted this -> alpha-test fences/cards rendered BLACK. Apply
         // the SAME floor verbatim before multiplying the albedo.
         rgb = texc.rgb * max(vArgb, vec3(0.5));
+        rgb += propPoolLight(texc.rgb);
         if (uFrame.pbrV1Strength > 0.0) rgb += propSunSpecular(texc.rgb) * uFrame.pbrV1Strength;
     } else if (uFrame.materialReady != 0 && vLayer >= 0) {
         // ALPHA-OFF group. Real albedo texture (GL_REPEAT restored via fract, then
@@ -161,6 +187,7 @@ void main() {
             rgb = albedo * max(vArgb, vec3(0.5));
             alphaTestClass = true;
         }
+        rgb += propPoolLight(albedo);
         if (uFrame.pbrV1Strength > 0.0) rgb += propSunSpecular(albedo) * uFrame.pbrV1Strength;
     } else {
         // Fail-soft flat teal placeholder. IN-PLACE opaque write.

@@ -179,6 +179,9 @@ VkShaderModule load_spv(VkDevice device, std::string_view path) {
 
 const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT; // MainColor-compatible
 const VkFormat kDepthFmt = VK_FORMAT_D32_SFLOAT;          // VK-owned (non-exported)
+// Night light-pool SSBO: GpuTerrainLight is 48 B; 256 is the GL object pool cap.
+const int          kMaxPoolLights = 256;
+const VkDeviceSize kPoolBytes = VkDeviceSize{kMaxPoolLights} * 48ull;
 
 // Per-type packet (subset of GpuStaticPropPacket the draw loop needs).
 struct TypeRun {
@@ -282,6 +285,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedBuffer ubo[2];
     mc2vk::OwnedBuffer instBuf[2];
     mc2vk::OwnedBuffer lightBuf[2];       // per parity slot (VK-PROP-FENCE-DEFER-1)
+    mc2vk::OwnedBuffer poolBuf[2];        // night light pools (binding 8, FS), per parity slot
     mc2vk::OwnedBuffer vbo, ibo;
     mc2vk::OwnedRenderPass t1_rpass;      // 2 color LOAD + depth LOAD
     mc2vk::OwnedFramebuffer t1_fb;        // over the 3 shared image views
@@ -309,14 +313,18 @@ std::unique_ptr<mc2vk::IslandState>& islandSlot() {
 ColorPropIsland* parkedIsland() { return static_cast<ColorPropIsland*>(islandSlot().get()); }
 
 
+// gpuReadHeavy: a host-written buffer the GPU reads many times per frame (the night pool, walked by every prop fragment) is written
+// sequentially so VMA can place it in device-local, host-visible memory instead of system memory read across the bus.
 bool make_buffer(ColorPropIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible,
-                 std::string_view name, int i0 = -1, int i1 = -1) {
+                 std::string_view name, int i0 = -1, int i1 = -1, bool gpuReadHeavy = false) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO;
-    aci.flags = hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : 0;
+    aci.flags = !hostVisible ? 0
+              : gpuReadHeavy ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
+                             : VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
     if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
         vlog("buffer creation failed (%.*s).", static_cast<int>(name.size()), name.data()); return false;
     }
@@ -335,7 +343,8 @@ void write_descriptors(ColorPropIsland* s) {
     VkDescriptorBufferInfo uboInfo{ s->ubo[i].get(), 0, VK_WHOLE_SIZE };
     VkDescriptorBufferInfo instInfo{ s->instBuf[i].get(), 0, VK_WHOLE_SIZE };
     VkDescriptorBufferInfo lightInfo{};
-    VkWriteDescriptorSet w[5]{};
+    VkDescriptorBufferInfo poolInfo{};
+    VkWriteDescriptorSet w[6]{};
     uint32_t n = 0;
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
     w[n].dstBinding = 0; w[n].descriptorCount = 1;
@@ -392,6 +401,12 @@ void write_descriptors(ColorPropIsland* s) {
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 7; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &hotInfo; ++n;
+    }
+    if (s->tier1 && s->poolBuf[i]) {
+        poolInfo = VkDescriptorBufferInfo{ s->poolBuf[i].get(), 0, VK_WHOLE_SIZE };
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
+        w[n].dstBinding = 8; w[n].descriptorCount = 1;
+        w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &poolInfo; ++n;
     }
     if (n) vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
     if (m) vkUpdateDescriptorSets(s->device, m, wm, 0, nullptr);
@@ -864,6 +879,8 @@ bool init_island(ColorPropIsland* s, int w, int h) {
     if (!ensure_inst_capacity(s, 1, 256 * 1024)) return false;
     if (!make_buffer(s, s->ubo[0], sizeof(ColorFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "colorprop.ubo", 0)) return false;
     if (!make_buffer(s, s->ubo[1], sizeof(ColorFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "colorprop.ubo", 1)) return false;
+    for (uint32_t i = 0; s->tier1 && i < 2; ++i)
+        if (!make_buffer(s, s->poolBuf[i], kPoolBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.poolBuf", static_cast<int>(i), -1, true)) return false;
 
     if (s->tier1) {
         VkImageResource* colorRes  = reinterpret_cast<VkImageResource*>(s->t1_colorRes);
@@ -948,7 +965,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // Base bindings 0(UBO),1(inst SSBO); optional +4(LightsData SSBO, VS). Material
         // (tier1 + MC2_VK_PROP_MATERIAL): +2(alpha-OFF layer SSBO VS), 3(alpha-OFF albedo
         // FS), 5(alpha-ON layer SSBO VS), 6(alpha-ON albedo FS).
-        VkDescriptorSetLayoutBinding b[8]{};
+        VkDescriptorSetLayoutBinding b[9]{};
         uint32_t nb = 0;
         b[nb].binding = 0; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
@@ -973,6 +990,8 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         if (s->tier1) {   // the hot-colour table is read by the tier-1 vertex shader in every mode
             b[nb].binding = 7; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
+            b[nb].binding = 8; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;   // night light pools
+            b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
         }
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -984,7 +1003,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         VkDescriptorPoolSize sizes[3]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 2;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        sizes[1].descriptorCount = 2u * (1u + (materialBindings ? 2u : 0u) + (lightBinding ? 1u : 0u) + (s->tier1 ? 1u : 0u));
+        sizes[1].descriptorCount = 2u * (1u + (materialBindings ? 2u : 0u) + (lightBinding ? 1u : 0u) + (s->tier1 ? 2u : 0u));
         sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = materialBindings ? 4u : 2u;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1521,6 +1540,21 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         u.pbrV1Strength = haveLightFeed ? lightFeed.pbrV1Strength : 0.0f;
         u.pbrV1RoughnessOverride = haveLightFeed ? lightFeed.pbrV1RoughnessOverride : -1.0f;
         for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = haveLightFeed ? lightFeed.cameraWorldPos[k] : 0.0f;
+        // Night light pools: this frame's pool copy (GL caps the set at 256); a failed map turns the term off.
+        int poolN = (haveLightFeed && lightFeed.poolLights48 && lightFeed.numPoolLights > 0) ? lightFeed.numPoolLights : 0;
+        if (poolN > kMaxPoolLights) poolN = kMaxPoolLights;
+        if (poolN > 0) {
+            void* pp = s->poolBuf[par] ? s->poolBuf[par].map() : nullptr;
+            if (pp) {
+                std::memcpy(pp, lightFeed.poolLights48, static_cast<size_t>(poolN) * 48u);
+                s->poolBuf[par].unmap();
+            } else {
+                poolN = 0;
+            }
+        }
+        u.poolF[0] = lightFeed.poolMoverDim; u.poolF[1] = lightFeed.poolMoverScale; u.poolF[2] = lightFeed.poolObjScale; u.poolF[3] = 0.0f;
+        u.poolI[0] = poolN;                  u.poolI[1] = lightFeed.poolSoft;
+        u.poolI[2] = lightFeed.poolMoverMax; u.poolI[3] = lightFeed.poolCompress;
         // ADJUDICATION-1 WASHOUT engagement probe: one-shot dump of the exact UBO
         // lighting terms so we can tell fed-real from fail-soft-constant. If
         // lightingReady==0, the VS ambientTerm falls back to a hemisphere constant

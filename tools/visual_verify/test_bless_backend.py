@@ -75,3 +75,22 @@ def test_vulkan_golden_refuses_wrong_runs(world, backend, declared, needle):
 def test_unknown_backend_is_refused():
     with pytest.raises(SystemExit, match="unknown backend"):
         blesslib.require_backend([{}], "metal")
+
+
+def test_golden_records_the_harness_seed(world):
+    root, exe = world
+    runs = _runs(root, exe, VK, VK_ENV, "seed")
+    for rd in runs:
+        cap = json.loads((rd / "capture_run.json").read_text(encoding="utf-8"))
+        cap["harness_env"] = {"MC2_DETERMINISTIC_RNG": "1", "MC2_SMOKE_FIXED_TIMESTEP": "1"}
+        (rd / "capture_run.json").write_text(json.dumps(cap), encoding="utf-8")
+    g = blesslib.bless(runs, root / "golden", named_backend="vulkan")
+    assert g["capture_env"]["harness_env"]["MC2_DETERMINISTIC_RNG"] == "1"
+
+
+def test_capture_harness_env_drops_the_per_pose_paths():
+    sys.path.insert(0, str(_THIS.parent))
+    import capture as caplib  # noqa: E402
+    poses = [{"harness_set": {"MC2_DETERMINISTIC_RNG": "1", "MC2_VISUAL_CAPTURE_DIR": "x", "MC2_VISUAL_BOOKMARK_CAPTURE": "y"}}]
+    assert caplib._harness_env(poses) == {"MC2_DETERMINISTIC_RNG": "1"}
+    assert caplib._harness_env([{}]) == {}

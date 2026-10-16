@@ -670,6 +670,8 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS, named_
         # the declared environment (animation freeze, backend selector, clean-capture switches) and the backend that drew.
         "render_options": run_options[0],
         "declared_env": cap0.get("declared_env") or {},
+        # The harness's own settings (deterministic RNG seed and clock among them); empty for a run captured before capture.py recorded them.
+        "harness_env": cap0.get("harness_env") or {},
         "backend": cap0.get("backend") or {},
     }
     # The backend this golden is the reference for: the named one, else what run 1 asked for (a pre-flag golden records only capture_env).

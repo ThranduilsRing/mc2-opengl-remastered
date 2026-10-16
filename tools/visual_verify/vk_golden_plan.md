@@ -98,7 +98,28 @@ to give the GL-arm removal a VK reference; the final set is re-blessed after the
 | viewed | every pose of r1 next to the same-exe GL capture `gl26-r1`: `.claude/l2cap/montages/s26-vkgold-gl-vk-{1,2}.png` (GL left, VK right); VK-GL mean 205644 2.49, 205843 6.07, 204523 1.67, 204611 3.53, 204753 3.75, 204907 5.14, 205952 10.1 (the white GL map-edge skirt), 212019 4.17, 212140 3.11, 212258 3.04 |
 | why interim | parity rows that change these poses are still open (1, 2, 4, 6, 7, 9 at least), so this set is the VK reference for GL deletion step 1, not the final golden; re-bless after the last row closes and then point `CURRENT_GOLDEN` at it |
 
-## 4. Follow-ups (not done here)
+## 4. Re-blessed 2026-10-16: `golden-d9e1f3801716-vk-1080p` (interim, not CURRENT_GOLDEN)
+
+| item | value |
+|---|---|
+| runs | `.claude/l2cap/vkgold27-r{1,2,3}`, exe d9e1f3801716 (clean), same poses, env and options as section 3; noise floor all pairs at most 0.004 mean / 57 px over 30 (204611) |
+| blessed | 36 of 36 regions, 0 refused; `verify.py` r2 against it: 10 poses PASS, 36 regions PASS. `golden.json` `capture_env.harness_env` now records the harness settings (`MC2_DETERMINISTIC_RNG=1`, `MC2_SMOKE_FIXED_TIMESTEP=1`, seed, size) |
+| why re-blessed | r2 against the section-3 set: 14 regions FAIL, every one a legitimate parity change measured against the same-exe GL capture. Row 1 (prop light pools, bcb9b5623), 11 regions: 204523 compound_light_wedges (VK-GL in the rect 3.99 -> 1.39), 204611 far_water_surface (10.46 -> 3.30), 204753 light_clusters_census (7.79 -> 2.43), runway_edge_lights (6.12 -> 1.85), lamp_cones (10.45 -> 1.55), 204907 distant_ridge_base (17.5 -> 1.94 at its 1080p rect), spotlight_towers (9.08 -> 2.81), 212019 ghost_wedge_over_road (5.61 -> 5.19), searchlight_cones_compound (6.29 -> 3.53), light_pools_road (4.00 -> 3.03), 212258 light_pools_sourcing (7.35 -> 1.14). Row 9 (map-edge feather, 8d7f14ec8), 3 regions on 205843: cement_pads_dark, mech_night_shadow_fan, shoreline_dark_water (pose VK-GL 4.52 -> 0.52) |
+| viewed | every pose of r1 next to the GL capture `s27b-gl` (GL path code-identical to this exe): `.claude/l2cap/montages/s27-vkgold-gl-vk.png` (GL, VK, VK, diff, diff); VK-GL mean 205644 2.48, 205843 0.52, 204523 1.49, 204611 1.89, 204753 2.01, 204907 1.99, 205952 2.79, 212019 2.42, 212140 3.11, 212258 1.57 (section 3: 2.49 / 6.07 / 1.67 / 3.53 / 3.75 / 5.14 / 10.1 / 4.17 / 3.11 / 3.04) |
+
+### CURRENT_GOLDEN decision (2026-10-16)
+Not yet. Of the rows that change these poses, 1, 4, 6, 7 and 9 are closed with numbers (`.claude/VK-PARITY-GAPS.md`); row 2 (mech shading)
+is ported but not proven, because the golden poses show mechs at a few dozen pixels and the term oracle there is inconclusive. Switch when:
+(1) row 2 is proven on a close-up mech bookmark (day and night, imported and stock mech) or ruled to need no golden change; (2) if that row
+moves pixels in these poses, re-bless (three runs, the section 2 recipe); (3) `render_resolution.CURRENT_GOLDEN` names the VK set in the same
+commit as the `RETIRED.md` rows for `golden-e9e3f19d6-1080p` and `reset-50331d5`; (4) `verify.py` refuses a candidate whose backend differs
+from the golden's (section 5, first item) so a GL capture cannot grade against a VK golden silently. Until then
+`golden-d9e1f3801716-vk-1080p` is the VK reference GL deletion step 1 can use.
+GL deletion step 1 then needs: the capture and tooling GL arms of `.claude/cleanup/gl-retirement-inventory-2026-10-15.md` sections 11-13
+(`capture_ab.py` noise floor on two VK arms, `ab.py` and the term-oracle scripts kept only as long as a GL exe exists, the GL tier1 arm
+dropped from the per-row proof), with this set as the regression guard: `verify.py` 36/36 on a VK run of the post-deletion exe.
+
+## 5. Follow-ups (not done here)
 - `verify.py` does not compare the golden's backend with the candidate's; add a refusal (with an explicit cross-backend switch for the
   oracle use) when the VK set becomes current.
 - `capture_ab.py` uses two GL arms as its noise floor; switch to two VK arms (inventory section 12).
