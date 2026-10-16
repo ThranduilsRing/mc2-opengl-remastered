@@ -1538,13 +1538,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "VK Metal-gate resource canary.",
     },
     {
-        "MC2_TRACE_VK_NO_GL_INTEROP_STRICT",
-        "MC2_VK_NO_GL_INTEROP_STRICT",
-        EnvVarKind::Trace,
-        false,
-        "VK Metal-gate canary.",
-    },
-    {
         "MC2_VK_PICK_PROBE",
         "MC2_VK_PICK_PROBE",
         EnvVarKind::Trace,

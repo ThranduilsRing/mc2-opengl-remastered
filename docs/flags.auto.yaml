@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 979
-registry_entry_count: 204
-verified_count: 970
+gate_count: 978
+registry_entry_count: 203
+verified_count: 969
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -4941,7 +4941,7 @@ flags:
     default: 1
     rule: Prefix
     owner: code
-    doc: "SIM-SPEED-BUTTON-1: seed for the runtime-settable sim-speed multiplier; the HUD speed tab and dev-shell sim_speed set it afterwards."
+    doc: "SIM-SPEED-BUTTON-1: play (wall clock) = seed of the HUD/dev-shell dt multiplier; harness fixed-step clock, unfocused = floor(N) 1/30 s steps per drawn frame."
     range: {lo: 0.25, hi: 4, style: clamp}
     smoke_passthrough: true
     verified: true
@@ -6919,15 +6919,6 @@ flags:
     doc: "VK Metal-gate resource canary."
     smoke_passthrough: true
     registry: {feature_id: MC2_TRACE_VK_NO_GL_INTEROP_RESOURCE_STRICT, kind: Trace, order: -1, default_on: false}
-  - name: MC2_VK_NO_GL_INTEROP_STRICT
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: vk
-    doc: "VK Metal-gate canary."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TRACE_VK_NO_GL_INTEROP_STRICT, kind: Trace, order: -1, default_on: false}
   - name: MC2_VK_OBJECTID_DIRECT_CHAIN
     kind: Bool
     default: false
