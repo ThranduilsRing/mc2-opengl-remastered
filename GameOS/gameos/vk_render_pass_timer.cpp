@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "mc2fmt.h"
+#include "vk_one_shot.h"
 #include "vk_owned.h"
 #include "vk_render_pass_timer_ring.h"
 #include "vulkan_context.h"
@@ -44,39 +45,7 @@ VkDevice s_unsupportedDevice = VK_NULL_HANDLE;
 // Puts every query of the new pool in the reset state with one GPU submit, so a read of a query no submitted command
 // buffer has written yet is "not ready" rather than uninitialized.
 bool resetAll(const mc2vk::VulkanContext& ctx, VkQueryPool qp, uint32_t count) {
-    const VkDevice device = ctx.device();
-    mc2vk::OwnedCommandPool cpool;
-    mc2vk::OwnedFence fence;
-    bool ok = false, submitted = false;
-    do {
-        VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
-        pci.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-        pci.queueFamilyIndex = ctx.graphicsFamily();
-        if (!mc2vk::create(cpool, device, [&](VkCommandPool* h) { return vkCreateCommandPool(device, &pci, nullptr, h); })) break;
-        VkCommandBufferAllocateInfo ai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-        ai.commandPool = cpool.get();
-        ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        ai.commandBufferCount = 1;
-        VkCommandBuffer cb = VK_NULL_HANDLE;
-        if (vkAllocateCommandBuffers(device, &ai, &cb) != VK_SUCCESS) break;
-        VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-        if (!mc2vk::create(fence, device, [&](VkFence* h) { return vkCreateFence(device, &fci, nullptr, h); })) break;
-        VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) break;
-        vkCmdResetQueryPool(cb, qp, 0, count);
-        if (vkEndCommandBuffer(cb) != VK_SUCCESS) break;
-        VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-        si.commandBufferCount = 1;
-        si.pCommandBuffers = &cb;
-        if (vkQueueSubmit(ctx.graphicsQueue(), 1, &si, fence.get()) != VK_SUCCESS) break;
-        submitted = true;
-        const VkFence fh = fence.get();
-        ok = vkWaitForFences(device, 1, &fh, VK_TRUE, 5ull * 1000 * 1000 * 1000) == VK_SUCCESS;
-    } while (false);
-    // The fence and the pool are released on return: a submit whose fence did not signal must finish first.
-    if (submitted && !ok) ctx.waitIdle("pass_timer_reset");
-    return ok;
+    return mc2vk::submitOneShot(ctx, [&](VkCommandBuffer cb) { vkCmdResetQueryPool(cb, qp, 0, count); }, "pass_timer_reset");
 }
 
 TimerState* state(bool create) {
