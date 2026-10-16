@@ -1,5 +1,29 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## TWENTY-NINTH session (2026-10-16, cap 5 h, Sonnet 5.5) -- CURRENT_GOLDEN switched to the VK set, capture_ab on two VK arms, GL goldens archived, row2 review fixed; nifty NOT merged (waits for "merge lane2 cbfac5d8e")
+
+### Commits (after cbfac5d8e; code exe = f77062b02, everything later is scripts/docs/baselines)
+324fa2a36 CURRENT_GOLDEN + RETIRED.md rows | 8f4799f7f + ced0be17f capture_ab two VK arms (`--gl-arm` keeps the GL set) | 79ee15509 GL goldens archived and removed | b7eed679c tracy baseline defaults to vk | d4cca58e9 + 236a628b6 row2 review fixes | f77062b02 plan/inventory (owner fail-soft ruling recorded: failed VK init exits with a message, no fallback) | 575adb9bf + 80a1e8b45 check-contracts duplicate row | feff1b7ea + 9c31cbaa3 + 4ae1fefe7 board debts (ColorFrameUBO 320, stale allowlist row, dup_lines baseline, background-launch inventory, callers.json) | this state commit. MERGEABLE TIP = the commit carrying this line.
+
+### GL deletion step 1: what went, what stopped (inventory section 15)
+- Removed: `golden-e9e3f19d6-1080p` + `reset-50331d5` (61 files, 2,486 deleted lines incl. json; tarball + sha256 `E:/mc2-archive-2026-10/docs/gl-goldens-2026-10-16/`, extraction diffed against the tree before removal); capture_ab GL noise floor (now two VK arms, GL behind `--gl-arm`); tracy `baseline` default arm gl,vk -> vk.
+- STOPPED, listed: VFX oracle (GL readback is the only MLR-vs-GPU proof, no VK arm); GL-reference provers (rows 3, 5-22, 24 still open, they pin those); Tracy `selfcheck`/`matrix` GL arm (MC2_LIGHT_POOL_MAX is a GL knob, no VK-visible known cost); capture `gl_fbo` arm and the 10 debug views (all GameOS, outside this session).
+- Row2 review: should-fix 1 (verify.py refuses a golden with no backend record; VK-vs-GL refusal test), 2 and 3 plus the two nits (gaps row 2) fixed.
+
+### Proof
+| Evidence | Result |
+|---|---|
+| ninja -j2 (`scratch/build_s29.log`) | exit 0 at f77062b02, deployed to mc2-win64-lane2 |
+| golden: `.claude/l2cap/s29-vk` vs `--golden current` | 36/36 regions PASS, 10 poses PASS, validation errors 0 (`scratch/verify29.log`) |
+| tier1 VK + validation | 5/5 PASS, errors=0 warnings=0 on all five, 146/123/116/117/96 fps, DEPLOY_FINGERPRINT OK (`scratch/b29_vk_t1.log`) |
+| tier1 GL | 5/5 PASS, 142/114/142/141/132 fps, +0 destroys, fingerprint OK (ancestor f77062b02, doc-only commits since) (`scratch/b29_gl_t1.log`) |
+| pytest | tests/smoke + tools/visual_verify 222+ passed; test_gpu_abi_gen + test_gl_vk_feature_coverage 90 passed; scripts/tests/test_tracy_capture_compare.py 9 failures are pre-existing (same 9 at cbfac5d8e) |
+| board (`scratch/cc_s29b.log`, before the debt commits) | reds fixed here: gpu_abi, gl_vk_feature_coverage, dup_lines, background_launch inventory staleness, callers.json. Reds left, not this lane: estring_callsites, container_callsites, spirv_artifacts (prints nothing), vk_pipeline_layout split-unit case, background_launch (test_host_lease_batch.py:69 os.kill), doc_links, script_callers (test_journal_comment_ratchet.py has no caller), scripts_tests (journal ratchet tests, build_compiler_presets, editor_smoke, tracy lease tests), sim_include_firewall |
+
+### Open
+- VFX oracle VK arm; Tracy VK known-cost selfcheck; provers after the last row; GameOS step (gl_fbo arm, debug views, then sections 2-10); `golden-e350d0b4a5c6-vk-1080p` is a superseded interim set (candidate for the next archive); the check-contracts duplicate-row fix is also needed on nifty (same merge bug).
+- Scratch (mine, deletable): `scratch/` f29.sh/.out, build_s29.log, deploy_s29.log, verify29.log, b29_*_t1.log, cc_s29*.log, ab_edit.py, vb_edit.py, gaps_edit.py, docs_edit.py, state_edit.py; `.claude/l2cap/s29-vk` (keep until merge).
+
 ## TWENTY-EIGHTH session (2026-10-16 ~04:35-06:30 CDT, cap 5 h, Opus 5.5) -- row 2 closed on close-up mech bookmarks (no VK change), row 24 opened (GL-only mech face darkening), verify.py backend refusal, mech pool buffer placement, rows1-9 review should-fix 1 + 2, CURRENT_GOLDEN switch recommended; nifty NOT merged ("merge lane2 649c149c4" absent from mc2-main)
 
 ### Commits (after 649c149c4)
