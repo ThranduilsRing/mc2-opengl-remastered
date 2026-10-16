@@ -980,17 +980,7 @@ void main() {
                 if (alpha > 0.5) { cementHit = true; cementDbgClass = 2; }
             }
         } else {
-            // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6), REVISION 2 (RUNWAY-EDGE-DILATE-1):
-            // The pad/runway apron stays FULLY, CRISPLY concrete right out to its own
-            // tile boundary -- revision 1 feathered cement OUT toward terrain here,
-            // which eroded the apron and read as a blurry dirty edge (user verdict:
-            // "gate on is worse; the answer is usually MORE concrete, not less").
-            // The blend now happens OUTSIDE this tile: the bare-terrain neighbour
-            // DILATES cement inward over its outer margin (see RUNWAY-EDGE-DILATE-1
-            // block below), so gate ON grows the concrete footprint with a soft outer
-            // margin instead of dissolving the existing footprint. The CPU-baked
-            // "open border" mask (cementWord bits 19:16, killswitch
-            // MC2_RUNWAY_EDGE_BLEND) is unchanged -- it is now read by the neighbour.
+            // Solid cement: the apron stays fully concrete out to its own tile boundary.
             base = cementColor;
             cementHit = true;
             cementDbgClass = 1;
@@ -1033,75 +1023,6 @@ void main() {
                 cementHit = true;
                 cementDbgClass = 3;
             }
-        }
-    }
-
-    // RUNWAY-EDGE-DILATE-1 (MASTER-FAIL #6, revision 2): grow the apron/runway
-    // concrete OUTWARD by up to half a tile with a soft outer margin, instead of
-    // eroding the concrete inward (revision 1, rejected by the user: "gate on is
-    // worse -- the answer is usually MORE concrete, not less"). This runs on the
-    // BARE-TERRAIN tile next to a solid pad edge: if an orthogonal neighbour is a
-    // SOLID cement tile that flagged THIS side as an "open border" (CPU-baked
-    // cementWord bits 19:16, killswitch MC2_RUNWAY_EDGE_BLEND), we blend that
-    // neighbour's cement over the terrain, full strength at the shared edge and
-    // falling to zero half a tile out. Alpha is 1.0 exactly at the shared edge, so
-    // it is seam-continuous with the now-crisp full-cement tile: the hard stairstep
-    // becomes a soft outer margin, and the concrete footprint GROWS.
-    // Gate OFF => the CPU never writes the mask bits => reDmask is always 0 for
-    // every neighbour => this block is a no-op => byte-identical stock.
-    // Neighbour bit convention (from the NEIGHBOUR's frame, so it is mirrored):
-    //   E neighbour (ctX+1) flags me as its W -> bit17 (0x2)
-    //   W neighbour (ctX-1) flags me as its E -> bit16 (0x1)
-    //   N neighbour (ctY-1) flags me as its S -> bit19 (0x8)
-    //   S neighbour (ctY+1) flags me as its N -> bit18 (0x4)
-    // Transition neighbours never carry the mask (CPU skips them), so the authored
-    // marching-squares edges (CEMENT-HARD-EDGE-1) stay untouched.
-    if (u_useCement != 0 && !cementBypassDiag && !cementHit) {
-        vec2 rTileUV = fract(vec2(v_worldPos.x, -v_worldPos.y) / u_cementWUPT);
-        int  rGridSide = u_cementGridSide;
-        if (rGridSide < 1) rGridSide = 1;
-        // Outward reach, in tiles. Pure taste knob: 0.5 (a half-tile skirt) is
-        // measurable but too subtle to read at gameplay zoom on the mc2_01 apron
-        // (only 4 solid-vs-bare tiles are eligible there); 1.0 gives a full-tile
-        // margin that is visibly MORE concrete without swallowing terrain.
-        const float kReDilate = 1.0;
-        float rBestAlpha = 0.0;
-        uint  rBestLayer = 0u;
-        // (neighbour dx, dy, required mask bit, distance from the shared edge)
-        for (int s = 0; s < 4; ++s) {
-            int  rnX = ctX, rnY = ctY;
-            uint rBit = 0u;
-            float rDist = 1.0;
-            if (s == 0)      { rnX = ctX + 1; rBit = 0x2u; rDist = 1.0 - rTileUV.x; }
-            else if (s == 1) { rnX = ctX - 1; rBit = 0x1u; rDist = rTileUV.x; }
-            else if (s == 2) { rnY = ctY - 1; rBit = 0x8u; rDist = rTileUV.y; }
-            else             { rnY = ctY + 1; rBit = 0x4u; rDist = 1.0 - rTileUV.y; }
-            if (rnX < 0 || rnX >= u_mapSide || rnY < 0 || rnY >= u_mapSide) continue;
-            uint rnw = cementWordsF[rnX + rnY * u_mapSide];
-            if ((rnw & 0x80000000u) == 0u) continue;   // neighbour not cement
-            if ((rnw & 0x40000000u) != 0u) continue;   // transition: legacy owns it
-            if ((((rnw >> 16) & 0xFu) & rBit) == 0u) continue;  // not flagged open toward me
-            float rAlpha = 1.0 - smoothstep(0.0, kReDilate, rDist);
-            if (rAlpha > rBestAlpha) {
-                rBestAlpha = rAlpha;
-                rBestLayer = rnw & 0xFFFFu;
-            }
-        }
-        if (rBestAlpha > 0.0) {
-            int  rCol = int(rBestLayer) % rGridSide;
-            int  rRow = int(rBestLayer) / rGridSide;
-            vec2 rSampleUV = rTileUV;
-            if (u_cementAtlasSeamFix != 0) {
-                // CEMENT-ATLAS-SEAM-1: same half-texel inset as the main cement branch.
-                float rCellPx = float(textureSize(u_cementAtlas, 0).x) / float(rGridSide);
-                float rInset  = 0.5 / max(rCellPx, 1.0);
-                rSampleUV = clamp(rTileUV, vec2(rInset), vec2(1.0 - rInset));
-            }
-            vec2 rAtlasUV = (vec2(float(rCol), float(rRow)) + rSampleUV) / float(rGridSide);
-            // CEMENT-NIGHT-LIGHT-1: raw atlas texel -> mission flat light.
-            vec3 rCement = texture(u_cementAtlas, rAtlasUV).rgb * u_missionFlatLight;
-            base = mix(base, rCement, rBestAlpha);
-            if (rBestAlpha > 0.5) { cementHit = true; cementDbgClass = 4; }
         }
     }
 
@@ -1156,14 +1077,13 @@ void main() {
     // CEMENT-CLASS-DIAG-1 (DIAG bit 32768): visualise which path coloured the
     // concrete at this pixel. BLACK = baked colormap only (no cement word, no
     // overlay); RED = SOLID cement-atlas replacement; GREEN = TRANSITION
-    // cement-atlas; BLUE = diag-connect; YELLOW = runway-edge dilate;
+    // cement-atlas; BLUE = diag-connect;
     // MAGENTA = authored overlay sidecar. Diagnostic only, zero-cost when off.
     if ((u_diag & 32768) != 0) {
         vec3 cc = vec3(0.0);
         if      (cementDbgClass == 1) cc = vec3(1.0, 0.0, 0.0);
         else if (cementDbgClass == 2) cc = vec3(0.0, 1.0, 0.0);
         else if (cementDbgClass == 3) cc = vec3(0.0, 0.0, 1.0);
-        else if (cementDbgClass == 4) cc = vec3(1.0, 1.0, 0.0);
         else if (cementDbgClass == 5) cc = vec3(1.0, 0.0, 1.0);
         else if (cementDbgClass == 6) cc = vec3(0.0, 1.0, 1.0);  // CEMENT-ALPHA-LAND-1 own-alpha
         // PAVED-OVERLAY-CLASS-1: WHITE = overlay-only pavement now given the
