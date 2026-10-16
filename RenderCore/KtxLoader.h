@@ -64,7 +64,8 @@ struct KtxParseResult {
 inline constexpr uint32_t kKtxMaxEdge = 16384;
 KtxParseResult ktxParse(std::span<const uint8_t> file);
 
-// Reads a .ktx2 file and parses it with ktxParse. Returns false (silent) for a missing file or anything ktxParse rejects.
+// Reads a .ktx2 file and parses it with ktxParse. Returns false for a missing file (silent: callers probe for optional
+// sidecars) or for anything ktxParse rejects (logged with the path and the reason).
 // Despite the historical name, this also accepts stored (non-supercompressed)
 // BC7 KTX2 files — inspect out.isCompressed / out.vkFormat to dispatch upload.
 bool ktxLoadRgba8(const char* path, KtxImage& out);

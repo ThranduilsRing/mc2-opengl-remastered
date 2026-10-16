@@ -3,6 +3,8 @@
 // No GL headers. No external dependencies.
 
 #include "KtxLoader.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+#include "../GameOS/include/mc2fmt.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -144,7 +146,11 @@ bool ktxLoadRgba8(const char* path, KtxImage& out)
     }
     std::fclose(f);
     KtxParseResult parsed = ktxParse(bytes);
-    if (!parsed.image) return false;
+    if (!parsed.image) {
+        // A present but malformed sidecar is mod content the caller silently replaces with its fallback; say why.
+        MC2_LOG(Assets, Warn, "[TEXTURE_DECODE v1] rejected {}: {}", mc2::fmt::safe(path), parsed.error ? parsed.error : "unreadable");
+        return false;
+    }
     out = std::move(*parsed.image);
     return true;
 }

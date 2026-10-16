@@ -110,3 +110,52 @@ TEST_CASE("ktx2: more levels than a full chain, arrays, cubes and supercompressi
     const auto unknown = makeKtx2(100, 4, 4, 16);
     CHECK_FALSE(parse(unknown.data(), unknown.size()).image);
 }
+
+TEST_CASE("ktx2: a level offset past the end is rejected even when its length is right") {
+    auto file = makeKtx2(kBc7Srgb, 4, 4, 16);
+    putU64(file, 80, ~0ull - 4);   // offset + length would wrap; the offset alone is already past the file
+    CHECK_FALSE(parse(file.data(), file.size()).image);
+    putU64(file, 80, file.size() + 1);
+    CHECK_FALSE(parse(file.data(), file.size()).image);
+}
+
+TEST_CASE("ktx2: an RGBA8 level is returned as 4 bytes a pixel") {
+    constexpr uint32_t kRgba8Unorm = 37;
+    const auto file = makeKtx2(kRgba8Unorm, 3, 2, 3 * 2 * 4);
+    const auto r = parse(file.data(), file.size());
+    REQUIRE(r.image);
+    CHECK_FALSE(r.image->isCompressed);
+    CHECK_FALSE(r.image->isSrgb);
+    CHECK(r.image->blockSizeBytes == 0);
+    CHECK(r.image->pixels.size() == 24);
+}
+
+TEST_CASE("ktx2: a full BC7 chain packs the levels in order with their byte offsets") {
+    // 8x8 -> 4x4 -> 2x2 -> 1x1: 4 blocks, then one block for each smaller level (a partial block is still a whole block).
+    const uint64_t lens[4] = {64, 16, 16, 16};
+    const size_t dataAt = 80 + 4 * 24;
+    std::vector<uint8_t> file = makeKtx2(kBc7Srgb, 8, 8, 0);
+    file.resize(dataAt + 112, 0);
+    putU32(file, 40, 4);
+    uint64_t at = dataAt;
+    for (int lvl = 0; lvl < 4; ++lvl) {
+        putU64(file, 80 + lvl * 24, at);
+        putU64(file, 88 + lvl * 24, lens[lvl]);
+        putU64(file, 96 + lvl * 24, lens[lvl]);
+        std::memset(file.data() + at, 0x10 + lvl, (size_t)lens[lvl]);
+        at += lens[lvl];
+    }
+    const auto r = parse(file.data(), file.size());
+    REQUIRE(r.image);
+    CHECK(r.image->mipCount == 4);
+    REQUIRE(r.image->mipByteOffsets.size() == 4);
+    CHECK(r.image->mipByteOffsets[0] == 0);
+    CHECK(r.image->mipByteOffsets[1] == 64);
+    CHECK(r.image->mipByteOffsets[2] == 80);
+    CHECK(r.image->mipByteOffsets[3] == 96);
+    REQUIRE(r.image->pixels.size() == 112);
+    CHECK(r.image->pixels[0] == 0x10);
+    CHECK(r.image->pixels[64] == 0x11);
+    CHECK(r.image->pixels[80] == 0x12);
+    CHECK(r.image->pixels[111] == 0x13);
+}

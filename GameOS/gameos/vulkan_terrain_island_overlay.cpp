@@ -119,11 +119,13 @@ bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, VkForma
     return mc2vk::create(e.view, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
 }
 
-// Resolve (importing copy-once on first sight) the texture for a gos handle. nullptr = not
-// resident / cannot import (caller skips the draw this frame). 0 / 0xffffffff = untextured.
+// Resolve (importing copy-once on first sight) the texture for a gos handle. nullptr = texels still
+// pending or the import failed (caller skips the draw this frame). Untextured (0 / 0xffffffff, or a
+// handle the producer reports has no CPU texels) binds the dummy, as the producer contract says.
 OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
     if (gosHandle == 0 || gosHandle == 0xffffffffu) return &o->dummy;
     GosTexels texels = gos_GetTextureTexels(gosHandle);
+    if (texels.status == GosTexels::Status::Unavailable) return &o->dummy;
     if (texels.status != GosTexels::Status::Ready) return nullptr;
     const uint32_t w = texels.width, h = texels.height;
     auto it = o->texs.find(gosHandle);
