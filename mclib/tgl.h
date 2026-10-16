@@ -23,6 +23,7 @@
 #include<stuff/stuff.hpp>
 #include<gameos.hpp>
 #include <cstdint>  // uint64_t (Tier-1 instrumentation, stability spec §2)
+#include <memory>   // the per-frame pools own their storage
 #include "../RenderCore/gpu_abi/GpuObjectLights.h"  // single-source per-object light record
 
 //-------------------------------------------------------------------------------
