@@ -75,6 +75,7 @@ flat layout(location = 5) in vec2 vUvScale;  // FENCE-UVSCALE-1: this packet's u
 layout(location = 6) in vec3 vWorldPos;
 flat layout(location = 7) in vec3 vSunDirStuff;
 flat layout(location = 8) in vec3 vSunColor;
+flat layout(location = 9) in vec4 vHighlight;   // objective / selection highlight (static_prop.frag: c.rgb += rgb * a)
 
 // The vertex stage's push block; the FS reads only packetAlphaTest.
 layout(push_constant) uniform PacketLayerPC {
@@ -166,6 +167,7 @@ void main() {
         // read pure black. VK omitted this -> alpha-test fences/cards rendered BLACK. Apply
         // the SAME floor verbatim before multiplying the albedo.
         rgb = texc.rgb * max(vArgb, vec3(0.5));
+        rgb += vHighlight.rgb * vHighlight.a;
         rgb += propPoolLight(texc.rgb);
         if (uFrame.pbrV1Strength > 0.0) rgb += propSunSpecular(texc.rgb) * uFrame.pbrV1Strength;
     } else if (uFrame.materialReady != 0 && vLayer >= 0) {
@@ -187,6 +189,7 @@ void main() {
             rgb = albedo * max(vArgb, vec3(0.5));
             alphaTestClass = true;
         }
+        rgb += vHighlight.rgb * vHighlight.a;
         rgb += propPoolLight(albedo);
         if (uFrame.pbrV1Strength > 0.0) rgb += propSunSpecular(albedo) * uFrame.pbrV1Strength;
     } else {
