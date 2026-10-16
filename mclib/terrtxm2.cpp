@@ -81,7 +81,7 @@ MemoryPtr TerrainColorMap::ownColorMap (size_t bytes)
 
 void TerrainColorMap::ownTextureHandles (DWORD count)
 {
-	texturesStore.assign(count ? count : 1, ColorMapTextures{0xffffffff});
+	texturesStore = std::vector<ColorMapTextures>(count ? count : 1);
 	textures = texturesStore.data();
 }
 

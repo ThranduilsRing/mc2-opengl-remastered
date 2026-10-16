@@ -550,7 +550,7 @@ long TerrainColorMap::init (char *fileName)
 					// Allocate texture handles (they outlive the colour map scratch)
 					{
 						ZoneScopedN("TerrainColorMap::init normalMap allocHandles");
-						normalMapStore.assign(numNormalMapTextures, ColorMapTextures{0xffffffff});
+						normalMapStore = std::vector<ColorMapTextures>(numNormalMapTextures);
 						normalMapTextures = normalMapStore.data();
 					}
 
