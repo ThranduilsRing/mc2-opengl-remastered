@@ -1,5 +1,6 @@
 #include "doctest.h"
 #include "utilities.h"
+#include "gameos_resource.hpp"
 #include "utils/mc2log.h"
 
 #include <algorithm>
@@ -10,12 +11,17 @@
 #include <vector>
 
 // A scripted provider boundary; both public loaders link from the production TU.
-// Missing/empty distinctions inside GameOS remain a separate provider claim.
 struct gos_StringRes {
     const char* text = "";
     unsigned int calls = 0;
     DWORD lastId = 0;
+    bool present = true;
 };
+
+std::optional<std::size_t> gos_ResourceStringLength(HSTRRES handle, DWORD)
+{
+    return handle->present ? std::optional<std::size_t>(handle->text ? std::strlen(handle->text) : 0) : std::nullopt;
+}
 
 const char* __stdcall gos_GetResourceString(HSTRRES handle, DWORD id)
 {
@@ -144,7 +150,7 @@ TEST_CASE("resource_strings/valid empty is silent and clears the destination tai
     CHECK(fixture.diagnostics().empty());
 }
 
-TEST_CASE("resource_strings/provider missing marker is preserved without an extra diagnostic")
+TEST_CASE("resource_strings/marker looking valid content is preserved without a diagnostic")
 {
     Fixture fixture("<missing-string:legacy:999999>");
     Guarded<64> output;
@@ -156,6 +162,22 @@ TEST_CASE("resource_strings/provider missing marker is preserved without an extr
     CHECK(value == fixture.table.text);
     CHECK(value.c_str()[value.size()] == '\0');
     CHECK(fixture.diagnostics().empty());
+}
+
+TEST_CASE("resource_strings/missing ID rejects provider marker with one diagnostic per API")
+{
+    Fixture fixture("<missing-string:legacy:999999>");
+    fixture.table.present = false;
+    Guarded<64> output;
+    CHECK(cLoadString(999999, output.text.data(), 64) == 0);
+    CHECK(std::all_of(output.text.begin(), output.text.end(), [](char c) { return c == '\0'; }));
+    output.checkGuards();
+    CHECK(loadResourceString(999999).empty());
+    CHECK(fixture.table.calls == 0);
+    CHECK(fixture.diagnostics() ==
+        "[RESOURCE_STRING v1] event=missing_id id=999999 source_length=0 capacity=64 copied=0\n"
+        "[RESOURCE_STRING v1] event=missing_id id=999999 source_length=0 capacity=0 copied=0\n");
+    CHECK(std::string(gos_GetResourceString(&fixture.table, 999999)) == fixture.table.text);
 }
 
 TEST_CASE("resource_strings/null provider result is rejected once per API")

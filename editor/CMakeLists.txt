@@ -59,6 +59,16 @@ target_compile_features(editor_catalog_probe PRIVATE cxx_std_23)
 target_include_directories(editor_catalog_probe PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/include")
 target_link_libraries(editor_catalog_probe PRIVATE editor_document)
 
+add_executable(editor_resource_tests EXCLUDE_FROM_ALL tests/test_resource_catalog.cpp
+    "${CMAKE_SOURCE_DIR}/GameOS/gameos/MC2Strings.cpp"
+    "${CMAKE_SOURCE_DIR}/GameOS/gameos/gameos_res.cpp"
+    "${CMAKE_SOURCE_DIR}/GameOS/gameos/utils/mc2log.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/resource_strings.cpp")
+target_compile_features(editor_resource_tests PRIVATE cxx_std_23)
+target_include_directories(editor_resource_tests PRIVATE
+    "${CMAKE_SOURCE_DIR}/GameOS/gameos" "${CMAKE_SOURCE_DIR}/GameOS/include")
+target_link_libraries(editor_resource_tests PRIVATE editor_document mc2_gate SDL2::SDL2)
+
 add_executable(editor_panel_tests tests/test_main.cpp tests/test_panels.cpp tests/test_files.cpp shell/EntityPanels.cpp shell/ObjectivePanel.cpp shell/PanelProof.cpp shell/ObjectiveProof.cpp shell/FileWorkflow.cpp shell/FileProof.cpp
     "${CMAKE_SOURCE_DIR}/3rdparty/imgui/misc/cpp/imgui_stdlib.cpp")
 target_compile_features(editor_panel_tests PRIVATE cxx_std_23)

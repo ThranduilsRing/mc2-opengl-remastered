@@ -1059,14 +1059,6 @@ bool CDisplayResourceTextMessage::Read( FitIniFile* missionFile )
 	return true;
 }
 
-// The string-table text of a resource ID; the table's own "not defined" text when the ID is missing.
-static std::string loadResourceString(int resourceID) {
-	char szTmp[16384/*max string length*/];
-	szTmp[0] = '\0';
-	cLoadString( resourceID, szTmp, 16384/*max string length*/ );
-	return std::string(szTmp);
-}
-
 int CDisplayResourceTextMessage::Execute()
 {
 	const std::string resourceText = loadResourceString(m_resourceStringID);
