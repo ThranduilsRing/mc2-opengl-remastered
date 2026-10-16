@@ -49,13 +49,13 @@
   "GameOS": {
    "LG01": 10,
    "LG02": 191,
-   "LG03": 265,
+   "LG03": 266,
    "LG04": 6,
-   "LG05": 120,
+   "LG05": 122,
    "LG06": 509,
    "LG07": 0,
-   "LG08": 261,
-   "LG09": 1966,
+   "LG08": 259,
+   "LG09": 1956,
    "LG10": 42,
    "LG11": 101,
    "LG12a": 95,
@@ -364,13 +364,13 @@
    "LG17": 1
   },
   "GameOS/gameos/gameos_graphics_bridge.cpp": {
-   "LG09": 19
+   "LG09": 20
   },
   "GameOS/gameos/gameos_graphics_capi.cpp": {
-   "LG03": 7,
-   "LG05": 6,
+   "LG03": 8,
+   "LG05": 8,
    "LG06": 10,
-   "LG09": 7,
+   "LG09": 8,
    "LG17": 1
   },
   "GameOS/gameos/gameos_graphics_draw.cpp": {
@@ -723,7 +723,7 @@
    "LG09": 12
   },
   "GameOS/gameos/gos_static_prop_batcher_finalize_textures.cpp": {
-   "LG08": 15,
+   "LG08": 13,
    "LG09": 7
   },
   "GameOS/gameos/gos_static_prop_batcher_flush.cpp": {
@@ -803,7 +803,7 @@
    "LG06": 1
   },
   "GameOS/gameos/gos_terrain_indirect_atlas.cpp": {
-   "LG09": 43
+   "LG09": 44
   },
   "GameOS/gameos/gos_terrain_indirect_cement.cpp": {
    "LG05": 3,
@@ -1011,7 +1011,7 @@
    "LG05": 1
   },
   "GameOS/gameos/terrain_field_store.cpp": {
-   "LG09": 7,
+   "LG09": 9,
    "LG17": 1
   },
   "GameOS/gameos/terrain_field_store.h": {
@@ -1165,7 +1165,7 @@
   },
   "GameOS/gameos/vulkan_color_prop_island.cpp": {
    "LG06": 2,
-   "LG09": 37,
+   "LG09": 28,
    "LG10": 1,
    "LG11": 1,
    "LG13": 4,
@@ -1259,7 +1259,7 @@
    "LG11": 1
   },
   "GameOS/gameos/vulkan_terrain_island_images.cpp": {
-   "LG09": 25
+   "LG09": 19
   },
   "GameOS/gameos/vulkan_terrain_island_internal.h": {
    "LG06": 1,
@@ -5127,7 +5127,7 @@
    "LG20": 3
   }
  },
- "head": "a58df2b76",
+ "head": "505f85088",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

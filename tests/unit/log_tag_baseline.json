@@ -9669,7 +9669,7 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [
-    "id"
+    "handle"
    ],
    "count": 1
   },
@@ -10283,14 +10283,14 @@
    "ver": 1,
    "stream": "log",
    "keys": [],
-   "count": 5
+   "count": 6
   },
   {
    "tag": "TERRAIN_FIELDS",
    "ver": 1,
    "stream": "stderr",
    "keys": [],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "TERRAIN_HEIGHT_TEX",
@@ -10791,7 +10791,7 @@
    "ver": 1,
    "stream": "log",
    "keys": [],
-   "count": 12
+   "count": 13
   },
   {
    "tag": "TEXTURE_RGBA",
