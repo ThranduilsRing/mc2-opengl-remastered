@@ -91,6 +91,27 @@ struct CompileFixture {
 };
 CompileFixture* CompileFixture::current = nullptr;
 
+std::string compileBytes(const CompileFixture& fixture, const Routine& routine) {
+    // Symbol addresses vary between processes; retain their names in the byte control.
+    std::string result;
+    constexpr char hex[] = "0123456789abcdef";
+    for (long i = 0; i < routine.codeSegmentSize;) {
+        SymTableNodePtr symbol = nullptr;
+        if (i + sizeof(symbol) <= routine.codeSegmentSize) {
+            std::memcpy(&symbol, routine.codeSegment + i, sizeof(symbol));
+            if (!fixture.blocks.contains(symbol)) symbol = nullptr;
+        }
+        if (symbol) {
+            result += "<" + std::string(symbol->name) + ">";
+            i += sizeof(symbol);
+        } else {
+            const auto byte = static_cast<unsigned char>(routine.codeSegment[i++]);
+            result += hex[byte >> 4]; result += hex[byte & 15];
+        }
+    }
+    return result;
+}
+
 struct CompileLog {
     FILE* file = nullptr;
     int saved = -1;
@@ -124,20 +145,14 @@ TEST_CASE("ABLCompile/syntax rejection rolls back before the next compile") {
     extern long eternalOffset;
     extern TypePtr IntegerTypePtr;
     extern SymTableNodePtr SymTableDisplay[MAX_NESTING_LEVEL];
+    extern bool EnterStateSymbol;
+    extern bool Crunch;
     const std::string valid = "module retry;\nvar\neternal integer retained;\ncode\nendmodule.\n";
-    std::vector<char> control;
-    long controlTypeCount = 0;
-    {
-        CompileFixture fixture;
-        fixture.sources["valid.abl"] = valid;
-        REQUIRE(ABLi_preProcess("valid.abl") == 0);
-        auto& routine = ModuleRegistry[0].moduleIdPtr->defn.info.routine;
-        control.assign(routine.codeSegment, routine.codeSegment + routine.codeSegmentSize);
-        controlTypeCount = IntegerTypePtr->numInstances;
-    }
     struct Failure { const char* name; std::string source; const char* error; bool library = false; };
     const Failure failures[] = {
         {"undefined expression", valid.substr(0, valid.find("code")) + "code\nundefined = ;\nendmodule\n", "Undefined identifier"},
+        {"failed state handle argument", "module retry;\ncode\ngetstatehandle(undefined);\nendmodule.\n", "Undefined identifier"},
+        {"failed suppressed print argument", "module retry;\ncode\nprint(undefined);\nendmodule.\n", "Undefined identifier"},
         {"failed eternal array allocation", "module retry;\nvar\neternal integer[3] retained;\ncode\nundefined = ;\nendmodule.\n", "Undefined identifier"},
         {"missing period after bytecode allocation", valid.substr(0, valid.size() - 2), "Missing period"},
         {"unterminated comment", "/* unterminated", "Unexpected end-of-file"},
@@ -167,18 +182,44 @@ TEST_CASE("ABLCompile/syntax rejection rolls back before the next compile") {
     CHECK(eternalOffset == 0);
     CHECK(IntegerTypePtr->numInstances == typeCount);
     CHECK(SymTableDisplay[0] == root);
+    CHECK_FALSE(EnterStateSymbol);
+    CHECK(Crunch);
     const auto message = log.text();
     CHECK(std::count(message.begin(), message.end(), '\n') == 1);
     CHECK(message.find(failure.name == std::string("failed include") ? "include.abl [line " : "bad.abl [line ") != std::string::npos);
     CHECK(message.find(failure.error) != std::string::npos);
     REQUIRE(ABLi_preProcess("valid.abl", &errors) == 0);
     CHECK(errors == 0);
-    CHECK(IntegerTypePtr->numInstances == controlTypeCount);
-    auto& routine = ModuleRegistry[0].moduleIdPtr->defn.info.routine;
-    CHECK(std::vector<char>(routine.codeSegment, routine.codeSegment + routine.codeSegmentSize) == control);
+    CHECK(IntegerTypePtr->numInstances == typeCount + 1);
     CHECK(searchSymTable("retry", SymTableDisplay[0]) == ModuleRegistry[0].moduleIdPtr);
     CHECK(log.text() == message);
     }
+}
+
+TEST_CASE("ABLCompile/statements includes and library calls preserve parent bytecode after rejection") {
+    extern ModuleEntryPtr ModuleRegistry;
+    CompileFixture fixture;
+    fixture.sources["helpers.abx"] = "library helpers;\nfunction bump: integer;\ncode\nreturn(7);\nendfunction;\ncode\nendlibrary.\n";
+    fixture.sources["vars.abi"] = "var\neternal integer retained;\n";
+    fixture.sources["valid.abl"] = "module retry;\n#include \"vars.abi\"\ncode\nretained = helpers.bump;\nretained = retained + 1;\nprint(\"ordinary text\");\nendmodule.\n";
+    REQUIRE(ABLi_loadLibrary("helpers.abx") != nullptr);
+    SUBCASE("clean compile") {}
+    SUBCASE("undefined state handle does not turn a later string into a state") {
+        fixture.sources["bad.abl"] = "module broken;\ncode\ngetstatehandle(undefined);\nendmodule.\n";
+        CompileLog log;
+        CHECK(ABLi_preProcess("bad.abl") < 0);
+    }
+    SUBCASE("malformed suppressed print does not suppress the next module") {
+        fixture.sources["bad.abl"] = "module broken;\ncode\nprint(undefined);\nendmodule.\n";
+        CompileLog log;
+        CHECK(ABLi_preProcess("bad.abl") < 0);
+    }
+    REQUIRE(ABLi_preProcess("valid.abl") == 1);
+    const auto& routine = ModuleRegistry[1].moduleIdPtr->defn.info.routine;
+    CHECK(searchSymTableForState("ordinary text", routine.localSymTable) == nullptr);
+    constexpr auto expectedBytesFromD419c25bb =
+        "1a4a01<retained>0a01<bump>0e4a01<retained>0a01<retained>0902<1>0e2b12a5";
+    CHECK(compileBytes(fixture, routine) == expectedBytesFromD419c25bb);
 }
 
 namespace {

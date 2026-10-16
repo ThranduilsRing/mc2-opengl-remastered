@@ -99,6 +99,7 @@ extern bool				AssertEnabled;
 extern bool				IncludeDebugInfo;
 extern bool				ProfileABL;
 extern bool				Crunch;
+extern bool				EnterStateSymbol;
 extern int32_t          level;
 extern int32_t		    lineNumber;
 extern int32_t		    FileNumber;
@@ -655,6 +656,8 @@ struct CompileTransaction {
 		codeBufferPtr = codeBuffer;
 		blockFlag = false;
 		DumbGetCharOn = false;
+		EnterStateSymbol = false;
+		Crunch = true;
 		NumLibrariesUsed = NumStaticVariables = NumOrderCalls = 0;
 		NumStateHandles = 1;
 		std::fill_n(StateHandleList, MAX_STATE_HANDLES_PER_MODULE, StateHandleInfo{});
