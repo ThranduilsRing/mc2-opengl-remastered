@@ -3474,7 +3474,7 @@
         },
         {
           "path": "tools/gl_vk_feature_coverage.py",
-          "line": 448,
+          "line": 466,
           "evidence": "import",
           "reference": "gate_table_reader",
           "text": "import gate_table_reader as gtr"

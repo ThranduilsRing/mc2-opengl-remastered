@@ -1,5 +1,40 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## THIRTY-SECOND session (2026-10-16, cap 6 h, Opus 5.5) -- nifty merged (c6f7dba41); rows 25 + 26 ported and closed, row 20 ShadowCSM=FALSE closed (no code), row 27 opened, provers pin zero debt, tracy N2/N4, s31 review S1/S2/N2/N3; owner ruling mid-session: minimum viable proof
+
+### Commits (after c6f7dba41; code exe = 20f3c0575, everything later is tools/docs)
+dc800a2dd rows 25+26 port + doctest | 20f3c0575 cementHit hoist (first build failed on scope) | 65fd9d6cb provers: parity section empty, PORTED_AS row-26 spellings | 2a320e92c tracy S1/N2/N4 | 9de53b08b gaps rows 20/25/26/27, parity state, Total line | this commit: dup-lines exclude for the gpu_abi-generated frame-UBO includes, callers.json, state. MERGEABLE TIP = the commit carrying this line.
+
+### Proof
+| Evidence | Result |
+|---|---|
+| build -j2 + deploy (`scratch/build_s32a.log`) | exit 0 at 20f3c0575; doctest suite (`build_contract_harnesses --unit-only --run`) SUCCESS |
+| golden `.claude/l2cap/s32-vk` vs `--golden current` (`scratch/verify32.log`) | 36/36 regions, 10/10 poses, validation_errors=0 on all 40 logs; vs pre-port s31-vk every pose moved under 0.04 mean |
+| row 25 term oracle (`s32-{gl,vk}{,-seam0}`) | 212258 1,664 of 1,667 GL px shared, err 0.45 / 33.51; 204753 0.74 / 32.74; 205644 3.29 / 83.89 |
+| row 26 term oracle (`s32-{gl,vk}{,-shore0}`, GL shore0 at 204611 + 205952 only) | 139 / 124 shared px, VK-GL on term px 19.10 -> 15.78, 22.48 -> 9.97; montage `montages/s32-r26-205952-gl-vk-shore.png` viewed; mc2_17 water overviews 0 term px in both |
+| row 20 VK ShadowCSM=FALSE smoke mc2_01 + validation (`scratch/b32_csmoff.log`) | PASS 63 fps, errors=0 warnings=0 (was 6.5 fps fail) |
+| tier1 VK + validation (`scratch/b32_vk_t1.log`) | 5/5 PASS, errors=0 warnings=0 all five, 122/110/106/115/94 fps, fingerprint PASS; SHORELINE mask imported on mc2_01/17/24 |
+| tier1 GL (`scratch/b32_gl_t1.log`) | 5/5 PASS, 147/119/147/145/130 fps, +0 destroys, fingerprint PASS (GL bindShorelineMask moved to the shared producer) |
+| provers / board (`scratch/cc_s32.log`) | coverage --check 0 new 0 stale (parity section empty), glsl_port_diff exit 0, gpu_abi 14 match, gate_gen consistent, file_size = baseline, journal 6465 <= 6497, dup_lines 55314 <= 55326 after excluding the generated frame-UBO includes; reds not this lane: estring/container callsites, vk_pipeline_layout split-unit test, background-launch (nifty's tests/analyze/b5_asset_census.py + test_host_lease_batch.py:69), journal ratchet tests, mc2_authored_order_seam |
+
+### Open
+- Row 27 runway edge blend (owner lane 2), row 18 owner ruling.
+- Scratch (mine): deletable `scratch/` s32a-e.sh/.out, s32d.out, r32move.py, r32w.py, build/deploy_s32*.log, b32_*.log, cc_s32.log, `.claude/l2cap/` s32w-* (not cited); KEEP `s32-{gl,vk}{,-seam0,-shore0}` (rows 25/26 cite them), s31-{gl,vk}{,-amb0}, s31-gl-diag, s31-gl-unbind, `scratch/r31a.py`, `r27term.py` (rows 3/24 cite them: the brief listed s31-vk/s31-gl and r31*.py as deletable, kept because the gaps file cites them).
+- I copied `tests/visual/bookmarks/mc2_17_water_wide.json` into the lane2 install's saved_bookmarks for the row 26 capture.
+
+### Lessons (32)
+- A generated include (gpu_abi) shows up as duplicated lines; the exclude file is the place for machine-written sources, not a baseline rewrite.
+- Wide water overviews cannot prove a 16 wu shoreline band; pick the term poses from the VK on/off diff before spending GL captures.
+- Moving gate reads into one producer struct makes the coverage tool attribute every knob to every gate (295 -> 351 rows); harmless, but expected.
+
+### Row 26 design note (before the port)
+- GL: `terrain_lod_chunk.frag` block `if (u_useShorelineMask != 0)` (after the edge feather, last term before the output): elevation bands measured as horizontal run from `u_waterElevation` via the macro slope (`smoothTerrainNormal`), fbm edge jitter, wet lobe (sand darken toward `vec3(1.16,1.06,0.78)*luma*0.9`) and animated foam rim (`u_shaderTime` fbm), slope guard 12-20 deg on N.z, beach affinity from lit luma and material weights, optional mask sidecar modulator (G wet, B foam, A valid) in `u_shorelineBounds`. Knobs uploaded by `bindShorelineMask()` (`gos_terrain_lod_chunk_draw.cpp`).
+- VK: the same terrain pass (`terrain_tier1.frag`, after its edge-feather block); `mv_smoothTerrainNormal`, `fbm` (noise.hglsl) and `mv_weights` already exist there. The VK `pureConcrete` is a bool (accepted stand-in elsewhere in the file).
+- New `GpuTerrainFrameUBO` fields (gpu_abi header, generated include): shorelineOn, shorelineHasMask, shorelineWaterElev, shorelineTime, shorelineStrength, shorelineFoamStrength, shorelineWetRun, shorelineFoamRun, shorelineEdgeJitter, shorelineBounds[4] (pad 61 -> 48).
+- One producer for the knobs: `gos_TerrainShorelineKnobs()` read by both GL `bindShorelineMask()` and the VK feed.
+- New binding 14 in the terrain set: the mask sidecar (RGBA8, from `TerrainFieldStore::shorelineMask()`, copy-once per store version, 1x1 dummy when absent; linear clamp sampler = the colormap sampler). Ships for mc2_01 / mc2_17 / mc2_24.
+- Found while reading row 25: GL's runway edge blend (`terrain_lod_chunk.frag` ~1040-1110, cement-word bits 19:16, gate deleted = always on) has no VK twin: new row 27, not ported this session unless time remains.
+
 ## THIRTY-FIRST session (2026-10-16, cap 5 h, Opus 5.5) -- nifty merged (76195d1b2), row 24 closed (VK reference, GL compare defect), row 3 closed by term oracle, rows 11/12 closed as no default gap, allowlist audited (rows 25/26 opened), parity-state header, tracy review should-fix
 
 ### Commits (after 39fc9203f + nifty merge 76195d1b2; code exe = b44a12842 = merge tip code, the TEMP pairs net to zero)
