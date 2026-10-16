@@ -31,9 +31,9 @@
   "code/mechicon.cpp": 1966,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1626,
-  "code/missionbegin.cpp": 2163,
+  "code/missionbegin.cpp": 2165,
   "code/mover.h": 1908,
-  "code/mpparameterscreen.cpp": 2415,
+  "code/mpparameterscreen.cpp": 2409,
   "code/multplyr.h": 1849,
   "code/objective.cpp": 2437,
   "code/optionsarea.cpp": 1842,
@@ -41,12 +41,12 @@
   "code/tacordr.cpp": 2117,
   "code/terrobj.cpp": 1735,
   "code/turret.cpp": 2338,
-  "code/warrior.cpp": 2686,
+  "code/warrior.cpp": 2683,
   "code/warrior.h": 2173,
   "editor/tests/test_objectives.cpp": 1683,
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1608,
-  "mclib/ablrtn.cpp": 1735,
+  "mclib/ablrtn.cpp": 1798,
   "mclib/assimp_importer.cpp": 1589,
   "mclib/camera.h": 1812,
   "mclib/file.cpp": 2599,
@@ -62,7 +62,7 @@
   "mclib/tgl.h": 1724,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "a393238c9",
+ "head": "9ae2d7383",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -113,7 +113,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 597,
+   "files": 596,
    "files_over_1500": 15,
    "files_over_3000": 0,
    "max_lines": 2629
@@ -140,7 +140,7 @@
   },
   {
    "file": "code/warrior.cpp",
-   "lines": 2686
+   "lines": 2683
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
@@ -160,7 +160,7 @@
   },
   {
    "file": "code/mpparameterscreen.cpp",
-   "lines": 2415
+   "lines": 2409
   },
   {
    "file": "code/turret.cpp",
@@ -180,7 +180,7 @@
   },
   {
    "file": "code/missionbegin.cpp",
-   "lines": 2163
+   "lines": 2165
   },
   {
    "file": "code/logisticsdialog.cpp",
@@ -243,16 +243,16 @@
    "lines": 1812
   },
   {
-   "file": "mclib/terrtxm.cpp",
-   "lines": 1771
+   "file": "mclib/ablrtn.cpp",
+   "lines": 1798
   },
   {
-   "file": "code/terrobj.cpp",
-   "lines": 1735
+   "file": "mclib/terrtxm.cpp",
+   "lines": 1771
   }
  ],
  "total": {
-  "files": 1919,
+  "files": 1918,
   "files_over_1500": 48,
   "files_over_3000": 1,
   "max_lines": 3757
