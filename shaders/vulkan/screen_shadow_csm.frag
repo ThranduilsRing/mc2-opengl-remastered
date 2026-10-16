@@ -30,6 +30,7 @@ layout(set = 0, binding = 2) uniform sampler2DShadow shadowMap;
 layout(set = 0, binding = 4) uniform sampler2DArrayShadow dynamicShadowArray;
 layout(set = 0, binding = 5) uniform sampler2DShadow dynamicFullMapShadow;
 layout(set = 0, binding = 6) uniform sampler2DArray dynamicShadowArrayRaw;
+layout(set = 0, binding = 7) uniform sampler2D dynamicFullMapRaw;
 
 layout(std140, set = 0, binding = 3) uniform ScreenShadowCsmParams {
     mat4 inverseViewProj;
@@ -159,11 +160,22 @@ void main()
     FragColor = vec4(shadow, shadow, shadow, 1.0);
     if (isStaticProp && u.propShadowReceive != 0)
     {
-        vec4 lp = u.dynamicCascadeMatrices[0] * vec4(worldPos, 1.0);
-        vec3 pc = lp.xyz / lp.w; pc.xy = pc.xy * 0.5 + 0.5;
-        float stored = texture(dynamicShadowArrayRaw, vec3(pc.xy, 0.0)).r;
-        FragColor = vec4(step(0.5, fract(stored * 200.0)),
-                         stored < pc.z ? 1.0 : 0.0,
-                         stored < pc.z - 0.0012 ? 1.0 : 0.0, 1.0);
+        int selC = -1; float rawLess = 0.0;
+        float dNdotL = max(dot(objN, u.lightDir.xyz), 0.0);
+        int dCount = clamp(u.dynamicCsmCount, 1, MC2_SHADOW_CSM_MAX);
+        for (int c = 0; c < dCount && dNdotL >= 0.05; ++c) {
+            bool isFull = (c == dCount - 1);
+            float tw = isFull ? u.dynamicFullMapTexelWorld : u.dynamicCascadeTexelWorld[c];
+            vec3 sp = worldPos + objN * (u.objNormalBiasScale * tw * dNdotL);
+            vec4 lp = u.dynamicCascadeMatrices[c] * vec4(sp, 1.0);
+            vec3 pc = lp.xyz / lp.w; pc.xy = pc.xy * 0.5 + 0.5;
+            if (pc.z > 1.0 || pc.z < 0.0) continue;
+            if (pc.xy != clamp(pc.xy, 0.0, 1.0)) continue;
+            float cur = pc.z - (0.0012 + 1.5 * tw / max(u.csmDepthSpan, 1.0) + 0.0005 * (1.0 - dNdotL));
+            float stored = isFull ? texture(dynamicFullMapRaw, pc.xy).r : texture(dynamicShadowArrayRaw, vec3(pc.xy, float(c))).r;
+            selC = c; rawLess = stored < cur ? 1.0 : 0.0;
+            break;
+        }
+        FragColor = vec4(selC == 0 ? 1.0 : 0.0, selC == dCount - 1 ? 1.0 : 0.0, rawLess, 1.0);
     }
 }
