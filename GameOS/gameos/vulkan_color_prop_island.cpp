@@ -1083,8 +1083,11 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         VkPipelineRasterizationStateCreateInfo rs{};
         rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         rs.polygonMode = VK_POLYGON_MODE_FILL;
-        rs.cullMode = VK_CULL_MODE_NONE;
-        rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        // GL's StaticPropOpaque pipeline culls back faces (CCW front); the props were drawn double-sided here, so faces GL
+        // culls (the inner panels of the hex lattice props) covered the faces behind them. The island projects with GL's
+        // clip matrix into an unflipped viewport, which mirrors window y, so GL's CCW front arrives here clockwise.
+        rs.cullMode = VK_CULL_MODE_BACK_BIT;
+        rs.frontFace = VK_FRONT_FACE_CLOCKWISE;
         rs.lineWidth = 1.0f;
 
         VkPipelineMultisampleStateCreateInfo ms{};
