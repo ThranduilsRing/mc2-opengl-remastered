@@ -1,5 +1,51 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## TWENTY-EIGHTH session (2026-10-16 ~04:35-06:30 CDT, cap 5 h, Opus 5.5) -- row 2 closed on close-up mech bookmarks (no VK change), row 24 opened (GL-only mech face darkening), verify.py backend refusal, mech pool buffer placement, rows1-9 review should-fix 1 + 2, CURRENT_GOLDEN switch recommended; nifty NOT merged ("merge lane2 649c149c4" absent from mc2-main)
+
+### Commits (after 649c149c4)
+908e2ad90 verify.py backend refusal + pytest | d37588c7c mech pool SSBO sequential-write placement + close-up bookmarks | fb8ef42f0 bookmarks declare covers | 67b4b029a review should-fix 1 (pool uploads flush) + 2 (props-only wording) | this state/gaps/plan commit. MERGEABLE TIP = the commit carrying this line (code = 67b4b029a).
+
+### Rows
+- Row 2 CLOSED (numbers in the gaps row): day term error 0.11 on 26.46; night 0.32 on 10.21 after dividing out GL's whole-pixel face multiplier. No VK code change, so no golden pose moves.
+- Row 24 OPENED: GL multiplies 43,428 night mech px by a median 0.55 (diffuse and spec alike), not via mech casters (`MC2_SHADOW_ENABLE=0` identical). Cause and correct backend not established.
+- Mech pool buffer (task 3): no pixel change (s28a vs s28b at both close-ups 0.000 / 0 px both backends; s28c-vk vs s27d-vk at most 0.004 mean / 46 px, the noise floor); VK tier1 mc2_10 122 fps (p1 102) on d37588c7c, 122 (p1 101) on 67b4b029a, as before (122 / 101): mechs are few pixels in tier1.
+
+### GL deletion step 1 candidates (task 5; nothing deleted; after CURRENT_GOLDEN is VK)
+| item | files | tests / checks that reference it |
+|---|---|---|
+| capture GL readback arm | `GameOS/gameos/gos_visual_capture.cpp` (`gl_fbo` arm, `g_readbackSource`), `gos_screenshot.cpp` (port to VK present readback) | `scripts/smoke_lib/capture_backend.py` (`gl_fbo` mapping), `tests/smoke/test_capture_backend.py`, `tools/visual_verify/test_capture_ab.py`, `test_capture_index.py` (fixtures keep `gl_fbo` as a refused/old sidecar case) |
+| A/B noise floor on two GL arms | `tools/visual_verify/capture_ab.py` (switch to two VK arms), `tools/visual_verify/ab.py` (keep while a GL exe exists) | `tools/visual_verify/test_capture_ab.py`, `scripts/smoke_lib/render_resolution.py` (reader list), `scripts/check-background-launch.py` |
+| VFX oracle (GL readback only) | `tools/vfx_parity_oracle.py`, `scripts/capture_vfx_oracle.py` (needs a VK arm, not a deletion) | `tools/test_vfx_parity_oracle.py`, `tools/test_capture_vfx_oracle.py` |
+| Tracy compare GL arm | `tools/tracy_capture_compare.py` (VK only, shadows on) | `scripts/tests/test_tracy_capture_compare.py`, `scripts/check-background-launch.py`, `render_resolution.py` |
+| GL-as-reference provers (after the last row) | `tools/glsl_port_diff.py`, `tools/gl_vk_feature_coverage.py`, `tools/vk_not_ported.allowlist` | `scripts/check-contracts.sh`, `scripts/tests/test_gl_vk_feature_coverage.py`, `test_vk_offline_proofs.py`, `test_axis_swizzle_ratchet.py`, `test_contract_coverage.py` |
+| GL goldens | `tests/visual/goldens/golden-e9e3f19d6-1080p`, `reset-50331d5` (RETIRED.md rows in the switch commit) | `tests/smoke/test_resolution_tier.py`, `scripts/check-capture-resolution.py`, `check-visual-bookmark-honesty.py` (vendored poses) |
+| per-row GL tier1 leg + term-oracle scratch | lane proof recipe; `scratch/r27term.py` (scratch only) | none tracked |
+| debug views (step 2, decision per view) | `gos_object_parity.cpp/.h`, `gos_dev_shell.cpp`, `gos_postprocess_diag.cpp`, `debug_renderer.cpp`, `gos_render_pass_timer.cpp`, `mc2_hitch_trace.h`, `gos_validate.cpp`, `gpu_memory_report.cpp`, `gos_renderer_input_probe.cpp`, `gos_frame_pass_stats.cpp` | all in `GameOS/gameos/CMakeLists.txt`; `scripts/check-gate-echo-reads.py` (dev shell), `check-object-mvp-currency.py` (debug_renderer), `scripts/smoke_lib/vram.py` (gpu_memory_report) |
+
+### BUGS rows proposed
+None this session (row 24 is unpinned; the flush is a latent correctness fix with no observed symptom on this host).
+
+### Proof
+| Evidence | Result |
+|---|---|
+| ninja -j2 (`scratch/build_s28{a,b}.log`) | exit 0 at d37588c7c and 67b4b029a, each built after its commit |
+| harnesses --run --unit (`scratch/harn28.log`, 67b4b029a) | doctest 3242/3242 (10 failed assertions inside passing cases, as before); FAIL mc2_authored_order_seam (nifty, not this lane) |
+| pytest | test_verify_backend.py 7 + test_bless_backend.py 9 passed; `callers.py` regenerated (remaining unallowlisted: scripts/tests/test_journal_comment_ratchet.py, not this lane) |
+| bookmark honesty | OK, 41 pose files |
+| row 2 oracle | `s28b-{gl,vk}{,-nospec}`, `s28d-gl-noms{,-nospec}`; montage `s28-r2-mechclose-gl-vk-terms.png` viewed (committed) |
+| golden | `s28c-vk` (d37588c7c) and `s28e-vk` (67b4b029a): 36/36 PASS vs golden-d9e1f3801716-vk-1080p; validation_errors=0 on every VK capture |
+| tier1 VK + validation, final exe 67b4b029a (`scratch/b28e_vk_t1.log`) | 5/5 PASS, errors=0 warnings=0 (145/138/122/128/113 fps), DEPLOY_FINGERPRINT OK |
+| tier1 VK on d37588c7c (`scratch/b28_vk_t1.log`) | 5/5 PASS, errors=0 warnings=0 (144/139/122/128/113) |
+| tier1 GL, final exe (`scratch/b28e_gl_t1.log`) | 5/5 PASS (142/114/142/143/131 fps; mc2_24 p1 28 one hitch), +0 destroys, DEPLOY_FINGERPRINT OK |
+
+### Open
+1. CURRENT_GOLDEN switch: recommended in `vk_golden_plan.md` section 4 (orchestrator commit). 2. Row 24 cause. 3. Gaps row 5 text still says "props and vehicles" for the residue (vehicles via the legacy shape island have no pool term: check whether GL vehicles receive pool light). 4. Rows1-9 review notes not taken: ghost_wedge watch on next bless; sed edits of session 27 (none outside the scanned range found). 5. Carried: T7 / T9, row 20 GL cause, row 18.
+6. Scratch (mine, deletable): `scratch/` a28.sh/.out, b28.sh/.out, d28.sh/.out, e28.sh/.out, s28a_frame.png, s28_r2_night_terms.png, s28_r2_night_diffmap.png, build_s28*.log, deploy_s28*.log, harn28.log, verify28*.log, b28*_t1.log; `.claude/l2cap/` s28a-*, s28b-*, s28c-vk, s28d-*, s28e-vk (KEEP s28b-* while gaps row 2 cites them).
+
+### Lessons (28)
+- A term oracle must divide out the base-light ratio before blaming the term: a 22% "spec excess" was a whole-pixel GL multiplier on some faces.
+- A close-up pose turns an inconclusive 20-200 px oracle into a 30k-140k px one in two capture rounds; frame it first with a 4-candidate sweep.
+
 ## TWENTY-SEVENTH session (2026-10-16 01:55-04:30 CDT, cap 5 h, Opus 5.5) -- parity rows 1 and 9 ported (prop night pools, map-edge feather), rows 4, 6, 7 proven and closed, row 2 ported but not proven, VK golden re-blessed (interim), CURRENT_GOLDEN decision written, row-5 review should-fix 1 + note 3; nifty NOT merged ("merge lane2 f0fffa457" absent from mc2-main)
 
 ### Commits (after f0fffa457)
