@@ -24,6 +24,7 @@
 #include<gameos.hpp>
 #include <cstdint>  // uint64_t (Tier-1 instrumentation, stability spec §2)
 #include <memory>   // the per-frame pools own their storage
+#include <vector>   // an animation owns its key tracks
 #include "../RenderCore/gpu_abi/GpuObjectLights.h"  // single-source per-object light record
 
 //-------------------------------------------------------------------------------
