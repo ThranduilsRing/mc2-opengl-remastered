@@ -24,6 +24,7 @@
 #ifndef INIFILE_H
 #include"inifile.h"
 #endif
+#include<vector>
 
 //---------------------------------------------------------------------------
 // Macro Definitions
