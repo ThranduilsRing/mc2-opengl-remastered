@@ -721,6 +721,7 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
                             (firePin > 0 &&
                              g_mc2FrameCounter >= firePin &&
                              g_mc2FrameCounter < firePin + 600);
+                        gos::screenshot::tick();
                         const bool verify =
                             ((mc2::gate::get<"MC2_VK_PRESENT_VERIFY">()) &&
                              inVerifyWindow && (g_mc2FrameCounter % 60 == 0)) ||

@@ -183,7 +183,6 @@ class LogSummary:
     # runner walltime during load pauses.
     last_heartbeat_wall_s_load: Optional[float] = None
     last_heartbeat_wall_s_play: Optional[float] = None
-    gl_errors: int = 0
     pool_nulls: int = 0
     asset_oob: int = 0
     shader_errors: int = 0
@@ -271,7 +270,6 @@ def parse_log(text: str,
                 if line_wall is not None:
                     s.last_heartbeat_wall_s_load = line_wall
 
-        if "[GL_ERROR v1]" in line:        s.gl_errors += 1
         if "[TGL_POOL v1]" in line and "nulls=" in line: s.pool_nulls += 1
         if "[ASSET_SCALE v1] event=oob_blit" in line: s.asset_oob += 1
         if "[DESTROY v1]" in line and "event=destroy" in line: s.destroys += 1

@@ -1,10 +1,11 @@
 """
 mech_shot.py — MECH-SHOT-SELFVERIFY-1
 
-Headless framebuffer screenshot of an imported mech, for AGENT self-verification
+Headless screenshot of an imported mech, for AGENT self-verification
 (orientation / scale / texture) without a human eyeballing. Pure Python — uses the
-engine's existing MC2_SCREENSHOT_AT_FRAME hook (gameosmain.cpp:1664), which captures
-the offscreen sceneFBO (works even when the window is minimized), so NO engine change.
+engine's MC2_VISUAL_DIFF_CAPTURE hook, which reads back the Vulkan present image
+(works even when the window is minimized; needs the Vulkan backend, a GL run writes
+no file), so NO engine change.
 
   py -3 scripts/mech_shot.py [--mission mc2_24] [--frame 600] [--out shot.png]
 
@@ -107,7 +108,7 @@ def main():
 
     from PIL import Image
     img = Image.open(tga)
-    # Engine writeTGA stores the GL framebuffer; flip if it comes out upside down.
+    # The engine's TGA is written bottom-up from the Vulkan present readback; PIL reads the origin flag, so no flip.
     img.save(out_png)
     tga.unlink(missing_ok=True)
     print(f"[mech_shot] wrote {out_png} ({img.size[0]}x{img.size[1]})")

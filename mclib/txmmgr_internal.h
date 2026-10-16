@@ -76,7 +76,7 @@
 #include "../GameOS/gameos/render_snapshot.h"  // getLastRenderSnapshot() for snap-cull (v2.3)
 #include "../GameOS/gameos/gos_static_prop_registry.h"  // Stage 3.C: flush()
 #include "../GameOS/gameos/gos_mech_batcher.h"
-#include "../GameOS/gameos/gos_validate.h"  // drainGLErrors (Tier-1 instr §4)
+#include "../GameOS/gameos/gos_validate.h"  // validation entry points
 #include "../GameOS/gameos/gos_terrain_patch_stream.h"
 #include "../GameOS/gameos/gos_terrain_indirect.h"
 #include "../GameOS/gameos/gos_render_pass_timer.h"

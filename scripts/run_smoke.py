@@ -602,7 +602,7 @@ def main():
                     help="SMOKE-LITE-1 inner-loop profile: mc2_10 (night/urban, "
                          "heaviest) + mc2_01 (day) at --duration 10 (override "
                          "with --duration). ALL gates stay on (crash, heartbeat, "
-                         "shader_error, gl_error, deploy fingerprint, ...). "
+                         "shader_error, deploy fingerprint, ...). "
                          "Reduced soak coverage: run full --tier tier1 before "
                          "milestones/landing.")
     ap.add_argument("--profile", default="stock")
@@ -711,7 +711,7 @@ def main():
     # CLAUDE.md rule: NEVER --duration > 30 (soak/parity tier is 30s fixed); the one exception is a sim_determinism pair, which may run 60 (owner 2026-10-13).
     # 15s is a valid opt-in "does it still boot+run+not crash" inner-loop tier
     # (see .claude/SMOKE-LATENCY-1-RECON.md §4) -- all duration-independent
-    # gates (crash_silent, crash_no_summary, engine_reported_fail, gl_error,
+    # gates (crash_silent, crash_no_summary, engine_reported_fail,
     # pool_null, asset_oob, shader_error, missing_file) and the play-heartbeat
     # freeze gate (3s threshold) are satisfied well within 15s. It intentionally
     # loses soak coverage (mid-mission combat/FX/leak/hitch observation), so it

@@ -16,7 +16,9 @@ struct Request {
     bool pending = false;
     std::string path;
     DoneFn done = nullptr;
+    unsigned int framesWaited = 0;
 };
+constexpr unsigned int kMaxFramesPending = 300;
 Request g_req;
 
 }  // namespace
@@ -41,6 +43,17 @@ bool request(const char* path, DoneFn done) {
 }
 
 bool pending() { return g_req.pending; }
+
+void tick() {
+    if (!g_req.pending) return;
+    if (++g_req.framesWaited < kMaxFramesPending) return;
+    // The present never reached its readback (a failed or declined present, a fallback): free the slot so
+    // the next request is not rejected for the rest of the run.
+    const Request req = g_req;
+    g_req = Request{};
+    mc2::fmt::print_err("[SCREENSHOT v1] request for {} expired after {:d} frames without a readback\n", mc2::fmt::safe(req.path.c_str()), mc2::fmt::as_u32(kMaxFramesPending));
+    if (req.done) req.done(req.path.c_str(), false, 0, 0);
+}
 
 void deliver(unsigned int w, unsigned int h, const unsigned char* rgba) {
     if (!g_req.pending) return;

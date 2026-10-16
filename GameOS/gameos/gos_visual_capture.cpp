@@ -46,7 +46,6 @@
 // bookmark PNGs and zero frame*.png -- see active() / onPostRenderFrame().
 #include "gos_visual_capture.h"
 
-#include "gos_screenshot.h"   // not used for PNG, but keeps capture siblings together
 #include "gos_smoke.h"
 
 #include <GL/glew.h>

@@ -78,13 +78,6 @@ def test_run_fault_engine_reported_fail():
     assert not r.verdict.passed
 
 
-def test_run_fault_gl_error():
-    r = _run_fault("gl_error")
-    assert r.summary.gl_errors == 1
-    assert r.verdict.buckets == ["gl_error"]
-    assert not r.verdict.passed
-
-
 def test_run_fault_pool_null():
     r = _run_fault("pool_null")
     assert r.summary.pool_nulls == 1

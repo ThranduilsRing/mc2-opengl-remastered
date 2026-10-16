@@ -157,7 +157,7 @@ static void executorOwnBegin(gosPostProcess* pp)
 // On failure -> increments g_executorValidationFailures + logs.
 //
 // NOTE: calls glGetError() which clears the GL error flag. Acceptable here:
-// (a) we are post-endScene which already calls drainGLErrors("post_process"),
+// (a) we are post-endScene,
 // (b) this code path is gated MC2_FRAMEGRAPH_EXECUTOR (default-OFF), so there
 // is no production-run side effect.
 

@@ -77,7 +77,6 @@ py -3 scripts/run_smoke.py --menu-canary --keep-logs
 - `engine_reported_fail`: engine emitted `[SMOKE v1] result=fail`. First check the `reason=` and `stage=`.
 - `heartbeat_freeze_load`: stalled before `mission_ready`. First check mission load, missing files, or startup deadlock.
 - `heartbeat_freeze_play`: stalled after `mission_ready`. First check render/game loop regressions.
-- `gl_error`: `[GL_ERROR v1]` observed. First check shader changes, FBO state, and draw ordering.
 - `pool_null`: `[TGL_POOL v1]` exhaustion observed. First check cull/visibility changes and pool budget regressions.
 - `asset_oob`: `[ASSET_SCALE v1] event=oob_blit` observed. First check asset-scale manifest coverage and caller math.
 - `missing_file`: required file load failed. First check mission/content resolution and loose-file overrides.

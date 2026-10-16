@@ -194,9 +194,9 @@ WINDOWING_VARS = ("MC2_WINDOWED", "MC2_WIDTH", "MC2_HEIGHT", "MC2_NO_CURSOR_GRAB
 #:
 #: WHY A LIST AND NOT A HEURISTIC: the two capture families are
 #: indistinguishable from the launch side and opposite in what they need.
-#:   * ENGINE READBACK (glReadPixels / FBO -- MC2_VISUAL_CAPTURE,
-#:     MC2_VISUAL_DIFF_CAPTURE, MC2_SCREENSHOT_SOURCE=backbuffer): reads the GL
-#:     drawable, which keeps its full size wherever the window sits. Offscreen
+#:   * ENGINE READBACK (the Vulkan present readback -- MC2_VISUAL_CAPTURE,
+#:     MC2_VISUAL_DIFF_CAPTURE, MC2_SCREENSHOT_PATH): reads the swapchain
+#:     image, which keeps its full size wherever the window sits. Offscreen
 #:     is free and correct. run_visual_capture.py, mech_shot.py,
 #:     mechbay_preview_harness.py, renderdoc/capture.py.
 #:   * DESKTOP COMPOSITE (pyautogui / mss / PIL.ImageGrab): reads the input
@@ -852,7 +852,7 @@ def check(root: Path = ROOT, use_git: bool = True, allow=None):
             f"window contributes NO pixels to that grab, so this harness saves "
             f"the user's WALLPAPER and grades it as the game. Either port it to "
             f"the engine readback path (MC2_VISUAL_CAPTURE=1 / "
-            f"MC2_SCREENSHOT_SOURCE=backbuffer), or add it to "
+            f"MC2_SCREENSHOT_PATH on the Vulkan backend), or add it to "
             f"COMPOSITE_CAPTURE_FILES with a reason and pass offscreen=False.")
     for r in sorted(COMPOSITE_CAPTURE_FILES):
         if not (root / r).is_file():

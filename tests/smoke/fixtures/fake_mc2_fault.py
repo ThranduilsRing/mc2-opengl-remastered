@@ -75,12 +75,6 @@ if f == "engine_reported_fail":
     emit("[SMOKE v1] event=summary result=fail reason=objective_lost stage=play")
     sys.exit(0)
 
-# ---- gl_error: pass run + one GL error line (additive bucket) ---------------
-if f == "gl_error":
-    emit("[GL_ERROR v1] code=0x0500 GL_INVALID_ENUM op=glDrawElements")
-    play_ok()
-    sys.exit(0)
-
 # ---- pool_null: pass run + a TGL pool null report (additive bucket) ---------
 if f == "pool_null":
     emit("[TGL_POOL v1] event=summary nulls=3 total=512")

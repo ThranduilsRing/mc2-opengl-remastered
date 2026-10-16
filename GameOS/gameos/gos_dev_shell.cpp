@@ -519,8 +519,8 @@ void capturePendingScreenshot(uint32_t)
     s_pendingShotPath.clear();
     // The request completes in the present path of this frame; onShotDone records the result.
     if (!gos::screenshot::request(path.c_str(), onShotDone)) {
-        s_lastShotResult = "failed: screenshot needs the Vulkan backend and no other capture pending";
-        mc2::fmt::print_err("[DEV_SHELL] screenshot: {}\n", s_lastShotResult.c_str());
+        // gos::screenshot::request logged the reason; the shell only records it for the next status reply.
+        s_lastShotResult = "failed: screenshot needs the Vulkan backend and no screenshot request pending";
     }
 }
 

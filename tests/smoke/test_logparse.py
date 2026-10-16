@@ -11,17 +11,12 @@ def test_pass_log_counts_zero_faults():
     s = parse_log(text, line_wallclocks=wall)
     assert s.instr_banner_seen
     assert s.smoke_summary_result == "pass"
-    assert s.gl_errors == 0
     assert s.pool_nulls == 0
     assert s.asset_oob == 0
     assert s.heartbeats_play > 0
     assert s.mission_ready_ms == 6800.1
     assert s.last_heartbeat_wall_s_play is not None
     assert s.perf.avg_fps == 59.8
-
-def test_gl_error_detected():
-    s = parse_log((FIX / "fake_engine_gl_error.log").read_text())
-    assert s.gl_errors == 1
 
 def test_freeze_load_no_mission_ready():
     text = (FIX / "fake_engine_freeze_load.log").read_text()

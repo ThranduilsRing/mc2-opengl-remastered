@@ -58,7 +58,7 @@
 #include "gos_postprocess.h"
 #include "gos_profiler.h"
 #include "gos_gpu_sync.h"
-#include "gos_validate.h"  // drainGLErrors (Tier-1 instr §4)
+#include "gos_validate.h"  // validation entry points
 #include "gl_state_guard.h"  // GlScopedTextureUnit (GLSTATE-TEXTURE-UNIT0-RESTORE-1)
 #include "gos_visual_capture.h"   // VISUAL-CAPTURE-CLEAN-1
 #include "gos_smoke.h"     // S9E: SmokeMode fixed deterministic render-shader clock
