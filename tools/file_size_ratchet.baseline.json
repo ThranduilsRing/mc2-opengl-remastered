@@ -27,9 +27,9 @@
   "code/brain_special_dispatch.cpp": 2770,
   "code/gamecam.cpp": 1591,
   "code/gameobj.cpp": 2259,
-  "code/infowindow.cpp": 1730,
+  "code/infowindow.cpp": 1728,
   "code/logisticsdialog.cpp": 2148,
-  "code/mechicon.cpp": 1967,
+  "code/mechicon.cpp": 1966,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1626,
   "code/missionbegin.cpp": 2163,
@@ -63,7 +63,7 @@
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2176
  },
- "head": "4085e68c7",
+ "head": "885644373",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -114,7 +114,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 595,
+   "files": 596,
    "files_over_1500": 15,
    "files_over_3000": 0,
    "max_lines": 2629
@@ -201,7 +201,7 @@
   },
   {
    "file": "code/mechicon.cpp",
-   "lines": 1967
+   "lines": 1966
   },
   {
    "file": "code/mechlabscreen.cpp",
@@ -253,7 +253,7 @@
   }
  ],
  "total": {
-  "files": 1907,
+  "files": 1908,
   "files_over_1500": 49,
   "files_over_3000": 1,
   "max_lines": 3757
