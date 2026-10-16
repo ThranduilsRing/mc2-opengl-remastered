@@ -64,6 +64,9 @@ void validateRecordFrame(float frameMs) {
     s_telemetry.totalFrameMs += frameMs;
     if (frameMs > s_telemetry.maxFrameMs)
         s_telemetry.maxFrameMs = frameMs;
+    // The screenshot is read back by the present path of the next frame, which is the last one the run draws.
+    if (s_config.enabled && s_config.screenshotPath[0] && s_telemetry.framesRendered == s_config.maxFrames - 1)
+        gos::screenshot::request(s_config.screenshotPath);
 }
 
 bool validateShouldExit() {
@@ -83,14 +86,10 @@ static void writeJsonString(FILE* f, const char* s) {
     fputc('"', f);
 }
 
-void validateWriteResults(int viewportW, int viewportH) {
+void validateWriteResults() {
     static bool s_resultsWritten = false;
     if (!s_config.enabled || s_resultsWritten) return;
     s_resultsWritten = true;
-
-    if (s_config.screenshotPath[0]) {
-        gos::screenshot::writeTGA(s_config.screenshotPath, viewportW, viewportH);
-    }
 
     float avgMs = s_telemetry.framesRendered > 0
         ? s_telemetry.totalFrameMs / s_telemetry.framesRendered : 0.0f;

@@ -737,7 +737,7 @@ static void draw_screen( void )
     // default framebuffer holds scene+post-process, but BEFORE projectz_overlay
     // and HUD replay so neither leaks into the captured TGA. Default-off
     // (early-return when MC2_VISUAL_DIFF_CAPTURE is unset).
-    VisualDiff::onFrameTick(Environment.drawableWidth, Environment.drawableHeight);
+    VisualDiff::onFrameTick();
 
     // Tier 5: in-process RenderDoc capture trigger. Default-off; activates
     // only when MC2_RDC_CAPTURE_FRAME is set. Shares the post-PP / pre-HUD
@@ -1330,7 +1330,7 @@ int main(int argc, char** argv)
         if (getValidateConfig().enabled) {
             validateRecordFrame((float)dt);
             if (validateShouldExit()) {
-                validateWriteResults(Environment.drawableWidth, Environment.drawableHeight);
+                validateWriteResults();
                 break;
             }
         }
@@ -1351,7 +1351,7 @@ int main(int argc, char** argv)
 
     // Write validation results if game exited before frame limit
     if (getValidateConfig().enabled) {
-        validateWriteResults(Environment.drawableWidth, Environment.drawableHeight);
+        validateWriteResults();
     }
 
     // Tier-1 instrumentation (stability spec §2.5): final monotonic summary

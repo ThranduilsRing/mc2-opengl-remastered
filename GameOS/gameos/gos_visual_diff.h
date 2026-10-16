@@ -29,13 +29,10 @@ bool isCaptureEnabled();
 //   - Snapshots its own "intro complete frame" on the first tick after
 //     gos_terrain_indirect::WasEverFrameSolidArmed() returns true
 //   - At framesSinceStart == MC2_VISUAL_DIFF_FRAME_N (default 90):
-//     writes a TGA via gos::screenshot::writeTGA to MC2_VISUAL_DIFF_OUT
+//     requests a TGA of the presented frame via gos::screenshot::request to MC2_VISUAL_DIFF_OUT
 //   - At framesSinceStart > MC2_VISUAL_DIFF_MAX_FRAMES (default frameN+60):
 //     logs capture_timeout and exits process with code 4
-//
-// viewportW/viewportH come from Environment.drawableWidth/Height at the
-// caller.
-void onFrameTick(int viewportW, int viewportH);
+void onFrameTick();
 
 // Mission-load reset hook (currently uncalled from external code; reserved
 // for future engine-side wiring if in-process restart support is needed).

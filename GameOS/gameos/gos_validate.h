@@ -31,4 +31,4 @@ void validateParseArgs(int argc, char** argv);
 void validateRecordShaderError(const char* msg);
 void validateRecordFrame(float frameMs);
 bool validateShouldExit();
-void validateWriteResults(int viewportW, int viewportH);
+void validateWriteResults();

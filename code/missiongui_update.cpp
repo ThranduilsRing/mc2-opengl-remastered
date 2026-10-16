@@ -132,7 +132,7 @@ void MissionInterfaceManager::update (void)
 							_mkdir("dev_shell_out");
 							char nm[32];
 							mc2::fmt::to_buf(nm, "view_{:d}", mc2::fmt::as_i32(idx + 1));
-							gos_dev_shell::scheduleScreenshot(nm, false);
+							gos_dev_shell::scheduleScreenshot(nm);
 						}
 					} else if (s_stage < idx * 2) {
 						s_stage = idx * 2;

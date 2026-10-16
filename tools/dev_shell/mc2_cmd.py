@@ -40,8 +40,6 @@ def main():
     p.add_argument("--force", action="store_true")
     p.add_argument("--collect", choices=["true", "false"],
                    help="framegraph: flip runtime pass-stats/GPU-timer collectors on/off")
-    p.add_argument("--source", choices=["scene", "backbuffer"],
-                   help="screenshot source: scene FBO (missions, default) or backbuffer (menus/front-end)")
     p.add_argument("--port", type=int, default=9877)
     args = p.parse_args()
 
@@ -52,8 +50,6 @@ def main():
         params["value"] = args.value
     if args.force:
         params["force"] = True
-    if args.source:
-        params["source"] = args.source
     if args.collect:
         params["collect"] = args.collect
 

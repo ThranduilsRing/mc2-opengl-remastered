@@ -27,7 +27,7 @@ py -3 <repo>\tools\dev_shell\watch.py A:\Games\mc2-opengl\<deploy-lane>
 |---|---|
 | `ping` | liveness + frame counter |
 | `reload_shaders [--force] [--name PROG]` | recompile changed (or all) shader programs; reply carries the FULL GLSL error text; failed reload keeps the old program live |
-| `screenshot --name X [--source backbuffer]` | TGA to `<deploy>/dev_shell_out/`. `backbuffer` for menus/front-end (they never touch sceneFBO), default `scene` for missions |
+| `screenshot --name X` | TGA of the presented frame to `<deploy>/dev_shell_out/` (Vulkan backend only; `last_screenshot` reports the result) |
 | `last_screenshot` | confirm the capture landed |
 | `ui_reload` | re-read the ACTIVE front-end screen's `.fit` from `data/art/` and rebuild it in place |
 | `texture_refresh --name SUBSTR` | re-read edited loose `.tga`s whose path contains SUBSTR from disk and re-upload (reply: `refreshed` + `skipped_no_file`; FST-only textures skip — drop a loose copy to override) |

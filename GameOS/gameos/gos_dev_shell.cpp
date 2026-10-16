@@ -140,7 +140,6 @@ bool s_initOk = false;
 
 // pending screenshot (set by command, consumed at the post-render hook)
 std::string s_pendingShotPath;
-bool s_pendingShotBackbuffer = false;  // front-end/menu screens draw to FBO 0, not sceneFBO
 std::string s_lastShotResult;  // "" until first capture; then "wrote <path>" / error
 
 void closeClient()
@@ -255,9 +254,6 @@ std::string cmdScreenshot(const std::string& req, uint32_t frame)
         return makeReply(false, "screenshot already pending: " + s_pendingShotPath, "");
     CreateDirectoryA("dev_shell_out", nullptr);  // ok if it already exists
     s_pendingShotPath = sanitizeShotName(jsonGetString(req, "name"), frame);
-    // source=backbuffer for front-end/menu screens (they never touch sceneFBO).
-    // Caveat: FBO 0 reads black while the window is minimized.
-    s_pendingShotBackbuffer = (jsonGetString(req, "source") == "backbuffer");
     return makeReply(true, "",
         "{\"scheduled\":true,\"path\":\"" + jsonEscape(s_pendingShotPath)
         + "\",\"note\":\"captured at end of current frame; poll last_screenshot to confirm\"}");
@@ -500,52 +496,32 @@ bool pollCommands(uint32_t frame)
     return quit;
 }
 
-void scheduleScreenshot(const char* name, bool backbuffer)
+void scheduleScreenshot(const char* name)
 {
     if (!shellEnabled() || !name || !name[0]) return;
     if (!s_pendingShotPath.empty()) return;
     s_pendingShotPath = sanitizeShotName(name, 0);
-    s_pendingShotBackbuffer = backbuffer;
 }
 
-void capturePendingScreenshot(uint32_t frame)
+// The present readback finished (or failed) the shell's request.
+static void onShotDone(const char* path, bool ok, int w, int h)
+{
+    s_lastShotResult = ok
+        ? std::string("wrote ") + path + " (" + std::to_string(w) + "x" + std::to_string(h) + ")"
+        : std::string("failed: write ") + path;
+    mc2::fmt::print_err("[DEV_SHELL] screenshot: {}\n", s_lastShotResult.c_str());
+}
+
+void capturePendingScreenshot(uint32_t)
 {
     if (!shellEnabled() || s_pendingShotPath.empty()) return;
     const std::string path = s_pendingShotPath;
     s_pendingShotPath.clear();
-
-    // Default source, same as [SCREENSHOT v1]: the offscreen post-process
-    // scene FBO — correct for missions, black for front-end/menu screens
-    // (those draw directly to FBO 0; use source=backbuffer for them).
-    GLuint fbo = 0;
-    int w = 0, h = 0;
-    if (s_pendingShotBackbuffer) {
-        GLint vp[4] = {};
-        glGetIntegerv(GL_VIEWPORT, vp);
-        w = vp[2];
-        h = vp[3];
-    } else {
-        gosPostProcess* pp = getGosPostProcess();
-        fbo = pp ? pp->getSceneFBO() : 0;
-        w = pp ? pp->getWidth() : 0;
-        h = pp ? pp->getHeight() : 0;
-        if (!fbo) {
-            s_lastShotResult = "failed: scene FBO unavailable (try source=backbuffer)";
-            return;
-        }
+    // The request completes in the present path of this frame; onShotDone records the result.
+    if (!gos::screenshot::request(path.c_str(), onShotDone)) {
+        s_lastShotResult = "failed: screenshot needs the Vulkan backend and no other capture pending";
+        mc2::fmt::print_err("[DEV_SHELL] screenshot: {}\n", s_lastShotResult.c_str());
     }
-    if (w <= 0 || h <= 0) {
-        s_lastShotResult = "failed: zero-size capture source";
-        return;
-    }
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-    glReadBuffer(s_pendingShotBackbuffer ? GL_BACK : GL_COLOR_ATTACHMENT0);
-    const bool ok = gos::screenshot::writeTGA(path.c_str(), w, h);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-    s_lastShotResult = ok
-        ? "wrote " + path + " (" + std::to_string(w) + "x" + std::to_string(h) + ", frame " + std::to_string(frame) + ")"
-        : "failed: writeTGA " + path;
-    mc2::fmt::print_err("[DEV_SHELL] screenshot: {}\n", s_lastShotResult.c_str());
 }
 
 #endif  // _WIN32
