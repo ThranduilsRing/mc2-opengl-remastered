@@ -29,6 +29,7 @@ layout(set = 0, binding = 1) uniform sampler2D sceneNormalTex;
 layout(set = 0, binding = 2) uniform sampler2DShadow shadowMap;
 layout(set = 0, binding = 4) uniform sampler2DArrayShadow dynamicShadowArray;
 layout(set = 0, binding = 5) uniform sampler2DShadow dynamicFullMapShadow;
+layout(set = 0, binding = 6) uniform sampler2DArray dynamicShadowArrayRaw;
 
 layout(std140, set = 0, binding = 3) uniform ScreenShadowCsmParams {
     mat4 inverseViewProj;
@@ -156,4 +157,13 @@ void main()
     else if (u.enableDynamicShadows == 1 && u.propShadowReceive != 0 && !rc_isAlphaTestProp(normalData))
         shadow = min(shadow, sampleDynamicShadow(worldPos, objN, u.mechSoft, 0.4));
     FragColor = vec4(shadow, shadow, shadow, 1.0);
+    if (isStaticProp && u.propShadowReceive != 0)
+    {
+        vec4 lp = u.dynamicCascadeMatrices[0] * vec4(worldPos, 1.0);
+        vec3 pc = lp.xyz / lp.w; pc.xy = pc.xy * 0.5 + 0.5;
+        float stored = texture(dynamicShadowArrayRaw, vec3(pc.xy, 0.0)).r;
+        FragColor = vec4(step(0.5, fract(stored * 200.0)),
+                         stored < pc.z ? 1.0 : 0.0,
+                         stored < pc.z - 0.0012 ? 1.0 : 0.0, 1.0);
+    }
 }

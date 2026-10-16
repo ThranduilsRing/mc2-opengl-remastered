@@ -73,6 +73,7 @@ uniform mat4 lightSpaceMatrix;
 #define MC2_SHADOW_CSM_MAX 3
 #endif
 uniform sampler2DArrayShadow dynamicShadowArray;
+uniform sampler2DArray dynamicShadowArrayRaw;
 uniform mat4 dynamicCascadeMatrices[MC2_SHADOW_CSM_MAX];
 uniform int  dynamicCsmCount;
 uniform float dynamicCascadeTexelWorld[MC2_SHADOW_CSM_MAX]; // 2*cRad/mapSize, world units
@@ -365,4 +366,13 @@ void main()
 
     float combined = shadow;
     FragColor = vec4(combined, combined, combined, 1.0);
+    if (isStaticProp && propShadowReceive != 0)
+    {
+        vec4 lp = dynamicCascadeMatrices[0] * vec4(worldPos, 1.0);
+        vec3 pc = lp.xyz / lp.w; pc.xy = pc.xy * 0.5 + 0.5;
+        float stored = texture(dynamicShadowArrayRaw, vec3(pc.xy, 0.0)).r;
+        FragColor = vec4(step(0.5, fract(stored * 200.0)),
+                         stored < pc.z ? 1.0 : 0.0,
+                         stored < pc.z - 0.0012 ? 1.0 : 0.0, 1.0);
+    }
 }

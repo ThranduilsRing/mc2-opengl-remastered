@@ -491,9 +491,23 @@ void gosPostProcess::runScreenShadow()
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, shadowDepthTex_);
     glActiveTexture(GL_TEXTURE3);
-    if (csmActive)
+    if (csmActive) {
         glBindTexture(GL_TEXTURE_2D_ARRAY, dynShadowArrayTex_);
-    else
+        static GLuint s_rawSampler = 0;
+        if (!s_rawSampler) {
+            glGenSamplers(1, &s_rawSampler);
+            glSamplerParameteri(s_rawSampler, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+            glSamplerParameteri(s_rawSampler, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glSamplerParameteri(s_rawSampler, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glSamplerParameteri(s_rawSampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glSamplerParameteri(s_rawSampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        }
+        glActiveTexture(GL_TEXTURE7);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, dynShadowArrayTex_);
+        glBindSampler(7, s_rawSampler);
+        screenShadowProg_->setInt("dynamicShadowArrayRaw", 7);
+        glActiveTexture(GL_TEXTURE3);
+    } else
         glBindTexture(GL_TEXTURE_2D, dynShadowDepthTex_);
     if (csmActive) {
         // Per-cascade shadow resolution: separate full-map (last) cascade, unit 4.
@@ -518,6 +532,7 @@ void gosPostProcess::runScreenShadow()
     }
 
     glBindVertexArray(0);
+    glBindSampler(7, 0);
 
     glDisable(GL_BLEND);
     glDepthMask(GL_TRUE);
