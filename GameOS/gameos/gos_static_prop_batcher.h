@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <array>
 #include <atomic>
 #include <vector>
 #include <unordered_map>
@@ -9,6 +10,7 @@
 #include "Stuff/Stuff.hpp"
 #include "tgl.h"
 #include "msl.h"
+#include "texture_decode.h"
 #include "../../RenderCore/RenderDebugView.h"  // DEBUG-VIEW-REGISTRY-1: StaticPropViewToShaderMode / StaticPropShaderModeToView
 
 // MaterialGpu-3: forward declare RenderCore::MaterialGpu so batcher_getMaterialGpuEntry
@@ -189,7 +191,11 @@ private:
     void buildPerPacketDrawTables(StaticPropFinalizeFrame& f);
     bool reportMaterialCacheAndBaseInstances(StaticPropFinalizeFrame& f);
     void armCoalesce(StaticPropFinalizeFrame& f);
+    // The CPU copy of the alpha-OFF (0) and alpha-ON (1) albedo arrays of the RGBA8 group path, per map; empty when a group has
+    // no array or its array came from the BC7 path. The Vulkan prop island copies it instead of reading the GL arrays back.
+    std::array<mc2tex::TextureArrayCpu, 2> albedoArrays_;
 public:
+    const mc2tex::TextureArrayCpu& albedoArray(uint32_t group) const { return albedoArrays_[group & 1u]; }
     // True when GL alpha-tests packet `packet` of the shared geometry this frame: its material's ALPHA_TEST bit or its texture's live alpha
     // flag (set after load for some textures, so it can differ from the packet's group).
     bool packetAlphaTest(uint32_t packet) const;

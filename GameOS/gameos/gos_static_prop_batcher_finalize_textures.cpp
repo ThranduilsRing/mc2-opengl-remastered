@@ -4,6 +4,8 @@
 #include "gos_static_prop_finalize_frame.h"
 #include "mc2fmt.h"
 
+#include <cstring>
+
 
 // Build the per-group texture arrays and publish the per-packet and per-type layer tables.
 bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
@@ -25,6 +27,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
     // Shader applies `fract(v_uv) * uvScale` before sampling so
     // GL_REPEAT semantics work for tiling textures.
     layerForType.assign(typeCount, -1);
+    for (auto& a : albedoArrays_) a = {};
     // 2026-05-11 per-packet rework: layerForPacket[globalPacketIdx] gives the
     // group-relative texture-array layer for that packet. The previous
     // per-type layerForType is kept for backward-compat but now records the
@@ -689,6 +692,13 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                 glTexStorage3D(GL_TEXTURE_2D_ARRAY, levels, internalformat,
                                maxW, maxH, static_cast<GLsizei>(uniques.size()));
 
+                mc2tex::TextureArrayCpu& cpuArray = albedoArrays_[group];
+                cpuArray = {};
+                cpuArray.width = static_cast<uint32_t>(maxW);
+                cpuArray.height = static_cast<uint32_t>(maxH);
+                cpuArray.layers = static_cast<uint32_t>(uniques.size());
+                cpuArray.vkFormat = mc2tex::kVkFormatBc7Unorm;
+                cpuArray.levels.assign(static_cast<size_t>(levels), {});
                 size_t bc7TotalBytes = 0;
                 for (size_t k = 0; k < uniques.size(); ++k) {
                     const RenderCore::KtxImage& img = bc7Imgs[k];
@@ -704,6 +714,8 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                             internalformat, imageSize,
                             img.pixels.data() +
                                 img.mipByteOffsets[static_cast<size_t>(lvl)]);
+                        const uint8_t* blocks = img.pixels.data() + img.mipByteOffsets[static_cast<size_t>(lvl)];
+                        cpuArray.levels[static_cast<size_t>(lvl)].insert(cpuArray.levels[static_cast<size_t>(lvl)].end(), blocks, blocks + imageSize);
                         bc7TotalBytes += static_cast<size_t>(imageSize);
                     }
                 }
@@ -742,26 +754,24 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             }
         }
 
-        // 5.10.d — allocate the array at max dims.
-        // TEX-CLASS: asset-pool -- static-prop material 2D_ARRAY (content)
-        glGenTextures(1, &outArray);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, outArray);
-        glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8,
-                     maxW, maxH,
-                     static_cast<GLsizei>(uniques.size()),
-                     0, GL_BGRA, GL_UNSIGNED_BYTE, nullptr);
-
-        // 5.10.e — per-unique blit. Each unique blits at sub-region
-        // (0,0,W,H) of its layer; the unused (W..maxW, H..maxH) area
-        // is left at the glTexImage3D-zeroed state. Shader uvScale
-        // ensures sampling never reaches that area for the type's UVs.
-        size_t maxBytes = static_cast<size_t>(maxW) *
-                          static_cast<size_t>(maxH) * 4u;
-        std::vector<uint8_t> pixelBuf(maxBytes);
-        // KTX2 layers that carry a pre-baked mip chain: cache the loaded image
-        // keyed by layer index so we can OVERWRITE the auto-generated mips with
-        // the sharp pre-baked levels after the single glGenerateMipmap pass.
-        std::vector<std::pair<size_t, RenderCore::KtxImage>> s_ktxMipLayers;
+        // The group's array is assembled on the CPU (RGBA8, R first, every level): GL uploads every level from it and the Vulkan prop
+        // island copies the same bytes. Each unique fills the upper-left (W x H) of its layer; the rest of the layer stays zero, and the
+        // shader's uvScale keeps sampling inside the sub-region. The chain is the box filter of the whole layer (glGenerateMipmap's
+        // filter on this format), then the pre-baked .ktx2 levels replace it on the layers that carry them.
+        mc2tex::TextureArrayCpu& cpuArray = albedoArrays_[group];
+        cpuArray = {};
+        cpuArray.width = static_cast<uint32_t>(maxW);
+        cpuArray.height = static_cast<uint32_t>(maxH);
+        cpuArray.layers = static_cast<uint32_t>(uniques.size());
+        cpuArray.vkFormat = mc2tex::kVkFormatRgba8Unorm;
+        const size_t layerBytes0 = static_cast<size_t>(maxW) * static_cast<size_t>(maxH) * 4u;
+        std::vector<std::vector<uint8_t>> layerTexels(uniques.size(), std::vector<uint8_t>(layerBytes0, 0));
+        auto blitRows = [](std::vector<uint8_t>& layer, uint32_t layerW, const uint8_t* src, uint32_t w, uint32_t h) {
+            for (uint32_t y = 0; y < h; ++y)
+                std::memcpy(layer.data() + static_cast<size_t>(y) * layerW * 4u, src + static_cast<size_t>(y) * w * 4u, static_cast<size_t>(w) * 4u);
+        };
+        std::vector<uint8_t> pixelBuf;
+        std::vector<std::pair<size_t, RenderCore::KtxImage>> ktxMipLayers;
         for (size_t k = 0; k < uniques.size(); ++k) {
             const auto& u = uniques[k];
             bool ktxUsed = false;
@@ -772,15 +782,11 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                     const std::string ktxPath = deriveTieredKtxPath(srcName, texTier());
                     RenderCore::KtxImage ktxImg;
                     const bool ktxOk = RenderCore::ktxLoadRgba8(ktxPath.c_str(), ktxImg);
-                    // This RGBA8 upload path cannot consume compressed (BC7) KTX2:
-                    // its bytes are block data, not RGBA8 texels. If a BC7 sidecar
-                    // is present but this group fell back to the RGBA8 path (e.g.
-                    // mixed-dim, so the BC7 array path was declined), reject it here
-                    // (dimOk=false) so we fall through to the original GL texture
-                    // upload below instead of mis-uploading block data as RGBA8.
+                    // A BC7 sidecar in a group that took this RGBA8 path (e.g. mixed dims declined the BC7 array) holds blocks, not
+                    // texels: rejected here, so the texture's own pixels are used.
                     const bool dimOk = ktxOk && !ktxImg.isCompressed &&
-                                       ktxImg.width == u.w && ktxImg.height == u.h;
-                    // Always-on debug: log attempt result so we can diagnose path/dim issues.
+                                       ktxImg.width == u.w && ktxImg.height == u.h &&
+                                       ktxImg.pixels.size() >= static_cast<size_t>(u.w) * static_cast<size_t>(u.h) * 4u;
                     mc2::fmt::print_err("[KTX_SIDECAR] node={:d} srcName={} path={} load={:d} ktxDims={:d}x{:d} glDims={:d}x{:d} match={:d}\n",
                         mc2::fmt::as_u32((unsigned long)u.nodeIdx), mc2::fmt::safe(srcName), ktxPath.c_str(),
                         mc2::fmt::as_i32((int)ktxOk),
@@ -788,43 +794,22 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                         mc2::fmt::as_i32(u.w), mc2::fmt::as_i32(u.h), mc2::fmt::as_i32((int)dimOk));
                     std::fflush(stderr);
                     if (dimOk) {
-                        // KTX2 pixels are RGBA order; GL_RGBA matches.
-                        glBindTexture(GL_TEXTURE_2D_ARRAY, outArray);
-                        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0,
-                                        0, 0, static_cast<GLint>(k),
-                                        u.w, u.h, 1,
-                                        GL_RGBA, GL_UNSIGNED_BYTE, ktxImg.pixels.data());
+                        blitRows(layerTexels[k], cpuArray.width, ktxImg.pixels.data(), static_cast<uint32_t>(u.w), static_cast<uint32_t>(u.h));
                         ktxUsed = true;
-                        // Stash for post-glGenerateMipmap pre-baked mip overwrite.
-                        if (ktxImg.mipCount > 1) {
-                            s_ktxMipLayers.emplace_back(k, std::move(ktxImg));
-                        }
+                        if (ktxImg.mipCount > 1) ktxMipLayers.emplace_back(k, std::move(ktxImg));
                         COALESCE_TRACE("ktx_sidecar_hit type=? node=%lu path=%s",
                                        (unsigned long)u.nodeIdx, ktxPath.c_str());
                     }
                 }
             }
             if (!ktxUsed) {
+                pixelBuf.assign(static_cast<size_t>(u.w) * static_cast<size_t>(u.h) * 4u, 0);
                 glBindTexture(GL_TEXTURE_2D, u.glTexId);
-                const size_t need = static_cast<size_t>(u.w) *
-                                    static_cast<size_t>(u.h) * 4u;
-                if (pixelBuf.size() < need) pixelBuf.resize(need);
-                glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixelBuf.data());
-                glBindTexture(GL_TEXTURE_2D_ARRAY, outArray);
-                glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0,
-                                0, 0, static_cast<GLint>(k),
-                                u.w, u.h, 1,
-                                GL_BGRA, GL_UNSIGNED_BYTE, pixelBuf.data());
+                glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelBuf.data());
+                blitRows(layerTexels[k], cpuArray.width, pixelBuf.data(), static_cast<uint32_t>(u.w), static_cast<uint32_t>(u.h));
             }
         }
 
-        // 5.10.f — mipmap + sampler params (forestall AMD strict-fail).
-        // GL_CLAMP_TO_EDGE on the array (was GL_REPEAT pre-v3.8) so
-        // sub-region textures don't bleed into the unused area at the
-        // edge. Tiling textures rely on the shader's `fract(v_uv) *
-        // uvScale` to keep sampling within the sub-region.
-        glBindTexture(GL_TEXTURE_2D_ARRAY, outArray);
-        glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
         GLint maxLevel = 0;
         {
             GLint w = maxW, h = maxH;
@@ -834,39 +819,46 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                 if (h > 1) h >>= 1;
             }
         }
-        // 5.10.f.ktx — OVERWRITE auto-generated mips with the pre-baked KTX2
-        // mip chain for layers that carried one. glGenerateMipmap above filled
-        // mips for ALL layers (KTX + non-KTX) from level 0; here we replace the
-        // blurry auto-gen mips on KTX layers with the sharp baked levels.
-        // Non-KTX layers keep their auto-generated mips. Only overwrite levels
-        // that exist both in the baked chain AND within the array's maxLevel.
-        if (s_materialKtxEnabled && !s_ktxMipLayers.empty()) {
-            glBindTexture(GL_TEXTURE_2D_ARRAY, outArray);
-            int totalMipsUploaded = 0;
-            for (const auto& lm : s_ktxMipLayers) {
-                const size_t layerK = lm.first;
-                const RenderCore::KtxImage& img = lm.second;
-                const int lastLvl = (img.mipCount - 1 < maxLevel)
-                                        ? (img.mipCount - 1) : maxLevel;
-                int uploaded = 0;
-                for (int lvl = 1; lvl <= lastLvl; ++lvl) {
-                    int lw = img.width  >> lvl; if (lw < 1) lw = 1;
-                    int lh = img.height >> lvl; if (lh < 1) lh = 1;
-                    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, lvl,
-                                    0, 0, static_cast<GLint>(layerK),
-                                    lw, lh, 1,
-                                    GL_RGBA, GL_UNSIGNED_BYTE,
-                                    img.pixels.data() +
-                                        img.mipByteOffsets[static_cast<size_t>(lvl)]);
-                    ++uploaded;
+        const uint32_t levelCount = static_cast<uint32_t>(maxLevel) + 1u;
+        cpuArray.levels.assign(levelCount, {});
+        int bakedLevels = 0;
+        for (uint32_t lvl = 0; lvl < levelCount; ++lvl) {
+            const uint32_t lw = mc2tex::mipExtent(cpuArray.width, lvl), lh = mc2tex::mipExtent(cpuArray.height, lvl);
+            const size_t layerBytes = static_cast<size_t>(lw) * lh * 4u;
+            if (lvl > 0)
+                for (const auto& lm : ktxMipLayers) {
+                    const RenderCore::KtxImage& img = lm.second;
+                    if (static_cast<int>(lvl) >= img.mipCount || lvl >= img.mipByteOffsets.size()) continue;
+                    const uint32_t kw = mc2tex::mipExtent(static_cast<uint32_t>(img.width), lvl);
+                    const uint32_t kh = mc2tex::mipExtent(static_cast<uint32_t>(img.height), lvl);
+                    const size_t off = img.mipByteOffsets[lvl];
+                    if (kw > lw || kh > lh || off + static_cast<size_t>(kw) * kh * 4u > img.pixels.size()) {
+                        mc2::fmt::print_err("[KTX2_MIP] layer {:d} level {:d} rejected: {:d}x{:d} does not fit the {:d}x{:d} array level or its bytes\n",
+                            mc2::fmt::as_size(lm.first), mc2::fmt::as_u32(lvl), mc2::fmt::as_u32(kw), mc2::fmt::as_u32(kh), mc2::fmt::as_u32(lw), mc2::fmt::as_u32(lh));
+                        continue;
+                    }
+                    blitRows(layerTexels[lm.first], lw, img.pixels.data() + off, kw, kh);
+                    ++bakedLevels;
                 }
-                totalMipsUploaded += uploaded;
-                mc2::fmt::print_err("[KTX2_MIP] uploaded {:d} pre-baked mips for layer {:d} ({:d}x{:d})\n", mc2::fmt::as_i32(uploaded), mc2::fmt::as_size(layerK), mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height));
-            }
-            mc2::fmt::print_err("[KTX2_MIP] summary: {:d} KTX layers, {:d} pre-baked mips overwritten\n", mc2::fmt::as_size(s_ktxMipLayers.size()), mc2::fmt::as_i32(totalMipsUploaded));
-            std::fflush(stderr);
+            std::vector<uint8_t>& level = cpuArray.levels[lvl];
+            level.resize(layerBytes * layerTexels.size());
+            for (size_t k = 0; k < layerTexels.size(); ++k) std::memcpy(level.data() + k * layerBytes, layerTexels[k].data(), layerBytes);
+            if (lvl + 1u < levelCount)
+                for (auto& layer : layerTexels) layer = mc2tex::boxDownsampleRgba8(layer, lw, lh);
         }
+        if (!ktxMipLayers.empty())
+            mc2::fmt::print_err("[KTX2_MIP] summary: {:d} KTX layers, {:d} pre-baked mips used\n", mc2::fmt::as_size(ktxMipLayers.size()), mc2::fmt::as_i32(bakedLevels));
 
+        // TEX-CLASS: asset-pool -- static-prop material 2D_ARRAY (content)
+        glGenTextures(1, &outArray);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, outArray);
+        for (uint32_t lvl = 0; lvl < levelCount; ++lvl)
+            glTexImage3D(GL_TEXTURE_2D_ARRAY, static_cast<GLint>(lvl), GL_RGBA8,
+                         static_cast<GLsizei>(mc2tex::mipExtent(cpuArray.width, lvl)), static_cast<GLsizei>(mc2tex::mipExtent(cpuArray.height, lvl)),
+                         static_cast<GLsizei>(cpuArray.layers), 0, GL_RGBA, GL_UNSIGNED_BYTE, cpuArray.levels[lvl].data());
+
+        // GL_CLAMP_TO_EDGE: a sub-region texture must not bleed into the unused area at the layer edge; tiling textures rely on the
+        // shader's `fract(v_uv) * uvScale`.
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL,  maxLevel);
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);

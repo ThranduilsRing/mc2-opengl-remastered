@@ -16,6 +16,8 @@
 
 #include <cstdint>
 
+namespace mc2tex { struct TextureArrayCpu; }
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -103,6 +105,10 @@ struct Mc2ColorPropMaterialFeed {
     // glTexArrayOn), so no second layer table is needed on the feed side. 0 = alpha-ON
     // array not built (island imports/routes class-1 types only when non-zero).
     uint32_t        glTexArrayOn;    // GL name of s_texArrayOn (alpha-ON 2D_ARRAY)
+    // The CPU copies of the two group arrays (every level, the bytes GL uploaded); null when a group has none. The island imports
+    // these; the GL names above only tell it the arrays were rebuilt.
+    const mc2tex::TextureArrayCpu* albedoOff;
+    const mc2tex::TextureArrayCpu* albedoOn;
 
     // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: per-PACKET (not per-type) albedo layer.
     // A single typeID can own multiple packets (sub-mesh ranges) that each target a

@@ -228,4 +228,11 @@ std::vector<uint8_t> boxDownsampleRgba8(const std::vector<uint8_t>& src, uint32_
     return dst;
 }
 
+size_t textureArrayLevelBytes(const TextureArrayCpu& a, uint32_t level) {
+    const uint32_t w = mipExtent(a.width, level), h = mipExtent(a.height, level);
+    if (a.vkFormat == kVkFormatRgba8Unorm) return size_t{w} * h * 4u * a.layers;
+    if (a.vkFormat == kVkFormatBc7Unorm || a.vkFormat == kVkFormatBc7Srgb) return bc7LevelBytes(w, h) * a.layers;
+    return 0;
+}
+
 }  // namespace mc2tex
