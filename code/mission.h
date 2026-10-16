@@ -14,6 +14,7 @@
 #include "combat_retirement.h"
 #include "tactical_order_queue.h"
 #include <algorithm>
+#include <memory>
 //----------------------------------------------------------------------------------
 // Include Files
 #ifndef MCLIB_H
