@@ -75,6 +75,12 @@ struct Mc2TerrainTier1Feed {
     // island imports copy-once, plus the atlas-UV reconstruction params (same source
     // as the GL LOD-chunk u_colormap / u_atlasTopLeftX/Y / u_atlasOneOverWorldUnits).
     uint32_t                    glColormapTex;         // GL name of g_atlasGLTex (0 = not built yet)
+    const uint8_t*              colormapBytes;         // the field store's colormap atlas (RGBA8 or BC7 level 0); null = none
+    size_t                      colormapByteCount;
+    int32_t                     colormapWidth;
+    int32_t                     colormapHeight;
+    uint32_t                    colormapVkFormat;      // 37 RGBA8, 145 / 146 BC7 UNORM / SRGB
+    uint64_t                    colormapVersion;       // changes on every rebuild; the island re-imports on a change
     float                       atlasTopLeftX;
     float                       atlasTopLeftY;
     float                       atlasOneOverWorldUnits;

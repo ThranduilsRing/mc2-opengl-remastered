@@ -53,6 +53,16 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     // COLORMAP-BASE sub-slice: hand the GL colormap atlas tex + UV params to the
     // island so it can copy-once import the colormap and sample the REAL base color.
     out->glColormapTex          = static_cast<uint32_t>(gos_terrain_indirect_getAtlasGLTex());
+    {
+        const mc2terrain::ColormapAtlas& cm = fields->colormapAtlas();
+        const bool have = !cm.bytes.empty();
+        out->colormapBytes     = have ? cm.bytes.data() : nullptr;
+        out->colormapByteCount = have ? cm.bytes.size() : 0;
+        out->colormapWidth     = have ? cm.width : 0;
+        out->colormapHeight    = have ? cm.height : 0;
+        out->colormapVkFormat  = have ? cm.vkFormat : 0;
+        out->colormapVersion   = have ? cm.version : 0;
+    }
     out->atlasTopLeftX          = gos_terrain_indirect_getAtlasMapTopLeftX();
     out->atlasTopLeftY          = gos_terrain_indirect_getAtlasMapTopLeftY();
     out->atlasOneOverWorldUnits = gos_terrain_indirect_getAtlasOneOverWorldUnits();

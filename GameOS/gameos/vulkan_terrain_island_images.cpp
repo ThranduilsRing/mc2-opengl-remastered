@@ -156,57 +156,22 @@ bool ensure_dummy_colormap(TerrainIsland* s) {
     return true;
 }
 
-// Copy-once import of the GL colormap atlas. Re-imports only when the GL tex name
-// changes (per-mission rebuild). Sets s->colormapReady on success. Fail-soft: leaves
-// the dummy bound (colormapReady=false) so the FS falls back to olive.
+// Copy-once import of the colormap atlas from the terrain field store (RGBA8 texels or BC7 blocks, the bytes GL uploaded), again
+// whenever the store's version changes (a per-mission rebuild). Sets s->colormapReady on success. Fail-soft: leaves the dummy
+// bound (colormapReady=false) so the FS falls back to olive.
 void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    const uint32_t glTex = feed.glColormapTex;
-    if (glTex == 0) return;                       // atlas not built yet -> stay olive
-    if (glTex == s->colormapTexImported && s->colormapReady) return; // already imported
-
-    // Query the REAL internalformat of the GL atlas (RGBA8 vs BC7 UNORM/SRGB).
-    glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
-    GLint w = 0, h = 0, internalFmt = 0;
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFmt);
-    if (w <= 0 || h <= 0) { glBindTexture(GL_TEXTURE_2D, 0); return; }
-
-    bool ok = false;
-    if (internalFmt == GL_COMPRESSED_RGBA_BPTC_UNORM ||
-        internalFmt == GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM) {
-        // BC7: copy the compressed blocks verbatim. VK format per UNORM/SRGB.
-        GLint compBytes = 0;
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &compBytes);
-        if (compBytes > 0) {
-            std::vector<uint8_t> blocks((size_t)compBytes);
-            glGetCompressedTexImage(GL_TEXTURE_2D, 0, blocks.data());
-            const VkFormat vkFmt = (internalFmt == GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM)
-                                 ? VK_FORMAT_BC7_SRGB_BLOCK : VK_FORMAT_BC7_UNORM_BLOCK;
-            ok = upload_colormap_image(s, vkFmt, (uint32_t)w, (uint32_t)h, blocks.data(), (VkDeviceSize)compBytes);
-        }
-    } else {
-        // RGBA8 path: the GL atlas is RGBA8 storage (BGRA source swizzled to RGBA on
-        // upload). Read it back as RGBA -> VK_FORMAT_R8G8B8A8_UNORM (channel order
-        // preserved end-to-end; do NOT feed BGRA to an R8G8B8A8 image).
-        std::vector<uint8_t> px((size_t)w * (size_t)h * 4u);
-        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, px.data());
-        ok = upload_colormap_image(s, VK_FORMAT_R8G8B8A8_UNORM, (uint32_t)w, (uint32_t)h,
-                                   px.data(), (VkDeviceSize)px.size());
-    }
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    if (ok) {
-        s->colormapTexImported = glTex;
+    if (!feed.colormapBytes || feed.colormapVersion == 0) return;                          // atlas not built yet -> stay olive
+    if (feed.colormapVersion == s->colormapVersionImported && s->colormapReady) return;     // already imported
+    const VkFormat fmt = feed.colormapVkFormat == 146u ? VK_FORMAT_BC7_SRGB_BLOCK
+                       : feed.colormapVkFormat == 145u ? VK_FORMAT_BC7_UNORM_BLOCK
+                       : VK_FORMAT_R8G8B8A8_UNORM;
+    if (upload_colormap_image(s, fmt, (uint32_t)feed.colormapWidth, (uint32_t)feed.colormapHeight, feed.colormapBytes,
+                              (VkDeviceSize)feed.colormapByteCount)) {
+        s->colormapVersionImported = feed.colormapVersion;
         s->colormapReady = true;
         write_descriptors(s);
-        static bool s_firstCm = false;
-        if (!s_firstCm) {
-            vlog("COLORMAP-BASE: imported GL colormap atlas gltex=%u %dx%d internalFmt=0x%x "
-                 "(RGBA8->R8G8B8A8 or BC7 verbatim); VK terrain base color now real.",
-                 glTex, w, h, (unsigned)internalFmt);
-            s_firstCm = true;
-        }
+        vlog("COLORMAP-BASE: imported the colormap atlas %dx%d format %u from the terrain field store (version %llu).",
+             feed.colormapWidth, feed.colormapHeight, feed.colormapVkFormat, (unsigned long long)feed.colormapVersion);
     }
     // On failure the dummy stays bound (colormapReady=false) -> FS uses olive.
 }

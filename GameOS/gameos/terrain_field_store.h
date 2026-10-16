@@ -23,6 +23,16 @@ struct FieldImage {
     uint64_t version = 0;
 };
 
+// The terrain colormap atlas as its GL upload took it: RGBA8 texels (R first) or the level-0 BC7 blocks of a .ktx2 sidecar.
+struct ColormapAtlas {
+    static constexpr uint32_t kRgba8 = 37, kBc7Unorm = 145, kBc7Srgb = 146;   // VkFormat values
+    std::vector<uint8_t> bytes;
+    int width = 0;
+    int height = 0;
+    uint32_t vkFormat = 0;
+    uint64_t version = 0;
+};
+
 class TerrainFieldStore {
 public:
     // Whole-map writes. Return false (with a log line) and keep the previous field on a null / empty / oversized input.
@@ -59,6 +69,11 @@ public:
     bool setCementAtlas(const uint8_t* rgba, int width, int height);
     const FieldImage<uint8_t>& cementAtlas() const { return cementAtlas_; }   // 4 bytes a texel
 
+    // Rejected (with a log line, previous atlas kept) on a null input, an edge out of range, an unknown format or a byte count
+    // that is not one level of that format at that size.
+    bool setColormapAtlas(const uint8_t* bytes, size_t byteCount, int width, int height, uint32_t vkFormat);
+    const ColormapAtlas& colormapAtlas() const { return colormapAtlas_; }
+
 private:
     std::vector<float> height_;
     int mapSide_ = 0;
@@ -72,6 +87,7 @@ private:
     FieldImage<uint8_t> shorelineMask_;
     FieldImage<float> waterShoreHeight_;
     FieldImage<uint8_t> cementAtlas_;
+    ColormapAtlas colormapAtlas_;
 };
 
 }  // namespace mc2terrain
