@@ -135,7 +135,7 @@ void EllipseElement::setClip( const GUI_RECT& rect )
 void EllipseElement::removeTextureHandle (void)
 {
 	if (s_textureHandle)
-		mcTextureManager->removeTextureNode(s_textureHandle);
+		mcTextureManager->releaseNode(s_textureHandle);
 
 	s_textureHandle = 0;
 }

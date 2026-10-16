@@ -567,10 +567,6 @@ class MC_TextureManager
 		void startShapes (uint32_t maxShapes = 3000);
 		
 		//------------------------------------------------------
-		// Frees a specific textureNode.
-		void removeTextureNode (DWORD textureNode);
-
-		//------------------------------------------------------
 		// Gives back one reference to a texture node (the count loadTexture / textureFromMemory took for the caller). The node, its GOS
 		// texture and its RAM copy are freed when the last reference goes. This is the release behind mc2::TextureRef.
 		void releaseNode (DWORD textureNode);

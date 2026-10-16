@@ -36,8 +36,8 @@ B5.5-heap-owner	code/simplecamera.cpp:89	asset_delete	delete GVAppearanceType::S
 B5.5-heap-owner	code/simplecamera.cpp:95	asset_delete	delete Mech3DAppearanceType::SensorSquareShape;
 B5.4-objecttype	code/terrobj.cpp:1108	asset_delete	delete appearance;
 B5.5-heap-owner	code/turret.cpp:2090	asset_delete	delete appearance;
-B5.1-texture	code/weaponbolt.cpp:580	tex_acquire	mcTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,0);
-B5.1-texture	code/weaponbolt.cpp:582	tex_acquire	mcTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap);
+B5.1-texture	code/weaponbolt.cpp:628	tex_acquire	mcTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,0);
+B5.1-texture	code/weaponbolt.cpp:630	tex_acquire	mcTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap);
 B5.1-texture	gui/UiDefs_draw.cpp:142	tex_acquire	e.textureNode = mcTextureManager->loadTexture(loadPath, gos_Texture_Alpha, 0, 0, 0x2);
 B5.1-texture	gui/abutton.cpp:373	tex_acquire	int ID = mcTextureManager->loadTexture( file, gos_Texture_Alpha, 0, 0, 0x2 );
 B5.1-texture	gui/asystem.cpp:354	tex_acquire	int ID = mcTextureManager->loadTexture( buffer, bAlpha ? gos_Texture_Alpha : gos_Texture_Keyed, 0, 0, neverFlush);
@@ -130,9 +130,8 @@ B5.3-appearance	mclib/bdactor_type.cpp:758	asset_delete	delete treeShape[i];
 B5.3-appearance	mclib/bdactor_type.cpp:767	asset_delete	delete treeRenderShape[i];
 B5.3-appearance	mclib/bdactor_type.cpp:775	asset_delete	delete treeDmgShape;
 B5.1-texture	mclib/cellip.cpp:126	tex_acquire	s_textureHandle = mcTextureManager->loadTexture("data/art/ring.tga", gos_Texture_Alpha, 0 );
-B5.1-texture	mclib/cellip.cpp:138	tex_release	mcTextureManager->removeTextureNode(s_textureHandle);
-B5.1-texture	mclib/crater.cpp:165	tex_acquire	craterTextureIndices[i] = mcTextureManager->loadTexture(craterPath, gos_Texture_Keyed, gosHint_DisableMipmap);
-B5.1-texture	mclib/crater.cpp:167	tex_acquire	craterTextureIndices[i] = mcTextureManager->loadTexture(craterPath, gos_Texture_Alpha, gosHint_DisableMipmap);
+B5.1-texture	mclib/crater.cpp:162	tex_acquire	craterTextureIndices[i] = mcTextureManager->loadTexture(craterPath, gos_Texture_Keyed, gosHint_DisableMipmap);
+B5.1-texture	mclib/crater.cpp:164	tex_acquire	craterTextureIndices[i] = mcTextureManager->loadTexture(craterPath, gos_Texture_Alpha, gosHint_DisableMipmap);
 B5.3-appearance	mclib/genactor.cpp:25	asset_new	genShape = new TG_TypeMultiShape;
 B5.3-appearance	mclib/genactor.cpp:87	asset_new	genDmgShape = new TG_TypeMultiShape;
 B5.3-appearance	mclib/genactor.cpp:93	asset_delete	delete genDmgShape;
@@ -181,14 +180,14 @@ B5.1-texture	mclib/gvactor.cpp:1118	tex_acquire	localTextureHandle = mcTextureMa
 B5.1-texture	mclib/gvactor.cpp:1124	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrin
 B5.1-texture	mclib/gvactor.cpp:1136	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
 B5.1-texture	mclib/gvactor.cpp:1142	tex_acquire	gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrin
-B5.1-texture	mclib/gvactor_geometry.cpp:170	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
-B5.1-texture	mclib/gvactor_geometry.cpp:192	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
-B5.3-appearance	mclib/gvactor_geometry.cpp:597	asset_delete	delete gvShape;
-B5.1-texture	mclib/gvactor_geometry.cpp:621	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
-B5.1-texture	mclib/gvactor_geometry.cpp:628	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
-B5.3-appearance	mclib/gvactor_geometry.cpp:650	asset_delete	delete gvShape;
-B5.1-texture	mclib/gvactor_geometry.cpp:671	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
-B5.1-texture	mclib/gvactor_geometry.cpp:678	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
+B5.1-texture	mclib/gvactor_geometry.cpp:171	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
+B5.1-texture	mclib/gvactor_geometry.cpp:193	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
+B5.3-appearance	mclib/gvactor_geometry.cpp:598	asset_delete	delete gvShape;
+B5.1-texture	mclib/gvactor_geometry.cpp:622	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_Don
+B5.1-texture	mclib/gvactor_geometry.cpp:629	tex_acquire	DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_Don
+B5.3-appearance	mclib/gvactor_geometry.cpp:651	asset_delete	delete gvShape;
+B5.1-texture	mclib/gvactor_geometry.cpp:672	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShr
+B5.1-texture	mclib/gvactor_geometry.cpp:679	tex_acquire	localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShr
 B5.3-appearance	mclib/gvactor_update.cpp:706	asset_delete	delete gvShape;
 B5.3-appearance	mclib/gvactor_update.cpp:712	asset_delete	delete gvShadowShape;
 B5.3-appearance	mclib/gvactor_update.cpp:718	asset_delete	delete sensorCircleShape;
@@ -311,35 +310,22 @@ B5.1-texture	mclib/terrtxm.cpp:525	tex_acquire	textures[nextAvailable].mcTexture
 B5.1-texture	mclib/terrtxm.cpp:539	tex_acquire	textures[nextAvailable].mcTextureNodeIndex = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_Disable
 B5.1-texture	mclib/terrtxm.cpp:552	tex_acquire	textures[nextAvailable].mcTextureNodeIndex = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DontShr
 B5.1-texture	mclib/terrtxm.cpp:565	tex_acquire	textures[nextAvailable].mcTextureNodeIndex = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_Disable
-B5.1-texture	mclib/terrtxm.cpp:1297	tex_release	mcTextureManager->removeTextureNode(textures[transitions[i].baseTXMIndex].mcTextureNodeIndex);
 B5.1-texture	mclib/terrtxm.cpp:1540	tex_acquire	result = textureFromMemory(ourRAM,mipSize);
 B5.5-heap-owner	mclib/terrtxm.cpp:1730	asset_delete	delete tileRAMHeap;
-B5.1-texture	mclib/terrtxm.cpp:1754	tex_release	mcTextureManager->removeTextureNode(textures[i].mcTextureNodeIndex);
 B5.5-heap-owner	mclib/terrtxm.cpp:1763	asset_delete	delete tileHeap;
 B5.1-texture	mclib/terrtxm.h:171	tex_acquire	long textureFromMemory (MemoryPtr ourRam, long mipSize);
-B5.1-texture	mclib/terrtxm2.cpp:125	tex_release	mcTextureManager->removeTextureNode(textures[i].mcTextureNodeIndex);
-B5.1-texture	mclib/terrtxm2.cpp:136	tex_release	mcTextureManager->removeTextureNode(normalMapTextures[i].mcTextureNodeIndex);
-B5.1-texture	mclib/terrtxm2.cpp:143	tex_release	mcTextureManager->removeTextureNode(detailTextureNodeIndex);
-B5.1-texture	mclib/terrtxm2.cpp:148	tex_release	mcTextureManager->removeTextureNode(detailNormalNodeIndex);
-B5.1-texture	mclib/terrtxm2.cpp:153	tex_release	mcTextureManager->removeTextureNode(waterTextureNodeIndex);
-B5.1-texture	mclib/terrtxm2.cpp:160	tex_release	mcTextureManager->removeTextureNode(waterDetailNodeIndex[i]);
-B5.1-texture	mclib/terrtxm2_bake.cpp:806	tex_release	mcTextureManager->removeTextureNode (detailTextureNodeIndex);
-B5.1-texture	mclib/terrtxm2_bake.cpp:820	tex_acquire	detailTextureNodeIndex = mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
-B5.1-texture	mclib/terrtxm2_bake.cpp:822	tex_acquire	detailTextureNodeIndex = mcTextureManager->loadTexture(fileName,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
-B5.1-texture	mclib/terrtxm2_bake.cpp:837	tex_release	mcTextureManager->removeTextureNode (waterTextureNodeIndex);
-B5.1-texture	mclib/terrtxm2_bake.cpp:851	tex_acquire	waterTextureNodeIndex = mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1);
-B5.1-texture	mclib/terrtxm2_bake.cpp:853	tex_acquire	waterTextureNodeIndex = mcTextureManager->loadTexture(fileName,gos_Texture_Solid,0, 0, 0x1);
-B5.1-texture	mclib/terrtxm2_bake.cpp:893	tex_release	mcTextureManager->removeTextureNode (waterDetailNodeIndex[j]);
-B5.1-texture	mclib/terrtxm2_bake.cpp:900	tex_acquire	waterDetailNodeIndex[i] = mcTextureManager->loadTexture(waterFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
-B5.1-texture	mclib/terrtxm2_bake.cpp:1014	tex_release	mcTextureManager->removeTextureNode(textures[i].mcTextureNodeIndex);
-B5.1-texture	mclib/terrtxm2_bake.cpp:1019	tex_acquire	textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint
-B5.1-texture	mclib/terrtxm2_bake.cpp:1036	tex_release	mcTextureManager->removeTextureNode(textures[i].mcTextureNodeIndex);
-B5.1-texture	mclib/terrtxm2_bake.cpp:1187	tex_acquire	textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint
-B5.1-texture	mclib/terrtxm2_load.cpp:175	tex_acquire	detailTextureNodeIndex = mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
-B5.1-texture	mclib/terrtxm2_load.cpp:198	tex_acquire	waterTextureNodeIndex = mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1);
-B5.1-texture	mclib/terrtxm2_load.cpp:299	tex_acquire	textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosH
-B5.1-texture	mclib/terrtxm2_load.cpp:440	tex_acquire	textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosH
-B5.1-texture	mclib/terrtxm2_load.cpp:589	tex_acquire	normalMapTextures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw(
+B5.1-texture	mclib/terrtxm2_bake.cpp:819	tex_acquire	detailTextureNodeIndex.reset(mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
+B5.1-texture	mclib/terrtxm2_bake.cpp:821	tex_acquire	detailTextureNodeIndex.reset(mcTextureManager->loadTexture(fileName,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
+B5.1-texture	mclib/terrtxm2_bake.cpp:849	tex_acquire	waterTextureNodeIndex.reset(mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1));
+B5.1-texture	mclib/terrtxm2_bake.cpp:851	tex_acquire	waterTextureNodeIndex.reset(mcTextureManager->loadTexture(fileName,gos_Texture_Solid,0, 0, 0x1));
+B5.1-texture	mclib/terrtxm2_bake.cpp:897	tex_acquire	waterDetailNodeIndex[i].reset(mcTextureManager->loadTexture(waterFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
+B5.1-texture	mclib/terrtxm2_bake.cpp:1016	tex_acquire	textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gos
+B5.1-texture	mclib/terrtxm2_bake.cpp:1183	tex_acquire	textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gos
+B5.1-texture	mclib/terrtxm2_load.cpp:175	tex_acquire	detailTextureNodeIndex.reset(mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
+B5.1-texture	mclib/terrtxm2_load.cpp:198	tex_acquire	waterTextureNodeIndex.reset(mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1));
+B5.1-texture	mclib/terrtxm2_load.cpp:299	tex_acquire	textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,
+B5.1-texture	mclib/terrtxm2_load.cpp:440	tex_acquire	textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,
+B5.1-texture	mclib/terrtxm2_load.cpp:589	tex_acquire	normalMapTextures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw(
 B5.2-tg	mclib/tgl.h:1229	heap_free	TG_Shape::tglHeap->Free(tgVertexPool);
 B5.2-tg	mclib/tgl.h:1236	heap_malloc	tgVertexPool = (TG_VertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Vertex) * maxVertices);
 B5.2-tg	mclib/tgl.h:1318	heap_free	TG_Shape::tglHeap->Free(gVertexPool);

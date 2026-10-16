@@ -501,25 +501,6 @@ void MC_TextureManager::flush (bool justTextures)
 	gos_PopCurrentHeap();
 }
 
-void MC_TextureManager::removeTextureNode (DWORD textureNode)
-{
-	if (textureNode != 0xffffffff)
-	{
-		masterTextureNodes[textureNode].destroy();
-		if (masterTextureNodes[textureNode].textureData)
-		{
-			textureCacheHeap->Free(masterTextureNodes[textureNode].textureData);
-			masterTextureNodes[textureNode].textureData = nullptr;
-
-			if (masterTextureNodes[textureNode].nodeName)
-			{
-				textureStringHeap->Free(masterTextureNodes[textureNode].nodeName);
-				masterTextureNodes[textureNode].nodeName = nullptr;
-			}
-		}
-	}
-}
-
 void MC_TextureManager::releaseNode (DWORD textureNode)
 {
 	if (textureNode >= MC_MAXTEXTURES)

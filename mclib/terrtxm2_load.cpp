@@ -172,7 +172,7 @@ long TerrainColorMap::init (char *fileName)
 		if (fileExists(detailFile))		//Otherwise, its already 0xffffffff!!
 		{
 			ZoneScopedN("TerrainColorMap::init detailTexture");
-			detailTextureNodeIndex = mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
+			detailTextureNodeIndex.reset(mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
 		}
 		else
 			gosASSERT(false);
@@ -195,7 +195,7 @@ long TerrainColorMap::init (char *fileName)
 		if (fileExists(waterFile))
 		{
 			ZoneScopedN("TerrainColorMap::init waterTexture");
-			waterTextureNodeIndex = mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1);
+			waterTextureNodeIndex.reset(mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1));
 		}
 		else
 			gosASSERT(false);
@@ -219,7 +219,7 @@ long TerrainColorMap::init (char *fileName)
 		}
 		for (long i=0;i<MAX_WATER_DETAIL_TEXTURES;i++)
 		{
-			waterDetailNodeIndex[i] = 0xffffffff;
+			waterDetailNodeIndex[i].reset();
 		}
 		mc2::fmt::to_buf(dName, "{}{:04d}", mc2::fmt::safe(waterDetailBaseName), mc2::fmt::as_i32(0));
 		waterFile.init(texturePath,dName,".tga");
@@ -296,8 +296,8 @@ long TerrainColorMap::init (char *fileName)
 						}
 						{
 							ZoneScopedN("TerrainColorMap::init jpgColorMap tileCache");
-							textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE);
-							mcTextureManager->setTextureNeverFlush(textures[i].mcTextureNodeIndex, 0x1);
+							textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
+							mcTextureManager->setTextureNeverFlush(textures[i].mcTextureNodeIndex.get(), 0x1);
 						}
 					}
 				}
@@ -437,8 +437,8 @@ long TerrainColorMap::init (char *fileName)
 							}
 							{
 								ZoneScopedN("TerrainColorMap::init colorMap tileCache");
-								textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE);
-								mcTextureManager->setTextureNeverFlush(textures[i].mcTextureNodeIndex, 0x1);
+								textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
+								mcTextureManager->setTextureNeverFlush(textures[i].mcTextureNodeIndex.get(), 0x1);
 							}
 							if (i % 50 == 0)
 							{
@@ -586,9 +586,9 @@ long TerrainColorMap::init (char *fileName)
 
 						{
 							ZoneScopedN("TerrainColorMap::init normalMap tileCache");
-							normalMapTextures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw(
-								(DWORD *)tileRAM, gos_Texture_Solid, gosHint_DontShrink, COLOR_MAP_TEXTURE_SIZE);
-							mcTextureManager->setTextureNeverFlush(normalMapTextures[i].mcTextureNodeIndex, 0x1);
+							normalMapTextures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw(
+								(DWORD *)tileRAM, gos_Texture_Solid, gosHint_DontShrink, COLOR_MAP_TEXTURE_SIZE));
+							mcTextureManager->setTextureNeverFlush(normalMapTextures[i].mcTextureNodeIndex.get(), 0x1);
 						}
 					}
 					}
