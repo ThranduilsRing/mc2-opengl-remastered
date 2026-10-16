@@ -752,11 +752,52 @@ long TacticalOrder::getGroup (long commanderID, MoverPtr* moverList, MoverPtr* p
 
 //---------------------------------------------------------------------------
 
+namespace {
+void dispatchRoute(MechWarrior* warrior, mc2::sim::RouteExecution& route) {
+    const auto cursor = route.path.curPoint;
+    auto& path = warrior->getTacOrder(ORDERSTATE_GENERAL)->moveParams.wayPath;
+    path.curPoint = cursor;
+    warrior->getCurTacOrder()->moveParams.wayPath.curPoint = cursor;
+    route.pendingSegment = {cursor, route.revision, false};
+    route.awaitingMaps = route.retryPending = false;
+    warrior->setMoveWayPath(&path, route.kind == mc2::sim::OrderKind::PatrolPath);
+    const auto& point = route.path.points[cursor];
+    Stuff::Vector3D goal(point.x, point.y, point.z);
+    warrior->setMoveGoal(MOVEGOAL_LOCATION, &goal);
+    warrior->setMoveRun(route.path.mode[cursor] == mc2::sim::TravelMode::Fast);
+    warrior->requestMovePath(warrior->getTacOrder(ORDERSTATE_GENERAL)->selectionIndex,
+        MOVEPARAM_INIT | MOVEPARAM_FACE_TARGET, 21);
+}
+}
+void Mission::dispatchOwnedRoute(MechWarrior* warrior, mc2::sim::RouteExecution& route) {
+    if (ownedRoute(warrior) != &route || warrior->getOrderState() != ORDERSTATE_GENERAL ||
+        route.state != mc2::sim::RouteState::Active) return;
+    if (!routeMapsReady(warrior)) { route.awaitingMaps = true; return; }
+    dispatchRoute(warrior, route);
+}
+
 long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 
 	long result = TACORDER_FAILURE;
 	message = -1;
 
+    if (mission) if (auto* r = mission->ownedRoute(warrior)) {
+        if (warrior->getOrderState() == ORDERSTATE_GENERAL && code == static_cast<int>(r->kind)) {
+            const bool ready = mission->routeMapsReady(warrior);
+            if (r->state == mc2::sim::RouteState::Pending) {
+                if (ready) mission->signalRoute(*r, mc2::sim::RouteAction::Ready, true);
+                else r->awaitingMaps = true;
+            } else if (r->state == mc2::sim::RouteState::Suspended) {
+                mission->signalRoute(*r, mc2::sim::RouteAction::AlarmCleared, ready);
+                if (!r->terminal() && r->state == mc2::sim::RouteState::Pending) r->awaitingMaps = true;
+            }
+            if (!r->terminal()) {
+                moveParams.wayPath.curPoint = r->path.curPoint;
+                mission->dispatchOwnedRoute(warrior, *r);
+            }
+            return TACORDER_FAILURE;
+        }
+    }
 	if (warrior->getVehicle()->refitBuddyWID)	// am I in a refitting operation? if is, point my and my refit
 	{												// buddy to NULL, taking us out of the operation
 		GameObjectPtr refitBuddy = ObjectManager->getByWatchID(warrior->getVehicle()->refitBuddyWID);
@@ -1261,6 +1302,10 @@ extern Mission *mission;
 
 long TacticalOrder::status (MechWarriorPtr warrior) {
 
+    if (mission) if (auto* r = mission->ownedRoute(warrior)) {
+        if (this == warrior->getCurTacOrder() && warrior->getOrderState() == ORDERSTATE_GENERAL &&
+            code == static_cast<int>(r->kind)) return TACORDER_FAILURE;
+    }
 	long result = TACORDER_SUCCESS;
 
 	GameObjectPtr target = ObjectManager->getByWatchID(targetWID);

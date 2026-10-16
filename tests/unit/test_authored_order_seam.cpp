@@ -4,16 +4,23 @@
 #include "mover.h"
 #include "heap.h"
 #include "mission_init_frame.h"
+#include "mech.h"
+#include "movemgr.h"
+#include "team.h"
 
 #include <cstdlib>
+#include <algorithm>
+#include <array>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <regex>
 #include <set>
 
 bool missionFitOpordApplies(const MissionFitBrain&, unsigned long, bool);
+extern bool InitWayPath;
 
 namespace {
 // Supply world resources without replacing production constructors or order handling.
@@ -22,6 +29,39 @@ struct Actor : Mover {
 };
 struct Pilot : MechWarrior {
     bool received() const { return newTacOrderReceived[ORDERSTATE_GENERAL]; }
+};
+struct RouteMech : BattleMech {
+    void attach(MechWarrior& warrior) { pilot = &warrior; watchID = 1; setExists(true); }
+};
+struct RouteActors {
+    struct Watches : GameObjectManager {
+        GameObject* entries[2]{};
+        Watches() { watchList = entries; nextWatchID = 2; collisionSystem = nullptr; moverLineOfSightTable = nullptr; }
+    } objects;
+    Pilot pilot;
+    RouteMech mech;
+    bool previousInit = InitWayPath;
+    RouteActors() {
+        ObjectManager = &objects;
+        objects.entries[1] = &mech;
+        mech.attach(pilot);
+        pilot.setVehicle(&mech);
+        InitWayPath = true;
+    }
+    ~RouteActors() { InitWayPath = previousInit; }
+    void path(TacticalOrderCode code) {
+        auto& order = *pilot.getCurTacOrder();
+        order.init(ORDER_ORIGIN_SELF, code, false);
+        auto& path = order.moveParams.wayPath;
+        path.numPoints = 3;
+        for (int i = 0; i < path.numPoints; ++i) {
+            path.points[3*i] = 100.0f * (i + 1);
+            path.points[3*i+1] = 200.0f;
+            path.points[3*i+2] = 0.0f;
+            path.mode[i] = TRAVEL_MODE_SLOW;
+        }
+        pilot.setMoveWayPath(&path, code == TACTICAL_ORDER_PATROL_PATH);
+    }
 };
 struct Access {
     Actor& actor;
@@ -50,6 +90,9 @@ struct SeamWorldResources {
     unsigned long previousIcon = Mover::holdFireIconHandle;
     GameObjectManager* previousObjects = ObjectManager;
     MechWarrior* previousPilot = MechWarrior::warriorList[7];
+    Team* previousTeam = Team::teams[0];
+    bool previousBrain = MechWarrior::brainsEnabled[0];
+    long previousTeamCount = Team::numTeams;
     SeamWorldResources() {
         heap.init(1024 * 1024, "authored-order-seam");
         systemHeap = &heap;
@@ -64,13 +107,118 @@ struct SeamWorldResources {
         missionHeap = previousMissionHeap;
         ObjectManager = previousObjects;
         MechWarrior::warriorList[7] = previousPilot;
+        Team::teams[0] = previousTeam;
+        MechWarrior::brainsEnabled[0] = previousBrain;
+        Team::numTeams = previousTeamCount;
     }
 };
+}
+
+TEST_CASE("AuthoredOrderProduction/BattleMech patrol reverses at endpoints (warrior_move.cpp:743-770)") {
+    SeamWorldResources resources;
+    RouteActors actors;
+    actors.path(TACTICAL_ORDER_PATROL_PATH);
+    const int expected[] = {1, 2, 1, 0, 1};
+    for (const auto index : expected) {
+        Stuff::Vector3D next;
+        REQUIRE(actors.pilot.getNextWayPoint(next, false));
+        const auto cursor = actors.pilot.getMoveOrders()->curWayPt;
+        REQUIRE(actors.pilot.getNextWayPoint(next, false));
+        CHECK(actors.pilot.getMoveOrders()->curWayPt == cursor);
+        REQUIRE(actors.pilot.getNextWayPoint(next, true));
+        CHECK(next.x == 100.0f * (index + 1));
+        CHECK(next.y == 200.0f);
+        CHECK(actors.pilot.getMoveOrders()->curWayPt == index);
+        CHECK(actors.pilot.getCurTacOrder()->moveParams.wayPath.curPoint == index);
+    }
+}
+
+TEST_CASE("AuthoredOrderProduction/BattleMech traverse consumes extra mode sentinel (warrior_move.cpp:732)") {
+    SeamWorldResources resources;
+    RouteActors actors;
+    actors.path(TACTICAL_ORDER_TRAVERSE_PATH);
+    auto& path = actors.pilot.getCurTacOrder()->moveParams.wayPath;
+    REQUIRE(path.numPoints < MAX_WAYPTS);
+    path.mode[path.numPoints] = TRAVEL_MODE_FAST;
+    Stuff::Vector3D next;
+    for (int index = 1; index < path.numPoints; ++index) {
+        REQUIRE(actors.pilot.getNextWayPoint(next, true));
+        CHECK(next.x == 100.0f * (index + 1));
+        CHECK_FALSE(actors.pilot.getMoveRun());
+    }
+    const auto last = next;
+    CHECK_FALSE(actors.pilot.getNextWayPoint(next, true));
+    CHECK(next.x == last.x);
+    CHECK(actors.pilot.getMoveRun());
+    CHECK(actors.pilot.getMoveOrders()->curWayPt == path.numPoints);
+    CHECK(path.curPoint == path.numPoints);
+    CHECK(actors.pilot.getCurTacOrder()->stage == 2);
+}
+
+TEST_CASE("AuthoredOrderProduction/BattleMech waypoint reset depends on InitWayPath (warrior_move.cpp:186)") {
+    SeamWorldResources resources;
+    RouteActors actors;
+    actors.path(TACTICAL_ORDER_PATROL_PATH);
+    Stuff::Vector3D next;
+    REQUIRE(actors.pilot.getNextWayPoint(next, true));
+    auto& path = actors.pilot.getCurTacOrder()->moveParams.wayPath;
+    InitWayPath = false;
+    actors.pilot.setMoveWayPath(&path, true);
+    CHECK(actors.pilot.getMoveOrders()->curWayPt == 1);
+    InitWayPath = true;
+    actors.pilot.setMoveWayPath(&path, true);
+    CHECK(actors.pilot.getMoveOrders()->curWayPt == 0);
+}
+
+TEST_CASE("AuthoredOrderProduction/BattleMech path orders cannot reach the queue (tacordr.cpp:868-884,1263)") {
+    SeamWorldResources resources;
+    RouteActors actors;
+    struct QueueScope {
+        MovePathManager* previous = PathManager;
+        long paths = MovePathManager::numPaths, peak = MovePathManager::peakPaths;
+        std::array<long, 50> tally;
+        std::unique_ptr<MovePathManager> manager;
+        QueueScope() {
+            std::copy_n(MovePathManager::sourceTally, tally.size(), tally.begin());
+            manager = std::make_unique<MovePathManager>();
+            PathManager = manager.get();
+        }
+        ~QueueScope() {
+            PathManager = previous;
+            MovePathManager::numPaths = paths;
+            MovePathManager::peakPaths = peak;
+            std::copy(tally.begin(), tally.end(), MovePathManager::sourceTally);
+        }
+    } queue;
+    for (const auto code : {TACTICAL_ORDER_TRAVERSE_PATH, TACTICAL_ORDER_PATROL_PATH}) {
+        auto& order = *actors.pilot.getCurTacOrder();
+        order.init(ORDER_ORIGIN_SELF, code, false);
+        order.moveParams.wayPath.numPoints = 2;
+        order.setWayPoint(0, Stuff::Vector3D(100.0f, 200.0f, 0.0f));
+        order.setWayPoint(1, Stuff::Vector3D(300.0f, 400.0f, 0.0f));
+        long message = 0;
+        CHECK(order.execute(&actors.pilot, message) == TACORDER_FAILURE);
+        CHECK(message == -1);
+        CHECK(order.status(&actors.pilot) == TACORDER_SUCCESS);
+        auto path = order.moveParams.wayPath;
+        CHECK(actors.pilot.orderTraversePath(false, true, ORDER_ORIGIN_SELF, &path, 0) == TACORDER_SUCCESS);
+        CHECK(actors.pilot.orderPatrolPath(false, true, ORDER_ORIGIN_SELF, &path) == TACORDER_SUCCESS);
+        CHECK(queue.manager->queueFront == nullptr);
+        CHECK(actors.pilot.getMovePathRequest() == nullptr);
+        CHECK(actors.pilot.getMoveOrders()->numWayPts == 0);
+        CHECK(actors.pilot.getMovePath(0)->numStepsWhenNotPaused == 0);
+        CHECK(actors.pilot.getMovePath(1)->numStepsWhenNotPaused == 0);
+    }
 }
 
 TEST_CASE("AuthoredOrderProduction/mission admission resolves recipient and records installation") {
     SeamWorldResources resources;
     Pilot pilot;
+    Team team;
+    team.id = 0;
+    Team::teams[0] = &team;
+    MechWarrior::brainsEnabled[0] = true;
+    pilot.setTeam(&team);
     Actor actor;
     actor.attach(pilot);
     struct WatchManager : GameObjectManager {
@@ -79,15 +227,24 @@ TEST_CASE("AuthoredOrderProduction/mission admission resolves recipient and reco
     } objects;
     ObjectManager = &objects;
     objects.watches[1] = &actor;
+    pilot.setVehicle(&actor);
     MechWarrior::warriorList[7] = &pilot;
     struct AuthoredMission : Mission {
         using Mission::authoredRoutes;
         using Mission::orderIngress;
+        using Mission::rejectedRouteSignals;
+        using Mission::nextPartIncarnation;
+        using Mission::nextPilotIncarnation;
+        using Mission::nextRouteExecution;
+        using Mission::nextOrderRevision;
+        using Mission::authoredDiagnostics;
         void roster(Part* entries) { parts = entries; numParts = 2; }
         void releaseOrderState() {
             std::destroy_at(&orderFixtureReceipt);
             std::destroy_at(&authoredDiagnostics);
             std::destroy_at(&authoredRoutes);
+            std::destroy_at(&routeExecutions);
+            std::destroy_at(&rejectedRouteSignals);
             std::destroy_at(&authoredOpordPilots);
             std::destroy_at(&authoredMissionText);
             std::destroy_at(&orderRecipients);
@@ -125,6 +282,109 @@ TEST_CASE("AuthoredOrderProduction/mission admission resolves recipient and reco
     owner.completeOrderSimulationTick();
     CHECK(owner.orderIngress.queue().receipts().empty());
     CHECK(owner.authoredRoutes[0].installed);
+    using namespace mc2::sim;
+    REQUIRE(owner.authoredExecutions().size() == 1);
+    auto previous = owner.authoredExecutions().front();
+    CHECK(previous.originalPart == 2); CHECK(previous.selectedPart == 9); CHECK(previous.pilot == 7);
+    CHECK(previous.path == (**parsed).path); CHECK(previous.stance == 4);
+    CHECK(previous.state == RouteState::Pending); CHECK(previous.eventSequence == 0);
+    auto input = RouteSignal{previous.key, previous.revision, 1, 1, RouteAction::Ready, true, true, true, previous.pilotIncarnation};
+    SUBCASE("pilot replacement interrupts the old execution on its next signal") {
+        Pilot replacement;
+        actor.attach(replacement);
+        const auto event = owner.onRouteEvent(input);
+        REQUIRE(event); CHECK(event->event == RouteEventKind::Interrupted);
+        CHECK(event->reason == RouteReason::Removed);
+        CHECK(owner.routeExecution(previous.key)->state == RouteState::Interrupted);
+    }
+    SUBCASE("resetting mission records reproduces execution identities") {
+        const auto oldSession = owner.orderSession();
+        owner.resetOrderIngress(); owner.bindOrderRecipients();
+        owner.authoredRoutes.push_back(**parsed); owner.admitAuthoredRoutes();
+        owner.beginOrderSimulationTick(); owner.completeOrderSimulationTick();
+        REQUIRE(owner.authoredExecutions().size() == 1);
+        const auto& current = owner.authoredExecutions().front();
+        CHECK(current.key == previous.key); CHECK(current.revision == previous.revision);
+        CHECK(current.pilotIncarnation == previous.pilotIncarnation);
+        CHECK(owner.orderSession() != oldSession);
+        CHECK(owner.orderRecipient(2)->generation == 1);
+    }
+    SUBCASE("rejections retain only the last signal for an endless patrol") {
+        REQUIRE(owner.onRouteEvent(input));
+        for (int i = 0; i < 100; ++i) {
+            input.action = RouteAction::Ready; ++input.sequence;
+            CHECK_FALSE(owner.onRouteEvent(input));
+            CHECK(owner.rejectedRouteSignals.size() == 1);
+            CHECK(owner.rejectedRouteSignals.front().sequence == input.sequence);
+            input.action = RouteAction::Arrived;
+            REQUIRE(owner.onRouteEvent(input));
+        }
+    }
+    SUBCASE("destroy discards live routes and rejections before a mission reload") {
+        REQUIRE(owner.onRouteEvent(input));
+        CHECK_FALSE(owner.onRouteEvent(input));
+        ObjectManager = nullptr; MechWarrior::warriorList[7] = nullptr; missionHeap = nullptr;
+        Team::teams[0] = nullptr;
+        owner.destroy(false);
+        Team::teams[0] = &team;
+        ObjectManager = &objects; MechWarrior::warriorList[7] = &pilot; missionHeap = &resources.heap;
+        CHECK(owner.authoredExecutions().empty()); CHECK(owner.rejectedRouteSignals.empty());
+        CHECK(owner.authoredRoutes.empty()); CHECK_FALSE(owner.orderRecipient(2));
+        CHECK_FALSE(owner.onRouteEvent(input));
+        owner.bindOrderRecipients();
+        CHECK(owner.authoredExecutions().empty());
+        CHECK(owner.nextRouteExecution == 1); CHECK(owner.nextOrderRevision == 1);
+        CHECK(owner.nextPartIncarnation == 2); CHECK(owner.nextPilotIncarnation == 2);
+    }
+    SUBCASE("revision and terminal rejection preserve execution ownership") {
+        REQUIRE(owner.onRouteEvent(input));
+        CHECK_FALSE(owner.onRouteEvent(input)); CHECK_FALSE(owner.onRouteEvent(input));
+        CHECK(owner.rejectedRouteSignals.size() == 1); CHECK(owner.routeExecution(previous.key)->eventSequence == 1);
+        input.sequence = 2; input.action = RouteAction::Alarm;
+        REQUIRE(owner.onRouteEvent(input));
+        input.sequence = 3; input.action = RouteAction::AlarmCleared; --input.revision;
+        CHECK_FALSE(owner.onRouteEvent(input));
+        CHECK_FALSE(owner.onRouteEvent(input)); CHECK(owner.rejectedRouteSignals.size() == 1);
+        ++input.revision; input.segmentReachable = false;
+        REQUIRE(owner.onRouteEvent(input));
+        CHECK(owner.routeExecution(previous.key)->state == RouteState::Active);
+        input.sequence = 4; input.action = RouteAction::Alarm;
+        auto event = owner.onRouteEvent(input);
+        REQUIRE(event); CHECK(event->event == RouteEventKind::Suspended);
+        input.sequence = 5; input.action = RouteAction::AlarmCleared; input.segmentReachable = true;
+        REQUIRE(owner.onRouteEvent(input));
+        const auto sequence = owner.routeExecution(previous.key)->eventSequence;
+        ::TacticalOrder replacement;
+        replacement.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_STOP, false);
+        auto* savedMission = mission;
+        mission = &owner;
+        pilot.setGeneralTacOrder(replacement);
+        mission = savedMission;
+        CHECK(pilot.getTacOrder(ORDERSTATE_GENERAL)->code == TACTICAL_ORDER_PATROL_PATH);
+        CHECK(owner.routeExecution(previous.key)->eventSequence == sequence);
+        input.sequence = 6; input.action = RouteAction::AlarmCleared;
+        CHECK_FALSE(owner.onRouteEvent(input)); CHECK_FALSE(owner.onRouteEvent(input));
+        CHECK(owner.rejectedRouteSignals.size() == 1);
+        CHECK(owner.routeExecution(previous.key)->eventSequence == 5);
+    }
+    SUBCASE("identity exhaustion rejects once without unwinding queue application") {
+        for (const auto counter : {&owner.nextPartIncarnation, &owner.nextPilotIncarnation,
+                                  &owner.nextRouteExecution, &owner.nextOrderRevision}) {
+            owner.resetOrderIngress();
+            owner.authoredRoutes.push_back(**parsed);
+            *counter = std::numeric_limits<std::uint64_t>::max();
+            CHECK_NOTHROW(owner.bindOrderRecipients());
+            CHECK_NOTHROW(owner.admitAuthoredRoutes());
+            CHECK_NOTHROW(owner.beginOrderSimulationTick());
+            CHECK_NOTHROW(owner.completeOrderSimulationTick());
+            CHECK(owner.authoredExecutions().empty());
+            CHECK(owner.authoredRoutes[0].diagnosed);
+            REQUIRE(owner.authoredDiagnostics.size() == 1);
+            CHECK(owner.authoredDiagnostics[0].find("identity") != std::string::npos);
+            CHECK(owner.orderIngress.queue().receipts().empty());
+        }
+    }
+
 }
 
 TEST_CASE("AuthoredOrderProduction/OPORD eligibility matches the consumer skip rules") {

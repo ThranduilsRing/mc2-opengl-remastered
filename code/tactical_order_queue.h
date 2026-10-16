@@ -95,6 +95,70 @@ struct AuthoredRoute {
     std::optional<std::uint64_t> receiptId;
     bool installed = false, diagnosed = false;
 };
+
+enum class RouteState { Pending, Active, Suspended, Completed, Interrupted, Failed };
+enum class RouteReason { None, PlayerOrder, Removed, Unreachable, Alarm };
+enum class RouteAction { Ready, Arrived, Unreachable, PlayerOrder, Alarm, AlarmCleared, Removed, PathAccepted };
+enum class RouteEventKind { Started, Advanced, Retrying, Suspended, Resumed, Completed, Interrupted, Failed, PathAccepted };
+inline constexpr unsigned routeRetryBudget = 3;
+inline constexpr Tick routeRetryWindow = 30;
+inline constexpr RouteReason routePlayerReason = RouteReason::PlayerOrder;
+inline constexpr RouteReason routeRemovalReason = RouteReason::Removed;
+inline constexpr RouteReason routeFailureReason = RouteReason::Unreachable;
+
+// Proposed stance policy preserves authored travel modes; combat may temporarily suspend movement.
+enum class RouteCombat { Evade, ReturnFire, Defend, Engage, Pursue, FightToDeath };
+struct RouteStancePolicy { bool preserveTravelMode; RouteCombat combat; };
+inline constexpr RouteStancePolicy routeStancePolicies[] = {
+    {true, RouteCombat::Evade}, {true, RouteCombat::ReturnFire},
+    {true, RouteCombat::Defend}, {true, RouteCombat::Engage},
+    {true, RouteCombat::Pursue}, {true, RouteCombat::FightToDeath}
+};
+struct RouteKey {
+    std::uint64_t partIncarnation = 0, executionId = 0;
+    bool operator==(const RouteKey&) const = default;
+};
+struct RouteSignal {
+    RouteKey key;
+    std::uint64_t revision = 0, sequence = 0;
+    Tick tick = 0;
+    RouteAction action = RouteAction::Ready;
+    bool pathMapsReady = false, goalMapReady = false, segmentReachable = false;
+    std::uint64_t pilotIncarnation = 0;
+    bool operator==(const RouteSignal&) const = default;
+};
+struct RouteTransition {
+    RouteKey key;
+    std::uint64_t revision = 0, sequence = 0;
+    Tick tick = 0;
+    RouteEventKind event;
+    RouteReason reason;
+};
+struct RouteExecution {
+    RouteKey key;
+    std::uint64_t pilotIncarnation = 0;
+    std::uint32_t originalPart = 0, selectedPart = 0, pilot = 0, stance = 2;
+    OrderKind kind = OrderKind::None;
+    WayPath path;
+    std::uint64_t revision = 0;
+    RouteState state = RouteState::Pending;
+    RouteReason suspensionReason = RouteReason::None;
+    unsigned retriesRemaining = routeRetryBudget;
+    Tick retryDeadline = 0, lastTransitionTick = 0;
+    std::uint64_t eventSequence = 0;
+    struct Segment {
+        std::uint32_t cursor;
+        std::uint64_t revision;
+        bool reinit = false;
+        bool operator==(const Segment&) const = default;
+    };
+    std::optional<Segment> pendingSegment;
+    std::int32_t commander = -1;
+    bool generalWriteDiagnosed = false, awaitingMaps = false, retryPending = false;
+    bool terminal() const;
+    std::optional<TravelMode> cursorMode() const;
+    std::optional<RouteTransition> transition(const RouteSignal&);
+};
 // The caller owns the single diagnostic. A failed parse publishes no partial route.
 std::expected<std::optional<AuthoredRoute>, std::string> readAuthoredRoute(
     std::string_view missionText, std::uint32_t originalPart, std::uint32_t selectedPart,
@@ -335,6 +399,7 @@ template<class Actor, class Pilot> struct MissionRecipientBinding {
     bool retired = false;
     // FIT Part indices and runtime roster IDs occupy different namespaces.
     std::int64_t actorPartId = mover ? mover->getPartId() : 0;
+    std::uint64_t partIncarnation = 0, pilotIncarnation = 0;
 
     template<class Lookup> Actor* resolve(ObjectRef requested, Lookup lookup, std::uint32_t partWatch) {
         if (ref != requested || retired) return nullptr;
