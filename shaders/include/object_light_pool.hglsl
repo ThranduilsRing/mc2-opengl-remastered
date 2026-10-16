@@ -4,7 +4,7 @@
 // VK-PARITY-MECH-1: object-side night light-pool walk (POOL-CONSUMERS-1), shared
 // VERBATIM by the GL object shaders (via light_pools.hglsl::calcLightPools ->
 // static_prop.frag / mech.frag / gos_tex_vertex_lighted.frag) and the VK tier-1
-// mech FS (shaders/vulkan/mech_tier1.frag). One body, two backends.
+// mech and colour prop FSs (shaders/vulkan/mech_tier1.frag, color_prop_tier1.frag). One body, two backends.
 //
 // The INCLUDER must declare, before including this file:
 //   struct PoolLight { ... }   (48B std430, lockstep with gos_terrain_lighting.h

@@ -170,6 +170,15 @@ struct Mc2ColorPropLightFeed {
     float        pbrV1Strength;     // StaticPropPbr option: the specular strength when it is on, else 0.0
     float        pbrV1RoughnessOverride; // the GL roughness override the specular uses (the tuning slider), or -1.0 when it is off
     float        cameraWorldPos[4]; // GL world eye position for the specular view vector
+    // Night light pools (the GL prop pool term's inputs): the CPU pool array and its knobs.
+    const void*  poolLights48;      // GpuTerrainLight[numPoolLights] (48B each) or null
+    int32_t      numPoolLights;     // 0 = no pool term this frame
+    int32_t      poolSoft;
+    float        poolMoverDim;
+    float        poolMoverScale;
+    int32_t      poolMoverMax;
+    int32_t      poolCompress;
+    float        poolObjScale;
 };
 int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out);
 
