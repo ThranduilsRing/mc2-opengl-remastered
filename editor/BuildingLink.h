@@ -8,7 +8,7 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
-#include "Elist.h"
+#include <vector>
 
 class EditorObject;
 
@@ -50,7 +50,7 @@ private:
 	 };
 
 	 Info	parent;
-	 EList< Info, const Info& > children;
+	 std::vector<Info> children;
 
 
 	 // Helper function

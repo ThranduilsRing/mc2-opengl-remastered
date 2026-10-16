@@ -161,7 +161,8 @@ def main():
     (directory / "inputs.json").write_text(json.dumps(hashes, indent=2) + "\n", encoding="utf-8")
     env = dict(os.environ, _MSPDBSRV_ENDPOINT_=f"sol-editor-egl-{os.getpid()}",
                ASAN_OPTIONS="detect_leaks=0:halt_on_error=1")
-    commands = []
+    commands = [([sys.executable, "-B", "-m", "unittest",
+                  "editor.tests.test_placement_proofs.LegacyLinkTests"], 120, "legacy-link-order-run")]
     for target in ("editor_document_tests", "editor_document_tests_asan", "EditorShell", "EditorShellSmoke", "editor_panel_tests", "editor_objective_reader_tests"):
         if target == "editor_document_tests_asan" and not args.asan:
             continue

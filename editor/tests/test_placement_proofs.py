@@ -8,9 +8,156 @@ import struct
 import unittest
 from unittest.mock import patch
 import uuid
+import subprocess
+from scripts.console_child import child_kwargs
 
 from editor.tests.legacy_reference import (FROZEN, PLACEMENTS, buildings, compare_frozen,
     packet, reference_evidence, verify_frozen)
+
+
+class LegacyLinkTests(unittest.TestCase):
+    def test_child_order_snapshots_and_reverse_undo(self):
+        root = Path(__file__).resolve().parents[2]
+        output = root / "scratch/el2-links" / uuid.uuid4().hex
+        output.mkdir(parents=True)
+        def method(source, signature):
+            start = source.index(signature)
+            opening = source.index("{", start)
+            depth = 1
+            end = opening + 1
+            while depth:
+                depth += (source[end] == "{") - (source[end] == "}")
+                end += 1
+            return source[start:end] + "\n"
+        building = (root / "editor/BuildingLink.cpp").read_text()
+        brush = (root / "editor/LinkBrush.cpp").read_text()
+        header = (root / "editor/BuildingLink.h").read_text()
+        header = re.sub(r'^#include.*$', '', header, flags=re.M)
+        nested = (root / "editor/LinkBrush.h").read_text()
+        nested = nested[nested.index("\tstruct LinkInfo"):nested.index("\tLinkAction* pAction;")]
+        source = r'''
+#include <algorithm>
+#include <cassert>
+#include <vector>
+#define gosASSERT(x) ((void)0)
+#define SPEW(x) ((void)0)
+namespace Stuff { struct Vector3D { float x{}, y{}, z{}; bool operator==(const Vector3D&) const = default; }; }
+'''
+        source += r'''
+struct EditorObject {
+    int id, alignment; Stuff::Vector3D pos;
+    int getID() const { return id; } auto getPosition() const { return pos; }
+    int getAlignment() const { return alignment; }
+    void setAlignment(int a) { alignment = a; }
+};
+struct Terrain { float getTerrainElevation(const Stuff::Vector3D&) { return 0; } };
+Terrain* land;
+'''
+        source += header + '\nstruct Action {};\nclass LinkBrush { public:\n' + nested + '\n};\n'
+        source += r'''
+struct EditorObjectMgr {
+    std::vector<EditorObject> objects;
+    std::vector<BuildingLink*> links;
+    std::vector<int> visits;
+    static EditorObjectMgr* active;
+    static auto instance() { return active; }
+    EditorObject* getObjectAtLocation(float x, float y) {
+        for (auto& o : objects) if (o.pos.x == x && o.pos.y == y) return &o;
+        return nullptr;
+    }
+    BuildingLink* getLinkWithParent(const EditorObject* o) {
+        for (auto* l : links) if (l->HasParent(o)) return l;
+        return nullptr;
+    }
+    BuildingLink* getLinkWithBuilding(const EditorObject* o) {
+        for (auto* l : links) if (l->HasParent(o) || l->HasChild(o)) return l;
+        return nullptr;
+    }
+    void deleteLink(BuildingLink* l) {
+        visits.push_back(-static_cast<int>(l->GetParentPosition().x));
+        links.erase(std::find(links.begin(), links.end(), l)); delete l;
+    }
+    void addLink(BuildingLink* l) { visits.push_back(static_cast<int>(l->GetParentPosition().x)); links.push_back(l); }
+    ~EditorObjectMgr() { for (auto* l : links) delete l; }
+};
+EditorObjectMgr* EditorObjectMgr::active;
+'''
+        for signature in ('BuildingLink::BuildingLink( const EditorObject*',
+                          'BuildingLink::BuildingLink( const Stuff::Vector3D&',
+                          'BuildingLink::BuildingLink( const BuildingLink&',
+                          'BuildingLink& BuildingLink::operator=', 'void BuildingLink::CopyData',
+                          'bool BuildingLink::AddChild', 'int BuildingLink::GetLinkCount',
+                          'const Stuff::Vector3D& BuildingLink::GetParentPosition',
+                          'bool BuildingLink::HasChild', 'bool BuildingLink::HasParent',
+                          'bool BuildingLink::RemoveObject', 'int BuildingLink::GetChildrenPositions',
+                          'void\tBuildingLink::FixHeights'):
+            source += method(building, signature)
+        for signature in ('void LinkBrush::LinkAction::AddToListOnce', 'LinkBrush::LinkAction::LinkAction',
+                          'bool LinkBrush::LinkAction::undo', 'bool LinkBrush::LinkAction::redo',
+                          'LinkBrush::LinkInfo::LinkInfo'):
+            source += method(brush, signature)
+        source += r'''
+int main() {
+    EditorObjectMgr mgr; EditorObjectMgr::active = &mgr;
+    mgr.objects = {{1, 1, {1,0,0}}, {2, 2, {2,0,0}}, {3, 0, {3,0,0}}, {4, 0, {4,0,0}}};
+    auto& a = mgr.objects[0]; auto& b = mgr.objects[1]; auto& c = mgr.objects[2]; auto& d = mgr.objects[3];
+    BuildingLink link(&a);
+    assert(link.AddChild(&d)); assert(link.AddChild(&c)); assert(!link.AddChild(&d));
+    Stuff::Vector3D positions[3]{{99,0,0}};
+    assert(link.GetChildrenPositions(positions, 1) == 2 && positions[0].x == 99);
+    assert(link.GetChildrenPositions(positions, 3) == 2 && positions[0] == d.pos && positions[1] == c.pos);
+    BuildingLink copy(link); BuildingLink assigned(&b); assigned = link; assigned = assigned;
+    assert(!link.RemoveObject(&a)); assert(link.RemoveObject(&d)); assert(!link.RemoveObject(&d));
+    assert(link.AddChild(&d));
+    assert(link.GetChildrenPositions(positions, 3) == 2 && positions[0] == c.pos && positions[1] == d.pos);
+    for (auto* snapshot : {&copy, &assigned}) {
+        assert(snapshot->GetChildrenPositions(positions, 3) == 2 && positions[0] == d.pos && positions[1] == c.pos);
+    }
+    assert(link.RemoveObject(&c)); assert(link.RemoveObject(&d)); assert(link.GetLinkCount() == 0);
+    assert(link.GetChildrenPositions(positions, 3) == 0);
+    EditorObject elevated = d; elevated.pos.z = 1;
+    assert(link.AddChild(&d)); assert(link.AddChild(&c)); assert(link.AddChild(&elevated));
+    Terrain terrain; land = &terrain; link.FixHeights();
+    assert(link.RemoveObject(&d));
+    assert(link.GetChildrenPositions(positions, 3) == 2 && positions[0] == c.pos && positions[1] == d.pos);
+    LinkBrush::LinkAction empty; assert(empty.undo()); assert(empty.redo());
+    BuildingLink first(&a); first.AddChild(&c); first.AddChild(&d);
+    BuildingLink second(&b); second.AddChild(&c);
+    LinkBrush::LinkAction action;
+    action.AddToListOnce({&first, LinkBrush::LinkInfo::REMOVE});
+    action.AddToListOnce({&second, LinkBrush::LinkInfo::REMOVE});
+    BuildingLink duplicate(&a);
+    action.AddToListOnce({&duplicate, LinkBrush::LinkInfo::ADD});
+    assert(action.undo()); assert((mgr.visits == std::vector<int>{2,1}));
+    assert(c.alignment == 1 && d.alignment == 1);
+    assert(mgr.links[1]->GetChildrenPositions(positions, 3) == 2 && positions[0] == c.pos && positions[1] == d.pos);
+    mgr.visits.clear(); assert(action.redo()); assert((mgr.visits == std::vector<int>{-2,-1})); assert(mgr.links.empty());
+    mgr.visits.clear(); assert(action.undo()); assert((mgr.visits == std::vector<int>{2,1}));
+    LinkBrush::LinkAction edit; edit.AddToListOnce({mgr.links[1]});
+    mgr.links[1]->RemoveObject(&c);
+    assert(edit.undo()); assert(mgr.links[1]->GetChildrenPositions(positions, 3) == 2 && positions[0] == c.pos);
+    assert(edit.redo()); assert(mgr.links[1]->GetChildrenPositions(positions, 3) == 1 && positions[0] == d.pos);
+}
+'''
+        def run(contents, label):
+            cpp = output / (label + '.cpp'); cpp.write_text(contents)
+            exe = output / (label + '.exe')
+            built = subprocess.run(['clang++', '-std=c++23', '-I', str(root), str(cpp), '-o', str(exe)],
+                                   capture_output=True, text=True, timeout=90, **child_kwargs(redirected=True))
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            result = subprocess.run([str(exe)], capture_output=True, timeout=30, **child_kwargs(redirected=True))
+            if label == 'links':
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            return result.returncode
+        self.assertEqual(run(source, 'links'), 0)
+        # Mutate the production bodies, keeping the fixture's expected order fixed.
+        append = 'children.push_back( tmp );'
+        self.assertIn(append, source)
+        self.assertNotEqual(run(source.replace(append, 'children.insert(children.begin(), tmp);'), 'wrong-child-order'), 0)
+        reverse = 'changedLinks.rbegin(); iter != changedLinks.rend(); ++iter'
+        self.assertIn(reverse, source)
+        self.assertNotEqual(run(source.replace(reverse, 'changedLinks.begin(); iter != changedLinks.end(); ++iter'), 'wrong-undo-order'), 0)
+        print(f'Link fixture artifacts: {output}')
 
 
 class FrozenParityTests(unittest.TestCase):

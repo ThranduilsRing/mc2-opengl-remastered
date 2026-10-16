@@ -1,17 +1,17 @@
 # Step 4 B2 container call sites from a [[deprecated("B2")]] build (tests/analyze/container_callsites.py); a batch commit removes its rows.
-# total 917 sites in 61 files
+# total 881 sites in 57 files
 # per kind:
-#     257  EList::Begin
-#     189  EList
-#     162  EList::Count
-#     115  EList::Append
-#      40  EList::~EList
-#      28  EList::Delete
+#     248  EList::Begin
+#     177  EList
+#     158  EList::Count
+#     112  EList::Append
+#      39  EList::~EList
 #      28  EList::operator[]
+#      27  EList::Delete
 #      23  EList::Iterator
-#      22  EList::EList
-#      20  EList::Clear
-#      13  EList::End
+#      19  EList::Clear
+#      18  EList::EList
+#      12  EList::End
 #      10  EList::GetHead
 #       4  EList::Insert
 #       2  EList::operator==
@@ -23,8 +23,8 @@
 #       1  B2.3
 #       6  B6
 #     288  E1
-#     445  E2
-#      29  E3
+#     418  E2
+#      20  E3
 #     148  E4
 # sites in files the batch table does NOT list (includers the compiler forces, or the PCH): 0 in 0 files
 # per file:
@@ -38,7 +38,6 @@
 #      37  editor/EditorObjectMgr.h
 #      33  editor/EditorObjectMgr_render.cpp
 #      27  editor/ObjectivesDlg.cpp
-#      26  editor/BuildingLink.cpp
 #      23  editor/BuildingSettingsDlg.cpp
 #      22  editor/EditorObjectMgr_pick.cpp
 #      20  editor/CampaignDialog.cpp
@@ -56,7 +55,6 @@
 #       8  editor/Objective_conditions.cpp
 #       7  editor/EditorInterface_wnd.cpp
 #       7  editor/GroupDialog.cpp
-#       7  editor/LinkBrush.cpp
 #       5  code/mpparameterscreen.cpp
 #       4  editor/BuildingBrush.cpp
 #       4  editor/EditorInterface_editor.cpp
@@ -71,7 +69,6 @@
 #       2  editor/EditorObjects_unit.cpp
 #       2  editor/GameplayDebugger.cpp
 #       2  editor/InspectorPanel.cpp
-#       2  editor/LinkBrush.h
 #       2  editor/ObjectSelectionBrush.cpp
 #       2  editor/ObjectiveDlg.h
 #       2  editor/SelectionBrush.cpp
@@ -79,7 +76,6 @@
 #       2  editor/campaignData.h
 #       1  code/mission_update.cpp
 #       1  code/mpparameterscreen.h
-#       1  editor/BuildingLink.h
 #       1  editor/DamageBrush.cpp
 #       1  editor/EditorInterface.cpp
 #       1  editor/EditorInterface_imgui.cpp
@@ -96,8 +92,6 @@
 # blob b31494e4c1a6dde629f4314019849e47784999da editor/Action.h
 # blob 3bb73f78efe7050a2464d40c8f5c56aa0adf36be editor/BuildingBrush.cpp
 # blob ffba17cb457c4844b67e5b8344a8854efded1cf4 editor/BuildingBrush.h
-# blob 0f367c156e68b2e0b489b489b07251107cd5e304 editor/BuildingLink.cpp
-# blob 0781fb19e8c1c77b7295cea330b97a561bb42de0 editor/BuildingLink.h
 # blob a7df5ac1a2d8e07091214366b2e3b6996f1b28a6 editor/BuildingSettingsDlg.cpp
 # blob 1edc9812c84eab22d662e03a49b712b36ac952ac editor/BuildingSettingsDlg.h
 # blob fe00343fdcd0a409f689a5a81b45cdcfef0e77c2 editor/CampaignData.cpp
@@ -128,8 +122,6 @@
 # blob 7fe708a411675e9db2c1f20f1b3e1bd1f0e3b512 editor/GroupDialog.cpp
 # blob cfccb98b3478c7f5cba34acacfb7fe73b8aee829 editor/HeightBrush.cpp
 # blob ce78979d26d339bc9bdaf034338fefc8e60e20b4 editor/InspectorPanel.cpp
-# blob acd57f65f4f2192d2fe1381d1a57c5d8ff16c543 editor/LinkBrush.cpp
-# blob 827751d68ba116ce91878f98d307f1b5219f4c61 editor/LinkBrush.h
 # blob 12d303e40ff570baf923ab693f5fb42761a867e4 editor/MissionValidation.cpp
 # blob f5bc0d48faff08df66c80bc4467224f71aeadccd editor/ObjectSelectionBrush.cpp
 # blob 60fc1db428d58d4068d0612e0a34840172e52047 editor/ObjectSelectionBrush.h
@@ -234,33 +226,6 @@ editor/BuildingBrush.cpp:286:EList::Append
 editor/BuildingBrush.h:68:EList
 editor/BuildingBrush.h:70:EList::~EList
 editor/BuildingBrush.h:72:EList::Begin
-editor/BuildingLink.cpp:38:EList::EList
-editor/BuildingLink.cpp:46:EList::EList
-editor/BuildingLink.cpp:52:EList::EList
-editor/BuildingLink.cpp:70:EList::Clear
-editor/BuildingLink.cpp:72:EList
-editor/BuildingLink.cpp:72:EList::Begin
-editor/BuildingLink.cpp:75:EList::Append
-editor/BuildingLink.cpp:85:EList
-editor/BuildingLink.cpp:85:EList::Begin
-editor/BuildingLink.cpp:102:EList::Append
-editor/BuildingLink.cpp:110:EList::Count
-editor/BuildingLink.cpp:125:EList
-editor/BuildingLink.cpp:125:EList::Begin
-editor/BuildingLink.cpp:222:EList
-editor/BuildingLink.cpp:222:EList::Begin
-editor/BuildingLink.cpp:227:EList::Delete
-editor/BuildingLink.cpp:238:EList::Count
-editor/BuildingLink.cpp:239:EList::Count
-editor/BuildingLink.cpp:242:EList
-editor/BuildingLink.cpp:242:EList::Begin
-editor/BuildingLink.cpp:317:EList
-editor/BuildingLink.cpp:317:EList::Begin
-editor/BuildingLink.cpp:386:EList
-editor/BuildingLink.cpp:386:EList::Begin
-editor/BuildingLink.cpp:403:EList
-editor/BuildingLink.cpp:403:EList::Begin
-editor/BuildingLink.h:53:EList
 editor/BuildingSettingsDlg.cpp:21:EList
 editor/BuildingSettingsDlg.cpp:91:EList
 editor/BuildingSettingsDlg.cpp:91:EList::Begin
@@ -742,15 +707,6 @@ editor/GroupDialog.cpp:211:EList::operator[]
 editor/HeightBrush.cpp:56:EList::Count
 editor/InspectorPanel.cpp:61:EList::Count
 editor/InspectorPanel.cpp:62:EList::Begin
-editor/LinkBrush.cpp:59:EList::Count
-editor/LinkBrush.cpp:194:EList
-editor/LinkBrush.cpp:194:EList::Begin
-editor/LinkBrush.cpp:203:EList::Append
-editor/LinkBrush.cpp:207:EList::EList
-editor/LinkBrush.cpp:213:EList
-editor/LinkBrush.cpp:213:EList::End
-editor/LinkBrush.h:77:EList::~EList
-editor/LinkBrush.h:82:EList
 editor/MissionValidation.cpp:156:EList::~EList
 editor/MissionValidation.cpp:157:EList::Begin
 editor/MissionValidation.cpp:256:EList::~EList

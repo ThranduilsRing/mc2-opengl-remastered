@@ -67,13 +67,7 @@ void BuildingLink::CopyData( const BuildingLink& Src )
 {
 	parent = Src.parent;
 
-	children.Clear();
-
-	for ( EList< Info, const Info& >::EConstIterator iter = Src.children.Begin();
-	!iter.IsDone(); iter++ )
-	{
-		children.Append( *iter );	
-	}
+	children = Src.children;
 }
 
 
@@ -82,24 +76,23 @@ bool BuildingLink::AddChild( const EditorObject* pObject )
 {
 	int ID = pObject->getID();
 	
-	for( EList< Info, const Info& >::EIterator iter = children.Begin();
-		!iter.IsDone(); iter++ )
+	for ( const auto& child : children )
+	{
+		if ( child.pos == pObject->getPosition() &&
+			 child.m_ID == ID )
 		{
-			if ( (*iter).pos == pObject->getPosition() &&
-				 (*iter).m_ID == ID )
-			{
-				SPEW( (0, "Link::AddChild, not adding an object because it is"
-					"already there\n" ) );
+			SPEW( (0, "Link::AddChild, not adding an object because it is"
+				"already there\n" ) );
 
-				return false;
-			}
+			return false;
 		}
+	}
 
 	Info tmp;
 	tmp.pos = pObject->getPosition();
 	tmp.m_ID = ID;
 
-	children.Append( tmp );
+	children.push_back( tmp );
 
 	return true;
 
@@ -107,7 +100,7 @@ bool BuildingLink::AddChild( const EditorObject* pObject )
 
 int BuildingLink::GetLinkCount( ) const
 {
-	return children.Count();
+	return static_cast<int>(children.size());
 }
 
 
@@ -122,12 +115,11 @@ bool BuildingLink::HasChild( const EditorObject* pObject ) const
 	pObject->getPosition();
 
 	
-	for( EList< Info, const Info& >::EConstIterator iter = children.Begin();
-		!iter.IsDone(); iter++ )
+	for ( const auto& child : children )
 	{
-		if ( (*iter).pos == pObject->getPosition() )
+		if ( child.pos == pObject->getPosition() )
 		{
-			if ( (*iter).m_ID == ID )
+			if ( child.m_ID == ID )
 				return true;
 		}
 	}
@@ -219,12 +211,11 @@ bool BuildingLink::RemoveObject( const EditorObject* pObject )
 	Stuff::Vector3D pos = pObject->getPosition( );
 	long ID = pObject->getID();
 	
-	for ( EList< Info, const Info& >::EIterator iter = children.Begin();
-	!iter.IsDone(); iter++ )
+	for ( auto iter = children.begin(); iter != children.end(); ++iter )
 	{
 		if ( ID == (*iter).m_ID && pos == (*iter).pos  )
 		{
-			children.Delete( iter );
+			children.erase( iter );
 			return true;
 		}
 	}
@@ -235,14 +226,13 @@ bool BuildingLink::RemoveObject( const EditorObject* pObject )
 
 int BuildingLink::GetChildrenPositions( Stuff::Vector3D* pos, int Count ) const
 {
-	if ( children.Count() > (unsigned long)Count )
-		return children.Count();
+	if ( children.size() > static_cast<unsigned long>(Count) )
+		return static_cast<int>(children.size());
 
 	int i = 0;
-	for ( EList< Info, const Info& >::EConstIterator iter = children.Begin();
-	!iter.IsDone(); iter++ )
+	for ( const auto& child : children )
 	{
-		pos[i++] = (*iter).pos;
+		pos[i++] = child.pos;
 	}
 
 	return i; 
@@ -314,14 +304,11 @@ static bool isInView(const Point3D &position)
 
 void BuildingLink::render()
 {
-	for ( EList< Info, const Info& >::EConstIterator iter = children.Begin();
-	!iter.IsDone(); iter++ )
+	for ( const auto& child : children )
 	{
-		/* Rather than doing true clipping, the link lines are broken into "typical object"
-		sized pieces and rendered using course culling and relying on guard band clipping
-		in the fashion that buildings are rendered. */
+		// Short segments keep long links visible under coarse object culling.
 		Stuff::Vector3D diffVect;
-		diffVect.Subtract((*iter).pos, parent.pos);
+		diffVect.Subtract(child.pos, parent.pos);
 		float lineLength = diffVect.GetLength();
 		const float lengthOfATypicalLargeObject = 150.0/*arbitrary*/;
 		int numSegments = lineLength / lengthOfATypicalLargeObject;
@@ -348,7 +335,7 @@ void BuildingLink::render()
 				// Modern zoom-correct projection (legacy projectZ X-collapses on zoom).
 				float s1x, s1y, s2x, s2y;
 				if ( projectPtGL_link( eye, p1, s1x, s1y ) &&
-				     projectPtGL_link( eye, p2, s2x, s2y ) )   // skip segment if either rejects
+				     projectPtGL_link( eye, p2, s2x, s2y ) )
 				{
 					Stuff::Vector4D vertices[2];
 					vertices[0].x = s1x;
@@ -383,27 +370,25 @@ void	BuildingLink::SetParentAlignment( int alignment )
 		gosASSERT(false);
 	}
 
-	for ( EList<Info, const Info& >::EConstIterator iter = children.Begin(); 
-		!iter.IsDone(); iter++ )
+	for ( const auto& child : children )
+	{
+		pTmp = EditorObjectMgr::instance()->getObjectAtLocation( child.pos.x, child.pos.y ) ;
+		if ( pTmp )
+			pTmp->setAlignment( alignment );
+		else
 		{
-			pTmp = EditorObjectMgr::instance()->getObjectAtLocation( (*iter).pos.x, (*iter).pos.y ) ;
-			if ( pTmp )
-				pTmp->setAlignment( alignment );
-			else
-			{
-				gosASSERT(false);
-			}
+			gosASSERT(false);
 		}
+	}
 }
 
 void	BuildingLink::FixHeights()
 {
 	parent.pos.z = land->getTerrainElevation( parent.pos );
 
-	for ( EList<Info, const Info& >::EIterator iter = children.Begin(); 
-		!iter.IsDone(); iter++ )
+	for ( auto& child : children )
 	{
-		(*iter).pos.z = land->getTerrainElevation((*iter).pos );
+		child.pos.z = land->getTerrainElevation(child.pos );
 	}
 }
 void	BuildingLink::SetParentPosition( const Stuff::Vector3D& pos )
