@@ -53,37 +53,79 @@ INSTALL_DIR = "A:/Games/mc2-opengl/mc2-win64-v0.4"
 #: alone is 4 GB, and a changed model is a changed size or name in practice).
 FINGERPRINT_ARCHIVES = ("mission.fst", "tgl.fst", "effect.fst", "misc.fst", "camera.fst")
 FINGERPRINT_TREES = ("data/tgl", "data/objects", "data/effects", "data/missions", "data/warriors")
+#: The loose files a baseline run is allowed on top of the stock data (the fixtures tests need), by content hash. A baseline pins the
+#: stock archives and trees plus exactly this overlay, never a lane's working install; `write-overlay` regenerates it from an install.
+OVERLAY_MANIFEST = os.path.join(BASELINE_DIR, "data_overlay.json")
 
 
 def baseline_path(mission: str) -> str:
     return os.path.join(BASELINE_DIR, mission + ".json")
 
 
-def data_fingerprint(install: str = INSTALL_DIR) -> dict:
-    """-> {"digest", "inputs"}: a digest of the install data the simulation reads. Archives by content, loose trees by relative path and size."""
+def _sha256(path: str) -> str:
     h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for block in iter(lambda: fh.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def load_overlay_manifest(path: str = OVERLAY_MANIFEST) -> dict:
+    """The declared overlay: {"overlay": {install-relative path: sha256}, "stock_digest": ...}. Empty when the file is missing."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return {"overlay": {}, "stock_digest": ""}
+
+
+def data_fingerprint(install: str = INSTALL_DIR, manifest: dict | None = None) -> dict:
+    """-> {"digest", "inputs", "stock_digest", "overlay", "problems"}: a digest of the install data the simulation reads.
+
+    The digest covers two parts. STOCK: the archives by content and the loose trees by relative path and size, leaving out the declared
+    overlay and the `*.beauty` presentation sidecars (render-only, they differ per lane without touching the simulation). OVERLAY: the
+    files tests/smoke/sim_determinism/data_overlay.json declares, by content. `problems` names a declared overlay file that is missing or
+    changed and a stock part that no longer equals the manifest's `stock_digest`, so a dirty install says why instead of only differing.
+    """
+    manifest = load_overlay_manifest() if manifest is None else manifest
+    declared = manifest.get("overlay", {})
+    stock = hashlib.sha256()
     inputs = []
     for name in FINGERPRINT_ARCHIVES:
         p = os.path.join(install, name)
         if os.path.exists(p):
-            with open(p, "rb") as fh:
-                for block in iter(lambda: fh.read(1 << 20), b""):
-                    h.update(block)
+            stock.update(_sha256(p).encode())
             inputs.append(name)
     for tree in FINGERPRINT_TREES:
         base = os.path.join(install, tree)
         if not os.path.isdir(base):
             continue
         entries = []
-        for dp, _dn, fns in os.walk(base):
+        for dp, dn, fns in os.walk(base):
+            dn[:] = [d for d in dn if not d.endswith(".beauty")]
             for fn in fns:
                 full = os.path.join(dp, fn)
-                entries.append(f"{os.path.relpath(full, install).replace(os.sep, '/')} {os.path.getsize(full)}")
+                rel = os.path.relpath(full, install).replace(os.sep, "/")
+                if rel not in declared:
+                    entries.append(f"{rel} {os.path.getsize(full)}")
         for e in sorted(entries):
-            h.update(e.encode("utf-8", "replace"))
-            h.update(b"\n")
+            stock.update(e.encode("utf-8", "replace"))
+            stock.update(b"\n")
         inputs.append(tree + "/")
-    return {"digest": h.hexdigest()[:16], "inputs": inputs}
+    overlay, problems = {}, []
+    for rel in sorted(declared):
+        full = os.path.join(install, rel)
+        got = _sha256(full) if os.path.isfile(full) else "missing"
+        overlay[rel] = got[:16]
+        if got != declared[rel]:
+            problems.append(f"overlay file {rel} is {'missing' if got == 'missing' else 'not the declared content'}")
+    stock_digest = stock.hexdigest()[:16]
+    if manifest.get("stock_digest") and manifest["stock_digest"] != stock_digest:
+        problems.append(f"the stock part {stock_digest} is not the manifest's {manifest['stock_digest']} (loose data added or removed outside the overlay)")
+    h = hashlib.sha256(stock_digest.encode())
+    for rel in sorted(overlay):
+        h.update(f"{rel} {overlay[rel]}\n".encode())
+    return {"digest": h.hexdigest()[:16], "inputs": inputs, "stock_digest": stock_digest, "overlay": overlay, "problems": problems}
 
 
 def load_simid(path: str) -> list:
@@ -132,7 +174,8 @@ def check_baseline(lines, baseline_path: str, seed: str = "", fingerprint: dict 
         return False, f"this run's mission seed {seed} is not the baseline's {base['seed']} (MC2_RNG_SEED set, or another mission name?)"
     if base.get("data_fingerprint") and fingerprint and base["data_fingerprint"]["digest"] != fingerprint["digest"]:
         return False, (f"the install data fingerprint {fingerprint['digest']} is not the baseline's {base['data_fingerprint']['digest']}: "
-                       "the baseline pins other data (re-record it after a data change, with the reason in the commit)")
+                       "the baseline pins other data (re-record it after a data change, with the reason in the commit)"
+                       + "".join("; " + pr for pr in (fingerprint.get("problems") or [])))
     n = int(base["frames"])
     if len(lines) < n:
         return False, f"the run has {len(lines)} sim frames, the baseline needs {n}"
@@ -380,11 +423,32 @@ def selftest() -> int:
             fh.write(b"abc")
         with open(os.path.join(inst, "data", "tgl", "x.ini"), "wb") as fh:
             fh.write(b"1234")
-        f1 = data_fingerprint(inst)
+        f1 = data_fingerprint(inst, {})
         with open(os.path.join(inst, "data", "tgl", "x.ini"), "wb") as fh:
             fh.write(b"12345")
-        expect(f1["digest"] != data_fingerprint(inst)["digest"] and f1["inputs"] == ["mission.fst", "data/tgl/"],
+        expect(f1["digest"] != data_fingerprint(inst, {})["digest"] and f1["inputs"] == ["mission.fst", "data/tgl/"],
                "the data fingerprint sees a changed loose file size and names its inputs")
+        os.makedirs(os.path.join(inst, "data", "missions", "m.beauty"))
+        with open(os.path.join(inst, "data", "missions", "m.beauty", "h.r32"), "wb") as fh:
+            fh.write(b"x")
+        with open(os.path.join(inst, "data", "missions", "fx.fit"), "wb") as fh:
+            fh.write(b"fixture")
+        man = {"overlay": {"data/missions/fx.fit": _sha256(os.path.join(inst, "data", "missions", "fx.fit"))}, "stock_digest": ""}
+        f2 = data_fingerprint(inst, man)
+        man["stock_digest"] = f2["stock_digest"]
+        with open(os.path.join(inst, "data", "missions", "m.beauty", "h.r32"), "wb") as fh:
+            fh.write(b"yy")
+        expect(data_fingerprint(inst, man) == f2 and not f2["problems"], "a presentation sidecar does not move the fingerprint")
+        with open(os.path.join(inst, "data", "missions", "fx.fit"), "wb") as fh:
+            fh.write(b"changed")
+        f3 = data_fingerprint(inst, man)
+        expect(f3["digest"] != f2["digest"] and f3["problems"] and "fx.fit" in f3["problems"][0], "a changed overlay file moves the digest and is named")
+        os.remove(os.path.join(inst, "data", "missions", "fx.fit"))
+        with open(os.path.join(inst, "data", "missions", "other.fit"), "wb") as fh:
+            fh.write(b"stray")
+        f4 = data_fingerprint(inst, man)
+        expect(any("missing" in x for x in f4["problems"]) and any("stock part" in x for x in f4["problems"]),
+               "a missing overlay file and a stray loose file are both reported")
     from unittest.mock import patch
 
     class _Stop(Exception):
@@ -472,19 +536,35 @@ def main(argv=None) -> int:
     w.add_argument("--out", help="default: tests/smoke/sim_determinism/<mission>.json")
     w.add_argument("--env", action="append", default=[], metavar="NAME=VALUE", help="the fixture env the run had, recorded for `check`")
     install_arg(w)
+    o = sub.add_parser("write-overlay", help="declare the overlay: the loose .fit/.pak files directly in data/missions of --install, with the stock digest")
+    install_arg(o)
     sub.add_parser("selftest")
     args = ap.parse_args(argv)
     if args.cmd == "selftest":
         return selftest()
+    if args.cmd == "write-overlay":
+        base = os.path.join(args.install, "data", "missions")
+        declared = {f"data/missions/{fn}": _sha256(os.path.join(base, fn)) for fn in sorted(os.listdir(base))
+                    if fn.endswith((".fit", ".pak")) and os.path.isfile(os.path.join(base, fn))}
+        fp = data_fingerprint(args.install, {"overlay": declared, "stock_digest": ""})
+        with open(OVERLAY_MANIFEST, "w", encoding="utf-8", newline="\n") as fh:
+            json.dump({"about": "loose fixture files a baseline run may carry on top of the stock data, by sha256; *.beauty sidecars are not fingerprinted; "
+                                "tools/sim_determinism.py write-overlay regenerates this", "stock_digest": fp["stock_digest"], "overlay": declared}, fh, indent=1)
+            fh.write("\n")
+        print(f"sim_determinism: wrote {os.path.relpath(OVERLAY_MANIFEST, ROOT)}: {len(declared)} overlay files, stock {fp['stock_digest']}")
+        return 0
     if args.cmd == "write-baseline":
         lines = load_simid(args.log)
         if len(lines) < args.frames:
             sys.exit(f"the log has {len(lines)} sim frames, fewer than --frames {args.frames}")
+        fp = data_fingerprint(args.install)
+        if fp["problems"]:
+            sys.exit("the install is not the declared stock-plus-overlay data set; no baseline written:\n  " + "\n  ".join(fp["problems"]))
         out = args.out or baseline_path(args.mission)
         os.makedirs(os.path.dirname(out), exist_ok=True)
         with open(out, "w", encoding="utf-8", newline="\n") as fh:
             json.dump({"mission": args.mission, "frames": args.frames, "chain": chain(lines, args.frames), "visible_chain": visible_chain(lines, args.frames),
-                       "sha": _build_sha(args.log) or _git_sha(), "seed": _seed(args.log), "data_fingerprint": data_fingerprint(args.install),
+                       "sha": _build_sha(args.log) or _git_sha(), "seed": _seed(args.log), "data_fingerprint": fp,
                        "gates": GATES, "env": dict(kv.split("=", 1) for kv in args.env),
                        "about": "chain digest of the first N [SIMID v1] lines; tools/sim_determinism.py check <mission>"}, fh, indent=1)
             fh.write("\n")

@@ -145,6 +145,10 @@ def selftest() -> int:
         ok, rep = check_baseline_record(rec, baseline_record("m", 10, 20, f1, f3, fp))
         if ok or "re-save" not in " ".join(rep):
             fails.append("a baseline that was re-save identical must refuse a run that is not")
+        other = dict(rec, data_fingerprint={"digest": "d2", "problems": []})
+        ok, rep = check_baseline_record(dict(rec, data_fingerprint={"digest": "d1"}), other)
+        if ok or "data fingerprint" not in " ".join(rep):
+            fails.append("a baseline must refuse a run on other install data before comparing the save")
         for broken in ({}, {"overall": "x"}, {"runs": []}, {"runs": "no", "overall": "x"}, []):
             ok, rep = check_baseline_record(broken, rec)
             if ok or "malformed baseline" not in " ".join(rep):
@@ -368,6 +372,10 @@ def check_baseline_record(base: dict, cur: dict):
     if (base.get("save_at"), base.get("load_at")) != (cur.get("save_at"), cur.get("load_at")):
         return False, [f"baseline recorded at --save-at {base.get('save_at')} --load-at {base.get('load_at')}; this run used "
                        f"{cur.get('save_at')} / {cur.get('load_at')}: pass the baseline's frames"]
+    bd, cd = base.get("data_fingerprint"), cur.get("data_fingerprint")
+    if bd and cd and bd.get("digest") != cd.get("digest"):
+        return False, [f"the install data fingerprint {cd.get('digest')} is not the baseline's {bd.get('digest')}: the baseline pins other data "
+                       "(re-record it after a data change, with the reason in the commit)" + "".join("; " + pr for pr in cd.get("problems") or [])]
     be, ce = base.get("exe") or {}, cur.get("exe") or {}
     if base.get("judged", "unrecorded") != "first-save-and-resave":
         lines.append(f"WEAK baseline: judged {base.get('judged', 'unrecorded (recorded before the field existed)')}; the re-save was not part of the verdict")
@@ -455,7 +463,13 @@ def cmd_fixture(args) -> int:
         print("saveload_roundtrip: " + lines[0])
         return 1
     rec = baseline_record(args.mission, args.save_at, args.load_at, first, second, fp, args.mask, args.first_save_only)
+    # WHY: a baseline pins the declared stock-plus-overlay data (tools/sim_determinism.py), not whatever a lane's install carries.
+    rec["data_fingerprint"] = sd.data_fingerprint(args.install)
     if args.cmd == "baseline":
+        if rec["data_fingerprint"]["problems"]:
+            print("saveload_roundtrip baseline: the install is not the declared stock-plus-overlay data set; nothing written:\n  "
+                  + "\n  ".join(rec["data_fingerprint"]["problems"]))
+            return 1
         os.makedirs(BASELINE_DIR, exist_ok=True)
         with open(path, "w", encoding="utf-8", newline="\n") as fh:
             json.dump(rec, fh, indent=1)
