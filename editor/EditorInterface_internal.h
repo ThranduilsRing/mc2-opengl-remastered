@@ -91,7 +91,7 @@
 #include "UndoHistoryPanel.h"
 #include "CommandPalette.h"
 #include "gameplay_pick.h"  // tryGameplayPick: shared pick spine, no game-object deps
-#include "../EditorBridge/EditorRenderBridge.h"  // EDITOR-OBJECTID-PICK-BRIDGE-1: GPU ObjectID pick seam
+#include "../EditorBridge/EditorRenderBridge.h"  // GPU ObjectID pick seam
 #include "gameos.hpp"       // gos_GetViewport, Environment (drawableWidth/Height)
 #include "gos_render.h"     // graphics::make_current_context
 #include "gos_postprocess.h" // gosPostProcess + getGosPostProcess() — OID scan diagnostic
@@ -224,7 +224,7 @@ static inline void EditorRttClientToViewport(int&, int&) {}
 #include "EditForestDlg.h"
 
 #include "CampaignDialog.h"
-#include "../GameOS/gameos/gos_crashbundle.h"  // EDITOR-EXIT-CRASH-1: shutdown breadcrumbs
+#include "../GameOS/gameos/gos_crashbundle.h"  // shutdown breadcrumbs
 
 extern bool silentMode;
 

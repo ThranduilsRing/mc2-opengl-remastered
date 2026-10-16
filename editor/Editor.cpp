@@ -723,9 +723,8 @@ if (justResaveAllMaps)
     FitIniFile loader;
     long result = loader.open(guiloader);
 
-    // EDITOR-PILOT-CATALOG-FST-1: this gate used to fail SILENTLY (empty else
-    // branches) -- if editorGui.fit doesn't resolve or the renderer is missing,
-    // editor->init() never runs (no pilot catalog, no object mgr). Log it.
+    // Log missing editorGui.fit or renderer initialization: either prevents
+    // editor->init() from creating the pilot catalog and object manager.
     {
         FILE* f = fopen("editor-startup.log", "a");
         if (f)

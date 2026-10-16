@@ -464,7 +464,7 @@ static bool EditorAnalyzeBrain( const char* brainName, std::vector<Stuff::Vector
 	return true;
 }
 
-// TECHBRAIN-PATROL-VIEWER-1: declarative mission.fit Brain{} Primary-OPORD Patrol import.
+// declarative mission.fit Brain{} Primary-OPORD Patrol import.
 // Matches this unit's spawn (ux,uy) to a parsed Brain record via MissionFitBrainSource --
 // the SAME shared cache + position-match tolerance the "Declarative Brain" panel section
 // uses (editor/UnitBrainPanel.cpp), so what the panel shows for a unit and what this seeds

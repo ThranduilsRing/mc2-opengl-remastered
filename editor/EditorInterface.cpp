@@ -14,7 +14,7 @@
 
 
 // ---------------------------------------------------------------------------
-// EDITOR-EXIT-CRASH-1 shutdown breadcrumbs.
+// Shutdown breadcrumbs.
 // Mirrors EditorData.cpp's EditorDataTrace: always feeds the crashbundle ring
 // buffer (so the last ~64KB of activity lands in crashes/<ts>/last_trace.txt
 // on any CTD, including one during exit), and additionally logs to
@@ -740,7 +740,7 @@ void EditorInterface::update()
 		return;
 	}
 
-	// Slice 3 -- Locate (PICKER-SELECT-POINT-RECON-1 section 6). The Objective
+	// Locate. The Objective
 	// dialog's "Locate" button armed pendingLocate and EndDialog'd to unwind the
 	// modal stack. Unlike the marker pick (which waits for a map click in
 	// handleLeftButtonDown), Locate needs NO click: it fires here, the per-frame
@@ -972,11 +972,11 @@ void EditorInterface::render()
 	// (~100 fps) rather than WM_KEYDOWN key-repeat rate (~30 Hz).
 	updateCameraInput();
 
-	// Phase 5: PCG foliage billboard preview, drawn over the already-rendered
+	// PCG foliage billboard preview, drawn over the already-rendered
 	// terrain. Pure visual overlay -- no terrain/save/load state touched.
 	FoliageRender::Render( eye );
 
-	// Phase 2: diagnostic world overlays (chunk/superchunk grid, water bounds).
+	// diagnostic world overlays (chunk/superchunk grid, water bounds).
 	// Pure visual; same frame/projection context as the foliage preview.
 	EditorDebugOverlay::RenderWorldOverlay( eye );
 

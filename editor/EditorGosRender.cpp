@@ -333,7 +333,7 @@ void set_verbose(bool is_verbose)
 
 RenderWindow* create_window(const char* pwinname, int width, int height, bool windowed_hint)
 {
-    // ISSUE-49: windowed_hint is a game-side SDL resizable-border hint; the
+    // windowed_hint is a game-side SDL resizable-border hint; the
     // editor renders into a Win32 child HWND, so it does not apply here.
     (void)windowed_hint;
 	int i, j, m, n;
@@ -736,7 +736,7 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
         return nullptr;
     }
 
-    // Step 1: pick and set a pixel format using the classic (non-ARB) path.
+    // pick and set a pixel format using the classic (non-ARB) path.
     // This must happen before any wgl call.
     PIXELFORMATDESCRIPTOR pfd = {};
     pfd.nSize      = sizeof(pfd);
@@ -761,7 +761,7 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
         return nullptr;
     }
 
-    // Step 2: create a legacy GL 1.x context so we can query wglCreateContextAttribsARB.
+    // create a legacy GL 1.x context so we can query wglCreateContextAttribsARB.
     HGLRC legacyCtx = ::wglCreateContext(hdc);
     if (!legacyCtx)
     {
@@ -776,7 +776,7 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
         return nullptr;
     }
 
-    // Step 3: load wglCreateContextAttribsARB and wglChoosePixelFormatARB through
+    // load wglCreateContextAttribsARB and wglChoosePixelFormatARB through
     // the legacy context, then upgrade to a core 4.3 context.
     typedef HGLRC (WINAPI* PFNWGLCREATECONTEXTATTRIBSARBPROC)(HDC, HGLRC, const int*);
     PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB =

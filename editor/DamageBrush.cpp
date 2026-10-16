@@ -10,7 +10,7 @@ DamageBrush.cpp			: Implementation of the DamageBrush component.
 #include "DamageBrush.h"
 #include "EditorObjectMgr.h"
 
-// EDITOR-BRUSH-SCREENPICK-1: GPU-primary object pick (defined in EditorInterface.cpp),
+// GPU-primary object pick (defined in EditorInterface.cpp),
 // same picker the Select tool uses. Avoids pulling the heavy EditorInterface.h in here.
 extern EditorObject* EditorPickObjectAtScreen(int screenX, int screenY);
 
@@ -42,7 +42,7 @@ Action* DamageBrush::endPaint()
 
 bool DamageBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY  )
 {
-	// EDITOR-BRUSH-SCREENPICK-1: screen-projection pick (like Select) so tall static
+	// screen-projection pick (like Select) so tall static
 	// props are hittable; world-footprint pick missed them (cursor ground point != base).
 	EditorObject* pObject = EditorPickObjectAtScreen( screenX, screenY );
 
@@ -57,7 +57,7 @@ bool DamageBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY  )
 
 bool DamageBrush::canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags )
 {
-	const EditorObject* pObject = EditorPickObjectAtScreen( screenX, screenY );  // EDITOR-BRUSH-SCREENPICK-1
+	const EditorObject* pObject = EditorPickObjectAtScreen( screenX, screenY );
 
 	return pObject ? true : false;
 

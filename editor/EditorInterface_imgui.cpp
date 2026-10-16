@@ -323,7 +323,7 @@ void EditorInterface::renderToolbarImGui()
 	ImGui::EndDisabled();
 	MapGeneratorDialog::DrawFoliagePanel();
 
-	// Beauty Sidecar Preview (EDITOR-SIDECAR-PREVIEW-1) — apply/restore an offline
+	// Beauty Sidecar Preview — apply/restore an offline
 	// terrain beautify delta on the live terrain.
 	BeautySidecarPreview::MaybeAutoApply();
 	BeautySidecarPreview::DrawImGui();
@@ -391,7 +391,7 @@ void EditorInterface::renderToolbarImGui()
 	CommandPalette::Draw();
 
 	// === Authoring mode selector (contextual tool settings) =================
-	// EDITOR-CONTEXTUAL-TOOLS-1: one active mode; only its controls render below,
+	// one active mode; only its controls render below,
 	// replacing the old flat wall where every tool's settings stacked at once.
 	// s_toolMode tracks the active brush (brush-pointer change = re-derive) so a
 	// brush switch from the legacy menu or a hotkey moves the selector too; the
@@ -544,11 +544,8 @@ void EditorInterface::renderToolbarImGui()
 	if (s_toolMode == MODE_PAINT)
 	{
 		ImGui::Text("Paint Material");
-		// TERRAIN-MATERIAL-PAINT-1 (Slice 1): surface the dormant TerrainBrush.
-		// Each button installs a TerrainBrush painting one TerrainType (mclib/dmapdata.h)
-		// via setPaintMaterialBrush() -> setActiveBrush() (same path as Sculpt/Stamp).
-		// The 4 buttons map to the 4 visual PBR buckets the renderer blends
-		// (terrain_mat_layers.hglsl): Rock->Mountain(6), Grass(9), Dirt(4), Concrete(10).
+		// Material buttons select TerrainType values through the shared brush
+		// activation path; the four choices match the renderer material buckets.
 		TerrainBrush* tb = dynamic_cast<TerrainBrush*>(curBrush);
 		struct PM { const char* label; int type; };
 		static const PM pm[] = {
@@ -844,12 +841,9 @@ void EditorInterface::renderObjectCompanionPanel()
 void EditorInterface::renderObjectInfoPanel()
 {
 	// Left "current object" DOCK COLUMN. Pinned flush-left, full viewport height so
-	// it reads as a docked left column (not a floating popup). It is NOT a real
-	// dockspace split: a true left dock would shrink the scene from the left and
-	// shift its origin, drifting object picking (gated on the projZ->GL slice, see
-	// PROJZ-GL-UNIFICATION-RECON-1). Pinned-overlay instead — it covers only the
-	// scene's left strip; picking in the rest of the scene stays correct. Always
-	// pos/size + NoSavedSettings so a stale imgui.ini can never float or hide it.
+	// The panel reads as a docked left column. A true dock would shift the
+	// scene origin and break object picking, so this overlay covers only the
+	// left strip. Fixed position and size ignore stale imgui.ini placement.
 	ImGuiIO& objIo = ImGui::GetIO();
 	const float w    = 270.0f * s_uiScale;
 	const float topY = 26.0f * s_uiScale;   // clear the main menu bar
@@ -927,7 +921,7 @@ void EditorInterface::renderObjectInfoPanel()
 }
 
 // ---------------------------------------------------------------------------
-// Place Tool panel (Phase 1d): a single always-available control surface for the
+// Place Tool panel: a single always-available control surface for the
 // EXISTING object-placement brushes. Shows the active brush, toggles scatter
 // mode, and exposes the scatter parameters (the same ScatterBrush statics the
 // companion panel edits). No new placement system -- placement still happens via
@@ -1005,7 +999,7 @@ void EditorInterface::renderPlacePanelImGui()
 }
 
 // ---------------------------------------------------------------------------
-// Mission Tools panel (Phase 1d): the smallest useful Test Mission + Build Mod
+// Mission Tools panel: the smallest useful Test Mission + Build Mod
 // Package flows, wrapping existing pieces (EditorTaskRunner for the launch,
 // getMapName() for the current .pak, plain file copies for the package). No new
 // mission/launch/package SYSTEM -- just buttons over what already exists.

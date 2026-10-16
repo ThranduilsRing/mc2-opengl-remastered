@@ -53,7 +53,7 @@
 
 #include "MapGeneratorDialog.h"
 #include "EditorData.h"    // EditorData::generateFromDialogParams declaration
-#include "EditorTaskRunner.h"  // async subprocess (Phase 1: no UI-thread blocking)
+#include "EditorTaskRunner.h"  // async subprocess
 #include "FoliageRender.h"     // load generated foliage sidecar after apply
 
 #include <cstdio>

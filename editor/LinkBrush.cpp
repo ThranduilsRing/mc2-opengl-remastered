@@ -13,7 +13,7 @@
 #include "EditorObjectMgr.h"
 #include "Camera.h"
 
-// EDITOR-BRUSH-SCREENPICK-1: GPU-primary object pick (defined in EditorInterface.cpp),
+// GPU-primary object pick (defined in EditorInterface.cpp),
 // same picker the Select tool uses. Avoids pulling the heavy EditorInterface.h in here.
 extern EditorObject* EditorPickObjectAtScreen(int screenX, int screenY);
 
@@ -71,7 +71,7 @@ bool LinkBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
 	if ( !bLink )
 		return unPaint( worldPos, screenX, screenY );
 	
-	const EditorObject* pObject = EditorPickObjectAtScreen( screenX, screenY );  // EDITOR-BRUSH-SCREENPICK-1
+	const EditorObject* pObject = EditorPickObjectAtScreen( screenX, screenY );
 
 	if ( !pObject )
 		return 0;
@@ -150,7 +150,7 @@ bool LinkBrush::canPaint( Stuff::Vector3D& pos, int x, int y, int flags )
 	if ( !bLink )
 		return canUnPaint( pos, x, y, flags );
 	
-	const EditorObject* pObject = EditorPickObjectAtScreen( x, y );  // EDITOR-BRUSH-SCREENPICK-1
+	const EditorObject* pObject = EditorPickObjectAtScreen( x, y );
 
 	if ( !pObject )
 		return false;
@@ -173,7 +173,7 @@ bool LinkBrush::canPaint( Stuff::Vector3D& pos, int x, int y, int flags )
 bool LinkBrush::canUnPaint( Stuff::Vector3D& pos, int x, int y, int flags )
 { 
 
-	const EditorObject* pBuilding = EditorPickObjectAtScreen( x, y );  // EDITOR-BRUSH-SCREENPICK-1
+	const EditorObject* pBuilding = EditorPickObjectAtScreen( x, y );
 
 	if ( !pBuilding )
 		return false;
@@ -294,7 +294,7 @@ bool LinkBrush::LinkAction::undo( )
 bool LinkBrush::unPaint( Stuff::Vector3D& pos, int XPos, int yPos )
 {
  
-	const EditorObject* pBuilding = EditorPickObjectAtScreen( XPos, yPos );  // EDITOR-BRUSH-SCREENPICK-1
+	const EditorObject* pBuilding = EditorPickObjectAtScreen( XPos, yPos );
 
 	if ( pBuilding )
 	{

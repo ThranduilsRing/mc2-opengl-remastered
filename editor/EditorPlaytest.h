@@ -1,5 +1,5 @@
 //-------------------------------------------------------------------------------------------------
-// EditorPlaytest.h -- "Playtest in Game" controller for the MC2 Mission Editor (Slice 1).
+// EditorPlaytest.h -- "Playtest in Game" controller for the MC2 Mission Editor.
 //
 // One-click loop: save the current mission -> launch mc2.exe as a child process with
 // `-mission <pak>` -> capture combined stdout/stderr + exit code (via EditorTaskRunner)
@@ -9,10 +9,8 @@
 // and the log-archive callback run on the MAIN (editor) thread, driven by
 // EditorTaskRunner::PumpMainThread().  Do NOT call any method here off the main thread.
 //
-// DESIGN COMPROMISE (Slice 1): EditorData::save() mutates editor path state (calls
-// setMapName + writes .old backups) -- a non-mutating "shadow save" to .playtest/
-// would require a >50-line EditorData refactor, exceeding the slice budget.  Per the
-// plan's STOP-DOWNGRADE rule we save IN PLACE (normal save) and launch that pak.
+// Playtest saves in place and launches that pak. EditorData::save() updates
+// editor path state and writes .old backups, so this also changes the active save.
 //-------------------------------------------------------------------------------------------------
 #ifndef EDITOR_PLAYTEST_H
 #define EDITOR_PLAYTEST_H

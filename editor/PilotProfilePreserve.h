@@ -3,14 +3,12 @@
 /***************************************************************
 * FILENAME: PilotProfilePreserve.h
 * DESCRIPTION: Pure decision kernel for which [WarriorN] Profile string a
-*              mission save writes (PILOT-PROFILE-PRESERVE-1, follow-up to
-*              QUICKSTART-PILOT-DROP-RECON-1).
+*              mission save writes.
 *
-* Regression being closed: when Pilot::initPilots() loads zero pilots
+* When Pilot::initPilots() loads zero pilots
 * (pilots.csv zlib-compressed inside the FST, or warriors/*.fit missing),
 * every Pilot::load falls back to s_GoodPilots[0] whose fileName is NULL,
-* and Pilot::save used to write Profile = "" for EVERY warrior -- silently
-* blanking profiles that existed on disk (the Bubba x3 quickstart bug).
+* so saving must preserve profiles that existed on disk despite the empty catalog.
 *
 * Precedence:
 *   1. rawProfile   -- the string read from the mission .fit (kept in sync

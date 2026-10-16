@@ -488,7 +488,7 @@ bool EditorObjectMgr::canAddBuilding( const Stuff::Vector3D& position,
 {
 	
 	if ( !land )
-		return false;  // EDITOR-CRASH-HARDENING-1: no terrain -> worldToCell derefs NULL
+		return false;  // no terrain -> worldToCell derefs NULL
 
 	int realCellI, realCellJ;
 	land->worldToCell( position, realCellJ, realCellI );
@@ -497,7 +497,7 @@ bool EditorObjectMgr::canAddBuilding( const Stuff::Vector3D& position,
 
 	if ( cellObject )
 	{
-		// EDITOR-CRASH-HARDENING-1: appearance() can be NULL; guard before ->rotation.
+		// appearance() can be NULL; guard before ->rotation.
 		if (cellObject->appearance() && cellObject->appearance()->rotation == rotation )
 			return false;
 	}
@@ -663,19 +663,9 @@ EditorObject* EditorObjectMgr::addBuilding( const Stuff::Vector3D& position, uns
 		// EditorInterface.cpp:6462). Must run AFTER final position/rotation/scale.
 		a->registerStatic();
 
-		// META-FIX part 2 (the actual invisibility): registerStatic ARMS the H4
-		// light-bake latch (needsFullBakeNextFrame). The editor's render-loop
-		// drain pass (EDITOR-STATIC-PREWARM-1, ~line 1465) that clears it is
-		// ONE-SHOT -- s_prewarmDone latches true once the LOAD-time props are
-		// baked, and never runs again. So a building placed AFTER load keeps the
-		// latch armed forever -> IsStaticNow() stays false (bdactor.cpp:4147) ->
-		// the static color path (markVisible) skips it while the shadow pass
-		// still draws the registered recipe == "shadow but no body" (the reported
-		// symptom). Drain the latch immediately for the placed prop, exactly as
-		// the game does per-object in GameObjectManager::prewarmStaticPropLightBakes
-		// (code/objmgr.cpp:1648). Post-load the camera has lights so the bake
-		// succeeds; eye->update() ran above. If lights aren't up yet the latch
-		// stays armed and the one-shot render-loop pass still covers it.
+		// registerStatic arms the light-bake latch. The load-time drain is one-shot,
+		// so objects placed after loading need an explicit bake to become static
+		// and visible to the GPU batcher.
 		if ( eye && eye->getNumLights() > 0 )
 			a->prewarmStaticLightBake( eye );
 	}

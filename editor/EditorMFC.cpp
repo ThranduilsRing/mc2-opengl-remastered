@@ -43,7 +43,7 @@ bool        g_cliGenMap          = false;
 int         g_cliNewMapSize      = 0;
 int         g_cliNewMapTerrain   = 0;
 
-// -smoke-foliage[=PATH]: after the map auto-loads, exercise the Phase 5 foliage
+// -smoke-foliage[=PATH]: after the map auto-loads, exercise the foliage
 // preview (FoliageRender::Load + Toggle) under the live frame loop. A missing or
 // malformed JSON / missing sprite texture must load to 0 instances WITHOUT
 // crashing -- that is the whole point of the foliage smoke. Default path is the

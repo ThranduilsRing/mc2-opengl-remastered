@@ -319,7 +319,7 @@ int EditorInterface::runPlaceOobSmoke()
 }
 
 //-------------------------------------------------------------------------------------------------
-// Phase 5 PCG foliage commands. Generate runs the Python generator's foliage pass
+// PCG foliage commands. Generate runs the Python generator's foliage pass
 // on the current generated-map recipe and loads the resulting sidecar; the rest
 // are pure overlay-state toggles. None touch terrain/save/load.
 //-------------------------------------------------------------------------------------------------

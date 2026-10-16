@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// BeautySidecarPreview — EDITOR-SIDECAR-PREVIEW-1 (B7a). See header.
+// BeautySidecarPreview. See header.
 //------------------------------------------------------------------------------
 #include "BeautySidecarPreview.h"
 #include "Gates/gate.h"
@@ -135,7 +135,7 @@ namespace BeautySidecarPreview
 	void Restore()
 	{
 		if (!s_applied || !land || s_side <= 0) return;
-		// EDITOR-CRASH-HARDENING-1: if a different-size map was loaded after Apply,
+		// if a different-size map was loaded after Apply,
 		// s_side (old grid) no longer matches the live terrain -> setVertexHeight(i,..)
 		// for i<s_side*s_side writes OOB into the new (smaller) vertex grid, and a
 		// null Terrain::mapData would crash calcLight(). Drop the stale snapshot and

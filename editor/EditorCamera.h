@@ -22,11 +22,7 @@ EditorCamera.h			: Interface for the EditorCamera component.
 
 #include "../EditorBridge/EditorRenderBridge.h"  // GPU batcher/registry lifecycle (firewall)
 #include <GL/glew.h>                              // GLint/GL_VIEWPORT/glGetIntegerv for the
-                                                  // throttled [PICKW] viewport diag below. Was
-                                                  // transitively pulled by the gos_*_batcher/registry
-                                                  // headers removed in EDITOR-BRIDGE-GPU-FIREWALL-1;
-                                                  // glew is a raw-GL header, not one of the 4 GPU-
-                                                  // subsystem headers the editor firewall forbids.
+                                                  // throttled [PICKW] viewport diagnostics.
 #include "../GameOS/gameos/view_uniforms_gl.h"  // setCurrentView + uploadViewUniforms
 #include "EditorGpuTimer.h"                      // MC2_EDITOR_GPU_TIMERS per-pass GPU timing
 #include "AuthoredMissionState.h"
@@ -190,19 +186,13 @@ public:
 				s_ecrFrame, (active && turn > 1) ? 1 : 0);
 		if (active && turn > 1)
 		{
-			// S2 per-frame chain — mirrors code/gamecam.cpp:176-257 exactly.
-			// Canonical order locked by docs/superpowers/plans/2026-05-25-editor-rebuild-S0-contract.md.
-			// DO NOT call GpuStaticPropBatcher::flush() directly; the only legal dispatch
-			// path is through mcTextureManager->renderLists() (txmmgr.cpp:2164).
+			// Static props must dispatch through mcTextureManager->renderLists() so
+			// visibility and batching share the scene render order.
 
-			gos_SetWorldToClipGL(eye->worldToClipGL());        // step 1 — game line 176
+			gos_SetWorldToClipGL(eye->worldToClipGL());
 
-			// EDITOR-VIEWUNIFORMS-1: fill ViewUniforms + register MainScene EngineView,
-			// mirroring code/gamecam.cpp:185-255. Without this, VIEW_UNIFORMS UBO
-			// binding=3 holds stale/zero data → static_prop.vert transforms all props
-			// with identity matrix → everything off-screen. Added post-S2 when
-			// kMainSceneViewId/setCurrentView were introduced (commit 434c923e,
-			// 2026-05-27); the editor missed the update.
+			// Publish the main scene view so static props receive the camera transform;
+			// stale or zero view uniforms put the props off-screen.
 			{
 				RenderCore::ViewUniforms vu{};
 				auto stuffToRowMajor = [](const Stuff::Matrix4D& m, float out[16]) {
@@ -240,7 +230,7 @@ public:
 				}
 			}
 
-			// S2.10: terrain shader needs camera position (distance LOD in TCS)
+			// The terrain shader needs camera position (distance LOD in TCS)
 			// and light direction (PBR lighting in FS). Without these the
 			// terrain_camera_pos_ / terrain_light_dir_ uniforms remain at their
 			// zero-initialized defaults, breaking distance-based tessellation
@@ -256,34 +246,31 @@ public:
 				theSky->render(1);
 			EditorGpuTimer_Mark("sky");
 
-			EditorBridge::staticPropFrameBegin();              // step 2 — game line 198
+			EditorBridge::staticPropFrameBegin();
 
 			// Absorb any mech types registered after finalizeGeometry() (late
-			// placement in the editor). Mirrors logistics.cpp:814 (VPL-#11).
+			// placement in the editor).
 			// No-op when s_pendingLateTypes==false (single branch, ~1ns).
 			EditorBridge::mechFinalizePending();
 
 			if (land)
-				land->render();                                // step 3 — game line 199
+				land->render();
 			EditorGpuTimer_Mark("terrain");
 
-			// step 4 — game line 214: ObjectManager->render(...)
-			// TODO(S2): editor has no GameObjectManager (ObjectManager == nullptr —
-			// see editor/EditorGlobals.cpp). EditorObjectMgr::render() is a no-op
-			// stub post-S1 carve. Buildings/mechs/trees will not register per-frame
-			// visibility until an editor-side render walk is restored (out of S2
-			// scope per plan; see report).
+
+			// TODO: Restore the editor actor render walk; the editor has no
+			// GameObjectManager, and EditorObjectMgr::render() is a no-op, so actors
+			// cannot register per-frame visibility here.
 			if (!s_bSensorMapEnabled)
 				EditorObjectMgr::instance()->render();
 			EditorGpuTimer_Mark("objmgr");
 
 			if (land)
-				land->renderWater();                           // step 5 — game line 219
+				land->renderWater();
 			EditorGpuTimer_Mark("water");
 
-			// step 6 — game line 225: ObjectManager->renderShadows(...)
-			// TODO(S2): same gap as step 4. EditorObjectMgr::renderShadows() was
-			// deleted in S1 carve. Shadow visibility for actors deferred.
+
+			// TODO: Restore actor shadow visibility; the editor has no renderShadows walk.
 
 			if (!drawOldWay)
 			{
@@ -291,14 +278,8 @@ public:
 					compass->render(-1);		//Force this to zBuffer in front of everything
 			}
 
-			// Terrain LOD chunk flush — submit the GPU draw commands that land->render()
-			// (step 3) built into s_drawCmds[]. The editor previously NEVER called this
-			// (it lived only in gamecam.cpp:388), so under the default-on chunk path the
-			// command buffer was built every frame and silently discarded while the legacy
-			// per-quad draw was suppressed -> BLACK terrain (only overlays drew). Mirror
-			// gamecam.cpp:388 placement: after shadow/compass, before renderLists() so
-			// chunk terrain is fully drawn before post-process. No-op when the chunk path
-			// is off (s_blockMeta == nullptr).
+			// Submit terrain chunk commands before post-processing; the chunk path
+			// suppresses legacy per-quad draws, so an unflushed buffer leaves terrain black.
 			Terrain::flushDrawCommands();
 			EditorGpuTimer_Mark("terrainFlush");
 
@@ -311,11 +292,11 @@ public:
 			EditorGpuTimer_Mark("ui");
 
 			if (mcTextureManager)
-				mcTextureManager->renderLists();               // step 7 — game line 246 (drives GpuStaticPropBatcher::flush at txmmgr.cpp:2164)
+				mcTextureManager->renderLists();
 			EditorGpuTimer_Mark("props");
 
 			if (land)
-				land->renderWaterFastPath();                   // step 8 — game line 257
+				land->renderWaterFastPath();
 			EditorGpuTimer_Mark("waterFast");
 
 			EditorGpuTimer_End();

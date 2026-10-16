@@ -48,7 +48,7 @@ Action* FlattenBrush::endPaint()
 bool FlattenBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
 {
 	if ( !land || !pCurAction )
-		return false;  // EDITOR-CRASH-HARDENING-1: no terrain/action -> NULL deref (sibling StampBrush.cpp:66)
+		return false;  // no terrain/action -> NULL deref (sibling StampBrush.cpp:66)
 
 	int closestX = floor( (worldPos.x - land->mapTopLeft3d.x)/land->worldUnitsPerVertex + .5 );
 	int closestY = floor( (land->mapTopLeft3d.y - worldPos.y)/land->worldUnitsPerVertex + .5 );
@@ -83,7 +83,7 @@ bool FlattenBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
 Action* FlattenBrush::applyToSelection()
 {
 	if ( !land )
-		return nullptr;  // EDITOR-CRASH-HARDENING-1: no terrain -> NULL deref (sibling StampBrush.cpp:66)
+		return nullptr;  // no terrain -> NULL deref (sibling StampBrush.cpp:66)
 
 	float height = getAverageHeightOfSelection();
 

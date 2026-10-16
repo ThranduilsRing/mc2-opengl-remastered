@@ -233,7 +233,7 @@ public:
 	// RenderWorld handle via syncSpawn. Used by the ImGui mech inspector fallback.
 	Unit* findUnitByMechHandle(RenderCore::RenderObjectHandle h);
 
-	// EDITOR-OBJECTID-PICK-BRIDGE-1 (Slice 3): reverse-map a GPU ObjectID
+	// reverse-map a GPU ObjectID
 	// StaticProp recipe back to the EditorObject that owns it. The GPU pick
 	// returns a RenderObjectHandle whose index() equals the GpuStaticPropRegistry
 	// recipeIndex (identity mapping, RenderWorld.h handleToRecipeIndex); each
@@ -353,7 +353,7 @@ inline bool EditorObjectMgr::isAlignable( int ID )
 inline int EditorObjectMgr::getAppearanceType( int ID )
 {
 	if ( !EOM_DECODE_INBOUNDS( ID ) ) return 0;
-	// EDITOR-CRASH-HARDENING-1: appearanceType can be NULL for some entries.
+	// appearanceType can be NULL for some entries.
 	AppearanceType* pAppr = groups[getGroup( ID )].buildings[getIndexInGroup( ID )].appearanceType;
 	if ( !pAppr ) return 0;
 	return pAppr->getAppearanceClass();

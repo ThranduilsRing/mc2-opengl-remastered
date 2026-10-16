@@ -523,7 +523,7 @@ void EditorInterface::OnDestroy()
 	}
 	else
 	{
-		// EDITOR-EXIT-CRASH-1 (#4): gosASSERT is a dead no-op in RelWithDebInfo
+		// gosASSERT is a dead no-op in RelWithDebInfo
 		// (see mclib review), so gosASSERT(false) here silently did nothing —
 		// a null tacMap.m_hWnd at WM_DESTROY was neither logged nor handled.
 		// Make the signal live: log it (crashbundle ring + optional file) and

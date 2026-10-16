@@ -15,7 +15,7 @@ eraser.cpp			: Implementation of the eraser component.
 #endif
 #include "EditorData.h"
 
-// EDITOR-BRUSH-SCREENPICK-1: GPU-primary object pick (defined in EditorInterface.cpp),
+// GPU-primary object pick (defined in EditorInterface.cpp),
 // same picker the Select tool uses. Avoids pulling the heavy EditorInterface.h in here.
 extern EditorObject* EditorPickObjectAtScreen(int screenX, int screenY);
 
@@ -59,9 +59,9 @@ constexpr int DEFAULT_TERRAIN = 2;
 bool Eraser::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
 {
 	if ( !land )
-		return false;  // EDITOR-CRASH-HARDENING-1: no terrain -> worldToTileCell/getOverlay deref NULL (sibling StampBrush.cpp:66)
+		return false;  // no terrain -> worldToTileCell/getOverlay deref NULL (sibling StampBrush.cpp:66)
 
-	// EDITOR-BRUSH-SCREENPICK-1: use the SCREEN-projection picker (same as the Select
+	// use the SCREEN-projection picker (same as the Select
 	// tool, EditorInterface.cpp:1625) instead of the world-footprint getObjectAtPosition.
 	// The world pick matches an object's base against the cursor's GROUND point; for a
 	// tall static prop (building/tree) viewed at an angle, clicking the body projects to
@@ -134,11 +134,11 @@ bool Eraser::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
 }
 bool Eraser::canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags )
 {
-	if ( EditorPickObjectAtScreen( screenX, screenY ) )  // EDITOR-BRUSH-SCREENPICK-1
+	if ( EditorPickObjectAtScreen( screenX, screenY ) )
 		return true;
 
 	if ( !land )
-		return false;  // EDITOR-CRASH-HARDENING-1: no terrain -> worldToTileCell/getOverlay deref NULL (sibling StampBrush.cpp:66)
+		return false;  // no terrain -> worldToTileCell/getOverlay deref NULL (sibling StampBrush.cpp:66)
 
 	int tileRow, tileCol;
 	int cellRow, cellCol;

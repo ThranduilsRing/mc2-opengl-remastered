@@ -1,7 +1,7 @@
 /***************************************************************
 * FILENAME: ObjectivesSummaryPanel.cpp
 * DESCRIPTION: Read-only objectives explainer / mission-logic viewer.
-*   Phase 2 polish: three-pane shell (Objective List | WHEN/THEN flow |
+*   Three-pane shell (Objective List | WHEN/THEN flow |
 *   Inspector). Walks EditorData::instance->TeamsRef() -> per team CObjectives
 *   (owned CObjective pointers).
 *
@@ -30,7 +30,6 @@
 *   PURE-ADDITIVE, READ-ONLY: no mutate buttons, no save/load. Selection is a raw
 *   CObjective* compared by identity; a mission reload simply clears it (the old
 *   pointer no longer appears in the rebuilt list).
-* DATE: 2026-06-27
 ****************************************************************/
 
 // Pull stdafx first (MFC / Windows headers).

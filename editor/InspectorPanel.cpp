@@ -1,12 +1,11 @@
 /***************************************************************
 * FILENAME: InspectorPanel.cpp
-* DESCRIPTION: Inspector (Phase 1b modder usability + S17 edit depth).
+* DESCRIPTION: Inspector.
 *   See InspectorPanel.h. Reads the current selection from the existing
 *   EditorObjectMgr selection list (shared by viewport + Scene Outliner)
 *   and displays per-object details. EDITABLE fields (transform XY+yaw, team)
 *   commit through the existing undo manager (ModifyBuildingAction) and mark
 *   the mission dirty -- one undoable action per commit.
-* DATE: 2026-06-09 (edit depth 2026-06-15)
 ****************************************************************/
 
 #include "stdafx.h"
