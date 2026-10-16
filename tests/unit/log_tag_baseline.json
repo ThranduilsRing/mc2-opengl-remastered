@@ -8648,6 +8648,42 @@
    "count": 1
   },
   {
+   "tag": "ROUTE_EXECUTION",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "execution"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ROUTE_EXECUTION",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "execution",
+    "revision",
+    "sequence",
+    "tick",
+    "action"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ROUTE_EXECUTION",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "execution",
+    "revision",
+    "sequence",
+    "tick",
+    "event",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SALVAGE",
    "ver": -1,
    "stream": "stdout",
