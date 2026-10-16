@@ -1,5 +1,38 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## THIRTY-THIRD session (2026-10-16, cap 6 h, Opus 5.5) -- row 27 closed (dead GL arm deleted, not ported), ungated census done (row 28 opened and pinned by the coverage tool), VK pass-timer design note (not implemented, over the bar), review s32 folded; nifty not merged (f170964d8 queued at lane 1's session end)
+
+### Commits (after f170964d8; final exe = 5e0ad4c1f, later commits tools/docs)
+9c528ddfe row 27 dead GL arm deleted | 5e0ad4c1f review s32 N3/N4 | 6c98b51d9 coverage tool UNGATED_FEATURES + row 28 pin + test | e4c5a5ba8 gaps rows 27/28, census, parity state, review S1/S2 | this commit: state (design note, review N1), callers.json. MERGEABLE TIP = the commit carrying this line.
+
+### Proof
+| Evidence | Result |
+|---|---|
+| row 27 deadness: GL `s32-gl` (exe 20f3c0575) vs `s33-gl` (exe 9c528ddfe) at mc2_10 212258 / 204753 | 0 px over 15, mean 0.000 both poses |
+| build -j2 + deploy (`scratch/build_s33b.log`) | exit 0 at 5e0ad4c1f; check-gl-shader-variants 231/231 after the GL deletion |
+| tier1 VK + validation (`scratch/b33_vk_t1.log`) | 5/5 PASS, errors=0 warnings=0 all five, fingerprint PASS (mc2_24 passed on 4,853 frames at 40 fps, host shared with other lanes) |
+| tier1 GL (`scratch/b33_gl_t1.log`) | 5/5 PASS, +0 destroys, fingerprint PASS (GL shader moved: row 27) |
+| provers / board (`scratch/cc_s33.log`) | coverage 0 new 0 stale with row 28 pinned under UNGATED; flip-check OK; pytest coverage 28 pass; dup_lines 55314 <= 55326, file_size and journal at or under baseline; reds unchanged and not this lane's (estring / container callsites, vk_pipeline_layout split test, background-launch, mc2_authored_order_seam, build_compiler_presets) |
+
+### Open
+- Row 28 port (two terms in color_prop_tier1; needs a highlighted-building pose or a forced-highlight oracle), row 18 owner ruling, VK pass timer (note above, routed by the coordinator).
+- Scratch (mine, deletable): `scratch/` s33a/b.sh/.out, r33tags.py/.out, r33unif.out, build/deploy_s33*.log, b33_*.log, cc_s33.log, and the session-32 leftovers r32move.py, r32w.py, build/deploy_s32*.log, b32_*.log, cc_s32.log; `.claude/l2cap/s33-gl` is cited by row 27 (keep).
+
+### Lessons (33)
+- Before porting a GL block, check that its inputs are still written: row 27's bits lost their writer in a gate deletion, and the gate ledger had said so.
+- A shared GPU struct declares every field for both backends, so "the name exists in VK" proves nothing for a per-instance term; grade member reads.
+- Event-driven terms (selection highlight) are invisible to every static golden pose; the census by data flow (inst.* reads) found what the pixel oracles could not.
+
+### VK timestamp source for gos_render_pass_timer / gos_frame_pass_stats (design note; not implemented: about 200 lines over 8 files, above the 150-line bar)
+- Reader contract to keep: `gos_render_pass_timer::LastMs(Pass)` / `HasSample(Pass)` (read by the dev shell `framegraph` and the Frame Inspector), `SetCollect(bool)`, the `[RENDER_PASS_TIME v1]` line. Under VK today every pass reads 0: the GL `GL_TIME_ELAPSED` scopes wrap GL calls that the VK islands replaced.
+- Source: one `VkQueryPool` (TIMESTAMP) per frame in flight (2, matching the islands' parity slots), `2 * Pass_Count + 2` queries each (a begin / end stamp per pass plus the frame pair for `gpu_total`). Owned by a new `vk_render_pass_timer` unit beside `vk_gpu_timestamps.h` (reuse its `timestampValidBits` / `timestampPeriod` gating), created lazily on the first `Enabled()` frame: zero cost when off, as the GL timer.
+- Recording: each island brackets its own work on its command buffer with `vk_render_pass_timer::Stamp(cb, pass, begin|end)`: shadow island (Pass_ShadowDyn, Pass_ShadowStatic), terrain (Pass_TerrainChunk), colour props (Pass_SpColor), mechs (Pass_Mechs), water (Pass_Water), post / composite (Pass_Post). The terrain and mech islands already own a `mc2vkts::GpuTimer`; the timer unit replaces those private pools rather than adding a third. A pass recorded in several command buffers takes its first begin and last end in queue order (all islands submit on the one graphics queue).
+- Reset: `vkCmdResetQueryPool` for the slot at the start of the frame's first island command buffer (the frame submit hook that already orders the islands).
+- Resolve: at `FrameEnd`, `vkGetQueryPoolResults` without WAIT on the OTHER parity slot (the previous frame, whose fence the island submit already waited for before reusing its parity resources); a not-yet-available result is dropped and counted (`dropped=`), never waited on, the GL timer's rule.
+- Hand-off: the resolved per-pass ms go through a new `gos_render_pass_timer::SubmitBackendSample(Pass, double ms)` into the SAME window aggregation the GL harvest feeds, so `LastMs` / the log line / the Frame Inspector read VK values unchanged; under VK the GL `Begin`/`End` become no-ops (the backend is known at init).
+- `gos_frame_pass_stats` needs no timestamps: its GL-state fields (FBO, viewport, blend) are GL-only and report "n/a" under VK; its draw / instance counts come from CPU aggregates that both backends already fill.
+- Proof when built: `MC2_RENDER_PASS_TIME=1` under VK prints non-zero passes on mc2_01, the sum within 10% of the frame GPU time from `MC2_VK_GPU_TIMESTAMPS`, validation 0, and the off path allocates no pool (validation object count unchanged).
+
 ## THIRTY-SECOND session (2026-10-16, cap 6 h, Opus 5.5) -- nifty merged (c6f7dba41); rows 25 + 26 ported and closed, row 20 ShadowCSM=FALSE closed (no code), row 27 opened, provers pin zero debt, tracy N2/N4, s31 review S1/S2/N2/N3; owner ruling mid-session: minimum viable proof
 
 ### Commits (after c6f7dba41; code exe = 20f3c0575, everything later is tools/docs)
@@ -30,7 +63,7 @@ dc800a2dd rows 25+26 port + doctest | 20f3c0575 cementHit hoist (first build fai
 ### Row 26 design note (before the port)
 - GL: `terrain_lod_chunk.frag` block `if (u_useShorelineMask != 0)` (after the edge feather, last term before the output): elevation bands measured as horizontal run from `u_waterElevation` via the macro slope (`smoothTerrainNormal`), fbm edge jitter, wet lobe (sand darken toward `vec3(1.16,1.06,0.78)*luma*0.9`) and animated foam rim (`u_shaderTime` fbm), slope guard 12-20 deg on N.z, beach affinity from lit luma and material weights, optional mask sidecar modulator (G wet, B foam, A valid) in `u_shorelineBounds`. Knobs uploaded by `bindShorelineMask()` (`gos_terrain_lod_chunk_draw.cpp`).
 - VK: the same terrain pass (`terrain_tier1.frag`, after its edge-feather block); `mv_smoothTerrainNormal`, `fbm` (noise.hglsl) and `mv_weights` already exist there. The VK `pureConcrete` is a bool (accepted stand-in elsewhere in the file).
-- New `GpuTerrainFrameUBO` fields (gpu_abi header, generated include): shorelineOn, shorelineHasMask, shorelineWaterElev, shorelineTime, shorelineStrength, shorelineFoamStrength, shorelineWetRun, shorelineFoamRun, shorelineEdgeJitter, shorelineBounds[4] (pad 61 -> 48).
+- New `GpuTerrainFrameUBO` fields (gpu_abi header, generated include): shorelineOn, shorelineHasMask, shorelineWaterElev, shorelineTime, shorelineStrength, shorelineFoamStrength, shorelineWetRun, shorelineFoamRun, shorelineEdgeJitter, shorelineBounds[4] (pad 62 -> 48 with the row-25 seam flag; review s32 N1).
 - One producer for the knobs: `gos_TerrainShorelineKnobs()` read by both GL `bindShorelineMask()` and the VK feed.
 - New binding 14 in the terrain set: the mask sidecar (RGBA8, from `TerrainFieldStore::shorelineMask()`, copy-once per store version, 1x1 dummy when absent; linear clamp sampler = the colormap sampler). Ships for mc2_01 / mc2_17 / mc2_24.
 - Found while reading row 25: GL's runway edge blend (`terrain_lod_chunk.frag` ~1040-1110, cement-word bits 19:16, gate deleted = always on) has no VK twin: new row 27, not ported this session unless time remains.
