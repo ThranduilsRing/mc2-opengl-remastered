@@ -21,11 +21,11 @@
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1586,
   "GameOS/include/gameos.hpp": 3757,
   "RenderCore/RendererFeatureRegistry.h": 1734,
-  "code/artlry.cpp": 1857,
+  "code/artlry.cpp": 1849,
   "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2770,
-  "code/gamecam.cpp": 1591,
-  "code/gameobj.cpp": 2257,
+  "code/gamecam.cpp": 1580,
+  "code/gameobj.cpp": 2258,
   "code/infowindow.cpp": 1728,
   "code/logisticsdialog.cpp": 2148,
   "code/mechicon.cpp": 1984,
@@ -33,13 +33,13 @@
   "code/mechlopedia.cpp": 1626,
   "code/missionbegin.cpp": 2165,
   "code/mover.h": 1906,
-  "code/mpparameterscreen.cpp": 2409,
+  "code/mpparameterscreen.cpp": 2408,
   "code/multplyr.h": 1849,
   "code/objective.cpp": 2437,
   "code/optionsarea.cpp": 1842,
   "code/pilotreviewarea.cpp": 1844,
   "code/tacordr.cpp": 2117,
-  "code/terrobj.cpp": 1734,
+  "code/terrobj.cpp": 1723,
   "code/turret.cpp": 2337,
   "code/warrior.cpp": 2691,
   "code/warrior.h": 2176,
@@ -59,10 +59,10 @@
   "mclib/render_contract.cpp": 1530,
   "mclib/stuff/rotation.cpp": 1672,
   "mclib/terrtxm.cpp": 1823,
-  "mclib/tgl.h": 1731,
+  "mclib/tgl.h": 1787,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "7301a5f4f",
+ "head": "5572df548",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -71,7 +71,7 @@
    "max_lines": 485
   },
   "GameOS": {
-   "files": 356,
+   "files": 353,
    "files_over_1500": 7,
    "files_over_3000": 1,
    "max_lines": 3757
@@ -113,7 +113,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 596,
+   "files": 594,
    "files_over_1500": 15,
    "files_over_3000": 0,
    "max_lines": 2629
@@ -160,7 +160,7 @@
   },
   {
    "file": "code/mpparameterscreen.cpp",
-   "lines": 2409
+   "lines": 2408
   },
   {
    "file": "code/turret.cpp",
@@ -172,7 +172,7 @@
   },
   {
    "file": "code/gameobj.cpp",
-   "lines": 2257
+   "lines": 2258
   },
   {
    "file": "code/warrior.h",
@@ -224,7 +224,7 @@
   },
   {
    "file": "code/artlry.cpp",
-   "lines": 1857
+   "lines": 1849
   },
   {
    "file": "code/multplyr.h",
@@ -252,7 +252,7 @@
   }
  ],
  "total": {
-  "files": 1925,
+  "files": 1920,
   "files_over_1500": 48,
   "files_over_3000": 1,
   "max_lines": 3757
