@@ -158,6 +158,11 @@ Finding: the 1-ULP trig rows were the HARNESS include order. The gameos/mclib/mc
   types: Ray3D 0 (base of Line3D), YawPitchRoll 0 (Stuff-internal EulerAngles notation I/O), SinCosPair 3, Line3D 8, Normal3D 8,
   ExtentBox 9, RGBColor 12, Sphere 14, Radian 17, Plane 18, UnitVector3D 23, AffineMatrix4D 31, OBB 61, Vector2DOf 126, UnitQuaternion 127,
   EulerAngles 212, Matrix4D 229, RGBAColor 265, Vector4D 277, Vector2DScalar 423, LinearMatrix4D 458, Point3D 710, Vector3D 2149.
+- S5.6 36ecb4215 (lane 1 s22) Stuff::SinCosPair deleted: its 12 Stuff-internal sites (matrices from EulerAngles/YawPitchRoll, Euler/YPR
+  from LinearMatrix4D, UnitQuaternion from a rotation vector, GetAngle, Multiply(q,t), Subtract, Vector3D from UnitQuaternion and
+  YawPitchRange) call the same cosf/sinf and Arctan in the same translation unit; the gosFX tube profile (render-only) uses glm::sin/cos.
+  The corpus sincos rows now assert sinf/cosf == glm::sin/cos (0 mismatches). Proof: sim pair identical to the pre-session reference,
+  saveload x2 = baselines, capture pair viewed, 38 REQUIRED rows 0 mismatches, build_all_targets -j2.
 Proof every batch: sim pair mc2_03/mc2_24 identical to the pre-port reference (exe 579b60e2c) and to the committed baselines; saveload mc2_03
 fb63e85ac66966cf and mc2_01 d46e3e5e30d26b15 = baselines; S5.2/S5.4 GL/VK capture pair day mc2_01 + night mc2_10 viewed.
 Left on Stuff: the types themselves (Vector3D ~2,000 uses outside stuff/, Point3D, the matrices, UnitQuaternion, angles) and every op whose
