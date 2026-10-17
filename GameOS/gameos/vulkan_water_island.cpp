@@ -132,7 +132,7 @@ bool make_buffer(WaterIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkB
     return true;
 }
 
-// Write the 4-binding descriptor set (0=vsUbo, 1=fsUbo, 5=recipe, 6=thin).
+// Write the descriptor set (0=vsUbo, 1=fsUbo: frame-ring dynamic bindings; 5=recipe, 6=thin).
 // Called at init (after the set is allocated) and whenever a buffer is (re)allocated.
 // No-op until the descriptor SET exists — ensure_thin_capacity / recipe realloc can
 // run during init BEFORE vkAllocateDescriptorSets, and writing to a NULL set is a
@@ -146,25 +146,23 @@ void write_descriptors(WaterIsland* s, int only) {
     for (int i = 0; i < 2; ++i) {
         if (only >= 0 && i != only) continue;
         if (s->set[i] == VK_NULL_HANDLE) continue;   // set not allocated yet (early init path)
-        VkDescriptorBufferInfo vsInfo{ s->vsUbo[i].get(), 0, VK_WHOLE_SIZE };
-        VkDescriptorBufferInfo fsInfo{ s->fsUbo[i].get(), 0, VK_WHOLE_SIZE };
+        // Bindings 0 and 1 (the parameter UBOs) at the frame ring's current buffer; the slot re-points them at its next frame (ringBound cleared).
+        if (const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer()) {
+            mc2vk::writeDynamicBinding(s->device, s->set[i], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, sizeof(WaterVsParams));
+            mc2vk::writeDynamicBinding(s->device, s->set[i], 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, sizeof(WaterFsParams));
+        }
+        s->ringBound[i] = VK_NULL_HANDLE;
         VkDescriptorBufferInfo recInfo{ s->recipeBuf.get(), 0, VK_WHOLE_SIZE };
         // STEP 3.4P: binding 6 is the GPU-produced thin buffer only for the slot whose last feed was the native one (thinNative[i]);
         // a frame that takes the readback feed (opt-out, null MVP) rebinds its slot to thinBuf first (vulkan_water_island_run.cpp).
         VkDescriptorBufferInfo thinInfo{ (s->thinNative[i] && s->native && s->native->ready()) ? s->native->thin(static_cast<uint32_t>(i)) : s->thinBuf[i].get(), 0, VK_WHOLE_SIZE };
-        VkWriteDescriptorSet w[4]{};
+        VkWriteDescriptorSet w[2]{};
         w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = s->set[i];
-        w[0].dstBinding = 0; w[0].descriptorCount = 1;
-        w[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[0].pBufferInfo = &vsInfo;
+        w[0].dstBinding = 5; w[0].descriptorCount = 1;
+        w[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[0].pBufferInfo = &recInfo;
         w[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[1].dstSet = s->set[i];
-        w[1].dstBinding = 1; w[1].descriptorCount = 1;
-        w[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[1].pBufferInfo = &fsInfo;
-        w[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[2].dstSet = s->set[i];
-        w[2].dstBinding = 5; w[2].descriptorCount = 1;
-        w[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[2].pBufferInfo = &recInfo;
-        w[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[3].dstSet = s->set[i];
-        w[3].dstBinding = 6; w[3].descriptorCount = 1;
-        w[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[3].pBufferInfo = &thinInfo;
+        w[1].dstBinding = 6; w[1].descriptorCount = 1;
+        w[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[1].pBufferInfo = &thinInfo;
         // Binding 2 (HDRI equirect) is written separately by ensure_hdri() once the
         // image exists — it may not yet at init time (write of a NULL view is invalid).
         VkDescriptorImageInfo hdriInfo{};
@@ -176,7 +174,7 @@ void write_descriptors(WaterIsland* s, int only) {
             w4.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w4.pImageInfo = &hdriInfo;
             vkUpdateDescriptorSets(s->device, 1, &w4, 0, nullptr);
         }
-        vkUpdateDescriptorSets(s->device, 4, w, 0, nullptr);
+        vkUpdateDescriptorSets(s->device, 2, w, 0, nullptr);
         // VK-PARITY-WATER-SHORE-1: bindings 3/4 (shore height / mask), once imported.
         if (s->shHView && s->shMView && s->hdriSampler) {
             VkDescriptorImageInfo shInfo[2] = {

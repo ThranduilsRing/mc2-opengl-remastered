@@ -134,14 +134,15 @@ struct VfxIsland : mc2vk::IslandState {
 
     // The objects the island owns, in creation order: the destructor releases them in reverse (fence first, buffers last), so the island is released
     // by deleting it, after the GPU is idle. The descriptor set and the command buffer belong to their pool.
-    mc2vk::OwnedBuffer ubo;
-    mc2vk::OwnedBuffer ssbo;
-    VkDeviceSize     ssboBytes = 0;
     mc2vk::OwnedRenderPass rpass;
     mc2vk::OwnedFramebuffer fb;
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
-    VkDescriptorSet  set   = VK_NULL_HANDLE;
+    // One set per parity slot; both bind the engine frame ring with dynamic offsets (0 = frame constants, 1 = particles). ringBound[par][binding] = the ring
+    // buffer that binding of set[par] currently points at; a frame whose span came from another buffer (the ring grew) re-points it after the slot's last
+    // submit completed.
+    VkDescriptorSet  set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    VkBuffer         ringBound[2][2] = {};
     mc2vk::OwnedShaderModule vert, frag;
     mc2vk::OwnedSampler samp;
     mc2vk::OwnedDescriptorSetLayout spriteDsl;
@@ -156,54 +157,39 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedPipeline addPipe;
     mc2vk::OwnedPipeline oneOnePipe;   // GL OneOne: (ONE, ONE), alpha ignored
     mc2vk::OwnedCommandPool cpool;
-    VkCommandBuffer  cbuf  = VK_NULL_HANDLE;
-    mc2vk::OwnedFence fence;
+    VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // one per parity slot
+    uint64_t         ticket[2] = {0, 0};                           // timeline value of the slot's last submit (0 = never submitted)
+    uint32_t         nextSlot = 0;
 
     int  w = 0, h = 0;
     bool inited = false;
     bool disabled = false;
 };
 
-bool make_buffer(VfxIsland* s, VkDeviceSize size, VkBufferUsageFlags usage, mc2vk::OwnedBuffer& out, std::string_view name) {
-    VkBufferCreateInfo bci{};
-    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bci.size = size; bci.usage = usage;
-    VmaAllocationCreateInfo aci{};
-    aci.usage = VMA_MEMORY_USAGE_AUTO;
-    aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-    if (!out.create(s->allocator, s->device, bci, aci, name)) {
-        vlog("vmaCreateBuffer failed (size=%llu).", (unsigned long long)size); return false;
+// The ring bindings of one parity set: 0 = frame constants (uniform, explicit range), 1 = particles (storage, the ring's dynamic range).
+void write_ring_bindings(VfxIsland* s, uint32_t par, VkBuffer buf, VkDeviceSize range) {
+    if (buf == VK_NULL_HANDLE || s->set[par] == VK_NULL_HANDLE) return;
+    if (s->ringBound[par][0] != buf) {
+        mc2vk::writeDynamicBinding(s->device, s->set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, buf, sizeof(VfxVsParams));
+        s->ringBound[par][0] = buf;
     }
-    return true;
+    if (s->ringBound[par][1] != buf) {
+        mc2vk::writeDynamicBinding(s->device, s->set[par], 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, buf, range);
+        s->ringBound[par][1] = buf;
+    }
 }
 
-void write_descriptors(VfxIsland* s) {
-    if (s->set == VK_NULL_HANDLE) return;
-    VkDescriptorBufferInfo uboInfo{ s->ubo.get(),  0, VK_WHOLE_SIZE };
-    VkDescriptorBufferInfo ssbInfo{ s->ssbo.get(), 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[2]{};
-    w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = s->set;
-    w[0].dstBinding = 0; w[0].descriptorCount = 1;
-    w[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[0].pBufferInfo = &uboInfo;
-    w[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[1].dstSet = s->set;
-    w[1].dstBinding = 1; w[1].descriptorCount = 1;
-    w[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[1].pBufferInfo = &ssbInfo;
-    vkUpdateDescriptorSets(s->device, 2, w, 0, nullptr);
-}
-
-// Grow the particle SSBO to at least `bytes`; re-point the descriptor. Never shrinks.
-bool ensure_ssbo(VfxIsland* s, VkDeviceSize bytes) {
-    if (bytes == 0) bytes = 64;
-    if (bytes <= s->ssboBytes && s->ssbo) return true;
-    // No device idle: the island retires every frame inline (it waits its own fence right after the submit, VKIsl.Vfx.InlineFenceWait), and no other
-    // island reads this buffer or its set, so nothing in flight can still use the old one.
-    s->ssbo.reset(); s->ssboBytes = 0;
-    VkDeviceSize cap = bytes + bytes / 2;   // 1.5x headroom
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->ssbo, "vfx.ssbo")) return false;
-    s->ssboBytes = cap;
-    write_descriptors(s);
-    return true;
-}
+// A sprite page that left the cache (its texels were replaced): the descriptor set returns to the sprite pool and the image goes once the frames that
+// may sample them have completed.
+struct RetiredSprite {
+    VkDevice dev = VK_NULL_HANDLE;
+    VkDescriptorPool pool = VK_NULL_HANDLE;
+    SpritePage page;
+    RetiredSprite(VkDevice d, VkDescriptorPool p, SpritePage&& pg) : dev(d), pool(p), page(std::move(pg)) {}
+    RetiredSprite(RetiredSprite&& o) noexcept : dev(o.dev), pool(o.pool), page(std::move(o.page)) { o.page.set = VK_NULL_HANDLE; }
+    RetiredSprite(const RetiredSprite&) = delete;
+    ~RetiredSprite() { if (page.set != VK_NULL_HANDLE) vkFreeDescriptorSets(dev, pool, 1, &page.set); }
+};
 
 // Copy one level of RGBA8 / BC7 texels into `page.img` and point `page.set` at it. The copy is queued in the context's upload batch (no CPU wait).
 bool upload_page(VfxIsland* s, SpritePage& page, const GosTexels& t) {
@@ -269,16 +255,16 @@ const SpritePage* get_page(VfxIsland* s, uint32_t handle) {
     if (failed != s->failedSource.end() && failed->second == t.bytes) return nullptr;
 
     SpritePage page;
-    if (it != s->pages.end()) {
-        page.set = it->second.set;   // sets live as long as the pool; the replacement reuses the slot
-    } else {
-        if (s->pages.size() >= kMaxSpritePages) {
-            if (!s->pageCapLogged) {
-                s->pageCapLogged = true;
-                vlog("sprite page cap reached (%u): groups on further textures are not drawn.", kMaxSpritePages);
-            }
-            return nullptr;
+    // A replacement takes a fresh set: the old page may still be sampled by a frame in flight, so neither its set nor its image is touched; the old
+    // page retires below. (A new page needs a free slot of the pool; a replacement frees one when the old page retires, so it may use the same budget.)
+    if (it == s->pages.end() && s->pages.size() >= kMaxSpritePages) {
+        if (!s->pageCapLogged) {
+            s->pageCapLogged = true;
+            vlog("sprite page cap reached (%u): groups on further textures are not drawn.", kMaxSpritePages);
         }
+        return nullptr;
+    }
+    {
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         dsai.descriptorPool = s->spritePool.get(); dsai.descriptorSetCount = 1;
@@ -289,9 +275,12 @@ const SpritePage* get_page(VfxIsland* s, uint32_t handle) {
     if (!upload_page(s, page, t)) {
         vlog("sprite import failed: handle=%u %ux%u.", handle, t.width, t.height);
         s->failedSource[handle] = t.bytes;
-        if (it == s->pages.end()) vkFreeDescriptorSets(s->device, s->spritePool.get(), 1, &page.set);   // the failed vector is not retried, and the slot returns to the pool
+        vkFreeDescriptorSets(s->device, s->spritePool.get(), 1, &page.set);   // the failed vector is not retried, and the slot returns to the pool
+        page.set = VK_NULL_HANDLE;
         return nullptr;
     }
+    if (it != s->pages.end())
+        mc2vk::getOrCreateEngineVulkanContext().retire(RetiredSprite(s->device, s->spritePool.get(), std::move(it->second)));
     page.source = t.bytes;
     vlog("sprite page cached: handle=%u %ux%u format=%u (%zu/%u).", handle, t.width, t.height, t.vkFormat,
          s->pages.size() + (it == s->pages.end() ? 1u : 0u), kMaxSpritePages);
@@ -397,10 +386,6 @@ bool init_island(VfxIsland* s, int w, int h) {
         setFallback("shared_gbuffer_views_not_ready"); return false;
     }
 
-    // UBO + initial particle SSBO.
-    if (!make_buffer(s, sizeof(VfxVsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, s->ubo, "vfx.ubo")) return false;
-    if (!ensure_ssbo(s, 64 * 1024)) return false;   // ~1024 particles to start
-
     // Render pass: color0 (LOAD, blend, STORE) + normal (LOAD, STORE, writemask 0) +
     // depth (LOAD, GEQUAL test, NO write, STORE unchanged).
     {
@@ -460,26 +445,26 @@ bool init_island(VfxIsland* s, int w, int h) {
     // Descriptor set: UBO(0, vert) + particle SSBO(1, vert).
     {
         VkDescriptorSetLayoutBinding b[2]{};
-        b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
         b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = 2; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* o) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, o); })) { vlog("vkCreateDescriptorSetLayout failed."); return false; }
         VkDescriptorPoolSize sizes[2]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 1;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 1;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 2;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; sizes[1].descriptorCount = 2;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 1; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+        pci.maxSets = 2; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* o) { return vkCreateDescriptorPool(s->device, &pci, nullptr, o); })) { vlog("vkCreateDescriptorPool failed."); return false; }
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 1; const VkDescriptorSetLayout dslHandle = s->dsl.get(); dsai.pSetLayouts = &dslHandle;
-        if (vkAllocateDescriptorSets(s->device, &dsai, &s->set) != VK_SUCCESS) { vlog("vkAllocateDescriptorSets failed."); return false; }
-        write_descriptors(s);
+        const VkDescriptorSetLayout dslHandles2[2] = { s->dsl.get(), s->dsl.get() };
+        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = dslHandles2;
+        if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) { vlog("vkAllocateDescriptorSets failed."); return false; }
     }
 
     // Pipelines (alpha + additive).
@@ -521,7 +506,7 @@ bool init_island(VfxIsland* s, int w, int h) {
         if (!s->alphaPipe || !s->addPipe || !s->oneOnePipe) { setFallback("pipeline_create_failed"); return false; }
     }
 
-    // Command pool + one command buffer + fence (inline-wait each frame).
+    // Command pool + two command buffers (one per parity slot; the slot is reused once its last submit completed, a timeline ticket, no island fence).
     {
         VkCommandPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -530,10 +515,8 @@ bool init_island(VfxIsland* s, int w, int h) {
         if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* o) { return vkCreateCommandPool(s->device, &pci, nullptr, o); })) { vlog("vkCreateCommandPool failed."); return false; }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
-        if (vkAllocateCommandBuffers(s->device, &cai, &s->cbuf) != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed."); return false; }
-        VkFenceCreateInfo fnci{}; fnci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        if (!mc2vk::create(s->fence, s->device, [&](VkFence* o) { return vkCreateFence(s->device, &fnci, nullptr, o); })) { vlog("vkCreateFence failed."); return false; }
+        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2;
+        if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed."); return false; }
     }
 
     s->inited = true;
@@ -564,7 +547,7 @@ extern "C" int mc2_vk_vfx_island_run(
     if (!vfxGateOn()) return 0;
     if (particleCount == 0 || drawCount == 0 || particles == nullptr || draws == nullptr) return 0;
     if (w <= 0 || h <= 0 || worldToClipGL == nullptr) return 0;
-    ZoneScopedN("VKIsl.Vfx.Run");   // VK-ISLAND-TRACY-1 per-call total (CPU; incl. ALWAYS-inline fence wait)
+    ZoneScopedN("VKIsl.Vfx.Run");   // VK-ISLAND-TRACY-1 per-call total (CPU)
 
     // The island lives in the engine context's slot: the context releases it ahead of the device whatever path ends the process.
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
@@ -585,28 +568,30 @@ extern "C" int mc2_vk_vfx_island_run(
     VfxIsland* s = static_cast<VfxIsland*>(slot.get());
     if (s->disabled || !s->inited) return 0;
 
-    // Upload the whole particle array (64B/record) + frame constants.
+    // Per-frame data goes into the engine frame ring: frame constants (UBO) then the whole particle array (64B/record), one span. The parity slot's last
+    // submit must have completed before its command buffer and set are reused: a timeline ticket, not an island fence.
+    const uint32_t par = s->nextSlot;
+    s->nextSlot ^= 1u;
+    if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return 0; }
     const VkDeviceSize needBytes = (VkDeviceSize)particleCount * 64u;
-    if (!ensure_ssbo(s, needBytes)) { s->disabled = true; return 0; }
+    const VkDeviceSize partOff = mc2vk::alignUp(sizeof(VfxVsParams), slotCtx.frameAlignment());
+    const mc2vk::FrameAlloc span = slotCtx.frameAlloc(partOff + needBytes);
+    if (!span) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
     {
-        ZoneScopedN("VKIsl.Vfx.Feed");   // VK-ISLAND-TRACY-1: particle SSBO staging
-        if (void* p = s->ssbo.map()) {
-            std::memcpy(p, particles, (size_t)needBytes);
-            s->ssbo.unmap();
-        }
+        ZoneScopedN("VKIsl.Vfx.Feed");   // VK-ISLAND-TRACY-1: particle staging
+        std::memcpy(static_cast<uint8_t*>(span.ptr) + partOff, particles, (size_t)needBytes);
     }
     {
-        if (void* p = s->ubo.map()) {
-            VfxVsParams up{};
-            std::memcpy(up.worldToClipGL, worldToClipGL, sizeof(up.worldToClipGL));
-            if (camRight) { up.camRight[0]=camRight[0]; up.camRight[1]=camRight[1]; up.camRight[2]=camRight[2]; }
-            if (camUp)    { up.camUp[0]=camUp[0];       up.camUp[1]=camUp[1];       up.camUp[2]=camUp[2]; }
-            else          { up.camUp[1]=1.0f; }
-            if (!camRight) up.camRight[0]=1.0f;
-            std::memcpy(p, &up, sizeof(up));
-            s->ubo.unmap();
-        }
+        VfxVsParams up{};
+        std::memcpy(up.worldToClipGL, worldToClipGL, sizeof(up.worldToClipGL));
+        if (camRight) { up.camRight[0]=camRight[0]; up.camRight[1]=camRight[1]; up.camRight[2]=camRight[2]; }
+        if (camUp)    { up.camUp[0]=camUp[0];       up.camUp[1]=camUp[1];       up.camUp[2]=camUp[2]; }
+        else          { up.camUp[1]=1.0f; }
+        if (!camRight) up.camRight[0]=1.0f;
+        std::memcpy(span.ptr, &up, sizeof(up));
     }
+    write_ring_bindings(s, par, span.buffer, span.range);
+    const uint32_t dynOffsets[2] = {static_cast<uint32_t>(span.offset), static_cast<uint32_t>(span.offset + partOff)};
 
     // Resolve every group's sprite page first: an import records and waits on its own submit.
     std::vector<const SpritePage*> groupPage(drawCount, nullptr);
@@ -616,12 +601,13 @@ extern "C" int mc2_vk_vfx_island_run(
     if (s->disabled) return 0;
 
     // Record: one renderpass, per-group pipeline + sub-range draw.
-    vkResetCommandBuffer(s->cbuf, 0);
+    VkCommandBuffer cb = s->cbuf[par];
+    vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(s->cbuf, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
-    vk_render_pass_timer::Begin(s->cbuf, gos_render_pass_timer::Pass_AlphaVfx);
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_AlphaVfx);
     vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_AlphaVfx);
     VkClearValue clears[3]{};   // all LOAD; ignored
     VkRenderPassBeginInfo rbi{};
@@ -629,8 +615,8 @@ extern "C" int mc2_vk_vfx_island_run(
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
     rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
     rbi.clearValueCount = 3; rbi.pClearValues = clears;
-    vkCmdBeginRenderPass(s->cbuf, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindDescriptorSets(s->cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set, 0, nullptr);
+    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, dynOffsets);
     unsigned long groupsDrawn = 0;
     VkPipeline bound = VK_NULL_HANDLE;
     for (uint32_t gi = 0; gi < drawCount; ++gi) {
@@ -639,31 +625,27 @@ extern "C" int mc2_vk_vfx_island_run(
         if ((uint64_t)d.start + d.count > particleCount) continue;   // clamp bad ranges
         if (!groupPage[gi]) continue;   // no resident texture: skipped, as the GL path does
         VkPipeline want = d.additive == VFX_ADD_ONE_ONE ? s->oneOnePipe.get() : d.additive == VFX_ADD_SRC_ALPHA ? s->addPipe.get() : s->alphaPipe.get();
-        if (want != bound) { vkCmdBindPipeline(s->cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }
-        vkCmdBindDescriptorSets(s->cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groupPage[gi]->set, 0, nullptr);
+        if (want != bound) { vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groupPage[gi]->set, 0, nullptr);
         const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive == VFX_ADD_ONE_ONE ? 1u : 0u };
-        vkCmdPushConstants(s->cbuf, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
-        vkCmdDraw(s->cbuf, d.count * 6u, 1, d.start * 6u, 0);
+        vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
+        vkCmdDraw(cb, d.count * 6u, 1, d.start * 6u, 0);
         ++groupsDrawn;
     }
-    vkCmdEndRenderPass(s->cbuf);
-    vk_render_pass_timer::End(s->cbuf, gos_render_pass_timer::Pass_AlphaVfx);
-    if (vkEndCommandBuffer(s->cbuf) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+    vkCmdEndRenderPass(cb);
+    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_AlphaVfx);
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
     if (groupsDrawn == 0) return 0;   // nothing drawable this frame: the recorded buffer is not submitted (the guard cancels its bracket)
 
-    const VkFence fence = s->fence.get();
-    vkResetFences(s->device, 1, &fence);
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.commandBufferCount = 1; si.pCommandBuffers = &s->cbuf;
+    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     { ZoneScopedN("VKIsl.Vfx.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
-      if (mc2vk::submitGraphics(si, fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+      uint64_t value = 0;
+      if (slotCtx.submit(si, VK_NULL_HANDLE, &value) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
+      s->ticket[par] = value; }
     timerGuard.submitted();
-    { ZoneScopedN("VKIsl.Vfx.InlineFenceWait");   // VK-ISLAND-TRACY-1: ALWAYS-inline retire (never fence-deferred)
-      if (vkWaitForFences(s->device, 1, &fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
-          setFallback("fence_timeout"); s->disabled = true; return 0;
-      } }
 
     g_health.vkDraws = groupsDrawn;
     g_health.particles = particleCount;

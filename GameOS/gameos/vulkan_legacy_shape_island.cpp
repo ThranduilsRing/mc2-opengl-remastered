@@ -108,11 +108,12 @@ struct Island : mc2vk::IslandState {
     struct VkImageResource* normalRes = nullptr;
     struct VkImageResource* depthRes = nullptr;
 
-    VkDeviceSize vtxCap[2] = {};
+    // Per-frame data (the frame UBO, then the vertex stream) lives in the engine frame ring; every texture set binds the UBO with a dynamic offset.
+    // ringBound[par] = the ring buffer binding 0 of every [par] set currently points at; a frame whose span came from another buffer (the ring grew), or a
+    // set created since, re-points them after beginFrame retired the parity.
+    VkBuffer ringBound[2] = {};
     VkCommandBuffer cbuf[2] = {};   // allocated from `cpool`, freed with it
 
-    mc2vk::OwnedBuffer ubo[2];
-    mc2vk::OwnedBuffer vtx[2];
     mc2vk::OwnedCommandPool cpool;
     mc2vk::OwnedSampler samp;
     mc2vk::OwnedRenderPass rpass;
@@ -229,15 +230,16 @@ bool alloc_tex_sets(Island* s, TexEntry& t) {
     dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
     if (vkAllocateDescriptorSets(s->device, &dsai, t.set) != VK_SUCCESS) return false;
     for (uint32_t par = 0; par < 2; ++par) {
-        VkDescriptorBufferInfo ui{ s->ubo[par].get(), 0, VK_WHOLE_SIZE };
         VkDescriptorImageInfo ii{};
         ii.sampler = s->samp.get(); ii.imageView = t.view.get(); ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        VkWriteDescriptorSet w[2]{};
-        w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = t.set[par]; w[0].dstBinding = 0;
-        w[0].descriptorCount = 1; w[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[0].pBufferInfo = &ui;
-        w[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[1].dstSet = t.set[par]; w[1].dstBinding = 1;
-        w[1].descriptorCount = 1; w[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[1].pImageInfo = &ii;
-        vkUpdateDescriptorSets(s->device, 2, w, 0, nullptr);
+        VkWriteDescriptorSet w[1]{};
+        w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = t.set[par]; w[0].dstBinding = 1;
+        w[0].descriptorCount = 1; w[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[0].pImageInfo = &ii;
+        vkUpdateDescriptorSets(s->device, 1, w, 0, nullptr);
+        // Binding 0 (the frame UBO) at the ring's current buffer; the parity is re-pointed at its next frame.
+        if (const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer())
+            mc2vk::writeDynamicBinding(s->device, t.set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, sizeof(LegacyFrameUBO));
+        s->ringBound[par] = VK_NULL_HANDLE;
     }
     return true;
 }
@@ -293,12 +295,6 @@ bool init_island(Island* s, int w, int h) {
     s->depthRes  = mc2SharedSceneDepthGetResource();
     if (!s->colorRes || !s->normalRes || !s->depthRes) { setFallback("shared_gbuffer_not_ready"); return false; }
     g_initReachedBuild = 1;   // readiness gates passed: failures past here are PERMANENT
-
-    for (int i = 0; i < 2; ++i) {
-        if (!make_buffer(s, s->ubo[i], sizeof(LegacyFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "legacyshape.ubo", static_cast<int>(i))) return false;
-        s->vtxCap[i] = 256 * 1024;
-        if (!make_buffer(s, s->vtx[i], s->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "legacyshape.vtx", static_cast<int>(i))) return false;
-    }
 
     {   // command pool + per-parity command buffers
         VkCommandPoolCreateInfo cpi{};
@@ -375,7 +371,7 @@ bool init_island(Island* s, int w, int h) {
 
     {   // descriptor layout + pool, dummy white texture
         VkDescriptorSetLayoutBinding b[2]{};
-        b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -385,7 +381,7 @@ bool init_island(Island* s, int w, int h) {
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) { setFallback("dsl_failed"); return false; }
         const uint32_t N = kMaxTextures + 1;   // + dummy
         VkDescriptorPoolSize sizes[2]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[0].descriptorCount = 2 * N;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 2 * N;
         sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[1].descriptorCount = 2 * N;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -556,18 +552,12 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
         totalBytes += (VkDeviceSize)d.vertexCount * kVertexStride;
     }
 
-    // Grow both parity vertex buffers BEFORE beginFrame (growth after it could strand the fence).
-    for (uint32_t i = 0; i < 2; ++i) {
-        if (totalBytes > s->vtxCap[i]) {
-            // Growth frees a buffer an in-flight submit may still read.
-            mc2vk::getOrCreateEngineVulkanContext().waitIdle("legacy_shape_vtx_grow");
-            s->vtx[i].reset();
-            s->vtxCap[i] = totalBytes + totalBytes / 2;
-            if (!make_buffer(s, s->vtx[i], s->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "legacyshape.vtx", static_cast<int>(i))) {
-                s->disabled = true; setFallback("vtx_grow_failed"); return 0;
-            }
-        }
-    }
+    // The frame UBO and the vertex stream go into the engine frame ring BEFORE beginFrame (a ring failure after it could strand the fence). The ring slot
+    // belongs to the frame, not to the parity, so staging here races nothing.
+    mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
+    const VkDeviceSize vtxOff = mc2vk::alignUp(sizeof(LegacyFrameUBO), rctx.frameAlignment());
+    const mc2vk::FrameAlloc span = rctx.frameAlloc(vtxOff + (totalBytes ? totalBytes : kVertexStride));
+    if (!span) { s->disabled = true; setFallback("frame_ring_alloc_failed"); return 0; }
 
     VkImageResource* colorRes = reinterpret_cast<VkImageResource*>(s->colorRes);
     VkFrameSync fsC{};
@@ -575,18 +565,23 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     const uint32_t par = fsC.parity & 1u;
 
     {   // per-frame vertex stream + UBO
-        void* p = s->vtx[par].map();
-        if (!p) { setFallback("map_failed"); s->disabled = true; return 0; }
+        uint8_t* const base = static_cast<uint8_t*>(span.ptr);
         for (const Resolved& r : list)
-            std::memcpy((uint8_t*)p + r.byteOff, r.d->vertices, (size_t)r.d->vertexCount * kVertexStride);
-        s->vtx[par].unmap();
-
+            std::memcpy(base + vtxOff + r.byteOff, r.d->vertices, (size_t)r.d->vertexCount * kVertexStride);
         LegacyFrameUBO u{};
         const float* proj = gos_GetProj2ScreenMat4();
         if (proj) std::memcpy(u.proj, proj, sizeof(u.proj));
         for (int k = 0; k < 4; ++k) u.fogColor[k] = frame->fogColor[k];
-        upload_host(s->ubo[par], &u, sizeof(u));
+        std::memcpy(base, &u, sizeof(u));
     }
+    // Every texture set of this parity follows the ring buffer the span came from; the draw passes the UBO offset.
+    if (s->ringBound[par] != span.buffer) {
+        for (auto& kv : s->texs)
+            if (kv.second.set[par] != VK_NULL_HANDLE) mc2vk::writeDynamicBinding(s->device, kv.second.set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, span.buffer, sizeof(LegacyFrameUBO));
+        if (s->dummyTex.set[par] != VK_NULL_HANDLE) mc2vk::writeDynamicBinding(s->device, s->dummyTex.set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, span.buffer, sizeof(LegacyFrameUBO));
+        s->ringBound[par] = span.buffer;
+    }
+    const uint32_t uboOffset = static_cast<uint32_t>(span.offset);
 
     VkCommandBuffer cb = s->cbuf[par];
     vkResetCommandBuffer(cb, 0);
@@ -604,17 +599,16 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     VkRect2D scissor{{0, 0}, {(uint32_t)w, (uint32_t)h}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
-    VkDeviceSize zeroOff = 0;
+    VkDeviceSize vertexOffset = span.offset + vtxOff;
     uint32_t boundPass = 0xffffffffu;
-    const VkBuffer vertexBuffer = s->vtx[par].get();
-    vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &zeroOff);
+    vkCmdBindVertexBuffers(cb, 0, 1, &span.buffer, &vertexOffset);
 
     VkDescriptorSet boundSet = VK_NULL_HANDLE;
     unsigned long drawn = 0, verts = 0;
     for (const Resolved& r : list) {
         VkDescriptorSet set = r.t->set[par];
         if (set != boundSet) {
-            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 0, nullptr);
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 1, &uboOffset);
             boundSet = set;
         }
         const uint32_t pass = (r.d->pass < MC2_LEGACY_PASS_COUNT) ? r.d->pass : (uint32_t)MC2_LEGACY_PASS_SOLID;
@@ -661,6 +655,7 @@ extern "C" void mc2_vk_legacy_shape_island_reset() {
     // The pool has no FREE_DESCRIPTOR_SET bit: reset it and re-create the dummy sets.
     if (s->pool) vkResetDescriptorPool(s->device, s->pool.get(), 0);
     s->dummyTex.set[0] = s->dummyTex.set[1] = VK_NULL_HANDLE;
+    s->ringBound[0] = s->ringBound[1] = VK_NULL_HANDLE;
     if (!alloc_tex_sets(s, s->dummyTex)) { s->disabled = true; vlog("reset: dummy sets failed -- island disabled."); }
     vlog("texture cache reset on mission unload.");
 }

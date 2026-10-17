@@ -188,8 +188,9 @@ struct WaterIsland : mc2vk::IslandState {
 
     // Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
     // parked island ahead of the device). An image is declared before its view so the view is released first.
-    mc2vk::OwnedBuffer vsUbo[2];
-    mc2vk::OwnedBuffer fsUbo[2];
+    // The vertex and fragment parameter UBOs live in the engine frame ring (one span per frame); set[par] binds them with dynamic offsets (bindings 0, 1).
+    // ringBound[par] = the ring buffer they currently point at; a frame whose span came from another buffer re-points them after the slot fence.
+    VkBuffer ringBound[2] = {};
     mc2vk::OwnedBuffer recipeBuf;
     mc2vk::OwnedBuffer thinBuf[2];
     mc2vk::OwnedRenderPass rpass;

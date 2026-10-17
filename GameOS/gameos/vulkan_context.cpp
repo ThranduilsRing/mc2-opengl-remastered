@@ -468,6 +468,7 @@ void VulkanContext::retireIsland(IslandSlot slot) {
     static_assert(sizeof(kSlotNames) / sizeof(kSlotNames[0]) == static_cast<size_t>(IslandSlot::Count), "name every island slot");
     if (mc2_diag::tagRequested("VK_SHUTDOWN")) ctxlog("retire island slot=%s.", kSlotNames[static_cast<size_t>(slot)]);
     waitIdle("retire_island");
+    deferred_.drainAll();   // parked owners may name this island's pools (a retired sprite page frees its set): they go while the island is still alive
     parked.reset();
 }
 #endif

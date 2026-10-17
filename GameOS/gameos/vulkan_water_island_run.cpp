@@ -93,6 +93,12 @@ extern "C" int mc2_vk_water_island_run(
     // frame — near-free by now), and it protects everything indexed [par] below:
     // staging buffers, descriptor set, command buffer. The inline post-submit wait
     // this replaces is kept only under the MC2_VK_WATER_FENCE_DEFER=0 killswitch.
+    // The parameter UBOs go into the engine frame ring BEFORE beginFrame (a ring failure after it could strand the fence); the ring slot belongs to the
+    // frame, not to the parity, so staging them here races nothing.
+    const VkDeviceSize fsUboOff = mc2vk::alignUp(sizeof(WaterVsParams), slotCtx.frameAlignment());
+    const mc2vk::FrameAlloc uboSpan = slotCtx.frameAlloc(fsUboOff + sizeof(WaterFsParams));
+    if (!uboSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
+
     const clk::time_point tFence0 = clk::now();
     VkFrameSync fsC{};
     { ZoneScopedN("VKIsl.Water.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the parity slot
@@ -150,33 +156,33 @@ extern "C" int mc2_vk_water_island_run(
         g_health.thinRecords = thinCount;
     }
 
-    // ---- 3) Upload slot `par`'s UBOs. ----
+    // ---- 3) Stage the parameter UBOs into the frame-ring span and point slot `par` at its buffer. ----
     {
-        void* p = nullptr;
-        if ((p = s->vsUbo[par].map()) != nullptr) {
-            WaterVsParams vsLocal;
-            std::memcpy(&vsLocal, vsParams, sizeof(WaterVsParams));
-            // Shore mode 3: flat water plane in the VS only when the hi-res height sidecar
-            // is really imported (mirrors GL u_shoreFlat = mode==3 && shTex != 0).
-            vsLocal.p3[1] = (((int)(((const WaterFsParams*)fsParams)->f4[0] + 0.5f) == 3) && s->shHReal) ? 1.0f : 0.0f;
-            std::memcpy(p, &vsLocal, sizeof(WaterVsParams)); s->vsUbo[par].unmap();
+        uint8_t* const base = static_cast<uint8_t*>(uboSpan.ptr);
+        WaterVsParams vsLocal;
+        std::memcpy(&vsLocal, vsParams, sizeof(WaterVsParams));
+        // Shore mode 3: flat water plane in the VS only when the hi-res height sidecar
+        // is really imported (mirrors GL u_shoreFlat = mode==3 && shTex != 0).
+        vsLocal.p3[1] = (((int)(((const WaterFsParams*)fsParams)->f4[0] + 0.5f) == 3) && s->shHReal) ? 1.0f : 0.0f;
+        std::memcpy(base, &vsLocal, sizeof(WaterVsParams));
+        WaterFsParams fsLocal;
+        std::memcpy(&fsLocal, fsParams, sizeof(WaterFsParams));
+        // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy
+        // bound), force u_waterHdriLod (f2.w, offset 60) to -1 so the FS
+        // takes the SH-L2 fallback -- same semantics as GL !isHdriReady().
+        if (!s->hdriRealImported) fsLocal.f2[3] = -1.0f;
+        // VK-PARITY-WATER-SHORE-1: GL sets u_hasShoreHeight = (mode==2 && tex)
+        // and u_hasShoreMask = (mode>=1 && tex); the island owns the textures.
+        {
+            const int shMode = (int)(fsLocal.f4[0] + 0.5f);
+            fsLocal.f4[1] = (shMode >= 2 && s->shHReal) ? 1.0f : 0.0f;
+            fsLocal.f4[2] = (shMode >= 1 && s->shMReal) ? 1.0f : 0.0f;
         }
-        if ((p = s->fsUbo[par].map()) != nullptr) {
-            WaterFsParams fsLocal;
-            std::memcpy(&fsLocal, fsParams, sizeof(WaterFsParams));
-            // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy
-            // bound), force u_waterHdriLod (f2.w, offset 60) to -1 so the FS
-            // takes the SH-L2 fallback — same semantics as GL !isHdriReady().
-            if (!s->hdriRealImported) fsLocal.f2[3] = -1.0f;
-            // VK-PARITY-WATER-SHORE-1: GL sets u_hasShoreHeight = (mode==2 && tex)
-            // and u_hasShoreMask = (mode>=1 && tex); the island owns the textures.
-            {
-                const int shMode = (int)(fsLocal.f4[0] + 0.5f);
-                fsLocal.f4[1] = (shMode >= 2 && s->shHReal) ? 1.0f : 0.0f;
-                fsLocal.f4[2] = (shMode >= 1 && s->shMReal) ? 1.0f : 0.0f;
-            }
-            std::memcpy(p, &fsLocal, sizeof(WaterFsParams));
-            s->fsUbo[par].unmap();
+        std::memcpy(base + fsUboOff, &fsLocal, sizeof(WaterFsParams));
+        if (s->ringBound[par] != uboSpan.buffer) {
+            mc2vk::writeDynamicBinding(s->device, s->set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, uboSpan.buffer, sizeof(WaterVsParams));
+            mc2vk::writeDynamicBinding(s->device, s->set[par], 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, uboSpan.buffer, sizeof(WaterFsParams));
+            s->ringBound[par] = uboSpan.buffer;
         }
     }
     }   // VK-ISLAND-TRACY-1: close VKIsl.Water.Feed
@@ -229,7 +235,8 @@ extern "C" int mc2_vk_water_island_run(
         rbi.clearValueCount = 3; rbi.pClearValues = clears;
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 0, nullptr);
+        const uint32_t uboOffsets[2] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(uboSpan.offset + fsUboOff)};
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, uboOffsets);
         if (nat) vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
         else     vkCmdDraw(cb, thinCount * 6u, 1, 0, 0);
         vkCmdEndRenderPass(cb);
