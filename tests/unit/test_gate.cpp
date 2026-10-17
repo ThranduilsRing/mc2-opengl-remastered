@@ -317,10 +317,10 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const gate::Row* rows = gate::tableData();
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
-    // The table is exactly 980 rows (gate_table.json `count`). REQUIRE(n == kGateCount) only ties the table to the
+    // The table is exactly 967 rows (gate_table.json `count`). REQUIRE(n == kGateCount) only ties the table to the
     // generated header, so a bad regeneration that shrinks both passes it; this floor catches that loss. It sits a
     // few rows under the real count and moves down with an amnesty wave that deletes rows on purpose.
-    REQUIRE(n >= 975);
+    REQUIRE(n >= 960);
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);
