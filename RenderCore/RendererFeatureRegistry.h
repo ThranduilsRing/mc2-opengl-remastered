@@ -1101,7 +1101,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_RENDER_BACKEND",
         EnvVarKind::Feature,
         false,
-        "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default gl; unset/unrecognized -> gl, coercion logged).",
+        "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default vulkan; unset/unrecognized -> vulkan; gl is the temporary opt-out).",
     },
     {
         "MC2_FEATURE_RENDER_BACKEND_IFACE",

@@ -4297,7 +4297,7 @@ flags:
     default: ""
     rule: Std
     owner: unclassified
-    doc: "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default gl; unset/unrecognized -> gl, coercion logged)."
+    doc: "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default vulkan; unset/unrecognized -> vulkan; gl is the temporary opt-out)."
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_RENDER_BACKEND, kind: Feature, order: -1, default_on: false}

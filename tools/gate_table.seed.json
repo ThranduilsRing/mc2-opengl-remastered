@@ -15736,7 +15736,7 @@
    "rule": "NonEmpty",
    "owner": "unclassified",
    "retireBy": "",
-   "doc": "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default gl; unset/unrecognized -> gl, coercion logged).",
+   "doc": "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default vulkan; unset/unrecognized -> vulkan; gl is the temporary opt-out).",
    "readers": [
     {
      "at": "GameOS/gameos/render_backend_select.cpp:30",
