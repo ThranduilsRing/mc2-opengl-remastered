@@ -932,6 +932,16 @@ void Start()
 	spec.envExtra.push_back(std::make_pair(
 		std::string("MC2_BRIDGE_MOVER_STATE"), std::string("1")));
 
+	// The game child runs the same backend as the editor viewport (Vulkan unless the gl opt-out is set),
+	// stated explicitly so it never depends on what the child would default to.
+	{
+		const char* be = getenv("MC2_RENDER_BACKEND");
+		const bool gl = be && _stricmp(be, "gl") == 0;
+		spec.envExtra.push_back(std::make_pair(std::string("MC2_RENDER_BACKEND"), std::string(gl ? "gl" : "vulkan")));
+		if (!gl)
+			spec.envExtra.push_back(std::make_pair(std::string("MC2_VK_SHARED_GBUFFER"), std::string("1")));
+	}
+
 	// Mod-aware env: when the mission lives in a mod, mount it + ask for a state dump.
 	if (s_modActive)
 	{
