@@ -17,7 +17,7 @@ ChooseBuildingDlg.h		: Interface for the ChooseBuildingDlg component.
 class ChooseBuildingDlg: public CDialog
 {
 public:
-	typedef EditorObject *building_ptr_type;
+	using building_ptr_type = EditorObject *;
 
 	ChooseBuildingDlg( building_ptr_type &buildingPtr );
 
@@ -31,7 +31,7 @@ public:
 	BOOL OnInitDialog();
 
 private:
-	typedef CDialog inherited;
+	using inherited = CDialog;
 
 	// suppressing these
 	inline ChooseBuildingDlg();

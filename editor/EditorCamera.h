@@ -101,10 +101,10 @@ public:
 		{
 			Camera::init();
 			missionView.reset();
-			compass = NULL;
+			compass = nullptr;
 			drawCompass = true;
 			cameraLineChanged = 0;
-			theSky = NULL;
+			theSky = nullptr;
 			// Zoom range is set per-frame in render() (Camera::init resets these).
 		}
 
@@ -112,10 +112,10 @@ public:
 	{
 		//Must toss these between map loads to clear out their texture memory!!
 		delete compass;
-		compass = NULL;
+		compass = nullptr;
 		
 		delete theSky;
-		theSky = NULL;
+		theSky = nullptr;
 	}
 	
  	virtual void render (void)
@@ -356,7 +356,7 @@ public:
 			if ( !appearanceTypeList )
 			{
 				appearanceTypeList = new AppearanceTypeList;
-				gosASSERT(appearanceTypeList != NULL);
+				gosASSERT(appearanceTypeList != nullptr);
 			}
 
 			AppearanceType* appearanceType = appearanceTypeList->getAppearance( BLDG_TYPE << 24, "compass" );
@@ -368,7 +368,7 @@ public:
 		{
 			long appearanceType = (GENERIC_APPR_TYPE << 24);
 		
-			AppearanceTypePtr genericAppearanceType = NULL;
+			AppearanceTypePtr genericAppearanceType = nullptr;
 			genericAppearanceType = appearanceTypeList->getAppearance(appearanceType,"skybox");
 			if (!genericAppearanceType)
 			{
@@ -378,10 +378,10 @@ public:
 			}
 			  
 			theSky = new GenericAppearance;
-			gosASSERT(theSky != NULL);
+			gosASSERT(theSky != nullptr);
 		
 			gosASSERT(genericAppearanceType->getAppearanceClass() == GENERIC_APPR_TYPE);
-			theSky->init((GenericAppearanceType*)genericAppearanceType, NULL);
+			theSky->init((GenericAppearanceType*)genericAppearanceType, nullptr);
 			
 			theSky->setSkyNumber(EditorData::instance->TheSkyNumber());
 			oldSkyNumber = EditorData::instance->TheSkyNumber();

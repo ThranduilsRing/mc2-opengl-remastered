@@ -6,7 +6,7 @@
 
 int EditorInterface::NewHeightMap()
 {
-	CFileDialog	fileDlg( 1,  "tga", NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szTGAFilter );
+	CFileDialog	fileDlg( 1,  "tga", nullptr, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szTGAFilter );
 	fileDlg.m_ofn.lpstrInitialDir = terrainPath;
 
 	bool endFlag = false;
@@ -503,9 +503,9 @@ int EditorInterface::Alignment( int specific )
 
 int EditorInterface::SaveHeightMap()
 {
-	CreateDirectory(terrainPath, NULL);
+	CreateDirectory(terrainPath, nullptr);
 	
-	CFileDialog	fileDlg( 0, "tga", NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szTGAFilter );
+	CFileDialog	fileDlg( 0, "tga", nullptr, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szTGAFilter );
 	fileDlg.m_ofn.lpstrInitialDir = terrainPath;
 	
 	if (  IDOK == fileDlg.DoModal() )
@@ -683,7 +683,7 @@ int EditorInterface::LayMines()
 
 int EditorInterface::SelectDetailTexture()
 {
-	CFileDialog fileDlg( TRUE,  "tga", NULL, OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR, szTGAFilter );
+	CFileDialog fileDlg( TRUE,  "tga", nullptr, OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR, szTGAFilter );
 	fileDlg.m_ofn.lpstrInitialDir = texturePath;
 
 	if (  IDOK == fileDlg.DoModal() )
@@ -701,7 +701,7 @@ int EditorInterface::SelectDetailTexture()
 
 int EditorInterface::SelectWaterTexture()
 {
-	CFileDialog fileDlg( TRUE,  "tga", NULL, OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR, szTGAFilter );
+	CFileDialog fileDlg( TRUE,  "tga", nullptr, OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR, szTGAFilter );
 	fileDlg.m_ofn.lpstrInitialDir = texturePath;
 
 	if (  IDOK == fileDlg.DoModal() )
@@ -740,7 +740,7 @@ inline bool colorMapIsOKFormat (const char *fileName)
 
 int EditorInterface::SetBaseTexture()
 {
-	CFileDialog fileDlg( TRUE,  "tga", NULL, OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR, szTGAFilter );
+	CFileDialog fileDlg( TRUE,  "tga", nullptr, OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR, szTGAFilter );
 	fileDlg.m_ofn.lpstrInitialDir = texturePath;
 
 	if (  IDOK == fileDlg.DoModal() )
@@ -752,7 +752,7 @@ int EditorInterface::SetBaseTexture()
 		if (colorMapIsOKFormat(path))
 		{
 			char name[1024];
-			_splitpath(path,NULL,NULL,name,NULL);
+			_splitpath(path,nullptr,nullptr,name,nullptr);
 
 			char *testLoc = strstr(name,".burnin");
 			if (testLoc)
@@ -792,7 +792,7 @@ int EditorInterface::ReloadBaseTexture()
 
 int EditorInterface::SelectWaterDetailTexture()
 {
-	CFileDialog fileDlg( TRUE,  "tga", NULL, OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR, szTGAFilter );
+	CFileDialog fileDlg( TRUE,  "tga", nullptr, OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR, szTGAFilter );
 	fileDlg.m_ofn.lpstrInitialDir = texturePath;
 
 	if (  IDOK == fileDlg.DoModal() )

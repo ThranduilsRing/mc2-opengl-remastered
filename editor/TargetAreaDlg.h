@@ -33,7 +33,7 @@ public:
 	void OnPickCenter();
 
 private:
-	typedef CDialog inherited;
+	using inherited = CDialog;
 
 	// suppressing these
 	inline TargetAreaDlg();

@@ -75,7 +75,7 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 	
 	memset( pShrunken, 0, dataSize );
 
-	gosASSERT(tacMapBmp != NULL);
+	gosASSERT(tacMapBmp != nullptr);
 	memset(tacMapBmp,0,ramSize*4);
 
 	Stuff::Vector3D optimalLight;

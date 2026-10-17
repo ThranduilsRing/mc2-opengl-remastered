@@ -19,7 +19,7 @@ class FogDlg : public CDialog
 {
 // Construction
 public:
-	FogDlg(CWnd* pParent = NULL);   // standard constructor
+	FogDlg(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(FogDlg)
