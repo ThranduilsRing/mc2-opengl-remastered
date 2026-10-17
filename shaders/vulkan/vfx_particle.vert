@@ -77,9 +77,9 @@ void main() {
     vec3 glCenter    = mc2ToRender(stuffCenter);
     // MLR draws these sprites over the scene without a depth test, and a beam head / impact flare sits ON the
     // surface it hits, so its centre fails the depth test against that surface. Pull the whole billboard toward
-    // the camera by its own radius (the GL basis is handed so that cross(right, up) points away from the camera) so it lies in front of what it touches.
+    // the camera by four of its own radii (the GL basis is handed so that cross(right, up) points away from the camera) so it lies in front of what it touches.
     vec3 toCamera    = normalize(cross(U.camRight.xyz, U.camUp.xyz));
-    glCenter        -= toCamera * max(sX, sY);
+    glCenter        -= toCamera * (4.0 * max(sX, sY));
     vec3 worldPos    = glCenter
                      + U.camRight.xyz * corner.x
                      + U.camUp.xyz    * corner.y;
