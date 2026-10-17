@@ -25,7 +25,7 @@
   "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2770,
   "code/gamecam.cpp": 1580,
-  "code/gameobj.cpp": 2258,
+  "code/gameobj.cpp": 2255,
   "code/infowindow.cpp": 1728,
   "code/logisticsdialog.cpp": 2148,
   "code/mechicon.cpp": 1984,
@@ -51,7 +51,7 @@
   "mclib/camera.h": 1814,
   "mclib/file.cpp": 2599,
   "mclib/gosfx/fcurve.cpp": 1923,
-  "mclib/mapdata.cpp": 2629,
+  "mclib/mapdata.cpp": 2630,
   "mclib/mlr/mlrlightmap.cpp": 1648,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
@@ -62,7 +62,7 @@
   "mclib/tgl.h": 1787,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "5572df548",
+ "head": "22a0e8228",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -95,7 +95,7 @@
    "max_lines": 1116
   },
   "code": {
-   "files": 407,
+   "files": 408,
    "files_over_1500": 22,
    "files_over_3000": 0,
    "max_lines": 2770
@@ -113,10 +113,10 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 594,
+   "files": 597,
    "files_over_1500": 15,
    "files_over_3000": 0,
-   "max_lines": 2629
+   "max_lines": 2630
   },
   "shaders": {
    "files": 174,
@@ -148,7 +148,7 @@
   },
   {
    "file": "mclib/mapdata.cpp",
-   "lines": 2629
+   "lines": 2630
   },
   {
    "file": "mclib/file.cpp",
@@ -172,7 +172,7 @@
   },
   {
    "file": "code/gameobj.cpp",
-   "lines": 2258
+   "lines": 2255
   },
   {
    "file": "code/warrior.h",
@@ -252,7 +252,7 @@
   }
  ],
  "total": {
-  "files": 1920,
+  "files": 1924,
   "files_over_1500": 48,
   "files_over_3000": 1,
   "max_lines": 3757
