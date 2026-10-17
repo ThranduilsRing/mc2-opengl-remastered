@@ -42,6 +42,10 @@ void beginFrameTexResolve(uint64_t frameId);
 // "this is a terrain frame" window an explicit invariant.
 void endFrameTexResolve(void);
 
+// Drop every memoized handle (keeps frameActive). Call after a mid-frame texture-node teardown/reload
+// (Mission::load) so tex_resolve re-reads the live nodes instead of the pre-destroy handles.
+void invalidateTexResolveTable(void);
+
 // Initialize from env vars; print [TEX_RESOLVE v1] event=startup. Called
 // once at engine init.
 void initTexResolveTable(void);

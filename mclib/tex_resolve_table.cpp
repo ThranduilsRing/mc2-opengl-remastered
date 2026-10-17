@@ -99,6 +99,15 @@ void beginFrameTexResolve(uint64_t frameId)
     }
 }
 
+void invalidateTexResolveTable(void)
+{
+    // Mission::load runs INSIDE a frame (quickload fires from mission update,
+    // after Terrain::geometry armed the table). Mission::destroy has just
+    // released every terrain node, so the memoized gos handles are stale.
+    if (!g_texResolveTable.enabled) return;
+    memset(g_texResolveTable.handles, 0xFF, sizeof(g_texResolveTable.handles));
+}
+
 void endFrameTexResolve(void)
 {
     ZoneScopedN("Terrain.EndFrameTexResolve");
