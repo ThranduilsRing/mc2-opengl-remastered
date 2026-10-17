@@ -21,9 +21,10 @@ GL_SIDECAR = {"backend": "gl", "readback_source": "gl_fbo"}
 def test_requested_follows_the_engine_selector():
     for text in ("vulkan", "VULKAN", "vk"):
         assert cb.requested({"MC2_RENDER_BACKEND": text}) == "vulkan"
-    for env in (None, {}, {"MC2_RENDER_BACKEND": ""}, {"MC2_RENDER_BACKEND": "gl"}, {"MC2_RENDER_BACKEND": "Vulkan "},
-                {"MC2_RENDER_BACKEND": "bogus"}):
-        assert cb.requested(env) == "gl"   # the engine coerces anything it does not recognise to GL
+    for text in ("gl", "GL"):
+        assert cb.requested({"MC2_RENDER_BACKEND": text}) == "gl"   # the only way to ask for GL (the temporary opt-out)
+    for env in (None, {}, {"MC2_RENDER_BACKEND": ""}, {"MC2_RENDER_BACKEND": "Vulkan "}, {"MC2_RENDER_BACKEND": "bogus"}):
+        assert cb.requested(env) == "vulkan"   # unset or unrecognised is the default, Vulkan (flip of 2026-10-17)
 
 
 def test_a_vulkan_request_drawn_by_gl_is_refused():
@@ -73,9 +74,9 @@ def test_the_capture_driver_env_carries_the_declared_backend(tmp_path):
     rvc = _load("scripts/run_visual_capture.py", "run_visual_capture_backend_under_test")
     args = (tmp_path / "bm.json", tmp_path, 431, 30, True)
     env, _ = rvc.build_capture_env(*args, None)
-    assert cb.requested(env) == "gl"   # an ambient shell value is scrubbed; nothing declared means GL
-    env, _ = rvc.build_capture_env(*args, {"MC2_RENDER_BACKEND": "vulkan"})
-    assert cb.requested(env) == "vulkan"
+    assert cb.requested(env) == "vulkan"   # an ambient shell value is scrubbed; nothing declared means the default, Vulkan
+    env, _ = rvc.build_capture_env(*args, {"MC2_RENDER_BACKEND": "gl"})
+    assert cb.requested(env) == "gl"
 
 
 @pytest.mark.parametrize("drew,fails", [("vulkan", False), ("gl", True)])

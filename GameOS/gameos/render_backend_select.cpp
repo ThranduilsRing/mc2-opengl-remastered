@@ -31,8 +31,8 @@ RenderBackend resolveOnce() {
     const std::string envText = mc2::gate::str<"MC2_RENDER_BACKEND">();   // "" when unset or empty
     const char* env = envText.c_str();
     if (env[0] == '\0') {
-        // Unset -> GL. Silent (this is the default, byte-identical path).
-        return RenderBackend::GL;
+        // Unset -> Vulkan (default since the 2026-10-17 flip). Silent.
+        return RenderBackend::Vulkan;
     }
     if (std::strcmp(env, "gl") == 0 || std::strcmp(env, "GL") == 0) {
         return RenderBackend::GL;

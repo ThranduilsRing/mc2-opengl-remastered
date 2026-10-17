@@ -7098,13 +7098,13 @@ flags:
     registry: {feature_id: MC2_TRACE_VK_SHADOW_MATRIX_DIAG, kind: Trace, order: -1, default_on: false}
   - name: MC2_VK_SHARED_GBUFFER
     kind: Bool
-    default: false
-    rule: Exact1
+    default: true
+    rule: Lead0Kill
     owner: vk
-    doc: "VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF."
+    doc: "The VK umbrella, default ON since the 2026-10-17 default flip; =0 is a kill switch (only meaningful with MC2_RENDER_BACKEND=vulkan, which is the default)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_VK_SHARED_GBUFFER, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_FEATURE_VK_SHARED_GBUFFER, kind: Feature, order: -1, default_on: true}
   - name: MC2_VK_SHARED_SCENE_STRICT
     kind: Bool
     default: false

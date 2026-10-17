@@ -22,12 +22,12 @@
 namespace mc2 {
 
 enum class RenderBackend {
-    GL = 0,      // default / unset / unrecognized MC2_RENDER_BACKEND
-    Vulkan = 1,  // MC2_RENDER_BACKEND=vulkan
+    GL = 0,      // MC2_RENDER_BACKEND=gl (the temporary opt-out)
+    Vulkan = 1,  // default / unset / unrecognized / =vulkan
 };
 
 // Memoized accessor. Reads MC2_RENDER_BACKEND once (values "gl" | "vulkan";
-// default GL; anything unrecognized -> GL, coercion logged once). Idempotent
+// default Vulkan; anything unrecognized -> Vulkan, coercion logged once). Idempotent
 // and cheap after the first call. Thread-safety: intended to be first called
 // during single-threaded engine init (gameosmain), after which it is a pure
 // read of a cached value.

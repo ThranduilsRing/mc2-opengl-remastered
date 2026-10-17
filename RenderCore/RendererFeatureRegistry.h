@@ -1604,8 +1604,8 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_FEATURE_VK_SHARED_GBUFFER",
         "MC2_VK_SHARED_GBUFFER",
         EnvVarKind::Feature,
-        false,
-        "VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF.",
+        true,
+        "The VK umbrella, default ON since the 2026-10-17 default flip; =0 is a kill switch (only meaningful with MC2_RENDER_BACKEND=vulkan, which is the default).",
     },
     {
         "MC2_TRACE_VK_SHARED_SCENE_STRICT",

@@ -930,7 +930,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_SELECT_TEST", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VK_SHADOW_INTEROP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_SHADOW_MATRIX_DIAG", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_VK_SHARED_GBUFFER", Kind::Bool, Rule::Exact1, {}},
+    {"MC2_VK_SHARED_GBUFFER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_SHARED_SCENE_STRICT", Kind::Bool, Rule::Exact1, {}},
     {"MC2_VK_TERRAIN_COPY_STATS", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_TERRAIN_CSM_DEBUG", Kind::Int, Rule::Prefix, {}},
