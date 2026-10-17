@@ -11,7 +11,7 @@
 namespace mc2vk {
 
 namespace {
-constexpr VkDeviceSize kInitialPerSlot = 4ull * 1024 * 1024;
+constexpr VkDeviceSize kInitialPerSlot = 16ull * 1024 * 1024;   // islands bind it with dynamic offsets: growth rewrites their sets, so it is sized not to
 constexpr VkBufferUsageFlags kUsage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
                                       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 }  // namespace
@@ -38,6 +38,11 @@ bool FrameRing::grow(VulkanContext& ctx, VkDeviceSize perSlot) {
     std::fprintf(stderr, "[VK_FRAMERING v1] capacity=%llu bytes per slot (growth %u).\n", static_cast<unsigned long long>(perSlot), growths_);
     std::fflush(stderr);
     return true;
+}
+
+VkBuffer FrameRing::ensureBuffer(VulkanContext& ctx) {
+    if (!buffer_ && !grow(ctx, kInitialPerSlot)) return VK_NULL_HANDLE;
+    return buffer_.get();
 }
 
 FrameAlloc FrameRing::alloc(VulkanContext& ctx, VkDeviceSize size, VkDeviceSize align) {

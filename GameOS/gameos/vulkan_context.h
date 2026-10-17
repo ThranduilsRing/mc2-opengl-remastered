@@ -180,6 +180,8 @@ public:
     struct FrameContext { uint64_t frame = 0; uint32_t slot = 0; uint32_t framesInFlight = 1; };
     FrameContext frameContext() const { return {tracker_.frameNo(), static_cast<uint32_t>(tracker_.frameNo() % FrameRingCore::kSlots), 1}; }
     const FrameRing& frameRing() const { return frameRing_; }
+    VkBuffer frameRingBuffer() { return frameRing_.ensureBuffer(*this); }
+    VkDeviceSize frameAlignment() const { return frameAlign_; }
 #endif
 
     // Parks an owner (a buffer, an image, a container of them) until the GPU has finished the frame that may use it, then destroys it: the replacement

@@ -55,6 +55,22 @@ private:
 #ifdef MC2_VULKAN_ISLAND
 class VulkanContext;
 
+constexpr VkDeviceSize alignUp(VkDeviceSize v, VkDeviceSize a) { return (v + a - 1) / a * a; }
+
+// Writes one dynamic-offset buffer binding of `set` at `buffer` from offset 0; the draw passes the offset at bind time. `type` is
+// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC (give an explicit range: uniform ranges are device-limited) or VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC
+// (VK_WHOLE_SIZE reads from the dynamic offset to the end of the buffer).
+inline void writeDynamicBinding(VkDevice device, VkDescriptorSet set, uint32_t binding, VkDescriptorType type, VkBuffer buffer, VkDeviceSize range) {
+    VkDescriptorBufferInfo info{buffer, 0, range};
+    VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    w.dstSet = set;
+    w.dstBinding = binding;
+    w.descriptorCount = 1;
+    w.descriptorType = type;
+    w.pBufferInfo = &info;
+    vkUpdateDescriptorSets(device, 1, &w, 0, nullptr);
+}
+
 struct FrameAlloc {
     VkBuffer buffer = VK_NULL_HANDLE;
     VkDeviceSize offset = 0;
@@ -69,6 +85,9 @@ public:
     void beginFrame(uint64_t frameNo) { core_.beginFrame(frameNo); }
     // Never blocks. An empty FrameAlloc means the allocation failed (no device memory); callers fail soft.
     FrameAlloc alloc(VulkanContext& ctx, VkDeviceSize size, VkDeviceSize align);
+    // The buffer the next allocation will come from (created on first use). Dynamic-offset descriptors point at it; a frame that allocated from a
+    // different buffer than a set was written for rewrites that set (growth replaces the buffer).
+    VkBuffer ensureBuffer(VulkanContext& ctx);
     void release() { buffer_.reset(); mapped_ = nullptr; core_.setCapacity(0); }
     uint64_t capacityPerSlot() const { return core_.capacity(); }
     uint32_t growths() const { return growths_; }

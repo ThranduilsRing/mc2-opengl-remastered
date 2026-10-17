@@ -178,7 +178,6 @@ const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT; // MainColor-compatibl
 const VkFormat kDepthFmt = VK_FORMAT_D32_SFLOAT;          // VK-owned (non-exported)
 // Night light-pool SSBO: GpuTerrainLight is 48 B; 256 is the GL object pool cap.
 const int          kMaxPoolLights = 256;
-const VkDeviceSize kPoolBytes = VkDeviceSize{kMaxPoolLights} * 48ull;
 
 // Per-type packet (subset of GpuStaticPropPacket the draw loop needs).
 struct TypeRun {
@@ -238,7 +237,10 @@ struct ColorPropIsland : mc2vk::IslandState {
     // layer tables + albedo arrays are map-load writes that run right after a
     // cp_end_oneshot inline fence wait (which retires ALL earlier submission-order
     // work on the queue) — safe by construction.
-    VkDeviceSize  instCapBytes[2] = {0, 0};
+    // Per-frame data (UBO, instance rows, LightsData, night pool) lives in the engine frame ring; set[par] binds it with dynamic offsets (bindings 0, 1,
+    // 4, 8). ringBound[par][binding] = the ring buffer that binding of set[par] currently points at; a frame whose spans came from another buffer
+    // (the ring grew), or a set rewritten by write_descriptors, is re-pointed after beginFrame retired the parity.
+    VkBuffer      ringBound[2][9] = {};
 
     // VK-PROP-AMBIENT-IBL-1: per-frame copy of the live GL LightsData SSBO (binding 4,
     // Tier-1 only) so the vert shader's calc_light-style ambient sum reads the same
@@ -246,11 +248,6 @@ struct ColorPropIsland : mc2vk::IslandState {
     // this is a parity FIX, not a new opt-in feature).
     bool          wantLighting  = false;
     bool          lightingReady = false;   // LightsData copied this frame
-    VkDeviceSize  lightCap[2] = {0, 0};
-    // VK-LIGHTFEED-DEDUP-1: what set[i]'s binding-4 descriptor currently points
-    // at -- the shared ring slot (changes every frame) or the island's own
-    // lightBuf[i] (killswitch / fail-soft). Drives the no-op rebind check.
-    VkBuffer      boundLightBuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
 
     // VK-P11 STATIC-PROP MATERIAL: copy-once albedo 2D_ARRAY import + per-type layer
     // table + terrain sun. All optional (Tier-1 + MC2_VK_PROP_MATERIAL); fail-soft to
@@ -279,10 +276,6 @@ struct ColorPropIsland : mc2vk::IslandState {
 
     // Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
     // parked island ahead of the device). An image is declared before its view so the view is released first.
-    mc2vk::OwnedBuffer ubo[2];
-    mc2vk::OwnedBuffer instBuf[2];
-    mc2vk::OwnedBuffer lightBuf[2];       // per parity slot (VK-PROP-FENCE-DEFER-1)
-    mc2vk::OwnedBuffer poolBuf[2];        // night light pools (binding 8, FS), per parity slot
     mc2vk::OwnedBuffer vbo, ibo;
     mc2vk::OwnedRenderPass t1_rpass;      // 2 color LOAD + depth LOAD
     mc2vk::OwnedFramebuffer t1_fb;        // over the 3 shared image views
@@ -328,6 +321,35 @@ bool make_buffer(ColorPropIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size,
     return true;
 }
 
+constexpr VkDeviceSize kFrameUboRange = sizeof(ColorFrameUBO);
+
+// Binding 4 (LightsData) is declared when tier1 && wantLighting, binding 8 (night pools) when tier1.
+void write_ring_bindings(ColorPropIsland* s, VkDescriptorSet set) {
+    if (set == VK_NULL_HANDLE) return;
+    const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer();
+    if (ring == VK_NULL_HANDLE) return;
+    mc2vk::writeDynamicBinding(s->device, set, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, kFrameUboRange);
+    mc2vk::writeDynamicBinding(s->device, set, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, VK_WHOLE_SIZE);
+    if (s->tier1 && s->wantLighting) mc2vk::writeDynamicBinding(s->device, set, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, VK_WHOLE_SIZE);
+    if (s->tier1) mc2vk::writeDynamicBinding(s->device, set, 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, VK_WHOLE_SIZE);
+}
+
+// Re-point set[par]'s ring bindings at the buffers this frame's spans live in (after beginFrame retired the parity). A binding already there is skipped.
+void sync_ring_bindings(ColorPropIsland* s, uint32_t par, VkBuffer mainBuf, VkBuffer lightBuf) {
+    struct Want { uint32_t binding; VkDescriptorType type; VkBuffer buf; VkDeviceSize range; bool on; };
+    const Want want[4] = {
+        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, mainBuf, kFrameUboRange, true},
+        {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, VK_WHOLE_SIZE, true},
+        {4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, lightBuf, VK_WHOLE_SIZE, s->tier1 && s->wantLighting},
+        {8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, VK_WHOLE_SIZE, s->tier1},
+    };
+    for (const Want& w : want) {
+        if (!w.on || w.buf == VK_NULL_HANDLE || s->ringBound[par][w.binding] == w.buf) continue;
+        mc2vk::writeDynamicBinding(s->device, s->set[par], w.binding, w.type, w.buf, w.range);
+        s->ringBound[par][w.binding] = w.buf;
+    }
+}
+
 void write_descriptors(ColorPropIsland* s) {
     // VK-PROP-FENCE-DEFER-1: write BOTH parity sets (set[i] binds ubo/inst/light[i];
     // the material bindings are identical single-instance state). Callers must
@@ -337,27 +359,12 @@ void write_descriptors(ColorPropIsland* s) {
     // submission-order work on the queue).
     for (int i = 0; i < 2; ++i) {
     if (s->set[i] == VK_NULL_HANDLE) continue;
-    VkDescriptorBufferInfo uboInfo{ s->ubo[i].get(), 0, VK_WHOLE_SIZE };
-    VkDescriptorBufferInfo instInfo{ s->instBuf[i].get(), 0, VK_WHOLE_SIZE };
-    VkDescriptorBufferInfo lightInfo{};
-    VkDescriptorBufferInfo poolInfo{};
-    VkWriteDescriptorSet w[6]{};
+    // The ring bindings (0 UBO, 1 instances, 4 LightsData, 8 pool) at the frame ring's current buffer; the next frame of this parity re-points them at
+    // the buffer its spans live in (ringBound is cleared).
+    write_ring_bindings(s, s->set[i]);
+    for (VkBuffer& b : s->ringBound[i]) b = VK_NULL_HANDLE;
+    VkWriteDescriptorSet w[2]{};
     uint32_t n = 0;
-    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
-    w[n].dstBinding = 0; w[n].descriptorCount = 1;
-    w[n].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[n].pBufferInfo = &uboInfo; ++n;
-    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
-    w[n].dstBinding = 1; w[n].descriptorCount = 1;
-    w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &instInfo; ++n;
-    // VK-PROP-AMBIENT-IBL-1: binding4 LightsData SSBO (Tier-1 only, valid dummy-or-real
-    // buffer required whenever the DSL declared it -- see wantLighting bindingCount).
-    if (s->tier1 && s->wantLighting && s->lightBuf[i]) {
-        lightInfo = VkDescriptorBufferInfo{ s->lightBuf[i].get(), 0, VK_WHOLE_SIZE };
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
-        w[n].dstBinding = 4; w[n].descriptorCount = 1;
-        w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &lightInfo; ++n;
-        s->boundLightBuf[i] = s->lightBuf[i].get();   // VK-LIGHTFEED-DEDUP-1 rebind tracker
-    }
     // VK-P11 STATIC-PROP MATERIAL: binding2 layer SSBO (VS) + binding3 albedo array (FS).
     // Only written when the layout declared them (wantMaterial) AND the objects exist
     // (dummy or real). A valid descriptor is required for binding3 even pre-import.
@@ -399,51 +406,9 @@ void write_descriptors(ColorPropIsland* s) {
         w[n].dstBinding = 7; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &hotInfo; ++n;
     }
-    if (s->tier1 && s->poolBuf[i]) {
-        poolInfo = VkDescriptorBufferInfo{ s->poolBuf[i].get(), 0, VK_WHOLE_SIZE };
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
-        w[n].dstBinding = 8; w[n].descriptorCount = 1;
-        w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &poolInfo; ++n;
-    }
     if (n) vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
     if (m) vkUpdateDescriptorSets(s->device, m, wm, 0, nullptr);
     }   // per-parity set loop
-}
-
-// VK-PROP-AMBIENT-IBL-1: grow-once light-copy buffer (mirrors ensure_inst_capacity's
-// shape; separate because it needs no write_descriptors rebind tie-in until the
-// caller decides -- the binding4 descriptor is written once at init from the dummy
-// size, same convention as the mech island's lightBuf).
-bool ensure_light_capacity(ColorPropIsland* s, uint32_t par, VkDeviceSize bytes) {
-    if (s->lightBuf[par] && bytes <= s->lightCap[par]) return true;
-    if (s->lightBuf[par]) {
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_light_grow");   // the old buffer may still be read by an in-flight submit
-        s->lightBuf[par].reset();
-    }
-    VkDeviceSize cap = bytes + bytes / 2 + 4096;
-    if (!make_buffer(s, s->lightBuf[par], cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.lightBuf", static_cast<int>(par)))
-        return false;
-    s->lightCap[par] = cap;
-    write_descriptors(s);
-    return true;
-}
-
-// VK-LIGHTFEED-DEDUP-1: point set[par]'s binding-4 LightsData descriptor at
-// `buf` -- the shared ring slot (handle changes every frame) or the island's
-// own lightBuf[par] on the killswitch / fail-soft path. Safe here: called
-// after beginFrame's parity-fence wait, so no in-flight command buffer can be
-// consuming set[par]. No-op when already bound.
-void bind_light_buffer(ColorPropIsland* s, uint32_t par, VkBuffer buf) {
-    if (buf == VK_NULL_HANDLE || s->set[par] == VK_NULL_HANDLE ||
-        s->boundLightBuf[par] == buf)
-        return;
-    VkDescriptorBufferInfo lightInfo{ buf, 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w{};
-    w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    w.dstSet = s->set[par]; w.dstBinding = 4; w.descriptorCount = 1;
-    w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w.pBufferInfo = &lightInfo;
-    vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
-    s->boundLightBuf[par] = buf;
 }
 
 // ADJUDICATION-1 WASHOUT-RECON (extracted as a helper for VK-LIGHTFEED-DEDUP-1
@@ -513,21 +478,6 @@ void prop_light_vertex_probe(const uint8_t* base, VkDeviceSize lbytes,
     for (size_t idx = 0; idx < maxEntries && idx < 8; ++idx) scanEntry(idx);
     std::fflush(stderr);
 }
-
-bool ensure_inst_capacity(ColorPropIsland* s, uint32_t par, VkDeviceSize bytes) {
-    if (s->instBuf[par] && bytes <= s->instCapBytes[par]) return true;
-    if (s->instBuf[par]) {
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_inst_grow");   // the old buffer may still be read by an in-flight submit
-        s->instBuf[par].reset();
-    }
-    VkDeviceSize cap = bytes + bytes / 2 + 4096;
-    if (!make_buffer(s, s->instBuf[par], cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.instBuf", static_cast<int>(par)))
-        return false;
-    s->instCapBytes[par] = cap;
-    write_descriptors(s);
-    return true;
-}
-
 
 // VK-P11 STATIC-PROP MATERIAL ------------------------------------------------
 // Copy-once import of the GL alpha-OFF albedo GL_TEXTURE_2D_ARRAY into a VK sampled
@@ -870,15 +820,6 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         vlog("TIER-1 shared-GBuffer co-write ACTIVE — in-place RGBA16F color(MRT0)+normal(MRT1) "
              "+ shared D32S8 depth (direct-chain native, no interop).");
     }
-    // ---- Instance SSBO + UBO (common to both tiers). ----
-    // VK-PROP-FENCE-DEFER-1: per-parity instance SSBOs + frame UBOs.
-    if (!ensure_inst_capacity(s, 0, 256 * 1024)) return false;
-    if (!ensure_inst_capacity(s, 1, 256 * 1024)) return false;
-    if (!make_buffer(s, s->ubo[0], sizeof(ColorFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "colorprop.ubo", 0)) return false;
-    if (!make_buffer(s, s->ubo[1], sizeof(ColorFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "colorprop.ubo", 1)) return false;
-    for (uint32_t i = 0; s->tier1 && i < 2; ++i)
-        if (!make_buffer(s, s->poolBuf[i], kPoolBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.poolBuf", static_cast<int>(i), -1, true)) return false;
-
     if (s->tier1) {
         VkImageResource* colorRes  = reinterpret_cast<VkImageResource*>(s->t1_colorRes);
         VkImageResource* normalRes = reinterpret_cast<VkImageResource*>(s->t1_normalRes);
@@ -964,9 +905,9 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // FS), 5(alpha-ON layer SSBO VS), 6(alpha-ON albedo FS).
         VkDescriptorSetLayoutBinding b[9]{};
         uint32_t nb = 0;
-        b[nb].binding = 0; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        b[nb].binding = 0; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
-        b[nb].binding = 1; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[nb].binding = 1; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
         b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
         if (materialBindings) {
             b[nb].binding = 2; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -975,7 +916,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
         }
         if (lightBinding) {
-            b[nb].binding = 4; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            b[nb].binding = 4; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
             b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
         }
         if (materialBindings) {
@@ -987,7 +928,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         if (s->tier1) {   // the hot-colour table is read by the tier-1 vertex shader in every mode
             b[nb].binding = 7; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
-            b[nb].binding = 8; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;   // night light pools
+            b[nb].binding = 8; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;   // night light pools
             b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
         }
         VkDescriptorSetLayoutCreateInfo lci{};
@@ -997,14 +938,16 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
         // VK-PROP-FENCE-DEFER-1: TWO sets (one per parity slot), so pool sizes double.
-        VkDescriptorPoolSize sizes[3]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 2;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        sizes[1].descriptorCount = 2u * (1u + (materialBindings ? 2u : 0u) + (lightBinding ? 1u : 0u) + (s->tier1 ? 2u : 0u));
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = materialBindings ? 4u : 2u;
+        // Dynamic: 0 UBO; 1 + 4 (lights) + 8 (pools) SSBO. Static SSBOs: layer tables (2, 5) and the hot-colour table (7).
+        VkDescriptorPoolSize sizes[4]{};
+        uint32_t nsz = 0;
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2u * (1u + (lightBinding ? 1u : 0u) + (s->tier1 ? 1u : 0u))};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2u * ((materialBindings ? 2u : 0u) + (s->tier1 ? 1u : 0u))};
+        if (materialBindings) sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4u};
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 2; pci.poolSizeCount = materialBindings ? 3u : 2u; pci.pPoolSizes = sizes;
+        pci.maxSets = 2; pci.poolSizeCount = nsz; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) {
             vlog("vkCreateDescriptorPool failed."); return false;
         }
@@ -1014,12 +957,6 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
         if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) {
             vlog("vkAllocateDescriptorSets failed."); return false;
-        }
-        // VK-PROP-AMBIENT-IBL-1: light buffers must exist BEFORE write_descriptors below
-        // (binding4 needs a valid buffer object). Dummy-sized (grow on first real copy).
-        if (lightBinding) {
-            if (!ensure_light_capacity(s, 0, sizeof(GpuObjectLights))) { setFallback("light_buf_failed"); return false; }
-            if (!ensure_light_capacity(s, 1, sizeof(GpuObjectLights))) { setFallback("light_buf_failed"); return false; }
         }
         if (s->tier1 && !cp_upload_hot_table(s, {})) { setFallback("hot_buf_failed"); return false; }
         write_descriptors(s);
@@ -1418,6 +1355,22 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     // buffer. The inline post-submit wait this replaces is kept only under the
     // MC2_VK_PROP_FENCE_DEFER=0 killswitch. (The copy-once material imports above are
     // self-synced by their one-shot inline fence waits — safe before OR after this.)
+    // Per-frame data goes into the engine frame ring BEFORE beginFrame (the ring slot belongs to the frame, not to the parity, so staging here races
+    // nothing, and a ring failure cannot strand the shared fence beginFrame acquires).
+    Mc2ColorPropLightFeed lightFeed{};
+    const bool haveLightFeed = mc2_color_prop_island_get_light_feed(&lightFeed);
+    mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
+    const VkDeviceSize ringAlign = rctx.frameAlignment();
+    const uint32_t instanceCount = feed.count;
+    const VkDeviceSize instBytes = (VkDeviceSize)instanceCount * sizeof(GpuStaticPropInstance);
+    int poolN = (haveLightFeed && lightFeed.poolLights48 && lightFeed.numPoolLights > 0) ? lightFeed.numPoolLights : 0;
+    if (poolN > kMaxPoolLights) poolN = kMaxPoolLights;
+    const VkDeviceSize instOff = mc2vk::alignUp(sizeof(ColorFrameUBO), ringAlign);
+    const VkDeviceSize poolOff = mc2vk::alignUp(instOff + (instBytes ? instBytes : sizeof(GpuStaticPropInstance)), ringAlign);
+    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + (VkDeviceSize)(poolN > 0 ? poolN : 1) * 48ull);
+    if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
+    uint8_t* const mainPtr = static_cast<uint8_t*>(mainSpan.ptr);
+
     VkImageResource* colorRes = reinterpret_cast<VkImageResource*>(s->t1_colorRes);
     const clk::time_point tFence0 = clk::now();
     VkFrameSync fsC{};
@@ -1438,9 +1391,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     // simply not marked ready (shader falls back flat-lit via u.lightingReady=0) — no GL
     // readback rescue. IBL-SH coeffs are a static per-mission table (no GL round-trip)
     // fetched fresh each frame in case the mission's SH set changed.
-    Mc2ColorPropLightFeed lightFeed{};
-    const bool haveLightFeed = mc2_color_prop_island_get_light_feed(&lightFeed);
     s->lightingReady = false;
+    mc2vk::FrameAlloc lightSpan;
     const bool nativeLight = haveLightFeed && lightFeed.lightDataCpu &&
                              lightFeed.lightDataCpuBytes >= 3600ull;
     if (s->tier1 && s->wantLighting && nativeLight) {
@@ -1454,26 +1406,19 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // the pre-slice per-island copy below (zone VKIsl.Props.LightFeed)
         // unchanged.
         const VkDeviceSize lbytes = (VkDeviceSize)lightFeed.lightDataCpuBytes;
-        if (const VkBuffer sharedLight = mc2vkSharedLightFeedAcquire(s->allocator, s->device,
-                                                                     lightFeed.lightDataCpu,
-                                                                     lightFeed.lightDataCpuBytes)) {
-            bind_light_buffer(s, par, sharedLight);
+        lightSpan = mc2vkSharedLightFeedAcquire(lightFeed.lightDataCpu, lightFeed.lightDataCpuBytes);
+        if (lightSpan) {
             // Probe reads the CPU source -- byte-identical to the ring copy
             // (single-threaded copy of the same array this same frame).
             prop_light_vertex_probe((const uint8_t*)lightFeed.lightDataCpu, lbytes, feed);
             s->lightingReady = true;
         } else {
-            ZoneScopedN("VKIsl.Props.LightFeed");   // VK-ISLAND-TRACY-1: per-frame LightsData CPU->VK copy (twin-copy path)
-            if (ensure_light_capacity(s, par, lbytes)) {
-                void* p = nullptr;
-                if ((p = s->lightBuf[par].map()) != nullptr) {
-                    std::memcpy(p, lightFeed.lightDataCpu, (size_t)lbytes);
-                    prop_light_vertex_probe((const uint8_t*)p, lbytes, feed);
-                    s->lightBuf[par].unmap();
-                    // Restore the own-buffer binding after any shared frames.
-                    bind_light_buffer(s, par, s->lightBuf[par].get());
-                    s->lightingReady = true;
-                }
+            ZoneScopedN("VKIsl.Props.LightFeed");   // VK-ISLAND-TRACY-1: per-frame LightsData CPU->VK copy (own-span path)
+            lightSpan = rctx.frameAlloc(lbytes);
+            if (lightSpan) {
+                std::memcpy(lightSpan.ptr, lightFeed.lightDataCpu, (size_t)lbytes);
+                prop_light_vertex_probe((const uint8_t*)lightSpan.ptr, lbytes, feed);
+                s->lightingReady = true;
             }
         }
     }
@@ -1484,16 +1429,9 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
 
     const clk::time_point tStage0 = clk::now();
     // ---- 1) Upload the per-frame color instances into slot `par` (grouped by typeID). ----
-    const uint32_t instanceCount = feed.count;
-    const VkDeviceSize instBytes = (VkDeviceSize)instanceCount * sizeof(GpuStaticPropInstance);
-    if (!ensure_inst_capacity(s, par, instBytes)) { s->disabled = true; return 0; }
     {
         ZoneScopedN("VK-props-instance-upload");   // VK-FLIP-FIELD-REPORT-1: per-frame instance SSBO staging
-        void* p = nullptr;
-        if ((p = s->instBuf[par].map()) != nullptr) {
-            std::memcpy(p, feed.instances112, (size_t)instBytes);
-            s->instBuf[par].unmap();
-        }
+        if (instBytes) std::memcpy(mainPtr + instOff, feed.instances112, (size_t)instBytes);
     }
     g_health.instRecords = instanceCount;
 
@@ -1539,9 +1477,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = haveLightFeed ? lightFeed.cameraWorldPos[k] : 0.0f;
         // Night light pools: this frame's pool copy (GL caps the set at 256), flushed because the sequential-write placement need not be
         // host-coherent; a failed upload turns the term off.
-        int poolN = (haveLightFeed && lightFeed.poolLights48 && lightFeed.numPoolLights > 0) ? lightFeed.numPoolLights : 0;
-        if (poolN > kMaxPoolLights) poolN = kMaxPoolLights;
-        if (poolN > 0 && !s->poolBuf[par].upload(lightFeed.poolLights48, static_cast<VkDeviceSize>(poolN) * 48u)) poolN = 0;
+        if (poolN > 0) std::memcpy(mainPtr + poolOff, lightFeed.poolLights48, static_cast<size_t>(poolN) * 48u);
         u.poolF[0] = lightFeed.poolMoverDim; u.poolF[1] = lightFeed.poolMoverScale; u.poolF[2] = lightFeed.poolObjScale; u.poolF[3] = 0.0f;
         u.poolI[0] = poolN;                  u.poolI[1] = lightFeed.poolSoft;
         u.poolI[2] = lightFeed.poolMoverMax; u.poolI[3] = lightFeed.poolCompress;
@@ -1566,11 +1502,16 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                 std::fflush(stderr);
             }
         }
-        void* p = nullptr;
-        if ((p = s->ubo[par].map()) != nullptr) {
-            std::memcpy(p, &u, sizeof(u)); s->ubo[par].unmap();
-        }
+        std::memcpy(mainPtr, &u, sizeof(u));
     }
+    // set[par] follows the buffers the spans came from; the draw passes the offsets (bindings 0, 1, then 4 when declared, then 8).
+    sync_ring_bindings(s, par, mainSpan.buffer, lightSpan ? lightSpan.buffer : mainSpan.buffer);
+    uint32_t dynOffsets[4];
+    uint32_t nDyn = 0;
+    dynOffsets[nDyn++] = static_cast<uint32_t>(mainSpan.offset);
+    dynOffsets[nDyn++] = static_cast<uint32_t>(mainSpan.offset + instOff);
+    if (s->tier1 && s->wantLighting) dynOffsets[nDyn++] = static_cast<uint32_t>(lightSpan ? lightSpan.offset : mainSpan.offset);
+    if (s->tier1) dynOffsets[nDyn++] = static_cast<uint32_t>(mainSpan.offset + poolOff);
     g_health.stageInstUs = usSince(tStage0);
     // VK-FLIP-FIELD-REPORT-1: the instance+UBO staging above is the per-frame prop
     // upload cost (a coarse zone for it would nest cleanly; kept as the usSince metric
@@ -1618,7 +1559,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         vkCmdSetScissor(cb, 0, 1, &scissor);
 
         vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->t1_pipe.get());
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 0, nullptr);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], nDyn, dynOffsets);
         VkDeviceSize vboOff = 0;
         const VkBuffer vertexBuffer = s->vbo.get();
         vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &vboOff);
