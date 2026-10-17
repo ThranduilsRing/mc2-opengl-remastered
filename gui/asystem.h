@@ -314,6 +314,7 @@ public:
 	void	init( FitIniFile* file, const char* header );
 
 	void	setText( std::string_view text );
+	void	setText( const char* text ) { setText( text ? std::string_view(text) : std::string_view() ); }
 	void	setText( long resID );
 	std::string	textString() const;
 

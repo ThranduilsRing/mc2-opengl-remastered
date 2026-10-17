@@ -72,6 +72,7 @@ public:
 	virtual ~aTextListItem();
 
 	void		setText( std::string_view text );
+	void		setText( const char* text ) { setText( text ? std::string_view(text) : std::string_view() ); }
 	void		setText( long resID );
 	const char* getText() const;
 	void		sizeToText();

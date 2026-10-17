@@ -45,6 +45,7 @@ class aEdit: public aObject
 	
 		std::string entry() const;
 		void setEntry(std::string_view str, BYTE byHighlight = 0);
+		void setEntry(const char* str, BYTE byHighlight = 0) { setEntry(str ? std::string_view(str) : std::string_view(), byHighlight); }
 		void limitEntry(int nNewLimit) { nLimit = nNewLimit; }
 		void setFocus(bool bHasFocus);
 		void setFont( long fontID );

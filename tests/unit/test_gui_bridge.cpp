@@ -34,3 +34,19 @@ TEST_CASE("widget text: every caller shape resolves to one overload")
 {
 	CHECK(TakesLiteral<aText>);                // asserted at compile time above; this case keeps the file in the doctest report
 }
+
+// The harness does not link gui/*.cpp, so the null path cannot run here. The
+// const char* overloads are inline wrappers (nullptr -> empty view); what can
+// be pinned is that they stay distinct from the string_view and resource-id
+// overloads for a null pointer argument.
+namespace
+{
+template <class W> concept TakesNullCString = requires(W& w, const char* p) { w.setText(p); };
+template <class E> concept EditTakesNullCString = requires(E& e, const char* p) { e.setEntry(p); e.setEntry(p, 1); };
+static_assert(TakesNullCString<aText> && TakesNullCString<aTextListItem> && EditTakesNullCString<aEdit>);
+}
+
+TEST_CASE("widget text: const char* overload exists for null-safe forwarding")
+{
+	CHECK(TakesNullCString<aText>);
+}
