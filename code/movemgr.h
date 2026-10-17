@@ -23,7 +23,7 @@
 
 //***************************************************************************
 
-typedef struct _PathQueueRec* PathQueueRecPtr;
+using PathQueueRecPtr = struct _PathQueueRec*;
 
 struct _PathQueueRec {
 	long				num;
@@ -81,7 +81,7 @@ class MovePathManager {
 		void update (void);
 };
 
-typedef MovePathManager* MovePathManagerPtr;
+using MovePathManagerPtr = MovePathManager*;
 
 #endif
 

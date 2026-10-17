@@ -142,17 +142,17 @@ inline constexpr int UNLIMITED_SHOTS = 9999;
 
 //------------------------------------------------------------------------------
 // Enums
-typedef enum {
+enum WeaponSortType {
 	WEAPONSORT_ATTACKCHANCE,
 	NUM_WEAPONSORT_TYPES
-} WeaponSortType;
+};
 
-typedef enum {
+enum SpeedState {
 	SPEED_STATE_STATIONARY,
 	SPEED_STATE_MOVING,
 	SPEED_STATE_MOVING_FAST,
 	NUM_MOVE_STATES
-} SpeedState;
+};
 
 enum DeathCause
 {
@@ -167,7 +167,7 @@ enum DeathCause
 //---------------------------------------------------------------------------
 
 class MoveChunk;
-typedef MoveChunk* MoveChunkPtr;
+using MoveChunkPtr = MoveChunk*;
 
 class MoveChunk {
 
@@ -207,7 +207,7 @@ class MoveChunk {
 			destroy();
 		}
 
-		void build (MoverPtr mover, MovePath* path1, MovePath* path2 = NULL);
+		void build (MoverPtr mover, MovePath* path1, MovePath* path2 = nullptr);
 
 		void build (MoverPtr mover, Stuff::Vector3D jumpGoal);
 
@@ -221,14 +221,14 @@ class MoveChunk {
 //---------------------------------------------------------------------------
 inline constexpr int MAX_YAW = 64;
 
-typedef enum {
+enum DynamicsType {
 	DYNAMICS_BASE,
 	DYNAMICS_MECH,
 	DYNAMICS_GROUNDVEHICLE,
 	DYNAMICS_ELEMENTAL
-} DynamicsType;
+};
 
-typedef union {
+union DynamicsLimits {
 	struct {
 		int32_t	yawRate;			//Degrees per sec
 	} elemental;
@@ -244,7 +244,7 @@ typedef union {
 		int32_t	torsoYawRate;		//Degrees per sec
 		int32_t	torsoYaw;			//Degrees
 	} mech;
-} DynamicsLimits;
+};
 
 class MoverDynamics {
 
@@ -293,21 +293,21 @@ class MoverDynamics {
 
 //---------------------------------------------------------------------------
 
-typedef enum {
+enum ControlType {
 	CONTROL_BASE,
 	CONTROL_PLAYER,
 	CONTROL_AI,
 	CONTROL_NET
-} ControlType;
+};
 
-typedef enum {
+enum ControlDataType {
 	CONTROL_DATA_BASE,
 	CONTROL_DATA_MECH,
 	CONTROL_DATA_GROUNDVEHICLE,
 	CONTROL_DATA_ELEMENTAL
-} ControlDataType;
+};
 
-typedef union {
+union ControlSettings {
 	struct {
 		float	rotate;
 	} elemental;
@@ -331,7 +331,7 @@ typedef union {
 		bool	blowRightArm;
 		bool	pivot;
 	} mech;
-} ControlSettings;
+};
 
 class MoverControl {
 
@@ -400,16 +400,16 @@ class MoverControl {
 
 inline constexpr int MAX_RANGE_RATINGS = 51;
 
-typedef struct _InventoryItem* InventoryItemPtr;
+using InventoryItemPtr = struct _InventoryItem*;
 
-typedef struct _RangeRating {
+struct _RangeRating {
 	float				accuracy;
 	float				adjAccuracy;
-} RangeRating;
+}; using RangeRating = _RangeRating;
 
-typedef struct _RangeRating* RangeRatingPtr;
+using RangeRatingPtr = struct _RangeRating*;
 
-typedef struct _InventoryItem {
+struct _InventoryItem {
 	//------------------
 	// general item info
 	unsigned char		masterID;		// master component ID
@@ -437,25 +437,25 @@ typedef struct _InventoryItem {
 	// slice 4 routes the mount through the HardpointId). Plain uint keeps
 	// InventoryItem trivially copyable so raw MoverData save/load is unaffected.
 	unsigned int		hardpointId;	// 0 == unset (legacy positional-CSV fallback)
-} InventoryItem;
+}; using InventoryItem = _InventoryItem;
 
 //------------------------------------------------------------------------------------------
 
 inline constexpr int MAX_AMMO_TYPES = 10;
 
-typedef struct _AmmoTally {
+struct _AmmoTally {
 	long				masterId;		// ammo type's Master Component Id
 	long				curAmount;		// current amount of this ammo type in inventory
 	long				maxAmount;		// starting amount of this ammo type in inventory
-} AmmoTally;
+}; using AmmoTally = _AmmoTally;
 
-typedef AmmoTally* AmmoTallyPtr;
+using AmmoTallyPtr = AmmoTally*;
 
 //------------------------------------------------------------------------------------------
 
-typedef struct _CriticalSpace* CriticalSpacePtr;
+using CriticalSpacePtr = struct _CriticalSpace*;
 
-typedef struct _CriticalSpace {
+struct _CriticalSpace {
 
 	unsigned char		inventoryID;	// indexes into mech's inventory
 	bool				hit;			// TRUE, if this space has been hit
@@ -465,7 +465,7 @@ typedef struct _CriticalSpace {
 		hit = copy.hit;
 	}
 
-} CriticalSpace;
+}; using CriticalSpace = _CriticalSpace;
 
 //------------------------------------------------------------------------------------------
 
@@ -497,7 +497,7 @@ class BodyLocation {
 		}
 };
 
-typedef BodyLocation* BodyLocationPtr;
+using BodyLocationPtr = BodyLocation*;
 
 //---------------------------------------------------------------------------
 
@@ -509,7 +509,7 @@ class ArmorLocation {
 		unsigned char	maxArmor;
 };
 
-typedef ArmorLocation* ArmorLocationPtr;
+using ArmorLocationPtr = ArmorLocation*;
 
 //---------------------------------------------------------------------------
 
@@ -539,16 +539,16 @@ inline constexpr int STATUSCHUNK_CELLPOS_MASK = 0x000003FF;
 inline constexpr int STATUSCHUNK_EJECTORDER_MASK = 0x00000001;
 inline constexpr int STATUSCHUNK_JUMPORDER_MASK = 0x00000001;
 
-typedef enum {
+enum StatusChunkTarget {
 	STATUSCHUNK_TARGET_NONE,
 	STATUSCHUNK_TARGET_MOVER,
 	STATUSCHUNK_TARGET_TERRAIN,
 	STATUSCHUNK_TARGET_SPECIAL,
 	STATUSCHUNK_TARGET_LOCATION
-} StatusChunkTarget;
+};
 
 class StatusChunk;
-typedef StatusChunk* StatusChunkPtr;
+using StatusChunkPtr = StatusChunk*;
 
 class StatusChunk {
 
@@ -621,7 +621,7 @@ inline constexpr int MAXLEN_MECH_LONGNAME = 35;
 inline constexpr int MAX_ATTACK_INCREMENTS = 32;
 #define	RANGED_CELLS_DIM			(MAX_ATTACK_CELLRANGE * 2 + 1) * (MAX_ATTACK_CELLRANGE * 2 + 1)
 
-typedef struct _MoverData : public GameObjectData
+struct _MoverData : public GameObjectData
 {
 	bool				killed;
 	bool				lost;
@@ -766,14 +766,14 @@ typedef struct _MoverData : public GameObjectData
 	DWORD				psBlue;
 	DWORD				psGreen;
 
-} MoverData;
+}; using MoverData = _MoverData;
 
 
-typedef enum {
+enum MoveType {
 	MOVETYPE_GROUND,
 	MOVETYPE_AIR,
 	NUM_MOVETYPES
-} MoveType;
+};
 
 class LogisticsPilot;
 
@@ -1195,11 +1195,11 @@ class Mover : public GameObject {
 
 		virtual void updatePathLock (bool set);
 
-		virtual bool getPathRangeLock (long range, bool* reachedEnd = NULL);
+		virtual bool getPathRangeLock (long range, bool* reachedEnd = nullptr);
 
 		virtual long setPathRangeLock (bool set, long range = 0);
 
-		virtual bool getPathRangeBlocked (long range, bool* reachedEnd = NULL);
+		virtual bool getPathRangeBlocked (long range, bool* reachedEnd = nullptr);
 
 		virtual bool crashAvoidanceSystem (void) {
 			return(false);
@@ -1547,7 +1547,7 @@ class Mover : public GameObject {
 
 		virtual long calcFireRanges (void);
 
-		virtual float getOrderedFireRange (long* attackRange = NULL);
+		virtual float getOrderedFireRange (long* attackRange = nullptr);
 
 		virtual float getMinFireRange (void);
 
@@ -1595,7 +1595,7 @@ class Mover : public GameObject {
 		
 		virtual long sortWeapons (int* weaponList, long* valueList, long listSize, long sortType, bool skillCheck);
 
-		virtual float calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, Stuff::Vector3D* targetPoint = NULL);
+		virtual float calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, Stuff::Vector3D* targetPoint = nullptr);
 
 		virtual float calcAttackModifier (GameObjectPtr target, long weaponIndex, bool skillCheck) {
 			return(0.0);
@@ -1734,7 +1734,7 @@ class Mover : public GameObject {
 		virtual const char* getVariantName (void) const { return ""; }
 		virtual long getVariantId (void) const { return -1; }
 
-		virtual float getJumpRange (long* numOffsets = NULL, long* jumpCost = NULL) {
+		virtual float getJumpRange (long* numOffsets = nullptr, long* jumpCost = nullptr) {
 			if (numOffsets)
 				*numOffsets = 8;
 			if (jumpCost)
@@ -1742,7 +1742,7 @@ class Mover : public GameObject {
 			return(0.0);
 		}
 
-		virtual bool isJumping (Stuff::Vector3D* jumpGoal = NULL) {
+		virtual bool isJumping (Stuff::Vector3D* jumpGoal = nullptr) {
 			return(false);
 		}
 
@@ -1868,7 +1868,7 @@ class Mover : public GameObject {
 
 //---------------------------------------------------------------------------
 
-typedef struct _MoverInitData {
+struct _MoverInitData {
 	char			pilotFileName[50];
 	bool			overrideLoadedPilot;
 	float			gunnerySkill;
@@ -1895,7 +1895,7 @@ typedef struct _MoverInitData {
 	bool			capturable;
 	long            numComponents;
 	long            components[50];
-} MoverInitData;
+}; using MoverInitData = _MoverInitData;
 
 //---------------------------------------------------------------------------
 

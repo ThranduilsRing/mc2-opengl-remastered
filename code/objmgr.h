@@ -140,7 +140,7 @@ struct ObjDataLoader {
 
 #pragma pack()
 
-typedef ObjData *ObjDataPtr;
+using ObjDataPtr = ObjData *;
 
 //---------------------------------------------------------------------------
 
@@ -152,14 +152,14 @@ inline constexpr int MAX_SPECIAL_BUILDINGS = 200;
 
 #pragma pack(1)
 
-typedef struct _TeamObjectInfo {
+struct _TeamObjectInfo {
 	short		numMechs;
 	short		numVehicles;
 	short		numElementals;
 	short		mechHandleIndex;
 	short		vehicleHandleIndex;
 	short		elementalHandleIndex;
-} TeamObjectInfo;
+}; using TeamObjectInfo = _TeamObjectInfo;
 
 #pragma pack()
 
@@ -168,12 +168,12 @@ inline constexpr int MAX_WATCHES = 4000;
 
 inline constexpr int MAX_CAPTURES_PER_TEAM = 30;
 
-typedef struct _RemovedMoverRec {
+struct _RemovedMoverRec {
 	unsigned int	turn;
 	int			partID;
-} RemovedMoverRec;
+}; using RemovedMoverRec = _RemovedMoverRec;
 
-typedef struct _ObjectManagerData
+struct _ObjectManagerData
 {
 	int					maxObjects;
 	int					numElementals;
@@ -190,7 +190,7 @@ typedef struct _ObjectManagerData
 	int					numMechs;
 	int					numVehicles;
 	int					nextWatchId;
-} ObjectManagerData;
+}; using ObjectManagerData = _ObjectManagerData;
 
 class GameObjectManager {
 
@@ -548,7 +548,7 @@ class GameObjectManager {
 
 		GameObjectPtr getByWatchID (unsigned long watchID) {
 			// OBJMGR-WATCH-POLICY-EXTRACT-1: shared resolve predicate (behavior-identical).
-			return mc2watch::isResolvableWatchId(watchID, nextWatchID) ? watchList[watchID] : NULL;
+			return mc2watch::isResolvableWatchId(watchID, nextWatchID) ? watchList[watchID] : nullptr;
 		}
 
 		// MF3-GENERATIONAL-HANDLE-1: additive generational resolve. Behaves like

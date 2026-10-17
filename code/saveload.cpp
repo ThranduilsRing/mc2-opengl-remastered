@@ -271,7 +271,7 @@ void Mission::save (const char *saveFileName)
 
 	mc2IsInDisplayBackBuffer = true;
 
-	AsynFunc = NULL;
+	AsynFunc = nullptr;
 	mc2UseAsyncMouse = turnOffAsyncMouse;
 	if ( !mc2UseAsyncMouse)
 		MouseTimerKill();
@@ -464,7 +464,7 @@ void Mission::loadDestroyAndRestore() {
 				"[MECHRESTORE v1] event=saveload_phase phase=post_destroy "
 				"mechFinalized=%d appearanceListNull=%d\n",
 				GpuMechBatcher::instance().isFinalized() ? 1 : 0,
-				(appearanceTypeList == NULL) ? 1 : 0);
+				(appearanceTypeList == nullptr) ? 1 : 0);
 	}
 
 	// Fresh type indices must precede restored actors, whose appearance addresses can be reused.
@@ -500,7 +500,7 @@ void Mission::loadGameSystemRanges(MissionLoadFrame& f) {
 	//--------------------------------------------------------------
 	// Start the Mission Heap
 	missionHeap = new UserHeap;
-	gosASSERT(missionHeap != NULL);
+	gosASSERT(missionHeap != nullptr);
 	
 	missionHeap->init(missionHeapSize,"MISSION");
 	

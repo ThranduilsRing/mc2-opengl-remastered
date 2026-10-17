@@ -2134,7 +2134,7 @@ void Turret::init (bool create, ObjectTypePtr _type) {
 	}
 	  
    	adoptAppearance(new BldgAppearance);
-	gosASSERT(appearance != NULL);
+	gosASSERT(appearance != nullptr);
 
 	//--------------------------------------------------------------
 	// The only appearance type for buildings is MLR_APPEARANCE.

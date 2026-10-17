@@ -70,7 +70,7 @@
 //#include<stdio.h>
 
 //***************************************************************************
-typedef void *NETPLAYER;
+using NETPLAYER = void *;
 
 enum NETMESSAGETYPE
 {
@@ -125,13 +125,13 @@ public:
 #define	MPLAYER_ERR_BAD_VERSION			-7
 #define	MPLAYER_ERR_SESSION_FULL		-8
 
-typedef enum {
+enum BaseColorType {
 	BASECOLOR_PREFERENCE,
 	BASECOLOR_SELF,
 	BASECOLOR_TEAM
-} BaseColorType;
+};
 
-typedef enum {
+enum MultiplayerMode {
 	MULTIPLAYER_MODE_NONE,
 	MULTIPLAYER_MODE_BROWSER,
 	MULTIPLAYER_MODE_PARAMETERS,
@@ -139,9 +139,9 @@ typedef enum {
 	MULTIPLAYER_MODE_LOADING,
 	MULTIPLAYER_MODE_MISSION,
 	MULTIPLAYER_MODE_RESULTS
-} MultiplayerMode;
+};
 
-typedef enum {
+enum MissionType {
 	MISSION_TYPE_ELIMINATION,
 	MISSION_TYPE_KING_OF_THE_HILL,
 	MISSION_TYPE_CAPTURE_BASE,
@@ -150,7 +150,7 @@ typedef enum {
 	MISSION_TYPE_LAST_MAN_ON_THE_HILL,
 	MISSION_TYPE_OTHER,
 	NUM_MISSION_TYPES
-} MissionType;
+};
 
 enum {
 	GO_SESSION_SCREEN = 1
@@ -210,7 +210,7 @@ enum {
 #define	MAXLEN_INSIGNIA_FILE		35
 #define MAX_COLORS					32
 
-typedef struct _MC2Session {
+struct _MC2Session {
 	char			name[MAXLEN_SESSION_NAME];
 	char			maxPlayers;
 	char			numPlayers;
@@ -221,10 +221,10 @@ typedef struct _MC2Session {
 	bool			cancelled;
 	char			versionStamp[15];
 	GUID			handle;
-} MC2Session;
+}; using MC2Session = _MC2Session;
 
 #pragma pack(1)
-typedef struct _MC2SessionData {
+struct _MC2SessionData {
 	char			map[MAXLEN_MAP_NAME];
 	bool			locked;
 	bool			inProgress;
@@ -232,21 +232,21 @@ typedef struct _MC2SessionData {
 	char			numPlayers;
 	char			versionStamp[15];
 	bool			cancelled;
-} MC2SessionData;
+}; using MC2SessionData = _MC2SessionData;
 #pragma pack()
 
-typedef struct _TeamInfo {
+struct _TeamInfo {
 	DWORD id;
 	DWORD team;
-} TeamInfo;
+}; using TeamInfo = _TeamInfo;
 
-typedef struct _MC2PlayerSlot {
+struct _MC2PlayerSlot {
 	NETPLAYER		player;
 	char			commanderID;
 	char			name[MAXLEN_PLAYER_NAME];
-} MC2PlayerSlot;
+}; using MC2PlayerSlot = _MC2PlayerSlot;
 
-typedef struct _MC2Player {
+struct _MC2Player {
 	bool			checkedIn;
 	NETPLAYER		player;
 	char			commanderID;
@@ -273,9 +273,9 @@ typedef struct _MC2Player {
 	bool			winner;
 	bool			leftSession;
 	bool			booted;
-} MC2Player;
+}; using MC2Player = _MC2Player;
 
-typedef struct _MissionSettings {
+struct _MissionSettings {
 	char			map[MAXLEN_MAP_NAME];	// file name
 	char			name[MAXLEN_MAP_DESC];	// displayNmae
 	GUID			mapGuid;				// Insures maps are the same version!!
@@ -303,9 +303,9 @@ typedef struct _MissionSettings {
 	long			dropWeight;
 	bool			locked;
 	bool			inProgress;
-} MissionSettings;
+}; using MissionSettings = _MissionSettings;
 
-typedef struct _CompressedMech {
+struct _CompressedMech {
 	bool			lastMech;
 	long			objNumber;
 	char			commanderID;
@@ -321,7 +321,7 @@ typedef struct _CompressedMech {
 	bool			designerMech;
 	long			numComponents;
 	unsigned char	components[50];
-} CompressedMech;
+}; using CompressedMech = _CompressedMech;
 
 #pragma pack(1)
 
@@ -1284,12 +1284,12 @@ class MCMSG_PassValue {
 
 //***************************************************************************
 
-typedef enum {
+enum VersionStatus {
 	VERSION_STATUS_UNKNOWN,
 	VERSION_STATUS_GOOD,
 	VERSION_STATUS_BAD,
 	NUM_VERSION_STATUS_TYPES
-} VersionStatus;
+};
 
 class MultiPlayer {
 
@@ -1509,7 +1509,7 @@ class MultiPlayer {
 		// for write purposes....
 		MC2Player* getPlayerInfo( long commanderID )
 		{
-			return NULL;
+			return nullptr;
 		}
 
 		bool hostSession(char* sessionName, char* playerName, long mxPlayers);
@@ -1585,7 +1585,7 @@ class MultiPlayer {
 		void initSpecialBuildings (char commandersToLoad[8][3]);
 
 		char* getPlayerName (void) {
-			return(NULL);
+			return(nullptr);
 		}
 
 		void addToLocalMovers (MoverPtr mover);
@@ -1773,7 +1773,7 @@ class MultiPlayer {
 							  long numMovers,
 							  MoverPtr* moverList,
 							  long numGroups = 0,
-							  MoverGroupPtr* groupList = NULL,
+							  MoverGroupPtr* groupList = nullptr,
   							  bool queuedOrder = false);
 
 		void sendHoldPosition (void);

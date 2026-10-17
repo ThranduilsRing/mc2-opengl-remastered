@@ -546,8 +546,8 @@ public: /* we could make this protected if only the editdialog is to access thes
 	static CObjectiveCondition *new_CObjectiveCondition(condition_species_type conditionSpecies, int alignment);
 	static CObjectiveAction *new_CObjectiveAction(action_species_type actionSpecies, int alignment);
 public:
-	typedef CObjectiveConditionList condition_list_type;
-	typedef CObjectiveActionList action_list_type;
+	using condition_list_type = CObjectiveConditionList;
+	using action_list_type = CObjectiveActionList;
 	/* The success conditions: every one must hold for the objective to succeed. */
 	condition_list_type m_conditionList;
 	action_list_type m_actionList;
