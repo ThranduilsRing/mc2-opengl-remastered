@@ -10,6 +10,7 @@ struct MissionLoadFrame {
 	DWORD oldXLoc;
 	DWORD oldYLoc;
 	bool turnOffAsyncMouse;
+	bool incompatibleSave = false;
 	PacketFile loadFile;
 	long result;
 	DWORD currentPacket;
