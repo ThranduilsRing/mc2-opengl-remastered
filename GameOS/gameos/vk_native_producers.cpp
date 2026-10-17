@@ -155,7 +155,7 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT);
     vkCmdFillBuffer(cb, header_[par].get(), 0, 16, 0);
     if (!lightOutCleared_) {
-        vkCmdFillBuffer(cb, lightOut_.get(), 0, VK_WHOLE_SIZE, 0);
+        vkCmdFillBuffer(cb, lightOut_.get(), 0, VK_WHOLE_SIZE, 0xFFFFFFFFu);   // the engine no-tint white sentinel, like the GL output SSBO's clear
         lightOutCleared_ = true;
     }
     cmdBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
