@@ -13,6 +13,8 @@
 #include"cmponent.h"
 #endif
 
+#include <new>
+
 #ifndef HEAP_H
 #include"heap.h"
 #endif
@@ -629,20 +631,16 @@ bool MasterComponent::isDefensiveWeapon (void) {
 
 long MasterComponent::loadMasterList (const char* fileName, long listSize, float baseSensorRange) {
 
-	if (masterList) 
-	{
-		systemHeap->Free(masterList);
-		masterList = nullptr;
-	}
+	freeMasterList();
 
 	numComponents = listSize;
-	masterList = (MasterComponentPtr)systemHeap->Malloc(sizeof(MasterComponent) * numComponents);
+	masterList = static_cast<MasterComponentPtr>(systemHeap->Malloc(sizeof(MasterComponent) * numComponents));
 	// The table loaders set only the fields the data names; the rest (disableLevel, which getInventoryDamage is compared with on every component hit,
 	// among them) must not be whatever the heap block held: the same hit disabled a component in one run and not in the next (mc2_24 frame 3193).
 	memset(masterList, 0, sizeof(MasterComponent) * numComponents);
 
 	for (long curComponent = 0; curComponent < numComponents; curComponent++)
-		masterList[curComponent].init();
+		::new (static_cast<void*>(&masterList[curComponent])) MasterComponent;
 
 	armActuatorID = -1;
 	legActuatorID = -1;
@@ -749,6 +747,8 @@ long MasterComponent::freeMasterList (void) {
 
 	if (masterList) 
 	{
+		for (long i = 0; i < numComponents; ++i)
+			masterList[i].~MasterComponent();
 		systemHeap->Free(masterList);
 		masterList = nullptr;
 		numComponents = 0;

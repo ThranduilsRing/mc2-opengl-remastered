@@ -40,11 +40,12 @@ class FloatHelp
 		static	DWORD		currentFloatHelp;		//How many of them are we using at present
 		static	FloatHelp*	floatHelps;				//POinters to all of them.
 
-	public:
+	private:
+		// Entries share the pool; only the public handle owns its lifetime.
+		bool ownsPool = false;
 
-		FloatHelp (long maxHelps)
+		FloatHelp ()
 		{
-			init(maxHelps);
 			text[0] = 0;
 			screenPos.x = screenPos.y = screenPos.z = screenPos.w = 0.0f;
 			foregroundColor = SD_WHITE;
@@ -54,9 +55,16 @@ class FloatHelp
 			bold = italic = wordWrap = false;
 		}
 
+	public:
+		FloatHelp (long maxHelps) : FloatHelp()
+		{
+			init(maxHelps);
+		}
+
 		~FloatHelp (void)
 		{
-			destroy();
+			if (ownsPool)
+				destroy();
 		}
 
 		void init (long maxHelps);
