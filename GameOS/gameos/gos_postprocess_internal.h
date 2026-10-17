@@ -102,7 +102,6 @@ float mc2ShadowMechSoft();
 int mc2PropShadowReceive();
 bool mc2ShadowGuardClampedSun();
 bool mc2CloudShadowEnabled();
-bool screenShadowGlCanaryEnabled();
 void mc2ClampShadowSunAltitude(float& fx, float& fy, float& fz);
 void executorOwnBeginSub(gosPostProcess* pp, RenderCore::framegraph::ExecutorIslandId islandId);
 void executorOwnEndSub(gosPostProcess* pp, RenderCore::framegraph::ExecutorIslandId islandId);

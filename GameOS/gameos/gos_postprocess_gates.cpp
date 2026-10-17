@@ -334,9 +334,3 @@ bool mc2CloudShadowEnabled()
     static const bool s_on = mc2::gate::get<"MC2_CLOUD_SHADOW">();
     return s_on;
 }
-
-bool screenShadowGlCanaryEnabled()
-{
-    static const bool s_on = mc2::gate::get<"MC2_VK_SCREENSHADOW_GL_CANARY">();
-    return s_on;
-}

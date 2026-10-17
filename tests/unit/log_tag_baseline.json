@@ -12328,29 +12328,6 @@
    "count": 1
   },
   {
-   "tag": "VK_SCENE_GL_DRAW_CANARY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "tag",
-    "any_samples",
-    "draws"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_SCREENSHADOW_GL_CANARY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "any_samples",
-    "sceneFBO",
-    "csm",
-    "debug"
-   ],
-   "count": 1
-  },
-  {
    "tag": "VK_SHADOW_MATRIX",
    "ver": 1,
    "stream": "stderr",

@@ -1510,13 +1510,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "VK full-map cascade producer, on under the VK umbrella; =0 turns it off (terrain then loses the far cascade).",
     },
     {
-        "MC2_TRACE_VK_DECAL_STATIC_GL_CANARY",
-        "MC2_VK_DECAL_STATIC_GL_CANARY",
-        EnvVarKind::Trace,
-        false,
-        "VK final-gate diagnostic: wraps gosRenderer::drawDecalStaticBatch GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1]...",
-    },
-    {
         "MC2_FEATURE_VK_FORCE_FAIL",
         "MC2_VK_FORCE_FAIL",
         EnvVarKind::Trace,
@@ -1573,13 +1566,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "VK present-tail deletion-readiness canary.",
     },
     {
-        "MC2_TRACE_VK_SCREENSHADOW_GL_CANARY",
-        "MC2_VK_SCREENSHADOW_GL_CANARY",
-        EnvVarKind::Trace,
-        false,
-        "VK final-gate diagnostic: wraps only the legacy GL runScreenShadow fullscreen draw in GL_ANY_SAMPLES_PASSED and logs [VK_SCREENSHADOW_GL_CANARY v1].",
-    },
-    {
         "MC2_FEATURE_VK_SHADOW_INTEROP",
         "MC2_VK_SHADOW_INTEROP",
         EnvVarKind::Feature,
@@ -1598,7 +1584,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_VK_SHARED_GBUFFER",
         EnvVarKind::Feature,
         true,
-        "The VK umbrella, default ON since the 2026-10-17 default flip; =0 is a kill switch (only meaningful with MC2_RENDER_BACKEND=vulkan, which is the default).",
+        "The VK umbrella, default ON since the 2026-10-17 default flip; =0 is a kill switch (no effect under MC2_RENDER_BACKEND=gl).",
     },
     {
         "MC2_TRACE_VK_SHARED_SCENE_STRICT",
@@ -1608,25 +1594,11 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "VK shared-scene deletion-readiness canary.",
     },
     {
-        "MC2_TRACE_VK_TERRAIN_DECAL_GL_CANARY",
-        "MC2_VK_TERRAIN_DECAL_GL_CANARY",
-        EnvVarKind::Trace,
-        false,
-        "VK final-gate diagnostic: wraps gosRenderer::drawDecals GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=terrain_decal_batch.",
-    },
-    {
         "MC2_FEATURE_VK_TERRAIN_LODFADE",
         "MC2_VK_TERRAIN_LODFADE",
         EnvVarKind::Feature,
         false,
         "VK-TERRAIN-LODFADE: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DETAIL).",
-    },
-    {
-        "MC2_TRACE_VK_TERRAIN_OVERLAY_GL_CANARY",
-        "MC2_VK_TERRAIN_OVERLAY_GL_CANARY",
-        EnvVarKind::Trace,
-        false,
-        "VK final-gate diagnostic: wraps gosRenderer::drawTerrainOverlays GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1]...",
     },
     {
         "MC2_TRACE_VK_VFX_TRACE",

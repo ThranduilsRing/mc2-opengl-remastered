@@ -24909,34 +24909,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_DECAL_STATIC_GL_CANARY",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Std",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VK final-gate diagnostic: wraps gosRenderer::drawDecalStaticBatch GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=decal_static_batch.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11293",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_VK_DECAL_STATIC_GL_CANARY",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_FEED_DUMP",
    "kind": "String",
    "default": "",
@@ -25720,34 +25692,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_SCREENSHADOW_GL_CANARY",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "VK final-gate diagnostic: wraps only the legacy GL runScreenShadow fullscreen draw in GL_ANY_SAMPLES_PASSED and logs [VK_SCREENSHADOW_GL_CANARY v1].",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:714",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_VK_SCREENSHADOW_GL_CANARY",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_SELECT_TEST",
    "kind": "Bool",
    "default": false,
@@ -25970,34 +25914,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_TERRAIN_DECAL_GL_CANARY",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Std",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VK final-gate diagnostic: wraps gosRenderer::drawDecals GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=terrain_decal_batch.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11413",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_VK_TERRAIN_DECAL_GL_CANARY",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_TERRAIN_FENCE_DEFER",
    "kind": "Bool",
    "default": true,
@@ -26047,34 +25963,6 @@
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_VK_TERRAIN_LODFADE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_TERRAIN_OVERLAY_GL_CANARY",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Std",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VK final-gate diagnostic: wraps gosRenderer::drawTerrainOverlays GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=terrain_overlay_batch.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11138",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_VK_TERRAIN_OVERLAY_GL_CANARY",
    "retireVerdict": ""
   },
   {
