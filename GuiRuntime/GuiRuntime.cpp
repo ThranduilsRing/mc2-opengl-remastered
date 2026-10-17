@@ -44,8 +44,8 @@ static bool isEnabled() {
 }
 
 static bool vkImguiRequested() {
-    // The gate is process-static; the backend is read live, because a later forceGLFallback (frame-loop present
-    // init retry budget) turns a Vulkan session into a GL one after GuiRuntime::Init ran.
+    // The gate is process-static; the backend is read live (the backend never changes after init since the
+    // GL fallback was removed, the live read is harmless).
     static int cachedGate = -1;
     if (cachedGate < 0) {
 #ifdef MC2_VULKAN

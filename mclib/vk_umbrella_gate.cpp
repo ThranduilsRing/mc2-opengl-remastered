@@ -6,7 +6,7 @@ namespace mc2vkgate {
 
 bool umbrellaOn()
 {
-    return mc2::gate::get<"MC2_VK_SHARED_GBUFFER">() && !g_mc2VkSessionForcedGL;
+    return mc2::gate::get<"MC2_VK_SHARED_GBUFFER">();
 }
 
 bool vfxTraceOn()

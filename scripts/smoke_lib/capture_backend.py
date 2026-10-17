@@ -3,7 +3,7 @@
 
 WHAT: `requested(env)` reads MC2_RENDER_BACKEND the way the engine does (render_backend_select.cpp); `check(requested, sidecars)` returns one
 message per sidecar whose backend or readback source is not what was asked for. An empty list means the capture is what it says it is.
-WHY: a Vulkan context that fails to start puts the whole session back on GL (`forceGLFallback`). The GL frame is then read back from the GL
+WHY: a Vulkan context that fails to start used to put the whole session back on GL (the fallback is gone; old sidecars and `MC2_RENDER_BACKEND` typos still produce GL frames). The GL frame is then read back from the GL
 framebuffer and written as an ordinary capture, so a "Vulkan arm" of an A/B can be a second GL capture and nobody sees it until the sidecar is
 opened. The engine writes the backend that drew and the readback source into every sidecar; the capture drivers fail on a mismatch.
 An older engine's sidecar has no `backend`; it is read from `readback_source` (vk_present = Vulkan, gl_fbo = GL), and a sidecar with

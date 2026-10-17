@@ -162,7 +162,7 @@ bool VulkanContext::init(bool wantPresent) {
 
     // Fail-soft proof knob (plan T4): MC2_VK_FORCE_FAIL=1 forces the engine
     // context bring-up to fail deterministically BEFORE any Vulkan object is
-    // created, so the fail-soft -> forceGLFallback path can be exercised on
+    // created, so the fail-soft -> fatalBackendFailure path can be exercised on
     // demand (no broken-ICD juggling). Presence-gated; default OFF.
     {
         if (mc2::gate::get<"MC2_VK_FORCE_FAIL">()) {

@@ -36,12 +36,13 @@ RenderBackend renderBackend();
 // Human-readable name for logs ("gl" | "vulkan").
 const char* renderBackendName(RenderBackend b);
 
-// Fail-soft coercion: force the session back to GL for the remainder of the
-// process. Called by T2 when the engine VulkanContext fails to be born (bad
-// device / missing exts / validation-layer failure). After this, renderBackend()
-// returns GL so every downstream consumer takes the GL path. Session-sticky;
-// there is no un-force. Logs the reason once.
-void forceGLFallback(const char* reason);
+// Fatal backend failure (owner ruling 2026-10-16: no GL fallback). Called when
+// MC2_RENDER_BACKEND=vulkan was requested and Vulkan cannot come up (device /
+// extensions / validation layer failure, no MC2_VULKAN in the build, or a present
+// path that cannot be VK-owned). Logs "[RENDER_BACKEND] FATAL: <reason>", shows a
+// message box unless the run is automated (smoke / crash-fast-exit), and ends the
+// process with exit code 3. Does not return.
+[[noreturn]] void fatalBackendFailure(const char* reason);
 
 }  // namespace mc2
 

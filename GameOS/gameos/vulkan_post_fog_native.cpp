@@ -498,7 +498,7 @@ void gosPostProcess::VkPostFogNativeDeleter::operator()(VkPostFogNative* s) cons
 
 // ---------------------------------------------------------------------------
 // vkPostFogNativeEnabled(): UMBRELLA-ARMED, NOT an opt-in: ON iff MC2_VK_SHARED_GBUFFER=1
-// (and OFF once g_mc2VkSessionForcedGL is set). The SKYBOX-FOG-EXCLUDE parity guard
+// . The SKYBOX-FOG-EXCLUDE parity guard
 // below is therefore reachable on the default umbrella launch and is load-bearing.
 // ---------------------------------------------------------------------------
 bool gosPostProcess::vkPostFogNativeEnabled()
