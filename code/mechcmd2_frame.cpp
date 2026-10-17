@@ -656,8 +656,7 @@ void __stdcall DoGameLogic()
 				++s_barrage;
 				extern unsigned g_mc2ArtCreated, g_mc2ArtReinit, g_mc2ArtReinitFreed;
 				if ((s_barrage % 50) == 0 || s_barrage == s_barrageN)
-					mc2::fmt::print_out("[ALLOC_ART] barrage={} created={} reinit={} reinit_freed_appearance={}
-", mc2::fmt::as_i32(s_barrage), mc2::fmt::as_u32(g_mc2ArtCreated), mc2::fmt::as_u32(g_mc2ArtReinit), mc2::fmt::as_u32(g_mc2ArtReinitFreed));
+					mc2::fmt::print_out("[ALLOC_ART] barrage={} created={} reinit={} reinit_freed_appearance={}\n", mc2::fmt::as_i32(s_barrage), mc2::fmt::as_u32(g_mc2ArtCreated), mc2::fmt::as_u32(g_mc2ArtReinit), mc2::fmt::as_u32(g_mc2ArtReinitFreed));
 			}
 		}
 		{
