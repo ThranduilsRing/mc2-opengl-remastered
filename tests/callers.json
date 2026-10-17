@@ -2598,6 +2598,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "tests/analyze/b7_actor_census.py",
+          "line": 32,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "tests/analyze/container_callsites.py",
           "line": 35,
           "evidence": "import",

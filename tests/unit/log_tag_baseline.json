@@ -12250,6 +12250,28 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
+    "ctx",
+    "backend",
+    "viewport_renderer_data",
+    "owner"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_IMGUI",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "live",
+    "retired"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_IMGUI",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
     "requested",
     "used_vulkan",
     "direct_present_armed",
@@ -12265,6 +12287,15 @@
     "requested",
     "used_vulkan",
     "fallback_reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_IMGUI",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "texture_cmds_skipped"
    ],
    "count": 1
   },
