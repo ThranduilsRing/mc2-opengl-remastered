@@ -297,7 +297,15 @@ void __stdcall gos_LockTexture( DWORD Handle, DWORD MipMapSize, bool ReadOnly, T
 
     gosTextureInfo info;
     int pitch = 0;
-    gosTexture* ptex = g_gos_renderer->getTexture(Handle);
+    gosTexture* ptex = (Handle < g_gos_renderer->getTextureListSize()) ? g_gos_renderer->getTexture(Handle) : nullptr;
+    if (!ptex)
+    {
+        // A texture that failed to build must not take the process down; the
+        // caller sees an empty lock (null pixels, zero size).
+        mc2::fmt::print_out("[LOCK_TEXTURE_NULL] no texture for handle {}\n", mc2::fmt::as_u32(Handle));
+        *TextureInfo = TEXTUREPTR{};
+        return;
+    }
     ptex->getTextureInfo(&info);
     BYTE* pdata = ptex->Lock(mip_level, ReadOnly, &pitch);
 

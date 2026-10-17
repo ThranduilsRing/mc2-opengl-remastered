@@ -308,7 +308,30 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 			}
 		}
 	}
-	gosASSERT(textureFileOpenResult == NO_ERR);
+	if (textureFileOpenResult != NO_ERR)
+	{
+		// A layout or object file can name a texture that is in no archive or
+		// loose tree (a stale mod or install). The node must still be a valid
+		// texture so every consumer (gos_LockTexture, UV math) stays safe: bind a
+		// transparent 1x1 and say so once. gosASSERT is a no-op in this build, so
+		// the old assert let the unopened File reach fileSize() and a null texture.
+		mc2::fmt::print_out("[TEXMGR_MISSING] texture not found, bound a 1x1 placeholder: {}\n", mc2::fmt::safe(textureFullPathName));
+		fflush(stdout);
+		const DWORD txmSize = 4;
+		masterTextureNodes[i].uvScale = 1;
+		masterTextureNodes[i].logicalWidth = 1;
+		masterTextureNodes[i].logicalHeight = 1;
+		masterTextureNodes[i].width = MC_TEXCACHE_MEM_RAW + txmSize;
+		masterTextureNodes[i].lzCompSize = txmSize;
+		actualTextureSize += txmSize;
+		compressedTextureSize += txmSize;
+		masterTextureNodes[i].textureData = (DWORD *)textureCacheHeap->Malloc(txmSize);
+		if (masterTextureNodes[i].textureData)
+			*masterTextureNodes[i].textureData = 0;
+		else
+			masterTextureNodes[i].gosTextureHandle = 0;
+		return(i);
+	}
 
 	// ENCYCLO-3D-2 diagnostic: for TGL preview textures, record where the
 	// bytes actually came from at load time (loose disk vs fastfile), the
