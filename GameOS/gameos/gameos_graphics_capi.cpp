@@ -959,8 +959,69 @@ void __stdcall gos_BeginCameraPreviewRender()
 
 // Restore the default framebuffer (and its real-resolution glViewport) after
 // camera preview rendering.
+// VK-PREVIEW-READBACK-1: under the Vulkan backend the ImGui layer is drawn by a Vulkan pass that cannot sample the GL FBO colour
+// texture. After each preview render the FBO is downscaled to the 800x600 virtual canvas (the panel UV crop is canvas-relative, so the
+// scale does not matter), read back, and published as the texels of that GL texture name: gos_GetTextureTexelsByGlName hands them to
+// the ImGui bridge, which uploads them to a VK image. A fresh vector each render is the bridge's content-change signal.
+namespace {
+    GLuint s_camPreviewDownFbo = 0;
+    GLuint s_camPreviewDownTex = 0;
+    std::shared_ptr<const std::vector<uint8_t>> s_camPreviewTexels;
+    GLuint s_camPreviewTexelsName = 0;
+
+    void publishCamPreviewTexels()
+    {
+        constexpr int kW = 800, kH = 600;
+        if (!s_camPreviewFbo || !s_camPreviewColorTex) return;
+        if (!s_camPreviewDownFbo) {
+            glGenFramebuffers(1, &s_camPreviewDownFbo);
+            glGenTextures(1, &s_camPreviewDownTex);
+            glBindTexture(GL_TEXTURE_2D, s_camPreviewDownTex);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, kW, kH, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+            glBindTexture(GL_TEXTURE_2D, 0);
+            glBindFramebuffer(GL_FRAMEBUFFER, s_camPreviewDownFbo);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_camPreviewDownTex, 0);
+        }
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, s_camPreviewFbo);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s_camPreviewDownFbo);
+        glBlitFramebuffer(0, 0, s_camPreviewW, s_camPreviewH, 0, 0, kW, kH, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, s_camPreviewDownFbo);
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+        glPixelStorei(GL_PACK_ALIGNMENT, 1);
+        auto px = std::make_shared<std::vector<uint8_t>>((size_t)kW * kH * 4u);
+        glReadPixels(0, 0, kW, kH, GL_RGBA, GL_UNSIGNED_BYTE, px->data());
+        static bool s_logged = false;
+        static int s_checks = 0;
+        if (!s_logged && ++s_checks <= 600) {   // the first renders can precede the mech load: log the first one that has pixels
+            size_t lit = 0;
+            for (size_t i = 0; i < px->size(); i += 4)
+                if ((*px)[i] | (*px)[i + 1] | (*px)[i + 2]) ++lit;
+            if (lit) {
+                s_logged = true;
+                mc2::fmt::print_err("[PREVIEW_READBACK v1] first publish with pixels: gl_tex={:d} nonblack_px={:d} of {:d}\n",
+                                mc2::fmt::as_u32(s_camPreviewColorTex), mc2::fmt::as_u32((uint32_t)lit), mc2::fmt::as_u32((uint32_t)(kW * kH)));
+            }
+        }
+        s_camPreviewTexels = std::move(px);
+        s_camPreviewTexelsName = s_camPreviewColorTex;
+    }
+}
+
+GosTexels gos_GetCameraPreviewTexels(uint32_t glName)
+{
+    GosTexels out;
+    if (glName == 0 || glName != s_camPreviewTexelsName || !s_camPreviewTexels) return out;
+    out.status = GosTexels::Status::Ready;
+    out.width = 800;
+    out.height = 600;
+    out.vkFormat = mc2tex::kVkFormatRgba8Unorm;
+    out.bytes = s_camPreviewTexels;
+    return out;
+}
+
 void __stdcall gos_EndCameraPreviewRender()
 {
+    if (mc2vkgate::umbrellaOn()) publishCamPreviewTexels();
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     if (g_gos_renderer) {
         glViewport(0, 0, g_gos_renderer->getWidth(), g_gos_renderer->getHeight());
