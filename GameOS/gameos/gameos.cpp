@@ -226,6 +226,10 @@ void __stdcall gos_WalkMemoryHeap(HGOSHEAP pHeap, bool vociferous/* = false*/)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+#ifdef MC2_ALLOC_STATS
+#include "alloc_stats_proof.inc"
+#endif
+
 void* operator new(size_t sz) {
     // A replaced operator new must not return null: callers (and the compiler) assume the result is valid.
     void* p = gos_Malloc(sz ? sz : 1, nullptr);
@@ -269,7 +273,19 @@ void* __stdcall gos_Malloc(size_t bytes, HGOSHEAP Heap/* = 0*/)
         PAUSE((""));
     }
     */
+#ifdef MC2_ALLOC_STATS
+    void* p = malloc(bytes);
+    if (p) {
+        if (!tl_inTracker) {
+            g_allocStatsLive.fetch_add(1, std::memory_order_relaxed);
+            g_allocStatsBytes.fetch_add(static_cast<long long>(_msize(p)), std::memory_order_relaxed);
+            trackAlloc(p, bytes);
+        }
+    }
+    return p;
+#else
     return malloc(bytes);
+#endif
 }
 void __stdcall gos_Free(void* ptr)
 {
@@ -280,6 +296,13 @@ void __stdcall gos_Free(void* ptr)
         heap->BytesAllocated -= // ??? ;
     }
     */
+#ifdef MC2_ALLOC_STATS
+    if (ptr && !tl_inTracker) {
+        g_allocStatsLive.fetch_sub(1, std::memory_order_relaxed);
+        g_allocStatsBytes.fetch_sub(static_cast<long long>(_msize(ptr)), std::memory_order_relaxed);
+        trackFree(ptr);
+    }
+#endif
     free(ptr);
 }
 ////////////////////////////////////////////////////////////////////////////////

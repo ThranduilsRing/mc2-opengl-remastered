@@ -50,18 +50,6 @@ bool useShadows = true;
 
 //-------------------------------------------------------------------------------
 // TG_TypeMultiShape
-void *TG_TypeMultiShape::operator new (size_t mySize)
-{
-	void *result = TG_Shape::tglHeap->Malloc(mySize);
-	return result;
-}
- 
-//-------------------------------------------------------------------------------
- void TG_TypeMultiShape::operator delete (void *us)
-{
-	TG_Shape::tglHeap->Free(us);
-}
-
 //-------------------------------------------------------------------------------
 // TG_MultiShape & TG_TypeMultiShape
 //This function copies the entire multi-shape to the new pointer.

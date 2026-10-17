@@ -159,7 +159,7 @@ public:
 		
 		//vTol
 		Stuff::Vector3D				vPos[MAX_TEAMS];		// vehicle position
-		BldgAppearance*				vTol[MAX_TEAMS];
+		BldgAppearance*				vTol[MAX_TEAMS] = {};
 		bool						paintingVtol[MAX_TEAMS];
 		float						vTolTime[MAX_TEAMS];
 		gosFX::Effect				*recoveryBeam[MAX_TEAMS];

@@ -5,9 +5,10 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
+#include <algorithm>
+
 #ifndef MECH3D_H
 #include"mech3d.h"
-#include <algorithm>
 #endif
 
 #include "mech3d_internal.h"
@@ -286,6 +287,7 @@ void Mech3DAppearance::copyTo (MechAppearanceData *data)
 	if (mechType->numWeaponNodes > 10)
 		STOP(("Mech Has too many weapon nodes to save %d",mechType->numWeaponNodes));
 
+	// The saved slot is 10 BYTES of a 10-element table (a save-format limit, docs/known_issues.md); a table shorter than the slot must not be over-read.
 	memcpy(data->nodeUsed,nodeUsed.data(),std::min<size_t>(10,nodeUsed.size()*sizeof(long)));		 
 	memcpy(data->nodeRecycle,nodeRecycle.data(),std::min<size_t>(10,nodeRecycle.size()*sizeof(float)));
 
@@ -332,6 +334,7 @@ void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 	currentFrame = data->currentFrame;
 	currentLOD = data->currentLOD;
 
+	// Mirror of copyTo: only 10 bytes were saved, and a table shorter than that must not be over-written.
 	memcpy(nodeUsed.data(),data->nodeUsed,std::min<size_t>(10,nodeUsed.size()*sizeof(long)));		 
 	memcpy(nodeRecycle.data(),data->nodeRecycle,std::min<size_t>(10,nodeRecycle.size()*sizeof(float)));
 

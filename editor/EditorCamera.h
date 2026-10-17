@@ -357,8 +357,6 @@ public:
 			{
 				appearanceTypeList = new AppearanceTypeList;
 				gosASSERT(appearanceTypeList != NULL);
-				
-				appearanceTypeList->init(81920000);   // 10x the real engine's spriteHeapSize (8192000); editor edits many appearances/forests
 			}
 
 			AppearanceType* appearanceType = appearanceTypeList->getAppearance( BLDG_TYPE << 24, "compass" );

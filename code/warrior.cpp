@@ -1019,6 +1019,9 @@ void MechWarrior::clear (void) {
 
 void MechWarrior::destroy (void) {
 
+	// Queued waypoint markers are owned appearances; mission end used to sweep them up with the appearance heap.
+	clearTacOrderQueue();
+
 	if (brain) {
 		delete brain;
 		brain = nullptr;

@@ -58,16 +58,6 @@ SimpleCamera::SimpleCamera()
 SimpleCamera::~SimpleCamera()
 {
 
-    // sebi, do not see how this object cannot be on a heap..
-    // so delete unconditionally
-    /*
-	//Why did we not delete here??
-	// It was commented out.
-	// -fs
-	if ( appearanceTypeList && appearanceTypeList->pointerCanBeDeleted(pObject) )
-		delete pObject;
-    */
-
 	// sebi: added this condition ecause  appearanceTypeList used inside destructor
 	if (appearanceTypeList)
     	delete pObject;
@@ -78,23 +68,7 @@ SimpleCamera::~SimpleCamera()
 	// ONLY if we are running it in logistics.  DO NOT DELETE THESE IN THE MIDDLE OF A MISSION!!!
 	if (!bIsInMission)
 	{
-		if (GVAppearanceType::SensorTriangleShape)
-		{
-			delete GVAppearanceType::SensorTriangleShape;
-			GVAppearanceType::SensorTriangleShape = nullptr;
-		}
-		
-		if (GVAppearanceType::SensorCircleShape)
-		{
-			delete GVAppearanceType::SensorCircleShape;
-			GVAppearanceType::SensorCircleShape = nullptr;
-		}
-
-		if (Mech3DAppearanceType::SensorSquareShape)
-		{
-			delete Mech3DAppearanceType::SensorSquareShape;
-			Mech3DAppearanceType::SensorSquareShape = nullptr;
-		}
+		AppearanceTypeList::destroySensorShapes();
 	}
 }
 
@@ -591,13 +565,6 @@ void SimpleCamera::setMech(const char* fileName, long baseColor, long highlight1
 
 	AltitudeTight = 650;
 
-    // sebi, do not see how this object cannot be on a heap..
-    // so delete unconditionally
-    /*
-	// moving this to above the spot where we create the appearancetypelist
-	if ( appearanceTypeList && appearanceTypeList->pointerCanBeDeleted(pObject) )
-		delete pObject;
-        */
 	// sebi: added this conition ecause  appearanceTypeList used inside destructor
 	if (appearanceTypeList)
 		delete pObject;
@@ -669,13 +636,6 @@ void SimpleCamera::setVehicle(const char* fileName,long base, long highlight, lo
 
 	rotationIncrement = 90;
 	
-    // sebi, do not see how this object cannot be on a heap..
-    // so delete unconditionally
-    /*
-	if ( appearanceTypeList && appearanceTypeList->pointerCanBeDeleted(pObject) )
-		delete pObject;
-        */
-  
 	// sebi: added this conition ecause  appearanceTypeList used inside destructor
 	if (appearanceTypeList)
     	delete pObject;
@@ -741,13 +701,6 @@ void SimpleCamera::setComponent(const char* fileName )
 		Mission::initBareMinimum();
 
 	
-    // sebi, do not see how this object cannot be on a heap..
-    // so delete unconditionally
-    /*
-	if ( appearanceTypeList && appearanceTypeList->pointerCanBeDeleted(pObject) )
-		delete pObject;
-        */
-
 	// sebi: added this conition ecause  appearanceTypeList used inside destructor
 	if (appearanceTypeList)
     	delete pObject;

@@ -44,7 +44,6 @@ static MemoryPtr effectsData = nullptr;  // kept alive until effectStream is del
 // Editor-only: game binary unchanged.
 unsigned long systemHeapSize = 128 * 1024 * 1024;
 unsigned long guiHeapSize = 1023999;
-unsigned long tglHeapSize = 65536000;
 
 
 long gammaLevel = 0;
@@ -665,9 +664,6 @@ void InitializeGameEngine()
 	prefs = nullptr;
 
 
-	TG_Shape::tglHeap = new UserHeap;
-		TG_Shape::tglHeap->init(tglHeapSize,"TinyGeom");
-
 		colorPool 		= new TG_VertexPool;
 		colorPool->init(20000);
 		
@@ -804,7 +800,7 @@ void TerminateGameEngine()
 		mcTextureManager = nullptr;
 	}
 
-	if (TG_Shape::tglHeap)
+	if (colorPool || vertexPool || facePool || shadowPool || trianglePool)
 	{
 		if (colorPool)
 		{
@@ -840,11 +836,6 @@ void TerminateGameEngine()
 			delete trianglePool;
 			trianglePool = nullptr;
 		}
- 
-		TG_Shape::tglHeap->destroy();
-
-		delete TG_Shape::tglHeap;
-		TG_Shape::tglHeap = nullptr;
 	}
 
 	//

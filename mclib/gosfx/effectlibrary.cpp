@@ -63,8 +63,9 @@ gosFX::EffectLibrary::EffectLibrary()
 //
 gosFX::EffectLibrary::~EffectLibrary()
 {
-	// Storage lives on SpecLibrary; nothing to free here. SpecLibrary is
-	// torn down in TerminateClass() above.
+	// Storage lives on SpecLibrary and the texture manager's flush deletes this object without TerminateClass(): the specs go with the
+	// library, or every mission reload parses a second set on top of the first and drops the old one.
+	mc2::particles::SpecLibrary::Shutdown();
 }
 
 //------------------------------------------------------------------------------

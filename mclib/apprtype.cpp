@@ -36,6 +36,7 @@
 
 #include "mc2_audit.h"   // META-FIX design B PART 2: appr_type_fail backstop
 
+#include<algorithm>
 #include<cstdlib>
 #include<cstdio>
 #include "Gates/gate.h"
@@ -43,7 +44,6 @@
 
 //---------------------------------------------------------------------------
 // static Globals
-UserHeapPtr AppearanceTypeList::appearanceHeap = nullptr;
 AppearanceTypeListPtr appearanceTypeList = nullptr;
 
 //---------------------------------------------------------------------------
@@ -70,28 +70,6 @@ long g_loadRaceLastTerrainPath           = 0;    // last preflight: 0=none 1=gpu
 
 //---------------------------------------------------------------------------
 // Class AppearanceType
-void* AppearanceType::operator new (size_t memSize)
-{
-	void* result = nullptr;
-	if (AppearanceTypeList::appearanceHeap && AppearanceTypeList::appearanceHeap->heapReady())
-	{
-		result = AppearanceTypeList::appearanceHeap->Malloc(memSize);
-	}
-		
-	return(result);
-}
-
-//---------------------------------------------------------------------------
-void AppearanceType::operator delete (void* treePtr)
-{
-	long result;
-	if (AppearanceTypeList::appearanceHeap && AppearanceTypeList::appearanceHeap->heapReady())
-	{
-		result = AppearanceTypeList::appearanceHeap->Free(treePtr);
-	}
-}
-
-//---------------------------------------------------------------------------
 void AppearanceType::init (const char *fileName)
 {
 	nameStore = fileName;
@@ -239,18 +217,6 @@ void AppearanceType::destroy (void)
 
 //---------------------------------------------------------------------------
 // class AppearanceTypeList
-void AppearanceTypeList::init (unsigned long heapSize)
-{
-	appearanceHeap = new UserHeap;
-	gosASSERT(appearanceHeap != nullptr);
-
-	appearanceHeap->init(heapSize,"APPEAR");
-
-	//No More sprite files.  Objects now have direct control over their appearances.
-	
-}
-
-//---------------------------------------------------------------------------
 AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, const char *appearFile)
 {
 	//----------------------------------------------------------------
@@ -288,11 +254,14 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 	}
 
 	//-----------------------------------------------------------
-	// Scan the list of appearances and see if we have this one.
-	appearanceType = head;
-	while (appearanceType && S_stricmp(appearanceType->name,appearFile) != 0)
+	// Scan the registry (load order) for this appearance.
+	for (auto& known : types)
 	{
-		appearanceType = appearanceType->next;
+		if (known && S_stricmp(known->name,appearFile) == 0)
+		{
+			appearanceType = known.get();
+			break;
+		}
 	}
 
 	if (appearanceType)
@@ -302,147 +271,27 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 	else
 	{
 		//---------------------------------------------------------
-		// This appearance is not on the list yet, so load/new it.	
+		// This appearance is not registered yet, so load/new it.
+		std::unique_ptr<AppearanceType> fresh;
 		switch (appearanceClass)
 		{
-			//----------------------------------------
-			case MECH_TYPE:
-			{
-				appearanceType = new Mech3DAppearanceType;
-				gosASSERT(appearanceType != nullptr);
-
-				appearanceType->appearanceNum = apprNum;
-				appearanceType->init(appearFile);
-
-				//----------------------------------------
-				// We have a new one, add it to the list.				
-				appearanceType->numUsers = 1;
-				appearanceType->next = nullptr;
-
-				if (head == nullptr)
-				{
-					head = appearanceType;
-					last = head;
-				}
-				else
-				{
-					last->next = appearanceType;
-					last = appearanceType;
-				}
-			}
-			break;
-
-			//----------------------------------------
-			case GV_TYPE:
-			{
-				appearanceType = new GVAppearanceType;
-				gosASSERT(appearanceType != nullptr);
-
-				appearanceType->appearanceNum = apprNum;
-				appearanceType->init(appearFile);
-
-				//----------------------------------------
-				// We have a new one, add it to the list.				
-				appearanceType->numUsers = 1;
-				appearanceType->next = nullptr;
-
-				if (head == nullptr)
-				{
-					head = appearanceType;
-					last = head;
-				}
-				else
-				{
-					last->next = appearanceType;
-					last = appearanceType;
-				}
-			}
-			break;
-			
-			//----------------------------------------
-			case TREED_TYPE:
-			{
-				appearanceType = new TreeAppearanceType;
-				gosASSERT(appearanceType != nullptr);
-
-				appearanceType->appearanceNum = apprNum;
-				appearanceType->init(appearFile);
-
-				//----------------------------------------
-				// We have a new one, add it to the list.				
-				appearanceType->numUsers = 1;
-				appearanceType->next = nullptr;
-
-				if (head == nullptr)
-				{
-					head = appearanceType;
-					last = head;
-				}
-				else
-				{
-					last->next = appearanceType;
-					last = appearanceType;
-				}
-			}
-			break;
-
-			//----------------------------------------
-			case GENERIC_APPR_TYPE:
-			{
-				appearanceType = new GenericAppearanceType;
-				gosASSERT(appearanceType != nullptr);
-
-				appearanceType->appearanceNum = apprNum;
-				appearanceType->init(appearFile);
-
-				//----------------------------------------
-				// We have a new one, add it to the list.				
-				appearanceType->numUsers = 1;
-				appearanceType->next = nullptr;
-
-				if (head == nullptr)
-				{
-					head = appearanceType;
-					last = head;
-				}
-				else
-				{
-					last->next = appearanceType;
-					last = appearanceType;
-				}
-			}
-			break;
-
-			//----------------------------------------
-			case BLDG_TYPE:
-			{
-				appearanceType = new BldgAppearanceType;
-				gosASSERT(appearanceType != nullptr);
-
-				appearanceType->appearanceNum = apprNum;
-				appearanceType->init(appearFile);
-
-				//----------------------------------------
-				// We have a new one, add it to the list.				
-				appearanceType->numUsers = 1;
-				appearanceType->next = nullptr;
-
-				if (head == nullptr)
-				{
-					head = appearanceType;
-					last = head;
-				}
-				else
-				{
-					last->next = appearanceType;
-					last = appearanceType;
-				}
-			}
-			break;
-
+			case MECH_TYPE:			fresh = std::make_unique<Mech3DAppearanceType>();	break;
+			case GV_TYPE:			fresh = std::make_unique<GVAppearanceType>();		break;
+			case TREED_TYPE:		fresh = std::make_unique<TreeAppearanceType>();		break;
+			case GENERIC_APPR_TYPE:	fresh = std::make_unique<GenericAppearanceType>();	break;
+			case BLDG_TYPE:			fresh = std::make_unique<BldgAppearanceType>();		break;
 			default:
 				return(nullptr);
 		}
+
+		appearanceType = fresh.get();
+		appearanceType->appearanceNum = apprNum;
+		appearanceType->init(appearFile);
+
+		//----------------------------------------
+		// Registered after init, as the list append always was.
+		appearanceType->numUsers = 1;
+		types.push_back(std::move(fresh));
 	}
 
 	// META-FIX design B PART 2 — chokepoint backstop: this is the sole
@@ -468,48 +317,18 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 //---------------------------------------------------------------------------
 long AppearanceTypeList::removeAppearance (AppearanceTypePtr which)
 {
-	AppearanceTypePtr appearanceType = head;
-	AppearanceTypePtr previous = nullptr;
-	
-	while (appearanceType && (appearanceType != which))
-	{
-		previous = appearanceType;
-		appearanceType = appearanceType->next;
-	}
-
-	if (appearanceType)
-		appearanceType->numUsers--;
-	else
+	auto found = std::find_if(types.begin(), types.end(),
+		[which](const std::unique_ptr<AppearanceType>& known) { return known.get() == which; });
+	if (found == types.end())
 		return(-1);
-	
+
+	(*found)->numUsers--;
+
 	//----------------------------------------------------------
-	// NEVER remove the types anymore.  Save cache time!
-//#if 0
-	if (appearanceType && (appearanceType->numUsers == 0))
-	{
-		//------------------------------------------------------
-		// Check if there is no previous appearanceType in list
-		if (previous == nullptr)
-		{
-			//----------------------------------------------------
-			// if there was no previous, head is the next in list
-			head = appearanceType->next;
-		}
-		else
-		{
-			previous->next = appearanceType->next;
-		}
-		
-		//-------------------------------------------------------------
-		// Make sure that we don't gratuitously free the last pointer
-		if (appearanceType == last)
-			last = previous;
-			
-		delete appearanceType;
-		appearanceType = nullptr;
-	}
-//#endif
-	
+	// The last user releases the type: the registry's erase deletes it, which runs the destructor chain (each subclass destroy()).
+	if ((*found)->numUsers == 0)
+		types.erase(found);
+
 	return NO_ERR;
 }
 
@@ -517,49 +336,35 @@ long AppearanceTypeList::removeAppearance (AppearanceTypePtr which)
 void AppearanceTypeList::destroy (void)
 {
 	//---------------------------------------------------------------------
-	// Delete every type still in the list, once each: the destructor chain runs the type's destroy(), the same path removeAppearance
-	// takes. The types must go before the heap they were taken from.
+	// Delete every type still registered, once each and in load order: the destructor chain runs the type's destroy(), the same path
+	// removeAppearance takes.
+	for (auto& known : types)
+		known.reset();
+	types.clear();
 
-	AppearanceTypePtr currentAppr = head;
-	while (currentAppr)
-	{
-		AppearanceTypePtr nextPtr = currentAppr->next;
-		delete currentAppr;
-		currentAppr = nextPtr;
-	}
-	
+	destroySensorShapes();
+}
 
-	head = last = nullptr;
-	
-	delete appearanceHeap;
-	appearanceHeap = nullptr;
-	
- 	if (GVAppearanceType::SensorCircleShape)
+//---------------------------------------------------------------------------
+void AppearanceTypeList::destroySensorShapes (void)
+{
+	if (GVAppearanceType::SensorCircleShape)
 	{
 		delete GVAppearanceType::SensorCircleShape;
 		GVAppearanceType::SensorCircleShape = nullptr;
 	}
-	
+
 	if (GVAppearanceType::SensorTriangleShape)
 	{
 		delete GVAppearanceType::SensorTriangleShape;
 		GVAppearanceType::SensorTriangleShape = nullptr;
 	}
-	
+
 	if (Mech3DAppearanceType::SensorSquareShape)
 	{
 		delete Mech3DAppearanceType::SensorSquareShape;
 		Mech3DAppearanceType::SensorSquareShape = nullptr;
 	}
-}
-
-//---------------------------------------------------------------------------
-bool AppearanceTypeList::pointerCanBeDeleted (void *ptr)
-{
-	if (appearanceHeap && appearanceHeap->pointerOnHeap(ptr))
-		return true;
-
-	return false;
 }
 
 //---------------------------------------------------------------------------

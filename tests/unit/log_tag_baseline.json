@@ -218,6 +218,31 @@
    "count": 1
   },
   {
+   "tag": "ALLOC_RELOAD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "n",
+    "phase",
+    "live",
+    "bytes",
+    "t"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "ALLOC_TICK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "n",
+    "frame",
+    "live",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
    "tag": "AMBIENT_GUARD",
    "ver": -1,
    "stream": "stderr",
@@ -5798,6 +5823,13 @@
    "count": 1
   },
   {
+   "tag": "LOCK_TEXTURE_NULL",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
    "tag": "LODBUG",
    "ver": 1,
    "stream": "stderr",
@@ -10890,6 +10922,13 @@
   },
   {
    "tag": "TEXMGR_KTX_PRIMARY",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "TEXMGR_MISSING",
    "ver": -1,
    "stream": "stdout",
    "keys": [],

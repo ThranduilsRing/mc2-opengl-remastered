@@ -100,8 +100,6 @@ class Appearance
 	//-----------------
 	public:
 
-		void * operator new (size_t mySize);
-		void operator delete (void * us);
 			
 		Appearance (void)
 		{

@@ -214,6 +214,7 @@
   "tools/test_log_identity.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_log_tag_census.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_montage_compact.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
+  "tools/test_objective_outcomes.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_pak_append.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_pak_dump.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_pch_audit.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
@@ -293,6 +294,5 @@
   "scripts/check-deploy-target.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track.",
   "scripts/check_shader_bom.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track.",
   "scripts/smoke_lib/baselines.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track.",
-  "scripts/smoke_lib/crash_evidence.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track.",
-  "scripts/tests/test_journal_comment_ratchet.py": "Pytest-discovered module through the scripts_tests board row."
+  "scripts/smoke_lib/crash_evidence.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track."
 }

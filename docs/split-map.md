@@ -459,7 +459,7 @@ Split commit: `f4c986566`.
 | `camera_update.cpp` | Camera: the camera goal updates, Camera::update and render. |
 | `camera_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
-## `mclib/cevfx.cpp`
+## mclib/cevfx.cpp (original removed)
 
 Split commit: `2d6c73efc`.
 
@@ -607,9 +607,4 @@ Split commit: `16460b02e`.
 | `txmmgr_texture.cpp` | MC_TextureManager: texture load/save/copy and MC_TextureNode (KTX route-2 and compressed upload). |
 | `txmmgr_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 | `txmmgr_render_internal.h` | shared include bundle, extern globals and declarations of the pieces |
-
-## `mclib/vfxtile.cpp`
-
-| Piece | What it holds |
-|---|---|
 

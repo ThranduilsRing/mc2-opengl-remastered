@@ -155,15 +155,9 @@
    ]
   },
   "AppearanceTypeList": {
-   "delete": 2,
+   "delete": 1,
    "delete_array": 0,
    "files": {
-    "code/mission.cpp": {
-     "delete": 1
-    },
-    "code/mission2.cpp": {
-     "new": 1
-    },
     "editor/EditorCamera.h": {
      "new": 1
     },
@@ -174,11 +168,10 @@
      "new": 2
     }
    },
-   "new": 4,
+   "new": 3,
    "new_array": 0,
    "owners": [
-    "EditorObjectMgr",
-    "Mission"
+    "EditorObjectMgr"
    ]
   },
   "Artillery": {
@@ -374,10 +367,11 @@
    ]
   },
   "BldgAppearance": {
-   "delete": 11,
+   "delete": 12,
    "delete_array": 0,
    "files": {
     "code/artlry.cpp": {
+     "delete": 1,
      "new": 3
     },
     "code/bldng.cpp": {
@@ -425,27 +419,13 @@
    "new_array": 0,
    "owners": [
     "",
+    "Artillery",
     "Building",
     "GameCamera",
     "Gate",
     "SimpleCamera",
     "TerrainObject",
     "Turret"
-   ]
-  },
-  "BldgAppearanceType": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/apprtype.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "AppearanceTypeList"
    ]
   },
   "BrainTaskQueue": {
@@ -2233,18 +2213,6 @@
     "GroundVehicle"
    ]
   },
-  "GVAppearanceType": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/apprtype.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "GameCamera": {
    "delete": 1,
    "delete_array": 0,
@@ -2393,18 +2361,6 @@
     "",
     "GameCamera"
    ]
-  },
-  "GenericAppearanceType": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/apprtype.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
   },
   "GlobalCollisionAlert": {
    "delete": 1,
@@ -3699,18 +3655,6 @@
    "owners": [
     "BattleMech"
    ]
-  },
-  "Mech3DAppearanceType": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/apprtype.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
   },
   "MechBayScreen": {
    "delete": 0,
@@ -5932,18 +5876,6 @@
    "new_array": 0,
    "owners": []
   },
-  "TreeAppearanceType": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/apprtype.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "TreeIterator": {
    "delete": 0,
    "delete_array": 0,
@@ -6091,7 +6023,7 @@
    ]
   },
   "UserHeap": {
-   "delete": 16,
+   "delete": 15,
    "delete_array": 0,
    "files": {
     "code/ablmc2.cpp": {
@@ -6109,11 +6041,7 @@
      "delete": 2
     },
     "code/mission.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "code/mission2.cpp": {
-     "new": 1
+     "delete": 1
     },
     "code/mission_init.cpp": {
      "new": 1
@@ -6129,10 +6057,6 @@
      "new": 1
     },
     "editor/Editor.cpp": {
-     "delete": 1,
-     "new": 2
-    },
-    "mclib/apprtype.cpp": {
      "delete": 1,
      "new": 1
     },
@@ -6151,11 +6075,10 @@
      "new": 2
     }
    },
-   "new": 21,
+   "new": 17,
    "new_array": 0,
    "owners": [
     "",
-    "AppearanceTypeList",
     "CollisionSystem",
     "MC_TextureManager",
     "Mission",
@@ -7660,12 +7583,11 @@
   "code/mechcmd2_frame.cpp": 4,
   "code/mechicon.cpp": 5,
   "code/mechlistbox.cpp": 1,
-  "code/mission.cpp": 9,
-  "code/mission2.cpp": 1,
+  "code/mission.cpp": 4,
   "code/mission_init.cpp": 1,
   "code/missionbegin.cpp": 4,
   "code/missionbriefingscreen.cpp": 3,
-  "code/missiongui.cpp": 2,
+  "code/missiongui.cpp": 3,
   "code/missiongui_style.cpp": 6,
   "code/mover.cpp": 1,
   "code/mpparameterscreen.cpp": 1,
@@ -7676,7 +7598,6 @@
   "code/optionsarea.cpp": 3,
   "code/pilotreviewarea.cpp": 2,
   "code/salvagemecharea.cpp": 10,
-  "code/simplecamera.cpp": 3,
   "code/terrobj.cpp": 1,
   "code/warrior_queue.cpp": 2,
   "code/weaponbolt.cpp": 10,
@@ -7685,7 +7606,7 @@
   "editor/BuildingBrush.cpp": 2,
   "editor/BuildingSettingsDlg.cpp": 1,
   "editor/DlgFileOpen.cpp": 1,
-  "editor/Editor.cpp": 3,
+  "editor/Editor.cpp": 2,
   "editor/EditorData_tacmap.cpp": 1,
   "editor/EditorInterface_editor.cpp": 1,
   "editor/EditorMFC.cpp": 1,
@@ -7702,7 +7623,7 @@
   "gui/alistbox.cpp": 2,
   "gui/asystem.cpp": 1,
   "mclib/ablenv.cpp": 1,
-  "mclib/apprtype.cpp": 4,
+  "mclib/apprtype.cpp": 3,
   "mclib/bdactor.cpp": 2,
   "mclib/bdactor_static.cpp": 4,
   "mclib/bdactor_terrain.cpp": 11,
@@ -7782,6 +7703,7 @@
   "mclib/mlr/mlrtexture.cpp": 1,
   "mclib/mlr/mlrtexturepool.cpp": 7,
   "mclib/mlr/mlrtrianglecloud.cpp": 1,
+  "mclib/msl_load.cpp": 1,
   "mclib/particles/batcher.cpp": 1,
   "mclib/particles/spec_library.cpp": 1,
   "mclib/stuff/chain.cpp": 3,

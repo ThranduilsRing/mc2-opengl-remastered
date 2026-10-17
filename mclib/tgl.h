@@ -482,9 +482,6 @@ class TG_TypeNode
 	protected:
 
 	public:
-		void *operator new (size_t mySize);
-		void operator delete (void *us);
-			
  		virtual void init (void)
 		{
 			nodeId[0] = parentId[0] = '\0';
@@ -805,10 +802,9 @@ class TG_TypeShape : public TG_TypeNode
 		}
 
 		// Track D — populate this shape from a format-agnostic importer
-		// (FBX/GLB via Assimp). Caller pre-allocates vertexBuf/triangleBuf
-		// from TG_Shape::tglHeap and transfers ownership; this method copies
-		// the count + pointer into class storage and sets nodeId/parentId/
-		// nodeCenter. Texture wiring happens separately via the existing
+		// (FBX/GLB via Assimp). Caller builds the vertex and triangle
+		// vectors and moves them in; this method takes them into class storage
+		// and sets nodeId/parentId/nodeCenter. Texture wiring happens separately via the existing
 		// CreateListOfTextures method (driven from TG_TypeMultiShape).
 		// No Assimp types appear in this signature — header stays clean.
 		void InitFromImportedMesh(const char* nodeIdIn, const char* parentIdIn,
@@ -921,8 +917,6 @@ class TG_Shape
 		static Stuff::Vector3D			s_spotDir[MAX_LIGHTS_IN_WORLD];
 		static Stuff::Vector3D			s_rootLightDir[MAX_LIGHTS_IN_WORLD];
 
-		static UserHeapPtr 				tglHeap;		//Stores all TGL data so we don't need to go through the FREE merry go round of GOS!
-		
 		static DWORD					lighteningLevel;
 
 	//-----------------
@@ -940,9 +934,6 @@ class TG_Shape
 		void xformEmitShape(Stuff::Matrix4D* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped, TG_TypeShapePtr theShape);
 
 	public:
-		void * operator new (size_t mySize);
-		void operator delete (void * us);
-
 		void init (void)
 		{
 			numVertices = numTriangles = numVisibleFaces = 0;

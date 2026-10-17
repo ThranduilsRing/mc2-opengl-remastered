@@ -16,7 +16,7 @@ void build_layout(S* s) {
     VkDescriptorSetLayoutCreateInfo lci{};
     vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl);
     VkPushConstantRange pcr{};
-    pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT; pcr.offset = 0; pcr.size = 16;
+    pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT; pcr.offset = 0; pcr.size = 20;
     VkPipelineLayoutCreateInfo plci{};
     plci.setLayoutCount = 1; plci.pSetLayouts = &s->dsl;
 }

@@ -26,7 +26,10 @@
     ],
     "pch": "cmake/pch/mc2_std_pch.h",
     "pch_skip": "cmake/pch/pch_skip.cmake",
-    "pch_excluded": ["code/sim_rng.cpp", "code/tactical_order_queue.cpp"]
+    "pch_excluded": [
+      "code/sim_rng.cpp",
+      "code/tactical_order_queue.cpp"
+    ]
   },
   "violations": [
     {
@@ -404,6 +407,18 @@
       "rule": "gameos",
       "subject": "../GameOS/gameos/gpu_cull_substrate.h",
       "evidence": "#include \"../GameOS/gameos/gpu_cull_substrate.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp",
+        "GameOS/gameos/utils/mc2log.h"
+      ],
+      "rule": "gameos",
+      "subject": "../GameOS/gameos/utils/mc2log.h",
+      "evidence": "#include \"../GameOS/gameos/utils/mc2log.h\"",
       "occurrence": 1
     },
     {

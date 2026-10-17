@@ -29,6 +29,8 @@ import subprocess
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import console_child  # noqa: E402
 LIST = os.path.join(ROOT, ".claude", "cleanup", "cxx23-step4-b5-callsites.txt")
 
 SCAN_DIRS = ["code", "mclib", "gui"]
@@ -55,7 +57,7 @@ RX = {
 }
 ASSET_NAME = re.compile(r"(?i)shape|type|appear|tg_|texture|heap")
 #: Deletes that match ASSET_NAME but belong to another batch: an actor's own Appearance instance (B7), other subsystems' heaps (B4 / B6 / B8), UI icon texture memory (B6).
-OTHER_BATCH_DELETE = re.compile(r"delete\s+(?:\[\s*\]\s*)?(?:appearance|Abl\w*Heap|collisionHeap|Radio::radioHeap|systemHeap|guiHeap|globalHeapList|missionHeap|crater\w*Heap|"
+OTHER_BATCH_DELETE = re.compile(r"delete\s+(?:\[\s*\]\s*)?(?:appearance\x08|Abl\w*Heap|collisionHeap|Radio::radioHeap|systemHeap|guiHeap|globalHeapList|missionHeap|crater\w*Heap|"
                                 r"progressTextureMemory|mergedTexture|MechIcon::|ForceGroupIcon::|VehicleIcon::|mcTextureManager)")
 #: class_op only counts in asset classes, not every class of the files the rules name.
 CLASS_OP_CLASSES = re.compile(r"\b(AppearanceType|\w*AppearanceType|\w*Appearance|TG_\w+|ObjectType|\w*ObjectType|\w*Shape)::operator")
@@ -97,7 +99,7 @@ def strip_comments(text: str) -> list[str]:
 
 def tracked() -> list[str]:
     try:
-        out = subprocess.run(["git", "-C", ROOT, "ls-files"] + SCAN_DIRS, capture_output=True, text=True, check=True).stdout
+        out = subprocess.run(["git", "-C", ROOT, "ls-files"] + SCAN_DIRS, capture_output=True, text=True, check=True, **console_child.child_kwargs(redirected=True)).stdout
     except (OSError, subprocess.CalledProcessError) as e:
         raise CensusError(f"git ls-files failed: {e}")
     return [p for p in out.splitlines() if p.endswith(SOURCE_EXT)]

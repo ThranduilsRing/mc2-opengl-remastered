@@ -36,7 +36,6 @@ Stuff::Vector3D			TG_Shape::s_lightDir[MAX_LIGHTS_IN_WORLD];
 Stuff::Vector3D			TG_Shape::s_rootLightDir[MAX_LIGHTS_IN_WORLD];
 Stuff::Vector3D			TG_Shape::s_spotDir[MAX_LIGHTS_IN_WORLD];
 
-UserHeapPtr 			TG_Shape::tglHeap = nullptr;
 
 DWORD					TG_Shape::lighteningLevel = 0;
 

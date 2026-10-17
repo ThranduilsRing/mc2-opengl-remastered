@@ -1530,7 +1530,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 902,
+          "line": 909,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
@@ -2589,6 +2589,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
+        },
+        {
+          "path": "tests/analyze/b5_asset_census.py",
+          "line": 33,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
         },
         {
           "path": "tests/analyze/container_callsites.py",
@@ -9190,7 +9197,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 880,
+          "line": 887,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"

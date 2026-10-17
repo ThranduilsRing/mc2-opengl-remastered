@@ -45,8 +45,6 @@ static bool createARM = false;
 
 IProviderEngine * armProvider = NULL;
 
-unsigned long tglHeapSize = 16386000;
-
 // NS3: fastFiles/numFastFiles/maxFastFiles defined in mclib/fastfile.cpp (engine boundary).
 
 HWND		appWnd = NULL;
@@ -485,11 +483,6 @@ int main(int argc, char** argv)
 	assert(systemHeap != NULL);
 
 	systemHeap->init(2048000);
-
-	//---------------------------------------------------------
-	// Start the Tiny Geometry Layer Heap.
-	TG_Shape::tglHeap = new UserHeap;
-	TG_Shape::tglHeap->init(tglHeapSize, "TinyGeom");
 
 	//-------------------------------------------------------
 	// Check if we are running this from the command line

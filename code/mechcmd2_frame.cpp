@@ -3,6 +3,9 @@
 #include "mechcmd2_internal.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#ifdef MC2_ALLOC_STATS
+#include "artlry.h"
+#endif
 
 
 void __stdcall UpdateRenderers()
@@ -637,11 +640,67 @@ void __stdcall DoGameLogic()
 			gos_TerminateApplication();
 		}
 
+#ifdef MC2_ALLOC_STATS
+		// Proof build only: reload the quicksave every 90 frames (the harness quicksaves at frame 300 through
+		// MC2_BOOT_QUICKSAVE_AT), 8 times, calling an artillery strike in before each so the pooled rounds are exercised.
+		{
+			extern uint32_t g_mc2FrameCounter;
+			extern bool saveInMissionSave;
+			static int s_cycle = 0;
+			static uint32_t s_nextAt = 420;
+			// Proof-only knobs (plain names so no gate registry row is needed): S10_RELOADS cycles (default 8), S10_STRIKE=0 skips the
+			// artillery call-in, S10_RELOAD=0 only samples (the no-reload control).
+			static const int s_cycles = std::getenv("S10_RELOADS") ? std::atoi(std::getenv("S10_RELOADS")) : 8;
+			static const bool s_strike = !std::getenv("S10_STRIKE") || std::atoi(std::getenv("S10_STRIKE")) != 0;
+			static const bool s_reload = !std::getenv("S10_RELOAD") || std::atoi(std::getenv("S10_RELOAD")) != 0;
+			if (s_cycle < s_cycles && g_mc2FrameCounter >= s_nextAt && !loadInMissionSave && mission && eye)
+			{
+				extern void mc2AllocStatsSnapshot(long long*, long long*);
+				long long liveTick = 0, bytesTick = 0;
+				mc2AllocStatsSnapshot(&liveTick, &bytesTick);
+				mc2::fmt::print_out("[ALLOC_TICK] n={} frame={} live={} bytes={}\n", mc2::fmt::as_i32(s_cycle), mc2::fmt::as_i64(g_mc2FrameCounter), mc2::fmt::as_i64(liveTick), mc2::fmt::as_i64(bytesTick));
+				if (s_strike)
+				{
+					Stuff::Vector3D strikeAt = eye->getPosition();
+					IfaceCallStrike(ARTILLERY_LARGE, &strikeAt, nullptr, true, false, 30.0f);
+				}
+				// Cycle 0 only quicksaves (the boot fixture's save is not reliably there), later cycles reload it.
+				if (s_cycle == 0)
+					saveInMissionSave = true;
+				else if (s_reload)
+					loadInMissionSave = true;
+				s_nextAt = g_mc2FrameCounter + 90;
+				++s_cycle;
+			}
+		}
+#endif
 		if (loadInMissionSave)
 		{
             char savegame_path[1024];
             S_snprintf(savegame_path, sizeof(savegame_path)/sizeof(savegame_path[0]), "%s" PATH_SEPARATOR "testgame.ims", savePath);
+#ifdef MC2_ALLOC_STATS
+			static int s_reloadNo = 0;
+			extern void mc2AllocStatsSnapshot(long long*, long long*);
+			long long liveBefore = 0, bytesBefore = 0;
+			mc2AllocStatsSnapshot(&liveBefore, &bytesBefore);
+			extern void mc2AllocTrackStart(); extern void mc2AllocTrackNextGen(); extern void mc2AllocTrackReport(uint32_t); extern uint32_t mc2AllocTrackGen();
+			static const bool s_track = std::getenv("S10_TRACK") != nullptr;
+			if (s_track && s_reloadNo == 0) mc2AllocTrackStart();
+			if (s_track) mc2AllocTrackNextGen();
+			mc2::fmt::print_out("[ALLOC_RELOAD] n={} phase=pre live={} bytes={} t={}\n", mc2::fmt::as_i32(s_reloadNo), mc2::fmt::as_i64(liveBefore), mc2::fmt::as_i64(bytesBefore), mc2::fmt::as_i64(static_cast<long long>(scenarioTime * 1000.0)));
+#endif
             mission->load(savegame_path);
+#ifdef MC2_ALLOC_STATS
+			{
+				long long liveAfter = 0, bytesAfter = 0;
+				mc2AllocStatsSnapshot(&liveAfter, &bytesAfter);
+				mc2::fmt::print_out("[ALLOC_RELOAD] n={} phase=post live={} bytes={} t={}\n", mc2::fmt::as_i32(s_reloadNo), mc2::fmt::as_i64(liveAfter), mc2::fmt::as_i64(bytesAfter), mc2::fmt::as_i64(static_cast<long long>(scenarioTime * 1000.0)));
+				fflush(stdout);
+				if (s_track && mc2AllocTrackGen() >= 2)
+					mc2AllocTrackReport(mc2AllocTrackGen() - 1);
+				++s_reloadNo;
+			}
+#endif
 			loadInMissionSave = false;
 			if (g_resaveAfterQuickload)
 			{

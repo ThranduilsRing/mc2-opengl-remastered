@@ -77,7 +77,7 @@ class TG_TypeMultiShape
 		TG_TexturePtr		listOfTextures;			//List of texture Structures for all shapes.
 
 		// The two lists above are views of these stores, which own the arrays. The nodes the first list points at are still new / delete'd
-		// one by one in destroy() until the node classes leave tglHeap.
+		// one by one in destroy().
 		std::vector<TG_TypeNodePtr>	typeNodeStore;
 		std::vector<TG_Texture>		textureStore;
 
@@ -95,9 +95,6 @@ class TG_TypeMultiShape
 	protected:
 
 	public:
-		void * operator new (size_t mySize);
-		void operator delete (void * us);
-
 		void init (void)
 		{
 			numTG_TypeShapes = 0;
@@ -331,9 +328,6 @@ class TG_MultiShape
 	protected:
 
 	public:
-		void * operator new (size_t mySize);
-		void operator delete (void * us);
-
 		void init (void)
 		{
 			myMultiType = NULL;
@@ -752,9 +746,6 @@ class TG_AnimateShape
 		bool				shapeIdsSet;
 
 	public:
-		void * operator new (size_t mySize);
-		void operator delete (void * us);
-
 		void init (void)
 		{
 			listOfAnimation = NULL;

@@ -369,9 +369,8 @@ void BuildTextureList(const aiScene* scene, TG_TypeMultiShape* out) {
 }
 
 //-----------------------------------------------------------------------------
-// Populate one TG_TypeShape from one aiMesh. Allocates vertex/triangle buffers
-// from TG_Shape::tglHeap, writes them, then transfers ownership via the
-// narrow construction API on TG_TypeShape.
+// Populate one TG_TypeShape from one aiMesh. Builds vertex/triangle vectors,
+// then transfers ownership via the narrow construction API on TG_TypeShape.
 //
 // Returns 0 on success, -1 on failure.
 long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,

@@ -691,11 +691,6 @@ void HeapList::dumpLog (void)
 	logFile.close();
 }
 
-bool UserHeap::pointerOnHeap (void *ptr)
-{
-	return true;
-}
-
 //---------------------------------------------------------------------------
 //
 // Edit Log

@@ -113,13 +113,11 @@ void Mission::initBareMinimum()
 
 	initTGLForLogistics();
 
-	unsigned long spriteHeapSize = 3072000;
 	if ( !appearanceTypeList )
 	{
 		mission->appearanceTypes = std::make_unique<AppearanceTypeList>();
 		appearanceTypeList = mission->appearanceTypes.get();
 		gosASSERT(appearanceTypeList != nullptr);
-		appearanceTypeList->init(spriteHeapSize);
 		gosASSERT(result == NO_ERR);
 
 	}
@@ -189,13 +187,10 @@ void Mission::initializeStatistics()
 
 void Mission::initTGLForLogistics()
 {
-	// The heap backs the largest single logistics preview object.
-	unsigned long tglHeapSize = 48 * 1024 * 1024;
-
 	// A mission-ending flash must not carry into logistics.
 	TG_Shape::lighteningLevel = 0;
 
-	if (TG_Shape::tglHeap)
+	if (colorPool || vertexPool || facePool || shadowPool || trianglePool)
 	{
 		if (colorPool)
 		{
@@ -231,19 +226,9 @@ void Mission::initTGLForLogistics()
 			delete trianglePool;
 			trianglePool = nullptr;
 		}
-		
-		TG_Shape::tglHeap->destroy();
-
-		mission->tglHeapOwner.reset();
-		TG_Shape::tglHeap = nullptr;
 	}
 
-	if ( !TG_Shape::tglHeap )
 	{
-		mission->tglHeapOwner = std::make_unique<UserHeap>();
-		TG_Shape::tglHeap = mission->tglHeapOwner.get();
-		TG_Shape::tglHeap->init(tglHeapSize,"TinyGeom");
-		
 		// Pools cover one large preview object, including its shadow and Sensor shapes.
 		colorPool 		= new TG_VertexPool;
 		colorPool->init(64000);

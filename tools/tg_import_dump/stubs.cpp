@@ -41,22 +41,13 @@
 #include "gos_object_recon_tracy.h"
 
 // ===========================================================================
-// (1) TGL heap. TG_Shape::tglHeap must be non-null before LoadBinaryCopy —
-//     all per-type geometry is allocated from it. Back it with a non-GOS
-//     UserHeap (useGOS=false) so we never touch the GOS allocator.
+// (1) Engine heap. TG shapes allocate with plain new; only the global
+//     `systemHeap` needs a CRT-backed stand-in.
 // ===========================================================================
-UserHeapPtr userHeapForTgl   = nullptr;
 static UserHeapPtr systemHeapForSpike = nullptr;
 
 void InstallTglHeap()
 {
-    if (!userHeapForTgl)
-    {
-        userHeapForTgl = new UserHeap();
-        userHeapForTgl->init(16u * 1024u * 1024u, "tglspike", false);
-    }
-    TG_Shape::tglHeap = userHeapForTgl;
-
     // mclib/file.cpp allocates the filename buffer from the global `systemHeap`
     // (heap.cpp defaults it to NULL — the game's heap init normally fills it).
     // Without it File::open dereferences NULL. Back it with a CRT UserHeap.

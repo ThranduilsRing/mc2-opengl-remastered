@@ -23,6 +23,8 @@
   "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
  },
  "direct_spawn": {
+  "tests/analyze/b5_asset_census.py": "runs git ls-files (argv built from a list concatenation, so not a literal program; no window, no game) through console_child.child_kwargs(redirected=True)",
+  "tests/smoke/objectives_e6e/generate_assets.py": "runs the caller-supplied ffmpeg to encode the synthetic e6e test video (no window, no game) with a 60s timeout and captured output through console_child.child_kwargs(redirected=True)",
   "scripts/smoke_lib/host_lease.py": "hold starts the batch-lease holder (this same file under the current interpreter, _holder subcommand: no window, no game, stdio to DEVNULL) through console_child.child_kwargs; lane 3 2026-10-15",
   "tools/vfx_oracle/probe_rng.py": "runs clang++ and the standalone rng_probe.exe console helper (no game or window); Rule 10 children use console_child.child_kwargs(redirected=True), with 30s compile and 10s run timeouts and captured output",
   "scripts/tests/test_board_selftests.py": "runs the board's selftest checkers with the current interpreter (no window, no game); every child takes console_child.child_kwargs through the shared CHILD_OPTIONS dict, which the console-spawn scanner cannot see",

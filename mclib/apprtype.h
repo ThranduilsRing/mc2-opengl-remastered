@@ -27,7 +27,9 @@
 #endif
 
 #include<stuff/stuffheaders.hpp>
+#include<memory>
 #include<string>
+#include<vector>
 
 //---------------------------------------------------------------------------
 // Macro definitions
@@ -46,7 +48,6 @@ class AppearanceType
 	
 		unsigned long 		numUsers;			//Number of users using this appearanceType.
 		unsigned long		appearanceNum;		//What kind am I.
-		AppearanceTypePtr	next;				//Pointer to next type in list.
 
 		char 				*name;				//Appearance Base FileName.  A view of nameStore.
 		std::string			nameStore;			//Owns the name text; a type is never copied or moved, so the view stays valid.
@@ -75,13 +76,9 @@ class AppearanceType
 	//-----------------
 	public:
 
-		void* operator new (size_t memSize);
-		void operator delete (void* treePtr);
-
 		void init (void)
 		{
 			numUsers = 0;
-			next = NULL;
 			appearanceNum = 0xffffffff;
 
 			name = NULL;
@@ -130,25 +127,14 @@ class AppearanceTypeList
 	//Data Members
 	//-------------
 	protected:
-	
-		AppearanceTypePtr	head;
-		AppearanceTypePtr	last;
-		
-	public:
 
-		static UserHeapPtr	appearanceHeap;
-		
+		// The registry owns every type, in load order. Users hold non-owning pointers that stay valid until removeAppearance drops
+		// the last user or the registry is destroyed. destroy() releases the types before anything else they depend on.
+		std::vector<std::unique_ptr<AppearanceType>>	types;
+
 	//Member Functions
 	//----------------
 	public:
-	
-		AppearanceTypeList (void)
-		{
-			head = last = NULL;
-			appearanceHeap = NULL;
-		}
-
-		void init (unsigned long heapSize);
 
 		AppearanceTypePtr getAppearance (unsigned long apprNum, const char * apprFile);
 		
@@ -161,7 +147,9 @@ class AppearanceTypeList
 			destroy();
 		}
 
-		bool pointerCanBeDeleted (void *ptr);
+		// The one place the shared Sensor shapes are deleted: the registry's destroy() and the logistics SimpleCamera, which loads them
+		// without a mission.
+		static void destroySensorShapes (void);
 };
 
 extern AppearanceTypeListPtr appearanceTypeList;

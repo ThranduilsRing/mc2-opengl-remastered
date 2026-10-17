@@ -142,6 +142,9 @@ option(MC2_EDITOR_IN_ALL "Include EditRel in the default all build (it recompile
 option(MC2_RNG_TRACE "Compile the gos_rand RNG diagnostic trace (DETERMINISTIC-RNG-1)" OFF)
 # The [DT] determinism trace (mclib/sim_trace.h, docs/sim-trace.md): per-frame RNG draw counts, per-draw call stacks, hit/path/target/
 # contact/camera events. Compile-time only, no runtime gate; a hunt build turns it ON, a default build has none of it.
+# Proof build for the mission-reload leak delta: counts gos_Malloc/gos_Free live blocks and bytes, and reloads the quicksave 8 times
+# (mechcmd2_frame.cpp, [ALLOC_RELOAD] lines). Only gameos.cpp and mechcmd2_frame.cpp see the define. Never ON in a shipped build.
+option(MC2_ALLOC_STATS "Proof build: gos_Malloc live counters and the reload fixture" OFF)
 option(MC2_SIM_TRACE "Compile the [DT] determinism trace into mclib and mc2" OFF)
 # The ABL tag (one line per standard-routine call, thousands per frame) is its own switch: a hunt that is not about scripts leaves it
 # off so the log stays diffable and the game stays fast enough to reach the frame in question.
@@ -626,6 +629,10 @@ add_custom_target(build_fingerprint
     VERBATIM)
 
 add_executable(mc2 ${SOURCES} ${MAIN_SRC})
+if(MC2_ALLOC_STATS)
+    set_source_files_properties("code/mechcmd2_frame.cpp" PROPERTIES COMPILE_DEFINITIONS MC2_ALLOC_STATS=1)
+    set_source_files_properties("${CMAKE_SOURCE_DIR}/GameOS/gameos/gameos.cpp" DIRECTORY "${CMAKE_SOURCE_DIR}/GameOS/gameos" PROPERTIES COMPILE_DEFINITIONS MC2_ALLOC_STATS=1)
+endif()
 if(MC2_SIM_TRACE)
     target_compile_definitions(mc2 PRIVATE MC2_SIM_TRACE=1)
 endif()
