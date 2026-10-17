@@ -1495,8 +1495,9 @@ bool WeaponHitChunk::valid (long from) {
 
 void* GameObject::operator new (size_t ourSize) {
 
-	void* result = ObjectTypeManager::objectCache->Malloc(ourSize);
-	// Save files copy whole member arrays of an object, so bytes no constructor sets must be defined: zero.
+	// B7o.9: the CRT heap (objectCache is gone). Save files copy whole member arrays of an object, so bytes no constructor
+	// sets must be defined: zero (G4, kept).
+	void* result = ::operator new(ourSize);
 	if (result)
 		memset(result, 0, ourSize);
 	return(result);
@@ -1506,8 +1507,8 @@ void* GameObject::operator new (size_t ourSize) {
 
 void GameObject::operator delete (void* us) {
 
-	ObjectTypeManager::objectCache->Free(us);
-}	
+	::operator delete(us);
+}
 
 //---------------------------------------------------------------------------
 

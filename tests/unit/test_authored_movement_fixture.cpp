@@ -341,7 +341,6 @@ struct MovementWorld {
         saved.keep(GameMap); saved.keep(GlobalMoveMap); saved.keep(PathFindMap);
         saved.keep(PathManager); saved.keep(ObjectManager);
         saved.keep(Mover::triggerAreaMgr);
-        saved.keep(ObjectTypeManager::objectCache);
         saved.keep(GameObject::initialize); saved.keep(Mover::holdFireIconHandle);
         saved.keep(Mover::numMovers); saved.keep(MechWarrior::numWarriors);
         saved.keep(MechWarrior::warriorList);
@@ -375,7 +374,6 @@ struct MovementWorld {
         saved.keep(goalMap); saved.keep(goalMapRowStart); saved.keep(goalMapRowCol);
         heap.init(16 * 1024 * 1024, "offline-movement");
         systemHeap = missionHeap = &heap;
-        ObjectTypeManager::objectCache = &heap;
         GameObject::initialize = true;
         Mover::holdFireIconHandle = 1;
         scenarioTime = 1.0f;
@@ -424,7 +422,7 @@ struct MovementWorld {
     }
     bool ready() const {
         return GameMap && !GameMap->map.empty() && land && Terrain::mapData && Terrain::mapData->getBlocks() &&
-            ObjectManager && ObjectTypeManager::objectCache && pilot->getVehicle() == mech.get() &&
+            ObjectManager && pilot->getVehicle() == mech.get() &&
             PathManager && PathFindMap[0] && PathFindMap[1] &&
             GlobalMoveMap[0] && GlobalMoveMap[0]->areas && GlobalMoveMap[0]->doors;
     }
@@ -541,9 +539,9 @@ void consumeActive(MovementWorld& world, std::vector<int>& visited) {
     world.pilot->clearMovePath(0);
     world.pilot->getMovePath();
 }
-std::array<const void*, 20> bindings() {
+std::array<const void*, 19> bindings() {
     return {systemHeap, missionHeap, land, GameMap, GlobalMoveMap[0], GlobalMoveMap[1], GlobalMoveMap[2],
-        PathFindMap[0], PathFindMap[1], ObjectManager, PathManager, ObjectTypeManager::objectCache,
+        PathFindMap[0], PathFindMap[1], ObjectManager, PathManager,
         Terrain::mapData, Terrain::terrainHeap, Terrain::tileRowToWorldCoord, Terrain::tileColToWorldCoord,
         Terrain::cellRowToWorldCoord, Terrain::cellColToWorldCoord, Terrain::objBlockInfo, Mover::triggerAreaMgr};
 }

@@ -3,9 +3,7 @@ B7o.5-nonactor-owners	code/artlry.cpp:1652	app_new	adoptAppearance(new BldgAppea
 B7o.5-nonactor-owners	code/artlry.cpp:1720	app_new	adoptAppearance(new BldgAppearance);
 B7o.3-actor-owner	code/bldng.cpp:1262	app_new	adoptAppearance(new BldgAppearance);
 B7o.9-operators	code/gameobj.cpp:1496	objcache_op	void* GameObject::operator new (size_t ourSize) {
-B7o.9-operators	code/gameobj.cpp:1498	objcache_actor	void* result = ObjectTypeManager::objectCache->Malloc(ourSize);
-B7o.9-operators	code/gameobj.cpp:1507	objcache_op	void GameObject::operator delete (void* us) {
-B7o.9-operators	code/gameobj.cpp:1509	objcache_actor	ObjectTypeManager::objectCache->Free(us);
+B7o.9-operators	code/gameobj.cpp:1508	objcache_op	void GameObject::operator delete (void* us) {
 B7o.3-actor-owner	code/gate.cpp:701	app_new	adoptAppearance(new BldgAppearance);
 B7o.3-actor-owner	code/gvehicl.cpp:695	app_new	adoptAppearance(new GVAppearance);
 B7o.3-actor-owner	code/light.cpp:178	app_new	lightAppearance = new VFXAppearance;
@@ -14,8 +12,8 @@ B7o.3-actor-owner	code/mech_init.cpp:164	app_new	adoptAppearance(new Mech3DAppea
 B7o.7-typemgr	code/objmgr.cpp:113	objtypemgr	objTypeManager = nullptr;
 B7o.7-typemgr	code/objmgr.cpp:179	objtypemgr	objTypeManager = ownedTypeManager.get();
 B7o.7-typemgr	code/objmgr.cpp:1087	objtypemgr	objTypeManager = nullptr;
-B7o.9-operators	code/objtype.cpp:86	objtype_op	void* ObjectType::operator new (size_t ourSize) {
-B7o.9-operators	code/objtype.cpp:94	objtype_op	void ObjectType::operator delete (void* us) {
+B7o.9-operators	code/objtype.cpp:84	objtype_op	void* ObjectType::operator new (size_t ourSize) {
+B7o.9-operators	code/objtype.cpp:93	objtype_op	void ObjectType::operator delete (void* us) {
 B7o.3-actor-owner	code/terrobj.cpp:1161	app_new	adoptAppearance(new TreeAppearance);
 B7o.3-actor-owner	code/terrobj.cpp:1189	app_new	adoptAppearance(new BldgAppearance);
 B7o.3-actor-owner	code/turret.cpp:2136	app_new	adoptAppearance(new BldgAppearance);
@@ -32,8 +30,8 @@ B7o.4-queue-markers	code/warrior_state.cpp:738	marker_wire_null	tacOrderQueue[i]
 B7o.4-queue-markers	code/warrior_state.cpp:742	marker_new	return getWayPointMarker( queued.point, "WalkWayPoint" );
 B7o.4-queue-markers	code/warrior_state.cpp:744	marker_new	return getWayPointMarker( queued.point, "RunWayPoint" );
 B7o.4-queue-markers	code/warrior_state.cpp:746	marker_new	return getWayPointMarker( queued.point, "JumpWayPoint" );
-B7o.7-typemgr	tests/unit/test_combat_retirement_seam.cpp:89	objtypemgr	if (ownedTypes) objects->objTypeManager = nullptr;
-B7o.7-typemgr	tests/unit/test_combat_retirement_seam.cpp:216	objtypemgr	objects.objTypeManager = world.ownedTypes = new ObjectTypeManager;
-B7o.7-typemgr	tests/unit/test_combat_retirement_seam.cpp:312	objtypemgr	objects.objTypeManager = nullptr;
-B7o.7-typemgr	tests/unit/test_combat_retirement_seam.cpp:314	objtypemgr	objects.objTypeManager = world.ownedTypes;
+B7o.7-typemgr	tests/unit/test_combat_retirement_seam.cpp:86	objtypemgr	if (ownedTypes) objects->objTypeManager = nullptr;
+B7o.7-typemgr	tests/unit/test_combat_retirement_seam.cpp:210	objtypemgr	objects.objTypeManager = world.ownedTypes = new ObjectTypeManager;
+B7o.7-typemgr	tests/unit/test_combat_retirement_seam.cpp:306	objtypemgr	objects.objTypeManager = nullptr;
+B7o.7-typemgr	tests/unit/test_combat_retirement_seam.cpp:308	objtypemgr	objects.objTypeManager = world.ownedTypes;
 B7o.7-typemgr	tests/unit/test_part_archive.cpp:113	objtypemgr	objects.objTypeManager = &types;

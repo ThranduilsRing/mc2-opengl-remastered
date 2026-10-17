@@ -4371,21 +4371,6 @@
    "new_array": 0,
    "owners": []
   },
-  "ObjectTypeManager": {
-   "delete": 2,
-   "delete_array": 0,
-   "files": {
-    "code/objmgr.cpp": {
-     "delete": 2,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "GameObjectManager"
-   ]
-  },
   "OptionsAudio": {
    "delete": 0,
    "delete_array": 0,
@@ -5918,7 +5903,7 @@
    ]
   },
   "UserHeap": {
-   "delete": 15,
+   "delete": 13,
    "delete_array": 0,
    "files": {
     "code/ablmc2.cpp": {
@@ -5940,10 +5925,6 @@
     },
     "code/mission_init.cpp": {
      "new": 1
-    },
-    "code/objtype.cpp": {
-     "delete": 2,
-     "new": 2
     },
     "code/radio.cpp": {
      "new": 1
@@ -5970,14 +5951,13 @@
      "new": 2
     }
    },
-   "new": 17,
+   "new": 15,
    "new_array": 0,
    "owners": [
     "",
     "CollisionSystem",
     "MC_TextureManager",
     "Mission",
-    "ObjectTypeManager",
     "Terrain",
     "TerrainTextures"
    ]

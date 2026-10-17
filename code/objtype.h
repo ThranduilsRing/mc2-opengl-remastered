@@ -131,7 +131,7 @@ class ObjectType {
 
 		// Mod-tolerance: back-fill appearance name for stub ObjectTypes created
 		// when a mission-referenced ObjectNumber doesn't exist in the pak.
-		// Allocates from objectTypeCache like the normal init path.
+		// Allocates with the class operator new like the normal init path.
 		void setAppearanceTypeName (const char* name);
 			
 		bool getPotentialContact (void) {
@@ -214,7 +214,7 @@ class ObjectTypeManager {
 		long					numObjectTypes;
 		ObjectTypePtr*			table;			// view of tableStore
 		std::vector<ObjectTypePtr>	tableStore;	// the slots `table` views: raw pointers, sized once by init(file), kept in step with typeStore
-		std::vector<std::unique_ptr<ObjectType>>	typeStore;	// OWNS the loaded types (their memory is in objectCache); destroy() deletes them before the heaps go
+		std::vector<std::unique_ptr<ObjectType>>	typeStore;	// OWNS the loaded types (CRT memory since B7o.9); destroy() deletes them
 		std::vector<std::unique_ptr<ObjectType>>	retiredTypes;	// types replaced by a forced reload: live objects may still point at them, so they are deleted only by destroy()
 
 	private:
@@ -223,8 +223,6 @@ class ObjectTypeManager {
 
 	public:
 
-		static UserHeapPtr		objectTypeCache;
-		static UserHeapPtr		objectCache;
 		static PacketFilePtr	objectFile;		// view of m_objectFile for the readers of object packets (null before init and after destroy)
 
 		//--------------------------------------------------------
