@@ -6,6 +6,9 @@
 #include "vulkan_color_prop_island.h"   // mc2_static_prop_geometry_cpu
 #include "mc2fmt.h"
 
+// Per-packet alpha-test answer baked at finalize (see packetAlphaTest); rebuilt every map.
+static std::vector<uint8_t> s_packetAlphaBaked;
+
 
 
 // Log the texture tier, clear the per-packet side tables and load the programs.
@@ -134,6 +137,20 @@ void GpuStaticPropBatcher::uploadPerTypeAndPublish() {
             mc2::fmt::as_u32(g_regCall[1]), mc2::fmt::as_u32(g_regCall[2]), mc2::fmt::as_u32(g_regCall[3]), mc2::fmt::as_u32(g_regCall[0]),
             mc2::fmt::as_u32(g_regLateDrop[1]), mc2::fmt::as_u32(g_regLateDrop[2]), mc2::fmt::as_u32(g_regLateDrop[3]), mc2::fmt::as_u32(g_regLateDrop[0]),
             mc2::fmt::as_size(s_typeIndex.size()));
+    }
+
+    // VK-PROP-ALPHA-BAKE-1: bake each packet's alpha-test answer NOW, while the type sources are alive. The Vulkan colour island asks per
+    // draw (mc2_static_prop_packet_alpha_test); reading src->listOfTextures there faulted (READ 0xFFFFFFFFFFFFFFFF) once a source's texture
+    // list had been released after finalize (the second campaign mission).
+    s_packetAlphaBaked.assign(s_packets.size(), 0u);
+    for (size_t pi = 0; pi < s_packets.size(); ++pi) {
+        const auto& pkt = s_packets[pi];
+        bool alpha = (pkt.materialFlags & STATIC_PROP_FLAG_ALPHA_TEST) != 0;
+        if (!alpha && pkt.owningTypeID < s_types.size()) {
+            const TG_TypeShape* src = s_types[pkt.owningTypeID].source;
+            alpha = src && src->listOfTextures && pkt.textureSlot < src->numTextures && src->listOfTextures[pkt.textureSlot].textureAlpha;
+        }
+        s_packetAlphaBaked[pi] = alpha ? 1u : 0u;
     }
 
     s_geometryFinalized = true;
@@ -1055,12 +1072,8 @@ void GpuStaticPropBatcher::finalizeGeometry() {
 }
 
 bool GpuStaticPropBatcher::packetAlphaTest(uint32_t packet) const {
-    if (!s_geometryFinalized || packet >= s_packets.size()) return false;
-    const auto& pkt = s_packets[packet];
-    if (pkt.materialFlags & STATIC_PROP_FLAG_ALPHA_TEST) return true;
-    if (pkt.owningTypeID >= s_types.size()) return false;
-    const TG_TypeShape* src = s_types[pkt.owningTypeID].source;
-    return src && src->listOfTextures && pkt.textureSlot < src->numTextures && src->listOfTextures[pkt.textureSlot].textureAlpha;
+    if (!s_geometryFinalized || packet >= s_packets.size() || packet >= s_packetAlphaBaked.size()) return false;
+    return s_packetAlphaBaked[packet] != 0;   // baked at finalize (VK-PROP-ALPHA-BAKE-1)
 }
 
 extern "C" int mc2_static_prop_packet_alpha_test(uint32_t packet) {
