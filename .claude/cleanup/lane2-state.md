@@ -33,6 +33,9 @@ a86a4c65c F0 + F1 foundation (CompletionTracker, DeferredDestroy, `VulkanContext
 | F5 mission reload / quickload | `quickload_cement_check.py` PASS (214 px, max 2000) on the lane install (`scratch/s55_quickload.log`) |
 | after F2c (partial) + F5: VK tier1 under validation | 5/5 PASS errors=0 on all five (`scratch/s55_f2c_t1.log`: mc2_01 138 fps, 03 94, 10 90, 17 99, 24 61); resolution tier 2/2 PASS validation 0 (its only red was the fingerprint of a stale exe, rerun on a fresh one by the later smokes) |
 | F2c tip (post tickets + terrain + overlay + legacy + water + VFX) | captures V `.claude/l2cap/s55-ab-f2c/*/montage.jpg` (HUD) and `s55-ab-f2c-clean` (MAD 0.00); producers V `.claude/l2cap/s55-ab-prod/mc2_01_saved_205644/montage.jpg` (water present, identical), self-test `mismatches=0` |
+| tip tier1 (94d497f69 + the peak line), core validation | 5/5 PASS errors=0: mc2_01 144 fps, 03 105, 10 86, 17 104, 24 78 (s54 had 139/84/83/88/64) (`scratch/s55_fin_t1.log`) |
+| tip tier1 under `MC2_VULKAN_VALIDATION=sync`, two frames in flight, full 120 s soaks | 5/5 PASS errors=0 warnings=0 on all five (`scratch/s55_fin_t1sync.log`: 115/80/68/80/56 fps, sync validation costs about a third) |
+| frame ring sizing | `[VK_FRAMERING v1] peak_used`: mc2_01 4.2 MB, mc2_10 (night) 10.5 MB of the 16 MiB slot (`scratch/s55_peak_smoke.log`); run_end VRAM is +90..99 MiB over s54 at every mission (the ring is 48 MiB device-local-preferred, plus its slot tail and the retire queue; the deleted parity buffers are small beside it) |
 | waitIdle sites | 66 code sites at eee783c6a -> 50 at the tip in `GameOS/gameos` (`scratch/s55_count.py`); every remaining one is init failure, mission unload, geometry regen, swapchain/teardown, shadow, or the sky/legacy copy-once paths |
 
 ### Ratchet rises and generated files (named)
