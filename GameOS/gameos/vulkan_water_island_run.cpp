@@ -20,9 +20,11 @@ extern "C" int mc2_vk_water_island_run(
     const void* thinRecords, unsigned int thinCount,
     const void* recipes, unsigned int recipeCount,
     const void* vsParams, const void* fsParams,
-    unsigned int hdriGlTex) {
+    unsigned int hdriGlTex,
+    const void* nativeInputsIn, int parityFrame) {
     if (!waterTier1Requested()) return 0;
-    if (thinCount == 0 || recipeCount == 0 || w <= 0 || h <= 0) return 0;
+    // STEP 3.4P: with native inputs the thin records are produced on the GPU; thinRecords/thinCount are then only the GL reference of a parity frame.
+    if ((thinCount == 0 && !nativeInputsIn) || recipeCount == 0 || w <= 0 || h <= 0) return 0;
     ZoneScopedN("VKIsl.Water.Run");   // VK-ISLAND-TRACY-1 per-frame island total (CPU)
     (void)sceneColorTex;
     (void)sceneDepthTex;
@@ -101,36 +103,43 @@ extern "C" int mc2_vk_water_island_run(
     const clk::time_point tStage0 = clk::now();
     {
     ZoneScopedN("VKIsl.Water.Feed");   // VK-ISLAND-TRACY-1: recipe/thin/UBO staging (steps 1-3)
-    // ---- 1) Upload recipe SSBO once (mission-static). ----
+    // ---- 1) Upload recipe SSBO once (mission-static), into device-local memory (the cull compute reads it every frame). ----
     if (!s->recipeUploaded) {
-        const VkDeviceSize need = (VkDeviceSize)recipeCount * 64;
-        if (need > s->recipeBytes) {
-            slotCtx.waitIdle("water_recipe_grow");
-            s->recipeBuf.reset();
-            if (!make_buffer(s, s->recipeBuf, need, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "water.recipeBuf")) { s->disabled = true; return 0; }
-            s->recipeBytes = need;
-            write_descriptors(s);
-        }
-        void* p = nullptr;
-        if ((p = s->recipeBuf.map()) != nullptr) {
-            std::memcpy(p, recipes, (size_t)recipeCount * 64);
-            s->recipeBuf.unmap();
-        }
+        if (!upload_recipes_device(s, recipes, recipeCount)) { s->disabled = true; return 0; }
         s->recipeUploaded = true;
         g_health.recipeCount = recipeCount;
     }
 
-    // ---- 2) Upload the per-frame thin records into slot `par` (CPU-staged). ----
-    const VkDeviceSize thinBytes = (VkDeviceSize)thinCount * 48;
-    if (!ensure_thin_capacity(s, par, thinBytes)) { s->disabled = true; return 0; }
-    {
+    // STEP 3.4P: bring the native producers up once the recipes and the first lighting snapshot exist.
+    if (!s->native && !s->nativeFailed) {
+        gos_terrain_lighting::VkProducerSnapshot snap0{};
+        if (gos_terrain_lighting::GetVkProducerSnapshot(snap0) && snap0.numVertices > 0) {
+            slotCtx.waitIdle("water_native_init");
+            auto np = std::make_unique<mc2vk::NativeProducers>();
+            if (np->init(slotCtx, snap0.numVertices, recipeCount, s->recipeBuf.get())) {
+                s->native = std::move(np);
+                write_descriptors(s);   // binding 6 -> the GPU-produced thin buffers
+            } else {
+                s->nativeFailed = true;
+                vlog("native producers unavailable - the GL cull/pack readback feed stays in use.");
+            }
+        }
+    }
+    const WaterStream::VkNativeInputs* nat = (nativeInputsIn && s->native && s->native->ready())
+                                                 ? static_cast<const WaterStream::VkNativeInputs*>(nativeInputsIn) : nullptr;
+    if (!nat && thinCount == 0) return 0;
+
+    // ---- 2) Upload the per-frame thin records into slot `par` (CPU-staged; the GL readback feed). The native path skips this. ----
+    if (!nat) {
+        const VkDeviceSize thinBytes = (VkDeviceSize)thinCount * 48;
+        if (!ensure_thin_capacity(s, par, thinBytes)) { s->disabled = true; return 0; }
         void* p = nullptr;
         if ((p = s->thinBuf[par].map()) != nullptr) {
             std::memcpy(p, thinRecords, (size_t)thinBytes);
             s->thinBuf[par].unmap();
         }
+        g_health.thinRecords = thinCount;
     }
-    g_health.thinRecords = thinCount;
 
     // ---- 3) Upload slot `par`'s UBOs. ----
     {
@@ -186,6 +195,18 @@ extern "C" int mc2_vk_water_island_run(
         if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
         vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_Water);
 
+        // STEP 3.4P: the native producers (terrain lighting, cull/pack, draw args) are recorded ahead of the render pass in this command buffer.
+        const bool doParity = nat && parityFrame;
+        if (nat) {
+            gos_terrain_lighting::VkProducerSnapshot snap{};
+            gos_terrain_lighting::GetVkProducerSnapshot(snap);   // none = zero window: the cull reads the previous lighting
+            mc2vk::WaterCullFrame wf{};
+            std::memcpy(wf.mvp, nat->mvp, sizeof(wf.mvp));
+            wf.frameCos = nat->frameCos; wf.waterElevation = nat->waterElevation; wf.shoreExt = nat->shoreExt;
+            wf.mapSide = nat->mapSide; wf.biasLegacy = nat->biasLegacy;
+            if (!s->native->record(cb, par, snap, wf, doParity)) { setFallback("native_record_failed"); s->disabled = true; return 0; }
+        }
+
         // All attachments LOAD -> clear values ignored (array must still cover them).
         VkClearValue clears[3]{};
         VkRenderPassBeginInfo rbi{};
@@ -196,7 +217,8 @@ extern "C" int mc2_vk_water_island_run(
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 0, nullptr);
-        vkCmdDraw(cb, thinCount * 6u, 1, 0, 0);
+        if (nat) vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
+        else     vkCmdDraw(cb, thinCount * 6u, 1, 0, 0);
         vkCmdEndRenderPass(cb);
         vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Water);
         if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
@@ -215,6 +237,26 @@ extern "C" int mc2_vk_water_island_run(
           if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
         timerGuard.submitted();
         us_submit = usSince(tSubmit0);
+
+        // STEP 3.4P parity frame: wait for the work, then compare the native outputs with the GL producer output (the GL cull ran on this frame too).
+        if (nat && parityFrame) {
+            slotCtx.waitIdle("water_native_parity");
+            gos_terrain_lighting::VkProducerSnapshot snap{};
+            std::vector<gos_terrain_lighting::GpuTerrainLightingOutput> glLight;
+            if (gos_terrain_lighting::GetVkProducerSnapshot(snap) && snap.windowCount > 0) {
+                glLight.resize(snap.windowCount);
+                if (!gos_terrain_lighting::ReadbackOutputForParity(snap.vertexOffset, snap.windowCount, glLight.data())) glLight.clear();
+            }
+            const mc2vk::ProducerParity pr = s->native->compare(par, thinRecords, thinCount, glLight.empty() ? nullptr : glLight.data(), snap.vertexOffset,
+                                                                glLight.empty() ? 0u : snap.windowCount);
+            mc2::fmt::print_err("[VK_PRODUCER_PARITY v1] frame={:d} water gl_count={:d} vk_visible={:d} compared={:d} same={:d} differ={:d} only_gl={:d} only_vk={:d} truncated={:d} lighting compared={:d} light_mismatch={:d} fog_mismatch={:d} max_channel_delta={:d}\n",
+                                mc2::fmt::as_u64(s->nativeFrames), mc2::fmt::as_u32(pr.glCount), mc2::fmt::as_u32(pr.vkVisible), mc2::fmt::as_u32(pr.vkCompared),
+                                mc2::fmt::as_u32(pr.same), mc2::fmt::as_u32(pr.differ), mc2::fmt::as_u32(pr.onlyGl), mc2::fmt::as_u32(pr.onlyVk), mc2::fmt::as_i32(pr.truncated ? 1 : 0),
+                                mc2::fmt::as_u32(pr.lightCompared), mc2::fmt::as_u32(pr.lightMismatch), mc2::fmt::as_u32(pr.fogMismatch), mc2::fmt::as_u32(pr.lightMaxDelta));
+            std::fflush(stderr);
+            g_health.thinRecords = pr.vkVisible;
+        }
+        if (nat) ++s->nativeFrames;
 
         us_sem_wait = 0.0;
 

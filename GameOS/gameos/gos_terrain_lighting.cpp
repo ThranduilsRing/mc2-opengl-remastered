@@ -1033,6 +1033,15 @@ bool GetVkProducerSnapshot(VkProducerSnapshot& out) {
     return true;
 }
 
+bool ReadbackOutputForParity(uint32_t first, uint32_t count, GpuTerrainLightingOutput* dst) {
+    if (!dst || count == 0 || !s_initialized || first + count > s_numVertices) return false;
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_computeOutputSsbo.backendHandle));
+    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<GLintptr>(first) * sizeof(GpuTerrainLightingOutput),
+                       static_cast<GLsizeiptr>(count) * sizeof(GpuTerrainLightingOutput), dst);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    return true;
+}
+
 void BeginFrame() {
     s_vkSnapValid = false;   // STEP 3.4P: set again by this frame's PackAndDispatch
     if (!IsEnabled() || !s_initialized || s_shaderBad) return;

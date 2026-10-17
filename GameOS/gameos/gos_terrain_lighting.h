@@ -219,5 +219,7 @@ struct VkProducerSnapshot {
 };
 // False when the GL producer did not run this frame (disabled / not initialized / shader bad): the native producer then has nothing to light.
 bool GetVkProducerSnapshot(VkProducerSnapshot& out);
+// Parity frames only: blocking read of `count` outputs starting at vertex `first` from the GL output SSBO.
+bool ReadbackOutputForParity(uint32_t first, uint32_t count, GpuTerrainLightingOutput* dst);
 
 } // namespace gos_terrain_lighting

@@ -351,4 +351,17 @@ float ShoreMeanderWu();
 float ShoreMeanderFreq();
 float EffShoreExt(float baseAlphaDepth);
 
+// STEP 3.4P: the per-frame scalars the cull dispatch uses, captured at the same point so the native Vulkan cull/pack (vk_native_producers) reads
+// identical values. Valid for the frame only when the full-recipe authoritative path ran its guards and the native producer is active.
+struct VkNativeInputs {
+    float    mvp[16];
+    float    frameCos;
+    float    waterElevation;
+    float    shoreExt;
+    uint32_t mapSide;
+    int32_t  biasLegacy;
+    uint32_t recipeCount;
+};
+bool GetVkNativeInputs(VkNativeInputs& out);
+
 } // namespace WaterStream
