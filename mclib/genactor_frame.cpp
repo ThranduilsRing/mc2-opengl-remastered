@@ -457,12 +457,6 @@ long GenericAppearance::update (bool animate)
 			// is brittle — explicit caching removes the fragility.
 			genShape->CacheGpuLightData();
 			genShape->TransformMultiShape_PositionsOnly (&xlatPosition,&rot);
-			// Stage 2.D.2: dual-emit full bake — same rationale as BldgAppearance.
-			// Populates listOfTriangles[].aRGBLight for snapshot in submit().
-			// Stage 2.D.3: per-actor gate (see BldgAppearance::update).
-			if (gos_object_parity::IsDualEmitArmedForActor(genShape)) {
-				genShape->TransformMultiShape (&xlatPosition,&rot);
-			}
 		}
 		else
 		{

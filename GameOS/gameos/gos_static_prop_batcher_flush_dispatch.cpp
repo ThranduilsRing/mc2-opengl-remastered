@@ -779,8 +779,8 @@ void GpuStaticPropBatcher::legacyCensus() {
     }
 }
 
-// Fence the ring slots and hand the parity slot to the dual-emit state.
-void GpuStaticPropBatcher::fenceAndParitySlot() {
+// Fence the ring slots.
+void GpuStaticPropBatcher::fenceRingSlots() {
     s_fence[s_frameSlot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
     // Plan v3.8 Step 11.9 — coalesce fence insert after all draws issued.
     // Independent of legacy s_fence[]: tracks s_coalesceInstanceSsbo's
@@ -790,23 +790,13 @@ void GpuStaticPropBatcher::fenceAndParitySlot() {
         // Step 4.4 — use s_coalesceFrameSlot (coalesce ring), not s_frameSlot (legacy ring).
         s_coalesceFence[s_coalesceFrameSlot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
     }
-    // Stage 2.D.1: record this slot's parity-byte usage so the next visit
-    // (RING_FRAMES frames from now) knows exactly how much to glGetBufferSubData.
-    s_parityBytesUsedPerSlot[s_frameSlot] = s_parityBytesUsedThisFrame;
-    // Stage 2.D.2: after the fence is inserted (GPU draw committed), advance
-    // the dual-emit latch from Armed → WaitingForReadback. Pass s_frameSlot
-    // so the compare only fires when the ring revisits this exact slot (after
-    // glClientWaitSync ensures GPU writes are complete — RING_FRAMES later).
-    if (gos_object_parity::IsDualEmitArmedAnyActor()) {
-        gos_object_parity::AdvanceDualEmitToWaiting(s_frameSlot);
-    }
 }
 
 // Restore the GL state saved at flush start.
 void GpuStaticPropBatcher::releaseGlGuards(StaticPropFlushFrame& f) {
     auto& guardProgram = f.guardProgram; auto& guardVao = f.guardVao; auto& guardArrayBuf = f.guardArrayBuf; auto& guardElemBuf = f.guardElemBuf;
     auto& guardTexUnit0 = f.guardTexUnit0; auto& guardSsbo0 = f.guardSsbo0; auto& guardSsbo1 = f.guardSsbo1; auto& guardSsbo2 = f.guardSsbo2;
-    auto& guardSsbo3 = f.guardSsbo3; auto& guardSsbo5 = f.guardSsbo5;
+    auto& guardSsbo5 = f.guardSsbo5;
     // Restore GL state to EXACTLY what it was at flush start.
     // GLSTATE-GUARD-SITE5: explicit .reset() in the same order the hand-
     // rolled epilogue used to restore (SSBOs, then texture unit 0, then
@@ -816,7 +806,6 @@ void GpuStaticPropBatcher::releaseGlGuards(StaticPropFlushFrame& f) {
     guardSsbo0.reset();
     guardSsbo1.reset();
     guardSsbo2.reset();
-    guardSsbo3.reset();
     guardSsbo5.reset();
     guardTexUnit0.reset();
     guardVao.reset();
@@ -825,30 +814,13 @@ void GpuStaticPropBatcher::releaseGlGuards(StaticPropFlushFrame& f) {
     guardProgram.reset();
 }
 
-// Accumulate the counters, tick parity, clear the frame buckets and invalidate the render-state cache.
+// Accumulate the counters, clear the frame buckets and invalidate the render-state cache.
 void GpuStaticPropBatcher::finishFlush() {
     // Pipeline state: no explicit restore needed — applyPipeline() set state
     // above, and gos_InvalidateRenderStateCache() below ensures the next
     // applyRenderStates() call re-applies from scratch regardless of what
     // applyPipeline left.
     accumulateMonotonicAndMaybeEmit(/*forceEmit=*/false);
-
-    // Slice 2 (object-offload) — Stage 2.D.1: tick parity counters and emit
-    // the 600-frame summary line if the cadence is hit. Internally a no-op
-    // when MC2_OBJECT_PARITY_CHECK is unset.
-    gos_object_parity::ParityFrameTick();
-
-    //
-    // Called AFTER ParityFrameTick so the summary's parity_compared_actors
-    // sees the just-finalized count, and AFTER AdvanceDualEmitToWaiting so
-    // the state machine has progressed for this frame. PickNextSampleIfReady:
-    //   - rotates this frame's submitMultiShape observation list into the
-    //     prior-frame pool (always),
-    //   - if state == Done AND the pool is non-empty, picks one shape via
-    //     round-robin and re-arms (state=Armed, armMode=SampledOnly,
-    //     s_currentSampledShape=picked).
-    // Default-off inside the sidecar; safe to call unconditionally.
-    gos_object_parity::PickNextSampleIfReady();
 
     s_bucketsByType.clear();
     s_reinjectedThisFrame = false;

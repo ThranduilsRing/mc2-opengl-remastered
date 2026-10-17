@@ -4,8 +4,8 @@
 #include "mc2fmt.h"
 
 
-// MECH_RING_FRAMES must equal STATIC_PROP_RING_FRAMES so the parity SSBO
-// ring and the mech fence ring share the same depth.
+// MECH_RING_FRAMES must equal STATIC_PROP_RING_FRAMES so the static-prop
+// fence ring and the mech fence ring share the same depth.
 static_assert(MECH_RING_FRAMES == STATIC_PROP_RING_FRAMES,
               "MECH_RING_FRAMES must match STATIC_PROP_RING_FRAMES");
 

@@ -18,7 +18,7 @@ bool GpuStaticPropBatcher::wasLastFailureLateRegistration() const {
 }
 
 // Slice 2 (Stage 2.D.3) — late-registration event-counter queries.
-// Static methods so the parity sidecar can call them without a singleton
+// Static methods so diagnostics can call them without a singleton
 // hop. The counters live in the file-static block above; they are
 // monotonic since process start.
 uint64_t GpuStaticPropBatcher::getAllowedLateRegEventCount() {

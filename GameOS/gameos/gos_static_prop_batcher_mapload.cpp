@@ -95,10 +95,6 @@ void GpuStaticPropBatcher::onMapLoad() {
     s_coalesceArmed          = false;
     s_coalesceFirstFlushDone = false;
 
-    // Stage 2.D.2: re-arm the dual-emit latch for this mission so the first
-    // eligible frame after map load triggers the compare.
-    gos_object_parity::OnMissionLoad();
-
     // V-IBL-STATIC-2: re-default to baseline set at every map boundary so a
     // mission that calls setMissionForIbl(nullptr) (or never calls it -- e.g.
     // editor / savegame paths) lands on "default" regardless of what the

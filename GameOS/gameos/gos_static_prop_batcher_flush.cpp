@@ -11,9 +11,8 @@
 //   rc_gbuffer1_screenShadowEligible (production) or
 //   rc_gbuffer1_legacyDebugSentinelScreenShadowEligible (debug).
 
-// Apply the opaque pipeline state, bind the shared VAO / IBO and per-type SSBO, clear the parity slot.
+// Apply the opaque pipeline state, bind the shared VAO / IBO and per-type SSBO.
 void GpuStaticPropBatcher::applyOpaqueState(StaticPropFlushFrame& f) {
-    auto& parityBuffer = f.parityBuffer; auto& locParityWrite = f.locParityWrite; auto& locParityVerts = f.locParityVerts; auto& locParityBaseVertex = f.locParityBaseVertex;
     // Bind program + depth/blend/cull via PipelineDesc.
     // Uses StaticPropOpaque — both alpha and opaque packets share the same
     // program and fixed-function state; the alpha distinction is texture-array
@@ -66,37 +65,6 @@ void GpuStaticPropBatcher::applyOpaqueState(StaticPropFlushFrame& f) {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, s_perTypeSsbo);
     }
 
-    // Slice 2 (object-offload) — Stage 2.D.1: parity write defaults OFF.
-    // Per-type loop below flips it to 1 only for draws whose bound
-    // parity-buffer range fits in this slot's remaining byte budget.
-    // When MC2_OBJECT_PARITY_CHECK is unset, parityBuffer == 0 and the
-    // uniform stays 0 for every draw (no shader writes happen).
-    // Stage 2.D.1.1 (Item 2): use link-time cached locations instead of
-    // per-flush glGetUniformLocation (one driver round-trip per flush saved).
-    locParityWrite = s_loc_u_parityWrite;
-    locParityVerts = s_loc_u_parityVertsPerType;
-    locParityBaseVertex = s_loc_u_parityBaseVertex;
-    if (locParityWrite >= 0) glUniform1i(locParityWrite, 0);
-
-    // Stage 2.D.2: zero the Armed frame's parity SSBO slot before drawing so
-    // that back-facing vertices (GPU-culled by GL_CULL_FACE GL_BACK, not
-    // written by the shader) read as zero on the compare frame — matching the
-    // zero-initialized CPU snapshot (vector initialized to 0u in submit()).
-    // Without this clear, stale uint32 values from RING_FRAMES ago remain in
-    // the slot for unwritten (back-facing) positions and cause false mismatches
-    // against the CPU's 0x00000000 for those same positions.
-    if (parityBuffer != 0 && gos_object_parity::IsDualEmitArmedAnyActor()) {
-        const GLintptr slotBase =
-            static_cast<GLintptr>(s_frameSlot) *
-            static_cast<GLintptr>(kParitySlotBytes);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, parityBuffer);
-        const GLuint zero = 0u;
-        glClearBufferSubData(GL_SHADER_STORAGE_BUFFER, GL_R32UI,
-                             slotBase,
-                             static_cast<GLsizeiptr>(kParitySlotBytes),
-                             GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    }
 }
 
 // Draw the static-population split when its gate is armed.
@@ -270,7 +238,6 @@ void GpuStaticPropBatcher::dispatchMultiDraw(StaticPropFlushFrame& f) {
 
 // Legacy path: draw each type.
 void GpuStaticPropBatcher::legacyDrawLoop(StaticPropFlushFrame& f) {
-    auto& parityBuffer = f.parityBuffer; auto& locParityWrite = f.locParityWrite; auto& locParityVerts = f.locParityVerts; auto& locParityBaseVertex = f.locParityBaseVertex;
     auto& useC1bIndirect = f.useC1bIndirect;
     for (uint32_t typeID = 0; typeID < s_types.size(); ++typeID) {
         auto rit = s_typeRanges.find(typeID);
@@ -333,84 +300,6 @@ void GpuStaticPropBatcher::legacyDrawLoop(StaticPropFlushFrame& f) {
         const int maxID = (type.vertexCount > 0u) ? (int)(type.vertexCount - 1u) : 0;
         glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_maxLocalVertexID"), maxID);
 
-        //
-        // The shader writes parityOut[gl_InstanceID * vertsPerType + gl_VertexID].
-        // We bind a tight glBindBufferRange so that index always lands inside
-        // the bound region. Each per-type draw consumes its bytes from a
-        // monotonic cursor within slot s_frameSlot of the parity SSBO; if
-        // the slot's budget would be exceeded by this draw, we fall back to
-        // u_parityWrite=0 and the shader skips the write (the readback at
-        // top of next visit then doesn't see those vertices — fine for
-        // 2.D.1 acceptance, will be tightened in 2.D.2/2.D.3 if real-world
-        // peak exceeds kParitySlotBytes).
-        // Stage 2.D.2: the parity SSBO uses the expanded (triangle-soup) vertex
-        // count so gl_VertexID in static_prop.vert stays in-bounds. gl_VertexID
-        // runs 0..numTris*3-1 (per the VBO layout in registerType), so the
-        // correct u_parityVertsPerType and SSBO range size is numTris*3, not
-        // type.vertexCount (which is numTypeVertices, the shared-vertex count).
-        const uint32_t parityVerts = (type.source && type.source->numTypeTriangles > 0u)
-            ? type.source->numTypeTriangles * 3u
-            : type.vertexCount;
-
-        bool wroteParityThisDraw = false;
-        if (parityBuffer != 0 && parityVerts > 0u) {
-            const size_t needBytes = static_cast<size_t>(r.instanceCount) *
-                                     static_cast<size_t>(parityVerts) *
-                                     sizeof(uint32_t);
-            // SSBO offset alignment requirement. Mirrors the per-type
-            // instance/color bind alignment used by uploadAllBucketsIfNeeded
-            // above (its s_ssboAlignment is function-scope, so query once
-            // here too — single static, set on first hit).
-            static GLint s_parityAlignment = 0;
-            if (s_parityAlignment == 0) {
-                glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT,
-                              &s_parityAlignment);
-                if (s_parityAlignment < 16) s_parityAlignment = 256;
-            }
-            const size_t alignMask = static_cast<size_t>(s_parityAlignment) - 1u;
-            const size_t cursor = (s_parityBytesUsedThisFrame + alignMask) & ~alignMask;
-            if (needBytes > 0 && cursor + needBytes <= kParitySlotBytes) {
-                const GLintptr slotBase =
-                    static_cast<GLintptr>(s_frameSlot) *
-                    static_cast<GLintptr>(kParitySlotBytes);
-                gpuBindSsboRange(3, (unsigned int)parityBuffer,
-                                 (long long)(slotBase + (GLintptr)cursor),
-                                 (long long)needBytes,
-                                 "sp.parity");
-                // u_parityVertsPerType = expanded (triangle-soup) vertex count.
-                if (locParityVerts >= 0)
-                    glUniform1i(locParityVerts, (int)parityVerts);
-                // u_parityBaseVertex = type's VBO baseVertex; shader subtracts
-                // this from gl_VertexID to get the type-local index.
-                if (locParityBaseVertex >= 0) {
-                    const int typeBase = (type.packetCount > 0)
-                        ? s_packets[type.firstPacket].baseVertex
-                        : 0;
-                    glUniform1i(locParityBaseVertex, typeBase);
-                }
-                if (locParityWrite >= 0)
-                    glUniform1i(locParityWrite, 1);
-                s_parityBytesUsedThisFrame = cursor + needBytes;
-                gos_object_parity::Counters_AddVerticesWrittenThisFrame(
-                    static_cast<uint64_t>(r.instanceCount) *
-                    static_cast<uint64_t>(parityVerts));
-                wroteParityThisDraw = true;
-                // Stage 2.D.2: record slot-relative cursor + expanded vertex
-                // count so CompareAndReport can decode this type's bytes on
-                // the readback frame. parityVerts (not type.vertexCount) here.
-                if (gos_object_parity::IsDualEmitArmedAnyActor()) {
-                    gos_object_parity::RecordParityTypeRange(
-                        typeID, cursor, r.instanceCount, parityVerts);
-                }
-            } else if (needBytes > 0) {
-                // Stage 2.D.1.1 (Item 1): slot budget exhausted — record it.
-                // u_parityWrite stays 0 so the shader skips the write;
-                // the draw still happens but no parity bytes are produced.
-                gos_object_parity::Counters_AddSlotOverflowThisFrame(
-                    typeID, needBytes, kParitySlotBytes);
-            }
-        }
-
         for (uint32_t p = 0; p < type.packetCount; ++p) {
             const GpuStaticPropPacket& pkt = s_packets[type.firstPacket + p];
             // Resolve the texture handle at draw time. MC2 mutates
@@ -471,13 +360,6 @@ void GpuStaticPropBatcher::legacyDrawLoop(StaticPropFlushFrame& f) {
                     pkt.baseVertex);
             }
         }
-        // Stage 2.D.1: clear u_parityWrite back to 0 so a subsequent type
-        // that gets rejected by the slot-budget check (or has zero
-        // vertices) can't inherit a stale write authorization against this
-        // type's binding range.
-        if (wroteParityThisDraw && locParityWrite >= 0) {
-            glUniform1i(locParityWrite, 0);
-        }
     }
 }
 
@@ -535,7 +417,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
     if (!uploadAllBucketsIfNeeded()) {
         s_bucketsByType.clear();
         accumulateMonotonicAndMaybeEmit(/*forceEmit=*/false);
-        gos_object_parity::ParityFrameTick();
         return;
     }
 
@@ -549,12 +430,11 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         s_bucketsByType.clear();
         s_lastUploadedSlot = 0xFFFFFFFFu;
         accumulateMonotonicAndMaybeEmit(/*forceEmit=*/false);
-        gos_object_parity::ParityFrameTick();
         return;
     }
 
     StaticPropFlushFrame f;
-    candidateLogAndParityReadback(f);
+    batcher_buildCandidateLog();
     acquireGlGuards(f);
     applyOpaqueState(f);
     prepareIndirectAndFence(f);
@@ -622,7 +502,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
     legacyDrawLoop(f);
     } // end Step 11.8 else (!IsCoalesceEnabled() legacy draw loop)
 
-    fenceAndParitySlot();
+    fenceRingSlots();
     releaseGlGuards(f);
     finishFlush();
 

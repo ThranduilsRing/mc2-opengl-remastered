@@ -628,23 +628,6 @@ long BldgAppearance::update (bool animate)
 				else
 					bldgShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
 			}
-			// Stage 2.D.2: on the dual-emit frame (latch Armed), also run
-			// the full bake so listOfTriangles[].aRGBLight is populated for
-			// the parity snapshot captured in submit(). This call is a pure
-			// CPU-side data write; it does NOT affect GPU output (the shader
-			// uses a_aRGBLight from the type-level VBO, not listOfVertices.argb).
-			// No addRenderShape: GPU-eligible actors reach this branch only
-			// when g_useGpuObjects is true. The legacy Render() path (which
-			// calls addTriangle) is bypassed because submitMultiShape()
-			// handles the GPU draw instead. In Renderer 3 (GL 4.3), the
-			// addTriangle queue is never flushed to hardware — only the GPU
-			// batcher's direct draw is visible. So calling TransformMultiShape
-			// here (for the parity snapshot) does NOT result in double-draw.
-			// Stage 2.D.3: per-actor gate. Bootstrap arm returns true for
-			// every shape; sample arm returns true only for the picked actor.
-			if (gos_object_parity::IsDualEmitArmedForActor(bldgShape)) {
-				bldgShape->TransformMultiShape (&xlatPosition,&rot);
-			}
 		}
 		else
 		{

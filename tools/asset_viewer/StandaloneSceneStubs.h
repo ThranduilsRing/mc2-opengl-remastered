@@ -15,7 +15,6 @@ public:
     bool valid() const { return built_; }
 private:
     unsigned instancesSsbo_ = 0, colorsSsbo_ = 0, perTypeSsbo_ = 0, lightsSsbo_ = 0;
-    unsigned parityOutSsbo_ = 0;   // binding 3; writes gated off by u_parityWrite=0, bound to avoid unbound-SSBO UB
     unsigned shadowTex_ = 0;
     bool built_ = false;
 };

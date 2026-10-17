@@ -132,7 +132,7 @@ enum class GpuMechFallbackReason : uint8_t {
 };
 
 // Ring depth — must match STATIC_PROP_RING_FRAMES to share fence semantics
-// with gos_object_parity.cpp. Cross-checked by static_assert in .cpp.
+// with the static-prop fence ring. Cross-checked by static_assert in .cpp.
 constexpr uint32_t MECH_RING_FRAMES = 3u;
 
 class GpuMechBatcher {

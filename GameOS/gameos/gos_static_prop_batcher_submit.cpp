@@ -202,70 +202,6 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
         gpu_cull::substrate_appendStaticPropRecord(rec);
     }
 
-    // Stage 2.D.2 — dual-emit snapshot collection.
-    // When the latch is Armed, capture per-vertex lit ARGB in triangle-soup
-    // expanded order (matching gl_VertexID in static_prop.vert). The shader
-    // writes parityOut_[gl_InstanceID * parityVerts + gl_VertexID] where
-    // gl_VertexID is the expanded VBO index (0 .. numTris*3-1). We build the
-    // snapshot in the same order: corner (j,c) → index 3*j+c.
-    // Note: typeShape->numTypeTriangles is the TOTAL triangle count across all
-    // packets (same as the total triangles emitted into the VBO by registerType).
-    //
-    // Source: listOfVertices[typeTriangles[j].Vertices[c]].argb — NOT
-    //   listOfTriangles[j].aRGBLight[c]. The face-loop only writes
-    //   aRGBLight[c] for FRONT-FACING triangles; back-facing positions
-    //   retain stale pool memory from previous frames (not zeroed on alloc).
-    //   listOfVertices[v].argb is always written by the vertex lighting loop
-    //   for every vertex (front AND back facing), making it the correct
-    //   per-vertex ground truth. Both values are identical for front-facing
-    //   vertices when useFaceLighting=false (stock mc2_01 condition).
-    // Stage 2.D.3: per-actor narrowing of snapshot capture. The mclib gate
-    // sites only fire the full TransformMultiShape (CPU lighting bake) for
-    // the sampled actor in SampledOnly arm mode — non-sampled actors have
-    // stale listOfVertices[].argb. Capturing their bytes would corrupt the
-    // snapshot map. Use the per-actor gate here too: when the enclosing
-    // multishape (s_currentSubmittingMulti, set by submitMultiShape) doesn't
-    // match the sampler's pick, skip the snapshot. In bootstrap arm (state=
-    // Armed + armMode=All) IsDualEmitArmedForActor returns true for every
-    // shape, so 2.D.2 baseline coverage is preserved.
-    if (gos_object_parity::IsDualEmitArmedForActor(s_currentSubmittingMulti) &&
-        shape->listOfVertices &&
-        typeShape->listOfTypeTriangles &&
-        typeShape->numTypeTriangles > 0) {
-        const DWORD numTris = typeShape->numTypeTriangles;
-        const uint32_t expandedVerts = numTris * 3u;
-        std::vector<uint32_t> perVertexARGB(expandedVerts, 0u);
-        // Stage 2.D.2 diagnostic: one-shot dump of original aRGBLight tags vs
-        // computed listOfVertices[vi].argb for first instance of typeID=82.
-        // Controlled by MC2_OBJECT_PARITY_TRACE env var.
-        static bool s_parity82Printed = false;
-        const bool doTrace82 = (typeID == 82 && !s_parity82Printed &&
-                                gos_object_parity::IsParityTraceEnabled());
-        if (doTrace82) s_parity82Printed = true;
-        for (DWORD j = 0; j < numTris; ++j) {
-            for (int c = 0; c < 3; ++c) {
-                const DWORD vi = typeShape->listOfTypeTriangles[j].Vertices[c];
-                perVertexARGB[j * 3u + c] = shape->listOfVertices[vi].argb;
-                if (doTrace82 && (j * 3u + c) < 20u) {
-                    mc2::fmt::print_err("[PARITY_DIAG v1] typeId=82 inst=first vert={:d} aRGBLight_tag=0x{:08X} computed_argb=0x{:08X}\n", mc2::fmt::as_u32((unsigned)(j * 3u + c)), mc2::fmt::as_u32((unsigned)typeShape->listOfTypeVertices[vi].aRGBLight), mc2::fmt::as_u32((unsigned)shape->listOfVertices[vi].argb));
-                    std::fflush(stderr);
-                }
-            }
-        }
-        // Stage 2.D.3: pass explicit instanceIdx = bucket position this leaf
-        // just took. bucket.instances.push_back ran above, so size()-1 is
-        // the just-pushed entry's index. Required so SampledOnly mode can
-        // address the correct GPU slot in CompareAndReport (the sampled
-        // leaf might not be at instance 0 — there are typically many
-        // unrelated submissions of the same type per frame).
-        const uint32_t instanceIdx =
-            static_cast<uint32_t>(bucket.instances.size() - 1u);
-        gos_object_parity::RecordInstanceSnapshot(typeID,
-                                                   instanceIdx,
-                                                   perVertexARGB.data(),
-                                                   expandedVerts);
-    }
-
     // Append this instance's per-vertex ARGB block.
     // IMPORTANT: listOfColors (TG_Vertex: fog+redSpec+greenSpec+blueSpec) is
     // specular-only and is zero for most buildings — reading it produces
@@ -305,10 +241,6 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     // Clear the late-reg signal at the top of every call so a stale "true"
     // from a prior submitMultiShape never masquerades as a signal for this one.
     s_lastSubmitWasLateReg = false;
-    // Stage 2.D.3: track the currently-submitting multishape so per-leaf
-    // submit() calls can compare against the sampler's pick. Cleared at every
-    // exit path of this function to keep the window tight.
-    s_currentSubmittingMulti = multi;
     // 2026-05-10 actor-center fix: cleared per-call so a stale value from a
     // prior submitMultiShape can't leak into a multishape that has zero valid
     // SHAPE_NODE leaves. Populated below when firstShapeNodeLeaf is captured.
@@ -324,17 +256,14 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     // this function's behaviour is unchanged.
     if (s_treeDiagTrace) s_currentSubmitPop = pop;
     if (!multi || s_fatalRegistrationFailure) {
-        s_currentSubmittingMulti = nullptr;
         return false;
     }
     if (s_programLoadFailed || s_staticPropProgram == 0) {
-        s_currentSubmittingMulti = nullptr;
         return false;
     }
 
     const int n = multi->numTG_Shapes;
     if (n <= 0 || !multi->listOfShapes) {
-        s_currentSubmittingMulti = nullptr;
         return false;
     }
 
@@ -456,7 +385,6 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
             // needsFullBakeNextFrame=true on the owning actor.
             s_lastSubmitWasLateReg = true;
             ++s_late_register_recovery_skips;
-            s_currentSubmittingMulti = nullptr;
             return false;
         }
     }
@@ -596,7 +524,6 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
                 multi->cachedGpuLightIndex_, multi->cachedFrame_, g_mc2FrameCounter);
             std::fflush(stderr);
         }
-        s_currentSubmittingMulti = nullptr;
         return false;
     }
 
@@ -622,7 +549,6 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
                 g_mc2FrameCounter);
             std::fflush(stderr);
         }
-        s_currentSubmittingMulti = nullptr;
         return false;
     }
 
@@ -724,21 +650,11 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
             // submit() rejected after we passed the registration gate —
             // typically a buffer-full condition. Fall back for this frame
             // to keep the visual self-consistent.
-            s_currentSubmittingMulti = nullptr;
             return false;
         }
         s_counters.submitted_children++;
     }
     s_counters.submitted_instances_by_pop[popIndex(pop)]++;
-    // Stage 2.D.3 — sampler observation. Record the multishape pointer in
-    // the parity sidecar's per-frame observation list. Default-off short-
-    // circuits internally when MC2_OBJECT_PARITY_CHECK is unset; safe to
-    // call unconditionally. Only successful submissions reach here, so
-    // late-registered actors (skybox/compass) are structurally excluded
-    // from the sampler pool — matching the "registered types only"
-    // contract from the dispatch.
-    gos_object_parity::ObserveSubmittedShape(multi);
-    s_currentSubmittingMulti = nullptr;
     return true;
 }
 

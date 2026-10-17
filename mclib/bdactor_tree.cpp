@@ -529,12 +529,6 @@ long TreeAppearance::update (bool animate)
 				else
 					treeShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
 			}
-			// Stage 2.D.2: dual-emit full bake — same rationale as BldgAppearance
-			// above. Populates listOfTriangles[].aRGBLight for snapshot in submit().
-			// Stage 2.D.3: per-actor gate (see BldgAppearance::update above).
-			if (gos_object_parity::IsDualEmitArmedForActor(treeShape)) {
-				treeShape->TransformMultiShape (&xlatPosition,&rot);
-			}
 		}
 		else
 		{

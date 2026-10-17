@@ -12,7 +12,6 @@
 #endif
 
 #include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon-zero
-#include "gos_object_parity_query.h"  // IsDualEmitArmed — Stage 2.D.2 dual-emit hook
 #include "cpu_proj_cost_split.h"      // F3 CPU projection cost-baseline (RAII scope)
 
 #ifndef CAMERA_H

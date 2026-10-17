@@ -85,7 +85,6 @@ set(SOURCES ${SOURCES}
     gos_terrain_lod_chunk_feed.cpp
     gos_terrain_lod_chunk_draw.cpp
     gos_terrain_lod_chunk_upload.cpp
-    gos_object_parity.cpp
     gos_validate.cpp
     gos_screenshot.cpp
     gos_dev_shell.cpp

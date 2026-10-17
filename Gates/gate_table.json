@@ -1,6 +1,6 @@
 {
  "version": 1,
- "count": 976,
+ "count": 975,
  "gates": [
   {"name": "MC2_3DVIEW_DIAG", "kind": "Bool", "rule": "Presence", "default": false, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_ABL_ARG_GUARD", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -...", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
@@ -478,7 +478,6 @@
   {"name": "MC2_OBJECT_ADMISSION_SELFTEST", "kind": "Bool", "rule": "Exact1", "default": false, "owner": "gameos", "retireBy": "", "doc": "Optional startup selftest - hard-fails on any boundary violation so the operator knows immediately if the predicate body has a regression.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_OBJECT_ID_BUFFER", "kind": "Bool", "rule": "DefOnLead0", "default": true, "owner": "code", "retireBy": "", "doc": "R32_UINT MRT attachment-2 with per-pixel object handles (RenderWorld M1.5).", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": {"featureId": "MC2_FEATURE_OBJECT_ID_BUFFER", "kind": "Feature", "order": 2, "defaultOn": true}, "logTopic": ""},
   {"name": "MC2_OBJECT_ID_BUFFER_SELFTEST", "kind": "Bool", "rule": "Lead0", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
-  {"name": "MC2_OBJECT_PARITY_CHECK", "kind": "Bool", "rule": "Exact1", "default": false, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_OBJECT_PARITY_TRACE", "kind": "Bool", "rule": "Exact1", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_OBJECT_POLY_OFFSET", "kind": "Bool", "rule": "Lead0P", "default": false, "owner": "props", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_OBJECT_POLY_OFFSET_FACTOR", "kind": "Float", "rule": "Prefix", "default": -1, "owner": "props", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},

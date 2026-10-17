@@ -7,7 +7,6 @@
 
 // Locals the static-prop flush phases share.
 struct StaticPropFlushFrame {
-    GLuint parityBuffer;
     std::optional<mc2gl::GlScopedProgram> guardProgram;
     std::optional<mc2gl::GlScopedVertexArray> guardVao;
     std::optional<mc2gl::GlScopedBufferBinding> guardArrayBuf;
@@ -16,11 +15,7 @@ struct StaticPropFlushFrame {
     std::optional<mc2gl::GlScopedSsboBinding> guardSsbo0;
     std::optional<mc2gl::GlScopedSsboBinding> guardSsbo1;
     std::optional<mc2gl::GlScopedSsboBinding> guardSsbo2;
-    std::optional<mc2gl::GlScopedSsboBinding> guardSsbo3;
     std::optional<mc2gl::GlScopedSsboBinding> guardSsbo5;
-    GLint locParityWrite;
-    GLint locParityVerts;
-    GLint locParityBaseVertex;
     bool useC1bIndirect;
     size_t fr_off_bytes_d;
     size_t off_total_bytes;

@@ -72,12 +72,9 @@ struct GpuStaticPropPacket {
     uint32_t owningTypeID;
 };
 
-// Stage 2.D.1.1: exported so gos_object_parity.cpp can de-duplicate its
-// local kRingFrames constant (Option A — include rather than static_assert).
-// Both the parity SSBO ring and the batcher's s_fence ring share this depth;
-// changing one without the other corrupts the async readback handshake.
-// The .cpp defines its private `RING_FRAMES` separately to keep the hot-path
-// anonymous-namespace TU clean, but MUST match this value.
+// Ring depth of the batcher's s_fence ring, exported so GpuMechBatcher can
+// static_assert it shares the same fence semantics. The .cpp defines its
+// private `RING_FRAMES` separately and MUST match this value.
 constexpr uint32_t STATIC_PROP_RING_FRAMES = 3u;
 
 constexpr uint32_t STATIC_PROP_FLAG_ALPHA_TEST = 1u << 0;
@@ -261,7 +258,6 @@ public:
 
 private:
     // GpuStaticPropBatcher::flush phases (gos_static_prop_batcher_flush.cpp); callers use flush().
-    void candidateLogAndParityReadback(StaticPropFlushFrame& f);
     void acquireGlGuards(StaticPropFlushFrame& f);
     void applyOpaqueState(StaticPropFlushFrame& f);
     void prepareIndirectAndFence(StaticPropFlushFrame& f);
@@ -287,7 +283,7 @@ private:
     void legacyPrepare();
     void legacyCensus();
     void legacyDrawLoop(StaticPropFlushFrame& f);
-    void fenceAndParitySlot();
+    void fenceRingSlots();
     void releaseGlGuards(StaticPropFlushFrame& f);
     void finishFlush();
 public:
@@ -336,11 +332,8 @@ public:
 
     // Slice 2 (Stage 2.D.3) — late-registration event counters.
     //
-    // Consumed by gos_object_parity::ParityFrameTick() to surface the two
-    // late-reg event aggregates in the [OBJECT_PARITY v1] event=summary
-    // line. Both are monotonic since process start (the parity window in
-    // 2.D.3's reduced contract is "since program start" — see
-    // gos_object_parity.h "late-reg event counters" block for rationale).
+    // Diagnostic aggregates of the late-reg events. Both are monotonic since
+    // process start.
     //
     //   getAllowedLateRegEventCount():   count of allowed=1 events
     //                                    (allowlisted nodeId, e.g. skybox)
@@ -349,8 +342,7 @@ public:
     //
     // Both increment per occurrence inside submitMultiShape's late-reg
     // branch (NOT once-per-type — the dedup-print logic stays the same,
-    // but every event ticks the counter so the parity summary surfaces the
-    // true frequency).
+    // but every event ticks the counter so the true frequency is visible).
     static uint64_t getAllowedLateRegEventCount();
     static uint64_t getDisallowedLateRegEventCount();
 

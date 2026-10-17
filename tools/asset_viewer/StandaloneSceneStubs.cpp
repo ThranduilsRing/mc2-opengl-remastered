@@ -33,8 +33,6 @@ void StandaloneSceneStubs::build(const float dir[3], const float col[3], float a
     mk(colorsSsbo_,    &color0, sizeof color0);
     mk(perTypeSsbo_,   &pt,   sizeof pt);
     mk(lightsSsbo_,    &L,    sizeof L);
-    uint32_t parityZero = 0;                         // binding 3: 1-elem stub; writes gated off by u_parityWrite=0
-    mk(parityOutSsbo_, &parityZero, sizeof parityZero);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     glGenTextures(1, &shadowTex_);                       // unused in minimal config; future seam
     glBindTexture(GL_TEXTURE_2D, shadowTex_);
@@ -52,14 +50,13 @@ void StandaloneSceneStubs::bind(const float modelMatrix[16]) const {
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instancesSsbo_);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, colorsSsbo_);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, perTypeSsbo_);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, parityOutSsbo_);   // gated off; bound to avoid unbound-SSBO UB
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 20, lightsSsbo_);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
 void StandaloneSceneStubs::destroy() {
-    unsigned b[5] = {instancesSsbo_, colorsSsbo_, perTypeSsbo_, lightsSsbo_, parityOutSsbo_};
-    glDeleteBuffers(5, b);
+    unsigned b[4] = {instancesSsbo_, colorsSsbo_, perTypeSsbo_, lightsSsbo_};
+    glDeleteBuffers(4, b);
     if (shadowTex_) glDeleteTextures(1, &shadowTex_);
-    instancesSsbo_=colorsSsbo_=perTypeSsbo_=lightsSsbo_=parityOutSsbo_=shadowTex_=0; built_=false;
+    instancesSsbo_=colorsSsbo_=perTypeSsbo_=lightsSsbo_=shadowTex_=0; built_=false;
 }

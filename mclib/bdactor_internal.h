@@ -32,7 +32,6 @@
 #include <GL/glew.h>
 #include "../RenderCore/KtxLoader.h"
 #include "../RenderCore/MaterialGpu.h"
-#include "gos_object_parity_query.h"  // IsDualEmitArmed — Stage 2.D.2 dual-emit hook
 #include <set>            // [LIGHTSLOT v1] Task 0 cardinality gate
 #include "gos_smoke.h"    // [LIGHTSLOT v1] SmokeMode::missionHasStarted()
 #include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon-zero

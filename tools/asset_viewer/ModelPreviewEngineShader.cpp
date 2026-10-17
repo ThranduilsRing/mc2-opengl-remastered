@@ -98,7 +98,7 @@ bool ModelPreviewEngineShader::ensureProgram() {
     report_.fragPath   = shaderRoot_ + "/static_prop.frag";
     report_.activeDefines =
         "(minimal: legacy lane; no MC2_USE_VIEW_UNIFORMS/MC2_COALESCE/"
-        "MC2_STATICPROP_PBR_SLOTS/MC2_OBJECT_ID_BUFFER/MC2_OBJECT_PARITY_CHECK)";
+        "MC2_STATICPROP_PBR_SLOTS/MC2_OBJECT_ID_BUFFER)";
     report_.textureMode          = "legacy sampler2D u_tex";
     report_.objectLightsStubActive = true;
     report_.shadowStubActive       = false;
@@ -331,10 +331,6 @@ void ModelPreviewEngineShader::renderScene(int w, int h) {
         // SSBOs (Instances gets the model matrix)
         stubs_.bind(modelMat);
 
-        // Bind ParityOut stub (binding 3) — an empty buffer suffices since u_parityWrite=0
-        // The SSBO is declared but not written when parityWrite<=0; we bind a minimal stub.
-        // stubs_ doesn't expose this binding, so we just leave it unbound (GL allows sparse).
-
         glUseProgram(prog_);
 
         // Set all uniforms the contract lists to safe defaults
@@ -369,19 +365,6 @@ void ModelPreviewEngineShader::renderScene(int w, int h) {
 
         GLint locIbl = setUniformLoc("u_iblShStrength");
         if (locIbl >= 0) glUniform1f(locIbl, 0.0f);
-
-        GLint locParity = setUniformLoc("u_parityWrite");
-        if (locParity >= 0) glUniform1i(locParity, 0);
-
-        // Parity uniforms from contract (safe zero defaults)
-        GLint locPBV = setUniformLoc("u_parityBaseVertex");
-        if (locPBV >= 0) glUniform1i(locPBV, 0);
-        GLint locPVPT = setUniformLoc("u_parityVertsPerType");
-        if (locPVPT >= 0) glUniform1i(locPVPT, 0);
-        GLint locPNLD = setUniformLoc("u_parityNumLightsDebugMode");
-        if (locPNLD >= 0) glUniform1i(locPNLD, 0);
-        GLint locPBLD = setUniformLoc("u_parityBaseLightDebugMode");
-        if (locPBLD >= 0) glUniform1i(locPBLD, 0);
 
         // u_iblSh is an array uniform; set all 7 entries to zero
         for (int i = 0; i < 7; i++) {

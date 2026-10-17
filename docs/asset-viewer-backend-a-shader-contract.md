@@ -17,7 +17,6 @@ Outcome: **PASS** (compile + link succeeded)
 - `MC2_COALESCE` — omitted; per-draw coalesce indirection and `u_drawIDBase` absent
 - `MC2_STATICPROP_PBR_SLOTS` — omitted; `u_ormTexArr` / `u_ormSampleEnable` absent
 - `MC2_OBJECT_ID_BUFFER` — omitted; `layout(location=2) out uint v_objectId` absent
-- `MC2_OBJECT_PARITY_CHECK` — omitted; parity writes short-circuit via `u_parityWrite=0` default
 
 Note: `#define MC2_STATIC_PROP_LIGHTING` is defined INSIDE `static_prop.vert` at line 20 — it is part of the shader source, not the prefix.
 
@@ -46,11 +45,6 @@ u_iblSh[0]
 u_worldToClipGL
 u_ambientV1Strength
 u_iblShStrength
-u_parityWrite
-u_parityBaseVertex
-u_parityVertsPerType
-u_parityNumLightsDebugMode
-u_parityBaseLightDebugMode
 u_materialFlags
 u_packetID
 u_maxLocalVertexID
@@ -66,7 +60,6 @@ u_fogValue
 LightsData    (binding 20 — declared in lighting.hglsl)
 Instances     (binding 0)
 PerType       (binding 2)
-ParityOut     (binding 3)
 Colors        (binding 1)
 ```
 
