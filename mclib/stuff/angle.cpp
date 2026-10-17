@@ -84,17 +84,4 @@ Radian&
 		SPEW((group, "%f rad+", angle.angle));
 	}
 
-	//
-	//#############################################################################
-	//#############################################################################
-	//
-	void
-		Spew(
-			const char* group,
-			const SinCosPair& angle
-		)
-	{
-		Check_Object(&angle);
-		SPEW((group, "{%f,%f}+", angle.cosine, angle.sine));
-	}
 #endif

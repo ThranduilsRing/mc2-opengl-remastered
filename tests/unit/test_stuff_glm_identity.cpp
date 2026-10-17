@@ -163,9 +163,9 @@ void scalars(Corpus& corpus, float x, float y) {
         member.Normalize();
         corpus.exact("exact.wrap-member", member.angle, mc2::math::wrapAngleMember(x));
     }
-    const Stuff::SinCosPair pair{Stuff::Radian(x)};
-    corpus.scalar("angle.sincos-sin", pair.sine, glm::sin(x));
-    corpus.scalar("angle.sincos-cos", pair.cosine, glm::cos(x));
+    // S5.6: SinCosPair is gone; its sites call sinf/cosf (Stuff) or glm::sin/cos (gosFX tube).
+    corpus.scalar("angle.sincos-sin", sinf(x), glm::sin(x));
+    corpus.scalar("angle.sincos-cos", cosf(x), glm::cos(x));
     corpus.scalar("angle.wrap-static", Stuff::Radian::Normalize(x),
                   glm::mod(x + Stuff::Pi, Stuff::Two_Pi) - Stuff::Pi);
     Stuff::Radian angle(x);
@@ -215,9 +215,9 @@ void matrices(Corpus& corpus, std::mt19937& rng, unsigned index) {
     mo.Invert(ma);
     corpus.matrix("matrix.inverse", mo, glm::inverse(gma), 4);
     Stuff::LinearMatrix4D la(true), lb(true), lo;
-    const Stuff::SinCosPair rotation{Stuff::Radian(smallRand())};
-    la(0, 0) = rotation.cosine; la(0, 1) = rotation.sine;
-    la(1, 0) = -rotation.sine; la(1, 1) = rotation.cosine;
+    const float turn = smallRand(), turnSine = sinf(turn), turnCosine = cosf(turn);
+    la(0, 0) = turnCosine; la(0, 1) = turnSine;
+    la(1, 0) = -turnSine; la(1, 1) = turnCosine;
     lb(3, 0) = smallRand(); lb(3, 1) = smallRand(); lb(3, 2) = smallRand();
     lo.Multiply(la, lb);
     corpus.matrix("linear.multiply", lo, glmMatrix(la, 3) * glmMatrix(lb, 3), 3);

@@ -57,9 +57,8 @@ Vector3D&
 		return *this = Identity;
 	}
 
-	SinCosPair half_angle(sine_of_half, q.w);
 	Radian angle;
-	angle = half_angle;
+	angle = Arctan(sine_of_half, q.w);
 	Scalar len = angle * 2.0f / sine_of_half;
 	x = q.x * len;
 	y = q.y * len;
@@ -82,13 +81,14 @@ Vector3D&
 		 && Vector3D::Left.x == 1.0f
 		 && Vector3D::Up.y == 1.0f
 	);
-	SinCosPair azimuth(polar.yaw);
-	SinCosPair altitude(polar.pitch);
-	y = -polar.range * altitude.sine;
+	const Scalar
+		azimuthSine = sinf(polar.yaw), azimuthCosine = cosf(polar.yaw),
+		altitudeSine = sinf(polar.pitch), altitudeCosine = cosf(polar.pitch);
+	y = -polar.range * altitudeSine;
 
-	Scalar len = polar.range * altitude.cosine;
-	x = len * azimuth.sine;
-	z = len * azimuth.cosine;
+	Scalar len = polar.range * altitudeCosine;
+	x = len * azimuthSine;
+	z = len * azimuthCosine;
 	return *this;
 }
 
