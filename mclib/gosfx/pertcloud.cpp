@@ -369,8 +369,8 @@ void
 		Stuff::Scalar temp = perturbance + radius;
 		particle->m_vertices[j] =
 			Stuff::Point3D(
-				Stuff::Sin(j*angle_between)*temp,
-				Stuff::Cos(j*angle_between)*temp,
+				mc2::math::sinD(j*angle_between)*temp,
+				mc2::math::cosD(j*angle_between)*temp,
 				perturbance
 			);
 		perturbance = temp*temp + perturbance*perturbance;

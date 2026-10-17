@@ -439,7 +439,7 @@ void
 				Stuff::Random::GetFraction()
 			);
 
-		particle->m_linearVelocity.Lerp(Stuff::Vector3D::Up, v, lerpFactor);
+		particle->m_linearVelocity = mc2::math::toVector3D(mc2::math::lerp(mc2::math::toGlm(Stuff::Vector3D::Up), mc2::math::toGlm(v), lerpFactor));
 		particle->m_linearVelocity.Normalize(particle->m_linearVelocity);
 
 		particle->m_linearVelocity *= spec->m_startingSpeed.ComputeValue(0.0f, particle->m_seed);

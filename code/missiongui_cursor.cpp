@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "missiongui_shared_internal.h"
+#include "math/stuff_glm_bridge.h"
 
 
 constexpr float ATTILA_FACTOR = 1.0f;
@@ -906,7 +907,7 @@ long MissionInterfaceManager::calcRotation()
 	
 	float actualLength = actualPos.GetLength();
 	if (actualLength > Stuff::SMALL)
-		actualPos /= actualLength;
+		actualPos = mc2::math::toVector3D(mc2::math::divide(mc2::math::toGlm(actualPos), actualLength));
 	actualPos *= 200.0f;
 	
 	Stuff::Vector3D camPos = eye->getPosition();

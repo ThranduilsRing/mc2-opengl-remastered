@@ -292,7 +292,7 @@ void
 	Check_Object(particle);
 	particle->m_radius = spec->m_size.ComputeValue(m_age, particle->m_seed);
 	particle->m_angle =
-		Stuff::Sin(spec->m_angularity.ComputeValue(m_age, particle->m_seed));
+		mc2::math::sinD(spec->m_angularity.ComputeValue(m_age, particle->m_seed));
 }
 
 //------------------------------------------------------------------------------
