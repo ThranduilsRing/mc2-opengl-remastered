@@ -650,7 +650,7 @@ void __stdcall DoGameLogic()
 			if (s_cycle < 8 && g_mc2FrameCounter >= s_nextAt && !loadInMissionSave && mission && eye)
 			{
 				Stuff::Vector3D strikeAt = eye->getPosition();
-				IfaceCallStrike(ARTILLERY_LARGE, &strikeAt, nullptr, false, false, 30.0f);
+				IfaceCallStrike(ARTILLERY_LARGE, &strikeAt, nullptr, true, false, 30.0f);
 				loadInMissionSave = true;
 				s_nextAt = g_mc2FrameCounter + 90;
 				++s_cycle;
