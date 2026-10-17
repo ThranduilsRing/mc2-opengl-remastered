@@ -180,7 +180,7 @@ static void editor_set_default_env_vars()
     if (!mc2::gate::isSet<"MC2_EDITOR_TRACE">())            _putenv_s("MC2_EDITOR_TRACE",              "1");
     // Owner ruling 2026-10-17: the editor keeps a private GL until its VK viewport lands (the engine default is Vulkan).
     // The playtest child gets MC2_RENDER_BACKEND=vulkan explicitly (EditorPlaytest.cpp).
-    if (!mc2::gate::isSet<"MC2_RENDER_BACKEND">())          _putenv_s("MC2_RENDER_BACKEND",            "gl");
+    if (!mc2::gate::isSet<"MC2_RENDER_BACKEND">())          { _putenv_s("MC2_RENDER_BACKEND",            "gl"); mc2::gate::invalidate("MC2_RENDER_BACKEND"); }
     // S3 (2026-05-25): MC2_GPU_DRIVEN, MC2_EDITOR_BYPASS_BLDG_CULL, MC2_STATIC_PROP_REGISTRY
     // sidesteps retired -- editor now runs canonical default-ON chain.
 }
