@@ -407,3 +407,5 @@ set_source_files_properties(test_part_archive.cpp
     INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/gui;${MC2_WORKTREE_ROOT}/netlib;${MC2_WORKTREE_ROOT}/3rdparty/tracy")
 # B7o.1: TG_TypeNode virtual destructor (header-only plus local stubs for the base out-of-line virtuals)
 target_sources(mc2_tests PRIVATE test_tg_type_node_dtor.cpp)
+# B7o.3: actor appearance owner protocol (header-only, code/appearance_owner.h)
+target_sources(mc2_tests PRIVATE test_actor_appearance_owner.cpp)

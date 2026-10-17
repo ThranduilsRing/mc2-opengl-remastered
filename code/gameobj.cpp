@@ -19,6 +19,8 @@
 #include"gameobj.h"
 #endif
 
+#include"appearance_owner.h"
+
 #ifndef CARNAGE_H
 #include"carnage.h"
 #endif
@@ -1547,17 +1549,27 @@ void GameObject::init (bool create) {
 
 //---------------------------------------------------------------------------
 
-// B7o.2: the ONLY writers of GameObject::appearance (the census exempts just these two bodies).
-// Raw ownership is unchanged: adopt stores the pointer, release deletes and nulls (B7o.3 turns this into an owner).
+// B7o.2/B7o.3: the ONLY writers of GameObject::appearance (the census exempts just these two bodies).
+// B7o.3: appearanceOwner owns the appearance; `appearance` is a view synced here. Adopting over a live appearance frees the previous
+// one (the init replacement paths used to overwrite it). The owner's destructor is a backstop for an actor that is destroyed
+// without releasing (destroy() still releases at the same position as before, see G2).
 void GameObject::adoptAppearance (AppearancePtr newAppearance) {
 
-	appearance = newAppearance;
+	mc2::adoptOwnedView(appearanceOwner, appearance, newAppearance);
 }
 
 void GameObject::releaseAppearance (void) {
 
-	delete appearance;
-	appearance = nullptr;
+	verifyAppearanceView("releaseAppearance");
+	mc2::releaseOwnedView(appearanceOwner, appearance);
+}
+
+static_assert(sizeof(std::unique_ptr<Appearance>) == sizeof(Appearance*), "appearanceOwner must use the default deleter");
+
+void GameObject::verifyAppearanceView (const char* where) {
+
+	if (mc2::ownedViewDiverged(appearanceOwner, appearance))
+		MC2_LOG(Sim, Warn, "{}: GameObject appearance view {} diverged from its owner {}", where, static_cast<const void*>(appearance), static_cast<const void*>(appearanceOwner.get()));
 }
 
 //---------------------------------------------------------------------------
