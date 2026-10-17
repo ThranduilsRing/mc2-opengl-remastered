@@ -98,6 +98,8 @@ bool                         s_vkMechFrameReady        = false;
 std::vector<uint8_t>         s_vkVboNativeCopy;
 // Geometry generation: bumped on every rebuild of the VBO copy AND of s_stagingIbo, so a consumer that keeps its own copy of both (the VK shadow island) re-uploads exactly when either changed.
 uint32_t                     s_vkMechGeomGen = 0;
+// The geometry generation the run / instance / bone snapshots were built against: their firstIndex ranges index THAT index set.
+uint32_t                     s_vkMechSnapshotGeomGen = 0;
 #endif
 
 // SimpleCamera UI preview-render context depth (Mech Bay / Mech Purchase).

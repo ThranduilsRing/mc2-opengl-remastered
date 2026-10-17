@@ -36,6 +36,8 @@ extern "C" int mc2_mech_island_get_shadow_feed(Mc2MechShadowFeed* out) {
     if (!mc2::gate::get<"MC2_SHADOW_ENABLE">()) return 0;
     if (!g_useGpuMechs || !s_geometryFinalized || s_programLoadFailed) return 0;
     if (s_vkMechInstSnapshot.empty() || s_vkMechRunSnapshot.empty() || s_vkMechBoneSnapshot.empty()) return 0;
+    // The snapshot's runs index the geometry of the generation it was built against; after a rebuild they name ranges of a different index set.
+    if (s_vkMechSnapshotGeomGen != s_vkMechGeomGen) return 0;
     const uint64_t vboBytes = static_cast<uint64_t>(s_stagingVbo.size());
     if (s_vkVboNativeCopy.empty() || s_vkVboNativeCopy.size() != vboBytes || s_stagingIbo.empty()) return 0;
     out->instances64 = s_vkMechInstSnapshot.data(); out->instanceCount = static_cast<uint32_t>(s_vkMechInstSnapshot.size());
@@ -52,6 +54,9 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     if (!out) return 0;
     if (!vkMechGateOn() || !s_vkMechFrameReady) return 0;
     if (s_vkMechInstSnapshot.empty() || s_vkMechRunSnapshot.empty()) return 0;
+    // Stale snapshot from before a geometry rebuild (new map, late types): its firstIndex values index the OLD index set (the draw would
+    // read past the new buffer). The next flush() rebuilds it against the new set.
+    if (s_vkMechSnapshotGeomGen != s_vkMechGeomGen) return 0;
     out->instances64   = s_vkMechInstSnapshot.data();
     out->instanceCount = (uint32_t)s_vkMechInstSnapshot.size();
     out->bones64       = s_vkMechBoneSnapshot.data();
