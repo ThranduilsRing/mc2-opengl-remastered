@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 976
 registry_entry_count: 203
-verified_count: 967
+verified_count: 966
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -37,7 +37,6 @@ flags:
     owner: code
     doc: "ASAN-3-ABL-COMPILE-FATAL-1: fail at preprocess when ABL syntax errors leave partial bytecode; set =0 only for legacy execute-anyway diagnostics."
     smoke_passthrough: true
-    verified: true
     registry: {feature_id: MC2_ABL_COMPILE_FATAL, kind: Feature, order: -1, default_on: true}
   - name: MC2_ABL_COMPILE_FATAL_REPRO
     kind: String
@@ -6865,13 +6864,13 @@ flags:
     verified: true
   - name: MC2_VK_IMGUI
     kind: Bool
-    default: false
-    rule: Lead1
+    default: true
+    rule: Lead0Kill
     owner: code
-    doc: "VK-IMGUI-NATIVE-1 (rung 8.6): default-OFF ImGui Vulkan renderer gate."
+    doc: "ImGui draws through the Vulkan renderer under a Vulkan backend (default ON); =0 is a kill-switch back to GL ImGui."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_VK_IMGUI, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_FEATURE_VK_IMGUI, kind: Feature, order: -1, default_on: true}
   - name: MC2_VK_LIGHTFEED_DEDUP
     kind: Bool
     default: true

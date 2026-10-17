@@ -1527,8 +1527,8 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_FEATURE_VK_IMGUI",
         "MC2_VK_IMGUI",
         EnvVarKind::Feature,
-        false,
-        "VK-IMGUI-NATIVE-1 (rung 8.6): default-OFF ImGui Vulkan renderer gate.",
+        true,
+        "ImGui draws through the Vulkan renderer under a Vulkan backend (default ON); =0 is a kill-switch back to GL ImGui.",
     },
     {
         "MC2_TRACE_VK_NO_GL_INTEROP_RESOURCE_STRICT",
