@@ -10,13 +10,10 @@ B7o.5-nonactor-owners	code/gamecam.cpp:197	app_delete	delete theSky;
 B7o.5-nonactor-owners	code/gamecam.cpp:203	app_delete	delete compass;
 B7o.5-nonactor-owners	code/gamecam.cpp:1109	app_new	theSky = new GenericAppearance;
 B7o.5-nonactor-owners	code/gamecam.cpp:1412	app_new	compass = new BldgAppearance;
-B7o.9-operators	code/gameobj.cpp:1492	objcache_op	void* GameObject::operator new (size_t ourSize) {
-B7o.9-operators	code/gameobj.cpp:1494	objcache_actor	void* result = ObjectTypeManager::objectCache->Malloc(ourSize);
-B7o.9-operators	code/gameobj.cpp:1503	objcache_op	void GameObject::operator delete (void* us) {
-B7o.9-operators	code/gameobj.cpp:1505	objcache_actor	ObjectTypeManager::objectCache->Free(us);
-B7o.2-seal	code/gameobj.cpp:1554	app_write_api	appearance = newAppearance;
-B7o.3-actor-owner	code/gameobj.cpp:1559	app_delete	delete appearance;
-B7o.2-seal	code/gameobj.cpp:1560	app_write_api	appearance = nullptr;
+B7o.9-operators	code/gameobj.cpp:1494	objcache_op	void* GameObject::operator new (size_t ourSize) {
+B7o.9-operators	code/gameobj.cpp:1496	objcache_actor	void* result = ObjectTypeManager::objectCache->Malloc(ourSize);
+B7o.9-operators	code/gameobj.cpp:1505	objcache_op	void GameObject::operator delete (void* us) {
+B7o.9-operators	code/gameobj.cpp:1507	objcache_actor	ObjectTypeManager::objectCache->Free(us);
 B7o.3-actor-owner	code/gate.cpp:701	app_new	adoptAppearance(new BldgAppearance);
 B7o.3-actor-owner	code/gvehicl.cpp:695	app_new	adoptAppearance(new GVAppearance);
 B7o.3-actor-owner	code/light.cpp:178	app_new	lightAppearance = new VFXAppearance;
