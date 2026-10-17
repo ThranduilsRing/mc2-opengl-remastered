@@ -481,9 +481,11 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
 			{
 				const MidLevelRenderer::MLRState::AlphaMode am =
 					spec->m_state.GetAlphaMode();
+				// MLR draws both as pure additive (ONE,ONE), alpha ignored: AlphaOneMode leaves the
+				// renderer state it inherits, and the card data (alpha 0 halo cards) relies on that.
 				if (am == MidLevelRenderer::MLRState::OneOneMode ||
 				    am == MidLevelRenderer::MLRState::AlphaOneMode)
-					blendMode = 1;
+					blendMode = 2;
 			}
 			Stuff::LinearMatrix4D local_to_world;
 			local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);

@@ -105,8 +105,9 @@ struct VfxGroupPush {
     float    uvOffset[2];
     float    uvSize[2];
     uint32_t atlasColumns;
+    uint32_t oneOne;
 };
-static_assert(sizeof(VfxGroupPush) == 20, "VfxGroupPush push-constant size (vfx_particle.vert)");
+static_assert(sizeof(VfxGroupPush) == 24, "VfxGroupPush push-constant size (vfx_particle.vert)");
 
 constexpr uint32_t kMaxSpritePages = 64;   // descriptor-set budget for the sprite pages
 
@@ -153,6 +154,7 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline alphaPipe;
     mc2vk::OwnedPipeline addPipe;
+    mc2vk::OwnedPipeline oneOnePipe;   // GL OneOne: (ONE, ONE), alpha ignored
     mc2vk::OwnedCommandPool cpool;
     VkCommandBuffer  cbuf  = VK_NULL_HANDLE;
     mc2vk::OwnedFence fence;
@@ -205,7 +207,9 @@ bool ensure_ssbo(VfxIsland* s, VkDeviceSize bytes) {
 // Copy one level of RGBA8 / BC7 texels into `page.img` and point `page.set` at it. Runs before the frame is
 // recorded: it borrows the frame's command buffer and fence and waits for the copy, so no frame work is in flight.
 bool upload_page(VfxIsland* s, SpritePage& page, const GosTexels& t) {
-    const VkFormat fmt = mc2vk::texelFormat(t.vkFormat);
+    // Sprite texels are sampled as stored (BC7 sRGB read as UNORM): the MLR sprites the VFX arm must match are
+    // blended on the displayed values, and decoding to linear here crushed the soft halos to near black.
+    const VkFormat fmt = mc2vk::texelFormat(t.vkFormat == mc2tex::kVkFormatBc7Srgb ? mc2tex::kVkFormatBc7Unorm : t.vkFormat);
     mc2vk::OwnedBuffer stg;
     if (!make_buffer(s, t.bytes->size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stg, "vfx.staging")) return false;
     if (!stg.upload(t.bytes->data(), t.bytes->size())) return false;
@@ -302,7 +306,10 @@ const SpritePage* get_page(VfxIsland* s, uint32_t handle) {
     return &slot;
 }
 
-mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive) {
+// VfxDrawGroup::additive values (LOCKSTEP with ADDITIVE_* in shaders/vulkan/vfx_particle.vert).
+enum : uint32_t { VFX_ADD_ALPHA = 0, VFX_ADD_SRC_ALPHA = 1, VFX_ADD_ONE_ONE = 2 };
+
+mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bool oneOne = false) {
     VkPipelineVertexInputStateCreateInfo vin{};
     vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;  // procedural
     VkPipelineInputAssemblyStateCreateInfo ia{};
@@ -326,10 +333,10 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive) {
     //   additive = SRC_ALPHA / ONE                  (GL additive groups)
     VkPipelineColorBlendAttachmentState cba[2]{};
     cba[0].blendEnable = VK_TRUE;
-    cba[0].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    cba[0].srcColorBlendFactor = oneOne ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_SRC_ALPHA;
     cba[0].dstColorBlendFactor = additive ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
     cba[0].colorBlendOp = VK_BLEND_OP_ADD;
-    cba[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    cba[0].srcAlphaBlendFactor = oneOne ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_SRC_ALPHA;
     cba[0].dstAlphaBlendFactor = additive ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
     cba[0].alphaBlendOp = VK_BLEND_OP_ADD;
     cba[0].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
@@ -516,7 +523,8 @@ bool init_island(VfxIsland* s, int w, int h) {
         if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* o) { return vkCreatePipelineLayout(s->device, &plci, nullptr, o); })) { vlog("vkCreatePipelineLayout failed."); return false; }
         s->alphaPipe = make_pipeline(s, w, h, /*additive=*/false);
         s->addPipe   = make_pipeline(s, w, h, /*additive=*/true);
-        if (!s->alphaPipe || !s->addPipe) { setFallback("pipeline_create_failed"); return false; }
+        s->oneOnePipe = make_pipeline(s, w, h, /*additive=*/true, /*oneOne=*/true);
+        if (!s->alphaPipe || !s->addPipe || !s->oneOnePipe) { setFallback("pipeline_create_failed"); return false; }
     }
 
     // Command pool + one command buffer + fence (inline-wait each frame).
@@ -636,10 +644,10 @@ extern "C" int mc2_vk_vfx_island_run(
         if (d.count == 0) continue;
         if ((uint64_t)d.start + d.count > particleCount) continue;   // clamp bad ranges
         if (!groupPage[gi]) continue;   // no resident texture: skipped, as the GL path does
-        VkPipeline want = d.additive ? s->addPipe.get() : s->alphaPipe.get();
+        VkPipeline want = d.additive == VFX_ADD_ONE_ONE ? s->oneOnePipe.get() : d.additive == VFX_ADD_SRC_ALPHA ? s->addPipe.get() : s->alphaPipe.get();
         if (want != bound) { vkCmdBindPipeline(s->cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }
         vkCmdBindDescriptorSets(s->cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groupPage[gi]->set, 0, nullptr);
-        const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns };
+        const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive == VFX_ADD_ONE_ONE ? 1u : 0u };
         vkCmdPushConstants(s->cbuf, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
         vkCmdDraw(s->cbuf, d.count * 6u, 1, d.start * 6u, 0);
         ++groupsDrawn;

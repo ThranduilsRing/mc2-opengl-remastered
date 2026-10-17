@@ -378,7 +378,7 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
                 VfxParticleDraw d;
                 d.start    = groups[gi].start;
                 d.count    = groups[gi].count;
-                d.additive = (groups[gi].blendMode == 1) ? 1u : 0u;
+                d.additive = (groups[gi].blendMode == 2) ? 2u : (groups[gi].blendMode == 1) ? 1u : 0u;
                 d.texture  = groups[gi].handle;
                 d.u0 = groups[gi].u0;  d.v0 = groups[gi].v0;
                 d.us = groups[gi].us;  d.vs = groups[gi].vs;
@@ -713,20 +713,20 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
             // same GL state as the old hand-set glBlendFunc; program(0)=skip, so the
             // bound particle program + uniforms + VAO are untouched.
             pipeline_binder::applyPipeline(
-                RenderCore::getPipelineDesc(grp.blendMode == 1
+                RenderCore::getPipelineDesc(grp.blendMode >= 1
                     ? RenderCore::PipelineId::VfxBillboardAdditive
                     : RenderCore::PipelineId::VfxBillboardAlpha),
-                grp.blendMode == 1 ? "VfxBillboardAdditive" : "VfxBillboardAlpha");
+                grp.blendMode >= 1 ? "VfxBillboardAdditive" : "VfxBillboardAlpha");
             // VFX-TUNING-UI-1: tell the FS whether this group is additive so the
             // additive-brightness scale applies only to additive groups.
             if (s_loc_vfxIsAdditive >= 0)
-                glUniform1i(s_loc_vfxIsAdditive, grp.blendMode == 1 ? 1 : 0);
+                glUniform1i(s_loc_vfxIsAdditive, grp.blendMode >= 1 ? 1 : 0);
             // VFX-BLACKBODY-1: enable the blackbody emissive tint only for
             // additive/emissive groups, and only while the gate is ON. Alpha
             // groups (smoke/dust) keep u_vfxBlackbody=0 -> never tinted.
             if (s_loc_vfxBlackbody >= 0)
                 glUniform1i(s_loc_vfxBlackbody,
-                            (s_blackbody_enabled && grp.blendMode == 1) ? 1 : 0);
+                            (s_blackbody_enabled && grp.blendMode >= 1) ? 1 : 0);
             // VFX-DISTORTION-1: enable heat-haze refraction for the distortion
             // alpha group ONLY. distortActive already requires the gate AND a live
             // scene-color grab. The FIXTURE (MC2_VFX_DISTORT_FIXTURE) tags every

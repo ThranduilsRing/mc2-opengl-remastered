@@ -43,6 +43,7 @@ layout(push_constant) uniform VfxGroupPush {
     vec2 uvOffset;
     vec2 uvSize;
     uint atlasColumns;   // 0 / 1 = static, > 1 = flipbook (frame = atlasIndex)
+    uint oneOne;         // additive mode, ADDITIVE_*
 } G;
 
 // Atlas UVs for the four billboard corners (normalized [0,1]).
@@ -51,9 +52,12 @@ const vec2 kCornerUv[4] = vec2[](
 // Two CCW triangles per quad (matches the GL VS winding fix).
 const int kCornerIdx[6] = int[](0, 1, 2, 2, 3, 1);
 
+// Group additive mode (push constant oneOne).
+const uint ADDITIVE_ONE_ONE = 1u;   // pure additive (GL OneOne); ADDITIVE_* mirrors VfxAdditive in vulkan_vfx_island.cpp
+
 layout(location = 0) out vec2 v_uv;
 layout(location = 1) out vec4 v_color;
-layout(location = 2) flat out uint v_is_head;
+layout(location = 2) flat out uint v_flags;
 
 void main() {
     uint particleId = uint(gl_VertexIndex) / 6u;
@@ -74,6 +78,16 @@ void main() {
 
     vec3 stuffCenter = p.position.xyz;
     vec3 glCenter    = mc2ToRender(stuffCenter);
+    // Beam heads and additive flares sit on the surface they hit and would fail the depth test there, so lift them
+    // toward the camera. Smoke, dust and alpha sprites keep true depth. The lift never crosses the near plane.
+    bool pulled = ((p.kind_flags & 1u) != 0u) || (G.oneOne == ADDITIVE_ONE_ONE);
+    if (pulled) {
+        vec3  toCamera = normalize(cross(U.camRight.xyz, U.camUp.xyz));
+        float viewW    = (U.worldToClipGL * vec4(glCenter, 1.0)).w;
+        float nearD    = U.worldToClipGL[3][2] / (U.worldToClipGL[2][2] - 1.0);
+        float room     = clamp(viewW - max(nearD, 0.0) * 1.05 - 0.01, 0.0, 0.5 * max(viewW, 0.0));
+        glCenter      -= toCamera * min(4.0 * max(sX, sY), room);
+    }
     vec3 worldPos    = glCenter
                      + U.camRight.xyz * corner.x
                      + U.camUp.xyz    * corner.y;
@@ -86,5 +100,5 @@ void main() {
     }
     v_uv      = G.uvOffset + (frameOffset + kCornerUv[cornerIdx]) * G.uvSize;
     v_color   = p.color;
-    v_is_head = p.kind_flags & 1u;
+    v_flags = (p.kind_flags & 1u) | (G.oneOne << 1);
 }
