@@ -28,9 +28,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 # MC2_SMOKE_MODE + MC2_NO_CURSOR_GRAB (set below) stop the game grabbing the pointer; nofocus.spawn refuses an exe too old to honour them.
-from smoke_lib import nofocus  # noqa: E402
+from smoke_lib import host_lease, nofocus  # noqa: E402
 
 DEFAULT_DEPLOY = "A:/Games/mc2-opengl/mc2-win64-v0.4"
+
+
+def acquire_label(args) -> str:
+    return f"mechbay_preview_harness {args.screen} capture"
 
 
 def main():
@@ -39,6 +43,8 @@ def main():
     ap.add_argument("--campaign", default="campaign",
                     help="stock campaign .fit basename passed to MC2_BOOT_TO_BAY (default: 'campaign')")
     ap.add_argument("--deploy", default=DEFAULT_DEPLOY)
+    ap.add_argument("--preview-log", action="store_true",
+                    help="set MC2_LOG_PREVIEW=1 (engine appends to preview_debug.log in the deploy folder; grows without bound, so off by default)")
     ap.add_argument("--frame", type=int, default=200,
                     help="capture frame number (frames since boot settle)")
     ap.add_argument("--timeout", type=int, default=25,
@@ -79,7 +85,6 @@ def main():
         "MC2_RENDER_BACKEND": "vulkan",
         "MC2_VK_SHARED_GBUFFER": "1",
         "MC2_LOG": "1",
-        "MC2_LOG_PREVIEW": "1",
         # Stock MC2_BOOT_TO_BAY does NOT skip straight to logistics — it launches
         # the campaign's first mission for real. The mech bay is only reached
         # after that mission plays out through the after-action screens. So we
@@ -98,12 +103,24 @@ def main():
         "MC2_NO_CURSOR_GRAB": "1",
     })
 
+    if args.preview_log:
+        env["MC2_LOG_PREVIEW"] = "1"
+    else:
+        env.pop("MC2_LOG_PREVIEW", None)
+
     if encyclopedia:
         # The Mechlopedia boots from the main menu: no campaign mission, no auto-win.
         for k in ("MC2_BOOT_TO_BAY", "MC2_SOAK_AUTOWIN", "MC2_SOAK_WIN_AFTER_SEC", "MC2_SOAK_STOP_AT_BAY"):
             env.pop(k, None)
 
     print(f"[harness] launching {exe} (screen={args.screen} campaign='{args.campaign}' frame={args.frame})")
+    # Host game lease for the whole launch-to-kill window (held until this process exits). Exclusive: this harness takes screenshots,
+    # so no other lane's engine may share the host (same as run_visual_capture). A named holder replaces "unknown holder" in other lanes' waits.
+    try:
+        host_lease.acquire(acquire_label(args), exclusive=True)
+    except host_lease.HostLeaseBusy as busy:
+        print(f"[harness] FAILED: {busy}")
+        sys.exit(2)
     with open(out_stdout, "w") as fo, open(out_stderr, "w") as fe:
         p = nofocus.spawn([str(exe)], cwd=str(deploy), stdout=fo, stderr=fe, env=env)
         try:

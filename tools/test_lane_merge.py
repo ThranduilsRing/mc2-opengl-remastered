@@ -276,7 +276,7 @@ def test_dry_run_changes_nothing_and_predicts_conflicts(env):
     commit_all(repo, "main edits")
     head = git(repo, "rev-parse", "HEAD")
     rc, out, _ = merge(env, "--dry-run")
-    assert rc == 0
+    assert rc == 5  # a predicted blocking conflict is the same rc as the real merge
     assert "PLAN conflicts=2 regenerable=1 blocking=1" in out and "a.txt" in out and "dry-run" in out
     assert git(repo, "rev-parse", "HEAD") == head
     assert git(repo, "status", "--porcelain") == ""
@@ -415,3 +415,40 @@ def test_verify_is_skipped_without_the_scripts_or_when_switched_off(tmp_path):
     (tmp_path / "scripts").mkdir()
     (tmp_path / "scripts" / "ninja_build.py").write_text("")
     assert lm.verify_merged(str(tmp_path), "none")[0] == "SKIPPED"
+
+
+BUGS = ".claude/cleanup/BUGS-FOUND-FIXED.md"
+HEAD_TXT = "# bugs\n\n| # | Bug |\n|---|---|\n"
+
+
+def test_bugs_table_keeps_both_and_renumbers(env):
+    repo, _ = env
+    write(repo, BUGS, HEAD_TXT + "| 1 | one |\n\nfooter\n")
+    commit_all(repo, "bugs base")
+    lane_branch(repo, {BUGS: HEAD_TXT + "| 1 | one |\n| 2 | lane bug |\n\nfooter\n"})
+    write(repo, BUGS, HEAD_TXT + "| 1 | one |\n| 2 | main bug |\n\nfooter\n")
+    commit_all(repo, "main bug")
+    rc, out, err = merge(env)
+    assert rc == 0, err
+    assert (repo / BUGS).read_text() == HEAD_TXT + "| 1 | one |\n| 2 | main bug |\n| 3 | lane bug |\n\nfooter\n"
+
+
+def test_bugs_table_same_row_changed_by_both_returns_5(env):
+    repo, _ = env
+    write(repo, BUGS, HEAD_TXT + "| 1 | one |\n")
+    commit_all(repo, "bugs base")
+    lane_branch(repo, {BUGS: HEAD_TXT + "| 1 | lane edit |\n"})
+    write(repo, BUGS, HEAD_TXT + "| 1 | main edit |\n")
+    commit_all(repo, "main edit")
+    rc, out, err = merge(env)
+    assert rc == 5 and "renumber" in err
+    assert not (repo / ".git" / "MERGE_HEAD").exists()
+
+
+def test_dry_run_with_blocking_conflict_returns_5(env):
+    repo, _ = env
+    lane_branch(repo, {"a.txt": "lane a\n"})
+    write(repo, "a.txt", "main a\n")
+    commit_all(repo, "main a")
+    rc, out, err = merge(env, "--dry-run")
+    assert rc == 5 and "blocking=1" in out
