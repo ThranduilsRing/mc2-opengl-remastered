@@ -31,7 +31,6 @@
 // Symbols exposed by engine_stubs.cpp (same link unit for the lib).
 // ---------------------------------------------------------------------------
 extern void          InstallTglHeap();
-extern UserHeapPtr   userHeapForTgl;
 
 // FastFile globals (fastfile.cpp).
 extern FastFile** fastFiles;
@@ -74,7 +73,7 @@ bool TglMeshLoader::ensureFastFile(const char* deployDir)
     if (g_initAttempted)   return false;  // already failed; don't retry
     g_initAttempted = true;
 
-    // Install the TGL heap (sets TG_Shape::tglHeap + systemHeap).
+    // Install the stand-in systemHeap.
     InstallTglHeap();
 
     // Allocate the fastFiles pointer array if not already done.

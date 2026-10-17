@@ -842,7 +842,7 @@ void Mission::start (void)
 void Mission::initTGLForMission()
 {
 	ZoneScopedN("Mission::initTGLForMission");
-	if (TG_Shape::tglHeap)
+	if (colorPool || vertexPool || facePool || shadowPool || trianglePool)
 	{
 		ZoneScopedN("Mission::initTGLForMission shutdown");
 		logTglPoolPeaks("mission_unload");
@@ -880,25 +880,12 @@ void Mission::initTGLForMission()
 			delete trianglePool;
 			trianglePool = nullptr;
 		}
-		
-		TG_Shape::tglHeap->destroy();
-
-		mission->tglHeapOwner.reset();
-		TG_Shape::tglHeap = nullptr;
 	}
 
 	loadProgress += 1.0f;
 
-	if ( !TG_Shape::tglHeap )
 	{
 		ZoneScopedN("Mission::initTGLForMission startup");
-		// Shape allocations need headroom beyond the per-frame pools.
-		unsigned long tglHeapSize = 128 * 1024 * 1024;
-
-		mission->tglHeapOwner = std::make_unique<UserHeap>();
-		TG_Shape::tglHeap = mission->tglHeapOwner.get();
-		TG_Shape::tglHeap->init(tglHeapSize,"TinyGeom");
-		
 		// Pools cover detailed model overrides across active blocks, including
 		// offscreen static props, so early props cannot exhaust storage for mechs.
 		colorPool 		= new TG_VertexPool;
@@ -1104,7 +1091,7 @@ void Mission::destroy (bool initLogistics)
 		initTGLForLogistics();
 	else
 	{
-		if (TG_Shape::tglHeap)
+		if (colorPool || vertexPool || facePool || shadowPool || trianglePool)
 		{
 			logTglPoolPeaks("mission_unload");
 			if (colorPool)
@@ -1141,11 +1128,6 @@ void Mission::destroy (bool initLogistics)
 				delete trianglePool;
 				trianglePool = nullptr;
 			}
-
-			TG_Shape::tglHeap->destroy();
-
-			tglHeapOwner.reset();
-			TG_Shape::tglHeap = nullptr;
 		}
 	}
 

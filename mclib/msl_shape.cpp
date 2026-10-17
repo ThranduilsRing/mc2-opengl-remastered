@@ -5,20 +5,6 @@
 
 
 //-------------------------------------------------------------------------------
-// TG_TypeMultiShape
-void *TG_MultiShape::operator new (size_t mySize)
-{
-	void *result = TG_Shape::tglHeap->Malloc(mySize);
-	return result;
-}
- 
-//-------------------------------------------------------------------------------
- void TG_MultiShape::operator delete (void *us)
-{
-	TG_Shape::tglHeap->Free(us);
-}
-
-//-------------------------------------------------------------------------------
 //Function returns 0 if OK.  realLength if textureName is longer then nameLength-1.
 //Returns -1 if texture requested is out of range.
 //This function digs the texture name(s) out of the ASE file so that the

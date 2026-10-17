@@ -96,17 +96,6 @@ void GetNameData (char *rawData, char *result)
 }	
 
 
- void *TG_TypeNode::operator new (size_t mySize)
- {
-	void *result = TG_Shape::tglHeap->Malloc(mySize);
-	return result;
- }
- 
- void TG_TypeNode::operator delete (void *us)
- {
-	TG_Shape::tglHeap->Free(us);
- }
- 
 void TG_TypeNode::destroy (void)
 {
 	init();
@@ -168,7 +157,7 @@ TG_ShapePtr TG_TypeNode::CreateFrom (void)
 //Function return 0 is OK.  -1 if file is not ASE Format or missing data.
 //This function simply parses the ASE buffers handed to it.  This allows
 //users to load the ase file themselves and manage their own memory for it.
-//It allocates memory for internal Lists.  These are straight tglHeap->Mallocs at present.
+//It allocates memory for internal Lists (vector stores owned by the shape).
 //
 long TG_TypeNode::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 {
@@ -627,7 +616,7 @@ void TG_Shape::destroy (void)
 //Function return 0 is OK.  -1 if file is not ASE Format or missing data.
 //This function simply parses the ASE buffers handed to it.  This allows
 //users to load the ase file themselves and manage their own memory for it.
-//It allocates memory for internal Lists.  These are straight tglHeap->Mallocs at present.
+//It allocates memory for internal Lists (vector stores owned by the shape).
 //
 // NOTE: Only takes the first HELPOBJECT from the ASE file.  Multi-object
 // Files will require user intervention to parse!!

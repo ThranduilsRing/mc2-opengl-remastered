@@ -29,17 +29,6 @@ static bool tgLightBillboardTwoSided()
 bool s_hotGreenLightTraceDone = false;
 bool s_hotGreenLightTraceEnabled = mc2::gate::get<"MC2_OBJECT_PARITY_TRACE">();
 
-void *TG_Shape::operator new (size_t mySize)
-{
-	void *result = TG_Shape::tglHeap->Malloc(mySize);
-	return result;
-}
- 
- void TG_Shape::operator delete (void *us)
-{
-	TG_Shape::tglHeap->Free(us);
-}
-
 //-------------------------------------------------------------------------------
 //This function sets up the camera Matrices for this TG_Shape to transform
 //itself with.  These matrices are static and only need to be set once per

@@ -809,7 +809,6 @@ int AssetViewerApp::runSmokeFitMaterial(const char* dir)
 // ---------------------------------------------------------------------------
 // Forward-declare the heap installer from engine_stubs.cpp.
 extern void InstallTglHeap();
-extern UserHeapPtr userHeapForTgl;
 
 int AssetViewerApp::runSmokeTglLoad(const char* deployDir)
 {

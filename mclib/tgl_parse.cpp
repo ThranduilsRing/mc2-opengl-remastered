@@ -9,7 +9,7 @@
 //Function return 0 is OK.  -1 if file is not ASE Format or missing data.
 //This function simply parses the ASE buffers handed to it.  This allows
 //users to load the ase file themselves and manage their own memory for it.
-//It allocates memory for internal Lists.  These are straight tglHeap->Mallocs at present.
+//It allocates memory for internal Lists (vector stores owned by the shape).
 //
 // NOTE: Only takes the first GEOMOBJECT from the ASE file.  Multi-object
 // Files will require user intervention to parse!!
@@ -588,7 +588,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 //-------------------------------------------------------------------------------
 //Function returns 0 if OK.  -1 if file not found or file not ASE Format.		
 //This function loads the ASE file into the TG_Triangle and TG_Vertex lists.
-//It allocates memory.  These are straight tglHeap->Mallocs at present.
+//It allocates memory (vector stores owned by the shape).
 //
 // NOTE: Only takes the first GEOMOBJECT from the ASE file.  Multi-object
 // Files will require user intervention to parse!!

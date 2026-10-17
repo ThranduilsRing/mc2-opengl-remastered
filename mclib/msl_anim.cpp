@@ -8,18 +8,6 @@
 //-------------------------------------------------------------------------------
 // class TG_AnimateShape
 //-------------------------------------------------------------------------------
-void *TG_AnimateShape::operator new (size_t mySize)
-{
-	void *result = TG_Shape::tglHeap->Malloc(mySize);
-	return result;
-}
- 
-//-------------------------------------------------------------------------------
- void TG_AnimateShape::operator delete (void *us)
-{
-	TG_Shape::tglHeap->Free(us);
-}
-//-------------------------------------------------------------------------------
 void _TG_Animation::SaveBinaryCopy (File *binFile)
 {
 	if (S_stricmp(nodeId,"NONE") != 0)

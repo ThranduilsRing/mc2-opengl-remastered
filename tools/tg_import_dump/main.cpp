@@ -22,7 +22,7 @@
 #include "msl.h"
 #include "assimp_importer.h"
 
-extern void InstallTglHeap();  // stubs.cpp — sets TG_Shape::tglHeap (CRT-backed)
+extern void InstallTglHeap();  // stubs.cpp — sets the CRT-backed systemHeap
 
 namespace {
 
