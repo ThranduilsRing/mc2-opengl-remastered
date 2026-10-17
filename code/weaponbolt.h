@@ -76,7 +76,7 @@ class WeaponBoltType : public ObjectType
 		bool			isBeam;
 		float			beamDuration;
 		float			beamWiggle;
-		char			*textureName;
+		std::unique_ptr<char[]>	textureName;	// B7o.8a: owned text, released in destroy()
 		float			uvAnimRate;
 		float			uvRepeat;
 		float			unitLength;
@@ -117,7 +117,7 @@ class WeaponBoltType : public ObjectType
 			beamWiggle = 0.0f;
 			mipTexture = false;
 			
-			textureName = NULL;
+			textureName.reset();
 			
 			arcEffect = false;
 			arcHeight = -1.0f;

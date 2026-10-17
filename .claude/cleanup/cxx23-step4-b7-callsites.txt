@@ -43,14 +43,8 @@ B7o.8b-ptrarrays	code/objmgr_misc.cpp:242	objcache_ptrarr	ObjectTypeManager::obj
 B7o.8b-ptrarrays	code/objmgr_misc.cpp:249	objcache_ptrarr	collidableList = (GameObjectPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GameObjectPtr) * numCollidables);
 B7o.9-operators	code/objtype.cpp:86	objtype_op	void* ObjectType::operator new (size_t ourSize) {
 B7o.9-operators	code/objtype.cpp:94	objtype_op	void ObjectType::operator delete (void* us) {
-B7o.8a-subarea-text	code/terrobj.cpp:1094	objcache_subarea	ObjectTypeManager::objectCache->Free(subAreas0);
-B7o.8a-subarea-text	code/terrobj.cpp:1100	objcache_subarea	ObjectTypeManager::objectCache->Free(subAreas1);
-B7o.3-actor-owner	code/terrobj.cpp:1170	app_new	adoptAppearance(new TreeAppearance);
-B7o.3-actor-owner	code/terrobj.cpp:1198	app_new	adoptAppearance(new BldgAppearance);
-B7o.8a-subarea-text	code/terrobj.cpp:1491	objcache_subarea	subAreas0 = (short *)ObjectTypeManager::objectCache->Malloc(sizeof(short) * MAX_SPECIAL_SUB_AREAS);
-B7o.8a-subarea-text	code/terrobj.cpp:1518	objcache_subarea	subAreas1 = (short *)ObjectTypeManager::objectCache->Malloc(sizeof(short) * MAX_SPECIAL_SUB_AREAS);
-B7o.8a-subarea-text	code/terrobj.cpp:1713	objcache_subarea	subAreas0 = (short *)ObjectTypeManager::objectCache->Malloc(sizeof(short) * MAX_SPECIAL_SUB_AREAS);
-B7o.8a-subarea-text	code/terrobj.cpp:1719	objcache_subarea	subAreas1 = (short *)ObjectTypeManager::objectCache->Malloc(sizeof(short) * MAX_SPECIAL_SUB_AREAS);
+B7o.3-actor-owner	code/terrobj.cpp:1161	app_new	adoptAppearance(new TreeAppearance);
+B7o.3-actor-owner	code/terrobj.cpp:1189	app_new	adoptAppearance(new BldgAppearance);
 B7o.3-actor-owner	code/turret.cpp:2136	app_new	adoptAppearance(new BldgAppearance);
 B7o.4-queue-markers	code/warrior.h:2118	marker_new	std::unique_ptr<BldgAppearance> getWayPointMarker( const Stuff::Vector3D& pos, const char* name );
 B7o.4-queue-markers	code/warrior_queue.cpp:28	marker_new	queueMarkers[numTacOrdersQueued] = getWayPointMarker( tacOrder.getWayPoint(0), "WalkWayPoint" );
@@ -65,8 +59,6 @@ B7o.4-queue-markers	code/warrior_state.cpp:738	marker_wire_null	tacOrderQueue[i]
 B7o.4-queue-markers	code/warrior_state.cpp:742	marker_new	return getWayPointMarker( queued.point, "WalkWayPoint" );
 B7o.4-queue-markers	code/warrior_state.cpp:744	marker_new	return getWayPointMarker( queued.point, "RunWayPoint" );
 B7o.4-queue-markers	code/warrior_state.cpp:746	marker_new	return getWayPointMarker( queued.point, "JumpWayPoint" );
-B7o.8a-subarea-text	code/weaponbolt.cpp:37	objcache_text	ObjectTypeManager::objectCache->Free(textureName);
-B7o.8a-subarea-text	code/weaponbolt.cpp:89	objcache_text	textureName = (char *)ObjectTypeManager::objectCache->Malloc(strlen(txmName)+1);
 B7o.7-typemgr	tests/unit/test_combat_retirement_seam.cpp:89	objtypemgr	if (ownedTypes) objects->objTypeManager = nullptr;
 B7o.7-typemgr	tests/unit/test_combat_retirement_seam.cpp:216	objtypemgr	objects.objTypeManager = world.ownedTypes = new ObjectTypeManager;
 B7o.7-typemgr	tests/unit/test_combat_retirement_seam.cpp:312	objtypemgr	objects.objTypeManager = nullptr;
