@@ -151,10 +151,8 @@ struct EnginePresentVk::Impl {
     mc2vk::OwnedFramebuffer   imguiFramebuffer;
     ImDrawData*     pendingImguiDrawData = nullptr;
     // GL texture name (the ImTextureID the game passes) -> a Vulkan image and the descriptor set ImGui_ImplVulkan binds for it.
-    // Members release in reverse order: view, image, memory, staging buffer, staging memory.
+    // Members release in reverse order: view, image, memory. The upload's staging bytes live in the frame ring.
     struct ImguiTexEntry {
-        mc2vk::OwnedDeviceMemory stageMem;
-        mc2vk::OwnedRawBuffer stageBuf;
         mc2vk::OwnedDeviceMemory memory;
         mc2vk::OwnedRawImage image;
         mc2vk::OwnedImageView view;
@@ -172,11 +170,11 @@ struct EnginePresentVk::Impl {
     // SINGLE-FRAME-IN-FLIGHT DEPENDENCY (VK-PRESENT-SINGLESUBMIT-1 audit note): the
     // HUD tail is race-free ONLY because exactly one present submission is in flight
     // (the inFlight wait at composite-record time retires frame N-1 before frame N
-    // records): hudColorVertexBuf/hudTexVertexBuf are single instances rewritten per
-    // frame and texture mirrors are updated in place on serial change. A mirror that
+    // records): the HUD vertices are frame-ring memory (per frame slot) and texture
+    // mirrors are updated in place on serial change. A mirror that
     // leaves the cache is retired through the context deferred-destroy queue (a
     // ticket, not a frame count). Any future 2-frames-in-flight change MUST ship
-    // together with per-frame HUD vertex buffers and mirror double-buffering.
+    // together with mirror double-buffering.
     std::vector<VkHudDraw> pendingHudDraws;
     // HUD-CANVAS-EXTENT-FIX (2026-07-11): the pixel space the queued HUD vertices
     // were authored in (gosRenderer width_/height_ == Environment.screenWidth/Height,
@@ -199,9 +197,6 @@ struct EnginePresentVk::Impl {
     mc2vk::OwnedPipeline      hudColorLineOpaquePipe;
     mc2vk::OwnedShaderModule  hudColorVert;
     mc2vk::OwnedShaderModule  hudColorFrag;
-    mc2vk::OwnedDeviceMemory  hudColorVertexMem; // declared before the buffer bound to it: released after it
-    mc2vk::OwnedRawBuffer        hudColorVertexBuf;
-    VkDeviceSize    hudColorVertexBytes = 0;
     mc2vk::OwnedDescriptorSetLayout hudTexDsl;
     mc2vk::OwnedDescriptorPool hudTexPool;
     mc2vk::OwnedPipelineLayout hudTexLayout;
@@ -211,9 +206,6 @@ struct EnginePresentVk::Impl {
     mc2vk::OwnedPipeline      hudTexOneOnePipe;      // VK-FIELD-VFX-7: GL OneOne (ONE,ONE) muzzle-flash/tracer sprites
     mc2vk::OwnedShaderModule  hudTexVert;
     mc2vk::OwnedShaderModule  hudTexFrag;
-    mc2vk::OwnedDeviceMemory  hudTexVertexMem; // declared before the buffer bound to it: released after it
-    mc2vk::OwnedRawBuffer        hudTexVertexBuf;
-    VkDeviceSize    hudTexVertexBytes = 0;
     struct HudTextureMirror {
         uint32_t serial = 0;
         uint32_t width = 0;
@@ -990,28 +982,6 @@ bool createHostBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes, VkBufferUsag
     return vkBindBufferMemory(s.dev, outBuf.get(), outMem.get(), 0) == VK_SUCCESS;
 }
 
-bool ensureHudColorVertexBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes) {
-    if (bytes == 0) return false;
-    if (s.hudColorVertexBuf && s.hudColorVertexBytes >= bytes)
-        return true;
-    if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                          s.hudColorVertexBuf, s.hudColorVertexMem, "present.hudColorVertex"))
-        return false;
-    s.hudColorVertexBytes = bytes;
-    return true;
-}
-
-bool ensureHudTexVertexBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes) {
-    if (bytes == 0) return false;
-    if (s.hudTexVertexBuf && s.hudTexVertexBytes >= bytes)
-        return true;
-    if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                          s.hudTexVertexBuf, s.hudTexVertexMem, "present.hudTexVertex"))
-        return false;
-    s.hudTexVertexBytes = bytes;
-    return true;
-}
-
 bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
     if (s.hudColorTriPipe.get() && s.hudColorLinePipe.get() &&
         s.hudColorTriOpaquePipe.get() && s.hudColorLineOpaquePipe.get() &&
@@ -1464,10 +1434,6 @@ void imguiTexSweep(EnginePresentVk::Impl& s) {
     const uint64_t now = ++s.imguiTexFrame;
     for (auto it = s.imguiTex.begin(); it != s.imguiTex.end();) {
         auto& e = it->second;
-        if (e.stageBuf && e.uploadFrame < now) {   // the upload was recorded in an earlier frame: the staging pair goes when that frame completes
-            struct Stage { mc2vk::OwnedDeviceMemory mem; mc2vk::OwnedRawBuffer buf; };   // memory declared first, released last
-            s.ctx->retire(Stage{std::move(e.stageMem), std::move(e.stageBuf)});
-        }
         if (e.src.expired()) {   // the texture was released or recreated: retire the set, destroy it once the GPU is done with it
             s.ctx->retire(std::make_unique<ImguiTexRetired>(std::move(e)));
             it = s.imguiTex.erase(it);
@@ -1541,13 +1507,11 @@ ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint32
         return fail();
 
     EnginePresentVk::Impl::ImguiTexEntry e;
-    if (!createHostBuffer(s, need, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, e.stageBuf, e.stageMem, "present.imguiTexStage"))
+    // The staging bytes are this frame's transient memory: the copy below is recorded into `cb`, which submits this frame.
+    const mc2vk::FrameAlloc stage = s.ctx->frameAlloc(need, 16);
+    if (!stage)
         return fail();
-    void* mapped = nullptr;
-    if (vkMapMemory(s.dev, e.stageMem.get(), 0, need, 0, &mapped) != VK_SUCCESS)
-        return fail();
-    std::memcpy(mapped, texels.bytes->data(), (size_t)need);
-    vkUnmapMemory(s.dev, e.stageMem.get());
+    std::memcpy(stage.ptr, texels.bytes->data(), (size_t)need);
 
     VkImageCreateInfo ici{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     ici.imageType = VK_IMAGE_TYPE_2D;
@@ -1606,9 +1570,10 @@ ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint32
     barrier(cb, e.image.get(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     VkBufferImageCopy region{};
+    region.bufferOffset = stage.offset;
     region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     region.imageExtent = {texels.width, texels.height, 1};
-    vkCmdCopyBufferToImage(cb, e.stageBuf.get(), e.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    vkCmdCopyBufferToImage(cb, stage.buffer, e.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
     barrier(cb, e.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
@@ -1852,32 +1817,24 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     const size_t lineBytes = lineVerts.size() * sizeof(HudColorGpuVertex);
     const size_t texBytes = texVerts.size() * sizeof(HudTexGpuVertex);
     const VkDeviceSize colorBytes = (VkDeviceSize)(triBytes + lineBytes);
-    if (colorBytes != 0 && !ensureHudColorVertexBuffer(s, colorBytes)) {
-        s.pendingHudDraws.clear();
-        return draws;
-    }
-    if (texBytes != 0 && !ensureHudTexVertexBuffer(s, (VkDeviceSize)texBytes)) {
-        s.pendingHudDraws.clear();
-        return draws;
-    }
+    // Both vertex streams are this frame's transient memory (frame ring): rewritten every frame, never read after the frame completed.
+    mc2vk::FrameAlloc colorVb, texVb;
     if (colorBytes != 0) {
-        void* mapped = nullptr;
-        if (vkMapMemory(s.dev, s.hudColorVertexMem.get(), 0, colorBytes, 0, &mapped) != VK_SUCCESS) {
+        colorVb = s.ctx->frameAlloc(colorBytes, 16);
+        if (!colorVb) {
             s.pendingHudDraws.clear();
             return draws;
         }
-        if (triBytes) std::memcpy(mapped, triVerts.data(), triBytes);
-        if (lineBytes) std::memcpy((uint8_t*)mapped + triBytes, lineVerts.data(), lineBytes);
-        vkUnmapMemory(s.dev, s.hudColorVertexMem.get());
+        if (triBytes) std::memcpy(colorVb.ptr, triVerts.data(), triBytes);
+        if (lineBytes) std::memcpy((uint8_t*)colorVb.ptr + triBytes, lineVerts.data(), lineBytes);
     }
     if (texBytes != 0) {
-        void* mapped = nullptr;
-        if (vkMapMemory(s.dev, s.hudTexVertexMem.get(), 0, (VkDeviceSize)texBytes, 0, &mapped) != VK_SUCCESS) {
+        texVb = s.ctx->frameAlloc((VkDeviceSize)texBytes, 16);
+        if (!texVb) {
             s.pendingHudDraws.clear();
             return draws;
         }
-        std::memcpy(mapped, texVerts.data(), texBytes);
-        vkUnmapMemory(s.dev, s.hudTexVertexMem.get());
+        std::memcpy(texVb.ptr, texVerts.data(), texBytes);
     }
 
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
@@ -1901,7 +1858,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     vkCmdPushConstants(cb, s.hudColorLayout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(extent), extent);
     VkDeviceSize offset = 0;
     VkPipeline boundPipe = VK_NULL_HANDLE;
-    VkBuffer boundBuffer = VK_NULL_HANDLE;
+    int boundStream = -1;   // 0 = color vertices bound, 1 = textured vertices bound
     for (const HudNativeCmd& td : commands) {
         if (td.stream == 0 || td.stream == 1) {
             const VkPipeline pipe = (td.stream == 0)
@@ -1913,10 +1870,10 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
                 boundPipe = pipe;
             }
-            if (boundBuffer != s.hudColorVertexBuf.get()) {
-                offset = 0;
-                { const VkBuffer vb = s.hudColorVertexBuf.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &offset); }
-                boundBuffer = s.hudColorVertexBuf.get();
+            if (boundStream != 0) {
+                offset = colorVb.offset;
+                vkCmdBindVertexBuffers(cb, 0, 1, &colorVb.buffer, &offset);
+                boundStream = 0;
             }
             const uint32_t first = (td.stream == 1)
                 ? (uint32_t)triVerts.size() + td.first
@@ -1930,10 +1887,10 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
                 boundPipe = pipe;
             }
-            if (boundBuffer != s.hudTexVertexBuf.get()) {
-                VkDeviceSize texOffset = 0;
-                { const VkBuffer vb = s.hudTexVertexBuf.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &texOffset); }
-                boundBuffer = s.hudTexVertexBuf.get();
+            if (boundStream != 1) {
+                VkDeviceSize texOffset = texVb.offset;
+                vkCmdBindVertexBuffers(cb, 0, 1, &texVb.buffer, &texOffset);
+                boundStream = 1;
             }
             HudTexPush pc{};
             pc.extent[0] = hudExW;   // HUD-CANVAS-EXTENT-FIX (see hudColor path above)

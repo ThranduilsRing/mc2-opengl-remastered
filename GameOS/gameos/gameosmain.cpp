@@ -1237,14 +1237,14 @@ int main(int argc, char** argv)
 #endif
 
     static uint32_t s_hitchFrame = 0u;
+#ifdef MC2_VULKAN
+    if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().beginFrame();   // frame 1 of the completion tracker
+#endif
     while( !g_exit ) {
         ZoneScopedN("Frame");
 
 		uint64_t start_tick = timing::gettickcount();
         mc2_hitch::BeginFrame(s_hitchFrame);
-#ifdef MC2_VULKAN
-        if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().beginFrame();   // opens the completion tracker's frame
-#endif
 
     frameThrottleLogicEvents();
 
@@ -1302,7 +1302,9 @@ int main(int argc, char** argv)
 
     frameSwapWindow(win);
 #ifdef MC2_VULKAN
-    if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().endFrame();   // seals the frame with the last graphics submit
+    // The present is the frame boundary: it seals this frame's graphics submits and opens the next frame (any other host that presents, the editor
+    // viewport, calls the same function right after its present).
+    if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().frameBoundary();
 #endif
     frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
 

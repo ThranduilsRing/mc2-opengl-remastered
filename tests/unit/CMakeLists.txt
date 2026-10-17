@@ -48,6 +48,7 @@ add_executable(mc2_tests
     test_gpu_buffer_owner.cpp  # GPU-BUFFER-OWNER-SKELETON-1: owner record invariants (offline)
     test_completion_tracker.cpp  # the Vulkan completion tracker: ticket math and frame sealing (offline)
     test_deferred_destroy.cpp  # the Vulkan deferred-destroy queue: not before the ticket, after it, negative control (offline)
+    test_frame_ring.cpp  # the Vulkan frame ring offset arithmetic: slots, alignment, growth sizing (offline)
     test_det_rng.cpp        # DETERMINISTIC-RNG-1: LCG kernel determinism (offline)
     test_appearance_rng.cpp # the appearance-side random stream: replayable, in range, apart from the simulation's
     test_script_music.cpp   # the music state an ABL script sees: its own request on the scenario clock, never the device

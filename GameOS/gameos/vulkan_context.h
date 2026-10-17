@@ -28,6 +28,7 @@
 #include "vk_deferred_destroy.h"
 #include "vk_device_profile.h"
 #ifdef MC2_VULKAN_ISLAND
+#include "vk_frame_ring.h"
 #include "vk_shared_light_feed.h"
 #endif
 
@@ -163,10 +164,23 @@ public:
     bool isComplete(const GpuTicket& t) const;
     // Blocks until the ticket completes or the timeout passes. A timeout or a lost device is logged with `why`; returns whether the ticket is complete.
     bool wait(const GpuTicket& t, uint64_t timeoutNs, std::string_view why) const;
-    // Frame bracket of the engine loop: beginFrame polls the counter and opens a frame, endFrame seals it with the graphics value submitted so far and
-    // emits the [VK_TIMELINE v1] summary at its cadence.
+    // Frame bracket: beginFrame polls the counter, opens a frame, collects the deferred-destroy entries that completed and restarts the frame-ring slot
+    // (a call on an open frame does nothing); endFrame seals the frame with the graphics value submitted so far and emits the [VK_TIMELINE v1] summary at
+    // its cadence. A host that presents calls frameBoundary() right after the present: endFrame, then beginFrame of the next frame.
     void beginFrame();
     void endFrame();
+    void frameBoundary() { endFrame(); beginFrame(); }
+
+#ifdef MC2_VULKAN_ISLAND
+    // Per-frame transient memory (vertex data, dynamic-offset uniform and storage rows, copy sources): host-visible, written through the returned pointer,
+    // valid until the frame that asked for it has completed. `align` 0 = the device uniform / storage offset alignment. An empty result means the
+    // allocation failed; the caller declines its draw. Main thread only.
+    FrameAlloc frameAlloc(VkDeviceSize size, VkDeviceSize align = 0) { return frameRing_.alloc(*this, size, align ? align : frameAlign_); }
+    // The frame the engine loop is recording and the slot of the per-frame memory it uses. framesInFlight is 1 until the two-frame slice.
+    struct FrameContext { uint64_t frame = 0; uint32_t slot = 0; uint32_t framesInFlight = 1; };
+    FrameContext frameContext() const { return {tracker_.frameNo(), static_cast<uint32_t>(tracker_.frameNo() % FrameRingCore::kSlots), 1}; }
+    const FrameRing& frameRing() const { return frameRing_; }
+#endif
 
     // Parks an owner (a buffer, an image, a container of them) until the GPU has finished the frame that may use it, then destroys it: the replacement
     // for "waitIdle, then reset". Main thread only. Owners must be move-only types or movable values.
@@ -195,6 +209,10 @@ private:
     profile::Evaluation profile_ = [] { profile::Evaluation e; e.accepted = false; return e; }();   // the chosen device's verdict (see profile())
     VkSemaphore      gfxTimeline_       = VK_NULL_HANDLE;   // the graphics queue's timeline: signalled with CompletionTracker::noteSubmit values
     mutable CompletionTracker tracker_;
+#ifdef MC2_VULKAN_ISLAND
+    FrameRing        frameRing_;
+    VkDeviceSize     frameAlign_ = 256;   // max(uniform, storage offset alignment, 16): set at device birth
+#endif
     DeferredDestroy  deferred_;   // after the allocator's owners are gone: destroy() drains it first
     mutable std::mutex submitMutex_;
     uint8_t          luid_[8]           = {0, 0, 0, 0, 0, 0, 0, 0};

@@ -40,6 +40,7 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
+#include <algorithm>
 #include <cstring>
 #include <memory>
 #include <vector>
@@ -425,6 +426,14 @@ bool VulkanContext::init(bool wantPresent) {
         if (vkCreateSemaphore(device_, &sci, nullptr, &gfxTimeline_) != VK_SUCCESS) { gfxTimeline_ = VK_NULL_HANDLE; return fail("graphics timeline semaphore"); }
         tracker_ = CompletionTracker{};
     }
+#ifdef MC2_VULKAN_ISLAND
+    {
+        VkPhysicalDeviceProperties props{};
+        vkGetPhysicalDeviceProperties(phys_, &props);
+        const VkDeviceSize a = std::max<VkDeviceSize>({props.limits.minUniformBufferOffsetAlignment, props.limits.minStorageBufferOffsetAlignment, 16});
+        frameAlign_ = a;
+    }
+#endif
 
     // ---- VMA allocator (volk-imported functions) ----
     {
@@ -531,9 +540,17 @@ bool VulkanContext::wait(const GpuTicket& t, uint64_t timeoutNs, std::string_vie
 }
 
 void VulkanContext::beginFrame() {
+    if (tracker_.frameOpen()) return;
     poll();
     tracker_.beginFrame();
     deferred_.collect(tracker_);
+#ifdef MC2_VULKAN_ISLAND
+    // The ring slot of this frame was last written by frame F-2: its work must be done before the slot restarts. The islands' own fences keep this
+    // true today; the wait only costs anything if one of them let a frame run further ahead.
+    const uint64_t f = tracker_.frameNo();
+    if (f > FrameRingCore::kSlots) wait(tracker_.frameTicket(f - FrameRingCore::kSlots), 5ull * 1000 * 1000 * 1000, "frame_ring_slot");
+    frameRing_.beginFrame(f);
+#endif
 }
 
 void VulkanContext::drainDeferred(std::string_view why) {
@@ -568,6 +585,7 @@ void VulkanContext::destroy() {
     // The islands consume the light feed, so they go first; both go before the allocator and the device their objects were made on.
     for (size_t i = 0; i < islands_.size(); ++i) retireIsland(static_cast<IslandSlot>(i));
     lightFeed_.release();
+    frameRing_.release();
     // PRECONDITION: the owners that live outside the context (the shared scene colour / depth / normal images, the present path's shared image, the
     // shadow island's images) were destroyed by the engine shutdown ahead of this call. A resource still alive here would release its image on a device
     // that is gone, so the count is checked and a violation is logged where the validation layer would otherwise report it far from its cause.

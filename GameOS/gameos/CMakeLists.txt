@@ -254,6 +254,8 @@ if(MC2_VULKAN)
         list(APPEND SOURCES vk_first_layout.cpp)
         # Record, submit and wait for one setup command buffer (first layouts, query pool resets).
         list(APPEND SOURCES vk_one_shot.cpp)
+        # Per-frame transient memory (FrameRing): two slot regions of one host-visible buffer, reclaimed by completion tickets.
+        list(APPEND SOURCES vk_frame_ring.cpp)
         # Move-only owners of the Vulkan objects an island creates (RAII; the destructor is the only release path).
         list(APPEND SOURCES vk_owned.cpp)
         # STEP 3.4P: native Vulkan compute producers (Slang compute pipelines; terrain lighting + water cull/pack).
