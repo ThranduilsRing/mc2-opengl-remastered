@@ -1,5 +1,7 @@
 #include <stuff/stuff.hpp>
 #include "stuff_glm_config.h"
+#include "math/mc2_math.h"
+#include "math/stuff_glm_bridge.h"
 #include "axis_convert.h"
 #include "doctest.h"
 
@@ -53,6 +55,9 @@ struct Corpus {
     void scalar(const char* name, float old, float candidate) {
         record(name, "sim-side", false, same(old, candidate));
     }
+    void exact(const char* name, float old, float candidate) {
+        record(name, "sim-side", true, same(old, candidate));
+    }
     void vector(const char* name, const Stuff::Vector3D& old, glm::vec3 candidate,
                 bool required = false, const char* tag = "sim-side") {
         record(name, tag, required, same(old.x, candidate.x) &&
@@ -72,17 +77,11 @@ struct Corpus {
     }
 };
 
-glm::vec3 glmVector(const Stuff::Vector3D& v) { return {v.x, v.y, v.z}; }
-
-// Stuff multiplies row vectors; GLM indices remain [column][row].
+// The production bridge (mclib/math/stuff_glm_bridge.h) is the converter under test: Stuff multiplies row vectors, glm
+// indices are [column][row], an affine matrix gets the implicit (0, 0, 0, 1) fourth column.
+glm::vec3 glmVector(const Stuff::Vector3D& v) { return mc2::math::toGlm(v); }
 template<class M>
-glm::mat4 glmMatrix(const M& m, int columns) {
-    glm::mat4 result(1.0f);
-    for (int r = 0; r < 4; ++r)
-        for (int c = 0; c < columns; ++c)
-            result[c][r] = m(r, c);
-    return result;
-}
+glm::mat4 glmMatrix(const M& m, int) { return mc2::math::toGlm(m); }
 
 float finite(std::mt19937& rng) {
     const auto bits = static_cast<std::uint32_t>(rng());
@@ -101,13 +100,17 @@ void vectors(Corpus& corpus, const Stuff::Vector3D& a, const Stuff::Vector3D& b,
     corpus.vector("vector.add-scaled", out.AddScaled(a, b, t), ga + gb * t);
     corpus.vector("vector.combine", out.Combine(a, t, b, 1.0f - t), t * ga + (1.0f - t) * gb);
     corpus.vector("vector.lerp", out.Lerp(a, b, t), glm::mix(ga, gb, t));
+    corpus.vector("exact.lerp", out.Lerp(a, b, t), mc2::math::lerp(ga, gb, t), true);
     corpus.vector("vector.cross", out.Cross(a, b), glm::cross(ga, gb));
     corpus.scalar("vector.dot", a * b, glm::dot(ga, gb));
     corpus.scalar("vector.length-squared", a.GetLengthSquared(), glm::dot(ga, ga));
     corpus.scalar("vector.length", a.GetLength(), glm::length(ga));
     corpus.scalar("vector.approximate-length", a.GetApproximateLength(), glm::length(ga));
     if (!Stuff::Small_Enough(t))
+    {
         corpus.vector("vector.scalar-divide", out.Divide(a, t), ga / t);
+        corpus.vector("exact.divide", out.Divide(a, t), mc2::math::divide(ga, t), true);
+    }
     if (!Stuff::Small_Enough(b.x) && !Stuff::Small_Enough(b.y) && !Stuff::Small_Enough(b.z))
         corpus.vector("vector.component-divide", out.Divide(a, b), ga / gb, true);
     const float length = a.GetLength();
@@ -118,6 +121,7 @@ void vectors(Corpus& corpus, const Stuff::Vector3D& a, const Stuff::Vector3D& b,
     }
     Stuff::Point3D point;
     corpus.vector("point.add", point.Add(a, b), ga + gb, true);
+    corpus.vector("bridge.round-trip", mc2::math::toVector3D(ga), ga, true);
     corpus.vector("point.subtract", point.Subtract(Stuff::Point3D(a), b), ga - gb, true);
     Stuff::Vector3D delta;
     delta.Subtract(a, b);
@@ -149,6 +153,18 @@ void scalars(Corpus& corpus, float x, float y) {
     const float bounded = std::isfinite(x) ? x / (1.0f + std::fabs(x)) : 0.0f;
     corpus.scalar("scalar.asin", Stuff::Arcsin(bounded), glm::asin(bounded));
     corpus.scalar("scalar.acos", Stuff::Arccos(bounded), glm::acos(bounded));
+    // The harness TU includes stuff.hpp before <cmath>: Stuff binds the double CRT here, as in the non-PCH libraries.
+    corpus.exact("exact.sin", Stuff::Sin(x), mc2::math::sinD(x));
+    corpus.exact("exact.cos", Stuff::Cos(x), mc2::math::cosD(x));
+    if (!Stuff::Small_Enough(x) || !Stuff::Small_Enough(y))
+        corpus.exact("exact.atan2", Stuff::Arctan(y, x), mc2::math::atan2D(y, x));
+    corpus.exact("exact.acos", Stuff::Arccos(bounded), mc2::math::acosD(bounded));
+    corpus.exact("exact.wrap-static", Stuff::Radian::Normalize(x), mc2::math::wrapAngleStatic(x));
+    {
+        Stuff::Radian member(x);
+        member.Normalize();
+        corpus.exact("exact.wrap-member", member.angle, mc2::math::wrapAngleMember(x));
+    }
     const Stuff::SinCosPair pair{Stuff::Radian(x)};
     corpus.scalar("angle.sincos-sin", pair.sine, glm::sin(x));
     corpus.scalar("angle.sincos-cos", pair.cosine, glm::cos(x));
@@ -254,7 +270,18 @@ TEST_CASE("Stuff/GLM identity detects byte changes and classifies migration cand
         matrices(corpus, rng, i);
     }
     std::printf("[STUFF_GLM] seed=%u random_cases=%u glm=1.0.1 mode=scalar-precise\n", seed, randomCases);
-    REQUIRE(corpus.rows.size() == 47);
+    REQUIRE(corpus.rows.size() == 56);
+    // Step 5: every operation identical on the opening corpus is now REQUIRED identical (a port relies on it), as are the exact
+    // wrappers (mclib/math/mc2_math.h) and the bridge. Differing render-only operations stay characterized.
+    static const char* const identical[] = {"angle.sincos-cos", "angle.sincos-sin", "chain.line-of-sight-step",
+        "chain.mover-integration", "chain.path-distance", "chain.row-transform", "linear.multiply", "matrix.multiply",
+        "point.affine-transform", "quaternion.multiply", "scalar.approximate-sqrt", "scalar.sqrt", "unit-vector.normalize",
+        "vector.add-scaled", "vector.approximate-length", "vector.combine", "vector.cross", "vector.dot", "vector.length",
+        "vector.length-squared", "vector.normalize"};
+    for (const char* name : identical) {
+        REQUIRE(corpus.rows.count(name) == 1);
+        corpus.rows[name].requireIdentity = true;
+    }
     for (const auto& [name, row] : corpus.rows) {
         std::printf("[STUFF_GLM] op=%s tag=%s samples=%u mismatches=%u class=%s policy=%s\n",
             name.c_str(), row.tag, row.samples, row.mismatches,
