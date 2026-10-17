@@ -1029,8 +1029,11 @@ void aText::init( FitIniFile* file, const char* header )
 		//WAY too small.  Good crash.  Only crashes in profile.
 		// cLoadString now checks buffer length and keeps game from crashing!!
 		// -fs
+		// TextID 0 means "no text" (static labels set their text later); there is no string 0.
 		char tmp[1024];
-		cLoadString( textID, tmp, 1023 );
+		tmp[0] = 0;
+		if ( textID != 0 )
+			cLoadString( textID, tmp, 1023 );
 		text = tmp;
 	}
 
