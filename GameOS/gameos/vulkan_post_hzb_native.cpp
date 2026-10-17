@@ -136,7 +136,7 @@ struct gosPostProcess::VkPostHzbNative {
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipe;
     mc2vk::OwnedCommandPool cpool;
-    mc2vk::OwnedFence submitFence; // VK-QWI-TO-FENCE-1: per-submit retire fence
+    uint64_t ticket = 0;   // timeline value of this pass's last submit (0 = never): waited at the NEXT run, not inline after the submit
 };
 
 namespace {
@@ -603,6 +603,22 @@ bool gosPostProcess::runVkPostHzbNative()
         return false;
     }
     if (s->disabled) return false;
+
+    // The previous submit of this pass must have completed before its command buffer is reused. A timeline ticket waited here (a frame after the submit,
+    // normally already complete) replaces the fence the pass used to wait inline right after every submit.
+    {
+        const std::chrono::steady_clock::time_point tWait0 = std::chrono::steady_clock::now();
+        if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{s->ticket, 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
+            setFallback("fence_timeout"); s->disabled = true; return false;
+        }
+        g_health.waitUsLast = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - tWait0).count();
+        g_health.waitUsAccum += g_health.waitUsLast;
+        ++g_health.waitSamples;
+        if ((g_health.waitSamples % 600) == 1)
+            vlog("[QWI-WAIT] wait_us_last=%.1f wait_us_avg=%.1f samples=%lu",
+                 g_health.waitUsLast,
+                 g_health.waitUsAccum / (double)g_health.waitSamples, g_health.waitSamples);
+    }
     if (!s->inited || s->width != width_ || s->height != height_ || s->mipCount != hzbMipCount_) {
         if (s->inited) destroy_state(s);
         if (!build_state(s, width_, height_, hzbMipCount_)) {
@@ -688,49 +704,14 @@ bool gosPostProcess::runVkPostHzbNative()
 
     // VK-RUNG8 item-4: direct-chain only — the submit waits/signals no GL<->VK
     // semaphores; the images stay Vulkan-owned for the following native pass.
-    // VK-QWI-TO-FENCE-1: dedicated per-submit fence instead of the queue-wide drain
-    // (see vulkan_post_fog_native.cpp for the full rationale). Fail-soft to QWI if
-    // fence creation ever fails.
-    if (!s->submitFence) {
-        VkFenceCreateInfo fci{};
-        fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        mc2vk::create(s->submitFence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });   // empty on failure: the queue drain below stands in
-    }
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1;
     si.pCommandBuffers = &cb;
-    if (mc2vk::submitGraphics(si, s->submitFence.get()) != VK_SUCCESS) {
+    if (mc2vk::getOrCreateEngineVulkanContext().submit(si, VK_NULL_HANDLE, &s->ticket) != VK_SUCCESS) {
         setFallback("submit_failed");
         s->disabled = true;
         return false;
-    }
-
-    // Slot-recycle guard: this frame's command buffer must be retired before reuse
-    // next frame (per-submit fence; QWI only as the fence-creation fail-soft).
-    {
-        const clk::time_point tWait0 = clk::now();
-        if (s->submitFence) {
-            const VkFence submitFence = s->submitFence.get();
-            if (vkWaitForFences(s->device, 1, &submitFence, VK_TRUE,
-                                5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
-                setFallback("fence_timeout");
-                s->disabled = true;
-                return false;
-            }
-            vkResetFences(s->device, 1, &submitFence);
-        } else if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
-            setFallback("queue_wait_idle_failed");
-            s->disabled = true;
-            return false;
-        }
-        g_health.waitUsLast = std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
-        g_health.waitUsAccum += g_health.waitUsLast;
-        ++g_health.waitSamples;
-        if ((g_health.waitSamples % 600) == 1)
-            vlog("[QWI-WAIT] wait_us_last=%.1f wait_us_avg=%.1f samples=%lu",
-                 g_health.waitUsLast,
-                 g_health.waitUsAccum / (double)g_health.waitSamples, g_health.waitSamples);
     }
 
     g_health.copyDepthOps = 0;

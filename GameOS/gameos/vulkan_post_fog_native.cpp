@@ -181,7 +181,7 @@ struct gosPostProcess::VkPostFogNative {
     mc2vk::OwnedPipeline   edgePipe;
     mc2vk::OwnedPipeline   oobPipe;
     mc2vk::OwnedCommandPool cpool;
-    mc2vk::OwnedFence      submitFence; // VK-QWI-TO-FENCE-1: per-submit retire fence
+    uint64_t ticket = 0;   // timeline value of this pass's last submit (0 = never): waited at the NEXT run, not inline after the submit
 };
 
 static bool vkPostFogDirectChainEnabled();
@@ -558,6 +558,21 @@ bool gosPostProcess::runVkPostFogNative()
     if (!vkPostFogNative_) vkPostFogNative_.reset(new VkPostFogNative());
     VkPostFogNative* s = vkPostFogNative_.get();
     if (s->disabled) return false;
+    // The previous submit of this pass must have completed before its host-visible inputs are rewritten and its command buffer is reused. A timeline
+    // ticket waited here (a frame after the submit, normally already complete) replaces the fence the pass used to wait inline right after every submit.
+    {
+        const std::chrono::steady_clock::time_point tWait0 = std::chrono::steady_clock::now();
+        if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{s->ticket, 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
+            setFallback("fence_timeout"); s->disabled = true; return false;
+        }
+        g_pf.waitUsLast = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - tWait0).count();
+        g_pf.waitUsAccum += g_pf.waitUsLast;
+        ++g_pf.waitSamples;
+        if ((g_pf.waitSamples % 600) == 1)
+            vlog("[QWI-WAIT] wait_us_last=%.1f wait_us_avg=%.1f samples=%lu",
+                 g_pf.waitUsLast,
+                 g_pf.waitUsAccum / (double)g_pf.waitSamples, g_pf.waitSamples);
+    }
     if (!s->inited || s->width != width_ || s->height != height_) {
         if (s->inited) destroy_state(s);
         if (!build_state(s, width_, height_)) {
@@ -682,47 +697,15 @@ bool gosPostProcess::runVkPostFogNative()
 
     // ---- Submit (VK-RUNG8 item-4: direct-chain only — no GL<->VK semaphores). The
     // images stay Vulkan-owned for the following native post/composite pass. ----
-    // VK-QWI-TO-FENCE-1: retire THIS submit via a dedicated per-submit fence instead
-    // of a queue-wide vkQueueWaitIdle drain. The slot-recycle guarantee only needs
-    // this pass's own cbuf retired before reuse next frame; the fence preserves that
-    // exactly (a vkQueueSubmit fence signal is also ordered after all earlier
-    // submission-order work on the queue, so the wait is never WEAKER than the drain
-    // it replaces). Fail-soft: if fence creation ever fails, keep the queue drain.
-    if (!s->submitFence) {
-        VkFenceCreateInfo fci{};
-        fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        mc2vk::create(s->submitFence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });   // empty on failure: the queue drain below stands in
-    }
+    // The submit goes through the completion tracker; its timeline value is waited at the next run of this pass (top of the function), not here.
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (mc2vk::submitGraphics(si, s->submitFence.get()) != VK_SUCCESS) {
+    if (mc2vk::getOrCreateEngineVulkanContext().submit(si, VK_NULL_HANDLE, &s->ticket) != VK_SUCCESS) {
         setFallback("submit_failed"); s->disabled = true; return false;
     }
     timerGuard.submitted();
 
-    // Slot-recycle guard: this frame's command buffer must be retired before reuse
-    // next frame (per-submit fence; QWI only as the fence-creation fail-soft).
-    {
-        const clk::time_point tWait0 = clk::now();
-        if (s->submitFence) {
-            const VkFence submitFence = s->submitFence.get();
-            if (vkWaitForFences(s->device, 1, &submitFence, VK_TRUE,
-                                5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
-                setFallback("fence_timeout"); s->disabled = true; return false;
-            }
-            vkResetFences(s->device, 1, &submitFence);
-        } else if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
-            setFallback("queue_wait_idle_failed"); s->disabled = true; return false;
-        }
-        g_pf.waitUsLast = std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
-        g_pf.waitUsAccum += g_pf.waitUsLast;
-        ++g_pf.waitSamples;
-        if ((g_pf.waitSamples % 600) == 1)
-            vlog("[QWI-WAIT] wait_us_last=%.1f wait_us_avg=%.1f samples=%lu",
-                 g_pf.waitUsLast,
-                 g_pf.waitUsAccum / (double)g_pf.waitSamples, g_pf.waitSamples);
-    }
 
     g_pf.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
     ++g_pf.usedVulkan;
