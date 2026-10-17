@@ -1587,8 +1587,7 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
         static uint32_t s_logged = 0;
         if (skipped != 0 && s_logged < kImguiLogCap) {
             ++s_logged;
-            std::fprintf(stderr, "[VK_IMGUI] texture_cmds_skipped=%u (no VK image for the GL texture name)
-", skipped);
+            std::fprintf(stderr, "[VK_IMGUI] texture_cmds_skipped=%u (no VK image for the GL texture name)\n", skipped);
         }
     }
 

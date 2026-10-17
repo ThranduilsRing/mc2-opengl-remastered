@@ -7,7 +7,7 @@
 #include "mc2fmt.h"
 
 // Does a packet alpha-test: its own flag, or its texture slot carrying alpha on the type source (null/released texture list reads as no alpha).
-static bool packetHasAlpha(const GpuStaticPropPacket& pkt, const TG_TypeShape* src) {
+bool GpuStaticPropBatcher::packetHasAlpha(const GpuStaticPropPacket& pkt, const TG_TypeShape* src) {
     return (pkt.materialFlags & STATIC_PROP_FLAG_ALPHA_TEST) != 0 ||
            (src && src->listOfTextures && pkt.textureSlot < src->numTextures && src->listOfTextures[pkt.textureSlot].textureAlpha);
 }
