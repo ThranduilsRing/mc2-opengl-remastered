@@ -1,5 +1,25 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FORTY-THIRD session (2026-10-16, Sonnet 5.5) -- s42 review fixes: camera pull limited to heads/OneOne, near-plane clamp, nits
+
+### Commits (after nifty merge bee7435c2)
+d83a07b0f vfx_particle.vert: pull only when `kind_flags&1` (head) or the group is OneOne (`G.oneOne`), lift capped by the room in front of the near plane (near taken from the GL projection terms, never more than half the view distance), WHAT+WHY comment, `ADDITIVE_ONE_ONE` constant + `VFX_ADD_*` enum in `vulkan_vfx_island.cpp`, `v_is_head` -> `v_flags`, duplicate blend comment dropped | state commit. MERGEABLE TIP = the commit carrying this line.
+
+### Proof
+| Evidence | Result |
+|---|---|
+| nifty merge | `git merge --no-ff 629aac459` clean (bee7435c2) |
+| build | ninja -j2, exit 0, exe d83a07b0f9df deployed to the lane install |
+| doctest | `build_contract_harnesses --run --unit` exit 0 |
+| row 29 oracle, mc2_24 ppc frame 154 `--fixture 1`, exe d83a07b0f (`scratch/vo43a`) | four heads present (2 blue, 2 orange); crop is PIXEL-IDENTICAL to the s42 GPU capture (`scratch/vo42j`: 9,999 px differ from the MLR run, same counts); montage MLR / s42 GPU / s43 GPU viewed: `.claude/l2cap/s43-row29-heads-mlr-s42gpu-s43gpu.png` |
+| smoke/dust behind geometry | NOT SHOWN: no oracle bookmark has non-head sprites behind geometry (mc2_10 missile `scratch/vo43b` and mc2_01 volley `scratch/vo43c` viewed: beams, heads and flares only, no smoke or dust drawn). The restriction is by construction (shader gate), not demonstrated on a capture |
+| near-plane clamp | by construction only (no capture has a sprite within 4 radii of the near plane); the near term uses the GL projection formula, falls back to half the view distance when the matrix is reverse-Z |
+| VK tier1 + validation (shell env, umbrella), final exe d83a07b0f (`scratch/t43.log`, run 2026-10-16T21-36-03) | 5/5 PASS, DEPLOY_FINGERPRINT OK x5, validation errors 0 warnings 0 on all five |
+
+### Open
+- Should-fix 3 (s42 review): lazy GL3 init after a late VK-to-GL fallback is unproven. Run one late forced fallback before VK becomes the default backend.
+- Row 29 and the 14 pre-existing red contract rows: unchanged from session 42.
+
 ## FORTY-SECOND session (2026-10-16, Sonnet 5.5) -- row 29 beam heads and halos fixed (shape residual proposed as accepted), s41 review items folded
 
 ### Commits (after 92f06782a)
