@@ -156,6 +156,14 @@ unsigned int g_cliPlaytestDeadline  = 0;     // GetTickCount() target once start
 int          g_cliPlaytestWarmFrames = 0;    // frames rendered since auto-load done
 bool         g_cliPlaytestDone       = false; // verdict emitted; guards the exit
 
+// -capture=<tga path> [-capture-frame=N]: write the shown editor window (viewport + ImGui panels)
+// to a TGA after N rendered frames with a mission loaded, then let the smoke exit timer end the run.
+// Backend-neutral: the GL backend reads the back buffer, Vulkan asks the present path for its readback.
+std::string  g_cliCapturePath;
+int          g_cliCaptureFrame       = 150;
+const char*  EditorCliCapturePath()  { return g_cliCapturePath.c_str(); }
+int          EditorCliCaptureFrame() { return g_cliCaptureFrame; }
+
 // Set true after the auto-load block finishes ALL its work (generate + optional
 // foliage + optional save). The smoke exit countdown starts from THIS, not from
 // g_cliAutoLoadFired (which is set at block ENTRY) -- otherwise a slow generation
@@ -178,6 +186,10 @@ static void editor_set_default_env_vars()
     // the exe directly without a .bat. Bat overrides still work because we
     // only set when unset.
     if (!mc2::gate::isSet<"MC2_EDITOR_TRACE">())            _putenv_s("MC2_EDITOR_TRACE",              "1");
+    // The editor viewport renders on the same Vulkan path as the game (step 3.6). MC2_RENDER_BACKEND=gl
+    // stays as the temporary opt-out; the umbrella arms the VK islands the shared scene driver feeds.
+    if (!mc2::gate::isSet<"MC2_RENDER_BACKEND">())          _putenv_s("MC2_RENDER_BACKEND",            "vulkan");
+    if (!mc2::gate::isSet<"MC2_VK_SHARED_GBUFFER">())       _putenv_s("MC2_VK_SHARED_GBUFFER",         "1");
     // S3 (2026-05-25): MC2_GPU_DRIVEN, MC2_EDITOR_BYPASS_BLDG_CULL, MC2_STATIC_PROP_REGISTRY
     // sidesteps retired -- editor now runs canonical default-ON chain.
 }
@@ -405,6 +417,14 @@ static void s_cli_parse(const char* cmd)
 		else if (s_cli_flag_match(tok, "-playtest", "--playtest"))
 		{
 			g_cliPlaytest = true;
+		}
+		else if (s_cli_starts_with(tok, "-capture=", &rest) || s_cli_starts_with(tok, "--capture=", &rest))
+		{
+			g_cliCapturePath = rest;
+		}
+		else if (s_cli_starts_with(tok, "-capture-frame=", &rest) || s_cli_starts_with(tok, "--capture-frame=", &rest))
+		{
+			g_cliCaptureFrame = atoi(rest);
 		}
 		else if (s_cli_flag_match(tok, "-playtest-timeout-sec", "--playtest-timeout-sec"))
 		{
