@@ -60,7 +60,7 @@
 
 #ifdef MC2_IMGUI
 #include "GuiRuntime.h"
-#include "gameosmain_internal.h"   // initVulkanBackend / frameSwapWindow: the game's VK bring-up and present, shared
+#include "gos_host_vk.h"          // initVulkanBackend / presentOrSwap: the game's VK bring-up and present, shared
 #include "gos_screenshot.h"        // -capture on the Vulkan backend
 #include "render_backend_select.h"
 #include "imgui.h"
@@ -860,7 +860,10 @@ DWORD __stdcall RunGameOSLogic()
     // renderer own its own program lifecycle.
     EditorViewportCaptureTick();
     // The game's present: VK composite+swapchain present when the Vulkan backend is up, else the GL swap.
-    frameSwapWindow(g_editorRenderWindow);
+    {
+        static unsigned long s_editorFrame = 0;
+        gos::host::presentOrSwap(g_editorRenderWindow, ++s_editorFrame);
+    }
     EditorFramePhase_Mark("swap");
     EditorFramePhase_End();
 

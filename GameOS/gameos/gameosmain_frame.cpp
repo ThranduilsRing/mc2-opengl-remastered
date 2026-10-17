@@ -3,6 +3,7 @@
 #include "gameosmain_internal.h"
 #include "mc2fmt.h"
 #include "sim_substeps.h"
+#include "gos_host_vk.h"
 
 
 // Throttle while the window is invisible, then run the game logic and the event pumps.
@@ -649,139 +650,8 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
             }
             {
                 ZoneScopedN("SwapWindow.SDL");
-                // Outside the Vulkan block so a request expires on a run whose Vulkan present is down or never entered.
-                gos::screenshot::tick();
-#ifdef MC2_VULKAN
-                // VK-P13 T3: present intercept. When MC2_RENDER_BACKEND=vulkan AND
-                // the VK present path is up, present the finished GL frame (FBO-0,
-                // post-HUD/composite/pillarbox) through the hidden-window VK
-                // swapchain instead of SDL_GL_SwapWindow. Any hard error fail-softs
-                // to GL for the rest of the session (never breaks the GL path).
-                bool vkPresented = false;
-                if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
-                    mc2vk::EnginePresentVk& vkpres = mc2vk::getOrCreateEnginePresentVk();
-                    // VK-FAILSOFT-DISARM-1: present init was deferred on a zero
-                    // surface extent (window minimized at boot). Retry once per
-                    // frame while the drawable is non-zero; success promotes the
-                    // session to the normal VK present path mid-run.
-                    if (!vkpres.valid() && g_vkPresentInitDeferred &&
-                        (g_mc2FrameCounter % 30 == 0)) {   // retry ~2x/s, not per frame (init logs each attempt)
-                        int rdw = 0, rdh = 0;
-                        graphics::get_drawable_size(win, &rdw, &rdh);
-                        if (rdw > 0 && rdh > 0) {
-                            mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
-                            if (rctx.valid() &&
-                                vkpres.init(rctx, g_sdl_window, (uint32_t)rdw, (uint32_t)rdh) &&
-                                vkpres.valid()) {
-                                g_vkPresentInitDeferred = false;
-                                g_vkPresentRetryFails = 0;
-                                mc2::fmt::print_out("[VK_PRESENT] deferred init recovered: {:d}x{:d} — VK present active.\n", mc2::fmt::as_i32(rdw), mc2::fmt::as_i32(rdh));
-                                fflush(stdout);
-                                vkpres.logHealth();
-                            } else if (vkpres.health().fallback_reason.find(
-                                           "zero surface extent") != std::string::npos) {
-                                // Still minimized: the GL drawable reports a
-                                // size even for SW_SHOWMINNOACTIVE windows, but
-                                // the VK surface caps say zero. This is the
-                                // defer-forever-by-design case — never budget it.
-                            } else if (++g_vkPresentRetryFails >= 120) {
-                                // ~60s of NON-minimized failed retries: the
-                                // surface is not coming back — take the
-                                // best-effort GL fail-soft rather than showing
-                                // torn frames forever.
-                                mc2::forceGLFallback(
-                                    "VK present init failed for ~60s with a "
-                                    "visible drawable (deferred-retry budget)");
-                            }
-                        }
-                    }
-                    if (vkpres.valid()) {
-                        int pdw = 0, pdh = 0;
-                        graphics::get_drawable_size(win, &pdw, &pdh);
-                        // T5 content verification: readback on a light cadence for
-                        // the first stretch (proves real, changing frame content
-                        // without a per-frame readback stall). A pinned PPM dump
-                        // (MC2_VK_PRESENT_DUMP_FRAME=N) needs a verify tick AT/after
-                        // frame N — without the extra window below, a pin >= 600
-                        // could never fire (verify ticks stopped first), so the
-                        // oracle silently reported "PPM never wrote" on a healthy
-                        // present path (the 2026-07-12 grey-regression red herring).
-                        static const unsigned long s_ppmPinFrame = static_cast<unsigned long>(mc2::gate::get<"MC2_VK_PRESENT_DUMP_FRAME">());
-                        // VK-FIELD-VFX-5: dynamic fire-event pin (armed at runtime
-                        // by the MC2_FX_FORCE_SPAWN fixture when
-                        // MC2_VK_PRESENT_DUMP_ON_FIRE is set) — must be read per
-                        // frame, not memoized.
-                        extern uint32_t g_mc2FxFireCaptureFrame;
-                        static const bool s_dumpOnFire = mc2::gate::get<"MC2_VK_PRESENT_DUMP_ON_FIRE">();
-                        const unsigned long firePin =
-                            s_dumpOnFire ? (unsigned long)g_mc2FxFireCaptureFrame : 0ul;
-                        const bool inVerifyWindow =
-                            (g_mc2FrameCounter < 600) ||
-                            (s_ppmPinFrame > 0 &&
-                             g_mc2FrameCounter >= s_ppmPinFrame &&
-                             g_mc2FrameCounter < s_ppmPinFrame + 600) ||
-                            (firePin > 0 &&
-                             g_mc2FrameCounter >= firePin &&
-                             g_mc2FrameCounter < firePin + 600);
-                        const bool verify =
-                            ((mc2::gate::get<"MC2_VK_PRESENT_VERIFY">()) &&
-                             inVerifyWindow && (g_mc2FrameCounter % 60 == 0)) ||
-                            gos::visual_capture::vkCapturePending() ||   // VK-VISUAL-CAPTURE-1
-                            gos::screenshot::pending();
-                        if (vkpres.presentGLFrame((uint32_t)pdw, (uint32_t)pdh, verify)) {
-                            vkPresented = true;
-                            static unsigned long s_vkHealthCadence = 0;
-                            if ((s_vkHealthCadence++ % 300) == 0) vkpres.logHealth();
-                        } else {
-                            // VK-FAILSOFT-DISARM-2: a mid-run present failure is
-                            // almost always the transient swapchain flake
-                            // (NATIVE_WINDOW_IN_USE at resize; observed
-                            // environmental, clears in <1s). Forcing GL for the
-                            // session here produced the torn half-disarmed scene
-                            // (streaking grey + pause-bobbing mechs). Instead:
-                            // tear the present stack down and re-enter the
-                            // DEFERRED-INIT retry path — the session stays VK
-                            // and recovers when the surface frees up. The ONLY
-                            // remaining forceGL is the structural not-VK-owned
-                            // decline (config plainly cannot composite; retry
-                            // cannot help).
-                            const std::string fr = vkpres.health().fallback_reason;
-                            vkpres.logHealth();
-                            if (fr.find("not VK-owned") != std::string::npos) {
-                                mc2::forceGLFallback(fr.c_str());
-                            } else {
-                                mc2::fmt::print_out("[VK_PRESENT] present failure treated as transient: {} -- tearing down and retrying init (session stays VK).\n",
-                                       fr.empty() ? "(unspecified)" : fr.c_str());
-                                fflush(stdout);
-                                vkpres.destroy();
-                                g_vkPresentInitDeferred = true;
-                            }
-                        }
-                    }
-                }
-                if (!vkPresented) {
-                    // VK-FAILSOFT-DISARM-2b: NEVER GL-swap while VK present init
-                    // is deferred. A GL SwapBuffers on the shared HWND claims the
-                    // window's WSI binding, and every VK swapchain re-creation
-                    // then fails NATIVE_WINDOW_IN_USE — observed 120/120 re-init
-                    // failures over 60s with GL swapping between attempts (the
-                    // deferral deadlock: GL swaps because VK isn't up; VK can't
-                    // come up because GL swaps). Skipping the swap frees the HWND
-                    // so the next retry succeeds; the window just holds its last
-                    // frame for the sub-second gap (or stays blank while
-                    // minimized, where nothing is visible anyway). After the
-                    // retry-budget forceGL, renderBackend() returns GL and the
-                    // swap resumes.
-                    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
-                        g_vkPresentInitDeferred) {
-                        // hold the frame: no GL present while VK retries the HWND
-                    } else {
-                        graphics::swap_window(win);
-                    }
-                }
-#else
-                graphics::swap_window(win);
-#endif
+                // The shared host present (Vulkan composite + present, or the GL swap): also the editor's.
+                gos::host::presentOrSwap(win, g_mc2FrameCounter);
             }
             render_contract::renderPassTelemetryFrameTick();  // [RENDER_PASS v1] frame boundary
             render_contract::renderPassScopeFrameBoundary();   // ENFORCEMENT-1 missing-end flush
