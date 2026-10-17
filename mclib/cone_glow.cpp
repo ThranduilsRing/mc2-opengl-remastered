@@ -819,7 +819,7 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
     {
         const TG_ShapeRec* recp = shape->GetShapeRec(i);
         if (!recp || !recp->processMe) continue;
-        TG_Shape* child = recp->node;
+        TG_Shape* child = recp->node.get();
         if (!child) continue;
         ++dWalked;
         // Reuse LIGHT-BILLBOARD-GPU-1's classification verbatim (tgl.h:1047).

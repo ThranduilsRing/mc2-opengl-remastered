@@ -224,7 +224,7 @@ void TreeAppearance::registerStatic() {
 			++t_diag_total;
 			const TG_ShapeRec* rec = lodShape->GetShapeRec(i);
 			if (!rec || !rec->processMe || !rec->node) { ++t_diag_skip_pm; continue; }
-			TG_Shape* child = rec->node;
+			TG_Shape* child = rec->node.get();
 			// 2026-05-10 fix: skip non-SHAPE_NODE helpers (mirror of submitMultiShape's
 			// filter) — see BldgAppearance::registerStatic for full rationale.
 			if (!child->IsShapeNode()) { ++t_diag_skip_h; continue; }

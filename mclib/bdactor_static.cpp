@@ -211,7 +211,7 @@ void BldgAppearance::registerStatic() {
 		++diag_total;
 		const TG_ShapeRec* rec = bldgShape->GetShapeRec(i);
 		if (!rec || !rec->processMe || !rec->node) { ++diag_skip_processMe; continue; }
-		TG_Shape* child = rec->node;
+		TG_Shape* child = rec->node.get();
 		// 2026-05-10 fix: skip non-SHAPE_NODE children (helpers, spotlight
 		// emitters, animation roots) — mirrors GpuStaticPropBatcher::submitMultiShape
 		// at gos_static_prop_batcher.cpp. Without this, the loop hits a

@@ -1,15 +1,21 @@
-// B7o.6a: TG_ShapeRec::transferFrom moves a record's node and applies the resets the copy assignment applied (Detach and the
+// B7o.6a/6b: TG_ShapeRec::transferFrom moves a record's node and applies the resets the copy assignment applied (Detach and the
 // shape-compaction loop use it), and rebuildShapeRecParents re-points every parent into the array it is given, so after a
 // detach or a compaction no parent points into a released array.
 #include "doctest.h"
 #include "tgl.h"
 
+#include <type_traits>
+
 #include <cstring>
 #include <memory>
 #include <vector>
 
+// ~TG_Shape calls the out-of-line destroy() (tgl.cpp, GL dependent); the dummies are released before any record goes, so it never runs.
+void TG_Shape::destroy (void) {}
+
 namespace {
-// The node is only moved, never dereferenced, by transferFrom: an aligned dummy stands in for a TG_Shape.
+// The node is only moved, never dereferenced, by transferFrom: an aligned dummy stands in for a TG_Shape. Since B7o.6b the record
+// OWNS its node (unique_ptr), so every test releases the dummies before the records go.
 TG_Shape* fakeNode(int i)
 {
 	static std::vector<std::unique_ptr<unsigned char[]>> blocks;
@@ -29,7 +35,7 @@ TEST_CASE("TG_ShapeRec::transferFrom moves the node and resets the per-frame fie
 	TG_ShapeRec parent{};
 	TG_ShapeRec src{};
 	TG_Animation anim;
-	src.node = fakeNode(1);
+	src.node.reset(fakeNode(1));
 	src.calcedThisFrame = 77;
 	src.processMe = false;
 	src.currentAnimation = &anim;
@@ -38,14 +44,14 @@ TEST_CASE("TG_ShapeRec::transferFrom moves the node and resets the per-frame fie
 	src.baseRotation.x = 0.25f;
 	src.baseRotation.y = -0.25f;
 	src.baseRotation.z = 0.75f;
-	TG_Shape* const node = src.node;
+	TG_Shape* const node = src.node.get();
 
 	TG_ShapeRec dst{};
 	dst.calcedThisFrame = 5;
 	dst.processMe = false;
 	dst.transferFrom(src);
 
-	CHECK(dst.node == node);
+	CHECK(dst.node.get() == node);
 	CHECK(src.node == nullptr);
 	CHECK(dst.calcedThisFrame == -1);
 	CHECK(dst.processMe == true);
@@ -55,6 +61,7 @@ TEST_CASE("TG_ShapeRec::transferFrom moves the node and resets the per-frame fie
 	CHECK(dst.baseRotation.x == 0.25f);
 	CHECK(dst.baseRotation.y == -0.25f);
 	CHECK(dst.baseRotation.z == 0.75f);
+	(void)dst.node.release();
 }
 
 TEST_CASE("TG_ShapeRec: compaction by transfer, then the parent rebuild points every parent into the new array")
@@ -65,18 +72,18 @@ TEST_CASE("TG_ShapeRec: compaction by transfer, then the parent rebuild points e
 	std::vector<TG_Shape*> nodes;
 	for (size_t i = 0; i < ids.size(); ++i)
 	{
-		old[i].node = fakeNode(static_cast<int>(i));
-		nodes.push_back(old[i].node);
+		old[i].node.reset(fakeNode(static_cast<int>(i)));
+		nodes.push_back(old[i].node.get());
 	}
 	auto idOf = [&](const TG_ShapeRec& r) {
 		for (size_t i = 0; i < nodes.size(); ++i)
-			if (nodes[i] == r.node)
+			if (nodes[i] == r.node.get())
 				return ids[i].id;
 		return "?";
 	};
 	auto parentOf = [&](const TG_ShapeRec& r) {
 		for (size_t i = 0; i < nodes.size(); ++i)
-			if (nodes[i] == r.node)
+			if (nodes[i] == r.node.get())
 				return ids[i].parent;
 		return "?";
 	};
@@ -111,9 +118,16 @@ TEST_CASE("TG_ShapeRec: compaction by transfer, then the parent rebuild points e
 		CHECK(r.processMe == true);
 		CHECK((r.parentNode == nullptr || (r.parentNode >= lo && r.parentNode < hi)));
 	}
-	CHECK(kept[0].node == nodes[0]);
-	CHECK(kept[1].node == nodes[3]);
+	CHECK(kept[0].node.get() == nodes[0]);
+	CHECK(kept[1].node.get() == nodes[3]);
 	CHECK(kept[1].parentNode == &kept[0]);
 	for (auto& r : old)
 		CHECK(r.node == nullptr);
+	for (auto& r : kept)
+		(void)r.node.release();
+	for (auto& r : detached)
+		(void)r.node.release();
 }
+
+static_assert(!std::is_copy_assignable_v<TG_ShapeRec> && !std::is_copy_constructible_v<TG_ShapeRec>, "a record owns its node: never copied (B7o.6b)");
+static_assert(sizeof(std::unique_ptr<TG_Shape>) == sizeof(TG_Shape*), "the node owner is one pointer (default deleter)");

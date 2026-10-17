@@ -439,7 +439,7 @@ typedef TG_Animation *TG_AnimationPtr;
 // TG_ShapeRec
 typedef struct _TG_ShapeRec
 {
-	TG_Shape*					node;					//Pointer to the actual TG_Shape for this piece
+	std::unique_ptr<TG_Shape>	node;					//OWNS the TG_Shape for this piece (B7o.6b); moved only by transferFrom
 	Stuff::LinearMatrix4D		localShapeToWorld;		//Matrix to transform this TG_Shape.
 	Stuff::LinearMatrix4D		shapeToWorld;			//Matrix to transform this TG_Shape.
 	Stuff::LinearMatrix4D		worldToShape;			//Inverse of above Matrix.
@@ -449,30 +449,15 @@ typedef struct _TG_ShapeRec
 	_TG_ShapeRec				*parentNode;			//Parent Node.  OK if NULL but only for ROOT node!
 	Stuff::UnitQuaternion		baseRotation;			//Always ZERO unless set by appearance controlling this shape.
 	
-	_TG_ShapeRec &operator=(const _TG_ShapeRec &rec)
-	{
-		node 				= rec.node;
-		calcedThisFrame		= -1;
-		processMe			= true;
-		currentAnimation	= NULL;
-		parentNode			= rec.parentNode;
-		baseRotation		= rec.baseRotation;
-
-		return *this;
-	}
+	// A record owns its node, so it is never copied (B7o.6b: the old copy assignment duplicated the owner).
+	_TG_ShapeRec (void) = default;
+	_TG_ShapeRec (const _TG_ShapeRec&) = delete;
+	_TG_ShapeRec &operator=(const _TG_ShapeRec&) = delete;
 
 	// B7o.6a: Detach and the shape compaction MOVE a record: the node goes over (the source keeps none) and the per-frame fields
-	// reset exactly as the copy assignment resets them; the parent pointer is copied and must be rebuilt for the new array.
-	void transferFrom (_TG_ShapeRec &rec)
-	{
-		node 				= rec.node;
-		rec.node			= nullptr;
-		calcedThisFrame		= -1;
-		processMe			= true;
-		currentAnimation	= NULL;
-		parentNode			= rec.parentNode;
-		baseRotation		= rec.baseRotation;
-	}
+	// reset exactly as the old copy assignment reset them; the parent pointer is copied and must be rebuilt for the new array.
+	// Defined after TG_Shape (the unique_ptr move needs the complete type).
+	inline void transferFrom (_TG_ShapeRec &rec);
 
 } TG_ShapeRec;
 
@@ -622,7 +607,7 @@ class TG_TypeNode
 
 		//--------------------------------------------------------------
 		// Creates an instance of this shape for the game to muck with.
-		virtual TG_Shape *CreateFrom (void);
+		virtual std::unique_ptr<TG_Shape> CreateFrom (void);
 
 		virtual void SetAlphaTest (bool flag)
 		{
@@ -724,7 +709,36 @@ class TG_TypeShape : public TG_TypeNode
 			init();
 		}
 
-		virtual void destroy (void);
+		// Idempotent: stores swapped empty, views and counts zeroed, GPU handles released once and nulled. Inline (B7o.6b) so the
+		// unit tier exercises this exact body.
+		virtual void destroy (void)
+		{
+			std::vector<TG_TypeVertex>().swap(typeVertexStore);
+			listOfTypeVertices = nullptr;
+
+			std::vector<TG_TypeTriangle>().swap(typeTriangleStore);
+			listOfTypeTriangles = nullptr;
+
+			std::vector<TG_TinyTexture>().swap(tinyTextureStore);
+			listOfTextures = nullptr;
+
+			numTypeVertices = numTypeTriangles = numTextures = 0;
+
+			if (vb_) {
+				gos_DestroyBuffer(vb_);
+				vb_ = nullptr;
+			}
+
+			if (ib_) {
+				gos_DestroyBuffer(ib_);
+				ib_ = nullptr;
+			}
+
+			if (vdecl_) {
+				gos_DestroyVertexDeclaration(vdecl_);
+				vdecl_ = nullptr;
+			}
+		}
 
 		~TG_TypeShape (void)
 		{
@@ -813,7 +827,7 @@ class TG_TypeShape : public TG_TypeNode
 		
 		//--------------------------------------------------------------
 		// Creates an instance of this shape for the game to muck with.
-		virtual TG_Shape *CreateFrom (void);
+		virtual std::unique_ptr<TG_Shape> CreateFrom (void);
 
 		virtual void SetAlphaTest (bool flag)
 		{
@@ -1180,6 +1194,16 @@ class TG_Shape
 };
 
 typedef TG_Shape* TG_ShapePtr;
+
+inline void _TG_ShapeRec::transferFrom (_TG_ShapeRec &rec)
+{
+	node 				= std::move(rec.node);
+	calcedThisFrame		= -1;
+	processMe			= true;
+	currentAnimation	= NULL;
+	parentNode			= rec.parentNode;
+	baseRotation		= rec.baseRotation;
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////

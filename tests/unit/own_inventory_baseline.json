@@ -5455,18 +5455,6 @@
     "Mission"
    ]
   },
-  "TG_Shape": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/tgl_types.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "TG_TrianglePool": {
    "delete": 4,
    "delete_array": 0,
@@ -5520,33 +5508,6 @@
     "GenericAppearanceType",
     "Mech3DAppearanceType",
     "TreeAppearanceType"
-   ]
-  },
-  "TG_TypeNode": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/msl_load.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "TG_TypeShape": {
-   "delete": 2,
-   "delete_array": 0,
-   "files": {
-    "mclib/msl_load.cpp": {
-     "delete": 2,
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "TG_TypeMultiShape"
    ]
   },
   "TG_VertexPool": {
@@ -7635,7 +7596,6 @@
   "mclib/mlr/mlrtexture.cpp": 1,
   "mclib/mlr/mlrtexturepool.cpp": 7,
   "mclib/mlr/mlrtrianglecloud.cpp": 1,
-  "mclib/msl_load.cpp": 1,
   "mclib/particles/batcher.cpp": 1,
   "mclib/particles/spec_library.cpp": 1,
   "mclib/stuff/chain.cpp": 3,

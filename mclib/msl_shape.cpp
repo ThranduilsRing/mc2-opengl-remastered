@@ -435,7 +435,7 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 	resultShape->myMultiType = myMultiType;
 	resultShape->numTG_Shapes = curShape;
 	
-	resultShape->shapeRecStore.assign(curShape, TG_ShapeRec{});
+	std::vector<TG_ShapeRec>(curShape).swap(resultShape->shapeRecStore);
 	resultShape->listOfShapes = resultShape->shapeRecStore.data();
 
 	resultShape->frameNum = 0;
@@ -465,7 +465,7 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 	
  	//-------------------------------------------------------------
 	// Rebuild the currentShape heirarchy to reflect removed things
-	std::vector<TG_ShapeRec> newShapeRecs(numTG_Shapes - curShape, TG_ShapeRec{});
+	std::vector<TG_ShapeRec> newShapeRecs(numTG_Shapes - curShape);
 	TG_ShapeRecPtr newListOfShapes = newShapeRecs.data();
 
 	long newShapeIndex = 0;

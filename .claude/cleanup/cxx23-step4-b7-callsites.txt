@@ -69,16 +69,6 @@ B7o.4-queue-markers	code/warrior_state.cpp:744	marker_new	return getWayPointMark
 B7o.4-queue-markers	code/warrior_state.cpp:746	marker_new	return getWayPointMarker( queued.point, "JumpWayPoint" );
 B7o.8a-subarea-text	code/weaponbolt.cpp:37	objcache_text	ObjectTypeManager::objectCache->Free(textureName);
 B7o.8a-subarea-text	code/weaponbolt.cpp:89	objcache_text	textureName = (char *)ObjectTypeManager::objectCache->Malloc(strlen(txmName)+1);
-B7o.6-shapenode	mclib/msl_load.cpp:95	shape_node	listOfTypeShapes[i] = new TG_TypeShape;
-B7o.6-shapenode	mclib/msl_load.cpp:109	shape_node	listOfTypeShapes[i] = new TG_TypeNode;
-B7o.6-shapenode	mclib/msl_load.cpp:142	shape_node	delete listOfTypeShapes[i];
-B7o.6-shapenode	mclib/msl_load.cpp:234	shape_node	listOfTypeShapes[i] = new TG_TypeShape;
-B7o.6-shapenode	mclib/msl_load.cpp:379	shape_node	delete listOfTypeShapes[i];
-B7o.6-shapenode	mclib/msl_load.cpp:409	shape_node	delete listOfShapes[i].node;
-B7o.6-shapenode	mclib/msl_load.cpp:769	shape_node	listOfTypeShapes[startIndex] = new TG_TypeNode;
-B7o.6-shapenode	mclib/msl_load.cpp:851	shape_node	listOfTypeShapes[startIndex] = new TG_TypeShape;
-B7o.6-shapenode	mclib/tgl_types.cpp:108	shape_node	TG_ShapePtr newShape = new TG_Shape();
-B7o.6-shapenode	mclib/tgl_types.cpp:264	shape_node	TG_ShapePtr newShape = new TG_Shape();
 B7o.7-typemgr	tests/unit/test_combat_retirement_seam.cpp:89	objtypemgr	if (ownedTypes) objects->objTypeManager = nullptr;
 B7o.7-typemgr	tests/unit/test_combat_retirement_seam.cpp:216	objtypemgr	objects.objTypeManager = world.ownedTypes = new ObjectTypeManager;
 B7o.7-typemgr	tests/unit/test_combat_retirement_seam.cpp:312	objtypemgr	objects.objTypeManager = nullptr;

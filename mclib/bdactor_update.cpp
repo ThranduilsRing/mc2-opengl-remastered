@@ -99,7 +99,7 @@ long BldgAppearance::update (bool animate)
 			{
 				const TG_ShapeRec* recp = bldgShape->GetShapeRec(i);
 				if (!recp) continue;
-				TG_Shape* child = recp->node;
+				TG_Shape* child = recp->node.get();
 				// Mirror canonical batcher guards at
 				// gos_static_prop_batcher.cpp (C-r3 M1).
 				if (!child || !recp->processMe) continue;

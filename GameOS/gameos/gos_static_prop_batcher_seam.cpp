@@ -45,7 +45,7 @@ bool GpuStaticPropBatcher::isMultiShapeEligibleForGpuObjects(
     for (int i = 0; i < n; ++i) {
         const TG_ShapeRec& rec = multi->listOfShapes[i];
         if (!rec.processMe || !rec.node) continue;
-        const TG_Shape* child = rec.node;
+        const TG_Shape* child = rec.node.get();
         if (!child->myType) continue;
         if (child->myType->GetNodeType() != SHAPE_NODE) continue;  // skip helpers/bones
         const TG_TypeShape* ts = static_cast<const TG_TypeShape*>(child->myType);
