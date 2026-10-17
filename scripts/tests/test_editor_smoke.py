@@ -690,7 +690,8 @@ def crud_edit_fixture(original, operation):
             if action == "add":
                 count = 3
                 species = "BooleanFlagIsSet" if int(index) % 2 == 0 else "SetBooleanFlag"
-                sections[base + "2"] = f'\r\nst {suffix}SpeciesString = "{species}"\r\nst FlagID = ""\r\nb Value = TRUE\r\n'.encode()
+                flag = "created-flag" if int(index) % 2 else ""  # f82f77ee8: action creation carries its payload
+                sections[base + "2"] = f'\r\nst {suffix}SpeciesString = "{species}"\r\nst FlagID = "{flag}"\r\nb Value = TRUE\r\n'.encode()
             elif action == "delete":
                 count = 1
                 sections[base + "0"] = sections.pop(base + "1")
