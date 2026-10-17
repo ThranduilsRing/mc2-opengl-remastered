@@ -59,21 +59,6 @@ AffineMatrix4D&
 //###########################################################################
 //
 AffineMatrix4D&
-	AffineMatrix4D::operator=(const Origin3D& p)
-{
-	Check_Pointer(this);
-	Check_Object(&p);
-
-	BuildRotation(p.angularPosition);
-	BuildTranslation(p.linearPosition);
-	return *this;
-}
-
-//
-//###########################################################################
-//###########################################################################
-//
-AffineMatrix4D&
 	AffineMatrix4D::operator=(const EulerAngles &angles)
 {
 	Check_Pointer(this);

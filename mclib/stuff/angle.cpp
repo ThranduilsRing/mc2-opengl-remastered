@@ -91,20 +91,6 @@ Radian&
 	void
 		Spew(
 			const char* group,
-			const Degree& angle
-		)
-	{
-		Check_Object(&angle);
-		SPEW((group, "%f deg+", angle.angle));
-	}
-
-	//
-	//#############################################################################
-	//#############################################################################
-	//
-	void
-		Spew(
-			const char* group,
 			const SinCosPair& angle
 		)
 	{

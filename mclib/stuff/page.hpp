@@ -247,27 +247,6 @@ namespace Stuff {
 			);
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	// Motion3D access
-	//
-	public:
-		bool
-			GetEntry(
-				const char *entryname,
-				Motion3D *value,
-				bool required=false
-			);
-		void
-			SetEntry(
-				const char *entryname,
-				const Motion3D &value
-			);
-		void
-			AppendEntry(
-				const char *entryname,
-				const Motion3D &value
-			);
-
-	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// RGBColor access
 	//
 	public:
