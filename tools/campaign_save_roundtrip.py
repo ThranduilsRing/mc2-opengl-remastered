@@ -34,7 +34,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import save_inspect as si  # noqa: E402
 import savegame_backup  # noqa: E402
-from smoke_lib import nofocus  # noqa: E402
+from smoke_lib import host_lease, nofocus  # noqa: E402
 
 DEFAULT_DEPLOY = "A:/Games/mc2-opengl/mc2-win64-v0.4"
 #: Variables that would change the campaign flow when inherited from the caller's shell.
@@ -138,6 +138,9 @@ def add_player_variant(src: str, dst: str, chassis: str, variant: str, mech_vari
     si.scs.write(dst, out, False)
 
 
+LEASE_LABEL = "campaign_save_roundtrip capture"
+
+
 def capture(args) -> int:
     deploy = os.path.abspath(args.deploy)
     exe = os.path.join(deploy, "mc2.exe")
@@ -151,6 +154,12 @@ def capture(args) -> int:
     loading = args.load is not None
     # With a load, the quicksave fixture is armed far out of reach: it only makes the engine write the re-save right after the load.
     env = campaign_env(args.campaign, args.win_after_sec, 10**9 if loading else args.save_at, args.load_at if loading else None)
+    # Host game lease before the owner's saves are touched, held until this process exits (launch-to-kill included).
+    try:
+        host_lease.acquire(LEASE_LABEL)
+    except host_lease.HostLeaseBusy as busy:
+        print(f"campaign_save_roundtrip: {busy}")
+        return 2
     with savegame_backup.guarded(sdir):
         for stale in (first_src, second_src):
             if os.path.exists(stale):
