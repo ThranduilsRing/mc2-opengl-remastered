@@ -8,8 +8,8 @@
   "mclib/terrain_update.cpp": 1,
   "tools/asset_viewer/TglMeshLoader.cpp": 2
  },
- "head": "fd64472aa",
- "helper_calls": 213,
+ "head": "070047fa3",
+ "helper_calls": 216,
  "shapes": {
   "assign-scalars": 4,
   "assign-triple": 0,
