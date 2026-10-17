@@ -29,6 +29,8 @@ import subprocess
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import console_child  # noqa: E402
 LIST = os.path.join(ROOT, ".claude", "cleanup", "cxx23-step4-b5-callsites.txt")
 
 SCAN_DIRS = ["code", "mclib", "gui"]
@@ -97,7 +99,7 @@ def strip_comments(text: str) -> list[str]:
 
 def tracked() -> list[str]:
     try:
-        out = subprocess.run(["git", "-C", ROOT, "ls-files"] + SCAN_DIRS, capture_output=True, text=True, check=True).stdout
+        out = subprocess.run(["git", "-C", ROOT, "ls-files"] + SCAN_DIRS, capture_output=True, text=True, check=True, **console_child.child_kwargs(redirected=True)).stdout
     except (OSError, subprocess.CalledProcessError) as e:
         raise CensusError(f"git ls-files failed: {e}")
     return [p for p in out.splitlines() if p.endswith(SOURCE_EXT)]
