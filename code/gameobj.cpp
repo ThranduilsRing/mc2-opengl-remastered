@@ -1869,7 +1869,9 @@ bool GameObject::lineOfSight (Stuff::Vector3D point) {
 
 //---------------------------------------------------------------------------
 
-inline bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad)
+// B7o.2: was `inline` here. The virtual's only emitter was the vtable instance gameobj.cpp used to produce through the by-value
+// GameObject::set; with that gone the inline body was never instantiated (LNK2001). A virtual defined in a .cpp is an ordinary external function.
+bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad)
 {
 	ZoneScopedN("GameLogic.LOS.Update"); 
 
