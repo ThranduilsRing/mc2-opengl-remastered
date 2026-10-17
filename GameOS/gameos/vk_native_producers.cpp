@@ -227,7 +227,11 @@ ProducerParity NativeProducers::compare(uint32_t, const void* glThin, uint32_t g
         if (j >= vk.size() || (i < gl.size() && gl[i].w[0] < vk[j].w[0])) { ++r.onlyGl; ++i; }
         else if (i >= gl.size() || vk[j].w[0] < gl[i].w[0]) { ++r.onlyVk; ++j; }
         else {
-            if (std::memcmp(&gl[i], &vk[j], sizeof(ThinRec)) == 0) ++r.same; else ++r.differ;
+            if (std::memcmp(&gl[i], &vk[j], sizeof(ThinRec)) == 0) ++r.same;
+            else {
+                ++r.differ;
+                if (!r.haveDiff) { r.haveDiff = true; std::memcpy(r.firstDiffGl, &gl[i], sizeof(ThinRec)); std::memcpy(r.firstDiffVk, &vk[j], sizeof(ThinRec)); }
+            }
             ++i; ++j;
         }
     }

@@ -65,6 +65,8 @@ struct ProducerParity {
     uint32_t onlyGl = 0, onlyVk = 0, same = 0, differ = 0; // matched by recipe index
     uint32_t lightCompared = 0, lightMismatch = 0, fogMismatch = 0, lightMaxDelta = 0;
     bool     truncated = false;
+    uint32_t firstDiffGl[12] = {}, firstDiffVk[12] = {};   // the first differing pair (diagnosis)
+    bool     haveDiff = false;
 };
 
 class NativeProducers {
