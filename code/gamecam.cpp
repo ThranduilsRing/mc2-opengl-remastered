@@ -486,6 +486,9 @@ void GameCamera::renderLetterbox() {
 	{
 		const bool vkHudQuad = mc2vkgate::umbrellaOn();
 		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 1);
+		// The HUD batch shrinks bottom-band quads (0.85 toward bottom-centre); the bars and the fade span the screen and must not.
+		const bool prevHudScaleExempt = gos_GetHudScaleExempt();
+		if (vkHudQuad) gos_SetHudScaleExempt(true);
 		//Figure out the two faces we need to draw based on letterBox Pos and Alpha
 		float barTopX = screenResolution.y * letterBoxPos;
 		float barBotX = screenResolution.y - barTopX;
@@ -600,6 +603,7 @@ void GameCamera::renderLetterbox() {
 		gVertex[3].frgb		= 0xff000000;            
 		
 		gos_DrawQuads(gVertex, 4);
+		if (vkHudQuad) gos_SetHudScaleExempt(prevHudScaleExempt);
 		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 0);
 	}
 }
@@ -610,6 +614,9 @@ void GameCamera::renderFadeQuad() {
 	{
 		const bool vkHudQuad = mc2vkgate::umbrellaOn();
 		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 1);
+		// The HUD batch shrinks bottom-band quads (0.85 toward bottom-centre); the bars and the fade span the screen and must not.
+		const bool prevHudScaleExempt = gos_GetHudScaleExempt();
+		if (vkHudQuad) gos_SetHudScaleExempt(true);
 		//We are fading to something other then clear screen.
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
@@ -666,6 +673,7 @@ void GameCamera::renderFadeQuad() {
 		gVertex[3].frgb		= 0xff000000;            
 		
 		gos_DrawQuads(gVertex, 4);
+		if (vkHudQuad) gos_SetHudScaleExempt(prevHudScaleExempt);
 		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 0);
 	}
 }
