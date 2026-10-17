@@ -647,11 +647,24 @@ void __stdcall DoGameLogic()
 			extern uint32_t g_mc2FrameCounter;
 			static int s_cycle = 0;
 			static uint32_t s_nextAt = 420;
-			if (s_cycle < 8 && g_mc2FrameCounter >= s_nextAt && !loadInMissionSave && mission && eye)
+			// Proof-only knobs (plain names so no gate registry row is needed): S10_RELOADS cycles (default 8), S10_STRIKE=0 skips the
+			// artillery call-in, S10_RELOAD=0 only samples (the no-reload control).
+			static const int s_cycles = std::getenv("S10_RELOADS") ? std::atoi(std::getenv("S10_RELOADS")) : 8;
+			static const bool s_strike = !std::getenv("S10_STRIKE") || std::atoi(std::getenv("S10_STRIKE")) != 0;
+			static const bool s_reload = !std::getenv("S10_RELOAD") || std::atoi(std::getenv("S10_RELOAD")) != 0;
+			if (s_cycle < s_cycles && g_mc2FrameCounter >= s_nextAt && !loadInMissionSave && mission && eye)
 			{
-				Stuff::Vector3D strikeAt = eye->getPosition();
-				IfaceCallStrike(ARTILLERY_LARGE, &strikeAt, nullptr, true, false, 30.0f);
-				loadInMissionSave = true;
+				extern void mc2AllocStatsSnapshot(long long*, long long*);
+				long long liveTick = 0, bytesTick = 0;
+				mc2AllocStatsSnapshot(&liveTick, &bytesTick);
+				mc2::fmt::print_out("[ALLOC_TICK] n={} frame={} live={} bytes={}\n", mc2::fmt::as_i32(s_cycle), mc2::fmt::as_i64(g_mc2FrameCounter), mc2::fmt::as_i64(liveTick), mc2::fmt::as_i64(bytesTick));
+				if (s_strike)
+				{
+					Stuff::Vector3D strikeAt = eye->getPosition();
+					IfaceCallStrike(ARTILLERY_LARGE, &strikeAt, nullptr, true, false, 30.0f);
+				}
+				if (s_reload)
+					loadInMissionSave = true;
 				s_nextAt = g_mc2FrameCounter + 90;
 				++s_cycle;
 			}
