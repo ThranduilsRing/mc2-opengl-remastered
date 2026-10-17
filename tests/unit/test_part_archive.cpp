@@ -83,6 +83,8 @@ struct MissionPartArchiveTest {
     static Part& reserved(Mission& mission) { return mission.parts[0]; }
 };
 void Mission::destroy(bool) { MissionPartArchiveTest::release(*this); }
+// The test never creates the mission's appearance types; the owner's destructor only needs the symbol.
+void AppearanceTypeList::destroy(void) {}
 
 namespace {
 struct PilotFixture : MechWarrior {
