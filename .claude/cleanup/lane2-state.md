@@ -1,5 +1,42 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FIFTY-FOURTH session (2026-10-17, Sonnet 5.5) -- 3.4P review fixes, step 3.7: the viewport tools ported to Vulkan
+
+### Commits (on bc9133f66)
+5bd49d2ac 3.4P review fixes (code) | 65a1f4fa1 step 3.7 tools (code) | a state commit after them (docs only). Mergeable code tip: 65a1f4fa1.
+
+### 3.4P review (s52-s53 cleanup review, 1 MUST + SHOULDs)
+- MUST: binding 6 of each parity descriptor set follows the feed that ran (`WaterIsland::thinNative[2]`; `write_descriptors(s, only)` rewrites one slot after its fence wait). Native -> readback flips that slot to `thinBuf[par]`; first readback frame still allocates and rewrites under waitIdle.
+- SHOULD done: parity frames only 60 and 600 (the every-3600th stall is gone); a `record()` failure ends its begun command buffer before failing soft; thin-cap overflow warns at init; a lighting self-test mismatch refuses native (GL feed stays); parity truncation no longer inflates only_gl/only_vk (left at 0 when `truncated`).
+- NOT done (nits, OPEN): self-test/reference in its own file; unused `par` arg and `VkNativeInputs::recipeCount`; Slang constant drift guard; self-test covers one branch combination; a record failure still disables the island instead of degrading to the old feed.
+- Proof: ninja exit 0 + deploy; VK tier1 under `MC2_VULKAN_VALIDATION=1` = 5/5 PASS, validation errors=0 warnings=0 on all five (`scratch/s54_vk_t1.log`; mc2_01 139 fps, 03 84, 10 83, 17 88, 24 64). Fail-soft run (`MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE=0`, `.claude/l2cap/s54-failsoft`, viewed): NO WATER, identical to GL with the same env (`s54-failsoft-gl`, viewed): the opt-out mode renders no water on either backend (pre-existing: its window mode is not fed), so VK draws nothing and no garbage, validation clean. The wrong-buffer bug needs a thinCount>0 readback frame while native is ready (null-MVP frame) and is fixed by construction, not exercised by a capture. Native capture `s54-native` shows water (day montage viewed).
+- Doctest (`build_contract_harnesses.py --run --unit`, at 65a1f4fa1): 3277/3277 test cases, status SUCCESS; check-contracts: 121 of 124 rows PASS on the first run, the 3 reds (background_launch inventory, script_callers, scripts_tests = the same inventory) were the new runner and are fixed in 65a1f4fa1 (re-run of the two row tests green).
+
+### Step 3.7: tools on Vulkan
+- Inventory (before): all three tools were standalone SDL2 + `imgui_impl_opengl3` apps with their own GL 3.3 context; none used gameos or the engine render path. mc2weapon_gui and mc2fx_preview were pure ImGui (no GL drawing). asset_viewer drew GL FBO previews (mesh lit, Cook-Torrance sphere, engine-GLSL Backend-A), GL texture upload/decoders and about 30 `--smoke-*` modes, 13 of which created a GL context.
+- New: `tools/common` = `mc2_tool_vk`: `tool_vk_shell` (SDL2 Vulkan surface, instance/device/swapchain UNORM, one render pass, `imgui_impl_vulkan`, validation counting `MC2_VULKAN_VALIDATION=1`, swapchain screenshot `MC2_TOOL_CAPTURE=<png>` + PNG writer) and `tool_vk_gpu` (textures RGBA8/BC7/sRGB + generated mips, offscreen color+depth targets for ImGui, buffers, one-UBO+N-sampler pipelines, flipped-viewport so GL-style Y-up renders upright, Vulkan [0,1] depth). It is the tools' own thin shell, not the game's VK umbrella: the tools never linked the engine renderer, so there is no umbrella to run them through; the ImGui-on-VK backend is the same `imgui_impl_vulkan` the game uses.
+- mc2weapon_gui, mc2fx_preview: GL context and GL ImGui backend replaced; the draw code is untouched. mc2fx_preview no longer links OpenGL/GLEW.
+- asset_viewer: textures, KTX2/BC7, MeshGpu, MeshPreview3D, PBR sphere ported (GLSL 450 in `tools/asset_viewer/shaders_vk`, glslangValidator at build time into `shaders_vk/` beside the exe); UiEditorImageCache and the GL smokes removed (13 GL smokes: the screenshot runner replaces them; CPU smokes kept). OpenGL/GLEW stay on its link line only for the isolated `mc2_tglloader` engine closure; no GL context is created.
+- Runner: `scripts/run_tool_capture.py <tool> --out x.png [--validation] [--cwd install] -- <tool args>` (background via nofocus.spawn, host lease, hidden window, PNG graded for flatness, validation errors=0 required). Registered in background-launch-allow.json and tests/callers_allowlist.json; asset_viewer got `--view textures <f> | materials | props <name.tgl> | workbench`.
+
+| tool | build | launch+capture (viewed) | validation |
+|---|---|---|---|
+| mc2weapon_gui | build_all_targets root tree, linked, no GL | `.claude/l2cap/s54-tools/weapon_vk.png`: weapon list + editor pane | errors=0 |
+| mc2fx_preview | linked, no GL libs | `.claude/l2cap/s54-tools/fxpreview_vk.png`: effect curves plotted (the Effects window sits under Curves, as with the GL default placement) | errors=0 |
+| asset_viewer props | linked | `.claude/l2cap/s54-tools/av_props_vk.png`: 2civliving textured and upright (BC7 albedo through the new path) | errors=0 |
+| asset_viewer materials | linked | `.claude/l2cap/s54-tools/av_material_vk.png`: PBR sphere, 4 slots loaded from the fit | errors=0 |
+| asset_viewer textures | linked | `.claude/l2cap/s54-tools/av_tex_vk.png`: a_2civliving.ktx2 BC7 sRGB 8 mips | errors=0 |
+
+"Matching its GL rendering": there is no GL capture of the old builds (no baseline was ever recorded); the ImGui draw code and the preview math are unchanged and only the backend changed, so layout/colour match is by identity of the draw lists, and the 3D previews were judged by eye (orientation upright, texture right way up, lighting plausible). Say so rather than claim a pixel diff.
+
+### VK gaps found
+1. asset_viewer Backend-A (real engine `static_prop` GLSL preview): not ported. The engine's VK static-prop shaders (color_prop island) need the bindless texture array and scene SSBO set; there is no standalone entry. The radio stays, fails open to Backend-B, the Shader Contract panel states why. The ShaderIncludeResolver and its CPU smoke stay.
+2. The 13 GL render smokes of asset_viewer have no VK twin (only the screenshot runner); the CPU pixel assertions (distinct-from-background, tangent flat vs tilt, UV-V orientation) are not reproduced. OPEN: add a readback hook to toolvk and port the three assertions if the regression is wanted.
+3. Tools do not run under `MC2_RENDER_BACKEND=gl` (not required).
+
+### OPEN
+1. 3.4P nits above. 2. No Tracy/perf on the tools. 3. `tools/mc2fx` (CLI) and the other non-viewport tools were not touched. 4. The docs `asset-viewer-backend-a-*.md` still describe the GL Backend-A as shipped: they are now history.
+
 ## FIFTY-THIRD session (2026-10-17, Sonnet 5.5) -- step 3.4P: native Vulkan compute producers (terrain lighting + water cull/pack), first engine Slang shaders
 
 ### Commits (on 0421c2417, then merged nifty 26b00c43c)
