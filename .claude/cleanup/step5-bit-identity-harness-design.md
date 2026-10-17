@@ -152,6 +152,12 @@ Finding: the 1-ULP trig rows were the HARNESS include order. The gameos/mclib/mc
 - S5.3 3f83f2a52 class A: callerless Stuff math deleted (Arcsin, Tan, Round_Float_To_Word, the MultiplyByInverse family, Vector3D
   Get*Component, AlignWithVector, Plane::CalculateX/Y/Z, Line3D::FindEnd, Ray3D::GetClosestPointTo/SetOrigin, OBB::BuildSphere).
 - S5.4 22a0e8228 the last external callers of the differing ops (gosFX Sin/Cos/Lerp, cursor and terrain-light scalar divide) on the wrappers.
+- S5.5 a7585245a (lane 1 s22) types with no caller outside Stuff deleted bottom-up: Origin3D and Motion3D (their conversion overloads in
+  Matrix4D/AffineMatrix4D/LinearMatrix4D/Point3D/EulerAngles/YawPitchRoll/UnitQuaternion and the Note/Page notation accessors), and Degree
+  (its one user, the MLR spotlight reader, keeps the identical deg * Radians_Per_Degree). Census of external uses that decides the next
+  types: Ray3D 0 (base of Line3D), YawPitchRoll 0 (Stuff-internal EulerAngles notation I/O), SinCosPair 3, Line3D 8, Normal3D 8,
+  ExtentBox 9, RGBColor 12, Sphere 14, Radian 17, Plane 18, UnitVector3D 23, AffineMatrix4D 31, OBB 61, Vector2DOf 126, UnitQuaternion 127,
+  EulerAngles 212, Matrix4D 229, RGBAColor 265, Vector4D 277, Vector2DScalar 423, LinearMatrix4D 458, Point3D 710, Vector3D 2149.
 Proof every batch: sim pair mc2_03/mc2_24 identical to the pre-port reference (exe 579b60e2c) and to the committed baselines; saveload mc2_03
 fb63e85ac66966cf and mc2_01 d46e3e5e30d26b15 = baselines; S5.2/S5.4 GL/VK capture pair day mc2_01 + night mc2_10 viewed.
 Left on Stuff: the types themselves (Vector3D ~2,000 uses outside stuff/, Point3D, the matrices, UnitQuaternion, angles) and every op whose

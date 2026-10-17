@@ -34,7 +34,7 @@
   "GameOS/gameos/gos_terrain_lighting.cpp": {
    "pointer_key": 1
   },
-  "code/ablmc2.cpp": {
+  "mclib/ablrtn.cpp": {
    "pointer_key": 1
   },
   "mclib/assimp_importer.cpp": {
