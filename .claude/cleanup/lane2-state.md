@@ -1,5 +1,27 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FORTY-FOURTH session (2026-10-17, Sonnet 5.5) -- VK mission-end crash (ImGui foreign textures) and the second-mission prop alpha crash
+
+### Commits (after the nifty merge 248d9a4e6 of 505511f91)
+346eaf31c recordPendingImgui liveness guard (context, backend data, main-viewport renderer data) | e397b1703 foreign ImTextureID commands dropped | d8741e48a per-packet alpha-test baked at finalize | state/BUGS commit after (docs only)
+
+### Root cause
+The crash lane 1 found (render frame 391, READ 0x66, ImGui_ImplVulkan_RenderDrawData <- recordPendingImgui) was NOT a lifecycle bug: the guard I added (backend + viewport data live) passed and it still crashed, in vkCmdDrawIndexed. The game's ImGui draws images with GL texture names as ImTextureID; the Vulkan backend binds the id as a VkDescriptorSet. Only the logistics/results screens (after won_mission) draw such images, so it never showed inside a mission. Fix: commands whose id is not io.Fonts->TexID get a collapsed clip rect (skipped before the bind). Behind it sat a second crash at the next mission start: packetAlphaTest dereferenced a released listOfTextures at draw time; now baked at finalize.
+
+### Proof
+| check | result |
+|---|---|
+| VK campaign leg (`MC2_RENDER_BACKEND=vulkan MC2_VK_SHARED_GBUFFER=1`, `campaign_save_roundtrip.py capture --out D --deploy A:/Games/mc2-opengl/mc2-win64-lane2`) | before: crash x3 (frames 326, 359, 391 in lane 1's run); after the ImGui fix: crash 2 (prop alpha); after both: PASS (.claude/l2s44/vk-fix2) |
+| same leg with `MC2_VK_IMGUI=0` | PASS (.claude/l2s44/vk-imgui0); the pre-fix default-vs-0 A/B was not run on an old exe: the diagnosis is the guard-passed crash plus foreign_texture_cmds_dropped=41 |
+| VK tier1 + `MC2_VULKAN_VALIDATION=1`, exe d8741e48a, DEPLOY_FINGERPRINT OK | 5/5, errors=0 warnings=0, tests/smoke/artifacts/2026-10-17T01-45-54-739735-34112; first run 01-34-29: 4/5, mc2_03 heartbeat_freeze_play (flake, validation on) |
+| build + `build_contract_harnesses --run --unit` | build exit 0; harnesses + doctest rc 0 |
+
+### Open
+1. ImGui images are not drawn under Vulkan (logistics art, ImGui HUD icons): needs a GL-texture to VkDescriptorSet bridge (ImGui_ImplVulkan_AddTexture over VK-only images, or the owned HUD path). Player-visible: those screens show text and panels without pictures.
+2. "late forced VK-to-GL fallback" (lazy GL3 ImGui init) NOT run: the harness cannot force forceGLFallback mid-run (only the 120-retry deferred-present budget or a "not VK-owned" decline reach it). To force it: a test gate or dev-shell command that calls mc2::forceGLFallback at a chosen frame.
+3. MISTAKE to report: my first `deploy_payload --target game --ninja` (no explicit dir) deployed to the DEFAULT install mc2-win64-v0.4 (lane 1's dev install), replacing its exe/payload with lane 2's 248d9a4e6 build. Lane 1 should redeploy. Lane 2 deploys must name the dir: `deploy_payload.py A:/Games/mc2-opengl/mc2-win64-lane2 --ninja --allow-new-target`.
+4. `campaign_save_roundtrip --deploy` takes a PATH (not the name lane2); env is inherited, so set the VK vars in the shell.
+
 ## FORTY-THIRD session (2026-10-16, Sonnet 5.5) -- s42 review fixes: camera pull limited to heads/OneOne, near-plane clamp, nits
 
 ### Commits (after nifty merge bee7435c2)
