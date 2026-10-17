@@ -64,8 +64,7 @@ const char* renderBackendName(RenderBackend b) {
 
 void fatalBackendFailure(const char* reason) {
     const char* why = reason && reason[0] ? reason : "(unspecified)";
-    mc2::fmt::print_out("[RENDER_BACKEND] FATAL: Vulkan could not be started: {}. There is no OpenGL fallback; exiting.
-", mc2::fmt::safe(why));
+    mc2::fmt::print_out("[RENDER_BACKEND] FATAL: Vulkan could not be started: {}. There is no OpenGL fallback; exiting.\n", mc2::fmt::safe(why));
     std::fflush(stdout);
     std::fflush(stderr);
 #ifdef _WIN32
@@ -74,13 +73,9 @@ void fatalBackendFailure(const char* reason) {
                            mc2::gate::isSet<"MC2_SMOKE_SEED">() || mc2::gate::isSet<"MC2_HEARTBEAT">() ||
                            mc2::gate::get<"MC2_CRASH_FAST_EXIT">();
     if (!automated) {
-        std::string text = "MechCommander 2 could not start the Vulkan renderer:
-
-";
+        std::string text = "MechCommander 2 could not start the Vulkan renderer:\n\n";
         text += why;
-        text += "
-
-Update your graphics driver and make sure the GPU supports Vulkan 1.3.";
+        text += "\n\nUpdate your graphics driver and make sure the GPU supports Vulkan 1.3.";
         MessageBoxA(nullptr, text.c_str(), "MechCommander 2", MB_OK | MB_ICONERROR);
     }
 #endif
