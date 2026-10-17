@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 975;
+inline constexpr std::size_t kGateCount = 967;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -893,9 +893,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VIS_SEMANTICS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VIS_SEMANTICS_TRACE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VIS_SEMANTICS_TRACE_EVERY", Kind::Int, Rule::Prefix, {}},
-    {"MC2_VK_CSM_ARRAY_INTEROP", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_VK_CSM_FULLMAP_INTEROP", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_VK_DECAL_STATIC_GL_CANARY", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VK_FEED_DUMP", Kind::String, Rule::Std, {}},
     {"MC2_VK_FORCE_FAIL", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VK_GPU_TIMESTAMPS", Kind::Bool, Rule::Presence, {}},
@@ -925,20 +922,15 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_PROP_LIGHT_VERTEX_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_PROP_PACKET_DUMP", Kind::String, Rule::Std, {}},
     {"MC2_VK_PROP_PERF", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_VK_SCENE_GL_PRODUCER_QUERY", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_VK_SCREENSHADOW_GL_CANARY", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VK_SELECT_TEST", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_VK_SHADOW_INTEROP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_SHADOW_MATRIX_DIAG", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_VK_SHARED_GBUFFER", Kind::Bool, Rule::Exact1, {}},
+    {"MC2_VK_SHARED_GBUFFER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_SHARED_SCENE_STRICT", Kind::Bool, Rule::Exact1, {}},
     {"MC2_VK_TERRAIN_COPY_STATS", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_TERRAIN_CSM_DEBUG", Kind::Int, Rule::Prefix, {}},
     {"MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_VK_TERRAIN_DECAL_GL_CANARY", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VK_TERRAIN_FENCE_DEFER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_TERRAIN_LODFADE", Kind::Bool, Rule::Exact1, {}},
-    {"MC2_VK_TERRAIN_OVERLAY_GL_CANARY", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VK_TERRAIN_PERF", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VK_TERRAIN_VISUALDISPLACE_FAR", Kind::Bool, Rule::Exact1, {}},
     {"MC2_VK_VFX_TRACE", Kind::Bool, Rule::Lead0, {}},

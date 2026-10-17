@@ -57,17 +57,15 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
         const bool vkok = vkctx.init(/*wantPresent=*/true);
         vkctx.logHealth();
         if (!vkok || !vkctx.valid()) {
-            // Fail-soft: force the whole session back to GL. renderBackend() stays
-            // queryable but now returns GL; the VK device is null; every consumer
-            // takes the GL path. Present was never changed, so nothing to revert.
-            mc2::forceGLFallback(vkctx.health().fallbackReason.empty()
+            // No GL fallback: show the reason and exit.
+            mc2::fatalBackendFailure(vkctx.health().fallbackReason.empty()
                                      ? "engine Vulkan context did not come up"
                                      : vkctx.health().fallbackReason.c_str());
         } else {
             // VK-P13 T3: stand up the whole-frame GL->VK present intercept on the
             // shared device. Sized to the GL drawable (backbuffer, incl. pillarbox
             // by construction: source is FBO-0 at swap). Fail-soft: if present init
-            // fails, force GL -- the GL swap path is untouched.
+            // fails, defer and retry from the frame loop (see below).
             int dw = 0, dh = 0;
             graphics::get_drawable_size(win, &dw, &dh);
             if (dw <= 0) dw = w;
@@ -89,8 +87,8 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
                 // all — the user-sighted half-grey/streaking + pause-bobbing
                 // frame was exactly that half-disarmed state. So: NEVER force
                 // GL for a present-level failure — DEFER and retry init from
-                // the frame loop; the session stays VK. forceGLFallback remains
-                // for context/device-level failures only (handled above).
+                // the frame loop; the session stays VK. Context/device-level
+                // failures are fatal (handled above).
                 const std::string& fr = vkpres.health().fallback_reason;
                 g_vkPresentInitDeferred = true;
                 mc2::fmt::print_out("[VK_PRESENT] init deferred: {} -- will retry from the frame loop (session stays VK; present-level failures never force GL).\n", fr.c_str());
@@ -98,9 +96,9 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
             }
         }
 #else
-        // MC2_RENDER_BACKEND=vulkan requested but this build has no Vulkan
-        // support compiled in (GL-only build). Fail-soft to GL.
-        mc2::forceGLFallback("MC2_RENDER_BACKEND=vulkan but build has no MC2_VULKAN support");
+        // The Vulkan backend is selected but this build has no Vulkan support
+        // compiled in. No fallback: fatal.
+        mc2::fatalBackendFailure("this build has no MC2_VULKAN support");
 #endif
     }
 }
@@ -146,10 +144,9 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
                     // defer-forever-by-design case — never budget it.
                 } else if (++g_vkPresentRetryFails >= 120) {
                     // ~60s of NON-minimized failed retries: the
-                    // surface is not coming back — take the
-                    // best-effort GL fail-soft rather than showing
-                    // torn frames forever.
-                    mc2::forceGLFallback(
+                    // surface is not coming back. No GL fallback:
+                    // show the reason, exit.
+                    mc2::fatalBackendFailure(
                         "VK present init failed for ~60s with a "
                         "visible drawable (deferred-retry budget)");
                 }
@@ -201,13 +198,13 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
                 // tear the present stack down and re-enter the
                 // DEFERRED-INIT retry path — the session stays VK
                 // and recovers when the surface frees up. The ONLY
-                // remaining forceGL is the structural not-VK-owned
+                // remaining fatal case is the structural not-VK-owned
                 // decline (config plainly cannot composite; retry
-                // cannot help).
+                // cannot help; it is fatal, there is no GL fallback).
                 const std::string fr = vkpres.health().fallback_reason;
                 vkpres.logHealth();
                 if (fr.find("not VK-owned") != std::string::npos) {
-                    mc2::forceGLFallback(fr.c_str());
+                    mc2::fatalBackendFailure(fr.c_str());
                 } else {
                     mc2::fmt::print_out("[VK_PRESENT] present failure treated as transient: {} -- tearing down and retrying init (session stays VK).\n",
                            fr.empty() ? "(unspecified)" : fr.c_str());
@@ -228,9 +225,8 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
         // come up because GL swaps). Skipping the swap frees the HWND
         // so the next retry succeeds; the window just holds its last
         // frame for the sub-second gap (or stays blank while
-        // minimized, where nothing is visible anyway). After the
-        // retry-budget forceGL, renderBackend() returns GL and the
-        // swap resumes.
+        // minimized, where nothing is visible anyway). If the
+        // retry budget runs out the process exits (fatalBackendFailure).
         if (mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
             g_vkPresentInitDeferred) {
             // hold the frame: no GL present while VK retries the HWND

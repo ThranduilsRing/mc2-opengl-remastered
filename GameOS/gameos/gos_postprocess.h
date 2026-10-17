@@ -692,8 +692,6 @@ private:
     GLuint sceneFBO_;
     GLuint sceneColorTex_;
     GLuint sceneDepthTex_;
-    GLuint sceneGlProducerQuery_ = 0;
-    bool sceneGlProducerQueryActive_ = false;
     // SKYBOX-FOG-EXCLUDE-1: stencil-only view onto sceneDepthTex_'s storage
     // (GL_DEPTH_STENCIL_TEXTURE_MODE=GL_STENCIL_INDEX baked in via glTextureView,
     // so it can be sampled in the same draw as the depth-mode sceneDepthTex_
@@ -923,26 +921,5 @@ void gos_SetSkyNumber(int skyNumber);
 // Player post-FX options from options.cfg (CPrefs::applyPrefs): CAS on/off, CAS sharpness 0..1, tonemap mode
 // 0 off / 1 AgX / 2 Hable / 3 Reinhard. Safe before the post-processor exists: the values are kept and read at its init.
 void gos_SetPostFxOptions(int casEnabled, float casSharpness, int tonemapMode);
-
-// VK-GL-LOST-DRAWS-1: per-draw-group GL_SAMPLES_PASSED diagnostic (env
-// MC2_VK_SCENE_GL_PRODUCER_QUERY=1 AND MC2_RENDER_BACKEND=vulkan; otherwise the
-// flag below stays false and every scope is one predicted-false branch).
-// Any tag that reports samples>0 rasterizes into the GL scene buffer that the
-// Vulkan backend discards => that layer is invisible under VK.
-// A nullptr tag suspends measurement for the scope (use for COMPUTE-ONLY spans: on this
-// driver a SAMPLES_PASSED segment with no raster returns garbage ~1e12 -- see txmmgr.cpp
-// GpuSP.CullDispatch). Logs [VK_GL_LOST_DRAWS v1] every 300 frames and at shutdown.
-extern bool g_gosGlLostDrawsOn;
-void gos_GlLostDrawsPush(const char* tag);
-void gos_GlLostDrawsPop();
-struct GosGlLostDrawsScope {
-    bool on_;
-    explicit GosGlLostDrawsScope(const char* tag) : on_(g_gosGlLostDrawsOn) {
-        if (on_) gos_GlLostDrawsPush(tag);
-    }
-    ~GosGlLostDrawsScope() { if (on_) gos_GlLostDrawsPop(); }
-    GosGlLostDrawsScope(const GosGlLostDrawsScope&) = delete;
-    GosGlLostDrawsScope& operator=(const GosGlLostDrawsScope&) = delete;
-};
 
 #endif // GOS_POSTPROCESS_H

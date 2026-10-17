@@ -758,7 +758,7 @@ L(Exact1, "MC2_RENDERSTATES_LEGACY", Bool, false, "gameos", "", "", verified),
 L(Presence, "MC2_RENDERSTATES_TRACE", Bool, false, "gameos", "", "Optional diagnostic: print the first 8 mismatch reasons.", verified),
 // VK-P13-SELECTOR-1 / T1: the top-level GL-vs-Vulkan backend selector.
 // history: docs/gate-history.md#MC2_RENDER_BACKEND
-G("MC2_RENDER_BACKEND", String, "", "unclassified", "", "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default gl; unset/unrecognized -> gl, coercion logged).", passthrough | registry(Feature, "MC2_FEATURE_RENDER_BACKEND", -1, false) | verified),
+G("MC2_RENDER_BACKEND", String, "", "unclassified", "", "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default vulkan; unset/unrecognized -> vulkan; gl is the temporary opt-out).", passthrough | registry(Feature, "MC2_FEATURE_RENDER_BACKEND", -1, false) | verified),
 // history: docs/gate-history.md#MC2_RENDER_BACKEND_IFACE
 L(Lead1, "MC2_RENDER_BACKEND_IFACE", Bool, false, "post", "", "RENDER-BACKEND-SEAMS arc: routes select GL calls (e.g.", passthrough | registry(Feature, "MC2_FEATURE_RENDER_BACKEND_IFACE", -1, false) | verified),
 L(Lead1, "MC2_RENDER_BACKEND_REGION_IFACE", Bool, false, "post", "", "", passthrough | verified),
@@ -1255,12 +1255,6 @@ G("MC2_VISUAL_TUNING_FILE", String, "", "gameos", "", "", passthrough | verified
 L(Lead0Kill, "MC2_VIS_SEMANTICS", Bool, true, "code", "", "ONE gate.", verified | passthrough),
 L(Lead0, "MC2_VIS_SEMANTICS_TRACE", Bool, false, "code", "", "", verified | passthrough),
 P("MC2_VIS_SEMANTICS_TRACE_EVERY", Int, 120, "code", "", "", passthrough | verified),
-// history: docs/gate-history.md#MC2_VK_CSM_ARRAY_INTEROP
-L(Lead0Kill, "MC2_VK_CSM_ARRAY_INTEROP", Bool, true, "vk", "", "VK near-cascade array producer, on under the VK umbrella; =0 turns it off (terrain then loses the near cascades).", passthrough | registry(Feature, "MC2_FEATURE_VK_CSM_ARRAY_INTEROP", -1, true) | verified),
-// history: docs/gate-history.md#MC2_VK_CSM_FULLMAP_INTEROP
-L(Lead0Kill, "MC2_VK_CSM_FULLMAP_INTEROP", Bool, true, "vk", "", "VK full-map cascade producer, on under the VK umbrella; =0 turns it off (terrain then loses the far cascade).", passthrough | registry(Feature, "MC2_FEATURE_VK_CSM_FULLMAP_INTEROP", -1, true) | verified),
-// history: docs/gate-history.md#MC2_VK_DECAL_STATIC_GL_CANARY
-L(Lead1, "MC2_VK_DECAL_STATIC_GL_CANARY", Bool, false, "gameos", "", "VK final-gate diagnostic: wraps gosRenderer::drawDecalStaticBatch GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1]...", registry(Trace, "MC2_TRACE_VK_DECAL_STATIC_GL_CANARY", -1, false) | verified),
 G("MC2_VK_FEED_DUMP", String, "", "vk", "", "", verified),
 // VK-P13-SELECTOR-1 / T4: fail-soft proof knob for the engine VK context.
 // history: docs/gate-history.md#MC2_VK_FORCE_FAIL
@@ -1302,33 +1296,23 @@ L(Presence, "MC2_VK_PROP_LIGHT_PROBE", Bool, false, "vk", "", "", verified),
 L(Presence, "MC2_VK_PROP_LIGHT_VERTEX_PROBE", Bool, false, "vk", "", "", verified),
 G("MC2_VK_PROP_PACKET_DUMP", String, "", "vk", "", "", verified),
 L(Lead1, "MC2_VK_PROP_PERF", Bool, false, "vk", "", "", passthrough | verified),
-// history: docs/gate-history.md#MC2_VK_SCENE_GL_PRODUCER_QUERY
-L(Lead1, "MC2_VK_SCENE_GL_PRODUCER_QUERY", Bool, false, "post", "", "VK final-gate diagnostic: wraps the sceneFBO producer phase in a GL_ANY_SAMPLES_PASSED query and logs [VK_SCENE_GL_PRODUCER_QUERY v1] any_samples=... so...", registry(Trace, "MC2_TRACE_VK_SCENE_GL_PRODUCER_QUERY", -1, false) | verified),
-// history: docs/gate-history.md#MC2_VK_SCREENSHADOW_GL_CANARY
-L(Lead1, "MC2_VK_SCREENSHADOW_GL_CANARY", Bool, false, "post", "", "VK final-gate diagnostic: wraps only the legacy GL runScreenShadow fullscreen draw in GL_ANY_SAMPLES_PASSED and logs [VK_SCREENSHADOW_GL_CANARY v1].", registry(Trace, "MC2_TRACE_VK_SCREENSHADOW_GL_CANARY", -1, false) | verified),
 L(Lead1, "MC2_VK_SELECT_TEST", Bool, false, "code", "", "", verified),
 // VK-P8a SHADOW-INTEROP: the SECOND VK geometry region + FIRST VK-produces-depth gate.
-// history: docs/gate-history.md#MC2_VK_SHADOW_INTEROP
-L(Lead0Kill, "MC2_VK_SHADOW_INTEROP", Bool, true, "vk", "", "VK shadow-caster island (dynamic map, cascades, mech casters), on under the VK umbrella; =0 turns every VK shadow producer off.", passthrough | registry(Feature, "MC2_FEATURE_VK_SHADOW_INTEROP", -1, true) | verified),
 // history: docs/gate-history.md#MC2_VK_SHADOW_MATRIX_DIAG
 L(Lead0, "MC2_VK_SHADOW_MATRIX_DIAG", Bool, false, "vk", "", "VK shadow producer/consumer evidence (default OFF = zero cost; GameOS/gameos/vulkan_shadow_island_live.cpp).", passthrough | registry(Trace, "MC2_TRACE_VK_SHADOW_MATRIX_DIAG", -1, false) | verified),
 // VK-P14 GATE-CONSOLIDATION-1: the ONE umbrella for the shared-GBuffer scene path.
 // history: docs/gate-history.md#MC2_VK_SHARED_GBUFFER
-L(Exact1, "MC2_VK_SHARED_GBUFFER", Bool, false, "vk", "", "VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_SHARED_GBUFFER", -1, false) | verified),
+L(Lead0Kill, "MC2_VK_SHARED_GBUFFER", Bool, true, "vk", "", "The VK umbrella, default ON since the 2026-10-17 default flip; =0 is a kill switch (no effect under MC2_RENDER_BACKEND=gl).", passthrough | registry(Feature, "MC2_FEATURE_VK_SHARED_GBUFFER", -1, true) | verified),
 // VK-TIER1 SHARED SCENE DEPTH: the shared-depth substrate slice (step 2).
 // history: docs/gate-history.md#MC2_VK_SHARED_SCENE_STRICT
 L(Exact1, "MC2_VK_SHARED_SCENE_STRICT", Bool, false, "post", "", "VK shared-scene deletion-readiness canary.", passthrough | registry(Trace, "MC2_TRACE_VK_SHARED_SCENE_STRICT", -1, false) | verified),
 L(Presence, "MC2_VK_TERRAIN_COPY_STATS", Bool, false, "vk", "", "", passthrough | verified),
 P("MC2_VK_TERRAIN_CSM_DEBUG", Int, 0, "vk", "", "", verified),
 L(Lead1, "MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL", Bool, false, "terrain", "", "", verified),
-// history: docs/gate-history.md#MC2_VK_TERRAIN_DECAL_GL_CANARY
-L(Lead1, "MC2_VK_TERRAIN_DECAL_GL_CANARY", Bool, false, "gameos", "", "VK final-gate diagnostic: wraps gosRenderer::drawDecals GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=terrain_decal_batch.", registry(Trace, "MC2_TRACE_VK_TERRAIN_DECAL_GL_CANARY", -1, false) | verified),
 L(Lead0Kill, "MC2_VK_TERRAIN_FENCE_DEFER", Bool, true, "vk", "", "", verified | passthrough),
 // VK-TERRAIN-LIGHTING: make the VK Tier-1 terrain LIT (directional relief + baked static shadow).
 // history: docs/gate-history.md#MC2_VK_TERRAIN_LODFADE
 L(Exact1, "MC2_VK_TERRAIN_LODFADE", Bool, false, "terrain", "", "VK-TERRAIN-LODFADE: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DETAIL).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_LODFADE", -1, false) | verified),
-// history: docs/gate-history.md#MC2_VK_TERRAIN_OVERLAY_GL_CANARY
-L(Lead1, "MC2_VK_TERRAIN_OVERLAY_GL_CANARY", Bool, false, "gameos", "", "VK final-gate diagnostic: wraps gosRenderer::drawTerrainOverlays GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1]...", registry(Trace, "MC2_TRACE_VK_TERRAIN_OVERLAY_GL_CANARY", -1, false) | verified),
 L(Lead1, "MC2_VK_TERRAIN_PERF", Bool, false, "vk", "", "", passthrough | verified),
 // VK-P10 TERRAIN TIER-1: the terrain in-place shared-GBuffer co-write region.
 L(Exact1, "MC2_VK_TERRAIN_VISUALDISPLACE_FAR", Bool, false, "vk", "", "", verified | passthrough),

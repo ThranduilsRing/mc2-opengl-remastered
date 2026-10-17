@@ -1,4 +1,4 @@
-<!-- doc-status: current | reviewed:2026-10-15 -->
+<!-- doc-status: current | reviewed:2026-10-17 -->
 # Step 5 bit-identity harness: design
 
 WHAT: the harness that step 5 (`Stuff::` math -> glm) opens with, per the owner ruling of 2026-10-11 and the meta-review section E bar: the
@@ -139,3 +139,21 @@ then run `mc2_tests.exe --test-case="*Stuff/GLM identity*" --no-skip` and retain
 The independent smoke checksum already exists: `py -3 tools/sim_determinism.py check mc2_03
 --install lane3 --duration 30` (one shell line; repeat for mc2_10/16/24). Compare strict reference chains before
 accepting sim changes; do not re-record a baseline to absorb a math mismatch. No runtime files changed.
+
+## 7. Port log (lane 1, session 21, 2026-10-17)
+
+Production GLM lives in `mclib/math/` (glm_config.h: the one configuration; mc2_math.h: exact wrappers; stuff_glm_bridge.h: Stuff<->glm
+until the last Stuff type goes). The corpus now asserts 39 required rows at 0 mismatches (the 30 identical ops, 8 exact wrappers, the bridge).
+Finding: the 1-ULP trig rows were the HARNESS include order. The gameos/mclib/mc2 PCH puts <cmath> first, so there Stuff::Sin binds sinf
+(== glm::sin); only the non-PCH libraries (stuff, mlr, gosfx, the editor) bind the double CRT, which sinD/cosD/acosD/atan2D reproduce.
+- S5.1 c9ff5eebf infra + wrappers + harness asserts (class A: no production user).
+- S5.2 6d07a8e3c render-only: all 23 `Invert` and 16 `MultiplyByInverse` calls outside Stuff -> glm::inverse (camera, TG/MSL transform, shadow
+  corners, gosFX, MLR). Stuff's OBB/Plane/Normal keep Stuff::Invert (OBB is collision geometry: not ported without a sim proof).
+- S5.3 3f83f2a52 class A: callerless Stuff math deleted (Arcsin, Tan, Round_Float_To_Word, the MultiplyByInverse family, Vector3D
+  Get*Component, AlignWithVector, Plane::CalculateX/Y/Z, Line3D::FindEnd, Ray3D::GetClosestPointTo/SetOrigin, OBB::BuildSphere).
+- S5.4 22a0e8228 the last external callers of the differing ops (gosFX Sin/Cos/Lerp, cursor and terrain-light scalar divide) on the wrappers.
+Proof every batch: sim pair mc2_03/mc2_24 identical to the pre-port reference (exe 579b60e2c) and to the committed baselines; saveload mc2_03
+fb63e85ac66966cf and mc2_01 d46e3e5e30d26b15 = baselines; S5.2/S5.4 GL/VK capture pair day mc2_01 + night mc2_10 viewed.
+Left on Stuff: the types themselves (Vector3D ~2,000 uses outside stuff/, Point3D, the matrices, UnitQuaternion, angles) and every op whose
+callers are Stuff-internal. Next: port by TYPE bottom-up (a header batch per type converting members to glm with the bridge at the boundary),
+not by op: op-by-op porting cannot delete a type.

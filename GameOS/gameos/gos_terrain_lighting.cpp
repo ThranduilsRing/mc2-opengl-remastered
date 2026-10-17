@@ -157,6 +157,9 @@ static bool     s_shaderBad    = false;   // sticky disable on compile failure
 static GLuint   s_program      = 0;
 
 static uint32_t s_numVertices  = 0;
+// STEP 3.4P: this frame's producer inputs for the native Vulkan lighting compute (see GetVkProducerSnapshot).
+static gos_terrain_lighting::VkProducerSnapshot s_vkSnap{};
+static bool s_vkSnapValid = false;
 static uint32_t s_maxLights    = 0;
 
 // GPU-side SSBOs (compute reads/writes; no persistent map needed)
@@ -1024,7 +1027,23 @@ void mission_shutdown() {
 // ---------------------------------------------------------------------------
 // BeginFrame — advance ring slot
 // ---------------------------------------------------------------------------
+bool GetVkProducerSnapshot(VkProducerSnapshot& out) {
+    if (!s_vkSnapValid) return false;
+    out = s_vkSnap;
+    return true;
+}
+
+bool ReadbackOutputForParity(uint32_t first, uint32_t count, GpuTerrainLightingOutput* dst) {
+    if (!dst || count == 0 || !s_initialized || first + count > s_numVertices) return false;
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_computeOutputSsbo.backendHandle));
+    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<GLintptr>(first) * sizeof(GpuTerrainLightingOutput),
+                       static_cast<GLsizeiptr>(count) * sizeof(GpuTerrainLightingOutput), dst);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    return true;
+}
+
 void BeginFrame() {
+    s_vkSnapValid = false;   // STEP 3.4P: set again by this frame's PackAndDispatch
     if (!IsEnabled() || !s_initialized || s_shaderBad) return;
     s_currentSlot = (s_currentSlot + 1u) % RING_FRAMES;
     ++s_frameIndex;
@@ -1369,6 +1388,40 @@ void PackAndDispatch() {
     // NIGHT-LIGHT-POOLS-1: publish this frame's packed count for the forward
     // consumer (LOD-chunk terrain per-fragment light loop).
     s_lastNumLights = numLights;
+
+    // STEP 3.4P: publish the exact inputs this frame's GL dispatch uses for the native Vulkan producer. The scalar block mirrors the uniform
+    // uploads below value for value.
+    {
+        VkProducerSnapshot& sn = s_vkSnap;
+        sn = VkProducerSnapshot{};
+        sn.numVertices  = s_numVertices;
+        sn.vertexOffset = (packMinVN <= packMaxVN) ? packMinVN : 0u;
+        sn.windowCount  = (packMinVN <= packMaxVN) ? (packMaxVN - packMinVN + 1u) : 0u;
+        sn.window       = (packMinVN <= packMaxVN) ? (s_packBuf.data() + packMinVN) : nullptr;
+        sn.numLights    = numLights;
+        sn.lights       = s_lightBuf.data();
+        if (eye) {
+            sn.sunDir[0] = eye->lightDirection.x; sn.sunDir[1] = eye->lightDirection.y; sn.sunDir[2] = eye->lightDirection.z;
+            sn.lightRgb[0] = static_cast<int>(eye->lightRed);   sn.lightRgb[1] = static_cast<int>(eye->lightGreen);   sn.lightRgb[2] = static_cast<int>(eye->lightBlue);
+            sn.ambientRgb[0] = static_cast<int>(eye->ambientRed); sn.ambientRgb[1] = static_cast<int>(eye->ambientGreen); sn.ambientRgb[2] = static_cast<int>(eye->ambientBlue);
+            sn.fogStart = eye->fogStart;
+            sn.fogFull  = eye->fogFull;
+            sn.camPos[0] = -eye->getCameraOrigin().x; sn.camPos[1] = eye->getCameraOrigin().z; sn.camPos[2] = eye->getCameraOrigin().y;
+        }
+        sn.baseRgb[0] = static_cast<int>((BaseVertexColor >> 16) & 0xFFu);
+        sn.baseRgb[1] = static_cast<int>((BaseVertexColor >>  8) & 0xFFu);
+        sn.baseRgb[2] = static_cast<int>( BaseVertexColor        & 0xFFu);
+        sn.rain       = TerrainQuad::rainLightLevel;
+        sn.lightening = static_cast<int>(TerrainQuad::lighteningLevel);
+        sn.useFog     = useFog ? 1 : 0;
+        sn.rendererSW = (Environment.Renderer == 3) ? 1 : 0;
+        const float pm = Terrain::worldUnitsMapSide / 2.0f - Terrain::worldUnitsPerVertex * 2.0f;
+        sn.playArea[0] = -pm; sn.playArea[1] = -pm; sn.playArea[2] = pm; sn.playArea[3] = pm;
+        sn.minHaze = Camera::MinHazeDistance;
+        sn.maxClip = Camera::MaxClipDistance;
+        sn.distFactor = Camera::DistanceFactor;
+        s_vkSnapValid = true;
+    }
 
     // --- Dispatch compute ---
     glUseProgram(s_program);

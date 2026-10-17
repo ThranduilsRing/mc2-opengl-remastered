@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 974,
+ "count": 973,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -15736,7 +15736,7 @@
    "rule": "NonEmpty",
    "owner": "unclassified",
    "retireBy": "",
-   "doc": "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default gl; unset/unrecognized -> gl, coercion logged).",
+   "doc": "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default vulkan; unset/unrecognized -> vulkan; gl is the temporary opt-out).",
    "readers": [
     {
      "at": "GameOS/gameos/render_backend_select.cpp:30",
@@ -24853,90 +24853,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_CSM_ARRAY_INTEROP",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-CSM-ARRAY-DIRECT-1: presence-gated =1, default OFF.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_shadow_island_live.cpp:148",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_CSM_ARRAY_INTEROP",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_CSM_FULLMAP_INTEROP",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-CSM-FULLMAP-DIRECT-1: presence-gated =1, default OFF.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_shadow_island_live.cpp:139",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_CSM_FULLMAP_INTEROP",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_DECAL_STATIC_GL_CANARY",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Std",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VK final-gate diagnostic: wraps gosRenderer::drawDecalStaticBatch GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=decal_static_batch.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11293",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_VK_DECAL_STATIC_GL_CANARY",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_FEED_DUMP",
    "kind": "String",
    "default": "",
@@ -25720,60 +25636,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_SCENE_GL_PRODUCER_QUERY",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "VK final-gate diagnostic: wraps the sceneFBO producer phase in a GL_ANY_SAMPLES_PASSED query and logs [VK_SCENE_GL_PRODUCER_QUERY v1] any_samples=... so resource-strict work can prove whether any GL scene producer still rasterizes before attempting to delete shared scene GL interop resources.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:597",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_VK_SCENE_GL_PRODUCER_QUERY",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_SCREENSHADOW_GL_CANARY",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "VK final-gate diagnostic: wraps only the legacy GL runScreenShadow fullscreen draw in GL_ANY_SAMPLES_PASSED and logs [VK_SCREENSHADOW_GL_CANARY v1].",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:714",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_VK_SCREENSHADOW_GL_CANARY",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_SELECT_TEST",
    "kind": "Bool",
    "default": false,
@@ -25797,35 +25659,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_SHADOW_INTEROP",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-P8a SHADOW-INTEROP: presence-gated =1, default OFF.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_shadow_island_live.cpp:130",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "0",
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_SHADOW_INTEROP",
    "retireVerdict": ""
   },
   {
@@ -25996,34 +25829,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_TERRAIN_DECAL_GL_CANARY",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Std",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VK final-gate diagnostic: wraps gosRenderer::drawDecals GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=terrain_decal_batch.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11413",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_VK_TERRAIN_DECAL_GL_CANARY",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_TERRAIN_FENCE_DEFER",
    "kind": "Bool",
    "default": true,
@@ -26073,34 +25878,6 @@
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_VK_TERRAIN_LODFADE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_TERRAIN_OVERLAY_GL_CANARY",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Std",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VK final-gate diagnostic: wraps gosRenderer::drawTerrainOverlays GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=terrain_overlay_batch.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11138",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_VK_TERRAIN_OVERLAY_GL_CANARY",
    "retireVerdict": ""
   },
   {

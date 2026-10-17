@@ -873,7 +873,7 @@
    "key": "gos_terrain_water_mdi",
    "optional_groups_on": [],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n",
-   "source": "GameOS/gameos/gameos_graphics_water.cpp:302",
+   "source": "GameOS/gameos/gameos_graphics_water.cpp:304",
    "stages": {
     "frag": "shaders/gos_terrain_water_mdi.frag",
     "vert": "shaders/gos_terrain_water_fast_mdi.vert"
@@ -2775,7 +2775,7 @@
    "key": "gpu_driven_cmd_patch",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1464",
+   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1479",
    "stages": {
     "comp": "shaders/gpu_driven_cmd_patch.comp"
    }
@@ -2799,7 +2799,7 @@
    "key": "gpu_driven_water",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1462",
+   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1477",
    "stages": {
     "comp": "shaders/gpu_driven_water.comp"
    }
@@ -3980,7 +3980,7 @@
    "key": "terrain_lighting",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_lighting.cpp:716",
+   "source": "GameOS/gameos/gos_terrain_lighting.cpp:719",
    "splice": {
     "begin_marker": "// --- begin terrain_lighting_shared.hglsl ---",
     "end_marker": "// --- end terrain_lighting_shared.hglsl ---",

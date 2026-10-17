@@ -256,6 +256,8 @@ if(MC2_VULKAN)
         list(APPEND SOURCES vk_one_shot.cpp)
         # Move-only owners of the Vulkan objects an island creates (RAII; the destructor is the only release path).
         list(APPEND SOURCES vk_owned.cpp)
+        # STEP 3.4P: native Vulkan compute producers (Slang compute pipelines; terrain lighting + water cull/pack).
+        list(APPEND SOURCES vk_compute_pipeline.cpp vk_native_producers.cpp)
         # VK-LIGHTFEED-DEDUP-1: ONE shared per-frame LightsData SSBO (3-slot
         # host-visible ring on the shared engine device) consumed by the mech +
         # color-prop islands instead of twin per-island ~3.5 MB copies of the

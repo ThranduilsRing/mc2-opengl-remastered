@@ -63,6 +63,11 @@ extern "C" uint64_t gos_terrain_indirect_getDispatchMvpFrameIdx();
 // this-frame-fresh) so the drawn water matches the drawn terrain exactly.
 extern "C" const float* gos_terrain_indirect_getDispatchMvp16();
 
+#ifdef MC2_VULKAN_ISLAND
+// 0 = the GL cull/pack runs and feeds VK by readback; 1 = the native VK producer replaces it; 2 = native plus the GL dispatch (parity frame).
+extern "C" int mc2_vk_water_native_mode();
+#endif
+
 namespace WaterStream {
 
 // SHORELINE-STAIRCASE-1: MC2_WATER_SHORE_FEATHER floor on effective alphaDepth
@@ -260,6 +265,9 @@ bool DebugOn() {
 // Phase C Stage 1 compute resources
 // ---------------------------------------------------------------------------
 GLuint   g_waterComputeProgram    = 0;
+// STEP 3.4P: native Vulkan cull inputs (see VkNativeInputs).
+VkNativeInputs g_vkNative{};
+bool           g_vkNativeValid = false;
 GLuint   g_cmdPatchProgram        = 0;
 GLuint   g_quadWindowSsbo         = 0;   // per-frame: recipe indices in quadList window
 uint32_t g_quadWindowSsboCapacity = 0;   // CPU-side mirror of g_quadWindowSsbo allocated size (bytes)
@@ -1442,8 +1450,15 @@ static uint32_t BuildQuadWindowSSBO() {
     return windowCount;
 }
 
+bool GetVkNativeInputs(VkNativeInputs& out) {
+    if (!g_vkNativeValid) return false;
+    out = g_vkNative;
+    return true;
+}
+
 bool ComputeDispatchAndBindThinRecords(float frameCos) {
     g_waterGpuDrivenArmed = false;
+    g_vkNativeValid = false;   // STEP 3.4P: re-captured below on frames the native producer runs
     mc2_hitch::HitchScope _hitchWater(mc2_hitch::HitchSpanKind::WaterFastPath);
     if (g_mc2HitchEnabled) {
         ++g_mc2HitchAccum.waterCalled;
@@ -1566,6 +1581,29 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
         g_mc2HitchAccum.waterNarrowCount = (uint32_t)g_narrowQuadsThisFrame.size();
         g_mc2HitchAccum.waterRecipeCount = (uint32_t)g_recipes.size();
     }
+
+#ifdef MC2_VULKAN_ISLAND
+    // STEP 3.4P: the native Vulkan cull/pack replaces this GL dispatch (mode 1) or runs beside it for a parity compare (mode 2). Same MVP the GL
+    // dispatch below would upload, same scalars.
+    if (fullRecipeAuth) {
+        const int nativeMode = mc2_vk_water_native_mode();
+        if (nativeMode >= 1) {
+            const float* nmvp = gos_terrain_indirect::IsFrameSolidArmed() ? gos_terrain_indirect_getDispatchMvp16() : gos_GetTerrainMVPMat4();
+            if (!nmvp) nmvp = gos_GetTerrainMVPMat4();
+            if (nmvp) {
+                std::memcpy(g_vkNative.mvp, nmvp, sizeof(g_vkNative.mvp));
+                g_vkNative.frameCos = frameCos;
+                g_vkNative.waterElevation = Terrain::waterElevation;
+                g_vkNative.shoreExt = EffShoreExt(MapData::alphaDepth);
+                g_vkNative.mapSide = (uint32_t)Terrain::realVerticesMapSide;
+                g_vkNative.biasLegacy = mc2WaterBiasLegacy();
+                g_vkNative.recipeCount = maxThinRecords;
+                g_vkNativeValid = true;
+                if (nativeMode == 1) return true;   // no GL ring slot, no GL dispatch, no readback
+            }
+        }
+    }
+#endif
 
     // Advance ring slot so GPU write doesn't stomp a slot the GPU is still consuming.
     // Must happen AFTER the windowCount==0 early-return so we don't burn a slot

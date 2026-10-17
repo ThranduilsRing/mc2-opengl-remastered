@@ -8,7 +8,6 @@ void MC_TextureManager::renderListsOverlaysWaterLoops (void)
     // sebi: split in 2 parts, first draw objects which have alpha test off, then with alpha test on
 	{
 	ZoneScopedN("RenderLists.TerrainAlphaWaterLoops");
-	GosGlLostDrawsScope _rlLost_("water_loops");
     for(int states = 0; states < 2; ++states)
     {
         gos_SetRenderState( gos_State_AlphaTest, states);
@@ -83,7 +82,6 @@ void MC_TextureManager::renderListsOverlaysNoUnderlayer (void)
 	//<< sebi: added this section to draw objects which do not have terrain underlayer (those are added in quad.cpp, see (*) there )
 	{ ZoneScopedN("Render.NoUnderlayer");
 	  TracyGpuZone("Render.NoUnderlayer");
-	  GosGlLostDrawsScope _rlLost_("no_underlayer");
 	if (Environment.Renderer != 3)
 	{
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
@@ -154,7 +152,6 @@ void MC_TextureManager::renderListsOverlaysShadowBlobs ([[maybe_unused]] const R
 
 	{
 	ZoneScopedN("RenderLists.ShadowBlobs");
-	GosGlLostDrawsScope _rlLost_("shadow_blobs");
 	if (Environment.Renderer == 3)
 	{
 		gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
@@ -237,7 +234,6 @@ void MC_TextureManager::renderListsOverlaysNonTerrainAlpha ([[maybe_unused]] con
 #endif
 	{
 	ZoneScopedN("RenderLists.NonTerrainAlphaLoops");
-	GosGlLostDrawsScope _rlLost_("alpha_loops");
 	gos_SetRenderState( gos_State_ZCompare, 1);
 	if (Environment.Renderer != 3)
 	{
@@ -319,7 +315,6 @@ void MC_TextureManager::renderListsOverlaysVfxHudSubmit ([[maybe_unused]] const 
 #endif
 	{
 	ZoneScopedN("RenderLists.VfxHudSubmit");
-	GosGlLostDrawsScope _rlLost_("vfx_hud");
 	if (Environment.Renderer == 3)
 	{
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
@@ -545,7 +540,7 @@ void MC_TextureManager::renderListsOverlaysVfxHudSubmit ([[maybe_unused]] const 
 void MC_TextureManager::renderListsOverlaysOld (const RenderListsFrame& st)
 {
 	{
-		ZoneScopedN("Render.Overlays"); GosGlLostDrawsScope _lost_("overlays.overlays_old");
+		ZoneScopedN("Render.Overlays");
 		TracyGpuZone("Render.Overlays");
 	if (Environment.Renderer == 3)
 	{

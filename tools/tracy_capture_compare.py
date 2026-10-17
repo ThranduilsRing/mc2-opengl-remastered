@@ -115,9 +115,7 @@ REGRESS_WARN_PCT = 5.0   # frame-count drop that WARNs (exit 1)
 REGRESS_FAIL_PCT = 10.0  # frame-count drop that FAILs (exit 2)
 
 # The vk arm measures the shipped VK frame: backend + shared GBuffer, every umbrella member
-# at its default (the shadow producers are default-on kill switches since the one-submit-
-# per-frame rework, so forcing MC2_VK_SHADOW_INTEROP=0 would measure a frame without shadows).
-# Per-capture overrides go through --env (e.g. --env MC2_VK_SHADOW_INTEROP=0 for a no-shadow arm).
+# at its default. Per-capture overrides go through --env (e.g. --env MC2_VK_SHARED_GBUFFER=0).
 VK_ENV = {
     "MC2_RENDER_BACKEND": "vulkan",
     "MC2_VK_SHARED_GBUFFER": "1",
@@ -937,7 +935,7 @@ def main() -> int:
     c.set_defaults(show_window=True)
     c.add_argument("--env", action="append", default=[], metavar="KEY=VAL",
                    help="extra env var(s) for the game, applied AFTER the arm's "
-                        "defaults + the MC2_VK* scrub (e.g. --env MC2_VK_SHADOW_INTEROP=0). "
+                        "defaults + the MC2_VK* scrub (e.g. --env MC2_VK_SHARED_GBUFFER=0). "
                         "Repeatable.")
     c.set_defaults(fn=cmd_capture)
 

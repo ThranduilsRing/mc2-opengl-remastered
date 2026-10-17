@@ -27,6 +27,7 @@
 // =============================================================================
 
 #include "vulkan_water_island_internal.h"
+#include "vk_one_shot.h"   // STEP 3.4P: recipe upload
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -146,7 +147,8 @@ void write_descriptors(WaterIsland* s) {
         VkDescriptorBufferInfo vsInfo{ s->vsUbo[i].get(), 0, VK_WHOLE_SIZE };
         VkDescriptorBufferInfo fsInfo{ s->fsUbo[i].get(), 0, VK_WHOLE_SIZE };
         VkDescriptorBufferInfo recInfo{ s->recipeBuf.get(), 0, VK_WHOLE_SIZE };
-        VkDescriptorBufferInfo thinInfo{ s->thinBuf[i].get(), 0, VK_WHOLE_SIZE };
+        // STEP 3.4P: binding 6 is the GPU-produced thin buffer once the native producers are up.
+        VkDescriptorBufferInfo thinInfo{ (s->native && s->native->ready()) ? s->native->thin(static_cast<uint32_t>(i)) : s->thinBuf[i].get(), 0, VK_WHOLE_SIZE };
         VkWriteDescriptorSet w[4]{};
         w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = s->set[i];
         w[0].dstBinding = 0; w[0].descriptorCount = 1;
@@ -200,6 +202,35 @@ bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes) {
     if (!make_buffer(s, s->thinBuf[par], cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "water.thinBuf", static_cast<int>(par)))
         return false;
     s->thinCapBytes[par] = cap;
+    write_descriptors(s);
+    return true;
+}
+
+// STEP 3.4P: the mission-static recipes (64 B each) copied once into a device-local storage buffer (staging + one-shot copy). The native cull reads it every
+// frame and the water vertex stage reads it for the visible records, so it must not live in host memory.
+bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeCount) {
+    const VkDeviceSize need = static_cast<VkDeviceSize>(recipeCount) * 64;
+    if (!recipes || need == 0) return false;
+    mc2vk::getOrCreateEngineVulkanContext().waitIdle("water_recipe_upload");
+    mc2vk::OwnedBuffer staging;
+    if (!staging.createFilled(s->allocator, s->device, recipes, need, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "water.recipeStage")) {
+        vlog("recipe staging failed."); return false;
+    }
+    s->recipeBuf.reset();
+    VkBufferCreateInfo bci{};
+    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bci.size = need; bci.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    VmaAllocationCreateInfo aci{};
+    aci.usage = VMA_MEMORY_USAGE_AUTO;
+    if (!s->recipeBuf.create(s->allocator, s->device, bci, aci, "water.recipeBuf")) { vlog("recipe device buffer failed."); return false; }
+    s->recipeBytes = need;
+    const VkBuffer src = staging.get(), dst = s->recipeBuf.get();
+    if (!mc2vk::submitOneShot(mc2vk::getOrCreateEngineVulkanContext(), [&](VkCommandBuffer cb) {
+            VkBufferCopy c{0, 0, need};
+            vkCmdCopyBuffer(cb, src, dst, 1, &c);
+        }, "water_recipe_upload")) {
+        vlog("recipe copy failed."); return false;
+    }
     write_descriptors(s);
     return true;
 }
@@ -280,6 +311,15 @@ extern "C" void mc2_render_backend_water_region_health(
 // MDI draw and calls mc2_vk_water_island_run instead — mutually exclusive).
 extern "C" int mc2_vk_water_island_enabled() {
     return waterTier1Requested() ? 1 : 0;
+}
+
+// STEP 3.4P: 0 = the GL cull/pack feeds the island by readback; 1 = the native VK producers run (the GL cull dispatch is skipped); 2 = native, and the GL
+// dispatch runs as well so the outputs can be compared (parity frames: native frames 60, 600, then every 3600th).
+extern "C" int mc2_vk_water_native_mode() {
+    WaterIsland* s = parkedIsland();
+    if (!s || s->disabled || !s->inited || !s->native || !s->native->ready()) return 0;
+    const uint64_t f = s->nativeFrames;
+    return (f == 60 || f == 600 || (f > 0 && f % 3600 == 0)) ? 2 : 1;
 }
 
 // Teardown (called from gosPostProcess::destroy or renderer shutdown).

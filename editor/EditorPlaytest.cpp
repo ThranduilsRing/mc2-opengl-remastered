@@ -955,6 +955,9 @@ void Start()
 	if (s_smokeChild)
 		spec.envExtra.push_back(std::make_pair(std::string("MC2_SMOKE_MODE"), std::string("1")));
 
+	// The editor process runs its private GL (MC2_RENDER_BACKEND=gl, EditorMFC.cpp); the game it launches is the Vulkan default.
+	spec.envExtra.push_back(std::make_pair(std::string("MC2_RENDER_BACKEND"), std::string("vulkan")));
+
 	s_task = EditorTaskRunner::StartTask(spec);
 	if (s_task == EditorTaskRunner::kInvalidTask)
 	{

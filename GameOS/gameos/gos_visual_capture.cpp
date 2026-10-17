@@ -319,8 +319,8 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
     mc2::fmt::to_buf(num, "  \"width\": {:d},\n", mc2::fmt::as_i32(w)); buf += num;
     mc2::fmt::to_buf(num, "  \"height\": {:d},\n", mc2::fmt::as_i32(h)); buf += num;
     buf += "  \"readback_source\": \""; buf += g_readbackSource; buf += "\",\n";
-    // The backend that DREW this frame, not the one requested: a Vulkan context that failed to start puts the whole session back on GL
-    // (forceGLFallback), and a capture harness has to tell that apart from a Vulkan frame.
+    // The backend that DREW this frame, not the one requested: a harness has to tell a GL frame from a Vulkan frame
+    // (a Vulkan context that fails to start now exits the process).
     buf += "  \"backend\": \""; buf += mc2::renderBackendName(mc2::renderBackend()); buf += "\",\n";
     // VK-FIRST-BOOKMARK-POSE-1: record the ACTUAL camera pose the JUST-RENDERED
     // frame used (stashed at the rendered_pose_matches point, BEFORE the per-settle

@@ -242,7 +242,6 @@ void MC_TextureManager::renderListsPreamble (void)
 {
 	{
 	ZoneScopedN("RenderLists.Preamble");
-	GosGlLostDrawsScope _rlLost_("preamble");
 	if (Environment.Renderer == 3)
 	{
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneZero);
@@ -296,7 +295,6 @@ void MC_TextureManager::renderListsLightDataUpload (void)
 {
 	{
 	ZoneScopedN("RenderLists.LightDataUpload");
-	GosGlLostDrawsScope _rlLost_("light_upload");
     // copy global list of light data into GPU buffer
 
     // [LIGHTSSBO v1] Upload-size FLOOR retained (NOT a removable UBO-window
@@ -340,7 +338,6 @@ void MC_TextureManager::renderListsSceneDataUpload (void)
     Stuff::Vector3D cp = eye->getCameraOrigin();
     {
         ZoneScopedN("Camera.SceneDataUpload");
-        GosGlLostDrawsScope _rlLost_("scene_data");
         sceneData_->fog_start = eye->fogStart;
         sceneData_->fog_end = eye->fogFull;
         sceneData_->min_haze_dist = Camera::MinHazeDistance;
@@ -373,7 +370,6 @@ void MC_TextureManager::renderListsObjects3D (void)
 	{
 		ZoneScopedN("Render.3DObjects");
 		TracyGpuZone("Render.3DObjects");
-		GosGlLostDrawsScope _rlLost_("obj3d");
 		// SAME-ORDER-EXECUTOR-SLICE-2: validate-only ownership of MechOpaque top-level
 		// pass. Body sets its own state (no apply); this just validates ambient+FBO.
 		render_contract::executorOwnBeginTopLevel(render_contract::PassIdentity::OpaqueObject,
@@ -444,7 +440,6 @@ void MC_TextureManager::renderListsPostObjectsStateRestore (void)
 {
 	{
 	ZoneScopedN("RenderLists.PostObjectsStateRestore");
-	GosGlLostDrawsScope _rlLost_("state_restore");
 	// [Moved in Phase 4 debug] flush() was originally here (after
 	// Render.3DObjects). But Render.TerrainSolid runs AFTER us on line
 	// ~1287, so terrain was overwriting our building pixels. Flush is
@@ -482,7 +477,6 @@ void MC_TextureManager::renderListsStaticShadowBuild (void)
 	    Terrain::mapData) {
 		ZoneScopedN("Shadow.StaticFullMapBuild");
 		TracyGpuZone("Shadow.StaticFullMapBuild");
-		GosGlLostDrawsScope _rlLost_("static_shadow_build");
 
 		gos_BuildStaticLightMatrix();   // world-fixed, camera-independent
 		gos_MarkStaticLightMatrixBuilt();
@@ -540,7 +534,6 @@ void MC_TextureManager::renderListsStaticPropRegistryFlush (void)
 	// Render.GpuStaticProps block; runs regardless of tessellation/mech state.
 	{
 		ZoneScopedN("RenderLists.StaticPropRegistryFlush");
-		GosGlLostDrawsScope _rlLost_("sp_registry_flush");
 		extern bool g_useGpuStaticProps;
 		extern bool g_useGpuObjects;
 		if (g_useGpuStaticProps || g_useGpuObjects) {

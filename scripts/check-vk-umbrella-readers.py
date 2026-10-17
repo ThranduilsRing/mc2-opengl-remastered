@@ -325,7 +325,7 @@ def selftest() -> int:
         ("R1 direct effective<> is caught",
          {"a.cpp": 'bool f() { return mc2::gate::effective<"MC2_VK_VFX">(false); }'}, check_direct_effective, True),
         ("R1 the adapter itself is allowed",
-         {ADAPTER: 'return gate::effective<n>(g_mc2VkSessionForcedGL); // effective<"MC2_VK_X">'}, check_direct_effective, False),
+         {ADAPTER: 'return gate::effective<n>(false); // effective<"MC2_VK_X">'}, check_direct_effective, False),
         ("R1 a comment is not a call",
          {"a.cpp": '// effective<"MC2_VK_VFX">(false)\nint x;'}, check_direct_effective, False),
         ("R1 a direct read of the umbrella is caught",
