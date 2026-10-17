@@ -687,8 +687,8 @@ bool gosPostProcess::runVkPostFogNative()
     // Depth back to the GL hand-off layout (layout-stable across the boundary).
     depthBarrier(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                 VK_ACCESS_SHADER_READ_BIT, 0,
-                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+                 VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 
     vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Post);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) {
