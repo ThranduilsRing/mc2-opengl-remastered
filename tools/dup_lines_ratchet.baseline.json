@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 577,
   "RenderWorld": 0,
-  "code": 14650,
+  "code": 14634,
   "mclib": 31446,
   "shaders": 3078
  },
@@ -202,7 +202,7 @@
   "code/mechcmd2_cmdline.cpp": 22,
   "code/mechcmd2_debugwins.cpp": 24,
   "code/mechcmd2_frame.cpp": 12,
-  "code/mechicon.cpp": 260,
+  "code/mechicon.cpp": 244,
   "code/mechlabscreen.cpp": 66,
   "code/mechlistbox.cpp": 46,
   "code/mechlopedia.cpp": 174,
@@ -643,8 +643,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "35ade3351",
+ "head": "04e8c4dbc",
  "n": 8,
- "total": 54946,
+ "total": 54930,
  "version": 1
 }
