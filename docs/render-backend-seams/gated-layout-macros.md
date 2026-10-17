@@ -470,7 +470,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:79`
+- Header: `GameOS/gameos/vk_owned.h:81`
 - Class: `Owner`  (data-member)
 - Member: `return true;`
 - Consuming targets: gameos
@@ -478,7 +478,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:85`
+- Header: `GameOS/gameos/vk_owned.h:87`
 - Class: `Owner`  (data-member)
 - Member: `VkResult result = VK_ERROR_UNKNOWN;`
 - Consuming targets: gameos
@@ -486,7 +486,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:87`
+- Header: `GameOS/gameos/vk_owned.h:89`
 - Class: `Owner`  (data-member)
 - Member: `return result;`
 - Consuming targets: gameos
@@ -494,7 +494,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:96`
+- Header: `GameOS/gameos/vk_owned.h:98`
 - Class: `OwnedBuffer`  (data-member)
 - Member: `OwnedBuffer& operator=(const OwnedBuffer&) = delete;`
 - Consuming targets: gameos
@@ -502,7 +502,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:103`
+- Header: `GameOS/gameos/vk_owned.h:105`
 - Class: `OwnedBuffer`  (data-member)
 - Member: `return *this;`
 - Consuming targets: gameos
@@ -510,25 +510,9 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:107`
+- Header: `GameOS/gameos/vk_owned.h:109`
 - Class: `OwnedBuffer`  (data-member)
 - Member: `int i0 = -1, int i1 = -1);`
-- Consuming targets: gameos
-- Reached by define: gameos[gameos(PUBLIC)]
-
-## PASS  (`MC2_VULKAN_ISLAND`)
-
-- Header: `GameOS/gameos/vk_owned.h:131`
-- Class: `OwnedBuffer`  (data-member)
-- Member: `VkBuffer buffer_ = VK_NULL_HANDLE;`
-- Consuming targets: gameos
-- Reached by define: gameos[gameos(PUBLIC)]
-
-## PASS  (`MC2_VULKAN_ISLAND`)
-
-- Header: `GameOS/gameos/vk_owned.h:132`
-- Class: `OwnedBuffer`  (data-member)
-- Member: `VmaAllocation allocation_ = nullptr;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
@@ -536,13 +520,29 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 - Header: `GameOS/gameos/vk_owned.h:133`
 - Class: `OwnedBuffer`  (data-member)
+- Member: `VkBuffer buffer_ = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_owned.h:134`
+- Class: `OwnedBuffer`  (data-member)
+- Member: `VmaAllocation allocation_ = nullptr;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_owned.h:135`
+- Class: `OwnedBuffer`  (data-member)
 - Member: `VmaAllocator allocator_ = nullptr;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:142`
+- Header: `GameOS/gameos/vk_owned.h:144`
 - Class: `OwnedImage`  (data-member)
 - Member: `OwnedImage& operator=(const OwnedImage&) = delete;`
 - Consuming targets: gameos
@@ -550,7 +550,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:149`
+- Header: `GameOS/gameos/vk_owned.h:151`
 - Class: `OwnedImage`  (data-member)
 - Member: `return *this;`
 - Consuming targets: gameos
@@ -558,7 +558,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:153`
+- Header: `GameOS/gameos/vk_owned.h:155`
 - Class: `OwnedImage`  (data-member)
 - Member: `int i0 = -1, int i1 = -1);`
 - Consuming targets: gameos
@@ -566,7 +566,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:170`
+- Header: `GameOS/gameos/vk_owned.h:172`
 - Class: `OwnedImage`  (data-member)
 - Member: `VkImage image_ = VK_NULL_HANDLE;`
 - Consuming targets: gameos
@@ -574,7 +574,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:171`
+- Header: `GameOS/gameos/vk_owned.h:173`
 - Class: `OwnedImage`  (data-member)
 - Member: `VmaAllocation allocation_ = nullptr;`
 - Consuming targets: gameos
@@ -582,7 +582,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_owned.h:172`
+- Header: `GameOS/gameos/vk_owned.h:174`
 - Class: `OwnedImage`  (data-member)
 - Member: `VmaAllocator allocator_ = nullptr;`
 - Consuming targets: gameos
