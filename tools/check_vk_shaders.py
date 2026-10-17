@@ -3,7 +3,8 @@
 
 Wraps the SAME SPIR-V compiler the build already uses (VULKAN-SHADER-TOOLCHAIN-1
 in GameOS/gameos/CMakeLists.txt: glslangValidator -V, or glslc as fallback) over
-every shaders/vulkan/*.vert / *.frag file, errors only. One-command, no CMake
+every shaders/vulkan/*.{vert,frag,comp} file and stage-named Slang file, errors only.
+Slang uses the shared bake helper (version, descriptors and GPU ABI checked). No CMake
 configure/build needed.
 
 Locates the compiler via (in order): --glslang / --glslc CLI flag, VULKAN_SDK
@@ -25,6 +26,9 @@ import tempfile
 import os as _os, sys as _sys  # noqa: E401
 _sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent / 'shader_offline_build'))
+import slang_compile
 
 
 def find_compiler(explicit_glslang, explicit_glslc):
@@ -53,6 +57,8 @@ def find_compiler(explicit_glslang, explicit_glslc):
 def compile_one(kind, exe, src_path):
     with tempfile.TemporaryDirectory() as td:
         spv = os.path.join(td, "out.spv")
+        if src_path.endswith('.slang'):
+            return slang_compile.bake(Path(src_path), Path(spv))
         if kind == "glslang":
             cmd = [exe, "-V", src_path, "-o", spv]
         else:
@@ -74,11 +80,6 @@ def main():
     args = ap.parse_args()
 
     kind, exe = find_compiler(args.glslang, args.glslc)
-    if not exe:
-        print("check_vk_shaders: no glslangValidator or glslc found "
-              "(set VULKAN_SDK, or pass --glslang/--glslc)", file=sys.stderr)
-        sys.exit(2)
-
     shader_dir = args.shader_dir
     if not os.path.isdir(shader_dir):
         print(f"check_vk_shaders: shader dir not found: {shader_dir}", file=sys.stderr)
@@ -86,10 +87,14 @@ def main():
 
     files = sorted(
         f for f in os.listdir(shader_dir)
-        if f.endswith(".vert") or f.endswith(".frag")
+        if f.endswith(('.vert', '.frag', '.comp', '.vert.slang', '.frag.slang', '.comp.slang'))
     )
     if not files:
-        print(f"check_vk_shaders: no .vert/.frag files in {shader_dir}", file=sys.stderr)
+        print(f"check_vk_shaders: no stage shaders in {shader_dir}", file=sys.stderr)
+        sys.exit(2)
+
+    if not exe and any(not f.endswith('.slang') for f in files):
+        print('check_vk_shaders: glslangValidator or glslc required', file=sys.stderr)
         sys.exit(2)
 
     any_error = False

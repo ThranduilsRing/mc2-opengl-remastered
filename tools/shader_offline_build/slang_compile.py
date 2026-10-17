@@ -7,6 +7,7 @@ See docs/shaders-slang.md.
 """
 from __future__ import annotations
 import re
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -43,6 +44,7 @@ def find_slangc():
 
 def slangc_version(exe) -> str:
     r = subprocess.run([exe, "-v"], capture_output=True, text=True,
+                       timeout=60,
                        **console_child.child_kwargs(redirected=True))
     out = (r.stdout + r.stderr).strip().splitlines()
     return out[0].strip() if out else "unknown"
@@ -60,17 +62,183 @@ def source_text_canon(path: Path) -> str:
     return path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
 
 
+def uncomment(text):
+    return re.sub(r'/\*.*?\*/|//[^\n]*', lambda m: '\n' * m.group().count('\n'),
+                  text, flags=re.S)
+
+
+def dependencies(src: Path):
+    """Conservative local dependency closure, including inactive conditional imports."""
+    src = src.resolve()
+    found = {}
+
+    def visit(path):
+        if path in found:
+            return
+        text = source_text_canon(path)
+        found[path] = text
+        clean = uncomment(text)
+        refs = re.findall(r'\b(?:export\s+)?import\s+([\w.]+)\s*;', clean)
+        names = [r.replace('.', '/') + '.slang' for r in refs]
+        for include in re.findall(r'^\s*#\s*include\s+([^\n]+)', clean, re.M):
+            literal = re.fullmatch(r'\s*["<]([^">]+)[">]\s*', include)
+            if not literal:
+                raise ValueError(f'{path.name}: only literal includes are supported')
+            names.append(literal.group(1))
+        for name in names:
+            target = next((d / name for d in (path.parent, src.parent)
+                           if (d / name).is_file()), None)
+            if target is None:
+                raise ValueError(f'{path.name}: unresolved local dependency {name}')
+            visit(target.resolve())
+    visit(src)
+    return found
+
+
+def source_bundle(src: Path):
+    """Portable source hash input; paths and contents are both significant."""
+    import os
+    files = dependencies(src)
+    return json.dumps(sorted((Path(os.path.relpath(p, src.resolve().parent)).as_posix(), t)
+                             for p, t in files.items()), ensure_ascii=False)
+
+
+RESOURCE_RE = re.compile(
+    r'(?:\[\[\s*vk::binding\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)\s*\]\]\s*)?'
+    r'\b(ConstantBuffer|(?:RW)?StructuredBuffer|(?:RW)?ByteAddressBuffer|'
+    r'(?:RW)?Texture\w*|SamplerState|SamplerComparisonState)'
+    r'\s*(?:<([^;]+?)>)?\s+(\w+)\s*(?:\[[^]]*\])?\s*;')
+
+
+def resource_bindings(text):
+    for m in RESOURCE_RE.finditer(uncomment(text)):
+        binding, desc_set, kind, typ, name = m.groups()
+        ns = ('ubo' if kind == 'ConstantBuffer' else 'ssbo' if 'Buffer' in kind
+              else 'image' if kind.startswith('RWTexture') else 'texture')
+        yield {'binding': int(binding) if binding is not None else None,
+               'set': int(desc_set) if desc_set is not None else None,
+               'namespace': ns, 'name': name, 'type': typ,
+               'line': text.count('\n', 0, m.start()) + 1}
+
+
+def validate_reflection(raw, src, root=ROOT):
+    """Reject implicit/duplicate descriptors, unknown buffer slots and ABI drift."""
+    declarations = [r for t in dependencies(src).values() for r in resource_bindings(t)]
+    errors = [f"{r['name']}: explicit vk::binding required" for r in declarations
+              if r['binding'] is None]
+    occ_path = Path(root) / 'docs/render-backend-seams/binding-slot-occupancy.json'
+    occ = json.loads(occ_path.read_text(encoding='utf-8'))['occupancy'] if occ_path.exists() else None
+    seen = set()
+    for group in ('ubos', 'ssbos', 'textures', 'separate_images', 'separate_samplers', 'images', 'samplers'):
+        for r in raw.get(group, []):
+            slot = (r.get('set'), r.get('binding'))
+            if None in slot or slot in seen:
+                errors.append(f"{r.get('name')}: missing or duplicate descriptor {slot}")
+            if slot not in {(d['set'], d['binding']) for d in declarations}:
+                errors.append(f"{r.get('name')}: descriptor {slot} has no explicit source binding")
+            seen.add(slot)
+            if group in ('ubos', 'ssbos') and slot[0] == 0 and occ is not None:
+                key = f"{'UBO' if group == 'ubos' else 'SSBO'}:{slot[1]}"
+                if key not in occ:
+                    errors.append(f'{key}: absent from binding-slot-occupancy.json')
+    sys.path.insert(0, str(ROOT / 'tools'))
+    import gpu_abi_gen as abi
+    types = raw.get('types', {})
+    for header, _, _ in abi.STRUCTS:
+        path = Path(root) / header
+        if not path.exists():
+            continue
+        info = abi.parse_source(path.read_text(encoding='utf-8'), header)
+        for type_id, reflected in types.items():
+            if reflected.get('name') not in (info['glsl'], info['cpp']):
+                continue
+            if info['block']:
+                for block in raw.get('ubos', []):
+                    if block.get('type') == type_id and (
+                            block.get('set'), block.get('binding')) != (
+                                int(info['set']), int(info['binding'])):
+                        errors.append(f"gpu_abi: {reflected['name']} set/binding drift")
+            offsets, _, _ = abi.struct_offsets(info['fields'], info['rules'])
+            expected = []
+            for (name, typ), (_, offset) in zip(info['fields'], offsets):
+                base, arr = abi.glsl_type_str(typ)
+                expected.append((name, base, offset, [] if not arr else [typ[2]]))
+            got = [(m['name'], m['type'], m.get('offset'), m.get('array', []))
+                   for m in reflected.get('members', [])]
+            if got != expected:
+                errors.append(f"gpu_abi: {reflected['name']} member type/offset/array drift")
+            for m, (_, typ) in zip(reflected.get('members', []), info['fields']):
+                if isinstance(typ, tuple):
+                    stride = abi.align_size(typ, info['rules'])[1] // typ[2]
+                    if m.get('array_stride') != stride:
+                        errors.append(f"gpu_abi: {m['name']} array stride drift")
+                if (typ == 'mat4' or isinstance(typ, tuple) and typ[1] == 'mat4') and (
+                        m.get('matrix_stride') != 16 or m.get('row_major', False)):
+                    errors.append(f"gpu_abi: {m['name']} matrix layout drift")
+    return errors
+
+
 def compile_slang(exe, src: Path, stage: str, out: Path, entry="main",
-                  profile=DEFAULT_PROFILE):
+                  profile=DEFAULT_PROFILE, defines=()):
     """Return (ok, diagnostics). Never leaves a partial `out` behind on failure."""
     if stage not in SLANG_STAGE:
         return False, f"unsupported stage '{stage}' (vert|frag|comp)"
-    cmd = [exe, str(src), "-target", "spirv", "-profile", profile,
+    out.unlink(missing_ok=True)
+    cmd = [exe, str(src), "-I", str(src.parent), "-target", "spirv", "-profile", profile,
+           "-matrix-layout-column-major",
            "-stage", SLANG_STAGE[stage], "-entry", entry,
            "-warnings-disable", DISABLED_WARNINGS, "-o", str(out)]
-    r = subprocess.run(cmd, capture_output=True, text=True,
-                       **console_child.child_kwargs(redirected=True))
+    cmd += [f"-D{d}" for d in sorted(defines)]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True,
+                           timeout=60,
+                           **console_child.child_kwargs(redirected=True))
+    except (OSError, subprocess.SubprocessError) as e:
+        out.unlink(missing_ok=True)
+        return False, str(e)
     ok = r.returncode == 0 and out.exists()
     if not ok and out.exists():
         out.unlink()
     return ok, (r.stdout + r.stderr).strip()
+
+
+def bake(src, out, entry='main', defines=(), exe=None, cross=None):
+    out.unlink(missing_ok=True)
+    exe = exe or find_slangc()
+    cross = cross or shader_common.find_tool('spirv-cross')
+    if not exe or not cross:
+        return False, 'slangc and spirv-cross required (Vulkan SDK)'
+    try:
+        error = check_version(exe)
+        if error:
+            return False, error
+        dependencies(src)
+        ok, diag = compile_slang(exe, src, src.suffixes[-2][1:], out, entry,
+                                 defines=defines)
+        if not ok:
+            return ok, diag
+        raw = json.loads(subprocess.run([cross, str(out), '--reflect'], check=True,
+                         capture_output=True, text=True, timeout=60,
+                         **console_child.child_kwargs(redirected=True)).stdout)
+        errors = validate_reflection(raw, src)
+        if not errors:
+            return True, diag
+        diag = '\n'.join(errors)
+    except (ValueError, OSError, subprocess.SubprocessError) as e:
+        diag = str(e)
+    out.unlink(missing_ok=True)
+    return False, diag
+
+
+if __name__ == '__main__':
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('source', type=Path)
+    ap.add_argument('-o', required=True, type=Path)
+    ap.add_argument('--slangc')
+    ap.add_argument('--spirv-cross')
+    args = ap.parse_args()
+    ok, diagnostic = bake(args.source, args.o, exe=args.slangc, cross=args.spirv_cross)
+    if diagnostic:
+        print(diagnostic)
+    sys.exit(0 if ok else 1)
