@@ -655,6 +655,12 @@ void __stdcall DoGameLogic()
 				IfaceCallStrike(ARTILLERY_LARGE, &strikeAt, nullptr, true, false, 3.0f);
 				++s_barrage;
 				extern unsigned g_mc2ArtCreated, g_mc2ArtReinit, g_mc2ArtReinitFreed, g_mc2ArtEnded, g_mc2ArtBoomNoFx;
+				if ((s_barrage % 50) == 0)
+				{
+					ArtilleryPtr a0 = ObjectManager->getArtillery(0);
+					if (a0)
+						mc2::fmt::print_out("[ALLOC_ART] a0 exists={} tti_ms={} boom={} flags_justcreated={}\n", mc2::fmt::as_i32(a0->getExists() ? 1 : 0), mc2::fmt::as_i32(static_cast<int>(a0->info.strike.timeToImpact * 1000.0)), mc2::fmt::as_i32(a0->getFlag(OBJECT_FLAG_BOOM) ? 1 : 0), mc2::fmt::as_i32(a0->getFlag(OBJECT_FLAG_JUSTCREATED) ? 1 : 0));
+				}
 				if ((s_barrage % 50) == 0 || s_barrage == s_barrageN)
 					mc2::fmt::print_out("[ALLOC_ART] barrage={} created={} reinit={} reinit_freed_appearance={} ended={} boom_no_fx={}\n", mc2::fmt::as_i32(s_barrage), mc2::fmt::as_u32(g_mc2ArtCreated), mc2::fmt::as_u32(g_mc2ArtReinit), mc2::fmt::as_u32(g_mc2ArtReinitFreed), mc2::fmt::as_u32(g_mc2ArtEnded), mc2::fmt::as_u32(g_mc2ArtBoomNoFx));
 			}
