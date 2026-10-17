@@ -255,8 +255,7 @@ extern "C" int mc2_vk_water_island_run(
                                 mc2::fmt::as_u32(pr.lightCompared), mc2::fmt::as_u32(pr.lightMismatch), mc2::fmt::as_u32(pr.fogMismatch), mc2::fmt::as_u32(pr.lightMaxDelta));
             mc2::fmt::print_err("[VK_PRODUCER_PARITY v1] lighting_window offset={:d} count={:d} lights={:d} gl_read={:d}\n", mc2::fmt::as_u32(snap.vertexOffset), mc2::fmt::as_u32(snap.windowCount), mc2::fmt::as_u32(snap.numLights), mc2::fmt::as_i32(glLight.empty() ? 0 : 1));
             if (pr.haveDiff) {
-                mc2::fmt::print_err("[VK_PRODUCER_PARITY v1] first_diff gl={:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x} vk={:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x}
-",
+                mc2::fmt::print_err("[VK_PRODUCER_PARITY v1] first_diff gl={:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x} vk={:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x}\n",
                     mc2::fmt::as_u32(pr.firstDiffGl[0]), mc2::fmt::as_u32(pr.firstDiffGl[1]), mc2::fmt::as_u32(pr.firstDiffGl[2]), mc2::fmt::as_u32(pr.firstDiffGl[3]), mc2::fmt::as_u32(pr.firstDiffGl[4]), mc2::fmt::as_u32(pr.firstDiffGl[5]),
                     mc2::fmt::as_u32(pr.firstDiffGl[6]), mc2::fmt::as_u32(pr.firstDiffGl[7]), mc2::fmt::as_u32(pr.firstDiffGl[8]), mc2::fmt::as_u32(pr.firstDiffGl[9]), mc2::fmt::as_u32(pr.firstDiffGl[10]), mc2::fmt::as_u32(pr.firstDiffGl[11]),
                     mc2::fmt::as_u32(pr.firstDiffVk[0]), mc2::fmt::as_u32(pr.firstDiffVk[1]), mc2::fmt::as_u32(pr.firstDiffVk[2]), mc2::fmt::as_u32(pr.firstDiffVk[3]), mc2::fmt::as_u32(pr.firstDiffVk[4]), mc2::fmt::as_u32(pr.firstDiffVk[5]),
