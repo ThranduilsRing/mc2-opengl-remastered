@@ -26,6 +26,7 @@
 
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
+#include "vk_one_shot.h"
 #include "vulkan_context.h"
 #include "vulkan_legacy_shape_island.h"
 #include "../../RenderCore/gpu_abi/GpuLegacyFrameUBO.h"  // single-source per-frame UBO
@@ -175,16 +176,7 @@ void cp_end(Island* s, VkCommandBuffer cb) {
     vkEndCommandBuffer(cb);
     VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    mc2vk::OwnedFence fence;
-    VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    mc2vk::create(fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });   // empty on failure: the queue idle below stands in
-    mc2vk::submitGraphics(si, fence.get());
-    if (fence) {
-        const VkFence f = fence.get();
-        vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull * 1000 * 1000 * 1000);
-    } else {
-        vkQueueWaitIdle(s->queue);
-    }
+    mc2vk::submitAndWait(mc2vk::getOrCreateEngineVulkanContext(), si, 5ull * 1000 * 1000 * 1000, "legacy shape copy-once");
     vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
 }
 

@@ -18,6 +18,11 @@ class VulkanContext;
 // A transient command pool holding one primary command buffer, begun for a single submit. False on any failure (the pool is left to its owner).
 bool beginTransientCommandBuffer(const VulkanContext& ctx, OwnedCommandPool& pool, VkCommandBuffer& cb);
 
+// Submits `si` and waits for its timeline ticket (no fence to allocate, so no allocation-failure fallback): true when it completed within `timeoutNs`.
+// A timed-out wait falls back to a device idle (the caller releases the command buffer and its resources on return), so it never returns while the GPU
+// may still be executing the submit. For copy-once setup work and diagnostics; never per frame.
+bool submitAndWait(const VulkanContext& ctx, const VkSubmitInfo& si, uint64_t timeoutNs, std::string_view why);
+
 // Records with `record` (between begin and end), submits, waits up to 5 s. False on any failure; `why` names the caller
 // in the device-wait log line a timed-out submit produces.
 bool submitOneShot(const VulkanContext& ctx, const std::function<void(VkCommandBuffer)>& record, std::string_view why);

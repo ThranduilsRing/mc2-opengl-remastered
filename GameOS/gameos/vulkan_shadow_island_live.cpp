@@ -52,6 +52,7 @@
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
 #include "vk_owned.h"
+#include "vk_one_shot.h"
 #include "vulkan_context.h"
 #include "vulkan_shadow_island_live.h"
 #include "vk_depth_caster_pipeline.h"
@@ -977,8 +978,7 @@ void diagVkRead(ShadowIsland* s, VkImage img, uint32_t layer, int dim, std::vect
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1, &br);
     vkEndCommandBuffer(cb);
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO}; si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) == VK_SUCCESS) {
-        vkQueueWaitIdle(s->queue);
+    if (mc2vk::submitAndWait(mc2vk::getOrCreateEngineVulkanContext(), si, 5ull * 1000 * 1000 * 1000, "shadow diagnostic readback")) {
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, al, &p) == VK_SUCCESS) {
             vmaInvalidateAllocation(s->allocator, al, 0, VK_WHOLE_SIZE);

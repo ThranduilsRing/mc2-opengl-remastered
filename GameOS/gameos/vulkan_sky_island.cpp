@@ -18,6 +18,7 @@
 
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
+#include "vk_one_shot.h"
 #include "vulkan_context.h"
 #include "vulkan_sky_island.h"
 #include "vk_hdri_source.h"
@@ -133,15 +134,7 @@ bool submit_once(Island* s, const std::function<void(VkCommandBuffer)>& record) 
     vkEndCommandBuffer(cb);
     VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    mc2vk::OwnedFence fence;
-    VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    mc2vk::create(fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });   // empty on failure: the queue idle below stands in
-    const VkFence fenceHandle = fence.get();
-    bool ok = mc2vk::submitGraphics(si, fenceHandle) == VK_SUCCESS;
-    if (fence) {
-        if (ok) ok = vkWaitForFences(s->device, 1, &fenceHandle, VK_TRUE, 30ull * 1000 * 1000 * 1000) == VK_SUCCESS;
-        if (!ok) vkDeviceWaitIdle(s->device);   // the fence is released on return: the GPU must be done with it
-    } else { vkQueueWaitIdle(s->queue); }
+    const bool ok = mc2vk::submitAndWait(mc2vk::getOrCreateEngineVulkanContext(), si, 30ull * 1000 * 1000 * 1000, "sky copy-once");
     vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
     return ok;
 }

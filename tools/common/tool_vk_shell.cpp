@@ -321,8 +321,22 @@ bool end(Shell& s) {
     sub.waitSemaphoreCount = 1; sub.pWaitSemaphores = &s.acquired; sub.pWaitDstStageMask = &wait;
     sub.commandBufferCount = 1; sub.pCommandBuffers = &s.cb;
     sub.signalSemaphoreCount = 1; sub.pSignalSemaphores = &s.renderDone[s.imageIndex];
-    vkQueueSubmit(s.queue, 1, &sub, s.fence);
+    const VkResult submitResult = vkQueueSubmit(s.queue, 1, &sub, s.fence);
     s.frameOpen = false;
+    if (submitResult != VK_SUCCESS) {
+        // A refused submit signals nothing: the fence begin() reset would stay unsignaled and the next infinite fence wait would hang the tool. Make the
+        // fence signaled again, release the readback resources and end the run explicitly (a lost device cannot be recovered by a tool).
+        std::fprintf(stderr, "[TOOLVK] vkQueueSubmit failed (%d); ending the run\n", static_cast<int>(submitResult));
+        s.submitFailed = true;
+        if (rbBuf) vkDestroyBuffer(s.dev, rbBuf, nullptr);
+        if (rbMem) vkFreeMemory(s.dev, rbMem, nullptr);
+        vkDestroyFence(s.dev, s.fence, nullptr);
+        VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        if (vkCreateFence(s.dev, &fci, nullptr, &s.fence) != VK_SUCCESS) s.fence = VK_NULL_HANDLE;
+        s.capturePath.clear();
+        return true;
+    }
 
     bool quit = false;
     if (capture) {

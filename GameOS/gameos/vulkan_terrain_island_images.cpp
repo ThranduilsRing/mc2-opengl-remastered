@@ -1,6 +1,7 @@
 // VK terrain island: height snapshot and audit, the colormap / cement / material-normal imports and the shadow image copies.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
+#include "vk_one_shot.h"
 #include "texture_decode.h"
 #include "terrain_field_store.h"
 
@@ -59,18 +60,7 @@ void end_oneshot(TerrainIsland* s, VkCommandBuffer cb) {
     vkEndCommandBuffer(cb);
     VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    // VK-QWI-TO-FENCE-1: transient per-submit fence instead of a queue-wide drain
-    // (copy-once helper, not per-frame; fail-soft to QWI if fence creation fails).
-    mc2vk::OwnedFence fence;
-    VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    mc2vk::create(fence, s->device, [&](auto* h) { return vkCreateFence(s->device, &fci, nullptr, h); });
-    const VkFence f = fence.get();
-    mc2vk::submitGraphics(si, f);
-    if (f != VK_NULL_HANDLE) {
-        vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull * 1000 * 1000 * 1000);
-    } else {
-        vkQueueWaitIdle(s->queue);
-    }
+    mc2vk::submitAndWait(mc2vk::getOrCreateEngineVulkanContext(), si, 5ull * 1000 * 1000 * 1000, "terrain image copy-once");
     vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
 }
 

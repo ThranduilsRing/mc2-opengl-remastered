@@ -42,6 +42,7 @@ struct Shell {
     uint32_t imageIndex = 0;
     bool frameOpen = false;
     bool needRebuild = false;
+    bool submitFailed = false;   // end() ended the run because vkQueueSubmit was refused
     int frameNo = 0;
     std::string capturePath;
     int captureFrame = 12;

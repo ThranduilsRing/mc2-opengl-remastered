@@ -47,6 +47,7 @@
 
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
+#include "vk_one_shot.h"
 #include "vulkan_context.h"
 #include "vulkan_mech_island.h"
 #include "texture_decode.h"              // gos_GetTextureTexels: material texels without a GL readback
@@ -368,18 +369,7 @@ void cp_end(MechIsland* s, VkCommandBuffer cb) {
     vkEndCommandBuffer(cb);
     VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    // VK-QWI-TO-FENCE-1: transient per-submit fence instead of a queue-wide drain
-    // (copy-once helper, not per-frame; fail-soft to QWI if fence creation fails).
-    mc2vk::OwnedFence fence;
-    VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    mc2vk::create(fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });   // empty on failure: the queue idle below stands in
-    mc2vk::submitGraphics(si, fence.get());
-    if (fence) {
-        const VkFence f = fence.get();
-        vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull * 1000 * 1000 * 1000);
-    } else {
-        vkQueueWaitIdle(s->queue);
-    }
+    mc2vk::submitAndWait(mc2vk::getOrCreateEngineVulkanContext(), si, 5ull * 1000 * 1000 * 1000, "mech copy-once");
     vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
 }
 

@@ -26,6 +26,16 @@ bool beginTransientCommandBuffer(const VulkanContext& ctx, OwnedCommandPool& poo
     return vkBeginCommandBuffer(cb, &bi) == VK_SUCCESS;
 }
 
+bool submitAndWait(const VulkanContext& ctx, const VkSubmitInfo& si, uint64_t timeoutNs, std::string_view why) {
+    uint64_t value = 0;
+    if (ctx.submit(si, VK_NULL_HANDLE, &value) != VK_SUCCESS) return false;
+    const GpuTicket t{value, 0};
+    if (ctx.wait(t, timeoutNs, why)) return true;
+    ctx.waitIdle(why);
+    ctx.poll();
+    return ctx.isComplete(t);
+}
+
 bool submitOneShot(const VulkanContext& ctx, const std::function<void(VkCommandBuffer)>& record, std::string_view why) {
     const VkDevice device = ctx.device();
     if (device == VK_NULL_HANDLE) return false;
