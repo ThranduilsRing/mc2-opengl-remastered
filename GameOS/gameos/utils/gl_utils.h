@@ -7,7 +7,7 @@
 #include "utils/shader_builder.h"
 #include "utils/render_constants.h"
 
-#define BUFFER_OFFSET(bytes) ((GLubyte*) NULL + (bytes))
+#define BUFFER_OFFSET(bytes) ((GLubyte*) nullptr + (bytes))
 
 uint32_t vec4_to_uint32(const vec4& v);
 vec4 uint32_to_vec4(uint32_t v);
@@ -101,7 +101,7 @@ void applyTexture(glsl_program* program, int unit, const char* name, GLuint texi
 void applyPBO(glsl_program* program, int unit, const char* name, const Texture pbo, const Texture tex);
 
 
-typedef void (*render_func_t)(int w, int h, void* puserdata);
+using render_func_t = void (*)(int w, int h, void* puserdata);
 
 void draw_in_2d(int w, int h, render_func_t prenderfunc, void* puserdata);
 
@@ -136,7 +136,7 @@ struct glMesh {
 	void			    update_hw(GLvoid* vertex_data, GLsizeiptr vsize, GLvoid* index_data, GLsizeiptr isize, GLvoid* instance_data = 0 , GLsizeiptr inst_size = 0);
 	void			    update_hw(GLsizeiptr num_cvertices, GLsizeiptr num_indices, GLsizeiptr num_instances);
 
-	typedef glMesh<VERTEX>	    myType;
+	using myType = glMesh<VERTEX>;
 
 };
 

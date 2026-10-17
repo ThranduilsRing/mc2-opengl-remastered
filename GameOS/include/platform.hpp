@@ -7,7 +7,7 @@
 //===========================================================================//
 
 
-typedef enum PlatformType
+enum PlatformType
 {
 	Platform_Game,
 	Platform_MFC,
