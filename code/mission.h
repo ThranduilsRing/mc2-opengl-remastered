@@ -14,6 +14,7 @@
 #include "combat_retirement.h"
 #include "tactical_order_queue.h"
 #include <algorithm>
+#include <memory>
 //----------------------------------------------------------------------------------
 // Include Files
 #ifndef MCLIB_H
@@ -308,6 +309,12 @@ class Mission
 	//Data Members
 	//-------------
 	protected:
+		// Teardown: types, appearance heap, Sensor shapes, TGL pools, then TGL heap;
+		// the texture manager outlives them because shapes retain texture references.
+		// The global appearanceTypeList and TG_Shape::tglHeap pointers are non-owning views.
+		std::unique_ptr<UserHeap> tglHeapOwner;
+		std::unique_ptr<AppearanceTypeList> appearanceTypes;
+
 		mc2::sim::MissionOrderIngress orderIngress;
 		mc2::combat::CombatClock combatClock;
 		using OrderRecipientBinding = mc2::sim::MissionRecipientBinding<Mover, MechWarrior>;
