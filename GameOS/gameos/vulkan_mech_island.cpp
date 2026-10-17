@@ -303,22 +303,26 @@ void write_ring_bindings(MechIsland* s, VkDescriptorSet set) {
     if (set == VK_NULL_HANDLE) return;
     const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer();
     if (ring == VK_NULL_HANDLE) return;
+    const VkDeviceSize range = mc2vk::getOrCreateEngineVulkanContext().frameRingRange();
     mc2vk::writeDynamicBinding(s->device, set, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, kUboRange);
     for (const uint32_t b : {1u, 2u, 4u, 5u})
-        mc2vk::writeDynamicBinding(s->device, set, b, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, VK_WHOLE_SIZE);
+        mc2vk::writeDynamicBinding(s->device, set, b, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, range);
 }
 
 // Point the ring bindings of EVERY cached scheme set's [par] slot at the buffers this frame's spans live in. Safe after beginFrame (the parity fence
 // retired every [par] consumer); the [1-par] sets, possibly in flight, are untouched and follow at their own frame. A binding already pointing at its
 // buffer is skipped.
-void sync_ring_bindings(MechIsland* s, uint32_t par, VkBuffer mainBuf, VkBuffer lightBuf) {
+void sync_ring_bindings(MechIsland* s, uint32_t par, const mc2vk::FrameAlloc& mainSpan, const mc2vk::FrameAlloc& lightSpan) {
     struct Want { uint32_t binding; VkDescriptorType type; VkBuffer buf; VkDeviceSize range; };
+    const VkBuffer mainBuf = mainSpan.buffer;
+    const VkBuffer lightBuf = lightSpan ? lightSpan.buffer : mainSpan.buffer;
+    const VkDeviceSize lightRange = lightSpan ? lightSpan.range : mainSpan.range;
     const Want want[5] = {
         {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, mainBuf, kUboRange},
-        {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, VK_WHOLE_SIZE},
-        {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, VK_WHOLE_SIZE},
-        {4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, lightBuf, VK_WHOLE_SIZE},
-        {5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, VK_WHOLE_SIZE},
+        {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, mainSpan.range},
+        {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, mainSpan.range},
+        {4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, lightBuf, lightRange},
+        {5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, mainSpan.range},
     };
     for (const Want& w : want) {
         if (w.buf == VK_NULL_HANDLE || s->ringBound[par][w.binding] == w.buf) continue;
@@ -981,7 +985,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.miscI[0] = feed.specDebugMask;
       std::memcpy(mainPtr, &u, sizeof(u)); }
     // Every scheme set of this parity follows the buffers the spans came from; the draw passes the offsets.
-    sync_ring_bindings(s, par, mainSpan.buffer, lightSpan ? lightSpan.buffer : mainSpan.buffer);
+    sync_ring_bindings(s, par, mainSpan, lightSpan);
     const uint32_t dynOffsets[5] = {
         static_cast<uint32_t>(mainSpan.offset),
         static_cast<uint32_t>(mainSpan.offset + instOff),

@@ -19,7 +19,7 @@ constexpr VkBufferUsageFlags kUsage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUF
 bool FrameRing::grow(VulkanContext& ctx, VkDeviceSize perSlot) {
     OwnedBuffer fresh;
     VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-    bci.size = perSlot * FrameRingCore::kSlots;
+    bci.size = perSlot * (FrameRingCore::kSlots + 1);   // one slot of tail: a dynamic descriptor range of perSlot bytes fits from any offset
     bci.usage = kUsage;
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO;
@@ -30,7 +30,7 @@ bool FrameRing::grow(VulkanContext& ctx, VkDeviceSize perSlot) {
     VmaAllocationInfo info{};
     vmaGetAllocationInfo(ctx.allocator(), fresh.allocation(), &info);
     if (!info.pMappedData) return false;
-    if (buffer_) ctx.retire(std::move(buffer_), core_.capacity() * FrameRingCore::kSlots);   // this frame may already have handed out spans of it
+    if (buffer_) ctx.retire(std::move(buffer_), core_.capacity() * (FrameRingCore::kSlots + 1));   // this frame may already have handed out spans of it
     buffer_ = std::move(fresh);
     mapped_ = static_cast<uint8_t*>(info.pMappedData);
     core_.setCapacity(perSlot);
@@ -59,6 +59,7 @@ FrameAlloc FrameRing::alloc(VulkanContext& ctx, VkDeviceSize size, VkDeviceSize 
     out.offset = off;
     out.ptr = mapped_ + off;
     out.size = size;
+    out.range = core_.capacity();
     return out;
 }
 

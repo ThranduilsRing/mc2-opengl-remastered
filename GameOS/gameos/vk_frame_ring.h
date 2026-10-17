@@ -58,8 +58,9 @@ class VulkanContext;
 constexpr VkDeviceSize alignUp(VkDeviceSize v, VkDeviceSize a) { return (v + a - 1) / a * a; }
 
 // Writes one dynamic-offset buffer binding of `set` at `buffer` from offset 0; the draw passes the offset at bind time. `type` is
-// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC (give an explicit range: uniform ranges are device-limited) or VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC
-// (VK_WHOLE_SIZE reads from the dynamic offset to the end of the buffer).
+// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC (an explicit range: uniform ranges are device-limited) or VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC. A dynamic
+// descriptor range must never be VK_WHOLE_SIZE (its dynamic offset would have to be 0): storage bindings use FrameAlloc::range, a range that stays in
+// the buffer from any offset the ring hands out.
 inline void writeDynamicBinding(VkDevice device, VkDescriptorSet set, uint32_t binding, VkDescriptorType type, VkBuffer buffer, VkDeviceSize range) {
     VkDescriptorBufferInfo info{buffer, 0, range};
     VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
@@ -76,6 +77,7 @@ struct FrameAlloc {
     VkDeviceSize offset = 0;
     void* ptr = nullptr;
     VkDeviceSize size = 0;
+    VkDeviceSize range = 0;   // a dynamic-descriptor range valid from every offset of this buffer (the ring is one slot longer than its slots)
     explicit operator bool() const { return buffer != VK_NULL_HANDLE && ptr != nullptr; }
 };
 
@@ -88,6 +90,7 @@ public:
     // The buffer the next allocation will come from (created on first use). Dynamic-offset descriptors point at it; a frame that allocated from a
     // different buffer than a set was written for rewrites that set (growth replaces the buffer).
     VkBuffer ensureBuffer(VulkanContext& ctx);
+    VkDeviceSize bindRange() const { return core_.capacity(); }
     void release() { buffer_.reset(); mapped_ = nullptr; core_.setCapacity(0); }
     uint64_t capacityPerSlot() const { return core_.capacity(); }
     uint32_t growths() const { return growths_; }

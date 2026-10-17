@@ -182,6 +182,7 @@ public:
     const FrameRing& frameRing() const { return frameRing_; }
     VkBuffer frameRingBuffer() { return frameRing_.ensureBuffer(*this); }
     VkDeviceSize frameAlignment() const { return frameAlign_; }
+    VkDeviceSize frameRingRange() const { return frameRing_.bindRange(); }
 #endif
 
     // Parks an owner (a buffer, an image, a container of them) until the GPU has finished the frame that may use it, then destroys it: the replacement

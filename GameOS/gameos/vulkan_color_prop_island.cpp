@@ -328,20 +328,24 @@ void write_ring_bindings(ColorPropIsland* s, VkDescriptorSet set) {
     if (set == VK_NULL_HANDLE) return;
     const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer();
     if (ring == VK_NULL_HANDLE) return;
+    const VkDeviceSize range = mc2vk::getOrCreateEngineVulkanContext().frameRingRange();
     mc2vk::writeDynamicBinding(s->device, set, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, kFrameUboRange);
-    mc2vk::writeDynamicBinding(s->device, set, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, VK_WHOLE_SIZE);
-    if (s->tier1 && s->wantLighting) mc2vk::writeDynamicBinding(s->device, set, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, VK_WHOLE_SIZE);
-    if (s->tier1) mc2vk::writeDynamicBinding(s->device, set, 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, VK_WHOLE_SIZE);
+    mc2vk::writeDynamicBinding(s->device, set, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, range);
+    if (s->tier1 && s->wantLighting) mc2vk::writeDynamicBinding(s->device, set, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, range);
+    if (s->tier1) mc2vk::writeDynamicBinding(s->device, set, 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, range);
 }
 
 // Re-point set[par]'s ring bindings at the buffers this frame's spans live in (after beginFrame retired the parity). A binding already there is skipped.
-void sync_ring_bindings(ColorPropIsland* s, uint32_t par, VkBuffer mainBuf, VkBuffer lightBuf) {
+void sync_ring_bindings(ColorPropIsland* s, uint32_t par, const mc2vk::FrameAlloc& mainSpan, const mc2vk::FrameAlloc& lightSpan) {
     struct Want { uint32_t binding; VkDescriptorType type; VkBuffer buf; VkDeviceSize range; bool on; };
+    const VkBuffer mainBuf = mainSpan.buffer;
+    const VkBuffer lightBuf = lightSpan ? lightSpan.buffer : mainSpan.buffer;
+    const VkDeviceSize lightRange = lightSpan ? lightSpan.range : mainSpan.range;
     const Want want[4] = {
         {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, mainBuf, kFrameUboRange, true},
-        {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, VK_WHOLE_SIZE, true},
-        {4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, lightBuf, VK_WHOLE_SIZE, s->tier1 && s->wantLighting},
-        {8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, VK_WHOLE_SIZE, s->tier1},
+        {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, mainSpan.range, true},
+        {4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, lightBuf, lightRange, s->tier1 && s->wantLighting},
+        {8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, mainSpan.range, s->tier1},
     };
     for (const Want& w : want) {
         if (!w.on || w.buf == VK_NULL_HANDLE || s->ringBound[par][w.binding] == w.buf) continue;
@@ -1505,7 +1509,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         std::memcpy(mainPtr, &u, sizeof(u));
     }
     // set[par] follows the buffers the spans came from; the draw passes the offsets (bindings 0, 1, then 4 when declared, then 8).
-    sync_ring_bindings(s, par, mainSpan.buffer, lightSpan ? lightSpan.buffer : mainSpan.buffer);
+    sync_ring_bindings(s, par, mainSpan, lightSpan);
     uint32_t dynOffsets[4];
     uint32_t nDyn = 0;
     dynOffsets[nDyn++] = static_cast<uint32_t>(mainSpan.offset);
