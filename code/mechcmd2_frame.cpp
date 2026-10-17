@@ -645,6 +645,7 @@ void __stdcall DoGameLogic()
 		// MC2_BOOT_QUICKSAVE_AT), 8 times, calling an artillery strike in before each so the pooled rounds are exercised.
 		{
 			extern uint32_t g_mc2FrameCounter;
+			extern bool saveInMissionSave;
 			static int s_cycle = 0;
 			static uint32_t s_nextAt = 420;
 			// Proof-only knobs (plain names so no gate registry row is needed): S10_RELOADS cycles (default 8), S10_STRIKE=0 skips the
@@ -663,7 +664,10 @@ void __stdcall DoGameLogic()
 					Stuff::Vector3D strikeAt = eye->getPosition();
 					IfaceCallStrike(ARTILLERY_LARGE, &strikeAt, nullptr, true, false, 30.0f);
 				}
-				if (s_reload)
+				// Cycle 0 only quicksaves (the boot fixture's save is not reliably there), later cycles reload it.
+				if (s_cycle == 0)
+					saveInMissionSave = true;
+				else if (s_reload)
 					loadInMissionSave = true;
 				s_nextAt = g_mc2FrameCounter + 90;
 				++s_cycle;
