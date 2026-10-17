@@ -196,7 +196,10 @@ class GameObjectManager {
 
 	public:
 
+		// B7o.7 (G7): objTypeManager is a VIEW (the unit tests point it at objects they own); ownedTypeManager is what init() fills and
+		// destroy() releases. Both are written together in objmgr.cpp only.
 		ObjectTypeManagerPtr	objTypeManager;
+		std::unique_ptr<ObjectTypeManager>	ownedTypeManager;
 
 		long					numMechs;
 		long					numVehicles;

@@ -109,6 +109,7 @@ void GameObjectManager::operator delete (void* us) {
 
 void GameObjectManager::init (void) {
 
+	ownedTypeManager.reset();
 	objTypeManager = nullptr;
 
 	numMechs = 0;
@@ -172,10 +173,10 @@ void GameObjectManager::init (void) {
 
 void GameObjectManager::init (const char* objTypeDataFile, long objTypeHeapSize, long objHeapSize) {
 
-	if (objTypeManager)
-		delete objTypeManager;
-
-	objTypeManager = new ObjectTypeManager;
+	// The previous manager goes first (its destroy() deletes the static type/object heaps the new init() recreates).
+	ownedTypeManager.reset();
+	ownedTypeManager = std::make_unique<ObjectTypeManager>();
+	objTypeManager = ownedTypeManager.get();
 	if (!objTypeManager)
 		Fatal(0, " GameObjectManager.init: unable to create objTypeManager ");
 	long result = objTypeManager->init(objTypeDataFile, objTypeHeapSize, objHeapSize);
@@ -1046,11 +1047,8 @@ void GameObjectManager::destroy (void)
 	artillery = nullptr;
 
 	//--------------------------------------------------------------
-	if (objTypeManager) 
-	{
-		delete objTypeManager;
-		objTypeManager = nullptr;
-	}
+	ownedTypeManager.reset();
+	objTypeManager = nullptr;
 
 	delete collisionSystem;
 	collisionSystem = nullptr;
