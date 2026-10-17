@@ -50,7 +50,7 @@ void __stdcall UpdateRenderers()
 
 		if (logistics)
 		{
-			ZoneScopedN("UpdateRenderers logisticsRender"); GosGlLostDrawsScope _lostSc_("hud.logistics");
+			ZoneScopedN("UpdateRenderers logisticsRender");
 			float viewMulX, viewMulY, viewAddX, viewAddY;
 			gos_GetViewport(&viewMulX, &viewMulY, &viewAddX, &viewAddY);
 			userInput->setViewport(viewMulX,viewMulY,viewAddX,viewAddY);
@@ -62,7 +62,7 @@ void __stdcall UpdateRenderers()
 
 		if (optionsScreenWrapper && !optionsScreenWrapper->isDone() )
 		{
-			ZoneScopedN("UpdateRenderers optionsRender"); GosGlLostDrawsScope _lostSc_("hud.options");
+			ZoneScopedN("UpdateRenderers optionsRender");
 			float viewMulX, viewMulY, viewAddX, viewAddY;
 			gos_GetViewport(&viewMulX, &viewMulY, &viewAddX, &viewAddY);
 			userInput->setViewport(viewMulX,viewMulY,viewAddX,viewAddY);
@@ -73,7 +73,7 @@ void __stdcall UpdateRenderers()
 		}
 
 		{
-			ZoneScopedN("UpdateRenderers uiRender"); GosGlLostDrawsScope _lostSc_("hud.cursor_userinput");
+			ZoneScopedN("UpdateRenderers uiRender");
 			gos_SetRenderState( gos_State_Filter, gos_FilterNone );
 			gos_SetRenderState( gos_State_IsHUD, 1 );
 			userInput->render();

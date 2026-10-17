@@ -333,7 +333,7 @@ static bool vkHudSkipGlEnabled()
     // an optimization under VK-only present (the GL backbuffer is discarded anyway), and it is
     // self-protecting: nativeHudCanSkipGl is AND-reduced over drawRepresentable, so GL HUD stays
     // live whenever any HUD element is not VK-representable.
-    const bool enabled = mc2vkgate::umbrellaOn();    // per-call: VK-FAILSOFT-DISARM-1 (GL HUD must return after fail-soft)
+    const bool enabled = mc2vkgate::umbrellaOn();    // per-call
     return enabled;
 }
 
@@ -651,11 +651,7 @@ void gosRenderer::flushHUDBatch()
         // VK-HUD-GATE-HOIST-1: resolve the VFX umbrella sub-gate ONCE PER FLUSH,
         // not per draw (3x env-reading gate calls + a raw getenv per draw was ~380-450 CRT env
         // scans/frame at field HUD density, thousands during weapon fire).
-        // DISARM-1/2 semantics preserved: umbrellaOn() reads g_mc2VkSessionForcedGL
-        // on THIS call, so a mid-session fail-soft still
-        // propagates at the next flush (frame-boundary granularity is the disarm
-        // intent). Do NOT make this local `static`, and do NOT re-fuse the
-        // per-draw reads below back into the loop.
+        // Do NOT re-fuse the per-draw reads below back into the loop.
         const bool hudVfxGate = mc2vkgate::umbrellaOn();
         // Env-token-only memo (no disarm interaction): the env block is
         // process-static, so one getenv per process is exact.

@@ -12,12 +12,13 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <string>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#endif
 #include "mc2fmt.h"
-
-// VK-FAILSOFT-DISARM-1: defined in mclib/tgl.cpp (data-tool-link home, same as
-// g_mc2FrameCounter); set below by forceGLFallback, read by
-// mc2vkgate::umbrellaOn() (vk_shared_gbuffer_gate.h).
-extern bool g_mc2VkSessionForcedGL;
 
 namespace mc2 {
 
@@ -25,39 +26,36 @@ namespace {
 
 // Cached backend. -1 = not yet resolved; 0 = GL; 1 = Vulkan.
 int s_cached = -1;
-// Session-sticky force-GL flag set by forceGLFallback(). Once true, renderBackend()
-// always returns GL regardless of the cached env selection.
-bool s_forceGL = false;
 
 RenderBackend resolveOnce() {
     const std::string envText = mc2::gate::str<"MC2_RENDER_BACKEND">();   // "" when unset or empty
-    const char* env = envText.c_str();
-    if (env[0] == '\0') {
-        // Unset -> GL. Silent (this is the default, byte-identical path).
-        return RenderBackend::GL;
-    }
-    if (std::strcmp(env, "gl") == 0 || std::strcmp(env, "GL") == 0) {
-        return RenderBackend::GL;
-    }
-    if (std::strcmp(env, "vulkan") == 0 || std::strcmp(env, "VULKAN") == 0 ||
-        std::strcmp(env, "vk") == 0) {
-        mc2::fmt::print_out("[RENDER_BACKEND] MC2_RENDER_BACKEND={} -> Vulkan backend selected.\n", mc2::fmt::safe(env));
+    bool recognized = true;
+    const RenderBackend b = backendFromText(envText.c_str(), &recognized);
+    if (!recognized) {
+        mc2::fmt::print_out("[RENDER_BACKEND] MC2_RENDER_BACKEND={} unrecognized (expected gl|vulkan); coercing to Vulkan.\n", mc2::fmt::safe(envText.c_str()));
         std::fflush(stdout);
-        return RenderBackend::Vulkan;
+    } else if (b == RenderBackend::Vulkan && !envText.empty()) {
+        mc2::fmt::print_out("[RENDER_BACKEND] MC2_RENDER_BACKEND={} -> Vulkan backend selected.\n", mc2::fmt::safe(envText.c_str()));
+        std::fflush(stdout);
     }
-    // Unrecognized -> GL, log the coercion once.
-    mc2::fmt::print_out("[RENDER_BACKEND] MC2_RENDER_BACKEND={} unrecognized (expected gl|vulkan); coercing to GL.\n", mc2::fmt::safe(env));
-    std::fflush(stdout);
-    return RenderBackend::GL;
+    return b;
 }
 
 }  // namespace
+
+RenderBackend backendFromText(const char* text, bool* recognized) {
+    if (recognized) *recognized = true;
+    if (!text || text[0] == '\0') return RenderBackend::Vulkan;   // unset: Vulkan, silent
+    if (std::strcmp(text, "gl") == 0 || std::strcmp(text, "GL") == 0) return RenderBackend::GL;
+    if (std::strcmp(text, "vulkan") == 0 || std::strcmp(text, "VULKAN") == 0 || std::strcmp(text, "vk") == 0) return RenderBackend::Vulkan;
+    if (recognized) *recognized = false;   // a typo must not select GL while the VK umbrella reads it as on
+    return RenderBackend::Vulkan;
+}
 
 RenderBackend renderBackend() {
     if (s_cached < 0) {
         s_cached = static_cast<int>(resolveOnce());
     }
-    if (s_forceGL) return RenderBackend::GL;
     return static_cast<RenderBackend>(s_cached);
 }
 
@@ -65,19 +63,24 @@ const char* renderBackendName(RenderBackend b) {
     return b == RenderBackend::Vulkan ? "vulkan" : "gl";
 }
 
-void forceGLFallback(const char* reason) {
-    if (!s_forceGL) {
-        mc2::fmt::print_out("[RENDER_BACKEND] fail-soft: forcing GL for the session (reason: {}).\n", mc2::fmt::safe(reason ? reason : "(unspecified)"));
-        std::fflush(stdout);
+void fatalBackendFailure(const char* reason) {
+    const char* why = reason && reason[0] ? reason : "(unspecified)";
+    mc2::fmt::print_out("[RENDER_BACKEND] FATAL: Vulkan could not be started: {}. There is no OpenGL fallback; exiting.\n", mc2::fmt::safe(why));
+    std::fflush(stdout);
+    std::fflush(stderr);
+#ifdef _WIN32
+    // Automated runs (smoke, crash fast-exit) must not block on a modal box.
+    const bool automated = mc2::gate::isSet<"MC2_SMOKE_MODE">() || mc2::gate::isSet<"MC2_NO_LAUNCHER">() ||
+                           mc2::gate::isSet<"MC2_SMOKE_SEED">() || mc2::gate::isSet<"MC2_HEARTBEAT">() ||
+                           mc2::gate::get<"MC2_CRASH_FAST_EXIT">();
+    if (!automated) {
+        std::string text = "MechCommander 2 could not start the Vulkan renderer:\n\n";
+        text += why;
+        text += "\n\nUpdate your graphics driver and make sure the GPU supports Vulkan 1.3.";
+        MessageBoxA(nullptr, text.c_str(), "MechCommander 2", MB_OK | MB_ICONERROR);
     }
-    s_forceGL = true;
-    // VK-FAILSOFT-DISARM-1: disarm the shared-GBuffer umbrella family too.
-    // Post-ITEM8 there is no per-layer GL fallback — if the content islands
-    // stay armed while present runs GL, every VK-owned layer VANISHES (torn
-    // grey scene with only residual GL-drawn VFX/decals; the S2b signature).
-    // mc2vkgate::umbrellaOn() reads this flag per call, so islands that
-    // consult their gate per frame fall back to the pure GL path.
-    ::g_mc2VkSessionForcedGL = true;
+#endif
+    std::_Exit(3);
 }
 
 }  // namespace mc2

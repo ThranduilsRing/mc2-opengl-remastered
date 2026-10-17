@@ -56,3 +56,15 @@ spirv-cross; `shader_common.find_tool`). Minimum version pinned in `tools/slang/
   layout; this tooling does not create pipelines or migrate existing GLSL.
 
 Tests: `py -3 -B -m pytest scripts/tests/test_slang_build.py --capture=sys -p no:tmpdir -p no:cacheprovider -q`.
+
+## First engine Slang shaders: the native compute producers (step 3.4P)
+`shaders/vulkan/terrain_lighting.comp.slang`, `water_cull_pack.comp.slang`, `water_draw_args.comp.slang` are consumed by
+`GameOS/gameos/vk_native_producers.cpp` (pipelines through `vk_compute_pipeline.h`, RAII on `vk_owned.h`). Notes from writing them:
+- CMake bakes `*.comp.slang` with no pilot entry; `pilots.json` is only for the runtime-variant GLSL builder.
+- Set-0 UBO/SSBO slots must already exist in `binding-slot-occupancy.json` (the bake rejects an unregistered slot, e.g. UBO 4). The three shaders
+  reuse registered slots (UBO 2/3, SSBO 0-4) instead of registering new ones; a shader needing a new slot must regenerate the occupancy file.
+- The ABI check only covers structs named like existing `gpu_abi` types; the producer structs (`WaterRecipe`, `WaterThinRecord`, `LightingParams`)
+  have no `gpu_abi` entry, so their C++ mirrors are guarded by `static_assert(sizeof)` and the startup self-test / parity frames, not by the bake.
+- A matrix uniform is passed as four `float4` columns (the raw 16 floats of the GL `GL_FALSE` upload) and multiplied by hand; this avoids any
+  row/column-major question between Slang's `mul` and the engine's matrices.
+- `uint`/`int` uniforms are fine in a `ConstantBuffer` (the GL `uniform uint` crash does not exist here); pack them as `int4` to keep std140 trivial.

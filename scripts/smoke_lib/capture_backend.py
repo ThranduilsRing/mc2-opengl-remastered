@@ -3,7 +3,7 @@
 
 WHAT: `requested(env)` reads MC2_RENDER_BACKEND the way the engine does (render_backend_select.cpp); `check(requested, sidecars)` returns one
 message per sidecar whose backend or readback source is not what was asked for. An empty list means the capture is what it says it is.
-WHY: a Vulkan context that fails to start puts the whole session back on GL (`forceGLFallback`). The GL frame is then read back from the GL
+WHY: a Vulkan context that fails to start used to put the whole session back on GL (the fallback is gone; old sidecars and `MC2_RENDER_BACKEND` typos still produce GL frames). The GL frame is then read back from the GL
 framebuffer and written as an ordinary capture, so a "Vulkan arm" of an A/B can be a second GL capture and nobody sees it until the sidecar is
 opened. The engine writes the backend that drew and the readback source into every sidecar; the capture drivers fail on a mismatch.
 An older engine's sidecar has no `backend`; it is read from `readback_source` (vk_present = Vulkan, gl_fbo = GL), and a sidecar with
@@ -16,14 +16,14 @@ from typing import Mapping, Optional, Sequence
 GL = "gl"
 VULKAN = "vulkan"
 
-_VULKAN_SPELLINGS = ("vulkan", "vk")   # the engine accepts vulkan / VULKAN / vk; anything else unrecognised is GL
+_GL_SPELLINGS = ("gl", "GL")   # the engine's only GL spellings (the temporary opt-out); unset, empty or unrecognised is Vulkan
 _SOURCE_BACKEND = {"vk_present": VULKAN, "gl_fbo": GL}
 
 
 def requested(env: Optional[Mapping[str, str]]) -> str:
-    """The backend `env` selects: 'vulkan' for vulkan/VULKAN/vk, otherwise 'gl' (unset, empty, gl, or unrecognised, as in the engine)."""
+    """The backend `env` selects: 'gl' for gl/GL, otherwise 'vulkan' (unset, empty, vulkan, vk or unrecognised, as in the engine)."""
     text = str((env or {}).get("MC2_RENDER_BACKEND", "") or "")
-    return VULKAN if text in ("vulkan", "VULKAN", "vk") else GL
+    return GL if text in _GL_SPELLINGS else VULKAN
 
 
 def drew(sidecar: Optional[Mapping[str, object]]) -> Optional[str]:

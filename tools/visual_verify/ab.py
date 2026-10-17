@@ -156,7 +156,7 @@ def main():
         gl = Path(a.skip_gl)
     else:
         gl = out / "gl"
-        run_capture(a.install, a.bookmarks, gl, [])
+        run_capture(a.install, a.bookmarks, gl, ["MC2_RENDER_BACKEND=gl"])  # unset means Vulkan: pin the GL arm
     vk = out / "vk"
     run_capture(a.install, a.bookmarks, vk,
                 ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + a.env)

@@ -212,7 +212,9 @@ extern "C" int mc2_vk_water_island_run(
     const void* thinRecords, unsigned int thinCount,
     const void* recipes, unsigned int recipeCount,
     const void* vsParams, const void* fsParams,
-    unsigned int hdriGlTex);
+    unsigned int hdriGlTex,
+    const void* nativeInputs, int parityFrame);
+extern "C" int mc2_vk_water_native_mode();
 #endif
 
 // WATER-SHORE-EDGE-1 feather half-width K (world units), shared by the GL MDI
@@ -868,8 +870,13 @@ void gosRenderer::renderWaterFastPath(
             if (s_vkWaterPerf == -1) {
                 s_vkWaterPerf = mc2::gate::get<"MC2_VK_WATER_PERF">();
             }
+            // STEP 3.4P: when the native VK producers ran this frame (inputs captured by the cull entry point) the GPU-produced records are drawn
+            // directly: no readback, no re-upload. On a parity frame (mode 2) the GL cull ran too; read its records back as the reference to compare.
+            WaterStream::VkNativeInputs vkNat{};
+            const bool vkNative = WaterStream::GetVkNativeInputs(vkNat);
+            const bool vkParity = vkNative && mc2_vk_water_native_mode() == 2;
             const auto tThinRb0 = std::chrono::steady_clock::now();
-            const uint32_t vkThinCount = WaterStream::ReadbackGpuThinForVk(&vkThinPtr);
+            const uint32_t vkThinCount = (!vkNative || vkParity) ? WaterStream::ReadbackGpuThinForVk(&vkThinPtr) : 0u;
             if (s_vkWaterPerf) {
                 const double us = std::chrono::duration<double, std::micro>(
                     std::chrono::steady_clock::now() - tThinRb0).count();
@@ -879,7 +886,7 @@ void gosRenderer::renderWaterFastPath(
             const void*    vkRecipes   = (const void*)WaterStream::GetRecipes();
             const uint32_t vkRecipeN   = WaterStream::GetRecipeCount();
             gosPostProcess* ppVk = getGosPostProcess();
-            if (vkThinCount > 0 && vkThinPtr && vkRecipes && vkRecipeN > 0 && ppVk) {
+            if ((vkNative || (vkThinCount > 0 && vkThinPtr)) && vkRecipes && vkRecipeN > 0 && ppVk) {
                 // Pack VS/FS UBO params LOCKSTEP with water_geom.{vert,frag}.
                 struct VkWaterVsP { float m[16]; float p0[4],p1[4],p2[4],p3[4]; } vsP{};
                 struct VkWaterFsP { float fog[4],f0[4],f1[4],f2[4],f3[4],deep[4],shallow[4],f4[4],f5[4],f6[4],f7[4],f8[4],f9[4]; } fsP{};
@@ -953,7 +960,8 @@ void gosRenderer::renderWaterFastPath(
                     (unsigned int)ppVk->getSceneDepthTexture(),
                     ppVk->getWidth(), ppVk->getHeight(),
                     vkThinPtr, vkThinCount, vkRecipes, vkRecipeN, &vsP, &fsP,
-                    ppVk->isHdriReady() ? (unsigned int)ppVk->getHdriTex() : 0u));
+                    ppVk->isHdriReady() ? (unsigned int)ppVk->getHdriTex() : 0u,
+                    vkNative ? &vkNat : nullptr, vkParity ? 1 : 0));
             }
         }
 #endif

@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 975
-registry_entry_count: 203
-verified_count: 965
+gate_count: 967
+registry_entry_count: 195
+verified_count: 957
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -4297,7 +4297,7 @@ flags:
     default: ""
     rule: Std
     owner: unclassified
-    doc: "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default gl; unset/unrecognized -> gl, coercion logged)."
+    doc: "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default vulkan; unset/unrecognized -> vulkan; gl is the temporary opt-out)."
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_RENDER_BACKEND, kind: Feature, order: -1, default_on: false}
@@ -6798,32 +6798,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_VK_CSM_ARRAY_INTEROP
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: vk
-    doc: "VK near-cascade array producer, on under the VK umbrella; =0 turns it off (terrain then loses the near cascades)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VK_CSM_ARRAY_INTEROP, kind: Feature, order: -1, default_on: true}
-  - name: MC2_VK_CSM_FULLMAP_INTEROP
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: vk
-    doc: "VK full-map cascade producer, on under the VK umbrella; =0 turns it off (terrain then loses the far cascade)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VK_CSM_FULLMAP_INTEROP, kind: Feature, order: -1, default_on: true}
-  - name: MC2_VK_DECAL_STATIC_GL_CANARY
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: gameos
-    doc: "VK final-gate diagnostic: wraps gosRenderer::drawDecalStaticBatch GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1]..."
-    verified: true
-    registry: {feature_id: MC2_TRACE_VK_DECAL_STATIC_GL_CANARY, kind: Trace, order: -1, default_on: false}
   - name: MC2_VK_FEED_DUMP
     kind: String
     default: ""
@@ -7055,22 +7029,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_VK_SCENE_GL_PRODUCER_QUERY
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: post
-    doc: "VK final-gate diagnostic: wraps the sceneFBO producer phase in a GL_ANY_SAMPLES_PASSED query and logs [VK_SCENE_GL_PRODUCER_QUERY v1] any_samples=... so..."
-    verified: true
-    registry: {feature_id: MC2_TRACE_VK_SCENE_GL_PRODUCER_QUERY, kind: Trace, order: -1, default_on: false}
-  - name: MC2_VK_SCREENSHADOW_GL_CANARY
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: post
-    doc: "VK final-gate diagnostic: wraps only the legacy GL runScreenShadow fullscreen draw in GL_ANY_SAMPLES_PASSED and logs [VK_SCREENSHADOW_GL_CANARY v1]."
-    verified: true
-    registry: {feature_id: MC2_TRACE_VK_SCREENSHADOW_GL_CANARY, kind: Trace, order: -1, default_on: false}
   - name: MC2_VK_SELECT_TEST
     kind: Bool
     default: false
@@ -7078,15 +7036,6 @@ flags:
     owner: code
     doc: ""
     verified: true
-  - name: MC2_VK_SHADOW_INTEROP
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: vk
-    doc: "VK shadow-caster island (dynamic map, cascades, mech casters), on under the VK umbrella; =0 turns every VK shadow producer off."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VK_SHADOW_INTEROP, kind: Feature, order: -1, default_on: true}
   - name: MC2_VK_SHADOW_MATRIX_DIAG
     kind: Bool
     default: false
@@ -7098,13 +7047,13 @@ flags:
     registry: {feature_id: MC2_TRACE_VK_SHADOW_MATRIX_DIAG, kind: Trace, order: -1, default_on: false}
   - name: MC2_VK_SHARED_GBUFFER
     kind: Bool
-    default: false
-    rule: Exact1
+    default: true
+    rule: Lead0Kill
     owner: vk
-    doc: "VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF."
+    doc: "The VK umbrella, default ON since the 2026-10-17 default flip; =0 is a kill switch (no effect under MC2_RENDER_BACKEND=gl)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_VK_SHARED_GBUFFER, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_FEATURE_VK_SHARED_GBUFFER, kind: Feature, order: -1, default_on: true}
   - name: MC2_VK_SHARED_SCENE_STRICT
     kind: Bool
     default: false
@@ -7136,14 +7085,6 @@ flags:
     owner: terrain
     doc: ""
     verified: true
-  - name: MC2_VK_TERRAIN_DECAL_GL_CANARY
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: gameos
-    doc: "VK final-gate diagnostic: wraps gosRenderer::drawDecals GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=terrain_decal_batch."
-    verified: true
-    registry: {feature_id: MC2_TRACE_VK_TERRAIN_DECAL_GL_CANARY, kind: Trace, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_FENCE_DEFER
     kind: Bool
     default: true
@@ -7161,14 +7102,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_VK_TERRAIN_LODFADE, kind: Feature, order: -1, default_on: false}
-  - name: MC2_VK_TERRAIN_OVERLAY_GL_CANARY
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: gameos
-    doc: "VK final-gate diagnostic: wraps gosRenderer::drawTerrainOverlays GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1]..."
-    verified: true
-    registry: {feature_id: MC2_TRACE_VK_TERRAIN_OVERLAY_GL_CANARY, kind: Trace, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_PERF
     kind: Bool
     default: false

@@ -501,21 +501,8 @@ void gosPostProcess::runScreenShadow()
         glBindTexture(GL_TEXTURE_2D, dynamicFullMapTex_);
     }
 
-    GLuint screenShadowCanaryQuery = 0;
-    const bool screenShadowCanary = screenShadowGlCanaryEnabled();
-    if (screenShadowCanary) {
-        glGenQueries(1, &screenShadowCanaryQuery);
-        glBeginQuery(GL_ANY_SAMPLES_PASSED, screenShadowCanaryQuery);
-    }
     glBindVertexArray(quadVAO_);
     glDrawArrays(GL_TRIANGLES, 0, 6);
-    if (screenShadowCanary) {
-        glEndQuery(GL_ANY_SAMPLES_PASSED);
-        GLuint anySamples = 0;
-        glGetQueryObjectuiv(screenShadowCanaryQuery, GL_QUERY_RESULT, &anySamples);
-        mc2::fmt::print_err("[VK_SCREENSHADOW_GL_CANARY v1] any_samples={:d} sceneFBO={:d} csm={:d} debug={:d}\n", mc2::fmt::as_u32((unsigned)anySamples), mc2::fmt::as_u32((unsigned)sceneFBO_), mc2::fmt::as_i32(csmActive ? 1 : 0), mc2::fmt::as_i32(screenShadowDebug_));
-        glDeleteQueries(1, &screenShadowCanaryQuery);
-    }
 
     glBindVertexArray(0);
 

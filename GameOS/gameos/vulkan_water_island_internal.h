@@ -24,6 +24,7 @@
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
 #include "vk_hdri_source.h"
+#include "vk_native_producers.h"   // STEP 3.4P: native compute producers
 #include "vulkan_context.h"
 #include "gos_terrain_water_stream.h"
 #include "terrain_field_store.h"   // the shore sidecars' CPU copies
@@ -207,6 +208,12 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedPipeline pipe;
     mc2vk::OwnedCommandPool cpool;
     mc2vk::OwnedFence fence;
+
+    // STEP 3.4P: the native Vulkan lighting + cull/pack producers (declared last: released first). `nativeFailed` = init was tried and refused, so the
+    // GL readback feed stays in use for the session.
+    std::unique_ptr<mc2vk::NativeProducers> native;
+    bool     nativeFailed = false;
+    uint64_t nativeFrames = 0;   // frames the native path completed; schedules the parity frames
 };
 
 }  // namespace vk_water_detail
@@ -235,6 +242,7 @@ bool make_buffer(WaterIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkB
                  std::string_view name, int i0 = -1, int i1 = -1);
 void write_descriptors(WaterIsland* s);
 bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes);
+bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeCount);
 bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& record);
 bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex);
 bool import_shore_tex(WaterIsland* s, const void* texels, int texelsW, int texelsH, bool isFloat, mc2vk::OwnedImage& img,

@@ -2,10 +2,7 @@
  "base": "e6770aa59",
  "src": "GameOS/gameos/gos_postprocess.cpp",
  "stem": "gos_postprocess",
- "add": [
-  "void lostFrameBegin();   // gos_postprocess_diag.cpp"
- ],
- "_add_reason": "lostFrameBegin is declared with a trailing comment naming its piece: its definition is parsed as a statement run by the unit splitter, so no prototype is generated for it.",
+ "add": [],
  "scripts": [
   "scripts/check-apply-pass-bumped.py",
   "scripts/check-contracts.sh",
@@ -23,12 +20,11 @@
   "scripts/gl_shader_variants.json",
   "tests/unit/test_gate.cpp",
   "tools/class_light_band_harness/class_light_band_harness.cpp",
-  "tools/gl_vk_feature_coverage.py",
   "tools/mc2_launcher/mc2_launcher.cpp",
   "tools/render_state_contract_harness/gos_counter_stubs.cpp",
   "tools/shader_offline_build/pilots.json"
  ],
- "_scripts_reason": "Reviewed: check-frame-resource-feedback scans every gos_postprocess piece for live sceneColorTex_ binds and requires the copy plumbing across them; check-vk-umbrella-readers pins the MC2_VK_SHARED_SCENE_DEPTH reader in gos_postprocess_gates.cpp; the five check-raw-gl-* scripts allowlist the pieces that hold each raw call (core+effects blend, core+shadow+skybox colormask, shadow depthfunc, core+effects+shadow+skybox depthmask, core+effects+executor+fbo+shadow fbobind); counter-honesty keys follow their limiters to the diag, executor and shadow pieces; gl_shader_variants.json is regenerated (file:line of each makeProgram call); check-drawbuffer-ownership still finds setSceneDrawBuffers in gos_postprocess.cpp; tools/gate_codemod.py (lane 1) lists the file it already migrated and the rest cite gos_postprocess.cpp in comments or notes. tools/gl_vk_feature_coverage.py names the file only in the docstring example of its split-family rule.",
+ "_scripts_reason": "Reviewed: check-frame-resource-feedback scans every gos_postprocess piece for live sceneColorTex_ binds and requires the copy plumbing across them; check-vk-umbrella-readers pins the MC2_VK_SHARED_SCENE_DEPTH reader in gos_postprocess_gates.cpp; the five check-raw-gl-* scripts allowlist the pieces that hold each raw call (core+effects blend, core+shadow+skybox colormask, shadow depthfunc, core+effects+shadow+skybox depthmask, core+effects+executor+fbo+shadow fbobind); counter-honesty keys follow their limiters to the diag, executor and shadow pieces; gl_shader_variants.json is regenerated (file:line of each makeProgram call); check-drawbuffer-ownership still finds setSceneDrawBuffers in gos_postprocess.cpp; tools/gate_codemod.py (lane 1) lists the file it already migrated and the rest cite gos_postprocess.cpp in comments or notes.",
  "exclude_files": [
   "gos_postprocess_blur.cpp"
  ]

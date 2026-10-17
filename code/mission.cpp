@@ -593,7 +593,7 @@ long Mission::render (void)
 			eye->ambientGreen = 0xFF;
 			eye->ambientBlue = 0xFF;
 		}
-		{ ZoneScopedN("Camera.UpdateRenderers eye.render"); GosGlLostDrawsScope _lostSc_("scene.eye_render"); eye->render(); }
+		{ ZoneScopedN("Camera.UpdateRenderers eye.render"); eye->render(); }
 		{ ZoneScopedN("Camera.UpdateRenderers clearCellDebugs"); GameMap->clearCellDebugs(0); }
 
 		//-----------------------------------------------------
@@ -610,13 +610,13 @@ long Mission::render (void)
 
 		gos_SetRenderState( gos_State_Fog, 0);
 
-		{ ZoneScopedN("Camera.UpdateRenderers FloatHelp.renderAll"); GosGlLostDrawsScope _lostSc_("hud.floathelp"); FloatHelp::renderAll(); }
+		{ ZoneScopedN("Camera.UpdateRenderers FloatHelp.renderAll"); FloatHelp::renderAll(); }
 
 		currentFloatHelp = 0;
 
 		if (missionInterface)
 		{
-			ZoneScopedN("Camera.UpdateRenderers missionInterface.render"); GosGlLostDrawsScope _lostSc_("hud.mission_interface");
+			ZoneScopedN("Camera.UpdateRenderers missionInterface.render");
 			missionInterface->render();
 		}
 

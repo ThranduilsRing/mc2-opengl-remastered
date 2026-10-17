@@ -11995,17 +11995,6 @@
    "count": 1
   },
   {
-   "tag": "VK_GL_LOST_DRAWS",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "final",
-    "total_groups"
-   ],
-   "count": 1
-  },
-  {
    "tag": "VK_HUD_AUDIT",
    "ver": 1,
    "stream": "stderr",
@@ -12306,6 +12295,49 @@
    "count": 1
   },
   {
+   "tag": "VK_PRODUCER_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "gl_count",
+    "vk_visible",
+    "compared",
+    "same",
+    "differ",
+    "only_gl",
+    "only_vk",
+    "truncated",
+    "compared",
+    "light_mismatch",
+    "fog_mismatch",
+    "max_channel_delta"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PRODUCER_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "gl",
+    "vk"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PRODUCER_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "offset",
+    "count",
+    "lights",
+    "gl_read"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_PROFILE",
    "ver": 1,
    "stream": "buffer",
@@ -12335,39 +12367,6 @@
     "record_submit_us",
     "fence_wait_us",
     "island_total_us"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_SCENE_GL_DRAW_CANARY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "tag",
-    "any_samples",
-    "draws"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_SCENE_GL_PRODUCER_QUERY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "any_samples",
-    "frame_sceneFBO"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_SCREENSHADOW_GL_CANARY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "any_samples",
-    "sceneFBO",
-    "csm",
-    "debug"
    ],
    "count": 1
   },

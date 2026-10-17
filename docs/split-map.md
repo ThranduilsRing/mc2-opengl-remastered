@@ -45,7 +45,7 @@ Split commit: `f0521b300`.
 | Piece | What it holds |
 |---|---|
 | `gos_postprocess.cpp` | keeps the singleton, setters, init, scene begin/end and the viewmode/sky accessors |
-| `gos_postprocess_diag.cpp` | gosPostProcess: GL lost-draws query tracker (VK-GL-LOST-DRAWS-1) and the HZB readback probe. |
+| `gos_postprocess_diag.cpp` | gosPostProcess: the HZB readback probe. |
 | `gos_postprocess_effects.cpp` | gosPostProcess: box decals, HZB reduce, SSAO, screen-space shadow, cloud shadow, shoreline, edge fog and fog-OOB passes. |
 | `gos_postprocess_executor.cpp` | gosPostProcess: frame-graph executor ownership accessors, apply-state wrappers and counters. |
 | `gos_postprocess_fbo.cpp` | gosPostProcess: gosPostProcess teardown, resize, scene/post FBO creation and destruction, and the particle/VFX scene copies. |

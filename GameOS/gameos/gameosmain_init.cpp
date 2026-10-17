@@ -389,11 +389,9 @@ void initResolutionFromConfig() {
 // Birth the engine Vulkan context and present path when the Vulkan backend is selected.
 void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
     // VK-P13-SELECTOR-1 / T2+T4: birth the standalone shared engine Vulkan
-    // context when MC2_RENDER_BACKEND=vulkan. The GL window + GL context above
-    // are UNTOUCHED (approach A'); this only additionally stands up the shared
-    // VK device that P6/P8/P9/P14 will reuse. Present is still GL swap (T3 wires
-    // the VK present intercept later). On =gl/unset this whole block is skipped
-    // -> byte-identical GL behavior.
+    // context on the Vulkan backend (the default). The GL window + GL context above
+    // are UNTOUCHED (approach A'); this additionally stands up the shared VK device
+    // that P6/P8/P9/P14 reuse. Under the =gl opt-out this whole block is skipped.
     if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
 #ifdef MC2_VULKAN
         // R2 INTERLOCK (plan §6/R2, landed here since the device is born here):
@@ -415,17 +413,15 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
         const bool vkok = vkctx.init(/*wantPresent=*/true);
         vkctx.logHealth();
         if (!vkok || !vkctx.valid()) {
-            // Fail-soft: force the whole session back to GL. renderBackend() stays
-            // queryable but now returns GL; the VK device is null; every consumer
-            // takes the GL path. Present was never changed, so nothing to revert.
-            mc2::forceGLFallback(vkctx.health().fallbackReason.empty()
+            // No GL fallback: show the reason and exit.
+            mc2::fatalBackendFailure(vkctx.health().fallbackReason.empty()
                                      ? "engine Vulkan context did not come up"
                                      : vkctx.health().fallbackReason.c_str());
         } else {
             // VK-P13 T3: stand up the whole-frame GL->VK present intercept on the
             // shared device. Sized to the GL drawable (backbuffer, incl. pillarbox
             // by construction: source is FBO-0 at swap). Fail-soft: if present init
-            // fails, force GL -- the GL swap path is untouched.
+            // fails, defer and retry from the frame loop (see below).
             int dw = 0, dh = 0;
             graphics::get_drawable_size(win, &dw, &dh);
             if (dw <= 0) dw = w;
@@ -447,8 +443,8 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
                 // all — the user-sighted half-grey/streaking + pause-bobbing
                 // frame was exactly that half-disarmed state. So: NEVER force
                 // GL for a present-level failure — DEFER and retry init from
-                // the frame loop; the session stays VK. forceGLFallback remains
-                // for context/device-level failures only (handled above).
+                // the frame loop; the session stays VK. Context/device-level
+                // failures are fatal (handled above).
                 const std::string& fr = vkpres.health().fallback_reason;
                 g_vkPresentInitDeferred = true;
                 mc2::fmt::print_out("[VK_PRESENT] init deferred: {} -- will retry from the frame loop (session stays VK; present-level failures never force GL).\n", fr.c_str());
@@ -456,9 +452,9 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
             }
         }
 #else
-        // MC2_RENDER_BACKEND=vulkan requested but this build has no Vulkan
-        // support compiled in (GL-only build). Fail-soft to GL.
-        mc2::forceGLFallback("MC2_RENDER_BACKEND=vulkan but build has no MC2_VULKAN support");
+        // The Vulkan backend is selected but this build has no Vulkan support
+        // compiled in. No fallback: fatal.
+        mc2::fatalBackendFailure("this build has no MC2_VULKAN support");
 #endif
     }
 }

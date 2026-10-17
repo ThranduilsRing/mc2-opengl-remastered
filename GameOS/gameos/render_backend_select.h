@@ -13,8 +13,7 @@
 //
 // This header is GL-safe: it pulls in NO Vulkan headers and has NO #ifdef
 // MC2_VULKAN dependency, so it compiles identically in the shipping GL-only
-// build. On =gl / unset / unrecognized the accessor adds only one memoized
-// getenv and returns GL -- byte-identical behavior, no code path changes.
+// build. The accessor adds only one memoized getenv.
 
 #ifndef MC2_RENDER_BACKEND_SELECT_H
 #define MC2_RENDER_BACKEND_SELECT_H
@@ -22,12 +21,16 @@
 namespace mc2 {
 
 enum class RenderBackend {
-    GL = 0,      // default / unset / unrecognized MC2_RENDER_BACKEND
-    Vulkan = 1,  // MC2_RENDER_BACKEND=vulkan
+    GL = 0,      // MC2_RENDER_BACKEND=gl (the temporary opt-out)
+    Vulkan = 1,  // default / unset / unrecognized / =vulkan
 };
 
+// The one parsing rule: "gl"/"GL" -> GL; "vulkan"/"VULKAN"/"vk"/unset/empty -> Vulkan; anything else
+// -> Vulkan with *recognized=false (a typo must not select GL). Pure; used by renderBackend() and tests.
+RenderBackend backendFromText(const char* text, bool* recognized = nullptr);
+
 // Memoized accessor. Reads MC2_RENDER_BACKEND once (values "gl" | "vulkan";
-// default GL; anything unrecognized -> GL, coercion logged once). Idempotent
+// default Vulkan; anything unrecognized -> Vulkan, coercion logged once). Idempotent
 // and cheap after the first call. Thread-safety: intended to be first called
 // during single-threaded engine init (gameosmain), after which it is a pure
 // read of a cached value.
@@ -36,12 +39,13 @@ RenderBackend renderBackend();
 // Human-readable name for logs ("gl" | "vulkan").
 const char* renderBackendName(RenderBackend b);
 
-// Fail-soft coercion: force the session back to GL for the remainder of the
-// process. Called by T2 when the engine VulkanContext fails to be born (bad
-// device / missing exts / validation-layer failure). After this, renderBackend()
-// returns GL so every downstream consumer takes the GL path. Session-sticky;
-// there is no un-force. Logs the reason once.
-void forceGLFallback(const char* reason);
+// Fatal backend failure (there is no GL fallback). Called when the Vulkan
+// backend is selected (the default) and Vulkan cannot come up (device /
+// extensions / validation layer failure, no MC2_VULKAN in the build, or a present
+// path that cannot be VK-owned). Logs "[RENDER_BACKEND] FATAL: <reason>", shows a
+// message box unless the run is automated (smoke / crash-fast-exit), and ends the
+// process with exit code 3. Does not return.
+[[noreturn]] void fatalBackendFailure(const char* reason);
 
 }  // namespace mc2
 

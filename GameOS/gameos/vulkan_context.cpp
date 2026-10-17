@@ -3,7 +3,7 @@
 // VK-P13-SELECTOR-1 / T2 -- the standalone shared engine Vulkan context.
 // Owns instance + physical device + logical device + graphics queue + VMA +
 // volk device dispatch. Born once at engine init (gameosmain) when
-// renderBackend()==Vulkan; fail-soft on any error. Device ownership lives HERE;
+// renderBackend()==Vulkan; any error is reported to the caller (fatal). Device ownership lives HERE;
 // consumers borrow it.
 //
 // Whole TU is inert unless MC2_VULKAN is defined. Device bring-up keeps the
@@ -162,11 +162,11 @@ bool VulkanContext::init(bool wantPresent) {
 
     // Fail-soft proof knob (plan T4): MC2_VK_FORCE_FAIL=1 forces the engine
     // context bring-up to fail deterministically BEFORE any Vulkan object is
-    // created, so the fail-soft -> forceGLFallback path can be exercised on
+    // created, so the fatalBackendFailure path can be exercised on
     // demand (no broken-ICD juggling). Presence-gated; default OFF.
     {
         if (mc2::gate::get<"MC2_VK_FORCE_FAIL">()) {
-            return fail("MC2_VK_FORCE_FAIL=1 forced failure (fail-soft proof knob)");
+            return fail("MC2_VK_FORCE_FAIL=1 forced failure (failure-path proof knob)");
         }
     }
 
@@ -302,7 +302,7 @@ bool VulkanContext::init(bool wantPresent) {
     vkEnumeratePhysicalDevices(instance_, &devCount, devs.data());
 
     // ---- device profile: the first discrete device that meets every REQUIRED item, else the first device that does; if none does, the engine
-    // refuses Vulkan (fail-soft to GL) and the refused device's line says which items it lacks ----
+    // refuses Vulkan (fatal, no GL fallback) and the refused device's line says which items it lacks ----
     profile::DeviceCaps caps;
     {
         struct Candidate { VkPhysicalDevice pd; profile::DeviceCaps caps; profile::Evaluation ev; std::string name; bool discrete; };
