@@ -95,7 +95,7 @@ gosFX::Effect::Specification*
 
 //------------------------------------------------------------------------------
 //
-gosFX::Effect*
+gosFX::EffectPtr
 	gosFX::EffectLibrary::MakeEffect(
 		unsigned index,
 		unsigned flags
@@ -118,5 +118,6 @@ gosFX::Effect*
 		);
 	Check_Object(data);
 	Check_Pointer(data->effectFactory);
-	return (*data->effectFactory)(spec, flags);
+	// The class registry factories return the new object; this is the one place it gets its owner.
+	return EffectPtr{(*data->effectFactory)(spec, flags)};
 }

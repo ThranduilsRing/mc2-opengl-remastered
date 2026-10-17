@@ -203,9 +203,9 @@ class Artillery : public GameObject
 		ArtilleryInfo		info;
 		int32_t             effectId;
 		
-		gosFX::Effect		*hitEffect;
-		gosFX::Effect		*rightContrail;
-		gosFX::Effect		*leftContrail;
+		gosFX::EffectPtr		hitEffect;
+		gosFX::EffectPtr		rightContrail;
+		gosFX::EffectPtr		leftContrail;
 				
 		std::unique_ptr<Appearance>	bomber;		// B7o.5: owns the air-strike bomber (reset at the end of the run and in destroy())
 		bool				bombRunStarted;

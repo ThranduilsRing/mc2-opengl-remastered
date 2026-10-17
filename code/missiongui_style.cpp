@@ -39,15 +39,13 @@ void MissionInterfaceManager::updateVTol()
 					if (dustCloud[vtolNum])
 					{
 						dustCloud[vtolNum]->Kill();
-						delete dustCloud[vtolNum];
-						dustCloud[vtolNum] = nullptr;
+						dustCloud[vtolNum].reset();
 					}
 					
 					if (recoveryBeam[vtolNum])
 					{
 						recoveryBeam[vtolNum]->Kill();
-						delete recoveryBeam[vtolNum];
-						recoveryBeam[vtolNum] = nullptr;
+						recoveryBeam[vtolNum].reset();
 					}
 
 					//We should have set this when the helo was brought in.
@@ -175,15 +173,13 @@ void MissionInterfaceManager::updateVTol()
 					if (dustCloud[vtolNum])
 					{
 						dustCloud[vtolNum]->Kill();
-						delete dustCloud[vtolNum];
-						dustCloud[vtolNum] = nullptr;
+						dustCloud[vtolNum].reset();
 					}
 					
 					if (recoveryBeam[vtolNum])
 					{
 						recoveryBeam[vtolNum]->Kill();
-						delete recoveryBeam[vtolNum];
-						recoveryBeam[vtolNum] = nullptr;
+						recoveryBeam[vtolNum].reset();
 					}
 
 					//Check if mech was recovered.  If not, restore the resource points!!!

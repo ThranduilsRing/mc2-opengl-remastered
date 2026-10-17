@@ -146,7 +146,7 @@ class TerrainObject : public GameObject {
 		
 		unsigned char				numCellsCovered;
 		short*						cellsCovered;
-		gosFX::Effect				*bldgDustPoofEffect;
+		gosFX::EffectPtr				bldgDustPoofEffect;
 			
 		static long					cellArray[9];
 

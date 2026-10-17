@@ -66,7 +66,8 @@ namespace gosFX
 	public:
 		Effect::Specification*
 			Find(const char* name);
-		Effect*
+		// The caller owns the new effect.
+		EffectPtr
 			MakeEffect(
 				unsigned index,
 				unsigned flags

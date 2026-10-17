@@ -198,10 +198,10 @@ class GVAppearance : public ObjectAppearance
 		float										hazeFactor;
 		long										status;
 			
-   		gosFX::Effect								*destructFX;
-   		gosFX::Effect								*waterWake;
-   		gosFX::Effect								*dustCloud;
-		gosFX::Effect								*activity;
+		gosFX::EffectPtr								destructFX;
+		gosFX::EffectPtr								waterWake;
+		gosFX::EffectPtr								dustCloud;
+		gosFX::EffectPtr								activity;
 		bool										isWaking;
 		bool										isActivitying;
 		bool										movedThisFrame;

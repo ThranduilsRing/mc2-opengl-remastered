@@ -280,8 +280,7 @@ long WeaponBolt::update (void)
 				// Only the impact effect remains visible after arrival.
 				if (gosEffect) {
 					gosEffect->Kill();
-					delete gosEffect;
-					gosEffect = nullptr;
+					gosEffect.reset();
 				}
 
 				if (target)
@@ -315,15 +314,13 @@ long WeaponBolt::update (void)
 					if (missEffect)
 					{
 						missEffect->Kill();
-						delete missEffect;
-						missEffect = nullptr;
+						missEffect.reset();
 					}
 					
 					if (waterMissEffect)
 					{
 						waterMissEffect->Kill();
-						delete waterMissEffect;
-						waterMissEffect = nullptr;
+						waterMissEffect.reset();
 					}
 					
 					laserPosition = hotSpot;
@@ -356,8 +353,7 @@ long WeaponBolt::update (void)
 						if (missEffect)
 						{
 							missEffect->Kill();
-							delete missEffect;
-							missEffect = nullptr;
+							missEffect.reset();
 						}
 					}
 					else
@@ -381,16 +377,14 @@ long WeaponBolt::update (void)
 						if (waterMissEffect)
 						{
 							waterMissEffect->Kill();
-							delete waterMissEffect;
-							waterMissEffect = nullptr;
+							waterMissEffect.reset();
 						}
 					}
 					
 					if (hitEffect)
 					{
 						hitEffect->Kill();
-						delete hitEffect;
-						hitEffect = nullptr;
+						hitEffect.reset();
 					}
 					
 					laserPosition = hotSpot;
@@ -431,22 +425,19 @@ long WeaponBolt::update (void)
 						if (hitEffect)
 						{
 							hitEffect->Kill();
-							delete hitEffect;
-							hitEffect = nullptr;
+							hitEffect.reset();
 						}
 						
 						if (missEffect)
 						{
 							missEffect->Kill();
-							delete missEffect;
-							missEffect = nullptr;
+							missEffect.reset();
 						}
 						
 						if (waterMissEffect)
 						{
 							waterMissEffect->Kill();
-							delete waterMissEffect;
-							waterMissEffect = nullptr;
+							waterMissEffect.reset();
 						}
 						
 						// The explosion owns area damage for both hits and misses.
@@ -491,22 +482,19 @@ long WeaponBolt::update (void)
 						if (hitEffect)
 						{
 							hitEffect->Kill();
-							delete hitEffect;
-							hitEffect = nullptr;
+							hitEffect.reset();
 						}
 
 						if (missEffect)
 						{
 							missEffect->Kill();
-							delete missEffect;
-							missEffect = nullptr;
+							missEffect.reset();
 						}
 
 						if (waterMissEffect)
 						{
 							waterMissEffect->Kill();
-							delete waterMissEffect;
-							waterMissEffect = nullptr;
+							waterMissEffect.reset();
 						}
 
 						// Located aimed damage leaves the explosion cosmetic to avoid duplicate damage.
@@ -534,8 +522,7 @@ long WeaponBolt::update (void)
 					// The beam head must not remain visible through the impact tail.
 					if (gosEffect) {
 						gosEffect->Kill();
-						delete gosEffect;
-						gosEffect = nullptr;
+						gosEffect.reset();
 					}
 
 				if (target)
@@ -567,15 +554,13 @@ long WeaponBolt::update (void)
 					if (missEffect)
 					{
 						missEffect->Kill();
-						delete missEffect;
-						missEffect = nullptr;
+						missEffect.reset();
 					}
 					
 					if (waterMissEffect)
 					{
 						waterMissEffect->Kill();
-						delete waterMissEffect;
-						waterMissEffect = nullptr;
+						waterMissEffect.reset();
 					}
 				}
 				else
@@ -606,8 +591,7 @@ long WeaponBolt::update (void)
 						if (missEffect)
 						{
 							missEffect->Kill();
-							delete missEffect;
-							missEffect = nullptr;
+							missEffect.reset();
 						}
 					}
 					else
@@ -631,16 +615,14 @@ long WeaponBolt::update (void)
 						if (waterMissEffect)
 						{
 							waterMissEffect->Kill();
-							delete waterMissEffect;
-							waterMissEffect = nullptr;
+							waterMissEffect.reset();
 						}
 					}
 					
 					if (hitEffect)
 					{
 						hitEffect->Kill();
-						delete hitEffect;
-						hitEffect = nullptr;
+						hitEffect.reset();
 					}
 				}
 				
@@ -678,22 +660,19 @@ long WeaponBolt::update (void)
 						if (hitEffect)
 						{
 							hitEffect->Kill();
-							delete hitEffect;
-							hitEffect = nullptr;
+							hitEffect.reset();
 						}
 						
 						if (missEffect)
 						{
 							missEffect->Kill();
-							delete missEffect;
-							missEffect = nullptr;
+							missEffect.reset();
 						}
 						
 						if (waterMissEffect)
 						{
 							waterMissEffect->Kill();
-							delete waterMissEffect;
-							waterMissEffect = nullptr;
+							waterMissEffect.reset();
 						}
 						
 						// The explosion owns area damage for both hits and misses.
@@ -738,22 +717,19 @@ long WeaponBolt::update (void)
 						if (hitEffect)
 						{
 							hitEffect->Kill();
-							delete hitEffect;
-							hitEffect = nullptr;
+							hitEffect.reset();
 						}
 						
 						if (missEffect)
 						{
 							missEffect->Kill();
-							delete missEffect;
-							missEffect = nullptr;
+							missEffect.reset();
 						}
 						
 						if (waterMissEffect)
 						{
 							waterMissEffect->Kill();
-							delete waterMissEffect;
-							waterMissEffect = nullptr;
+							waterMissEffect.reset();
 						}
 						
 						// The explosion owns area damage for both hits and misses.
@@ -832,8 +808,7 @@ long WeaponBolt::update (void)
 		if (!result)
 		{
 			gosEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-			delete gosEffect;
-			gosEffect = nullptr;
+			gosEffect.reset();
 		}
    	}
 	
@@ -865,8 +840,7 @@ long WeaponBolt::update (void)
 		if (!result)
 		{
 			muzzleEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-			delete muzzleEffect;
-			muzzleEffect = nullptr;
+			muzzleEffect.reset();
 		}
 
    	}
@@ -981,8 +955,7 @@ long WeaponBolt::update (void)
 		if (gosEffect && (hitLeft < 0.0f))
 		{
 			gosEffect->Kill();
-			delete gosEffect;
-			gosEffect = nullptr;
+			gosEffect.reset();
 			
 			if (pointLight)
 			{
@@ -1028,8 +1001,7 @@ long WeaponBolt::update (void)
 				if (hitEffect)
 				{
 					hitEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-					delete hitEffect;
-					hitEffect = nullptr;
+					hitEffect.reset();
 				}
 					
 				inView = FALSE;
@@ -1044,8 +1016,7 @@ long WeaponBolt::update (void)
 				if (muzzleEffect)
 				{
 					muzzleEffect->Kill();
-					delete muzzleEffect;
-					muzzleEffect = nullptr;
+					muzzleEffect.reset();
 				}
 			}
 		}
@@ -1054,8 +1025,7 @@ long WeaponBolt::update (void)
 			if (hitEffect)
 			{
 				hitEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-				delete hitEffect;
-				hitEffect = nullptr;
+				hitEffect.reset();
 			}
 				
 			if (pointLight)
@@ -1102,15 +1072,13 @@ long WeaponBolt::update (void)
 				if (missEffect)
 				{
 					missEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-					delete missEffect;
-					missEffect = nullptr;
+					missEffect.reset();
 				}
 					
 				if (muzzleEffect)
 				{
 					muzzleEffect->Kill();
-					delete muzzleEffect;
-					muzzleEffect = nullptr;
+					muzzleEffect.reset();
 				}
 				
 				inView = FALSE;
@@ -1128,8 +1096,7 @@ long WeaponBolt::update (void)
 			if (missEffect)
 			{
 				missEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-				delete missEffect;
-				missEffect = nullptr;
+				missEffect.reset();
 			}
 				
 			if (pointLight)
@@ -1178,15 +1145,13 @@ long WeaponBolt::update (void)
 				if (waterMissEffect)
 				{
 					waterMissEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-					delete waterMissEffect;
-					waterMissEffect = nullptr;
+					waterMissEffect.reset();
 				}
 					
 				if (muzzleEffect)
 				{
 					muzzleEffect->Kill();
-					delete muzzleEffect;
-					muzzleEffect = nullptr;
+					muzzleEffect.reset();
 				}
 				
 				inView = FALSE;
@@ -1204,8 +1169,7 @@ long WeaponBolt::update (void)
 			if (waterMissEffect)
 			{
 				waterMissEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-				delete waterMissEffect;
-				waterMissEffect = nullptr;
+				waterMissEffect.reset();
 			}
 				
 			if (pointLight)

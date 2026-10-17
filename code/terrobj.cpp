@@ -944,8 +944,7 @@ long TerrainObject::update (void) {
 				if (!result)
 				{
 					bldgDustPoofEffect->Kill();
-					delete bldgDustPoofEffect;
-					bldgDustPoofEffect = nullptr;
+					bldgDustPoofEffect.reset();
 				}
 			}
 		}

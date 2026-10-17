@@ -193,44 +193,38 @@ void Mech3DAppearance::destroy (void)
 		if (rightDustPoofEffect[i])
 		{
 			rightDustPoofEffect[i]->Kill();
-			delete rightDustPoofEffect[i];
-			rightDustPoofEffect[i] = nullptr;
+			rightDustPoofEffect[i].reset();
 		}
 			
 		if (leftDustPoofEffect[i])
 		{
 			leftDustPoofEffect[i]->Kill();
-			delete leftDustPoofEffect[i];
-			leftDustPoofEffect[i] = nullptr;
+			leftDustPoofEffect[i].reset();
 		}
 	}
 
 	if (smokeEffect)
 	{
 		smokeEffect->Kill();
-		delete smokeEffect;
-		smokeEffect = nullptr;
+		smokeEffect.reset();
 	}
 	
 	if (jumpJetEffect)
 	{
 		jumpJetEffect->Kill();
-		delete jumpJetEffect;
-		jumpJetEffect = nullptr;
+		jumpJetEffect.reset();
 	}
 	
 	if (rightShoulderBoom)
 	{
 		rightShoulderBoom->Kill();
-		delete rightShoulderBoom;
-		rightShoulderBoom = nullptr;
+		rightShoulderBoom.reset();
 	}
 	
 	if (leftShoulderBoom)
 	{
 		leftShoulderBoom->Kill();
-		delete leftShoulderBoom;
-		leftShoulderBoom = nullptr;
+		leftShoulderBoom.reset();
 	}
 
 	if (sensorSquareShape)

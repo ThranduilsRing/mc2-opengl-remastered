@@ -627,8 +627,7 @@ void Carnage::finishNow (void)
 		if (gosEffect)
 		{
 			gosEffect->Kill();		//Effect is over.
-			delete gosEffect;
-			gosEffect = nullptr;
+			gosEffect.reset();
 		}
 
 		if (pointLight)
@@ -793,8 +792,7 @@ long Carnage::update (void)
 			if (!result)
 			{
 				gosEffect->Kill();		//Effect is over.
-				delete gosEffect;
-				gosEffect = nullptr;
+				gosEffect.reset();
 
 				if (pointLight)
 				{
@@ -890,8 +888,7 @@ void Carnage::destroy (void)
 		if (gosEffect)
 		{
 			gosEffect->Kill();		//Effect is over.
-			delete gosEffect;
-			gosEffect = nullptr;
+			gosEffect.reset();
 		}
 
 		if (pointLight)
