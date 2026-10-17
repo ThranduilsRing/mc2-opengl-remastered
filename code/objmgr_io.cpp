@@ -362,46 +362,31 @@ void GameObjectManager::primeTerrainObjectsForMissionLoad (volatile float& progr
 	TracyPlot("Terrain object appearances warmed during mission load", int64_t(warmedAppearances));
 }
 
-// Task 5 (Track B): bulk static-prop registration at mission load.
-// Walks every Bldg/Tree appearance spawned by addObject AFTER
-// primeTerrainObjectsForMissionLoad (position/rotation set) and BEFORE
-// finalizeGeometry. registerStatic() calls TransformMultiShape_PositionsOnly
-// to populate per-leaf shapeToWorld matrices, then buildRecipeFromShape per
-// leaf, then GpuStaticPropRegistry::registerRecipe.
-// Default-ON. Set MC2_STATIC_PROP_MISSION_LOAD_REG=0 to opt out (the first-render
-// fallback then covers registration). Reader source, and the only authority:
-// GameOS/gameos/gos_static_prop_registry.cpp:141 —
-//   parseEnvBoolWithDefault("MC2_STATIC_PROP_MISSION_LOAD_REG", true)
-// This comment said "Default-off" until 2026-07-30 (ENV-DROP-CLOSE-1) while the
-// reader had defaulted true since Task 9 Track B (2026-05-06), i.e. mission-load
-// registration was LIVE for everyone reading here that it was not.
+// Register static props before geometry finalization so they are visible on the first frame.
+// MC2_STATIC_PROP_MISSION_LOAD_REG defaults on; disabling it leaves first-render registration.
 void GameObjectManager::registerStaticPropsForMissionLoad() {
 	ZoneScopedN("GameObjectManager::registerStaticPropsForMissionLoad");
 	if (!GpuStaticPropRegistry::isMissionLoadRegEnabled()) return;
 
 	int totalEnumerated = 0, totalRegistered = 0, totalSkipped = 0;
-	// 2026-05-10 diag: per-array breakdown to localise the buildings-don't-render bug.
+	// Per-array counts distinguish missing appearances from failed registrations.
 	int byArr_enum[4] = {0,0,0,0}; // 0=terrainObjects 1=buildings 2=turrets 3=gates
 	int byArr_reg[4]  = {0,0,0,0};
 	int byArr_skip[4] = {0,0,0,0};
 	int byArr_noapp[4]= {0,0,0,0};
 	int currentArr = 0;
 
-	// Push game-object position/rotation into Appearance::position/rotation
-	// before registerStatic() reads them. Without this, buildings/turrets/gates
-	// register at world origin (ghost-prop pile) and miss frustum admission,
-	// falling through to a broken legacy first-render path that renders them
-	// solid black. Applied uniformly to all four arrays — terrainObjects[]
-	// were already primed by primeTerrainObjectsForMissionLoad but re-priming
-	// is harmless. Known side effect: mech shadow regression (intermittent,
-	// camera-dependent); accepted trade-off until shadow path is debugged.
+	// Appearance state must match the object before registration to avoid props at world origin
+	// and incorrect selection or allegiance after a restore.
 	auto registerOne = [&](GameObjectPtr obj) {
 		if (!obj) return;
 		++totalEnumerated;
 		++byArr_enum[currentArr];
 		AppearancePtr app = obj->getAppearance();
 		if (!app) { ++totalSkipped; ++byArr_skip[currentArr]; ++byArr_noapp[currentArr]; return; }
-		app->setObjectParameters(obj->getPosition(), obj->getRotation(), 0, 0, 0);
+		const long teamId = obj->getTeamId();
+		const long homeRelation = Team::home ? Team::getRelation(teamId, Team::home->getId()) : 0;
+		app->setObjectParameters(obj->getPosition(), obj->getRotation(), obj->drawFlags, teamId, homeRelation);
 		app->registerStatic();
 		if (app->isStaticRegistered()) { ++totalRegistered; ++byArr_reg[currentArr]; }
 		else                           { ++totalSkipped;    ++byArr_skip[currentArr]; }

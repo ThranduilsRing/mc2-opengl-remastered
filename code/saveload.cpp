@@ -13,6 +13,8 @@
 #include "mc2fmt.h"
 #include "mission_load_frame.h"
 #include "mc2_dialog.h"
+#include "../GameAdapters/MechRenderAdapter.h"
+extern float MaxExtractUnitDistance;
 //----------------------------------------------------------------------------------------------------
 // Save.
 void Part::Save (FitIniFilePtr file, long partNum)
@@ -452,8 +454,8 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 
 // Tear down the running mission and reset the mech and static-prop batchers.
 void Mission::loadDestroyAndRestore() {
-	//Used to call this before the version check.  Wow.
 	destroy();
+	resetOrderIngress();
 
 	{
 		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
@@ -465,26 +467,10 @@ void Mission::loadDestroyAndRestore() {
 				(appearanceTypeList == NULL) ? 1 : 0);
 	}
 
-	// VPL-deferred item 11 FIX (pre-spawn half — completes the tail-side
-	// finalizeGeometry() below). destroy() above ran Mission::destroy ->
-	// GpuMechBatcher::onMapUnload() (mission.cpp:3260), which frees GL
-	// buffers + clears s_geometryFinalized but does NOT clear the CPU
-	// s_typeLodIndex / s_typeLodRecords / staging (only onMapLoad()
-	// does). destroy() also UNCONDITIONALLY deletes appearanceTypeList
-	// (mission.cpp:3438-3443). The mechs respawned below via
-	// ObjectManager->Load heap-reuse freed Mech3DAppearanceType
-	// addresses; registerTypeLod()'s idempotent guard
-	// (gos_mech_batcher.cpp:337, key = {Mech3DAppearanceType*, lod})
-	// then false-hits the stale entry and SILENTLY SKIPS registering the
-	// reused-address type -> that type's mechs are invisible from a
-	// savegame. Mission::init avoids this by calling onMapLoad() BEFORE
-	// any spawn (mission.cpp:1682-1683); Mission::load is a parallel
-	// path that skipped it. Mirror Init's pre-spawn reset exactly here
-	// (after destroy(), before any ::Load respawn) so registration
-	// rebuilds into a clean index; the finalizeGeometry() tail below is
-	// Init's matching post-spawn half.
-	GameAdapters::StaticProp::resetForRestore();
+	// Fresh type indices must precede restored actors, whose appearance addresses can be reused.
+	GameAdapters::StaticProp::beginMissionEarly();
 	GpuMechBatcher::instance().onMapLoad();
+	GameAdapters::Mech::beginMission();
 
 	loadProgress = 1.0f;
 }
@@ -498,6 +484,8 @@ void Mission::loadResetSimState(MissionLoadFrame& f) {
 	turn = 0;
 	restoreCombatClock(*mc2::combat::readCombatClock(f.loadFile));
 	terminationCounterStarted = 0;
+	terminationResult = mis_PLAYING;
+	forcedTerminationResult = mis_PLAYING;
 
 	initABL();
 
@@ -563,6 +551,9 @@ void Mission::loadGameSystemRanges(MissionLoadFrame& f) {
 
 	result = gameSystemFile->readIdFloat("FireVisualRange",fireVisualRange);
 	gosASSERT(result == NO_ERR);
+	result = gameSystemFile->readIdULong("MaxTreeLOSBlock",MaxTreeLOSCellBlock);
+	if (result != NO_ERR)
+		MaxTreeLOSCellBlock = 5;
 
 	result = gameSystemFile->readIdFloatArray("WeaponRange", WeaponRange, NUM_FIRERANGES);
 	gosASSERT(result == NO_ERR);
@@ -583,6 +574,9 @@ void Mission::loadGameSystemRanges(MissionLoadFrame& f) {
 
 	result = gameSystemFile->readIdLong("ForestMoveCost", forestMoveCost);
 	gosASSERT(result == NO_ERR);
+	result = gameSystemFile->readIdFloat("MaxUnitExtractDistance",MaxExtractUnitDistance);
+	if (result != NO_ERR)
+		MaxExtractUnitDistance = 1280.0f;
 }
 
 // Read the component list, the god-mode / footprint flags and the mover game-system blocks.
@@ -741,6 +735,7 @@ void Mission::loadMissionSettings(MissionLoadFrame& f) {
 	if (result != NO_ERR)
 		STOP(("Mission Name missing from IN-Mission Save"));
 	saveloadTrace("load_slotMission", loadFileName, missionFileName);
+	GameAdapters::StaticProp::beginMissionLate(missionFileName);
 
 	result = missionFile.readIdFloat( "TimeLimit"						, m_timeLimit );
 	if (result != NO_ERR)
@@ -803,7 +798,7 @@ void Mission::loadMissionSettings(MissionLoadFrame& f) {
 		if (result != NO_ERR)
 			theSkyNumber = DEFAULT_SKY;
 			
-		if ((theSkyNumber < 1) || (theSkyNumber > 20))
+		if ((theSkyNumber < 1) || (theSkyNumber > 21))
 			theSkyNumber = DEFAULT_SKY;
 	}
 		

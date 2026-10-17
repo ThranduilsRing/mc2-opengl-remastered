@@ -1,11 +1,15 @@
 #include "doctest.h"
+#include <array>
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <functional>
 #include <string>
+#include <thread>
 #include <vector>
+#include "frame_jobs.h"
 #include "job_system.h"
 #include "jobs_fatal.h"
 
@@ -40,10 +44,47 @@ struct JobsFixture {
     const int64_t dispatchFloor = jobs::kDispatchFloorNs;
     JobsFixture() { mc2::gate::markMainEntered(); }
     ~JobsFixture() {
+        frameJobsShutdown();
         jobs::stopPool();
         jobs::kDispatchFloorNs = dispatchFloor;
     }
 };
+
+TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/startup_cannot_release_first_dispatch_early") {
+    mc2::gate::ScopedOverride<"MC2_FRAME_JOBS"> enabled("1");
+    mc2::gate::ScopedOverride<"MC2_FRAME_JOBS_WORKERS"> workers("4");
+    jobs::kDispatchFloorNs = 0;
+    bool legacy = false;
+    SUBCASE("frame jobs") { legacy = true; }
+    SUBCASE("domain jobs") { legacy = false; }
+
+    for (int iteration = 0; iteration < 256; ++iteration) {
+        std::array<std::atomic<int>, 256> visits{};
+        std::atomic<int> completed{0};
+        auto body = [&](int begin, int end) {
+            for (int i = begin; i < end; ++i) {
+                std::this_thread::yield();
+                visits[i].fetch_add(1, std::memory_order_relaxed);
+                completed.fetch_add(1, std::memory_order_release);
+            }
+        };
+        if (legacy) {
+            frameJobsInit();
+            parallelForRange(256, 1, body);
+        } else {
+            jobs::startPool(4);
+            jobs::parallel_for(jobs::Domain::Render, 256, 1, 1000, body);
+        }
+        const int completedAtReturn = completed.load(std::memory_order_acquire);
+        // Captures stay alive until every worker is joined, even if the barrier fails.
+        if (legacy) frameJobsShutdown();
+        else jobs::stopPool();
+        CAPTURE(iteration);
+        REQUIRE(completedAtReturn == 256);
+        for (const auto& visit : visits)
+            REQUIRE(visit.load(std::memory_order_relaxed) == 1);
+    }
+}
 
 
 static std::uint64_t dbits(double d) {
