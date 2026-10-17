@@ -18,10 +18,10 @@ inline constexpr int GENERIC_DESTRUCTIBLE_RESOURCE_BUILDING_OBJNUM = 357;
 inline constexpr int GENERIC_INDESTRUCTIBLE_RESOURCE_BUILDING_OBJNUM = 636;
 
 class BuildingType;
-typedef BuildingType* BuildingTypePtr;
+using BuildingTypePtr = BuildingType*;
 
 class Building;
-typedef Building* BuildingPtr;
+using BuildingPtr = Building*;
 
 #endif
 

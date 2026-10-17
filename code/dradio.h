@@ -12,7 +12,7 @@
 #define DRADIO_H
 
 class Radio;
-typedef Radio *RadioPtr;
+using RadioPtr = Radio *;
 
 inline constexpr int MSG_TOTAL_MSGS = 0;
 

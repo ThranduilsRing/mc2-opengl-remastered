@@ -99,11 +99,11 @@ enum ObjectTypeClass
 // Class definitions
 
 class ObjectType;
-typedef ObjectType* ObjectTypePtr;
+using ObjectTypePtr = ObjectType*;
 
 class ObjectTypeManager;
-typedef ObjectTypeManager* ObjectTypeManagerPtr;
+using ObjectTypeManagerPtr = ObjectTypeManager*;
 
-typedef long ObjectTypeNumber;
+using ObjectTypeNumber = long;
 //---------------------------------------------------------------------------
 #endif

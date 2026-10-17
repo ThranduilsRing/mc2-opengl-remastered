@@ -15,16 +15,16 @@
 //------------------------------------------------------------------------------
 // class and macro definitions
 struct CollisionGridNode;
-typedef CollisionGridNode* CollisionGridNodePtr;
+using CollisionGridNodePtr = CollisionGridNode*;
 
 class CollisionGrid;
-typedef CollisionGrid* CollisionGridPtr;
+using CollisionGridPtr = CollisionGrid*;
 
 class CollisionSystem;
-typedef CollisionSystem* CollisionSystemPtr;
+using CollisionSystemPtr = CollisionSystem*;
 
 struct CollisionRecord;
-typedef CollisionRecord* CollisionRecordPtr;
+using CollisionRecordPtr = CollisionRecord*;
 
 //------------------------------------------------------------------------------
 #endif

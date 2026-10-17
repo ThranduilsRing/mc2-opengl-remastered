@@ -493,7 +493,7 @@ class ControlGui
 				return &rpCallout;
 			}
 
-			return NULL;
+			return nullptr;
 		}
 
 };

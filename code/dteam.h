@@ -18,20 +18,20 @@ inline constexpr int MAX_MOVERS_PER_TEAM = 120;
 #define	MAX_CONTACTS_PER_TEAM			MAX_MOVERS
 inline constexpr int NUM_CONTACT_UPDATES_PER_PASS = 3;
 
-typedef enum {
+enum Relation {
 	RELATION_FRIENDLY,
 	RELATION_NEUTRAL,
 	RELATION_ENEMY,
 	NUM_RELATIONS
-} Relation;
+};
 
 //---------------------------------------------------------------------------
 
 class Team;
-typedef Team* TeamPtr;
+using TeamPtr = Team*;
 
 struct _SystemTracker;
-typedef _SystemTracker* SystemTrackerPtr;
+using SystemTrackerPtr = _SystemTracker*;
 
 #endif
 

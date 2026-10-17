@@ -13,10 +13,10 @@
 // class Definitions
 
 class ElementalType;
-typedef ElementalType* ElementalTypePtr;
+using ElementalTypePtr = ElementalType*;
 
 class Elemental;
-typedef Elemental* ElementalPtr;
+using ElementalPtr = Elemental*;
 
 //------------------------------------------------------------------------------
 

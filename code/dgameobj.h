@@ -114,23 +114,23 @@ inline constexpr int WEAPONHITCHUNK_SPECIAL_CAMERADRONE = 0;
 
 //---------------------------------------------------------------------------
 
-typedef int32_t GameObjectHandle;
-typedef int32_t GameObjectTypeHandle;
-typedef int32_t GameObjectWatchID;
+using GameObjectHandle = int32_t;
+using GameObjectTypeHandle = int32_t;
+using GameObjectWatchID = int32_t;
 
 class GameObject;
-typedef GameObject* GameObjectPtr;
+using GameObjectPtr = GameObject*;
 
 class SalvageItem;
-typedef SalvageItem* SalvageItemPtr;
+using SalvageItemPtr = SalvageItem*;
 
 class WeaponFireChunk;
-typedef WeaponFireChunk* WeaponFireChunkPtr;
+using WeaponFireChunkPtr = WeaponFireChunk*;
 
 class WeaponHitChunk;
-typedef WeaponHitChunk* WeaponHitChunkPtr;
+using WeaponHitChunkPtr = WeaponHitChunk*;
 
-typedef struct _WeaponShotInfo* WeaponShotInfoPtr;
+using WeaponShotInfoPtr = struct _WeaponShotInfo*;
 
 //typedef long *AICodePtr;
 //---------------------------------------------------------------------------

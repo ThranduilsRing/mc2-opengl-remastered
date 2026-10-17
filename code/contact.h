@@ -123,10 +123,10 @@ class ContactInfo {
 
 //---------------------------------------------------------------------------
 
-typedef struct _ECMInfo {
+struct _ECMInfo {
 	GameObjectPtr				owner;
 	float						range;
-} ECMInfo;
+}; using ECMInfo = _ECMInfo;
 
 //---------------------------------------------------------------------------
 
@@ -385,10 +385,10 @@ class SensorSystemManager {
 		
 		void init (void) {
 			freeSensors = 0;
-			sensorPool = NULL;
-			freeList = NULL;
+			sensorPool = nullptr;
+			freeList = nullptr;
 			for (long i = 0; i < MAX_TEAMS; i++)
-				teamSensors[i] = NULL;
+				teamSensors[i] = nullptr;
 			numEcms = 0;
 			teamToUpdate = 0;
 		}
