@@ -367,15 +367,13 @@
    ]
   },
   "BldgAppearance": {
-   "delete": 12,
+   "delete": 7,
    "delete_array": 0,
    "files": {
     "code/artlry.cpp": {
-     "delete": 1,
      "new": 3
     },
     "code/bldng.cpp": {
-     "delete": 1,
      "new": 1
     },
     "code/gamecam.cpp": {
@@ -383,7 +381,6 @@
      "new": 1
     },
     "code/gate.cpp": {
-     "delete": 1,
      "new": 1
     },
     "code/missiongui_input.cpp": {
@@ -397,11 +394,9 @@
      "new": 1
     },
     "code/terrobj.cpp": {
-     "delete": 1,
      "new": 1
     },
     "code/turret.cpp": {
-     "delete": 1,
      "new": 1
     },
     "code/warrior_state.cpp": {
@@ -419,13 +414,8 @@
    "new_array": 0,
    "owners": [
     "",
-    "Artillery",
-    "Building",
     "GameCamera",
-    "Gate",
-    "SimpleCamera",
-    "TerrainObject",
-    "Turret"
+    "SimpleCamera"
    ]
   },
   "BrainTaskQueue": {
@@ -2188,7 +2178,7 @@
    ]
   },
   "GVAppearance": {
-   "delete": 3,
+   "delete": 2,
    "delete_array": 0,
    "files": {
     "code/artlry.cpp": {
@@ -2196,7 +2186,6 @@
      "new": 2
     },
     "code/gvehicl.cpp": {
-     "delete": 1,
      "new": 1
     },
     "code/simplecamera.cpp": {
@@ -2209,8 +2198,7 @@
    "new": 5,
    "new_array": 0,
    "owners": [
-    "Artillery",
-    "GroundVehicle"
+    "Artillery"
    ]
   },
   "GameCamera": {
@@ -3633,14 +3621,10 @@
    ]
   },
   "Mech3DAppearance": {
-   "delete": 2,
+   "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/mech.cpp": {
-     "delete": 1
-    },
     "code/mech_init.cpp": {
-     "delete": 1,
      "new": 1
     },
     "code/simplecamera.cpp": {
@@ -3652,9 +3636,7 @@
    },
    "new": 3,
    "new_array": 0,
-   "owners": [
-    "BattleMech"
-   ]
+   "owners": []
   },
   "MechBayScreen": {
    "delete": 0,
@@ -5057,21 +5039,6 @@
    "owners": [
     "SensorSystemManager"
    ]
-  },
-  "SensorSystemManager": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mission_init.cpp": {
-     "new": 1
-    },
-    "code/saveload_load.cpp": {
-     "new": 1
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
   },
   "SimpleCamera": {
    "delete": 1,
@@ -7566,6 +7533,7 @@
   "code/carnage.cpp": 3,
   "code/componentlistbox.cpp": 1,
   "code/forcegroupbar.cpp": 5,
+  "code/gameobj.cpp": 1,
   "code/gamesound.cpp": 1,
   "code/gametacmap.h": 1,
   "code/infowindow.cpp": 1,
@@ -7589,7 +7557,6 @@
   "code/missionbriefingscreen.cpp": 3,
   "code/missiongui.cpp": 3,
   "code/missiongui_style.cpp": 6,
-  "code/mover.cpp": 1,
   "code/mpparameterscreen.cpp": 1,
   "code/mpprefs.cpp": 1,
   "code/objective.cpp": 8,

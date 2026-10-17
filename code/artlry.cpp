@@ -100,6 +100,11 @@ extern bool MLRVertexLimitReached;
 // MISC
 //***************************************************************************
 
+#ifdef MC2_ALLOC_STATS
+// Proof build only: pooled-round evidence for the reload fixture (printed with [ALLOC_TICK]).
+unsigned g_mc2ArtCreated = 0, g_mc2ArtReinit = 0, g_mc2ArtReinitFreed = 0, g_mc2ArtEnded = 0, g_mc2ArtBoomNoFx = 0;
+#endif
+
 void CallArtillery (long commanderID, long strikeType, Stuff::Vector3D strikeLoc, long secondsToImpact, bool randomOff) 
 {
 
@@ -123,6 +128,9 @@ void CallArtillery (long commanderID, long strikeType, Stuff::Vector3D strikeLoc
   	ArtilleryPtr artilleryStrike = ObjectManager->createArtillery(strikeType,strikeLoc);
 	if (artilleryStrike)
 	{
+#ifdef MC2_ALLOC_STATS
+		++g_mc2ArtCreated;
+#endif
 		artilleryStrike->iFacePosition = strikeLoc;
 		artilleryStrike->setPosition( strikeLoc );
 		
@@ -633,6 +641,19 @@ bool ArtilleryType::handleDestruction (GameObjectPtr collidee, GameObjectPtr col
 //***************************************************************************
 void Artillery::init (bool create) 
 {
+	// Pool reuse (create=false) arrives holding the previous round's appearance/bomber/effects; free them before
+	// the resets below orphan them. destroy() is idempotent (nulls what it frees). The constructor (create=true) has nothing yet.
+#ifdef MC2_ALLOC_STATS
+	if (!create)
+	{
+		++g_mc2ArtReinit;
+		if (appearance)
+			++g_mc2ArtReinitFreed;
+	}
+#endif
+	if (!create)
+		destroy();
+
 	artilleryType = ARTILLERY_SMALL;
 
 	initFlags();
@@ -653,7 +674,7 @@ void Artillery::init (bool create)
 			
 	bomber = nullptr;
 	// A fresh round owns no appearance yet; destroy() frees it (the heap that used to sweep it up is gone).
-	appearance = nullptr;
+	adoptAppearance(nullptr);
 
 	setFlag(OBJECT_FLAG_RANDOM_OFFSET, 0);
 }
@@ -879,6 +900,10 @@ long Artillery::update (void)
 	if (getFlag(OBJECT_FLAG_BOOM) && (type->nominalDamage > 0.0)) 
 	{
 		setFlag(OBJECT_FLAG_TANGIBLE, false);
+#ifdef MC2_ALLOC_STATS
+		if (!hitEffect || !hitEffect->IsExecuted())
+			++g_mc2ArtBoomNoFx;
+#endif
 		
 		//------------------------------------------------
 		// Update GOSFX
@@ -922,6 +947,9 @@ long Artillery::update (void)
 					rightContrail = nullptr;
 				}
 				
+#ifdef MC2_ALLOC_STATS
+				++g_mc2ArtEnded;
+#endif
  				return false;			//Strike is also over
 			}
 		}
@@ -1495,8 +1523,7 @@ void Artillery::destroy (void)
 	// The round owns its strike appearance; the per-mission appearance heap no longer reclaims it in bulk.
 	if (appearance)
 	{
-		delete appearance;
-		appearance = nullptr;
+		releaseAppearance();
 	}
 }
 
@@ -1562,7 +1589,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 				}
 			}
 			  
-			appearance = new BldgAppearance;
+			adoptAppearance(new BldgAppearance);
 			gosASSERT(appearance != NULL);
 		
 			//--------------------------------------------------------------
@@ -1630,7 +1657,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 				}
 			}
 			  
-			appearance = new BldgAppearance;
+			adoptAppearance(new BldgAppearance);
 			gosASSERT(appearance != NULL);
 		
 			//--------------------------------------------------------------
@@ -1698,7 +1725,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 				}
 			}
 			  
-			appearance = new BldgAppearance;
+			adoptAppearance(new BldgAppearance);
 			gosASSERT(appearance != NULL);
 		
 			//--------------------------------------------------------------

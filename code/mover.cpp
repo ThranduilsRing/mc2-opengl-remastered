@@ -578,8 +578,7 @@ void Mover::destroy (void)
 	// This will free any memory the mover is using.
 	if (appearance)
 	{
-		delete appearance;
-		appearance = nullptr;
+		releaseAppearance();
 	}
 
 	if (contactInfo)

@@ -1158,8 +1158,7 @@ void Building::destroy (void)
 	// This will free any memory the Building is using.
 	if (appearance) 
 	{
-		delete appearance;
-		appearance = nullptr;
+		releaseAppearance();
 	}
 }
 
@@ -1260,7 +1259,7 @@ void Building::init (bool create, ObjectTypePtr objType) {
 		}
 	}
 	  
-   	appearance = new BldgAppearance;
+   	adoptAppearance(new BldgAppearance);
 	gosASSERT(appearance != nullptr);
 
 	//--------------------------------------------------------------

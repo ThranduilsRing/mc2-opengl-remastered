@@ -12,7 +12,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/camera_sweep_smoke.py` | 101 | `nofocus.spawn` | desktop-composite |
 | `scripts/game_auto.py` | 136 | `nofocus.spawn` | desktop-composite |
 | `scripts/mech_shot.py` | 87 | `nofocus.spawn` | offscreen |
-| `scripts/mechbay_preview_harness.py` | 108 | `nofocus.spawn` | offscreen |
+| `scripts/mechbay_preview_harness.py` | 125 | `nofocus.spawn` | offscreen |
 | `scripts/renderdoc_capture.py` | 238 | `nofocus.run` | offscreen |
 | `scripts/renderdoc_capture.py` | 266 | `subprocess.run` **raw, allowed:** renderdoccmd convert is a console file converter, not the game; windowless via hidden_kwargs | offscreen |
 | `scripts/run_editor_playtest_smoke.py` | 235 | `nofocus.spawn` | offscreen |
@@ -32,7 +32,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/tests/test_harness_desktop_safety.py` | 462 | `nofocus.run` | offscreen |
 | `tests/smoke/object_visual_diff.py` | 123 | `nofocus.run` | offscreen |
 | `tests/smoke/test_launcher_legacy_env.py` | 68 | `subprocess.run` **raw, allowed:** the launcher's --sync-options mode edits two files and exits before it creates a window; it never starts the game | offscreen |
-| `tools/campaign_save_roundtrip.py` | 161 | `nofocus.spawn` | offscreen |
+| `tools/campaign_save_roundtrip.py` | 170 | `nofocus.spawn` | offscreen |
 | `tools/menu_oracle.py` | 110 | `nofocus.spawn` | desktop-composite |
 | `tools/perf_snapshot.py` | 105 | `nofocus.spawn` | offscreen |
 | `tools/renderdoc/capture.py` | 144 | `nofocus.run` | offscreen |

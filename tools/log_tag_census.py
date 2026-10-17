@@ -32,7 +32,7 @@ import console_child  # noqa: E402
 import cxx_calls  # noqa: E402
 
 BASELINE = os.path.join(ROOT, "tests", "unit", "log_tag_baseline.json")
-CPP_EXT = (".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".inl")
+CPP_EXT = (".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".inl", ".inc")
 SKIP_PREFIX = ("3rdparty/", "build", "tests/")
 
 # callee -> (index of the stream/FILE argument or None, index of the format argument, stream name when fixed)

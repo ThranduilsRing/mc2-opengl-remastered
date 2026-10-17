@@ -989,8 +989,6 @@ class Mover : public GameObject {
 
 	public:
 
-		virtual void set (Mover copy);
-
 		virtual void init (bool create);
 
 		Mover (void) {

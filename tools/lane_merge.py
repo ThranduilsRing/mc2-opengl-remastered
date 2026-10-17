@@ -21,7 +21,7 @@ HEAD, (d) a follow-up commit of exactly the tightened baseline files.
 Step (e), on by default: build the merged tree (scripts/ninja_build.py) and run the doctest tier (scripts/run-unit-tests.sh); `--verify full`
 adds the whole contracts board, `--no-verify` skips it. A root without those scripts (the throwaway repos of the tests) reports SKIPPED.
 
-Exit codes: 0 merged (or lane already contained); 2 bad ref; 3 merge already in progress or
+Exit codes (a dry run that predicts a blocking conflict also exits 5; the BUGS table is merged mechanically, keep both and renumber): 0 merged (or lane already contained); 2 bad ref; 3 merge already in progress or
 unmerged paths; 4 dirty overlap / staged changes; 5 merge failed or conflicts outside the
 regenerable set (merge aborted, the lane's untracked files removed; a "file in use" failure waits up to 10 min for
 build-alltargets/.tidy.lock to clear and retries once); 6 a ratchet failed (merge commit stays).
@@ -71,6 +71,9 @@ RATCHETS = [
     ("axis_swizzle", "axis_swizzle_ratchet.py", ["--check", "--tighten"]),
     ("split_map", "split/split_map.py", ["--check"]),
 ]
+# Row tables where both sides append rows: merged mechanically (keep both, the lane's new rows renumbered after ours).
+BUG_TABLES = {".claude/cleanup/BUGS-FOUND-FIXED.md"}
+ROW = re.compile(r"^\| (\d+) \|")
 UNMERGED = {"DD", "AU", "UD", "UA", "DU", "AA", "UU"}
 
 
@@ -203,8 +206,15 @@ def do_merge(root: str, sha: str, message: str, lane_files=(), lock_path: str | 
             continue
         raise Stop(5, "merge failed before it started" + note + ":\n" + r.stdout.strip())
     conflicted = lines(git(root, "diff", "--name-only", "--diff-filter=U").stdout)
+    tables = [p for p in conflicted if p in BUG_TABLES]
+    conflicted = [p for p in conflicted if p not in BUG_TABLES]
+    for p in tables:
+        if not resolve_row_table(root, p):
+            abort_and_clean(root, lane_files)
+            raise Stop(5, f"{p}: both sides changed the same row or the text outside the rows; it cannot be merged mechanically "
+                          "(keep both and renumber by hand); merge aborted")
     foreign = [p for p in conflicted if p not in REGENERABLE]
-    if foreign or not conflicted:
+    if foreign or not (conflicted or tables):
         abort_and_clean(root, lane_files)
         what = foreign or ["(merge failed without conflicts)"]
         raise Stop(5, "conflicts outside the regenerable set; merge aborted:\n  " + "\n  ".join(what)
@@ -219,6 +229,67 @@ def do_merge(root: str, sha: str, message: str, lane_files=(), lock_path: str | 
     if c.returncode != 0:
         abort_and_clean(root, lane_files)
         raise Stop(5, "merge commit failed; merge aborted: " + c.stdout.strip())
+
+
+def merge_row_table(base: str, ours: str, theirs: str) -> str | None:
+    """Keep both sides of a numbered markdown row table. None when it cannot be done mechanically
+    (a row both sides changed, or text outside the rows that the lane changed)."""
+    def split(text):
+        rows, other = {}, []
+        for ln in text.split("\n"):
+            m = ROW.match(ln)
+            if m:
+                rows[int(m.group(1))] = ln
+            else:
+                other.append(ln)
+        return rows, other
+    (br, bo), (orows, oo), (tr, to) = split(base), split(ours), split(theirs)
+    if oo != to and to != bo:
+        return None  # the lane changed text outside the rows
+    merged = dict(orows)
+    new = []
+    for n in sorted(tr):
+        t, b, o = tr[n], br.get(n), orows.get(n)
+        if o == t:
+            continue
+        if b is None:
+            new.append(t)  # a row the lane added (its number may be taken on our side)
+        elif o is None:
+            return None
+        elif o == b:
+            merged[n] = t
+        elif t != b:
+            return None  # both sides changed the same row
+    nxt = max(list(orows) + list(br) + [0]) + 1
+    renumbered = {}
+    for t in new:
+        renumbered[nxt] = ROW.sub(f"| {nxt} |", t, count=1)
+        nxt += 1
+    merged.update(renumbered)
+    out, emitted = [], False
+    last_row = max((i for i, ln in enumerate(ours.split("\n")) if ROW.match(ln)), default=None)
+    for i, ln in enumerate(ours.split("\n")):
+        m = ROW.match(ln)
+        out.append(merged[int(m.group(1))] if m else ln)
+        if i == last_row:
+            out.extend(renumbered[k] for k in sorted(renumbered))
+    return "\n".join(out)
+
+
+def resolve_row_table(root: str, path: str) -> bool:
+    """Resolve a conflicted BUG_TABLES file in place and stage it; False when it needs a human."""
+    stages = []
+    for n in (1, 2, 3):
+        r = git(root, "show", f":{n}:{path}")
+        if r.returncode != 0:
+            return False
+        stages.append(r.stdout)
+    text = merge_row_table(*stages)
+    if text is None:
+        return False
+    with open(os.path.join(root, path), "w", encoding="utf-8", newline="") as f:
+        f.write(text)
+    return git(root, "add", "--", path).returncode == 0
 
 
 def run_ratchets(root: str, tools_dir: str) -> list[tuple[str, int, str]]:
@@ -319,6 +390,7 @@ def main(argv: list[str] | None = None) -> int:
         p = plan(root, args.ref)
         message = args.message or f"merge lane: {tip_subject(root, p['sha'])}"
         if args.dry_run:
+            would_abort = False
             print(f"PLAN lane={p['sha'][:9]} head={p['head'][:9]} base={p['base'][:9]} "
                   f"lane_files={len(p['lane_files'])} nifty_files={len(p['nifty_files'])} "
                   f"overlap={len(p['overlap'])}")
@@ -331,15 +403,19 @@ def main(argv: list[str] | None = None) -> int:
                 if conf is None:
                     print("PLAN conflicts: unknown (git merge-tree unavailable)")
                 else:
-                    regen = [c for c in conf if c in REGENERABLE]
-                    other = [c for c in conf if c not in REGENERABLE]
+                    regen = [c for c in conf if c in REGENERABLE or c in BUG_TABLES]
+                    other = [c for c in conf if c not in REGENERABLE and c not in BUG_TABLES]
                     print(f"PLAN conflicts={len(conf)} regenerable={len(regen)} blocking={len(other)}"
                           + ("" if not other else " (merge would abort): " + ", ".join(other)))
                 print(f'PLAN merge --no-ff -m "{message}"')
+                if [c for c in (conf or []) if c not in REGENERABLE and c not in BUG_TABLES]:
+                    would_abort = True
             print("PLAN then: " + ", ".join(label for label, _, _ in RATCHETS)
                   + "; follow-up commit of tightened baselines only")
             print("[dry-run] nothing changed")
-            return 0
+            if would_abort:
+                print("lane_merge: the merge would abort on the blocking conflicts above", file=sys.stderr)
+            return 5 if would_abort else 0
         if p["contained"]:
             print(f"MERGED {p['head'][:9]} lane tip already contained files=0 ratchets=SKIPPED overlap=0")
             return 0

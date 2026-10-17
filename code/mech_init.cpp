@@ -159,9 +159,9 @@ void BattleMech::init (bool create, ObjectTypePtr _type) {
 	        Mech3DAppearance* m3d = static_cast<Mech3DAppearance*>(appearance);
 	        GameAdapters::Mech::destroyMech(*m3d);
 	    }
-	    delete appearance;
+	    releaseAppearance();
 	}
-	appearance = new Mech3DAppearance;
+	adoptAppearance(new Mech3DAppearance);
 	gosASSERT(appearance != nullptr);
 
 	// The only kind of appearanceType the mechs currently know how

@@ -137,3 +137,6 @@ editor/EditorDebugOverlay.cpp::s_logged < 3
 mclib/move_recon.cpp::s_pcBurstPrints < 30
 mclib/move_recon.cpp::s_chunkShadowSamplePrints < 40
 mclib/txmmgr_render_phases.cpp::s_pbrRenderTrace < 64
+# lane 2 s45: capped VK ImGui skip diagnostic (one line per frame until kImguiLogCap); a skip counter, not a census
+GameOS/gameos/engine_present_vk.cpp::s_logged < kImguiLogCap
+GameOS/gameos/engine_present_vk.cpp::s_skipped++ < 3

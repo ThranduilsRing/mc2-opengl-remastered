@@ -1060,6 +1060,9 @@ void Mission::destroy (bool initLogistics)
 	}
 
 
+	// Teardown order is documented at the declaration (contact.h): after the objects, before the teams.
+	SensorManager.reset();
+
 	Mission::resetTeamsAndCommanders();
 
 	if (Mover::triggerAreaMgr) {

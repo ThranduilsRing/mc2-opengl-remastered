@@ -375,7 +375,7 @@ void TG_TypeMultiShape::destroy (void)
 	{
 		if (listOfTypeShapes[i])
 		{
-			listOfTypeShapes[i]->destroy();
+			// ~TG_TypeNode is virtual (B7o.1): the derived destructor runs destroy() once.
 			delete listOfTypeShapes[i];
 			listOfTypeShapes[i] = nullptr;
 		}

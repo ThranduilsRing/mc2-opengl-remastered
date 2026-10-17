@@ -150,7 +150,7 @@ class Building : public TerrainObject
 		virtual void init (bool create) {
 			sensorSystem = NULL;
 			setFlag(OBJECT_FLAG_JUSTCREATED, true);
-			appearance = NULL;
+			adoptAppearance(NULL);
 			vertexNumber = 0;
 			blockNumber = 0;
 			baseTileId = 0;

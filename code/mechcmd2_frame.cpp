@@ -644,6 +644,28 @@ void __stdcall DoGameLogic()
 		// Proof build only: reload the quicksave every 90 frames (the harness quicksaves at frame 300 through
 		// MC2_BOOT_QUICKSAVE_AT), 8 times, calling an artillery strike in before each so the pooled rounds are exercised.
 		{
+			// S10_BARRAGE=N: one 3 s strike per frame from frame 420 on (N in all) so the strike pool wraps and a slot that held a finished
+			// round is re-initialised; [ALLOC_ART] reinit_freed_appearance counts the appearances that re-init freed (was an orphan).
+			extern uint32_t g_mc2FrameCounter;
+			static int s_barrage = 0;
+			static const int s_barrageN = std::getenv("S10_BARRAGE") ? std::atoi(std::getenv("S10_BARRAGE")) : 0;
+			if (s_barrage < s_barrageN && g_mc2FrameCounter >= 420 && !loadInMissionSave && mission && eye)
+			{
+				Stuff::Vector3D strikeAt = eye->getPosition();
+				IfaceCallStrike(ARTILLERY_LARGE, &strikeAt, nullptr, true, false, 3.0f);
+				++s_barrage;
+				extern unsigned g_mc2ArtCreated, g_mc2ArtReinit, g_mc2ArtReinitFreed, g_mc2ArtEnded, g_mc2ArtBoomNoFx;
+				if ((s_barrage % 50) == 0)
+				{
+					ArtilleryPtr a0 = ObjectManager->getArtillery(0);
+					if (a0)
+						mc2::fmt::print_out("[ALLOC_ART] a0 exists={} tti_ms={} boom={} flags_justcreated={}\n", mc2::fmt::as_i32(a0->getExists() ? 1 : 0), mc2::fmt::as_i32(static_cast<int>(a0->info.strike.timeToImpact * 1000.0)), mc2::fmt::as_i32(a0->getFlag(OBJECT_FLAG_BOOM) ? 1 : 0), mc2::fmt::as_i32(a0->getFlag(OBJECT_FLAG_JUSTCREATED) ? 1 : 0));
+				}
+				if ((s_barrage % 50) == 0 || s_barrage == s_barrageN)
+					mc2::fmt::print_out("[ALLOC_ART] barrage={} created={} reinit={} reinit_freed_appearance={} ended={} boom_no_fx={}\n", mc2::fmt::as_i32(s_barrage), mc2::fmt::as_u32(g_mc2ArtCreated), mc2::fmt::as_u32(g_mc2ArtReinit), mc2::fmt::as_u32(g_mc2ArtReinitFreed), mc2::fmt::as_u32(g_mc2ArtEnded), mc2::fmt::as_u32(g_mc2ArtBoomNoFx));
+			}
+		}
+		{
 			extern uint32_t g_mc2FrameCounter;
 			extern bool saveInMissionSave;
 			static int s_cycle = 0;
@@ -658,6 +680,8 @@ void __stdcall DoGameLogic()
 				extern void mc2AllocStatsSnapshot(long long*, long long*);
 				long long liveTick = 0, bytesTick = 0;
 				mc2AllocStatsSnapshot(&liveTick, &bytesTick);
+				extern unsigned g_mc2ArtCreated, g_mc2ArtReinit, g_mc2ArtReinitFreed;
+				mc2::fmt::print_out("[ALLOC_ART] n={} created={} reinit={} reinit_freed_appearance={}\n", mc2::fmt::as_i32(s_cycle), mc2::fmt::as_u32(g_mc2ArtCreated), mc2::fmt::as_u32(g_mc2ArtReinit), mc2::fmt::as_u32(g_mc2ArtReinitFreed));
 				mc2::fmt::print_out("[ALLOC_TICK] n={} frame={} live={} bytes={}\n", mc2::fmt::as_i32(s_cycle), mc2::fmt::as_i64(g_mc2FrameCounter), mc2::fmt::as_i64(liveTick), mc2::fmt::as_i64(bytesTick));
 				if (s_strike)
 				{

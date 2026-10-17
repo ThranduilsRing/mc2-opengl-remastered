@@ -432,7 +432,17 @@ class SensorSystemManager {
 
 //---------------------------------------------------------------------------
 
-extern SensorSystemManagerPtr		SensorManager;
+// OWNER of the sensor pool (BUGS 53: the manager, its 512 SensorSystems and the team systems leaked 515 blocks per mission,
+// because missionHeap::destroy releases no individual block and nothing deleted them).
+// Lifetime: created by Mission::initTriggerAndDropZone (mission_init.cpp) or Mission::loadTeamsAndObjects (saveload_load.cpp),
+// reset by Mission::destroy. Teardown order in Mission::destroy:
+//   1. ObjectManager->destroy()  -- every mover/building has let go of its SensorSystem slot (they hold pool pointers only)
+//   2. weaponEffects, craterManager
+//   3. SensorManager.reset()     -- ~SensorSystemManager frees the pool and the TeamSensorSystems; it reads Team::numTeams,
+//                                   so it must run BEFORE resetTeamsAndCommanders() zeroes it
+//   4. resetTeamsAndCommanders(), triggerAreaMgr, closeABL(), missionHeap->destroy() (the heap the pool lived on)
+// Readers outside a mission must test it for null; inside a mission it is never null.
+extern std::unique_ptr<SensorSystemManager>		SensorManager;
 
 //***************************************************************************
 

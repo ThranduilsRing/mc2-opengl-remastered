@@ -19,6 +19,8 @@
 #include"mclib.h"
 #endif
 
+#include <memory>
+
 #ifndef DOBJTYPE_H
 #include"dobjtype.h"
 #endif
@@ -324,7 +326,8 @@ class GameObject {
 	
 		float						tonnage;			//How hefty am I?
 		float			   			rotation;			//everything's base facing
-		AppearancePtr				appearance;
+		AppearancePtr				appearance;			//view of appearanceOwner (B7o.3): written only by adoptAppearance/releaseAppearance
+		std::unique_ptr<Appearance>	appearanceOwner;	//the owner; frees a replaced or leftover appearance
 		GameObjectWatchID			collisionFreeFromWID;	//Index into GameObject Table
 		float						collisionFreeTime;
 		Stuff::Vector4D				screenPos;			//Actual Screen position
@@ -359,7 +362,10 @@ class GameObject {
 
 		void operator delete (void *us);
 
-		virtual void set (GameObject copy);
+		// B7o.2/B7o.3: sole writers of `appearance`; adopt takes ownership (a previous appearance is freed), release frees now.
+		void adoptAppearance (AppearancePtr newAppearance);
+		void releaseAppearance (void);
+		void verifyAppearanceView (const char* where);	// logs one line if the view and the owner diverged (no assert, G12)
 
 		virtual void init (bool create);
 	
@@ -371,6 +377,7 @@ class GameObject {
 
 		virtual ~GameObject (void) {
 			destroy();
+			verifyAppearanceView("~GameObject");
 		}
 		
 		ObjectClass getObjectClass (void) {

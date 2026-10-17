@@ -653,8 +653,7 @@ void Gate::destroy (void)
 	// This will free any memory the Building is using.
 	if (appearance)
 	{
-		delete appearance;
-		appearance = nullptr;
+		releaseAppearance();
 	}
 }
 
@@ -699,7 +698,7 @@ void Gate::init (bool create, ObjectTypePtr _type)
 		}
 	}
 	  
-   	appearance = new BldgAppearance;
+   	adoptAppearance(new BldgAppearance);
 	gosASSERT(appearance != nullptr);
 
 	//--------------------------------------------------------------

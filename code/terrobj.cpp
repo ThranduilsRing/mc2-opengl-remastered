@@ -1105,8 +1105,7 @@ void TerrainObject::destroy (void)
 	// This will free any memory the Building is using.
 	if (appearance) 
 	{
-		delete appearance;
-		appearance = nullptr;
+		releaseAppearance();
 	}
 }
 
@@ -1168,7 +1167,7 @@ void TerrainObject::init (bool create, ObjectTypePtr objType) {
 			gosASSERT(terrainObjectAppearanceType != NULL);
 		}
 		  
-	   	appearance = new TreeAppearance;
+	   	adoptAppearance(new TreeAppearance);
 		gosASSERT(appearance != NULL);
 
 		appearance->init((TreeAppearanceType*)terrainObjectAppearanceType, (GameObjectPtr)this);
@@ -1196,7 +1195,7 @@ void TerrainObject::init (bool create, ObjectTypePtr objType) {
 			terrainObjectAppearanceType = appearanceTypeList->getAppearance(appearanceType,"TESTOBJ");
 		}
 	  
-	   	appearance = new BldgAppearance;
+	   	adoptAppearance(new BldgAppearance);
 		gosASSERT(appearance != NULL);
 
 		//--------------------------------------------------------------

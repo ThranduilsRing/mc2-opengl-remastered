@@ -19,6 +19,10 @@
 #include"gameobj.h"
 #endif
 
+#include"appearance_owner.h"
+static_assert(sizeof(std::unique_ptr<Appearance>) == sizeof(Appearance*), "appearanceOwner must use the default deleter");
+#include "../GameOS/gameos/utils/mc2log.h"
+
 #ifndef CARNAGE_H
 #include"carnage.h"
 #endif
@@ -1512,7 +1516,7 @@ void GameObject::init (bool create) {
 	objectClass = GAMEOBJECT;
 	if (initialize) {
 		handle = 0;
-		appearance = nullptr;
+		adoptAppearance(nullptr);
 		threatRating = 0;
 	}
 	partId = 0;
@@ -1547,33 +1551,25 @@ void GameObject::init (bool create) {
 
 //---------------------------------------------------------------------------
 
-void GameObject::set (GameObject copy) {
+// B7o.2/B7o.3: the ONLY writers of GameObject::appearance (the census exempts just these two bodies).
+// B7o.3: appearanceOwner owns the appearance; `appearance` is a view synced here. Adopting over a live appearance frees the previous
+// one (the init replacement paths used to overwrite it). The owner's destructor is a backstop for an actor that is destroyed
+// without releasing (destroy() still releases at the same position as before, see G2).
+void GameObject::adoptAppearance (AppearancePtr newAppearance) {
 
-	objectClass = copy.objectClass;
-	handle = copy.handle;
-	partId = copy.partId;
-	watchID = copy.watchID;
-	typeHandle = copy.typeHandle;
-	position = copy.position;
-	cellPositionRow = copy.cellPositionRow;
-	cellPositionCol = copy.cellPositionCol;
-	flags = copy.flags;
-	debugFlags = copy.debugFlags;
-	status = copy.status;
-	tonnage = copy.tonnage;
-	appearance = copy.appearance;
-	d_vertexNum = copy.d_vertexNum;
-	collisionFreeFromWID = copy.collisionFreeFromWID;
-	collisionFreeTime = copy.collisionFreeTime;
-	screenPos = copy.screenPos;
-	windowsVisible = copy.windowsVisible;
-	explRadius = copy.explRadius;
-	explDamage = copy.explDamage;
-	maxCV = copy.maxCV;
-	curCV = copy.curCV;
-	lastFrameTime = copy.lastFrameTime;
-	blipFrame = copy.blipFrame;
-	numAttackers = copy.numAttackers;
+	mc2::adoptOwnedView(appearanceOwner, appearance, newAppearance);
+}
+
+void GameObject::releaseAppearance (void) {
+
+	verifyAppearanceView("releaseAppearance");
+	mc2::releaseOwnedView(appearanceOwner, appearance);
+}
+
+void GameObject::verifyAppearanceView (const char* where) {
+
+	if (mc2::ownedViewDiverged(appearanceOwner, appearance))
+		MC2_LOG(Sim, Warn, "{}: GameObject appearance view {} diverged from its owner {}", where, static_cast<const void*>(appearance), static_cast<const void*>(appearanceOwner.get()));
 }
 
 //---------------------------------------------------------------------------
@@ -1885,7 +1881,9 @@ bool GameObject::lineOfSight (Stuff::Vector3D point) {
 
 //---------------------------------------------------------------------------
 
-inline bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad)
+// B7o.2: was `inline` here. The virtual's only emitter was the vtable instance gameobj.cpp used to produce through the by-value
+// GameObject::set; with that gone the inline body was never instantiated (LNK2001). A virtual defined in a .cpp is an ordinary external function.
+bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad)
 {
 	ZoneScopedN("GameLogic.LOS.Update"); 
 

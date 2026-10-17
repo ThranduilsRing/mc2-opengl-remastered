@@ -692,7 +692,7 @@ void GroundVehicle::init (bool create, ObjectTypePtr objType) {
 
 	if ((appearanceType>>24) == GV_TYPE)
 	{
-		appearance = new GVAppearance;
+		adoptAppearance(new GVAppearance);
 		if (!appearance)
 			Fatal(0, " GroundVehicle.init: unable to create appearance ");
 
@@ -1077,8 +1077,7 @@ void GroundVehicle::destroy (void)
 {
 	if (appearance)
 	{
-		delete appearance;
-		appearance = nullptr;
+		releaseAppearance();
 	}
 }
 

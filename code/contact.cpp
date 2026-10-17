@@ -54,7 +54,7 @@
 // SENSOR-SCAN-FACTS-1: TU-local telemetry accumulator (default-OFF).
 namespace mc2_sensor_trace { Counters g_counters = {false,0,0,0,0,0,0}; }
 
-SensorSystemManagerPtr		SensorManager = nullptr;
+std::unique_ptr<SensorSystemManager>		SensorManager;
 
 long						SensorSystem::numSensors = 0;
 float						SensorSystem::scanFrequency = 0.5;
@@ -99,7 +99,11 @@ void* SensorSystem::operator new (size_t mySize) {
 
 void SensorSystem::operator delete (void* us) {
 
-	missionHeap->Free(us);
+	// SensorManager is a global unique_ptr: at process exit (or after a load error that skipped Mission::destroy) the heap is already gone.
+	// Exit-path containment only: normal teardown resets the sensors before the heap is deleted, so a null heap here means the block was
+	// abandoned on purpose (the process is ending) and the leak is accepted rather than dereferencing a dead heap.
+	if (missionHeap)
+		missionHeap->Free(us);
 }
 
 //---------------------------------------------------------------------------
@@ -699,7 +703,11 @@ void* TeamSensorSystem::operator new (size_t mySize) {
 
 void TeamSensorSystem::operator delete (void* us) {
 
-	missionHeap->Free(us);
+	// SensorManager is a global unique_ptr: at process exit (or after a load error that skipped Mission::destroy) the heap is already gone.
+	// Exit-path containment only: normal teardown resets the sensors before the heap is deleted, so a null heap here means the block was
+	// abandoned on purpose (the process is ending) and the leak is accepted rather than dereferencing a dead heap.
+	if (missionHeap)
+		missionHeap->Free(us);
 }
 
 //---------------------------------------------------------------------------
@@ -1142,7 +1150,11 @@ void* SensorSystemManager::operator new (size_t mySize) {
 
 void SensorSystemManager::operator delete (void* us) {
 
-	missionHeap->Free(us);
+	// SensorManager is a global unique_ptr: at process exit (or after a load error that skipped Mission::destroy) the heap is already gone.
+	// Exit-path containment only: normal teardown resets the sensors before the heap is deleted, so a null heap here means the block was
+	// abandoned on purpose (the process is ending) and the leak is accepted rather than dereferencing a dead heap.
+	if (missionHeap)
+		missionHeap->Free(us);
 }
 
 //---------------------------------------------------------------------------
@@ -1269,7 +1281,9 @@ void SensorSystemManager::destroy (void) {
 			sensorPool[i] = nullptr;
 		}
 		
-		missionHeap->Free(sensorPool);
+		// Exit-path containment: normal teardown destroys the sensors while the heap is alive; a null heap means the process is ending.
+		if (missionHeap)
+			missionHeap->Free(sensorPool);
 		sensorPool = nullptr;
 	}
 

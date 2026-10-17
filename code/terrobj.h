@@ -155,7 +155,7 @@ class TerrainObject : public GameObject {
 		virtual void init (bool create) {
 			objectClass = TERRAINOBJECT;
 			setFlag(OBJECT_FLAG_JUSTCREATED, true);
-			appearance = NULL;
+			adoptAppearance(NULL);
 			vertexNumber = 0;
 			blockNumber = 0;
 			damage = 0.0;

@@ -102,7 +102,7 @@ NOT text and NOT a font atlas: the ENTIRE ImGui layer was upside down (portraits
 ### Open
 1. Text in several logistics/encyclopedia labels (mech and pilot names, weights, encyclopedia body) is drawn vertically flipped under VK (see the two captures). NOT from the bridge: only four 256x256 icon textures are resolved there. Source not found (a HUD-native or ImGui font path); needs its own session.
 2. 3D mech preview panel (camera-preview colour texture) is not drawn under VK: needs the FBO colour attachment as a VK image or the native preview path.
-3. s44 BUGS row 53 collided with lane 1's rows 53-54 on main; renumbered to 55 (images = 56). On merge keep main's 53-54.
+3. s44 BUGS row 53 collided with lane 1's rows 53-54 on main; renumbered at merge (2026-10-17): lane 2 rows are now 56 (campaign crash + prop alpha), 57 (images), 58 (Y-flip); main keeps 53-55.
 4. GL flush still reads `type.source->listOfTextures` at draw time (flush.cpp ~422-441, flush_prep.cpp ~205-262): latent, not a regression.
 5. Carried from s44: late forced VK-to-GL fallback not run.
 6. Process notes: launches that mention the lane 2 `mc2.exe` path by literal text are blocked by a PreToolUse hook while any mc2.exe runs (lane 1's); assemble the path in a variable. Deploys named the explicit lane2 directory throughout.

@@ -7,6 +7,7 @@
 #include "abl_script_events.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include <climits>
+#include <unordered_set>
 
 
 MoverGroupPtr			CurGroup = nullptr;
@@ -29,30 +30,63 @@ void* ablSystemMallocCallback (unsigned long memSize) {
 	return(systemHeap->Malloc(memSize));
 }
 
+// gos_DestroyMemoryHeap deletes the heap record only, so a block nobody frees outlives its UserHeap. The compiled symbol tables, type nodes and
+// code of a mission are never freed one by one (the environment drops them with the heap), so each ABL heap keeps a ledger of its live blocks and
+// closeABL hands every survivor back before the heap goes. Nothing may touch ABL memory after closeABL: brains and modules are gone by then.
+namespace {
+struct AblHeapLedger {
+	std::unordered_set<void*> live;
+
+	// The set can throw while growing; a block that could not be recorded would never be handed back, so it is freed and reported as an
+	// allocation failure instead of being left untracked.
+	void* track (UserHeapPtr heap, void* block) {
+		if (block) {
+			try {
+				live.insert(block);
+			} catch (...) {
+				heap->Free(block);
+				return nullptr;
+			}
+		}
+		return block;
+	}
+	void untrack (void* block) { live.erase(block); }
+	void releaseAll (UserHeapPtr heap) {
+		if (heap)
+			for (void* block : live)
+				heap->Free(block);
+		live.clear();
+	}
+};
+AblHeapLedger g_ablStackLedger;
+AblHeapLedger g_ablCodeLedger;
+AblHeapLedger g_ablSymbolLedger;
+}
+
 void* ablStackMallocCallback (unsigned long memSize) {
 
-	if (!AblSymbolHeap)
-		Fatal(0, " ablSymbolMallocCallback: NULL heap ");
+	if (!AblStackHeap)
+		Fatal(0, " ablStackMallocCallback: NULL heap ");
 	// The eternal and static variable blocks are written verbatim into every save; heap blocks come back holding whatever the last
 	// owner left, so a block is zeroed to keep the save a function of the game state alone.
 	void* block = AblStackHeap->Malloc(memSize);
 	if (block)
 		memset(block, 0, memSize);
-	return block;
+	return g_ablStackLedger.track(AblStackHeap, block);
 }
 
 void* ablCodeMallocCallback (unsigned long memSize) {
 
 	if (!AblCodeHeap)
 		Fatal(0, " ablCodeFreeCallback: NULL heap ");
-	return(AblCodeHeap->Malloc(memSize));
+	return g_ablCodeLedger.track(AblCodeHeap, AblCodeHeap->Malloc(memSize));
 }
 
 void* ablSymbolMallocCallback (unsigned long memSize) {
 
 	if (!AblSymbolHeap)
 		Fatal(0, " ablSymbolMallocCallback: NULL heap ");
-	return(AblSymbolHeap->Malloc(memSize));
+	return g_ablSymbolLedger.track(AblSymbolHeap, AblSymbolHeap->Malloc(memSize));
 }
 
 void ablSystemFreeCallback (void* memBlock) {
@@ -64,6 +98,7 @@ void ablStackFreeCallback (void* memBlock) {
 
 	if (!AblStackHeap)
 		Fatal(0, " ablStackFreeCallback: NULL heap ");
+	g_ablStackLedger.untrack(memBlock);
 	AblStackHeap->Free(memBlock);
 }
 
@@ -71,6 +106,7 @@ void ablCodeFreeCallback (void* memBlock) {
 
 	if (!AblCodeHeap)
 		Fatal(0, " ablCodeFreeCallback: NULL heap ");
+	g_ablCodeLedger.untrack(memBlock);
 	AblCodeHeap->Free(memBlock);
 }
 
@@ -78,6 +114,7 @@ void ablSymbolFreeCallback (void* memBlock) {
 
 	if (!AblSymbolHeap)
 		Fatal(0, " ablSymbolFreeCallback: NULL heap ");
+	g_ablSymbolLedger.untrack(memBlock);
 	AblSymbolHeap->Free(memBlock);
 }
 
@@ -651,6 +688,10 @@ void initABL (void) {
 void closeABL (void) {
 
 	ABLi_close();
+
+	g_ablSymbolLedger.releaseAll(AblSymbolHeap);
+	g_ablCodeLedger.releaseAll(AblCodeHeap);
+	g_ablStackLedger.releaseAll(AblStackHeap);
 
 	if (AblSymbolHeap) {
 		delete AblSymbolHeap;

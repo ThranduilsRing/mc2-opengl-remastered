@@ -65,6 +65,7 @@ gosFX::EffectLibrary::~EffectLibrary()
 {
 	// Storage lives on SpecLibrary and the texture manager's flush deletes this object without TerminateClass(): the specs go with the
 	// library, or every mission reload parses a second set on top of the first and drops the old one.
+	// Live effects must already be dead before this runs: they point into the specs freed here (the flush kills them before it deletes us).
 	mc2::particles::SpecLibrary::Shutdown();
 }
 

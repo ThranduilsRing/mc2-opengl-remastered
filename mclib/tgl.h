@@ -482,6 +482,10 @@ class TG_TypeNode
 	protected:
 
 	public:
+		// Virtual so a TG_TypeShape deleted through a TG_TypeNode* runs ~TG_TypeShape. Deliberately does NOT call destroy(): a base
+		// destructor never dispatches virtually; the derived destructor releases its own stores through destroy() (idempotent).
+		virtual ~TG_TypeNode (void) = default;
+
  		virtual void init (void)
 		{
 			nodeId[0] = parentId[0] = '\0';
