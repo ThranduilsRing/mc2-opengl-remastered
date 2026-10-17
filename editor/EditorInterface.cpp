@@ -1267,11 +1267,14 @@ int EditorInterface::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	return 0;
 }
 
+void EditorPlaytestSmokeDriverTick();   // EditorMFC.cpp: -playtest driver (no-op unless -playtest)
+
 void EditorInterface::OnTimer(UINT_PTR nIDEvent)
 {
 	if (nIDEvent == kRenderTimerId)
 	{
 		SafeRunGameOSLogic();
+		EditorPlaytestSmokeDriverTick();
 		return;
 	}
 	CWnd::OnTimer(nIDEvent);
