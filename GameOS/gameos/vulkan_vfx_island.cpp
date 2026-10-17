@@ -601,6 +601,7 @@ extern "C" int mc2_vk_vfx_island_run(
             if (camUp)    { up.camUp[0]=camUp[0];       up.camUp[1]=camUp[1];       up.camUp[2]=camUp[2]; }
             else          { up.camUp[1]=1.0f; }
             if (!camRight) up.camRight[0]=1.0f;
+            { /* ROW29-TEMP */ float zb = 0.0f; if (FILE* zf = std::fopen("A:/Games/mc2-lane2/scratch/zbias.txt", "r")) { if (std::fscanf(zf, "%f", &zb) != 1) zb = 0.0f; std::fclose(zf); } up.camRight[3] = zb; }
             std::memcpy(p, &up, sizeof(up));
             s->ubo.unmap();
         }

@@ -79,6 +79,7 @@ void main() {
                      + U.camUp.xyz    * corner.y;
 
     gl_Position = U.worldToClipGL * vec4(worldPos, 1.0);
+    gl_Position.z += U.camRight.w * gl_Position.w;   // ROW29-TEMP
 
     vec2 frameOffset = vec2(0.0);
     if (G.atlasColumns > 1u) {
