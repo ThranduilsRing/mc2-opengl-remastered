@@ -5798,6 +5798,13 @@
    "count": 1
   },
   {
+   "tag": "LOCK_TEXTURE_NULL",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
    "tag": "LODBUG",
    "ver": 1,
    "stream": "stderr",
@@ -10890,6 +10897,13 @@
   },
   {
    "tag": "TEXMGR_KTX_PRIMARY",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "TEXMGR_MISSING",
    "ver": -1,
    "stream": "stdout",
    "keys": [],
