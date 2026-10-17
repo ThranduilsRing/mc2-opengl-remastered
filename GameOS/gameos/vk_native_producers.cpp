@@ -236,7 +236,7 @@ uint32_t NativeProducers::selfTestLighting() {
     syncInputs(par, span.buffer, span.range);
     const uint32_t offsets[3] = {static_cast<uint32_t>(span.offset + offIn), static_cast<uint32_t>(span.offset + offLights), static_cast<uint32_t>(span.offset)};
     const bool ok = submitOneShot(*ctx_, [&](VkCommandBuffer cb) {
-        lightP_.bind(cb, lightSets_.set(par), offsets, 3);
+        lightP_.bind(cb, lightSets_.set(par), offsets);
         lightP_.dispatch(cb, (N + 63u) / 64u);
         cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
         VkBufferCopy c{static_cast<VkDeviceSize>(kFirst) * 8u, 0, static_cast<VkDeviceSize>(N) * 8u};
@@ -334,11 +334,11 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
     cmdBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
 
     if (L.windowCount > 0) {
-        lightP_.bind(cb, lightSets_.set(par), lightOffsets, 3);
+        lightP_.bind(cb, lightSets_.set(par), lightOffsets);
         lightP_.dispatch(cb, (L.windowCount + 63u) / 64u);
         cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
     }
-    cullP_.bind(cb, cullSets_.set(par), &cullOffset, 1);
+    cullP_.bind(cb, cullSets_.set(par), std::span<const uint32_t>(&cullOffset, 1));
     cullP_.dispatch(cb, (recipeCount_ + 63u) / 64u);
     cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
     argsP_.bind(cb, argsSets_.set(par));

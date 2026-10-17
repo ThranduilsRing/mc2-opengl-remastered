@@ -67,27 +67,22 @@ bool ComputePipeline::create(VkDevice device, std::string_view spvPath, const st
     return true;
 }
 
-void ComputePipeline::bind(VkCommandBuffer cb, VkDescriptorSet set, const uint32_t* dynamicOffsets, uint32_t dynamicCount) const {
+void ComputePipeline::bind(VkCommandBuffer cb, VkDescriptorSet set, std::span<const uint32_t> dynamicOffsets) const {
     vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipe_.get());
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, layout_.get(), 0, 1, &set, dynamicCount, dynamicOffsets);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, layout_.get(), 0, 1, &set, static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.data());
 }
 
 bool ComputeSets::create(VkDevice device, const ComputePipeline& pipe, uint32_t count, std::string_view name) {
-    uint32_t nType[4] = {0, 0, 0, 0};   // storage, uniform, storage dynamic, uniform dynamic
-    for (const ComputeBinding& b : pipe.bindings()) {
-        switch (b.type) {
-            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:         ++nType[1]; break;
-            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: ++nType[2]; break;
-            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: ++nType[3]; break;
-            default:                                        ++nType[0]; break;
-        }
-    }
+    // One pool size per descriptor type the layout uses: storage, uniform, storage dynamic, uniform dynamic.
     const VkDescriptorType kTypes[4] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                                         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC};
     VkDescriptorPoolSize sizes[4]{};
     uint32_t nSizes = 0;
-    for (int t = 0; t < 4; ++t)
-        if (nType[t]) sizes[nSizes++] = {kTypes[t], nType[t] * count};
+    for (const VkDescriptorType t : kTypes) {
+        uint32_t n = 0;
+        for (const ComputeBinding& b : pipe.bindings()) n += (b.type == t) ? 1u : 0u;
+        if (n) sizes[nSizes++] = {t, n * count};
+    }
     VkDescriptorPoolCreateInfo pci{};
     pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     pci.maxSets = count;

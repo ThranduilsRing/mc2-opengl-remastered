@@ -15,6 +15,7 @@
 #include "vk_owned.h"
 
 #include <cstdint>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -37,7 +38,7 @@ public:
     const std::vector<ComputeBinding>& bindings() const noexcept { return bindings_; }
 
     // vkCmdBindPipeline + vkCmdBindDescriptorSets(set 0), with the dynamic offsets of the layout's _DYNAMIC bindings in binding order.
-    void bind(VkCommandBuffer cb, VkDescriptorSet set, const uint32_t* dynamicOffsets = nullptr, uint32_t dynamicCount = 0) const;
+    void bind(VkCommandBuffer cb, VkDescriptorSet set, std::span<const uint32_t> dynamicOffsets = {}) const;
     void dispatch(VkCommandBuffer cb, uint32_t groupsX) const { vkCmdDispatch(cb, groupsX, 1, 1); }
 
 private:

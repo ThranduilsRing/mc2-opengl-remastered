@@ -390,7 +390,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_compute_pipeline.h:24`
+- Header: `GameOS/gameos/vk_compute_pipeline.h:25`
 - Class: `ComputeBinding`  (data-member)
 - Member: `uint32_t         binding;`
 - Consuming targets: gameos
@@ -398,7 +398,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_compute_pipeline.h:44`
+- Header: `GameOS/gameos/vk_compute_pipeline.h:45`
 - Class: `ComputePipeline`  (data-member)
 - Member: `OwnedShaderModule         module_;`
 - Consuming targets: gameos
@@ -406,7 +406,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_compute_pipeline.h:45`
+- Header: `GameOS/gameos/vk_compute_pipeline.h:46`
 - Class: `ComputePipeline`  (data-member)
 - Member: `OwnedDescriptorSetLayout  dsl_;`
 - Consuming targets: gameos
@@ -414,7 +414,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_compute_pipeline.h:46`
+- Header: `GameOS/gameos/vk_compute_pipeline.h:47`
 - Class: `ComputePipeline`  (data-member)
 - Member: `OwnedPipelineLayout       layout_;`
 - Consuming targets: gameos
@@ -422,7 +422,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_compute_pipeline.h:47`
+- Header: `GameOS/gameos/vk_compute_pipeline.h:48`
 - Class: `ComputePipeline`  (data-member)
 - Member: `OwnedPipeline             pipe_;`
 - Consuming targets: gameos
@@ -430,7 +430,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_compute_pipeline.h:48`
+- Header: `GameOS/gameos/vk_compute_pipeline.h:49`
 - Class: `ComputePipeline`  (data-member)
 - Member: `std::vector<ComputeBinding> bindings_;`
 - Consuming targets: gameos
@@ -438,7 +438,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_compute_pipeline.h:61`
+- Header: `GameOS/gameos/vk_compute_pipeline.h:62`
 - Class: `ComputeSets`  (data-member)
 - Member: `OwnedDescriptorPool       pool_;`
 - Consuming targets: gameos
@@ -742,15 +742,15 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:117`
+- Header: `GameOS/gameos/vk_native_producers.h:118`
 - Class: `NativeProducers`  (data-member)
-- Member: `VkDeviceSize lightInCap_[kSlots] = {0, 0}, lightsCap_[kSlots] = {0, 0};`
+- Member: `VkBuffer ringBound_[kSlots] = {VK_NULL_HANDLE, VK_NULL_HANDLE};`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:121`
+- Header: `GameOS/gameos/vk_native_producers.h:122`
 - Class: `NativeProducers`  (data-member)
 - Member: `OwnedBuffer parityHdr_, parityThin_, parityLight_;`
 - Consuming targets: gameos
@@ -758,7 +758,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:122`
+- Header: `GameOS/gameos/vk_native_producers.h:123`
 - Class: `NativeProducers`  (data-member)
 - Member: `uint32_t parityLightFirst_ = 0, parityLightCount_ = 0;`
 - Consuming targets: gameos
