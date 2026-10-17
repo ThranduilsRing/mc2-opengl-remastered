@@ -723,8 +723,6 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
  
 	localTextureHandle = 0xffffffff;
 	
-	nodeUsed = nullptr;
-	nodeRecycle = nullptr;
 	
 	waterWake = nullptr;
 	dustCloud = nullptr;
@@ -977,17 +975,10 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			appearType->typeLowerRight.z *= EXPAND_FACTOR;
 		}
 		
- 		if (appearType->numWeaponNodes)
+		if (appearType->numWeaponNodes > 0)
 		{
-			nodeUsed = (long *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(long) * appearType->numWeaponNodes);
-			gosASSERT(nodeUsed != nullptr);
-			memset(nodeUsed,0,sizeof(long) * appearType->numWeaponNodes);
-			
-			nodeRecycle = (float *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(float) * appearType->numWeaponNodes);
-			gosASSERT(nodeRecycle != nullptr);
-			
-			for (long i=0;i<appearType->numWeaponNodes;i++)
-				nodeRecycle[i] = 0.0f;
+			nodeUsed.assign(static_cast<size_t>(appearType->numWeaponNodes), 0);
+			nodeRecycle.assign(static_cast<size_t>(appearType->numWeaponNodes), 0.0f);
 		}
 			
 		if (!InEditor)

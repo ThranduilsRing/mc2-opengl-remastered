@@ -215,6 +215,7 @@ class ObjectTypeManager {
 		ObjectTypePtr*			table;			// view of tableStore
 		std::vector<ObjectTypePtr>	tableStore;	// the slots `table` views: raw pointers, sized once by init(file), kept in step with typeStore
 		std::vector<std::unique_ptr<ObjectType>>	typeStore;	// OWNS the loaded types (their memory is in objectCache); destroy() deletes them before the heaps go
+		std::vector<std::unique_ptr<ObjectType>>	retiredTypes;	// types replaced by a forced reload: live objects may still point at them, so they are deleted only by destroy()
 
 	private:
 		// The object .pak. Declared before the first use by destroy(), which closes it and clears the view before the member goes.

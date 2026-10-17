@@ -7,6 +7,7 @@
 
 #ifndef MECH3D_H
 #include"mech3d.h"
+#include <algorithm>
 #endif
 
 #include "mech3d_internal.h"
@@ -56,9 +57,6 @@ char MechStateByGesture[MAX_MECH_ANIMATIONS] = {
 	BODYSTATE_FALLEN_FORWARD,	// GestureFallenForward			23 -- Fallen Forward (Single Frame, mech on ground)
 	BODYSTATE_FALLEN_FORWARD,	// GestureFallenBackward		24 -- Fallen Backward (Single Frame, mech on ground)
 };																
-
-PaintSchemataPtr	Mech3DAppearance::paintSchemata = nullptr;
-DWORD				Mech3DAppearance::numPaintSchemata = 0;
 
 TG_TypeMultiShapePtr Mech3DAppearanceType::SensorSquareShape = nullptr;
 
@@ -147,9 +145,6 @@ bool oneMechPlease = false;
 
 void Mech3DAppearance::destroy (void)
 {
-	AppearanceTypeList::appearanceHeap->Free(paintSchemata);
-	paintSchemata = nullptr;
-
 	// (E) T1.8: paired cleanup for SpotLight_-child illumination from T1.6.
 	// Walks CACHED state only (spotlightLights_/spotlightSlotIds_); does NOT
 	// call getNodeIdPosition or any mechShape method — same destroy-ordering
@@ -253,11 +248,8 @@ void Mech3DAppearance::destroy (void)
 
 	if (InEditor)
 	{
-		AppearanceTypeList::appearanceHeap->Free(nodeUsed); 
-		nodeUsed = nullptr;
-
-		AppearanceTypeList::appearanceHeap->Free(nodeRecycle);
-		nodeRecycle = nullptr;
+		std::vector<long>().swap(nodeUsed);
+		std::vector<float>().swap(nodeRecycle);
 	}
 }
 
@@ -294,8 +286,8 @@ void Mech3DAppearance::copyTo (MechAppearanceData *data)
 	if (mechType->numWeaponNodes > 10)
 		STOP(("Mech Has too many weapon nodes to save %d",mechType->numWeaponNodes));
 
-	memcpy(data->nodeUsed,nodeUsed,10);		 
-	memcpy(data->nodeRecycle,nodeRecycle,10);
+	memcpy(data->nodeUsed,nodeUsed.data(),std::min<size_t>(10,nodeUsed.size()*sizeof(long)));		 
+	memcpy(data->nodeRecycle,nodeRecycle.data(),std::min<size_t>(10,nodeRecycle.size()*sizeof(float)));
 
 	data->isSmoking = isSmoking;
 	data->isWaking = isWaking;
@@ -340,8 +332,8 @@ void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 	currentFrame = data->currentFrame;
 	currentLOD = data->currentLOD;
 
-	memcpy(nodeUsed,data->nodeUsed,10);		 
-	memcpy(nodeRecycle,data->nodeRecycle,10);
+	memcpy(nodeUsed.data(),data->nodeUsed,std::min<size_t>(10,nodeUsed.size()*sizeof(long)));		 
+	memcpy(nodeRecycle.data(),data->nodeRecycle,std::min<size_t>(10,nodeRecycle.size()*sizeof(float)));
 
 	isSmoking = -1;
 	if (data->isSmoking >= 0)

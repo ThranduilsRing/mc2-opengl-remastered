@@ -1,0 +1,17 @@
+{
+ "about": "loose fixture files a baseline run may carry on top of the stock data, by sha256; *.beauty sidecars are not fingerprinted; tools/sim_determinism.py write-overlay regenerates this",
+ "stock_digest": "8d4e57136dcf513e",
+ "overlay": {
+  "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b267c319b15fed1e56d0df8dda2be1715756dd26e7ec4237da",
+  "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4a9b02741330baf12bcdd812b1c7c5766501b58cc078e42f5",
+  "data/missions/mc2_01_ai.fit": "05ac63a7d6e6a0227ccc23680193821fb44e21f6c68a99b7077346c6c950d3df",
+  "data/missions/mc2_01_eject_specials.fit": "fb1ae62005af323bcce3c3d901f08b0a16ea1924c5b5f83ff6d25332e68e126f",
+  "data/missions/mc2_01_ejectalias_specials.fit": "7dcea591e6e5a519f46faa6f02df1ca9b6386929ae0420711dfa3fa0d42406c0",
+  "data/missions/mc2_01_moveto_nan_specials.fit": "7d179e0afeeeff60cc84e4ea75d85f37e2bc08bc3584a71544940d8f4fecedf1",
+  "data/missions/mc2_01_moveto_specials.fit": "ceed6688c9c9402a904b2e8dafbf73f8f28c2a47a93778d28af8a1bfee8c179b",
+  "data/missions/mc2_01_specials.fit": "1b484e1e9e1ffd9a2e8f803107759d822856cd74ecc5d8b2962e46783721be9c",
+  "data/missions/mc2_01_specials_eject.fit": "176239689c45632499bb84f3c31b7a770a8a094d272fb4ec1bb03df22b00ea85",
+  "data/missions/mc2_01_specials_ejectalias.fit": "d5ae4996d3e5d3a9540c98c77e2a6986073f2d7fdf4acbdfdab3e3bed9295ff7",
+  "data/missions/mc2_01_specials_raw_specials.fit": "a48b828b55f5097d3b7ea80dc0f52c136da2b4e6efd1612bd0c6997e03234671"
+ }
+}

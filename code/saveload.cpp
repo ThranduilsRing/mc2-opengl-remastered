@@ -12,6 +12,7 @@
 #include "save_layout_guard.h"
 #include "mc2fmt.h"
 #include "mission_load_frame.h"
+#include "mc2_dialog.h"
 //----------------------------------------------------------------------------------------------------
 // Save.
 void Part::Save (FitIniFilePtr file, long partNum)
@@ -437,6 +438,7 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 		loadFile.readPacket(currentPacket, reinterpret_cast<MemoryPtr>(versionCheck)) != versionSize ||
 		memcmp(versionCheck, versionStamp, versionSize) != 0) {
 		mc2::fmt::print_err("[SAVE v1] event=reject reason=version file={}\n", mc2::fmt::safe(loadFileName));
+		f.incompatibleSave = true;
 		return true;
 	}
 	currentPacket = 2;
@@ -826,6 +828,15 @@ void Mission::load (const char *loadFileName)
 
 	if (openSaveFile(f)) {
 		loadRestoreInput(f);
+		if (f.incompatibleSave) {
+			char message[1024]{};
+			char title[256]{};
+			cLoadString(IDS_QUICKSAVE_VERSION_WRONG, message, sizeof(message) - 1);
+			cLoadString(IDS_GAME_ERROR, title, sizeof(title) - 1);
+			mc2MessageBox(message, title, MB_OK | MB_ICONWARNING, IDOK);
+			// Time spent in the dialog must not reach scenarioTime on the next update.
+			LastTimeGetTime = timeGetTime();
+		}
 		return;
 	}
 

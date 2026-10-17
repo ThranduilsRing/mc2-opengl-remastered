@@ -17,7 +17,7 @@ long Mech3DAppearance::update (bool animate)
 	if (!mechShape)
 		return TRUE;
 
-	if (nodeRecycle)
+	if (!nodeRecycle.empty())
 	{
 		for (long i=0;i<mechType->numWeaponNodes;i++)
 		{

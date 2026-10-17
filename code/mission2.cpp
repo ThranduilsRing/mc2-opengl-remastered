@@ -107,18 +107,17 @@ void Mission::initBareMinimum()
 
 	}
 
-	//Startup the vertex array pool (MODEL-OVERRIDE: sized for override forests, see mission.cpp pools)
+	// Vertex storage covers forests of detailed model overrides.
 	mcTextureManager->startVertices(32000000);
 	mcTextureManager->startShapes(10000);
 
 	initTGLForLogistics();
 
-	//----------------------------------------------
-	// Start Appearance Type Lists.
 	unsigned long spriteHeapSize = 3072000;
 	if ( !appearanceTypeList )
 	{
-		appearanceTypeList = new AppearanceTypeList;
+		mission->appearanceTypes = std::make_unique<AppearanceTypeList>();
+		appearanceTypeList = mission->appearanceTypes.get();
 		gosASSERT(appearanceTypeList != nullptr);
 		appearanceTypeList->init(spriteHeapSize);
 		gosASSERT(result == NO_ERR);
@@ -190,20 +189,14 @@ void Mission::initializeStatistics()
 
 void Mission::initTGLForLogistics()
 {
-	//---------------------------------------------------------
-	// 48 MB: the TGL pools below were enlarged to hold the largest single
-	// preview object; the legacy 4 MB heap could not back them.
+	// The heap backs the largest single logistics preview object.
 	unsigned long tglHeapSize = 48 * 1024 * 1024;
 
-	//---------------------------------------------------------
-	//Reset the lightening in case they exitted with a flash on screen!!
+	// A mission-ending flash must not carry into logistics.
 	TG_Shape::lighteningLevel = 0;
 
-	//---------------------------------------------------------
-	// End the Tiny Geometry Layer Heap for the Mission
 	if (TG_Shape::tglHeap)
 	{
-		//Shut down the TGL RAM pools.
 		if (colorPool)
 		{
 			colorPool->destroy();
@@ -241,25 +234,17 @@ void Mission::initTGLForLogistics()
 		
 		TG_Shape::tglHeap->destroy();
 
-		delete TG_Shape::tglHeap;
+		mission->tglHeapOwner.reset();
 		TG_Shape::tglHeap = nullptr;
 	}
 
-	//------------------------------------------------------
-	// Start the Tiny Geometry Layer Heap for Logistics
 	if ( !TG_Shape::tglHeap )
 	{
-		TG_Shape::tglHeap = new UserHeap;
+		mission->tglHeapOwner = std::make_unique<UserHeap>();
+		TG_Shape::tglHeap = mission->tglHeapOwner.get();
 		TG_Shape::tglHeap->init(tglHeapSize,"TinyGeom");
 		
-		//Start up the TGL RAM pools.
-		// Sized to hold the largest single encyclopedia/logistics object
-		// (mech body + shadow + sensor shapes, or a large building) in one
-		// frame. The legacy 2000-vertex pools overflowed: mechs sat right at
-		// the limit (intermittent "exploded" geometry from stale listOfVertices
-		// on the shapes that got a NULL alloc) and buildings/large vehicles blew
-		// past it entirely, so most of their shapes never rendered. The pools
-		// are reset per frame, so this only needs to cover one object at a time.
+		// Pools cover one large preview object, including its shadow and Sensor shapes.
 		colorPool 		= new TG_VertexPool;
 		colorPool->init(64000);
 

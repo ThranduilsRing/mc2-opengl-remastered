@@ -257,6 +257,7 @@ long ObjectTypeManager::init (const char* objectFileName, long objectTypeCacheSi
 	tableStore.assign(static_cast<size_t>(numObjectTypes), nullptr);
 	table = tableStore.data();
 	typeStore.clear();
+	retiredTypes.clear();
 	typeStore.resize(static_cast<size_t>(numObjectTypes));
 
 	//---------------------------------------------------------------------------
@@ -282,6 +283,7 @@ void ObjectTypeManager::destroy(void)
 	{
 		// The types are deleted while objectCache still exists: their destructors release their name text and anything they took from it.
 		std::vector<std::unique_ptr<ObjectType>>().swap(typeStore);
+		std::vector<std::unique_ptr<ObjectType>>().swap(retiredTypes);
 		std::vector<ObjectTypePtr>().swap(tableStore);
 		table = nullptr;
 		numObjectTypes = 0;
@@ -512,9 +514,10 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			load(objType->getExplosionObject());
 	}
 
-	// A forced reload over a loaded slot leaves the old type to its users (objects still point at it), as before.
+	// A forced reload over a loaded slot cannot delete the old type: live objects still point at it.
+	// It moves to retiredTypes so destroy() deletes it with the rest, instead of leaking.
 	if (typeStore[objTypeNum])
-		typeStore[objTypeNum].release();
+		retiredTypes.push_back(std::move(typeStore[objTypeNum]));
 	typeStore[objTypeNum].reset(objType);
 	table[objTypeNum] = objType;
 

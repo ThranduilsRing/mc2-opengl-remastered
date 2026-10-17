@@ -406,8 +406,7 @@ void TG_MultiShape::destroy (void)
 	{
 		if (listOfShapes[i].node)
 		{
-			listOfShapes[i].node->destroy();
-			TG_Shape::tglHeap->Free(listOfShapes[i].node);
+			delete listOfShapes[i].node;
 		}
 	}
 

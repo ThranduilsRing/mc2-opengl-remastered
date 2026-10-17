@@ -244,8 +244,6 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	OBBRadius = -1.0f;
 	highZ = -1.0f;
 	
-	nodeUsed = nullptr;
-	nodeRecycle = nullptr;
 	
 	beenInView = false;
 	buildingPbrRenderActive = false;
@@ -357,17 +355,10 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			appearType->typeLowerRight.Add(bldgShape->GetMaxBox(),nodeCenter);
 		}
 		
- 		if (appearType->numWeaponNodes)
+		if (appearType->numWeaponNodes > 0)
 		{
-			nodeUsed = (long *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(long) * appearType->numWeaponNodes);
-			gosASSERT(nodeUsed != nullptr);
-			memset(nodeUsed,0,sizeof(long) * appearType->numWeaponNodes);
-			
-			nodeRecycle = (float *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(float) * appearType->numWeaponNodes);
-			gosASSERT(nodeRecycle != nullptr);
-			
-			for (long i=0;i<appearType->numWeaponNodes;i++)
-				nodeRecycle[i] = 0.0f;
+			nodeUsed.assign(static_cast<size_t>(appearType->numWeaponNodes), 0);
+			nodeRecycle.assign(static_cast<size_t>(appearType->numWeaponNodes), 0.0f);
 		}
 
 		// Register this building's TG_TypeShape variants with the GPU static

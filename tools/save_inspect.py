@@ -35,7 +35,7 @@ NUL = scs.NUL
 #: Record class by payload byte size. code/save_layout_guard.h pins these numbers in the build (tools/test_save_inspect.py compares the two); the object
 #: loader dispatches on them. StackItem is not a packet and is not listed.
 RECORD_SIZES = {372: "GameObjectData", 3288: "MoverData", 720: "TerrainObjectData", 756: "BuildingData", 820: "TurretData", 760: "GateData",
-                432: "ArtilleryData", 396: "CarnageData", 3992: "MechData", 3424: "GroundVehicleData", 580: "WeaponBoltData",
+                432: "ArtilleryData", 396: "CarnageData", 3992: "MechData", 3424: "GroundVehicleData", 600: "WeaponBoltData",
                 60: "ObjectManagerData", 40: "StaticMechWarriorData", 19864: "MechWarriorData", 80: "TeamStaticData", 488: "TeamData",
                 8: "StaticCommanderData", 1288: "CommanderData"}
 #: A run of this many written packets of one kind is split so a digest mismatch still points into the run.

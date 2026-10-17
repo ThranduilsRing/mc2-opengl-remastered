@@ -520,7 +520,7 @@ void GVAppearance::updateGeometry (void)
 
 long GVAppearance::update (bool animate) 
 {
-	if (nodeRecycle)
+	if (!nodeRecycle.empty())
 	{
 		for (long i=0;i<appearType->numWeaponNodes;i++)
 		{

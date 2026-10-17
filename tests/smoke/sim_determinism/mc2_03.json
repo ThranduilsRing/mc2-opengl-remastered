@@ -3,10 +3,10 @@
  "frames": 1000,
  "chain": "3bfc7e1947c403dc",
  "visible_chain": "1bfe69fd58f7cff3",
- "sha": "29f95649a1d7",
+ "sha": "d7c8db5a16f2",
  "seed": "0x0E7C68FF",
  "data_fingerprint": {
-  "digest": "3bd7216039fbcfbd",
+  "digest": "ab0dd57ba93dcad7",
   "inputs": [
    "mission.fst",
    "tgl.fst",
@@ -18,7 +18,22 @@
    "data/effects/",
    "data/missions/",
    "data/warriors/"
-  ]
+  ],
+  "stock_digest": "8d4e57136dcf513e",
+  "overlay": {
+   "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
+   "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4",
+   "data/missions/mc2_01_ai.fit": "05ac63a7d6e6a022",
+   "data/missions/mc2_01_eject_specials.fit": "fb1ae62005af323b",
+   "data/missions/mc2_01_ejectalias_specials.fit": "7dcea591e6e5a519",
+   "data/missions/mc2_01_moveto_nan_specials.fit": "7d179e0afeeeff60",
+   "data/missions/mc2_01_moveto_specials.fit": "ceed6688c9c9402a",
+   "data/missions/mc2_01_specials.fit": "1b484e1e9e1ffd9a",
+   "data/missions/mc2_01_specials_eject.fit": "176239689c456324",
+   "data/missions/mc2_01_specials_ejectalias.fit": "d5ae4996d3e5d3a9",
+   "data/missions/mc2_01_specials_raw_specials.fit": "a48b828b55f5097d"
+  },
+  "problems": []
  },
  "gates": {
   "MC2_SMOKE_FIXED_TIMESTEP": "1",
