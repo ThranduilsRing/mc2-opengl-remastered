@@ -1,5 +1,30 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FORTY-SEVENTH session (2026-10-17, Sonnet 5.5) -- VK mech island VUID errors fixed (BUGS 58), 3D mech preview panel drawn under VK (BUGS 56 closed)
+
+### Commits (on 9b9270005)
+ba046261b mech island re-upload on geometry generation | 805e07ab8 run/instance/bone snapshot tagged with the geometry generation | 10897d0fd preview FBO readback for the VK ImGui bridge | state/BUGS commit after (docs only). Mergeable tip = the state commit. Code = 10897d0fd.
+
+### Root causes
+Task 1 (BUGS 58): two coupled causes. (a) `vulkan_mech_island.cpp` copied the batcher's VBO/IBO into VK buffers once per process (`geomUploaded` never reset) while the batcher rebuilds both at every map load and for late types; the shadow and prop islands already track a generation, the mech island did not. (b) the run/instance/bone snapshot from the last flush survives that rebuild, so the first frame after it draws old firstIndex ranges against the new buffer: after fix (a) alone the campaign leg still gave 10 errors at mc2_05 (upload 25896 B, runs up to firstIndex 6987). Fix: island re-uploads (waitIdle, reset, upload) when `Mc2MechGeomFeed::geomGen` changes; `s_vkMechSnapshotGeomGen` is set at snapshot time and `get_frame_feed`/`get_shadow_feed` refuse a stale snapshot.
+Task 2 (BUGS 56): the mech IS drawn into the GL preview FBO under VK (`[PREVIEW] drawTris isHUD=0 curFbo=9`); the ImGui bridge just had no texels for a render target. Chosen option: scale-agnostic GL readback (the narrower of the two). `gos_EndCameraPreviewRender` (VK umbrella only) blits the FBO (default 4x, 3200x2400) to 800x600, `glReadPixels`, publishes the vector under the FBO texture's GL name (`gos_GetCameraPreviewTexels`, checked first in `gos_GetTextureTexelsByGlName`); a new vector per render is the bridge's content-change signal, so it re-uploads each render (about 1.9 MB). Log: `[PREVIEW_READBACK v1] first publish with pixels`.
+
+### Proof
+| check | result |
+|---|---|
+| VK campaign leg, `MC2_VULKAN_VALIDATION=1`, 15 missions, exe 10897d0fd | `validation_errors=0`, 0 `robustBufferAccess2`, 13 mech geometry uploads (`.claude/l2s47/vk-campaign2`); before: 10 errors (`.claude/l2s47/vk-campaign` with fix (a) only, `.claude/l2s46/vk-campaign`) |
+| VK tier1 + validation, exe 10897d0fd, DEPLOY_FINGERPRINT OK x5 | 5/5 PASS, errors=0 warnings=0 on all five (`.claude/l2s47/t47.log`; fps 135/123/96/96/58) |
+| mech bay VK | `.claude/l2s47/bay2.png` viewed: yellow Bushwhacker drawn in the preview panel, everything else upright; before `bay0.png` empty panel |
+
+### Where the bay capture is launched (for the lease fix)
+`scripts/mechbay_preview_harness.py`, `main()`: `nofocus.spawn([exe], ...)` (from `scripts/smoke_lib/nofocus.py`) with a hard `p.kill()` after `--timeout`. No lease code of its own: it waits only through whatever `nofocus.spawn` does ("[wait] host game lease" lines appeared when my own earlier campaign exe was still alive and once with "unknown holder"); the harness never calls host_lease itself. `tools/campaign_save_roundtrip.py` (`capture`, `nofocus.spawn` at line ~161) is the same pattern. Not fixed here.
+
+### Open
+1. The preview readback stalls the GL queue once per preview render (bay and mechlopedia only); an async PBO readback is the upgrade if a profile shows it. `MC2_PREVIEW_FBO_SCALE=1` makes the blit a copy.
+2. Mechlopedia and Options paint preview use the same FBO but were not captured under VK this session (encyclopedia page not re-checked for the panel).
+3. Carried from s46: BC7 UI colour space not compared by eye; late forced VK-to-GL fallback not run.
+4. `preview_debug.log` in the lane2 install grows without bound under `MC2_LOG_PREVIEW=1` (8.6M lines); the harness sets that env.
+
 ## FORTY-SIXTH session (2026-10-17, Sonnet 5.5) -- ImGui layer drawn upside down under Vulkan (fixed), s45 texture bridge review blockers fixed
 
 ### Commits (on 8f0622666)

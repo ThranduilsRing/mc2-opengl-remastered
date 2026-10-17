@@ -1,0 +1,73 @@
+[runner] [DEPLOY_FINGERPRINT] reference: worktree HEAD 10897d0fdeabaecd3117ef7bbf78e556fba14ce3
+[exe-guard] mc2-win64-lane2: fingerprint read via MC2FP1 literal
+[SMOKE] exe=A:\Games\mc2-opengl\mc2-win64-lane2\mc2.exe src_commit=10897d0fdeab
+[wait] host game lease: the host game lease is held by unknown holder; giving up in 3599 s (bound 3600 s)
+[runner] [LEASE] acquired lane2 (--deploy)
+[runner] [DEPLOY_COHERENCE] manifest: written 2026-10-17T04:02:19 from ?@10897d0f ((.deployed_manifest.csv via deploy_payload.py))
+[runner] [DEPLOY_COHERENCE] kit: 0/11 pinned kit files present in A:\Games\mc2-opengl\mc2-win64-lane2 -- not the blessed install (A:\Games\MC2-OpenGL-REVIEWFIX-2026-08-01), kit coverage N/A (not a pass)
+[runner] [DEPLOY_COHERENCE] OK: A:\Games\mc2-opengl\mc2-win64-lane2 matches manifest, no newer code commits
+[runner] [BOM-CHECK] [bom-check] OK: no BOMs found in shader sources.
+[runner] artifacts: A:\Games\mc2-lane2\tests\smoke\artifacts\2026-10-17T04-07-41-682038-29620
+[DEPLOY_STALENESS] OK: 882 files match manifest (src_commit=10897d0fdeabaecd3117ef7bbf78e556fba14ce3)
+[runner] [ENV-DECLARED] 5 ambient MC2_* var(s) will reach mc2.exe and are recorded in the run manifest: MC2_DEBUG_STATE_DUMP=1, MC2_DIAG_TAGS=CONFIG,BUILD,DEVICE, MC2_RENDER_BACKEND=vulkan, MC2_VK_SHARED_GBUFFER=1, MC2_VULKAN_VALIDATION=1
+[runner] running mc2_01 (tier=tier1 duration=30)
+[host-affinity] pid=36872 mask=0xf0 logical_cpus=4
+[runner] [DEPLOY_FINGERPRINT] OK: exe sha=10897d0fdeab matches worktree HEAD 10897d0fdeabaecd3117ef7bbf78e556fba14ce3
+[runner] [MOVER-COHERENCE] mc2_01: checked=90 violations=0 advisories=0 audits=30
+[runner] [ENV-DECLARED] 5 ambient MC2_* var(s) will reach mc2.exe and are recorded in the run manifest: MC2_DEBUG_STATE_DUMP=1, MC2_DIAG_TAGS=CONFIG,BUILD,DEVICE, MC2_RENDER_BACKEND=vulkan, MC2_VK_SHARED_GBUFFER=1, MC2_VULKAN_VALIDATION=1
+[runner] running mc2_03 (tier=tier1 duration=30)
+[host-affinity] pid=23140 mask=0xf0 logical_cpus=4
+[runner] [DEPLOY_FINGERPRINT] OK: exe sha=10897d0fdeab matches worktree HEAD 10897d0fdeabaecd3117ef7bbf78e556fba14ce3
+[runner] [MOVER-COHERENCE] mc2_03: checked=120 violations=0 advisories=0 audits=30
+[runner] [ENV-DECLARED] 5 ambient MC2_* var(s) will reach mc2.exe and are recorded in the run manifest: MC2_DEBUG_STATE_DUMP=1, MC2_DIAG_TAGS=CONFIG,BUILD,DEVICE, MC2_RENDER_BACKEND=vulkan, MC2_VK_SHARED_GBUFFER=1, MC2_VULKAN_VALIDATION=1
+[runner] running mc2_10 (tier=tier1 duration=30)
+[host-affinity] pid=35780 mask=0xf0 logical_cpus=4
+[runner] [DEPLOY_FINGERPRINT] OK: exe sha=10897d0fdeab matches worktree HEAD 10897d0fdeabaecd3117ef7bbf78e556fba14ce3
+[runner] [MOVER-COHERENCE] mc2_10: checked=150 violations=0 advisories=0 audits=30
+[runner] [ENV-DECLARED] 5 ambient MC2_* var(s) will reach mc2.exe and are recorded in the run manifest: MC2_DEBUG_STATE_DUMP=1, MC2_DIAG_TAGS=CONFIG,BUILD,DEVICE, MC2_RENDER_BACKEND=vulkan, MC2_VK_SHARED_GBUFFER=1, MC2_VULKAN_VALIDATION=1
+[runner] running mc2_17 (tier=tier1 duration=30)
+[host-affinity] pid=23156 mask=0xf0 logical_cpus=4
+[runner] [DEPLOY_FINGERPRINT] OK: exe sha=10897d0fdeab matches worktree HEAD 10897d0fdeabaecd3117ef7bbf78e556fba14ce3
+[runner] [MOVER-COHERENCE] mc2_17: checked=150 violations=0 advisories=0 audits=30
+[runner] [ENV-DECLARED] 5 ambient MC2_* var(s) will reach mc2.exe and are recorded in the run manifest: MC2_DEBUG_STATE_DUMP=1, MC2_DIAG_TAGS=CONFIG,BUILD,DEVICE, MC2_RENDER_BACKEND=vulkan, MC2_VK_SHARED_GBUFFER=1, MC2_VULKAN_VALIDATION=1
+[runner] running mc2_24 (tier=tier1 duration=30)
+[host-affinity] pid=29836 mask=0xf0 logical_cpus=4
+[runner] [DEPLOY_FINGERPRINT] OK: exe sha=10897d0fdeab matches worktree HEAD 10897d0fdeabaecd3117ef7bbf78e556fba14ce3
+[runner] [MOVER-COHERENCE] mc2_24: checked=180 violations=0 advisories=0 audits=30
+# Smoke run 2026-10-17T04-07-41-682038-29620  tier=tier1  profile=stock  result=PASS (5/5 passed)
+
+> **FPS note:** game window starts minimized (SW_SHOWMINNOACTIVE). SDL throttles rendering to ~100 fps when minimized; Avg FPS / p1% reflect that cap, not GPU throughput. Not a perf regression.
+
+> **Fingerprint reference:** worktree HEAD 10897d0fdeabaecd3117ef7bbf78e556fba14ce3
+
+> **DEPLOY_FINGERPRINT:** PASS (required)
+
+> mc2_01: [DEPLOY_FINGERPRINT] OK: exe sha=10897d0fdeab matches worktree HEAD 10897d0fdeabaecd3117ef7bbf78e556fba14ce3
+> mc2_03: [DEPLOY_FINGERPRINT] OK: exe sha=10897d0fdeab matches worktree HEAD 10897d0fdeabaecd3117ef7bbf78e556fba14ce3
+> mc2_10: [DEPLOY_FINGERPRINT] OK: exe sha=10897d0fdeab matches worktree HEAD 10897d0fdeabaecd3117ef7bbf78e556fba14ce3
+> mc2_17: [DEPLOY_FINGERPRINT] OK: exe sha=10897d0fdeab matches worktree HEAD 10897d0fdeabaecd3117ef7bbf78e556fba14ce3
+> mc2_24: [DEPLOY_FINGERPRINT] OK: exe sha=10897d0fdeab matches worktree HEAD 10897d0fdeabaecd3117ef7bbf78e556fba14ce3
+
+> **Host wait:** lease 22 s
+
+> **Render options:** all defaults
+
+> **Resolution:** 1920x1080 (pinned for tier1, scripts/smoke_lib/render_resolution.py)
+
+> **VRAM:** mc2_01 load_end vk: 1662 MiB in use (dxgi-process), budget 23748 MiB; run_end vk: 3942 MiB in use (dxgi-process), budget 23748 MiB | mc2_03 load_end vk: 1628 MiB in use (dxgi-process), budget 23748 MiB; run_end vk: 4043 MiB in use (dxgi-process), budget 23748 MiB | mc2_10 load_end vk: 1672 MiB in use (dxgi-process), budget 23748 MiB; run_end vk: 4187 MiB in use (dxgi-process), budget 23748 MiB | mc2_17 load_end vk: 1729 MiB in use (dxgi-process), budget 23748 MiB; run_end vk: 4380 MiB in use (dxgi-process), budget 23748 MiB | mc2_24 load_end vk: 1738 MiB in use (dxgi-process), budget 23748 MiB; run_end vk: 4486 MiB in use (dxgi-process), budget 23748 MiB
+
+> **Vulkan profile:** ok AMD Radeon RX 7900 XTX api 1.4.355 (instance 1.3.0): core: api_1_2 timeline_semaphore buffer_device_address descriptor_indexing dynamic_rendering synchronization2 independent_blend, ext: swapchain memory_budget, limit: limits; wanted missing: -
+
+> **Vulkan validation:** mc2_01 errors=0 warnings=0 | mc2_03 errors=0 warnings=0 | mc2_10 errors=0 warnings=0 | mc2_17 errors=0 warnings=0 | mc2_24 errors=0 warnings=0
+
+| Mission | Result | Bucket                 | Frames | Avg FPS | p1% | Load ms | Δ destroys |
+|---------|--------|------------------------|--------|---------|-----|---------|-----------|
+| mc2_01  | PASS   |                        | 4029   | 135     | 73  | 7253    | +0        |
+| mc2_03  | PASS   |                        | 3668   | 123     | 75  | 7065    | +0        |
+| mc2_10  | PASS   |                        | 2885   | 96      | 64  | 7241    | +0        |
+| mc2_17  | PASS   |                        | 2861   | 96      | 50  | 7682    | +0        |
+| mc2_24  | PASS   |                        | 1717   | 58      | 34  | 10929   | +0        |
+
+[diag-state] PASS: PASS schema_version==2; PASS dump_kind=shutdown; PASS session_id present; PASS pid present; PASS written_at_epoch present; PASS diagnostic_trace.jsonl has CONFIG startup event
+[runner] [LEASE] released lane2
+P47C_DONE
