@@ -39,7 +39,7 @@ SOURCE_EXT = (".cpp", ".h", ".hpp")
 #: Sub-batch of a site: the texture kinds are B5.1 wherever they occur; the rest go by file (first matching rule wins).
 FILE_RULES = [
     ("B5.2-tg", re.compile(r"^mclib/(tgl|msl)[\w]*\.(cpp|h)$|^mclib/assimp_importer\.(cpp|h)$")),
-    ("B5.3-appearance", re.compile(r"^mclib/(appear|apprtype|dappear|objectappearance|bdactor|gvactor|genactor|mech3d)[\w]*\.(cpp|h)$|^code/actor\.h$")),
+    ("B5.3-appearance", re.compile(r"^mclib/(appear|apprtype|dappear|objectappearance|bdactor|gvactor|genactor|mech3d)[\w]*\.(cpp|h)$|^code/actor\.h$")),
     ("B5.4-objecttype", re.compile(r"^code/(objtype|dobjtype|terrobj|dterrobj)\.(cpp|h)$")),
 ]
 OWNER_BATCH = "B5.5-heap-owner"
@@ -57,7 +57,7 @@ RX = {
 }
 ASSET_NAME = re.compile(r"(?i)shape|type|appear|tg_|texture|heap")
 #: Deletes that match ASSET_NAME but belong to another batch: an actor's own Appearance instance (B7), other subsystems' heaps (B4 / B6 / B8), UI icon texture memory (B6).
-OTHER_BATCH_DELETE = re.compile(r"delete\s+(?:\[\s*\]\s*)?(?:appearanceb|Abl\w*Heap|collisionHeap|Radio::radioHeap|systemHeap|guiHeap|globalHeapList|missionHeap|crater\w*Heap|"
+OTHER_BATCH_DELETE = re.compile(r"delete\s+(?:\[\s*\]\s*)?(?:appearance\x08|Abl\w*Heap|collisionHeap|Radio::radioHeap|systemHeap|guiHeap|globalHeapList|missionHeap|crater\w*Heap|"
                                 r"progressTextureMemory|mergedTexture|MechIcon::|ForceGroupIcon::|VehicleIcon::|mcTextureManager)")
 #: class_op only counts in asset classes, not every class of the files the rules name.
 CLASS_OP_CLASSES = re.compile(r"\b(AppearanceType|\w*AppearanceType|\w*Appearance|TG_\w+|ObjectType|\w*ObjectType|\w*Shape)::operator")
