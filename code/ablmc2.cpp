@@ -37,9 +37,17 @@ namespace {
 struct AblHeapLedger {
 	std::unordered_set<void*> live;
 
-	void* track (void* block) {
-		if (block)
-			live.insert(block);
+	// The set can throw while growing; a block that could not be recorded would never be handed back, so it is freed and reported as an
+	// allocation failure instead of being left untracked.
+	void* track (UserHeapPtr heap, void* block) {
+		if (block) {
+			try {
+				live.insert(block);
+			} catch (...) {
+				heap->Free(block);
+				return nullptr;
+			}
+		}
 		return block;
 	}
 	void untrack (void* block) { live.erase(block); }
@@ -64,21 +72,21 @@ void* ablStackMallocCallback (unsigned long memSize) {
 	void* block = AblStackHeap->Malloc(memSize);
 	if (block)
 		memset(block, 0, memSize);
-	return g_ablStackLedger.track(block);
+	return g_ablStackLedger.track(AblStackHeap, block);
 }
 
 void* ablCodeMallocCallback (unsigned long memSize) {
 
 	if (!AblCodeHeap)
 		Fatal(0, " ablCodeFreeCallback: NULL heap ");
-	return g_ablCodeLedger.track(AblCodeHeap->Malloc(memSize));
+	return g_ablCodeLedger.track(AblCodeHeap, AblCodeHeap->Malloc(memSize));
 }
 
 void* ablSymbolMallocCallback (unsigned long memSize) {
 
 	if (!AblSymbolHeap)
 		Fatal(0, " ablSymbolMallocCallback: NULL heap ");
-	return g_ablSymbolLedger.track(AblSymbolHeap->Malloc(memSize));
+	return g_ablSymbolLedger.track(AblSymbolHeap, AblSymbolHeap->Malloc(memSize));
 }
 
 void ablSystemFreeCallback (void* memBlock) {
