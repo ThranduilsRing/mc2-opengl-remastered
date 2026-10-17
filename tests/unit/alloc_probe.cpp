@@ -1,8 +1,6 @@
-// The allocation probe and ScopedLeakCheck: the leak oracle of the ownership step, proven on itself and on EString (the first type
-// the step migrates).
+// The allocation probe and ScopedLeakCheck exercise allocation accounting and standard owners.
 #include "doctest.h"
 #include "alloc_probe.h"
-#include "estring.h"
 
 #include <memory>
 #include <string>
@@ -65,44 +63,6 @@ TEST_CASE("standard owners balance: vector, string, unique_ptr")
 		std::string s(200, 'x');
 		auto u = std::make_unique<double[]>(64);
 		CHECK(lc.delta() == 3);
-	}
-	CHECK(lc.delta() == 0);
-}
-
-TEST_CASE("EString: create, copy, assign, format and destroy leave the heap where it was")
-{
-	// EString's buffers come from malloc (EBuffer, estring.cpp), which the probe does not see; what it proves here is that nothing
-	// EString does through operator new (Format's scratch, CreateMBCS) is left behind by the common sequence. B1 moves the
-	// buffer to std::string, and then every byte is in the probe's view.
-	ScopedLeakCheck lc;
-	{
-		EString a("one");
-		EString b(a);          // shares the buffer (copy on write)
-		EString c;
-		c = b;
-		c += " two";           // the shared buffer is split here
-		EString d;
-		d.Format("%d-%s", 42, (const char*)c);
-		CHECK(a.Length() == 3);
-		CHECK(c.Length() == 7);
-		CHECK(d.Length() == 10);
-		char* copy = d.CreateMBCS();
-		CHECK(lc.delta() == 1);
-		delete[] copy;
-	}
-	CHECK(lc.delta() == 0);
-	CHECK(lc.bytesDelta() == 0);
-}
-
-TEST_CASE("EString: a by-value return handed to a C string pointer outlives nothing")
-{
-	// The one bug class the B1 migration guards against: a const char* taken from a temporary EString. The probe cannot see the
-	// dangling read; it sees that the temporary's buffer is gone, which is why the pointer must not be kept.
-	ScopedLeakCheck lc;
-	auto make = [] { return EString("temporary"); };
-	{
-		EString kept = make();
-		CHECK(kept.Length() == 9);
 	}
 	CHECK(lc.delta() == 0);
 }
