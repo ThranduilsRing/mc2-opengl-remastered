@@ -230,11 +230,11 @@ gosFX::PertCloud::PertCloud(
 
 	gos_PushCurrentHeap(MidLevelRenderer::Heap);
 	m_cloudImplementation =
-		new MidLevelRenderer::MLRNGonCloud(
+		std::make_unique<MidLevelRenderer::MLRNGonCloud>(
 			spec->m_vertices,
 			spec->m_maxParticleCount
 		);
-	Register_Object(m_cloudImplementation);
+	Register_Object(m_cloudImplementation.get());
 	gos_PopCurrentHeap();
 
 	unsigned index = spec->m_maxParticleCount*sizeof(Particle);
@@ -254,8 +254,7 @@ gosFX::PertCloud::PertCloud(
 //
 gosFX::PertCloud::~PertCloud()
 {
-	Unregister_Object(m_cloudImplementation);
-	delete m_cloudImplementation;
+	Unregister_Object(m_cloudImplementation.get());
 }
 
 //------------------------------------------------------------------------------
@@ -407,7 +406,7 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 	{
 		Specification *spec = GetSpecification();
 		Check_Object(spec);
-		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation, m_localToParent);
+		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation.get(), m_localToParent);
 		const auto& local_to_world = submission.localToWorld;
 
 		//

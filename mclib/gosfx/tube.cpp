@@ -604,10 +604,10 @@ gosFX::Tube::Tube(
 	//
 	gos_PushCurrentHeap(MidLevelRenderer::Heap);
 	m_mesh =
-		new MidLevelRenderer::MLRIndexedTriangleCloud(
+		std::make_unique<MidLevelRenderer::MLRIndexedTriangleCloud>(
 			spec->m_maxProfileCount*(vertex_count-1)*2
 		);
-	Register_Object(m_mesh);
+	Register_Object(m_mesh.get());
 	gos_PopCurrentHeap();
 
 	//
@@ -731,8 +731,7 @@ void
 //
 gosFX::Tube::~Tube()
 {
-	Unregister_Object(m_mesh);
-	delete m_mesh;
+	Unregister_Object(m_mesh.get());
 }
 
 //------------------------------------------------------------------------------
@@ -1214,7 +1213,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 	if (m_activeProfileCount>1)
 	{
 		MidLevelRenderer::DrawEffectInformation dInfo;
-		dInfo.effect = m_mesh;
+		dInfo.effect = m_mesh.get();
 		Specification *spec = GetSpecification();
 
 		// MC2_TUBE_PROFILE_LOG=1: log each tube spec's PEAK m_activeProfileCount.

@@ -450,7 +450,6 @@ gosFX::Effect::Effect(
 	unsigned flags
 ):
 	Node(class_data),
-	m_children(nullptr),
 	m_event(&spec->m_events)
 {
 	Check_Pointer(this);
@@ -479,12 +478,10 @@ gosFX::Effect::Effect(
 gosFX::Effect::~Effect()
 {
 	Check_Object(this);
-	Stuff::ChainIteratorOf<gosFX::Effect*> children(&m_children);
-	children.DeletePlugs();
+	m_children.clear();
 
-	// [B1 C16] (diagnostic) Effect destroy counter — covers both child->Kill()
-	// at effect.cpp:619 (delete child) AND DeletePlugs() above for orphan kills
-	// in ~Effect, since both ultimately invoke this dtor.
+	// [B1 C16] (diagnostic) Effect destroy counter: a finished child released in
+	// Execute and the children cleared above both end in this dtor.
 	--g_effectAliveNow;
 	++g_effectDestroys;
 }
@@ -669,13 +666,14 @@ bool gosFX::Effect::Execute(ExecuteInfo *info)
 		else
 			flags |= event->m_flags&SimulationModeMask;
 
-		Effect* effect =
+		EffectPtr owned{
 			EffectLibrary::Instance->MakeEffect(
 				event->m_effectID,
 				flags
-			);
+			)};
+		Effect* effect = owned.get();
 		Register_Object(effect);
-		m_children.Add(effect);
+		m_children.push_back(std::move(owned));
 		m_event.Next();
 
 		//
@@ -706,8 +704,6 @@ bool gosFX::Effect::Execute(ExecuteInfo *info)
 	// Execute all the children.  If any of them finish, kill them
 	//------------------------------------------------------------
 	//
-	Stuff::ChainIteratorOf<gosFX::Effect*> children(&m_children);
-	gosFX::Effect *child;
 	Stuff::OBB child_obb = Stuff::OBB::Identity;
 	ExecuteInfo
 		child_info(
@@ -716,13 +712,15 @@ bool gosFX::Effect::Execute(ExecuteInfo *info)
 			&child_obb
 		);
 	child_info.m_bounds = &child_obb;
-	while ((child = children.ReadAndNext()) != nullptr)
+	bool released = false;
+	for (EffectPtr& child : m_children)
 	{
-		Check_Object(child);
+		Check_Object(child.get());
 		if (!child->Execute(&child_info))
 		{
-			Unregister_Object(child);
-			delete child;
+			Unregister_Object(child.get());
+			child.reset();
+			released = true;
 		}
 
 		//
@@ -735,6 +733,8 @@ bool gosFX::Effect::Execute(ExecuteInfo *info)
 		parent_bounds.Multiply(child_obb, m_localToParent);
 		info->m_bounds->Union(*info->m_bounds, parent_bounds);
 	}
+	if (released)
+		std::erase(m_children, nullptr);
 
 	Check_Object(info->m_bounds);
 
@@ -791,11 +791,9 @@ void gosFX::Effect::Kill()
 	// Kill the children then kill ourself
 	//------------------------------------
 	//
-	Stuff::ChainIteratorOf<gosFX::Effect*> children(&m_children);
-	gosFX::Effect* child;
-	while ((child = children.ReadAndNext()) != nullptr)
+	for (const EffectPtr& child : m_children)
 	{
-		Check_Object(child);
+		Check_Object(child.get());
 		child->Kill();
 	}
 	SetExecuteOff();
@@ -826,11 +824,9 @@ void gosFX::Effect::Draw(DrawInfo *info)
 	new_info.m_parentToWorld = &local_to_world;
 	new_info.m_clipper = info->m_clipper;
 	new_info.m_clippingFlags = info->m_clippingFlags;
-	Stuff::ChainIteratorOf<gosFX::Effect*> children(&m_children);
-	gosFX::Effect *child;
-	while ((child = children.ReadAndNext()) != nullptr)
+	for (const EffectPtr& child : m_children)
 	{
-		Check_Object(child);
+		Check_Object(child.get());
 		child->Draw(&new_info);
 	}
 }
@@ -854,8 +850,7 @@ bool gosFX::Effect::HasFinished()
 	// It is also not finished if it has any children
 	//-----------------------------------------------
 	//
-	Stuff::ChainIteratorOf<gosFX::Effect*> children(&m_children);
-	return children.GetCurrent() == nullptr;
+	return m_children.empty();
 }
 
 //#############################################################################
