@@ -154,7 +154,7 @@ void Mission::loadBrainParamsPhase(MissionInitFrame& f) {
 			if (MechWarrior::warriorList[i] && !MechWarrior::warriorList[i]->getBrain())
 				continue;
 			// Exhausting the warrior slots can leave a missing pilot.
-			if (!MC2_VERIFY(MechWarrior::warriorList[i] != nullptr,
+			if (!MC2_VERIFY(MechWarrior::warriorList[i] != NULL,
 					"Mission::init: warriorList[%lu] is NULL (loadBrainParameters)", i))
 				continue;	// log mode: skip the missing warrior
 			result = MechWarrior::warriorList[i]->loadBrainParameters(missionFile, i);

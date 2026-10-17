@@ -471,7 +471,7 @@ void Mission::initSkyAndTeamReset(MissionInitFrame& f) {
 			Team::home = Team::teams[0];
 			Commander::home = Commander::commanders[0];
 			MC2_VERIFY(Team::numTeams == 2 && Commander::numCommanders == 2 &&
-					Team::home != nullptr && Commander::home != nullptr,
+					Team::home != NULL && Commander::home != NULL,
 				"MC2_MISSION_CYCLE_TEST: synthetic populate wrong "
 				"(teams=%ld commanders=%ld)", Team::numTeams, Commander::numCommanders);
 
@@ -481,8 +481,8 @@ void Mission::initSkyAndTeamReset(MissionInitFrame& f) {
 			// destroy frees again). MUST be a clean no-op with home NULL.
 			Mission::resetTeamsAndCommanders();
 			MC2_VERIFY(Team::numTeams == 0 && Commander::numCommanders == 0 &&
-					Team::home == nullptr && Commander::home == nullptr &&
-					Team::teams[0] == nullptr && Commander::commanders[0] == nullptr,
+					Team::home == NULL && Commander::home == NULL &&
+					Team::teams[0] == NULL && Commander::commanders[0] == NULL,
 				"MC2_MISSION_CYCLE_TEST: reset not idempotent / home not nulled "
 				"(teams=%ld commanders=%ld home=%p/%p slot0=%p/%p)",
 				Team::numTeams, Commander::numCommanders,
@@ -614,7 +614,7 @@ void Mission::initTeamsAndCommanders(long loadType, Stuff::Vector3D* dropZoneLis
 		// aligned with the existing CRASH-HARDEN STOP (b71702ba) below -- in
 		// fatal mode the verify stops first with the same message; in log/off
 		// mode the legacy STOP path is preserved unchanged.
-		MC2_VERIFY((Team::teams[0] != nullptr) && (Commander::commanders[0] != nullptr),
+		MC2_VERIFY((Team::teams[0] != NULL) && (Commander::commanders[0] != NULL),
 			"mission has no commanders -- invalid mission data (no [Parts] with TeamId/CommanderId): %s",
 			missionName ? missionName : "(null)");
 		if ((Team::teams[0] == nullptr) || (Commander::commanders[0] == nullptr))
@@ -634,7 +634,7 @@ void Mission::initTeamsAndCommanders(long loadType, Stuff::Vector3D* dropZoneLis
 			if (ctlCommander > -1) {
 				if (!MC2_VERIFY_BOUNDS(ctlCommander, MAX_COMMANDERS, "Mission::init commandersToLoad commander") ||
 					!MC2_VERIFY_BOUNDS(ctlTeam, MAX_TEAMS, "Mission::init commandersToLoad team") ||
-					!MC2_VERIFY((Commander::commanders[ctlCommander] != nullptr) && (Team::teams[ctlTeam] != nullptr),
+					!MC2_VERIFY((Commander::commanders[ctlCommander] != NULL) && (Team::teams[ctlTeam] != NULL),
 						"Mission::init: commandersToLoad[%ld] names uninitialized commander %ld / team %ld",
 						i, ctlCommander, ctlTeam))
 					continue;	// log mode: skip the malformed entry
