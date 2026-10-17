@@ -142,7 +142,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, Stuff
 			}
 			
 			AppearanceType* appearanceType = appearanceTypeList->getAppearance( BLDG_TYPE << 24, "vtol" );
-			vTol[commanderID] = new BldgAppearance;
+			vTol[commanderID] = std::make_unique<BldgAppearance>();
 			vTol[commanderID]->init( appearanceType );
 			
 			if (!dustCloud[commanderID] && prefs.useNonWeaponEffects)
@@ -182,7 +182,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, Stuff
 			}
 
 			AppearanceType* appearanceType = appearanceTypeList->getAppearance( BLDG_TYPE << 24, "karnov" );
-			vTol[commanderID] = new BldgAppearance;
+			vTol[commanderID] = std::make_unique<BldgAppearance>();
 			vTol[commanderID]->init( appearanceType );
 			
 			if (MPlayer)

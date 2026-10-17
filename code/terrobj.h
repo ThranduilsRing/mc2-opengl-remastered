@@ -140,8 +140,8 @@ class TerrainObject : public GameObject {
 		Stuff::Vector3D				vectorFootprint[4];
 		short						numSubAreas0;
 		short						numSubAreas1;
-		short						*subAreas0;
-		short						*subAreas1;
+		std::unique_ptr<short[]>	subAreas0;		// B7o.8a: owned (MAX_SPECIAL_SUB_AREAS entries), released in destroy()
+		std::unique_ptr<short[]>	subAreas1;
 		unsigned char				listID;
 		
 		unsigned char				numCellsCovered;

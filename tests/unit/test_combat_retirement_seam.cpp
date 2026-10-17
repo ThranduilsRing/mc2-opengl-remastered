@@ -48,8 +48,6 @@ struct World {
     UserHeap heap;
     UserHeap* oldHeap = systemHeap;
     UserHeap* oldMissionHeap = missionHeap;
-    UserHeap* oldTypeCache = ObjectTypeManager::objectTypeCache;
-    UserHeap* oldObjectCache = ObjectTypeManager::objectCache;
     Mission* oldMission = mission;
     GameObjectManager* oldObjects = ObjectManager;
     bool oldInitialize = GameObject::initialize;
@@ -76,7 +74,6 @@ struct World {
         std::memcpy(oldNetworkRelations, TeamRelations, sizeof(oldNetworkRelations));
         heap.init(1024 * 1024, "combat-retirement-seam");
         systemHeap = missionHeap = &heap;
-        ObjectTypeManager::objectTypeCache = ObjectTypeManager::objectCache = &heap;
         objects = std::make_unique<Watches>();
         GameObject::initialize = true;
         mission = &storage.owner;
@@ -93,7 +90,6 @@ struct World {
             ownedTypes->table = nullptr;
             auto* oldFile = ObjectTypeManager::objectFile;
             ObjectTypeManager::objectFile = nullptr;
-            ObjectTypeManager::objectTypeCache = ObjectTypeManager::objectCache = nullptr;
             delete ownedTypes;
             ObjectTypeManager::objectFile = oldFile;
         }
@@ -105,8 +101,6 @@ struct World {
         ObjectManager = oldObjects; mission = oldMission;
         GameObject::initialize = oldInitialize;
         systemHeap = oldHeap; missionHeap = oldMissionHeap;
-        ObjectTypeManager::objectTypeCache = oldTypeCache;
-        ObjectTypeManager::objectCache = oldObjectCache;
     }
 };
 struct Bolt : WeaponBolt {

@@ -155,7 +155,6 @@ set(SOURCES ${SOURCES}
     move_movemap_goals.cpp
     move_movemap_path.cpp
     move_recon.cpp
-    estring.cpp
     tacmap.cpp
     utilities.cpp
     resource_strings.cpp

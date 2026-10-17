@@ -4,7 +4,8 @@
 
 #include"aanim.h"
 #include"mclib.h"
-#include"estring.h"
+#include "mc2str.h"
+#include <format>
 
 extern float frameRate;
 
@@ -67,19 +68,19 @@ void aAnimation::copyData( const aAnimation& src )
 
 long	aAnimation::init(FitIniFile* file, const char* headerName)
 {
-	EString strToCheck = headerName;
+	std::string strToCheck = mc2::str::from_c(headerName);
 	strToCheck += "AnimationTimeStamps";
 
-	if ( NO_ERR != file->readIdLong( strToCheck, infoCount ) )
+	if ( NO_ERR != file->readIdLong( strToCheck.c_str(), infoCount ) )
 	{
-		EString strToCheck = headerName;
+		std::string strToCheck = mc2::str::from_c(headerName);
 		strToCheck += "NumTimeStamps";
-		file->readIdLong( strToCheck, infoCount );
+		file->readIdLong( strToCheck.c_str(), infoCount );
 	}
 
-	strToCheck = headerName;
+	strToCheck = mc2::str::from_c(headerName);
 	strToCheck += "AnimationLoops";
-	file->readIdBoolean( strToCheck, bLoops ); 
+	file->readIdBoolean( strToCheck.c_str(), bLoops );
 
 	//Maybe someone already inited this?
 	if (infos)
@@ -93,35 +94,35 @@ long	aAnimation::init(FitIniFile* file, const char* headerName)
 		infos = new MoveInfo[infoCount];
 		for ( int i = 0; i < infoCount; i++ )
 		{
-			strToCheck.Format( "%s%s%ld", headerName, "Time", i );
-			file->readIdFloat( strToCheck, infos[i].time );
+			strToCheck = std::format("{}Time{}", mc2::str::from_c(headerName), i);
+			file->readIdFloat( strToCheck.c_str(), infos[i].time );
 
-			strToCheck.Format( "%s%s%ld", headerName, "Color", i );
-			if ( NO_ERR != file->readIdLong( strToCheck, infos[i].color ) )
+			strToCheck = std::format("{}Color{}", mc2::str::from_c(headerName), i);
+			if ( NO_ERR != file->readIdLong( strToCheck.c_str(), infos[i].color ) )
 				infos[i].color = 0xffffffff;
 
-			strToCheck.Format( "%s%s%ld%s", headerName, "Pos", i, "X" );
+			strToCheck = std::format("{}Pos{}X", mc2::str::from_c(headerName), i);
 			long tmp;
-			file->readIdLong( strToCheck, tmp );
+			file->readIdLong( strToCheck.c_str(), tmp );
 			infos[i].positionX = tmp;
 
-			strToCheck.Format( "%s%s%ld%s", headerName, "Pos", i, "Y" );
-			file->readIdLong( strToCheck, tmp );
+			strToCheck = std::format("{}Pos{}Y", mc2::str::from_c(headerName), i);
+			file->readIdLong( strToCheck.c_str(), tmp );
 			infos[i].positionY = tmp;
 
-			strToCheck.Format( "%s%s%ld", headerName, "Scale", i );
-			if ( NO_ERR != file->readIdFloat( strToCheck, infos[i].scaleX ) )
+			strToCheck = std::format("{}Scale{}", mc2::str::from_c(headerName), i);
+			if ( NO_ERR != file->readIdFloat( strToCheck.c_str(), infos[i].scaleX ) )
 			{
 				// look for scaleX and scale Y
-				strToCheck.Format( "%s%s%ld", headerName, "ScaleX", i );
-				if ( NO_ERR != file->readIdFloat( strToCheck, infos[i].scaleX ) )
+				strToCheck = std::format("{}ScaleX{}", mc2::str::from_c(headerName), i);
+				if ( NO_ERR != file->readIdFloat( strToCheck.c_str(), infos[i].scaleX ) )
 				{
 					infos[i].scaleX = infos[i].scaleY = 1.0f;
 				}
 				else
 				{
-					strToCheck.Format( "%s%s%ld", headerName, "ScaleY", i );
-					if ( NO_ERR != file->readIdFloat( strToCheck, infos[i].scaleY ) )
+					strToCheck = std::format("{}ScaleY{}", mc2::str::from_c(headerName), i);
+					if ( NO_ERR != file->readIdFloat( strToCheck.c_str(), infos[i].scaleY ) )
 					{
 						infos[i].scaleY = 1.0f;
 					}

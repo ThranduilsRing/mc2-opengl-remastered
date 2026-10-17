@@ -292,11 +292,11 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     for (int i = 0; i < n; ++i) {
         const TG_ShapeRec& rec = multi->listOfShapes[i];
         if (!rec.processMe || !rec.node) continue;
-        const TG_Shape* child = rec.node;
+        const TG_Shape* child = rec.node.get();
         if (!child->myType) continue;
         if (child->myType->GetNodeType() != SHAPE_NODE) continue;  // skip helpers
         const TG_TypeShape* ts = static_cast<const TG_TypeShape*>(child->myType);
-        if (firstShapeNodeLeaf == nullptr) firstShapeNodeLeaf = rec.node;
+        if (firstShapeNodeLeaf == nullptr) firstShapeNodeLeaf = rec.node.get();
         if (s_typeIndex.find(ts) == s_typeIndex.end()) {
             loadLateRegisterAllowlistOnce();
             // Stage 2.C+ instrumentation: build a richer identifier for the
@@ -557,7 +557,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     for (int i = 0; i < n; ++i) {
         TG_ShapeRec& rec = multi->listOfShapes[i];
         if (!rec.processMe || !rec.node) { s_counters.skipped_children++; continue; }
-        TG_Shape* child = rec.node;
+        TG_Shape* child = rec.node.get();
         if (!child->myType) { s_counters.skipped_children++; continue; }
         // Helper/bone nodes (non-SHAPE). CPU Render silently returns because
         // numVertices == 0. Do the same — no instance to emit.

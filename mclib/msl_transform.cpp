@@ -536,7 +536,7 @@ void TG_MultiShape::CacheGpuLightData()
         for (int i = 0; i < numTG_Shapes; ++i) {
             TG_ShapeRec& rec = listOfShapes[i];
             if (!rec.processMe || !rec.node) continue;
-            TG_Shape* child = rec.node;
+            TG_Shape* child = rec.node.get();
             if (!child->myType) continue;
             if (child->myType->GetNodeType() != SHAPE_NODE) continue;
             firstShapeNodeLeaf = child;
@@ -566,7 +566,7 @@ void TG_MultiShape::CacheGpuLightDataAllLeaves()
     for (int i = 0; i < numTG_Shapes; ++i) {
         TG_ShapeRec& rec = listOfShapes[i];
         if (!rec.processMe || !rec.node) continue;
-        TG_Shape* child = rec.node;
+        TG_Shape* child = rec.node.get();
         if (!child->myType) continue;
         if (child->myType->GetNodeType() != SHAPE_NODE) continue;
         const uint32_t idx = child->GatherGpuObjectLightDataOnly();
@@ -592,7 +592,7 @@ const TG_HWLightsData* TG_MultiShape::peekCachedLeafLightData()
     for (int i = 0; i < numTG_Shapes; ++i) {
         TG_ShapeRec& rec = listOfShapes[i];
         if (!rec.processMe || !rec.node) continue;
-        TG_Shape* child = rec.node;
+        TG_Shape* child = rec.node.get();
         if (!child->myType) continue;
         if (child->myType->GetNodeType() != SHAPE_NODE) continue;
         firstShapeNodeLeaf = child;
@@ -659,7 +659,7 @@ void TG_MultiShape::ResubmitCachedGpuLightData()
     for (int i = 0; i < numTG_Shapes; ++i) {
         TG_ShapeRec& rec = listOfShapes[i];
         if (!rec.processMe || !rec.node) continue;
-        TG_Shape* child = rec.node;
+        TG_Shape* child = rec.node.get();
         if (!child->myType) continue;
         if (child->myType->GetNodeType() != SHAPE_NODE) continue;
         firstShapeNodeLeaf = child;

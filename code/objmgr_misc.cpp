@@ -237,16 +237,11 @@ long GameObjectManager::buildCollidableList (void)
 {
 	rebuildCollidableList = false;
 	
-	if (collidableList) 
-	{
-		ObjectTypeManager::objectCache->Free(collidableList);
-		collidableList = nullptr;
-	}
-
 	// First, how many collidables are there?
 	numCollidables = numMechs + numVehicles + numElementals + numTurrets + numGates + numCarnage + numArtillery;
 
-	collidableList = (GameObjectPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GameObjectPtr) * numCollidables);
+	// B7o.8b: the previous list is released by the re-bind.
+	collidableList = bindPoolArray(collidableStore, numCollidables);
 
 	long curIndex = 0;
 	for (long i = 0; i < numMechs; i++)

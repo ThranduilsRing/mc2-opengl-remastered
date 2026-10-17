@@ -207,7 +207,7 @@ class Artillery : public GameObject
 		gosFX::Effect		*rightContrail;
 		gosFX::Effect		*leftContrail;
 				
-		Appearance			*bomber;
+		std::unique_ptr<Appearance>	bomber;		// B7o.5: owns the air-strike bomber (reset at the end of the run and in destroy())
 		bool				bombRunStarted;
 		
 		bool				inView;

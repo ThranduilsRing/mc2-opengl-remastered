@@ -68,7 +68,7 @@ TG_MultiShapePtr TG_TypeMultiShape::CreateFrom (void)
 
 	//listOfShapes
 	newShape->numTG_Shapes = numTG_TypeShapes;
-	newShape->shapeRecStore.assign(numTG_TypeShapes, TG_ShapeRec{});
+	std::vector<TG_ShapeRec>(numTG_TypeShapes).swap(newShape->shapeRecStore);
 	newShape->listOfShapes = newShape->shapeRecStore.data();
 
 	for (long i=0;i<numTG_TypeShapes;i++)

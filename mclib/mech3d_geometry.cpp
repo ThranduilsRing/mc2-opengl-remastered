@@ -370,7 +370,7 @@ void Mech3DAppearance::updateGeometry (void)
 				{
 					const TG_ShapeRec* recp = mechShape->GetShapeRec(i);
 					if (!recp) continue;
-					TG_Shape* c = recp->node;
+					TG_Shape* c = recp->node.get();
 					if (!c || !recp->processMe) continue;
 					++diagChildrenWalked;
 					if (!c->GetIsSpotlight()) continue;

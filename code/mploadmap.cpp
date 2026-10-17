@@ -1,3 +1,4 @@
+#include "mc2str.h"
 #define MPLOADMAP_CPP
 /*************************************************************************************************\
 MPLoadMap.cpp			: Implementation of the MPLoadMap component.
@@ -301,12 +302,12 @@ void MPLoadMap::seedFromCampaign()
 {
 		char searchStr[255];
 		cLoadString( IDS_AUTOSAVE_NAME, searchStr, 255 );
-		EString finalStr;
+		std::string finalStr;
 		finalStr =  "*.fit";
 		FullPathFileName findPath;
-		findPath.init( savePath, finalStr, ".fit" );
+		findPath.init( savePath, finalStr.c_str(), ".fit" );
 
-		EString newestFile;
+		std::string newestFile;
 		long	groupCount = -1;
 		long	missionCount = -1;
 		FitIniFile tmpFile;
@@ -353,9 +354,9 @@ void MPLoadMap::seedFromCampaign()
 
 		 FindClose(searchHandle);
 
-		 if ( newestFile.Length() )
+		 if ( !newestFile.empty() )
 		 {
-			 findPath.init( savePath, newestFile, ".fit" );
+			 findPath.init( savePath, newestFile.c_str(), ".fit" );
 			 FitIniFile file;
 			 long group;
 			 long missions;
@@ -578,8 +579,8 @@ void MPLoadMap::updateMapInfo()
 		FitIniFile file;
 		FullPathFileName path;
 		const char* fileName = ((aTextListItem*)mapList.GetItem( sel ))->getText();
-		selMapName = ((aLocalizedListItem*)mapList.GetItem(sel))->getHiddenText();
-		path.init( missionPath, selMapName, ".fit" );
+		selMapName = mc2::str::from_c(((aLocalizedListItem*)mapList.GetItem(sel))->getHiddenText());
+		path.init( missionPath, selMapName.c_str(), ".fit" );
 
 		if ( NO_ERR == file.open( path ) )
 		{
@@ -604,7 +605,7 @@ void MPLoadMap::updateMapInfo()
 				file.readIdString( "MissionName", missionName, 255 );
 			}
 
-			long textureHandle = MissionBriefingScreen::getMissionTGA( selMapName, true );
+			long textureHandle = MissionBriefingScreen::getMissionTGA( selMapName.c_str(), true );
 			setDefsElementTextureNode( kMpMapKey, textureHandle );
  
 			cLoadString( IDS_MP_LM_MAP_LIST_MAP_NAME, text, 255 );

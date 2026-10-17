@@ -9,6 +9,8 @@ SimpleCamera.h		: Interface for the camera that renders a single object
 
 #include"camera.h"
 
+#include <memory>
+
 class ObjectAppearance;
 
 ///////////////////////////////
@@ -23,7 +25,7 @@ public:
 	void setComponent( const char* fileName );
 	void setBuilding( const char* fileName );
 	void setVehicle( const char* vehicle, long base = 0xffff7e00, long highlight = 0xffff7e00, long h2 = 0xffbcbcbc );
-	ObjectAppearance* getObjectAppearance() const { return pObject; }
+	ObjectAppearance* getObjectAppearance() const { return pObject.get(); }
 
 	void init( float left, float right, float top, float bottom );
 
@@ -78,7 +80,8 @@ public:
 
 private:
 
-	ObjectAppearance*	pObject;
+	std::unique_ptr<ObjectAppearance>	pObject;	// B7o.5: owned; released only through releaseObject()
+	void releaseObject();
 	Camera*				oldCam;
 	float				rotation;
 	float				rotationIncrement;

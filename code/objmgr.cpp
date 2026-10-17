@@ -109,6 +109,7 @@ void GameObjectManager::operator delete (void* us) {
 
 void GameObjectManager::init (void) {
 
+	ownedTypeManager.reset();
 	objTypeManager = nullptr;
 
 	numMechs = 0;
@@ -172,10 +173,10 @@ void GameObjectManager::init (void) {
 
 void GameObjectManager::init (const char* objTypeDataFile, long objTypeHeapSize, long objHeapSize) {
 
-	if (objTypeManager)
-		delete objTypeManager;
-
-	objTypeManager = new ObjectTypeManager;
+	// The previous manager goes first (its destroy() deletes the static type/object heaps the new init() recreates).
+	ownedTypeManager.reset();
+	ownedTypeManager = std::make_unique<ObjectTypeManager>();
+	objTypeManager = ownedTypeManager.get();
 	if (!objTypeManager)
 		Fatal(0, " GameObjectManager.init: unable to create objTypeManager ");
 	long result = objTypeManager->init(objTypeDataFile, objTypeHeapSize, objHeapSize);
@@ -234,17 +235,17 @@ void GameObjectManager::setNumObjects (long nMechs,
 
 	//-----------------------------------------------------------
 	// First element in list is NULL (handle of 0 is always NULL)
-	objList = (GameObjectPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GameObjectPtr) * (getMaxObjects() + 1));
+	objList = bindPoolArray(objListStore, (getMaxObjects() + 1));
 	memset(objList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));
 
-	watchList = (GameObjectPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GameObjectPtr) * (getMaxObjects() + 1));
+	watchList = bindPoolArray(watchListStore, (getMaxObjects() + 1));
 	memset(watchList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));
 
 	// MF3-GENERATIONAL-HANDLE-1: generation side array, LOCKSTEP with watchList
 	// (same size, same memset-0). Allocated unconditionally so the pointer is
-	// always valid; only read/written under s_watchGen. Shares watchList's
-	// objectCache lifecycle (no discrete Free; reclaimed with the cache).
-	watchGeneration = (uint16_t*)ObjectTypeManager::objectCache->Malloc(sizeof(uint16_t) * (getMaxObjects() + 1));
+	// always valid; only read/written under s_watchGen. Owned by watchGenerationStore
+	// like watchList (released by releasePoolArrays() in destroy()).
+	watchGeneration = bindPoolArray(watchGenerationStore, (getMaxObjects() + 1));
 	memset(watchGeneration,0,sizeof(uint16_t) * (getMaxObjects() + 1));
 
 	long curHandle = 1;
@@ -252,7 +253,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 	// For now, we'll use an array of pointers due to the irritating
 	// 'new' for arrays problem...
 	if (maxMechs > 0) {
-		mechs = (BattleMechPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(BattleMechPtr) * maxMechs);
+		mechs = bindPoolArray(mechStore, maxMechs);
 		if (!mechs)
 			Fatal(maxMechs, " GameObjectManager.setNumObjects: cannot malloc mechs ");
 		for (i = 0; i < maxMechs; i++) {
@@ -268,7 +269,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 	// For now, we'll use an array of pointers due to the irritating
 	// 'new' for arrays problem...
 	if (maxVehicles > 0) {
-		vehicles = (GroundVehiclePtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GroundVehiclePtr) * maxVehicles);
+		vehicles = bindPoolArray(vehicleStore, maxVehicles);
 		if (!vehicles)
 			Fatal(maxVehicles, " GameObjectManager.setNumObjects: cannot malloc vehicles ");
 		for (i = 0; i < maxVehicles; i++) {
@@ -285,7 +286,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 	// 'new' for arrays problem...
 #ifdef USE_ELEMENTALS
 	if (numElementals > 0) {
-		elementals = (ElementalPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(ElementalPtr) * numElementals);
+		elementals = bindPoolArray(elementalStore, numElementals);
 		if (!elementals)
 			Fatal(numElementals, " GameObjectManager.setNumObjects: cannot malloc elementals ");
 		for (i = 0; i < numElementals; i++) {
@@ -300,7 +301,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 	// For now, we'll use an array of pointers due to the irritating
 	// 'new' for arrays problem...
 	if (numTerrainObjects > 0) {
-		terrainObjects = (TerrainObjectPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(TerrainObjectPtr) * numTerrainObjects);
+		terrainObjects = bindPoolArray(terrainObjectStore, numTerrainObjects);
 		if (!terrainObjects)
 			Fatal(numTerrainObjects, " GameObjectManager.setNumObjects: cannot malloc terrain objects ");
 
@@ -315,7 +316,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 	// For now, we'll use an array of pointers due to the irritating
 	// 'new' for arrays problem...
 	if (numBuildings > 0) {
-		buildings = (BuildingPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(BuildingPtr) * numBuildings);
+		buildings = bindPoolArray(buildingStore, numBuildings);
 		if (!buildings)
 			Fatal(numBuildings, " GameObjectManager.setNumObjects: cannot malloc buildings ");
 		for (i = 0; i < numBuildings; i++) {
@@ -327,7 +328,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 
 	if (numTurrets > 0)
 	{
-		turrets = (TurretPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(TurretPtr) * numTurrets);
+		turrets = bindPoolArray(turretStore, numTurrets);
 		if ( !turrets )
 			Fatal(numTurrets, " GameObjectManager.setNumObjects: cannot malloc Turrets ");
 			
@@ -341,7 +342,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 
 	if (numGates > 0)
 	{
-		gates = (GatePtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GatePtr) * numGates);
+		gates = bindPoolArray(gateStore, numGates);
 		if ( !gates )
 			Fatal(numGates, " GameObjectManager.setNumObjects: cannot malloc Gates ");
 			
@@ -357,7 +358,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 	// For now, we'll use an array of pointers due to the irritating
 	// 'new' for arrays problem...
 	if (numWeapons > 0) {
-		weapons = (WeaponBoltPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(WeaponBoltPtr) * numWeapons);
+		weapons = bindPoolArray(weaponStore, numWeapons);
 		if (!weapons)
 			Fatal(numWeapons, " GameObjectManager.setNumObjects: cannot malloc weapons ");
 		for (i = 0; i < numWeapons; i++) {
@@ -368,7 +369,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 	}
 
 	if (numCarnage > 0) {
-		carnage = (CarnagePtr*)ObjectTypeManager::objectCache->Malloc(sizeof(CarnagePtr) * numCarnage);
+		carnage = bindPoolArray(carnageStore, numCarnage);
 		if (!carnage)
 			Fatal(numCarnage, " GameObjectManager.setNumObjects: cannot malloc carnage ");
 		for (i = 0; i < numCarnage; i++) {
@@ -379,7 +380,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 	}
 
 	if (numArtillery > 0) {
-		artillery = (ArtilleryPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(ArtilleryPtr) * numArtillery);
+		artillery = bindPoolArray(artilleryStore, numArtillery);
 		if (!artillery)
 			Fatal(numArtillery, " GameObjectManager.setNumObjects: cannot malloc artillery ");
 		for (i = 0; i < numArtillery; i++) {
@@ -931,6 +932,39 @@ void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjec
 
 //---------------------------------------------------------------------------
 
+void GameObjectManager::releasePoolArrays (void)
+{
+	std::vector<GameObjectPtr>().swap(objListStore);
+	std::vector<GameObjectPtr>().swap(watchListStore);
+	std::vector<uint16_t>().swap(watchGenerationStore);
+	std::vector<GameObjectPtr>().swap(collidableStore);
+	std::vector<BattleMechPtr>().swap(mechStore);
+	std::vector<GroundVehiclePtr>().swap(vehicleStore);
+	std::vector<ElementalPtr>().swap(elementalStore);
+	std::vector<TerrainObjectPtr>().swap(terrainObjectStore);
+	std::vector<BuildingPtr>().swap(buildingStore);
+	std::vector<TurretPtr>().swap(turretStore);
+	std::vector<GatePtr>().swap(gateStore);
+	std::vector<WeaponBoltPtr>().swap(weaponStore);
+	std::vector<CarnagePtr>().swap(carnageStore);
+	std::vector<ArtilleryPtr>().swap(artilleryStore);
+	objList = watchList = collidableList = nullptr;
+	watchGeneration = nullptr;
+	mechs = nullptr;
+	vehicles = nullptr;
+	elementals = nullptr;
+	terrainObjects = nullptr;
+	buildings = nullptr;
+	turrets = nullptr;
+	gates = nullptr;
+	weapons = nullptr;
+	carnage = nullptr;
+	artillery = nullptr;
+	numCollidables = 0;
+}
+
+//---------------------------------------------------------------------------
+
 void GameObjectManager::destroy (void) 
 {
 	//--------------------------------------------------------------
@@ -1045,12 +1079,12 @@ void GameObjectManager::destroy (void)
 	}
 	artillery = nullptr;
 
+	// Every actor is gone: only now do the lookup arrays go (objList/watchList stay readable through all the loops above).
+	releasePoolArrays();
+
 	//--------------------------------------------------------------
-	if (objTypeManager) 
-	{
-		delete objTypeManager;
-		objTypeManager = nullptr;
-	}
+	ownedTypeManager.reset();
+	objTypeManager = nullptr;
 
 	delete collisionSystem;
 	collisionSystem = nullptr;

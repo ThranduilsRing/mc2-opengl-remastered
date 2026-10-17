@@ -34,8 +34,7 @@ void MissionInterfaceManager::updateVTol()
 				else if (vTol[vtolNum]->currentFrame >= 300)
 				{
 					paintingVtol[vtolNum] = 0;
-					delete vTol[vtolNum]; 
-					vTol[vtolNum] = nullptr;
+					vTol[vtolNum].reset();
 					
 					if (dustCloud[vtolNum])
 					{
@@ -171,8 +170,7 @@ void MissionInterfaceManager::updateVTol()
 				else if ((vTol[vtolNum]->getCurrentGestureId() == 2) && (!vTol[vtolNum]->getInTransition()))
 				{
 					paintingVtol[vtolNum] = 0;
-					delete vTol[vtolNum];
-					vTol[vtolNum] = nullptr;
+					vTol[vtolNum].reset();
 					
 					if (dustCloud[vtolNum])
 					{

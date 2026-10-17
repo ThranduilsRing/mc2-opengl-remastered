@@ -1089,17 +1089,8 @@ void TerrainObject::destroy (void)
 		cellsCovered = nullptr;
 	}
 
-	if (subAreas0)
-	{
-		ObjectTypeManager::objectCache->Free(subAreas0);
-		subAreas0 = nullptr;
-	}
-
-	if (subAreas1)
-	{
-		ObjectTypeManager::objectCache->Free(subAreas1);
-		subAreas1 = nullptr;
-	}
+	subAreas0.reset();
+	subAreas1.reset();
 
 	//-----------------------------------------------------
 	// This will free any memory the Building is using.
@@ -1488,8 +1479,7 @@ void TerrainObject::calcSubAreas (long numCells, short cells[MAX_GAME_OBJECT_CEL
 			{
 				if (!subAreas0)
 				{
-					subAreas0 = (short *)ObjectTypeManager::objectCache->Malloc(sizeof(short) * MAX_SPECIAL_SUB_AREAS);
-					memset(subAreas0,0,sizeof(short) * MAX_SPECIAL_SUB_AREAS);
+					subAreas0 = std::make_unique<short[]>(MAX_SPECIAL_SUB_AREAS);	// zeroed
 				}
 
 				subAreas0[numSubAreas0++] = area;
@@ -1515,8 +1505,7 @@ void TerrainObject::calcSubAreas (long numCells, short cells[MAX_GAME_OBJECT_CEL
 			{
 				if (!subAreas1)
 				{
-					subAreas1 = (short *)ObjectTypeManager::objectCache->Malloc(sizeof(short) * MAX_SPECIAL_SUB_AREAS);
-					memset(subAreas1,0,sizeof(short) * MAX_SPECIAL_SUB_AREAS);
+					subAreas1 = std::make_unique<short[]>(MAX_SPECIAL_SUB_AREAS);	// zeroed
 				}
 
 				subAreas1[numSubAreas1++] = area;
@@ -1672,12 +1661,12 @@ void TerrainObject::CopyTo (TerrainObjectData *data)
 	data->numSubAreas1 = numSubAreas1;
 
 	if (subAreas0)
-		memcpy(data->subAreas0,subAreas0,sizeof(short) * MAX_SPECIAL_SUB_AREAS);
+		memcpy(data->subAreas0,subAreas0.get(),sizeof(short) * MAX_SPECIAL_SUB_AREAS);
 	else
 		memset(data->subAreas0,0,sizeof(short) * MAX_SPECIAL_SUB_AREAS);
 
 	if (subAreas1)
-		memcpy(data->subAreas1,subAreas1,sizeof(short) * MAX_SPECIAL_SUB_AREAS);
+		memcpy(data->subAreas1,subAreas1.get(),sizeof(short) * MAX_SPECIAL_SUB_AREAS);
 	else
 		memset(data->subAreas1,0,sizeof(short) * MAX_SPECIAL_SUB_AREAS);
 
@@ -1710,14 +1699,14 @@ void TerrainObject::Load (TerrainObjectData *data)
 
 	if (numSubAreas0)
 	{
-		subAreas0 = (short *)ObjectTypeManager::objectCache->Malloc(sizeof(short) * MAX_SPECIAL_SUB_AREAS);
-		memcpy(subAreas0,data->subAreas0,sizeof(short) * MAX_SPECIAL_SUB_AREAS);
+		subAreas0 = std::make_unique<short[]>(MAX_SPECIAL_SUB_AREAS);
+		memcpy(subAreas0.get(),data->subAreas0,sizeof(short) * MAX_SPECIAL_SUB_AREAS);
 	}
 
 	if (numSubAreas1)
 	{
-		subAreas1 = (short *)ObjectTypeManager::objectCache->Malloc(sizeof(short) * MAX_SPECIAL_SUB_AREAS);
-		memcpy(subAreas1,data->subAreas1,sizeof(short) * MAX_SPECIAL_SUB_AREAS);
+		subAreas1 = std::make_unique<short[]>(MAX_SPECIAL_SUB_AREAS);
+		memcpy(subAreas1.get(),data->subAreas1,sizeof(short) * MAX_SPECIAL_SUB_AREAS);
 	}
 
 	listID = data->listID;

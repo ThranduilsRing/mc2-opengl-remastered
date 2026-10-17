@@ -44,13 +44,13 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 		if (vehicleID[vtolNum] != 147)		//NOT a recovery vehicle.  Standard VTOL
 		{
 			AppearanceType* appearanceType = appearanceTypeList->getAppearance( BLDG_TYPE << 24, "vtol" );
-			vTol[commanderID] = new BldgAppearance;
+			vTol[commanderID] = std::make_unique<BldgAppearance>();
 			vTol[commanderID]->init( appearanceType );
 		}
 		else
 		{
 			AppearanceType* appearanceType = appearanceTypeList->getAppearance( BLDG_TYPE << 24, "karnov" );
-			vTol[commanderID] = new BldgAppearance;
+			vTol[commanderID] = std::make_unique<BldgAppearance>();
 			vTol[commanderID]->init( appearanceType );
 		}
 

@@ -80,8 +80,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 		}
 
 		//listOfShapes
-		typeNodeStore.assign(numTG_TypeShapes, nullptr);
-		listOfTypeShapes = typeNodeStore.data();
+		bindTypeNodes(numTG_TypeShapes);
 
 		bool aborted = false;
 		const char* abortReason = "unknown_node_type";
@@ -92,7 +91,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 
 			if (nodeType == SHAPE_NODE)
 			{
-				listOfTypeShapes[i] = new TG_TypeShape;
+				adoptTypeNode(i, std::make_unique<TG_TypeShape>());
 				listOfTypeShapes[i]->init();
 				const bool nodeOK = listOfTypeShapes[i]->LoadBinaryCopy(binFile);
 				loadedShapes++;
@@ -106,7 +105,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 			}
 			else if (nodeType == TYPE_NODE)
 			{
-				listOfTypeShapes[i] = new TG_TypeNode;
+				adoptTypeNode(i, std::make_unique<TG_TypeNode>());
 				listOfTypeShapes[i]->init();
 				listOfTypeShapes[i]->LoadBinaryCopy(binFile);
 				loadedShapes++;
@@ -138,10 +137,8 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 			// Clear any partially-constructed shapes so the MultiShape is
 			// cleanly empty. Caller treats -1 as unsupported.
 			for (long i = 0; i < loadedShapes; ++i) {
-				if (listOfTypeShapes[i]) {
-					delete listOfTypeShapes[i];
-					listOfTypeShapes[i] = nullptr;
-				}
+				typeNodeStore[i].reset();
+				listOfTypeShapes[i] = nullptr;
 			}
 			numTG_TypeShapes = 0;
 			// META-FIX design B PART 0: file existed, content bad -> always-on.
@@ -223,15 +220,14 @@ void TG_TypeMultiShape::AllocateImportedShapes(int numShapes)
 	gosASSERT(listOfTypeShapes == nullptr);  // freshly init()'d multi-shape
 
 	numTG_TypeShapes = numShapes;
-	typeNodeStore.assign(numTG_TypeShapes, nullptr);
-	listOfTypeShapes = typeNodeStore.data();
+	bindTypeNodes(numTG_TypeShapes);
 
 	// Construct empty TG_TypeShape per slot — caller fills via
 	// listOfTypeShapes[i]->InitFromImportedMesh(...). This mirrors the
 	// LoadBinaryCopy SHAPE_NODE branch (msl.cpp:222-228).
 	for (long i = 0; i < numTG_TypeShapes; i++)
 	{
-		listOfTypeShapes[i] = new TG_TypeShape;
+		adoptTypeNode(i, std::make_unique<TG_TypeShape>());
 		listOfTypeShapes[i]->init();
 	}
 }
@@ -371,17 +367,9 @@ void TG_TypeMultiShape::SaveBinaryCopy (const char *fileName)
 //-------------------------------------------------------------------------------
 void TG_TypeMultiShape::destroy (void)
 {
-	for (long i=0;i<numTG_TypeShapes;i++)
-	{
-		if (listOfTypeShapes[i])
-		{
-			// ~TG_TypeNode is virtual (B7o.1): the derived destructor runs destroy() once.
-			delete listOfTypeShapes[i];
-			listOfTypeShapes[i] = nullptr;
-		}
-	}
-
-	std::vector<TG_TypeNodePtr>().swap(typeNodeStore);
+	// The owners release the nodes (~TG_TypeNode is virtual, B7o.1: the derived destructor runs destroy() once); the view goes with them.
+	std::vector<std::unique_ptr<TG_TypeNode>>().swap(typeNodeStore);
+	std::vector<TG_TypeNodePtr>().swap(typeNodeView);
 	listOfTypeShapes = nullptr;
 
 	std::vector<TG_Texture>().swap(textureStore);
@@ -402,14 +390,7 @@ void TG_TypeMultiShape::destroy (void)
 //-------------------------------------------------------------------------------
 void TG_MultiShape::destroy (void)
 {
-	for (long i=0;i<numTG_Shapes;i++)
-	{
-		if (listOfShapes[i].node)
-		{
-			delete listOfShapes[i].node;
-		}
-	}
-
+	// Each record owns its node (B7o.6b): releasing the records releases the nodes.
 	std::vector<TG_ShapeRec>().swap(shapeRecStore);
 	listOfShapes = nullptr;
 
@@ -755,8 +736,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 			aseScan = strstr(aseScan,ASE_HELP_OBJECT);
 		}
 	
-		typeNodeStore.assign(numTG_TypeShapes + 1, nullptr);
-		listOfTypeShapes = typeNodeStore.data();
+		bindTypeNodes(numTG_TypeShapes + 1);
 	
 		//------------------------------------------------------------
 		// SECOND PASS.  Load HelperObjects.
@@ -766,7 +746,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 		aseScan = strstr(aseScan,ASE_HELP_OBJECT);
 		while (aseScan != nullptr)
 		{
-			listOfTypeShapes[startIndex] = new TG_TypeNode;
+			adoptTypeNode(startIndex, std::make_unique<TG_TypeNode>());
 			listOfTypeShapes[startIndex]->init();
 	
 			//---------------------------------------------------
@@ -848,7 +828,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 		aseScan = strstr(aseScan,ASE_OBJECT);
 		while (aseScan != nullptr)
 		{
-			listOfTypeShapes[startIndex] = new TG_TypeShape;
+			adoptTypeNode(startIndex, std::make_unique<TG_TypeShape>());
 			listOfTypeShapes[startIndex]->init();
 			listOfTypeShapes[startIndex]->CreateListOfTextures(listOfTextures,numTextures);
 	

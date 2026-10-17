@@ -67,8 +67,6 @@
 //---------------------------------------------------------------------------
 
 PacketFilePtr			ObjectTypeManager::objectFile = nullptr;
-UserHeapPtr				ObjectTypeManager::objectTypeCache = nullptr;
-UserHeapPtr				ObjectTypeManager::objectCache = nullptr;
 long					ObjectTypeManager::bridgeTypeHandle = 0xFFFFFFFF;
 long					ObjectTypeManager::forestTypeHandle = 0xFFFFFFFF;
 long					ObjectTypeManager::wallHeavyTypeHandle = 0xFFFFFFFF;
@@ -85,7 +83,8 @@ unsigned long			NextIdNumber = 0x30000001;		//Big number to indicate
 
 void* ObjectType::operator new (size_t ourSize) {
 
-	void* result = ObjectTypeManager::objectTypeCache->Malloc(ourSize);
+	// B7o.9: the CRT heap (objectTypeCache is gone).
+	void* result = ::operator new(ourSize);
 	return(result);
 }
 
@@ -93,8 +92,9 @@ void* ObjectType::operator new (size_t ourSize) {
 
 void ObjectType::operator delete (void* us) {
 
+	// G6: the guard is kept exactly as it was (read after the destructor ran); retirement of in-use types is the manager's.
 	if (!((ObjectTypePtr)us)->inUse()) {
-		ObjectTypeManager::objectTypeCache->Free(us);
+		::operator delete(us);
 	}
 }
 	
@@ -237,21 +237,10 @@ long ObjectTypeManager::init (const char* objectFileName, long objectTypeCacheSi
 	if (result != NO_ERR)
 		return(result);
 		
-	objectTypeCache = new UserHeap;
-	if (!objectTypeCache)
-		return NO_RAM_FOR_OBJECT_TYPE_CACHE;
-
-	result = objectTypeCache->init(objectTypeCacheSize,"ObjectTypeHeap");
-	if (result != NO_ERR)
-		return(result);
-	
-	objectCache = new UserHeap;
-	if (!objectCache)
-		return NO_RAM_FOR_OBJECT_CACHE;
-
-	result = objectCache->init(objectCacheSize,"ObjectHeap");
-	if (result != NO_ERR)
-		return(result);
+	// B7o.9: the object type and object heaps are gone (types, actors and their buffers use the CRT and have owners);
+	// the two size parameters are accepted and unused.
+	(void)objectTypeCacheSize;
+	(void)objectCacheSize;
 
 	numObjectTypes = maxObjectTypes;
 	tableStore.assign(static_cast<size_t>(numObjectTypes), nullptr);
@@ -281,7 +270,7 @@ void ObjectTypeManager::destroy(void)
 {
 	if (table) 
 	{
-		// The types are deleted while objectCache still exists: their destructors release their name text and anything they took from it.
+		// The types release their own text (owned members) as the owners go.
 		std::vector<std::unique_ptr<ObjectType>>().swap(typeStore);
 		std::vector<std::unique_ptr<ObjectType>>().swap(retiredTypes);
 		std::vector<ObjectTypePtr>().swap(tableStore);
@@ -294,18 +283,6 @@ void ObjectTypeManager::destroy(void)
 		objectFile->close();
 		objectFile = nullptr;
 		m_objectFile.reset();
-	}
-	
-	if (objectTypeCache) 
-	{
-		delete objectTypeCache;
-		objectTypeCache = nullptr;
-	}
-
-	if (objectCache) 
-	{
-		delete objectCache;
-		objectCache = nullptr;
 	}
 }
 

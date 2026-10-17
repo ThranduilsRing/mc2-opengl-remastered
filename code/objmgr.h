@@ -196,7 +196,10 @@ class GameObjectManager {
 
 	public:
 
+		// B7o.7 (G7): objTypeManager is a VIEW (the unit tests point it at objects they own); ownedTypeManager is what init() fills and
+		// destroy() releases. Both are written together in objmgr.cpp only.
 		ObjectTypeManagerPtr	objTypeManager;
+		std::unique_ptr<ObjectTypeManager>	ownedTypeManager;
 
 		long					numMechs;
 		long					numVehicles;
@@ -256,6 +259,32 @@ class GameObjectManager {
 		// (same size getMaxObjects()+1, same memset-0). Never serialized; reset
 		// to base at Load by design. Inert unless MC2_WATCHID_GENERATION is set.
 		uint16_t				*watchGeneration;
+
+		// B7o.8b (G13 d): the pointer arrays above (objList, watchList, watchGeneration, collidableList and the typed arrays) are VIEWS of
+		// these owners. bindPoolArray() is the one (re)allocation point (setNumObjects, Load, buildCollidableList: zeroed storage, view
+		// refreshed); releasePoolArrays() swaps every owner empty and nulls every view, after destroy()'s last actor deletion.
+		std::vector<GameObjectPtr>		objListStore;
+		std::vector<GameObjectPtr>		watchListStore;
+		std::vector<uint16_t>			watchGenerationStore;
+		std::vector<GameObjectPtr>		collidableStore;
+		std::vector<BattleMechPtr>		mechStore;
+		std::vector<GroundVehiclePtr>	vehicleStore;
+		std::vector<ElementalPtr>		elementalStore;
+		std::vector<TerrainObjectPtr>	terrainObjectStore;
+		std::vector<BuildingPtr>		buildingStore;
+		std::vector<TurretPtr>			turretStore;
+		std::vector<GatePtr>			gateStore;
+		std::vector<WeaponBoltPtr>		weaponStore;
+		std::vector<CarnagePtr>			carnageStore;
+		std::vector<ArtilleryPtr>		artilleryStore;
+
+		template <class T>
+		static T* bindPoolArray (std::vector<T>& owner, long count)
+		{
+			std::vector<T>(static_cast<size_t>(count)).swap(owner);
+			return owner.data();
+		}
+		void releasePoolArrays (void);
 
 		long					currentWeaponsIndex;			//points to next entry in rotating weapon array.
 		long					currentCarnageIndex;			//points to next entry in rotating carnage list		
