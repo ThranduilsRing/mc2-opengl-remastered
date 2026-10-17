@@ -1,3 +1,4 @@
+#include <string>
 #define MPHOSTGAME_CPP
 /*************************************************************************************************\
 MPHostGame.cpp			: Implementation of the MPHostGame component.
@@ -189,12 +190,9 @@ int	MPHostGame::handleMessage( unsigned long message, unsigned long who)
 
 	if ( status == YES )
 	{
-		EString tmp;
-//		numPlayersDropList.EditBox().getEntry(tmp);
-//		long maxPlayers = atoi( tmp );
-		edits[0].getEntry(tmp);
+		std::string tmp = edits[0].entry();
 		MPlayer->setMode(MULTIPLAYER_MODE_PARAMETERS);
-		if ( !MPlayer->hostSession ((char*)(const char*)tmp, &prefs.playerName[0][0], 8) )
+		if ( !MPlayer->hostSession (tmp.data(), &prefs.playerName[0][0], 8) )
 		{
 			MPlayer->setMode(MULTIPLAYER_MODE_NONE);
 			// need to pop dlg here
@@ -234,10 +232,9 @@ void MPHostGame::update()
 	helpTextID = 0;
 	helpTextHeaderID = 0;
 
-	EString tmp;
-	edits[0].getEntry(tmp);
+	std::string tmp = edits[0].entry();
 
-	long len = tmp.Length();
+	long len = static_cast<int>(tmp.size());
 
 
 	if ( len >= 1)

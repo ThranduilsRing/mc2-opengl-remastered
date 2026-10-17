@@ -1,3 +1,4 @@
+#include "mc2str.h"
 #define MPPREFS_CPP
 /*************************************************************************************************\
 mpprefs.cpp			: Implementation of the mpprefs component.ef
@@ -574,28 +575,26 @@ int			MPPrefs::handleMessage( unsigned long message, unsigned long who )
 void MPPrefs::saveSettings()
 {
 	// check and see if name has changed
-	EString txt;
-	comboBox[0].EditBox().getEntry( txt );
+	std::string txt = comboBox[0].EditBox().entry();
 
-	if ( txt != prefs.playerName[0] )
+	if ( !mc2::str::iequals(txt, prefs.playerName[0]) )
 	{
-		prefs.setNewName( txt );
+		prefs.setNewName( txt.c_str() );
 	}
 	
 	MC2Player* pInfo = MPlayer->getPlayerInfo( MPlayer->commanderID );
 
-	strcpy( pInfo->name, txt );
+	strcpy( pInfo->name, txt.c_str() );
 
 	// check and see if name has changed
-	comboBox[1].EditBox().getEntry( txt );
+	txt = comboBox[1].EditBox().entry();
 
-	if ( txt != prefs.unitName[0] )
+	if ( !mc2::str::iequals(txt, prefs.unitName[0]) )
 	{
-		prefs.setNewUnit( txt );
+		prefs.setNewUnit( txt.c_str() );
 	}
 
-	if ( txt )
-		strcpy( pInfo->unitName, txt );
+	strcpy( pInfo->unitName, txt.c_str() );
 
 
 	// colors should already be updated by now
@@ -681,7 +680,7 @@ int aBmpListItem::setBmp( const char* pFileName )
 
 	addChild( &bmp );
 
-	fileName = pFileName;
+	fileName = mc2::str::from_c(pFileName);
 	return true;
 }
 

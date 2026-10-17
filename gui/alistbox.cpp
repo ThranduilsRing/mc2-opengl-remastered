@@ -1318,13 +1318,13 @@ aTextListItem::~aTextListItem()
 {
 }
 
-void		aTextListItem::setText( const char* newText )
+void		aTextListItem::setText( std::string_view newText )
 {
-	text = newText;
+	text = newText.substr(0, newText.find('\0'));
 }
 const char* aTextListItem::getText() const
 {
-	return text;
+	return text.c_str();
 }
 
 void aTextListItem::render()
@@ -1334,14 +1334,14 @@ void aTextListItem::render()
 
 	// Text bridge: route the row label to crisp TTF (matches the data/defs UI)
 	// when a legacy widget is being drawn over a defs page.
-	if ( aObject::renderTextBridged( font, (const char*)text,
+	if ( aObject::renderTextBridged( font, text.c_str(),
 		location[0].x, location[0].y, location[2].x, location[2].y,
 		location[0].argb, alignment ) )
 		return;
 
 	float y = location[2].y - location[0].y;
 	float tmpHeight = font.height();
-	if ( y > tmpHeight && font.height( text, width() ) <= tmpHeight
+	if ( y > tmpHeight && font.height( text.c_str(), width() ) <= tmpHeight
 		&& !bForceToTop )
 	{
 		// Centered branch — use visual ink bounds so the visible text
@@ -1350,13 +1350,13 @@ void aTextListItem::render()
 		DWORD w;
 		int   visTop, visBot;
 		gos_TextSetAttributes( font.getTempHandle(), location[0].argb, font.getSize(), true, true, false, false, alignment );
-		gos_TextVisualBounds( &w, &visTop, &visBot, text );
+		gos_TextVisualBounds( &w, &visTop, &visBot, text.c_str() );
 		y = (location[2].y + location[0].y)/2.f - (visTop + visBot + 1)/2.f;
 	}
 	else
 		y = location[0].y + tmpHeight/4.f;
 
-	font.render( text, location[0].x, y,
+	font.render( text.c_str(), location[0].x, y,
 		location[2].x - location[0].x, location[2].y - location[0].y,
 		location[0].argb, 0, alignment );
 }
@@ -1372,7 +1372,7 @@ void aTextListItem::setText( long resID )
 void aTextListItem::sizeToText()
 {
 	// assume the width is right and we need to make the height different
-	unsigned long height = font.height( text, width() );
+	unsigned long height = font.height( text.c_str(), width() );
 	resize( width(), height );
 
 	
