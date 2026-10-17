@@ -131,6 +131,14 @@ class gosRenderer {
         // TG_TinyTexture entries that were never loaded (e.g. 0xFFFFFFFF).
         size_t getTextureListSize() const { return textureList_.size(); }
 
+        // The live texture handle owning GL name `glName`, or INVALID_TEXTURE_ID. Tolerates released (null) list slots.
+        uint32_t findTextureHandleByGlName(uint32_t glName) const {
+            for (size_t h = 0; h < textureList_.size(); ++h)
+                if (textureList_[h] && textureList_[h]->getTextureId() == glName)
+                    return (uint32_t)h;
+            return INVALID_TEXTURE_ID;
+        }
+
         void deleteTexture(DWORD texture_id) {
             // FIXME: bad use object list, with stable ids
             // to not waste space

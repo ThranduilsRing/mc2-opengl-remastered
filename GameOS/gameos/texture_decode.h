@@ -107,3 +107,5 @@ struct GosTexels {
 
 // Implemented by the renderer's texture list (gameos_graphics.cpp).
 GosTexels gos_GetTextureTexels(uint32_t gosHandle);
+// The same, found by the GL texture name (what the game hands ImGui as an ImTextureID); Pending when no live texture has that name.
+GosTexels gos_GetTextureTexelsByGlName(uint32_t glName);

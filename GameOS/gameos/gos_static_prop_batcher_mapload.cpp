@@ -54,6 +54,7 @@ GpuStaticPropBatcher& GpuStaticPropBatcher::instance() {
 
 void GpuStaticPropBatcher::onMapLoad() {
     s_packets.clear();
+    s_packetAlphaBaked.clear();
     s_types.clear();
     s_perTypePeak.clear();
     s_coalesceFrameSlot = 0;  // reset coalesce ring slot per-mission for hygiene
