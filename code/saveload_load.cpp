@@ -4,6 +4,7 @@
 #include "saveload_internal.h"
 #include "mission_load_frame.h"
 #include "mc2fmt.h"
+#include "tex_resolve_table.h"
 #include <new>
 
 
@@ -72,6 +73,11 @@ void Mission::loadTerrain(MissionLoadFrame& f) {
 
 	result = pakFile.open( terrainFileName );
 	gosASSERT( result == NO_ERR );
+
+	// Mission::load can run mid-frame (quickload), after Terrain::geometry armed the per-frame
+	// tex_resolve memo; Mission::destroy released the terrain nodes, so drop the stale handles
+	// before the cement/colormap atlas builds resolve them (Mission::init runs out of frame).
+	invalidateTexResolveTable();
 
 	land = new Terrain;
 	gosASSERT(land != nullptr);
