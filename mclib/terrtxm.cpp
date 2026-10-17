@@ -1809,6 +1809,8 @@ void TerrainTextures::destroy (void)
 	}
 	textures = nullptr;
 	details = nullptr;
+	numTxms = 0;
+	numDetails = 0;
 
 	delete tileHeap;
 	tileHeap = nullptr;

@@ -99,7 +99,9 @@ void* SensorSystem::operator new (size_t mySize) {
 
 void SensorSystem::operator delete (void* us) {
 
-	missionHeap->Free(us);
+	// SensorManager is a global unique_ptr: at process exit (or after a load error that skipped Mission::destroy) the heap is already gone.
+	if (missionHeap)
+		missionHeap->Free(us);
 }
 
 //---------------------------------------------------------------------------
@@ -699,7 +701,9 @@ void* TeamSensorSystem::operator new (size_t mySize) {
 
 void TeamSensorSystem::operator delete (void* us) {
 
-	missionHeap->Free(us);
+	// SensorManager is a global unique_ptr: at process exit (or after a load error that skipped Mission::destroy) the heap is already gone.
+	if (missionHeap)
+		missionHeap->Free(us);
 }
 
 //---------------------------------------------------------------------------
@@ -1142,7 +1146,9 @@ void* SensorSystemManager::operator new (size_t mySize) {
 
 void SensorSystemManager::operator delete (void* us) {
 
-	missionHeap->Free(us);
+	// SensorManager is a global unique_ptr: at process exit (or after a load error that skipped Mission::destroy) the heap is already gone.
+	if (missionHeap)
+		missionHeap->Free(us);
 }
 
 //---------------------------------------------------------------------------
@@ -1269,7 +1275,8 @@ void SensorSystemManager::destroy (void) {
 			sensorPool[i] = nullptr;
 		}
 		
-		missionHeap->Free(sensorPool);
+		if (missionHeap)
+			missionHeap->Free(sensorPool);
 		sensorPool = nullptr;
 	}
 
