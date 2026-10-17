@@ -176,8 +176,7 @@ def main() -> int:
         print(f"ERROR: editor exe not found: {exe}\n  Build EditRel + deploy-editor (DEPLOY=...0.4c) first.")
         return 2
     if not mission.exists():
-        print(f"ERROR: mission pak not found: {mission}
-  Stock missions live in mission.fst; materialize them with "
+        print(f"ERROR: mission pak not found: {mission}\nStock missions live in mission.fst; materialize them with "
               f"`run_editor_smoke.py --exe <editor> --prepare-stock-scratch --case gen_map_basic` on a lane install, "
               f"then pass --mission stock:mc2_01.")
         return 2
