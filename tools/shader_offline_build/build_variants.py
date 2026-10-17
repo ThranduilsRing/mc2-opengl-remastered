@@ -38,6 +38,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import shader_common  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import slang_compile  # noqa: E402
 
 PILOTS = ROOT / "tools" / "shader_offline_build" / "pilots.json"
 BINDING_OCC = ROOT / "docs" / "render-backend-seams" / "binding-slot-occupancy.json"
@@ -104,6 +106,12 @@ def reflect(spv: Path, spirv_cross: str):
     samplers = [{"name": t.get("name"), "type": t.get("type"),
                  "location": t.get("location"), "binding": t.get("binding")}
                 for t in raw.get("textures", [])]
+    # Slang/HLSL-style separate image + sampler objects (absent from GLSL output,
+    # so existing sidecars are unchanged).
+    for key in ("separate_images", "separate_samplers"):
+        samplers += [{"name": t.get("name"), "type": t.get("type"),
+                      "location": t.get("location"), "binding": t.get("binding"),
+                      "set": t.get("set")} for t in raw.get(key, [])]
     return {"ubos": blocks("ubos"), "ssbos": blocks("ssbos"),
             "samplers": samplers,
             "inputs": [{"name": i.get("name"), "location": i.get("location")}
@@ -170,18 +178,24 @@ def _tool_version(exe) -> str:
         return "unknown"
 
 
-def build_package(cfg, spv_dir, index_records, glslang, spirv_cross):
+def build_package(cfg, spv_dir, index_records, glslang, spirv_cross, slangc=None):
+    tools = {
+        "glslangValidator": _tool_version(glslang),
+        "spirv_cross": _tool_version(spirv_cross),
+        "compile_flags": "-G --auto-map-locations (NOT --auto-map-bindings)",
+    }
+    if slangc:  # only when a .slang pilot exists: GLSL-only output stays byte-identical
+        tools["slangc"] = slang_compile.slangc_version(slangc)
+        tools["slang_compile_flags"] = (
+            f"-target spirv -profile {slang_compile.DEFAULT_PROFILE} "
+            "(Vulkan; no GL occupancy check)")
     return {
         "schema_version": PACKAGE_SCHEMA_VERSION,
         "slice": "SHADER-ARTIFACT-PACKAGE-METADATA-1",
         "generator": "tools/shader_offline_build/build_variants.py",
         "source_hash_canonicalization":
             "canon_source: strip '#line N // <path>' labels + normalize CRLF->LF",
-        "tools": {
-            "glslangValidator": _tool_version(glslang),
-            "spirv_cross": _tool_version(spirv_cross),
-            "compile_flags": "-G --auto-map-locations (NOT --auto-map-bindings)",
-        },
+        "tools": tools,
         "runtime": {
             "env_gate": "MC2_SHADER_SPIRV=1 (default OFF)",
             "required_extension": "GL_ARB_gl_spirv || GL 4.6",
@@ -198,12 +212,43 @@ def build_package(cfg, spv_dir, index_records, glslang, spirv_cross):
     }
 
 
+def _emit_record(args, fails, built, index, cfg, spv_dir, base, stage, vname,
+                 defines, vid, art, src_hash, spirv_hash, refl, index_key, extra):
+    """Sidecar + index record for a Slang stage (same shape as the GLSL records).
+    Vulkan set/binding numbers are NOT checked against the GL slot-occupancy file."""
+    sidecar = {
+        "base": base, "stage": stage, "variant": vname,
+        "defines": defines, "specializationParams": [],
+        "artifact": art, "spv_dir": cfg.get("spv_dir", "shaders/spv"),
+        "source_sha256": src_hash, "spirv_sha256": spirv_hash,
+        "bindings": {"ubos": refl["ubos"], "ssbos": refl["ssbos"],
+                     "samplers": refl["samplers"]},
+        "interface": {"inputs": refl["inputs"], "outputs": refl["outputs"]},
+        "shaderVariantId": vid,
+    }
+    sidecar.update(extra)
+    sc_path = spv_dir / sidecar_name(base, stage, vname)
+    if args.check:
+        if not sc_path.exists():
+            fails.append(f"{art}: sidecar missing {sc_path.name}")
+        elif json.load(open(sc_path, encoding="utf-8")).get("source_sha256") != src_hash:
+            fails.append(f"{art}: source hash drift vs sidecar")
+    else:
+        sc_path.write_text(json.dumps(sidecar, indent=2), encoding="utf-8")
+    index.append({"key": index_key(base, stage, defines), "artifact": art,
+                  "variantId": vid, "base": base, "stage": stage,
+                  "defines": sorted(defines)})
+    built.append(art)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default=None)
     ap.add_argument("--check", action="store_true",
                     help="verify existing artifacts match; write nothing")
     ap.add_argument("--quiet", action="store_true")
+    ap.add_argument("--pilots", default=None,
+                    help="alternate pilots manifest (tests; .slang stages allowed)")
     args = ap.parse_args()
     root = Path(args.root) if args.root else ROOT
 
@@ -214,7 +259,19 @@ def main():
               "(need Vulkan SDK on PATH or $VULKAN_SDK)", file=sys.stderr)
         return 2
 
-    cfg = json.load(open(PILOTS, encoding="utf-8"))
+    cfg = json.load(open(args.pilots or PILOTS, encoding="utf-8"))
+    slangc = None
+    if any(slang_compile.is_slang(rel)
+           for p in cfg["pilots"] for rel in p["stages"].values()):
+        slangc = slang_compile.find_slangc()
+        if not slangc:
+            print("[build_variants] FAIL: slangc not found (Vulkan SDK >= "
+                  f"{slang_compile.min_version()} on PATH or $VULKAN_SDK)", file=sys.stderr)
+            return 2
+        verr = slang_compile.check_version(slangc)
+        if verr:
+            print(f"[build_variants] FAIL: {verr}", file=sys.stderr)
+            return 2
     spv_dir = root / cfg.get("spv_dir", "shaders/spv")
     occ = occupancy_slots()
     if not args.check:
@@ -232,11 +289,30 @@ def main():
             vname, defines = variant["name"], variant.get("defines", [])
             vid = variant_id(base, defines)
             for stage, rel in pilot["stages"].items():
+                art = artifact_name(base, stage, vname, vid)
+                spv_path = spv_dir / art
+                if slang_compile.is_slang(rel):
+                    src_path = root / rel
+                    src_hash = sha256(slang_compile.source_text_canon(src_path))
+                    entry = pilot.get("entries", {}).get(stage, "main")
+                    prof = pilot.get("spirv", slang_compile.DEFAULT_PROFILE)
+                    with tempfile.TemporaryDirectory() as td:
+                        out = spv_path if not args.check else Path(td) / art
+                        ok, diag = slang_compile.compile_slang(
+                            slangc, src_path, stage, out, entry, prof)
+                        if not ok:
+                            fails.append(f"{art}: slangc failed: {diag[:600]}")
+                            continue
+                        spirv_hash = sha256(out.read_bytes())
+                        refl = reflect(out, spirv_cross)
+                    _emit_record(args, fails, built, index, cfg, spv_dir, base, stage,
+                                 vname, defines, vid, art, src_hash, spirv_hash, refl,
+                                 index_key, extra={"language": "slang", "entry": entry,
+                                                   "spirvProfile": prof})
+                    continue
                 src_path = root / rel
                 src = shader_common.build_shader_source(src_path, defines)
                 src_hash = sha256(canon_source(src))
-                art = artifact_name(base, stage, vname, vid)
-                spv_path = spv_dir / art
                 # compile to a temp source, then to the artifact path
                 with tempfile.TemporaryDirectory() as td:
                     tmp = Path(td) / src_path.name
@@ -312,7 +388,7 @@ def main():
     # SHADER-ARTIFACT-PACKAGE-METADATA-1: deterministic package metadata file.
     pkg_path = spv_dir / "spirv_package.json"
     if index:
-        pkg = build_package(cfg, spv_dir, index, glslang, spirv_cross)
+        pkg = build_package(cfg, spv_dir, index, glslang, spirv_cross, slangc)
         if args.check:
             if not pkg_path.exists():
                 fails.append("spirv_package.json missing — run build_variants.py")
