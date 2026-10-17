@@ -1,5 +1,36 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FORTY-SECOND session (2026-10-16, Sonnet 5.5) -- row 29 beam heads and halos fixed (shape residual proposed as accepted), s41 review items folded
+
+### Commits (after 92f06782a)
+Temp diag commits (net content removed again) | VFX island: OneOne blend, texels as stored, billboard pull (code in `vulkan_vfx_island.*`, `gos_particle_bridge.cpp`, `vfx_particle.{vert,frag}`, gosFX `card/cardcloud/pointcloud.cpp` blend mapping) | GuiRuntime lazy GL3 init after a VK-to-GL fallback + editor Render branch + doc/scrub nits | docs/state commit. MERGEABLE TIP = the commit carrying this line.
+
+### Proof
+| Evidence | Result |
+|---|---|
+| row 29 oracle, mc2_24 ppc frame 154 `--fixture 1`, exe 0db577a86 (`scratch/vo42h` MLR, `scratch/vo42j` GPU) | MLR byte-identical to s41; GPU heads (2 blue, 2 orange) now drawn with halo; crop 650x370: 10,424 px differ (7,505 over 8 levels, 3,923 over 32, mean 0.908) vs s41 8,263 / 6,738 / 3,971 / 0.966; montage `.claude/l2cap/s42-row29-heads-mlr-s41gpu-s42gpu.png` viewed |
+| causes (experiments in `scratch/vo42c..g`) | clip bias 0.001/0.01/0.1 all show the heads (0.1 = 0.01 = 0.001), so depth value; dump showed halo groups with vertex alpha 0; BC7 sRGB view -> UNORM view brought the halos back |
+| doctest | `build_contract_harnesses --run --unit` exit 0 |
+| VK tier1 + validation, exe 0db577a86 (`scratch/t42.log`, run 2026-10-16T20-15-23) | 5/5 PASS, DEPLOY_FINGERPRINT OK x5, validation errors 0 warnings 0 on all five (default path: the island is not exercised, `MC2_GPU_PARTICLES` default OFF) |
+| check-contracts.sh | 14 rows red, the SAME 14 as a clean worktree at 92f06782a (`scratch/cc42base.log` vs `scratch/cc42b.log`): abl_writer_census, estring_callsites, gl_shader_variants, spirv_artifacts, vk_pipeline_layout, gl_vk_feature_coverage, background_launch, vk_ownership_ledger, gated_layout_macros, doc_links, script_callers, scripts_tests, tools_tests, sim_include_firewall. None from this diff; not fixed (cleanup debt on this branch) |
+
+### Review items (orchestrator, s41 cleanup review)
+1. `vkImguiRequested()` now reads the backend live (gate cached only); `NewFrame` brings GL3 up lazily when no renderer is up and the session is not Vulkan. Not exercised by a forced fallback run.
+2. Editor: `Render()` takes the VK path only when no GL3 renderer is initialised (`!s_openGlRendererInitialized && vkImguiRequested()`).
+3. `MC2_ABL_COMPILE_FATAL` `verified` drop is INTENDED: the generator check says it is marked verified but has no `gate::get<>` reader (restoring it makes `gate_gen_check` fail; I tried, then reverted). verified_count 966 stays.
+4. check-contracts run (above). Nits: "since lane 2 session 41" dropped; `MC2_VK_NO_GL_INTEROP_STRICT` (deleted gate) removed from the field-check SCRUB list; `MC2_VK_IMGUI` stays scrubbed on purpose (a leaked `=0` would flip the check).
+
+### Open
+- Row 29: shape/glow fidelity residual (proposal: accept; default-OFF gate). GPU arm not validation-run (oracle cannot declare it).
+- 14 pre-existing red contract rows (above).
+- Scratch (mine, deletable): `scratch/` vo42*, b42.sh, build/deploy_s42.log, t42.log, cc42*.log, s42-heads-*.png.
+
+### Lessons (42)
+- Do not trust an inherited cause ("heads fail against the tube depth"): MLR beams are HUD-tail and write no depth. A clip-bias sweep (0.001..0.1 identical) localised it in three runs.
+- A blend difference can hide in data: vertex alpha 0 is invisible under SRC_ALPHA but not under ONE,ONE.
+- BC7 sRGB pages sampled as sRGB crush soft glows when the reference blends in display space.
+- A heredoc through this shell swallows `\n`: build the backslash with `chr(92)` or sed.
+
 ## FORTY-FIRST session (2026-10-16, Sonnet 5.5) -- nifty 9c39e5cbf and Codex row 29 fix merged, row 29 re-graded (stays open), MC2_VK_IMGUI default ON
 
 ### Commits (after 07056c242)
