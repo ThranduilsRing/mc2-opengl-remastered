@@ -2599,7 +2599,7 @@
         },
         {
           "path": "tests/analyze/b7_actor_census.py",
-          "line": 32,
+          "line": 39,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
