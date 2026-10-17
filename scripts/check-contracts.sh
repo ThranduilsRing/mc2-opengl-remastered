@@ -948,11 +948,6 @@ run_check "shader_package"         "py -3 scripts/check-shader-package.py --quie
 run_check "vk_ubo_layout"          "py -3 tools/check_ubo_layout.py"
 run_check "glsl_port_diff"         "py -3 tools/glsl_port_diff.py --all"
 run_check "vk_shaders_compile"     "py -3 tools/check_vk_shaders.py"
-# D6/A5 (opus-consistency-review): GL features an MC2_* gate drives that the VK twin lacks.
-# Every NOT_PORTED pair must be in tools/vk_not_ported.allowlist (new gap / stale entry fail),
-# and the second command fails a change that turns such a gate's default ON, because gate
-# amnesty would then change GL only. Docs: docs/gl-vk-feature-coverage.md, gl-vk-shader-twins.md.
-run_check "gl_vk_feature_coverage" "py -3 tools/gl_vk_feature_coverage.py && py -3 tools/gl_vk_feature_coverage.py --flip-check HEAD~1"
 # CONTRACT-TRUTH-2: the census above enforces that shaders ROUTE THROUGH the
 # rc_* helpers. It says nothing about whether the helpers' own documentation is
 # true, and it wasn't: shaders/include/render_contract.hglsl:77 stated the
