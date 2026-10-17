@@ -1,5 +1,34 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FORTY-SIXTH session (2026-10-17, Sonnet 5.5) -- ImGui layer drawn upside down under Vulkan (fixed), s45 texture bridge review blockers fixed
+
+### Commits (on 8f0622666)
+7f769cda5 TEMP diag (DrawUiText vertex log; net content reverted in 3da8aeb94) | 3da8aeb94 ImGui flip fix | a2bd261c6 bridge review fixes | state/BUGS commit after (docs only). Mergeable tip = the state commit.
+
+### Root cause (task 1)
+NOT text and NOT a font atlas: the ENTIRE ImGui layer was upside down (portraits, mech icons, button art, label positions; the s45 note that icons were upright was wrong, the portraits in `.claude/l2s45/vk_bay.png` are inverted). Every logistics/encyclopedia page is a defs page drawn through ImGui (`DrawUiText`/`DrawUiImage`). Evidence: a temporary log of `DrawUiText` boxes showed BACK at y=440 and MAIN MENU at y=14 (ImGui space, correct for the game), drawn at the top and bottom respectively. The present image has GL bottom-left origin (composite un-flipped, copy-2 flips into the swapchain) and the native HUD shader flips Y itself; the stock Vulkan ImGui backend draws top-down into that image. Introduced with the first ImGui present tail (4ed1ca21d); invisible while ImGui carried only the debug overlay. Fix: vendored backend `ImGui_ImplVulkan_SetFlipY(true)` (negative-height viewport, scissor mirrored). `MC2_VK_IMGUI=0` draws no ImGui at all under VK (black pages), so it cannot show a flip; no pre-s41 exe was run (by construction since 4ed1ca21d).
+
+### Review blockers (orchestrator, Astra) fixed in a2bd261c6
+1 pool: size 16 + 2*256, live and retired both capped at 256, `AddTexture` (vendored) returns null on exhaustion, draw skipped, logged once. 2 identity: each cache hit compares the live texture's texel vector pointer once per frame (plus the weak_ptr), a mismatch retires and re-uploads. 3 descriptor allocated before any command is recorded (a failure leaves nothing recorded). Should-fix: BC7 sRGB sampled as UNORM, BC7 size ceil(w/4)*ceil(h/4)*16 validated, LRU eviction at the live cap, scope guard for the id/clip restore.
+
+### Proof
+| check | result |
+|---|---|
+| mech bay VK (`mechbay_preview_harness bay`), final exe a2bd261c6 | `.claude/l2s46/bay3.png` viewed: all text, portraits, icons, buttons upright (before: `.claude/l2s45/vk_bay.png`, `.claude/l2s46/bay0.png`) |
+| encyclopedia VK | `.claude/l2s46/enc3.png` viewed: upright, list order A to J, body text readable |
+| in-mission HUD text VK | `.claude/l2s46/mis2.png` viewed: unit names and hint text upright (native HUD path, not affected) |
+| VK tier1 + validation | 3da8aeb94: 5/5, 0/0 (`.claude/l2s46/t46.log`); final a2bd261c6: 5/5, errors 0 warnings 0, DEPLOY_FINGERPRINT OK x5 (`.claude/l2s46/t46b.log`) |
+| VK campaign leg (validation ON), a2bd261c6 | `.claude/l2s46/vk-campaign`: results, logistics, mission 2 (mc2_16) loaded, no crash; ended on the timeout |
+| `build_contract_harnesses --run --unit` | rc 0 (`.claude/l2s46/p_doctest.log`) |
+
+### Open
+1. Task 2 NOT done: the 3D mech preview panel is empty. The camera-preview colour texture is a GL FBO texture (`gos_BeginCameraPreviewRender`, 800x600 times `MC2_PREVIEW_FBO_SCALE`, default 4 = 3200x2400, about 30 MB). Needs either a per-frame GL readback into a VK image (scale 1 = 1.9 MB) after confirming the mech is still drawn into the GL FBO under VK-owned scenes (the log shows `BeginCameraPreviewRender fbo=9 status=0x8cd5` = complete, but whether the mech batcher draws into it is unverified), or the VK mech island rendering into a VK colour target for the panel. Row 56 stays OPEN on this.
+2. The VK campaign leg with validation ON reports 10 `VUID-vkCmdDrawIndexed-robustBufferAccess2-08798` errors (index size 4, firstIndex 5562..6156 beyond a 19740-byte index buffer) during mission 2 load, after the `VK_MECH_ISLAND` texture-cache lines; not ImGui (no ImGui draws in missions). Tier1 stays 0/0. NOT investigated; s45 ran its campaign leg without validation. Candidate: a mech or shadow island draw. Needs its own session.
+3. BC7 UI colour space: UI images now sample BC7 as UNORM; not compared by eye against a BC7-sRGB UI texture (the bay icons are RGBA8 mirrors).
+4. Carried: late forced VK-to-GL fallback not run; GL flush reads `listOfTextures` at draw time (latent).
+5. Process: the build and the game launches ran through script files (`scratch/b46.sh` waits for no mc2 process, builds with -j2 and a unique `_MSPDBSRV_ENDPOINT_`, deploys to the explicit lane2 directory); no variable-built exe path.
+6. Lesson: a shell heredoc swallows `\n` (build the backslash with `chr(92)`), `re.sub` needs a function replacement for it, and long heredocs with apostrophes break this tool: use the Write tool.
+
 ## FORTY-FIFTH session (2026-10-17, Sonnet 5.5) -- ImGui images under Vulkan (GL texture name to descriptor set bridge), s44 review items folded
 
 ### Commits (on 3ac571c9f)
