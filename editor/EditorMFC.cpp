@@ -83,6 +83,7 @@ int          g_cliSmokeSaveOk     = -1;    // -1 = not attempted, 0/1 = save() r
 // (no save mutation); reported in the [ESMOKE v1] summary. Pairs with a -gen-map
 // (empty map -> counts all zero, selected=0, which is still a valid PASS).
 bool         g_cliSmokeOutliner       = false;
+bool         g_cliSmokeFrameSelection = false;   // -smoke-frame-selection: frame the camera on the outliner-selected object (capture evidence)
 int          g_cliSmokeOutlinerCount  = -1;   // -1 = not attempted, >=0 = total objects
 int          g_cliSmokeOutlinerSel    = -1;   // -1 = not attempted, 0/1 = first-object selected
 
@@ -391,6 +392,10 @@ static void s_cli_parse(const char* cmd)
 		else if (s_cli_flag_match(tok, "-smoke-outliner", "--smoke-outliner"))
 		{
 			g_cliSmokeOutliner = true;
+		}
+		else if (s_cli_flag_match(tok, "-smoke-frame-selection", "--smoke-frame-selection"))
+		{
+			g_cliSmokeFrameSelection = true;
 		}
 		else if (s_cli_flag_match(tok, "-smoke-inspector", "--smoke-inspector"))
 		{
@@ -1086,6 +1091,8 @@ BOOL EditorMFCApp::OnIdle(LONG lCount)
 			OutlinerCounts oc = SceneOutliner::ComputeCounts();
 			g_cliSmokeOutlinerCount = oc.total();
 			g_cliSmokeOutlinerSel = SceneOutliner::SelectFirstObject() ? 1 : 0;
+			if (g_cliSmokeFrameSelection && g_cliSmokeOutlinerSel)
+				EditorInterface::frameSelectedObjects();
 			fprintf(stderr, "[EDITOR_CLI v1] event=outliner count=%d selected=%d "
 				"units=%d buildings=%d navmarkers=%d dropzones=%d forests=%d\n",
 				g_cliSmokeOutlinerCount, g_cliSmokeOutlinerSel,
