@@ -5058,21 +5058,6 @@
     "SensorSystemManager"
    ]
   },
-  "SensorSystemManager": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mission_init.cpp": {
-     "new": 1
-    },
-    "code/saveload_load.cpp": {
-     "new": 1
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "SimpleCamera": {
    "delete": 1,
    "delete_array": 0,
