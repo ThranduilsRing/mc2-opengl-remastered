@@ -23,6 +23,7 @@
 #include<stuff/stuff.hpp>
 #include<gameos.hpp>
 #include <cstdint>  // uint64_t (Tier-1 instrumentation, stability spec §2)
+#include <cstring>  // strcmp (rebuildShapeRecParents)
 #include <memory>   // the per-frame pools own their storage
 #include <vector>   // an animation owns its key tracks
 #include "../RenderCore/gpu_abi/GpuObjectLights.h"  // single-source per-object light record
@@ -459,10 +460,41 @@ typedef struct _TG_ShapeRec
 
 		return *this;
 	}
-	
+
+	// B7o.6a: Detach and the shape compaction MOVE a record: the node goes over (the source keeps none) and the per-frame fields
+	// reset exactly as the copy assignment resets them; the parent pointer is copied and must be rebuilt for the new array.
+	void transferFrom (_TG_ShapeRec &rec)
+	{
+		node 				= rec.node;
+		rec.node			= nullptr;
+		calcedThisFrame		= -1;
+		processMe			= true;
+		currentAnimation	= NULL;
+		parentNode			= rec.parentNode;
+		baseRotation		= rec.baseRotation;
+	}
+
 } TG_ShapeRec;
 
 typedef TG_ShapeRec *TG_ShapeRecPtr;
+
+// B7o.6a: points each record's parent at the record of the SAME array whose node id equals its parent id (the first match);
+// a record whose parent id matches none keeps its parent pointer (the detached root was nulled by the caller).
+template <class NodeIdOf, class ParentIdOf>
+inline void rebuildShapeRecParents (TG_ShapeRec *recs, long count, NodeIdOf nodeIdOf, ParentIdOf parentIdOf)
+{
+	for (long i = 0; i < count; i++)
+	{
+		for (long j = 0; j < count; j++)
+		{
+			if (strcmp(parentIdOf(recs[i]), nodeIdOf(recs[j])) == 0)
+			{
+				recs[i].parentNode = &recs[j];
+				break;
+			}
+		}
+	}
+}
 
 inline constexpr int TYPE_NODE = 0;
 #define SHAPE_NODE			1

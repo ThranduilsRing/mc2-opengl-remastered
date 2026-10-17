@@ -412,3 +412,5 @@ target_sources(mc2_tests PRIVATE test_actor_appearance_owner.cpp)
 
 # B7o.4: queued waypoint marker owners (header-only, code/warrior_queue_markers.h): byte-level oracle histories, final pool slice (ASan), rebind, restore
 target_sources(mc2_tests PRIVATE test_warrior_queue_markers.cpp)
+# B7o.6a/6b: TG_ShapeRec transfer (reset fields), parent rebuild after detach and compaction; since 6b the record owns its node
+target_sources(mc2_tests PRIVATE test_tg_shape_rec_transfer.cpp)
