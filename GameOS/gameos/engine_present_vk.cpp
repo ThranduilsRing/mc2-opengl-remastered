@@ -1397,6 +1397,30 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
         }
     }
 
+    // VK-IMGUI-FOREIGN-TEX-1 (the mission-end crash at the campaign won_mission -> logistics screens): the game's ImGui panels draw images with
+    // GL texture NAMES as the ImTextureID (AddImage / GuiRuntime::DrawUiImage), but ImGui_ImplVulkan_RenderDrawData reads every ImTextureID as a
+    // VkDescriptorSet and binds it. A GL name is not a descriptor set, so vkCmdDrawIndexed faulted in the driver (READ at 0x66). Only the font
+    // atlas, whose id the Vulkan backend itself produced, is a descriptor set; every other textured command is emptied (its clip rect collapses, so
+    // the backend skips it before the bind) until a GL-texture -> descriptor bridge exists. Those images are not drawn under Vulkan.
+    {
+        const ImTextureID fontTex = ImGui::GetIO().Fonts->TexID;
+        uint32_t dropped = 0;
+        for (int n = 0; n < drawData->CmdListsCount; ++n) {
+            ImDrawList* dl = drawData->CmdLists[n];
+            for (ImDrawCmd& c : dl->CmdBuffer) {
+                if (c.UserCallback || c.ElemCount == 0 || c.GetTexID() == fontTex)
+                    continue;
+                c.ClipRect = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+                ++dropped;
+            }
+        }
+        if (dropped != 0) {
+            static uint32_t s_logged = 0;
+            if (s_logged++ < 2)
+                std::fprintf(stderr, "[VK_IMGUI] foreign_texture_cmds_dropped=%u (GL texture ids are not Vulkan descriptor sets; images not drawn under Vulkan)\n", dropped);
+        }
+    }
+
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rp.renderPass = s.imguiRenderPass.get();
     rp.framebuffer = s.imguiFramebuffer.get();
