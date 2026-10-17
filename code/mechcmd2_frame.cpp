@@ -679,14 +679,14 @@ void __stdcall DoGameLogic()
 			extern void mc2AllocStatsSnapshot(long long*, long long*);
 			long long liveBefore = 0, bytesBefore = 0;
 			mc2AllocStatsSnapshot(&liveBefore, &bytesBefore);
-			mc2::fmt::print_out("[ALLOC_RELOAD] n={} phase=pre live={} bytes={}\n", mc2::fmt::as_i32(s_reloadNo), mc2::fmt::as_i64(liveBefore), mc2::fmt::as_i64(bytesBefore));
+			mc2::fmt::print_out("[ALLOC_RELOAD] n={} phase=pre live={} bytes={} t={}\n", mc2::fmt::as_i32(s_reloadNo), mc2::fmt::as_i64(liveBefore), mc2::fmt::as_i64(bytesBefore), mc2::fmt::as_i64((long long)(scenarioTime * 1000.0)));
 #endif
             mission->load(savegame_path);
 #ifdef MC2_ALLOC_STATS
 			{
 				long long liveAfter = 0, bytesAfter = 0;
 				mc2AllocStatsSnapshot(&liveAfter, &bytesAfter);
-				mc2::fmt::print_out("[ALLOC_RELOAD] n={} phase=post live={} bytes={}\n", mc2::fmt::as_i32(s_reloadNo), mc2::fmt::as_i64(liveAfter), mc2::fmt::as_i64(bytesAfter));
+				mc2::fmt::print_out("[ALLOC_RELOAD] n={} phase=post live={} bytes={} t={}\n", mc2::fmt::as_i32(s_reloadNo), mc2::fmt::as_i64(liveAfter), mc2::fmt::as_i64(bytesAfter), mc2::fmt::as_i64((long long)(scenarioTime * 1000.0)));
 				fflush(stdout);
 				++s_reloadNo;
 			}
