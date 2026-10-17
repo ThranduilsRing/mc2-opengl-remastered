@@ -1,5 +1,31 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FIFTIETH session (2026-10-17, Sonnet 5.5) -- GL deletion step 3 plan written; step 3.1 done: a failed Vulkan init is fatal (no GL fallback)
+
+### Commits (on 1de45a787)
+6b2445340 plan + code (broken string escapes) | c5e75b2af fix of the escapes | state commit after it is docs only. Mergeable code tip: c5e75b2af.
+
+### Plan
+`.claude/cleanup/gl-deletion-step3-plan.md`: nine ordered steps (3.1 fatal VK init, 3.2 VK default flip, 3.3 retire the GL proof matrix, 3.4 GL/VK interop removal, 3.5 GL scene passes whole-file, 3.6 editor on VK, 3.7 in-repo tools, 3.8 GL-only shaders, 3.9 present/core/state guard) with size, proof, blockers; four owner questions at its end. Key fact found: the default backend is still GL (`resolveOnce` unset -> GL, umbrella `Exact1` default false), so the flip (3.2) is not done.
+
+### Done: step 3.1
+`mc2::forceGLFallback` and `g_mc2VkSessionForcedGL` (mclib/tgl.cpp) deleted; `mc2::fatalBackendFailure(reason)` (render_backend_select.cpp): logs `[RENDER_BACKEND] FATAL: ...`, message box (skipped for MC2_SMOKE_MODE / NO_LAUNCHER / SMOKE_SEED / HEARTBEAT / CRASH_FAST_EXIT), `_Exit(3)`. Callers: context/device init failure, no-MC2_VULKAN build, "not VK-owned" present, the ~60 s present-retry budget. `umbrellaOn()` is a plain gate read. Transient present failures still defer and retry (unchanged). docs/tier1_env_vars.md section rewritten ("VK init failure policy").
+Left: the log strings "fail-soft to GL" in vulkan_context.cpp:157 and engine_present_vk.cpp:422 (printf corpus rows; wording only).
+
+### Proof
+| check | result |
+|---|---|
+| ninja -j2 + deploy at c5e75b2af | exit 0 / deploy_exit 0 |
+| doctest (`build_contract_harnesses --run --unit`) | all harnesses pass (the doctest "FAILURE" line is the deliberate SIGABRT subprocess case) |
+| VK tier1, `MC2_VULKAN_VALIDATION=1`, fingerprint OK | 5/5 PASS, errors=0 warnings=0 (fps 110/96/62/90/74), scratch/t50vk.log |
+| GL tier1, fingerprint OK | 5/5 PASS (139/118/96/124/94 fps), scratch/t50gl.log |
+| `MC2_VK_FORCE_FAIL=1` through run_smoke | exit_code 3, `[RENDER_BACKEND] FATAL` line in the log (crash_evidence.json), run reported crash_silent as expected |
+| `check-contracts.sh -j2` | 124/124 green |
+No rendering change (no capture needed).
+
+### OPEN (owner questions are at the end of the plan)
+1. Flip the default now (3.2) or at release? 2. Port non-IsHUD letterbox/fade quads via IsHUD? 3. Editor private GL until its rework? 4. asset_viewer / mc2fx_preview / mc2weapon_gui: port or retire?
+
 ## FORTY-NINTH session (2026-10-17, Sonnet 5.5) -- GL object-parity check DELETED (owner ruling), VK-PARITY-GAPS row 29 CLOSED (all rows closed)
 
 ### Commits (on nifty merge of 2026-10-17)
