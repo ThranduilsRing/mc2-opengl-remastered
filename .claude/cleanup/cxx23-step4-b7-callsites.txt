@@ -13,34 +13,7 @@ B7o.2-seal	code/logisticsvariant.cpp:25	app_write_other	appearance = nullptr;
 B7o.3-actor-owner	code/mech_init.cpp:164	app_new	adoptAppearance(new Mech3DAppearance);
 B7o.7-typemgr	code/objmgr.cpp:113	objtypemgr	objTypeManager = nullptr;
 B7o.7-typemgr	code/objmgr.cpp:179	objtypemgr	objTypeManager = ownedTypeManager.get();
-B7o.8b-ptrarrays	code/objmgr.cpp:238	objcache_ptrarr	objList = (GameObjectPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GameObjectPtr) * (getMaxObjects() + 1));
-B7o.8b-ptrarrays	code/objmgr.cpp:241	objcache_ptrarr	watchList = (GameObjectPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GameObjectPtr) * (getMaxObjects() + 1));
-B7o.8b-ptrarrays	code/objmgr.cpp:248	objcache_ptrarr	watchGeneration = (uint16_t*)ObjectTypeManager::objectCache->Malloc(sizeof(uint16_t) * (getMaxObjects() + 1));
-B7o.8b-ptrarrays	code/objmgr.cpp:256	objcache_ptrarr	mechs = (BattleMechPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(BattleMechPtr) * maxMechs);
-B7o.8b-ptrarrays	code/objmgr.cpp:272	objcache_ptrarr	vehicles = (GroundVehiclePtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GroundVehiclePtr) * maxVehicles);
-B7o.8b-ptrarrays	code/objmgr.cpp:289	objcache_ptrarr	elementals = (ElementalPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(ElementalPtr) * numElementals);
-B7o.8b-ptrarrays	code/objmgr.cpp:304	objcache_ptrarr	terrainObjects = (TerrainObjectPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(TerrainObjectPtr) * numTerrainObjects)
-B7o.8b-ptrarrays	code/objmgr.cpp:319	objcache_ptrarr	buildings = (BuildingPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(BuildingPtr) * numBuildings);
-B7o.8b-ptrarrays	code/objmgr.cpp:331	objcache_ptrarr	turrets = (TurretPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(TurretPtr) * numTurrets);
-B7o.8b-ptrarrays	code/objmgr.cpp:345	objcache_ptrarr	gates = (GatePtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GatePtr) * numGates);
-B7o.8b-ptrarrays	code/objmgr.cpp:361	objcache_ptrarr	weapons = (WeaponBoltPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(WeaponBoltPtr) * numWeapons);
-B7o.8b-ptrarrays	code/objmgr.cpp:372	objcache_ptrarr	carnage = (CarnagePtr*)ObjectTypeManager::objectCache->Malloc(sizeof(CarnagePtr) * numCarnage);
-B7o.8b-ptrarrays	code/objmgr.cpp:383	objcache_ptrarr	artillery = (ArtilleryPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(ArtilleryPtr) * numArtillery);
-B7o.7-typemgr	code/objmgr.cpp:1051	objtypemgr	objTypeManager = nullptr;
-B7o.8b-ptrarrays	code/objmgr_io.cpp:735	objcache_ptrarr	objList = (GameObjectPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GameObjectPtr) * (getMaxObjects() + 1));
-B7o.8b-ptrarrays	code/objmgr_io.cpp:738	objcache_ptrarr	watchList = (GameObjectPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GameObjectPtr) * (getMaxObjects() + 1));
-B7o.8b-ptrarrays	code/objmgr_io.cpp:744	objcache_ptrarr	watchGeneration = (uint16_t*)ObjectTypeManager::objectCache->Malloc(sizeof(uint16_t) * (getMaxObjects() + 1));
-B7o.8b-ptrarrays	code/objmgr_io.cpp:755	objcache_ptrarr	mechs = (BattleMechPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(BattleMechPtr) * maxMechs);
-B7o.8b-ptrarrays	code/objmgr_io.cpp:765	objcache_ptrarr	vehicles = (GroundVehiclePtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GroundVehiclePtr) * maxVehicles);
-B7o.8b-ptrarrays	code/objmgr_io.cpp:775	objcache_ptrarr	terrainObjects = (TerrainObjectPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(TerrainObjectPtr) * numTerrainObjects)
-B7o.8b-ptrarrays	code/objmgr_io.cpp:785	objcache_ptrarr	buildings = (BuildingPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(BuildingPtr) * numBuildings);
-B7o.8b-ptrarrays	code/objmgr_io.cpp:792	objcache_ptrarr	turrets = (TurretPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(TurretPtr) * numTurrets);
-B7o.8b-ptrarrays	code/objmgr_io.cpp:799	objcache_ptrarr	gates = (GatePtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GatePtr) * numGates);
-B7o.8b-ptrarrays	code/objmgr_io.cpp:809	objcache_ptrarr	weapons = (WeaponBoltPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(WeaponBoltPtr) * numWeapons);
-B7o.8b-ptrarrays	code/objmgr_io.cpp:816	objcache_ptrarr	carnage = (CarnagePtr*)ObjectTypeManager::objectCache->Malloc(sizeof(CarnagePtr) * numCarnage);
-B7o.8b-ptrarrays	code/objmgr_io.cpp:823	objcache_ptrarr	artillery = (ArtilleryPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(ArtilleryPtr) * numArtillery);
-B7o.8b-ptrarrays	code/objmgr_misc.cpp:242	objcache_ptrarr	ObjectTypeManager::objectCache->Free(collidableList);
-B7o.8b-ptrarrays	code/objmgr_misc.cpp:249	objcache_ptrarr	collidableList = (GameObjectPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GameObjectPtr) * numCollidables);
+B7o.7-typemgr	code/objmgr.cpp:1087	objtypemgr	objTypeManager = nullptr;
 B7o.9-operators	code/objtype.cpp:86	objtype_op	void* ObjectType::operator new (size_t ourSize) {
 B7o.9-operators	code/objtype.cpp:94	objtype_op	void ObjectType::operator delete (void* us) {
 B7o.3-actor-owner	code/terrobj.cpp:1161	app_new	adoptAppearance(new TreeAppearance);
