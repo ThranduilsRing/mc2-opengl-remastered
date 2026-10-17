@@ -189,7 +189,13 @@ static void editor_set_default_env_vars()
     // The editor viewport renders on the same Vulkan path as the game (step 3.6). MC2_RENDER_BACKEND=gl
     // stays as the temporary opt-out; the umbrella arms the VK islands the shared scene driver feeds.
     if (!mc2::gate::isSet<"MC2_RENDER_BACKEND">())          _putenv_s("MC2_RENDER_BACKEND",            "vulkan");
-    if (!mc2::gate::isSet<"MC2_VK_SHARED_GBUFFER">())       _putenv_s("MC2_VK_SHARED_GBUFFER",         "1");
+    {
+        // The umbrella only makes sense with the Vulkan backend; with the gl opt-out it must stay off or the
+        // islands own the scene while nothing presents it.
+        const char* backend = getenv("MC2_RENDER_BACKEND");
+        const bool gl = backend && (_stricmp(backend, "gl") == 0);
+        if (!gl && !getenv("MC2_VK_SHARED_GBUFFER"))        _putenv_s("MC2_VK_SHARED_GBUFFER",         "1");
+    }
     // S3 (2026-05-25): MC2_GPU_DRIVEN, MC2_EDITOR_BYPASS_BLDG_CULL, MC2_STATIC_PROP_REGISTRY
     // sidesteps retired -- editor now runs canonical default-ON chain.
 }
