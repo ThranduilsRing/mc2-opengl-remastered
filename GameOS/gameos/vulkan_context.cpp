@@ -607,6 +607,10 @@ void VulkanContext::endFrame() {
         const DeferredDestroy::Stats ds = deferred_.stats(tracker_);
         std::fprintf(stderr, "[VK_TIMELINE v1] deferred_entries=%u deferred_bytes=%llu oldest_age_frames=%llu\n", ds.entries,
                      static_cast<unsigned long long>(ds.bytes), static_cast<unsigned long long>(ds.oldestAgeFrames));
+#ifdef MC2_VULKAN_ISLAND
+        std::fprintf(stderr, "[VK_FRAMERING v1] capacity=%llu peak_used=%llu\n", static_cast<unsigned long long>(frameRing_.capacityPerSlot()),
+                     static_cast<unsigned long long>(frameRing_.peakPerSlot()));
+#endif
         std::fprintf(stderr, "[VK_TIMELINE v1] frame=%llu last_submitted=%llu completed=%llu in_flight=%llu\n",
                      static_cast<unsigned long long>(tracker_.frameNo()),
                      static_cast<unsigned long long>(tracker_.lastSubmitted(QueueKind::Graphics)),

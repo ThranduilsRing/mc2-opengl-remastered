@@ -34,8 +34,10 @@ public:
         if (aligned + size > cap_) return false;
         *ringOffset = static_cast<uint64_t>(slot_) * cap_ + aligned;
         head_[slot_] = aligned + size;
+        if (head_[slot_] > peak_) peak_ = head_[slot_];
         return true;
     }
+    uint64_t peak() const { return peak_; }   // the most any one frame has used of its slot
     uint64_t capacity() const { return cap_; }
     uint64_t used() const { return head_[slot_]; }
     uint32_t slot() const { return slot_; }
@@ -49,6 +51,7 @@ public:
 private:
     uint64_t cap_ = 0;
     uint64_t head_[kSlots] = {0, 0};
+    uint64_t peak_ = 0;
     uint32_t slot_ = 0;
 };
 
@@ -93,6 +96,7 @@ public:
     VkDeviceSize bindRange() const { return core_.capacity(); }
     void release() { buffer_.reset(); mapped_ = nullptr; core_.setCapacity(0); }
     uint64_t capacityPerSlot() const { return core_.capacity(); }
+    uint64_t peakPerSlot() const { return core_.peak(); }
     uint32_t growths() const { return growths_; }
 
 private:

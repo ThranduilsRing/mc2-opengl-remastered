@@ -19,6 +19,11 @@ TEST_CASE("allocations bump and align inside the frame slot") {
     CHECK(r.alloc(1, 1, &c));
     CHECK(c == 1024 + 256 + 100);
     CHECK(r.used() == 256 + 100 + 1);
+    CHECK(r.peak() == 256 + 100 + 1);
+    r.beginFrame(2);                                     // a later, smaller frame does not lower the peak
+    uint64_t d = 0;
+    CHECK(r.alloc(8, 1, &d));
+    CHECK(r.peak() == 256 + 100 + 1);
 }
 
 TEST_CASE("the two frames in flight never share bytes") {
