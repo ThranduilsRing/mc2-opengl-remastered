@@ -66,3 +66,13 @@ The pytest fixtures cover direct/transitive Camera, a timing alias, VM wall
 seed, PCH leakage, and an extern clock shim, each paired with a clean twin.
 Additional tests cover all forbidden header families, include-name camouflage,
 aliases/pointers, macro includes, cycles, missing inputs, and CLI ratchet deltas.
+
+## Accepted growth
+
+2026-10-16: `code/mission_update.cpp -> GameOS/gameos/utils/mc2log.h` was added to the
+baseline by hand (one `gameos` row, a growth the `--rebaseline` command refuses on purpose).
+The include came in with b230be8dc (mission combat clock) and was never pinned. mc2log.h is
+the logger: it includes only standard headers and takes no sim input (its clock is an
+injectable rate limiter for log output), so it adds no nondeterminism, and the same TU already
+carries baselined GameOS diagnostic includes (diagnostic_trace.h). It is debt like those rows:
+the extraction removes it with them.
