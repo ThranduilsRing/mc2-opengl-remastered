@@ -15,6 +15,8 @@ Round 2 (after the before-review) adds, all by text:
   app_copy_api   `GameObject::set` / `Mover::set` (by-value copy APIs that copy the appearance view)
   app_delete (extended) also `delete bomber|theSky|compass|pObject` (artillery bomber, camera sky/compass, SimpleCamera object)
   marker_new / marker_delete / marker_write / marker_copy   the MechWarrior waypoint marker: creations, deletes, assignments to `.marker`, whole-slot queue copies (`tacOrderQueue[i] = tacOrderQueue[j]`, `MemCpy(..tacOrderQueue..)`)
+  marker_read   (round 4) a RUNTIME read of the wire field: any `.marker` / `->marker` token in code/warrior* that is not an assignment and not a `delete` (the draw loop, `if (...marker)` guards); target 0 after B7o.4 (readers move to `queueMarkers[i].get()`)
+  marker_wire_null   (round 4) a write of nullptr/0/NULL to the wire field (staging nulling, the dead-storage clears): ALLOWED to remain after B7o.4, listed apart from `marker_write` (a write of a real pointer, target 0) so the zero-token target is not contradicted by the retained staging write
   objcache_actor / objcache_subarea / objcache_text / objcache_ptrarr   the objectCache->Malloc/Free rows split by what they allocate (actor allocation operators, terrain sub-area short arrays, weapon-bolt texture text, manager pointer arrays and the collidable list)
 One line per site goes to the committed list `.claude/cleanup/cxx23-step4-b7-callsites.txt`; `--check` compares the tree against it (line numbers ignored).
 WHY: same shape as b5_asset_census: a sub-batch commit shrinks the list by intent (`--write` in the same commit); a site that appears or vanishes outside a batch fails `--check`.
@@ -61,6 +63,8 @@ KIND_BATCH = {
     "marker_delete": "B7o.4-queue-markers",
     "marker_write": "B7o.4-queue-markers",
     "marker_copy": "B7o.4-queue-markers",
+    "marker_read": "B7o.4-queue-markers",
+    "marker_wire_null": "B7o.4-queue-markers",
 }
 FILE_RULES = [
     ("B7o.5-nonactor-owners", re.compile(r"^code/(gamecam|simplecamera|missiongui\w*|artlry\w*)\.(cpp|h)$|^gui/")),
@@ -105,6 +109,7 @@ RX = {
     "marker_new": re.compile(r"\bgetWayPointMarker\s*\("),
     "marker_delete": re.compile(r"\bdelete\s+[\w\[\]\.>-]*marker\b"),
     "marker_write": re.compile(r"\bmarker\s*=(?!=)"),
+    "marker_read": re.compile(r"(?:\.|->)marker\b(?!\s*=(?!=))"),
     "marker_copy": re.compile(r"\btacOrderQueue\s*\[[^\]]*\]\s*=\s*tacOrderQueue|\bMemCpy\s*\(\s*(?:data\.)?tacOrderQueue\b"),
     "objtype_op": re.compile(r"\bObjectType::operator\s+(?:new|delete)\b"),
     "objcache_op": re.compile(r"\bGameObject::operator\s+(?:new|delete)\b"),
@@ -113,6 +118,9 @@ RX = {
     "shape_node": re.compile(r"\bnew\s+(?:TG_Shape|TG_TypeShape|TG_TypeNode)\b|\bdelete\s+\w*\.?node\b|\bdelete\s+listOf(?:Type)?Shapes\b|\bdelete\s+listOfShapes\s*\[[^\]]*\]\s*\.node\b|\bdelete\s+listOfTypeShapes\s*\["),
 }
 #: The shape_node rows belong to the TG files only; the same words elsewhere are other classes.
+MARKER_NULL_WRITE = re.compile(r"\bmarker\s*=\s*(?:nullptr|NULL|0)\s*;")
+MARKER_DELETE_LINE = re.compile(r"\bdelete\s+[\w\[\]\.>-]*marker\b")
+MARKER_WRITE_LINE = re.compile(r"\bmarker\s*=(?!=)")
 MARKER_FILES = re.compile(r"^code/warrior\w*\.(cpp|h)$")
 NAMED_DELETE_FILES = re.compile(r"^code/(artlry|gamecam|simplecamera)\.cpp$")
 LOCAL_DECL = re.compile(r"\b(?:AppearancePtr|Appearance|\w+Appearance)\s*\*?\s*appearance\s*=")
@@ -182,7 +190,11 @@ def census() -> list[str]:
                     continue
                 if kind == "app_write" and LOCAL_DECL.search(line):
                     continue
+                if kind == "marker_read" and (MARKER_DELETE_LINE.search(line) or MARKER_WRITE_LINE.search(line)):
+                    continue
                 final = classify(path, kind)
+                if final == "marker_write" and MARKER_NULL_WRITE.search(line):
+                    final = "marker_wire_null"
                 if final == "app_write" and lineno in api_lines:
                     final = "app_write_api"
                 rows.append(f"{batch_of(path, final)}\t{path}:{lineno}\t{final}\t{src_lines[lineno - 1].strip()[:120]}")
@@ -211,6 +223,9 @@ def summary(rows: list[str]) -> None:
     for b in sorted(per):
         print(f"  {b:26s} {sum(per[b].values()):4d} sites {len(perfiles[b]):3d} files  " + " ".join(f"{k}={n}" for k, n in sorted(per[b].items())))
     print(f"b7_actor_census: raw appearance writers outside the API: {len(raw_writers(rows))} (B7o.2 seal target 0)")
+    reads = sum(1 for r in rows if r.split("\t", 3)[2] == "marker_read")
+    mwrites = sum(1 for r in rows if r.split("\t", 3)[2] == "marker_write")
+    print(f"b7_actor_census: runtime marker reads: {reads}, marker pointer writes: {mwrites} (B7o.4 target 0 and 0; marker_wire_null rows are allowed to remain)")
 
 
 def main(argv: list[str] | None = None) -> int:
