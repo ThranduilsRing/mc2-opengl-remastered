@@ -36,7 +36,6 @@ bool ObjectType::handleDestruction(GameObjectPtr, GameObjectPtr) { return false;
 void GameObject::init(bool) {}
 void GameObject::destroy() {}
 void GameObject::operator delete(void*) {}
-void GameObject::set(GameObject) {}
 void GameObject::getBlockAndVertexNumber(int&, int&) {}
 ObjectTypePtr GameObject::getObjectType() { return nullptr; }
 void GameObject::init(bool, ObjectTypePtr) {}

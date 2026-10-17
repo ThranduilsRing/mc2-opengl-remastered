@@ -1512,7 +1512,7 @@ void GameObject::init (bool create) {
 	objectClass = GAMEOBJECT;
 	if (initialize) {
 		handle = 0;
-		appearance = nullptr;
+		adoptAppearance(nullptr);
 		threatRating = 0;
 	}
 	partId = 0;
@@ -1547,33 +1547,17 @@ void GameObject::init (bool create) {
 
 //---------------------------------------------------------------------------
 
-void GameObject::set (GameObject copy) {
+// B7o.2: the ONLY writers of GameObject::appearance (the census exempts just these two bodies).
+// Raw ownership is unchanged: adopt stores the pointer, release deletes and nulls (B7o.3 turns this into an owner).
+void GameObject::adoptAppearance (AppearancePtr newAppearance) {
 
-	objectClass = copy.objectClass;
-	handle = copy.handle;
-	partId = copy.partId;
-	watchID = copy.watchID;
-	typeHandle = copy.typeHandle;
-	position = copy.position;
-	cellPositionRow = copy.cellPositionRow;
-	cellPositionCol = copy.cellPositionCol;
-	flags = copy.flags;
-	debugFlags = copy.debugFlags;
-	status = copy.status;
-	tonnage = copy.tonnage;
-	appearance = copy.appearance;
-	d_vertexNum = copy.d_vertexNum;
-	collisionFreeFromWID = copy.collisionFreeFromWID;
-	collisionFreeTime = copy.collisionFreeTime;
-	screenPos = copy.screenPos;
-	windowsVisible = copy.windowsVisible;
-	explRadius = copy.explRadius;
-	explDamage = copy.explDamage;
-	maxCV = copy.maxCV;
-	curCV = copy.curCV;
-	lastFrameTime = copy.lastFrameTime;
-	blipFrame = copy.blipFrame;
-	numAttackers = copy.numAttackers;
+	appearance = newAppearance;
+}
+
+void GameObject::releaseAppearance (void) {
+
+	delete appearance;
+	appearance = nullptr;
 }
 
 //---------------------------------------------------------------------------

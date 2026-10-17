@@ -674,7 +674,7 @@ void Artillery::init (bool create)
 			
 	bomber = nullptr;
 	// A fresh round owns no appearance yet; destroy() frees it (the heap that used to sweep it up is gone).
-	appearance = nullptr;
+	adoptAppearance(nullptr);
 
 	setFlag(OBJECT_FLAG_RANDOM_OFFSET, 0);
 }
@@ -1523,8 +1523,7 @@ void Artillery::destroy (void)
 	// The round owns its strike appearance; the per-mission appearance heap no longer reclaims it in bulk.
 	if (appearance)
 	{
-		delete appearance;
-		appearance = nullptr;
+		releaseAppearance();
 	}
 }
 
@@ -1590,7 +1589,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 				}
 			}
 			  
-			appearance = new BldgAppearance;
+			adoptAppearance(new BldgAppearance);
 			gosASSERT(appearance != NULL);
 		
 			//--------------------------------------------------------------
@@ -1658,7 +1657,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 				}
 			}
 			  
-			appearance = new BldgAppearance;
+			adoptAppearance(new BldgAppearance);
 			gosASSERT(appearance != NULL);
 		
 			//--------------------------------------------------------------
@@ -1726,7 +1725,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 				}
 			}
 			  
-			appearance = new BldgAppearance;
+			adoptAppearance(new BldgAppearance);
 			gosASSERT(appearance != NULL);
 		
 			//--------------------------------------------------------------

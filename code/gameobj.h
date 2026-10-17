@@ -359,7 +359,9 @@ class GameObject {
 
 		void operator delete (void *us);
 
-		virtual void set (GameObject copy);
+		// B7o.2: sole writers of `appearance` (raw ownership, B7o.3 makes them an owner).
+		void adoptAppearance (AppearancePtr newAppearance);
+		void releaseAppearance (void);
 
 		virtual void init (bool create);
 	

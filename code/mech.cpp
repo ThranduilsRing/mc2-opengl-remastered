@@ -515,8 +515,7 @@ void BattleMech::destroy (void)
 	        Mech3DAppearance* m3d = static_cast<Mech3DAppearance*>(appearance);
 	        GameAdapters::Mech::destroyMech(*m3d);
 	    }
-		delete appearance;
-		appearance = nullptr;
+		releaseAppearance();
 	}
 }
 

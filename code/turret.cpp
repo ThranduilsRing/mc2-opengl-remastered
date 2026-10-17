@@ -335,7 +335,7 @@ void Turret::init (bool create) {
 	setFlag(OBJECT_FLAG_ONFIRE, false);
 	setFlag(OBJECT_FLAG_CHECKED_ONSCREEN, false);
 
-	appearance = nullptr;
+	adoptAppearance(nullptr);
 			
 	vertexNumber = 0;
 	blockNumber = 0;
@@ -2087,8 +2087,7 @@ void Turret::destroy (void)
 {
 	if (appearance)
 	{
-		delete appearance;
-		appearance = nullptr;
+		releaseAppearance();
 	}
 }
 
@@ -2134,7 +2133,7 @@ void Turret::init (bool create, ObjectTypePtr _type) {
 		}
 	}
 	  
-   	appearance = new BldgAppearance;
+   	adoptAppearance(new BldgAppearance);
 	gosASSERT(appearance != NULL);
 
 	//--------------------------------------------------------------

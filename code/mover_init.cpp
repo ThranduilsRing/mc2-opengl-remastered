@@ -379,30 +379,6 @@ long Mover::loadGameSystem (FitIniFilePtr mechFile, float visualRange) {
 	return(NO_ERR);
 }
 
-void Mover::set (Mover copy) {
-
-	GameObject::set(copy);
-
-	positionNormal = copy.positionNormal;
-	velocity = copy.velocity;
-	rotation = copy.rotation;
-	strncpy(name, copy.name, MAXLEN_MOVER_NAME - 1);
-	name[MAXLEN_MOVER_NAME - 1] = '\0'; 
-	chassis = copy.chassis;
-	damageRateTally = copy.damageRateTally;
-	damageRateCheckTime = copy.damageRateCheckTime;
-	pilotCheckDamageTally = copy.pilotCheckDamageTally;
-
-	numBodyLocations = copy.numBodyLocations;
-	for (long i = 0; i < numBodyLocations; i++)
-		body[i] = copy.body[i];
-	fieldedCV = copy.fieldedCV;
-		
-	numArmorLocations = copy.numArmorLocations;
-	for (int i = 0; i < numArmorLocations; i++)	
-		armor[i] = copy.armor[i];
-}
-
 void Mover::init (bool create) {
 		
 	GameObject::init(create);
@@ -410,7 +386,7 @@ void Mover::init (bool create) {
 		killed = false;
 		lost = false;
 		salvaged = false;
-		appearance = nullptr;
+		adoptAppearance(nullptr);
 		lowestWeaponNodeID = -2;
 		sensorSystem = nullptr;
 		lastMapCell[0] = -1;
