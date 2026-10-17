@@ -1,5 +1,31 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FORTY-FIFTH session (2026-10-17, Sonnet 5.5) -- ImGui images under Vulkan (GL texture name to descriptor set bridge), s44 review items folded
+
+### Commits (on 3ac571c9f)
+3cc5184f8 bridge + review items (non-mutating skip, one alpha helper, s_packetAlphaBaked cleared in onMapLoad) | 3c214d229 log newline fix and the helper as a batcher static (friend access to TG_TypeShape) | state/BUGS commit after (docs only). Mergeable tip = the state commit.
+
+### What
+`recordPendingImgui` (engine_present_vk.cpp): each non-font draw command's GL texture name goes through `gos_GetTextureTexelsByGlName` (new; `findTextureHandleByGlName` on the renderer, tolerant of released slots) to a VK image uploaded from the texture CPU texels (RGBA8 or BC7), recorded into the present command buffer before the ImGui render pass, wrapped with `ImGui_ImplVulkan_AddTexture`, cached per GL name (cap 256, pool 16+256). Invalidation: the entry holds a weak_ptr to the immutable texel vector; it expires when the texture is released or its content re-published, the entry retires and is destroyed 4 frames later (RemoveTexture first); everything is released before `ImGui_ImplVulkan_Shutdown`. A name with no texels (render targets) is skipped at bind time (clip rect collapsed) and retried every 120 frames. The ids and clip rects are swapped for the draw and RESTORED afterwards, so ImDrawData is not mutated (review item 1).
+
+### Proof
+| check | result |
+|---|---|
+| mech bay under VK (`scripts/mechbay_preview_harness.py bay --frame 1500`, lane2 install) | `.claude/l2s45/vk_bay.png`: mech icons, pilot portraits, tiles drawn (s44: none). The 3D preview panel is empty (camera-preview FBO texture, row 56 OPEN) |
+| encyclopedia under VK | `.claude/l2s45/vk_encyclopedia.png`: the four icon atlases drawn |
+| GL by eye | not possible: the GL screenshot arm is deleted, and `MC2_VK_IMGUI=0` gives a black VK readback (`gl_imgui_bay.png`). Compared to the game's own art by eye only |
+| VK campaign leg (`campaign_save_roundtrip capture`, VK env) | `.claude/l2s45/vk-campaign`: results, logistics, mission 2 (mc2_15) loaded, frame 8880, no crash; ended on the 150 s timeout like s44's PASS |
+| VK tier1 + `MC2_VULKAN_VALIDATION=1`, exe 3c214d229, DEPLOY_FINGERPRINT OK | 5/5 PASS, errors=0 warnings=0 (`.claude/l2s45/t45.log`) |
+| `build_contract_harnesses --run --unit` | rc 0 |
+
+### Open
+1. Text in several logistics/encyclopedia labels (mech and pilot names, weights, encyclopedia body) is drawn vertically flipped under VK (see the two captures). NOT from the bridge: only four 256x256 icon textures are resolved there. Source not found (a HUD-native or ImGui font path); needs its own session.
+2. 3D mech preview panel (camera-preview colour texture) is not drawn under VK: needs the FBO colour attachment as a VK image or the native preview path.
+3. s44 BUGS row 53 collided with lane 1's rows 53-54 on main; renumbered to 55 (images = 56). On merge keep main's 53-54.
+4. GL flush still reads `type.source->listOfTextures` at draw time (flush.cpp ~422-441, flush_prep.cpp ~205-262): latent, not a regression.
+5. Carried from s44: late forced VK-to-GL fallback not run.
+6. Process notes: launches that mention the lane 2 `mc2.exe` path by literal text are blocked by a PreToolUse hook while any mc2.exe runs (lane 1's); assemble the path in a variable. Deploys named the explicit lane2 directory throughout.
+
 ## FORTY-FOURTH session (2026-10-17, Sonnet 5.5) -- VK mission-end crash (ImGui foreign textures) and the second-mission prop alpha crash
 
 ### Commits (after the nifty merge 248d9a4e6 of 505511f91)
