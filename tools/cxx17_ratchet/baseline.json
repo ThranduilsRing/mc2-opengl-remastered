@@ -141,7 +141,7 @@
   "code": {
    "LG01": 202,
    "LG02": 204,
-   "LG03": 847,
+   "LG03": 845,
    "LG04": 21,
    "LG05": 198,
    "LG06": 472,
@@ -3074,7 +3074,6 @@
    "LG09": 32
   },
   "code/warrior_queue.cpp": {
-   "LG03": 2,
    "LG09": 3
   },
   "code/warrior_state.cpp": {
@@ -5129,7 +5128,7 @@
    "LG20": 3
   }
  },
- "head": "75ee24666",
+ "head": "7301a5f4f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
