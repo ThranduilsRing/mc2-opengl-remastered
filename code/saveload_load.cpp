@@ -365,7 +365,7 @@ void Mission::loadTeamsAndObjects(MissionLoadFrame& f) {
 
 	//-----------------------------------
 	// Setup the Sensor System Manager...
-	SensorManager = new SensorSystemManager;
+	SensorManager = std::make_unique<SensorSystemManager>();
 	Assert(SensorManager != nullptr, 0, " Unable to init sensor system manager ");
 	result = SensorManager->init(true);
 	Assert(result == NO_ERR, result, " could not start Sensor System Manager ");

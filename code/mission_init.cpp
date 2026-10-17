@@ -655,8 +655,8 @@ void Mission::initTriggerAndDropZone(MissionInitFrame& f) {
 	Mover::triggerAreaMgr = new TriggerAreaManager;
 	Assert(Mover::triggerAreaMgr != NULL, 0, " Mossion.init: unable to init triggerAreaMgr ");
 
-	SensorManager = new SensorSystemManager;
-	Assert(SensorManager != NULL, 0, " Unable to init sensor system manager ");
+	SensorManager = std::make_unique<SensorSystemManager>();
+	Assert(SensorManager != nullptr, 0, " Unable to init sensor system manager ");
 	result = SensorManager->init(true);
 	Assert(result == NO_ERR, result, " could not start Sensor System Manager ");
 

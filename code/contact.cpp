@@ -54,7 +54,7 @@
 // SENSOR-SCAN-FACTS-1: TU-local telemetry accumulator (default-OFF).
 namespace mc2_sensor_trace { Counters g_counters = {false,0,0,0,0,0,0}; }
 
-SensorSystemManagerPtr		SensorManager = nullptr;
+std::unique_ptr<SensorSystemManager>		SensorManager;
 
 long						SensorSystem::numSensors = 0;
 float						SensorSystem::scanFrequency = 0.5;

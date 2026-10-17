@@ -323,6 +323,8 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 			memset(ourRAM,0,16 * 16 * sizeof(DWORD));
 			
 			textures[nextAvailable].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw((DWORD *)ourRAM,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,16);
+			// textureFromMemoryRaw memcpy's into its own cache block, so this buffer is scratch (BUGS 53: it was never freed, 181 blocks per mission).
+			tileRAMHeap->Free(ourRAM);
 			mcTextureManager->setTextureNeverFlush(textures[nextAvailable].mcTextureNodeIndex, 0x1);
 			nextAvailable++;
 
@@ -1702,6 +1704,42 @@ void TerrainTextures::update (void)
 	ZoneScopedN("TerrainTextures::update");
 	if (tileRAMHeap)
 	{
+		// BUGS 53: UserHeap::destroy() hands nothing back to the allocator (gos_DestroyMemoryHeap deletes the heap record only),
+		// so every block init() took from tileRAMHeap leaked once per mission (538 blocks on mc2_03). Free them here, where the
+		// pointers are dropped. Owner of each block: types[] / overlays[] / details[] entries own their name strings and mip tables;
+		// the mip entries are non-null only when init() ran the non-quickLoad path (editor, or no .lst); none of them aliases
+		// another table (the tables hold one malloc each, written once in init()).
+		auto freeBlock = [this](void* block) { if (block) tileRAMHeap->Free(block); };
+		auto freeTable = [&freeBlock](MemoryPtr* table, long entries) {
+			if (!table)
+				return;
+			for (long m = 0; m < entries; m++)
+				freeBlock(table[m]);
+			freeBlock(table);
+		};
+		for (long i = 0; types && i < numTypes; i++)
+		{
+			freeBlock(types[i].terrainName);
+			freeBlock(types[i].maskName);
+			freeTable(types[i].textureData, MC_MAX_MIP_LEVELS);
+			freeTable(types[i].maskData, MC_MASK_NUM * MC_MAX_MIP_LEVELS);
+		}
+		for (long i = 0; overlays && i < numOverlays; i++)
+		{
+			freeBlock(overlays[i].overlayName);
+			freeTable(overlays[i].overlayData, overlays[i].numTextures * MC_MAX_MIP_LEVELS);
+			freeBlock(overlays[i].overlayDataSizes);
+		}
+		for (long i = 0; details && i < numDetails; i++)
+		{
+			freeBlock(details[i].detailName);
+			freeTable(details[i].detailData, details[i].numDetails * MC_MAX_MIP_LEVELS);
+		}
+		freeBlock(types);
+		freeBlock(overlays);
+		freeBlock(transitions);
+		freeBlock(localBaseName);
+
 		//We can now safely purge all transitions cause the MC2 texture manager has them all!!
 		numTypes = 0;
 		types = nullptr;
@@ -1759,6 +1797,18 @@ void TerrainTextures::destroy (void)
 	nextAvailable = 0;
 
 	update();
+
+	// tileHeap blocks (BUGS 53): the heap's destroy frees none of them. textures[] and details[] stay readable all mission
+	// (isCement, getTilingFactor), so they are released here and only here.
+	if (tileHeap)
+	{
+		if (textures)
+			tileHeap->Free(textures);
+		if (details)
+			tileHeap->Free(details);
+	}
+	textures = nullptr;
+	details = nullptr;
 
 	delete tileHeap;
 	tileHeap = nullptr;
