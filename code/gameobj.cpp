@@ -20,6 +20,7 @@
 #endif
 
 #include"appearance_owner.h"
+static_assert(sizeof(std::unique_ptr<Appearance>) == sizeof(Appearance*), "appearanceOwner must use the default deleter");
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #ifndef CARNAGE_H
@@ -1564,8 +1565,6 @@ void GameObject::releaseAppearance (void) {
 	verifyAppearanceView("releaseAppearance");
 	mc2::releaseOwnedView(appearanceOwner, appearance);
 }
-
-static_assert(sizeof(std::unique_ptr<Appearance>) == sizeof(Appearance*), "appearanceOwner must use the default deleter");
 
 void GameObject::verifyAppearanceView (const char* where) {
 

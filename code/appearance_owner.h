@@ -12,7 +12,8 @@ namespace mc2 {
 template <class T>
 inline void adoptOwnedView (std::unique_ptr<T>& owner, T*& view, T* p) noexcept
 {
-	owner.reset(p);
+	if (p != owner.get())	// self-adopt would delete the live object and leave the view dangling
+		owner.reset(p);
 	view = p;
 }
 

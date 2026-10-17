@@ -76,6 +76,23 @@ TEST_CASE("actor appearance owner: adopting over a live appearance frees the pre
 	CHECK(a.appearance == nullptr);
 }
 
+TEST_CASE("actor appearance owner: adopting the already-owned appearance is a no-op (no delete, view stays valid)")
+{
+	g_events.clear(); g_live = 0; g_dtors = 0;
+	{
+		Actor a;
+		App* p = new App(7);
+		a.adopt(p);
+		a.adopt(p);
+		CHECK(g_dtors == 0);
+		CHECK(a.appearance == p);
+		CHECK(a.appearanceOwner.get() == p);
+		a.release();
+		CHECK(g_dtors == 1);
+	}
+	CHECK(g_live == 0);
+}
+
 TEST_CASE("actor appearance owner: release nulls the view and repeated teardown frees nothing twice")
 {
 	reset();
