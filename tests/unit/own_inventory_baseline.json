@@ -155,15 +155,9 @@
    ]
   },
   "AppearanceTypeList": {
-   "delete": 2,
+   "delete": 1,
    "delete_array": 0,
    "files": {
-    "code/mission.cpp": {
-     "delete": 1
-    },
-    "code/mission2.cpp": {
-     "new": 1
-    },
     "editor/EditorCamera.h": {
      "new": 1
     },
@@ -174,11 +168,10 @@
      "new": 2
     }
    },
-   "new": 4,
+   "new": 3,
    "new_array": 0,
    "owners": [
-    "EditorObjectMgr",
-    "Mission"
+    "EditorObjectMgr"
    ]
   },
   "Artillery": {
@@ -6109,11 +6102,7 @@
      "delete": 2
     },
     "code/mission.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "code/mission2.cpp": {
-     "new": 1
+     "delete": 1
     },
     "code/mission_init.cpp": {
      "new": 1
@@ -6151,7 +6140,7 @@
      "new": 2
     }
    },
-   "new": 21,
+   "new": 19,
    "new_array": 0,
    "owners": [
     "",
@@ -7660,8 +7649,7 @@
   "code/mechcmd2_frame.cpp": 4,
   "code/mechicon.cpp": 5,
   "code/mechlistbox.cpp": 1,
-  "code/mission.cpp": 9,
-  "code/mission2.cpp": 1,
+  "code/mission.cpp": 4,
   "code/mission_init.cpp": 1,
   "code/missionbegin.cpp": 4,
   "code/missionbriefingscreen.cpp": 3,
@@ -7782,6 +7770,7 @@
   "mclib/mlr/mlrtexture.cpp": 1,
   "mclib/mlr/mlrtexturepool.cpp": 7,
   "mclib/mlr/mlrtrianglecloud.cpp": 1,
+  "mclib/msl_load.cpp": 1,
   "mclib/particles/batcher.cpp": 1,
   "mclib/particles/spec_library.cpp": 1,
   "mclib/stuff/chain.cpp": 3,
