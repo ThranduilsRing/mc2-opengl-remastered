@@ -2591,6 +2591,13 @@
           "text": "import console_child"
         },
         {
+          "path": "tests/analyze/b5_asset_census.py",
+          "line": 33,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "tests/analyze/container_callsites.py",
           "line": 35,
           "evidence": "import",

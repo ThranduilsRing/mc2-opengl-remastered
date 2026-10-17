@@ -71,12 +71,12 @@ def test_capture_driver_builds_the_pinned_env(tmp_path):
 
 def test_tracy_driver_builds_the_pinned_env():
     tcc = _load("tools/tracy_capture_compare.py", "tracy_capture_compare_pin_under_test")
-    env = tcc.game_env("gl", False, 0, None, [])
+    env = tcc.game_env("vk", False, 0, None, [])
     assert (env["MC2_WIDTH"], env["MC2_HEIGHT"]) == ("1920", "1080")
-    env = tcc.game_env("gl", False, 0, None, ["MC2_WIDTH=2560", "MC2_HEIGHT=1440"])
+    env = tcc.game_env("vk", False, 0, None, ["MC2_WIDTH=2560", "MC2_HEIGHT=1440"])
     assert (env["MC2_WIDTH"], env["MC2_HEIGHT"]) == ("2560", "1440")
     with pytest.raises(SystemExit):
-        tcc.game_env("gl", False, 0, None, ["MC2_HEIGHT=1440"])
+        tcc.game_env("vk", False, 0, None, ["MC2_HEIGHT=1440"])
 
 
 def test_smoke_runner_names_every_per_row_artifact_by_the_row_label():

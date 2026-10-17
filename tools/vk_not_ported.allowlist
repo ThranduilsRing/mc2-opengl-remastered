@@ -73,11 +73,6 @@ MC2_WATER_SHINE | shaders/gos_terrain_water_mdi.frag | uniform u_waterSpecIntens
 MC2_WATER_SHORE_MEANDER | shaders/gos_terrain_water_mdi.frag | VK water_geom.frag has no shore-meander block (u_shoreMeanderWu fbm offset on WaterThickness), so VK shorelines stay straight where GL meanders once the amplitude is non-zero. Pinned as the waterBaseColor debt in tools/glsl_port_diff.allowlist.
 
 # --- GL-only diagnostic / debug knobs (no VK equivalent is expected)
-MC2_DEBUG_RENDERER | shaders/mech.frag | define MC2_OBJECT_ID_BUFFER: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi
-MC2_DEBUG_RENDERER | shaders/mech.vert | define MC2_OBJECT_ID_BUFFER: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi
-MC2_DEBUG_RENDERER | shaders/static_prop.frag | define MC2_OBJECT_ID_BUFFER: no such name in the VK twin (shaders/vulkan/color_prop_tier1.*) shader, island C++ or gpu_abi
-MC2_DEBUG_RENDERER | shaders/static_prop.vert | define MC2_COALESCE: no such name in the VK twin (shaders/vulkan/color_prop_tier1.*) shader, island C++ or gpu_abi
-MC2_DEBUG_RENDERER | shaders/static_prop_depth.frag | define MC2_COALESCE: no such name in the VK twin (shaders/vulkan/color_prop_tier1.*) shader, island C++ or gpu_abi
 MC2_HDRI_SKY_FRAME_FIX | shaders/hdri_skybox.frag | uniform frameFix: no such name in the VK twin (shaders/vulkan/hdri_sky.*) shader, island C++ or gpu_abi
 MC2_HDRI_SKY_UV_DEBUG | shaders/hdri_skybox.frag | uniform uvDebug: no such name in the VK twin (shaders/vulkan/hdri_sky.*) shader, island C++ or gpu_abi
 MC2_MECH_FRAG_DEBUG | shaders/mech.frag | uniform u_debugMode: no such name in the VK twin (shaders/vulkan/mech_tier1.*) shader, island C++ or gpu_abi

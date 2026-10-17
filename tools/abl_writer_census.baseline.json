@@ -11,11 +11,6 @@
    "verdict": "engine",
    "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
   },
-  "code/ablmc2.cpp::ablFileCreateCB::to_buf": {
-   "count": 1,
-   "verdict": "engine",
-   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
-  },
   "code/ablmc2.cpp::ablStackMallocCallback::memset": {
    "count": 1,
    "verdict": "bounded",
@@ -561,11 +556,6 @@
    "verdict": "engine",
    "why": "copies compile-time tables into module-registry blocks allocated for exactly their size"
   },
-  "mclib/ablrtn.cpp::ABLi_preProcess::to_buf": {
-   "count": 1,
-   "verdict": "engine",
-   "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
-  },
   "mclib/ablrtn.cpp::ABLi_registerInteger::strcpy": {
    "count": 1,
    "verdict": "engine",
@@ -576,6 +566,11 @@
    "verdict": "engine",
    "why": "copies the registered variable's name into the token buffer after a length check against MAXLEN_TOKENSTRING"
   },
+  "mclib/ablrtn.cpp::CompileTransaction::memcpy": {
+   "count": 1,
+   "verdict": "engine",
+   "why": "snapshots the compiler's codeBuffer into a std::vector sized MaxCodeBufferSize (the same size copied); a C++ buffer, no script variable is written"
+  },
   "mclib/ablrtn.cpp::routine::strcpy": {
    "count": 1,
    "verdict": "engine",
@@ -585,6 +580,11 @@
    "count": 1,
    "verdict": "engine",
    "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
+  },
+  "mclib/ablrtn.cpp::~CompileTransaction::memcpy": {
+   "count": 1,
+   "verdict": "engine",
+   "why": "rolls a failed compile back by copying the snapshot (savedCode.size() == MaxCodeBufferSize) over the compiler's own codeBuffer; no script variable is written"
   },
   "mclib/ablxstd.cpp::double2long::memcpy": {
    "count": 1,
