@@ -189,7 +189,12 @@ bool GuiRuntime::DrawUiText(float x,
         return false;
 
     const ImVec4 clip(x, y, x + std::max(w, 0.0f), y + std::max(h, size));
+    const int s46v0 = drawList->VtxBuffer.Size;
     drawList->AddText(font, size, pos, argbToImU32(argb), text, nullptr, wrapWidth, &clip);
+    { static int s46n = 0; if (s46n < 12 && drawList->VtxBuffer.Size - s46v0 >= 4) { ++s46n;
+      const ImDrawVert& a = drawList->VtxBuffer[s46v0]; const ImDrawVert& b = drawList->VtxBuffer[s46v0 + 2];
+      std::fprintf(stderr, "[S46] text='%.20s' box=%.0f,%.0f,%.0f,%.0f pos=%.1f,%.1f v0=(%.1f,%.1f uv %.4f,%.4f) v2=(%.1f,%.1f uv %.4f,%.4f)
+", text, x, y, w, h, pos.x, pos.y, a.pos.x, a.pos.y, a.uv.x, a.uv.y, b.pos.x, b.pos.y, b.uv.x, b.uv.y); } }
     return true;
 }
 
