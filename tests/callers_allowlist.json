@@ -50,6 +50,7 @@
   "scripts/tests/test_gl_vk_feature_coverage.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_gpu_abi_gen.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_harness_desktop_safety.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
+  "scripts/tests/test_harness_launch_lease.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_host_lease.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_host_lease_batch.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_host_load.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
