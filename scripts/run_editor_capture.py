@@ -22,6 +22,7 @@ def main() -> int:
     ap.add_argument("--backend", choices=("gl", "vulkan"), default=None)
     ap.add_argument("--frame", type=int, default=150)
     ap.add_argument("--timeout", type=int, default=120)
+    ap.add_argument("--arg", action="append", default=[], help="extra editor CLI argument, e.g. -smoke-outliner (selects the first object)")
     ap.add_argument("--env", action="append", default=[], help="KEY=VALUE for the editor process")
     args = ap.parse_args()
     exe = Path(args.exe)
@@ -41,7 +42,7 @@ def main() -> int:
         k, v = kv.split("=", 1)
         env[k] = v
     argv = [str(exe), f"-mission={mission}", f"-capture={out}", f"-capture-frame={args.frame}",
-            "-smoke-exit-sec=15", "-exit-on-load-fail"]
+            "-smoke-exit-sec=15", "-exit-on-load-fail"] + args.arg
     t0 = time.time()
     proc = nofocus.spawn(argv, cwd=str(deploy), env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     try:
