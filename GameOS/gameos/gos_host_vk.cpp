@@ -20,6 +20,7 @@
 #endif
 
 extern SDL_Window* g_sdl_window;
+extern uint32_t g_mc2FxFireCaptureFrame;   // mclib/tgl.cpp
 
 // VK-FAILSOFT-DISARM-1: present init hit a zero surface extent (window minimized at boot) and was DEFERRED instead of fail-softing
 // the session to GL. The frame loop retries EnginePresentVk::init once the drawable is non-zero.
@@ -170,7 +171,6 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
             // by the MC2_FX_FORCE_SPAWN fixture when
             // MC2_VK_PRESENT_DUMP_ON_FIRE is set) — must be read per
             // frame, not memoized.
-            extern uint32_t g_mc2FxFireCaptureFrame;
             static const bool s_dumpOnFire = mc2::gate::get<"MC2_VK_PRESENT_DUMP_ON_FIRE">();
             const unsigned long firePin =
                 s_dumpOnFire ? (unsigned long)g_mc2FxFireCaptureFrame : 0ul;
