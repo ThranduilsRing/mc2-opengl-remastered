@@ -864,6 +864,7 @@ namespace {
     GLuint s_camPreviewDepthRbo = 0;
     int    s_camPreviewW = 0;
     int    s_camPreviewH = 0;
+    GLuint s_camPreviewTexelsName = 0;   // GL name the published preview texels belong to (VK-PREVIEW-READBACK-1)
 
     void ensureCamPreviewFbo(int w, int h)
     {
@@ -876,6 +877,7 @@ namespace {
             glDeleteTextures(1, &s_camPreviewColorTex);
             glDeleteRenderbuffers(1, &s_camPreviewDepthRbo);
             s_camPreviewFbo = s_camPreviewColorTex = s_camPreviewDepthRbo = 0;
+            s_camPreviewTexelsName = 0;   // the deleted name may be reused by an ordinary texture
         }
 
         glGenFramebuffers(1, &s_camPreviewFbo);
@@ -957,8 +959,6 @@ void __stdcall gos_BeginCameraPreviewRender()
     if (g_gos_renderer) g_gos_renderer->invalidateRenderStateCache();
 }
 
-// Restore the default framebuffer (and its real-resolution glViewport) after
-// camera preview rendering.
 // VK-PREVIEW-READBACK-1: under the Vulkan backend the ImGui layer is drawn by a Vulkan pass that cannot sample the GL FBO colour
 // texture. After each preview render the FBO is downscaled to the 800x600 virtual canvas (the panel UV crop is canvas-relative, so the
 // scale does not matter), read back, and published as the texels of that GL texture name: gos_GetTextureTexelsByGlName hands them to
@@ -967,7 +967,7 @@ namespace {
     GLuint s_camPreviewDownFbo = 0;
     GLuint s_camPreviewDownTex = 0;
     std::shared_ptr<const std::vector<uint8_t>> s_camPreviewTexels;
-    GLuint s_camPreviewTexelsName = 0;
+    // The down FBO/texture live for the process (no rebuild on context loss).
 
     void publishCamPreviewTexels()
     {
@@ -976,9 +976,11 @@ namespace {
         if (!s_camPreviewDownFbo) {
             glGenFramebuffers(1, &s_camPreviewDownFbo);
             glGenTextures(1, &s_camPreviewDownTex);
+            GLint prevTex = 0;   // restore the active unit's 2D binding
+            glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTex);
             glBindTexture(GL_TEXTURE_2D, s_camPreviewDownTex);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, kW, kH, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-            glBindTexture(GL_TEXTURE_2D, 0);
+            glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
             glBindFramebuffer(GL_FRAMEBUFFER, s_camPreviewDownFbo);
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_camPreviewDownTex, 0);
         }
@@ -987,21 +989,12 @@ namespace {
         glBlitFramebuffer(0, 0, s_camPreviewW, s_camPreviewH, 0, 0, kW, kH, GL_COLOR_BUFFER_BIT, GL_LINEAR);
         glBindFramebuffer(GL_READ_FRAMEBUFFER, s_camPreviewDownFbo);
         glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+        GLint prevPack = 4;
+        glGetIntegerv(GL_PACK_ALIGNMENT, &prevPack);
         glPixelStorei(GL_PACK_ALIGNMENT, 1);
         auto px = std::make_shared<std::vector<uint8_t>>((size_t)kW * kH * 4u);
         glReadPixels(0, 0, kW, kH, GL_RGBA, GL_UNSIGNED_BYTE, px->data());
-        static bool s_logged = false;
-        static int s_checks = 0;
-        if (!s_logged && ++s_checks <= 600) {   // the first renders can precede the mech load: log the first one that has pixels
-            size_t lit = 0;
-            for (size_t i = 0; i < px->size(); i += 4)
-                if ((*px)[i] | (*px)[i + 1] | (*px)[i + 2]) ++lit;
-            if (lit) {
-                s_logged = true;
-                mc2::fmt::print_err("[PREVIEW_READBACK v1] first publish with pixels: gl_tex={:d} nonblack_px={:d} of {:d}\n",
-                                mc2::fmt::as_u32(s_camPreviewColorTex), mc2::fmt::as_u32((uint32_t)lit), mc2::fmt::as_u32((uint32_t)(kW * kH)));
-            }
-        }
+        glPixelStorei(GL_PACK_ALIGNMENT, prevPack);
         s_camPreviewTexels = std::move(px);
         s_camPreviewTexelsName = s_camPreviewColorTex;
     }
@@ -1019,6 +1012,8 @@ GosTexels gos_GetCameraPreviewTexels(uint32_t glName)
     return out;
 }
 
+// Restore the default framebuffer (and its real-resolution glViewport) after
+// camera preview rendering.
 void __stdcall gos_EndCameraPreviewRender()
 {
     if (mc2vkgate::umbrellaOn()) publishCamPreviewTexels();

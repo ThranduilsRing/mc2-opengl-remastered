@@ -853,6 +853,9 @@ bool upload_geometry_once(MechIsland* s) {
     const bool haveFeed = mc2_mech_island_get_geometry_feed(&feed) != 0;
     if (s->geomUploaded && (!haveFeed || feed.geomGen == s->geomGen)) return true;
     if (!haveFeed) return false;
+    // A null source means a normals rebuild raced the accessor: decline before the waitIdle and the buffer destroy, so the old
+    // buffers stay and no device stall is taken for a retry.
+    if (feed.vboBytes == 0 || feed.iboBytes == 0 || !feed.vboCpu || !feed.iboCpu) return false;
     if (s->geomUploaded) {
         // A new map (or a normals rebuild) replaced the batcher's vertex and index sets: the draw runs index into the NEW
         // set, so a buffer kept from the previous map is read past its end (VUID-vkCmdDrawIndexed-robustBufferAccess2-08798).
@@ -862,9 +865,7 @@ bool upload_geometry_once(MechIsland* s) {
         s->ibo.reset();
         s->geomUploaded = false;
     }
-    // The bytes come from the batcher's CPU copy (the exact bytes the GL buffers were created from). A null source means a
-    // normals rebuild raced the accessor: decline this frame and retry before allocating anything.
-    if (feed.vboBytes == 0 || feed.iboBytes == 0 || !feed.vboCpu || !feed.iboCpu) return false;
+    // The bytes come from the batcher's CPU copy (the exact bytes the GL buffers were created from).
     if (feed.vertexStride != mc2_mech_vertex_stride())
         vlog("ERROR: mech feed vertexStride %u != pipeline stride %u (mech geometry will explode).", feed.vertexStride, mc2_mech_vertex_stride());
     s->vertexStride = feed.vertexStride;
