@@ -14,17 +14,17 @@
  ],
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2950,
-  "GameOS/gameos/gos_terrain_lighting.cpp": 1696,
-  "GameOS/gameos/gos_terrain_water_stream.cpp": 2328,
+  "GameOS/gameos/gos_terrain_lighting.cpp": 1749,
+  "GameOS/gameos/gos_terrain_water_stream.cpp": 2366,
   "GameOS/gameos/utils/shader_builder.cpp": 1550,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1808,
-  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1586,
+  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1575,
   "GameOS/include/gameos.hpp": 3757,
-  "RenderCore/RendererFeatureRegistry.h": 1734,
+  "RenderCore/RendererFeatureRegistry.h": 1678,
   "code/artlry.cpp": 1849,
   "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2770,
-  "code/gamecam.cpp": 1580,
+  "code/gamecam.cpp": 1596,
   "code/gameobj.cpp": 2255,
   "code/infowindow.cpp": 1728,
   "code/logisticsdialog.cpp": 2148,
@@ -62,7 +62,7 @@
   "mclib/tgl.h": 1787,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "22a0e8228",
+ "head": "22b97bfc7",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -71,7 +71,7 @@
    "max_lines": 485
   },
   "GameOS": {
-   "files": 353,
+   "files": 357,
    "files_over_1500": 7,
    "files_over_3000": 1,
    "max_lines": 3757
@@ -86,7 +86,7 @@
    "files": 55,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 1734
+   "max_lines": 1678
   },
   "RenderWorld": {
    "files": 6,
@@ -163,12 +163,12 @@
    "lines": 2408
   },
   {
-   "file": "code/turret.cpp",
-   "lines": 2337
+   "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
+   "lines": 2366
   },
   {
-   "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-   "lines": 2328
+   "file": "code/turret.cpp",
+   "lines": 2337
   },
   {
    "file": "code/gameobj.cpp",
@@ -252,7 +252,7 @@
   }
  ],
  "total": {
-  "files": 1924,
+  "files": 1928,
   "files_over_1500": 48,
   "files_over_3000": 1,
   "max_lines": 3757
