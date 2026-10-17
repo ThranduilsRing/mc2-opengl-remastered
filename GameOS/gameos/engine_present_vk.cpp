@@ -20,6 +20,7 @@
 #include "mc2fmt.h"
 #include "mc2_hitch_trace.h"   // frame-fence wait attribution for the hitch trace
 #include "vk_island_util.h"
+#include "texture_decode.h"   // gos_GetTextureTexelsByGlName
 
 #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
 
@@ -52,6 +53,7 @@
 #include <cstring>
 #include <chrono>   // VK-QWI-TO-FENCE-1: composite wait telemetry
 #include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: present-path CPU attribution zones
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -147,6 +149,27 @@ struct EnginePresentVk::Impl {
     mc2vk::OwnedRenderPass    imguiRenderPass;
     mc2vk::OwnedFramebuffer   imguiFramebuffer;
     ImDrawData*     pendingImguiDrawData = nullptr;
+    // GL texture name (the ImTextureID the game passes) -> a Vulkan image and the descriptor set ImGui_ImplVulkan binds for it.
+    // Members release in reverse order: view, image, memory, staging buffer, staging memory.
+    struct ImguiTexEntry {
+        mc2vk::OwnedDeviceMemory stageMem;
+        mc2vk::OwnedRawBuffer stageBuf;
+        mc2vk::OwnedDeviceMemory memory;
+        mc2vk::OwnedRawImage image;
+        mc2vk::OwnedImageView view;
+        VkDescriptorSet set = VK_NULL_HANDLE;
+        std::weak_ptr<const std::vector<uint8_t>> src;   // expires when the texture is released or its content re-published
+        uint64_t uploadFrame = 0;
+        uint64_t retireFrame = 0;
+        const void* srcPtr = nullptr;   // identity of the uploaded texel vector, compared with the live texture once per frame
+        uint64_t checkedFrame = 0;      // last frame srcPtr was compared
+        uint64_t lastUsedFrame = 0;
+    };
+    std::unordered_map<uint32_t, ImguiTexEntry> imguiTex;
+    std::vector<ImguiTexEntry> imguiTexRetired;          // destroyed a few frames after retirement (frame in flight)
+    std::unordered_map<uint32_t, uint64_t> imguiTexRetryAt;   // GL names with no texels: next frame to ask again
+    mc2vk::OwnedSampler imguiTexSampler;
+    uint64_t imguiTexFrame = 0;
     // SINGLE-FRAME-IN-FLIGHT DEPENDENCY (VK-PRESENT-SINGLESUBMIT-1 audit note): the
     // HUD tail is race-free ONLY because exactly one present submission is in flight
     // (the inFlight wait at composite-record time retires frame N-1 before frame N
@@ -1349,6 +1372,8 @@ bool ensureImguiFramebuffer(EnginePresentVk::Impl& s) {
     return mc2vk::create(s.imguiFramebuffer, s.dev, [&](auto* h) { return vkCreateFramebuffer(s.dev, &fb, nullptr, h); });
 }
 
+constexpr uint32_t kImguiTexCap = 256;
+
 bool ensureImguiVulkan(EnginePresentVk::Impl& s) {
     if (s.imguiVkInited) return ensureImguiFramebuffer(s);
     if (s.imguiVkFailed || !s.dev || !s.phys || !s.gfxQ || !s.imgW || !s.imgH)
@@ -1368,13 +1393,216 @@ bool ensureImguiVulkan(EnginePresentVk::Impl& s) {
     info.MinImageCount = 2;
     info.ImageCount = s.scImages.size() >= 2 ? (uint32_t)s.scImages.size() : 2;
     info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-    info.DescriptorPoolSize = 16;
+    info.DescriptorPoolSize = 16 + 2 * kImguiTexCap;   // font + live texture sets + retired sets awaiting their frame
     if (!ImGui_ImplVulkan_Init(&info)) {
         s.imguiVkFailed = true;
         return false;
     }
+    // The present image is stored with GL bottom-left origin (the composite renders it un-flipped and copy-2 flips it into the
+    // swapchain), and the HUD tail pass flips its own Y. The Vulkan ImGui backend draws top-down, so without this the whole ImGui
+    // layer (every defs/ImGui page: text, art, portraits) reaches the screen upside down.
+    ImGui_ImplVulkan_SetFlipY(true);
     s.imguiVkInited = true;
     return true;
+}
+
+// Per-texture ImGui bridge. The game draws ImGui images with GL texture names as the ImTextureID; the Vulkan backend binds the id as a
+// VkDescriptorSet, so each name is resolved to a set over a VK image uploaded from the texture CPU texels. A name with no texels
+// (render targets, not loaded) gets no set and its command is skipped at draw time.
+constexpr uint32_t kImguiLogCap = 3;
+constexpr uint64_t kImguiTexRetireFrames = 4;
+
+void imguiTexDestroy(EnginePresentVk::Impl::ImguiTexEntry& e, bool backendLive) {
+    if (e.set && backendLive)
+        ImGui_ImplVulkan_RemoveTexture(e.set);
+    e.set = VK_NULL_HANDLE;
+}
+
+bool imguiBackendLive() {
+    return ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().BackendRendererUserData != nullptr;
+}
+
+void imguiTexReleaseAll(EnginePresentVk::Impl& s) {
+    const bool live = imguiBackendLive();
+    for (auto& kv : s.imguiTex) imguiTexDestroy(kv.second, live);
+    for (auto& e : s.imguiTexRetired) imguiTexDestroy(e, live);
+    s.imguiTex.clear();
+    s.imguiTexRetired.clear();
+    s.imguiTexRetryAt.clear();
+}
+
+void imguiTexSweep(EnginePresentVk::Impl& s) {
+    const uint64_t now = ++s.imguiTexFrame;
+    const bool live = imguiBackendLive();
+    for (auto it = s.imguiTex.begin(); it != s.imguiTex.end();) {
+        auto& e = it->second;
+        if (e.stageBuf && e.uploadFrame + kImguiTexRetireFrames < now) {
+            e.stageBuf.reset();
+            e.stageMem.reset();
+        }
+        if (e.src.expired()) {   // the texture was released or recreated: retire the set, destroy it once the GPU is done with it
+            e.retireFrame = now;
+            s.imguiTexRetired.push_back(std::move(e));
+            it = s.imguiTex.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    for (size_t i = 0; i < s.imguiTexRetired.size();) {
+        if (s.imguiTexRetired[i].retireFrame + kImguiTexRetireFrames < now) {
+            imguiTexDestroy(s.imguiTexRetired[i], live);
+            s.imguiTexRetired.erase(s.imguiTexRetired.begin() + (std::ptrdiff_t)i);
+        } else {
+            ++i;
+        }
+    }
+}
+
+// Moves a live entry to the retired list (destroyed kImguiTexRetireFrames later, once the in-flight frame is done with it).
+void imguiTexRetire(EnginePresentVk::Impl& s, std::unordered_map<uint32_t, EnginePresentVk::Impl::ImguiTexEntry>::iterator it) {
+    it->second.retireFrame = s.imguiTexFrame;
+    s.imguiTexRetired.push_back(std::move(it->second));
+    s.imguiTex.erase(it);
+}
+
+// Records the upload into `cb` (outside the render pass). Returns 0 when the name has no VK image. Everything that can fail
+// (buffers, image, view, the descriptor set) happens BEFORE the first command is recorded, so a failure never leaves a recorded
+// command naming a destroyed resource.
+ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint32_t glName) {
+    auto it = s.imguiTex.find(glName);
+    if (it != s.imguiTex.end()) {
+        auto& e = it->second;
+        if (e.checkedFrame == s.imguiTexFrame) {
+            e.lastUsedFrame = s.imguiTexFrame;
+            return (ImTextureID)e.set;
+        }
+        // Once per frame: the cached image must still be the texture's CURRENT content. Pointer identity of the published texel
+        // vector tracks content (a re-publish or a reused GL name gives a different vector), and an expired weak_ptr covers a
+        // released one. Other caches holding the old vector alive do not matter: the comparison is against the live texture.
+        const GosTexels cur = gos_GetTextureTexelsByGlName(glName);
+        if (cur.status == GosTexels::Status::Ready && cur.bytes && cur.bytes.get() == e.srcPtr && !e.src.expired()) {
+            e.checkedFrame = s.imguiTexFrame;
+            e.lastUsedFrame = s.imguiTexFrame;
+            return (ImTextureID)e.set;
+        }
+        imguiTexRetire(s, it);
+    }
+    auto miss = s.imguiTexRetryAt.find(glName);
+    if (miss != s.imguiTexRetryAt.end() && miss->second > s.imguiTexFrame)
+        return 0;
+    constexpr uint64_t kRetryFrames = 120;
+    auto fail = [&]() -> ImTextureID { s.imguiTexRetryAt[glName] = s.imguiTexFrame + kRetryFrames; return 0; };
+    // Descriptor budget: the pool holds kImguiTexCap live AND kImguiTexCap retired sets (a retired set is freed only after
+    // kImguiTexRetireFrames). At the live cap, the least recently used entry not drawn this frame is retired to make room.
+    if (s.imguiTexRetired.size() >= kImguiTexCap)
+        return fail();
+    if (s.imguiTex.size() >= kImguiTexCap) {
+        auto victim = s.imguiTex.end();
+        for (auto v = s.imguiTex.begin(); v != s.imguiTex.end(); ++v)
+            if (v->second.lastUsedFrame != s.imguiTexFrame &&
+                (victim == s.imguiTex.end() || v->second.lastUsedFrame < victim->second.lastUsedFrame))
+                victim = v;
+        if (victim == s.imguiTex.end())
+            return fail();
+        imguiTexRetire(s, victim);
+    }
+    const GosTexels texels = gos_GetTextureTexelsByGlName(glName);
+    if (texels.status != GosTexels::Status::Ready || !texels.bytes || texels.width == 0 || texels.height == 0 ||
+        texels.width > 8192 || texels.height > 8192)
+        return fail();
+    VkFormat fmt = mc2vk::texelFormat(texels.vkFormat);
+    // ImGui writes display-space values into a UNORM target: a BC7 sRGB image would be decoded to linear and come out dark, so UI
+    // images sample BC7 as UNORM, which equals what the RGBA8 mirrors give.
+    if (fmt == VK_FORMAT_BC7_SRGB_BLOCK)
+        fmt = VK_FORMAT_BC7_UNORM_BLOCK;
+    const VkDeviceSize bytes = (VkDeviceSize)texels.bytes->size();
+    const bool bc7 = fmt == VK_FORMAT_BC7_UNORM_BLOCK;
+    const VkDeviceSize need = bc7 ? (VkDeviceSize)((texels.width + 3u) / 4u) * ((texels.height + 3u) / 4u) * 16u
+                                  : (VkDeviceSize)texels.width * texels.height * 4u;
+    if (bytes < need)
+        return fail();
+
+    EnginePresentVk::Impl::ImguiTexEntry e;
+    if (!createHostBuffer(s, need, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, e.stageBuf, e.stageMem, "present.imguiTexStage"))
+        return fail();
+    void* mapped = nullptr;
+    if (vkMapMemory(s.dev, e.stageMem.get(), 0, need, 0, &mapped) != VK_SUCCESS)
+        return fail();
+    std::memcpy(mapped, texels.bytes->data(), (size_t)need);
+    vkUnmapMemory(s.dev, e.stageMem.get());
+
+    VkImageCreateInfo ici{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+    ici.imageType = VK_IMAGE_TYPE_2D;
+    ici.format = fmt;
+    ici.extent = {texels.width, texels.height, 1};
+    ici.mipLevels = 1;
+    ici.arrayLayers = 1;
+    ici.samples = VK_SAMPLE_COUNT_1_BIT;
+    ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+    ici.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    if (!mc2vk::create(e.image, s.dev, [&](auto* h) { return vkCreateImage(s.dev, &ici, nullptr, h); }))
+        return fail();
+    VkMemoryRequirements req{};
+    vkGetImageMemoryRequirements(s.dev, e.image.get(), &req);
+    uint32_t memType = findMemoryType(s.phys, req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (memType == UINT32_MAX) memType = findMemoryType(s.phys, req.memoryTypeBits, 0);
+    if (memType == UINT32_MAX)
+        return fail();
+    VkMemoryAllocateInfo mai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+    mai.allocationSize = req.size;
+    mai.memoryTypeIndex = memType;
+    if (!mc2vk::create(e.memory, s.dev, [&](auto* h) { return vkAllocateMemory(s.dev, &mai, nullptr, h); }) ||
+        vkBindImageMemory(s.dev, e.image.get(), e.memory.get(), 0) != VK_SUCCESS)
+        return fail();
+    VkImageViewCreateInfo vci{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+    vci.image = e.image.get();
+    vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    vci.format = fmt;
+    vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    if (!mc2vk::create(e.view, s.dev, [&](auto* h) { return vkCreateImageView(s.dev, &vci, nullptr, h); }))
+        return fail();
+    if (!s.imguiTexSampler.get()) {
+        VkSamplerCreateInfo sci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+        sci.magFilter = sci.minFilter = VK_FILTER_LINEAR;
+        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        if (!mc2vk::create(s.imguiTexSampler, s.dev, [&](auto* h) { return vkCreateSampler(s.dev, &sci, nullptr, h); }))
+            return fail();
+    }
+
+    // The descriptor set is the last thing that can fail; the vendored backend returns null when the pool is exhausted.
+    e.set = ImGui_ImplVulkan_AddTexture(s.imguiTexSampler.get(), e.view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    if (!e.set) {
+        static bool s_logged = false;
+        if (!s_logged) {
+            s_logged = true;
+            std::fprintf(stderr, "[VK_IMGUI] descriptor pool exhausted (live=%zu retired=%zu): image draws skipped until sets retire\n",
+                         s.imguiTex.size(), s.imguiTexRetired.size());
+        }
+        return fail();
+    }
+
+    // No failure past this point.
+    barrier(cb, e.image.get(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    VkBufferImageCopy region{};
+    region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+    region.imageExtent = {texels.width, texels.height, 1};
+    vkCmdCopyBufferToImage(cb, e.stageBuf.get(), e.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    barrier(cb, e.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+    e.src = texels.bytes;
+    e.srcPtr = texels.bytes.get();
+    e.uploadFrame = s.imguiTexFrame;
+    e.checkedFrame = s.imguiTexFrame;
+    e.lastUsedFrame = s.imguiTexFrame;
+    const ImTextureID id = (ImTextureID)e.set;
+    s.imguiTexRetryAt.erase(glName);
+    s.imguiTex.emplace(glName, std::move(e));
+    return id;
 }
 
 bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
@@ -1383,11 +1611,59 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
     if (!drawData || !s.imguiVkInited || !ensureImguiFramebuffer(s))
         return false;
 
+    // VK-IMGUI-LIFECYCLE-1: the draw data is only recorded while the Vulkan backend (and the main viewport's renderer data it installs) is alive.
+    {
+        const bool ctx = ImGui::GetCurrentContext() != nullptr;
+        const bool bd = ctx && ImGui::GetIO().BackendRendererUserData != nullptr;
+        const bool vp = drawData->OwnerViewport && drawData->OwnerViewport->RendererUserData;
+        if (!(ctx && bd && vp)) {
+            static uint32_t s_skipped = 0;
+            if (s_skipped++ < 3)
+                std::fprintf(stderr, "[VK_IMGUI] draw data skipped: ctx=%d backend=%d viewport_renderer_data=%d owner=%p\n",
+                             (int)ctx, (int)bd, (int)vp, (void*)drawData->OwnerViewport);
+            return false;
+        }
+    }
+
+    // Every non-font command carries a GL texture name; swap in its descriptor set for the backend and restore afterwards, so the same
+    // ImDrawData still reads correctly elsewhere. A name with no VK image is skipped at bind time (empty clip rect).
+    struct CmdSave { ImDrawCmd* cmd; ImTextureID id; ImVec4 clip; };
+    std::vector<CmdSave> saved;
+    {
+        imguiTexSweep(s);
+        const ImTextureID fontTex = ImGui::GetIO().Fonts->TexID;
+        uint32_t skipped = 0;
+        for (int n = 0; n < drawData->CmdListsCount; ++n) {
+            for (ImDrawCmd& c : drawData->CmdLists[n]->CmdBuffer) {
+                if (c.UserCallback || c.ElemCount == 0 || c.GetTexID() == fontTex)
+                    continue;
+                saved.push_back({&c, c.TextureId, c.ClipRect});
+                const ImTextureID set = imguiTexResolve(s, cb, (uint32_t)c.GetTexID());
+                if (set) {
+                    c.TextureId = set;
+                } else {
+                    c.ClipRect = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+                    ++skipped;
+                }
+            }
+        }
+        static uint32_t s_logged = 0;
+        if (skipped != 0 && s_logged < kImguiLogCap) {
+            ++s_logged;
+            std::fprintf(stderr, "[VK_IMGUI] texture_cmds_skipped=%u (no VK image for the GL texture name)\n", skipped);
+        }
+    }
+
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rp.renderPass = s.imguiRenderPass.get();
     rp.framebuffer = s.imguiFramebuffer.get();
     rp.renderArea.offset = {0, 0};
     rp.renderArea.extent = {s.imgW, s.imgH};
+    // The ids and clip rects are put back on every exit from here.
+    struct RestoreGuard {
+        const std::vector<CmdSave>& v;
+        ~RestoreGuard() { for (const CmdSave& c : v) { c.cmd->TextureId = c.id; c.cmd->ClipRect = c.clip; } }
+    } restoreGuard{saved};
     vkCmdBeginRenderPass(cb, &rp, VK_SUBPASS_CONTENTS_INLINE);
     ImGui_ImplVulkan_RenderDrawData(drawData, cb);
     vkCmdEndRenderPass(cb);
@@ -2114,6 +2390,8 @@ void EnginePresentVk::shutdownImguiVulkanRenderer() {
     if (!impl_) return;
     Impl& s = *impl_;
     if (s.dev) s.ctx->waitIdle("present_imgui_shutdown");
+    imguiTexReleaseAll(s);   // before the backend (and its descriptor pool) goes
+    s.imguiTexSampler.reset();
     if (s.imguiVkInited) {
         // VK-IMGUI-SHUTDOWN-GUARD-1: this can be reached twice at teardown —
         // once from GuiRuntime::Shutdown() (which then calls ImGui::DestroyContext())

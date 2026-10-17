@@ -6,6 +6,12 @@
 #include "vulkan_color_prop_island.h"   // mc2_static_prop_geometry_cpu
 #include "mc2fmt.h"
 
+// Does a packet alpha-test: its own flag, or its texture slot carrying alpha on the type source (null/released texture list reads as no alpha).
+bool GpuStaticPropBatcher::packetHasAlpha(const GpuStaticPropPacket& pkt, const TG_TypeShape* src) {
+    return (pkt.materialFlags & STATIC_PROP_FLAG_ALPHA_TEST) != 0 ||
+           (src && src->listOfTextures && pkt.textureSlot < src->numTextures && src->listOfTextures[pkt.textureSlot].textureAlpha);
+}
+
 
 
 // Log the texture tier, clear the per-packet side tables and load the programs.
@@ -136,6 +142,14 @@ void GpuStaticPropBatcher::uploadPerTypeAndPublish() {
             mc2::fmt::as_size(s_typeIndex.size()));
     }
 
+    // Bake each packet's alpha-test answer now, while the type sources are alive: the Vulkan colour island asks per draw, after a source's
+    // texture list may have been released (second campaign mission).
+    s_packetAlphaBaked.assign(s_packets.size(), 0u);
+    for (size_t pi = 0; pi < s_packets.size(); ++pi) {
+        const auto& pkt = s_packets[pi];
+        s_packetAlphaBaked[pi] = packetHasAlpha(pkt, pkt.owningTypeID < s_types.size() ? s_types[pkt.owningTypeID].source : nullptr) ? 1u : 0u;
+    }
+
     s_geometryFinalized = true;
 }
 
@@ -187,11 +201,7 @@ bool GpuStaticPropBatcher::layoutCoalesce(StaticPropFinalizeFrame& f) {
             const auto& pkt = s_packets[type.firstPacket + p];
             const TG_TypeShape* src = type.source;
             if (!src || !src->listOfTextures) { malformed = true; break; }
-            bool pktAlpha = (pkt.materialFlags & STATIC_PROP_FLAG_ALPHA_TEST) != 0;
-            if (pkt.textureSlot < src->numTextures &&
-                src->listOfTextures[pkt.textureSlot].textureAlpha)
-                pktAlpha = true;
-            typeAlpha = typeAlpha || pktAlpha;
+            typeAlpha = typeAlpha || packetHasAlpha(pkt, src);
         }
         if (malformed) {
             if (coalesceWanted) {
@@ -1055,12 +1065,8 @@ void GpuStaticPropBatcher::finalizeGeometry() {
 }
 
 bool GpuStaticPropBatcher::packetAlphaTest(uint32_t packet) const {
-    if (!s_geometryFinalized || packet >= s_packets.size()) return false;
-    const auto& pkt = s_packets[packet];
-    if (pkt.materialFlags & STATIC_PROP_FLAG_ALPHA_TEST) return true;
-    if (pkt.owningTypeID >= s_types.size()) return false;
-    const TG_TypeShape* src = s_types[pkt.owningTypeID].source;
-    return src && src->listOfTextures && pkt.textureSlot < src->numTextures && src->listOfTextures[pkt.textureSlot].textureAlpha;
+    if (!s_geometryFinalized || packet >= s_packets.size() || packet >= s_packetAlphaBaked.size()) return false;
+    return s_packetAlphaBaked[packet] != 0;   // baked at finalize (VK-PROP-ALPHA-BAKE-1)
 }
 
 extern "C" int mc2_static_prop_packet_alpha_test(uint32_t packet) {

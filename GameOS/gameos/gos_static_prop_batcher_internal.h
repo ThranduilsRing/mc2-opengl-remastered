@@ -468,6 +468,7 @@ extern std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_persis
 extern uint64_t s_persistentStaticGen;
 extern std::vector<GpuStaticPropInstance> s_lastBuiltBatch;
 extern std::vector<GpuStaticPropPacket>                   s_packets;
+extern std::vector<uint8_t>                                s_packetAlphaBaked;   // per-packet alpha-test answer baked at finalize; cleared with s_packets
 extern std::vector<GpuStaticPropType>                     s_types;
 extern std::unordered_map<const TG_TypeShape*, uint32_t>  s_typeIndex;
 extern std::vector<RenderCore::StaticPropTypeDesc>        s_typeDescTable;

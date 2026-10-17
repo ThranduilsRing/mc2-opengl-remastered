@@ -183,6 +183,7 @@ public:
 
 private:
     // GpuStaticPropBatcher::finalizeGeometry phases (gos_static_prop_batcher_finalize*.cpp); callers use finalizeGeometry().
+    static bool packetHasAlpha(const GpuStaticPropPacket& pkt, const TG_TypeShape* src);
     void finalizePrologue();
     void createSharedBuffers();
     void uploadPerTypeAndPublish();

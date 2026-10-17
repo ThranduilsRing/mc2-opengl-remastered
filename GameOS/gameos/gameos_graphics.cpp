@@ -908,6 +908,12 @@ GosTexels gos_GetTextureTexels(uint32_t gosHandle) {
     return out;
 }
 
+GosTexels gos_GetTextureTexelsByGlName(uint32_t glName) {
+    if (glName == 0 || !g_gos_renderer) return {};
+    const uint32_t h = g_gos_renderer->findTextureHandleByGlName(glName);
+    return h == INVALID_TEXTURE_ID ? GosTexels{} : gos_GetTextureTexels(h);
+}
+
 // P1-1: FX-GPU-1 Phase 1 — narrow GL-name resolver for the GPU particle
 // bridge. Declared in GameOS/include/gameos.hpp and called at flush time.
 // Delegates to gos_GetGLTextureId; the DWORD parameter matches the GOS

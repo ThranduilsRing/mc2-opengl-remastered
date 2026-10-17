@@ -470,6 +470,10 @@ static void CreateOrResizeBuffer(VkBuffer& buffer, VkDeviceMemory& buffer_memory
     buffer_size = buffer_size_aligned;
 }
 
+// MC2 local change: draw bottom-up (see SetupRenderState). Process-wide; set once by the owner of the target image.
+static bool g_FlipY = false;
+void ImGui_ImplVulkan_SetFlipY(bool flip) { g_FlipY = flip; }
+
 static void ImGui_ImplVulkan_SetupRenderState(ImDrawData* draw_data, VkPipeline pipeline, VkCommandBuffer command_buffer, ImGui_ImplVulkan_FrameRenderBuffers* rb, int fb_width, int fb_height)
 {
     ImGui_ImplVulkan_Data* bd = ImGui_ImplVulkan_GetBackendData();
@@ -488,13 +492,14 @@ static void ImGui_ImplVulkan_SetupRenderState(ImDrawData* draw_data, VkPipeline 
         vkCmdBindIndexBuffer(command_buffer, rb->IndexBuffer, 0, sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
     }
 
-    // Setup viewport:
+    // Setup viewport. MC2 local change (ImGui_ImplVulkan_SetFlipY): a negative-height viewport draws the frame bottom-up, for a target
+    // image stored with GL bottom-left origin (the engine's present image).
     {
         VkViewport viewport;
         viewport.x = 0;
-        viewport.y = 0;
+        viewport.y = g_FlipY ? (float)fb_height : 0.0f;
         viewport.width = (float)fb_width;
-        viewport.height = (float)fb_height;
+        viewport.height = g_FlipY ? -(float)fb_height : (float)fb_height;
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(command_buffer, 0, 1, &viewport);
@@ -632,7 +637,7 @@ void ImGui_ImplVulkan_RenderDrawData(ImDrawData* draw_data, VkCommandBuffer comm
                 // Apply scissor/clipping rectangle
                 VkRect2D scissor;
                 scissor.offset.x = (int32_t)(clip_min.x);
-                scissor.offset.y = (int32_t)(clip_min.y);
+                scissor.offset.y = g_FlipY ? (int32_t)((float)fb_height - clip_max.y) : (int32_t)(clip_min.y);
                 scissor.extent.width = (uint32_t)(clip_max.x - clip_min.x);
                 scissor.extent.height = (uint32_t)(clip_max.y - clip_min.y);
                 vkCmdSetScissor(command_buffer, 0, 1, &scissor);
@@ -1258,7 +1263,8 @@ VkDescriptorSet ImGui_ImplVulkan_AddTexture(VkSampler sampler, VkImageView image
     VkDescriptorPool pool = bd->DescriptorPool ? bd->DescriptorPool : v->DescriptorPool;
 
     // Create Descriptor Set:
-    VkDescriptorSet descriptor_set;
+    // MC2 local change: an exhausted pool returns VK_NULL_HANDLE (no descriptor update on a garbage handle); the caller skips the draw.
+    VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
     {
         VkDescriptorSetAllocateInfo alloc_info = {};
         alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1266,7 +1272,8 @@ VkDescriptorSet ImGui_ImplVulkan_AddTexture(VkSampler sampler, VkImageView image
         alloc_info.descriptorSetCount = 1;
         alloc_info.pSetLayouts = &bd->DescriptorSetLayout;
         VkResult err = vkAllocateDescriptorSets(v->Device, &alloc_info, &descriptor_set);
-        check_vk_result(err);
+        if (err != VK_SUCCESS)
+            return VK_NULL_HANDLE;
     }
 
     // Update the Descriptor Set:
