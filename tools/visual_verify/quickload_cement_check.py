@@ -22,6 +22,8 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)
 import savegame_backup  # noqa: E402
 
 BOOKMARK = "mc2_01_runway_overview.png"
@@ -34,7 +36,7 @@ def capture(exe: str, out: str, load: bool) -> int:
         args += ["--exe", exe]
     if load:
         args += ["--env-declare", "MC2_BOOT_QUICKSAVE_AT=1000", "--env-declare", "MC2_BOOT_QUICKLOAD_AT=1100"]
-    return subprocess.run(args, cwd=ROOT).returncode
+    return subprocess.run(args, cwd=ROOT, **console_child.child_kwargs()).returncode
 
 
 def diff_px(a: str, b: str) -> int:
