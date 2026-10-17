@@ -44,6 +44,9 @@ Several scene inputs that VK consumes are still produced by GL compute (11 GL-on
 - Order: (1) culling / light grid / cluster depth pyramid, (2) terrain lighting, (3) water. Each: VK compute pipeline + SPIR-V, parity vs the GL producer's output (buffer diff or captured frame at a day and a night map, viewed), VK tier1 under validation 0, then the GL producer is deletable.
 - Finding this session: the `glGetTexImage` calls still in the tree are GL-side self-tests/uploads (cluster depth pyramid, light grid, blur self-checks, texture finalize, atlas), NOT readbacks into VK islands (the island counters `g_forbidden.glGetTexImage` assert zero). So 3.4(b) is mostly already true; the real dependencies are the producers above.
 
+### 3.4P status (s53)
+Water cull/pack and terrain lighting are native VK compute (Slang) and ON by default under the umbrella; the water readback is gone. Proof: GL-vs-VK thin-record byte parity on three maps, lighting self-test vs a C++ transcription, captures viewed, tier1 validation 0. Remaining producers from the list (culling, light grid, cluster pyramid) have NO VK consumer (see lane2-state s53 findings), so they need no port and are deletable with their GL consumers in 3.5.
+
 ### 3.3 comparison tooling (note, not a restore)
 3.3 deleted the GL-vs-VK feature-coverage / twin / source tools and the GL leg of the proof matrix. What remains for proving producer moves: `ab.py --skip-gl` / `capture_ab.py` (GL arm pinned `MC2_RENDER_BACKEND=gl`, valid while the opt-out exists), `bless.py --backend gl`. If a producer move needs a per-buffer GL-vs-VK diff, build it for that move; the deleted twin-map tools are in git history (commit before 04c35b397) if wanted. The GL opt-out must therefore stay until 3.4P is done.
 

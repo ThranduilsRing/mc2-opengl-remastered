@@ -51,16 +51,16 @@
    "LG02": 192,
    "LG03": 263,
    "LG04": 6,
-   "LG05": 132,
-   "LG06": 512,
+   "LG05": 138,
+   "LG06": 516,
    "LG07": 0,
-   "LG08": 267,
-   "LG09": 1954,
+   "LG08": 266,
+   "LG09": 1952,
    "LG10": 42,
    "LG11": 89,
    "LG12a": 93,
    "LG12b": 30,
-   "LG13": 317,
+   "LG13": 319,
    "LG14": 61,
    "LG15": 0,
    "LG16": 6,
@@ -182,7 +182,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 9
+   "LG20": 11
   },
   "mclib": {
    "LG01": 337,
@@ -418,7 +418,7 @@
   },
   "GameOS/gameos/gameos_graphics_overlay.cpp": {
    "LG05": 2,
-   "LG06": 2,
+   "LG06": 1,
    "LG09": 21,
    "LG10": 1,
    "LG12a": 1
@@ -627,7 +627,7 @@
    "LG20": 8
   },
   "GameOS/gameos/gos_postprocess.h": {
-   "LG06": 3
+   "LG06": 1
   },
   "GameOS/gameos/gos_postprocess_blur.cpp": {
    "LG03": 3,
@@ -637,9 +637,7 @@
    "LG11": 2
   },
   "GameOS/gameos/gos_postprocess_diag.cpp": {
-   "LG06": 1,
-   "LG08": 1,
-   "LG09": 24,
+   "LG09": 23,
    "LG10": 1
   },
   "GameOS/gameos/gos_postprocess_effects.cpp": {
@@ -836,7 +834,7 @@
   "GameOS/gameos/gos_terrain_lighting.cpp": {
    "LG03": 8,
    "LG04": 1,
-   "LG05": 4,
+   "LG05": 6,
    "LG06": 4,
    "LG08": 1,
    "LG09": 12,
@@ -844,7 +842,7 @@
    "LG16": 1
   },
   "GameOS/gameos/gos_terrain_lighting.h": {
-   "LG05": 2,
+   "LG05": 4,
    "LG13": 8
   },
   "GameOS/gameos/gos_terrain_lod_chunk.cpp": {
@@ -888,8 +886,12 @@
    "LG09": 26
   },
   "GameOS/gameos/gos_terrain_water_stream.cpp": {
+   "LG05": 1,
    "LG08": 10,
-   "LG09": 102
+   "LG09": 103
+  },
+  "GameOS/gameos/gos_terrain_water_stream.h": {
+   "LG05": 1
   },
   "GameOS/gameos/gos_validate.cpp": {
    "LG06": 2,
@@ -987,10 +989,10 @@
    "LG06": 1
   },
   "GameOS/gameos/render_backend_select.cpp": {
-   "LG06": 1
+   "LG06": 2
   },
   "GameOS/gameos/render_backend_select.h": {
-   "LG06": 1
+   "LG06": 2
   },
   "GameOS/gameos/render_frame_plan.h": {
    "LG06": 1
@@ -1135,6 +1137,9 @@
   "GameOS/gameos/visual_tuning_profile.h": {
    "LG06": 1
   },
+  "GameOS/gameos/vk_compute_pipeline.cpp": {
+   "LG06": 1
+  },
   "GameOS/gameos/vk_feed_dump.h": {
    "LG06": 1
   },
@@ -1150,6 +1155,13 @@
   "GameOS/gameos/vk_island_util.h": {
    "LG06": 3,
    "LG11": 1
+  },
+  "GameOS/gameos/vk_native_producers.cpp": {
+   "LG06": 3,
+   "LG13": 2
+  },
+  "GameOS/gameos/vk_native_producers.h": {
+   "LG06": 2
   },
   "GameOS/gameos/vk_render_pass_timer.cpp": {
    "LG06": 1
@@ -1295,7 +1307,7 @@
    "LG13": 2
   },
   "GameOS/gameos/vulkan_water_island_run.cpp": {
-   "LG09": 7
+   "LG09": 5
   },
   "GameOS/include/fileio.hpp": {
    "LG06": 1
@@ -3108,10 +3120,10 @@
    "LG20": 2
   },
   "editor/EditorMFC.cpp": {
-   "LG20": 1
+   "LG20": 2
   },
   "editor/EditorPlaytest.cpp": {
-   "LG20": 4
+   "LG20": 5
   },
   "editor/EditorTaskRunner.cpp": {
    "LG19": 1
@@ -5101,7 +5113,7 @@
    "LG20": 3
   }
  },
- "head": "9f93fa1cb",
+ "head": "bd9c08b9e",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

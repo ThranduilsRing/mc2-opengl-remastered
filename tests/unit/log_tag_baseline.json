@@ -12295,6 +12295,49 @@
    "count": 1
   },
   {
+   "tag": "VK_PRODUCER_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "gl_count",
+    "vk_visible",
+    "compared",
+    "same",
+    "differ",
+    "only_gl",
+    "only_vk",
+    "truncated",
+    "compared",
+    "light_mismatch",
+    "fog_mismatch",
+    "max_channel_delta"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PRODUCER_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "gl",
+    "vk"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PRODUCER_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "offset",
+    "count",
+    "lights",
+    "gl_read"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_PROFILE",
    "ver": 1,
    "stream": "buffer",

@@ -1,5 +1,35 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FIFTY-THIRD session (2026-10-17, Sonnet 5.5) -- step 3.4P: native Vulkan compute producers (terrain lighting + water cull/pack), first engine Slang shaders
+
+### Commits (on 0421c2417, then merged nifty 26b00c43c)
+Merge nifty (callers/cxx17 baseline: nifty side) | WIP shaders + compute RAII + lighting snapshot | wiring into the water island | build fixes | parity diagnostics | white-sentinel init | startup self-test | docs/regens. Mergeable tip: the state commit on top (code tip bd9c08b9e; everything after it is docs and regenerated inventories).
+
+### What landed
+- `GameOS/gameos/vk_compute_pipeline.{h,cpp}`: RAII `ComputePipeline` / `ComputeSets` / `cmdBarrier` (first VK compute pipelines in the engine). `vk_native_producers.{h,cpp}`: `NativeProducers` records lighting -> cull/pack -> draw-args in the water island command buffer on the single graphics queue (barriers, no semaphore, no async compute).
+- Slang compute shaders (the first real engine Slang): `shaders/vulkan/terrain_lighting.comp.slang` (port of gos_terrain_lighting.comp), `water_cull_pack.comp.slang` (port of gpu_driven_water.comp, full-recipe mode), `water_draw_args.comp.slang` (port of gpu_driven_cmd_patch.comp). Baked by the CMake glob; no pilot needed.
+- Water: the VK water draw is `vkCmdDrawIndirect` on GPU-written args over a GPU-written thin buffer. The per-frame blocking GL readback (count + count x 48 B) and the re-upload are gone; the GL cull dispatch is skipped while native is active (`mc2_vk_water_native_mode()`: 0 readback feed (fail-soft and the first frames), 1 native, 2 native + GL for a parity frame at native frames 60, 600, then every 3600th). Recipes now live in device-local memory (staging copy once). GL path under `MC2_RENDER_BACKEND=gl` untouched. No new gate (gated by the umbrella, fail-soft to the old feed).
+- Terrain lighting: `gos_terrain_lighting::GetVkProducerSnapshot` publishes the exact arrays/scalars the GL dispatch used each frame; the VK compute runs the same math.
+
+### Proof
+| check | result |
+|---|---|
+| water thin records, VK vs GL, same frame (frames 60, 600) | mc2_01: 4413/4413 and 3673/3673 byte-identical (same=N differ=0 only_gl=0 only_vk=0); mc2_10: 399/399, 388/388; mc2_17: 3955/3955, 923/923 |
+| lighting compute vs C++ transcription of quad.cpp (startup self-test, 4096 vertices, 8 lights, all branches) | 0 mismatches, max channel delta 0 (`[VK_PRODUCER_SELFTEST v1]`) |
+| VK captures viewed (ab.py, day mc2_01_saved_205644 + night mc2_10_saved_204523, `.claude/l2cap/s53-ab/cmp/*/montage.jpg`) | water identical to GL (MAD 0.82 / 0.50) |
+| VK tier1 under validation | validation errors=0 warnings=0 on all 5; full run 3/5 (mc2_01 and mc2_17 heartbeat_freeze_play on a 4-CPU-mask run with other lanes loading the host: the known flake class); each rerun alone PASS (mc2_01 4197 frames incl. the frame-3600 parity, mc2_17 3498) |
+| doctest | 3277/3277 test cases |
+| CPU per frame | the removed GL readback cost 598 us at 4525 records (`[VK_WATER_PERF] thin_readback_us`); the native path has none (Tracy not run) |
+
+### Findings (changes the 3.4P list)
+- Only the water feed was a GL-compute -> VK readback. The light grid VK consumes is the CPU-built `GetLightGridCpu` copy; `cluster_depth_pyramid` and `lightgrid_build` are INERT (no consumer, per their own headers); no VK TU references gpu_cull / terrain_indirect compute output. So those GL producers die with GL and need no VK port.
+- The GL terrain-lighting window is EMPTY on the live LOD-chunk path (`land->getNumVertices()==0` at PackAndDispatch): the water thin records carry the 0xFFFFFFFF white sentinel in GL and now in VK (VK lightOut starts white). The lighting shader is therefore proven by the self-test, not by a live window.
+- Slang toolchain gaps: set-0 slots must pre-exist in binding-slot-occupancy.json (UBO 4 refused; reused registered slots); the gpu_abi bake check covers only structs named like gpu_abi types (the producer structs have no entry); `docs/shaders-slang.md` updated.
+- Process: the `run_smoke.py` combined run flakes under host load; the `Edit`-free helper `scratch/ce.py` preserves CRLF.
+
+### OPEN
+1. Terrain lighting is consumed only by water thin records today; if the LOD-chunk path ever packs a window the producer is live (proven by self-test). 2. The GL lighting/water producers stay until 3.5 (CPU consumers, the `gl` opt-out). 3. Thin capacity is capped at 131072 records per slot (overflow only shows on a parity line). 4. Tracy CPU delta not measured. 5. Owner question 5 (editor GL set) unchanged.
+
 ## FIFTY-SECOND session (2026-10-17, Sonnet 5.5) -- review must-fixes, editor check, GL canary/INTEROP gates deleted, step 3.4P and the editor blocker recorded
 
 ### Commits (on a8b3462ca)
