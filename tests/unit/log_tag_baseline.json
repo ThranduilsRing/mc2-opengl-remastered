@@ -222,6 +222,32 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [
+    "barrage",
+    "created",
+    "reinit",
+    "reinit_freed_appearance",
+    "ended",
+    "boom_no_fx"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ALLOC_ART",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "exists",
+    "tti_ms",
+    "boom",
+    "flags_justcreated"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ALLOC_ART",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
     "n",
     "created",
     "reinit",
