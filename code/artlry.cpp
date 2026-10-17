@@ -100,6 +100,11 @@ extern bool MLRVertexLimitReached;
 // MISC
 //***************************************************************************
 
+#ifdef MC2_ALLOC_STATS
+// Proof build only: pooled-round evidence for the reload fixture (printed with [ALLOC_TICK]).
+unsigned g_mc2ArtCreated = 0, g_mc2ArtReinit = 0, g_mc2ArtReinitFreed = 0;
+#endif
+
 void CallArtillery (long commanderID, long strikeType, Stuff::Vector3D strikeLoc, long secondsToImpact, bool randomOff) 
 {
 
@@ -123,6 +128,9 @@ void CallArtillery (long commanderID, long strikeType, Stuff::Vector3D strikeLoc
   	ArtilleryPtr artilleryStrike = ObjectManager->createArtillery(strikeType,strikeLoc);
 	if (artilleryStrike)
 	{
+#ifdef MC2_ALLOC_STATS
+		++g_mc2ArtCreated;
+#endif
 		artilleryStrike->iFacePosition = strikeLoc;
 		artilleryStrike->setPosition( strikeLoc );
 		
@@ -635,6 +643,14 @@ void Artillery::init (bool create)
 {
 	// Pool reuse (create=false) arrives holding the previous round's appearance/bomber/effects; free them before
 	// the resets below orphan them. destroy() is idempotent (nulls what it frees). The constructor (create=true) has nothing yet.
+#ifdef MC2_ALLOC_STATS
+	if (!create)
+	{
+		++g_mc2ArtReinit;
+		if (appearance)
+			++g_mc2ArtReinitFreed;
+	}
+#endif
 	if (!create)
 		destroy();
 

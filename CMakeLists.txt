@@ -630,7 +630,7 @@ add_custom_target(build_fingerprint
 
 add_executable(mc2 ${SOURCES} ${MAIN_SRC})
 if(MC2_ALLOC_STATS)
-    set_source_files_properties("code/mechcmd2_frame.cpp" PROPERTIES COMPILE_DEFINITIONS MC2_ALLOC_STATS=1)
+    set_source_files_properties("code/mechcmd2_frame.cpp" "code/artlry.cpp" PROPERTIES COMPILE_DEFINITIONS MC2_ALLOC_STATS=1)
     set_source_files_properties("${CMAKE_SOURCE_DIR}/GameOS/gameos/gameos.cpp" DIRECTORY "${CMAKE_SOURCE_DIR}/GameOS/gameos" PROPERTIES COMPILE_DEFINITIONS MC2_ALLOC_STATS=1)
 endif()
 if(MC2_SIM_TRACE)
