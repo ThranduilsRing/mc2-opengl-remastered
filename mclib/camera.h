@@ -514,7 +514,7 @@ class Camera
 		long init (FitIniFile *cameraFile);
 
 		// Virtual so a teardown through a Camera pointer reaches GameCamera::destroy, which frees the sky and compass appearances
-		// (they used to be swept up with the appearance heap).
+		// (they used to be swept up with the appearance heap). Idempotent: every free nulls its pointer, so ~Camera after an explicit destroy is safe.
 		virtual void destroy (void);
 
 		~Camera (void)
