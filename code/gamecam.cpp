@@ -80,6 +80,18 @@ namespace gos_terrain_indirect { void RenderWaterReflectionPass(); }
 #include "../GameOS/gameos/gos_postprocess.h"  // VK-GL-LOST-DRAWS tags
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+
+namespace {
+// Marks the quads drawn inside a scope as exempt from the HUD batch's bottom-band shrink, then restores the previous state.
+struct HudScaleExemptScope {
+	bool prev;
+	bool active;
+	explicit HudScaleExemptScope(bool on) : prev(gos_GetHudScaleExempt()), active(on) { if (active) gos_SetHudScaleExempt(true); }
+	~HudScaleExemptScope() { if (active) gos_SetHudScaleExempt(prev); }
+	HudScaleExemptScope(const HudScaleExemptScope&) = delete;
+	HudScaleExemptScope& operator=(const HudScaleExemptScope&) = delete;
+};
+}
 extern float g_iblShStrength;             // static-prop SH ambient slider (gos_static_prop_batcher.cpp)
 
 //---------------------------------------------------------------------------
@@ -487,8 +499,7 @@ void GameCamera::renderLetterbox() {
 		const bool vkHudQuad = mc2vkgate::umbrellaOn();
 		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 1);
 		// The HUD batch shrinks bottom-band quads (0.85 toward bottom-centre); the bars and the fade span the screen and must not.
-		const bool prevHudScaleExempt = gos_GetHudScaleExempt();
-		if (vkHudQuad) gos_SetHudScaleExempt(true);
+		const HudScaleExemptScope hudExempt(vkHudQuad);
 		//Figure out the two faces we need to draw based on letterBox Pos and Alpha
 		float barTopX = screenResolution.y * letterBoxPos;
 		float barBotX = screenResolution.y - barTopX;
@@ -603,7 +614,6 @@ void GameCamera::renderLetterbox() {
 		gVertex[3].frgb		= 0xff000000;            
 		
 		gos_DrawQuads(gVertex, 4);
-		if (vkHudQuad) gos_SetHudScaleExempt(prevHudScaleExempt);
 		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 0);
 	}
 }
@@ -615,8 +625,7 @@ void GameCamera::renderFadeQuad() {
 		const bool vkHudQuad = mc2vkgate::umbrellaOn();
 		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 1);
 		// The HUD batch shrinks bottom-band quads (0.85 toward bottom-centre); the bars and the fade span the screen and must not.
-		const bool prevHudScaleExempt = gos_GetHudScaleExempt();
-		if (vkHudQuad) gos_SetHudScaleExempt(true);
+		const HudScaleExemptScope hudExempt(vkHudQuad);
 		//We are fading to something other then clear screen.
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
@@ -673,7 +682,6 @@ void GameCamera::renderFadeQuad() {
 		gVertex[3].frgb		= 0xff000000;            
 		
 		gos_DrawQuads(gVertex, 4);
-		if (vkHudQuad) gos_SetHudScaleExempt(prevHudScaleExempt);
 		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 0);
 	}
 }

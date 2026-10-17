@@ -16,7 +16,7 @@ from typing import Mapping, Optional, Sequence
 GL = "gl"
 VULKAN = "vulkan"
 
-_GL_SPELLINGS = ("gl", "GL")   # the engine's only GL spellings (the temporary opt-out); unset, empty or unrecognised is Vulkan since 2026-10-17
+_GL_SPELLINGS = ("gl", "GL")   # the engine's only GL spellings (the temporary opt-out); unset, empty or unrecognised is Vulkan
 _SOURCE_BACKEND = {"vk_present": VULKAN, "gl_fbo": GL}
 
 

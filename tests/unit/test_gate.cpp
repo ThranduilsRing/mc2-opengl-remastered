@@ -20,6 +20,7 @@
 #include "mlr/mlr_gate.h"
 #include "vk_device_profile.h"   // the Vulkan device profile table (header-only, so the table is tested without a Vulkan link)
 #include "vk_validation_line.h"  // the engine-log line of one validation-layer message (header-only, Vulkan-free)
+#include "render_backend_select.h"  // the one MC2_RENDER_BACKEND parse rule
 #include "owned_handle.h"       // the move-only owner the Vulkan islands hold their objects in (header-only, Vulkan-free)
 
 #include <cstdio>
@@ -1862,4 +1863,20 @@ TEST_CASE("scoped gate override: a nullptr value clears a variable that was set,
     CHECK_FALSE(gate::get<"MC2_TERRAIN_LOD_CHUNK">());
     CHECK(std::string(std::getenv("MC2_TERRAIN_LOD_CHUNK")) == "0");
     static_assert(!std::is_copy_constructible_v<gate::ScopedEnv>);
+}
+
+TEST_CASE("MC2_RENDER_BACKEND text: only gl/GL selects GL, a typo is Vulkan and flagged")
+{
+	using mc2::RenderBackend;
+	bool ok = false;
+	CHECK(mc2::backendFromText(nullptr, &ok) == RenderBackend::Vulkan);   CHECK(ok);
+	CHECK(mc2::backendFromText("", &ok) == RenderBackend::Vulkan);        CHECK(ok);
+	CHECK(mc2::backendFromText("gl", &ok) == RenderBackend::GL);          CHECK(ok);
+	CHECK(mc2::backendFromText("GL", &ok) == RenderBackend::GL);          CHECK(ok);
+	CHECK(mc2::backendFromText("vulkan", &ok) == RenderBackend::Vulkan);  CHECK(ok);
+	CHECK(mc2::backendFromText("vk", &ok) == RenderBackend::Vulkan);      CHECK(ok);
+	for (const char* typo : {"opengl", "Vulkan", "Gl", "gl "}) {
+		CHECK(mc2::backendFromText(typo, &ok) == RenderBackend::Vulkan);
+		CHECK_FALSE(ok);
+	}
 }

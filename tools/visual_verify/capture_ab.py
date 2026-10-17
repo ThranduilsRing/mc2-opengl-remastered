@@ -113,6 +113,8 @@ def capture_cmd(install: str, out_dir: str, bookmarks: str, vulkan: bool, freeze
         # The umbrella, not the bare selector: with MC2_RENDER_BACKEND=vulkan alone the engine finds the present image not VK-owned, forces GL
         # for the session and the "Vulkan" arm is a GL capture (capture.py now refuses that).
         cmd += ["--env", "MC2_RENDER_BACKEND=vulkan", "--env", "MC2_VK_SHARED_GBUFFER=1"]
+    else:
+        cmd += ["--env", "MC2_RENDER_BACKEND=gl"]        # unset means Vulkan, so the GL arm names its backend
     return cmd
 
 

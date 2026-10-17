@@ -60,7 +60,7 @@ def test_the_vulkan_arm_asks_for_the_shared_gbuffer_umbrella():
     vk = capture_ab.capture_cmd("inst", "out", BM, vulkan=True)
     gl = capture_ab.capture_cmd("inst", "out", BM, vulkan=False)
     assert "MC2_RENDER_BACKEND=vulkan" in vk and "MC2_VK_SHARED_GBUFFER=1" in vk
-    assert not any("MC2_RENDER_BACKEND" in a or "MC2_VK_SHARED_GBUFFER" in a for a in gl)
+    assert "MC2_RENDER_BACKEND=gl" in gl and not any("MC2_VK_SHARED_GBUFFER" in a for a in gl)
 
 
 def put_sidecar(root, set_name, **fields):

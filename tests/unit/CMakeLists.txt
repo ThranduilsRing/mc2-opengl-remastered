@@ -120,6 +120,7 @@ add_executable(mc2_tests
     test_mc2fmt.cpp         # STEP3-LOGGING-B0: mc2fmt.h to_buf/to_buf_n/safe/as_* vs snprintf (offline)
     test_printf_corpus.cpp  # STEP3-LOGGING-B0: generated format corpus, printf vs mc2::fmt::to_buf byte equality
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils/mc2log.cpp  # LOGGING-FACADE-P0: leaf TU (no engine deps)
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/render_backend_select.cpp  # the one MC2_RENDER_BACKEND parser (backendFromText)
     test_texture_decode.cpp  # backend-neutral texture decode + upload policy (no GL)
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/texture_decode.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils/Image.cpp     # the TGA / PNG decoders texture_decode wraps (WIC for PNG)

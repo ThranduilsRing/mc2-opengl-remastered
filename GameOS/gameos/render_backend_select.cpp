@@ -29,27 +29,28 @@ int s_cached = -1;
 
 RenderBackend resolveOnce() {
     const std::string envText = mc2::gate::str<"MC2_RENDER_BACKEND">();   // "" when unset or empty
-    const char* env = envText.c_str();
-    if (env[0] == '\0') {
-        // Unset -> Vulkan (default since the 2026-10-17 flip). Silent.
-        return RenderBackend::Vulkan;
-    }
-    if (std::strcmp(env, "gl") == 0 || std::strcmp(env, "GL") == 0) {
-        return RenderBackend::GL;
-    }
-    if (std::strcmp(env, "vulkan") == 0 || std::strcmp(env, "VULKAN") == 0 ||
-        std::strcmp(env, "vk") == 0) {
-        mc2::fmt::print_out("[RENDER_BACKEND] MC2_RENDER_BACKEND={} -> Vulkan backend selected.\n", mc2::fmt::safe(env));
+    bool recognized = true;
+    const RenderBackend b = backendFromText(envText.c_str(), &recognized);
+    if (!recognized) {
+        mc2::fmt::print_out("[RENDER_BACKEND] MC2_RENDER_BACKEND={} unrecognized (expected gl|vulkan); coercing to Vulkan.\n", mc2::fmt::safe(envText.c_str()));
         std::fflush(stdout);
-        return RenderBackend::Vulkan;
+    } else if (b == RenderBackend::Vulkan && !envText.empty()) {
+        mc2::fmt::print_out("[RENDER_BACKEND] MC2_RENDER_BACKEND={} -> Vulkan backend selected.\n", mc2::fmt::safe(envText.c_str()));
+        std::fflush(stdout);
     }
-    // Unrecognized -> GL, log the coercion once.
-    mc2::fmt::print_out("[RENDER_BACKEND] MC2_RENDER_BACKEND={} unrecognized (expected gl|vulkan); coercing to GL.\n", mc2::fmt::safe(env));
-    std::fflush(stdout);
-    return RenderBackend::GL;
+    return b;
 }
 
 }  // namespace
+
+RenderBackend backendFromText(const char* text, bool* recognized) {
+    if (recognized) *recognized = true;
+    if (!text || text[0] == '\0') return RenderBackend::Vulkan;   // unset: Vulkan, silent
+    if (std::strcmp(text, "gl") == 0 || std::strcmp(text, "GL") == 0) return RenderBackend::GL;
+    if (std::strcmp(text, "vulkan") == 0 || std::strcmp(text, "VULKAN") == 0 || std::strcmp(text, "vk") == 0) return RenderBackend::Vulkan;
+    if (recognized) *recognized = false;   // a typo must not select GL while the VK umbrella reads it as on
+    return RenderBackend::Vulkan;
+}
 
 RenderBackend renderBackend() {
     if (s_cached < 0) {

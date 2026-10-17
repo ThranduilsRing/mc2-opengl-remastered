@@ -44,8 +44,7 @@ static bool isEnabled() {
 }
 
 static bool vkImguiRequested() {
-    // The gate is process-static; the backend is read live (the backend never changes after init since the
-    // GL fallback was removed, the live read is harmless).
+    // Both inputs are fixed once the engine is up (the gate is cached, the backend is immutable).
     static int cachedGate = -1;
     if (cachedGate < 0) {
 #ifdef MC2_VULKAN

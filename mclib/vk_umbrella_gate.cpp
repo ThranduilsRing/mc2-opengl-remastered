@@ -1,17 +1,15 @@
 // vk_umbrella_gate.cpp -- out-of-line VK umbrella questions (see GameOS/gameos/vk_umbrella_light.h).
 #include "../GameOS/gameos/vk_shared_gbuffer_gate.h"
 #include "../GameOS/gameos/vk_umbrella_light.h"
-#include "Gates/gate_cold.h"   // str<>()
-#include <string>
+#include "../GameOS/gameos/render_backend_select.h"
 
 namespace mc2vkgate {
 
 bool umbrellaOn()
 {
-    // The umbrella is default ON, but only means anything on the Vulkan backend: MC2_RENDER_BACKEND=gl
-    // (the temporary opt-out) must leave every VK island off. Mirrors resolveOnce() in render_backend_select.cpp.
-    const std::string be = mc2::gate::str<"MC2_RENDER_BACKEND">();   // "gl" fits the small-string buffer: no allocation
-    if (be == "gl" || be == "GL") return false;
+    // The umbrella is default ON, but only means anything on the Vulkan backend: the GL opt-out must leave every
+    // VK island off. The backend is immutable once resolved, so ask the one resolver rather than re-parse the string.
+    if (mc2::renderBackend() != mc2::RenderBackend::Vulkan) return false;
     return mc2::gate::get<"MC2_VK_SHARED_GBUFFER">();
 }
 

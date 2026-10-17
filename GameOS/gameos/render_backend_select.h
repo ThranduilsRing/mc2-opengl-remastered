@@ -13,8 +13,7 @@
 //
 // This header is GL-safe: it pulls in NO Vulkan headers and has NO #ifdef
 // MC2_VULKAN dependency, so it compiles identically in the shipping GL-only
-// build. On =gl / unset / unrecognized the accessor adds only one memoized
-// getenv and returns GL -- byte-identical behavior, no code path changes.
+// build. The accessor adds only one memoized getenv.
 
 #ifndef MC2_RENDER_BACKEND_SELECT_H
 #define MC2_RENDER_BACKEND_SELECT_H
@@ -26,6 +25,10 @@ enum class RenderBackend {
     Vulkan = 1,  // default / unset / unrecognized / =vulkan
 };
 
+// The one parsing rule: "gl"/"GL" -> GL; "vulkan"/"VULKAN"/"vk"/unset/empty -> Vulkan; anything else
+// -> Vulkan with *recognized=false (a typo must not select GL). Pure; used by renderBackend() and tests.
+RenderBackend backendFromText(const char* text, bool* recognized = nullptr);
+
 // Memoized accessor. Reads MC2_RENDER_BACKEND once (values "gl" | "vulkan";
 // default Vulkan; anything unrecognized -> Vulkan, coercion logged once). Idempotent
 // and cheap after the first call. Thread-safety: intended to be first called
@@ -36,8 +39,8 @@ RenderBackend renderBackend();
 // Human-readable name for logs ("gl" | "vulkan").
 const char* renderBackendName(RenderBackend b);
 
-// Fatal backend failure (owner ruling 2026-10-16: no GL fallback). Called when
-// MC2_RENDER_BACKEND=vulkan was requested and Vulkan cannot come up (device /
+// Fatal backend failure (there is no GL fallback). Called when the Vulkan
+// backend is selected (the default) and Vulkan cannot come up (device /
 // extensions / validation layer failure, no MC2_VULKAN in the build, or a present
 // path that cannot be VK-owned). Logs "[RENDER_BACKEND] FATAL: <reason>", shows a
 // message box unless the run is automated (smoke / crash-fast-exit), and ends the

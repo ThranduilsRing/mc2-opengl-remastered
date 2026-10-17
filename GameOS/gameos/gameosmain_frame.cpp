@@ -687,7 +687,7 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
                             } else if (++g_vkPresentRetryFails >= 120) {
                                 // ~60s of NON-minimized failed retries: the
                                 // surface is not coming back. No GL fallback
-                                // (owner ruling 2026-10-16): show the reason, exit.
+                                // show the reason, exit.
                                 mc2::fatalBackendFailure(
                                     "VK present init failed for ~60s with a "
                                     "visible drawable (deferred-retry budget)");
@@ -741,7 +741,7 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
                             // tear the present stack down and re-enter the
                             // DEFERRED-INIT retry path — the session stays VK
                             // and recovers when the surface frees up. The ONLY
-                            // remaining forceGL is the structural not-VK-owned
+                            // remaining fatal case is the structural not-VK-owned
                             // decline (config plainly cannot composite; retry
                             // cannot help; it is fatal, there is no GL fallback).
                             const std::string fr = vkpres.health().fallback_reason;
@@ -768,9 +768,8 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
                     // come up because GL swaps). Skipping the swap frees the HWND
                     // so the next retry succeeds; the window just holds its last
                     // frame for the sub-second gap (or stays blank while
-                    // minimized, where nothing is visible anyway). After the
-                    // retry-budget forceGL, renderBackend() returns GL and the
-                    // swap resumes.
+                    // minimized, where nothing is visible anyway). If the
+                    // retry budget runs out the process exits (fatalBackendFailure).
                     if (mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
                         g_vkPresentInitDeferred) {
                         // hold the frame: no GL present while VK retries the HWND

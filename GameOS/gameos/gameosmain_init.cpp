@@ -389,11 +389,9 @@ void initResolutionFromConfig() {
 // Birth the engine Vulkan context and present path when the Vulkan backend is selected.
 void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
     // VK-P13-SELECTOR-1 / T2+T4: birth the standalone shared engine Vulkan
-    // context when MC2_RENDER_BACKEND=vulkan. The GL window + GL context above
-    // are UNTOUCHED (approach A'); this only additionally stands up the shared
-    // VK device that P6/P8/P9/P14 will reuse. Present is still GL swap (T3 wires
-    // the VK present intercept later). On =gl/unset this whole block is skipped
-    // -> byte-identical GL behavior.
+    // context on the Vulkan backend (the default). The GL window + GL context above
+    // are UNTOUCHED (approach A'); this additionally stands up the shared VK device
+    // that P6/P8/P9/P14 reuse. Under the =gl opt-out this whole block is skipped.
     if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
 #ifdef MC2_VULKAN
         // R2 INTERLOCK (plan §6/R2, landed here since the device is born here):
@@ -415,7 +413,7 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
         const bool vkok = vkctx.init(/*wantPresent=*/true);
         vkctx.logHealth();
         if (!vkok || !vkctx.valid()) {
-            // No GL fallback (owner ruling 2026-10-16): show the reason and exit.
+            // No GL fallback: show the reason and exit.
             mc2::fatalBackendFailure(vkctx.health().fallbackReason.empty()
                                      ? "engine Vulkan context did not come up"
                                      : vkctx.health().fallbackReason.c_str());
@@ -454,9 +452,9 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
             }
         }
 #else
-        // MC2_RENDER_BACKEND=vulkan requested but this build has no Vulkan
-        // support compiled in (GL-only build). No fallback: fatal.
-        mc2::fatalBackendFailure("MC2_RENDER_BACKEND=vulkan but build has no MC2_VULKAN support");
+        // The Vulkan backend is selected but this build has no Vulkan support
+        // compiled in. No fallback: fatal.
+        mc2::fatalBackendFailure("this build has no MC2_VULKAN support");
 #endif
     }
 }
