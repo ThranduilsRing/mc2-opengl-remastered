@@ -19,7 +19,7 @@
 struct VfxParticleDraw {
     uint32_t start;      // index of first particle in the flat array
     uint32_t count;      // number of particles in this group
-    uint32_t additive;   // 1 = additive (SRC_ALPHA/ONE), 0 = alpha (SRC_ALPHA/1-SRC_ALPHA)
+    uint32_t additive;   // 1 = additive (SRC_ALPHA/ONE), 2 = pure additive (ONE/ONE, alpha ignored), 0 = alpha (SRC_ALPHA/1-SRC_ALPHA)
     uint32_t texture;    // gos texture handle of the group's sprite page; 0 = none (group skipped, as GL does)
     float    u0, v0;     // sprite sub-rect origin
     float    us, vs;     // sprite sub-rect size (per tile for a flipbook)

@@ -574,8 +574,9 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 				{
 					const MidLevelRenderer::MLRState::AlphaMode am =
 						spec->m_state.GetAlphaMode();
-					if (am == MidLevelRenderer::MLRState::OneOneMode ||
-					    am == MidLevelRenderer::MLRState::AlphaOneMode)
+					if (am == MidLevelRenderer::MLRState::OneOneMode)
+						blendMode = 2;   // (ONE,ONE): alpha ignored
+					else if (am == MidLevelRenderer::MLRState::AlphaOneMode)
 						blendMode = 1;
 				}
 				// Same effect->world transform the legacy CardCloud::Draw feeds

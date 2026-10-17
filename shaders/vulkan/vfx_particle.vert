@@ -43,6 +43,7 @@ layout(push_constant) uniform VfxGroupPush {
     vec2 uvOffset;
     vec2 uvSize;
     uint atlasColumns;   // 0 / 1 = static, > 1 = flipbook (frame = atlasIndex)
+    uint oneOne;         // 1 = pure-additive group (GL OneOne): alpha is ignored by the blend and the fragment
 } G;
 
 // Atlas UVs for the four billboard corners (normalized [0,1]).
@@ -87,5 +88,5 @@ void main() {
     }
     v_uv      = G.uvOffset + (frameOffset + kCornerUv[cornerIdx]) * G.uvSize;
     v_color   = p.color;
-    v_is_head = p.kind_flags & 1u;
+    v_is_head = (p.kind_flags & 1u) | (G.oneOne << 1);
 }
