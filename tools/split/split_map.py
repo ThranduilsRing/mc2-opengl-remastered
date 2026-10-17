@@ -92,7 +92,8 @@ def build():
         base = os.path.basename(src)
         pieces, headers = g["pieces"], g["headers"]
         hdr_paths = [os.path.join(REPO, d, h) for h in sorted(headers)]
-        out.append("## `%s`" % src)
+        # a removed original is named without backticks so doc_links does not read it as a live path
+        out.append("## `%s`" % src if os.path.exists(os.path.join(REPO, src)) else "## %s (original removed)" % src)
         out.append("")
         if g["commits"]:
             out.append("Split commit%s: %s." % ("s" if len(g["commits"]) > 1 else "", ", ".join("`%s`" % c for c in g["commits"])))
