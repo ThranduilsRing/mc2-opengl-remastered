@@ -373,7 +373,7 @@ void LogisticsScreen::update()
 		if ( ::helpTextID )
 		{
 
-			EString helpText;
+			std::string helpText;
 			char tmp[1024];
 		//	if ( helpTextHeaderID )
 		//	{

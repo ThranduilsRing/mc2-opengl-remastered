@@ -1,3 +1,4 @@
+#include <string>
 #define MPCONNECTIONTYPE_CPP
 /*************************************************************************************************\
 MPConnectionType.cpp			: Implementation of the MPConnectionType component.
@@ -639,9 +640,8 @@ void aTcpipPanel::update()
 						{
 							pParentScreen->handleMessage( 1, TCPIP_PANEL_FIRST_BUTTON_ID );
 							MPlayer->endSessionScan();
-							EString ipAddress;
-							comboBox.EditBox().getEntry( ipAddress );
-							prefs.setNewIP( ipAddress );
+							std::string ipAddress = comboBox.EditBox().entry();
+							prefs.setNewIP( ipAddress.c_str() );
 							prefs.save();
 							connectingTime = 0.f;
 
@@ -749,23 +749,23 @@ void aTcpipPanel::update()
 
 
 	// grey out button if inavlid...
-	EString str;
-	comboBox.EditBox().getEntry(str);
+	std::string str = comboBox.EditBox().entry();
 	bool bValid = 1;
 
-	if ( str.Length() )
+	if ( !str.empty() )
 	{
 		// now look for 3 periods
 		int dotIndex[5];
 		for ( int i = 0; i < 5; i++ )
 			dotIndex[i] = -1;
 
-		dotIndex[4] = str.Length();
+		dotIndex[4] = static_cast<int>(str.size());
 
 		int tmp = -1;
 		while ( tmp )
 		{
-			tmp = str.Find( '.', tmp+1 );
+			const auto next = str.find('.', tmp + 1);
+			tmp = next == std::string::npos ? -1 : static_cast<int>(next);
 			if ( tmp == -1 )
 			{
 				break;
@@ -790,11 +790,11 @@ void aTcpipPanel::update()
 		}
 		if ( dotIndex[3] == -1 || !bValid )
 			bValid = 0;
-		else if ( dotIndex[3] < str.Length() - 1 )
+		else if ( dotIndex[3] < static_cast<int>(str.size()) - 1 )
 		{
 			bValid = 1;
 			char tmp[256];
-			strcpy( tmp, str );
+			strcpy( tmp, str.c_str() );
 			for ( int i = 0; i < 4; i++ )
 			{
 				long num = getNum( tmp, dotIndex[i]+1, dotIndex[i+1] );
@@ -858,13 +858,12 @@ int	aTcpipPanel::handleMessage( unsigned long message, unsigned long who)
 		char text[256];
 		char Display[256];
 		cLoadString( IDS_MP_CON_MODEM_CONNECTING, text, 255 );
-		EString str;
-		comboBox.EditBox().getEntry( str );
-		sprintf( Display, text, (const char*)str );
+		std::string str = comboBox.EditBox().entry();
+		sprintf( Display, text, str.c_str() );
 		LogisticsOneButtonDialog::instance()->setText( Display );
 		LogisticsOneButtonDialog::instance()->begin();
 
-		if ( MPlayer->beginSessionScan ( (char*)(const char*)str) )
+		if ( MPlayer->beginSessionScan ( str.data() ) )
 		{
 			LogisticsOneButtonDialog::instance()->setText( IDS_MP_CONNECT_ERROR_NO_CONNECTION, IDS_DIALOG_OK, IDS_DIALOG_OK );
 		}

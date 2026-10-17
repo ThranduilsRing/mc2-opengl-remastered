@@ -1,16 +1,14 @@
 // tests/unit/test_mc2str.cpp
 //
-// mc2::str (mclib/mc2str.h): the helpers that carry EString's null-is-empty and case-insensitive-name behaviour over to std::string.
-// The old class is the oracle: the corpus test runs the stock
-// identifiers through EString::Compare (the Windows lstrcmpi) and through the new helpers and lists where they disagree.
+// String helpers preserve null-as-empty and ASCII case-insensitive names.
 
 #include "doctest.h"
 
-#include "estring.h"
 #include "mc2str.h"
 
 #include <algorithm>
 #include <fstream>
+#include <iterator>
 #include <map>
 #include <string>
 #include <vector>
@@ -21,8 +19,6 @@
 
 namespace
 {
-int signOf(int v) { return (v > 0) - (v < 0); }
-
 std::vector<std::string> stockNames()
 {
 	std::vector<std::string> names;
@@ -91,52 +87,16 @@ TEST_CASE("ascii_lower and ascii_upper leave every byte above 0x7F alone")
 	CHECK(mc2::str::ascii_upper(std::string_view("a\0b", 3)) == std::string("A\0B", 3));
 }
 
-// The stock identifiers (tests/unit/fixtures/stock_names.txt) through the old compare and the new one. Equality must agree on every
-// name and on its upper- and lower-cased variants. Order may differ: lstrcmpi is a locale word sort (punctuation weighted apart), the new
-// order is plain byte order of the folded text; the disagreements are counted, and listed by a run with doctest's -s (success output).
-TEST_CASE("corpus: iequals agrees with the old lstrcmpi-based equality on the stock identifiers")
+TEST_CASE("corpus: iequals matches every stock identifier and its ASCII case variants")
 {
-	std::vector<std::string> names = stockNames();
+	const std::vector<std::string> names = stockNames();
 	REQUIRE(names.size() > 5000);
-
-	std::vector<std::string> sorted = names;
-	std::ranges::sort(sorted, mc2::str::ci_total_less{});
-
-	int equalMismatch = 0;
-	int caseVariantMismatch = 0;
-	for (const std::string& n : sorted)
+	for (const std::string& name : names)
 	{
-		const std::string up = mc2::str::ascii_upper(n);
-		const std::string lo = mc2::str::ascii_lower(n);
-		if (!(EString(n.c_str()) == up.c_str()) || !(EString(n.c_str()) == lo.c_str()) || !mc2::str::iequals(n, up) || !mc2::str::iequals(n, lo))
-			++caseVariantMismatch;
+		CHECK(mc2::str::iequals(name, name));
+		CHECK(mc2::str::iequals(name, mc2::str::ascii_upper(name)));
+		CHECK(mc2::str::iequals(name, mc2::str::ascii_lower(name)));
 	}
-
-	// Adjacent names in the folded order: the old compare and the new one must agree on equal-or-not, and the order disagreements are counted.
-	int orderDisagree = 0;
-	for (size_t i = 1; i < sorted.size(); ++i)
-	{
-		const std::string& a = sorted[i - 1];
-		const std::string& b = sorted[i];
-		const int oldCmp = EString(a.c_str()).Compare(b.c_str());
-		const bool oldEqual = oldCmp == 0;
-		if (oldEqual != mc2::str::iequals(a, b))
-		{
-			++equalMismatch;
-			MESSAGE("equality differs: '", a, "' '", b, "' old=", oldCmp);
-		}
-		else if (signOf(oldCmp) != signOf(mc2::str::icompare(a, b)))
-		{
-			++orderDisagree;
-			MESSAGE("order differs: '", a, "' '", b, "' old=", signOf(oldCmp), " new=", signOf(mc2::str::icompare(a, b)));
-		}
-	}
-	MESSAGE("names=", sorted.size(), " equalMismatch=", equalMismatch, " caseVariantMismatch=", caseVariantMismatch, " adjacentOrderDisagreements=", orderDisagree);
-
-	CHECK(equalMismatch == 0);
-	CHECK(caseVariantMismatch == 0);
-	// The disagreements are not a failure (the old order was a locale word sort) but a jump means the fold changed.
-	CHECK(orderDisagree <= 20);           // measured: 20 adjacent pairs
 }
 
 // ci_total_less orders the pilot and mech lists, so it must be a strict total order: irreflexive, antisymmetric, transitive, and two names are
@@ -174,16 +134,12 @@ TEST_CASE("corpus: ci_total_less is a strict total order over the stock identifi
 	CHECK(transitive);
 }
 
-// The campaign code cut ".fit" out of a mission name with EString::Remove(EString): the FIRST occurrence, compared exactly.
-TEST_CASE("erase_first agrees with EString::Remove(EString) on mission-name shapes")
+TEST_CASE("erase_first cuts only the first exact mission extension")
 {
 	const char* cases[] = {"m0101.fit", "m0101", "a.fit.fit", "A.FIT", "x.fitness", ".fit", "", "m.fi.fit", "fit"};
-	for (const char* text : cases)
-	{
-		EString old(text);
-		old.Remove(EString(".fit"));
-		CHECK(mc2::str::erase_first(text, ".fit") == std::string(old.Data() ? old.Data() : ""));
-	}
+	const char* expected[] = {"m0101", "m0101", "a.fit", "A.FIT", "xness", "", "", "m.fi", "fit"};
+	for (std::size_t i = 0; i < std::size(cases); ++i)
+		CHECK(mc2::str::erase_first(cases[i], ".fit") == expected[i]);
 	CHECK(mc2::str::erase_first("abc", "") == "abc");
 }
 
@@ -200,33 +156,6 @@ TEST_CASE("file_stem is the name between the last path separator and the first d
 	CHECK(mc2::str::file_stem(".x").empty());
 	CHECK(mc2::str::file_stem("data/objects\\madcat.csv") == "madcat");   // mixed separators: the last one of either kind
 	CHECK(mc2::str::file_stem("data\\objects/madcat.csv") == "madcat");
-}
-
-// The three mech-camera call sites (logisticsmechdisplay, mechbayscreen_mechs, salvagemecharea) cut a chassis file name with
-// Find('.') / Left / ReverseFind(separator) / Right on an EString. For every stock name that has an extension the helper gives the same text.
-TEST_CASE("corpus: file_stem agrees with the EString Find / Left / ReverseFind / Right chain on the stock file names")
-{
-	int compared = 0;
-	int differ = 0;
-	for (const std::string& name : stockNames())
-	{
-		const std::string path = "data\\objects\\" + name;
-		EString fileName(path.c_str());
-		int index = fileName.Find('.');
-		if (index < 0)
-			continue;
-		fileName = fileName.Left(index);
-		index = fileName.ReverseFind('\\');
-		fileName = fileName.Right(fileName.Length() - index - 1);
-		++compared;
-		if (std::string(static_cast<const char*>(fileName)) != mc2::str::file_stem(path))
-		{
-			++differ;
-			MESSAGE("stem differs: '", path, "'");
-		}
-	}
-	CHECK(compared > 3000);
-	CHECK(differ == 0);
 }
 
 }

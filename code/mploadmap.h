@@ -1,3 +1,4 @@
+#include <string>
 #ifndef MPLOADMAP_H
 #define MPLOADMAP_H
 /*************************************************************************************************\
@@ -45,7 +46,7 @@ public:
 
 	void				beginSingleMission();
 
-	const char* getMapFileName(){ return selMapName; }
+	const char* getMapFileName(){ return selMapName.empty() ? nullptr : selMapName.c_str(); }
 
 	static void			getMapNameFromFile( const char* pFileName, char* pBuffer, long bufferLength );
 
@@ -69,7 +70,7 @@ private:
 	UiDefs::GameOSPage*	mapListPage;
 	void					syncMapListPage();
 
-	EString					selMapName;
+	std::string					selMapName;
 
 	bool					bIsSingle;
 

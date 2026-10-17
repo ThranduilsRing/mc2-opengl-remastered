@@ -1,3 +1,4 @@
+#include <string>
 #ifndef MPPARAMETERSCREEN_H
 #define MPPARAMETERSCREEN_H
 /*************************************************************************************************\
@@ -90,7 +91,7 @@ protected:
 
 	aStyle2TextListItem		templateItem;
 
-	EString					insigniaName;
+	std::string					insigniaName;
 	aEdit					edit;
 
 	bool					bHasFocus;
@@ -173,7 +174,7 @@ private:
 	bool			bErrorDlg;
 	bool			bBootDlg;
 	bool			bDisconnectDlg;
-	EString			mapName;
+	std::string			mapName;
 	long			bootPlayerID;
 
 	bool			bMapInfoDlg;

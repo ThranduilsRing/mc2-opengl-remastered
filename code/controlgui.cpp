@@ -166,7 +166,8 @@ ControlGui::ControlGui()
 
 	memset( chatInfos, 0, MAX_CHAT_COUNT * sizeof ( ChatInfo ) );
 
-	chatEdit.text.SetBufferSize( 512 );
+	chatEdit.text.clear();
+	chatEdit.text.reserve( 512 );
 	playerNameEdit.setBufferSize( 16 ); // pre - alloc 
 
 	buttonToPress 	= -1;

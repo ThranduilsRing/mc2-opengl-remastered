@@ -21,9 +21,8 @@ inline constexpr unsigned int ITEM_OUT_OF_RANGE = 0xEEEE0002;
 #include"afont.h"
 #endif
 
-#ifndef ESTRING_H
-#include"estring.h"
-#endif
+#include "mc2str.h"
+#include <string_view>
 
 #include <string>
 
@@ -72,9 +71,8 @@ public:
 
 	virtual ~aTextListItem();
 
-	void		setText( const char* text );
-	// Bridge until the widgets convert: lets a caller that holds std::string pass it without .c_str(); folds into setText(std::string_view).
-	void		setText( const std::string& text ) { setText( text.c_str() ); }
+	void		setText( std::string_view text );
+	void		setText( const char* text ) { setText( text ? std::string_view(text) : std::string_view() ); }
 	void		setText( long resID );
 	const char* getText() const;
 	void		sizeToText();
@@ -92,7 +90,7 @@ protected:
 
 
 	aFont		font;
-	EString		text;
+	std::string		text;
 	long		alignment;
 
 	bool		bForceToTop;
@@ -130,12 +128,12 @@ public:
 	virtual long	init( FitIniFile* file, const char* blockName );
 	virtual void		render();
 
-	void			setHiddenText( const char* pText ){ hiddenText = pText; }
-	const char*		getHiddenText( ) const { return hiddenText;}
+	void			setHiddenText( const char* pText ){ hiddenText = mc2::str::from_c(pText); }
+	const char*		getHiddenText( ) const { return hiddenText.c_str();}
 
 protected:
 
-	EString				hiddenText;
+	std::string				hiddenText;
 
 };
 

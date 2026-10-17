@@ -1,3 +1,4 @@
+#include "mc2str.h"
 
 #define MPPARAMETERSCREEN_CPP
 /*************************************************************************************************\
@@ -226,7 +227,7 @@ void MPParameterScreen::begin()
 
 	for ( int i = 0; i < MAX_MC_PLAYERS; i++ )
 	{
-		playerParameters[i].insigniaName.Empty();
+		playerParameters[i].insigniaName.clear();
 	}
 
 	bWaitingToStart = 0;
@@ -1023,7 +1024,7 @@ void MPParameterScreen::update()
 				return;
 			}
 
-			if ( mapName != MPlayer->missionSettings.map 
+			if ( !mc2::str::iequals(mapName, MPlayer->missionSettings.map)
 				&& strlen( MPlayer->missionSettings.map )) // check for new map
 			{
 				//
@@ -1154,9 +1155,8 @@ void MPParameterScreen::update()
 			bEditHasFocus = true;
 			if ( !edits[oldEditFocus].hasFocus() )
 			{
-				EString text;
-				edits[oldEditFocus].getEntry( text );
-				long val = atoi( text );
+				std::string text = edits[oldEditFocus].entry();
+				long val = atoi( text.c_str() );
 				switch (oldEditFocus)
 				{
 					case 0:
@@ -1982,7 +1982,7 @@ void aPlayerParams::update()
 		// need to check for changes
 		int oldSel = teamNumberDropList.GetSelectedItem();
 		int oldFaction = factionDropList.GetSelectedItem();
-		const char* pText = textObjects[1].text;
+		const char* pText = textObjects[1].text.c_str();
 		
 		long oldCBills = 0;
 		
@@ -2018,12 +2018,11 @@ void aPlayerParams::update()
 		int newSel = teamNumberDropList.GetSelectedItem();
 		int newFaction = factionDropList.GetSelectedItem();
 		bool bNewReady = ReadyButton.isPressed();
-		EString cBillsText;
-		edit.getEntry( cBillsText );
+		std::string cBillsText = edit.entry();
 		long newCBills = 0;
-		if ( cBillsText.Length() )
+		if ( !cBillsText.empty() )
 		{
-			newCBills = atoi( cBillsText ) * 1000;
+			newCBills = atoi( cBillsText.c_str() ) * 1000;
 		}
 
 		if (  bCBillsChanged )
@@ -2129,7 +2128,7 @@ void	aPlayerParams::setData( const _MC2Player* data)
 	// set up the insignia...
 	// I really need to store this... really don't want to allocate a texture every time
 	const char* pFileName = data->insigniaFile;
-	if ( pFileName != insigniaName )
+	if ( !mc2::str::iequals(mc2::str::from_c(pFileName), insigniaName) )
 	{
 		FullPathFileName path;
 		path.init( "data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR "insignia" PATH_SEPARATOR, data->insigniaFile, ".tga" );
@@ -2138,7 +2137,7 @@ void	aPlayerParams::setData( const _MC2Player* data)
 		{
 			statics[0].setTexture( path );
 			statics[0].setUVs( 0, 0, 32, 32 );
-			insigniaName = pFileName;
+			insigniaName = mc2::str::from_c(pFileName);
 			MPlayer->insigniaList[data->commanderID] = 1;
 
 		}

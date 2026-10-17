@@ -11,9 +11,7 @@ aEdit.h			: Interface for the aEdit component of the GUI library.
 #include"asystem.h"
 #endif
 
-#ifndef ESTRING_H
-#include"estring.h"
-#endif
+#include <string_view>
 
 #include <string>
 
@@ -45,13 +43,9 @@ class aEdit: public aObject
 		void	renderWithDropShadow();
 
 	
-		void getEntry(EString& str);
-		// Final-form accessors: entry() replaces getEntry, the const char* / const std::string& setEntry pair stands in for
-		// the EString one until the widgets convert. Callers moved to std::string use only these.
 		std::string entry() const;
-		void setEntry(const EString& str, BYTE byHighlight = 0);
-		void setEntry(const char* str, BYTE byHighlight = 0);
-		void setEntry(const std::string& str, BYTE byHighlight = 0);
+		void setEntry(std::string_view str, BYTE byHighlight = 0);
+		void setEntry(const char* str, BYTE byHighlight = 0) { setEntry(str ? std::string_view(str) : std::string_view(), byHighlight); }
 		void limitEntry(int nNewLimit) { nLimit = nNewLimit; }
 		void setFocus(bool bHasFocus);
 		void setFont( long fontID );
@@ -97,7 +91,7 @@ class aEdit: public aObject
 		int getFont() { return font.getFontID(); }
 
 		void initBufferSize( unsigned long newSize );
-		void setBufferSize( int newSize ) { text.SetBufferSize( newSize ); }
+		void setBufferSize( int newSize ) { text.clear(); text.reserve( newSize ); }
 
 		void	allowIME( bool bAllow ){ bAllowIME = bAllow; }
 
@@ -134,7 +128,7 @@ class aEdit: public aObject
 		int		nLeftOffset;
 		float	cursorTime;
 		bool	bMouseDown;
-		EString	text;
+		std::string	text;
 		aFont	font;
 		bool	bFocus;
 		unsigned long dwStyleFlags;

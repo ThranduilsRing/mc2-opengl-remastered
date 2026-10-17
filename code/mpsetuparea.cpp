@@ -1,3 +1,5 @@
+#include "mc2str.h"
+#include <format>
 #define MPSETUP_CPP
 /*************************************************************************************************\
 MPSetupArea.cpp			: Implementation of the MPSetupArea component.
@@ -138,9 +140,9 @@ void MPSetupXScreen::init(FitIniFile* file)
 		for (i = 0; i < listItemCount; i += 1)
 		{
 			pTmp2 = new aInsigniaListItem;
-			EString tmpStr;
-			tmpStr.Format("ListItem%d", i);
-			pTmp2->init(&PNfile, tmpStr.Data());
+			std::string tmpStr;
+			tmpStr = std::format("ListItem{}", i);
+			pTmp2->init(&PNfile, tmpStr.c_str());
 			insigniaDropList.AddItem(pTmp2);
 		}
 		insigniaDropList.SelectItem(0);
@@ -153,57 +155,57 @@ void MPSetupXScreen::init(FitIniFile* file)
 	/* these string are to be moved to the string table */
 	if (1 <= textCount )
 	{
-		EString str = "MULTIPLAYER SETUP";
+		std::string str = "MULTIPLAYER SETUP";
 		textObjects[0].setText(str);
 	}
 	if (2 <= textCount )
 	{
-		EString str = "PLAYER NAME";
+		std::string str = "PLAYER NAME";
 		textObjects[1].setText(str);
 	}
 	if (3 <= textCount )
 	{
-		EString str = "UNIT NAME";
+		std::string str = "UNIT NAME";
 		textObjects[2].setText(str);
 	}
 	if (4 <= textCount )
 	{
-		EString str = "UNIT INSIGNIA";
+		std::string str = "UNIT INSIGNIA";
 		textObjects[3].setText(str);
 	}
 	if (5 <= textCount )
 	{
-		EString str = "PLAYER COLORS";
+		std::string str = "PLAYER COLORS";
 		textObjects[4].setText(str);
 	}
 	if (6 <= textCount )
 	{
-		EString str = "HELP TEXT";
+		std::string str = "HELP TEXT";
 		textObjects[5].setText(str);
 	}
 	if (7 <= textCount )
 	{
-		EString str = "CONNECTION TYPE";
+		std::string str = "CONNECTION TYPE";
 		textObjects[6].setText(str);
 	}
 	if (8 <= textCount )
 	{
-		EString str = "connection type info";
+		std::string str = "connection type info";
 		textObjects[7].setText(str);
 	}
 	if (9 <= textCount )
 	{
-		EString str = "PLAYER NAME...";
+		std::string str = "PLAYER NAME...";
 		textObjects[8].setText(str);
 	}
 	if (10 <= textCount )
 	{
-		EString str = "UNIT NAME...";
+		std::string str = "UNIT NAME...";
 		textObjects[9].setText(str);
 	}
 	if (11 <= textCount )
 	{
-		EString str = "INSIGNIA NAME...";
+		std::string str = "INSIGNIA NAME...";
 		textObjects[10].setText(str);
 	}
 
@@ -482,55 +484,55 @@ void aColorPicker::init( FitIniFile* file, const char* blockName )
 
 	init( x, y, width, height );
 
-	EString blockname;
+	std::string blockname;
 	blockname = "ColorPickerMainRect";
-	mainRect.init( file, blockname.Data() );
+	mainRect.init( file, blockname.c_str() );
 
 	file->seekBlock( "ColorPickerTab0" );
 	blockname = "Tab0Text";
-	tab0text.init( file, blockname.Data() );
+	tab0text.init( file, blockname.c_str() );
 	{
-		EString str = "BASE COLOR";
+		std::string str = "BASE COLOR";
 		tab0text.setText(str);
 	}
 
 	activeTab = 0;
 
 	blockname = "Tab0ColorOutlineRect";
-	tab0ColorOutlineRect.init( file, blockname.Data() );
+	tab0ColorOutlineRect.init( file, blockname.c_str() );
 
 	blockname = "Tab0ColorRect";
-	tab0ColorRect.init( file, blockname.Data() );
+	tab0ColorRect.init( file, blockname.c_str() );
 	tab0ColorRect.setColor(color0);
 
 	blockname = "Tab0Button";
-	tab0Button.init( *file, blockname.Data() );
+	tab0Button.init( *file, blockname.c_str() );
 	tab0Button.press(true);
 
 	file->seekBlock( "ColorPickerTab1" );
 	blockname = "Tab1Text";
-	tab1text.init( file, blockname.Data() );
+	tab1text.init( file, blockname.c_str() );
 	{
-		EString str = "STRIPE COLOR";
+		std::string str = "STRIPE COLOR";
 		tab1text.setText(str);
 	}
 
 	blockname = "Tab1ColorOutlineRect";
-	tab1ColorOutlineRect.init( file, blockname.Data() );
+	tab1ColorOutlineRect.init( file, blockname.c_str() );
 
 	blockname = "Tab1ColorRect";
-	tab1ColorRect.init( file, blockname.Data() );
+	tab1ColorRect.init( file, blockname.c_str() );
 	tab1ColorRect.setColor(color1);
 
 	blockname = "Tab1Button";
-	tab1Button.init( *file, blockname.Data() );
+	tab1Button.init( *file, blockname.c_str() );
 	tab1Button.press(false);
 
 	blockname = "ColorPickerCircleStatic";
-	colorPlaneStatic.init( file, blockname.Data() );
+	colorPlaneStatic.init( file, blockname.c_str() );
 
 	blockname = "ColorPickerValueGradient";
-	intensityGradientRect.init( file, blockname.Data() );
+	intensityGradientRect.init( file, blockname.c_str() );
 
 	{
 		blockname = "GradientSlider";
@@ -543,7 +545,7 @@ void aColorPicker::init( FitIniFile* file, const char* blockName )
 	}
 
 	blockname = "HueCirclePicker";
-	colorPlaneCursorStatic.init( file, blockname.Data() );
+	colorPlaneCursorStatic.init( file, blockname.c_str() );
 }
 
 void aColorPicker::destroy()
@@ -796,9 +798,9 @@ long aInsigniaListItem::init( FitIniFile* file, const char* blockName )
 	file->readIdLong( "Width", width );
 	file->readIdLong( "Height", height );
 
-	EString graphicBlockName = blockName;
+	std::string graphicBlockName = mc2::str::from_c(blockName);
 	graphicBlockName += "Static";
-	graphic.init(file, graphicBlockName.Data());
+	graphic.init(file, graphicBlockName.c_str());
 	if (graphic.height() > height)
 	{
 		height = graphic.height();
@@ -808,9 +810,9 @@ long aInsigniaListItem::init( FitIniFile* file, const char* blockName )
 		width = graphic.width();
 	}
 
-	EString textBlockName = blockName;
+	std::string textBlockName = mc2::str::from_c(blockName);
 	textBlockName += "Text";
-	text.init(file, textBlockName.Data());
+	text.init(file, textBlockName.c_str());
 	if (text.height() > height)
 	{
 		height = text.height();
