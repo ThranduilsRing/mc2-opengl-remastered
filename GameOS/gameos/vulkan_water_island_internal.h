@@ -213,6 +213,7 @@ struct WaterIsland : mc2vk::IslandState {
     // GL readback feed stays in use for the session.
     std::unique_ptr<mc2vk::NativeProducers> native;
     bool     nativeFailed = false;
+    bool     thinNative[2] = {false, false};   // what binding 6 of each parity set currently points at: true = native thin_, false = thinBuf
     uint64_t nativeFrames = 0;   // frames the native path completed; schedules the parity frames
 };
 
@@ -240,7 +241,7 @@ std::string spv_dir();
 VkShaderModule load_spv(VkDevice device, std::string_view path);
 bool make_buffer(WaterIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage,
                  std::string_view name, int i0 = -1, int i1 = -1);
-void write_descriptors(WaterIsland* s);
+void write_descriptors(WaterIsland* s, int only = -1);
 bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes);
 bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeCount);
 bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& record);

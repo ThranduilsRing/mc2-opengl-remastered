@@ -119,6 +119,7 @@ extern "C" int mc2_vk_water_island_run(
             auto np = std::make_unique<mc2vk::NativeProducers>();
             if (np->init(slotCtx, snap0.numVertices, recipeCount, s->recipeBuf.get())) {
                 s->native = std::move(np);
+                s->thinNative[0] = s->thinNative[1] = true;
                 write_descriptors(s);   // binding 6 -> the GPU-produced thin buffers
             } else {
                 s->nativeFailed = true;
@@ -128,6 +129,14 @@ extern "C" int mc2_vk_water_island_run(
     }
     nat = (nativeInputsIn && s->native && s->native->ready()) ? static_cast<const WaterStream::VkNativeInputs*>(nativeInputsIn) : nullptr;
     if (!nat && thinCount == 0) return 0;
+
+    // Binding 6 of slot `par` must name the buffer this frame's feed fills. The slot fence was waited above, so the set is idle.
+    // Native -> readback (opt-out MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE=0, null MVP): flip to thinBuf; the readback upload below
+    // allocates it (and rewrites both sets under waitIdle) if it does not exist yet.
+    if (s->thinNative[par] != (nat != nullptr)) {
+        s->thinNative[par] = (nat != nullptr);
+        if (nat || s->thinBuf[par]) write_descriptors(s, static_cast<int>(par));
+    }
 
     // ---- 2) Upload the per-frame thin records into slot `par` (CPU-staged; the GL readback feed). The native path skips this. ----
     if (!nat) {
@@ -204,7 +213,11 @@ extern "C" int mc2_vk_water_island_run(
             std::memcpy(wf.mvp, nat->mvp, sizeof(wf.mvp));
             wf.frameCos = nat->frameCos; wf.waterElevation = nat->waterElevation; wf.shoreExt = nat->shoreExt;
             wf.mapSide = nat->mapSide; wf.biasLegacy = nat->biasLegacy;
-            if (!s->native->record(cb, par, snap, wf, doParity)) { setFallback("native_record_failed"); s->disabled = true; return 0; }
+            if (!s->native->record(cb, par, snap, wf, doParity)) {
+                // record() fails only before it records a command: close the begun buffer so it is never left open, then fail soft.
+                vkEndCommandBuffer(cb);
+                setFallback("native_record_failed"); s->disabled = true; return 0;
+            }
         }
 
         // All attachments LOAD -> clear values ignored (array must still cover them).

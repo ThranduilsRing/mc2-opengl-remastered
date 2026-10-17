@@ -98,7 +98,14 @@ bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint3
     }
     writeAll();
     ready_ = true;
-    selfTestLighting();
+    if (recipeCount > kMaxThin)
+        plog("WARNING: %u water recipes exceed the native thin capacity %u: the surplus quads are dropped.", recipeCount, kMaxThin);
+    if (const uint32_t bad = selfTestLighting(); bad != 0) {
+        // A lighting mismatch against the reference transcription means this driver/compile differs from GL: do not ship it.
+        plog("native lighting self-test FAILED (%u mismatches): native producers refused, the GL cull/pack feed stays in use.", bad);
+        ready_ = false;
+        return false;
+    }
     plog("native producers ready: vertices=%u recipes=%u maxThin=%u (Slang compute: terrain_lighting, water_cull_pack, water_draw_args).",
          numVertices, recipeCount, maxThin_);
     return true;
@@ -375,13 +382,15 @@ ProducerParity NativeProducers::compare(uint32_t, const void* glThin, uint32_t g
     }
     std::vector<ThinRec> gl(glThinCount);
     if (glThinCount && glThin) std::memcpy(gl.data(), glThin, gl.size() * sizeof(ThinRec));
+    // A truncated side makes the set difference meaningless (the VK list is cut in atomic order): leave only_gl/only_vk at 0 then.
+    const bool countOnly = !r.truncated;
     auto byRecipe = [](const ThinRec& a, const ThinRec& b) { return a.w[0] < b.w[0]; };
     std::sort(vk.begin(), vk.end(), byRecipe);
     std::sort(gl.begin(), gl.end(), byRecipe);
     size_t i = 0, j = 0;
     while (i < gl.size() || j < vk.size()) {
-        if (j >= vk.size() || (i < gl.size() && gl[i].w[0] < vk[j].w[0])) { ++r.onlyGl; ++i; }
-        else if (i >= gl.size() || vk[j].w[0] < gl[i].w[0]) { ++r.onlyVk; ++j; }
+        if (j >= vk.size() || (i < gl.size() && gl[i].w[0] < vk[j].w[0])) { if (countOnly) ++r.onlyGl; ++i; }
+        else if (i >= gl.size() || vk[j].w[0] < gl[i].w[0]) { if (countOnly) ++r.onlyVk; ++j; }
         else {
             if (std::memcmp(&gl[i], &vk[j], sizeof(ThinRec)) == 0) ++r.same;
             else {

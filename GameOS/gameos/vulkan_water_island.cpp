@@ -138,17 +138,20 @@ bool make_buffer(WaterIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkB
 // run during init BEFORE vkAllocateDescriptorSets, and writing to a NULL set is a
 // validation error + crash (dstSet == VK_NULL_HANDLE). The post-alloc write_descriptors
 // in init_island covers the initial bind; later reallocs re-write with a valid set.
-void write_descriptors(WaterIsland* s) {
-    // VK-WATER-FENCE-DEFER-1: write BOTH parity sets (set[i] binds buffers[i]).
+void write_descriptors(WaterIsland* s, int only) {
+    // VK-WATER-FENCE-DEFER-1: write BOTH parity sets (set[i] binds buffers[i]) unless `only` names one slot (the caller then owns
+    // that slot's retirement: the per-frame feed rebind runs after the slot fence wait).
     // Callers (re)allocating any bound buffer are vkDeviceWaitIdle-guarded, so no
     // in-flight command buffer can be using either set during the update.
     for (int i = 0; i < 2; ++i) {
+        if (only >= 0 && i != only) continue;
         if (s->set[i] == VK_NULL_HANDLE) continue;   // set not allocated yet (early init path)
         VkDescriptorBufferInfo vsInfo{ s->vsUbo[i].get(), 0, VK_WHOLE_SIZE };
         VkDescriptorBufferInfo fsInfo{ s->fsUbo[i].get(), 0, VK_WHOLE_SIZE };
         VkDescriptorBufferInfo recInfo{ s->recipeBuf.get(), 0, VK_WHOLE_SIZE };
-        // STEP 3.4P: binding 6 is the GPU-produced thin buffer once the native producers are up.
-        VkDescriptorBufferInfo thinInfo{ (s->native && s->native->ready()) ? s->native->thin(static_cast<uint32_t>(i)) : s->thinBuf[i].get(), 0, VK_WHOLE_SIZE };
+        // STEP 3.4P: binding 6 is the GPU-produced thin buffer only for the slot whose last feed was the native one (thinNative[i]);
+        // a frame that takes the readback feed (opt-out, null MVP) rebinds its slot to thinBuf first (vulkan_water_island_run.cpp).
+        VkDescriptorBufferInfo thinInfo{ (s->thinNative[i] && s->native && s->native->ready()) ? s->native->thin(static_cast<uint32_t>(i)) : s->thinBuf[i].get(), 0, VK_WHOLE_SIZE };
         VkWriteDescriptorSet w[4]{};
         w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = s->set[i];
         w[0].dstBinding = 0; w[0].descriptorCount = 1;
@@ -314,12 +317,12 @@ extern "C" int mc2_vk_water_island_enabled() {
 }
 
 // STEP 3.4P: 0 = the GL cull/pack feeds the island by readback; 1 = the native VK producers run (the GL cull dispatch is skipped); 2 = native, and the GL
-// dispatch runs as well so the outputs can be compared (parity frames: native frames 60, 600, then every 3600th).
+// dispatch runs as well so the outputs can be compared (parity frames: native frames 60 and 600).
 extern "C" int mc2_vk_water_native_mode() {
     WaterIsland* s = parkedIsland();
     if (!s || s->disabled || !s->inited || !s->native || !s->native->ready()) return 0;
     const uint64_t f = s->nativeFrames;
-    return (f == 60 || f == 600 || (f > 0 && f % 3600 == 0)) ? 2 : 1;
+    return (f == 60 || f == 600) ? 2 : 1;   // two parity frames per session: a periodic one is a full stall (waitIdle + GL readbacks) in shipped code
 }
 
 // Teardown (called from gosPostProcess::destroy or renderer shutdown).
