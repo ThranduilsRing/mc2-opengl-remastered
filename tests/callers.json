@@ -3687,7 +3687,15 @@
       "basename": "mechbay_preview_harness.py",
       "stem": "mechbay_preview_harness",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_harness_launch_lease.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "mechbay_preview_harness",
+          "text": "import mechbay_preview_harness as mbh  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "scripts/new_lane.py",
@@ -4444,6 +4452,13 @@
           "text": "from scripts.smoke_lib import deploy_lease  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_harness_launch_lease.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import host_lease  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_host_lease.py",
           "line": 15,
           "evidence": "import",
@@ -4971,6 +4986,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from scripts.smoke_lib import host_lease"
+        },
+        {
+          "path": "scripts/tests/test_harness_launch_lease.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.host_lease",
+          "text": "from scripts.smoke_lib import host_lease  # noqa: E402"
         },
         {
           "path": "scripts/tests/test_host_lease.py",
@@ -5874,6 +5896,13 @@
       "path": "scripts/tests/test_harness_desktop_safety.py",
       "basename": "test_harness_desktop_safety.py",
       "stem": "test_harness_desktop_safety",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_harness_launch_lease.py",
+      "basename": "test_harness_launch_lease.py",
+      "stem": "test_harness_launch_lease",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -6863,6 +6892,13 @@
       "stem": "campaign_save_roundtrip",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_harness_launch_lease.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "campaign_save_roundtrip",
+          "text": "import campaign_save_roundtrip as csr  # noqa: E402"
+        },
         {
           "path": "tools/test_campaign_save_roundtrip.py",
           "line": 9,

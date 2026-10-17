@@ -55,7 +55,7 @@
    "LG06": 514,
    "LG07": 0,
    "LG08": 270,
-   "LG09": 1959,
+   "LG09": 1960,
    "LG10": 42,
    "LG11": 89,
    "LG12a": 93,
@@ -373,7 +373,7 @@
    "LG03": 8,
    "LG05": 8,
    "LG06": 10,
-   "LG09": 8,
+   "LG09": 9,
    "LG17": 1
   },
   "GameOS/gameos/gameos_graphics_draw.cpp": {
@@ -5130,7 +5130,7 @@
    "LG20": 3
   }
  },
- "head": "04e8c4dbc",
+ "head": "34be1fb93",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
