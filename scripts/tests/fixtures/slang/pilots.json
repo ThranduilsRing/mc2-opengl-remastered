@@ -1,0 +1,8 @@
+{
+  "spv_dir": "out",
+  "pilots": [
+    { "program": "slang_probe",
+      "stages": { "frag": "probe.frag.slang", "comp": "probe.comp.slang" },
+      "variants": [ { "name": "default", "defines": [] } ] }
+  ]
+}
