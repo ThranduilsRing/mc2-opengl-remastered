@@ -1,5 +1,35 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FIFTY-FIRST session (2026-10-17, Sonnet 5.5) -- GL deletion 3.2 DONE: the default backend is Vulkan; letterbox bar shrink bug fixed; 3.3 part; 3.4a lost-draws tracker deleted
+
+### Commits (on 8015fa3c8)
+51a08cb8c 3.2 flip | 9d8f0a310 umbrellaOn stateless str read + editor gate-cache invalidate + cxx17 baseline | 04c35b397 3.3 part (GL feature-coverage family deleted) | 52266a175 letterbox/fade exempt from the HUD shrink | 1567e0303 3.4a lost-draws tracker + MC2_VK_SCENE_GL_PRODUCER_QUERY deleted | 9dc99a357 gated-layout-macros doc regen. Mergeable code tip: 9dc99a357 (the state commit after it is docs only).
+
+### 3.2 the flip
+`resolveOnce` (render_backend_select.cpp): unset / empty / unrecognised -> Vulkan; only `gl`/`GL` selects GL. `MC2_VK_SHARED_GBUFFER` row is `Lead0Kill`, default true (registry, flags.auto.yaml, gate_index regenerated). `mc2vkgate::umbrellaOn()` (mclib/vk_umbrella_gate.cpp) is false whenever `MC2_RENDER_BACKEND=gl`, so the opt-out leaves every VK island off (a stateless `gate::str` read: R2 of check-vk-umbrella-readers forbids a cache). `scripts/smoke_lib/capture_backend.requested()` now returns vulkan for unset (its tests updated); the capture/ab/bless/vk_replay tools already pinned vulkan explicitly and the GL arms were retired in step 1, so nothing else assumed a GL default; run_smoke has no backend pin (its default leg is now VK). docs/tier1_env_vars.md and CLAUDE.md updated (GL tier1 is optional, not a required gate). Editor (owner ruling 3): `editor_set_default_env_vars` puts `MC2_RENDER_BACKEND=gl` when unset and invalidates the gate cache; `EditorPlaytest` passes `MC2_RENDER_BACKEND=vulkan` to the game it launches. The editor target is not built in the default tree: UNVERIFIED in the editor exe itself (`ninja EditRel` not run).
+
+### Owner ruling 2 (letterbox / fade)
+Already IsHUD under the umbrella since 7159006ef (now default ON, still off under =gl so GL is unchanged by construction). The default-env capture showed a real VK defect: the bottom bar was drawn 0.85 wide and 20 px short, because the HUD batch's bottom-band shrink (`s_hud_scale`) treats it as a HUD panel. Fixed in `GameCamera::renderLetterbox/renderFadeQuad` with `gos_SetHudScaleExempt(true)` around both quads (52266a175). Viewed: `.claude/l2cap/s51-letterbox` (before: bottom bar x 144..1776, y>=960), `s51-letterbox-gl` (GL reference: y>=940, full width), `s51-letterbox2` (after: matches GL), `s51-fade5` (mc2_01 frame 5, bars full width). The fade quad itself was NOT captured: it needs an ABL `fadeToColor` and no capture bookmark triggers one; it shares the code path and the exemption.
+
+### 3.3 (part)
+Deleted: `tools/gl_vk_feature_coverage.py`, `gl_vk_twins.py`, `gl_vk_cpp_gates.py`, `gl_vk_source.py`, `gl_vk_twin_map.json`, `vk_not_ported.allowlist`, its pytest and three generated docs, the check-contracts row and the caller inventory entries. NOT done (entangled, left for the next session): `check-gl-shader-variants` / `extract_gl_shader_variants` / `gl_shader_variants.json` (referenced by test_fingerprint, lane_merge, test_lane_merge), `tools/glsl_port_diff.py` (axis_swizzle_ratchet, test_vk_offline_proofs, shader comments), `check-shader-variant.py` (a lint of live GL batcher code; valid until 3.5), `tests/shader_variants`. These die with the GL shaders (3.8).
+
+### 3.4a (first interop batch)
+GL lost-draws tracker deleted: `GosGlLostDrawsScope` and its 60 call sites (gamecam, mission, mechcmd2_frame, missiongui, appear, txmmgr_*, gameos_graphics), the tracker body in gos_postprocess_diag.cpp, the scene producer query in beginScene/endScene (+ members), gate row `MC2_VK_SCENE_GL_PRODUCER_QUERY` (table, registry, yaml, index, seed json), log-tag baseline, split allow json. Left: the frozen `docs/gate-history.md` entry, the two printf-corpus rows for the deleted log lines (stale, harmless). Batches (b)-(d) of the plan are untouched.
+
+### Proof
+| check | result |
+|---|---|
+| default-env tier1 (VK) with `MC2_VULKAN_VALIDATION=1`, fingerprint OK at the tip | 5/5 PASS, validation errors=0 warnings=0 on all five (scratch/t51vk2.log); logs show `[VK_ENGINE_CONTEXT]` |
+| `MC2_RENDER_BACKEND=gl` tier1, fingerprint OK | 5/5 PASS, CONFIG line value="gl", no VK context (scratch/t51gl2.log) |
+| smoke-lite, validation, default env (at 52266a175) | 2/2 PASS, errors=0 |
+| `check-contracts.sh -j2` | run 1: 2 red rows (gate_echo_reads, cxx17_ratchet), fixed in 9d8f0a310; run 2 at 1567e0303: 1 red row (gated_layout_macros doc, regenerated in 9dc99a357); all else green incl. scripts_tests. Not re-run after 9dc99a357 |
+| `sim_determinism.py check mc2_03 --install lane2`, default env | PASS identical over 3277 frames, first 1000 match the committed baseline chain: the sim is backend-independent |
+| letterbox captures | viewed, see above |
+
+### OPEN
+1. Editor exe not built (see 3.2). 2. No GL-opt-out letterbox capture after the shrink fix (the exemption is inside `if (vkHudQuad)`, so GL is unchanged). 3. The MC2_RENDER_BACKEND gate_table doc string still says "default gl" (changing it forces a full rebuild; do it with the next gate-table edit). 4. Scratch (mine, deletable): scratch/b51*.log d51*.log t51*.log cc51*.log, .claude/l2cap/s51-*.
+
 ## FIFTIETH session (2026-10-17, Sonnet 5.5) -- GL deletion step 3 plan written; step 3.1 done: a failed Vulkan init is fatal (no GL fallback)
 
 ### Commits (on 1de45a787)
