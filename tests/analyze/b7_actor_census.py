@@ -10,7 +10,7 @@ WHAT: scans the tracked game files (code/, mclib/, gui/, and tests/unit for the 
   objtypemgr     objTypeManager `new`, `delete` or assignment (a raw pointer that tests assign borrowed objects to)
   shape_node     raw `new` / `delete` of a TG node: TG_ShapeRec::node, typeNodeStore entries (`new TG_Shape`, `new TG_TypeShape/Node`, `delete ...node`, `delete listOfTypeShapes[..]`)
 Round 2 (after the before-review) adds, all by text:
-  app_write      RAW WRITERS of an `appearance` member (`appearance = x`, `->appearance = x`, `.appearance = x`; local declarations excluded). B7o.2 seals them: the count outside the adopt/release API (ALLOWED_WRITERS) must reach 0
+  app_write      RAW WRITERS of an `appearance` member (`appearance = x`, `->appearance = x`, `.appearance = x`; local declarations excluded). B7o.2 seals them: the count outside the BODIES of GameObject::adoptAppearance/releaseAppearance (those rows are kind app_write_api, not raw) must reach 0
   app_write_other  the same text in a class that is not a GameObject (LogisticsChassis): listed, never sealed
   app_copy_api   `GameObject::set` / `Mover::set` (by-value copy APIs that copy the appearance view)
   app_delete (extended) also `delete bomber|theSky|compass|pObject` (artillery bomber, camera sky/compass, SimpleCamera object)
@@ -55,6 +55,7 @@ KIND_BATCH = {
     "shape_node": "B7o.6-shapenode",
     "app_write": "B7o.2-seal",
     "app_write_other": "B7o.2-seal",
+    "app_write_api": "B7o.2-seal",
     "app_copy_api": "B7o.2-seal",
     "marker_new": "B7o.4-queue-markers",
     "marker_delete": "B7o.4-queue-markers",
@@ -65,8 +66,35 @@ FILE_RULES = [
     ("B7o.5-nonactor-owners", re.compile(r"^code/(gamecam|simplecamera|missiongui\w*|artlry\w*)\.(cpp|h)$|^gui/")),
 ]
 APPEARANCE_OWNER_BATCH = "B7o.3-actor-owner"
-#: The only file allowed to write `appearance` once B7o.2 lands: the adopt/release API itself.
-ALLOWED_WRITERS = re.compile(r"^code/gameobj\.cpp$")
+#: Round 3: the exemption is NOT a file. The only raw `appearance` writes allowed once B7o.2 lands are inside the BODIES of these two
+#: functions of code/gameobj.cpp (the adopt/release API); `GameObject::init` and `GameObject::set` in the same file are writers like any other.
+API_FILE = "code/gameobj.cpp"
+API_FUNCS = re.compile(r"GameObject::(?:adoptAppearance|releaseAppearance)\s*\(")
+
+def api_body_lines(path: str, lines: list[str]) -> set[int]:
+    """1-based line numbers inside the braces of the API function definitions of `path` (empty for any other file)."""
+    if path != API_FILE:
+        return set()
+    out: set[int] = set()
+    i = 0
+    while i < len(lines):
+        if API_FUNCS.search(lines[i]) and not lines[i].rstrip().endswith(";"):
+            depth, started, j = 0, False, i
+            while j < len(lines):
+                for ch in lines[j]:
+                    if ch == "{":
+                        depth += 1
+                        started = True
+                    elif ch == "}":
+                        depth -= 1
+                if started:
+                    out.add(j + 1)
+                if started and depth <= 0:
+                    break
+                j += 1
+            i = j
+        i += 1
+    return out
 
 RX = {
     "app_new": re.compile(r"\bnew\s+(?!\w*AppearanceType)\w*Appearance\b"),
@@ -138,7 +166,9 @@ def census() -> list[str]:
         except OSError as e:
             raise CensusError(f"tracked file {path} is unreadable: {e}")
         src_lines = raw.split("\n")
-        for lineno, line in enumerate(strip_comments(raw), 1):
+        stripped = list(strip_comments(raw))
+        api_lines = api_body_lines(path, stripped)
+        for lineno, line in enumerate(stripped, 1):
             for kind, rx in RX.items():
                 if not rx.search(line):
                     continue
@@ -153,16 +183,18 @@ def census() -> list[str]:
                 if kind == "app_write" and LOCAL_DECL.search(line):
                     continue
                 final = classify(path, kind)
+                if final == "app_write" and lineno in api_lines:
+                    final = "app_write_api"
                 rows.append(f"{batch_of(path, final)}\t{path}:{lineno}\t{final}\t{src_lines[lineno - 1].strip()[:120]}")
     return rows
 
 
 def raw_writers(rows: list[str]) -> list[str]:
-    """Raw `appearance` writers outside the adopt/release API (ALLOWED_WRITERS): B7o.2 is proved when this is empty."""
+    """Raw `appearance` writers outside the adopt/release API (only the bodies of GameObject::adoptAppearance/releaseAppearance are exempt): B7o.2 is proved when this is empty."""
     out = []
     for r in rows:
         _, loc, k, _t = r.split("\t", 3)
-        if k == "app_write" and not ALLOWED_WRITERS.search(loc.rsplit(":", 1)[0]):
+        if k == "app_write":
             out.append(r)
     return out
 
