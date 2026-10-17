@@ -405,6 +405,13 @@ void MissionInterfaceManager::destroy (void)
 	hotKeyFont.destroy();
 	hotKeyHeaderFont.destroy();
 
+	// A drop-ship VTOL still in flight at mission end owns its appearance (the appearance heap no longer sweeps it).
+	for (long i = 0; i < MAX_TEAMS; i++)
+	{
+		delete vTol[i];
+		vTol[i] = nullptr;
+	}
+
 	delete keyboardRef;
 	keyboardRef = nullptr;
 }	

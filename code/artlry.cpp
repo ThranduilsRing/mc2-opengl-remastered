@@ -652,7 +652,9 @@ void Artillery::init (bool create)
 	rightContrail = nullptr;
 			
 	bomber = nullptr;
-	
+	// A fresh round owns no appearance yet; destroy() frees it (the heap that used to sweep it up is gone).
+	appearance = nullptr;
+
 	setFlag(OBJECT_FLAG_RANDOM_OFFSET, 0);
 }
 
@@ -1489,11 +1491,21 @@ void Artillery::destroy (void)
 		delete bomber;
 		bomber = nullptr;
 	}
+
+	// The round owns its strike appearance; the per-mission appearance heap no longer reclaims it in bulk.
+	if (appearance)
+	{
+		delete appearance;
+		appearance = nullptr;
+	}
 }
 
 //---------------------------------------------------------------------------
-void Artillery::init (bool create, ObjectTypePtr _type) 
+void Artillery::init (bool create, ObjectTypePtr _type)
 {
+	// A re-init must not orphan what the previous init built (appearance, bomber, effects).
+	destroy();
+
 	GameObject::init(create, _type);
 
 	initFlags();
