@@ -1383,6 +1383,20 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
     if (!drawData || !s.imguiVkInited || !ensureImguiFramebuffer(s))
         return false;
 
+    // VK-IMGUI-LIFECYCLE-1: the draw data is only recorded while the Vulkan backend (and the main viewport's renderer data it installs) is alive.
+    {
+        const bool ctx = ImGui::GetCurrentContext() != nullptr;
+        const bool bd = ctx && ImGui::GetIO().BackendRendererUserData != nullptr;
+        const bool vp = drawData->OwnerViewport && drawData->OwnerViewport->RendererUserData;
+        if (!(ctx && bd && vp)) {
+            static uint32_t s_skipped = 0;
+            if (s_skipped++ < 3)
+                std::fprintf(stderr, "[VK_IMGUI] draw data skipped: ctx=%d backend=%d viewport_renderer_data=%d owner=%p\n",
+                             (int)ctx, (int)bd, (int)vp, (void*)drawData->OwnerViewport);
+            return false;
+        }
+    }
+
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rp.renderPass = s.imguiRenderPass.get();
     rp.framebuffer = s.imguiFramebuffer.get();
