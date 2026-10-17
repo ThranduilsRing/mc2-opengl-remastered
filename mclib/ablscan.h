@@ -287,14 +287,16 @@ void printPageHeader (void);
 // VARIABLES
 
 extern char			wordString[MAXLEN_TOKENSTRING];
-extern void* (*ABLSystemMallocCallback) (unsigned long memSize);
-extern void* (*ABLStackMallocCallback) (unsigned long memSize);
-extern void* (*ABLCodeMallocCallback) (unsigned long memSize);
-extern void* (*ABLSymbolMallocCallback) (unsigned long memSize);
-extern void (*ABLSystemFreeCallback) (void* memBlock);
-extern void (*ABLStackFreeCallback) (void* memBlock);
-extern void (*ABLCodeFreeCallback) (void* memBlock);
-extern void (*ABLSymbolFreeCallback) (void* memBlock);
+// The ABL environment owns its memory: one pool resource per kind, alive from ABLi_init to the end of ABLi_close, which hands back
+// every block still live (compiled symbols, types and code are never freed one by one). Blocks come back zero-filled: the eternal
+// and static blocks are written verbatim into every save, so their bytes must be a function of the game state alone. Module
+// instances, files and the debugger objects of other kinds use the C++ allocator (they are owned one by one).
+enum class ABLPool : int { Symbol = 0, Code = 1, Stack = 2 };
+void* ABL_alloc (ABLPool pool, size_t bytes);
+void ABL_free (ABLPool pool, void* block);
+// Live blocks across all pools, and whether a block is one of them (tests and the compile rollback use these).
+size_t ABL_liveBlocks (void);
+bool ABL_ownsBlock (const void* block);
 extern void (*ABLDebugPrintCallback) (const char* s);
 extern long (*ABLRandomCallback) (long range);
 extern void (*ABLSeedRandomCallback) (unsigned long range);

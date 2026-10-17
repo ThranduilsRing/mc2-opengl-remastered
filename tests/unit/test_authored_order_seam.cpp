@@ -29,21 +29,11 @@ extern bool InitWayPath;
 
 namespace {
 struct CompileFixture {
-    std::set<void*> blocks;
     std::map<std::string, std::string> sources;
     int openFiles = 0;
     long (*previousRemaining)(void*) = ABLFile::remainingCB;
     struct Reader { std::string text; size_t offset = 0; };
     static CompileFixture* current;
-    static void* allocate(unsigned long size) {
-        void* block = std::malloc(size);
-        current->blocks.insert(block);
-        return block;
-    }
-    static void release(void* block) {
-        current->blocks.erase(block);
-        std::free(block);
-    }
     static long open(void** file, const char* name) {
         auto found = current->sources.find(name);
         if (found == current->sources.end()) return -1;
@@ -74,8 +64,7 @@ struct CompileFixture {
     }
     CompileFixture() {
         current = this;
-        ABLi_init(65536, 20480, 20, 100, allocate, allocate, allocate, allocate,
-            release, release, release, release, nullptr, open, close, eof,
+        ABLi_init(65536, 20480, 20, 100, nullptr, open, close, eof,
             read, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
             nullptr, [](long, const char* message) { throw std::runtime_error(message); });
         ABLFile::remainingCB = remaining;
@@ -85,7 +74,6 @@ struct CompileFixture {
     ~CompileFixture() {
         ABLi_close();
         ABLFile::remainingCB = previousRemaining;
-        for (void* block : blocks) std::free(block);
         current = nullptr;
     }
 };
@@ -99,7 +87,7 @@ std::string compileBytes(const CompileFixture& fixture, const Routine& routine) 
         SymTableNodePtr symbol = nullptr;
         if (i + sizeof(symbol) <= routine.codeSegmentSize) {
             std::memcpy(&symbol, routine.codeSegment + i, sizeof(symbol));
-            if (!fixture.blocks.contains(symbol)) symbol = nullptr;
+            if (!ABL_ownsBlock(symbol)) symbol = nullptr;
         }
         if (symbol) {
             result += "<" + std::string(symbol->name) + ">";
@@ -166,7 +154,7 @@ TEST_CASE("ABLCompile/syntax rejection rolls back before the next compile") {
     fixture.sources["bad.abl"] = failure.source;
     fixture.sources["include.abl"] = "code\nendmodule.\n";
     fixture.sources["valid.abl"] = valid;
-    const auto blockCount = fixture.blocks.size();
+    const auto blockCount = ABL_liveBlocks();
     const auto typeCount = IntegerTypePtr->numInstances;
     const auto root = SymTableDisplay[0];
     CompileLog log;
@@ -177,7 +165,7 @@ TEST_CASE("ABLCompile/syntax rejection rolls back before the next compile") {
         CHECK(ABLi_preProcess("bad.abl", &errors) < 0);
     CHECK(errors == 1);
     CHECK(fixture.openFiles == 0);
-    CHECK(fixture.blocks.size() == blockCount);
+    CHECK(ABL_liveBlocks() == blockCount);
     CHECK(NumModulesRegistered == 0);
     CHECK(eternalOffset == 0);
     CHECK(IntegerTypePtr->numInstances == typeCount);
@@ -194,6 +182,29 @@ TEST_CASE("ABLCompile/syntax rejection rolls back before the next compile") {
     CHECK(searchSymTable("retry", SymTableDisplay[0]) == ModuleRegistry[0].moduleIdPtr);
     CHECK(log.text() == message);
     }
+}
+
+TEST_CASE("ABLArena/the environment owns its blocks: zero-filled, freed one by one or all at close") {
+    {
+        CompileFixture fixture;
+        const auto atInit = ABL_liveBlocks();
+        CHECK(atInit > 0); // code buffer, size lists, registries
+        auto* stackBlock = static_cast<unsigned char*>(ABL_alloc(ABLPool::Stack, 64));
+        auto* symbolBlock = static_cast<unsigned char*>(ABL_alloc(ABLPool::Symbol, 32));
+        CHECK(std::all_of(stackBlock, stackBlock + 64, [](unsigned char b) { return b == 0; }));
+        CHECK(ABL_ownsBlock(stackBlock));
+        CHECK(ABL_ownsBlock(symbolBlock));
+        CHECK(ABL_liveBlocks() == atInit + 2);
+        std::memset(stackBlock, 0xcd, 64);
+        ABL_free(ABLPool::Stack, stackBlock);
+        CHECK_FALSE(ABL_ownsBlock(stackBlock));
+        auto* again = static_cast<unsigned char*>(ABL_alloc(ABLPool::Stack, 64));
+        CHECK(std::all_of(again, again + 64, [](unsigned char b) { return b == 0; }));
+        ABL_free(ABLPool::Stack, nullptr);
+        // symbolBlock and again are never freed one by one: closing the environment hands them back.
+    }
+    CHECK(ABL_liveBlocks() == 0);
+    CHECK_FALSE(ABL_ownsBlock(nullptr));
 }
 
 TEST_CASE("ABLCompile/statements includes and library calls preserve parent bytecode after rejection") {

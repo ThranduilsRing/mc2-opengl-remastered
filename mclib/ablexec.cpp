@@ -275,7 +275,7 @@ char* createCodeSegment (long& codeSegmentSize) {
 	// there. Caller-visible codeSegmentSize stays the actual bytecode
 	// length; no consumer needs updating.
 	// See docs/asan-follow-ups.md findings #5 / #6.
-	char* codeSegment = (char*)ABLCodeMallocCallback(codeSegmentSize + 1);
+	char* codeSegment = (char*)ABL_alloc(ABLPool::Code, codeSegmentSize + 1);
 	if (!codeSegment)
 		ABL_Fatal(0, " ABL: Unable to AblCodeHeap->malloc code segment ");
 
@@ -500,7 +500,7 @@ void allocLocal (TypePtr typePtr) {
 //				allocLocal(typePtr->info.subrange.rangeTypePtr);
 //				break;
 			case FRM_ARRAY:
-				char* ptr = (char*)ABLStackMallocCallback(typePtr->size);
+				char* ptr = (char*)ABL_alloc(ABLPool::Stack, typePtr->size);
 				if (!ptr)
 					ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc local array ");
 				pushAddress((Address)ptr);
@@ -550,7 +550,7 @@ void freeLocal (SymTableNodePtr idPtr) {
 				// stack-layout mismatch may not actually belong to our heap; an SEH
 				// frame guarantees a bad free can never crash the mission (leak at worst).
 				__try {
-					ABLStackFreeCallback(itemPtr->address);
+					ABL_free(ABLPool::Stack, itemPtr->address);
 				} __except (1 /*EXCEPTION_EXECUTE_HANDLER*/) {
 				}
 			}

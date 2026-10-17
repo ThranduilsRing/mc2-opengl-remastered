@@ -37,7 +37,7 @@ extern ScrollingTextWindow* ABLDebuggerOut;
 
 void* WatchManager::operator new (size_t mySize) {
 
-	void *result = ABLStackMallocCallback(static_cast<unsigned long>(mySize));
+	void *result = ABL_alloc(ABLPool::Stack, static_cast<unsigned long>(mySize));
 	return(result);
 }
 
@@ -45,7 +45,7 @@ void* WatchManager::operator new (size_t mySize) {
 
 void WatchManager::operator delete (void* us) {
 
-	ABLStackFreeCallback(us);
+	ABL_free(ABLPool::Stack, us);
 }
 
 //---------------------------------------------------------------------------
@@ -55,7 +55,7 @@ long WatchManager::init (long max) {
 	maxWatches = max;
 	numWatches = 0;
 
-	watches = (WatchPtr)ABLStackMallocCallback(max * sizeof(Watch));
+	watches = (WatchPtr)ABL_alloc(ABLPool::Stack, max * sizeof(Watch));
 	if (!watches)
 		return(-1);
 
@@ -67,7 +67,7 @@ long WatchManager::init (long max) {
 void WatchManager::destroy (void) {
 
 	if (watches) {
-		ABLStackFreeCallback(watches);
+		ABL_free(ABLPool::Stack, watches);
 		watches = nullptr;
 	}
 
@@ -252,7 +252,7 @@ void WatchManager::print (void) {
 
 void* BreakPointManager::operator new (size_t mySize) {
 
-	void *result = ABLStackMallocCallback(static_cast<unsigned long>(mySize));
+	void *result = ABL_alloc(ABLPool::Stack, static_cast<unsigned long>(mySize));
 	return(result);
 }
 
@@ -260,7 +260,7 @@ void* BreakPointManager::operator new (size_t mySize) {
 
 void BreakPointManager::operator delete (void* us) {
 
-	ABLStackFreeCallback(us);
+	ABL_free(ABLPool::Stack, us);
 }
 
 //---------------------------------------------------------------------------
@@ -270,7 +270,7 @@ long BreakPointManager::init (long max) {
 	maxBreakPoints = max;
 	numBreakPoints = 0;
 
-	breakPoints = (long*)ABLStackMallocCallback(max * sizeof(long));
+	breakPoints = (long*)ABL_alloc(ABLPool::Stack, max * sizeof(long));
 	if (!breakPoints)
 		return(-1);
 
@@ -282,7 +282,7 @@ long BreakPointManager::init (long max) {
 void BreakPointManager::destroy (void) {
 
 	if (breakPoints) {
-		ABLStackFreeCallback(breakPoints);
+		ABL_free(ABLPool::Stack, breakPoints);
 		breakPoints = nullptr;
 	}
 
@@ -379,7 +379,7 @@ void BreakPointManager::print (void) {
 
 void* Debugger::operator new (size_t mySize) {
 
-	void *result = ABLStackMallocCallback(static_cast<unsigned long>(mySize));
+	void *result = ABL_alloc(ABLPool::Stack, static_cast<unsigned long>(mySize));
 	return(result);
 }
 
@@ -387,7 +387,7 @@ void* Debugger::operator new (size_t mySize) {
 
 void Debugger::operator delete (void* us) {
 
-	ABLStackFreeCallback(us);
+	ABL_free(ABLPool::Stack, us);
 }
 
 //---------------------------------------------------------------------------

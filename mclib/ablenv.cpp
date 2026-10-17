@@ -248,7 +248,7 @@ void* UserFile::operator new (size_t mySize) {
 
 	void* result = nullptr;
 	
-	result = ABLSystemMallocCallback(static_cast<unsigned long>(mySize));
+	result = ::operator new(mySize);
 	
 	return(result);
 }
@@ -257,7 +257,7 @@ void* UserFile::operator new (size_t mySize) {
 
 void UserFile::operator delete (void* us) {
 
-	ABLSystemFreeCallback(us);
+	::operator delete(us);
 }
 
 //---------------------------------------------------------------------------
@@ -380,14 +380,14 @@ void initModuleRegistry (long maxModules) {
 
 	//------------------------------
 	// Create the module registry...
-	ModuleRegistry = (ModuleEntryPtr)ABLStackMallocCallback(sizeof(ModuleEntry) * MaxModules);
+	ModuleRegistry = (ModuleEntryPtr)ABL_alloc(ABLPool::Stack, sizeof(ModuleEntry) * MaxModules);
 	if (!ModuleRegistry)
 		ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc Module Registry ");
 	memset(ModuleRegistry, 0, sizeof(ModuleEntry) * MaxModules);
 
 	//-------------------------------------------------
 	// Create the active (ABLModule) module registry...
-	ModuleInstanceRegistry = (ABLModulePtr*)ABLStackMallocCallback(sizeof(ABLModulePtr) * MaxModules);
+	ModuleInstanceRegistry = (ABLModulePtr*)ABL_alloc(ABLPool::Stack, sizeof(ABLModulePtr) * MaxModules);
 	if (!ModuleInstanceRegistry)
 		ABL_Fatal(0, " ABL: Unable to malloc AblStackHeap->Module Instance Registry ");
 	memset(ModuleInstanceRegistry, 0, sizeof(ABLModulePtr) * MaxModules);
@@ -401,19 +401,19 @@ void destroyModuleRegistry (void) {
 	// First, go through the registry, free'n each module and its
 	// associated data...
 	for (long i = 0; i < NumModulesRegistered; i++) {
-		ABLStackFreeCallback(ModuleRegistry[i].fileName);
+		ABL_free(ABLPool::Stack, ModuleRegistry[i].fileName);
 		ModuleRegistry[i].fileName = nullptr;
 		ModuleRegistry[i].moduleIdPtr = nullptr;
 		for (long j = 0; j < ModuleRegistry[i].numSourceFiles; j++) {
-			ABLStackFreeCallback(ModuleRegistry[i].sourceFiles[j]);
+			ABL_free(ABLPool::Stack, ModuleRegistry[i].sourceFiles[j]);
 			ModuleRegistry[i].sourceFiles[j] = nullptr;
 		}
 	}
 
-	ABLStackFreeCallback(ModuleRegistry);	
+	ABL_free(ABLPool::Stack, ModuleRegistry);
 	ModuleRegistry = nullptr;
 
-	ABLStackFreeCallback(ModuleInstanceRegistry);	
+	ABL_free(ABLPool::Stack, ModuleInstanceRegistry);
 	ModuleInstanceRegistry = nullptr;
 }
 
@@ -430,7 +430,7 @@ void initLibraryRegistry (long maxLibraries) {
 
 	//--------------------------------------------------
 	// Create the active (ABLModule) library registry...
-	LibraryInstanceRegistry = (ABLModulePtr*)ABLStackMallocCallback(sizeof(ABLModulePtr) * MaxLibraries);
+	LibraryInstanceRegistry = (ABLModulePtr*)ABL_alloc(ABLPool::Stack, sizeof(ABLModulePtr) * MaxLibraries);
 	if (!LibraryInstanceRegistry)
 		ABL_Fatal(0, " ABL: Unable to malloc AblStackHeap->Library Instance Registry ");
 	memset(LibraryInstanceRegistry, 0, sizeof(ABLModulePtr) * MaxLibraries);
@@ -454,7 +454,7 @@ void destroyLibraryRegistry (void) {
 		LibraryInstanceRegistry[i] = nullptr;
 	}
 
-	ABLStackFreeCallback(LibraryInstanceRegistry);
+	ABL_free(ABLPool::Stack, LibraryInstanceRegistry);
 	LibraryInstanceRegistry = nullptr;
 }
 
@@ -466,7 +466,7 @@ void* ABLModule::operator new (size_t mySize) {
 
 	void* result = nullptr;
 	
-	result = ABLSystemMallocCallback(static_cast<unsigned long>(mySize));
+	result = ::operator new(mySize);
 	
 	return(result);
 }
@@ -475,7 +475,7 @@ void* ABLModule::operator new (size_t mySize) {
 
 void ABLModule::operator delete (void* us) {
 
-	ABLSystemFreeCallback(us);
+	::operator delete(us);
 }
 
 //---------------------------------------------------------------------------
@@ -548,7 +548,7 @@ long ABLModule::init (int moduleHandle) {
 	staticData = nullptr;
 	long numStatics = ModuleRegistry[handle].numStaticVars;
 	if (numStatics) {
-		staticData = (StackItemPtr)ABLStackMallocCallback(sizeof(StackItem) * numStatics);
+		staticData = (StackItemPtr)ABL_alloc(ABLPool::Stack, sizeof(StackItem) * numStatics);
 		if (!staticData) {
 			char err[255];
 			sprintf(err, "ABL: Unable to AblStackHeap->malloc staticData [Module %d]", id);
@@ -557,7 +557,7 @@ long ABLModule::init (int moduleHandle) {
 		long* sizeList = ModuleRegistry[handle].sizeStaticVars;
 		for (long i = 0; i < numStatics; i++)
 			if (sizeList[i] > 0) {
-				staticData[i].address = (char*)ABLStackMallocCallback(sizeList[i]);
+				staticData[i].address = (char*)ABL_alloc(ABLPool::Stack, sizeList[i]);
 				if (!staticData) {
 					char err[255];
 					sprintf(err, "ABL: Unable to AblStackHeap->malloc staticData address [Module %d]", id);
@@ -570,7 +570,7 @@ long ABLModule::init (int moduleHandle) {
 
 	if (ModuleRegistry[handle].numOrderCalls) {
 		long numLongs = 1 + ModuleRegistry[handle].numOrderCalls / 32;
-		orderCallFlags = (unsigned long*)ABLStackMallocCallback(sizeof(unsigned long) * numLongs);
+		orderCallFlags = (unsigned long*)ABL_alloc(ABLPool::Stack, sizeof(unsigned long) * numLongs);
 		if (!orderCallFlags) {
 			char err[255];
 			sprintf(err, "ABL: Unable to AblStackHeap->malloc orderCallFlags [Module %d]", id);
@@ -688,7 +688,7 @@ void ABLModule::read (ABLFile* moduleFile) {
 	long numStatics = ModuleRegistry[handle].numStaticVars;
 	if (numStatics) {
 		if (fresh) {		
-			staticData = (StackItemPtr)ABLStackMallocCallback(sizeof(StackItem) * numStatics);
+			staticData = (StackItemPtr)ABL_alloc(ABLPool::Stack, sizeof(StackItem) * numStatics);
 			if (!staticData) {
 				char err[255];
 				sprintf(err, "ABL: Unable to AblStackHeap->malloc staticData [Module %d]", id);
@@ -699,7 +699,7 @@ void ABLModule::read (ABLFile* moduleFile) {
 		for (long i = 0; i < numStatics; i++)
 			if (sizeList[i] > 0) {
 				if (fresh) {
-					staticData[i].address = (char*)ABLStackMallocCallback(sizeList[i]);
+					staticData[i].address = (char*)ABL_alloc(ABLPool::Stack, sizeList[i]);
 					if (!staticData) {
 						char err[255];
 						sprintf(err, "ABL: Unable to AblStackHeap->malloc staticData address [Module %d]", id);
@@ -727,7 +727,7 @@ void ABLModule::read (ABLFile* moduleFile) {
 
 	if (ModuleRegistry[handle].numOrderCalls) {
 		long numLongs = 1 + ModuleRegistry[handle].numOrderCalls / 32;
-		orderCallFlags = (unsigned long*)ABLStackMallocCallback(sizeof(unsigned long) * numLongs);
+		orderCallFlags = (unsigned long*)ABL_alloc(ABLPool::Stack, sizeof(unsigned long) * numLongs);
 		if (!orderCallFlags) {
 			char err[255];
 			sprintf(err, "ABLModule.read: Unable to AblStackHeap->malloc orderCallFlags [Module %d]", id);
@@ -904,7 +904,7 @@ long ABLModule::execute (ABLParamPtr paramList) {
 
 				if (formalTypePtr->form == FRM_ARRAY/* || (formalTypePtr->form == FRM_RECORD)*/) {
 					long size = formalTypePtr->size;
-					char* dest = (char*)ABLStackMallocCallback((size_t)size);
+					char* dest = (char*)ABL_alloc(ABLPool::Stack, (size_t)size);
 					if (!dest) {
 						char err[255];
 						sprintf(err, "ABL: Unable to AblStackHeap->malloc array parameter [Module %d]", id);
@@ -1045,7 +1045,7 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 					// The following is a little inefficient, but is kept this way to keep it clear.
 					// Once it's verified to work, optimize...
 					long size = formalTypePtr->size;
-					char* dest = (char*)ABLStackMallocCallback((size_t)size);
+					char* dest = (char*)ABL_alloc(ABLPool::Stack, (size_t)size);
 					if (!dest) {
 						char err[255];
 						sprintf(err, "ABL: Unable to AblStackHeap->malloc array parameter [Module %d]", id);
@@ -1421,7 +1421,7 @@ void ABLModule::destroy (void) {
 	}
 
 	if (staticData) {
-		ABLStackFreeCallback(staticData);
+		ABL_free(ABLPool::Stack, staticData);
 		staticData = nullptr;
 	}
 }
