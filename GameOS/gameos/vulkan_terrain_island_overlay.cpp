@@ -325,10 +325,6 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
             mc2vk::nameObjectAt(s->device, o->pipe[k].get(), "terrain.overlayPipe", static_cast<int>(k));
         }
     }
-    for (int i = 0; i < 2; ++i) {
-        o->vtxCap[i] = 256 * 1024;
-        if (!make_buffer(s, o->vtx[i], o->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "terrain.overlay.vtx", static_cast<int>(i))) return false;
-    }
     o->inited = true;
     vlog("[VK_TERRAIN_OVERLAY] island initialized %dx%d (cement/road overlays + decals -> shared GBuffer; GEQUAL reverse-Z).", w, h);
     return true;
@@ -404,16 +400,6 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
         vmaUnmapMemory(s->allocator, o->stat.allocation());
         o->statVersion = p.version;
     }
-    for (int i = 0; i < 2; ++i) {
-        if (dynBytes > o->vtxCap[i]) {
-            mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_overlay_vertex_grow");
-            o->vtx[i].reset();
-            o->vtxCap[i] = dynBytes + dynBytes / 2;
-            if (!make_buffer(s, o->vtx[i], o->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "terrain.overlay.vtx", static_cast<int>(i))) {
-                o->disabled = true; return 0;
-            }
-        }
-    }
     // Draw list in submission order; dynamic verts packed back to back.
     VkDeviceSize dynOff = 0;
     std::vector<std::pair<const OvlPending*, uint32_t>> dynRuns;   // (pending, first vertex in the dyn stream)
@@ -432,32 +418,31 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     Mc2VkOverlayFrame fr{};
     mc2_vk_overlay_fill_frame(&fr);
 
+    // Per-frame data goes into the engine frame ring BEFORE beginFrame (the slot belongs to the frame, not to the parity): the one-slot UBO, the light pool
+    // + grid spans and the dynamic vertex stream. The overlay stages its own copies; the terrain pass's spans are not shared.
+    mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
+    const mc2vk::FrameAlloc uboSpan = rctx.frameAlloc(sizeof(TerrainFrameUBO));
+    int32_t vkPoolLights = feed.numPoolLights;
+    int32_t vkGridDim    = feed.lightGridDim;
+    mc2vk::FrameAlloc lpSpans[3];
+    mc2vk::FrameAlloc vtxSpan;
+    if (!uboSpan || !stage_light_pool(s, feed, vkPoolLights, vkGridDim, lpSpans) || (dynBytes != 0 && !(vtxSpan = rctx.frameAlloc(dynBytes, 16)))) {
+        o->disabled = true; return 0;
+    }
+    {
+        TerrainFrameUBO u{};
+        fill_frame_ubo(s, feed, feed.patches[0], vkPoolLights, vkGridDim, u);
+        std::memcpy(uboSpan.ptr, &u, sizeof(u));
+    }
+    for (const auto& r : dynRuns)
+        std::memcpy(static_cast<uint8_t*>(vtxSpan.ptr) + (size_t)r.second * kOvlVertStride, r.first->verts.data(), (size_t)r.first->vertCount * kOvlVertStride);
+
     // ---- sync: same shared parity-slot fence discipline as the other islands ----
     VkImageResource* colorRes = s->colorRes;
     VkFrameSync fsC{};
     { ZoneScopedN("VKIsl.Overlay.FenceWait"); fsC = vkImageResourceBeginFrame(colorRes); }
     const uint32_t par = fsC.parity & 1u;
-
-    if (!ensure_ubo_capacity(s, par, sizeof(TerrainFrameUBO))) { o->disabled = true; return 0; }
-    int32_t vkPoolLights = feed.numPoolLights;
-    int32_t vkGridDim    = feed.lightGridDim;
-    stage_light_pool(s, par, feed, vkPoolLights, vkGridDim);
-    {
-        void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->ubo[par].allocation(), &p) != VK_SUCCESS) { o->disabled = true; return 0; }
-        TerrainFrameUBO u{};
-        fill_frame_ubo(s, feed, feed.patches[0], vkPoolLights, vkGridDim, u);
-        std::memcpy(p, &u, sizeof(u));
-        vmaUnmapMemory(s->allocator, s->ubo[par].allocation());
-    }
-    if (!dynRuns.empty()) {
-        void* p = nullptr;
-        if (vmaMapMemory(s->allocator, o->vtx[par].allocation(), &p) != VK_SUCCESS) { o->disabled = true; return 0; }
-        for (const auto& r : dynRuns)
-            std::memcpy((uint8_t*)p + (size_t)r.second * kOvlVertStride, r.first->verts.data(),
-                        (size_t)r.first->vertCount * kOvlVertStride);
-        vmaUnmapMemory(s->allocator, o->vtx[par].allocation());
-    }
+    sync_ring_bindings(s, par, uboSpan, lpSpans);
 
     VkCommandBuffer cb = o->cbuf[par];
     vkResetCommandBuffer(cb, 0);
@@ -480,8 +465,9 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     pc.artFlatExempt = fr.artFlatExempt; pc.mapHalfExtent = fr.mapHalfExtent;
     pc.biasLegacy = fr.biasLegacy; pc.cementAdopt = fr.cementAdopt; pc.seamFix = fr.seamFix;
     vkCmdPushConstants(cb, o->playout.get(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
-    const uint32_t dynOffset0 = 0;
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->playout.get(), 0, 1, &s->set[par], 1, &dynOffset0);
+    const uint32_t dynOffsets[4] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(lpSpans[0].offset),
+                                    static_cast<uint32_t>(lpSpans[1].offset), static_cast<uint32_t>(lpSpans[2].offset)};
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->playout.get(), 0, 1, &s->set[par], 4, dynOffsets);
 
     int boundKind = -1; int boundStatic = -1; VkDescriptorSet boundTex = VK_NULL_HANDLE;
     unsigned long drawn[2] = {0, 0}, verts = 0;
@@ -490,9 +476,9 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
         const int isStat = (it.kind & 2u) ? 1 : 0;
         if (kind != boundKind) { vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->pipe[kind].get()); boundKind = kind; }
         if (isStat != boundStatic) {
-            VkBuffer vb = isStat ? o->stat.get() : o->vtx[par].get();
-            VkDeviceSize zero = 0;
-            vkCmdBindVertexBuffers(cb, 0, 1, &vb, &zero);
+            VkBuffer vb = isStat ? o->stat.get() : vtxSpan.buffer;
+            VkDeviceSize vbOff = isStat ? 0 : vtxSpan.offset;
+            vkCmdBindVertexBuffers(cb, 0, 1, &vb, &vbOff);
             boundStatic = isStat;
         }
         if (it.tex->set != boundTex) {

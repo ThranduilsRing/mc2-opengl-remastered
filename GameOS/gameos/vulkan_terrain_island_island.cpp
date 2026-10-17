@@ -168,13 +168,18 @@ void write_descriptors(TerrainIsland* s) {
     // binding 0 = dynamic UBO (per-patch frame block); binding 1 = height SSBO;
     // binding 2 = colormap combined-image-sampler (COLORMAP-BASE, only when live).
     // binding 3 = cement combined-image-sampler (dummy/real); binding 4 = cement-word SSBO.
-    VkDescriptorBufferInfo uboInfo{ s->ubo[i].get(), 0, sizeof(TerrainFrameUBO) }; // range = one slot
+    // Bindings 0 (UBO) and 11-13 (light pool) are frame-ring dynamic bindings: written at the ring's current buffer, re-pointed at the next frame of this
+    // parity (ringBound cleared).
+    if (const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer()) {
+        const VkDeviceSize range = mc2vk::getOrCreateEngineVulkanContext().frameRingRange();
+        mc2vk::writeDynamicBinding(s->device, s->set[i], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, sizeof(TerrainFrameUBO));
+        for (uint32_t k = 0; k < 3; ++k)
+            mc2vk::writeDynamicBinding(s->device, s->set[i], 11 + k, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, range);
+    }
+    for (VkBuffer& b : s->ringBound[i]) b = VK_NULL_HANDLE;
     VkDescriptorBufferInfo hInfo{ s->heightBuf.get(), 0, VK_WHOLE_SIZE };
     VkWriteDescriptorSet w[15]{};
     uint32_t n = 0;
-    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
-    w[n].dstBinding = 0; w[n].descriptorCount = 1;
-    w[n].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; w[n].pBufferInfo = &uboInfo; ++n;
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
     w[n].dstBinding = 1; w[n].descriptorCount = 1;
     w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &hInfo; ++n;
@@ -271,16 +276,7 @@ void write_descriptors(TerrainIsland* s) {
         w[n].dstBinding = 10; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &vhBuf; ++n;
     }
-    // VK-PARITY-TERRAIN-2: bindings 11/12/13 light pool / grid header / grid indices
-    // (per-parity buffers; always valid once created, uT.numPoolLights gates use).
-    VkDescriptorBufferInfo lpInfo[3]{};
-    for (int k = 0; k < 3; ++k) {
-        if (!s->lpBuf[i][k]) continue;
-        lpInfo[k].buffer = s->lpBuf[i][k].get(); lpInfo[k].offset = 0; lpInfo[k].range = VK_WHOLE_SIZE;
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
-        w[n].dstBinding = 11 + k; w[n].descriptorCount = 1;
-        w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &lpInfo[k]; ++n;
-    }
+    // VK-PARITY-TERRAIN-2: bindings 11/12/13 light pool / grid header / grid indices are the ring bindings written above.
     // TERRAIN-SHORELINE-V3: binding 14 shoreline mask (dummy until a mission ships one; uT.shorelineHasMask gates use).
     VkDescriptorImageInfo smInfo{};
     if (s->shoreMaskView && s->colormapSamp) {
@@ -309,37 +305,16 @@ bool ensure_height_capacity(TerrainIsland* s, VkDeviceSize bytes) {
     return true;
 }
 
-// Grow slot `par`'s per-patch dynamic UBO (VK-TERRAIN-FENCE-DEFER-1: per parity slot).
-bool ensure_ubo_capacity(TerrainIsland* s, uint32_t par, VkDeviceSize bytes) {
-    if (s->ubo[par] && bytes <= s->uboCapBytes[par]) return true;
-    if (s->ubo[par]) {
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_ubo_grow");
-        s->ubo[par].reset();
+void sync_ring_bindings(TerrainIsland* s, uint32_t par, const mc2vk::FrameAlloc& ubo, const mc2vk::FrameAlloc (&lp)[3]) {
+    if (s->ringBound[par][0] != ubo.buffer) {
+        mc2vk::writeDynamicBinding(s->device, s->set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ubo.buffer, sizeof(TerrainFrameUBO));
+        s->ringBound[par][0] = ubo.buffer;
     }
-    VkDeviceSize cap = bytes + bytes / 2 + sizeof(TerrainFrameUBO);
-    if (!make_buffer(s, s->ubo[par], cap, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "terrain.ubo", static_cast<int>(par)))
-        return false;
-    s->uboCapBytes[par] = cap;
-    write_descriptors(s);
-    return true;
-}
-
-// VK-PARITY-TERRAIN-2: grow slot `par`'s light buffer k (0 pool, 1 grid header,
-// 2 grid indices). Same grow discipline as ensure_ubo_capacity (device idle, rewrite
-// both sets). Initial sizes cover the defaults (256-light cap, 64x64 grid) so the
-// regrow path only runs for MC2_LIGHT_GRID_DIM overrides / unusually dense stamps.
-bool ensure_lightpool_capacity(TerrainIsland* s, uint32_t par, int k, VkDeviceSize bytes) {
-    if (s->lpBuf[par][k] && bytes <= s->lpCap[par][k]) return true;
-    if (s->lpBuf[par][k]) {
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_lightpool_grow");
-        s->lpBuf[par][k].reset();
+    for (uint32_t k = 0; k < 3; ++k) {
+        if (s->ringBound[par][1 + k] == lp[k].buffer) continue;
+        mc2vk::writeDynamicBinding(s->device, s->set[par], 11 + k, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, lp[k].buffer, lp[k].range);
+        s->ringBound[par][1 + k] = lp[k].buffer;
     }
-    VkDeviceSize cap = bytes + bytes / 2 + 256;
-    if (!make_buffer(s, s->lpBuf[par][k], cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "terrain.lpBuf", static_cast<int>(par), static_cast<int>(k)))
-        return false;
-    s->lpCap[par][k] = cap;
-    write_descriptors(s);
-    return true;
 }
 
 // One-time init: fetch shared GBuffer, build LOAD renderpass/framebuffer/pipeline.
@@ -478,10 +453,8 @@ bool init_island(TerrainIsland* s, int w, int h) {
         }
     }
 
-    // ---- Buffers (height snapshot SSBO + per-parity per-patch dynamic UBOs). ----
+    // ---- Buffers (height snapshot SSBO; the per-frame UBO and light pool are frame-ring spans). ----
     if (!ensure_height_capacity(s, 256 * 1024)) return false;
-    if (!ensure_ubo_capacity(s, 0, 64 * sizeof(TerrainFrameUBO))) return false;
-    if (!ensure_ubo_capacity(s, 1, 64 * sizeof(TerrainFrameUBO))) return false;
 
     // ---- COLORMAP-BASE: command pool must exist before the copy-once import can
     // run its one-shot cmd buffer; create it here (also allocs the 2 draw cbufs). ----
@@ -547,22 +520,6 @@ bool init_island(TerrainIsland* s, int w, int h) {
     // csmEnabled=0 -> falls back to the legacy single-map path, no hole).
     if (!ensure_dummy_csm(s)) { setFallback("csm_dummy_failed"); return false; }
 
-    // VK-PARITY-TERRAIN-2: initial light pool / grid buffers (both parities) so bindings
-    // 11-13 are valid descriptors from frame 1. Sizes: 256 x 48B pool, 64x64 x uvec2 header,
-    // 16K index words; grown on demand by ensure_lightpool_capacity.
-    {
-        const VkDeviceSize initBytes[3] = { 256u * 48u, 64u * 64u * 8u, 16384u * 4u };
-        for (int i = 0; i < 2; ++i)
-            for (int k = 0; k < 3; ++k)
-                if (!s->lpBuf[i][k]) {
-                    if (!make_buffer(s, s->lpBuf[i][k], initBytes[k], VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                     true, "terrain.lpBuf", i, k)) {
-                        setFallback("lightpool_ssbo_failed"); return false;
-                    }
-                    s->lpCap[i][k] = initBytes[k];
-                }
-    }
-
     // ---- Descriptor layout: binding0 dynamic UBO (VS+FS), binding1 height SSBO (VS). ----
     {
         VkDescriptorSetLayoutBinding b[15]{};
@@ -602,7 +559,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         b[10].descriptorCount = 1; b[10].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         // VK-PARITY-TERRAIN-2: bindings 11/12/13 = light pool / grid header / grid index SSBOs (FS).
         for (int k = 11; k <= 13; ++k) {
-            b[k].binding = (uint32_t)k; b[k].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            b[k].binding = (uint32_t)k; b[k].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
             b[k].descriptorCount = 1; b[k].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         }
         // TERRAIN-SHORELINE-V3: binding 14 = shoreline mask sidecar sampler2D (FS).
@@ -615,15 +572,16 @@ bool init_island(TerrainIsland* s, int w, int h) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
         // VK-TERRAIN-FENCE-DEFER-1: TWO sets (one per parity slot), so pool sizes double.
-        VkDescriptorPoolSize sizes[4]{};
+        VkDescriptorPoolSize sizes[5]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;  sizes[0].descriptorCount = 2;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 12; // (height + cement + visual-height + pool + grid hdr + grid idx) x2
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 6;  // (height + cement + visual-height) x2
         // Image samplers per set: colormap, cement, static shadow, matNormalArray, dyn shadow, csm array, csm full map,
         // shoreline mask; two sets.
         sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 16;
+        sizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;  sizes[3].descriptorCount = 6;  // light pool + grid header + grid indices, x2
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 2; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
+        pci.maxSets = 2; pci.poolSizeCount = 4; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) {
             vlog("vkCreateDescriptorPool failed."); return false;
         }

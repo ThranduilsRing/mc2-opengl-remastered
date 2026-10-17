@@ -266,8 +266,11 @@ struct TerrainIsland : mc2vk::IslandState {
     // Everything else the submit reads is either write-once (patch/skirt cache VBO/IBOs,
     // copy-once image imports), rare-write device-idle-guarded (height/cement/visual-
     // height snapshots), or synced by its own one-shot inline fence (shadow copies).
-    mc2vk::OwnedBuffer ubo[2];
-    VkDeviceSize  uboCapBytes[2] = {0, 0};
+    // Per-frame data lives in the engine frame ring: the per-patch dynamic UBO (binding 0) and the light pool / grid header / grid index SSBOs (bindings
+    // 11-13) are spans of it, bound with dynamic offsets (in binding order 0, 11, 12, 13). ringBound[par][k] (k = 0 UBO, 1-3 pool/header/indices) = the
+    // ring buffer that binding of set[par] currently points at; a frame whose spans came from another buffer (the ring grew), or a set rewritten by
+    // write_descriptors, is re-pointed after beginFrame retired the parity.
+    VkBuffer      ringBound[2][4] = {};
 
     // VK-PARITY-TERRAIN-2: per-parity host-visible copies of the GL terrain light pool
     // (GL binding 28 -> VK binding 11), light-grid header (29 -> 12) and index list
@@ -275,8 +278,6 @@ struct TerrainIsland : mc2vk::IslandState {
     // the SAME CPU arrays the GL producer uploads each frame (pool <= 12 KB, header 32 KB
     // at the default 64x64 grid, indices = stamped count); staged [par] after the slot
     // fence like the UBO. Grow-only (device-idle on regrow, rare).
-    mc2vk::OwnedBuffer lpBuf[2][3];
-    VkDeviceSize  lpCap[2][3]   = {};
 
     std::unordered_map<uint32_t, PatchMesh> patchCache;
     std::unordered_map<uint32_t, SkirtMesh> skirtCache;  // VK-TERRAIN-SKIRT (rung 4)
@@ -336,9 +337,7 @@ struct OvlState {
     mc2vk::OwnedDescriptorSetLayout texDsl;
     mc2vk::OwnedDescriptorPool texPool;
     mc2vk::OwnedSampler samp;
-    mc2vk::OwnedBuffer vtx[2];
-    VkDeviceSize vtxCap[2] = {0, 0};
-    mc2vk::OwnedBuffer stat;
+    mc2vk::OwnedBuffer stat;   // persistent static bake (re-uploaded under a device idle at a map change); the dynamic stream is a frame-ring span
     VkDeviceSize statCap = 0; uint64_t statVersion = UINT64_MAX;
     VkCommandBuffer cbuf[2] = {};   // allocated from the island's pool
     OvlTex dummy;
@@ -397,8 +396,8 @@ const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep
 const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lodStep);
 void write_descriptors(TerrainIsland* s);
 bool ensure_height_capacity(TerrainIsland* s, VkDeviceSize bytes);
-bool ensure_ubo_capacity(TerrainIsland* s, uint32_t par, VkDeviceSize bytes);
-bool ensure_lightpool_capacity(TerrainIsland* s, uint32_t par, int k, VkDeviceSize bytes);
+// Re-points set[par]'s ring bindings (0 UBO, 11-13 light pool) at the buffers this frame's spans live in.
+void sync_ring_bindings(TerrainIsland* s, uint32_t par, const mc2vk::FrameAlloc& ubo, const mc2vk::FrameAlloc (&lp)[3]);
 bool init_island(TerrainIsland* s, int w, int h);
 bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 VkCommandBuffer begin_oneshot(TerrainIsland* s);
@@ -423,7 +422,9 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h);
 
 // Run-piece helpers the overlay piece also calls.
 bool ensure_island_ready(int w, int h);
-void stage_light_pool(TerrainIsland* s, uint32_t par, const Mc2TerrainTier1Feed& feed, int32_t& vkPoolLights, int32_t& vkGridDim);
+// Stages this frame's light pool + grid into frame-ring spans lp[0..2] (bindings 11-13 are always bound: an unused one is a small placeholder). False when
+// the ring has no memory for them.
+bool stage_light_pool(TerrainIsland* s, const Mc2TerrainTier1Feed& feed, int32_t& vkPoolLights, int32_t& vkGridDim, mc2vk::FrameAlloc (&lp)[3]);
 void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed, const Mc2TerrainTier1Patch& patch, int32_t vkPoolLights, int32_t vkGridDim, TerrainFrameUBO& u);
 
 #endif // MC2_VULKAN_ISLAND
