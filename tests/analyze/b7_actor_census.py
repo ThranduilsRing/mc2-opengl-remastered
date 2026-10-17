@@ -9,6 +9,13 @@ WHAT: scans the tracked game files (code/, mclib/, gui/, and tests/unit for the 
   objcache_heap  objectCache->Malloc / Free (the manager's pool arrays; the heap goes when the last one does)
   objtypemgr     objTypeManager `new`, `delete` or assignment (a raw pointer that tests assign borrowed objects to)
   shape_node     raw `new` / `delete` of a TG node: TG_ShapeRec::node, typeNodeStore entries (`new TG_Shape`, `new TG_TypeShape/Node`, `delete ...node`, `delete listOfTypeShapes[..]`)
+Round 2 (after the before-review) adds, all by text:
+  app_write      RAW WRITERS of an `appearance` member (`appearance = x`, `->appearance = x`, `.appearance = x`; local declarations excluded). B7o.2 seals them: the count outside the adopt/release API (ALLOWED_WRITERS) must reach 0
+  app_write_other  the same text in a class that is not a GameObject (LogisticsChassis): listed, never sealed
+  app_copy_api   `GameObject::set` / `Mover::set` (by-value copy APIs that copy the appearance view)
+  app_delete (extended) also `delete bomber|theSky|compass|pObject` (artillery bomber, camera sky/compass, SimpleCamera object)
+  marker_new / marker_delete / marker_write / marker_copy   the MechWarrior waypoint marker: creations, deletes, assignments to `.marker`, whole-slot queue copies (`tacOrderQueue[i] = tacOrderQueue[j]`, `MemCpy(..tacOrderQueue..)`)
+  objcache_actor / objcache_subarea / objcache_text / objcache_ptrarr   the objectCache->Malloc/Free rows split by what they allocate (actor allocation operators, terrain sub-area short arrays, weapon-bolt texture text, manager pointer arrays and the collidable list)
 One line per site goes to the committed list `.claude/cleanup/cxx23-step4-b7-callsites.txt`; `--check` compares the tree against it (line numbers ignored).
 WHY: same shape as b5_asset_census: a sub-batch commit shrinks the list by intent (`--write` in the same commit); a site that appears or vanishes outside a batch fails `--check`.
 Not a compiler census: names are matched by text. Editor (editor/), tools and GameOS are not scanned (rebuilt by tools/build_all_targets.py; forced edits are listed in the batch commit).
@@ -38,20 +45,39 @@ SOURCE_EXT = (".cpp", ".h", ".hpp")
 
 #: Sub-batch of a site: the kind decides for the non-appearance kinds, then the file for the appearance kinds.
 KIND_BATCH = {
-    "objtype_op": "B7.5-objectcache",
-    "objcache_op": "B7.5-objectcache",
-    "objcache_heap": "B7.5-objectcache",
-    "objtypemgr": "B7.4-typemgr",
-    "shape_node": "B7.3-shapenode",
+    "objtype_op": "B7o.9-operators",
+    "objcache_op": "B7o.9-operators",
+    "objcache_actor": "B7o.9-operators",
+    "objcache_subarea": "B7o.8a-subarea-text",
+    "objcache_text": "B7o.8a-subarea-text",
+    "objcache_ptrarr": "B7o.8b-ptrarrays",
+    "objtypemgr": "B7o.7-typemgr",
+    "shape_node": "B7o.6-shapenode",
+    "app_write": "B7o.2-seal",
+    "app_write_other": "B7o.2-seal",
+    "app_copy_api": "B7o.2-seal",
+    "marker_new": "B7o.4-queue-markers",
+    "marker_delete": "B7o.4-queue-markers",
+    "marker_write": "B7o.4-queue-markers",
+    "marker_copy": "B7o.4-queue-markers",
 }
 FILE_RULES = [
-    ("B7.2-camera-ui", re.compile(r"^code/(gamecam|simplecamera|missiongui\w*|warrior\w*|artlry\w*)\.(cpp|h)$|^gui/")),
+    ("B7o.5-nonactor-owners", re.compile(r"^code/(gamecam|simplecamera|missiongui\w*|artlry\w*)\.(cpp|h)$|^gui/")),
 ]
-APPEARANCE_OWNER_BATCH = "B7.1-actor-appearance"
+APPEARANCE_OWNER_BATCH = "B7o.3-actor-owner"
+#: The only file allowed to write `appearance` once B7o.2 lands: the adopt/release API itself.
+ALLOWED_WRITERS = re.compile(r"^code/gameobj\.cpp$")
 
 RX = {
     "app_new": re.compile(r"\bnew\s+(?!\w*AppearanceType)\w*Appearance\b"),
     "app_delete": re.compile(r"\bdelete\s+(?:\w+(?:->|\.))?(?:appearance\b|vTol\s*\[)"),
+    "app_delete_named": re.compile(r"\bdelete\s+(?:\w+(?:->|\.))?(?:bomber|theSky|compass|pObject)\b"),
+    "app_write": re.compile(r"(?:^|[^\w])appearance\s*=(?!=)"),
+    "app_copy_api": re.compile(r"\b(?:GameObject|Mover)::set\s*\("),
+    "marker_new": re.compile(r"\bgetWayPointMarker\s*\("),
+    "marker_delete": re.compile(r"\bdelete\s+[\w\[\]\.>-]*marker\b"),
+    "marker_write": re.compile(r"\bmarker\s*=(?!=)"),
+    "marker_copy": re.compile(r"\btacOrderQueue\s*\[[^\]]*\]\s*=\s*tacOrderQueue|\bMemCpy\s*\(\s*(?:data\.)?tacOrderQueue\b"),
     "objtype_op": re.compile(r"\bObjectType::operator\s+(?:new|delete)\b"),
     "objcache_op": re.compile(r"\bGameObject::operator\s+(?:new|delete)\b"),
     "objcache_heap": re.compile(r"\bobjectCache\s*->\s*(?:Malloc|Free)\s*\("),
@@ -59,6 +85,9 @@ RX = {
     "shape_node": re.compile(r"\bnew\s+(?:TG_Shape|TG_TypeShape|TG_TypeNode)\b|\bdelete\s+\w*\.?node\b|\bdelete\s+listOf(?:Type)?Shapes\b|\bdelete\s+listOfShapes\s*\[[^\]]*\]\s*\.node\b|\bdelete\s+listOfTypeShapes\s*\["),
 }
 #: The shape_node rows belong to the TG files only; the same words elsewhere are other classes.
+MARKER_FILES = re.compile(r"^code/warrior\w*\.(cpp|h)$")
+NAMED_DELETE_FILES = re.compile(r"^code/(artlry|gamecam|simplecamera)\.cpp$")
+LOCAL_DECL = re.compile(r"\b(?:AppearancePtr|Appearance|\w+Appearance)\s*\*?\s*appearance\s*=")
 SHAPE_NODE_FILES = re.compile(r"^mclib/(msl|tgl|assimp_importer)[\w]*\.(cpp|h)$")
 
 
@@ -72,6 +101,23 @@ def tracked() -> list[str]:
     except (OSError, subprocess.CalledProcessError) as e:
         raise CensusError(f"git ls-files failed: {e}")
     return [p for p in out.splitlines() if p.endswith(SOURCE_EXT)]
+
+
+def classify(path: str, kind: str) -> str:
+    """Final kind of a matched line: the objectCache rows split by what they allocate, the named deletes fold into app_delete."""
+    if kind == "objcache_heap":
+        if path == "code/gameobj.cpp":
+            return "objcache_actor"
+        if path == "code/terrobj.cpp":
+            return "objcache_subarea"
+        if path == "code/weaponbolt.cpp":
+            return "objcache_text"
+        return "objcache_ptrarr"
+    if kind == "app_delete_named":
+        return "app_delete"
+    if kind == "app_write" and path.startswith("code/logistics"):
+        return "app_write_other"
+    return kind
 
 
 def batch_of(path: str, kind: str) -> str:
@@ -100,8 +146,25 @@ def census() -> list[str]:
                     continue
                 if kind != "objtypemgr" and path.startswith("tests/unit/"):
                     continue
-                rows.append(f"{batch_of(path, kind)}\t{path}:{lineno}\t{kind}\t{src_lines[lineno - 1].strip()[:120]}")
+                if kind.startswith("marker_") and not MARKER_FILES.search(path):
+                    continue
+                if kind == "app_delete_named" and not NAMED_DELETE_FILES.search(path):
+                    continue
+                if kind == "app_write" and LOCAL_DECL.search(line):
+                    continue
+                final = classify(path, kind)
+                rows.append(f"{batch_of(path, final)}\t{path}:{lineno}\t{final}\t{src_lines[lineno - 1].strip()[:120]}")
     return rows
+
+
+def raw_writers(rows: list[str]) -> list[str]:
+    """Raw `appearance` writers outside the adopt/release API (ALLOWED_WRITERS): B7o.2 is proved when this is empty."""
+    out = []
+    for r in rows:
+        _, loc, k, _t = r.split("\t", 3)
+        if k == "app_write" and not ALLOWED_WRITERS.search(loc.rsplit(":", 1)[0]):
+            out.append(r)
+    return out
 
 
 def summary(rows: list[str]) -> None:
@@ -114,7 +177,8 @@ def summary(rows: list[str]) -> None:
         per[b][k] += 1
         perfiles[b].add(loc.rsplit(":", 1)[0])
     for b in sorted(per):
-        print(f"  {b:24s} {sum(per[b].values()):4d} sites {len(perfiles[b]):3d} files  " + " ".join(f"{k}={n}" for k, n in sorted(per[b].items())))
+        print(f"  {b:26s} {sum(per[b].values()):4d} sites {len(perfiles[b]):3d} files  " + " ".join(f"{k}={n}" for k, n in sorted(per[b].items())))
+    print(f"b7_actor_census: raw appearance writers outside the API: {len(raw_writers(rows))} (B7o.2 seal target 0)")
 
 
 def main(argv: list[str] | None = None) -> int:
