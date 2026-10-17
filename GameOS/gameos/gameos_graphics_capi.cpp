@@ -319,7 +319,10 @@ void __stdcall gos_LockTexture( DWORD Handle, DWORD MipMapSize, bool ReadOnly, T
 
 void __stdcall gos_UnLockTexture( DWORD Handle )
 {
-    gosTexture* ptex = g_gos_renderer->getTexture(Handle);
+    // Pairs with gos_LockTexture: a handle that gave an empty lock has nothing to release.
+    gosTexture* ptex = (Handle < g_gos_renderer->getTextureListSize()) ? g_gos_renderer->getTexture(Handle) : nullptr;
+    if (!ptex)
+        return;
     ptex->Unlock();
 
 }

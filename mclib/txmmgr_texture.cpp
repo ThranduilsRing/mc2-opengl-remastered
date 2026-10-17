@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
 #include "mc2fmt.h"
+#include <algorithm>
 
 DWORD actualTextureSize = 0;
 DWORD compressedTextureSize = 0;
@@ -313,7 +314,9 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		// A layout or object file can name a texture that is in no archive or
 		// loose tree (a stale mod or install). The node must still be a valid
 		// texture so every consumer (gos_LockTexture, UV math) stays safe: bind a
-		// transparent 1x1 and say so once. gosASSERT is a no-op in this build, so
+		// transparent 1x1 to this node and say so once per node. Nodes are per
+		// (name, uniqueInstance), so there is no shared placeholder: each paint
+		// instance gets its own 1x1 and its own writable surface. gosASSERT is a no-op in this build, so
 		// the old assert let the unopened File reach fileSize() and a null texture.
 		mc2::fmt::print_out("[TEXMGR_MISSING] texture not found, bound a 1x1 placeholder: {}\n", mc2::fmt::safe(textureFullPathName));
 		fflush(stdout);
@@ -732,7 +735,12 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 					gos_LockTexture(gosTextureHandle, 0, 0, &pTextureData);
 				}
 				{
-					memcpy(pTextureData.pTexture, textureBytes, originalSize);
+					// WHY: a failed texture build gives an empty lock; copy only what the locked surface can hold.
+					if (pTextureData.pTexture)
+					{
+						const size_t surfaceBytes = (size_t)pTextureData.Width * (size_t)pTextureData.Height * sizeof(DWORD);
+						memcpy(pTextureData.pTexture, textureBytes, (std::min)((size_t)originalSize, surfaceBytes));
+					}
 				}
 				{
 					gos_UnLockTexture(gosTextureHandle);
@@ -867,7 +875,9 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 				LZDecomp(MC_TextureManager::lzBuffer2,(MemoryPtr)textureData,lzCompSize,MAX_LZ_BUFFER_SIZE);
 			}
 			{
-				memcpy(pTextureData.pTexture,MC_TextureManager::lzBuffer2,txmSize);
+				// WHY: an empty lock (texture build failed) has no pixels to fill.
+				if (pTextureData.pTexture)
+					memcpy(pTextureData.pTexture,MC_TextureManager::lzBuffer2,txmSize);
 			}
 
 			{

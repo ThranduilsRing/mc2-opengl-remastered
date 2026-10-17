@@ -684,12 +684,15 @@ void Mech3DAppearance::setPaintScheme (void)
 		{
 			if ( FILE* f = fopen("preview_debug.log","a") )
 			{
-				DWORD* p = textureData.pTexture;
+				// The surface can be empty or the 1x1 missing-texture placeholder: read only pixels that exist.
+				const DWORD* p = textureData.pTexture;
+				const long long pixelCount = (long long)textureData.Width * (long long)textureData.Height;
+				auto px = [&](long long idx) -> unsigned long { return (p && idx < pixelCount) ? (unsigned long)p[idx] : 0ul; };
 				fprintf(f,"[PREVIEW-PAINT] lock gosHandle=%lu %ldx%ld pitch=%ld px0=%08lX px1=%08lX pxMid=%08lX\n",
 					(unsigned long)gosHandle,
 					(long)textureData.Width,(long)textureData.Height,(long)textureData.Pitch,
-					(unsigned long)p[0],(unsigned long)p[1],
-					(unsigned long)p[(textureData.Height/2)*textureData.Width + textureData.Width/2]);
+					px(0),px(1),
+					px((long long)(textureData.Height/2)*textureData.Width + textureData.Width/2));
 				fclose(f);
 			}
 		}
