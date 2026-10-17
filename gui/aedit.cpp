@@ -257,7 +257,7 @@ void aEdit::handleKeyboard()
 			}
 
 			// is there space to insert a character?
-			if (text.Length() - labs( nInsertion2 - nInsertion1 ) + (key2 ? 1 : 0) >= nLimit)
+			if (static_cast<int>(text.size()) - labs( nInsertion2 - nInsertion1 ) + (key2 ? 1 : 0) >= nLimit)
 			{
 				sndSystem->playDigitalSample( LOG_WRONGBUTTON );
 				gos_FinalizeStringIME();
@@ -281,9 +281,9 @@ void aEdit::handleKeyboard()
 				else
 					str[1] = '\0';
 				
-				if (nInsertion1 < text.Length() )
+				if (nInsertion1 < static_cast<int>(text.size()) )
 				{
-					text.Insert( nInsertion1, str );
+					text.insert( nInsertion1, str );
 				}
 				else
 					text += str;
@@ -325,7 +325,7 @@ void aEdit::render()
 
 	aObject::render();
 
-	EString textToDraw = text;
+	std::string textToDraw = text;
 	textToDraw += ' '; // have to do this for loc, some fonts are getting clipped in millenium
 
 	// draw selection range
@@ -333,8 +333,8 @@ void aEdit::render()
 	{
 		int nMin = nInsertion1<nInsertion2?nInsertion1:nInsertion2;
 		int nMax = nInsertion1<nInsertion2?nInsertion2:nInsertion1;
-		if ( nMax > text.Length() )
-			nMax = text.Length();
+		if ( nMax > static_cast<int>(text.size()) )
+			nMax = static_cast<int>(text.size());
 
 		if ( nMax > 1 )
 		{
@@ -362,7 +362,7 @@ void aEdit::render()
 		}
 
 
-		if ( text.Length() )
+		if ( !text.empty() )
 		{
 			font.render( &textToDraw[startChar], 
 				(int)(globalX() + ENTRY_MARGIN), 
@@ -371,7 +371,7 @@ void aEdit::render()
 		}
 		drawRect( rect, highlightColor);
 
-		if ( text.Length() )
+		if ( !text.empty() )
 		{
 			char tmp = textToDraw[nMax];
 			textToDraw[nMax] = '\0';
@@ -390,7 +390,7 @@ void aEdit::render()
 		}
 
 
-		if ( textToDraw.Length() )
+		if ( !textToDraw.empty() )
 		{
 			// When a screen wraps this widget in aObject::beginTextBridge (e.g. the
 			// Mech Lab variant combo box), route the collapsed display text through
@@ -430,37 +430,23 @@ void aEdit::render()
 }
 
 
-void aEdit::getEntry(EString& str)
-{
-	str = text;
-}
-
 std::string aEdit::entry() const
 {
-	return mc2::str::from_c(text);      // the entry is null while nothing was typed or set
+	return text;
 }
 
-void aEdit::setEntry(const char* str, BYTE byHighlight)
+void aEdit::setEntry(std::string_view str, BYTE byHighlight)
 {
-	setEntry(EString(str), byHighlight);
-}
-
-void aEdit::setEntry(const std::string& str, BYTE byHighlight)
-{
-	setEntry(EString(str.c_str()), byHighlight);
-}
-void aEdit::setEntry(const EString& str, BYTE byHighlight)
-{
-	text = str;
+	text = str.substr(0, str.find('\0'));
 
 	if (byHighlight)
 	{
-		nInsertion2 = text.Length();
+		nInsertion2 = static_cast<int>(text.size());
 		nInsertion1 = 0;
 	}
 	else
 	{
-		nInsertion2 = nInsertion1 = text.Length();
+		nInsertion2 = nInsertion1 = static_cast<int>(text.size());
 		flushCursorRight();
 	}
 
@@ -522,9 +508,7 @@ bool aEdit::clearSelection()
 	{ // delete selection range
 		int nMin = nInsertion1<nInsertion2?nInsertion1:nInsertion2;
 		int nMax = nInsertion1<nInsertion2?nInsertion2:nInsertion1;
-		int len = 1;
-
-		text.Remove( nMin, nMax-len );
+		text.erase( nMin, nMax - nMin );
 		nInsertion1 = nMin;
 		nInsertion2 = nInsertion1;
 		flushCursorRight();
@@ -535,7 +519,7 @@ bool aEdit::clearSelection()
 }
 void aEdit:: backSpace(int nPosition)
 {
-	int nCharCount = text.Length();
+	int nCharCount = static_cast<int>(text.size());
 	if (nPosition>nCharCount)
 		return;
 	if (nPosition<=0)
@@ -547,11 +531,11 @@ void aEdit:: backSpace(int nPosition)
 
 	if ( nPosition > 1 )
 	{
-		unsigned char* pPrev = _mbsdec( (const unsigned char*)(const char*)text, (const unsigned char*)(const char*)text + nPosition );		
-		nCharCount = (const unsigned char*)(const char*)text + nPosition - pPrev;
+		unsigned char* pPrev = _mbsdec( (const unsigned char*)text.c_str(), (const unsigned char*)text.c_str() + nPosition );
+		nCharCount = (const unsigned char*)text.c_str() + nPosition - pPrev;
 	}
 
-	text.Remove( nPosition-nCharCount, nPosition-1 );
+	text.erase( nPosition - nCharCount, nCharCount );
 	nInsertion2 = nInsertion1 = nPosition-nCharCount;
 
 	
@@ -626,9 +610,9 @@ bool aEdit::handleFormattingKeys(int keycode)
 			return true;
 		case KEY_END:
 			if (gos_GetKeyStatus(KEY_LSHIFT) != KEY_FREE)
-				nInsertion2 = text.Length();
+				nInsertion2 = static_cast<int>(text.size());
 			else
-				nInsertion2 = nInsertion1=text.Length();
+				nInsertion2 = nInsertion1=static_cast<int>(text.size());
 			makeCursorVisible();
 			bCursorVisible=TRUE;
 			return true;
@@ -640,8 +624,8 @@ bool aEdit::handleFormattingKeys(int keycode)
 					int decrementCount = 1;
 					if ( nInsertion2 > 1  )
 					{
-						unsigned char* pPrev = _mbsdec( (const unsigned char*)(const char*)text, (const unsigned char*)(const char*)text + nInsertion2 );
-						decrementCount = (const unsigned char*)(const char*)text + nInsertion2 - pPrev;
+						unsigned char* pPrev = _mbsdec( (const unsigned char*)text.c_str(), (const unsigned char*)text.c_str() + nInsertion2 );
+						decrementCount = (const unsigned char*)text.c_str() + nInsertion2 - pPrev;
 					}
 					nInsertion2-= decrementCount;
 				}
@@ -655,8 +639,8 @@ bool aEdit::handleFormattingKeys(int keycode)
 					int decrementCount = 1;
 					if ( nInsertion1 > 1 )
 					{
-						unsigned char* pPrev = _mbsdec( (const unsigned char*)(const char*)text, (const unsigned char*)(const char*)text + nInsertion2 );
-						decrementCount = (const unsigned char*)(const char*)text + nInsertion2 - pPrev;	
+						unsigned char* pPrev = _mbsdec( (const unsigned char*)text.c_str(), (const unsigned char*)text.c_str() + nInsertion2 );
+						decrementCount = (const unsigned char*)text.c_str() + nInsertion2 - pPrev;
 					}
 					nInsertion1 -= decrementCount;
 				}
@@ -675,7 +659,7 @@ bool aEdit::handleFormattingKeys(int keycode)
 			{
 				if (nInsertion1 != nInsertion2)
 					nInsertion1 = nInsertion1>nInsertion2?nInsertion1:nInsertion2;
-				else if (nInsertion1<text.Length())
+				else if (nInsertion1<static_cast<int>(text.size()))
 					nInsertion1 += charLength( nInsertion1 );
 				nInsertion2 = nInsertion1;
 			}
@@ -720,19 +704,19 @@ bool aEdit::handleFormattingKeys(int keycode)
 
 int		aEdit::charXPos(int nCharIndex)
 {
-	if (nCharIndex > text.Length() || !text.Length())
+	if (nCharIndex > static_cast<int>(text.size()) || text.empty())
 		return 0;
 	int nXPos = 0;
-	if ( nCharIndex != text.Length() )
+	if ( nCharIndex != static_cast<int>(text.size()) )
 	{
 		int oldChar = text[nCharIndex];
 		text[nCharIndex] = 0;
-		nXPos = font.width( text );
+		nXPos = font.width( text.c_str() );
 		text[nCharIndex] = oldChar;
 	}
 	else
 	{
-		nXPos = font.width( text );
+		nXPos = font.width( text.c_str() );
 	}
 	return nXPos;
 }
@@ -761,7 +745,7 @@ int		aEdit::findChar(int nXPos)
 	unsigned char* pBegin = (unsigned char*)&text[0];
 	unsigned char* pCur = pBegin;
 	unsigned char* pNext = pBegin;
-	if ( text.Length() )
+	if ( !text.empty() )
 	{
 		do
 		{	
@@ -769,7 +753,7 @@ int		aEdit::findChar(int nXPos)
 			unsigned char tmp = *pNext;
 			*pNext = '\0';
 			nLastPos = nNextPos;
-			nNextPos = font.width(text);
+			nNextPos = font.width(text.c_str());
 			*pNext = tmp;
 			if ( nXPos > nNextPos )			
 				pCur = pNext;
@@ -781,8 +765,8 @@ int		aEdit::findChar(int nXPos)
 	else
 		n = pNext - pBegin;
 
-	if (n>text.Length())
-		n=text.Length();
+	if (n>static_cast<int>(text.size()))
+		n=static_cast<int>(text.size());
 
 	return n;
 }
@@ -834,7 +818,7 @@ int aEdit::charLength( int index )
 {
 	if ( index < 0 )
 		return 0;
-	if ( index > text.Length() )
+	if ( index > static_cast<int>(text.size()) )
 		return 0;
 
 	char tmp = text[index];

@@ -435,14 +435,14 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 	resultShape->myMultiType = myMultiType;
 	resultShape->numTG_Shapes = curShape;
 	
-	resultShape->shapeRecStore.assign(curShape, TG_ShapeRec{});
+	std::vector<TG_ShapeRec>(curShape).swap(resultShape->shapeRecStore);
 	resultShape->listOfShapes = resultShape->shapeRecStore.data();
 
 	resultShape->frameNum = 0;
 	
 	for (i=0;i<curShape;i++)
 	{
-		resultShape->listOfShapes[i] = *detachables[i];
+		resultShape->listOfShapes[i].transferFrom(*detachables[i]);
 		
 		if (S_stricmp(resultShape->listOfShapes[i].node->getNodeName(),nodeName) == 0)
 			resultShape->listOfShapes[i].parentNode = nullptr;		//Set new top O heirarchy.
@@ -459,25 +459,13 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 	}
 
 	//Rebuild resultShape parent node pointers!
-	for (i=0;i<resultShape->numTG_Shapes;i++)
-	{
-		//----------------------------------------------------------------------------------
-		// For each shape, look for another node whose NodeId matches this shape's parentId
-		for (long j=0;j<resultShape->numTG_Shapes;j++)
-		{
-			if (strcmp(resultShape->listOfShapes[i].node->myType->getParentId(),resultShape->listOfShapes[j].node->myType->getNodeId()) == 0)
-			{
-				//-------------------------------
-				// Found it!
-				resultShape->listOfShapes[i].parentNode = &(resultShape->listOfShapes[j]);
-				break;
-			}
-		}
-	}
+	auto nodeIdOf = [](const TG_ShapeRec& rec) { return rec.node->myType->getNodeId(); };
+	auto parentIdOf = [](const TG_ShapeRec& rec) { return rec.node->myType->getParentId(); };
+	rebuildShapeRecParents(resultShape->listOfShapes, resultShape->numTG_Shapes, nodeIdOf, parentIdOf);
 	
  	//-------------------------------------------------------------
 	// Rebuild the currentShape heirarchy to reflect removed things
-	std::vector<TG_ShapeRec> newShapeRecs(numTG_Shapes - curShape, TG_ShapeRec{});
+	std::vector<TG_ShapeRec> newShapeRecs(numTG_Shapes - curShape);
 	TG_ShapeRecPtr newListOfShapes = newShapeRecs.data();
 
 	long newShapeIndex = 0;
@@ -485,7 +473,7 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 	{
 		if (listOfShapes[i].node != nullptr)
 		{
-			newListOfShapes[newShapeIndex] = listOfShapes[i];
+			newListOfShapes[newShapeIndex].transferFrom(listOfShapes[i]);
 			newShapeIndex++;
 		}
 	}
@@ -498,21 +486,7 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 	numTG_Shapes -= curShape;
 
 	//Rebuild parent node pointers!
-	for (i=0;i<numTG_Shapes;i++)
-	{
-		//----------------------------------------------------------------------------------
-		// For each shape, look for another node whose NodeId matches this shape's parentId
-		for (long j=0;j<numTG_Shapes;j++)
-		{
-			if (strcmp(listOfShapes[i].node->myType->getParentId(),listOfShapes[j].node->myType->getNodeId()) == 0)
-			{
-				//-------------------------------
-				// Found it!
-				listOfShapes[i].parentNode = &(listOfShapes[j]);
-				break;
-			}
-		}
-	}
+	rebuildShapeRecParents(listOfShapes, numTG_Shapes, nodeIdOf, parentIdOf);
 
 	return resultShape;
 }

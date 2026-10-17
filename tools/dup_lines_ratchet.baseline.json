@@ -6,8 +6,8 @@
   "HostServices": 0,
   "RenderCore": 577,
   "RenderWorld": 0,
-  "code": 14634,
-  "mclib": 31446,
+  "code": 14620,
+  "mclib": 31380,
   "shaders": 3078
  },
  "dirs": [
@@ -129,7 +129,7 @@
   "code/ablmc2_queries.cpp": 50,
   "code/ablmc2_roster.cpp": 42,
   "code/ablmc2_state.cpp": 18,
-  "code/artlry.cpp": 286,
+  "code/artlry.cpp": 284,
   "code/bldng.cpp": 151,
   "code/bldng.h": 10,
   "code/brain_missionfit_oporbd.cpp": 58,
@@ -219,7 +219,7 @@
   "code/missiongui_cursor.cpp": 96,
   "code/missiongui_input.cpp": 87,
   "code/missiongui_orders.cpp": 35,
-  "code/missiongui_style.cpp": 485,
+  "code/missiongui_style.cpp": 483,
   "code/missiongui_support.cpp": 92,
   "code/missiongui_uicmd.cpp": 16,
   "code/missiongui_uicmd_probe.cpp": 16,
@@ -263,7 +263,7 @@
   "code/saveload_load.cpp": 51,
   "code/sensor_trace.h": 8,
   "code/sim_identity.cpp": 20,
-  "code/simplecamera.cpp": 57,
+  "code/simplecamera.cpp": 47,
   "code/tacordr.cpp": 224,
   "code/team.cpp": 81,
   "code/team_los.cpp": 40,
@@ -327,7 +327,6 @@
   "mclib/csvfile.cpp": 250,
   "mclib/csvfile.h": 9,
   "mclib/dynamic_decal_ring.cpp": 8,
-  "mclib/estring.cpp": 66,
   "mclib/ffile.cpp": 55,
   "mclib/file.cpp": 212,
   "mclib/fit_number.h": 64,
@@ -643,8 +642,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "04e8c4dbc",
+ "head": "5572df548",
  "n": 8,
- "total": 54930,
+ "total": 54850,
  "version": 1
 }

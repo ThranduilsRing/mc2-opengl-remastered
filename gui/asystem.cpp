@@ -1029,8 +1029,11 @@ void aText::init( FitIniFile* file, const char* header )
 		//WAY too small.  Good crash.  Only crashes in profile.
 		// cLoadString now checks buffer length and keeps game from crashing!!
 		// -fs
+		// TextID 0 means "no text" (static labels set their text later); there is no string 0.
 		char tmp[1024];
-		cLoadString( textID, tmp, 1023 );
+		tmp[0] = 0;
+		if ( textID != 0 )
+			cLoadString( textID, tmp, 1023 );
 		text = tmp;
 	}
 
@@ -1038,37 +1041,27 @@ void aText::init( FitIniFile* file, const char* header )
 	file->readIdLong( "HelpDesc", helpID );
 }
 
-void aText::setText(const EString& str)
+void aText::setText(std::string_view str)
 {
-	text = str;
-}
-
-void aText::setText(const char* str)
-{
-	text = str;                 // a null pointer empties the label, as it did through EString
-}
-
-void aText::setText(const std::string& str)
-{
-	text = str.c_str();
+	text = str.substr(0, str.find('\0'));
 }
 
 std::string aText::textString() const
 {
-	return mc2::str::from_c(text);
+	return text;
 }
 
 void aText::render()
 {
-	if ( showWindow && text.Length()>0)
+	if ( showWindow && !text.empty())
 	{
 		// Text bridge: draw the label via the ImGui TTF path (crisp, matches the
 		// data/defs UI) instead of the GameOS bitmap font.
-		if ( renderTextBridged( font, (const char*)text,
+		if ( renderTextBridged( font, text.c_str(),
 			location[0].x, location[0].y, location[2].x, location[2].y,
 			location[0].argb, alignment ) )
 			return;
-		font.render( text, location[0].x, location[0].y, location[2].x - location[0].x,
+		font.render( text.c_str(), location[0].x, location[0].y, location[2].x - location[0].x,
 		location[2].y - location[0].y, location[0].argb, 0, alignment );
 	}
 }
@@ -1123,7 +1116,7 @@ bool aText::pointInside(long xPos, long yPos) const
 	{
 		long left = location[0].x;
 		long top = location[0].y;
-		long width = font.width( text );
+		long width = font.width( text.c_str() );
 		long height = font.height( );
 
 		if ( alignment == 1 ) // right aligned

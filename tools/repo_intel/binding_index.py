@@ -22,7 +22,7 @@ from pathlib import Path
 # Constants
 # ---------------------------------------------------------------------------
 
-_SHADER_EXTS    = {'.vert', '.frag', '.comp', '.geom', '.tesc', '.tese', '.hglsl'}
+_SHADER_EXTS    = {'.vert', '.frag', '.comp', '.geom', '.tesc', '.tese', '.hglsl', '.slang'}
 _CPP_EXTS       = {'.cpp', '.h', '.hpp', '.c'}
 _EXCLUDE_DIRS   = {'build64', '3rdparty', '.git', 'releases', 'dist', '.vscode'}
 
@@ -158,6 +158,22 @@ def _grep_shader_bindings(repo_root: Path) -> dict:
             continue
 
         rel = str(fpath.relative_to(repo_root)).replace('\\', '/')
+        if fpath.suffix == '.slang':
+            import sys
+            sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'shader_offline_build'))
+            from slang_compile import resource_bindings
+            for resource in resource_bindings(text):
+                if resource['binding'] is None:
+                    continue
+                ns = resource['namespace']
+                if resource['set'] != 0:
+                    ns = f"vk_set{resource['set']}_{ns}"
+                key = (ns, resource['binding'])
+                result.setdefault(key, []).append({
+                    'file': rel, 'line': resource['line'], 'set': resource['set'],
+                    'snippet': f"{resource['name']} (Slang)",
+                })
+            continue
         for lineno, raw_line in enumerate(text.splitlines(), 1):
             comment_pos = raw_line.find('//')
             for m in _SHADER_BINDING_RE.finditer(raw_line):

@@ -481,6 +481,7 @@ void MechWarrior::init (bool create) {
 
 	alarmPriority = 0;
 
+	resetQueueMarkers();	// B7o.4: a pooled warrior re-initialised over a previous run owns no stale markers
 	tacOrderQueue = nullptr;
 	enableTacOrderQueue();
 	curPlayerOrderFromQueue = false;
@@ -1015,6 +1016,10 @@ void MechWarrior::clear (void) {
 	//radio = NULL;
 	oldPilot = 0;
 
+}
+
+MechWarrior::~MechWarrior (void) {
+	destroy();
 }
 
 void MechWarrior::destroy (void) {

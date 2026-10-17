@@ -103,9 +103,9 @@ void TG_TypeNode::destroy (void)
 
 //-------------------------------------------------------------------------------
 // This function creates an instance of a TG_Shape from a TG_TypeNode.  Saves RAM.
-TG_ShapePtr TG_TypeNode::CreateFrom (void)
+std::unique_ptr<TG_Shape> TG_TypeNode::CreateFrom (void)
 {
-	TG_ShapePtr newShape = new TG_Shape();
+	auto newShape = std::make_unique<TG_Shape>();
 	gosASSERT(newShape != nullptr);
 
 	//listOfVertices
@@ -259,9 +259,9 @@ void TG_TypeNode::SaveBinaryCopy (File &binFile)
 //-------------------------------------------------------------------------------
 // TG_TypeShape
 // This function creates an instance of a TG_Shape from a TG_TypeShape.  Saves RAM.
-TG_ShapePtr TG_TypeShape::CreateFrom (void)
+std::unique_ptr<TG_Shape> TG_TypeShape::CreateFrom (void)
 {
-	TG_ShapePtr newShape = new TG_Shape();
+	auto newShape = std::make_unique<TG_Shape>();
 	gosASSERT(newShape != nullptr);
 	
 	//listOfVertices
@@ -547,34 +547,7 @@ void TG_TypeShape::SaveBinaryCopy (File &binFile)
 	binFile.write((MemoryPtr)parentId,TG_NODE_ID);
 }
 
-void TG_TypeShape::destroy (void)
-{
-	std::vector<TG_TypeVertex>().swap(typeVertexStore);
-	listOfTypeVertices = nullptr;
-
-	std::vector<TG_TypeTriangle>().swap(typeTriangleStore);
-	listOfTypeTriangles = nullptr;
-
-	std::vector<TG_TinyTexture>().swap(tinyTextureStore);
-	listOfTextures = nullptr;
-
-	numTypeVertices = numTypeTriangles = numTextures = 0;
-
-	if (vb_) {
-		gos_DestroyBuffer(vb_);
-		vb_ = nullptr;
-	}
-
-	if (ib_) {
-		gos_DestroyBuffer(ib_);
-		ib_ = nullptr;
-	}
-
-	if (vdecl_) {
-		gos_DestroyVertexDeclaration(vdecl_);
-		vdecl_ = nullptr;
-	}
-}	
+// TG_TypeShape::destroy is inline in tgl.h since B7o.6b (the unit tier tests the production body).
 
 //-------------------------------------------------------------------------------
 // 2026-05-10: out-of-line so myType (protected) stays inside the class.

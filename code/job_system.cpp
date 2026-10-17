@@ -113,7 +113,8 @@ void frameJobsInit() {
 
     g_pool = new Pool();
     g_pool->numWorkers = nw;
-    g_pool->workerEpoch.assign(nw, -1);
+    // Startup must not count as a completed dispatch.
+    g_pool->workerEpoch.assign(nw, g_pool->epoch);
     for (int i = 0; i < nw; ++i)
         g_pool->threads.emplace_back(workerFn, g_pool, i);
 
@@ -337,7 +338,8 @@ void startPool(int workerCount) {
     if (workerCount < 0) workerCount = 0;
     g_np = new NewPool();
     g_np->numWorkers = workerCount;
-    g_np->workerEpoch.assign(std::max(0, workerCount), -1);
+    // Startup must not count as a completed dispatch.
+    g_np->workerEpoch.assign(std::max(0, workerCount), g_np->epoch);
     for (int i = 0; i < workerCount; ++i)
         g_np->threads.emplace_back(npWorker, g_np, i);
 }

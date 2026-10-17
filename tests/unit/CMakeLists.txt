@@ -49,7 +49,7 @@ add_executable(mc2_tests
     test_det_rng.cpp        # DETERMINISTIC-RNG-1: LCG kernel determinism (offline)
     test_appearance_rng.cpp # the appearance-side random stream: replayable, in range, apart from the simulation's
     test_script_music.cpp   # the music state an ABL script sees: its own request on the scenario clock, never the device
-    alloc_probe.cpp         # the allocation probe + ScopedLeakCheck, proven on itself and on EString (step 4 leak oracle)
+    alloc_probe.cpp         # the allocation probe + ScopedLeakCheck, allocation accounting and standard-owner coverage
     alloc_probe_new.cpp     # this binary's global operator new/delete, routed through the probe
     test_saved_objects_check.cpp  # SAVE-REJECT-1: object-packet run check of an in-mission save (offline)
     test_save_struct_zero.cpp  # SAVE-ZERO-1: MC2_SAVE_STRUCT zeroes struct padding on a dirty stack (offline)
@@ -95,7 +95,6 @@ add_executable(mc2_tests
     test_path_permutations.cpp  # META-FIX design E: canonical-key permutation matrix (issue #8 family)
     test_csvfile.cpp        # MINIMAL-VIABLE-HARNESS-2: real csvfile.cpp (Buildings.csv-shaped)
     test_memorystream.cpp   # Stuff::MemoryStream::ReadBytes bounds check (truncated mod .fx)
-    test_estring.cpp        # EString::Format sizing (ll/z/j specs) via the CRT parser; step 4 B1 characterization of the class (H1-H14)
     test_objective_text.cpp # objective text reader/writer + boolean flag table (step 4 B1.1)
     test_score_sort_ties.cpp    # step 4 B2.4: the CRT qsort tie table recorded from the old SortList (golden/sortlist_ties.h) against the new rule
     test_score_sort.cpp         # step 4 B2.4: mc2::sort_scored, the ordering rule that replaces SortList (SS1-SS7)
@@ -175,7 +174,6 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/mclib/stuff/scalar.cpp            # Scaled_*_Bits used by its bit I/O
     ${MC2_WORKTREE_ROOT}/mclib/stuff/mstring.cpp           # MString used by its string I/O
     ${MC2_WORKTREE_ROOT}/mclib/stuff/style.cpp             # Stuff::SMALL and the other global constants
-    ${MC2_WORKTREE_ROOT}/mclib/estring.cpp                 # EString under test
     ${MC2_WORKTREE_ROOT}/code/objective_text.cpp           # objective string reader/writer (leaf: FitIniFile + log facade)
     ${MC2_WORKTREE_ROOT}/code/objective_flags.cpp          # objective boolean flag table (leaf)
     ${MC2_WORKTREE_ROOT}/mclib/mlr/mlr_gate.cpp            # MC2_DISABLE_GOSFX latch
@@ -410,3 +408,49 @@ set_source_files_properties(test_part_archive.cpp
 target_sources(mc2_tests PRIVATE test_tg_type_node_dtor.cpp)
 # B7o.3: actor appearance owner protocol (header-only, code/appearance_owner.h)
 target_sources(mc2_tests PRIVATE test_actor_appearance_owner.cpp)
+
+# B7o.4: queued waypoint marker owners (header-only, code/warrior_queue_markers.h): byte-level oracle histories, final pool slice (ASan), rebind, restore
+target_sources(mc2_tests PRIVATE test_warrior_queue_markers.cpp)
+# B7o.6a/6b: TG_ShapeRec transfer (reset fields), parent rebuild after detach and compaction; since 6b the record owns its node
+target_sources(mc2_tests PRIVATE test_tg_shape_rec_transfer.cpp)
+
+# Missing GLM leaves the existing unit tier usable, but cannot prove a math migration.
+if(NOT TARGET glm::glm)
+    if(EXISTS "${MC2_WORKTREE_ROOT}/3rdparty/glm/glm/glm.hpp")
+        add_library(mc2_identity_glm INTERFACE)
+        target_include_directories(mc2_identity_glm SYSTEM INTERFACE "${MC2_WORKTREE_ROOT}/3rdparty/glm")
+        add_library(glm::glm ALIAS mc2_identity_glm)
+    else()
+        find_package(glm 1.0.1 EXACT CONFIG QUIET)
+    endif()
+endif()
+if(TARGET glm::glm)
+    set(MC2_IDENTITY_SOURCES
+        test_stuff_glm_identity.cpp
+        ${MC2_WORKTREE_ROOT}/mclib/stuff/angle.cpp
+        ${MC2_WORKTREE_ROOT}/mclib/stuff/vector3d.cpp
+        ${MC2_WORKTREE_ROOT}/mclib/stuff/point3d.cpp
+        ${MC2_WORKTREE_ROOT}/mclib/stuff/matrix.cpp
+        ${MC2_WORKTREE_ROOT}/mclib/stuff/affinematrix.cpp
+        ${MC2_WORKTREE_ROOT}/mclib/stuff/linearmatrix.cpp
+        ${MC2_WORKTREE_ROOT}/mclib/stuff/rotation.cpp
+    )
+    target_sources(mc2_tests PRIVATE ${MC2_IDENTITY_SOURCES})
+    target_link_libraries(mc2_tests PRIVATE glm::glm)
+    # Uncalled legacy class self-tests reference engine services; only the math is needed here.
+    if(MSVC)
+        set_property(SOURCE ${MC2_IDENTITY_SOURCES} APPEND PROPERTY COMPILE_OPTIONS /fp:precise /Gy)
+        target_link_options(mc2_tests PRIVATE /OPT:REF /INCREMENTAL:NO)
+    else()
+        set_property(SOURCE ${MC2_IDENTITY_SOURCES} APPEND PROPERTY COMPILE_OPTIONS
+            -fno-fast-math -ffp-contract=off -ffunction-sections -fdata-sections)
+        if(APPLE)
+            target_link_options(mc2_tests PRIVATE -Wl,-dead_strip)
+        else()
+            target_link_options(mc2_tests PRIVATE -Wl,--gc-sections)
+        endif()
+    endif()
+    message(STATUS "Stuff/GLM bit-identity corpus enabled (GLM 1.0.1, scalar, precise)")
+else()
+    message(WARNING "Stuff/GLM bit-identity corpus NOT BUILT: vendor GLM 1.0.1; sim migration NOT PROVEN")
+endif()

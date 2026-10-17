@@ -51,7 +51,8 @@ void MechWarrior::drawWaypointPath()
 
 		for ( int i = 0; i < numTacOrdersQueued; i++ )
 		{
-			tacOrderQueue[i].marker->render();
+			if ( queueMarkers[i] )
+				queueMarkers[i]->render();
 			
 			Stuff::Vector4D screenPos1;
 			Stuff::Vector4D screenPos2;
@@ -240,11 +241,15 @@ void MechWarrior::updateDrawWaypointPath()
 	{
 		for ( int i = 0; i < numTacOrdersQueued; i++ )
 		{
-			tacOrderQueue[i].marker->setObjectParameters(tacOrderQueue[i].point,((ObjectAppearance*)tacOrderQueue[i].marker)->rotation,false,0,0);
-			tacOrderQueue[i].marker->recalcBounds();
-	
-			tacOrderQueue[i].marker->update();
-			
+			// B7o.4: a move mode outside slow/fast/jump owns no marker (the old code dereferenced it unchecked).
+			if ( queueMarkers[i] )
+			{
+				BldgAppearance* waypoint = queueMarkers[i].get();
+				waypoint->setObjectParameters(tacOrderQueue[i].point,((ObjectAppearance*)waypoint)->rotation,false,0,0);
+				waypoint->recalcBounds();
+				waypoint->update();
+			}
+
 			float zPos = TerrainRuntime::groundElevation(tacOrderQueue[i].point);
 			tacOrderQueue[i].point.z = zPos;
 		}

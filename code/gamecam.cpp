@@ -192,7 +192,6 @@ extern MidLevelRenderer::MLRClipper * theClipper;
 extern bool drawOldWay;
 
 extern bool useNonWeaponEffects;
-GenericAppearance *theSky = NULL;
 
 // DEBUG-STATE-ASSETS: globals read by GameOS/gameos/debug_state_dump.cpp via extern.
 // LINK-CONFIG-FIX: definitions moved to GameOS/gameos/dbg_asset_globals.cpp so that
@@ -204,17 +203,8 @@ extern char  g_dbgLoadScreen[64];
 //---------------------------------------------------------------------------
 void GameCamera::destroy (void)
 {
-	if (theSky)
-	{
-		delete theSky;
-		theSky = NULL;
-	}
-
-	if (compass)
-	{
-		delete compass;
-		compass = NULL;
-	}
+	theSky.reset();
+	compass.reset();
 
 	Camera::destroy();
 }
@@ -1122,8 +1112,7 @@ long GameCamera::activate (void)
 		Fatal(0,msg);
 	}
 	  
-   	theSky = new GenericAppearance;
-	gosASSERT(theSky != NULL);
+   	theSky = std::make_unique<GenericAppearance>();
 
 	//--------------------------------------------------------------
 	gosASSERT(genericAppearanceType->getAppearanceClass() == GENERIC_APPR_TYPE);
@@ -1425,7 +1414,7 @@ long GameCamera::update (void)
 	if (!compass)	//Create it!
 	{
 		AppearanceType* appearanceType = appearanceTypeList->getAppearance( BLDG_TYPE << 24, "compass" );
-		compass = new BldgAppearance;
+		compass = std::make_unique<BldgAppearance>();
 		compass->init( appearanceType );
 	}
 

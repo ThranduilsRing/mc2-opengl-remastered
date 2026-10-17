@@ -76,10 +76,26 @@ class TG_TypeMultiShape
 		TG_TypeNodePtr		*listOfTypeShapes;		//Memory holding all TG_TypeNodes and TypeShapes
 		TG_TexturePtr		listOfTextures;			//List of texture Structures for all shapes.
 
-		// The two lists above are views of these stores, which own the arrays. The nodes the first list points at are still new / delete'd
-		// one by one in destroy().
-		std::vector<TG_TypeNodePtr>	typeNodeStore;
+		// The two lists above are views: listOfTypeShapes is typeNodeView.data() (a raw T** view the consumers index), the nodes are OWNED
+		// by typeNodeStore (B7o.6b), index-parallel; bindTypeNodes() sizes both, adoptTypeNode() fills one slot of both, destroy() releases.
+		std::vector<std::unique_ptr<TG_TypeNode>>	typeNodeStore;
+		std::vector<TG_TypeNodePtr>	typeNodeView;
 		std::vector<TG_Texture>		textureStore;
+
+		// The one (re)allocation point of the node arrays (binary load, imported mesh, ASE): count empty owners and a null view.
+		void bindTypeNodes (long count)
+		{
+			std::vector<std::unique_ptr<TG_TypeNode>>(count).swap(typeNodeStore);
+			typeNodeView.assign(count, nullptr);
+			listOfTypeShapes = typeNodeView.data();
+		}
+		// Slot i takes ownership of node; returns the raw view now stored in listOfTypeShapes[i].
+		TG_TypeNodePtr adoptTypeNode (long i, std::unique_ptr<TG_TypeNode> node)
+		{
+			typeNodeStore[i] = std::move(node);
+			typeNodeView[i] = typeNodeStore[i].get();
+			return typeNodeView[i];
+		}
 
 #ifdef _DEBUG
 		char				*shapeName;				//FileName of shape

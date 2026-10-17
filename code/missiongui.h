@@ -159,7 +159,7 @@ public:
 		
 		//vTol
 		Stuff::Vector3D				vPos[MAX_TEAMS];		// vehicle position
-		BldgAppearance*				vTol[MAX_TEAMS] = {};
+		std::unique_ptr<BldgAppearance>				vTol[MAX_TEAMS] = {};	// B7o.5: owned drop-ship VTOL / Karnov per team
 		bool						paintingVtol[MAX_TEAMS];
 		float						vTolTime[MAX_TEAMS];
 		gosFX::Effect				*recoveryBeam[MAX_TEAMS];

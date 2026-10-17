@@ -1,0 +1,9 @@
+# Slang toolchain pin (read by tools/shader_offline_build/slang_compile.py).
+# Provisioning: slangc ships in the LunarG Vulkan SDK, the same place glslangValidator
+# and spirv-cross come from (no separate vendoring; shader_common.find_tool).
+# Slang is Apache-2.0 WITH LLVM-exception (license text: <VulkanSDK>/Licenses/ and
+# https://github.com/shader-slang/slang/blob/master/LICENSE).
+# MIN_VERSION is the oldest slangc the build accepts; the version actually used is
+# recorded in spirv_package.json under tools.slangc.
+MIN_VERSION=2026.8
+PINNED_SDK=1.4.350.0

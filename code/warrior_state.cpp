@@ -4,7 +4,7 @@
 #include "mc2fmt.h"
 
 
-BldgAppearance* MechWarrior::getWayPointMarker( const Stuff::Vector3D& pos, const char* name )
+std::unique_ptr<BldgAppearance> MechWarrior::getWayPointMarker( const Stuff::Vector3D& pos, const char* name )
 {
 	int appearanceType = (BLDG_TYPE << 24);
 	AppearanceTypePtr buildingAppearanceType = appearanceTypeList->getAppearance(appearanceType, name );
@@ -32,7 +32,7 @@ BldgAppearance* MechWarrior::getWayPointMarker( const Stuff::Vector3D& pos, cons
 	(void)GameAdapters::StaticProp::syncStaticPropLateSpawn(
 		appearance, &lateRecipe);
 
-	return appearance;
+	return std::unique_ptr<BldgAppearance>(appearance);
 }
 
 long MechWarrior::calcTacOrder (long goalAction,
@@ -731,23 +731,21 @@ void MechWarrior::copyFromData (MechWarriorData &data)
 	tacOrderQueueLooping = data.tacOrderQueueLooping;
 	numTacOrdersQueued = data.numTacOrdersQueued;
 	MemCpy(tacOrderQueue,data.tacOrderQueue);
+	// The wire field is dead storage: null it for every slot, then rebuild the runtime owners for the queued orders only (an empty slot
+	// has move mode 0 (slow), which used to give every pilot 16 waypoint markers at the origin after a load). Each live marker of the
+	// previous run is released exactly once by restoreQueueMarkers.
 	for (long i=0;i<MAX_QUEUED_TACORDERS_PER_WARRIOR;i++)
-	{
-		//Set the Marker pointers to NULL and then recreate them from the movemode data, for the queued orders only: an empty slot has move mode 0
-		// (slow), which used to give every pilot 16 waypoint markers at the origin after a load.
 		tacOrderQueue[i].marker = nullptr;
-		if (i >= numTacOrdersQueued)
-			continue;
-
-		if ( tacOrderQueue[i].moveMode == TRAVEL_MODE_SLOW )
-			tacOrderQueue[i].marker = getWayPointMarker( tacOrderQueue[i].point, "WalkWayPoint" );
-
-		else if ( tacOrderQueue[i].moveMode == TRAVEL_MODE_FAST )
-			tacOrderQueue[i].marker = getWayPointMarker( tacOrderQueue[i].point, "RunWayPoint" );
-
-		else if ( tacOrderQueue[i].moveMode == TRAVEL_MODE_JUMP )
-			tacOrderQueue[i].marker = getWayPointMarker( tacOrderQueue[i].point, "JumpWayPoint" );
-	}
+	mc2::restoreQueueMarkers(tacOrderQueue, queueMarkers, numTacOrdersQueued,
+		[this](const QueuedTacOrder& queued) -> std::unique_ptr<BldgAppearance> {
+			if ( queued.moveMode == TRAVEL_MODE_SLOW )
+				return getWayPointMarker( queued.point, "WalkWayPoint" );
+			if ( queued.moveMode == TRAVEL_MODE_FAST )
+				return getWayPointMarker( queued.point, "RunWayPoint" );
+			if ( queued.moveMode == TRAVEL_MODE_JUMP )
+				return getWayPointMarker( queued.point, "JumpWayPoint" );
+			return nullptr;
+		});
 	tacOrderQueueIndex = data.tacOrderQueueIndex;
 	nextTacOrderId = data.nextTacOrderId;
 	lastTacOrderId = data.lastTacOrderId;
@@ -874,6 +872,10 @@ long MechWarrior::Load (PacketFilePtr file, long packetNum)
 	curEventID				= staticData.curEventID;
 	curEventTrigger			= staticData.curEventTrigger;
 
+	// Pool reset: every warrior releases its markers BEFORE the slice cursor goes back to 0, never after.
+	for (long i = 0; i < MAX_WARRIORS; i++)
+		if (MechWarrior::warriorList[i])
+			MechWarrior::warriorList[i]->resetQueueMarkers();
 	TacOrderQueuePos = 0;
 
 	for (long i = 0; i < numWarriors; i++)

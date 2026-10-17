@@ -84,3 +84,58 @@ no launch. One full M5 pairing run (both exes, class C set) ~60 min because ever
 M7 glm vendored -> M3 sim-file list -> M1 corpus over the ops (random inputs) -> M2 recorder + recorded chains -> M6 mc2_16 stable -> M4 offset mask ->
 M5 runner -> first class A batch -> class B render batches -> class C sim batches, one subsystem at a time, each against the M5 report.
 Owner: lane 1 (sim and saves); the corpus and runner can be a Python/doctest-only lane; glm vendoring is a build change (2-job cap).
+
+## 6. Opening corpus and pending verdict
+
+`tests/unit/test_stuff_glm_identity.cpp` adds 100,000 seeded cases (MT19937 seed `0x53545546`;
+float bits generated without standard-library distributions), plus signed zero, unit axes, denormals,
+minimum/maximum floats, tiny/huge values, pi boundaries, singular and near-singular matrices.
+Each `[STUFF_GLM]` row reports operation, sim/render tag, sample count, mismatches and classification.
+`identical-on-corpus` means zero mismatches; `not-identical` means at least one, including NaN payloads
+and signed zeros. Only component arithmetic is asserted identical; all other operations characterize
+the candidate without failing merely because its semantics or rounding differ. Comparator negative
+controls distinguish signed zeros and adjacent floats. Invalid legacy domains (zero-length normalization,
+small divisors, small affine determinants) are excluded from those operations, not counted as matches.
+
+| Operations (row-name prefixes retained) | tag | identity expectation | measured mismatches |
+|---|---|---|---|
+| vector.negate/add/subtract/scale/component-multiply/component-divide; point.add/subtract | sim-side | required identical | point.add 0/100305, point.subtract 0/100305, vector.add 0/100305, vector.component-divide 0/16477, vector.component-multiply 0/100305, vector.negate 0/100305, vector.scale 0/100305, vector.subtract 0/100305 |
+| vector.add-scaled/combine/lerp/cross/dot/length-squared/length/approximate-length | sim-side | measure rounding and evaluation order | vector.add-scaled 0/100305, vector.approximate-length 0/100305, vector.combine 0/100305, vector.cross 0/100305, vector.dot 0/100305, vector.length 0/100305, vector.length-squared 0/100305, vector.lerp 49044/100305 |
+| vector.scalar-divide | sim-side | expected not-identical: reciprocal multiply vs division | vector.scalar-divide 55150/100293 |
+| vector.normalize; unit-vector.normalize | sim-side | measure reciprocal sqrt rounding | unit-vector.normalize 0/33974, vector.normalize 0/33974 |
+| scalar.sqrt/approximate-sqrt/sin/cos/tan/atan2/asin/acos; angle.sincos-sin/sincos-cos | sim-side (conservative) | measure wrapper/overload precision | angle.sincos-cos 0/100289, angle.sincos-sin 0/100289, scalar.acos 78/100289, scalar.approximate-sqrt 0/100289, scalar.asin 2221/100289, scalar.atan2 3/79895, scalar.cos 70/100289, scalar.sin 62/100289, scalar.sqrt 0/100289, scalar.tan 13/100289 |
+| angle.wrap-static/wrap-member | sim-side (conservative) | expected not-identical: boundary and reduction rules | angle.wrap-member 99500/100289, angle.wrap-static 99517/100289 |
+| chain.path-distance/mover-integration/line-of-sight-step | sim-side | synthetic call sequences, measure | chain.line-of-sight-step 0/17555, chain.mover-integration 0/100305, chain.path-distance 0/100305 |
+| axis-convert | render-only | required identical | axis-convert 0/100305 |
+| vector.affine-transform/inverse-transform; point.affine-transform; chain.row-transform | render-only | measure row-vector transforms | chain.row-transform 0/100000, point.affine-transform 0/100000, vector.affine-transform 787/100000, vector.inverse-transform 23088/100000 |
+| affine.multiply/inverse; linear.multiply/inverse; matrix.multiply | render-only | measure association and inversion | affine.inverse 72102/75000, affine.multiply 2164/100000, linear.inverse 100000/100000, linear.multiply 0/100000, matrix.multiply 0/100000 |
+| matrix.inverse | render-only | expected not-identical: `det < SMALL` uses `1e30f`, including negative determinants | matrix.inverse 88463/100000 |
+| quaternion.multiply/normalize | render-only | reversed product order adapted; normalize reconstructs w, expected not-identical | quaternion.multiply 0/100000, quaternion.normalize 61809/100000 |
+
+Sim evidence: `code/mover.cpp` Cross/Normalize, `mover_path.cpp` distance/LOS,
+`gvehicl_update.cpp` integration, `weaponbolt_update.cpp` velocity/lead. Point3D inherits vector arithmetic.
+Render evidence: `mclib/camera_matrix.cpp` inverses, `camera_project.cpp`, `gvactor_update.cpp`
+quaternions; `code/weaponbolt_render.cpp` and effect-only sections of `weaponbolt_update.cpp` transform chains.
+Tags describe these operations' observed uses, not permission to migrate whole mixed update TUs.
+Measured (seed 0x53545546, GLM 1.0.1 scalar, /fp:precise): 47 ops; 30 identical-on-corpus; sim-side 24/34 identical. Not identical (mismatches/samples): affine.inverse 72102/75000; affine.multiply 2164/100000; angle.wrap-member 99500/100289; angle.wrap-static 99517/100289; linear.inverse 100000/100000; matrix.inverse 88463/100000; quaternion.normalize 61809/100000; scalar.acos 78/100289; scalar.asin 2221/100289; scalar.atan2 3/79895; scalar.cos 70/100289; scalar.sin 62/100289; scalar.tan 13/100289; vector.affine-transform 787/100000; vector.inverse-transform 23088/100000; vector.lerp 49044/100305; vector.scalar-divide 55150/100293. Sim-side differing: angle.wrap-member, angle.wrap-static, scalar.acos, scalar.asin, scalar.atan2, scalar.cos, scalar.sin, scalar.tan, vector.lerp, vector.scalar-divide. Identical on a synthetic corpus is not migration approval: no sim operation is approved until recorded-chain and SIMID proof.
+Zero-mismatch sim rows become candidates only after recorded-chain and strict SIMID proof; any mismatch
+keeps that operation on Stuff in sim. This opening corpus does not implement M2/M3 or cover every
+geometry API in M1 (Origin/Plane/Line/ExtentBox); it grants no migration permission for those APIs.
+
+Vendoring action for the orchestrator: take upstream GLM **1.0.1**, commit
+`0af55ccecd98d4e5a8d1fad7de25ba429d60e863`, from https://github.com/g-truc/glm;
+copy its unmodified `glm/` directory and `copying.txt` (dual MIT/Happy Bunny; use MIT) into
+`3rdparty/glm/`, retaining the commit pin in its README. This matches the stb/tinyexr header-only
+precedent. Download here was blocked by network access; no partial vendor tree was created.
+Unit CMake exposes those headers as `glm::glm`, or accepts an exact 1.0.1 installed CMake package;
+otherwise it explicitly warns that the corpus was not built. No configure-time network fetch.
+`tests/unit/stuff_glm_config.h` owns the sole `GLM_FORCE_PURE` definition and checks the version;
+move this policy into `mclib/math/glm_config.h` when production first adopts GLM (M7 remains pending).
+Both sides compile with `/fp:precise`, no contraction option, and the same default architecture;
+the orchestrator must verify their flags against the game before treating results as migration proof.
+
+Orchestrator proof: reconfigure the existing unit build tree, build `mc2_tests` RelWithDebInfo,
+then run `mc2_tests.exe --test-case="*Stuff/GLM identity*" --no-skip` and retain every `[STUFF_GLM]` row.
+The independent smoke checksum already exists: `py -3 tools/sim_determinism.py check mc2_03
+--install lane3 --duration 30` (one shell line; repeat for mc2_10/16/24). Compare strict reference chains before
+accepting sim changes; do not re-record a baseline to absorb a math mismatch. No runtime files changed.

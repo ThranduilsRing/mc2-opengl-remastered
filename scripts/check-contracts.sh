@@ -936,6 +936,8 @@ run_check "shader_variant"         "py -3 scripts/check-shader-variant.py --quie
 # also proves it catches the static_prop.frag include-splice regression. ~6s, offline.
 run_check "gl_shader_variants"     "py -3 scripts/check-gl-shader-variants.py --quiet"
 run_check "spirv_artifacts"        "py -3 scripts/check-spirv-artifacts.py --quiet"
+# SLANG-TOOLCHAIN-1: .slang -> SPIR-V through build_variants.py (fixtures only; no shipped Slang yet).
+run_check "slang_build"            "py -3 -B -m pytest scripts/tests/test_slang_build.py -q -p no:cacheprovider"
 run_check "gpu_abi"                "py -3 tools/gpu_abi_gen.py --check && py -3 -B -m pytest scripts/tests/test_gpu_abi_gen.py -q -p no:cacheprovider"
 run_check "spirv_reflection"       "py -3 scripts/check-spirv-reflection-contract.py --quiet"
 run_check "vk_pipeline_layout"    "py -3 scripts/check-vk-pipeline-layout.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vk_pipeline_layout.py -q -p no:cacheprovider"

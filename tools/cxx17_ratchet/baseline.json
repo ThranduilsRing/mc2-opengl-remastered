@@ -139,15 +139,15 @@
    "LG20": 0
   },
   "code": {
-   "LG01": 202,
+   "LG01": 197,
    "LG02": 204,
-   "LG03": 847,
+   "LG03": 815,
    "LG04": 21,
    "LG05": 198,
    "LG06": 472,
    "LG07": 2,
    "LG08": 17,
-   "LG09": 2273,
+   "LG09": 2239,
    "LG10": 20,
    "LG11": 103,
    "LG12a": 100,
@@ -182,30 +182,30 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 11
+   "LG20": 9
   },
   "mclib": {
-   "LG01": 343,
-   "LG02": 278,
-   "LG03": 1049,
+   "LG01": 337,
+   "LG02": 277,
+   "LG03": 1035,
    "LG04": 15,
-   "LG05": 138,
-   "LG06": 680,
+   "LG05": 134,
+   "LG06": 662,
    "LG07": 0,
    "LG08": 69,
-   "LG09": 1977,
+   "LG09": 1955,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 208,
-   "LG12b": 236,
-   "LG13": 448,
+   "LG12b": 233,
+   "LG13": 447,
    "LG14": 112,
    "LG15": 0,
    "LG16": 156,
-   "LG17": 94,
+   "LG17": 95,
    "LG18": 9,
    "LG19": 0,
-   "LG20": 11
+   "LG20": 10
   },
   "tests": {
    "LG01": 0,
@@ -1617,7 +1617,7 @@
   },
   "code/artlry.cpp": {
    "LG01": 10,
-   "LG03": 16,
+   "LG03": 12,
    "LG09": 20,
    "LG12b": 8,
    "LG13": 12
@@ -1941,8 +1941,7 @@
    "LG06": 1
   },
   "code/gamecam.cpp": {
-   "LG01": 12,
-   "LG03": 4,
+   "LG01": 8,
    "LG09": 5,
    "LG10": 1,
    "LG11": 2,
@@ -2516,7 +2515,7 @@
   },
   "code/missiongui.cpp": {
    "LG01": 2,
-   "LG03": 7,
+   "LG03": 6,
    "LG06": 1,
    "LG09": 1,
    "LG12a": 2,
@@ -2541,7 +2540,6 @@
    "LG09": 16
   },
   "code/missiongui_input.cpp": {
-   "LG03": 2,
    "LG09": 4
   },
   "code/missiongui_orders.cpp": {
@@ -2553,11 +2551,10 @@
    "LG14": 1
   },
   "code/missiongui_style.cpp": {
-   "LG03": 6,
+   "LG03": 4,
    "LG09": 18
   },
   "code/missiongui_support.cpp": {
-   "LG03": 2,
    "LG05": 2,
    "LG09": 6
   },
@@ -2643,7 +2640,7 @@
   },
   "code/mpconnectiontype.cpp": {
    "LG05": 1,
-   "LG09": 3,
+   "LG09": 1,
    "LG12b": 1,
    "LG13": 1
   },
@@ -2660,7 +2657,7 @@
   "code/mphostgame.cpp": {
    "LG05": 1,
    "LG06": 1,
-   "LG09": 5,
+   "LG09": 4,
    "LG13": 1
   },
   "code/mphostgame.h": {
@@ -2773,10 +2770,10 @@
   },
   "code/objmgr.cpp": {
    "LG01": 1,
-   "LG03": 24,
+   "LG03": 21,
    "LG05": 4,
    "LG06": 1,
-   "LG09": 44,
+   "LG09": 31,
    "LG12a": 2,
    "LG12b": 2
   },
@@ -2788,13 +2785,13 @@
   "code/objmgr_io.cpp": {
    "LG03": 13,
    "LG06": 1,
-   "LG09": 46,
+   "LG09": 34,
    "LG12a": 3,
    "LG12b": 1
   },
   "code/objmgr_misc.cpp": {
    "LG03": 1,
-   "LG09": 2
+   "LG09": 1
   },
   "code/objmgr_pick.cpp": {
    "LG09": 8
@@ -2810,7 +2807,7 @@
    "LG09": 7
   },
   "code/objtype.cpp": {
-   "LG03": 18,
+   "LG03": 14,
    "LG05": 3,
    "LG06": 2,
    "LG09": 5
@@ -2909,7 +2906,7 @@
    "LG10": 1
   },
   "code/simplecamera.cpp": {
-   "LG03": 9,
+   "LG03": 1,
    "LG06": 5,
    "LG09": 12,
    "LG11": 2
@@ -2964,7 +2961,7 @@
    "LG01": 4,
    "LG03": 4,
    "LG04": 5,
-   "LG09": 34,
+   "LG09": 30,
    "LG12a": 2,
    "LG12b": 9,
    "LG13": 1
@@ -3064,7 +3061,6 @@
    "LG09": 32
   },
   "code/warrior_queue.cpp": {
-   "LG03": 2,
    "LG09": 3
   },
   "code/warrior_state.cpp": {
@@ -3091,10 +3087,10 @@
   },
   "code/weaponbolt.cpp": {
    "LG03": 14,
-   "LG09": 12
+   "LG09": 11
   },
   "code/weaponbolt.h": {
-   "LG01": 10,
+   "LG01": 9,
    "LG02": 1,
    "LG09": 7
   },
@@ -3112,10 +3108,10 @@
    "LG20": 2
   },
   "editor/EditorMFC.cpp": {
-   "LG20": 2
+   "LG20": 1
   },
   "editor/EditorPlaytest.cpp": {
-   "LG20": 5
+   "LG20": 4
   },
   "editor/EditorTaskRunner.cpp": {
    "LG19": 1
@@ -3577,19 +3573,6 @@
   },
   "mclib/err.h": {
    "LG06": 2
-  },
-  "mclib/estring.cpp": {
-   "LG01": 6,
-   "LG03": 4,
-   "LG05": 4,
-   "LG06": 18,
-   "LG09": 20,
-   "LG12b": 3,
-   "LG13": 1
-  },
-  "mclib/estring.h": {
-   "LG02": 1,
-   "LG09": 2
   },
   "mclib/fastfile.cpp": {
    "LG03": 2,
@@ -4377,7 +4360,6 @@
    "LG13": 1
   },
   "mclib/msl_load.cpp": {
-   "LG03": 8,
    "LG05": 5,
    "LG06": 8,
    "LG09": 26,
@@ -4947,7 +4929,7 @@
    "LG06": 18,
    "LG09": 2,
    "LG13": 53,
-   "LG17": 6
+   "LG17": 7
   },
   "mclib/tgl_internal.h": {
    "LG14": 1
@@ -4982,7 +4964,7 @@
    "LG09": 22
   },
   "mclib/tgl_types.cpp": {
-   "LG03": 6,
+   "LG03": 4,
    "LG05": 2,
    "LG06": 4,
    "LG09": 26
@@ -5080,9 +5062,6 @@
    "LG09": 1,
    "LG14": 1
   },
-  "mclib/vk_umbrella_gate.cpp": {
-   "LG20": 1
-  },
   "mclib/weaponfx.cpp": {
    "LG06": 1,
    "LG09": 2
@@ -5122,7 +5101,7 @@
    "LG20": 3
   }
  },
- "head": "04c35b397",
+ "head": "9f93fa1cb",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

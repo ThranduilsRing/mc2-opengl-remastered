@@ -1,3 +1,4 @@
+#include <string>
 #define MPGAMEBROWSER_CPP
 /*************************************************************************************************\
 MPGameBrowser.cpp			: Implementation of the MPGameBrowser component.
@@ -516,9 +517,9 @@ long aGameListItem::init( FitIniFile* file, const char* blockName )
 	file->readIdLong( "Width", width );
 	file->readIdLong( "Height", height );
 
-	EString graphicBlockName;
+	std::string graphicBlockName;
 	graphicBlockName += "Static0";
-	allTechGraphic.init(file, graphicBlockName.Data());
+	allTechGraphic.init(file, graphicBlockName.c_str());
 	if (allTechGraphic.height() + 5 > height)
 	{
 		height = allTechGraphic.height() + 5;
@@ -528,9 +529,9 @@ long aGameListItem::init( FitIniFile* file, const char* blockName )
 		width = allTechGraphic.globalRight() - globalX();
 	}
 
-	EString textBlockName;
+	std::string textBlockName;
 	textBlockName = "Text0";
-	gameName.init(file, textBlockName.Data());
+	gameName.init(file, textBlockName.c_str());
 	if (gameName.height() > height)
 	{
 		height = gameName.height();
@@ -541,7 +542,7 @@ long aGameListItem::init( FitIniFile* file, const char* blockName )
 	}
 
 	textBlockName = "Text1";
-	numPlayers.init(file, textBlockName.Data());
+	numPlayers.init(file, textBlockName.c_str());
 	if (numPlayers.height() > height)
 	{
 		height = numPlayers.height();
@@ -552,7 +553,7 @@ long aGameListItem::init( FitIniFile* file, const char* blockName )
 	}
 
 	textBlockName = "Text2";
-	mapName.init(file, textBlockName.Data());
+	mapName.init(file, textBlockName.c_str());
 	if (mapName.height() > height)
 	{
 		height = mapName.height();
@@ -563,7 +564,7 @@ long aGameListItem::init( FitIniFile* file, const char* blockName )
 	}
 
 	textBlockName = "Text3";
-	latency.init(*file, textBlockName.Data());
+	latency.init(*file, textBlockName.c_str());
 	if (latency.height() > height)
 	{
 		height = latency.height();
@@ -573,9 +574,9 @@ long aGameListItem::init( FitIniFile* file, const char* blockName )
 		//width = latency.globalRight() - globalX();
 	}
 
-	EString rectBlockName;
+	std::string rectBlockName;
 	rectBlockName = "Rect0";
-	allTechRect.init(file, rectBlockName.Data());
+	allTechRect.init(file, rectBlockName.c_str());
 	if (allTechRect.height() > height)
 	{
 		height = allTechRect.height();
@@ -586,7 +587,7 @@ long aGameListItem::init( FitIniFile* file, const char* blockName )
 	}
 
 	rectBlockName = "Rect1";
-	gameNameRect.init(file, rectBlockName.Data());
+	gameNameRect.init(file, rectBlockName.c_str());
 	if (gameNameRect.height() > height)
 	{
 		height = gameNameRect.height();
@@ -597,7 +598,7 @@ long aGameListItem::init( FitIniFile* file, const char* blockName )
 	}
 
 	rectBlockName = "Rect2";
-	numPlayersRect.init(file, rectBlockName.Data());
+	numPlayersRect.init(file, rectBlockName.c_str());
 	if (numPlayersRect.height() > height)
 	{
 		height = numPlayersRect.height();
@@ -608,7 +609,7 @@ long aGameListItem::init( FitIniFile* file, const char* blockName )
 	}
 
 	rectBlockName = "Rect3";
-	mapNameRect.init(file, rectBlockName.Data());
+	mapNameRect.init(file, rectBlockName.c_str());
 	if (mapNameRect.height() > height)
 	{
 		height = mapNameRect.height();
@@ -619,7 +620,7 @@ long aGameListItem::init( FitIniFile* file, const char* blockName )
 	}
 
 	rectBlockName = "Rect4";
-	latencyRect.init(file, rectBlockName.Data());
+	latencyRect.init(file, rectBlockName.c_str());
 	if (latencyRect.height() > height)
 	{
 		height = latencyRect.height();

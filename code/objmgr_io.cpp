@@ -362,46 +362,31 @@ void GameObjectManager::primeTerrainObjectsForMissionLoad (volatile float& progr
 	TracyPlot("Terrain object appearances warmed during mission load", int64_t(warmedAppearances));
 }
 
-// Task 5 (Track B): bulk static-prop registration at mission load.
-// Walks every Bldg/Tree appearance spawned by addObject AFTER
-// primeTerrainObjectsForMissionLoad (position/rotation set) and BEFORE
-// finalizeGeometry. registerStatic() calls TransformMultiShape_PositionsOnly
-// to populate per-leaf shapeToWorld matrices, then buildRecipeFromShape per
-// leaf, then GpuStaticPropRegistry::registerRecipe.
-// Default-ON. Set MC2_STATIC_PROP_MISSION_LOAD_REG=0 to opt out (the first-render
-// fallback then covers registration). Reader source, and the only authority:
-// GameOS/gameos/gos_static_prop_registry.cpp:141 —
-//   parseEnvBoolWithDefault("MC2_STATIC_PROP_MISSION_LOAD_REG", true)
-// This comment said "Default-off" until 2026-07-30 (ENV-DROP-CLOSE-1) while the
-// reader had defaulted true since Task 9 Track B (2026-05-06), i.e. mission-load
-// registration was LIVE for everyone reading here that it was not.
+// Register static props before geometry finalization so they are visible on the first frame.
+// MC2_STATIC_PROP_MISSION_LOAD_REG defaults on; disabling it leaves first-render registration.
 void GameObjectManager::registerStaticPropsForMissionLoad() {
 	ZoneScopedN("GameObjectManager::registerStaticPropsForMissionLoad");
 	if (!GpuStaticPropRegistry::isMissionLoadRegEnabled()) return;
 
 	int totalEnumerated = 0, totalRegistered = 0, totalSkipped = 0;
-	// 2026-05-10 diag: per-array breakdown to localise the buildings-don't-render bug.
+	// Per-array counts distinguish missing appearances from failed registrations.
 	int byArr_enum[4] = {0,0,0,0}; // 0=terrainObjects 1=buildings 2=turrets 3=gates
 	int byArr_reg[4]  = {0,0,0,0};
 	int byArr_skip[4] = {0,0,0,0};
 	int byArr_noapp[4]= {0,0,0,0};
 	int currentArr = 0;
 
-	// Push game-object position/rotation into Appearance::position/rotation
-	// before registerStatic() reads them. Without this, buildings/turrets/gates
-	// register at world origin (ghost-prop pile) and miss frustum admission,
-	// falling through to a broken legacy first-render path that renders them
-	// solid black. Applied uniformly to all four arrays — terrainObjects[]
-	// were already primed by primeTerrainObjectsForMissionLoad but re-priming
-	// is harmless. Known side effect: mech shadow regression (intermittent,
-	// camera-dependent); accepted trade-off until shadow path is debugged.
+	// Appearance state must match the object before registration to avoid props at world origin
+	// and incorrect selection or allegiance after a restore.
 	auto registerOne = [&](GameObjectPtr obj) {
 		if (!obj) return;
 		++totalEnumerated;
 		++byArr_enum[currentArr];
 		AppearancePtr app = obj->getAppearance();
 		if (!app) { ++totalSkipped; ++byArr_skip[currentArr]; ++byArr_noapp[currentArr]; return; }
-		app->setObjectParameters(obj->getPosition(), obj->getRotation(), 0, 0, 0);
+		const long teamId = obj->getTeamId();
+		const long homeRelation = Team::home ? Team::getRelation(teamId, Team::home->getId()) : 0;
+		app->setObjectParameters(obj->getPosition(), obj->getRotation(), obj->drawFlags, teamId, homeRelation);
 		app->registerStatic();
 		if (app->isStaticRegistered()) { ++totalRegistered; ++byArr_reg[currentArr]; }
 		else                           { ++totalSkipped;    ++byArr_skip[currentArr]; }
@@ -732,16 +717,16 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 
 	//-----------------------------------------------------------
 	// First element in list is NULL (handle of 0 is always NULL)
-	objList = (GameObjectPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GameObjectPtr) * (getMaxObjects() + 1));
+	objList = bindPoolArray(objListStore, (getMaxObjects() + 1));
 	memset(objList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));
 
-	watchList = (GameObjectPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GameObjectPtr) * (getMaxObjects() + 1));
+	watchList = bindPoolArray(watchListStore, (getMaxObjects() + 1));
 	memset(watchList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));
 
 	// MF3-GENERATIONAL-HANDLE-1: Load re-alloc of the generation side array, in
 	// LOCKSTEP with watchList above. Load = fresh generations by design (reset
 	// to 0); generation is runtime-only and never deserialized.
-	watchGeneration = (uint16_t*)ObjectTypeManager::objectCache->Malloc(sizeof(uint16_t) * (getMaxObjects() + 1));
+	watchGeneration = bindPoolArray(watchGenerationStore, (getMaxObjects() + 1));
 	memset(watchGeneration,0,sizeof(uint16_t) * (getMaxObjects() + 1));
 
 	long i = 0;
@@ -752,7 +737,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	// 'new' for arrays problem...
 	if (maxMechs > 0) 
 	{
-		mechs = (BattleMechPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(BattleMechPtr) * maxMechs);
+		mechs = bindPoolArray(mechStore, maxMechs);
 		if (!mechs)
 			Fatal(maxMechs, " GameObjectManager.setNumObjects: cannot malloc mechs ");
 	}
@@ -762,7 +747,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	// 'new' for arrays problem...
 	if (maxVehicles > 0) 
 	{
-		vehicles = (GroundVehiclePtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GroundVehiclePtr) * maxVehicles);
+		vehicles = bindPoolArray(vehicleStore, maxVehicles);
 		if (!vehicles)
 			Fatal(maxVehicles, " GameObjectManager.setNumObjects: cannot malloc vehicles ");
 	}
@@ -772,7 +757,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	// 'new' for arrays problem...
 	if (numTerrainObjects > 0) 
 	{
-		terrainObjects = (TerrainObjectPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(TerrainObjectPtr) * numTerrainObjects);
+		terrainObjects = bindPoolArray(terrainObjectStore, numTerrainObjects);
 		if (!terrainObjects)
 			Fatal(numTerrainObjects, " GameObjectManager.setNumObjects: cannot malloc terrain objects ");
 	}
@@ -782,21 +767,21 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	// 'new' for arrays problem...
 	if (numBuildings > 0) 
 	{
-		buildings = (BuildingPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(BuildingPtr) * numBuildings);
+		buildings = bindPoolArray(buildingStore, numBuildings);
 		if (!buildings)
 			Fatal(numBuildings, " GameObjectManager.setNumObjects: cannot malloc buildings ");
 	}
 
 	if (numTurrets > 0)
 	{
-		turrets = (TurretPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(TurretPtr) * numTurrets);
+		turrets = bindPoolArray(turretStore, numTurrets);
 		if ( !turrets )
 			Fatal(numTurrets, " GameObjectManager.setNumObjects: cannot malloc Turrets ");
 	}
 
 	if (numGates > 0)
 	{
-		gates = (GatePtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GatePtr) * numGates);
+		gates = bindPoolArray(gateStore, numGates);
 		if ( !gates )
 			Fatal(numGates, " GameObjectManager.setNumObjects: cannot malloc Gates ");
 	}
@@ -806,21 +791,21 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	// 'new' for arrays problem...
 	if (numWeapons > 0) 
 	{
-		weapons = (WeaponBoltPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(WeaponBoltPtr) * numWeapons);
+		weapons = bindPoolArray(weaponStore, numWeapons);
 		if (!weapons)
 			Fatal(numWeapons, " GameObjectManager.setNumObjects: cannot malloc weapons ");
 	}
 
 	if (numCarnage > 0) 
 	{
-		carnage = (CarnagePtr*)ObjectTypeManager::objectCache->Malloc(sizeof(CarnagePtr) * numCarnage);
+		carnage = bindPoolArray(carnageStore, numCarnage);
 		if (!carnage)
 			Fatal(numCarnage, " GameObjectManager.setNumObjects: cannot malloc carnage ");
 	}
 
 	if (numArtillery > 0) 
 	{
-		artillery = (ArtilleryPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(ArtilleryPtr) * numArtillery);
+		artillery = bindPoolArray(artilleryStore, numArtillery);
 		if (!artillery)
 			Fatal(numArtillery, " GameObjectManager.setNumObjects: cannot malloc artillery ");
 	}

@@ -1,3 +1,4 @@
+#include <string>
 #ifndef MPPREFS_H
 #define MPPREFS_H
 /*************************************************************************************************\
@@ -74,13 +75,13 @@ class aBmpListItem : public aListItem
 public:
 
 	int setBmp( const char* pFileName );
-	const char* getBmp(){ return fileName; }
+	const char* getBmp(){ return fileName.c_str(); }
 	
 private:
 
 	aObject		bmp;
 
-	EString		fileName;
+	std::string		fileName;
 };
 
 

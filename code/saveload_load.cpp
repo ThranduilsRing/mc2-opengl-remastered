@@ -5,6 +5,10 @@
 #include "mission_load_frame.h"
 #include "mc2fmt.h"
 #include "tex_resolve_table.h"
+#include "frame_jobs.h"
+#include "../GameAdapters/VegetationAdapter.h"
+#include "../GameOS/gameos/visual_tuning_profile.h"
+#include "../GameOS/gameos/terrain_material_lib.h"
 #include <new>
 
 
@@ -81,6 +85,20 @@ void Mission::loadTerrain(MissionLoadFrame& f) {
 
 	land = new Terrain;
 	gosASSERT(land != nullptr);
+	// Missing or malformed saved names need the authored asset selection before terrain init.
+	char savedColorMapName[1024]{};
+	if (missionFile.seekBlock("ColorMap") == NO_ERR &&
+		missionFile.readIdString("ColorMapName", savedColorMapName, 1023) == NO_ERR &&
+		savedColorMapName[0] != '\0') {
+		land->setColorMapName(savedColorMapName);
+	} else {
+		FullPathFileName authoredMissionName;
+		authoredMissionName.init(missionPath, missionFileName, ".fit");
+		FitIniFile authoredMission;
+		if (authoredMission.open(authoredMissionName) == NO_ERR)
+			land->getColorMapName(&authoredMission);
+		// Unavailable authored file: keep the pak-name fallback silently.
+	}
 
 	loadProgress = 15.0f;
 
@@ -95,23 +113,13 @@ void Mission::loadTerrain(MissionLoadFrame& f) {
 
 	land->load( &missionFile );
 
-	// Stage 0.5 §0 prereq (continued, Block A): mirror Mission::init's
-	// terrain-side per-mission init that Mission::destroy() tore down at the
-	// top of this function. Block B (gpu_cull substrate/compute/readback
-	// re-init) is deferred to after ObjectManager->Load below, because those
-	// subsystems size their SSBOs to ObjectManager->getMaxObjects() which
-	// returns 0 until Load populates the actor counts. Plan:
-	// docs/superpowers/plans/2026-05-20-mission-load-init-mirror-design.md.
+	// Terrain caches depend only on terrain dimensions; actor buffers wait for ObjectManager::Load.
 	loadProgress = 36.0f;
 	land->primeMissionTerrainCache(loadProgress, 4.0f);
 	loadProgress = 40.0f;
-	// Phase 1: terrain lighting GPU compute — per-mission init alongside
-	// gpu_cull (mirror mission.cpp:2817). Uses Terrain::realVerticesMapSide
-	// set during land->init() above.
 	gos_terrain_lighting::mission_init(
 		static_cast<uint32_t>(Terrain::realVerticesMapSide * Terrain::realVerticesMapSide),
 		64u);
-	// Static-shadow priming reset (process-scoped, mirror mission.cpp:2831-2832).
 	gos_ResetStaticShadowPriming();
 	mc_ResetTerrainShadowPrimed();
 }
@@ -157,6 +165,8 @@ void Mission::loadMovement(MissionLoadFrame& f) {
 void Mission::loadMissionScript(MissionLoadFrame& f) {
 	auto& loadFile = f.loadFile; auto& result = f.result; auto& currentPacket = f.currentPacket;
 	auto& tmpString = f.tmpString;
+	visualTuning_applyProfile(missionScriptName);
+	terrainMaterials_apply(missionScriptName);
 	FullPathFileName dmpName;
 	dmpName.init(savePath,tmpString,".abl");
 
@@ -393,20 +403,14 @@ void Mission::loadTeamsAndObjects(MissionLoadFrame& f) {
 			mc2::fmt::print_err("[MECHRESTORE v1] event=saveload_phase phase=post_objmgr_load mechFinalized={:d} appearanceListNull={:d}\n", mc2::fmt::as_i32(GpuMechBatcher::instance().isFinalized() ? 1 : 0), mc2::fmt::as_i32((appearanceTypeList == nullptr) ? 1 : 0));
 	}
 
-	// Stage 0.5 §0 prereq (continued, Block B): gpu_cull substrate/compute/readback
-	// re-init paired with Mission::destroy's *_shutdown calls (mission.cpp:3264-3269).
-	// Placed AFTER ObjectManager->Load above because substrate_init and readback_init
-	// size their SSBOs to ObjectManager->getMaxObjects(), which returns 0 until that
-	// Load call populates the actor counts. Mirror of Mission::init's order at
-	// mission.cpp:2796 setNumObjects -> :2807 substrate_init -> :2811 compute_init
-	// -> :2826 readback_init. Each *_init drops its prior state internally on re-init.
-	// Plan: docs/superpowers/plans/2026-05-20-mission-load-init-mirror-design.md.
+	// Actor buffer capacity is known only after ObjectManager::Load.
 	{
 		const uint32_t maxActors = static_cast<uint32_t>(ObjectManager->getMaxObjects());
 		const uint32_t staticPropHeadroom = 8192u;  // visible static props at wolfman zoom
 		gpu_cull::substrate_init(maxActors + maxActors / 4u + staticPropHeadroom);
 	}
 	gpu_cull::compute_init();
+	frameJobsInit();
 	{
 		const uint32_t maxActors = static_cast<uint32_t>(ObjectManager->getMaxObjects());
 		const uint32_t staticPropHeadroom = 8192u;
@@ -418,6 +422,7 @@ void Mission::loadTeamsAndObjects(MissionLoadFrame& f) {
 			mc2::fmt::print_err("[MECHRESTORE v1] event=saveload_phase phase=post_init_mirror maxActors={:d}\n", mc2::fmt::as_u32((uint32_t)ObjectManager->getMaxObjects()));
 	}
 
+	ObjectManager->registerStaticPropsForMissionLoad();
 	ObjectManager->buildMoverLists();
 }
 
@@ -466,6 +471,7 @@ void Mission::loadObjectivesCommanders(MissionLoadFrame& f) {
 	// Should already be done but no harm in doing again?
 	if (!MPlayer)
 		Commander::home->setLocalMoverId(0);
+	bindOrderRecipients();
 
 	//-----------------------------------------------------
 	// This tracks time since scenario started in seconds.
@@ -492,6 +498,7 @@ void Mission::loadWeatherCamera(MissionLoadFrame& f) {
 
 	result = eye->init(&missionFile);
 	gosASSERT(result == NO_ERR);
+	eye->inMovieMode = false;
 
 	loadProgress = 96.0;
 }
@@ -600,30 +607,20 @@ void Mission::loadActivateAndFinalize() {
 
 	DebugGameObject[0] = DebugGameObject[1] = DebugGameObject[2] = nullptr;
 
-	// VPL-deferred item 11 FIX (a): Mission::load is a parallel mission-
-	// setup path that never routes through Mission::init, so it skips
-	// Init's unconditional finalizeGeometry() tail (mission.cpp:3114-3115).
-	// Mission::destroy() above ran onMapUnload() (s_geometryFinalized=
-	// false, s_typeLodIndex cleared); the mechs respawned via
-	// ObjectManager->Load re-ran registerTypeLod() while !finalized (OK),
-	// but without this call s_geometryFinalized stays false and
-	// GpuMechBatcher::submitActor() fast-rejects every actor -> mechs
-	// invisible from a savegame. Mirror Init's known-good tail exactly
-	// (both batchers; finalizeGeometry() is idempotent / early-returns if
-	// already finalized). GL context is live here (camera + mission
-	// interface already initialized above), same precondition as
-	// mission.cpp:3112-3115.
+	// Restored appearances need immutable geometry before rendering or light prewarm.
 	GameAdapters::StaticProp::finalizeGeometry();
 	GpuMechBatcher::instance().finalizeGeometry();
 
-	// Stage 0.5 §0 prerequisite: mirror Mission::init's compute_buildIndirectBuffer
-	// tail (mission.cpp:3134-3136). Without this, s_blockVisBuf inherits the
-	// previous mission's block-temporal stamps on savegame restore, breaking any
-	// future readback consumer that depends on block-vis correctness post-restore.
-	// Logistics::beginMission inherits this transitively via mission->init().
 	if (gpu_cull::compute_isEnabled()) {
 		gpu_cull::compute_buildIndirectBuffer(GameAdapters::StaticProp::typeCount());
 	}
+	eye->primeActiveLightsForPrewarm();
+	ObjectManager->prewarmStaticPropLightBakes(eye);
+	GameAdapters::Vegetation::missionLoaded(land, GameMap);
+	// Quickload resumes without Mission::start, which normally arms input and HUD layout.
+	MissionInterfaceManager::armHoverTarget();
+	gos_SetHudScaleActive(true);
+	gos_SetHudCanvasActive(true);
 	{
 		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
 		if (s_mechRestoreTrace)

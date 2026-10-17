@@ -33,10 +33,7 @@ GameObjectPtr WeaponBoltType::createInstance (void)
 //---------------------------------------------------------------------------
 void WeaponBoltType::destroy (void)
 {
-	if (textureName)
-		ObjectTypeManager::objectCache->Free(textureName); 
-		
-	textureName = nullptr;
+	textureName.reset();
 
 	ObjectType::destroy();
 }
@@ -86,8 +83,8 @@ long WeaponBoltType::init (FilePtr objFile, unsigned long fileSize)
 		if (result != NO_ERR)
 			strcpy(txmName,"NONE");
 		
-		textureName = (char *)ObjectTypeManager::objectCache->Malloc(strlen(txmName)+1); 
-		strcpy(textureName,txmName);
+		textureName = std::make_unique<char[]>(strlen(txmName)+1);
+		strcpy(textureName.get(),txmName);
 
 		result = bullFile.readIdFloat("UVAnimRate",uvAnimRate);
 		if (result != NO_ERR)
@@ -616,13 +613,13 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 	
 	//----------------------------------------------
 	// Effect textures require alpha.
-	if (((WeaponBoltTypePtr)_type)->textureName && S_stricmp(((WeaponBoltTypePtr)_type)->textureName,"NONE") != 0)
+	if (((WeaponBoltTypePtr)_type)->textureName && S_stricmp(((WeaponBoltTypePtr)_type)->textureName.get(),"NONE") != 0)
 	{
 		char tPath[1024];
 		mc2::fmt::to_buf(tPath, "{}128" PATH_SEPARATOR "", mc2::fmt::safe(tglPath));
 
 		FullPathFileName textureName;
-		textureName.init(tPath,((WeaponBoltTypePtr)_type)->textureName,".tga");
+		textureName.init(tPath,((WeaponBoltTypePtr)_type)->textureName.get(),".tga");
 	
 		if (((WeaponBoltTypePtr)_type)->mipTexture)
 			mcTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,0);

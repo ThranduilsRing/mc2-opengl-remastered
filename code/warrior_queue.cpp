@@ -8,13 +8,8 @@
 
 bool MechWarrior::enableTacOrderQueue (void) {
 
-	if ((MAX_QUEUED_TACORDERS - TacOrderQueuePos) < MAX_QUEUED_TACORDERS_PER_WARRIOR)
-		return(false);
-
-	tacOrderQueue = &TacOrderQueue[TacOrderQueuePos];
-	TacOrderQueuePos += MAX_QUEUED_TACORDERS_PER_WARRIOR;
-	numTacOrdersQueued = 0;
-	return(true);
+	// Capacity first: on failure the whole old binding (pointer, count, records, every marker owner) is preserved (B7o.4).
+	return(mc2::rebindQueue(tacOrderQueue, TacOrderQueue, MAX_QUEUED_TACORDERS, TacOrderQueuePos, numTacOrdersQueued, queueMarkers));
 }
 
 long MechWarrior::addQueuedTacOrder (TacticalOrder tacOrder) {
@@ -30,13 +25,13 @@ long MechWarrior::addQueuedTacOrder (TacticalOrder tacOrder) {
 	tacOrderQueue[numTacOrdersQueued].moveMode = tacOrder.moveParams.wayPath.mode[0];
 
 	if ( tacOrder.moveParams.wayPath.mode[0] == TRAVEL_MODE_SLOW )
-		tacOrderQueue[numTacOrdersQueued].marker = getWayPointMarker( tacOrder.getWayPoint(0), "WalkWayPoint" );
+		queueMarkers[numTacOrdersQueued] = getWayPointMarker( tacOrder.getWayPoint(0), "WalkWayPoint" );
 
 	else if ( tacOrder.moveParams.wayPath.mode[0] == TRAVEL_MODE_FAST )
-		tacOrderQueue[numTacOrdersQueued].marker = getWayPointMarker( tacOrder.getWayPoint(0), "RunWayPoint" );
+		queueMarkers[numTacOrdersQueued] = getWayPointMarker( tacOrder.getWayPoint(0), "RunWayPoint" );
 
 	else if ( tacOrder.moveParams.wayPath.mode[0] == TRAVEL_MODE_JUMP )
-		tacOrderQueue[numTacOrdersQueued].marker = getWayPointMarker( tacOrder.getWayPoint(0), "JumpWayPoint" );
+		queueMarkers[numTacOrdersQueued] = getWayPointMarker( tacOrder.getWayPoint(0), "JumpWayPoint" );
 
 	tacOrderQueue[numTacOrdersQueued].point = tacOrder.getWayPoint(0);
 	tacOrderQueue[numTacOrdersQueued].tactic = tacOrder.attackParams.tactic;
@@ -71,13 +66,8 @@ long MechWarrior::removeQueuedTacOrder (TacticalOrderPtr tacOrder) {
 	Stuff::Vector3D point = tacOrderQueue[tacOrderQueueIndex].point;
 	TacticType tactic = (TacticType)tacOrderQueue[tacOrderQueueIndex].tactic;
 
-	if ( tacOrderQueue[tacOrderQueueIndex].marker )
-		delete tacOrderQueue[tacOrderQueueIndex].marker;
-
-	tacOrderQueue[tacOrderQueueIndex].marker = 0;
-
-	for (long i = 0; i < numTacOrdersQueued; i++)
-		tacOrderQueue[i] = tacOrderQueue[i + 1];
+	// Head marker deleted on purpose, records and owners shift (B7o.4: the legacy loop's slot-16 read at full capacity is gone).
+	mc2::shiftQueueDown(tacOrderQueue, queueMarkers, numTacOrdersQueued);
 	numTacOrdersQueued--;
 
 	tacOrder->unpack();
@@ -137,12 +127,7 @@ long MechWarrior::peekQueuedTacOrder (long index, TacticalOrderPtr tacOrder) {
 
 void MechWarrior::clearTacOrderQueue (void) {
 
-	for ( int i = 0; i < numTacOrdersQueued; i++ )
-	if ( tacOrderQueue[i].marker )
-	{
-		delete tacOrderQueue[i].marker;
-		tacOrderQueue[i].marker = 0;
-	}
+	resetQueueMarkers();
 
 	numTacOrdersQueued = 0;
 	tacOrderQueueIndex = 0;
