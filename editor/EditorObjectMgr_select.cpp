@@ -519,24 +519,10 @@ void EditorObjectMgr::doForest( const Forest& forest )
 							float scale = RandomNumber( 100 * (forest.maxHeight - forest.minHeight) );
 							scale = forest.minHeight + (scale)/100.f;
 
-							if ((AppearanceTypeList::appearanceHeap->totalCoreLeft() < 1000/*arbitrary*/)
-								|| (AppearanceTypeList::appearanceHeap->totalCoreLeft() < 0.01/*arbitrary*/ * AppearanceTypeList::appearanceHeap->size()))
-							{
-								AfxMessageBox(IDS_APPEARANCE_HEAP_EXHAUSTED);
-								/*exit all loops*/
-								t = count;
-								m = 2;
-								l = 2;
-								i = land->realVerticesMapSide;
-								j = land->realVerticesMapSide;
-							}
-							else
-							{
-								EditorObject* pObject = (EditorObject*)addBuilding( treePos, group, 
-									index, -1, rotation * 11.25, scale, !forest.bRandom );
+							EditorObject* pObject = (EditorObject*)addBuilding( treePos, group, 
+								index, -1, rotation * 11.25, scale, !forest.bRandom );
 
-								pObject->setForestID( forest.getID() );
-							}
+							pObject->setForestID( forest.getID() );
 						}
 					}
 

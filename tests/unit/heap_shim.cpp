@@ -181,11 +181,6 @@ long UserHeap::getLastError (void)
 	return heapState;
 }
 
-bool UserHeap::pointerOnHeap (void *)
-{
-	// CRT owns everything; report true so debug checks never false-fail.
-	return true;
-}
 
 #ifdef _DEBUG
 void UserHeap::startHeapMallocLog (void) {}

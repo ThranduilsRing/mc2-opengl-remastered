@@ -82,27 +82,6 @@ struct VkHudRouteScope {
 
 //---------------------------------------------------------------------------
 // class Appearance
-void * Appearance::operator new (size_t mySize)
-{
-	void* result = nullptr;
-	if (AppearanceTypeList::appearanceHeap && AppearanceTypeList::appearanceHeap->heapReady())
-	{
-		result = AppearanceTypeList::appearanceHeap->Malloc(mySize);
-	}
-		
-	return(result);
-}
-
-//---------------------------------------------------------------------------
-void Appearance::operator delete (void * us)
-{
-	long result;
-	if (AppearanceTypeList::appearanceHeap && AppearanceTypeList::appearanceHeap->heapReady())
-	{
-		result = AppearanceTypeList::appearanceHeap->Free(us);
-	}
-}		
-
 //---------------------------------------------------------------------------
 void Appearance::drawTextHelp (char *text, unsigned long color)
 {

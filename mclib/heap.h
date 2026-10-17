@@ -219,8 +219,6 @@ class UserHeap : public HeapManager
 			return heapName;
 		}
 
-		bool pointerOnHeap (void *ptr);
-
 		#ifdef _DEBUG
 		void startHeapMallocLog (void);		//This function will start recoding each malloc and
 											//free to insure that there are no leaks.

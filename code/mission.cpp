@@ -1083,7 +1083,7 @@ void Mission::destroy (bool initLogistics)
 		missionHeap = nullptr;
 	}
 
-	// The registry destructor releases types, its appearance heap and the Sensor shapes.
+	// The registry destructor releases the types, then the Sensor shapes.
 	appearanceTypes.reset();
 	appearanceTypeList = nullptr;
 

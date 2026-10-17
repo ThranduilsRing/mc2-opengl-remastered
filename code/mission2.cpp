@@ -113,13 +113,11 @@ void Mission::initBareMinimum()
 
 	initTGLForLogistics();
 
-	unsigned long spriteHeapSize = 3072000;
 	if ( !appearanceTypeList )
 	{
 		mission->appearanceTypes = std::make_unique<AppearanceTypeList>();
 		appearanceTypeList = mission->appearanceTypes.get();
 		gosASSERT(appearanceTypeList != nullptr);
-		appearanceTypeList->init(spriteHeapSize);
 		gosASSERT(result == NO_ERR);
 
 	}
