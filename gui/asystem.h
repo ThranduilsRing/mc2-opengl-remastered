@@ -43,7 +43,7 @@ inline constexpr int aMSG_DONE = 110;
 inline constexpr int aMSG_BUTTONCLICKED = 111;
 inline constexpr int aMSG_SELCHANGED = 112;
 
-typedef enum
+enum WINDOW_ID
 {
 	UNDEFINEDWINDOW = -1,
 	GENERIC = 1,
@@ -53,7 +53,7 @@ typedef enum
 	LISTBOX,
 	COMBOBOX,
 	NUMBER_OF_WINDOWTYPES
-} WINDOW_ID;
+};
 
 
 
