@@ -518,6 +518,7 @@ static void EditorViewportCaptureTick()
 
 extern void gos_RendererBeginFrame();
 extern void gos_RendererEndFrame();
+extern void gos_RendererFlushHUDBatch();
 extern void gos_RendererHandleEvents();
 extern bool gosExitGameOS();
 
@@ -784,6 +785,11 @@ DWORD __stdcall RunGameOSLogic()
         pp_editor->endScene();
     }
     EditorFramePhase_Mark("endScene");
+
+    // Under Vulkan the selection brackets and health bars route through the HUD batch (VkHudRouteScope, mclib/appear.cpp);
+    // the game replays that batch here (gameosmain.cpp), so the editor must too or they never reach the present tail.
+    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan)
+        gos_RendererFlushHUDBatch();
 
 #ifdef MC2_IMGUI
     // RENDER-TO-TEXTURE viewport: endScene() composited the scene into the bottom-left
