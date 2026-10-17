@@ -94,8 +94,7 @@ void Mission::loadTerrain(MissionLoadFrame& f) {
 		FitIniFile authoredMission;
 		if (authoredMission.open(authoredMissionName) == NO_ERR)
 			land->getColorMapName(&authoredMission);
-		else
-			mc2::fmt::print_err("[SAVELOAD] authored mission unavailable for ColorMap: {}\n", (const char*)authoredMissionName);
+		// Unavailable authored file: keep the pak-name fallback silently.
 	}
 
 	loadProgress = 15.0f;
