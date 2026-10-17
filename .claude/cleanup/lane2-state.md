@@ -1,5 +1,29 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FORTY-NINTH session (2026-10-17, Sonnet 5.5) -- GL object-parity check DELETED (owner ruling), VK-PARITY-GAPS row 29 CLOSED (all rows closed)
+
+### Commits (on nifty merge of 2026-10-17)
+b1ce2f533 delete the parity check (code) | d12e07e3a docs/baselines (parity gaps row 29, inventory 16(b), printf corpus, log tag baseline) | 60c827647 regenerate gl_shader_variants.json + callers.json | state commit after it is docs only. Mergeable code tip: 60c827647.
+
+### Deleted
+`GameOS/gameos/gos_object_parity.cpp/.h/_query.h` (git rm); `static_prop.vert` `parityOut` (binding 3) + 5 `u_parity*` uniforms; in the static-prop batcher the readback (`candidateLogAndParityReadback`, now just `batcher_buildCandidateLog()`), the slot ring and cursor, the clear, the dual-emit snapshot in submit, `OnMissionLoad`/`ParityFrameTick`/`PickNextSampleIfReady`/`ObserveSubmittedShape` calls, `guardSsbo3`, `s_currentSubmittingMulti`, `kParitySlotBytes`; `fenceAndParitySlot` renamed `fenceRingSlots`; the dual-emit full-bake hooks in bdactor_tree/bdactor_update/genactor_frame; the `MC2_OBJECT_PARITY_CHECK` gate row and its views (gate_gen --sync-verified, `--check --rebuild` OK); asset-viewer stubs and doc; binding-registry row; shader-reflect goldens for static_prop.vert regenerated (they also carried unrelated drift); cxx17 baseline rows; 12 printf-corpus rows; 171 lines of log_tag_baseline. 30 files, about -610 lines in the code commit. Kept: `MC2_OBJECT_PARITY_TRACE` (separate CPU light-trace gate, `[PARITY_DIAG v2]`).
+Left alone: the frozen `tools/gate_table.seed.json` keeps a stale reader location for the TRACE gate (edited only the CHECK entry); pre-existing shader_reflect DRIFT in other shaders is not from this change.
+
+### Proof
+| Check | Result |
+|---|---|
+| ninja build -j2 + deploy | exit 0 / deploy_exit 0 |
+| doctest (`build_contract_harnesses --run --unit`) | 3277/3277 test cases (the harness "FAILURE" line is the deliberate SIGABRT subprocess case) |
+| GL tier1, fingerprint OK | 5/5 PASS |
+| VK tier1, `MC2_VULKAN_VALIDATION=1`, fingerprint OK | 5/5 PASS, errors=0 warnings=0 |
+| `check-contracts.sh -j2` | red rows were gl_shader_variants (stale line number, regenerated, 230/230 variants compile) and script_callers (stale, regenerated); both fixed in 60c827647 |
+| pytest scripts/tests | 912 passed |
+| `repo_query.py binding --conflicts` | no new conflicts; ssbo multi_binder 5 -> 4, other counts equal to nifty |
+| log_tag_census, printf corpus, cxx17 ratchet | OK |
+
+### Also
+VK-PARITY-GAPS.md: row 29 CLOSED by owner ruling (accepted residual: head shape slightly blockier than MLR; MC2_GPU_PARTICLES default OFF); header says all 29 rows closed. Inventory section 16(b) item marked DONE.
+
 ## FORTY-EIGHTH session (2026-10-17, Sonnet 5.5) -- s47 review items closed; gos_object_parity GL readback NOT droppable without a VK parity producer
 
 ### Commits (on 8b2eb167b)
