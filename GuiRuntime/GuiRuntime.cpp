@@ -44,16 +44,22 @@ static bool isEnabled() {
 }
 
 static bool vkImguiRequested() {
-    static int cached = -1;
-    if (cached < 0) {
-        // Only a Vulkan backend has a Vulkan ImGui renderer; a GL run keeps the GL one whatever the gate says.
+    // The gate is process-static; the backend is read live, because a later forceGLFallback (frame-loop present
+    // init retry budget) turns a Vulkan session into a GL one after GuiRuntime::Init ran.
+    static int cachedGate = -1;
+    if (cachedGate < 0) {
 #ifdef MC2_VULKAN
-        cached = (mc2::gate::get<"MC2_VK_IMGUI">() && mc2::renderBackend() == mc2::RenderBackend::Vulkan) ? 1 : 0;
+        cachedGate = mc2::gate::get<"MC2_VK_IMGUI">() ? 1 : 0;
 #else
-        cached = 0;
+        cachedGate = 0;
 #endif
     }
-    return cached == 1;
+#ifdef MC2_VULKAN
+    // Only a Vulkan backend has a Vulkan ImGui renderer; a GL run keeps the GL one whatever the gate says.
+    return cachedGate == 1 && mc2::renderBackend() == mc2::RenderBackend::Vulkan;
+#else
+    return false;
+#endif
 }
 
 static bool traceEnabled()
@@ -524,6 +530,11 @@ static void BuildEditorDockspace() {
 
 void GuiRuntime::NewFrame() {
     if (!g_imguiInitialized) return;
+    if (!s_openGlRendererInitialized && !vkImguiRequested()) {
+        // Init chose the Vulkan renderer, then the session fell back to GL: bring the GL renderer up now.
+        ImGui_ImplOpenGL3_Init("#version 430");
+        s_openGlRendererInitialized = true;
+    }
     if (s_openGlRendererInitialized) {
         ImGui_ImplOpenGL3_NewFrame();
     } else if (vkImguiRequested()) {
@@ -806,7 +817,7 @@ void GuiRuntime::Render() {
         }
     }
 
-    if (vkImguiRequested()) {
+    if (!s_openGlRendererInitialized && vkImguiRequested()) {
 #ifdef MC2_VULKAN
         if (mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
             mc2vk::getOrCreateEnginePresentVk().renderImguiVulkanDrawData(ImGui::GetDrawData())) {
