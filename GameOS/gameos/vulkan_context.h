@@ -29,6 +29,7 @@
 #include "vk_device_profile.h"
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_frame_ring.h"
+#include "vk_readback.h"
 #include "vk_shared_light_feed.h"
 #include "vk_upload.h"
 #endif
@@ -185,6 +186,8 @@ public:
     struct FrameContext { uint64_t frame = 0; uint32_t slot = 0; uint32_t framesInFlight = 1; };
     FrameContext frameContext() const { return {tracker_.frameNo(), static_cast<uint32_t>(tracker_.frameNo() % FrameRingCore::kSlots), 1}; }
     const FrameRing& frameRing() const { return frameRing_; }
+    // GPU -> CPU readbacks that never block (see vk_readback.h).
+    ReadbackRing& readbacks() { return readbacks_; }
     // Streaming uploads (see vk_upload.h): stage into the frame ring and queue the copy; it is submitted ahead of the next graphics submit, no CPU wait.
     UploadBatch& uploads() { return uploads_; }
     const UploadBatch& uploads() const { return uploads_; }
@@ -224,6 +227,7 @@ private:
 #ifdef MC2_VULKAN_ISLAND
     FrameRing        frameRing_;
     mutable UploadBatch uploads_;
+    ReadbackRing     readbacks_;
     VkDeviceSize     frameAlign_ = 256;   // max(uniform, storage offset alignment, 16): set at device birth
 #endif
     mutable DeferredDestroy deferred_;   // after the allocator's owners are gone: destroy() drains it first

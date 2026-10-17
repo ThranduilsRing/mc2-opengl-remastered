@@ -623,6 +623,7 @@ void VulkanContext::destroy() {
     for (size_t i = 0; i < islands_.size(); ++i) retireIsland(static_cast<IslandSlot>(i));
     lightFeed_.release();
     frameRing_.release();
+    readbacks_.releaseAll();
     // PRECONDITION: the owners that live outside the context (the shared scene colour / depth / normal images, the present path's shared image, the
     // shadow island's images) were destroyed by the engine shutdown ahead of this call. A resource still alive here would release its image on a device
     // that is gone, so the count is checked and a violation is logged where the validation layer would otherwise report it far from its cause.

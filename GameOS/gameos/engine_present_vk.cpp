@@ -137,11 +137,12 @@ struct EnginePresentVk::Impl {
     uint32_t        imgW = 0, imgH = 0;
 
     // readback (T5 content verification)
-    mc2vk::OwnedDeviceMemory  readbackMem; // declared before the buffer bound to it: released after it
-    mc2vk::OwnedRawBuffer        readbackBuf;
-    VkDeviceSize    readbackSize = 0;
+    // The presented-image readback (T5 content check, captures, screenshots) never blocks: a readback-ring slot requested at one present and consumed at a
+    // later one. readbackTag is the frame the request was made for; the copy command buffer is reused only after the previous request completed.
+    mc2vk::ReadbackToken readbackToken;
+    uint64_t        readbackTag = 0;
+    uint32_t        readbackW = 0, readbackH = 0;
     VkCommandBuffer readbackCbuf = VK_NULL_HANDLE;
-    mc2vk::OwnedFence         readbackFence;
 
     // Rung 8.6 native ImGui renderer backend. GuiRuntime builds ImDrawData;
     // presentGLFrame records it here after GL->VK handoff and before copy-2.
@@ -2714,83 +2715,15 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     return true;
 }
 
-// Synchronous readback of a small strided sample of the shared image -> checksum.
-// Not on the hot path (only called when verifyReadback is set). Records its own
-// one-shot copy-to-buffer, waits idle, hashes.
+// Readback of the shared image (strided checksum, optional PPM dump, capture and screenshot delivery). Never blocks: the copy is requested at one present
+// and consumed at a later one through the readback ring, and while a request is in flight no second one is made. Only called when verifyReadback is set.
 void EnginePresentVk::verifyReadbackContent() {
     Impl& s = *impl_;
-    const uint32_t rw = s.imgW, rh = s.imgH;
-    const VkDeviceSize needed = (VkDeviceSize)rw * rh * 4u;
-    if (needed == 0) return;
+    mc2vk::VulkanContext& ctx = *s.ctx;
 
-    // (Re)allocate readback buffer if size changed.
-    if (s.readbackSize != needed) {
-        s.readbackBuf.reset();   // the buffer goes before the memory bound to it
-        s.readbackMem.reset();
-        VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-        bci.size = needed;
-        bci.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-        bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        if (!mc2vk::create(s.readbackBuf, s.dev, [&](auto* h) { return vkCreateBuffer(s.dev, &bci, nullptr, h); })) return;
-        mc2vk::nameObject(s.dev, s.readbackBuf.get(), "present.readback");
-        VkMemoryRequirements mr{}; vkGetBufferMemoryRequirements(s.dev, s.readbackBuf.get(), &mr);
-        VkPhysicalDeviceMemoryProperties mp{}; vkGetPhysicalDeviceMemoryProperties(s.phys, &mp);
-        uint32_t idx = UINT32_MAX;
-        for (uint32_t i = 0; i < mp.memoryTypeCount; ++i) {
-            if ((mr.memoryTypeBits & (1u << i)) &&
-                (mp.memoryTypes[i].propertyFlags &
-                 (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) ==
-                 (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
-                idx = i; break;
-            }
-        }
-        if (idx == UINT32_MAX) return;
-        VkMemoryAllocateInfo mai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
-        mai.allocationSize = mr.size; mai.memoryTypeIndex = idx;
-        if (!mc2vk::create(s.readbackMem, s.dev, [&](auto* h) { return vkAllocateMemory(s.dev, &mai, nullptr, h); })) return;
-        vkBindBufferMemory(s.dev, s.readbackBuf.get(), s.readbackMem.get(), 0);
-        s.readbackSize = needed;
-    }
-    if (!s.readbackCbuf) {
-        VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-        cai.commandPool = s.cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
-        if (vkAllocateCommandBuffers(s.dev, &cai, &s.readbackCbuf) != VK_SUCCESS) return;
-    }
-    if (!s.readbackFence) {
-        VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-        if (!mc2vk::create(s.readbackFence, s.dev, [&](auto* h) { return vkCreateFence(s.dev, &fci, nullptr, h); })) return;
-    }
-
-    vkResetCommandBuffer(s.readbackCbuf, 0);
-    VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(s.readbackCbuf, &bi);
-    // shared image is in COLOR_ATTACHMENT (post-present barrier) -> TRANSFER_SRC.
-    barrier(s.readbackCbuf, s.sharedImg.image.get(),
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-    VkBufferImageCopy bic{};
-    bic.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    bic.imageExtent = {rw, rh, 1};
-    vkCmdCopyImageToBuffer(s.readbackCbuf, s.sharedImg.image.get(),
-                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s.readbackBuf.get(), 1, &bic);
-    barrier(s.readbackCbuf, s.sharedImg.image.get(),
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-    vkEndCommandBuffer(s.readbackCbuf);
-
-    const VkFence readbackFenceHandle = s.readbackFence.get();
-    vkResetFences(s.dev, 1, &readbackFenceHandle);
-    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-    si.commandBufferCount = 1; si.pCommandBuffers = &s.readbackCbuf;
-    if (mc2vk::submitGraphics(si, s.readbackFence.get()) != VK_SUCCESS) return;
-    vkWaitForFences(s.dev, 1, &readbackFenceHandle, VK_TRUE, UINT64_MAX);
-
-    void* mapped = nullptr;
-    if (vkMapMemory(s.dev, s.readbackMem.get(), 0, needed, 0, &mapped) != VK_SUCCESS) return;
-    const unsigned char* px = (const unsigned char*)mapped;
+    // ---- consume the outstanding request, if its copy has finished ----
+    auto consume = [&](const unsigned char* px, uint32_t rw, uint32_t rh) {
+        const VkDeviceSize needed = (VkDeviceSize)rw * rh * 4u;
     // FNV-1a over a strided sample (every 257th byte) -- cheap, sensitive to change.
     unsigned long long h = 1469598103934665603ull;
     for (VkDeviceSize i = 0; i < needed; i += 257) {
@@ -2856,7 +2789,6 @@ void EnginePresentVk::verifyReadbackContent() {
         gos::visual_capture::vkCaptureDeliver(rw, rh, px);
     if (gos::screenshot::pending())
         gos::screenshot::deliver(rw, rh, px);
-    vkUnmapMemory(s.dev, s.readbackMem.get());
 
     health_.prev_readback_checksum = health_.last_readback_checksum;
     health_.last_readback_checksum = h;
@@ -2864,6 +2796,64 @@ void EnginePresentVk::verifyReadbackContent() {
         health_.prev_readback_checksum != health_.last_readback_checksum) {
         health_.readback_changed = true;
     }
+    };
+    if (s.readbackToken) {
+        bool stale = false;
+        const void* bytes = ctx.readbacks().poll(ctx, s.readbackToken, s.readbackTag, &stale);
+        if (bytes) {
+            consume(static_cast<const unsigned char*>(bytes), s.readbackW, s.readbackH);
+            ctx.readbacks().release(s.readbackToken);
+            s.readbackToken = {};
+        } else if (stale) {
+            s.readbackToken = {};   // recycled or for another frame: discarded, never used
+        } else {
+            return;                 // still in flight
+        }
+    }
+
+    // ---- request the next one ----
+    const uint32_t rw = s.imgW, rh = s.imgH;
+    const VkDeviceSize needed = (VkDeviceSize)rw * rh * 4u;
+    if (needed == 0) return;
+    extern uint32_t g_mc2FrameCounter;
+    const uint64_t tag = g_mc2FrameCounter;
+    VkBuffer dst = VK_NULL_HANDLE;
+    const mc2vk::ReadbackToken tok = ctx.readbacks().request(ctx, needed, tag, &dst);
+    if (!tok) return;
+    if (!s.readbackCbuf) {
+        VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+        cai.commandPool = s.cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+        if (vkAllocateCommandBuffers(s.dev, &cai, &s.readbackCbuf) != VK_SUCCESS) { ctx.readbacks().release(tok); return; }
+    }
+    vkResetCommandBuffer(s.readbackCbuf, 0);
+    VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(s.readbackCbuf, &bi);
+    // shared image is in COLOR_ATTACHMENT (post-present barrier) -> TRANSFER_SRC.
+    barrier(s.readbackCbuf, s.sharedImg.image.get(),
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    VkBufferImageCopy bic{};
+    bic.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+    bic.imageExtent = {rw, rh, 1};
+    vkCmdCopyImageToBuffer(s.readbackCbuf, s.sharedImg.image.get(),
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst, 1, &bic);
+    barrier(s.readbackCbuf, s.sharedImg.image.get(),
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    vkEndCommandBuffer(s.readbackCbuf);
+
+    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    si.commandBufferCount = 1; si.pCommandBuffers = &s.readbackCbuf;
+    uint64_t value = 0;
+    if (ctx.submit(si, VK_NULL_HANDLE, &value) != VK_SUCCESS) { ctx.readbacks().release(tok); return; }
+    ctx.readbacks().seal(tok, mc2vk::GpuTicket{value, 0});
+    s.readbackToken = tok;
+    s.readbackTag = tag;
+    s.readbackW = rw;
+    s.readbackH = rh;
 }
 
 void EnginePresentVk::destroy() {

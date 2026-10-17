@@ -258,6 +258,8 @@ if(MC2_VULKAN)
         list(APPEND SOURCES vk_frame_ring.cpp)
         # Streaming uploads: staging in the frame ring, copies queued and submitted ahead of the next graphics submit, no CPU wait.
         list(APPEND SOURCES vk_upload.cpp)
+        # Non-blocking GPU -> CPU readbacks (ReadbackRing): request, submit, poll by ticket, tag-checked.
+        list(APPEND SOURCES vk_readback.cpp)
         # Move-only owners of the Vulkan objects an island creates (RAII; the destructor is the only release path).
         list(APPEND SOURCES vk_owned.cpp)
         # STEP 3.4P: native Vulkan compute producers (Slang compute pipelines; terrain lighting + water cull/pack).
