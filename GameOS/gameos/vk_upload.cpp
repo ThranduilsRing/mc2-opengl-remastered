@@ -6,6 +6,7 @@
 
 #include <vk_mem_alloc.h>
 
+#include "vk_one_shot.h"
 #include "vulkan_context.h"
 
 namespace mc2vk {
@@ -41,21 +42,9 @@ UploadBatch::Span UploadBatch::stage(VulkanContext& ctx, VkDeviceSize bytes) {
 bool UploadBatch::build(const VulkanContext& ctx, OwnedCommandPool& pool, VkCommandBuffer& cb) {
     cb = VK_NULL_HANDLE;
     if (recorders_.empty()) return false;
-    const VkDevice device = ctx.device();
     bool ok = false;
     do {
-        VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
-        pci.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-        pci.queueFamilyIndex = ctx.graphicsFamily();
-        if (!create(pool, device, [&](VkCommandPool* h) { return vkCreateCommandPool(device, &pci, nullptr, h); })) break;
-        VkCommandBufferAllocateInfo ai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-        ai.commandPool = pool.get();
-        ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        ai.commandBufferCount = 1;
-        if (vkAllocateCommandBuffers(device, &ai, &cb) != VK_SUCCESS) break;
-        VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) break;
+        if (!beginTransientCommandBuffer(ctx, pool, cb)) break;
         for (auto& fn : recorders_) fn(cb);
         ok = vkEndCommandBuffer(cb) == VK_SUCCESS;
     } while (false);

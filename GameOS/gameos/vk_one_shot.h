@@ -10,8 +10,13 @@
 #include <functional>
 #include <string_view>
 
+#include "vk_owned.h"
+
 namespace mc2vk {
 class VulkanContext;
+
+// A transient command pool holding one primary command buffer, begun for a single submit. False on any failure (the pool is left to its owner).
+bool beginTransientCommandBuffer(const VulkanContext& ctx, OwnedCommandPool& pool, VkCommandBuffer& cb);
 
 // Records with `record` (between begin and end), submits, waits up to 5 s. False on any failure; `why` names the caller
 // in the device-wait log line a timed-out submit produces.

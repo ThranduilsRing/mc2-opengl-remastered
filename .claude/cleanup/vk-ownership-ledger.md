@@ -30,14 +30,15 @@ code and the proof of a finished conversion, not a leak detector.
 | image_resource | 2 | 0 | 0 | +0 | 0 | - |
 | shared_scene | 6 | 0 | 0 | +0 | 0 | - |
 | light_feed | 2 | 0 | 0 | +0 | 0 | - |
-| context | 2 | 0 | 0 | +0 | 0 | - |
+| context | 2 | 1 | 1 | +0 | 2 | - |
 
-Total over all islands: created 0, released 0, imbalance +0.
+Total over all islands: created 1, released 1, imbalance +0.
 
 ## Files
 
 | File | Created | Released | Imbalance |
 |---|---:|---:|---:|
+| `vulkan_context.cpp` | 1 | 1 | +0 |
 
 ## Conversion order
 
