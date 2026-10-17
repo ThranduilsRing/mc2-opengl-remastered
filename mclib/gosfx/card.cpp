@@ -506,10 +506,11 @@ void gosFX::Card::Draw(DrawInfo *info)
 			{
 				const MidLevelRenderer::MLRState::AlphaMode am =
 					spec->m_state.GetAlphaMode();
-				if (am == MidLevelRenderer::MLRState::OneOneMode)
-					blendMode = 2;   // (ONE,ONE): alpha ignored
-				else if (am == MidLevelRenderer::MLRState::AlphaOneMode)
-					blendMode = 1;
+				// MLR draws both as pure additive (ONE,ONE), alpha ignored: AlphaOneMode leaves the
+				// renderer state it inherits, and the card data (alpha 0 halo cards) relies on that.
+				if (am == MidLevelRenderer::MLRState::OneOneMode ||
+				    am == MidLevelRenderer::MLRState::AlphaOneMode)
+					blendMode = 2;
 			}
 
 			// Authored atlas tile bounds are constant over the card's lifetime.

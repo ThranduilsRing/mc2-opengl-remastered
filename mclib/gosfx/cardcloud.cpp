@@ -574,10 +574,11 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 				{
 					const MidLevelRenderer::MLRState::AlphaMode am =
 						spec->m_state.GetAlphaMode();
-					if (am == MidLevelRenderer::MLRState::OneOneMode)
-						blendMode = 2;   // (ONE,ONE): alpha ignored
-					else if (am == MidLevelRenderer::MLRState::AlphaOneMode)
-						blendMode = 1;
+					// MLR draws both as pure additive (ONE,ONE), alpha ignored: AlphaOneMode leaves the
+					// renderer state it inherits, and the card data (alpha 0 halo cards) relies on that.
+					if (am == MidLevelRenderer::MLRState::OneOneMode ||
+					    am == MidLevelRenderer::MLRState::AlphaOneMode)
+						blendMode = 2;
 				}
 				// Same effect->world transform the legacy CardCloud::Draw feeds
 				// to MLR as effectToWorld.
