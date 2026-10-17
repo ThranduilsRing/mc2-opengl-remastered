@@ -927,12 +927,8 @@ long Artillery::update (void)
 				delete hitEffect;
 				hitEffect = nullptr;
 				
-				if (bomber)
-				{
-					delete bomber;
-					bomber = nullptr;
-				}
-				
+				bomber.reset();
+
 				if (leftContrail)
 				{
 					leftContrail->Kill();
@@ -1514,11 +1510,7 @@ void Artillery::destroy (void)
 		rightContrail = nullptr;
 	}
 
- 	if (bomber)
-	{
-		delete bomber;
-		bomber = nullptr;
-	}
+	bomber.reset();
 
 	// The round owns its strike appearance; the per-mission appearance heap no longer reclaims it in bulk.
 	if (appearance)
@@ -1609,7 +1601,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 		
 			if ((appearanceType>>24) == GV_TYPE)
 			{
-				bomber = new GVAppearance;
+				bomber = std::make_unique<GVAppearance>();
 				if (!bomber)
 					STOP((" Artillery.init: unable to create appearance for Shilone"));
 		
@@ -1676,7 +1668,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 		
 			if ((appearanceType>>24) == GV_TYPE)
 			{
-				bomber = new GVAppearance;
+				bomber = std::make_unique<GVAppearance>();
 				if (!bomber)
 					STOP((" Artillery.init: unable to create appearance for Shilone"));
 		

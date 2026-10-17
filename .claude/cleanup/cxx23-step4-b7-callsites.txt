@@ -1,15 +1,7 @@
-B7o.5-nonactor-owners	code/artlry.cpp:932	app_delete	delete bomber;
-B7o.5-nonactor-owners	code/artlry.cpp:1519	app_delete	delete bomber;
-B7o.5-nonactor-owners	code/artlry.cpp:1592	app_new	adoptAppearance(new BldgAppearance);
-B7o.5-nonactor-owners	code/artlry.cpp:1612	app_new	bomber = new GVAppearance;
-B7o.5-nonactor-owners	code/artlry.cpp:1660	app_new	adoptAppearance(new BldgAppearance);
-B7o.5-nonactor-owners	code/artlry.cpp:1679	app_new	bomber = new GVAppearance;
-B7o.5-nonactor-owners	code/artlry.cpp:1728	app_new	adoptAppearance(new BldgAppearance);
+B7o.5-nonactor-owners	code/artlry.cpp:1584	app_new	adoptAppearance(new BldgAppearance);
+B7o.5-nonactor-owners	code/artlry.cpp:1652	app_new	adoptAppearance(new BldgAppearance);
+B7o.5-nonactor-owners	code/artlry.cpp:1720	app_new	adoptAppearance(new BldgAppearance);
 B7o.3-actor-owner	code/bldng.cpp:1262	app_new	adoptAppearance(new BldgAppearance);
-B7o.5-nonactor-owners	code/gamecam.cpp:197	app_delete	delete theSky;
-B7o.5-nonactor-owners	code/gamecam.cpp:203	app_delete	delete compass;
-B7o.5-nonactor-owners	code/gamecam.cpp:1109	app_new	theSky = new GenericAppearance;
-B7o.5-nonactor-owners	code/gamecam.cpp:1412	app_new	compass = new BldgAppearance;
 B7o.9-operators	code/gameobj.cpp:1496	objcache_op	void* GameObject::operator new (size_t ourSize) {
 B7o.9-operators	code/gameobj.cpp:1498	objcache_actor	void* result = ObjectTypeManager::objectCache->Malloc(ourSize);
 B7o.9-operators	code/gameobj.cpp:1507	objcache_op	void GameObject::operator delete (void* us) {
@@ -19,13 +11,6 @@ B7o.3-actor-owner	code/gvehicl.cpp:695	app_new	adoptAppearance(new GVAppearance)
 B7o.3-actor-owner	code/light.cpp:178	app_new	lightAppearance = new VFXAppearance;
 B7o.2-seal	code/logisticsvariant.cpp:25	app_write_other	appearance = nullptr;
 B7o.3-actor-owner	code/mech_init.cpp:164	app_new	adoptAppearance(new Mech3DAppearance);
-B7o.5-nonactor-owners	code/missiongui.cpp:411	app_delete	delete vTol[i];
-B7o.5-nonactor-owners	code/missiongui_input.cpp:47	app_new	vTol[commanderID] = new BldgAppearance;
-B7o.5-nonactor-owners	code/missiongui_input.cpp:53	app_new	vTol[commanderID] = new BldgAppearance;
-B7o.5-nonactor-owners	code/missiongui_style.cpp:37	app_delete	delete vTol[vtolNum];
-B7o.5-nonactor-owners	code/missiongui_style.cpp:174	app_delete	delete vTol[vtolNum];
-B7o.5-nonactor-owners	code/missiongui_support.cpp:145	app_new	vTol[commanderID] = new BldgAppearance;
-B7o.5-nonactor-owners	code/missiongui_support.cpp:185	app_new	vTol[commanderID] = new BldgAppearance;
 B7o.7-typemgr	code/objmgr.cpp:112	objtypemgr	objTypeManager = nullptr;
 B7o.7-typemgr	code/objmgr.cpp:176	objtypemgr	delete objTypeManager;
 B7o.7-typemgr	code/objmgr.cpp:178	objtypemgr	objTypeManager = new ObjectTypeManager;
@@ -60,14 +45,6 @@ B7o.8b-ptrarrays	code/objmgr_misc.cpp:242	objcache_ptrarr	ObjectTypeManager::obj
 B7o.8b-ptrarrays	code/objmgr_misc.cpp:249	objcache_ptrarr	collidableList = (GameObjectPtr*)ObjectTypeManager::objectCache->Malloc(sizeof(GameObjectPtr) * numCollidables);
 B7o.9-operators	code/objtype.cpp:86	objtype_op	void* ObjectType::operator new (size_t ourSize) {
 B7o.9-operators	code/objtype.cpp:94	objtype_op	void ObjectType::operator delete (void* us) {
-B7o.5-nonactor-owners	code/simplecamera.cpp:63	app_delete	delete pObject;
-B7o.5-nonactor-owners	code/simplecamera.cpp:570	app_delete	delete pObject;
-B7o.5-nonactor-owners	code/simplecamera.cpp:607	app_new	pObject = new Mech3DAppearance;
-B7o.5-nonactor-owners	code/simplecamera.cpp:641	app_delete	delete pObject;
-B7o.5-nonactor-owners	code/simplecamera.cpp:670	app_new	pObject = new GVAppearance;
-B7o.5-nonactor-owners	code/simplecamera.cpp:706	app_delete	delete pObject;
-B7o.5-nonactor-owners	code/simplecamera.cpp:734	app_new	pObject = new BldgAppearance;
-B7o.5-nonactor-owners	code/simplecamera.cpp:770	app_delete	delete pObject;
 B7o.8a-subarea-text	code/terrobj.cpp:1094	objcache_subarea	ObjectTypeManager::objectCache->Free(subAreas0);
 B7o.8a-subarea-text	code/terrobj.cpp:1100	objcache_subarea	ObjectTypeManager::objectCache->Free(subAreas1);
 B7o.3-actor-owner	code/terrobj.cpp:1170	app_new	adoptAppearance(new TreeAppearance);

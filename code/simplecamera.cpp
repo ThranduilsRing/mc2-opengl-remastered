@@ -55,12 +55,20 @@ SimpleCamera::SimpleCamera()
 }
 
 
+// The appearance destructor reads appearanceTypeList: with no list (outside a mission) the object is left unfreed, as before B7o.5.
+void SimpleCamera::releaseObject()
+{
+	if (appearanceTypeList)
+		pObject.reset();
+	else
+		(void)pObject.release();
+}
+
 SimpleCamera::~SimpleCamera()
 {
 
 	// sebi: added this condition ecause  appearanceTypeList used inside destructor
-	if (appearanceTypeList)
-    	delete pObject;
+	releaseObject();
 
 	pObject = nullptr;
 
@@ -125,7 +133,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
 		FILE* f = fopen("preview_debug.log","a");
-		if (f) { mc2::fmt::print(f, "[PREVIEW] SimpleCamera::render pObject={:016X} bIsComponent={:d}\n", mc2::fmt::as_ptr((void*)pObject), mc2::fmt::as_i32((int)bIsComponent)); fflush(f); fclose(f); }
+		if (f) { mc2::fmt::print(f, "[PREVIEW] SimpleCamera::render pObject={:016X} bIsComponent={:d}\n", mc2::fmt::as_ptr((void*)pObject.get()), mc2::fmt::as_i32((int)bIsComponent)); fflush(f); fclose(f); }
 	}
 
 	if ( pObject )
@@ -566,8 +574,7 @@ void SimpleCamera::setMech(const char* fileName, long baseColor, long highlight1
 	AltitudeTight = 650;
 
 	// sebi: added this conition ecause  appearanceTypeList used inside destructor
-	if (appearanceTypeList)
-		delete pObject;
+	releaseObject();
 
 
 	if ( !appearanceTypeList )
@@ -604,7 +611,7 @@ void SimpleCamera::setMech(const char* fileName, long baseColor, long highlight1
 	else
 		appearanceType = (Mech3DAppearanceType*)appearanceTypeList->getAppearance( MECH_TYPE << 24, (char*)NoPathFileName );
 
-	pObject = new Mech3DAppearance;	
+	pObject = std::make_unique<Mech3DAppearance>();	
 	pObject->init( appearanceType );
 	pObject->setGestureGoal(2);
 	pObject->resetPaintScheme( highlight1, highlight2, baseColor );
@@ -637,8 +644,7 @@ void SimpleCamera::setVehicle(const char* fileName,long base, long highlight, lo
 	rotationIncrement = 90;
 	
 	// sebi: added this conition ecause  appearanceTypeList used inside destructor
-	if (appearanceTypeList)
-    	delete pObject;
+	releaseObject();
 
 	pObject = nullptr;
 
@@ -667,7 +673,7 @@ void SimpleCamera::setVehicle(const char* fileName,long base, long highlight, lo
 	else
 		appearanceType= (GVAppearanceType*)appearanceTypeList->getAppearance( GV_TYPE << 24, (char*)NoPathFileName );
 
-	pObject = new GVAppearance;	
+	pObject = std::make_unique<GVAppearance>();	
 	pObject->init( appearanceType );
 	pObject->setGestureGoal(2);
 	pObject->resetPaintScheme(base, highlight, h2);
@@ -702,8 +708,7 @@ void SimpleCamera::setComponent(const char* fileName )
 
 	
 	// sebi: added this conition ecause  appearanceTypeList used inside destructor
-	if (appearanceTypeList)
-    	delete pObject;
+	releaseObject();
 
 	pObject = nullptr;
 
@@ -731,7 +736,7 @@ void SimpleCamera::setComponent(const char* fileName )
 	//MUST ALWAYS CALL GET, EVEN IF WE HAVE AN APPEARANCE TYPE OR REFERENCE COUNT DOES NOT INCREASE!
 	 
 
-	pObject = new BldgAppearance;	
+	pObject = std::make_unique<BldgAppearance>();	
 	pObject->init( appearanceType );
 	pObject->resetPaintScheme(0xffff7e00, 0xffff7e00, 0xffbcbcbc);
 	pObject->rotation = rotation;
@@ -766,8 +771,7 @@ void SimpleCamera::setObject( const char* pFileName, long type, long base, long 
 	if ( !pFileName || !strlen( pFileName ) )
 	{
 		// Empty/NULL filename = no model. Free existing object and return cleanly.
-		if ( appearanceTypeList )
-			delete pObject;
+		releaseObject();
 		pObject = nullptr;
 		return;
 	}

@@ -367,7 +367,7 @@
    ]
   },
   "BldgAppearance": {
-   "delete": 7,
+   "delete": 1,
    "delete_array": 0,
    "files": {
     "code/artlry.cpp": {
@@ -376,21 +376,7 @@
     "code/bldng.cpp": {
      "new": 1
     },
-    "code/gamecam.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "code/gate.cpp": {
-     "new": 1
-    },
-    "code/missiongui_input.cpp": {
-     "new": 2
-    },
-    "code/missiongui_support.cpp": {
-     "new": 2
-    },
-    "code/simplecamera.cpp": {
-     "delete": 5,
      "new": 1
     },
     "code/terrobj.cpp": {
@@ -410,12 +396,10 @@
      "new": 1
     }
    },
-   "new": 16,
+   "new": 10,
    "new_array": 0,
    "owners": [
-    "",
-    "GameCamera",
-    "SimpleCamera"
+    ""
    ]
   },
   "BrainTaskQueue": {
@@ -2178,28 +2162,19 @@
    ]
   },
   "GVAppearance": {
-   "delete": 2,
+   "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/artlry.cpp": {
-     "delete": 2,
-     "new": 2
-    },
     "code/gvehicl.cpp": {
-     "new": 1
-    },
-    "code/simplecamera.cpp": {
      "new": 1
     },
     "editor/EditorObjectMgr_render.cpp": {
      "new": 1
     }
    },
-   "new": 5,
+   "new": 2,
    "new_array": 0,
-   "owners": [
-    "Artillery"
-   ]
+   "owners": []
   },
   "GameCamera": {
    "delete": 1,
@@ -2331,23 +2306,18 @@
    "owners": []
   },
   "GenericAppearance": {
-   "delete": 2,
+   "delete": 1,
    "delete_array": 0,
    "files": {
-    "code/gamecam.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "editor/EditorCamera.h": {
      "delete": 1,
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": [
-    "",
-    "GameCamera"
+    ""
    ]
   },
   "GlobalCollisionAlert": {
@@ -3627,14 +3597,11 @@
     "code/mech_init.cpp": {
      "new": 1
     },
-    "code/simplecamera.cpp": {
-     "new": 1
-    },
     "editor/EditorObjectMgr_render.cpp": {
      "new": 1
     }
    },
-   "new": 3,
+   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -7533,7 +7500,6 @@
   "code/carnage.cpp": 3,
   "code/componentlistbox.cpp": 1,
   "code/forcegroupbar.cpp": 5,
-  "code/gameobj.cpp": 1,
   "code/gamesound.cpp": 1,
   "code/gametacmap.h": 1,
   "code/infowindow.cpp": 1,
@@ -7555,8 +7521,8 @@
   "code/mission_init.cpp": 1,
   "code/missionbegin.cpp": 4,
   "code/missionbriefingscreen.cpp": 3,
-  "code/missiongui.cpp": 3,
-  "code/missiongui_style.cpp": 6,
+  "code/missiongui.cpp": 2,
+  "code/missiongui_style.cpp": 4,
   "code/mpparameterscreen.cpp": 1,
   "code/mpprefs.cpp": 1,
   "code/objective.cpp": 8,
@@ -7566,7 +7532,6 @@
   "code/pilotreviewarea.cpp": 2,
   "code/salvagemecharea.cpp": 10,
   "code/terrobj.cpp": 1,
-  "code/warrior_queue.cpp": 2,
   "code/weaponbolt.cpp": 10,
   "code/weaponbolt_update.cpp": 36,
   "editor/Action.cpp": 5,

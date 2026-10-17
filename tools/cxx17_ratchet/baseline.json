@@ -139,9 +139,9 @@
    "LG20": 0
   },
   "code": {
-   "LG01": 202,
+   "LG01": 198,
    "LG02": 204,
-   "LG03": 845,
+   "LG03": 822,
    "LG04": 21,
    "LG05": 198,
    "LG06": 472,
@@ -1617,7 +1617,7 @@
   },
   "code/artlry.cpp": {
    "LG01": 10,
-   "LG03": 16,
+   "LG03": 12,
    "LG09": 20,
    "LG12b": 8,
    "LG13": 12
@@ -1941,8 +1941,7 @@
    "LG06": 1
   },
   "code/gamecam.cpp": {
-   "LG01": 12,
-   "LG03": 4,
+   "LG01": 8,
    "LG09": 5,
    "LG10": 1,
    "LG11": 2,
@@ -2516,7 +2515,7 @@
   },
   "code/missiongui.cpp": {
    "LG01": 2,
-   "LG03": 7,
+   "LG03": 6,
    "LG06": 1,
    "LG09": 1,
    "LG12a": 2,
@@ -2541,7 +2540,6 @@
    "LG09": 16
   },
   "code/missiongui_input.cpp": {
-   "LG03": 2,
    "LG09": 4
   },
   "code/missiongui_orders.cpp": {
@@ -2553,11 +2551,10 @@
    "LG14": 1
   },
   "code/missiongui_style.cpp": {
-   "LG03": 6,
+   "LG03": 4,
    "LG09": 18
   },
   "code/missiongui_support.cpp": {
-   "LG03": 2,
    "LG05": 2,
    "LG09": 6
   },
@@ -2909,7 +2906,7 @@
    "LG10": 1
   },
   "code/simplecamera.cpp": {
-   "LG03": 9,
+   "LG03": 1,
    "LG06": 5,
    "LG09": 12,
    "LG11": 2
@@ -5118,7 +5115,7 @@
    "LG20": 3
   }
  },
- "head": "4a70f02c8",
+ "head": "d987ce873",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
