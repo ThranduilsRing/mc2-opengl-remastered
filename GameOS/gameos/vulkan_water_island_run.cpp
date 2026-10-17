@@ -101,6 +101,7 @@ extern "C" int mc2_vk_water_island_run(
     const uint32_t par = fsC.parity & 1u;
 
     const clk::time_point tStage0 = clk::now();
+    const WaterStream::VkNativeInputs* nat = nullptr;   // STEP 3.4P: set in the feed block when the native producers run this frame
     {
     ZoneScopedN("VKIsl.Water.Feed");   // VK-ISLAND-TRACY-1: recipe/thin/UBO staging (steps 1-3)
     // ---- 1) Upload recipe SSBO once (mission-static), into device-local memory (the cull compute reads it every frame). ----
@@ -125,8 +126,7 @@ extern "C" int mc2_vk_water_island_run(
             }
         }
     }
-    const WaterStream::VkNativeInputs* nat = (nativeInputsIn && s->native && s->native->ready())
-                                                 ? static_cast<const WaterStream::VkNativeInputs*>(nativeInputsIn) : nullptr;
+    nat = (nativeInputsIn && s->native && s->native->ready()) ? static_cast<const WaterStream::VkNativeInputs*>(nativeInputsIn) : nullptr;
     if (!nat && thinCount == 0) return 0;
 
     // ---- 2) Upload the per-frame thin records into slot `par` (CPU-staged; the GL readback feed). The native path skips this. ----
