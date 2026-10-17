@@ -1,5 +1,36 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FIFTY-SECOND session (2026-10-17, Sonnet 5.5) -- review must-fixes, editor check, GL canary/INTEROP gates deleted, step 3.4P and the editor blocker recorded
+
+### Commits (on a8b3462ca)
+9631b8379 MC2_RENDER_BACKEND gate doc | 249da5ee0 review must-fix (one parse rule, GL arms pinned, stale comments, letterbox RAII) | a2cf61686 3.4c part: four *_GL_CANARY gates | dcff10717 3.4c part: three *_INTEROP kill switches | ffc9c25cd plan amendments | 74708d95a test_gate floor | a docs-regen + state commit after it (docs only). Mergeable code tip: dcff10717 (the exe under test is ffc9c25cd, which differs from it only by the plan doc).
+
+### Review items done
+- MUST 1: `mc2::backendFromText(text, &recognized)` (render_backend_select.cpp) is the single parse rule: gl/GL -> GL; vulkan/VULKAN/vk/unset/empty -> Vulkan; any typo -> Vulkan, logged "coercing to Vulkan". `umbrellaOn()` asks `mc2::renderBackend()` (no string re-parse). Doctest "MC2_RENDER_BACKEND text" covers opengl / Vulkan / Gl / "gl ". render_backend_select.cpp added to the unit-test sources.
+- MUST 2: `ab.py` GL arm, `capture_ab.capture_cmd(vulkan=False)` and `bless.BACKEND_DECLARED_ENV["gl"]` pin `MC2_RENDER_BACKEND=gl`; tests updated (18 pass).
+- SHOULD: stale "=vulkan requested" / forceGL / dated comments rewritten (init, frame, vulkan_context, GuiRuntime, capture_backend); the letterbox/fade exempt bracket is one RAII scope (`HudScaleExemptScope` in gamecam.cpp). Not done: the 8+ brackets in controlgui_render.cpp / forcegroupbar.cpp, the bare-brace nits, window teardown in `fatalBackendFailure` (no handle reachable from that TU), the "fail-soft to GL" log strings (printf-corpus rows). Build check: `MC2_VULKAN` is a global CMake option, default ON; no shipped target drops it unless -DMC2_VULKAN=OFF is passed.
+- Astra review (plan only): new step 3.4P "native VK producers for water / terrain lighting / culling" gates the rest of 3.4 and all of 3.5; comparison-tooling note; fade quad recorded UNPROVEN.
+
+### Agenda
+1. Editor: built (`ninja EditRel`, ok) and deployed to the lane2 install with `deploy_payload.py ... --exe-name "Mission Editor.exe" --build-dir build64-ninja/out/editor`. `run_editor_smoke.py` refuses on this install (stock dependency audit: non-stock loose data), so it was not usable. `run_editor_playtest_smoke.py` (MC2_PLAYTEST_EXE = lane2 mc2.exe, Exodus a_0_1.pak): the editor starts on its private GL (editor-startup.log: glewInit ok, `[CONFIG v1] MC2_RENDER_BACKEND value="gl"`, mission loaded, EditorObjectMgr::render through frame 120) but the -playtest driver never reaches Start() and the harness reports process_timeout. The pre-flip editor (v0.4, 2026-10-12) times out identically with the same mission, so it is not a flip regression (gaea_peaks_01.pak fails S-CLI auto-load for both). UNPROVEN: a playtest child launched on VK. Static proof only: EditorPlaytest.cpp:949 pushes `MC2_RENDER_BACKEND=vulkan` into the child env block.
+2. Gate doc string fixed. GL opt-out letterbox captured and viewed (`.claude/l2cap/s52-letterbox-gl3`, mc2_10 --frame 100, no --clean): both bars full width, top 0..140, bottom 940..1080, same row profile as the s51 VK-after-fix capture. Note `--clean` hides the letterbox.
+3. 3.4 done: four canary gates, three INTEROP kill switches, the GL occlusion wrappers. Not done, with reasons: the remaining `glGetTexImage` calls are GL-side uploads and self-tests (VK island counters assert zero GL pulls), so 3.4(b) already holds; the umbrella cannot be unconditional while `MC2_RENDER_BACKEND=gl` exists; the "discarded GL scene FBO" is the 3.5 content.
+4. 3.5 NOT started: `gameos_editor` compiles the same GL scene sources as `gameos`, so any whole-file deletion removes the editor's renderer (owner question 5, recorded in the plan).
+
+### Proof
+| check | result |
+|---|---|
+| ninja -j2 mc2 mc2_launcher EditRel at ffc9c25cd + deploy | exit 0 / 0 (a first build raced my own edit on a string escape; fixed before the final build) |
+| doctest `build_contract_harnesses --run --unit` | all pass (first run caught the gate-count floor 975 > 967, fixed in 74708d95a) |
+| default-env VK tier1, validation on, fingerprint OK at ffc9c25cd | 5/5 PASS, errors=0 warnings=0 (scratch/t52vk2.log) |
+| `MC2_RENDER_BACKEND=gl` tier1, fingerprint OK | 5/5 PASS (scratch/t52gl2.log) |
+| pytest of the visual_verify tests touched | 18 pass |
+| check-contracts -j2 | run 1: 3 red (split_map doc, background-launch inventory, scripts_tests through it), regenerated; final run in the report |
+| GL-opt-out letterbox | viewed, bars correct |
+
+### OPEN
+1. Editor playtest e2e needs a stock-mission fixture the harness can load; a child on VK was not observed. 2. Owner question 5: editor GL set vs 3.5 (pull 3.6 first, or split the editor's GL set out). 3. 3.4P producers (cull / light grid / cluster pyramid, terrain lighting, water as VK compute). 4. Fade quad capture. 5. Scratch (mine, deletable): scratch/*52*.log, .claude/l2cap/s52-*.
+
 ## FIFTY-FIRST session (2026-10-17, Sonnet 5.5) -- GL deletion 3.2 DONE: the default backend is Vulkan; letterbox bar shrink bug fixed; 3.3 part; 3.4a lost-draws tracker deleted
 
 ### Commits (on 8015fa3c8)
