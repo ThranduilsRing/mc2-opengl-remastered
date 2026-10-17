@@ -33,10 +33,12 @@ class ReadbackCore {
 public:
     static constexpr uint32_t kSlots = 4;
 
-    // A free slot, tagged; an empty token when every slot is in use.
-    ReadbackToken request(uint64_t tag) {
+    // A free slot, tagged; an empty token when every slot is in use. A discarded slot whose copy is still in flight is NOT free: it returns to
+    // the pool only once its ticket completed, so its buffer is never replaced or reused under a pending GPU write.
+    ReadbackToken request(uint64_t tag, const CompletionTracker& ct) {
         for (uint32_t i = 0; i < kSlots; ++i) {
             Slot& s = slots_[i];
+            if (s.state == State::Discarded && ct.isComplete(s.ticket)) s.state = State::Free;
             if (s.state != State::Free) continue;
             s.state = State::Requested;
             s.tag = tag;
@@ -59,18 +61,20 @@ public:
         if (s.state != State::Sealed || !ct.isComplete(s.ticket)) return ReadbackState::Pending;
         return ReadbackState::Ready;
     }
-    // The consumer is done with the slot (read it or discarded it): it is free again and every older token for it is stale.
-    void release(ReadbackToken tok) {
+    // The consumer is done with the slot (read it or discarded it): every older token for it is stale. The slot is free again when its copy
+    // completed (or was never submitted); a sealed copy still in flight parks the slot as Discarded until its ticket completes.
+    void release(ReadbackToken tok, const CompletionTracker& ct) {
         if (!valid(tok)) return;
-        slots_[tok.slot].state = State::Free;
-        ++slots_[tok.slot].gen;
+        Slot& s = slots_[tok.slot];
+        s.state = (s.state == State::Sealed && !ct.isComplete(s.ticket)) ? State::Discarded : State::Free;
+        ++s.gen;
     }
     uint64_t tagOf(ReadbackToken tok) const { return valid(tok) ? slots_[tok.slot].tag : 0; }
     GpuTicket ticketOf(ReadbackToken tok) const { return valid(tok) ? slots_[tok.slot].ticket : GpuTicket{}; }
     uint32_t inUse() const { uint32_t n = 0; for (const Slot& s : slots_) n += s.state != State::Free; return n; }
 
 private:
-    enum class State : uint8_t { Free, Requested, Sealed };
+    enum class State : uint8_t { Free, Requested, Sealed, Discarded };
     struct Slot { State state = State::Free; uint32_t gen = 0; uint64_t tag = 0; GpuTicket ticket; };
     bool valid(ReadbackToken tok) const { return tok.slot < kSlots && slots_[tok.slot].gen == tok.gen; }
     Slot slots_[kSlots];
@@ -89,8 +93,9 @@ public:
     const void* poll(VulkanContext& ctx, ReadbackToken tok, uint64_t expectedTag, bool* stale = nullptr);
     // Captures and diagnostics only: blocks until the slot completed.
     const void* wait(VulkanContext& ctx, ReadbackToken tok, uint64_t expectedTag, uint64_t timeoutNs);
-    void release(ReadbackToken tok) { core_.release(tok); }
+    void release(VulkanContext& ctx, ReadbackToken tok);
     void releaseAll() { for (auto& b : buf_) b.reset(); }
+    GpuTicket ticketOf(ReadbackToken tok) const { return core_.ticketOf(tok); }
     uint32_t inUse() const { return core_.inUse(); }
     uint64_t requests() const { return requests_; }
     uint64_t stale() const { return stale_; }

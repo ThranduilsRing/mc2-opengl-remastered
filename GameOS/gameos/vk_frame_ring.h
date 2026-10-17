@@ -25,8 +25,9 @@ public:
 
     // New capacity per slot: every slot starts empty (a replaced buffer is fresh memory).
     void setCapacity(uint64_t perSlot) { cap_ = perSlot; head_[0] = head_[1] = 0; }
-    // Frame F opens: its slot restarts at zero.
-    void beginFrame(uint64_t frameNo) { slot_ = static_cast<uint32_t>(frameNo % kSlots); head_[slot_] = 0; }
+    // Frame F opens: its slot restarts at zero, but only when the caller proved the slot's previous user (frame F-2) completed. Without that proof
+    // (restart == false) the slot keeps its head: new allocations bump past what F-2 wrote and a full slot fails soft, never overwriting live bytes.
+    void beginFrame(uint64_t frameNo, bool restart = true) { slot_ = static_cast<uint32_t>(frameNo % kSlots); if (restart) head_[slot_] = 0; }
     // Returns false when the request does not fit; otherwise *ringOffset is the byte offset in the whole buffer.
     bool alloc(uint64_t size, uint64_t align, uint64_t* ringOffset) {
         if (align == 0) align = 1;
@@ -87,7 +88,7 @@ struct FrameAlloc {
 class FrameRing {
 public:
     // Opens frame `frameNo`. The caller (the context) has already made sure frame F-2 completed.
-    void beginFrame(uint64_t frameNo) { core_.beginFrame(frameNo); }
+    void beginFrame(uint64_t frameNo, bool restart = true) { core_.beginFrame(frameNo, restart); }
     // Never blocks. An empty FrameAlloc means the allocation failed (no device memory); callers fail soft.
     FrameAlloc alloc(VulkanContext& ctx, VkDeviceSize size, VkDeviceSize align);
     // The buffer the next allocation will come from (created on first use). Dynamic-offset descriptors point at it; a frame that allocated from a

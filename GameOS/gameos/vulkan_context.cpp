@@ -577,8 +577,19 @@ void VulkanContext::beginFrame() {
     // The ring slot of this frame was last written by frame F-2: its work must be done before the slot restarts. The islands' own fences keep this
     // true today; the wait only costs anything if one of them let a frame run further ahead.
     const uint64_t f = tracker_.frameNo();
-    if (f > FrameRingCore::kSlots) wait(tracker_.frameTicket(f - FrameRingCore::kSlots), 5ull * 1000 * 1000 * 1000, "frame_ring_slot");
-    frameRing_.beginFrame(f);
+    // The slot restarts only when that completion is proven: a timed-out wait falls back to a device idle, and if even that leaves the ticket
+    // incomplete (device lost) the slot keeps its head, so the CPU never overwrites bytes the GPU may still read.
+    bool slotFree = true;
+    if (f > FrameRingCore::kSlots) {
+        const GpuTicket t = tracker_.frameTicket(f - FrameRingCore::kSlots);
+        if (!wait(t, 5ull * 1000 * 1000 * 1000, "frame_ring_slot")) {
+            waitIdle("frame_ring_slot_timeout");
+            poll();
+            slotFree = tracker_.isComplete(t);
+            if (!slotFree) ctxlog("frame %llu: ticket of frame %llu never completed; ring slot NOT restarted.", static_cast<unsigned long long>(f), static_cast<unsigned long long>(f - FrameRingCore::kSlots));
+        }
+    }
+    frameRing_.beginFrame(f, slotFree);
 #endif
 }
 

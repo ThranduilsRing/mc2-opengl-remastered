@@ -113,7 +113,7 @@ struct EnginePresentVk::Impl {
     mc2vk::OwnedSemaphore     acquireSems[2];
     mc2vk::OwnedFence         inFlights[2];
     uint32_t slotCount = 1;
-    uint32_t slot() const { return slotCount < 2 ? 0u : static_cast<uint32_t>(ctx->tracker().frameNo() % 2); }
+    uint32_t slot() const { return ctx->frameContext().slot; }
     VkCommandBuffer&       curCbuf()          { return cbufs[slot()]; }
     VkCommandBuffer&       curCompositeCbuf() { return compositeCbufs[slot()]; }
     mc2vk::OwnedSemaphore& curAcquireSem()    { return acquireSems[slot()]; }
@@ -2078,6 +2078,7 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
                 return fail("vkCreateFence(inFlight) failed");
         }
         s.slotCount = mc2::gate::get<"MC2_VK_FRAMES_IN_FLIGHT">() >= 2 ? 2u : 1u;
+        ctx.setFramesInFlight(s.slotCount);
         plog("[VK_FRAMES_IN_FLIGHT v1] frames_in_flight=%u (MC2_VK_FRAMES_IN_FLIGHT=1 is the kill switch).", s.slotCount);
         // VK-PRESENT-SINGLESUBMIT-1: the composite's own command buffer (recorded at
         // composite time, submitted together with the tail cbuf in ONE submit).
@@ -2408,6 +2409,16 @@ void EnginePresentVk::shutdownImguiVulkanRenderer() {
 // copy-1 is SKIPPED here and the Y-flip is done in copy-2 instead.
 bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
                                      bool verifyReadback) {
+    mc2vk::VulkanContext* const ctx = (created_ && impl_) ? impl_->ctx : nullptr;
+    const bool ok = presentGLFrameBody(glDrawableW, glDrawableH, verifyReadback);
+    // Every exit advances the frame, including skipped presents: a slot is reused only after its ticket completes (beginFrame waits it), so
+    // advancing never frees GPU-owned memory early, and not advancing would pin the ring on one slot.
+    if (ctx) ctx->frameBoundary();
+    return ok;
+}
+
+bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawableH,
+                                         bool verifyReadback) {
     if (!created_ || !impl_) {
         health_.fallback_reason = "present path not initialized";
         return false;
@@ -2438,6 +2449,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
         // the pending composite recording: it references the about-to-be-destroyed
         // shared image / framebuffers and must never be submitted.
         { const VkFence fences[2] = {s.inFlights[0].get(), s.inFlights[1].get()}; vkWaitForFences(s.dev, 2, fences, VK_TRUE, 5ull * 1000 * 1000 * 1000); }
+        drainReadbackBeforeImageDestroy();   // a pending image->buffer copy reads the shared image buildSharedImage is about to destroy
         s.compositePending = false;
         std::string r;
         if (!buildSharedImage(s, glDrawableW, glDrawableH, r)) {
@@ -2733,7 +2745,7 @@ void EnginePresentVk::verifyReadbackContent() {
     mc2vk::VulkanContext& ctx = *s.ctx;
 
     // ---- consume the outstanding request, if its copy has finished ----
-    auto consume = [&](const unsigned char* px, uint32_t rw, uint32_t rh) {
+    auto consume = [&](const unsigned char* px, uint32_t rw, uint32_t rh, uint64_t readbackTag) {
         const VkDeviceSize needed = (VkDeviceSize)rw * rh * 4u;
     // FNV-1a over a strided sample (every 257th byte) -- cheap, sensitive to change.
     unsigned long long h = 1469598103934665603ull;
@@ -2796,9 +2808,11 @@ void EnginePresentVk::verifyReadbackContent() {
         }
     }
     // VK-VISUAL-CAPTURE-1: hand the presented image to a pending visual capture.
-    if (gos::visual_capture::vkCapturePending())
+    // A capture or screenshot takes only a readback requested at or after the frame it was asked in; an older in-flight one shows an earlier
+    // frame than its sidecar. The request stays pending and the next readback (requested right after this one is consumed) serves it.
+    if (gos::visual_capture::vkCapturePending() && gos::screenshot::Slot::acceptsReadback(gos::visual_capture::vkCapturePendingSince(), readbackTag))
         gos::visual_capture::vkCaptureDeliver(rw, rh, px);
-    if (gos::screenshot::pending())
+    if (gos::screenshot::pending() && gos::screenshot::Slot::acceptsReadback(gos::screenshot::pendingSince(), readbackTag))
         gos::screenshot::deliver(rw, rh, px);
 
     health_.prev_readback_checksum = health_.last_readback_checksum;
@@ -2812,8 +2826,8 @@ void EnginePresentVk::verifyReadbackContent() {
         bool stale = false;
         const void* bytes = ctx.readbacks().poll(ctx, s.readbackToken, s.readbackTag, &stale);
         if (bytes) {
-            consume(static_cast<const unsigned char*>(bytes), s.readbackW, s.readbackH);
-            ctx.readbacks().release(s.readbackToken);
+            consume(static_cast<const unsigned char*>(bytes), s.readbackW, s.readbackH, s.readbackTag);
+            ctx.readbacks().release(ctx, s.readbackToken);
             s.readbackToken = {};
         } else if (stale) {
             s.readbackToken = {};   // recycled or for another frame: discarded, never used
@@ -2834,7 +2848,7 @@ void EnginePresentVk::verifyReadbackContent() {
     if (!s.readbackCbuf) {
         VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
         cai.commandPool = s.cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
-        if (vkAllocateCommandBuffers(s.dev, &cai, &s.readbackCbuf) != VK_SUCCESS) { ctx.readbacks().release(tok); return; }
+        if (vkAllocateCommandBuffers(s.dev, &cai, &s.readbackCbuf) != VK_SUCCESS) { ctx.readbacks().release(ctx, tok); return; }
     }
     vkResetCommandBuffer(s.readbackCbuf, 0);
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
@@ -2859,7 +2873,7 @@ void EnginePresentVk::verifyReadbackContent() {
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.commandBufferCount = 1; si.pCommandBuffers = &s.readbackCbuf;
     uint64_t value = 0;
-    if (ctx.submit(si, VK_NULL_HANDLE, &value) != VK_SUCCESS) { ctx.readbacks().release(tok); return; }
+    if (ctx.submit(si, VK_NULL_HANDLE, &value) != VK_SUCCESS) { ctx.readbacks().release(ctx, tok); return; }
     ctx.readbacks().seal(tok, mc2vk::GpuTicket{value, 0});
     s.readbackToken = tok;
     s.readbackTag = tag;
@@ -2867,10 +2881,23 @@ void EnginePresentVk::verifyReadbackContent() {
     s.readbackH = rh;
 }
 
+void EnginePresentVk::drainReadbackBeforeImageDestroy() {
+    if (!impl_ || !impl_->readbackToken) return;
+    Impl& s = *impl_;
+    mc2vk::VulkanContext& ctx = *s.ctx;
+    ctx.wait(ctx.readbacks().ticketOf(s.readbackToken), 5ull * 1000 * 1000 * 1000, "present_resize_readback");
+    if (!ctx.isComplete(ctx.readbacks().ticketOf(s.readbackToken))) ctx.waitIdle("present_resize_readback_timeout");
+    ctx.readbacks().release(ctx, s.readbackToken);
+    s.readbackToken = {};
+}
+
 void EnginePresentVk::destroy() {
     if (impl_) {
         Impl& s = *impl_;
-        if (s.dev) s.ctx->waitIdle("present_destroy");
+        if (s.dev) {
+            s.ctx->waitIdle("present_destroy");
+            if (s.readbackToken) { s.ctx->readbacks().release(*s.ctx, s.readbackToken); s.readbackToken = {}; }   // idle: its copy is done, the slot rejoins the pool
+        }
         shutdownImguiVulkanRenderer();
         if (s.dev) s.ctx->drainDeferred("present_destroy");   // retired HUD mirrors name this object descriptor pool
         // VK-PRESENT-SINGLESUBMIT-1: compositeCbuf is pool-allocated (freed with the pool); just drop the pending state.

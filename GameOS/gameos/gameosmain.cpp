@@ -1301,11 +1301,6 @@ int main(int argc, char** argv)
         gos_frame_pass_stats::FrameEnd((unsigned long)g_mc2FrameCounter);
 
     frameSwapWindow(win);
-#ifdef MC2_VULKAN
-    // The present is the frame boundary: it seals this frame's graphics submits and opens the next frame (any other host that presents, the editor
-    // viewport, calls the same function right after its present).
-    if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().frameBoundary();
-#endif
     frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
 
         {

@@ -24,6 +24,9 @@ public:
 
     bool pending() const { return pending_; }
     const std::string& path() const { return req_.path; }
+    // The frame the request was made in: only a readback requested at or after it shows that frame (an older in-flight one shows an earlier frame).
+    unsigned long long requestFrame() const { return requestFrame_; }
+    static bool acceptsReadback(unsigned long long requestFrame, unsigned long long readbackTag) { return readbackTag >= requestFrame; }
 
     // Why a request for `path` cannot be queued now, or nullptr when it can. WHY here: the predicate is engine-free, so a
     // doctest pins each refusal; the caller only supplies whether the Vulkan backend is the one drawing.
@@ -35,9 +38,10 @@ public:
     }
 
     // False when a request is already waiting.
-    bool begin(const char* path, DoneFn done) {
+    bool begin(const char* path, DoneFn done, unsigned long long frame = 0) {
         if (pending_) return false;
         pending_ = true;
+        requestFrame_ = frame;
         framesWaited_ = 0;
         req_.path = path;
         req_.done = done;
@@ -64,6 +68,7 @@ public:
 private:
     bool pending_ = false;
     unsigned int framesWaited_ = 0;
+    unsigned long long requestFrame_ = 0;
     Request req_;
 };
 

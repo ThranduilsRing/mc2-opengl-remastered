@@ -74,6 +74,20 @@ TEST_CASE("frame sealing: the ticket is the last submit before endFrame, later s
     CHECK_FALSE(t.isComplete(t.frameTicket(2)));
 }
 
+TEST_CASE("a skipped present (no submit in the frame) still advances the frame and its ticket never undercuts earlier work") {
+    // minimize / resize / swapchain recreate / failed acquire all end the frame without a present submit; the frame boundary still runs.
+    CompletionTracker t;
+    t.beginFrame();                                  // frame 1 submits
+    t.noteSubmit(QueueKind::Graphics);
+    t.endFrame();
+    for (int f = 2; f <= 4; ++f) { t.beginFrame(); t.endFrame(); }   // frames 2..4 skipped
+    CHECK(t.frameNo() == 4);
+    for (int f = 2; f <= 4; ++f) CHECK(t.frameTicket(f).gfx == 1);   // sealed at the last submitted value, not at the "always complete" empty ticket
+    CHECK_FALSE(t.isComplete(t.frameTicket(3)));     // the ring slot of frame 5 (= frame 3's slot) waits for frame 1's work
+    t.setCompleted(QueueKind::Graphics, 1);
+    CHECK(t.isComplete(t.frameTicket(3)));
+}
+
 TEST_CASE("frames the ring forgot, or never sealed, answer complete") {
     CompletionTracker t;
     for (int f = 0; f < 20; ++f) { t.beginFrame(); t.noteSubmit(QueueKind::Graphics); t.endFrame(); }

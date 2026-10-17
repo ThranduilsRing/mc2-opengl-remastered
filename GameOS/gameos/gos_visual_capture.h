@@ -66,6 +66,8 @@ void cameraParkTick(unsigned int frame);
 // the presented RGBA8 rows (bottom-up, shared-image orientation, w*h*4 bytes)
 // to vkCaptureDeliver() in the same frame, which flips them and writes the PNG.
 bool vkCapturePending();
+// The frame counter when the pending capture's sidecar was written; only a readback requested at or after it shows that frame.
+unsigned long long vkCapturePendingSince();
 void vkCaptureDeliver(unsigned int w, unsigned int h, const unsigned char* rgbaBottomUp);
 
 }}  // namespace gos::visual_capture

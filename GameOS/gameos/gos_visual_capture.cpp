@@ -275,7 +275,7 @@ float g_renderedProj = 0.0f;
 float g_renderedRot  = 0.0f;
 float g_renderedAlt  = 0.0f;
 
-struct VkCaptureReq { bool pending = false; std::string png; int w = 0, h = 0; };
+struct VkCaptureReq { bool pending = false; std::string png; int w = 0, h = 0; unsigned long long frame = 0; };
 VkCaptureReq g_vkReq;
 const char* g_readbackSource = "gl_fbo";   // VK-VISUAL-CAPTURE-1: sidecar "readback_source"
 
@@ -389,6 +389,7 @@ void capture_to(const std::string& dir, const std::string& base,
         g_readbackSource = "vk_present";
         write_sidecar(js, mission, label, frame, w, h, triggerFrame, deterministic);
         g_vkReq.pending = true;
+        g_vkReq.frame = frame;   // the sidecar frame
         g_vkReq.png = png;
         g_vkReq.w = w; g_vkReq.h = h;
         mc2::fmt::print_err("[VISUAL_CAPTURE v1] VK readback requested {} ({:d}x{:d})\n", png.c_str(), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
@@ -919,6 +920,7 @@ bool cleanFrame() {
 }
 
 bool vkCapturePending() { return g_vkReq.pending; }
+unsigned long long vkCapturePendingSince() { return g_vkReq.frame; }
 
 void vkCaptureDeliver(unsigned int w, unsigned int h, const unsigned char* rgba) {
     if (!g_vkReq.pending) return;

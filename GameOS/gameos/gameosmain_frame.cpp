@@ -658,6 +658,7 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
                 // swapchain instead of SDL_GL_SwapWindow. Any hard error fail-softs
                 // to GL for the rest of the session (never breaks the GL path).
                 bool vkPresented = false;
+                bool vkPresentAttempted = false;   // presentGLFrame ran (it advances the Vulkan frame itself, on every exit)
                 if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
                     mc2vk::EnginePresentVk& vkpres = mc2vk::getOrCreateEnginePresentVk();
                     // VK-FAILSOFT-DISARM-1: present init was deferred on a zero
@@ -727,6 +728,7 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
                              inVerifyWindow && (g_mc2FrameCounter % 60 == 0)) ||
                             gos::visual_capture::vkCapturePending() ||   // VK-VISUAL-CAPTURE-1
                             gos::screenshot::pending();
+                        vkPresentAttempted = true;
                         if (vkpres.presentGLFrame((uint32_t)pdw, (uint32_t)pdh, verify)) {
                             vkPresented = true;
                             static unsigned long s_vkHealthCadence = 0;
@@ -777,6 +779,8 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
                         graphics::swap_window(win);
                     }
                 }
+                // No present ran (init deferred, present torn down): the frame still ends, or the tracker and the ring would stop advancing.
+                if (!vkPresentAttempted && mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().frameBoundary();
 #else
                 graphics::swap_window(win);
 #endif

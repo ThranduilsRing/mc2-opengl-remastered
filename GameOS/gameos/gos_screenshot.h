@@ -17,6 +17,9 @@ bool request(const char* path, DoneFn done = nullptr);
 // True while a request waits for the present readback; the present path reads the frame back when this is true.
 bool pending();
 
+// The frame counter at the time of the pending request; the present path hands over only a readback requested at or after it.
+unsigned long long pendingSince();
+
 // Once per presented frame: a request still waiting after a bounded number of frames is dropped (one log line, `done` called with !ok)
 // so a present that never reads back cannot block every later request.
 void tick();

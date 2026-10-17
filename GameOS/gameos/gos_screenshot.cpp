@@ -8,6 +8,8 @@
 #include "mc2fmt.h"
 #include "render_backend_select.h"
 
+extern uint32_t g_mc2FrameCounter;
+
 namespace gos { namespace screenshot {
 
 namespace {
@@ -22,8 +24,10 @@ bool request(const char* path, DoneFn done) {
         mc2::fmt::print_err("[SCREENSHOT v1] request rejected: {}\n", mc2::fmt::safe(why));
         return false;
     }
-    return g_slot.begin(path, done);
+    return g_slot.begin(path, done, g_mc2FrameCounter);
 }
+
+unsigned long long pendingSince() { return g_slot.requestFrame(); }
 
 bool pending() { return g_slot.pending(); }
 

@@ -182,9 +182,11 @@ public:
     // valid until the frame that asked for it has completed. `align` 0 = the device uniform / storage offset alignment. An empty result means the
     // allocation failed; the caller declines its draw. Main thread only.
     FrameAlloc frameAlloc(VkDeviceSize size, VkDeviceSize align = 0) { return frameRing_.alloc(*this, size, align ? align : frameAlign_); }
-    // The frame the engine loop is recording and the slot of the per-frame memory it uses. framesInFlight is 1 until the two-frame slice.
+    // The frame the engine loop is recording, the number of frames the engine keeps in flight (2, or 1 under MC2_VK_FRAMES_IN_FLIGHT=1) and the slot every
+    // per-frame object of the present path uses (frame % framesInFlight; 0 at N=1). The frame ring itself always alternates its two regions.
     struct FrameContext { uint64_t frame = 0; uint32_t slot = 0; uint32_t framesInFlight = 1; };
-    FrameContext frameContext() const { return {tracker_.frameNo(), static_cast<uint32_t>(tracker_.frameNo() % FrameRingCore::kSlots), 1}; }
+    FrameContext frameContext() const { return {tracker_.frameNo(), framesInFlight_ < 2 ? 0u : static_cast<uint32_t>(tracker_.frameNo() % framesInFlight_), framesInFlight_}; }
+    void setFramesInFlight(uint32_t n) { framesInFlight_ = n < 2 ? 1u : 2u; }
     const FrameRing& frameRing() const { return frameRing_; }
     // GPU -> CPU readbacks that never block (see vk_readback.h).
     ReadbackRing& readbacks() { return readbacks_; }
@@ -226,6 +228,7 @@ private:
     mutable CompletionTracker tracker_;
 #ifdef MC2_VULKAN_ISLAND
     FrameRing        frameRing_;
+    uint32_t         framesInFlight_ = 1;
     mutable UploadBatch uploads_;
     ReadbackRing     readbacks_;
     VkDeviceSize     frameAlign_ = 256;   // max(uniform, storage offset alignment, 16): set at device birth

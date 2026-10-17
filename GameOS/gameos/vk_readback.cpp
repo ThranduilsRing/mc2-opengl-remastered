@@ -11,7 +11,8 @@ namespace mc2vk {
 ReadbackToken ReadbackRing::request(VulkanContext& ctx, VkDeviceSize bytes, uint64_t tag, VkBuffer* dst) {
     if (dst) *dst = VK_NULL_HANDLE;
     if (bytes == 0) return {};
-    const ReadbackToken tok = core_.request(tag);
+    ctx.poll();   // a discarded slot rejoins the pool once its ticket completed
+    const ReadbackToken tok = core_.request(tag, ctx.tracker());
     if (!tok) return {};
     OwnedBuffer& b = buf_[tok.slot];
     if (!b || cap_[tok.slot] < bytes) {
@@ -23,10 +24,10 @@ ReadbackToken ReadbackRing::request(VulkanContext& ctx, VkDeviceSize bytes, uint
         VmaAllocationCreateInfo aci{};
         aci.usage = VMA_MEMORY_USAGE_AUTO;
         aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;   // random access = host-cached where the device has it
-        if (!b.create(ctx.allocator(), ctx.device(), bci, aci, "readback.slot", static_cast<int>(tok.slot))) { core_.release(tok); return {}; }
+        if (!b.create(ctx.allocator(), ctx.device(), bci, aci, "readback.slot", static_cast<int>(tok.slot))) { core_.release(tok, ctx.tracker()); return {}; }
         VmaAllocationInfo info{};
         vmaGetAllocationInfo(ctx.allocator(), b.allocation(), &info);
-        if (!info.pMappedData) { b.reset(); core_.release(tok); return {}; }
+        if (!info.pMappedData) { b.reset(); core_.release(tok, ctx.tracker()); return {}; }
         mapped_[tok.slot] = info.pMappedData;
         cap_[tok.slot] = bytes;
     }
@@ -42,12 +43,17 @@ const void* ReadbackRing::poll(VulkanContext& ctx, ReadbackToken tok, uint64_t e
     if (st == ReadbackState::Stale) {
         ++stale_;
         if (staleOut) *staleOut = true;
-        core_.release(tok);
+        core_.release(tok, ctx.tracker());
         return nullptr;
     }
     if (st == ReadbackState::Pending) return nullptr;
     vmaInvalidateAllocation(ctx.allocator(), buf_[tok.slot].allocation(), 0, VK_WHOLE_SIZE);   // non-coherent host-cached memory
     return mapped_[tok.slot];
+}
+
+void ReadbackRing::release(VulkanContext& ctx, ReadbackToken tok) {
+    ctx.poll();
+    core_.release(tok, ctx.tracker());
 }
 
 const void* ReadbackRing::wait(VulkanContext& ctx, ReadbackToken tok, uint64_t expectedTag, uint64_t timeoutNs) {

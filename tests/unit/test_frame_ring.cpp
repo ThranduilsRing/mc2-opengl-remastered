@@ -26,6 +26,23 @@ TEST_CASE("allocations bump and align inside the frame slot") {
     CHECK(r.peak() == 256 + 100 + 1);
 }
 
+TEST_CASE("a slot whose previous user is unproven keeps its head (timed-out ticket wait)") {
+    FrameRingCore r;
+    r.setCapacity(512);
+    uint64_t a = 0, b = 0, c = 0;
+    r.beginFrame(2);
+    CHECK(r.alloc(300, 1, &a));
+    CHECK(a == 0);
+    r.beginFrame(3);
+    r.beginFrame(4, false);                              // F-2 not proven complete: no restart
+    CHECK(r.alloc(100, 1, &b));
+    CHECK(b == 300);                                     // bumps past F-2's bytes, never onto them
+    CHECK_FALSE(r.alloc(200, 1, &c));                    // a full slot fails soft
+    r.beginFrame(6);                                     // proven: restarts
+    CHECK(r.alloc(10, 1, &c));
+    CHECK(c == 0);
+}
+
 TEST_CASE("the two frames in flight never share bytes") {
     FrameRingCore r;
     r.setCapacity(512);
