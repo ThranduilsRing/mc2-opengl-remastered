@@ -1263,7 +1263,8 @@ VkDescriptorSet ImGui_ImplVulkan_AddTexture(VkSampler sampler, VkImageView image
     VkDescriptorPool pool = bd->DescriptorPool ? bd->DescriptorPool : v->DescriptorPool;
 
     // Create Descriptor Set:
-    VkDescriptorSet descriptor_set;
+    // MC2 local change: an exhausted pool returns VK_NULL_HANDLE (no descriptor update on a garbage handle); the caller skips the draw.
+    VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
     {
         VkDescriptorSetAllocateInfo alloc_info = {};
         alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1271,7 +1272,8 @@ VkDescriptorSet ImGui_ImplVulkan_AddTexture(VkSampler sampler, VkImageView image
         alloc_info.descriptorSetCount = 1;
         alloc_info.pSetLayouts = &bd->DescriptorSetLayout;
         VkResult err = vkAllocateDescriptorSets(v->Device, &alloc_info, &descriptor_set);
-        check_vk_result(err);
+        if (err != VK_SUCCESS)
+            return VK_NULL_HANDLE;
     }
 
     // Update the Descriptor Set:
