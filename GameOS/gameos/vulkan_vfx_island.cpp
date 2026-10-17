@@ -207,7 +207,7 @@ bool ensure_ssbo(VfxIsland* s, VkDeviceSize bytes) {
 // Copy one level of RGBA8 / BC7 texels into `page.img` and point `page.set` at it. Runs before the frame is
 // recorded: it borrows the frame's command buffer and fence and waits for the copy, so no frame work is in flight.
 bool upload_page(VfxIsland* s, SpritePage& page, const GosTexels& t) {
-    const VkFormat fmt = mc2vk::texelFormat(t.vkFormat);
+    const VkFormat fmt = mc2vk::texelFormat(t.vkFormat == 146u ? 145u : t.vkFormat);   // ROW29-TEMP raw texels
     mc2vk::OwnedBuffer stg;
     if (!make_buffer(s, t.bytes->size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stg, "vfx.staging")) return false;
     if (!stg.upload(t.bytes->data(), t.bytes->size())) return false;
