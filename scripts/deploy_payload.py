@@ -40,6 +40,7 @@ import csv
 import ctypes
 import datetime
 import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -118,19 +119,7 @@ BUILDING_PBR_PAYLOAD = [
 GAME_DATA_PAYLOAD = [
     "data/terrain_materials.json",
     "data/visual_tuning.json",
-    # Cement-pad proper asset fix (deferred item 3, supersedes the ead760df
-    # "asset cook" TODO): the painted-concrete NORMAL map loaded into
-    # matNormalArray layer 6 / MAT_LAYER_PAINTED_CONC by terrtxm2.cpp's
-    # materialArrays block and sampled AS A NORMAL for cement-pad relief
-    # (terrain_lod_chunk.frag ~1031, gos_terrain.frag ~720). Installs deployed
-    # between 2026-06-14 and this fix carry an ALBEDO image in this slot
-    # (the CEMENT-DETAIL-COLOR era literal swap; backup kept on installs as
-    # mat6_normal.tga.orig_normal), which corrupts pad relief lighting.
-    # Tracked in-repo + shipped here so every deploy mechanically restores the
-    # true normal map. Cement pad ALBEDO does NOT come from this file -- it is
-    # sampled from the cement diffuse atlas (tex3 / u_cementAtlas) since
-    # ead760df, which is the permanent path, not a stopgap.
-    "data/textures/mat6_normal.tga",
+
 ]
 
 # TERRAIN-MATERIAL-TEXTURES-1: per-layer BC7 sRGB albedo KTX2s read off
@@ -1041,8 +1030,54 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
 # Deploy + verify
 # ---------------------------------------------------------------------------
 
+
+GOLDEN_NORMAL_ROOT = Path("A:/Games/mc2-opengl/mc2-win64-v0.4c")
+NORMAL_MANIFEST = Path(__file__).with_name("terrain_normals.json")
+
+
+def ensure_terrain_normals(target_dir):
+    """Verify required modern normals; read golden assets without modifying them.
+
+    Replace destination entries atomically so shared data hardlinks stay intact.
+    Correct files are never rewritten. Refuse unavailable or changed golden bytes.
+    """
+    hashes = {}
+    try:
+        manifest = json.loads(NORMAL_MANIFEST.read_text(encoding="utf-8"))
+        expected_paths = {f"data/textures/mat{i}_normal.tga" for i in range(9)}
+        if set(manifest) != expected_paths or any(
+                not re.fullmatch(r"[0-9a-f]{40}", h) for h in manifest.values()):
+            raise ValueError("invalid terrain normal manifest")
+        for rel, expected in manifest.items():
+            dst = Path(target_dir) / rel
+            if not dst.is_file() or hashlib.sha1(dst.read_bytes()).hexdigest() != expected:
+                src = GOLDEN_NORMAL_ROOT / rel
+                content = src.read_bytes()
+                if hashlib.sha1(content).hexdigest() != expected:
+                    raise ValueError(f"golden terrain normal hash mismatch: {src}")
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                temporary = None
+                try:
+                    with tempfile.NamedTemporaryFile(dir=dst.parent, delete=False) as out:
+                        temporary = Path(out.name)
+                        out.write(content)
+                    os.replace(temporary, dst)
+                finally:
+                    if temporary is not None and temporary.exists():
+                        temporary.unlink()
+                log(f"restored required terrain normal: {rel}")
+            content = dst.read_bytes()
+            if hashlib.sha1(content).hexdigest() != expected:
+                raise ValueError(f"deployed terrain normal hash mismatch: {dst}")
+            hashes[rel] = (hashlib.sha256(content).hexdigest(), len(content))
+        log("terrain normals verified: 9/9")
+    except (OSError, ValueError, TypeError) as exc:
+        fail(f"required terrain normals unavailable: {exc}")
+    return hashes
+
+
 def deploy(items, target_dir, allow_stale_pdb, preserve=()):
-    src_hashes = {}
+    src_hashes = ensure_terrain_normals(target_dir)
     shader_mismatches = []
     pdb_problem = None
     preserve = {p.replace(os.sep, "/") for p in preserve}

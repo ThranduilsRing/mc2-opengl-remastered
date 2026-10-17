@@ -104,6 +104,11 @@ PRESENCE_RULES: tuple = (
 )
 
 MARKER_BUCKETS: tuple = (
+    # Stock tier1 baseline must be clean; missing textures are install failures.
+    MarkerBucket(re.compile(r"\[SPLATTING\] FAILED\b"),
+                 "splatting_failed", "red", "allow_splatting_failed"),
+    MarkerBucket(re.compile(r"\[TEXMGR_MISSING\]"),
+                 "texmgr_missing", "red", None),
     # G4: a VK gate resolved before main() was read by a static initializer, i.e. ahead of the launcher's
     # environment apply, so it can disagree with the environment the game then runs under. The VK gates
     # are read lazily; Gates/gate.cpp dumpConfig reports every snapshotted pre-main VK slot as

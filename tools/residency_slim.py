@@ -1,35 +1,17 @@
 #!/usr/bin/env python3
 """residency_slim.py - residency-aware slim deploy for data/tgl/128 (v1).
 
-The blind fst_repack_drop.py dropped EVERY data/tgl/128/*.tga, including the
-CPU_RGBA_REQUIRED mech/vehicle paint textures (*rgb) -> mechs rendered
-untextured. This tool drops ONLY the tgas that are provably safe to remove
-(GPU-sampled / static-prop, which load from the BC7 .ktx2 via route-2 +
-the bdactor gate fix), and KEEPS every CPU-required source. Fails before
-touching anything if it cannot classify a texture (unless --allow-unknown).
-
-SCOPE v1: operates ONLY on <deploy>/data/tgl/128. data/art, terrain splat
-mats (data/textures/mat*), and burnin colormaps are structurally outside /128
-and are never touched here.
-
-Classification (per data/tgl/128/*.tga):
-  KEEP  cpu_required   name matches *rgb.tga  (mech/vehicle paint, gos_LockTexture)
-  KEEP  no_ktx2        no same-stem .ktx2 exists (no GPU substitute)
-  DROP  gpu_ktx2       same-stem .ktx2 exists AND not a KEEP rule
-  unknown              (none under these rules; bucket reserved for future scope)
-
-On --apply: repack tgl.fst dropping only the DROP set's data/tgl/128/*.tga
-entries, and move the DROP-set loose tgas into <128>/_tga_slim_backup/.
---restore undoes both. Default action is --dry-run (prints the validator line,
-changes nothing).
+Slimming moves only observed GPU-only loose tgas into a local backup.
+The complete stock FST is the fallback beneath loose overrides and must never
+lose entries. Neither apply nor restore writes an FST (including .preslim).
 """
 import argparse
 import os
 import re
-import struct
+import shutil
 import sys
 
-# Reuse the proven fst parse/rebuild from fst_repack_drop.py.
+# Reuse the FST parser for the non-removing legacy API.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fst_repack_drop as fstlib  # parse(), ENTRY_SIZE
 
@@ -89,19 +71,14 @@ def classify(d128, observed_paint, observed):
 
 
 def repack_fst(src_fst, dst_fst, drop_paths_lower):
+    """Legacy API: entry removal is forbidden, including calls outside main()."""
+    if drop_paths_lower:
+        raise ValueError("FST entry removal is forbidden; slim loose files only")
     data = open(src_fst, "rb").read()
-    version, entries = fstlib.parse(data)
-    kept = [e for e in entries if e["name"].lower().replace("\\", "/") not in drop_paths_lower]
-    dropped = len(entries) - len(kept)
-    cur = 8 + len(kept) * fstlib.ENTRY_SIZE
-    out = bytearray(struct.pack("<II", version, len(kept)))
-    table, blob = bytearray(), bytearray()
-    for e in kept:
-        table += struct.pack("<IIII", cur, e["size"], e["real"], e["hash"])
-        table += e["name_field"]; blob += e["payload"]; cur += e["size"]
-    out += table + blob
-    open(dst_fst, "wb").write(out)
-    return len(entries), len(kept), dropped
+    _, entries = fstlib.parse(data)
+    if os.path.abspath(src_fst) != os.path.abspath(dst_fst):
+        shutil.copyfile(src_fst, dst_fst)
+    return len(entries), len(entries), 0
 
 
 def main():
@@ -109,7 +86,7 @@ def main():
     ap.add_argument("deploy_root")
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--dry-run", action="store_true", help="classify + print only (default)")
-    g.add_argument("--apply", action="store_true", help="repack fst + move DROP tgas to backup")
+    g.add_argument("--apply", action="store_true", help="move DROP loose tgas to backup; keep stock FST intact")
     g.add_argument("--restore", action="store_true", help="undo a prior --apply")
     ap.add_argument("--trace", nargs="+", default=[],
                     help="[TEXLOAD] trace file(s) (MC2_TEXMGR_LOAD_TRACE=1 output / "
@@ -121,15 +98,11 @@ def main():
     args = ap.parse_args()
 
     d128 = os.path.join(args.deploy_root, "data", "tgl", "128")
-    fst = os.path.join(args.deploy_root, "tgl.fst")
     bk = os.path.join(d128, BACKUP_DIR)
     if not os.path.isdir(d128):
         print(f"FAIL: {d128} not found"); sys.exit(2)
 
     if args.restore:
-        pre = fst + ".preslim"
-        if os.path.isfile(pre):
-            os.replace(pre, fst); print(f"[slim] restored tgl.fst")
         n = 0
         if os.path.isdir(bk):
             for f in os.listdir(bk):
@@ -161,15 +134,10 @@ def main():
         sys.exit(1)
 
     if not args.apply:
-        print("[slim] dry-run only (use --apply to repack/move).")
+        print("[slim] dry-run only (use --apply to move loose files).")
         return
 
-    # --apply: residency-aware fst repack + loose move.
-    drop_fst_keys = {f"data/tgl/128/{n.lower()}" for n in drop}
-    if not os.path.isfile(fst + ".preslim"):
-        import shutil; shutil.copyfile(fst, fst + ".preslim")
-    tot, kept, dropped = repack_fst(fst + ".preslim", fst, drop_fst_keys)
-    print(f"[slim] tgl.fst {tot} -> {kept} entries ({dropped} dropped)")
+    # Loose overrides may be slimmed; the stock archive stays complete.
     os.makedirs(bk, exist_ok=True)
     for n in drop:
         os.replace(os.path.join(d128, n), os.path.join(bk, n))
