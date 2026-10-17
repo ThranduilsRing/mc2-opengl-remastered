@@ -133,21 +133,10 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
-// The three producers run under the VK umbrella (each row is a kill switch, on by default). The umbrella is asked on every call, not cached: a session that
-// fail-softs to GL mid-run must stop producing VK shadows at once.
+// The shadow producers (dynamic map, near-cascade array, full-map cascade) run under the VK umbrella. The umbrella is asked on every call, not
+// cached, so the opt-out backend produces no VK shadows.
 bool shadowInteropGateRequested() {
-    static const bool killSwitchOn = mc2::gate::get<"MC2_VK_SHADOW_INTEROP">();
-    return killSwitchOn && mc2vkgate::umbrellaOn();
-}
-
-bool csmFullMapInteropGateRequested() {
-    static const bool killSwitchOn = mc2::gate::get<"MC2_VK_CSM_FULLMAP_INTEROP">();
-    return killSwitchOn;
-}
-
-bool csmArrayInteropGateRequested() {
-    static const bool killSwitchOn = mc2::gate::get<"MC2_VK_CSM_ARRAY_INTEROP">();
-    return killSwitchOn;
+    return mc2vkgate::umbrellaOn();
 }
 
 // The island is unconditionally direct-chain-native. Kept as a named constant
@@ -1318,7 +1307,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     const void* instances, unsigned int instanceCount,
     float biasFactor, float biasUnits) {
     g_csmFullMapReadyThisFrame = false;
-    if (!shadowInteropGateRequested() || !csmFullMapInteropGateRequested()) return 0;
+    if (!shadowInteropGateRequested()) return 0;
     if (size <= 0 || !lightSpace16) return 0;
     ShadowIsland* s = parkedIsland();
     if (!s || s->disabled || !s->inited || !(s->useInterop || s->directChain)) return 0;
@@ -1348,7 +1337,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
         g_csmArrayReadyThisFrame = false;
         if (ShadowIsland* parked = parkedIsland()) parked->csmArrayRenderedMask = 0;
     }
-    if (!shadowInteropGateRequested() || !csmArrayInteropGateRequested()) return 0;
+    if (!shadowInteropGateRequested()) return 0;
     if (size <= 0 || layers <= 0 || layerIndex < 0 || layerIndex >= layers) return 0;
     if (!lightSpace16) return 0;
     ShadowIsland* s = parkedIsland();

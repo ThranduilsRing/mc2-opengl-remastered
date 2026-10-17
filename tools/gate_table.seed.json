@@ -24853,62 +24853,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_CSM_ARRAY_INTEROP",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-CSM-ARRAY-DIRECT-1: presence-gated =1, default OFF.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_shadow_island_live.cpp:148",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_CSM_ARRAY_INTEROP",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_CSM_FULLMAP_INTEROP",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-CSM-FULLMAP-DIRECT-1: presence-gated =1, default OFF.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_shadow_island_live.cpp:139",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_CSM_FULLMAP_INTEROP",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_FEED_DUMP",
    "kind": "String",
    "default": "",
@@ -25715,35 +25659,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_SHADOW_INTEROP",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VK-P8a SHADOW-INTEROP: presence-gated =1, default OFF.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_shadow_island_live.cpp:130",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "0",
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_SHADOW_INTEROP",
    "retireVerdict": ""
   },
   {

@@ -1496,20 +1496,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "VK-FIELD-VFX-8: GL twin of MC2_VK_PRESENT_DUMP_ON_FIRE.",
     },
     {
-        "MC2_FEATURE_VK_CSM_ARRAY_INTEROP",
-        "MC2_VK_CSM_ARRAY_INTEROP",
-        EnvVarKind::Feature,
-        true,
-        "VK near-cascade array producer, on under the VK umbrella; =0 turns it off (terrain then loses the near cascades).",
-    },
-    {
-        "MC2_FEATURE_VK_CSM_FULLMAP_INTEROP",
-        "MC2_VK_CSM_FULLMAP_INTEROP",
-        EnvVarKind::Feature,
-        true,
-        "VK full-map cascade producer, on under the VK umbrella; =0 turns it off (terrain then loses the far cascade).",
-    },
-    {
         "MC2_FEATURE_VK_FORCE_FAIL",
         "MC2_VK_FORCE_FAIL",
         EnvVarKind::Trace,
@@ -1564,13 +1550,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Trace,
         false,
         "VK present-tail deletion-readiness canary.",
-    },
-    {
-        "MC2_FEATURE_VK_SHADOW_INTEROP",
-        "MC2_VK_SHADOW_INTEROP",
-        EnvVarKind::Feature,
-        true,
-        "VK shadow-caster island (dynamic map, cascades, mech casters), on under the VK umbrella; =0 turns every VK shadow producer off.",
     },
     {
         "MC2_TRACE_VK_SHADOW_MATRIX_DIAG",

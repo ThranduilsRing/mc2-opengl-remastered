@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 970
-registry_entry_count: 198
-verified_count: 960
+gate_count: 967
+registry_entry_count: 195
+verified_count: 957
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -6798,24 +6798,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_VK_CSM_ARRAY_INTEROP
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: vk
-    doc: "VK near-cascade array producer, on under the VK umbrella; =0 turns it off (terrain then loses the near cascades)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VK_CSM_ARRAY_INTEROP, kind: Feature, order: -1, default_on: true}
-  - name: MC2_VK_CSM_FULLMAP_INTEROP
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: vk
-    doc: "VK full-map cascade producer, on under the VK umbrella; =0 turns it off (terrain then loses the far cascade)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VK_CSM_FULLMAP_INTEROP, kind: Feature, order: -1, default_on: true}
   - name: MC2_VK_FEED_DUMP
     kind: String
     default: ""
@@ -7054,15 +7036,6 @@ flags:
     owner: code
     doc: ""
     verified: true
-  - name: MC2_VK_SHADOW_INTEROP
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: vk
-    doc: "VK shadow-caster island (dynamic map, cascades, mech casters), on under the VK umbrella; =0 turns every VK shadow producer off."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VK_SHADOW_INTEROP, kind: Feature, order: -1, default_on: true}
   - name: MC2_VK_SHADOW_MATRIX_DIAG
     kind: Bool
     default: false

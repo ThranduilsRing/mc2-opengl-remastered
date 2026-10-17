@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 970;
+inline constexpr std::size_t kGateCount = 967;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -893,8 +893,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VIS_SEMANTICS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VIS_SEMANTICS_TRACE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VIS_SEMANTICS_TRACE_EVERY", Kind::Int, Rule::Prefix, {}},
-    {"MC2_VK_CSM_ARRAY_INTEROP", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_VK_CSM_FULLMAP_INTEROP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_FEED_DUMP", Kind::String, Rule::Std, {}},
     {"MC2_VK_FORCE_FAIL", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VK_GPU_TIMESTAMPS", Kind::Bool, Rule::Presence, {}},
@@ -925,7 +923,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_PROP_PACKET_DUMP", Kind::String, Rule::Std, {}},
     {"MC2_VK_PROP_PERF", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VK_SELECT_TEST", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_VK_SHADOW_INTEROP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_SHADOW_MATRIX_DIAG", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VK_SHARED_GBUFFER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_SHARED_SCENE_STRICT", Kind::Bool, Rule::Exact1, {}},
