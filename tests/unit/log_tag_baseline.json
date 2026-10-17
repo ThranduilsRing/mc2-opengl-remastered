@@ -231,6 +231,38 @@
    "count": 2
   },
   {
+   "tag": "ALLOC_SITE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "rank",
+    "blocks",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ALLOC_SKIPPED",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "blocks"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ALLOC_SURVIVORS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "gen",
+    "blocks",
+    "bytes",
+    "sites"
+   ],
+   "count": 1
+  },
+  {
    "tag": "ALLOC_TICK",
    "ver": -1,
    "stream": "stdout",

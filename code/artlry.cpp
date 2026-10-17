@@ -633,6 +633,11 @@ bool ArtilleryType::handleDestruction (GameObjectPtr collidee, GameObjectPtr col
 //***************************************************************************
 void Artillery::init (bool create) 
 {
+	// Pool reuse (create=false) arrives holding the previous round's appearance/bomber/effects; free them before
+	// the resets below orphan them. destroy() is idempotent (nulls what it frees). The constructor (create=true) has nothing yet.
+	if (!create)
+		destroy();
+
 	artilleryType = ARTILLERY_SMALL;
 
 	initFlags();
