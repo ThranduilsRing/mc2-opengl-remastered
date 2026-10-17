@@ -158,7 +158,7 @@ void Mission::initCoreSystems() {
 	mission_phase_mark("setup_tgl_ready"); // LOAD-PHASE-FACTS-1
 	
 	missionHeap = new UserHeap;
-	gosASSERT(missionHeap != NULL);
+	gosASSERT(missionHeap != nullptr);
 	
 	missionHeap->init(missionHeapSize,"MISSION");
 }
@@ -471,7 +471,7 @@ void Mission::initSkyAndTeamReset(MissionInitFrame& f) {
 			Team::home = Team::teams[0];
 			Commander::home = Commander::commanders[0];
 			MC2_VERIFY(Team::numTeams == 2 && Commander::numCommanders == 2 &&
-					Team::home != NULL && Commander::home != NULL,
+					Team::home != nullptr && Commander::home != nullptr,
 				"MC2_MISSION_CYCLE_TEST: synthetic populate wrong "
 				"(teams=%ld commanders=%ld)", Team::numTeams, Commander::numCommanders);
 
@@ -481,8 +481,8 @@ void Mission::initSkyAndTeamReset(MissionInitFrame& f) {
 			// destroy frees again). MUST be a clean no-op with home NULL.
 			Mission::resetTeamsAndCommanders();
 			MC2_VERIFY(Team::numTeams == 0 && Commander::numCommanders == 0 &&
-					Team::home == NULL && Commander::home == NULL &&
-					Team::teams[0] == NULL && Commander::commanders[0] == NULL,
+					Team::home == nullptr && Commander::home == nullptr &&
+					Team::teams[0] == nullptr && Commander::commanders[0] == nullptr,
 				"MC2_MISSION_CYCLE_TEST: reset not idempotent / home not nulled "
 				"(teams=%ld commanders=%ld home=%p/%p slot0=%p/%p)",
 				Team::numTeams, Commander::numCommanders,
@@ -614,10 +614,10 @@ void Mission::initTeamsAndCommanders(long loadType, Stuff::Vector3D* dropZoneLis
 		// aligned with the existing CRASH-HARDEN STOP (b71702ba) below -- in
 		// fatal mode the verify stops first with the same message; in log/off
 		// mode the legacy STOP path is preserved unchanged.
-		MC2_VERIFY((Team::teams[0] != NULL) && (Commander::commanders[0] != NULL),
+		MC2_VERIFY((Team::teams[0] != nullptr) && (Commander::commanders[0] != nullptr),
 			"mission has no commanders -- invalid mission data (no [Parts] with TeamId/CommanderId): %s",
 			missionName ? missionName : "(null)");
-		if ((Team::teams[0] == NULL) || (Commander::commanders[0] == NULL))
+		if ((Team::teams[0] == nullptr) || (Commander::commanders[0] == nullptr))
 			STOP(("mission has no commanders -- invalid mission data (no [Parts] with TeamId/CommanderId): %s",
 			      missionName ? missionName : "(null)"));
 		Team::home = Team::teams[0];
@@ -634,7 +634,7 @@ void Mission::initTeamsAndCommanders(long loadType, Stuff::Vector3D* dropZoneLis
 			if (ctlCommander > -1) {
 				if (!MC2_VERIFY_BOUNDS(ctlCommander, MAX_COMMANDERS, "Mission::init commandersToLoad commander") ||
 					!MC2_VERIFY_BOUNDS(ctlTeam, MAX_TEAMS, "Mission::init commandersToLoad team") ||
-					!MC2_VERIFY((Commander::commanders[ctlCommander] != NULL) && (Team::teams[ctlTeam] != NULL),
+					!MC2_VERIFY((Commander::commanders[ctlCommander] != nullptr) && (Team::teams[ctlTeam] != nullptr),
 						"Mission::init: commandersToLoad[%ld] names uninitialized commander %ld / team %ld",
 						i, ctlCommander, ctlTeam))
 					continue;	// log mode: skip the malformed entry
@@ -650,10 +650,10 @@ void Mission::initTriggerAndDropZone(MissionInitFrame& f) {
 	auto& result = f.result;
 	if (Mover::triggerAreaMgr) {
 		delete Mover::triggerAreaMgr;
-		Mover::triggerAreaMgr = NULL;
+		Mover::triggerAreaMgr = nullptr;
 	}
 	Mover::triggerAreaMgr = new TriggerAreaManager;
-	Assert(Mover::triggerAreaMgr != NULL, 0, " Mossion.init: unable to init triggerAreaMgr ");
+	Assert(Mover::triggerAreaMgr != nullptr, 0, " Mossion.init: unable to init triggerAreaMgr ");
 
 	SensorManager = std::make_unique<SensorSystemManager>();
 	Assert(SensorManager != nullptr, 0, " Unable to init sensor system manager ");
@@ -706,7 +706,7 @@ void Mission::initMissionSettings(MissionInitFrame& f) {
 	}
 
 	craterManager = (CraterManagerPtr)missionHeap->Malloc(sizeof(CraterManager));
-	gosASSERT(craterManager != NULL);
+	gosASSERT(craterManager != nullptr);
 	::new (craterManager) CraterManager;
 		
 	result = craterManager->init(1000,20479,"feet");
@@ -739,7 +739,7 @@ void Mission::initTerrain(MissionInitFrame& f) {
 
 	land->getColorMapName(missionFile);
 
-	gosASSERT(land != NULL);
+	gosASSERT(land != nullptr);
 
 	loadProgress = 15.0f;
 
@@ -824,7 +824,7 @@ void Mission::initPathfinding(MissionInitFrame& f) {
 		if (moveSide > 0) {
 			mc2::fmt::print_out("[MISSION] synthesizing blank MOVE: moveSide={:d} (terrainVtx={:d})\n", mc2::fmt::as_i32(moveSide), mc2::fmt::as_i32((int)Terrain::realVerticesMapSide));
 			fflush(stdout);
-			MOVE_buildData(moveSide, moveSide, NULL /*all-passable blank*/, 0, NULL);
+			MOVE_buildData(moveSide, moveSide, nullptr /*all-passable blank*/, 0, nullptr);
 			if (GameMap)
 				GameMap->placeMoversCallback = PlaceMovers;
 		}
@@ -917,7 +917,7 @@ void Mission::initMissionScript(MissionInitFrame& f) {
 	}
 	
 	missionBrain = new ABLModule;
-	gosASSERT(missionBrain != NULL);
+	gosASSERT(missionBrain != nullptr);
 		
 #ifdef _DEBUG
 	long brainErr = 
@@ -928,7 +928,7 @@ void Mission::initMissionScript(MissionInitFrame& f) {
 	missionBrain->setName("Mission");
 
 	missionBrainParams = new ABLParam;
-	gosASSERT(missionBrainParams != NULL);
+	gosASSERT(missionBrainParams != nullptr);
 
 	missionBrainCallback = missionBrain->findFunction("handlemessage", TRUE);
 

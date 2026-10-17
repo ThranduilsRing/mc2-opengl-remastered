@@ -25,10 +25,10 @@ inline constexpr int WEAPON_STATUS_NO_CHANCE = -5;
 inline constexpr int WEAPON_STATUS_TOO_HOT = -6;
 
 class GoalObject;
-typedef GoalObject* GoalObjectPtr;
+using GoalObjectPtr = GoalObject*;
 
 class MechWarrior;
-typedef MechWarrior* MechWarriorPtr;
+using MechWarriorPtr = MechWarrior*;
 
 //------------------------------------------------------------------------------
 #endif

@@ -71,12 +71,12 @@ MissionBegin::MissionBegin()
 	curScreenX = -1;
 	curScreenY = 1;
 
-	mainMenu = NULL;
+	mainMenu = nullptr;
 
 	bSplash = 0;
 	bMultiplayer = 0;
 	animJustBegun = 0;
-	placeHolderScreen = NULL;
+	placeHolderScreen = nullptr;
 
 }
 
@@ -91,26 +91,26 @@ MissionBegin::~MissionBegin()
 			if ( singlePlayerScreens[i][j] )
 			{
 				delete singlePlayerScreens[i][j];
-				singlePlayerScreens[i][j] = NULL;
+				singlePlayerScreens[i][j] = nullptr;
 			}
 			if ( multiplayerScreens[i][j] )
 			{
 				delete multiplayerScreens[i][j];
-				multiplayerScreens[i][j] = NULL;
+				multiplayerScreens[i][j] = nullptr;
 			}
 		}
 	}
 
 	delete LogisticsMechIcon::s_pTemplateIcon;
-	LogisticsMechIcon::s_pTemplateIcon = NULL;
+	LogisticsMechIcon::s_pTemplateIcon = nullptr;
 
 	delete placeHolderScreen;
-	placeHolderScreen = NULL;
+	placeHolderScreen = nullptr;
 
 	if (mainMenu)
 	{
 		delete mainMenu;
-		mainMenu = NULL;
+		mainMenu = nullptr;
 	}
 }
 
@@ -335,7 +335,7 @@ void MissionBegin::begin()
 		logisticsScriptHandle = ABLi_preProcess(brainFileName, &numErrors, &numLinesProcessed);
 		if (logisticsScriptHandle >= 0) {
 			logisticsBrain = new ABLModule;
-			gosASSERT(logisticsBrain != NULL);
+			gosASSERT(logisticsBrain != nullptr);
 
 	#ifdef _DEBUG
 			long brainErr =
@@ -351,7 +351,7 @@ void MissionBegin::begin()
 	else
 	{
 		logisticsScriptHandle = 0;
-		logisticsBrain = NULL;
+		logisticsBrain = nullptr;
 	}
 
 	// CRASH-SOAK harness marker: report whether a logistics ABL brain was
@@ -359,7 +359,7 @@ void MissionBegin::begin()
 	// entry); always emitted so it shows up regardless of soak gate.
 	printf("[SOAK] abl logistics brain=%s loaded=%d\n",
 		brainfile.empty() ? "(none)" : brainfile.c_str(),
-		(logisticsBrain != NULL) ? 1 : 0);
+		(logisticsBrain != nullptr) ? 1 : 0);
 	fflush(stdout);
 
 	//---------------------------------------------
@@ -450,13 +450,13 @@ void MissionBegin::begin()
 	MissionBriefingScreen*		pBriefingScreen;
 	LoadScreenWrapper*			pLoadScreen;
 
-	pMissionSelectionScreen = NULL;
-	pMechBayScreen = NULL;
-	pPilotSelectionScreen = NULL;
-	pMechLabScreen = NULL;
-	pPurchaseMechScreen = NULL;
-	pBriefingScreen = NULL;
-	pLoadScreen = NULL;
+	pMissionSelectionScreen = nullptr;
+	pMechBayScreen = nullptr;
+	pPilotSelectionScreen = nullptr;
+	pMechLabScreen = nullptr;
+	pPurchaseMechScreen = nullptr;
+	pBriefingScreen = nullptr;
+	pLoadScreen = nullptr;
 
 	bDone = 0;
 
@@ -683,7 +683,7 @@ void MissionBegin::init()
 
 void MissionBegin::end()
 {
-	logisticsBrain = NULL;
+	logisticsBrain = nullptr;
 	closeABL();
 }
 
@@ -1664,7 +1664,7 @@ const char* MissionBegin::update()
 {
 	updateDumpFrontEndState();
 
-	if (updateSplash()) return pendingPreVideo.empty() ? NULL : pendingPreVideo.c_str();
+	if (updateSplash()) return pendingPreVideo.empty() ? nullptr : pendingPreVideo.c_str();
 
 	leftAnim.update();
 	rightAnim.update();
@@ -1707,10 +1707,10 @@ const char* MissionBegin::update()
 			{
 				MPlayer->closeSession();
 				delete MPlayer;
-				MPlayer = NULL;
+				MPlayer = nullptr;
 			}
 				
-			return NULL;
+			return nullptr;
 		}
 
 		if ( pCurScreen->getStatus() == LogisticsScreen::READYTOLOAD && 
@@ -1722,7 +1722,7 @@ const char* MissionBegin::update()
 	else
 		bDone = true;
 
-	return NULL;
+	return nullptr;
 
 }
 
@@ -1926,10 +1926,10 @@ void MissionBegin::beginMPlayer()
 
 
 		//multiplayer setup screens
-	MPConnectionType*		pMPConnectionType = NULL;
-	placeHolderScreen = NULL;
-	MPGameBrowser*		pMPGameBrowser = NULL;
-	MPParameterScreen*		pMPParameterScreen = NULL;
+	MPConnectionType*		pMPConnectionType = nullptr;
+	placeHolderScreen = nullptr;
+	MPGameBrowser*		pMPGameBrowser = nullptr;
+	MPParameterScreen*		pMPParameterScreen = nullptr;
 
 	char path[512];
 	FitIniFile file;
@@ -2126,7 +2126,7 @@ void MissionBegin::restartMPlayer( const char* playerName )
 void MissionBegin::beginZone()
 {
 	beginMPlayer();
-	restartMPlayer(NULL);
+	restartMPlayer(nullptr);
 	bReadyToLoad = 0;
 	bDone = 0;
 
