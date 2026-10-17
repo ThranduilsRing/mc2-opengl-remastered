@@ -87,6 +87,7 @@
 extern float scenarioTime;
 
 class BldgAppearance;
+#include "warrior_queue_markers.h"
 
 //***************************************************************************
 
@@ -900,6 +901,9 @@ class MechWarrior {
 		bool					tacOrderQueueLooping;
 		char					numTacOrdersQueued;	// Currently, only player orders may be queued...
 		QueuedTacOrderPtr		tacOrderQueue;
+		// B7o.4: runtime owners of the queued waypoint markers, index-parallel to the queue slice (a marker exists only for slot < numTacOrdersQueued).
+		// The wire record QueuedTacOrder::marker is dead storage (always null); never copy these, never save them.
+		mc2::QueueMarkerArray<BldgAppearance, MAX_QUEUED_TACORDERS_PER_WARRIOR> queueMarkers;
 		int32_t					tacOrderQueueIndex;
 		int32_t					nextTacOrderId;
 		int32_t					lastTacOrderId;
@@ -986,9 +990,7 @@ class MechWarrior {
 
 		void destroy (void);
 
-		~MechWarrior (void)	{
-			destroy();
-		}
+		~MechWarrior (void);	// out of line: queueMarkers holds unique_ptr<BldgAppearance>, complete only in warrior.cpp
 
 		long init (FitIniFile* warriorFile);
 
@@ -1286,6 +1288,7 @@ class MechWarrior {
 		// TacOrderQueue routines...
 
 		bool enableTacOrderQueue (void);
+		void resetQueueMarkers (void) { mc2::resetQueueMarkers(queueMarkers); }	// the one wholesale clear (init, destroy, pool reset)
 
 		long addQueuedTacOrder (TacticalOrder tacOrder);
 
@@ -2112,7 +2115,7 @@ class MechWarrior {
 
 		bool isCloseToFirstTacOrder( Stuff::Vector3D& pos );
 
-		BldgAppearance* getWayPointMarker( const Stuff::Vector3D& pos, const char* name );
+		std::unique_ptr<BldgAppearance> getWayPointMarker( const Stuff::Vector3D& pos, const char* name );
 
 
 		void setDebugString (long stringNum, char* s) {

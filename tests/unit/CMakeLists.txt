@@ -409,3 +409,6 @@ set_source_files_properties(test_part_archive.cpp
 target_sources(mc2_tests PRIVATE test_tg_type_node_dtor.cpp)
 # B7o.3: actor appearance owner protocol (header-only, code/appearance_owner.h)
 target_sources(mc2_tests PRIVATE test_actor_appearance_owner.cpp)
+
+# B7o.4: queued waypoint marker owners (header-only, code/warrior_queue_markers.h): byte-level oracle histories, final pool slice (ASan), rebind, restore
+target_sources(mc2_tests PRIVATE test_warrior_queue_markers.cpp)

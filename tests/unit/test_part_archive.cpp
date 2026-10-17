@@ -18,6 +18,7 @@ long RandomNumber(long) { return 0; }
 MechWarrior* MechWarrior::warriorList[MAX_WARRIORS] = {};
 void MechWarrior::init(bool) {}
 void MechWarrior::destroy() {}
+MechWarrior::~MechWarrior() {}
 void TacticalOrder::init() {}
 void TacticalOrder::destroy() {}
 void TargetPriorityList::init() {}
