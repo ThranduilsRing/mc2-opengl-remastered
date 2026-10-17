@@ -63,11 +63,9 @@ VkBuffer SharedLightFeed::acquire(VmaAllocator allocator, VkDevice device, const
     OwnedBuffer& sl = slots_[slot];
     if (!sl || (VkDeviceSize)cpuBytes > caps_[slot]) {
         if (sl) {
-            // Growth frees a buffer an in-flight submit may still read, so the
-            // device idles first. Rare: a few times around mission start as the
-            // light count ramps.
-            vkDeviceWaitIdle(device);
-            sl.reset();
+            // Growth drops a buffer an in-flight submit may still read: it is parked in the deferred-destroy queue and freed once the frame that
+            // may use it has completed. Rare: a few times around mission start as the light count ramps.
+            getOrCreateEngineVulkanContext().retire(std::move(sl), caps_[slot]);
         }
         const VkDeviceSize cap = (VkDeviceSize)cpuBytes + (VkDeviceSize)cpuBytes / 2 + 4096;
         VkBufferCreateInfo bci{};

@@ -977,7 +977,7 @@ void diagVkRead(ShadowIsland* s, VkImage img, uint32_t layer, int dim, std::vect
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1, &br);
     vkEndCommandBuffer(cb);
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO}; si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (vkQueueSubmit(s->queue, 1, &si, VK_NULL_HANDLE) == VK_SUCCESS) {
+    if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) == VK_SUCCESS) {
         vkQueueWaitIdle(s->queue);
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, al, &p) == VK_SUCCESS) {
@@ -1407,7 +1407,7 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
     si.commandBufferCount = 1;
     si.pCommandBuffers = &cb;
     ZoneScopedN("VKIsl.Shadow.Submit");
-    if (vkQueueSubmit(s->queue, 1, &si, fence) != VK_SUCCESS) { setFallback("submit_failed"); disableFrame(); return; }
+    if (mc2vk::submitGraphics(si, fence) != VK_SUCCESS) { setFallback("submit_failed"); disableFrame(); return; }
     timerGuard.submitted();
     s->staticMap.markSubmitted();
     if (g_diagVkDumpPending) { g_diagVkDumpPending = false; diagDumpVk(s); }

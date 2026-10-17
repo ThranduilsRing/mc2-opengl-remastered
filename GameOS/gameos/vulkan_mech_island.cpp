@@ -429,7 +429,7 @@ void cp_end(MechIsland* s, VkCommandBuffer cb) {
     mc2vk::OwnedFence fence;
     VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     mc2vk::create(fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });   // empty on failure: the queue idle below stands in
-    vkQueueSubmit(s->queue, 1, &si, fence.get());
+    mc2vk::submitGraphics(si, fence.get());
     if (fence) {
         const VkFence f = fence.get();
         vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull * 1000 * 1000 * 1000);
@@ -1161,7 +1161,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     { ZoneScopedN("VKIsl.Mech.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
-      if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+      if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
     timerGuard.submitted();
 
     if (!mechFenceDeferEnabled()) {

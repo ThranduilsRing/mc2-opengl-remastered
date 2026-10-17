@@ -195,7 +195,8 @@ void write_descriptors(VfxIsland* s) {
 bool ensure_ssbo(VfxIsland* s, VkDeviceSize bytes) {
     if (bytes == 0) bytes = 64;
     if (bytes <= s->ssboBytes && s->ssbo) return true;
-    vkDeviceWaitIdle(s->device);
+    // No device idle: the island retires every frame inline (it waits its own fence right after the submit, VKIsl.Vfx.InlineFenceWait), and no other
+    // island reads this buffer or its set, so nothing in flight can still use the old one.
     s->ssbo.reset(); s->ssboBytes = 0;
     VkDeviceSize cap = bytes + bytes / 2;   // 1.5x headroom
     if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->ssbo, "vfx.ssbo")) return false;
@@ -240,7 +241,7 @@ bool upload_page(VfxIsland* s, SpritePage& page, const GosTexels& t) {
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &s->cbuf;
-    if (vkQueueSubmit(s->queue, 1, &si, fence) != VK_SUCCESS) return false;
+    if (mc2vk::submitGraphics(si, fence) != VK_SUCCESS) return false;
     if (vkWaitForFences(s->device, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
         vlog("sprite upload fence wait failed.");
         s->disabled = true;   // the copy may still be reading the staging buffer: do not draw again
@@ -664,7 +665,7 @@ extern "C" int mc2_vk_vfx_island_run(
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &s->cbuf;
     { ZoneScopedN("VKIsl.Vfx.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
-      if (vkQueueSubmit(s->queue, 1, &si, fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+      if (mc2vk::submitGraphics(si, fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
     timerGuard.submitted();
     { ZoneScopedN("VKIsl.Vfx.InlineFenceWait");   // VK-ISLAND-TRACY-1: ALWAYS-inline retire (never fence-deferred)
       if (vkWaitForFences(s->device, 1, &fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {

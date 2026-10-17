@@ -506,7 +506,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     { ZoneScopedN("VKIsl.Overlay.Submit");
-      if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { o->disabled = true; return 0; } }
+      if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { o->disabled = true; return 0; } }
 
     static bool s_firstOk = false;
     static unsigned long s_frames = 0;

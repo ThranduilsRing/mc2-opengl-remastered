@@ -99,6 +99,7 @@ private:
     bool growHost(OwnedBuffer& buf, VkDeviceSize& cap, VkDeviceSize need, VkBufferUsageFlags usage, const char* name, uint32_t par);
     bool makeDevice(OwnedBuffer& buf, VkDeviceSize size, VkBufferUsageFlags usage, const char* name, int i0 = -1);
     void writeAll();
+    void writeInputs(uint32_t slot);   // bindings 0 and 1 of the terrain-lighting set of one slot
 
     bool ready_ = false;
     VkDevice device_ = VK_NULL_HANDLE;

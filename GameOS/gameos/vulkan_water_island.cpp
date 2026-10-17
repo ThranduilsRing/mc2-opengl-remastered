@@ -258,7 +258,7 @@ bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& rec
             VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
             si.commandBufferCount = 1; si.pCommandBuffers = &cb;
             const VkFence f = fence.get();
-            ok = (vkQueueSubmit(s->queue, 1, &si, f) == VK_SUCCESS) &&
+            ok = (mc2vk::submitGraphics(si, f) == VK_SUCCESS) &&
                  (vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull*1000*1000*1000) == VK_SUCCESS);
         }
     }

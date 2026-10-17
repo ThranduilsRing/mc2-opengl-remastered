@@ -65,7 +65,7 @@ void end_oneshot(TerrainIsland* s, VkCommandBuffer cb) {
     VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     mc2vk::create(fence, s->device, [&](auto* h) { return vkCreateFence(s->device, &fci, nullptr, h); });
     const VkFence f = fence.get();
-    vkQueueSubmit(s->queue, 1, &si, f);
+    mc2vk::submitGraphics(si, f);
     if (f != VK_NULL_HANDLE) {
         vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull * 1000 * 1000 * 1000);
     } else {

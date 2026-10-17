@@ -891,7 +891,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (vkQueueSubmit(s->queue, 1, &si, s->submitFence.get()) != VK_SUCCESS) {
+    if (mc2vk::submitGraphics(si, s->submitFence.get()) != VK_SUCCESS) {
         setFallback("submit_failed"); return false;
     }
     timerGuard.submitted();
@@ -1104,7 +1104,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (vkQueueSubmit(s->queue, 1, &si, s->submitFence.get()) != VK_SUCCESS) {
+    if (mc2vk::submitGraphics(si, s->submitFence.get()) != VK_SUCCESS) {
         setFallback("submit_failed"); s->disabled = true; return 0;
     }
     timerGuard.submitted();

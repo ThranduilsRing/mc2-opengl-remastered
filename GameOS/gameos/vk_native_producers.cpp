@@ -50,7 +50,8 @@ bool NativeProducers::makeDevice(OwnedBuffer& buf, VkDeviceSize size, VkBufferUs
 
 bool NativeProducers::growHost(OwnedBuffer& buf, VkDeviceSize& cap, VkDeviceSize need, VkBufferUsageFlags usage, const char* name, uint32_t par) {
     if (buf && need <= cap) return false;
-    if (buf) ctx_->waitIdle("producers_host_grow");
+    // The old buffer may still be read by a submit of the other slot's frame or this slot's previous one: it is parked, not idled for.
+    if (buf) getOrCreateEngineVulkanContext().retire(std::move(buf), cap);
     const VkDeviceSize newCap = std::max<VkDeviceSize>(need + need / 4 + 256, 256);
     buf.reset();
     cap = 0;
@@ -282,6 +283,12 @@ void NativeProducers::writeAll() {
     }
 }
 
+void NativeProducers::writeInputs(uint32_t p) {
+    const VkDescriptorType S = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    lightSets_.write(device_, p, 0, S, lightIn_[p].get());
+    lightSets_.write(device_, p, 1, S, lights_[p].get());
+}
+
 bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain_lighting::VkProducerSnapshot& L, const WaterCullFrame& W, bool parity) {
     if (!ready_) return false;
     par &= 1u;
@@ -291,7 +298,7 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
     regrow |= growHost(lightIn_[par], lightInCap_[par], static_cast<VkDeviceSize>(L.windowCount) * sizeof(gos_terrain_lighting::GpuTerrainVertexInput), kStorage, "producers.lightIn", par);
     regrow |= growHost(lights_[par], lightsCap_[par], static_cast<VkDeviceSize>(std::max(L.numLights, 1u)) * sizeof(gos_terrain_lighting::GpuTerrainLight), kStorage, "producers.lights", par);
     if (!lightIn_[par] || !lights_[par]) return false;
-    if (regrow) writeAll();   // growHost idled the device
+    if (regrow) writeInputs(par);   // only this slot's set: the island's slot fence retired its last use, the other slot may be in flight
     if (L.windowCount > 0 && !lightIn_[par].upload(L.window, static_cast<VkDeviceSize>(L.windowCount) * sizeof(gos_terrain_lighting::GpuTerrainVertexInput))) return false;
     if (L.numLights > 0 && !lights_[par].upload(L.lights, static_cast<VkDeviceSize>(L.numLights) * sizeof(gos_terrain_lighting::GpuTerrainLight))) return false;
 

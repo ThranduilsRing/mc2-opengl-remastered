@@ -137,7 +137,7 @@ bool submit_once(Island* s, const std::function<void(VkCommandBuffer)>& record) 
     VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     mc2vk::create(fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });   // empty on failure: the queue idle below stands in
     const VkFence fenceHandle = fence.get();
-    bool ok = vkQueueSubmit(s->queue, 1, &si, fenceHandle) == VK_SUCCESS;
+    bool ok = mc2vk::submitGraphics(si, fenceHandle) == VK_SUCCESS;
     if (fence) {
         if (ok) ok = vkWaitForFences(s->device, 1, &fenceHandle, VK_TRUE, 30ull * 1000 * 1000 * 1000) == VK_SUCCESS;
         if (!ok) vkDeviceWaitIdle(s->device);   // the fence is released on return: the GPU must be done with it
@@ -445,7 +445,7 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO; si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     { ZoneScopedN("VKIsl.Sky.Submit");
-      if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+      if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
     ++g_health.usedVulkan;
     static bool s_firstOk = false;
     if (!s_firstOk) { vlog("first HDRI sky co-write (hdriReal=%d).", s->hdriReal ? 1 : 0); s_firstOk = true; }
