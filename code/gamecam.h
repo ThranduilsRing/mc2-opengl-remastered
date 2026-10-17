@@ -67,7 +67,7 @@ class GameCamera : public Camera
 			destroy();
 		}
 
-		void destroy (void);
+		void destroy (void) override;
 
 		void render (void) override;
 		long activate (void) override;
