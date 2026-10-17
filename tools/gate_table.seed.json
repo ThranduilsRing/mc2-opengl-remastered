@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 975,
+ "count": 974,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -13575,32 +13575,6 @@
     {
      "at": "RenderWorld/RenderWorld.cpp:214",
      "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_OBJECT_PARITY_CHECK",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Exact1",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_object_parity.cpp:58",
-     "idiom": "Exact1"
     }
    ],
    "conflict": false,

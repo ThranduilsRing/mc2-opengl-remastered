@@ -130,12 +130,8 @@ void TG_Shape::xformVertexBaseColor(bool isHudElement, bool isNight, float night
 	// Traces s_lightDir, normal, cosine, and contributions — the CPU side
 	// that should match GatherLightsParameters and the GPU dot product.
 	//
-	// Stage 2.D.2.1 (m2): [PARITY_DIAG v2] is a SEPARATE diagnostic stream
-	// from [OBJECT_PARITY v1]. The "v2" label is NOT a schema bump of the
-	// parity system — it distinguishes this subsystem's trace stream. It is
-	// gated by MC2_OBJECT_PARITY_TRACE (see gameosmain.cpp), not by
-	// MC2_OBJECT_PARITY_CHECK. Zero [PARITY_DIAG v2] output in production
-	// logs is expected and correct.
+	// [PARITY_DIAG v2] is gated by MC2_OBJECT_PARITY_TRACE. Zero output in
+	// production logs is expected and correct.
 	doHotGreenTrace = (s_hotGreenLightTraceEnabled && !s_hotGreenLightTraceDone
 	                        && (startVLight == 0xff00ff00) && !isNight
 	                        && (nightFactor <= Stuff::SMALL));

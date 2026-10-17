@@ -47,16 +47,6 @@ struct PerTypeData {
 layout(std430, binding = 0) readonly buffer Instances { GpuStaticPropInstance i[]; } instances_;
 layout(std430, binding = 1) readonly buffer Colors    { uint         c[]; } colors_;
 layout(std430, binding = 2) readonly buffer PerType   { PerTypeData  t[]; } perType_;
-// Slice 2 (object-offload) — Stage 2.D.1: parity readback harness output.
-// Bound only when MC2_OBJECT_PARITY_CHECK=1 from the C++ side; the
-// u_parityWrite gate below short-circuits the write when unbound so this
-// declaration is harmless on the default-off path. Index convention:
-//   parityOut[gl_InstanceID * u_parityVertsPerType + (gl_VertexID - u_parityBaseVertex)]
-// where u_parityVertsPerType is set per-type to numTypeTriangles*3 (expanded
-// inside one glDrawElementsInstancedBaseVertex call). The bound range from
-// glBindBufferRange is sized exactly instanceCount * vertsPerType uint32
-// entries, so writes never overflow.
-layout(std430, binding = 3) buffer ParityOut { uint parityOut[]; } parityOut_;
 
 #ifdef MC2_USE_VIEW_UNIFORMS
 #include <include/view_uniforms.hglsl>
@@ -96,36 +86,6 @@ uniform float u_farBackdropNear;     // view-depth (clip.w) where the fade begin
 uniform float u_farBackdropFar;      // view-depth where the fade completes
 uniform float u_farBackdropStrength; // max substitution amount (default 1.0; >1 exaggerates)
 uniform vec3  u_farBackdropTint;     // debug/exaggeration additive tint (default 0)
-// Slice 2 (object-offload) — Stage 2.D.1: parity write gate.
-// 0 (default) = no write to parityOut_; nonzero = write per-vertex lit ARGB.
-// 'uniform uint' crashes this engine's shader compile (memory/uniform_uint_crash.md)
-// so we use int + a >0 test in GLSL.
-uniform int u_parityWrite;
-// Per-draw vertex count for the type currently being drawn. Constant
-// inside one glDrawElementsInstancedBaseVertex call. Equal to
-// typeShape->numTypeTriangles * 3 (expanded/triangle-soup vertex count).
-uniform int u_parityVertsPerType;
-// VBO base vertex for the current type. gl_VertexID (with baseVertex) is
-// absolute; subtract this to get the type-local [0, parityVerts) index.
-// Set per-type (constant across all packets of the same type).
-uniform int u_parityBaseVertex;
-// Diagnostic Addition 3 (Approach A): when non-zero, the shader writes
-// light[inst.lightDataIndex].numLights.x into parityOut_[0] from the
-// (inst=0, vert=0) invocation only.  All other invocations still write
-// their normal lit-ARGB if u_parityWrite>0.  C++ reads slot 0 back and
-// prints [PARITY_DIAG v2] event=shader_observed gpu_numLights=N.
-// Default 0 = disabled.  Set to 1 per-frame for typeId=474 draws when
-// MC2_OBJECT_PARITY_TRACE=1.  'uniform uint' crashes engine compile
-// (memory/uniform_uint_crash.md); use int.
-uniform int u_parityNumLightsDebugMode;
-// Diagnostic Addition 4 (Approach A): when non-zero, the shader writes
-// get_base_light()'s RGB output (packed as B|G<<8|R<<16|0xFF<<24) into
-// parityOut_[0] from the (inst=0, vert=0) invocation only.  C++ reads
-// slot 0 back and prints [PARITY_DIAG v2] event=base_light_observed
-// typeId=84 rgb=R,G,B (packed=0xPACKED).  Default 0 = disabled.
-// Set to 1 per-frame for typeId=84 draws when MC2_OBJECT_PARITY_TRACE=1.
-// 'uniform uint' crashes engine compile (memory/uniform_uint_crash.md).
-uniform int u_parityBaseLightDebugMode;
 
 // V-AMBIENT-STATIC-1: hemisphere ambient fill (StaticPropOpaque lane only).
 // Strength 0.0 (default) == OFF and is mathematically a no-op (adds vec3(0)
@@ -956,7 +916,7 @@ void main() {
     // 6. aRGBHighlight additive contribution — mirrors CPU tgl.cpp:2313-2335.
     //    CPU adds R/G/B channels of aRGBHighlight (objective/selection tint)
     //    to the lit argb, clamping each channel to [0, 255]. Must apply
-    //    BEFORE the parity pack below so the readback includes the highlight.
+    //    BEFORE the output below.
     //    inst.aRGBHighlight is stored as (R,G,B,A) float[4] by submit() at
     //    gos_static_prop_batcher.cpp:745-748 (decode from packed ARGB uint).
     //    When no highlight is active the CPU passes aRGBHighlight=0 → r/g/b=0
@@ -970,60 +930,6 @@ void main() {
     //    (The alpha in some aRGBLight tags like 0x02FFFFFF or 0xFAxxxxxx
     //    is MC2 data that the CPU simply ignores for vertex lighting.)
     v_argb = vec4(lit, 1.0);
-
-    // 7. Slice 2 (object-offload) — Stage 2.D.1: parity readback harness.
-    //    Pack the per-vertex lit ARGB into a single uint matching the
-    //    in-memory B,G,R,A byte order convention used everywhere in this
-    //    engine (see memory/mc2_argb_packing.md and the
-    //    a_aRGBLight decode at lines 107-110 above). The CPU side that
-    //    Stage 2.D.2/2.D.3 will compare against (listOfTriangles[].aRGBLight)
-    //    is also a DWORD-as-BGRA, so this packing keeps the bytewise
-    //    compare arithmetic-free.
-    //
-    //    The bound parity buffer range is sized exactly
-    //    instanceCount * u_parityVertsPerType uint entries on the C++ side,
-    //    so this index is always in-bounds when u_parityWrite > 0.
-    if (u_parityWrite > 0) {
-        uint b8 = uint(clamp(lit.b * 255.0, 0.0, 255.0));
-        uint g8 = uint(clamp(lit.g * 255.0, 0.0, 255.0));
-        uint r8 = uint(clamp(lit.r * 255.0, 0.0, 255.0));
-        // Alpha is always 0xFF to match CPU tgl.cpp:2225 which hardcodes
-        // (0xFF << 24) and ignores the raw aRGBLight alpha byte.
-        uint a8 = 255u;
-        uint bits = b8 | (g8 << 8) | (r8 << 16) | (a8 << 24);
-        // gl_VertexID = IBO[i] + baseVertex (from glDrawElementsInstancedBaseVertex).
-        // Subtract u_parityBaseVertex (the type's VBO baseVertex) to get the
-        // type-local index in [0, u_parityVertsPerType). This keeps the write
-        // in-bounds for types whose VBO region doesn't start at 0.
-        int localVert = gl_VertexID - u_parityBaseVertex;
-        int idx = gl_InstanceID * u_parityVertsPerType + localVert;
-        parityOut_.parityOut[idx] = bits;
-
-        // Addition 3 (Approach A): diagnostic numLights capture.
-        // When u_parityNumLightsDebugMode==1 and this is the (inst=0, vert=0)
-        // invocation, write the raw numLights.x value into slot 0 of the parity
-        // buffer so C++ can read it back.  This overwrites the lit-ARGB at that
-        // slot; the C++ side skips the normal parity compare for typeId=474 on
-        // this frame and instead prints the numLights value.
-        if (u_parityNumLightsDebugMode > 0 &&
-            gl_InstanceID == 0 && localVert == 0) {
-            ObjectLights ld = light[int(inst.lightDataIndex)];
-            parityOut_.parityOut[0] = uint(ld.numLights.x);
-        }
-        // Addition 4 (Approach A): base_light diagnostic capture for typeId=84.
-        // When u_parityBaseLightDebugMode==1 and this is the (inst=0, vert=0)
-        // invocation, pack get_base_light()'s output (base_light, computed
-        // BEFORE calc_light) as B|G<<8|R<<16|0xFF<<24 into parityOut_[0].
-        // C++ reads slot 0 back and prints event=base_light_observed.
-        // This runs AFTER Addition 3 so typeId=84 never triggers Addition 3.
-        if (u_parityBaseLightDebugMode > 0 &&
-            gl_InstanceID == 0 && localVert == 0) {
-            uint bl_b = uint(clamp(base_light.b * 255.0, 0.0, 255.0));
-            uint bl_g = uint(clamp(base_light.g * 255.0, 0.0, 255.0));
-            uint bl_r = uint(clamp(base_light.r * 255.0, 0.0, 255.0));
-            parityOut_.parityOut[0] = bl_b | (bl_g << 8u) | (bl_r << 16u) | (0xFFu << 24u);
-        }
-    }
 
     v_normal     = worldNormal;
     v_uv         = a_uv;

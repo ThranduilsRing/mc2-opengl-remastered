@@ -11,7 +11,7 @@
           "matrix_stride": null,
           "name": "i",
           "offset": 0,
-          "type": "_719"
+          "type": "_310"
         }
       ],
       "name": "Instances"
@@ -37,33 +37,20 @@
           "matrix_stride": null,
           "name": "t",
           "offset": 0,
-          "type": "_814"
+          "type": "_411"
         }
       ],
       "name": "PerType"
     },
     {
-      "binding": 3,
-      "members": [
-        {
-          "array_stride": 4,
-          "matrix_stride": null,
-          "name": "parityOut",
-          "offset": 0,
-          "type": "uint"
-        }
-      ],
-      "name": "ParityOut"
-    },
-    {
       "binding": 20,
       "members": [
         {
-          "array_stride": 1808,
+          "array_stride": 3600,
           "matrix_stride": null,
           "name": "light",
           "offset": 0,
-          "type": "_239"
+          "type": "_552"
         }
       ],
       "name": "LightsData"
@@ -79,13 +66,13 @@
           "matrix_stride": null,
           "name": "g_scene",
           "offset": 0,
-          "type": "_186"
+          "type": "_185"
         }
       ],
       "name": "SceneData"
     },
     {
-      "binding": 4,
+      "binding": 3,
       "members": [
         {
           "array_stride": null,
@@ -97,57 +84,78 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "u_parityWrite",
+          "name": "u_terrainSunMC2",
           "offset": 64,
-          "type": "int"
+          "type": "vec3"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "u_parityVertsPerType",
-          "offset": 68,
-          "type": "int"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
-          "name": "u_parityBaseVertex",
-          "offset": 72,
-          "type": "int"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
-          "name": "u_parityNumLightsDebugMode",
+          "name": "u_isNight",
           "offset": 76,
           "type": "int"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "u_parityBaseLightDebugMode",
+          "name": "u_nightFactor",
           "offset": 80,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_farBackdropLit",
+          "offset": 84,
           "type": "int"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
+          "name": "u_farBackdropNear",
+          "offset": 88,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_farBackdropFar",
+          "offset": 92,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_farBackdropStrength",
+          "offset": 96,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_farBackdropTint",
+          "offset": 112,
+          "type": "vec3"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
           "name": "u_ambientV1Strength",
-          "offset": 84,
+          "offset": 124,
           "type": "float"
         },
         {
           "array_stride": 16,
           "matrix_stride": null,
           "name": "u_iblSh",
-          "offset": 96,
+          "offset": 128,
           "type": "vec3"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "u_iblShStrength",
-          "offset": 240,
+          "offset": 272,
           "type": "float"
         }
       ],

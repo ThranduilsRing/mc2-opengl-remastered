@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 976;
+inline constexpr std::size_t kGateCount = 975;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -489,7 +489,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_OBJECT_ADMISSION_SELFTEST", Kind::Bool, Rule::Exact1, {}},
     {"MC2_OBJECT_ID_BUFFER", Kind::Bool, Rule::DefOnLead0, {}},
     {"MC2_OBJECT_ID_BUFFER_SELFTEST", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_OBJECT_PARITY_CHECK", Kind::Bool, Rule::Exact1, {}},
     {"MC2_OBJECT_PARITY_TRACE", Kind::Bool, Rule::Exact1, {}},
     {"MC2_OBJECT_POLY_OFFSET", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_OBJECT_POLY_OFFSET_FACTOR", Kind::Float, Rule::Prefix, {}},

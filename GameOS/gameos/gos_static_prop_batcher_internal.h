@@ -30,7 +30,6 @@
 #include "gos_static_prop_killswitch.h"  // gos_GetGLTextureId
 #include "gos_mech_killswitch.h"          // g_mechPreviewRenderDepth (mech-bay preview gate)
 #include "gos_profiler.h"
-#include "gos_object_parity.h"           // Slice 2 Stage 2.D.1 parity harness
 #include "gpu_cull_compute.h"            // C1b: compute_isEnabled, getIndirectCmdBuf, getBucketCount
 #include "gpu_cull_substrate.h"          // 2026-05-10: substrate_appendStaticPropRecord
 #include "gpu_cull_record.h"             // 2026-05-10: GpuActorRecord, Cat_StaticProp
@@ -124,11 +123,10 @@ constexpr size_t kVertexStride = 40;
 
 constexpr uint32_t RING_FRAMES = 3;
 
-// Stage 2.D.1.1 (Item 4): STATIC_PROP_RING_FRAMES in the header equals this.
+// STATIC_PROP_RING_FRAMES in the header equals this.
 // Enforce in lock-step so a future edit to either side fails loudly.
 static_assert(RING_FRAMES == STATIC_PROP_RING_FRAMES,
-              "RING_FRAMES and STATIC_PROP_RING_FRAMES must match — "
-              "changing one without the other corrupts the parity SSBO readback");
+              "RING_FRAMES and STATIC_PROP_RING_FRAMES must match");
 
 constexpr size_t   INITIAL_INSTANCES_PER_FRAME = 4096;
 
@@ -141,20 +139,6 @@ constexpr uint32_t BASE_INSTANCE_SSBO_BINDING     = 16u;
 namespace gos_static_prop_batcher_detail {
 
 
-//
-// The parity SSBO is allocated lazily by gos_object_parity::EnsureParityOutputSSBO()
-// the first time flush() runs with MC2_OBJECT_PARITY_CHECK=1 set. It's sized
-// kParitySlotBytes per slot * RING_FRAMES (matches s_fence ring depth).
-//
-// Stock tier1 missions show on the order of low-thousands of GPU-drawn
-// instances per frame. Worst per-type vertex count is bounded by the
-// largest TG_TypeShape::numTypeVertices in the loaded map (typically
-// 100-500 verts for buildings, less for trees). 4 MB per slot covers
-// ~1M uint32 entries (1M lit-ARGB writes), which is comfortably above
-// the actual draw load (RAlt+0 stress survey ~250-400K verts/frame on
-// tier1's busiest shoppingmall+suburb missions). Sized at a power of two
-// so the per-type byte alignment trim is cheap.
-constexpr size_t kParitySlotBytes = 4 * 1024 * 1024;
 
 
 // Forward decl -- body appears after state block below, so it can reference
@@ -460,9 +444,6 @@ extern GLsync   s_fence[RING_FRAMES];
 extern uint32_t s_frameSlot;
 extern size_t   s_instanceCapacity;
 extern size_t   s_colorCapacity;
-extern size_t   s_parityBytesUsedThisFrame;
-extern size_t   s_parityBytesUsedPerSlot[RING_FRAMES];
-extern std::vector<uint8_t> s_parityReadbackScratch;
 extern std::unordered_map<uint32_t, PerTypeBucket> s_bucketsByType;
 extern std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_persistentStaticStore;
 extern uint64_t s_persistentStaticGen;
@@ -483,9 +464,6 @@ extern bool s_geometryFinalized;
 extern bool s_fatalRegistrationFailure;
 extern glsl_program* s_staticPropProgramObj;
 extern GLuint        s_staticPropProgram;
-extern GLint s_loc_u_parityWrite;
-extern GLint s_loc_u_parityVertsPerType;
-extern GLint s_loc_u_parityBaseVertex;
 extern bool s_programLoadTried;
 extern bool s_programLoadFailed;
 extern GLuint s_coalesceInstanceSsbo;
@@ -591,7 +569,6 @@ extern std::unordered_map<std::string, uint32_t> s_lateRegisterCounts;
 extern std::unordered_set<std::string> s_lateRegisterAllowlist;
 extern bool s_lastSubmitWasLateReg;
 extern uint64_t s_late_register_recovery_skips;
-extern const TG_MultiShape* s_currentSubmittingMulti;
 extern GpuStaticPropPopulation s_currentSubmitPop;
 extern float s_currentSubmittingActorCenter[3];
 extern bool  s_currentSubmittingActorCenterValid;

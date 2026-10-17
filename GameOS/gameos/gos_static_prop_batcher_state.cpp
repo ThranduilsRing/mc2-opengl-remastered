@@ -82,18 +82,6 @@ uint32_t s_frameSlot = 0;
 size_t   s_instanceCapacity = 0;
 size_t   s_colorCapacity    = 0;
 
-// Per-slot byte usage of the parity SSBO. Tracks how much of slot
-// kParitySlotBytes was actually written in the most recent visit to that
-// slot, so the next-visit readback at the top of flush() can scope its
-// glGetBufferSubData to exactly the live range. Indexed by s_frameSlot.
-size_t   s_parityBytesUsedThisFrame = 0;
-size_t   s_parityBytesUsedPerSlot[RING_FRAMES] = {0};
-// Discard buffer for the readback. Sized once on first parity-on visit;
-// std::vector keeps it alive for the lifetime of the process so we don't
-// reallocate per frame. Bytes are read into this and DISCARDED — Stage
-// 2.D.1 does no compare; 2.D.2/2.D.3 will use these bytes against a CPU
-// recompute for the byte-wise compare.
-std::vector<uint8_t> s_parityReadbackScratch;
 std::unordered_map<uint32_t, PerTypeBucket> s_bucketsByType;
 
 // The per-instance Colors SSBO (binding 1) is read by NO production shader (static_prop.vert declares colors_ but
@@ -153,16 +141,6 @@ bool s_fatalRegistrationFailure = false;
 // but most call sites will read the raw GL handle via s_staticPropProgram.
 glsl_program* s_staticPropProgramObj = nullptr;
 GLuint        s_staticPropProgram    = 0;
-
-// Stage 2.D.1.1 (Item 2): parity uniform locations cached at link time.
-// Querying glGetUniformLocation every flush was a per-flush driver round-trip;
-// cache once here. The shader is not hot-reloadable (s_programLoadTried latches
-// after first attempt, no in-process relink path), so the cache is valid for
-// the lifetime of the program handle. -1 signals "not found in shader" and is
-// safe to pass to glUniform*i (the spec says glUniform* is a no-op for loc=-1).
-GLint s_loc_u_parityWrite        = -1;
-GLint s_loc_u_parityVertsPerType = -1;
-GLint s_loc_u_parityBaseVertex   = -1;
 
 // Latched once a compile/link attempt has failed. We never retry inside a
 // session because shader source can only change between runs. With this

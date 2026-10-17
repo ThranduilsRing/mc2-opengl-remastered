@@ -115,10 +115,7 @@ void loadProgramsIfNeeded() {
     // variants. Pure metadata; no GL change.
     RenderCore::recordPipelineVertexLayout(RenderCore::PipelineId::StaticPropOpaque,    RenderCore::VertexLayoutId::StaticProp40B);
     RenderCore::recordPipelineVertexLayout(RenderCore::PipelineId::StaticPropAlphaTest, RenderCore::VertexLayoutId::StaticProp40B);
-    s_loc_u_parityWrite        = glGetUniformLocation(s_staticPropProgram, "u_parityWrite");
-    s_loc_u_parityVertsPerType = glGetUniformLocation(s_staticPropProgram, "u_parityVertsPerType");
-    s_loc_u_parityBaseVertex   = glGetUniformLocation(s_staticPropProgram, "u_parityBaseVertex");
-    mc2::fmt::print_err("[GPUPROPS-DIAG] loadProgramsIfNeeded OK prog={:d} loc_parityWrite={:d} loc_parityVertsPerType={:d} loc_parityBaseVertex={:d}\n", mc2::fmt::as_u32(s_staticPropProgram), mc2::fmt::as_i32(s_loc_u_parityWrite), mc2::fmt::as_i32(s_loc_u_parityVertsPerType), mc2::fmt::as_i32(s_loc_u_parityBaseVertex));
+    mc2::fmt::print_err("[GPUPROPS-DIAG] loadProgramsIfNeeded OK prog={:d}\n", mc2::fmt::as_u32(s_staticPropProgram));
 
     // Plan v3.8 Step 7.4 — populate s_locsLegacy. GLSL string literals are
     // mixed-prefix (terrainMVP has NO u_ prefix; the rest do); reproduce
@@ -271,14 +268,6 @@ void loadProgramsIfNeeded() {
             // is texture-array + shader discard, not a separate program).
             RenderCore::bindProgram(RenderCore::PipelineId::StaticPropOpaque,    s_staticPropProgramCoalesce);
             RenderCore::bindProgram(RenderCore::PipelineId::StaticPropAlphaTest, s_staticPropProgramCoalesce);
-            // Re-cache parity uniform locations from the coalesce program.
-            // s_loc_u_parity* were initially cached from s_staticPropProgram, but
-            // applyPipeline() now binds s_staticPropProgramCoalesce — the locations
-            // are program-specific, so calling glUniform1i with a location from the
-            // wrong program yields GL_INVALID_OPERATION (0x502).
-            s_loc_u_parityWrite        = glGetUniformLocation(s_staticPropProgramCoalesce, "u_parityWrite");
-            s_loc_u_parityVertsPerType = glGetUniformLocation(s_staticPropProgramCoalesce, "u_parityVertsPerType");
-            s_loc_u_parityBaseVertex   = glGetUniformLocation(s_staticPropProgramCoalesce, "u_parityBaseVertex");
         } else {
             // Compile/link failure — leave handle zero. Legacy path is
             // unaffected; finalizeGeometry's Step 5.5 will see
@@ -380,7 +369,6 @@ bool IsCoalesceEnabled() {
     if (s_perDrawSsbo == 0)                 return false;
     if (s_permutationSsbo == 0)             return false;
     if (s_alphaOffCount == 0 && s_alphaOnCount == 0) return false;
-    if (gos_object_parity::IsParityCheckEnabled())   return false;
     return true;
 }
 
@@ -526,19 +514,6 @@ bool s_lastSubmitWasLateReg = false;
 // Added to the [OBJBATCHER v1] summary line.
 uint64_t s_late_register_recovery_skips = 0;
 
-// Slice 2 (Stage 2.D.3) — "currently-submitting multishape" pointer used to
-// gate per-leaf snapshot capture in submit() to only the sampled actor.
-//
-// Set at the top of submitMultiShape (after the registered-types check), used
-// inside submit() to compare against the sampler's current pick, and reset to
-// nullptr at the bottom of submitMultiShape so a stray submit() call from a
-// non-multi path can't leak gating state. In SampledOnly arm mode, only
-// submit() calls whose enclosing multishape == s_currentSampledShape will
-// record an instance snapshot — the GPU parity SSBO still receives writes
-// from every type's draw (those bytes are ignored on compare because the
-// snapshot map only carries entries for the sampled actor's types).
-const TG_MultiShape* s_currentSubmittingMulti = nullptr;
-
 // TREE-POP-TAG-1: population of the actor whose leaves submit() is currently
 // pushing. Written ONLY while MC2_TREE_DIAG_TRACE is armed (see
 // submitMultiShape) and read ONLY by the [TREE_DIAG] record, so the unarmed
@@ -562,13 +537,13 @@ bool  s_currentSubmittingActorCenterValid = false;
 // allowlist disposition. Incremented in the late-reg branch of
 // submitMultiShape() per occurrence (NOT once-per-type — the dedup
 // printf logic is unchanged, but every event ticks one of these so the
-// parity 600-frame summary surfaces actual frequency).
+// true frequency is visible).
 //
 //   s_lateReg_allowed_events:    nodeId IS in objbatcher_late_register_allowlist.txt
 //   s_lateReg_disallowed_events: nodeId is NOT (or empty)
 //
 // Read by GpuStaticPropBatcher::getAllowedLateRegEventCount() and
-// getDisallowedLateRegEventCount(); consumed by gos_object_parity::ParityFrameTick.
+// getDisallowedLateRegEventCount().
 uint64_t s_lateReg_allowed_events    = 0;
 uint64_t s_lateReg_disallowed_events = 0;
 

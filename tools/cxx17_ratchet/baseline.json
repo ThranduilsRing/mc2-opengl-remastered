@@ -609,16 +609,6 @@
    "LG09": 28,
    "LG10": 1
   },
-  "GameOS/gameos/gos_object_parity.cpp": {
-   "LG06": 1,
-   "LG08": 3,
-   "LG09": 2,
-   "LG16": 1,
-   "LG18": 1
-  },
-  "GameOS/gameos/gos_object_parity.h": {
-   "LG06": 1
-  },
   "GameOS/gameos/gos_object_recon_tracy.cpp": {
    "LG06": 2,
    "LG09": 1

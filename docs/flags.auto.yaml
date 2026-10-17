@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 976
+gate_count: 975
 registry_entry_count: 203
-verified_count: 966
+verified_count: 965
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -3675,13 +3675,6 @@ flags:
     default: false
     rule: Lead0
     owner: code
-    doc: ""
-    verified: true
-  - name: MC2_OBJECT_PARITY_CHECK
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: gameos
     doc: ""
     verified: true
   - name: MC2_OBJECT_PARITY_TRACE

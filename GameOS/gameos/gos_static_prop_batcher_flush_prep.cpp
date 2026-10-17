@@ -6,73 +6,11 @@
 #include "mc2fmt.h"
 
 
-// Emit the candidate log and read back / reset the parity output buffer.
-void GpuStaticPropBatcher::candidateLogAndParityReadback(StaticPropFlushFrame& f) {
-    auto& parityBuffer = f.parityBuffer;
-    batcher_buildCandidateLog();
-
-    //
-    // uploadAllBucketsIfNeeded() above just glClientWaitSync'd on
-    // s_fence[s_frameSlot] (the fence from RING_FRAMES frames ago). At
-    // this point the parity SSBO writes from that prior cycle are
-    // GPU-complete and safe to read on the CPU.
-    //
-    // 2.D.1 acceptance is "the readback runs without crash or stall" — we
-    // glGetBufferSubData the live byte range from this slot into a discard
-    // scratch buffer and DROP the bytes. 2.D.2/2.D.3 will swap the discard
-    // for a CPU recompute compare.
-    //
-    // Skips entirely when MC2_OBJECT_PARITY_CHECK is unset
-    // (IsParityCheckEnabled() returns false → EnsureParityOutputSSBO()
-    // returns 0 → the bind/uniform/readback all short-circuit). This is
-    // the load-bearing default-off contract per the advisor.
-    parityBuffer = 0;
-    if (gos_object_parity::IsParityCheckEnabled()) {
-        parityBuffer = gos_object_parity::EnsureParityOutputSSBO(kParitySlotBytes);
-        if (parityBuffer != 0) {
-            const size_t bytesToRead = s_parityBytesUsedPerSlot[s_frameSlot];
-            if (bytesToRead > 0) {
-                if (s_parityReadbackScratch.size() < bytesToRead) {
-                    s_parityReadbackScratch.resize(bytesToRead);
-                }
-                const GLintptr slotBase =
-                    static_cast<GLintptr>(s_frameSlot) *
-                    static_cast<GLintptr>(kParitySlotBytes);
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, parityBuffer);
-                glGetBufferSubData(GL_SHADER_STORAGE_BUFFER,
-                                   slotBase,
-                                   static_cast<GLsizeiptr>(bytesToRead),
-                                   s_parityReadbackScratch.data());
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-                gos_object_parity::Counters_AddReadbackBytesThisFrame(
-                    static_cast<uint64_t>(bytesToRead));
-                // Stage 2.D.2: if the latch is WaitingForReadback, compare
-                // the GPU bytes against the CPU snapshot captured on frame N.
-                // After compare, advance latch to Done and free the snapshot.
-                // The fence wait above (glClientWaitSync in
-                // uploadAllBucketsIfNeeded) guarantees GPU writes are complete.
-                // Stage 2.D.2: compare only when the ring has returned to the
-                // exact slot the Armed frame wrote to (IsDualEmitReadyForSlot
-                // checks both state==WaitingForReadback AND slot match).
-                if (gos_object_parity::IsDualEmitReadyForSlot(s_frameSlot)) {
-                    gos_object_parity::CompareAndReport(
-                        s_parityReadbackScratch.data(),
-                        bytesToRead,
-                        static_cast<unsigned>(s_counters.frame_count));
-                    gos_object_parity::AdvanceDualEmitToDone();
-                }
-            }
-        }
-        s_parityBytesUsedPerSlot[s_frameSlot] = 0;
-    }
-    s_parityBytesUsedThisFrame = 0;
-}
-
 // Save the program, VAO, buffer, texture-unit and SSBO bindings for the restore at exit.
 void GpuStaticPropBatcher::acquireGlGuards(StaticPropFlushFrame& f) {
     auto& guardProgram = f.guardProgram; auto& guardVao = f.guardVao; auto& guardArrayBuf = f.guardArrayBuf; auto& guardElemBuf = f.guardElemBuf;
     auto& guardTexUnit0 = f.guardTexUnit0; auto& guardSsbo0 = f.guardSsbo0; auto& guardSsbo1 = f.guardSsbo1; auto& guardSsbo2 = f.guardSsbo2;
-    auto& guardSsbo3 = f.guardSsbo3; auto& guardSsbo5 = f.guardSsbo5;
+    auto& guardSsbo5 = f.guardSsbo5;
     // Save binding state (program/VAO/SSBO/texture) for restore at exit.
     // Pipeline state (depth/blend/cull) is set by applyPipeline() below and
     // NOT restored: gos_InvalidateRenderStateCache() at exit ensures the next
@@ -81,14 +19,14 @@ void GpuStaticPropBatcher::acquireGlGuards(StaticPropFlushFrame& f) {
     // prevProgram/prevVao/prevArrayBuf/prevElemBuf/prevActiveTex/prevTexUnit0/
     // prevSsbo{0,1,2,3,5} save + restore. gos_InvalidateRenderStateCache() is
     // called later in this function — ~30 lines of unrelated bookkeeping
-    // (parity tick, sample pick, bucket-map clear) run between the original
+    // (bucket-map clear) run between the original
     // manual-restore point and that call — so, mirroring the
     // GpuMechBatcher::flush() SSBO 0/1/2 precedent (gos_mech_batcher.cpp
     // ~2167/2212, GLSTATE-GUARD-ADOPTION-3), every guard here is wrapped in
     // std::optional and .reset() explicitly at the ORIGINAL manual-restore
     // point below, instead of at this scope's natural end. Slice 2
-    // (object-offload) Stage 2.C.2/2.D.1: SSBO slots 2/3 covered too
-    // (per-type hot-color / parity readback).
+    // (object-offload) Stage 2.C.2/2.D.1: SSBO slot 2 covered too
+    // (per-type hot-color).
     guardProgram.emplace();
     guardVao.emplace();
     guardArrayBuf.emplace(GL_ARRAY_BUFFER);
@@ -97,7 +35,6 @@ void GpuStaticPropBatcher::acquireGlGuards(StaticPropFlushFrame& f) {
     guardSsbo0.emplace(0);
     guardSsbo1.emplace(1);
     guardSsbo2.emplace(2);
-    guardSsbo3.emplace(3);
     guardSsbo5.emplace(5);
 }
 

@@ -141,7 +141,6 @@ absent or stubbed in `StandaloneSceneStubs` (the v3 swap point):
 - Shadow cascade (no depth map; NdotL shading only).
 - Fog parameters (stubbed to no-fog values).
 - Hot-window lights (the engine's SSBO light list is empty).
-- Per-type GPU parity write-back (parity SSBO is a null stub).
 
 No pixel-parity claim is made or implied. Backend-A is useful for confirming that
 the real engine shaders compile cleanly against the prop's materials and that basic
