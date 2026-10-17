@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 967
+gate_count: 968
 registry_entry_count: 195
-verified_count: 957
+verified_count: 958
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -6814,6 +6814,14 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_VK_FORCE_FAIL, kind: Trace, order: -1, default_on: false}
+  - name: MC2_VK_FRAMES_IN_FLIGHT
+    kind: Int
+    default: 2
+    rule: Prefix
+    owner: vk
+    doc: "Frames in flight of the Vulkan present path: 2 (default); =1 is the kill switch back to one frame."
+    smoke_passthrough: true
+    verified: true
   - name: MC2_VK_GPU_TIMESTAMPS
     kind: Bool
     default: false
