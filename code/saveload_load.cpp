@@ -85,9 +85,12 @@ void Mission::loadTerrain(MissionLoadFrame& f) {
 
 	land = new Terrain;
 	gosASSERT(land != nullptr);
-	// Existing saves omit ColorMapName; recover authored asset selection before terrain init.
-	if (missionFile.seekBlock("ColorMap") == NO_ERR) {
-		land->getColorMapName(&missionFile);
+	// Missing or malformed saved names need the authored asset selection before terrain init.
+	char savedColorMapName[1024]{};
+	if (missionFile.seekBlock("ColorMap") == NO_ERR &&
+		missionFile.readIdString("ColorMapName", savedColorMapName, 1023) == NO_ERR &&
+		savedColorMapName[0] != '\0') {
+		land->setColorMapName(savedColorMapName);
 	} else {
 		FullPathFileName authoredMissionName;
 		authoredMissionName.init(missionPath, missionFileName, ".fit");
