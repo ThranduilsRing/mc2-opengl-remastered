@@ -1302,8 +1302,6 @@ L(Presence, "MC2_VK_PROP_LIGHT_PROBE", Bool, false, "vk", "", "", verified),
 L(Presence, "MC2_VK_PROP_LIGHT_VERTEX_PROBE", Bool, false, "vk", "", "", verified),
 G("MC2_VK_PROP_PACKET_DUMP", String, "", "vk", "", "", verified),
 L(Lead1, "MC2_VK_PROP_PERF", Bool, false, "vk", "", "", passthrough | verified),
-// history: docs/gate-history.md#MC2_VK_SCENE_GL_PRODUCER_QUERY
-L(Lead1, "MC2_VK_SCENE_GL_PRODUCER_QUERY", Bool, false, "post", "", "VK final-gate diagnostic: wraps the sceneFBO producer phase in a GL_ANY_SAMPLES_PASSED query and logs [VK_SCENE_GL_PRODUCER_QUERY v1] any_samples=... so...", registry(Trace, "MC2_TRACE_VK_SCENE_GL_PRODUCER_QUERY", -1, false) | verified),
 // history: docs/gate-history.md#MC2_VK_SCREENSHADOW_GL_CANARY
 L(Lead1, "MC2_VK_SCREENSHADOW_GL_CANARY", Bool, false, "post", "", "VK final-gate diagnostic: wraps only the legacy GL runScreenShadow fullscreen draw in GL_ANY_SAMPLES_PASSED and logs [VK_SCREENSHADOW_GL_CANARY v1].", registry(Trace, "MC2_TRACE_VK_SCREENSHADOW_GL_CANARY", -1, false) | verified),
 L(Lead1, "MC2_VK_SELECT_TEST", Bool, false, "code", "", "", verified),

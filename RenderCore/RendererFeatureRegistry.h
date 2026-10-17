@@ -1573,13 +1573,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "VK present-tail deletion-readiness canary.",
     },
     {
-        "MC2_TRACE_VK_SCENE_GL_PRODUCER_QUERY",
-        "MC2_VK_SCENE_GL_PRODUCER_QUERY",
-        EnvVarKind::Trace,
-        false,
-        "VK final-gate diagnostic: wraps the sceneFBO producer phase in a GL_ANY_SAMPLES_PASSED query and logs [VK_SCENE_GL_PRODUCER_QUERY v1] any_samples=... so...",
-    },
-    {
         "MC2_TRACE_VK_SCREENSHADOW_GL_CANARY",
         "MC2_VK_SCREENSHADOW_GL_CANARY",
         EnvVarKind::Trace,

@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 975
-registry_entry_count: 203
-verified_count: 965
+gate_count: 974
+registry_entry_count: 202
+verified_count: 964
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -7055,14 +7055,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_VK_SCENE_GL_PRODUCER_QUERY
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: post
-    doc: "VK final-gate diagnostic: wraps the sceneFBO producer phase in a GL_ANY_SAMPLES_PASSED query and logs [VK_SCENE_GL_PRODUCER_QUERY v1] any_samples=... so..."
-    verified: true
-    registry: {feature_id: MC2_TRACE_VK_SCENE_GL_PRODUCER_QUERY, kind: Trace, order: -1, default_on: false}
   - name: MC2_VK_SCREENSHADOW_GL_CANARY
     kind: Bool
     default: false

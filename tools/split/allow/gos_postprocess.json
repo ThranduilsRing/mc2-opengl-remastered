@@ -2,10 +2,7 @@
  "base": "e6770aa59",
  "src": "GameOS/gameos/gos_postprocess.cpp",
  "stem": "gos_postprocess",
- "add": [
-  "void lostFrameBegin();   // gos_postprocess_diag.cpp"
- ],
- "_add_reason": "lostFrameBegin is declared with a trailing comment naming its piece: its definition is parsed as a statement run by the unit splitter, so no prototype is generated for it.",
+ "add": [],
  "scripts": [
   "scripts/check-apply-pass-bumped.py",
   "scripts/check-contracts.sh",

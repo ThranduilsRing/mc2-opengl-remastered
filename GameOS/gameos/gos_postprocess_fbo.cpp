@@ -31,7 +31,6 @@ void gosPostProcess::destroy()
 {
     if (!initialized_)
         return;
-    lostShutdown();
 
     destroyFBOs();
     destroyFullscreenQuad();

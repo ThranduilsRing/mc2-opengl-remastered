@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 974,
+ "count": 973,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -25717,32 +25717,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_SCENE_GL_PRODUCER_QUERY",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "VK final-gate diagnostic: wraps the sceneFBO producer phase in a GL_ANY_SAMPLES_PASSED query and logs [VK_SCENE_GL_PRODUCER_QUERY v1] any_samples=... so resource-strict work can prove whether any GL scene producer still rasterizes before attempting to delete shared scene GL interop resources.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:597",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_VK_SCENE_GL_PRODUCER_QUERY",
    "retireVerdict": ""
   },
   {

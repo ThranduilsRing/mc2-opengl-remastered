@@ -11995,17 +11995,6 @@
    "count": 1
   },
   {
-   "tag": "VK_GL_LOST_DRAWS",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "final",
-    "total_groups"
-   ],
-   "count": 1
-  },
-  {
    "tag": "VK_HUD_AUDIT",
    "ver": 1,
    "stream": "stderr",
@@ -12346,16 +12335,6 @@
     "tag",
     "any_samples",
     "draws"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_SCENE_GL_PRODUCER_QUERY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "any_samples",
-    "frame_sceneFBO"
    ],
    "count": 1
   },

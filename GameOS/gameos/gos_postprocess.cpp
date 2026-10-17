@@ -685,13 +685,6 @@ void gosPostProcess::beginScene()
     sceneHasTerrain_ = false;  // reset each frame; set by markTerrainDrawn()
 
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
-    lostFrameBegin();
-    if (sceneGlProducerQueryEnabled() && sceneGlProducerQuery_ == 0)
-        glGenQueries(1, &sceneGlProducerQuery_);
-    if (sceneGlProducerQuery_ != 0 && !sceneGlProducerQueryActive_) {
-        glBeginQuery(GL_ANY_SAMPLES_PASSED, sceneGlProducerQuery_);
-        sceneGlProducerQueryActive_ = true;
-    }
 
     // COLORMASK-ROLLOUT-1 (keystone): assert the steady-state color mask (all
     // attachments writable) at frame begin, before the clear + the first MRT scene
@@ -756,14 +749,6 @@ void gosPostProcess::endScene()
     if (!initialized_)
         return;
 
-    lostFrameEnd();
-    if (sceneGlProducerQueryActive_) {
-        glEndQuery(GL_ANY_SAMPLES_PASSED);
-        GLuint anySamples = 0;
-        glGetQueryObjectuiv(sceneGlProducerQuery_, GL_QUERY_RESULT, &anySamples);
-        mc2::fmt::print_err("[VK_SCENE_GL_PRODUCER_QUERY v1] any_samples={:d} frame_sceneFBO={:d}\n", mc2::fmt::as_u32((unsigned)anySamples), mc2::fmt::as_u32((unsigned)sceneFBO_));
-        sceneGlProducerQueryActive_ = false;
-    }
 
     // GLSTATE-VAO-RESTORE-1: save the caller's VAO so endScene() is self-contained.
     // NVIDIA Core profile rejects any draw with VAO=0 (GL_INVALID_OPERATION). endScene

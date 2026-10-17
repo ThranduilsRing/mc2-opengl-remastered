@@ -657,7 +657,7 @@ void MissionInterfaceManager::render (void)
 	}
 
 	gos_SetRenderState( gos_State_IsHUD, 1 );
-	{ GosGlLostDrawsScope _lostSc_("hud.control_gui_tacmap"); controlGui.render( isPaused() && !isPausedWithoutMenu() ); }
+	{ controlGui.render( isPaused() && !isPausedWithoutMenu() ); }
 	gos_SetRenderState( gos_State_IsHUD, 0 );
 
   /* 	if ( scenarioTime  < 7.0 )

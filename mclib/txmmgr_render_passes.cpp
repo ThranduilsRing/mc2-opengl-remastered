@@ -13,7 +13,6 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 	// off-screen-caster low-sun shadow is the documented Phase-2 gap).
 	{
 		ZoneScopedN("RenderLists.DynamicShadowPass");
-		GosGlLostDrawsScope _rlLost_("dyn_shadow");
 		extern bool g_useGpuObjects;
 		extern bool g_useGpuMechs;
 		// ISSUE-34: modern-shadow-path predicate (was tess-keyed) — dynamic
@@ -363,7 +362,6 @@ void MC_TextureManager::renderListsTerrainSolid ([[maybe_unused]] const RenderLi
 
 	{
 		ZoneScopedN("Render.TerrainSolid");
-	GosGlLostDrawsScope _rlLost_("terrain_solid");
 		TracyGpuZone("Render.TerrainSolid");
 
 		// MC2_LOAD_RACE_TRACE: terrain GPU-residency probe. The degraded
@@ -647,7 +645,6 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 		if (g_useGpuStaticProps || g_useGpuObjects) {
 			// [RENDERLISTS_COST v1] prep+cull-dispatch only; the two flush units
 			// below carry their own spans (no double-count vs total).
-			GosGlLostDrawsScope _rlLost_("gpusp_prep_cull");
 			// Stage 3.C registry flush MOVED earlier (before flushShadow, see
 			// STATIC-PROP SHADOW-ORDER FIX 2026-05-29) so terrain-object instances
 			// are in s_bucketsByType before the shadow-time SSBO upload locks the
@@ -661,7 +658,7 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 			// patch shader can read baseInstanceByCmd[] in the same dispatch.
 			// The GpuSP.PrepBaseInstance Tracy zone (override branch).
 			{
-				ZoneScopedN("GpuSP.PrepBaseInstance"); GosGlLostDrawsScope _lost_("gpusp.prep_base_instance");
+				ZoneScopedN("GpuSP.PrepBaseInstance");
 				batcher_prepareBaseInstanceTable();
 			}
 
@@ -676,10 +673,10 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 			// cull-record prefix now that baseInstanceForType is valid (set by
 			// batcher_prepareBaseInstanceTable above) and before compute_dispatch
 			// consumes the records. No-op on clean frames / unless the gate is set.
-			{ GosGlLostDrawsScope _lost_("gpusp.static_prefix"); GpuStaticPropRegistry::buildStaticPrefixGolden(); }
+			{ GpuStaticPropRegistry::buildStaticPrefixGolden(); }
 
 			if (gpu_cull::compute_isEnabled()) {
-				ZoneScopedN("GpuSP.CullDispatch"); GosGlLostDrawsScope _lost_(nullptr);
+				ZoneScopedN("GpuSP.CullDispatch");
 				// VK-GL-LOST-DRAWS: nullptr tag = unmeasured. compute_dispatch() is compute-only (no raster); a
 				// GL_SAMPLES_PASSED segment holding only compute + barriers returns a garbage
 				// ~1e12 on this driver (begin snapshot never taken) and mis-attributes the frame's
@@ -710,7 +707,6 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 			if (g_useGpuStaticProps || g_useGpuObjects) {
 				ZoneScopedN("GpuSP.BatcherFlush");
 				TracyGpuZone("GpuSP.BatcherFlush");
-				GosGlLostDrawsScope _rlLost_("sp_batcher_flush");
 #ifdef MC2_VULKAN_ISLAND
 				// VK-P11 STATIC-PROP COLOR Tier-1 (gate MC2_VK_PROP_COLOR_TIER1):
 				// render visible static-prop color instances directly into the shared
@@ -747,7 +743,6 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 		auto runMechFlushUnit = []() {
 			ZoneScopedN("Render.GpuMechs");
 			TracyGpuZone("Render.GpuMechs");
-			GosGlLostDrawsScope _rlLost_("mech_flush");
 			// [RENDER_PASS v1] advisory telemetry (env-gated, rate-limited).
 			// MECHOPAQUE-NOTE-RELOCATE-1: note fires at the real mech GPU draw
 			// site (after shadow, after static-prop flush) — NOT at the preamble.
@@ -805,7 +800,7 @@ void MC_TextureManager::renderListsOverlayBatches (void)
 	// Default-off: IsFrameMaskSolidArmed() returns false unless
 	// MC2_TERRAIN_MASK_DISPATCH=1 AND MC2_TERRAIN_MASK_DISPATCH_SOLID != "0".
 	{
-		ZoneScopedN("Render.TerrainMask.Solid"); GosGlLostDrawsScope _lost_("overlays.mask_solid");
+		ZoneScopedN("Render.TerrainMask.Solid");
 		TracyGpuZone("Render.TerrainMask.Solid");
 		if (gos_terrain_mask_dispatch::IsMaskDispatchReady()
 		 && gos_terrain_mask_dispatch::IsFrameMaskSolidArmed()) {
@@ -818,7 +813,7 @@ void MC_TextureManager::renderListsOverlayBatches (void)
 	// craterManager->render().  They set their own GL state and restore it.
 	// Render order matches design: terrain → cement overlays → decals → (old overlays).
 	{
-		ZoneScopedN("Render.TerrainOverlays"); GosGlLostDrawsScope _lost_("overlays.terrain_overlays");
+		ZoneScopedN("Render.TerrainOverlays");
 		TracyGpuZone("Render.TerrainOverlays");
 		gos_DrawTerrainOverlays();
 	}
@@ -831,7 +826,7 @@ void MC_TextureManager::renderListsOverlayBatches (void)
 	// after Render.TerrainOverlays so the static cement composites in the
 	// same slot the per-frame batch used (before mines/decals/old overlays).
 	{
-		ZoneScopedN("Render.TerrainOverlaysStatic"); GosGlLostDrawsScope _lost_("overlays.terrain_overlays_static");
+		ZoneScopedN("Render.TerrainOverlaysStatic");
 		TracyGpuZone("Render.TerrainOverlaysStatic");
 		if (gos_terrain_indirect::IsFrameOverlayArmed()) {
 			gos_terrain_indirect::DrawDecalStatic();
@@ -843,14 +838,14 @@ void MC_TextureManager::renderListsOverlayBatches (void)
 	// Default-off: IsFrameMineArmed() returns false unless
 	// MC2_TERRAIN_INDIRECT_MINE=1 AND the texture-array has been built.
 	{
-		ZoneScopedN("Render.TerrainMines"); GosGlLostDrawsScope _lost_("overlays.terrain_mines");
+		ZoneScopedN("Render.TerrainMines");
 		TracyGpuZone("Render.TerrainMines");
 		if (gos_terrain_indirect::IsFrameMineArmed()) {
 			gos_terrain_indirect::DrawMineStatic();
 		}
 	}
 	{
-		ZoneScopedN("Render.Decals"); GosGlLostDrawsScope _lost_("overlays.decals");
+		ZoneScopedN("Render.Decals");
 		TracyGpuZone("Render.Decals");
 		// MC2_DYNAMIC_DECALS: push dynamic impact decals into the batch before flushing.
 		// Gate-off: gatherToDecalBatch() is a no-op; gate-on: pushes faded quads.

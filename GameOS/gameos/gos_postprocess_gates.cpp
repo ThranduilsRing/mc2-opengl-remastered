@@ -335,12 +335,6 @@ bool mc2CloudShadowEnabled()
     return s_on;
 }
 
-bool sceneGlProducerQueryEnabled()
-{
-    static const bool s_on = mc2::gate::get<"MC2_VK_SCENE_GL_PRODUCER_QUERY">();
-    return s_on;
-}
-
 bool screenShadowGlCanaryEnabled()
 {
     static const bool s_on = mc2::gate::get<"MC2_VK_SCREENSHADOW_GL_CANARY">();

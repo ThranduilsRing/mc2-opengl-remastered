@@ -75,7 +75,6 @@ enum class SceneDrawBufferMode { MainSceneMRT, SingleColor };
 // Defined in gos_postprocess.cpp, shared with the FBO piece.
 extern gosPostProcess* s_postProcess;
 void setSceneDrawBuffers(SceneDrawBufferMode mode, bool objectIdAttachmentReady);
-void lostFrameBegin();   // gos_postprocess_diag.cpp
 
 
 // Free functions defined in the split pieces.
@@ -103,9 +102,6 @@ float mc2ShadowMechSoft();
 int mc2PropShadowReceive();
 bool mc2ShadowGuardClampedSun();
 bool mc2CloudShadowEnabled();
-bool sceneGlProducerQueryEnabled();
-void lostFrameEnd();
-void lostShutdown();
 bool screenShadowGlCanaryEnabled();
 void mc2ClampShadowSunAltitude(float& fx, float& fy, float& fz);
 void executorOwnBeginSub(gosPostProcess* pp, RenderCore::framegraph::ExecutorIslandId islandId);
