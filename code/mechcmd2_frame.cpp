@@ -3,6 +3,9 @@
 #include "mechcmd2_internal.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#ifdef MC2_ALLOC_STATS
+#include "artlry.h"
+#endif
 
 
 void __stdcall UpdateRenderers()
@@ -637,11 +640,44 @@ void __stdcall DoGameLogic()
 			gos_TerminateApplication();
 		}
 
+#ifdef MC2_ALLOC_STATS
+		// Proof build only: reload the quicksave every 90 frames (the harness quicksaves at frame 300 through
+		// MC2_BOOT_QUICKSAVE_AT), 8 times, calling an artillery strike in before each so the pooled rounds are exercised.
+		{
+			extern uint32_t g_mc2FrameCounter;
+			static int s_cycle = 0;
+			static uint32_t s_nextAt = 420;
+			if (s_cycle < 8 && g_mc2FrameCounter >= s_nextAt && !loadInMissionSave && mission && eye)
+			{
+				Stuff::Vector3D strikeAt = eye->getPosition();
+				IfaceCallStrike(ARTILLERY_LARGE, &strikeAt, nullptr, false, false, 30.0f);
+				loadInMissionSave = true;
+				s_nextAt = g_mc2FrameCounter + 90;
+				++s_cycle;
+			}
+		}
+#endif
 		if (loadInMissionSave)
 		{
             char savegame_path[1024];
             S_snprintf(savegame_path, sizeof(savegame_path)/sizeof(savegame_path[0]), "%s" PATH_SEPARATOR "testgame.ims", savePath);
+#ifdef MC2_ALLOC_STATS
+			static int s_reloadNo = 0;
+			extern void mc2AllocStatsSnapshot(long long*, long long*);
+			long long liveBefore = 0, bytesBefore = 0;
+			mc2AllocStatsSnapshot(&liveBefore, &bytesBefore);
+			mc2::fmt::print_out("[ALLOC_RELOAD] n={} phase=pre live={} bytes={}\n", mc2::fmt::as_i32(s_reloadNo), mc2::fmt::as_i64(liveBefore), mc2::fmt::as_i64(bytesBefore));
+#endif
             mission->load(savegame_path);
+#ifdef MC2_ALLOC_STATS
+			{
+				long long liveAfter = 0, bytesAfter = 0;
+				mc2AllocStatsSnapshot(&liveAfter, &bytesAfter);
+				mc2::fmt::print_out("[ALLOC_RELOAD] n={} phase=post live={} bytes={}\n", mc2::fmt::as_i32(s_reloadNo), mc2::fmt::as_i64(liveAfter), mc2::fmt::as_i64(bytesAfter));
+				fflush(stdout);
+				++s_reloadNo;
+			}
+#endif
 			loadInMissionSave = false;
 			if (g_resaveAfterQuickload)
 			{

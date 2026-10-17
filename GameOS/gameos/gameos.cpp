@@ -226,6 +226,21 @@ void __stdcall gos_WalkMemoryHeap(HGOSHEAP pHeap, bool vociferous/* = false*/)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+#ifdef MC2_ALLOC_STATS
+// Proof build only (cmake -DMC2_ALLOC_STATS=ON): live blocks / bytes through gos_Malloc and gos_Free, for the mission-reload delta.
+// WHY: the ownership step removed the bulk-free heaps, so a leak they hid must show as growth per reload. Direct malloc/free
+// sites are not counted; a block freed here that was allocated elsewhere only pulls the figure down, never up.
+#include <atomic>
+#include <malloc.h>
+static std::atomic<long long> g_allocStatsLive{0};
+static std::atomic<long long> g_allocStatsBytes{0};
+void mc2AllocStatsSnapshot(long long* live, long long* bytes)
+{
+    *live = g_allocStatsLive.load(std::memory_order_relaxed);
+    *bytes = g_allocStatsBytes.load(std::memory_order_relaxed);
+}
+#endif
+
 void* operator new(size_t sz) {
     // A replaced operator new must not return null: callers (and the compiler) assume the result is valid.
     void* p = gos_Malloc(sz ? sz : 1, nullptr);
@@ -269,7 +284,16 @@ void* __stdcall gos_Malloc(size_t bytes, HGOSHEAP Heap/* = 0*/)
         PAUSE((""));
     }
     */
+#ifdef MC2_ALLOC_STATS
+    void* p = malloc(bytes);
+    if (p) {
+        g_allocStatsLive.fetch_add(1, std::memory_order_relaxed);
+        g_allocStatsBytes.fetch_add((long long)_msize(p), std::memory_order_relaxed);
+    }
+    return p;
+#else
     return malloc(bytes);
+#endif
 }
 void __stdcall gos_Free(void* ptr)
 {
@@ -280,6 +304,12 @@ void __stdcall gos_Free(void* ptr)
         heap->BytesAllocated -= // ??? ;
     }
     */
+#ifdef MC2_ALLOC_STATS
+    if (ptr) {
+        g_allocStatsLive.fetch_sub(1, std::memory_order_relaxed);
+        g_allocStatsBytes.fetch_sub((long long)_msize(ptr), std::memory_order_relaxed);
+    }
+#endif
     free(ptr);
 }
 ////////////////////////////////////////////////////////////////////////////////
