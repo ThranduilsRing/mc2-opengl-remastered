@@ -1031,30 +1031,32 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
 # ---------------------------------------------------------------------------
 
 
-GOLDEN_NORMAL_ROOT = Path("A:/Games/mc2-opengl/mc2-win64-v0.4c")
-NORMAL_MANIFEST = Path(__file__).with_name("terrain_normals.json")
+GOLDEN_MATERIAL_ROOT = Path("A:/Games/mc2-opengl/mc2-win64-v0.4c")
+MATERIAL_MANIFEST = Path(__file__).with_name("terrain_materials.json")
 
 
-def ensure_terrain_normals(target_dir):
-    """Verify required modern normals; read golden assets without modifying them.
+def ensure_terrain_materials(target_dir):
+    """Verify required modern normals and displacement maps; read golden assets without modifying them.
 
     Replace destination entries atomically so shared data hardlinks stay intact.
     Correct files are never rewritten. Refuse unavailable or changed golden bytes.
     """
     hashes = {}
     try:
-        manifest = json.loads(NORMAL_MANIFEST.read_text(encoding="utf-8"))
-        expected_paths = {f"data/textures/mat{i}_normal.tga" for i in range(9)}
+        manifest = json.loads(MATERIAL_MANIFEST.read_text(encoding="utf-8"))
+        expected_paths = ({f"data/textures/mat{i}_normal.tga" for i in range(9)} |
+                          {f"data/textures/mat{i}_displacement.tga" for i in range(4)} |
+                          {"data/textures/detail_displacement.tga"})
         if set(manifest) != expected_paths or any(
                 not re.fullmatch(r"[0-9a-f]{40}", h) for h in manifest.values()):
-            raise ValueError("invalid terrain normal manifest")
+            raise ValueError("invalid terrain material manifest")
         for rel, expected in manifest.items():
             dst = Path(target_dir) / rel
             if not dst.is_file() or hashlib.sha1(dst.read_bytes()).hexdigest() != expected:
-                src = GOLDEN_NORMAL_ROOT / rel
+                src = GOLDEN_MATERIAL_ROOT / rel
                 content = src.read_bytes()
                 if hashlib.sha1(content).hexdigest() != expected:
-                    raise ValueError(f"golden terrain normal hash mismatch: {src}")
+                    raise ValueError(f"golden terrain material hash mismatch: {src}")
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 temporary = None
                 try:
@@ -1065,19 +1067,19 @@ def ensure_terrain_normals(target_dir):
                 finally:
                     if temporary is not None and temporary.exists():
                         temporary.unlink()
-                log(f"restored required terrain normal: {rel}")
+                log(f"restored required terrain material: {rel}")
             content = dst.read_bytes()
             if hashlib.sha1(content).hexdigest() != expected:
-                raise ValueError(f"deployed terrain normal hash mismatch: {dst}")
+                raise ValueError(f"deployed terrain material hash mismatch: {dst}")
             hashes[rel] = (hashlib.sha256(content).hexdigest(), len(content))
-        log("terrain normals verified: 9/9")
+        log("terrain materials verified: 14/14")
     except (OSError, ValueError, TypeError) as exc:
-        fail(f"required terrain normals unavailable: {exc}")
+        fail(f"required terrain materials unavailable: {exc}")
     return hashes
 
 
 def deploy(items, target_dir, allow_stale_pdb, preserve=()):
-    src_hashes = ensure_terrain_normals(target_dir)
+    src_hashes = ensure_terrain_materials(target_dir)
     shader_mismatches = []
     pdb_problem = None
     preserve = {p.replace(os.sep, "/") for p in preserve}

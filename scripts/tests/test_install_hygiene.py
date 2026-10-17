@@ -1,4 +1,4 @@
-"""Install hygiene: pinned normals, complete FSTs, and fatal texture diagnostics."""
+"""Install hygiene: pinned terrain materials, complete FSTs, and fatal texture diagnostics."""
 import hashlib
 import json
 from pathlib import Path
@@ -17,24 +17,26 @@ import residency_slim
 
 
 @pytest.fixture
-def normals(tmp_path, monkeypatch):
+def materials(tmp_path, monkeypatch):
     source = tmp_path / 'golden'
     manifest = {}
-    for i in range(9):
-        rel = f'data/textures/mat{i}_normal.tga'
+    paths = ([f'data/textures/mat{i}_normal.tga' for i in range(9)] +
+             [f'data/textures/mat{i}_displacement.tga' for i in range(4)] +
+             ['data/textures/detail_displacement.tga'])
+    for i, rel in enumerate(paths):
         path = source / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(bytes([i]) * 32)
         manifest[rel] = hashlib.sha1(path.read_bytes()).hexdigest()
-    pin = tmp_path / 'normals.json'
+    pin = tmp_path / 'materials.json'
     pin.write_text(json.dumps(manifest))
-    monkeypatch.setattr(dp, 'NORMAL_MANIFEST', pin)
-    monkeypatch.setattr(dp, 'GOLDEN_NORMAL_ROOT', source)
+    monkeypatch.setattr(dp, 'MATERIAL_MANIFEST', pin)
+    monkeypatch.setattr(dp, 'GOLDEN_MATERIAL_ROOT', source)
     return source, manifest
 
 
-def test_deploy_repairs_missing_and_wrong_normals_then_noop(tmp_path, normals, monkeypatch):
-    source, manifest = normals
+def test_deploy_repairs_missing_and_wrong_materials_then_noop(tmp_path, materials, monkeypatch):
+    source, manifest = materials
     target = tmp_path / 'target'
     bad = target / 'data/textures/mat6_normal.tga'
     bad.parent.mkdir(parents=True)
@@ -53,10 +55,12 @@ def test_deploy_repairs_missing_and_wrong_normals_then_noop(tmp_path, normals, m
     assert stamps == {rel: (target / rel).stat().st_mtime_ns for rel in manifest}
 
 
+@pytest.mark.parametrize('rel', ['mat0_normal.tga', 'mat0_displacement.tga',
+                                  'detail_displacement.tga'])
 @pytest.mark.parametrize('corrupt', [False, True])
-def test_normal_source_failure_refuses_deploy(tmp_path, normals, corrupt):
-    source, _ = normals
-    path = source / 'data/textures/mat0_normal.tga'
+def test_material_source_failure_refuses_deploy(tmp_path, materials, corrupt, rel):
+    source, _ = materials
+    path = source / 'data/textures' / rel
     if corrupt:
         path.write_bytes(b'changed golden')
     else:
@@ -65,13 +69,13 @@ def test_normal_source_failure_refuses_deploy(tmp_path, normals, corrupt):
         dp.deploy([], tmp_path / 'target', False)
 
 
-def test_correct_target_does_not_need_golden(tmp_path, normals):
-    source, manifest = normals
+def test_correct_target_does_not_need_golden(tmp_path, materials):
+    source, manifest = materials
     target = tmp_path / 'target'
-    dp.ensure_terrain_normals(target)
+    dp.ensure_terrain_materials(target)
     for rel in manifest:
         (source / rel).unlink()
-    dp.ensure_terrain_normals(target)
+    dp.ensure_terrain_materials(target)
 
 
 def archive(path, name):
@@ -137,18 +141,18 @@ def test_texture_diagnostics_fail_otherwise_passing_smoke(line, bucket):
     assert bucket in verdict.buckets
 
 
-def test_splatting_exceptions_are_scoped_to_baselined_tier1():
+def test_splatting_failure_cannot_be_waived():
     from scripts.smoke_lib import manifest
     entries = manifest.parse_manifest(ROOT / 'tests/smoke/smoke_missions.txt')
     exceptions = {(e.tier, e.stem) for e in entries
                   if e.marker_overrides.get('splatting_failed')}
-    assert exceptions == {('tier1', stem) for stem in
-                          ('mc2_01', 'mc2_03', 'mc2_10', 'mc2_17', 'mc2_24')}
+    assert not exceptions
+    assert 'allow_splatting_failed' not in manifest.MARKER_OVERRIDE_KEY_TO_BUCKET
     summary = logparse.parse_log('[INSTR v1] enabled: test\n'
                                  '[SMOKE v1] event=summary result=pass\n'
                                  '[SPLATTING] FAILED to load all material textures\n')
     cfg = gates.GateConfig(marker_overrides={'splatting_failed': True})
-    assert gates.evaluate(summary, cfg, exit_code=0, walltime_s=1).passed
+    assert not gates.evaluate(summary, cfg, exit_code=0, walltime_s=1).passed
     summary = logparse.parse_log('[INSTR v1] enabled: test\n'
                                  '[SMOKE v1] event=summary result=pass\n'
                                  '[TEXMGR_MISSING] missing.tga\n')

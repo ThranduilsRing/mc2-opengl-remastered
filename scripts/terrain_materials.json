@@ -7,5 +7,10 @@
   "data/textures/mat5_normal.tga": "1b5e484a3e7f6d428aebdb5003a5db6f69d6ab74",
   "data/textures/mat6_normal.tga": "3afd27567cdfeca2b5a51e53fdd8d6599061f4a7",
   "data/textures/mat7_normal.tga": "b6035d1dbc2307ade0edd816d7f840480cea63db",
-  "data/textures/mat8_normal.tga": "f725ba8d7eb0cf8956eb8b7db2f8dade8849dc38"
+  "data/textures/mat8_normal.tga": "f725ba8d7eb0cf8956eb8b7db2f8dade8849dc38",
+  "data/textures/detail_displacement.tga": "d09332f2c2beeb11197f0f2f868631600ffbcce2",
+  "data/textures/mat0_displacement.tga": "0ac162b2808635a8c9e19b0bc8523a024ee96b46",
+  "data/textures/mat1_displacement.tga": "d5339aa4009a1c5a6376c674908c33d136abf446",
+  "data/textures/mat2_displacement.tga": "a608deb41792d793db4367d7819bf7273fb87291",
+  "data/textures/mat3_displacement.tga": "03e17eddbe73598621a8610f59805105e7d30ad3"
 }

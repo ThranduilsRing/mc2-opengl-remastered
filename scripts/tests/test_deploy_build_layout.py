@@ -29,7 +29,7 @@ from scripts import console_child  # noqa: E402
 
 
 def test_asset_sidecar_deploy_is_identical_across_checkout_roots(monkeypatch):
-    monkeypatch.setattr(dp, "ensure_terrain_normals", lambda target: {})
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda target: {})
     rel = "data/tgl/QuonsetGLB.mcasset.json"
     tracked = subprocess.run(["git", "-C", str(ROOT), "show", "HEAD:" + rel],
                              check=True, stdout=subprocess.PIPE,

@@ -8,14 +8,11 @@
 # Tier1 measurements are isolated single-mission runs -- the canonical
 # regression-detection reference. Do not compare tier1 perf numbers to
 # tier2 perf numbers; see "Measurement semantics" in tests/smoke/README.md.
-# 2026-10-17 lane3 stock-FST baseline: all five log SPLATTING FAILED with
-# the nine golden normals present; the loader also requires displacement maps.
-# Allow only that known marker here; TEXMGR_MISSING remains fatal everywhere.
-tier1 mc2_01 allow_splatting_failed=1 reason="baseline grass/desert combat"
-tier1 mc2_03 allow_splatting_failed=1 reason="salvage + heavier combat"
-tier1 mc2_10 allow_splatting_failed=1 reason="urban/complex objects"
-tier1 mc2_17 allow_splatting_failed=1 reason="late-campaign combined-arms stress"
-tier1 mc2_24 allow_splatting_failed=1 reason="final campaign mission smoke"
+tier1 mc2_01 reason="baseline grass/desert combat"
+tier1 mc2_03 reason="salvage + heavier combat"
+tier1 mc2_10 reason="urban/complex objects"
+tier1 mc2_17 reason="late-campaign combined-arms stress"
+tier1 mc2_24 reason="final campaign mission smoke"
 
 tier2 mc2_01 reason="campaign"
 tier2 mc2_02 reason="campaign"
