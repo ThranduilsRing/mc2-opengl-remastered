@@ -12,6 +12,8 @@
 #include <vector>
 #include <array>
 #include <algorithm>
+#include <cstdlib>
+#include <cstring>
 
 static std::atomic<long long> g_allocStatsLive{0};
 static std::atomic<long long> g_allocStatsBytes{0};
@@ -94,7 +96,21 @@ void mc2AllocTrackReport(uint32_t gen)
     SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME);
     static bool s_symInit = false;
     if (!s_symInit) { SymInitialize(proc, nullptr, TRUE); s_symInit = true; }
-    for (size_t r = 0; r < v.size() && r < 12; ++r) {
+    // S10_SKIP=<substring>: sites with that text in any frame symbol are left out (a known, separately reported leak); S10_SITES = ranks to print.
+    const char* skip = std::getenv("S10_SKIP");
+    const size_t maxSites = std::getenv("S10_SITES") ? (size_t)std::atoi(std::getenv("S10_SITES")) : 12;
+    size_t printed = 0;
+    uint64_t skippedBlocks = 0;
+    for (size_t r = 0; r < v.size() && printed < maxSites; ++r) {
+        if (skip) {
+            bool hit = false;
+            for (int i = 0; i < 10 && (*g_sites)[v[r].first][i]; ++i) {
+                char sb[sizeof(SYMBOL_INFO) + 256]; SYMBOL_INFO* sy = (SYMBOL_INFO*)sb; sy->SizeOfStruct = sizeof(SYMBOL_INFO); sy->MaxNameLen = 256; DWORD64 dd = 0;
+                if (SymFromAddr(proc, (DWORD64)(*g_sites)[v[r].first][i], &dd, sy) && std::strstr(sy->Name, skip)) { hit = true; break; }
+            }
+            if (hit) { skippedBlocks += v[r].second.count; continue; }
+        }
+        ++printed;
         mc2::fmt::print_out("[ALLOC_SITE] rank={} blocks={} bytes={}\n", mc2::fmt::as_u64(r), mc2::fmt::as_u64(v[r].second.count), mc2::fmt::as_u64(v[r].second.bytes));
         auto& key = (*g_sites)[v[r].first];
         for (int i = 0; i < 8 && key[i]; ++i) {
@@ -108,6 +124,7 @@ void mc2AllocTrackReport(uint32_t gen)
             mc2::fmt::print_out("    {} ({}:{})\n", mc2::fmt::safe(nm), mc2::fmt::safe(fn), mc2::fmt::as_u32(lno));
         }
     }
+    mc2::fmt::print_out("[ALLOC_SKIPPED] blocks={}\n", mc2::fmt::as_u64(skippedBlocks));
     fflush(stdout);
     tl_inTracker = false;
 }
