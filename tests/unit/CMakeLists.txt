@@ -412,6 +412,8 @@ target_sources(mc2_tests PRIVATE test_actor_appearance_owner.cpp)
 target_sources(mc2_tests PRIVATE test_warrior_queue_markers.cpp)
 # B7o.6a/6b: TG_ShapeRec transfer (reset fields), parent rebuild after detach and compaction; since 6b the record owns its node
 target_sources(mc2_tests PRIVATE test_tg_shape_rec_transfer.cpp)
+# B7 proof gap: GameObject zero-fill against a poisoned operator new (header-only, code/object_zero_new.h)
+target_sources(mc2_tests PRIVATE test_object_zero_new.cpp)
 
 # Missing GLM leaves the existing unit tier usable, but cannot prove a math migration.
 if(NOT TARGET glm::glm)
