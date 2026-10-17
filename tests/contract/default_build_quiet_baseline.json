@@ -17,6 +17,10 @@
       "status": "keep",
       "reason": "Gates/gate.cpp dumpConfig: ONE summary line per start (set/nondefault/unregistered/badvalue counts) plus a line per env-set gate and each warning. The smoke runner forces MC2_CONFIG_STRICT=1 and reads these lines to prove which configuration was measured; per-row lines for unset gates only print under MC2_CONFIG_DUMP=all."
     },
+    "HDRI_SKY v1": {
+      "status": "keep",
+      "reason": "FAIL-LOUD by design (GameOS/gameos/gos_hdri.cpp): EXR load/decode, GL texture creation and GL upload failures disable the HDRI sky; gosPostProcess::setSkyNumber leaves the sky black on load failure. Stock-profile smoke logs expose missing data/hdr EXRs at startup and mission load. These failures must remain visible; successful loads, sidecar fallback and sun-scan diagnostics are already MC2_DIAGFE-gated."
+    },
     "INSTR v1": {
       "status": "keep",
       "reason": "scripts/whatran.py and smoke_lib/gates.py parse the 'enabled:' banner to record which gates were armed for a run. smoke_lib/gates.py reports '[INSTR v1] banner absent' as a failure."
