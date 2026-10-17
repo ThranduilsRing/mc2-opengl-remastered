@@ -1395,6 +1395,10 @@ bool ensureImguiVulkan(EnginePresentVk::Impl& s) {
         s.imguiVkFailed = true;
         return false;
     }
+    // The present image is stored with GL bottom-left origin (the composite renders it un-flipped and copy-2 flips it into the
+    // swapchain), and the HUD tail pass flips its own Y. The Vulkan ImGui backend draws top-down, so without this the whole ImGui
+    // layer (every defs/ImGui page: text, art, portraits) reaches the screen upside down.
+    ImGui_ImplVulkan_SetFlipY(true);
     s.imguiVkInited = true;
     return true;
 }
