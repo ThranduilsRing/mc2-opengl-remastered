@@ -20,6 +20,7 @@
 #endif
 
 #include"appearance_owner.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 #ifndef CARNAGE_H
 #include"carnage.h"
