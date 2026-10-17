@@ -1,5 +1,29 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FORTY-FIRST session (2026-10-16, Sonnet 5.5) -- nifty 9c39e5cbf and Codex row 29 fix merged, row 29 re-graded (stays open), MC2_VK_IMGUI default ON
+
+### Commits (after 07056c242)
+8179fe9b6 merge nifty 9c39e5cbf (clean, no conflicts) | merge of af42a52e7 (Codex Card::Draw harvest, clean) | 53101fc19 MC2_VK_IMGUI default ON (gate row Lead0Kill true, registry, `vkImguiRequested()` only true under the Vulkan backend, tier1 doc) + s40 review note (transient import failure cached) | state/docs commit. MERGEABLE TIP = the commit carrying this line.
+
+### Proof
+| Evidence | Result |
+|---|---|
+| build + doctest at the merge (497a98894537) and at 53101fc19 | ninja exit 0, deploy exit 0, `build_contract_harnesses --run --unit` exit 0 both times |
+| row 29 oracle, mc2_24 ppc frame 154 `--fixture 1`, both arms, lane2 install, exe 497a98894537 (`scratch/vo41`), repeated on 53101fc19 (`scratch/vo41f`, identical) | MLR byte-identical to session 39; crop 8,263 px differ, 6,738 over 8 levels, 3,971 over 32, mean 0.966 (s39: 8,381 / 6,734 / 3,947 / 0.997); heads still missing in the GPU arm; montages viewed (`.claude/l2cap/s41-row29-*.png`) |
+| depth experiment (GEQUAL -> ALWAYS, reverted, `scratch/vo41x`) | heads appear but as jagged spikes without the halo: depth cause AND wrong-tile cause both still present |
+| VK tier1 + validation (shell umbrella), exe 53101fc19, `scratch/t41.log` | 4/5, mc2_24 `heartbeat_freeze_play` at 12 fps min (host contention, known flake); mc2_24 rerun alone PASS (`scratch/t41b.log`); DEPLOY_FINGERPRINT OK x5; validation errors 0 warnings 0 on all five |
+| ImGui overlay, default (no `MC2_VK_IMGUI`), mc2_01 + `MC2_DEBUG_RENDERER_TEST=1` + validation (`scratch/d41.log`) | PASS, 0/0, `[VK_IMGUI] requested=1 used_vulkan=1`, `[DEBUGDRAW v1] first_draw queued=67`; dev-shell screenshot viewed: white ring / Y arm and red X arm drawn (`.claude/l2cap/s41-imgui-default.png`) |
+| not run | GL tier1 (GL backend ignores the gate, GL ImGui unchanged), check-contracts.sh, item 4 |
+
+### Open
+- Row 29: depth (heads fail GEQUAL against the tube depth) and the tile without halo; lane3 evidence (round flares) does not reproduce on lane2.
+- Item 4 `gos_object_parity` GL readback NOT taken: still needs a VK source for the parity bytes (inventory section 16 (b)).
+- Scratch (mine, deletable): `scratch/` vo41*, b41*.sh, build/deploy/harn_s41*.log, t41*.log, d41.log.
+
+### Lessons (41)
+- A pixel-count drop on someone else's install proves nothing until the same oracle on your install moves too; look at the heads, not the total.
+- `vkImguiRequested()` was gate-only, so flipping the gate ON would have made a GL-backend run draw no ImGui: tie it to the backend.
+
 ## FORTIETH session (2026-10-16, Sonnet 5.5) -- row 29 diagnosed (not fixed), s39 review folded; nifty not merged
 
 ### Commits (after 9113a4554)
