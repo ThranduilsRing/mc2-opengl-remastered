@@ -207,7 +207,9 @@ bool ensure_ssbo(VfxIsland* s, VkDeviceSize bytes) {
 // Copy one level of RGBA8 / BC7 texels into `page.img` and point `page.set` at it. Runs before the frame is
 // recorded: it borrows the frame's command buffer and fence and waits for the copy, so no frame work is in flight.
 bool upload_page(VfxIsland* s, SpritePage& page, const GosTexels& t) {
-    const VkFormat fmt = mc2vk::texelFormat(t.vkFormat == 146u ? 145u : t.vkFormat);   // ROW29-TEMP raw texels
+    // Sprite texels are sampled as stored (BC7 sRGB read as UNORM): the MLR sprites the VFX arm must match are
+    // blended on the displayed values, and decoding to linear here crushed the soft halos to near black.
+    const VkFormat fmt = mc2vk::texelFormat(t.vkFormat == mc2tex::kVkFormatBc7Srgb ? mc2tex::kVkFormatBc7Unorm : t.vkFormat);
     mc2vk::OwnedBuffer stg;
     if (!make_buffer(s, t.bytes->size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stg, "vfx.staging")) return false;
     if (!stg.upload(t.bytes->data(), t.bytes->size())) return false;
@@ -604,7 +606,6 @@ extern "C" int mc2_vk_vfx_island_run(
             if (camUp)    { up.camUp[0]=camUp[0];       up.camUp[1]=camUp[1];       up.camUp[2]=camUp[2]; }
             else          { up.camUp[1]=1.0f; }
             if (!camRight) up.camRight[0]=1.0f;
-            { /* ROW29-TEMP */ float zb = 0.0f; if (FILE* zf = std::fopen("A:/Games/mc2-lane2/scratch/zbias.txt", "r")) { if (std::fscanf(zf, "%f", &zb) != 1) zb = 0.0f; std::fclose(zf); } up.camRight[3] = zb; }
             std::memcpy(p, &up, sizeof(up));
             s->ubo.unmap();
         }

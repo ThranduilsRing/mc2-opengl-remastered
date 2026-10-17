@@ -9,7 +9,6 @@
 //           FX-GPU-1 Phase 2: per-group UV sub-rect uniforms.              //
 //===========================================================================//
 
-#include <cstdio>
 #include "gos_particle_bridge_internal.h"
 #include "mc2fmt.h"
 #include "Gates/render_options.h"
@@ -350,24 +349,6 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
     mc2::ScopedFlushTimer _pfst(0, "billboard");  // PARTICLE-FLUSH-STALL-MEASURE-1
 
     ensureInitialized();
-
-    // ROW29-TEMP-DIAG (not to be committed)
-    if (count >= 90 && count <= 140 && groups) {
-        static int s_dumped = 0;
-        if (s_dumped < 3) {
-            ++s_dumped;
-            fprintf(stderr, "[ROW29] flush count=%u groups=%u\n", count, numGroups);
-            for (unsigned gi = 0; gi < numGroups; ++gi) {
-                const auto& g = groups[gi];
-                fprintf(stderr, "[ROW29] G%u handle=%u uv=%.3f,%.3f,%.3f,%.3f blend=%d cols=%u start=%u count=%u\n", gi, g.handle, g.u0, g.v0, g.us, g.vs, (int)g.blendMode, g.atlasColumns, g.start, g.count);
-                for (unsigned i = g.start; i < g.start + g.count && i < count; ++i) {
-                    const auto& r = records[i];
-                    fprintf(stderr, "[ROW29]   P%u pos=%.1f,%.1f,%.1f size=%.2f vel=%.2f,%.2f,%.2f col=%.2f,%.2f,%.2f,%.2f atlas=%u age=%.3f life=%.3f kf=%u\n", i, r.position[0], r.position[1], r.position[2], r.size, r.velocity[0], r.velocity[1], r.velocity[2], r.color[0], r.color[1], r.color[2], r.color[3], r.atlasIndex, r.age, r.lifetime, r.kind_flags);
-                }
-            }
-            fflush(stderr);
-        }
-    }
 
     // P0-5: failure log — once only.
     if (s_initFailed) {
