@@ -52,14 +52,6 @@ typedef struct _GestureData
 	long			leftFootDownFrame1;		//Sometimes the foot's down twice.
 } GestureData;
 
-typedef struct _PaintSchemata
-{
-	DWORD			redColor;				//Replace all Reds in texture with this color scaled by intensity of red!
-	DWORD			greenColor;				//Replace all Greens in texture with this color scaled by intensity of green!
-	DWORD			blueColor;				//Replace all Blues in texture with this color scaled by intensity of blue!
-} PaintSchemata;
-
-typedef PaintSchemata *PaintSchemataPtr;
 //-------------------------------------------------------------------------------
 // Macro Definitions
 inline constexpr int GesturePark = 0;
@@ -405,8 +397,8 @@ class Mech3DAppearance: public ObjectAppearance
 		Stuff::Vector3D				jumpVelocity;			//Real velocity vector now.  Just plug into mech velocity.
 		float						hazeFactor;
 		
-		long						*nodeUsed;				//Used to stagger the weapon nodes for firing.
-		float						*nodeRecycle;			//Used for ripple fire to find out if the node has fired recently.
+		std::vector<long>						nodeUsed;				//Used to stagger the weapon nodes for firing.
+		std::vector<float>						nodeRecycle;			//Used for ripple fire to find out if the node has fired recently.
 		
 		Stuff::Vector3D				footPos[2];				//Used to store previous frame foot positions.
 															//For foot poofs and footprints.
@@ -509,9 +501,6 @@ class Mech3DAppearance: public ObjectAppearance
 		RenderCore::MechVisualState m_visualState{};
 
 	public:
-		static PaintSchemataPtr		paintSchemata;
-		static DWORD				numPaintSchemata;
-
 		// M2 adapter accessors (public -- used ONLY by GameAdapters::Mech).
 		// No other caller may use these outside the adapter TU.
 		RenderCore::RenderObjectHandle getRenderWorldHandle() const {
@@ -763,8 +752,6 @@ class Mech3DAppearance: public ObjectAppearance
 		{
 			objectNameId = objId;
 		}
-
-		static void LoadPaintSchemata (void);
 
 		virtual unsigned long getAppearanceClass (void)
 		{

@@ -24,7 +24,7 @@ long BldgAppearance::update (bool animate)
 	Stuff::UnitQuaternion rot;
 
 	// Recycle the weapon Nodes
-	if (nodeRecycle)
+	if (!nodeRecycle.empty())
 	{
 		for (long i=0;i<appearType->numWeaponNodes;i++)
 		{

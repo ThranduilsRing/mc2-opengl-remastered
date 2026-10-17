@@ -116,9 +116,7 @@ void TG_TypeNode::destroy (void)
 // This function creates an instance of a TG_Shape from a TG_TypeNode.  Saves RAM.
 TG_ShapePtr TG_TypeNode::CreateFrom (void)
 {
-	TG_ShapePtr newShape = nullptr;
-	void* memarea = TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
-	newShape = ::new(memarea) TG_Shape();
+	TG_ShapePtr newShape = new TG_Shape();
 	gosASSERT(newShape != nullptr);
 
 	//listOfVertices
@@ -274,9 +272,7 @@ void TG_TypeNode::SaveBinaryCopy (File &binFile)
 // This function creates an instance of a TG_Shape from a TG_TypeShape.  Saves RAM.
 TG_ShapePtr TG_TypeShape::CreateFrom (void)
 {
-	TG_ShapePtr newShape = nullptr;
-	void* memarea = TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
-	newShape = ::new(memarea) TG_Shape();
+	TG_ShapePtr newShape = new TG_Shape();
 	gosASSERT(newShape != nullptr);
 	
 	//listOfVertices

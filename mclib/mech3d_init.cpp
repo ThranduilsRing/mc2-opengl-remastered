@@ -101,8 +101,6 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	jumpVelocity.Zero();
 	jumpFXSetup = false;
 	
-	nodeUsed = nullptr;
-	nodeRecycle = nullptr;
 
 	currentRightPoof = currentLeftPoof = 0;
 	
@@ -278,17 +276,10 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			}
 		}
 		
- 		if (mechType->numWeaponNodes)
+		if (mechType->numWeaponNodes > 0)
 		{
-			nodeUsed = (long *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(long) * mechType->numWeaponNodes);
-			gosASSERT(nodeUsed != NULL);
-			memset(nodeUsed,0,sizeof(long) * mechType->numWeaponNodes);
-			
-			nodeRecycle = (float *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(float) * mechType->numWeaponNodes);
-			gosASSERT(nodeRecycle != NULL);
-			
-			for (long i=0;i<mechType->numWeaponNodes;i++)
-				nodeRecycle[i] = 0.0f;
+			nodeUsed.assign(static_cast<size_t>(mechType->numWeaponNodes), 0);
+			nodeRecycle.assign(static_cast<size_t>(mechType->numWeaponNodes), 0.0f);
 		}
 		
 		for (int i=0;i<mechType->numWeaponNodes;i++)
@@ -673,46 +664,6 @@ bool Mech3DAppearance::PerPolySelect (long mouseX, long mouseY)
 		return false;
 	return mechShape->PerPolySelect(mouseX,mouseY);
 }
-
-void Mech3DAppearance::LoadPaintSchemata (void)
-{
-	FullPathFileName paintName;
-	paintName.init(tglPath,"paintSchemata",".fit");
-
-	FitIniFile paintFile;
-	long result = paintFile.open(paintName);
-	gosASSERT(result == NO_ERR);
-
-	result = paintFile.seekBlock("Main");
-	gosASSERT(result == NO_ERR);
-
-	result = paintFile.readIdULong("NumPaintSchemes",numPaintSchemata);
-	gosASSERT(result == NO_ERR);
-
-	paintSchemata = (PaintSchemataPtr)AppearanceTypeList::appearanceHeap->Malloc(numPaintSchemata * sizeof(PaintSchemata));
-	gosASSERT(paintSchemata != NULL);
-
-	memset(paintSchemata,0xff,numPaintSchemata * sizeof(PaintSchemata));
-
-	for (long i=0;i<numPaintSchemata;i++)
-	{
-		char blockId[512];
-		sprintf(blockId,"Scheme%d",i);
-		result = paintFile.seekBlock(blockId);
-		gosASSERT(result == NO_ERR);
-
-		result = paintFile.readIdULong("RedColor",paintSchemata[i].redColor);
-		gosASSERT(result == NO_ERR);
-
-		result = paintFile.readIdULong("GreenColor",paintSchemata[i].greenColor);
-		gosASSERT(result == NO_ERR);
-
-		result = paintFile.readIdULong("BlueColor",paintSchemata[i].blueColor);
-		gosASSERT(result == NO_ERR);
-	}
-
-	paintFile.close();
-}	
 
 void Mech3DAppearance::setPaintScheme (void)
 {

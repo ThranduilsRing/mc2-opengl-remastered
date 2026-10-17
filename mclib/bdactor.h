@@ -315,8 +315,8 @@ class BldgAppearance : public ObjectAppearance
 		
 		long										currentLOD;
 		
- 		long										*nodeUsed;				//Used to stagger the weapon nodes for firing.
-		float										*nodeRecycle;			//Used for ripple fire to find out if the node has fired recently.
+ 		std::vector<long>										nodeUsed;				//Used to stagger the weapon nodes for firing.
+		std::vector<float>										nodeRecycle;			//Used for ripple fire to find out if the node has fired recently.
 		
 		TG_LightPtr									pointLight;
 		DWORD										lightId;
