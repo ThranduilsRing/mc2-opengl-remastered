@@ -11,7 +11,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1100"
  },
  "exe": {
-  "sha": "d7c8db5a16f2",
+  "sha": "e6134a43525a",
   "dirty": 0
  },
  "comparison": {
@@ -108,7 +108,7 @@
  },
  "judged": "first-save-only",
  "packets": 20000,
- "overall": "4c26f2cda29a116e",
+ "overall": "65313b285efbe59e",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -729,11 +729,11 @@
    "8f4ff2f59e61027c"
   ],
   [
-   "data",
+   "WeaponBoltData",
    9889,
    100,
    60000,
-   "5d3e484b130bca6d"
+   "d7eb327260dd1ebb"
   ],
   [
    "CarnageData",

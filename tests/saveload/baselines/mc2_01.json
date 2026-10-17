@@ -11,7 +11,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1100"
  },
  "exe": {
-  "sha": "d7c8db5a16f2",
+  "sha": "e6134a43525a",
   "dirty": 0
  },
  "comparison": {
@@ -365,7 +365,7 @@
    "7aa6952d3c0f8f27"
   ],
   [
-   "data",
+   "WeaponBoltData",
    3317,
    100,
    60000,
