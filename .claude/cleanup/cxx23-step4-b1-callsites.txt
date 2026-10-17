@@ -44,7 +44,7 @@
 # blob 9141cfafbbcd405fafdc2f15628cb5d801377d7e gui/aedit.cpp
 # blob b0f6054af3f49ecc2608a03c8370ceee4ee13181 gui/alistbox.cpp
 # blob 5b14be7100bce3de73dc4af51d5ace425fec2984 gui/alistbox.h
-# blob 42381c047cd42155878e7805d3bdcd4d1bf3849e gui/asystem.cpp
+# blob 76a46c9f890786f7ae24da36f6fd363133a978b5 gui/asystem.cpp
 # file:line:kind
 code/mpconnectiontype.cpp:644:operator ECHARPTR
 code/mpconnectiontype.cpp:768:Find
@@ -132,7 +132,7 @@ gui/alistbox.cpp:1353:operator ECHARPTR
 gui/alistbox.cpp:1359:operator ECHARPTR
 gui/alistbox.cpp:1375:operator ECHARPTR
 gui/alistbox.h:138:operator ECHARPTR
-gui/asystem.cpp:1058:operator ECHARPTR
-gui/asystem.cpp:1067:operator ECHARPTR
-gui/asystem.cpp:1071:operator ECHARPTR
-gui/asystem.cpp:1126:operator ECHARPTR
+gui/asystem.cpp:1061:operator ECHARPTR
+gui/asystem.cpp:1070:operator ECHARPTR
+gui/asystem.cpp:1074:operator ECHARPTR
+gui/asystem.cpp:1129:operator ECHARPTR
