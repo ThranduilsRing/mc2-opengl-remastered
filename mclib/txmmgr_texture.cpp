@@ -325,7 +325,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		masterTextureNodes[i].lzCompSize = txmSize;
 		actualTextureSize += txmSize;
 		compressedTextureSize += txmSize;
-		masterTextureNodes[i].textureData = (DWORD *)textureCacheHeap->Malloc(txmSize);
+		masterTextureNodes[i].textureData = static_cast<DWORD *>(textureCacheHeap->Malloc(txmSize));
 		if (masterTextureNodes[i].textureData)
 			*masterTextureNodes[i].textureData = 0;
 		else
