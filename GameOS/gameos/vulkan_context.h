@@ -30,6 +30,7 @@
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_frame_ring.h"
 #include "vk_shared_light_feed.h"
+#include "vk_upload.h"
 #endif
 
 #include <array>
@@ -157,6 +158,10 @@ public:
     // up to here has finished". `si` keeps its binary waits and signals; `fence` (may be null) is passed through unchanged. `si.pNext` must be empty.
     // On success *outValue (when given) is the timeline value this submit signals. Thread-safe.
     VkResult submit(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue = nullptr) const;
+private:
+    VkResult submitLocked(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const;   // submitMutex_ held
+    void flushUploadsLocked() const;
+public:
     CompletionTracker&       tracker()       { return tracker_; }
     const CompletionTracker& tracker() const { return tracker_; }
     // Refreshes the completed counter from the timeline semaphore (cheap; once per frame begin is enough).
@@ -180,6 +185,10 @@ public:
     struct FrameContext { uint64_t frame = 0; uint32_t slot = 0; uint32_t framesInFlight = 1; };
     FrameContext frameContext() const { return {tracker_.frameNo(), static_cast<uint32_t>(tracker_.frameNo() % FrameRingCore::kSlots), 1}; }
     const FrameRing& frameRing() const { return frameRing_; }
+    // Streaming uploads (see vk_upload.h): stage into the frame ring and queue the copy; it is submitted ahead of the next graphics submit, no CPU wait.
+    UploadBatch& uploads() { return uploads_; }
+    const UploadBatch& uploads() const { return uploads_; }
+    void flushUploads() const;   // the queued uploads, now (the next submit and endFrame do it anyway)
     VkBuffer frameRingBuffer() { return frameRing_.ensureBuffer(*this); }
     VkDeviceSize frameAlignment() const { return frameAlign_; }
     VkDeviceSize frameRingRange() const { return frameRing_.bindRange(); }
@@ -214,9 +223,10 @@ private:
     mutable CompletionTracker tracker_;
 #ifdef MC2_VULKAN_ISLAND
     FrameRing        frameRing_;
+    mutable UploadBatch uploads_;
     VkDeviceSize     frameAlign_ = 256;   // max(uniform, storage offset alignment, 16): set at device birth
 #endif
-    DeferredDestroy  deferred_;   // after the allocator's owners are gone: destroy() drains it first
+    mutable DeferredDestroy deferred_;   // after the allocator's owners are gone: destroy() drains it first
     mutable std::mutex submitMutex_;
     uint8_t          luid_[8]           = {0, 0, 0, 0, 0, 0, 0, 0};
     bool             luidValid_         = false;

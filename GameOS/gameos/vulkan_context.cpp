@@ -481,9 +481,37 @@ void VulkanContext::waitIdle(std::string_view why) const {
 
 VkResult VulkanContext::submit(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const {
     if (device_ == VK_NULL_HANDLE || gfxTimeline_ == VK_NULL_HANDLE) return VK_ERROR_DEVICE_LOST;
+    std::lock_guard<std::mutex> lock(submitMutex_);   // the value and the queue order must agree
+#ifdef MC2_VULKAN_ISLAND
+    flushUploadsLocked();   // queued uploads run ahead of every submit that may sample them
+#endif
+    return submitLocked(si, fence, outValue);
+}
+
+#ifdef MC2_VULKAN_ISLAND
+void VulkanContext::flushUploadsLocked() const {
+    if (!uploads_.pending()) return;
+    OwnedCommandPool pool;
+    VkCommandBuffer cb = VK_NULL_HANDLE;
+    if (!uploads_.build(*this, pool, cb)) return;
+    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &cb;
+    if (submitLocked(si, VK_NULL_HANDLE, nullptr) != VK_SUCCESS) ctxlog("the upload batch submit failed: the queued uploads are lost.");
+    // The command buffer lives in its pool and the dedicated staging buffers belong to the batch: both go with the frame.
+    deferred_.retire(tracker_, std::move(pool));
+    deferred_.retire(tracker_, uploads_.takeDedicated());
+}
+
+void VulkanContext::flushUploads() const {
+    std::lock_guard<std::mutex> lock(submitMutex_);
+    flushUploadsLocked();
+}
+#endif
+
+VkResult VulkanContext::submitLocked(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const {
     assert(si.pNext == nullptr && "submit(): the timeline info is appended here; pass a plain VkSubmitInfo");
     if (si.signalSemaphoreCount > 7 || si.waitSemaphoreCount > 8) return VK_ERROR_INITIALIZATION_FAILED;
-    std::lock_guard<std::mutex> lock(submitMutex_);   // the value and the queue order must agree
     const uint64_t value = tracker_.noteSubmit(QueueKind::Graphics);
     // The caller's binary signals first, the timeline last (binary entries ignore their value).
     VkSemaphore signals[8];
@@ -562,10 +590,19 @@ void VulkanContext::drainDeferred(std::string_view why) {
 }
 
 void VulkanContext::endFrame() {
+#ifdef MC2_VULKAN_ISLAND
+    flushUploads();   // an upload queued this frame is submitted inside it, so the frame ticket covers its staging
+#endif
     tracker_.endFrame();
     deferred_.sealFrame(tracker_.frameTicket(tracker_.frameNo()));
     if (tracker_.frameNo() % 600 == 0) {
         poll();
+#ifdef MC2_VULKAN_ISLAND
+        if (uploads_.queued() != 0)
+            std::fprintf(stderr, "[VK_UPLOAD v1] flushes=%llu queued=%llu dedicated_stages=%llu dropped=%llu frame_ring_growths=%u\n",
+                         static_cast<unsigned long long>(uploads_.flushes()), static_cast<unsigned long long>(uploads_.queued()),
+                         static_cast<unsigned long long>(uploads_.dedicatedStages()), static_cast<unsigned long long>(uploads_.dropped()), frameRing_.growths());
+#endif
         const DeferredDestroy::Stats ds = deferred_.stats(tracker_);
         std::fprintf(stderr, "[VK_TIMELINE v1] deferred_entries=%u deferred_bytes=%llu oldest_age_frames=%llu\n", ds.entries,
                      static_cast<unsigned long long>(ds.bytes), static_cast<unsigned long long>(ds.oldestAgeFrames));

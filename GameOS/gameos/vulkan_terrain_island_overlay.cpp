@@ -61,23 +61,23 @@ bool ovl_alloc_tex_set(TerrainIsland* s, OvlState* o, OvlTex& t) {
 bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, VkFormat fmt, const void* bytes, VkDeviceSize byteCount) {
     uint32_t mips = 1;
     if (fmt == VK_FORMAT_R8G8B8A8_UNORM) { uint32_t m = (w > h) ? w : h; while (m > 1) { m >>= 1; ++mips; } }
-    mc2vk::OwnedBuffer stg;
-    if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "terrain.staging")) return false;
-    { void* p = nullptr;
-      if (vmaMapMemory(s->allocator, stg.allocation(), &p) != VK_SUCCESS) return false;
-      std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stg.allocation()); }
+    // Streaming import: staging in the frame ring, the copy (and the mip blits) queued in the context's upload batch, no CPU wait. The batch runs ahead
+    // of the next graphics submit, so the draw that samples this texture sees the finished image.
+    mc2vk::VulkanContext& uctx = mc2vk::getOrCreateEngineVulkanContext();
+    const mc2vk::UploadBatch::Span stg = uctx.uploads().stage(uctx, byteCount);
+    if (!stg) return false;
+    std::memcpy(stg.ptr, bytes, (size_t)byteCount);
 
     if (!e.img.createSampled2D(s->allocator, s->device, fmt, w, h, mips, VK_IMAGE_USAGE_TRANSFER_SRC_BIT, "terrain.overlayTexture"))
         return false;
-    VkCommandBuffer cb = begin_oneshot(s);
-    if (cb == VK_NULL_HANDLE) return false;
-
+    const VkImage img = e.img.get();
+    uctx.uploads().record([img, stg, w, h, mips](VkCommandBuffer cb) {
     auto barrier = [&](uint32_t baseMip, uint32_t count, VkImageLayout oldL, VkImageLayout newL,
                        VkAccessFlags srcA, VkAccessFlags dstA, VkPipelineStageFlags srcS, VkPipelineStageFlags dstS) {
         VkImageMemoryBarrier b{};
         b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         b.oldLayout = oldL; b.newLayout = newL;
-        b.srcQueueFamilyIndex = b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; b.image = e.img.get();
+        b.srcQueueFamilyIndex = b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; b.image = img;
         b.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, baseMip, count, 0, 1};
         b.srcAccessMask = srcA; b.dstAccessMask = dstA;
         vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
@@ -85,9 +85,10 @@ bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, VkForma
     barrier(0, mips, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     VkBufferImageCopy rgn{};
+    rgn.bufferOffset = stg.offset;
     rgn.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     rgn.imageExtent = {w, h, 1};
-    vkCmdCopyBufferToImage(cb, stg.get(), e.img.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
+    vkCmdCopyBufferToImage(cb, stg.buffer, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
     int32_t mw = (int32_t)w, mh = (int32_t)h;
     for (uint32_t i = 1; i < mips; ++i) {
         barrier(i - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -99,7 +100,7 @@ bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, VkForma
         blit.srcOffsets[1] = {mw, mh, 1};
         blit.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, i, 0, 1};
         blit.dstOffsets[1] = {nw, nh, 1};
-        vkCmdBlitImage(cb, e.img.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, e.img.get(),
+        vkCmdBlitImage(cb, img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, img,
                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
         mw = nw; mh = nh;
     }
@@ -110,7 +111,7 @@ bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, VkForma
     barrier(mips - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    end_oneshot(s, cb);
+    });
 
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -132,8 +133,8 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
     if (it != o->texs.end()) {
         if (it->second.source == texels.bytes) return &it->second;
         // The texels behind this handle changed (reloaded): re-import.
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_overlay_texture_replace");
-        ovl_destroy_tex(it->second);
+        // The old image may be sampled by a frame still in flight: it leaves through the deferred-destroy queue, not a device idle.
+        mc2vk::getOrCreateEngineVulkanContext().retire(std::move(it->second));
         o->texs.erase(it);
         // (the old descriptor set leaks in the pool until the next mission reset; rare)
     }
@@ -145,7 +146,8 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
     if (!ovl_upload_tex(s, t, w, h, mc2vk::texelFormat(texels.vkFormat), texels.bytes->data(),
                         (VkDeviceSize)texels.bytes->size()) ||
         !ovl_alloc_tex_set(s, o, t)) {
-        ovl_destroy_tex(t);
+        // The upload of this texture may already be queued: the image leaves with the frame, not now.
+        mc2vk::getOrCreateEngineVulkanContext().retire(std::move(t));
         return nullptr;
     }
     t.source = std::move(texels.bytes);

@@ -205,48 +205,16 @@ bool ensure_ssbo(VfxIsland* s, VkDeviceSize bytes) {
     return true;
 }
 
-// Copy one level of RGBA8 / BC7 texels into `page.img` and point `page.set` at it. Runs before the frame is
-// recorded: it borrows the frame's command buffer and fence and waits for the copy, so no frame work is in flight.
+// Copy one level of RGBA8 / BC7 texels into `page.img` and point `page.set` at it. The copy is queued in the context's upload batch (no CPU wait).
 bool upload_page(VfxIsland* s, SpritePage& page, const GosTexels& t) {
     // Sprite texels are sampled as stored (BC7 sRGB read as UNORM): the MLR sprites the VFX arm must match are
     // blended on the displayed values, and decoding to linear here crushed the soft halos to near black.
     const VkFormat fmt = mc2vk::texelFormat(t.vkFormat == mc2tex::kVkFormatBc7Srgb ? mc2tex::kVkFormatBc7Unorm : t.vkFormat);
-    mc2vk::OwnedBuffer stg;
-    if (!make_buffer(s, t.bytes->size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stg, "vfx.staging")) return false;
-    if (!stg.upload(t.bytes->data(), t.bytes->size())) return false;
+    mc2vk::VulkanContext& uctx = mc2vk::getOrCreateEngineVulkanContext();
+    const mc2vk::UploadBatch::Span stg = uctx.uploads().stage(uctx, t.bytes->size());
+    if (!stg) return false;
+    std::memcpy(stg.ptr, t.bytes->data(), t.bytes->size());
     if (!page.img.createSampled2D(s->allocator, s->device, fmt, t.width, t.height, 1, 0, "vfx.sprite")) return false;
-
-    vkResetCommandBuffer(s->cbuf, 0);
-    VkCommandBufferBeginInfo bi{};
-    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(s->cbuf, &bi) != VK_SUCCESS) return false;
-    VkImageMemoryBarrier bar{};
-    bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = page.img.get();
-    bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    vkCmdPipelineBarrier(s->cbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
-    VkBufferImageCopy r{};
-    r.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    r.imageExtent = {t.width, t.height, 1};
-    vkCmdCopyBufferToImage(s->cbuf, stg.get(), page.img.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &r);
-    bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    vkCmdPipelineBarrier(s->cbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
-    if (vkEndCommandBuffer(s->cbuf) != VK_SUCCESS) return false;
-    const VkFence fence = s->fence.get();
-    vkResetFences(s->device, 1, &fence);
-    VkSubmitInfo si{};
-    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.commandBufferCount = 1; si.pCommandBuffers = &s->cbuf;
-    if (mc2vk::submitGraphics(si, fence) != VK_SUCCESS) return false;
-    if (vkWaitForFences(s->device, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
-        vlog("sprite upload fence wait failed.");
-        s->disabled = true;   // the copy may still be reading the staging buffer: do not draw again
-        return false;
-    }
 
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -259,6 +227,31 @@ bool upload_page(VfxIsland* s, SpritePage& page, const GosTexels& t) {
     w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w.dstSet = page.set; w.dstBinding = 0; w.descriptorCount = 1;
     w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo = &ii;
     vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
+    // The copy is queued, not waited for: it runs in the upload batch ahead of this frame's VFX submit (or the next submit of any island), and ends
+    // with the barrier that makes the page readable by the fragment shader.
+    {
+        const VkImage img = page.img.get();
+        const VkBuffer src = stg.buffer;
+        const VkDeviceSize srcOff = stg.offset;
+        const uint32_t pw = t.width, ph = t.height;
+        uctx.uploads().record([img, src, srcOff, pw, ph](VkCommandBuffer cb) {
+            VkImageMemoryBarrier bar{};
+            bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = img;
+            bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+            bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
+            VkBufferImageCopy r{};
+            r.bufferOffset = srcOff;
+            r.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+            r.imageExtent = {pw, ph, 1};
+            vkCmdCopyBufferToImage(cb, src, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &r);
+            bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
+        });
+    }
     return true;
 }
 
