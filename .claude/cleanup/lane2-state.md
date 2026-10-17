@@ -1,5 +1,32 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FORTY-EIGHTH session (2026-10-17, Sonnet 5.5) -- s47 review items closed; gos_object_parity GL readback NOT droppable without a VK parity producer
+
+### Commits (on 8b2eb167b)
+83703f617 s47 review items (code) | state commit after it (docs only). Mergeable code tip: 83703f617.
+
+### Task 1 (review items)
+- `vulkan_mech_island.cpp upload_geometry_once`: the null/size check of `feed.vboCpu/iboCpu` now runs BEFORE the waitIdle and the vbo/ibo reset, so a normals rebuild declines with the old buffers kept and no device stall.
+- Readback "shown" skip: NOT done. No cheap signal exists: `gos_EndCameraPreviewRender` is called only when simplecamera rendered the preview (review: not-shown cost is already none); whether the ImGui panel is actually drawn is decided later in the frame by GuiRuntime, after End. Left as is (review Should-fix 2 said acceptable).
+- Nits done in `gameos_graphics_capi.cpp`: GL_PACK_ALIGNMENT and the bound 2D texture restored after the readback / first-call setup; `s_camPreviewTexelsName` cleared where the FBO is deleted on resize; lit-pixel diagnostic (`[PREVIEW_READBACK v1]`) removed; the stranded "Restore the default framebuffer" comment moved back above `gos_EndCameraPreviewRender`; comment that the down FBO lives for the process.
+
+### Task 2 (gos_object_parity): neither (a) nor (b) taken
+The parity bytes are written by the GL vertex shader `shaders/static_prop.vert` (`parityOut`, SSBO binding 3, `u_parityWrite`); no VK static-prop shader writes them. `CompareAndReport` compares those GPU bytes against the CPU recompute, so dropping the GL `glGetBufferSubData` leaves the comparison with no input: (b) deletes the feature, it does not "keep the CPU comparison". (a) needs a new parity SSBO output in the VK prop island shaders plus a VK buffer readback; the s39 screenshot readback and the s45 bridge give pixels / ImGui texels, not per-vertex colours, so neither is a source. The check is also default-OFF (`MC2_OBJECT_PARITY_CHECK`). Recommended owner ruling: DELETE the whole dual-emit parity check (readback, SSBO cursor, `static_prop.vert` parity block, `gos_object_parity` compare) with the GL static-prop producer, or port the shader output to VK; ask which.
+
+### Proof
+| check | result |
+|---|---|
+| ninja -j2 + deploy at 83703f617 | exit 0, fingerprint OK |
+| `build_contract_harnesses --run --unit` | rc 0 |
+| `pytest scripts/tests` | 908 passed, 270 subtests |
+| VK tier1, `MC2_VULKAN_VALIDATION=1`, MC2_RENDER_BACKEND=vulkan, DEPLOY_FINGERPRINT OK | 5/5 PASS, errors=0 warnings=0 on all five (fps 136/105/86/99/76), `scratch/t48v.log` |
+| `check-contracts.sh -j2` | 4 red rows, all from the s45 ImGui bridge code, none from this diff: counter-honesty (engine_present_vk.cpp:1621,1651) and script_callers (both already fixed on nifty by 3196cd289 / 94621015d merge follow-ups), log_tag_census (new `[VK_IMGUI]` lines: `log_tag_census.py --write` at merge) and test_gl_shader_variants manifest freshness (unrelated to this diff; not investigated) |
+
+### OPEN
+1. Owner ruling on gos_object_parity (above).
+2. At merge: regenerate log_tag_census and the GL shader-variant manifest; counter-honesty/callers come from nifty's follow-ups.
+3. Mechlopedia / options preview panel capture still not done.
+
 ## FORTY-SEVENTH session (2026-10-17, Sonnet 5.5) -- VK mech island VUID errors fixed (BUGS 58), 3D mech preview panel drawn under VK (BUGS 56 closed)
 
 ### Commits (on 9b9270005)
