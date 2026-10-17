@@ -95,6 +95,7 @@
   "tools/renderdoc/_rdcommon.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
   "tools/repo_intel/grep_tool.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
   "tools/repo_intel/repo_query.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
+  "tools/shader_offline_build/slang_compile.py": "program is a variable (slangc, spirv-cross located from the Vulkan SDK; offline shader bake); console tools, not the game, through console_child.child_kwargs(redirected=True) with a 60s timeout; Slang toolchain 2026-10-17",
   "tools/shader_offline_build/build_variants.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
   "tools/shader_reflect/reflect.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
   "tools/split/split_verify.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",

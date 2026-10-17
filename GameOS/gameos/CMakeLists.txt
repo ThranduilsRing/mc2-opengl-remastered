@@ -436,10 +436,48 @@ if(MC2_VULKAN)
             list(APPEND MC2_VK_SPV_OUTPUTS "${_spv}")
         endforeach()
         endforeach()
-        add_custom_target(mc2_vulkan_shaders ALL DEPENDS ${MC2_VK_SPV_OUTPUTS})
         message(STATUS "VULKAN-SHADER-TOOLCHAIN-1: SPIR-V compile ON -> ${MC2_VK_SPV_OUT_DIR}")
     else()
         message(WARNING "VULKAN-SHADER-TOOLCHAIN-1: neither glslangValidator nor glslc found (Vulkan SDK tools); skipping SPIR-V compile. Shader probe will fail-soft.")
+    endif()
+    file(GLOB MC2_VK_SLANG_STAGES CONFIGURE_DEPENDS
+        "${MC2_VK_SHADER_SRC_DIR}/*.vert.slang"
+        "${MC2_VK_SHADER_SRC_DIR}/*.frag.slang"
+        "${MC2_VK_SHADER_SRC_DIR}/*.comp.slang")
+    if(MC2_VK_SLANG_STAGES)
+        find_package(Python3 REQUIRED COMPONENTS Interpreter)
+        find_program(MC2_SLANGC NAMES slangc HINTS ENV VULKAN_SDK PATH_SUFFIXES Bin bin REQUIRED)
+        find_program(MC2_SPIRV_CROSS NAMES spirv-cross HINTS ENV VULKAN_SDK PATH_SUFFIXES Bin bin REQUIRED)
+        # Conservative dependencies keep imports and ABI edits from leaving stale binaries.
+        file(GLOB_RECURSE MC2_SLANG_DEPENDS CONFIGURE_DEPENDS
+            "${CMAKE_SOURCE_DIR}/shaders/*.slang"
+            "${CMAKE_SOURCE_DIR}/shaders/*.h"
+            "${CMAKE_SOURCE_DIR}/shaders/*.glsl"
+            "${CMAKE_SOURCE_DIR}/shaders/*.hglsl"
+            "${CMAKE_SOURCE_DIR}/RenderCore/gpu_abi/*.h")
+        foreach(_src ${MC2_VK_SLANG_STAGES})
+            get_filename_component(_name "${_src}" NAME_WLE)
+            set(_spv "${MC2_VK_SPV_OUT_DIR}/${_name}.spv")
+            if(_spv IN_LIST MC2_VK_SPV_OUTPUTS)
+                message(FATAL_ERROR "Duplicate GLSL/Slang shader output: ${_spv}")
+            endif()
+            add_custom_command(OUTPUT "${_spv}"
+                COMMAND "${Python3_EXECUTABLE}"
+                    "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py"
+                    "${_src}" -o "${_spv}"
+                    --slangc "${MC2_SLANGC}" --spirv-cross "${MC2_SPIRV_CROSS}"
+                DEPENDS ${MC2_SLANG_DEPENDS}
+                    "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py"
+                    "${CMAKE_SOURCE_DIR}/tools/gpu_abi_gen.py"
+                    "${CMAKE_SOURCE_DIR}/tools/slang/SLANG_VERSION"
+                    "${CMAKE_SOURCE_DIR}/docs/render-backend-seams/binding-slot-occupancy.json"
+                COMMENT "SPIR-V (Slang): ${_name}"
+                VERBATIM)
+            list(APPEND MC2_VK_SPV_OUTPUTS "${_spv}")
+        endforeach()
+    endif()
+    if(MC2_VK_SPV_OUTPUTS)
+        add_custom_target(mc2_vulkan_shaders ALL DEPENDS ${MC2_VK_SPV_OUTPUTS})
     endif()
 endif()
 

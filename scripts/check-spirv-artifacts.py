@@ -30,6 +30,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import shader_common  # noqa: E402
+sys.path.insert(0, str(ROOT / 'tools/shader_offline_build'))
+import slang_compile  # noqa: E402
 
 PILOTS = "tools/shader_offline_build/pilots.json"
 BINDING_OCC = "docs/render-backend-seams/binding-slot-occupancy.json"
@@ -106,18 +108,23 @@ def main():
                     fails.append(f"{tag}: .spv artifact missing ({meta.get('artifact')})")
                 # 2: source hash in sync with current GLSL
                 try:
-                    if rel.endswith(".slang"):  # Slang: newline-normalized file text (no GLSL flattening)
-                        cur = (root / rel).read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+                    if rel.endswith(".slang"):
+                        cur = slang_compile.source_bundle(root / rel)
                     else:
                         cur = canon_source(shader_common.build_shader_source(root / rel, defines))
                     if meta.get("source_sha256") != sha256(cur):
-                        fails.append(f"{tag}: source drift - GLSL changed since bake "
+                        fails.append(f"{tag}: source drift - shader changed since bake "
                                      f"(rebuild with build_variants.py)")
                 except Exception as e:
                     fails.append(f"{tag}: cannot rebuild source: {e}")
-                # 3: binding manifest agreement (GL slot occupancy; Slang uses Vulkan
-                # set/binding numbering, covered by scripts/tests/test_slang_build.py)
                 is_slang = rel.endswith(".slang")
+                if is_slang:
+                    bindings = meta.get('bindings', {})
+                    try:
+                        errors = slang_compile.validate_reflection(bindings, root / rel, root)
+                        fails.extend(f'{tag}: {e}' for e in errors)
+                    except (OSError, ValueError) as e:
+                        fails.append(f'{tag}: {e}')
                 for blk in ([] if is_slang else meta.get("bindings", {}).get("ubos", [])):
                     b = blk.get("binding")
                     if b is not None and occ is not None and ("UBO", b) not in occ:

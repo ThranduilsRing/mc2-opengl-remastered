@@ -96,10 +96,15 @@ def occupancy_slots():
     return out
 
 
-def reflect(spv: Path, spirv_cross: str):
+def reflect(spv: Path, spirv_cross: str, slang_source=None, root=ROOT):
     raw = json.loads(subprocess.run(
         [spirv_cross, str(spv), "--reflect"],
-        capture_output=True, text=True, check=True).stdout)
+        capture_output=True, text=True, check=True,
+        **console_child.child_kwargs(redirected=True)).stdout)
+    if slang_source is not None:
+        errors = slang_compile.validate_reflection(raw, slang_source, root)
+        if errors:
+            raise ValueError('; '.join(errors))
     def blocks(key):
         return [{"name": b.get("name"), "binding": b.get("binding"),
                  "set": b.get("set")} for b in raw.get(key, [])]
@@ -188,7 +193,7 @@ def build_package(cfg, spv_dir, index_records, glslang, spirv_cross, slangc=None
         tools["slangc"] = slang_compile.slangc_version(slangc)
         tools["slang_compile_flags"] = (
             f"-target spirv -profile {slang_compile.DEFAULT_PROFILE} "
-            "(Vulkan; no GL occupancy check)")
+            "-matrix-layout-column-major (-entry/-D/profile per sidecar)")
     return {
         "schema_version": PACKAGE_SCHEMA_VERSION,
         "slice": "SHADER-ARTIFACT-PACKAGE-METADATA-1",
@@ -214,8 +219,7 @@ def build_package(cfg, spv_dir, index_records, glslang, spirv_cross, slangc=None
 
 def _emit_record(args, fails, built, index, cfg, spv_dir, base, stage, vname,
                  defines, vid, art, src_hash, spirv_hash, refl, index_key, extra):
-    """Sidecar + index record for a Slang stage (same shape as the GLSL records).
-    Vulkan set/binding numbers are NOT checked against the GL slot-occupancy file."""
+    """Sidecar + index record for a validated Slang stage."""
     sidecar = {
         "base": base, "stage": stage, "variant": vname,
         "defines": defines, "specializationParams": [],
@@ -231,8 +235,8 @@ def _emit_record(args, fails, built, index, cfg, spv_dir, base, stage, vname,
     if args.check:
         if not sc_path.exists():
             fails.append(f"{art}: sidecar missing {sc_path.name}")
-        elif json.load(open(sc_path, encoding="utf-8")).get("source_sha256") != src_hash:
-            fails.append(f"{art}: source hash drift vs sidecar")
+        elif json.load(open(sc_path, encoding="utf-8")) != sidecar:
+            fails.append(f"{art}: compiled shader or metadata drift vs sidecar")
     else:
         sc_path.write_text(json.dumps(sidecar, indent=2), encoding="utf-8")
     index.append({"key": index_key(base, stage, defines), "artifact": art,
@@ -293,18 +297,27 @@ def main():
                 spv_path = spv_dir / art
                 if slang_compile.is_slang(rel):
                     src_path = root / rel
-                    src_hash = sha256(slang_compile.source_text_canon(src_path))
+                    try:
+                        src_hash = sha256(slang_compile.source_bundle(src_path))
+                    except (OSError, ValueError) as e:
+                        fails.append(f'{art}: {e}')
+                        continue
                     entry = pilot.get("entries", {}).get(stage, "main")
                     prof = pilot.get("spirv", slang_compile.DEFAULT_PROFILE)
                     with tempfile.TemporaryDirectory() as td:
                         out = spv_path if not args.check else Path(td) / art
                         ok, diag = slang_compile.compile_slang(
-                            slangc, src_path, stage, out, entry, prof)
+                            slangc, src_path, stage, out, entry, prof, defines)
                         if not ok:
                             fails.append(f"{art}: slangc failed: {diag[:600]}")
                             continue
                         spirv_hash = sha256(out.read_bytes())
-                        refl = reflect(out, spirv_cross)
+                        try:
+                            refl = reflect(out, spirv_cross, src_path, root)
+                        except ValueError as e:
+                            fails.append(f'{art}: {e}')
+                            out.unlink(missing_ok=True)
+                            continue
                     _emit_record(args, fails, built, index, cfg, spv_dir, base, stage,
                                  vname, defines, vid, art, src_hash, spirv_hash, refl,
                                  index_key, extra={"language": "slang", "entry": entry,
