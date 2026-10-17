@@ -79,11 +79,15 @@ TGAFileHeader *VehicleIcon::s_VehicleTextures = nullptr;
 AssetScale::AssetKey VehicleIcon::s_VehicleTexturesKey;
 TGAFileHeader* ForceGroupIcon::s_textureMemory = nullptr;
 
-// An icon page is a 256x256 in-memory texture. A page whose build failed locks empty (or as the 1x1 missing-texture placeholder)
-// and must not be written with page offsets.
-static bool iconPageWritable( const TEXTUREPTR& page )
+// Locks an icon page for writing. A page whose build failed locks empty (or as the 1x1 missing-texture placeholder); that page is
+// released again and refused, because the callers write at 256x256 page offsets.
+static bool lockIconPage( long handle, TEXTUREPTR& page )
 {
-	return page.pTexture && page.Width >= 256 && page.Height >= 256;
+	gos_LockTexture( handle, 0, 0, &page );
+	if ( page.pTexture && page.Width >= 256 && page.Height >= 256 )
+		return true;
+	gos_UnLockTexture( handle );
+	return false;
 }
 
 StaticInfo*		ForceGroupIcon::jumpJetIcon = nullptr;
@@ -399,12 +403,8 @@ void MechIcon::setDrawBack( bool bSet)
 	
 	// now need to make a copy of the data
 	TEXTUREPTR textureData;
-	gos_LockTexture( s_textureHandle[textureIndex], 0, 0, &textureData );
-	if ( !iconPageWritable( textureData ) )
-	{
-		gos_UnLockTexture( s_textureHandle[textureIndex] );
+	if ( !lockIconPage( s_textureHandle[textureIndex], textureData ) )
 		return;
-	}
 
 
 	DWORD* pDestData, *pDestRow = textureData.pTexture + offsetY * textureData.Width + offsetX;
@@ -637,12 +637,8 @@ bool MechIcon::init( long whichIndex )
 
 	// now need to make a copy of the data
 	TEXTUREPTR textureData;
-	gos_LockTexture( s_textureHandle[textureIndex], 0, 0, &textureData );
-	if ( !iconPageWritable( textureData ) )
-	{
-		gos_UnLockTexture( s_textureHandle[textureIndex] );
+	if ( !lockIconPage( s_textureHandle[textureIndex], textureData ) )
 		return false;
-	}
 
 	DWORD* pDestData, *pDestRow = textureData.pTexture + offsetY * textureData.Width + offsetX;
 	char* pTmp = (char*)s_MechTextures + sizeof ( TGAFileHeader );
@@ -973,12 +969,8 @@ void MechIcon::doDraw( char* newDamage, char* oldDamage, unsigned long handle, u
 			}
 
 			TEXTUREPTR textureData;
-			gos_LockTexture( s_textureHandle[texIndex], 0, 0, &textureData );
-			if ( !iconPageWritable( textureData ) )
-			{
-				gos_UnLockTexture( s_textureHandle[texIndex] );
+			if ( !lockIconPage( s_textureHandle[texIndex], textureData ) )
 				continue;
-			}
 
 			DWORD* pData = textureData.pTexture;
 
@@ -1467,12 +1459,8 @@ bool VehicleIcon::init( Mover* pMover )
 
 
 	TEXTUREPTR textureData;
-	gos_LockTexture( s_textureHandle[texIndex], 0, 0, &textureData );
-	if ( !iconPageWritable( textureData ) )
-	{
-		gos_UnLockTexture( s_textureHandle[texIndex] );
+	if ( !lockIconPage( s_textureHandle[texIndex], textureData ) )
 		return false;
-	}
 
 	
 	DWORD* pDestData, *pDestRow = textureData.pTexture + offsetY * textureData.Width + offsetX;
@@ -1630,12 +1618,8 @@ void VehicleIcon::update()
 
 			
 			TEXTUREPTR textureData;
-			gos_LockTexture( s_textureHandle[texIndex], 0, 0, &textureData );
-			if ( !iconPageWritable( textureData ) )
-			{
-				gos_UnLockTexture( s_textureHandle[texIndex] );
+			if ( !lockIconPage( s_textureHandle[texIndex], textureData ) )
 				continue;
-			}
 
 			DWORD* pData = textureData.pTexture;
 

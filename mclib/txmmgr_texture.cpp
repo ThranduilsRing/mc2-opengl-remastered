@@ -738,8 +738,8 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 					// WHY: a failed texture build gives an empty lock; copy only what the locked surface can hold.
 					if (pTextureData.pTexture)
 					{
-						const size_t surfaceBytes = (size_t)pTextureData.Width * (size_t)pTextureData.Height * sizeof(DWORD);
-						memcpy(pTextureData.pTexture, textureBytes, (std::min)((size_t)originalSize, surfaceBytes));
+						const size_t surfaceBytes = static_cast<size_t>(pTextureData.Width) * static_cast<size_t>(pTextureData.Height) * sizeof(DWORD);
+						memcpy(pTextureData.pTexture, textureBytes, (std::min)(static_cast<size_t>(originalSize), surfaceBytes));
 					}
 				}
 				{

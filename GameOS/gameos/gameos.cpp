@@ -278,7 +278,7 @@ void* __stdcall gos_Malloc(size_t bytes, HGOSHEAP Heap/* = 0*/)
     if (p) {
         if (!tl_inTracker) {
             g_allocStatsLive.fetch_add(1, std::memory_order_relaxed);
-            g_allocStatsBytes.fetch_add((long long)_msize(p), std::memory_order_relaxed);
+            g_allocStatsBytes.fetch_add(static_cast<long long>(_msize(p)), std::memory_order_relaxed);
             trackAlloc(p, bytes);
         }
     }
@@ -299,7 +299,7 @@ void __stdcall gos_Free(void* ptr)
 #ifdef MC2_ALLOC_STATS
     if (ptr && !tl_inTracker) {
         g_allocStatsLive.fetch_sub(1, std::memory_order_relaxed);
-        g_allocStatsBytes.fetch_sub((long long)_msize(ptr), std::memory_order_relaxed);
+        g_allocStatsBytes.fetch_sub(static_cast<long long>(_msize(ptr)), std::memory_order_relaxed);
         trackFree(ptr);
     }
 #endif

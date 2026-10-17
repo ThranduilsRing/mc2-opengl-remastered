@@ -687,14 +687,14 @@ void __stdcall DoGameLogic()
 			static const bool s_track = std::getenv("S10_TRACK") != nullptr;
 			if (s_track && s_reloadNo == 0) mc2AllocTrackStart();
 			if (s_track) mc2AllocTrackNextGen();
-			mc2::fmt::print_out("[ALLOC_RELOAD] n={} phase=pre live={} bytes={} t={}\n", mc2::fmt::as_i32(s_reloadNo), mc2::fmt::as_i64(liveBefore), mc2::fmt::as_i64(bytesBefore), mc2::fmt::as_i64((long long)(scenarioTime * 1000.0)));
+			mc2::fmt::print_out("[ALLOC_RELOAD] n={} phase=pre live={} bytes={} t={}\n", mc2::fmt::as_i32(s_reloadNo), mc2::fmt::as_i64(liveBefore), mc2::fmt::as_i64(bytesBefore), mc2::fmt::as_i64(static_cast<long long>(scenarioTime * 1000.0)));
 #endif
             mission->load(savegame_path);
 #ifdef MC2_ALLOC_STATS
 			{
 				long long liveAfter = 0, bytesAfter = 0;
 				mc2AllocStatsSnapshot(&liveAfter, &bytesAfter);
-				mc2::fmt::print_out("[ALLOC_RELOAD] n={} phase=post live={} bytes={} t={}\n", mc2::fmt::as_i32(s_reloadNo), mc2::fmt::as_i64(liveAfter), mc2::fmt::as_i64(bytesAfter), mc2::fmt::as_i64((long long)(scenarioTime * 1000.0)));
+				mc2::fmt::print_out("[ALLOC_RELOAD] n={} phase=post live={} bytes={} t={}\n", mc2::fmt::as_i32(s_reloadNo), mc2::fmt::as_i64(liveAfter), mc2::fmt::as_i64(bytesAfter), mc2::fmt::as_i64(static_cast<long long>(scenarioTime * 1000.0)));
 				fflush(stdout);
 				if (s_track && mc2AllocTrackGen() >= 2)
 					mc2AllocTrackReport(mc2AllocTrackGen() - 1);
