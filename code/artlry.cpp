@@ -102,7 +102,7 @@ extern bool MLRVertexLimitReached;
 
 #ifdef MC2_ALLOC_STATS
 // Proof build only: pooled-round evidence for the reload fixture (printed with [ALLOC_TICK]).
-unsigned g_mc2ArtCreated = 0, g_mc2ArtReinit = 0, g_mc2ArtReinitFreed = 0;
+unsigned g_mc2ArtCreated = 0, g_mc2ArtReinit = 0, g_mc2ArtReinitFreed = 0, g_mc2ArtEnded = 0, g_mc2ArtBoomNoFx = 0;
 #endif
 
 void CallArtillery (long commanderID, long strikeType, Stuff::Vector3D strikeLoc, long secondsToImpact, bool randomOff) 
@@ -900,6 +900,10 @@ long Artillery::update (void)
 	if (getFlag(OBJECT_FLAG_BOOM) && (type->nominalDamage > 0.0)) 
 	{
 		setFlag(OBJECT_FLAG_TANGIBLE, false);
+#ifdef MC2_ALLOC_STATS
+		if (!hitEffect || !hitEffect->IsExecuted())
+			++g_mc2ArtBoomNoFx;
+#endif
 		
 		//------------------------------------------------
 		// Update GOSFX
@@ -943,6 +947,9 @@ long Artillery::update (void)
 					rightContrail = nullptr;
 				}
 				
+#ifdef MC2_ALLOC_STATS
+				++g_mc2ArtEnded;
+#endif
  				return false;			//Strike is also over
 			}
 		}

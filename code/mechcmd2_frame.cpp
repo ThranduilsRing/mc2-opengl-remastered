@@ -654,9 +654,9 @@ void __stdcall DoGameLogic()
 				Stuff::Vector3D strikeAt = eye->getPosition();
 				IfaceCallStrike(ARTILLERY_LARGE, &strikeAt, nullptr, true, false, 3.0f);
 				++s_barrage;
-				extern unsigned g_mc2ArtCreated, g_mc2ArtReinit, g_mc2ArtReinitFreed;
+				extern unsigned g_mc2ArtCreated, g_mc2ArtReinit, g_mc2ArtReinitFreed, g_mc2ArtEnded, g_mc2ArtBoomNoFx;
 				if ((s_barrage % 50) == 0 || s_barrage == s_barrageN)
-					mc2::fmt::print_out("[ALLOC_ART] barrage={} created={} reinit={} reinit_freed_appearance={}\n", mc2::fmt::as_i32(s_barrage), mc2::fmt::as_u32(g_mc2ArtCreated), mc2::fmt::as_u32(g_mc2ArtReinit), mc2::fmt::as_u32(g_mc2ArtReinitFreed));
+					mc2::fmt::print_out("[ALLOC_ART] barrage={} created={} reinit={} reinit_freed_appearance={} ended={} boom_no_fx={}\n", mc2::fmt::as_i32(s_barrage), mc2::fmt::as_u32(g_mc2ArtCreated), mc2::fmt::as_u32(g_mc2ArtReinit), mc2::fmt::as_u32(g_mc2ArtReinitFreed), mc2::fmt::as_u32(g_mc2ArtEnded), mc2::fmt::as_u32(g_mc2ArtBoomNoFx));
 			}
 		}
 		{
