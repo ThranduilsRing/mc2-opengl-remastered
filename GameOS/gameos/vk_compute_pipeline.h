@@ -22,7 +22,7 @@ namespace mc2vk {
 
 struct ComputeBinding {
     uint32_t         binding;
-    VkDescriptorType type;   // VK_DESCRIPTOR_TYPE_STORAGE_BUFFER or VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+    VkDescriptorType type;   // VK_DESCRIPTOR_TYPE_STORAGE_BUFFER / UNIFORM_BUFFER, or the _DYNAMIC variant of either (a frame-ring binding)
 };
 
 class ComputePipeline {
@@ -36,8 +36,8 @@ public:
     VkDescriptorSetLayout setLayout() const noexcept { return dsl_.get(); }
     const std::vector<ComputeBinding>& bindings() const noexcept { return bindings_; }
 
-    // vkCmdBindPipeline + vkCmdBindDescriptorSets(set 0).
-    void bind(VkCommandBuffer cb, VkDescriptorSet set) const;
+    // vkCmdBindPipeline + vkCmdBindDescriptorSets(set 0), with the dynamic offsets of the layout's _DYNAMIC bindings in binding order.
+    void bind(VkCommandBuffer cb, VkDescriptorSet set, const uint32_t* dynamicOffsets = nullptr, uint32_t dynamicCount = 0) const;
     void dispatch(VkCommandBuffer cb, uint32_t groupsX) const { vkCmdDispatch(cb, groupsX, 1, 1); }
 
 private:
