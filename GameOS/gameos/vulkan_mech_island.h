@@ -62,6 +62,7 @@ struct Mc2MechGeomFeed {
     uint32_t vertexStride;  // sizeof(GpuMechVertex) == 48
     const void* vboCpu;     // native feed: exact uploaded VBO bytes (or null)
     const void* iboCpu;     // native feed: s_stagingIbo bytes (or null)
+    uint32_t geomGen;       // bumped on every rebuild of the VBO copy or the staged indices (new map, normals rebuild)
 };
 
 // Per-FRAME feed: the instance + bone snapshots the GL flush() just built, plus

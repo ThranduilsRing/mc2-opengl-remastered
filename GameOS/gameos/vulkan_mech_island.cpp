@@ -199,6 +199,7 @@ struct MechIsland : mc2vk::IslandState {
     // Copy-once mech geometry (VK-owned copies of the shared mech VBO/IBO).
     uint32_t vertexStride = 48;
     bool     geomUploaded = false;
+    uint32_t geomGen = 0;   // generation of the feed the buffers were filled from
 
     // Per-frame instance + bone SSBOs (host-visible; grown as needed).
     VkDeviceSize instCap[2] = {};
@@ -848,12 +849,23 @@ bool init_island(MechIsland* s, int w, int h) {
 
 // Copy the shared mech VBO/IBO into VK-owned buffers ONCE per map.
 bool upload_geometry_once(MechIsland* s) {
-    if (s->geomUploaded) return true;
     Mc2MechGeomFeed feed{};
-    if (!mc2_mech_island_get_geometry_feed(&feed)) return false;
-    // The bytes come from the batcher's CPU copy (the exact bytes the GL buffers were created from). A null source means a
-    // normals rebuild raced the accessor: decline this frame and retry before allocating anything.
+    const bool haveFeed = mc2_mech_island_get_geometry_feed(&feed) != 0;
+    if (s->geomUploaded && (!haveFeed || feed.geomGen == s->geomGen)) return true;
+    if (!haveFeed) return false;
+    // A null source means a normals rebuild raced the accessor: decline before the waitIdle and the buffer destroy, so the old
+    // buffers stay and no device stall is taken for a retry.
     if (feed.vboBytes == 0 || feed.iboBytes == 0 || !feed.vboCpu || !feed.iboCpu) return false;
+    if (s->geomUploaded) {
+        // A new map (or a normals rebuild) replaced the batcher's vertex and index sets: the draw runs index into the NEW
+        // set, so a buffer kept from the previous map is read past its end (VUID-vkCmdDrawIndexed-robustBufferAccess2-08798).
+        // Frames in flight may still read the old buffers.
+        mc2vk::getOrCreateEngineVulkanContext().waitIdle("mech_geometry_regen");
+        s->vbo.reset();
+        s->ibo.reset();
+        s->geomUploaded = false;
+    }
+    // The bytes come from the batcher's CPU copy (the exact bytes the GL buffers were created from).
     if (feed.vertexStride != mc2_mech_vertex_stride())
         vlog("ERROR: mech feed vertexStride %u != pipeline stride %u (mech geometry will explode).", feed.vertexStride, mc2_mech_vertex_stride());
     s->vertexStride = feed.vertexStride;
@@ -863,8 +875,10 @@ bool upload_geometry_once(MechIsland* s) {
         !s->ibo.createFilled(s->allocator, s->device, feed.iboCpu, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, "mech.ibo")) {
         vlog("mech geometry upload failed (buffer creation or map); retrying next frame.");
         s->vbo.reset();
+        s->ibo.reset();
         return false;
     }
+    s->geomGen = feed.geomGen;
     g_health.geomVerts = (unsigned long)(feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1));
     s->geomUploaded = true;
     vlog("mech geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u source=cpu-native.",

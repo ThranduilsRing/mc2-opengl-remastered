@@ -1,5 +1,57 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FORTY-EIGHTH session (2026-10-17, Sonnet 5.5) -- s47 review items closed; gos_object_parity GL readback NOT droppable without a VK parity producer
+
+### Commits (on 8b2eb167b)
+83703f617 s47 review items (code) | state commit after it (docs only). Mergeable code tip: 83703f617.
+
+### Task 1 (review items)
+- `vulkan_mech_island.cpp upload_geometry_once`: the null/size check of `feed.vboCpu/iboCpu` now runs BEFORE the waitIdle and the vbo/ibo reset, so a normals rebuild declines with the old buffers kept and no device stall.
+- Readback "shown" skip: NOT done. No cheap signal exists: `gos_EndCameraPreviewRender` is called only when simplecamera rendered the preview (review: not-shown cost is already none); whether the ImGui panel is actually drawn is decided later in the frame by GuiRuntime, after End. Left as is (review Should-fix 2 said acceptable).
+- Nits done in `gameos_graphics_capi.cpp`: GL_PACK_ALIGNMENT and the bound 2D texture restored after the readback / first-call setup; `s_camPreviewTexelsName` cleared where the FBO is deleted on resize; lit-pixel diagnostic (`[PREVIEW_READBACK v1]`) removed; the stranded "Restore the default framebuffer" comment moved back above `gos_EndCameraPreviewRender`; comment that the down FBO lives for the process.
+
+### Task 2 (gos_object_parity): neither (a) nor (b) taken
+The parity bytes are written by the GL vertex shader `shaders/static_prop.vert` (`parityOut`, SSBO binding 3, `u_parityWrite`); no VK static-prop shader writes them. `CompareAndReport` compares those GPU bytes against the CPU recompute, so dropping the GL `glGetBufferSubData` leaves the comparison with no input: (b) deletes the feature, it does not "keep the CPU comparison". (a) needs a new parity SSBO output in the VK prop island shaders plus a VK buffer readback; the s39 screenshot readback and the s45 bridge give pixels / ImGui texels, not per-vertex colours, so neither is a source. The check is also default-OFF (`MC2_OBJECT_PARITY_CHECK`). Recommended owner ruling: DELETE the whole dual-emit parity check (readback, SSBO cursor, `static_prop.vert` parity block, `gos_object_parity` compare) with the GL static-prop producer, or port the shader output to VK; ask which.
+
+### Proof
+| check | result |
+|---|---|
+| ninja -j2 + deploy at 83703f617 | exit 0, fingerprint OK |
+| `build_contract_harnesses --run --unit` | rc 0 |
+| `pytest scripts/tests` | 908 passed, 270 subtests |
+| VK tier1, `MC2_VULKAN_VALIDATION=1`, MC2_RENDER_BACKEND=vulkan, DEPLOY_FINGERPRINT OK | 5/5 PASS, errors=0 warnings=0 on all five (fps 136/105/86/99/76), `scratch/t48v.log` |
+| `check-contracts.sh -j2` | 4 red rows, all from the s45 ImGui bridge code, none from this diff: counter-honesty (engine_present_vk.cpp:1621,1651) and script_callers (both already fixed on nifty by 3196cd289 / 94621015d merge follow-ups), log_tag_census (new `[VK_IMGUI]` lines: `log_tag_census.py --write` at merge) and test_gl_shader_variants manifest freshness (unrelated to this diff; not investigated) |
+
+### OPEN
+1. Owner ruling on gos_object_parity (above).
+2. At merge: regenerate log_tag_census and the GL shader-variant manifest; counter-honesty/callers come from nifty's follow-ups.
+3. Mechlopedia / options preview panel capture still not done.
+
+## FORTY-SEVENTH session (2026-10-17, Sonnet 5.5) -- VK mech island VUID errors fixed (BUGS 58), 3D mech preview panel drawn under VK (BUGS 56 closed)
+
+### Commits (on 9b9270005)
+ba046261b mech island re-upload on geometry generation | 805e07ab8 run/instance/bone snapshot tagged with the geometry generation | 10897d0fd preview FBO readback for the VK ImGui bridge | state/BUGS commit after (docs only). Mergeable tip = the state commit. Code = 10897d0fd.
+
+### Root causes
+Task 1 (BUGS 58): two coupled causes. (a) `vulkan_mech_island.cpp` copied the batcher's VBO/IBO into VK buffers once per process (`geomUploaded` never reset) while the batcher rebuilds both at every map load and for late types; the shadow and prop islands already track a generation, the mech island did not. (b) the run/instance/bone snapshot from the last flush survives that rebuild, so the first frame after it draws old firstIndex ranges against the new buffer: after fix (a) alone the campaign leg still gave 10 errors at mc2_05 (upload 25896 B, runs up to firstIndex 6987). Fix: island re-uploads (waitIdle, reset, upload) when `Mc2MechGeomFeed::geomGen` changes; `s_vkMechSnapshotGeomGen` is set at snapshot time and `get_frame_feed`/`get_shadow_feed` refuse a stale snapshot.
+Task 2 (BUGS 56): the mech IS drawn into the GL preview FBO under VK (`[PREVIEW] drawTris isHUD=0 curFbo=9`); the ImGui bridge just had no texels for a render target. Chosen option: scale-agnostic GL readback (the narrower of the two). `gos_EndCameraPreviewRender` (VK umbrella only) blits the FBO (default 4x, 3200x2400) to 800x600, `glReadPixels`, publishes the vector under the FBO texture's GL name (`gos_GetCameraPreviewTexels`, checked first in `gos_GetTextureTexelsByGlName`); a new vector per render is the bridge's content-change signal, so it re-uploads each render (about 1.9 MB). Log: `[PREVIEW_READBACK v1] first publish with pixels`.
+
+### Proof
+| check | result |
+|---|---|
+| VK campaign leg, `MC2_VULKAN_VALIDATION=1`, 15 missions, exe 10897d0fd | `validation_errors=0`, 0 `robustBufferAccess2`, 13 mech geometry uploads (`.claude/l2s47/vk-campaign2`); before: 10 errors (`.claude/l2s47/vk-campaign` with fix (a) only, `.claude/l2s46/vk-campaign`) |
+| VK tier1 + validation, exe 10897d0fd, DEPLOY_FINGERPRINT OK x5 | 5/5 PASS, errors=0 warnings=0 on all five (`.claude/l2s47/t47.log`; fps 135/123/96/96/58) |
+| mech bay VK | `.claude/l2s47/bay2.png` viewed: yellow Bushwhacker drawn in the preview panel, everything else upright; before `bay0.png` empty panel |
+
+### Where the bay capture is launched (for the lease fix)
+`scripts/mechbay_preview_harness.py`, `main()`: `nofocus.spawn([exe], ...)` (from `scripts/smoke_lib/nofocus.py`) with a hard `p.kill()` after `--timeout`. No lease code of its own: it waits only through whatever `nofocus.spawn` does ("[wait] host game lease" lines appeared when my own earlier campaign exe was still alive and once with "unknown holder"); the harness never calls host_lease itself. `tools/campaign_save_roundtrip.py` (`capture`, `nofocus.spawn` at line ~161) is the same pattern. Not fixed here.
+
+### Open
+1. The preview readback stalls the GL queue once per preview render (bay and mechlopedia only); an async PBO readback is the upgrade if a profile shows it. `MC2_PREVIEW_FBO_SCALE=1` makes the blit a copy.
+2. Mechlopedia and Options paint preview use the same FBO but were not captured under VK this session (encyclopedia page not re-checked for the panel).
+3. Carried from s46: BC7 UI colour space not compared by eye; late forced VK-to-GL fallback not run.
+4. `preview_debug.log` in the lane2 install grows without bound under `MC2_LOG_PREVIEW=1` (8.6M lines); the harness sets that env.
+
 ## FORTY-SIXTH session (2026-10-17, Sonnet 5.5) -- ImGui layer drawn upside down under Vulkan (fixed), s45 texture bridge review blockers fixed
 
 ### Commits (on 8f0622666)

@@ -910,6 +910,7 @@ GosTexels gos_GetTextureTexels(uint32_t gosHandle) {
 
 GosTexels gos_GetTextureTexelsByGlName(uint32_t glName) {
     if (glName == 0 || !g_gos_renderer) return {};
+    if (GosTexels pv = gos_GetCameraPreviewTexels(glName); pv.status == GosTexels::Status::Ready) return pv;
     const uint32_t h = g_gos_renderer->findTextureHandleByGlName(glName);
     return h == INVALID_TEXTURE_ID ? GosTexels{} : gos_GetTextureTexels(h);
 }

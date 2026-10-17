@@ -1155,6 +1155,7 @@ void MechFlushFrame::snapshotForVkIsland() {
         const float* mvp = gos_GetMechFixBMVPMat4();
         if (mvp) std::memcpy(s_vkMechWorldToClipGL, mvp, sizeof(s_vkMechWorldToClipGL));
         s_vkMechObjectDepthBias = mc2depth::OBJECT_DEPTH_BIAS;   // mclib/terrain_depth_bias.h
+        s_vkMechSnapshotGeomGen = s_vkMechGeomGen;
         s_vkMechFrameReady = (totalInstances > 0 && !s_vkMechRunSnapshot.empty());
     } else {
         s_vkMechFrameReady = false;

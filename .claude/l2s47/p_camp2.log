@@ -1,0 +1,6 @@
+savegame_backup: backed up to testgame.ims.bak_20261017_040223
+[exe-guard] mc2-win64-lane2: fingerprint read via MC2FP1 literal
+[host-affinity] pid=9012 mask=0xf0 logical_cpus=4
+savegame_backup: restored testgame.ims.bak_20261017_040223
+campaign_save_roundtrip: wrote A:\Games\mc2-lane2\.claude\l2s47\vk-campaign2
+rc=0
