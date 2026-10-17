@@ -412,3 +412,44 @@ target_sources(mc2_tests PRIVATE test_actor_appearance_owner.cpp)
 
 # B7o.4: queued waypoint marker owners (header-only, code/warrior_queue_markers.h): byte-level oracle histories, final pool slice (ASan), rebind, restore
 target_sources(mc2_tests PRIVATE test_warrior_queue_markers.cpp)
+
+# Missing GLM leaves the existing unit tier usable, but cannot prove a math migration.
+if(NOT TARGET glm::glm)
+    if(EXISTS "${MC2_WORKTREE_ROOT}/3rdparty/glm/glm/glm.hpp")
+        add_library(mc2_identity_glm INTERFACE)
+        target_include_directories(mc2_identity_glm SYSTEM INTERFACE "${MC2_WORKTREE_ROOT}/3rdparty/glm")
+        add_library(glm::glm ALIAS mc2_identity_glm)
+    else()
+        find_package(glm 1.0.1 EXACT CONFIG QUIET)
+    endif()
+endif()
+if(TARGET glm::glm)
+    set(MC2_IDENTITY_SOURCES
+        test_stuff_glm_identity.cpp
+        ${MC2_WORKTREE_ROOT}/mclib/stuff/angle.cpp
+        ${MC2_WORKTREE_ROOT}/mclib/stuff/vector3d.cpp
+        ${MC2_WORKTREE_ROOT}/mclib/stuff/point3d.cpp
+        ${MC2_WORKTREE_ROOT}/mclib/stuff/matrix.cpp
+        ${MC2_WORKTREE_ROOT}/mclib/stuff/affinematrix.cpp
+        ${MC2_WORKTREE_ROOT}/mclib/stuff/linearmatrix.cpp
+        ${MC2_WORKTREE_ROOT}/mclib/stuff/rotation.cpp
+    )
+    target_sources(mc2_tests PRIVATE ${MC2_IDENTITY_SOURCES})
+    target_link_libraries(mc2_tests PRIVATE glm::glm)
+    # Uncalled legacy class self-tests reference engine services; only the math is needed here.
+    if(MSVC)
+        set_property(SOURCE ${MC2_IDENTITY_SOURCES} APPEND PROPERTY COMPILE_OPTIONS /fp:precise /Gy)
+        target_link_options(mc2_tests PRIVATE /OPT:REF /INCREMENTAL:NO)
+    else()
+        set_property(SOURCE ${MC2_IDENTITY_SOURCES} APPEND PROPERTY COMPILE_OPTIONS
+            -fno-fast-math -ffp-contract=off -ffunction-sections -fdata-sections)
+        if(APPLE)
+            target_link_options(mc2_tests PRIVATE -Wl,-dead_strip)
+        else()
+            target_link_options(mc2_tests PRIVATE -Wl,--gc-sections)
+        endif()
+    endif()
+    message(STATUS "Stuff/GLM bit-identity corpus enabled (GLM 1.0.1, scalar, precise)")
+else()
+    message(WARNING "Stuff/GLM bit-identity corpus NOT BUILT: vendor GLM 1.0.1; sim migration NOT PROVEN")
+endif()
