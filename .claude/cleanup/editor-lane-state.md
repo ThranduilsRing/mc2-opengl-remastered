@@ -66,3 +66,9 @@ The editor's GL context is born in `editor/EditorGameOS.cpp:327-336` (`graphics:
 
 ### Mergeable tip
 Branch `claude/editor-vk` at the commit carrying this section; code tip `a845a78ea` (merge). No ratchet rises; no BUGS row added (the defect is an install-data gap, noted above).
+
+### Session 2 addendum (after the owner's deploy and data copy)
+- Deployed editor fingerprint verified from the exe literal: first `a845a78ea50b` (merge), later `671ab6863` then `6824c8833` after my two editor commits below.
+- BUG FIXED, selection brackets / health bars missing on VK (`6824c8833`): `EditorGameOS.cpp` never replayed the HUD batch. Under VK the brackets route through the HUD batch (`VkHudRouteScope`, mclib/appear.cpp) which only `gameosmain.cpp:744` flushed; editor logs showed `hud_vk_queued_frames=0`. The editor now calls `gos_RendererFlushHUDBatch()` after `endScene` when the backend is Vulkan (after: `hud_vk_queued_frames=599`, `hud_vk_draws_last=45`). Evidence viewed: `scratch/editor-vk2/ed2_mc2_10_sel.png` + `ed2_sel_crop.png` (yellow corners + green health bar on Zeus), `ed2_mc2_01_sel.png` (Razorback). New `-smoke-frame-selection` CLI flag (`671ab6863`) frames the camera on the outliner selection for the capture.
+- Props still flat teal on lane3 in the GAME capture (`scratch/editor-vk2/game_bldg2/mc2_01_airport_bldgs_mid.png`, viewed; 56 TEXMGR_MISSING, `[SPLATTING] FAILED`, no_primary=19). The owner's robocopy did not land in lane3: `data/tgl/128` still has 660 files and `data/textures` has no `mat*_normal.tga` when checked at 16:5x. Editor VK shows the same teal props/trees (`ed2_mc2_10_sel.png`). Root cause stands (install data), unfixed.
+- Proof at 6824c8833 (lane3, VK): editor smoke gen_map_basic + stock_roundtrip:mc2_01 PASS 2/2; playtest mc2_01 PASS (child exit 0); day mc2_01 and night mc2_10 editor captures with selection ok.
