@@ -2599,7 +2599,7 @@
         },
         {
           "path": "tests/analyze/b7_actor_census.py",
-          "line": 39,
+          "line": 41,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
@@ -3219,6 +3219,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
+        },
+        {
+          "path": "tools/visual_verify/quickload_cement_check.py",
+          "line": 26,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)"
         },
         {
           "path": "tools/visual_verify/test_capture_index.py",
@@ -9178,6 +9185,13 @@
           "evidence": "import",
           "reference": "savegame_backup",
           "text": "import savegame_backup as mod  # noqa: E402"
+        },
+        {
+          "path": "tools/visual_verify/quickload_cement_check.py",
+          "line": 27,
+          "evidence": "import",
+          "reference": "savegame_backup",
+          "text": "import savegame_backup  # noqa: E402"
         }
       ]
     },
@@ -11903,6 +11917,13 @@
           "text": "import montage_compact as mc  # noqa: E402"
         }
       ]
+    },
+    {
+      "path": "tools/visual_verify/quickload_cement_check.py",
+      "basename": "quickload_cement_check.py",
+      "stem": "quickload_cement_check",
+      "callers_by_basename": [],
+      "callers_by_stem": []
     },
     {
       "path": "tools/visual_verify/regions.py",
