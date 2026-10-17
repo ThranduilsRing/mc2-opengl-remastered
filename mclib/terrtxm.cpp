@@ -166,10 +166,10 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 	//--------------------------------------------------------
 	// First setup the user heap with amount of RAM requested
 	tileHeap = new UserHeap;
-	gosASSERT(tileHeap != NULL);
+	gosASSERT(tileHeap != nullptr);
 
 	tileRAMHeap = new UserHeap;
-	gosASSERT(tileRAMHeap != NULL);
+	gosASSERT(tileRAMHeap != nullptr);
 
 	txmFileName.init(texturePath,fileName,".FIT");
 
@@ -213,7 +213,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 	//--------------------------------------------------------
 	// Create the lists of pointers to the textures.
 	textures = (TerrainTXMPtr)tileHeap->Malloc(numTxms * sizeof(TerrainTXM));
-	gosASSERT(textures != NULL);
+	gosASSERT(textures != nullptr);
 
 	memset(textures,-1,numTxms * sizeof(TerrainTXM));
 
@@ -224,22 +224,22 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 		textures[i].flags = 0;
 
 	types = (MC_TerrainTypePtr)tileRAMHeap->Malloc(numTypes * sizeof(MC_TerrainType));
-	gosASSERT(types != NULL);
+	gosASSERT(types != nullptr);
 
 	memset(types,0,numTypes * sizeof(MC_TerrainType));
 
 	overlays = (MC_OverlayTypePtr)tileRAMHeap->Malloc(numOverlays * sizeof(MC_OverlayType));
-	gosASSERT(overlays != NULL);
+	gosASSERT(overlays != nullptr);
 
 	memset(overlays, 0, numOverlays * sizeof(MC_OverlayType));
 
 	details = (MC_DetailTypePtr)tileHeap->Malloc(numDetails * sizeof(MC_DetailType));
-	gosASSERT(details != NULL);
+	gosASSERT(details != nullptr);
 
 	memset(details, 0, numDetails * sizeof(MC_DetailType));
 
 	transitions = (TransitionTypePtr)tileRAMHeap->Malloc(numTransitions * sizeof(TransitionType));
-	gosASSERT(transitions != NULL);
+	gosASSERT(transitions != nullptr);
 
 	memset(transitions, -1, numTransitions * sizeof(TransitionType));
 
@@ -260,13 +260,13 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 			result = textureFile.readIdString("TerrainName",tmpy,2047);
 			gosASSERT(result == NO_ERR);
 			types[i].terrainName = (char *)tileRAMHeap->Malloc(strlen(tmpy)+1);
-			gosASSERT(types[i].terrainName != NULL);
+			gosASSERT(types[i].terrainName != nullptr);
 			strcpy(types[i].terrainName,tmpy);
 	
 			result = textureFile.readIdString("MaskName",tmpy,2047);
 			gosASSERT(result == NO_ERR);
 			types[i].maskName = (char *)tileRAMHeap->Malloc(strlen(tmpy)+1);
-			gosASSERT(types[i].maskName != NULL);
+			gosASSERT(types[i].maskName != nullptr);
 			strcpy(types[i].maskName,tmpy);
 	
 			result = textureFile.readIdLong("TerrainPriority",types[i].terrainPriority);
@@ -301,12 +301,12 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 		if ((i && (types[i].terrainId != types[0].terrainId)) || !i)
 		{
 			types[i].textureData = (MemoryPtr *)tileRAMHeap->Malloc(sizeof(MemoryPtr) * MC_MAX_MIP_LEVELS);
-			gosASSERT(types[i].textureData != NULL);
+			gosASSERT(types[i].textureData != nullptr);
 			
 			memset(types[i].textureData,0,sizeof(MemoryPtr) * MC_MAX_MIP_LEVELS);
 
 			types[i].maskData = (MemoryPtr *)tileRAMHeap->Malloc(sizeof(MemoryPtr) * MC_MASK_NUM * MC_MAX_MIP_LEVELS);
-			gosASSERT(types[i].maskData != NULL);
+			gosASSERT(types[i].maskData != nullptr);
 			
 			memset(types[i].maskData,0,sizeof(MemoryPtr) * MC_MASK_NUM);
 
@@ -318,7 +318,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 		else if (i && (types[i].terrainId == types[0].terrainId))
 		{
 			MemoryPtr ourRAM = (MemoryPtr)tileRAMHeap->Malloc(16 * 16 * sizeof(DWORD));
-			gosASSERT(ourRAM != NULL);
+			gosASSERT(ourRAM != nullptr);
 			
 			memset(ourRAM,0,16 * 16 * sizeof(DWORD));
 			
@@ -352,7 +352,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 		result = textureFile.readIdString("OverlayName",tmpy,2047);
 		gosASSERT(result == NO_ERR);
 		overlays[i].overlayName = (char *)tileRAMHeap->Malloc(strlen(tmpy)+1);
-		gosASSERT(overlays[i].overlayName != NULL);
+		gosASSERT(overlays[i].overlayName != nullptr);
 		strcpy(overlays[i].overlayName,tmpy);
 
 		result = textureFile.readIdLong("NumOverlays",overlays[i].numTextures);
@@ -376,7 +376,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 	for (int i=0;i<numOverlays;i++)
 	{
 		overlays[i].overlayData = (MemoryPtr *)tileRAMHeap->Malloc(sizeof(MemoryPtr) * overlays[i].numTextures * MC_MAX_MIP_LEVELS);
-		gosASSERT(overlays[i].overlayData != NULL);
+		gosASSERT(overlays[i].overlayData != nullptr);
 
 		memset(overlays[i].overlayData,0,sizeof(MemoryPtr) * overlays[i].numTextures * MC_MAX_MIP_LEVELS);
 
@@ -384,7 +384,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 		// slot to the legacy TERRAIN_TXM_SIZE; initOverlay() overwrites per file
 		// when the hires gate resyncs a tile to its actual TGA dimensions.
 		overlays[i].overlayDataSizes = (long *)tileRAMHeap->Malloc(sizeof(long) * overlays[i].numTextures * MC_MAX_MIP_LEVELS);
-		gosASSERT(overlays[i].overlayDataSizes != NULL);
+		gosASSERT(overlays[i].overlayDataSizes != nullptr);
 		for (long s=0;s<overlays[i].numTextures * MC_MAX_MIP_LEVELS;s++)
 			overlays[i].overlayDataSizes[s] = TERRAIN_TXM_SIZE;
 
@@ -416,7 +416,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 		result = textureFile.readIdString("DetailName",tmpy,2047);
 		gosASSERT(result == NO_ERR);
 		details[i].detailName = (char *)tileRAMHeap->Malloc(strlen(tmpy)+1);
-		gosASSERT(details[i].detailName != NULL);
+		gosASSERT(details[i].detailName != nullptr);
 		strcpy(details[i].detailName,tmpy);
 
 		result = textureFile.readIdLong("NumDetails",details[i].numDetails);
@@ -436,7 +436,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 	for (int i=0;i<numDetails;i++)
 	{
 		details[i].detailData = (MemoryPtr *)tileRAMHeap->Malloc(sizeof(MemoryPtr) * details[i].numDetails * MC_MAX_MIP_LEVELS);
-		gosASSERT(details[i].detailData != NULL);
+		gosASSERT(details[i].detailData != nullptr);
 		
 		memset(details[i].detailData,0,sizeof(MemoryPtr) * details[i].numDetails * MC_MAX_MIP_LEVELS);
 
@@ -682,7 +682,7 @@ long TerrainTextures::initTexture (long typeNum)
 			tgaFile.seek(0);
 	
 			MemoryPtr ourRAM = (MemoryPtr)tileRAMHeap->Malloc(mipSize * mipSize * sizeof(DWORD));
-			gosASSERT(ourRAM != NULL);
+			gosASSERT(ourRAM != nullptr);
 	
 			loadTGATexture(&tgaFile,ourRAM,mipSize,mipSize);
 	
@@ -754,7 +754,7 @@ void TerrainTextures::initMask (long typeNum)
 			gosASSERT(result == NO_ERR);
 
 			MemoryPtr ourRAM = (MemoryPtr)tileRAMHeap->Malloc(mipSize * mipSize * sizeof(BYTE));
-			gosASSERT(ourRAM != NULL);
+			gosASSERT(ourRAM != nullptr);
 
 			loadTGAMask(&tgaFile,ourRAM,mipSize,mipSize);
 
@@ -874,7 +874,7 @@ long TerrainTextures::initOverlay (long overlayNum, long txmNum, char *txmName)
 			}
 
 			MemoryPtr ourRAM = (MemoryPtr)tileRAMHeap->Malloc(mipSize * mipSize * sizeof(DWORD));
-			gosASSERT(ourRAM != NULL);
+			gosASSERT(ourRAM != nullptr);
 
 			loadTGATexture(&tgaFile,ourRAM,mipSize,mipSize);
 
@@ -1154,7 +1154,7 @@ void TerrainTextures::combineOverlayTxm (MemoryPtr dest, long type, long mipLeve
 		// TCE ships overlay types that hit this; skip silently to avoid null-deref.
 		return;
 	}
-	gosASSERT(combineRAM != NULL);
+	gosASSERT(combineRAM != nullptr);
 
 	long mipSize = 0;
 	switch (mipLevel)

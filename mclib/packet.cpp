@@ -593,7 +593,7 @@ int PacketFile::writePacket (int packet, MemoryPtr buffer, unsigned int nbytes, 
 		else
 			workBuffer = (MemoryPtr)malloc(nbytes<<1);
 		
-		gosASSERT(workBuffer != NULL);
+		gosASSERT(workBuffer != nullptr);
 	}
 
 	gosASSERT((packet >= 0) && (packet < numPackets));

@@ -315,7 +315,7 @@ MC_TextureManager::~MC_TextureManager (void)
 	{
 		if (lzBuffer1)
 		{
-			gosASSERT(lzBuffer2 != NULL);
+			gosASSERT(lzBuffer2 != nullptr);
 			if (textureCacheHeap)
 			{
 				textureCacheHeap->Free(lzBuffer1);

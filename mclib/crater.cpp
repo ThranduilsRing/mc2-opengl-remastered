@@ -132,7 +132,7 @@ long CraterManager::init (long numCraters, unsigned long craterTypeSize, const c
 	//-----------------------------------------------------
 	// create Heaps
 	craterPosHeap = new HeapManager;
-	gosASSERT(craterPosHeap != NULL);
+	gosASSERT(craterPosHeap != nullptr);
 	
 	long result = craterPosHeap->createHeap(craterPosHeapSize);
 	gosASSERT(result == NO_ERR);
