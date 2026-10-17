@@ -1,6 +1,5 @@
 // tools/asset_viewer/SphereMesh.cpp
 #include "SphereMesh.h"
-#include <GL/glew.h>
 #include <cmath>
 
 void SphereMesh::generate(float radius, int stacks, int slices) {
@@ -46,31 +45,11 @@ void SphereMesh::generate(float radius, int stacks, int slices) {
 
 void SphereMesh::uploadGL() {
     indexCount_ = (int)idx_.size();
-    glGenVertexArrays(1, &vao_);
-    glGenBuffers(1, &vbo_);
-    glGenBuffers(1, &ebo_);
-    glBindVertexArray(vao_);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glBufferData(GL_ARRAY_BUFFER, verts_.size()*sizeof(SphereVertex), verts_.data(), GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_.size()*sizeof(uint32_t), idx_.data(), GL_STATIC_DRAW);
-    const GLsizei stride = sizeof(SphereVertex);
-    glEnableVertexAttribArray(0); glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
-    glEnableVertexAttribArray(1); glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3*sizeof(float)));
-    glEnableVertexAttribArray(2); glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, stride, (void*)(6*sizeof(float)));
-    glEnableVertexAttribArray(3); glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, stride, (void*)(10*sizeof(float)));
-    glBindVertexArray(0);
-}
-
-void SphereMesh::draw() const {
-    glBindVertexArray(vao_);
-    glDrawElements(GL_TRIANGLES, indexCount_, GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
+    toolvk::createBuffer(vb_, verts_.data(), verts_.size() * sizeof(SphereVertex), false);
+    toolvk::createBuffer(ib_, idx_.data(), idx_.size() * sizeof(uint32_t), true);
 }
 
 void SphereMesh::destroyGL() {
-    if (ebo_) glDeleteBuffers(1, &ebo_);
-    if (vbo_) glDeleteBuffers(1, &vbo_);
-    if (vao_) glDeleteVertexArrays(1, &vao_);
-    ebo_ = vbo_ = vao_ = 0;
+    toolvk::destroyBuffer(ib_);
+    toolvk::destroyBuffer(vb_);
 }

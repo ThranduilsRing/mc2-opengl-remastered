@@ -19,7 +19,7 @@ private:
 
     std::string     path_;
     TextureMetadata meta_;
-    DecodedTexture  current_;     // holds glTexture + ownsGlTexture
+    DecodedTexture  current_;     // holds texId + ownsTexture
     bool            hasError_ = false;
     std::string     errorText_;
     float           zoom_ = 1.0f;

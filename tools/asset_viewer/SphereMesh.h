@@ -2,6 +2,7 @@
 #pragma once
 #include <vector>
 #include <cstdint>
+#include "tool_vk_gpu.h"
 
 // Interleaved vertex: position(3), normal(3), tangent(4 = xyz + handedness w), uv(2) = 12 floats.
 struct SphereVertex {
@@ -14,12 +15,14 @@ struct SphereVertex {
 class SphereMesh {
 public:
     // Generates a UV sphere of `radius` with `stacks` latitude bands and
-    // `slices` longitude segments. CPU buffers only; call uploadGL() once a
-    // GL context is current to create VAO/VBO/EBO.
+    // `slices` longitude segments. CPU buffers only; call uploadGL() once toolvk is up
+    // to create the vertex + index buffers.
     void generate(float radius, int stacks, int slices);
-    void uploadGL();          // creates VAO/VBO/EBO from the CPU buffers
-    void draw() const;        // glBindVertexArray + glDrawElements(GL_TRIANGLES)
-    void destroyGL();         // delete VAO/VBO/EBO
+    void uploadGL();          // creates the vertex + index buffers from the CPU buffers
+    void destroyGL();         // free them
+    const toolvk::Buffer& vertexBuffer() const { return vb_; }
+    const toolvk::Buffer& indexBuffer() const { return ib_; }
+    uint32_t indexCount() const { return (uint32_t)indexCount_; }
 
     const std::vector<SphereVertex>& vertices() const { return verts_; }
     const std::vector<uint32_t>&     indices()  const { return idx_;   }
@@ -27,6 +30,6 @@ public:
 private:
     std::vector<SphereVertex> verts_;
     std::vector<uint32_t>     idx_;
-    unsigned vao_ = 0, vbo_ = 0, ebo_ = 0;
+    toolvk::Buffer vb_, ib_;
     int indexCount_ = 0;
 };

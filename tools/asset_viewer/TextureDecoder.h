@@ -4,18 +4,18 @@
 #include <string>
 #include <vector>
 
-// Result of decoding+uploading one texture file. glTexture==0 means failure
-// (error holds a friendly message). ownsGlTexture decides who frees it:
-//   true  -> the consumer (TexturePreview2D) must glDeleteTextures it.
-//   false -> the GL texture is owned elsewhere (e.g. UiEditorImageCache); do NOT delete.
+// Result of decoding+uploading one texture file. texId (a toolvk texture id, tools/common/tool_vk_gpu.h) == 0 means failure
+// (error holds a friendly message). ownsTexture decides who frees it:
+//   true  -> the consumer (TexturePreview2D) must toolvk::destroyTexture it.
+//   false -> the texture is owned elsewhere; do NOT destroy.
 struct DecodedTexture {
-    uint32_t    glTexture     = 0;
+    uint32_t    texId         = 0;
     int         width         = 0;
     int         height        = 0;
     int         mipCount      = 1;
     std::string formatLabel;            // "RGBA8", "RGBA8 (sRGB)", "BC7 (sRGB), 9 mips"
     bool        isCompressed  = false;
-    bool        ownsGlTexture = false;
+    bool        ownsTexture   = false;
     std::string error;                  // empty on success
 };
 

@@ -16,7 +16,7 @@ struct Ktx2DecodedImage {
 
 Ktx2DecodedImage loadKtx2Image(const std::string& path);
 
-// The .ktx2 decoder. GL upload implemented in Task 3.
+// The .ktx2 decoder. Uploads through toolvk::createTexture.
 class Ktx2Decoder : public ITextureDecoder {
 public:
     bool          handles(const std::string& extLower) const override;

@@ -1,4 +1,4 @@
-<!-- doc-status: current | reviewed:2026-10-11 -->
+<!-- doc-status: current | reviewed:2026-10-17 -->
 # mc2_asset_viewer (stage 1: texture/asset shell)
 
 Standalone modder tool. Stage 1 = app shell + folder-path browser + texture preview +
@@ -8,6 +8,21 @@ Standalone modder tool. Stage 1 = app shell + folder-path browser + texture prev
 materials, meshes, VFX, manifests, validation, cooking, packaging). Mission
 layout, triggers, objectives, camera paths, and unit placement stay with MC2's
 existing mission editor.
+
+## Vulkan (step 3.7, 2026-10-17)
+
+The viewer draws through Vulkan only: `tools/common` (`mc2_tool_vk`) is the SDL2 Vulkan window + swapchain + ImGui-on-Vulkan shell and
+a small offscreen layer (textures RGBA8/BC7, targets, one-draw-per-descriptor-set pipelines). The previews (`MeshPreview3D`, the PBR
+`MaterialPreviewPBR`, `TexturePreview2D`) render with GLSL 450 shaders in `shaders_vk/`, compiled by glslangValidator at build time to
+`shaders_vk/*.spv` next to the exe. No GL context is created (OpenGL/GLEW stay linked only for the isolated `mc2_tglloader` engine closure).
+
+- **Launch and screenshot:** `py -3 scripts/run_tool_capture.py asset_viewer --out x.png --cwd <install> -- --view props data/tgl/2civliving.tgl`
+  (`--view textures <file> | materials | props <name.tgl> | workbench`), background, lease-taking, `--validation` for the layer.
+- **Not ported (VK gap):** Backend-A, the preview with the real engine `static_prop` GLSL (needs the color_prop island's bindless/SSBO set;
+  no standalone entry point). The Backend-A radio button stays and fails open to Backend-B with the reason in the Shader Contract panel.
+- **Removed with the GL context:** the GL render smokes (`--smoke`, `--smoke-ktx`, `--smoke-preview`, `--smoke-backend`, `--smoke-texload`,
+  `--smoke-render`, `--smoke-tangent`, `--smoke-fit-load`, `--smoke-mesh-render`, `--smoke-backend-a-compile|render|fallback|uvv`). The CPU-only
+  smokes (loaders, workbench, validation, manifests, shader-include) are unchanged; the screenshot runner replaces the render ones.
 
 ## Build
 

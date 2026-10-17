@@ -1,15 +1,16 @@
 // tools/asset_viewer/MeshGpu.h
-// Upload a CPU MeshData to GL (VAO/VBO/EBO per submesh + per-submesh albedo).
-// No engine headers; pure GL + C++17.
+// Upload a CPU MeshData to Vulkan buffers (vertex + index buffer per submesh + per-submesh albedo).
+// No engine headers; toolvk (tools/common/tool_vk_gpu.h) + C++17.
 #pragma once
 #include "TglMeshLoader.h"
+#include "tool_vk_gpu.h"
 #include <string>
 #include <vector>
 #include <cstdint>
 
 struct GpuSubMesh {
-    unsigned vao = 0, vbo = 0, ebo = 0;
-    unsigned albedo = 0;
+    toolvk::Buffer vb, ib;
+    uint32_t albedo = 0;   // toolvk texture id, 0 = none
     int      indexCount = 0;
     bool     ownsAlbedo = false;
     // Lowercased stem of the source texture name (no extension, no path).
@@ -31,16 +32,10 @@ public:
     // VAO/VBO/EBO are untouched; only textures are freed (if owned) and re-resolved.
     void reloadAlbedo(const std::string& deployDir, int preferredTier);
 
-    // Bind each submesh's albedo (unit 0) and draw elements.
-    // For the basic (no-shader) path.
-    void draw() const;
+    // The submeshes in draw order; the caller issues one toolvk::Pass::draw per entry (skipping isSpotlight when lights are hidden).
+    const std::vector<GpuSubMesh>& subs() const { return subs_; }
 
-    // Draw with per-submesh u_hasAlbedo uniform (loc passed in).
-    // Caller must have a program bound and u_albedo set to unit 0.
-    // showLights: if false, submeshes with isSpotlight==true are skipped entirely.
-    void drawLit(int uHasAlbedoLoc, bool showLights = true) const;
-
-    // Delete all GL objects.
+    // Free all GPU objects.
     void destroy();
 
     bool valid() const { return !subs_.empty(); }

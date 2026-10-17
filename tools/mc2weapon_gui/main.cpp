@@ -1,4 +1,4 @@
-// mc2weapon_gui — Dear ImGui (SDL2 + OpenGL3) weapon editor for MC2.
+// mc2weapon_gui — Dear ImGui (SDL2 + Vulkan) weapon editor for MC2.
 //
 // Foolproof front-end over the same CSV model as tools/mc2weapon/mc2weapon.py:
 // enum fields are dropdowns (can't typo a Type/Range/FX), numbers are validated
@@ -22,11 +22,11 @@
 
 #include "weapon_csv.h"
 
-#include <GL/glew.h>
 #include <SDL.h>
+#include "tool_vk_shell.h"
 #include "imgui.h"
 #include "backends/imgui_impl_sdl2.h"
-#include "backends/imgui_impl_opengl3.h"
+#include "backends/imgui_impl_vulkan.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -577,33 +577,21 @@ int main(int argc, char** argv) {
         if (headless) return coreOnly(app, cbp, efp);
         return 3;
     }
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-
-    Uint32 winFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
-    if (headless) winFlags |= SDL_WINDOW_HIDDEN;
-    SDL_Window* window = SDL_CreateWindow("mc2weapon — weapon editor",
+    Uint32 winFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
+    if (headless || toolvk::captureRequested()) winFlags |= SDL_WINDOW_HIDDEN;
+    SDL_Window* window = SDL_CreateWindow("mc2weapon - weapon editor",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 800, winFlags);
     if (!window) { std::fprintf(stderr, "SDL_CreateWindow: %s\n", SDL_GetError()); SDL_Quit();
                    if (headless) return coreOnly(app, cbp, efp); return 3; }
-    SDL_GLContext glc = SDL_GL_CreateContext(window);
-    if (!glc) { std::fprintf(stderr, "GL context: %s\n", SDL_GetError()); SDL_DestroyWindow(window); SDL_Quit();
-                if (headless) return coreOnly(app, cbp, efp); return 3; }
-    SDL_GL_MakeCurrent(window, glc);
-    SDL_GL_SetSwapInterval(headless ? 0 : 1);
-    glewExperimental = GL_TRUE;
-    if (glewInit() != GLEW_OK) { std::fprintf(stderr, "glewInit failed\n");
-        SDL_GL_DeleteContext(glc); SDL_DestroyWindow(window); SDL_Quit();
-        if (headless) return coreOnly(app, cbp, efp); return 3; }
-    while (glGetError() != GL_NO_ERROR) {}
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
-    ImGui_ImplSDL2_InitForOpenGL(window, glc);
-    ImGui_ImplOpenGL3_Init("#version 130");
+    toolvk::Shell vk;
+    if (!toolvk::init(vk, window, "mc2weapon_gui")) {
+        std::fprintf(stderr, "Vulkan shell init failed\n");
+        toolvk::shutdown(vk); ImGui::DestroyContext(); SDL_DestroyWindow(window); SDL_Quit();
+        if (headless) return coreOnly(app, cbp, efp); return 3; }
 
     bool running = true;
     int frame = 0;
@@ -615,7 +603,8 @@ int main(int argc, char** argv) {
             if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_CLOSE &&
                 e.window.windowID == SDL_GetWindowID(window)) running = false;
         }
-        ImGui_ImplOpenGL3_NewFrame();
+        if (!toolvk::begin(vk)) { SDL_Delay(10); continue; }
+        ImGui_ImplVulkan_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
@@ -623,23 +612,16 @@ int main(int argc, char** argv) {
         drawEditor(app);
 
         ImGui::Render();
-        int dw = 0, dh = 0;
-        SDL_GL_GetDrawableSize(window, &dw, &dh);
-        glViewport(0, 0, dw, dh);
-        glClearColor(0.10f, 0.11f, 0.13f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        SDL_GL_SwapWindow(window);
+        if (toolvk::end(vk)) running = false;
 
         ++frame;
         if (headless && frame >= frames) running = false;
     }
     if (headless) std::printf("rendered %d frames, exiting cleanly\n", frame);
 
-    ImGui_ImplOpenGL3_Shutdown();
+    toolvk::shutdown(vk);
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
-    SDL_GL_DeleteContext(glc);
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;

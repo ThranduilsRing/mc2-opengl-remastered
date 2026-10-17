@@ -9,6 +9,7 @@
   "scripts/run_editor_playtest_smoke.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
   "scripts/run_editor_smoke.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
   "scripts/run_smoke.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
+  "scripts/run_tool_capture.py": "viewport-tool launcher (asset_viewer, mc2fx_preview, mc2weapon_gui) through nofocus.spawn under the host lease: hidden window, swapchain screenshot, no desktop pixels; step 3.7",
   "scripts/run_smoke_asan.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
   "scripts/run_visual_capture.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
   "scripts/run_vk_field_check.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",

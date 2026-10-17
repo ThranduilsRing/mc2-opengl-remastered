@@ -1,7 +1,6 @@
 // tools/asset_viewer/MeshPreview3D.h
 // PreviewSurface impl: loads a .tgl via TglMeshLoader, uploads to MeshGpu,
-// renders on a turntable orbit camera into an FBO, blits via ImGui::Image.
-// Follows the same GL-state-containment contract as MaterialPreviewPBR.
+// renders on a turntable orbit camera into an offscreen Vulkan target, blits via ImGui::Image.
 #pragma once
 #include "PreviewSurface.h"
 #include "MeshGpu.h"
@@ -25,10 +24,6 @@ public:
     // Render an arbitrary MeshData (e.g. a GLB override). Untextured preview.
     void setMeshData(const MeshData& md);
 
-    // Test hook: render into an internal FBO and read back RGBA pixels.
-    // No ImGui context required. Returns false if init or FBO failed.
-    bool renderToPixels(int w, int h, std::vector<uint8_t>& rgbaOut);
-
     // Test hook: reload albedo textures at the given tier and update tier_.
     // Thin wrapper over mesh_.reloadAlbedo; safe to call without ImGui.
     void reloadAlbedoAtTier(const std::string& deployDir, int tier) {
@@ -50,20 +45,12 @@ private:
                        float out[16], float camPosOut[3]) const;
     void renderScene(int w, int h);
 
-    // GL program (compiled once in ensureGL)
-    unsigned prog_  = 0;
-    int u_viewProj  = -1;
-    int u_model_    = -1;   // model rotation matrix (world transform)
-    int u_cameraPos = -1;
-    int u_lightDir  = -1;
-    int u_albedo    = -1;
-    int u_hasAlbedo = -1;
+    toolvk::Pipeline pipe_;   // created once in ensureGL
 
     MeshGpu mesh_;
 
-    // FBO
-    unsigned fbo_ = 0, colorTex_ = 0, depthRbo_ = 0;
-    int fboW_ = 0, fboH_ = 0;
+    // Offscreen target
+    toolvk::Target target_;
 
     bool backendOk_   = false;
     bool fboComplete_ = false;

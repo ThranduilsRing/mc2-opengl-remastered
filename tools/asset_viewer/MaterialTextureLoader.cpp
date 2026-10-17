@@ -1,6 +1,6 @@
 // tools/asset_viewer/MaterialTextureLoader.cpp
 #include "MaterialTextureLoader.h"
-#include <GL/glew.h>
+#include "tool_vk_gpu.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"     // 3rdparty/stb on the include path
 
@@ -16,18 +16,10 @@ uint32_t MaterialTextureLoader_Load(const std::string& path,
         return 0;
     }
 
-    GLint internal = (kind == MaterialSlotKind::BaseColor || kind == MaterialSlotKind::Emissive)
-                     ? GL_SRGB8_ALPHA8 : GL_RGBA8;
-    uint32_t tex = 0;
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, internal, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, px);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    const bool srgb = (kind == MaterialSlotKind::BaseColor || kind == MaterialSlotKind::Emissive);
+    const uint32_t tex = toolvk::createTexture(w, h, srgb ? toolvk::TexFormat::Rgba8Srgb : toolvk::TexFormat::Rgba8Unorm,
+                                               px, {}, true, true);
+    if (!tex && errorOut) *errorOut = "Vulkan texture upload failed";
     stbi_image_free(px);
     return tex;
 }

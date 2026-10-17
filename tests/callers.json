@@ -4071,6 +4071,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/run_tool_capture.py",
+      "basename": "run_tool_capture.py",
+      "stem": "run_tool_capture",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/run_tools_tests.py",
       "basename": "run_tools_tests.py",
       "stem": "run_tools_tests",

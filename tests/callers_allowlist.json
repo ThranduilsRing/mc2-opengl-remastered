@@ -24,6 +24,7 @@
   "scripts/run_editor_smoke.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "scripts/run_smoke_asan.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "scripts/run_smoke_matrix.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
+  "scripts/run_tool_capture.py": "Operator entry point: the launch-and-screenshot runner for the Vulkan viewport tools (asset_viewer, mc2fx_preview, mc2weapon_gui); run by hand and by agents, no script calls it.",
   "scripts/run_vk_field_check.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "scripts/sweep_campaign.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "scripts/test_gl_shader_variants.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",

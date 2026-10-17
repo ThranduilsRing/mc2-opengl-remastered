@@ -1,10 +1,10 @@
 // tools/asset_viewer/MeshPreview3D.cpp
 // Renders a loaded TGL prop on a turntable orbit camera with a simple lit shader.
-// GL-state fully contained (exact same save/restore discipline as MaterialPreviewPBR).
+// Vulkan: one offscreen pass per draw() into a private target (toolvk::Pass).
 #include "MeshPreview3D.h"
 #include "TglMeshLoader.h"
 #include "imgui.h"
-#include <GL/glew.h>
+#include "tool_vk_gpu.h"
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -16,8 +16,8 @@ static void perspective(float fovyRad, float aspect, float zn, float zf, float m
     float f = 1.0f / std::tan(fovyRad * 0.5f);
     for (int i = 0; i < 16; i++) m[i] = 0;
     m[0] = f / aspect; m[5] = f;
-    m[10] = (zf + zn) / (zn - zf); m[11] = -1.0f;
-    m[14] = (2 * zf * zn) / (zn - zf);
+    m[10] = zf / (zn - zf); m[11] = -1.0f;        // Vulkan [0,1] depth
+    m[14] = (zf * zn) / (zn - zf);
 }
 
 static void lookAt(const float eye[3], const float ctr[3], const float up[3], float m[16]) {
@@ -103,96 +103,18 @@ static void rotateAboutCenter(const float cx, const float cy, const float cz,
     m[15] = 1.0f;
 }
 
-// ---------------------------------------------------------------------------
-// Simple lit shader (N·L Lambert diffuse × albedo + ambient, gamma encode)
-// ---------------------------------------------------------------------------
-static const char* kVertSrc = R"GLSL(
-#version 330 core
-layout(location=0) in vec3 a_pos;
-layout(location=1) in vec3 a_normal;
-layout(location=2) in vec2 a_uv;
-
-uniform mat4 u_viewProj;
-uniform mat4 u_model;   // world transform (rotation about bounds center)
-
-out vec3 v_posWorld;
-out vec3 v_normal;
-out vec2 v_uv;
-
-void main() {
-    vec4 wp    = u_model * vec4(a_pos, 1.0);
-    v_posWorld = wp.xyz;
-    v_normal   = normalize(mat3(u_model) * a_normal);
-    v_uv       = a_uv;
-    gl_Position = u_viewProj * wp;
-}
-)GLSL";
-
-static const char* kFragSrc = R"GLSL(
-#version 330 core
-in vec3 v_posWorld;
-in vec3 v_normal;
-in vec2 v_uv;
-
-uniform vec3      u_cameraPos;
-uniform vec3      u_lightDir;   // world-space, points FROM light (normalize in shader)
-uniform sampler2D u_albedo;
-uniform int       u_hasAlbedo;
-
-out vec4 fragColor;
-
-void main() {
-    vec3 N = normalize(v_normal);
-    vec3 L = normalize(-u_lightDir);
-
-    // Albedo
-    vec3 albedo = (u_hasAlbedo != 0)
-        ? texture(u_albedo, v_uv).rgb
-        : vec3(0.78, 0.78, 0.78);   // flat grey fallback
-
-    // Lambert diffuse + ambient
-    float NdotL  = max(dot(N, L), 0.0);
-    vec3  color  = albedo * (NdotL * 0.85 + 0.15);
-
-    // Gamma encode (linear -> sRGB approx)
-    color = pow(clamp(color, 0.0, 1.0), vec3(1.0 / 2.2));
-
-    fragColor = vec4(color, 1.0);
-}
-)GLSL";
-
-// Compile one shader stage; returns 0 on failure (prints to stderr).
-static unsigned compileShader(GLenum type, const char* src) {
-    unsigned sh = glCreateShader(type);
-    glShaderSource(sh, 1, &src, nullptr);
-    glCompileShader(sh);
-    GLint ok = 0;
-    glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
-    if (!ok) {
-        char buf[1024]; glGetShaderInfoLog(sh, sizeof(buf), nullptr, buf);
-        std::fprintf(stderr, "[MeshPreview3D] shader compile error: %s\n", buf);
-        glDeleteShader(sh);
-        return 0;
-    }
-    return sh;
-}
-
-// Link; returns 0 on failure.
-static unsigned linkProgram(unsigned vs, unsigned fs) {
-    unsigned p = glCreateProgram();
-    glAttachShader(p, vs);
-    glAttachShader(p, fs);
-    glLinkProgram(p);
-    GLint ok = 0;
-    glGetProgramiv(p, GL_LINK_STATUS, &ok);
-    if (!ok) {
-        char buf[1024]; glGetProgramInfoLog(p, sizeof(buf), nullptr, buf);
-        std::fprintf(stderr, "[MeshPreview3D] program link error: %s\n", buf);
-        glDeleteProgram(p);
-        return 0;
-    }
-    return p;
-}
+// Shaders: shaders_vk/mesh_lit.{vert,frag} (N.L Lambert x albedo + ambient, gamma encode), compiled to SPIR-V at build time.
+namespace {
+// std140, mirrors the UBO in mesh_lit.vert / mesh_lit.frag.
+struct MeshUbo {
+    float viewProj[16];
+    float model[16];
+    float cameraPos[4];
+    float lightDir[4];
+    int32_t hasAlbedo[4];
+};
+static_assert(sizeof(MeshUbo) == 64 + 64 + 16 + 16 + 16, "MeshUbo std140 layout");
+} // namespace
 
 // ---------------------------------------------------------------------------
 // MeshPreview3D lifecycle
@@ -202,66 +124,31 @@ MeshPreview3D::MeshPreview3D() = default;
 MeshPreview3D::~MeshPreview3D() {
     mesh_.destroy();
     destroyFbo();
-    if (prog_) glDeleteProgram(prog_);
+    toolvk::destroyPipeline(pipe_);
 }
 
 void MeshPreview3D::destroyFbo() {
-    if (depthRbo_) glDeleteRenderbuffers(1, &depthRbo_);
-    if (colorTex_) glDeleteTextures(1, &colorTex_);
-    if (fbo_)      glDeleteFramebuffers(1, &fbo_);
-    fbo_ = colorTex_ = depthRbo_ = 0;
-    fboW_ = fboH_ = 0;
+    toolvk::destroyTarget(target_);
     fboComplete_ = false;
 }
 
 void MeshPreview3D::ensureGL(int w, int h) {
     if (!glReady_) {
         glReady_ = true;
-        // Compile the lit shader
-        unsigned vs = compileShader(GL_VERTEX_SHADER,   kVertSrc);
-        unsigned fs = compileShader(GL_FRAGMENT_SHADER, kFragSrc);
-        if (vs && fs) {
-            prog_ = linkProgram(vs, fs);
-        }
-        if (vs) glDeleteShader(vs);
-        if (fs) glDeleteShader(fs);
-
-        if (prog_) {
-            u_viewProj  = glGetUniformLocation(prog_, "u_viewProj");
-            u_model_    = glGetUniformLocation(prog_, "u_model");
-            u_cameraPos = glGetUniformLocation(prog_, "u_cameraPos");
-            u_lightDir  = glGetUniformLocation(prog_, "u_lightDir");
-            u_albedo    = glGetUniformLocation(prog_, "u_albedo");
-            u_hasAlbedo = glGetUniformLocation(prog_, "u_hasAlbedo");
-            backendOk_  = true;
-        } else {
-            std::fprintf(stderr, "[MeshPreview3D] shader compile/link failed\n");
-            backendOk_ = false;
-        }
+        toolvk::PipelineDesc d;
+        d.vertSpv = "mesh_lit.vert.spv";
+        d.fragSpv = "mesh_lit.frag.spv";
+        d.stride = sizeof(MeshVertex);
+        d.attrs = {{0, 106 /*R32G32B32_SFLOAT*/, 0}, {1, 106, 12}, {2, 103 /*R32G32_SFLOAT*/, 24}};
+        d.samplers = 1;
+        d.cullBack = false;   // some MC2 props have inverted winding; render both sides
+        backendOk_ = toolvk::createPipeline(pipe_, d);
+        if (!backendOk_) std::fprintf(stderr, "[MeshPreview3D] pipeline creation failed\n");
     }
 
-    if (w != fboW_ || h != fboH_ || !fbo_) {
-        destroyFbo();
-        fboW_ = w; fboH_ = h;
-        glGenFramebuffers(1, &fbo_);
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
-
-        glGenTextures(1, &colorTex_);
-        glBindTexture(GL_TEXTURE_2D, colorTex_);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTex_, 0);
-
-        glGenRenderbuffers(1, &depthRbo_);
-        glBindRenderbuffer(GL_RENDERBUFFER, depthRbo_);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, w, h);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthRbo_);
-
-        fboComplete_ = (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
-        if (!fboComplete_) std::fprintf(stderr, "[MeshPreview3D] FBO incomplete\n");
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glBindTexture(GL_TEXTURE_2D, 0);
+    if (w != target_.w || h != target_.h || !target_.impl) {
+        fboComplete_ = toolvk::createTarget(target_, w, h);
+        if (!fboComplete_) std::fprintf(stderr, "[MeshPreview3D] target creation failed\n");
     }
 }
 
@@ -358,71 +245,28 @@ void MeshPreview3D::buildViewProj(int w, int h, const float center[3],
 }
 
 // ---------------------------------------------------------------------------
-// renderScene: fully GL-state-contained render into fbo_.
+// renderScene: one offscreen pass into target_.
 // ---------------------------------------------------------------------------
 void MeshPreview3D::renderScene(int w, int h) {
-    // --- Save state ---
-    GLint  prevFbo = 0;
-    GLint  prevVp[4];
-    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFbo);
-    glGetIntegerv(GL_VIEWPORT, prevVp);
-    GLboolean wasDepth = glIsEnabled(GL_DEPTH_TEST);
-    GLboolean wasCull  = glIsEnabled(GL_CULL_FACE);
-    GLboolean wasBlend = glIsEnabled(GL_BLEND);
-    GLint prevDepthFunc = GL_LESS, prevCullMode = GL_BACK;
-    GLfloat prevClear[4];
-    glGetIntegerv(GL_DEPTH_FUNC,      &prevDepthFunc);
-    glGetIntegerv(GL_CULL_FACE_MODE,  &prevCullMode);
-    glGetFloatv(GL_COLOR_CLEAR_VALUE,  prevClear);
-
-    // --- Render into FBO ---
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
-    glViewport(0, 0, w, h);
-    glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LESS);
-    glDisable(GL_BLEND);
-    // Disable backface culling: some MC2 props have inverted winding; render both
-    // sides to guarantee a visible model even without known winding order.
-    glDisable(GL_CULL_FACE);
-    glClearColor(0.10f, 0.11f, 0.13f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    if (mesh_.valid() && prog_) {
-        float vp[16], cam[3];
-        buildViewProj(w, h, center_, vp, cam);
-
-        glUseProgram(prog_);
-        glUniformMatrix4fv(u_viewProj,  1, GL_FALSE, vp);
-
-        // Build T(center)*R*T(-center) so rotation pivots at the bounds center.
-        float modelMat[16];
-        rotateAboutCenter(center_[0], center_[1], center_[2],
-                          modelRotDeg_[0], modelRotDeg_[1], modelRotDeg_[2],
-                          modelMat);
-        glUniformMatrix4fv(u_model_, 1, GL_FALSE, modelMat);
-
-        glUniform3fv(u_cameraPos, 1, cam);
-        glUniform3fv(u_lightDir,  1, lightDir_);
-        glUniform1i(u_albedo, 0);   // sampler bound on unit 0
-
-        // Draw each submesh; drawLit sets u_hasAlbedo per submesh.
-        mesh_.drawLit(u_hasAlbedo, showLights_);
+    toolvk::Pass pass;
+    const float clear[4] = {0.10f, 0.11f, 0.13f, 1.0f};
+    if (!pass.begin(target_, clear)) return;
+    if (mesh_.valid() && pipe_.impl) {
+        MeshUbo u{};
+        float cam[3];
+        buildViewProj(w, h, center_, u.viewProj, cam);
+        // T(center)*R*T(-center) so rotation pivots at the bounds center.
+        rotateAboutCenter(center_[0], center_[1], center_[2], modelRotDeg_[0], modelRotDeg_[1], modelRotDeg_[2], u.model);
+        std::memcpy(u.cameraPos, cam, 12);
+        std::memcpy(u.lightDir, lightDir_, 12);
+        pass.bind(pipe_);
+        for (const GpuSubMesh& gs : mesh_.subs()) {
+            if (gs.isSpotlight && !showLights_) continue;
+            u.hasAlbedo[0] = gs.albedo != 0 ? 1 : 0;
+            pass.draw(&u, sizeof u, {gs.albedo}, gs.vb, gs.ib, (uint32_t)gs.indexCount);
+        }
     }
-
-    // --- Restore state ---
-    // Unbind texture units used (only unit 0 here), leave unit 0 active.
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glUseProgram(0);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prevFbo);
-    glViewport(prevVp[0], prevVp[1], prevVp[2], prevVp[3]);
-
-    if (wasDepth) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
-    glDepthFunc(prevDepthFunc);
-    if (wasCull)  glEnable(GL_CULL_FACE);  else glDisable(GL_CULL_FACE);
-    glCullFace(prevCullMode);
-    if (wasBlend) glEnable(GL_BLEND); else glDisable(GL_BLEND);
-    glClearColor(prevClear[0], prevClear[1], prevClear[2], prevClear[3]);
+    pass.end();
 }
 
 // ---------------------------------------------------------------------------
@@ -513,15 +357,15 @@ void MeshPreview3D::draw(const ImVec2& availableSize) {
 
     if (!backendOk_ || !fboComplete_) {
         ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.3f, 1.0f),
-            "Model preview unavailable (shader compile or FBO init failed). See stderr.");
+            "Model preview unavailable (pipeline or target init failed). See stderr.");
         return;
     }
 
     renderScene(w, h);
 
-    ImGui::Image((ImTextureID)(intptr_t)colorTex_,
+    ImGui::Image((ImTextureID)toolvk::imguiTex(target_.colorTex),
                  ImVec2((float)w, (float)h),
-                 ImVec2(0, 1), ImVec2(1, 0));
+                 ImVec2(0, 0), ImVec2(1, 1));
 
     // -----------------------------------------------------------------------
     // Mouse orbit + zoom (active while hovered over the Image above)
@@ -542,19 +386,4 @@ void MeshPreview3D::draw(const ImVec2& availableSize) {
             if (dist_ < 0.05f) dist_ = 0.05f;
         }
     }
-}
-
-// ---------------------------------------------------------------------------
-// renderToPixels (test hook, ImGui-free)
-// ---------------------------------------------------------------------------
-bool MeshPreview3D::renderToPixels(int w, int h, std::vector<uint8_t>& rgbaOut) {
-    if (w < 1) w = 1; if (h < 1) h = 1;
-    ensureGL(w, h);
-    if (!backendOk_ || !fboComplete_) return false;
-    renderScene(w, h);
-    rgbaOut.resize((size_t)w * h * 4);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
-    glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, rgbaOut.data());
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    return true;
 }
