@@ -93,6 +93,9 @@ public:
                            uint32_t lightFirst, uint32_t lightCount);
 
 private:
+    // One-shot startup check of the lighting compute: a synthetic vertex/light set (4096 vertices, 8 lights, every branch) is run on the GPU and compared with a
+    // C++ transcription of the quad.cpp math. Logs [VK_PRODUCER_SELFTEST v1]. Returns the mismatch count (0 = exact).
+    uint32_t selfTestLighting();
     bool growHost(OwnedBuffer& buf, VkDeviceSize& cap, VkDeviceSize need, VkBufferUsageFlags usage, const char* name, uint32_t par);
     bool makeDevice(OwnedBuffer& buf, VkDeviceSize size, VkBufferUsageFlags usage, const char* name, int i0 = -1);
     void writeAll();
