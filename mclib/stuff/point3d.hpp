@@ -163,17 +163,6 @@ namespace Stuff {
 		Point3D&
 			operator*=(const AffineMatrix4D &m)
 				{Point3D src(*this); return Multiply(src,m);}
-		Point3D&
-			MultiplyByInverse(
-				const Vector3D &v,
-				const LinearMatrix4D &m
-			)
-				{Vector3D::MultiplyByInverse(v,m); return *this;}
-		Point3D&
-			MultiplyByInverse(
-				const Point3D &p,
-				const LinearMatrix4D &m
-			);
 
 		//
 		// Miscellaneous functions

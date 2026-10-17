@@ -44,9 +44,6 @@ namespace Stuff {
 		Line3D&
 			SetDirection(const Vector3D &vector);
 
-		void
-			FindEnd(Point3D *result)
-				{Check_Object(this); Check_Pointer(result); Ray3D::Project(length, result);}
 			
 		//
 		// Intersection functions

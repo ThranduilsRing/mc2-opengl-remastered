@@ -89,14 +89,6 @@ namespace Stuff {
 					return *this;
 				}
 
-		OBB&
-			BuildSphere(const Sphere& sphere)
-				{
-					Check_Pointer(this); Check_Object(&sphere);
-					sphereRadius = sphere.radius;
-					localToParent.BuildTranslation(sphere.center);
-					return *this;
-				}
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Transforms

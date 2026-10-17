@@ -147,11 +147,9 @@ void scalars(Corpus& corpus, float x, float y) {
     corpus.scalar("scalar.approximate-sqrt", Stuff::SqrtApproximate(positive), glm::sqrt(positive));
     corpus.scalar("scalar.sin", Stuff::Sin(x), glm::sin(x));
     corpus.scalar("scalar.cos", Stuff::Cos(x), glm::cos(x));
-    corpus.scalar("scalar.tan", Stuff::Tan(x), glm::tan(x));
     if (!Stuff::Small_Enough(x) || !Stuff::Small_Enough(y))
         corpus.scalar("scalar.atan2", Stuff::Arctan(y, x), glm::atan(y, x));
     const float bounded = std::isfinite(x) ? x / (1.0f + std::fabs(x)) : 0.0f;
-    corpus.scalar("scalar.asin", Stuff::Arcsin(bounded), glm::asin(bounded));
     corpus.scalar("scalar.acos", Stuff::Arccos(bounded), glm::acos(bounded));
     // The harness TU includes stuff.hpp before <cmath>: Stuff binds the double CRT here, as in the non-PCH libraries.
     corpus.exact("exact.sin", Stuff::Sin(x), mc2::math::sinD(x));
@@ -225,9 +223,6 @@ void matrices(Corpus& corpus, std::mt19937& rng, unsigned index) {
     corpus.matrix("linear.multiply", lo, glmMatrix(la, 3) * glmMatrix(lb, 3), 3);
     lo.Invert(la);
     corpus.matrix("linear.inverse", lo, glm::inverse(glmMatrix(la, 3)), 3);
-    transformed.MultiplyByInverse(v, la);
-    corpus.vector("vector.inverse-transform", transformed,
-        glm::vec3(glm::vec4(glmVector(v), 0.0f) * glm::inverse(glmMatrix(la, 3))), false, "render-only");
     const float halfA = smallRand(), halfB = smallRand();
     const Stuff::UnitQuaternion qa(std::sin(halfA), 0.0f, 0.0f, std::cos(halfA));
     const Stuff::UnitQuaternion qb(0.0f, std::sin(halfB), 0.0f, std::cos(halfB));
@@ -270,7 +265,7 @@ TEST_CASE("Stuff/GLM identity detects byte changes and classifies migration cand
         matrices(corpus, rng, i);
     }
     std::printf("[STUFF_GLM] seed=%u random_cases=%u glm=1.0.1 mode=scalar-precise\n", seed, randomCases);
-    REQUIRE(corpus.rows.size() == 56);
+    REQUIRE(corpus.rows.size() == 53);  // step 5 S5.3: Stuff::Arcsin, Stuff::Tan and MultiplyByInverse deleted (no callers)
     // Step 5: every operation identical on the opening corpus is now REQUIRED identical (a port relies on it), as are the exact
     // wrappers (mclib/math/mc2_math.h) and the bridge. Differing render-only operations stay characterized.
     static const char* const identical[] = {"angle.sincos-cos", "angle.sincos-sin", "chain.line-of-sight-step",

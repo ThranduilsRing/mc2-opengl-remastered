@@ -62,24 +62,12 @@ namespace Stuff {
 					Vector3D temp; temp.Subtract(point,origin);
 					return temp*direction;
 				}
-		void
-			GetClosestPointTo(
-				const Point3D &point,
-				Point3D *result
-			)
-				{
-					Check_Object(this); Check_Object(result); Check_Object(&point);
-					Project(GetLengthToClosestPointTo(point),result);
-				}
 
 		//
 		// Assignment operators
 		//
 		Ray3D&
 			SetDirection(const Vector3D &vector);
-		Ray3D&
-			SetOrigin(const Point3D &point)
-				{Check_Pointer(this); origin = point; return *this;}
 
 		//
 		// Ray3D intersection functions

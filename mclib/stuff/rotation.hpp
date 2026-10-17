@@ -314,8 +314,6 @@ namespace Stuff {
 					const YawPitchRoll& angle
 				);
 		#endif
-		YawPitchRoll&
-			AlignWithVector(const Vector3D &v);
 
 		//
 		// Test functions

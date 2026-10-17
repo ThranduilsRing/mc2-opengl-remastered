@@ -213,25 +213,6 @@ namespace Stuff {
 					return (&x)[index];
 				}
 
-		Scalar
-			GetForwardComponent()
-				{Check_Object(this); return APPLY_FORWARD_SIGN((*this)[FORWARD_AXIS]);}
-		Scalar
-			GetBackwardComponent()
-				{Check_Object(this); return APPLY_BACKWARD_SIGN((*this)[BACKWARD_AXIS]);}
-		Scalar
-			GetUpComponent()
-				{Check_Object(this); return APPLY_UP_SIGN((*this)[UP_AXIS]);}
-		Scalar
-			GetDownComponent()
-				{Check_Object(this); return APPLY_DOWN_SIGN((*this)[DOWN_AXIS]);}
-		Scalar
-			GetRightComponent()
-				{Check_Object(this); return APPLY_RIGHT_SIGN((*this)[RIGHT_AXIS]);}
-		Scalar
-			GetLeftComponent()
-				{Check_Object(this); return APPLY_LEFT_SIGN((*this)[LEFT_AXIS]);}
-
 		//
 		// The following operators all assume that this points to the destination
 		// of the operation results
@@ -394,11 +375,6 @@ namespace Stuff {
 		Vector3D&
 			operator*=(const AffineMatrix4D &m)
 				{Vector3D src(*this); return Multiply(src,m);}
-		Vector3D&
-			MultiplyByInverse(
-				const Vector3D &v,
-				const LinearMatrix4D &m
-			);
 
 		//
 		// Miscellaneous functions
