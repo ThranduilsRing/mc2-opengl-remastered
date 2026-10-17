@@ -1,6 +1,7 @@
 #include"gosfxheaders.hpp"
 #include"fx_trace/fx_cost_split.h"  // Q2-S0 FX cost-split (env MC2_FX_COST_SPLIT)
 #include <tracy/Tracy.hpp>          // Q2-S0 coarse CPU zone
+#include "math/stuff_glm_bridge.h"
 
 //==========================================================================//
 // File:	 gosFX_ParticleCloud.cpp										//
@@ -394,7 +395,7 @@ bool gosFX::ParticleCloud::Execute(ExecuteInfo *info)
 	{
 		Stuff::LinearMatrix4D local_to_world;
 		local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
-		new_world_to_local.Invert(local_to_world);
+		mc2::math::fromGlm(new_world_to_local, glm::inverse(mc2::math::toGlm(local_to_world)));
 		matrix = &new_world_to_local;
 	}
 

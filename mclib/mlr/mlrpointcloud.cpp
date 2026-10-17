@@ -3,6 +3,7 @@
 //===========================================================================//
 
 #include"mlrheaders.hpp"
+#include "math/stuff_glm_bridge.h"
 
 //#############################################################################
 //#########################    MLRPointCloud    ###############################
@@ -81,7 +82,7 @@ void
 {
 	Check_Object(this);
 
-	worldToEffect.Invert(*dInfo->effectToWorld);
+	mc2::math::fromGlm(worldToEffect, glm::inverse(mc2::math::toGlm(*dInfo->effectToWorld)));
 
 	Transform(*usedNrOfVertices, 1);
 

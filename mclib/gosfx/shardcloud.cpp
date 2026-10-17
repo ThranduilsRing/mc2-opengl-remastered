@@ -7,6 +7,7 @@
 #include<cstdio>   // VFX-ORACLE diagnostics
 #include<cmath>    // std::atan2 for spin extraction (VFX-SHARDCLOUD-SPIN-ASPECT-1)
 #include "mc2fmt.h"
+#include "math/stuff_glm_bridge.h"
 
 //==========================================================================//
 // File:	 gosFX_ShardCloud.cpp											//
@@ -437,10 +438,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 				Stuff::Point3D
 					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud.MultiplyByInverse(
-					camera_in_world,
-					local_to_world
-				);
+				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
 
 				//
 				//--------------------------------------
@@ -525,10 +523,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 				Stuff::Point3D
 					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud.MultiplyByInverse(
-					camera_in_world,
-					local_to_world
-				);
+				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
 
 				//
 				//--------------------------------------
@@ -614,10 +609,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 			Stuff::Point3D
 				camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 			Stuff::Point3D camera_in_cloud;
-			camera_in_cloud.MultiplyByInverse(
-				camera_in_world,
-				local_to_world
-			);
+			camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
 
 			//
 			//--------------------------------------

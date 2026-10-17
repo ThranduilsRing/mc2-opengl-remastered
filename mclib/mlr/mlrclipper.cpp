@@ -6,6 +6,7 @@
 #include "../cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (n_prims_clipped)
 #include "../fx_trace/fx_trace.h"    // fx_trace v1: gated MLR-leaf invocation counter
 #include "mlr_gate.h"                // MC2_DISABLE_GOSFX env-gate (plan v6 §2)
+#include "math/stuff_glm_bridge.h"
 
 extern DWORD gShowBirdView, gEnableDetailTexture, gEnableMultiTexture, gEnableLightMaps;
 
@@ -212,7 +213,7 @@ void
 
 	cameraToWorldMatrix = camera_to_world;
 
-	worldToCameraMatrix.Invert(cameraToWorldMatrix);
+	mc2::math::fromGlm(worldToCameraMatrix, glm::inverse(mc2::math::toGlm(cameraToWorldMatrix)));
 
 #ifdef LAB_ONLY
 

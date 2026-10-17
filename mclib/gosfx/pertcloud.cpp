@@ -1,6 +1,7 @@
 #include"gosfxheaders.hpp"
 #include "mlr_cloud_draw.hpp"
 #include<mlr/mlrngoncloud.hpp>
+#include "math/stuff_glm_bridge.h"
 
 //==========================================================================//
 // File:	 gosFX_gosFX::PertCloud.cpp										//
@@ -428,10 +429,7 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 				Stuff::Point3D
 					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud.MultiplyByInverse(
-					camera_in_world,
-					local_to_world
-				);
+				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
 
 				//
 				//--------------------------------------
@@ -498,10 +496,7 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 				Stuff::Point3D
 					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud.MultiplyByInverse(
-					camera_in_world,
-					local_to_world
-				);
+				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
 
 				//
 				//--------------------------------------
@@ -569,10 +564,7 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 			Stuff::Point3D
 				camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 			Stuff::Point3D camera_in_cloud;
-			camera_in_cloud.MultiplyByInverse(
-				camera_in_world,
-				local_to_world
-			);
+			camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
 
 			//
 			//--------------------------------------

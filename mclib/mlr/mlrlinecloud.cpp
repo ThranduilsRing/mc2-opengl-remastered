@@ -7,6 +7,7 @@
 #if !defined(MLR_MLRCLIPTRICK_HPP)
 #include<mlr/mlrcliptrick.hpp>
 #endif
+#include "math/stuff_glm_bridge.h"
 
 //#############################################################################
 //#########################    MLRLineCloud    ###############################
@@ -85,7 +86,7 @@ void
 {
 	Check_Object(this);
 
-	worldToEffect.Invert(*dInfo->effectToWorld);
+	mc2::math::fromGlm(worldToEffect, glm::inverse(mc2::math::toGlm(*dInfo->effectToWorld)));
 
 	Transform(*usedNrOfVertices, 1);
 

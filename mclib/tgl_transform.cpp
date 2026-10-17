@@ -3,6 +3,7 @@
 #include "tgl_internal.h"
 #include "tgl_transform_frame.h"
 #include "Gates/gate.h"
+#include "math/stuff_glm_bridge.h"
 
 
 // MC2_LIGHT_BILLBOARD_TWOSIDED=1 suppresses legacy backface culling of edge-light
@@ -38,7 +39,7 @@ void TG_Shape::SetCameraMatrices (Stuff::LinearMatrix4D *camOrigin, Stuff::Matri
 	s_cameraOrigin = camOrigin;
 	s_cameraToClip = camToClip;
 
-	s_worldToCamera.Invert(*s_cameraOrigin);
+	mc2::math::fromGlm(s_worldToCamera, glm::inverse(mc2::math::toGlm(*s_cameraOrigin)));
 
 	s_worldToClip.Multiply(s_worldToCamera, *s_cameraToClip);
 }	

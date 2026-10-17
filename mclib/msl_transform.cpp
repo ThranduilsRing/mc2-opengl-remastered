@@ -1,6 +1,7 @@
 // Multi shape layer: TG_MultiShape::TransformMultiShape (and its variants) and the GPU light-data cache.
 // Declared in the class headers; shared names in msl_internal.h.
 #include "msl_internal.h"
+#include "math/stuff_glm_bridge.h"
 
 //-------------------------------------------------------------------------------
 //This function does the actual transform math, clip checks and lighting math.
@@ -162,7 +163,7 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                         //Then move the piece of the heirarchy into the frame of the parent
                         childChain[j]->shapeToWorld.Multiply(childChain[j]->localShapeToWorld,shapeOrigin);
 
-                        childChain[j]->worldToShape.Invert(childChain[j]->shapeToWorld);
+                        mc2::math::fromGlm(childChain[j]->worldToShape, glm::inverse(mc2::math::toGlm(childChain[j]->shapeToWorld)));
                         childChain[j]->calcedThisFrame = turn;
                     }
                     else
@@ -174,7 +175,7 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
 
                         childChain[j]->shapeToWorld.Multiply(childChain[j]->localShapeToWorld,shapeOrigin);
 
-                        childChain[j]->worldToShape.Invert(childChain[j]->shapeToWorld);
+                        mc2::math::fromGlm(childChain[j]->worldToShape, glm::inverse(mc2::math::toGlm(childChain[j]->shapeToWorld)));
                         childChain[j]->calcedThisFrame = turn;
                     }
                 }
@@ -226,7 +227,7 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                         // Then deal with global translation.
                         childChain[j]->shapeToWorld.Multiply(childChain[j]->localShapeToWorld,shapeOrigin);
 
-                        childChain[j]->worldToShape.Invert(childChain[j]->shapeToWorld);
+                        mc2::math::fromGlm(childChain[j]->worldToShape, glm::inverse(mc2::math::toGlm(childChain[j]->shapeToWorld)));
                         childChain[j]->calcedThisFrame = turn;
                     }
                     else
@@ -250,7 +251,7 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                         // Then deal with global translation.
                         childChain[j]->shapeToWorld.Multiply(childChain[j]->localShapeToWorld,shapeOrigin);
 
-                        childChain[j]->worldToShape.Invert(childChain[j]->shapeToWorld);
+                        mc2::math::fromGlm(childChain[j]->worldToShape, glm::inverse(mc2::math::toGlm(childChain[j]->shapeToWorld)));
                         childChain[j]->calcedThisFrame = turn;
                     }
                 }

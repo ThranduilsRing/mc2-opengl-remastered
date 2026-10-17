@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in camera_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "camera_internal.h"
+#include "math/stuff_glm_bridge.h"
 
 
 namespace {
@@ -486,12 +487,12 @@ void Camera::setCameraOrigin (void)
 	// DO Exactly what MLR does to create its Internal Matrices.
 	Stuff::LinearMatrix4D cameraToWorldMatrix(cameraOrigin);
 																  
-	worldToCameraMatrix.Invert(cameraToWorldMatrix);
+	mc2::math::fromGlm(worldToCameraMatrix, glm::inverse(mc2::math::toGlm(cameraToWorldMatrix)));
 
 	worldToClip.Multiply(worldToCameraMatrix, cameraToClip);
 	
 	if (usePerspective)
-		clipToWorld.Invert(worldToClip);
+		mc2::math::fromGlm(clipToWorld, glm::inverse(mc2::math::toGlm(worldToClip)));
 }
 
 //---------------------------------------------------------------------------

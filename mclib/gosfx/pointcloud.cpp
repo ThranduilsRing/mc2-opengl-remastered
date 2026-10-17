@@ -8,6 +8,7 @@
 #include<cstdio>   // VFX-POINTCLOUD-ORACLE diagnostics
 #include<cmath>    // std::min / std::max fallback (also in gosfxheaders)
 #include "mc2fmt.h"
+#include "math/stuff_glm_bridge.h"
 
 //==========================================================================//
 // File:	 gosFX_PointCloud.cpp											//
@@ -367,9 +368,9 @@ bool
 	if (sim_mode == StaticWorldSpaceSimulationMode)
 	{
 		Stuff::LinearMatrix4D world_to_effect;
-		world_to_effect.Invert(m_localToWorld);
+		mc2::math::fromGlm(world_to_effect, glm::inverse(mc2::math::toGlm(m_localToWorld)));
 		Stuff::Vector3D local_ether;
-		local_ether.MultiplyByInverse(ether, world_to_effect);
+		local_ether = mc2::math::toVector3D(mc2::math::transformVector(mc2::math::toGlm(ether), glm::inverse(mc2::math::toGlm(world_to_effect))));
 		Stuff::Vector3D rel_vel;
 		rel_vel.Subtract(*velocity, local_ether);
 		accel.Multiply(rel_vel, drag);

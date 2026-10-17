@@ -14,6 +14,7 @@
 #include<string>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "math/stuff_glm_bridge.h"
 
 // MC2_VFX_ORACLE_TUBE slice 1: ribbon mesh submit bridge (GameOS-side GL).
 // Declared extern "C" here to avoid pulling GameOS headers into mclib.
@@ -808,7 +809,7 @@ bool gosFX::Tube::Execute(ExecuteInfo *info)
 	Stuff::LinearMatrix4D new_world_to_local;
 	Stuff::LinearMatrix4D local_to_world;
 	local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
-	new_world_to_local.Invert(local_to_world);
+	mc2::math::fromGlm(new_world_to_local, glm::inverse(mc2::math::toGlm(local_to_world)));
 
 	//
 	//--------------------------
@@ -1259,7 +1260,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 			Stuff::Point3D
 				camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 			Stuff::LinearMatrix4D world_to_local;
-			world_to_local.Invert(local_to_world);
+			mc2::math::fromGlm(world_to_local, glm::inverse(mc2::math::toGlm(local_to_world)));
 
 			//
 			//----------------------------------------------------------------
@@ -1273,7 +1274,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 				Profile *profile = GetProfile(i);
 				Check_Object(profile);
 				Stuff::Point3D camera_in_profile;
-				camera_in_profile.MultiplyByInverse(camera_in_world, profile->m_profileToWorld);
+				camera_in_profile = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(profile->m_profileToWorld))));
 
 				//
 				//---------------------------------------------------------

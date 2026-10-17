@@ -4,6 +4,7 @@
 
 #include"mlrheaders.hpp"
 #include "mc2fmt.h"
+#include "math/stuff_glm_bridge.h"
 
 //#############################################################################
 //#########################    MLRLookUpLight    ################################
@@ -285,7 +286,7 @@ void
 
 	lightToShape.Multiply(lightToWorld, worldToShape);
 
-	shapeToWorld.Invert(worldToShape);
+	mc2::math::fromGlm(shapeToWorld, glm::inverse(mc2::math::toGlm(worldToShape)));
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

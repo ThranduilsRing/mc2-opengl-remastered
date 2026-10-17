@@ -11,6 +11,7 @@
 #if !defined(MLR_MLRINDEXEDTRIANGLECLOUD_HPP)
 #include<mlr/mlrindexedtrianglecloud.hpp>
 #endif
+#include "math/stuff_glm_bridge.h"
 
 extern DWORD gShowClippedPolys;
 extern unsigned short *indexOffset;	// [MidLevelRenderer::Max_Number_Vertices_Per_Mesh]
@@ -124,7 +125,7 @@ void
 {
 	Check_Object(this);
 
-	worldToEffect.Invert(*dInfo->effectToWorld);
+	mc2::math::fromGlm(worldToEffect, glm::inverse(mc2::math::toGlm(*dInfo->effectToWorld)));
 
 	Vector4D *v4 = transformedCoords->GetData();
 	for(int k=0;k<*usedNrOfPoints;k++, v4++)
