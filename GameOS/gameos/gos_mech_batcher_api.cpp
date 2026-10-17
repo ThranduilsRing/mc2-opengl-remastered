@@ -27,6 +27,7 @@ extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
     // A size mismatch means a normals rebuild is in flight: no vertex bytes this frame, the island retries.
     out->vboCpu = (uint64_t)s_vkVboNativeCopy.size() == vboBytes ? s_vkVboNativeCopy.data() : nullptr;
     out->iboCpu = s_stagingIbo.data();
+    out->geomGen = s_vkMechGeomGen;
     return 1;
 }
 
