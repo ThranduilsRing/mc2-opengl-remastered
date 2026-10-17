@@ -89,7 +89,6 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/stuff/point3d.cpp
     ${MC2_ROOT}/mclib/stuff/polar.cpp
     ${MC2_ROOT}/mclib/stuff/random.cpp
-    ${MC2_ROOT}/mclib/stuff/ray.cpp
     ${MC2_ROOT}/mclib/stuff/rotation.cpp
     ${MC2_ROOT}/mclib/stuff/scalar.cpp
     ${MC2_ROOT}/mclib/stuff/sphere.cpp

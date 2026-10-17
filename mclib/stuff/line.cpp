@@ -8,6 +8,27 @@
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
+Scalar
+	Line3D::GetDistanceTo(
+		const Plane &plane,
+		Scalar *product
+	) const
+{
+	Check_Object(this);
+	Check_Object(&plane);
+	Check_Pointer(product);
+
+	*product = direction * plane.normal;
+	if (Small_Enough(*product))
+	{
+		return -1.0f;
+	}
+	Scalar result = -plane.GetDistanceTo(origin) / *product;
+	return result;
+}
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
 Line3D&
 	Line3D::SetDirection(const Vector3D &vector)
 {

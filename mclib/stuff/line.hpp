@@ -7,36 +7,53 @@
 #pragma once
 
 #include"stuff.hpp"
-#include"ray.hpp"
+#include"point3d.hpp"
+#include"unitvector.hpp"
 
 namespace Stuff {
 
+	class Plane;
+	class Sphere;
+	class OBB;
+
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Line3D3D ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	class Line3D:
-		public Ray3D
+	// A segment: origin, unit direction and length (the Ray3D base it had is folded in; nothing else used Ray3D).
+	class Line3D
+		#if defined(_ARMOR)
+			: public Stuff::Signature
+		#endif
 	{
 	 public:
+		Point3D
+			origin;
+		UnitVector3D
+			direction;
 		Scalar
 			length;
 
 		Line3D()
 			{}
 		Line3D(
-			const Ray3D &ray,
-			Scalar length
-		):
-			Ray3D(ray),
-			length(length)
-				{}
-		Line3D(
 			const Point3D &start,
 			const UnitVector3D &direction,
 			Scalar length
 		):
-			Ray3D(start,direction),
+			origin(start),
+			direction(direction),
 			length(length)
 				{}
+
+		void
+			Project(
+				Scalar length,
+				Point3D *result
+			)
+				{
+					Check_Object(this); Check_Object(result);
+					Vector3D temp; temp.Multiply(direction,length);
+					result->Add(origin,temp);
+				}
 
 		//
 		// Assignment operators
@@ -52,8 +69,7 @@ namespace Stuff {
 			GetDistanceTo(
 				const Plane &plane,
 				Scalar *product
-			) const
-				{Check_Object(this); return Ray3D::GetDistanceTo(plane, product);}
+			) const;
 		Scalar
 			GetDistanceTo(
 				const Sphere &sphere,
@@ -66,6 +82,10 @@ namespace Stuff {
 				const OBB& box,
 				int *axis
 			);
+
+		void
+			TestInstance() const
+				{}
 	};
 
 }

@@ -17,7 +17,6 @@ set(SOURCES ${SOURCES}
     point3d.cpp
     polar.cpp
     random.cpp
-    ray.cpp
     rotation.cpp
     scalar.cpp
     sphere.cpp
