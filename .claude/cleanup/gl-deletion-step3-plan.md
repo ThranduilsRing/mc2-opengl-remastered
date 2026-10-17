@@ -35,3 +35,17 @@ Goldens: `CURRENT_GOLDEN` is already a VK set; GL golden sets were archived to E
 2. Is in-scene non-HUD draw (letterbox / fade quads) acceptable to port by marking them `IsHUD` (checklist section 1 sketch), so the legacy path has no GL-only draws?
 3. Editor: may it keep a private GL until the editor rework, or must the VK viewport land before 3.9?
 4. `asset_viewer`, `mc2fx_preview`, `mc2weapon_gui`: port or retire?
+
+## Amendments (2026-10-17, lane 2 s52, from the orchestrator and the Astra post-modernization review)
+
+### New step 3.4P (gate for the rest of 3.4 and all of 3.5): native VK producers for water / terrain lighting / culling
+Several scene inputs that VK consumes are still produced by GL compute (11 GL-only compute shaders; no VK compute pipeline exists for them): water, terrain lighting, culling (cluster depth pyramid, light grid, terrain indirect compute). Closed visual-parity rows prove the VK picture matches, not that VK is independent of GL.
+- Rule: do NOT delete a GL producer whose output a VK pass still consumes. Before each 3.5 batch (and the interop removal that touches it), list the producer's consumers (grep + `repo_query.py binding`); if any VK consumer exists, the batch first needs a native VK producer (VK compute pipeline or CPU producer) landed ON by default.
+- Order: (1) culling / light grid / cluster depth pyramid, (2) terrain lighting, (3) water. Each: VK compute pipeline + SPIR-V, parity vs the GL producer's output (buffer diff or captured frame at a day and a night map, viewed), VK tier1 under validation 0, then the GL producer is deletable.
+- Finding this session: the `glGetTexImage` calls still in the tree are GL-side self-tests/uploads (cluster depth pyramid, light grid, blur self-checks, texture finalize, atlas), NOT readbacks into VK islands (the island counters `g_forbidden.glGetTexImage` assert zero). So 3.4(b) is mostly already true; the real dependencies are the producers above.
+
+### 3.3 comparison tooling (note, not a restore)
+3.3 deleted the GL-vs-VK feature-coverage / twin / source tools and the GL leg of the proof matrix. What remains for proving producer moves: `ab.py --skip-gl` / `capture_ab.py` (GL arm pinned `MC2_RENDER_BACKEND=gl`, valid while the opt-out exists), `bless.py --backend gl`. If a producer move needs a per-buffer GL-vs-VK diff, build it for that move; the deleted twin-map tools are in git history (commit before 04c35b397) if wanted. The GL opt-out must therefore stay until 3.4P is done.
+
+### Fade / letterbox (3.2 ruling 2)
+Marking the quads IsHUD can change compositing order. Proven: the letterbox bars (VK captures viewed, matches GL after the shrink exemption). UNPROVEN: the fade quad at partial alpha (needs an ABL `fadeToColor` capture; no bookmark triggers it). Add a bookmark or scripted fade before 3.9.
