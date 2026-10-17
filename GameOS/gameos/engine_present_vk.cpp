@@ -54,6 +54,7 @@
 #include <chrono>   // VK-QWI-TO-FENCE-1: composite wait telemetry
 #include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: present-path CPU attribution zones
 #include <memory>
+#include <utility>
 #include <unordered_map>
 #include <vector>
 
@@ -160,13 +161,11 @@ struct EnginePresentVk::Impl {
         VkDescriptorSet set = VK_NULL_HANDLE;
         std::weak_ptr<const std::vector<uint8_t>> src;   // expires when the texture is released or its content re-published
         uint64_t uploadFrame = 0;
-        uint64_t retireFrame = 0;
         const void* srcPtr = nullptr;   // identity of the uploaded texel vector, compared with the live texture once per frame
         uint64_t checkedFrame = 0;      // last frame srcPtr was compared
         uint64_t lastUsedFrame = 0;
     };
     std::unordered_map<uint32_t, ImguiTexEntry> imguiTex;
-    std::vector<ImguiTexEntry> imguiTexRetired;          // destroyed a few frames after retirement (frame in flight)
     std::unordered_map<uint32_t, uint64_t> imguiTexRetryAt;   // GL names with no texels: next frame to ask again
     mc2vk::OwnedSampler imguiTexSampler;
     uint64_t imguiTexFrame = 0;
@@ -174,10 +173,10 @@ struct EnginePresentVk::Impl {
     // HUD tail is race-free ONLY because exactly one present submission is in flight
     // (the inFlight wait at composite-record time retires frame N-1 before frame N
     // records): hudColorVertexBuf/hudTexVertexBuf are single instances rewritten per
-    // frame, texture mirrors are updated in place on serial change, and the 4-frame
-    // mirror eviction window assumes retired reuse. Any future 2-frames-in-flight
-    // change MUST ship together with per-frame HUD vertex buffers, mirror
-    // double-buffering, and a re-derived eviction window.
+    // frame and texture mirrors are updated in place on serial change. A mirror that
+    // leaves the cache is retired through the context deferred-destroy queue (a
+    // ticket, not a frame count). Any future 2-frames-in-flight change MUST ship
+    // together with per-frame HUD vertex buffers and mirror double-buffering.
     std::vector<VkHudDraw> pendingHudDraws;
     // HUD-CANVAS-EXTENT-FIX (2026-07-11): the pixel space the queued HUD vertices
     // were authored in (gosRenderer width_/height_ == Environment.screenWidth/Height,
@@ -1261,6 +1260,23 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
     return true;
 }
 
+constexpr uint64_t kHudMirrorIdleFrames = 4;   // retention of an unreferenced mirror (cache policy, not a safety window)
+
+// An evicted HUD mirror: the descriptor set returns to the HUD pool, then the buffer and its memory go (members release in reverse order).
+struct HudMirrorRetired {
+    VkDevice dev = VK_NULL_HANDLE;
+    VkDescriptorPool pool = VK_NULL_HANDLE;
+    VkDescriptorSet set = VK_NULL_HANDLE;
+    mc2vk::OwnedDeviceMemory memory;
+    mc2vk::OwnedRawBuffer buffer;
+    HudMirrorRetired(VkDevice d, VkDescriptorPool p, VkDescriptorSet st, mc2vk::OwnedDeviceMemory&& mem, mc2vk::OwnedRawBuffer&& buf)
+        : dev(d), pool(p), set(st), memory(std::move(mem)), buffer(std::move(buf)) {}
+    HudMirrorRetired(HudMirrorRetired&& o) noexcept
+        : dev(o.dev), pool(o.pool), set(std::exchange(o.set, VK_NULL_HANDLE)), memory(std::move(o.memory)), buffer(std::move(o.buffer)) {}
+    HudMirrorRetired(const HudMirrorRetired&) = delete;
+    ~HudMirrorRetired() { if (set) vkFreeDescriptorSets(dev, pool, 1, &set); }
+};
+
 EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk::Impl& s,
                                                                 const VkHudDraw& d,
                                                                 uint32_t* uploads) {
@@ -1410,7 +1426,16 @@ bool ensureImguiVulkan(EnginePresentVk::Impl& s) {
 // VkDescriptorSet, so each name is resolved to a set over a VK image uploaded from the texture CPU texels. A name with no texels
 // (render targets, not loaded) gets no set and its command is skipped at draw time.
 constexpr uint32_t kImguiLogCap = 3;
-constexpr uint64_t kImguiTexRetireFrames = 4;
+
+// A retired ImGui texture entry waits in the context deferred-destroy queue; its destructor returns the descriptor set to the backend pool and
+// releases the image, view and memory once the frame that may sample them has completed. The counter feeds the descriptor budget below.
+size_t g_imguiTexRetiredPending = 0;
+struct ImguiTexRetired {
+    EnginePresentVk::Impl::ImguiTexEntry entry;
+    explicit ImguiTexRetired(EnginePresentVk::Impl::ImguiTexEntry&& e) : entry(std::move(e)) { ++g_imguiTexRetiredPending; }
+    ImguiTexRetired(const ImguiTexRetired&) = delete;
+    ~ImguiTexRetired();
+};
 
 void imguiTexDestroy(EnginePresentVk::Impl::ImguiTexEntry& e, bool backendLive) {
     if (e.set && backendLive)
@@ -1422,46 +1447,39 @@ bool imguiBackendLive() {
     return ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().BackendRendererUserData != nullptr;
 }
 
+ImguiTexRetired::~ImguiTexRetired() {
+    --g_imguiTexRetiredPending;
+    imguiTexDestroy(entry, imguiBackendLive());
+}
+
 void imguiTexReleaseAll(EnginePresentVk::Impl& s) {
     const bool live = imguiBackendLive();
     for (auto& kv : s.imguiTex) imguiTexDestroy(kv.second, live);
-    for (auto& e : s.imguiTexRetired) imguiTexDestroy(e, live);
     s.imguiTex.clear();
-    s.imguiTexRetired.clear();
     s.imguiTexRetryAt.clear();
+    s.ctx->drainDeferred("present_imgui_release");   // the retired entries return their sets while the backend is still up
 }
 
 void imguiTexSweep(EnginePresentVk::Impl& s) {
     const uint64_t now = ++s.imguiTexFrame;
-    const bool live = imguiBackendLive();
     for (auto it = s.imguiTex.begin(); it != s.imguiTex.end();) {
         auto& e = it->second;
-        if (e.stageBuf && e.uploadFrame + kImguiTexRetireFrames < now) {
-            e.stageBuf.reset();
-            e.stageMem.reset();
+        if (e.stageBuf && e.uploadFrame < now) {   // the upload was recorded in an earlier frame: the staging pair goes when that frame completes
+            struct Stage { mc2vk::OwnedDeviceMemory mem; mc2vk::OwnedRawBuffer buf; };   // memory declared first, released last
+            s.ctx->retire(Stage{std::move(e.stageMem), std::move(e.stageBuf)});
         }
         if (e.src.expired()) {   // the texture was released or recreated: retire the set, destroy it once the GPU is done with it
-            e.retireFrame = now;
-            s.imguiTexRetired.push_back(std::move(e));
+            s.ctx->retire(std::make_unique<ImguiTexRetired>(std::move(e)));
             it = s.imguiTex.erase(it);
         } else {
             ++it;
         }
     }
-    for (size_t i = 0; i < s.imguiTexRetired.size();) {
-        if (s.imguiTexRetired[i].retireFrame + kImguiTexRetireFrames < now) {
-            imguiTexDestroy(s.imguiTexRetired[i], live);
-            s.imguiTexRetired.erase(s.imguiTexRetired.begin() + (std::ptrdiff_t)i);
-        } else {
-            ++i;
-        }
-    }
 }
 
-// Moves a live entry to the retired list (destroyed kImguiTexRetireFrames later, once the in-flight frame is done with it).
+// Moves a live entry to the deferred-destroy queue (destroyed once the frame that may sample it has completed).
 void imguiTexRetire(EnginePresentVk::Impl& s, std::unordered_map<uint32_t, EnginePresentVk::Impl::ImguiTexEntry>::iterator it) {
-    it->second.retireFrame = s.imguiTexFrame;
-    s.imguiTexRetired.push_back(std::move(it->second));
+    s.ctx->retire(std::make_unique<ImguiTexRetired>(std::move(it->second)));
     s.imguiTex.erase(it);
 }
 
@@ -1492,9 +1510,9 @@ ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint32
         return 0;
     constexpr uint64_t kRetryFrames = 120;
     auto fail = [&]() -> ImTextureID { s.imguiTexRetryAt[glName] = s.imguiTexFrame + kRetryFrames; return 0; };
-    // Descriptor budget: the pool holds kImguiTexCap live AND kImguiTexCap retired sets (a retired set is freed only after
-    // kImguiTexRetireFrames). At the live cap, the least recently used entry not drawn this frame is retired to make room.
-    if (s.imguiTexRetired.size() >= kImguiTexCap)
+    // Descriptor budget: the pool holds kImguiTexCap live AND kImguiTexCap retired sets (a retired set is freed only once its frame completed).
+    // At the live cap, the least recently used entry not drawn this frame is retired to make room.
+    if (g_imguiTexRetiredPending >= kImguiTexCap)
         return fail();
     if (s.imguiTex.size() >= kImguiTexCap) {
         auto victim = s.imguiTex.end();
@@ -1579,7 +1597,7 @@ ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint32
         if (!s_logged) {
             s_logged = true;
             std::fprintf(stderr, "[VK_IMGUI] descriptor pool exhausted (live=%zu retired=%zu): image draws skipped until sets retire\n",
-                         s.imguiTex.size(), s.imguiTexRetired.size());
+                         s.imguiTex.size(), g_imguiTexRetiredPending);
         }
         return fail();
     }
@@ -1686,18 +1704,20 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     }
 
     // VK-HUD-GLYPH-CORRUPTION FIX: advance the HUD frame counter and evict mirror
-    // entries not referenced for a few frames (freeing their descriptor set + buffer
-    // back to the pool). The window (>= 4 frames) keeps any entry a still-in-flight
-    // present submit might read alive; runtime string serials otherwise accumulate
-    // unbounded and would exhaust the 512-set pool.
+    // entries not referenced for a few frames (their descriptor set + buffer go back
+    // to the pool through the deferred-destroy queue). The idle window is a cache
+    // policy only; runtime string serials otherwise accumulate unbounded and would
+    // exhaust the 512-set pool.
     ++s.hudMirrorFrameCounter;
     {
         const uint64_t now = s.hudMirrorFrameCounter;
         for (auto it = s.hudTextureMirrors.begin(); it != s.hudTextureMirrors.end(); ) {
-            if (it->second.lastFrame + 4 < now) {
+            if (it->second.lastFrame + kHudMirrorIdleFrames < now) {
+                // Idle long enough to count as gone: its descriptor set and buffer leave through the deferred-destroy queue, so a present submit
+                // that is still reading them keeps them alive (a ticket, not the idle window, is the proof).
                 auto& m = it->second;
-                if (m.set)    vkFreeDescriptorSets(s.dev, s.hudTexPool.get(), 1, &m.set);
-                it = s.hudTextureMirrors.erase(it);   // the erase releases the buffer, then its memory
+                s.ctx->retire(HudMirrorRetired{s.dev, s.hudTexPool.get(), std::exchange(m.set, VK_NULL_HANDLE), std::move(m.memory), std::move(m.buffer)});
+                it = s.hudTextureMirrors.erase(it);
             } else {
                 ++it;
             }
@@ -2687,7 +2707,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     { const VkFence inFlightFence = s.inFlight.get(); vkResetFences(s.dev, 1, &inFlightFence); }
     s.compositePending = false;   // consumed by this submit (success or fail-soft)
     { ZoneScopedN("VKIsl.Present.Submit");   // VK-ISLAND-TRACY-1: THE single present-path vkQueueSubmit
-      r = vkQueueSubmit(s.gfxQ, 1, &si, s.inFlight.get()); }  // drives acquire/present cadence
+      r = mc2vk::submitGraphics(si, s.inFlight.get()); }  // drives acquire/present cadence
     if (r != VK_SUCCESS) {
         // The fence is now unsignaled with no submit to signal it; returning false
         // triggers the DISARM-2 present-failure path (vkpres.destroy() + deferred
@@ -2808,7 +2828,7 @@ void EnginePresentVk::verifyReadbackContent() {
     vkResetFences(s.dev, 1, &readbackFenceHandle);
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.commandBufferCount = 1; si.pCommandBuffers = &s.readbackCbuf;
-    if (vkQueueSubmit(s.gfxQ, 1, &si, s.readbackFence.get()) != VK_SUCCESS) return;
+    if (mc2vk::submitGraphics(si, s.readbackFence.get()) != VK_SUCCESS) return;
     vkWaitForFences(s.dev, 1, &readbackFenceHandle, VK_TRUE, UINT64_MAX);
 
     void* mapped = nullptr;
@@ -2894,6 +2914,7 @@ void EnginePresentVk::destroy() {
         Impl& s = *impl_;
         if (s.dev) s.ctx->waitIdle("present_destroy");
         shutdownImguiVulkanRenderer();
+        if (s.dev) s.ctx->drainDeferred("present_destroy");   // retired HUD mirrors name this object descriptor pool
         // VK-PRESENT-SINGLESUBMIT-1: compositeCbuf is pool-allocated (freed with the pool); just drop the pending state.
         s.compositeCbuf = VK_NULL_HANDLE;
         s.compositePending = false;

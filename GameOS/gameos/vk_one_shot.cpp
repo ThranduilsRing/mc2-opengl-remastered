@@ -38,7 +38,7 @@ bool submitOneShot(const VulkanContext& ctx, const std::function<void(VkCommandB
         VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
         si.commandBufferCount = 1;
         si.pCommandBuffers = &cb;
-        if (vkQueueSubmit(ctx.graphicsQueue(), 1, &si, fence.get()) != VK_SUCCESS) break;
+        if (ctx.submit(si, fence.get()) != VK_SUCCESS) break;
         submitted = true;
         const VkFence fenceHandle = fence.get();
         ok = vkWaitForFences(device, 1, &fenceHandle, VK_TRUE, 5ull * 1000 * 1000 * 1000) == VK_SUCCESS;

@@ -24,6 +24,8 @@
 
 #include <volk.h>
 
+#include "vk_completion_tracker.h"
+#include "vk_deferred_destroy.h"
 #include "vk_device_profile.h"
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_shared_light_feed.h"
@@ -34,6 +36,7 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
 
@@ -148,6 +151,31 @@ public:
     void retireIsland(IslandSlot slot);
 #endif
 
+    // THE submit path of the engine device. Every graphics-queue submit goes through here and none through a raw vkQueueSubmit (a contract row
+    // greps for it): the submit gets the next value of the graphics timeline semaphore as one more signal, so a GpuTicket proves "everything submitted
+    // up to here has finished". `si` keeps its binary waits and signals; `fence` (may be null) is passed through unchanged. `si.pNext` must be empty.
+    // On success *outValue (when given) is the timeline value this submit signals. Thread-safe.
+    VkResult submit(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue = nullptr) const;
+    CompletionTracker&       tracker()       { return tracker_; }
+    const CompletionTracker& tracker() const { return tracker_; }
+    // Refreshes the completed counter from the timeline semaphore (cheap; once per frame begin is enough).
+    void poll() const;
+    bool isComplete(const GpuTicket& t) const;
+    // Blocks until the ticket completes or the timeout passes. A timeout or a lost device is logged with `why`; returns whether the ticket is complete.
+    bool wait(const GpuTicket& t, uint64_t timeoutNs, std::string_view why) const;
+    // Frame bracket of the engine loop: beginFrame polls the counter and opens a frame, endFrame seals it with the graphics value submitted so far and
+    // emits the [VK_TIMELINE v1] summary at its cadence.
+    void beginFrame();
+    void endFrame();
+
+    // Parks an owner (a buffer, an image, a container of them) until the GPU has finished the frame that may use it, then destroys it: the replacement
+    // for "waitIdle, then reset". Main thread only. Owners must be move-only types or movable values.
+    template <class Owner>
+    void retire(Owner&& owner, uint64_t bytes = 0) { deferred_.retire(tracker_, std::forward<Owner>(owner), bytes); }
+    // Mission unload, swapchain recreate, teardown: idles the device and destroys everything parked. The only sanctioned device-idle besides init failure.
+    void drainDeferred(std::string_view why);
+    const DeferredDestroy& deferred() const { return deferred_; }
+
     // Waits for the device to drain before the caller drops objects that may be in flight, and logs a failed wait (a lost device). A no-op without a device.
     void waitIdle(std::string_view why) const;
 
@@ -165,6 +193,10 @@ private:
     uint32_t         gfxFamily_         = UINT32_MAX;
     VmaAllocator     allocator_         = nullptr;
     profile::Evaluation profile_ = [] { profile::Evaluation e; e.accepted = false; return e; }();   // the chosen device's verdict (see profile())
+    VkSemaphore      gfxTimeline_       = VK_NULL_HANDLE;   // the graphics queue's timeline: signalled with CompletionTracker::noteSubmit values
+    mutable CompletionTracker tracker_;
+    DeferredDestroy  deferred_;   // after the allocator's owners are gone: destroy() drains it first
+    mutable std::mutex submitMutex_;
     uint8_t          luid_[8]           = {0, 0, 0, 0, 0, 0, 0, 0};
     bool             luidValid_         = false;
 
@@ -208,6 +240,9 @@ VulkanContext& getOrCreateEngineVulkanContext();
 
 // Convenience: true if the engine context has been born and holds a live device.
 bool engineVulkanContextValid();
+
+// Submits on the shared engine context's graphics queue through the completion tracker (VulkanContext::submit). The only way an engine TU submits.
+inline VkResult submitGraphics(const VkSubmitInfo& si, VkFence fence) { return getOrCreateEngineVulkanContext().submit(si, fence); }
 
 // On-demand shared-context birth DECOUPLED from present. Lazy + idempotent: returns
 // true if the shared context is already valid; else brings it up once via
