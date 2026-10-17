@@ -659,8 +659,7 @@ void __stdcall DoGameLogic()
 				long long liveTick = 0, bytesTick = 0;
 				mc2AllocStatsSnapshot(&liveTick, &bytesTick);
 				extern unsigned g_mc2ArtCreated, g_mc2ArtReinit, g_mc2ArtReinitFreed;
-				mc2::fmt::print_out("[ALLOC_ART] n={} created={} reinit={} reinit_freed_appearance={}
-", mc2::fmt::as_i32(s_cycle), mc2::fmt::as_u32(g_mc2ArtCreated), mc2::fmt::as_u32(g_mc2ArtReinit), mc2::fmt::as_u32(g_mc2ArtReinitFreed));
+				mc2::fmt::print_out("[ALLOC_ART] n={} created={} reinit={} reinit_freed_appearance={}\n", mc2::fmt::as_i32(s_cycle), mc2::fmt::as_u32(g_mc2ArtCreated), mc2::fmt::as_u32(g_mc2ArtReinit), mc2::fmt::as_u32(g_mc2ArtReinitFreed));
 				mc2::fmt::print_out("[ALLOC_TICK] n={} frame={} live={} bytes={}\n", mc2::fmt::as_i32(s_cycle), mc2::fmt::as_i64(g_mc2FrameCounter), mc2::fmt::as_i64(liveTick), mc2::fmt::as_i64(bytesTick));
 				if (s_strike)
 				{

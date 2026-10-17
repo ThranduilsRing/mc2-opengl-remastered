@@ -218,6 +218,18 @@
    "count": 1
   },
   {
+   "tag": "ALLOC_ART",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "n",
+    "created",
+    "reinit",
+    "reinit_freed_appearance"
+   ],
+   "count": 1
+  },
+  {
    "tag": "ALLOC_RELOAD",
    "ver": -1,
    "stream": "stdout",
