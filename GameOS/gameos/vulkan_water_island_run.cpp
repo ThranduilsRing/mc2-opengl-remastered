@@ -253,8 +253,7 @@ extern "C" int mc2_vk_water_island_run(
                                 mc2::fmt::as_u64(s->nativeFrames), mc2::fmt::as_u32(pr.glCount), mc2::fmt::as_u32(pr.vkVisible), mc2::fmt::as_u32(pr.vkCompared),
                                 mc2::fmt::as_u32(pr.same), mc2::fmt::as_u32(pr.differ), mc2::fmt::as_u32(pr.onlyGl), mc2::fmt::as_u32(pr.onlyVk), mc2::fmt::as_i32(pr.truncated ? 1 : 0),
                                 mc2::fmt::as_u32(pr.lightCompared), mc2::fmt::as_u32(pr.lightMismatch), mc2::fmt::as_u32(pr.fogMismatch), mc2::fmt::as_u32(pr.lightMaxDelta));
-            mc2::fmt::print_err("[VK_PRODUCER_PARITY v1] lighting_window offset={:d} count={:d} lights={:d} gl_read={:d}
-", mc2::fmt::as_u32(snap.vertexOffset), mc2::fmt::as_u32(snap.windowCount), mc2::fmt::as_u32(snap.numLights), mc2::fmt::as_i32(glLight.empty() ? 0 : 1));
+            mc2::fmt::print_err("[VK_PRODUCER_PARITY v1] lighting_window offset={:d} count={:d} lights={:d} gl_read={:d}\n", mc2::fmt::as_u32(snap.vertexOffset), mc2::fmt::as_u32(snap.windowCount), mc2::fmt::as_u32(snap.numLights), mc2::fmt::as_i32(glLight.empty() ? 0 : 1));
             if (pr.haveDiff) {
                 mc2::fmt::print_err("[VK_PRODUCER_PARITY v1] first_diff gl={:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x} vk={:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x}
 ",
