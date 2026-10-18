@@ -38,8 +38,8 @@ TEST_CASE("reorder regression: postprocess before geometry strands MainColor") {
         kRenderPassContracts, kRenderPassIdCount, badOrder, 2,
         kExternalResources, kExternalResourceCount);
     CHECK_FALSE(r.ok);
-    CHECK(r.offendingPass == RenderPassId::PostProcess);
-    CHECK(r.missingResource == RenderResourceId::MainColor);
+    CHECK(static_cast<unsigned>(r.offendingPass) == static_cast<unsigned>(RenderPassId::PostProcess));
+    CHECK(static_cast<unsigned>(r.missingResource) == static_cast<unsigned>(RenderResourceId::MainColor));
 }
 
 TEST_CASE("removing an external resource surfaces the missing producer") {
@@ -1819,7 +1819,7 @@ TEST_CASE("oracle (b): postprocess before opaque geometry violates the MainColor
     cand[post] = firstPass;
     PassEdge first{};
     CHECK(isReorderLegal(cand, n, &first) == ReorderVerdict::ForbiddenEdgeViolated);
-    CHECK(first.to == RenderPassId::PostProcess);
+    CHECK(static_cast<unsigned>(first.to) == static_cast<unsigned>(RenderPassId::PostProcess));
 }
 
 TEST_CASE("oracle (c): Terrain moved AFTER PostProcess breaks the sceneHasTerrain latch -> ForbiddenEdgeViolated") {
