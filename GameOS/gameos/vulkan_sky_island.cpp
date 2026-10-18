@@ -53,12 +53,6 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
-bool gateRequested() {
-    static int state = -1;
-    if (state == -1) state = mc2vkgate::umbrellaOn() ? 1 : 0;
-    return state == 1;
-}
-
 std::string spv_dir() { return vk_island_util::spvDir(); }
 
 VkShaderModule load_spv(VkDevice device, std::string_view path) {
@@ -371,7 +365,7 @@ bool init_island(Island* s, int w, int h) {
 
 } // namespace
 
-extern "C" int mc2_vk_sky_island_enabled(void) { return (gateRequested() && !g_sessionDeclined) ? 1 : 0; }
+extern "C" int mc2_vk_sky_island_enabled(void) { return g_sessionDeclined ? 0 : 1; }
 
 extern "C" void mc2_vk_sky_submit(const float* invProj16, const float* invViewRot9, float skyYaw, unsigned int hdriGlTex) {
     if (!invProj16 || !invViewRot9) return;
@@ -384,7 +378,7 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     ZoneScopedN("VK-sky-island");
     Pending p = g_pending;
     g_pending.valid = false;   // consume: a frame with no sky submit draws no sky
-    if (!gateRequested() || g_sessionDeclined || !p.valid || w <= 0 || h <= 0) return 0;
+    if (g_sessionDeclined || !p.valid || w <= 0 || h <= 0) return 0;
 
     // The island lives in the engine context's slot: the context releases it ahead of the device whatever path ends the process.
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();

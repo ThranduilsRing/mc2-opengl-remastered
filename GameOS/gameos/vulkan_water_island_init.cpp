@@ -46,11 +46,7 @@ bool init_island(WaterIsland* s, int w, int h) {
     // the retired gate was explicitly set (result ignored — always direct-chain-native).
     (void)waterDirectChainRequested();
 
-    s->tier1 = waterTier1Requested();
-    if (!s->tier1) {
-        setFallback("gate_off");
-        return false;
-    }
+    s->tier1 = true;
     s->sColorRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
     s->sNormalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
     s->sDepthRes  = mc2SharedSceneDepthGetResource();

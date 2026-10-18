@@ -130,12 +130,7 @@ void gosPostProcess::loadHdri(const char* path, float* outSunAz, bool* outSunVal
         hdriTex_ = 0;
     }
     hdriCpu_.reset();
-    // Only a Vulkan consumer reads the CPU copy (about 85 MB for a 4K RGBA16F chain), so GL-only runs do not keep one.
-    bool wantCpu = false;
-#ifdef MC2_VULKAN_ISLAND
-    wantCpu = mc2vkgate::umbrellaOn();
-#endif
-    auto cpu = wantCpu ? std::make_shared<HdriCpuImage>() : nullptr;
+    auto cpu = std::make_shared<HdriCpuImage>();
     hdriTex_ = loadHdriTexture(path, outSunAz, outSunValid, cpu.get());
     if (hdriTex_ && cpu && !cpu->levels.empty()) {
         cpu->generation = ++hdriCpuGeneration_;
@@ -874,7 +869,7 @@ void gosPostProcess::endScene()
     // effects render natively on the shared engine context (zero copies, zero
     // readbacks) and BOTH GL sites are skipped. runVkPostFogNative() returns false
     // on ANY not-ready condition -> the unchanged GL chain below runs (fail-soft).
-    if (vkPostFogNativeEnabled() && runVkPostFogNative()) {
+    if (runVkPostFogNative()) {
         subgraphRanThisFrame = true;    // -> OOB site is skipped below (no double-apply)
     } else
 #endif

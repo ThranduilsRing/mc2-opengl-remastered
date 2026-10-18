@@ -113,19 +113,6 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
-// TIER-1 (parity): co-write props IN-PLACE into the SHARED scene color+normal+depth
-// GBuffer. Default-OFF; requires MC2_VK_SHARED_SCENE_DEPTH
-// (the shared depth Tier-1 depth-tests against). When Tier-1 is armed it REPLACES the
-// Gate OFF -> GL flush, byte-identical.
-bool propColorTier1Requested() {
-    static int state = -1;
-    if (state == -1) {
-        // Umbrella member: MC2_VK_SHARED_GBUFFER=1 arms it.
-        state = mc2vkgate::umbrellaOn() ? 1 : 0;  // require shared depth
-    }
-    return state == 1;
-}
-
 // VK-PROP-FENCE-DEFER-1 (cluster-A, water-pilot template 61031785): defer the
 // island's retire wait to the parity slot's next vkImageResourceBeginFrame instead
 // of waiting the submit fence inline. Default-ON (per-parity inst/ubo/light staging
@@ -153,16 +140,6 @@ bool propPerfGateRequested() {
 // semaphore-handoff arm and the shared-scene GL-import half are deleted).
 bool propDirectChainRequested() {
     return true;
-}
-
-// VK-P11 STATIC-PROP MATERIAL: real lit textured props (albedo 2D_ARRAY sample +
-// shared computePBR). Requires the Tier-1 gate (shared-GBuffer co-write). Default-OFF.
-bool propMaterialRequested() {
-    // Umbrella member: MC2_VK_SHARED_GBUFFER=1 arms it (precondition =
-    // propColorTier1Requested, enforced at the call site).
-    static int state = -1;
-    if (state == -1) state = mc2vkgate::umbrellaOn() ? 1 : 0;
-    return state == 1;
 }
 
 std::string spv_dir() { return vk_island_util::spvDir(); }
@@ -748,9 +725,8 @@ bool init_island(ColorPropIsland* s, int w, int h) {
     // the retired gate was explicitly set (result ignored — always direct-chain-native).
     (void)propDirectChainRequested();
 
-    s->tier1 = propColorTier1Requested();
-    // VK-P11 STATIC-PROP MATERIAL requires the Tier-1 shared-GBuffer co-write path.
-    s->wantMaterial = s->tier1 && propMaterialRequested();
+    s->tier1 = true;
+    s->wantMaterial = true;
     // VK-PROP-AMBIENT-IBL-1: real ambient/IBL feed also requires Tier-1.
     // Not a separate opt-in gate --
     // this closes a documented parity gap in the same tier the washout fix landed in.
@@ -1202,13 +1178,11 @@ extern "C" int mc2_color_prop_island_get_alpha_array(void** view, uint32_t* gene
 }
 
 extern "C" int mc2_vk_color_prop_island_enabled() {
-    // Either tier armed => the caller skips the GL prop color flush and calls run().
-    return propColorTier1Requested() ? 1 : 0;
+    return 1;
 }
 
 extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     ZoneScopedN("VK-props-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
-    if (!propColorTier1Requested()) return 0;
     if (w <= 0 || h <= 0) return 0;
 
     using clk = std::chrono::steady_clock;

@@ -333,7 +333,7 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
 }  // namespace
 
 extern "C" int mc2_vk_overlay_enabled() {
-    return (terrainTier1Requested() && !g_terrainSessionDeclined && !g_ovlDeclined) ? 1 : 0;
+    return (!g_terrainSessionDeclined && !g_ovlDeclined) ? 1 : 0;
 }
 
 extern "C" void mc2_vk_overlay_submit(uint32_t kind, const void* verts, uint32_t vertCount,

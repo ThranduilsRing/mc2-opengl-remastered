@@ -94,7 +94,7 @@ void vlog(const char* fmt, ...) {
 struct PostSsaoNativeHealth {
     int  runtimeGate   = 0;   // MC2_VK_POST_SSAO resolved ON
     int  substrateLive = 0;   // shared color0 + normal + depth present at init
-    int  directChain   = 0;   // direct-chain engaged
+    int  directChain   = 1;   // direct-chain engaged
     unsigned long attempted  = 0;  // frames the native path was entered
     unsigned long usedVulkan = 0;  // frames both passes actually rendered via VK
     unsigned long usedInterop = 0; // frames that used GL<->VK semaphores
@@ -198,8 +198,6 @@ struct gosPostProcess::VkPostSsaoNative {
     mc2vk::OwnedCommandPool cpool;
     uint64_t ticket = 0;   // timeline value of this pass's last submit (0 = never): waited at the NEXT run, not inline after the submit
 };
-
-static bool vkPostSsaoDirectChainEnabled();
 
 namespace {
 
@@ -649,21 +647,6 @@ bool gosPostProcess::vkPostSsaoNativeEnabled()
     return state == 1;
 }
 
-// Native SSAO runs only in direct-chain, engaged when upstream left the shared GBuffer
-// Vulkan-owned (umbrellaOn); otherwise it declines and the GL SSAO pass runs.
-static bool vkPostSsaoDirectChainEnabled()
-{
-    static int state = -1;
-    if (state == -1) {
-        state = mc2vkgate::umbrellaOn() ? 1 : 0;
-        g_ps.directChain = state;
-        if (state == 1)
-            vlog("native SSAO direct-chain: upstream left the shared GBuffer VK-owned; "
-                 "no SSAO GL<->VK handoff.");
-    }
-    return state == 1;
-}
-
 // ---------------------------------------------------------------------------
 // runVkPostSsaoNative(): render SSAO gen + apply natively in VK. Returns true only
 // when both passes were submitted (caller skips the GL SSAO site); ANY not-ready
@@ -749,7 +732,6 @@ bool gosPostProcess::runVkPostSsaoNative()
     // ---- Shared resource ownership (handoff mode, or direct-chain skip). ----
     // VK-RUNG8 item-4: direct-chain only — engage only when upstream is direct-chain,
     // else decline to the GL SSAO pass. No GL<->VK semaphore handoff.
-    if (!vkPostSsaoDirectChainEnabled()) { setFallback("upstream_not_direct_chain"); return false; }
     VkCommandBuffer cb = s->cbuf[0u];
 
     vkResetCommandBuffer(cb, 0);

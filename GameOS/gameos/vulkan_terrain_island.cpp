@@ -81,17 +81,6 @@ bool terrainPerfGateRequested() {
     return state == 1;
 }
 
-// Gate: MC2_VK_TERRAIN_TIER1==1 AND MC2_VK_SHARED_SCENE_DEPTH==1 (the shared depth
-// the Tier-1 pass depth-tests against). Mirrors propColorTier1Requested().
-bool terrainTier1Requested() {
-    static int state = -1;
-    if (state == -1) {
-        // Umbrella member: MC2_VK_SHARED_GBUFFER=1 arms it.
-        state = mc2vkgate::umbrellaOn() ? 1 : 0;   // tier-1 island AND shared scene depth
-    }
-    return state == 1;
-}
-
 float g_prefixClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 
 // VK-TERRAIN-ALL-LODS sub-slice (rung 3): extend VK terrain ownership beyond LOD0
@@ -115,7 +104,7 @@ float g_prefixClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 bool terrainAllLodsRequested() {
     static int state = -1;
     if (state == -1) {
-        state = terrainTier1Requested() ? 1 : 0;
+        state = 1;
     }
     return state == 1;
 }

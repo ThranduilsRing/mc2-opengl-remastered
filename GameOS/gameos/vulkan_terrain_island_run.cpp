@@ -12,7 +12,7 @@
 // ===========================================================================
 
 extern "C" int mc2_vk_terrain_island_enabled() {
-    return terrainTier1Requested() ? 1 : 0;
+    return 1;
 }
 
 extern "C" int mc2_vk_terrain_all_lods_enabled() {
@@ -38,7 +38,6 @@ extern "C" int mc2_vk_terrain_visualdisplace_far_enabled() {
 // LOD0), and the first successful run() flips it ready for subsequent frames — a one-frame
 // GL-draw-then-VK-takeover with no hole.
 extern "C" int mc2_vk_terrain_island_ready() {
-    if (!terrainTier1Requested()) return 0;
     const TerrainIsland* island = parkedIsland();
     if (!island) return 0;                   // not born yet -> GL owns LOD0 this frame
     if (island->disabled) return 0;          // latched off by a prior fatal (spv/pipeline/device)
@@ -56,7 +55,6 @@ extern "C" int mc2_vk_terrain_island_ready() {
 // and the island would only be born from a non-empty feed produced by the skip
 // (chicken-egg deadlock -> island never births -> LOD0 always GL-drawn).
 bool ensure_island_ready(int w, int h) {
-    if (!terrainTier1Requested()) return false;
     if (w <= 0 || h <= 0) return false;
     // Item-2 boot-level native-or-decline: a prior PERMANENT init failure declined this
     // island for the whole session -> GL owns terrain, no per-frame re-init churn.
@@ -300,7 +298,6 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
 
 extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     ZoneScopedN("VK-terrain-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
-    if (!terrainTier1Requested()) return 0;
     if (w <= 0 || h <= 0) return 0;
 
     using clk = std::chrono::steady_clock;

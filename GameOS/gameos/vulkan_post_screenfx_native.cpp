@@ -101,7 +101,7 @@ struct PostScreenFxHealth {
     int  shoreGate     = 0;
     int  shadowGate    = 0;
     int  substrateLive = 0;   // shared color0 + normal + depth present at init
-    int  directChain   = 0;   // direct-chain engaged
+    int  directChain   = 1;   // direct-chain engaged
     unsigned long attempted   = 0;  // frames the native path was entered
     unsigned long usedVulkan  = 0;  // frames at least one pass rendered via VK
     unsigned long usedInterop = 0;  // frames that used GL<->VK semaphores
@@ -248,8 +248,6 @@ struct gosPostProcess::VkPostScreenFx {
     mc2vk::OwnedCommandPool cpool;
     uint64_t ticket[2] = {0, 0};   // timeline value of this pass's last submit (0 = never): waited at the NEXT run, not inline after the submit
 };
-
-static bool vkPostScreenFxDirectChainEnabled();
 
 namespace {
 
@@ -657,7 +655,7 @@ void gosPostProcess::VkPostScreenFxDeleter::operator()(VkPostScreenFx* s) const 
 }
 
 // ---------------------------------------------------------------------------
-// vkPostScreenFxNativeEnabled(): on under the VK umbrella (MC2_VK_POST_SCREENFX is its kill switch; with the umbrella off the GL passes run untouched).
+// vkPostScreenFxNativeEnabled(): MC2_VK_POST_SCREENFX is its kill switch.
 // The per-pass sub-gates are resolved here too: the screen shadow is the receiver of the cascades (mech bodies in the shadows of the casters), and the
 // cloud and shoreline passes run only where the GL passes would.
 // ---------------------------------------------------------------------------
@@ -665,32 +663,16 @@ bool gosPostProcess::vkPostScreenFxNativeEnabled()
 {
     static int state = -1;
     if (state == -1) {
-        state = (mc2::gate::get<"MC2_VK_POST_SCREENFX">() && mc2vkgate::umbrellaOn()) ? 1 : 0;
+        state = mc2::gate::get<"MC2_VK_POST_SCREENFX">() ? 1 : 0;
         g_fx.runtimeGate = state;
         if (state == 1) {
             g_fx.cloudGate = mc2::gate::get<"MC2_VK_POST_SCREENFX_CLOUD">() ? 1 : 0;
             g_fx.shoreGate = mc2::gate::get<"MC2_VK_POST_SCREENFX_SHORELINE">() ? 1 : 0;
             g_fx.shadowGate = mc2::gate::get<"MC2_VK_POST_SCREENFX_SHADOW">() ? 1 : 0;
-            vlog("native screenfx gate ON (the VK umbrella) "
+            vlog("native screenfx gate ON "
                  "(shadow=%d cloud=%d shoreline=%d; lazy init at the pass site; fail-soft to GL).",
                  g_fx.shadowGate, g_fx.cloudGate, g_fx.shoreGate);
         }
-    }
-    return state == 1;
-}
-
-// Native screenfx runs only in direct-chain, engaged when upstream left the shared GBuffer
-// Vulkan-owned (umbrellaOn); otherwise it declines and the GL screenfx
-// passes run.
-static bool vkPostScreenFxDirectChainEnabled()
-{
-    static int state = -1;
-    if (state == -1) {
-        state = mc2vkgate::umbrellaOn() ? 1 : 0;
-        g_fx.directChain = state;
-        if (state == 1)
-            vlog("native screenfx direct-chain: upstream left the shared GBuffer VK-owned; "
-                 "no screenfx GL<->VK handoff.");
     }
     return state == 1;
 }
@@ -827,7 +809,6 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
 
     // VK-RUNG8 item-4: direct-chain only — engage only when upstream is direct-chain,
     // else decline to the GL screenfx passes. No GL<->VK semaphore handoff.
-    if (!vkPostScreenFxDirectChainEnabled()) { setFallback("upstream_not_direct_chain"); return false; }
     VkCommandBuffer cb = s->cbuf[0u];
 
     vkResetCommandBuffer(cb, 0);
@@ -1009,7 +990,6 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     // ---- Shared resource ownership (handoff mode, or direct-chain skip). ----
     // VK-RUNG8 item-4: direct-chain only — engage only when upstream is direct-chain,
     // else decline to the GL screenfx passes. No GL<->VK semaphore handoff.
-    if (!vkPostScreenFxDirectChainEnabled()) { setFallback("upstream_not_direct_chain"); return 0; }
     VkCommandBuffer cb = s->cbuf[1u];
 
     vkResetCommandBuffer(cb, 0);

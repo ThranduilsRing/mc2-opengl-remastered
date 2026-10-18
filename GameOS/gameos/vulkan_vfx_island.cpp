@@ -526,25 +526,18 @@ bool init_island(VfxIsland* s, int w, int h) {
     return true;
 }
 
-// Gate: ON under the umbrella (content that would VANISH otherwise).
-bool vfxGateOn() {
-    const bool s_on = mc2vkgate::umbrellaOn();   // per-call: VK-FAILSOFT-DISARM-1
-    return s_on;
-}
-
 }  // namespace
 
 // ===========================================================================
 // PUBLIC ENTRY POINTS
 // ===========================================================================
-extern "C" int mc2_vk_vfx_island_enabled() { return vfxGateOn() ? 1 : 0; }
+extern "C" int mc2_vk_vfx_island_enabled() { return 1; }
 
 extern "C" int mc2_vk_vfx_island_run(
     const void* particles, uint32_t particleCount,
     const VfxParticleDraw* draws, uint32_t drawCount,
     const float* worldToClipGL, const float* camRight, const float* camUp,
     int w, int h) {
-    if (!vfxGateOn()) return 0;
     if (particleCount == 0 || drawCount == 0 || particles == nullptr || draws == nullptr) return 0;
     if (w <= 0 || h <= 0 || worldToClipGL == nullptr) return 0;
     ZoneScopedN("VKIsl.Vfx.Run");   // VK-ISLAND-TRACY-1 per-call total (CPU)

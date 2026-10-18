@@ -108,15 +108,6 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
-bool mechGateRequested() {
-    static int state = -1;
-    if (state == -1) {
-        // Umbrella member: MC2_VK_SHARED_GBUFFER=1 arms it.
-        state = mc2vkgate::umbrellaOn() ? 1 : 0;   // require shared depth
-    }
-    return state == 1;
-}
-
 bool mechFenceDeferEnabled() {
     static int state = -1;
     if (state == -1)
@@ -134,26 +125,6 @@ bool mechPerfGateRequested() {
 
 // The mech island always renders direct-chain (terrain leaves the shared GBuffer
 // Vulkan-owned); there is no GL<->VK semaphore-handoff co-write path.
-
-// MC2_VK_MECH_MATERIAL (follow-on): copy-once single 2D albedo for the covered
-// stock mech type. DEFERRED general case = per-frame slot0 handle -> VK-descriptor
-// cache. Default-OFF -> flat color.
-bool mechMaterialRequested() {
-    // Umbrella member.
-    static int state = -1;
-    if (state == -1) state = mc2vkgate::umbrellaOn() ? 1 : 0;
-    return state == 1;
-}
-
-// MC2_VK_MECH_LIGHTING (follow-on): per-vertex calc_light Lambert (matches the GL
-// default mech path). Default-OFF -> flat-white lit (v_litColor = 1). Independent of
-// MC2_VK_MECH_MATERIAL, but only visible when material is on (albedo * litColor).
-bool mechLightingRequested() {
-    // Umbrella member.
-    static int state = -1;
-    if (state == -1) state = mc2vkgate::umbrellaOn() ? 1 : 0;
-    return state == 1;
-}
 
 // VK-RUNG8 item-9: the native
 // CPU geometry + LightsData feed is unconditional under the VK mech island.
@@ -526,8 +497,8 @@ bool init_island(MechIsland* s, int w, int h) {
         std::strncpy(g_health.deviceName, props.deviceName, sizeof(g_health.deviceName) - 1);
     }
 
-    s->wantMaterial = mechMaterialRequested();
-    s->wantLighting = mechLightingRequested();
+    s->wantMaterial = true;
+    s->wantLighting = true;
 
     // Fetch the SHARED scene color/normal/depth exportable images the GL scene renders
     // terrain into. Fail-soft: any missing => GL fallback (the GL mech flush runs).
@@ -814,12 +785,11 @@ bool upload_geometry_once(MechIsland* s) {
 // ===========================================================================
 
 extern "C" int mc2_vk_mech_island_enabled() {
-    return mechGateRequested() ? 1 : 0;
+    return 1;
 }
 
 extern "C" int mc2_vk_mech_island_run(int w, int h) {
     ZoneScopedN("VK-mech-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
-    if (!mechGateRequested()) return 0;
     if (w <= 0 || h <= 0) return 0;
 
     using clk = std::chrono::steady_clock;

@@ -54,7 +54,7 @@ void vlog(const char* fmt, ...) {
 struct HzbNativeHealth {
     int runtimeGate = 0;
     int substrateLive = 0;
-    int directChain = 0;
+    int directChain = 1;
     unsigned long attempted = 0;
     unsigned long usedVulkan = 0;
     unsigned long usedInterop = 0;
@@ -559,21 +559,6 @@ bool gosPostProcess::vkPostHzbNativeEnabled()
     return state == 1;
 }
 
-// Native HZB runs only in direct-chain, engaged when upstream left the shared GBuffer
-// Vulkan-owned (umbrellaOn); otherwise it declines and the GL HZB pass runs.
-static bool vkPostHzbDirectChainEnabled()
-{
-    static int state = -1;
-    if (state == -1) {
-        state = mc2vkgate::umbrellaOn() ? 1 : 0;
-        g_health.directChain = state;
-        if (state == 1)
-            vlog("native HZB direct-chain: upstream left the shared GBuffer VK-owned; "
-                 "no HZB GL<->VK handoff.");
-    }
-    return state == 1;
-}
-
 bool gosPostProcess::runVkPostHzbNative()
 {
     if (!hzbEnabled_) return false;
@@ -636,7 +621,6 @@ bool gosPostProcess::runVkPostHzbNative()
 
     // VK-RUNG8 item-4: direct-chain only — engage only when upstream is direct-chain,
     // else decline to the GL HZB pass. No GL<->VK semaphore handoff.
-    if (!vkPostHzbDirectChainEnabled()) { setFallback("upstream_not_direct_chain"); return false; }
     VkCommandBuffer cb = s->cbuf[0u];
 
     vkResetCommandBuffer(cb, 0);

@@ -234,7 +234,6 @@ std::unique_ptr<mc2vk::IslandState>& islandSlot();
 WaterIsland* parkedIsland();
 void setFallback(std::string_view reason);
 void vlog(const char* fmt, ...);
-bool waterTier1Requested();
 bool waterPerfGateRequested();
 bool waterFenceDeferEnabled();
 bool waterDirectChainRequested();

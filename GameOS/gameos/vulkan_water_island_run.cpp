@@ -23,7 +23,6 @@ extern "C" int mc2_vk_water_island_run(
     const void* vsParams, const void* fsParams,
     unsigned int hdriGlTex,
     const void* nativeInputsIn, int parityFrame) {
-    if (!waterTier1Requested()) return 0;
     // STEP 3.4P: with native inputs the thin records are produced on the GPU; thinRecords/thinCount are then only the GL reference of a parity frame.
     if ((thinCount == 0 && !nativeInputsIn) || recipeCount == 0 || w <= 0 || h <= 0) return 0;
     ZoneScopedN("VKIsl.Water.Run");   // VK-ISLAND-TRACY-1 per-frame island total (CPU)

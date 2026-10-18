@@ -157,9 +157,6 @@ void gosPostProcess::createFBOs(int w, int h)
     glGenFramebuffers(1, &sceneFBO_);
     RenderCore::framegraph::fboLedger().registerFbo(sceneFBO_, RenderCore::RenderResourceId::MainColor);  // FBO-LEDGER-1
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
-#ifdef MC2_VULKAN_ISLAND
-    const bool vkDirectSceneResources = mc2VkSharedSceneDirectResourceEnabled();
-#endif
 
     // Color attachment: RGBA16F
     // TEX-CLASS: render-target -- scene HDR color (MRT0, FBO attach)
@@ -177,7 +174,7 @@ void gosPostProcess::createFBOs(int w, int h)
     // the full native-present stack; otherwise the VK islands would co-write into a
     // VK image that GL present can no longer read, so we decline the whole shared
     // scene to pure GL here (islands then fail their resource-readiness => GL).
-    if (mc2VkSharedSceneColorNeeded() && vkDirectSceneResources) {
+    {
         const char* reason = "unset";
         sharedSceneColor_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_COLOR0, w, h,
                                                       &reason);
@@ -243,7 +240,7 @@ void gosPostProcess::createFBOs(int w, int h)
     bool sceneDepthShared = false;
 #ifdef MC2_VULKAN_ISLAND
     // VK-RUNG8-ITEM5: VK-only shared depth, armed only under the full native stack.
-    if (mc2VkSharedSceneDepthEnabled() && vkDirectSceneResources) {
+    {
         const char* reason = "unset";
         sharedSceneDepth_ = mc2SharedSceneDepthCreate(w, h, &reason);
         if (sharedSceneDepth_) {
@@ -301,7 +298,7 @@ void gosPostProcess::createFBOs(int w, int h)
     bool sceneNormalShared = false;
 #ifdef MC2_VULKAN_ISLAND
     // VK-RUNG8-ITEM5: VK-only shared normal (MRT1), armed only under the full stack.
-    if (mc2VkSharedSceneColorNeeded() && vkDirectSceneResources) {
+    {
         const char* reason = "unset";
         sharedSceneNormal_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_NORMAL, w, h,
                                                        &reason);
@@ -340,7 +337,7 @@ void gosPostProcess::createFBOs(int w, int h)
         bool sceneObjectIdShared = false;
 #ifdef MC2_VULKAN_ISLAND
         // VK-RUNG8-ITEM5: VK-only shared object-id (MRT2), armed only under the full stack.
-        if (mc2VkSharedSceneColorNeeded() && vkDirectSceneResources) {
+        {
             const char* reason = "unset";
             sharedSceneObjectId_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_OBJECT_ID, w, h,
                                                              &reason);

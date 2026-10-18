@@ -134,12 +134,6 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
-// The shadow producers (dynamic map, near-cascade array, full-map cascade) run under the VK umbrella. The umbrella is asked on every call, not
-// cached, so the opt-out backend produces no VK shadows.
-bool shadowInteropGateRequested() {
-    return mc2vkgate::umbrellaOn();
-}
-
 // The island is unconditionally direct-chain-native. Kept as a named constant
 // documenting that the depth images are non-exportable and consumed via VkImageView only.
 constexpr bool kShadowDirectChain = true;
@@ -431,7 +425,6 @@ bool init_island(ShadowIsland* s, int size) {
         g_health.deviceName[sizeof(g_health.deviceName) - 1] = '\0';
     }
 
-    if (!shadowInteropGateRequested()) { setFallback("gate_off"); return false; }
 
     // Readiness gates (context + gate) passed: any failure past this point is a PERMANENT
     // build failure -> the island declines for the session (item-2 boot-decline).
@@ -1013,7 +1006,7 @@ void diagDumpVk(ShadowIsland* s) {
 // True when the gate requests the VK shadow region (the caller then SKIPS the GL
 // dynamic shadow WRITE draws and calls mc2_vk_shadow_island_run instead).
 extern "C" int mc2_vk_shadow_island_enabled() {
-    return shadowInteropGateRequested() ? 1 : 0;
+    return 1;
 }
 
 // A product the frame has recorded is usable by a consumer only after the frame's submit: the consumers run later on the same queue, and the render pass
@@ -1253,7 +1246,6 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     g_csmFullMapReadyThisFrame = false;  // CSM full-map direct view must be same-frame fresh too
     g_csmArrayReadyThisFrame = false;    // CSM array direct view must be same-frame fresh too
     ++g_shadowFrameEpoch;
-    if (!shadowInteropGateRequested()) return 0;
     if (size <= 0 || !lightSpace16) return 0;
     ZoneScopedN("VKIsl.Shadow.Run");   // VK-ISLAND-TRACY-1 per-frame island total (CPU)
 
@@ -1307,7 +1299,6 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     const void* instances, unsigned int instanceCount,
     float biasFactor, float biasUnits) {
     g_csmFullMapReadyThisFrame = false;
-    if (!shadowInteropGateRequested()) return 0;
     if (size <= 0 || !lightSpace16) return 0;
     ShadowIsland* s = parkedIsland();
     if (!s || s->disabled || !s->inited || !(s->useInterop || s->directChain)) return 0;
@@ -1337,7 +1328,6 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
         g_csmArrayReadyThisFrame = false;
         if (ShadowIsland* parked = parkedIsland()) parked->csmArrayRenderedMask = 0;
     }
-    if (!shadowInteropGateRequested()) return 0;
     if (size <= 0 || layers <= 0 || layerIndex < 0 || layerIndex >= layers) return 0;
     if (!lightSpace16) return 0;
     ShadowIsland* s = parkedIsland();

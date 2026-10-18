@@ -341,8 +341,6 @@ bool init_island(TerrainIsland* s, int w, int h) {
         g_health.deviceName[sizeof(g_health.deviceName) - 1] = '\0';
     }
 
-    if (!terrainTier1Requested()) { setFallback("gate_off"); return false; }
-
     // ---- Fetch the SHARED scene color(MRT0)+normal(MRT1)+depth exportable images the
     // GL scene renders terrain into. Fail-soft: any missing => GL fallback. Same
     // accessors the prop Tier-1 island uses (built by the postprocess createFBOs seam,

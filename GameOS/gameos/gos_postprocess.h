@@ -452,7 +452,6 @@ public:
     // destroyVkPostFogNative(): torn down from destroyFBOs() (resize; the shared
     // GBuffer it borrows is rebuilt) and destroy(). Defined in
     // vulkan_post_fog_native.cpp (same #ifdef MC2_VULKAN_ISLAND discipline).
-    bool  vkPostFogNativeEnabled();
     bool  runVkPostFogNative();
     void  destroyVkPostFogNative();
     struct VkPostFogNative;             // defined in vulkan_post_fog_native.cpp

@@ -68,15 +68,6 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
-// Armed exactly when the mech island is (the other half of object content).
-bool gateRequested() {
-    static int state = -1;
-    if (state == -1) {
-        state = mc2vkgate::umbrellaOn() ? 1 : 0;
-    }
-    return state == 1;
-}
-
 std::string spv_dir() { return vk_island_util::spvDir(); }
 
 VkShaderModule load_spv(VkDevice device, std::string_view path) {
@@ -496,7 +487,7 @@ bool init_island(Island* s, int w, int h) {
 // ===========================================================================
 
 extern "C" int mc2_vk_legacy_shape_island_enabled() {
-    return (gateRequested() && !g_sessionDeclined) ? 1 : 0;
+    return g_sessionDeclined ? 0 : 1;
 }
 
 extern "C" void mc2_vk_legacy_shape_submit(const Mc2LegacyMlrDraw* d) {
@@ -508,7 +499,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     // Always consume the queue (even on failure) so it can never grow across frames.
     std::vector<Mc2LegacyMlrDraw> draws;
     draws.swap(g_pending);
-    if (!gateRequested() || g_sessionDeclined || !frame) return 0;
+    if (g_sessionDeclined || !frame) return 0;
     if (draws.empty() || w <= 0 || h <= 0) return 0;
 
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();

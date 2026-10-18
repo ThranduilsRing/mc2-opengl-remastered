@@ -77,9 +77,6 @@ void setSceneDrawBuffers(SceneDrawBufferMode mode, bool objectIdAttachmentReady)
 
 // Free functions defined in the split pieces.
 bool mc2ShadowCsmEnabled();
-bool mc2VkSharedSceneDepthEnabled();
-bool mc2VkSharedSceneColorNeeded();
-bool mc2VkSharedSceneDirectResourceEnabled();
 GLuint createSceneColorPlaceholderTex(int w, int h, GLint internalFormat, GLenum format, GLenum type, GLint minMagFilter);
 GLuint createSceneDepthPlaceholderTex(int w, int h);
 int mc2ShadowCsmCount();

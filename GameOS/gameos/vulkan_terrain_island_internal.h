@@ -384,7 +384,6 @@ void setFallback(std::string_view reason);
 void vlog(const char* fmt, ...);
 bool terrainFenceDeferEnabled();
 bool terrainPerfGateRequested();
-bool terrainTier1Requested();
 bool terrainAllLodsRequested();
 bool terrainSkirtsRequested();
 bool terrainVisualDisplaceFarRequested();
