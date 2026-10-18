@@ -218,7 +218,7 @@ bool spot_direction_fix_enabled()
 // computes is discarded downstream and no direction can ever move a pixel.
 // `=2` separates them: if an absurd position still renders byte-identically,
 // the consumer's output is provably dead on the default GPU static-prop path.
-// Same role as the MC2_NIGHT_FOG_DIM_SCALE=0.0 exaggeration lower-bound.
+// Zero is an exaggeration bound, not a shipping setting.
 // Diagnostic only -- never a shipping value.
 bool spot_direction_exaggerate()
 {
