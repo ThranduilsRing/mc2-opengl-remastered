@@ -2672,19 +2672,6 @@
   {
    "assemble": "engine",
    "defines": [],
-   "id": "particle_billboard",
-   "key": "particle_billboard",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_particle_bridge.cpp:234",
-   "stages": {
-    "frag": "shaders/particle_billboard.frag",
-    "vert": "shaders/particle_billboard.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [],
    "id": "postprocess",
    "key": "postprocess",
    "optional_groups_on": [],

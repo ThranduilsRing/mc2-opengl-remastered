@@ -751,46 +751,7 @@ void gosRenderer::drawQuads(gos_VERTEX* vertices, int count) {
         return;
     }
 
-    if(beforeDrawCall()) return;
-
-    int num_quads = count / 4;
-    int num_vertices = num_quads * 6;
-
-    if(quads_->getNumVertices() + num_vertices > quads_->getVertexCapacity()) {
-        applyRenderStates();
-        gosRenderMaterial* mat = selectBasicRenderMaterial(curStates_);
-        gosASSERT(mat);
-
-        mat->setTransform(projection_);
-        mat->setFogColor(fog_color_);
-        quads_->draw(mat);
-        quads_->rewind();
-    } 
-
-    gosASSERT(quads_->getNumVertices() + num_vertices <= quads_->getVertexCapacity());
-    for(int i=0; i<count;i+=4) {
-
-        quads_->addVertices(vertices + 4*i + 0, 1);
-        quads_->addVertices(vertices + 4*i + 1, 1);
-        quads_->addVertices(vertices + 4*i + 2, 1);
-
-        quads_->addVertices(vertices + 4*i + 0, 1);
-        quads_->addVertices(vertices + 4*i + 2, 1);
-        quads_->addVertices(vertices + 4*i + 3, 1);
-    }
-
-    // for now draw anyway because no render state saved for draw calls
-    applyRenderStates();
-
-    gosRenderMaterial* mat = selectBasicRenderMaterial(curStates_);
-    gosASSERT(mat);
-
-    mat->setTransform(projection_);
-    mat->setFogColor(fog_color_);
-    quads_->draw(mat);
-    quads_->rewind();
-
-    afterDrawCall();
+    // World geometry reaches Vulkan through the typed scene feeds.
 }
 
 void gosRenderer::drawLines(gos_VERTEX* vertices, int count) {
@@ -816,53 +777,14 @@ void gosRenderer::drawLines(gos_VERTEX* vertices, int count) {
         return;
     }
 
-    if(beforeDrawCall()) return;
-
-    if(lines_->getNumVertices() + count > lines_->getVertexCapacity()) {
-        applyRenderStates();
-        basic_material_->setTransform(projection_);
-        basic_material_->setFogColor(fog_color_);
-        lines_->draw(basic_material_);
-        lines_->rewind();
-    }
-
-    gosASSERT(lines_->getNumVertices() + count <= lines_->getVertexCapacity());
-    lines_->addVertices(vertices, count);
-
-    // for now draw anyway because no render state saved for draw calls
-    applyRenderStates();
-    basic_material_->setTransform(projection_);
-    basic_material_->setFogColor(fog_color_);
-    lines_->draw(basic_material_);
-    lines_->rewind();
-
-    afterDrawCall();
+    // World geometry reaches Vulkan through the typed scene feeds.
 }
 
 void gosRenderer::drawPoints(gos_VERTEX* vertices, int count) {
-    ZoneScopedN("DrawPoints");
+    // The legacy point rasterizer wrote only the discarded GL scene.
     gosASSERT(vertices);
-
-    if(beforeDrawCall()) return;
-
-    if(points_->getNumVertices() + count > points_->getVertexCapacity()) {
-        applyRenderStates();
-        basic_material_->setTransform(projection_);
-		basic_material_->setFogColor(fog_color_);
-        points_->draw(basic_material_);
-        points_->rewind();
-    } 
-
-    gosASSERT(points_->getNumVertices() + count <= points_->getVertexCapacity());
-    points_->addVertices(vertices, count);
-
-    // for now draw anyway because no render state saved for draw calls
-    applyRenderStates();
-    points_->draw(basic_material_);
-    points_->rewind();
-
-    afterDrawCall();
 }
+
 
 // VK-VFX-COALESCE-1: consecutive-same-state HUD tri-batch merge in drawTris()
 // below. MLRSortByOrder emits gosFX geometry (weapon tracers, muzzle flashes,
@@ -955,36 +877,7 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
         return;
     }
 
-    if(beforeDrawCall()) return;
-
-
-    if(tris_->getNumVertices() + count > tris_->getVertexCapacity()) {
-        applyRenderStates();
-
-        gosRenderMaterial* mat = selectBasicRenderMaterial(curStates_);
-        gosASSERT(mat);
-
-        mat->setTransform(projection_);
-		mat->setFogColor(fog_color_);
-        tris_->draw(mat);
-        tris_->rewind();
-    } 
-
-    gosASSERT(tris_->getNumVertices() + count <= tris_->getVertexCapacity());
-    tris_->addVertices(vertices, count);
-
-    // for now draw anyway because no render state saved for draw calls
-    applyRenderStates();
-
-    gosRenderMaterial* mat = selectBasicRenderMaterial(curStates_);
-    gosASSERT(mat);
-
-    mat->setTransform(projection_);
-    mat->setFogColor(fog_color_);
-    tris_->draw(mat);
-    tris_->rewind();
-
-    afterDrawCall();
+    // World geometry reaches Vulkan through the typed scene feeds.
 }
 
 void gosRenderer::terrainOverrideThinMVP(const float* mvp4x4)
@@ -1024,129 +917,15 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
         return;
     }
 
-    if(beforeDrawCall()) return;
-
-    bool not_enough_vertices = indexed_tris_->getNumVertices() + num_vertices > indexed_tris_->getVertexCapacity();
-    bool not_enough_indices = indexed_tris_->getNumIndices() + num_indices > indexed_tris_->getIndexCapacity();
-    if(not_enough_vertices || not_enough_indices){
-        applyRenderStates();
-
-        gosRenderMaterial* mat = selectBasicRenderMaterial(curStates_);
-        gosASSERT(mat);
-
-        mat->setTransform(projection_);
-		mat->setFogColor(fog_color_);
-        indexed_tris_->drawIndexed(mat);
-        indexed_tris_->rewind();
-    }
-
-    gosASSERT(indexed_tris_->getNumVertices() + num_vertices <= indexed_tris_->getVertexCapacity());
-    gosASSERT(indexed_tris_->getNumIndices() + num_indices <= indexed_tris_->getIndexCapacity());
-    indexed_tris_->addVertices(vertices, num_vertices);
-    indexed_tris_->addIndices(indices, num_indices);
-
-    // for now draw anyway because no render state saved for draw calls
-    applyRenderStates();
-
-    if (curStates_[gos_State_Terrain] && !curStates_[gos_State_Overlay] && terrain_material_ && terrain_batch_extras_count_ > 0 && terrain_draw_enabled_) {
-        // TERRAIN-DEADCODE-DELETE-1: the legacy gosRenderer tess-solid terrain draw
-        // (terrainDrawIndexedPatches) is retired — all terrain renders via the LOD-chunk
-        // path (gos_terrain_lod_chunk.cpp / gamecam.cpp:508). This funnel branch is
-        // unreachable post terrain-retire (terrain_path.legacy_mlr==0 confirms). If terrain
-        // geometry ever reaches here, SKIP it (must not fall through to the basic renderer,
-        // which would mis-draw terrain) and fire the telemetry counter as a regression tripwire.
-        RenderCore::framegraph::noteTerrainPath(RenderCore::framegraph::TerrainPath::LegacyMLR);
-        indexed_tris_->rewind();
-    } else {
-        // When tessellation is active, skip SOLID fallback terrain draws (tessellation
-        // already rendered base terrain). Overlay/detail draws don't set gos_State_Terrain
-        // (it auto-resets after each draw), so they fall through to the basic renderer.
-        if (curStates_[gos_State_Terrain] && terrain_material_) {
-            indexed_tris_->rewind();
-        } else {
-            gosRenderMaterial* mat = selectBasicRenderMaterial(curStates_);
-            gosASSERT(mat);
-
-            mat->setTransform(projection_);
-            mat->setFogColor(fog_color_);
-
-            // Water uniforms: set via deferred system before apply() flushes them
-            {
-                glsl_program* prog = mat->getShader();
-                if (curStates_[gos_State_Water]) {
-                    prog->setInt("isWater", 1);
-                    static uint64_t water_start = timing::get_wall_time_ms();
-                    float elapsed = SmokeMode::fixedTimestepEnabled()
-                                        ? (float)SmokeMode::fixedClockSeconds()
-                                        : (float)(timing::get_wall_time_ms() - water_start) / 1000.0f;
-                    prog->setFloat("time", elapsed);
-                } else {
-                    prog->setInt("isWater", 0);
-                }
-            }
-
-            // Overlay.SplitDraw removed — alpha cement and decals now go through
-            // gos_DrawTerrainOverlays() / gos_DrawDecals() typed world-space batches.
-            {
-                ZoneScopedN("BasicDraw.Indexed");
-                indexed_tris_->drawIndexed(mat);
-            }
-            indexed_tris_->rewind();
-        }
-    }
-
-    afterDrawCall();
+    // World geometry reaches Vulkan through the typed scene feeds.
 }
 
 void gosRenderer::drawIndexedTris(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl, const float* mvp)
 {
-    ZoneScopedN("DrawIndexedTris.Lighted");
-    TracyGpuZone("DrawIndexedTris.Lighted");
-    gosASSERT(ib && vb && mvp);
-    gosASSERT((ib->count_ % 3) == 0);
-
-    if(beforeDrawCall()) return;
-
-    applyRenderStates();
-
-    gosRenderMaterial* mat = selectLightedRenderMaterial(curStates_);
-    gosASSERT(mat);
-
-	mat4 transform(	mvp[0], mvp[1], mvp[2], mvp[3], 
-					mvp[4], mvp[5], mvp[6], mvp[7],
-					mvp[8], mvp[9], mvp[10], mvp[11],
-					mvp[12], mvp[13], mvp[14], mvp[15]);
-
-	vec4 vp = g_gos_renderer->getRenderViewport();
-
-	mat->getShader()->setFloat4("vp", vp);
-	mat->getShader()->setMat4("projection_", projection_);
-
-    mat->setTransform(transform);
-
-	// [LIGHTSSBO v1] FORK-2: this legacy lit material's LightsData is now
-	// an SSBO; UBO reflection no longer binds it. Bind the storage block
-	// for this program (idempotent, per-draw, hot-reload-safe).
-	gos_BindLightDataStorageBlock(mat);
-
-	gosMesh::drawIndexed(ib, vb, vdecl, mat);
-
-    afterDrawCall();
+    // Retained C API until the mclib GL hardware-shape caller is retired.
 }
 
 void gosRenderer::drawIndexedTris(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl)
 {
-    ZoneScopedN("DrawIndexedTris.Unlighted");
-    TracyGpuZone("DrawIndexedTris.Unlighted");
-    gosASSERT(ib && vb);
-    gosASSERT((ib->count_ % 3) == 0);
-
-    if(beforeDrawCall()) return;
-
-    applyRenderStates();
-
-
-	gosMesh::drawIndexed(ib, vb, vdecl);
-
-    afterDrawCall();
+    // Retained C API until the mclib GL hardware-shape caller is retired.
 }
