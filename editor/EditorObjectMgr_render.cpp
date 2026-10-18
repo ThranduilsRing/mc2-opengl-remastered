@@ -41,7 +41,7 @@ void EditorObjectMgr::update()
 				{
 					if ( pBAppr->recalcBounds() )
 					{
-						Stuff::Vector3D pos = pBAppr->position;
+						glm::vec3 pos = pBAppr->position;
 						// Keep the building level with the terrain WITHOUT snapping it to the
 						// cell grid. The legacy path called moveBuilding(worldToCell(pos)) here,
 						// which re-derived x,y from the cell CENTRE every frame -- making free
@@ -77,7 +77,7 @@ void EditorObjectMgr::update()
 				// Vehicles and mech forced to ground in Object classes in game now.
 				// NOT in the appearance anymore since they can fly when they die!
 				// Must force here as well.
-				Stuff::Vector3D pos = pUAppr->position;
+				glm::vec3 pos = pUAppr->position;
 				pos.z = land->getTerrainElevation(pos);
 				if (getIsHoverCraft(pObj->id)) {
 					float waterElevation = land->getWaterElevation();
@@ -241,7 +241,7 @@ void EditorObjectMgr::render()
 	for ( auto dIter = dropZones.begin();
 		dIter != dropZones.end(); dIter++ )
 	{
-		Stuff::Vector3D pos = (*dIter)->getPosition();
+		glm::vec3 pos = (*dIter)->getPosition();
 		Stuff::Vector4D screen;
 
 		// Modern zoom-correct projection — legacy projectZ X-collapses on zoom.

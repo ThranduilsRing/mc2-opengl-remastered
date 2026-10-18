@@ -56,7 +56,7 @@ void EditorInterface::frameSelectedObjects()
 		return;
 
 	EditorObjectMgr::EDITOR_OBJECT_LIST selectedObjects = mgr->getSelectedObjectList();
-	Stuff::Vector3D centroid;
+	glm::vec3 centroid;
 	centroid.x = centroid.y = centroid.z = 0.0f;
 	int count = 0;
 	for ( auto iter = selectedObjects.begin();
@@ -64,7 +64,7 @@ void EditorInterface::frameSelectedObjects()
 	{
 		if ( !(*iter) )
 			continue;
-		const Stuff::Vector3D& p = (*iter)->getPosition();
+		const glm::vec3& p = (*iter)->getPosition();
 		centroid.x += p.x;
 		centroid.y += p.y;
 		centroid.z += p.z;
@@ -131,7 +131,7 @@ bool EditorInterface::applyObjectTransform( EditorObject* obj, float worldX, flo
 	ModifyBuildingAction* pAction = new ModifyBuildingAction;
 	pAction->addBuildingInfo( *obj );   // captures OLD snapshot + OLD position
 
-	Stuff::Vector3D newPos;
+	glm::vec3 newPos;
 	newPos.x = worldX;
 	newPos.y = worldY;
 	newPos.z = obj->appearance()->position.z;
@@ -217,7 +217,7 @@ int EditorInterface::runInspectorEditSmoke()
 
 	// Place a throwaway drop zone near map center (no catalog group/index needed).
 	const int mid = ( land->realVerticesMapSide - 1 ) / 2;
-	Stuff::Vector3D p;
+	glm::vec3 p;
 	land->cellToWorld( mid, mid, p );
 	p.z = land->getTerrainElevation( p );
 
@@ -303,7 +303,7 @@ int EditorInterface::runPlaceOobSmoke()
 
 	for ( int i = 0; i < (int)( sizeof( px ) / sizeof( px[0] ) ); ++i )
 	{
-		Stuff::Vector3D p;
+		glm::vec3 p;
 		p.x = px[i];
 		p.y = py[i];
 		p.z = 0.0f;
@@ -396,7 +396,7 @@ void EditorInterface::OnForestTool()
 		{
 			if ( land->isVertexSelected( j, i ) )
 			{
-				Stuff::Vector3D pos;
+				glm::vec3 pos;
 				land->tileCellToWorld( j, i, 0, 0, pos );
 
 				xAvg += pos.x;
@@ -428,7 +428,7 @@ void EditorInterface::OnForestTool()
 		{
 			if ( land->isVertexSelected( j, i ) )
 			{
-				Stuff::Vector3D pos;
+				glm::vec3 pos;
 				land->tileCellToWorld( j, i, 0, 0, pos );
 
 				float deltaX = pos.x - centerX;

@@ -83,7 +83,7 @@ public:
 
 	void		init( const char* bldgListFileName, const char* objectFileName );
 
-	EditorObject*	addBuilding( const Stuff::Vector3D& position, 
+	EditorObject*	addBuilding( const glm::vec3& position, 
 								unsigned long group, 
 								unsigned long indexWithinGroup,
 								int alignment,
@@ -93,7 +93,7 @@ public:
 
 	bool addBuilding( EditorObject* pObjectThatWeWillCopy );
 
-	EditorObject*	addDropZone( const Stuff::Vector3D& position, 
+	EditorObject*	addDropZone( const glm::vec3& position, 
 								int alignment, bool bVTol ); // returns NULL if failure
 
 	bool		deleteBuilding( const EditorObject* pInfo ); // should only be one building in a spot
@@ -103,7 +103,7 @@ public:
 	mouse, not really for general use. It appears to return an object that a) is visible on screen,
 	and b) has the property that the screen projection of the given position is contained in
 	(intersect with) the screen projection of the object. */
-	EditorObject* getObjectAtPosition( const Stuff::Vector3D& position );
+	EditorObject* getObjectAtPosition( const glm::vec3& position );
 	// by Methuselas: single-click selection needs to use the actual mouse
 	// screen point. The old world-position pick can miss remastered mechs
 	// even though drag-select works from projected object centers.
@@ -119,12 +119,12 @@ public:
 
 	EditorObject* getBuilding( const EditorObject &building );
 	
-	bool		canAddBuilding( const Stuff::Vector3D& position,
+	bool		canAddBuilding( const glm::vec3& position,
 								float rotation,
 								unsigned long group,
 								unsigned long indexWithinGroup );
 
-	bool		canAddDropZone( const Stuff::Vector3D& position, int alignment, bool bVTol );
+	bool		canAddDropZone( const glm::vec3& position, int alignment, bool bVTol );
 
 	int			getBuildingGroupCount() const;		// mechs count too!
 	int			getNumberBuildingsInGroup( int Group ) const;

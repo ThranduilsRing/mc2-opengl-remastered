@@ -231,7 +231,7 @@ void GameplayDebugger::Draw()
 
     // Position
     {
-        const Stuff::Vector3D& pos = obj->getPosition();
+        const glm::vec3& pos = obj->getPosition();
         ImGui::Text("Pos:   (%.1f, %.1f, %.1f)", pos.x, pos.y, pos.z);
     }
 

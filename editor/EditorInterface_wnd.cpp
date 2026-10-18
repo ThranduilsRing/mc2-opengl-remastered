@@ -14,7 +14,7 @@ void EditorInterface::UpdateButton( CCmdUI* pButton )
 
 	if ( pButton->m_nID == ID_DROPZONES_ADD || pButton->m_nID == ID_DROPZONES_VTOL )
 	{
-		Stuff::Vector3D pos;
+		glm::vec3 pos;
 		pos.x = -1; 
 		pos.y = -1;
 		if ( !EditorObjectMgr::instance()->canAddDropZone( pos, 0, (pButton->m_nID - ID_DROPZONES_ADD) ? true : false ) )
@@ -179,7 +179,7 @@ void EditorInterface::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 	}
 
 	/* this calculation was based in the code for Camera::moveRight(float amount) */
-	Stuff::Vector3D direction;
+	glm::vec3 direction;
 	if (!eye->usePerspective)
 	{
 		direction.x = 0.0;
@@ -195,14 +195,14 @@ void EditorInterface::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 	float worldCameraRotation = eye->getCameraRotation();
 	OppRotate(direction,worldCameraRotation);
 
-	Stuff::Vector3D eyeDisplacement = eye->getPosition();
+	glm::vec3 eyeDisplacement = eye->getPosition();
 
 	/* maxVisual was taken from Camera::setPosition(). */
 	float maxVisual = (Terrain::worldUnitsMapSide / 2) - Terrain::worldUnitsPerVertex;
 	float bound = SQRT_2 * maxVisual;
 	float amount = bound * 2.0f * ((float)pt.y / VSCROLLBAR_RANGE - 0.5f);
 
-	float amountMore = amount - direction * eyeDisplacement;
+	float amountMore = amount - glm::dot(direction, eyeDisplacement);
 	eye->moveDown(amountMore);
 
 	SetScrollPos( SB_VERT, pt.y );

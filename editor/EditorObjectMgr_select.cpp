@@ -79,7 +79,7 @@ void EditorObjectMgr::select( const Stuff::Vector4D& pos1, const Stuff::Vector4D
 			if ( !pAppearance )
 				continue;
 
-			Stuff::Vector3D pos = pObject->getPosition();
+			glm::vec3 pos = pObject->getPosition();
 			if ( !EditorObjectMgr_ProjectScreenXY_GL( pos, screenPos ) )
 				continue;
 
@@ -460,7 +460,7 @@ void EditorObjectMgr::doForest( const Forest& forest )
 				{
 					for ( int m = -1; m < 2; m++ )
 					{
-						Stuff::Vector3D pos;
+						glm::vec3 pos;
 
 						if ( cellJ + l < 0 || cellJ + l > land->realVerticesMapSide * 3 )
 							continue;
@@ -509,7 +509,7 @@ void EditorObjectMgr::doForest( const Forest& forest )
 								continue;
 							}
 
-							Stuff::Vector3D treePos = pos;
+							glm::vec3 treePos = pos;
 
 							treePos.x += (float)RandomNumber( Terrain::worldUnitsPerCell ) - Terrain::worldUnitsPerCell/2;
 							treePos.y += (float)RandomNumber( Terrain::worldUnitsPerCell ) - Terrain::worldUnitsPerCell/2;

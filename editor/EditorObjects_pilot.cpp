@@ -23,7 +23,7 @@ static void PilotDataLossWarn( const char* msg )
 
 bool DropZone::save( FitIniFile* file, int number )
 {
-	Stuff::Vector3D pos = getPosition();
+	glm::vec3 pos = getPosition();
 	
 	file->writeIdLong( "NumSlots", 4 );
 	if ( bVTol )
@@ -60,7 +60,7 @@ bool DropZone::save( FitIniFile* file, int number )
 	return true;
 }
 
-DropZone::DropZone( const Stuff::Vector3D& pos, int alignment, bool bvtol )
+DropZone::DropZone( const glm::vec3& pos, int alignment, bool bvtol )
 {
 	bVTol = bvtol;
 }
