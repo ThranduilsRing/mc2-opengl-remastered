@@ -202,10 +202,16 @@ def versions():
 
 
 def compute_key(repo, uni, cmd, specs):
+    nul, nl = bytes([0]), bytes([10])
     h = hashlib.sha256()
-    h.update(versions().encode() + b"\0" + cmd.encode() + b"\0" + repr(sorted(specs)).encode() + b"\0")
-    for p in row_inputs(repo, uni, cmd, specs):
-        h.update(p.encode() + b"\0" + uni.ident(p).encode() + b"\n")
+    h.update(versions().encode() + nul + cmd.encode() + nul + repr(sorted(specs)).encode() + nul)
+    items = [(p, uni.ident(p)) for p in row_inputs(repo, uni, cmd, specs)]
+    for p, ident in items:
+        h.update(p.encode() + nul + ident.encode() + nl)
+    dbg = os.environ.get("CONTRACTS_CACHE_DEBUG")
+    if dbg:      # dump what was keyed, to diff two runs: CONTRACTS_CACHE_DEBUG=<dir>
+        with open(os.path.join(dbg, hashlib.md5(cmd.encode()).hexdigest() + ".txt"), "w") as f:
+            f.write(cmd + chr(10) + chr(10).join(p + " " + i for p, i in items) + chr(10))
     return h.hexdigest()
 
 
@@ -229,7 +235,10 @@ def main(argv):
     if len(argv) < 3 or argv[1] not in ("keys", "store"):
         print(__doc__)
         return 2
-    mode, repo = argv[1], os.path.abspath(argv[2])
+    mode = argv[1]
+    # The shell passes an MSYS-style path (/a/Games/...); git resolves it, plain python file reads would not.
+    repo = subprocess.run(["git", "-C", argv[2], "rev-parse", "--show-toplevel"], capture_output=True, text=True,
+                          check=True, **console_child.child_kwargs(redirected=True)).stdout.strip()
     rows = [ln.rstrip("\n").split("\t") for ln in sys.stdin if ln.strip()]
     if mode == "keys":
         decls, cache = load_decls(repo), load_cache(repo)

@@ -431,15 +431,14 @@ _drain_queue() {
     if [ "$NO_CACHE" != "1" ]; then
         local tsv="" lbl key st
         for ((i = 0; i < n; i++)); do
-            case "${Q_CMD[$i]}" in *$'	'*|*$'
-'*) continue ;; esac
-            tsv+="${Q_LABEL[$i]}"$'	'"${Q_CMD[$i]}"$'
-'
+            case "${Q_CMD[$i]}" in *$'\t'*|*$'\n'*) continue ;; esac
+            tsv+="${Q_LABEL[$i]}"$'\t'"${Q_CMD[$i]}"$'\n'
         done
         local res
         res="$(printf '%s' "$tsv" | py -3 -B "$SCRIPT_DIR/contracts_cache.py" keys "$WORKTREE_ROOT" 2>/dev/null)" || res=""
-        while IFS=$'	' read -r lbl key st; do
+        while IFS=$'\t' read -r lbl key st; do
             [ -n "$lbl" ] || continue
+            st="${st%$'\r'}"    # python on Windows ends lines with CRLF
             ckey["$lbl"]="$key"
             [ "$st" = "HIT" ] && chit["$lbl"]=1
         done <<< "$res"
@@ -474,8 +473,7 @@ _drain_queue() {
         [ -n "${ckey[${Q_LABEL[$i]}]:-}" ] || continue
         [ "${chit[${Q_LABEL[$i]}]:-0}" = "1" ] && continue
         [ "$(cat "$_PAR_DIR/$i.rc" 2>/dev/null)" = "0" ] || continue
-        store+="${Q_LABEL[$i]}"$'	'"${ckey[${Q_LABEL[$i]}]}"$'
-'
+        store+="${Q_LABEL[$i]}"$'\t'"${ckey[${Q_LABEL[$i]}]}"$'\n'
     done
     if [ -n "$store" ]; then printf '%s' "$store" | py -3 -B "$SCRIPT_DIR/contracts_cache.py" store "$WORKTREE_ROOT" 2>/dev/null || true; fi
     rm -rf "$_PAR_DIR"
