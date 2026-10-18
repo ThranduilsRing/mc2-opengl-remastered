@@ -1,0 +1,47 @@
+# Cast-census bug candidates, lane 3, 2026-10-17
+
+Base: `36ecb4215db2` (`claude/nifty-mendeleev`); branch: `claude/sol-cast-bugs`.
+Scope and lane/install permissions are the owner's 2026-10-17 task, overriding the older single-lane guidance.
+Evidence root: `E:/mc2-archive-2026-10/cast-bugs-20261017/`.
+
+## Reachability and disposition
+
+| Candidate (base line) | Current RelWithDebInfo / default Vulkan call path | Disposition |
+|---|---|---|
+| `code/goal.cpp:203` | `code/saveload_load.cpp:538` calls `MechWarrior::initGoalManager`; `code/warrior_state.cpp:504-507` constructs the manager and calls `setup` and `build`; `setup` allocates the pool and `clear` writes the entries. `CMakeLists.txt:410` includes the unit. | Real lifetime defect on the save-load path. Placement-construct each GoalObject and destroy each before releasing the mission-heap block. The constructor initializes the links/controller that clear alone omitted. |
+| `mclib/floathelp.cpp:34` | `code/mechcmd2.cpp:989` constructs `globalFloatHelp` during engine startup; the public constructor calls `init`; `code/mechcmd2_frame.cpp:247` deletes it before system-heap teardown. This is independent of backend. | Real lifetime defect. Give pool entries a private constructor and mark only the public handle as pool owner; placement-construct entries and run their destructors before freeing the block, without recursive allocation or pool destruction. Preserve every prior field default. |
+| `mclib/cmponent.cpp:639` | `code/mission_init.cpp:256` and `code/saveload.cpp:593` call `MasterComponent::loadMasterList`; inventory/weapon simulation consumes the resulting table. | Real lifetime defect. Preserve the zeroed backing storage (including disableLevel), then placement-construct entries instead of calling init on unconstructed objects. Run destructors at both reload and final release. |
+| `mclib/mlr/gosvertexpool.hpp:99` | Weapon-effect rendering (`code/weaponbolt_render.cpp:616,639`) and carnage rendering (`code/carnage.cpp:858`) dispatch gosFX effects; `gosFX::Shape::Draw` (`mclib/gosfx/shape.cpp:551`), ShapeCloud (`shapecloud.cpp:392,454,517,560`) and DebrisCloud (`debriscloud.cpp:852`) call `MLRClipper::DrawScalableShape`; `mclib/mlr/mlrclipper.cpp:635` dispatches TransformAndClip; `mlrtriangleclipping.hpp:578` fetches the 2UV pool for dual/detail-texture meshes. `mlr_i_dt_tmesh.cpp:226` includes that implementation. MLR remains enabled by default (`mlr_gate.cpp:30`). | Real wrong-pool alignment offset. Use vertexAlignment2uv, calculated from the 2UV allocation in gosvertexpool.hpp:189. Availability of dual/detail-texture shapes is content-dependent; bookmark captures do not establish that a particular effect exercised this accessor. |
+| `mclib/mlr/mlrtriangleclipping.hpp:113` | The bad write exists only in TransformNoClip. All current game callers of DrawScalableShape set clippingFlags to 0x3f (`shape.cpp:320`, `shapecloud.cpp:321`, `debriscloud.cpp:827`), selecting TransformAndClip at `mlrclipper.cpp:633-635`. That implementation already writes an unsigned short at `mlrtriangleclipping.hpp:1568`. DrawShape's sole caller is the LAB_ONLY bird-view block (`mlrclipper.cpp:340-383`); LAB_ONLY is defined only for Debug (`CMakeLists.txt:75`). The deferred sorter's no-clip branches (`mlrsortbyorder.cpp:343,410`) inherit DrawShape's flags. | Dead branch in the current game, ledger only: retained methods have callers, so this is not a whole removable unit. The int store really overwrites the next ushort, but the indexOffset allocation has Max_Number_Vertices_Per_Mesh+1 entries (`mlrindexedprimitivebase.cpp:39`), so the last valid write uses the sentinel rather than overrunning the allocation. If a future caller enables no-clip, change the assignment to indexOffset[j] = static_cast<unsigned short>(j - stride). |
+
+## Lane 1 notes (read only, two lines each)
+
+`mclib/ablexec.cpp:156`: confirmed: emitStatementMarker writes an int after byte-sized marker/file fields, without guaranteeing int alignment.
+Use byte-safe storage and matching byte-safe readers; this lane did not edit the file.
+
+`code/ablmc2_internal.h:163`: confirmed: double2long dereferences an int pointer into a double, violating aliasing.
+Preserve the binary64 rounding-bias and little-endian low-word contract when replacing it; this lane did not edit the file.
+
+`mclib/stuff/mstring.hpp:535`: confirmed: the int views violate aliasing/alignment, and stringLength & 0x3-1 parses as stringLength & 2.
+The intended tail mask index is (stringLength & 3) - 1; this lane did not edit the file.
+
+## Verification
+
+Implementation: `e0d8e994c` (five source files; placement construction, matching teardown, and 2UV offset).
+
+- Source changes preserve CRLF; `git -c core.whitespace=cr-at-eol diff --check` passed.
+- Base RelWithDebInfo build: passed, two Ninja jobs, unique PDB endpoint; the archived `before-mc2.exe` is `36ecb4215db2`.
+- Fixed RelWithDebInfo build: PASS, all 374 Ninja steps, full relink, clean e0d8e994c fingerprint; one Ninja job alongside the seam build, combined CPU affinity capped to two logical CPUs. Artifact: fixed-mc2.exe; log: .scratch/cast-fixed-build.log.
+- Python: 898 passed, 270 subtests passed (`.scratch/cast-pytest.log`); all four Python contract harnesses passed (`.scratch/cast-python-harnesses.log`).
+- Doctest: 3280 cases passed, 2 skipped; the 10 failed assertions are expected negative controls and the suite reports SUCCESS (`.scratch/cast-doctest-before.log`). The engine-linked seam stage of the combined runner hit its 900s build timeout; the unchanged warm-cache retry passed, including the installed stock/mod census and both adapter/execution-disconnected negative controls (`.scratch/cast-seam-retry.log`).
+- Offline contracts: 122 passed / 2 failed. Existing failures: `default_build_quiet` (five new diagnostic tags) and `script_callers` (stale callers.json). No code in this diff adds a tag or a script caller; callers.json is expressly owner-held. These gates remain blockers for the orchestrator, not waived passes (`.scratch/cast-contracts-before.log`).
+- Pre-change `sim_determinism.py check mc2_03 --install lane3 --duration 60`: pair PASS, identical over 2950 frames (244d144f205283ec); committed-baseline FAIL on data fingerprint.
+- Pre-change `check mc2_24 --install lane3 --duration 60 --ref-commit 36ecb4215db2`: pair PASS, identical over 3083 frames (abf59f6ca340a7e6); same committed-baseline failure.
+- Extended pre-change mc2_24 check with `--sim-speed 4`: identical over 9581 frames (9b80dfbb670d173d), beyond the historical disableLevel divergence at frame 3193; its first 3083 frames also exactly match the 1x reference. Artifacts: `before-mc2_24-4x/`.
+- Both committed-baseline failures precede the fixes: lane3 data digest is 7c3b823500b025cc; the committed baseline expects ab0dd57ba93dcad7 and overlay fixtures absent from lane3. The original baselines and fixture manifest are unchanged. Direct before/after log comparisons on the same data passed below; the committed baselines were not re-recorded.
+- Pre-change `ab.py` day/night GL/VK sweep: four captures, all deterministic; both montages VIEWED. Day scene contains terrain, buildings and mechs; night contains buildings/lights and the expected shoreline. GL/VK MAD is 0.78 / 0.47 respectively, not a pass criterion. Initially the sweep stopped for missing saved_bookmarks; the two requested JSON files were copied read-only from v0.4 into lane3, then the sweep passed. No other install was changed.
+- Fixed sim checks: mc2_03 pair identical over 6437 frames (4a1db4f723ade333); mc2_24 at 4x identical over 11553 frames (13e310811ecd2318). The committed-baseline data mismatch is unchanged from the pre-change checks.
+- Direct pre-change comparison using the same tool: mc2_03 before/a versus after/a identical over 2950 frames (244d144f205283ec), before/b versus after/a identical over 5176 (7321afb1ab1510fb); mc2_24-4x before/b versus after/a identical over 10041 frames (925fbcb4f7c28de5). These exact comparisons include every SIMID digest, not only the graded hash. Logs: .scratch/cast-cross03a.log, cast-cross03b.log, cast-cross24b.log.
+- Fixed ab.py day/night GL/VK sweep: four deterministic captures passed; Vulkan sidecars identify backend=vulkan. Both same-backend before/after comparisons report MAD 0 and 0 percent changed pixels on both maps. All FOUR before/after montages were VIEWED: terrain, buildings, mechs, night lights and shoreline retained, no visible difference. Artifacts: after-render/, gl-before-after/, vk-before-after/; logs: .scratch/cast-render-after.log, cast-render-cross-gl.log, cast-render-cross-vk.log.
+- BUGS-FOUND-FIXED.md rows 65-69 record the four fixed latent defects and the dormant index-width branch. No crash or visible defect was claimed to have been reproduced; construction/alignment defects were established from the live source paths. GoalManager setup is reached by save loading; the mission sim pairs are regression proof, not a claim that quickload was exercised.
+- All three lane 1 files and the owner-held inventories/baselines are unchanged. claude/sol-install-hygiene remains at 808fa29a7. Test-created mvh_scratch_* outputs were moved into .scratch/cast-harness-artifacts; no files were deleted.
