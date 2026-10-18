@@ -15,8 +15,6 @@
 #include<string>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
-#include "math/stuff_glm_bridge.h"
-
 // MC2_VFX_ORACLE_TUBE slice 1: ribbon mesh submit bridge (GameOS-side GL).
 // Declared extern "C" here to avoid pulling GameOS headers into mclib.
 // Immediate flush (kept intact; used only if a caller bypasses the deferred path).
@@ -385,8 +383,8 @@ void
 	case e_Ribbon:
 	case e_AlignedRibbon:
 		m_vertices.SetLength(2);
-		m_vertices[0] = Stuff::Vector3D(1.0f, 0.0f, 0.0f);
-		m_vertices[1] = Stuff::Vector3D(-1.0f, 0.0f, 0.0f);
+		m_vertices[0] = glm::vec3(1.0f, 0.0f, 0.0f);
+		m_vertices[1] = glm::vec3(-1.0f, 0.0f, 0.0f);
 		m_uvs.SetLength(2);
 		m_uvs[0] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.0f);
 		m_uvs[1] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 1.0f);
@@ -394,8 +392,8 @@ void
 
 	case e_VerticalRibbon:
 		m_vertices.SetLength(2);
-		m_vertices[0] = Stuff::Vector3D(0.0f, 0.0f, -1.0f);
-		m_vertices[1] = Stuff::Vector3D(0.0f, 0.0f, 1.0f);
+		m_vertices[0] = glm::vec3(0.0f, 0.0f, -1.0f);
+		m_vertices[1] = glm::vec3(0.0f, 0.0f, 1.0f);
 		m_uvs.SetLength(2);
 		m_uvs[0] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.0f);
 		m_uvs[1] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 1.0f);
@@ -403,10 +401,10 @@ void
 
 	case e_Triangle:
 		m_vertices.SetLength(4);
-		m_vertices[0] = Stuff::Vector3D(0.0f, 0.0f, 1.0f);
-		m_vertices[1] = Stuff::Vector3D(-0.8660254f, 0.0f, -0.5f);
-		m_vertices[2] = Stuff::Vector3D(0.8660254f, 0.0f, -0.5f);
-		m_vertices[3] = Stuff::Vector3D(0.0f, 0.0f, 1.0f);
+		m_vertices[0] = glm::vec3(0.0f, 0.0f, 1.0f);
+		m_vertices[1] = glm::vec3(-0.8660254f, 0.0f, -0.5f);
+		m_vertices[2] = glm::vec3(0.8660254f, 0.0f, -0.5f);
+		m_vertices[3] = glm::vec3(0.0f, 0.0f, 1.0f);
 		m_uvs.SetLength(4);
 		m_uvs[0] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.0f);
 		m_uvs[1] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 1.0f/3.0f);
@@ -416,11 +414,11 @@ void
 
 	case e_Square:
 		m_vertices.SetLength(5);
-		m_vertices[0] = Stuff::Vector3D(0.0f, 0.0f, 1.0f);
-		m_vertices[1] = Stuff::Vector3D(-1.0f, 0.0f, 0.0f);
-		m_vertices[2] = Stuff::Vector3D(0.0f, 0.0f, -1.0f);
-		m_vertices[3] = Stuff::Vector3D(1.0f, 0.0f, 0.0f);
-		m_vertices[4] = Stuff::Vector3D(0.0f, 0.0f, 1.0f);
+		m_vertices[0] = glm::vec3(0.0f, 0.0f, 1.0f);
+		m_vertices[1] = glm::vec3(-1.0f, 0.0f, 0.0f);
+		m_vertices[2] = glm::vec3(0.0f, 0.0f, -1.0f);
+		m_vertices[3] = glm::vec3(1.0f, 0.0f, 0.0f);
+		m_vertices[4] = glm::vec3(0.0f, 0.0f, 1.0f);
 		m_uvs.SetLength(5);
 		m_uvs[0] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.0f);
 		m_uvs[1] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.25f);
@@ -431,11 +429,11 @@ void
 
 	case e_Cross:
 		m_vertices.SetLength(5);
-		m_vertices[0] = Stuff::Vector3D(0.0f, 0.0f, 0.0f);
-		m_vertices[1] = Stuff::Vector3D(0.0f, 0.0f, 1.0f);
-		m_vertices[2] = Stuff::Vector3D(-1.0f, 0.0f, 0.0f);
-		m_vertices[3] = Stuff::Vector3D(0.0f, 0.0f, -1.0f);
-		m_vertices[4] = Stuff::Vector3D(1.0f, 0.0f, 0.0f);
+		m_vertices[0] = glm::vec3(0.0f, 0.0f, 0.0f);
+		m_vertices[1] = glm::vec3(0.0f, 0.0f, 1.0f);
+		m_vertices[2] = glm::vec3(-1.0f, 0.0f, 0.0f);
+		m_vertices[3] = glm::vec3(0.0f, 0.0f, -1.0f);
+		m_vertices[4] = glm::vec3(1.0f, 0.0f, 0.0f);
 		m_uvs.SetLength(5);
 		m_uvs[0] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.0f);
 		m_uvs[1] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 1.0f);
@@ -446,12 +444,12 @@ void
 
 	case e_Pentagon:
 		m_vertices.SetLength(6);
-		m_vertices[0] = Stuff::Vector3D(0.0f, 0.0f, 1.0f);
-		m_vertices[1] = Stuff::Vector3D(-0.9510565f, 0.0f, 0.309017f);
-		m_vertices[2] = Stuff::Vector3D(-0.58778525f, 0.0f, -0.8090167f);
-		m_vertices[3] = Stuff::Vector3D(0.58778525f, 0.0f, -0.8090167f);
-		m_vertices[4] = Stuff::Vector3D(0.9510565f, 0.0f, 0.309017f);
-		m_vertices[5] = Stuff::Vector3D(0.0f, 0.0f, 1.0f);
+		m_vertices[0] = glm::vec3(0.0f, 0.0f, 1.0f);
+		m_vertices[1] = glm::vec3(-0.9510565f, 0.0f, 0.309017f);
+		m_vertices[2] = glm::vec3(-0.58778525f, 0.0f, -0.8090167f);
+		m_vertices[3] = glm::vec3(0.58778525f, 0.0f, -0.8090167f);
+		m_vertices[4] = glm::vec3(0.9510565f, 0.0f, 0.309017f);
+		m_vertices[5] = glm::vec3(0.0f, 0.0f, 1.0f);
 		m_uvs.SetLength(6);
 		m_uvs[0] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.0f);
 		m_uvs[1] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.2f);
@@ -463,13 +461,13 @@ void
 
 	case e_Hexagon:
 		m_vertices.SetLength(7);
-		m_vertices[0] = Stuff::Vector3D(0.0f, 0.0f, 1.0f);
-		m_vertices[1] = Stuff::Vector3D(-0.8660254f, 0.0f, 0.5f);
-		m_vertices[2] = Stuff::Vector3D(-0.8660254f, 0.0f, -0.5f);
-		m_vertices[3] = Stuff::Vector3D(0.0f, 0.0f, -1.0f);
-		m_vertices[4] = Stuff::Vector3D(0.8660254f, 0.0f, -0.5f);
-		m_vertices[5] = Stuff::Vector3D(0.8660254f, 0.0f, 0.5f);
-		m_vertices[6] = Stuff::Vector3D(0.0f, 0.0f, 1.0f);
+		m_vertices[0] = glm::vec3(0.0f, 0.0f, 1.0f);
+		m_vertices[1] = glm::vec3(-0.8660254f, 0.0f, 0.5f);
+		m_vertices[2] = glm::vec3(-0.8660254f, 0.0f, -0.5f);
+		m_vertices[3] = glm::vec3(0.0f, 0.0f, -1.0f);
+		m_vertices[4] = glm::vec3(0.8660254f, 0.0f, -0.5f);
+		m_vertices[5] = glm::vec3(0.8660254f, 0.0f, 0.5f);
+		m_vertices[6] = glm::vec3(0.0f, 0.0f, 1.0f);
 		m_uvs.SetLength(7);
 		m_uvs[0] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.0f);
 		m_uvs[1] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 1.0f/6.0f);
@@ -592,7 +590,7 @@ gosFX::Tube::Tube(
 	Verify(vertex_count < 8);
 	unsigned index_count = (vertex_count - 1)*6;
 	unsigned size =
-		sizeof(Stuff::Point3D)
+		sizeof(glm::vec3)
 		 + sizeof(Stuff::RGBAColor)
 		 + sizeof(Stuff::Vector2DOf<Stuff::Scalar>);
 	size *= vertex_count*spec->m_maxProfileCount;
@@ -619,8 +617,8 @@ gosFX::Tube::Tube(
 	m_triangleCount = 0;
 	m_vertexCount = 0;
 	m_data.SetLength(size);
-	m_P_vertices = Cast_Pointer(Stuff::Point3D*, &m_data[0]);
-	size = spec->m_maxProfileCount*vertex_count*sizeof(Stuff::Point3D);
+	m_P_vertices = Cast_Pointer(glm::vec3*, &m_data[0]);
+	size = spec->m_maxProfileCount*vertex_count*sizeof(glm::vec3);
 	m_P_colors = Cast_Pointer(Stuff::RGBAColor*, &m_data[size]);
 	size += spec->m_maxProfileCount*vertex_count*sizeof(Stuff::RGBAColor);
 	m_P_uvs = Cast_Pointer(Stuff::Vector2DOf<Stuff::Scalar>*, &m_data[size]);
@@ -806,10 +804,10 @@ bool gosFX::Tube::Execute(ExecuteInfo *info)
 	// inverse transformation to keep all particles in their place of origin
 	//----------------------------------------------------------------------
 	//
-	Stuff::LinearMatrix4D new_world_to_local;
-	Stuff::LinearMatrix4D local_to_world;
-	local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
-	mc2::math::fromGlm(new_world_to_local, glm::inverse(mc2::math::toGlm(local_to_world)));
+	glm::mat4 new_world_to_local;
+	glm::mat4 local_to_world;
+	local_to_world = m_localToParent * *info->m_parentToWorld;
+	new_world_to_local = glm::inverse(local_to_world);
 
 	//
 	//--------------------------
@@ -954,17 +952,17 @@ bool gosFX::Tube::Execute(ExecuteInfo *info)
 	Verify(box.max.x >= box.min.x);
 	Verify(box.max.y >= box.min.y);
 	Verify(box.max.z >= box.min.z);
-	Stuff::OBB local_bounds = Stuff::OBB::Identity;
+	mc2::math::Obb local_bounds = mc2::math::Obb();
 	local_bounds.axisExtents.x = 0.5f * (box.max.x - box.min.x);
 	local_bounds.axisExtents.y = 0.5f * (box.max.y - box.min.y);
 	local_bounds.axisExtents.z = 0.5f * (box.max.z - box.min.z);
-	local_bounds.localToParent(3,0) = box.min.x + local_bounds.axisExtents.x;
-	local_bounds.localToParent(3,1) = box.min.y + local_bounds.axisExtents.y;
-	local_bounds.localToParent(3,2) = box.min.z + local_bounds.axisExtents.z;
-	local_bounds.sphereRadius = local_bounds.axisExtents.GetLength();
-	Stuff::OBB parent_bounds;
-	parent_bounds.Multiply(local_bounds, m_localToParent);
-	info->m_bounds->Union(*info->m_bounds, parent_bounds);
+	local_bounds.localToParent[0][3] = box.min.x + local_bounds.axisExtents.x;
+	local_bounds.localToParent[1][3] = box.min.y + local_bounds.axisExtents.y;
+	local_bounds.localToParent[2][3] = box.min.z + local_bounds.axisExtents.z;
+	local_bounds.sphereRadius = glm::length(local_bounds.axisExtents);
+	mc2::math::Obb parent_bounds;
+	parent_bounds = mc2::math::multiply(local_bounds, m_localToParent);
+	(*info->m_bounds) = mc2::math::unite(*info->m_bounds, parent_bounds);
 	return true;
 }
 
@@ -1016,7 +1014,7 @@ bool gosFX::Tube::HasFinished()
 void
 	gosFX::Tube::CreateNewProfile(
 		unsigned index,
-		const Stuff::LinearMatrix4D &origin
+		const glm::mat4 &origin
 	)
 {
 	Check_Object(this);
@@ -1071,7 +1069,7 @@ bool
 	gosFX::Tube::AnimateProfile(
 		unsigned index,
 		unsigned profile_index,
-		const Stuff::LinearMatrix4D &world_to_new_local,
+		const glm::mat4 &world_to_new_local,
 		Stuff::Time till,
 		mc2::math::Sphere *bounds
 	)
@@ -1108,24 +1106,24 @@ bool
 	Stuff::Scalar scale = spec->m_pScale.ComputeValue(age, seed);
 	Verify(scale >= 0.0f);
 	Stuff::Scalar disp = spec->m_pDisplacement.ComputeValue(age, seed);
-	Stuff::Point3D offset;
-	offset.Multiply(profile->m_direction, disp);
+	glm::vec3 offset;
+	offset = profile->m_direction * disp;
 
 	//
 	//-------------------------------------------------
 	// Now build the template to new local space matrix
 	//-------------------------------------------------
 	//
-	Stuff::AffineMatrix4D template_to_profile(true);
-	template_to_profile(0,0) = scale;
-	template_to_profile(1,1) = scale;
-	template_to_profile(2,2) = scale;
-	template_to_profile.BuildTranslation(offset);
-	Stuff::AffineMatrix4D template_to_world;
-	template_to_world.Multiply(template_to_profile, profile->m_profileToWorld);
-	Stuff::AffineMatrix4D template_to_new_local;
-	template_to_new_local.Multiply(template_to_world, world_to_new_local);
-	bounds->center = mc2::math::toGlm(Stuff::Point3D(template_to_new_local));
+	glm::mat4 template_to_profile = glm::mat4(1.0f);
+	template_to_profile[0][0] = scale;
+	template_to_profile[1][1] = scale;
+	template_to_profile[2][2] = scale;
+	mc2::math::buildTranslation(template_to_profile, offset);
+	glm::mat4 template_to_world;
+	template_to_world = template_to_profile * profile->m_profileToWorld;
+	glm::mat4 template_to_new_local;
+	template_to_new_local = template_to_world * world_to_new_local;
+	bounds->center = (mc2::math::getTranslation(template_to_new_local));
 	bounds->radius = scale;
 
 	//
@@ -1143,10 +1141,7 @@ bool
 		Check_Pointer(m_P_vertices);
 		for (i=0; i<vertex_count; ++i)
 		{
-			m_P_vertices[vertex_index+i].Multiply(
-				spec->m_vertices[i],
-				template_to_new_local
-			);
+			m_P_vertices[vertex_index+i] = mc2::math::transformPoint(spec->m_vertices[i], template_to_new_local);
 		}
 	}
 
@@ -1238,8 +1233,8 @@ void gosFX::Tube::Draw(DrawInfo *info)
 		Check_Object(spec);
 		dInfo.state.Combine(info->m_state, spec->m_state);
 		dInfo.clippingFlags = info->m_clippingFlags;
-		Stuff::LinearMatrix4D local_to_world;
-		local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
+		glm::mat4 local_to_world;
+		local_to_world = m_localToParent * *info->m_parentToWorld;
 		dInfo.effectToWorld = &local_to_world;
 		unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.GetLength());
 		m_vertexCount = m_activeProfileCount * vertex_count;
@@ -1257,10 +1252,10 @@ void gosFX::Tube::Draw(DrawInfo *info)
 			int vertex = 0;
 			unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.GetLength());
 			Verify(vertex_count < 8);
-			Stuff::Point3D
-				camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-			Stuff::LinearMatrix4D world_to_local;
-			mc2::math::fromGlm(world_to_local, glm::inverse(mc2::math::toGlm(local_to_world)));
+			glm::vec3
+				camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+			glm::mat4 world_to_local;
+			world_to_local = glm::inverse(local_to_world);
 
 			//
 			//----------------------------------------------------------------
@@ -1273,8 +1268,8 @@ void gosFX::Tube::Draw(DrawInfo *info)
 			{
 				Profile *profile = GetProfile(i);
 				Check_Object(profile);
-				Stuff::Point3D camera_in_profile;
-				camera_in_profile = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(profile->m_profileToWorld))));
+				glm::vec3 camera_in_profile;
+				camera_in_profile = (mc2::math::transformPoint(camera_in_world, glm::inverse(profile->m_profileToWorld)));
 
 				//
 				//---------------------------------------------------------
@@ -1286,8 +1281,8 @@ void gosFX::Tube::Draw(DrawInfo *info)
 				Stuff::Scalar seed = profile->m_seed;
 				Stuff::Scalar scale = spec->m_pScale.ComputeValue(age, seed);
 				Stuff::Scalar disp = spec->m_pDisplacement.ComputeValue(age, seed);
-				Stuff::Point3D offset_in_profile;
-				offset_in_profile.Multiply(profile->m_direction, disp);
+				glm::vec3 offset_in_profile;
+				offset_in_profile = profile->m_direction * disp;
 
 				//
 				//----------------------------------------------------------
@@ -1295,36 +1290,31 @@ void gosFX::Tube::Draw(DrawInfo *info)
 				// and build a rotation vector that does it
 				//----------------------------------------------------------
 				//
-				Stuff::Vector3D direction;
-				direction.Subtract(camera_in_profile, offset_in_profile);
-				Stuff::LinearMatrix4D template_rotation(true);
-				template_rotation.AlignLocalAxisToWorldVector(
-					direction,
-					Stuff::Z_Axis,
-					Stuff::Y_Axis,
-					-1
-				);
+				glm::vec3 direction;
+				direction = camera_in_profile - offset_in_profile;
+				glm::mat4 template_rotation = glm::mat4(1.0f);
+				mc2::math::alignLocalAxisToWorldVector(template_rotation, direction, Stuff::Z_Axis, Stuff::Y_Axis, -1);
 
 				//
 				//-------------------------------------------------
 				// Now build the template to new local space matrix
 				//-------------------------------------------------
 				//
-				Stuff::AffineMatrix4D template_to_profile;
-				template_to_profile(0,0) = scale*template_rotation(0,0);
-				template_to_profile(0,1) = scale*template_rotation(0,1);
-				template_to_profile(0,2) = scale*template_rotation(0,2);
-				template_to_profile(1,0) = scale*template_rotation(1,0);
-				template_to_profile(1,1) = scale*template_rotation(1,1);
-				template_to_profile(1,2) = scale*template_rotation(1,2);
-				template_to_profile(2,0) = scale*template_rotation(2,0);
-				template_to_profile(2,1) = scale*template_rotation(2,1);
-				template_to_profile(2,2) = scale*template_rotation(2,2);
-				template_to_profile.BuildTranslation(offset_in_profile);
-				Stuff::AffineMatrix4D template_to_world;
-				template_to_world.Multiply(template_to_profile, profile->m_profileToWorld);
-				Stuff::AffineMatrix4D template_to_local;
-				template_to_local.Multiply(template_to_world, world_to_local);
+				glm::mat4 template_to_profile;
+				template_to_profile[0][0] = scale*template_rotation[0][0];
+				template_to_profile[1][0] = scale*template_rotation[1][0];
+				template_to_profile[2][0] = scale*template_rotation[2][0];
+				template_to_profile[0][1] = scale*template_rotation[0][1];
+				template_to_profile[1][1] = scale*template_rotation[1][1];
+				template_to_profile[2][1] = scale*template_rotation[2][1];
+				template_to_profile[0][2] = scale*template_rotation[0][2];
+				template_to_profile[1][2] = scale*template_rotation[1][2];
+				template_to_profile[2][2] = scale*template_rotation[2][2];
+				mc2::math::buildTranslation(template_to_profile, offset_in_profile);
+				glm::mat4 template_to_world;
+				template_to_world = template_to_profile * profile->m_profileToWorld;
+				glm::mat4 template_to_local;
+				template_to_local = template_to_world * world_to_local;
 
 				//
 				//------------------------------------
@@ -1333,10 +1323,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 				//
 				for (int v=0; v<vertex_count; ++v)
 				{
-					m_P_vertices[vertex++].Multiply(
-						spec->m_vertices[v],
-						template_to_local
-					);
+					m_P_vertices[vertex++] = mc2::math::transformPoint(spec->m_vertices[v], template_to_local);
 				}
 
 				//
@@ -1438,8 +1425,8 @@ void gosFX::Tube::Draw(DrawInfo *info)
 						s_worldPos.SetLength(numVerts*3u);
 					for (unsigned vi = 0; vi < numVerts; ++vi)
 					{
-						Stuff::Point3D wp;
-						wp.Multiply(m_P_vertices[vi], local_to_world);
+						glm::vec3 wp;
+						wp = mc2::math::transformPoint(m_P_vertices[vi], local_to_world);
 						s_worldPos[vi*3+0] = wp.x;
 						s_worldPos[vi*3+1] = wp.y;
 						s_worldPos[vi*3+2] = wp.z;

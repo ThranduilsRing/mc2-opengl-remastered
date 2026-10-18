@@ -8,8 +8,6 @@
 #include<cstdio>   // VFX-POINTCLOUD-ORACLE diagnostics
 #include<cmath>    // std::min / std::max fallback (also in gosfxheaders)
 #include "mc2fmt.h"
-#include "math/stuff_glm_bridge.h"
-
 //==========================================================================//
 // File:	 gosFX_PointCloud.cpp											//
 // Contents: Base gosFX::PointCloud Component								//
@@ -118,8 +116,8 @@ gosFX::PointCloud::PointCloud(
 	gos_PopCurrentHeap();
 
 	unsigned index = spec->m_maxParticleCount*sizeof(Particle);
-	m_P_localTranslation = Cast_Pointer(Stuff::Point3D*, &m_data[index]);
-	index += spec->m_maxParticleCount*sizeof(Stuff::Point3D);
+	m_P_localTranslation = Cast_Pointer(glm::vec3*, &m_data[index]);
+	index += spec->m_maxParticleCount*sizeof(glm::vec3);
 	m_P_color = Cast_Pointer(Stuff::RGBAColor*, &m_data[index]);
 
 	m_cloudImplementation->SetData(
@@ -186,7 +184,7 @@ bool
 	if (m_activeParticleCount > 0)
 	{
 		mc2::math::Aabb box;
-		Stuff::Point3D *vertex = &m_P_localTranslation[0];
+		glm::vec3 *vertex = &m_P_localTranslation[0];
 		unsigned i=0;
 
 		//
@@ -255,19 +253,19 @@ bool
 		Verify(box.max.x >= box.min.x);
 		Verify(box.max.y >= box.min.y);
 		Verify(box.max.z >= box.min.z);
-		Stuff::OBB local_bounds = Stuff::OBB::Identity;
+		mc2::math::Obb local_bounds = mc2::math::Obb();
 		local_bounds.axisExtents.x = 0.5f * (box.max.x - box.min.x);
 		local_bounds.axisExtents.y = 0.5f * (box.max.y - box.min.y);
 		local_bounds.axisExtents.z = 0.5f * (box.max.z - box.min.z);
-		local_bounds.localToParent(3,0) = box.min.x + local_bounds.axisExtents.x;
-		local_bounds.localToParent(3,1) = box.min.y + local_bounds.axisExtents.y;
-		local_bounds.localToParent(3,2) = box.min.z + local_bounds.axisExtents.z;
-		local_bounds.sphereRadius = local_bounds.axisExtents.GetLength();
+		local_bounds.localToParent[0][3] = box.min.x + local_bounds.axisExtents.x;
+		local_bounds.localToParent[1][3] = box.min.y + local_bounds.axisExtents.y;
+		local_bounds.localToParent[2][3] = box.min.z + local_bounds.axisExtents.z;
+		local_bounds.sphereRadius = glm::length(local_bounds.axisExtents);
 		if (local_bounds.sphereRadius < Stuff::SMALL)
 			local_bounds.sphereRadius = 0.01f;
-		Stuff::OBB parent_bounds;
-		parent_bounds.Multiply(local_bounds, m_localToParent);
-		info->m_bounds->Union(*info->m_bounds, parent_bounds);
+		mc2::math::Obb parent_bounds;
+		parent_bounds = mc2::math::multiply(local_bounds, m_localToParent);
+		(*info->m_bounds) = mc2::math::unite(*info->m_bounds, parent_bounds);
 	}
 
 	//
@@ -283,7 +281,7 @@ bool
 void
 	gosFX::PointCloud::CreateNewParticle(
 		unsigned index,
-		Stuff::Point3D *translation
+		glm::vec3 *translation
 	)
 {
 	Check_Object(this);
@@ -306,7 +304,7 @@ void
 bool
 	gosFX::PointCloud::AnimateParticle(
 		unsigned index,
-		const Stuff::LinearMatrix4D *world_to_new_local,
+		const glm::mat4 *world_to_new_local,
 		Stuff::Time till
 	)
 {
@@ -325,15 +323,15 @@ bool
 	if (age >= 1.0f)
 		return false;
 	Set_Statistic(Point_Count, Point_Count+1);
-	Stuff::Vector3D *velocity = &particle->m_localLinearVelocity;
-	Stuff::Point3D *translation = &m_P_localTranslation[index];
+	glm::vec3 *velocity = &particle->m_localLinearVelocity;
+	glm::vec3 *translation = &m_P_localTranslation[index];
 	int sim_mode = GetSimulationMode();
 	if (sim_mode == DynamicWorldSpaceSimulationMode)
 	{
 		Check_Object(translation);
 		Check_Object(velocity);
-		particle->m_worldLinearVelocity.Multiply(*velocity, m_localToWorld);
-		particle->m_worldTranslation.Multiply(*translation, m_localToWorld);
+		particle->m_worldLinearVelocity = mc2::math::transformVector(*velocity, m_localToWorld);
+		particle->m_worldTranslation = mc2::math::transformPoint(*translation, m_localToWorld);
 		translation = &particle->m_worldTranslation;
 		velocity = &particle->m_worldLinearVelocity;
 	}
@@ -349,11 +347,11 @@ bool
 	Stuff::Scalar seed = particle->m_seed;
 	Specification *spec = GetSpecification();
 	Check_Object(spec);
-	Stuff::Vector3D ether;
+	glm::vec3 ether;
 	ether.x = spec->m_pEtherVelocityX.ComputeValue(age, seed);
 	ether.y = spec->m_pEtherVelocityY.ComputeValue(age, seed);
 	ether.z = spec->m_pEtherVelocityZ.ComputeValue(age, seed);
-	Stuff::Vector3D accel(Stuff::Vector3D::Identity);
+	glm::vec3 accel(glm::vec3(0.0f));
 
 	//
 	//-------------------------------------------------------------------
@@ -366,25 +364,25 @@ bool
 	Max_Clamp(drag, 0.0f);
 	if (sim_mode == StaticWorldSpaceSimulationMode)
 	{
-		Stuff::LinearMatrix4D world_to_effect;
-		mc2::math::fromGlm(world_to_effect, glm::inverse(mc2::math::toGlm(m_localToWorld)));
-		Stuff::Vector3D local_ether;
-		local_ether = mc2::math::toVector3D(mc2::math::transformVector(mc2::math::toGlm(ether), glm::inverse(mc2::math::toGlm(world_to_effect))));
-		Stuff::Vector3D rel_vel;
-		rel_vel.Subtract(*velocity, local_ether);
-		accel.Multiply(rel_vel, drag);
+		glm::mat4 world_to_effect;
+		world_to_effect = glm::inverse(m_localToWorld);
+		glm::vec3 local_ether;
+		local_ether = (mc2::math::transformVector(ether, glm::inverse(world_to_effect)));
+		glm::vec3 rel_vel;
+		rel_vel = *velocity - local_ether;
+		accel = rel_vel * drag;
 
 		//
 		//-----------------------------------------
 		// Now, add in acceleration of the particle
 		//-----------------------------------------
 		//
-		Stuff::Vector3D world_accel;
+		glm::vec3 world_accel;
 		world_accel.x = spec->m_pAccelerationX.ComputeValue(age, seed);
 		world_accel.y = spec->m_pAccelerationY.ComputeValue(age, seed);
 		world_accel.z = spec->m_pAccelerationZ.ComputeValue(age, seed);
-		Stuff::Vector3D local_accel;
-		local_accel.Multiply(world_accel, world_to_effect);
+		glm::vec3 local_accel;
+		local_accel = mc2::math::transformVector(world_accel, world_to_effect);
 		accel += local_accel;
 	}
 
@@ -395,9 +393,9 @@ bool
 	//
 	else
 	{
-		Stuff::Vector3D rel_vel;
-		rel_vel.Subtract(*velocity, ether);
-		accel.Multiply(rel_vel, drag);
+		glm::vec3 rel_vel;
+		rel_vel = *velocity - ether;
+		accel = rel_vel * drag;
 
 		//
 		//-----------------------------------------
@@ -416,8 +414,8 @@ bool
 	//
 	Stuff::Scalar time_slice =
 		static_cast<Stuff::Scalar>(till - m_lastRan);
-	velocity->AddScaled(*velocity, accel, time_slice);
-	translation->AddScaled(*translation, *velocity, time_slice);
+	(*velocity) = *velocity + accel * time_slice;
+	(*translation) = *translation + *velocity * time_slice;
 
 	//
 	//---------------------------------------------------------------------
@@ -428,14 +426,8 @@ bool
 	if (sim_mode == DynamicWorldSpaceSimulationMode)
 	{
 		Check_Object(world_to_new_local);
-		particle->m_localLinearVelocity.Multiply(
-			particle->m_worldLinearVelocity,
-			*world_to_new_local
-		);
-		m_P_localTranslation[index].Multiply(
-			particle->m_worldTranslation,
-			*world_to_new_local
-		);
+		particle->m_localLinearVelocity = mc2::math::transformVector(particle->m_worldLinearVelocity, *world_to_new_local);
+		m_P_localTranslation[index] = mc2::math::transformPoint(particle->m_worldTranslation, *world_to_new_local);
 	}
 
 	//
@@ -487,8 +479,8 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
 				    am == MidLevelRenderer::MLRState::AlphaOneMode)
 					blendMode = 2;
 			}
-			Stuff::LinearMatrix4D local_to_world;
-			local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
+			glm::mat4 local_to_world;
+			local_to_world = m_localToParent * *info->m_parentToWorld;
 
 			mc2::particles::Batcher &batcher = mc2::particles::Batcher::Instance();
 			batcher.BeginGroup(mlrTex, 0.0f, 0.0f, 1.0f, 1.0f, blendMode, 0u);
@@ -502,8 +494,8 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
 				Check_Object(p);
 				if (p->m_age >= 1.0f) continue;   // skip dead slots
 
-				Stuff::Point3D wc;
-				wc.Multiply(m_P_localTranslation[i], local_to_world);
+				glm::vec3 wc;
+				wc = mc2::math::transformPoint(m_P_localTranslation[i], local_to_world);
 
 				const Stuff::RGBAColor &c = m_P_color[i];
 

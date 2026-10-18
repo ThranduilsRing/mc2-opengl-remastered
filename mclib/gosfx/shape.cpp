@@ -224,12 +224,12 @@ void
 		{
 			MidLevelRenderer::MLRPrimitiveBase *primitive = m_shape->Find(i);
 			Check_Object(primitive);
-			Stuff::Point3D *points;
+			glm::vec3 *points;
 			int vertex_count;
 			primitive->GetCoordData(&points, &vertex_count);
 			for (int v=0; v<vertex_count; ++v)
 			{
-				Stuff::Scalar len = points[v].GetLengthSquared();
+				Stuff::Scalar len = mc2::math::lengthSquared(points[v]);
 				if (len > m_radius)
 					m_radius = len;
 			}
@@ -325,11 +325,11 @@ void gosFX::Shape::Draw(DrawInfo *info)
 	dinfo.activeLights = nullptr;
 	dinfo.nrOfActiveLights = 0;
 	dinfo.shape = shape;
-	Stuff::Vector3D scale(m_scale, m_scale, m_scale);
+	glm::vec3 scale(m_scale, m_scale, m_scale);
 	dinfo.scaling = &scale;
 	dinfo.paintMe = &m_color;
-	Stuff::LinearMatrix4D local_to_world;
-	local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
+	glm::mat4 local_to_world;
+	local_to_world = m_localToParent * *info->m_parentToWorld;
 	dinfo.shapeToWorld = &local_to_world;
 
 	//
@@ -339,25 +339,15 @@ void gosFX::Shape::Draw(DrawInfo *info)
 	//
 	if (spec->m_alignZUsingX)
 	{
-		Stuff::Point3D
-			camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-		Stuff::Point3D card_in_world(local_to_world);
-		Stuff::Vector3D look_at;
-		look_at.Subtract(camera_in_world, card_in_world);
+		glm::vec3
+			camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+		glm::vec3 card_in_world = mc2::math::getTranslation(local_to_world);
+		glm::vec3 look_at;
+		look_at = camera_in_world - card_in_world;
 		if (spec->m_alignZUsingY)
-			local_to_world.AlignLocalAxisToWorldVector(
-				look_at,
-				Stuff::Z_Axis,
-				Stuff::Y_Axis,
-				Stuff::X_Axis
-			);
+			mc2::math::alignLocalAxisToWorldVector(local_to_world, look_at, Stuff::Z_Axis, Stuff::Y_Axis, Stuff::X_Axis);
 		else
-			local_to_world.AlignLocalAxisToWorldVector(
-				look_at,
-				Stuff::Z_Axis,
-				Stuff::X_Axis,
-				-1
-			);
+			mc2::math::alignLocalAxisToWorldVector(local_to_world, look_at, Stuff::Z_Axis, Stuff::X_Axis, -1);
 	}
 
 	//
@@ -367,17 +357,12 @@ void gosFX::Shape::Draw(DrawInfo *info)
 	//
 	else if (spec->m_alignZUsingY)
 	{
-		Stuff::Point3D
-			camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-		Stuff::Point3D card_in_world(local_to_world);
-		Stuff::Vector3D look_at;
-		look_at.Subtract(camera_in_world, card_in_world);
-		local_to_world.AlignLocalAxisToWorldVector(
-			look_at,
-			Stuff::Z_Axis,
-			Stuff::Y_Axis,
-			-1
-		);
+		glm::vec3
+			camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+		glm::vec3 card_in_world = mc2::math::getTranslation(local_to_world);
+		glm::vec3 look_at;
+		look_at = camera_in_world - card_in_world;
+		mc2::math::alignLocalAxisToWorldVector(local_to_world, look_at, Stuff::Z_Axis, Stuff::Y_Axis, -1);
 	}
 
 	//
@@ -426,8 +411,8 @@ void gosFX::Shape::Draw(DrawInfo *info)
 			for (int c = 0; c < 3; ++c)
 			{
 				for (int k = 0; k < 3; ++k)
-					m2w[k*4 + c] = (float)local_to_world(k, c);
-				m2w[3*4 + c] = (float)local_to_world(3, c);  // translation
+					m2w[k*4 + c] = (float)local_to_world[c][k];
+				m2w[3*4 + c] = (float)local_to_world[c][3];  // translation
 			}
 			m2w[3*4 + 3] = 1.0f;
 
@@ -468,7 +453,7 @@ void gosFX::Shape::Draw(DrawInfo *info)
 
 				if (needUpload)
 				{
-					Stuff::Point3D   *coords = nullptr; int nCoords = 0;
+					glm::vec3   *coords = nullptr; int nCoords = 0;
 					MidLevelRenderer::Vector2DScalar *texc = nullptr; int nTex = 0;
 					unsigned short   *indices = nullptr; int nIdx   = 0;
 					prim->GetCoordData(&coords, &nCoords);

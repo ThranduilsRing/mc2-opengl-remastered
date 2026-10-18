@@ -1,8 +1,6 @@
 #include"gosfxheaders.hpp"
 #include "mlr_cloud_draw.hpp"
 #include<mlr/mlrngoncloud.hpp>
-#include "math/stuff_glm_bridge.h"
-
 //==========================================================================//
 // File:	 gosFX_gosFX::PertCloud.cpp										//
 // Contents: Base gosFX::PertCloud Component								//
@@ -34,7 +32,7 @@ gosFX::PertCloud__Specification::PertCloud__Specification(
 	*stream >> m_vertices;
 	m_totalParticleSize =
 		sizeof(gosFX::PertCloud::Particle)
-		 + m_vertices * sizeof(Stuff::Point3D)
+		 + m_vertices * sizeof(glm::vec3)
 		 + 2 * sizeof(Stuff::RGBAColor);
 }
 
@@ -49,7 +47,7 @@ gosFX::PertCloud__Specification::PertCloud__Specification(unsigned sides):
 	m_vertices = sides+2;
 	m_totalParticleSize =
 		sizeof(gosFX::PertCloud::Particle)
-		 + m_vertices * sizeof(Stuff::Point3D)
+		 + m_vertices * sizeof(glm::vec3)
 		 + 2 * sizeof(Stuff::RGBAColor);
 }
 
@@ -238,9 +236,9 @@ gosFX::PertCloud::PertCloud(
 	gos_PopCurrentHeap();
 
 	unsigned index = spec->m_maxParticleCount*sizeof(Particle);
-	m_P_vertices = Cast_Pointer(Stuff::Point3D*, &m_data[index]);
+	m_P_vertices = Cast_Pointer(glm::vec3*, &m_data[index]);
 	index +=
-		spec->m_vertices * spec->m_maxParticleCount * sizeof(Stuff::Point3D);
+		spec->m_vertices * spec->m_maxParticleCount * sizeof(glm::vec3);
 	m_P_color = Cast_Pointer(Stuff::RGBAColor*, &m_data[index]);
 	
 	m_cloudImplementation->SetData(
@@ -279,7 +277,7 @@ gosFX::PertCloud*
 bool
 	gosFX::PertCloud::AnimateParticle(
 		unsigned index,
-		const Stuff::LinearMatrix4D *world_to_new_local,
+		const glm::mat4 *world_to_new_local,
 		Stuff::Time till
 	)
 {
@@ -325,7 +323,7 @@ bool
 void
 	gosFX::PertCloud::CreateNewParticle(
 		unsigned index,
-		Stuff::Point3D *translation
+		glm::vec3 *translation
 	)
 {
 	Check_Object(this);
@@ -358,7 +356,7 @@ void
 	Stuff::Scalar angle_between = Stuff::Two_Pi/(spec->m_vertices-2);
 	Stuff::Scalar radius = spec->m_size.ComputeValue(m_age, particle->m_seed);
 	int even = 1;
-	particle->m_vertices[0] = Stuff::Point3D::Identity;
+	particle->m_vertices[0] = glm::vec3(0.0f);
 	Stuff::Scalar bound = 0.0f;
     int j=1;
 	for (; j<spec->m_vertices-1; j++)
@@ -367,7 +365,7 @@ void
 			even * spec->m_perturbation.ComputeValue(m_age, particle->m_seed);
 		Stuff::Scalar temp = perturbance + radius;
 		particle->m_vertices[j] =
-			Stuff::Point3D(
+			glm::vec3(
 				mc2::math::sinD(j*angle_between)*temp,
 				mc2::math::cosD(j*angle_between)*temp,
 				perturbance
@@ -425,10 +423,10 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 				// Get the camera location into local space
 				//-----------------------------------------
 				//
-				Stuff::Point3D
-					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
+				glm::vec3
+					camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+				glm::vec3 camera_in_cloud;
+				camera_in_cloud = (mc2::math::transformPoint(camera_in_world, glm::inverse(local_to_world)));
 
 				//
 				//--------------------------------------
@@ -447,20 +445,12 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 						// Build the local to cloud matrix
 						//--------------------------------
 						//
-						Stuff::Vector3D direction_in_cloud;
-						direction_in_cloud.Subtract(
-							camera_in_cloud,
-							particle->m_localTranslation
-						);
-						Stuff::LinearMatrix4D pert_to_cloud;
-						pert_to_cloud.BuildRotation(particle->m_localRotation);
-						pert_to_cloud.AlignLocalAxisToWorldVector(
-							direction_in_cloud,
-							Stuff::Z_Axis,
-							Stuff::Y_Axis,
-							Stuff::X_Axis
-						);
-						pert_to_cloud.BuildTranslation(particle->m_localTranslation);
+						glm::vec3 direction_in_cloud;
+						direction_in_cloud = camera_in_cloud - particle->m_localTranslation;
+						glm::mat4 pert_to_cloud;
+						mc2::math::buildRotation(pert_to_cloud, particle->m_localRotation);
+						mc2::math::alignLocalAxisToWorldVector(pert_to_cloud, direction_in_cloud, Stuff::Z_Axis, Stuff::Y_Axis, Stuff::X_Axis);
+						mc2::math::buildTranslation(pert_to_cloud, particle->m_localTranslation);
 
 						//
 						//----------------------------------------------------
@@ -470,9 +460,9 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 						Stuff::Scalar scale = particle->m_scale;
 						for (unsigned v=0; v<spec->m_vertices; ++v)
 						{
-							Stuff::Point3D scaled;
-							scaled.Multiply(particle->m_vertices[v], scale);
-							m_P_vertices[vert++].Multiply(scaled, pert_to_cloud);
+							glm::vec3 scaled;
+							scaled = particle->m_vertices[v] * scale;
+							m_P_vertices[vert++] = mc2::math::transformPoint(scaled, pert_to_cloud);
 						}
 					}
 					else
@@ -492,10 +482,10 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 				// Get the camera location into local space
 				//-----------------------------------------
 				//
-				Stuff::Point3D
-					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
+				glm::vec3
+					camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+				glm::vec3 camera_in_cloud;
+				camera_in_cloud = (mc2::math::transformPoint(camera_in_world, glm::inverse(local_to_world)));
 
 				//
 				//--------------------------------------
@@ -514,20 +504,12 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 						// Build the local to cloud matrix
 						//--------------------------------
 						//
-						Stuff::Vector3D direction_in_cloud;
-						direction_in_cloud.Subtract(
-							camera_in_cloud,
-							particle->m_localTranslation
-						);
-						Stuff::LinearMatrix4D pert_to_cloud;
-						pert_to_cloud.BuildRotation(particle->m_localRotation);
-						pert_to_cloud.AlignLocalAxisToWorldVector(
-							direction_in_cloud,
-							Stuff::Z_Axis,
-							Stuff::X_Axis,
-							-1
-						);
-						pert_to_cloud.BuildTranslation(particle->m_localTranslation);
+						glm::vec3 direction_in_cloud;
+						direction_in_cloud = camera_in_cloud - particle->m_localTranslation;
+						glm::mat4 pert_to_cloud;
+						mc2::math::buildRotation(pert_to_cloud, particle->m_localRotation);
+						mc2::math::alignLocalAxisToWorldVector(pert_to_cloud, direction_in_cloud, Stuff::Z_Axis, Stuff::X_Axis, -1);
+						mc2::math::buildTranslation(pert_to_cloud, particle->m_localTranslation);
 
 						//
 						//----------------------------------------------------
@@ -537,9 +519,9 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 						Stuff::Scalar scale = particle->m_scale;
 						for (unsigned v=0; v<spec->m_vertices; ++v)
 						{
-							Stuff::Point3D scaled;
-							scaled.Multiply(particle->m_vertices[v], scale);
-							m_P_vertices[vert++].Multiply(scaled, pert_to_cloud);
+							glm::vec3 scaled;
+							scaled = particle->m_vertices[v] * scale;
+							m_P_vertices[vert++] = mc2::math::transformPoint(scaled, pert_to_cloud);
 						}
 					}
 					else
@@ -560,10 +542,10 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 			// Get the camera location into local space
 			//-----------------------------------------
 			//
-			Stuff::Point3D
-				camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-			Stuff::Point3D camera_in_cloud;
-			camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
+			glm::vec3
+				camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+			glm::vec3 camera_in_cloud;
+			camera_in_cloud = (mc2::math::transformPoint(camera_in_world, glm::inverse(local_to_world)));
 
 			//
 			//--------------------------------------
@@ -582,20 +564,12 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 					// Build the local to cloud matrix
 					//--------------------------------
 					//
-					Stuff::Vector3D direction_in_cloud;
-					direction_in_cloud.Subtract(
-						camera_in_cloud,
-						particle->m_localTranslation
-					);
-					Stuff::LinearMatrix4D pert_to_cloud;
-					pert_to_cloud.BuildRotation(particle->m_localRotation);
-					pert_to_cloud.AlignLocalAxisToWorldVector(
-						direction_in_cloud,
-						Stuff::Z_Axis,
-						Stuff::Y_Axis,
-						-1
-					);
-					pert_to_cloud.BuildTranslation(particle->m_localTranslation);
+					glm::vec3 direction_in_cloud;
+					direction_in_cloud = camera_in_cloud - particle->m_localTranslation;
+					glm::mat4 pert_to_cloud;
+					mc2::math::buildRotation(pert_to_cloud, particle->m_localRotation);
+					mc2::math::alignLocalAxisToWorldVector(pert_to_cloud, direction_in_cloud, Stuff::Z_Axis, Stuff::Y_Axis, -1);
+					mc2::math::buildTranslation(pert_to_cloud, particle->m_localTranslation);
 
 					//
 					//----------------------------------------------------
@@ -605,9 +579,9 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 					Stuff::Scalar scale = particle->m_scale;
 					for (unsigned v=0; v<spec->m_vertices; ++v)
 					{
-						Stuff::Point3D scaled;
-						scaled.Multiply(particle->m_vertices[v], scale);
-						m_P_vertices[vert++].Multiply(scaled, pert_to_cloud);
+						glm::vec3 scaled;
+						scaled = particle->m_vertices[v] * scale;
+						m_P_vertices[vert++] = mc2::math::transformPoint(scaled, pert_to_cloud);
 					}
 				}
 				else
@@ -635,9 +609,9 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 					// Build the local to cloud matrix
 					//--------------------------------
 					//
-					Stuff::LinearMatrix4D pert_to_cloud;
-					pert_to_cloud.BuildRotation(particle->m_localRotation);
-					pert_to_cloud.BuildTranslation(particle->m_localTranslation);
+					glm::mat4 pert_to_cloud;
+					mc2::math::buildRotation(pert_to_cloud, particle->m_localRotation);
+					mc2::math::buildTranslation(pert_to_cloud, particle->m_localTranslation);
 
 					//
 					//----------------------------------------------------
@@ -647,9 +621,9 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 					Stuff::Scalar scale = particle->m_scale;
 					for (unsigned v=0; v<spec->m_vertices; ++v)
 					{
-						Stuff::Point3D scaled;
-						scaled.Multiply(particle->m_vertices[v], scale);
-						m_P_vertices[vert++].Multiply(scaled, pert_to_cloud);
+						glm::vec3 scaled;
+						scaled = particle->m_vertices[v] * scale;
+						m_P_vertices[vert++] = mc2::math::transformPoint(scaled, pert_to_cloud);
 					}
 				}
 				else

@@ -79,7 +79,7 @@ namespace gosFX
 		public SpinningCloud__Particle
 	{
 	public:
-		Stuff::Point3D
+		glm::vec3
 			m_vertices[MidLevelRenderer::Limits::Max_Number_Of_NGon_Vertices];
 	};
 
@@ -101,7 +101,7 @@ namespace gosFX
 
 	protected:
 		std::unique_ptr<MidLevelRenderer::MLRNGonCloud> m_cloudImplementation;						// Pert to an MLR Pert cloud by Jim
-		Stuff::Point3D		*m_P_vertices;
+		glm::vec3		*m_P_vertices;
 		Stuff::RGBAColor	*m_P_color;
 
 	//----------------------------------------------------------------------------
@@ -157,13 +157,13 @@ namespace gosFX
 		bool
 			AnimateParticle(
 				unsigned index,
-				const Stuff::LinearMatrix4D *world_to_new_local,
+				const glm::mat4 *world_to_new_local,
 				Stuff::Time till
 			);
 		void
 			CreateNewParticle(
 				unsigned index,
-				Stuff::Point3D *translation
+				glm::vec3 *translation
 			);
 		void
 			DestroyParticle(unsigned index);
