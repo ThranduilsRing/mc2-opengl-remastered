@@ -38,7 +38,7 @@ RadioPtr	  		Radio::radioList[MAX_RADIOS];	//Warriors no longer delete their rad
 bool				Radio::radioListGo = false;
 bool				Radio::messageInfoLoaded = false;
 long				Radio::currentRadio = 0;
-UserHeapPtr			Radio::radioHeap = nullptr;
+std::unique_ptr<UserHeap>	Radio::radioHeap;
 PacketFilePtr		Radio::messagesFile[MAX_RADIOS];
 
 RadioMessageInfo	messageInfo[RADIO_MESSAGE_COUNT];
@@ -59,7 +59,7 @@ void *Radio::operator new (size_t mySize)
 		
 		currentRadio = 0;
 		
-		radioHeap = new UserHeap;
+		radioHeap = std::make_unique<UserHeap>();
 		radioHeap->init((4096 * 51)-1,"Radios");
 		radioHeap->setMallocFatals(false);
 	}

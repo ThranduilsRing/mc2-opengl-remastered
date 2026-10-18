@@ -18,6 +18,7 @@
 #endif
 
 #include<cstdint>
+#include<memory>
 #include<vector>
 
 #ifndef DRADIO_H
@@ -99,7 +100,7 @@ class Radio
 		static bool				messageInfoLoaded;
 		static bool				radioListGo;
 		static long				currentRadio;
-		static UserHeapPtr		radioHeap;				//Only one Heap Per Game!!!
+		static std::unique_ptr<UserHeap>	radioHeap;				//Only one Heap Per Game!!!
 	
 	//Member Functions
 	//-----------------
