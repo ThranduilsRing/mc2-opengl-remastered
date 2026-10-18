@@ -9115,26 +9115,6 @@
    "count": 1
   },
   {
-   "tag": "SHADOW_STATE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "pass",
-    "fbo",
-    "vp",
-    "clearDepth",
-    "depthTest",
-    "depthFunc",
-    "depthMask",
-    "colorMask",
-    "cull",
-    "clipOrigin",
-    "clipDepth",
-    "restored"
-   ],
-   "count": 1
-  },
-  {
    "tag": "SHADOW_STATIC_BLDG_REBAKE_TEST",
    "ver": 1,
    "stream": "stderr",
