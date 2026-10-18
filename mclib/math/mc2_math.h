@@ -86,6 +86,31 @@ struct Sphere {
 };
 static_assert(sizeof(Sphere) == 16, "Stuff::Sphere was a Point3D and a Scalar");
 
+// Stuff::UnitVector3D = Vector3D (Vector3D::Normalize), verbatim: one float reciprocal of the length, then three multiplies.
+inline glm::vec3 normalizeExact(const glm::vec3& v)
+{
+	const float len = 1.0f / std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+	return glm::vec3(v.x * len, v.y * len, v.z * len);
+}
+
+// The former Stuff::Plane (S5.16): points p with dot(normal, p) == offset (the MLR mesh face planes). Same 16-byte layout.
+struct Plane {
+	glm::vec3 normal{0.0f};
+	float offset = 0.0f;
+
+	// Stuff::Plane::BuildPlane, verbatim: (p1 - p0) x (p2 - p1), normalized, offset at p0.
+	void buildPlane(const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2)
+	{
+		const glm::vec3 v1(p1.x - p0.x, p1.y - p0.y, p1.z - p0.z), v2(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z);
+		const glm::vec3 axis(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);
+		normal = normalizeExact(axis);
+		offset = normal.x * p0.x + normal.y * p0.y + normal.z * p0.z;
+	}
+	float distanceTo(const glm::vec3& p) const { return normal.x * p.x + normal.y * p.y + normal.z * p.z - offset; }
+	bool isSeenBy(const glm::vec3& p) const { return normal.x * p.x + normal.y * p.y + normal.z * p.z > offset; }
+};
+static_assert(sizeof(Plane) == 16, "Stuff::Plane was a UnitVector3D and a Scalar");
+
 inline glm::vec3 polarToVector(const YawPitchRange& polar)
 {
 	const float azimuthSine = sinf(polar.yaw), azimuthCosine = cosf(polar.yaw), altitudeSine = sinf(polar.pitch),

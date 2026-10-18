@@ -46,7 +46,7 @@ void
 					continue;
 				}
 
-				f = facePlanes[i].GetDistanceTo(lightPosInShape);
+				f = facePlanes[i].distanceTo(mc2::math::toGlm(lightPosInShape));
 				
 				lm = false;
 
@@ -55,7 +55,7 @@ void
 					rhf = 1.0f/f;
 
 					matrix = LinearMatrix4D::Identity;
-					matrix.AlignLocalAxisToWorldVector(facePlanes[i].normal, Z_Axis, X_Axis, Y_Axis);
+					matrix.AlignLocalAxisToWorldVector(mc2::math::toVector3D(facePlanes[i].normal), Z_Axis, X_Axis, Y_Axis);
 					matrix.GetLocalLeftInWorld(&left);
 					matrix.GetLocalUpInWorld(&up);
 					matrix.GetLocalForwardInWorld(&forward);
@@ -117,7 +117,7 @@ void
 					SPEW(("micgaert", "vertex2 = %f,%f,%f", vec.x, vec.y, vec.z));
 					vec = coords[index[j+2]];
 					SPEW(("micgaert", "vertex3 = %f,%f,%f", vec.x, vec.y, vec.z));
-					vec = facePlanes[i].normal;
+					vec = mc2::math::toVector3D(facePlanes[i].normal);
 					SPEW(("micgaert", "normal = %f,%f,%f", vec.x, vec.y, vec.z));
 					SPEW(("micgaert", "forward = %f,%f,%f", forward.x, forward.y, forward.z));
 					SPEW(("micgaert", "distance = %f", f));
@@ -180,7 +180,7 @@ void
 
 				lm = false;
 
-				if(!facePlanes[i].IsSeenBy(lightPosInShape))
+				if(!facePlanes[i].isSeenBy(mc2::math::toGlm(lightPosInShape)))
 				{
 					continue;
 				}
@@ -331,7 +331,7 @@ void
 	#endif
 				}
 	#if SPEW_AWAY
-				Vector3D vec = facePlanes[i].normal;
+				Vector3D vec = mc2::math::toVector3D(facePlanes[i].normal);
 				SPEW(("micgaert", "normal = %f,%f,%f", vec.x, vec.y, vec.z));
 				SPEW(("micgaert", "forward = %f,%f,%f", forward.x, forward.y, forward.z));
 				SPEW(("micgaert", "left = %f,%f,%f", left.x, left.y, left.z));

@@ -159,6 +159,31 @@ void vectors(Corpus& corpus, const Stuff::Vector3D& a, const Stuff::Vector3D& b,
     const auto united = mc2::math::unite(boxA, boxB);
     corpus.vector("exact.box-union-min", mc2::math::toVector3D(legacyBoxMin(boxA.min, boxB.min)), united.min, true);
     corpus.vector("exact.box-union-max", mc2::math::toVector3D(legacyBoxMax(boxA.max, boxB.max)), united.max, true);
+    {
+        // S5.16: Stuff::Plane is gone; its verbatim body is UnitVector3D = Vector3D (Normalize) and the Vector3D dot product.
+        const float l2 = a.GetLengthSquared();
+        if (std::isfinite(l2) && !Stuff::Small_Enough(std::sqrt(l2))) {
+            Stuff::Vector3D legacy;
+            legacy.Normalize(a);
+            corpus.vector("exact.normalize", legacy, mc2::math::normalizeExact(ga), true);
+        }
+        const Stuff::Point3D p0(a), p1(b), p2(Stuff::Vector3D(b.y, a.z, t));
+        Stuff::Vector3D v1, v2, axis;
+        v1.Subtract(p1, p0);
+        v2.Subtract(p2, p1);
+        axis.Cross(v1, v2);
+        const float axisLength = axis.GetLength();
+        if (std::isfinite(axisLength) && !Stuff::Small_Enough(axisLength)) {
+            Stuff::UnitVector3D normal;
+            normal = axis;
+            const float offset = normal * p0;
+            mc2::math::Plane plane;
+            plane.buildPlane(mc2::math::toGlm(p0), mc2::math::toGlm(p1), mc2::math::toGlm(p2));
+            corpus.vector("exact.plane-normal", normal, plane.normal, true);
+            corpus.exact("exact.plane-offset", offset, plane.offset);
+            corpus.exact("exact.plane-distance", normal * p2 - offset, plane.distanceTo(mc2::math::toGlm(p2)));
+        }
+    }
     corpus.vector("point.add", point.Add(a, b), ga + gb, true);
     corpus.vector("bridge.round-trip", mc2::math::toVector3D(ga), ga, true);
     corpus.vector("point.subtract", point.Subtract(Stuff::Point3D(a), b), ga - gb, true);
@@ -300,7 +325,7 @@ TEST_CASE("Stuff/GLM identity detects byte changes and classifies migration cand
         matrices(corpus, rng, i);
     }
     std::printf("[STUFF_GLM] seed=%u random_cases=%u glm=1.0.1 mode=scalar-precise\n", seed, randomCases);
-    REQUIRE(corpus.rows.size() == 56);  // S5.3 deleted Arcsin, Tan, MultiplyByInverse; S5.13/S5.14 added the polar and box rows
+    REQUIRE(corpus.rows.size() == 60);  // S5.3 deleted Arcsin, Tan, MultiplyByInverse; S5.13/S5.14 added the polar and box rows
     // Step 5: every operation identical on the opening corpus is now REQUIRED identical (a port relies on it), as are the exact
     // wrappers (mclib/math/mc2_math.h) and the bridge. Differing render-only operations stay characterized.
     static const char* const identical[] = {"angle.sincos-cos", "angle.sincos-sin", "chain.line-of-sight-step",

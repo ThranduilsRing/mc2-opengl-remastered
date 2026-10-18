@@ -196,10 +196,10 @@ void
 
 	for(i=0,j=0;i<numPrimitives;++i,j+=3)
 	{
-		facePlanes[i].BuildPlane(
-			coords[index[j]],
-			coords[index[j+1]],
-			coords[index[j+2]]
+		facePlanes[i].buildPlane(
+			mc2::math::toGlm(coords[index[j]]),
+			mc2::math::toGlm(coords[index[j+1]]),
+			mc2::math::toGlm(coords[index[j+2]])
 		);
 
 		;
@@ -215,7 +215,7 @@ int
 
 	int ret = 0;
 	unsigned char *iPtr;
-	Plane *p;
+	const mc2::math::Plane *p;
 
 	if(numOfTriangles <= 0)
 	{
@@ -237,7 +237,7 @@ int
 		memset(iPtr, 0, numOfTriangles);
 		for(int i=numOfTriangles-1;i>=0;p--,i--)
 		{
-			if(p->GetDistanceTo(u)>= 0.0f)
+			if(p->distanceTo(mc2::math::toGlm(u))>= 0.0f)
 			{
 				iPtr[i] = (unsigned char)(ret = 1);
 			}

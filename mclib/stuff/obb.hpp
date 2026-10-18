@@ -232,8 +232,6 @@ namespace Stuff {
 		//
 		bool
 			Contains(const Point3D &point) const;
-		bool
-			Intersects(const Plane &plane) const;
 
 		void
 			Union(

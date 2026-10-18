@@ -9,7 +9,6 @@ set(SOURCES ${SOURCES}
     linearmatrix.cpp
     matrix.cpp
     obb.cpp
-    plane.cpp
     point3d.cpp
     random.cpp
     rotation.cpp

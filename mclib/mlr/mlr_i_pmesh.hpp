@@ -8,6 +8,7 @@
 #if !defined(MLR_MLR_HPP)
 #include<mlr/mlr.hpp>
 #endif
+#include "math/stuff_glm_bridge.h"
 
 #if !defined(MLR_MLRINDEXEDPRIMITIVEBASE_HPP)
 #include<mlr/mlrindexedprimitivebase.hpp>
@@ -67,7 +68,7 @@ namespace MidLevelRenderer {
 
 		virtual int	FindBackFace(const Stuff::Point3D&);
 
-		const Stuff::Plane *GetPolygonPlane(int i)
+		const mc2::math::Plane *GetPolygonPlane(int i)
 			{
 				Check_Object(this);
 				Verify(i<facePlanes.GetLength());
@@ -131,7 +132,7 @@ namespace MidLevelRenderer {
 
 		Stuff::DynamicArrayOf<unsigned char>	testList;
 		
-		Stuff::DynamicArrayOf<Stuff::Plane> facePlanes;
+		Stuff::DynamicArrayOf<mc2::math::Plane> facePlanes;
 		
 	};
 

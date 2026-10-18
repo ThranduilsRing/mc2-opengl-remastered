@@ -74,7 +74,7 @@ namespace MidLevelRenderer {
 
 		virtual int	FindBackFace(const Stuff::Point3D&);
 
-		const Stuff::Plane *GetTrianglePlane(int i)
+		const mc2::math::Plane *GetTrianglePlane(int i)
 			{
 				Check_Object(this);
 				Verify(i<facePlanes.GetLength());
@@ -143,7 +143,7 @@ namespace MidLevelRenderer {
 
 		Stuff::DynamicArrayOf<unsigned char>	testList;
 		
-		Stuff::DynamicArrayOf<Stuff::Plane> facePlanes;
+		Stuff::DynamicArrayOf<mc2::math::Plane> facePlanes;
 		
 	};
 

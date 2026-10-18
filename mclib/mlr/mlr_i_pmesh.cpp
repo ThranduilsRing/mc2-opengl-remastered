@@ -237,10 +237,10 @@ void
 	{
 		stride = lengths[i];
 
-		facePlanes[i].BuildPlane(
-			coords[index[j]],
-			coords[index[j+1]],
-			coords[index[j+2]]
+		facePlanes[i].buildPlane(
+			mc2::math::toGlm(coords[index[j]]),
+			mc2::math::toGlm(coords[index[j+1]]),
+			mc2::math::toGlm(coords[index[j+2]])
 		);
 
 		j += stride;
@@ -257,7 +257,7 @@ int
 	int i, numPrimitives = GetNumPrimitives();
 	int ret = 0, len = static_cast<int>(lengths.GetLength());
 	unsigned char *iPtr;
-	Plane *p;
+	const mc2::math::Plane *p;
 
 	if(len <= 0)
 	{
@@ -278,7 +278,7 @@ int
 	{
 		for(i=0;i<numPrimitives;i++,p++,iPtr++)
 		{
-			*iPtr = (p->GetDistanceTo(u) >= 0.0f) ? (unsigned char)0xff : (unsigned char)0;
+			*iPtr = (p->distanceTo(mc2::math::toGlm(u)) >= 0.0f) ? (unsigned char)0xff : (unsigned char)0;
 			
 			ret += *iPtr;
 		}
@@ -584,7 +584,7 @@ void
 					continue;
 				}
 
-				f = facePlanes[i].GetDistanceTo(lightPosInShape);
+				f = facePlanes[i].distanceTo(mc2::math::toGlm(lightPosInShape));
 				
 				lm = false;
 
@@ -593,7 +593,7 @@ void
 					rhf = 1.0f/f;
 
 					matrix = LinearMatrix4D::Identity;
-					matrix.AlignLocalAxisToWorldVector(facePlanes[i].normal, Z_Axis, Y_Axis, X_Axis);
+					matrix.AlignLocalAxisToWorldVector(mc2::math::toVector3D(facePlanes[i].normal), Z_Axis, Y_Axis, X_Axis);
 					matrix.GetWorldLeftInLocal(&left);
 					matrix.GetWorldUpInLocal(&up);
 					matrix.GetWorldForwardInLocal(&forward);
@@ -686,7 +686,7 @@ void
 
 				lm = false;
 
-				if(!facePlanes[i].IsSeenBy(lightPosInShape))
+				if(!facePlanes[i].isSeenBy(mc2::math::toGlm(lightPosInShape)))
 				{
 					continue;
 				}
