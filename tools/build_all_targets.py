@@ -104,7 +104,8 @@ def build_root(args) -> int:
         cmd = [cn.NINJA, "-C", f"{root}/{tree}", f"-j{str(args.jobs).lstrip('j')}"]
         if args.keep_going:
             cmd += ["-k", "0"]
-        cmd += args.targets or ROOT_TARGETS
+        # Cached mode builds the order seam here too: it links this tree's mc2 objects, so it costs four test TUs and a link.
+        cmd += args.targets or ROOT_TARGETS + (["mc2_authored_order_seam"] if cache else [])
     return bd.run(cmd, ROOT, "root", "build", args.log_dir, vcvars=True,
                   env=cn.compile_cache_env(root) if cache else None)[0]
 
@@ -183,7 +184,7 @@ def main(argv=None) -> int:
     if args.keep_going:
         cmd += ["--keep-going"]
     if use_cache(args):
-        cmd += ["--compile-cache", "-j", args.jobs]
+        cmd += ["--compile-cache", "-j", args.jobs, "--seam-tree", TREE, "--seam-prebuilt"]
     if args.log_dir:
         cmd += ["--log-dir", os.path.abspath(args.log_dir)]
     rc = subprocess.run(cmd,

@@ -126,15 +126,20 @@ def run_python_harnesses():
     return passed
 
 
-def build_and_run_order_seam(run, cache=False, jobs=None):
+def build_and_run_order_seam(run, cache=False, jobs=None, seam_tree=None, seam_prebuilt=False):
     """Separate linkage avoids the standalone TacticalOrder stubs."""
     from bootstrap_worktree_build import cache_args
-    bdir = REPO_ROOT / ("build-cc-order-seam" if cache else "build64-order-seam")
+    bdir = REPO_ROOT / (seam_tree or ("build-cc-order-seam" if cache else "build64-order-seam"))
     cache_env = None
     if cache:
         cfg, cache_env = cached_configure(REPO_ROOT, bdir, cache_args(str(REPO_ROOT)))
-        commands = [cfg, [cmake_exe(), "--build", str(bdir), "--target", "mc2_authored_order_seam",
-                          "--parallel", str(jobs or "2").lstrip("j")]]
+        build = [cmake_exe(), "--build", str(bdir), "--target", "mc2_authored_order_seam",
+                 "--parallel", str(jobs or "2").lstrip("j")]
+        # --seam-tree: an already configured Ninja tree of the root project (tools/build_all_targets.py passes its own). The seam
+        # links that tree's mc2 objects, so building it there costs the test TUs and a link instead of a second mc2 compile.
+        # --seam-prebuilt: that tree's own build already produced the seam (build_all_targets builds it with stage 1); only the
+        # exe is looked up, and a missing one fails here.
+        commands = [] if seam_prebuilt else [build] if seam_tree else [cfg, build]
     else:
         commands = [
             [cmake_exe(), "-S", str(REPO_ROOT), "-B", str(bdir), "-A", "x64", *cache_args(str(REPO_ROOT))],
@@ -152,9 +157,12 @@ def build_and_run_order_seam(run, cache=False, jobs=None):
         if result.returncode:
             print(result.stdout + result.stderr)
             return False
+    exe = bdir / ("mc2_authored_order_seam.exe" if cache else "RelWithDebInfo/mc2_authored_order_seam.exe")
+    if cache and not exe.is_file():
+        print(f"  missing {exe}")
+        return False
     if not run:
         return True
-    exe = bdir / ("mc2_authored_order_seam.exe" if cache else "RelWithDebInfo/mc2_authored_order_seam.exe")
     command = [str(exe), "--no-breaks"]
     census = "AuthoredOrderProduction/read-only stock and mod mission Part census"
     env = dict(os.environ)
@@ -214,9 +222,17 @@ def main(argv=None):
     ap.add_argument("--keep-going", action="store_true", help="Ninja -k 0 / NMake /K in the selected preset tree")
     ap.add_argument("--compile-cache", action="store_true",
                     help="Ninja trees (build-cc-*) through the shared sccache, PCH off; not with --preset")
+    ap.add_argument("--seam-tree", help="with --compile-cache: build the order seam in this configured root-project Ninja tree "
+                                        "(relative to the repo) instead of its own build-cc-order-seam")
+    ap.add_argument("--seam-prebuilt", action="store_true",
+                    help="with --seam-tree: do not build the seam, require its exe there (built by the caller's own build)")
     ap.add_argument("--log-dir", help="complete mc2_tests configure/build logs")
     ap.add_argument("-j", dest="jobs", help="parallel jobs")
     args = ap.parse_args(argv)
+    if args.seam_prebuilt and not args.seam_tree:
+        ap.error("--seam-prebuilt needs --seam-tree")
+    if args.seam_tree and not args.compile_cache:
+        ap.error("--seam-tree needs --compile-cache (the Ninja single-config layout)")
     if args.compile_cache and args.preset:
         ap.error("--compile-cache is the MSVC cl.exe path; do not combine it with --preset")
     if args.asan and bd.is_clang(args.preset):
@@ -234,7 +250,7 @@ def main(argv=None):
         return 1
     if not (args.asan or args.only):
         try:
-            ok = build_and_run_order_seam(args.run, args.compile_cache, args.jobs)
+            ok = build_and_run_order_seam(args.run, args.compile_cache, args.jobs, args.seam_tree, args.seam_prebuilt)
         except subprocess.TimeoutExpired as error:
             print(f"  [TIMEOUT] production seam ({error.timeout}s), not a compiler failure")
             return 124
