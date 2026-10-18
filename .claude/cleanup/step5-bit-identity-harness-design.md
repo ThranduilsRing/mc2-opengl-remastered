@@ -163,8 +163,28 @@ Finding: the 1-ULP trig rows were the HARNESS include order. The gameos/mclib/mc
   YawPitchRange) call the same cosf/sinf and Arctan in the same translation unit; the gosFX tube profile (render-only) uses glm::sin/cos.
   The corpus sincos rows now assert sinf/cosf == glm::sin/cos (0 mismatches). Proof: sim pair identical to the pre-session reference,
   saveload x2 = baselines, capture pair viewed, 38 REQUIRED rows 0 mismatches, build_all_targets -j2.
+- S5.7 0f485f8ab (lane 1 s22) Ray3D folded into Line3D (its only user was Line3D's base): origin/direction are Line3D members in the
+  same order, Project and the plane distance moved verbatim; the hidden or callerless Ray3D functions and Find_Closest_Approach deleted.
 Proof every batch: sim pair mc2_03/mc2_24 identical to the pre-port reference (exe 579b60e2c) and to the committed baselines; saveload mc2_03
 fb63e85ac66966cf and mc2_01 d46e3e5e30d26b15 = baselines; S5.2/S5.4 GL/VK capture pair day mc2_01 + night mc2_10 viewed.
 Left on Stuff: the types themselves (Vector3D ~2,000 uses outside stuff/, Point3D, the matrices, UnitQuaternion, angles) and every op whose
 callers are Stuff-internal. Next: port by TYPE bottom-up (a header batch per type converting members to glm with the bridge at the boundary),
 not by op: op-by-op porting cannot delete a type.
+
+## 8. Numerical contract (lane 1 s22, orchestrator addition 2026-10-17)
+
+- WHAT "bit-identical" promises: the same exe repeats itself, across job-system worker counts and across save/load (SIMID chain,
+  saveload digests). It does NOT promise identity across compilers (MSVC vs clang-cl presets) or platforms.
+- PINNED in `mclib/math/glm_config.h` (included by `mc2_math.h`; compile-time, fails the build on change): GLM 1.0.1, scalar
+  (`GLM_CONFIG_SIMD == GLM_DISABLE` via GLM_FORCE_PURE), no aligned gentypes, no forced intrinsics/FMA; under MSVC no `/fp:fast`,
+  `/fp:contract` or `/fp:strict` (the build passes no /fp flag = /fp:precise; MSVC defines `_M_FP_PRECISE` only for an explicit
+  flag, so the check is on the deviating macros). The identity corpus TUs keep their explicit `/fp:precise` (clang: `-ffp-contract=off`).
+  OPEN: clang-cl presets contract by default (`-ffp-contract=on`) outside the corpus TUs; not checked (cross-compiler is not promised).
+- Retained exact wrappers (mc2_math.h), one line each:
+  - `transformPoint/transformVector`: row-vector p*M (Stuff convention); glm's `M*p` is the column convention, a different product.
+  - `divide(v, s)`: one float reciprocal then three multiplies, as Stuff::Vector3D::Divide; glm `v / s` divides each component (1 ULP).
+  - `lerp(a, b, t)`: a + t*(b-a) per component; glm::mix is a*(1-t) + b*t, which cancels differently.
+  - `wrapAngleStatic`: double fmod into (-Pi, Pi] (-Pi -> +Pi), as Radian::Normalize(Scalar); no glm equivalent with that interval.
+  - `wrapAngleMember`: as above into [-Pi, Pi] (-Pi stays), as Radian::Normalize(); the two intervals differ on purpose.
+  - `sinD/cosD/acosD/atan2D`: the DOUBLE CRT function rounded to float, which is what Stuff::Sin/Cos/Arccos/Arctan bind in the non-PCH
+    libraries (stuff, mlr, gosfx, editor); glm::sin(float) is sinf, 1 ULP apart on ~0.1% of inputs.
