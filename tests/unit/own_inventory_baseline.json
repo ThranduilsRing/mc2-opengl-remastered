@@ -42,9 +42,6 @@
     "code/mission_init.cpp": {
      "new": 1
     },
-    "code/missionbegin.cpp": {
-     "new": 1
-    },
     "code/saveload_load.cpp": {
      "new": 1
     },
@@ -60,7 +57,7 @@
      "new": 1
     }
    },
-   "new": 6,
+   "new": 5,
    "new_array": 0,
    "owners": [
     "",
