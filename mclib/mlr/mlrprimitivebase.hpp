@@ -188,12 +188,6 @@ namespace MidLevelRenderer {
 			GetSortDataMode()
 				{ Check_Object(this); return drawMode; }
 
-		virtual bool
-			CastRay(
-				Stuff::Line3D *line,
-				Stuff::Normal3D *normal
-			);
-
 		virtual void
 			PaintMe(const Stuff::RGBAColor *paintMe) = 0;
 

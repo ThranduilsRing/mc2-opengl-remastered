@@ -176,6 +176,8 @@ Finding: the 1-ULP trig rows were the HARNESS include order. The gameos/mclib/mc
   and the quaternion-from-rotation-vector half angle call mc2::math::wrapAngleMember / wrapAngleStatic (corpus-exact); angle.cpp is
   gone (the Radian Lerp had no caller: EulerAngles::Lerp already used the Scalar Stuff::Lerp). The corpus wrap rows now compare the
   wrappers with the verbatim Radian::Normalize bodies kept in the test.
+- S5.11 (lane 1 s23) Stuff::Line3D deleted with its only user, the MLR CastRay family (MLRShape::CastRay had no caller; the
+  virtual MLRPrimitiveBase::CastRay and its MLR_I_PMesh / MLR_I_TMesh overrides went with it). Normal3D keeps its Plane use.
 Proof every batch: sim pair mc2_03/mc2_24 identical to the pre-port reference (exe 579b60e2c) and to the committed baselines; saveload mc2_03
 fb63e85ac66966cf and mc2_01 d46e3e5e30d26b15 = baselines; S5.2/S5.4 GL/VK capture pair day mc2_01 + night mc2_10 viewed.
 Left on Stuff: the types themselves (Vector3D ~2,000 uses outside stuff/, Point3D, the matrices, UnitQuaternion, angles) and every op whose

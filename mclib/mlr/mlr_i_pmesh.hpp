@@ -88,12 +88,6 @@ namespace MidLevelRenderer {
 
 		virtual int	TransformAndClip(Stuff::Matrix4D*, MLRClippingState, GOSVertexPool*,bool=false);
 
-		bool
-			CastRay(
-				Stuff::Line3D *line,
-				Stuff::Normal3D *normal
-			);
-
 		virtual void
 			TransformNoClip(Stuff::Matrix4D*, GOSVertexPool*,bool=false);
 

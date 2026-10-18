@@ -26,7 +26,6 @@ namespace Stuff {
 	class Sphere;
 	class ExtentBox;
 	class OBB;
-	class Line3D;
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Plane ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

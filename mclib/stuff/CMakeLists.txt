@@ -7,7 +7,6 @@ set(SOURCES ${SOURCES}
     affinematrix.cpp
     color.cpp
     extentbox.cpp
-    line.cpp
     linearmatrix.cpp
     matrix.cpp
     normal.cpp
