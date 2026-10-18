@@ -5,6 +5,22 @@
 // frame is recorded. Packets live in the arena of the frame's slot (frame % 2); a slot is reset when a frame first begins in it, so a published set
 // stays valid through the following frame and until a frame two later begins.
 //
+// CONTRACT (one page)
+//  - Who builds: one owner per packet kind, on the thread that owns the sim tick, between the last logic tick of the frame and recording. Today: the camera
+//    owner (GameCamera::renderViewUniforms) fills the views and the scene lighting. Packets hold only per-submission data (matrices, viewport, frame and
+//    tick, sun / ambient): no scene database, no pointers into sim objects, nothing a consumer could use to reach back into sim state.
+//  - Parallel fill: jobs may fill disjoint ranges of one packet's arrays (the view list, later the instance rows); one owner calls publish() after the jobs
+//    joined. A packet is never written by two owners.
+//  - Immutable: from publish() the set is read-only; a consumer reads it through published() / mainView() and sees the same bytes for the rest of the
+//    frame. A later begin() allocates a NEW set; it never edits the published one.
+//  - Retains: a published set lives in its frame's slot arena (frame % 2). It stays valid through the next frame; it is dropped (published() falls back to
+//    the zeroed set) only if its slot is about to be recycled by a frame that skipped its publish.
+//  - Recycles: a slot's arena is reset when a frame first begins in it, i.e. two frames after the slot's previous user. CPU-side lifetime only: anything a
+//    recorded-but-unsubmitted command buffer or an in-flight submit reads from a packet must be copied into the frame ring (whose slot restarts only after
+//    the ticket of the frame two back completed), never referenced into this arena.
+//  - Pass order: NOT fixed by this slice. The recording order is today the order the GL-era draw_screen call graph reaches each island; fixing it as data
+//    needs a one-frame trace of that graph first (open item).
+//
 // Producers today: GameCamera::renderViewUniforms (views, lighting). Consumers today: the mech and static-prop island feeds (camera position) and the
 // scene-lighting trace. The HUD / ImGui draw list (UiPacket in the design) has no frame-start producer: it is built during the present tail, so it moves
 // with the HUD slice, not here.
