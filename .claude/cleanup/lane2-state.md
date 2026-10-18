@@ -42,6 +42,9 @@ Commits on 662d777d0 (all local): 0ca2c5358 review MUST-FIX | dc7f0a297 review S
 3. Islands on the engine slot (blocker above), fixed pass order, UiPacket.
 4. Ratchet rises, named: `log_tag_census` / `tools_tests` RED (tags `[VK_TIMELINE v1]`, `[VK_UPLOAD v1]`, `[VK_FRAMERING v1]`: now MC2_DIAG_VERBOSE-gated but present in source; NOT re-frozen, `log_tag_baseline.json` is on the do-not-regenerate list); `cxx17_ratchet` LG20 +6 in tools (s54). Regenerated with their writer (`tools/gate_gen.py --write`): `Gates/gate_index.gen.h`, `docs/flags.auto.yaml`, `RenderCore/RendererFeatureRegistry.h` (one gate row removed). No callers.json / inventory regeneration.
 
+### Final contracts / proof at the tip
+- check-contracts after the fixes (`scratch/s56_contracts3.log`): red only `log_tag_census` + `tools_tests` (not re-frozen, see OPEN 4), `cxx17_ratchet` LG20 tools (s54), and `default_build_quiet` which is fixed by 443a67811 (`[VK_PROFILE v1]` keep). Gate row count, own_inventory, gated_layout_macros, file_size, LG08/LG11 fixed (commits after 43136d5c9). Final tier1 sync validation 5/5 PASS errors=0 (`scratch/s56_t1final.log`), smoke-lite 2/2 default env (`scratch/s56_lite.log`), final capture pair identical to the viewed P1 pair (MAD 0.00, `.claude/l2cap/s56-ab-final`).
+
 ### Re-sequencing note
 The orchestrator moved P3, P4a/b, P5, P6 after GL deletion mid-session; P3 and P4a had already landed (55fb7482a, ba9909249: new headers plus hooks that change no behavior) and are left in.
 
