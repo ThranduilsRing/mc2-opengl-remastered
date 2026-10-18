@@ -74,6 +74,7 @@ DEFAULT_BAND_WU = 320.0        # coastal band: SDF smoothing + the shore depth r
 DEFAULT_DEPTH_SIGMA_WU = 96.0  # smoothing of the real depth used beyond the band
 DEFAULT_SHORE_SLOPE = 0.02     # water floor ramp: minimum depth (wu) per wu inside the smoothed edge
 LAND_FLOOR_SLOPE = 0.25        # land floor ramp: minimum height (wu) above water per wu inland
+EDGE_LINEAR_WU = 32.0          # |SDF| inside which the field is exactly linear in the SDF (both sides)
 EDGE_BIAS_WU = 12.0            # smoothed edge moved inland: covers most of the colormap's teal staircase corners;
                                # more pushes the edge into coarse terrain above the lifted plane (its stair shows)
 
@@ -161,6 +162,12 @@ def build_field(h: np.ndarray, welev: float, cell_wu: float, *, open_wu: float, 
     # water dots (mc2_10 diagonal coast).
     depth = np.where(water, np.maximum(real_depth, -shore_slope * sdf),
                      np.minimum(real_depth, -LAND_FLOOR_SLOPE * sdf))
+    # Right at the coast the field must be LINEAR in the SDF, with the same slope on both sides:
+    # the engine reconstructs it with Catmull-Rom, which is exact for linear data but not across a
+    # kink (water floor 0.02 vs land floor 0.25), and the kink made the zero crossing wobble inside
+    # every 16 wu texel -- a regular row of scallops along every coast (mc2_17 shelves).
+    w_lin = smoothstep(EDGE_LINEAR_WU, 3.0 * EDGE_LINEAR_WU, np.abs(sdf))
+    depth = (1.0 - w_lin) * (-LAND_FLOOR_SLOPE * sdf) + w_lin * depth
     return {"field": welev - depth, "sdf": sdf, "sdf0": sdf0, "band": band}
 
 
