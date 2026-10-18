@@ -947,9 +947,11 @@ set_source_files_properties(
 
 # Separate engine linkage avoids the standalone tests' initializer/actor stubs.
 if(MC2_BUILD_TESTS)
-    get_target_property(_order_seam_sources mc2 SOURCES)
+    # The seam links the object files of the mc2 target (same sources, same flags, same definitions) instead of compiling every
+    # mc2 source a second time: building it after mc2 costs the test TUs plus one link. A source that mc2 stops compiling still
+    # leaves the seam, because the seam IS mc2's object set.
     add_executable(mc2_authored_order_seam EXCLUDE_FROM_ALL
-        ${_order_seam_sources} tests/unit/test_authored_order_seam.cpp
+        $<TARGET_OBJECTS:mc2> tests/unit/test_authored_order_seam.cpp
         tests/unit/test_authored_movement_fixture.cpp tests/unit/test_globalmap_init_refusal.cpp
         tests/unit/test_combat_retirement_seam.cpp)
     target_compile_definitions(mc2_authored_order_seam PRIVATE $<TARGET_PROPERTY:mc2,COMPILE_DEFINITIONS>)

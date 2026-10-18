@@ -3,6 +3,8 @@
 
 --only/--asan restrict runs to standalone doctests; --unit-only skips Python.
 --unit is compatibility syntax. RelWithDebInfo retains release fatal-path checks.
+--compile-cache builds both trees (build-cc-tests, build-cc-order-seam) with Ninja through the shared sccache instead of the
+VS-generator trees; tools/build_all_targets.py passes it by default.
 """
 import argparse
 import os
@@ -14,6 +16,7 @@ import time
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import console_child
+import configure_ninja as cn
 sys.path.insert(0, str(REPO_ROOT / "cmake"))
 import build_driver as bd
 
@@ -50,20 +53,33 @@ def cmake_exe():
     return _VS_CMAKE if os.path.isfile(_VS_CMAKE) else "cmake"
 
 
+def cached_configure(src, bdir, extra=()):
+    """(cmake configure command, env) for a Ninja tree behind the shared compile cache."""
+    flags, env = cn.cache_cmake_args(str(REPO_ROOT))
+    return [cmake_exe(), "-S", Path(src).as_posix(), "-B", Path(bdir).as_posix(), "-G", "Ninja",
+            f"-DCMAKE_MAKE_PROGRAM={cn.NINJA}", "-DCMAKE_BUILD_TYPE=RelWithDebInfo", *flags, *extra], env
+
+
 def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
-                             keep_going=False, log_dir=None, jobs=None):
+                             keep_going=False, log_dir=None, jobs=None, cache=False):
     started = time.monotonic()
-    bdir = REPO_ROOT / bd.tree_name("build64-tests-asan" if asan else "build64-tests", preset)
+    tree = "build64-tests-asan" if asan else "build64-tests"
+    bdir = REPO_ROOT / (("build-cc-" + tree.removeprefix("build64-")) if cache else bd.tree_name(tree, preset))
     cm = cmake_exe()
-    commands = [
-        [cm] + bd.configure_args(REPO_ROOT, REPO_ROOT / "tests/unit", bdir, preset) +
-        ["-DMC2_ASAN=" + ("ON" if asan else "OFF")],
-        bd.build_args(cm, bdir, config, ["mc2_tests"], jobs, preset, keep_going),
-    ]
+    cache_env = None
+    if cache:
+        cfg, cache_env = cached_configure(REPO_ROOT / "tests/unit", bdir, ["-DMC2_ASAN=" + ("ON" if asan else "OFF")])
+        commands = [cfg, bd.build_args(cm, bdir, config, ["mc2_tests"], jobs or "2", "ninja", keep_going)]
+    else:
+        commands = [
+            [cm] + bd.configure_args(REPO_ROOT, REPO_ROOT / "tests/unit", bdir, preset) +
+            ["-DMC2_ASAN=" + ("ON" if asan else "OFF")],
+            bd.build_args(cm, bdir, config, ["mc2_tests"], jobs, preset, keep_going),
+        ]
     for stage, command in zip(("configure", "build"), commands):
-        if preset or log_dir is not None or jobs or keep_going:
+        if cache or preset or log_dir is not None or jobs or keep_going:
             rc, output = bd.run(command, REPO_ROOT, "mc2_tests", stage, log_dir,
-                                vcvars=bool(preset), capture=True)
+                                vcvars=bool(preset) or cache, capture=True, env=cache_env)
         else:
             result = subprocess.run(command, capture_output=True, text=True, cwd=REPO_ROOT,
                                     **console_child.child_kwargs(redirected=True))
@@ -110,23 +126,43 @@ def run_python_harnesses():
     return passed
 
 
-def build_and_run_order_seam(run):
+def build_and_run_order_seam(run, cache=False, jobs=None, seam_tree=None, seam_prebuilt=False):
     """Separate linkage avoids the standalone TacticalOrder stubs."""
     from bootstrap_worktree_build import cache_args
-    bdir = REPO_ROOT / "build64-order-seam"
-    commands = [
-        [cmake_exe(), "-S", str(REPO_ROOT), "-B", str(bdir), "-A", "x64", *cache_args(str(REPO_ROOT))],
-        [cmake_exe(), "--build", str(bdir), "--config", "RelWithDebInfo", "--target", "mc2_authored_order_seam"],
-    ]
+    bdir = REPO_ROOT / (seam_tree or ("build-cc-order-seam" if cache else "build64-order-seam"))
+    cache_env = None
+    if cache:
+        cfg, cache_env = cached_configure(REPO_ROOT, bdir, cache_args(str(REPO_ROOT)))
+        build = [cmake_exe(), "--build", str(bdir), "--target", "mc2_authored_order_seam",
+                 "--parallel", str(jobs or "2").lstrip("j")]
+        # --seam-tree: an already configured Ninja tree of the root project (tools/build_all_targets.py passes its own). The seam
+        # links that tree's mc2 objects, so building it there costs the test TUs and a link instead of a second mc2 compile.
+        # --seam-prebuilt: that tree's own build already produced the seam (build_all_targets builds it with stage 1); only the
+        # exe is looked up, and a missing one fails here.
+        commands = [] if seam_prebuilt else [build] if seam_tree else [cfg, build]
+    else:
+        commands = [
+            [cmake_exe(), "-S", str(REPO_ROOT), "-B", str(bdir), "-A", "x64", *cache_args(str(REPO_ROOT))],
+            [cmake_exe(), "--build", str(bdir), "--config", "RelWithDebInfo", "--target", "mc2_authored_order_seam"],
+        ]
     for command in commands:
+        if cache:
+            rc, output = bd.run(command, REPO_ROOT, "order_seam", "cached", None, vcvars=True, capture=True, env=cache_env)
+            if rc:
+                print(output)
+                return False
+            continue
         result = subprocess.run(command, cwd=REPO_ROOT, timeout=900, capture_output=True,
                                 text=True, **console_child.child_kwargs(redirected=True))
         if result.returncode:
             print(result.stdout + result.stderr)
             return False
+    exe = bdir / ("mc2_authored_order_seam.exe" if cache else "RelWithDebInfo/mc2_authored_order_seam.exe")
+    if cache and not exe.is_file():
+        print(f"  missing {exe}")
+        return False
     if not run:
         return True
-    exe = bdir / "RelWithDebInfo/mc2_authored_order_seam.exe"
     command = [str(exe), "--no-breaks"]
     census = "AuthoredOrderProduction/read-only stock and mod mission Part census"
     env = dict(os.environ)
@@ -184,9 +220,21 @@ def main(argv=None):
     ap.add_argument("--asan", action="store_true", help="MSVC AddressSanitizer; implies --unit-only")
     ap.add_argument("--preset", choices=bd.PRESETS, help="compiler preset; omitted preserves the MSVC trees")
     ap.add_argument("--keep-going", action="store_true", help="Ninja -k 0 / NMake /K in the selected preset tree")
+    ap.add_argument("--compile-cache", action="store_true",
+                    help="Ninja trees (build-cc-*) through the shared sccache, PCH off; not with --preset")
+    ap.add_argument("--seam-tree", help="with --compile-cache: build the order seam in this configured root-project Ninja tree "
+                                        "(relative to the repo) instead of its own build-cc-order-seam")
+    ap.add_argument("--seam-prebuilt", action="store_true",
+                    help="with --seam-tree: do not build the seam, require its exe there (built by the caller's own build)")
     ap.add_argument("--log-dir", help="complete mc2_tests configure/build logs")
     ap.add_argument("-j", dest="jobs", help="parallel jobs")
     args = ap.parse_args(argv)
+    if args.seam_prebuilt and not args.seam_tree:
+        ap.error("--seam-prebuilt needs --seam-tree")
+    if args.seam_tree and not args.compile_cache:
+        ap.error("--seam-tree needs --compile-cache (the Ninja single-config layout)")
+    if args.compile_cache and args.preset:
+        ap.error("--compile-cache is the MSVC cl.exe path; do not combine it with --preset")
     if args.asan and bd.is_clang(args.preset):
         ap.error("--asan runtime deployment is currently MSVC-only")
     os.environ.setdefault("_MSPDBSRV_ENDPOINT_", f"sol-s4b2-contracts-{os.getpid()}")
@@ -196,13 +244,13 @@ def main(argv=None):
             ap.error("unregistered harness: " + ", ".join(sorted(unknown)))
     ok, info = build_and_run_unit_tests(args.config, args.run, args.asan, args.only,
                                        preset=args.preset, keep_going=args.keep_going,
-                                       log_dir=args.log_dir, jobs=args.jobs)
+                                       log_dir=args.log_dir, jobs=args.jobs, cache=args.compile_cache)
     print(f"  [{'PASS' if ok else 'FAIL'}] mc2_tests: {info}")
     if not ok:
         return 1
     if not (args.asan or args.only):
         try:
-            ok = build_and_run_order_seam(args.run)
+            ok = build_and_run_order_seam(args.run, args.compile_cache, args.jobs, args.seam_tree, args.seam_prebuilt)
         except subprocess.TimeoutExpired as error:
             print(f"  [TIMEOUT] production seam ({error.timeout}s), not a compiler failure")
             return 124
