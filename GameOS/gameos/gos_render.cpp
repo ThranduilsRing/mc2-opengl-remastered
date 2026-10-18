@@ -800,6 +800,17 @@ void destroy_render_context(RenderContextHandle rc_handle)
 }
 
 //==============================================================================
+void release_render_context_at_exit(RenderContextHandle rc_handle)
+{
+    RenderContext* rc = (RenderContext*)rc_handle;
+    assert(rc);
+
+    SDL_GL_MakeCurrent(rc->render_window_ ? rc->render_window_->window_ : nullptr, nullptr);
+    g_sdl_glcontext = nullptr;
+    delete rc;   // the driver context itself is left to process teardown
+}
+
+//==============================================================================
 void make_current_context(RenderContextHandle ctx_h)
 {
     RenderContext* rc = (RenderContext*)ctx_h;
