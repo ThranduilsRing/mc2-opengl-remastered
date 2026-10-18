@@ -159,7 +159,7 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 		goalCol += (doors[goalDoor].length / 2);
 	}
 
-	Stuff::Vector3D goalWorldPos;
+	glm::vec3 goalWorldPos;
 	land->cellToWorld(goalRow, goalCol, goalWorldPos);
 
 	long cost = 9999;
@@ -439,13 +439,13 @@ bool GlobalMap::getAdjacentAreaCell (long area, long adjacentArea, long& cellRow
 	return(false);
 }
 
-Stuff::Vector3D GlobalMap::getDoorWorldPos (long area, long door, long* prevGoalCell) {
+glm::vec3 GlobalMap::getDoorWorldPos (long area, long door, long* prevGoalCell) {
 
 	long cellR, cellC;
 	cellR = prevGoalCell[0];// + adjTile[areas[area].doors[door].direction][0];
 	cellC = prevGoalCell[1];// += adjTile[areas[area].doors[door].direction][1];
-	Stuff::Vector3D pos;
-	pos.Zero();
+	glm::vec3 pos;
+	pos = glm::vec3(0.0f);
 	pos.x = (float)cellC * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
 	pos.y = (Terrain::worldUnitsMapSide / 2) - ((float)cellR * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
 	pos.z = land->getTerrainElevation(pos); // How do we get the elevation for this point? Do we care?

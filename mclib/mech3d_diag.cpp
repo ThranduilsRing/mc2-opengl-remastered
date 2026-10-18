@@ -84,7 +84,7 @@ void Mech3DAppearance::debugUpdate (long whichOne)
 	}
 
 	// Adjust position based on mech Velocity which is based on gesture
-	Stuff::Vector3D velocity;
+	glm::vec3 velocity;
 	velocity.x = 0.7071f;
 	velocity.z = 0.0;
 	velocity.y = -0.7071f;
@@ -96,7 +96,7 @@ void Mech3DAppearance::debugUpdate (long whichOne)
 	// Take slope being walked on into account.
 	// Use for ground vehicles for sure.
 	/*
-	Stuff::Vector3D currentNormal = land->getTerrainNormal(debugMechActorPosition);
+	glm::vec3 currentNormal = land->getTerrainNormal(debugMechActorPosition);
 	float angle = angle_from(velocity,currentNormal);
 	if (angle != 90.0)
 	{

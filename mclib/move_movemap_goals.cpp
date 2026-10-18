@@ -73,18 +73,18 @@ void MoveMap::clear (void) {
 		node->hPrime = initHPrime;
 	}
 
-	goal.Zero();
+	goal = glm::vec3(0.0f);
 	target.x = -999999.0;
 	target.y = -999999.0;
 	target.z = -999999.0;
 }
 
-void MoveMap::setTarget (Stuff::Vector3D targetPos) {
+void MoveMap::setTarget (glm::vec3 targetPos) {
 
 	target = targetPos;
 }
 
-void MoveMap::setStart (Stuff::Vector3D* startPos, long startRow, long startCol) {
+void MoveMap::setStart (glm::vec3* startPos, long startRow, long startCol) {
 
 	if (startPos)
 		start = *startPos;
@@ -105,7 +105,7 @@ void MoveMap::setStart (Stuff::Vector3D* startPos, long startRow, long startCol)
 	}
 }
 
-void MoveMap::setGoal (Stuff::Vector3D goalPos, long goalRow, long goalCol) {
+void MoveMap::setGoal (glm::vec3 goalPos, long goalRow, long goalCol) {
 
 	goal = goalPos;
 	if (goalRow == -1) {
@@ -168,7 +168,7 @@ void MoveMap::setGoal (long thruArea, long goalDoor) {
 	}
 }
 
-inline long MoveMap::markGoals (Stuff::Vector3D finalGoal) {
+inline long MoveMap::markGoals (glm::vec3 finalGoal) {
 
 	// First, mark the blocked goal cells...
 	// PATHFINDING-SOLVER-ISOLATION-1: was function-local static; made stack-
@@ -281,7 +281,7 @@ inline long MoveMap::markGoals (Stuff::Vector3D finalGoal) {
 	return(numGoalCells);
 }
 
-inline long MoveMap::markEscapeGoals (Stuff::Vector3D finalGoal) {
+inline long MoveMap::markEscapeGoals (glm::vec3 finalGoal) {
 
 	long numGoalCells = 0;
 
@@ -314,10 +314,10 @@ long MoveMap::setUp (long mapULr,
 					 long mapWidth,
 					 long mapHeight,
 					 long level,
-					 Stuff::Vector3D* startPos,
+					 glm::vec3* startPos,
 					 long startRow,
 					 long startCol,
-					 Stuff::Vector3D goalPos,
+					 glm::vec3 goalPos,
 					 long goalRow,
 					 long goalCol,
 					 long clearCellCost,
@@ -465,12 +465,12 @@ long MoveMap::setUp (long mapULr,
 }
 
 long MoveMap::setUp (long level,
-					 Stuff::Vector3D* startPos,
+					 glm::vec3* startPos,
 					 long startRow,
 					 long startCol,
 					 long thruArea[2],
 					 long goalDoor,
-					 Stuff::Vector3D finalGoal,
+					 glm::vec3 finalGoal,
 					 long clearCellCost,
 					 long jumpCellCost,
 					 long offsets,

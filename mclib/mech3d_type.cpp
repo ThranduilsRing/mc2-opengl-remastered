@@ -666,9 +666,9 @@ void Mech3DAppearance::setWeaponNodeRecycle(long nodeId, float time)
 		nodeRecycle[nodeId] = time;
 }
 
-Stuff::Vector3D Mech3DAppearance::getWeaponNodePosition (long nodeId)
+glm::vec3 Mech3DAppearance::getWeaponNodePosition (long nodeId)
 {
-	Stuff::Vector3D result = position;
+	glm::vec3 result = position;
 	if ((nodeId < mechType->numSmokeNodes) || (nodeId >= (mechType->numSmokeNodes+mechType->numWeaponNodes)))
 		return result;
 
@@ -684,7 +684,7 @@ Stuff::Vector3D Mech3DAppearance::getWeaponNodePosition (long nodeId)
 		float wp[3];
 		if (mc2mechanim::GetImportedNodeWorld((const void*)mechShape, tKey,
 				mechType->nodeData[nodeId].nodeId,
-				(const float*)mechShape->GetShapeRec(0)->shapeToWorld.entries, wp)) {
+				(const float*)glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld), wp)) {
 			static int s_diagN = 0;
 			if (mc2::gate::get<"MC2_MECH_NODE_DIAG">() && s_diagN++ < 24)
 				fprintf(stderr, "[NODE-DIAG-CALLER] mech pos=(%.1f,%.1f,%.1f) node='%s' world=(%.1f,%.1f,%.1f) delta=(%.1f,%.1f,%.1f)\n",
@@ -697,15 +697,15 @@ Stuff::Vector3D Mech3DAppearance::getWeaponNodePosition (long nodeId)
 		}
 	}
 
-   	Stuff::UnitQuaternion qRotation;
+   	glm::quat qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
-   	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+   	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
 
-   	Stuff::Point3D xlatPosition;
+   	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
 
-   	Stuff::UnitQuaternion torsoRot;
-   	torsoRot = Stuff::EulerAngles(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f);
+   	glm::quat torsoRot;
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 
@@ -721,21 +721,21 @@ Stuff::Vector3D Mech3DAppearance::getWeaponNodePosition (long nodeId)
 	return result;
 }
 
-Stuff::Vector3D Mech3DAppearance::getNodeNamePosition (const char *nodeName)
+glm::vec3 Mech3DAppearance::getNodeNamePosition (const char *nodeName)
 {
-	Stuff::Vector3D result = position;
+	glm::vec3 result = position;
 
 	// No visibility test: update() poses every mech each sim step, so the node is current on and off screen.
 
-   	Stuff::UnitQuaternion qRotation;
+   	glm::quat qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
-   	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+   	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
    
-   	Stuff::Point3D xlatPosition;
+   	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
    
-   	Stuff::UnitQuaternion torsoRot;
-   	torsoRot = Stuff::EulerAngles(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f);
+   	glm::quat torsoRot;
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 
@@ -751,21 +751,21 @@ Stuff::Vector3D Mech3DAppearance::getNodeNamePosition (const char *nodeName)
 	return result;
 }
 
-Stuff::Vector3D Mech3DAppearance::getNodeIdPosition (long nodeId)
+glm::vec3 Mech3DAppearance::getNodeIdPosition (long nodeId)
 {
-	Stuff::Vector3D result = position;
+	glm::vec3 result = position;
 
 	// No visibility test: update() poses every mech each sim step, so the node is current on and off screen.
 
-   	Stuff::UnitQuaternion qRotation;
+   	glm::quat qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
-   	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+   	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
    
-   	Stuff::Point3D xlatPosition;
+   	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
    
-   	Stuff::UnitQuaternion torsoRot;
-   	torsoRot = Stuff::EulerAngles(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f);
+   	glm::quat torsoRot;
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 
@@ -781,23 +781,23 @@ Stuff::Vector3D Mech3DAppearance::getNodeIdPosition (long nodeId)
 	return result;
 }
 
-Stuff::Vector3D Mech3DAppearance::getNodePosition (long nodeId)
+glm::vec3 Mech3DAppearance::getNodePosition (long nodeId)
 {
-	Stuff::Vector3D result = position;
+	glm::vec3 result = position;
 	if ((nodeId < 0) || (nodeId >= mechType->getTotalNodes()))
 		return result;
 
 	// No visibility test: update() poses every mech each sim step, so the node is current on and off screen.
 
-   	Stuff::UnitQuaternion qRotation;
+   	glm::quat qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
-   	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+   	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
    
-   	Stuff::Point3D xlatPosition;
+   	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
    
-   	Stuff::UnitQuaternion torsoRot;
-   	torsoRot = Stuff::EulerAngles(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f);
+   	glm::quat torsoRot;
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 
@@ -816,7 +816,7 @@ long Mech3DAppearance::getLowestWeaponNode (void)
 	lowestPosZ = 9999999999999.0f;
 	for (long i=0;i<mechType->numWeaponNodes;i++)
 	{
-		Stuff::Vector3D nodePosition = getNodePosition(i+numSmokeNodes);
+		glm::vec3 nodePosition = getNodePosition(i+numSmokeNodes);
 		if (nodePosition.z < lowestPosZ)
 		{
 			lowestPosZ = nodePosition.z;

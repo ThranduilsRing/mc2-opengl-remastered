@@ -15,9 +15,9 @@
 #include"mathfunc.h"
 #endif
 
-Stuff::Vector3D UnitI(-1.0f,0.0f,0.0f);
-Stuff::Vector3D UnitJ(0.0f,-1.0f,0.0f);
-Stuff::Vector3D UnitK(0.0f,0.0f,1.0f);
+glm::vec3 UnitI(-1.0f,0.0f,0.0f);
+glm::vec3 UnitJ(0.0f,-1.0f,0.0f);
+glm::vec3 UnitK(0.0f,0.0f,1.0f);
 
 void Rotate (Stuff::Vector2DOf<float> &vec, float angle)
 {
@@ -32,7 +32,7 @@ void Rotate (Stuff::Vector2DOf<float> &vec, float angle)
 	vec.y -= (tx * sine);
 }
 
-void Rotate (Stuff::Vector3D &vec, float angle)
+void Rotate (glm::vec3 &vec, float angle)
 {
 	float tx = vec.x;
 	float sine = sin(angle * DEGREES_TO_RADS);
@@ -45,7 +45,7 @@ void Rotate (Stuff::Vector3D &vec, float angle)
 	vec.y -= (tx * sine);
 }
 
-void RotateLight (Stuff::Vector3D &vec, float angle)
+void RotateLight (glm::vec3 &vec, float angle)
 {
 	float tx = vec.x;
 	float sine = sin(angle);
@@ -58,7 +58,7 @@ void RotateLight (Stuff::Vector3D &vec, float angle)
 	vec.z -= (tx * sine);
 }
 
-void OppRotate (Stuff::Vector3D &vec, float angle)
+void OppRotate (glm::vec3 &vec, float angle)
 {
 	float tx = vec.x;
 	float sine = sin(angle * DEGREES_TO_RADS);
@@ -71,14 +71,14 @@ void OppRotate (Stuff::Vector3D &vec, float angle)
 	vec.y += (tx * sine);
 }
 
-float distance_from (Stuff::Vector3D &v1, Stuff::Vector3D &v2)
+float distance_from (glm::vec3 &v1, glm::vec3 &v2)
 {
-	Stuff::Vector3D result;
+	glm::vec3 result;
 	result.x = v2.x - v1.x;
 	result.y = v2.y - v1.y;
 	result.z = v2.z - v1.z;
 
-	float dist = result.GetLength();
+	float dist = glm::length(result);
 	return (dist);
 }
 
@@ -113,26 +113,26 @@ float angle_from (Stuff::Vector2DOf<float>&v1, Stuff::Vector2DOf<float> &v2)
 	}
 }
 
-float angle_from (Stuff::Vector3D &v1, Stuff::Vector3D &v2)
+float angle_from (glm::vec3 &v1, glm::vec3 &v2)
 {
-	float mag_product = v1.GetLength() * v2.GetLength();
+	float mag_product = glm::length(v1) * glm::length(v2);
 
 	if (mag_product == 0.0)
 		return mag_product;	// 0;
 	else
 	{
-		float vecResult = v1 * v2;
+		float vecResult = glm::dot(v1, v2);
 		return (my_acos(vecResult / mag_product) * RADS_TO_DEGREES);
 	}
 }
 
 //---------------------------------------------------------------------------
-float world_angle_between (Stuff::Vector3D &v1, Stuff::Vector3D &v2) 
+float world_angle_between (glm::vec3 &v1, glm::vec3 &v2) 
 {
-	Stuff::Vector3D facingVec(0.0f,1.0f,0.0f);
+	glm::vec3 facingVec(0.0f,1.0f,0.0f);
 
-	Stuff::Vector3D goalVec;
-	goalVec.Subtract(v1, v2);
+	glm::vec3 goalVec;
+	goalVec = v1 - v2;
 
 	float angle = angle_from(facingVec, goalVec);
 
@@ -169,7 +169,7 @@ frameOfRef & frameOfRef::operator = (frameOfRef &fr)
 	return *this;
 }
 
-frameOfRef & frameOfRef::rotate(Stuff::Vector3D &rotation_vector)
+frameOfRef & frameOfRef::rotate(glm::vec3 &rotation_vector)
 {
 	rotate_about_k(rotation_vector.z);
 	rotate_about_i(rotation_vector.x);
@@ -181,7 +181,7 @@ frameOfRef & frameOfRef::rotate(Stuff::Vector3D &rotation_vector)
 frameOfRef & frameOfRef::rotate_about_i (float &angle)
 {
 	float cosine, sine;
-	Stuff::Vector3D oldj, oldK;
+	glm::vec3 oldj, oldK;
 
 	cosine = cos(angle * DEGREES_TO_RADS);
 	sine = sin(angle * DEGREES_TO_RADS);
@@ -203,7 +203,7 @@ frameOfRef & frameOfRef::rotate_about_i (float &angle)
 frameOfRef & frameOfRef::rotate_about_j (float &angle)
 {
 	float cosine, sine;
-	Stuff::Vector3D oldi,oldK;
+	glm::vec3 oldi,oldK;
 
 	cosine = cos(angle * DEGREES_TO_RADS);
 	sine = sin(angle * DEGREES_TO_RADS);
@@ -225,7 +225,7 @@ frameOfRef & frameOfRef::rotate_about_j (float &angle)
 frameOfRef & frameOfRef::rotate_about_k (float &angle)
 {
 	float cosine, sine;
-	Stuff::Vector3D oldi,oldJ;
+	glm::vec3 oldi,oldJ;
 
 	cosine = cos(angle * DEGREES_TO_RADS);
 	sine = sin(angle * DEGREES_TO_RADS);
@@ -282,13 +282,13 @@ frameOfRef & frameOfRef::orthonormalize_on_xaxis ()
 		// DON'T CHANGE THIS ORDER OF OPERATIONS WITHOUT CHANGING THE
 		// ROTATE FUNCTIONS
 		//-----------------------------------------------------------
-	k.Cross(i,j);
-	j.Cross(k,i);
+	k = glm::cross(i, j);
+	j = glm::cross(k, i);
 
 		// TO AVOID MIND-NUMBING OCTAGONAL ROTATION THROBBING
-	i.Normalize(i);
-	j.Normalize(j);
-	k.Normalize(k);
+	i = glm::normalize(i);
+	j = glm::normalize(j);
+	k = glm::normalize(k);
 
 	return *this;
 }
@@ -298,13 +298,13 @@ frameOfRef & frameOfRef::orthonormalize_on_yaxis ()
 		// DON'T CHANGE THIS ORDER OF OPERATIONS WITHOUT CHANGING THE
 		// ROTATE FUNCTIONS
 		//-----------------------------------------------------------
-	k.Cross(i,j);
-	i.Cross(j,k);
+	k = glm::cross(i, j);
+	i = glm::cross(j, k);
 
 		// TO AVOID MIND-NUMBING OCTAGONAL ROTATION THROBBING
-	i.Normalize(i);
-	j.Normalize(j);
-	k.Normalize(k);
+	i = glm::normalize(i);
+	j = glm::normalize(j);
+	k = glm::normalize(k);
 
 	return *this;
 }
@@ -314,13 +314,13 @@ frameOfRef & frameOfRef::orthonormalize_on_zaxis ()
 		// DON'T CHANGE THIS ORDER OF OPERATIONS WITHOUT CHANGING THE 
 		// ROTATE FUNCTIONS
 		//-----------------------------------------------------------
-	i.Cross(j,k);
-	j.Cross(k,i);
+	i = glm::cross(j, k);
+	j = glm::cross(k, i);
 
 		// TO AVOID MIND-NUMBING OCTAGONAL ROTATION THROBBING
-	i.Normalize(i);
-	j.Normalize(j);
-	k.Normalize(k);
+	i = glm::normalize(i);
+	j = glm::normalize(j);
+	k = glm::normalize(k);
 
 	return *this;
 }

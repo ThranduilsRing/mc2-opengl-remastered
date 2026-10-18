@@ -4,7 +4,7 @@
 #include "mc2fmt.h"
 
 
-long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, long* goalCell) {
+long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* goalCell) {
 
 	// PATHFINDING-SOLVER-ISOLATION-1: per-solve context (default-OFF).
 	mc2_move::SolveContext ctx;
@@ -26,7 +26,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 
 /*
 	if ((goalR < 0) || (goalR >= cellHeight) || (goalC < 0) || (goalC >= cellWidth)) {
-		Stuff::Vector3D p;
+		glm::vec3 p;
 		p.x = (float)(goalC) * MetersPerCell + MetersPerCell / 2 - Terrain::worldUnitsMapSide / 2;
 		p.y = (Terrain::worldUnitsMapSide / 2) - ((float)(goalR) * MetersPerCell) - MetersPerCell / 2;
 		p.z = (float)0; // How do we get the elevation for this point? Do we care?
@@ -260,7 +260,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 
 				goalCell[0] = ULr + doorR;
 				goalCell[1] = ULc + doorC;
-				Stuff::Vector3D stepDest;
+				glm::vec3 stepDest;
 				stepDest.x = (float)(ULc + doorC) * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
 				stepDest.y = (Terrain::worldUnitsMapSide / 2) - ((float)(ULr + doorR) * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
 				stepDest.z = (float)0; // How do we get the elevation for this point? Do we care?
@@ -298,7 +298,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 				else
 					path->setDirection(curCell, parent);
 
-				Stuff::Vector3D stepDest;
+				glm::vec3 stepDest;
 				long cell[2];
 				cell[0] = ULr + curRow;
 				cell[1] = ULc + curCol;

@@ -64,14 +64,14 @@ TG_TypeMultiShapePtr Mech3DAppearanceType::SensorSquareShape = nullptr;
 bool Mech3DAppearanceType::animationLoadingEnabled = true;
 
 #define MAX_MECHS					1
-Stuff::Vector3D debugMechActorPosition[MAX_MECHS];
+glm::vec3 debugMechActorPosition[MAX_MECHS];
 float mechDebugAngle[MAX_MECHS];
 float torsoDebugAngle[MAX_MECHS];
 
-void Mech3DAppearance::setObjectParameters (const Stuff::Vector3D &pos, float Rot, long sel, long team, long homeRelations)
+void Mech3DAppearance::setObjectParameters (const glm::vec3 &pos, float Rot, long sel, long team, long homeRelations)
 {
 	movedThisFrame = false;
-	if ((rotation != Rot) || (pos != position))
+	if ((rotation != Rot) || (!mc2::math::closeEnough(pos, position)))
 		movedThisFrame = true;
  
 	if ((currentGestureId == 23) || (currentGestureId == 24) || (currentGestureId == 21) || (currentGestureId == 22) ||
@@ -351,22 +351,22 @@ void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 	if (data->inJump)
 	{
 		long jumpNodeId = mechType->numSmokeNodes + mechType->numWeaponNodes;
-		Stuff::Vector3D jumpNodePos = getNodePosition(jumpNodeId);
+		glm::vec3 jumpNodePos = getNodePosition(jumpNodeId);
 		
-		Stuff::Point3D			actualPosition;
-		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D	localToWorld;
-		Stuff::LinearMatrix4D	localResult;
+		glm::vec3			actualPosition;
+		glm::mat4 	shapeOrigin;
+		glm::mat4	localToWorld;
+		glm::mat4	localResult;
 		
 		mc2ToRender(actualPosition, jumpNodePos);
 		
-		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(actualPosition);
+		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, actualPosition);
 		
-		Stuff::UnitQuaternion effectRot;
-		effectRot = Stuff::EulerAngles(JUMP_PITCH * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f);
-		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-		localResult.Multiply(localToWorld,shapeOrigin);
+		glm::quat effectRot;
+		effectRot = mc2::math::quatFromEuler(mc2::math::Euler(JUMP_PITCH * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f));
+		localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
+		localResult = localToWorld * shapeOrigin;
 					
  		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 		jumpJetEffect->Start(&info);
@@ -400,24 +400,24 @@ void Mech3DAppearance::flashBuilding (float dur, float fDuration, DWORD color)
 	currentFlash = flashDuration;
 }
 
-Stuff::Vector3D Mech3DAppearance::getHitNodeLeft (void)
+glm::vec3 Mech3DAppearance::getHitNodeLeft (void)
 {
 	if (hitLeftNodeIndex == -1)
 		hitLeftNodeIndex = mechShape->GetNodeNameId("hit_left");
 
-	Stuff::Vector3D result = position;
+	glm::vec3 result = position;
 	// No visibility test: update() poses every mech each sim step, and bolts aim at this node in the simulation.
 
    	// Create Matrix to conform to.
-   	Stuff::UnitQuaternion qRotation;
+   	glm::quat qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
-   	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+   	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
 
-   	Stuff::Point3D xlatPosition;
+   	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
 
-   	Stuff::UnitQuaternion torsoRot;
-   	torsoRot = Stuff::EulerAngles(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f);
+   	glm::quat torsoRot;
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 
@@ -428,7 +428,7 @@ Stuff::Vector3D Mech3DAppearance::getHitNodeLeft (void)
 		const void* tKey = mechType ? (const void*)mechType->mechShape[currentLOD] : nullptr;
 		float wp[3];
 		if (mc2mechanim::GetImportedNodeWorld((const void*)mechShape, tKey, "hit_left",
-				(const float*)mechShape->GetShapeRec(0)->shapeToWorld.entries, wp)) {
+				(const float*)glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld), wp)) {
 			result.x = wp[0]; result.y = wp[1]; result.z = wp[2];
 			return result;
 		}
@@ -444,24 +444,24 @@ Stuff::Vector3D Mech3DAppearance::getHitNodeLeft (void)
 	return result;
 }
 
-Stuff::Vector3D Mech3DAppearance::getHitNodeRight (void)
+glm::vec3 Mech3DAppearance::getHitNodeRight (void)
 {
 	if (hitRightNodeIndex == -1)
 		hitRightNodeIndex = mechShape->GetNodeNameId("hit_right");
 
-	Stuff::Vector3D result = position;
+	glm::vec3 result = position;
 	// No visibility test: update() poses every mech each sim step, and bolts aim at this node in the simulation.
 
    	// Create Matrix to conform to.
-   	Stuff::UnitQuaternion qRotation;
+   	glm::quat qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
-   	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+   	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
    
-   	Stuff::Point3D xlatPosition;
+   	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
    
-   	Stuff::UnitQuaternion torsoRot;
-   	torsoRot = Stuff::EulerAngles(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f);
+   	glm::quat torsoRot;
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 
@@ -472,7 +472,7 @@ Stuff::Vector3D Mech3DAppearance::getHitNodeRight (void)
 		const void* tKey = mechType ? (const void*)mechType->mechShape[currentLOD] : nullptr;
 		float wp[3];
 		if (mc2mechanim::GetImportedNodeWorld((const void*)mechShape, tKey, "hit_right",
-				(const float*)mechShape->GetShapeRec(0)->shapeToWorld.entries, wp)) {
+				(const float*)glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld), wp)) {
 			result.x = wp[0]; result.y = wp[1]; result.z = wp[2];
 			return result;
 		}

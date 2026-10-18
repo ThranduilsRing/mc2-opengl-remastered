@@ -298,8 +298,8 @@ typedef struct _MechAppearanceData
 	long						nodeUsed[10];				//Used to stagger the weapon nodes for firing.
 	float						nodeRecycle[10];			//Used for ripple fire to find out if the node has fired recently.
 
-	Stuff::Vector3D				jumpDestination;
-	Stuff::Vector3D				jumpVelocity;			//Real velocity vector now.  Just plug into mech velocity.
+	glm::vec3				jumpDestination;
+	glm::vec3				jumpVelocity;			//Real velocity vector now.  Just plug into mech velocity.
 
 	float						baseRootNodeHeight;
 
@@ -328,8 +328,8 @@ class Mech3DAppearance: public ObjectAppearance
 		TG_MultiShapePtr			leftArm;
 		TG_MultiShapePtr			rightArm;
 		
-		Stuff::Vector3D				leftArmPos;
-		Stuff::Vector3D				rightArmPos;
+		glm::vec3				leftArmPos;
+		glm::vec3				rightArmPos;
 
 		float						leftArmHazeFactor;
 		float						rightArmHazeFactor;
@@ -393,14 +393,14 @@ class Mech3DAppearance: public ObjectAppearance
 		float						idleTime;				//Elapsed time since I've done something.
 															//If it gets larger then X, play the idle animation.
 															
-		Stuff::Vector3D				jumpDestination;
-		Stuff::Vector3D				jumpVelocity;			//Real velocity vector now.  Just plug into mech velocity.
+		glm::vec3				jumpDestination;
+		glm::vec3				jumpVelocity;			//Real velocity vector now.  Just plug into mech velocity.
 		float						hazeFactor;
 		
 		std::vector<long>						nodeUsed;				//Used to stagger the weapon nodes for firing.
 		std::vector<float>						nodeRecycle;			//Used for ripple fire to find out if the node has fired recently.
 		
-		Stuff::Vector3D				footPos[2];				//Used to store previous frame foot positions.
+		glm::vec3				footPos[2];				//Used to store previous frame foot positions.
 															//For foot poofs and footprints.
    		//NEW  GOS FX
 		gosFX::EffectPtr				rightDustPoofEffect[MAX_DUST_POOFS];
@@ -417,8 +417,8 @@ class Mech3DAppearance: public ObjectAppearance
 
 		bool						movedThisFrame;
 
-		Stuff::Point3D				leftShoulderPos;
-		Stuff::Point3D				rightShoulderPos;
+		glm::vec3				leftShoulderPos;
+		glm::vec3				rightShoulderPos;
 				
 		long						currentRightPoof;
 		long						currentLeftPoof;
@@ -426,8 +426,8 @@ class Mech3DAppearance: public ObjectAppearance
 		long						leftFootPoofDraw[MAX_DUST_POOFS];
 		long						rightFootPoofDraw[MAX_DUST_POOFS];
 		
-		Stuff::Point3D				lFootPosition[MAX_DUST_POOFS];
-		Stuff::Point3D				rFootPosition[MAX_DUST_POOFS];
+		glm::vec3				lFootPosition[MAX_DUST_POOFS];
+		glm::vec3				rFootPosition[MAX_DUST_POOFS];
 		bool						rightFootDone0;
 		bool						leftFootDone0;
 		bool						rightFootDone1;
@@ -461,11 +461,11 @@ class Mech3DAppearance: public ObjectAppearance
 		char						mechName[64];
 
 		//Arm off coolness
-		Stuff::Vector3D				dVel[2];
-		Stuff::Vector3D				dRot[2];
-		Stuff::Vector3D				dAcc[2];
-		Stuff::Vector3D				dRVel[2];
-		Stuff::Vector3D				dRacc[2];
+		glm::vec3				dVel[2];
+		glm::vec3				dRot[2];
+		glm::vec3				dAcc[2];
+		glm::vec3				dRVel[2];
+		glm::vec3				dRacc[2];
 		float						dTime[2];
 
 		float										flashDuration;
@@ -589,7 +589,7 @@ class Mech3DAppearance: public ObjectAppearance
 			return jumpAirborne;
 		}
 
-		virtual bool setJumpParameters (Stuff::Vector3D &end);
+		virtual bool setJumpParameters (glm::vec3 &end);
 
 		virtual bool haveFallen (void)
 		{
@@ -718,7 +718,7 @@ class Mech3DAppearance: public ObjectAppearance
 			}
 		}
 
-		virtual Stuff::Vector3D getVelocity (void)
+		virtual glm::vec3 getVelocity (void)
 		{
 			return jumpVelocity;
 		}
@@ -738,7 +738,7 @@ class Mech3DAppearance: public ObjectAppearance
 			inCombatMode = combatMode;
 		}
 
-		virtual void setObjectParameters (const Stuff::Vector3D &pos, float legRot, long selected, long alignment, long homeRelations);
+		virtual void setObjectParameters (const glm::vec3 &pos, float legRot, long selected, long alignment, long homeRelations);
 
 		virtual void setMoverParameters (float turretRot, float lArmRot = 0.0f, float rArmRot = 0.0f, bool isAirborne = false);
 
@@ -767,11 +767,11 @@ class Mech3DAppearance: public ObjectAppearance
 		// Once site Objects are in place, go get 'em
 		virtual void setWeaponNodeUsed (long nodeId);
 		
-		virtual Stuff::Vector3D getWeaponNodePosition (long nodeId);
+		virtual glm::vec3 getWeaponNodePosition (long nodeId);
 		
-		virtual Stuff::Vector3D getNodePosition (long nodeId);
+		virtual glm::vec3 getNodePosition (long nodeId);
 		
-		virtual Stuff::Vector3D getNodeNamePosition (const char *nodeName);
+		virtual glm::vec3 getNodeNamePosition (const char *nodeName);
 		
 		virtual long getWeaponNode (long weapontype);
 
@@ -847,12 +847,12 @@ class Mech3DAppearance: public ObjectAppearance
 
 		virtual bool PerPolySelect (long mouseX, long mouseY);
 		
-		virtual Stuff::Point3D getRootNodeCenter (void)
+		virtual glm::vec3 getRootNodeCenter (void)
 		{
 			// DEGRADE-DON'T-CRASH: partial import with no base shape -> origin.
 			if (!mechShape)
-				return Stuff::Point3D(0.0f, 0.0f, 0.0f);
-			Stuff::Point3D result = mechShape->GetRootNodeCenter();
+				return glm::vec3(0.0f, 0.0f, 0.0f);
+			glm::vec3 result = mechShape->GetRootNodeCenter();
 			return result;
 		}
 
@@ -894,10 +894,10 @@ class Mech3DAppearance: public ObjectAppearance
 			return leftArmOff;
 		}
 
-		virtual Stuff::Vector3D getHitNodeLeft (void);
-		virtual Stuff::Vector3D getHitNodeRight (void);
+		virtual glm::vec3 getHitNodeLeft (void);
+		virtual glm::vec3 getHitNodeRight (void);
 
-		virtual Stuff::Vector3D getNodeIdPosition (long nodeId);
+		virtual glm::vec3 getNodeIdPosition (long nodeId);
 };
 
 

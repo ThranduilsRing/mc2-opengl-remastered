@@ -81,8 +81,8 @@ TG_MultiShapePtr TG_TypeMultiShape::CreateFrom (void)
 	{
 		newShape->listOfShapes[i].parentNode = nullptr;
 		newShape->listOfShapes[i].currentAnimation = nullptr;
-		newShape->listOfShapes[i].shapeToWorld = Stuff::LinearMatrix4D::Identity;
-		newShape->listOfShapes[i].worldToShape = Stuff::LinearMatrix4D::Identity;
+		newShape->listOfShapes[i].shapeToWorld = glm::mat4(1.0f);
+		newShape->listOfShapes[i].worldToShape = glm::mat4(1.0f);
 		newShape->listOfShapes[i].calcedThisFrame = -1;
 		newShape->listOfShapes[i].processMe = true;
 		newShape->listOfShapes[i].baseRotation.w = 1.0f;

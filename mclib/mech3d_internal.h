@@ -120,7 +120,7 @@ extern int ObjectTextureSize;
 
 // Eager gate caches defined in mech3d.cpp (read by several pieces).
 extern const bool s_lcTrace;
-extern Stuff::Vector3D debugMechActorPosition[];
+extern glm::vec3 debugMechActorPosition[];
 extern float mechDebugAngle[];
 extern float torsoDebugAngle[];
 
