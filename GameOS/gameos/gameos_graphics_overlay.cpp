@@ -850,44 +850,6 @@ void gosRenderer::executorApplyWaterState()
     waterStateAppliedByExecutor_ = true;
 }
 
-// APPLY-STATE-SHADOW-1: pre-apply the declared Shadow render-target MODE at the dynamic
-// shadow seam. ★FIRST consumer that lifts a CLEAR (DepthForwardZ) in addition to the
-// pipeline — Shadow owns a render-target mode, not just a pipeline. The EXTEND generic-axes
-// helper is called with the Shadow row whose fboTarget=Unknown / viewport=Inherit, so it
-// applies ONLY the DepthForwardZ depth clear (1.0 -> glClear(DEPTH) -> 0.0; the trailing
-// reset to 0.0 protects the reverse-Z scene). FBO/viewport are passed as 0 and are NOT
-// touched by the helper (skip-sentinels) — the body keeps its glBindFramebuffer
-// (ShadowDynamicMap) + glViewport (ShadowMap size); lifting those is SHADOW-2.
-// Then applies the ShadowMech BASE pipeline (mech casters inherit it; dynamic-prop casters
-// re-apply ShadowStaticProp at their draw sites — body-owned), bumps the apply counter, and
-// flags the body to skip its own applyPipeline + clear (one-shot). Order note: the helper does
-// the clear, and the pipeline is applied here, so when ON the clear runs immediately before
-// applyPipeline(ShadowMech) and BEFORE the unconditional noteRenderPass(ShadowCaster) in the
-// body. That moves the clear ~6 lines earlier than the OFF path; it is provably inert to what
-// the note samples (FBO binding + depthFunc/depthWrite — a depth-buffer clear changes neither)
-// and no draw occurs in the gap, so the rendered shadow is byte-identical. Only reached when
-// MC2_FRAMEGRAPH_EXECUTOR is ON and the dynamic shadow pass runs.
-void gosRenderer::executorApplyShadowState()
-{
-    const RenderCore::framegraph::TopLevelStateDesc* desc =
-        RenderCore::framegraph::findTopLevelStateDesc(RenderCore::RenderPassId::Shadow);
-    if (desc) {
-        // APPLY-STATE-SHADOW-2: resolve the dynamic shadow FBO + shadow-map size and pass them
-        // so the EXTEND helper binds fboTarget=ShadowDynamicMap, sets viewport=ShadowMap (the
-        // shadow-map size), then does the DepthForwardZ clear — in that order, AFTER the body's
-        // AMD-unbind + GL_TEXTURE_COMPARE_MODE preamble (the dispatch sits at the body's former
-        // FBO-bind position). Byte-identical to the body's FBO->viewport->clear sequence.
-        gosPostProcess* pp = getGosPostProcess();
-        const unsigned fbo = pp ? pp->getDynamicShadowFBO() : 0u;
-        const int      sz  = pp ? pp->getDynamicShadowMapSize() : 0;
-        RenderCore::framegraph::applyTopLevelGenericAxes(*desc, fbo, sz, sz);
-    }
-    pipeline_binder::applyPipeline(
-        RenderCore::getPipelineDesc(RenderCore::PipelineId::ShadowMech), "ShadowMech");
-    mc2_framegraph_executor_bump_apply_state((unsigned)RenderCore::framegraph::ApplyPassId::Shadow);
-    shadowStateAppliedByExecutor_ = true;
-}
-
 // FRAMEGRAPH-APPLY-STATE-EXTEND-1: shared GENERIC-AXES apply helper (declared in
 // RenderCore/top_level_apply_axes.h). Applies the OPTIONAL non-pipeline axes a
 // TopLevelStateDesc declares, each SKIPPED on its sentinel so the 4 unchanged consumers

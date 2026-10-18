@@ -72,7 +72,6 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 			// Body sets its own state (FBO bind, depth, lightSpaceMatrix); we just validate.
 			render_contract::executorOwnBeginTopLevel(render_contract::PassIdentity::ShadowCaster,
 			                                          "renderLists_gos_BeginDynamicShadowPass");
-			gos_BeginDynamicShadowPass();             // no-op if shadowsEnabled_ false
 #ifdef MC2_VULKAN_ISLAND
 			// VK-P8a SHADOW-INTEROP: clear any stale VK-produced shadow tex at the top of
 			// the bracket so a frame where the island declines/isn't reached (e.g. the
@@ -248,25 +247,17 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 #endif
 				csmCasterSet = dynShadowSet;   // Item 1 P1: remember for the cascade replay
 			}
-			gos_EndDynamicShadowPass();
 			render_contract::executorOwnEndTopLevel(render_contract::PassIdentity::ShadowCaster,
 			                                        "renderLists_gos_EndDynamicShadowPass");
 
-			// Item 1 P1: replay casters into each CSM array layer. The legacy
-			// single-map pass above is fully complete (props+mech+EndPass restored
-			// state). Each beginDynamicShadowCascade binds the array layer + sets
-			// the active cascade matrix (via getDynamicLightSpaceMatrix resolving to
-			// the active cascade) and clears forward-Z. Skipped entirely (no GL) and
-			// byte-identical when the ShadowCSM option is off. csmCasterSet is non-null in
-			// the prop-caster path; otherwise we fall back to flushShadow per layer.
+			// Item 1 P1: the VK shadow island records each CSM layer from the same caster set (the GL per-layer replay is gone).
+			// Skipped entirely when the ShadowCSM option is off.
 			if (mc2ShadowCsmEnabled()) {
 				gosPostProcess* ppCsm = getGosPostProcess();
-				if (ppCsm && ppCsm->getDynamicShadowArrayTexture()) {
+				if (ppCsm && ppCsm->csmBuilt()) {
 					ZoneScopedN("RenderLists.DynShadowCSM");
 					const int csmN = ppCsm->getDynamicShadowCascadeCount();
 					for (int ci = 0; ci < csmN; ++ci) {
-						if (!ppCsm->beginDynamicShadowCascade(ci)) continue;
-						ppCsm->endDynamicShadowCascadePass();
 #ifdef MC2_VULKAN_ISLAND
 						if (ci < csmN - 1 && csmCasterSet && mc2_vk_shadow_island_enabled()) {
 							const float* mats = ppCsm->getDynamicCascadeMatrices();
