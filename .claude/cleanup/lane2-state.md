@@ -1,5 +1,10 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## SIXTY-SECOND session (2026-10-18, Sonnet 5.5) -- GL deletion continued (batches D onward)
+
+Branch rebased onto nifty b8b2b6862 (clean, 9 commits replayed, no conflicts; the log tag baseline did not conflict). Ninja tree reconfigured with `--compile-cache`; first full rebuild 861 steps, 23 min, sccache server stats afterwards 1868 hits / 3667 requests (50.97 %; shared with the other lanes, so not this build alone).
+
+- Batch D (9da151301, 24 files, +102 -1161): the GL shadow map resources are gone: static 4096^2, dynamic 8192^2, CSM near array + full map, their FBOs / dummy colour textures / depth program, the ShadowStaticMap / ShadowDynamicMap / ShadowCsmNearArray / ShadowCsmFullMap RenderResource registrations (the two CSM enumerators and DynamicFullMapFbo=35 deleted, Count 52 -> 50), the FBO-ledger registrations, the GL shadow debug overlay (the Vulkan CSM view stays; `showShadowDebug_` toggles it, the static / dynamic mode radio is gone) and shaders shadow_debug.frag / shadow_depth.vert / shadow_depth.frag. `gosPostProcess` keeps sizes, matrices and the `dynShadowBuilt()` / `csmBuilt()` flags the Vulkan feeds read. The GL forward consumers (object material, overlay, terrain patch stream, LOD-chunk draw) run shadow-free (enableShadows=0). The GL screen-shadow draw is deleted (only the native pass remains). `MC2_VK_SHADOW_MATRIX_DIAG` lost its GL depth readback half. Kept on purpose: the logical ids ShadowStaticMap / ShadowDynamicMap in the frame-graph / Vulkan contract tables (frame-graph batch).
 ## SIXTY-FIRST session (2026-10-18, Sonnet 5.5) -- BUGS 94 (HUD) was install data, GL prop/static/dynamic shadow draws and the GL HUD replay deleted, batch 0 feeds neutral
 
 Branch rebased onto nifty 03403e3ed. Commits (local): batch A | batch 0 | BUGS row | batch B | two check regenerations | batch C | Shadow ApplyPassId retired + ledger/manifests. Code tip = the commit before this state commit (a5859d86d).
