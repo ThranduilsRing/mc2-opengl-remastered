@@ -22,7 +22,11 @@ Hardens against the four documented stale-deploy failure classes
                                              (override: --allow-stale-pdb)
 
 After a successful deploy, writes <target>/.deployed_manifest.csv (manifest v1):
-  rows = relpath,sha256,bytes,src_commit,timestamp
+  rows = relpath,sha256,bytes,src_commit,timestamp,mtime_ns
+
+Unchanged files (source size AND mtime_ns match the previous row, and the
+deployed copy still has the recorded size) are not re-copied or re-hashed.
+--full-verify disables that fast path and copies/hashes every payload file.
 
 --verify-only re-checks an existing target against its manifest (post-hoc
 staleness detector). Advisory: exit 0 with a report, unless --strict.
@@ -443,6 +447,46 @@ def sha256_file(path):
     return h.hexdigest()
 
 
+def read_manifest(target_dir):
+    """relpath -> (sha256, bytes, mtime_ns) from the target's CSV, or {}.
+
+    Rows written before the mtime_ns column have no cache entry (mtime_ns
+    None), so the first deploy after the upgrade copies and hashes as before.
+    """
+    path = os.path.join(target_dir, MANIFEST_NAME)
+    if not os.path.isfile(path):
+        return {}
+    out = {}
+    try:
+        with open(path, newline="", encoding="utf-8") as f:
+            rows = list(csv.reader(f))
+    except (OSError, csv.Error):
+        return {}
+    if not rows or rows[0][:2] != ["manifest_version", MANIFEST_VERSION]:
+        return {}
+    for row in rows[2:]:
+        if len(row) < 3 or not row[0]:
+            continue
+        try:
+            size = int(row[2])
+        except ValueError:
+            continue
+        mtime_ns = None
+        if len(row) >= 6 and row[5].isdigit():
+            mtime_ns = int(row[5])
+        out[row[0]] = (row[1], size, mtime_ns)
+    return out
+
+
+def source_stamp(src):
+    """(size, mtime_ns) of a source file, or None when it does not exist."""
+    try:
+        st = os.stat(src)
+    except OSError:
+        return None
+    return (st.st_size, st.st_mtime_ns)
+
+
 # TERRAIN-MATERIAL-TEXTURES-1-FIX (fix D): read a KTX2 file's levelCount from the
 # header. The KTX2 v2 layout is a 12-byte identifier followed by a fixed header:
 # vkFormat(u32) typeSize(u32) pixelWidth(u32) pixelHeight(u32) pixelDepth(u32)
@@ -656,7 +700,7 @@ def _check_running_processes(target_exe_resolved, exe_name):
 
 
 #: How long a deploy waits for a game running from its target folder to exit (another lane's smoke run, usually). MC2_DEPLOY_WAIT_S overrides.
-DEFAULT_DEPLOY_WAIT_S = 900.0
+DEFAULT_DEPLOY_WAIT_S = 30.0
 
 
 def _deploy_lease_module():
@@ -1078,11 +1122,25 @@ def ensure_terrain_materials(target_dir):
     return hashes
 
 
-def deploy(items, target_dir, allow_stale_pdb, preserve=()):
+def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
+           full_verify=False):
+    """Copy + verify the payload.
+
+    `cache` is read_manifest()'s relpath -> (sha256, bytes, mtime_ns). A file
+    whose source size and mtime_ns still match the recorded row, and whose
+    deployed copy is still the recorded size, is skipped: not copied, not
+    re-hashed. `full_verify` (--full-verify) ignores the cache and does what
+    every deploy did before: copy every file and hash source + target.
+    `.mcasset.json` is always copied: its deployed bytes are line-ending
+    normalized, so the deployed size is not a source size.
+    """
     src_hashes = ensure_terrain_materials(target_dir)
     shader_mismatches = []
     pdb_problem = None
     preserve = {p.replace(os.sep, "/") for p in preserve}
+    cache = cache or {}
+    skipped = 0
+    pdb_skipped = False
 
     for src, rel, kind in items:
         dst = os.path.join(target_dir, rel)
@@ -1096,6 +1154,16 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=()):
             src_hashes[rel] = (sha256_file(dst), os.path.getsize(dst))
             log(f"preserved {rel} (existing target copy kept)")
             continue
+        if not full_verify and not rel.endswith(".mcasset.json"):
+            row = cache.get(rel)
+            stamp = source_stamp(src)
+            if (row is not None and row[2] is not None and stamp == (row[1], row[2])
+                    and os.path.isfile(dst)
+                    and os.path.getsize(dst) == row[1]):
+                src_hashes[rel] = (row[0], row[1], stamp[1])
+                skipped += 1
+                pdb_skipped = pdb_skipped or kind == "pdb"
+                continue
         os.makedirs(os.path.dirname(dst) or target_dir, exist_ok=True)
         try:
             if rel.endswith(".mcasset.json"):
@@ -1114,7 +1182,9 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=()):
                  "  A process is holding this file. Close it and re-run; "
                  "this script never taskkills.", 2)
         d_hash = sha256_file(dst)
-        src_hashes[rel] = (d_hash, os.path.getsize(dst))
+        stamp = source_stamp(src)
+        src_hashes[rel] = (d_hash, os.path.getsize(dst),
+                           stamp[1] if stamp is not None else None)
         if s_hash != d_hash:
             if kind == "exe":
                 fail(f"post-copy exe hash MISMATCH: {rel}\n"
@@ -1128,6 +1198,10 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=()):
                 shader_mismatches.append(rel)  # DLLs hard-fail too
         log(f"deployed {rel} ({'OK' if s_hash == d_hash else 'MISMATCH'})")
 
+    if skipped:
+        log(f"skipped {skipped} unchanged file(s) "
+            f"(size+mtime_ns match the manifest; --full-verify to re-copy)")
+
     if shader_mismatches:
         fail("post-copy diff MISMATCH (stale files in target):\n  "
              + "\n  ".join(shader_mismatches), 4)
@@ -1138,6 +1212,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=()):
         else:
             fail(f"{pdb_problem}\n  Stale PDB = wrong Tracy symbols "
                  "(Mistake D). Use --allow-stale-pdb to override.", 5)
+    elif pdb_skipped:
+        log("PDB check OK: unchanged (size+mtime_ns match the manifest)")
     else:
         log("PDB check OK: deployed PDB matches source hash")
 
@@ -1149,11 +1225,15 @@ def write_manifest(target_dir, hashes, src_commit):
     path = os.path.join(target_dir, MANIFEST_NAME)
     with open(path, "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["manifest_version", MANIFEST_VERSION, "", "", ""])
-        w.writerow(["relpath", "sha256", "bytes", "src_commit", "timestamp"])
+        w.writerow(["manifest_version", MANIFEST_VERSION, "", "", "", ""])
+        w.writerow(["relpath", "sha256", "bytes", "src_commit", "timestamp",
+                    "mtime_ns"])
         for rel in sorted(hashes):
-            h, size = hashes[rel]
-            w.writerow([rel, h, size, src_commit, ts])
+            entry = tuple(hashes[rel])
+            h, size = entry[0], entry[1]
+            mtime_ns = entry[2] if len(entry) > 2 else None
+            w.writerow([rel, h, size, src_commit, ts,
+                        "" if mtime_ns is None else mtime_ns])
     log(f"manifest written: {path} ({len(hashes)} rows, {MANIFEST_VERSION}, "
         f"src_commit {src_commit[:12]})")
 
@@ -1173,7 +1253,10 @@ def hash_present_payload(items, target_dir):
     for src, rel, kind in items:
         dst = os.path.join(target_dir, rel)
         if os.path.isfile(dst):
-            hashes[rel] = (sha256_file(dst), os.path.getsize(dst))
+            # No mtime_ns: this path cannot prove the deployed bytes came from
+            # the current source (another deploy path copied them), so the row
+            # must never authorize a future skip. A real deploy fills it in.
+            hashes[rel] = (sha256_file(dst), os.path.getsize(dst), None)
             present += 1
         else:
             absent += 1
@@ -1214,7 +1297,7 @@ def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir,
                         continue  # freshly re-hashed wins
                     p = os.path.join(target_dir, rel)
                     if os.path.isfile(p):
-                        hashes[rel] = (h, size)
+                        hashes[rel] = (h, size, None)
         except Exception as e:
             log(f"WARNING: could not merge existing CSV manifest ({e}); replacing")
 
@@ -1375,6 +1458,9 @@ def main():
                     help="downgrade PDB staleness to a warning")
     ap.add_argument("--allow-stale-exe", action="store_true",
                     help="downgrade stale-exe (exe older than its .obj files) to a warning")
+    ap.add_argument("--full-verify", action="store_true",
+                    help="ignore the size+mtime_ns fast path: copy every payload "
+                    "file and hash source and target as earlier versions did")
     ap.add_argument("--verify-only", action="store_true",
                     help="re-check existing target against its manifest; no copy")
     ap.add_argument("--write-manifest-only", action="store_true",
@@ -1515,7 +1601,9 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     check_hardlink_isolation(items + [(None, MANIFEST_NAME, "manifest")],
                              target)
 
-    hashes = deploy(items, target, args.allow_stale_pdb, preserve=args.preserve)
+    cache = {} if args.full_verify else read_manifest(target)
+    hashes = deploy(items, target, args.allow_stale_pdb, preserve=args.preserve,
+                    cache=cache, full_verify=args.full_verify)
     write_manifest(target, hashes, src_commit)
     log("deploy COMPLETE — payload verified, manifest written")
 

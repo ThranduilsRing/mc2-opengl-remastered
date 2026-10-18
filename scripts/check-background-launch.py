@@ -365,19 +365,109 @@ def allow_reason(lines, node):
     return None
 
 
-def assignments(tree: ast.AST, src: str) -> dict:
+class FileScan:
+    """Everything the per-file rules need, from ONE ast.walk() of that file.
+
+    Rules used to re-walk the whole tree once per needle (names_in_code was
+    called 1,913 times) and once more per rule: 34 M child visits, 40+ s.
+    ast.walk() is breadth-first and its yield order is fixed, so a single
+    collection is identical to the repeated walks it replaces.
+    """
+    __slots__ = ("nodes", "calls", "assigns", "strings", "names", "attrs",
+                 "call_names", "call_strs", "cursor_hits")
+
+    def __init__(self, tree: ast.AST, src: str):
+        nodes: list = list(ast.walk(tree))
+        calls: list = []
+        assigns: dict = {}
+        strings: list = []
+        names: set = set()
+        attrs: set = set()
+        docs: set = set()
+        call_names: dict = {}
+        cursor_hits: list = []
+        defs = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+        for node in nodes:
+            kind = type(node)
+            if kind is ast.Call:
+                calls.append(node)
+                call_names[id(node)] = call_name(node)
+            elif kind is ast.Constant:
+                if isinstance(node.value, str):
+                    strings.append(node)
+            elif kind is ast.Name:
+                names.add(node.id)
+            elif kind is ast.Attribute:
+                attrs.add(node.attr)
+                if node.attr == CURSOR_WRITE_API:
+                    cursor_hits.append((node.lineno, node.attr))
+            elif kind is ast.Assign:
+                for tgt in node.targets:
+                    if type(tgt) is ast.Name:
+                        assigns.setdefault(tgt.id, []).append(
+                            source_segment(src, node.value) or "")
+            elif kind is ast.AnnAssign or kind is ast.NamedExpr:
+                if node.value is not None and type(node.target) is ast.Name:
+                    assigns.setdefault(node.target.id, []).append(
+                        source_segment(src, node.value) or "")
+            if kind is ast.Name and node.id == CURSOR_WRITE_API:
+                cursor_hits.append((node.lineno, node.id))
+            if kind in defs:
+                body = getattr(node, "body", None)
+                if body:
+                    first = body[0]
+                    if (isinstance(first, ast.Expr)
+                            and isinstance(first.value, ast.Constant)
+                            and isinstance(first.value.value, str)):
+                        docs.add(id(first.value))
+        self.nodes = nodes
+        self.calls = calls
+        self.assigns = assigns
+        self.strings = [c for c in strings if id(c) not in docs]
+        self.names = names
+        self.attrs = attrs
+        self.cursor_hits = cursor_hits
+        # Rules ask which call's ARGUMENTS mention "taskkill": collect the
+        # casefolded strings of every call's subtree in one traversal (a stack
+        # of enclosing calls), rather than ast.walk() per call.
+        call_strs: dict = {}
+        if "taskkill" in src.casefold():
+            self._index_call_strings(tree, call_strs)
+        self.call_names = call_names
+        self.call_strs = call_strs
+
+    @staticmethod
+    def _index_call_strings(tree: ast.AST, call_strs: dict) -> None:
+        stack: list = []
+        def _visit(node) -> None:
+            is_call = isinstance(node, ast.Call)
+            if is_call:
+                stack.append([])
+            text = (node.value.casefold() if isinstance(node, ast.Constant)
+                    and isinstance(node.value, str) else None)
+            for child in ast.iter_child_nodes(node):
+                _visit(child)
+            if is_call:
+                found = stack.pop()
+                call_strs[id(node)] = found
+            if text is not None:
+                for found in stack:
+                    found.append(text)
+        _visit(tree)
+
+    def names_in_code(self, needle: str) -> bool:
+        """True iff `needle` appears in EXECUTABLE source: a non-docstring
+        string constant, an identifier, or an attribute name."""
+        if needle in self.names or needle in self.attrs:
+            return True
+        return any(needle in c.value for c in self.strings)
+
+
+def assignments(tree: ast.AST, src: str, scan: FileScan | None = None) -> dict:
     """name -> [source text of every value assigned to it in this file]."""
-    out: dict = {}
-    for node in ast.walk(tree):
-        targets, value = [], None
-        if isinstance(node, ast.Assign):
-            targets, value = node.targets, node.value
-        elif isinstance(node, (ast.AnnAssign, ast.NamedExpr)) and node.value is not None:
-            targets, value = [node.target], node.value
-        for t in targets:
-            if isinstance(t, ast.Name) and value is not None:
-                out.setdefault(t.id, []).append(ast.get_source_segment(src, value) or "")
-    return out
+    if scan is not None:
+        return scan.assigns
+    return FileScan(tree, src).assigns
 
 
 def launch_argv_text(node: ast.Call, src: str, assigns: dict, depth: int = 3) -> str:
@@ -386,7 +476,7 @@ def launch_argv_text(node: ast.Call, src: str, assigns: dict, depth: int = 3) ->
     """
     expr = node.args[0] if node.args else next(
         (k.value for k in node.keywords if k.arg == "args"), None)
-    text = (ast.get_source_segment(src, expr) if expr is not None else "") or ""
+    text = (source_segment(src, expr) if expr is not None else "") or ""
     seen: set = set()
     frontier = text
     for _ in range(depth):
@@ -413,6 +503,48 @@ def call_name(node: ast.Call) -> str:
     return ".".join(reversed(parts))
 
 
+_LINE_PATTERN = re.compile(r"(.*?(?:\r\n|\n|\r|$))")
+_SPLIT_CACHE: dict = {}
+
+
+def _source_lines(src: str) -> list:
+    """ast's own line split, computed once per source string instead of per call."""
+    cached = _SPLIT_CACHE.get(id(src))
+    if cached is not None and cached[0] is src:
+        return cached[1]
+    lines = [m[0] for m in _LINE_PATTERN.finditer(src)]
+    _SPLIT_CACHE.clear()
+    _SPLIT_CACHE[id(src)] = (src, lines)
+    return lines
+
+
+def source_segment(src: str, node) -> str | None:
+    """ast.get_source_segment, with the line split cached per file.
+
+    The standard function re-splits the WHOLE file on every call; this checker
+    made 27,867 calls and that was 20 s of a 26 s run. Everything below is
+    ast.get_source_segment()'s algorithm unchanged (padded is unused here).
+    """
+    try:
+        if node.end_lineno is None or node.end_col_offset is None:
+            return None
+        lineno = node.lineno - 1
+        end_lineno = node.end_lineno - 1
+        col_offset = node.col_offset
+        end_col_offset = node.end_col_offset
+    except AttributeError:
+        return None
+    lines = _source_lines(src)
+    if end_lineno == lineno:
+        return lines[lineno].encode()[col_offset:end_col_offset].decode()
+    first = lines[lineno].encode()[col_offset:].decode()
+    last = lines[end_lineno].encode()[:end_col_offset].decode()
+    body = lines[lineno + 1:end_lineno]
+    body.insert(0, first)
+    body.append(last)
+    return "".join(body)
+
+
 def docstring_nodes(tree: ast.AST) -> set:
     """id() of every string Constant that is a module/class/function docstring.
 
@@ -437,20 +569,11 @@ def docstring_nodes(tree: ast.AST) -> set:
     return out
 
 
-def names_in_code(tree: ast.AST, needle: str) -> bool:
+def names_in_code(tree: ast.AST, needle: str, scan: FileScan | None = None) -> bool:
     """True iff `needle` appears in EXECUTABLE source: a non-docstring string
     constant, an identifier, or an attribute name. Comments and docstrings do
     not count -- see docstring_nodes()."""
-    docs = docstring_nodes(tree)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            if id(node) not in docs and needle in node.value:
-                return True
-        elif isinstance(node, ast.Name) and node.id == needle:
-            return True
-        elif isinstance(node, ast.Attribute) and node.attr == needle:
-            return True
-    return False
+    return (scan or FileScan(tree, "")).names_in_code(needle)
 
 
 def const_kwarg(node: ast.Call, name: str):
@@ -523,7 +646,7 @@ def _spawn_kind(node: ast.Call, src: str):
     """
     bare = False
     for kw in node.keywords:
-        ks = ast.get_source_segment(src, kw.value) or ""
+        ks = source_segment(src, kw.value) or ""
         if kw.arg == "creationflags":
             if re.search(r"NO_WINDOW|0x08000000", ks):
                 bare = True
@@ -549,7 +672,7 @@ def argv_variants(node: ast.Call, src: str, assigns: dict) -> list:
     """
     expr = node.args[0] if node.args else next(
         (k.value for k in node.keywords if k.arg == "args"), None)
-    direct = (ast.get_source_segment(src, expr) if expr is not None else "") or ""
+    direct = (source_segment(src, expr) if expr is not None else "") or ""
 
     def expand(text: str, depth: int = 3) -> str:
         seen: set = set()
@@ -591,13 +714,13 @@ def literal_program(node: ast.Call):
     return None
 
 
-def collect_sites(tree: ast.AST) -> dict:
+def collect_sites(tree: ast.AST, scan: FileScan | None = None) -> dict:
     """What a file does that RULE 14 / RULE 15 care about (AST, not grep)."""
     out = {"nofocus": False, "direct": False, "inject": [], "image_kill": [], "os_kill": []}
-    for node in ast.walk(tree):
+    for node in (scan.calls if scan is not None else ast.walk(tree)):
         if not isinstance(node, ast.Call):
             continue
-        nm = call_name(node)
+        nm = scan.call_names[id(node)] if scan is not None else call_name(node)
         leaf = nm.rsplit(".", 1)[-1]
         if nm in SAFE_LAUNCH_CALLS:
             out["nofocus"] = True
@@ -607,7 +730,9 @@ def collect_sites(tree: ast.AST) -> dict:
             out["inject"].append((node.lineno, nm))
         if nm == "os.kill":
             out["os_kill"].append(node.lineno)
-        strs = [c.value.casefold() for c in ast.walk(node) if isinstance(c, ast.Constant) and isinstance(c.value, str)]
+        strs = (scan.call_strs.get(id(node), []) if scan is not None
+                else [c.value.casefold() for c in ast.walk(node)
+                      if isinstance(c, ast.Constant) and isinstance(c.value, str)])
         if any("taskkill" in s for s in strs) and ("/im" in strs or any(re.search(r"/im\s", s) for s in strs)):
             out["image_kill"].append(node.lineno)
     return out
@@ -691,33 +816,32 @@ def check(root: Path = ROOT, use_git: bool = True, allow=None):
         except SyntaxError:
             continue
         lines = src.splitlines()
-        assigns = assignments(tree, src)
+        scan = FileScan(tree, src)
+        assigns = scan.assigns
         names_engine_file = bool(ENGINE_FILE_MARK.search(src))
 
         if r != "scripts/check-background-launch.py":
-            sites_by_file[r] = collect_sites(tree)
+            sites_by_file[r] = collect_sites(tree, scan)
             texts[r] = src
 
         # ---- RULE 11: SetCursorPos only inside win_input.set_cursor_pos, after the idle check ----
         if r != "scripts/check-background-launch.py":
-            problems.extend(cursor_write_problems(r, tree))
+            problems.extend(cursor_write_problems(r, tree, scan))
 
         # ---- RULE 13: vetted launch path, no blanket kills ----
         if r != "scripts/check-background-launch.py":
-            problems.extend(engine_kill_problems(r, tree))
-        problems.extend(launch_vet_problems(r, tree))
+            problems.extend(engine_kill_problems(r, tree, scan))
+        problems.extend(launch_vet_problems(r, tree, scan))
 
         # ---- RULE 12: test trees must disable the real cursor guard ----
-        problems.extend(test_cursor_isolation_problems(root, r, tree, src))
+        problems.extend(test_cursor_isolation_problems(root, r, tree, src, scan))
 
         # ---- RULE 3: raw focus/cursor Win32 outside the policy modules ----
         # AST, not grep: a docstring or a string constant naming the API is not
         # a call, and flagging those made the checker cry wolf.
         if r not in CURSOR_POLICY_FILES:
-            for node in ast.walk(tree):
-                if not isinstance(node, ast.Call):
-                    continue
-                nm = call_name(node)
+            for node in scan.calls:
+                nm = scan.call_names[id(node)]
                 leaf = nm.rsplit(".", 1)[-1]
                 if nm.startswith("nofocus."):
                     continue
@@ -734,14 +858,12 @@ def check(root: Path = ROOT, use_git: bool = True, allow=None):
                         f"MC2_HARNESS_ALLOW_FOREGROUND=1.")
 
         # ---- RULE 1 (tightened) + RULE 10 ----
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Call):
-                continue
-            name = call_name(node)
+        for node in scan.calls:
+            name = scan.call_names[id(node)]
             safe = name in SAFE_LAUNCH_CALLS
             if name not in CHILD_SPAWN_CALLS and not safe:
                 continue
-            seg = ast.get_source_segment(src, node) or ""
+            seg = source_segment(src, node) or ""
             variants = argv_variants(node, src, assigns)
 
             # Is this an ENGINE launch? A nofocus.* call is BY DEFINITION one --
@@ -809,7 +931,7 @@ def check(root: Path = ROOT, use_git: bool = True, allow=None):
             for var in required:
                 # names_in_code(), not `var in src`: a policy file that only
                 # MENTIONS the var in a comment or docstring still strips it.
-                if not names_in_code(tree, var):
+                if not scan.names_in_code(var):
                     problems.append(
                         f"{r}: defines an MC2_* env policy but never names "
                         f"{var} IN CODE (a comment or docstring mention does "
@@ -824,20 +946,18 @@ def check(root: Path = ROOT, use_git: bool = True, allow=None):
 
         # ---- collect once for RULES 6/7/8 ----
         composite_hits = []
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Call):
-                continue
+        for node in scan.calls:
             nm = call_name(node)
             if any(nm == api or nm.endswith("." + api)
                    for api in COMPOSITE_CAPTURE_APIS):
                 composite_hits.append((node.lineno, nm))
         if composite_hits:
             composite_users[r] = composite_hits
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Call) and const_kwarg(node, "offscreen") is False:
+        for node in scan.calls:
+            if const_kwarg(node, "offscreen") is False:
                 offscreen_false_decls.setdefault(r, []).append(node.lineno)
-        if any(names_in_code(tree, n) for n in OFFSCREEN_ENV_NAMES) or \
-                names_in_code(tree, "MC2_WINDOW_OFFSCREEN"):
+        if any(scan.names_in_code(n) for n in OFFSCREEN_ENV_NAMES) or \
+                scan.names_in_code("MC2_WINDOW_OFFSCREEN"):
             delivers_offscreen.add(r)
 
     # ---- RULE 6: composite-capture registry integrity ----
@@ -1329,24 +1449,27 @@ NOFOCUS_FILE = "scripts/smoke_lib/nofocus.py"
 LAUNCH_VET_FUNC = "_vet_engine_exe"
 
 
-def engine_kill_problems(rel: str, tree: ast.AST) -> list:
+def engine_kill_problems(rel: str, tree: ast.AST, scan: FileScan | None = None) -> list:
     """RULE 13b: an image-name kill of an engine exe."""
     out = []
-    for node in ast.walk(tree):
+    for node in (scan.calls if scan is not None else ast.walk(tree)):
         if not isinstance(node, ast.Call):
             continue
-        strs = [c.value.casefold() for c in ast.walk(node) if isinstance(c, ast.Constant) and isinstance(c.value, str)]
+        strs = (scan.call_strs.get(id(node), []) if scan is not None
+                else [c.value.casefold() for c in ast.walk(node)
+                      if isinstance(c, ast.Constant) and isinstance(c.value, str)])
         if "taskkill" in strs and "/im" in strs and any(n in strs for n in ENGINE_IMAGE_NAMES):
             out.append(f"{rel}:{node.lineno}: taskkill /IM of an engine exe ends every running game, "
                        f"including the owner's. Kill only the pid you spawned.")
     return out
 
 
-def launch_vet_problems(rel: str, tree: ast.AST) -> list:
+def launch_vet_problems(rel: str, tree: ast.AST, scan: FileScan | None = None) -> list:
     """RULE 13a: nofocus.spawn()/run() must call the shared exe vetting."""
     if rel != NOFOCUS_FILE:
         return []
-    funcs = {f.name: f for f in ast.walk(tree) if isinstance(f, ast.FunctionDef)}
+    funcs = {f.name: f for f in (scan.nodes if scan is not None else ast.walk(tree))
+             if isinstance(f, ast.FunctionDef)}
     out = []
     for name in ("spawn", "run"):
         fn = funcs.get(name)
@@ -1369,17 +1492,20 @@ def _is_test_tree_file(rel: str) -> bool:
     return rel.startswith(("tests/", "scripts/tests/", "tools/")) or Path(rel).name.startswith("test_")
 
 
-def test_cursor_isolation_problems(root: Path, rel: str, tree: ast.AST, src: str) -> list:
+def test_cursor_isolation_problems(root: Path, rel: str, tree: ast.AST, src: str,
+                                   scan: FileScan | None = None) -> list:
     """RULE 12: a test-tree file that can reach the real pointer needs MC2_CURSOR_GUARD_OFF set."""
     if not _is_test_tree_file(rel) or Path(rel).name == "conftest.py":
         return []
     hits = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call):
-            leaf = call_name(node).rsplit(".", 1)[-1]
+    for node in (scan.nodes if scan is not None else ast.walk(tree)):
+        kind = type(node)
+        if kind is ast.Call:
+            leaf = (scan.call_names[id(node)] if scan is not None
+                    else call_name(node)).rsplit(".", 1)[-1]
             if leaf in TEST_CURSOR_APIS:
                 hits.append((node.lineno, leaf))
-        elif isinstance(node, ast.Attribute) and node.attr == "ClipCursor":
+        elif kind is ast.Attribute and node.attr == "ClipCursor":
             hits.append((node.lineno, "ClipCursor"))
     if not hits or TEST_CURSOR_OFF_ENV in src:
         return []
@@ -1397,24 +1523,33 @@ def test_cursor_isolation_problems(root: Path, rel: str, tree: ast.AST, src: str
             f"ClipCursor/SetCursorPos on the user's desktop."]
 
 
-def cursor_write_problems(rel: str, tree: ast.AST) -> list:
+def cursor_write_problems(rel: str, tree: ast.AST, scan: FileScan | None = None) -> list:
     """RULE 11: every mention of the pointer-write API outside its one guarded function."""
     allowed = None      # (first_line, last_line) of the guarded function in the owner file
     if rel == CURSOR_WRITE_OWNER:
-        for fn in ast.walk(tree):
-            if isinstance(fn, ast.FunctionDef) and fn.name == CURSOR_WRITE_FUNC:
+        for fn in (scan.nodes if scan is not None else ast.walk(tree)):
+            if type(fn) is ast.FunctionDef and fn.name == CURSOR_WRITE_FUNC:
                 guard_lines = [c.lineno for c in ast.walk(fn)
                                if isinstance(c, ast.Call) and call_name(c).rsplit(".", 1)[-1] == CURSOR_WRITE_GUARD]
                 if guard_lines:
                     allowed = (min(guard_lines), fn.end_lineno)
                 break
     out = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Attribute) and node.attr == CURSOR_WRITE_API:
+    if scan is not None:
+        for lineno, name in scan.cursor_hits:
+            if allowed and allowed[0] < lineno <= allowed[1]:
+                continue
+            out.append(f"{rel}:{lineno}: {name} outside {CURSOR_WRITE_OWNER}:{CURSOR_WRITE_FUNC}() "
+                       f"(after its {CURSOR_WRITE_GUARD}() check). Call win_input.set_cursor_pos() "
+                       f"so a user at the keyboard is never fought for the mouse.")
+        return out
+    for node in (scan.nodes if scan is not None else ast.walk(tree)):
+        kind = type(node)
+        if kind is ast.Attribute and node.attr == CURSOR_WRITE_API:
             name = node.attr
-        elif isinstance(node, ast.Name) and node.id == CURSOR_WRITE_API:
+        elif kind is ast.Name and node.id == CURSOR_WRITE_API:
             name = node.id
-        elif (isinstance(node, ast.Call) and call_name(node).rsplit(".", 1)[-1] in ("getattr", "GetProcAddress")
+        elif (kind is ast.Call and call_name(node).rsplit(".", 1)[-1] in ("getattr", "GetProcAddress")
               and any(isinstance(a, ast.Constant) and a.value == CURSOR_WRITE_API for a in node.args)):
             name = CURSOR_WRITE_API     # looked up by name; a list of names to scan for is not a call
         else:
