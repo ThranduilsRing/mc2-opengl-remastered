@@ -532,7 +532,7 @@ void gosFX::Card::Draw(DrawInfo *info)
 			                   blendMode, atlasColumns);
 
 			// Card world position: translation column of m_localToWorld.
-			const Stuff::Point3D wc(m_localToWorld);
+			const glm::vec3 wc = mc2::math::getTranslation(m_localToWorld);
 
 			// The live atlas frame matches Card::Execute.
 			uint32_t atlasFrame = 0u;
@@ -593,8 +593,8 @@ void gosFX::Card::Draw(DrawInfo *info)
 	Check_Object(spec);
 	dInfo.state.Combine(info->m_state, spec->m_state);
 	dInfo.clippingFlags = info->m_clippingFlags;
-	Stuff::LinearMatrix4D local_to_world;
-	local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
+	glm::mat4 local_to_world;
+	local_to_world = m_localToParent * *info->m_parentToWorld;
 	dInfo.effectToWorld = &local_to_world;
 
 	//
@@ -604,25 +604,15 @@ void gosFX::Card::Draw(DrawInfo *info)
 	//
 	if (spec->m_alignZUsingX)
 	{
-		Stuff::Point3D
-			camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-		Stuff::Point3D card_in_world(local_to_world);
-		Stuff::Vector3D look_at;
-		look_at.Subtract(camera_in_world, card_in_world);
+		glm::vec3
+			camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+		glm::vec3 card_in_world = mc2::math::getTranslation(local_to_world);
+		glm::vec3 look_at;
+		look_at = camera_in_world - card_in_world;
 		if (spec->m_alignZUsingY)
-			local_to_world.AlignLocalAxisToWorldVector(
-				look_at,
-				Stuff::Z_Axis,
-				Stuff::Y_Axis,
-				Stuff::X_Axis
-			);
+			mc2::math::alignLocalAxisToWorldVector(local_to_world, look_at, Stuff::Z_Axis, Stuff::Y_Axis, Stuff::X_Axis);
 		else
-			local_to_world.AlignLocalAxisToWorldVector(
-				look_at,
-				Stuff::Z_Axis,
-				Stuff::X_Axis,
-				-1
-			);
+			mc2::math::alignLocalAxisToWorldVector(local_to_world, look_at, Stuff::Z_Axis, Stuff::X_Axis, -1);
 	}
 
 	//
@@ -632,17 +622,12 @@ void gosFX::Card::Draw(DrawInfo *info)
 	//
 	else if (spec->m_alignZUsingY)
 	{
-		Stuff::Point3D
-			camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-		Stuff::Point3D card_in_world(local_to_world);
-		Stuff::Vector3D look_at;
-		look_at.Subtract(camera_in_world, card_in_world);
-		local_to_world.AlignLocalAxisToWorldVector(
-			look_at,
-			Stuff::Z_Axis,
-			Stuff::Y_Axis,
-			-1
-		);
+		glm::vec3
+			camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+		glm::vec3 card_in_world = mc2::math::getTranslation(local_to_world);
+		glm::vec3 look_at;
+		look_at = camera_in_world - card_in_world;
+		mc2::math::alignLocalAxisToWorldVector(local_to_world, look_at, Stuff::Z_Axis, Stuff::Y_Axis, -1);
 	}
 
 	//

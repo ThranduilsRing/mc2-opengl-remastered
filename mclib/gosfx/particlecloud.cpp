@@ -1,8 +1,6 @@
 #include"gosfxheaders.hpp"
 #include"fx_trace/fx_cost_split.h"  // Q2-S0 FX cost-split (env MC2_FX_COST_SPLIT)
 #include <tracy/Tracy.hpp>          // Q2-S0 coarse CPU zone
-#include "math/stuff_glm_bridge.h"
-
 //==========================================================================//
 // File:	 gosFX_ParticleCloud.cpp										//
 // Contents: Base gosFX::ParticleCloud Component							//
@@ -388,14 +386,14 @@ bool gosFX::ParticleCloud::Execute(ExecuteInfo *info)
 	// just invert the new matrix, otherwise just use the existing one
 	//--------------------------------------------------------------------
 	//
-	Stuff::LinearMatrix4D new_world_to_local;
-	Stuff::LinearMatrix4D *matrix = nullptr;
+	glm::mat4 new_world_to_local;
+	glm::mat4 *matrix = nullptr;
 	int sim_mode = GetSimulationMode();
 	if (sim_mode == DynamicWorldSpaceSimulationMode)
 	{
-		Stuff::LinearMatrix4D local_to_world;
-		local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
-		mc2::math::fromGlm(new_world_to_local, glm::inverse(mc2::math::toGlm(local_to_world)));
+		glm::mat4 local_to_world;
+		local_to_world = m_localToParent * *info->m_parentToWorld;
+		new_world_to_local = glm::inverse(local_to_world);
 		matrix = &new_world_to_local;
 	}
 
@@ -456,7 +454,7 @@ bool gosFX::ParticleCloud::Execute(ExecuteInfo *info)
 		//
 		if (m_birthAccumulator >= 1.0f)
 		{
-			Stuff::Point3D translation;
+			glm::vec3 translation;
 			{	// Q2-S0b: birth cost (RNG draws + init)
 				mc2::fx_cost_split::Scope _fxbd(mc2::fx_cost_split::B_FX_BIRTH_DEATH);
 				CreateNewParticle(i, &translation);
@@ -482,7 +480,7 @@ bool gosFX::ParticleCloud::Execute(ExecuteInfo *info)
 	)
 	{
 		i = m_activeParticleCount++;
-		Stuff::Point3D translation;
+		glm::vec3 translation;
 		{	// Q2-S0b: birth cost (RNG draws + init)
 			mc2::fx_cost_split::Scope _fxbd(mc2::fx_cost_split::B_FX_BIRTH_DEATH);
 			CreateNewParticle(i, &translation);
@@ -548,7 +546,7 @@ void gosFX::ParticleCloud::Kill()
 void
 	gosFX::ParticleCloud::CreateNewParticle(
 		unsigned index,
-		Stuff::Point3D *translation
+		glm::vec3 *translation
 	)
 {
 	Check_Object(this);
@@ -587,7 +585,7 @@ void
 			Stuff::Random::GetFraction() * Stuff::Pi - Stuff::Pi_Over_2,
 			Stuff::Random::GetFraction()
 		);
-	Stuff::Vector3D position = mc2::math::toVector3D(mc2::math::polarToVector(initial_p));
+	glm::vec3 position = (mc2::math::polarToVector(initial_p));
 	translation->x =
 		position.x * spec->m_emitterSizeX.ComputeValue(m_age, seed);
 	translation->y =
@@ -614,7 +612,7 @@ void
 			pitch_min,
 			spec->m_startingSpeed.ComputeValue(m_age, seed)
 		);
-	particle->m_localLinearVelocity = mc2::math::toVector3D(mc2::math::polarToVector(initial_v));
+	particle->m_localLinearVelocity = (mc2::math::polarToVector(initial_v));
 }
 
 //------------------------------------------------------------------------------

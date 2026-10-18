@@ -1,6 +1,4 @@
 #include"gosfxheaders.hpp"
-#include "math/stuff_glm_bridge.h"
-
 //==========================================================================//
 // File:	 gosFX_DebrisCloud.cpp											//
 // Contents: Base gosFX::DebrisCloud Component								//
@@ -121,7 +119,7 @@ void
 	{
 		*stream << debrisPositions[i];
 
-		*stream << mc2::math::toPoint3D(debrisSpheres[i].center);
+		*stream << debrisSpheres[i].center;
 		*stream << debrisSpheres[i].radius;
 
 		Check_Object(debrisPieces[i]);
@@ -197,9 +195,9 @@ void
 	{
 		*stream >> debrisPositions[i];
 
-		Stuff::Point3D center;
+		glm::vec3 center;
 		*stream >> center;
-		debrisSpheres[i].center = mc2::math::toGlm(center);
+		debrisSpheres[i].center = center;
 		*stream >> debrisSpheres[i].radius;
 
 		if(debrisSpheres[i].radius < minRadius)
@@ -240,7 +238,7 @@ void
 	Check_Object(this);
 	Effect__Specification::BuildDefaults();
 
-	centerOfForce = Stuff::Point3D(0.0f, 00.0f, 0.0f);
+	centerOfForce = glm::vec3(0.0f, 00.0f, 0.0f);
 
 	m_lifeSpan.SetCurve(20.0f);
 
@@ -286,7 +284,7 @@ bool
 	Check_Object(this);
 	return	Effect__Specification::IsDataValid(fix_data);
 /*
-	centerOfForce = Stuff::Point3D(0.0f, 00.0f, 0.0f);
+	centerOfForce = glm::vec3(0.0f, 00.0f, 0.0f);
 
 	m_lifeSpan.SetCurve(20.0f);
 
@@ -417,8 +415,8 @@ void
 	{
 		Particle *particle = &debrisPieces[i];
 
-		particle->m_localToParent = Stuff::LinearMatrix4D::Identity;
-		particle->m_localToParent.BuildTranslation(spec->debrisPositions[i]);
+		particle->m_localToParent = glm::mat4(1.0f);
+		mc2::math::buildTranslation(particle->m_localToParent, spec->debrisPositions[i]);
 
 		particle->m_age = 0.0f;
 		particle->m_seed = spec->debrisSeed[i];
@@ -429,9 +427,9 @@ void
 		Min_Clamp(lifetime, 0.0333333f);
 		particle->m_ageRate = 1.0f / lifetime;
 
-		Stuff::Vector3D v;
+		glm::vec3 v;
 
-		v.Subtract(spec->debrisPositions[i], spec->centerOfForce);
+		v = spec->debrisPositions[i] - spec->centerOfForce;
 //		v.y = 0.0f;
 
 		Stuff::Scalar lerpFactor =
@@ -441,8 +439,8 @@ void
 				Stuff::Random::GetFraction()
 			);
 
-		particle->m_linearVelocity = mc2::math::toVector3D(mc2::math::lerp(mc2::math::toGlm(Stuff::Vector3D::Up), mc2::math::toGlm(v), lerpFactor));
-		particle->m_linearVelocity.Normalize(particle->m_linearVelocity);
+		particle->m_linearVelocity = (mc2::math::lerp((mc2::math::Up), v, lerpFactor));
+		particle->m_linearVelocity = glm::normalize(particle->m_linearVelocity);
 
 		particle->m_linearVelocity *= spec->m_startingSpeed.ComputeValue(0.0f, particle->m_seed);
 
@@ -490,9 +488,9 @@ bool
 	//-----------------------------------
 	//
 	int i;
-	Stuff::LinearMatrix4D local_to_world;
+	glm::mat4 local_to_world;
 
-	local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
+	local_to_world = m_localToParent * *info->m_parentToWorld;
 
 	for (i = 0; i < debrisPieces.GetLength(); i++)
 	{
@@ -545,10 +543,10 @@ bool
 		//
 		if (particle->m_age < 1.0f)
 		{
-			Stuff::Point3D point;
+			glm::vec3 point;
 			Stuff::Scalar radius = spec->debrisSpheres[i].radius;
 
-			point.Multiply(mc2::math::toPoint3D(spec->debrisSpheres[i].center), particle->m_localToParent);
+			point = mc2::math::transformPoint(spec->debrisSpheres[i].center, particle->m_localToParent);
 
 			box.max.x = point.x + radius;
 			box.min.x = point.x - radius;
@@ -577,10 +575,10 @@ bool
 		if (particle->m_age < 1.0f)
 		{
 			mc2::math::Aabb local_box;
-			Stuff::Point3D point;
+			glm::vec3 point;
 			Stuff::Scalar radius = spec->debrisSpheres[i].radius;
 
-			point.Multiply(mc2::math::toPoint3D(spec->debrisSpheres[i].center), particle->m_localToParent);
+			point = mc2::math::transformPoint(spec->debrisSpheres[i].center, particle->m_localToParent);
 
 			local_box.max.x = point.x + radius;
 			local_box.min.x = point.x - radius;
@@ -604,19 +602,19 @@ bool
 	Verify(box.max.x >= box.min.x);
 	Verify(box.max.y >= box.min.y);
 	Verify(box.max.z >= box.min.z);
-	Stuff::OBB local_bounds = Stuff::OBB::Identity;
+	mc2::math::Obb local_bounds = mc2::math::Obb();
 	local_bounds.axisExtents.x = 0.5f * (box.max.x - box.min.x);
 	local_bounds.axisExtents.y = 0.5f * (box.max.y - box.min.y);
 	local_bounds.axisExtents.z = 0.5f * (box.max.z - box.min.z);
-	local_bounds.localToParent(3,0) = box.min.x + local_bounds.axisExtents.x;
-	local_bounds.localToParent(3,1) = box.min.y + local_bounds.axisExtents.y;
-	local_bounds.localToParent(3,2) = box.min.z + local_bounds.axisExtents.z;
-	local_bounds.sphereRadius = local_bounds.axisExtents.GetLength();
+	local_bounds.localToParent[0][3] = box.min.x + local_bounds.axisExtents.x;
+	local_bounds.localToParent[1][3] = box.min.y + local_bounds.axisExtents.y;
+	local_bounds.localToParent[2][3] = box.min.z + local_bounds.axisExtents.z;
+	local_bounds.sphereRadius = glm::length(local_bounds.axisExtents);
 	if (local_bounds.sphereRadius < Stuff::SMALL)
 		local_bounds.sphereRadius = 0.01f;
-	Stuff::OBB parent_bounds;
-	parent_bounds.Multiply(local_bounds, m_localToParent);
-	info->m_bounds->Union(*info->m_bounds, parent_bounds);
+	mc2::math::Obb parent_bounds;
+	parent_bounds = mc2::math::multiply(local_bounds, m_localToParent);
+	(*info->m_bounds) = mc2::math::unite(*info->m_bounds, parent_bounds);
 
 	//
 	//----------------------------------------------
@@ -665,7 +663,7 @@ void
 bool
 	gosFX::DebrisCloud::AnimateParticle(
 		unsigned index,
-		const Stuff::LinearMatrix4D *world_to_new_local,
+		const glm::mat4 *world_to_new_local,
 		Stuff::Time till
 	)
 {
@@ -701,11 +699,11 @@ bool
 	//-----------------------------------------------------------------------
 	//
 
-	Stuff::Point3D translation;
-	translation = particle->m_localToParent;
+	glm::vec3 translation;
+	translation = mc2::math::getTranslation(particle->m_localToParent);
 
-	Stuff::UnitQuaternion rotation;
-	rotation = particle->m_localToParent;
+	glm::quat rotation;
+	rotation = mc2::math::quatFromRotation(particle->m_localToParent);
 
 	//
 	//------------------------------------------------------------------
@@ -715,11 +713,11 @@ bool
 	//
 	Stuff::Scalar drag = -spec->m_pDrag.ComputeValue(age, seed);
 	Max_Clamp(drag, 0.0f);
-	Stuff::Vector3D ether;
+	glm::vec3 ether;
 	ether.x = 0.0f;
 	ether.y = spec->m_pEtherVelocityY.ComputeValue(age, seed);
 	ether.z = 0.0f;
-	Stuff::Vector3D accel(Stuff::Vector3D::Identity);
+	glm::vec3 accel(glm::vec3(0.0f));
 
 	//
 	//-------------------------------------------------------------------
@@ -728,25 +726,25 @@ bool
 	// back to local space
 	//-------------------------------------------------------------------
 	//
-	Stuff::LinearMatrix4D world_to_effect;
-	mc2::math::fromGlm(world_to_effect, glm::inverse(mc2::math::toGlm(m_localToWorld)));
-	Stuff::Vector3D local_ether;
-	local_ether = mc2::math::toVector3D(mc2::math::transformVector(mc2::math::toGlm(ether), glm::inverse(mc2::math::toGlm(world_to_effect))));
-	Stuff::Vector3D rel_vel;
-	rel_vel.Subtract(particle->m_linearVelocity, local_ether);
-	accel.Multiply(rel_vel, drag);
+	glm::mat4 world_to_effect;
+	world_to_effect = glm::inverse(m_localToWorld);
+	glm::vec3 local_ether;
+	local_ether = (mc2::math::transformVector(ether, glm::inverse(world_to_effect)));
+	glm::vec3 rel_vel;
+	rel_vel = particle->m_linearVelocity - local_ether;
+	accel = rel_vel * drag;
 
 	//
 	//-----------------------------------------
 	// Now, add in acceleration of the particle
 	//-----------------------------------------
 	//
-	Stuff::Vector3D world_accel;
+	glm::vec3 world_accel;
 	world_accel.x = 0.0f;
 	world_accel.y = spec->m_pAccelerationY.ComputeValue(age, seed);
 	world_accel.z = 0.0f;
-	Stuff::Vector3D local_accel;
-	local_accel.Multiply(world_accel, world_to_effect);
+	glm::vec3 local_accel;
+	local_accel = mc2::math::transformVector(world_accel, world_to_effect);
 	accel += local_accel;
 
 	//
@@ -757,25 +755,25 @@ bool
 	Stuff::Scalar time_slice =
 		static_cast<Stuff::Scalar>(till - m_lastRan);
 	
-	particle->m_linearVelocity.AddScaled(particle->m_linearVelocity, accel, time_slice);
+	particle->m_linearVelocity = particle->m_linearVelocity + accel * time_slice;
 	
-	translation.AddScaled(translation, particle->m_linearVelocity, time_slice);
+	translation = translation + particle->m_linearVelocity * time_slice;
 
 	//
 	//-----------------------
 	// Deal with the rotation
 	//-----------------------
 	//
-	Stuff::Vector3D omega(particle->m_angularVelocity);
+	glm::vec3 omega(particle->m_angularVelocity);
 	omega *= time_slice;
-	Stuff::UnitQuaternion omega_q;
-	omega_q = omega;
+	glm::quat omega_q;
+	omega_q = mc2::math::quatFromRotationVector(omega);
 
-	rotation.Multiply(omega_q, Stuff::UnitQuaternion(rotation));
-	rotation.Normalize();
+	rotation = mc2::math::composeQuat(omega_q, rotation);
+	rotation = glm::normalize(rotation);
 
-	particle->m_localToParent.BuildRotation(rotation);
-	particle->m_localToParent.BuildTranslation(translation);
+	mc2::math::buildRotation(particle->m_localToParent, rotation);
+	mc2::math::buildTranslation(particle->m_localToParent, translation);
 
 	Check_Object(&particle->m_localToParent);
 
@@ -832,8 +830,8 @@ void gosFX::DebrisCloud::Draw(DrawInfo *info)
 			dinfo.activeLights = nullptr;
 			dinfo.nrOfActiveLights = 0;
 			dinfo.shape = shape;
-			Stuff::LinearMatrix4D local_to_world;
-			local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
+			glm::mat4 local_to_world;
+			local_to_world = m_localToParent * *info->m_parentToWorld;
 
 			//
 			//---------------------------------------------------------------
@@ -842,11 +840,8 @@ void gosFX::DebrisCloud::Draw(DrawInfo *info)
 			//---------------------------------------------------------------
 			//
 
-			Stuff::LinearMatrix4D shape_to_world;
-			shape_to_world.Multiply(
-				particle->m_localToParent,
-				local_to_world
-			);
+			glm::mat4 shape_to_world;
+			shape_to_world = particle->m_localToParent * local_to_world;
 			dinfo.shapeToWorld = &shape_to_world;
 			dinfo.scaling = nullptr;
 			Stuff::RGBAColor color(1.0f, 1.0f, 1.0f, particle->m_alpha);

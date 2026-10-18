@@ -12,8 +12,6 @@
 #include<cstdio>   // VFX-ORACLE diagnostics
 #include<vector>
 #include "mc2fmt.h"
-#include "math/stuff_glm_bridge.h"
-
 //------------------------------------------------------------------------------
 //
 gosFX::CardCloud__Specification::CardCloud__Specification(
@@ -314,8 +312,8 @@ gosFX::CardCloud::CardCloud(
 	gos_PopCurrentHeap();
 
 	unsigned index = spec->m_maxParticleCount*sizeof(Particle);
-	m_P_vertices = Cast_Pointer(Stuff::Point3D*, &m_data[index]);
-	index += 4*spec->m_maxParticleCount*sizeof(Stuff::Point3D);
+	m_P_vertices = Cast_Pointer(glm::vec3*, &m_data[index]);
+	index += 4*spec->m_maxParticleCount*sizeof(glm::vec3);
 	m_P_color = Cast_Pointer(Stuff::RGBAColor*, &m_data[index]);
 	index += spec->m_maxParticleCount * sizeof(Stuff::RGBAColor);
 	m_P_uvs = Cast_Pointer(Stuff::Vector2DOf<Stuff::Scalar>*, &m_data[index]);
@@ -357,7 +355,7 @@ gosFX::CardCloud*
 void
 	gosFX::CardCloud::CreateNewParticle(
 		unsigned index,
-		Stuff::Point3D *translation
+		glm::vec3 *translation
 	)
 {
 	Check_Object(this);
@@ -396,7 +394,7 @@ void
 bool
 	gosFX::CardCloud::AnimateParticle(
 		unsigned index,
-		const Stuff::LinearMatrix4D *world_to_new_local,
+		const glm::mat4 *world_to_new_local,
 		Stuff::Time till
 	)
 {
@@ -523,8 +521,8 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 		// COMPUTE-1). COMPUTE-1 adds the compute integration + readback + parity.
 		if (mc2::particles::Batcher::is_gpu_sim_cardcloud_enabled()
 		    && m_activeParticleCount > 0 && m_P_color) {
-			Stuff::LinearMatrix4D local_to_world;
-			local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
+			glm::mat4 local_to_world;
+			local_to_world = m_localToParent * *info->m_parentToWorld;
 			// Reused across frames (single-threaded render path) to avoid
 			// per-frame allocation.
 			static std::vector<mc2::particles::CardCloudSimParticle> s_simRecords;
@@ -534,8 +532,8 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 				Particle *p = GetParticle(i);
 				Check_Object(p);
 				if (p->m_age >= 1.0f) continue;   // skip dead (compacted live list)
-				Stuff::Point3D wc;
-				wc.Multiply(p->m_localTranslation, local_to_world);
+				glm::vec3 wc;
+				wc = mc2::math::transformPoint(p->m_localTranslation, local_to_world);
 				const Stuff::Scalar radius =
 					p->m_scale * Stuff::Sqrt(p->m_halfX * p->m_halfX + p->m_halfY * p->m_halfY);
 				const Stuff::RGBAColor &c = m_P_color[i];
@@ -582,8 +580,8 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 				}
 				// Same effect->world transform the legacy CardCloud::Draw feeds
 				// to MLR as effectToWorld.
-				Stuff::LinearMatrix4D local_to_world;
-				local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
+				glm::mat4 local_to_world;
+				local_to_world = m_localToParent * *info->m_parentToWorld;
 
 				mc2::particles::Batcher &batcher = mc2::particles::Batcher::Instance();
 
@@ -626,8 +624,8 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 					Particle *p = GetParticle(i);
 					Check_Object(p);
 					if (p->m_age >= 1.0f) continue;   // skip dead slots (legacy filter)
-					Stuff::Point3D wc;
-					wc.Multiply(p->m_localTranslation, local_to_world);
+					glm::vec3 wc;
+					wc = mc2::math::transformPoint(p->m_localTranslation, local_to_world);
 					// Billboard radius from per-particle scaled half-extents.
 					// Aspect (halfX vs halfY) collapsed to a bounding radius —
 					// same idiom as the placeholder; per-particle aspect deferred.
@@ -682,9 +680,9 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 					gp.velocity[0] = static_cast<float>(p->m_scale * p->m_halfX);
 					gp.velocity[1] = static_cast<float>(p->m_scale * p->m_halfY);
 					{
-						Stuff::UnitQuaternion parentRot, worldRot;
-						parentRot = *info->m_parentToWorld;
-						worldRot.Multiply(p->m_localRotation, parentRot);
+						glm::quat parentRot, worldRot;
+						parentRot = mc2::math::quatFromRotation(*info->m_parentToWorld);
+						worldRot = mc2::math::composeQuat(p->m_localRotation, parentRot);
 						gp.velocity[2] = 2.0f * std::atan2(
 						    static_cast<float>(worldRot.z),
 						    static_cast<float>(worldRot.w));
@@ -777,10 +775,10 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 				// Get the camera location into local space
 				//-----------------------------------------
 				//
-				Stuff::Point3D
-					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
+				glm::vec3
+					camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+				glm::vec3 camera_in_cloud;
+				camera_in_cloud = (mc2::math::transformPoint(camera_in_world, glm::inverse(local_to_world)));
 
 				//
 				//--------------------------------------
@@ -799,22 +797,12 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 						// Build the local to cloud matrix
 						//--------------------------------
 						//
-						Stuff::Vector3D direction_in_cloud;
-						direction_in_cloud.Subtract(
-							camera_in_cloud,
-							particle->m_localTranslation
-						);
-						Stuff::LinearMatrix4D card_to_cloud;
-						card_to_cloud.BuildRotation(particle->m_localRotation);
-						card_to_cloud.AlignLocalAxisToWorldVector(
-							direction_in_cloud,
-							Stuff::Z_Axis,
-							Stuff::Y_Axis,
-							Stuff::X_Axis
-						);
-						card_to_cloud.BuildTranslation(
-							particle->m_localTranslation
-						);
+						glm::vec3 direction_in_cloud;
+						direction_in_cloud = camera_in_cloud - particle->m_localTranslation;
+						glm::mat4 card_to_cloud;
+						mc2::math::buildRotation(card_to_cloud, particle->m_localRotation);
+						mc2::math::alignLocalAxisToWorldVector(card_to_cloud, direction_in_cloud, Stuff::Z_Axis, Stuff::Y_Axis, Stuff::X_Axis);
+						mc2::math::buildTranslation(card_to_cloud, particle->m_localTranslation);
 
 						//
 						//-------------------------------------------------
@@ -822,38 +810,26 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 						//-------------------------------------------------
 						//
 						Stuff::Scalar scale = particle->m_scale;
-						m_P_vertices[vert++].Multiply(
-							Stuff::Point3D(
+						m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 								scale*particle->m_halfX,
 								-scale*particle->m_halfY,
 								0.0f
-							),
-							card_to_cloud
-						);
-						m_P_vertices[vert++].Multiply(
-							Stuff::Point3D(
+							), card_to_cloud);
+						m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 								-scale*particle->m_halfX,
 								-scale*particle->m_halfY,
 								0.0f
-							),
-							card_to_cloud
-						);
-						m_P_vertices[vert++].Multiply(
-							Stuff::Point3D(
+							), card_to_cloud);
+						m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 								-scale*particle->m_halfX,
 								scale*particle->m_halfY,
 								0.0f
-							),
-							card_to_cloud
-						);
-						m_P_vertices[vert++].Multiply(
-							Stuff::Point3D(
+							), card_to_cloud);
+						m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 								scale*particle->m_halfX,
 								scale*particle->m_halfY,
 								0.0f
-							),
-							card_to_cloud
-						);
+							), card_to_cloud);
 					}
 					else
 						vert += 4;
@@ -872,10 +848,10 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 				// Get the camera location into local space
 				//-----------------------------------------
 				//
-				Stuff::Point3D
-					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
+				glm::vec3
+					camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+				glm::vec3 camera_in_cloud;
+				camera_in_cloud = (mc2::math::transformPoint(camera_in_world, glm::inverse(local_to_world)));
 
 				//
 				//--------------------------------------
@@ -894,20 +870,12 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 						// Build the local to cloud matrix
 						//--------------------------------
 						//
-						Stuff::Vector3D direction_in_cloud;
-						direction_in_cloud.Subtract(
-							camera_in_cloud,
-							particle->m_localTranslation
-						);
-						Stuff::LinearMatrix4D card_to_cloud;
-						card_to_cloud.BuildRotation(particle->m_localRotation);
-						card_to_cloud.AlignLocalAxisToWorldVector(
-							direction_in_cloud,
-							Stuff::Z_Axis,
-							Stuff::X_Axis,
-							-1
-						);
-						card_to_cloud.BuildTranslation(particle->m_localTranslation);
+						glm::vec3 direction_in_cloud;
+						direction_in_cloud = camera_in_cloud - particle->m_localTranslation;
+						glm::mat4 card_to_cloud;
+						mc2::math::buildRotation(card_to_cloud, particle->m_localRotation);
+						mc2::math::alignLocalAxisToWorldVector(card_to_cloud, direction_in_cloud, Stuff::Z_Axis, Stuff::X_Axis, -1);
+						mc2::math::buildTranslation(card_to_cloud, particle->m_localTranslation);
 
 						//
 						//-------------------------------------------------
@@ -915,38 +883,26 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 						//-------------------------------------------------
 						//
 						Stuff::Scalar scale = particle->m_scale;
-						m_P_vertices[vert++].Multiply(
-							Stuff::Point3D(
+						m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 								scale*particle->m_halfX,
 								-scale*particle->m_halfY,
 								0.0f
-							),
-							card_to_cloud
-						);
-						m_P_vertices[vert++].Multiply(
-							Stuff::Point3D(
+							), card_to_cloud);
+						m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 								-scale*particle->m_halfX,
 								-scale*particle->m_halfY,
 								0.0f
-							),
-							card_to_cloud
-						);
-						m_P_vertices[vert++].Multiply(
-							Stuff::Point3D(
+							), card_to_cloud);
+						m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 								-scale*particle->m_halfX,
 								scale*particle->m_halfY,
 								0.0f
-							),
-							card_to_cloud
-						);
-						m_P_vertices[vert++].Multiply(
-							Stuff::Point3D(
+							), card_to_cloud);
+						m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 								scale*particle->m_halfX,
 								scale*particle->m_halfY,
 								0.0f
-							),
-							card_to_cloud
-						);
+							), card_to_cloud);
 					}
 					else
 						vert += 4;
@@ -966,10 +922,10 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 			// Get the camera location into local space
 			//-----------------------------------------
 			//
-			Stuff::Point3D
-				camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-			Stuff::Point3D camera_in_cloud;
-			camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
+			glm::vec3
+				camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+			glm::vec3 camera_in_cloud;
+			camera_in_cloud = (mc2::math::transformPoint(camera_in_world, glm::inverse(local_to_world)));
 
 			//
 			//--------------------------------------
@@ -988,20 +944,12 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 					// Build the local to cloud matrix
 					//--------------------------------
 					//
-					Stuff::Vector3D direction_in_cloud;
-					direction_in_cloud.Subtract(
-						camera_in_cloud,
-						particle->m_localTranslation
-					);
-					Stuff::LinearMatrix4D card_to_cloud;
-					card_to_cloud.BuildRotation(particle->m_localRotation);
-					card_to_cloud.AlignLocalAxisToWorldVector(
-						direction_in_cloud,
-						Stuff::Z_Axis,
-						Stuff::Y_Axis,
-						-1
-					);
-					card_to_cloud.BuildTranslation(particle->m_localTranslation);
+					glm::vec3 direction_in_cloud;
+					direction_in_cloud = camera_in_cloud - particle->m_localTranslation;
+					glm::mat4 card_to_cloud;
+					mc2::math::buildRotation(card_to_cloud, particle->m_localRotation);
+					mc2::math::alignLocalAxisToWorldVector(card_to_cloud, direction_in_cloud, Stuff::Z_Axis, Stuff::Y_Axis, -1);
+					mc2::math::buildTranslation(card_to_cloud, particle->m_localTranslation);
 
 					//
 					//-------------------------------------------------
@@ -1009,38 +957,26 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 					//-------------------------------------------------
 					//
 					Stuff::Scalar scale = particle->m_scale;
-					m_P_vertices[vert++].Multiply(
-						Stuff::Point3D(
+					m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 							scale*particle->m_halfX,
 							-scale*particle->m_halfY,
 							0.0f
-						),
-						card_to_cloud
-					);
-					m_P_vertices[vert++].Multiply(
-						Stuff::Point3D(
+						), card_to_cloud);
+					m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 							-scale*particle->m_halfX,
 							-scale*particle->m_halfY,
 							0.0f
-						),
-						card_to_cloud
-					);
-					m_P_vertices[vert++].Multiply(
-						Stuff::Point3D(
+						), card_to_cloud);
+					m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 							-scale*particle->m_halfX,
 							scale*particle->m_halfY,
 							0.0f
-						),
-						card_to_cloud
-					);
-					m_P_vertices[vert++].Multiply(
-						Stuff::Point3D(
+						), card_to_cloud);
+					m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 							scale*particle->m_halfX,
 							scale*particle->m_halfY,
 							0.0f
-						),
-						card_to_cloud
-					);
+						), card_to_cloud);
 				}
 				else
 					vert += 4;
@@ -1067,9 +1003,9 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 					// Build the local to cloud matrix
 					//--------------------------------
 					//
-					Stuff::LinearMatrix4D card_to_cloud;
-					card_to_cloud.BuildRotation(particle->m_localRotation);
-					card_to_cloud.BuildTranslation(particle->m_localTranslation);
+					glm::mat4 card_to_cloud;
+					mc2::math::buildRotation(card_to_cloud, particle->m_localRotation);
+					mc2::math::buildTranslation(card_to_cloud, particle->m_localTranslation);
 
 					//
 					//-------------------------------------------------
@@ -1077,38 +1013,26 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 					//-------------------------------------------------
 					//
 					Stuff::Scalar scale = particle->m_scale;
-					m_P_vertices[vert++].Multiply(
-						Stuff::Point3D(
+					m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 							scale*particle->m_halfX,
 							-scale*particle->m_halfY,
 							0.0f
-						),
-						card_to_cloud
-					);
-					m_P_vertices[vert++].Multiply(
-						Stuff::Point3D(
+						), card_to_cloud);
+					m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 							-scale*particle->m_halfX,
 							-scale*particle->m_halfY,
 							0.0f
-						),
-						card_to_cloud
-					);
-					m_P_vertices[vert++].Multiply(
-						Stuff::Point3D(
+						), card_to_cloud);
+					m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 							-scale*particle->m_halfX,
 							scale*particle->m_halfY,
 							0.0f
-						),
-						card_to_cloud
-					);
-					m_P_vertices[vert++].Multiply(
-						Stuff::Point3D(
+						), card_to_cloud);
+					m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 							scale*particle->m_halfX,
 							scale*particle->m_halfY,
 							0.0f
-						),
-						card_to_cloud
-					);
+						), card_to_cloud);
 				}
 				else
 					vert += 4;
