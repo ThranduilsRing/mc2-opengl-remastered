@@ -67,7 +67,7 @@ Split commit: `f0521b300`.
 | `gos_static_prop_batcher_mapload.cpp` | GpuStaticPropBatcher: StaticPropViewToShaderMode, onMapLoad, setMissionForIbl, onMapUnload, registerType and registerMultiShape. |
 | `gos_static_prop_batcher_program.cpp` | GpuStaticPropBatcher: loadProgramsIfNeeded, ring capacity, light-freshness gate and the late-register / submit telemetry. |
 | `gos_static_prop_batcher_seam.cpp` | GpuStaticPropBatcher: eligibility, persistent static instances, cached-instance submits, the batcher_* RenderCore seam accessors and the base-instance table. |
-| `gos_static_prop_batcher_shadow.cpp` | GpuStaticPropBatcher: prop shadow helpers, flushShadow, static-building and dynamic-prop shadow draws and the VK shadow-island geometry feed. |
+| `gos_static_prop_batcher_shadow.cpp` | GpuStaticPropBatcher: the VK shadow-island geometry feed and the colour-prop island feeds (the GL prop shadow draws are gone). |
 | `gos_static_prop_batcher_state.cpp` | GpuStaticPropBatcher: the shared GPU buffer, ring, program-location, coalesce and static-draw state, the IBL helpers and the material and base-instance bookkeeping. |
 | `gos_static_prop_batcher_submit.cpp` | GpuStaticPropBatcher: submit, submitMultiShape, the bucket upload, the V6 array build, the depth prepass and the executor apply-state hook. |
 | `gos_static_prop_batcher_internal.h` | shared include bundle, extern globals and declarations of the pieces |
