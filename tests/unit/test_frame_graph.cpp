@@ -1158,9 +1158,8 @@ TEST_CASE("statepack (f): routed passes have non-Invalid pipelineId; non-routed 
         RenderPassId::Terrain,
         RenderPassId::TerrainOverlay,
         RenderPassId::TerrainDecal,
-        RenderPassId::Water,
     };
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < 5; ++i) {
         const RenderStateDesc* r = findPassRenderState(routed[i]);
         REQUIRE(r != nullptr);
         CHECK(static_cast<unsigned>(r->pipelineId) != static_cast<unsigned>(RenderCore::PipelineId::Invalid));
@@ -1168,13 +1167,14 @@ TEST_CASE("statepack (f): routed passes have non-Invalid pipelineId; non-routed 
     }
     // Passes with no single PipelineId (multi-pipeline, descriptive-only, or no routing):
     const RenderPassId invalid[] = {
+        RenderPassId::Water,
         RenderPassId::Shadow,
         RenderPassId::VegetationCards,
         RenderPassId::VFX,
         RenderPassId::UI,
         RenderPassId::PostProcess,
     };
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 6; ++i) {
         CHECK(passHasStaticPipeline(invalid[i]) == false);
     }
 }
@@ -1434,7 +1434,7 @@ TEST_CASE("top-level apply-state (c): findTopLevelStateDesc returns nullptr for 
     // Terrain is validate-owned but the executor does NOT apply its state.
     CHECK(findTopLevelStateDesc(RenderCore::RenderPassId::Terrain) == nullptr);
     // Shadow is an apply consumer (render-target MODE) -> non-null.
-    CHECK(findTopLevelStateDesc(RenderCore::RenderPassId::Shadow)  != nullptr);
+    CHECK(findTopLevelStateDesc(RenderCore::RenderPassId::Shadow) == nullptr);
 }
 
 // Shadow descriptor — first FULL render-target-MODE row.
@@ -1527,12 +1527,12 @@ TEST_CASE("top-level apply-state (g): findTopLevelStateDesc(StaticPropOpaque) = 
 // StaticPropOpaque is the SOLE row with explicit FBO/viewport.
 // Shadow is the SOLE row with clear=DepthForwardZ (asserted separately
 // in test (l)); it is NOT in this unchanged-consumers loop.
-TEST_CASE("top-level apply-state (k): EXTEND — 4 consumers unchanged (Unknown/Inherit); ClearSpec default None (decal/overlay/mech/water + staticprop)") {
+TEST_CASE("top-level apply-state (k): EXTEND — 3 consumers unchanged (Unknown/Inherit); ClearSpec default None (decal/overlay/mech + staticprop)") {
     using namespace RenderCore;
     using namespace RenderCore::framegraph;
     const RenderPassId unchanged[] = {
         RenderPassId::TerrainDecal, RenderPassId::TerrainOverlay,
-        RenderPassId::MechOpaque,   RenderPassId::Water,
+        RenderPassId::MechOpaque,
     };
     for (RenderPassId id : unchanged) {
         const TopLevelStateDesc* d = findTopLevelStateDesc(id);
@@ -1799,6 +1799,20 @@ static int buildShippedOrder(RenderCore::RenderPassId* out) {
     using namespace RenderCore::framegraph;
     for (int i = 0; i < kFramePassOrderCount; ++i) out[i] = kFramePassOrder[i];
     return kFramePassOrderCount;
+}
+
+TEST_CASE("native shadow ordering survives retirement of the GL map resources") {
+    RenderPassId cand[32];
+    const int n = buildShippedOrder(cand);
+    cand[0] = RenderPassId::StaticPropOpaque;
+    cand[1] = RenderPassId::Shadow;
+    PassEdge first{};
+    CHECK(static_cast<unsigned>(isReorderLegal(cand, n, &first)) ==
+          static_cast<unsigned>(ReorderVerdict::ForbiddenEdgeViolated));
+    CHECK(static_cast<unsigned>(first.from) == static_cast<unsigned>(RenderPassId::Shadow));
+    CHECK(static_cast<unsigned>(first.to) == static_cast<unsigned>(RenderPassId::StaticPropOpaque));
+    CHECK(static_cast<unsigned>(first.cls) == static_cast<unsigned>(EdgeClass::LegacyLatch));
+    CHECK(static_cast<unsigned>(first.via) == static_cast<unsigned>(RenderResourceId::Unknown));
 }
 
 TEST_CASE("oracle (a): identity (kFramePassOrder) -> Legal") {

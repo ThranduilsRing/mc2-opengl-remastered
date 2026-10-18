@@ -185,6 +185,17 @@ static constexpr int kContentConditionalEdgeCount =
 //     soft edge the model misses is STILL caught as forbidden. Every entry's from/to
 //     must be a real RenderPassId (asserted by a doctest). Reviewed at change time.
 static constexpr PassEdge kForbiddenReorderEdges[] = {
+    // Native shadow preparation must precede color consumers. Vulkan owns
+    // the shadow images; these ordering latches need no retired GL resource id.
+    { RenderPassId::Shadow, RenderPassId::StaticPropOpaque, EdgeClass::LegacyLatch,
+      RenderResourceId::Unknown, /*forbidden*/ true, /*contentGated*/ false,
+      "native shadow inputs must be ready before StaticPropOpaque" },
+    { RenderPassId::Shadow, RenderPassId::MechOpaque, EdgeClass::LegacyLatch,
+      RenderResourceId::Unknown, /*forbidden*/ true, /*contentGated*/ false,
+      "native shadow inputs must be ready before MechOpaque" },
+    { RenderPassId::Shadow, RenderPassId::Terrain, EdgeClass::LegacyLatch,
+      RenderResourceId::Unknown, /*forbidden*/ true, /*contentGated*/ false,
+      "native shadow inputs must be ready before Terrain" },
     // Terrain re-asserts glColorMask(TRUE) (after shadow disabled color write) for ALL
     // following color-writing passes. Soft GL-state edge, invisible to the resource DAG.
     { RenderPassId::Terrain, RenderPassId::PostProcess, EdgeClass::SoftState,

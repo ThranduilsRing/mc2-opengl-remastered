@@ -452,14 +452,13 @@ TEST_CASE("RenderPassContract pipelineDescRegistered matches current shipped tru
                                c.id == RenderPassId::Terrain ||
                                c.id == RenderPassId::TerrainDecal ||
                                c.id == RenderPassId::TerrainOverlay ||
-                               c.id == RenderPassId::Water ||
                                c.id == RenderPassId::VFX ||
                                c.id == RenderPassId::PostProcess);
         CHECK(c.pipelineDescRegistered == expected);
         if (c.pipelineDescRegistered) ++trueCount;
     }
     // Eight passes route through applyPipeline() (see list above).
-    CHECK(trueCount == 8);
+    CHECK(trueCount == 7);
 }
 
 TEST_CASE("RenderPassContract: PipelineId-family passes back their flag with a real enumerator") {
@@ -510,6 +509,7 @@ TEST_CASE("RenderPassContract: non-applyPipeline lanes stay unregistered") {
     for (int i = 0; i < kRenderPassContractCount; ++i) {
         const RenderPassContract& c = kRenderPassContracts[i];
         if (c.id != RenderPassId::Shadow &&
+            c.id != RenderPassId::Water &&
             c.id != RenderPassId::VegetationCards &&
             c.id != RenderPassId::UI) continue;
         CHECK_FALSE(c.pipelineDescRegistered);
@@ -534,7 +534,7 @@ TEST_CASE("RenderPassContract: 6 new lanes resolve to contract rows with current
     //   registered=false: VegetationCards, UI
     struct LaneExpect { RenderPassId id; bool registered; };
     const LaneExpect newIds[] = {
-        { RenderPassId::Water,           true  },
+        { RenderPassId::Water,           false },
         { RenderPassId::PostProcess,     true  },
         { RenderPassId::VegetationCards, false },
         { RenderPassId::TerrainDecal,    true  },
