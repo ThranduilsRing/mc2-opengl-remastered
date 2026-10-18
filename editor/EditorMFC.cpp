@@ -176,6 +176,9 @@ bool         g_cliSmokeWorkDone   = false;
 // visibility/count at each step into the [ESMOKE v1] summary for the runner to
 // verify. Implies -smoke-foliage (so there is foliage loaded to toggle first).
 bool         g_cliSmokeFoliageMenu = false;
+// -smoke-clean-close: end the run through the real shutdown (WM_CLOSE -> ExitInstance -> EditorGameOS_Shutdown) instead of a hard ExitProcess, so the
+// Vulkan/GL teardown and its validation output are exercised. A close that does not finish in 30 s ends the process with code 4.
+bool         g_cliSmokeCleanClose = false;
 void*        g_smokeMainHwnd       = nullptr;   // HWND (typed void* -- declared before windows.h)
 int          g_menuVis0 = -1, g_menuVis1 = -1, g_menuVis2 = -1;   // visibility across two toggles
 int          g_menuClearCount = -1;          // Count() after Clear (expect 0)
@@ -356,6 +359,10 @@ static void s_cli_parse(const char* cmd)
 		         s_cli_starts_with(tok, "--smoke-exit-sec=", &rest))
 		{
 			g_cliExitAfterSec = atoi(rest);
+		}
+		else if (s_cli_flag_match(tok, "-smoke-clean-close", "--smoke-clean-close"))
+		{
+			g_cliSmokeCleanClose = true;
 		}
 		else if (s_cli_flag_match(tok, "-smoke-foliage-menu", "--smoke-foliage-menu"))
 		{
@@ -889,6 +896,15 @@ static DWORD WINAPI s_smoke_thread(LPVOID)
 		if (loadedDone || absBackstop)
 		{
 			s_emit_esmoke(loadedDone ? "smoke_thread" : "abs_backstop");
+			if (g_cliSmokeCleanClose && loadedDone && g_smokeMainHwnd)
+			{
+				::PostMessageA((HWND)g_smokeMainHwnd, WM_CLOSE, 0, 0);
+				::Sleep(30000);   // the normal shutdown ends the process before this returns
+				fprintf(stderr, "[ESMOKE v1] event=clean_close_timeout
+");
+				fflush(stderr);
+				::ExitProcess(4);
+			}
 			::ExitProcess(0);
 		}
 		::Sleep(200);
@@ -1220,7 +1236,7 @@ BOOL EditorMFCApp::OnIdle(LONG lCount)
 
 	// Capture the main frame HWND on the main thread so the smoke driver thread can
 	// PostMessage WM_COMMAND foliage-menu commands to it (-smoke-foliage-menu).
-	if (g_cliSmokeFoliageMenu && g_smokeMainHwnd == nullptr && AfxGetMainWnd())
+	if ((g_cliSmokeFoliageMenu || g_cliSmokeCleanClose) && g_smokeMainHwnd == nullptr && AfxGetMainWnd())
 		g_smokeMainHwnd = AfxGetMainWnd()->GetSafeHwnd();
 
 	EditorPlaytestSmokeDriverTick();

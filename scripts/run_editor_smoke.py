@@ -414,7 +414,17 @@ STOCK_CLONE_SKIP = ("data", "_rdoc", "_pngcap", "debug_state", "crashes", "dev_s
                     "saved_bookmarks")
 
 
-def clone_install_for_stock_scratch(install: Path) -> Path:
+def load_stock_allowances(args) -> dict:
+    allowances = (read_json_object(args.stock_allowlist) if args.stock_allowlist
+                  else read_json_object(args.baseline).get("stock_allowlist", {}) if args.baseline.exists() else {})
+    if not isinstance(allowances, dict) or any(not isinstance(value, dict)
+            or not isinstance(value.get("reason"), str) or not isinstance(value.get("sha256"), str)
+            for value in allowances.values()):
+        raise ValueError("stock allowances must map paths to sha256/reason strings")
+    return allowances
+
+
+def clone_install_for_stock_scratch(install: Path, allowances: dict | None = None) -> Path:
     """Copy an install's runtime (exe, dlls, archives, shaders, tools; NOT data or logs) to a scratch
     directory of this worktree and return it. The preparation then rewrites only the copy; the install
     it was pointed at is never modified."""
@@ -426,6 +436,12 @@ def clone_install_for_stock_scratch(install: Path) -> Path:
     shutil.copytree(install, target, ignore=lambda _dir, names: [
         n for n in names if (Path(_dir) == install and n in STOCK_CLONE_SKIP) or n.lower().endswith(".pdb")])
     (target / "data").mkdir(exist_ok=True)
+    # The waived stock-derived files (allowlist: path + sha256) are not in any archive; carry them over when the install holds the exact bytes.
+    for relative, waiver in (allowances or {}).items():
+        source = install / relative
+        if source.is_file() and hashlib.sha256(source.read_bytes()).hexdigest() == waiver["sha256"]:
+            (target / relative).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target / relative)
     return target
 
 
@@ -894,6 +910,16 @@ def run_case(name: str, exe: Path, deploy: Path, exit_sec: int, timeout: int,
                 bucket = "foliage_not_run"; detail = "foliage smoke step did not run"
         if expect == "saved" and esmoke.get("saved") != "1":
             bucket = "save_failed"; detail = f"expected saved=1, got {esmoke.get('saved')}"
+        if expect == "clean_close":
+            # The process must leave through EditorGameOS_Shutdown, after the Vulkan teardown, with the validation layer silent.
+            try:
+                startup = log.read_text(errors="replace")
+            except OSError:
+                startup = ""
+            if "EditorGameOS_Shutdown: after shutdownVulkanBackend" not in startup:
+                bucket, detail = "shutdown_not_reached", "editor-startup.log has no 'after shutdownVulkanBackend' line"
+            elif "VUID-" in combined or re.search(r"validation_errors=[1-9]", combined):
+                bucket, detail = "validation_at_shutdown", "validation error reported in the editor output"
         if expect == "menu":
             # Drove the foliage menu commands via WM_COMMAND: visibility must toggle
             # off (vis1) then back on (vis2), Clear must drop the count to 0, and
@@ -1043,6 +1069,7 @@ def build_suite(deploy: Path):
         "foliage_missing": (["-gen-map=0,0", "-smoke-foliage=terrain_gen_out\\__does_not_exist__.json"], "foliage_tolerated"),
         "foliage_garbage": (["-gen-map=0,0", "-smoke-foliage=terrain_gen_out\\garbage.foliage.json"], "foliage_tolerated"),
         "foliage_menu_commands": (["-gen-map=0,0", "-smoke-foliage-menu"], "menu"),
+        "clean_close":     (["-gen-map=0,0", "-smoke-clean-close"], "clean_close"),  # exits through the real shutdown (Vulkan teardown)
         "outliner":        (["-gen-map=0,0", "-smoke-outliner"], "outliner"),  # read-only Scene Outliner
         "inspector":       (["-gen-map=0,0", "-smoke-inspector"], "inspector"),  # read-only Inspector
         "validate":        (["-gen-map=0,0", "-smoke-validate"], "validate"),  # live Mission validator
@@ -1735,7 +1762,7 @@ def main() -> int:
         return 2
 
     if args.prepare_stock_scratch and not deploy.resolve().is_relative_to((REPO / "scratch").resolve()):
-        deploy = clone_install_for_stock_scratch(deploy)
+        deploy = clone_install_for_stock_scratch(deploy, load_stock_allowances(args))
         exe = deploy / exe.name
         print(f"[STOCK_SCRATCH] cloned the install into {deploy}; the install itself is not modified")
 
@@ -1753,12 +1780,7 @@ def main() -> int:
     rptdir.mkdir(parents=True, exist_ok=False)
     stock, groups = None, {}
     try:
-        allowances = (read_json_object(args.stock_allowlist) if args.stock_allowlist
-                      else read_json_object(args.baseline).get("stock_allowlist", {}) if args.baseline.exists() else {})
-        if not isinstance(allowances, dict) or any(not isinstance(value, dict)
-                or not isinstance(value.get("reason"), str) or not isinstance(value.get("sha256"), str)
-                for value in allowances.values()):
-            raise ValueError("stock allowances must map paths to sha256/reason strings")
+        allowances = load_stock_allowances(args)
         if args.prepare_stock_scratch:
             prepare_stock_scratch(deploy, rptdir / "preparation.json", allowances)
         dependencies = dependency_manifest(deploy, rptdir / "dependencies.json", allowances)
