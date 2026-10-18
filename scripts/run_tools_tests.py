@@ -106,7 +106,7 @@ def load_ledger() -> dict[str, str]:
     return fails
 
 
-def run_module(mod: str) -> tuple[str, int, list[str], str]:
+def run_module(mod: str, env=None) -> tuple[str, int, list[str], str]:
     """Run one module; retry ONCE when it failed without naming a test.
 
     A non-zero exit with no FAILED/ERROR node id is an infrastructure hiccup
@@ -114,23 +114,23 @@ def run_module(mod: str) -> tuple[str, int, list[str], str]:
     ran in parallel), not a test verdict. A real test failure is deterministic
     and is never retried.
     """
-    res = _run_module_once(mod)
+    res = _run_module_once(mod, env)
     if res[1] != 0 and not res[2]:
-        res = _run_module_once(mod)
+        res = _run_module_once(mod, env)
     return res
 
 
-def _run_module_once(mod: str) -> tuple[str, int, list[str], str]:
+def _run_module_once(mod: str, env=None) -> tuple[str, int, list[str], str]:
     """Return (module, rc, failed node ids, tail of output)."""
     try:
         p = subprocess.run(PYTEST + [mod], cwd=ROOT, capture_output=True,
-                           text=True, timeout=TIMEOUT_S,
+                           text=True, timeout=TIMEOUT_S, env=env,
                            **console_child.child_kwargs(redirected=True))
         text, rc = p.stdout + p.stderr, p.returncode
         if rc == 5:  # nothing collected: script-style test, run it directly
             p = subprocess.run([sys.executable, "-B", mod], cwd=ROOT,
                                capture_output=True, text=True,
-                               timeout=TIMEOUT_S,
+                               timeout=TIMEOUT_S, env=env,
                                **console_child.child_kwargs(redirected=True))
             text, rc = p.stdout + p.stderr, p.returncode
             if rc != 0:  # report as a module-level failure
@@ -145,11 +145,50 @@ def _run_module_once(mod: str) -> tuple[str, int, list[str], str]:
     return mod, rc, failed, "\n".join(text.splitlines()[-8:])
 
 
+def run_all(mods: list[str], jobs: int, tier: str, no_cache: bool = False, report: bool = False):
+    """Run every module (own process each, `jobs` at a time) through the per-module result cache
+    (scripts/module_test_cache.py): a module whose recorded inputs are unchanged and that fully passed last time is
+    not run. Returns [(module, rc, failed ids, tail)] in module order."""
+    import time
+    import module_test_cache as mtc
+    cache = mtc.ModuleTestCache(ROOT, tier, enabled=not no_cache)
+    if cache.enabled:
+        cache.tree_key()          # computed once, before anything runs: the pre-run state of the tree
+    infos: dict[str, dict] = {}
+
+    def one(mod):
+        def run(env):
+            res = run_module(mod, env)
+            return res[1], res[3], res
+        res, hit, info = mtc.run_with_cache(cache, mod, "pytest:" + mod, run)
+        if hit:
+            return (mod, 0, [], "")
+        infos[mod] = info
+        return res
+
+    with cf.ThreadPoolExecutor(max_workers=jobs) as ex:
+        results = list(ex.map(one, mods))
+    cache.save()
+    if report or os.environ.get("MC2_TEST_CACHE_REPORT") == "1":
+        print(f"[test-cache:{tier}] {cache.stats['hit']} hit, {cache.stats['ran']} ran, "
+              f"{cache.stats['uncacheable']} without a record")
+        rows = sorted(((i or {}).get("secs", 0), m, i or {}) for m, i in infos.items())
+        for secs, m, i in reversed(rows):
+            ks = i.get("kinds") or {}
+            if i.get("tree"):
+                print(f"[test-cache:{tier}] WHOLE-TREE {secs:6.1f}s {m}: {'; '.join(i.get('opaque', [])[:2])}")
+            elif set(ks) - {"foreign", "harmless"}:
+                print(f"[test-cache:{tier}] scoped     {secs:6.1f}s {m}: {ks}")
+    return results
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--jobs", type=int,
                     default=min(2, os.cpu_count() or 2))   # the 2-core lane cap; measured: batching modules into few pytest processes was NOT faster (tests, not startup, dominate)
     ap.add_argument("--list", action="store_true", help="print modules and exit")
+    ap.add_argument("--no-cache", action="store_true", help="run every module (also CONTRACTS_NO_CACHE=1)")
+    ap.add_argument("--report", action="store_true", help="print cache hits and the opaque (whole-tree) modules")
     args = ap.parse_args()
 
     mods = discover()
@@ -165,19 +204,18 @@ def main() -> int:
     seen_fail: set[str] = set()
     passed = 0
 
-    with cf.ThreadPoolExecutor(max_workers=args.jobs) as ex:
-        for mod, rc, failed, tail in ex.map(run_module, mods):
-            if rc == 0:
-                passed += 1
-                continue
-            if not failed:  # timeout / crash / interrupted with no FAILED line
-                bad.append(f"{mod}: pytest rc={rc} with no FAILED/ERROR lines\n{tail}")
-                continue
-            for node in failed:
-                if node in led_fail:
-                    seen_fail.add(node)
-                else:
-                    bad.append(f"{node}: NEW failure (not in the ledger)")
+    for mod, rc, failed, tail in run_all(mods, args.jobs, "tools", args.no_cache, args.report):
+        if rc == 0:
+            passed += 1
+            continue
+        if not failed:  # timeout / crash / interrupted with no FAILED line
+            bad.append(f"{mod}: pytest rc={rc} with no FAILED/ERROR lines\n{tail}")
+            continue
+        for node in failed:
+            if node in led_fail:
+                seen_fail.add(node)
+            else:
+                bad.append(f"{node}: NEW failure (not in the ledger)")
 
     all_mods = set(mods)
     for node in led_fail:

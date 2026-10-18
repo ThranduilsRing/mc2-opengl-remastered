@@ -130,6 +130,9 @@ for arg in "$@"; do
     esac
 done
 
+# The per-module test runners (scripts_tests / tools_tests rows) read this too.
+if [ "$NO_CACHE" = "1" ]; then export CONTRACTS_NO_CACHE=1; fi
+
 # ---------------------------------------------------------------------------
 # Check runner
 # ---------------------------------------------------------------------------
@@ -1517,9 +1520,9 @@ run_check "manifest_schema"            "py -3 scripts/check-manifest-schema.py -
 # note above refuses for the same reason. scripts/check-doctest-count-locks.py
 # is the mechanism that manages a count lock properly if this tier ever needs
 # one.
-# pytest-xdist, when installed, runs the tier on the lane's 2 cores (-n 2); without it the tier stays serial.
-_XDIST_N=""; if py -3 -c "import xdist" >/dev/null 2>&1; then _XDIST_N="-n 2"; fi
-run_check "scripts_tests"              "py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider $_XDIST_N"
+# One pytest process per module, 2 at a time, through the per-module result cache (scripts/module_test_cache.py):
+# a module that fully passed with unchanged recorded inputs is not re-run. --no-cache / CONTRACTS_NO_CACHE=1 turns it off.
+run_check "scripts_tests"              "py -3 scripts/run_scripts_tests.py"
 
 # ---------------------------------------------------------------------------
 # TOOLS-TESTS-WIRE-1 (2026-10-09) -- the pytest modules that live NEXT TO their tools
