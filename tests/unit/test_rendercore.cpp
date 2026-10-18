@@ -466,9 +466,9 @@ TEST_CASE("RenderPassContract: PipelineId-family passes back their flag with a r
     // PipelineRegistry registers the static-prop family + MechOpaque
     // plus a set of DESCRIPTIVE-ONLY rows (shadow casters,
     // terrain overlay/decal, water, VFX, post-process) that are NOT routed through
-    // applyPipeline. The enum has Count_=25:
+    // applyPipeline. The enum has Count_=14:
     //   0 Invalid, 1 StaticPropOpaque, 2 StaticPropAlphaTest, 3 MechOpaque,
-    //   4 StaticPropDepth, 5..24 descriptive-only families, 25 Count_.
+    //   4 StaticPropDepth, 5..13 surviving GL families, 14 Count_.
     //
     // pipelineDescRegistered means "routes through applyPipeline()", which is
     // BROADER than "owns a dedicated PipelineId enumerator":
@@ -481,7 +481,7 @@ TEST_CASE("RenderPassContract: PipelineId-family passes back their flag with a r
     //
     // Count_ is hardcoded as a tripwire: bump it (and re-examine the family set
     // below) every time a PipelineId enumerator is added.
-    CHECK(static_cast<uint32_t>(PipelineId::Count_) == 25u);
+    CHECK(static_cast<uint32_t>(PipelineId::Count_) == 14u);
     CHECK(static_cast<uint32_t>(PipelineId::Invalid) == 0u);
 
     for (int i = 0; i < kRenderPassContractCount; ++i) {

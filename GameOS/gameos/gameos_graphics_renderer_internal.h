@@ -298,8 +298,6 @@ class gosRenderer {
 
         uint32_t getRenderState(gos_RenderState render_state) { return curStates_[render_state]; }
 
-        gosRenderMaterial* selectBasicRenderMaterial(const RenderState& rs) const ;
-        gosRenderMaterial* selectLightedRenderMaterial(const RenderState& rs) const ;
 
 		void handleEvents();
 

@@ -710,7 +710,7 @@ TEST_CASE("postprocess subgraph (f): order regression — Composite before a Mai
     // external and also not produced by any prior subpass — we do this by providing
     // an empty external set. In the shipped table HzbReduce (row 0, not isCompute) reads
     // MainDepth which is no longer in external, so HzbReduce is flagged unsatisfied.
-    const PostProcessValidationResult r2 = validatePostProcessSubgraph(nullptr, sizeof(nullptr) / sizeof(nullptr[0]));
+    const PostProcessValidationResult r2 = validatePostProcessSubgraph(nullptr, 0);
     CHECK(r2.ok == false);
     // HzbReduce is the first non-isCompute row (row 0) and reads MainDepth not in empty external.
     CHECK(static_cast<unsigned>(r2.offendingSubpass) ==

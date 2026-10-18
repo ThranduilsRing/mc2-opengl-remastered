@@ -450,40 +450,9 @@ void gosRenderer::afterDrawCall()
 {
 }
 
-gosRenderMaterial* gosRenderer::selectBasicRenderMaterial(const RenderState& rs) const
-{
-	ZoneScopedN("SelectBasicMaterial");
-	const auto& sh_var = rs[gos_State_Texture]!=0 ?
-		materialDB_.find("gos_tex_vertex")->second :
-		materialDB_.find("gos_vertex")->second;
-    uint32_t flags = rs[gos_State_AlphaTest] ? SHADER_FLAG_INDEX_TO_MASK(gosGLOBAL_SHADER_FLAGS::ALPHA_TEST) : 0;
-    if (rs[gos_State_Overlay])
-        flags |= SHADER_FLAG_INDEX_TO_MASK(gosGLOBAL_SHADER_FLAGS::IS_OVERLAY);
 
-    if(sh_var.count(flags))
-        return sh_var.at(flags);
-    else
-    {
-        STOP(("Trying to get variation which does not exist: shader: %s flags: %d\n", "basic", flags));
-        return nullptr;
-    }
-}
 
-gosRenderMaterial* gosRenderer::selectLightedRenderMaterial(const RenderState& rs) const
-{
-	const auto& sh_var = rs[gos_State_Texture]!=0 ?
-		materialDB_.find("gos_tex_vertex_lighted")->second :
-		materialDB_.find("gos_vertex_lighted")->second;
-    uint32_t flags = rs[gos_State_AlphaTest] ? SHADER_FLAG_INDEX_TO_MASK(gosGLOBAL_SHADER_FLAGS::ALPHA_TEST) : 0;
 
-    if(sh_var.count(flags))
-        return sh_var.at(flags);
-    else
-    {
-        STOP(("Trying to get variation which does not exist: shader: %s flags: %d\n", "lighted", flags));
-        return nullptr;
-    }
-}
 
 void gosRenderer::drawQuads(gos_VERTEX* vertices, int count) {
     ZoneScopedN("DrawQuads");

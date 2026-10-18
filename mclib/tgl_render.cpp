@@ -6,12 +6,7 @@
 
 struct TG_RenderShapePbrOverrideState {
 	HGOSRENDERMATERIAL program = nullptr;
-	DWORD normalTexture = 0;
-	DWORD ormTexture = 0;
-	DWORD materialSsbo = 0;
-	float tileScale = 1.0f;
-	float roughnessBias = 0.0f;
-	float metallicInfluence = 0.0f;
+
 };
 
 static TG_RenderShapePbrOverrideState s_activeRenderShapePbrOverride;
@@ -25,12 +20,6 @@ void TG_SetRenderShapePbrOverride(HGOSRENDERMATERIAL program,
                                   float metallicInfluence)
 {
 	s_activeRenderShapePbrOverride.program = program;
-	s_activeRenderShapePbrOverride.normalTexture = normalTexture;
-	s_activeRenderShapePbrOverride.ormTexture = ormTexture;
-	s_activeRenderShapePbrOverride.materialSsbo = materialSsbo;
-	s_activeRenderShapePbrOverride.tileScale = tileScale;
-	s_activeRenderShapePbrOverride.roughnessBias = roughnessBias;
-	s_activeRenderShapePbrOverride.metallicInfluence = metallicInfluence;
 }
 
 void TG_ClearRenderShapePbrOverride()
