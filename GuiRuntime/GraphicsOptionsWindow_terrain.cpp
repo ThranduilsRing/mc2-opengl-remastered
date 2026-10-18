@@ -5,6 +5,8 @@
 #include "Gates/render_options.h"
 #include "mc2fmt.h"
 
+#include <algorithm>
+
 namespace GraphicsOptionsWindow {
 
 struct TerrainMode {
@@ -52,8 +54,7 @@ void drawTerrainSection() {
                  + (lineH * 2.2f + pad) * (float)(kDiagnosticStart - 1)  // visual 1..7
                  + (lineH + pad) * 1.2f                                   // separator + label
                  + (lineH * 2.2f + pad) * (float)(kTerrainModeCount - kDiagnosticStart);
-    if (childH < 120.0f) childH = 120.0f;
-    if (childH > 420.0f) childH = 420.0f;
+    childH = std::clamp(childH, 120.0f, 420.0f);
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
     ImGui::BeginChild("##terrain_modes", ImVec2(0, childH), ImGuiChildFlags_Border);

@@ -641,7 +641,7 @@ void UiDefs::GameOSPage::update(LogisticsScreen* target, int xOffset, int yOffse
                 const float thumbW = std::max(8.0f, static_cast<float>(e.rect.h) * 0.55f);
                 const float travel = std::max(1.0f, static_cast<float>(e.rect.w) - thumbW);
                 float frac = (static_cast<float>(mx - e.rect.x) - thumbW * 0.5f) / travel;
-                frac = std::min(1.0f, std::max(0.0f, frac));
+                frac = std::clamp(frac, 0.0f, 1.0f);
                 e.sliderValue = static_cast<int>(frac * static_cast<float>(e.sliderMax) + 0.5f);
             }
         }
@@ -670,7 +670,7 @@ void UiDefs::GameOSPage::update(LogisticsScreen* target, int xOffset, int yOffse
                 const int rectH = (e.kind == UiElement::Combo) ? e.popupHeight : e.rect.h;
                 const int visibleRows = rowH > 0 ? rectH / rowH : 0;
                 const int maxScroll = std::max(0, static_cast<int>(e.items.size()) - visibleRows);
-                e.scrollOffset = std::max(0, std::min(e.scrollOffset + delta, maxScroll));
+                e.scrollOffset = std::clamp(e.scrollOffset + delta, 0, maxScroll);
                 break;
             }
         }
@@ -1104,7 +1104,7 @@ bool UiDefs::GameOSPage::setSliderValue(const std::string& elementKey, int value
     for (UiElement& e : impl->elements) {
         if (e.kind != UiElement::Slider || e.key != elementKey)
             continue;
-        e.sliderValue = std::min(std::max(value, 0), e.sliderMax);
+        e.sliderValue = std::clamp(value, 0, e.sliderMax);
         return true;
     }
     return false;
