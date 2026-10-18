@@ -1,5 +1,5 @@
 // tests/unit/test_depth_hzb.cpp
-// HZB-DEPTH-CONVENTION-TESTS-1: GL-free CPU reference tests that pin the
+// GL-free CPU reference tests that pin the
 // reverse-Z / Hi-Z (HZB) depth contract BEFORE any runtime HZB pyramid or
 // occlusion-culling code exists.
 //
@@ -7,13 +7,11 @@
 // --------------------
 // A wrong HZB min/max reduction convention does not crash -- it silently
 // over-culls visible geometry, producing intermittent invisible-object bugs
-// that are extremely expensive to diagnose later (see the month-long
-// shadow/water invisible-prop arcs in this project's history). This file is
-// semantic infrastructure: it encodes the depth contract as executable,
-// CI-checked assertions so the future runtime HZB slice
-// (TRACKRV-HZB-VISIBILITY-OPUS-1) has a fixed target to match.
+// that are extremely expensive to diagnose later. This file is semantic
+// infrastructure: it encodes the depth contract as executable, CI-checked
+// assertions so the runtime HZB implementation has a fixed target to match.
 //
-// PROJECT DEPTH CONTRACT (recon-verified, do NOT change without re-verifying):
+// PROJECT DEPTH CONTRACT (do NOT change without re-verifying):
 //   * Reverse-Z:        near plane -> depth 1.0, far plane -> depth 0.0.
 //                       LARGER depth value == CLOSER to the camera.
 //                       (gameosmain.cpp glClearDepth(0.0f); gameos_graphics.cpp
@@ -25,7 +23,7 @@
 //   * Sky / far / no-geometry sentinel: depth == 0.0 (clear value).
 //
 // All math below is LOCAL REFERENCE MATH. The project has no depth-linearize
-// or HZB-reduce helper yet (recon: none found). When the runtime HZB lands it
+// or HZB-reduce helper yet. When the runtime HZB lands it
 // MUST reproduce these exact rules; if a reusable helper is later promoted
 // into RenderCore, port these tests to call it instead of the locals here.
 #include "doctest.h"
@@ -80,7 +78,7 @@ bool isSkyOrFar(double depth) { return depth <= 0.0; }
 //   Forward-Z (near=0/far=1) would store MAX. Reverse-Z FLIPS this to MIN.
 //   Storing MAX here would record the nearest occluder and over-cull objects
 //   that are actually visible behind a thin foreground sliver -> invisible
-//   objects. That inversion is the entire trap this slice guards against.
+//   objects. That inversion is the entire trap this file guards against.
 double hzbReduce2x2(double a, double b, double c, double d) {
     return std::min(std::min(a, b), std::min(c, d));
 }
@@ -119,7 +117,7 @@ std::vector<uint32_t> hzbMipLadder(uint32_t base) {
     return levels;
 }
 
-// HZB-DEPTH-PYRAMID-MVP-1: number of mip levels in a 2D HZB pyramid for a WxH
+// Number of mip levels in a 2D HZB pyramid for a WxH
 // base (ceil ladder down to 1x1). This is exactly the level count the runtime
 // allocates via glTexStorage2D. It equals the runtime's compact form that
 // halves max(w,h) by ceil until it reaches 1; the test also asserts it equals
@@ -289,7 +287,7 @@ TEST_CASE("HZB 2D mip count reduces non-square extents to a 1x1 terminal") {
     CHECK(hzbMipCount2D(7, 3) == (uint32_t)hzbMipLadder(7).size());
 }
 
-// --- Occlusion probe decision (HZB-OCCLUSION-PROBE-1) -----------------------
+// --- Occlusion probe decision -------------------------------------------------
 
 TEST_CASE("HZB probe: a tile min never culls its own child texels") {
     // The runtime self-consistency probe asserts exactly this: a parent texel

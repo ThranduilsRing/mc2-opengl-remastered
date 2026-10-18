@@ -1,17 +1,16 @@
 // tests/unit/test_fst_roundtrip.cpp
 //
-// MINIMAL-VIABLE-HARNESS-2 (TU-2): proves the loose-vs-FST resolution ladder
-// end to end with NO new engine TU -- ffile.cpp's create/writeFast and
-// fastfile.cpp's registry (FastFileInit/Find/Fini) are already linked by
-// MINIMAL-VIABLE-HARNESS-1. This authors a tiny .fst in scratch, registers it,
-// and drives File::open through both branches.
+// Proves the loose-vs-FST resolution ladder end to end with NO new engine TU --
+// ffile.cpp's create/writeFast and fastfile.cpp's registry
+// (FastFileInit/Find/Fini) are already linked by the unit-test harness. This
+// authors a tiny .fst in scratch, registers it, and drives File::open through
+// both branches.
 //
 // THE CONTRACT everything relies on (file.cpp::File::open, READ branch):
 //   1. A loose disk file is tried FIRST (_open). Only on INVALID_HANDLE_VALUE
 //      does resolution fall through to FastFileFind (the FST).
 //   => loose OVERRIDES packed; packed SERVES when loose is absent.
-// This was previously untested; the initVariants / mech-CSV / .fit load paths
-// all assume it. Pattern doc: docs/testing/minimal-viable-harness.md.
+// The initVariants / mech-CSV / .fit load paths all assume it.
 //
 // FST authoring path mirrors the makefst tool: create(name,true) ->
 // reserve(n) -> writeFast(entryName, buf, len) per entry -> close(). Entries

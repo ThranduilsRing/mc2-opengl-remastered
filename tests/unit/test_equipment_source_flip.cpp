@@ -1,4 +1,4 @@
-// EQUIPMENT-SOURCE-FLIP-SWITCH-1 -- offline tests for the PURE gate + overlay
+// Offline tests for the PURE equipment-source gate + overlay
 // value logic (equipment_registry.h). No engine, no MasterComponent, no file I/O:
 // the engine overlay pass (equipment_registry_engine.cpp) reads FitIniFile and is
 // not built here; this covers only the deterministic decision/mapping rules.

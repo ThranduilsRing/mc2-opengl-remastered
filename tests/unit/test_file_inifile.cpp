@@ -1,15 +1,14 @@
 // tests/unit/test_file_inifile.cpp
 //
-// MINIMAL-VIABLE-HARNESS-1: first tests that run REAL mclib file-stack TUs
+// First tests that run REAL mclib file-stack TUs
 // (file.cpp / inifile.cpp / packet.cpp) game-free, on top of the malloc-backed
-// heap shim (heap_shim.cpp). Pattern doc: docs/testing/minimal-viable-harness.md.
+// heap shim (heap_shim.cpp).
 //
 // What this proves:
 //   * FitIniFile disk parse -- the game's config spine, offline-verifiable.
-//   * FitIniFile::open(buffer,len) -- FITINI-INMEM-OPEN-WRAPPER-1 shipped this
-//     seam with ZERO callers and no runtime proof (harness was blocked on
-//     heap.cpp; docs/testing/fitini-inmem-harness-bootstrap-recon-1.md).
-//     These are its first runtime assertions.
+//   * FitIniFile::open(buffer,len) -- the in-memory open seam previously had
+//     ZERO callers and no runtime proof. These are its first runtime
+//     assertions.
 //   * PacketFile write/read round-trip -- the .pak container used by object2.pak
 //     et al., exercised end-to-end with no external data dependency.
 //   * File loose-disk resolution (base-loose branch of File::open).

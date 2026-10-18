@@ -1,5 +1,4 @@
 // tests/unit/test_equipment_validator.cpp
-// WEAPON-VALIDATOR-1 (equipment arc, slice 6).
 //
 // Pure-logic doctest coverage for equipment_validator.h: the construction-rules
 // validator for EquipmentDefinition / WeaponFacet. Every LIVE reason code must be
@@ -218,15 +217,15 @@ TEST_CASE("equip: every LIVE reason code is reachable + vocabulary-size lock") {
     // the vocabulary size so a future slice APPENDS (never renumbers).
     // EQV codes: NO_FIRE_EXECUTOR, PRESENTATION_ASSET_MISSING, NO_CATEGORY,
     // AMMO_CATEGORY_MISSING, RANGE_INVALID, KIND_FACET_MISMATCH, HARDPOINT_REJECTED,
-    // FIRE_EXECUTOR_UNBOUND (appended by FIRE-EXECUTOR-REGISTRY-1, E7),
-    // ENABLE_UNRESOLVED (appended by EQUIP-ENABLE-WIRE-1, ADD-ladder S1),
+    // FIRE_EXECUTOR_UNBOUND,
+    // ENABLE_UNRESOLVED,
     // ADD_ORDINAL_UNAVAILABLE / ADD_FIELDS_INCOMPLETE / ADD_AMMO_UNRESOLVED
-    // (appended by EQUIP-ADD-FILL-1, ADD-ladder S2).
+    // (the ADD codes).
     CHECK(EQV__COUNT == 12);
 }
 
 // -------------------------------------------------------------------------
-// EQUIP-ENABLE-WIRE-1 (ADD-ladder S1): EQV_ENABLE_UNRESOLVED.
+// EQV_ENABLE_UNRESOLVED.
 // -------------------------------------------------------------------------
 
 TEST_CASE("equip: Enabled with no legacyMasterId alias -> EQV_ENABLE_UNRESOLVED") {
@@ -241,7 +240,7 @@ TEST_CASE("equip: Enabled with no legacyMasterId alias -> EQV_ENABLE_UNRESOLVED"
 TEST_CASE("equip: Enabled with out-of-range ordinal (>=255) -> EQV_ENABLE_UNRESOLVED") {
     EquipmentValidationInputs in;
     in.def = goodEnergyWeapon();
-    in.def.legacyMasterId = 255;      // 0xff sentinel / E4-widen land
+    in.def.legacyMasterId = 255;      // 0xff sentinel / wide ordinal
     in.enableDeclared = true;
     std::vector<EquipmentFinding> f = validateEquipmentDefinition(in);
     REQUIRE(f.size() == 1);

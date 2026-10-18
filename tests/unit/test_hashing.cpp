@@ -67,7 +67,7 @@ TEST_CASE("Normalized-then-hashed keys are slash-direction-invariant") {
     CHECK(elfHash(a) == elfHash(b));
 }
 
-// --- loose-file / mod-overlay index key (GAMEOS-PATHSEP-HARNESS-1) ----------
+// --- loose-file / mod-overlay index key --------------------------------------
 // fst_normalize_loose_key folds CASE + SLASHES together — the canonical key
 // mclib/file.cpp's loose-file index now delegates to. Distinct from
 // fst_normalize_key (slash-only, FST elfHash path). A miss here = a mod file

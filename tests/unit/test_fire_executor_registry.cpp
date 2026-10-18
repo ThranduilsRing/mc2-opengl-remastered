@@ -1,4 +1,4 @@
-// FIRE-EXECUTOR-REGISTRY-1 (equipment arc, engine slice E7) -- offline tests for
+// Offline tests for
 // the PURE fire-executor registry: bind/isBound/entryFor/resolve, the stock
 // executor vocabulary (must match the converter's assigned fireExecutor names),
 // resolve(WeaponFacet) by category-derived id, and unset/unbound classification.
