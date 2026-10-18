@@ -71,3 +71,12 @@ def test_deleted_input_and_undeclared_row(tmp_path):
     os.remove(r / "src" / "a.cpp")
     assert _key(r) != k0
     assert "nope" not in cc.load_decls(str(r))      # an undeclared row has no declaration, so it is never keyed
+
+
+def test_touch_without_content_change_keeps_key(tmp_path):
+    r = _repo(tmp_path)
+    k0 = _key(r)
+    f = r / "src" / "a.cpp"
+    f.write_text("int a;\n")                  # same bytes, fresh mtime: git sees it as stat-dirty until refreshed
+    os.utime(f, (1, 1))
+    assert _key(r) == k0

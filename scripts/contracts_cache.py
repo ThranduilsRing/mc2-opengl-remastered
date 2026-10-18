@@ -51,6 +51,9 @@ def _git(repo, *args, nul=False):
 class Universe:
     def __init__(self, repo):
         self.repo = repo
+        # Refresh stat info first: a file a test merely touched (same bytes, new mtime) must not read as modified.
+        subprocess.run(["git", "-C", repo, "update-index", "-q", "--really-refresh"], capture_output=True,
+                       **console_child.child_kwargs(redirected=True))
         self.tracked = {}       # path -> index blob sha
         for line in _git(repo, "ls-files", "-s", "-z", nul=True):
             meta, path = line.split("\t", 1)
@@ -76,7 +79,11 @@ class Universe:
             return self.tracked[path]
         try:
             with open(full, "rb") as f:
-                return "w:" + hashlib.sha256(f.read()).hexdigest()
+                data = f.read()
+            # git blob id of the working bytes: identical bytes give the identical id whether or not stat info is fresh
+            if path not in self.tracked:
+                return "w:" + hashlib.sha256(data).hexdigest()
+            return hashlib.sha1(b"blob %d" % len(data) + bytes([0]) + data).hexdigest()
         except OSError:
             return "DELETED" if path in self.tracked else "ABSENT"
 
