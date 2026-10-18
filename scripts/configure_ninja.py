@@ -25,6 +25,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from bootstrap_worktree_build import cache_args, find_cmake  # noqa: E402
+import console_child  # noqa: E402
 
 VS = "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools"
 VCVARS = VS + "/VC/Auxiliary/Build/vcvars64.bat"
@@ -43,7 +44,8 @@ def compile_cache_env(root):
     entries (a server started earlier keeps its old list: run `sccache --stop-server` after adding a worktree)."""
     roots = {root.replace("\\", "/")}
     try:
-        out = subprocess.run(["git", "-C", root, "worktree", "list", "--porcelain"], capture_output=True, text=True).stdout
+        out = subprocess.run(["git", "-C", root, "worktree", "list", "--porcelain"], capture_output=True, text=True,
+                             **console_child.child_kwargs(redirected=True)).stdout
         roots |= {ln[9:].strip().replace("\\", "/") for ln in out.splitlines() if ln.startswith("worktree ")}
     except OSError:
         pass
@@ -56,10 +58,11 @@ def ensure_cache_server(root, env_extra):
     and would never share entries, so restart the server when this root is missing (only ever when a new worktree first builds)."""
     env = dict(os.environ, **env_extra)
     want = root.replace("\\", "/").lower().rstrip("/") + "/"
-    shown = subprocess.run([SCCACHE_EXE, "-s"], env=env, capture_output=True, text=True).stdout.lower()
+    shown = subprocess.run([SCCACHE_EXE, "-s"], env=env, capture_output=True, text=True,
+                           **console_child.child_kwargs(redirected=True)).stdout.lower()
     if want not in shown:
-        subprocess.run([SCCACHE_EXE, "--stop-server"], env=env, capture_output=True)
-        subprocess.run([SCCACHE_EXE, "--start-server"], env=env, capture_output=True)
+        subprocess.run([SCCACHE_EXE, "--stop-server"], env=env, capture_output=True, **console_child.child_kwargs(redirected=True))
+        subprocess.run([SCCACHE_EXE, "--start-server"], env=env, capture_output=True, **console_child.child_kwargs(redirected=True))
 
 
 def tree_uses_cache(root, tree):

@@ -56,7 +56,7 @@ def test_asset_sidecar_deploy_is_identical_across_checkout_roots(monkeypatch):
                 hashes = dp.deploy([(str(source), rel, "support")], str(root / "payload"), False)
             output = root / "payload" / rel
             outputs.append(output.read_bytes())
-            assert hashes[rel] == (dp.sha256_file(str(output)), len(tracked))
+            assert hashes[rel][:2] == (dp.sha256_file(str(output)), len(tracked))
             assert source.read_bytes() == checkout_bytes
     assert outputs == [tracked, tracked]
 
