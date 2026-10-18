@@ -2121,7 +2121,7 @@ void MechWarrior::updateActions (void) {
 				// mid-volley instead of pin-frame roulette against the mission's
 				// intro/scenario clock. Consumed by verifyReadbackContent
 				// (engine_present_vk.cpp) + the gameosmain verify window.
-				extern uint32_t g_mc2FrameCounter;
+				extern uint32_t g_mc2RenderFrame;   // g_mc2FxFireCaptureFrame is a RENDER-clock frame
 				extern uint32_t g_mc2FxFireCaptureFrame;
 				// VK-FIELD-VFX-8: MC2_VISUAL_CAPTURE_ON_FIRE arms the same pin for
 				// the GL engine capture (gos_visual_capture.cpp), so GL/VK pairs
@@ -2130,8 +2130,8 @@ void MechWarrior::updateActions (void) {
 					(mc2::gate::get<"MC2_VK_PRESENT_DUMP_ON_FIRE">() ||
 					 mc2::gate::get<"MC2_VISUAL_CAPTURE_ON_FIRE">());
 				if (s_dumpOnFire && g_mc2FxFireCaptureFrame == 0) {
-					g_mc2FxFireCaptureFrame = g_mc2FrameCounter + 30u;
-					mc2::fmt::print_out("[FX_FORCE_SPAWN loop] event=capture_armed frame={:d} pin={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::as_u32(g_mc2FxFireCaptureFrame));
+					g_mc2FxFireCaptureFrame = g_mc2RenderFrame + 30u;
+					mc2::fmt::print_out("[FX_FORCE_SPAWN loop] event=capture_armed frame={:d} pin={:d}\n", mc2::fmt::as_u32(g_mc2RenderFrame), mc2::fmt::as_u32(g_mc2FxFireCaptureFrame));
 					fflush(stdout);
 				}
 			}

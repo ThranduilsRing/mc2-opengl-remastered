@@ -8,7 +8,7 @@
 #include "mc2fmt.h"
 #include "render_backend_select.h"
 
-extern uint32_t g_mc2FrameCounter;
+extern uint32_t g_mc2RenderFrame;   // the present readbacks are tagged with the render clock
 
 namespace gos { namespace screenshot {
 
@@ -24,7 +24,7 @@ bool request(const char* path, DoneFn done) {
         mc2::fmt::print_err("[SCREENSHOT v1] request rejected: {}\n", mc2::fmt::safe(why));
         return false;
     }
-    return g_slot.begin(path, done, g_mc2FrameCounter);
+    return g_slot.begin(path, done, g_mc2RenderFrame);
 }
 
 unsigned long long pendingSince() { return g_slot.requestFrame(); }

@@ -107,6 +107,7 @@ extern "C" void mc2_vk_color_prop_island_destroy();
 // registries. No-op if never born.
 extern "C" void mc2_vk_terrain_island_destroy();
 extern "C" void mc2_vk_terrain_set_native_prefix_clear_color(float r, float g, float b, float a);
+extern "C" int mc2_vk_scene_clear(int w, int h);   // vulkan_terrain_island_run.cpp
 // VK-P14 MECH TIER-1: mech island shutdown teardown (defined in vulkan_mech_island.cpp
 // under the same #ifdef). Frees the VK renderpass/framebuffer/pipeline + instance/bone/
 // geometry buffers + copy-once albedo while the shared device is alive. The shared

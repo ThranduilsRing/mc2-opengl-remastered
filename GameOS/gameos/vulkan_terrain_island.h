@@ -284,6 +284,10 @@ int mc2_vk_terrain_island_prepare(int w, int h);
 // LOD-chunk path must then draw the LOD0 patches too).
 int mc2_vk_terrain_island_run(int w, int h);
 
+// Clears the shared scene (color0 / normal / depth) unless the terrain pass already did this render frame. 1 = the scene is cleared this frame, 0 = no island
+// to record it (the island is declined or disabled).
+int mc2_vk_scene_clear(int w, int h);
+
 // Health accessor (mirrors mc2_render_backend_color_prop_region_health, terrain fields).
 void mc2_render_backend_terrain_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,

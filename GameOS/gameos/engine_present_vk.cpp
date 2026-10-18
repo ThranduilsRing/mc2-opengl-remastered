@@ -2710,13 +2710,12 @@ void EnginePresentVk::verifyReadbackContent() {
         const std::string ppmPathText = mc2::gate::str<"MC2_VK_PRESENT_DUMP_PPM">();   // "" when unset or empty
         const char* ppmPath = ppmPathText.empty() ? nullptr : ppmPathText.c_str();
         // VK-FIELD-VFX-3: optional frame pin. MC2_VK_PRESENT_DUMP_FRAME=N dumps at the
-        // FIRST verify tick with g_mc2FrameCounter >= N, then stops overwriting -- so a
+        // FIRST verify tick with g_mc2RenderFrame >= N, then stops overwriting -- so a
         // capture can be pinned to an early fire-active frame (continuous force-fire
         // overheats/depletes the mechs, so the default overwrite-latest catches a
         // post-fire frame). Unset -> legacy overwrite-each-verify-tick behaviour.
         {
             extern uint32_t g_mc2RenderFrame;
-            extern uint32_t g_mc2FrameCounter;
             extern uint32_t g_mc2FxFireCaptureFrame;
             if (mc2::gate::isNonEmpty<"MC2_VK_PRESENT_DUMP_FRAME">()) {
                 const unsigned long pin = static_cast<unsigned long>(mc2::gate::get<"MC2_VK_PRESENT_DUMP_FRAME">());
@@ -2730,7 +2729,7 @@ void EnginePresentVk::verifyReadbackContent() {
                 // Unarmed (0) = suppress; once armed, capture at the first verify
                 // tick >= the armed frame.
                 if (s_ppmDone || g_mc2FxFireCaptureFrame == 0 ||
-                    g_mc2FrameCounter < g_mc2FxFireCaptureFrame)
+                    g_mc2RenderFrame < g_mc2FxFireCaptureFrame)
                     ppmPath = nullptr;
             }
         }

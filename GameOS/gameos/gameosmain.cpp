@@ -633,6 +633,9 @@ static void draw_screen( void )
             mc2_vk_terrain_set_native_prefix_clear_color(0.55f, 0.62f, 0.72f, 1.0f);
         else
             mc2_vk_terrain_set_native_prefix_clear_color(0.0f, 0.0f, 0.0f, 1.0f);
+        // No terrain last frame (menu, loading, mech bay): nothing will clear the shared scene before the first island draws, so clear it now. A frame
+        // with terrain is cleared by the terrain pass, or by the terrain flush's own guarantee.
+        if (!blueGrey) (void)mc2_vk_scene_clear(viewport_w, viewport_h);
     }
 
     // Skybox disabled — terrain fog provides atmosphere, bright sky looked jarring

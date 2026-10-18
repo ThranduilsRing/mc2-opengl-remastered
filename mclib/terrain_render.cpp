@@ -288,8 +288,8 @@ void Terrain::flushDrawCommands (void)
 			s_morphFactorVec.empty() ? nullptr : s_morphFactorVec.data(),  // TERRAIN-LOD-GEOMORPH-1
 			s_cmdCount);
 	}
+	gos_TerrainLodChunk_EnsureSceneClear();   // a frame without a terrain pass still starts from a cleared shared scene
 }
-
 //---------------------------------------------------------------------------
 // Single-source predicate: all conditions that allow renderWater() to skip the
 // legacy loop and quad.cpp::setupTextures() to skip the armed-frame (ii) writes.

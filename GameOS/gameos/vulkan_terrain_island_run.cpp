@@ -11,6 +11,9 @@
 // PUBLIC ENTRY POINTS.
 // ===========================================================================
 
+extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
+static uint32_t g_sceneClearedRenderFrame = 0;   // render frame + 1 of the last shared-scene clear (0 = never)
+
 extern "C" int mc2_vk_terrain_island_enabled() {
     return 1;
 }
@@ -495,6 +498,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     clears[1].color.float32[3] = 0.0f;
     clears[2].depthStencil = {0.0f, 0u};
 
+    g_sceneClearedRenderFrame = g_mc2RenderFrame + 1u;   // this pass CLEARs color0 / normal / depth (see mc2_vk_scene_clear)
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
@@ -615,6 +619,47 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
             mc2::fmt::as_u32(patchCount), g_health.stageUs, g_health.drawUs, us_fence_wait, g_health.totalUs);
         std::fflush(stderr);
     }
+    return 1;
+}
+
+// The shared scene's own clear. The terrain pass is the normal clear (CLEAR loadOps), but it does not run when the frame has no terrain (menu,
+// loading, mech bay) or when it declines before recording, and every later island LOADs: without this the composite would show the previous frame.
+// `g_sceneClearedRenderFrame` holds the render frame (plus one) of the last clear, so a frame the terrain pass already cleared is not cleared twice.
+// Callers: the frame start when the last frame had no terrain, and the point right after the terrain flush (before any prop / mech draw).
+extern "C" int mc2_vk_scene_clear(int w, int h) {
+    if (w <= 0 || h <= 0) return 0;
+    if (g_sceneClearedRenderFrame == g_mc2RenderFrame + 1u) return 1;
+    if (!ensure_island_ready(w, h)) return 0;
+    TerrainIsland* s = parkedIsland();
+    if (!s || s->disabled || !s->inited) return 0;
+
+    VkFrameSync fsC{};
+    fsC = vkImageResourceBeginFrame(s->colorRes);
+    const uint32_t par = fsC.parity & 1u;
+    VkCommandBuffer cb = s->cbuf[par];
+    vkResetCommandBuffer(cb, 0);
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("clear_record_failed"); s->disabled = true; return 0; }
+
+    VkClearValue clears[3]{};
+    for (int k = 0; k < 4; ++k) clears[0].color.float32[k] = g_prefixClearColor[k];
+    clears[1].color.float32[0] = 0.5f; clears[1].color.float32[1] = 0.5f; clears[1].color.float32[2] = 1.0f; clears[1].color.float32[3] = 0.0f;
+    clears[2].depthStencil = {0.0f, 0u};
+    VkRenderPassBeginInfo rbi{};
+    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
+    rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    rbi.clearValueCount = 3; rbi.pClearValues = clears;
+    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdEndRenderPass(cb);
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("clear_record_failed"); s->disabled = true; return 0; }
+    VkSubmitInfo si{};
+    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+    if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("clear_submit_failed"); s->disabled = true; return 0; }
+    g_sceneClearedRenderFrame = g_mc2RenderFrame + 1u;
     return 1;
 }
 
