@@ -53,7 +53,9 @@ def configure(root: str, preset=None, log_dir=None) -> int:
             args += [f"-DCMAKE_MAKE_PROGRAM={cn.NINJA}"]
     else:
         args = [find_cmake(), "-S", root, "-B", f"{root}/{TREE}", "-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={cn.NINJA}",
-                "-DCMAKE_BUILD_TYPE=RelWithDebInfo"] + EXTRA + cache_args(root)
+                "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+                # cl.exe reads its own .pch (only the clang-cl presets cannot): same precompiled std header as the dev tree.
+                "-DMC2_PCH=ON"] + EXTRA + cache_args(root)
     rc, _ = bd.run(args, ROOT, "root", "configure", log_dir, vcvars=True)
     if rc:
         print(f"build_all_targets: configure failed (rc={rc})", file=sys.stderr)
