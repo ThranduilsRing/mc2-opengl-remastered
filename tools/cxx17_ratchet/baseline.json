@@ -147,7 +147,7 @@
    "LG06": 472,
    "LG07": 2,
    "LG08": 17,
-   "LG09": 2239,
+   "LG09": 2238,
    "LG10": 20,
    "LG11": 103,
    "LG12a": 100,
@@ -193,7 +193,7 @@
    "LG06": 662,
    "LG07": 0,
    "LG08": 70,
-   "LG09": 1949,
+   "LG09": 1947,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 200,
@@ -2013,7 +2013,7 @@
    "LG09": 2
   },
   "code/goal.cpp": {
-   "LG09": 3
+   "LG09": 2
   },
   "code/goal.h": {
    "LG02": 1,
@@ -3436,7 +3436,7 @@
   },
   "mclib/cmponent.cpp": {
    "LG06": 2,
-   "LG09": 7,
+   "LG09": 6,
    "LG12b": 72
   },
   "mclib/cmponent.h": {
@@ -3634,9 +3634,6 @@
   "mclib/fit_number.h": {
    "LG06": 3,
    "LG09": 2
-  },
-  "mclib/floathelp.cpp": {
-   "LG09": 1
   },
   "mclib/floathelp.h": {
    "LG02": 1,
@@ -5105,7 +5102,7 @@
    "LG20": 3
   }
  },
- "head": "d7c7cf05e",
+ "head": "22826ff54",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
