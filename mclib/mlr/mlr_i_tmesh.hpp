@@ -72,7 +72,7 @@ namespace MidLevelRenderer {
 
 		void	FindFacePlanes();
 
-		virtual int	FindBackFace(const Stuff::Point3D&);
+		virtual int	FindBackFace(const glm::vec3&);
 
 		const mc2::math::Plane *GetTrianglePlane(int i)
 			{
@@ -93,13 +93,13 @@ namespace MidLevelRenderer {
 			PaintMe(const Stuff::RGBAColor *paintMe) {};
 #endif
 
-		virtual int	TransformAndClip(Stuff::Matrix4D *, MLRClippingState, GOSVertexPool*,bool=false);
+		virtual int	TransformAndClip(glm::mat4 *, MLRClippingState, GOSVertexPool*,bool=false);
 
 //		void
 //			Transform(Stuff::Matrix4D*);
 
 		virtual void
-			TransformNoClip(Stuff::Matrix4D*, GOSVertexPool*,bool=false);
+			TransformNoClip(glm::mat4*, GOSVertexPool*,bool=false);
 
 	//	Initializes the visibility test list
 		void

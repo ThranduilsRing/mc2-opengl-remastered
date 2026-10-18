@@ -8,8 +8,6 @@
 #if !defined(MLR_MLR_HPP)
 #include<mlr/mlr.hpp>
 #endif
-#include "math/stuff_glm_bridge.h"
-
 #if !defined(MLR_MLRINDEXEDPRIMITIVEBASE_HPP)
 #include<mlr/mlrindexedprimitivebase.hpp>
 #endif
@@ -66,7 +64,7 @@ namespace MidLevelRenderer {
 
 		void	FindFacePlanes();
 
-		virtual int	FindBackFace(const Stuff::Point3D&);
+		virtual int	FindBackFace(const glm::vec3&);
 
 		const mc2::math::Plane *GetPolygonPlane(int i)
 			{
@@ -87,10 +85,10 @@ namespace MidLevelRenderer {
 			PaintMe(const Stuff::RGBAColor *paintMe) {};
 #endif
 
-		virtual int	TransformAndClip(Stuff::Matrix4D*, MLRClippingState, GOSVertexPool*,bool=false);
+		virtual int	TransformAndClip(glm::mat4*, MLRClippingState, GOSVertexPool*,bool=false);
 
 		virtual void
-			TransformNoClip(Stuff::Matrix4D*, GOSVertexPool*,bool=false);
+			TransformNoClip(glm::mat4*, GOSVertexPool*,bool=false);
 
 	//	Initializes the visibility test list
 		void
@@ -128,7 +126,7 @@ namespace MidLevelRenderer {
 
 	protected:
 		void
-			Transform(Stuff::Matrix4D*);
+			Transform(glm::mat4*);
 
 		Stuff::DynamicArrayOf<unsigned char>	testList;
 		
@@ -146,10 +144,10 @@ namespace MidLevelRenderer {
 
 	void
 		subdivide (
-			Stuff::Point3D *coords,
-			Stuff::Point3D& v1,
-			Stuff::Point3D& v2,
-			Stuff::Point3D& v3,
+			glm::vec3 *coords,
+			glm::vec3& v1,
+			glm::vec3& v2,
+			glm::vec3& v3,
 			long depth,
 			long tri2draw, 
 			float rad = 1.0f

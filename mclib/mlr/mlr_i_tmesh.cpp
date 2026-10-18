@@ -142,7 +142,7 @@ bool
 
 	int len;
 	unsigned short *_index;
-	Point3D *_coords;
+	glm::vec3 *_coords;
 	Vector2DScalar *_texCoords;
 
 	pMesh->GetCoordData(&_coords, &len);
@@ -190,16 +190,16 @@ void
 	Check_Object(this); 
 
 	int i, j, numPrimitives = GetNumPrimitives();
-	Vector3D v;
+	glm::vec3 v;
 
 	Verify(index.GetLength() > 0);
 
 	for(i=0,j=0;i<numPrimitives;++i,j+=3)
 	{
 		facePlanes[i].buildPlane(
-			mc2::math::toGlm(coords[index[j]]),
-			mc2::math::toGlm(coords[index[j+1]]),
-			mc2::math::toGlm(coords[index[j+2]])
+			coords[index[j]],
+			(coords[index[j+1]]),
+			(coords[index[j+2]])
 		);
 
 		;
@@ -209,7 +209,7 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 int
-	MLR_I_TMesh::FindBackFace(const Point3D& u)
+	MLR_I_TMesh::FindBackFace(const glm::vec3& u)
 {
 	Check_Object(this);
 
@@ -237,7 +237,7 @@ int
 		memset(iPtr, 0, numOfTriangles);
 		for(int i=numOfTriangles-1;i>=0;p--,i--)
 		{
-			if(p->distanceTo(mc2::math::toGlm(u))>= 0.0f)
+			if(p->distanceTo(u)>= 0.0f)
 			{
 				iPtr[i] = (unsigned char)(ret = 1);
 			}
@@ -318,7 +318,7 @@ extern DWORD gEnableTextureSort, gEnableAlphaSort;
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 /*
 void
-	MLR_I_TMesh::Transform(Matrix4D *mat)
+	MLR_I_TMesh::Transform(glm::mat4 *mat)
 {
 	Check_Object(this);
 
@@ -331,7 +331,7 @@ void
 	}
 
 	Stuff::Vector4D *v4d = transformedCoords.GetData();
-	Stuff::Point3D *p3d = coords.GetData();
+	glm::vec3 *p3d = coords.GetData();
 	MLRClippingState *cs = clipPerVertex.GetData();
 	unsigned char *viv = visibleIndexedVertices.GetData();
 
