@@ -180,13 +180,10 @@ VULKAN_SAMPLER_RESOURCE = {
     "u_sceneDepthTex":     "MainDepth",
     "sceneNormalTex":      "MainNormal",
     "u_sceneNormalTex":    "MainNormal",
-    "dynamicShadowArray":  "ShadowDynamicMap",
-    "dynamicShadowMap":    "ShadowDynamicMap",
-    "dynamicFullMapShadow":"ShadowDynamicMap",
 }
 # The set of RenderResourceIds this table claims are CombinedImageSampler; the
 # runtime check verifies these are exactly the CIS rows present in the header.
-VULKAN_CIS_EXPECTED = {"MainColor", "MainDepth", "MainNormal", "ShadowDynamicMap"}
+VULKAN_CIS_EXPECTED = {"MainColor", "MainDepth", "MainNormal"}
 VULKAN_CONTRACT_H = os.path.join("RenderCore", "vulkan_contract.h")
 
 

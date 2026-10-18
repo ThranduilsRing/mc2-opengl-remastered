@@ -25,8 +25,6 @@ REGISTRY = ROOT / "RenderCore" / "PipelineRegistry.cpp"
 
 # The contract. Collapsing tube into AdditiveSrcAlphaOne (or vice-versa) FAILS.
 EXPECTED = {
-    "VfxBillboardAlpha":    "AlphaBlend",
-    "VfxBillboardAdditive": "AdditiveSrcAlphaOne",
     "VfxTubeAlpha":         "AlphaBlend",
     "VfxTubeAdditive":      "AdditiveOneOne",       # ONE/ONE — the DISTINCTION
     "VfxMeshAlpha":         "AlphaBlend",
@@ -57,6 +55,22 @@ def parse_vfx_blends(text: str) -> dict[str, str]:
     return found
 
 
+def native_blend_issues(text: str) -> list[str]:
+    """Pin the visible Vulkan blend factors and its three pipeline variants."""
+    text = re.sub(r"/\*.*?\*/|//[^\n]*", "", text, flags=re.S)
+    compact = re.sub(r"\s+", "", text)
+    required = [
+        "cba[0].srcColorBlendFactor=oneOne?VK_BLEND_FACTOR_ONE:VK_BLEND_FACTOR_SRC_ALPHA;",
+        "cba[0].dstColorBlendFactor=additive?VK_BLEND_FACTOR_ONE:VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;",
+        "cba[0].srcAlphaBlendFactor=oneOne?VK_BLEND_FACTOR_ONE:VK_BLEND_FACTOR_SRC_ALPHA;",
+        "cba[0].dstAlphaBlendFactor=additive?VK_BLEND_FACTOR_ONE:VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;",
+        "s->alphaPipe=make_pipeline(s,w,h,false);",
+        "s->addPipe=make_pipeline(s,w,h,true);",
+        "s->oneOnePipe=make_pipeline(s,w,h,true,true);",
+    ]
+    return ["Vulkan VFX blend contract missing: " + clause for clause in required if clause not in compact]
+
+
 def main() -> int:
     quiet = "--quiet" in sys.argv
     if not REGISTRY.exists():
@@ -64,7 +78,7 @@ def main() -> int:
         return 2
     found = parse_vfx_blends(REGISTRY.read_text(encoding="utf-8", errors="replace"))
 
-    fails = []
+    fails = native_blend_issues((ROOT / "GameOS/gameos/vulkan_vfx_island.cpp").read_text(encoding="utf-8"))
     for name, want in EXPECTED.items():
         got = found.get(name)
         if got is None:
@@ -75,9 +89,9 @@ def main() -> int:
 
     # Cross-check the distinction explicitly: tube additive != billboard additive.
     t = found.get("VfxTubeAdditive")
-    b = found.get("VfxBillboardAdditive")
+    b = found.get("VfxMeshAdditive")
     if t is not None and b is not None and t == b:
-        fails.append(f"VfxTubeAdditive ({t}) == VfxBillboardAdditive ({b}) — "
+        fails.append(f"VfxTubeAdditive ({t}) == VfxMeshAdditive ({b}) — "
                      "tube additive (ONE/ONE) COLLAPSED into billboard "
                      "(SRC_ALPHA/ONE). This is exactly the forbidden collapse.")
 
@@ -87,7 +101,7 @@ def main() -> int:
             print(f"  - {f}", file=sys.stderr)
         return 1
     if not quiet:
-        print("[vfx-blend] PASS — 6 VFX rows blend-distinct "
+        print("[vfx-blend] PASS — 4 GL VFX rows and native billboard blend-distinct "
               "(tube=AdditiveOneOne, billboard/mesh=AdditiveSrcAlphaOne, "
               "alpha=AlphaBlend).")
     return 0

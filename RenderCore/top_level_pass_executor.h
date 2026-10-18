@@ -42,15 +42,12 @@ struct TopLevelPassContract {
 //
 // VegetationCards: gated MC2_VEGETATION_CARDS default-OFF -> legitimately fires 0 times
 // per frame in default smoke. That is correct and NOT a validation failure.
-// Shadow: dynamic-shadow only (per-frame). Static shadow (once/mission) is NOT wrapped
-// here — it is not a per-frame top-level pass. The seam is gos_Begin/EndDynamicShadowPass
-// in txmmgr.cpp renderLists(). Shadow FBO = ShadowDynamicMap (registered in gos_postprocess).
-// MechOpaque: wraps GpuMechBatcher::flush() in renderLists(). FBO = MainColor (scene FBO).
+// Native shadow/water passes remain observed, without GL state or FBO validation.
 static constexpr TopLevelPassContract kTopLevelExecutorPasses[] = {
     {
         /*id*/              RenderPassId::Shadow,
-        /*validateAmbient*/ true,   // AmbientContract row: ShadowLess depthFunc, ShadowMap viewport
-        /*validateFbo*/     true,   // FBO ledger: ShadowDynamicMap registered in gos_postprocess
+        /*validateAmbient*/ false,   // native Vulkan owns the shadow state
+        /*validateFbo*/     false,   // native Vulkan owns the shadow images
         /*note*/            "Shadow/gosRenderer_beginDynamicShadowPass",
     },
     {
@@ -85,8 +82,8 @@ static constexpr TopLevelPassContract kTopLevelExecutorPasses[] = {
     },
     {
         /*id*/              RenderPassId::Water,
-        /*validateAmbient*/ true,   // AmbientContract row: SceneGEqual depthFunc, depthWrite On, MainScene viewport
-        /*validateFbo*/     true,   // FBO ledger declares MainColor target (scene FBO)
+        /*validateAmbient*/ false,   // AmbientContract row: SceneGEqual depthFunc, depthWrite On, MainScene viewport
+        /*validateFbo*/     false,   // FBO ledger declares MainColor target (scene FBO)
         /*note*/            "Water/gosRenderer_renderWaterFastPath",
     },
     {
@@ -229,49 +226,6 @@ static constexpr TopLevelStateDesc kTopLevelStateDesc[] = {
         /*pipelineId*/ RenderCore::PipelineId::MechOpaque,
         /*fboTarget*/  RenderResourceId::Unknown,   // inherit (not applied)
         /*viewport*/   ViewportKind::Inherit,       // inherit (not applied)
-    },
-    // APPLY-STATE-WATER-1: Water — gosRenderer::renderWaterFastPath(): the SOLE liftable
-    // entry render-state is applyPipeline(getPipelineDesc(WaterArmed)) at the body's live
-    // draw site (~gameos_graphics.cpp:3276). ★BODY-SITE apply, NOT a begin-seam pre-apply:
-    // WaterStream::ComputeDispatchAndBindThinRecords() (~:3232) runs glUseProgram(compute)+
-    // glDispatchCompute BETWEEN the begin seam and the applyPipeline, so a seam pre-apply
-    // would be mistimed (clobbered by the compute program bind). Instead the dispatch fires
-    // immediately before the existing :3276 applyPipeline — mirrors the TerrainOverlay
-    // SITE-FIX (apply hook at the live draw site). renderWaterFastPath has NO
-    // glBindFramebuffer/glDrawBuffers/glViewport — it inherits the scene/MainColor FBO +
-    // viewport from the caller, so this is a pipeline-only lift (FBO/viewport Unknown/Inherit,
-    // same honesty shape as decal/overlay/staticprop/mech). The debug-gated glDepthMask
-    // (MC2_WATER_NO_DEPTH_WRITE) fires AFTER applyPipeline and is NOT executor-ownable — left
-    // unchanged. The reflection pass (RenderWaterReflectionPass, default-OFF, self-restoring)
-    // is a separate TU and is NOT lifted.
-    {
-        /*id*/         RenderPassId::Water,
-        /*pipelineId*/ RenderCore::PipelineId::WaterArmed,
-        /*fboTarget*/  RenderResourceId::Unknown,   // inherit (not applied)
-        /*viewport*/   ViewportKind::Inherit,       // inherit (not applied)
-    },
-    // APPLY-STATE-SHADOW-1/2: Shadow — gosRenderer::beginDynamicShadowPass() (dynamic shadow
-    // seam, per-frame; NOT the static once/mission beginShadowPrePass). ★FIRST render-target-MODE
-    // apply consumer (first ClearSpec::DepthForwardZ row): Shadow owns a render-target mode
-    // (pipeline + forward-Z depth clear), not just a pipeline.
-    // APPLY-STATE-SHADOW-2: NOW a FULL render-target-mode owner — fboTarget=ShadowDynamicMap +
-    // viewport=ShadowMap lifted (was Unknown/Inherit in SHADOW-1). The EXTEND helper applies
-    // FBO bind -> viewport -> DepthForwardZ clear in order; the body's own FBO bind + viewport +
-    // pipeline + clear are skipped (one-shot). The AMD feedback-unbind / GL_TEXTURE_COMPARE_MODE
-    // flip are shadow-TEXTURE mutations that MUST run BEFORE the FBO bind (the shadow texture
-    // stops being a sampled input as it becomes a render target) — they stay a BODY PREAMBLE
-    // ahead of the executor dispatch, NOT lifted into the helper.
-    // ★pipelineId=ShadowMech is the BASE caster pipeline only (the authoritative kPassRenderState
-    // Shadow row is intentionally PipelineId::Invalid — Shadow has 3 descriptive sub-caster
-    // pipelines ShadowTerrain/ShadowMech/ShadowStaticProp). Per-caster ShadowStaticProp re-applies
-    // in the body at draw sites. Shadow is therefore EXEMPT from the "top-level apply pipeline
-    // matches the authoritative kPassRenderState row" registration invariant (see test_frame_graph.cpp).
-    {
-        /*id*/         RenderPassId::Shadow,
-        /*pipelineId*/ RenderCore::PipelineId::ShadowMech,
-        /*fboTarget*/  RenderResourceId::ShadowDynamicMap,  // SHADOW-2: executor binds the dynamic shadow FBO
-        /*viewport*/   ViewportKind::ShadowMap,             // SHADOW-2: executor sets the shadow-map viewport
-        /*clear*/      ClearSpec::DepthForwardZ,     // forward-Z shadow clear (1.0->clear->0.0; reverse-Z scene protected)
     },
 };
 static constexpr unsigned kTopLevelStateDescCount =

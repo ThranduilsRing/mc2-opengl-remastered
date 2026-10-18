@@ -55,31 +55,31 @@
       "next": "retire the descriptor with the RenderCore frame-graph islands (3.9)"
     },
     "ShadowTerrain": {
-      "status": "DESCRIPTIVE_REGISTERED",
+      "status": "DO_NOT_MODEL",
       "renderPassId": "Shadow",
-      "pipelineId": "ShadowTerrain",
       "shaderBase": "shadow_terrain",
       "stateOwner": "vulkan_island",
       "evidence": "the GL static terrain shadow prepass (beginShadowPrePass applyPipeline(ShadowTerrain)) was deleted in s61; the descriptor stays registered for the frame-graph model and the static map is drawn by the Vulkan shadow island",
-      "next": "retire the descriptor with the RenderCore frame-graph islands (3.9)"
+      "next": "none (GL model retired)",
+      "reason": "Native Vulkan pass; its GL draw and PipelineDesc were deleted. Vulkan owns the images and pipeline state."
     },
     "ShadowStaticProp": {
-      "status": "DESCRIPTIVE_REGISTERED",
+      "status": "DO_NOT_MODEL",
       "renderPassId": "Shadow",
-      "pipelineId": "ShadowStaticProp",
       "shaderBase": "shadow_static_prop",
       "stateOwner": "vulkan_island",
       "evidence": "the GL prop shadow draws (flushShadow, drawStaticBuildingShadows, drawDynamicPropShadows: applyPipeline(ShadowStaticProp)) were deleted in s61; the descriptor stays registered for the frame-graph model and the casters are drawn by the Vulkan shadow island",
-      "next": "retire the descriptor with the RenderCore frame-graph islands (3.9)"
+      "next": "none (GL model retired)",
+      "reason": "Native Vulkan pass; its GL draw and PipelineDesc were deleted. Vulkan owns the images and pipeline state."
     },
     "ShadowMech": {
-      "status": "DESCRIPTIVE_REGISTERED",
+      "status": "DO_NOT_MODEL",
       "renderPassId": "Shadow",
-      "pipelineId": "ShadowMech",
       "shaderBase": "shadow_mech",
       "stateOwner": "vulkan_island",
       "evidence": "the GL dynamic shadow pass (beginDynamicShadowPass applyPipeline(ShadowMech)) was deleted in s61; the descriptor stays registered for the frame-graph model and the mech casters are drawn by the Vulkan shadow island",
-      "next": "retire the descriptor with the RenderCore frame-graph islands (3.9)"
+      "next": "none (GL model retired)",
+      "reason": "Native Vulkan pass; its GL draw and PipelineDesc were deleted. Vulkan owns the images and pipeline state."
     },
     "Terrain": {
       "status": "ROUTED_BY_APPLYPIPELINE",
@@ -121,16 +121,16 @@
       "next": "TERRAIN-DECAL-VISUAL-GATE: capture with battle-damage decals in-frame, byte-hash A/B + [PIPELINE_BIND] TerrainDecal trace -> VISUAL_PROVEN."
     },
     "Water": {
-      "status": "DESCRIPTIVE_REGISTERED",
+      "status": "DO_NOT_MODEL",
       "proofStatus": "oracle_coverage",
       "renderPassId": "Water",
-      "pipelineId": "WaterArmed",
       "shaderBase": "gos_terrain_water_fast",
       "stateOwner": "vulkan_island",
       "evidence": "the GL water draw (renderWaterFastPath applyPipeline(WaterArmed)) was deleted in s62; the descriptor stays registered for the frame-graph model and the water is drawn by the Vulkan water island. Earlier proof: WATER-ARMED-APPLYPIPELINE-ROUTING-1: routed at gosRenderer::renderWaterFastPath (gameos_graphics.cpp:3275) via applyPipeline(WaterArmed). VISUAL_PROVEN via oracle_coverage (HARNESS-ISOLATION-1 session, 2026-06-23): hardened pipeline_visual_gate water profile on the routed build (v0.4c / 051946c3) captured bookmark mc2_01 water_overview_high (an entirely-water frame) 3-run BYTE-STABLE post-warmup sha cb5a700ebd00 (deterministic clock; both poses stable), and the [PIPELINE_BIND] draw-oracle recorded WaterArmed bound 19184x with the exact row state depth=GreaterEqual cull=None frontFace=Ccw polygonOffset=false. State byte-identical to the old hand-set (cull off, depth-test on, GEQUAL, blend SRC_ALPHA/1-SRC_ALPHA; no-op frontFace/offset) — confirmed by trace, not a pixel A/B. depthMask kept manual (debug-gated MC2_WATER_NO_DEPTH_WRITE). Build green; smoke PASS.",
       "scope_note": "ONLY the armed fast-path base. The armed fast path is the DEFAULT render path (real latch terrain.cpp:2779, called unconditionally gamecam.cpp:530; gameosmain.cpp:852 MC2_RENDER_WATER_FASTPATH is only a diagnostic flag, NOT the gate). Legacy quad fallback + GPU-driven MDI sub-variant NOT modeled.",
       "proofNote": "PROOF = oracle_coverage (LANDED), not byte_identical: a pixel before/after was deliberately NOT required. The pass is DETERMINISTIC (3-run byte-stable cb5a700ebd00), DRAWS (19184 [PIPELINE_BIND] WaterArmed binds = SAMPLES rasterized), and its bound state is trace-confirmed identical to the legacy hand-set GL state. Together (determinism + draw-oracle + state-identity) these establish the applyPipeline routing is a visual no-op without a separate BEFORE build. Harness made concurrent-safe by HARNESS-ISOLATION-1 (own-only child reap; never kills foreign mc2.exe) — the original blocker (taskkill-all) is removed.",
-      "next": "CLOSED. WaterArmed VISUAL_PROVEN via oracle_coverage. SPIRV_ELIGIBLE = future SPIR-V consumer pilot."
+      "next": "none (GL model retired)",
+      "reason": "Native Vulkan pass; its GL draw and PipelineDesc were deleted. Vulkan owns the images and pipeline state."
     },
     "VFX": {
       "status": "ROUTED_BY_APPLYPIPELINE",
@@ -172,38 +172,35 @@
       ]
     },
     "PostProcessVkNativeFx": {
-      "status": "DESCRIPTIVE_REGISTERED",
+      "status": "DO_NOT_MODEL",
       "renderPassId": "PostProcess",
-      "pipelineId": "PostProcessEdgeFog",
       "shaderBase": "edge_fog/fog_oob/shadow_screen/cloud/shoreline",
       "stateOwner": "vulkan_native",
       "evidence": "the GL edge fog, OOB fog, screen shadow, cloud shadow and shoreline passes (applyPipeline PostProcess{EdgeFog,FogOob,ScreenShadow,CloudShadow,Shoreline}) were deleted in s62; the passes run only as Vulkan native post passes (vulkan_post_fog_native.cpp, vulkan_post_screenfx_native.cpp)",
-      "next": "retire the descriptors with the RenderCore frame-graph islands (3.9)",
-      "pipelineIds": [
-        "PostProcessEdgeFog",
-        "PostProcessFogOob",
-        "PostProcessScreenShadow",
-        "PostProcessCloudShadow",
-        "PostProcessShoreline"
-      ]
+      "next": "none (GL model retired)",
+      "pipelineIds": [],
+      "reason": "Native Vulkan pass; its GL draw and PipelineDesc were deleted. Vulkan owns the images and pipeline state."
     },
     "UI": {
       "status": "DO_NOT_MODEL",
       "renderPassId": "UI",
       "pipelineId": null,
-      "reason": "gos legacy state machine IS the dynamic-state emulator — 5 blend modes, 3 programs, per-draw depth/cull/zwrite from gos_State_* array. Modeling it as static PSO rows fights its design."
+      "reason": "Native Vulkan pass; its GL draw and PipelineDesc were deleted. Vulkan owns the images and pipeline state.",
+      "next": "none (GL model retired)"
     },
     "Picking": {
       "status": "DO_NOT_MODEL",
       "renderPassId": null,
       "pipelineId": null,
-      "reason": "no draw pipeline — pure glReadPixels (RenderWorld.cpp) of the objId ATTACHMENT2 that the already-covered opaque PSOs write as a side effect."
+      "reason": "Native Vulkan pass; its GL draw and PipelineDesc were deleted. Vulkan owns the images and pipeline state.",
+      "next": "none (GL model retired)"
     },
     "RoadsRunways": {
       "status": "DO_NOT_MODEL",
       "renderPassId": null,
       "pipelineId": null,
-      "reason": "a terrain surface-type baked into the colormap, not a separate draw pass."
+      "reason": "Native Vulkan pass; its GL draw and PipelineDesc were deleted. Vulkan owns the images and pipeline state.",
+      "next": "none (GL model retired)"
     },
     "MineStatic": {
       "status": "UNREGISTERED",
@@ -214,16 +211,14 @@
       "next": "needs_pass_reg_first: stable alpha-test state but NO RenderPassId — add an id or fold into TerrainOverlay before any PipelineDesc row"
     },
     "VfxBillboardVkNative": {
-      "status": "DESCRIPTIVE_REGISTERED",
+      "status": "DO_NOT_MODEL",
       "renderPassId": "VFX",
-      "pipelineIds": [
-        "VfxBillboardAlpha",
-        "VfxBillboardAdditive"
-      ],
+      "pipelineIds": [],
       "shaderBase": "particle_billboard",
       "stateOwner": "vulkan_native",
       "evidence": "s63 G1 deleted the GL billboard draw; gos_particle_bridge_flush dispatches only vulkan_vfx_island. The CPU particle/group/camera inputs are unchanged.",
-      "next": "retire the GL descriptors with the RenderCore cleanup"
+      "next": "none (GL model retired)",
+      "reason": "Native Vulkan pass; its GL draw and PipelineDesc were deleted. Vulkan owns the images and pipeline state."
     }
   }
 }

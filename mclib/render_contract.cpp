@@ -879,10 +879,8 @@ const char* resourceName(RenderCore::RenderResourceId id) {
         case RenderCore::RenderResourceId::Unknown:              return "Unknown";
         case RenderCore::RenderResourceId::MainColor:            return "MainColor";
         case RenderCore::RenderResourceId::MainDepth:            return "MainDepth";
-        case RenderCore::RenderResourceId::ShadowStaticMap:      return "ShadowStaticMap";
         case RenderCore::RenderResourceId::TerrainHeightTexture: return "TerrainHeightTexture";
         case RenderCore::RenderResourceId::MaterialGpuBuffer:    return "MaterialGpuBuffer";
-        case RenderCore::RenderResourceId::ShadowDynamicMap:     return "ShadowDynamicMap";
         case RenderCore::RenderResourceId::WaterReflectionColor: return "WaterReflectionColor";
         case RenderCore::RenderResourceId::WaterReflectionDepth: return "WaterReflectionDepth";
         default:                                                  return "???";
@@ -915,9 +913,7 @@ void frameBegin() {
     s_frame.writtenBits    = 0;
     s_frame.violationCount = 0;
     // Pre-seed resources that are always valid (not produced per-frame):
-    //   ShadowStaticMap: built once per mission at renderLists() preamble
     //   TerrainHeightTexture: uploaded at mission load
-    markResourceWritten(RenderCore::RenderResourceId::ShadowStaticMap);
     markResourceWritten(RenderCore::RenderResourceId::TerrainHeightTexture);
     ++s_frame.telemetryTick;
 }

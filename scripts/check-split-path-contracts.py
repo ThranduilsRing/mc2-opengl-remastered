@@ -85,7 +85,6 @@ FS_CONVENTIONS = {
     "shaders/gos_tex_vertex.frag":        "fs-swizzle",
     "shaders/gos_vertex_lighted.frag":    "fs-swizzle",
     "shaders/gos_terrain.frag":           "fs-swizzle",
-    "shaders/gos_terrain_water_mdi.frag": "fs-swizzle",  # two active reads, EACH one .bgra
     # VK native water FS (rung 6.5 port of the MDI water reflection block):
     # vertex light read is Color.bgra — same swizzle convention as its GL source.
     "shaders/vulkan/water_geom.frag":     "fs-swizzle",
@@ -126,8 +125,7 @@ _NEUTRAL_SPLAT_RE = re.compile(r"vec4\(\s*-?[\d.]+\s*\)")
 
 # VS/TES/water-family members whose computed writes must ALL be pre-swizzled
 # (the double-swizzle convention family).
-VS_DOUBLE_SWIZZLE_FAMILY = ["shaders/gos_terrain_water_fast.vert",
-                            "shaders/gos_terrain_water_fast_mdi.vert"]
+VS_DOUBLE_SWIZZLE_FAMILY = []
 
 # ---------------------------------------------------------------------------
 # RULE 2 tables
@@ -147,8 +145,8 @@ BIAS_APPLICATION_PINS = [
     ("shaders/gos_terrain_surface.vert",       r"clip\.z \+= TERRAIN_DEPTH_FUDGE \* clip\.w"),
     ("shaders/gos_terrain_thin.vert",          r"clip\.z \+= TERRAIN_DEPTH_FUDGE \* clip\.w"),
     ("shaders/gos_terrain.tese",               r"clip\.z \+= TERRAIN_DEPTH_FUDGE \* clip\.w"),
-    ("shaders/gos_terrain_water_fast.vert",    r"clip\.z \+= WATER_DEPTH_FUDGE_FAST \* clip\.w"),
-    ("shaders/gos_terrain_water_fast_mdi.vert", r"clip\.z \+= WATER_DEPTH_FUDGE_FAST \* clip\.w"),
+
+
     ("shaders/mech.vert",                      r"clip\.z \+= OBJECT_DEPTH_BIAS \* clip\.w"),
     ("shaders/static_prop.vert",               r"clip\.z \+= OBJECT_DEPTH_BIAS \* clip\.w"),
     ("shaders/terrain_overlay.vert",           r"clip4\.z \+= OVERLAY_DEPTH_BIAS \* clip4\.w"),
@@ -183,16 +181,10 @@ TESS_SCAN_DIRS = ["code", "gui", "mclib", "GameOS", "RenderCore", "RenderWorld",
 # RULE 4 tables
 # ---------------------------------------------------------------------------
 
-PAIRS = {
-    "edge_fog_frag": ["shaders/edge_fog.frag", "shaders/vulkan/edge_fog.frag"],
-    "fog_oob_frag":  ["shaders/fog_oob.frag", "shaders/vulkan/fog_oob.frag"],
-    "water_fast_vs": ["shaders/gos_terrain_water_fast.vert",
-                      "shaders/gos_terrain_water_fast_mdi.vert"],
-    "shadow_terrain_paths": ["shaders/shadow_terrain.tesc",
-                             "shaders/shadow_terrain.tese",
-                             "shaders/shadow_terrain.vert"],
-}
+PAIRS = {}
 ISLANDS = {
+    "shaders/vulkan/edge_fog.frag": "Native Vulkan fog; the GL twin was retired in s63.",
+    "shaders/vulkan/fog_oob.frag": "Native Vulkan fog; the GL twin was retired in s63.",
     "shaders/vulkan/edge_fog.vert":   "VK fullscreen-triangle VS for edge_fog; GL pass has no dedicated .vert sibling",
     "shaders/vulkan/fog_oob.vert":    "VK fullscreen-triangle VS for fog_oob; GL pass has no dedicated .vert sibling",
     # --- Native VK tier-1 islands. One shared reason.
@@ -664,7 +656,7 @@ def run_all(ctx: Ctx, quiet: bool) -> int:
 
 
 def do_stamp(names: list[str]) -> int:
-    stamps = _load_stamps()
+    stamps = {name: value for name, value in _load_stamps().items() if name in PAIRS}
     ctx = Ctx()
     for name in names:
         if name not in PAIRS:
@@ -681,6 +673,7 @@ def do_stamp(names: list[str]) -> int:
 
 
 def self_test() -> int:
+    global _load_stamps
     """Prove each rule can still fail (house pattern check-contracts.sh
     vulkan_bindings_selftest) — in-memory overlays, no disk mutation."""
     failures = []
@@ -732,10 +725,19 @@ def self_test() -> int:
         "int g(){ return 1 /* closes the phantom block */; }\n"
     }), True)))
 
-    # RULE4: a pair member edited without re-stamping.
-    t = checklib.read_text("shaders/edge_fog.frag") + "\n// drift\n"
-    failures.append(("RULE4 stamp drift",
-                     run_all(Ctx({"shaders/edge_fog.frag": t}), True)))
+    # RULE4 remains tested with a synthetic pair after the final GL twins retire.
+    original_pairs, original_loader = dict(PAIRS), _load_stamps
+    a, b = "shaders/selftest_a.vert", "shaders/selftest_b.vert"
+    baseline = Ctx({a: "void main() {}", b: "void main() {}"})
+    PAIRS["selftest_pair"] = [a, b]
+    _load_stamps = lambda: {"selftest_pair": {a: _sha1(baseline, a), b: _sha1(baseline, b)}}
+    try:
+        failures.append(("RULE4 stamp drift", run_all(Ctx({
+            a: "void main() {} // drift", b: "void main() {}"}), True)))
+    finally:
+        PAIRS.clear()
+        PAIRS.update(original_pairs)
+        _load_stamps = original_loader
 
     # --- arms that must NOT fire -------------------------------------------
     # A rule that cannot be made quiet by legitimate code is only half a spec.

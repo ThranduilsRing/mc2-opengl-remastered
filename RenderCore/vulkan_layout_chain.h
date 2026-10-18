@@ -80,26 +80,20 @@ struct VkImageLayoutChain {
 // kVkImageLayoutChains[] — one row per CombinedImageSampler image in
 // kVkResourceContracts whose producer/consumer passes are verifiable from
 // kRenderPassContracts reads[]/writes[]. There are exactly 4 sampler rows in
-// vulkan_contract.h: MainColor, MainDepth, MainNormal, ShadowDynamicMap.
+// vulkan_contract.h: MainColor, MainDepth, MainNormal.
 //
 // Producer/firstConsumer derived from kFramePassOrder against the shipped
 // reads[]/writes[]:
-//   ShadowDynamicMap: written by Shadow (order[0]); first read by StaticPropOpaque.
 //   MainColor:        written by StaticPropOpaque; first read by PostProcess.
 //   MainDepth:        written by StaticPropOpaque; first read by Water (Water precedes
 //                     VegetationCards/VFX/PostProcess in kFramePassOrder).
 //   MainNormal:       written by StaticPropOpaque; first read by PostProcess.
 //
 // Layout derivation from resource semantics:
-//   ShadowDynamicMap — depth compare-sampler (shadow PCF) -> DepthStencilReadOnly.
 //   MainDepth        — plain depth sampled for soft-depth reject -> DepthReadOnly.
 //   MainColor / MainNormal — color / GBuffer sampled -> ShaderReadOnly.
 // ---------------------------------------------------------------------------
 static constexpr VkImageLayoutChain kVkImageLayoutChains[] = {
-    { RenderResourceId::ShadowDynamicMap, VkImageLayoutRead::DepthStencilReadOnly,
-      RenderPassId::Shadow, RenderPassId::StaticPropOpaque,
-      "dynamic shadow depth; compare-sampled by StaticProp/Terrain/Mech/PostProcess "
-      "-> DEPTH_STENCIL_READ_ONLY" },
     { RenderResourceId::MainColor, VkImageLayoutRead::ShaderReadOnly,
       RenderPassId::StaticPropOpaque, RenderPassId::PostProcess,
       "scene HDR color (sceneFBO attach0); sampled by PostProcess -> SHADER_READ_ONLY" },
@@ -228,10 +222,10 @@ constexpr bool vkLayoutChainRowsWellFormed() {
 // inline framegraph::findContract helper, so they are RUNTIME validators proven by the
 // doctest CHECKs (test_vulkan_layout_chain.cpp) rather than static_asserts.
 // ---------------------------------------------------------------------------
-static_assert(kVkImageLayoutChainCount == 4,
-              "kVkImageLayoutChains row count changed; this sampled-read chain covers the 4 "
+static_assert(kVkImageLayoutChainCount == 3,
+              "kVkImageLayoutChains row count changed; this sampled-read chain covers the 3 "
               "FBO-backed sampler images consumed by passes in kFramePassOrder "
-              "(MainColor/MainDepth/MainNormal/ShadowDynamicMap). The subgraph-internal "
+              "(MainColor/MainDepth/MainNormal). The subgraph-internal "
               "PostprocessSubgraphDepth is NOT a kFramePassOrder read — its layout is modeled by "
               "the transition-chain table below, not this sampled-read table.");
 static_assert(vkLayoutChainRowsWellFormed(),

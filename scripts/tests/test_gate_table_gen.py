@@ -209,3 +209,22 @@ def test_enum_names_are_emitted_and_checked_against_the_table():
         grg.patch_header(HEADER.replace("// MC2_B_GATE", "// MC2_SOMETHING_ELSE"), ents)
     with pytest.raises(SystemExit):
         grg.patch_header(HEADER.replace("    B = 1,   // MC2_B_GATE\n", ""), ents)
+
+
+def test_declared_retirement_keeps_the_seed_historical(tmp_path):
+    root = _tree(tmp_path)
+    tools_dir = tmp_path / "tools"
+    tools_dir.mkdir()
+    (tools_dir / "gate_table.seed.json").write_text(json.dumps({"gates": [{"name": "MC2_RETIRED"}]}), encoding="utf-8")
+    assert any("seed gate" in f for f in tg.check(root))
+    (tmp_path / "Gates" / "retired_names.json").write_text('["MC2_RETIRED"]', encoding="utf-8")
+    assert not any("seed gate" in f for f in tg.check(root))
+
+
+def test_retired_name_cannot_remain_a_live_gate(tmp_path):
+    root = _tree(tmp_path)
+    tools_dir = tmp_path / "tools"
+    tools_dir.mkdir()
+    (tools_dir / "gate_table.seed.json").write_text(json.dumps({"gates": [{"name": "MC2_A"}]}), encoding="utf-8")
+    (tmp_path / "Gates" / "retired_names.json").write_text('["MC2_A"]', encoding="utf-8")
+    assert any("retired gate(s) still" in f for f in tg.check(root))

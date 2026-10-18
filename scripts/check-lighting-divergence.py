@@ -253,7 +253,7 @@ BASELINE = {
     # :165-168 states the reason: lighting.hglsl is also included by shaders
     # that must NOT get a floor, so hoisting would widen the blast radius.
     "ambient_floor_scalar": [
-        ("shaders/gos_terrain_water_mdi.frag", "SKY_AMBIENT", "0.18"),
+
         ("shaders/gos_tex_vertex_lighted.vert", "kAmbientFloor", "0.35"),
         ("shaders/mech.vert", "kAmbientFloor", "0.35"),
         ("shaders/vulkan/mech_tier1.vert", "kAmbientFloor", "0.35"),
@@ -289,7 +289,7 @@ BASELINE = {
         ("shaders/gos_vegetation_card.frag", "add:NdotL", "0.60+0.38"),
         ("shaders/include/shadow.hglsl", "mix:shadow", "0.4->1.0"),
         ("shaders/include/shadow.hglsl", "mix:shadow", "0.4->1.0"),
-        ("shaders/shadow_screen.frag", "mix:shadow", "0.4->1.0"),
+
         ("shaders/terrain_lod_chunk.frag", "mix:shadow", "0.55->1.0"),
         ("shaders/vulkan/include/lighting_shadow_vk.glsl", "mix:shadow", "0.4->1.0"),
         # lsvk_calcShadow + lsvk_calcDynamicShadowLegacy, line-for-line ports of GL calcShadow/calcDynamicShadow (INTENTIONAL: parity).
