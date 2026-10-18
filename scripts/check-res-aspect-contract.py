@@ -122,7 +122,7 @@ def rule_a(ctx: Ctx) -> list[str]:
         # Pre-filter on the RAW text before paying for the comment lexer.
         # EXACT, not an approximation: stripping only ever DELETES characters,
         # so a token absent from the raw text cannot appear after stripping.
-        # (STRIPPER-AUDIT-1: checklib.strip_comments is now a real per-character
+        # (checklib.strip_comments is a real per-character
         # lexer rather than two regexes; without this the whole-tree walks in
         # RULE A / RULE B took res_aspect_selftest 1.28s -> 12.24s, past the
         # 5s-per-check budget this suite promises.)
@@ -180,13 +180,13 @@ def rule_b(ctx: Ctx) -> list[str]:
 GAMEOSMAIN = "GameOS/gameos/gameosmain.cpp"
 GRAPHICS_MODE = "GameOS/gameos/gameos_graphics_capi.cpp"      # gos_SetScreenMode
 GRAPHICS_EVENTS = "GameOS/gameos/gameos_graphics_draw.cpp"    # gosRenderer::handleEvents
-CAMERA = "mclib/camera_matrix.cpp"   # Camera::setOrthogonal (the #45 override) lives in the matrix piece
+CAMERA = "mclib/camera_matrix.cpp"   # Camera::setOrthogonal (the drawable-aspect override) lives in the matrix piece
 
 
 def rule_c(ctx: Ctx) -> list[str]:
     problems = []
 
-    # (i) boot clamp (HUD-RES-CLAMP restore) in gameosmain.cpp
+    # (i) boot clamp restore in gameosmain.cpp
     main_text = checklib.strip_comments(ctx.read(GAMEOSMAIN))
     main_norm = checklib.normalize_ws(main_text)
     if not re.search(r"Environment\.screenWidth\s*=\s*800\s*;", main_norm):
@@ -217,7 +217,7 @@ def rule_c(ctx: Ctx) -> list[str]:
             problems.append("RULE C(ii): gos_SetScreenMode clamp no longer "
                             "forces the 800x600 logical canvas")
 
-    # (iii) #49 keep-window guard in gosRenderer::handleEvents
+    # (iii) keep-window guard in gosRenderer::handleEvents
     body = checklib.find_function_body(
         ev_text, r"void\s+gosRenderer\s*::\s*handleEvents\s*\(\s*\)")
     if body is None:
@@ -235,7 +235,7 @@ def rule_c(ctx: Ctx) -> list[str]:
                             "(WINDOWED-8006-1 revert — clamped path would "
                             "force the OS window back to 800x600)")
 
-    # (iv) #45 drawable-aspect override in Camera::setOrthogonal
+    # (iv) drawable-aspect override in Camera::setOrthogonal
     cam_norm = checklib.normalize_ws(checklib.strip_comments(ctx.read(CAMERA)))
     if not re.search(r"Environment\.drawableHeight\s*/\s*\(\s*float\s*\)\s*"
                      r"Environment\.drawableWidth", cam_norm):
@@ -307,18 +307,18 @@ def self_test() -> int:
     failures.append(("RULE B ratchet grow", run_all(Ctx({CAMERA: t}), True)))
 
     # RULE C(ii): the SetScreenMode clamp branch is widened away (the exact
-    # HUD-RES-CLAMP merge-drop class).
+    # merge-drop class this rule guards).
     t = checklib.read_text(GRAPHICS_MODE).replace(
         "if (g_hudResClampEnabled)", "if (false && g_hudResClampEnabled)", 1)
     t = t.replace("Width  = 800;", "Width  = Width;", 1)
     failures.append(("RULE C(ii) clamp drop", run_all(Ctx({GRAPHICS_MODE: t}), True)))
 
-    # RULE C(iii): #49 keep-window guard removed.
+    # RULE C(iii): keep-window guard removed.
     t = checklib.read_text(GRAPHICS_EVENTS).replace(
         "if (reqPhysWidth > 0 && reqPhysHeight > 0)", "if (true)", 1)
     failures.append(("RULE C(iii) #49 guard", run_all(Ctx({GRAPHICS_EVENTS: t}), True)))
 
-    # RULE C(iv): #45 drawable-aspect override reverted.
+    # RULE C(iv): drawable-aspect override reverted.
     t = checklib.read_text(CAMERA).replace(
         "(float)Environment.drawableHeight / (float)Environment.drawableWidth",
         "(float)Environment.screenHeight / (float)Environment.screenWidth")

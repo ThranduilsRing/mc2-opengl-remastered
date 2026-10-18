@@ -95,8 +95,8 @@ def test_compbas_weapon_type_lookup(compbas):
 # --- mech extraction -----------------------------------------------------
 
 def test_mech_identity_and_facets(atlas):
-    # LOADOUT-THREE-LAYER-1: extract_mech returns the FIRST (Prime) variant, now
-    # keyed per-variant (core:<chassis>_<variant-slug>) referencing chassis core:atlas.
+    # extract_mech returns the FIRST (Prime) variant, keyed per-variant
+    # (core:<chassis>_<variant-slug>) referencing chassis core:atlas.
     assert atlas.identity.unit_id == "core:atlas_atlas_prime"
     assert atlas.identity.chassis_id == "core:atlas"
     assert atlas.identity.variant_index == 0
@@ -122,7 +122,7 @@ def test_mech_prime_has_no_jump(atlas):
     assert atlas.capabilities.jump is False
 
 
-# --- LOADOUT-THREE-LAYER-1: multi-variant conversion + chassis/variant split ---
+# --- multi-variant conversion + chassis/variant split -----------------------
 
 def test_all_variants_convert(atlas_variants):
     chassis, defs = atlas_variants
@@ -186,7 +186,7 @@ def test_mech_hardpoints_named_not_indexed(atlas):
 def test_mech_loadout_binds_up_to_socket_count(atlas):
     bound = [e for e in atlas.loadout if e.hardpoint_id]
     # more stock weapons than model sockets -> only socket-count many bind,
-    # the rest are surfaced as waivers (the recon's least-used-node crux)
+    # the rest are surfaced as waivers (the least-used-node crux)
     assert len(bound) == len(atlas.presentation.sockets)
     assert any("no compatible hardpoint" in w for w in atlas.waivers)
 

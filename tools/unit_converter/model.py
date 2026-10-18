@@ -31,7 +31,7 @@ DMG_SINGLE_ACTOR = "SingleActor"
 
 # Weapon-class tag vocabulary. Derived from the compbas.csv `Type` column
 # (EnergyWeapon / BallisticWeapon / MissileWeapon...). Kept as neutral tags so
-# the Phase-2 HardpointId validator can compare weapon tag vs hardpoint class.
+# the HardpointId validator can compare weapon tag vs hardpoint class.
 WT_ENERGY = "Energy"
 WT_BALLISTIC = "Ballistic"
 WT_MISSILE = "Missile"
@@ -56,7 +56,7 @@ class Identity:
     kind: str                    # "mech" | "vehicle"
     tonnage: Optional[float] = None
     house_id: Optional[int] = None
-    # LOADOUT-THREE-LAYER-1 (Phase 3): chassis/variant separation. `chassis_id`
+    # Chassis/variant separation. `chassis_id`
     # is the shared frame (one chassisdef per chassis); `variant_index`/
     # `variant_name` identify the per-variant loadout (one mechdef per variant).
     # The engine dump joins on (chassis, variant) so the spawned variant diffs
@@ -101,7 +101,7 @@ class Hardpoint:
 class LoadoutEntry:
     weapon_name: str             # "ER Laser"
     weapon_tag: str              # Energy / Ballistic / Missile / Any
-    master_id: int               # stock MasterID (provenance)
+    master_id: int               # stock MasterID
     hardpoint_id: Optional[str] = None  # bound HardpointId when resolvable
 
 

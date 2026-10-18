@@ -52,11 +52,10 @@ SCAN_DIRS = [
 
 CONCRETE_LIFETIMES = {"FrameLocal", "Mission", "Persistent", "External"}
 
-# GPU-BUFFER-EXCLUSION-LEDGER-1: valid TIER2 exclusion reasons.
-# GPU-BUFFER-LEDGER-STRICT-1: added `legacy-mlr-gated`.
+# Valid TIER2 exclusion reasons.
 TIER2_REASONS = {"ring", "substrate-gated", "dead-path", "legacy-mlr-gated"}
 
-# GPU-BUFFER-LEDGER-STRICT-1 strict-mode windows/evidence.
+# Strict-mode windows/evidence.
 # Orphan-tag: a TIER2-EXCLUDED tag must sit within this many lines of a
 # glGenBuffers OR an SSBO/UBO glBindBufferBase site.
 ORPHAN_TAG_WINDOW = 3
@@ -86,7 +85,7 @@ SSBO_UBO_NAME = re.compile(r"[Ss][Ss][Bb][Oo]|[Uu][Bb][Oo]")
 # `glGenBuffers(<n>, &<var>)` -- capture the target var name.
 GEN_BUFFERS = re.compile(r"glGenBuffers\s*\(\s*[^,]+,\s*&\s*([A-Za-z_]\w*)\s*\)")
 
-# GPU-BUFFER-GATE-TIGHTEN-1: the DEFINITIVE SSBO/UBO signal is the binding
+# The DEFINITIVE SSBO/UBO signal is the binding
 # TARGET, not the handle's name. Any buffer bound with
 #   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, <slot>, <handle>)
 #   glBindBufferBase(GL_UNIFORM_BUFFER,        <slot>, <handle>)
@@ -113,7 +112,7 @@ BARE_IDENT  = re.compile(r"^([A-Za-z_]\w*)\s*\)*\s*$")
 TIER2_TAG = re.compile(r"//\s*TIER2-EXCLUDED:\s*([A-Za-z0-9_-]+)")
 
 # `RenderCore::GpuBufferOwner   s_name{` (var-decl construction, not a typedef/include/comment).
-# GPU-BUFFER-TIER0-LODCHUNK-RAII-1: ALSO matches the owning `RenderCore::GpuBuffer
+# ALSO matches the owning `RenderCore::GpuBuffer
 # s_name{...}` RAII sites (RenderCore/GpuBuffer.h) -- their positional identity
 # args deliberately mirror the GpuBufferOwner order (id, lifetime, debugName, ...),
 # so the same arg[0..2] invariants apply to both site families.
@@ -275,7 +274,7 @@ def bound_ssbo_ubo_vars():
             # Pre-filter on the RAW text before paying for the lexer. EXACT, not
             # an approximation: stripping only ever DELETES characters, so a
             # token absent from the raw text cannot appear after stripping.
-            # (STRIPPER-AUDIT-1 -- keeps this row at its pre-lexer cost.)
+            # (keeps this row at its pre-lexer cost.)
             by_file[rel] = names = set()
             if not BIND_BASE.search(raw):
                 continue
@@ -521,13 +520,13 @@ def main():
                         'TEST_SUITE("GpuBufferOwnerLifetimeCheck") missing '
                         "(runtime invariant arm gone)")
 
-    # GPU-BUFFER-EXCLUSION-LEDGER-1: owned-OR-excluded partition over every
+    # Owned-OR-excluded partition over every
     # SSBO/UBO-named glGenBuffers target.
     part_failures, n_owned_gen, n_excluded, n_bind_caught = check_partition(
         owner_aliased_names(), bound_ssbo_ubo_vars())
     failures.extend(part_failures)
 
-    # GPU-BUFFER-LEDGER-STRICT-1 rule 2: orphan tags.
+    # Rule 2: orphan tags.
     failures.extend(check_orphan_tags())
 
     if failures:

@@ -85,7 +85,7 @@ def load_atlas(art_dir: str, name: str, cache: dict) -> Image.Image:
         p = os.path.join(art_dir, base + ext)
         if os.path.isfile(p):
             im = Image.open(p).convert("RGBA")
-            # PNG magenta key -> transparent (engine PNG-MAGENTA-KEY-1 parity).
+            # PNG magenta key -> transparent (engine parity).
             px = im.getdata()
             im.putdata([(0, 0, 0, 0) if (r, g, b) == MAGENTA else (r, g, b, a)
                         for (r, g, b, a) in px])
@@ -133,7 +133,7 @@ def reconstruct(fit_path: str, art_dir: str, panel: str, default_atlas: str,
             x, y = int(b["XLocation"]), int(b["YLocation"])
             w, h = int(b["Width"]), int(b["Height"])
             u, v = int(b.get("UNormal", 0)), int(b.get("VNormal", 0))
-            # POLISH-IMGUI-SLICE-1: optionally bake an alternate button state
+            # Optionally bake an alternate button state
             # (legacy makeUVs stateCoords — UPressed/VPressed etc.). Statics have
             # no state UVs, so `kind` gates it; missing keys fall back to normal.
             if kind == "Button" and button_state != "normal":
@@ -154,7 +154,7 @@ def reconstruct(fit_path: str, art_dir: str, panel: str, default_atlas: str,
             if (uw, vh) != (w, h):  # honor scale if a panel differs (stock: 1:1)
                 crop = crop.resize((w, h), Image.NEAREST)
             if tint is not None:
-                # PAUSE-IMGUI-SLICE-3: pre-modulate by the fit button 'color'
+                # Pre-modulate by the fit button 'color'
                 # (legacy aButton quads draw modulated; e.g. mcl_dialog buttons
                 # tint the yellow slot art 0xff005392 -> green camo).
                 tr, tg, tb = tint

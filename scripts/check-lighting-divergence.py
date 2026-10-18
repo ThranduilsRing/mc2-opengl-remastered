@@ -245,7 +245,7 @@ def scan(verbose_sink=None):
 
 
 # ---------------------------------------------------------------------------
-# PINNED BASELINE -- the deliberate state as of LIGHTING-DIVERGENCE-PIN-1.
+# PINNED BASELINE -- the deliberate current state.
 # Each entry was read from the shader / C++ reader itself, not from docs.
 # ---------------------------------------------------------------------------
 BASELINE = {
@@ -274,7 +274,7 @@ BASELINE = {
         ("shaders/vulkan/color_prop_tier1.vert", "kAmbientV1Sky", "0.20,0.22,0.28"),
         ("shaders/vulkan/color_prop_tier1.vert", "kAmbientGround", "0.14,0.13,0.11"),
         ("shaders/vulkan/color_prop_tier1.vert", "kAmbientSky", "0.00,0.02,0.08"),
-        # VK-PARITY-TERRAIN-1: verbatim port of terrain_lod_chunk.frag's TERRAIN-AMBIENT-FLOOR-2 pair (INTENTIONAL: parity).
+        # Verbatim port of terrain_lod_chunk.frag's TERRAIN-AMBIENT-FLOOR-2 pair (INTENTIONAL: parity).
         ("shaders/vulkan/terrain_tier1.frag", "ambGnd", "0.34,0.30,0.24"),
         ("shaders/vulkan/terrain_tier1.frag", "ambSky", "0.55,0.62,0.75"),
         # The skirt pipeline's fragment SPIR-V is baked from terrain_tier1.frag itself (CMake
@@ -293,12 +293,12 @@ BASELINE = {
         ("shaders/shadow_screen.frag", "mix:shadow", "0.4->1.0"),
         ("shaders/terrain_lod_chunk.frag", "mix:shadow", "0.55->1.0"),
         ("shaders/vulkan/include/lighting_shadow_vk.glsl", "mix:shadow", "0.4->1.0"),
-        # VK-PARITY-SHADOW-1: lsvk_calcShadow + lsvk_calcDynamicShadowLegacy, line-for-line ports of GL calcShadow/calcDynamicShadow (INTENTIONAL: parity).
+        # lsvk_calcShadow + lsvk_calcDynamicShadowLegacy, line-for-line ports of GL calcShadow/calcDynamicShadow (INTENTIONAL: parity).
         ("shaders/vulkan/include/lighting_shadow_vk.glsl", "mix:shadow", "0.4->1.0"),
         ("shaders/vulkan/include/lighting_shadow_vk.glsl", "mix:shadow", "0.4->1.0"),
         ("shaders/vulkan/screen_shadow_csm.frag", "mix:shadow", "0.4->1.0"),
         ("shaders/vulkan/screen_shadow_static.frag", "mix:shadow", "0.4->1.0"),
-        # VK-PARITY-TERRAIN-1: same 0.55 terrain ambient-occlusion floor as the GL terrain frag (INTENTIONAL: parity).
+        # Same 0.55 terrain ambient-occlusion floor as the GL terrain frag (INTENTIONAL: parity).
         ("shaders/vulkan/terrain_tier1.frag", "mix:shadow", "0.55->1.0"),
     ],
     # Which TG_LIGHT_* symbols each shader mentions in CODE. This is the
@@ -314,8 +314,8 @@ BASELINE = {
         ("shaders/mech.vert", ("INFINITE", "INFINITEWITHFALLOFF")),
         ("shaders/static_prop.vert", ("AMBIENT", "INFINITE", "INFINITEWITHFALLOFF")),
         # SAME matrix as the GL prop path. Reached via bare integers
-        # (`lt == 1 || lt == 2`, :284), which is why this row read "AMBIENT
-        # only" until RE_LIGHT_TYPE_INT was added.
+        # (`lt == 1 || lt == 2`, :284); RE_LIGHT_TYPE_INT selects the full
+        # type matrix.
         ("shaders/vulkan/color_prop_tier1.vert",
          ("AMBIENT", "INFINITE", "INFINITEWITHFALLOFF")),
         ("shaders/vulkan/mech_tier1.vert",

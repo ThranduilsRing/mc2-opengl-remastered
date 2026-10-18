@@ -66,7 +66,7 @@ def test_enumerate_ignores_malformed_rows_without_crashing():
 
 def test_convert_roster_converts_present_and_skips_missing():
     result = R.convert_roster(SRCDATA, BUILDINGS)
-    # LOADOUT-THREE-LAYER-1: atlas -> 3 variant defs + armoredcar -> 1 def.
+    # atlas -> 3 variant defs + armoredcar -> 1 def.
     converted = {d.identity.unit_id for d in result.defs}
     assert converted == {
         "core:atlas_atlas_prime", "core:atlas_claymores_atlas",
@@ -151,10 +151,10 @@ def test_roster_diff_all_match_is_pass():
 
 
 def test_variant_aware_join_resolves_atlas_jump():
-    # THE ATLAS FINDING, RESOLVED: the engine spawns Renard's Atlas (jumpjets ->
-    # jump TRUE). Under the OLD chassis-stem join it diffed against Atlas PRIME
-    # (jump FALSE) -> false mismatch. The variant-aware join now diffs against the
-    # SAME converted variant (Renard's Atlas) -> jump matches, PASS.
+    # The engine spawns Renard's Atlas (jumpjets -> jump TRUE). A chassis-stem
+    # join would diff it against Atlas PRIME (jump FALSE) -> false mismatch. The
+    # variant-aware join diffs against the SAME converted variant (Renard's
+    # Atlas) -> jump matches, PASS.
     result = R.convert_roster(SRCDATA, BUILDINGS)
     batch = R.build_batch_report(result)
     converter = SC.load_converter_facets(batch)

@@ -156,7 +156,7 @@ def main():
             for one in ids_for_evidence:
                 if one not in routed:
                     fails.append(f"'{name}' status {st} but no applyPipeline(...PipelineId::{one}) evidence in sources")
-        # VFX-APPLYPIPELINE-ROUTING-1: nondeterministic visual passes that are
+        # Nondeterministic visual passes that are
         # ROUTED but cannot get a byte-hash gate may declare a documented
         # proofStatus instead of claiming VISUAL_PROVEN. Allowed values only;
         # VISUAL_PROVEN/SPIRV_ELIGIBLE must NOT carry a 'pending' proofStatus.

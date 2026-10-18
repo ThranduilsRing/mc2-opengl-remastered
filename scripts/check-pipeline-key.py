@@ -100,9 +100,9 @@ def main():
     inv_macros = {m["name"] for m in inv["macros"]}
     registry_raw = read(os.path.join(root, REGISTRY_H))
     enum_ids = parse_enum_ids(re.sub(r"/\*.*?\*/", "", registry_raw, flags=re.S))
-    # VERTEXLAYOUT-AUTHORITY-1: raw text (// layout: comments preserved).
+    # Read raw text so `// layout:` comments are preserved.
     vlayouts = parse_vertex_layouts(registry_raw)
-    # PIPELINEKEY-RASTERSTATE-FRONTFACE-AUTHORITY-1: enums live in PipelineDesc.h
+    # The enums live in PipelineDesc.h
     desc_raw = read(os.path.join(root, DESC_H))
     frontfaces = parse_enum_values(desc_raw, "FrontFace")
     cullmodes = parse_enum_values(desc_raw, "CullMode")
@@ -147,7 +147,7 @@ def main():
             if isinstance(sp, dict) and not sp.get("type"):
                 fails.append(f"pipeline '{p['id']}' spec param '{sp.get('name')}' untyped")
 
-    # VERTEXLAYOUT-AUTHORITY-1: vertexLayout is now AUTHORITATIVE — recorded in
+        # vertexLayout is AUTHORITATIVE, recorded in
     # RenderCore::VertexLayoutId and checked here. (1) The field must declare
     # AUTHORITATIVE so the promotion cannot silently regress. (2) Every enum
     # value must carry a canonical "// layout: <name>" comment. (3) Every
@@ -167,7 +167,7 @@ def main():
                          "canonical-name comment")
     for p in schema.get("registered_pipelines", []):
         vid = p.get("vertexLayoutId")
-        # SHADOW-CASTER-PIPELINE-REGISTRATION-1: descriptive shadow rows defer
+        # Descriptive shadow rows defer
         # vertex-layout modeling — a pipeline that declares NEITHER vertexLayout
         # NOR vertexLayoutId is exempt. A pipeline that declares one but not the
         # other still FAILs (half-declared = drift).
@@ -187,7 +187,7 @@ def main():
                 f"pipeline '{p['id']}' vertexLayout '{p.get('vertexLayout')}' "
                 f"!= enum canonical '{canon}' for {vid} (rename drift)")
 
-    # PIPELINEKEY-RASTERSTATE-FRONTFACE-AUTHORITY-1: rasterState frontFace (and
+    # rasterState frontFace (and
     # the existing cullMode) are now repo-owned per-pipeline rows. (1) the field
     # must be PARTIAL or AUTHORITATIVE (not MISSING/DESCRIPTIVE) so the promotion
     # cannot silently regress; (2) the FrontFace enum must be present in
@@ -215,7 +215,7 @@ def main():
             fails.append(f"pipeline '{p['id']}' cullState.mode '{mode}' absent "
                          f"from CullMode enum {cullmodes} (stale/renamed)")
 
-    # SHADOW-CASTER-PIPELINE-REGISTRATION-1: polygonOffsetEnable is now an
+    # polygonOffsetEnable is an
     # authoritative ENABLE/DISABLE-only subaxis. (1) every registered pipeline
     # must declare a boolean polygonOffsetEnable (missing -> FAIL); (2) the
     # PipelineDesc struct must carry the bool field (parsed from PipelineDesc.h);
@@ -241,7 +241,7 @@ def main():
             fails.append(f"PipelineDesc in {DESC_H} declares '{forbidden}' — "
                          "polygon-offset magnitude is dynamic state, must not be a field")
 
-    # BLENDMODE-ADDITIVE-VOCABULARY-1: blend FACTORS are authoritative and the
+    # Blend FACTORS are authoritative and the
     # factor NAME now encodes the exact GL func (no per-id truth table needed).
     # CANONICAL_BLEND is the single source of factor->(src,dst,equation) truth.
     # Rules for every registered pipeline row:
@@ -285,7 +285,7 @@ def main():
                          f"{CANONICAL_BLEND[factor]} for '{factor}' "
                          "(blend collapse / drift — e.g. SRC_ALPHA/ONE flattened to ONE/ONE)")
 
-    # SPIRV-MECHOPAQUE-PIPELINEKEY-INTEGRATION-1: cross-link the pipeline-key
+    # Cross-link the pipeline-key
     # contract to the baked SPIR-V artifact contract. For any registered pipeline
     # whose shaderVariantId.base is also a baked SPIR-V family, the schema's
     # variant macros MUST equal the macro-name set the package actually bakes
