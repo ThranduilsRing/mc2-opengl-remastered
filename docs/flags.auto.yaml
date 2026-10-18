@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 968
+gate_count: 967
 registry_entry_count: 195
-verified_count: 958
+verified_count: 957
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -6716,13 +6716,6 @@ flags:
     doc: "VK-FIELD-VFX-8: GL twin of MC2_VK_PRESENT_DUMP_ON_FIRE."
     verified: true
     registry: {feature_id: MC2_TRACE_VISUAL_CAPTURE_ON_FIRE, kind: Trace, order: -1, default_on: false}
-  - name: MC2_VISUAL_CAPTURE_POST
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: gameos
-    doc: "VK-PARITY-F2: MC2_VISUAL_CAPTURE_POST=1 (default OFF = byte-identical) reads the composited back buffer (post exposure/sunset grade, what the player sees)..."
-    verified: true
   - name: MC2_VISUAL_DIFF_CAPTURE
     kind: Bool
     default: false

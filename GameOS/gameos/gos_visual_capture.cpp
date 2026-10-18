@@ -215,9 +215,6 @@ bool write_png_rgb(const char* path, int w, int h,
 }
 
 // ---------------------------------------------------------------------------
-// Pixel readback (scene FBO is already bound by the caller). glReadPixels
-// returns bottom-up; we flip to top-down for the PNG.
-// ---------------------------------------------------------------------------
 bool read_scene_rgb(int w, int h, std::vector<unsigned char>& rgbTopDown) {
     std::vector<unsigned char> bottomUp((size_t)w * h * 3);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
@@ -277,7 +274,7 @@ float g_renderedAlt  = 0.0f;
 
 struct VkCaptureReq { bool pending = false; std::string png; int w = 0, h = 0; unsigned long long frame = 0; };
 VkCaptureReq g_vkReq;
-const char* g_readbackSource = "gl_fbo";   // VK-VISUAL-CAPTURE-1: sidecar "readback_source"
+const char* g_readbackSource = "vk_present";   // VK-VISUAL-CAPTURE-1: sidecar "readback_source"
 
 void write_sidecar(const std::string& jsonPath, const std::string& mission,
                    const std::string& label, unsigned int frame,
@@ -395,15 +392,8 @@ void capture_to(const std::string& dir, const std::string& base,
         mc2::fmt::print_err("[VISUAL_CAPTURE v1] VK readback requested {} ({:d}x{:d})\n", png.c_str(), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
         return;
     }
-    g_readbackSource = "gl_fbo";
-    std::vector<unsigned char> rgb;
-    if (!read_scene_rgb(w, h, rgb)) return;
-    if (write_png_rgb(png.c_str(), w, h, rgb)) {
-        write_sidecar(js, mission, label, frame, w, h,
-                      triggerFrame, deterministic);
-        mc2::fmt::print_err("[VISUAL_CAPTURE v1] wrote {} ({:d}x{:d})\n", png.c_str(), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
-        fflush(stderr);
-    }
+    // There is no GL readback arm any more: a run on the GL opt-out writes no capture.
+    mc2::fmt::print_err("[VISUAL_CAPTURE v1] refused {}: the capture reads the Vulkan present image and the Vulkan backend is not drawing\n", png.c_str());
 }
 
 // ---------------------------------------------------------------------------

@@ -1244,7 +1244,6 @@ L(Presence, "MC2_VISUAL_CAPTURE_EXIT_AFTER", Bool, false, "gameos", "", "VK-NOIN
 P("MC2_VISUAL_CAPTURE_FRAME", Int, -1, "vk", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_VISUAL_CAPTURE_ON_FIRE
 L(Presence, "MC2_VISUAL_CAPTURE_ON_FIRE", Bool, false, "unclassified", "", "VK-FIELD-VFX-8: GL twin of MC2_VK_PRESENT_DUMP_ON_FIRE.", registry(Trace, "MC2_TRACE_VISUAL_CAPTURE_ON_FIRE", -1, false) | verified),
-L(Lead0, "MC2_VISUAL_CAPTURE_POST", Bool, false, "gameos", "", "VK-PARITY-F2: MC2_VISUAL_CAPTURE_POST=1 (default OFF = byte-identical) reads the composited back buffer (post exposure/sunset grade, what the player sees)...", verified),
 L(Lead0, "MC2_VISUAL_DIFF_CAPTURE", Bool, false, "gameos", "", "", verified),
 P("MC2_VISUAL_DIFF_FRAME_N", Int, 90, "gameos", "", "", verified),
 P("MC2_VISUAL_DIFF_MAX_FRAMES", Int, 0, "gameos", "", "", verified),  // default not derivable from the tree

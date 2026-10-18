@@ -333,9 +333,6 @@ def main(argv=None) -> int:
 
     if args.clean:
         args.env_declare.append("MC2_VISUAL_CAPTURE_CLEAN=1")
-        # Parity A/B: GL must be captured AFTER the composite grade, like VK
-        # (VK reads the presented image). See commit aa2ff14c2.
-        args.env_declare.append("MC2_VISUAL_CAPTURE_POST=1")
     try:
         declared_env = env_pin.parse_declarations(args.env_declare)
     except ValueError as e:
