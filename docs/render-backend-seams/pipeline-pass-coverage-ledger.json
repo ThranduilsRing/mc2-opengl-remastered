@@ -170,12 +170,23 @@
       "evidence": "Composite routing proven BYTE-IDENTICAL: with composite routed via applyPipeline, mc2_01 water_overview_high captured sha cb5a700ebd00dd0b — identical to the banked pre-routing baseline (the composite is the final pass writing the backbuffer, so an identical whole-frame sha proves the routing is a perfect no-op, incl. no downstream state leak from the binder's inert frontFace/depthFunc/blendFunc sets). [PIPELINE_BIND] PostProcessComposite fired 3304x (once/frame).",
       "pipelineIds": [
         "PostProcessComposite",
+        "PostProcessSsaoApply"
+      ]
+    },
+    "PostProcessVkNativeFx": {
+      "status": "DESCRIPTIVE_REGISTERED",
+      "renderPassId": "PostProcess",
+      "pipelineId": "PostProcessEdgeFog",
+      "shaderBase": "edge_fog/fog_oob/shadow_screen/cloud/shoreline",
+      "stateOwner": "vulkan_native",
+      "evidence": "the GL edge fog, OOB fog, screen shadow, cloud shadow and shoreline passes (applyPipeline PostProcess{EdgeFog,FogOob,ScreenShadow,CloudShadow,Shoreline}) were deleted in s62; the passes run only as Vulkan native post passes (vulkan_post_fog_native.cpp, vulkan_post_screenfx_native.cpp)",
+      "next": "retire the descriptors with the RenderCore frame-graph islands (3.9)",
+      "pipelineIds": [
         "PostProcessEdgeFog",
         "PostProcessFogOob",
         "PostProcessScreenShadow",
         "PostProcessCloudShadow",
-        "PostProcessShoreline",
-        "PostProcessSsaoApply"
+        "PostProcessShoreline"
       ]
     },
     "UI": {

@@ -136,8 +136,7 @@ static constexpr unsigned kTopLevelDeferredPassCount = 0u;
 
 // ---- APPLY-STATE-TERRAINDECAL-1: top-level APPLY-STATE descriptor table -----
 //
-// The top-level analog of kSubStageState (frame_executor.h), which describes the
-// PostProcess sub-stage islands the executor *applies* state for. This table is
+// The executor's top-level apply-state table (the PostProcess sub-stage analog left with the GL post passes). This table is
 // the FIRST step toward the north-star: executor applies declared pipeline state,
 // the pass body stops self-setting it.
 //
@@ -279,8 +278,7 @@ static constexpr unsigned kTopLevelStateDescCount =
     sizeof(kTopLevelStateDesc) / sizeof(kTopLevelStateDesc[0]);
 
 // Find the TopLevelStateDesc for the given pass id, or nullptr if the executor does
-// not apply state for it. Pure, constexpr-compatible, no GL. Mirrors
-// findSubStageState() (frame_executor.h).
+// not apply state for it. Pure, constexpr-compatible, no GL.
 inline const TopLevelStateDesc* findTopLevelStateDesc(RenderPassId id) {
     for (unsigned i = 0; i < kTopLevelStateDescCount; ++i) {
         if (kTopLevelStateDesc[i].id == id)

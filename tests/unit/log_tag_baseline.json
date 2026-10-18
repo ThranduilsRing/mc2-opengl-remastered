@@ -3683,34 +3683,12 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "island"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "EXECUTOR",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
     "island",
     "check",
     "owned",
     "failures"
    ],
-   "count": 3
-  },
-  {
-   "tag": "EXECUTOR",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "island",
-    "postcond",
-    "activeUnit",
-    "owned",
-    "failures"
-   ],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "EXECUTOR",
@@ -3733,18 +3711,6 @@
     "island",
     "postcond",
     "err",
-    "owned",
-    "failures"
-   ],
-   "count": 2
-  },
-  {
-   "tag": "EXECUTOR",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "island",
-    "postcond",
     "owned",
     "failures"
    ],

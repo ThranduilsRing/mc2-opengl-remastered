@@ -39,40 +39,6 @@ public:
     bool executorSceneColorTexValid()    const;   // sceneColorTex_ != 0
     bool executorSceneHasTerrain()       const { return sceneHasTerrain_; }
 
-    // FRAME-GRAPH-EXECUTOR-ISLAND-2: sub-stage accessors (EdgeFog + FogOob).
-    // Each WillRun() mirrors the exact early-return gates of the matching run*().
-    bool executorEdgeFogWillRun()      const;   // edgeFogEnabled_+prog_+mapHalfExtent_+terrain
-    bool executorFogOobWillRun()       const;   // fogOobEnabled_+prog_+terrain
-    bool executorSceneDepthTexValid()  const;   // sceneDepthTex_ != 0
-
-    // FRAME-GRAPH-EXECUTOR-ISLAND-3: sub-stage accessors (Shoreline + CloudShadow).
-    bool executorShorelineWillRun()    const;   // shorelineEnabled_+prog_+terrain
-    bool executorCloudShadowWillRun()  const;   // enableCloudShadow_+prog_+terrain
-
-    // EXECUTOR-ISLAND-SCREENSHADOW-1: sub-stage accessor for ScreenShadow.
-    // WillRun() mirrors exact early-return gates of runScreenShadow() (lines 2033-2036):
-    //   screenShadowEnabled_ && sceneHasTerrain_ && screenShadowProg_ valid && shadowsEnabled_
-    // Unblocked by SCREENSHADOW-TEX-RESTORE-1 (a0b4189b); validate-only island.
-    bool executorScreenShadowWillRun() const;   // screenShadowEnabled_+prog_+terrain+shadowsEnabled_
-
-    // FRAMEGRAPH-APPLY-STATE-ISLAND-1: executor pre-apply for EdgeFog sub-stage.
-    // Performs the 4 GL state calls that runEdgeFog() makes at entry:
-    //   glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_)
-    //   setSceneDrawBuffers(SingleColor, false)
-    //   glViewport(0, 0, width_, height_)
-    //   pipeline_binder::applyPipeline(PostProcessEdgeFog, "PostProcessEdgeFog")
-    // This method touches GL; it lives in gos_postprocess.cpp (private member access).
-    // Only called when executorEnabled() && executorEdgeFogWillRun() (gate: MC2_FRAMEGRAPH_EXECUTOR).
-    void executorApplyEdgeFogState();
-    // FRAMEGRAPH-APPLY-STATE-ISLAND-2: pre-apply declared GL state for FogOob/Shoreline/CloudShadow.
-    // Mirrors executorApplyEdgeFogState(): FBO bind + setSceneDrawBuffers + glViewport + applyPipeline
-    // only; no tex binds, no uniforms. Idempotent (body makes identical calls at entry).
-    void executorApplyFogOobState();
-    void executorApplyShorelineState();
-    void executorApplyCloudShadowState();
-    // APPLY-STATE-SCREENSHADOW-1: pre-apply declared GL state for ScreenShadow.
-    void executorApplyScreenShadowState();
-
     float  getSkyYaw()    const { return skyYaw_; }    // WATER-HDRI-REFL-1: cached per-frame
 
     // HDRI-SKY-NUMBER-1: reload the HDRI texture to match theSkyNumber from the
@@ -250,25 +216,12 @@ public:
     // POST-FX-TONEMAP-V2: 0 off (default), 1 AgX, 2 Hable, 3 Reinhard; options.cfg TonemapMode.
     int   tonemapMode_;
 
-    void runScreenShadow();
     bool screenShadowEnabled_;
-    // APPLY-STATE-SCREENSHADOW-1: per-island executor-applied flag (see
-    // cloudShadowStateAppliedByExecutor_). Set by executorApplyScreenShadowState();
-    // runScreenShadow() skips its own 4 setup calls when true, then resets (one-shot).
-    // Gate OFF → stays false → body sets state → byte-identical.
-    bool screenShadowStateAppliedByExecutor_ = false;
     int screenShadowDebug_;  // 0=normal, 1=visualize
 
     // Cloud shadows — single fullscreen multiplicative pass (replaces the four
     // inline cloud blocks). Default-ON to preserve legacy look; tunable live.
-    void runCloudShadow();
-    glsl_program* cloudProg_;
     bool  enableCloudShadow_;   // seeded from mc2CloudShadowEnabled()
-    // APPLY-STATE-REDUNDANT-BODY-REMOVE-2: set by executorApplyCloudShadowState()
-    // when MC2_FRAMEGRAPH_EXECUTOR is ON; runCloudShadow() skips its own 4 setup
-    // calls when true, then resets (one-shot). Gate OFF → stays false → body sets
-    // state → byte-identical. Per-island flag (siblings share sceneFBO_/viewport).
-    bool  cloudShadowStateAppliedByExecutor_ = false;
     float cloudStrength_;       // max darkening (factor floor = 1-strength)
     float cloudScale_;          // worldXY * scale (smaller = bigger clouds)
     float cloudScrollX_;
@@ -301,16 +254,11 @@ public:
 
     // Shoreline
     bool shorelineEnabled_;
-    // APPLY-STATE-REDUNDANT-BODY-REMOVE-2: per-island executor-applied flag (see
-    // cloudShadowStateAppliedByExecutor_). Set by executorApplyShorelineState().
-    bool shorelineStateAppliedByExecutor_ = false;
-    void runShoreline();
     // TERRAIN-SHORELINE-MASK-1 (recon landmine #6 "double-shore"): set every
     // frame by the terrain chunk driver (gos_terrain_lod_chunk.cpp) to true
     // when a terrain-side wet/foam shoreline mask is active (gate ON + sidecar
-    // loaded). runShoreline() yields when this is true so the screen-space
+    // loaded). The native shoreline pass yields when this is true so the screen-space
     // foam halo and the new terrain-side band never brighten the seam twice.
-    // Default false -> runShoreline() behaves exactly as before (byte-identical).
     bool shorelineSuppressedByTerrainMask_ = false;
     void setShorelineSuppressedByTerrainMask(bool b) { shorelineSuppressedByTerrainMask_ = b; }
 
@@ -347,14 +295,6 @@ public:
     // Fades terrain/props/mechs near the map boundary into the cloud color.
     // Default ON (MC2_EDGE_FOG=0 to disable).
     bool  edgeFogEnabled_  = false;
-    // APPLY-STATE-REDUNDANT-BODY-REMOVE-1: set by executorApplyEdgeFogState() when
-    // MC2_FRAMEGRAPH_EXECUTOR is ON and the executor pre-applies EdgeFog's 4 setup
-    // GL calls (FBO/drawBuffers/viewport/applyPipeline) before runEdgeFog() runs.
-    // runEdgeFog() checks this flag: if true, skips its own redundant 4 setup calls
-    // (executor is sole setter), then resets to false (one-shot per frame).
-    // Gate OFF (executor never called): flag stays false → body sets state as before
-    // → byte-identical to pre-slice behavior.
-    bool  edgeFogStateAppliedByExecutor_ = false;
     // FOG-EXPOSURE-HEADROOM-1: fog composites into sceneFBO_ BEFORE the composite
     // pass applies exposure_ + the unconditional warm grade (postprocess.frag:89,
     // 95-112). At the near-white {0.93,0.94,0.95} the graded missions (mc2_24
@@ -366,18 +306,11 @@ public:
     float edgeFogStart_    = 50.0f;    // world units inside boundary where fog begins
     float edgeFogHeight_   = 2000.0f;  // cloud bank top in world Z (MC2_EDGE_FOG_HEIGHT)
     float edgeFogMax_      = 0.92f;    // max opacity
-    glsl_program* edgeFogProg_ = nullptr;
-    void  runEdgeFog();
 
-    // BACKDROP-BLIT-ATTRIB-1: night dimming for the horizon cloud bank.
-    // edgeFogColor_/oobFogColor_ are hardcoded daytime greys never dimmed for the
-    // mission night lighting -> near-white horizon band at night (mc2_10). When the
-    // gate is on, effectiveFogColor() scales the source color toward the measured
-    // night-sky shade before upload. Gate OFF (default): pass-through, byte-identical.
+    // BACKDROP-BLIT-ATTRIB-1: night dimming for the horizon cloud bank. The knob has no reader since the GL fog passes went (the native fog
+    // does not apply it); MC2_NIGHT_FOG_DIM is a parsed no-op.
     bool  nightFogDimEnabled_ = false;
     float nightFogDimScale_   = 0.35f;   // measured mc2_10 night HDRI-sky ~0.28 / 0.80
-    // Copy `in` -> `out`, scaled by nightFogDimScale_ when nightFogDimEnabled_.
-    void  effectiveFogColor(const float in[3], float out[3]) const;
 
 
 #ifdef MC2_VULKAN_ISLAND
@@ -490,16 +423,12 @@ public:
     // Default ON (MC2_OOB_FOG=0 to disable). Reads only scene depth —
     // no sceneColorTex_ feedback loop; blends SRC_ALPHA over scene color.
     bool  fogOobEnabled_ = false;
-    // APPLY-STATE-REDUNDANT-BODY-REMOVE-2: per-island executor-applied flag (see
-    // cloudShadowStateAppliedByExecutor_). Set by executorApplyFogOobState().
-    bool  fogOobStateAppliedByExecutor_ = false;
     // FOG-EXPOSURE-HEADROOM-1: see edgeFogColor_ above. fog_oob.frag's noise
     // "sunlit tops" (col = fogColor*1.05, line 101) clip FIRST under exposure,
     // which is what read as bright *spots*. 0.80 base * 1.05(top) * 1.1(exp) *
     // 1.10(grade) ~= 1.01 -- tops stay bright, no saturated white blob.
     float oobFogColor_[3] = {0.80f, 0.81f, 0.83f}; // bright cloud bank (exposure-headroom)
     float oobFogOpacity_ = 1.0f;
-    void  runFogOob();
 
     // FOG-HORIZON-CLAMP-1: reshape the OOB/edge-fog elevation profile so fog is
     // FULL at/below the horizon (covers OOB terrain/water sideways + down) and
@@ -670,16 +599,8 @@ private:
     int    dynamicFullMapSize_;                 // edge in texels (default 4096)
     float  dynamicFullMapTexelWorld_;           // 2*cRad/dynamicFullMapSize_ for last cascade
 
-    // Post-process screen shadow
-    glsl_program* screenShadowProg_;
     float inverseViewProj_[16];
     float viewProj_[16];
-
-    // Shoreline
-    glsl_program* shorelineProg_;
-
-    // OOB fog
-    glsl_program* fogOobProg_ = nullptr;
 
     // SSAO (half resolution)
     GLuint        ssaoFBO_      = 0;

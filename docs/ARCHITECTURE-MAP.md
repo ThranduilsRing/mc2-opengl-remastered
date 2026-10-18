@@ -72,7 +72,7 @@ Islands share color/depth/GBuffer via `vulkan_shared_scene_color.cpp`, `vulkan_s
 | Props / buildings | `gos_static_prop_batcher.cpp`, `gos_static_prop_registry.cpp`, `GameAdapters/StaticPropRenderAdapter.cpp`, `code/bldng.cpp` |
 | Trees / foliage | `gos_vegetation.cpp`, `GameAdapters/VegetationAdapter.cpp` |
 | Mechs | `gos_mech_batcher.cpp`, `GameAdapters/MechRenderAdapter.cpp`, `code/mech.cpp`; memory `INDEX-MECH.md` |
-| Shadows | `mclib/txmmgr.cpp` (pre-pass), `shaders/shadow_depth.vert`, `shadow_mech.vert`; memory `shadow_coordinate_spaces`, `csm_dynamic_shadow_architecture` |
+| Shadows | `mclib/txmmgr.cpp` (caster pass), `GameOS/gameos/vulkan_shadow_island_live.cpp` (the shadow maps), `shaders/shadow_mech.vert`; memory `shadow_coordinate_spaces`, `csm_dynamic_shadow_architecture` |
 | Fog / sky | `shaders/edge_fog.frag`, `shaders/fog_oob.frag`, `shaders/hdri_skybox.frag`, `gos_hdri.cpp`, `SkyRenderAdapter.cpp` |
 | Post-process | `gos_postprocess.cpp`, `RenderCore/postprocess_subgraph.h` |
 | HUD / UI | `gos_RendererFlushHUDBatch` in `gameos_graphics.cpp`; `code/missiongui.cpp`, `gui/`, `GuiRuntime/` |
