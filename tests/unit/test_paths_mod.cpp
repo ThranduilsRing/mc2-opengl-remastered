@@ -1,10 +1,10 @@
 // tests/unit/test_paths_mod.cpp
 //
-// MINIMAL-VIABLE-HARNESS-2 (TU-3): brings mclib/paths.cpp (path string globals)
-// under test as a leaf TU, and exercises the mods/ resolution order that the
-// moddability arc wants proven -- offline, game-free. The mod-index machinery
-// (InitModSearchPaths / TryModOpen / g_modIndex) lives in file.cpp, already
-// linked by MINIMAL-VIABLE-HARNESS-1; paths.cpp only supplies the real engine
+// This test brings mclib/paths.cpp (path string globals)
+// under test as a leaf TU, and exercises the mods/ resolution order --
+// offline, game-free. The mod-index machinery
+// (InitModSearchPaths / TryModOpen / g_modIndex) lives in file.cpp;
+// paths.cpp only supplies the real engine
 // path globals so tests reference them instead of stand-ins.
 // Pattern doc: docs/testing/minimal-viable-harness.md.
 //

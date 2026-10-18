@@ -1,4 +1,4 @@
-// SUBGRAPH-CONTIGUITY-GUARD-1 offline validation.
+// Offline validation.
 //
 // Proves the standing rule encoded in RenderCore/postprocess_subpass_order.h: a Vulkan
 // postprocess subgraph may ONLY fuse passes contiguous in canonical endScene() order.

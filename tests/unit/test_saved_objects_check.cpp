@@ -1,4 +1,4 @@
-// SAVE-REJECT-1: the structural check of the object packets of an in-mission save.
+// The structural check of the object packets of an in-mission save.
 // A save written by an older build holds records of other sizes; the check must refuse it with a reason
 // instead of letting the loader walk off unfilled arrays.
 #include "doctest.h"

@@ -1,4 +1,4 @@
-// MODDER-FIRST-ERROR-SURFACE-1: shared modder-finding struct + ONE line format
+// Shared modder-finding struct + ONE line format
 // (code/modder_finding.h) + the token-recognition probes that let loaders report
 // a silent fallback instead of swallowing it (locomotion_facet.h /
 // damage_schema.h). Pure, offline.

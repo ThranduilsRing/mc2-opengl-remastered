@@ -1,6 +1,4 @@
 // tests/unit/test_unit_profile_validator.cpp
-// UNITPROFILE-VALIDATOR-1 (slice 6 of the UNIT-PROFILE arc).
-//
 // Pure-logic doctest coverage for unit_profile_validator.h: the load-time
 // construction-rules validator. Every LIVE reason code must be reachable, and
 // the stock-parity guarantee (walker+jump -> none, vehicle-no-jump -> none)
@@ -69,7 +67,7 @@ TEST_CASE("validator: vehicle granted CAP_JUMP -> JUMP_GRANTED_NO_COMPATIBLE_EXE
 TEST_CASE("validator: reflects the registry, not the class -- vehicle+MechWalker is coherent") {
     // If a vehicle's locomotion facet is DATA-overridden to MechWalker, the bound
     // executor IS compatible -> no finding. Proves the validator keys on the facet
-    // + registry, never on C++ class (the whole point of the arc).
+    // + registry, never on C++ class.
     const ActionExecutorRegistry reg = stockJumpRegistry();
     UnitProfileFacts facts;
     facts.grantsJump = true;
@@ -93,7 +91,7 @@ TEST_CASE("validator: empty registry -> even a walker+jump trips the check") {
 
 // -------------------------------------------------------------------------
 // Every LIVE reason code is reachable (guards against a refactor making one
-// dead). Stubbed Phase-2 codes are intentionally NOT emitted this slice.
+// dead). Stubbed codes are intentionally NOT emitted.
 // -------------------------------------------------------------------------
 
 TEST_CASE("validator: every LIVE reason code is reachable") {
@@ -107,18 +105,17 @@ TEST_CASE("validator: every LIVE reason code is reachable") {
     REQUIRE(f.size() == 1);
     CHECK(f[0].code == UPV_JUMP_GRANTED_NO_COMPATIBLE_EXECUTOR);
 
-    // UPV_HARDPOINT_SOCKET_MISSING is now LIVE (PRESENTATION-SOCKET-PROFILE-1);
+    // UPV_HARDPOINT_SOCKET_MISSING is LIVE;
     // its reachability is covered in the declared-socket cases below.
-    // ACTION-ANIMATION-BINDINGS-1 (slice 5) made UPV_ANIMATION_FALLBACK_MISSING
-    // live; its reachability is covered in test_action_anim_tag.cpp
-    // (validateAnimationFallbacks). UI-PROFILE-1 (slice 6) APPENDED
-    // UPV_UI_ASSET_MISSING (reachability covered in test_ui_profile.cpp) -> the
-    // vocabulary grew to 6. Appended, never renumbered.
+    // UPV_ANIMATION_FALLBACK_MISSING is live; its reachability is covered in
+    // test_action_anim_tag.cpp (validateAnimationFallbacks). UPV_UI_ASSET_MISSING
+    // (reachability covered in test_ui_profile.cpp) -> the
+    // vocabulary has 6 codes. Appended, never renumbered.
     CHECK(UPV__COUNT == 6);   // vocabulary size lock
 }
 
 // -------------------------------------------------------------------------
-// LOADOUT-HARDPOINT-JOIN-1 (Phase-2 slice 3): declared loadout->hardpoint join.
+// Declared loadout->hardpoint join.
 // Pure check: for each DECLARED join, three coherence rules — weapon mount-class
 // accepted, damage location in schema, socket present. Stock loadouts declare no
 // HardpointId -> empty input -> zero findings (gate-ON parity).
@@ -198,7 +195,7 @@ TEST_CASE("join: multiple joins accumulate findings per entry") {
 }
 
 // -------------------------------------------------------------------------
-// PRESENTATION-SOCKET-PROFILE-1 (Phase-2 slice 2): declared-socket coherence.
+// Declared-socket coherence.
 // Pure check: a socket declared in data but absent on the model -> one
 // UPV_HARDPOINT_SOCKET_MISSING finding. Stock units declare none -> zero.
 // -------------------------------------------------------------------------
@@ -247,7 +244,7 @@ TEST_CASE("sockets: every declared socket absent -> one finding each") {
 }
 
 // -------------------------------------------------------------------------
-// UNIT-DEFINITION-VALIDATOR-1 (Phase-2 slice 8): the ONE consolidated pass.
+// The ONE consolidated pass.
 // Every LIVE reason code must be reachable through validateUnitDefinition(); a
 // fully-coherent unit yields ZERO findings (stock parity); a deliberately-broken
 // unit yields the expected multiple findings in stable facet order.

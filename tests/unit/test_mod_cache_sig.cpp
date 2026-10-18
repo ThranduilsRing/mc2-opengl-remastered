@@ -1,4 +1,4 @@
-// MOD-INDEX-CACHE-MTIME-1 -- offline tests for the PURE mod-index cache
+// Offline tests for the PURE mod-index cache
 // signature kernel (mclib/mod_cache_sig.h): sig-line parse/format round-trip
 // and the match rule. The FindFirstFile tree walk + cache read/write live in
 // mclib/file.cpp (not built here).

@@ -1,5 +1,5 @@
 // tests/unit/test_qualified_id.cpp
-// UNIT-ID-NAMESPACE-1 (Phase-3 slice 6): the `namespace:name` string-convention
+// The `namespace:name` string-convention
 // + deterministic override-precedence layer. These tests lock the charset rules,
 // canonicalization (lowercasing + bare-name -> core:), core-reserved policy, and
 // the deterministic override precedence (core < earlier-mod < later-mod) so the

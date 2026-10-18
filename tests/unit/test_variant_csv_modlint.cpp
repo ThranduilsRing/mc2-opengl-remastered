@@ -1,11 +1,9 @@
 // tests/unit/test_variant_csv_modlint.cpp
-// UNIT-VARIANT-ADD-1 (S4 of the ADD-path ladder, .claude/ADD-PATH-RECON-1.md).
-//
 // Offline doctest coverage for the pure legacy chassis-CSV variant-block
 // validator (tools/mc2_modlint/modlint_variant_csv.h): the engine-faithful
 // naive CSV parser (1-based rows/cols, strstr(',') split, no quote handling),
 // the compbas populated-ordinal set, and every VARC_ rule with EXACT row/field
-// reporting. The rules mirror the real consumers verified in this worktree:
+// reporting. The rules mirror the real consumers:
 // LogisticsData::initVariants row walk (23+97n, stop at first empty name),
 // LogisticsVariant::init loadout rows (26..96+off col 5, 0xff sentinel),
 // BattleMech::init armor rows (115+off), getVariant()'s 8-bit index mask.
