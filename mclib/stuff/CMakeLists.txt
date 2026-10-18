@@ -9,7 +9,6 @@ set(SOURCES ${SOURCES}
     extentbox.cpp
     linearmatrix.cpp
     matrix.cpp
-    normal.cpp
     obb.cpp
     plane.cpp
     point3d.cpp

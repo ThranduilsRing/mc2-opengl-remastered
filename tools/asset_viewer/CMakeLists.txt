@@ -82,7 +82,6 @@ add_library(mc2_tglloader STATIC
     "${CMAKE_SOURCE_DIR}/mclib/stuff/extentbox.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/linearmatrix.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/matrix.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/stuff/normal.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/obb.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/plane.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/point3d.cpp"

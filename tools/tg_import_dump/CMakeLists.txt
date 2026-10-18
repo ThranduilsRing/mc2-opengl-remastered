@@ -81,7 +81,6 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/stuff/extentbox.cpp
     ${MC2_ROOT}/mclib/stuff/linearmatrix.cpp
     ${MC2_ROOT}/mclib/stuff/matrix.cpp
-    ${MC2_ROOT}/mclib/stuff/normal.cpp
     ${MC2_ROOT}/mclib/stuff/obb.cpp
     ${MC2_ROOT}/mclib/stuff/plane.cpp
     ${MC2_ROOT}/mclib/stuff/point3d.cpp

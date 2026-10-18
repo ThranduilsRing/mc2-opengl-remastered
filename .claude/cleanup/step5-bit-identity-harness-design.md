@@ -178,6 +178,9 @@ Finding: the 1-ULP trig rows were the HARNESS include order. The gameos/mclib/mc
   wrappers with the verbatim Radian::Normalize bodies kept in the test.
 - S5.11 (lane 1 s23) Stuff::Line3D deleted with its only user, the MLR CastRay family (MLRShape::CastRay had no caller; the
   virtual MLRPrimitiveBase::CastRay and its MLR_I_PMesh / MLR_I_TMesh overrides went with it). Normal3D keeps its Plane use.
+- S5.12 (lane 1 s23) Stuff::Normal3D deleted: its one user left was Plane::normal, now a UnitVector3D (same layout; the
+  constructors, the normalizing assignment from a Vector3D and the dot product are UnitVector3D's own). Its transform members had no
+  caller (Multiply(Normal3D, AffineMatrix4D) even computed an inverse it never used). Normal3DClassID stays in the class-ID enum.
 Proof every batch: sim pair mc2_03/mc2_24 identical to the pre-port reference (exe 579b60e2c) and to the committed baselines; saveload mc2_03
 fb63e85ac66966cf and mc2_01 d46e3e5e30d26b15 = baselines; S5.2/S5.4 GL/VK capture pair day mc2_01 + night mc2_10 viewed.
 Left on Stuff: the types themselves (Vector3D ~2,000 uses outside stuff/, Point3D, the matrices, UnitQuaternion, angles) and every op whose
