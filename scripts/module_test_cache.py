@@ -39,6 +39,10 @@ import contracts_cache as cc  # noqa: E402
 
 AUDIT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_audit_site")
 SKIP_NAMES = ("__pycache__", ".pytest_cache")
+# What a C++ compiler child can read in the repo: the source trees (same set as @CPP in contracts-cache-inputs.txt).
+CXX_SCOPE = ("code", "mclib", "gui", "editor", "GameAdapters", "GameOS", "Viewer", "EditorBridge", "RenderCore",
+             "RenderWorld", "Visibility", "MeshRenderer", "MaterialSystem", "DebugRenderer", "RenderDeviceGL",
+             "GuiRuntime", "HostServices", "Gates", "cmake", "CMakeLists.txt", "3rdparty")
 
 
 def _sha_file(path: str) -> str:
@@ -118,6 +122,7 @@ class ModuleTestCache:
                 "tree": cc.compute_key(self.root, uni, "module_test_cache:tree", ["."]),
                 "scope": cc.compute_key(self.root, uni, "module_test_cache:shaders",
                                         ["shaders", "tools/shader_offline_build"]),
+                "cc": cc.compute_key(self.root, uni, "module_test_cache:cxx", list(CXX_SCOPE)),
                 "head": self._git_out("rev-parse", "HEAD").decode().strip(),
                 "list": hashlib.sha1(self._git_out("ls-files", "-z")).hexdigest(),
             }
@@ -181,6 +186,8 @@ class ModuleTestCache:
         if exe in ("glslc", "glslangvalidator", "glslang", "spirv-cross", "spirv-val", "spirv-opt", "spirv-dis",
                    "slangc"):
             return "tool", toks[0]
+        if exe in ("clang", "clang++", "clang-cl", "cl", "g++", "gcc", "c++"):
+            return "cc", toks[0]
         return "tree", desc
 
     # -- lookup / store -------------------------------------------------------------------------------------------
@@ -199,7 +206,7 @@ class ModuleTestCache:
         ex = e.get("extras") or {}
         if ex:
             now = self.extras_now()
-            if any(ex.get(k) != now[k] for k in ("tree", "head", "list", "scope") if k in ex):
+            if any(ex.get(k) != now[k] for k in ("tree", "head", "list", "scope", "cc") if k in ex):
                 return False
             for exe, st in (ex.get("tools") or {}).items():
                 try:
@@ -260,9 +267,18 @@ class ModuleTestCache:
                 ex = {k: now[k] for k in ("head", "list") if k in need}
                 if "tree" in need:
                     ex["tree"] = now["tree"]
+                if "cc" in need:
+                    ex["cc"] = now["cc"]
+                    ex["tools"] = ex.get("tools", {})
+                    for d in set(kinds["cc"]):
+                        try:
+                            st = os.stat(d)
+                            ex["tools"][d] = [st.st_size, st.st_mtime_ns]
+                        except OSError:
+                            pass       # resolved through PATH: the version is not keyed (stated risk)
                 if "tool" in need:
                     ex["scope"] = now["scope"]
-                    ex["tools"] = {}
+                    ex["tools"] = ex.get("tools", {})
                     for d in set(kinds["tool"]):
                         try:
                             st = os.stat(d)

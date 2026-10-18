@@ -36,7 +36,7 @@ def discover() -> list[str]:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
-    ap.add_argument("--jobs", type=int, default=min(2, os.cpu_count() or 2))
+    ap.add_argument("--jobs", type=int, default=int(os.environ.get("MC2_TEST_JOBS", "") or min(2, os.cpu_count() or 2)))
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--no-cache", action="store_true")
     ap.add_argument("--report", action="store_true")

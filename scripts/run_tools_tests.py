@@ -185,7 +185,7 @@ def run_all(mods: list[str], jobs: int, tier: str, no_cache: bool = False, repor
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--jobs", type=int,
-                    default=min(2, os.cpu_count() or 2))   # the 2-core lane cap; measured: batching modules into few pytest processes was NOT faster (tests, not startup, dominate)
+                    default=int(os.environ.get("MC2_TEST_JOBS", "") or min(2, os.cpu_count() or 2)))   # the 2-core lane cap; measured: batching modules into few pytest processes was NOT faster (tests, not startup, dominate)
     ap.add_argument("--list", action="store_true", help="print modules and exit")
     ap.add_argument("--no-cache", action="store_true", help="run every module (also CONTRACTS_NO_CACHE=1)")
     ap.add_argument("--report", action="store_true", help="print cache hits and the opaque (whole-tree) modules")
