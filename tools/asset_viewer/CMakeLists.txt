@@ -85,7 +85,6 @@ add_library(mc2_tglloader STATIC
     "${CMAKE_SOURCE_DIR}/mclib/stuff/obb.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/plane.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/point3d.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/stuff/polar.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/random.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/rotation.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/scalar.cpp"

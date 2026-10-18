@@ -61,6 +61,7 @@ namespace mc2_cpu_proj_cost {
 #endif
 
 #include<stuff/stuff.hpp>
+#include "math/mc2_math.h"
 #include<float.h>   // FLT_MAX for trueSignedRhw sentinel
 #include<cmath>     // isfinite for MC2_PROJECTZ_FINITE_CHECK invariant
 #include<cstdlib>
@@ -164,7 +165,7 @@ class Camera
 		Stuff::LinearMatrix4D		cameraOrigin;					//Translation and rotation of Camera
 		Stuff::LinearMatrix4D		worldToCameraMatrix;			//Inverse of the above.
 
-		Stuff::YawPitchRange		cameraDirection;				//Direction camera is looking.
+		mc2::math::YawPitchRange	cameraDirection;				//Direction camera is looking.
 		
 		Stuff::Vector2DOf<float>	cameraShift;					//Position camera is looking At.
 		

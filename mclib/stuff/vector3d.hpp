@@ -28,7 +28,6 @@ namespace Stuff {
 	class Matrix4D;
 	class Point3D;
 	class UnitQuaternion;
-	class YawPitchRange;
     class Vector3D;
 
     bool Close_Enough( const Vector3D &v1, const Vector3D &v2, Scalar e = SMALL);
@@ -141,8 +140,6 @@ namespace Stuff {
 				{}
 		explicit Vector3D(const UnitQuaternion &q)
 			{*this = q;}
-		explicit Vector3D(const YawPitchRange &p)
-			{*this = p;}
 
 		//
 		// Assignment operators
@@ -156,8 +153,6 @@ namespace Stuff {
 				}
 		Vector3D&
 			operator=(const UnitQuaternion &q);
-		Vector3D&
-			operator=(const YawPitchRange &p);
 
 		//
 		// "Close-enough" comparators

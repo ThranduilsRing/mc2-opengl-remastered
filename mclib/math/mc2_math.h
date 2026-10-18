@@ -61,4 +61,23 @@ inline float cosD(float x) { return static_cast<float>(std::cos(static_cast<doub
 inline float acosD(float x) { return static_cast<float>(std::acos(static_cast<double>(x))); }
 inline float atan2D(float y, float x) { return static_cast<float>(std::atan2(static_cast<double>(y), static_cast<double>(x))); }
 
+// The former Stuff::YawPitchRange (S5.13): yaw counter-clockwise about +Y from +Z, pitch (positive looks down), range. A
+// polar triple with no glm counterpart; the constructor keeps the three-argument call of the old one.
+struct YawPitchRange {
+	float yaw = 0.0f, pitch = 0.0f, range = 0.0f;
+	YawPitchRange() = default;
+	YawPitchRange(float y, float p, float r) : yaw(y), pitch(p), range(r) {}
+};
+
+// Stuff::Vector3D = YawPitchRange (vector3d.cpp), verbatim: the float CRT sinf/cosf (== glm::sin/cos, corpus rows), y from
+// the pitch, x and z from the horizontal length. glm::euclidean uses another axis convention.
+inline glm::vec3 polarToVector(const YawPitchRange& polar)
+{
+	const float azimuthSine = sinf(polar.yaw), azimuthCosine = cosf(polar.yaw), altitudeSine = sinf(polar.pitch),
+		altitudeCosine = cosf(polar.pitch);
+	const float y = -polar.range * altitudeSine;
+	const float len = polar.range * altitudeCosine;
+	return glm::vec3(len * azimuthSine, y, len * azimuthCosine);
+}
+
 } // namespace mc2::math

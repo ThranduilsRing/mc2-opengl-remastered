@@ -181,6 +181,11 @@ Finding: the 1-ULP trig rows were the HARNESS include order. The gameos/mclib/mc
 - S5.12 (lane 1 s23) Stuff::Normal3D deleted: its one user left was Plane::normal, now a UnitVector3D (same layout; the
   constructors, the normalizing assignment from a Vector3D and the dot product are UnitVector3D's own). Its transform members had no
   caller (Multiply(Normal3D, AffineMatrix4D) even computed an inverse it never used). Normal3DClassID stays in the class-ID enum.
+- S5.13 (lane 1 s24) Stuff::YawPitchRange deleted: the polar triple is `mc2::math::YawPitchRange` (camera direction, gosFX and
+  GPU-particle spawn samples, the LAB_ONLY MLR bird view) and its one used conversion, Vector3D = YawPitchRange, is
+  `mc2::math::polarToVector` (verbatim sinf/cosf; glm::euclidean has another axis convention). The three-argument constructor is
+  kept so the spawn sites' three Random::GetFraction() arguments keep a constructor call. The vector-to-polar direction had no
+  caller and went with the type. Corpus row exact.polar-to-vector (REQUIRED) compares it with the verbatim legacy body.
 Proof every batch: sim pair mc2_03/mc2_24 identical to the pre-port reference (exe 579b60e2c) and to the committed baselines; saveload mc2_03
 fb63e85ac66966cf and mc2_01 d46e3e5e30d26b15 = baselines; S5.2/S5.4 GL/VK capture pair day mc2_01 + night mc2_10 viewed.
 Left on Stuff: the types themselves (Vector3D ~2,000 uses outside stuff/, Point3D, the matrices, UnitQuaternion, angles) and every op whose

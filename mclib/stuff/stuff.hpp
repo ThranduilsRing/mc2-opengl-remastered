@@ -216,7 +216,6 @@ namespace Stuff {
 #include"obb.hpp"
 #include"plane.hpp"
 #include"point3d.hpp"
-#include"polar.hpp"
 #include"random.hpp"
 #include"sphere.hpp"
 #include"vector2d.hpp"

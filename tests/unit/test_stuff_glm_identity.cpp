@@ -50,6 +50,18 @@ float legacyRadianNormalizeMember(float angle) {
     return angle;
 }
 
+// Stuff::Vector3D::operator=(const YawPitchRange&) (mclib/stuff/vector3d.cpp, deleted at S5.13), verbatim.
+Stuff::Vector3D legacyPolarToVector(float yaw, float pitch, float range) {
+    Stuff::Vector3D out;
+    const Stuff::Scalar azimuthSine = sinf(yaw), azimuthCosine = cosf(yaw), altitudeSine = sinf(pitch),
+        altitudeCosine = cosf(pitch);
+    out.y = -range * altitudeSine;
+    Stuff::Scalar len = range * altitudeCosine;
+    out.x = len * azimuthSine;
+    out.z = len * azimuthCosine;
+    return out;
+}
+
 constexpr unsigned seed = 0x53545546;
 constexpr unsigned randomCases = 100000;
 
@@ -179,6 +191,8 @@ void scalars(Corpus& corpus, float x, float y) {
     corpus.exact("exact.wrap-static", legacyRadianNormalizeStatic(x), mc2::math::wrapAngleStatic(x));
     corpus.exact("exact.wrap-member", legacyRadianNormalizeMember(x), mc2::math::wrapAngleMember(x));
     // S5.6: SinCosPair is gone; its sites call sinf/cosf (Stuff) or glm::sin/cos (gosFX tube).
+    corpus.vector("exact.polar-to-vector", legacyPolarToVector(x, y, x - y),
+                  mc2::math::polarToVector(mc2::math::YawPitchRange(x, y, x - y)), true);
     corpus.scalar("angle.sincos-sin", sinf(x), glm::sin(x));
     corpus.scalar("angle.sincos-cos", cosf(x), glm::cos(x));
     corpus.scalar("angle.wrap-static", mc2::math::wrapAngleStatic(x),
@@ -278,7 +292,7 @@ TEST_CASE("Stuff/GLM identity detects byte changes and classifies migration cand
         matrices(corpus, rng, i);
     }
     std::printf("[STUFF_GLM] seed=%u random_cases=%u glm=1.0.1 mode=scalar-precise\n", seed, randomCases);
-    REQUIRE(corpus.rows.size() == 53);  // step 5 S5.3: Stuff::Arcsin, Stuff::Tan and MultiplyByInverse deleted (no callers)
+    REQUIRE(corpus.rows.size() == 54);  // S5.3 deleted Arcsin, Tan, MultiplyByInverse; S5.13 added exact.polar-to-vector
     // Step 5: every operation identical on the opening corpus is now REQUIRED identical (a port relies on it), as are the exact
     // wrappers (mclib/math/mc2_math.h) and the bridge. Differing render-only operations stay characterized.
     static const char* const identical[] = {"angle.sincos-cos", "angle.sincos-sin", "chain.line-of-sight-step",

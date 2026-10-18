@@ -400,7 +400,7 @@ void Camera::setCameraOrigin (void)
 		//cameraDirection.pitch = cameraDirection.pitch;
 		cameraOrigin.BuildRotation(Stuff::EulerAngles(cameraDirection.pitch, cameraDirection.yaw, 0.0f));
 
-		Stuff::Point3D translation(cameraDirection);
+		Stuff::Point3D translation = mc2::math::toPoint3D(mc2::math::polarToVector(cameraDirection));
 
 		translation.x -= cameraShift.x;
 		translation.z += cameraShift.y;
@@ -423,7 +423,7 @@ void Camera::setCameraOrigin (void)
 			cameraDirection.pitch = -localAngle * DEGREES_TO_RADS;
 			cameraOrigin.BuildRotation(Stuff::EulerAngles(cameraDirection.pitch, cameraDirection.yaw, 0.0f));
 	
-			Stuff::Point3D translation(cameraDirection);
+			Stuff::Point3D translation = mc2::math::toPoint3D(mc2::math::polarToVector(cameraDirection));
 			lookVector = translation;
 			lookVector.Normalize(lookVector);
 			lookVector.Negate(lookVector);

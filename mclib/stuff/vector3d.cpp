@@ -71,32 +71,6 @@ Vector3D&
 //#############################################################################
 //
 Vector3D&
-	Vector3D::operator=(const YawPitchRange &polar)
-{
-	Check_Object(this);
-	Check_Object(&polar);
-
-	Verify(
-		Vector3D::Forward.z == 1.0f
-		 && Vector3D::Left.x == 1.0f
-		 && Vector3D::Up.y == 1.0f
-	);
-	const Scalar
-		azimuthSine = sinf(polar.yaw), azimuthCosine = cosf(polar.yaw),
-		altitudeSine = sinf(polar.pitch), altitudeCosine = cosf(polar.pitch);
-	y = -polar.range * altitudeSine;
-
-	Scalar len = polar.range * altitudeCosine;
-	x = len * azimuthSine;
-	z = len * azimuthCosine;
-	return *this;
-}
-
-//
-//###########################################################################
-//###########################################################################
-//
-Vector3D&
 	Vector3D::Multiply(const Vector3D& v,const AffineMatrix4D& m)
 {
 	Check_Pointer(this);

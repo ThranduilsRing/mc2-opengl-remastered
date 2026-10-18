@@ -12,7 +12,6 @@ set(SOURCES ${SOURCES}
     obb.cpp
     plane.cpp
     point3d.cpp
-    polar.cpp
     random.cpp
     rotation.cpp
     scalar.cpp

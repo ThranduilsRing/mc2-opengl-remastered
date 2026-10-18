@@ -45,6 +45,7 @@
 #include <stuff/linearmatrix.hpp>
 #include <stuff/point3d.hpp>
 #include <stuff/random.hpp>
+#include "math/stuff_glm_bridge.h"
 
 #include <string>
 #include <unordered_set>
@@ -204,11 +205,11 @@ void SpawnCardCloud(const gosFX::CardCloud__Specification* spec,
 
         // Per-particle emitter-volume offset (legacy unit-sphere-ish
         // YawPitchRange sample, particlecloud.cpp:558-563).
-        Stuff::YawPitchRange initial_p(
+        mc2::math::YawPitchRange initial_p(
             Stuff::Random::GetFraction() * Stuff::Two_Pi,
             Stuff::Random::GetFraction() * Stuff::Pi - Stuff::Pi_Over_2,
             Stuff::Random::GetFraction());
-        Stuff::Vector3D unit_pos(initial_p);
+        Stuff::Vector3D unit_pos = mc2::math::toVector3D(mc2::math::polarToVector(initial_p));
         Stuff::Point3D local_offset(
             unit_pos.x * mut_spec->m_emitterSizeX.ComputeValue(parent_age, child_seed),
             unit_pos.y * mut_spec->m_emitterSizeY.ComputeValue(parent_age, child_seed),
@@ -231,11 +232,11 @@ void SpawnCardCloud(const gosFX::CardCloud__Specification* spec,
         }
         pitch_min +=
             pitch_range * Stuff::Random::GetFraction() - Stuff::Pi_Over_2;
-        Stuff::YawPitchRange initial_v(
+        mc2::math::YawPitchRange initial_v(
             Stuff::Random::GetFraction() * Stuff::Two_Pi,
             pitch_min,
             mut_spec->m_startingSpeed.ComputeValue(parent_age, child_seed));
-        Stuff::Vector3D local_velocity(initial_v);
+        Stuff::Vector3D local_velocity = mc2::math::toVector3D(mc2::math::polarToVector(initial_v));
         Stuff::Vector3D world_velocity;
         if (parentToWorld) {
             world_velocity.Multiply(local_velocity, *parentToWorld);

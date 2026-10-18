@@ -219,7 +219,7 @@ void
 
 	if(gShowBirdView)
 	{
-		static YawPitchRange Camera_Direction(-Pi_Over_6, 0.0f, 15.0f);
+		static mc2::math::YawPitchRange Camera_Direction(-Pi_Over_6, 0.0f, 15.0f);
 		static Vector2DOf<Scalar> Camera_Shift(0.0f, 0.0f);
 		static LinearMatrix4D birdsEye = LinearMatrix4D::Identity;
 
@@ -288,7 +288,7 @@ void
 			world_up;
 		birdsEye.GetLocalLeftInWorld(&world_left);
 		birdsEye.GetLocalUpInWorld(&world_up);
-		Point3D translation(Camera_Direction);
+		Point3D translation = mc2::math::toPoint3D(mc2::math::polarToVector(Camera_Direction));
 		translation.AddScaled(translation, world_left, Camera_Shift.x);
 		translation.AddScaled(translation, world_up, Camera_Shift.y);
 		birdsEye.BuildTranslation(translation);

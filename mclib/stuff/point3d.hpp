@@ -47,8 +47,6 @@ namespace Stuff {
 			{*this = v;}
 		explicit Point3D(const AffineMatrix4D &matrix)
 			{*this = matrix;}
-		explicit Point3D(const YawPitchRange &polar)
-			{*this = polar;}
 
 		//
 		// Assignment operators
@@ -60,9 +58,6 @@ namespace Stuff {
 			operator=(const Vector4D& v);
 		Point3D&
 			operator=(const AffineMatrix4D &matrix);
-		Point3D&
-			operator=(const YawPitchRange &polar)
-				{Vector3D::operator=(polar); return *this;}
 
 		//
 		// Math operators

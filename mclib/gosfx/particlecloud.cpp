@@ -581,13 +581,13 @@ void
 	// Figure out the initial position
 	//--------------------------------
 	//
-	Stuff::YawPitchRange
+	mc2::math::YawPitchRange
 		initial_p(
 			Stuff::Random::GetFraction() * Stuff::Two_Pi,
 			Stuff::Random::GetFraction() * Stuff::Pi - Stuff::Pi_Over_2,
 			Stuff::Random::GetFraction()
 		);
-	Stuff::Vector3D position(initial_p);
+	Stuff::Vector3D position = mc2::math::toVector3D(mc2::math::polarToVector(initial_p));
 	translation->x =
 		position.x * spec->m_emitterSizeX.ComputeValue(m_age, seed);
 	translation->y =
@@ -608,13 +608,13 @@ void
 		pitch_range = 0.0f;
 	pitch_min +=
 		pitch_range * Stuff::Random::GetFraction() - Stuff::Pi_Over_2;
-	Stuff::YawPitchRange
+	mc2::math::YawPitchRange
 		initial_v(
 			Stuff::Random::GetFraction() * Stuff::Two_Pi,
 			pitch_min,
 			spec->m_startingSpeed.ComputeValue(m_age, seed)
 		);
-	particle->m_localLinearVelocity = initial_v;
+	particle->m_localLinearVelocity = mc2::math::toVector3D(mc2::math::polarToVector(initial_v));
 }
 
 //------------------------------------------------------------------------------
