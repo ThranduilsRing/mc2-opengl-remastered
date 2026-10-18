@@ -295,15 +295,6 @@ extern "C" int mc2_vk_water_island_enabled() {
     return 1;
 }
 
-// STEP 3.4P: 0 = the GL cull/pack feeds the island by readback; 1 = the native VK producers run (the GL cull dispatch is skipped); 2 = native, and the GL
-// dispatch runs as well so the outputs can be compared (parity frames: native frames 60 and 600).
-extern "C" int mc2_vk_water_native_mode() {
-    WaterIsland* s = parkedIsland();
-    if (!s || s->disabled || !s->inited || !s->native || !s->native->ready()) return 0;
-    const uint64_t f = s->nativeFrames;
-    return (f == 60 || f == 600) ? 2 : 1;   // two parity frames per session: a periodic one is a full stall (waitIdle + GL readbacks) in shipped code
-}
-
 // Teardown (called from gosPostProcess::destroy or renderer shutdown).
 extern "C" void mc2_vk_water_island_destroy() {
     vlog("[VK_WATER_TIER1] vulkan_available=%d used_vulkan=%lu used_interop=%lu interop_active=%d "

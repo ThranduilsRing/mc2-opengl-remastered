@@ -20,7 +20,6 @@
 #include <cstdint>
 #include <cstddef>
 
-#include <GL/glew.h>  // GLuint — required for GetIndirectCmdBuffer() return type
 
 namespace WaterStream {
 
@@ -103,30 +102,6 @@ static_assert(sizeof(WaterThinRecord) == 48,
 constexpr uint32_t kWaterThinFlagPzTri1Valid = 0x1u;
 constexpr uint32_t kWaterThinFlagPzTri2Valid = 0x2u;
 
-// SSBO binding points for the water fast path (chosen to not collide with
-// patch_stream's 0/1/2: fat record / recipe / thin record).
-constexpr uint32_t kWaterRecipeSsboBinding   = 5;
-constexpr uint32_t kWaterThinSsboBinding     = 6;
-
-// GPU upload of the static recipe SSBO. Idempotent — safe to call repeatedly;
-// only re-uploads when the recipe count changes (i.e., on a new mission).
-// Internally manages a persistent GL buffer, lazily allocated.
-// Returns the GL buffer name (0 if not ready).
-unsigned int EnsureRecipeBufferUploaded();
-
-// Per-frame thin-record upload. Walks the live quadList window, finds water-
-// bearing quads, hashes each via top-left vertexNum to look up its stable
-// recipeIdx, packs lightRGB / fogRGB / pzValid into a triple-buffered ring
-// SSBO, binds it at kWaterThinSsboBinding. Returns the count of thin
-// records emitted (i.e., the per-frame draw instance count).
-//
-// forceFullWalk (VK-P9a): ignore the narrow-walk fast path and walk the full
-// quadList, so g_thinStaging is populated even when the armed full-recipe-
-// authoritative GPU path (default-on) has skipped the CPU narrow walk. The VK
-// water island passes true to get a CPU-staged thin feed. Default false =
-// byte-identical existing behavior for all legacy callers.
-uint32_t UploadAndBindThinRecords(bool forceFullWalk = false);
-
 // --- Narrow-walk fast path -------------------------------------------------
 //
 // Default-on (env-gate `MC2_WATER_UPLOAD_NARROW=0` to opt out and fall back
@@ -158,113 +133,6 @@ void AppendNarrowCandidate(const void* quadPtr);
 // directly into the draw-feeding thin buffer.
 bool IsFullRecipeAuthoritative();
 
-// --- Phase C Stage 1: compute dispatch ------------------------------------
-//
-// ComputeDispatchAndBindThinRecords() replaces UploadAndBindThinRecords() on
-// the GPU-driven path. Dispatches two compute shaders:
-//   1. gpu_driven_water.comp  — cull/pack (water quads → WaterThinRecord[])
-//   2. gpu_driven_cmd_patch.comp — writes DrawArraysIndirectCommand.count
-// Followed by GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT.
-//
-// Returns true on success (g_waterGpuDrivenArmed set true).
-// Returns false if killswitch is off, recipe not ready, or window is empty.
-// The MDI bridge (Task 1.5) calls IsGpuDrivenArmed() to decide the draw path.
-bool ComputeDispatchAndBindThinRecords(float frameCos);
-
-// True if ComputeDispatchAndBindThinRecords() succeeded this frame.
-bool IsGpuDrivenArmed();
-
-// GL buffer name for the indirect draw commands (2 × DrawArraysIndirectCommand).
-// Valid only when IsGpuDrivenArmed() is true.
-GLuint GetIndirectCmdBuffer();
-
-// WATER-THINRING-FENCE-1: fence the thin-record ring slot drawn this frame.
-// Call once per frame from the bridge AFTER the water draw is submitted (mirrors
-// the solid thin-ring post-draw fence). Closes the cross-frame CPU/GPU slot-reuse
-// race the barrier-only sync did not cover. Trace: MC2_WATER_THINRING_TRACE=1.
-void EndThinRingFrameFence();
-
-// When MC2_GPU_DRIVEN_PARITY=1: runs both CPU and GPU thin-record paths,
-// reads both back from SSBOs, and byte-compares by recipeIdx. Emits
-// [GPU_DRIVEN_WATER_PARITY v1] summary every 600 frames.
-void ComputeDispatchParity_Check();
-
-// VK-P9a WATER-INTEROP: GPU thin-record READBACK feed for the Vulkan water island.
-// Reads back the thin records the armed GPU compute actually packed this frame (count
-// from the bucket header, records from the packed ring slot) into an internal CPU copy
-// and returns the count with *outPtr pointing at it (48B WaterThinRecord each, valid
-// until the next call). Call AFTER ComputeDispatchAndBindThinRecords (the compute's
-// final barrier makes the data visible). Returns 0 if the GPU path didn't run this
-// frame. This is the reliable feed on the armed full-recipe-authoritative path, where
-// the CPU pack (UploadAndBindThinRecords) yields 0 records.
-uint32_t ReadbackGpuThinForVk(const void** outPtr);
-
-// Tear down GL buffers (mission unload, app shutdown).
-void ReleaseGlResources();
-
-// --- Stage 3 parity check ---------------------------------------------------
-//
-// MC2_RENDER_WATER_PARITY_CHECK=1 enables a per-frame CPU-side byte-comparison
-// between the legacy `TerrainQuad::drawWater()` `addVertices` argument streams
-// and the fast-path's recipe + thin-record + per-vertex VS-equivalent CPU
-// computation, for every in-window water-bearing quad this frame.
-//
-// Silent on success (matches the M2 thin-record parity convention in
-// `m2_thin_record_cpu_reduction_results.md`). On any field-level mismatch:
-//
-//   [WATER_PARITY v1] event=mismatch frame=N quad=Q layer=base|detail
-//                     tri=T vert=V field=<name> legacy=0xHEX fast=0xHEX
-//
-// Mismatch prints are throttled to first 16 per frame to keep logs bounded
-// when an early-frame uniform delta cascades. A monotonic summary line is
-// emitted every 600 frames AND on `ReleaseGlResources()`:
-//
-//   [WATER_PARITY v1] event=summary frames=N quads_checked=Q
-//                     total_mismatches=K
-//
-// Comparison granularity:
-// - Recipe-input fields (per-corner vx/vy/elev/terrainType/waterBits, uvMode,
-//   hasDetail) — compared against q.vertices[i]/blocks state.
-// - Thin-record fields (per-corner lightRGB/fogRGB, per-tri pzValid bit) —
-//   compared against the same q.vertices[i] reads + CPU-pz check.
-// - Derived gos_VERTEX bytes (u, v, argb, frgb-high-byte) — synthesized on
-//   both sides per legacy `drawWater` formulas vs fast-path VS formulas, then
-//   byte-compared. x/y/z/rhw NOT compared: legacy reads pre-projected CPU
-//   `wx/wy/wz/ww`; fast path projects on GPU. Per-spec line 122: comparing
-//   GPU-rendered output drifts below 1 ULP and produces fake mismatches.
-//
-// Per `feedback_offload_scope_stock_only.md`, parity is gated against stock
-// content only (tier1 missions). Mod content is out of scope.
-struct ParityFrameUniforms {
-    float    waterElevation;
-    float    alphaDepth;
-    uint32_t alphaEdgeDword;     // Terrain::alphaEdge   (full DWORD, not byte)
-    uint32_t alphaMiddleDword;   // Terrain::alphaMiddle
-    uint32_t alphaDeepDword;     // Terrain::alphaDeep
-    float    mapTopLeftX;
-    float    mapTopLeftY;
-    float    frameCos;
-    float    frameCosAlpha;
-    float    oneOverTF;
-    float    oneOverWaterTF;
-    float    cloudOffsetX;
-    float    cloudOffsetY;
-    float    sprayOffsetX;
-    float    sprayOffsetY;
-    float    maxMinUV;
-    bool     useWaterInterestTexture;
-    uint32_t waterDetailHandleSentinel;  // 0xffffffff if no detail bound this frame
-    bool     terrainTextures2Present;
-};
-
-// Run the parity check for the current frame. Reads g_thinStaging (built by
-// the most recent UploadAndBindThinRecords call, still populated). No-op
-// unless MC2_RENDER_WATER_PARITY_CHECK is set in the environment.
-//
-// Cost in dev mode: ~12 byte-comparisons per in-window water-bearing quad
-// per frame (~1.3K quads on mc2_01 → ~15K compare ops, sub-millisecond CPU).
-void CheckParityFrame(const ParityFrameUniforms& u);
-
 // Build the recipe array from the live Terrain::quadList. Walks all
 // numberQuads entries; flags water-bearing quads (≥1 vertex below
 // waterElevation). Idempotent — calling twice rebuilds.
@@ -276,11 +144,6 @@ void Build();
 
 // Reset to empty state (mission unload).
 void Reset();
-
-// Returns the water parity mask for this frame (indexed by corner-0 vertexNum,
-// same format as gos_terrain_mask_dispatch's s_waterMask). Built during
-// UploadAndBindThinRecords — only valid after that call. outWords = 450.
-const uint32_t* GetWaterParityMask(int* outWords);
 
 // Read-only access to the recipe array. Pointer is stable across the
 // mission lifetime (vector capacity is fixed after Build).
@@ -363,5 +226,9 @@ struct VkNativeInputs {
     uint32_t recipeCount;
 };
 bool GetVkNativeInputs(VkNativeInputs& out);
+
+// Captures the per-frame native-producer scalars at the water pass (the GL compute dispatch, the CPU thin pack, the GL draw and the readback
+// feed are gone). False = no water this frame.
+bool CaptureVkNativeInputs(float frameCos);
 
 } // namespace WaterStream

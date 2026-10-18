@@ -83,7 +83,6 @@
 #include "../GameOS/gameos/gos_terrain_bridge.h"   // [TERRAIN_SURFACE] PR-2 surface validation draw
 #include "../RenderCore/terrain_path_telemetry.h"  // LEGACY-MLR-DELETE-1: tripwire noteTerrainPath(LegacyMLR)
 #include "../RenderCore/top_level_pass_executor.h"  // APPLY-STATE-MECHOPAQUE-1: findTopLevelStateDesc
-#include "../GameOS/gameos/gos_terrain_mask_dispatch.h"  // B4 Stage 1b: mask-SOLID draw
 #include "../GameOS/gameos/gpu_cull_compute.h"  // C1b: compute_dispatch() moved here from mission.cpp
 #include "../GameOS/gameos/gpu_cull_substrate.h"
 #include "dynamic_decal_ring.h"  // MC2_DYNAMIC_DECALS gather before gos_DrawDecals

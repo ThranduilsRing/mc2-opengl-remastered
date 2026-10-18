@@ -724,20 +724,6 @@ void MC_TextureManager::renderListsOverlayBatches (void)
 {
 	// DRAWSOLID done
 
-	// B4 Slice Stage 1b — mask-SOLID dual-run dispatch.
-	// Draws the same SOLID quads as the legacy drawPass (which is still active
-	// in Stage 1b — both run; parity comparator validates the masks match).
-	// Default-off: IsFrameMaskSolidArmed() returns false unless
-	// MC2_TERRAIN_MASK_DISPATCH=1 AND MC2_TERRAIN_MASK_DISPATCH_SOLID != "0".
-	{
-		ZoneScopedN("Render.TerrainMask.Solid");
-		TracyGpuZone("Render.TerrainMask.Solid");
-		if (gos_terrain_mask_dispatch::IsMaskDispatchReady()
-		 && gos_terrain_mask_dispatch::IsFrameMaskSolidArmed()) {
-			gos_terrain_mask_dispatch::DrawMaskSolid();
-		}
-	}
-
 	// ── New world-space overlay batches ──────────────────────────────────────
 	// These draw calls flush batches accumulated during land->render() and
 	// craterManager->render().  They set their own GL state and restore it.

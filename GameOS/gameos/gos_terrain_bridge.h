@@ -143,33 +143,6 @@ bool gos_terrain_bridge_drawDecalStatic(unsigned int               vboGL,
                                         const GosDecalStaticDraw*  draws,
                                         int                        drawCount);
 
-// B4 Slice Stage 1c — mask-water draw bridge.
-// Called by gos_terrain_mask_dispatch::DrawMaskWater() from Render.TerrainMask.Water.
-// waterMaskSSBO: SSBO at binding 18 (per-frame bitset, one bit per quad vertexNum).
-// recipeSSBO: WaterRecipe SSBO at binding 5.
-// lightingSSBO: GpuTerrainLightingOutput SSBO at binding 2 (0 = skip light binding).
-// recipeCount: total WaterRecipe slots ((mapSide-1)^2). waterElevation, frameCos: per-frame.
-// Returns true if the indirect draw was issued.
-bool gos_terrain_bridge_drawMaskWater(uint32_t waterMaskSSBO,
-                                      uint32_t recipeSSBO,
-                                      uint32_t lightingSSBO,
-                                      int      recipeCount,
-                                      float    waterElevation,
-                                      float    frameCos);
-
-// B4 Slice Stage 1b — mask-SOLID MDI draw bridge.
-// Called by gos_terrain_mask_dispatch::DrawMaskSolid() from Render.TerrainMask.Solid.
-// solidMaskSSBO: SSBO at binding 17 (per-frame bitset, one bit per quad vertexNum).
-// recipeSSBO: dense recipe SSBO at binding 19.
-// lightingSSBO: GpuTerrainLightingOutput SSBO at binding 2 (0 = skip light binding).
-// quadCount: total dense recipe slots (mapSide*mapSide). mapSide: terrain map side.
-// Returns true if the indirect draw was issued.
-bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
-                                      uint32_t recipeSSBO,
-                                      uint32_t lightingSSBO,
-                                      int      quadCount,
-                                      int      mapSide);
-
 void gos_terrain_bridge_renderWaterFast(
     unsigned int recordCount,
     unsigned int waterGosHandle,

@@ -11,20 +11,17 @@
 // Per-frame entry. Inputs (all from the GL side, at water-render time):
 //   sceneColorTex/sceneDepthTex — GL scene MainColor + depth textures (w x h).
 //   mvp16 — the 16 raw floats GL uploads (glUniformMatrix4fv GL_FALSE) for u_worldToClipGL.
-//   thinRecords/thinCount — the CPU-staged per-frame thin-record array (48B each).
+//   nativeInputsIn — the per-frame scalars of the native Vulkan cull/pack (WaterStream::VkNativeInputs); the thin records are produced on the GPU.
 //   recipes/recipeCount — mission-static recipe array (64B each; uploaded once).
 //   vsP/fsP — the packed uniform params (LOCKSTEP with water_geom.{vert,frag}).
-// Returns 1 if the VK water pass rendered+composited this frame; 0 = fell back
-// (caller must then run the GL water draw, i.e. treat 0 as "not handled").
+// Returns 1 if the VK water pass rendered this frame; 0 = declined (no water this frame: the GL water draw is gone).
 extern "C" int mc2_vk_water_island_run(
     unsigned int sceneColorTex, unsigned int sceneDepthTex, int w, int h,
-    const void* thinRecords, unsigned int thinCount,
     const void* recipes, unsigned int recipeCount,
     const void* vsParams, const void* fsParams,
     unsigned int hdriGlTex,
-    const void* nativeInputsIn, int parityFrame) {
-    // STEP 3.4P: with native inputs the thin records are produced on the GPU; thinRecords/thinCount are then only the GL reference of a parity frame.
-    if ((thinCount == 0 && !nativeInputsIn) || recipeCount == 0 || w <= 0 || h <= 0) return 0;
+    const void* nativeInputsIn) {
+    if (!nativeInputsIn || recipeCount == 0 || w <= 0 || h <= 0) return 0;
     ZoneScopedN("VKIsl.Water.Run");   // VK-ISLAND-TRACY-1 per-frame island total (CPU)
     (void)sceneColorTex;
     (void)sceneDepthTex;
@@ -49,7 +46,7 @@ extern "C" int mc2_vk_water_island_run(
     if (!islandSlot()) {
         auto fresh = std::make_unique<WaterIsland>();
         if (!init_island(fresh.get(), w, h)) {
-            vlog("init failed (%s) — GL fallback.", g_health.fallbackReason);
+            vlog("init failed (%s) — no water this frame.", g_health.fallbackReason);
             slotCtx.waitIdle("water_init_failure");   // objects made before the failure may have been submitted
             return 0;
         }
@@ -129,35 +126,22 @@ extern "C" int mc2_vk_water_island_run(
                 write_descriptors(s);   // binding 6 -> the GPU-produced thin buffers
             } else {
                 s->nativeFailed = true;
-                vlog("native producers unavailable - the GL cull/pack readback feed stays in use.");
+                vlog("native producers unavailable - no water (the GL cull/pack readback feed is gone).");
             }
         }
     }
-    nat = (nativeInputsIn && s->native && s->native->ready()) ? static_cast<const WaterStream::VkNativeInputs*>(nativeInputsIn) : nullptr;
-    if (!nat && thinCount == 0) {   // nothing will submit: give the slot's fence back
+    nat = (s->native && s->native->ready()) ? static_cast<const WaterStream::VkNativeInputs*>(nativeInputsIn) : nullptr;
+    if (!nat) {   // nothing will submit: give the slot's fence back
         if (!vkImageResourceCancelFrame(s->sColorRes, fsC)) { setFallback("cancel_frame_fence_failed"); s->disabled = true; }
         return 0;
     }
 
-    // Binding 6 of slot `par` must name the buffer this frame's feed fills. The slot fence was waited above, so the set is idle.
-    // Native -> readback (opt-out MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE=0, null MVP): flip to thinBuf; the readback upload below
-    // allocates it (and rewrites both sets under waitIdle) if it does not exist yet.
-    if (s->thinNative[par] != (nat != nullptr)) {
-        s->thinNative[par] = (nat != nullptr);
-        if (nat || s->thinBuf[par]) write_descriptors(s, static_cast<int>(par));
+    // Binding 6 of slot `par` must name the GPU-produced thin buffer (the island starts on the placeholder thinBuf until the native producers exist).
+    if (!s->thinNative[par]) {
+        s->thinNative[par] = true;
+        write_descriptors(s, static_cast<int>(par));
     }
-
-    // ---- 2) Upload the per-frame thin records into slot `par` (CPU-staged; the GL readback feed). The native path skips this. ----
-    if (!nat) {
-        const VkDeviceSize thinBytes = (VkDeviceSize)thinCount * 48;
-        if (!ensure_thin_capacity(s, par, thinBytes)) { s->disabled = true; return 0; }
-        void* p = nullptr;
-        if ((p = s->thinBuf[par].map()) != nullptr) {
-            std::memcpy(p, thinRecords, (size_t)thinBytes);
-            s->thinBuf[par].unmap();
-        }
-        g_health.thinRecords = thinCount;
-    }
+    g_health.thinRecords = 0;   // GPU-produced: the count lives in the draw args
 
     // ---- 3) Stage the parameter UBOs into the frame-ring span and point slot `par` at its buffer. ----
     {
@@ -214,15 +198,14 @@ extern "C" int mc2_vk_water_island_run(
         vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_Water);
 
         // STEP 3.4P: the native producers (terrain lighting, cull/pack, draw args) are recorded ahead of the render pass in this command buffer.
-        const bool doParity = nat && parityFrame;
-        if (nat) {
+        {
             gos_terrain_lighting::VkProducerSnapshot snap{};
             gos_terrain_lighting::GetVkProducerSnapshot(snap);   // none = zero window: the cull reads the previous lighting
             mc2vk::WaterCullFrame wf{};
             std::memcpy(wf.mvp, nat->mvp, sizeof(wf.mvp));
             wf.frameCos = nat->frameCos; wf.waterElevation = nat->waterElevation; wf.shoreExt = nat->shoreExt;
             wf.mapSide = nat->mapSide; wf.biasLegacy = nat->biasLegacy;
-            if (!s->native->record(cb, par, snap, wf, doParity)) {
+            if (!s->native->record(cb, par, snap, wf, false)) {
                 // record() fails only before it records a command: close the begun buffer so it is never left open, then fail soft.
                 vkEndCommandBuffer(cb);
                 setFallback("native_record_failed"); s->disabled = true; return 0;
@@ -240,8 +223,7 @@ extern "C" int mc2_vk_water_island_run(
         vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
         const uint32_t uboOffsets[2] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(uboSpan.offset + fsUboOff)};
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, uboOffsets);
-        if (nat) vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
-        else     vkCmdDraw(cb, thinCount * 6u, 1, 0, 0);
+        vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
         vkCmdEndRenderPass(cb);
         vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Water);
         if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
@@ -261,35 +243,7 @@ extern "C" int mc2_vk_water_island_run(
         timerGuard.submitted();
         us_submit = usSince(tSubmit0);
 
-        // STEP 3.4P parity frame: wait for the work, then compare the native outputs with the GL producer output (the GL cull ran on this frame too).
-        if (nat && parityFrame) {
-            slotCtx.waitIdle("water_native_parity");
-            gos_terrain_lighting::VkProducerSnapshot snap{};
-            std::vector<gos_terrain_lighting::GpuTerrainLightingOutput> glLight;
-            if (gos_terrain_lighting::GetVkProducerSnapshot(snap) && snap.windowCount > 0) {
-                glLight.resize(snap.windowCount);
-                if (!gos_terrain_lighting::ReadbackOutputForParity(snap.vertexOffset, snap.windowCount, glLight.data())) glLight.clear();
-            }
-            const mc2vk::ProducerParity pr = s->native->compare(par, thinRecords, thinCount, glLight.empty() ? nullptr : glLight.data(), snap.vertexOffset,
-                                                                glLight.empty() ? 0u : snap.windowCount);
-            if (mc2DiagVerbose()) {
-            mc2::fmt::print_err("[VK_PRODUCER_PARITY v1] frame={:d} water gl_count={:d} vk_visible={:d} compared={:d} same={:d} differ={:d} only_gl={:d} only_vk={:d} truncated={:d} lighting compared={:d} light_mismatch={:d} fog_mismatch={:d} max_channel_delta={:d}\n",
-                                mc2::fmt::as_u64(s->nativeFrames), mc2::fmt::as_u32(pr.glCount), mc2::fmt::as_u32(pr.vkVisible), mc2::fmt::as_u32(pr.vkCompared),
-                                mc2::fmt::as_u32(pr.same), mc2::fmt::as_u32(pr.differ), mc2::fmt::as_u32(pr.onlyGl), mc2::fmt::as_u32(pr.onlyVk), mc2::fmt::as_i32(pr.truncated ? 1 : 0),
-                                mc2::fmt::as_u32(pr.lightCompared), mc2::fmt::as_u32(pr.lightMismatch), mc2::fmt::as_u32(pr.fogMismatch), mc2::fmt::as_u32(pr.lightMaxDelta));
-            mc2::fmt::print_err("[VK_PRODUCER_PARITY v1] lighting_window offset={:d} count={:d} lights={:d} gl_read={:d}\n", mc2::fmt::as_u32(snap.vertexOffset), mc2::fmt::as_u32(snap.windowCount), mc2::fmt::as_u32(snap.numLights), mc2::fmt::as_i32(glLight.empty() ? 0 : 1));
-            if (pr.haveDiff) {
-                mc2::fmt::print_err("[VK_PRODUCER_PARITY v1] first_diff gl={:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x} vk={:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x}\n",
-                    mc2::fmt::as_u32(pr.firstDiffGl[0]), mc2::fmt::as_u32(pr.firstDiffGl[1]), mc2::fmt::as_u32(pr.firstDiffGl[2]), mc2::fmt::as_u32(pr.firstDiffGl[3]), mc2::fmt::as_u32(pr.firstDiffGl[4]), mc2::fmt::as_u32(pr.firstDiffGl[5]),
-                    mc2::fmt::as_u32(pr.firstDiffGl[6]), mc2::fmt::as_u32(pr.firstDiffGl[7]), mc2::fmt::as_u32(pr.firstDiffGl[8]), mc2::fmt::as_u32(pr.firstDiffGl[9]), mc2::fmt::as_u32(pr.firstDiffGl[10]), mc2::fmt::as_u32(pr.firstDiffGl[11]),
-                    mc2::fmt::as_u32(pr.firstDiffVk[0]), mc2::fmt::as_u32(pr.firstDiffVk[1]), mc2::fmt::as_u32(pr.firstDiffVk[2]), mc2::fmt::as_u32(pr.firstDiffVk[3]), mc2::fmt::as_u32(pr.firstDiffVk[4]), mc2::fmt::as_u32(pr.firstDiffVk[5]),
-                    mc2::fmt::as_u32(pr.firstDiffVk[6]), mc2::fmt::as_u32(pr.firstDiffVk[7]), mc2::fmt::as_u32(pr.firstDiffVk[8]), mc2::fmt::as_u32(pr.firstDiffVk[9]), mc2::fmt::as_u32(pr.firstDiffVk[10]), mc2::fmt::as_u32(pr.firstDiffVk[11]));
-            }
-            std::fflush(stderr);
-            }
-            g_health.thinRecords = pr.vkVisible;
-        }
-        if (nat) ++s->nativeFrames;
+        ++s->nativeFrames;
 
         us_sem_wait = 0.0;
 
@@ -330,14 +284,14 @@ extern "C" int mc2_vk_water_island_run(
         g_health.totalUs = usSince(tTotal0);
         static bool s_tier1FirstOk = false;
         if (!s_tier1FirstOk) {
-            vlog("first TIER-1 in-place water GBuffer co-write: thin=%u recipes=%u "
+            vlog("first TIER-1 in-place water GBuffer co-write: recipes=%u "
                  "(color0 premult-over blend, normal untouched (writemask 0, GL a=0 parity), "
                  "shared depth GEQUAL test+write; no composite, no depth readback).",
-                 thinCount, recipeCount);
+                 recipeCount);
             s_tier1FirstOk = true;
         }
         if (perf) {
-            mc2::fmt::print_err("[VK_WATER_PERF] tier1=1 thin={:d} recipes={:d} stage_us={:.1f} record_us={:.1f} submit_us={:.1f} sem_wait_us={:.1f} fence_wait_us={:.1f} island_total_us={:.1f}\n", mc2::fmt::as_u32(thinCount), mc2::fmt::as_u32(recipeCount), us_stage, us_record, us_submit, us_sem_wait, us_fence_wait, g_health.totalUs);
+            mc2::fmt::print_err("[VK_WATER_PERF] tier1=1 recipes={:d} stage_us={:.1f} record_us={:.1f} submit_us={:.1f} sem_wait_us={:.1f} fence_wait_us={:.1f} island_total_us={:.1f}\n", mc2::fmt::as_u32(recipeCount), us_stage, us_record, us_submit, us_sem_wait, us_fence_wait, g_health.totalUs);
             std::fflush(stderr);
         }
         return 1;

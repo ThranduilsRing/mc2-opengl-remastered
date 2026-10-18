@@ -20,15 +20,6 @@ void Terrain::render (void)
 	// per-quad CPU work that stays attributed to drawPass at coarse level.
 	DWORD fogColor = eye->fogColor;
 
-	// Slice B4 Stage 1a — mask-dispatch build runs alongside the legacy
-	// drawPass (does NOT replace it). IsMaskDispatchEnabled() gates on
-	// MC2_TERRAIN_MASK_DISPATCH + dense recipe ready + Init() success.
-	gos_terrain_mask_dispatch::BeginFrame();
-	if (drawTerrainTiles && gos_terrain_mask_dispatch::IsMaskDispatchEnabled()) {
-		ZoneScopedN("Terrain::render maskBuild");
-		gos_terrain_mask_dispatch::BuildAndUploadMasksForFrame(quadList, numberQuads);
-	}
-
 	if (drawTerrainTiles)
 	{
 		ZoneScopedN("Terrain::render drawPass");
@@ -563,36 +554,6 @@ void Terrain::renderWaterFastPath (void)
 	    sprayOffsetX,
 	    sprayOffsetY,
 	    MaxMinUV);
-
-	// Stage 3 parity check (env-gated, silent on pass). Runs AFTER the bridge
-	// so g_thinStaging is already populated by UploadAndBindThinRecords. The
-	// check is CPU-only; it does not alter GPU state. See
-	// `gos_terrain_water_stream.h` "Stage 3 parity check" doc-comment for
-	// scope and field-level granularity.
-	{
-		ZoneScopedN("WaterFast.Parity");
-		WaterStream::ParityFrameUniforms pu;
-		pu.waterElevation             = Terrain::waterElevation;
-		pu.alphaDepth                 = WaterStream::EffAlphaDepth(MapData::alphaDepth);  // SHORELINE-STAIRCASE-1: keep parity consistent with the widened bridge upload
-		pu.alphaEdgeDword             = Terrain::alphaEdge;
-		pu.alphaMiddleDword           = Terrain::alphaMiddle;
-		pu.alphaDeepDword             = Terrain::alphaDeep;
-		pu.mapTopLeftX                = Terrain::mapTopLeft3d.x;
-		pu.mapTopLeftY                = Terrain::mapTopLeft3d.y;
-		pu.frameCos                   = Terrain::frameCos;
-		pu.frameCosAlpha              = Terrain::frameCosAlpha;
-		pu.oneOverTF                  = oneOverTF;
-		pu.oneOverWaterTF             = oneOverWaterTF;
-		pu.cloudOffsetX               = cloudOffsetX;
-		pu.cloudOffsetY               = cloudOffsetY;
-		pu.sprayOffsetX               = sprayOffsetX;
-		pu.sprayOffsetY               = sprayOffsetY;
-		pu.maxMinUV                   = MaxMinUV;
-		pu.useWaterInterestTexture    = useWaterInterestTexture;
-		pu.waterDetailHandleSentinel  = (uint32_t)waterDetailTexHandle;
-		pu.terrainTextures2Present    = (Terrain::terrainTextures2 != nullptr);
-		WaterStream::CheckParityFrame(pu);
-	}
 
 	if (s_waterDebugOn)
 	{

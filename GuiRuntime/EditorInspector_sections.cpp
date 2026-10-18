@@ -826,7 +826,6 @@ void drawTerrainPass() {
         ImGui::Text("Programs:");
         ImGui::BulletText("surface (solid):      %u", ts.surfaceProgramId);
         ImGui::BulletText("thin records:         %u", ts.thinProgramId);
-        ImGui::BulletText("water fast:           %u", ts.waterFastProgramId);
         // Read-only readout of the MDI water FS debug mode
         // (live control is deferred to Graphics Options > Water per panel discipline).
         // ::-qualified -> global symbol (decl at file top), not EditorInspector::.

@@ -94,14 +94,13 @@ inline const IslandContract* findIslandContract(ExecutorIslandId id) {
 // look like variance) with one counter slot per apply site, so each path is
 // observable on its own in the render-state dump. The aggregate is now derived
 // as the SUM over these ids (back-compat: the total is byte-stable).
-// 5 top-level applies (TerrainDecal, TerrainOverlay, StaticPropOpaque, MechOpaque, Water). Shadow left with the GL dynamic shadow pass (s61); the
+// 4 top-level applies (TerrainDecal, TerrainOverlay, StaticPropOpaque, MechOpaque); Water left with the GL water draw (s62). Shadow left with the GL dynamic shadow pass (s61); the
 // 5 PostProcess sub-stage applies (EdgeFog, FogOob, Shoreline, CloudShadow, ScreenShadow) left with the GL passes (s62).
 enum class ApplyPassId : uint8_t {
     TerrainDecal = 0,
     TerrainOverlay,
     StaticPropOpaque,
     MechOpaque,   // APPLY-STATE-MECHOPAQUE-1: top-level mech-opaque pipeline apply
-    Water,        // APPLY-STATE-WATER-1: top-level water pipeline apply (body-site post-compute-dispatch)
     Count,
 };
 
@@ -112,7 +111,6 @@ inline const char* applyPassName(ApplyPassId id) {
         case ApplyPassId::TerrainOverlay:          return "TerrainOverlay";
         case ApplyPassId::StaticPropOpaque:        return "StaticPropOpaque";
         case ApplyPassId::MechOpaque:              return "MechOpaque";
-        case ApplyPassId::Water:                   return "Water";
         default:                                   return "Unknown";
     }
 }

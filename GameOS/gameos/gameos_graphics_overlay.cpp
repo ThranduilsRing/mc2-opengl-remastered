@@ -767,27 +767,6 @@ void gosRenderer::executorApplyTerrainOverlayState()
     overlayStateAppliedByExecutor_ = true;
 }
 
-// APPLY-STATE-WATER-1: pre-apply the declared WaterArmed pipeline. Fifth consumer of the
-// top-level apply-state machinery, mirroring executorApplyTerrainOverlayState(). ★Unlike
-// decal/overlay/staticprop/mech (whose apply is dispatched at the begin seam), this is
-// dispatched at the BODY draw site (renderWaterFastPath, immediately before the :3276
-// applyPipeline) because a mid-body COMPUTE dispatch (ComputeDispatchAndBindThinRecords ->
-// glUseProgram(compute)) runs between the begin seam and the applyPipeline, so a seam
-// pre-apply would be clobbered. Performs the SOLE liftable entry render-state
-// (applyPipeline(WaterArmed)), bumps the apply-state counter, and flags the body to skip its
-// own applyPipeline (one-shot). Only the pipeline is lifted; FBO/drawBuffers/viewport are
-// inherited from the caller (scene/MainColor FBO) and NOT touched here (kTopLevelStateDesc
-// records them Unknown/Inherit). The debug-gated glDepthMask (MC2_WATER_NO_DEPTH_WRITE) that
-// follows in the body is NOT lifted. Idempotent: the body makes the identical call when the
-// flag is false. Only reached when MC2_FRAMEGRAPH_EXECUTOR is ON and the pass runs.
-void gosRenderer::executorApplyWaterState()
-{
-    pipeline_binder::applyPipeline(
-        RenderCore::getPipelineDesc(RenderCore::PipelineId::WaterArmed), "WaterArmed");
-    mc2_framegraph_executor_bump_apply_state((unsigned)RenderCore::framegraph::ApplyPassId::Water);
-    waterStateAppliedByExecutor_ = true;
-}
-
 // FRAMEGRAPH-APPLY-STATE-EXTEND-1: shared GENERIC-AXES apply helper (declared in
 // RenderCore/top_level_apply_axes.h). Applies the OPTIONAL non-pipeline axes a
 // TopLevelStateDesc declares, each SKIPPED on its sentinel so the 4 unchanged consumers
