@@ -1237,7 +1237,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     // ready, BC7-bucketed, import failure) leaves materialReady=false -> FS keeps teal.
     if (s->wantMaterial && s->tier1 && (!s->materialReady || !s->materialReadyOn)) {
         Mc2ColorPropMaterialFeed mf{};
-        if (mc2_color_prop_island_get_material_feed(&mf) && mf.glTexArrayOff != 0 && !mf.bucketed) {
+        if (mc2_color_prop_island_get_material_feed(&mf) && mf.arrayKeyOff != 0 && !mf.bucketed) {
             s->terrainSunMC2[0] = mf.terrainSunMC2[0];
             s->terrainSunMC2[1] = mf.terrainSunMC2[1];
             s->terrainSunMC2[2] = mf.terrainSunMC2[2];
@@ -1257,7 +1257,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                     if (mf.typeAlphaClass[t] == 0 && mf.typeAlbedoLayer[t] >= 0)
                         layerTbl[t] = mf.typeAlbedoLayer[t];
                 }
-                if (cp_import_albedo_array(s, cp_target_off(s), mf.glTexArrayOff, mf.albedoOff)) {
+                if (cp_import_albedo_array(s, cp_target_off(s), mf.arrayKeyOff, mf.albedoOff)) {
                     cp_upload_layer_table(s, layerTbl.data(), mf.typeCount);
                     changed = true;
                     vlog("material feed active: alpha-OFF %u types textured (sun=%.2f,%.2f,%.2f).",
@@ -1295,13 +1295,13 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             // ---- alpha-ON (class 1): the alpha-MIXED buildings. typeAlbedoLayer[t] is
             // ALREADY group-relative into s_texArrayOn for class-1 types, so the same
             // table shape works with the alpha-ON array + a 0.5 alpha-test in the FS. ----
-            if (!s->materialReadyOn && mf.glTexArrayOn != 0) {
+            if (!s->materialReadyOn && mf.arrayKeyOn != 0) {
                 std::vector<int32_t> layerOnTbl(mf.typeCount, -1);
                 for (uint32_t t = 0; t < mf.typeCount; ++t) {
                     if (mf.typeAlphaClass[t] == 1 && mf.typeAlbedoLayer[t] >= 0)
                         layerOnTbl[t] = mf.typeAlbedoLayer[t];
                 }
-                if (cp_import_albedo_array(s, cp_target_on(s), mf.glTexArrayOn, mf.albedoOn)) {
+                if (cp_import_albedo_array(s, cp_target_on(s), mf.arrayKeyOn, mf.albedoOn)) {
                     cp_upload_layer_table_on(s, layerOnTbl.data(), mf.typeCount);
                     changed = true;
                     vlog("material feed active: alpha-ON %u types textured (alpha-test 0.5).",

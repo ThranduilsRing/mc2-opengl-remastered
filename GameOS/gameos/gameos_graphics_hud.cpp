@@ -716,8 +716,7 @@ void gosRenderer::flushHUDBatch()
         static unsigned s_hudDeclineLogs = 0;
         if (s_hudDeclineLogs < 4) {
             ++s_hudDeclineLogs;
-            mc2::fmt::print_err("[VK_HUD_DECLINE v1] draws={:d} native tail declined the frame; the HUD batch is dropped
-", mc2::fmt::as_u32((unsigned)hudBatch_.size()));
+            mc2::fmt::print_err("[VK_HUD_DECLINE v1] draws={:d} native tail declined the frame; the HUD batch is dropped\n", mc2::fmt::as_u32((unsigned)hudBatch_.size()));
         }
     }
     hudFlushed_ = true;

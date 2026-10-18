@@ -686,11 +686,15 @@ void gosPostProcess::initDynamicShadows()
         }
 
         mc2::fmt::print_err("[CSM] init nearLayers={:d} arraySize={:d} fullMapSize={:d} separate={:d}\n", mc2::fmt::as_i32(nearCascades), mc2::fmt::as_i32(dynShadowMapSize_), mc2::fmt::as_i32(dynamicFullMapSize_), mc2::fmt::as_i32(mc2ShadowFullMapSeparate() ? 1 : 0));
+        csmBuilt_ = (dynShadowArrayTex_ != 0 && dynamicFullMapTex_ != 0);
     }
+    dynShadowBuilt_ = (dynShadowFBO_ != 0 && dynShadowDepthTex_ != 0);
 }
 
 void gosPostProcess::destroyDynamicShadows()
 {
+    dynShadowBuilt_ = false;
+    csmBuilt_ = false;
     if (dynShadowFBO_) { glDeleteFramebuffers(1, &dynShadowFBO_); dynShadowFBO_ = 0; }
     if (dynShadowDepthTex_) { glDeleteTextures(1, &dynShadowDepthTex_); dynShadowDepthTex_ = 0; }
     if (dynShadowDummyColorTex_) { glDeleteTextures(1, &dynShadowDummyColorTex_); dynShadowDummyColorTex_ = 0; }

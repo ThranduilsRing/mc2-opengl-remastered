@@ -220,6 +220,9 @@ public:
     void setDynamicShadowInteropTexture(GLuint tex) { dynShadowInteropTex_ = tex; }
 #endif
     GLuint getDynamicShadowFBO() const { return dynShadowFBO_; }
+    // The dynamic shadow state exists (the single map; the cascades when ShadowCSM is on). What the Vulkan terrain feed asks instead of the GL handles.
+    bool dynShadowBuilt() const { return dynShadowBuilt_; }
+    bool csmBuilt() const { return csmBuilt_; }
     // When CSM is active during the caster pass, this returns the matrix for the
     // cascade currently being rendered (csmActiveCascade_), so the existing
     // batcher caster sites (which all upload getDynamicLightSpaceMatrix() as
@@ -704,6 +707,8 @@ private:
     GLuint dynShadowInteropTex_ = 0;
 #endif
     int dynShadowMapSize_;
+    bool dynShadowBuilt_ = false;
+    bool csmBuilt_ = false;
     float dynamicLightSpaceMatrix_[16];
     glsl_program* shadowDebugProg_;
 

@@ -74,8 +74,8 @@ int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out);
 uint32_t mc2_static_prop_vertex_stride(void);
 
 // VK-P11 STATIC-PROP MATERIAL (MC2_VK_PROP_MATERIAL) — copy-once material feed.
-// Hands the color island the GL name of the alpha-OFF albedo GL_TEXTURE_2D_ARRAY
-// (s_texArrayOff — buildings live here; the parked Tree/Generic alpha-ON group is
+// Hands the color island the change key of the alpha-OFF albedo array
+// (the CPU group array — buildings live here; the parked Tree/Generic alpha-ON group is
 // a SEPARATE coverage gap) plus a per-type group-relative albedo LAYER table and a
 // per-type alpha-class flag. The island copy-once imports the array (glGetTexImage /
 // glGetCompressedTexImage -> vkCmdCopyBufferToImage, layerCount=N, full mips) into a
@@ -86,27 +86,27 @@ uint32_t mc2_static_prop_vertex_stride(void);
 // `bucketed`  = 1 when MC2_STATICPROP_BC7 split the group into per-bucket sibling
 //               arrays (bucket-relative layers): the single-array import is invalid
 //               then, so the island fails soft to the flat teal (materials DEFERRED
-//               for BC7). `glTexArrayOff` == 0 or !finalized -> return 0 (fail soft).
-// `typeAlbedoLayer[t]` = group-relative albedo layer for type t in glTexArrayOff, or
+//               for BC7). `arrayKeyOff` == 0 or !finalized -> return 0 (fail soft).
+// `typeAlbedoLayer[t]` = group-relative albedo layer for type t in the alpha-OFF array, or
 //               -1 if type t has no alpha-OFF texture (island keeps teal for that type).
 // `typeAlphaClass[t]`  = 0 alpha-OFF, 1 alpha-ON. The island only textures alpha-OFF
-//               types (class 0) from glTexArrayOff; class 1 types keep teal.
+//               types (class 0) from the alpha-OFF array; class 1 types keep teal.
 // Buffers are batcher-owned and valid until onMapUnload(). Returns 0 if not finalized
 // or the alpha-OFF array is unavailable.
 struct Mc2ColorPropMaterialFeed {
-    uint32_t        glTexArrayOff;   // GL name of s_texArrayOff (alpha-OFF 2D_ARRAY)
+    uint32_t        arrayKeyOff;     // change key of the alpha-OFF group array (0 = not built; new serial per build)
     uint32_t        bucketed;        // 1 = BC7/bucketed (island fails soft, keeps teal)
     const int32_t*  typeAlbedoLayer; // [typeCount] group-relative layer (-1 = none)
     const int32_t*  typeAlphaClass;  // [typeCount] 0=alpha-OFF, 1=alpha-ON
     uint32_t        typeCount;
     float           terrainSunMC2[3];// gos_GetTerrainLightDir (surface->sun, MC2 world)
-    // VK-P11 STATIC-PROP MATERIAL alpha-ON: GL name of s_texArrayOn (alpha-ON 2D_ARRAY).
+    // VK-P11 STATIC-PROP MATERIAL alpha-ON: the key of the alpha-ON group array.
     // typeAlbedoLayer[t] is ALREADY group-relative for class-1 types (layer into
-    // glTexArrayOn), so no second layer table is needed on the feed side. 0 = alpha-ON
+    // the alpha-ON array), so no second layer table is needed on the feed side. 0 = alpha-ON
     // array not built (island imports/routes class-1 types only when non-zero).
-    uint32_t        glTexArrayOn;    // GL name of s_texArrayOn (alpha-ON 2D_ARRAY)
+    uint32_t        arrayKeyOn;      // change key of the alpha-ON group array (0 = not built)
     // The CPU copies of the two group arrays (every level, the bytes GL uploaded); null when a group has none. The island imports
-    // these; the GL names above only tell it the arrays were rebuilt.
+    // these; the keys above tell it the arrays were rebuilt.
     const mc2tex::TextureArrayCpu* albedoOff;
     const mc2tex::TextureArrayCpu* albedoOn;
 

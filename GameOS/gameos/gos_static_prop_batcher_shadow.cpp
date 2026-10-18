@@ -182,15 +182,15 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
 extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed* out) {
     if (!out) return 0;
     if (!s_geometryFinalized || s_fatalRegistrationFailure) return 0;
-    if (s_texArrayOff == 0) return 0;                 // alpha-OFF array not built
+    if (GpuStaticPropBatcher::instance().albedoKey(0) == 0) return 0;   // alpha-OFF array not built
     if (s_typeAlbedoLayer.empty() ||
         s_typeAlbedoLayer.size() != s_types.size()) return 0;
 
-    out->glTexArrayOff   = s_texArrayOff;
+    out->arrayKeyOff     = GpuStaticPropBatcher::instance().albedoKey(0);
     // VK-P11 STATIC-PROP MATERIAL alpha-ON: expose the alpha-ON group array (0 if not
     // built). typeAlbedoLayer[] already carries the group-relative layer for class-1
     // types, so the island routes them into this array with the same layer table.
-    out->glTexArrayOn    = s_texArrayOn;
+    out->arrayKeyOn      = GpuStaticPropBatcher::instance().albedoKey(1);
     {
         const auto& batcher = GpuStaticPropBatcher::instance();
         out->albedoOff = batcher.albedoArray(0).levels.empty() ? nullptr : &batcher.albedoArray(0);
