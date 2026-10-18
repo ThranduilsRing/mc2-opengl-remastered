@@ -121,7 +121,7 @@ void
 	{
 		*stream << debrisPositions[i];
 
-		*stream << debrisSpheres[i].center;
+		*stream << mc2::math::toPoint3D(debrisSpheres[i].center);
 		*stream << debrisSpheres[i].radius;
 
 		Check_Object(debrisPieces[i]);
@@ -197,7 +197,9 @@ void
 	{
 		*stream >> debrisPositions[i];
 
-		*stream >> debrisSpheres[i].center;
+		Stuff::Point3D center;
+		*stream >> center;
+		debrisSpheres[i].center = mc2::math::toGlm(center);
 		*stream >> debrisSpheres[i].radius;
 
 		if(debrisSpheres[i].radius < minRadius)
@@ -546,7 +548,7 @@ bool
 			Stuff::Point3D point;
 			Stuff::Scalar radius = spec->debrisSpheres[i].radius;
 
-			point.Multiply(spec->debrisSpheres[i].center, particle->m_localToParent);
+			point.Multiply(mc2::math::toPoint3D(spec->debrisSpheres[i].center), particle->m_localToParent);
 
 			box.max.x = point.x + radius;
 			box.min.x = point.x - radius;
@@ -578,7 +580,7 @@ bool
 			Stuff::Point3D point;
 			Stuff::Scalar radius = spec->debrisSpheres[i].radius;
 
-			point.Multiply(spec->debrisSpheres[i].center, particle->m_localToParent);
+			point.Multiply(mc2::math::toPoint3D(spec->debrisSpheres[i].center), particle->m_localToParent);
 
 			local_box.max.x = point.x + radius;
 			local_box.min.x = point.x - radius;

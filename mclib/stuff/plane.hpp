@@ -23,7 +23,6 @@ namespace Stuff {class Plane;}
 
 namespace Stuff {
 
-	class Sphere;
 	class OBB;
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Plane ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -99,8 +98,6 @@ namespace Stuff {
 			GetDistanceTo(const Point3D& A_Point) const
 				{return normal * A_Point - offset;}
 		Scalar
-			GetDistanceTo(const Sphere& sphere) const;
-		Scalar
 			GetDistanceTo(const OBB& box) const;
 
 		//
@@ -112,16 +109,6 @@ namespace Stuff {
 				Scalar thickness=SMALL
 			) const
 				{Check_Object(this); return normal * point <= offset + thickness;}
-		bool
-			ContainsSomeOf(
-				const Sphere &sphere,
-				Scalar thickness=SMALL
-			) const;
-		bool
-			ContainsAllOf(
-				const Sphere &sphere,
-				Scalar thickness=SMALL
-			) const;
 		bool
 			ContainsSomeOf(
 				const OBB &box,
@@ -136,11 +123,6 @@ namespace Stuff {
 		//
 		// plane surface intersection functions
 		//
-		bool
-			Intersects(
-				const Sphere &sphere,
-				Scalar thickness=SMALL
-			) const;
 		bool
 			Intersects(
 				const OBB &box,

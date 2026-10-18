@@ -6,7 +6,7 @@
 
 #include"stuff.hpp"
 #include"linearmatrix.hpp"
-#include"sphere.hpp"
+#include"point3d.hpp"
 
 namespace Stuff {class OBB;}
 
@@ -241,15 +241,6 @@ namespace Stuff {
 				const OBB &second
 			);
 	};
-
-	inline Sphere&
-		Sphere::operator =(const OBB &obb)
-	{
-		Check_Pointer(this); Check_Object(&obb);
-		center = obb.localToParent;
-		radius = obb.sphereRadius;
-		return *this;
-	}
 
 }
 

@@ -9,6 +9,7 @@
 
 #include"gosfx.hpp"
 #include"effect.hpp"
+#include "math/mc2_math.h"
 
 namespace MidLevelRenderer {class MLRIndexedTriangleCloud;}
 
@@ -238,7 +239,7 @@ namespace gosFX
 				unsigned profile,
 				const Stuff::LinearMatrix4D &world_to_new_local,
 				Stuff::Time till,
-				Stuff::Sphere *sphere
+				mc2::math::Sphere *sphere
 			);
 		void
 			CreateNewProfile(

@@ -14,7 +14,6 @@ set(SOURCES ${SOURCES}
     random.cpp
     rotation.cpp
     scalar.cpp
-    sphere.cpp
     unitvector.cpp
     vector3d.cpp
     vector4d.cpp

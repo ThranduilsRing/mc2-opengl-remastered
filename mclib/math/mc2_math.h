@@ -79,6 +79,13 @@ struct Aabb {
 };
 inline Aabb unite(const Aabb& a, const Aabb& b) { return {glm::min(b.min, a.min), glm::max(b.max, a.max)}; }
 
+// The former Stuff::Sphere (S5.15): a center and a radius (gosFX debris pieces, tube profile bounds). Data only.
+struct Sphere {
+	glm::vec3 center{0.0f};
+	float radius = 0.0f;
+};
+static_assert(sizeof(Sphere) == 16, "Stuff::Sphere was a Point3D and a Scalar");
+
 inline glm::vec3 polarToVector(const YawPitchRange& polar)
 {
 	const float azimuthSine = sinf(polar.yaw), azimuthCosine = cosf(polar.yaw), altitudeSine = sinf(polar.pitch),

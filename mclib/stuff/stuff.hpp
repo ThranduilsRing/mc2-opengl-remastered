@@ -218,7 +218,6 @@ namespace Stuff {
 #include"plane.hpp"
 #include"point3d.hpp"
 #include"random.hpp"
-#include"sphere.hpp"
 #include"vector2d.hpp"
 #include"vector4d.hpp"
 #include"trace.hpp"

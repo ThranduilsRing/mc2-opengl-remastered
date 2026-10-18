@@ -87,7 +87,6 @@ add_library(mc2_tglloader STATIC
     "${CMAKE_SOURCE_DIR}/mclib/stuff/random.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/rotation.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/scalar.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/stuff/sphere.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/unitvector.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/vector3d.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/vector4d.cpp"

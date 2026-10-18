@@ -83,30 +83,6 @@ Plane&
 //#############################################################################
 //
 Scalar
-	Plane::GetDistanceTo(const Sphere& sphere) const
-{
-	Check_Object(this);
-	Check_Object(&sphere);
-
-	//
-	//-----------------------------------------------------------------------
-	// Find out how far the centerpoint of the sphere is from us, then adjust
-	// so that 0.0 means we are intersecting the sphere
-	//-----------------------------------------------------------------------
-	//
-	Scalar distance = GetDistanceTo(sphere.center);
-	if (distance > sphere.radius)
-		return distance - sphere.radius;
-	else if (distance < -sphere.radius)
-		return distance + sphere.radius;
-	return 0.0f;
-}
-
-//
-//#############################################################################
-//#############################################################################
-//
-Scalar
 	Plane::GetDistanceTo(const OBB& box) const
 {
 	Check_Object(this);
@@ -155,46 +131,6 @@ Scalar
 	if (distance > 0.0f)
 		return distance;
 	return 0.0f;
-}
-
-//
-//#############################################################################
-//#############################################################################
-//
-bool
-	Plane::ContainsSomeOf(
-		const Sphere &sphere,
-		Scalar thickness
-	) const
-{
-	return normal*sphere.center - offset <= sphere.radius - thickness;
-}
-
-//
-//#############################################################################
-//#############################################################################
-//
-bool
-	Plane::ContainsAllOf(
-		const Sphere &sphere,
-		Scalar thickness
-	) const
-{
-	return offset - normal*sphere.center >= sphere.radius + thickness;
-}
-
-//
-//#############################################################################
-//#############################################################################
-//
-bool
-	Plane::Intersects(
-		const Sphere &sphere,
-		Scalar thickness
-	) const
-{
-	Scalar dist = normal*sphere.center - offset;
-	return Abs(dist) <= sphere.radius + thickness;
 }
 
 //

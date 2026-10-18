@@ -893,7 +893,7 @@ bool gosFX::Tube::Execute(ExecuteInfo *info)
 		Check_Object(profile);
 		Verify (profile->m_age < 1.0f);
 		profile->m_age += dT*profile->m_ageRate;
-		Stuff::Sphere bounds;
+		mc2::math::Sphere bounds;
 		if (!AnimateProfile(i, profile_count, new_world_to_local, info->m_time, &bounds))
 		{
 			m_tailProfile = i;
@@ -1073,7 +1073,7 @@ bool
 		unsigned profile_index,
 		const Stuff::LinearMatrix4D &world_to_new_local,
 		Stuff::Time till,
-		Stuff::Sphere *bounds
+		mc2::math::Sphere *bounds
 	)
 {
 	Check_Object(this);
@@ -1125,7 +1125,7 @@ bool
 	template_to_world.Multiply(template_to_profile, profile->m_profileToWorld);
 	Stuff::AffineMatrix4D template_to_new_local;
 	template_to_new_local.Multiply(template_to_world, world_to_new_local);
-	bounds->center = template_to_new_local;
+	bounds->center = mc2::math::toGlm(Stuff::Point3D(template_to_new_local));
 	bounds->radius = scale;
 
 	//

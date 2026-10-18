@@ -10,6 +10,7 @@
 #include"gosfx.hpp"
 #include"spinningcloud.hpp"
 #include<mlr/mlr.hpp>
+#include "math/mc2_math.h"
 
 namespace MidLevelRenderer {class MLRShape;}
 
@@ -96,7 +97,7 @@ namespace gosFX
 			debrisPieces;
 		Stuff::DynamicArrayOf<Stuff::Point3D>
 			debrisPositions;
-		Stuff::DynamicArrayOf<Stuff::Sphere>
+		Stuff::DynamicArrayOf<mc2::math::Sphere>
 			debrisSpheres;
 		Stuff::DynamicArrayOf<Stuff::Scalar>
 			debrisSeed;

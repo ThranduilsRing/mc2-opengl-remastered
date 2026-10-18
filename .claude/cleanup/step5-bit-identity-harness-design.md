@@ -191,6 +191,9 @@ Finding: the 1-ULP trig rows were the HARNESS include order. The gameos/mclib/mc
   arguments REVERSED (Stuff Min(a, b) = a < b ? a : b = glm::min(b, a); the order decides +0/-0 and NaN). Callerless and gone with
   it: MLRPrimitiveBase::GetExtend, the Plane ExtentBox tests, Find_Planes_Of_Boxes, Use_Scalar_In_Sorted_Array, the ASCII
   reader. Corpus rows exact.box-union-min/max (REQUIRED) against the style.hpp Min/Max macros.
+- S5.15 (lane 1 s24) Stuff::Sphere deleted: `mc2::math::Sphere` (glm center + radius, 16 bytes as before) holds the gosFX debris
+  piece spheres (streamed as a Point3D then a Scalar, unchanged bytes) and the tube profile bounds. No arithmetic moved: the
+  Sphere union, the Plane sphere tests and Sphere = OBB had no caller and went with the type.
 Proof every batch: sim pair mc2_03/mc2_24 identical to the pre-port reference (exe 579b60e2c) and to the committed baselines; saveload mc2_03
 fb63e85ac66966cf and mc2_01 d46e3e5e30d26b15 = baselines; S5.2/S5.4 GL/VK capture pair day mc2_01 + night mc2_10 viewed.
 Left on Stuff: the types themselves (Vector3D ~2,000 uses outside stuff/, Point3D, the matrices, UnitQuaternion, angles) and every op whose
