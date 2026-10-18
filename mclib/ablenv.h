@@ -187,6 +187,7 @@ class ABLModule {
 			name[0] = '\0';
 			handle = -1;
 			staticData = NULL;
+			orderCallFlags = nullptr;
 			returnVal.integer = 0;
 			initCalled = false;
 			prevState = NULL;

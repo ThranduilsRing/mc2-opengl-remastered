@@ -740,7 +740,8 @@ void ABLModule::read (ABLFile* moduleFile) {
 
 	if (ModuleRegistry[handle].numOrderCalls) {
 		long numLongs = 1 + ModuleRegistry[handle].numOrderCalls / 32;
-		orderCallFlags = (unsigned long*)ABL_alloc(ABLPool::Stack, sizeof(unsigned long) * numLongs);
+		if (!orderCallFlags) // an instance read in place keeps its block
+			orderCallFlags = (unsigned long*)ABL_alloc(ABLPool::Stack, sizeof(unsigned long) * numLongs);
 		if (!orderCallFlags) {
 			char err[255];
 			sprintf(err, "ABLModule.read: Unable to AblStackHeap->malloc orderCallFlags [Module %d]", id);
@@ -1433,9 +1434,19 @@ void ABLModule::destroy (void) {
 		breakPointManager = nullptr;
 	}
 
+	// The instance's own blocks go back now, not at ABLi_close (BUGS row 78): the sized statics and the order flags.
 	if (staticData) {
+		const long* sizeList = ModuleRegistry[handle].sizeStaticVars;
+		for (long i = 0; i < ModuleRegistry[handle].numStaticVars; i++)
+			if (sizeList[i] > 0)
+				ABL_free(ABLPool::Stack, staticData[i].address);
 		ABL_free(ABLPool::Stack, staticData);
 		staticData = nullptr;
+	}
+
+	if (orderCallFlags) {
+		ABL_free(ABLPool::Stack, orderCallFlags);
+		orderCallFlags = nullptr;
 	}
 }
 
