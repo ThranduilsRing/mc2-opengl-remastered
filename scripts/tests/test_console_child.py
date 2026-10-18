@@ -64,7 +64,7 @@ def test_consoleless_parent_helper_propagates_output_and_rc():
     # and a pipe for stdout. The flag is needed here, and must not eat output.
     r = _run_parent("helper", detached=True)
     assert "PARENT-START" in r.stdout, r.stderr
-    assert "HAS-CONSOLE=False" in r.stdout, "premise: detached parent has no console"
+    assert "HAS-CONSOLE=True" in r.stdout, "detached parent adopted the shared hidden console"
     assert "PARENT-RC=7" in r.stdout
     assert "CHILD-OUT" in r.stdout
     assert "CHILD-ERR" in r.stderr
@@ -101,6 +101,7 @@ def test_kwargs_passthrough_when_console_present(monkeypatch):
 @win32
 def test_kwargs_forward_std_handles_when_headless(monkeypatch):
     monkeypatch.setattr(console_child, "has_console", lambda: False)
+    monkeypatch.setattr(console_child, "_adopt_shared_console", lambda: False)
     kw = console_child.child_kwargs(creationflags=0x200, stderr=subprocess.STDOUT)
     assert kw["creationflags"] == 0x200 | console_child.CREATE_NO_WINDOW
     assert kw["stderr"] == subprocess.STDOUT, "caller's explicit stream wins"
@@ -112,6 +113,7 @@ def test_redirected_headless_adds_only_the_flag(monkeypatch):
     """A call that captures/redirects supplies its own std handles; forwarding ours
     would raise 'stdout and stderr arguments may not be used with capture_output'."""
     monkeypatch.setattr(console_child, "has_console", lambda: False)
+    monkeypatch.setattr(console_child, "_adopt_shared_console", lambda: False)
     kw = console_child.child_kwargs(redirected=True)
     assert kw == {"creationflags": console_child.CREATE_NO_WINDOW}
     # background-launch: allow kw is console_child.child_kwargs(redirected=True) output under a patched has_console
@@ -134,4 +136,37 @@ def test_nofocus_hidden_kwargs_follows_the_console_rule(monkeypatch):
     assert "creationflags" not in nofocus.hidden_kwargs()
     if sys.platform == "win32":
         monkeypatch.setattr(nofocus, "has_console", lambda: False)
+        monkeypatch.setattr(nofocus, "_adopt_shared_console", lambda: False)
         assert nofocus.hidden_kwargs()["creationflags"] & nofocus.CREATE_NO_WINDOW
+
+
+SHARED = textwrap.dedent("""
+    import subprocess, sys
+    sys.path.insert(0, {scripts!r})
+    import console_child
+    print('BEFORE=%s' % console_child.has_console(), flush=True)
+    kw1 = console_child.child_kwargs()
+    kw2 = console_child.child_kwargs()
+    print('AFTER=%s' % console_child.has_console(), flush=True)
+    print('FLAG=%s' % (('creationflags' in kw1) or ('creationflags' in kw2)), flush=True)
+    print('RC=%d' % subprocess.run([sys.executable, '-c', {child!r}], **kw2).returncode, flush=True)
+    print('RED=%s' % sorted(console_child.child_kwargs(redirected=True)), flush=True)
+""").format(scripts=str(ROOT / "scripts"), child=CHILD)
+
+
+@win32
+def test_consoleless_parent_adopts_one_shared_console_no_flag():
+    r = subprocess.run([sys.executable, "-c", SHARED], capture_output=True, text=True,
+                       creationflags=DETACHED_PROCESS, timeout=60)  # background-launch: allow detached no-console parent premise
+    assert "BEFORE=False" in r.stdout, r.stderr
+    assert "AFTER=True" in r.stdout
+    assert "FLAG=False" in r.stdout, "no CREATE_NO_WINDOW once the console is shared"
+    assert "RC=7" in r.stdout and "CHILD-OUT" in r.stdout and "CHILD-ERR" in r.stderr
+    assert "RED=[]" in r.stdout
+
+
+@win32
+def test_adopt_failure_falls_back_to_flag(monkeypatch):
+    monkeypatch.setattr(console_child, "has_console", lambda: False)
+    monkeypatch.setattr(console_child, "_adopt_shared_console", lambda: False)
+    assert console_child.child_kwargs(redirected=True)["creationflags"] & console_child.CREATE_NO_WINDOW
