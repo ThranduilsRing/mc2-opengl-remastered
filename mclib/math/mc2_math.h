@@ -15,7 +15,13 @@ inline constexpr float TwoPi = static_cast<float>(2.0 * 3.14159265358979323846);
 
 // The engine's ROW-vector convention (Stuff p' = p * M) on glm types: a point carries the translation row, a vector does not.
 inline glm::vec3 transformPoint(const glm::vec3& p, const glm::mat4& m) { return glm::vec3(glm::vec4(p, 1.0f) * m); }
-inline glm::vec3 transformVector(const glm::vec3& v, const glm::mat4& m) { return glm::vec3(glm::vec4(v, 0.0f) * m); }
+// A vector has no translation term: three products per component, as Stuff::Vector3D::Multiply(v, M). (vec4(v, 0) * m added
+// a 0 * m(3, c) term: signed zero and inf * 0 differed on 787 of 100000 corpus cases.)
+inline glm::vec3 transformVector(const glm::vec3& v, const glm::mat4& m)
+{
+	return glm::vec3(v.x * m[0][0] + v.y * m[0][1] + v.z * m[0][2], v.x * m[1][0] + v.y * m[1][1] + v.z * m[1][2],
+		v.x * m[2][0] + v.y * m[2][1] + v.z * m[2][2]);
+}
 
 // Stuff::Vector3D::Divide(v, s): ONE float reciprocal, then three multiplies (glm v / s divides each component).
 inline glm::vec3 divide(const glm::vec3& v, float s)
