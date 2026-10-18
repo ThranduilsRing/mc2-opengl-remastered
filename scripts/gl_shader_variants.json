@@ -373,7 +373,7 @@
    "key": "decal",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:612",
+   "source": "GameOS/gameos/gameos_graphics.cpp:551",
    "stages": {
     "frag": "shaders/decal.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -399,7 +399,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:612",
+   "source": "GameOS/gameos/gameos_graphics.cpp:551",
    "stages": {
     "frag": "shaders/decal.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -417,7 +417,7 @@
     "if (mc2ShadowCsmEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:612",
+   "source": "GameOS/gameos/gameos_graphics.cpp:551",
    "stages": {
     "frag": "shaders/decal.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -438,7 +438,7 @@
     "if (mc2ShadowDistFadeWu() > 0.0f)"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:612",
+   "source": "GameOS/gameos/gameos_graphics.cpp:551",
    "stages": {
     "frag": "shaders/decal.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -455,7 +455,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:612",
+   "source": "GameOS/gameos/gameos_graphics.cpp:551",
    "stages": {
     "frag": "shaders/decal.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -474,123 +474,6 @@
     "tesc": "shaders/gos_terrain.tesc",
     "tese": "shaders/gos_terrain.tese",
     "vert": "shaders/gos_terrain.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [],
-   "id": "gos_terrain_mask_solid",
-   "key": "gos_terrain_mask_solid",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:528",
-   "stages": {
-    "frag": "shaders/gos_terrain.frag",
-    "vert": "shaders/gos_terrain_mask_solid.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [
-    "MC2_SHADOW_MIN_SUN_SIN=1.50000000"
-   ],
-   "id": "gos_terrain_mask_solid",
-   "key": "gos_terrain_mask_solid{SHADOW_MIN_SUN_SIN=1.50000000}",
-   "optional_groups_on": [
-    "call:mc2TerrainShadowSunDefine()"
-   ],
-   "prefix": "#version 430\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:528",
-   "stages": {
-    "frag": "shaders/gos_terrain.frag",
-    "vert": "shaders/gos_terrain_mask_solid.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [
-    "MC2_SHADOW_STATIC_BANDFIX_V2"
-   ],
-   "id": "gos_terrain_mask_solid",
-   "key": "gos_terrain_mask_solid{SHADOW_STATIC_BANDFIX_V2}",
-   "optional_groups_on": [
-    "if (mc2ShadowStaticBandFixV2Enabled())"
-   ],
-   "prefix": "#version 430\n#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:528",
-   "stages": {
-    "frag": "shaders/gos_terrain.frag",
-    "vert": "shaders/gos_terrain_mask_solid.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [
-    "MC2_SHADOW_STATIC_BANDFIX"
-   ],
-   "id": "gos_terrain_mask_solid",
-   "key": "gos_terrain_mask_solid{SHADOW_STATIC_BANDFIX}",
-   "optional_groups_on": [
-    "if (mc2ShadowStaticBandFixEnabled())"
-   ],
-   "prefix": "#version 430\n#define MC2_SHADOW_STATIC_BANDFIX 1\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:528",
-   "stages": {
-    "frag": "shaders/gos_terrain.frag",
-    "vert": "shaders/gos_terrain_mask_solid.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [
-    "TERRAIN_NORMAL_ARRAY",
-    "MC2_SHADOW_STATIC_BANDFIX",
-    "MC2_SHADOW_STATIC_BANDFIX_V2",
-    "MC2_SHADOW_MIN_SUN_SIN=1.50000000"
-   ],
-   "id": "gos_terrain_mask_solid",
-   "key": "gos_terrain_mask_solid{TERRAIN_NORMAL_ARRAY,SHADOW_STATIC_BANDFIX,SHADOW_STATIC_BANDFIX_V2,SHADOW_MIN_SUN_SIN=1.50000000}",
-   "optional_groups_on": [
-    "if (terrainNormalArrayEnabled())",
-    "if (mc2ShadowStaticBandFixEnabled())",
-    "if (mc2ShadowStaticBandFixV2Enabled())",
-    "call:mc2TerrainShadowSunDefine()"
-   ],
-   "prefix": "#version 430\n#define TERRAIN_NORMAL_ARRAY\n#define MC2_SHADOW_STATIC_BANDFIX 1\n#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:528",
-   "stages": {
-    "frag": "shaders/gos_terrain.frag",
-    "vert": "shaders/gos_terrain_mask_solid.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [
-    "TERRAIN_NORMAL_ARRAY"
-   ],
-   "id": "gos_terrain_mask_solid",
-   "key": "gos_terrain_mask_solid{TERRAIN_NORMAL_ARRAY}",
-   "optional_groups_on": [
-    "if (terrainNormalArrayEnabled())"
-   ],
-   "prefix": "#version 430\n#define TERRAIN_NORMAL_ARRAY\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:528",
-   "stages": {
-    "frag": "shaders/gos_terrain.frag",
-    "vert": "shaders/gos_terrain_mask_solid.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [],
-   "id": "gos_terrain_mask_water",
-   "key": "gos_terrain_mask_water",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:546",
-   "stages": {
-    "frag": "shaders/gos_tex_vertex.frag",
-    "vert": "shaders/gos_terrain_mask_water.vert"
    }
   },
   {
@@ -812,32 +695,6 @@
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_thin.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [],
-   "id": "gos_terrain_water_fast",
-   "key": "gos_terrain_water_fast",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:564",
-   "stages": {
-    "frag": "shaders/gos_tex_vertex.frag",
-    "vert": "shaders/gos_terrain_water_fast.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [],
-   "id": "gos_terrain_water_mdi",
-   "key": "gos_terrain_water_mdi",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n",
-   "source": "GameOS/gameos/gameos_graphics_water.cpp:304",
-   "stages": {
-    "frag": "shaders/gos_terrain_water_mdi.frag",
-    "vert": "shaders/gos_terrain_water_fast_mdi.vert"
    }
   },
   {
@@ -2732,18 +2589,6 @@
   {
    "assemble": "engine",
    "defines": [],
-   "id": "gpu_driven_cmd_patch",
-   "key": "gpu_driven_cmd_patch",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1479",
-   "stages": {
-    "comp": "shaders/gpu_driven_cmd_patch.comp"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [],
    "id": "gpu_driven_terrain_solid",
    "key": "gpu_driven_terrain_solid",
    "optional_groups_on": [],
@@ -2751,18 +2596,6 @@
    "source": "GameOS/gameos/gos_terrain_indirect_compute.cpp:14",
    "stages": {
     "comp": "shaders/gpu_driven_terrain_solid.comp"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [],
-   "id": "gpu_driven_water",
-   "key": "gpu_driven_water",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1477",
-   "stages": {
-    "comp": "shaders/gpu_driven_water.comp"
    }
   },
   {
@@ -4002,7 +3835,7 @@
    "key": "terrain_overlay",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:609",
+   "source": "GameOS/gameos/gameos_graphics.cpp:548",
    "stages": {
     "frag": "shaders/terrain_overlay.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -4028,7 +3861,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:609",
+   "source": "GameOS/gameos/gameos_graphics.cpp:548",
    "stages": {
     "frag": "shaders/terrain_overlay.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -4046,7 +3879,7 @@
     "if (mc2ShadowCsmEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:609",
+   "source": "GameOS/gameos/gameos_graphics.cpp:548",
    "stages": {
     "frag": "shaders/terrain_overlay.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -4067,7 +3900,7 @@
     "if (mc2ShadowDistFadeWu() > 0.0f)"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:609",
+   "source": "GameOS/gameos/gameos_graphics.cpp:548",
    "stages": {
     "frag": "shaders/terrain_overlay.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -4084,7 +3917,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:609",
+   "source": "GameOS/gameos/gameos_graphics.cpp:548",
    "stages": {
     "frag": "shaders/terrain_overlay.frag",
     "vert": "shaders/terrain_overlay.vert"

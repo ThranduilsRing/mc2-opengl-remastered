@@ -114,8 +114,6 @@ FS_FAMILIES = {
 # Known computed VS writes of `Color` WITHOUT .bgra that are certified
 # correct/neutral in current state: (file, normalized RHS, reason).
 KNOWN_VS_WRITES = [
-    ("shaders/gos_terrain_mask_solid.vert", "unpackARGB(lighting[vn].lightRGB)",
-     "mask pass: glColorMask(GL_FALSE) suppresses color output"),
     ("shaders/gos_terrain_thin.vert", "unpackARGB(lrgb)",
      "FROZEN current state: raw ARGB decode feeds gos_terrain.frag's .bgra "
      "read; near-greyscale vertex light + terrainTextures2 alphaOverride "
@@ -149,7 +147,6 @@ BIAS_APPLICATION_PINS = [
     ("shaders/gos_terrain_surface.vert",       r"clip\.z \+= TERRAIN_DEPTH_FUDGE \* clip\.w"),
     ("shaders/gos_terrain_thin.vert",          r"clip\.z \+= TERRAIN_DEPTH_FUDGE \* clip\.w"),
     ("shaders/gos_terrain.tese",               r"clip\.z \+= TERRAIN_DEPTH_FUDGE \* clip\.w"),
-    ("shaders/gos_terrain_mask_water.vert",    r"clip\.z \+= WATER_DEPTH_FUDGE_RASTER \* clip\.w"),
     ("shaders/gos_terrain_water_fast.vert",    r"clip\.z \+= WATER_DEPTH_FUDGE_FAST \* clip\.w"),
     ("shaders/gos_terrain_water_fast_mdi.vert", r"clip\.z \+= WATER_DEPTH_FUDGE_FAST \* clip\.w"),
     ("shaders/mech.vert",                      r"clip\.z \+= OBJECT_DEPTH_BIAS \* clip\.w"),

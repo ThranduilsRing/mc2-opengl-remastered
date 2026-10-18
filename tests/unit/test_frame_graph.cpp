@@ -1619,12 +1619,11 @@ TEST_CASE("top-level apply-state (h): StaticPropOpaque lifted pipelineId matches
 
 TEST_CASE("per-pass-apply-counters-1: ApplyPassId table is complete + names unique/non-Unknown") {
     using namespace RenderCore::framegraph;
-    // Exactly 5 apply paths, all top-level (the GL PostProcess sub-stage applies and the GL Shadow apply are gone).
-    CHECK(static_cast<unsigned>(ApplyPassId::Count) == 5u);
+    // Exactly 4 apply paths, all top-level (the GL PostProcess sub-stage, Shadow and Water applies are gone).
+    CHECK(static_cast<unsigned>(ApplyPassId::Count) == 4u);
     // Spot-check representative mappings.
     CHECK(std::string(applyPassName(ApplyPassId::StaticPropOpaque)) == "StaticPropOpaque");
     CHECK(std::string(applyPassName(ApplyPassId::MechOpaque))       == "MechOpaque");
-    CHECK(std::string(applyPassName(ApplyPassId::Water))            == "Water");
     // All ids return a non-"Unknown", unique name.
     const char* seen[(int)ApplyPassId::Count] = {nullptr};
     for (int i = 0; i < (int)ApplyPassId::Count; ++i) {
@@ -1638,8 +1637,8 @@ TEST_CASE("per-pass-apply-counters-1: ApplyPassId table is complete + names uniq
     CHECK(std::string(applyPassName(ApplyPassId::Count)) == "Unknown");
 }
 
-// Each of the 5 TOP-LEVEL apply
-// passes (TerrainDecal / TerrainOverlay / StaticPropOpaque / MechOpaque / Water) maps to a RenderPassId
+// Each of the 4 TOP-LEVEL apply
+// passes (TerrainDecal / TerrainOverlay / StaticPropOpaque / MechOpaque) maps to a RenderPassId
 // whose kPassRenderState[] row declares a CONCRETE (non-Invalid) pipelineId. You
 // must not declare a top-level apply on a multi-pipeline / Invalid pass — the
 // executor cannot pre-apply a pipeline that doesn't statically exist.
@@ -1661,7 +1660,6 @@ TEST_CASE("apply-state-registration (top-level): each top-level ApplyPassId maps
         { ApplyPassId::TerrainOverlay,   RenderPassId::TerrainOverlay   },
         { ApplyPassId::StaticPropOpaque, RenderPassId::StaticPropOpaque },
         { ApplyPassId::MechOpaque,       RenderPassId::MechOpaque       },
-        { ApplyPassId::Water,            RenderPassId::Water            },
     };
     for (const Row& r : topLevel) {
         // The ApplyPassId name and the RenderPassId name must agree (no silent skew).

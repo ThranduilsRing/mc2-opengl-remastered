@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 947
 registry_entry_count: 193
-verified_count: 931
+verified_count: 920
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -4282,7 +4282,6 @@ flags:
     rule: Prefix
     owner: gameos
     doc: ""
-    verified: true
   - name: MC2_RENDER_WATER_PARITY_CHECK
     kind: Bool
     default: false
@@ -5702,28 +5701,24 @@ flags:
     owner: terrain
     doc: "Cached at Init() time; re-read here for the IsMaskDispatchEnabled() path which may be called before Init() (safe: returns false if not init'd)."
     smoke_passthrough: true
-    verified: true
   - name: MC2_TERRAIN_MASK_DISPATCH_SOLID
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: terrain
     doc: ""
-    verified: true
   - name: MC2_TERRAIN_MASK_DISPATCH_WATER
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: terrain
     doc: ""
-    verified: true
   - name: MC2_TERRAIN_MASK_UPLOAD_STATS
     kind: Bool
     default: false
     rule: Lead0
     owner: gameos
     doc: ""
-    verified: true
   - name: MC2_TERRAIN_MATERIAL_LIB
     kind: Bool
     default: false
@@ -7077,7 +7072,6 @@ flags:
     owner: terrain
     doc: "[WATER_DEPTHPROBE v1] RETAINED verification instrument (env-gated MC2_WATER_DEPTHPROBE, silent by default; demote-not-delete per the debug-instrumentation..."
     smoke_passthrough: true
-    verified: true
   - name: MC2_WATER_EDGE_FEATHER
     kind: Bool
     default: true
@@ -7099,7 +7093,6 @@ flags:
     rule: Presence
     owner: terrain
     doc: "WATER-FULL-RECIPE-GPU-TIMER-SPIKE-0 (MC2_WATER_FULL_RECIPE_SPIKE): measurement only."
-    verified: true
   - name: MC2_WATER_GATE_DIAG
     kind: Bool
     default: false
@@ -7121,7 +7114,6 @@ flags:
     rule: Lead0P
     owner: terrain
     doc: "WATER-GPU-FULL-RECIPE-CULL-1A (MC2_WATER_GPU_FULL_RECIPE_CULL, default-OFF): runs the full-recipe cull path NON-AUTHORITATIVELY (candidate path still draws..."
-    verified: true
   - name: MC2_WATER_HDRI_LOD
     kind: Float
     default: 0
@@ -7151,7 +7143,6 @@ flags:
     rule: Presence
     owner: gameos
     doc: ""
-    verified: true
   - name: MC2_WATER_REFLECTION
     kind: Bool
     default: true
@@ -7182,7 +7173,6 @@ flags:
     owner: terrain
     doc: "[WATER_RENDERPROBE v1] Fix B matrix-share release gate."
     smoke_passthrough: true
-    verified: true
   - name: MC2_WATER_S6_COST
     kind: Bool
     default: false
@@ -7283,7 +7273,6 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_WATER_UPLOAD_NARROW
     kind: Bool
     default: true
