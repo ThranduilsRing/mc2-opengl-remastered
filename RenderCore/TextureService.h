@@ -55,7 +55,7 @@ inline std::string makeTextureSourceId(std::string_view provider, std::string_vi
     std::string id(provider);
     id += '|';
     for (char c : path) {
-        if (c == '\\') c = '/';
+        if (c == static_cast<char>(92)) c = '/';   // a backslash
         else if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
         id += c;
     }

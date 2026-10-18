@@ -27,7 +27,6 @@
 #pragma once
 
 #include <cstdint>
-#include <new>
 
 #include "EngineView.h"
 #include "FrameArena.h"
@@ -113,7 +112,8 @@ public:
         FrameArena& arena = slots_.begin(frame);
         RenderCore::Span<FramePackets> s = arena.allocArray<FramePackets>(1, "FramePackets");
         if (s.empty()) { ++overflows_; open_ = nullptr; return nullptr; }
-        open_ = new (s.data) FramePackets();
+        open_ = s.data;
+        *open_ = empty_;   // trivially copyable: copying the default set initializes the arena memory
         open_->frame = frame;
         return open_;
     }
