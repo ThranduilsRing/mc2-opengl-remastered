@@ -271,7 +271,7 @@ void Mission::save (const char *saveFileName)
 
 	mc2IsInDisplayBackBuffer = true;
 
-	AsynFunc = nullptr;
+	AsynFunc = NULL;
 	mc2UseAsyncMouse = turnOffAsyncMouse;
 	if ( !mc2UseAsyncMouse)
 		MouseTimerKill();

@@ -73,7 +73,7 @@ class GameSoundSystem : public SoundSystem
 			messagesInQueue = 0;
 			currentFragment = 0;
 			playingNoise = false;
-			radioHandle = nullptr;
+			radioHandle = NULL;
 
 			//------------------------------------------------------------
 			// Startup the Radio Message Queue.

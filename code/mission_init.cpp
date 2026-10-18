@@ -706,7 +706,7 @@ void Mission::initMissionSettings(MissionInitFrame& f) {
 	}
 
 	craterManager = (CraterManagerPtr)missionHeap->Malloc(sizeof(CraterManager));
-	gosASSERT(craterManager != nullptr);
+	gosASSERT(craterManager != NULL);
 	::new (craterManager) CraterManager;
 		
 	result = craterManager->init(1000,20479,"feet");

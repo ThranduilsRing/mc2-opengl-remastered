@@ -906,7 +906,7 @@ void Mission::initWeatherCamera(MissionInitFrame& f) {
 void Mission::initInterface(MissionInitFrame& f) {
 	auto& result = f.result; auto& pakFile = f.pakFile;
 	missionInterface = new MissionInterfaceManager;
-	gosASSERT(missionInterface != nullptr);
+	gosASSERT(missionInterface != NULL);
 	
 	missionInterface->initTacMap( &pakFile, 2 );
 	
@@ -936,7 +936,7 @@ void Mission::initInterface(MissionInitFrame& f) {
 
 	if (tempSpecialAreaFootPrints) {
 		systemHeap->Free(tempSpecialAreaFootPrints);
-		tempSpecialAreaFootPrints = nullptr;
+		tempSpecialAreaFootPrints = NULL;
 		tempNumSpecialAreas = 0;
 	}
 
