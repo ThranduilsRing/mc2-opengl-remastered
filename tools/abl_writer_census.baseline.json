@@ -11,11 +11,6 @@
    "verdict": "engine",
    "why": "formats a diagnostic, log or print line into a local C++ buffer, truncated at the buffer's size; no script variable is written"
   },
-  "code/ablmc2.cpp::ablStackMallocCallback::memset": {
-   "count": 1,
-   "verdict": "bounded",
-   "why": "zeroes exactly the block it has just allocated for a script variable or frame"
-  },
   "code/ablmc2.cpp::logAblFunctionTableCapacity::to_buf": {
    "count": 1,
    "verdict": "engine",
@@ -530,6 +525,11 @@
    "count": 1,
    "verdict": "read",
    "why": "reads the point of the script's real array"
+  },
+  "mclib/ablrtn.cpp::ABL_alloc::memset": {
+   "count": 1,
+   "verdict": "bounded",
+   "why": "zeroes exactly the block the environment pool has just allocated (script variables, frames, symbols, code)"
   },
   "mclib/ablrtn.cpp::ABLi_createParamList::memset": {
    "count": 1,

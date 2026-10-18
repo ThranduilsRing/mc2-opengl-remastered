@@ -291,7 +291,7 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
     auto* sorter = new PayloadSorter(&textures);
     MidLevelRenderer::MLRClipper clipper(nullptr, sorter);
     Stuff::Matrix4D projection;
-    projection.SetPerspective(1.0f, 100.0f, Stuff::Radian(1.2f), 1.0f);
+    projection.SetPerspective(1.0f, 100.0f, 1.2f, 1.0f);
     const Stuff::RGBAColor fog(0.0f, 0.0f, 0.0f, 1.0f);
     MidLevelRenderer::MLRState state;
     gosFX::Effect::DrawInfo draw{};

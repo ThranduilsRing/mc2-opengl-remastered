@@ -71,7 +71,7 @@ class Carnage : public GameObject
 			
 			//NEW  GOS FX
 			long				effectId;
-			gosFX::Effect		*gosEffect;
+			gosFX::EffectPtr		gosEffect;
 			
 			//Lighting Data
 			TG_LightPtr			pointLight;

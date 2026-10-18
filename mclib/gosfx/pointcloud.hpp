@@ -77,8 +77,8 @@ namespace gosFX
 		};
 
 	protected:
-		MidLevelRenderer::MLRPointCloud
-			*m_cloudImplementation;
+		std::unique_ptr<MidLevelRenderer::MLRPointCloud>
+			m_cloudImplementation;
 		Stuff::Point3D
 			*m_P_localTranslation;
 		Stuff::RGBAColor

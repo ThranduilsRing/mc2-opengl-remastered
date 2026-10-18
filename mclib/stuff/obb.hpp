@@ -20,7 +20,6 @@ namespace Stuff {class OBB;}
 
 namespace Stuff {
 
-	class Line3D;
 
 	class OBB
 	{

@@ -31,6 +31,25 @@ bool Small_Enough(const Vector4D& v, Scalar e) {
 }  // namespace Stuff
 
 namespace {
+// The two Stuff::Radian::Normalize bodies (mclib/stuff/angle.cpp, deleted at S5.10), verbatim, as the oracle of the exact
+// wrappers that replaced them: same unqualified fmod as the non-PCH stuff library (stuff.hpp precedes <cmath> here).
+float legacyRadianNormalizeStatic(float Value) {
+    float temp = static_cast<float>(fmod(Value, Stuff::Two_Pi));
+    if (temp > Stuff::Pi)
+        temp -= Stuff::Two_Pi;
+    else if (temp <= -Stuff::Pi)
+        temp += Stuff::Two_Pi;
+    return temp;
+}
+float legacyRadianNormalizeMember(float angle) {
+    angle = static_cast<float>(fmod(angle, Stuff::Two_Pi));
+    if (angle > Stuff::Pi)
+        angle -= Stuff::Two_Pi;
+    else if (angle < -Stuff::Pi)
+        angle += Stuff::Two_Pi;
+    return angle;
+}
+
 constexpr unsigned seed = 0x53545546;
 constexpr unsigned randomCases = 100000;
 
@@ -157,20 +176,14 @@ void scalars(Corpus& corpus, float x, float y) {
     if (!Stuff::Small_Enough(x) || !Stuff::Small_Enough(y))
         corpus.exact("exact.atan2", Stuff::Arctan(y, x), mc2::math::atan2D(y, x));
     corpus.exact("exact.acos", Stuff::Arccos(bounded), mc2::math::acosD(bounded));
-    corpus.exact("exact.wrap-static", Stuff::Radian::Normalize(x), mc2::math::wrapAngleStatic(x));
-    {
-        Stuff::Radian member(x);
-        member.Normalize();
-        corpus.exact("exact.wrap-member", member.angle, mc2::math::wrapAngleMember(x));
-    }
-    const Stuff::SinCosPair pair{Stuff::Radian(x)};
-    corpus.scalar("angle.sincos-sin", pair.sine, glm::sin(x));
-    corpus.scalar("angle.sincos-cos", pair.cosine, glm::cos(x));
-    corpus.scalar("angle.wrap-static", Stuff::Radian::Normalize(x),
+    corpus.exact("exact.wrap-static", legacyRadianNormalizeStatic(x), mc2::math::wrapAngleStatic(x));
+    corpus.exact("exact.wrap-member", legacyRadianNormalizeMember(x), mc2::math::wrapAngleMember(x));
+    // S5.6: SinCosPair is gone; its sites call sinf/cosf (Stuff) or glm::sin/cos (gosFX tube).
+    corpus.scalar("angle.sincos-sin", sinf(x), glm::sin(x));
+    corpus.scalar("angle.sincos-cos", cosf(x), glm::cos(x));
+    corpus.scalar("angle.wrap-static", mc2::math::wrapAngleStatic(x),
                   glm::mod(x + Stuff::Pi, Stuff::Two_Pi) - Stuff::Pi);
-    Stuff::Radian angle(x);
-    angle.Normalize();
-    corpus.scalar("angle.wrap-member", angle.angle,
+    corpus.scalar("angle.wrap-member", mc2::math::wrapAngleMember(x),
                   glm::mod(x + Stuff::Pi, Stuff::Two_Pi) - Stuff::Pi);
 }
 
@@ -215,9 +228,9 @@ void matrices(Corpus& corpus, std::mt19937& rng, unsigned index) {
     mo.Invert(ma);
     corpus.matrix("matrix.inverse", mo, glm::inverse(gma), 4);
     Stuff::LinearMatrix4D la(true), lb(true), lo;
-    const Stuff::SinCosPair rotation{Stuff::Radian(smallRand())};
-    la(0, 0) = rotation.cosine; la(0, 1) = rotation.sine;
-    la(1, 0) = -rotation.sine; la(1, 1) = rotation.cosine;
+    const float turn = smallRand(), turnSine = sinf(turn), turnCosine = cosf(turn);
+    la(0, 0) = turnCosine; la(0, 1) = turnSine;
+    la(1, 0) = -turnSine; la(1, 1) = turnCosine;
     lb(3, 0) = smallRand(); lb(3, 1) = smallRand(); lb(3, 2) = smallRand();
     lo.Multiply(la, lb);
     corpus.matrix("linear.multiply", lo, glmMatrix(la, 3) * glmMatrix(lb, 3), 3);
@@ -286,4 +299,25 @@ TEST_CASE("Stuff/GLM identity detects byte changes and classifies migration cand
         CHECK(row.samples > 0);
         if (row.requireIdentity) CHECK(row.mismatches == 0);
     }
+}
+
+// Step 5 S5.9: the notation-file yaw/pitch/roll conversions that replaced Stuff::YawPitchRoll keep its bits. While the type
+// existed the corpus compared both directions against it; the digest of the outputs is the record kept after its deletion.
+TEST_CASE("Stuff/YawPitchRoll fold: the notation conversions keep the former type's bits") {
+    std::mt19937 rng(seed ^ 0x59505200u);
+    std::uniform_real_distribution<float> angle(-4.0f, 4.0f);
+    std::uint64_t digest = 1469598103934665603ull;
+    auto fold = [&](float f) { digest = (digest ^ std::bit_cast<std::uint32_t>(f)) * 1099511628211ull; };
+    for (unsigned i = 0; i < 20000; ++i) {
+        const float yaw = angle(rng), roll = angle(rng);
+        float pitch = angle(rng);
+        if (i % 50 == 0) pitch = (i % 100 == 0) ? Stuff::Pi_Over_2 : -Stuff::Pi_Over_2;  // the two singular branches
+        const Stuff::UnitQuaternion q = Stuff::Quaternion_From_Yaw_Pitch_Roll(yaw, pitch, roll);
+        float y = 0, p = 0, r = 0;
+        Stuff::Yaw_Pitch_Roll_From_Quaternion(q, &y, &p, &r);
+        for (float f : {q.x, q.y, q.z, q.w, y, p, r}) fold(f);
+    }
+    std::printf("[STUFF_GLM] op=yaw-pitch-roll.fold samples=20000 digest=%016llx\n", static_cast<unsigned long long>(digest));
+    // Recorded at S5.9 phase A, when both directions matched Stuff::YawPitchRoll on every sample (0 mismatches).
+    CHECK(digest == 0x4785bc9cd9dfa939ull);
 }

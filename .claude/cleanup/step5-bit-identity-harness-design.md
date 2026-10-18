@@ -152,8 +152,59 @@ Finding: the 1-ULP trig rows were the HARNESS include order. The gameos/mclib/mc
 - S5.3 3f83f2a52 class A: callerless Stuff math deleted (Arcsin, Tan, Round_Float_To_Word, the MultiplyByInverse family, Vector3D
   Get*Component, AlignWithVector, Plane::CalculateX/Y/Z, Line3D::FindEnd, Ray3D::GetClosestPointTo/SetOrigin, OBB::BuildSphere).
 - S5.4 22a0e8228 the last external callers of the differing ops (gosFX Sin/Cos/Lerp, cursor and terrain-light scalar divide) on the wrappers.
+- S5.5 a7585245a (lane 1 s22) types with no caller outside Stuff deleted bottom-up: Origin3D and Motion3D (their conversion overloads in
+  Matrix4D/AffineMatrix4D/LinearMatrix4D/Point3D/EulerAngles/YawPitchRoll/UnitQuaternion and the Note/Page notation accessors), and Degree
+  (its one user, the MLR spotlight reader, keeps the identical deg * Radians_Per_Degree). Census of external uses that decides the next
+  types: Ray3D 0 (base of Line3D), YawPitchRoll 0 (Stuff-internal EulerAngles notation I/O), SinCosPair 3, Line3D 8, Normal3D 8,
+  ExtentBox 9, RGBColor 12, Sphere 14, Radian 17, Plane 18, UnitVector3D 23, AffineMatrix4D 31, OBB 61, Vector2DOf 126, UnitQuaternion 127,
+  EulerAngles 212, Matrix4D 229, RGBAColor 265, Vector4D 277, Vector2DScalar 423, LinearMatrix4D 458, Point3D 710, Vector3D 2149.
+- S5.6 36ecb4215 (lane 1 s22) Stuff::SinCosPair deleted: its 12 Stuff-internal sites (matrices from EulerAngles/YawPitchRoll, Euler/YPR
+  from LinearMatrix4D, UnitQuaternion from a rotation vector, GetAngle, Multiply(q,t), Subtract, Vector3D from UnitQuaternion and
+  YawPitchRange) call the same cosf/sinf and Arctan in the same translation unit; the gosFX tube profile (render-only) uses glm::sin/cos.
+  The corpus sincos rows now assert sinf/cosf == glm::sin/cos (0 mismatches). Proof: sim pair identical to the pre-session reference,
+  saveload x2 = baselines, capture pair viewed, 38 REQUIRED rows 0 mismatches, build_all_targets -j2.
+- S5.7 0f485f8ab (lane 1 s22) Ray3D folded into Line3D (its only user was Line3D's base): origin/direction are Line3D members in the
+  same order, Project and the plane distance moved verbatim; the hidden or callerless Ray3D functions and Find_Closest_Approach deleted.
+- S5.9 (lane 1 s23) Stuff::YawPitchRoll deleted: its one real use was the notation-file UnitQuaternion entry (yaw, pitch, roll in
+  degrees). The two conversions it carried (the AffineMatrix4D::BuildRotation(YawPitchRoll) matrix and the YawPitchRoll-from-matrix
+  extraction) are now `Quaternion_From_Yaw_Pitch_Roll` / `Yaw_Pitch_Roll_From_Quaternion` in rotation.cpp, verbatim; the YawPitchRoll
+  notation accessors (Note/Page), the matrix/Euler/quaternion constructors and assignments, Small_Enough/Close_Enough/Lerp/Normalize,
+  the stream I/O and Spew went with it (no caller). Phase A corpus: both directions equal the class on 20000 samples incl. both +/-90
+  degree pitch branches (0 mismatches); the output digest 4785bc9cd9dfa939 is the REQUIRED row after the deletion.
+- S5.10 (lane 1 s23) Stuff::Radian deleted: angles are Scalar radians. EulerAngles/YawPitchRange members, the Matrix4D perspective
+  field of view, the MLR spotlight spread, the light-manager spread and the gosFX tube deviation are Scalar; EulerAngles::Normalize
+  and the quaternion-from-rotation-vector half angle call mc2::math::wrapAngleMember / wrapAngleStatic (corpus-exact); angle.cpp is
+  gone (the Radian Lerp had no caller: EulerAngles::Lerp already used the Scalar Stuff::Lerp). The corpus wrap rows now compare the
+  wrappers with the verbatim Radian::Normalize bodies kept in the test.
+- S5.11 (lane 1 s23) Stuff::Line3D deleted with its only user, the MLR CastRay family (MLRShape::CastRay had no caller; the
+  virtual MLRPrimitiveBase::CastRay and its MLR_I_PMesh / MLR_I_TMesh overrides went with it). Normal3D keeps its Plane use.
+- S5.12 (lane 1 s23) Stuff::Normal3D deleted: its one user left was Plane::normal, now a UnitVector3D (same layout; the
+  constructors, the normalizing assignment from a Vector3D and the dot product are UnitVector3D's own). Its transform members had no
+  caller (Multiply(Normal3D, AffineMatrix4D) even computed an inverse it never used). Normal3DClassID stays in the class-ID enum.
 Proof every batch: sim pair mc2_03/mc2_24 identical to the pre-port reference (exe 579b60e2c) and to the committed baselines; saveload mc2_03
 fb63e85ac66966cf and mc2_01 d46e3e5e30d26b15 = baselines; S5.2/S5.4 GL/VK capture pair day mc2_01 + night mc2_10 viewed.
 Left on Stuff: the types themselves (Vector3D ~2,000 uses outside stuff/, Point3D, the matrices, UnitQuaternion, angles) and every op whose
 callers are Stuff-internal. Next: port by TYPE bottom-up (a header batch per type converting members to glm with the bridge at the boundary),
 not by op: op-by-op porting cannot delete a type.
+
+## 8. Numerical contract (lane 1 s22, orchestrator addition 2026-10-17)
+
+- WHAT "bit-identical" promises: the same exe repeats itself, across job-system worker counts and across save/load (SIMID chain,
+  saveload digests). It does NOT promise identity across compilers (MSVC vs clang-cl presets) or platforms.
+- PINNED in `mclib/math/glm_config.h` (included by `mc2_math.h`; compile-time, fails the build on change): GLM 1.0.1, scalar
+  (`GLM_CONFIG_SIMD == GLM_DISABLE` via GLM_FORCE_PURE), no aligned gentypes, no forced intrinsics/FMA.
+- PINNED per command line (s23, replaces the s22 `_M_FP_*` preprocessor guard, which ran only in TUs that included GLM and was
+  bypassed under clang-cl): `cmake/Mc2SimFpContract.cmake` adds `/fp:precise` to every first-party TU (root project after the vendored
+  subdirectories, every standalone project through Mc2Standalone.cmake) and under clang-cl `/clang:-ffp-contract=off` (clang-cl's
+  `/fp:precise` alone means `-ffp-contract=on`, verified with `clang-cl -###`); configure fails when the global flags carry
+  `/fp:fast|contract|strict`, `-ffast-math`, `-ffp-model=fast|strict` or `-ffp-contract=fast|on`. `scripts/check-sim-fp-contract.py`
+  (check-contracts row `sim_fp_contract`) checks every code/, mclib/ and GameOS/ entry of the compile database (last `/fp:` is precise,
+  no forbidden flag, clang-cl last `-ffp-contract=` off) and the CMake sources; `--selftest` and the pytest are the rejection probes.
+- Retained exact wrappers (mc2_math.h), one line each:
+  - `transformPoint/transformVector`: row-vector p*M (Stuff convention); glm's `M*p` is the column convention, a different product.
+  - `divide(v, s)`: one float reciprocal then three multiplies, as Stuff::Vector3D::Divide; glm `v / s` divides each component (1 ULP).
+  - `lerp(a, b, t)`: a + t*(b-a) per component; glm::mix is a*(1-t) + b*t, which cancels differently.
+  - `wrapAngleStatic`: double fmod into (-Pi, Pi] (-Pi -> +Pi), as Radian::Normalize(Scalar); no glm equivalent with that interval.
+  - `wrapAngleMember`: as above into [-Pi, Pi] (-Pi stays), as Radian::Normalize(); the two intervals differ on purpose.
+  - `sinD/cosD/acosD/atan2D`: the DOUBLE CRT function rounded to float, which is what Stuff::Sin/Cos/Arccos/Arctan bind in the non-PCH
+    libraries (stuff, mlr, gosfx, editor); glm::sin(float) is sinf, 1 ULP apart on ~0.1% of inputs.

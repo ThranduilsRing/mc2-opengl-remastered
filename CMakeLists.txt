@@ -333,6 +333,9 @@ if(MSVC)
     add_compile_definitions("$<$<CONFIG:RelWithDebInfo>:_MSVC_STL_HARDENING=1>")
 endif()
 
+# Sim-math numerical contract (/fp:precise, no FMA contraction) on every first-party TU from here on.
+include(cmake/Mc2SimFpContract.cmake)
+
 add_subdirectory("./Gates" "./out/Gates")
 add_subdirectory("./mclib/" "./out/mclib")
 add_subdirectory("./RenderCore" "./out/RenderCore")

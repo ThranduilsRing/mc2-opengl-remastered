@@ -27,6 +27,9 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" AND MC2_CXX_STANDARD EQUAL 23)
     set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++23preview")
 endif()
 
+# The sim-math numerical contract (/fp:precise, no FMA contraction), same as the root project.
+include("${CMAKE_CURRENT_LIST_DIR}/Mc2SimFpContract.cmake")
+
 # MC2_ASAN: build the standalone project under MSVC AddressSanitizer (the doctest tier is the one that matters: the ownership step
 # runs it natively and under ASan for every batch). Mirrors the root project's option: /fsanitize=address, no /RTC, no incremental
 # link; the runtime DLL is copied next to an executable by mc2_asan_runtime(target). ASAN_OPTIONS=detect_leaks=0 is the usual run

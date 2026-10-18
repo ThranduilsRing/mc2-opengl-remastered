@@ -108,6 +108,17 @@ extern void (*ABLEndlessStateCallback) (UserFile* log);
 // CRUNCH/DECRUNCH routines
 //***************************************************************************
 
+// Bytecode is byte-packed: a multi-byte slot need not be aligned, so it is copied, never dereferenced through a typed pointer.
+template <class T> static void putCode (char* at, T value) {
+	memcpy(at, &value, sizeof(T));
+}
+
+template <class T> static T peekCode (const void* at) {
+	T value;
+	memcpy(&value, at, sizeof(T));
+	return(value);
+}
+
 void crunchToken (void) {
 
 	if (!Crunch)
@@ -131,8 +142,7 @@ void crunchSymTableNodePtr (SymTableNodePtr nodePtr) {
 	if (codeBufferPtr >= (codeBuffer + MaxCodeBufferSize - 100))
 		syntaxError(ABL_ERR_SYNTAX_CODE_SEGMENT_OVERFLOW);
 	else {
-		SymTableNodePtr* nodePtrPtr = (SymTableNodePtr*)codeBufferPtr;
-		*nodePtrPtr = nodePtr;
+		putCode(codeBufferPtr, nodePtr);
 		codeBufferPtr += sizeof(SymTableNodePtr);
 	}
 }
@@ -153,7 +163,7 @@ void crunchStatementMarker (void) {
 		if (IncludeDebugInfo) {
 			*((unsigned char*)codeBufferPtr) = (unsigned char)FileNumber;
 			codeBufferPtr += sizeof(unsigned char);
-			*((int*)codeBufferPtr) = lineNumber;
+			putCode(codeBufferPtr, static_cast<int>(lineNumber));
 			codeBufferPtr += sizeof(int);
 		}
 		*codeBufferPtr = saveCode;
@@ -193,7 +203,7 @@ char* crunchAddressMarker (Address address) {
 		*codeBufferPtr = (char)TKN_ADDRESS_MARKER;
 		codeBufferPtr++;
 		saveCodeBufferPtr = codeBufferPtr;
-		*((Address*)codeBufferPtr) = address;
+		putCode(codeBufferPtr, address);
 		codeBufferPtr += sizeof(Address);
 		*codeBufferPtr = saveCode;
 		codeBufferPtr++;
@@ -209,9 +219,9 @@ char* fixupAddressMarker (Address address) {
 	if (!Crunch)
 		return(nullptr);
 
-	char* oldAddress = *((Address*)address);
+	char* oldAddress = peekCode<Address>(address);
 
-	*((size_t*)address) = codeBufferPtr - address;
+	putCode(address, static_cast<size_t>(codeBufferPtr - address));
 	return(oldAddress);
 }
 
@@ -225,7 +235,7 @@ void crunchInteger (int value) {
 	if (codeBufferPtr >= (codeBuffer + MaxCodeBufferSize - 100))
 		syntaxError(ABL_ERR_SYNTAX_CODE_SEGMENT_OVERFLOW);
 	else {
-		*((int*)codeBufferPtr) = value;
+		putCode(codeBufferPtr, value);
 		codeBufferPtr += sizeof(int);
 	}
 }
@@ -255,7 +265,7 @@ void crunchOffset (Address address) {
 	if (codeBufferPtr >= (codeBuffer + MaxCodeBufferSize - 100))
 		syntaxError(ABL_ERR_SYNTAX_CODE_SEGMENT_OVERFLOW);
 	else {
-		*((size_t*)codeBufferPtr) = address - codeBufferPtr;
+		putCode(codeBufferPtr, static_cast<size_t>(address - codeBufferPtr));
 		codeBufferPtr += sizeof(size_t);
 	}
 }
@@ -275,7 +285,7 @@ char* createCodeSegment (long& codeSegmentSize) {
 	// there. Caller-visible codeSegmentSize stays the actual bytecode
 	// length; no consumer needs updating.
 	// See docs/asan-follow-ups.md findings #5 / #6.
-	char* codeSegment = (char*)ABLCodeMallocCallback(codeSegmentSize + 1);
+	char* codeSegment = (char*)ABL_alloc(ABLPool::Code, codeSegmentSize + 1);
 	if (!codeSegment)
 		ABL_Fatal(0, " ABL: Unable to AblCodeHeap->malloc code segment ");
 
@@ -291,9 +301,7 @@ char* createCodeSegment (long& codeSegmentSize) {
 
 SymTableNodePtr getCodeSymTableNodePtr (void) {
 
-	SymTableNodePtr* nodePtrPtr = (SymTableNodePtr*)codeSegmentPtr;
-
-	SymTableNodePtr nodePtr = *nodePtrPtr;
+	SymTableNodePtr nodePtr = peekCode<SymTableNodePtr>(codeSegmentPtr);
 	codeSegmentPtr += sizeof(SymTableNodePtr);
 	return(nodePtr);
 }
@@ -310,7 +318,7 @@ int getCodeStatementMarker (void) {
 		if (IncludeDebugInfo) {
 			FileNumber = *((unsigned char*)codeSegmentPtr);
 			codeSegmentPtr += sizeof(unsigned char);
-			lineNum = *((int*)codeSegmentPtr);
+			lineNum = peekCode<int>(codeSegmentPtr);
 			codeSegmentPtr += sizeof(int);
 		}
 	}
@@ -324,7 +332,7 @@ char* getCodeAddressMarker (void) {
 	Address address = nullptr;
 
 	if (codeToken == TKN_ADDRESS_MARKER) {
-		address = *((size_t*)codeSegmentPtr) + codeSegmentPtr - 1;
+		address = peekCode<size_t>(codeSegmentPtr) + codeSegmentPtr - 1;
 		codeSegmentPtr += sizeof(Address);
 	}
 	return(address);
@@ -334,7 +342,7 @@ char* getCodeAddressMarker (void) {
 
 int getCodeInteger (void) {
 
-	int value = *((int*)codeSegmentPtr);
+	int value = peekCode<int>(codeSegmentPtr);
 	codeSegmentPtr += sizeof(int);
 	return(value);
 }
@@ -352,7 +360,7 @@ unsigned char getCodeByte (void) {
 
 char* getCodeAddress (void) {
 
-	Address address = *((size_t*)codeSegmentPtr) + codeSegmentPtr - 1;
+	Address address = peekCode<size_t>(codeSegmentPtr) + codeSegmentPtr - 1;
 	codeSegmentPtr += sizeof(size_t);
 	return(address);
 }
@@ -500,7 +508,7 @@ void allocLocal (TypePtr typePtr) {
 //				allocLocal(typePtr->info.subrange.rangeTypePtr);
 //				break;
 			case FRM_ARRAY:
-				char* ptr = (char*)ABLStackMallocCallback(typePtr->size);
+				char* ptr = (char*)ABL_alloc(ABLPool::Stack, typePtr->size);
 				if (!ptr)
 					ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc local array ");
 				pushAddress((Address)ptr);
@@ -550,7 +558,7 @@ void freeLocal (SymTableNodePtr idPtr) {
 				// stack-layout mismatch may not actually belong to our heap; an SEH
 				// frame guarantees a bad free can never crash the mission (leak at worst).
 				__try {
-					ABLStackFreeCallback(itemPtr->address);
+					ABL_free(ABLPool::Stack, itemPtr->address);
 				} __except (1 /*EXCEPTION_EXECUTE_HANDLER*/) {
 				}
 			}

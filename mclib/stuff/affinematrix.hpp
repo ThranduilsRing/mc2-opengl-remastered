@@ -22,10 +22,8 @@ namespace Stuff {class AffineMatrix4D;}
 
 namespace Stuff {
 
-	class Origin3D;
 	class EulerAngles;
 	class UnitQuaternion;
-	class YawPitchRoll;
 
 	bool Close_Enough(
 		const AffineMatrix4D &m1,
@@ -55,13 +53,9 @@ namespace Stuff {
 			{BuildIdentity();}
 		AffineMatrix4D(const AffineMatrix4D &m)
 			{*this = m;}
-		explicit AffineMatrix4D(const Origin3D &p)
-			{*this = p;}
 		explicit AffineMatrix4D(const Matrix4D &m)
 			{*this = m;}
 		explicit AffineMatrix4D(const EulerAngles &angles)
-			{*this = angles;}
-		explicit AffineMatrix4D(const YawPitchRoll &angles)
 			{*this = angles;}
 		explicit AffineMatrix4D(const UnitQuaternion &q)
 			{*this = q;}
@@ -78,13 +72,9 @@ namespace Stuff {
 					memcpy(entries, m.entries, sizeof(m.entries)); return *this;
 				}
 		AffineMatrix4D&
-			operator=(const Origin3D &p);
-		AffineMatrix4D&
 			operator=(const Matrix4D &m);
 		AffineMatrix4D&
 			operator=(const EulerAngles &angles);
-		AffineMatrix4D&
-			operator=(const YawPitchRoll &angles);
 		AffineMatrix4D&
 			operator=(const UnitQuaternion &q);
 		AffineMatrix4D&
@@ -92,8 +82,6 @@ namespace Stuff {
 
 		AffineMatrix4D&
 			BuildRotation(const EulerAngles &angles);
-		AffineMatrix4D&
-			BuildRotation(const YawPitchRoll &angles);
 		AffineMatrix4D&
 			BuildRotation(const UnitQuaternion &q);
 		AffineMatrix4D&

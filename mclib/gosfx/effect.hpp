@@ -9,6 +9,8 @@
 
 #include"gosfx.hpp"
 #include<mlr/mlr.hpp>
+#include<memory>
+#include<vector>
 
 namespace MidLevelRenderer
 {
@@ -164,6 +166,10 @@ namespace gosFX
 	//###############################  Effect  ###################################
 	//############################################################################
 
+	class Effect;
+	// The owner of a live effect: a parent effect for its children, the game object or appearance for a top-level one.
+	using EffectPtr = std::unique_ptr<Effect>;
+
 	class Effect:
 		public Stuff::Node
 	{
@@ -270,7 +276,8 @@ namespace gosFX
 	// Events
 	//
 	protected:
-		Stuff::ChainOf<Effect *>
+		// The parent owns every child it spawned, in spawn order (Execute, Draw and Kill visit them in that order).
+		std::vector<EffectPtr>
 			m_children;
 		Stuff::ChainIteratorOf<Event*>
 			m_event;

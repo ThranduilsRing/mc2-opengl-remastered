@@ -104,6 +104,7 @@ add_executable(mc2_tests
     test_resource_strings.cpp
     test_abl_concat.cpp     # ABL concat(): the append never writes past the script variable's declared size
     test_abl_position.cpp   # ABL getRelativePositionToObject: the REAL binding against a scripted argument queue (abl_exec_shim.cpp)
+    test_cast_census.cpp    # cast census: MString hash (bounded copies, five-bit shift) and ABL double2long keep their results
     abl_exec_shim.cpp       # the interpreter stack / object table the position bindings read, answered from the scripted queue
     ${MC2_WORKTREE_ROOT}/mclib/abl_script_events.cpp  # the ABL reject/clamp log lines (leaf: reads CurModule / execLineNumber, answered by abl_exec_shim.cpp)
     ${MC2_WORKTREE_ROOT}/code/ablmc2_position.cpp  # the ABL position builtins under test (a TU of their own so they link without ablmc2_misc.cpp)
@@ -187,7 +188,7 @@ add_executable(mc2_tests
 mc2_link_gate(mc2_tests)
 
 # The ABL native-binding headers (ablmc2_internal.h) pull the gui/ and netlib/ headers; only the TUs that include them get those directories.
-set_source_files_properties(test_abl_position.cpp test_gui_bridge.cpp abl_exec_shim.cpp ${MC2_WORKTREE_ROOT}/code/ablmc2_position.cpp ${MC2_WORKTREE_ROOT}/mclib/abl_script_events.cpp PROPERTIES
+set_source_files_properties(test_abl_position.cpp test_cast_census.cpp test_gui_bridge.cpp abl_exec_shim.cpp ${MC2_WORKTREE_ROOT}/code/ablmc2_position.cpp ${MC2_WORKTREE_ROOT}/mclib/abl_script_events.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/gui;${MC2_WORKTREE_ROOT}/netlib;${MC2_WORKTREE_ROOT}/3rdparty/tracy")
 
 # LOGGING-FACADE-P0: mc2log.h needs <format>/consteval (C++20); engine headers already build at 23.
@@ -429,7 +430,6 @@ endif()
 if(TARGET glm::glm)
     set(MC2_IDENTITY_SOURCES
         test_stuff_glm_identity.cpp
-        ${MC2_WORKTREE_ROOT}/mclib/stuff/angle.cpp
         ${MC2_WORKTREE_ROOT}/mclib/stuff/vector3d.cpp
         ${MC2_WORKTREE_ROOT}/mclib/stuff/point3d.cpp
         ${MC2_WORKTREE_ROOT}/mclib/stuff/matrix.cpp

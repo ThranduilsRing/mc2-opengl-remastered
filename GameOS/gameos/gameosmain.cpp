@@ -186,16 +186,6 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 // makersp) that link mclib without gameosmain still resolve the symbol.
 // This TU owns the per-frame increment; everyone else is a read-only extern.
 
-// VK-FAILSOFT-DISARM-1: present init hit a zero surface extent (window
-// minimized at boot) and was DEFERRED instead of fail-softing the session to
-// GL. The frame loop retries EnginePresentVk::init once the drawable is
-// non-zero; until then VK present is simply skipped (GL swap runs, the
-// umbrella family stays armed for when present comes up).
-bool g_vkPresentInitDeferred = false;
-// Failed deferred-retry attempts while the drawable was visible (non-zero).
-// Minimized frames never count — a minimized boot defers indefinitely by design.
-unsigned g_vkPresentRetryFails = 0;
-
 // Force discrete GPU selection on hybrid-graphics laptops (NVIDIA Optimus,
 // AMD PowerXpress). Without these exports, an unknown OpenGL executable is
 // routed to the Intel integrated GPU by default, which is catastrophic for

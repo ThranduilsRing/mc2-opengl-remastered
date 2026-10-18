@@ -42,9 +42,6 @@
     "code/mission_init.cpp": {
      "new": 1
     },
-    "code/missionbegin.cpp": {
-     "new": 1
-    },
     "code/saveload_load.cpp": {
      "new": 1
     },
@@ -60,7 +57,7 @@
      "new": 1
     }
    },
-   "new": 6,
+   "new": 5,
    "new_array": 0,
    "owners": [
     "",
@@ -1410,21 +1407,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "CraterManager": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mission_init.cpp": {
-     "new": 1
-    },
-    "code/saveload_load.cpp": {
-     "new": 1
-    }
-   },
-   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -3824,24 +3806,6 @@
     ""
    ]
   },
-  "MidLevelRenderer::MLRCardCloud": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/gosfx/card.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/gosfx/cardcloud.cpp": {
-     "new": 1
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": [
-    "Card"
-   ]
-  },
   "MidLevelRenderer::MLRClipper": {
    "delete": 4,
    "delete_array": 0,
@@ -3867,42 +3831,6 @@
     "",
     "MC_TextureManager"
    ]
-  },
-  "MidLevelRenderer::MLRIndexedTriangleCloud": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/gosfx/tube.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "MidLevelRenderer::MLRNGonCloud": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/gosfx/pertcloud.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "MidLevelRenderer::MLRPointCloud": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/gosfx/pointcloud.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
   },
   "MidLevelRenderer::MLRSortByOrder": {
    "delete": 0,
@@ -3937,18 +3865,6 @@
     }
    },
    "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "MidLevelRenderer::MLRTriangleCloud": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/gosfx/shardcloud.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -5840,18 +5756,6 @@
    "new_array": 0,
    "owners": []
   },
-  "Type": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/save_struct_zero.h": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "UiDefs::GameOSPage": {
    "delete": 5,
    "delete_array": 0,
@@ -5903,13 +5807,9 @@
    ]
   },
   "UserHeap": {
-   "delete": 13,
+   "delete": 10,
    "delete_array": 0,
    "files": {
-    "code/ablmc2.cpp": {
-     "delete": 3,
-     "new": 3
-    },
     "code/collsn.cpp": {
      "delete": 1,
      "new": 1
@@ -5951,7 +5851,7 @@
      "new": 2
     }
    },
-   "new": 15,
+   "new": 12,
    "new_array": 0,
    "owners": [
     "",
@@ -7437,8 +7337,6 @@
   "GameOS/gameos/vulkan_post_hzb_native.cpp": 1,
   "GameOS/gameos/vulkan_post_screenfx_native.cpp": 1,
   "GameOS/gameos/vulkan_post_ssao_native.cpp": 1,
-  "code/artlry.cpp": 8,
-  "code/carnage.cpp": 3,
   "code/componentlistbox.cpp": 1,
   "code/forcegroupbar.cpp": 5,
   "code/gamesound.cpp": 1,
@@ -7463,7 +7361,6 @@
   "code/missionbegin.cpp": 4,
   "code/missionbriefingscreen.cpp": 3,
   "code/missiongui.cpp": 2,
-  "code/missiongui_style.cpp": 4,
   "code/mpparameterscreen.cpp": 1,
   "code/mpprefs.cpp": 1,
   "code/objective.cpp": 8,
@@ -7472,9 +7369,6 @@
   "code/optionsarea.cpp": 3,
   "code/pilotreviewarea.cpp": 2,
   "code/salvagemecharea.cpp": 10,
-  "code/terrobj.cpp": 1,
-  "code/weaponbolt.cpp": 10,
-  "code/weaponbolt_update.cpp": 36,
   "editor/Action.cpp": 5,
   "editor/BuildingBrush.cpp": 2,
   "editor/BuildingSettingsDlg.cpp": 1,
@@ -7498,39 +7392,37 @@
   "mclib/ablenv.cpp": 1,
   "mclib/apprtype.cpp": 3,
   "mclib/bdactor.cpp": 2,
-  "mclib/bdactor_static.cpp": 4,
+  "mclib/bdactor_static.cpp": 1,
   "mclib/bdactor_terrain.cpp": 11,
   "mclib/bdactor_tree.cpp": 5,
   "mclib/bdactor_tree_static.cpp": 1,
   "mclib/bdactor_type.cpp": 1,
-  "mclib/bdactor_update.cpp": 3,
   "mclib/crater.cpp": 2,
   "mclib/fastfile.cpp": 1,
   "mclib/ffile.cpp": 3,
   "mclib/genactor.cpp": 1,
   "mclib/genactor_frame.cpp": 1,
   "mclib/gosfx/card.cpp": 1,
-  "mclib/gosfx/cardcloud.cpp": 2,
+  "mclib/gosfx/cardcloud.cpp": 1,
   "mclib/gosfx/debriscloud.cpp": 1,
-  "mclib/gosfx/effect.cpp": 2,
+  "mclib/gosfx/effect.cpp": 1,
   "mclib/gosfx/effectcloud.cpp": 4,
   "mclib/gosfx/particlecloud.cpp": 1,
-  "mclib/gosfx/pertcloud.cpp": 2,
-  "mclib/gosfx/pointcloud.cpp": 2,
+  "mclib/gosfx/pertcloud.cpp": 1,
+  "mclib/gosfx/pointcloud.cpp": 1,
   "mclib/gosfx/pointlight.cpp": 1,
   "mclib/gosfx/shape.cpp": 1,
   "mclib/gosfx/shapecloud.cpp": 1,
-  "mclib/gosfx/shardcloud.cpp": 2,
+  "mclib/gosfx/shardcloud.cpp": 1,
   "mclib/gosfx/singleton.cpp": 1,
   "mclib/gosfx/spinningcloud.cpp": 1,
-  "mclib/gosfx/tube.cpp": 2,
+  "mclib/gosfx/tube.cpp": 1,
   "mclib/gvactor.cpp": 2,
   "mclib/gvactor_geometry.cpp": 2,
-  "mclib/gvactor_update.cpp": 9,
-  "mclib/mech3d.cpp": 12,
-  "mclib/mech3d_geometry.cpp": 4,
+  "mclib/gvactor_update.cpp": 4,
+  "mclib/mech3d.cpp": 6,
+  "mclib/mech3d_geometry.cpp": 2,
   "mclib/mech3d_render.cpp": 2,
-  "mclib/mech3d_update.cpp": 2,
   "mclib/mlr/mlr_i_c_det_pmesh.cpp": 6,
   "mclib/mlr/mlr_i_c_det_tmesh.cpp": 2,
   "mclib/mlr/mlr_i_c_dt_pmesh.cpp": 6,

@@ -334,7 +334,7 @@ void MissionBegin::begin()
 		long numErrors, numLinesProcessed;
 		logisticsScriptHandle = ABLi_preProcess(brainFileName, &numErrors, &numLinesProcessed);
 		if (logisticsScriptHandle >= 0) {
-			logisticsBrain = new ABLModule;
+			logisticsBrain = std::make_unique<ABLModule>();
 			gosASSERT(logisticsBrain != nullptr);
 
 	#ifdef _DEBUG
@@ -683,7 +683,8 @@ void MissionBegin::init()
 
 void MissionBegin::end()
 {
-	logisticsBrain = nullptr;
+	// The tutorial logistics module lives on the ABL pools: free it before they close (BUGS row 72).
+	logisticsBrain.reset();
 	closeABL();
 }
 

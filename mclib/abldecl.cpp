@@ -302,7 +302,7 @@ void doConst (SymTableNodePtr constantIdPtr) {
 			}
 		else {
 			long length = static_cast<long>(strlen(curLiteral.value.string));
-			constantIdPtr->defn.info.constant.value.stringPtr = (char*)ABLSymbolMallocCallback(length + 1);
+			constantIdPtr->defn.info.constant.value.stringPtr = (char*)ABL_alloc(ABLPool::Symbol, length + 1);
 			if (!constantIdPtr->defn.info.constant.value.stringPtr)
 				ABL_Fatal(0, " ABL: Unable to AblSymbolHeap->malloc array string constant ");
 			strcpy(constantIdPtr->defn.info.constant.value.stringPtr, curLiteral.value.string);
@@ -659,7 +659,7 @@ void varOrFieldDeclarations (SymTableNodePtr routineIdPtr, long offset) {
 						// Initialize the variable to zero...
 						StackItemPtr dataPtr = (StackItemPtr)stack + eternalOffset;
 						if (typePtr->form == FRM_ARRAY) {
-							dataPtr->address = (Address)ABLStackMallocCallback((size_t)size);
+							dataPtr->address = (Address)ABL_alloc(ABLPool::Stack, (size_t)size);
 							if (!dataPtr->address)
 								ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc eternal array ");
 							memset(dataPtr->address, 0, size);

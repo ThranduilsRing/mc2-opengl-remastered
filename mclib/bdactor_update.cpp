@@ -705,8 +705,7 @@ long BldgAppearance::update (bool animate)
 			if (!result)
 			{
 				destructFX->Kill();
-				delete destructFX;
-				destructFX = nullptr;
+				destructFX.reset();
 			}
 		}
 		
@@ -754,8 +753,7 @@ long BldgAppearance::update (bool animate)
 				if (!result)
 				{
 					activity->Kill();		//Effect is over.  Otherwise, wait until hit!
-					delete activity;
-					activity = nullptr;
+					activity.reset();
 				}
 
 			}
@@ -800,8 +798,7 @@ long BldgAppearance::update (bool animate)
 					if (!result)
 					{
 						activity1->Kill();		//Effect is over.  Otherwise, wait until hit!
-						delete activity1;
-						activity1 = nullptr;
+						activity1.reset();
 					}
 				}
 

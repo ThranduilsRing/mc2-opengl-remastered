@@ -163,12 +163,22 @@ def main() -> int:
 
     exe = Path(args.exe)
     deploy = exe.parent
+    # Fixture: `stock:mc2_01` names a stock mission materialized loose in the install by
+    # `run_editor_smoke.py --prepare-stock-scratch` (lane/scratch installs).
+    if args.mission.lower().startswith("stock:"):
+        args.mission = str(deploy / "data" / "missions" / (args.mission.split(":", 1)[1] + ".pak"))
     mission = Path(args.mission)
+    # The playtest must launch the game from THIS install, not the ..\mc2-win64-v0.4 probe
+    # EditorPlaytest::ResolveExe tries first (a lane install would otherwise test the wrong exe).
+    if not os.environ.get("MC2_PLAYTEST_EXE") and (deploy / "mc2.exe").exists():
+        os.environ["MC2_PLAYTEST_EXE"] = str(deploy / "mc2.exe")
     if not exe.exists():
         print(f"ERROR: editor exe not found: {exe}\n  Build EditRel + deploy-editor (DEPLOY=...0.4c) first.")
         return 2
     if not mission.exists():
-        print(f"ERROR: mission pak not found: {mission}")
+        print(f"ERROR: mission pak not found: {mission}\nStock missions live in mission.fst; materialize them with "
+              f"`run_editor_smoke.py --exe <editor> --prepare-stock-scratch --case gen_map_basic` on a lane install, "
+              f"then pass --mission stock:mc2_01.")
         return 2
 
     # PER-INSTALL GUARD: refuse only if a running mc2.exe lives in the SAME

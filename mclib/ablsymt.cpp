@@ -170,7 +170,7 @@ inline SymTableNodePtr symTableSuccessor (SymTableNodePtr nodeX) {
 
 TypePtr createType (void) {
 
-	TypePtr newType = (TypePtr)ABLSymbolMallocCallback(sizeof(Type));
+	TypePtr newType = (TypePtr)ABL_alloc(ABLPool::Symbol, sizeof(Type));
 	if (!newType)
 		ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc newType ");
 	newType->numInstances = 1;
@@ -200,7 +200,7 @@ void clearType (TypePtr& type) {
 	if (type) {
 		type->numInstances--;
 		if (type->numInstances == 0) {
-			ABLSymbolFreeCallback(type);
+			ABL_free(ABLPool::Symbol, type);
 			type = nullptr;
 		}
 	}
@@ -407,11 +407,11 @@ SymTableNodePtr searchSymTableDisplay (const char* name) {
 
 SymTableNodePtr enterSymTable (const char* name, SymTableNodePtr* ptrToNodePtr) {
 
-	SymTableNodePtr newNode = (SymTableNodePtr)ABLSymbolMallocCallback(sizeof(SymTableNode));
+	SymTableNodePtr newNode = (SymTableNodePtr)ABL_alloc(ABLPool::Symbol, sizeof(SymTableNode));
 	if (!newNode)
 		ABL_Fatal(0, " ABL: Unable to AblSymTableHeap->malloc symbol ");
 
-	newNode->name = (char*)ABLSymbolMallocCallback(static_cast<unsigned long>(strlen(name) + 1));
+	newNode->name = (char*)ABL_alloc(ABLPool::Symbol, static_cast<unsigned long>(strlen(name) + 1));
 	if (!newNode->name)
 		ABL_Fatal(0, " ABL: Unable to AblSymTableHeap->malloc symbol name ");
 	strcpy(newNode->name, name);

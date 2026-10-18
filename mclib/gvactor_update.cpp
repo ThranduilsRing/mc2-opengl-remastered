@@ -375,8 +375,7 @@ void GVAppearance::updateGeometry (void)
 		if (!result)
 		{
 			destructFX->Kill();
-			delete destructFX;
-			destructFX = nullptr;
+			destructFX.reset();
 		}
 	}
 	
@@ -728,29 +727,25 @@ void GVAppearance::destroy (void)
 	if (destructFX)
 	{
 		destructFX->Kill();
-		delete destructFX;
-		destructFX = nullptr;
+		destructFX.reset();
 	}
 
 	if (waterWake)
 	{
 		waterWake->Kill();
-		delete waterWake;
-		waterWake = nullptr;
+		waterWake.reset();
 	}
 
 	if (dustCloud)
 	{
 		dustCloud->Kill();
-		delete dustCloud;
-		dustCloud = nullptr;
+		dustCloud.reset();
 	}
 
 	if (activity)
 	{
 		activity->Kill();
-		delete activity;
-		activity = nullptr;
+		activity.reset();
 	}
 
 	appearanceTypeList->removeAppearance(appearType);

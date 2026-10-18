@@ -105,13 +105,6 @@ namespace MidLevelRenderer {
 	// affect the shape in this frame and the number of lights in this array
 		void	Lighting(const Stuff::LinearMatrix4D&, MLRLight* const*, int nrLights);
 
-	// casts an ray against the geometry contained in shape
-		bool
-			CastRay(
-				Stuff::Line3D *line,
-				Stuff::Normal3D *normal
-			);
-
 		void
 			HurtMe(const Stuff::LinearMatrix4D&, Stuff::Scalar radius);
 

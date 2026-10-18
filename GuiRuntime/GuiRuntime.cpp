@@ -400,6 +400,11 @@ bool GuiRuntime::RttEnabled() {
     // shrunk scene projection diverges from the legacy object/pick projection. The
     // full-window scene (RTT off) picks PERFECTLY (user-bisected). Panels overlay the
     // map's right edge and are collapsible instead. Opt back in: MC2_EDITOR_RTT=1.
+    // The RTT viewport blits the GL back buffer into a GL texture; under Vulkan the scene lives in the present
+    // image, so the full-window scene is the only mode there.
+#ifdef MC2_VULKAN
+    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) return false;
+#endif
     static int s_on = -1;
     if (s_on < 0) {
         s_on = mc2::gate::get<"MC2_EDITOR_RTT">();   // default OFF

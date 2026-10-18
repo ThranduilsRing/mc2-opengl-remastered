@@ -220,11 +220,11 @@ class WeaponBolt : public GameObject
 			bool 				hitTarget;
 			
 			//NEW  GOS FX
-			gosFX::Effect		*gosEffect;
-			gosFX::Effect		*muzzleEffect;
-			gosFX::Effect		*hitEffect;
-			gosFX::Effect		*missEffect;
-			gosFX::Effect		*waterMissEffect;
+			gosFX::EffectPtr		gosEffect;
+			gosFX::EffectPtr		muzzleEffect;
+			gosFX::EffectPtr		hitEffect;
+			gosFX::EffectPtr		missEffect;
+			gosFX::EffectPtr		waterMissEffect;
 			
 			float				timeLeft;
 			Stuff::Vector3D		hsPos;

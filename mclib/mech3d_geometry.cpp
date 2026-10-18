@@ -968,8 +968,7 @@ void Mech3DAppearance::updateGeometry (void)
 		if (!result)
 		{
 			leftShoulderBoom->Kill();
-			delete leftShoulderBoom;
-			leftShoulderBoom = nullptr;
+			leftShoulderBoom.reset();
 		}
 	}
 	
@@ -999,8 +998,7 @@ void Mech3DAppearance::updateGeometry (void)
 		if (!result)
 		{
 			rightShoulderBoom->Kill();
-			delete rightShoulderBoom;
-			rightShoulderBoom = nullptr;
+			rightShoulderBoom.reset();
 		}
 	}
 	

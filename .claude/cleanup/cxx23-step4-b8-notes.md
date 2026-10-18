@@ -1,5 +1,5 @@
 <!-- doc-status: current | reviewed:2026-10-17 -->
-# Step 4 B8 notes (plan + census only; nothing implemented)
+# Step 4 B8 notes (B8a and B8b landed s22; B8c blocked)
 
 WHAT: the next ownership batch per `cxx23-step4-ownership-plan.md` (subsystem rows "gosFX" and "ABL", batch order line):
 "B8 gosFX, then ABL heaps and environment (instances after the save fix)". WHY: B7o closed 2026-10-17 (s20); B8 is next.
@@ -25,3 +25,27 @@ WHAT: the next ownership batch per `cxx23-step4-ownership-plan.md` (subsystem ro
 
 Open from s20: `MechWarrior::init` allocates 38 UserHeap blocks per load that survive the next load (warrior_state.cpp:802): not
 gosFX/ABL; a B8 side item only if the brains' ABL handles are what holds them.
+
+## Outcome (lane 1, session 22, 2026-10-17)
+
+- B8a.1 1bfca7d31: `Effect::m_children` is `std::vector<EffectPtr>` (one owner; a finished child is reset in place and erased after the
+  loop, so Execute/Draw/Kill order is spawn order); the MLR cloud of Card, CardCloud, PertCloud, PointCloud, ShardCloud and Tube is a
+  `unique_ptr` member. Doctest in `vfx_lifecycle_tests` (counted children: destroyed once on parent destroy, once when finished, never by Kill;
+  cloud create/destroy x8). ABI guard: sizeof(Effect) 208 -> 200.
+- B8a.2 57d5d23ee: `EffectLibrary::MakeEffect` returns `gosFX::EffectPtr`; the 30 effect members of Artillery, Carnage, BldgAppearance,
+  MissionInterfaceManager, GVAppearance, TerrainObject, WeaponBolt, Mech3DAppearance are `EffectPtr` (83 delete+null pairs -> reset()).
+  BUGS row 64: Mech3DAppearance never freed criticalSmoke, waterWake, helicopterDustCloud.
+- B8b 2dc3a2ffc: the 8 host callbacks and ABLi_init's 8 allocator parameters are deleted; `ABL_alloc`/`ABL_free` (ablscan.h) serve three
+  `std::pmr::unsynchronized_pool_resource`s (symbol, code, stack) owned from ABLi_init to the end of ABLi_close; zero-filled blocks; the
+  runtime stack is `std::vector<StackItem>`; the host's three UserHeaps and the s13 ledgers are gone. Doctest `ABLArena/...` in the order seam.
+- STAY BY DESIGN (WHY): the class-registry factories (`X::Make`, `Effect::Factory`) return the new raw object: they are registry function
+  pointers and MakeEffect is the one place that gives the result an owner. `EffectCloud__Particle::m_effect` stays raw: particles live in the
+  cloud's zeroed byte block, no constructor or destructor runs on a slot (freed by hand in DestroyParticle / ~EffectCloud). MLRShape
+  Attach/DetachReference (10) is the MLR intrusive refcount boundary. PointLight's `m_light` is owned by gosFX::LightManager. ABL module
+  instances, ABLFile, UserFile keep class operator new/delete on the C++ allocator (owned one by one; instance ownership is B8c).
+  The `X__Specification` factories feed `mc2::particles::SpecLibrary` (the spec owner); `new ClassData` per class is the RegisteredClass
+  registry entry, deleted in its TerminateClass; `Event` copies belong to their spec's `m_events` chain (plugs deleted with the spec).
+- NARROWER than planned: one pool per kind for the whole environment, not per module (allocation sites carry no module identity).
+  ScopedLeakCheck was not used for gosFX: vfx_lifecycle_tests cannot link the probe's operator new (the mc2fx stubs' `new(HGOSHEAP)` is
+  malloc and Stuff::MemoryBlock frees it with delete[]); counted destructors prove single ownership instead.
+- B8c still BLOCKED on the ABL save round-trip (unchanged).

@@ -12,7 +12,6 @@
 
 namespace Stuff {
 
-	class Origin3D;
 	class Vector4D;
     class Point3D;
 
@@ -46,8 +45,6 @@ namespace Stuff {
 			{*this = v;}
 		explicit Point3D(const Vector4D &v)
 			{*this = v;}
-		explicit Point3D(const Origin3D &origin)
-			{*this = origin;}
 		explicit Point3D(const AffineMatrix4D &matrix)
 			{*this = matrix;}
 		explicit Point3D(const YawPitchRange &polar)
@@ -61,8 +58,6 @@ namespace Stuff {
 				{Vector3D::operator=(v); return *this;}
 		Point3D&
 			operator=(const Vector4D& v);
-		Point3D&
-			operator=(const Origin3D &p);
 		Point3D&
 			operator=(const AffineMatrix4D &matrix);
 		Point3D&

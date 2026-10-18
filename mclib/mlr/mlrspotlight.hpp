@@ -45,12 +45,9 @@ namespace MidLevelRenderer {
 	// spotlight spread.  This value is only valid if the light had falloff
 	//
 		bool
-			GetSpreadAngle(Stuff::Radian *angle);
+			GetSpreadAngle(Stuff::Scalar *angle);
 		void
-			SetSpreadAngle(const Stuff::Radian &radian);
-
-		void
-			SetSpreadAngle(const Stuff::Degree &degree);
+			SetSpreadAngle(Stuff::Scalar radian);
 
 		Stuff::Scalar
 			GetTanSpreadAngle()
@@ -87,7 +84,7 @@ namespace MidLevelRenderer {
 	protected:
 		MLRLightMap *lightMap;
 
-		Stuff::Radian
+		Stuff::Scalar
 			spreadAngle;
 		Stuff::Scalar
 			tanSpreadAngle,

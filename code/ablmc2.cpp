@@ -7,7 +7,6 @@
 #include "abl_script_events.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include <climits>
-#include <unordered_set>
 
 
 MoverGroupPtr			CurGroup = nullptr;
@@ -20,103 +19,6 @@ MoverPtr				moverList[256];
 bool					TacOrderOrigin = ORDER_ORIGIN_COMMANDER;
 long					CurMultiplayCode = 0;
 long					CurMultiplayParam = 0;
-
-UserHeapPtr				AblStackHeap = nullptr;
-UserHeapPtr				AblCodeHeap = nullptr;
-UserHeapPtr				AblSymbolHeap = nullptr;
-
-void* ablSystemMallocCallback (unsigned long memSize) {
-
-	return(systemHeap->Malloc(memSize));
-}
-
-// gos_DestroyMemoryHeap deletes the heap record only, so a block nobody frees outlives its UserHeap. The compiled symbol tables, type nodes and
-// code of a mission are never freed one by one (the environment drops them with the heap), so each ABL heap keeps a ledger of its live blocks and
-// closeABL hands every survivor back before the heap goes. Nothing may touch ABL memory after closeABL: brains and modules are gone by then.
-namespace {
-struct AblHeapLedger {
-	std::unordered_set<void*> live;
-
-	// The set can throw while growing; a block that could not be recorded would never be handed back, so it is freed and reported as an
-	// allocation failure instead of being left untracked.
-	void* track (UserHeapPtr heap, void* block) {
-		if (block) {
-			try {
-				live.insert(block);
-			} catch (...) {
-				heap->Free(block);
-				return nullptr;
-			}
-		}
-		return block;
-	}
-	void untrack (void* block) { live.erase(block); }
-	void releaseAll (UserHeapPtr heap) {
-		if (heap)
-			for (void* block : live)
-				heap->Free(block);
-		live.clear();
-	}
-};
-AblHeapLedger g_ablStackLedger;
-AblHeapLedger g_ablCodeLedger;
-AblHeapLedger g_ablSymbolLedger;
-}
-
-void* ablStackMallocCallback (unsigned long memSize) {
-
-	if (!AblStackHeap)
-		Fatal(0, " ablStackMallocCallback: NULL heap ");
-	// The eternal and static variable blocks are written verbatim into every save; heap blocks come back holding whatever the last
-	// owner left, so a block is zeroed to keep the save a function of the game state alone.
-	void* block = AblStackHeap->Malloc(memSize);
-	if (block)
-		memset(block, 0, memSize);
-	return g_ablStackLedger.track(AblStackHeap, block);
-}
-
-void* ablCodeMallocCallback (unsigned long memSize) {
-
-	if (!AblCodeHeap)
-		Fatal(0, " ablCodeFreeCallback: NULL heap ");
-	return g_ablCodeLedger.track(AblCodeHeap, AblCodeHeap->Malloc(memSize));
-}
-
-void* ablSymbolMallocCallback (unsigned long memSize) {
-
-	if (!AblSymbolHeap)
-		Fatal(0, " ablSymbolMallocCallback: NULL heap ");
-	return g_ablSymbolLedger.track(AblSymbolHeap, AblSymbolHeap->Malloc(memSize));
-}
-
-void ablSystemFreeCallback (void* memBlock) {
-
-	systemHeap->Free(memBlock);
-}
-
-void ablStackFreeCallback (void* memBlock) {
-
-	if (!AblStackHeap)
-		Fatal(0, " ablStackFreeCallback: NULL heap ");
-	g_ablStackLedger.untrack(memBlock);
-	AblStackHeap->Free(memBlock);
-}
-
-void ablCodeFreeCallback (void* memBlock) {
-
-	if (!AblCodeHeap)
-		Fatal(0, " ablCodeFreeCallback: NULL heap ");
-	g_ablCodeLedger.untrack(memBlock);
-	AblCodeHeap->Free(memBlock);
-}
-
-void ablSymbolFreeCallback (void* memBlock) {
-
-	if (!AblSymbolHeap)
-		Fatal(0, " ablSymbolFreeCallback: NULL heap ");
-	g_ablSymbolLedger.untrack(memBlock);
-	AblSymbolHeap->Free(memBlock);
-}
 
 // The ABL environment holds a script file as an opaque handle (void*): ablFileCreateCB / ablFileOpenCB make it, ablFileCloseCB is the only place
 // that frees it. These three are the single owner pair; every other callback only borrows the handle for the call.
@@ -329,34 +231,11 @@ void initABL (void) {
 
 	abl::resetEventBudgets();
 
-	AblSymbolHeap = new UserHeap;
-	long heapErr = AblSymbolHeap->init(6143999);  // was 767999
-	if (heapErr != NO_ERR)
-		ABL_Fatal(0, "ABLi_init: unable to create ABL symbol table heap");
-
-	AblStackHeap = new UserHeap;
-	heapErr = AblStackHeap->init(4095999);  // was 511999
-	if (heapErr != NO_ERR)
-		ABL_Fatal(0, "ABLi_init: unable to create ABL stack heap");
-
-	AblCodeHeap = new UserHeap;
-	heapErr = AblCodeHeap->init(2457599);  // was 307199
-	if (heapErr != NO_ERR)
-		ABL_Fatal(0, "ABLi_init: unable to create ABL code heap");
-
 	ABLFile::remainingCB = ablFileRemainingCB;
 	ABLi_init(65535, // Runtime stack slots
 			  1048576, // Code-buffer bytes; mod scripts exceed the stock limit
 			  1024, // Registered modules
 			  512, //AblMaxStaticVariables, was 100
-			  ablSystemMallocCallback,
-			  ablStackMallocCallback,
-			  ablCodeMallocCallback,
-			  ablSymbolMallocCallback,
-			  ablSystemFreeCallback,
-			  ablStackFreeCallback,
-			  ablCodeFreeCallback,
-			  ablSymbolFreeCallback,
 			  ablFileCreateCB,
 			  ablFileOpenCB,
 			  ablFileCloseCB,
@@ -687,22 +566,6 @@ void initABL (void) {
 
 void closeABL (void) {
 
+	// ABLi_close hands back every block of the environment (its pools are freed last).
 	ABLi_close();
-
-	g_ablSymbolLedger.releaseAll(AblSymbolHeap);
-	g_ablCodeLedger.releaseAll(AblCodeHeap);
-	g_ablStackLedger.releaseAll(AblStackHeap);
-
-	if (AblSymbolHeap) {
-		delete AblSymbolHeap;
-		AblSymbolHeap = nullptr;
-	}
-	if (AblStackHeap) {
-		delete AblStackHeap;
-		AblStackHeap = nullptr;
-	}
-	if (AblCodeHeap) {
-		delete AblCodeHeap;
-		AblCodeHeap = nullptr;
-	}
 }

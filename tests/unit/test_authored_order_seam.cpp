@@ -29,21 +29,11 @@ extern bool InitWayPath;
 
 namespace {
 struct CompileFixture {
-    std::set<void*> blocks;
     std::map<std::string, std::string> sources;
     int openFiles = 0;
     long (*previousRemaining)(void*) = ABLFile::remainingCB;
     struct Reader { std::string text; size_t offset = 0; };
     static CompileFixture* current;
-    static void* allocate(unsigned long size) {
-        void* block = std::malloc(size);
-        current->blocks.insert(block);
-        return block;
-    }
-    static void release(void* block) {
-        current->blocks.erase(block);
-        std::free(block);
-    }
     static long open(void** file, const char* name) {
         auto found = current->sources.find(name);
         if (found == current->sources.end()) return -1;
@@ -74,8 +64,7 @@ struct CompileFixture {
     }
     CompileFixture() {
         current = this;
-        ABLi_init(65536, 20480, 20, 100, allocate, allocate, allocate, allocate,
-            release, release, release, release, nullptr, open, close, eof,
+        ABLi_init(65536, 20480, 20, 100, nullptr, open, close, eof,
             read, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
             nullptr, [](long, const char* message) { throw std::runtime_error(message); });
         ABLFile::remainingCB = remaining;
@@ -85,7 +74,6 @@ struct CompileFixture {
     ~CompileFixture() {
         ABLi_close();
         ABLFile::remainingCB = previousRemaining;
-        for (void* block : blocks) std::free(block);
         current = nullptr;
     }
 };
@@ -99,7 +87,7 @@ std::string compileBytes(const CompileFixture& fixture, const Routine& routine) 
         SymTableNodePtr symbol = nullptr;
         if (i + sizeof(symbol) <= routine.codeSegmentSize) {
             std::memcpy(&symbol, routine.codeSegment + i, sizeof(symbol));
-            if (!fixture.blocks.contains(symbol)) symbol = nullptr;
+            if (!ABL_ownsBlock(symbol)) symbol = nullptr;
         }
         if (symbol) {
             result += "<" + std::string(symbol->name) + ">";
@@ -166,7 +154,7 @@ TEST_CASE("ABLCompile/syntax rejection rolls back before the next compile") {
     fixture.sources["bad.abl"] = failure.source;
     fixture.sources["include.abl"] = "code\nendmodule.\n";
     fixture.sources["valid.abl"] = valid;
-    const auto blockCount = fixture.blocks.size();
+    const auto blockCount = ABL_liveBlocks();
     const auto typeCount = IntegerTypePtr->numInstances;
     const auto root = SymTableDisplay[0];
     CompileLog log;
@@ -177,7 +165,7 @@ TEST_CASE("ABLCompile/syntax rejection rolls back before the next compile") {
         CHECK(ABLi_preProcess("bad.abl", &errors) < 0);
     CHECK(errors == 1);
     CHECK(fixture.openFiles == 0);
-    CHECK(fixture.blocks.size() == blockCount);
+    CHECK(ABL_liveBlocks() == blockCount);
     CHECK(NumModulesRegistered == 0);
     CHECK(eternalOffset == 0);
     CHECK(IntegerTypePtr->numInstances == typeCount);
@@ -193,6 +181,171 @@ TEST_CASE("ABLCompile/syntax rejection rolls back before the next compile") {
     CHECK(IntegerTypePtr->numInstances == typeCount + 1);
     CHECK(searchSymTable("retry", SymTableDisplay[0]) == ModuleRegistry[0].moduleIdPtr);
     CHECK(log.text() == message);
+    }
+}
+
+TEST_CASE("ABLArena/the environment owns its blocks: zero-filled, freed one by one or all at close") {
+    {
+        CompileFixture fixture;
+        const auto atInit = ABL_liveBlocks();
+        CHECK(atInit > 0); // code buffer, size lists, registries
+        auto* stackBlock = static_cast<unsigned char*>(ABL_alloc(ABLPool::Stack, 64));
+        auto* symbolBlock = static_cast<unsigned char*>(ABL_alloc(ABLPool::Symbol, 32));
+        CHECK(std::all_of(stackBlock, stackBlock + 64, [](unsigned char b) { return b == 0; }));
+        CHECK(ABL_ownsBlock(stackBlock));
+        CHECK(ABL_ownsBlock(symbolBlock));
+        CHECK(ABL_liveBlocks() == atInit + 2);
+        std::memset(stackBlock, 0xcd, 64);
+        ABL_free(ABLPool::Stack, stackBlock);
+        CHECK_FALSE(ABL_ownsBlock(stackBlock));
+        auto* again = static_cast<unsigned char*>(ABL_alloc(ABLPool::Stack, 64));
+        CHECK(std::all_of(again, again + 64, [](unsigned char b) { return b == 0; }));
+        ABL_free(ABLPool::Stack, nullptr);
+        // symbolBlock and again are never freed one by one: closing the environment hands them back.
+    }
+    CHECK(ABL_liveBlocks() == 0);
+    CHECK_FALSE(ABL_ownsBlock(nullptr));
+}
+
+extern ABLModulePtr* ModuleInstanceRegistry;
+
+namespace {
+// In-memory save target for ABLi_saveEnvironment: written files land in `saved` when closed.
+struct SaveSink {
+    static std::map<std::string, std::string> saved;
+    static std::set<void*> writers;
+    static long (*fixtureClose)(void**);
+    struct Writer { std::string name, text; };
+    static long create(void** file, const char* name) {
+        auto* w = new Writer{name, {}};
+        writers.insert(w);
+        *file = w;
+        return 0;
+    }
+    static long close(void** file) {
+        if (writers.erase(*file)) {
+            auto* w = static_cast<Writer*>(*file);
+            saved[w->name] = w->text;
+            delete w;
+            *file = nullptr;
+            return 0;
+        }
+        return fixtureClose(file);
+    }
+    static long write(void* file, unsigned char* buffer, long length) {
+        static_cast<Writer*>(file)->text.append(reinterpret_cast<const char*>(buffer), static_cast<size_t>(length));
+        return length;
+    }
+    static long writeByte(void* file, unsigned char byte) { return write(file, &byte, 1); }
+    static long writeInt(void* file, int32_t value) {
+        return write(file, reinterpret_cast<unsigned char*>(&value), sizeof(value));
+    }
+    static long writeString(void* file, const char* text) {
+        return write(file, reinterpret_cast<unsigned char*>(const_cast<char*>(text)), static_cast<long>(std::strlen(text)));
+    }
+    SaveSink() {
+        fixtureClose = ABLFile::closeCB;
+        ABLFile::createCB = create;
+        ABLFile::closeCB = close;
+        ABLFile::writeCB = write;
+        ABLFile::writeByteCB = writeByte;
+        ABLFile::writeIntCB = writeInt;
+        ABLFile::writeStringCB = writeString;
+    }
+    ~SaveSink() { ABLFile::closeCB = fixtureClose; }
+};
+std::map<std::string, std::string> SaveSink::saved;
+std::set<void*> SaveSink::writers;
+long (*SaveSink::fixtureClose)(void**) = nullptr;
+
+// stepOne completes (returns 1, its order flag is set); stepTwo does not (returns 0, so run returns there). A second pass
+// must skip stepOne. The module counts how often each order body ran.
+constexpr const char* kResumeModule =
+    "module resume;\nvar\nstatic integer firstRuns;\nstatic integer secondRuns;\n"
+    "order stepOne : integer;\ncode\nfirstRuns = firstRuns + 1;\nreturn(1);\nendorder;\n"
+    "order stepTwo : integer;\ncode\nsecondRuns = secondRuns + 1;\nreturn(0);\nendorder;\n"
+    "order run : integer;\ncode\nstepOne;\nstepTwo;\nreturn(1);\nendorder;\n"
+    "code\nrun;\nendmodule.\n";
+
+struct Counts { long first, second; unsigned long flags; };
+Counts countsOf(ABLModule& module) {
+    return {module.getStaticData()[0].integer, module.getStaticData()[1].integer, module.getOrderCallFlags()[0]};
+}
+
+std::string saveEnvironment(const char* name) {
+    SaveSink sink;
+    ABLFile file;
+    REQUIRE(file.create(name) == 0);
+    ABLi_saveEnvironment(&file);
+    file.close();
+    return SaveSink::saved.at(name);
+}
+
+ABLModule* loadEnvironment(CompileFixture& fixture, const std::string& image) {
+    fixture.sources["resume.sav"] = image;
+    ABLFile file;
+    REQUIRE(file.open("resume.sav") == 0);
+    ABLi_loadEnvironment(&file, true);
+    file.close();
+    return ModuleInstanceRegistry[0];
+}
+}
+
+TEST_CASE("ABLSave/completed orders survive a save: resumed execution equals uninterrupted execution") {
+    Counts uninterrupted{};
+    {
+        CompileFixture fixture;
+        fixture.sources["resume.abl"] = kResumeModule;
+        const int handle = ABLi_preProcess("resume.abl");
+        REQUIRE(handle >= 0);
+        ABLModule module;
+        REQUIRE(module.init(handle) == ABL_NO_ERR);
+        module.execute();
+        const Counts afterOne = countsOf(module);
+        CHECK(afterOne.first == 1);
+        CHECK(afterOne.second == 1);
+        CHECK(afterOne.flags != 0); // stepOne's completion is recorded
+        module.execute();
+        uninterrupted = countsOf(module);
+        CHECK(uninterrupted.first == 1); // the completed order is not repeated
+        CHECK(uninterrupted.second == 2);
+    }
+    std::string image, legacyImage;
+    {
+        CompileFixture fixture;
+        fixture.sources["resume.abl"] = kResumeModule;
+        const int handle = ABLi_preProcess("resume.abl");
+        REQUIRE(handle >= 0);
+        auto* module = new ABLModule;
+        REQUIRE(module->init(handle) == ABL_NO_ERR);
+        legacyImage = saveEnvironment("fresh.sav"); // nothing completed yet: no trailing section
+        module->execute();
+        image = saveEnvironment("resume.sav");
+        delete module;
+    }
+    // A save with no completed order is the legacy layout: it ends with the module record.
+    CHECK(image.size() > legacyImage.size());
+    CHECK(image.compare(image.size() - 8, 4, "FDRO") == 0); // ABL_ORDER_FLAGS_MARK, little-endian
+    {
+        CompileFixture fixture;
+        fixture.sources["resume.abl"] = kResumeModule;
+        ABLModule* module = loadEnvironment(fixture, image);
+        REQUIRE(module != nullptr);
+        CHECK(countsOf(*module).flags == uninterrupted.flags);
+        module->execute();
+        const Counts resumed = countsOf(*module);
+        CHECK(resumed.first == uninterrupted.first);
+        CHECK(resumed.second == uninterrupted.second);
+        delete module;
+    }
+    {
+        // A legacy image (no trailing section) still loads, with every order flag clear.
+        CompileFixture fixture;
+        fixture.sources["resume.abl"] = kResumeModule;
+        ABLModule* module = loadEnvironment(fixture, legacyImage);
+        REQUIRE(module != nullptr);
+        CHECK(countsOf(*module).flags == 0);
+        delete module;
     }
 }
 

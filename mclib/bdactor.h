@@ -297,9 +297,9 @@ class BldgAppearance : public ObjectAppearance
 		
 		long										status;
 		
-   		gosFX::Effect								*destructFX;
-   		gosFX::Effect								*activity;
-   		gosFX::Effect								*activity1;
+		gosFX::EffectPtr								destructFX;
+		gosFX::EffectPtr								activity;
+		gosFX::EffectPtr								activity1;
 		bool										isActivitying;
 		
 		float										OBBRadius;

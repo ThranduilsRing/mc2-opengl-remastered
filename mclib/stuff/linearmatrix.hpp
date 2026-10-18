@@ -32,15 +32,11 @@ namespace Stuff {
 			{BuildIdentity();}
 		LinearMatrix4D(const LinearMatrix4D &m)
 			{*this = m;}
-		explicit LinearMatrix4D(const Origin3D &p)
-			{*this = p;}
 		explicit LinearMatrix4D(const AffineMatrix4D &m)
 			{*this = m;}
 		explicit LinearMatrix4D(const Matrix4D &m)
 			{*this = m;}
 		explicit LinearMatrix4D(const EulerAngles &angles)
-			{*this = angles;}
-		explicit LinearMatrix4D(const YawPitchRoll &angles)
 			{*this = angles;}
 		explicit LinearMatrix4D(const UnitQuaternion &q)
 			{*this = q;}
@@ -54,9 +50,6 @@ namespace Stuff {
 			operator=(const LinearMatrix4D &m)
 				{AffineMatrix4D::operator=(m); Check_Object(this); return *this;}
 		LinearMatrix4D&
-			operator=(const Origin3D &p)
-				{AffineMatrix4D::operator=(p); Check_Object(this); return *this;}
-		LinearMatrix4D&
 			operator=(const AffineMatrix4D &m)
 				{AffineMatrix4D::operator=(m); Check_Object(this); return *this;}
 		LinearMatrix4D&
@@ -64,12 +57,6 @@ namespace Stuff {
 				{AffineMatrix4D::operator=(m); Check_Object(this); return *this;}
 		LinearMatrix4D&
 			operator=(const EulerAngles &angles)
-				{
-					AffineMatrix4D::operator=(angles);
-					Check_Object(this); return *this;
-				}
-		LinearMatrix4D&
-			operator=(const YawPitchRoll &angles)
 				{
 					AffineMatrix4D::operator=(angles);
 					Check_Object(this); return *this;
@@ -83,9 +70,6 @@ namespace Stuff {
 
 		LinearMatrix4D&
 			BuildRotation(const EulerAngles &angles)
-				{AffineMatrix4D::BuildRotation(angles); return *this;}
-		LinearMatrix4D&
-			BuildRotation(const YawPitchRoll &angles)
 				{AffineMatrix4D::BuildRotation(angles); return *this;}
 		LinearMatrix4D&
 			BuildRotation(const UnitQuaternion &q)

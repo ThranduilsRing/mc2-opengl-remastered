@@ -85,7 +85,8 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
         n = s.marker_counts.get(mb.bucket, 0)
         if n <= 0:
             continue
-        overridden = bool(cfg.marker_overrides.get(mb.bucket, False))
+        overridden = bool(mb.manifest_override_key and
+                          cfg.marker_overrides.get(mb.bucket, False))
         if mb.severity == "red" and not overridden:
             buckets.append(mb.bucket)
             details.append(f"{n} {mb.bucket} marker line(s)")

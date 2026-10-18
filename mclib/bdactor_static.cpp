@@ -737,8 +737,7 @@ void BldgAppearance::destroy (void)
 	if (destructFX)
 	{
 		destructFX->Kill();
-		delete destructFX;
-		destructFX = nullptr;
+		destructFX.reset();
 	}
 	
 	//Turn the lights off!
@@ -775,15 +774,13 @@ void BldgAppearance::destroy (void)
 	if (activity)
 	{
 		activity->Kill();
-		delete activity;
-		activity = nullptr;
+		activity.reset();
 	}
 
 	if (activity1)
 	{
 		activity1->Kill();
-		delete activity1;
-		activity1 = nullptr;
+		activity1.reset();
 	}
 
 	appearanceTypeList->removeAppearance(appearType);

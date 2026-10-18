@@ -113,8 +113,8 @@ gosFX::PointCloud::PointCloud(
 
 	gos_PushCurrentHeap(MidLevelRenderer::Heap);
 	m_cloudImplementation =
-		new MidLevelRenderer::MLRPointCloud(spec->m_maxParticleCount);
-	Register_Object(m_cloudImplementation);
+		std::make_unique<MidLevelRenderer::MLRPointCloud>(spec->m_maxParticleCount);
+	Register_Object(m_cloudImplementation.get());
 	gos_PopCurrentHeap();
 
 	unsigned index = spec->m_maxParticleCount*sizeof(Particle);
@@ -133,8 +133,7 @@ gosFX::PointCloud::PointCloud(
 //
 gosFX::PointCloud::~PointCloud()
 {
-	Unregister_Object(m_cloudImplementation);
-	delete m_cloudImplementation;
+	Unregister_Object(m_cloudImplementation.get());
 }
 
 //------------------------------------------------------------------------------
@@ -558,7 +557,7 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
 	{
 		Specification *spec = GetSpecification();
 		Check_Object(spec);
-		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation, m_localToParent);
+		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation.get(), m_localToParent);
 	
 		submission.submit(info);
 	}

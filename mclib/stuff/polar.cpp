@@ -112,9 +112,9 @@ bool
 		)
 	{
 		SPEW((group, "<+"));
-		Spew(group, angle.yaw);
+		SPEW((group, "%f rad+", angle.yaw));
 		SPEW((group, ",+"));
-		Spew(group, angle.pitch);
+		SPEW((group, "%f rad+", angle.pitch));
 		SPEW((group, "; %f+", angle.range));
 	}
 #endif

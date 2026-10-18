@@ -422,36 +422,31 @@ void WeaponBolt::destroy (void)
 	if (hitEffect)
 	{
 		hitEffect->Kill();
-		delete hitEffect;
-		hitEffect = nullptr;
+		hitEffect.reset();
 	}
 
 	if (muzzleEffect)
 	{
 		muzzleEffect->Kill();
-		delete muzzleEffect;
-		muzzleEffect = nullptr;
+		muzzleEffect.reset();
 	}
 
 	if (gosEffect)
 	{
 		gosEffect->Kill();	 
-		delete gosEffect;
-		gosEffect = nullptr;
+		gosEffect.reset();
 	}
 
 	if (missEffect)
 	{
 		missEffect->Kill();	 
-		delete missEffect;
-		missEffect = nullptr;
+		missEffect.reset();
 	}
 
 	if (waterMissEffect)
 	{
 		waterMissEffect->Kill();
-		delete waterMissEffect;
-		waterMissEffect = nullptr;
+		waterMissEffect.reset();
 	}
 }
 
@@ -806,36 +801,31 @@ void WeaponBolt::finishNow (void)
 		if (hitEffect)
 		{
 			hitEffect->Kill();
-			delete hitEffect;
-			hitEffect = nullptr;
+			hitEffect.reset();
 		}
 
 		if (muzzleEffect)
 		{
 			muzzleEffect->Kill();
-			delete muzzleEffect;
-			muzzleEffect = nullptr;
+			muzzleEffect.reset();
 		}
 
 		if (missEffect)
 		{
 			missEffect->Kill();
-			delete missEffect;
-			missEffect = nullptr;
+			missEffect.reset();
 		}
 
 		if (waterMissEffect)
 		{
 			waterMissEffect->Kill();
-			delete waterMissEffect;
-			waterMissEffect = nullptr;
+			waterMissEffect.reset();
 		}
 
 		if (gosEffect)
 		{
 			gosEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-			delete gosEffect;
-			gosEffect = nullptr;
+			gosEffect.reset();
 		}
 
 		if (pointLight)

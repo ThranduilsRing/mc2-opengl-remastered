@@ -159,58 +159,6 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	Note::GetEntry(YawPitchRoll *value)
-{
-	Check_Object(this);
-	Check_Pointer(value);
-
-	const char *contents = nullptr;
-	GetEntry(&contents);
-	Check_Pointer(contents);
-	int count =
-		sscanf(
-			contents,
-			"%f %f %f",
-			&value->yaw.angle,
-			&value->pitch.angle,
-			&value->roll.angle
-		);
-	if (count != 3)
-	{
-		Page *page = m_page;
-		Check_Object(page);
-		NotationFile *file = page->m_notationFile;
-		Check_Object(file);
-		STOP((
-			"%s: {[%s]%s=%s} is not a YawPitchRoll!",
-			file->GetFileName(),
-			(const char*)page->m_name,
-			(const char*)m_name,
-			contents
-		));
-	}
-	value->yaw *= Radians_Per_Degree;
-	value->pitch *= Radians_Per_Degree;
-	value->roll *= Radians_Per_Degree;
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
-	Note::SetEntry(const YawPitchRoll &value)
-{
-	Check_Object(this);
-
-	static char
-		contents[32];
-	mc2::fmt::to_buf(contents, "{:f} {:f} {:f}", value.yaw * Degrees_Per_Radian, value.pitch * Degrees_Per_Radian, value.roll * Degrees_Per_Radian);
-	Verify(strlen(contents) < sizeof(contents));
-	SetEntry(contents);
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
 	Note::GetEntry(UnitQuaternion *value)
 {
 	Check_Object(this);
@@ -219,14 +167,14 @@ void
 	const char *contents = nullptr;
 	GetEntry(&contents);
 	Check_Pointer(contents);
-	YawPitchRoll ypr;
+	Scalar yaw, pitch, roll;
 	int count =
 		sscanf(
 			contents,
 			"%f %f %f",
-			&ypr.yaw.angle,
-			&ypr.pitch.angle,
-			&ypr.roll.angle
+			&yaw,
+			&pitch,
+			&roll
 		);
 	if (count != 3)
 	{
@@ -242,10 +190,10 @@ void
 			contents
 		));
 	}
-	ypr.yaw *= Radians_Per_Degree;
-	ypr.pitch *= Radians_Per_Degree;
-	ypr.roll *= Radians_Per_Degree;
-	*value = ypr;
+	yaw *= Radians_Per_Degree;
+	pitch *= Radians_Per_Degree;
+	roll *= Radians_Per_Degree;
+	*value = Quaternion_From_Yaw_Pitch_Roll(yaw, pitch, roll);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -257,61 +205,10 @@ void
 
 	static char
 		contents[32];
-	YawPitchRoll ypr(value);
+	Scalar yaw, pitch, roll;
+	Yaw_Pitch_Roll_From_Quaternion(value, &yaw, &pitch, &roll);
 	Verify(strlen(contents) < sizeof(contents));
-	mc2::fmt::to_buf(contents, "{:f} {:f} {:f}", ypr.yaw * Degrees_Per_Radian, ypr.pitch * Degrees_Per_Radian, ypr.roll * Degrees_Per_Radian);
-	SetEntry(contents);
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
-	Note::GetEntry(Motion3D *value)
-{
-	Check_Object(this);
-	Check_Pointer(value);
-
-	const char *contents = nullptr;
-	GetEntry(&contents);
-	Check_Pointer(contents);
-	int count =
-		sscanf(
-			contents,
-			"%f %f %f %f %f %f",
-			&value->linearMotion.x,
-			&value->linearMotion.y,
-			&value->linearMotion.z,
-			&value->angularMotion.x,
-			&value->angularMotion.y,
-			&value->angularMotion.z
-		);
-	if (count != 6)
-	{
-		Page *page = m_page;
-		Check_Object(page);
-		NotationFile *file = page->m_notationFile;
-		Check_Object(file);
-		STOP((
-			"%s: {[%s]%s=%s} is not a Motion!",
-			file->GetFileName(),
-			(const char*)page->m_name,
-			(const char*)m_name,
-			contents
-		));
-	}
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
-	Note::SetEntry(const Motion3D &value)
-{
-	Check_Object(this);
-
-	static char
-		contents[64];
-	mc2::fmt::to_buf(contents, "{:f} {:f} {:f} {:f} {:f} {:f}", value.linearMotion.x, value.linearMotion.y, value.linearMotion.z, value.angularMotion.x, value.angularMotion.y, value.angularMotion.z);
-	Verify(strlen(contents) < sizeof(contents));
+	mc2::fmt::to_buf(contents, "{:f} {:f} {:f}", yaw * Degrees_Per_Radian, pitch * Degrees_Per_Radian, roll * Degrees_Per_Radian);
 	SetEntry(contents);
 }
 

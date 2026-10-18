@@ -180,8 +180,8 @@ gosFX::ShardCloud::ShardCloud(
 
 	gos_PushCurrentHeap(MidLevelRenderer::Heap);
 	m_cloudImplementation =
-		new MidLevelRenderer::MLRTriangleCloud(spec->m_maxParticleCount);
-	Register_Object(m_cloudImplementation);
+		std::make_unique<MidLevelRenderer::MLRTriangleCloud>(spec->m_maxParticleCount);
+	Register_Object(m_cloudImplementation.get());
 	gos_PopCurrentHeap();
 
 	unsigned index = spec->m_maxParticleCount*sizeof(Particle);
@@ -200,8 +200,7 @@ gosFX::ShardCloud::ShardCloud(
 //
 gosFX::ShardCloud::~ShardCloud()
 {
-	Unregister_Object(m_cloudImplementation);
-	delete m_cloudImplementation;
+	Unregister_Object(m_cloudImplementation.get());
 }
 
 //------------------------------------------------------------------------------
@@ -416,7 +415,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 	{
 		Specification *spec = GetSpecification();
 		Check_Object(spec);
-		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation, m_localToParent);
+		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation.get(), m_localToParent);
 		const auto& local_to_world = submission.localToWorld;
 
 		//

@@ -306,8 +306,8 @@ gosFX::Card::Card(
 	Verify(gos_GetCurrentHeap() == Heap);
 
 	gos_PushCurrentHeap(MidLevelRenderer::Heap);
-	m_cardCloud = new MidLevelRenderer::MLRCardCloud(1);
-	Register_Object(m_cardCloud);
+	m_cardCloud = std::make_unique<MidLevelRenderer::MLRCardCloud>(1);
+	Register_Object(m_cardCloud.get());
 	gos_PopCurrentHeap();
 
 	m_cardCloud->SetData(
@@ -322,8 +322,7 @@ gosFX::Card::Card(
 //
 gosFX::Card::~Card()
 {
-	Unregister_Object(m_cardCloud);
-	delete m_cardCloud;
+	Unregister_Object(m_cardCloud.get());
 }
 
 //------------------------------------------------------------------------------
@@ -589,7 +588,7 @@ void gosFX::Card::Draw(DrawInfo *info)
 	//----------------------------
 	//
 	MidLevelRenderer::DrawEffectInformation dInfo;
-	dInfo.effect = m_cardCloud;
+	dInfo.effect = m_cardCloud.get();
 	Specification *spec = GetSpecification();
 	Check_Object(spec);
 	dInfo.state.Combine(info->m_state, spec->m_state);

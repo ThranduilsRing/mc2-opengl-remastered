@@ -16,3 +16,14 @@
 #if GLM_VERSION_MAJOR != 1 || GLM_VERSION_MINOR != 0 || GLM_VERSION_PATCH != 1
 #error The Stuff/GLM identity corpus is pinned to GLM 1.0.1
 #endif
+
+// The sim-math numerical contract (pinned here so a build change fails to compile instead of drifting the SIMID chain):
+// scalar GLM (no SIMD, no aligned gentypes), and /fp:precise with no FMA contraction and no /fp:fast. What
+// "bit-identical" promises: the same exe repeats, across worker counts and across save/load; NOT across compilers or platforms.
+static_assert(GLM_CONFIG_SIMD == GLM_DISABLE, "sim math needs scalar GLM (GLM_FORCE_PURE)");
+static_assert(GLM_CONFIG_ALIGNED_GENTYPES == GLM_DISABLE, "aligned GLM gentypes change layout and code paths");
+#if defined(GLM_FORCE_INTRINSICS) || defined(GLM_FORCE_DEFAULT_ALIGNED_GENTYPES) || defined(GLM_FORCE_FMA)
+#error GLM must not force intrinsics, aligned gentypes or FMA (sim-math contract)
+#endif
+// The floating-point flags are enforced per command line, for every TU whether or not it includes GLM, under MSVC and clang-cl:
+// cmake/Mc2SimFpContract.cmake sets them, scripts/check-sim-fp-contract.py checks the compile database.

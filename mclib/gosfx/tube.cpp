@@ -3,6 +3,7 @@
 #include"fx_trace/fx_cost_split.h"  // Q2-S0 FX cost-split (env MC2_FX_COST_SPLIT)
 #include <tracy/Tracy.hpp>          // Q2-S0 coarse CPU zone
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "math/glm_config.h"
 
 // B1 Stage 2' C8: subclass-Start routing into the GPU particle pipeline.
 #include"particles/batcher.h"
@@ -604,10 +605,10 @@ gosFX::Tube::Tube(
 	//
 	gos_PushCurrentHeap(MidLevelRenderer::Heap);
 	m_mesh =
-		new MidLevelRenderer::MLRIndexedTriangleCloud(
+		std::make_unique<MidLevelRenderer::MLRIndexedTriangleCloud>(
 			spec->m_maxProfileCount*(vertex_count-1)*2
 		);
-	Register_Object(m_mesh);
+	Register_Object(m_mesh.get());
 	gos_PopCurrentHeap();
 
 	//
@@ -731,8 +732,7 @@ void
 //
 gosFX::Tube::~Tube()
 {
-	Unregister_Object(m_mesh);
-	delete m_mesh;
+	Unregister_Object(m_mesh.get());
 }
 
 //------------------------------------------------------------------------------
@@ -1057,11 +1057,11 @@ void
 		spec->m_maximumDeviation.ComputeValue(m_age, seed) - pitch_min;
 	if (pitch_range < 0.0f)
 		pitch_range = 0.0f;
-	Stuff::Radian angle = pitch_min + Stuff::Random::GetFraction() * pitch_range;
-	Stuff::SinCosPair xy(angle);
-	profile->m_direction.x = (Stuff::Random::GetFraction() >= 0.5f) ? xy.sine : -xy.sine;
+	const Stuff::Scalar angle = pitch_min + Stuff::Random::GetFraction() * pitch_range;
+	const Stuff::Scalar xySine = glm::sin(angle), xyCosine = glm::cos(angle);
+	profile->m_direction.x = (Stuff::Random::GetFraction() >= 0.5f) ? xySine : -xySine;
 	profile->m_direction.y = 0.0f;
-	profile->m_direction.z = xy.cosine;
+	profile->m_direction.z = xyCosine;
 	Check_Object(&profile->m_direction);
 }
 
@@ -1214,7 +1214,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 	if (m_activeProfileCount>1)
 	{
 		MidLevelRenderer::DrawEffectInformation dInfo;
-		dInfo.effect = m_mesh;
+		dInfo.effect = m_mesh.get();
 		Specification *spec = GetSpecification();
 
 		// MC2_TUBE_PROFILE_LOG=1: log each tube spec's PEAK m_activeProfileCount.

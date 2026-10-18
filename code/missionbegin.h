@@ -18,6 +18,7 @@ MissionBegin:
 #include"alistbox.h"
 #include"aanim.h"
 #include"abl.h"
+#include <memory>
 #include <string>
 
 class LogisticsScreen;
@@ -84,7 +85,7 @@ class MissionBegin
 		bool						bDone;
 		bool						bReadyToLoad;
 
-		ABLModulePtr				logisticsBrain;
+		std::unique_ptr<ABLModule>	logisticsBrain;	// owner; freed in end() before closeABL
 		long						logisticsScriptHandle;
 
 		aAnimation					leftAnim;

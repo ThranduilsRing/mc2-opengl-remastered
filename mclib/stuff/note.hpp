@@ -109,15 +109,6 @@ namespace Stuff {
 			SetEntry(const Vector3D &value);
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	// YawPitchRoll access
-	//
-	public:
-		void
-			GetEntry(YawPitchRoll *value);
-		void
-			SetEntry(const YawPitchRoll &value);
-
-	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// UnitQuaternion access
 	//
 	public:
@@ -125,15 +116,6 @@ namespace Stuff {
 			GetEntry(UnitQuaternion *value);
 		void
 			SetEntry(const UnitQuaternion &value);
-
-	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	// Motion3D access
-	//
-	public:
-		void
-			GetEntry(Motion3D *value);
-		void
-			SetEntry(const Motion3D &value);
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// RGBColor access
