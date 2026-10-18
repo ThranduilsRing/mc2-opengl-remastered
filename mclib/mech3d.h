@@ -403,17 +403,17 @@ class Mech3DAppearance: public ObjectAppearance
 		Stuff::Vector3D				footPos[2];				//Used to store previous frame foot positions.
 															//For foot poofs and footprints.
    		//NEW  GOS FX
-   		gosFX::Effect				*rightDustPoofEffect[MAX_DUST_POOFS];
-		gosFX::Effect				*leftDustPoofEffect[MAX_DUST_POOFS];
-   		gosFX::Effect				*smokeEffect;
-   		gosFX::Effect				*jumpJetEffect;
-		gosFX::Effect				*rightShoulderBoom;
-		gosFX::Effect				*leftShoulderBoom;
-		gosFX::Effect				*criticalSmoke;
-		gosFX::Effect				*waterWake;
-		gosFX::Effect				*helicopterDustCloud;
-		gosFX::Effect				*rightArmSmoke;
-  		gosFX::Effect				*leftArmSmoke;
+		gosFX::EffectPtr				rightDustPoofEffect[MAX_DUST_POOFS];
+		gosFX::EffectPtr				leftDustPoofEffect[MAX_DUST_POOFS];
+		gosFX::EffectPtr				smokeEffect;
+		gosFX::EffectPtr				jumpJetEffect;
+		gosFX::EffectPtr				rightShoulderBoom;
+		gosFX::EffectPtr				leftShoulderBoom;
+		gosFX::EffectPtr				criticalSmoke;
+		gosFX::EffectPtr				waterWake;
+		gosFX::EffectPtr				helicopterDustCloud;
+		gosFX::EffectPtr				rightArmSmoke;
+		gosFX::EffectPtr				leftArmSmoke;
 
 		bool						movedThisFrame;
 

@@ -188,11 +188,13 @@ void
 	Check_Object(spec);
 	Particle *particle = GetParticle(index);
 	Check_Object(particle);
+	// Stays raw by design: particles live in the cloud's zeroed byte block (no constructor or destructor runs on a slot), so the
+	// slot is freed by hand in DestroyParticle and ~EffectCloud.
 	particle->m_effect =
 		EffectLibrary::Instance->MakeEffect(
 			spec->m_particleEffectID,
 			ExecuteFlag|DynamicWorldSpaceSimulationMode
-		);
+		).release();
 	Effect *effect = particle->m_effect;
 	Check_Object(effect);
 	particle->m_radius = 0.0f;

@@ -12,6 +12,10 @@
 #include<string.h>
 #include <vector>
 #include <algorithm>
+#include <cstring>
+#include <memory>
+#include <memory_resource>
+#include <unordered_map>
 #include"platform_str.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
@@ -202,14 +206,10 @@ extern void transState (SymTableNodePtr newState);
 int32_t                 numLibrariesLoaded = 0;
 int32_t                 NumExecutions = 0;
 
-void* (*ABLSystemMallocCallback) (unsigned long memSize) = nullptr;
-void* (*ABLStackMallocCallback) (unsigned long memSize) = nullptr;
-void* (*ABLCodeMallocCallback) (unsigned long memSize) = nullptr;
-void* (*ABLSymbolMallocCallback) (unsigned long memSize) = nullptr;
-void (*ABLSystemFreeCallback) (void* memBlock) = nullptr;
-void (*ABLStackFreeCallback) (void* memBlock) = nullptr;
-void (*ABLCodeFreeCallback) (void* memBlock) = nullptr;
-void (*ABLSymbolFreeCallback) (void* memBlock) = nullptr;
+// The runtime stack: `stack` is the view the interpreter indexes, this vector owns it (ABLi_init to ABLi_close).
+static std::vector<StackItem> stackStore;
+void ABL_openArena (void);
+void ABL_closeArena (void);
 void (*ABLDebugPrintCallback) (const char* s) = nullptr;
 long (*ABLRandomCallback) (long range) = nullptr;
 void (*ABLSeedRandomCallback) (unsigned long range) = nullptr;
@@ -340,14 +340,6 @@ void ABLi_init (unsigned long runtimeStackSize,
 				unsigned long maxCodeBufferSize,
 				unsigned long maxRegisteredModules,
 				unsigned long maxStaticVariables,
-				void* (*systemMallocCallback) (unsigned long memSize),
-				void* (*stackMallocCallback) (unsigned long memSize),
-				void* (*codeMallocCallback) (unsigned long memSize),
-				void* (*symbolMallocCallback) (unsigned long memSize),
-				void (*systemFreeCallback) (void* memBlock),
-				void (*stackFreeCallback) (void* memBlock),
-				void (*codeFreeCallback) (void* memBlock),
-				void (*symbolFreeCallback) (void* memBlock),
 				long (*fileCreateCB) (void** file, const char* fName),
 				long (*fileOpenCB) (void** file, const char* fName),
 				long (*fileCloseCB) (void** file),
@@ -379,14 +371,7 @@ profile = true;
 	if (NUM_ABL_ROUTINES > 254)
 		ABL_Fatal(0, " MAJOR ABL ERROR: Too Many ABL Routines ");
 
-	ABLSystemMallocCallback = systemMallocCallback;
-	ABLStackMallocCallback = stackMallocCallback;
-	ABLCodeMallocCallback = codeMallocCallback;
-	ABLSymbolMallocCallback = symbolMallocCallback;
-	ABLSystemFreeCallback = systemFreeCallback;
-	ABLStackFreeCallback = stackFreeCallback;
-	ABLCodeFreeCallback = codeFreeCallback;
-	ABLSymbolFreeCallback = symbolFreeCallback;
+	ABL_openArena();
 	ABLDebugPrintCallback = DefaultDebugPrintCallback;
 	ABLRandomCallback = DefaultRandom;
 	ABLSeedRandomCallback = DefaultSeedRandom;
@@ -496,7 +481,7 @@ profile = true;
 	//--------------------------------------------------------------------
 	// Allocate the code buffer used during pre-processing/interpreting...
 	MaxCodeBufferSize = maxCodeBufferSize;
-	codeBuffer = (char*)ABLCodeMallocCallback(maxCodeBufferSize);
+	codeBuffer = (char*)ABL_alloc(ABLPool::Code, maxCodeBufferSize);
 	if (!codeBuffer)
 		ABL_Fatal(0, " ABL: Unable to AblCodeHeap->malloc preprocess code buffer ");
 	
@@ -511,21 +496,20 @@ profile = true;
 	StaticDataPtr = nullptr;
 	StaticVariablesSizes = nullptr;
 	if (MaxStaticVariables > 0) {
-		StaticVariablesSizes = (long*)ABLStackMallocCallback(sizeof(long) * MaxStaticVariables);
+		StaticVariablesSizes = (long*)ABL_alloc(ABLPool::Stack, sizeof(long) * MaxStaticVariables);
 		if (!StaticVariablesSizes)
 			ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc StaticVariablesSizes ");
 	}
 
 	//------------------------------
 	// Allocate the runtime stack...
-	stack = (StackItemPtr)ABLStackMallocCallback(sizeof(StackItem) * (runtimeStackSize / sizeof(StackItem)));
-	if (!stack)
-		ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc stack ");
+	stackStore.assign(runtimeStackSize / sizeof(StackItem), StackItem{});
+	stack = stackStore.data();
 
 	//-----------------------------------
 	// Allocate Eternal Vars Size List...
 	if (MaxEternalVariables > 0) {
-		EternalVariablesSizes = (long*)ABLStackMallocCallback(sizeof(long) * MaxEternalVariables);
+		EternalVariablesSizes = (long*)ABL_alloc(ABLPool::Stack, sizeof(long) * MaxEternalVariables);
 		if (!EternalVariablesSizes)
 			ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc EternalVariablesSizes ");
 	}
@@ -596,11 +580,7 @@ namespace {
 struct CompileTransaction;
 CompileTransaction* activeCompile = nullptr;
 struct CompileTransaction {
-	using Alloc = void* (*)(unsigned long);
-	using Free = void (*)(void*);
-	Alloc alloc[3]{ABLSymbolMallocCallback, ABLCodeMallocCallback, ABLStackMallocCallback};
-	Free release[3]{ABLSymbolFreeCallback, ABLCodeFreeCallback, ABLStackFreeCallback};
-	struct Allocation { void* address; int heap; };
+	struct Allocation { void* address; ABLPool heap; };
 	std::vector<Allocation> allocations;
 	std::vector<SymTableNodePtr*> insertions;
 	std::vector<std::pair<TypePtr, long>> typeUses;
@@ -608,32 +588,21 @@ struct CompileTransaction {
 	SymTableNodePtr display[MAX_NESTING_LEVEL];
 	long savedEternalOffset = eternalOffset;
 	bool committed = false;
-	template<int Heap> static void* allocate(unsigned long size) {
-		auto& owner = *activeCompile;
-		void* result = owner.alloc[Heap](size);
-		try { owner.allocations.push_back({result, Heap}); }
-		catch (...) { owner.release[Heap](result); throw; }
-		return result;
-	}
-	template<int Heap> static void deallocate(void* address) {
-		auto& owner = *activeCompile;
-		for (auto& entry : owner.allocations)
-			if (entry.address == address && entry.heap == Heap) {
+	// Called by ABL_alloc / ABL_free while this compile is active.
+	void remember(void* address, ABLPool heap) { allocations.push_back({address, heap}); }
+	void forget(void* address, ABLPool heap) {
+		for (auto& entry : allocations)
+			if (entry.address == address && entry.heap == heap) {
 				entry.address = nullptr;
 				break;
 			}
-		owner.release[Heap](address);
 	}
 	CompileTransaction() : savedCode(static_cast<size_t>(MaxCodeBufferSize)) {
 		memcpy(savedCode.data(), codeBuffer, savedCode.size());
 		std::copy_n(SymTableDisplay, MAX_NESTING_LEVEL, display);
 		activeCompile = this;
-		ABLSymbolMallocCallback = allocate<0>; ABLCodeMallocCallback = allocate<1>; ABLStackMallocCallback = allocate<2>;
-		ABLSymbolFreeCallback = deallocate<0>; ABLCodeFreeCallback = deallocate<1>; ABLStackFreeCallback = deallocate<2>;
 	}
 	~CompileTransaction() {
-		ABLSymbolMallocCallback = alloc[0]; ABLCodeMallocCallback = alloc[1]; ABLStackMallocCallback = alloc[2];
-		ABLSymbolFreeCallback = release[0]; ABLCodeFreeCallback = release[1]; ABLStackFreeCallback = release[2];
 		activeCompile = nullptr;
 		if (committed)
 			return;
@@ -650,7 +619,7 @@ struct CompileTransaction {
 		memcpy(codeBuffer, savedCode.data(), savedCode.size());
 		for (auto entry : allocations)
 			if (entry.address)
-				release[entry.heap](entry.address);
+				ABL_free(entry.heap, entry.address);
 		level = 0;
 		CurModuleIdPtr = CurRoutineIdPtr = nullptr;
 		codeBufferPtr = codeBuffer;
@@ -663,6 +632,86 @@ struct CompileTransaction {
 		std::fill_n(StateHandleList, MAX_STATE_HANDLES_PER_MODULE, StateHandleInfo{});
 	}
 };
+}
+
+// The environment's pools (see ablscan.h). Each block's size is kept beside it: the pool resource needs it to hand the block back.
+namespace {
+struct AblArena {
+	struct Pool {
+		std::pmr::unsynchronized_pool_resource memory;
+		std::unordered_map<void*, size_t> live;
+	};
+	Pool pools[3];
+};
+std::unique_ptr<AblArena> ablArena;
+constexpr size_t kAblAlign = alignof(std::max_align_t);
+}
+
+void ABL_openArena (void) {
+	ablArena = std::make_unique<AblArena>();
+}
+
+void ABL_closeArena (void) {
+	ablArena.reset();
+}
+
+void* ABL_alloc (ABLPool which, size_t bytes) {
+	if (!ablArena)
+		ABL_Fatal(0, " ABL: allocation outside the environment ");
+	auto& pool = ablArena->pools[static_cast<int>(which)];
+	const size_t size = bytes ? bytes : 1;
+	void* block = pool.memory.allocate(size, kAblAlign);
+	try {
+		pool.live.emplace(block, size);
+		if (activeCompile)
+			activeCompile->remember(block, which);
+	} catch (...) {
+		pool.live.erase(block);
+		pool.memory.deallocate(block, size, kAblAlign);
+		throw;
+	}
+	std::memset(block, 0, size);
+	return block;
+}
+
+void ABL_free (ABLPool which, void* block) {
+	if (!block)
+		return;
+	if (!ablArena)
+		ABL_Fatal(0, " ABL: free after the environment closed ");
+	// A block handed back to the wrong kind (all kinds shared one allocator before) is still found and freed by its owner.
+	for (int i = 0; i < 3; ++i) {
+		const int index = (static_cast<int>(which) + i) % 3;
+		auto& pool = ablArena->pools[index];
+		auto found = pool.live.find(block);
+		if (found == pool.live.end())
+			continue;
+		if (activeCompile)
+			activeCompile->forget(block, static_cast<ABLPool>(index));
+		const size_t size = found->second;
+		pool.live.erase(found);
+		pool.memory.deallocate(block, size, kAblAlign);
+		return;
+	}
+	ABL_Fatal(0, " ABL: free of a block the environment does not own ");
+}
+
+size_t ABL_liveBlocks (void) {
+	if (!ablArena)
+		return 0;
+	size_t count = 0;
+	for (const auto& pool : ablArena->pools)
+		count += pool.live.size();
+	return count;
+}
+
+bool ABL_ownsBlock (const void* block) {
+	if (!ablArena)
+		return false;
+	for (const auto& pool : ablArena->pools)
+		if (pool.live.contains(const_cast<void*>(block)))
+			return true;
+	return false;
 }
 
 void ablRememberSymbolInsertion(SymTableNodePtr* slot) {
@@ -798,24 +847,24 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 
 	closeSourceFile();
 
-	ModuleRegistry[NumModulesRegistered].fileName = (char*)ABLStackMallocCallback(static_cast<unsigned long>(strlen(source_fn) + 1));
+	ModuleRegistry[NumModulesRegistered].fileName = (char*)ABL_alloc(ABLPool::Stack, static_cast<unsigned long>(strlen(source_fn) + 1));
 	if (!ModuleRegistry[NumModulesRegistered].fileName)
 		ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc module filename ");
 	strcpy(ModuleRegistry[NumModulesRegistered].fileName, source_fn);
 	ModuleRegistry[NumModulesRegistered].moduleIdPtr = moduleIdPtr;
 
 	ModuleRegistry[NumModulesRegistered].numSourceFiles = NumSourceFiles;
-	ModuleRegistry[NumModulesRegistered].sourceFiles = (char**)ABLStackMallocCallback(NumSourceFiles * sizeof(char*));
+	ModuleRegistry[NumModulesRegistered].sourceFiles = (char**)ABL_alloc(ABLPool::Stack, NumSourceFiles * sizeof(char*));
 	if (!ModuleRegistry[NumModulesRegistered].sourceFiles)
 		ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc sourceFiles ");
 	for (int i = 0; i < NumSourceFiles; i++) {
-		ModuleRegistry[NumModulesRegistered].sourceFiles[i] = (char*)ABLStackMallocCallback(static_cast<unsigned long>(strlen(SourceFiles[i]) + 1));
+		ModuleRegistry[NumModulesRegistered].sourceFiles[i] = (char*)ABL_alloc(ABLPool::Stack, static_cast<unsigned long>(strlen(SourceFiles[i]) + 1));
 		strcpy(ModuleRegistry[NumModulesRegistered].sourceFiles[i], SourceFiles[i]);
 	}
 
 	if (NumLibrariesUsed > 0) {
 		ModuleRegistry[NumModulesRegistered].numLibrariesUsed = NumLibrariesUsed;
-		ModuleRegistry[NumModulesRegistered].librariesUsed = (ABLModulePtr*)ABLStackMallocCallback(NumLibrariesUsed * sizeof(SymTableNodePtr));
+		ModuleRegistry[NumModulesRegistered].librariesUsed = (ABLModulePtr*)ABL_alloc(ABLPool::Stack, NumLibrariesUsed * sizeof(SymTableNodePtr));
 		if (!ModuleRegistry[NumModulesRegistered].librariesUsed)
 			ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc librariesUsed ");
 		for (int i = 0; i < NumLibrariesUsed; i++)
@@ -826,7 +875,7 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 	ModuleRegistry[NumModulesRegistered].sizeStaticVars	= nullptr;
 	ModuleRegistry[NumModulesRegistered].totalSizeStaticVars = 0;
 	if (NumStaticVariables) {
-		ModuleRegistry[NumModulesRegistered].sizeStaticVars = (long*)ABLStackMallocCallback(sizeof(long) * NumStaticVariables);
+		ModuleRegistry[NumModulesRegistered].sizeStaticVars = (long*)ABL_alloc(ABLPool::Stack, sizeof(long) * NumStaticVariables);
 		if (!ModuleRegistry[NumModulesRegistered].sizeStaticVars)
 			ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc module sizeStaticVars ");
 		memcpy(ModuleRegistry[NumModulesRegistered].sizeStaticVars, StaticVariablesSizes, sizeof(long) * NumStaticVariables);
@@ -841,7 +890,7 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 
 	ModuleRegistry[NumModulesRegistered].numStateHandles = NumStateHandles;
 	if (NumStateHandles > 1) {
-		ModuleRegistry[NumModulesRegistered].stateHandles = (StateHandleInfoPtr)ABLStackMallocCallback(sizeof(StateHandleInfo) * NumStateHandles);
+		ModuleRegistry[NumModulesRegistered].stateHandles = (StateHandleInfoPtr)ABL_alloc(ABLPool::Stack, sizeof(StateHandleInfo) * NumStateHandles);
 		memcpy(ModuleRegistry[NumModulesRegistered].stateHandles, StateHandleList, sizeof(StateHandleInfo) * NumStateHandles);
 	}
 
@@ -922,7 +971,7 @@ long ABLi_execute (SymTableNodePtr moduleIdPtr, SymTableNodePtr functionIdPtr, A
 
 				if (formalTypePtr->form == FRM_ARRAY/* || (formalTypePtr->form == FRM_RECORD)*/) {
 					long size = formalTypePtr->size;
-					char* dest = (char*)ABLStackMallocCallback((size_t)size);
+					char* dest = (char*)ABL_alloc(ABLPool::Stack, (size_t)size);
 					if (!dest)
 						ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc module formal array param ");
 					// The entry parameter list holds only integers and reals, so there is no actual array to copy from (the stack top is another
@@ -973,24 +1022,22 @@ void ABLi_close (void) {
 	destroyLibraryRegistry();
 
 	if (StaticVariablesSizes) {
-		ABLStackFreeCallback(StaticVariablesSizes);
+		ABL_free(ABLPool::Stack, StaticVariablesSizes);
 		StaticVariablesSizes = nullptr;
 	}
 
 	if (EternalVariablesSizes) {
-		ABLStackFreeCallback(EternalVariablesSizes);
+		ABL_free(ABLPool::Stack, EternalVariablesSizes);
 		EternalVariablesSizes = nullptr;
 	}
 	
 	if (codeBuffer) {
-		ABLCodeFreeCallback(codeBuffer);
+		ABL_free(ABLPool::Code, codeBuffer);
 		codeBuffer = nullptr;
 	}
 
-	if (stack) {
-		ABLStackFreeCallback(stack);
-		stack = nullptr;
-	}
+	std::vector<StackItem>().swap(stackStore);
+	stack = nullptr;
 
 	if (debugger) {
 		delete debugger;
@@ -1000,6 +1047,9 @@ void ABLi_close (void) {
 	ABL_CloseProfileLog();
 
 	ABLenabled = false;
+
+	// Last: everything above may still hand blocks back.
+	ABL_closeArena();
 }
 
 //***************************************************************************
@@ -1044,7 +1094,7 @@ ABLModulePtr ABLi_loadLibrary (const char* sourceFileName, long* numErrors, long
 ABLParamPtr ABLi_createParamList (long numParameters) {
 
 	if (numParameters) {
-		ABLParamPtr paramList = (ABLParamPtr)ABLStackMallocCallback(sizeof(ABLParam) * (numParameters + 1));
+		ABLParamPtr paramList = (ABLParamPtr)ABL_alloc(ABLPool::Stack, sizeof(ABLParam) * (numParameters + 1));
 		if (!paramList)
 			ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc paramList ");
 		memset(paramList, 0, sizeof(ABLParam) * (numParameters + 1)); 
@@ -1078,7 +1128,7 @@ void ABLi_setRealParam (ABLParamPtr paramList, int index, float value) {
 void ABLi_deleteParamList (ABLParamPtr paramList) {
 
 	if (paramList)
-		ABLStackFreeCallback(paramList);
+		ABL_free(ABLPool::Stack, paramList);
 }
 
 //***************************************************************************

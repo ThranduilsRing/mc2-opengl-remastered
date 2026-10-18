@@ -127,15 +127,6 @@ namespace Stuff {
 			SetEntry(const UnitQuaternion &value);
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	// Motion3D access
-	//
-	public:
-		void
-			GetEntry(Motion3D *value);
-		void
-			SetEntry(const Motion3D &value);
-
-	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// RGBColor access
 	//
 	public:

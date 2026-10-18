@@ -57,9 +57,8 @@ Vector3D&
 		return *this = Identity;
 	}
 
-	SinCosPair half_angle(sine_of_half, q.w);
 	Radian angle;
-	angle = half_angle;
+	angle = Arctan(sine_of_half, q.w);
 	Scalar len = angle * 2.0f / sine_of_half;
 	x = q.x * len;
 	y = q.y * len;
@@ -82,13 +81,14 @@ Vector3D&
 		 && Vector3D::Left.x == 1.0f
 		 && Vector3D::Up.y == 1.0f
 	);
-	SinCosPair azimuth(polar.yaw);
-	SinCosPair altitude(polar.pitch);
-	y = -polar.range * altitude.sine;
+	const Scalar
+		azimuthSine = sinf(polar.yaw), azimuthCosine = cosf(polar.yaw),
+		altitudeSine = sinf(polar.pitch), altitudeCosine = cosf(polar.pitch);
+	y = -polar.range * altitudeSine;
 
-	Scalar len = polar.range * altitude.cosine;
-	x = len * azimuth.sine;
-	z = len * azimuth.cosine;
+	Scalar len = polar.range * altitudeCosine;
+	x = len * azimuthSine;
+	z = len * azimuthCosine;
 	return *this;
 }
 
@@ -107,27 +107,6 @@ Vector3D&
 	x = v.x*m(0,0) + v.y*m(1,0) + v.z*m(2,0);
 	y = v.x*m(0,1) + v.y*m(1,1) + v.z*m(2,1);
 	z = v.x*m(0,2) + v.y*m(1,2) + v.z*m(2,2);
-	return *this;
-}
-
-//
-//###########################################################################
-//###########################################################################
-//
-Vector3D&
-	Vector3D::MultiplyByInverse(
-		const Vector3D& v,
-		const LinearMatrix4D& m
-	)
-{
-	Check_Pointer(this);
-	Check_Object(&v);
-	Check_Object(&m);
-	Verify(this != &v);
-
-	x = v.x*m(0,0) + v.y*m(0,1) + v.z*m(0,2);
-	y = v.x*m(1,0) + v.y*m(1,1) + v.z*m(1,2);
-	z = v.x*m(2,0) + v.y*m(2,1) + v.z*m(2,2);
 	return *this;
 }
 

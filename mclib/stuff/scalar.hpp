@@ -45,14 +45,6 @@ namespace Stuff {
 		Close_Enough(int x,int y,Scalar e=SMALL)
 			{return Fabs(static_cast<Scalar>(x-y)) <= e;}
 
-	inline WORD
-		Round_Float_To_Word(float in)
-	{
-		Verify(in >= 0.0f && in < 65536.0f);
-		in += 12582912.0f;
-		return *Cast_Pointer(WORD*, &in);
-	}
-
 	inline BYTE
 		Round_Float_To_Byte(float in)
 	{
@@ -177,13 +169,6 @@ namespace Stuff {
 	}
 
 	inline Scalar
-		Arcsin(Scalar x)
-	{
-		Verify(x>=-1.0f && x<=1.0f);
-		return static_cast<Scalar>(asin(x));
-	}
-
-	inline Scalar
 		Power(
 			Scalar x,
 			Scalar y
@@ -211,12 +196,6 @@ namespace Stuff {
 		Cos(Scalar v)
 	{
 		return static_cast<Scalar>(cos(v));
-	}
-
-	inline Scalar
-		Tan(Scalar v)
-	{
-		return static_cast<Scalar>(tan(v));
 	}
 
 	inline Scalar

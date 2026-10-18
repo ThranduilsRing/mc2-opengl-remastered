@@ -1,4 +1,4 @@
-<!-- doc-status: current | reviewed:2026-10-15 -->
+<!-- doc-status: current | reviewed:2026-10-17 -->
 # Step 5 bit-identity harness: design
 
 WHAT: the harness that step 5 (`Stuff::` math -> glm) opens with, per the owner ruling of 2026-10-11 and the meta-review section E bar: the
@@ -139,3 +139,52 @@ then run `mc2_tests.exe --test-case="*Stuff/GLM identity*" --no-skip` and retain
 The independent smoke checksum already exists: `py -3 tools/sim_determinism.py check mc2_03
 --install lane3 --duration 30` (one shell line; repeat for mc2_10/16/24). Compare strict reference chains before
 accepting sim changes; do not re-record a baseline to absorb a math mismatch. No runtime files changed.
+
+## 7. Port log (lane 1, session 21, 2026-10-17)
+
+Production GLM lives in `mclib/math/` (glm_config.h: the one configuration; mc2_math.h: exact wrappers; stuff_glm_bridge.h: Stuff<->glm
+until the last Stuff type goes). The corpus now asserts 39 required rows at 0 mismatches (the 30 identical ops, 8 exact wrappers, the bridge).
+Finding: the 1-ULP trig rows were the HARNESS include order. The gameos/mclib/mc2 PCH puts <cmath> first, so there Stuff::Sin binds sinf
+(== glm::sin); only the non-PCH libraries (stuff, mlr, gosfx, the editor) bind the double CRT, which sinD/cosD/acosD/atan2D reproduce.
+- S5.1 c9ff5eebf infra + wrappers + harness asserts (class A: no production user).
+- S5.2 6d07a8e3c render-only: all 23 `Invert` and 16 `MultiplyByInverse` calls outside Stuff -> glm::inverse (camera, TG/MSL transform, shadow
+  corners, gosFX, MLR). Stuff's OBB/Plane/Normal keep Stuff::Invert (OBB is collision geometry: not ported without a sim proof).
+- S5.3 3f83f2a52 class A: callerless Stuff math deleted (Arcsin, Tan, Round_Float_To_Word, the MultiplyByInverse family, Vector3D
+  Get*Component, AlignWithVector, Plane::CalculateX/Y/Z, Line3D::FindEnd, Ray3D::GetClosestPointTo/SetOrigin, OBB::BuildSphere).
+- S5.4 22a0e8228 the last external callers of the differing ops (gosFX Sin/Cos/Lerp, cursor and terrain-light scalar divide) on the wrappers.
+- S5.5 a7585245a (lane 1 s22) types with no caller outside Stuff deleted bottom-up: Origin3D and Motion3D (their conversion overloads in
+  Matrix4D/AffineMatrix4D/LinearMatrix4D/Point3D/EulerAngles/YawPitchRoll/UnitQuaternion and the Note/Page notation accessors), and Degree
+  (its one user, the MLR spotlight reader, keeps the identical deg * Radians_Per_Degree). Census of external uses that decides the next
+  types: Ray3D 0 (base of Line3D), YawPitchRoll 0 (Stuff-internal EulerAngles notation I/O), SinCosPair 3, Line3D 8, Normal3D 8,
+  ExtentBox 9, RGBColor 12, Sphere 14, Radian 17, Plane 18, UnitVector3D 23, AffineMatrix4D 31, OBB 61, Vector2DOf 126, UnitQuaternion 127,
+  EulerAngles 212, Matrix4D 229, RGBAColor 265, Vector4D 277, Vector2DScalar 423, LinearMatrix4D 458, Point3D 710, Vector3D 2149.
+- S5.6 36ecb4215 (lane 1 s22) Stuff::SinCosPair deleted: its 12 Stuff-internal sites (matrices from EulerAngles/YawPitchRoll, Euler/YPR
+  from LinearMatrix4D, UnitQuaternion from a rotation vector, GetAngle, Multiply(q,t), Subtract, Vector3D from UnitQuaternion and
+  YawPitchRange) call the same cosf/sinf and Arctan in the same translation unit; the gosFX tube profile (render-only) uses glm::sin/cos.
+  The corpus sincos rows now assert sinf/cosf == glm::sin/cos (0 mismatches). Proof: sim pair identical to the pre-session reference,
+  saveload x2 = baselines, capture pair viewed, 38 REQUIRED rows 0 mismatches, build_all_targets -j2.
+- S5.7 0f485f8ab (lane 1 s22) Ray3D folded into Line3D (its only user was Line3D's base): origin/direction are Line3D members in the
+  same order, Project and the plane distance moved verbatim; the hidden or callerless Ray3D functions and Find_Closest_Approach deleted.
+Proof every batch: sim pair mc2_03/mc2_24 identical to the pre-port reference (exe 579b60e2c) and to the committed baselines; saveload mc2_03
+fb63e85ac66966cf and mc2_01 d46e3e5e30d26b15 = baselines; S5.2/S5.4 GL/VK capture pair day mc2_01 + night mc2_10 viewed.
+Left on Stuff: the types themselves (Vector3D ~2,000 uses outside stuff/, Point3D, the matrices, UnitQuaternion, angles) and every op whose
+callers are Stuff-internal. Next: port by TYPE bottom-up (a header batch per type converting members to glm with the bridge at the boundary),
+not by op: op-by-op porting cannot delete a type.
+
+## 8. Numerical contract (lane 1 s22, orchestrator addition 2026-10-17)
+
+- WHAT "bit-identical" promises: the same exe repeats itself, across job-system worker counts and across save/load (SIMID chain,
+  saveload digests). It does NOT promise identity across compilers (MSVC vs clang-cl presets) or platforms.
+- PINNED in `mclib/math/glm_config.h` (included by `mc2_math.h`; compile-time, fails the build on change): GLM 1.0.1, scalar
+  (`GLM_CONFIG_SIMD == GLM_DISABLE` via GLM_FORCE_PURE), no aligned gentypes, no forced intrinsics/FMA; under MSVC no `/fp:fast`,
+  `/fp:contract` or `/fp:strict` (the build passes no /fp flag = /fp:precise; MSVC defines `_M_FP_PRECISE` only for an explicit
+  flag, so the check is on the deviating macros). The identity corpus TUs keep their explicit `/fp:precise` (clang: `-ffp-contract=off`).
+  OPEN: clang-cl presets contract by default (`-ffp-contract=on`) outside the corpus TUs; not checked (cross-compiler is not promised).
+- Retained exact wrappers (mc2_math.h), one line each:
+  - `transformPoint/transformVector`: row-vector p*M (Stuff convention); glm's `M*p` is the column convention, a different product.
+  - `divide(v, s)`: one float reciprocal then three multiplies, as Stuff::Vector3D::Divide; glm `v / s` divides each component (1 ULP).
+  - `lerp(a, b, t)`: a + t*(b-a) per component; glm::mix is a*(1-t) + b*t, which cancels differently.
+  - `wrapAngleStatic`: double fmod into (-Pi, Pi] (-Pi -> +Pi), as Radian::Normalize(Scalar); no glm equivalent with that interval.
+  - `wrapAngleMember`: as above into [-Pi, Pi] (-Pi stays), as Radian::Normalize(); the two intervals differ on purpose.
+  - `sinD/cosD/acosD/atan2D`: the DOUBLE CRT function rounded to float, which is what Stuff::Sin/Cos/Arccos/Arctan bind in the non-PCH
+    libraries (stuff, mlr, gosfx, editor); glm::sin(float) is sinf, 1 ULP apart on ~0.1% of inputs.

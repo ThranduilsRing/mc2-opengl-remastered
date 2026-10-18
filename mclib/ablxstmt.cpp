@@ -461,7 +461,7 @@ void execActualParams (SymTableNodePtr routineIdPtr) {
 			if (formalTypePtr->form == FRM_ARRAY/* || (formalTypePtr->form == FRM_RECORD)*/) {
 				long size = formalTypePtr->size;
 				char* src = tos->address;
-				char* dest = (char*)ABLStackMallocCallback((size_t)size);
+				char* dest = (char*)ABL_alloc(ABLPool::Stack, (size_t)size);
 				if (!dest) {
 					char err[255];
 					mc2::fmt::to_buf(err, " ABL: Unable to AblStackHeap->malloc actual array param in module {})", mc2::fmt::safe(CurModule->getName()));

@@ -6,6 +6,7 @@
   "scripts/mech_shot.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
   "scripts/mechbay_preview_harness.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
   "scripts/renderdoc_capture.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
+  "scripts/run_editor_capture.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); editor lane viewport capture driver, added in the editor-vk merge",
   "scripts/run_editor_playtest_smoke.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
   "scripts/run_editor_smoke.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
   "scripts/run_smoke.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",

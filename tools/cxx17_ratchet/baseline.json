@@ -141,13 +141,13 @@
   "code": {
    "LG01": 197,
    "LG02": 204,
-   "LG03": 815,
+   "LG03": 747,
    "LG04": 21,
    "LG05": 198,
    "LG06": 472,
    "LG07": 2,
    "LG08": 17,
-   "LG09": 2239,
+   "LG09": 2238,
    "LG10": 20,
    "LG11": 103,
    "LG12a": 100,
@@ -182,21 +182,21 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 11
+   "LG20": 16
   },
   "mclib": {
    "LG01": 337,
    "LG02": 277,
-   "LG03": 1035,
+   "LG03": 1001,
    "LG04": 15,
    "LG05": 134,
    "LG06": 662,
    "LG07": 0,
-   "LG08": 69,
-   "LG09": 1955,
+   "LG08": 70,
+   "LG09": 1947,
    "LG10": 33,
    "LG11": 67,
-   "LG12a": 208,
+   "LG12a": 200,
    "LG12b": 233,
    "LG13": 447,
    "LG14": 112,
@@ -486,13 +486,13 @@
    "LG20": 1
   },
   "GameOS/gameos/gameosmain_frame.cpp": {
-   "LG09": 20,
+   "LG09": 17,
    "LG12a": 4
   },
   "GameOS/gameos/gameosmain_init.cpp": {
    "LG02": 1,
    "LG06": 1,
-   "LG09": 7,
+   "LG09": 6,
    "LG11": 4,
    "LG12a": 2
   },
@@ -562,6 +562,9 @@
   },
   "GameOS/gameos/gos_hdri.h": {
    "LG06": 1
+  },
+  "GameOS/gameos/gos_host_vk.cpp": {
+   "LG09": 4
   },
   "GameOS/gameos/gos_input.cpp": {
    "LG05": 1,
@@ -1576,7 +1579,6 @@
    "LG12b": 2
   },
   "code/ablmc2.cpp": {
-   "LG03": 6,
    "LG06": 6,
    "LG09": 13,
    "LG17": 3
@@ -1629,7 +1631,7 @@
   },
   "code/artlry.cpp": {
    "LG01": 10,
-   "LG03": 12,
+   "LG03": 4,
    "LG09": 20,
    "LG12b": 8,
    "LG13": 12
@@ -1716,7 +1718,7 @@
   },
   "code/carnage.cpp": {
    "LG01": 1,
-   "LG03": 5,
+   "LG03": 2,
    "LG09": 30,
    "LG13": 1
   },
@@ -2011,7 +2013,7 @@
    "LG09": 2
   },
   "code/goal.cpp": {
-   "LG09": 3
+   "LG09": 2
   },
   "code/goal.h": {
    "LG02": 1,
@@ -2563,7 +2565,6 @@
    "LG14": 1
   },
   "code/missiongui_style.cpp": {
-   "LG03": 4,
    "LG09": 18
   },
   "code/missiongui_support.cpp": {
@@ -2971,7 +2972,7 @@
   },
   "code/terrobj.cpp": {
    "LG01": 4,
-   "LG03": 4,
+   "LG03": 3,
    "LG04": 5,
    "LG09": 30,
    "LG12a": 2,
@@ -3098,7 +3099,7 @@
    "LG09": 1
   },
   "code/weaponbolt.cpp": {
-   "LG03": 14,
+   "LG03": 4,
    "LG09": 11
   },
   "code/weaponbolt.h": {
@@ -3110,7 +3111,6 @@
    "LG09": 32
   },
   "code/weaponbolt_update.cpp": {
-   "LG03": 36,
    "LG09": 66
   },
   "code/weather.cpp": {
@@ -3120,10 +3120,10 @@
    "LG20": 2
   },
   "editor/EditorMFC.cpp": {
-   "LG20": 2
+   "LG20": 4
   },
   "editor/EditorPlaytest.cpp": {
-   "LG20": 5
+   "LG20": 8
   },
   "editor/EditorTaskRunner.cpp": {
    "LG19": 1
@@ -3219,8 +3219,8 @@
    "LG03": 8,
    "LG05": 1,
    "LG06": 13,
-   "LG08": 1,
-   "LG09": 21,
+   "LG08": 2,
+   "LG09": 20,
    "LG17": 5
   },
   "mclib/ablscan.cpp": {
@@ -3354,7 +3354,7 @@
    "LG20": 8
   },
   "mclib/bdactor_static.cpp": {
-   "LG03": 4,
+   "LG03": 1,
    "LG09": 9
   },
   "mclib/bdactor_terrain.cpp": {
@@ -3377,7 +3377,6 @@
    "LG09": 1
   },
   "mclib/bdactor_update.cpp": {
-   "LG03": 3,
    "LG09": 7
   },
   "mclib/burnin_jpeg_decode.cpp": {
@@ -3437,7 +3436,7 @@
   },
   "mclib/cmponent.cpp": {
    "LG06": 2,
-   "LG09": 7,
+   "LG09": 6,
    "LG12b": 72
   },
   "mclib/cmponent.h": {
@@ -3636,9 +3635,6 @@
    "LG06": 3,
    "LG09": 2
   },
-  "mclib/floathelp.cpp": {
-   "LG09": 1
-  },
   "mclib/floathelp.h": {
    "LG02": 1,
    "LG09": 1
@@ -3699,14 +3695,14 @@
    "LG13": 1
   },
   "mclib/gosfx/card.cpp": {
-   "LG03": 6,
+   "LG03": 4,
    "LG09": 2
   },
   "mclib/gosfx/card.hpp": {
    "LG02": 1
   },
   "mclib/gosfx/cardcloud.cpp": {
-   "LG03": 6,
+   "LG03": 4,
    "LG09": 2
   },
   "mclib/gosfx/cardcloud.hpp": {
@@ -3720,7 +3716,7 @@
    "LG02": 2
   },
   "mclib/gosfx/effect.cpp": {
-   "LG03": 7,
+   "LG03": 6,
    "LG06": 1,
    "LG09": 1
   },
@@ -3763,13 +3759,13 @@
    "LG02": 2
   },
   "mclib/gosfx/pertcloud.cpp": {
-   "LG03": 6
+   "LG03": 4
   },
   "mclib/gosfx/pertcloud.hpp": {
    "LG02": 2
   },
   "mclib/gosfx/pointcloud.cpp": {
-   "LG03": 6
+   "LG03": 4
   },
   "mclib/gosfx/pointcloud.hpp": {
    "LG02": 2,
@@ -3795,7 +3791,7 @@
    "LG02": 2
   },
   "mclib/gosfx/shardcloud.cpp": {
-   "LG03": 6
+   "LG03": 4
   },
   "mclib/gosfx/shardcloud.hpp": {
    "LG02": 2,
@@ -3816,7 +3812,7 @@
    "LG02": 2
   },
   "mclib/gosfx/tube.cpp": {
-   "LG03": 6,
+   "LG03": 4,
    "LG09": 6,
    "LG18": 2
   },
@@ -3847,7 +3843,7 @@
    "LG13": 3
   },
   "mclib/gvactor_update.cpp": {
-   "LG03": 9,
+   "LG03": 4,
    "LG09": 4
   },
   "mclib/heap.cpp": {
@@ -3927,7 +3923,7 @@
    "LG13": 75
   },
   "mclib/mech3d.cpp": {
-   "LG03": 12,
+   "LG03": 6,
    "LG09": 7,
    "LG13": 1
   },
@@ -3940,7 +3936,7 @@
    "LG14": 1
   },
   "mclib/mech3d_geometry.cpp": {
-   "LG03": 4,
+   "LG03": 2,
    "LG09": 7,
    "LG12a": 1,
    "LG12b": 1,
@@ -3975,7 +3971,6 @@
    "LG12b": 13
   },
   "mclib/mech3d_update.cpp": {
-   "LG03": 2,
    "LG08": 1,
    "LG09": 5
   },
@@ -4236,7 +4231,7 @@
   },
   "mclib/mlr/mlrspotlight.cpp": {
    "LG03": 6,
-   "LG09": 4
+   "LG09": 2
   },
   "mclib/mlr/mlrstate.cpp": {
    "LG03": 1,
@@ -4569,7 +4564,7 @@
    "LG12a": 4
   },
   "mclib/stuff/angle.cpp": {
-   "LG12a": 3
+   "LG12a": 1
   },
   "mclib/stuff/armoron.hpp": {
    "LG01": 1,
@@ -4646,9 +4641,6 @@
    "LG02": 1,
    "LG09": 2
   },
-  "mclib/stuff/motion.cpp": {
-   "LG12a": 3
-  },
   "mclib/stuff/mstring.cpp": {
    "LG03": 19,
    "LG05": 1,
@@ -4684,7 +4676,7 @@
    "LG14": 1
   },
   "mclib/stuff/note.cpp": {
-   "LG09": 14,
+   "LG09": 12,
    "LG13": 1
   },
   "mclib/stuff/note.hpp": {
@@ -4696,13 +4688,10 @@
   "mclib/stuff/obb.hpp": {
    "LG14": 1
   },
-  "mclib/stuff/origin.cpp": {
-   "LG12a": 3
-  },
   "mclib/stuff/page.cpp": {
    "LG03": 4,
    "LG06": 4,
-   "LG09": 11,
+   "LG09": 10,
    "LG13": 1
   },
   "mclib/stuff/page.hpp": {
@@ -5113,7 +5102,7 @@
    "LG20": 3
   }
  },
- "head": "bd9c08b9e",
+ "head": "22826ff54",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

@@ -38,7 +38,6 @@ namespace Stuff {
 namespace Stuff {
 
 	class UnitQuaternion;
-	class Origin3D;
 	class YawPitchRoll;
 	class UnitVector3D;
 	class LinearMatrix4D;
@@ -85,8 +84,6 @@ namespace Stuff {
 			{*this = quaternion;}
 		explicit EulerAngles(const LinearMatrix4D &matrix)
 			{*this = matrix;}
-		explicit EulerAngles(const Origin3D &origin)
-			{*this = origin;}
 
 		//
 		// Assignment operators
@@ -104,8 +101,6 @@ namespace Stuff {
 			operator=(const UnitQuaternion &quaternion);
 		EulerAngles&
 			operator=(const LinearMatrix4D &matrix);
-		EulerAngles&
-			operator=(const Origin3D &p);
 
 		//
 		// "Close-enough" comparators
@@ -223,8 +218,6 @@ namespace Stuff {
 			{*this = quaternion;}
 		explicit YawPitchRoll(const LinearMatrix4D &matrix)
 			{*this = matrix;}
-		explicit YawPitchRoll(const Origin3D &origin)
-			{*this = origin;}
 
 		//
 		// Assignment operators
@@ -242,8 +235,6 @@ namespace Stuff {
 			operator=(const UnitQuaternion &quaternion);
 		YawPitchRoll&
 			operator=(const LinearMatrix4D &matrix);
-		YawPitchRoll&
-			operator=(const Origin3D &p);
 
 
 		static int GetMemberCount(void)
@@ -314,8 +305,6 @@ namespace Stuff {
 					const YawPitchRoll& angle
 				);
 		#endif
-		YawPitchRoll&
-			AlignWithVector(const Vector3D &v);
 
 		//
 		// Test functions
@@ -382,8 +371,6 @@ namespace Stuff {
 			operator=(const YawPitchRoll &angles);
 		UnitQuaternion&
 			operator=(const LinearMatrix4D &matrix);
-		UnitQuaternion&
-			operator=(const Origin3D &p);
 		UnitQuaternion&
 			operator=(const Vector3D &v);
 

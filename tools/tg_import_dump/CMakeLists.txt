@@ -83,15 +83,12 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/stuff/line.cpp
     ${MC2_ROOT}/mclib/stuff/linearmatrix.cpp
     ${MC2_ROOT}/mclib/stuff/matrix.cpp
-    ${MC2_ROOT}/mclib/stuff/motion.cpp
     ${MC2_ROOT}/mclib/stuff/normal.cpp
     ${MC2_ROOT}/mclib/stuff/obb.cpp
-    ${MC2_ROOT}/mclib/stuff/origin.cpp
     ${MC2_ROOT}/mclib/stuff/plane.cpp
     ${MC2_ROOT}/mclib/stuff/point3d.cpp
     ${MC2_ROOT}/mclib/stuff/polar.cpp
     ${MC2_ROOT}/mclib/stuff/random.cpp
-    ${MC2_ROOT}/mclib/stuff/ray.cpp
     ${MC2_ROOT}/mclib/stuff/rotation.cpp
     ${MC2_ROOT}/mclib/stuff/scalar.cpp
     ${MC2_ROOT}/mclib/stuff/sphere.cpp

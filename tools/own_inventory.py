@@ -35,7 +35,7 @@ import cxx17_ratchet as cr  # noqa: E402  (git_blobs and the comment/string blan
 BASELINE = os.path.join(ROOT, "tests", "unit", "own_inventory_baseline.json")
 DEFAULT_DIRS = ["code", "mclib", "gui", "GameOS", "RenderCore", "RenderWorld", "GameAdapters", "GuiRuntime", "editor", "Gates"]
 
-_NEW = re.compile(r"\bnew\b\s*(?:\([^()]*\)\s*)?(?:\(\s*)?(?:const\s+)?([A-Za-z_][\w:]*(?:\s*<[^;{}()]*?>)?)\s*(\[)?")
+_NEW = re.compile(r"\bnew\b\s*(\((?:[^()]|\([^()]*\))*\)\s*)?(?:\(\s*)?(?:const\s+)?([A-Za-z_][\w:]*(?:\s*<[^;{}()]*?>)?)\s*(\[)?")
 _DELETE = re.compile(r"\bdelete\b\s*(\[\s*\])?\s*\(?\s*([A-Za-z_][\w\.\->\[\]]*)")
 #: `operator new` / `operator delete` tokens are allocator definitions or calls to the global ones, never a typed site.
 _OPERATOR = re.compile(r"operator\s*$")
@@ -67,14 +67,16 @@ def scan_text(text: str, rel: str) -> dict:
     for m in _NEW.finditer(clean):
         if _OPERATOR.search(clean, max(0, m.start() - 12), m.start()):
             continue   # `operator new(size)`: an allocator definition or a call to the global one, not an allocation of a type
-        t = re.sub(r"\s+", "", m.group(1))
+        if m.group(1) and not m.group(1).lstrip("(").lstrip().startswith(("std::nothrow", "nothrow")):
+            continue   # placement new (`new (buf) T`, also `new (static_cast<void*>(p)) T`) constructs in storage it was handed: no allocation
+        t = re.sub(r"\s+", "", m.group(2))
         if t in _SKIP_TYPES or t.startswith("(") or t == "" or t[0].isdigit():
             continue
         ln = clean.count("\n", 0, m.start()) + 1
         head = clean[max(0, clean.rfind("\n", 0, m.start())) : m.start()]
         am = _ASSIGN_NEW.search(head + "new")
         member = am.group(1) if am else ""
-        allocs.append((t, bool(m.group(2)), ln, _owner_of(ln, funcs), member))
+        allocs.append((t, bool(m.group(3)), ln, _owner_of(ln, funcs), member))
     for m in _DELETE.finditer(clean):
         if _OPERATOR.search(clean, max(0, m.start() - 12), m.start()):
             continue

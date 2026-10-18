@@ -132,9 +132,6 @@ extern MoverPtr	moverList[256];
 extern bool	TacOrderOrigin;
 extern long	CurMultiplayCode;
 extern long	CurMultiplayParam;
-extern UserHeapPtr	AblStackHeap;
-extern UserHeapPtr	AblCodeHeap;
-extern UserHeapPtr	AblSymbolHeap;
 
 // Defined elsewhere in the engine.
 extern float	MaxVisualRadius;

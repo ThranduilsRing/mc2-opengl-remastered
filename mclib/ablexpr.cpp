@@ -290,7 +290,7 @@ TypePtr factor (void) {
 					}
 				else {
 					thisNode->typePtr = thisType = makeStringType(length);
-					thisNode->info = (char*)ABLSymbolMallocCallback(length + 1);
+					thisNode->info = (char*)ABL_alloc(ABLPool::Symbol, length + 1);
 					if (!thisNode->info)
 						ABL_Fatal(0, " ABL: Unable to AblSymTableHeap->malloc string literal ");
 					strcpy(thisNode->info, curLiteral.value.string);

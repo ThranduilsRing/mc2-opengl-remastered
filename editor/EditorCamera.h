@@ -24,6 +24,7 @@ EditorCamera.h			: Interface for the EditorCamera component.
 #include <GL/glew.h>                              // GLint/GL_VIEWPORT/glGetIntegerv for the
                                                   // throttled [PICKW] viewport diagnostics.
 #include "../GameOS/gameos/view_uniforms_gl.h"  // setCurrentView + uploadViewUniforms
+#include "../RenderCore/FramePackets.h"        // the frame packets the batchers read
 #include "EditorGpuTimer.h"                      // MC2_EDITOR_GPU_TIMERS per-pass GPU timing
 #include "AuthoredMissionState.h"
 
@@ -222,6 +223,22 @@ public:
 					mainView.mode = RenderCore::ViewMode::Visual;
 					mainView.kind = RenderCore::ViewKind::MainScene;
 					RenderCore::setCurrentView(mainView);
+
+					// The editor's producer of the frame packets the batchers read (the game publishes them in GameCamera::renderViewUniforms): without
+					// it the mech and static-prop islands shade with a zero camera. Once per rendered frame; the frame number only has to be distinct
+					// per frame (it picks the slot arena). No scene lighting: the editor has none to capture, `valid` stays false.
+					static uint64_t s_editorPacketFrame = 0;
+					if (RenderCore::FramePackets* fp = RenderCore::framePackets().begin(++s_editorPacketFrame)) {
+						RenderCore::ViewPacket vp{};
+						vp.id = mainView.id;
+						vp.kind = mainView.kind;
+						vp.mode = mainView.mode;
+						for (int i = 0; i < 4; ++i) vp.viewport[i] = mainView.viewport[i];
+						vp.uniforms = vu;
+						vp.frame = s_editorPacketFrame;
+						fp->addView(vp);
+						RenderCore::framePackets().publish();
+					}
 				}
 
 				static const bool s_vuOn = mc2::gate::get<"MC2_VIEW_UNIFORMS">();

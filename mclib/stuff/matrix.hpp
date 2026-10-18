@@ -23,7 +23,6 @@ namespace Stuff {class Matrix4D;}
 namespace Stuff {
 
 	class AffineMatrix4D;
-	class Origin3D;
 	class EulerAngles;
 	class YawPitchRoll;
 	class Point3D;
@@ -62,8 +61,6 @@ namespace Stuff {
 			}
 		explicit Matrix4D(const AffineMatrix4D &m)
 			{*this = m;}
-		explicit Matrix4D(const Origin3D &p)
-			{*this = p;}
 		explicit Matrix4D(const EulerAngles &angles)
 			{*this = angles;}
 		explicit Matrix4D(const YawPitchRoll &angles)
@@ -85,8 +82,6 @@ namespace Stuff {
 				}
 		Matrix4D&
 			operator=(const AffineMatrix4D &m);
-		Matrix4D&
-			operator=(const Origin3D &p);
 		Matrix4D&
 			operator=(const EulerAngles &angles);
 		Matrix4D&

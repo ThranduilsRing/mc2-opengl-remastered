@@ -32,8 +32,6 @@ namespace Stuff {
 			{BuildIdentity();}
 		LinearMatrix4D(const LinearMatrix4D &m)
 			{*this = m;}
-		explicit LinearMatrix4D(const Origin3D &p)
-			{*this = p;}
 		explicit LinearMatrix4D(const AffineMatrix4D &m)
 			{*this = m;}
 		explicit LinearMatrix4D(const Matrix4D &m)
@@ -53,9 +51,6 @@ namespace Stuff {
 		LinearMatrix4D&
 			operator=(const LinearMatrix4D &m)
 				{AffineMatrix4D::operator=(m); Check_Object(this); return *this;}
-		LinearMatrix4D&
-			operator=(const Origin3D &p)
-				{AffineMatrix4D::operator=(p); Check_Object(this); return *this;}
 		LinearMatrix4D&
 			operator=(const AffineMatrix4D &m)
 				{AffineMatrix4D::operator=(m); Check_Object(this); return *this;}

@@ -57,9 +57,25 @@
       "status": "keep",
       "reason": "Regression floor of the video surface (owner ruling 2026-10-13, M1): one line per movie request, skip or play (campaign-start and won-mission pre-videos in code/missionbegin.cpp / logistics.cpp / logistics_begin.cpp, in-mission videos in controlgui_chat.cpp as event=play_requested), a few lines per session. Parsed by scripts/smoke_lib/logparse.py PRESENCE_RULES (an absence rule: tier1/tier2 mc2_10 must print an event=play_requested line or the row is red, bucket video_floor_missing; scripts/smoke_lib/gates.py applies it). The campaign-start pre_video line is not yet enforced: it needs a campaign-boot run, so until one exists the proof procedure greps it."
     },
+    "VK_HUD_SKIP v1": {
+      "status": "keep",
+      "reason": "ATTRIBUTED DEBT from the VK-default flip (merge window 8, 2026-10-17): printed unconditionally on the Vulkan default with no parser; gate it behind an MC2_*_DIAG bit and delete this row. (GameOS/gameos/gameos_graphics_hud.cpp)"
+    },
+    "VK_LIGHTFEED_DEDUP v1": {
+      "status": "keep",
+      "reason": "ATTRIBUTED DEBT from the VK-default flip (merge window 8, 2026-10-17): printed unconditionally on the Vulkan default with no parser; gate it behind an MC2_*_DIAG bit and delete this row. (GameOS/gameos/vk_shared_light_feed.cpp, one line at arm time)"
+    },
+    "VK_PRODUCER_PARITY v1": {
+      "status": "keep",
+      "reason": "ATTRIBUTED DEBT from the VK-default flip (merge window 8, 2026-10-17): printed unconditionally on the Vulkan default with no parser; gate it behind an MC2_*_DIAG bit and delete this row. (GameOS/gameos/vulkan_water_island_run.cpp)"
+    },
+    "VK_PRODUCER_SELFTEST v1": {
+      "status": "keep",
+      "reason": "ATTRIBUTED DEBT from the VK-default flip (merge window 8, 2026-10-17): printed unconditionally on the Vulkan default with no parser; gate it behind an MC2_*_DIAG bit and delete this row. (GameOS/gameos/vk_native_producers.cpp)"
+    },
     "VK_PROFILE v1": {
       "status": "keep",
-      "reason": "scripts/smoke_lib/vk_profile.py and logparse.py parse the verdict line; a refused device profile is graded red (vulkan_context.cpp VK_PROFILE)."
+      "reason": "scripts/smoke_lib/vk_profile.py and logparse.py (MarkerBucket verdict=refused) parse the Vulkan device-profile verdict; printed once per start. The default backend became Vulkan on 2026-10-17."
     },
     "VRAM v1": {
       "status": "keep",

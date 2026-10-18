@@ -84,12 +84,6 @@ namespace Stuff {
 		);
 		UnitVector3D&
 			operator*=(const LinearMatrix4D &m);
-		UnitVector3D&
-			MultiplyByInverse(
-				const UnitVector3D &v,
-				const LinearMatrix4D &m
-			)
-				{Vector3D::MultiplyByInverse(v,m); return *this;}
 
 		//
 		// Template support
@@ -122,7 +116,6 @@ namespace Stuff {
 		UnitVector3D& Multiply(const Vector3D& V1,const Vector3D& V2);
 		UnitVector3D& operator*=(const Vector3D &V);
 		UnitVector3D& Multiply(const Vector3D &Source, const AffineMatrix4D &M);
-		UnitVector3D& MultiplyByInverse(const Vector3D &Source, const LinearMatrix4D &M);
 		UnitVector3D& Divide(const Vector3D& V,Scalar Scale);
 		UnitVector3D& operator/=(Scalar Value);
 		UnitVector3D& Combine(const Vector3D& V1,Scalar t1,const Vector3D& V2,Scalar t2);

@@ -186,16 +186,6 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 // makersp) that link mclib without gameosmain still resolve the symbol.
 // This TU owns the per-frame increment; everyone else is a read-only extern.
 
-// VK-FAILSOFT-DISARM-1: present init hit a zero surface extent (window
-// minimized at boot) and was DEFERRED instead of fail-softing the session to
-// GL. The frame loop retries EnginePresentVk::init once the drawable is
-// non-zero; until then VK present is simply skipped (GL swap runs, the
-// umbrella family stays armed for when present comes up).
-bool g_vkPresentInitDeferred = false;
-// Failed deferred-retry attempts while the drawable was visible (non-zero).
-// Minimized frames never count — a minimized boot defers indefinitely by design.
-unsigned g_vkPresentRetryFails = 0;
-
 // Force discrete GPU selection on hybrid-graphics laptops (NVIDIA Optimus,
 // AMD PowerXpress). Without these exports, an unknown OpenGL executable is
 // routed to the Intel integrated GPU by default, which is catastrophic for
@@ -1300,19 +1290,7 @@ int main(int argc, char** argv)
         // after the timer FrameEnd; advisory, OFF=zero cost.
         gos_frame_pass_stats::FrameEnd((unsigned long)g_mc2FrameCounter);
 
-    frameSwapWindow(win);
-    {
-        // The render-object handle slots reuse an index only after the frame that may name it completed (the present just closed this frame).
-        uint64_t frameNo = g_mc2FrameCounter, doneFrame = frameNo > 2 ? frameNo - 2 : 0;
-#ifdef MC2_VULKAN
-        if (mc2vk::engineVulkanContextValid()) {
-            const mc2vk::VulkanContext& vkctx = mc2vk::getOrCreateEngineVulkanContext();
-            frameNo = vkctx.tracker().frameNo();
-            doneFrame = vkctx.completedFrame();
-        }
-#endif
-        RenderWorld::advanceFrame(frameNo, doneFrame);
-    }
+    frameSwapWindow(win);   // the shared host present also ends the Vulkan frame and advances the handle-slot clock
     frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
 
         {

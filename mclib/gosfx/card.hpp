@@ -107,8 +107,8 @@ namespace gosFX
 		Stuff::Scalar
 			m_halfX,
 			m_halfY;
-		MidLevelRenderer::MLRCardCloud
-			*m_cardCloud;
+		std::unique_ptr<MidLevelRenderer::MLRCardCloud>
+			m_cardCloud;
 		Stuff::Point3D
 			m_vertices[4];
 		Stuff::RGBAColor

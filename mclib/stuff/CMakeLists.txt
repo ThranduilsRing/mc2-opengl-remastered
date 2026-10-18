@@ -11,15 +11,12 @@ set(SOURCES ${SOURCES}
     line.cpp
     linearmatrix.cpp
     matrix.cpp
-    motion.cpp
     normal.cpp
     obb.cpp
-    origin.cpp
     plane.cpp
     point3d.cpp
     polar.cpp
     random.cpp
-    ray.cpp
     rotation.cpp
     scalar.cpp
     sphere.cpp

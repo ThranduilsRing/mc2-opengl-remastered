@@ -300,6 +300,9 @@ set_source_files_properties(
     PROPERTIES LANGUAGE C
 )
 
+# Vulkan bring-up + present shared by the game and the editor.
+list(APPEND SOURCES gos_host_vk.cpp)
+
 set(MAIN_SRC gameosmain.cpp gameosmain_init.cpp gameosmain_frame.cpp)
 
 #find_package(SDL2 REQUIRED PATHS "/opt" NO_DEFAULT_PATH)

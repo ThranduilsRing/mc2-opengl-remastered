@@ -564,8 +564,7 @@ long Mech3DAppearance::update (bool animate)
 			if (!result)
 			{
 				leftArmSmoke->Kill();
-				delete leftArmSmoke;
-				leftArmSmoke = nullptr;
+				leftArmSmoke.reset();
 			}
 		}
 	}
@@ -642,8 +641,7 @@ long Mech3DAppearance::update (bool animate)
 			if (!result)
 			{
 				rightArmSmoke->Kill();
-				delete rightArmSmoke;
-				rightArmSmoke = nullptr;
+				rightArmSmoke.reset();
 			}
 		}
 	}

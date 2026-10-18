@@ -3,6 +3,7 @@
 #include"fx_trace/fx_cost_split.h"  // Q2-S0 FX cost-split (env MC2_FX_COST_SPLIT)
 #include <tracy/Tracy.hpp>          // Q2-S0 coarse CPU zone
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "math/glm_config.h"
 
 // B1 Stage 2' C8: subclass-Start routing into the GPU particle pipeline.
 #include"particles/batcher.h"
@@ -14,6 +15,7 @@
 #include<string>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "math/stuff_glm_bridge.h"
 
 // MC2_VFX_ORACLE_TUBE slice 1: ribbon mesh submit bridge (GameOS-side GL).
 // Declared extern "C" here to avoid pulling GameOS headers into mclib.
@@ -603,10 +605,10 @@ gosFX::Tube::Tube(
 	//
 	gos_PushCurrentHeap(MidLevelRenderer::Heap);
 	m_mesh =
-		new MidLevelRenderer::MLRIndexedTriangleCloud(
+		std::make_unique<MidLevelRenderer::MLRIndexedTriangleCloud>(
 			spec->m_maxProfileCount*(vertex_count-1)*2
 		);
-	Register_Object(m_mesh);
+	Register_Object(m_mesh.get());
 	gos_PopCurrentHeap();
 
 	//
@@ -730,8 +732,7 @@ void
 //
 gosFX::Tube::~Tube()
 {
-	Unregister_Object(m_mesh);
-	delete m_mesh;
+	Unregister_Object(m_mesh.get());
 }
 
 //------------------------------------------------------------------------------
@@ -808,7 +809,7 @@ bool gosFX::Tube::Execute(ExecuteInfo *info)
 	Stuff::LinearMatrix4D new_world_to_local;
 	Stuff::LinearMatrix4D local_to_world;
 	local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
-	new_world_to_local.Invert(local_to_world);
+	mc2::math::fromGlm(new_world_to_local, glm::inverse(mc2::math::toGlm(local_to_world)));
 
 	//
 	//--------------------------
@@ -1057,10 +1058,10 @@ void
 	if (pitch_range < 0.0f)
 		pitch_range = 0.0f;
 	Stuff::Radian angle = pitch_min + Stuff::Random::GetFraction() * pitch_range;
-	Stuff::SinCosPair xy(angle);
-	profile->m_direction.x = (Stuff::Random::GetFraction() >= 0.5f) ? xy.sine : -xy.sine;
+	const Stuff::Scalar xySine = glm::sin(angle.angle), xyCosine = glm::cos(angle.angle);
+	profile->m_direction.x = (Stuff::Random::GetFraction() >= 0.5f) ? xySine : -xySine;
 	profile->m_direction.y = 0.0f;
-	profile->m_direction.z = xy.cosine;
+	profile->m_direction.z = xyCosine;
 	Check_Object(&profile->m_direction);
 }
 
@@ -1213,7 +1214,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 	if (m_activeProfileCount>1)
 	{
 		MidLevelRenderer::DrawEffectInformation dInfo;
-		dInfo.effect = m_mesh;
+		dInfo.effect = m_mesh.get();
 		Specification *spec = GetSpecification();
 
 		// MC2_TUBE_PROFILE_LOG=1: log each tube spec's PEAK m_activeProfileCount.
@@ -1259,7 +1260,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 			Stuff::Point3D
 				camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 			Stuff::LinearMatrix4D world_to_local;
-			world_to_local.Invert(local_to_world);
+			mc2::math::fromGlm(world_to_local, glm::inverse(mc2::math::toGlm(local_to_world)));
 
 			//
 			//----------------------------------------------------------------
@@ -1273,7 +1274,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 				Profile *profile = GetProfile(i);
 				Check_Object(profile);
 				Stuff::Point3D camera_in_profile;
-				camera_in_profile.MultiplyByInverse(camera_in_world, profile->m_profileToWorld);
+				camera_in_profile = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(profile->m_profileToWorld))));
 
 				//
 				//---------------------------------------------------------

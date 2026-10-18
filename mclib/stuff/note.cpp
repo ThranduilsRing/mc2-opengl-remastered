@@ -266,58 +266,6 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	Note::GetEntry(Motion3D *value)
-{
-	Check_Object(this);
-	Check_Pointer(value);
-
-	const char *contents = nullptr;
-	GetEntry(&contents);
-	Check_Pointer(contents);
-	int count =
-		sscanf(
-			contents,
-			"%f %f %f %f %f %f",
-			&value->linearMotion.x,
-			&value->linearMotion.y,
-			&value->linearMotion.z,
-			&value->angularMotion.x,
-			&value->angularMotion.y,
-			&value->angularMotion.z
-		);
-	if (count != 6)
-	{
-		Page *page = m_page;
-		Check_Object(page);
-		NotationFile *file = page->m_notationFile;
-		Check_Object(file);
-		STOP((
-			"%s: {[%s]%s=%s} is not a Motion!",
-			file->GetFileName(),
-			(const char*)page->m_name,
-			(const char*)m_name,
-			contents
-		));
-	}
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
-	Note::SetEntry(const Motion3D &value)
-{
-	Check_Object(this);
-
-	static char
-		contents[64];
-	mc2::fmt::to_buf(contents, "{:f} {:f} {:f} {:f} {:f} {:f}", value.linearMotion.x, value.linearMotion.y, value.linearMotion.z, value.angularMotion.x, value.angularMotion.y, value.angularMotion.z);
-	Verify(strlen(contents) < sizeof(contents));
-	SetEntry(contents);
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
 	Note::GetEntry(RGBColor *value)
 {
 	Check_Object(this);

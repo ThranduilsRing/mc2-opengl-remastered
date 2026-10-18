@@ -12,6 +12,7 @@
 #include<cstdio>   // VFX-ORACLE diagnostics
 #include<vector>
 #include "mc2fmt.h"
+#include "math/stuff_glm_bridge.h"
 
 //------------------------------------------------------------------------------
 //
@@ -308,8 +309,8 @@ gosFX::CardCloud::CardCloud(
 
 	gos_PushCurrentHeap(MidLevelRenderer::Heap);
 	m_cloudImplementation =
-		new MidLevelRenderer::MLRCardCloud(spec->m_maxParticleCount);
-	Register_Object(m_cloudImplementation);
+		std::make_unique<MidLevelRenderer::MLRCardCloud>(spec->m_maxParticleCount);
+	Register_Object(m_cloudImplementation.get());
 	gos_PopCurrentHeap();
 
 	unsigned index = spec->m_maxParticleCount*sizeof(Particle);
@@ -331,8 +332,7 @@ gosFX::CardCloud::CardCloud(
 //
 gosFX::CardCloud::~CardCloud()
 {
-	Unregister_Object(m_cloudImplementation);
-	delete m_cloudImplementation;
+	Unregister_Object(m_cloudImplementation.get());
 }
 
 //------------------------------------------------------------------------------
@@ -758,7 +758,7 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 	{
 		Specification *spec = GetSpecification();
 		Check_Object(spec);
-		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation, m_localToParent);
+		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation.get(), m_localToParent);
 		const auto& local_to_world = submission.localToWorld;
 
 		//
@@ -780,10 +780,7 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 				Stuff::Point3D
 					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud.MultiplyByInverse(
-					camera_in_world,
-					local_to_world
-				);
+				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
 
 				//
 				//--------------------------------------
@@ -878,10 +875,7 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 				Stuff::Point3D
 					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud.MultiplyByInverse(
-					camera_in_world,
-					local_to_world
-				);
+				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
 
 				//
 				//--------------------------------------
@@ -975,10 +969,7 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 			Stuff::Point3D
 				camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 			Stuff::Point3D camera_in_cloud;
-			camera_in_cloud.MultiplyByInverse(
-				camera_in_world,
-				local_to_world
-			);
+			camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
 
 			//
 			//--------------------------------------

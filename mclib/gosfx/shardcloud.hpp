@@ -97,7 +97,7 @@ namespace gosFX
 		};
 
 	protected:
-		MidLevelRenderer::MLRTriangleCloud * m_cloudImplementation;						// point to an MLR triangle cloud by Michael
+		std::unique_ptr<MidLevelRenderer::MLRTriangleCloud> m_cloudImplementation;						// point to an MLR triangle cloud by Michael
 		Stuff::Point3D			*m_P_vertices;
 		Stuff::RGBAColor		*m_P_color;
 

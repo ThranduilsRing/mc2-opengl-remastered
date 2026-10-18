@@ -40,6 +40,7 @@
 #include "Gates/gate.h"
 #include "Gates/render_options.h"
 #include "mc2fmt.h"
+#include "math/stuff_glm_bridge.h"
 
 //---------------------------------------------------------------------------
 // c'tors for postCompVertex
@@ -1888,7 +1889,7 @@ float MapData::terrainLight (const Stuff::Vector3D &position)
 
 
 	if ( distWeight > Stuff::SMALL )
-		weightedNormal /= distWeight;
+		weightedNormal = mc2::math::toVector3D(mc2::math::divide(mc2::math::toGlm(weightedNormal), distWeight));
 	else
 		weightedNormal = Stuff::Vector3D( 0.0, 0.0, 1.0 );
 		

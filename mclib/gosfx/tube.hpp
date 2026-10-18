@@ -171,8 +171,8 @@ namespace gosFX
 			m_profiles;
 		Stuff::DynamicArrayOf<char>
 			m_data;
-		MidLevelRenderer::MLRIndexedTriangleCloud
-			*m_mesh;
+		std::unique_ptr<MidLevelRenderer::MLRIndexedTriangleCloud>
+			m_mesh;
 		Stuff::Point3D
 			*m_P_vertices;
 		Stuff::RGBAColor

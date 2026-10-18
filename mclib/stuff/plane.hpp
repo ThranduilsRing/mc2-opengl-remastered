@@ -177,30 +177,6 @@ namespace Stuff {
 		static bool
 			TestClass();
 			
-		//
-		// Equation solutions
-		//
-		Scalar
-			CalculateX(Scalar y, Scalar z)
-				{
-					Check_Object(this); Verify(!Small_Enough(normal.x));
-					Scalar result = (offset - y*normal.y - z*normal.z) / normal.x;
-					return result;
-				}
-		Scalar
-			CalculateY(Scalar x, Scalar z)
-				{
-					Check_Object(this); Verify(!Small_Enough(normal.y));
-					Scalar result = (offset - x*normal.x - z*normal.z) / normal.y;
-					return result;
-				}
-		Scalar
-			CalculateZ(Scalar x, Scalar y)
-				{
-					Check_Object(this); Verify(!Small_Enough(normal.z));
-					Scalar result = (offset - x*normal.x - y*normal.y) / normal.z;
-					return result;
-				}
 
 		//
 		// Reflection code

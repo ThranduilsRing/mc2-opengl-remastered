@@ -59,21 +59,6 @@ AffineMatrix4D&
 //###########################################################################
 //
 AffineMatrix4D&
-	AffineMatrix4D::operator=(const Origin3D& p)
-{
-	Check_Pointer(this);
-	Check_Object(&p);
-
-	BuildRotation(p.angularPosition);
-	BuildTranslation(p.linearPosition);
-	return *this;
-}
-
-//
-//###########################################################################
-//###########################################################################
-//
-AffineMatrix4D&
 	AffineMatrix4D::operator=(const EulerAngles &angles)
 {
 	Check_Pointer(this);
@@ -169,26 +154,22 @@ AffineMatrix4D&
 		 || Vector3D::Forward.z == -1.0f && Vector3D::Right.x == 1.0f && Vector3D::Up.y == 1.0f
 	);
 
-	SinCosPair
-		x,
-		y,
-		z;
+	const Scalar
+		xSine = sinf(angles.pitch), xCosine = cosf(angles.pitch),
+		ySine = sinf(angles.yaw), yCosine = cosf(angles.yaw),
+		zSine = sinf(angles.roll), zCosine = cosf(angles.roll);
 
-	x = angles.pitch;
-	y = angles.yaw;
-	z = angles.roll;
+	(*this)(0,0) = yCosine*zCosine;
+	(*this)(0,1) = yCosine*zSine;
+	(*this)(0,2) = -ySine;
 
-	(*this)(0,0) = y.cosine*z.cosine;
-	(*this)(0,1) = y.cosine*z.sine;
-	(*this)(0,2) = -y.sine;
+	(*this)(1,0) = xSine*ySine*zCosine - xCosine*zSine;
+	(*this)(1,1) = xSine*ySine*zSine + xCosine*zCosine;
+	(*this)(1,2) = xSine*yCosine;
 
-	(*this)(1,0) = x.sine*y.sine*z.cosine - x.cosine*z.sine;
-	(*this)(1,1) = x.sine*y.sine*z.sine + x.cosine*z.cosine;
-	(*this)(1,2) = x.sine*y.cosine;
-
-	(*this)(2,0) = x.cosine*y.sine*z.cosine + x.sine*z.sine;
-	(*this)(2,1) = x.cosine*y.sine*z.sine - x.sine*z.cosine;
-	(*this)(2,2) = x.cosine*y.cosine;
+	(*this)(2,0) = xCosine*ySine*zCosine + xSine*zSine;
+	(*this)(2,1) = xCosine*ySine*zSine - xSine*zCosine;
+	(*this)(2,2) = xCosine*yCosine;
 
 	Check_Object(this);
 	return *this;
@@ -209,26 +190,22 @@ AffineMatrix4D&
 		 || Vector3D::Forward.z == -1.0f && Vector3D::Right.x == 1.0f && Vector3D::Up.y == 1.0f
 	);
 
-	SinCosPair
-		x,
-		y,
-		z;
+	const Scalar
+		xSine = sinf(angles.pitch), xCosine = cosf(angles.pitch),
+		ySine = sinf(angles.yaw), yCosine = cosf(angles.yaw),
+		zSine = sinf(angles.roll), zCosine = cosf(angles.roll);
 
-	x = angles.pitch;
-	y = angles.yaw;
-	z = angles.roll;
+	(*this)(0,0) = yCosine*zCosine + xSine*ySine*zSine;
+	(*this)(0,1) = xCosine*zSine;
+	(*this)(0,2) = xSine*yCosine*zSine - ySine*zCosine;
 
-	(*this)(0,0) = y.cosine*z.cosine + x.sine*y.sine*z.sine;
-	(*this)(0,1) = x.cosine*z.sine;
-	(*this)(0,2) = x.sine*y.cosine*z.sine - y.sine*z.cosine;
+	(*this)(1,0) = xSine*ySine*zCosine - yCosine*zSine;
+	(*this)(1,1) = xCosine*zCosine;
+	(*this)(1,2) = ySine*zSine + xSine*yCosine*zCosine;
 
-	(*this)(1,0) = x.sine*y.sine*z.cosine - y.cosine*z.sine;
-	(*this)(1,1) = x.cosine*z.cosine;
-	(*this)(1,2) = y.sine*z.sine + x.sine*y.cosine*z.cosine;
-
-	(*this)(2,0) = x.cosine*y.sine;
-	(*this)(2,1) = -x.sine;
-	(*this)(2,2) = x.cosine*y.cosine;
+	(*this)(2,0) = xCosine*ySine;
+	(*this)(2,1) = -xSine;
+	(*this)(2,2) = xCosine*yCosine;
 
 	Check_Object(this);
 	return *this;

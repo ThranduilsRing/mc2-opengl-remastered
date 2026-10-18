@@ -96,7 +96,7 @@ namespace MidLevelRenderer {
 						}
 						else
 						{
-							return (GOSVertex2UV*)((char*)(vertices2uv.GetData() + lastUsed2uv)+vertexAlignment); 
+							return (GOSVertex2UV*)((char*)(vertices2uv.GetData() + lastUsed2uv)+vertexAlignment2uv);
 						}
 					}
 

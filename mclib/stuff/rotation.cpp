@@ -75,20 +75,22 @@ EulerAngles&
 		 || Vector3D::Forward.z == -1.0f && Vector3D::Right.x == 1.0f && Vector3D::Up.y == 1.0f
 	);
 
-	SinCosPair
-		p,y,r;
+	Scalar
+		pSine, pCosine,
+		ySine, yCosine,
+		rSine, rCosine;
 
 	//
 	//-------------------------------------------------
 	// First deal with the singularity of 90 degree yaw
 	//-------------------------------------------------
 	//
-	y.sine = -matrix(0,2);
-	if (Close_Enough(y.sine,1.0f,0.0001f))
+	ySine = -matrix(0,2);
+	if (Close_Enough(ySine,1.0f,0.0001f))
 	{
-		p.sine = matrix(1,0);
-		p.cosine = matrix(2,0);
-		pitch = p;
+		pSine = matrix(1,0);
+		pCosine = matrix(2,0);
+		pitch = Arctan(pSine, pCosine);
 		yaw = Pi_Over_2;
 		roll = 0.0f;
 		return *this;
@@ -99,11 +101,11 @@ EulerAngles&
 	// Now deal with -90 degree yaw
 	//-----------------------------
 	//
-	else if (Close_Enough(y.sine,-1.0f,0.0001f))
+	else if (Close_Enough(ySine,-1.0f,0.0001f))
 	{
-		p.sine = -matrix(1,0);
-		p.cosine = -matrix(2,0);
-		pitch = p;
+		pSine = -matrix(1,0);
+		pCosine = -matrix(2,0);
+		pitch = Arctan(pSine, pCosine);
 		yaw = -Pi_Over_2;
 		roll = 0.0f;
 		return *this;
@@ -119,30 +121,30 @@ EulerAngles&
 	//
 	else
 	{
-		y.cosine = Sqrt(1.0f - y.sine*y.sine);
+		yCosine = Sqrt(1.0f - ySine*ySine);
 
-		Scalar one_y_cosine = 1.0f/ y.cosine;
+		Scalar one_y_cosine = 1.0f/ yCosine;
 
-		p.cosine = matrix(2,2) * one_y_cosine;
+		pCosine = matrix(2,2) * one_y_cosine;
 
-		if (p.cosine < 0.0f)
+		if (pCosine < 0.0f)
 		{
-			p.cosine = -p.cosine;
-			y.cosine = -y.cosine;
+			pCosine = -pCosine;
+			yCosine = -yCosine;
 			one_y_cosine = -one_y_cosine;
 		}
-		p.sine = matrix(1,2) * one_y_cosine;
-		r.sine = matrix(0,1) * one_y_cosine;
-		r.cosine = matrix(0,0) * one_y_cosine;
+		pSine = matrix(1,2) * one_y_cosine;
+		rSine = matrix(0,1) * one_y_cosine;
+		rCosine = matrix(0,0) * one_y_cosine;
 		#if defined(_ARMOR)
-			Scalar temp = p.sine*y.sine*r.cosine - p.cosine*r.sine;
+			Scalar temp = pSine*ySine*rCosine - pCosine*rSine;
 			Verify(Close_Enough(temp, matrix(1,0), 5e-3f));
 		#endif
 	}
 
-	pitch = p;
-	yaw = y;
-	roll = r;
+	pitch = Arctan(pSine, pCosine);
+	yaw = Arctan(ySine, yCosine);
+	roll = Arctan(rSine, rCosine);
 	return *this;
 }
 
@@ -294,20 +296,22 @@ YawPitchRoll&
 		 || Vector3D::Forward.z == -1.0f && Vector3D::Right.x == 1.0f && Vector3D::Up.y == 1.0f
 	);
 
-	SinCosPair
-		p,y,r;
+	Scalar
+		pSine, pCosine,
+		ySine, yCosine,
+		rSine, rCosine;
 
 	//
 	//---------------------------------------------------
 	// First deal with the singularity of 90 degree pitch
 	//---------------------------------------------------
 	//
-	p.sine = -matrix(2,1);
-	if (Close_Enough(p.sine,1.0f,0.0001f))
+	pSine = -matrix(2,1);
+	if (Close_Enough(pSine,1.0f,0.0001f))
 	{
-		y.sine = matrix(1,0);
-		y.cosine = matrix(0,0);
-		yaw = y;
+		ySine = matrix(1,0);
+		yCosine = matrix(0,0);
+		yaw = Arctan(ySine, yCosine);
 		pitch = Pi_Over_2;
 		roll = 0.0f;
 		return *this;
@@ -318,11 +322,11 @@ YawPitchRoll&
 	// Now deal with -90 degree pitch
 	//-------------------------------
 	//
-	else if (Close_Enough(p.sine,-1.0f,0.0001f))
+	else if (Close_Enough(pSine,-1.0f,0.0001f))
 	{
-		y.sine = matrix(0,2);
-		y.cosine = matrix(0,0);
-		yaw = y;
+		ySine = matrix(0,2);
+		yCosine = matrix(0,0);
+		yaw = Arctan(ySine, yCosine);
 		pitch = -Pi_Over_2;
 		roll = 0.0f;
 		return *this;
@@ -334,23 +338,23 @@ YawPitchRoll&
 	//------------------------------------------------------------------------
 	//
 	else {
-		p.cosine = Sqrt(1.0f - p.sine*p.sine);
-		y.sine = matrix(2,0) / p.cosine;
-		y.cosine = matrix(2,2) / p.cosine;
-		r.sine = matrix(0,1) / p.cosine;
-		r.cosine = matrix(1,1) / p.cosine;
+		pCosine = Sqrt(1.0f - pSine*pSine);
+		ySine = matrix(2,0) / pCosine;
+		yCosine = matrix(2,2) / pCosine;
+		rSine = matrix(0,1) / pCosine;
+		rCosine = matrix(1,1) / pCosine;
 		Verify(
 			Close_Enough(
-				y.cosine*r.cosine + p.sine*y.sine*r.sine,
+				yCosine*rCosine + pSine*ySine*rSine,
 				matrix(0,0),
 				1e-4f
 			)
 		);
 	}
 
-	pitch = p;
-	yaw = y;
-	roll = r;
+	pitch = Arctan(pSine, pCosine);
+	yaw = Arctan(ySine, yCosine);
+	roll = Arctan(rSine, rCosine);
 	return *this;
 }
 
@@ -686,13 +690,15 @@ UnitQuaternion&
 	// rotation
 	//---------------------------------------------------------------------
 	//
-	SinCosPair half_angle;
-	half_angle = 0.5f * Radian::Normalize(rotation);
-	rotation = half_angle.sine / rotation;
+	const Scalar half = 0.5f * Radian::Normalize(rotation);
+	const Scalar
+		half_angleSine = sinf(half),
+		half_angleCosine = cosf(half);
+	rotation = half_angleSine / rotation;
 	x = v.x * rotation;
 	y = v.y * rotation;
 	z = v.z * rotation;
-	w = half_angle.cosine;
+	w = half_angleCosine;
 	Check_Object(this);
 	return *this;
 }
@@ -730,9 +736,8 @@ Scalar
 		return 0.0f;
 	}
 
-	SinCosPair half_angle(sine_of_half, w);
 	Radian angle;
-	angle = half_angle;
+	angle = Arctan(sine_of_half, w);
 
 	return angle * 2.0f;
 }
@@ -832,19 +837,20 @@ UnitQuaternion&
 		return *this;
 	}
 
-	SinCosPair half_angle(sine_of_half, q.w);
 	Radian angle;
-	angle = half_angle;
+	angle = Arctan(sine_of_half, q.w);
 	angle *= t;
-	half_angle = angle;
+	const Scalar
+		half_angleSine = sinf(angle),
+		half_angleCosine = cosf(angle);
 
 	//
 	//-----------------------------------------------------------------
 	// Build the scaled quaternion out of the components of the old one
 	//-----------------------------------------------------------------
 	//
-	w = half_angle.cosine;
-	sine_of_half = half_angle.sine / sine_of_half;
+	w = half_angleCosine;
+	sine_of_half = half_angleSine / sine_of_half;
 	x = q.x * sine_of_half;
 	y = q.y * sine_of_half;
 	z = q.z * sine_of_half;
@@ -987,9 +993,10 @@ UnitQuaternion&
 
 	Vector3D
 		axis;
-	SinCosPair
-		delta;
-	delta.cosine = start*end;
+	Scalar
+		deltaSine,
+		deltaCosine;
+	deltaCosine = start*end;
 
 	//
 	//----------------------------------------------------------------------
@@ -997,7 +1004,7 @@ UnitQuaternion&
 	// rotation
 	//----------------------------------------------------------------------
 	//
-	if (Close_Enough(delta.cosine, 1.0f))
+	if (Close_Enough(deltaCosine, 1.0f))
 	{
 		x = 0.0f;
 		y = 0.0f;
@@ -1013,7 +1020,7 @@ UnitQuaternion&
 	// Extend that out to unit length, then set the angle to PI
 	//-------------------------------------------------------------------------
 	//
-	else if (Close_Enough(delta.cosine, -1.0f))
+	else if (Close_Enough(deltaCosine, -1.0f))
 	{
 		//
 		//---------------------------
@@ -1075,8 +1082,8 @@ UnitQuaternion&
 	else
 	{
 		axis.Cross(start, end);
-		delta.sine = axis.GetLength();
-		axis /= delta.sine;
+		deltaSine = axis.GetLength();
+		axis /= deltaSine;
 
 		//
 		//---------------------------------------------------------------
@@ -1084,11 +1091,11 @@ UnitQuaternion&
 		// quaternion
 		//---------------------------------------------------------------
 		//
-		delta.sine = Sqrt((1.0f - delta.cosine)*0.5f);
-		x = axis.x * delta.sine;
-		y = axis.y * delta.sine;
-		z = axis.z * delta.sine;
-		w = Sqrt((1.0f + delta.cosine)*0.5f);
+		deltaSine = Sqrt((1.0f - deltaCosine)*0.5f);
+		x = axis.x * deltaSine;
+		y = axis.y * deltaSine;
+		z = axis.z * deltaSine;
+		w = Sqrt((1.0f + deltaCosine)*0.5f);
 	}
 	return *this;
 }

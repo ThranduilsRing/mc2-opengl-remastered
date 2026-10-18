@@ -311,7 +311,7 @@ extern ABLModulePtr	CurLibrary;
 
 void* ABLFile::operator new (size_t ourSize) {
 
-	void* result = ABLSystemMallocCallback(static_cast<unsigned long>(ourSize));
+	void* result = ::operator new(ourSize);
 	return(result);
 }
 
@@ -319,7 +319,7 @@ void* ABLFile::operator new (size_t ourSize) {
 
 void ABLFile::operator delete (void* us) {
 
-	ABLSystemFreeCallback(us);
+	::operator delete(us);
 }	
 
 //---------------------------------------------------------------------------

@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in camera_internal.h.
 #include "camera_internal.h"
 #include "mc2fmt.h"
+#include "math/stuff_glm_bridge.h"
 
 
 //---------------------------------------------------------------------------
@@ -290,7 +291,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 		// Build the GL clip-to-world inverse matrix.
 		Stuff::Matrix4D M = worldToClipGL();
 		Stuff::Matrix4D Minv;
-		Minv.Invert(M);
+		mc2::math::fromGlm(Minv, glm::inverse(mc2::math::toGlm(M)));
 
 		// Convert screen pixel to GL NDC.
 		// screenPos: Y-down from top-left (same convention as screenResolution).

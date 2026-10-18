@@ -20,6 +20,7 @@
 #endif
 
 #include"appearance_owner.h"
+#include"object_zero_new.h"
 static_assert(sizeof(std::unique_ptr<Appearance>) == sizeof(Appearance*), "appearanceOwner must use the default deleter");
 #include "../GameOS/gameos/utils/mc2log.h"
 
@@ -1495,12 +1496,8 @@ bool WeaponHitChunk::valid (long from) {
 
 void* GameObject::operator new (size_t ourSize) {
 
-	// B7o.9: the CRT heap (objectCache is gone). Save files copy whole member arrays of an object, so bytes no constructor
-	// sets must be defined: zero (G4, kept).
-	void* result = ::operator new(ourSize);
-	if (result)
-		memset(result, 0, ourSize);
-	return(result);
+	// B7o.9: the CRT heap (objectCache is gone), zero-filled (G4, kept): object_zero_new.h.
+	return objectZeroNew(ourSize);
 }
 
 //---------------------------------------------------------------------------

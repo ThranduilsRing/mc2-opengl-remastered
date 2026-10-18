@@ -49,9 +49,6 @@ namespace MidLevelRenderer {
 		void
 			SetSpreadAngle(const Stuff::Radian &radian);
 
-		void
-			SetSpreadAngle(const Stuff::Degree &degree);
-
 		Stuff::Scalar
 			GetTanSpreadAngle()
 				{ Check_Object(this); return tanSpreadAngle; }

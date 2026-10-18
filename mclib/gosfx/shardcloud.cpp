@@ -7,6 +7,7 @@
 #include<cstdio>   // VFX-ORACLE diagnostics
 #include<cmath>    // std::atan2 for spin extraction (VFX-SHARDCLOUD-SPIN-ASPECT-1)
 #include "mc2fmt.h"
+#include "math/stuff_glm_bridge.h"
 
 //==========================================================================//
 // File:	 gosFX_ShardCloud.cpp											//
@@ -179,8 +180,8 @@ gosFX::ShardCloud::ShardCloud(
 
 	gos_PushCurrentHeap(MidLevelRenderer::Heap);
 	m_cloudImplementation =
-		new MidLevelRenderer::MLRTriangleCloud(spec->m_maxParticleCount);
-	Register_Object(m_cloudImplementation);
+		std::make_unique<MidLevelRenderer::MLRTriangleCloud>(spec->m_maxParticleCount);
+	Register_Object(m_cloudImplementation.get());
 	gos_PopCurrentHeap();
 
 	unsigned index = spec->m_maxParticleCount*sizeof(Particle);
@@ -199,8 +200,7 @@ gosFX::ShardCloud::ShardCloud(
 //
 gosFX::ShardCloud::~ShardCloud()
 {
-	Unregister_Object(m_cloudImplementation);
-	delete m_cloudImplementation;
+	Unregister_Object(m_cloudImplementation.get());
 }
 
 //------------------------------------------------------------------------------
@@ -291,7 +291,7 @@ void
 	Check_Object(particle);
 	particle->m_radius = spec->m_size.ComputeValue(m_age, particle->m_seed);
 	particle->m_angle =
-		Stuff::Sin(spec->m_angularity.ComputeValue(m_age, particle->m_seed));
+		mc2::math::sinD(spec->m_angularity.ComputeValue(m_age, particle->m_seed));
 }
 
 //------------------------------------------------------------------------------
@@ -415,7 +415,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 	{
 		Specification *spec = GetSpecification();
 		Check_Object(spec);
-		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation, m_localToParent);
+		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation.get(), m_localToParent);
 		const auto& local_to_world = submission.localToWorld;
 
 		//
@@ -437,10 +437,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 				Stuff::Point3D
 					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud.MultiplyByInverse(
-					camera_in_world,
-					local_to_world
-				);
+				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
 
 				//
 				//--------------------------------------
@@ -525,10 +522,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 				Stuff::Point3D
 					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud.MultiplyByInverse(
-					camera_in_world,
-					local_to_world
-				);
+				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
 
 				//
 				//--------------------------------------
@@ -614,10 +608,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 			Stuff::Point3D
 				camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 			Stuff::Point3D camera_in_cloud;
-			camera_in_cloud.MultiplyByInverse(
-				camera_in_world,
-				local_to_world
-			);
+			camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
 
 			//
 			//--------------------------------------

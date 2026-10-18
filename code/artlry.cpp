@@ -924,23 +924,20 @@ long Artillery::update (void)
 			if (!result)
 			{
 				hitEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-				delete hitEffect;
-				hitEffect = nullptr;
+				hitEffect.reset();
 				
 				bomber.reset();
 
 				if (leftContrail)
 				{
 					leftContrail->Kill();
-					delete leftContrail;
-					leftContrail = nullptr;
+					leftContrail.reset();
 				}
 				
 				if (rightContrail)
 				{
 					rightContrail->Kill();
-					delete rightContrail;
-					rightContrail = nullptr;
+					rightContrail.reset();
 				}
 				
 #ifdef MC2_ALLOC_STATS
@@ -1098,8 +1095,7 @@ long Artillery::update (void)
 			if (!result)
 			{
 				hitEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-				delete hitEffect;
-				hitEffect = nullptr;
+				hitEffect.reset();
 			}
 		}
   	
@@ -1163,8 +1159,7 @@ long Artillery::update (void)
 			if (!result)
 			{
 				hitEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-				delete hitEffect;
-				hitEffect = nullptr;
+				hitEffect.reset();
 			}
 		}
 	}
@@ -1492,22 +1487,19 @@ void Artillery::destroy (void)
 	if (hitEffect)
 	{
 		hitEffect->Kill();
-		delete hitEffect;
-		hitEffect = nullptr;
+		hitEffect.reset();
 	}
 				
 	if (leftContrail)
 	{
 		leftContrail->Kill();
-		delete leftContrail;
-		leftContrail = nullptr;
+		leftContrail.reset();
 	}
 	
 	if (rightContrail)
 	{
 		rightContrail->Kill();
-		delete rightContrail;
-		rightContrail = nullptr;
+		rightContrail.reset();
 	}
 
 	bomber.reset();

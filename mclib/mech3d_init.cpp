@@ -118,7 +118,8 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	isHelicopter = false;
 	
 	leftArm = rightArm = nullptr;
-	rightArmSmoke = leftArmSmoke = nullptr;
+	rightArmSmoke = nullptr;
+	leftArmSmoke = nullptr;
 
 	currentFlash = duration = flashDuration = 0.0f;
 	flashColor = 0x00000000;
@@ -440,7 +441,8 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	
 	smokeEffect = nullptr;
 	jumpJetEffect = nullptr;
-	rightShoulderBoom = leftShoulderBoom = nullptr;
+	rightShoulderBoom = nullptr;
+	leftShoulderBoom = nullptr;
 	
 	leftFootDone0 = rightFootDone0 = leftFootDone1 = rightFootDone1 = false;
 	

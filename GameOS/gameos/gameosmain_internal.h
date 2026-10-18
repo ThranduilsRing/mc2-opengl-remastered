@@ -56,6 +56,7 @@
 #include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon zero (env-gated)
 #include "projectz_trace.h"  // projectz_trace_init/frame_tick/shutdown (PROJECTZ v1)
 #include "projectz_overlay.h" // RAlt+P debug overlay (commit 4)
+#include "gos_host_vk.h"   // g_vkPresentInitDeferred / initVulkanBackend
 #include "render_backend_select.h"  // VK-P13-SELECTOR-1 / T1: MC2_RENDER_BACKEND
 #ifdef MC2_VULKAN
 #include "vulkan_context.h"         // VK-P13-SELECTOR-1 / T2: shared engine VK device
@@ -165,8 +166,6 @@ extern bool g_useGpuStaticProps;
 
 void startup_phase(std::string_view name);
 void process_events( void );
-extern bool g_vkPresentInitDeferred;
-extern unsigned g_vkPresentRetryFails;
 
 // Helpers of main() (gameosmain_init.cpp / gameosmain_frame.cpp).
 void initDpiAwareness();
@@ -175,7 +174,6 @@ void initLauncherEnv();
 void initInstrBanner();
 void initRenderOptionsFromConfig();
 void initResolutionFromConfig();
-void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h);
 void frameThrottleLogicEvents();
 void frameEmitDrawPackets(RenderSnapshot& snap);
 void frameScreenshotOracle();

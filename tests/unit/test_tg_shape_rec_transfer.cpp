@@ -3,6 +3,7 @@
 // detach or a compaction no parent points into a released array.
 #include "doctest.h"
 #include "tgl.h"
+#include "alloc_probe.h"
 
 #include <type_traits>
 
@@ -10,8 +11,12 @@
 #include <memory>
 #include <vector>
 
-// ~TG_Shape calls the out-of-line destroy() (tgl.cpp, GL dependent); the dummies are released before any record goes, so it never runs.
-void TG_Shape::destroy (void) {}
+// ~TG_Shape calls the out-of-line destroy() (tgl.cpp, GL dependent); here it counts, so the real-node tests below see every
+// TG_Shape the records destroy (the fake-node tests release their dummies before any record goes, so it never runs for them).
+namespace { int g_shapeDestroys = 0; }
+void TG_Shape::destroy (void) { ++g_shapeDestroys; }
+TG_LightPtr* TG_Shape::s_listOfLights = nullptr;	// TG_Shape::init() writes both (tgl.cpp is not linked)
+DWORD TG_Shape::s_numLights = 0;
 
 namespace {
 // The node is only moved, never dereferenced, by transferFrom: an aligned dummy stands in for a TG_Shape. Since B7o.6b the record
@@ -131,3 +136,98 @@ TEST_CASE("TG_ShapeRec: compaction by transfer, then the parent rebuild points e
 
 static_assert(!std::is_copy_assignable_v<TG_ShapeRec> && !std::is_copy_constructible_v<TG_ShapeRec>, "a record owns its node: never copied (B7o.6b)");
 static_assert(sizeof(std::unique_ptr<TG_Shape>) == sizeof(TG_Shape*), "the node owner is one pointer (default deleter)");
+
+// Review follow-up (B7 proof gaps): REAL TG_Shape nodes, owned by the records, through the same detach + compaction sequence as
+// TG_MultiShape::Detach (msl_shape.cpp:445) and its compaction loop (:476). Every node is destroyed exactly once, only when its
+// final owner goes; a second teardown of the same arrays destroys nothing; the cycle repeated leaves the heap where it found it.
+namespace {
+int detachAndCompactCycle()
+{
+	const std::vector<Ids> ids = {{"root", ""}, {"a", "root"}, {"b", "a"}, {"c", "root"}};
+	auto oldArray = std::make_unique<std::vector<TG_ShapeRec>>(ids.size());
+	auto& old = *oldArray;
+	std::vector<TG_Shape*> nodes;
+	for (auto& r : old)
+	{
+		r.node = std::make_unique<TG_Shape>();
+		nodes.push_back(r.node.get());
+	}
+	auto idOf = [&](const TG_ShapeRec& r) {
+		for (size_t i = 0; i < nodes.size(); ++i)
+			if (nodes[i] == r.node.get())
+				return ids[i].id;
+		return "?";
+	};
+	auto parentOf = [&](const TG_ShapeRec& r) {
+		for (size_t i = 0; i < nodes.size(); ++i)
+			if (nodes[i] == r.node.get())
+				return ids[i].parent;
+		return "?";
+	};
+	rebuildShapeRecParents(old.data(), static_cast<long>(old.size()), idOf, parentOf);
+
+	auto detached = std::make_unique<std::vector<TG_ShapeRec>>(2);
+	(*detached)[0].transferFrom(old[1]);
+	(*detached)[1].transferFrom(old[2]);
+	(*detached)[0].parentNode = nullptr;
+	rebuildShapeRecParents(detached->data(), 2, idOf, parentOf);
+
+	auto kept = std::make_unique<std::vector<TG_ShapeRec>>(2);
+	long k = 0;
+	for (auto& r : old)
+		if (r.node != nullptr)
+			(*kept)[k++].transferFrom(r);
+	rebuildShapeRecParents(kept->data(), k, idOf, parentOf);
+
+	// The old array goes first (as the compaction frees listOfShapes): it owns nothing any more, so no node dies.
+	const int before = g_shapeDestroys;
+	oldArray.reset();
+	CHECK(g_shapeDestroys == before);
+	CHECK(k == 2);
+	CHECK((*kept)[1].parentNode == &(*kept)[0]);
+	CHECK((*detached)[1].parentNode == &(*detached)[0]);
+
+	// The detached shape is released, then the compacted one: two nodes each.
+	detached.reset();
+	CHECK(g_shapeDestroys == before + 2);
+	kept.reset();
+	CHECK(g_shapeDestroys == before + 4);
+	return g_shapeDestroys - before;
+}
+}
+
+TEST_CASE("TG_ShapeRec: real nodes through detach and compaction are destroyed exactly once by their final owner")
+{
+	ScopedLeakCheck leak;
+	g_shapeDestroys = 0;
+	CHECK(detachAndCompactCycle() == 4);
+	CHECK(g_shapeDestroys == 4);
+	CHECK(leak.delta() == 0);
+}
+
+TEST_CASE("TG_ShapeRec: repeated teardown destroys nothing twice and the repeated cycle does not leak")
+{
+	ScopedLeakCheck leak;
+	g_shapeDestroys = 0;
+	for (int cycle = 0; cycle < 8; ++cycle)
+		CHECK(detachAndCompactCycle() == 4);
+	CHECK(g_shapeDestroys == 32);
+
+	// Tearing the same record down twice: the second reset finds an empty owner.
+	TG_ShapeRec rec{};
+	rec.node = std::make_unique<TG_Shape>();
+	rec.node.reset();
+	rec.node.reset();
+	CHECK(g_shapeDestroys == 33);
+	// A record moved from and then destroyed releases nothing; the receiver releases the node once.
+	{
+		TG_ShapeRec src{};
+		src.node = std::make_unique<TG_Shape>();
+		TG_ShapeRec dst{};
+		dst.transferFrom(src);
+		dst.transferFrom(src);	// a second transfer from an empty record clears the receiver's node: it is released here, once
+		CHECK(g_shapeDestroys == 34);
+	}
+	CHECK(g_shapeDestroys == 34);
+	CHECK(leak.delta() == 0);
+}

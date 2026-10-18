@@ -162,8 +162,8 @@ public:
 		std::unique_ptr<BldgAppearance>				vTol[MAX_TEAMS] = {};	// B7o.5: owned drop-ship VTOL / Karnov per team
 		bool						paintingVtol[MAX_TEAMS];
 		float						vTolTime[MAX_TEAMS];
-		gosFX::Effect				*recoveryBeam[MAX_TEAMS];
-		gosFX::Effect				*dustCloud[MAX_TEAMS];
+		gosFX::EffectPtr				recoveryBeam[MAX_TEAMS];
+		gosFX::EffectPtr				dustCloud[MAX_TEAMS];
 		bool						mechRecovered[MAX_TEAMS];
 		bool						vehicleDropped[MAX_TEAMS];
 		MoverPtr					mechToRecover[MAX_TEAMS];

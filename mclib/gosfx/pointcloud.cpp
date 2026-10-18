@@ -8,6 +8,7 @@
 #include<cstdio>   // VFX-POINTCLOUD-ORACLE diagnostics
 #include<cmath>    // std::min / std::max fallback (also in gosfxheaders)
 #include "mc2fmt.h"
+#include "math/stuff_glm_bridge.h"
 
 //==========================================================================//
 // File:	 gosFX_PointCloud.cpp											//
@@ -112,8 +113,8 @@ gosFX::PointCloud::PointCloud(
 
 	gos_PushCurrentHeap(MidLevelRenderer::Heap);
 	m_cloudImplementation =
-		new MidLevelRenderer::MLRPointCloud(spec->m_maxParticleCount);
-	Register_Object(m_cloudImplementation);
+		std::make_unique<MidLevelRenderer::MLRPointCloud>(spec->m_maxParticleCount);
+	Register_Object(m_cloudImplementation.get());
 	gos_PopCurrentHeap();
 
 	unsigned index = spec->m_maxParticleCount*sizeof(Particle);
@@ -132,8 +133,7 @@ gosFX::PointCloud::PointCloud(
 //
 gosFX::PointCloud::~PointCloud()
 {
-	Unregister_Object(m_cloudImplementation);
-	delete m_cloudImplementation;
+	Unregister_Object(m_cloudImplementation.get());
 }
 
 //------------------------------------------------------------------------------
@@ -367,9 +367,9 @@ bool
 	if (sim_mode == StaticWorldSpaceSimulationMode)
 	{
 		Stuff::LinearMatrix4D world_to_effect;
-		world_to_effect.Invert(m_localToWorld);
+		mc2::math::fromGlm(world_to_effect, glm::inverse(mc2::math::toGlm(m_localToWorld)));
 		Stuff::Vector3D local_ether;
-		local_ether.MultiplyByInverse(ether, world_to_effect);
+		local_ether = mc2::math::toVector3D(mc2::math::transformVector(mc2::math::toGlm(ether), glm::inverse(mc2::math::toGlm(world_to_effect))));
 		Stuff::Vector3D rel_vel;
 		rel_vel.Subtract(*velocity, local_ether);
 		accel.Multiply(rel_vel, drag);
@@ -557,7 +557,7 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
 	{
 		Specification *spec = GetSpecification();
 		Check_Object(spec);
-		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation, m_localToParent);
+		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation.get(), m_localToParent);
 	
 		submission.submit(info);
 	}

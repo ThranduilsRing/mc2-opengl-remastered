@@ -5,6 +5,11 @@
 
 #include <new>
 
+#include <cstring>
+
+// Nonzero: every new block is filled with this byte (test_object_zero_new.cpp proves a zero-fill against it).
+unsigned char g_unitNewPoison = 0;
+
 namespace {
 
 void* probeNew(size_t bytes)
@@ -12,6 +17,8 @@ void* probeNew(size_t bytes)
 	void* p = mc2_alloc_probe::allocate(bytes);
 	if (!p)
 		throw std::bad_alloc();
+	if (g_unitNewPoison)
+		std::memset(p, g_unitNewPoison, bytes);
 	return p;
 }
 

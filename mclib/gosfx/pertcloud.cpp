@@ -1,6 +1,7 @@
 #include"gosfxheaders.hpp"
 #include "mlr_cloud_draw.hpp"
 #include<mlr/mlrngoncloud.hpp>
+#include "math/stuff_glm_bridge.h"
 
 //==========================================================================//
 // File:	 gosFX_gosFX::PertCloud.cpp										//
@@ -229,11 +230,11 @@ gosFX::PertCloud::PertCloud(
 
 	gos_PushCurrentHeap(MidLevelRenderer::Heap);
 	m_cloudImplementation =
-		new MidLevelRenderer::MLRNGonCloud(
+		std::make_unique<MidLevelRenderer::MLRNGonCloud>(
 			spec->m_vertices,
 			spec->m_maxParticleCount
 		);
-	Register_Object(m_cloudImplementation);
+	Register_Object(m_cloudImplementation.get());
 	gos_PopCurrentHeap();
 
 	unsigned index = spec->m_maxParticleCount*sizeof(Particle);
@@ -253,8 +254,7 @@ gosFX::PertCloud::PertCloud(
 //
 gosFX::PertCloud::~PertCloud()
 {
-	Unregister_Object(m_cloudImplementation);
-	delete m_cloudImplementation;
+	Unregister_Object(m_cloudImplementation.get());
 }
 
 //------------------------------------------------------------------------------
@@ -368,8 +368,8 @@ void
 		Stuff::Scalar temp = perturbance + radius;
 		particle->m_vertices[j] =
 			Stuff::Point3D(
-				Stuff::Sin(j*angle_between)*temp,
-				Stuff::Cos(j*angle_between)*temp,
+				mc2::math::sinD(j*angle_between)*temp,
+				mc2::math::cosD(j*angle_between)*temp,
 				perturbance
 			);
 		perturbance = temp*temp + perturbance*perturbance;
@@ -406,7 +406,7 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 	{
 		Specification *spec = GetSpecification();
 		Check_Object(spec);
-		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation, m_localToParent);
+		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation.get(), m_localToParent);
 		const auto& local_to_world = submission.localToWorld;
 
 		//
@@ -428,10 +428,7 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 				Stuff::Point3D
 					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud.MultiplyByInverse(
-					camera_in_world,
-					local_to_world
-				);
+				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
 
 				//
 				//--------------------------------------
@@ -498,10 +495,7 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 				Stuff::Point3D
 					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud.MultiplyByInverse(
-					camera_in_world,
-					local_to_world
-				);
+				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
 
 				//
 				//--------------------------------------
@@ -569,10 +563,7 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 			Stuff::Point3D
 				camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
 			Stuff::Point3D camera_in_cloud;
-			camera_in_cloud.MultiplyByInverse(
-				camera_in_world,
-				local_to_world
-			);
+			camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
 
 			//
 			//--------------------------------------

@@ -3,6 +3,7 @@
 
 #include "txmmgr_render_internal.h"
 #include "mc2fmt.h"
+#include "math/stuff_glm_bridge.h"
 
 void MC_TextureManager::renderListsDynamicShadowPass (void)
 {
@@ -40,7 +41,7 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 			float cornersMC2[8][3];
 			// Invert(src) stores the inverse of src into *this (matrix.hpp).
 			Stuff::Matrix4D clipToWorldGL;
-			clipToWorldGL.Invert(eye->worldToClipGL());
+			mc2::math::fromGlm(clipToWorldGL, glm::inverse(mc2::math::toGlm(eye->worldToClipGL())));
 			for (int c = 0; c < 8; ++c) {
 				Stuff::Vector4D in, out;
 				in.x = ndc[c][0]; in.y = ndc[c][1]; in.z = ndc[c][2]; in.w = 1.0f;

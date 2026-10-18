@@ -100,7 +100,7 @@ namespace gosFX
 		typedef PertCloud__Particle Particle;
 
 	protected:
-		MidLevelRenderer::MLRNGonCloud * m_cloudImplementation;						// Pert to an MLR Pert cloud by Jim
+		std::unique_ptr<MidLevelRenderer::MLRNGonCloud> m_cloudImplementation;						// Pert to an MLR Pert cloud by Jim
 		Stuff::Point3D		*m_P_vertices;
 		Stuff::RGBAColor	*m_P_color;
 

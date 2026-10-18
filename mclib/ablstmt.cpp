@@ -263,7 +263,7 @@ void forStatement (void) {
 
 TypePtr caseLabel (CaseItemPtr& caseItemHead, CaseItemPtr& caseItemTail, long& caseLabelCount) {
 
-	CaseItemPtr newCaseItem = (CaseItemPtr)ABLStackMallocCallback(sizeof(CaseItem));
+	CaseItemPtr newCaseItem = (CaseItemPtr)ABL_alloc(ABLPool::Stack, sizeof(CaseItem));
 	if (!newCaseItem)
 		ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc case item ");
 	if (caseItemHead) {
@@ -444,7 +444,7 @@ long caseLabelCount = 0;
 		crunchInteger(caseItem->labelValue);
 		crunchOffset(caseItem->branchLocation);
 		CaseItemPtr nextCaseItem = caseItem->next;
-		ABLStackFreeCallback(caseItem);
+		ABL_free(ABLPool::Stack, caseItem);
 		caseItem = nextCaseItem;
 	}
 
