@@ -5,7 +5,7 @@
 
 
 bool GpuStaticPropBatcher::submit(TG_Shape* shape,
-                                  const Stuff::Matrix4D& shapeToWorld,
+                                  const glm::mat4& shapeToWorld,
                                   uint32_t highlightARGB,
                                   uint32_t fogARGB,
                                   uint32_t flags,
@@ -643,7 +643,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
         // reused as kFlagIsAlphaTest above.
 
         // rec.shapeToWorld is LinearMatrix4D; convert to Matrix4D for submit().
-        Stuff::Matrix4D xform(rec.shapeToWorld);
+        glm::mat4 xform = glm::mat4(rec.shapeToWorld);
         if (!submit(child, xform,
                     child->aRGBHighlight, child->fogRGB, flags,
                     lightDataIndex)) {

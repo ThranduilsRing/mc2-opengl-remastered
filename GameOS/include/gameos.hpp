@@ -2445,12 +2445,12 @@ float mc2ShadowMinSunAltDeg();            // MC2_SHADOW_MIN_SUN_ALT, default 15 
 // unique solid color so the render path of a given surface can be identified
 // visually. Default 0 => byte-identical normal rendering. See gos_postprocess.cpp.
 int   mc2ShaderPathTint();
-// Forward decl for F1 unified-projection API (Stuff::Matrix4D defined in mclib/stuff/matrix.hpp).
-namespace Stuff { class Matrix4D; }
+// F1 unified-projection API: the engine matrices are glm::mat4 (row-vector convention, mclib/math/mc2_xform.h).
+#include "../../mclib/math/glm_config.h"
 // F1 Stage A unified-projection production setter. Repackages column-major
 // Stuff::Matrix4D -> row-major and writes the terrain_mvp_ cache so all
 // gos_GetTerrainMVPMat4() callers inherit transparently.
-void __stdcall gos_SetWorldToClipGL(const Stuff::Matrix4D& mat);
+void __stdcall gos_SetWorldToClipGL(const glm::mat4& mat);
 // gos_SetTerrainMVP: raw 16-float row-major matrix upload to terrain_mvp_.
 // Used by EditorCamera.h shim and gamecam.cpp (via gos_SetWorldToClipGL).
 // The two APIs write the SAME terrain_mvp_ cache; use whichever matches

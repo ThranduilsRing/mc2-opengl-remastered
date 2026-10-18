@@ -115,10 +115,10 @@ static void popOverlayState() {
 // Project a world-space point to screen space.
 // Uses Camera::projectForScreenXY (non-deprecated intent-specific wrapper).
 // Returns false if the point is behind the camera.
-static bool projectToScreen(const Stuff::Vector3D& worldPt,
+static bool projectToScreen(const glm::vec3& worldPt,
                             float* outSx, float* outSy) {
     if (!eye || !outSx || !outSy) return false;
-    Stuff::Vector3D pt = worldPt;   // mutable copy: projectForScreenXY takes non-const ref
+    glm::vec3 pt = worldPt;   // mutable copy: projectForScreenXY takes non-const ref
     Stuff::Vector4D screen{};
     if (!eye->projectForScreenXY(pt, screen)) return false;
     *outSx = screen.x;
@@ -183,7 +183,7 @@ EditorPickResult pickAt(int screenX, int screenY) {
     Stuff::Vector2DOf<long> screenPt;
     screenPt.x = static_cast<long>(screenX);
     screenPt.y = static_cast<long>(screenY);
-    Stuff::Vector3D worldPt{};
+    glm::vec3 worldPt{};
     // inverseProject returns 0 on tile-found success, non-zero on off-map miss.
     const unsigned long hitFlags = eye->inverseProject(screenPt, worldPt);
     if (hitFlags != 0) return result;  // missed terrain (off-map or camera not ready)
@@ -219,11 +219,11 @@ void drawSelectionBounds(const EditorAabb& b, SelectionBoundsStyle style) {
     if (b.minX >= b.maxX || b.minY >= b.maxY || b.minZ >= b.maxZ) return;
 
     // 8 world-space corners: bottom face (z=minZ) + top face (z=maxZ).
-    const Stuff::Vector3D corners[8] = {
-        Stuff::Vector3D(b.minX, b.minY, b.minZ), Stuff::Vector3D(b.maxX, b.minY, b.minZ),
-        Stuff::Vector3D(b.maxX, b.maxY, b.minZ), Stuff::Vector3D(b.minX, b.maxY, b.minZ),
-        Stuff::Vector3D(b.minX, b.minY, b.maxZ), Stuff::Vector3D(b.maxX, b.minY, b.maxZ),
-        Stuff::Vector3D(b.maxX, b.maxY, b.maxZ), Stuff::Vector3D(b.minX, b.maxY, b.maxZ),
+    const glm::vec3 corners[8] = {
+        glm::vec3(b.minX, b.minY, b.minZ), glm::vec3(b.maxX, b.minY, b.minZ),
+        glm::vec3(b.maxX, b.maxY, b.minZ), glm::vec3(b.minX, b.maxY, b.minZ),
+        glm::vec3(b.minX, b.minY, b.maxZ), glm::vec3(b.maxX, b.minY, b.maxZ),
+        glm::vec3(b.maxX, b.maxY, b.maxZ), glm::vec3(b.minX, b.maxY, b.maxZ),
     };
 
     // Project all 8 corners. If any are behind the camera, skip the entire
@@ -282,15 +282,15 @@ void drawTerrainTileOutline(const TerrainTileOverlayDesc& desc) {
 
     // Sample elevation at the four world-space corners (CPU heightmap read).
     auto elevAt = [&](float x, float y) -> float {
-        Stuff::Vector3D pos(x, y, 0.f);
+        glm::vec3 pos(x, y, 0.f);
         return land->getTerrainElevation(pos);
     };
 
-    const Stuff::Vector3D corners[4] = {
-        Stuff::Vector3D(x0, y0, elevAt(x0, y0)),  // NW
-        Stuff::Vector3D(x1, y0, elevAt(x1, y0)),  // NE
-        Stuff::Vector3D(x1, y1, elevAt(x1, y1)),  // SE
-        Stuff::Vector3D(x0, y1, elevAt(x0, y1)),  // SW
+    const glm::vec3 corners[4] = {
+        glm::vec3(x0, y0, elevAt(x0, y0)),  // NW
+        glm::vec3(x1, y0, elevAt(x1, y0)),  // NE
+        glm::vec3(x1, y1, elevAt(x1, y1)),  // SE
+        glm::vec3(x0, y1, elevAt(x0, y1)),  // SW
     };
 
     // Project all 4 corners. Same policy as drawSelectionBounds: if any corner

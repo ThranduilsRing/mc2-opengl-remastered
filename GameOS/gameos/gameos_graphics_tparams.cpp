@@ -552,7 +552,7 @@ long g_viewContentEpoch = 0;
 static float g_prevPublishedWtc[16] = { 0 };
 static bool  g_havePrevPublishedWtc = false;
 
-void __stdcall gos_SetWorldToClipGL(const Stuff::Matrix4D& mat)
+void __stdcall gos_SetWorldToClipGL(const glm::mat4& mat)
 {
     if (!g_gos_renderer) return;
     const float* col = (const float*)&mat;

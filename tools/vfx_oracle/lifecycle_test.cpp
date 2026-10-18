@@ -85,8 +85,8 @@ TEST_CASE_FIXTURE(Platform, "CardCloud births and retirement through Effect Exec
         spec.m_particlesPerSecond.SetCurve(0.0f);
         spec.m_lifeSpan.SetCurve(0.1f);
         spec.m_pLifeSpan.m_ageCurve.SetCurve(0.1f);
-        const Stuff::LinearMatrix4D transform = Stuff::LinearMatrix4D::Identity;
-        Stuff::OBB bounds = Stuff::OBB::Identity;
+        const glm::mat4 transform = glm::mat4(1.0f);
+        mc2::math::Obb bounds = mc2::math::Obb();
         gosFX::Effect::ExecuteInfo info(Stuff::Time(0), &transform, &bounds);
         Parent parent(&parentSpec);
         parent.Start(&info);
@@ -128,13 +128,13 @@ TEST_CASE_FIXTURE(Platform, "Effect is the one owner of its children: create, fi
     gosFX::Effect::Specification longSpec;
     longSpec.BuildDefaults();
     longSpec.m_lifeSpan.SetCurve(10.0f);
-    const Stuff::LinearMatrix4D transform = Stuff::LinearMatrix4D::Identity;
+    const glm::mat4 transform = glm::mat4(1.0f);
 
     SUBCASE("a parent destroyed with live children frees each child once")
     {
         g_childDestroyed = 0;
         {
-            Stuff::OBB bounds = Stuff::OBB::Identity;
+            mc2::math::Obb bounds = mc2::math::Obb();
             gosFX::Effect::ExecuteInfo info(Stuff::Time(0), &transform, &bounds);
             Parent parent(&parentSpec);
             parent.Start(&info);
@@ -153,7 +153,7 @@ TEST_CASE_FIXTURE(Platform, "Effect is the one owner of its children: create, fi
         g_childDestroyed = 0;
         gosFX::Effect* survivor = nullptr;
         {
-            Stuff::OBB bounds = Stuff::OBB::Identity;
+            mc2::math::Obb bounds = mc2::math::Obb();
             gosFX::Effect::ExecuteInfo info(Stuff::Time(0), &transform, &bounds);
             Parent parent(&parentSpec);
             parent.Start(&info);
@@ -179,7 +179,7 @@ TEST_CASE_FIXTURE(Platform, "Effect is the one owner of its children: create, fi
     {
         g_childDestroyed = 0;
         {
-            Stuff::OBB bounds = Stuff::OBB::Identity;
+            mc2::math::Obb bounds = mc2::math::Obb();
             gosFX::Effect::ExecuteInfo info(Stuff::Time(0), &transform, &bounds);
             Parent parent(&parentSpec);
             parent.Start(&info);
@@ -264,8 +264,8 @@ struct LoadedLibrary {
 // Starts the cloud, runs `frames` 30 Hz frames and returns how many of its particles own a live effect afterwards.
 int runCloud(gosFX::EffectPtr& cloud, int frames)
 {
-    const Stuff::LinearMatrix4D transform = Stuff::LinearMatrix4D::Identity;
-    Stuff::OBB bounds = Stuff::OBB::Identity;
+    const glm::mat4 transform = glm::mat4(1.0f);
+    mc2::math::Obb bounds = mc2::math::Obb();
     gosFX::Effect::ExecuteInfo info(Stuff::Time(0), &transform, &bounds);
     cloud->Start(&info);
     for (int frame = 1; frame <= frames; ++frame) {

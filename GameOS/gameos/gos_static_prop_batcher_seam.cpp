@@ -212,7 +212,7 @@ void GpuStaticPropBatcher::reinjectPersistentStatic() {
 
 bool GpuStaticPropBatcher::buildRecipeFromShape(
         TG_Shape* shape,
-        const Stuff::Matrix4D& shapeToWorld,
+        const glm::mat4& shapeToWorld,
         uint32_t highlightARGB,
         uint32_t fogARGB,
         uint32_t flags,
