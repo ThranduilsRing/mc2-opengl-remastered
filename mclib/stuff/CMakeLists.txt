@@ -4,17 +4,9 @@ project(stuff)
 set(SOURCES ${SOURCES}
     style.cpp
     trace.cpp
-    affinematrix.cpp
     color.cpp
-    linearmatrix.cpp
-    matrix.cpp
-    obb.cpp
-    point3d.cpp
     random.cpp
-    rotation.cpp
     scalar.cpp
-    unitvector.cpp
-    vector3d.cpp
     vector4d.cpp
     memoryblock.cpp
     mstring.cpp

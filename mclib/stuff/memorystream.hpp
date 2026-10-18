@@ -19,9 +19,7 @@ namespace Stuff {
 
 	typedef float Scalar; // scalar.hpp
 
-    class Point3D;
 
-    class LinearMatrix4D;
 
     class MStringRepresentation;
 
@@ -59,35 +57,22 @@ namespace MemoryStreamIO {
 		);
 }
 
-// linearmatrix
+
+
+// glmstream.hpp (step 5): the byte records of the engine math types, declared before the stream templates below (a
+// qualified call binds the overloads visible at the template definition).
+#include "../math/mc2_xform.h"
 namespace MemoryStreamIO {
-
-	inline Stuff::MemoryStream&
-		Read(
-			Stuff::MemoryStream *stream,
-			Stuff::LinearMatrix4D *output
-		);
-	inline Stuff::MemoryStream&
-		Write(
-			Stuff::MemoryStream *stream,
-			const Stuff::LinearMatrix4D *input
-		);
-}
-
-// point3d
-namespace MemoryStreamIO {
-
-	inline Stuff::MemoryStream&
-		Read(
-			Stuff::MemoryStream* stream,
-			Stuff::Point3D *output
-		);
-	inline Stuff::MemoryStream&
-		Write(
-			Stuff::MemoryStream* stream,
-			const Stuff::Point3D *input
-        );
-
+	inline Stuff::MemoryStream& Read(Stuff::MemoryStream* stream, glm::vec3* output);
+	inline Stuff::MemoryStream& Write(Stuff::MemoryStream* stream, const glm::vec3* input);
+	inline Stuff::MemoryStream& Read(Stuff::MemoryStream* stream, glm::quat* output);
+	inline Stuff::MemoryStream& Write(Stuff::MemoryStream* stream, const glm::quat* input);
+	inline Stuff::MemoryStream& Read(Stuff::MemoryStream* stream, mc2::math::Euler* output);
+	inline Stuff::MemoryStream& Write(Stuff::MemoryStream* stream, const mc2::math::Euler* input);
+	inline Stuff::MemoryStream& Read(Stuff::MemoryStream* stream, glm::mat4* output);
+	inline Stuff::MemoryStream& Write(Stuff::MemoryStream* stream, const glm::mat4* input);
+	inline Stuff::MemoryStream& Read(Stuff::MemoryStream* stream, mc2::math::Obb* output);
+	inline Stuff::MemoryStream& Write(Stuff::MemoryStream* stream, const mc2::math::Obb* input);
 }
 
 // from scalar.hpp

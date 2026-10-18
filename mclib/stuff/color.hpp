@@ -11,7 +11,7 @@
 #include"stuff.hpp"
 #include"memorystream.hpp"
 #include"scalar.hpp"
-#include"vector3d.hpp"
+#include"scalar.hpp"
 
 namespace Stuff {
 	class RGBColor;
