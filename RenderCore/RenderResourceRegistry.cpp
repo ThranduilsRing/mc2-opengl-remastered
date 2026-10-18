@@ -80,7 +80,6 @@ const char* toString(RenderResourceId id) {
         case RenderResourceId::TerrainLightGridHeaderSsbo:   return "TerrainLightGridHeaderSsbo";
         case RenderResourceId::TerrainLightGridIndexSsbo:    return "TerrainLightGridIndexSsbo";
         case RenderResourceId::LightDataSsbo:        return "LightDataSsbo";
-        case RenderResourceId::DynamicFullMapFbo:    return "DynamicFullMapFbo";
         case RenderResourceId::DynamicPropShadowSsbo: return "DynamicPropShadowSsbo";
         case RenderResourceId::PostprocessSubgraphColor: return "PostprocessSubgraphColor";
         case RenderResourceId::PostprocessSubgraphDepth: return "PostprocessSubgraphDepth";
@@ -92,8 +91,6 @@ const char* toString(RenderResourceId id) {
         case RenderResourceId::WaterRecipeBuf:       return "WaterRecipeBuf";
         case RenderResourceId::WaterHeaderBuf:       return "WaterHeaderBuf";
         case RenderResourceId::WaterIndirectCmdBuf:  return "WaterIndirectCmdBuf";
-        case RenderResourceId::ShadowCsmNearArray:   return "ShadowCsmNearArray";
-        case RenderResourceId::ShadowCsmFullMap:     return "ShadowCsmFullMap";
         case RenderResourceId::Count:                return "Count";
     }
     return "unknown";

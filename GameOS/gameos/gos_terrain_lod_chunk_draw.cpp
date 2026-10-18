@@ -8,10 +8,6 @@
 // per-band numbers. Index = LOD level (0..5), same mapping as [TerrainLOD v1].
 static int s_visualDisplacedCounts[6] = {0, 0, 0, 0, 0, 0};
 static int      s_submitZeroStreak  = 0;  // Phase 7.5: consecutive frames with count==0
-// Mirror gameos_graphics.cpp's file-static terrain shadow texture units (9/10).
-static constexpr GLint kChunkTexUnitStaticShadow  = 9;
-static constexpr GLint kChunkTexUnitDynamicShadow = 10;
-static constexpr GLint kChunkTexUnitDynFullMap    = 13;  // free unit (chunk uses up to 11)
 static constexpr GLint kChunkTexUnitMatNormalArray = 5;
 static constexpr GLint kChunkTexUnitMatAlbedoArray = 4;
 static constexpr GLint kChunkTexUnitCement = 3;  // matches legacy tex3
@@ -350,67 +346,9 @@ static void bindAtlasAndShadowMaps() {
         }
     }
 
-    // Phase 10 Step 1c: bind the shadow maps + light matrices that
-    // include/shadow.hglsl reads. The chunk draw is a bolt-on — like the GL depth
-    // state, it MUST set these or enableShadows defaults to 0 and calcShadow
-    // returns 1.0 (no shadows). Mirrors gosRenderer::terrainBindShadowUniforms.
-    {
-        gosPostProcess* pp = getGosPostProcess();
-        if (pp && pp->shadowsEnabled_) {
-            if (s_locLightSpaceMatrix >= 0)
-                glUniformMatrix4fv(s_locLightSpaceMatrix, 1, GL_FALSE, pp->getLightSpaceMatrix());
-            if (s_locEnableShadows >= 0)  glUniform1i(s_locEnableShadows, 1);
-            if (s_locShadowSoftness >= 0) glUniform1f(s_locShadowSoftness, 2.5f);  // shadow.hglsl default
-            if (s_locShadowMap >= 0) {
-                glUniform1i(s_locShadowMap, kChunkTexUnitStaticShadow);
-                glActiveTexture(GL_TEXTURE0 + kChunkTexUnitStaticShadow);
-                glBindTexture(GL_TEXTURE_2D, pp->getShadowTexture());
-                glActiveTexture(GL_TEXTURE0);
-            }
-            if (pp->getDynamicShadowFBO()) {
-                if (s_locEnableDynShadows >= 0) glUniform1i(s_locEnableDynShadows, 1);
-                if (mc2ShadowCsmEnabled() && pp->getDynamicShadowArrayTexture()) {
-                    if (s_locDynCascadeMats >= 0)
-                        glUniformMatrix4fv(s_locDynCascadeMats, pp->getDynamicShadowCascadeCount(),
-                                           GL_FALSE, pp->getDynamicCascadeMatrices());
-                    if (s_locDynCsmCount >= 0) glUniform1i(s_locDynCsmCount, pp->getDynamicShadowCascadeCount());
-                    if (s_locDynCascadeTexel >= 0)
-                        glUniform1fv(s_locDynCascadeTexel, pp->getDynamicShadowCascadeCount(),
-                                     pp->getDynamicCascadeTexelWorld());
-                    if (s_locCsmDepthSpan >= 0)
-                        glUniform1f(s_locCsmDepthSpan, pp->getCsmDepthSpan());
-                    if (s_locDynShadowArray >= 0) {
-                        glUniform1i(s_locDynShadowArray, kChunkTexUnitDynamicShadow);
-                        glActiveTexture(GL_TEXTURE0 + kChunkTexUnitDynamicShadow);
-                        glBindTexture(GL_TEXTURE_2D_ARRAY, pp->getDynamicShadowArrayTexture());
-                        glActiveTexture(GL_TEXTURE0);
-                    }
-                    if (s_locDynFullMapTexel >= 0)
-                        glUniform1f(s_locDynFullMapTexel, pp->getDynamicFullMapTexelWorld());
-                    if (s_locDynFullMapShadow >= 0) {
-                        glUniform1i(s_locDynFullMapShadow, kChunkTexUnitDynFullMap);
-                        glActiveTexture(GL_TEXTURE0 + kChunkTexUnitDynFullMap);
-                        glBindTexture(GL_TEXTURE_2D, pp->getDynamicFullMapTexture());
-                        glActiveTexture(GL_TEXTURE0);
-                    }
-                } else {
-                    if (s_locDynLightSpaceMat >= 0)
-                        glUniformMatrix4fv(s_locDynLightSpaceMat, 1, GL_FALSE, pp->getDynamicLightSpaceMatrix());
-                    if (s_locDynShadowMap >= 0) {
-                        glUniform1i(s_locDynShadowMap, kChunkTexUnitDynamicShadow);
-                        glActiveTexture(GL_TEXTURE0 + kChunkTexUnitDynamicShadow);
-                        glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTexture());
-                        glActiveTexture(GL_TEXTURE0);
-                    }
-                }
-            } else if (s_locEnableDynShadows >= 0) {
-                glUniform1i(s_locEnableDynShadows, 0);
-            }
-        } else {
-            if (s_locEnableShadows >= 0)    glUniform1i(s_locEnableShadows, 0);
-            if (s_locEnableDynShadows >= 0) glUniform1i(s_locEnableDynShadows, 0);
-        }
-    }
+    // The shadow maps are Vulkan images the GL shaders cannot sample: the chunk draw runs shadow-free.
+    if (s_locEnableShadows >= 0)    glUniform1i(s_locEnableShadows, 0);
+    if (s_locEnableDynShadows >= 0) glUniform1i(s_locEnableDynShadows, 0);
 }
 
 // Bind the material normal array, the cement atlas, the transition mask and the control map.

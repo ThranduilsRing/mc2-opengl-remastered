@@ -152,8 +152,6 @@ void draw() {
             ImGui::Checkbox("Shadow Debug##pp", &pp->showShadowDebug_);
             if (pp->showShadowDebug_) {
                 ImGui::Indent();
-                ImGui::RadioButton("Static##sd",  &pp->shadowDebugMode_, 0); ImGui::SameLine();
-                ImGui::RadioButton("Dynamic##sd", &pp->shadowDebugMode_, 1);
                 if (ImGui::TreeNodeEx("Registries##sd")) {
                     ImGui::TextDisabled("Views:");
                     uint32_t nv = RenderCore::getViewCount();
@@ -171,20 +169,6 @@ void draw() {
                     }
                     if (!foundShadow)
                         ImGui::TextDisabled("  (none — load a mission first)");
-                    ImGui::TextDisabled("Resources:");
-                    for (auto rid : { RenderCore::RenderResourceId::ShadowStaticMap,
-                                      RenderCore::RenderResourceId::ShadowDynamicMap }) {
-                        const RenderCore::RenderResourceDesc* r =
-                            RenderCore::getRenderResource(rid);
-                        if (r)
-                            ImGui::Text("  %s  %ux%u  %s",
-                                r->debugName ? r->debugName : "?",
-                                r->width, r->height,
-                                RenderCore::toString(r->format));
-                        else
-                            ImGui::TextDisabled("  %s  (not registered)",
-                                RenderCore::toString(rid));
-                    }
                     ImGui::TreePop();
                 }
                 ImGui::Unindent();

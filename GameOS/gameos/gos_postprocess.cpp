@@ -201,22 +201,11 @@ gosPostProcess::gosPostProcess()
     , width_(0)
     , height_(0)
     , initialized_(false)
-    , shadowFBO_(0)
-    , shadowDepthTex_(0)
-    , shadowDummyColorTex_(0)
-    , shadowDepthProg_(nullptr)
     , shadowMapSize_(4096)
     , shadowsEnabled_(true)
     , staticLightMatrixBuilt_(false)
     , mapHalfExtent_(0.0f)
-    , dynShadowFBO_(0)
-    , dynShadowDepthTex_(0)
-    , dynShadowDummyColorTex_(0)
     , dynShadowMapSize_(2048)
-    , shadowDebugProg_(nullptr)
-    , dynShadowArrayFBO_(0)
-    , dynShadowArrayDummyColorTex_(0)
-    , dynShadowArrayTex_(0)
     , csmCount_(0)
     , csmDebugLayer_(0)
     , screenShadowProg_(nullptr)
@@ -263,9 +252,6 @@ gosPostProcess::gosPostProcess()
 {
     memset(staticLightSpaceMatrix_, 0, sizeof(staticLightSpaceMatrix_));
     memset(dynamicLightSpaceMatrix_, 0, sizeof(dynamicLightSpaceMatrix_));
-    dynamicFullMapTex_ = 0;
-    dynamicFullMapFbo_ = 0;
-    dynamicFullMapDummyColorTex_ = 0;
     dynamicFullMapSize_ = 4096;
     dynamicFullMapTexelWorld_ = 0.0f;
     memset(dynamicCascadeMatrices_, 0, sizeof(dynamicCascadeMatrices_));
@@ -275,7 +261,6 @@ gosPostProcess::gosPostProcess()
     memset(inverseViewProj_, 0, sizeof(inverseViewProj_));
     memset(viewProj_, 0, sizeof(viewProj_));
     showShadowDebug_ = false;
-    shadowDebugMode_ = 0;
 }
 
 gosPostProcess::~gosPostProcess()
@@ -365,15 +350,6 @@ void gosPostProcess::init(int w, int h)
                 "[HDRI_SKY v1] enabled=0 reason=env_gate MC2_HDRI_SKY=0\n");
         }
     }
-
-    // Item 1 P5: inject MC2_SHADOW_CSM so the debug blit can sample an array layer.
-    std::string shadowDebugPrefix = "#version 430\n";
-    if (mc2ShadowCsmEnabled())
-        shadowDebugPrefix += "#define MC2_SHADOW_CSM 1\n";
-    shadowDebugProg_ = glsl_program::makeProgram("shadow_debug",
-        "shaders/postprocess.vert", "shaders/shadow_debug.frag", shadowDebugPrefix.c_str());
-    if (!shadowDebugProg_ || !shadowDebugProg_->is_valid())
-        mc2::fmt::print_err("gosPostProcess: failed to compile shadow_debug shader\n");
 
     // Item 1: shadow_screen.frag #includes shadow.hglsl -> inject MC2_SHADOW_CSM
     // when ON so it compiles the array-sampler dynamic-shadow variant.
@@ -573,22 +549,16 @@ void gosPostProcess::init(int w, int h)
                      hzbProbeEnabled_ ? 1 : 0, probeEnv ? probeEnv : "(unset)");
     }
 
-    // SHADOW-ENV-DEBUG-MODE-1: select shadow debug overlay from env var so
-    // automated capture can request it without ImGui interaction.
-    // Default unset/0/off -> showShadowDebug_ stays false (byte-identical).
-    // RAlt+F2 hotkey and ImGui checkbox still override at runtime.
+    // SHADOW-ENV-DEBUG-MODE-1: select the shadow debug overlay (the Vulkan CSM near-cascade view)
+    // from env var so automated capture can request it without ImGui interaction.
+    // Default unset/0/off -> showShadowDebug_ stays false. RAlt+F2 hotkey and ImGui checkbox still override at runtime.
     {
         const std::string sdText = mc2::gate::str<"MC2_SHADOW_DEBUG_MODE">();   // "" when unset or empty
         const char* sdEnv = sdText.c_str();
         if (sdEnv[0]) {
-            if (sdEnv[0] == '1' || (sdEnv[0] == 's' && sdEnv[1] == 't')) {
+            if (sdEnv[0] == '1' || sdEnv[0] == '2' || sdEnv[0] == 's' || sdEnv[0] == 'd') {
                 showShadowDebug_ = true;
-                shadowDebugMode_ = 0;
-                mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE=static (mode 0)\n");
-            } else if (sdEnv[0] == '2' || sdEnv[0] == 'd') {
-                showShadowDebug_ = true;
-                shadowDebugMode_ = 1;
-                mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE=dynamic (mode 1)\n");
+                mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE on (CSM view)\n");
             } else {
                 mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE={} (unrecognized, using OFF)\n", mc2::fmt::safe(sdEnv));
             }

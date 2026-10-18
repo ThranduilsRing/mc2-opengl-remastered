@@ -11,59 +11,6 @@ static bool terrainMaterialLibEnabled() {
     return enabled;
 }
 
-// Item 1 CSM: upload the dynamic-shadow uniforms for a terrain-style loc set.
-// When CSM is OFF this is byte-identical to the legacy inline block (sets
-// dynamicLightSpaceMatrix + dynamicShadowMap + binds the 2D texture). When ON
-// it instead uploads dynamicCascadeMatrices[N] + dynamicCsmCount and binds the
-// GL_TEXTURE_2D_ARRAY to the same texunit. Template over the loc struct because
-// TerrainUniformLocs and ThinTerrainUniformLocs share field names.
-template <typename Locs>
-static void uploadDynamicShadowUniforms(const Locs& tl, gosPostProcess* pp, GLint texUnit)
-{
-    if (mc2ShadowCsmEnabled() && pp->getDynamicShadowArrayTexture()) {
-        if (tl.dynamicCascadeMatrices >= 0)
-            glUniformMatrix4fv(tl.dynamicCascadeMatrices,
-                               pp->getDynamicShadowCascadeCount(), GL_FALSE,
-                               pp->getDynamicCascadeMatrices());
-        if (tl.dynamicCsmCount >= 0)
-            glUniform1i(tl.dynamicCsmCount, pp->getDynamicShadowCascadeCount());
-        if (tl.dynamicCascadeTexelWorld >= 0)
-            glUniform1fv(tl.dynamicCascadeTexelWorld,
-                         pp->getDynamicShadowCascadeCount(),
-                         pp->getDynamicCascadeTexelWorld());
-        if (tl.csmDepthSpan >= 0)
-            glUniform1f(tl.csmDepthSpan, pp->getCsmDepthSpan());
-        if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 1);
-        if (tl.dynamicShadowArray >= 0) {
-            glUniform1i(tl.dynamicShadowArray, texUnit);
-            glActiveTexture(GL_TEXTURE0 + texUnit);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, pp->getDynamicShadowArrayTexture());
-            glActiveTexture(GL_TEXTURE0);
-        }
-        // Per-cascade shadow resolution: the LAST cascade samples this separate
-        // lower-res 2D depth texture on its own dedicated unit.
-        if (tl.dynamicFullMapTexelWorld >= 0)
-            glUniform1f(tl.dynamicFullMapTexelWorld, pp->getDynamicFullMapTexelWorld());
-        if (tl.dynamicFullMapShadow >= 0) {
-            glUniform1i(tl.dynamicFullMapShadow, kTerrainTexUnitDynFullMap);
-            glActiveTexture(GL_TEXTURE0 + kTerrainTexUnitDynFullMap);
-            glBindTexture(GL_TEXTURE_2D, pp->getDynamicFullMapTexture());
-            glActiveTexture(GL_TEXTURE0);
-        }
-        return;
-    }
-    // Legacy single-map path (byte-identical to the prior inline block).
-    if (tl.dynamicLightSpaceMatrix >= 0)
-        glUniformMatrix4fv(tl.dynamicLightSpaceMatrix, 1, GL_FALSE, pp->getDynamicLightSpaceMatrix());
-    if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 1);
-    if (tl.dynamicShadowMap >= 0) {
-        glUniform1i(tl.dynamicShadowMap, texUnit);
-        glActiveTexture(GL_TEXTURE0 + texUnit);
-        glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTexture());
-        glActiveTexture(GL_TEXTURE0);
-    }
-}
-
 // LIGHTING-DEBUG-VIEWS: render-family-shared lighting debug channel on the
 // shared surfaceDebugMode integer space. The 40-series is reserved for the
 // unified lighting channels so the SAME id means the SAME channel across
@@ -257,26 +204,9 @@ void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material)
                                  terrain_cliff_shadow_floor_);
     glActiveTexture(GL_TEXTURE0);
 
-    gosPostProcess* pp = getGosPostProcess();
-    if (pp && pp->shadowsEnabled_) {
-        if (tl.lightSpaceMatrix >= 0) glUniformMatrix4fv(tl.lightSpaceMatrix, 1, GL_FALSE, pp->getLightSpaceMatrix());
-        if (tl.enableShadows >= 0)    glUniform1i(tl.enableShadows, 1);
-        if (tl.shadowSoftness >= 0)   glUniform1f(tl.shadowSoftness, terrain_shadow_softness_);
-        if (tl.shadowMap >= 0) {
-            glUniform1i(tl.shadowMap, kTerrainTexUnitStaticShadow);
-            glActiveTexture(GL_TEXTURE0 + kTerrainTexUnitStaticShadow);
-            glBindTexture(GL_TEXTURE_2D, pp->getShadowTexture());
-            glActiveTexture(GL_TEXTURE0);
-        }
-        if (pp->getDynamicShadowFBO()) {
-            uploadDynamicShadowUniforms(tl, pp, kTerrainTexUnitDynamicShadow);
-        } else {
-            if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 0);
-        }
-    } else {
-        if (tl.enableShadows >= 0)        glUniform1i(tl.enableShadows, 0);
-        if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 0);
-    }
+    // The shadow maps are Vulkan images the GL shaders cannot sample: the GL terrain runs shadow-free.
+    if (tl.enableShadows >= 0)        glUniform1i(tl.enableShadows, 0);
+    if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 0);
 }
 
 int gosRenderer::terrainBindThinUniformsForPatchStream(glsl_program* overrideProg)
@@ -383,27 +313,9 @@ int gosRenderer::terrainBindThinUniformsForPatchStream(glsl_program* overridePro
                                  terrain_cliff_shadow_floor_);
     glActiveTexture(GL_TEXTURE0);
 
-    gosPostProcess* pp = getGosPostProcess();
-    if (pp && pp->shadowsEnabled_) {
-        if (tl.lightSpaceMatrix >= 0)
-            glUniformMatrix4fv(tl.lightSpaceMatrix, 1, GL_FALSE, pp->getLightSpaceMatrix());
-        if (tl.enableShadows >= 0)  glUniform1i(tl.enableShadows, 1);
-        if (tl.shadowSoftness >= 0) glUniform1f(tl.shadowSoftness, terrain_shadow_softness_);
-        if (tl.shadowMap >= 0) {
-            glUniform1i(tl.shadowMap, kTerrainTexUnitStaticShadow);
-            glActiveTexture(GL_TEXTURE0 + kTerrainTexUnitStaticShadow);
-            glBindTexture(GL_TEXTURE_2D, pp->getShadowTexture());
-            glActiveTexture(GL_TEXTURE0);
-        }
-        if (pp->getDynamicShadowFBO()) {
-            uploadDynamicShadowUniforms(tl, pp, kTerrainTexUnitDynamicShadow);
-        } else {
-            if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 0);
-        }
-    } else {
-        if (tl.enableShadows >= 0)        glUniform1i(tl.enableShadows, 0);
-        if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 0);
-    }
+    // The shadow maps are Vulkan images the GL shaders cannot sample: the GL terrain runs shadow-free.
+    if (tl.enableShadows >= 0)        glUniform1i(tl.enableShadows, 0);
+    if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 0);
 
     return tl.ssboRecordBase;
 }

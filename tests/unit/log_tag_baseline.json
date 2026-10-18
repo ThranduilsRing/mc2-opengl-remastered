@@ -9060,10 +9060,17 @@
    "tag": "SHADOW_DEBUG",
    "ver": -1,
    "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_DEBUG",
+   "ver": -1,
+   "stream": "stderr",
    "keys": [
     "MC2_SHADOW_DEBUG_MODE"
    ],
-   "count": 3
+   "count": 1
   },
   {
    "tag": "SHADOW_FRUSTUM_DIAG",

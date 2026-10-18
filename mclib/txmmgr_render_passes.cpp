@@ -72,17 +72,6 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 			// Body sets its own state (FBO bind, depth, lightSpaceMatrix); we just validate.
 			render_contract::executorOwnBeginTopLevel(render_contract::PassIdentity::ShadowCaster,
 			                                          "renderLists_gos_BeginDynamicShadowPass");
-#ifdef MC2_VULKAN_ISLAND
-			// VK-P8a SHADOW-INTEROP: clear any stale VK-produced shadow tex at the top of
-			// the bracket so a frame where the island declines/isn't reached (e.g. the
-			// non-prop-caster flushShadow branch) never leaves a stale VK tex bound for the
-			// forward consumers. The producer below re-publishes it on success. No-op when
-			// the gate is OFF (the tex is already 0 and stays 0).
-			if (mc2_vk_shadow_island_enabled()) {
-				if (gosPostProcess* ppClr = getGosPostProcess())
-					ppClr->setDynamicShadowInteropTexture(0);
-			}
-#endif
 			// Item 1 P1: caster set used by the CSM cascade replay (set in the
 			// prop-caster path below).
 			const std::vector<GpuStaticPropInstance>* csmCasterSet = nullptr;
@@ -214,34 +203,18 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 						}
 					}
 #ifdef MC2_VULKAN_ISLAND
-				// VK-P8a SHADOW-INTEROP (gate MC2_VK_SHADOW_INTEROP, default-OFF): the SECOND
-				// VK geometry region and the FIRST VK-PRODUCES-DEPTH region. VK re-renders the
-				// SAME dynShadowSet caster instances into an exportable D32 shadow map on the
-				// on-demand shared engine VulkanContext, signals vk2gl, and hands GL the imported
-				// GL-texture view of that D32. GL then binds it in place of getDynamicShadowTexture()
-				// so the four forward-shading consumers sample the VK-produced map via the UNCHANGED
-				// hardware sampler2DShadow calcShadow() path. Ordering: VK produce -> VK signal vk2gl
-				// -> GL wait (inside the island) -> here we publish the tex -> GL consumes at forward
-				// shading. The GL caster draw above still ran (it fills the engine-owned depth tex);
-				// its output is simply unused this frame when VK succeeds. NO GL->VK acquire is issued
-				// (VK never reads a GL-written depth) -- that direction poisons the AMD interop
-				// timeline (scene blackout). Gate OFF -> enabled()==0 -> interop tex stays 0 ->
-				// getDynamicShadowTexture() returns the GL tex -> byte-identical.
+				// The VK shadow island re-renders the dynShadowSet caster instances into its own D32 shadow map (the consumers bind it directly).
 				if (mc2_vk_shadow_island_enabled()) {
 					ZoneScopedN("RenderLists.VkShadowInterop");
 					gosPostProcess* ppVk = getGosPostProcess();
 					if (ppVk) {
-						const unsigned int vkTex = mc2_vk_shadow_island_run(
+						mc2_vk_shadow_island_run(
 							ppVk->getDynamicShadowMapSize(),
 							ppVk->getDynamicLightSpaceMatrix(),
 							dynShadowSet->data(),
 							(unsigned int)dynShadowSet->size(),
 							ppVk->getShadowBiasFactor(),
 							ppVk->getShadowBiasUnits());
-						// >0 => VK produced+signalled this frame; publish the shared D32's GL view so
-						// forward consumers sample it. 0 => island declined (fail-soft) -> leave the
-						// interop tex cleared so consumers use the GL-produced map (no regression).
-						ppVk->setDynamicShadowInteropTexture((GLuint)vkTex);
 					}
 				}
 #endif
@@ -300,11 +273,8 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 					if (mc2_vk_shadow_matrix_diag_enabled()) {
 						mc2_vk_shadow_matrix_diag_tick(
 							ppCsm->getDynamicLightSpaceMatrix(), ppCsm->getDynamicShadowMapSize(),
-							ppCsm->getDynamicShadowTextureRaw(),
 							ppCsm->getDynamicCascadeMatrices(), csmN, ppCsm->getDynamicShadowMapSize(),
-							ppCsm->getDynamicShadowArrayTexture(), ppCsm->getDynamicFullMapTexture(),
-							ppCsm->getDynamicFullMapSize(), ppCsm->getDynamicFullMapTexelWorld(),
-							ppCsm->getShadowTexture(), ppCsm->getShadowMapSize());
+							ppCsm->getDynamicFullMapSize(), ppCsm->getDynamicFullMapTexelWorld());
 					}
 #endif
 				}

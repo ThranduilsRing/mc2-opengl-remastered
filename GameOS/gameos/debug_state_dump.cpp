@@ -508,14 +508,14 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     // tunables via mc2-render-state instead of re-deriving from launcher_env.json.
     {
         gosPostProcess* ppShadow = getGosPostProcess();
-        const bool dynArrBound = ppShadow && (ppShadow->getDynamicShadowArrayTexture() != 0);
+        const bool csmBuilt = ppShadow && ppShadow->csmBuilt();
         s << "  \"shadow\": {\n";
         s << "    \"csmActive\": "; b(s, mc2ShadowCsmEnabled()); s << ",\n";
         s << "    \"cascadeCount\": " << mc2ShadowCsmCount() << ",\n";
         s << "    \"r0\": " << mc2ShadowCsmR0() << ",\n";
         s << "    \"lambda\": " << mc2ShadowCsmLambda() << ",\n";
         s << "    \"mapSize\": " << mc2ShadowMapSize() << ",\n";
-        s << "    \"dynShadowArrayTexBound\": "; b(s, dynArrBound); s << "\n";
+        s << "    \"csmBuilt\": "; b(s, csmBuilt); s << "\n";
         s << "  },\n";
     }
     s << "  \"registeredViews\": [\n";

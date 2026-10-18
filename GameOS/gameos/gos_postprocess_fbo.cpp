@@ -91,11 +91,6 @@ void gosPostProcess::destroy()
     hdriReady_ = false;
     hdriEnabled_ = false;
 
-    if (shadowDebugProg_) {
-        glsl_program::deleteProgram("shadow_debug");
-        shadowDebugProg_ = nullptr;
-    }
-
     if (screenShadowProg_) {
         glsl_program::deleteProgram("shadow_screen");
         screenShadowProg_ = nullptr;

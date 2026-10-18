@@ -158,73 +158,11 @@ static void setupOverlayShadowsForShp(GLuint shp)
     loc = glGetUniformLocation(shp, "terrainLightDir");
     if (loc >= 0) glUniform4fv(loc, 1, (const float*)&g_gos_renderer->getTerrainLightDir());
 
-    if (!pp->shadowsEnabled_) {
-        loc = glGetUniformLocation(shp, "enableShadows");
-        if (loc >= 0) glUniform1i(loc, 0);
-        loc = glGetUniformLocation(shp, "enableDynamicShadows");
-        if (loc >= 0) glUniform1i(loc, 0);
-        return;
-    }
-
-    loc = glGetUniformLocation(shp, "lightSpaceMatrix");
-    if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, pp->getLightSpaceMatrix());
+    // The shadow maps are Vulkan images the GL shaders cannot sample: the GL overlay runs shadow-free.
     loc = glGetUniformLocation(shp, "enableShadows");
-    if (loc >= 0) glUniform1i(loc, 1);
-    loc = glGetUniformLocation(shp, "shadowSoftness");
-    if (loc >= 0) glUniform1f(loc, g_gos_renderer->getTerrainShadowSoftness());
-    loc = glGetUniformLocation(shp, "shadowMap");
-    if (loc >= 0) {
-        glUniform1i(loc, kTerrainTexUnitStaticShadow);
-        glActiveTexture(GL_TEXTURE0 + kTerrainTexUnitStaticShadow);
-        glBindTexture(GL_TEXTURE_2D, pp->getShadowTexture());
-    }
-
-    if (pp->getDynamicShadowFBO()) {
-        loc = glGetUniformLocation(shp, "enableDynamicShadows");
-        if (loc >= 0) glUniform1i(loc, 1);
-        if (mc2ShadowCsmEnabled() && pp->getDynamicShadowArrayTexture()) {
-            loc = glGetUniformLocation(shp, "dynamicCascadeMatrices");
-            if (loc >= 0)
-                glUniformMatrix4fv(loc, pp->getDynamicShadowCascadeCount(), GL_FALSE,
-                                   pp->getDynamicCascadeMatrices());
-            loc = glGetUniformLocation(shp, "dynamicCsmCount");
-            if (loc >= 0) glUniform1i(loc, pp->getDynamicShadowCascadeCount());
-            loc = glGetUniformLocation(shp, "dynamicCascadeTexelWorld");
-            if (loc >= 0) glUniform1fv(loc, pp->getDynamicShadowCascadeCount(),
-                                       pp->getDynamicCascadeTexelWorld());
-            loc = glGetUniformLocation(shp, "csmDepthSpan");
-            if (loc >= 0) glUniform1f(loc, pp->getCsmDepthSpan());
-            loc = glGetUniformLocation(shp, "dynamicShadowArray");
-            if (loc >= 0) {
-                glUniform1i(loc, kTerrainTexUnitDynamicShadow);
-                glActiveTexture(GL_TEXTURE0 + kTerrainTexUnitDynamicShadow);
-                glBindTexture(GL_TEXTURE_2D_ARRAY, pp->getDynamicShadowArrayTexture());
-            }
-            loc = glGetUniformLocation(shp, "dynamicFullMapTexelWorld");
-            if (loc >= 0) glUniform1f(loc, pp->getDynamicFullMapTexelWorld());
-            loc = glGetUniformLocation(shp, "dynamicFullMapShadow");
-            if (loc >= 0) {
-                glUniform1i(loc, kTerrainTexUnitDynFullMap);
-                glActiveTexture(GL_TEXTURE0 + kTerrainTexUnitDynFullMap);
-                glBindTexture(GL_TEXTURE_2D, pp->getDynamicFullMapTexture());
-                glActiveTexture(GL_TEXTURE0);
-            }
-        } else {
-            loc = glGetUniformLocation(shp, "dynamicLightSpaceMatrix");
-            if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, pp->getDynamicLightSpaceMatrix());
-            loc = glGetUniformLocation(shp, "dynamicShadowMap");
-            if (loc >= 0) {
-                glUniform1i(loc, kTerrainTexUnitDynamicShadow);
-                glActiveTexture(GL_TEXTURE0 + kTerrainTexUnitDynamicShadow);
-                glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTexture());
-            }
-        }
-    } else {
-        loc = glGetUniformLocation(shp, "enableDynamicShadows");
-        if (loc >= 0) glUniform1i(loc, 0);
-    }
-
-    glActiveTexture(GL_TEXTURE0);
+    if (loc >= 0) glUniform1i(loc, 0);
+    loc = glGetUniformLocation(shp, "enableDynamicShadows");
+    if (loc >= 0) glUniform1i(loc, 0);
 }
 
 void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& L, float elapsed, const float* terrainMvpOverride)
