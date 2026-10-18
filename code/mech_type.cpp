@@ -449,7 +449,7 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 						else
 							shotInfo.init(collidee->getWatchID(), -1, collider->getTonnage() / 10.0 + 0.5, hitLocation, collider->relFacingTo(collidee->getPosition()));
 						collider->handleWeaponHit(&shotInfo, (MPlayer != nullptr));
-						Stuff::Vector3D tmpPosition = collider->getPosition();
+						glm::vec3 tmpPosition = collider->getPosition();
 						ObjectManager->createExplosion(DFA_BOOM_EFFECT, nullptr, tmpPosition);
 					}
 				}

@@ -47,7 +47,7 @@ void Mission::initPartsHeader(MissionInitFrame& f) {
 }
 
 // Create every mover and part named by the mission file.
-void Mission::initPartsLoad(long loadType, long dropZoneID, Stuff::Vector3D* dropZoneList, char (*commandersToLoad)[3], long numMoversPerCommander, MissionInitFrame& f) {
+void Mission::initPartsLoad(long loadType, long dropZoneID, glm::vec3* dropZoneList, char (*commandersToLoad)[3], long numMoversPerCommander, MissionInitFrame& f) {
 	auto& result = f.result;
 	long numMoversLoaded[MAX_MC_PLAYERS] = {0, 0, 0, 0, 0, 0, 0, 0};
 	long numDropZonePositions = 0;

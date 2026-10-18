@@ -376,7 +376,7 @@ void Mission::initGameSystemHazards(MissionInitFrame& f) {
 }
 
 // Open the mission .fit and activate the mod for it.
-void Mission::initMissionFile(Stuff::Vector3D* dropZoneList, MissionInitFrame& f) {
+void Mission::initMissionFile(glm::vec3* dropZoneList, MissionInitFrame& f) {
 	auto& missionName = f.missionName; auto& result = f.result; auto& missionFileName = f.missionFileName;
 	missionFileName.init(missionPath,missionName,".fit");
 
@@ -493,7 +493,7 @@ void Mission::initSkyAndTeamReset(MissionInitFrame& f) {
 }
 
 // Create the teams and commanders from the mission file or the multiplayer setup.
-void Mission::initTeamsAndCommanders(long loadType, Stuff::Vector3D* dropZoneList, char (*commandersToLoad)[3], MissionInitFrame& f) {
+void Mission::initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, char (*commandersToLoad)[3], MissionInitFrame& f) {
 	auto& missionName = f.missionName; auto& result = f.result; auto& maxTeamID = f.maxTeamID;
 	auto& maxCommanderID = f.maxCommanderID;
 	maxTeamID = -1;
@@ -939,7 +939,7 @@ void Mission::initMissionScript(MissionInitFrame& f) {
 }
 // Mission load sequence. Each phase is a member helper declared in mission.h, run in the original order; the
 // shared locals live in MissionInitFrame. The Tracy zone and the missionFileName char-array reset stay here.
-void Mission::init (const char *missionName, long loadType, long dropZoneID, Stuff::Vector3D* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander)
+void Mission::init (const char *missionName, long loadType, long dropZoneID, glm::vec3* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander)
 {
 	extern int g_lightProbeSetupPath; g_lightProbeSetupPath = 1; // [GPUPROPS v1]
 	ZoneScopedN("Mission::init");

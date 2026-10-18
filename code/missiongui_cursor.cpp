@@ -2,9 +2,6 @@
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "missiongui_shared_internal.h"
-#include "math/stuff_glm_bridge.h"
-
-
 constexpr float ATTILA_FACTOR = 1.0f;
 constexpr float ATTILA_ROTATION_FACTOR = 4.1f;
 constexpr float ATTILA_THRESHOLD = 0.01f;
@@ -233,17 +230,17 @@ bool MissionInterfaceManager::canJumpToWPos()
 				{
 					TacticalOrder lastQueuedTacOrder;
 					long err = pMover->getPilot()->peekQueuedTacOrder(-1, &lastQueuedTacOrder);
-					Stuff::Vector3D lastWayPoint;
+					glm::vec3 lastWayPoint;
 					if (err)
 						lastWayPoint = pMover->getPosition();
 					else
 						lastWayPoint = lastQueuedTacOrder.getWayPoint(0);
-					Stuff::Vector3D distance;
-					distance.Subtract(lastWayPoint,wPos);
+					glm::vec3 distance;
+					distance = lastWayPoint - wPos;
 
 					//JUMP distance is always JUST horizontal.  NO Vertical!!
 					distance.z = 0.0f;
-					float dist = distance.GetLength();
+					float dist = glm::length(distance);
 					
 					if (dist > pMover->getJumpRange())
 						canJump = false;
@@ -268,8 +265,8 @@ void MissionInterfaceManager::doDrag(bool bGui)
 	if ( TacticalOverview::formationLineEnabled()
 		&& g_tacticalOverview.flState() != TacticalOverview::FL_IDLE )
 	{
-		dragStart.Zero();
-		dragEnd.Zero();
+		dragStart = glm::vec3(0.0f);
+		dragEnd = glm::vec3(0.0f);
 		isDragging = FALSE;
 		return;
 	}
@@ -309,7 +306,7 @@ void MissionInterfaceManager::doDrag(bool bGui)
 			memset( objsInRect, 0, sizeof( GameObject* ) * 16 );
 			for (long i=0;i<ObjectManager->getNumMovers();i++)
 			{
-				Stuff::Vector3D screenStart;
+				glm::vec3 screenStart;
 				Stuff::Vector4D screenPos;
 				// [PROJECTZ:SelectionPicking id=picking_drag_select_origin]
 				// [PROJECTZ:SelectionPicking id=picking_drag_select_origin]
@@ -349,18 +346,18 @@ void MissionInterfaceManager::doDrag(bool bGui)
 					(controlGui).setInfoWndMover( (Mover*)objsInRect[0] );
 			}
 			
-			dragStart.Zero();
-			dragEnd.Zero();		
+			dragStart = glm::vec3(0.0f);
+			dragEnd = glm::vec3(0.0f);		
 			isDragging = FALSE;
 		}
 	}
 	else if ( gos_GetKeyStatus(KEY_LMOUSE) == KEY_RELEASED )
 	{
-		dragStart.Zero();
+		dragStart = glm::vec3(0.0f);
 	}
 }
 
-bool MissionInterfaceManager::canAddVehicle( const Stuff::Vector3D& pos )
+bool MissionInterfaceManager::canAddVehicle( const glm::vec3& pos )
 {
 	long commanderID = Commander::home->getId();
 
@@ -386,7 +383,7 @@ bool MissionInterfaceManager::canAddVehicle( const Stuff::Vector3D& pos )
 	return false;
 }
 
-bool MissionInterfaceManager::canRecover( const Stuff::Vector3D& pos )
+bool MissionInterfaceManager::canRecover( const glm::vec3& pos )
 {
 	long commanderID = Commander::home->getId();
 
@@ -869,7 +866,7 @@ long MissionInterfaceManager::makeRunCursor( bool bLineOfSite )
 
 long MissionInterfaceManager::calcRotation()
 {
-	Stuff::Vector3D pos;
+	glm::vec3 pos;
 	pos.x = 0.f;
 	pos.y = 0.f;
 	pos.z = 0.f;
@@ -901,20 +898,20 @@ long MissionInterfaceManager::calcRotation()
 	// do the projections based on the camera center (which is always the
 	// center of the screen) and the new vector.  Complex but it works!!
 	// -fs
-	Stuff::Vector3D actualPos;
-	actualPos.Subtract(pos, wPos);
+	glm::vec3 actualPos;
+	actualPos = pos - wPos;
 	actualPos.z = 0.0f;
 	
-	float actualLength = actualPos.GetLength();
+	float actualLength = glm::length(actualPos);
 	if (actualLength > Stuff::SMALL)
-		actualPos = mc2::math::toVector3D(mc2::math::divide(mc2::math::toGlm(actualPos), actualLength));
+		actualPos = (mc2::math::divide(actualPos, actualLength));
 	actualPos *= 200.0f;
 	
-	Stuff::Vector3D camPos = eye->getPosition();
+	glm::vec3 camPos = eye->getPosition();
 	
 	Stuff::Vector4D screenPosMover;
 	Stuff::Vector4D screenPosGoal;
-	actualPos.Add(camPos,actualPos);
+	actualPos = camPos + actualPos;
 	// [PROJECTZ:ScreenXYOracle id=gui_mover_rotation_pos]
 	// [PROJECTZ:ScreenXYOracle id=gui_mover_rotation_pos]
 	eye->projectForScreenXY( actualPos, screenPosMover );

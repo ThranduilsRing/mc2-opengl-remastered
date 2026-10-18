@@ -22,7 +22,7 @@ bool BattleMech::netUpdateMovePath (float& newRotate, char& newThrottleSetting, 
 			if (path->curStep == path->numSteps)
 				goalReached = true;
 			else {
-				Stuff::Vector3D wayPt = path->stepList[path->curStep].destination;
+				glm::vec3 wayPt = path->stepList[path->curStep].destination;
 				
 				// Let's record our last valid position, in case we need to
 				// crawl back from impassable terrain we get knocked onto.
@@ -220,7 +220,7 @@ void BattleMech::netUpdateMovement (void) {
 	MovePathPtr path = pilot->getMovePath();
 	bool atEndOfPath = (path->curStep == (path->numSteps - 1)); //was >=
 
-	Stuff::Vector3D wayPt;
+	glm::vec3 wayPt;
 	float distanceFromWayPt = 1000000.0;
 	if ((path->curStep > -1) && (path->curStep < path->numSteps)) {
 		wayPt = path->stepList[path->curStep].destination;
@@ -370,15 +370,15 @@ bool BattleMech::crashAvoidanceSystem (void) {
 	if (pilot->getMoveWaitForPointTime() > 999990.0)
 		return(false);
 
-	Stuff::Vector3D velocity = getVelocity();
+	glm::vec3 velocity = getVelocity();
 	velocity.z = 0.0;
 
-	Stuff::Vector3D relVelocity = velocity;
+	glm::vec3 relVelocity = velocity;
 	relVelocity *= frameLength;
 	relVelocity *= worldUnitsPerMeter;
 
-	Stuff::Vector3D newPosition;
-	newPosition.Add(position, relVelocity);
+	glm::vec3 newPosition;
+	newPosition = position + relVelocity;
 
 	int cellR, cellC;
 	land->worldToCell(newPosition, cellR, cellC);
@@ -563,7 +563,7 @@ void BattleMech::updatePlayerControl (void) {
 
 	if (userInput->getKeyDown(KEY_J)) 
 	{
-		Stuff::Vector3D jumpDest = getRotationVector();
+		glm::vec3 jumpDest = getRotationVector();
 		jumpDest *= 150.0;
 		jumpDest += position;
 		appearance->setJumpParameters(jumpDest);

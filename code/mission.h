@@ -199,7 +199,7 @@ struct Part
 	long				active;				//Am I currently awake?
 	long				exists;				//Am I currently in Existance?
 	bool				destroyed;			//Have I been destroyed for this scenario?
-	Stuff::Vector3D		position;			//Where do I start?  (relative to area)
+	glm::vec3		position;			//Where do I start?  (relative to area)
 	float				velocity;			//How fast am I going?
 	float				rotation;			//Which direction am I facing?
 	unsigned long		gestureId;			//What gesture do I start in?
@@ -275,7 +275,7 @@ struct Objective
 	ObjectiveType		type;
 	float				timeLeft;
 	ObjectiveStatus		status;
-	Stuff::Vector3D		position;
+	glm::vec3		position;
 	long				points;
 	float				radius;
 };
@@ -399,7 +399,7 @@ class Mission
 		
 		MissionInterfaceManagerPtr		missionInterface;
 
-		Stuff::Vector3D					dropZone;
+		glm::vec3					dropZone;
 		
 		long							theSkyNumber;
 
@@ -491,7 +491,7 @@ class Mission
 		std::expected<void, mc2::sim::OrderError> acknowledgeMissionOrder(
 			mc2::sim::MissionReceipt receipt) { return orderIngress.acknowledge(receipt); }
 
-		void init (const char *missionName, long loadType, long dropZoneID, Stuff::Vector3D* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander);
+		void init (const char *missionName, long loadType, long dropZoneID, glm::vec3* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander);
 
 		// Explicit developer import of a Part fragment; the runtime save/load format remains legacy.
 		bool loadParts(const mc2::save::Section& section, std::uint32_t schemaVersion,
@@ -505,9 +505,9 @@ class Mission
 		void initGameSystemRanges(MissionInitFrame& f);
 		void initGameSystemGeneral(MissionInitFrame& f);
 		void initGameSystemHazards(MissionInitFrame& f);
-		void initMissionFile(Stuff::Vector3D* dropZoneList, MissionInitFrame& f);
+		void initMissionFile(glm::vec3* dropZoneList, MissionInitFrame& f);
 		void initSkyAndTeamReset(MissionInitFrame& f);
-		void initTeamsAndCommanders(long loadType, Stuff::Vector3D* dropZoneList, char (*commandersToLoad)[3], MissionInitFrame& f);
+		void initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, char (*commandersToLoad)[3], MissionInitFrame& f);
 		void initTriggerAndDropZone(MissionInitFrame& f);
 		void initMissionSettings(MissionInitFrame& f);
 		void initTerrain(MissionInitFrame& f);
@@ -523,7 +523,7 @@ class Mission
 		void loadTacticWeights(MissionInitFrame& f);
 		void loadBrainDispatch(MissionInitFrame& f);
 		void initPartsHeader(MissionInitFrame& f);
-		void initPartsLoad(long loadType, long dropZoneID, Stuff::Vector3D* dropZoneList, char (*commandersToLoad)[3], long numMoversPerCommander, MissionInitFrame& f);
+		void initPartsLoad(long loadType, long dropZoneID, glm::vec3* dropZoneList, char (*commandersToLoad)[3], long numMoversPerCommander, MissionInitFrame& f);
 		void initObjectCounts(long loadType, MissionInitFrame& f);
 		void initGpuAndLighting();
 		void initSpawnActors(long loadType);
@@ -591,7 +591,7 @@ class Mission
 		
 		void start (void);
 
-		Stuff::Vector3D getDropZone( ) const { return dropZone; }
+		glm::vec3 getDropZone( ) const { return dropZone; }
 		
 		long update (void);
 		long render (void);
