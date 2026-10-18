@@ -932,10 +932,6 @@ void Start()
 	spec.envExtra.push_back(std::make_pair(
 		std::string("MC2_BRIDGE_MOVER_STATE"), std::string("1")));
 
-	// The game child runs the same (Vulkan) backend as the editor viewport; the umbrella is stated explicitly so it never
-	// depends on what the child would default to.
-	spec.envExtra.push_back(std::make_pair(std::string("MC2_VK_SHARED_GBUFFER"), std::string("1")));
-
 	// Mod-aware env: when the mission lives in a mod, mount it + ask for a state dump.
 	if (s_modActive)
 	{

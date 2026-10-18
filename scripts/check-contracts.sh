@@ -801,9 +801,7 @@ run_check "abl_writer_census"              "py -3 tools/abl_writer_census.py --c
 run_check "analyze_dangling"              "py -3 tests/analyze/analyze_dangling.py"   # lifetime gate: clang-cl catches the seeded dangling-pointer shapes, the clean twin is silent (notes section 5)
 run_check "estring_callsites"          "py -3 tests/analyze/estring_callsites.py --check"   # step 4 B1: every remaining call-site row still names its kind on its line; a converted file leaves the list through --drop
 run_check "container_callsites"       "py -3 tests/analyze/container_callsites.py --check"   # step 4 B2: the compiler-derived EList/SortList/PriorityQueue call-site list; an edited file needs --remap BASE, a converted one --drop
-# G4: the VK umbrella members are read only through mc2vkgate::armed<> (never a direct gate::effective<>, which
-# would skip the session fail-soft veto), and the per-call readers stay uncached so a mid-session fail-soft disarms them.
-run_check "vk_umbrella_readers"             "py -3 scripts/check-vk-umbrella-readers.py --quiet"
+# (the vk_umbrella_readers rule was retired with the umbrella: the Vulkan scene path is unconditional)
 run_check "gate_echo_reads"                 "py -3 scripts/check-gate-echo-reads.py --quiet"
 # GATE-TABLE-G1A (typed-gate-registry G1a, 2026-10-09): the compiled gate table is the truth.
 # gate_gen --check proves Gates/gate_index.gen.h is what Gates/gate_table.json generates, every

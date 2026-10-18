@@ -15,12 +15,7 @@
 // route is armed, take the IMMEDIATE gos_DrawTriangles path instead (the exact
 // mechanism the selection brackets / health bars use, PROVEN visible) so the bolt
 // verts are issued while objmgr has gos_State_IsHUD=1 -> composited into the VK HUD
-// tail. Umbrella OFF -> umbrellaOn() false -> drawOldWay path unchanged -> byte-identical GL.
-static bool vkVfxImmediateDraw()
-{
-	const bool s_on = mc2vkgate::umbrellaOn();   // per-call: VK-FAILSOFT-DISARM-1
-	return s_on;
-}
+// tail.
 static bool vkVfxTraceOn()
 {
 	static const bool s_on = mc2vkgate::vfxTraceOn();
@@ -46,7 +41,7 @@ void WeaponBolt::render (void)
 
 		// VK-FIELD-VFX-2: force the immediate gos_DrawTriangles path under the VK VFX
 		// umbrella route so the bolt lands in the composited HUD tail (see file-top note).
-		const bool useImmediate = drawOldWay || vkVfxImmediateDraw();
+		const bool useImmediate = true;
 		const bool vfxTrace = vkVfxTraceOn();
 
 		if (!gosEffect && !hitTarget && !((WeaponBoltTypePtr)getObjectType())->isBeam)

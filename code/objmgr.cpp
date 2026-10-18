@@ -1215,9 +1215,7 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 		// OFF -> IsHUD untouched -> byte-identical GL. NOTE: the mechs/vehicles
 		// (VK-owned islands) are in the SEPARATE `if (movers)` block above and are
 		// NOT routed here.
-		// Gated on the umbrella (MC2_VK_SHARED_GBUFFER). Umbrella OFF -> false -> byte-identical GL.
-		const bool vkVfxRoute = mc2vkgate::umbrellaOn();
-		const bool prevVfxExempt = vkVfxRoute ? gos_GetHudScaleExempt() : false;
+		const bool prevVfxExempt = gos_GetHudScaleExempt();
 		// VK-FIELD-VFX-2 trace (MC2_VK_VFX_TRACE): confirm the route + live effect counts.
 		static const bool s_vfxRouteTrace = mc2vkgate::vfxTraceOn();
 		if (s_vfxRouteTrace) {
@@ -1225,7 +1223,7 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 			if (weapons) for (long i = 0; i < numWeapons; i++) if (weapons[i] && weapons[i]->getExists()) liveW++;
 			if (liveW > 0) {
 				printf("[VK_VFX_TRACE] objmgr other-block route=%d IsHUD-wrap=%d numWeapons=%ld liveWeapons=%ld numCarnage=%ld numArtillery=%ld\n",
-					(int)vkVfxRoute, (int)vkVfxRoute, numWeapons, liveW, numCarnage, numArtillery);
+					1, 1, numWeapons, liveW, numCarnage, numArtillery);
 				fflush(stdout);
 			}
 		}
@@ -1248,11 +1246,8 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 		// The dominant combat classes emit textured effect sprites whose TGA-loaded
 		// textures carry an rgba mirror -> the tail mirrors + rasterizes them (alpha
 		// blend). scaleExempt so the bottom-band HUD shrink doesn't move the effects.
-		// Umbrella OFF -> vkVfxRoute false -> IsHUD untouched -> byte-identical GL.
-		if (vkVfxRoute) {
-			gos_SetHudScaleExempt(true);
-			gos_SetRenderState(gos_State_IsHUD, 1);
-		}
+		gos_SetHudScaleExempt(true);
+		gos_SetRenderState(gos_State_IsHUD, 1);
 		if (weapons) {
 			for (long i = 0; i < numWeapons; i++) {
 				if (weapons[i] && weapons[i]->getExists())
@@ -1282,10 +1277,8 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 					artillery[i]->render();
 			}
 		}
-		if (vkVfxRoute) {
-			gos_SetRenderState(gos_State_IsHUD, 0);
-			gos_SetHudScaleExempt(prevVfxExempt);
-		}
+		gos_SetRenderState(gos_State_IsHUD, 0);
+		gos_SetHudScaleExempt(prevVfxExempt);
 	}
 	gos_SetRenderState( gos_State_Fog, 0);
 }

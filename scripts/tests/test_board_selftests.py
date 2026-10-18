@@ -23,10 +23,6 @@ def _assert_pass(result):
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_vk_umbrella_readers_selftest():
-    _assert_pass(subprocess.run([sys.executable, "scripts/check-vk-umbrella-readers.py", "--selftest"], **OPTS, **console_child.child_kwargs(redirected=True)))
-
-
 def test_gate_echo_reads_selftest():
     _assert_pass(subprocess.run([sys.executable, "scripts/check-gate-echo-reads.py", "--selftest"], **OPTS, **console_child.child_kwargs(redirected=True)))
 
@@ -208,14 +204,6 @@ def test_injected_blind_gate_echo_checker_fails(monkeypatch):
     module = _load_script("scripts/check-gate-echo-reads.py")
     assert module.selftest() == 0
     monkeypatch.setattr(module, "check_text", lambda *args: [])
-    assert module.selftest() != 0
-
-
-def test_injected_blind_vk_umbrella_checker_fails(monkeypatch):
-    module = _load_script("scripts/check-vk-umbrella-readers.py")
-    monkeypatch.setattr(module, "check", lambda root: [])
-    assert module.selftest() == 0
-    monkeypatch.setattr(module, "check_direct_effective", lambda texts: [])
     assert module.selftest() != 0
 
 

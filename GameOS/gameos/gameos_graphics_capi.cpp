@@ -4,7 +4,6 @@
 #include "KtxLoader.h"          // kKtxMaxEdge: the edge bound every pre-compressed texture shares with the KTX2 parser
 #include "mc2fmt.h"
 #include "texture_decode.h"
-#include "vk_shared_gbuffer_gate.h"   // mc2vkgate::umbrellaOn: whether terrain normal texels are kept
 #include "utils/mc2log.h"
 
 
@@ -268,9 +267,8 @@ DWORD gos_NewTerrainNormalTexture(const unsigned char* rgbaData, int width)
     tex.format = GL_RGBA8;
     tex.has_mipmaps = false;
     gosTexture* ptex = new gosTexture(tex, gos_Texture_Alpha, "terrain_detail_normal", 0u, nullptr);
-    // WHY only under the umbrella: the texels are the Vulkan terrain island's upload source and nothing else reads them.
-    if(mc2vkgate::umbrellaOn())
-        ptex->adoptRgbaMirror(width, width, std::vector<uint8_t>(rgbaData, rgbaData + (size_t)width * (size_t)width * 4u));
+    // The texels are the Vulkan terrain island's upload source and nothing else reads them.
+    ptex->adoptRgbaMirror(width, width, std::vector<uint8_t>(rgbaData, rgbaData + (size_t)width * (size_t)width * 4u));
     return g_gos_renderer->addTexture(ptex);
 }
 
@@ -1016,7 +1014,7 @@ GosTexels gos_GetCameraPreviewTexels(uint32_t glName)
 // camera preview rendering.
 void __stdcall gos_EndCameraPreviewRender()
 {
-    if (mc2vkgate::umbrellaOn()) publishCamPreviewTexels();
+    publishCamPreviewTexels();
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     if (g_gos_renderer) {
         glViewport(0, 0, g_gos_renderer->getWidth(), g_gos_renderer->getHeight());

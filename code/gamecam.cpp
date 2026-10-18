@@ -77,7 +77,6 @@ namespace gos_terrain_indirect { void RenderWaterReflectionPass(); }
 #include <cstdlib>
 #include "../RenderCore/SceneLighting.h"  // SCENE-LIGHTING-STATE-1 canonical mirror
 #include "../GameOS/gameos/utils/terrain_daylight.h"  // TERRAIN-AMBIENT-FLOOR-2 daylight gate (pure)
-#include "../GameOS/gameos/vk_umbrella_light.h"  // VK-FIELD-VFX-6: gosFX flush IsHUD route
 #include "../GameOS/gameos/gos_postprocess.h"  // VK-GL-LOST-DRAWS tags
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
@@ -513,10 +512,9 @@ void GameCamera::renderLetterbox() {
 	// draw letterboxes here.
 	if (inMovieMode && (letterBoxPos != 0.0f) && !gos::visual_capture::cleanFrame())
 	{
-		const bool vkHudQuad = mc2vkgate::umbrellaOn();
-		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 1);
+		gos_SetRenderState(gos_State_IsHUD, 1);
 		// The HUD batch shrinks bottom-band quads (0.85 toward bottom-centre); the bars and the fade span the screen and must not.
-		const HudScaleExemptScope hudExempt(vkHudQuad);
+		const HudScaleExemptScope hudExempt(true);
 		//Figure out the two faces we need to draw based on letterBox Pos and Alpha
 		float barTopX = screenResolution.y * letterBoxPos;
 		float barBotX = screenResolution.y - barTopX;
@@ -631,7 +629,7 @@ void GameCamera::renderLetterbox() {
 		gVertex[3].frgb		= 0xff000000;            
 		
 		gos_DrawQuads(gVertex, 4);
-		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 0);
+		gos_SetRenderState(gos_State_IsHUD, 0);
 	}
 }
 
@@ -639,10 +637,9 @@ void GameCamera::renderLetterbox() {
 void GameCamera::renderFadeQuad() {
 	if (inMovieMode && (fadeAlpha != 0x0) && !gos::visual_capture::cleanFrame())
 	{
-		const bool vkHudQuad = mc2vkgate::umbrellaOn();
-		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 1);
+		gos_SetRenderState(gos_State_IsHUD, 1);
 		// The HUD batch shrinks bottom-band quads (0.85 toward bottom-centre); the bars and the fade span the screen and must not.
-		const HudScaleExemptScope hudExempt(vkHudQuad);
+		const HudScaleExemptScope hudExempt(true);
 		//We are fading to something other then clear screen.
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
@@ -699,7 +696,7 @@ void GameCamera::renderFadeQuad() {
 		gVertex[3].frgb		= 0xff000000;            
 		
 		gos_DrawQuads(gVertex, 4);
-		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 0);
+		gos_SetRenderState(gos_State_IsHUD, 0);
 	}
 }
 
@@ -1036,19 +1033,13 @@ void GameCamera::render (void)
 			// same MC2_VK_VFX gate: per-draw self-decline + the lazy GPU rgba
 			// mirror make the textured effect sprites representable. scaleExempt
 			// so the bottom-band HUD shrink doesn't move scene-projected FX.
-			// Umbrella OFF -> gate false -> byte-identical GL.
 			{
-				const bool vkVfxRoute = mc2vkgate::umbrellaOn();
-				const bool prevVfxExempt = vkVfxRoute ? gos_GetHudScaleExempt() : false;
-				if (vkVfxRoute) {
-					gos_SetHudScaleExempt(true);
-					gos_SetRenderState(gos_State_IsHUD, 1);
-				}
+				const bool prevVfxExempt = gos_GetHudScaleExempt();
+				gos_SetHudScaleExempt(true);
+				gos_SetRenderState(gos_State_IsHUD, 1);
 				theClipper->RenderNow();		//Draw the FX
-				if (vkVfxRoute) {
-					gos_SetRenderState(gos_State_IsHUD, 0);
-					gos_SetHudScaleExempt(prevVfxExempt);
-				}
+				gos_SetRenderState(gos_State_IsHUD, 0);
+				gos_SetHudScaleExempt(prevVfxExempt);
 			}
 		}
 

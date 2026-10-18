@@ -278,65 +278,9 @@ struct EnginePresentVk::Impl {
 
 namespace {
 
-// VK-P14b (MC2_VK_PRESENT_DIRECT_FBO, copy-1 elimination): memoized gate. When ON
-// AND MC2_RENDER_BACKEND=vulkan AND the present path is valid, endScene binds the
-// shared present FBO instead of FBO-0, so copy-1 is skipped and the Y-flip moves
-// into copy-2. Default OFF -> gate-OFF is byte-identical to the copy-1 path.
-bool directFboGateEnabled() {
-    // VK-FIELD-ENV-COMPOSITE-ARM-1: after VK-RUNG8-ITEM8 deleted the GL copy-1
-    // present FBO, the native VK composite is the ONLY producer of the present
-    // image for a VK-owned scene. This gate MUST therefore arm from the umbrella
-    // (MC2_VK_SHARED_GBUFFER) exactly like the other direct-chain members — else
-    // umbrella-ON steals the scene draws into the VK islands but never composites
-    // them, giving the catastrophic "terrain invisible / sky over everything"
-    // field image.
-    const bool on = mc2vkgate::umbrellaOn();   // per-call: VK-FAILSOFT-DISARM-1
-    return on;
-}
-
-// VK-TAIL-HOOK-1: opt-in proof seam for native final-tail commands. The hook is
-// behavior-neutral for now; it records a real command-buffer dependency at the
-// exact point future native HUD/ImGui rendering will attach.
-bool presentTailHookEnabled() {
-    // VK-FIELD-ENV-COMPOSITE-ARM-1: the native HUD/ImGui tail seam is part of the
-    // VK-owned present path, so it arms from the umbrella too (keeps the field env
-    // == the proof env: one flip name arms the whole present chain). Behaviour-
-    // neutral when the native HUD/ImGui draws are absent.
-    const bool on = mc2vkgate::umbrellaOn();    // per-call: VK-FAILSOFT-DISARM-1
-    return on;
-}
-
-bool nativeHudColorProofEnabled() {
-    // VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): despite the legacy "COLOR_PROOF"
-    // name this is the ACTUAL native VK HUD renderer -- recordPendingHudColorProof()
-    // draws NOTHING unless this is on (it clears the queued HUD undrawn otherwise). So
-    // the game HUD (colored tris/lines + textured/text quads) only reaches the VK-only
-    // present image when this is armed. Post-VK-RUNG8-ITEM8 the GL HUD draws into the
-    // DISCARDED backbuffer, so with this OFF the HUD VANISHES (the field bug: MC2_VK_HUD
-    // queued the draws but nothing rendered them). It is a member of the VK-owned present
-    // tail, so it arms from the umbrella exactly like presentTailHookEnabled /
-    // directFboGateEnabled / nativeCompositeGateEnabled. The strict proof armed
-    // MC2_VK_HUD_COLOR_PROOF=1 and passed.
-    const bool on = mc2vkgate::umbrellaOn();      // per-call: VK-FAILSOFT-DISARM-1
-    return on;
-}
-
-bool nativeCompositeGateEnabled() {
-    // VK-FIELD-ENV-COMPOSITE-ARM-1: arm from the umbrella (see directFboGateEnabled).
-    // The native composite is the sole present-image producer post item-8, so the
-    // umbrella flip must arm it by default.
-    const bool on = mc2vkgate::umbrellaOn();       // per-call: VK-FAILSOFT-DISARM-1
-    return on;
-}
-
-bool compositeDirectChainGateEnabled() {
-    static const bool on = mc2vkgate::umbrellaOn();
-    return on;
-}
-
 bool objectIdDirectChainGateEnabled() {
     static const bool on = []() {
-        return mc2::gate::get<"MC2_VK_OBJECTID_DIRECT_CHAIN">() && compositeDirectChainGateEnabled();
+        return mc2::gate::get<"MC2_VK_OBJECTID_DIRECT_CHAIN">();
     }();
     return on;
 }
@@ -1672,7 +1616,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     if (nativeDraws) *nativeDraws = 0;
     if (texturedDraws) *texturedDraws = 0;
     if (textureUploadsOut) *textureUploadsOut = 0;
-    if (!nativeHudColorProofEnabled() || !ensureHudColorObjects(s)) {
+    if (!ensureHudColorObjects(s)) {
         s.pendingHudDraws.clear();
         return draws;
     }
@@ -2127,8 +2071,7 @@ bool EnginePresentVk::presentDirectVkOnly() {
     // composite bind and the native VK composite (renderNativeCompositeVisual)
     // renders the present image instead. directFbo_ is a sentinel (1u == "native
     // present armed"), not a GL FBO name.
-    if (!directFboGateEnabled() || !nativeCompositeGateEnabled() ||
-        !created_ || !impl_ || impl_->sharedImg.image.get() == VK_NULL_HANDLE) {
+    if (!created_ || !impl_ || impl_->sharedImg.image.get() == VK_NULL_HANDLE) {
         directFbo_ = 0;
         presentImageVkOwned_ = false;
         return false;
@@ -2152,7 +2095,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
                                                   bool casEnabled, float casSharpness, int tonemapMode,
                                                   int viewportX, int viewportY,
                                                   int viewportW, int viewportH) {
-    if (!nativeCompositeGateEnabled() || !created_ || !impl_ || directFbo_ == 0)
+    if (!created_ || !impl_ || directFbo_ == 0)
         return false;
     Impl& s = *impl_;
     if (viewportW <= 0 || viewportH <= 0 ||
@@ -2160,14 +2103,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         viewportX + viewportW > (int)s.imgW ||
         viewportY + viewportH > (int)s.imgH)
         return false;
-    const bool sceneDirectChain = compositeDirectChainGateEnabled();
     const bool objectIdDirectChainCandidate = objectIdDirectChainGateEnabled();
-    // VK-RUNG8-ITEM5: the shared scene is VK-only (no GL interop view). The native
-    // composite therefore requires the shared scene already be Vulkan-owned by the
-    // upstream islands (direct-chain). If the composite/objectId direct-chain gate
-    // is explicitly disabled there is no GL-view rescue, so decline to GL composite.
-    if (!sceneDirectChain)
-        return false;
     VkImageResource* scene = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
     const bool needsObjectId = (viewMode == 1 || viewMode == 3);
     VkImageResource* objectId = needsObjectId
@@ -2310,7 +2246,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
 }
 
 bool EnginePresentVk::renderNativeCsmShadowDebugOverlay(void* csmArrayView, int layer) {
-    if (!created_ || !impl_ || directFbo_ == 0 || !nativeCompositeGateEnabled())
+    if (!created_ || !impl_ || directFbo_ == 0)
         return false;
     Impl& s = *impl_;
     VkImageView arrayView = reinterpret_cast<VkImageView>(csmArrayView);
@@ -2330,7 +2266,7 @@ bool EnginePresentVk::renderNativeCsmShadowDebugOverlay(void* csmArrayView, int 
 }
 
 bool EnginePresentVk::prepareImguiVulkanFrame() {
-    if (!created_ || !impl_ || !presentTailHookEnabled())
+    if (!created_ || !impl_)
         return false;
     Impl& s = *impl_;
     if (!ensureImguiVulkan(s))
@@ -2341,7 +2277,7 @@ bool EnginePresentVk::prepareImguiVulkanFrame() {
 }
 
 bool EnginePresentVk::renderImguiVulkanDrawData(ImDrawData* drawData) {
-    if (!created_ || !impl_ || !presentTailHookEnabled() || !drawData)
+    if (!created_ || !impl_ || !drawData)
         return false;
     Impl& s = *impl_;
     if (!ensureImguiVulkan(s))
@@ -2353,7 +2289,7 @@ bool EnginePresentVk::renderImguiVulkanDrawData(ImDrawData* drawData) {
 
 bool EnginePresentVk::queueHudVulkanFrame(std::vector<VkHudDraw>&& draws,
                                           uint32_t canvasW, uint32_t canvasH) {
-    if (!created_ || !impl_ || !presentTailHookEnabled() || draws.empty())
+    if (!created_ || !impl_ || draws.empty())
         return false;
     Impl& s = *impl_;
     s.pendingHudDraws = std::move(draws);
@@ -2498,8 +2434,7 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
         // permanently declined, or the gates only look armed) -> fail-soft the
         // whole session to GL. copy-1 no longer rescues a non-VK-owned frame.
         static const unsigned int kNotOwnedBudget = 240u;   // ~a few seconds @60fps
-        const bool armed = directFboGateEnabled() && nativeCompositeGateEnabled();
-        if (armed && notOwnedStreak_ < kNotOwnedBudget) {
+        if (notOwnedStreak_ < kNotOwnedBudget) {
             ++notOwnedStreak_;
             return true;   // transient: retry next frame
         }
@@ -2552,7 +2487,6 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
         return false;
     }
 
-    const bool tailHook = presentTailHookEnabled();
     VkImage scImg = s.scImages[imageIndex];
     ZoneNamedN(zTailRec, "VKIsl.Present.TailRecord", true);   // VK-ISLAND-TRACY-1: overlay/HUD/ImGui + blit record (to fn return)
     vkResetCommandBuffer(s.curCbuf(), 0);
@@ -2564,8 +2498,7 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
     // the FIRST command buffer of this same submit) before any tail attachment
     // write. Needed by the overlay/HUD/ImGui render passes; the blit path is
     // covered by its own COLOR_ATTACHMENT->TRANSFER_SRC barrier below.
-    const bool tailWrites = tailHook || (s.pendingShadowDebugView != VK_NULL_HANDLE);
-    if (tailWrites) {
+    {
         barrier(s.curCbuf(), s.sharedImg.image.get(),
                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -2607,7 +2540,7 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
     // VK-TAIL-HOOK-1: final native-tail seam. The composite left the shared image
     // in COLOR_ATTACHMENT layout; native HUD/ImGui commands attach here before the
     // present blit consumes the final image.
-    if (tailHook) {
+    {
         ++health_.tail_hook_frames;
         uint32_t hudColorDraws = 0;
         uint32_t hudTexturedDraws = 0;

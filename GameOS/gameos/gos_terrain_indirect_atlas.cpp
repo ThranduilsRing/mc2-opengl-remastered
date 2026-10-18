@@ -3,7 +3,6 @@
 #include "gos_terrain_indirect_internal.h"
 #include "mc2fmt.h"
 #include "terrain_field_store.h"
-#include "vk_shared_gbuffer_gate.h"   // mc2vkgate::umbrellaOn: whether the colormap atlas is kept on the CPU
 
 
 // ---------------------------------------------------------------------------
@@ -180,11 +179,7 @@ namespace gos_terrain_indirect_detail {
 
 
 // The CPU copy of the colormap atlas the Vulkan terrain island imports, kept in the terrain field store.
-// WHY only under the umbrella: GL frees its CPU colormap after the upload (MC2_COLORMAP_CPU_RETIRE), and an RGBA8 atlas is
-// 100-150 MB that only the Vulkan island reads.
 static void keepColormapAtlas(std::span<const uint8_t> bytes, int width, int height, uint32_t vkFormat) {
-    if (!mc2vkgate::umbrellaOn())
-        return;
     if (mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore())
         store->setColormapAtlas(bytes, width, height, vkFormat);
     else
@@ -300,7 +295,7 @@ void BuildColormapAtlas() {
         MC2_GL_BindTexture(GL_TEXTURE_2D, 0);
 
         atlasSizeCapture = tcm->cpuColorMapSize;
-        if (mc2vkgate::umbrellaOn()) {
+        {
             // RGBA order: the GL upload above swizzles the same BGRA bytes.
             const size_t texels = (size_t)tcm->cpuColorMapSize * (size_t)tcm->cpuColorMapSize;
             std::vector<uint8_t> rgba(texels * 4u);

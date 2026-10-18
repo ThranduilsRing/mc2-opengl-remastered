@@ -28,6 +28,10 @@ BackendRequest backendRequestFromText(const char* text) {
 }
 
 void noteBackendEnv() {
+    if (!mc2::gate::get<"MC2_VK_SHARED_GBUFFER">()) {
+        mc2::fmt::print_out("[RENDER_BACKEND] MC2_VK_SHARED_GBUFFER=0 ignored: the Vulkan scene path is unconditional.\n");
+        std::fflush(stdout);
+    }
     const std::string envText = mc2::gate::str<"MC2_RENDER_BACKEND">();   // "" when unset or empty
     switch (backendRequestFromText(envText.c_str())) {
     case BackendRequest::RemovedGl:

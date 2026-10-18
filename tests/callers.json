@@ -1925,28 +1925,6 @@
       "callers_by_stem": []
     },
     {
-      "path": "scripts/check-vk-umbrella-readers.py",
-      "basename": "check-vk-umbrella-readers.py",
-      "stem": "check-vk-umbrella-readers",
-      "callers_by_basename": [
-        {
-          "path": "scripts/check-contracts.sh",
-          "line": 806,
-          "evidence": "command",
-          "reference": "scripts/check-vk-umbrella-readers.py",
-          "text": "run_check \"vk_umbrella_readers\"             \"py -3 scripts/check-vk-umbrella-readers.py --quiet\""
-        },
-        {
-          "path": "scripts/tests/test_board_selftests.py",
-          "line": 27,
-          "evidence": "command",
-          "reference": "scripts/check-vk-umbrella-readers.py",
-          "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/check-vk-umbrella-readers.py\", \"--selftest\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
-        }
-      ],
-      "callers_by_stem": []
-    },
-    {
       "path": "scripts/check-vulkan-bindings.py",
       "basename": "check-vulkan-bindings.py",
       "stem": "check-vulkan-bindings",
@@ -6471,7 +6449,7 @@
           "line": 191,
           "evidence": "import",
           "reference": "blender_cmd",
-          "text": "import blender_cmd  # noqa: E402 \u2014 defs only at import time"
+          "text": "import blender_cmd  # noqa: E402 — defs only at import time"
         }
       ]
     },

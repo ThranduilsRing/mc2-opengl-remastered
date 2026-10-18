@@ -1294,7 +1294,7 @@ L(Lead1, "MC2_VK_SELECT_TEST", Bool, false, "code", "", "", verified),
 L(Lead0, "MC2_VK_SHADOW_MATRIX_DIAG", Bool, false, "vk", "", "VK shadow producer/consumer evidence (default OFF = zero cost; GameOS/gameos/vulkan_shadow_island_live.cpp).", passthrough | registry(Trace, "MC2_TRACE_VK_SHADOW_MATRIX_DIAG", -1, false) | verified),
 // VK-P14 GATE-CONSOLIDATION-1: the ONE umbrella for the shared-GBuffer scene path.
 // history: docs/gate-history.md#MC2_VK_SHARED_GBUFFER
-L(Lead0Kill, "MC2_VK_SHARED_GBUFFER", Bool, true, "vk", "", "The VK umbrella, default ON since the 2026-10-17 default flip; =0 is a kill switch.", passthrough | registry(Feature, "MC2_FEATURE_VK_SHARED_GBUFFER", -1, true) | verified),
+L(Lead0Kill, "MC2_VK_SHARED_GBUFFER", Bool, true, "vk", "", "Retired: the Vulkan scene path is unconditional; =0 is ignored with a [RENDER_BACKEND] line (render_backend_select.cpp).", passthrough | registry(Feature, "MC2_FEATURE_VK_SHARED_GBUFFER", -1, true) | verified),
 // VK-TIER1 SHARED SCENE DEPTH: the shared-depth substrate slice (step 2).
 // history: docs/gate-history.md#MC2_VK_SHARED_SCENE_STRICT
 L(Exact1, "MC2_VK_SHARED_SCENE_STRICT", Bool, false, "post", "", "VK shared-scene deletion-readiness canary.", passthrough | registry(Trace, "MC2_TRACE_VK_SHARED_SCENE_STRICT", -1, false) | verified),

@@ -3,7 +3,6 @@
 // MC2_RENDER_BACKEND seam. The engine renders on Vulkan only (the GL opt-out was removed); this header reports an ignored
 // MC2_RENDER_BACKEND value and holds the fatal-failure path for a Vulkan that cannot start.
 //
-// DISTINCT from MC2_RENDER_BACKEND_IFACE (gos_postprocess.cpp), a per-region post-process interface toggle.
 // No Vulkan headers and no MC2_VULKAN dependency.
 
 #ifndef MC2_RENDER_BACKEND_SELECT_H
@@ -20,8 +19,8 @@ enum class BackendRequest {
 };
 BackendRequest backendRequestFromText(const char* text);
 
-// Once at engine init: logs a [RENDER_BACKEND] line when MC2_RENDER_BACKEND names the removed GL backend or is unrecognized
-// (the run continues on Vulkan either way). Silent otherwise.
+// Once at engine init: logs a [RENDER_BACKEND] line when MC2_RENDER_BACKEND names the removed GL backend or is unrecognized,
+// or when the retired MC2_VK_SHARED_GBUFFER is set to 0 (the run continues on Vulkan either way). Silent otherwise.
 void noteBackendEnv();
 
 // Fatal backend failure (there is no GL fallback). Called when Vulkan cannot come up (device /

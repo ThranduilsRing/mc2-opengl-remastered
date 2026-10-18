@@ -18,23 +18,6 @@
 #include <time.h>
 #include "gameosmain_internal.h"
 
-// Terrain native first-owner (the island CLEARs shared color0/normal/depth; GL
-// frame-entry clears + clearGBuffer1 must be skipped) is a structural property of the
-// armed terrain Tier-1 island: mc2vkgate::umbrellaOn(). An explicit
-// MC2_VK_TERRAIN_TIER1=0 (island off, GL owns terrain) restores the GL clears.
-static bool mc2_vk_terrain_native_prefix_clear_requested()
-{
-#ifdef MC2_VULKAN_ISLAND
-    static int state = -1;
-    if (state == -1) {
-        state = mc2vkgate::umbrellaOn() ? 1 : 0;
-    }
-    return state == 1;
-#else
-    return false;
-#endif
-}
-
 // sebi 2026-04-22: unhandled-exception filter that symbolizes the stack via
 // DbgHelp (PDB-based). Needed because release/RelWithDebInfo builds otherwise
 // die silently with "read violation at 0xNN" and no frames — Tracy only resolves
@@ -624,13 +607,8 @@ static void draw_screen( void )
         pp->resize(viewport_w, viewport_h);
         pp->beginScene();
     }
-    const bool vkTerrainNativePrefixClear = mc2_vk_terrain_native_prefix_clear_requested();
 
     glViewport(0, 0, viewport_w, viewport_h);
-    if (!vkTerrainNativePrefixClear) {
-        glClearDepth(0.0f);   // reverse-Z (U2): far plane = depth 0
-        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-    }
 	/*
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
@@ -650,29 +628,12 @@ static void draw_screen( void )
     {
         gosPostProcess* ppClear = getGosPostProcess();
         const bool blueGrey = ppClear && ppClear->prevFrameHadTerrain_;
+        // The terrain island CLEARs shared color0/normal/depth first; the GL scene FBO is not cleared.
         if (blueGrey)
-            glClearColor(0.55f, 0.62f, 0.72f, 1.0f);
+            mc2_vk_terrain_set_native_prefix_clear_color(0.55f, 0.62f, 0.72f, 1.0f);
         else
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-#ifdef MC2_VULKAN_ISLAND
-        if (vkTerrainNativePrefixClear) {
-            if (blueGrey)
-                mc2_vk_terrain_set_native_prefix_clear_color(0.55f, 0.62f, 0.72f, 1.0f);
-            else
-                mc2_vk_terrain_set_native_prefix_clear_color(0.0f, 0.0f, 0.0f, 1.0f);
-        }
-#endif
+            mc2_vk_terrain_set_native_prefix_clear_color(0.0f, 0.0f, 0.0f, 1.0f);
     }
-    if (!vkTerrainNativePrefixClear) {
-        glClearDepth(0.0f);   // reverse-Z (U2): far plane = depth 0
-        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
-    }
-
-    // F3: overwrite attachment 1 (GBuffer1) with the post-shadow-eligible sentinel.
-    // glClearColor sets alpha=1.0 in both gameplay and menu paths, which would
-    // otherwise leave non-overwritten pixels reading "shadow handled". This
-    // sentinel ensures defense-in-depth coherence per F3 design v2 §5A.
-    if (pp && !vkTerrainNativePrefixClear) pp->clearGBuffer1();
 
     // Skybox disabled — terrain fog provides atmosphere, bright sky looked jarring
     // if (pp) pp->renderSkybox(0.3f, 0.7f, 0.2f);

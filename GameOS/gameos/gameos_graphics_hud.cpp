@@ -313,31 +313,7 @@ void gosRenderer::replayTextQuads(const HudDrawCall& call)
     setRenderState(gos_State_Texture, prev_texture);
 }
 
-static bool vkHudQueueEnabled()
-{
-    // VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): the game HUD is UI CONTENT, and post-
-    // VK-RUNG8-ITEM8 the native VK composite is the sole present-image producer -- the GL 2D
-    // HUD draws into the DISCARDED GL backbuffer, so under the umbrella an unarmed VK HUD queue
-    // means the HUD VANISHES (the field bug; pre-b0b8ae2b the HUD survived only because present
-    // fell back to the GL backbuffer). So arm from the umbrella: MC2_VK_SHARED_GBUFFER=1
-    // queues the HUD into the VK present tail. The strict proof armed
-    // MC2_VK_HUD=1 and passed. (Representable-draw filtering + the SKIP_GL all-or-nothing guard
-    // below still apply -- a non-representable HUD element keeps GL HUD live for parity.)
-    const bool enabled = mc2vkgate::umbrellaOn();            // per-call: VK-FAILSOFT-DISARM-1
-    return enabled;
-}
-
 #ifdef MC2_VULKAN
-static bool vkHudSkipGlEnabled()
-{
-    // VK-FIELD-ENV-CONTENT-STACK-ARM-1: arm from the umbrella too. Skipping the GL HUD is only
-    // an optimization under VK-only present (the GL backbuffer is discarded anyway), and it is
-    // self-protecting: nativeHudCanSkipGl is AND-reduced over drawRepresentable, so GL HUD stays
-    // live whenever any HUD element is not VK-representable.
-    const bool enabled = mc2vkgate::umbrellaOn();    // per-call
-    return enabled;
-}
-
 static bool vkHudDrawRepresentable(const mc2vk::VkHudDraw& draw)
 {
     // AlphaMode 1 (OneZero/opaque), 3 (AlphaInvAlpha) and 4 (OneInvAlpha, the
@@ -647,13 +623,7 @@ void gosRenderer::flushHUDBatch()
 
 #ifdef MC2_VULKAN
     bool nativeHudQueued = false;
-    bool nativeHudCanSkipGl = vkHudSkipGlEnabled();
-    if (vkHudQueueEnabled()) {
-        // VK-HUD-GATE-HOIST-1: resolve the VFX umbrella sub-gate ONCE PER FLUSH,
-        // not per draw (3x env-reading gate calls + a raw getenv per draw was ~380-450 CRT env
-        // scans/frame at field HUD density, thousands during weapon fire).
-        // Do NOT re-fuse the per-draw reads below back into the loop.
-        const bool hudVfxGate = mc2vkgate::umbrellaOn();
+    {
         // Env-token-only memo (no disarm interaction): the env block is
         // process-static, so one getenv per process is exact.
         static const bool s_hudDrawDumpEnv = mc2::gate::get<"MC2_VK_HUD_DRAW_DUMP">();
@@ -676,8 +646,7 @@ void gosRenderer::flushHUDBatch()
                     draw.textureSerial = tex->getContentSerial();
                     // Pre-compressed textures (BC7 .ktx2 sidecars: effect sprites) get their RGBA8 mirror decoded from
                     // their blocks on first use, so textured beams / effects composite instead of self-declining.
-                    // Gated on the VFX umbrella sub-gate; GL byte-identical when off.
-                    if (hudVfxGate && draw.textureWidth != 0 &&
+                    if (draw.textureWidth != 0 &&
                         draw.textureHeight != 0 && !tex->hasRgbaMirror())
                         tex->ensureRgbaMirror();
                     if (draw.textureWidth != 0 && draw.textureHeight != 0 && tex->hasRgbaMirror())
@@ -691,7 +660,7 @@ void gosRenderer::flushHUDBatch()
             // round-3 proven beam look) instead of self-declining — a weapon
             // beam must never vanish outright over a missing texture mirror.
             {
-                if (hudVfxGate && draw.kind == (uint32_t)kHudTriBatch &&
+                if (draw.kind == (uint32_t)kHudTriBatch &&
                     (draw.alphaMode == 4 || draw.alphaMode == 2) &&
                     draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID &&
                     (!draw.textureRgba || draw.textureRgba->empty()))
@@ -718,17 +687,14 @@ void gosRenderer::flushHUDBatch()
             // lost to the discarded GL HUD anyway). This removes the poisoning landmine
             // where any live textured effect killed the entire HUD composite, and lets the
             // effect classes (carnage/muzzle/artillery) route through IsHUD safely.
-            const bool s_hudPerDrawDecline = hudVfxGate;   // hoisted per-flush: VK-HUD-GATE-HOIST-1
             const bool drawRepresentable = vkHudDrawRepresentable(draw);
             if (!drawRepresentable) {
                 static unsigned s_nativeHudDeclineLogs = 0;
                 if (s_nativeHudDeclineLogs < 16) {
-                    mc2::fmt::print_err("[VK_HUD_SKIP_DECLINE v1] kind={:d} tex={:d} gl={:d} wh={:d}x{:d} serial={:d} rgba={:d} alpha={:d} verts={:d} perDrawDecline={:d}\n", mc2::fmt::as_u32(draw.kind), mc2::fmt::as_u32(draw.textureHandle), mc2::fmt::as_u32(draw.glTextureId), mc2::fmt::as_u32(draw.textureWidth), mc2::fmt::as_u32(draw.textureHeight), mc2::fmt::as_u32(draw.textureSerial), mc2::fmt::as_size(draw.textureRgba ? draw.textureRgba->size() : (size_t)0), mc2::fmt::as_u32(draw.alphaMode), mc2::fmt::as_size(draw.vertices.size()), mc2::fmt::as_i32((int)s_hudPerDrawDecline));
+                    mc2::fmt::print_err("[VK_HUD_SKIP_DECLINE v1] kind={:d} tex={:d} gl={:d} wh={:d}x{:d} serial={:d} rgba={:d} alpha={:d} verts={:d}\n", mc2::fmt::as_u32(draw.kind), mc2::fmt::as_u32(draw.textureHandle), mc2::fmt::as_u32(draw.glTextureId), mc2::fmt::as_u32(draw.textureWidth), mc2::fmt::as_u32(draw.textureHeight), mc2::fmt::as_u32(draw.textureSerial), mc2::fmt::as_size(draw.textureRgba ? draw.textureRgba->size() : (size_t)0), mc2::fmt::as_u32(draw.alphaMode), mc2::fmt::as_size(draw.vertices.size()));
                     ++s_nativeHudDeclineLogs;
                 }
             }
-            if (!s_hudPerDrawDecline)
-                nativeHudCanSkipGl = nativeHudCanSkipGl && drawRepresentable;
             // VK-HUD-GLYPH-CORRUPTION diagnostic: dump per-draw texture handle+serial
             // for the first few frames so an intra-frame same-handle/different-serial
             // collision (mirror keyed by handle -> last-upload-wins -> stale glyphs)
@@ -760,7 +726,7 @@ void gosRenderer::flushHUDBatch()
     mc2_ui_pass_check_ambient();
 
 #ifdef MC2_VULKAN
-    if (nativeHudQueued && nativeHudCanSkipGl) {
+    if (nativeHudQueued) {
         static unsigned s_nativeHudSkipFrames = 0;
         ++s_nativeHudSkipFrames;
         if (mc2DiagVerbose() && (s_nativeHudSkipFrames <= 10 || (s_nativeHudSkipFrames % 120) == 0)) {

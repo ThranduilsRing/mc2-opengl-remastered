@@ -1549,7 +1549,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_VK_SHARED_GBUFFER",
         EnvVarKind::Feature,
         true,
-        "The VK umbrella, default ON since the 2026-10-17 default flip; =0 is a kill switch.",
+        "Retired: the Vulkan scene path is unconditional; =0 is ignored with a [RENDER_BACKEND] line (render_backend_select.cpp).",
     },
     {
         "MC2_TRACE_VK_SHARED_SCENE_STRICT",
