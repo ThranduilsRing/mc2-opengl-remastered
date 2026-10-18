@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 967;
+inline constexpr std::size_t kGateCount = 964;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -537,7 +537,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_PIPELINE_COLORMASK", Kind::Bool, Rule::Lead0, {}},
     {"MC2_PLAYTEST_EXE", Kind::String, Rule::Std, {}},
     {"MC2_PNG_MAGENTA_KEY", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_POSTPROCESS_BACKEND", Kind::Enum, Rule::Std, "gl|vk|vulkan"},
     {"MC2_POSTPROCESS_COMPUTE_BLUR", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_POSTPROCESS_COMPUTE_BLUR_PLANT", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_POSTPROCESS_COMPUTE_BLUR_VERIFY", Kind::Bool, Rule::Lead0P, {}},
@@ -571,8 +570,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_RENDERSTATES_LEGACY", Kind::Bool, Rule::Exact1, {}},
     {"MC2_RENDERSTATES_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_RENDER_BACKEND", Kind::String, Rule::Std, {}},
-    {"MC2_RENDER_BACKEND_IFACE", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_RENDER_BACKEND_REGION_IFACE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_RENDER_CONTRACT_ASSERT", Kind::Bool, Rule::Lead0, {}},
     {"MC2_RENDER_FRAME_DRIVER", Kind::Bool, Rule::Presence, {}},
     {"MC2_RENDER_FRAME_PLAN_TRACE", Kind::Bool, Rule::Presence, {}},

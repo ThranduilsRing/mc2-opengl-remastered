@@ -1123,11 +1123,7 @@ TEST_CASE("G5 postprocess clamp rows reproduce the clamping lambdas they replace
     CHECK(fl("MC2_SHADOW_CSM_R0", "10") == 10.0f);
 }
 
-TEST_CASE("G5 postprocess text rows and the backend selector") {
-    const gate::Row& be = g1b::rowNamed("MC2_POSTPROCESS_BACKEND");
-    CHECK(be.kind == Kind::Enum);
-    CHECK(gate::rows::tokenListHas(be.tokens, "vk"));
-    CHECK(gate::rows::tokenListHas(be.tokens, "vulkan"));
+TEST_CASE("G5 postprocess text rows") {
     for (const char* name : {"MC2_SHADOW_DEBUG_MODE", "MC2_VIEW_MODE", "MC2_OOB_FOG_COLOR"})
         CHECK(g1b::rowNamed(name).kind == Kind::String);
 }

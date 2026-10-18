@@ -62,29 +62,6 @@ extern "C" unsigned long mc2_ui_pass_entry_drift();
 extern "C" unsigned long mc2_ui_pass_ambient_samples();     // UI-PASS-MODEL-1
 extern "C" unsigned long mc2_ui_pass_ambient_mismatches();  // UI-PASS-MODEL-1
 
-// RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): PostprocessFog region-selection
-// health (defined in GameOS/gameos/gos_postprocess.cpp). ALWAYS compiled — the
-// region interface exists on every build (no Vulkan needed for the GL path).
-extern "C" void mc2_render_backend_region_health(
-    int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
-    const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
-    unsigned long* routedFrames);
-
-// VK-REGION-SSAO-1: PostprocessSSAO region-selection health (defined in
-// GameOS/gameos/gos_postprocess.cpp). ALWAYS compiled, same shape as the fog
-// region's accessor above.
-extern "C" void mc2_render_backend_ssao_region_health(
-    int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
-    const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
-    unsigned long* routedFrames);
-
-// VK-REGION-HZB-1: PostprocessHzb region-selection health (defined in
-// GameOS/gameos/gos_postprocess.cpp). ALWAYS compiled, same shape.
-extern "C" void mc2_render_backend_hzb_region_health(
-    int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
-    const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
-    unsigned long* routedFrames);
-
 #ifdef MC2_VULKAN_ISLAND
 // VK-POST-FOG-NATIVE-1 (rung 8.1): native fog pair health snapshot (defined in
 // GameOS/gameos/vulkan_post_fog_native.cpp, same #ifdef MC2_VULKAN_ISLAND).
@@ -1058,97 +1035,6 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "  }\n";
     }
 #endif
-    // RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): PostprocessFog region-selection
-    // health. ALWAYS emitted (region iface exists on every build). Surfaces
-    // backend_region_selected = gl|vk|fallback_gl via region_impl + requested_backend.
-    {
-        int gateOn = 0, impl = 0, glPasses = 0, vkDraws = 0;
-        const char* reqBackend = "gl";
-        const char* fbReason = "";
-        unsigned long routed = 0;
-        mc2_render_backend_region_health(&gateOn, &reqBackend, &impl, &fbReason,
-                                         &glPasses, &vkDraws, &routed);
-        const char* implStr =
-            impl == 1 ? "GLInline" :
-            impl == 2 ? "VulkanSubgraph" :
-            impl == 3 ? "FallbackGL" : "None";
-        const char* selectedStr =
-            impl == 2 ? "vk" :
-            impl == 3 ? "fallback_gl" :
-            impl == 1 ? "gl" : "none";
-        s << "  ,\n";
-        s << "  \"render_backend_region\": {\n";
-        s << "    \"region_id\": \"PostprocessFog\",\n";
-        s << "    \"iface_gate_on\": " << gateOn << ",\n";
-        s << "    \"requested_backend\": \"" << jsonEscape(reqBackend) << "\",\n";
-        s << "    \"backend_region_selected\": \"" << selectedStr << "\",\n";
-        s << "    \"region_impl\": \"" << implStr << "\",\n";
-        s << "    \"fallback_reason\": \"" << jsonEscape(fbReason) << "\",\n";
-        s << "    \"gl_passes_run\": " << glPasses << ",\n";
-        s << "    \"vk_draws\": " << vkDraws << ",\n";
-        s << "    \"routed_frames\": " << routed << "\n";
-        s << "  }\n";
-    }
-    // VK-REGION-SSAO-1: PostprocessSSAO region-selection health. ALWAYS emitted
-    // (region iface exists on every build), same shape as render_backend_region.
-    {
-        int gateOn = 0, impl = 0, glPasses = 0, vkDraws = 0;
-        const char* reqBackend = "gl";
-        const char* fbReason = "";
-        unsigned long routed = 0;
-        mc2_render_backend_ssao_region_health(&gateOn, &reqBackend, &impl, &fbReason,
-                                              &glPasses, &vkDraws, &routed);
-        const char* implStr =
-            impl == 1 ? "GLInline" :
-            impl == 2 ? "VulkanSubgraph" :
-            impl == 3 ? "FallbackGL" : "None";
-        const char* selectedStr =
-            impl == 2 ? "vk" :
-            impl == 3 ? "fallback_gl" :
-            impl == 1 ? "gl" : "none";
-        s << "  ,\n";
-        s << "  \"render_backend_ssao_region\": {\n";
-        s << "    \"region_id\": \"PostprocessSSAO\",\n";
-        s << "    \"iface_gate_on\": " << gateOn << ",\n";
-        s << "    \"requested_backend\": \"" << jsonEscape(reqBackend) << "\",\n";
-        s << "    \"backend_region_selected\": \"" << selectedStr << "\",\n";
-        s << "    \"region_impl\": \"" << implStr << "\",\n";
-        s << "    \"fallback_reason\": \"" << jsonEscape(fbReason) << "\",\n";
-        s << "    \"gl_passes_run\": " << glPasses << ",\n";
-        s << "    \"vk_draws\": " << vkDraws << ",\n";
-        s << "    \"routed_frames\": " << routed << "\n";
-        s << "  }\n";
-    }
-    // VK-REGION-HZB-1: PostprocessHzb region-selection health. ALWAYS emitted
-    // (region iface exists on every build), same shape as render_backend_region.
-    {
-        int gateOn = 0, impl = 0, glPasses = 0, vkDraws = 0;
-        const char* reqBackend = "gl";
-        const char* fbReason = "";
-        unsigned long routed = 0;
-        mc2_render_backend_hzb_region_health(&gateOn, &reqBackend, &impl, &fbReason,
-                                             &glPasses, &vkDraws, &routed);
-        const char* implStr =
-            impl == 1 ? "GLInline" :
-            impl == 2 ? "VulkanSubgraph" :
-            impl == 3 ? "FallbackGL" : "None";
-        const char* selectedStr =
-            impl == 2 ? "vk" :
-            impl == 3 ? "fallback_gl" :
-            impl == 1 ? "gl" : "none";
-        s << "  ,\n";
-        s << "  \"render_backend_hzb_region\": {\n";
-        s << "    \"region_id\": \"PostprocessHzb\",\n";
-        s << "    \"iface_gate_on\": " << gateOn << ",\n";
-        s << "    \"requested_backend\": \"" << jsonEscape(reqBackend) << "\",\n";
-        s << "    \"backend_region_selected\": \"" << selectedStr << "\",\n";
-        s << "    \"region_impl\": \"" << implStr << "\",\n";
-        s << "    \"fallback_reason\": \"" << jsonEscape(fbReason) << "\",\n";
-        s << "    \"gl_passes_run\": " << glPasses << ",\n";
-        s << "    \"vk_draws\": " << vkDraws << ",\n";
-        s << "    \"routed_frames\": " << routed << "\n";
-        s << "  }\n";
-    }
     s << "}\n";
     return s.str();
 }

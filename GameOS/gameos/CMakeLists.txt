@@ -33,7 +33,6 @@ set(SOURCES ${SOURCES}
     gos_postprocess_diag.cpp
     gos_postprocess_fbo.cpp
     gos_postprocess_effects.cpp
-    gos_postprocess_region.cpp
     gos_postprocess_skybox.cpp
     gos_postprocess_shadow.cpp
     gos_postprocess_executor.cpp
@@ -119,7 +118,6 @@ set(SOURCES ${SOURCES}
     gos_frame_pass_stats.cpp
     draw_packet_emitter.cpp
     pipeline_binder.cpp
-    GLBackend.cpp
     view_uniforms_gl.cpp
     gpu_buffer_gl.cpp
     debug_state_dump.cpp

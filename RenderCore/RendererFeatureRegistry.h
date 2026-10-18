@@ -1104,13 +1104,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Legacy selector, read only to report an ignored value: the engine renders on Vulkan only (the gl opt-out was removed).",
     },
     {
-        "MC2_FEATURE_RENDER_BACKEND_IFACE",
-        "MC2_RENDER_BACKEND_IFACE",
-        EnvVarKind::Feature,
-        false,
-        "RENDER-BACKEND-SEAMS arc: routes select GL calls (e.g.",
-    },
-    {
         "MC2_FEATURE_RENDER_PASS_ORDER",
         "MC2_RENDER_PASS_ORDER",
         EnvVarKind::Feature,

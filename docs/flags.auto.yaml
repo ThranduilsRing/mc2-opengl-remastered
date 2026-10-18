@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 967
-registry_entry_count: 195
-verified_count: 957
+gate_count: 964
+registry_entry_count: 194
+verified_count: 954
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -4043,15 +4043,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_POSTPROCESS_BACKEND
-    kind: Enum
-    default: "gl"
-    rule: Std
-    owner: post
-    doc: ""
-    tokens: "gl|vk|vulkan"
-    smoke_passthrough: true
-    verified: true
   - name: MC2_POSTPROCESS_COMPUTE_BLUR
     kind: Bool
     default: false
@@ -4301,23 +4292,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_RENDER_BACKEND, kind: Feature, order: -1, default_on: false}
-  - name: MC2_RENDER_BACKEND_IFACE
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: post
-    doc: "RENDER-BACKEND-SEAMS arc: routes select GL calls (e.g."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_RENDER_BACKEND_IFACE, kind: Feature, order: -1, default_on: false}
-  - name: MC2_RENDER_BACKEND_REGION_IFACE
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-    verified: true
   - name: MC2_RENDER_CONTRACT_ASSERT
     kind: Bool
     default: false

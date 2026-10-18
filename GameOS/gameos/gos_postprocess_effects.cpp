@@ -765,16 +765,7 @@ void gosPostProcess::runFogOob()
     if (!fogOobStateAppliedByExecutor_) {
         // Bind scene FBO — writes to color attachment 0 only.
         // Reads sceneDepthTex_ (separate attachment — no read/write conflict).
-        // RENDER-BACKEND-IFACE-FBO-1: route this FBO-bind through IRenderBackend
-        // under MC2_RENDER_BACKEND_IFACE (default-OFF). OFF = direct GL, byte-
-        // identical. ON = the SAME glBindFramebuffer(sceneFBO_) via GLBackend —
-        // both GL, output identical; the gate just proves the seam routes.
-        static const bool s_backendIface = mc2::gate::get<"MC2_RENDER_BACKEND_IFACE">();
-        if (s_backendIface) {
-            RenderCore::getGLBackend().bindFramebuffer(sceneFBO_);
-        } else {
-            glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
-        }
+        glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
         setSceneDrawBuffers(SceneDrawBufferMode::SingleColor, false);
         glViewport(0, 0, width_, height_);
 

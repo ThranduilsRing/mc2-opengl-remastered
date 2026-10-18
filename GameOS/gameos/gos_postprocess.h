@@ -6,7 +6,7 @@
 #include "utils/gl_utils.h"
 
 struct HdriCpuImage;   // gos_hdri.h
-#include "../../RenderCore/RenderRegionId.h"   // RENDER-BACKEND-REGION-IFACE-1 (relative: reachable from every TU that includes this header, incl. RenderWorld)
+#include "../../RenderCore/RenderResourceRegistry.h"   // RenderCore::RenderResourceId (relative: reachable from every TU that includes this header, incl. RenderWorld)
 
 struct glsl_program;
 
@@ -373,48 +373,6 @@ public:
     float aoBlurDepthSigma_;   // relative depth tolerance for edge-stopping
     void runSSAO();
 
-    // VK-REGION-SSAO-1 (RENDER-BACKEND-REGION-IFACE-1, second region): the SSAO
-    // region (occlusion pass1 + multiplicative apply pass2) made SELECTABLE
-    // GL-vs-Vulkan through IRenderBackend, mirroring the PostprocessFog region
-    // precedent exactly. Gated by the SAME master gate
-    // (MC2_RENDER_BACKEND_REGION_IFACE) + the SAME sub-selector
-    // (MC2_POSTPROCESS_BACKEND=gl|vk); MC2_SSAO still gates whether the region
-    // runs AT ALL (unchanged — SSAO stays default-OFF either way).
-    //
-    // 1A: the extracted GL SSAO region wrapper. Calls the UNCHANGED runSSAO()
-    // inline body (pure code-move). Returns 1 if SSAO actually ran this frame
-    // (its own early-return guards still apply), 0 if it early-returned.
-    int  runSSAORegionGL();
-
-    // 1B: the routed entry called from endScene() when the master gate is ON.
-    // Builds the neutral SSAO context, picks the backend by
-    // MC2_POSTPROCESS_BACKEND, calls runRegion(); on false (VK unavailable/
-    // failed) runs runSSAORegionGL(). Writes region_impl/fallback_reason to
-    // the SSAO region health snapshot.
-    void runSSAORegionThroughBackend();
-
-    // VK-REGION-HZB-1 (RENDER-BACKEND-REGION-IFACE-1, third region): the HZB
-    // reduce chain routed through IRenderBackend::runRegion. Same shape as the
-    // SSAO region: master gate MC2_RENDER_BACKEND_REGION_IFACE + selector
-    // MC2_POSTPROCESS_BACKEND=gl|vk; MC2_HZB_BUILD still gates whether the
-    // region runs AT ALL (unchanged -- HZB stays default-OFF either way).
-    //
-    // 1A: the extracted GL HZB region wrapper. Calls the UNCHANGED
-    // runHzbReduce() inline body (pure code-move). Returns 1 if HZB's own
-    // gates let it run this frame, 0 if it early-returned.
-    int  runHzbRegionGL();
-    // The routed entry (master gate ON). Builds the neutral HZB context,
-    // picks the backend by MC2_POSTPROCESS_BACKEND, calls runRegion; on
-    // decline/failure runs runHzbRegionGL(). Writes region_impl /
-    // fallback_reason to the HZB region health snapshot.
-    void runHzbRegionThroughBackend();
-    // GL handle resolver for the HZB region context (depth / pyramid-level-0).
-    unsigned int resolveHzbRegionResource(RenderCore::RenderResourceId id) const;
-
-    // GL handle resolver for the SSAO region context (depth/normal/color/
-    // occlusion -> concrete GL texture names). Defined as a tiny adaptor in
-    // the .cpp, same shape as resolveRegionResource() for fog.
-    unsigned int resolveSSAORegionResource(RenderCore::RenderResourceId id) const;
 
     // BT2018-BOX-DECAL-1: screen-space AABB decal volume. Reconstructs scene world
     // pos from the depth COPY (reversed-Z), box-clips, normal-rejects, and composites
@@ -458,35 +416,6 @@ public:
     // Copy `in` -> `out`, scaled by nightFogDimScale_ when nightFogDimEnabled_.
     void  effectiveFogColor(const float in[3], float out[3]) const;
 
-    // RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY). The PostprocessFog region
-    // (EdgeFog + OOB fog) made SELECTABLE GL-vs-Vulkan through IRenderBackend.
-    //
-    // Master gate MC2_RENDER_BACKEND_REGION_IFACE (default OFF): OFF -> the
-    // ORIGINAL direct-GL fog sites run (abstraction fully skipped, byte-identical).
-    // ON -> endScene() routes the fog region through runFogRegionThroughBackend(),
-    // which builds the backend-neutral context, selects the backend
-    // (MC2_POSTPROCESS_BACKEND=gl|vk, default gl), and calls
-    // IRenderBackend::runRegion(); GL falls back on any failure.
-    bool regionIfaceEnabled() const;   // MC2_RENDER_BACKEND_REGION_IFACE==1
-
-    // 1A: the extracted GL fog region wrapper. Calls runEdgeFog() then runFogOob()
-    // UNCHANGED (same two inline bodies, same order). Returns the number of GL fog
-    // passes that actually executed (always 2 here; the inner run*() early-returns
-    // still short-circuit per-effect but the wrapper's contract is "run both GL
-    // sites"). This is what the GL backend's runRegion() invokes.
-    int  runFogRegionGL();
-
-    // 1B: the routed entry called from endScene() when the master gate is ON. Builds
-    // the neutral context, picks the backend by MC2_POSTPROCESS_BACKEND, calls
-    // runRegion(); on false (VK unavailable/failed) runs runFogRegionGL(). Writes
-    // the region_impl / fallback_reason / equivalence counters to the health snapshot.
-    void runFogRegionThroughBackend();
-
-    // GL handle resolver for the region context. gosPostProcess owns
-    // sceneColorTex_/sceneDepthTex_, so IT is the resolver: MainColor->sceneColorTex_,
-    // MainDepth->sceneDepthTex_. Defined as a tiny adaptor in the .cpp; the neutral
-    // context carries a pointer to it (a resolver is a SERVICE, not a handle).
-    unsigned int resolveRegionResource(RenderCore::RenderResourceId id) const;
 
 #ifdef MC2_VULKAN_ISLAND
     // VK-TIER1 SHARED SCENE DEPTH: when MC2_VK_SHARED_SCENE_DEPTH is ON and the
@@ -511,15 +440,6 @@ public:
     struct Mc2SharedSceneColor* sharedSceneNormal_ = nullptr;   // MRT1 sceneNormalTex_
     struct Mc2SharedSceneColor* sharedSceneObjectId_ = nullptr; // MRT2 sceneObjectIdTex_
 
-    // RENDER-BACKEND-REGION-IFACE-1 (1C): Vulkan impl of runRegion for the
-    // PostprocessFog region. Returns false (fail-soft) if native fog is
-    // unavailable/failed this frame -> caller runs the GL wrapper (FallbackGL).
-    // On success runs runVkPostFogNative() and reports two VK fog draws. Never
-    // crashes. Defined in gos_postprocess.cpp under the
-    // same #ifdef; the neutral context values already match the subgraph's
-    // EXACT uploads (both pull from the same members).
-    bool  runFogRegionVulkanBackend(const RenderCore::PostprocessFogRegionContext& ctx,
-                                     RenderCore::RegionOutput* out);
 
     // VK-POST-FOG-NATIVE-1 (rung 8.1, .claude/VK-RUNG8-LADDER-1.md): the fog pair
     // (edge + oob) rendered NATIVELY on the shared engine VulkanContext, sampling
@@ -601,12 +521,6 @@ public:
     struct VkPostHzbNativeDeleter { void operator()(VkPostHzbNative*) const; };
     std::unique_ptr<VkPostHzbNative, VkPostHzbNativeDeleter> vkPostHzbNative_;
 
-    // Retained region-interface entry points;
-    // these methods delegate to the shared-engine native implementations.
-    bool  runSSAORegionVulkanBackend(const RenderCore::PostprocessSSAORegionContext& ctx,
-                                      RenderCore::RegionOutput* out);
-    bool  runHzbRegionVulkanBackend(const RenderCore::PostprocessHzbRegionContext& ctx,
-                                     RenderCore::RegionOutput* out);
 
 #endif
 
