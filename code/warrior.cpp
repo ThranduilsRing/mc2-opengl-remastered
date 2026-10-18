@@ -462,7 +462,7 @@ void MechWarrior::init (bool create) {
 	useGoalPlan = false;
 	mainGoalAction = GOAL_ACTION_NONE;
 	mainGoalObjectWID = 0;
-	mainGoalLocation.Zero();
+	mainGoalLocation = glm::vec3(0.0f);
 	mainGoalControlRadius = -1.0;
 	lastGoalPathSize = 0;
 
@@ -745,7 +745,7 @@ void MoveOrders::init (void) {
 */		
 	goalType = MOVEGOAL_NONE;
 	goalObjectWID = 0;
-	goalObjectPosition.Zero();
+	goalObjectPosition = glm::vec3(0.0f);
 	// Since world coord should never reach -999999...
 	goalLocation.x = -999999.0;
 	goalLocation.y = -999999.0;
@@ -787,7 +787,7 @@ void AttackOrders::init (void) {
 	origin = ORDER_ORIGIN_COMMANDER;
 	type = ATTACK_NONE;
 	targetWID = 0;
-	targetPoint.Zero();
+	targetPoint = glm::vec3(0.0f);
 	aimLocation = -1;
 	pursue = false;
 	targetTime = 0.0;
@@ -1056,7 +1056,7 @@ long MechWarrior::getAggressiveness (bool current) {
 
 // QUEUED PLAYER ORDERS end
 
-void MechWarrior::setMainGoal (long action, GameObjectPtr obj, Stuff::Vector3D* location, float range) {
+void MechWarrior::setMainGoal (long action, GameObjectPtr obj, glm::vec3* location, float range) {
 
 	mainGoalAction = action;
 	if (obj)
@@ -1066,11 +1066,11 @@ void MechWarrior::setMainGoal (long action, GameObjectPtr obj, Stuff::Vector3D* 
 	if (location)
 		mainGoalLocation = *location;
 	else
-		mainGoalLocation.Zero();
+		mainGoalLocation = glm::vec3(0.0f);
 	mainGoalControlRadius = range;
 }
 
-long MechWarrior::getMainGoal (GameObjectPtr& obj, Stuff::Vector3D& location, float& radius) {
+long MechWarrior::getMainGoal (GameObjectPtr& obj, glm::vec3& location, float& radius) {
 
 	obj = nullptr;
 	if (mainGoalObjectWID)
@@ -1704,8 +1704,8 @@ long MechWarrior::runBrain (void) {
 		if (s_aiFreezeTrace) {
 			MovePathPtr mp = getMovePath();
 			MoverPtr traceVehicle = getVehicle();
-			Stuff::Vector3D tracePos;
-			tracePos.Zero();
+			glm::vec3 tracePos;
+			tracePos = glm::vec3(0.0f);
 			if (traceVehicle)
 				tracePos = traceVehicle->getPosition();
 			mc2::fmt::print_err("[BRAIN_FREEZE_TRACE] wid={:d} brainState={:d} curTacOrder.code={:d} movePath.numSteps={:d} moveState={:d} hasBrain={:d} orderState={:d} mainGoal={:d} goalWID={:d} genOrder={:d} pos=({:.0f},{:.0f}) lastMoveErr={:d}\n", mc2::fmt::as_i32((int)vehicleWID), mc2::fmt::as_i32((int)brainState), mc2::fmt::as_i32((int)curTacOrder.code), mc2::fmt::as_i32(mp ? (int)mp->numSteps : -1), mc2::fmt::as_i32(moveOrders.moveState), mc2::fmt::as_i32(brain ? 1 : 0), mc2::fmt::as_i32((int)orderState), mc2::fmt::as_i32((int)mainGoalAction), mc2::fmt::as_u32((unsigned long)mainGoalObjectWID), mc2::fmt::as_i32((int)tacOrder[ORDERSTATE_GENERAL].code), (double)tracePos.x, (double)tracePos.y, mc2::fmt::as_i32(LastMoveCalcErr));
@@ -1754,7 +1754,7 @@ void MechWarrior::noteJumpPathFailed (void) {
 	// requestMovePath compares against (getMoveGoal -> worldToCell). Using one
 	// source of truth guarantees the stamp and the short-circuit test agree,
 	// regardless of any goal revision the solver applied internally.
-	Stuff::Vector3D goalLoc;
+	glm::vec3 goalLoc;
 	if (getMoveGoal(&goalLoc) == MOVEGOAL_NONE)
 		return;
 	int goalCellR, goalCellC;
@@ -1773,7 +1773,7 @@ void MechWarrior::requestMovePath (long selectionIndex, unsigned long moveParams
 	// tick with no failure memory). Only AI/non-home jumpers ever fail jump solves
 	// (jump path is enemy-only, mover.cpp), so player orders are never affected.
 	if (s_jumpFailBackoffOn && (lastJumpFailFrame >= 0)) {
-		Stuff::Vector3D goalLoc;
+		glm::vec3 goalLoc;
 		if (getMoveGoal(&goalLoc) != MOVEGOAL_NONE) {
 			int goalCellR, goalCellC;
 			land->worldToCell(goalLoc, goalCellR, goalCellC);
@@ -1796,7 +1796,7 @@ long MechWarrior::combatDecisionTree (void) {
 
 	combatUpdate = scenarioTime + CombatUpdateFrequency;
 
-	Stuff::Vector3D tPoint;
+	glm::vec3 tPoint;
 
 	MoverPtr myVehicle = getVehicle();
 	Assert(myVehicle != nullptr, 0, " Pilot has no vehicle! ");
@@ -1813,7 +1813,7 @@ long MechWarrior::combatDecisionTree (void) {
 
 	// Our target is our last target, if we had one (and we weren't explicitly
 	// told to hold fire since then)...
-	Stuff::Vector3D *targetPoint = nullptr;
+	glm::vec3 *targetPoint = nullptr;
 	long attackType = ATTACK_TO_DESTROY;
 	long aimLocation = -1;
 	if (curTacOrder.isCombatOrder()) {
@@ -1849,7 +1849,7 @@ long MechWarrior::combatDecisionTree (void) {
 
 	if (target) {
 		if (!curTacOrder.isCombatOrder()) {
-			Stuff::Vector3D pos = target->getPosition();
+			glm::vec3 pos = target->getPosition();
 			if (myVehicle->distanceFrom(pos) > attackRadius) {
 				setLastTarget(nullptr);
 				target = nullptr;
@@ -2099,8 +2099,8 @@ void MechWarrior::updateActions (void) {
 	if (s_fxLoop) {
 		static float s_nextFire = 0.0f;
 		if (myVehicle && scenarioTime > 5.0f && scenarioTime >= s_nextFire && myVehicle->canFireWeapons()) {
-			Stuff::Vector3D pos = myVehicle->getPosition();
-			Stuff::Vector3D targetPoint = pos;
+			glm::vec3 pos = myVehicle->getPosition();
+			glm::vec3 targetPoint = pos;
 			targetPoint.x += 150.0f;
 			int firedCount = 0;
 			for (long cw = 0; cw < myVehicle->numWeapons; cw++) {
@@ -2150,8 +2150,8 @@ void MechWarrior::updateActions (void) {
 			for (int i = 0; i < s_firedMechs; i++)
 				if (s_firedWIDs[i] == wid) { already = true; break; }
 			if (!already) {
-				Stuff::Vector3D pos = myVehicle->getPosition();
-				Stuff::Vector3D targetPoint = pos;
+				glm::vec3 pos = myVehicle->getPosition();
+				glm::vec3 targetPoint = pos;
 				targetPoint.x += 150.0f;   // a point in front; any on-map point spawns a bolt
 				int firedCount = 0;
 				for (long cw = 0; cw < myVehicle->numWeapons; cw++) {
@@ -2271,7 +2271,7 @@ long MechWarrior::mainDecisionTree (void) {
 		if (target)
 			weaponsStatusResult = calcWeaponsStatus(target, weaponsStatus);
 		else if (curTacOrder.code == TACTICAL_ORDER_ATTACK_POINT) {
-			Stuff::Vector3D pos = getAttackTargetPoint();
+			glm::vec3 pos = getAttackTargetPoint();
 			weaponsStatusResult = calcWeaponsStatus(target, weaponsStatus, &pos);
 		}
 	}
@@ -2474,7 +2474,7 @@ long MechWarrior::mainDecisionTree (void) {
 			radioMessage(message, true);
 		setCurTacOrder(newTacOrder);
 		if (useGoalPlan) {
-			Stuff::Vector3D movePoint = newTacOrder.getWayPoint(0);
+			glm::vec3 movePoint = newTacOrder.getWayPoint(0);
 			if (!newTacOrder.subOrder)
 				switch (newTacOrder.code) {
 					case TACTICAL_ORDER_MOVETO_POINT:

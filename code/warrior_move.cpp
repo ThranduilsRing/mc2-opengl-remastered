@@ -5,7 +5,7 @@
 #include "mission.h"
 
 
-long MechWarrior::setMoveGoal (unsigned long type, Stuff::Vector3D* location, GameObjectPtr obj) {
+long MechWarrior::setMoveGoal (unsigned long type, glm::vec3* location, GameObjectPtr obj) {
 
 	moveOrders.goalType = type;
 	switch (type) {
@@ -28,7 +28,7 @@ long MechWarrior::setMoveGoal (unsigned long type, Stuff::Vector3D* location, Ga
 	return(NO_ERR);
 }
 
-unsigned long MechWarrior::getMoveGoal (Stuff::Vector3D* location, GameObjectPtr* obj) {
+unsigned long MechWarrior::getMoveGoal (glm::vec3* location, GameObjectPtr* obj) {
 
 	if (obj)
 		*obj = ObjectManager->getByWatchID(moveOrders.goalObjectWID);
@@ -51,7 +51,7 @@ void MechWarrior::resumePath (void) {
 
 void MechWarrior::rethinkPath (unsigned long strategy) {
 
-	Stuff::Vector3D nextWayPoint;
+	glm::vec3 nextWayPoint;
 	bool haveWayPoint = getNextWayPoint(nextWayPoint, false);
 
 	if (moveOrders.pathType == MOVEPATH_SIMPLE) {
@@ -105,7 +105,7 @@ float MechWarrior::getMoveDistanceLeft (void) {
 	return(distanceLeft);
 }
 
-bool MechWarrior::isJumping (Stuff::Vector3D* jumpGoal) {
+bool MechWarrior::isJumping (glm::vec3* jumpGoal) {
 
 	MoverPtr myVehicle = getVehicle();
 	if (myVehicle)
@@ -123,7 +123,7 @@ MovePathPtr MechWarrior::getMovePath (void) {
 		moveOrders.path[0] = moveOrders.path[1];
 		moveOrders.path[1] = temp;
 		if (moveOrders.path[0]->numStepsWhenNotPaused > 0) {
-			Stuff::Vector3D goal;
+			glm::vec3 goal;
 			GameObjectPtr goalObject;
 			unsigned long goalType = getMoveGoal(&goal, &goalObject);
 			if (goalType == MOVEGOAL_NONE) {
@@ -192,7 +192,7 @@ if (InitWayPath) {
 }
 }
 
-void MechWarrior::addMoveWayPoint (Stuff::Vector3D wayPt, bool patrol) {
+void MechWarrior::addMoveWayPoint (glm::vec3 wayPt, bool patrol) {
 
 	moveOrders.wayPath[moveOrders.numWayPts] = wayPt;
 	moveOrders.numWayPts++;
@@ -220,7 +220,7 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
     if (mission) if (auto* r = mission->ownedRoute(this)) {
         if (getOrderState() == ORDERSTATE_GENERAL && r->state == mc2::sim::RouteState::Active &&
             r->pendingSegment && !(moveParams & MOVEPARAM_ESCAPE_TILE)) {
-            Stuff::Vector3D goal;
+            glm::vec3 goal;
             getMoveGoal(&goal);
             const auto& p = r->path.points[r->path.curPoint];
             if (r->pendingSegment->cursor == r->path.curPoint && r->pendingSegment->revision == r->revision &&
@@ -261,17 +261,17 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
                 !route->pendingSegment || route->pendingSegment->cursor != route->path.curPoint ||
                 route->pendingSegment->revision != route->revision || buffer < 0) return;
             const auto& p = route->path.points[route->path.curPoint];
-            Stuff::Vector3D goal(p.x, p.y, p.z);
+            glm::vec3 goal(p.x, p.y, p.z);
             const bool accepted = (LastMoveCalcErr == NO_ERR && pilot->getMovePath(buffer)->numStepsWhenNotPaused > 0) ||
                 pilot->getVehicle()->cellDistanceFrom(goal) == 0;
             route->pendingSegment.reset();
             mission->signalRoute(*route, accepted ? mc2::sim::RouteAction::PathAccepted : mc2::sim::RouteAction::Unreachable);
         }
     } classify{this, route, pathNum};
-	Stuff::Vector3D jumpGoal;
+	glm::vec3 jumpGoal;
 	bool jumping = isJumping(&jumpGoal);
 
-	Stuff::Vector3D start;
+	glm::vec3 start;
 	if (jumping)
 		start = jumpGoal;
 	else
@@ -295,7 +295,7 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 
 	bool escapeTile = ((moveParams & MOVEPARAM_ESCAPE_TILE) != 0);
 
-	Stuff::Vector3D goal;
+	glm::vec3 goal;
 	GameObjectPtr goalObject;
 	unsigned long goalType = getMoveGoal(&goal, &goalObject);
 	if (goalType == MOVEGOAL_NONE) {
@@ -334,7 +334,7 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 	bool yielding = isYielding();
   	if (moveParams & MOVEPARAM_RECALC) {
 		if (target) {
-			Stuff::Vector3D pos = target->getPosition();
+			glm::vec3 pos = target->getPosition();
 			setMoveGoal(target->getWatchID(), &pos, target);
 			}
 		else
@@ -393,7 +393,7 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 				((MoverPtr)ramObject)->updatePathLock(false);
 			if (myVehicle->getObjectClass() != ELEMENTAL)
 				moveParams |= MOVEPARAM_AVOID_PATHLOCKS;
-			Stuff::Vector3D escapeGoal;
+			glm::vec3 escapeGoal;
 			long numSteps = myVehicle->calcEscapePath(moveOrders.path[pathNum], start, goal, nullptr, moveParams | MOVEPARAM_STATIONARY_MOVERS, escapeGoal);
 			if (ramObject && ramObject->isMover())
 				((MoverPtr)ramObject)->updatePathLock(true);
@@ -747,14 +747,14 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 	return(LastMoveCalcErr = NO_ERR);
 }
 
-bool MechWarrior::getNextWayPoint (Stuff::Vector3D& nextPoint, bool incWayPoint) {
+bool MechWarrior::getNextWayPoint (glm::vec3& nextPoint, bool incWayPoint) {
 
     if (mission) if (auto* r = mission->ownedRoute(this)) {
         if (getOrderState() == ORDERSTATE_GENERAL && curTacOrder.code == static_cast<int>(r->kind)) {
             if (incWayPoint) mission->signalRoute(*r, mc2::sim::RouteAction::Arrived);
             if (r->terminal()) return false;
             const auto& p = r->path.points[r->path.curPoint];
-            nextPoint = Stuff::Vector3D(p.x, p.y, p.z);
+            nextPoint = glm::vec3(p.x, p.y, p.z);
             if (incWayPoint) {
                 setMoveRun(r->path.mode[r->path.curPoint] == mc2::sim::TravelMode::Fast);
                 curTacOrder.moveParams.wayPath.curPoint = r->path.curPoint;
@@ -821,9 +821,9 @@ bool MechWarrior::getNextWayPoint (Stuff::Vector3D& nextPoint, bool incWayPoint)
 }
 
 
-Stuff::Vector3D MechWarrior::calcWithdrawGoal (float withdrawRange) {
+glm::vec3 MechWarrior::calcWithdrawGoal (float withdrawRange) {
 
-	Stuff::Vector3D escapeVector;
+	glm::vec3 escapeVector;
 
 	return(getVehicle()->getPosition());
 }
@@ -962,7 +962,7 @@ bool MechWarrior::movementDecisionTree (void) {
                 mission->dispatchOwnedRoute(this, *r);
         }
 		if (curTacOrder.code == TACTICAL_ORDER_WITHDRAW) {
-			Stuff::Vector3D escapeGoal = calcWithdrawGoal();
+			glm::vec3 escapeGoal = calcWithdrawGoal();
 			setMoveGoal(MOVEGOAL_LOCATION, &escapeGoal);
 			unsigned long params = MOVEPARAM_INIT | MOVEPARAM_FACE_TARGET;
 			if (curTacOrder.moveParams.jump)
@@ -975,7 +975,7 @@ bool MechWarrior::movementDecisionTree (void) {
 			}
 		else if ((curTacOrder.code == TACTICAL_ORDER_MOVETO_OBJECT) || (curTacOrder.code == TACTICAL_ORDER_CAPTURE)) {
 			GameObjectPtr moveTarget = curTacOrder.getTarget();
-			Stuff::Vector3D targetPos = moveTarget->getPosition();
+			glm::vec3 targetPos = moveTarget->getPosition();
 			if (moveTarget->isMover())
 				targetPos = moveTarget->getPosition();
 			else {
@@ -989,12 +989,12 @@ bool MechWarrior::movementDecisionTree (void) {
 					if (foundGoal)
 						land->cellToWorld(goalRow, goalCol, targetPos);
 					else {
-						Stuff::Vector3D objectPos = moveTarget->getPosition();
+						glm::vec3 objectPos = moveTarget->getPosition();
 						targetPos = getVehicle()->calcOffsetMoveGoal(objectPos);
 					}
 					}
 				else {
-					Stuff::Vector3D objectPos = moveTarget->getPosition();
+					glm::vec3 objectPos = moveTarget->getPosition();
 					targetPos = getVehicle()->calcOffsetMoveGoal(objectPos);
 				}
 			}
@@ -1008,7 +1008,7 @@ bool MechWarrior::movementDecisionTree (void) {
 				requestMovePath(curTacOrder.selectionIndex, params, 8);
 			}
 		else if (curTacOrder.isCombatOrder()) {
-			Stuff::Vector3D targetPosition;
+			glm::vec3 targetPosition;
 			GameObjectPtr target = getCurrentTarget();
 			if (target)
 				targetPosition = target->getPosition();
@@ -1017,7 +1017,7 @@ bool MechWarrior::movementDecisionTree (void) {
 			else
 				return(true);
 			if (curTacOrder.attackParams.method == ATTACKMETHOD_RAMMING) {
-				Stuff::Vector3D pos = target->getPosition();
+				glm::vec3 pos = target->getPosition();
 				setMoveGoal(target->getWatchID(), &pos, target);
 				unsigned long params = MOVEPARAM_INIT | MOVEPARAM_FACE_TARGET;
 				if (curTacOrder.moveParams.jump)
@@ -1170,10 +1170,10 @@ bool MechWarrior::movementDecisionTree (void) {
 		if (goalObject) {
 			// We may want to call a modified orderMoveToObject routine (but,
 			// we don't want to play with the tacOrders)...
-			Stuff::Vector3D targetPos = goalObject->getPosition();
+			glm::vec3 targetPos = goalObject->getPosition();
 			if (!curTacOrder.isCombatOrder()) {
 				if (distance_from(targetPos, moveOrders.goalObjectPosition) > 50.0) {
-					Stuff::Vector3D pos = goalObject->getPosition();
+					glm::vec3 pos = goalObject->getPosition();
 					setMoveGoal(goalObject->getWatchID(), &pos, goalObject);
 					unsigned long params = MOVEPARAM_INIT | MOVEPARAM_FACE_TARGET;
 					if (curTacOrder.moveParams.jump)
@@ -1181,7 +1181,7 @@ bool MechWarrior::movementDecisionTree (void) {
 					requestMovePath(curTacOrder.selectionIndex, params, 13);
 					}
 				else if (getMovePath()->numStepsWhenNotPaused == 0) {
-					Stuff::Vector3D pos = goalObject->getPosition();
+					glm::vec3 pos = goalObject->getPosition();
 					setMoveGoal(goalObject->getWatchID(), &pos, goalObject);
 					unsigned long params = MOVEPARAM_INIT | MOVEPARAM_FACE_TARGET;
 					if (curTacOrder.moveParams.jump)
@@ -1301,7 +1301,7 @@ bool MechWarrior::movementDecisionTree (void) {
 								moveParams = MOVEPARAM_SOMEWHERE_ELSE + MOVEPARAM_RANDOM_OPTIMAL;
 							}
 					if (recalcPath && (curTacOrder.attackParams.tactic != TACTIC_TURRET)) {
-						Stuff::Vector3D pos = target->getPosition();
+						glm::vec3 pos = target->getPosition();
 						setMoveGoal(target->getWatchID(), &pos, target);
 						if (curTacOrder.moveParams.jump)
 							moveParams |= MOVEPARAM_JUMP;

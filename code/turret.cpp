@@ -251,8 +251,8 @@ bool TurretType::handleCollision (GameObjectPtr collidee, GameObjectPtr collider
 	GameObjectPtr target = ObjectManager->getByWatchID(turret->targetWID);
 	float targetRange = 10000000.0;
 	if (target) {
-		Stuff::Vector3D targetRangeV3;
-		targetRangeV3.Subtract(turret->getPosition(), target->getPosition());
+		glm::vec3 targetRangeV3;
+		targetRangeV3 = turret->getPosition() - target->getPosition();
 		targetRange = targetRangeV3.x * targetRangeV3.x + targetRangeV3.y * targetRangeV3.y;								//().magnitude();
 	}
 
@@ -284,8 +284,8 @@ bool TurretType::handleCollision (GameObjectPtr collidee, GameObjectPtr collider
 				}
 				else
 				{
-					Stuff::Vector3D colliderRangeV3;
-					colliderRangeV3.Subtract(turret->getPosition(), collider->getPosition());
+					glm::vec3 colliderRangeV3;
+					colliderRangeV3 = turret->getPosition() - collider->getPosition();
 					float colliderRange = colliderRangeV3.x * colliderRangeV3.x + colliderRangeV3.y * colliderRangeV3.y;		//().magnitude();
 					if (colliderRange < targetRange)
 						turret->targetWID = collider->getWatchID();
@@ -302,8 +302,8 @@ bool TurretType::handleCollision (GameObjectPtr collidee, GameObjectPtr collider
 				}
 				else
 				{
-					Stuff::Vector3D colliderRangeV3;
-					colliderRangeV3.Subtract(turret->getPosition(), collider->getPosition());
+					glm::vec3 colliderRangeV3;
+					colliderRangeV3 = turret->getPosition() - collider->getPosition();
 					float colliderRange = colliderRangeV3.x * colliderRangeV3.x + colliderRangeV3.y * colliderRangeV3.y;		//().magnitude();
 					if (colliderRange < targetRange)
 						turret->targetWID = collider->getWatchID();
@@ -609,8 +609,8 @@ long Turret::update (void)
 		GameObjectPtr attackTarget = ObjectManager->getByWatchID(targetWID);
 		if (attackTarget)
 		{
-			Stuff::Vector3D targetRangeV3;
-			targetRangeV3.Subtract(attackTarget->getPosition(), position);
+			glm::vec3 targetRangeV3;
+			targetRangeV3 = attackTarget->getPosition() - position;
 			float targetRange = targetRangeV3.x * targetRangeV3.x + targetRangeV3.y * targetRangeV3.y;				//().magnitude();
 			if (attackTarget->isDisabled() || 
 				attackTarget->isDestroyed() || 
@@ -767,9 +767,9 @@ long Turret::update (void)
 	if (turretRotation < -360.0f)
 		turretRotation += 360.0f;
 	
-	Stuff::Vector3D distance;
-	distance.Subtract(oldPosition,position);
-	float spotDistance = distance.GetApproximateLength();
+	glm::vec3 distance;
+	distance = oldPosition - position;
+	float spotDistance = glm::length(distance);
 	
 	float turretPitch = 0.0f;
 	
@@ -843,8 +843,8 @@ long Turret::update (void)
 		// find distance from that vector.
 		// move distance proportional to rotation this frame divided by rotation left to hit target.
 		// Store newly derived position as oldPosition.
-		Stuff::Point3D xlatPos;
-		Stuff::Point3D ourPosition;
+		glm::vec3 xlatPos;
+		glm::vec3 ourPosition;
 		if (turretTurnRate == 0.0f)
 		{
 			//We are on Target.  Light is at same position as thing we are illuminating.
@@ -858,15 +858,15 @@ long Turret::update (void)
 		}
 		else
 		{
-			Stuff::Vector3D Dir;
+			glm::vec3 Dir;
 			GameObjectPtr target = ObjectManager->getByWatchID(targetWID);
 			if (target)
 			{
-				Dir.Subtract(target->getPosition(),oldPosition);
-				float dist = Dir.GetLength();
+				Dir = target->getPosition() - oldPosition;
+				float dist = glm::length(Dir);
 				if (dist > Stuff::SMALL)
 				{
-					Dir.Normalize(Dir);
+					Dir = glm::normalize(Dir);
 					dist *= fabs(turretTurnRate) / fabs(turretFacing);
 				
 					Dir *= dist;
@@ -877,11 +877,11 @@ long Turret::update (void)
 			}
 			else
 			{
-				Dir.Subtract(idlePosition,oldPosition);
-				float dist = Dir.GetApproximateLength();
+				Dir = idlePosition - oldPosition;
+				float dist = glm::length(Dir);
 				if (dist > Stuff::SMALL)
 				{
-					Dir.Normalize(Dir);
+					Dir = glm::normalize(Dir);
 					dist *= fabs(turretTurnRate) / fabs(turretFacing);
 					
 					Dir *= dist;
@@ -901,9 +901,9 @@ long Turret::update (void)
 		
 		pointLight->maxSpotLength = ourExtentRadius * 1.5f;
 
-		Stuff::LinearMatrix4D lightToWorldMatrix;
-		lightToWorldMatrix.BuildTranslation(xlatPos);
-		lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+		glm::mat4 lightToWorldMatrix;
+		mc2::math::buildTranslation(lightToWorldMatrix, xlatPos);
+		mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(0.0f,0.0f,0.0f));
 		pointLight->SetLightToWorld(&lightToWorldMatrix);
 		pointLight->SetPosition(&ourPosition);
 	}
@@ -928,16 +928,16 @@ long Turret::update (void)
 
 //---------------------------------------------------------------------------
 
-float Turret::relFacingTo (Stuff::Vector3D goal, long bodyLocation) 
+float Turret::relFacingTo (glm::vec3 goal, long bodyLocation) 
 {
-	Stuff::Vector3D facingVec;
+	glm::vec3 facingVec;
 	facingVec.x = 0.0f;
 	facingVec.y = -1.0f;
 	facingVec.z = 0.0f;
 	Rotate(facingVec, -turretRotation);
 
-	Stuff::Vector3D goalVec;
-	goalVec.Subtract(goal, position);
+	glm::vec3 goalVec;
+	goalVec = goal - position;
 
 	float angle = angle_from(facingVec, goalVec);
 
@@ -992,7 +992,7 @@ float Turret::calcAttackChance (GameObjectPtr target, long* range, long weaponId
 		
 	//-------------------------------------------------------------
 	// First, let's find out what kind of object we're targeting...
-	Stuff::Vector3D targetPosition(0.0f,0.0f,0.0f);
+	glm::vec3 targetPosition(0.0f,0.0f,0.0f);
 	BattleMechPtr mech = nullptr;
 	GroundVehiclePtr vehicle = nullptr;
 	
@@ -1041,7 +1041,7 @@ float Turret::calcAttackChance (GameObjectPtr target, long* range, long weaponId
 	// Target movement...
 	if (target) 
 	{
-		Stuff::Vector3D targetVelocity;
+		glm::vec3 targetVelocity;
 		targetVelocity = target->getVelocity();
 		float targetSpeed = targetVelocity.x * targetVelocity.x + targetVelocity.y * targetVelocity.y;
 		if (targetSpeed == 0.0)
@@ -1198,7 +1198,7 @@ long Turret::updateWeaponFireChunks (long which)
 		}
 		else if (chunk.targetType == 3) 
 		{
-			Stuff::Vector3D targetPoint;
+			glm::vec3 targetPoint;
 			targetPoint.x = (float)chunk.targetCell[1] * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
 			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - ((float)chunk.targetCell[0] * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
 			targetPoint.z = (float)0;
@@ -1215,29 +1215,29 @@ long Turret::updateWeaponFireChunks (long which)
 
 //---------------------------------------------------------------------------
 
-Stuff::Vector3D Turret::getPositionFromHS (long nodeId) 
+glm::vec3 Turret::getPositionFromHS (long nodeId) 
 {
 	//-----------------------------------------------------
 	// Need to get this working with SITE code when done!
-	Stuff::Vector3D nodePos = appearance->getHitNode();
-	if ((nodePos == position) || (nodeId != -1))
+	glm::vec3 nodePos = appearance->getHitNode();
+	if ((mc2::math::closeEnough(nodePos, position)) || (nodeId != -1))
 		nodePos = appearance->getWeaponNodePosition(0);
 
 	return(nodePos);
 }
 
 //---------------------------------------------------------------------------
-Stuff::Vector3D Turret::getLOSPosition (void)
+glm::vec3 Turret::getLOSPosition (void)
 {
-	Stuff::Vector3D nodePos = appearance->getWeaponNodePosition(0);
-	Stuff::Vector3D losPos = position;
+	glm::vec3 nodePos = appearance->getWeaponNodePosition(0);
+	glm::vec3 losPos = position;
 	losPos.z = nodePos.z;
 	return(losPos);
 }
 
 //---------------------------------------------------------------------------
 
-void Turret::printFireWeaponDebugInfo (GameObjectPtr target, Stuff::Vector3D* targetPoint, long chance, long roll, WeaponShotInfo* shotInfo) {
+void Turret::printFireWeaponDebugInfo (GameObjectPtr target, glm::vec3* targetPoint, long chance, long roll, WeaponShotInfo* shotInfo) {
 
 	if (!CombatLog)
 		return;
@@ -1357,7 +1357,7 @@ void Turret::fireWeapon (GameObjectPtr target, long weaponId) {
 	currentWeaponNode = appearance->getWeaponNode(0);
 	if (currentWeaponNode != -1) 
 	{
-		Stuff::Vector3D pos = appearance->getWeaponNodePosition(currentWeaponNode);
+		glm::vec3 pos = appearance->getWeaponNodePosition(currentWeaponNode);
 		appearance->setWeaponNodeUsed(currentWeaponNode);
 		
 		//Check if this is an indirect Fire weapon.
@@ -1643,7 +1643,7 @@ void Turret::fireWeapon (GameObjectPtr target, long weaponId) {
 					// invisible, just hit the target with zero points of damage.
 					float missRadius = target ? 25.0 : 5.0;
 
-					Stuff::Vector3D positionOffset = target->getPosition();
+					glm::vec3 positionOffset = target->getPosition();
 					positionOffset.x += missRadius;
 					positionOffset.z = land->getTerrainElevation(positionOffset);
 
@@ -1734,7 +1734,7 @@ void Turret::fireWeapon (GameObjectPtr target, long weaponId) {
 				// invisible, just hit the target with zero points of damage.
 				float missRadius = target ? 25.0 : 5.0;
 
-				Stuff::Vector3D positionOffset = target->getPosition();
+				glm::vec3 positionOffset = target->getPosition();
 				positionOffset.x += missRadius;
 				positionOffset.z = land->getTerrainElevation(positionOffset);
 
@@ -1818,7 +1818,7 @@ void Turret::fireWeapon (GameObjectPtr target, long weaponId) {
 
 long Turret::handleWeaponFire (long weaponIndex,
 							   GameObjectPtr target,
-							   Stuff::Vector3D* targetPoint,
+							   glm::vec3* targetPoint,
 							   bool hit,
 							   float entryAngle,
 							   long numMissiles,
@@ -1942,7 +1942,7 @@ long Turret::handleWeaponFire (long weaponIndex,
 					//-------------------------------------------------------------------------------------------
 					// If we missed, push the weapon target position away from the target by twice extent Radius
 					float missRadius = target ? 25.0 : 5.0;
-					Stuff::Vector3D positionOffset;
+					glm::vec3 positionOffset;
 					positionOffset.x = missRadius;
 					positionOffset.y = missRadius;
 					positionOffset.z = 0.0;
@@ -1979,7 +1979,7 @@ long Turret::handleWeaponFire (long weaponIndex,
 				//-------------------------------------------------------------------------------------------
 				// If we missed, push the weapon target position away from the target by twice extent Radius
 				float missRadius = target ? 25.0 : 5.0;
-				Stuff::Vector3D positionOffset;
+				glm::vec3 positionOffset;
 				positionOffset.x = missRadius;
 				positionOffset.y = missRadius;
 				positionOffset.z = 0.0;

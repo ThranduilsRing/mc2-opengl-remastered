@@ -113,7 +113,7 @@ typedef struct _TerrainObjectData : public GameObjectData
 	float						fallRate;
 	GameObjectWatchID			powerSupply;
 	short						cellFootprint[4];
-	Stuff::Vector3D				vectorFootprint[4];
+	glm::vec3				vectorFootprint[4];
 	short						numSubAreas0;
 	short						numSubAreas1;
 	short						subAreas0[MAX_SPECIAL_SUB_AREAS];
@@ -137,7 +137,7 @@ class TerrainObject : public GameObject {
 		float						fallRate;
 		GameObjectWatchID			powerSupply;
 		short						cellFootprint[4];
-		Stuff::Vector3D				vectorFootprint[4];
+		glm::vec3				vectorFootprint[4];
 		short						numSubAreas0;
 		short						numSubAreas1;
 		std::unique_ptr<short[]>	subAreas0;		// B7o.8a: owned (MAX_SPECIAL_SUB_AREAS entries), released in destroy()
@@ -207,7 +207,7 @@ class TerrainObject : public GameObject {
 
 		virtual long handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChunk = false);
 
-		virtual void setTerrainPosition (const Stuff::Vector3D& position, const Stuff::Vector2DOf<long>& numbers);
+		virtual void setTerrainPosition (const glm::vec3& position, const Stuff::Vector2DOf<long>& numbers);
 
 		virtual void setDamage (long newDamage);		//Damage encodes which groundtile to use, too.
 
@@ -264,7 +264,7 @@ class TerrainObject : public GameObject {
 			powerSupply = power->getWatchID();
 		}
 
-		virtual void calcCellFootprint (Stuff::Vector3D& pos);
+		virtual void calcCellFootprint (glm::vec3& pos);
 
 		virtual bool calcAdjacentAreaCell (long moveLevel, long areaID, long& adjRow, long& adjCol);
 
@@ -284,13 +284,13 @@ class TerrainObject : public GameObject {
 
 		void CopyTo (TerrainObjectData *data);
 
-		virtual Stuff::Vector3D getPositionFromHS (long weaponType) 
+		virtual glm::vec3 getPositionFromHS (long weaponType) 
 		{
 			//-----------------------------------------
 			// Hotspot for buildings is position plus 
 			// some Z based on OBB to make Effect visible.
 			// If this doesn't work, replace with art defined site.
-			Stuff::Vector3D hsPos = position;
+			glm::vec3 hsPos = position;
 
 			if (appearance)
 				hsPos.z += appearance->getTopZ() * 0.5f;
@@ -298,14 +298,14 @@ class TerrainObject : public GameObject {
 			return(hsPos);
 		}
 
-		virtual Stuff::Vector3D getLOSPosition (void) 
+		virtual glm::vec3 getLOSPosition (void) 
 		{
 			//-----------------------------------------
 			// Hotspot for buildings is position plus 
 			// some Z based on OBB to make Effect visible.
 			//
 			// Use THIS position for LOS Calc!!!
-			Stuff::Vector3D hsPos = position;
+			glm::vec3 hsPos = position;
 
 			if (appearance)
 				hsPos.z += appearance->getTopZ() * 0.5f;

@@ -162,21 +162,21 @@ typedef struct _WeaponBoltData : public GameObjectData
 
 	GameObjectWatchID	targetWID;
 	int32_t				targetHotSpot;
-	Stuff::Vector3D		targetPosition;
+	glm::vec3		targetPosition;
 	float				distanceToTarget;
 	float				halfDistanceToTarget;
 
 	WeaponShotInfo		weaponShot;
 
-	Stuff::Vector3D		laserPosition;
-	Stuff::Vector3D		laserVertices[4];
-	Stuff::Vector3D		laserSide[4];
+	glm::vec3		laserPosition;
+	glm::vec3		laserVertices[4];
+	glm::vec3		laserSide[4];
 
 	int32_t				effectId;
 	bool 				hitTarget;
 
 	float				timeLeft;
-	Stuff::Vector3D		hsPos;
+	glm::vec3		hsPos;
 
 	float				hitLeft;
 	DWORD				mcTextureHandle;
@@ -203,15 +203,15 @@ class WeaponBolt : public GameObject
 			// preserving the target lost by connect()'s position-bolt conversion.
 			// Transient: WeaponBoltData omits it; loaded bolts use stock splash.
 			GameObjectWatchID	aimedTargetWID;
-			Stuff::Vector3D		*targetPosition;
+			glm::vec3		*targetPosition;
 			float				distanceToTarget;
 			float				halfDistanceToTarget;
 			
 			WeaponShotInfo		weaponShot;
 			
-			Stuff::Vector3D		laserPosition;
-			Stuff::Vector3D		laserVertices[4];
-			Stuff::Vector3D		laserSide[4];
+			glm::vec3		laserPosition;
+			glm::vec3		laserVertices[4];
+			glm::vec3		laserSide[4];
 
 			TG_LightPtr			pointLight;
 			DWORD				lightId;
@@ -227,7 +227,7 @@ class WeaponBolt : public GameObject
 			gosFX::EffectPtr		waterMissEffect;
 			
 			float				timeLeft;
-			Stuff::Vector3D		hsPos;
+			glm::vec3		hsPos;
 			
 			float				hitLeft;
 			DWORD				mcTextureHandle;
@@ -236,13 +236,13 @@ class WeaponBolt : public GameObject
 			float				goalHeight;
 
 			// Reserved for velocity-based shader fades; unused by trails.
-			Stuff::Vector3D		prev_position;
+			glm::vec3		prev_position;
 
 			mc2::particles::GpuTrailKind gpu_trail_kind = mc2::particles::GpuTrailKind::None;
 
 			// History survives Batcher::Flush(), which clears staging each frame.
 			static constexpr int kTrailHistoryMax = 6;    // User-tuned ~0.1s trail.
-			Stuff::Vector3D trail_history[kTrailHistoryMax];
+			glm::vec3 trail_history[kTrailHistoryMax];
 			uint8_t trail_head     = 0;   // index of next slot to write
 			uint8_t trail_count    = 0;   // how many slots are populated (clamped to kTrailHistoryMax)
 
@@ -280,7 +280,7 @@ class WeaponBolt : public GameObject
 			hitTarget = false;
 			
 			timeLeft = 0.0;
-			hsPos.Zero();
+			hsPos = glm::vec3(0.0f);
 			
 			hitLeft = 0.0f;
 
@@ -292,9 +292,9 @@ class WeaponBolt : public GameObject
 
 			goalHeight = 0.0f;
 
-			prev_position.Zero();
+			prev_position = glm::vec3(0.0f);
 			gpu_trail_kind = mc2::particles::GpuTrailKind::None;
-			for (int _i = 0; _i < kTrailHistoryMax; ++_i) trail_history[_i].Zero();
+			for (int _i = 0; _i < kTrailHistoryMax; ++_i) (trail_history[_i] = glm::vec3(0.0f));
 			trail_head = 0;
 			trail_count = 0;
 		}
@@ -332,7 +332,7 @@ class WeaponBolt : public GameObject
 		
 		void setOwner (GameObjectPtr who);
 		void setTarget (GameObjectPtr who);
-		void setTargetPosition (Stuff::Vector3D pos);
+		void setTargetPosition (glm::vec3 pos);
 
 		void connect (GameObjectPtr source, GameObjectPtr dest, WeaponShotInfo* shotInfo = NULL, long sourceHS = 0, long targetHS = 0)
 		{
@@ -362,7 +362,7 @@ class WeaponBolt : public GameObject
 				(((WeaponBoltTypePtr)getObjectType())->areaEffectDmg > 0.0f) &&
 				(((WeaponBoltTypePtr)getObjectType())->areaEffectRad > 0.0f))
 			{
-				Stuff::Vector3D targetLoc;
+				glm::vec3 targetLoc;
 				targetLoc = ObjectManager->getByWatchID(targetWID)->getPosition();
 				setTargetPosition(targetLoc);
 				targetWID = 0;
@@ -376,7 +376,7 @@ class WeaponBolt : public GameObject
 				myOwner->appearance->setWeaponNodeRecycle(sourceHS,BASE_NODE_RECYCLE_TIME);
 		}
 		
-		void connect (GameObjectPtr source, Stuff::Vector3D targetLoc, WeaponShotInfo* shotInfo = NULL, long sourceHS = 0)
+		void connect (GameObjectPtr source, glm::vec3 targetLoc, WeaponShotInfo* shotInfo = NULL, long sourceHS = 0)
 		{
 			ownerWID = source->getWatchID();
 			targetWID = 0;

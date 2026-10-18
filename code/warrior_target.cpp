@@ -79,7 +79,7 @@ int32_t TargetPriorityList::calcAction (MechWarriorPtr pilot, GameObjectPtr targ
 	return(TACTICAL_ORDER_NONE);
 }
 
-int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, Stuff::Vector3D location, int32_t contactCriteria, int32_t& action) {
+int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, glm::vec3 location, int32_t contactCriteria, int32_t& action) {
 
 	if (!pilot->getTeam())
 		return(0);
@@ -233,18 +233,18 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, Stuff::Vector3D lo
 					target = pilot->getLastTarget();
 				}
 				if (target) {
-					Stuff::Vector3D disengageCenter;
-					Stuff::Vector3D targetPosition;
+					glm::vec3 disengageCenter;
+					glm::vec3 targetPosition;
 					if (list[i].params[0] == -1)
 						disengageCenter = pilot->getVehicle()->getPosition();
 					else
 						disengageCenter = pilot->getVehicle()->getPosition(); //FOR NOW... should ref point list
 					targetPosition = target->getPosition();
-					Stuff::Vector3D delta;
+					glm::vec3 delta;
 					delta.x = disengageCenter.x - targetPosition.x;
 					delta.y = disengageCenter.y - targetPosition.y;
 					delta.z = 0.0;
-					float distanceToTarget = delta.GetLength() * metersPerWorldUnit;
+					float distanceToTarget = glm::length(delta) * metersPerWorldUnit;
 					if (distanceToTarget < list[i].params[1]) {
 						if (list[i].params[2] && target->isMover()) {
 							if (pilot->getTeam()->isContact(pilot->getVehicle(), (MoverPtr)target, list[i].params[2])) {
@@ -547,7 +547,7 @@ void MechWarrior::setCurrentTarget (GameObjectPtr target) {
 	setLastTarget(target);
 }
 
-GameObjectPtr MechWarrior::getAttackTargetPosition (Stuff::Vector3D& pos) {
+GameObjectPtr MechWarrior::getAttackTargetPosition (glm::vec3& pos) {
 
 	GameObjectPtr object = ObjectManager->getByWatchID(attackOrders.targetWID);
 	if (!object) {
@@ -604,13 +604,13 @@ unsigned long MechWarrior::getSituationGuardObjectPartId (void) {
 }
 
 
-long MechWarrior::calcWeaponsStatus (GameObjectPtr target, int* weaponList, Stuff::Vector3D* targetPoint) {
+long MechWarrior::calcWeaponsStatus (GameObjectPtr target, int* weaponList, glm::vec3* targetPoint) {
 
 	MoverPtr myVehicle = getVehicle();
 	if (!myVehicle->canFireWeapons())
 		return(WEAPONS_STATUS_CANNOT_FIRE);
 
-	Stuff::Vector3D targetPosition;
+	glm::vec3 targetPosition;
 	if (target)
 		targetPosition = target->getPosition();
 	else if (targetPoint)

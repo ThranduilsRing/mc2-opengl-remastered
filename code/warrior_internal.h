@@ -187,6 +187,6 @@ void suspendAuthoredRoute(MechWarrior* warrior);
 long compareTacOrderId (long id1, long id2);
 long orderOrbitObject (GameObjectPtr target);
 long orderUseOrbitRange (long type, float range);
-void drawOverviewArrowWorld( const Stuff::Vector3D& from, const Stuff::Vector3D& to, unsigned long color );
+void drawOverviewArrowWorld( const glm::vec3& from, const glm::vec3& to, unsigned long color );
 
 #endif // WARRIOR_INTERNAL_H

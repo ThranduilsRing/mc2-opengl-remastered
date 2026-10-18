@@ -63,7 +63,7 @@ long MechWarrior::removeQueuedTacOrder (TacticalOrderPtr tacOrder) {
 	tacOrderQueueIndex = 0;
 	tacOrder->data[0] = tacOrderQueue[tacOrderQueueIndex].packedData[0];
 	tacOrder->data[1] = tacOrderQueue[tacOrderQueueIndex].packedData[1];
-	Stuff::Vector3D point = tacOrderQueue[tacOrderQueueIndex].point;
+	glm::vec3 point = tacOrderQueue[tacOrderQueueIndex].point;
 	TacticType tactic = (TacticType)tacOrderQueue[tacOrderQueueIndex].tactic;
 
 	// Head marker deleted on purpose, records and owners shift (B7o.4: the legacy loop's slot-16 read at full capacity is gone).
@@ -113,7 +113,7 @@ long MechWarrior::peekQueuedTacOrder (long index, TacticalOrderPtr tacOrder) {
 
 	tacOrder->data[0] = tacOrderQueue[index].packedData[0];
 	tacOrder->data[1] = tacOrderQueue[index].packedData[1];
-	Stuff::Vector3D point = tacOrderQueue[index].point;
+	glm::vec3 point = tacOrderQueue[index].point;
 	TacticType tactic = (TacticType)tacOrderQueue[index].tactic;
 	long tacOrderId = tacOrderQueue[index].id;
 

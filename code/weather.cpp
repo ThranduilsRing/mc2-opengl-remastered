@@ -279,7 +279,7 @@ void Weather::update (void)
 	
 	if (rainLevel > 0.0f)
 	{
-   		Stuff::Vector3D startPos = eye->getPosition();
+   		glm::vec3 startPos = eye->getPosition();
 		startPos.z += BASE_RAIN_HEIGHT;
    		float currentElevation = land->getTerrainElevation(startPos);
 		MC2_SIM_TRACE_LINE("WX pos=%.9g,%.9g,%.9g elev=%.9g fl=%.9g rl=%.9g", static_cast<double>(startPos.x), static_cast<double>(startPos.y), static_cast<double>(startPos.z), static_cast<double>(currentElevation), static_cast<double>(frameLength), static_cast<double>(rainLevel));
@@ -424,12 +424,12 @@ void Weather::update (void)
 				// Must put the new raindrops into service.
 				for (long i=currentRainDrops;i<newRainDrops;i++)
 				{
-					Stuff::Vector3D positionOffset;
+					glm::vec3 positionOffset;
 					positionOffset.x = randomNumber(BASE_RAIN_RANDOM_POS_FACTOR * 2) - BASE_RAIN_RANDOM_POS_FACTOR;
 					positionOffset.y = randomNumber(BASE_RAIN_RANDOM_POS_FACTOR * 2) - BASE_RAIN_RANDOM_POS_FACTOR;
 					positionOffset.z = randomNumber(BASE_RAIN_RANDOM_HGT_FACTOR * 2) - BASE_RAIN_RANDOM_HGT_FACTOR;
 				
-					rainDrops[i].position.Add(startPos,positionOffset);
+					rainDrops[i].position = startPos + positionOffset;
 					
 					rainDrops[i].length = BASE_RAIN_LENGTH + randomNumber(BASE_RAIN_RANDOM_LEN_FACTOR * 2) - BASE_RAIN_RANDOM_LEN_FACTOR; 
 				}
@@ -446,13 +446,13 @@ void Weather::update (void)
 			
 			if (rainDrops[i].position.z <= currentElevation)
 			{
-				Stuff::Vector3D positionOffset;
+				glm::vec3 positionOffset;
 				//This raindrop has hit the ground.  Recycle him.
 				positionOffset.x = randomNumber(BASE_RAIN_RANDOM_POS_FACTOR * 2) - BASE_RAIN_RANDOM_POS_FACTOR;
 				positionOffset.y = randomNumber(BASE_RAIN_RANDOM_POS_FACTOR * 2) - BASE_RAIN_RANDOM_POS_FACTOR;
 				positionOffset.z = randomNumber(BASE_RAIN_RANDOM_HGT_FACTOR * 2) - BASE_RAIN_RANDOM_HGT_FACTOR;
 			
-				rainDrops[i].position.Add(startPos,positionOffset);
+				rainDrops[i].position = startPos + positionOffset;
 				
 				rainDrops[i].length = BASE_RAIN_LENGTH + randomNumber(BASE_RAIN_RANDOM_LEN_FACTOR * 2) - BASE_RAIN_RANDOM_LEN_FACTOR; 
 			}
@@ -529,7 +529,7 @@ void Weather::render (void)
 				bool onScreen = eye->projectForEffectAdmission(rainDrops[i].position, screen1);
 				if (onScreen)
 				{
-					Stuff::Point3D  botPos = rainDrops[i].position;
+					glm::vec3  botPos = rainDrops[i].position;
 					botPos.z -= rainDrops[i].length;
 
 					// [PROJECTZ:Both id=weather_raindrop_bot]
@@ -578,7 +578,7 @@ void Weather::render (void)
 				bool onScreen = eye->projectForEffectAdmission(rainDrops[i].position,screen1);
 				if (onScreen)
 				{
-					Stuff::Point3D  botPos = rainDrops[i].position;
+					glm::vec3  botPos = rainDrops[i].position;
 					botPos.z -= rainDrops[i].length;
 
 					// [PROJECTZ:Both id=weather_raindrop_bot]

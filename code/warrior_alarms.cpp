@@ -86,7 +86,7 @@ void MechWarrior::clearCurTacOrder (bool updateTacOrder) {
 				radioMessage(message, true);
 			setCurTacOrder(newTacOrder);
 			if (useGoalPlan) {
-				Stuff::Vector3D movePoint = newTacOrder.getWayPoint(0);
+				glm::vec3 movePoint = newTacOrder.getWayPoint(0);
 				if (!newTacOrder.subOrder)
 					switch (newTacOrder.code) {
 						case TACTICAL_ORDER_MOVETO_POINT:

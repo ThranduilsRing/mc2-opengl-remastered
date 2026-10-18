@@ -30,7 +30,7 @@ long WeaponBolt::update (void)
 {
 	ZoneScopedN("GameLogic.Projectile.Update");
 
-	Stuff::Vector3D laserDirection;
+	glm::vec3 laserDirection;
 	
 	bool moveThisFrame = true;
 	if (getFlag(OBJECT_FLAG_JUSTCREATED)) 
@@ -51,17 +51,17 @@ long WeaponBolt::update (void)
 			
 		laserPosition = position;
 		
-		Stuff::Vector3D ownerPosition = laserPosition;
-		Stuff::Point3D actualPosition;
+		glm::vec3 ownerPosition = laserPosition;
+		glm::vec3 actualPosition;
 		mc2ToRender(actualPosition, laserPosition);
 
 		GameObjectPtr target = ObjectManager->getByWatchID(targetWID);
 
-		Stuff::Vector3D targetPos;
-		targetPos.Zero();
+		glm::vec3 targetPos;
+		targetPos = glm::vec3(0.0f);
 		if (target)
 		{
-			Stuff::Vector3D aim;
+			glm::vec3 aim;
 			if (!target->isMech())
 				aim = target->getPositionFromHS(targetHotSpot);
 			else if (targetHotSpot)
@@ -76,14 +76,14 @@ long WeaponBolt::update (void)
 			WeaponBoltTypePtr bt = (WeaponBoltTypePtr)getObjectType();
 			if (directFireStraightEnabled() && !bt->arcEffect && !bt->isBeam)
 			{
-				Stuff::Vector3D toTgt;
-				toTgt.Subtract(aim, ownerPosition);
-				float dist = toTgt.GetLength();
+				glm::vec3 toTgt;
+				toTgt = aim - ownerPosition;
+				float dist = glm::length(toTgt);
 				float spd  = bt->velocity * directFireSpeedMult();
 				float tof  = (spd > 0.01f) ? (dist / spd) : 0.0f;
-				Stuff::Vector3D lead;
-				lead.Multiply(target->getVelocity(), tof);
-				aim.Add(aim, lead);
+				glm::vec3 lead;
+				lead = target->getVelocity() * tof;
+				aim = aim + lead;
 			}
 			setTargetPosition(aim);
 		}
@@ -99,10 +99,10 @@ long WeaponBolt::update (void)
 			return false;
 		}
 					
-		laserDirection.Subtract(targetPos,ownerPosition);
+		laserDirection = targetPos - ownerPosition;
 
-		if (laserDirection.GetLength() != 0.0)
-			laserDirection.Normalize(laserDirection);
+		if (glm::length(laserDirection) != 0.0)
+			laserDirection = glm::normalize(laserDirection);
 
 		laserDirection *= ((WeaponBoltTypePtr)getObjectType())->projLength;
 		
@@ -118,19 +118,19 @@ long WeaponBolt::update (void)
 			
 		if (gosEffect && gosEffect->IsExecuted())
 		{
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D	localToWorld;
-			Stuff::LinearMatrix4D	localResult;
+			glm::mat4 	shapeOrigin;
+			glm::mat4	localToWorld;
+			glm::mat4	localResult;
 			
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 			
 			rotation = -world_angle_between(position, *targetPosition);
 
-			Stuff::UnitQuaternion effectRot;
-			effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
-			localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-			localResult.Multiply(localToWorld,shapeOrigin);
+			glm::quat effectRot;
+			effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,rotation * DEGREES_TO_RADS,0.0f));
+			localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
+			localResult = localToWorld * shapeOrigin;
 			
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 			gosEffect->Start(&info);
@@ -138,31 +138,31 @@ long WeaponBolt::update (void)
 		
 		if (muzzleEffect && muzzleEffect->IsExecuted())
 		{
-			Stuff::Point3D			mPosition;
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D	localToWorld;
-			Stuff::LinearMatrix4D	localResult;
+			glm::vec3			mPosition;
+			glm::mat4 	shapeOrigin;
+			glm::mat4	localToWorld;
+			glm::mat4	localResult;
 			
 			mc2ToRender(mPosition, position);
 			
- 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(mPosition);
+ 			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, mPosition);
 			
-			Stuff::UnitQuaternion effectRot;
+			glm::quat effectRot;
 			if (myOwner)
-				effectRot = Stuff::EulerAngles(0.0f, myOwner->getRotation() * DEGREES_TO_RADS,0.0f);
+				effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, myOwner->getRotation() * DEGREES_TO_RADS,0.0f));
 			else
-				effectRot = Stuff::EulerAngles(0.0f, 0.0f ,0.0f);
+				effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, 0.0f ,0.0f));
 
-			localToWorld.Multiply(gosFX::Effect_Into_Motion,effectRot);
-			localResult.Multiply(localToWorld,shapeOrigin);
+			localToWorld = mc2::math::multiply(gosFX::Effect_Into_Motion, effectRot);
+			localResult = localToWorld * shapeOrigin;
 			
  			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 			muzzleEffect->Start(&info);
 		}
 		
-		Stuff::Vector3D laserVelocity;
-		laserVelocity.Subtract(targetPos,ownerPosition);
+		glm::vec3 laserVelocity;
+		laserVelocity = targetPos - ownerPosition;
 		float distance = laserVelocity.x * laserVelocity.x + laserVelocity.y * laserVelocity.y;
 		distanceToTarget = distance;
 		halfDistanceToTarget = distance / 2.0f;
@@ -200,11 +200,11 @@ long WeaponBolt::update (void)
 		mcTextureManager->addTriangle(0xffffffff,MC2_DRAWALPHA);
 	}
 		
-	Stuff::Vector3D ownerPosition = laserPosition;
+	glm::vec3 ownerPosition = laserPosition;
 	GameObjectPtr target = ObjectManager->getByWatchID(targetWID);
 		
-	Stuff::Vector3D targetPos;
-	targetPos.Zero();
+	glm::vec3 targetPos;
+	targetPos = glm::vec3(0.0f);
 	// PPC de-curve: direct-fire (non-arc, non-beam) bolts do NOT re-track -- they
 	// fly straight to the lead-aim locked at spawn. LRM/arc + beams keep tracking.
 	WeaponBoltTypePtr boltType = (WeaponBoltTypePtr)getObjectType();
@@ -230,7 +230,7 @@ long WeaponBolt::update (void)
 		targetPos = *targetPosition;
 	}
 				
-	Stuff::Vector3D laserVelocity;
+	glm::vec3 laserVelocity;
 	float velMag = ((WeaponBoltTypePtr)getObjectType())->velocity;
 	velMag *= frameLength;
 
@@ -238,7 +238,7 @@ long WeaponBolt::update (void)
 	if (!((WeaponBoltTypePtr)getObjectType())->arcEffect)
 		velMag *= directFireSpeedMult();
 
-	laserVelocity.Subtract(targetPos,ownerPosition);
+	laserVelocity = targetPos - ownerPosition;
 	float distance = laserVelocity.x * laserVelocity.x + laserVelocity.y * laserVelocity.y;
 	
 	bool isArcing = false;
@@ -264,7 +264,7 @@ long WeaponBolt::update (void)
 			float lastDistanceMoved = distanceToTarget - distance;
 #if MC2_SIM_TRACE
 			if (target && target->isMech()) {
-				const Stuff::Vector3D tp = target->getPosition();
+				const glm::vec3 tp = target->getPosition();
 				MC2_SIM_TRACE_LINE("BOLT id=%ld tgt=%ld dist=%.4f last=%.4f tpos=%.4f,%.4f,%.4f mpos=%.4f,%.4f,%.4f", static_cast<long>(getPartId()), static_cast<long>(target->getPartId()), static_cast<double>(distance), static_cast<double>(lastDistanceMoved),
 				                   (double)targetPos.x, (double)targetPos.y, (double)targetPos.z, (double)tp.x, (double)tp.y, (double)tp.z);
 			}
@@ -285,7 +285,7 @@ long WeaponBolt::update (void)
 
 				if (target)
 				{
-					Stuff::Vector3D hotSpot = target->getPositionFromHS(targetHotSpot);
+					glm::vec3 hotSpot = target->getPositionFromHS(targetHotSpot);
 
 					if (target->isMech())
 					{
@@ -298,14 +298,14 @@ long WeaponBolt::update (void)
 
 					if (hitEffect && hitEffect->IsExecuted())
 					{
-						Stuff::Point3D			tPosition;
-						Stuff::LinearMatrix4D 	shapeOrigin;
-						Stuff::LinearMatrix4D	localToWorld;
+						glm::vec3			tPosition;
+						glm::mat4 	shapeOrigin;
+						glm::mat4	localToWorld;
 						
 						mc2ToRender(tPosition, hotSpot);
 						
-						shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-						shapeOrigin.BuildTranslation(tPosition);
+						mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+						mc2::math::buildTranslation(shapeOrigin, tPosition);
 						
 						gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 						hitEffect->Start(&info);
@@ -327,7 +327,7 @@ long WeaponBolt::update (void)
 				}
 				else
 				{
-					Stuff::Vector3D hotSpot = *targetPosition;
+					glm::vec3 hotSpot = *targetPosition;
 					int cellR, cellC;
 					land->worldToCell(hotSpot,cellR, cellC);
 					if (GameMap->getDeepWater(cellR, cellC) || GameMap->getShallowWater(cellR, cellC))
@@ -335,16 +335,16 @@ long WeaponBolt::update (void)
 						traceCombat("impact", "water_miss");
 						if (waterMissEffect && waterMissEffect->IsExecuted())
 						{
-							Stuff::Point3D			tPosition;
-							Stuff::LinearMatrix4D 	shapeOrigin;
-							Stuff::LinearMatrix4D	localToWorld;
+							glm::vec3			tPosition;
+							glm::mat4 	shapeOrigin;
+							glm::mat4	localToWorld;
 							
 							tPosition.x = -hotSpot.x;
 							tPosition.y = Terrain::waterElevation;
 							tPosition.z = hotSpot.y;
 							
-							shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-							shapeOrigin.BuildTranslation(tPosition);
+							mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+							mc2::math::buildTranslation(shapeOrigin, tPosition);
 							
 							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 							waterMissEffect->Start(&info);
@@ -361,14 +361,14 @@ long WeaponBolt::update (void)
 						traceCombat("impact", "miss");
 						if (missEffect && missEffect->IsExecuted())
 						{
-							Stuff::Point3D			tPosition;
-							Stuff::LinearMatrix4D 	shapeOrigin;
-							Stuff::LinearMatrix4D	localToWorld;
+							glm::vec3			tPosition;
+							glm::mat4 	shapeOrigin;
+							glm::mat4	localToWorld;
 							
 							mc2ToRender(tPosition, hotSpot);
 							
-							shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-							shapeOrigin.BuildTranslation(tPosition);
+							mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+							mc2::math::buildTranslation(shapeOrigin, tPosition);
 							
 							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 							missEffect->Start(&info);
@@ -397,16 +397,16 @@ long WeaponBolt::update (void)
 					{
 						if (target->getPosition().z < owner->getPosition().z)
 						{
-							Stuff::Vector3D targetPos = target->getPosition();
-							Stuff::Vector3D ownerPos = owner->getPosition();
+							glm::vec3 targetPos = target->getPosition();
+							glm::vec3 ownerPos = owner->getPosition();
 							
 							float zDistance = ownerPos.z - targetPos.z;
 							targetPos.z = ownerPos.z = 0.0f;
 							
-							Stuff::Vector3D distance;
-							distance.Subtract(ownerPos,targetPos);
+							glm::vec3 distance;
+							distance = ownerPos - targetPos;
 							
-							float yDistance = distance.GetApproximateLength();
+							float yDistance = glm::length(distance);
 							
 							float angle = mc2_atan2(zDistance,yDistance) * RADS_TO_DEGREES;
 							
@@ -527,7 +527,7 @@ long WeaponBolt::update (void)
 
 				if (target)
 				{
-					Stuff::Vector3D hotSpot = target->getPositionFromHS(targetHotSpot);
+					glm::vec3 hotSpot = target->getPositionFromHS(targetHotSpot);
 					if (target->isMech())
 					{
 						if (targetHotSpot)
@@ -538,14 +538,14 @@ long WeaponBolt::update (void)
 
 					if (hitEffect && hitEffect->IsExecuted())
 					{
-						Stuff::Point3D			tPosition;
-						Stuff::LinearMatrix4D 	shapeOrigin;
-						Stuff::LinearMatrix4D	localToWorld;
+						glm::vec3			tPosition;
+						glm::mat4 	shapeOrigin;
+						glm::mat4	localToWorld;
 						
 						mc2ToRender(tPosition, hotSpot);
 						
-						shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-						shapeOrigin.BuildTranslation(tPosition);
+						mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+						mc2::math::buildTranslation(shapeOrigin, tPosition);
 						
 						gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 						hitEffect->Start(&info);
@@ -565,7 +565,7 @@ long WeaponBolt::update (void)
 				}
 				else
 				{
-					Stuff::Vector3D hotSpot = *targetPosition;
+					glm::vec3 hotSpot = *targetPosition;
 					int cellR, cellC;
 					land->worldToCell(hotSpot,cellR, cellC);
 					if (GameMap->getDeepWater(cellR, cellC) || GameMap->getShallowWater(cellR, cellC))
@@ -573,16 +573,16 @@ long WeaponBolt::update (void)
 						traceCombat("impact", "water_miss");
 						if (waterMissEffect && waterMissEffect->IsExecuted())
 						{
-							Stuff::Point3D			tPosition;
-							Stuff::LinearMatrix4D 	shapeOrigin;
-							Stuff::LinearMatrix4D	localToWorld;
+							glm::vec3			tPosition;
+							glm::mat4 	shapeOrigin;
+							glm::mat4	localToWorld;
 							
 							tPosition.x = -hotSpot.x;
 							tPosition.y = Terrain::waterElevation;
 							tPosition.z = hotSpot.y;
 							
-							shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-							shapeOrigin.BuildTranslation(tPosition);
+							mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+							mc2::math::buildTranslation(shapeOrigin, tPosition);
 							
 							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 							waterMissEffect->Start(&info);
@@ -599,14 +599,14 @@ long WeaponBolt::update (void)
 						traceCombat("impact", "miss");
 						if (missEffect && missEffect->IsExecuted())
 						{
-							Stuff::Point3D			tPosition;
-							Stuff::LinearMatrix4D 	shapeOrigin;
-							Stuff::LinearMatrix4D	localToWorld;
+							glm::vec3			tPosition;
+							glm::mat4 	shapeOrigin;
+							glm::mat4	localToWorld;
 							
 							mc2ToRender(tPosition, hotSpot);
 							
-							shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-							shapeOrigin.BuildTranslation(tPosition);
+							mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+							mc2::math::buildTranslation(shapeOrigin, tPosition);
 							
 							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 							missEffect->Start(&info);
@@ -633,16 +633,16 @@ long WeaponBolt::update (void)
 					{
 						if (target->getPosition().z < owner->getPosition().z)
 						{
-							Stuff::Vector3D targetPos = target->getPosition();
-							Stuff::Vector3D ownerPos = owner->getPosition();
+							glm::vec3 targetPos = target->getPosition();
+							glm::vec3 ownerPos = owner->getPosition();
 
 							float zDistance = ownerPos.z - targetPos.z;
 							targetPos.z = ownerPos.z = 0.0f;
 
-							Stuff::Vector3D distance;
-							distance.Subtract(ownerPos,targetPos);
+							glm::vec3 distance;
+							distance = ownerPos - targetPos;
 
-							float yDistance = distance.GetApproximateLength();
+							float yDistance = glm::length(distance);
 
 							float angle = mc2_atan2(zDistance,yDistance) * RADS_TO_DEGREES;
 
@@ -756,8 +756,8 @@ long WeaponBolt::update (void)
 			tmpZ *= frameLength;
 		}
 		
-		if (laserVelocity.GetLength() != 0.0)
-			laserVelocity.Normalize(laserVelocity);
+		if (glm::length(laserVelocity) != 0.0)
+			laserVelocity = glm::normalize(laserVelocity);
 	
 		if (moveThisFrame)
 		{
@@ -768,14 +768,14 @@ long WeaponBolt::update (void)
 		
 		laserPosition += laserVelocity;
 	
-		laserDirection.Negate(laserVelocity);
-		if (laserDirection.GetLength() != 0.0)
-			laserDirection.Normalize(laserDirection);
+		laserDirection = -laserVelocity;
+		if (glm::length(laserDirection) != 0.0)
+			laserDirection = glm::normalize(laserDirection);
 	}
 
    	if (gosEffect && gosEffect->IsExecuted())
    	{
-		Stuff::Point3D actualPosition;
+		glm::vec3 actualPosition;
 		if (((WeaponBoltTypePtr)getObjectType())->isBeam)
 		{
 			actualPosition.x = -(*targetPosition).x;	//Play the beam hitting effect at the hit location
@@ -787,21 +787,21 @@ long WeaponBolt::update (void)
 			mc2ToRender(actualPosition, laserPosition);
 		}
 	
-		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D 	localToWorld;
-		Stuff::LinearMatrix4D 	localResult;
+		glm::mat4 	shapeOrigin;
+		glm::mat4 	localToWorld;
+		glm::mat4 	localResult;
 			
-		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(actualPosition);
+		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, actualPosition);
 		
 		rotation = -world_angle_between(laserPosition, *targetPosition);
 		
-		Stuff::UnitQuaternion effectRot;
-		effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
-		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-		localResult.Multiply(localToWorld,shapeOrigin);
+		glm::quat effectRot;
+		effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,rotation * DEGREES_TO_RADS,0.0f));
+		localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
+		localResult = localToWorld * shapeOrigin;
  
-		Stuff::OBB boundingBox;
+		mc2::math::Obb boundingBox;
    		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
 
 		bool result = gosEffect->Execute(&info);
@@ -814,26 +814,26 @@ long WeaponBolt::update (void)
 	
    	if (muzzleEffect && muzzleEffect->IsExecuted())
    	{
-		Stuff::Point3D mPosition;
+		glm::vec3 mPosition;
 		mc2ToRender(mPosition, position);
 	
-		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D 	localToWorld;
-		Stuff::LinearMatrix4D 	localResult;
+		glm::mat4 	shapeOrigin;
+		glm::mat4 	localToWorld;
+		glm::mat4 	localResult;
 			
-		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(mPosition);
+		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, mPosition);
 
-		Stuff::UnitQuaternion effectRot;
+		glm::quat effectRot;
 		if (myOwner)
-			effectRot = Stuff::EulerAngles(0.0f, myOwner->getRotation() * DEGREES_TO_RADS,0.0f);
+			effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, myOwner->getRotation() * DEGREES_TO_RADS,0.0f));
 		else
-			effectRot = Stuff::EulerAngles(0.0f, 0.0f ,0.0f); 
+			effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, 0.0f ,0.0f)); 
 
-		localToWorld.Multiply(gosFX::Effect_Into_Motion,effectRot);
-		localResult.Multiply(localToWorld,shapeOrigin);
+		localToWorld = mc2::math::multiply(gosFX::Effect_Into_Motion, effectRot);
+		localResult = localToWorld * shapeOrigin;
 			
- 		Stuff::OBB boundingBox;
+ 		mc2::math::Obb boundingBox;
    		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
 
 		bool result = muzzleEffect->Execute(&info);
@@ -851,9 +851,9 @@ long WeaponBolt::update (void)
 		// LaserPosition is front of projectile, laserVertices[0] is top vertex of bulge.
 		// LaserVertices[1] is bottom vertex of bulge, laservertices[2] is back of projectile,
 		// and laservertices[3] is the middle of the bulge.	
-		Stuff::Vector3D lDir(laserDirection);
+		glm::vec3 lDir(laserDirection);
 		lDir *= ((WeaponBoltTypePtr)getObjectType())->bulgeLength;
-		laserVertices[0].Add(laserPosition,lDir);
+		laserVertices[0] = laserPosition + lDir;
 		laserVertices[1] = laserVertices[0];
 		laserVertices[3] = laserVertices[0];
 		
@@ -864,7 +864,7 @@ long WeaponBolt::update (void)
 		laserVertices[0].y += laserDirection.x * ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
 	
 		laserDirection *= ((WeaponBoltTypePtr)getObjectType())->projLength;
-		laserVertices[2].Add(laserPosition,laserDirection);
+		laserVertices[2] = laserPosition + laserDirection;
 	
 		if (((WeaponBoltTypePtr)getObjectType())->lightSource && !pointLight && (lightId != -1))
 		{
@@ -912,7 +912,7 @@ long WeaponBolt::update (void)
 		}
 
 		float beamWiggle = ((WeaponBoltTypePtr)getObjectType())->beamWiggle;
-		Stuff::Vector3D offset(beamWiggle,beamWiggle,beamWiggle);
+		glm::vec3 offset(beamWiggle,beamWiggle,beamWiggle);
 		offset.x = mc2_appearance_rng::randomNumber(offset.x * 2) - offset.x;
 		offset.y = mc2_appearance_rng::randomNumber(offset.y * 2) - offset.y;
 		offset.z = mc2_appearance_rng::randomNumber(offset.z * 2) - offset.z;
@@ -936,14 +936,14 @@ long WeaponBolt::update (void)
 
 	if (pointLight)
 	{
-		Stuff::Point3D ourPosition;
+		glm::vec3 ourPosition;
 		mc2ToRender(ourPosition, laserPosition);
 
 		pointLight->direction = ourPosition;
 
-		Stuff::LinearMatrix4D lightToWorldMatrix;
-		lightToWorldMatrix.BuildTranslation(ourPosition);
-		lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+		glm::mat4 lightToWorldMatrix;
+		mc2::math::buildTranslation(lightToWorldMatrix, ourPosition);
+		mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(0.0f,0.0f,0.0f));
 		pointLight->SetLightToWorld(&lightToWorldMatrix);
 		pointLight->SetPosition(&laserPosition);
 	}
@@ -967,7 +967,7 @@ long WeaponBolt::update (void)
 		
 		if (hitEffect && hitEffect->IsExecuted())
 		{
-			Stuff::Vector3D hotSpot = *targetPosition;
+			glm::vec3 hotSpot = *targetPosition;
 			if (target)
 			{
 				if (!target->isMech())
@@ -983,16 +983,16 @@ long WeaponBolt::update (void)
 				}
 			}
 				
-			Stuff::Point3D tPosition;
+			glm::vec3 tPosition;
 			mc2ToRender(tPosition, hotSpot);
 		
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D 	localToWorld;
+			glm::mat4 	shapeOrigin;
+			glm::mat4 	localToWorld;
 				
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(tPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, tPosition);
 	
-			Stuff::OBB boundingBox;
+			mc2::math::Obb boundingBox;
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 	
 			bool result = hitEffect->Execute(&info);
@@ -1038,7 +1038,7 @@ long WeaponBolt::update (void)
 		
 		if (missEffect && missEffect->IsExecuted())
 		{
-			Stuff::Vector3D hotSpot = *targetPosition;
+			glm::vec3 hotSpot = *targetPosition;
 			if (target)
 			{
 				if (!target->isMech())
@@ -1054,16 +1054,16 @@ long WeaponBolt::update (void)
 				}
 			}
 				
-			Stuff::Point3D tPosition;
+			glm::vec3 tPosition;
 			mc2ToRender(tPosition, hotSpot);
 		
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D 	localToWorld;
+			glm::mat4 	shapeOrigin;
+			glm::mat4 	localToWorld;
 				
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(tPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, tPosition);
 	
-			Stuff::OBB boundingBox;
+			mc2::math::Obb boundingBox;
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 	
 			bool result = missEffect->Execute(&info);
@@ -1109,7 +1109,7 @@ long WeaponBolt::update (void)
 		
 		if (waterMissEffect && waterMissEffect->IsExecuted())
 		{
-			Stuff::Vector3D hotSpot = *targetPosition;
+			glm::vec3 hotSpot = *targetPosition;
 			if (target)
 			{
 				if (!target->isMech())
@@ -1125,18 +1125,18 @@ long WeaponBolt::update (void)
 				}
 			}
 				
-			Stuff::Point3D tPosition;
+			glm::vec3 tPosition;
 			tPosition.x = -hotSpot.x;
 			tPosition.y = Terrain::waterElevation; 
 			tPosition.z = hotSpot.y;
 		
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D 	localToWorld;
+			glm::mat4 	shapeOrigin;
+			glm::mat4 	localToWorld;
 				
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(tPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, tPosition);
 	
-			Stuff::OBB boundingBox;
+			mc2::math::Obb boundingBox;
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 	
 			bool result = waterMissEffect->Execute(&info);
@@ -1188,7 +1188,7 @@ long WeaponBolt::update (void)
 	// own their presentation, so GPU trails are limited to otherwise unrepresented flight.
 	if (gpu_trail_kind != mc2::particles::GpuTrailKind::None && !gosEffect && !hitTarget) {
 		// Trail positions belong to the projectile in render space, not the launcher hotspot.
-		Stuff::Vector3D swapped;
+		glm::vec3 swapped;
 		mc2ToRender(swapped, laserPosition);
 		trail_history[trail_head] = swapped;
 		trail_head = static_cast<uint8_t>((trail_head + 1) % kTrailHistoryMax);

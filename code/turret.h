@@ -126,8 +126,8 @@ struct _TurretData : public TerrainObjectData
 	int32_t                 numFunctionalWeapons;							// takes into account damage, etc.
 
 	float					idleWait;
-	Stuff::Vector3D			idlePosition;
-	Stuff::Vector3D			oldPosition;
+	glm::vec3			idlePosition;
+	glm::vec3			oldPosition;
 	DWORD					parentId;
 	GameObjectWatchID		parent;
 	int32_t					currentWeaponNode;
@@ -154,8 +154,8 @@ class Turret : public TerrainObject {
 		TG_LightPtr				pointLight;
 		DWORD					lightId;
 		float					idleWait;
-		Stuff::Vector3D			idlePosition;
-		Stuff::Vector3D			oldPosition;
+		glm::vec3			idlePosition;
+		glm::vec3			oldPosition;
 		DWORD					parentId;
 		GameObjectWatchID		parent;
 		int32_t					currentWeaponNode;
@@ -255,19 +255,19 @@ class Turret : public TerrainObject {
 
 		void fireWeapon (GameObjectPtr target, long weaponId);
 		
-		virtual Stuff::Vector3D getPositionFromHS (long weaponNum);
+		virtual glm::vec3 getPositionFromHS (long weaponNum);
 
-		virtual float relFacingTo (Stuff::Vector3D goal, long bodyLocation = -1);
+		virtual float relFacingTo (glm::vec3 goal, long bodyLocation = -1);
 		
 		long handleWeaponFire (long weaponIndex,
 							   GameObjectPtr target,
-							   Stuff::Vector3D* targetPoint,
+							   glm::vec3* targetPoint,
 							   bool hit,
 							   float entryAngle,
 							   long numMissiles,
 							   long hitLocation);
 
-		virtual void printFireWeaponDebugInfo (GameObjectPtr target, Stuff::Vector3D* targetPoint, long chance, long roll, WeaponShotInfo* shotInfo);
+		virtual void printFireWeaponDebugInfo (GameObjectPtr target, glm::vec3* targetPoint, long chance, long roll, WeaponShotInfo* shotInfo);
 
 		virtual void printHandleWeaponHitDebugInfo (WeaponShotInfo* shotInfo);
 		
@@ -286,7 +286,7 @@ class Turret : public TerrainObject {
 
 		long updateAnimations (void);
 		
-		virtual Stuff::Vector3D getLOSPosition (void);
+		virtual glm::vec3 getLOSPosition (void);
 		
 		virtual float getDestructLevel (void)
 		{

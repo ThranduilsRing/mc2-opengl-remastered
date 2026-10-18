@@ -36,12 +36,12 @@ inline constexpr float BASE_THUNDER_RANDOM_START = 5.0f;
 //----------------------------------------------------------------------------------
 // Struct Definitions
 struct _RainDrops {
-	Stuff::Point3D		position;
+	glm::vec3		position;
 	float				length;
 	
 	void init (void)
 	{
-		position.Zero();
+		position = glm::vec3(0.0f);
 		length = 0.0f;
 	}
 	
