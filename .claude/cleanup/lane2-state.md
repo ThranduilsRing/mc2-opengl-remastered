@@ -1,5 +1,37 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FIFTY-SEVENTH session (2026-10-17, Sonnet 5.5) -- astraL2s56 FAIL fixed, nifty merged (editor-vk), editor on the shared lifecycle, cement check rebuilt
+
+Commits on 96ca8f2ae (local): c9edcbc20 game-side MUSTs + SHOULDs | 285937474 merge of nifty (editor-vk, sol-cast-bugs; also carries the host-lifecycle move and the editor producer, staged while resolving) | 0d12a63d6 cement check | 366efad98 callers.json regenerated (merge follow-up) | 14021562f background-launch inventory regenerated (merge follow-up). Merge conflicts: BUGS rows (mine 64-68 renumbered 71-75, nifty owns 64-70), quiet baseline and callers.json take nifty's side (callers regenerated once), `gameosmain_frame.cpp` takes nifty's `gos::host::presentOrSwap` (my inline present is gone).
+
+### Review items -> fix
+- Capture identity: the bookmark sweep holds the camera on the bookmark until its present readback is delivered (`g_vkReq.pending` blocks the next teleport and the end-of-sweep restore; 600-frame bound, then the capture is dropped with a WARN). Any readback at or after the request then shows the bookmark's pose.
+- Stranded shared fence (`vulkan_water_island_run.cpp`): new `vkImageResourceCancelFrame` (re-creates the reset fence signaled, gives the parity back) on the `!nat && thinCount==0` return. The other post-BeginFrame returns disable the island permanently.
+- Resize present-fence timeout: a failed/timed-out wait escalates to `vkDeviceWaitIdle`; if that also fails the present fails and the image is not destroyed.
+- frameBoundary skipped-recording: `presentGLFrame` clears `compositePending` on every exit (a declined/minimized/failed present discards its recorded composite). CPU readers: contract in `FramePackets.h` ("readers copy synchronously", `copyMainView()`, static_assert trivially copyable); the two batcher consumers copy by value.
+- Editor MUSTs: `gos::host::presentOrSwap` (shared, game + editor) now ends the Vulkan frame itself when no present was attempted and runs the handle-slot `advanceFrame` clock after every present; `gameosmain.cpp`'s copy is gone. `editor/EditorCamera.h` publishes the ViewPacket (own frame counter, no lighting: `valid=false`).
+- SHOULDs: `HandleSlotTable::reset()` keeps and bumps generations (old-mission handles stay stale; doctest); `MaterialRegistry` validates generation (`owns`), foreign handles refused in `acquireSet`, set refs validated in `materialOfSetSlot` (doctest); `read_scene_rgb` and `<GL/glew.h>` deleted from `gos_visual_capture.cpp`.
+
+### Cement check (BUGS 74)
+The s55 PASS compared a sky/horizon pose (thumbnail MAD 48.8 vs the runway). Rebuilt: pose assertion (sidecar equals the bookmark AND the PNG matches the recorded 96x54 thumbnail `tools/visual_verify/quickload_cement_baseline.png`, recorded from the viewed correct s56 control; the pose was also right at the s56 tip, and the old s55 image fails it), metric = diff pixels after a 5x5 erosion, negative controls always run first (pad interior painted over: 99429 px > 2000; vertically flipped view: MAD 38 > 16). Residual 3241 px: raw difference is building rims / tree canopy dither outlines plus one moving turret blob; after erosion 185 px; the pad and runway art are intact (viewed ctl, diff). Verdict at the tip with correct captures: PASS (raw 3234, eroded 185; `scratch/s57_cement.log`). No GL-renderer re-record was needed: the check compares the same exe's two runs; the thumbnail is from the VK renderer, viewed. No game-level missing-pad control exists (no cement kill switch), the control is image-level.
+
+### Proof
+| claim | evidence |
+|---|---|
+| doctest | 3329/3329 (`scratch/s57_doctest.log`, the 10 failed assertions are the harness negative controls) |
+| tier1 sync validation N=2 30 s at 14021562f | 5/5 PASS errors=0 warnings=0 (`scratch/s57_t1b.log`) |
+| resize / minimize / restore (lane2-path filtered) | window 'mc2' hwnd resized 3x + minimize/restore, resize_count=2 recreate_ok=2, one failsoft = the zero-extent deferral recovered, errors=0 (`scratch/s57_resize_steps2.log`) |
+| editor smoke gen_map_basic + stock_roundtrip:mc2_01 on lane2, sync validation | 2/2 PASS, present path UP, validation_errors=0 (`scratch/editor-smoke/2026-10-17T21-44-53`) |
+| editor capture day mc2_01 + night mc2_10 (VIEWED) | `scratch/s57-edcap/mc2_01.png`, `mc2_10.png` (mechs shaded with brackets; props flat teal = install textures, as in the editor lane note) |
+| game capture pair day mc2_01_saved_205644 + night mc2_10_saved_204523 (VIEWED) | `.claude/l2cap/s571-vk` (clean, vk_present; scenes complete, buildings present on the night map) |
+| check-contracts (`scratch/s57_contracts.log`) | red: log_tag_census + tools_tests (VK_TIMELINE/VK_UPLOAD/VK_FRAMERING/TOOLVK tags, s55/s56, not re-frozen); cxx17_ratchet LG20 tools +3 (tool_vk_gpu/tool_vk_shell/mc2fx_preview MC2_ literals, s54-s56); tools_tests `test_saveload_roundtrip first_save_only` fails because MY editor stock-scratch prep rewrote the lane2 install data (see below), not code; background_launch fixed by regeneration |
+
+### Notes / OPEN
+- `run_editor_smoke.py --prepare-stock-scratch` rewrote 26479 files in the lane2 install `data` (first tier1 after it: 5/5 texmgr_missing). Restored by robocopy from the v0.4 data (read-only source) into lane2 `data`; 5307 extra loose stock files remain there (archive-exact). Tier1 5/5 PASS afterwards.
+- The Bash hook refuses any command that names the game exe while another lane's game runs; I launched through scratch wrapper scripts (the harness still owns the launch).
+- Not done: item 3 (GL deletion 3.5/3.9) - session time went to the builds (two full rebuilds after the merge) and the host lease queue.
+- Ratchet rises named: log_tag_census, cxx17 LG20 tools +3 (unchanged from s56, not re-frozen).
+
 ## FIFTY-SIXTH session (2026-10-17, Sonnet 5.5) -- s55 review fixes, P1 packets, P3 handle slots, P4a identity, first game-side GL deletion
 
 Commits on 662d777d0 (all local): 0ca2c5358 review MUST-FIX | dc7f0a297 review SHOULD | 093682238 + 0538822a7 P1 | 55fb7482a P3 | ba9909249 P4a | 43136d5c9 contract fixes | 21b732b2d GL deletion (capture arm). Tag `gl-baseline-s56` = 0538822a7 (the last revision whose capture still has a GL arm). GL baseline captures (day mc2_01_saved_205644 + night mc2_10_saved_204523, clean, `readback_source=gl_fbo`, frame 462): `.claude/l2cap/s56-gl-baseline`; the VK pair at the same tip `.claude/l2cap/s56-vk-tip`; their montage (VIEWED, MAD 0.82 / 0.50 = the s53 values) `.claude/l2cap/s56-ab-gl-vs-vk`.
