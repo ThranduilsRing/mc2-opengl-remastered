@@ -1,5 +1,37 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FIFTY-EIGHTH session (2026-10-18, Sonnet 5.5) -- s57 review fixed, lane2 data back to stock tgl.fst, game GL opt-out + GL layers deleted
+
+Code tip 7b74f46ae (state commit on top). Commits (local, on 6fa70a098): 0ffba83c6 editor smoke prep clones | 7705170f5 review fixes | 2de28d047 + aabe40b0a + c39d06f8b editor smoke `clean_close` | 131e74601 + 05163cb4e GL opt-out deleted | 3918c1a0c IRenderBackend layer deleted | 1421493f4 dead reader + docs | 7b74f46ae GL ImGui renderer + GL debug deleted.
+
+### Item 0
+lane2 tgl.fst is the stock 34,295,854-byte archive (sha1 7fc8e4841ef2, from A:/Games/test; slim kept as `tgl.fst.slim-2026-06-12`). `run_editor_smoke.py --prepare-stock-scratch` now clones the install runtime (no data, no pdb) into `scratch/stock-runtime/<name>`, carries only the allowlisted stock-derived files (badpilots.csv, object2.pak) and refuses any non-scratch target; the roundtrip baseline records the stock tgl.fst identity. lane2 data is the deploy state (the ~5,300 extra loose stock files only duplicate FST content and stay). Tier1 clean: 5/5, zero SPLATTING FAILED / TEXMGR_MISSING (`scratch/s58_t1a.log`, `scratch/s58_t1b.log`).
+
+### Item 1 (s57 review)
+- Frame counter: `gos::host::advanceFrameCounter()` (game at the old increment site, editor once per frame before the present).
+- Editor teardown: `gos::host::shutdownVulkanBackend()` (islands, present path, VulkanContext) called by `gameosmain` and `EditorGameOS_Shutdown`. New smoke case `clean_close` (flag `-smoke-clean-close`, WM_CLOSE -> ExitInstance) requires the `after shutdownVulkanBackend` trace line and no validation error; the save prompt is skipped under smoke modal suppression. PASS under `MC2_VULKAN_VALIDATION=sync` (`scratch/s58_ed5.log`, `s58_ed6.log`, `s58_ed7.log`).
+- CancelFrame: `RenderCore/FrameFenceCore.h`; a failed fence re-create keeps the old fence, disables the resource (BeginFrame returns a null fence, waits nothing), the water island disables itself. Doctest `test_frame_fence_core.cpp` (4 cases).
+
+### Item 2: game GL deletion (each batch group had its own build, smoke-lite, editor smoke and captures)
+- B1 (131e74601, 05163cb4e; 25 files): `MC2_RENDER_BACKEND=gl` is ignored with a `[RENDER_BACKEND]` line; `RenderBackend`, `renderBackend()`, `backendFromText` deleted (every `== Vulkan` test collapsed: present, postprocess, capture, screenshot slot, GuiRuntime, umbrella, memory report, pass timer); editor GL `-capture` branch and the editor backend env put / playtest backend pick deleted. Makes GL removable: nothing selects GL any more.
+- B2 (3918c1a0c, 1421493f4; 21 files, -1,535 lines): `IRenderBackend.h`, `RenderRegionId.h`, `GLBackend.{h,cpp}`, `gos_postprocess_region.cpp` (fog/SSAO/HZB region interface; `clearGBuffer1` moved to `gos_postprocess_fbo.cpp`), the `s_backendIface` routes, three `render_backend_*_region` debug-state blocks, gates `MC2_RENDER_BACKEND_IFACE`, `MC2_RENDER_BACKEND_REGION_IFACE`, `MC2_POSTPROCESS_BACKEND`. All default-OFF and GL-only.
+- B3 (7b74f46ae; 18 files, -440 net): the GL ImGui renderer (`ImGui_ImplOpenGL3` use in GuiRuntime, `InitEditorOpenGLOnly`, one-shot GL trace/probe), `MC2_VK_IMGUI`, `MC2_GL_DEBUG`, `MC2_GL_DEBUG_FATAL` (GL debug context + callback, run_smoke `--gl-debug-fatal`); the `[MODE]` line lost `gl_debug=`.
+- NOT done (reasons verified in the tree): the GL scene passes (terrain/props/mechs/VFX/post/shadows). The inventory marked gpu_cull / lightgrid / cluster pyramid "safe now"; they are not: gpu_cull is called by the static-prop batcher, and lightgrid / cluster pyramid are modelled in the RenderCore frame-graph islands, resource ids and ~30 tests (renumbering). The VK islands still pull GL-produced feeds (inventory batch 0: move the B-class feeds first). `MC2_VK_SHARED_GBUFFER` stays a kill switch: goldens record it in `capture_env` and ~40 tools set it. The SDL GL context (3.9 proper) was not started.
+
+### Proof
+| claim | evidence |
+|---|---|
+| doctest at the tip | 3336/3336 test cases, 0 failed (10 failed assertions = harness negative controls), harness run EXIT 0 (`scratch/s58_doctest.log`) |
+| tier1 sync validation N=2 30 s at the tip | 5/5 PASS errors=0 warnings=0, zero TEXMGR_MISSING (`scratch/s58_t1b.log`); after item 1: `scratch/s58_t1a.log` (7705170f5) 5/5 errors=0 |
+| smoke-lite sync validation | B1 (`s58_lite1.log`), B2 (`s58_lite2.log`), B3 (`s58_lite3.log`) all 2/2 errors=0 |
+| editor smoke sync validation (gen_map_basic, stock_roundtrip:mc2_01, clean_close) | PASS 3/3 at B2 (`s58_ed6.log`) and B3 (`s58_ed7.log`) |
+| captures day mc2_01_saved_205644 + night mc2_10_saved_204523, VIEWED | `.claude/l2cap/s58-b1` (viewed; MAD 0.010/0.003 vs the viewed s57 pair), `s58-b2` (night viewed; MAD 0.0002/0.0 vs b1), `s58-b3` (MAD 0.0001/0.0 vs b2); editor captures VIEWED `scratch/s58-edcap/mc2_01.png`, `mc2_10.png` (ImGui panels through Vulkan, brackets, props) |
+
+### Ratchets / OPEN
+- No ratchet rises. Gate rows deleted with `tools/gate_gen.py --write` (967 -> 960); the seed file was edited by hand (round-trip checked). `log_tag_baseline.json`, callers.json and the inventory were not regenerated.
+- Stale: the comment in `render_backend_select.h` still names the deleted `MC2_RENDER_BACKEND_IFACE` (the header is included everywhere; fix with the next full rebuild).
+- BUGS rows 77-80 (80 partly open: cursor re-draw above ImGui pages under Vulkan).
+
 ## FIFTY-SEVENTH session (2026-10-17, Sonnet 5.5) -- astraL2s56 FAIL fixed, nifty merged (editor-vk), editor on the shared lifecycle, cement check rebuilt
 
 Commits on 96ca8f2ae (local): c9edcbc20 game-side MUSTs + SHOULDs | 285937474 merge of nifty (editor-vk, sol-cast-bugs; also carries the host-lifecycle move and the editor producer, staged while resolving) | 0d12a63d6 cement check | 366efad98 callers.json regenerated (merge follow-up) | 14021562f background-launch inventory regenerated (merge follow-up). Merge conflicts: BUGS rows (mine 64-68 renumbered 71-75, nifty owns 64-70), quiet baseline and callers.json take nifty's side (callers regenerated once), `gameosmain_frame.cpp` takes nifty's `gos::host::presentOrSwap` (my inline present is gone).
