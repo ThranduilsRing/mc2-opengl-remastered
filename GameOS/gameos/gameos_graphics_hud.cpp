@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
 #include "mc2fmt.h"
+#include "mc2_diag_verbose.h"
 #include "utils/mc2log.h"
 
 
@@ -762,7 +763,7 @@ void gosRenderer::flushHUDBatch()
     if (nativeHudQueued && nativeHudCanSkipGl) {
         static unsigned s_nativeHudSkipFrames = 0;
         ++s_nativeHudSkipFrames;
-        if (s_nativeHudSkipFrames <= 10 || (s_nativeHudSkipFrames % 120) == 0) {
+        if (mc2DiagVerbose() && (s_nativeHudSkipFrames <= 10 || (s_nativeHudSkipFrames % 120) == 0)) {
             mc2::fmt::print_err("[VK_HUD_SKIP v1] frame={:d} draws={:d} reason=\"native_full_coverage\"\n", mc2::fmt::as_u32(s_nativeHudSkipFrames), mc2::fmt::as_u32((unsigned)hudBatch_.size()));
         }
         hudFlushed_ = true;

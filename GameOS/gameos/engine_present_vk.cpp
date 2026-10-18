@@ -31,6 +31,7 @@
 #endif
 
 #include "vulkan_context.h"
+#include "mc2_diag_verbose.h"
 #include "vk_image_resource.h"
 // VK-RUNG8-ITEM8: the present tail no longer uses gl_interop_view (GL view /
 // copy-1 / GL->VK handoff all deleted).
@@ -2079,7 +2080,7 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
         }
         s.slotCount = mc2::gate::get<"MC2_VK_FRAMES_IN_FLIGHT">() >= 2 ? 2u : 1u;
         ctx.setFramesInFlight(s.slotCount);
-        plog("[VK_FRAMES_IN_FLIGHT v1] frames_in_flight=%u (MC2_VK_FRAMES_IN_FLIGHT=1 is the kill switch).", s.slotCount);
+        if (mc2DiagVerbose()) plog("[VK_FRAMES_IN_FLIGHT v1] frames_in_flight=%u (MC2_VK_FRAMES_IN_FLIGHT=1 is the kill switch).", s.slotCount);
         // VK-PRESENT-SINGLESUBMIT-1: the composite's own command buffer (recorded at
         // composite time, submitted together with the tail cbuf in ONE submit).
         VkCommandBufferAllocateInfo cai2{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};

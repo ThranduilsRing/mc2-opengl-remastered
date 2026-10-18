@@ -7,6 +7,7 @@
 #include <vk_mem_alloc.h>
 
 #include "vulkan_context.h"
+#include "mc2_diag_verbose.h"
 
 namespace mc2vk {
 
@@ -35,8 +36,7 @@ bool FrameRing::grow(VulkanContext& ctx, VkDeviceSize perSlot) {
     mapped_ = static_cast<uint8_t*>(info.pMappedData);
     core_.setCapacity(perSlot);
     ++growths_;
-    std::fprintf(stderr, "[VK_FRAMERING v1] capacity=%llu bytes per slot (growth %u).\n", static_cast<unsigned long long>(perSlot), growths_);
-    std::fflush(stderr);
+    MC2_DIAGFE(stderr, "[VK_FRAMERING v1] capacity=%llu bytes per slot (growth %u).\n", static_cast<unsigned long long>(perSlot), growths_);
     return true;
 }
 

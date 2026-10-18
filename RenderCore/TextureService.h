@@ -70,11 +70,11 @@ public:
     // The handle of `key`: a new one bound to `node`, or the existing one (its user count rises; `node` is ignored, the first residency stays).
     TextureHandle acquire(const TextureKey& key, uint32_t node) {
         std::lock_guard<std::mutex> lk(mu_);
-        auto it = byKey_.find(key);
-        if (it != byKey_.end()) {
-            Entry& e = entries_[it->second];
+        if (auto it = byKey_.find(key); it != byKey_.end()) {
+            const auto& [k, idx] = *it;
+            Entry& e = entries_[idx];
             ++e.users;
-            return TextureHandle::make(it->second, e.generation);
+            return TextureHandle::make(idx, e.generation);
         }
         uint32_t idx;
         if (!free_.empty()) { idx = free_.back(); free_.pop_back(); }
@@ -93,8 +93,10 @@ public:
     // One user of the node's texture let go (mirrors the manager's reference count). The entry stays until the node dies.
     void dropRef(uint32_t node) {
         std::lock_guard<std::mutex> lk(mu_);
-        auto it = byNode_.find(node);
-        if (it != byNode_.end() && entries_[it->second].users > 0) --entries_[it->second].users;
+        if (auto it = byNode_.find(node); it != byNode_.end()) {
+            const auto& [n, idx] = *it;
+            if (entries_[idx].users > 0) --entries_[idx].users;
+        }
     }
 
     // The node died: the entry goes, its generation bumps (a held handle is stale), its index is reusable.
@@ -102,7 +104,8 @@ public:
         std::lock_guard<std::mutex> lk(mu_);
         auto it = byNode_.find(node);
         if (it == byNode_.end()) return;
-        retire(it->second);
+        const auto& [n, idx] = *it;
+        retire(idx);
         byNode_.erase(it);
     }
 
@@ -127,7 +130,9 @@ public:
     TextureHandle handleOfNode(uint32_t node) const {
         std::lock_guard<std::mutex> lk(mu_);
         auto it = byNode_.find(node);
-        return it == byNode_.end() ? TextureHandle::invalid() : TextureHandle::make(it->second, entries_[it->second].generation);
+        if (it == byNode_.end()) return TextureHandle::invalid();
+        const auto& [n, idx] = *it;
+        return TextureHandle::make(idx, entries_[idx].generation);
     }
     uint32_t contentVersion(TextureHandle h) const {
         std::lock_guard<std::mutex> lk(mu_);

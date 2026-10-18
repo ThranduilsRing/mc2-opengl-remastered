@@ -23,6 +23,7 @@
 #endif
 
 #include "vulkan_context.h"
+#include "mc2_diag_verbose.h"
 #include "diagnostic_trace.h"
 #include "vk_device_profile.h"
 #include "vk_validation_line.h"
@@ -607,7 +608,7 @@ void VulkanContext::endFrame() {
 #endif
     tracker_.endFrame();
     deferred_.sealFrame(tracker_.frameTicket(tracker_.frameNo()));
-    if (tracker_.frameNo() % 600 == 0) {
+    if (tracker_.frameNo() % 600 == 0 && mc2DiagVerbose()) {   // the periodic summaries are MC2_DIAG_VERBOSE lines (a default build stays quiet)
         poll();
 #ifdef MC2_VULKAN_ISLAND
         if (uploads_.queued() != 0)

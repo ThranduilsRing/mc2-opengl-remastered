@@ -7,6 +7,7 @@
 
 add_library(renderworld STATIC
     RenderWorld.cpp
+    mech_handles.cpp
     legacy/static_prop_backend.cpp
 )
 

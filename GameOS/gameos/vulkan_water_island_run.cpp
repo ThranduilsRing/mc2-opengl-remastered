@@ -3,6 +3,7 @@
 #include "vulkan_water_island_internal.h"
 #include "vk_render_pass_timer.h"
 #include "mc2fmt.h"
+#include "mc2_diag_verbose.h"
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -269,6 +270,7 @@ extern "C" int mc2_vk_water_island_run(
             }
             const mc2vk::ProducerParity pr = s->native->compare(par, thinRecords, thinCount, glLight.empty() ? nullptr : glLight.data(), snap.vertexOffset,
                                                                 glLight.empty() ? 0u : snap.windowCount);
+            if (mc2DiagVerbose()) {
             mc2::fmt::print_err("[VK_PRODUCER_PARITY v1] frame={:d} water gl_count={:d} vk_visible={:d} compared={:d} same={:d} differ={:d} only_gl={:d} only_vk={:d} truncated={:d} lighting compared={:d} light_mismatch={:d} fog_mismatch={:d} max_channel_delta={:d}\n",
                                 mc2::fmt::as_u64(s->nativeFrames), mc2::fmt::as_u32(pr.glCount), mc2::fmt::as_u32(pr.vkVisible), mc2::fmt::as_u32(pr.vkCompared),
                                 mc2::fmt::as_u32(pr.same), mc2::fmt::as_u32(pr.differ), mc2::fmt::as_u32(pr.onlyGl), mc2::fmt::as_u32(pr.onlyVk), mc2::fmt::as_i32(pr.truncated ? 1 : 0),
@@ -282,6 +284,7 @@ extern "C" int mc2_vk_water_island_run(
                     mc2::fmt::as_u32(pr.firstDiffVk[6]), mc2::fmt::as_u32(pr.firstDiffVk[7]), mc2::fmt::as_u32(pr.firstDiffVk[8]), mc2::fmt::as_u32(pr.firstDiffVk[9]), mc2::fmt::as_u32(pr.firstDiffVk[10]), mc2::fmt::as_u32(pr.firstDiffVk[11]));
             }
             std::fflush(stderr);
+            }
             g_health.thinRecords = pr.vkVisible;
         }
         if (nat) ++s->nativeFrames;

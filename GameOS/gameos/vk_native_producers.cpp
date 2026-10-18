@@ -7,6 +7,7 @@
 #include "vk_island_util.h"
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
+#include "mc2_diag_verbose.h"
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -257,7 +258,7 @@ uint32_t NativeProducers::selfTestLighting() {
             maxDelta = std::max<uint32_t>(maxDelta, static_cast<uint32_t>(std::abs(static_cast<int>((ef >> sh) & 255u) - static_cast<int>((got[i].fogRGB >> sh) & 255u))));
         }
     }
-    plog("[VK_PRODUCER_SELFTEST v1] lighting n=%u lights=%u mismatches=%u max_channel_delta=%u (Slang compute vs C++ transcription of quad.cpp)", N, NL, bad, maxDelta);
+    if (mc2DiagVerbose()) plog("[VK_PRODUCER_SELFTEST v1] lighting n=%u lights=%u mismatches=%u max_channel_delta=%u (Slang compute vs C++ transcription of quad.cpp)", N, NL, bad, maxDelta);
     return bad;
 }
 

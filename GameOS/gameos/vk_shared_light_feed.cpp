@@ -12,6 +12,7 @@
 #include <tracy/Tracy.hpp>
 
 #include "vulkan_context.h"
+#include "mc2_diag_verbose.h"
 
 bool mc2vkSharedLightFeedEnabled()
 {
@@ -57,13 +58,13 @@ FrameAlloc SharedLightFeed::acquire(VulkanContext& ctx, const void* cpuData, uin
     bytes_ = (VkDeviceSize)cpuBytes;
     ++copies_;
 
-    if (copies_ == 1) {
+    if (copies_ == 1 && mc2DiagVerbose()) {
         std::fprintf(stderr,
             "[VK_LIGHTFEED_DEDUP v1] armed: shared per-frame LightsData span in the frame ring (%llu B) -- killswitch MC2_VK_LIGHTFEED_DEDUP=0\n",
             (unsigned long long)cpuBytes);
         std::fflush(stderr);
     }
-    if (copies_ == 600) {   // ~10 s receipt: hits ~= copies when both islands share
+    if (copies_ == 600 && mc2DiagVerbose()) {   // ~10 s receipt: hits ~= copies when both islands share
         std::fprintf(stderr,
             "[VK_LIGHTFEED_DEDUP v1] 600 copies: sharedHits=%lu fallbacks=%lu bytes/frame=%llu\n",
             hits_, fallbacks_, (unsigned long long)bytes_);

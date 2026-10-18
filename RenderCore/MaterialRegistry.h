@@ -59,8 +59,10 @@ class MaterialRegistry {
 public:
     // The handle of `key`: new (a row index of the MaterialGpu table) or the existing one.
     MaterialHandle acquire(const MaterialKey& key) {
-        auto it = byKey_.find(key);
-        if (it != byKey_.end()) return MaterialHandle::make(it->second, 1u);
+        if (auto it = byKey_.find(key); it != byKey_.end()) {
+            const auto& [k, idx] = *it;
+            return MaterialHandle::make(idx, 1u);
+        }
         const uint32_t idx = static_cast<uint32_t>(keys_.size());
         keys_.push_back(key);
         byKey_.emplace(key, idx);
@@ -70,8 +72,10 @@ public:
 
     // The set of these materials (one per mesh material slot, in slot order): an existing set with the same handles, or a new contiguous range.
     MaterialSetRef acquireSet(const std::vector<MaterialHandle>& slots) {
-        auto it = bySet_.find(slots);
-        if (it != bySet_.end()) return it->second;
+        if (auto it = bySet_.find(slots); it != bySet_.end()) {
+            const auto& [k, ref] = *it;
+            return ref;
+        }
         MaterialSetRef r;
         r.base = static_cast<uint32_t>(setSlots_.size());
         r.count = static_cast<uint32_t>(slots.size());
