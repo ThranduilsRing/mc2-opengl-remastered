@@ -188,11 +188,11 @@ void main(void)
     PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
     // WATER-SHORE-EDGE-1 / WATER-SHORE-MASK-1: shared with the GL FS.
     if (hasField) {
-        // SHORE-FIELD-1: the coast is the field's zero crossing as a crisp ~2 px antialiased edge.
+        // SHORE-FIELD-1: the coast is the field's zero crossing as a crisp ~3 px antialiased edge.
         // The old depth feather (smoothstep over featherWu of DEPTH) spread hundreds of wu wide on
         // gentle shelves (mc2_17) and let coarse terrain decide the visible line elsewhere. Shallow
         // water keeps some translucency through a 0.55..1 depth softness floor.
-        float edgeAA = smoothstep(0.0, max(2.0 * fieldThickFw, 1e-3), fieldThick);
+        float edgeAA = smoothstep(0.0, max(3.0 * fieldThickFw, 1e-3), fieldThick);
         shore = edgeAA * mix(0.55, 1.0, smoothstep(0.0, max(F.f4.w, 0.5), fieldThick));
     } else {
         shore = wse_shoreFeather(shore, int(F.f4.x + 0.5), int(F.f4.y + 0.5), int(F.f4.z + 0.5),

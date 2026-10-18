@@ -74,7 +74,8 @@ DEFAULT_BAND_WU = 320.0        # coastal band: SDF smoothing + the shore depth r
 DEFAULT_DEPTH_SIGMA_WU = 96.0  # smoothing of the real depth used beyond the band
 DEFAULT_SHORE_SLOPE = 0.02     # water floor ramp: minimum depth (wu) per wu inside the smoothed edge
 LAND_FLOOR_SLOPE = 0.25        # land floor ramp: minimum height (wu) above water per wu inland
-EDGE_BIAS_WU = 32.0            # smoothed edge moved inland, covers the coarse staircase's inner corners
+EDGE_BIAS_WU = 12.0            # smoothed edge moved inland: covers most of the colormap's teal staircase corners;
+                               # more pushes the edge into coarse terrain above the lifted plane (its stair shows)
 
 
 def load_source(pak: Path, visual_height: Path | None, source: str = "coarse") -> tuple[np.ndarray, float, float]:
