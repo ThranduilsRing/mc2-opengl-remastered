@@ -13,6 +13,7 @@
 #include "RenderWorld.h"
 #include "mc2_diag_verbose.h"
 #include "Gates/gate.h"
+#include "../RenderCore/HandleSlots.h"
 
 // C1 fix: this TU MUST NOT include gos_static_prop_batcher.h (it
 // transitively pulls GL + Stuff). All translation between
@@ -107,9 +108,11 @@ RenderWorld::GameplaySelectionDebugState         s_lastGameplayPick;
 // from the registry record table (not adapter delta) so the banner
 // stays honest even if teardown paths skip the adapter.
 static std::atomic<uint64_t> s_mechs_alive_rw{0};
-// Dense mech slot index: incremented by registerMech, reset by clearAllMechRecords.
-// Mech handle indices are kMechHandleBase + s_nextMechSlot at allocation time.
-static std::atomic<uint32_t> s_nextMechSlot{0};
+// Mech handle slots (P3): allocated by registerMech, retired by destroyMech and parked until the GPU frame that may still name the index completed
+// (advanceFrame), reset by clearAllMechRecords. Mech handle indices are kMechHandleBase + slot. Guarded by s_objectRecordsMutex.
+static RenderCore::HandleSlotTable s_mechSlots;
+static std::atomic<uint64_t> s_currentFrame{0};     // the frame being recorded (the engine's frame counter)
+static std::atomic<uint64_t> s_completedFrame{0};   // the newest frame whose GPU work completed
 
 // kMechHandleBase: handle index base for mechs in the unified s_objectRecords table.
 // Must exceed the maximum static-prop recipe index across all tier1 missions.
@@ -495,6 +498,27 @@ void RunMechObjectIdSelfTest() {
             MC2_DIAGFE(stderr,
                 "[MECH_OBJECT_ID_SELFTEST v1] result=FAIL step=4 reason=generation_not_bumped_%u\n",
                 (unsigned)rec.generation);
+            return;
+        }
+    }
+
+    // P3 recycle: a slot retired in frame F is not handed out again until F completed; the stale handle stays refused after the reuse.
+    {
+        RenderWorld::advanceFrame(1000u, 998u);
+        RenderCore::RenderObjectHandle a = RenderWorld::registerMech(desc);
+        RenderWorld::destroyMech(a);                               // retired in frame 1000, which has not completed
+        RenderCore::RenderObjectHandle b = RenderWorld::registerMech(desc);
+        const bool earlyReuse = a.isValid() && b.isValid() && b.index() == a.index();
+        RenderWorld::advanceFrame(1001u, 1000u);                   // frame 1000 completed
+        RenderCore::RenderObjectHandle c = RenderWorld::registerMech(desc);
+        const bool lateReuse = c.isValid() && c.index() == a.index();
+        const bool staleRefused = c.isValid() && c.generation() != a.generation();
+        RenderWorld::destroyMech(b);
+        RenderWorld::destroyMech(c);
+        if (earlyReuse || !lateReuse || !staleRefused) {
+            MC2_DIAGFE(stderr,
+                "[MECH_OBJECT_ID_SELFTEST v1] result=FAIL step=5 reason=recycle early=%d late=%d stale_refused=%d\n",
+                earlyReuse ? 1 : 0, lateReuse ? 1 : 0, staleRefused ? 1 : 0);
             return;
         }
     }
@@ -983,25 +1007,31 @@ GameplaySelectionDebugState getLastGameplayPick() {
     return s_lastGameplayPick;  // copy out; struct is tiny
 }
 
+void advanceFrame(uint64_t frame, uint64_t completedFrame) {
+    s_currentFrame.store(frame, std::memory_order_relaxed);
+    s_completedFrame.store(completedFrame, std::memory_order_relaxed);
+}
+
 RenderCore::RenderObjectHandle registerMech(RenderMechDesc desc) {
-    // Allocate a dense slot above kMechHandleBase to avoid collision with
-    // static-prop recipe indices (max known: 2641 at tier1).
-    const uint32_t slot  = s_nextMechSlot.fetch_add(1, std::memory_order_relaxed);
-    const uint32_t idx   = kMechHandleBase + slot;
-    // 20-bit handle index clamp check.
-    if (idx >= 0x000FFFFFu) {
-        MC2_DIAGFE(stderr,
-            "[RENDER_WORLD v1] WARN: event=mech_register_fail reason=index_overflow slot=%u\n",
-            (unsigned)slot);
-        return RenderCore::RenderObjectHandle::invalid();
-    }
-    // Generation 1 on first allocation (generation 0 == invalid()).
-    const uint16_t gen = 1u;
-    RenderCore::RenderObjectHandle h = RenderCore::RenderObjectHandle::make(idx, gen);
+    // A slot above kMechHandleBase (static-prop recipe indices stay below it): a fresh one, or one retired earlier whose GPU frame completed.
+    RenderCore::RenderObjectHandle h = RenderCore::RenderObjectHandle::invalid();
+    uint32_t idx = 0;
+    uint16_t gen = 0;
 
     // Populate the unified record table with kind=Mech.
     {
         std::lock_guard<std::mutex> lk(s_objectRecordsMutex);
+        if (!s_mechSlots.initialized()) s_mechSlots.init(kTerrainHandleBase - kMechHandleBase);   // first use
+        const RenderCore::HandleSlotTable::Alloc a = s_mechSlots.alloc(s_completedFrame.load(std::memory_order_relaxed));
+        if (!a.ok) {
+            MC2_DIAGFE(stderr,
+                "[RENDER_WORLD v1] WARN: event=mech_register_fail reason=range_exhausted live=%u\n",
+                (unsigned)s_mechSlots.liveCount());
+            return RenderCore::RenderObjectHandle::invalid();
+        }
+        idx = kMechHandleBase + a.slot;
+        gen = static_cast<uint16_t>(a.generation);
+        h   = RenderCore::RenderObjectHandle::make(idx, a.generation);
         if (idx >= s_objectRecords.size()) {
             const size_t want = static_cast<size_t>(idx) + 1;
             const size_t cap  = (want * 3) / 2 + 16;
@@ -1051,8 +1081,11 @@ void destroyMech(RenderCore::RenderObjectHandle h) {
         if (h.generation() != static_cast<uint32_t>(rec.generation)) {
             return;
         }
+        // The slot parks until the frame being recorded has completed on the GPU; the record mirrors the table's bumped generation.
+        const uint32_t slot = idx - kMechHandleBase;
+        if (!s_mechSlots.release(slot, h.generation(), s_currentFrame.load(std::memory_order_relaxed))) return;
         rec.flags &= static_cast<uint16_t>(~kRenderObjectFlagAlive);
-        rec.generation = static_cast<uint16_t>(rec.generation + 1u);
+        rec.generation = static_cast<uint16_t>(s_mechSlots.generationOf(slot));
     }
     s_mechs_alive_rw.fetch_sub(1, std::memory_order_relaxed);
 
@@ -1076,8 +1109,11 @@ void clearAllMechRecords() {
     if (cleared > 0) {
         s_mechs_alive_rw.fetch_sub(cleared, std::memory_order_relaxed);
     }
-    // Reset the dense slot counter so the next beginMission starts fresh.
-    s_nextMechSlot.store(0, std::memory_order_relaxed);
+    // A mission boundary: every slot free again (no GPU work of the old mission may name these indices), generations back to 1.
+    {
+        std::lock_guard<std::mutex> lk(s_objectRecordsMutex);
+        s_mechSlots.reset();
+    }
 }
 
 uint64_t getMechsAliveCount() {

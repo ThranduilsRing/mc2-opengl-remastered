@@ -176,6 +176,14 @@ public:
     void beginFrame();
     void endFrame();
     void frameBoundary() { endFrame(); beginFrame(); }
+    // The newest sealed frame whose graphics work completed (0 when none within the tracker's ring). Frames complete in order, so everything older is done too.
+    uint64_t completedFrame() const {
+        poll();
+        const uint64_t open = tracker_.frameNo();
+        for (uint64_t g = open > 0 ? open - 1 : 0; g > 0 && open - g < CompletionTracker::kFrameRing; --g)
+            if (tracker_.isComplete(tracker_.frameTicket(g))) return g;
+        return 0;
+    }
 
 #ifdef MC2_VULKAN_ISLAND
     // Per-frame transient memory (vertex data, dynamic-offset uniform and storage rows, copy sources): host-visible, written through the returned pointer,

@@ -1301,6 +1301,18 @@ int main(int argc, char** argv)
         gos_frame_pass_stats::FrameEnd((unsigned long)g_mc2FrameCounter);
 
     frameSwapWindow(win);
+    {
+        // The render-object handle slots reuse an index only after the frame that may name it completed (the present just closed this frame).
+        uint64_t frameNo = g_mc2FrameCounter, doneFrame = frameNo > 2 ? frameNo - 2 : 0;
+#ifdef MC2_VULKAN
+        if (mc2vk::engineVulkanContextValid()) {
+            const mc2vk::VulkanContext& vkctx = mc2vk::getOrCreateEngineVulkanContext();
+            frameNo = vkctx.tracker().frameNo();
+            doneFrame = vkctx.completedFrame();
+        }
+#endif
+        RenderWorld::advanceFrame(frameNo, doneFrame);
+    }
     frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
 
         {

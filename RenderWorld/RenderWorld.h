@@ -406,6 +406,11 @@ void destroyMech(RenderCore::RenderObjectHandle h);
 // bumps generation, and decrements s_mechs_alive_rw for each.
 void clearAllMechRecords();
 
+// P3: the engine's frame clock, once per frame after the present. `frame` is the frame being opened, `completedFrame` the newest frame whose GPU work has
+// finished (the VK completion tracker's answer; frame - 2 on a run without it). A retired mech handle slot is reused only once the frame it was retired in
+// is at or below completedFrame, so an index never names two objects while the GPU can still read the first.
+void advanceFrame(uint64_t frame, uint64_t completedFrame);
+
 // M2.6: read-only accessor for the engine-side live-mech counter
 // (sourced from MechRenderAdapter via registerMech/destroyMech). Used
 // by RunMechPickSelfTest in GameAdapters/MechRenderAdapter.cpp to
