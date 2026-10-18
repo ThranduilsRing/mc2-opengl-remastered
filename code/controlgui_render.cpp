@@ -9,7 +9,7 @@
 // on the rim.
 bool g_sensorViewOn = false;   // default OFF (toggle with F7)
 
-static void drawSensorRing( Camera* eye, const Stuff::Vector3D& center, float radius,
+static void drawSensorRing( Camera* eye, const glm::vec3& center, float radius,
                             unsigned long rgb, unsigned long aBits )
 {
 	if ( radius < 1.0f ) return;
@@ -23,7 +23,7 @@ static void drawSensorRing( Camera* eye, const Stuff::Vector3D& center, float ra
 	for ( int i = 0; i <= N; i++ )
 	{
 		float a = ( 2.0f * 3.14159265f ) * (float)( i % N ) / (float)N;
-		Stuff::Vector3D p;
+		glm::vec3 p;
 		p.x = center.x + cosf( a ) * radius;
 		p.y = center.y + sinf( a ) * radius;
 		p.z = land ? land->getTerrainElevation( p ) : 0.0f;
@@ -73,7 +73,7 @@ static void drawSensorRing( Camera* eye, const Stuff::Vector3D& center, float ra
 }
 
 // Tiny radio-tower glyph: A-frame mast + crossbar, apex up, base on the spot.
-static void drawTowerGlyph( Camera* eye, const Stuff::Vector3D& wp, unsigned long col )
+static void drawTowerGlyph( Camera* eye, const glm::vec3& wp, unsigned long col )
 {
 	ModernClipResult r = eye->projectModernClipGL( wp );
 	if ( r.clip.w <= 0.05f ) return;
@@ -140,7 +140,7 @@ static void renderSensorView( Camera* eye )
 			if ( ps->owner->isDestroyed() ) continue;
 			float rangeMeters = ps->getRange();
 			if ( rangeMeters < 10.0f ) continue;
-			Stuff::Vector3D tp = ps->owner->getPosition();
+			glm::vec3 tp = ps->owner->getPosition();
 			drawSensorRing( eye, tp, rangeMeters * worldUnitsPerMeter, kTowerCyan, aBits );
 			drawTowerGlyph( eye, tp, aBits | kTowerCyan );
 		}
@@ -170,7 +170,7 @@ static void renderOverviewCoverageTint( Camera* eye, float alpha )
 			if ( !ps || ps->broken ) continue;
 			float r = ps->getRange();
 			if ( r < 1.0f || !ps->owner || ps->owner->isDestroyed() ) continue;
-			Stuff::Vector3D p = ps->owner->getPosition();
+			glm::vec3 p = ps->owner->getPosition();
 			cov[nc].x = p.x; cov[nc].y = p.y; cov[nc].r = r; nc++;
 		}
 
@@ -191,7 +191,7 @@ static void renderOverviewCoverageTint( Camera* eye, float alpha )
 	for ( int gy = 0; gy < sh; gy += cell )
 		for ( int gx = 0; gx < sw; gx += cell )
 		{
-			Stuff::Vector3D w;
+			glm::vec3 w;
 			if ( !eye->screenToGroundPlaneApprox( gx + cell / 2, gy + cell / 2, w ) )
 				continue;	// not ground (sky) — leave untouched
 
@@ -266,7 +266,7 @@ static void renderOverviewEnemyMarkers( Camera* eye, float alpha )
 			rgb |= 0x003f3f3f;		// brighten when selected
 		unsigned long col = aBits | rgb;
 
-		Stuff::Vector3D wp = mover->getPosition();
+		glm::vec3 wp = mover->getPosition();
 		ModernClipResult r = eye->projectModernClipGL( wp );
 		if ( !r.admit || r.clip.w <= 0.05f )
 			continue;
@@ -309,7 +309,7 @@ static void csgThickSeg( float x0, float y0, float x1, float y1, float hw, unsig
 // a circle-point is on the boundary only if it is NOT inside any OTHER circle,
 // so overlapping interior arcs are culled (figure-eight). Selected units' arcs
 // are bolded.
-static void drawWeaponBandUnion( Camera* eye, const Stuff::Vector3D* centers,
+static void drawWeaponBandUnion( Camera* eye, const glm::vec3* centers,
                                  const bool* sel, int n, float R,
                                  unsigned long rgb, unsigned long aBits )
 {
@@ -329,7 +329,7 @@ static void drawWeaponBandUnion( Camera* eye, const Stuff::Vector3D* centers,
 		for ( int k = 0; k <= N; k++ )
 		{
 			float a = ( 2.0f * 3.14159265f ) * (float)( k % N ) / (float)N;
-			Stuff::Vector3D p;
+			glm::vec3 p;
 			p.x = centers[i].x + cosf( a ) * R;
 			p.y = centers[i].y + sinf( a ) * R;
 			p.z = land ? land->getTerrainElevation( p ) : 0.0f;
@@ -362,7 +362,7 @@ static void drawWeaponBandUnion( Camera* eye, const Stuff::Vector3D* centers,
 	// One range label per BAND (first boundary rim point found), not per circle.
 	for ( int i = 0; i < n; i++ )
 	{
-		Stuff::Vector3D p;
+		glm::vec3 p;
 		p.x = centers[i].x; p.y = centers[i].y + R;
 		p.z = land ? land->getTerrainElevation( p ) : 0.0f;
 		bool interior = false;
@@ -399,7 +399,7 @@ static void renderWeaponView( Camera* eye )
 
 	// Bucket friendly units into the 3 weapon bands they have.
 	const int kMax = 64;
-	Stuff::Vector3D centers[3][kMax];
+	glm::vec3 centers[3][kMax];
 	bool sel[3][kMax];
 	int n[3] = { 0, 0, 0 };
 	for ( int i = 0; i < ObjectManager->numMovers; i++ )
@@ -480,7 +480,7 @@ static void updateAndRenderFormationLine( Camera* eye )
 
 		// Compute the slots first (they already reflect the spacing factor);
 		// drop each onto the terrain surface so it does not float over dips.
-		Stuff::Vector3D slots[32];
+		glm::vec3 slots[32];
 		int ns = g_tacticalOverview.flComputeSlots( slots, 32 );
 		for ( int s = 0; s < ns; s++ )
 			if ( land )
@@ -611,7 +611,7 @@ void ControlGui::render( bool bPaused )
 							if ( !m || !m->isOnGUI() || m->isDestroyed() || m->isDisabled() ) continue;
 							if ( m->getCommander()->getId() != Commander::home->getId() ) continue;
 							if ( !m->isInUnitGroup( g ) ) continue;
-							Stuff::Vector3D d;
+							glm::vec3 d;
 							if ( m->getMoveDestination( d ) )	// this member has a move
 							{
 								m->drawOverviewMovePath( pa | kSquadColors[g] );

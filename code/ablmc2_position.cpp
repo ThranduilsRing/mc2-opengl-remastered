@@ -28,11 +28,11 @@ void execGetRelativePositionToPoint (void) {
 		abl::reportBadArgument("getrelativepositiontopoint", "pos");
 		return;
 	}
-	Stuff::Vector3D curPos;
+	glm::vec3 curPos;
 	curPos.x = pos[0];
 	curPos.y = pos[1];
 	curPos.z = 0;
-	Stuff::Vector3D newPos;
+	glm::vec3 newPos;
 	newPos = relativePositionToPoint(curPos, angle, distance, flags);
 	relPos[0] = newPos.x;
 	relPos[1] = newPos.y;
@@ -68,7 +68,7 @@ void execGetRelativePositionToObject (void) {
 	// keeps the script's real[3] from holding a stale or uninitialised value.
 	GameObjectPtr object = getObject(objectId);
 	if (object && object->isMover()) {
-		Stuff::Vector3D newPos;
+		glm::vec3 newPos;
 		newPos = ((MoverPtr)object)->relativePosition(angle, distance, flags);
 		relPos[0] = newPos.x;
 		relPos[1] = newPos.y;

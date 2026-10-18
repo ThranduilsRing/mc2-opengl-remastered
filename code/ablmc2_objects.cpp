@@ -118,7 +118,7 @@ void execDistanceToObject (void) {
 
 	GameObjectPtr object2 = getObject(objectId2);
 	if (object2) {
-		Stuff::Vector3D position2 = object2->getPosition();
+		glm::vec3 position2 = object2->getPosition();
 		if ((objectId1 >= MIN_UNIT_PART_ID) && (objectId1 <= MAX_UNIT_PART_ID)) {
 			float minDistance = 3.4E38f;
 			float distance = 3.4E38f;
@@ -127,13 +127,13 @@ void execDistanceToObject (void) {
 				MoverPtr mover = moverList[i];
 				if (!mover->getExistsAndAwake())
 					continue;
-				Stuff::Vector3D position1 = mover->getPosition();
+				glm::vec3 position1 = mover->getPosition();
 				position2.z = position1.z;
 		
-				Stuff::Vector3D resultVector;
-				resultVector.Subtract(position2, position1);
+				glm::vec3 resultVector;
+				resultVector = position2 - position1;
 		
-				distance = resultVector.GetLength();
+				distance = glm::length(resultVector);
 				if (distance < minDistance)
 					minDistance = distance;
 			}
@@ -143,13 +143,13 @@ void execDistanceToObject (void) {
 		else {
 			GameObjectPtr object1 = getObject(objectId1);
 			if (object1) {
-				Stuff::Vector3D position1 = object1->getPosition();
+				glm::vec3 position1 = object1->getPosition();
 				position2.z = position1.z;
 			
-				Stuff::Vector3D resultVector;
-				resultVector.Subtract(position2, position1);
+				glm::vec3 resultVector;
+				resultVector = position2 - position1;
 			
-				ABLi_pokeReal(resultVector.GetLength() * metersPerWorldUnit);
+				ABLi_pokeReal(glm::length(resultVector) * metersPerWorldUnit);
 			}
 		}
 	}
@@ -167,8 +167,8 @@ void execDistanceToPosition (void) {
 	ABLi_pushReal(-1.0);
 
 	// For now, we only care about x and y...
-	Stuff::Vector3D position2;
-	position2.Zero();
+	glm::vec3 position2;
+	position2 = glm::vec3(0.0f);
 
 	if (!isnan(coordList[0]))
 		position2.x = coordList[0];
@@ -184,13 +184,13 @@ void execDistanceToPosition (void) {
 			MoverPtr mover = moverList[i];
 			if (!mover->getExistsAndAwake())
 				continue;
-			Stuff::Vector3D position1 = mover->getPosition();
+			glm::vec3 position1 = mover->getPosition();
 			position2.z = position1.z;
 		
-			Stuff::Vector3D resultVector;
-			resultVector.Subtract(position2, position1);
+			glm::vec3 resultVector;
+			resultVector = position2 - position1;
 		
-			distance = resultVector.GetLength();
+			distance = glm::length(resultVector);
 			if (distance < minDistance)
 				minDistance = distance;
 		}
@@ -200,12 +200,12 @@ void execDistanceToPosition (void) {
 	else {
 		GameObjectPtr obj = getObject(objectId);
 		if (obj) {
-			Stuff::Vector3D position1 = obj->getPosition();
+			glm::vec3 position1 = obj->getPosition();
 			position2.z = position1.z;
 			
-			Stuff::Vector3D resultVector;
-			resultVector.Subtract(position2, position1);
-			ABLi_pokeReal(resultVector.GetLength() * metersPerWorldUnit);
+			glm::vec3 resultVector;
+			resultVector = position2 - position1;
+			ABLi_pokeReal(glm::length(resultVector) * metersPerWorldUnit);
 		}
 	}
 }

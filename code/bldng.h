@@ -222,17 +222,17 @@ class Building : public TerrainObject
 
 		virtual char* getName (void);
 
-		virtual Stuff::Vector3D getPositionFromHS (long weaponType) 
+		virtual glm::vec3 getPositionFromHS (long weaponType) 
 		{
 			//-----------------------------------------
 			// Hotspot for buildings is position plus 
 			// some Z based on OBB to make Effect visible.
 			// If this doesn't work, replace with art defined site.
-			Stuff::Vector3D hsPos = position;
+			glm::vec3 hsPos = position;
 			if (appearance)
 			{
 				hsPos = appearance->getHitNode();
-				if (hsPos == position)
+				if (mc2::math::closeEnough(hsPos, position))
 				{
 					hsPos.z += appearance->getTopZ() * 0.5f;
 				}
@@ -241,14 +241,14 @@ class Building : public TerrainObject
 			return(hsPos);
 		}
 
-		virtual Stuff::Vector3D getLOSPosition (void) 
+		virtual glm::vec3 getLOSPosition (void) 
 		{
 			//-----------------------------------------
 			// Hotspot for buildings is position plus 
 			// some Z based on OBB to make Effect visible.
 			//
 			// Use THIS position for LOS Calc!!!
-			Stuff::Vector3D hsPos = position;
+			glm::vec3 hsPos = position;
 
 			if (appearance)
 				hsPos.z += appearance->getTopZ() * 0.5f;

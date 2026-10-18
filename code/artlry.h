@@ -86,7 +86,7 @@ class ArtilleryChunk {
 
 		void build (long commanderId,
 					long strikeType,
-					Stuff::Vector3D location,
+					glm::vec3 location,
 					long seconds);
 
 		void pack (void);
@@ -186,7 +186,7 @@ typedef struct _ArtilleryData : public GameObjectData
 
 	bool				bombRunStarted;
 	bool				inView;
-	Stuff::Vector3D		iFacePosition;
+	glm::vec3		iFacePosition;
 
 } ArtilleryData;
 
@@ -215,7 +215,7 @@ class Artillery : public GameObject
 		// Tier-1 instrumentation (stability spec §3.3): Artillery has direct inView field.
 		bool inView_instr (void) const override { return inView != 0; }
 
-		Stuff::Vector3D		iFacePosition;
+		glm::vec3		iFacePosition;
 		
 		
 	//Member Functions
@@ -332,12 +332,12 @@ class Artillery : public GameObject
 //---------------------------------------------------------------------------
 extern void CallArtillery (long commanderId,
 						   long strikeType,
-						   Stuff::Vector3D strikeLoc,
+						   glm::vec3 strikeLoc,
 						   long secondsToImpact,
 						   bool randomOffset);
 
 extern void IfaceCallStrike (long strikeID,
-							 Stuff::Vector3D* strikeLoc,
+							 glm::vec3* strikeLoc,
 							 GameObjectPtr strikeTarget,
 							 bool playerStrike = true,
 							 bool clanStrike = false,

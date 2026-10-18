@@ -105,7 +105,7 @@ extern bool MLRVertexLimitReached;
 unsigned g_mc2ArtCreated = 0, g_mc2ArtReinit = 0, g_mc2ArtReinitFreed = 0, g_mc2ArtEnded = 0, g_mc2ArtBoomNoFx = 0;
 #endif
 
-void CallArtillery (long commanderID, long strikeType, Stuff::Vector3D strikeLoc, long secondsToImpact, bool randomOff) 
+void CallArtillery (long commanderID, long strikeType, glm::vec3 strikeLoc, long secondsToImpact, bool randomOff) 
 {
 
 	//-------------------------------------------------------------------
@@ -169,7 +169,7 @@ void CallArtillery (long commanderID, long strikeType, Stuff::Vector3D strikeLoc
 //---------------------------------------------------------------------------
 
 void IfaceCallStrike (long strikeID,
-					  Stuff::Vector3D* strikeLoc,
+					  glm::vec3* strikeLoc,
 					  GameObjectPtr strikeTarget,
 					  bool playerStrike,
 					  bool clanStrike,
@@ -182,7 +182,7 @@ void IfaceCallStrike (long strikeID,
 	if (!strikeLoc && !strikeTarget)
 		return;
 
-	Stuff::Vector3D strikeLocation;
+	glm::vec3 strikeLocation;
 	if (strikeLoc)
 		strikeLocation = *strikeLoc;
 	else
@@ -264,7 +264,7 @@ void ArtilleryChunk::operator delete (void* us) {
 
 void ArtilleryChunk::build (long _commanderId,
 							long _strikeType,
-							Stuff::Vector3D location,
+							glm::vec3 location,
 							long _seconds) {
 
 	commanderId = _commanderId;
@@ -556,10 +556,10 @@ bool ArtilleryType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 	{
 		//---------------------
 		// Get Range to target.
-		Stuff::Vector3D distance = collider->getPosition();
+		glm::vec3 distance = collider->getPosition();
 		distance -= collidee->getPosition();
 		distance.z = 0.0;			//Do NOT use elevation!!!  Will make it look like its not WORKING!!!!
-		float range = distance.GetLength() * metersPerWorldUnit;
+		float range = glm::length(distance) * metersPerWorldUnit;
 		if ((collider->getObjectClass() == GATE) || (collider->getObjectClass() == TURRET))
 		{
 			switch (collider->getObjectClass()) 
@@ -726,7 +726,7 @@ void Artillery::handleStaticCollision (void)
 					
 					if (mineResult == 1)
 					{
-						Stuff::Vector3D minePosition;
+						glm::vec3 minePosition;
 						land->cellToWorld(i,j,minePosition);
 						GameMap->setMine(i,j,2);
 						if (MPlayer) 
@@ -857,13 +857,13 @@ void Artillery::setJustCreated (void)
 			{
 				if (hitEffect)
 				{ 
-					Stuff::LinearMatrix4D 	shapeOrigin;
+					glm::mat4 	shapeOrigin;
 					
-					Stuff::Point3D actualPosition;
+					glm::vec3 actualPosition;
 					mc2ToRender(actualPosition, position);
 					
-					shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-					shapeOrigin.BuildTranslation(actualPosition);
+					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+					mc2::math::buildTranslation(shapeOrigin, actualPosition);
 					
 					gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 					hitEffect->Start(&info);
@@ -909,15 +909,15 @@ long Artillery::update (void)
 		// Update GOSFX
 		if (hitEffect && hitEffect->IsExecuted())
 		{
-			Stuff::Point3D actualPosition;
+			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, position);
 		
-			Stuff::LinearMatrix4D 	shapeOrigin;
+			glm::mat4 	shapeOrigin;
 				
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 	
-			Stuff::OBB boundingBox;
+			mc2::math::Obb boundingBox;
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 	
 			bool result = hitEffect->Execute(&info);
@@ -971,15 +971,15 @@ long Artillery::update (void)
 		
 		if (rightContrail && rightContrail->IsExecuted())
 		{
-			Stuff::LinearMatrix4D 	shapeOrigin;
+			glm::mat4 	shapeOrigin;
 			
-			Stuff::Vector3D lPosition = bomber->getNodeNamePosition("activity_node");
+			glm::vec3 lPosition = bomber->getNodeNamePosition("activity_node");
 			
-			Stuff::Point3D actualPosition;
+			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, lPosition);
 			
- 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
+ 			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 			
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 			rightContrail->Start(&info);
@@ -987,15 +987,15 @@ long Artillery::update (void)
 		
 		if (leftContrail && leftContrail->IsExecuted())
 		{
-			Stuff::LinearMatrix4D 	shapeOrigin;
+			glm::mat4 	shapeOrigin;
 			
-			Stuff::Vector3D lPosition = bomber->getDustNodePosition(GV_LEFT_DUST_ID);
+			glm::vec3 lPosition = bomber->getDustNodePosition(GV_LEFT_DUST_ID);
 			
-			Stuff::Point3D actualPosition;
+			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, lPosition);
  
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 			
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 			leftContrail->Start(&info);
@@ -1011,17 +1011,17 @@ long Artillery::update (void)
 		
 		if (bomber && leftContrail && leftContrail->IsExecuted())
 		{
-			Stuff::Vector3D lPosition = bomber->getDustNodePosition(GV_LEFT_DUST_ID);
+			glm::vec3 lPosition = bomber->getDustNodePosition(GV_LEFT_DUST_ID);
 			
-			Stuff::Point3D actualPosition;
+			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, lPosition);
 		
-			Stuff::LinearMatrix4D 	shapeOrigin;
+			glm::mat4 	shapeOrigin;
 				
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 	
-			Stuff::OBB boundingBox;
+			mc2::math::Obb boundingBox;
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 	
 			leftContrail->Execute(&info);
@@ -1029,17 +1029,17 @@ long Artillery::update (void)
 		
 		if (bomber && rightContrail && rightContrail->IsExecuted())
 		{
-			Stuff::Vector3D lPosition = bomber->getNodeNamePosition("activity_node");
+			glm::vec3 lPosition = bomber->getNodeNamePosition("activity_node");
 			
-			Stuff::Point3D actualPosition;
+			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, lPosition);
  		
-			Stuff::LinearMatrix4D 	shapeOrigin;
+			glm::mat4 	shapeOrigin;
 				
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 	
-			Stuff::OBB boundingBox;
+			mc2::math::Obb boundingBox;
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 	
 			rightContrail->Execute(&info);
@@ -1057,20 +1057,20 @@ long Artillery::update (void)
 
 	if (!getFlag(OBJECT_FLAG_BOOM) && (info.strike.timeToImpact <= 0.0) && (type->nominalDamage > 0.0)) 
 	{
-		Stuff::Vector3D	actualPosition = position;
+		glm::vec3	actualPosition = position;
 
 		//-----------------------------------
 		// Create the giant artillery blast.
 		// GOS Fx now.
 		if (hitEffect && hitEffect->IsExecuted())
 		{
-			Stuff::LinearMatrix4D 	shapeOrigin;
+			glm::mat4 	shapeOrigin;
 			
-			Stuff::Point3D actualPosition;
+			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, position);
 
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 			
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 			hitEffect->Start(&info);
@@ -1080,15 +1080,15 @@ long Artillery::update (void)
 		// Update GOSFX -- One free update here.
 		if (hitEffect && hitEffect->IsExecuted())
 		{
-			Stuff::Point3D actualPosition;
+			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, position);
 		
-			Stuff::LinearMatrix4D 	shapeOrigin;
+			glm::mat4 	shapeOrigin;
 				
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 	
-			Stuff::OBB boundingBox;
+			mc2::math::Obb boundingBox;
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 	
 			bool result = hitEffect->Execute(&info);
@@ -1144,15 +1144,15 @@ long Artillery::update (void)
 		// GOS Fx now.
 		if (hitEffect)
 		{
-			Stuff::Point3D actualPosition;
+			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, position);
 		
-			Stuff::LinearMatrix4D 	shapeOrigin;
+			glm::mat4 	shapeOrigin;
 				
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 	
-			Stuff::OBB boundingBox;
+			mc2::math::Obb boundingBox;
 			gosFX::Effect::ExecuteInfo xinfo((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 	
 			bool result = hitEffect->Execute(&xinfo);
@@ -1177,12 +1177,12 @@ bool Artillery::recalcBounds (CameraPtr myEye)
 		// if object too far from camera.  Far Clip Plane.
 		if (eye->usePerspective)
 		{
-			Stuff::Point3D Distance;
-			Stuff::Point3D objPosition(position);
-			Stuff::Point3D eyePosition(eye->getPosition());
+			glm::vec3 Distance;
+			glm::vec3 objPosition(position);
+			glm::vec3 eyePosition(eye->getPosition());
 	
-			Distance.Subtract(objPosition,eyePosition);
-			float eyeDistance = Distance.GetApproximateLength();
+			Distance = objPosition - eyePosition;
+			float eyeDistance = glm::length(Distance);
 			if (eyeDistance > Camera::MaxClipDistance)
 			{
 				inView = false;
@@ -1198,15 +1198,15 @@ bool Artillery::recalcBounds (CameraPtr myEye)
 			// to Target.  If angle is less then halfFOV, object is visible.
 			if (inView)
 			{
-				Stuff::Vector3D Distance;
-				Stuff::Point3D objPosition;
-				Stuff::Point3D eyePosition(eye->getCameraOrigin());
+				glm::vec3 Distance;
+				glm::vec3 objPosition;
+				glm::vec3 eyePosition(eye->getCameraOrigin());
 				mc2ToRender(objPosition, position);
 		
-				Distance.Subtract(objPosition,eyePosition);
-				Distance.Normalize(Distance);
+				Distance = objPosition - eyePosition;
+				Distance = glm::normalize(Distance);
 				
-				float cosine = Distance * eye->getLookVector();
+				float cosine = glm::dot(Distance, eye->getLookVector());
  				if (cosine > eye->cosHalfFOV)
 					inView = true;
 				else
@@ -1354,13 +1354,13 @@ void Artillery::render (void)
 			drawInfo.m_state = mlrState;
 			drawInfo.m_clippingFlags = 0x0;
 			
-			Stuff::Point3D actualPosition;
+			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, position);
 			
-			Stuff::LinearMatrix4D 	shapeOrigin;
+			glm::mat4 	shapeOrigin;
 			
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 			
 			drawInfo.m_parentToWorld = &shapeOrigin;
 	 
@@ -1438,15 +1438,15 @@ void Artillery::render (void)
 			
  		if (leftContrail)
 		{
-			Stuff::Vector3D lPosition = bomber->getDustNodePosition(GV_LEFT_DUST_ID);
+			glm::vec3 lPosition = bomber->getDustNodePosition(GV_LEFT_DUST_ID);
 			
-			Stuff::Point3D actualPosition;
+			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, lPosition);
  			
-			Stuff::LinearMatrix4D 	shapeOrigin;
+			glm::mat4 	shapeOrigin;
 			
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 			
 			drawInfo.m_parentToWorld = &shapeOrigin;
 	 
@@ -1456,15 +1456,15 @@ void Artillery::render (void)
 		
 		if (rightContrail)
 		{
-			Stuff::Vector3D lPosition = bomber->getNodeNamePosition("activity_node");
+			glm::vec3 lPosition = bomber->getNodeNamePosition("activity_node");
 			
-			Stuff::Point3D actualPosition;
+			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, lPosition);
  			
-			Stuff::LinearMatrix4D 	shapeOrigin;
+			glm::mat4 	shapeOrigin;
 			
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 			
 			drawInfo.m_parentToWorld = &shapeOrigin;
 	 
@@ -1795,13 +1795,13 @@ void Artillery::Load (ArtilleryData *data)
 
 		if (hitEffect)
 		{ 
-			Stuff::LinearMatrix4D 	shapeOrigin;
+			glm::mat4 	shapeOrigin;
 
-			Stuff::Point3D actualPosition;
+			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, position);
 
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 			hitEffect->Start(&info);

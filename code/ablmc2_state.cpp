@@ -108,7 +108,7 @@ void execInArea (void) {
 		return;
 	}
 
-	Stuff::Vector3D center;
+	glm::vec3 center;
 	center.x = areaCenter[0];
 	center.y = areaCenter[1];
 	center.z = areaCenter[2];
@@ -893,7 +893,7 @@ void execCallStrike (void) {
 
 	long strikeType = ABLi_popInteger();
 	long targetId = ABLi_popInteger();
-	Stuff::Vector3D strikeLoc;
+	glm::vec3 strikeLoc;
 	strikeLoc.x = ABLi_popReal();
 	strikeLoc.y = ABLi_popReal();
 	strikeLoc.z = ABLi_popReal();
@@ -934,7 +934,7 @@ void execCallStrikeEx (void) {
 
 	long strikeType = ABLi_popInteger();
 	long targetId = ABLi_popInteger();
-	Stuff::Vector3D strikeLoc;
+	glm::vec3 strikeLoc;
 	strikeLoc.x = ABLi_popReal();
 	strikeLoc.y = ABLi_popReal();
 	strikeLoc.z = ABLi_popReal();

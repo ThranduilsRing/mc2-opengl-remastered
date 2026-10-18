@@ -648,9 +648,9 @@ long Building::updateAnimations (void)
 						{
 							GameObjectPtr refitMech = ObjectManager->getByWatchID(refitBuddyWID);
 							if (refitMech) {
-								Stuff::Vector3D distance;
-								distance.Subtract(refitMech->getPosition(),getPosition());
-								float dist = distance.GetApproximateLength();
+								glm::vec3 distance;
+								distance = refitMech->getPosition() - getPosition();
+								float dist = glm::length(distance);
 								if (dist <= 128.0f)
 								{
 									if (refitMech && (refitMech->getTonnage() <= 40.0f))
@@ -1508,7 +1508,7 @@ long Building::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChu
 				//-----------------------------------------------------
 				// Now, blow the building up using its type->explosion
 				// ONLY if the building has no special MAGIC gos FX version!
-				Stuff::Vector3D hitNodePos = appearance->getHitNode();
+				glm::vec3 hitNodePos = appearance->getHitNode();
 				if (!appearance->playDestruction())
 					ObjectManager->createExplosion(BUILDING_EXPLOSION_ID,nullptr,hitNodePos,explDamage,explRadius);
 				else	//Play the sound effect and do splash damage but don't draw any effect.  We are playing a magical GosFX one!!
