@@ -355,7 +355,11 @@ def check(root, rebuild=False):
         fails.append("%s is stale against %s: run py -3 tools/gate_gen.py --write" % (INDEX_REL, TABLE_JSON_REL))
     seed = _load_json(root, SEED_REL)
     if seed is not None:
-        missing = sorted(set(g["name"] for g in seed["gates"]) - set(names))
+        retired = set(_load_json(root, "Gates/retired_names.json") or [])
+        active_retired = sorted(retired & set(names))
+        if active_retired:
+            fails.append("retired gate(s) still in the live table: " + ", ".join(active_retired))
+        missing = sorted(set(g["name"] for g in seed["gates"]) - set(names) - retired)
         if missing:
             fails.append("%d seed gate(s) are not in the table: %s" % (len(missing), ", ".join(missing[:6])))
     # a registered Bool gate's feature default must equal the row's own default, unless the seed notes a deliberate

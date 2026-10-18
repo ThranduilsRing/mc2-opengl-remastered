@@ -63,62 +63,10 @@
       ]
     },
     {
-      "program": "fog_oob",
-      "note": "SPIRV-POSTPROCESS-FAMILY-1: frag-only (postprocess.vert + fog_oob.frag, gos_postprocess.cpp:572). out vec4 outFog @loc0. No material bindings.",
-      "stages": {
-        "frag": "shaders/fog_oob.frag"
-      },
-      "variants": [
-        {
-          "name": "default",
-          "defines": []
-        }
-      ]
-    },
-    {
-      "program": "edge_fog",
-      "note": "SPIRV-POSTPROCESS-FAMILY-1: frag-only (postprocess.vert + edge_fog.frag, gos_postprocess.cpp:591). out vec4 outFog @loc0. No material bindings.",
-      "stages": {
-        "frag": "shaders/edge_fog.frag"
-      },
-      "variants": [
-        {
-          "name": "default",
-          "defines": []
-        }
-      ]
-    },
-    {
       "program": "hzb_reduce",
       "note": "SPIRV-POSTPROCESS-FAMILY-1: frag-only (postprocess.vert + hzb_reduce.frag, gos_postprocess.cpp:607). No material bindings.",
       "stages": {
         "frag": "shaders/hzb_reduce.frag"
-      },
-      "variants": [
-        {
-          "name": "default",
-          "defines": []
-        }
-      ]
-    },
-    {
-      "program": "cloud",
-      "note": "SPIRV-FBM-POSTPROCESS-PILOT-1: FBM cloud-shadow pass (postprocess.vert + cloud.frag, gos_postprocess.cpp:537). PERCEPTUAL gate only (procedural noise; byte-exact impossible across GLSL/SPIR-V compilers).",
-      "stages": {
-        "frag": "shaders/cloud.frag"
-      },
-      "variants": [
-        {
-          "name": "default",
-          "defines": []
-        }
-      ]
-    },
-    {
-      "program": "shoreline",
-      "note": "SPIRV-FBM-POSTPROCESS-PILOT-1: shoreline foam (postprocess.vert + shoreline.frag, gos_postprocess.cpp:542, #includes noise.hglsl). PERCEPTUAL gate only.",
-      "stages": {
-        "frag": "shaders/shoreline.frag"
       },
       "variants": [
         {

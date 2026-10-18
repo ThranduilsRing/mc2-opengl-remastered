@@ -3,4 +3,3 @@
 # These are REAL VK gaps, not noise. The row stays green only while the diff is byte-for-byte
 # what is pinned here: a port that goes verbatim (stale entry) or drifts further fails.
 # Re-pin with: py -3 tools/glsl_port_diff.py --all --print-hashes
-waterBaseColor	shaders/vulkan/water_geom.frag	1c3716891bf7	VK water FS has no GL shore-meander block (u_shoreMeanderWu/u_shoreMeanderFreq fbm3 offset on WaterThickness), so VK shorelines are straight where GL meanders.

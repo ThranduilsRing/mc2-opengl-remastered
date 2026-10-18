@@ -113,32 +113,23 @@ REGISTRY = [
     # Armed-water base-layer color math (waveLOD/fBm/
     # absorption/shore/light/crest/glint), GL MDI water FS vs the VK water FS.
     # Real VK gap pinned in the allowlist: GL's shore-meander block is absent in VK.
-    Port("waterBaseColor", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag",
-         rename=[(r"int\(F\.f4\.x \+ 0\.5\)", "u_shoreMode"),
-                 (r"int\(F\.f4\.y \+ 0\.5\)", "u_hasShoreHeight"),
-                 (r"int\(F\.f4\.z \+ 0\.5\)", "u_hasShoreMask"),
-                 (r"\bF\.f4\.w\b", "u_shoreFeatherWu"),
-                 (r"\bF\.f5\b", "u_shoreHeightBounds"),
-                 (r"\bF\.f6\b", "u_shoreMaskBounds"),
-                 (r"\bF\.f7\.x\b", "waterElevation")]),
+
     # Water reflection block (SH-L2 coeffs + HDRI equirect eval + SH eval
     # + wave-normal/reflect setup + Fresnel mix). Terrain-RT contact sub-block NOT
     # ported (MC2_WATER_REFLECTION_RT default-OFF -> GL no-op in the field config).
-    Port("waterSkyShCoeffs", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag"),
-    Port("waterEvalHdri", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag"),
-    Port("waterEvalSkySh", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag"),
-    Port("waterReflSetup", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag",
-         rename=[(r"\bF\.f9\.w\b", "u_waterProjAspect"),
-                 (r"\bF\.f9\.xyz\b", "u_waterSkyTintColor")]),
-    Port("waterReflMix", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag"),
+
+
+
+
+
     # Cloud-shadow pass (inlined simplex fbm
     # + world-reconstruct main) and shoreline-foam pass (noise.hglsl fbm the GL
     # frag #includes + main). UBO plumbing differs by design (#define aliases);
     # the marked math blocks must stay verbatim.
-    Port("cloudShadowNoise", "shaders/cloud.frag", "shaders/vulkan/cloud_shadow.frag"),
-    Port("cloudShadowMain", "shaders/cloud.frag", "shaders/vulkan/cloud_shadow.frag"),
+
+
     Port("shorelineNoise", "shaders/include/noise.hglsl", "shaders/vulkan/shoreline.frag"),
-    Port("shorelineMain", "shaders/shoreline.frag", "shaders/vulkan/shoreline.frag"),
+
 ]
 
 
