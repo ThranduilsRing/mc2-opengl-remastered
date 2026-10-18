@@ -789,25 +789,29 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
 }
 
 //==============================================================================
-void destroy_render_context(RenderContextHandle rc_handle)
+static void destroy_render_context_impl(RenderContextHandle rc_handle, bool deleteGlContext)
 {
     RenderContext* rc = (RenderContext*)rc_handle;
     assert(rc);
 
-    SDL_GL_DeleteContext(rc->glcontext_);
+    if (deleteGlContext) {
+        SDL_GL_DeleteContext(rc->glcontext_);
+    } else {
+        SDL_GL_MakeCurrent(rc->render_window_ ? rc->render_window_->window_ : nullptr, nullptr);   // left to process teardown
+    }
     g_sdl_glcontext = nullptr;
     delete rc;
+}
+
+void destroy_render_context(RenderContextHandle rc_handle)
+{
+    destroy_render_context_impl(rc_handle, true);
 }
 
 //==============================================================================
 void release_render_context_at_exit(RenderContextHandle rc_handle)
 {
-    RenderContext* rc = (RenderContext*)rc_handle;
-    assert(rc);
-
-    SDL_GL_MakeCurrent(rc->render_window_ ? rc->render_window_->window_ : nullptr, nullptr);
-    g_sdl_glcontext = nullptr;
-    delete rc;   // the driver context itself is left to process teardown
+    destroy_render_context_impl(rc_handle, false);
 }
 
 //==============================================================================
