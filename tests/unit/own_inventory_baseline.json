@@ -4514,111 +4514,6 @@
    "new_array": 0,
    "owners": []
   },
-  "Point3D": {
-   "delete": 0,
-   "delete_array": 45,
-   "files": {
-    "mclib/mlr/mlr_i_c_det_pmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_c_det_tmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_c_dt_pmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_c_dt_tmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_c_pmesh.cpp": {
-     "delete_array": 4,
-     "new_array": 4
-    },
-    "mclib/mlr/mlr_i_c_tmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_det_pmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_det_tmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_dt_pmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_dt_tmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_l_det_pmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_l_det_tmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_l_dt_pmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_l_dt_tmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_l_pmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_l_tmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_mt_pmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_pmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_tmesh_cast.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    }
-   },
-   "new": 0,
-   "new_array": 45,
-   "owners": [
-    "",
-    "MLR_I_C_DT_PMesh",
-    "MLR_I_C_DT_TMesh",
-    "MLR_I_C_DeT_PMesh",
-    "MLR_I_C_DeT_TMesh",
-    "MLR_I_C_PMesh",
-    "MLR_I_C_TMesh",
-    "MLR_I_DT_PMesh",
-    "MLR_I_DT_TMesh",
-    "MLR_I_DeT_PMesh",
-    "MLR_I_DeT_TMesh",
-    "MLR_I_L_DT_PMesh",
-    "MLR_I_L_DT_TMesh",
-    "MLR_I_L_DeT_PMesh",
-    "MLR_I_L_DeT_TMesh",
-    "MLR_I_L_PMesh",
-    "MLR_I_L_TMesh",
-    "MLR_I_MT_PMesh",
-    "MLR_I_PMesh"
-   ]
-  },
   "Pool": {
    "delete": 1,
    "delete_array": 0,
@@ -5154,24 +5049,6 @@
    "owners": [
     "",
     "MC_TextureManager"
-   ]
-  },
-  "Stuff::Vector3D": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/weaponbolt.cpp": {
-     "delete": 1,
-     "new": 2
-    },
-    "editor/LinkBrush.cpp": {
-     "new_array": 1
-    }
-   },
-   "new": 2,
-   "new_array": 1,
-   "owners": [
-    "WeaponBolt"
    ]
   },
   "T": {
@@ -6009,46 +5886,6 @@
     "MLR_I_PMesh"
    ]
   },
-  "Vector3D": {
-   "delete": 0,
-   "delete_array": 6,
-   "files": {
-    "mclib/mlr/mlr_i_l_det_pmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_det_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_dt_pmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_dt_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_pmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 6,
-   "owners": [
-    "MLR_I_L_DT_PMesh",
-    "MLR_I_L_DT_TMesh",
-    "MLR_I_L_DeT_PMesh",
-    "MLR_I_L_DeT_TMesh",
-    "MLR_I_L_PMesh",
-    "MLR_I_L_TMesh"
-   ]
-  },
   "VehicleIcon": {
    "delete": 0,
    "delete_array": 0,
@@ -6601,6 +6438,119 @@
    "new": 1,
    "new_array": 0,
    "owners": []
+  },
+  "glm::vec3": {
+   "delete": 1,
+   "delete_array": 51,
+   "files": {
+    "code/weaponbolt.cpp": {
+     "delete": 1,
+     "new": 2
+    },
+    "editor/LinkBrush.cpp": {
+     "new_array": 1
+    },
+    "mclib/mlr/mlr_i_c_det_pmesh.cpp": {
+     "delete_array": 3,
+     "new_array": 3
+    },
+    "mclib/mlr/mlr_i_c_det_tmesh.cpp": {
+     "delete_array": 2,
+     "new_array": 2
+    },
+    "mclib/mlr/mlr_i_c_dt_pmesh.cpp": {
+     "delete_array": 3,
+     "new_array": 3
+    },
+    "mclib/mlr/mlr_i_c_dt_tmesh.cpp": {
+     "delete_array": 2,
+     "new_array": 2
+    },
+    "mclib/mlr/mlr_i_c_pmesh.cpp": {
+     "delete_array": 4,
+     "new_array": 4
+    },
+    "mclib/mlr/mlr_i_c_tmesh.cpp": {
+     "delete_array": 2,
+     "new_array": 2
+    },
+    "mclib/mlr/mlr_i_det_pmesh.cpp": {
+     "delete_array": 3,
+     "new_array": 3
+    },
+    "mclib/mlr/mlr_i_det_tmesh.cpp": {
+     "delete_array": 2,
+     "new_array": 2
+    },
+    "mclib/mlr/mlr_i_dt_pmesh.cpp": {
+     "delete_array": 3,
+     "new_array": 3
+    },
+    "mclib/mlr/mlr_i_dt_tmesh.cpp": {
+     "delete_array": 2,
+     "new_array": 2
+    },
+    "mclib/mlr/mlr_i_l_det_pmesh.cpp": {
+     "delete_array": 3,
+     "new_array": 3
+    },
+    "mclib/mlr/mlr_i_l_det_tmesh.cpp": {
+     "delete_array": 3,
+     "new_array": 3
+    },
+    "mclib/mlr/mlr_i_l_dt_pmesh.cpp": {
+     "delete_array": 3,
+     "new_array": 3
+    },
+    "mclib/mlr/mlr_i_l_dt_tmesh.cpp": {
+     "delete_array": 3,
+     "new_array": 3
+    },
+    "mclib/mlr/mlr_i_l_pmesh.cpp": {
+     "delete_array": 3,
+     "new_array": 3
+    },
+    "mclib/mlr/mlr_i_l_tmesh.cpp": {
+     "delete_array": 3,
+     "new_array": 3
+    },
+    "mclib/mlr/mlr_i_mt_pmesh.cpp": {
+     "delete_array": 2,
+     "new_array": 2
+    },
+    "mclib/mlr/mlr_i_pmesh.cpp": {
+     "delete_array": 3,
+     "new_array": 3
+    },
+    "mclib/mlr/mlr_i_tmesh_cast.cpp": {
+     "delete_array": 2,
+     "new_array": 2
+    }
+   },
+   "new": 2,
+   "new_array": 52,
+   "owners": [
+    "",
+    "MLR_I_C_DT_PMesh",
+    "MLR_I_C_DT_TMesh",
+    "MLR_I_C_DeT_PMesh",
+    "MLR_I_C_DeT_TMesh",
+    "MLR_I_C_PMesh",
+    "MLR_I_C_TMesh",
+    "MLR_I_DT_PMesh",
+    "MLR_I_DT_TMesh",
+    "MLR_I_DeT_PMesh",
+    "MLR_I_DeT_TMesh",
+    "MLR_I_L_DT_PMesh",
+    "MLR_I_L_DT_TMesh",
+    "MLR_I_L_DeT_PMesh",
+    "MLR_I_L_DeT_TMesh",
+    "MLR_I_L_PMesh",
+    "MLR_I_L_TMesh",
+    "MLR_I_MT_PMesh",
+    "MLR_I_PMesh",
+    "WeaponBolt"
+   ]
   },
   "glsl_program": {
    "delete": 1,

@@ -238,8 +238,8 @@ def self_test() -> int:
     #    declaration stays.
     gv = checklib.read_text("code/gvehicl_weapons.cpp")
     t = gv.replace(
-        "long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, Stuff::Vector3D* targetPoint, float &dmgDone) {",
-        "long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, Stuff::Vector3D* targetPoint, float &dmgDone) {\n"
+        "long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, glm::vec3* targetPoint, float &dmgDone) {",
+        "long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, glm::vec3* targetPoint, float &dmgDone) {\n"
         "\tfireGateTrace(0, weaponIndex, \"selftest\");",
         1)
     failures.append(("stale KNOWN_UNCOVERED",

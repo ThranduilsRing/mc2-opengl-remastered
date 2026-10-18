@@ -42,6 +42,7 @@
   "scripts/tests/test_check_ab_kit.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_check_background_launch.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_check_cxx_standard_floor.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
+  "scripts/tests/test_check_glm_convention.py": "Pytest-discovered module through the scripts_tests board row (also run by the glm_convention row).",
   "scripts/tests/test_check_sim_fp_contract.py": "Pytest-discovered module through the scripts_tests board row (also run by the sim_fp_contract row).",
   "scripts/tests/test_check_staged_hygiene.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/tests/test_check_vk_pipeline_layout.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",

@@ -930,16 +930,18 @@ int main(int argc, char** argv) {
 #include <vector>
 #define gosASSERT(x) ((void)0)
 #define SPEW(x) ((void)0)
-namespace Stuff { struct Vector3D { float x{}, y{}, z{}; bool operator==(const Vector3D&) const = default; }; }
+namespace glm { struct vec3 { float x{}, y{}, z{}; bool operator==(const vec3&) const = default; }; }
+namespace mc2::math { inline bool closeEnough(const glm::vec3& a, const glm::vec3& b, float e = 1e-4f) {
+    auto f = [](float v) { return v < 0 ? -v : v; }; return f(a.x - b.x) <= e && f(a.y - b.y) <= e && f(a.z - b.z) <= e; } }
 '''
         source += r'''
 struct EditorObject {
-    int id, alignment; Stuff::Vector3D pos;
+    int id, alignment; glm::vec3 pos;
     int getID() const { return id; } auto getPosition() const { return pos; }
     int getAlignment() const { return alignment; }
     void setAlignment(int a) { alignment = a; }
 };
-struct Terrain { float getTerrainElevation(const Stuff::Vector3D&) { return 0; } };
+struct Terrain { float getTerrainElevation(const glm::vec3&) { return 0; } };
 Terrain* land;
 '''
         source += header + '\nstruct Action {};\nclass LinkBrush { public:\n' + nested + '\n};\n'
@@ -972,11 +974,11 @@ struct EditorObjectMgr {
 EditorObjectMgr* EditorObjectMgr::active;
 '''
         for signature in ('BuildingLink::BuildingLink( const EditorObject*',
-                          'BuildingLink::BuildingLink( const Stuff::Vector3D&',
+                          'BuildingLink::BuildingLink( const glm::vec3&',
                           'BuildingLink::BuildingLink( const BuildingLink&',
                           'BuildingLink& BuildingLink::operator=', 'void BuildingLink::CopyData',
                           'bool BuildingLink::AddChild', 'int BuildingLink::GetLinkCount',
-                          'const Stuff::Vector3D& BuildingLink::GetParentPosition',
+                          'const glm::vec3& BuildingLink::GetParentPosition',
                           'bool BuildingLink::HasChild', 'bool BuildingLink::HasParent',
                           'bool BuildingLink::RemoveObject', 'int BuildingLink::GetChildrenPositions',
                           'void\tBuildingLink::FixHeights'):
@@ -992,7 +994,7 @@ int main() {
     auto& a = mgr.objects[0]; auto& b = mgr.objects[1]; auto& c = mgr.objects[2]; auto& d = mgr.objects[3];
     BuildingLink link(&a);
     assert(link.AddChild(&d)); assert(link.AddChild(&c)); assert(!link.AddChild(&d));
-    Stuff::Vector3D positions[3]{{99,0,0}};
+    glm::vec3 positions[3]{{99,0,0}};
     assert(link.GetChildrenPositions(positions, 1) == 2 && positions[0].x == 99);
     assert(link.GetChildrenPositions(positions, 3) == 2 && positions[0] == d.pos && positions[1] == c.pos);
     BuildingLink copy(link); BuildingLink assigned(&b); assigned = link; assigned = assigned;

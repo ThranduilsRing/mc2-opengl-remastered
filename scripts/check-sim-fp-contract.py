@@ -133,7 +133,7 @@ def source_arm():
 
 
 def selftest():
-    msvc = r"C:\cl.exe /nologo /TP /O2 /fp:precise -c A:\x\mclib\stuff\affinematrix.cpp"
+    msvc = r"C:\cl.exe /nologo /TP /O2 /fp:precise -c A:\x\mclib\stuff\vector4d.cpp"
     clang = r"C:\LLVM\bin\clang-cl.exe /nologo /TP /O2 /fp:precise /clang:-ffp-contract=off -c a.cpp"
     must_pass = [(msvc, None), (clang, None)]
     must_fail = [(msvc + " /fp:fast", None), (msvc + " /fp:contract", None), (msvc + " /fp:strict", None),
