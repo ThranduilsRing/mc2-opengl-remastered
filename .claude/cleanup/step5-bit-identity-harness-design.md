@@ -165,6 +165,12 @@ Finding: the 1-ULP trig rows were the HARNESS include order. The gameos/mclib/mc
   saveload x2 = baselines, capture pair viewed, 38 REQUIRED rows 0 mismatches, build_all_targets -j2.
 - S5.7 0f485f8ab (lane 1 s22) Ray3D folded into Line3D (its only user was Line3D's base): origin/direction are Line3D members in the
   same order, Project and the plane distance moved verbatim; the hidden or callerless Ray3D functions and Find_Closest_Approach deleted.
+- S5.9 (lane 1 s23) Stuff::YawPitchRoll deleted: its one real use was the notation-file UnitQuaternion entry (yaw, pitch, roll in
+  degrees). The two conversions it carried (the AffineMatrix4D::BuildRotation(YawPitchRoll) matrix and the YawPitchRoll-from-matrix
+  extraction) are now `Quaternion_From_Yaw_Pitch_Roll` / `Yaw_Pitch_Roll_From_Quaternion` in rotation.cpp, verbatim; the YawPitchRoll
+  notation accessors (Note/Page), the matrix/Euler/quaternion constructors and assignments, Small_Enough/Close_Enough/Lerp/Normalize,
+  the stream I/O and Spew went with it (no caller). Phase A corpus: both directions equal the class on 20000 samples incl. both +/-90
+  degree pitch branches (0 mismatches); the output digest 4785bc9cd9dfa939 is the REQUIRED row after the deletion.
 Proof every batch: sim pair mc2_03/mc2_24 identical to the pre-port reference (exe 579b60e2c) and to the committed baselines; saveload mc2_03
 fb63e85ac66966cf and mc2_01 d46e3e5e30d26b15 = baselines; S5.2/S5.4 GL/VK capture pair day mc2_01 + night mc2_10 viewed.
 Left on Stuff: the types themselves (Vector3D ~2,000 uses outside stuff/, Point3D, the matrices, UnitQuaternion, angles) and every op whose

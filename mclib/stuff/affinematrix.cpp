@@ -77,22 +77,6 @@ AffineMatrix4D&
 //###########################################################################
 //###########################################################################
 //
-AffineMatrix4D&
-	AffineMatrix4D::operator=(const YawPitchRoll &angles)
-{
-	Check_Pointer(this);
-	Check_Object(&angles);
-
-	BuildRotation(angles);
-	(*this)(3,0) = 0.0f;
-	(*this)(3,1) = 0.0f;
-	(*this)(3,2) = 0.0f;
-
-	Check_Object(this);
-	return *this;
-}
-
-//
 //###########################################################################
 //###########################################################################
 //
@@ -178,39 +162,6 @@ AffineMatrix4D&
 //
 //#############################################################################
 //#############################################################################
-//
-AffineMatrix4D&
-	AffineMatrix4D::BuildRotation(const YawPitchRoll &angles)
-{
-	Check_Pointer(this);
-	Check_Object(&angles);
-
-	Verify(
-		Vector3D::Forward.z == 1.0f && Vector3D::Right.x == -1.0f && Vector3D::Up.y == 1.0f
-		 || Vector3D::Forward.z == -1.0f && Vector3D::Right.x == 1.0f && Vector3D::Up.y == 1.0f
-	);
-
-	const Scalar
-		xSine = sinf(angles.pitch), xCosine = cosf(angles.pitch),
-		ySine = sinf(angles.yaw), yCosine = cosf(angles.yaw),
-		zSine = sinf(angles.roll), zCosine = cosf(angles.roll);
-
-	(*this)(0,0) = yCosine*zCosine + xSine*ySine*zSine;
-	(*this)(0,1) = xCosine*zSine;
-	(*this)(0,2) = xSine*yCosine*zSine - ySine*zCosine;
-
-	(*this)(1,0) = xSine*ySine*zCosine - yCosine*zSine;
-	(*this)(1,1) = xCosine*zCosine;
-	(*this)(1,2) = ySine*zSine + xSine*yCosine*zCosine;
-
-	(*this)(2,0) = xCosine*ySine;
-	(*this)(2,1) = -xSine;
-	(*this)(2,2) = xCosine*yCosine;
-
-	Check_Object(this);
-	return *this;
-}
-
 //
 //###########################################################################
 //###########################################################################

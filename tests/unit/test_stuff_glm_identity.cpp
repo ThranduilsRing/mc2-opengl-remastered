@@ -287,3 +287,24 @@ TEST_CASE("Stuff/GLM identity detects byte changes and classifies migration cand
         if (row.requireIdentity) CHECK(row.mismatches == 0);
     }
 }
+
+// Step 5 S5.9: the notation-file yaw/pitch/roll conversions that replaced Stuff::YawPitchRoll keep its bits. While the type
+// existed the corpus compared both directions against it; the digest of the outputs is the record kept after its deletion.
+TEST_CASE("Stuff/YawPitchRoll fold: the notation conversions keep the former type's bits") {
+    std::mt19937 rng(seed ^ 0x59505200u);
+    std::uniform_real_distribution<float> angle(-4.0f, 4.0f);
+    std::uint64_t digest = 1469598103934665603ull;
+    auto fold = [&](float f) { digest = (digest ^ std::bit_cast<std::uint32_t>(f)) * 1099511628211ull; };
+    for (unsigned i = 0; i < 20000; ++i) {
+        const float yaw = angle(rng), roll = angle(rng);
+        float pitch = angle(rng);
+        if (i % 50 == 0) pitch = (i % 100 == 0) ? Stuff::Pi_Over_2 : -Stuff::Pi_Over_2;  // the two singular branches
+        const Stuff::UnitQuaternion q = Stuff::Quaternion_From_Yaw_Pitch_Roll(yaw, pitch, roll);
+        float y = 0, p = 0, r = 0;
+        Stuff::Yaw_Pitch_Roll_From_Quaternion(q, &y, &p, &r);
+        for (float f : {q.x, q.y, q.z, q.w, y, p, r}) fold(f);
+    }
+    std::printf("[STUFF_GLM] op=yaw-pitch-roll.fold samples=20000 digest=%016llx\n", static_cast<unsigned long long>(digest));
+    // Recorded at S5.9 phase A, when both directions matched Stuff::YawPitchRoll on every sample (0 mismatches).
+    CHECK(digest == 0x4785bc9cd9dfa939ull);
+}

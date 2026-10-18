@@ -109,15 +109,6 @@ namespace Stuff {
 			SetEntry(const Vector3D &value);
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	// YawPitchRoll access
-	//
-	public:
-		void
-			GetEntry(YawPitchRoll *value);
-		void
-			SetEntry(const YawPitchRoll &value);
-
-	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// UnitQuaternion access
 	//
 	public:

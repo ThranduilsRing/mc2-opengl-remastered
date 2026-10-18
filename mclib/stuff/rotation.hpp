@@ -13,7 +13,6 @@
 
 namespace Stuff {
 	class UnitQuaternion;
-	class YawPitchRoll;
 	class EulerAngles;
 }
 
@@ -26,11 +25,6 @@ namespace Stuff {
 	void
 		Spew(
 			const char* group,
-			const Stuff::YawPitchRoll &angle
-		);
-	void
-		Spew(
-			const char* group,
 			const Stuff::UnitQuaternion &angle
 		);
 #endif
@@ -38,15 +32,12 @@ namespace Stuff {
 namespace Stuff {
 
 	class UnitQuaternion;
-	class YawPitchRoll;
 	class UnitVector3D;
 	class LinearMatrix4D;
 
     // sebi
     bool Small_Enough( const EulerAngles &a, Scalar e = SMALL);
-    bool Small_Enough( const YawPitchRoll &a, Scalar e = SMALL);
 
-    bool Close_Enough( const YawPitchRoll &a1, const YawPitchRoll &a2, Scalar e = SMALL);
     bool Close_Enough( const EulerAngles &a1, const EulerAngles &a2, Scalar e = SMALL);
     bool Close_Enough( const UnitQuaternion &a1, const UnitQuaternion &a2, Scalar e = SMALL);
 
@@ -78,8 +69,6 @@ namespace Stuff {
 			{pitch = p; yaw = y; roll = r;}
 		EulerAngles(const EulerAngles &a)
 			{pitch = a.pitch; yaw = a.yaw; roll = a.roll;}
-		explicit EulerAngles(const YawPitchRoll &angles)
-			{*this = angles;}
 		explicit EulerAngles(const UnitQuaternion &quaternion)
 			{*this = quaternion;}
 		explicit EulerAngles(const LinearMatrix4D &matrix)
@@ -95,8 +84,6 @@ namespace Stuff {
 					pitch = angles.pitch; yaw = angles.yaw; roll = angles.roll;
 					return *this;
 				}
-		EulerAngles&
-			operator=(const YawPitchRoll &angles);
 		EulerAngles&
 			operator=(const UnitQuaternion &quaternion);
 		EulerAngles&
@@ -185,136 +172,6 @@ namespace Stuff {
 	};
 
 	//##########################################################################
-	//#########################    YawPitchRoll     ############################
-	//##########################################################################
-
-	class YawPitchRoll
-	{
-	public:
-		Radian
-			yaw,
-			pitch,
-			roll;
-
-		static const YawPitchRoll
-			Identity;
-
-		//
-		// Constructors
-		//
-		YawPitchRoll()
-			{}
-		YawPitchRoll(
-			const Radian &y,
-			const Radian &p,
-			const Radian &r
-		)
-			{pitch = p; yaw = y; roll = r;}
-		YawPitchRoll(const YawPitchRoll &angles)
-			{pitch = angles.pitch; yaw = angles.yaw; roll = angles.roll;}
-		explicit YawPitchRoll(const EulerAngles &angles)
-			{*this = angles;}
-		explicit YawPitchRoll(const UnitQuaternion &quaternion)
-			{*this = quaternion;}
-		explicit YawPitchRoll(const LinearMatrix4D &matrix)
-			{*this = matrix;}
-
-		//
-		// Assignment operators
-		//
-		YawPitchRoll&
-			operator=(const YawPitchRoll &angles)
-				{
-					Check_Pointer(this); Check_Object(&angles);
-					pitch = angles.pitch; yaw = angles.yaw; roll = angles.roll;
-					return *this;
-				}
-		YawPitchRoll&
-			operator=(const EulerAngles &angles);
-		YawPitchRoll&
-			operator=(const UnitQuaternion &quaternion);
-		YawPitchRoll&
-			operator=(const LinearMatrix4D &matrix);
-
-
-		static int GetMemberCount(void)
-			{
-				return 3;
-			}
-
-		const Radian&
-			operator[](size_t index) const
-				{
-					Check_Pointer(this);
-					Verify(static_cast<unsigned>(index) <= Z_Axis);
-					return (&yaw)[index];
-				}
-		Radian&
-			operator[](size_t index)
-				{
-					Check_Pointer(this);
-					Verify(static_cast<unsigned>(index) <= Z_Axis);
-					return (&yaw)[index];
-				}
-
-
-		//
-		// "Close-enough" comparators
-		//
-		friend bool
-			Small_Enough(
-				const YawPitchRoll &a,
-				Scalar e/*=SMALL*/
-			);
-		bool
-			operator!() const
-				{return Small_Enough(*this);}
-
-		friend bool
-			Close_Enough(
-				const YawPitchRoll &a1,
-				const YawPitchRoll &a2,
-				Scalar e/*=SMALL*/
-			);
-		bool
-			operator==(const YawPitchRoll& a) const
-				{return Close_Enough(*this,a);}
-		bool
-			operator!=(const YawPitchRoll& a) const
-				{return !Close_Enough(*this,a);}
-
-		//
-		// Template support
-		//
-		YawPitchRoll&
-			Lerp(
-				const YawPitchRoll& v1,
-				const YawPitchRoll& v2,
-				Scalar t
-			);
-
-		//
-		// Support functions
-		//
-		YawPitchRoll&
-			Normalize();
-		#if !defined(Spew)
-			friend void
-				::Spew(
-					const char* group,
-					const YawPitchRoll& angle
-				);
-		#endif
-
-		//
-		// Test functions
-		//
-		void
-			TestInstance() const
-				{}
-	};
-
-	//##########################################################################
 	//#########################    UnitQuaternion    ###############################
 	//##########################################################################
 
@@ -367,8 +224,6 @@ namespace Stuff {
 				}
 		UnitQuaternion&
 			operator=(const EulerAngles &angles);
-		UnitQuaternion&
-			operator=(const YawPitchRoll &angles);
 		UnitQuaternion&
 			operator=(const LinearMatrix4D &matrix);
 		UnitQuaternion&
@@ -637,6 +492,15 @@ namespace Stuff {
 			TestClass();
 	};
 
+	//
+	// Notation-file rotations are yaw, pitch and roll (S5.9 folded the YawPitchRoll type into these two; the formulas are its
+	// matrix conversions, verbatim, so a notation entry reads and writes the same bits).
+	//
+	UnitQuaternion
+		Quaternion_From_Yaw_Pitch_Roll(Scalar yaw, Scalar pitch, Scalar roll);
+	void
+		Yaw_Pitch_Roll_From_Quaternion(const UnitQuaternion &q, Scalar *yaw, Scalar *pitch, Scalar *roll);
+
 }
 
 namespace MemoryStreamIO {
@@ -651,19 +515,6 @@ namespace MemoryStreamIO {
 		Write(
 			Stuff::MemoryStream* stream,
 			const Stuff::EulerAngles *input
-		)
-			{return stream->WriteBytes(input, sizeof(*input));}
-
-	inline Stuff::MemoryStream&
-		Read(
-			Stuff::MemoryStream* stream,
-			Stuff::YawPitchRoll *output
-		)
-			{return stream->ReadBytes(output, sizeof(*output));}
-	inline Stuff::MemoryStream&
-		Write(
-			Stuff::MemoryStream* stream,
-			const Stuff::YawPitchRoll *input
 		)
 			{return stream->WriteBytes(input, sizeof(*input));}
 
