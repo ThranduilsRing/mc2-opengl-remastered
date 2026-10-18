@@ -95,7 +95,7 @@ struct HudScaleExemptScope {
 extern float g_iblShStrength;             // static-prop SH ambient slider (gos_static_prop_batcher.cpp)
 
 //---------------------------------------------------------------------------
-CameraPtr eye = nullptr;
+CameraPtr eye = NULL;
 
 // SCENE-LIGHTING-STATE-1: capture a canonical mirror of today's fragmented
 // lighting state and emit one trace line per ~300-frame window. Read-only —
@@ -1070,7 +1070,7 @@ long GameCamera::activate (void)
 	//---------------------------------------------------------
 	// Camera always starts pointing at first mover in lists
 	// CANNOT be infinite because we don't allow missions without at least 1 player mech!!
-	MoverPtr firstMover = nullptr;
+	MoverPtr firstMover = NULL;
 	if (ObjectManager->getNumMovers() > 0) {
 		long i = 0;
 		firstMover = ObjectManager->getMover(i);
@@ -1103,7 +1103,7 @@ long GameCamera::activate (void)
 	//Startup the SKYBox
 	long appearanceType = (GENERIC_APPR_TYPE << 24);
 
-	AppearanceTypePtr genericAppearanceType = nullptr;
+	AppearanceTypePtr genericAppearanceType = NULL;
 	genericAppearanceType = appearanceTypeList->getAppearance(appearanceType,"skybox");
 	if (!genericAppearanceType)
 	{
@@ -1116,7 +1116,7 @@ long GameCamera::activate (void)
 
 	//--------------------------------------------------------------
 	gosASSERT(genericAppearanceType->getAppearanceClass() == GENERIC_APPR_TYPE);
-	theSky->init((GenericAppearanceType*)genericAppearanceType, nullptr);
+	theSky->init((GenericAppearanceType*)genericAppearanceType, NULL);
 	
 	theSky->setSkyNumber(mission->theSkyNumber);
 
@@ -1132,9 +1132,9 @@ long GameCamera::activate (void)
 
 inline GameObjectPtr getCamObject (long partId, bool existsOnly) 
 {
-	GameObjectPtr obj = nullptr;
+	GameObjectPtr obj = NULL;
 	if (partId == -1)
-		obj = nullptr;
+		obj = NULL;
 	else
 		obj = ObjectManager->findByPartId(partId);
 
@@ -1147,7 +1147,7 @@ inline GameObjectPtr getCamObject (long partId, bool existsOnly)
 			(obj->getCommanderId() == Commander::home->getId()) || 
 			(Team::home->teamLineOfSight(obj->getLOSPosition(),0.0f)))
 			return(obj);
-		return(nullptr);
+		return(NULL);
 	}
 
 	return(obj);
@@ -1185,7 +1185,7 @@ long GameCamera::update (void)
 	}
 	else
 	{
-		targetObject = nullptr;
+		targetObject = NULL;
 	}
 
 	//Force CameraAltitude to be less than max based on angle.  This keeps poly load relatively even	
