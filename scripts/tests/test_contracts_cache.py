@@ -4,11 +4,13 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+import console_child  # noqa: E402
 import contracts_cache as cc  # noqa: E402
 
 
 def _git(repo, *a):
-    subprocess.run(["git", "-C", str(repo), *a], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repo), *a], check=True, capture_output=True,
+                   **console_child.child_kwargs(redirected=True))
 
 
 def _repo(tmp_path):

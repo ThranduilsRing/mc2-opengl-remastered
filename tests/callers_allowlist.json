@@ -49,6 +49,7 @@
   "scripts/tests/test_console_child.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_contract_coverage.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/tests/test_contract_harness_migration.py": "Pytest-discovered module through the scripts_tests board row.",
+  "scripts/tests/test_contracts_cache.py": "Pytest-discovered module through the scripts_tests board row (scripts/check-contracts.sh runs the directory).",
   "scripts/tests/test_delivery_code_evidence.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/tests/test_delivery_gate_defaults.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/tests/test_deploy_build_layout.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",

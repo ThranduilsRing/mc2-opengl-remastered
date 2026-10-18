@@ -20,7 +20,7 @@ SAFE DEFAULTS
 CLI (used by check-contracts.sh)
   keys   <repo>  < TSV(label \t cmd)   -> TSV(label \t key \t HIT|MISS)   (undeclared rows are omitted)
   store  <repo>  < TSV(label \t key)   -> records PASS for each
-  Both honour no flags; `--no-cache` is handled by the shell (it simply never calls this).
+  Both honour no flags (tests: scripts/tests/test_contracts_cache.py); `--no-cache` is handled by the shell (it simply never calls this).
 """
 from __future__ import annotations
 
@@ -32,6 +32,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import console_child  # noqa: E402
+
 CACHE_VERSION = "1"
 DECL_REL = "scripts/contracts-cache-inputs.txt"
 TOKEN_RE = re.compile(r"[A-Za-z0-9_\-./]+\.[A-Za-z0-9]{1,12}")
@@ -39,7 +42,8 @@ LOCAL_DIRS = ("scripts", "tools")
 
 
 def _git(repo, *args, nul=False):
-    r = subprocess.run(["git", "-C", repo, *args], capture_output=True, check=True)
+    r = subprocess.run(["git", "-C", repo, *args], capture_output=True, check=True,
+                       **console_child.child_kwargs(redirected=True))
     out = r.stdout.decode("utf-8", "replace")
     return [x for x in out.split("\0" if nul else "\n") if x]
 
@@ -184,7 +188,8 @@ _versions = None
 def versions():
     global _versions
     if _versions is None:
-        g = subprocess.run(["git", "--version"], capture_output=True, text=True).stdout.strip()
+        g = subprocess.run(["git", "--version"], capture_output=True, text=True,
+                           **console_child.child_kwargs(redirected=True)).stdout.strip()
         _versions = f"{CACHE_VERSION}|py{sys.version.split()[0]}|{g}"
     return _versions
 
@@ -199,7 +204,7 @@ def compute_key(repo, uni, cmd, specs):
 
 def cache_path(repo):
     r = subprocess.run(["git", "-C", repo, "rev-parse", "--git-path", "mc2_contracts_cache.json"],
-                       capture_output=True, text=True, check=True)
+                       capture_output=True, text=True, check=True, **console_child.child_kwargs(redirected=True))
     p = r.stdout.strip()
     return os.path.normpath(p if os.path.isabs(p) else os.path.join(repo, p))
 
