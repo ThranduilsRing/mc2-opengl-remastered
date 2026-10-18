@@ -62,7 +62,7 @@
   "mclib/tgl.h": 1787,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "2a23dc346",
+ "head": "95b25584d",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -80,7 +80,7 @@
    "files": 14,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1200
+   "max_lines": 1196
   },
   "RenderCore": {
    "files": 55,
