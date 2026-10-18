@@ -50,6 +50,7 @@ add_executable(mc2_tests
     test_deferred_destroy.cpp  # the Vulkan deferred-destroy queue: not before the ticket, after it, negative control (offline)
     test_frame_ring.cpp  # the Vulkan frame ring offset arithmetic: slots, alignment, growth sizing (offline)
     test_readback.cpp  # the Vulkan readback ring: ticket, tag and generation checks, wrong-tag negative control (offline)
+    test_texture_service.cpp  # P4a texture/material identity: key dedupe, mod precedence, paint variants, stale handles, material sets (offline)
     test_handle_slots.cpp  # P3 handle slots: ticket-gated reuse, stale handles refused, generation wrap, range exhaustion (offline)
     test_frame_packets.cpp  # P1 frame packets: publish freezes a frame's views and lighting, per-slot arenas, republish and recycle (offline)
     test_det_rng.cpp        # DETERMINISTIC-RNG-1: LCG kernel determinism (offline)

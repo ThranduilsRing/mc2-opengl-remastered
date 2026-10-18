@@ -10,6 +10,7 @@
 
 #include "txmmgr_internal.h"
 #include "texture_ref.h"
+#include "../RenderCore/TextureService.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 // NS3 boundary: effectStream belongs to the texture/effect subsystem, not
@@ -516,6 +517,7 @@ void MC_TextureManager::releaseNode (DWORD textureNode)
 		return;
 	}
 
+	RenderCore::textureService().dropRef(textureNode);   // P4a: mirrors the reference count in the identity service
 	if (--node.numUsers == 0)
 		node.destroy();
 }
@@ -941,5 +943,6 @@ void MC_TextureNode::destroy (void)
 	
 	mcTextureManager->textureStringHeap->Free(nodeName);
 	mcTextureManager->textureCacheHeap->Free(textureData);
+	RenderCore::textureService().onNodeDestroyed(static_cast<uint32_t>(this - mcTextureManager->masterTextureNodes));   // P4a: the node's handle goes stale
 	init();
 }
