@@ -6,7 +6,7 @@
 
 //---------------------------------------------------------------------------
 
-GameObjectPtr GameObjectManager::findObject (Stuff::Vector3D position) {
+GameObjectPtr GameObjectManager::findObject (glm::vec3 position) {
 
 	float closestDistance = 10000.0;
 	GameObjectPtr closestObj = nullptr;
@@ -143,19 +143,19 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 	if (!appearType)
 		return false;
 
-	const Stuff::Vector3D& position = ba->position;
+	const glm::vec3& position = ba->position;
 	float rotation = ba->rotation;
 
-	Stuff::Vector3D boxCoords[8];
+	glm::vec3 boxCoords[8];
 	Stuff::Vector4D bcsp[8];
 
-	Stuff::Vector3D boxStart;
+	glm::vec3 boxStart;
 	mc2ToRender(boxStart, appearType->typeUpperLeft);
 
-	Stuff::Vector3D boxEnd;
+	glm::vec3 boxEnd;
 	mc2ToRender(boxEnd, appearType->typeLowerRight);
 
-	Stuff::Vector3D addCoords;
+	glm::vec3 addCoords;
 
 	addCoords.x = boxStart.x;
 	addCoords.y = boxStart.y;
@@ -163,7 +163,7 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 	if (rotation != 0.0f)
 		Rotate(addCoords,-rotation);
 
-	boxCoords[0].Add(position,addCoords);
+	boxCoords[0] = position + addCoords;
 
 	addCoords.x = boxStart.x;
 	addCoords.y = boxEnd.y;
@@ -171,7 +171,7 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 	if (rotation != 0.0f)
 		Rotate(addCoords,-rotation);
 
-	boxCoords[1].Add(position,addCoords);
+	boxCoords[1] = position + addCoords;
 
 	addCoords.x = boxEnd.x;
 	addCoords.y = boxEnd.y;
@@ -179,7 +179,7 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 	if (rotation != 0.0f)
 		Rotate(addCoords,-rotation);
 
-	boxCoords[2].Add(position,addCoords);
+	boxCoords[2] = position + addCoords;
 
 	addCoords.x = boxEnd.x;
 	addCoords.y = boxStart.y;
@@ -187,7 +187,7 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 	if (rotation != 0.0f)
 		Rotate(addCoords,-rotation);
 
-	boxCoords[3].Add(position,addCoords);
+	boxCoords[3] = position + addCoords;
 
 	addCoords.x = boxStart.x;
 	addCoords.y = boxStart.y;
@@ -195,7 +195,7 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 	if (rotation != 0.0f)
 		Rotate(addCoords,-rotation);
 
-	boxCoords[4].Add(position,addCoords);
+	boxCoords[4] = position + addCoords;
 
 	addCoords.x = boxEnd.x;
 	addCoords.y = boxStart.y;
@@ -203,7 +203,7 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 	if (rotation != 0.0f)
 		Rotate(addCoords,-rotation);
 
-	boxCoords[5].Add(position,addCoords);
+	boxCoords[5] = position + addCoords;
 
 	addCoords.x = boxEnd.x;
 	addCoords.y = boxEnd.y;
@@ -211,7 +211,7 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 	if (rotation != 0.0f)
 		Rotate(addCoords,-rotation);
 
-	boxCoords[6].Add(position,addCoords);
+	boxCoords[6] = position + addCoords;
 
 	addCoords.x = boxStart.x;
 	addCoords.y = boxEnd.y;
@@ -219,7 +219,7 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 	if (rotation != 0.0f)
 		Rotate(addCoords,-rotation);
 
-	boxCoords[7].Add(position,addCoords);
+	boxCoords[7] = position + addCoords;
 
 	float maxX = 0.0f, maxY = 0.0f;
 	float minX = 0.0f, minY = 0.0f;
@@ -682,8 +682,8 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse (long mouseX,
 									if (okClass)
 									{
 										// Disambiguate overlapping OBBs by nearest-to-camera (front building wins).
-										Stuff::Vector3D _cp = eye->getPosition();
-										Stuff::Vector3D _op = obj->getPosition();
+										glm::vec3 _cp = eye->getPosition();
+										glm::vec3 _op = obj->getPosition();
 										float _dx=_op.x-_cp.x, _dy=_op.y-_cp.y, _dz=_op.z-_cp.z;
 										float _dd=_dx*_dx+_dy*_dy+_dz*_dz;
 										if (_dd < pickBestDistSq) { pickBestDistSq = _dd; pickBest = obj; }
@@ -742,7 +742,7 @@ GameObjectPtr GameObjectManager::findObjectByMouse (long mouseX, long mouseY) {
 }
 
 //---------------------------------------------------------------------------
-bool GameObjectManager::moverInRect(long index, Stuff::Vector3D &dStart, Stuff::Vector3D &dEnd)
+bool GameObjectManager::moverInRect(long index, glm::vec3 &dStart, glm::vec3 &dEnd)
 {
 	//------------------------------------------------------------------------------
 	// This function checks the mover passed in to see if it

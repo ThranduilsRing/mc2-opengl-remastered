@@ -115,7 +115,7 @@ long MultiPlayer::addMissionScriptMessageChunk (long code, long param) {
 
 //---------------------------------------------------------------------------
 
-long MultiPlayer::addArtilleryChunk (long commanderId, long artilleryType, Stuff::Vector3D location, long seconds) 
+long MultiPlayer::addArtilleryChunk (long commanderId, long artilleryType, glm::vec3 location, long seconds) 
 {
 	return(0);
 }
@@ -278,9 +278,9 @@ void MultiPlayer::sendEndMission (long result) {
 }
 
 //---------------------------------------------------------------------------
-extern MoverPtr BringInReinforcement (long vehicleID, long rosterIndex, long commanderID, Stuff::Vector3D pos, bool exists);
+extern MoverPtr BringInReinforcement (long vehicleID, long rosterIndex, long commanderID, glm::vec3 pos, bool exists);
 
-void MultiPlayer::sendReinforcement (long vehicleID, long rosterIndex, const char pilotName[16], long commanderID, Stuff::Vector3D pos, unsigned char stage) {
+void MultiPlayer::sendReinforcement (long vehicleID, long rosterIndex, const char pilotName[16], long commanderID, glm::vec3 pos, unsigned char stage) {
 
 }
 
@@ -325,7 +325,7 @@ void MultiPlayer::sendPlayerMoverGroup (long groupId,
 
 //---------------------------------------------------------------------------
 
-void MultiPlayer::sendPlayerArtillery (long strikeType, Stuff::Vector3D location, long seconds) {
+void MultiPlayer::sendPlayerArtillery (long strikeType, glm::vec3 location, long seconds) {
 
 }
 

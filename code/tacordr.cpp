@@ -195,7 +195,7 @@ void TacticalOrder::init (void) {
 	attackParams.aimLocation = -1;
 	attackParams.pursue = true;
 	attackParams.obliterate = false;
-	attackParams.targetPoint.Zero();
+	attackParams.targetPoint = glm::vec3(0.0f);
 	targetWID = 0;
 	targetObjectClass = BASEOBJECT;
 	selectionIndex = -1;
@@ -244,9 +244,9 @@ void TacticalOrder::initWayPath (LocationNodePtr path) {
 
 //---------------------------------------------------------------------------
 
-Stuff::Vector3D TacticalOrder::getWayPoint (long index) {
+glm::vec3 TacticalOrder::getWayPoint (long index) {
 
-	Stuff::Vector3D wayPoint(moveParams.wayPath.points[index * 3],
+	glm::vec3 wayPoint(moveParams.wayPath.points[index * 3],
 							 moveParams.wayPath.points[index * 3 + 1],
 							 moveParams.wayPath.points[index * 3 + 2]);
 	return(wayPoint);
@@ -254,7 +254,7 @@ Stuff::Vector3D TacticalOrder::getWayPoint (long index) {
 
 //---------------------------------------------------------------------------
 
-void TacticalOrder::setWayPoint (long index, Stuff::Vector3D wayPoint) {
+void TacticalOrder::setWayPoint (long index, glm::vec3 wayPoint) {
 
 	moveParams.wayPath.points[index * 3] = wayPoint.x;
 	moveParams.wayPath.points[index * 3 + 1] = wayPoint.y;
@@ -263,7 +263,7 @@ void TacticalOrder::setWayPoint (long index, Stuff::Vector3D wayPoint) {
 
 //---------------------------------------------------------------------------
 
-void TacticalOrder::addWayPoint (Stuff::Vector3D wayPoint, long travelMode) {
+void TacticalOrder::addWayPoint (glm::vec3 wayPoint, long travelMode) {
 
 	if (moveParams.wayPath.numPoints == MAX_WAYPTS)
 		Fatal(MAX_WAYPTS, " tacticalOrder.addWayPoint: too many! ");
@@ -620,7 +620,7 @@ long TacticalOrder::unpack (void) {
 					
 			worldCell[0] = (tempData & TACORDERCHUNK_CELLPOS_MASK);
 
-			Stuff::Vector3D worldPos;
+			glm::vec3 worldPos;
 			land->cellToWorld(worldCell[0], worldCell[1], worldPos);
 			setWayPoint(0, worldPos);
 			moveParams.wayPath.numPoints = 1;
@@ -634,7 +634,7 @@ long TacticalOrder::unpack (void) {
 					
 				worldCell[0] = (tempData & TACORDERCHUNK_CELLPOS_MASK);
 
-				Stuff::Vector3D worldPos;
+				glm::vec3 worldPos;
 				land->cellToWorld(worldCell[0], worldCell[1], worldPos);
 				setWayPoint(0, worldPos);
 				moveParams.wayPath.numPoints = 1;
@@ -762,7 +762,7 @@ void dispatchRoute(MechWarrior* warrior, mc2::sim::RouteExecution& route) {
     route.awaitingMaps = route.retryPending = false;
     warrior->setMoveWayPath(&path, route.kind == mc2::sim::OrderKind::PatrolPath);
     const auto& point = route.path.points[cursor];
-    Stuff::Vector3D goal(point.x, point.y, point.z);
+    glm::vec3 goal(point.x, point.y, point.z);
     warrior->setMoveGoal(MOVEGOAL_LOCATION, &goal);
     warrior->setMoveRun(route.path.mode[cursor] == mc2::sim::TravelMode::Fast);
     warrior->requestMovePath(warrior->getTacOrder(ORDERSTATE_GENERAL)->selectionIndex,
@@ -846,7 +846,7 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 					return(TACORDER_FAILURE);
 				delayedTime = -1.0;
 			}
-			Stuff::Vector3D location;
+			glm::vec3 location;
 			location.x = moveParams.wayPath.points[0];
 			location.y = moveParams.wayPath.points[1];
 			location.z = moveParams.wayPath.points[2];
@@ -886,7 +886,7 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 					return(TACORDER_FAILURE);
 				delayedTime = -1.0;
 			}
-			Stuff::Vector3D location;
+			glm::vec3 location;
 			location.x = moveParams.wayPath.points[0];
 			location.y = moveParams.wayPath.points[1];
 			location.z = moveParams.wayPath.points[2];
@@ -1070,7 +1070,7 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 			break;
 		case TACTICAL_ORDER_WITHDRAW:
 			{
-			Stuff::Vector3D location;
+			glm::vec3 location;
 			location.x = moveParams.wayPath.points[0];
 			location.y = moveParams.wayPath.points[1];
 			location.z = moveParams.wayPath.points[2];
@@ -1078,7 +1078,7 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 			}
 			break;
 		case TACTICAL_ORDER_SCRAMBLE: {
-			Stuff::Vector3D location;
+			glm::vec3 location;
 			location.x = moveParams.wayPath.points[0];
 			location.y = moveParams.wayPath.points[1];
 			location.z = moveParams.wayPath.points[2];
@@ -1100,7 +1100,7 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 //					result = warrior->orderMoveToObject(unitOrder, false, origin, target, moveParams.fromArea, selectionIndex, params);
 
 					int cellRow, cellCol;
-					Stuff::Vector3D		destination;
+					glm::vec3		destination;
 					land->worldToCell(target->getPosition(), cellRow, cellCol);
 //					cellRow++;
 //					cellCol++;
@@ -1326,7 +1326,7 @@ long TacticalOrder::status (MechWarriorPtr warrior) {
 					long message;
 					execute(warrior, message);
 				}
-				Stuff::Vector3D location;
+				glm::vec3 location;
 				location.x = moveParams.wayPath.points[0];
 				location.y = moveParams.wayPath.points[1];
 				location.z = moveParams.wayPath.points[2];
@@ -1345,7 +1345,7 @@ long TacticalOrder::status (MechWarriorPtr warrior) {
 			break;
 		case TACTICAL_ORDER_MOVETO_OBJECT:
 			if (target) {
-				Stuff::Vector3D location;
+				glm::vec3 location;
 				location.x = moveParams.wayPath.points[0];
 				location.y = moveParams.wayPath.points[1];
 				location.z = moveParams.wayPath.points[2];
@@ -1445,7 +1445,7 @@ long TacticalOrder::status (MechWarriorPtr warrior) {
 			if ((formation > -1) && (formationPos > 0))
 				result = TACORDER_FAILURE;
 			else {
-				Stuff::Vector3D location;
+				glm::vec3 location;
 				location.x = moveParams.wayPath.points[0];
 				location.y = moveParams.wayPath.points[1];
 				location.z = moveParams.wayPath.points[2];
@@ -1486,7 +1486,7 @@ long TacticalOrder::status (MechWarriorPtr warrior) {
 							else
 							{
 								int cellRow, cellCol;
-								Stuff::Vector3D		destination;
+								glm::vec3		destination;
 								land->worldToCell(target->getPosition(), cellRow, cellCol);
 								cellRow++;
 								cellCol++;
@@ -1632,7 +1632,7 @@ long TacticalOrder::status (MechWarriorPtr warrior) {
 								{
 									BuildingPtr repairBuilding = (BuildingPtr)target;
 									int			tileRow, tileCol;
-									Stuff::Vector3D		destination;
+									glm::vec3		destination;
 									land->worldToTile(repairBuilding->getPosition(), tileRow, tileCol);
 									tileRow++;
 									tileCol++;
@@ -1729,7 +1729,7 @@ long TacticalOrder::status (MechWarriorPtr warrior) {
 						if (toad)
 						{
 						vector_2d	offset;
-						Stuff::Vector3D	targetLocation;
+						glm::vec3	targetLocation;
 						float		angle;
 
 							deployCount--;
@@ -1960,7 +1960,7 @@ bool TacticalOrder::equals (TacticalOrder* tacOrder) {
 				return(false);
 			if (attackParams.obliterate != tacOrder->attackParams.obliterate)
 				return(false);
-			if (attackParams.targetPoint != tacOrder->attackParams.targetPoint)
+			if (!mc2::math::closeEnough(attackParams.targetPoint, tacOrder->attackParams.targetPoint))
 				return(false);
 			if (attackParams.tactic != tacOrder->attackParams.tactic)
 				return(false);
@@ -2004,7 +2004,7 @@ void TacticalOrder::debugString (MechWarriorPtr pilot, char* s) {
 			strcpy(s, "wait");
 			break;
 		case TACTICAL_ORDER_MOVETO_POINT: {
-			Stuff::Vector3D curPos;
+			glm::vec3 curPos;
 			curPos.x = moveParams.wayPath.points[0];
 			curPos.y = moveParams.wayPath.points[1];
 			curPos.z = 0.0;
@@ -2020,7 +2020,7 @@ void TacticalOrder::debugString (MechWarriorPtr pilot, char* s) {
 			sprintf(s, "move to obj (%d)", target ? target->getPartId() : 0);
 			break;
 		case TACTICAL_ORDER_JUMPTO_POINT: {
-			Stuff::Vector3D curPos;
+			glm::vec3 curPos;
 			curPos.x = moveParams.wayPath.points[0];
 			curPos.y = moveParams.wayPath.points[1];
 			curPos.z = 0.0;
@@ -2088,7 +2088,7 @@ void TacticalOrder::debugString (MechWarriorPtr pilot, char* s) {
 			strcpy(s, "scramble");
 			break;
 		case TACTICAL_ORDER_CAPTURE: {
-			Stuff::Vector3D goalPos;
+			glm::vec3 goalPos;
 			GameObjectPtr obj;
 			long goalType = pilot->getMoveGoal(&goalPos, &obj);
 			if ((goalType > 0) && obj) {

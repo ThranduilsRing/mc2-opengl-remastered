@@ -60,15 +60,15 @@ public:
     static bool formationLineEnabled();        // env gate, cached
     void flOnHotkeyL();                        // L pressed while F6 active
     void flOnCancel();                         // Esc / right-click / F6 exit
-    void flOnDragStart( const Stuff::Vector3D& worldStart );
-    void flOnDragMove( const Stuff::Vector3D& worldEnd );
+    void flOnDragStart( const glm::vec3& worldStart );
+    void flOnDragMove( const glm::vec3& worldEnd );
     void flOnRelease();                        // resets state + count
     FormationLineState flState() const { return flState_; }
-    const Stuff::Vector3D& flStart() const { return flStart_; }
-    const Stuff::Vector3D& flEnd()   const { return flEnd_; }
+    const glm::vec3& flStart() const { return flStart_; }
+    const glm::vec3& flEnd()   const { return flEnd_; }
     // Evenly spaced slots start->end inclusive, scaled by the spacing factor
     // about the line midpoint; N==1 -> midpoint. Returns count.
-    int flComputeSlots( Stuff::Vector3D* outSlots, int maxSlots ) const;
+    int flComputeSlots( glm::vec3* outSlots, int maxSlots ) const;
     // Spacing wheel: stretch/compress the squad spread about the line
     // midpoint. Persists across lines (the player's preferred spread).
     float flSpacing() const { return flSpacing_; }
@@ -107,8 +107,8 @@ private:
     bool    suppressRelease_ = false;
 
     FormationLineState flState_ = FL_IDLE;
-    Stuff::Vector3D    flStart_;
-    Stuff::Vector3D    flEnd_;
+    glm::vec3    flStart_;
+    glm::vec3    flEnd_;
     static const int   kFlMaxMovers = 32;
     Mover*             flMovers_[kFlMaxMovers] = {};   // snapshot at drag start
     int                flMoverCount_ = 0;

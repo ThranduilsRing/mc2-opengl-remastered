@@ -49,11 +49,11 @@ void MultiPlayer::removeFromPlayerMoverRoster(MoverPtr mover) {}
 void MultiPlayer::sendChat(NETPLAYER receiver, char team, char* chatString) {}
 void MultiPlayer::sendHoldPosition() {}
 void MultiPlayer::sendMissionSetup(NETPLAYER receiver, long stage, CompressedMech* mechData) {}
-void MultiPlayer::sendPlayerArtillery(long strikeType, Stuff::Vector3D location, long seconds) {}
+void MultiPlayer::sendPlayerArtillery(long strikeType, glm::vec3 location, long seconds) {}
 void MultiPlayer::sendPlayerInsignia(char* insigniaFileName, unsigned char* insigniaData, long insigniaDataSize) {}
 void MultiPlayer::sendPlayerOrder(TacticalOrderPtr tacOrder, bool needsSelection, long numMovers, MoverPtr* moverList, long numGroups, MoverGroupPtr* groupList, bool queuedOrder) {}
 void MultiPlayer::sendPlayerUpdate(NETPLAYER receiver, long stage, long commanderID) {}
-void MultiPlayer::sendReinforcement(long vehicleID, long rosterIndex, const char pilotName[16], long commanderID, Stuff::Vector3D pos, unsigned char stage) {}
+void MultiPlayer::sendReinforcement(long vehicleID, long rosterIndex, const char pilotName[16], long commanderID, glm::vec3 pos, unsigned char stage) {}
 void MultiPlayer::setInProgress(bool set) {}
 void MultiPlayer::setLocked(bool set) {}
 long MultiPlayer::update() { return long(); }

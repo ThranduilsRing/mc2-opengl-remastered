@@ -156,7 +156,7 @@ void TacticalOverview::flOnCancel()
     flMoverCount_ = 0;
 }
 
-void TacticalOverview::flOnDragStart( const Stuff::Vector3D& worldStart )
+void TacticalOverview::flOnDragStart( const glm::vec3& worldStart )
 {
     if ( flState_ != FL_ARMED )
         return;
@@ -165,7 +165,7 @@ void TacticalOverview::flOnDragStart( const Stuff::Vector3D& worldStart )
     flState_ = FL_DRAGGING;
 }
 
-void TacticalOverview::flOnDragMove( const Stuff::Vector3D& worldEnd )
+void TacticalOverview::flOnDragMove( const glm::vec3& worldEnd )
 {
     if ( flState_ == FL_DRAGGING )
         flEnd_ = worldEnd;
@@ -196,7 +196,7 @@ void TacticalOverview::flAdjustSpacing( long wheelDelta )
     if ( flSpacing_ > kMax ) flSpacing_ = kMax;
 }
 
-int TacticalOverview::flComputeSlots( Stuff::Vector3D* outSlots, int maxSlots ) const
+int TacticalOverview::flComputeSlots( glm::vec3* outSlots, int maxSlots ) const
 {
     int n = flMoverCount_;
     if ( n <= 0 || maxSlots <= 0 )

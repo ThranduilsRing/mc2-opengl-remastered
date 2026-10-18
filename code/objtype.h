@@ -202,7 +202,7 @@ class ObjectType {
 			return(0.0);
 		}
 
-		void createExplosion (Stuff::Vector3D &position, float dmg = 0.0, float rad = 0.0);
+		void createExplosion (glm::vec3 &position, float dmg = 0.0, float rad = 0.0);
 };
 
 //---------------------------------------------------------------------------

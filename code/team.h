@@ -129,7 +129,7 @@ class Team {
 
 		void addToGUI (void);
 
-		Stuff::Vector3D calcEscapeVector (MoverPtr mover, float threatRange);
+		glm::vec3 calcEscapeVector (MoverPtr mover, float threatRange);
 
 		void statusCount (int* statusTally);
 
@@ -147,12 +147,12 @@ class Team {
 
 		static bool lineOfSight (float startLocal, long mCellRow, long mCellCol, float endLocal, long tCellRow, long tCellCol, long teamId, float targetRadius, float startRadius = 0.0f);
 
-		static bool lineOfSight (Stuff::Vector3D myPos, Stuff::Vector3D targetPosition, long teamId, float targetRadius, float startRadius = 0.0f);
+		static bool lineOfSight (glm::vec3 myPos, glm::vec3 targetPosition, long teamId, float targetRadius, float startRadius = 0.0f);
 
 		//-------------------------------------------		
 		// Can anyone on my team see this position?
 		// Used for cursors, artillery, indirect fire.
-		bool teamLineOfSight (Stuff::Vector3D tPos, float extRad);
+		bool teamLineOfSight (glm::vec3 tPos, float extRad);
 
 		void setRelation (TeamPtr team, char relation) {
 			relations[id][team->getId()] = relation;

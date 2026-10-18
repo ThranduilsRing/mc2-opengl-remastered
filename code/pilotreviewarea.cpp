@@ -863,7 +863,7 @@ void	ActivePilotListItem::render()
 	// when adding a new icon, play sound
 	if ( oldPossible != numPossible && numPossible < std::ssize(pilot->killedIcons) )
 	{
-		soundSystem->playDigitalSample( LOG_KILLMARKER, Stuff::Vector3D(-9999.0f,-9999.0,-9999.0f), true );
+		soundSystem->playDigitalSample( LOG_KILLMARKER, glm::vec3(-9999.0f,-9999.0,-9999.0f), true );
 	}
 
 	for ( auto iter = pilot->killedIcons.begin(); iter != pilot->killedIcons.end(); ++iter )

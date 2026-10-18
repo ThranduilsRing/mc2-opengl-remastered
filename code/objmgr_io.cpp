@@ -232,7 +232,7 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 			}
 			else if (!controlBuilding)
 			{
-				Stuff::Vector3D worldPos;
+				glm::vec3 worldPos;
 				if (land)
 					land->cellToWorld((turrets[i]->parentId>>16),(turrets[i]->parentId & 0x0000ffff),worldPos);
 				PAUSE(("Turret linked to bldg @ R %d, C %d  X:%f Y:%f No Bldg there!",(turrets[i]->parentId>>16),(turrets[i]->parentId & 0x0000ffff),worldPos.x,worldPos.y));
@@ -294,15 +294,15 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 	{
 		for (int i=0;i<numBuildings;i++)
 		{
-			Stuff::Vector3D maxDist;
+			glm::vec3 maxDist;
 			long generatorIndex = 0;
-			maxDist.Subtract(buildings[i]->getPosition(),powerGenerators[0]->getPosition());
-			float minDistance = maxDist.GetApproximateLength();
+			maxDist = buildings[i]->getPosition() - powerGenerators[0]->getPosition();
+			float minDistance = glm::length(maxDist);
 			
 			for (long j=1;j<numPowerGenerators;j++)
 			{
-				maxDist.Subtract(buildings[i]->getPosition(),powerGenerators[j]->getPosition()); 
-				float newDistance = maxDist.GetApproximateLength(); 
+				maxDist = buildings[i]->getPosition() - powerGenerators[j]->getPosition(); 
+				float newDistance = glm::length(maxDist); 
 				
 				if (newDistance < minDistance)
 				{
@@ -316,15 +316,15 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 		
 		for (int i=0;i<numTerrainObjects;i++)
 		{
-			Stuff::Vector3D maxDist;
+			glm::vec3 maxDist;
 			long generatorIndex = 0;
-			maxDist.Subtract(terrainObjects[i]->getPosition(),powerGenerators[0]->getPosition());
-			float minDistance = maxDist.GetApproximateLength();
+			maxDist = terrainObjects[i]->getPosition() - powerGenerators[0]->getPosition();
+			float minDistance = glm::length(maxDist);
 			
 			for (long j=1;j<numPowerGenerators;j++)
 			{
-				maxDist.Subtract(terrainObjects[i]->getPosition(),powerGenerators[j]->getPosition()); 
-				float newDistance = maxDist.GetApproximateLength(); 
+				maxDist = terrainObjects[i]->getPosition() - powerGenerators[j]->getPosition(); 
+				float newDistance = glm::length(maxDist); 
 				
 				if (newDistance < minDistance)
 				{
@@ -1182,7 +1182,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else if (!controlBuilding)
 			{
-				Stuff::Vector3D worldPos;
+				glm::vec3 worldPos;
 				if (land)
 					land->cellToWorld((turrets[i]->parentId>>16),(turrets[i]->parentId & 0x0000ffff),worldPos);
 				PAUSE(("Turret linked to bldg @ R %d, C %d  X:%f Y:%f No Bldg there!",(turrets[i]->parentId>>16),(turrets[i]->parentId & 0x0000ffff),worldPos.x,worldPos.y));
@@ -1237,15 +1237,15 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	{
 		for (i=0;i<numBuildings;i++)
 		{
-			Stuff::Vector3D maxDist;
+			glm::vec3 maxDist;
 			long generatorIndex = 0;
-			maxDist.Subtract(buildings[i]->getPosition(),powerGenerators[0]->getPosition());
-			float minDistance = maxDist.GetApproximateLength();
+			maxDist = buildings[i]->getPosition() - powerGenerators[0]->getPosition();
+			float minDistance = glm::length(maxDist);
 			
 			for (long j=1;j<numPowerGenerators;j++)
 			{
-				maxDist.Subtract(buildings[i]->getPosition(),powerGenerators[j]->getPosition()); 
-				float newDistance = maxDist.GetApproximateLength(); 
+				maxDist = buildings[i]->getPosition() - powerGenerators[j]->getPosition(); 
+				float newDistance = glm::length(maxDist); 
 				
 				if (newDistance < minDistance)
 				{
@@ -1259,15 +1259,15 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		
 		for (i=0;i<numTerrainObjects;i++)
 		{
-			Stuff::Vector3D maxDist;
+			glm::vec3 maxDist;
 			long generatorIndex = 0;
-			maxDist.Subtract(terrainObjects[i]->getPosition(),powerGenerators[0]->getPosition());
-			float minDistance = maxDist.GetApproximateLength();
+			maxDist = terrainObjects[i]->getPosition() - powerGenerators[0]->getPosition();
+			float minDistance = glm::length(maxDist);
 			
 			for (long j=1;j<numPowerGenerators;j++)
 			{
-				maxDist.Subtract(terrainObjects[i]->getPosition(),powerGenerators[j]->getPosition()); 
-				float newDistance = maxDist.GetApproximateLength(); 
+				maxDist = terrainObjects[i]->getPosition() - powerGenerators[j]->getPosition(); 
+				float newDistance = glm::length(maxDist); 
 				
 				if (newDistance < minDistance)
 				{

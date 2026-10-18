@@ -122,7 +122,7 @@ struct MiscObjectData {
 
 struct ObjDataLoader {
 		int objTypeNum;
-		Stuff::Vector3D vector;
+		glm::vec3 vector;
 
 		float rotation;		
 		int damage;
@@ -575,7 +575,7 @@ class GameObjectManager {
 			return(badMoverList[index]);
 		}
 
-		GameObjectPtr findObject (Stuff::Vector3D position);
+		GameObjectPtr findObject (glm::vec3 position);
 
 		GameObjectPtr findByPartId (long partId);
 
@@ -589,7 +589,7 @@ class GameObjectManager {
 
 		GameObjectPtr findObjectByMouse (long mouseX, long mouseY);
 		
-		bool moverInRect(long index, Stuff::Vector3D &dStart, Stuff::Vector3D &dEnd);
+		bool moverInRect(long index, glm::vec3 &dStart, glm::vec3 &dEnd);
 
 		ObjectTypePtr loadObjectType (ObjectTypeNumber typeHandle);
 
@@ -619,12 +619,12 @@ class GameObjectManager {
 
 		CarnagePtr createFire (ObjectTypeNumber fireObjTypeHandle,
 							   GameObjectPtr owner,
-							   Stuff::Vector3D& position,
+							   glm::vec3& position,
 							   float tonnage);
 
 		CarnagePtr createExplosion (long effectId,
 									GameObjectPtr owner,
-									Stuff::Vector3D& position,
+									glm::vec3& position,
 									float dmg = 0.0,
 									float radius = 0.0);
 
@@ -632,7 +632,7 @@ class GameObjectManager {
 
 		WeaponBoltPtr createWeaponBolt (long effectId);
 
-		ArtilleryPtr createArtillery (long artilleryType, Stuff::Vector3D& position);
+		ArtilleryPtr createArtillery (long artilleryType, glm::vec3& position);
 
 		RemovedMoverRec* getRemovedMovers (long& numRemovedMovers) {
 			numRemovedMovers = numRemoved;
