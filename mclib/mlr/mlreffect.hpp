@@ -43,7 +43,7 @@ namespace MidLevelRenderer {
 		virtual void
 			SetData(
 				const int *count,
-				const Stuff::Point3D *point_data,
+				const glm::vec3 *point_data,
 				const Stuff::RGBAColor *color_data
 			) = 0;
 
@@ -75,12 +75,12 @@ namespace MidLevelRenderer {
 
 		void
 			SetEffectToClipMatrix(
-				const Stuff::LinearMatrix4D *effectToWorld, 
-				const Stuff::Matrix4D *worldToClipMatrix
+				const glm::mat4 *effectToWorld, 
+				const glm::mat4 *worldToClipMatrix
 			)
 				{
 					Check_Object(this);
-					effectToClipMatrix.Multiply(*effectToWorld, *worldToClipMatrix);
+					effectToClipMatrix = *effectToWorld * *worldToClipMatrix;
 				}
 
 		GOSVertex*
@@ -129,7 +129,7 @@ namespace MidLevelRenderer {
 		int visible;
 		int maxNrOf;
 
-		const Stuff::Point3D *points;
+		const glm::vec3 *points;
 
 		const Stuff::RGBAColor *colors;
 
@@ -139,10 +139,10 @@ namespace MidLevelRenderer {
 
 		int drawMode;
 
-		Stuff::LinearMatrix4D
+		glm::mat4
 			worldToEffect;
 
-		Stuff::Matrix4D
+		glm::mat4
 			effectToClipMatrix;
 
 		GOSVertex *gos_vertices;

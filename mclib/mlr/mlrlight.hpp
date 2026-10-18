@@ -13,13 +13,13 @@ namespace MidLevelRenderer {
 	class MLRLightMap;
 
 	struct MLRVertexData {
-		Stuff::Point3D *point;
+		glm::vec3 *point;
 #if COLOR_AS_DWORD
 		DWORD *color;
 #else
 		Stuff::RGBAColor *color;
 #endif
-		Stuff::Vector3D *normal;
+		glm::vec3 *normal;
 
 		int index;
 	};
@@ -90,29 +90,29 @@ namespace MidLevelRenderer {
 			{ Check_Object(this); col = color; };
 		void GetColor(Stuff::Scalar&, Stuff::Scalar&, Stuff::Scalar&);
 
-		void GetInWorldPosition(Stuff::Point3D& pos)
-			{ Check_Object(this); pos = lightToWorld; };
+		void GetInWorldPosition(glm::vec3& pos)
+			{ Check_Object(this); pos = mc2::math::getTranslation(lightToWorld); };
 
-		void GetInWorldDirection(Stuff::UnitVector3D& dir)
-			{ Check_Object(this); lightToWorld.GetLocalForwardInWorld(&dir); };
+		void GetInWorldDirection(glm::vec3& dir)
+			{ Check_Object(this); dir = mc2::math::localForwardInWorld(lightToWorld); };
 
-		void GetInShapePosition(Stuff::Point3D& pos)
+		void GetInShapePosition(glm::vec3& pos)
+			{ Check_Object(this); pos = mc2::math::getTranslation(lightToShape); };
+
+		void GetInShapePosition(glm::mat4& pos)
 			{ Check_Object(this); pos = lightToShape; };
 
-		void GetInShapePosition(Stuff::LinearMatrix4D& pos)
-			{ Check_Object(this); pos = lightToShape; };
+		void GetInShapeDirection(glm::vec3& dir)
+			{ Check_Object(this); dir = mc2::math::localForwardInWorld(lightToShape); };
 
-		void GetInShapeDirection(Stuff::UnitVector3D& dir)
-			{ Check_Object(this); lightToShape.GetLocalForwardInWorld(&dir); };
-
-		void SetLightToWorldMatrix(const Stuff::LinearMatrix4D&);
-		const Stuff::LinearMatrix4D&
+		void SetLightToWorldMatrix(const glm::mat4&);
+		const glm::mat4&
 			GetLightToWorldMatrix()
 				{ Check_Object(this); return lightToWorld; };
 
 		virtual
-			void SetLightToShapeMatrix(const Stuff::LinearMatrix4D&);
-		const Stuff::LinearMatrix4D&
+			void SetLightToShapeMatrix(const glm::mat4&);
+		const glm::mat4&
 			GetLightToShapeMatrix()
 				{ Check_Object(this); return lightToShape; };
 
@@ -162,7 +162,7 @@ namespace MidLevelRenderer {
 		Stuff::RGBColor
 			color;
 
-		Stuff::LinearMatrix4D
+		glm::mat4
 			lightToWorld, lightToShape;
 
 		int

@@ -158,7 +158,7 @@ bool
 void
 	MLRInfiniteLightWithFalloff::LightVertex(const MLRVertexData& vertexData)
 {
-	UnitVector3D light_z;
+	glm::vec3 light_z;
 
 	GetInShapeDirection(light_z);
 
@@ -168,11 +168,11 @@ void
 	// cosine of the angle between light and normal
 	//-------------------------------------------------------------------
 	//
-	Scalar cosine = -(light_z * (*vertexData.normal)) * intensity;
+	Scalar cosine = -(glm::dot(light_z, (*vertexData.normal))) * intensity;
 
 	RGBColor light_color(color);
 
-	Point3D vertex_to_light;
+	glm::vec3 vertex_to_light;
 
 	Verify(GetFalloffDistance(vertex_to_light.x, vertex_to_light.y));
 
@@ -187,7 +187,7 @@ void
 	// light level as appropriate to the distance
 	//--------------------------------------------------------------
 	//
-	Scalar length = vertex_to_light.GetApproximateLength();
+	Scalar length = glm::length(vertex_to_light);
 
 	Scalar falloff = 1.0f;
 

@@ -145,7 +145,7 @@ void
 	MLRLightMap::SetDrawData
 		(
 			GOSVertexPool *vp,
-			Stuff::Matrix4D *mat,
+			glm::mat4 *mat,
 			MLRClippingState& clippingState,
 			MLRState& _state
 		)
@@ -411,7 +411,7 @@ void MLRLightMap::polygonClipOnePlane(unsigned short& stride, Vector2DScalar*& t
 }
 
 // Clip a polygon against several planes, plane by plane.
-void MLRLightMap::polygonClipManyPlanes(unsigned short& stride, Stuff::Point3D*& coords, Vector2DScalar*& texCoords, MLRClippingState& theOr, int& k, int& k1, int& l, int& mask, Stuff::Scalar& a, int& numberVerticesPerPolygon, bool& firstIsIn, MLRClippingState& theTest) {
+void MLRLightMap::polygonClipManyPlanes(unsigned short& stride, glm::vec3*& coords, Vector2DScalar*& texCoords, MLRClippingState& theOr, int& k, int& k1, int& l, int& mask, Stuff::Scalar& a, int& numberVerticesPerPolygon, bool& firstIsIn, MLRClippingState& theTest) {
 			#ifdef LAB_ONLY
 	Set_Statistic(PolysClippedButGOnePlane, PolysClippedButGOnePlane+1);
 			#endif
@@ -900,7 +900,7 @@ void MLRLightMap::colorPolygonClipOnePlane(unsigned short& stride, Stuff::RGBACo
 }
 
 // Clip a per-vertex-colour polygon against several planes.
-void MLRLightMap::colorPolygonClipManyPlanes(unsigned short& stride, Stuff::Point3D*& coords, Stuff::RGBAColor*& colors, Vector2DScalar*& texCoords, MLRClippingState& theOr, int& k, int& k1, int& l, int& mask, Stuff::Scalar& a, int& numberVerticesPerPolygon, bool& firstIsIn, MLRClippingState& theTest) {
+void MLRLightMap::colorPolygonClipManyPlanes(unsigned short& stride, glm::vec3*& coords, Stuff::RGBAColor*& colors, Vector2DScalar*& texCoords, MLRClippingState& theOr, int& k, int& k1, int& l, int& mask, Stuff::Scalar& a, int& numberVerticesPerPolygon, bool& firstIsIn, MLRClippingState& theTest) {
 			#ifdef LAB_ONLY
 	Set_Statistic(PolysClippedButGOnePlane, PolysClippedButGOnePlane+1);
 			#endif
@@ -1209,7 +1209,7 @@ void MLRLightMap::DrawLightMaps(MLRSorter *sorter)
 
 	void *ptr, *end = stream->GetPointer();
 
-	Stuff::Matrix4D *currentMatrix=nullptr;
+	glm::mat4 *currentMatrix=nullptr;
 	MLRClippingState currentClippingState;
 	
 	MLRState currentState, masterState;
@@ -1221,7 +1221,7 @@ void MLRLightMap::DrawLightMaps(MLRSorter *sorter)
 	int i;
     size_t pointerValue;
     //
-	Stuff::Point3D *coords = nullptr;
+	glm::vec3 *coords = nullptr;
 	Stuff::RGBAColor color;
 	Stuff::RGBAColor *colors = nullptr;
 	Vector2DScalar *texCoords = nullptr;
@@ -1248,7 +1248,7 @@ void MLRLightMap::DrawLightMaps(MLRSorter *sorter)
 		{
 			case Matrix4D:
 				*stream >> pointerValue;
-				currentMatrix = reinterpret_cast<Stuff::Matrix4D*>(pointerValue);
+				currentMatrix = reinterpret_cast<glm::mat4*>(pointerValue);
 			break;
 			case ClippingState:
 				currentClippingState.Load(stream);
@@ -1270,8 +1270,8 @@ void MLRLightMap::DrawLightMaps(MLRSorter *sorter)
 
 				argb = GOSCopyColor(&color);
 
-				coords = (Stuff::Point3D *)stream->GetPointer();
-				stream->AdvancePointer(stride*sizeof(Stuff::Point3D));
+				coords = (glm::vec3 *)stream->GetPointer();
+				stream->AdvancePointer(stride*sizeof(glm::vec3));
 				texCoords = (Vector2DScalar *)stream->GetPointer();
 				stream->AdvancePointer(stride*sizeof(Vector2DScalar));
 
@@ -1280,7 +1280,7 @@ void MLRLightMap::DrawLightMaps(MLRSorter *sorter)
 				Vector4D *v4d = transformedCoords->GetData();
 				for(i=0;i<stride;i++,v4d++,cs++)
 				{
-					v4d->Multiply(coords[i], *currentMatrix);
+					v4d->MultiplyPoint(coords[i], *currentMatrix);
 
 					if(currentClippingState!=0)
 					{
@@ -1355,8 +1355,8 @@ void MLRLightMap::DrawLightMaps(MLRSorter *sorter)
 				*stream >> stride;
 				Verify(stride<=Limits::Max_Number_Vertices_Per_Polygon);
 
-				coords = (Stuff::Point3D *)stream->GetPointer();
-				stream->AdvancePointer(stride*sizeof(Stuff::Point3D));
+				coords = (glm::vec3 *)stream->GetPointer();
+				stream->AdvancePointer(stride*sizeof(glm::vec3));
 				
 				colors = (Stuff::RGBAColor *)stream->GetPointer();
 				stream->AdvancePointer(stride*sizeof(Stuff::RGBAColor));
@@ -1369,7 +1369,7 @@ void MLRLightMap::DrawLightMaps(MLRSorter *sorter)
 				Vector4D *v4d = transformedCoords->GetData();
 				for(i=0;i<stride;i++,v4d++,cs++)
 				{
-					v4d->Multiply(coords[i], *currentMatrix);
+					v4d->MultiplyPoint(coords[i], *currentMatrix);
 
 					if(currentClippingState!=0)
 					{
@@ -1490,7 +1490,7 @@ MLRShape*
 	unsigned short stride;
 
 	int i;
-	Stuff::Point3D *coords = nullptr;
+	glm::vec3 *coords = nullptr;
 	Stuff::RGBAColor color;
 	Stuff::RGBAColor *colors = nullptr;
 	Vector2DScalar *texCoords = nullptr;
@@ -1571,8 +1571,8 @@ MLRShape*
 				argb = GOSCopyColor(&color);
 #endif
 
-				coords = (Stuff::Point3D *)stream->GetPointer();
-				stream->AdvancePointer(stride*sizeof(Stuff::Point3D));
+				coords = (glm::vec3 *)stream->GetPointer();
+				stream->AdvancePointer(stride*sizeof(glm::vec3));
 				texCoords = (Vector2DScalar *)stream->GetPointer();
 				stream->AdvancePointer(stride*sizeof(Vector2DScalar));
 
@@ -1599,8 +1599,8 @@ MLRShape*
 				*stream >> stride;
 				Verify(stride<=Limits::Max_Number_Vertices_Per_Polygon);
 
-				coords = (Stuff::Point3D *)stream->GetPointer();
-				stream->AdvancePointer(stride*sizeof(Stuff::Point3D));
+				coords = (glm::vec3 *)stream->GetPointer();
+				stream->AdvancePointer(stride*sizeof(glm::vec3));
 				
 				colors = (Stuff::RGBAColor *)stream->GetPointer();
 				stream->AdvancePointer(stride*sizeof(Stuff::RGBAColor));
