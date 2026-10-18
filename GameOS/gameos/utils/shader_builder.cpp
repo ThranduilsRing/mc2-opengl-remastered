@@ -455,10 +455,6 @@ kSpirvPilotStages[] = {
     {"/mech.frag",        "mech",        "frag"},
     // SPIRV-POSTPROCESS-FAMILY-1: frag-only family members (vert = postprocess.vert).
     {"/ssao.frag",        "ssao",        "frag"},
-    {"/cloud.frag",       "cloud",       "frag"},
-    {"/shoreline.frag",   "shoreline",   "frag"},
-    {"/fog_oob.frag",     "fog_oob",     "frag"},
-    {"/edge_fog.frag",    "edge_fog",    "frag"},
     {"/hzb_reduce.frag",  "hzb_reduce",  "frag"},
 };
 
@@ -470,10 +466,6 @@ static const struct { const char* vsuf; const char* fsuf; } kSpirvPilotPrograms[
     {"/postprocess.vert", "/postprocess.frag"},
     {"/mech.vert",        "/mech.frag"},
     {"/postprocess.vert", "/ssao.frag"},
-    {"/postprocess.vert", "/cloud.frag"},
-    {"/postprocess.vert", "/shoreline.frag"},
-    {"/postprocess.vert", "/fog_oob.frag"},
-    {"/postprocess.vert", "/edge_fog.frag"},
     {"/postprocess.vert", "/hzb_reduce.frag"},
 };
 

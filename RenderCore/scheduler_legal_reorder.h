@@ -117,7 +117,6 @@ inline RenderResourceLifetime staticResourceLifetime(RenderResourceId id) {
         case RenderResourceId::TerrainHeightSsbo:
             return RenderResourceLifetime::Mission;
         // Persistent: process/long-lived; built outside the dynamic frame order.
-        case RenderResourceId::ShadowStaticMap:
         case RenderResourceId::MaterialGpuBuffer:
             return RenderResourceLifetime::Persistent;
         // External: temporal / cross-frame N-1 / externally owned.
@@ -125,7 +124,7 @@ inline RenderResourceLifetime staticResourceLifetime(RenderResourceId id) {
         case RenderResourceId::WaterReflectionDepth:
             return RenderResourceLifetime::External;
         // Everything else read by a pass is a FrameLocal transient produced this frame
-        // (MainColor, MainDepth, MainNormal, ShadowDynamicMap, scene copies, ...).
+        // (MainColor, MainDepth, MainNormal, scene copies, ...).
         default:
             return RenderResourceLifetime::FrameLocal;
     }
@@ -186,16 +185,6 @@ static constexpr int kContentConditionalEdgeCount =
 //     soft edge the model misses is STILL caught as forbidden. Every entry's from/to
 //     must be a real RenderPassId (asserted by a doctest). Reviewed at change time.
 static constexpr PassEdge kForbiddenReorderEdges[] = {
-    // Shadow must produce ShadowDynamicMap before any geometry samples it.
-    { RenderPassId::Shadow, RenderPassId::StaticPropOpaque, EdgeClass::HardResource,
-      RenderResourceId::ShadowDynamicMap, /*forbidden*/ true, /*contentGated*/ false,
-      "Shadow->geometry: ShadowDynamicMap must be produced before opaque samples it" },
-    { RenderPassId::Shadow, RenderPassId::MechOpaque, EdgeClass::HardResource,
-      RenderResourceId::ShadowDynamicMap, /*forbidden*/ true, /*contentGated*/ false,
-      "Shadow->geometry: ShadowDynamicMap must be produced before mech samples it" },
-    { RenderPassId::Shadow, RenderPassId::Terrain, EdgeClass::HardResource,
-      RenderResourceId::ShadowDynamicMap, /*forbidden*/ true, /*contentGated*/ false,
-      "Shadow->geometry: ShadowDynamicMap must be produced before terrain samples it" },
     // Terrain re-asserts glColorMask(TRUE) (after shadow disabled color write) for ALL
     // following color-writing passes. Soft GL-state edge, invisible to the resource DAG.
     { RenderPassId::Terrain, RenderPassId::PostProcess, EdgeClass::SoftState,

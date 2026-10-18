@@ -405,7 +405,7 @@ class gosRenderMaterial {
                 sh_name.append(mvar.getUniqueSuffix());
 
             // Terrain gets TCS/TES for tessellation
-            if (strcmp(shader, "gos_terrain") == 0 || strcmp(shader, "shadow_terrain") == 0) {
+            if (strcmp(shader, "gos_terrain") == 0) {
                 char tcs[256], tes[256];
                 StringFormat(tcs, 255, "shaders/%s.tesc", shader);
                 StringFormat(tes, 255, "shaders/%s.tese", shader);
@@ -612,40 +612,12 @@ class gosMesh {
 
             gosASSERT(pmesh);
 
-            // GPU-BUFFER-WRAPPER-TIER0-HUD-1 (WATCHPOINT 4): drain + unmap +
-            // delete the ring buffers before the mesh goes away. ~GpuMeshRing
-            // does this; explicit delete keeps the lifetime obvious and ensures
-            // no GL buffer leaks across renderer teardown / device reset.
-            delete pmesh->ring_;
-            pmesh->ring_ = nullptr;
-
             delete[] pmesh->pvertex_data_;
             delete[] pmesh->pindex_data_;
 
             GLuint b[] = {pmesh->vb_, pmesh->ib_};
             glDeleteBuffers(sizeof(b)/sizeof(b[0]), b);
         }
-
-        // Lazily create (gate ON) and return the persistent-coherent ring for
-        // this mesh, or nullptr if creation/mapping failed (caller falls back to
-        // the legacy orphan path). Sized to this mesh's FIXED capacity x N slots.
-        mc2gpu::GpuMeshRing* ensureRing() {
-            if (ring_) return ring_->valid() ? ring_ : nullptr;
-            ring_ = new mc2gpu::GpuMeshRing();
-            char tag[48];
-            std::snprintf(tag, sizeof(tag), "gosMesh_p%d_v%d",
-                          (int)prim_type_, vertex_capacity_);
-            if (!ring_->create(tag,
-                               (uint32_t)sizeof(gos_VERTEX), (uint32_t)vertex_capacity_,
-                               (uint32_t)sizeof(INDEX_TYPE), (uint32_t)index_capacity_)) {
-                delete ring_;
-                ring_ = nullptr;
-                return nullptr;
-            }
-            return ring_;
-        }
-
-        mc2gpu::GpuMeshRing* ringIfLive() const { return ring_; }
 
         bool addVertices(gos_VERTEX* vertices, int count) {
             if(num_vertices_ + count <= vertex_capacity_) {
@@ -690,7 +662,6 @@ class gosMesh {
 
         void rewind() { num_vertices_ = 0; num_indices_ = 0; }
 
-        void draw(gosRenderMaterial* material) const;
 
 
 		static const std::string s_tex1;
@@ -707,7 +678,6 @@ class gosMesh {
             , prim_type_(prim_type)
             , vb_(-1)
             ,ib_(-1)
-            , ring_(nullptr)
          {
          }
 
@@ -722,10 +692,6 @@ class gosMesh {
         GLuint vb_;
         GLuint ib_;
 
-        // GPU-BUFFER-WRAPPER-TIER0-HUD-1: lazily-created persistent-coherent ring
-        // (gate ON only). Owned by this mesh; destroyed in destroy(). nullptr =>
-        // legacy orphan path.
-        mc2gpu::GpuMeshRing* ring_;
 };
 
 

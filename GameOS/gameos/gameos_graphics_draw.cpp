@@ -5,103 +5,6 @@
 #include "utils/mc2log.h"
 
 
-// ---------------------------------------------------------------------------
-// GPU-BUFFER-WRAPPER-TIER0-HUD-1 — gate state (default OFF).
-//   MC2_GPUBUF_RING            : route gosMesh::draw/drawIndexed through the
-//                                persistent-coherent fenced ring instead of the
-//                                per-batch glBufferData orphan. OFF => legacy
-//                                path, byte-identical GL stream + output.
-//   MC2_GPUBUF_RING_FORCE_WRAP : negative test — deterministically advance the
-//                                ring twice without an intervening endFrame so
-//                                the one-endFrame-per-beginFrame invariant trips
-//                                (proves the fence-per-frame guard is live).
-//   MC2_GPUBUF_RESIDENCY       : list the live HUD ring buffers once per frame.
-// Cached once on first query (single predicted-false branch when unset).
-static bool gosHudRingEnabled() {
-    static const bool s_on = mc2::gate::get<"MC2_GPUBUF_RING">();
-    return s_on;
-}
-static bool gosHudRingForceWrap() {
-    static const bool s_on = mc2::gate::get<"MC2_GPUBUF_RING_FORCE_WRAP">();
-    return s_on;
-}
-static bool gosHudRingResidency() {
-    static const bool s_on = mc2::gate::get<"MC2_GPUBUF_RESIDENCY">();
-    return s_on;
-}
-
-void gosMesh::draw(gosRenderMaterial* material) const
-{
-    gosASSERT(material);
-
-    if(num_vertices_ == 0)
-        return;
-
-    // GPU-BUFFER-WRAPPER-TIER0-HUD-1: ring path (gate ON) vs legacy orphan (OFF).
-    // The two branches differ ONLY in (a) how the current frame's vertices reach
-    // the GPU (memcpy into a coherent map vs glBufferData orphan) and (b) the
-    // first-vertex of the draw (slot base vs 0). Same data, same count, same
-    // primitive, same bind-to-0 epilogue => byte-identical draw-visible result.
-    mc2gpu::GpuMeshRing* ring =
-        gosHudRingEnabled() ? const_cast<gosMesh*>(this)->ensureRing() : nullptr;
-
-    GLint firstVertex = 0;
-    GLuint drawVb = vb_;
-    if (ring) {
-        ring->beginFrame();
-        if (gosHudRingForceWrap()) {
-            // NEGATIVE TEST: advance again with no intervening endFrame so the
-            // one-endFrame-per-beginFrame invariant trips (proves the guard).
-            ring->beginFrame();
-        }
-        firstVertex = ring->writeVertices(pvertex_data_, (uint32_t)num_vertices_);
-        drawVb = ring->vb();
-    } else {
-        updateBuffer(vb_, GL_ARRAY_BUFFER, pvertex_data_, num_vertices_*sizeof(gos_VERTEX), GL_DYNAMIC_DRAW_ARB);
-    }
-
-    material->apply();
-
-    material->setSamplerUnit(s_tex1, 0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, drawVb);
-    CHECK_GL_ERROR;
-
-    material->applyVertexDeclaration();
-    CHECK_GL_ERROR;
-
-    GLenum pt = GL_TRIANGLES;
-    switch(prim_type_) {
-        case PRIMITIVE_POINTLIST:
-            pt = GL_POINTS;
-            break;
-        case PRIMITIVE_LINELIST:
-            pt = GL_LINES;
-            break;
-        case PRIMITIVE_TRIANGLELIST:
-            pt = GL_TRIANGLES;
-            break;
-        default:
-            gosASSERT(0 && "Wrong primitive type");
-    }
-
-    glDrawArrays(pt, firstVertex, num_vertices_);
-
-    material->endVertexDeclaration();
-    material->end();
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    if (ring)
-        ring->endFrame();   // fence the slot AFTER the draw consumes it.
-}
-
-
-
-
-
-
-
 void gosRenderer::initRenderStates() {
     // RENDER_STATES v1: zero-init the entire arrays so the equality check has
     // a defined comparison for states that initRenderStates does not assign
@@ -442,20 +345,6 @@ void gosRenderer::endFrame()
     // permanent black terrain. Menu / mech-bay frames never call ComputePreflight(),
     // so they never set the arm; the end-of-frame clear is a no-op for them.
     gos_terrain_indirect::BeginFrame();
-
-    // GPU-BUFFER-WRAPPER-TIER0-HUD-1 (acceptance #4): residency dump of the live
-    // HUD rings, throttled. Gated by MC2_GPUBUF_RESIDENCY; no-op otherwise.
-    if (gosHudRingResidency()) {
-        static uint32_t s_resCountdown = 0;
-        if (s_resCountdown == 0) {
-            s_resCountdown = 300;
-            gosMesh* meshes[] = { quads_, tris_, indexed_tris_, lines_, points_, text_ };
-            for (gosMesh* m : meshes) {
-                if (m && m->ringIfLive()) m->ringIfLive()->reportResidency();
-            }
-        }
-        --s_resCountdown;
-    }
 
     rsFrames_++;
     if (rsFrames_ >= 600) {

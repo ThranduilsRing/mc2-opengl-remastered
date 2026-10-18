@@ -256,8 +256,6 @@ class gosRenderer {
         glsl_program* getTerrainSurfaceProgram()   const { return terrain_surface_prog_;     }
         glsl_program* getMineStaticProgram()       const { return mine_static_prog_;          }  // PR2c Stage 2c
         glsl_program* getTerrainOverlayProgram()   const { return overlayProg_;                }
-        glsl_program* getShadowMechProg()          const { return shadow_mech_prog_;          }
-        glsl_program* getShadowStaticPropProg()    const { return shadow_static_prop_prog_;   }
 
         // Water fast path (Stage 2 of renderWater architectural slice).
         // Issues 1-2 instanced draws against the WaterRecipe + WaterFrame SSBOs.
@@ -374,7 +372,6 @@ class gosRenderer {
         const vec4& getTerrainCameraPos() const { return terrain_camera_pos_; }
         void setShadowMode(bool enabled) { shadow_mode_ = enabled; }
         bool getShadowMode() const { return shadow_mode_; }
-        gosRenderMaterial* getShadowTerrainMaterial() const { return shadow_terrain_material_; }
 
         // Shadow softness (penumbra radius in texels)
         void setTerrainShadowSoftness(float s) { terrain_shadow_softness_ = s; }
@@ -838,13 +835,9 @@ class gosRenderer {
         glsl_program* terrain_surface_prog_ = nullptr;  // [TERRAIN_SURFACE] PR-2 gos_terrain_surface.vert + gos_terrain.frag
         glsl_program* mine_static_prog_  = nullptr;  // PR2c Stage 2c — gos_terrain_mine_static.vert + .frag
 
-        gosRenderMaterial* shadow_terrain_material_ = nullptr;
-        gosRenderMaterial* shadow_object_material_ = nullptr;
         // GPU-driven dynamic sun shadow -- depth-only instanced programs (Phase 1).
         // Registered at init; called by Tasks 3+ to draw GPU-batched mechs/buildings
         // into the dynamic shadow FBO.
-        glsl_program* shadow_mech_prog_        = nullptr;  // shadow_mech.vert + shadow_instanced.frag
-        glsl_program* shadow_static_prop_prog_ = nullptr;  // shadow_static_prop.vert + shadow_instanced.frag
         bool shadow_mode_ = false;
         float terrain_shadow_softness_ = mc2ShadowCsmSoftness();  // env-overridable via MC2_SHADOW_CSM_SOFTNESS
         bool terrain_draw_enabled_ = true;

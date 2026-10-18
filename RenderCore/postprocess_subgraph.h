@@ -203,8 +203,6 @@ static constexpr PostProcessSubpass kPostProcessSubpasses[] = {
         /*name*/           "ScreenShadow",
         /*reads*/          { RenderResourceId::MainDepth,
                              RenderResourceId::MainNormal,
-                             RenderResourceId::ShadowStaticMap,
-                             RenderResourceId::ShadowDynamicMap,
                              RenderResourceId::Unknown },
         /*writes*/         { RenderResourceId::MainColor,
                              RenderResourceId::Unknown },
@@ -214,8 +212,7 @@ static constexpr PostProcessSubpass kPostProcessSubpasses[] = {
         /*isCompute*/      false,
         /*note*/           "SUBGRAPH-2. EXECUTOR-ISLAND-SCREENSHADOW-1 (validate-only). "
                            "Screen-space shadow (draw, sceneFBO_ SingleColor). "
-                           "Reads MainDepth(unit0), MainNormal(unit1), ShadowStaticMap(unit2), "
-                           "ShadowDynamicMap(unit3), dynamicFullMapTex_(unit4, CSM only). "
+                           "Reads scene depth and normals; native Vulkan owns its shadow inputs. "
                            "Writes MainColor (multiply darken). Owned since SCREENSHADOW-TEX-RESTORE-1 "
                            "(a0b4189b) unbinds unit-3 2D_ARRAY on exit. "
                            "Exit: glDisable(GL_BLEND) line 2150, glActiveTexture(GL_TEXTURE0) line 2160. "
@@ -403,9 +400,7 @@ static constexpr PostProcessSubpass kPostProcessSubpasses[] = {
     {
         /*id*/             ExecutorIslandId::ShadowDebugOverlay,
         /*name*/           "ShadowDebugOverlay",
-        /*reads*/          { RenderResourceId::ShadowStaticMap,
-                             RenderResourceId::ShadowDynamicMap,
-                             RenderResourceId::Unknown },
+        /*reads*/          { RenderResourceId::Unknown },
         /*writes*/         { RenderResourceId::Backbuffer,
                              RenderResourceId::Unknown },
         /*fboTarget*/      RenderResourceId::Backbuffer,
@@ -530,8 +525,6 @@ inline PostProcessValidationResult validatePostProcessSubgraph(
 //   MainColor        — produced by Terrain + MechOpaque + StaticPropOpaque + VFX passes
 //   MainDepth        — produced by Terrain + opaque passes
 //   MainNormal       — produced by Terrain (GBuffer1 / sceneNormalTex_)
-//   ShadowStaticMap  — external (pre-mission bake)
-//   ShadowDynamicMap — produced by Shadow pass
 //   SceneDepthCopy   — POSTPROCESS-SCENEDEPTHCOPY-RESOURCE-1: produced by VFX pass
 //                      (copySceneDepthForParticles, gos_particle_bridge.cpp:1068), cross-boundary.
 //                      BoxDecals (SUBGRAPH-2) consumes it for soft-depth reject.
@@ -549,14 +542,12 @@ inline PostProcessValidationResult validateShippedPostProcessSubgraph() {
         RenderResourceId::MainColor,
         RenderResourceId::MainDepth,
         RenderResourceId::MainNormal,
-        RenderResourceId::ShadowStaticMap,
-        RenderResourceId::ShadowDynamicMap,
         RenderResourceId::SceneDepthCopy,  // POSTPROCESS-SCENEDEPTHCOPY-RESOURCE-1: VFX producer, BoxDecals (SUBGRAPH-2) consumer
         RenderResourceId::SceneObjectId,   // POSTPROCESS-SCENEOBJECTID-RESOURCE-1: MechOpaque+StaticPropOpaque producer, Composite consumer
         RenderResourceId::SsaoOcclusion,   // POSTPROCESS-SUBGRAPH-2 self-loop: Ssao pass1 writes, pass2 reads within same row; seeded external to avoid false failure in single-row model
         RenderResourceId::Unknown,
     };
-    constexpr int kExternalCount = 8;  // excludes the Unknown terminator
+    constexpr int kExternalCount = sizeof(kExternal) / sizeof(kExternal[0]) - 1;  // excludes the Unknown terminator
     return validatePostProcessSubgraph(kExternal, kExternalCount);
 }
 

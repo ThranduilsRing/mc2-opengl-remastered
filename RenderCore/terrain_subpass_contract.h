@@ -43,7 +43,6 @@ static constexpr TerrainSubPass kTerrainSubPasses[] = {
         TerrainPath::LODChunk,
         "LODChunk",
         {   // reads (Unknown-terminated)
-            RenderResourceId::ShadowDynamicMap,
             RenderResourceId::TerrainHeightSsbo,
             RenderResourceId::Unknown,
             RenderResourceId::Unknown,
@@ -62,7 +61,6 @@ static constexpr TerrainSubPass kTerrainSubPasses[] = {
         TerrainPath::IndirectBridge,
         "IndirectBridge",
         {   // reads (Unknown-terminated)
-            RenderResourceId::ShadowDynamicMap,
             RenderResourceId::TerrainRecipeBuffer,
             RenderResourceId::TerrainThinBuffer,
             RenderResourceId::CementAtlas,
@@ -84,7 +82,6 @@ static constexpr TerrainSubPass kTerrainSubPasses[] = {
         TerrainPath::PatchStreamThin,
         "PatchStreamThin",
         {   // reads (Unknown-terminated)
-            RenderResourceId::ShadowDynamicMap,
             RenderResourceId::TerrainThinBuffer,
             RenderResourceId::Unknown,
             RenderResourceId::Unknown,
@@ -103,7 +100,6 @@ static constexpr TerrainSubPass kTerrainSubPasses[] = {
         TerrainPath::LegacyMLR,
         "LegacyMLR",
         {   // reads (Unknown-terminated)
-            RenderResourceId::ShadowDynamicMap,
             RenderResourceId::Unknown,
             RenderResourceId::Unknown,
             RenderResourceId::Unknown,

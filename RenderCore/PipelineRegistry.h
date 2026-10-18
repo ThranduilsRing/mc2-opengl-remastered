@@ -23,72 +23,21 @@
 namespace RenderCore {
 
 enum class PipelineId : uint32_t {
-    Invalid             = 0,
-    StaticPropOpaque    = 1,   // opaque geometry, alpha-off group
-    StaticPropAlphaTest = 2,   // alpha-tested geometry, alpha-on group (shader discard)
-    MechOpaque          = 3,   // GPU mech batcher opaque pass (reverse-Z, cull back)
-    StaticPropDepth     = 4,   // camera depth-prepass (depth-only, alpha discard)
-    // SHADOW-CASTER-PIPELINE-REGISTRATION-1: shadow-map caster passes. DESCRIPTIVE
-    // ONLY — these rows state the truth (depth-only, GL_LESS forward-Z, cull off)
-    // but are NOT routed through applyPipeline (pipelineDescRegistered stays false
-    // in RenderPassContract). They exist so polygonOffsetEnable is an authoritative
-    // per-pipeline fact. Active applyPipeline routing is a later, gated slice.
-    ShadowTerrain       = 5,   // terrain -> static shadow map  (shadow_terrain)
-    ShadowStaticProp    = 6,   // static/dynamic props -> shadow map (shadow_static_prop; polygon offset ON)
-    ShadowMech          = 7,   // mech -> dynamic shadow map     (shadow_mech)
-    // TERRAIN-OVERLAY-DECAL-PIPELINE-REGISTRATION-1: terrain overlay + decal
-    // passes. DESCRIPTIVE ONLY (glProgramName=0, NOT routed through applyPipeline;
-    // state still hand-set in gosRenderer::drawTerrainOverlays / drawDecals). The
-    // rows state the truth so the pass-coverage ledger can move them forward.
-    // TerrainDecal is the first AlphaBlend pipeline row.
-    TerrainOverlay      = 8,   // terrain cement/perimeter overlay (terrain_overlay.frag, opaque)
-    TerrainDecal        = 9,   // bomb craters + mech footprints (decal.frag, alpha blend, depth-write OFF)
-    // WATER-ARMED-PIPELINE-REGISTRATION-1: the ARMED water fast-path base only
-    // (gosRenderer::renderWaterFastPath, gos_terrain_water_fast.vert +
-    // gos_tex_vertex.frag). DESCRIPTIVE (glProgramName=0, NOT routed). The legacy
-    // quad fallback + the GPU-driven MDI sub-variant are deliberately NOT modeled.
-    WaterArmed          = 10,  // armed water fast path (alpha blend, cull none, GEQUAL, depth-write)
-    // VFX-PIPELINE-REGISTRATION-1: the finite particle/VFX family. DESCRIPTIVE
-    // (glProgramName=0, NOT routed). 3 programs x AlphaBlend/Additive. Shared
-    // invariant: depthTest on, GEQUAL, depth-write OFF, cull None, color0 only,
-    // FUNC_ADD. The ADDITIVE factors DIVERGE per program — billboard/mesh use
-    // SRC_ALPHA/ONE, tube uses ONE/ONE; BlendMode::Additive cannot distinguish
-    // them, so the SCHEMA carries the exact src/dst and the checker treats those
-    // as authoritative. Routing waits on BLENDMODE-ADDITIVE-VOCABULARY-1.
-    VfxBillboardAlpha    = 11,  // particle_billboard, SRC_ALPHA/ONE_MINUS_SRC_ALPHA
-    VfxBillboardAdditive = 12,  // particle_billboard, SRC_ALPHA/ONE
-    VfxTubeAlpha         = 13,  // tube_ribbon, SRC_ALPHA/ONE_MINUS_SRC_ALPHA
-    VfxTubeAdditive      = 14,  // tube_ribbon, ONE/ONE  (differs from billboard/mesh)
-    VfxMeshAlpha         = 15,  // vfx_mesh, SRC_ALPHA/ONE_MINUS_SRC_ALPHA
-    VfxMeshAdditive      = 16,  // vfx_mesh, SRC_ALPHA/ONE
-    // POSTPROCESS-COMPOSITE-REGISTRATION-1: endScene final composite (fullscreen
-    // quad, postprocess.frag). ROUTED via applyPipeline. Opaque (force no blend —
-    // composite must fully overwrite the backbuffer; a gosFX additive leak would
-    // otherwise saturate RGBA8 to white), depth test+write OFF, cull None, color0.
-    PostProcessComposite = 17,  // endScene composite (postprocess.frag, opaque, no depth)
-    // POSTPROCESS-FOG-REGISTRATION-1: the two fullscreen fog passes that blend into
-    // the scene FBO before composite. Both AlphaBlend (SRC_ALPHA/ONE_MINUS_SRC_ALPHA),
-    // depth test+write OFF, cull None, color0. ROUTED via applyPipeline. State-twins
-    // (separate rows for per-pass [PIPELINE_BIND] trace identity).
-    PostProcessEdgeFog   = 18,  // runEdgeFog (edge_fog.frag, alpha blend, no depth)
-    PostProcessFogOob    = 19,  // runFogOob (fog_oob.frag, alpha blend, no depth)
-    // TERRAIN-SOLID-PIPELINE-REGISTRATION-1: the MAIN solid terrain pass (live =
-    // GPU-indirect thin MDI, gos_terrain_thin.vert + gos_terrain.frag). DESCRIPTIVE
-    // ONLY (glProgramName=0, NOT routed — state still hand-set in the bridge). cull
-    // = None / frontFace = Ccw are EMPIRICALLY PROBED (TERRAIN-CULL-STATE-PROBE-1,
-    // 8 frames unanimous at the dispatch chokepoint), NOT guessed. Writes color0 +
-    // GBuffer1. Routing (+ the load-bearing glColorMask repair) is a later slice.
-    TerrainSolid         = 20,  // main solid terrain (Opaque, GEQUAL reverse-Z, cull None)
-    // BLENDMODE-MULTIPLY-1: the four multiplicative post-fx darkening passes
-    // (scene *= mask). All Multiply (DST_COLOR/ZERO), depth test+write OFF, cull
-    // None, color0. State recon-proven (POSTPROCESS-PIPELINE-REGISTRATION-RECON-1
-    // + verified DST_COLOR/ZERO at gos_postprocess.cpp). ROUTED via applyPipeline.
-    PostProcessScreenShadow = 21,  // runScreenShadow (shadow_screen, Multiply)
-    PostProcessCloudShadow  = 22,  // runCloudShadow (cloud, Multiply)
-    PostProcessShoreline    = 23,  // runShoreline (shoreline, Multiply)
-    PostProcessSsaoApply    = 24,  // runSSAO apply (ssao_apply, Multiply)
-    // Future: DebugWireframe, ...
-    Count_               = 25,  // sentinel — do not use as an ID
+    Invalid = 0,
+    StaticPropOpaque = 1, // opaque geometry, alpha-off group
+    StaticPropAlphaTest = 2, // alpha-tested geometry, alpha-on group (shader discard)
+    MechOpaque = 3, // GPU mech batcher opaque pass (reverse-Z, cull back)
+    StaticPropDepth = 4, // camera depth-prepass (depth-only, alpha discard)
+    TerrainOverlay = 5, // terrain cement/perimeter overlay (terrain_overlay.frag, opaque)
+    TerrainDecal = 6, // bomb craters + mech footprints (decal.frag, alpha blend, depth-write OFF)
+    VfxTubeAlpha = 7, // tube_ribbon, SRC_ALPHA/ONE_MINUS_SRC_ALPHA
+    VfxTubeAdditive = 8, // tube_ribbon, ONE/ONE  (differs from billboard/mesh)
+    VfxMeshAlpha = 9, // vfx_mesh, SRC_ALPHA/ONE_MINUS_SRC_ALPHA
+    VfxMeshAdditive = 10, // vfx_mesh, SRC_ALPHA/ONE
+    PostProcessComposite = 11, // endScene composite (postprocess.frag, opaque, no depth)
+    TerrainSolid = 12, // main solid terrain (Opaque, GEQUAL reverse-Z, cull None)
+    PostProcessSsaoApply = 13, // runSSAO apply (ssao_apply, Multiply)
+    Count_ = 14,
 };
 
 // VERTEXLAYOUT-AUTHORITY-1: stable repo-owned vertex-input layout identities —

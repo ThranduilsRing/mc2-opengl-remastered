@@ -246,42 +246,7 @@ void gosRenderer::drawText(const char* text) {
         return;
     }
 
-    // Save Texture/Filter/TextureAddress so the text draw doesn't leak
-    // state to whatever the next caller relies on. Filter was being
-    // leaked previously (only Texture was saved); TextureAddress is now
-    // forced to clamp because the default wrap mode samples adjacent
-    // glyphs at atlas edges with nearest filtering.
-
-    int prev_texture = getRenderState(gos_State_Texture);
-    int prev_filter  = getRenderState(gos_State_Filter);
-    int prev_addr    = getRenderState(gos_State_TextureAddress);
-
-    setRenderState(gos_State_Texture, tex_id);
-    setRenderState(gos_State_Filter, gos_FilterNone);
-    setRenderState(gos_State_TextureAddress, gos_TextureClamp);
-
-    // for now draw anyway because no render state saved for draw calls
-    applyRenderStates();
-    gosRenderMaterial* mat = text_material_;
-
-    vec4 fg;
-    fg.x = (float)((ta.Foreground & 0xFF0000) >> 16);
-    fg.y = (float)((ta.Foreground & 0xFF00) >> 8);
-    fg.z = (float)(ta.Foreground & 0xFF);
-    fg.w = 255.0f;//(ta.Foreground & 0xFF000000) >> 24;
-    fg = fg / 255.0f;
-    mat->getShader()->setFloat4(s_Foreground, fg);
-
-    mat->setTransform(projection_);
-    mat->setFogColor(fog_color_);
-    text_->draw(mat);
     text_->rewind();
-
-    setRenderState(gos_State_Texture, prev_texture);
-    setRenderState(gos_State_Filter, prev_filter);
-    setRenderState(gos_State_TextureAddress, prev_addr);
-
-    afterDrawCall();
 }
 
 #ifdef MC2_VULKAN

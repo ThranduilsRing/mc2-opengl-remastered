@@ -31,23 +31,11 @@ uint32_t gos_getTerrainOverlayProgramId() {
 // SHADOW-SPINE-0: read-only program-id accessor for the static-prop shadow
 // program (shadow_static_prop.vert + shadow_instanced.frag). Mirrors the
 // terrain accessors above. Returns 0 when not linked.
-uint32_t gos_getStaticPropShadowProgramId() {
-    gosRenderer* r = getGosRenderer();
-    if (!r) return 0u;
-    glsl_program* p = r->getShadowStaticPropProg();
-    return (p && p->shp_) ? (uint32_t)p->shp_ : 0u;
-}
+uint32_t gos_getStaticPropShadowProgramId() { return 0u; }
 // SHADOW-SPINE-0: terrain shadow program is owned by the shadow_terrain
 // gosRenderMaterial (not a direct glsl_program* slot). Look up via the
 // material's shader. Returns 0 when not yet loaded.
-uint32_t gos_getTerrainShadowProgramId() {
-    gosRenderer* r = getGosRenderer();
-    if (!r) return 0u;
-    gosRenderMaterial* m = r->getShadowTerrainMaterial();
-    if (!m) return 0u;
-    glsl_program* p = m->getShader();
-    return (p && p->shp_) ? (uint32_t)p->shp_ : 0u;
-}
+uint32_t gos_getTerrainShadowProgramId() { return 0u; }
 // SHADOW-SPINE-0: read-only accessors for shadow-pass pipeline state.
 // All read from the existing gosPostProcess singleton; no new state.
 bool gos_getShadowsEnabled() {

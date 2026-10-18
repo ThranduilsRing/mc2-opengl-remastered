@@ -8,13 +8,12 @@ namespace RenderCore {
 // fixed registry array — do not reorder or renumber.
 // Registry is descriptive only; owners retain GL texture/buffer lifetimes.
 enum class RenderResourceId : uint16_t {
+    // Slots 3 and 6 are retired GL shadow maps; never reuse them.
     Unknown              = 0,
     MainColor            = 1,
     MainDepth            = 2,
-    ShadowStaticMap      = 3,
     TerrainHeightTexture = 4,
     MaterialGpuBuffer    = 5,
-    ShadowDynamicMap     = 6,
     WaterReflectionColor = 7,   // WATER-REFLECTION-RESOURCE-1: 1/4-res reflection RT (color)
     WaterReflectionDepth = 8,   // WATER-REFLECTION-RESOURCE-1: 1/4-res reflection RT (depth)
     Backbuffer           = 9,   // FRAME-GRAPH-FBO-LEDGER-1: default framebuffer (GL name 0)
