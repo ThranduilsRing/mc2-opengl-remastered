@@ -901,7 +901,7 @@ void gosRenderer::renderWaterFastPath(
                 vsP.p3[0]=(float)alphaDeepByte;
                 // SHORE-FIELD-1: the VK VS lifts the mode-3 plane by a bounded WORLD distance (wu) toward the
                 // camera, not GL's proportional K (which scaled with camera distance and flooded low land).
-                vsP.p3[2]=12.0f;   // shore mode 3 depth lift, wu (p3[1] flat flag set by the VK island)
+                vsP.p3[2]=40.0f;   // shore mode 3 depth lift, wu (p3[1] flat flag set by the VK island)
                 {
                     const vec4 waterFog = uint32_to_vec4(renderStates_[gos_State_Fog]);
                     memcpy(fsP.fog, &waterFog, 4*sizeof(float));

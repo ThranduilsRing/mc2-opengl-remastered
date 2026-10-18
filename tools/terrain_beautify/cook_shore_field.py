@@ -17,8 +17,8 @@ RECIPE (owner + outside reviewer, 2026-10-18: "upsample, then erode only at the 
 ------
   1. continuous field: the coarse pak heightfield the terrain mesh is drawn from
      (--source coarse, default; --source visual uses visual_height_4x.r32, whose
-     re-authored coast drifts from the rendered land), cubic-spline upsampled
-     --upsample x over the 128 wu grid (default 16 -> 8 wu cells), corner-aligned
+     re-authored coast drifts from the rendered land), linearly upsampled
+     (as the terrain triangles interpolate it) --upsample x over the 128 wu grid (default 16 -> 8 wu cells), corner-aligned
      (side = (n-1)*f+1, texel centres on grid vertices).
   2. threshold at the mission water level -> land/water; morphological open
      (removes spikes) and close (fills notches).
@@ -26,10 +26,10 @@ RECIPE (owner + outside reviewer, 2026-10-18: "upsample, then erode only at the 
   4. Gaussian passes over the SDF restricted to a feathered coastal band, so
      far inland and deep water are unaffected. The shoreline is SDF = 0.
   5. bake a PSEUDO-HEIGHT the water FS reads like a height (field = water - depth):
-       inside the band  depth = shore_slope * -SDF   (smooth ramp off the smoothed edge)
-       beyond the band  depth = the real depth, Gaussian-smoothed (authored shallow
-                        shelves keep their tint; lone low vertices stop drawing diamonds)
-     depth keeps the sign of -SDF everywhere, so the edge stays exactly SDF = 0.
+       depth = the real depth, Gaussian-smoothed (authored shallow shelves keep their
+       tint and translucency; lone low vertices stop drawing diamonds), with its sign
+       forced to that of -SDF by a gentle floor ramp (shore_slope * |SDF|), so the
+       edge is exactly SDF = 0.
   6. store at --store x over visual (default 2 -> 16 wu) as little-endian float16
      `<stem>.beauty/shore_field.r16f`.
 Gameplay terrain heights are untouched; only the water edge/tint reads this.
@@ -72,7 +72,9 @@ DEFAULT_SDF_SIGMA_WU = 48.0    # Gaussian per smoothing pass over the SDF, wu
 DEFAULT_SDF_PASSES = 4
 DEFAULT_BAND_WU = 320.0        # coastal band: SDF smoothing + the shore depth ramp live inside it
 DEFAULT_DEPTH_SIGMA_WU = 96.0  # smoothing of the real depth used beyond the band
-DEFAULT_SHORE_SLOPE = 0.2      # depth (wu) per wu offshore inside the band
+DEFAULT_SHORE_SLOPE = 0.02     # water floor ramp: minimum depth (wu) per wu inside the smoothed edge
+LAND_FLOOR_SLOPE = 0.25        # land floor ramp: minimum height (wu) above water per wu inland
+EDGE_BIAS_WU = 32.0            # smoothed edge moved inland, covers the coarse staircase's inner corners
 
 
 def load_source(pak: Path, visual_height: Path | None, source: str = "coarse") -> tuple[np.ndarray, float, float]:
@@ -94,12 +96,15 @@ def load_source(pak: Path, visual_height: Path | None, source: str = "coarse") -
     return np.asarray(layers["elev"], dtype=np.float64), WORLD_UNITS_PER_VERTEX, welev
 
 
-def upsample(grid: np.ndarray, factor: int) -> np.ndarray:
-    """Corner-aligned cubic-spline upsample: (n-1)*factor+1 samples per side."""
+def upsample(grid: np.ndarray, factor: int, order: int = 1) -> np.ndarray:
+    """Corner-aligned upsample: (n-1)*factor+1 samples per side. LINEAR by default: it is how the
+    terrain triangles interpolate the coarse heights, so the waterline stays on the rendered coast.
+    A cubic spline overshoots next to every terrace step of the stock heightmaps and dips land just
+    above the water level below it (mc2_10: +2.5% of the frame turned to water, eating the plateau)."""
     if factor <= 1:
         return grid.copy()
     n = grid.shape[0]
-    return ndimage.zoom(grid, ((n - 1) * factor + 1) / n, order=3, mode="nearest", grid_mode=False)
+    return ndimage.zoom(grid, ((n - 1) * factor + 1) / n, order=order, mode="nearest", grid_mode=False)
 
 
 def smoothstep(e0: float, e1: float, x: np.ndarray) -> np.ndarray:
@@ -121,22 +126,40 @@ def build_field(h: np.ndarray, welev: float, cell_wu: float, *, open_wu: float, 
                 sdf_sigma_wu: float, sdf_passes: int, band_wu: float, depth_sigma_wu: float,
                 shore_slope: float) -> dict:
     land = h >= welev
-    if open_wu > 0:
-        land = ndimage.binary_opening(land, iterations=max(int(round(open_wu / cell_wu)), 1))
-    if close_wu > 0:
-        land = ndimage.binary_closing(land, iterations=max(int(round(close_wu / cell_wu)), 1))
+    # Morphology on an edge-padded copy: scipy treats outside the array as background, which
+    # eroded land along every map border (a strip of water around maps whose land meets the edge).
+    it_open = max(int(round(open_wu / cell_wu)), 1) if open_wu > 0 else 0
+    it_close = max(int(round(close_wu / cell_wu)), 1) if close_wu > 0 else 0
+    pad = it_open + it_close + 1
+    lp = np.pad(land, pad, mode="edge")
+    if it_open:
+        lp = ndimage.binary_opening(lp, iterations=it_open)
+    if it_close:
+        lp = ndimage.binary_closing(lp, iterations=it_close)
+    land = lp[pad:-pad, pad:-pad]
     sdf0 = signed_distance_wu(land, cell_wu)
     band = 1.0 - smoothstep(0.5 * band_wu, band_wu, np.abs(sdf0))
     sdf = sdf0.copy()
     sig = max(sdf_sigma_wu / cell_wu, 0.5)
     for _ in range(max(sdf_passes, 0)):
         sdf = sdf + band * (ndimage.gaussian_filter(sdf, sig, mode="nearest") - sdf)
+    # Depth (the tint AND the edge alpha source) is the REAL depth, Gaussian-smoothed so a lone low
+    # coarse vertex no longer draws a deep diamond. The smoothed SDF only fixes its SIGN: a gentle
+    # floor ramp keeps water just inside the smoothed edge wet and land just outside dry. (A steep
+    # ramp made shallow flats read as deep, opaque water and flooded low plateaus visually.)
     real_depth = welev - ndimage.gaussian_filter(h, max(depth_sigma_wu / cell_wu, 0.5), mode="nearest")
-    ramp = -shore_slope * sdf
-    w = smoothstep(0.5 * band_wu, band_wu, np.abs(sdf))
-    depth = (1.0 - w) * ramp + w * real_depth
+    # Landward edge bias: the stock colormap paints underwater tiles teal, so the smooth edge must
+    # not retreat seaward of the coarse waterline's inner staircase corners (they showed as a row of
+    # teal dots on the land). Moving the edge EDGE_BIAS_WU inland covers them; real land standing
+    # above the water still wins the depth test, so this does not flood it.
+    sdf = sdf - EDGE_BIAS_WU
     water = sdf < 0.0
-    depth = np.where(water, np.maximum(depth, 0.5 * ramp), np.minimum(depth, 0.5 * ramp))
+    # Land side gets a FIRMER floor: the engine reconstructs this grid with Catmull-Rom, which
+    # overshoots toward the deeper water texels next to a near-zero land texel; with the gentle
+    # floor the land just inside the edge dipped below the water level in a tile-periodic row of
+    # water dots (mc2_10 diagonal coast).
+    depth = np.where(water, np.maximum(real_depth, -shore_slope * sdf),
+                     np.minimum(real_depth, -LAND_FLOOR_SLOPE * sdf))
     return {"field": welev - depth, "sdf": sdf, "sdf0": sdf0, "band": band}
 
 
