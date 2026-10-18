@@ -11,7 +11,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1400"
  },
  "exe": {
-  "sha": "621321942e88",
+  "sha": "248e1ac7e1ba",
   "dirty": 0
  },
  "comparison": {
@@ -108,7 +108,7 @@
  },
  "judged": "first-save-only",
  "packets": 20000,
- "overall": "fb63e85ac66966cf",
+ "overall": "d0cf1f6700882335",
  "resave_identical": true,
  "resave_matches_policy": true,
  "runs": [
@@ -263,8 +263,8 @@
    "data",
    2923,
    193,
-   52283,
-   "ef25d9219b526cc2"
+   52427,
+   "451dd87226aa7ce9"
   ],
   [
    "StaticMechWarriorData",

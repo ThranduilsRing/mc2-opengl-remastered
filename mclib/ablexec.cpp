@@ -113,7 +113,7 @@ template <class T> static void putCode (char* at, T value) {
 	memcpy(at, &value, sizeof(T));
 }
 
-template <class T> static T peekCode (const char* at) {
+template <class T> static T peekCode (const void* at) {
 	T value;
 	memcpy(&value, at, sizeof(T));
 	return(value);
