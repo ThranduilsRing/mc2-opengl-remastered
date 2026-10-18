@@ -48,7 +48,6 @@
 
 #include "gos_smoke.h"
 
-#include <GL/glew.h>
 
 #include <cmath>
 #include <cstdio>
@@ -215,26 +214,6 @@ bool write_png_rgb(const char* path, int w, int h,
 }
 
 // ---------------------------------------------------------------------------
-bool read_scene_rgb(int w, int h, std::vector<unsigned char>& rgbTopDown) {
-    std::vector<unsigned char> bottomUp((size_t)w * h * 3);
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    while (glGetError() != GL_NO_ERROR) {}   // drain stale errors
-    glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, bottomUp.data());
-    GLenum err = glGetError();
-    if (err != GL_NO_ERROR) {
-        mc2::fmt::print_err("[VISUAL_CAPTURE v1] ERROR glReadPixels 0x{:04X} ({:d}x{:d}) -- skipping PNG\n", mc2::fmt::as_u32((unsigned)err), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
-        return false;   // do NOT write a garbage PNG
-    }
-    rgbTopDown.resize((size_t)w * h * 3);
-    for (int y = 0; y < h; ++y) {
-        memcpy(rgbTopDown.data() + (size_t)y * w * 3,
-               bottomUp.data() + (size_t)(h - 1 - y) * w * 3,
-               (size_t)w * 3);
-    }
-    return true;
-}
-
-// ---------------------------------------------------------------------------
 // Capture tuple sidecar JSON.
 // ---------------------------------------------------------------------------
 void json_escape(const std::string& s, std::string& out) {
@@ -272,7 +251,10 @@ float g_renderedProj = 0.0f;
 float g_renderedRot  = 0.0f;
 float g_renderedAlt  = 0.0f;
 
-struct VkCaptureReq { bool pending = false; std::string png; int w = 0, h = 0; unsigned long long frame = 0; };
+struct VkCaptureReq { bool pending = false; std::string png; int w = 0, h = 0; unsigned long long frame = 0; unsigned heldFrames = 0; };
+// A requested bookmark capture is delivered by a later present readback. The sweep holds the camera on that bookmark until it is delivered (or this
+// many frames passed with no readback), so whichever readback serves the request shows the bookmark's pose, never the next bookmark's.
+constexpr unsigned kMaxCaptureHold = 600;
 VkCaptureReq g_vkReq;
 const char* g_readbackSource = "vk_present";   // VK-VISUAL-CAPTURE-1: sidecar "readback_source"
 
@@ -386,6 +368,7 @@ void capture_to(const std::string& dir, const std::string& base,
         g_readbackSource = "vk_present";
         write_sidecar(js, mission, label, frame, w, h, triggerFrame, deterministic);
         g_vkReq.pending = true;
+        g_vkReq.heldFrames = 0;
         g_vkReq.frame = frame;   // the sidecar frame
         g_vkReq.png = png;
         g_vkReq.w = w; g_vkReq.h = h;
@@ -778,6 +761,11 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
             mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] sweep triggered frame={:d} (triggerFrame={:d}) sim frozen, pauseState={:d}\n", mc2::fmt::as_u32(frame), mc2::fmt::as_i32(g_replay.triggerFrame), mc2::fmt::as_i32(g_replay.savePauseState));
         }
 
+        if (g_vkReq.pending) {
+            if (++g_vkReq.heldFrames < kMaxCaptureHold) return;
+            mc2::fmt::print_err("[VISUAL_CAPTURE v1] WARN no present readback for {} after {:d} frames -- capture dropped\n", g_vkReq.png.c_str(), mc2::fmt::as_u32(kMaxCaptureHold));
+            g_vkReq.pending = false;
+        }
         if (g_replay.idx >= g_replay.marks.size()) {
             // Sweep done: restore camera (pos+rot+altitude) then the exact
             // pre-sweep pause flags, so a continuing sim resumes unchanged.

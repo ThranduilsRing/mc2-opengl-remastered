@@ -167,4 +167,23 @@ TEST_CASE("a set is a contiguous range in slot order") {
     CHECK(s2.base == s.base + 3);
 }
 
+TEST_CASE("handles and set refs the registry did not issue are refused") {
+    MaterialRegistry r;
+    const TextureHandle t = TextureHandle::make(1, 1);
+    const MaterialHandle m0 = r.acquire(matKey(1, 0, t)), m1 = r.acquire(matKey(1, 1, t));
+    CHECK(r.keyOf(m0) != nullptr);
+    CHECK(r.keyOf(MaterialHandle::make(m0.index(), 2)) == nullptr);            // wrong generation
+    CHECK(r.keyOf(MaterialHandle::make(99, 1)) == nullptr);                    // index out of range
+    CHECK(r.keyOf(MaterialHandle::invalid()) == nullptr);
+    CHECK_FALSE(r.acquireSet({m0, MaterialHandle::make(99, 1)}).valid());      // a foreign handle gets no set
+    CHECK_FALSE(r.acquireSet({m0, MaterialHandle::make(m1.index(), 3)}).valid());
+    const MaterialSetRef s = r.acquireSet({m0, m1});
+    CHECK(r.materialOfSetSlot(s, 1) == m1);
+    CHECK_FALSE(r.materialOfSetSlot(s, 2).isValid());                          // slot past the set
+    MaterialSetRef forged = s; forged.base = 1;                                // a base in the middle of a set
+    CHECK_FALSE(r.materialOfSetSlot(forged, 0).isValid());
+    MaterialSetRef big = s; big.count = 50;                                    // a count past the table
+    CHECK_FALSE(r.materialOfSetSlot(big, 3).isValid());
+}
+
 }  // TEST_SUITE

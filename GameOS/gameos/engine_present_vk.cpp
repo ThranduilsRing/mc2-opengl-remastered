@@ -2412,6 +2412,9 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
                                      bool verifyReadback) {
     mc2vk::VulkanContext* const ctx = (created_ && impl_) ? impl_->ctx : nullptr;
     const bool ok = presentGLFrameBody(glDrawableW, glDrawableH, verifyReadback);
+    // A recorded composite that this frame's submit did not consume (present declined, minimized, failed) is dropped here: it was recorded against this
+    // frame's ring allocations and deferred-destroy epoch, which the boundary below moves past, so it must never be submitted later.
+    if (impl_) impl_->compositePending = false;
     // Every exit advances the frame, including skipped presents: a slot is reused only after its ticket completes (beginFrame waits it), so
     // advancing never frees GPU-owned memory early, and not advancing would pin the ring on one slot.
     if (ctx) ctx->frameBoundary();
@@ -2449,7 +2452,14 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
         // free when nothing is pending — fence stays SIGNALED, no reset). (b) DROP
         // the pending composite recording: it references the about-to-be-destroyed
         // shared image / framebuffers and must never be submitted.
-        { const VkFence fences[2] = {s.inFlights[0].get(), s.inFlights[1].get()}; vkWaitForFences(s.dev, 2, fences, VK_TRUE, 5ull * 1000 * 1000 * 1000); }
+        {
+            const VkFence fences[2] = {s.inFlights[0].get(), s.inFlights[1].get()};
+            VkResult done = vkWaitForFences(s.dev, 2, fences, VK_TRUE, 5ull * 1000 * 1000 * 1000);
+            // A timeout proves nothing: the in-flight frame may still read the image. Only an idle device proves it; a failed idle (device lost) leaves
+            // the image alone and fails the present, so buildSharedImage never destroys an image the GPU may still use.
+            if (done != VK_SUCCESS) done = vkDeviceWaitIdle(s.dev);
+            if (done != VK_SUCCESS) { health_.fallback_reason = "resize: in-flight frame not proven complete"; return false; }
+        }
         drainReadbackBeforeImageDestroy();   // a pending image->buffer copy reads the shared image buildSharedImage is about to destroy
         s.compositePending = false;
         std::string r;

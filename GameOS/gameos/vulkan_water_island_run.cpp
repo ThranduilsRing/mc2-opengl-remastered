@@ -135,7 +135,7 @@ extern "C" int mc2_vk_water_island_run(
         }
     }
     nat = (nativeInputsIn && s->native && s->native->ready()) ? static_cast<const WaterStream::VkNativeInputs*>(nativeInputsIn) : nullptr;
-    if (!nat && thinCount == 0) return 0;
+    if (!nat && thinCount == 0) { vkImageResourceCancelFrame(s->sColorRes, fsC); return 0; }   // nothing will submit: give the slot's fence back
 
     // Binding 6 of slot `par` must name the buffer this frame's feed fills. The slot fence was waited above, so the set is idle.
     // Native -> readback (opt-out MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE=0, null MVP): flip to thinBuf; the readback upload below

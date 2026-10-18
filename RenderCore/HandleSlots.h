@@ -25,15 +25,30 @@ public:
         bool     ok = false;
     };
 
-    // `capacity` slots at most (the range the handle kind owns).
-    void init(uint32_t capacity) { reset(); capacity_ = capacity; }
-    bool initialized() const { return capacity_ != 0; }
-
-    // Everything free again, every generation back to 1 (a mission boundary: no GPU work of the old mission may name these indices any more).
-    void reset() {
+    // `capacity` slots at most (the range the handle kind owns). A fresh table: generations start at 1.
+    void init(uint32_t capacity) {
         gen_.clear();
         live_.clear();
         parked_.clear();
+        liveCount_ = 0;
+        capacity_ = capacity;
+    }
+    bool initialized() const { return capacity_ != 0; }
+
+    // A mission boundary: every slot free again and reusable at once (no GPU work of the old mission may name these indices any more). Generations are
+    // PRESERVED, and each live slot's is bumped, so a handle an old mission's CPU code still holds names a stale generation and is refused in the new
+    // mission instead of aliasing whatever object takes its slot. (12-bit generations wrap after 4095 reuses of one slot; the same bound as release().)
+    void reset() {
+        parked_.clear();
+        for (uint32_t i = 0; i < static_cast<uint32_t>(gen_.size()); ++i) {
+            if (live_[i]) {
+                uint32_t g = gen_[i] + 1u;
+                if (g > kMaxGeneration) g = 1u;
+                gen_[i] = g;
+                live_[i] = false;
+            }
+            parked_.push_back({i, 0u});
+        }
         liveCount_ = 0;
     }
 

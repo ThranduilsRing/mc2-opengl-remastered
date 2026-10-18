@@ -71,18 +71,24 @@ TEST_CASE("generations wrap past 0") {
     }
 }
 
-TEST_CASE("an exhausted range refuses; reset() frees everything and restarts generations") {
+TEST_CASE("an exhausted range refuses; reset() frees everything but keeps generations moving") {
     HandleSlotTable t;
     t.init(2);
-    CHECK(t.alloc(0).ok);
+    const auto old0 = t.alloc(0);
     CHECK(t.alloc(0).ok);
     CHECK_FALSE(t.alloc(0).ok);
     t.reset();
+    CHECK(t.liveCount() == 0);
+    CHECK_FALSE(t.isLive(old0.slot, old0.generation));        // the old mission's handle is stale at once
     const auto a = t.alloc(0);
     CHECK(a.ok);
-    CHECK(a.slot == 0);
-    CHECK(a.generation == 1);
-    CHECK(t.liveCount() == 1);
+    CHECK(a.slot == old0.slot);
+    CHECK(a.generation != old0.generation);                   // the new mission's occupant never aliases it
+    CHECK(t.isLive(a.slot, a.generation));
+    CHECK_FALSE(t.release(old0.slot, old0.generation, 1));    // and the old handle cannot retire it
+    CHECK(t.alloc(0).ok);
+    CHECK_FALSE(t.alloc(0).ok);                               // the range is still two slots
+    CHECK(t.highWater() == 2);
 }
 
 TEST_CASE("spawn, destroy, reload cycle: indices stay inside the range however many objects pass through") {

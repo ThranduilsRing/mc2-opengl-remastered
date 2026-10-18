@@ -158,4 +158,16 @@ VkFrameSync vkImageResourceBeginFrame(VkImageResource* r) {
     return s;
 }
 
+void vkImageResourceCancelFrame(VkImageResource* r, const VkFrameSync& sync) {
+    if (!r || sync.parity > 1u) return;
+    VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+    fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    const VkDevice device = r->device;
+    if (!mc2vk::create(r->frameFence[sync.parity], device, [&](VkFence* out) { return vkCreateFence(device, &fci, nullptr, out); })) {
+        // vkCreateFence fails only on device loss or out of memory; the owner is left empty and the island's next failing call disables it.
+        return;
+    }
+    r->frameParity = sync.parity;
+}
+
 #endif // MC2_VULKAN_ISLAND

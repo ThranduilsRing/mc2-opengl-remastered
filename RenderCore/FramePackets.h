@@ -18,6 +18,11 @@
 //  - Recycles: a slot's arena is reset when a frame first begins in it, i.e. two frames after the slot's previous user. CPU-side lifetime only: anything a
 //    recorded-but-unsubmitted command buffer or an in-flight submit reads from a packet must be copied into the frame ring (whose slot restarts only after
 //    the ticket of the frame two back completed), never referenced into this arena.
+//  - Readers copy synchronously (explicit contract; no CPU-reader tracking exists): a consumer takes a packet's bytes by value (copyMainView(), or a
+//    struct copy of published()) inside the call that needs them and keeps no reference, pointer or span into the arena across a frame boundary. The
+//    arena recycle above does not wait for a reader; the guarantee is only that nothing reads after the frame that took the copy. Both packet types are
+//    trivially copyable (static_assert below) so the copy is the whole story. Skipped presents: a frame whose present was skipped discards its recorded
+//    composite (EnginePresentVk::presentGLFrame), so no recording outlives the frame that built it and a packet-derived value cannot be read late.
 //  - Pass order: NOT fixed by this slice. The recording order is today the order the GL-era draw_screen call graph reaches each island; fixing it as data
 //    needs a one-frame trace of that graph first (open item).
 //
@@ -71,6 +76,7 @@ struct FramePackets {
     }
 };
 static_assert(std::is_trivially_destructible<FramePackets>::value, "packets live in a FrameArena");
+static_assert(std::is_trivially_copyable<ViewPacket>::value && std::is_trivially_copyable<FramePackets>::value, "consumers copy packets by value (see the contract: readers copy synchronously)");
 
 // Two slot arenas over caller-owned memory. begin(frame) resets the slot's arena the first time a frame uses it and keeps bumping on later calls in the
 // same frame (a second set in one frame does not disturb the first).
@@ -129,6 +135,8 @@ public:
         const ViewPacket* v = published_->findView(kMainSceneViewId);
         return v ? *v : emptyView_;
     }
+    // The by-value form consumers use: the bytes are theirs, so nothing refers into the arena after the call.
+    ViewPacket copyMainView() const { return mainView(); }
     uint64_t publishes() const { return publishes_; }
     uint32_t overflows() const { return overflows_; }
 

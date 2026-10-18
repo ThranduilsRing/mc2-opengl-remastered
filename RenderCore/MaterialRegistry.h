@@ -57,21 +57,28 @@ struct MaterialSetRef {
 
 class MaterialRegistry {
 public:
+    // Materials are never retired in P4a, so every handle this registry issues carries generation 1; a handle with another generation was not issued here.
+    static constexpr uint32_t kIssuedGeneration = 1u;
+
     // The handle of `key`: new (a row index of the MaterialGpu table) or the existing one.
     MaterialHandle acquire(const MaterialKey& key) {
         if (auto it = byKey_.find(key); it != byKey_.end()) {
             const auto& [k, idx] = *it;
-            return MaterialHandle::make(idx, 1u);
+            return MaterialHandle::make(idx, kIssuedGeneration);
         }
         const uint32_t idx = static_cast<uint32_t>(keys_.size());
         keys_.push_back(key);
         byKey_.emplace(key, idx);
-        return MaterialHandle::make(idx, 1u);
+        return MaterialHandle::make(idx, kIssuedGeneration);
     }
-    const MaterialKey* keyOf(MaterialHandle h) const { return h.isValid() && h.index() < keys_.size() ? &keys_[h.index()] : nullptr; }
+    bool owns(MaterialHandle h) const { return h.isValid() && h.generation() == kIssuedGeneration && h.index() < keys_.size(); }
+    const MaterialKey* keyOf(MaterialHandle h) const { return owns(h) ? &keys_[h.index()] : nullptr; }
 
     // The set of these materials (one per mesh material slot, in slot order): an existing set with the same handles, or a new contiguous range.
+    // A list naming a handle this registry did not issue gets no set (an invalid ref), so no set ever holds a foreign handle.
     MaterialSetRef acquireSet(const std::vector<MaterialHandle>& slots) {
+        for (const MaterialHandle h : slots)
+            if (!owns(h)) return MaterialSetRef{};
         if (auto it = bySet_.find(slots); it != bySet_.end()) {
             const auto& [k, ref] = *it;
             return ref;
@@ -81,10 +88,14 @@ public:
         r.count = static_cast<uint32_t>(slots.size());
         setSlots_.insert(setSlots_.end(), slots.begin(), slots.end());
         bySet_.emplace(slots, r);
+        setCountByBase_.emplace(r.base, r.count);
         return r;
     }
     MaterialHandle materialOfSetSlot(MaterialSetRef set, uint32_t slot) const {
+        // The ref must be a set this registry issued (its base and count as registered), and the slot inside it.
         if (!set.valid() || slot >= set.count) return MaterialHandle::invalid();
+        const auto it = setCountByBase_.find(set.base);
+        if (it == setCountByBase_.end() || it->second != set.count) return MaterialHandle::invalid();
         return setSlots_[set.base + slot];
     }
 
@@ -103,6 +114,7 @@ private:
     std::vector<MaterialKey> keys_;
     std::unordered_map<MaterialKey, uint32_t, MaterialKeyHash> byKey_;
     std::vector<MaterialHandle> setSlots_;
+    std::unordered_map<uint32_t, uint32_t> setCountByBase_;   // issued sets: base -> count
     std::map<std::vector<MaterialHandle>, MaterialSetRef, SlotsLess> bySet_;
 };
 

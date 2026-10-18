@@ -90,7 +90,7 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     }
     // VK-PARITY-MECH-1: default mech FS shading inputs from the GL producers.
     {
-        const RenderCore::ViewUniforms& vu = RenderCore::framePackets().mainView().uniforms;
+        const RenderCore::ViewUniforms vu = RenderCore::framePackets().copyMainView().uniforms;   // by value: readers copy synchronously (FramePackets.h)
         for (int k = 0; k < 4; ++k) out->cameraWorldPos[k] = vu.cameraWorldPos[k];
         GpuMechShadingParams shp{};
         gpuMechShadingParams(&shp);

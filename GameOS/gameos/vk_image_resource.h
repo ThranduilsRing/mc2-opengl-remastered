@@ -78,6 +78,10 @@ int vkImageResourceLiveCount();
 
 // Advance to the frame's parity slot; wait+reset its fence; return the sync trio.
 VkFrameSync vkImageResourceBeginFrame(VkImageResource* r);
+// Undoes a BeginFrame whose frame then recorded and submitted nothing: BeginFrame reset the slot's fence and only a submit signals it again, so a
+// caller that returns early without submitting must call this, or the next BeginFrame on that slot waits forever. It re-creates the fence signaled
+// (nothing is in flight on it: BeginFrame waited it) and gives the parity back.
+void vkImageResourceCancelFrame(VkImageResource* r, const VkFrameSync& sync);
 
 #endif // MC2_VULKAN_ISLAND
 #endif // MC2_VK_IMAGE_RESOURCE_H

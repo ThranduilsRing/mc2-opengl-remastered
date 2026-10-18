@@ -125,7 +125,7 @@ void clearAllMechRecords() {
     if (cleared > 0) {
         mechsAlive.fetch_sub(cleared, std::memory_order_relaxed);
     }
-    // A mission boundary: every slot free again (no GPU work of the old mission may name these indices), generations back to 1.
+    // A mission boundary: every slot free again (no GPU work of the old mission may name these indices), generations kept moving (a handle held from the old mission stays stale).
     {
         std::lock_guard<std::mutex> lk(objectRecordsMutex);
         s_mechSlots.reset();
