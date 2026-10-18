@@ -711,12 +711,12 @@ long BattleMech::init (DWORD variantNum)
 	return(NO_ERR);
 }
 
-typedef struct _LogisticsMasterLocationTableEntry
+struct _LogisticsMasterLocationTableEntry
 {
 	bool		clearOut;
 	long		bodyLocation;
 	long		slotNumber;			//Starting at zero!
-}	LogisticsMasterLocationTableEntry;
+}; using LogisticsMasterLocationTableEntry = _LogisticsMasterLocationTableEntry;
 
 LogisticsMasterLocationTableEntry logisticsTable[MAX_MOVER_INVENTORY_ITEMS] = 
 {

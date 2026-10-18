@@ -14,19 +14,19 @@
 //---------------------------------------------------------------------------
 
 class ArtilleryChunk;
-typedef ArtilleryChunk* ArtilleryChunkPtr;
+using ArtilleryChunkPtr = ArtilleryChunk*;
 
 class ArtilleryType;
-typedef ArtilleryType* ArtilleryTypePtr;
+using ArtilleryTypePtr = ArtilleryType*;
 
 class Artillery;
-typedef Artillery* ArtilleryPtr;
+using ArtilleryPtr = Artillery*;
 
 class CameraDroneType;
-typedef CameraDroneType* CameraDroneTypePtr;
+using CameraDroneTypePtr = CameraDroneType*;
 
 class CameraDrone;
-typedef CameraDrone* CameraDronePtr;
+using CameraDronePtr = CameraDrone*;
 
 //---------------------------------------------------------------------------
 

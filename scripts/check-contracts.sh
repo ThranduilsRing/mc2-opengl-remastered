@@ -813,6 +813,7 @@ run_check "gate_gen_check"                  "py -3 tools/gate_gen.py --check --r
 # Class-type template parameters and consteval (Gates/gate.h) need C++20: a standalone CMake
 # project that compiles a source reading MC2_* gates must reach it, or it stops building the day
 # that source migrates. Self-maintaining: the list is derived from the sources, not enumerated.
+run_check "sim_fp_contract"                 "py -3 scripts/check-sim-fp-contract.py && py -3 -B -m pytest scripts/tests/test_check_sim_fp_contract.py -q -p no:cacheprovider"   # every sim TU /fp:precise, no contraction (MSVC + clang-cl); rejection probes
 run_check "cxx_standard_floor"              "py -3 scripts/check-cxx-standard-floor.py && py -3 -B -m pytest scripts/tests/test_check_cxx_standard_floor.py -q -p no:cacheprovider"
 # CPU-GPU-COGATING-1: the check above keeps a gate honest about its OWN default.
 # This one keeps a MIRROR PAIR honest about EACH OTHER. When one quantity is

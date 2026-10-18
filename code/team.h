@@ -35,29 +35,29 @@
 
 //***************************************************************************
 
-typedef struct _SystemTracker {
+struct _SystemTracker {
 	GameObjectPtr			owner;
 	long					masterId;
 	float					effect;
 	SystemTrackerPtr		prev;
 	SystemTrackerPtr		next;
-} SystemTracker;
+}; using SystemTracker = _SystemTracker;
 
 //---------------------------------------------------------------------------
-typedef struct _TeamData
+struct _TeamData
 {
 	long 				id;
 	long 				rosterSize;
 	GameObjectWatchID	roster[MAX_MOVERS_PER_TEAM];
-} TeamData;
+}; using TeamData = _TeamData;
 
-typedef struct _TeamStaticData
+struct _TeamStaticData
 {
 	long		numTeams;
 	long		homeTeamId;
 	char		relations[MAX_TEAMS][MAX_TEAMS];
 	bool		noPain[MAX_TEAMS];
-} TeamStaticData;
+}; using TeamStaticData = _TeamStaticData;
 
 class Team {
 

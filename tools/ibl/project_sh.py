@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # tools/ibl/project_sh.py
 #
-# V-IBL-STATIC-1 projector. Projects an equirectangular HDRI .exr into 9
+# Projects an equirectangular HDRI .exr into 9
 # SH-L2 spherical-harmonic coefficients (Ramamoorthi-Hanrahan 2001). Emits
 # RAW projection coefficients C_lm = integral( L(omega) * Y_lm(omega) dw ).
 #
@@ -16,8 +16,8 @@
 #   [0]=L00, [1]=L1-1, [2]=L10, [3]=L11,
 #   [4]=L2-2, [5]=L2-1, [6]=L20, [7]=L21, [8]=L22
 #
-# Axis convention: Y-up world (matches V-AMBIENT-STATIC-1 hemisphere term at
-# static_prop.vert:271 which uses worldNormal.y as up). Sample direction is
+# Axis convention: Y-up world (matches the hemisphere term at
+# static_prop.vert:271, which uses worldNormal.y as up). Sample direction is
 # n = (sin(theta)*cos(phi), cos(theta), sin(theta)*sin(phi)) with theta the
 # polar angle measured from +Y. This matches hdri_skybox.frag:30-33 which
 # decodes the same equirect via atan(z,x) azimuth + asin(y) elevation.

@@ -51,12 +51,11 @@ SUFFIX_KNOWN = {
 }
 
 
-# Keys that positively identify a document as belonging to SOME OTHER species
-# that merely happens to be spelled manifest.json. UNWIRED-CHECKS-CLOSE-1:
-# classify() keyed on the BASENAME alone, so every manifest.json anywhere in the
-# tree was graded as a run/release manifest and told to grow an identity block.
-# The two --strict failures that made this check unwirable were both this bug,
-# not stale fixtures:
+# Keys that positively identify a document as being SOME OTHER species
+# that merely happens to be spelled manifest.json. classify() must not key on
+# the BASENAME alone, or every manifest.json anywhere in the tree is graded as a
+# run/release manifest and told to grow an identity block. These are the
+# documents that must be classified as their own species:
 #   tests/fixtures/assets/orm_runtime/manifest.json -- an ASSET manifest
 #       (assetId/materials); its schema is what check-asset-manifests.py owns.
 #   tests/fixtures/brain_runtime/manifest.json -- declares its own

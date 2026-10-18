@@ -99,7 +99,7 @@ def run_checks() -> "list[str]":
     expect("agreeing env_extra fine",
            {"MC2_SMOKE_SEED": "0xC0FFEE"}, {"MC2_SMOKE_SEED": "0xC0FFEE"}, [])
 
-    # 7. The two gates named in the HARNESS-HYGIENE-3 brief, explicitly.
+    # 7. The two gates this guard exists for, explicitly.
     for gate in ("MC2_GPU_MECHS", "MC2_TERRAIN_LOD_CHUNK"):
         if gate in ua({gate: "0"}, {}):
             fails.append(f"{gate} reported undriveable; it passes through "

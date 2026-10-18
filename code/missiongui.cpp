@@ -617,7 +617,7 @@ void MissionInterfaceManager::render (void)
 			pos2.w = pos1.w = 1.0f;
 
 			{
-				LineElement newElement(pos1,pos2,color,NULL,-1);
+				LineElement newElement(pos1,pos2,color,nullptr,-1);
 				newElement.draw();
 			}
 
@@ -631,7 +631,7 @@ void MissionInterfaceManager::render (void)
 			pos2.w = pos1.w = 1.0f;
 
 			{
-				LineElement newElement(pos1,pos2,color,NULL,-1);
+				LineElement newElement(pos1,pos2,color,nullptr,-1);
 				newElement.draw();
 			}
 			

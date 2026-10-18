@@ -53,7 +53,7 @@ def parse_enumerators():
     body = m.group(1)
     # Strip comments BEFORE splitting on commas: a comma inside a trailing `// ...`
     # comment would otherwise split mid-comment and swallow the NEXT enumerator name
-    # (APPLY-STATE-SHADOW-1 hit exactly this — a comma in the Water comment dropped Shadow).
+    # (a comma in a Water comment otherwise drops Shadow).
     body = re.sub(r"//.*$", "", body, flags=re.MULTILINE)   # strip line comments
     body = re.sub(r"/\*.*?\*/", "", body, flags=re.DOTALL)   # strip block comments
     names = []

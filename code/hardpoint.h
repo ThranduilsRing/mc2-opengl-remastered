@@ -44,7 +44,7 @@ enum WeaponTag {
 
 // Bitset of accepted WeaponTags. std-layout unsigned; OR tags to build an
 // accept-set, test with hardpointAcceptsWeapon().
-typedef unsigned int WeaponTagMask;
+using WeaponTagMask = unsigned int;
 
 // Turn a WeaponTag into its single-bit mask.
 inline WeaponTagMask weaponTagBit(WeaponTag t) {

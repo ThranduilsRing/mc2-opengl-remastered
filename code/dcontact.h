@@ -15,7 +15,7 @@ inline constexpr int MAX_SENSORS = 512;	// # sensor systems allowed per mission 
 inline constexpr int MAX_ECMS = 50;
 inline constexpr int MAX_CONTACTS_PER_SENSOR = 200;
 
-typedef enum _ContactStatus {
+enum _ContactStatus {
 	CONTACT_NONE,
 	CONTACT_SENSOR_QUALITY_1,
 	CONTACT_SENSOR_QUALITY_2,
@@ -23,9 +23,9 @@ typedef enum _ContactStatus {
 	CONTACT_SENSOR_QUALITY_4,
 	CONTACT_VISUAL,
 	NUM_CONTACT_STATUSES
-} ContactStatus;
+}; using ContactStatus = _ContactStatus;
 
-typedef enum {
+enum ContactCriteria {
 	CONTACT_CRITERIA_NONE = 0,
 	CONTACT_CRITERIA_ENEMY = 1,
 	CONTACT_CRITERIA_VISUAL = 2,
@@ -36,26 +36,26 @@ typedef enum {
 	CONTACT_CRITERIA_NOT_DISABLED = 64,
 	CONTACT_CRITERIA_ARMED = 128,
 	NUM_CONTACT_CRITERIA = 9
-} ContactCriteria;
+};
 
-typedef enum {
+enum ContactSortType {
 	CONTACT_SORT_NONE,
 	CONTACT_SORT_CV,
 	CONTACT_SORT_DISTANCE,
 	NUM_CONTACT_SORTS
-} ContactSortType;
+};
 
 class ContactInfo;
-typedef ContactInfo* ContactInfoPtr;
+using ContactInfoPtr = ContactInfo*;
 
 class SensorSystem;
-typedef SensorSystem* SensorSystemPtr;
+using SensorSystemPtr = SensorSystem*;
 
 class TeamSensorSystem;
-typedef TeamSensorSystem* TeamSensorSystemPtr;
+using TeamSensorSystemPtr = TeamSensorSystem*;
 
 class SensorSystemManager;
-typedef SensorSystemManager* SensorSystemManagerPtr;
+using SensorSystemManagerPtr = SensorSystemManager*;
 
 #endif
 

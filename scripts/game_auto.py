@@ -38,14 +38,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from parent_watchdog import ParentWatch  # noqa: E402
-# VERIFY-INTEGRITY-3: do_click/do_rclick/do_move genuinely NEED to move the
-# pointer -- that is this tool's whole job -- but they previously left it
-# wherever the last scripted action dropped it, with no save/restore and no
-# release of any ClipCursor the game had installed. So a one-line
-# `game_auto.py click 800 600` permanently relocated the user's pointer.
-#
-# Fix shape (deliberately NOT "stop moving the cursor"): remember where the
-# pointer was on entry, and put it back when the command/script finishes.
+# do_click/do_rclick/do_move genuinely NEED to move the pointer -- that is this
+# tool's whole job -- but without save/restore they leave it wherever the last
+# scripted action dropped it, and leave any ClipCursor the game installed held.
+# Remember where the pointer was on entry, and put it back when the command or
+# script finishes (deliberately NOT "stop moving the cursor").
 from smoke_lib.win_input import get_cursor_pos, set_cursor_pos  # noqa: E402
 from smoke_lib import nofocus  # noqa: E402
 
@@ -127,7 +124,7 @@ def launch():
         return
     # DETACHED_PROCESS (0x8) preserved; nofocus adds MC2_NO_CURSOR_GRAB=1 +
     # a non-activating STARTUPINFO so the window never takes focus.
-    # NOFOCUS-FINISH-1: offscreen=False. This tool is the synthetic-input
+    # offscreen=False. This tool is the synthetic-input
     # driver -- its clicks target SCREEN coordinates and its `screenshot` verb
     # is pyautogui (the DESKTOP COMPOSITE), neither of which can reach a window
     # parked at (-32000,-32000). Declaring it makes nofocus REFUSE the launch
@@ -474,7 +471,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(1)
-    # VERIFY-INTEGRITY-3: the pointer goes back where the user left it even if
+    # The pointer goes back where the user left it even if
     # the scripted sequence raises or is Ctrl-C'd. atexit covers interpreter
     # teardown paths `finally` alone misses; _cursor_session_end is idempotent
     # and a no-op when no command actually warped the pointer.

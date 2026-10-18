@@ -24,7 +24,6 @@ namespace Stuff {
 
 	class EulerAngles;
 	class UnitQuaternion;
-	class YawPitchRoll;
 
 	bool Close_Enough(
 		const AffineMatrix4D &m1,
@@ -58,8 +57,6 @@ namespace Stuff {
 			{*this = m;}
 		explicit AffineMatrix4D(const EulerAngles &angles)
 			{*this = angles;}
-		explicit AffineMatrix4D(const YawPitchRoll &angles)
-			{*this = angles;}
 		explicit AffineMatrix4D(const UnitQuaternion &q)
 			{*this = q;}
 		explicit AffineMatrix4D(const Point3D &p)
@@ -79,16 +76,12 @@ namespace Stuff {
 		AffineMatrix4D&
 			operator=(const EulerAngles &angles);
 		AffineMatrix4D&
-			operator=(const YawPitchRoll &angles);
-		AffineMatrix4D&
 			operator=(const UnitQuaternion &q);
 		AffineMatrix4D&
 			operator=(const Point3D &p);
 
 		AffineMatrix4D&
 			BuildRotation(const EulerAngles &angles);
-		AffineMatrix4D&
-			BuildRotation(const YawPitchRoll &angles);
 		AffineMatrix4D&
 			BuildRotation(const UnitQuaternion &q);
 		AffineMatrix4D&

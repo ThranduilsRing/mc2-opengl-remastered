@@ -5,13 +5,10 @@ set(SOURCES ${SOURCES}
     style.cpp
     trace.cpp
     affinematrix.cpp
-    angle.cpp
     color.cpp
     extentbox.cpp
-    line.cpp
     linearmatrix.cpp
     matrix.cpp
-    normal.cpp
     obb.cpp
     plane.cpp
     point3d.cpp

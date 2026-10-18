@@ -106,8 +106,8 @@ namespace gosFX
 	// Class Data Support
 	//
 	public:
-		typedef SpinningCloud__Specification Specification;
-		typedef SpinningCloud__Particle Particle;
+		using Specification = SpinningCloud__Specification;
+		using Particle = SpinningCloud__Particle;
 
 	protected:
 		SpinningCloud(

@@ -11,7 +11,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1400"
  },
  "exe": {
-  "sha": "e6134a43525a",
+  "sha": "248e1ac7e1ba",
   "dirty": 0
  },
  "comparison": {
@@ -108,7 +108,7 @@
  },
  "judged": "first-save-only",
  "packets": 20000,
- "overall": "4866ef7404ce3036",
+ "overall": "77a374d2699735f7",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -228,8 +228,8 @@
    "data",
    3587,
    25,
-   43388,
-   "f3c0020225c82927"
+   43568,
+   "1a51910300114322"
   ],
   [
    "StaticMechWarriorData",
@@ -871,7 +871,7 @@
  ],
  "about": "digest of the quicksave a round-trip fixture writes; tools/saveload_roundtrip.py --baseline / --check",
  "data_fingerprint": {
-  "digest": "ab0dd57ba93dcad7",
+  "digest": "9ffe5ce425438ded",
   "inputs": [
    "mission.fst",
    "tgl.fst",
@@ -884,7 +884,7 @@
    "data/missions/",
    "data/warriors/"
   ],
-  "stock_digest": "8d4e57136dcf513e",
+  "stock_digest": "41173451b5049406",
   "overlay": {
    "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
    "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4",

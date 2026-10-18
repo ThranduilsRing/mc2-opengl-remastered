@@ -1,5 +1,4 @@
 // tests/unit/test_equipment_definition.cpp
-// EQUIPMENT-DEFINITION-SCHEMA-1 (equipment arc, slice 1).
 //
 // Pure-logic doctest coverage for equipment_definition.h: the top facet-aggregator
 // type over the whole compbas component family. PURE SCHEMA -- no engine behavior.

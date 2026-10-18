@@ -15,7 +15,7 @@ class GateConfig:
     heartbeat_timeout_play_s: int = 3
     duration_s: int = 120
     allow_asset_oob: bool = False
-    # META-FIX INFRA-3: per-mission downgrades for registered marker buckets
+    # Per-mission downgrades for registered marker buckets
     # (bucket name -> True), sourced from the manifest override key
     # (allow_asset_oob analog). Red buckets present here become advisory.
     marker_overrides: dict = field(default_factory=dict)
@@ -54,7 +54,7 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
         buckets.append("engine_reported_fail")
         details.append(f"reason={s.smoke_summary_reason} stage={s.smoke_summary_stage}")
     elif s.smoke_summary_result is None and exit_code != 0:
-        # SMOKE-MODMISSION-ENV-GUARDS-1: reclassify load-phase 0xC0000409 aborts
+        # Reclassify load-phase 0xC0000409 aborts
         # where STOP("Unable to open Mission File") was seen and no play-phase
         # heartbeat ever fired.  A mid-play 0xC0000409 (after profile_ready) stays
         # crash_silent — only the load-phase case is reclassified.
@@ -78,7 +78,7 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
     if s.missing_files > 0:
         buckets.append("missing_file"); details.append(f"{s.missing_files}")
 
-    # META-FIX INFRA-3: registered marker buckets. Red severity -> verdict
+    # Registered marker buckets. Red severity -> verdict
     # bucket (fails the mission) unless downgraded per mission via the
     # manifest override key; advisory severity -> detail line only.
     for mb in MARKER_BUCKETS:

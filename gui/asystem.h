@@ -43,7 +43,7 @@ inline constexpr int aMSG_DONE = 110;
 inline constexpr int aMSG_BUTTONCLICKED = 111;
 inline constexpr int aMSG_SELCHANGED = 112;
 
-typedef enum
+enum WINDOW_ID
 {
 	UNDEFINEDWINDOW = -1,
 	GENERIC = 1,
@@ -53,7 +53,7 @@ typedef enum
 	LISTBOX,
 	COMBOBOX,
 	NUMBER_OF_WINDOWTYPES
-} WINDOW_ID;
+};
 
 
 
@@ -181,7 +181,7 @@ public:
 	// real keyframe playback) on top of data/defs UI pages, which composite
 	// AFTER all GameOS draws and would otherwise hide them.
 	static void			beginGuiBridge(float scaleX, float scaleY);
-	// UI-LAYER-CONTRACT-2: bridge with a display-pixel origin offset (the
+	// Bridge with a display-pixel origin offset (the
 	// 16:9 canvas pads). Plain beginGuiBridge keeps offset (0,0).
 	static void			beginGuiBridge(float scaleX, float scaleY, float offX, float offY);
 	// Computes the canvas-aware transform (display size + 16:9 canvas box)

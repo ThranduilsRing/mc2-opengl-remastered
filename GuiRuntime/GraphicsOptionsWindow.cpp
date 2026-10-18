@@ -23,7 +23,7 @@ void draw() {
     if (ImGui::CollapsingHeader("Post-Process")) {
         gosPostProcess* pp = getGosPostProcess();
         if (pp) {
-            // ── Track V: HDR post + grounding (live tuners) ──────────────────
+            // ── HDR post + grounding (live tuners) ──────────────────
             // All gates are plain runtime bools read every frame, so toggling
             // here takes effect immediately (env var seeds the startup state).
             ImGui::SeparatorText("Track V (Exposure / SSAO)");
@@ -248,9 +248,8 @@ void draw() {
         drawTerrainTuningSection();
 
     // ── Static Prop Tuning ────────────────────────────────────────────────────
-    // IBL SH + PBR V1 strength + roughness override. Previously lived in
-    // the Object Inspector PBR selection block; consolidated here so the
-    // controls are reachable without picking a prop.
+    // IBL SH + PBR V1 strength + roughness override. Consolidated here so
+    // the controls are reachable without picking a prop.
     if (ImGui::CollapsingHeader("Static Prop Tuning"))
         drawStaticPropTuningSection();
 

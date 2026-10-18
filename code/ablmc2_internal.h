@@ -8,6 +8,8 @@
 
 #ifndef ABL_H
 #include"abl.h"
+#include <bit>
+#include <cstdint>
 #endif
 
 #ifndef MCLIB_H
@@ -159,8 +161,9 @@ long getMovers (long partId, MoverPtr* list, bool existsOnly = false);
 
 inline signed int double2long(double _in) {
 
+	// 1.5 * 2^52 moves the rounded (to nearest even) integer into the low 32 bits of the representation; read them as bits.
 	_in+=6755399441055744.0;
-	return(*(signed int*)&_in);
+	return static_cast<signed int>(static_cast<std::uint32_t>(std::bit_cast<std::uint64_t>(_in)));
 }
 
 inline bool isObjectId (long partId) {

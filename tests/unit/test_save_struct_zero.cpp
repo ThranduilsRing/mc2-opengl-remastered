@@ -1,4 +1,4 @@
-// SAVE-ZERO-1: MC2_SAVE_STRUCT gives a save struct whose padding is zero even on a dirty stack, without disturbing constructor-set defaults.
+// MC2_SAVE_STRUCT gives a save struct whose padding is zero even on a dirty stack, without disturbing constructor-set defaults.
 // Save writes sizeof(struct) bytes of a stack object; padding bytes between members used to carry stack leftovers into the file.
 #include "doctest.h"
 #include "save_struct_zero.h"

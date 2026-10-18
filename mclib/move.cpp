@@ -573,7 +573,7 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 	if (GameMap)
 		delete GameMap;
 	GameMap = new MissionMap;
-	gosASSERT(GameMap != NULL);
+	gosASSERT(GameMap != nullptr);
 	long numMissionMapPackets = GameMap->init(packetFile, whichPacket);
 	if (numMissionMapPackets == 0)
 		Fatal(0, " MOVE_readData: the mission map was rejected; the mission is not loaded ");

@@ -24,7 +24,7 @@ UnitSettingsDlg::UnitSettingsDlg( std::vector<Unit*>& newList/*=NULL*/, ActionUn
 	//}}AFX_DATA_INIT
 
 	pUndoMgr = &undoMgr;
-	pAction = NULL;
+	pAction = nullptr;
 }
 
 
@@ -361,7 +361,7 @@ void UnitSettingsDlg::applyChanges()
 
 void UnitSettingsDlg::OnOK() 
 {
-	if (NULL != pUndoMgr)
+	if (nullptr != pUndoMgr)
 	{
 		pUndoMgr->AddAction(pAction);
 	}
@@ -369,7 +369,7 @@ void UnitSettingsDlg::OnOK()
 	{
 		delete pAction;
 	}
-	pAction = NULL;
+	pAction = nullptr;
 
 	applyChanges();
 	CDialog::OnOK();
@@ -392,7 +392,7 @@ BOOL UnitSettingsDlg::OnInitDialog()
 
 	if (1 != static_cast<int>(units.size()))
 	{
-		pFirstPossibility = NULL;
+		pFirstPossibility = nullptr;
 	}
 	else
 	{
@@ -800,7 +800,7 @@ void UnitSettingsDlg::OnCancel()
 	{
 		pAction->undo();
 		delete pAction;
-		pAction = NULL;
+		pAction = nullptr;
 	}
 
 	CDialog::OnCancel();

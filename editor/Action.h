@@ -225,7 +225,7 @@ public:
 
 private:
 
-    typedef long ACTION_POS;
+    using ACTION_POS = long;
 
     void EmptyUndoList();
     std::vector<Action*> m_listUndoActions;

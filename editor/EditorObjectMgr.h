@@ -367,13 +367,13 @@ inline int EditorObjectMgr::getObjectTypeNum( int ID )
 
 inline const char* EditorObjectMgr::getFileName( int ID ) const
 {
-	if ( !EOM_DECODE_INBOUNDS( ID ) ) return NULL;
+	if ( !EOM_DECODE_INBOUNDS( ID ) ) return nullptr;
 	return groups[getGroup( ID )].buildings[getIndexInGroup( ID )].fileName;
 }
 
 inline const char* EditorObjectMgr::getTGAFileName( int ID ) const
 {
-	if ( !EOM_DECODE_INBOUNDS( ID ) ) return NULL;
+	if ( !EOM_DECODE_INBOUNDS( ID ) ) return nullptr;
 	return groups[getGroup( ID )].buildings[getIndexInGroup( ID )].tgaName;
 }
 

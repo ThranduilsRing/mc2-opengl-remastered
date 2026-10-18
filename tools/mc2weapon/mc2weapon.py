@@ -56,7 +56,7 @@ COMPBAS_FIELDS = [
 ]
 
 # ---------------------------------------------------------------------------
-# DATA-PROVENANCE-CLOSE-1 (2026-07-30) -- where the stock CSVs come from.
+# Where the stock CSVs come from.
 #
 # This used to be two hand-written candidate lists searched first-hit-wins:
 #
@@ -71,7 +71,7 @@ COMPBAS_FIELDS = [
 #     local edit would silently win over the shipped data and the tool would
 #     report the edited stats as stock.
 #
-#  2. Reordering alone would have fixed NOTHING. Measured 2026-07-30: NO deploy
+#  2. Reordering alone would have fixed NOTHING. NO deploy
 #     lane on this machine carries a loose `data/objects/compbas.csv` or
 #     `effects.csv` at all -- both files exist only inside `misc.fst`. So the
 #     "deploy" rung it was ordered behind never resolved, and never will. The
@@ -113,8 +113,8 @@ def _resolve_csvs(compbas_arg, effects_arg, allow_nonstock):
             resolved[n[:-4]] = res.member(n)
 
     # An explicit path is verified too -- a path typed on the command line is
-    # exactly as unproven as one baked into a list, which is why the original
-    # STOCK-DATA-TRUTH-1 fix did not simply make the flag required.
+    # exactly as unproven as one baked into a list, which is why the flag is
+    # not simply made required.
     for what, p in explicit.items():
         try:
             resolve_corpus("objects", explicit=p.parent, names=[p.name],

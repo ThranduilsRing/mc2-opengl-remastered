@@ -841,9 +841,8 @@ def run_case(name: str, exe: Path, deploy: Path, exit_sec: int, timeout: int,
     # the process STARTUPINFO on its first ShowWindow, and the GL viewport is a child
     # of that frame, so the whole editor comes up minimized.
     #
-    # BACKGROUND-SMOKE-1: this is now UNCONDITIONAL (nofocus), not gated on
-    # MINIMIZED. --minimized survives only as a no-op alias; it must never again
-    # be what decides whether the run steals focus.
+    # This is unconditional (nofocus), not gated on
+    # MINIMIZED. --minimized is only a no-op alias; never gate nofocus on it.
     print(f"[case {name}] launch: {' '.join(extra_flags) or '(gen-map only)'}  exit_sec={exit_sec}"
           f"{'  [minimized]' if MINIMIZED else ''}")
     t0 = time.time()
@@ -965,7 +964,7 @@ def run_case(name: str, exe: Path, deploy: Path, exit_sec: int, timeout: int,
             # so it MUST report a unit-staffing warning (no player/enemy units),
             # and at least one warning overall. No blocking failures are expected
             # on a generated map (terrain is loaded). This proves the save-time
-            # warnings are now visible pre-save without a modal.
+            # warnings are visible pre-save without a modal.
             vw = esmoke.get("validate_warning")
             uw = esmoke.get("validate_units_warn")
             if uw != "1":

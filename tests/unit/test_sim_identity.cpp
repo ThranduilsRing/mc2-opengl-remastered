@@ -1,4 +1,4 @@
-// SIM-IDENTITY-HASH-1 -- offline tests for the pure world-hash kernel.
+// Offline tests for the pure world-hash kernel.
 //
 // The kernel has no engine deps by design, so every property the refuse-to-grade
 // gate leans on is provable here with no GPU, no game, and no capture.
@@ -42,9 +42,8 @@ uint64_t world(std::vector<MoverRecord> v, DigestKind k) {
 } // namespace
 
 TEST_CASE("sim_identity: digest is independent of mover iteration order") {
-    // The load-bearing invariant. DETERMINISM-RATCHET-2 only OBSERVED
-    // moverList order to be stable on one map; the gate must not depend on
-    // that continuing to hold.
+    // The load-bearing invariant. Mover-list order is not guaranteed stable
+    // across maps; the gate must not depend on it.
     std::vector<MoverRecord> a{mk(711, 10.0f, 20.0f, 30.0f),
                                mk(102, -5.0f, 0.0f, 2.5f),
                                mk(940, 100.0f, 3.0f, -7.0f)};
@@ -74,7 +73,7 @@ TEST_CASE("sim_identity: a vanished mover changes the digest") {
 }
 
 TEST_CASE("sim_identity: target-only divergence is invisible to the VISUAL digest") {
-    // THE mc2_10 t=34.1s case, verbatim from DETERMINISM-RATCHET-2:
+    // THE mc2_10 t=34.1s case:
     //   r1: id=711 target=-1     r2/r3: id=711 target=84146
     // with every position identical. The graded digest must SEE it (the sim
     // really did diverge) while the visual digest must NOT (no pixel can move

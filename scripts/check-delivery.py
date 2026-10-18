@@ -42,17 +42,17 @@ EXE_NAME = "mc2" + ".exe"
 
 # Where installs live. Both a flat layout and a releases/ subdir are scanned.
 #
-# THE ROOT LIST IS ITSELF AN AXIS-4 CLAIM, AND THE FIRST VERSION'S WAS WRONG.
+# THE ROOT LIST IS ITSELF A CLAIM ABOUT WHERE THE USER LOOKS, AND IT MUST BE COMPLETE.
 # ---------------------------------------------------------------------------
 # This was `["A:/Games/mc2-opengl"]` -- the directory full of LANE SCRATCH
 # BUILDS (mc2-win64-pom1, mc2-win64-treesoff-1, mc2-win64-abl-validate ...).
-# A disk sweep for the engine binary (DELIVERY-CLOSE-1) found 22 of them and
-# this tool was grading 18. Among the four it could not see was
+# A disk sweep for the engine binary found 22 of them, but this tool graded
+# only 18. Among the four it could not see was
 #
-#     A:/Games/MC2 OpenGL Remastered/<engine>   built from 85aaaa4f, 2026-07-05
+#     A:/Games/MC2 OpenGL Remastered/<engine>
 #
 # -- the install carrying the PRODUCT name, i.e. the likeliest thing a person
-# actually double-clicks, and 25 days behind the tip. All nine manifest fixes
+# actually double-clicks, and far behind the tip. All nine manifest fixes
 # grade 0/3 against that root. So the tool whose entire purpose is "would the
 # user see it?" was answering for every directory EXCEPT the one named like the
 # user's, and answering 6/18 where the honest answer for that install is 0.
@@ -61,20 +61,19 @@ EXE_NAME = "mc2" + ".exe"
 # nothing reads as fine. Roots are therefore listed explicitly and a new one is
 # a deliberate edit, not a silent default.
 #
-# AND IT WENT STALE AGAIN, THE SAME WAY, WITHIN TWO DAYS (CONTRACT-GREEN-1,
-# 2026-07-31). A fresh sweep found 30 engine binaries where the last one found
-# 22, and 11 were outside these patterns. Four of them are not scratch at all --
+# A later sweep found 30 engine binaries where the previous one found 22, and
+# 11 were outside these patterns. Four of them are not scratch at all --
 # they are dated top-level installs with full deployed data trees, and they are
 # the FOUR NEWEST BINARIES ON THE DISK:
 #
-#   A:/Games/MC2-OpenGL-CURRENT-2026-07-30    e1bdb7af697d
-#   A:/Games/MC2-OpenGL-AB-SUNAXIS-2026-07-30 dab061529977
-#   A:/Games/MC2-OpenGL-TIP-2026-07-31        e4ce37d91162
-#   A:/Games/MC2-OpenGL-CURSORFIX-2026-07-31  3d7f9d7871f7
+#   A:/Games/MC2-OpenGL-CURRENT-*     (the newest dated cut)
+#   A:/Games/MC2-OpenGL-AB-SUNAXIS-*
+#   A:/Games/MC2-OpenGL-TIP-*
+#   A:/Games/MC2-OpenGL-CURSORFIX-*
 #
 # Every one of them delivers ALL NINE manifest fixes -- code in the binary,
 # default ON, data present, 9/9 on each. Meanwhile this gate was reporting four
-# of those nine as DELIVERED NOWHERE and had been red on that basis for hours,
+# of those nine as DELIVERED NOWHERE and was red on that basis,
 # which is not a conservative error: it is the tool asserting a falsehood in the
 # direction that makes people stop reading it. The failure is exactly the one
 # this comment block already warned about -- an install root that is not scanned
@@ -96,14 +95,14 @@ EXE_NAME = "mc2" + ".exe"
 # (grade THIS install, not any of them); WHICH install is nominated remains a
 # user decision and no default is taken here.
 #
-# THE FOUR-NESTED-COPIES GAP IS CLOSED (CONTRACT-TRUTH-2, 2026-07-31). The
+# THE FOUR-NESTED-COPIES GAP IS CLOSED. The
 # paragraph that stood here filed the <install>/data/mc2-win64-v0.4 copies as a
 # known gap on the grounds that reaching them needed "a speculative <root>/*/*/
 # glob that would also sweep arbitrary subdirectories". Two things were wrong
-# with that. There were FIVE, not four -- CURSORFIX-2026-07-31 was cut after the
-# paragraph was written, which is the same way this list went stale twice
-# already. And the glob is not speculative: measured, <root>/*/*/ adds exactly
-# those five under the default roots and nothing else. What it WOULD sweep, if
+# with that. There were FIVE, not four -- CURSORFIX was cut after the
+# paragraph was written, which is the same way this list went stale twice.
+# And the glob is not speculative: measured, <root>/*/*/ adds exactly those
+# five under the default roots and nothing else. What it WOULD sweep, if
 # a root were pointed at a source worktree, is build output -- so find_installs
 # rejects disqualifying path segments by name (see NON_INSTALL_SEGMENTS) and
 # reports every rejection in its scope block. A known gap in the one tool that
@@ -407,7 +406,7 @@ def read_default_at(sha: str | None, var: str) -> dict:
 # --install-root at a source worktree would otherwise grade a compiler output as
 # something a user launches. It is not: it has no deployed data tree beside it,
 # so every data axis would report MISSING and the row would be noise wearing a
-# verdict. Measured on this disk (CONTRACT-TRUTH-2, 2026-07-31): of 46 engine
+# verdict. Measured on this disk: of 46 engine
 # binaries under A:/, 16 are build outputs of exactly this shape.
 #
 # Matching is on any path segment BELOW the root, lowercased, so a root that is
@@ -702,7 +701,7 @@ def grade_default(fix, inst, cache) -> dict:
     #
     # "ON by default" is the right question only for a feature. It is the WRONG
     # question for two shapes this manifest already contains:
-    #   * a RETRACTION (CONCRETE-DELIVER-2 expects default 0). Grading it "ON =
+    #   * a RETRACTION (the manifest expects default 0). Grading it "ON =
     #     delivered" would have called an install that still ships the withdrawn
     #     default-ON a success, which is backwards.
     #   * a MULTI-ARM numeric gate, where 1 and 2 are different behaviours that
@@ -898,7 +897,7 @@ def report(fixes, installs, out=sys.stdout, want_json=False, scope=None):
             rows.append({"install": inst["label"],
                          # THE UNIQUE KEY, emitted on every row on purpose.
                          # A consumer that groups by "install" is grouping by a
-                         # display label; DELIVERY-REGRADE-1 built a table that
+                         # display label; an earlier table was built that
                          # way and merged six installs into one line. `exe` is
                          # one binary, always, whatever the label says.
                          "exe": inst["exe"].replace("\\", "/"),
@@ -1032,7 +1031,7 @@ def report(fixes, installs, out=sys.stdout, want_json=False, scope=None):
 # ---------------------------------------------------------------------------
 # THE EXIT CODE -- the half that made this tool decorative
 # ---------------------------------------------------------------------------
-# DELIVERY-CLOSE-1. The first version computed
+# The first version computed
 #
 #     delivered = any(any(row is WOULD SEE IT for row in fix.rows)
 #                     for fix in results)
@@ -1041,8 +1040,8 @@ def report(fixes, installs, out=sys.stdout, want_json=False, scope=None):
 # -- ONE `any` spanning every fix AND every install. So a run in which four
 # fixes were graded and TWO of them printed "<-- DELIVERED NOWHERE" in the
 # summary block still exited 0, because two OTHER fixes happened to land
-# somewhere. Measured on this disk before the fix: VEHICLE-AMBIENT-FLOOR-1 0/18,
-# CONCRETE-DELIVER-2-RETRACTION 0/18, exit code 0.
+# somewhere. Measured on this disk before the fix: two fixes graded 0/18,
+# exit code 0.
 #
 # A tool that answers "would the user see this?" and cannot return non-zero when
 # the answer is no is a report, not a gate. Nothing consumed the report: the
@@ -1301,7 +1300,7 @@ def selftest() -> int:
     ck("INJECTED float arm mismatch is caught",
        expect_mismatch("0.35", "0.5") is not None)
 
-    # 5d. INSTALL DISCOVERY AND LABELLING (CONTRACT-TRUTH-2). Both regressions
+    # 5d. INSTALL DISCOVERY AND LABELLING. Both regressions
     #     are built as real directory trees, not mocked, because both were
     #     invisible to every fixture this script already had: the tool graded
     #     23 installs on a disk that held 28, and its labels merged six of them

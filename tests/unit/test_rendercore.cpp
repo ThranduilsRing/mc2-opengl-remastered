@@ -3,20 +3,20 @@
 // No game startup, no GL context, no asset loading required.
 #include "doctest.h"
 #include "RenderResourceRegistry.h"
-#include "frame_graph_validate.h"       // REGISTRY-LIFETIME-CLASS-1: kExternalResources drift guard
+#include "frame_graph_validate.h"       // kExternalResources drift guard
 #include "RenderDebugView.h"
 #include "RendererFeatureRegistry.h"
 #include "IblShRegistry.h"
-#include "PipelineDesc.h"               // PIPELINE-DESC-SCAFFOLD-1: target type
-#include "render_contract_pipeline.h"   // PIPELINE-DESC-SCAFFOLD-1: adapter under test
-#include "RenderPassContract.h"        // PIPELINE-DESC-REGISTERED-AUDIT-1: descriptive pass table
-#include "PipelineRegistry.h"          // PIPELINE-DESC-REGISTERED-AUDIT-1: PipelineId coverage
-#include "MechVisualState.h"           // GAMEADAPTERS-VISUAL-STATE-BRIDGE-1: bridge POD
+#include "PipelineDesc.h"               // target type
+#include "render_contract_pipeline.h"   // adapter under test
+#include "RenderPassContract.h"        // descriptive pass table
+#include "PipelineRegistry.h"          // PipelineId coverage
+#include "MechVisualState.h"           // bridge POD
 #include <cstring>
 #include <cmath>                       // NAN / INFINITY for sanitizer test
 #include <type_traits>                 // is_trivially_copyable
-#include <set>                         // REGISTRY-COMPUTE-IDS-1: unique-name check
-#include <string>                      // REGISTRY-COMPUTE-IDS-1: unique-name check
+#include <set>                         // unique-name check
+#include <string>                      // unique-name check
 
 using namespace RenderCore;
 
@@ -116,8 +116,8 @@ TEST_CASE("RenderResourceRegistry toString") {
     CHECK(std::strcmp(toString(RenderResourceFormat::Depth32F),"Depth32F")  == 0);
 }
 
-// REGISTRY-COMPUTE-IDS-1: the 4 new compute-intermediate ids round-trip
-// through toString with non-empty, unique names; Count covers them.
+// The 4 compute-intermediate ids round-trip through toString with non-empty,
+// unique names; Count covers them.
 TEST_CASE("RenderResourceRegistry compute-intermediate ids toString") {
     CHECK(std::strcmp(toString(RenderResourceId::ClusterDepthPyramid),    "ClusterDepthPyramid")    == 0);
     CHECK(std::strcmp(toString(RenderResourceId::LightgridGrid),          "LightgridGrid")          == 0);
@@ -160,7 +160,7 @@ TEST_CASE("RenderResourceRegistry compute-intermediate ids register and invalida
 }
 
 // ---------------------------------------------------------------------------
-// REGISTRY-LIFETIME-CLASS-1: lifetime classification metadata
+// Lifetime classification metadata
 // ---------------------------------------------------------------------------
 
 TEST_CASE("RenderResourceLifetime toString round-trips every value") {
@@ -288,8 +288,8 @@ TEST_CASE("RenderDebugView placeholder lane masks are zero") {
 }
 
 TEST_CASE("RenderDebugView Vfx mask covers expected views") {
-    // VFX-DEBUG-VIEWS-1: only Final/Albedo map to the canonical enum. The
-    // shader's Alpha/ParticleKind/Overdraw modes are VFX-local (no enum slot).
+    // Only Final/Albedo map to the canonical enum. The shader's
+    // Alpha/ParticleKind/Overdraw modes are VFX-local (no enum slot).
     CHECK(RenderDebugViewSupported(RenderDebugView::Final,  kDebugViewMask_Vfx));
     CHECK(RenderDebugViewSupported(RenderDebugView::Albedo, kDebugViewMask_Vfx));
     // Particles have no normal/roughness/metallic/IBL/specular/materialIdx data.
@@ -304,7 +304,7 @@ TEST_CASE("RenderDebugView Vfx mask covers expected views") {
 }
 
 TEST_CASE("RenderDebugView Mech mask covers expected views") {
-    // MECH-DEBUG-VIEWS-1: mech.frag has Final/Albedo/Normal/LightingOnly branches.
+    // mech.frag has Final/Albedo/Normal/LightingOnly branches.
     CHECK(RenderDebugViewSupported(RenderDebugView::Final,        kDebugViewMask_Mech));
     CHECK(RenderDebugViewSupported(RenderDebugView::Albedo,       kDebugViewMask_Mech));
     CHECK(RenderDebugViewSupported(RenderDebugView::Normal,       kDebugViewMask_Mech));
@@ -349,8 +349,8 @@ TEST_CASE("RendererFeatureRegistry ViewUniforms is default-on with expected envV
 
 TEST_CASE("RendererFeatureRegistry always-on features have null envVar") {
     // ReverseZ has no env var kill-switch.
-    // (TerrainTessellation gained the MC2_TERRAIN_TESS default-ON killswitch
-    // in the ISSUE-34 fix batch — asserted in the next case instead.)
+    // (TerrainTessellation has the MC2_TERRAIN_TESS default-ON killswitch
+    // — asserted in the next case instead.)
     CHECK(kFeatureTable[static_cast<int>(RendererFeature::ReverseZ)].envVar           == nullptr);
 }
 
@@ -362,7 +362,7 @@ TEST_CASE("RendererFeatureRegistry TerrainTessellation is a default-ON killswitc
 }
 
 TEST_CASE("RendererFeatureRegistry Track V post/grounding gates are registered default-OFF") {
-    // TRACKV-GATE-DEFAULT-OFF-TEST-1: every experimental Track V visual gate
+    // Every experimental Track V visual gate
     // MUST be a Feature-kind entry that defaults OFF, so a fresh checkout or a
     // CI run never silently enables a visual feature. Promoting one to
     // default-ON is a deliberate edit in RendererFeatureRegistry.h AND here --
@@ -426,7 +426,7 @@ TEST_CASE("IblShRegistry kIblShSetCount is at least 1") {
 
 // ---------------------------------------------------------------------------
 // RenderPassContract.pipelineDescRegistered audit
-// PIPELINE-DESC-REGISTERED-AUDIT-1: the header's static_assert catches
+// The header's static_assert catches
 // kRenderPassContracts[] array-length drift but explicitly NOT field-value
 // staleness ("that is on you"). These cases machine-check the
 // pipelineDescRegistered booleans against current PipelineRegistry coverage,
@@ -434,14 +434,12 @@ TEST_CASE("IblShRegistry kIblShSetCount is at least 1") {
 // have) fails the build's test gate instead of silently mis-reporting in the
 // editor inspector / closure-audit doc.
 //
-// NOTE: this slice does NOT flip any pipelineDescRegistered value. It locks
-// the current shipped truth: only StaticPropOpaque routes through PipelineDesc.
+// NOTE: this test does NOT flip any pipelineDescRegistered value. It locks
+// the current shipped flags (see kRenderPassContracts).
 // ---------------------------------------------------------------------------
 
 TEST_CASE("RenderPassContract pipelineDescRegistered matches current shipped truth") {
-    // Per-row expected state from kRenderPassContracts at branch tip
-    // (FRAMEGRAPH-STATEPACK-SKELETON-1 a6854d69 flipped six lanes from the
-    // earlier StaticProp/Mech-only truth to applyPipeline()-routed):
+    // Per-row expected state from kRenderPassContracts:
     //   true:  StaticPropOpaque, MechOpaque, Terrain, TerrainDecal,
     //          TerrainOverlay, Water, VFX, PostProcess
     //   false: Shadow (descriptive-only PipelineIds), VegetationCards, UI.
@@ -459,25 +457,24 @@ TEST_CASE("RenderPassContract pipelineDescRegistered matches current shipped tru
         CHECK(c.pipelineDescRegistered == expected);
         if (c.pipelineDescRegistered) ++trueCount;
     }
-    // Eight passes route through applyPipeline() today (see list above).
+    // Eight passes route through applyPipeline() (see list above).
     CHECK(trueCount == 8);
 }
 
 TEST_CASE("RenderPassContract: PipelineId-family passes back their flag with a real enumerator") {
     // PipelineRegistry registers the static-prop family + MechOpaque
-    // (MECH-PIPELINEDESC-1) plus a set of DESCRIPTIVE-ONLY rows (shadow casters,
+    // plus a set of DESCRIPTIVE-ONLY rows (shadow casters,
     // terrain overlay/decal, water, VFX, post-process) that are NOT routed through
-    // applyPipeline. The enum has since grown to Count_=25:
+    // applyPipeline. The enum has Count_=25:
     //   0 Invalid, 1 StaticPropOpaque, 2 StaticPropAlphaTest, 3 MechOpaque,
     //   4 StaticPropDepth, 5..24 descriptive-only families, 25 Count_.
     //
-    // Since FRAMEGRAPH-STATEPACK-SKELETON-1 (a6854d69) pipelineDescRegistered
-    // means "routes through applyPipeline()", which is BROADER than "owns a
-    // dedicated PipelineId enumerator": Terrain/Water/VFX/PostProcess/
-    // TerrainDecal/TerrainOverlay route applyPipeline with a StatePack whose
-    // PipelineId is Invalid (multi-sub-pipeline lanes), yet they are correctly
-    // flagged true. So the old "only a registered PipelineId family may claim"
-    // invariant no longer holds. What still holds: the two lanes that DO own a
+    // pipelineDescRegistered means "routes through applyPipeline()", which is
+    // BROADER than "owns a dedicated PipelineId enumerator":
+    // Terrain/Water/VFX/PostProcess/TerrainDecal/TerrainOverlay route
+    // applyPipeline with a StatePack whose PipelineId is Invalid
+    // (multi-sub-pipeline lanes), yet they are correctly flagged true. A
+    // registered PipelineId family is not required. The two lanes that DO own a
     // PipelineId family (StaticPropOpaque, MechOpaque) must be flagged true and
     // map to a real (non-Invalid, in-range) enumerator.
     //
@@ -505,7 +502,7 @@ TEST_CASE("RenderPassContract: PipelineId-family passes back their flag with a r
 }
 
 TEST_CASE("RenderPassContract: non-applyPipeline lanes stay unregistered") {
-    // Defensive complement -- since FRAMEGRAPH-STATEPACK-SKELETON-1 the lanes
+    // Defensive complement -- the lanes
     // that do NOT route through applyPipeline() are exactly Shadow (its three
     // shadow PipelineIds are descriptive-only per PipelineRegistry.h),
     // VegetationCards, and UI. Every one of them must report false.
@@ -519,7 +516,7 @@ TEST_CASE("RenderPassContract: non-applyPipeline lanes stay unregistered") {
 }
 
 // ---------------------------------------------------------------------------
-// RENDER-PASS-DAG-CONTRACT-1: widened pass enum + frame pass order.
+// Widened pass enum + frame pass order.
 // (RenderCore-only checks. The toRenderPassId mapping is exercised in
 // test_render_contract_3, which links render_contract.cpp.)
 // ---------------------------------------------------------------------------
@@ -531,8 +528,7 @@ TEST_CASE("RenderPassContract: enum/table/order counts are all 11") {
 }
 
 TEST_CASE("RenderPassContract: 6 new lanes resolve to contract rows with current registration") {
-    // RENDER-PASS-DAG-CONTRACT-1 added six lanes. FRAMEGRAPH-STATEPACK-SKELETON-1
-    // (a6854d69) subsequently routed four of them through applyPipeline():
+    // Of the six lanes, four route through applyPipeline():
     //   registered=true:  Water, PostProcess, TerrainDecal, TerrainOverlay
     //   registered=false: VegetationCards, UI
     struct LaneExpect { RenderPassId id; bool registered; };
@@ -584,14 +580,14 @@ TEST_CASE("RenderPassContract: Shadow + PostProcess carry non-default Vulkan met
 
 // ---------------------------------------------------------------------------
 // PipelineDesc + render_contract -> PipelineDesc adapter
-// PIPELINE-DESC-SCAFFOLD-1: GL-free conversion substrate (no production caller
+// GL-free conversion substrate (no production caller
 // yet; this proves the adapter lowers a PassStateContract correctly).
 // ---------------------------------------------------------------------------
 
 namespace {
 
 // Field-by-field equality. PipelineDesc deliberately has NO operator== (the
-// scaffold slice changes the struct by zero bytes); the test owns comparison.
+// conversion substrate changes the struct by zero bytes); the test owns comparison.
 bool pipelineDescEqual(const PipelineDesc& a, const PipelineDesc& b) {
     return a.glProgramName        == b.glProgramName
         && a.blend                == b.blend
@@ -748,7 +744,7 @@ TEST_CASE("PipelineDesc stays within its hot-path size budget") {
 }
 
 // ---------------------------------------------------------------------------
-// MechVisualState — GAMEADAPTERS-VISUAL-STATE-BRIDGE-1
+// MechVisualState
 // ---------------------------------------------------------------------------
 TEST_CASE("MechVisualState defaults to safe-neutral") {
     MechVisualState s;

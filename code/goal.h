@@ -63,7 +63,7 @@ struct _GoalPathFindInfo {
 };
 using GoalPathFindInfo = _GoalPathFindInfo;
 
-typedef GoalLink* GoalLinkPtr;
+using GoalLinkPtr = GoalLink*;
 
 class GoalObject {
 

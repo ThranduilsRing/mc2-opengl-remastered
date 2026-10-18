@@ -1,4 +1,4 @@
-// EQUIP-ADD-FILL-1 (equipment arc, ADD-ladder S2) -- offline tests for the PURE
+// Offline tests for the PURE
 // ADD logic: the MC2_EQUIPMENT_ADD gate parse, the namespace-aware def path,
 // the fill decision matrix (explicit-ordinal-only / first-wins / never-clobber-
 // populated / 255-sentinel), the kind+category -> ComponentFormType mapping,
@@ -71,7 +71,7 @@ TEST_CASE("mc2ComponentRowPopulated: the string-table-name divergence class") {
     // The sentinel state loadMasterList now guarantees for undefined rows.
     CHECK(!mc2ComponentRowPopulated(-1, CFORM_WEAPON_ENERGY));
 
-    // THE 2026-07-05 live-witness divergence: initEXCEL bails on "undefined"
+// The observed live-witness divergence: initEXCEL bails on "undefined"
     // WITHOUT resetting masterID, leaving masterID==ordinal + a string-table
     // name + a GARBAGE form. A name-based test called this row populated (all
     // ADD defs refused EQADD_SKIP_POPULATED); the form-validity test does not.
@@ -225,7 +225,7 @@ TEST_CASE("validator EQV_ADD_* mirrors the engine fill rules") {
 }
 
 // ---------------------------------------------------------------------------
-// EQUIP-ADD-UI-NAME-1 (S3): string-table id decode + ADD-row UI text resolver.
+// String-table id decode + ADD-row UI text resolver.
 // ---------------------------------------------------------------------------
 TEST_CASE("equip-add-ui-name: equipmentUiStringDecode block mapping") {
     long ord = -99;

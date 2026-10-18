@@ -165,7 +165,7 @@ PAIRS = [
         "cpu": {
             "file": "mclib/mapdata.cpp",
             "anchor": r"Dirt texture displacement \(legacy mirror of gos_terrain\.tese",
-            # Made inert structurally: COLORMAP-CPU-RETIRE-1 frees the source
+            # Made inert structurally: the source buffers are freed,
             # buffers, and the null-guard below is what skips the block.
             "inert_by": {"kind": "env", "token": "MC2_COLORMAP_CPU_RETIRE",
                          "reader_file": "GameOS/gameos/gos_terrain_indirect_cement.cpp"},

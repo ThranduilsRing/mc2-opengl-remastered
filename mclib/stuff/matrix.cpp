@@ -672,7 +672,7 @@ void
 	Matrix4D::SetPerspective(
 		Scalar near_clip,
 		Scalar far_clip,
-		const  Radian &horizontal_fov,
+		Scalar horizontal_fov,
 		Scalar height_to_width
 	)
 {
@@ -694,7 +694,7 @@ void
 	Matrix4D::GetPerspective(
 		Scalar *nearClip,
 		Scalar *farClip,
-		Radian *horizontal_fov,
+		Scalar *horizontal_fov,
 		Scalar *height_to_width
 	) const
 {
@@ -715,7 +715,7 @@ void
 	if(horizontal_fov)
 	{
 		Verify(!Small_Enough(near_clip) );
-		horizontal_fov->angle = 2.0f * (Scalar)atan(left_clip / near_clip);
+		*horizontal_fov = 2.0f * (Scalar)atan(left_clip / near_clip);
 	}
 
 	if(height_to_width)

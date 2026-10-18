@@ -113,7 +113,7 @@ class TurretType : public ObjectType {
 };
 
 //---------------------------------------------------------------------------
-typedef struct _TurretData : public TerrainObjectData
+struct _TurretData : public TerrainObjectData
 {
 	char					teamId;
 	float					turretRotation;
@@ -131,7 +131,7 @@ typedef struct _TurretData : public TerrainObjectData
 	DWORD					parentId;
 	GameObjectWatchID		parent;
 	int32_t					currentWeaponNode;
-} TurretData;
+}; using TurretData = _TurretData;
 
 class Turret : public TerrainObject {
 	

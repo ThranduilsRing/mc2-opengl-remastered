@@ -233,7 +233,7 @@ def main() -> int:
         env["MC2_ACTIVE_MOD"] = active_mod
         print(f"[playtest] MC2_ACTIVE_MOD={active_mod}")
 
-    # BACKGROUND-SMOKE-1: minimized + non-activating is now UNCONDITIONAL via
+    # Minimized + non-activating is unconditional via
     # nofocus. --minimized remains only as a no-op alias; it is no longer what
     # decides whether this run steals focus. The env var nofocus also sets
     # (MC2_NO_CURSOR_GRAB=1) is inherited by the mc2.exe child the editor

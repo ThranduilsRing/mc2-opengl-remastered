@@ -50,7 +50,7 @@ void initColorTables (void)
 	gosASSERT(result == NO_ERR);
 
 	colorRGBLookup = (DWORD **)systemHeap->Malloc(sizeof(DWORD *) * numColorRGBTables);
-	gosASSERT(colorRGBLookup != NULL);
+	gosASSERT(colorRGBLookup != nullptr);
 
 	memset(colorRGBLookup,0,sizeof(DWORD *) * numColorRGBTables);
 
@@ -63,7 +63,7 @@ void initColorTables (void)
 		gosASSERT(result == NO_ERR);
 
 		colorRGBLookup[i] = (DWORD *)systemHeap->Malloc(sizeof(DWORD) * MAX_COLOR_ENTRIES);
-		gosASSERT(colorRGBLookup[i] != NULL);
+		gosASSERT(colorRGBLookup[i] != nullptr);
 
 		DWORD *table = colorRGBLookup[i];
 

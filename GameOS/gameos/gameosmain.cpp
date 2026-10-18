@@ -1239,7 +1239,7 @@ int main(int argc, char** argv)
     // Islands, then the present path, then the shared VulkanContext: one order, shared with the editor (gos_host_vk.cpp).
     gos::host::shutdownVulkanBackend();
 
-    graphics::release_render_context_at_exit(ctx);   // not deleted: wglDeleteContext stalls 1-5 s in the AMD driver (BUGS 82)
+    graphics::release_render_context_at_exit(ctx);   // not deleted: wglDeleteContext stalls 1-5 s in the AMD driver (BUGS 87)
     graphics::destroy_window(win);
 
     gos_DestroyAudio();

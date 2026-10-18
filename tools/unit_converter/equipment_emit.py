@@ -42,7 +42,7 @@ def emit_equipment_fit(ed: "EM.EquipmentDefinition") -> str:
     lines.append(f'st Kind="{ed.kind}"')
     lines.append(f'st Tags="{",".join(ed.tags)}"')
     lines.append(f"l LegacyMasterId={ed.legacy_master_id}")
-    # EQUIP-ENABLE-WIRE-1: Enabled emitted ONLY when explicitly True. Absent =
+    # Enabled is emitted ONLY when explicitly True. Absent =
     # false (the stock converter never sets it), so stock-generated defs stay
     # byte-identical and the engine enable wire is a no-op with zero mods.
     if ed.enabled:
@@ -84,7 +84,7 @@ def emit_equipment_fit(ed: "EM.EquipmentDefinition") -> str:
         lines.append(f"// provenance: legacy SpecialFXId={p.special_fx_id}")
     # Event-based presentation grid (OnFire/OnImpact/... x sfx/vfx/decal/light):
     # NOT derivable from compbas (stock has only a single raw SpecialFX id) --
-    # WAIVED here, authored by a later presentation slice.
+    # WAIVED here until authored.
     lines.append("// event-based presentation cues WAIVED (not derivable from"
                  " compbas)")
     lines.append("")

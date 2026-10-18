@@ -14,7 +14,7 @@
 //---------------------------------------------------------------------------
 
 class GameObjectManager;
-typedef GameObjectManager* GameObjectManagerPtr;
+using GameObjectManagerPtr = GameObjectManager*;
 
 //***************************************************************************
 

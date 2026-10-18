@@ -77,7 +77,7 @@ CONSUMERS = [
     "shaders/include/lighting.hglsl",
     "shaders/mech.vert",
     "shaders/static_prop.vert",
-    # VK-SCOPE-EXTEND-1: same ObjectLights record, same slot range, same failure
+    # Same ObjectLights record, same slot range, same failure
     # mode. Correctly bounded on entry; in scope so a rewrite cannot go quiet.
     "shaders/vulkan/mech_tier1.vert",
     "shaders/vulkan/color_prop_tier1.vert",

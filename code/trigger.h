@@ -25,21 +25,21 @@
 
 inline constexpr int MAX_TRIGGER_AREAS = 16;
 
-typedef enum {
+enum TriggerAreaType {
 	TRIGGER_AREA_NONE,
 	TRIGGER_AREA_MOVER,
 	TRIGGER_AREA_TEAM,
 	TRIGGER_AREA_GROUP,
 	TRIGGER_AREA_COMMANDER,
 	NUM_TRIGGER_AREA_TYPES
-} TriggerAreaType;
+};
 
-typedef struct {
+struct TriggerArea {
 	char	type;
 	long	param;
 	long	dim[4];
 	bool	hit;
-} TriggerArea;
+};
 
 class TriggerAreaManager {
 

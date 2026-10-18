@@ -214,7 +214,7 @@ def fst_has(fst_path, target_rel):
             return True
     return False
 
-# -- Step 1: Find all CVE-G-exclusive mech/vehicle types from object2.pak -----
+# -- Find all CVE-G-exclusive mech/vehicle types from object2.pak --------------
 
 def get_cveg_types(pak_path):
     """Return list of dicts: {obj_num, obj_type, appearance, profile}"""
@@ -240,7 +240,7 @@ def get_cveg_types(pak_path):
             types.append({'idx': i, 'type': obj_type, 'appearance': appearance, 'profile': profile or appearance})
     return types
 
-# -- Step 2: For each mech appearance, compute required tgl/ files -------------
+# -- For each mech appearance, compute required tgl/ files --------------------
 
 MECH_ANIM_NAMES = [
     'StandToPark','ParkToStand','','STtoWK','Walk','StandToPark',
@@ -275,7 +275,7 @@ def vehicle_tgl_files(appearance):
     base = appearance.lower()
     return {f'data/tgl/{base}.ini', f'data/tgl/{base}.tgl'}
 
-# -- Step 3: CSV files for mech stats -----------------------------------------
+# -- CSV files for mech stats -------------------------------------------------
 
 def mech_csv_files(profile):
     return {f'data/objects/{profile.lower()}.csv'}

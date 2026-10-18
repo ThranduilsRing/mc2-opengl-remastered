@@ -40,7 +40,7 @@ class Eraser: public Brush
 {
 	public:
 
-		Eraser(){ pCurAction = NULL; }
+		Eraser(){ pCurAction = nullptr; }
 
 		virtual bool beginPaint();
 		virtual Action* endPaint();

@@ -37,7 +37,7 @@ namespace timing {
 		timespec ts;
 		ts.tv_sec = 0;
 		ts.tv_nsec = nanosec;
-		nanosleep(&ts, NULL);
+		nanosleep(&ts, nullptr);
 #endif
 	}
 

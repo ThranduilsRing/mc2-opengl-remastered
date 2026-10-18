@@ -41,12 +41,12 @@ import sys
 # ---------------------------------------------------------------------------
 
 # Valid OPORD type= values. Compositions (Sentry/Ambush/Scout) are valid but
-# resolve to multi-step tac-order sequences at runtime (BRAIN-RUNTIME-1).
+# resolve to multi-step tac-order sequences at runtime.
 OPORD_TYPES = {
     "Patrol", "Guard", "MoveTo", "Escort", "Attack",
     "Withdraw", "Capture", "Refit", "Follow", "HoldFire",
     "Sentry", "Ambush", "Scout",
-    # BRAIN-SCHEMA-CARVER-COMPAT-1: carver_v_enhanced uses PlayerControlled for
+    # carver_v_enhanced uses PlayerControlled for
     # player-driven units (277 uses). Real OPORD type — was an R3 FAIL before.
     "PlayerControlled",
 }
@@ -58,7 +58,7 @@ OPORD_SLOTS = {"Primary", "Secondary", "Tertiary"}
 TACTIC_NAMES = {
     "IndirectFire", "HullDown", "FightingWithdraw", "Pursue", "HitAndRun",
     "StopAndFire", "Flank", "Joust", "Turret",
-    # BRAIN-SCHEMA-CARVER-COMPAT-1: carver_v_enhanced tactic-weight names —
+    # carver_v_enhanced tactic-weight names —
     # were W3 (unknown-tactic) warnings before.
     "Standard", "Suppress",
 }
@@ -348,7 +348,7 @@ def _validate_brain(brain_node, filepath, findings):
     return unit_ref
 
 
-# BRAIN-SCHEMA-CARVER-COMPAT-1: carver mission.fit Brain {} dialect.
+# carver mission.fit Brain {} dialect.
 # Differs from the _ai.fit schema: OPORD is expressed as PrimaryOPORD/SecondaryOPORD/
 # TertiaryOPORD { type = ... } blocks (not OPORD { slot=... }), and tactic weights as a
 # Tactics { <Name> = <weight> } block (not tactic.<Name> = keys). Rule codes are M-prefixed
@@ -531,7 +531,7 @@ def main():
 
     root = os.path.abspath(args.root)
     fixtures_dir = args.fixtures or os.path.join(root, 'scripts', 'fixtures', 'brain_fit')
-    # BRAIN-SCHEMA-CARVER-COMPAT-1: separate fixtures for the mission.fit Brain {} dialect.
+    # Separate fixtures for the mission.fit Brain {} dialect.
     mission_fixtures_dir = os.path.join(root, 'scripts', 'fixtures', 'brain_fit_mission')
 
     # Two independent passes:
@@ -544,7 +544,7 @@ def main():
     #     must never turn the CI gate red.
     mission_files = find_ai_fit_files(root)
     fixture_files = check_fixtures(fixtures_dir)
-    # BRAIN-SCHEMA-CARVER-COMPAT-1: mission.fit Brain {} pass + its fixture self-test.
+    # mission.fit Brain {} pass + its fixture self-test.
     mission_fit_files = find_mission_fit_files(root)
     mission_fixture_files = check_fixtures(mission_fixtures_dir)
 

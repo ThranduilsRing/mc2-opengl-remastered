@@ -1,5 +1,5 @@
 // tests/unit/test_facet_names.cpp
-// UNIT-DEFINITION-SHADOW-COMPARE-1 (Phase 3): the state-dump emits canonical
+// The state-dump emits canonical
 // token NAMES for the LocomotionModel / DamageSchemaId facets so the offline
 // shadow_compare.py can string-diff them against the converter's DMG_*/LOCO_*
 // vocabulary. These tests lock (a) the exact spellings the converter expects and

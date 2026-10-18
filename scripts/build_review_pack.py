@@ -87,7 +87,7 @@ def parse_registry(path):
 # The gate table registry rows are authoritative when a gate has one, but 18 of the
 # gates named in this pack have none, so a registry-only table can say nothing
 # about their real defaults.  Rather than let the manifest assert a default (the
-# exact drift AUDIT-TRUTH-1 had to repair), resolve it from the C++ READER at
+# exact drift this pack must not reintroduce), resolve it from the C++ READER at
 # render time by classifying the getenv idiom, and publish the matched source
 # line as the citation.  Anything that does not match a known idiom renders
 # UNRESOLVED -- never a guess.
@@ -276,8 +276,8 @@ def _plain(html: str, limit: int = 160) -> str:
     # manifest, the undecoded set was: ldquo/rdquo (246), times (67), sect (64),
     # rsquo (47), middot (18), bull (14), #9888 (13), hellip (12), minus (9),
     # asymp (7), #9940 (5).  Decoded to ASCII, not to the glyph, so an exported
-    # label stays safe on a cp1252 console -- the same class of crash 07349d10
-    # had to fix in mission_smooth.
+    # label stays safe on a cp1252 console -- the same class of crash mission_smooth
+    # had to fix.
     s = (s.replace("&ldquo;", '"').replace("&rdquo;", '"')
           .replace("&lsquo;", "'").replace("&rsquo;", "'")
           .replace("&hellip;", "...").replace("&times;", "x")
@@ -800,8 +800,8 @@ def selftest_registry_guard(registry_path: str) -> int:
             print("  FAIL  clean table was REFUSED: %s" % exc)
             failures += 1
         else:
-            # The floor only guards an empty or torn read; gate amnesty wave 1 (2026-10-12)
-            # took the registry from 351 rows toward the < 30-gate target, so it sits
+            # The floor only guards an empty or torn read; as gates are retired
+            # the registry shrinks toward the < 30-gate target, so it sits
             # well below today's count rather than tracking it.
             ok = len(reg) > 100
             print("  %s  clean table reads: %d registry entries" % ("OK  " if ok else "FAIL", len(reg)))

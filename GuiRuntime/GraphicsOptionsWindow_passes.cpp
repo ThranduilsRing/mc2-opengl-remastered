@@ -4,6 +4,8 @@
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
+#include <algorithm>
+
 namespace GraphicsOptionsWindow {
 
 void drawDrawPacketsSection() {
@@ -109,8 +111,7 @@ void drawDrawPacketsSection() {
 
     ImGui::SetNextItemWidth(110.f);
     ImGui::InputInt("TypeId##dp", &s_selTypeId, 1, 10);
-    if (s_selTypeId < 0)             s_selTypeId = 0;
-    if (s_selTypeId >= (int)typeCount) s_selTypeId = (int)typeCount - 1;
+    s_selTypeId = std::clamp(s_selTypeId, 0, (int)typeCount - 1);
     ImGui::SameLine();
     ImGui::TextDisabled("/ %u", typeCount - 1u);
 

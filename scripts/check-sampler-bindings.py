@@ -86,7 +86,7 @@ RE_CPP_ACTIVETEX = re.compile(r"\bglActiveTexture\s*\(\s*GL_TEXTURE(\d+)\b")
 MODE_ALTERNATE_PAIRS = [frozenset({"dynamicShadowArray", "dynamicShadowMap"})]
 
 # ---------------------------------------------------------------------------
-# Hard anchors (SHADER-SAMPLER-HARD-ANCHORS-1)
+# Hard anchors
 # ---------------------------------------------------------------------------
 # A SMALL allowlist of provably-stable, NON-multiplexed (name->unit) bindings
 # promoted from WARN to FAIL: the build will not silently let these drift. Each
@@ -104,18 +104,17 @@ HARD_ANCHORS = {
 }
 
 # ---------------------------------------------------------------------------
-# Multiplex anchors (MULTIPLEX-ANCHOR-1, VERIFY-DEBT-1)
+# Multiplex anchors
 # ---------------------------------------------------------------------------
 # Names DEMOTED out of HARD_ANCHORS by the self-demoting rule above, re-armed as
-# a PER-PASS anchor. The old DEMOTED_ANCHORS was a bare tuple that NOTHING read:
-# demoting ssaoTex dropped enforced anchors 3 -> 2 and left behind a comment, not
-# a guard. An inert record is documentation.
+# a PER-PASS anchor. A bare DEMOTED_ANCHORS tuple would be documentation rather
+# than a guard: an inert record cannot enforce anything.
 #
 # The insight: a name that is multiplexed across N passes is not un-anchorable,
 # it is anchorable N times. Instead of one (name -> unit) pair we pin the whole
 # multiplex SET -- every (glsl decl file, C++ receiver, unit) triple -- so each
-# pass keeps exactly the protection the single anchor used to give, and the
-# second pass gains protection the single anchor never had.
+# pass keeps exactly the protection of a single anchor, and every additional
+# pass gains the same protection.
 #
 # Checked below (FAIL 4), all of it:
 #   * the name is STILL multiplexed. If it de-multiplexes back to one decl file
@@ -126,13 +125,13 @@ HARD_ANCHORS = {
 #     pass, or a deleted pass, fails).
 #   * per-pass unit: each named receiver binds the name to its declared unit.
 #   * per-pass comment: each named GLSL file's unit comment matches its declared
-#     unit. This is the one that catches the real historical bug -- CONTRACT-
-#     REPAIR-2 found ssao_blur.frag's comments INVERTED vs the C++ (claimed
-#     ssaoTex=0 / sceneDepthTex=1, actual 1 / 0). A whole-name check cannot see
-#     that: {0,1} is the correct unit SET either way. Only the per-file pin does.
+#     unit. This is the one that catches an inverted comment -- ssao_blur.frag's
+#     comments disagree with the C++ (claimed ssaoTex=0 / sceneDepthTex=1,
+#     actual 1 / 0). A whole-name check cannot see that: {0,1} is the correct
+#     unit SET either way. Only the per-file pin does.
 #
-#   ssaoTex — demoted CONTRACT-REPAIR-2 (2026-07). Was (0, ssao_apply.frag,
-#     ssaoApplyProg_). SSAO-BLUR-1 added shaders/ssao_blur.frag, which declares
+#   ssaoTex — demoted out of HARD_ANCHORS. Its single-pass binding is (0,
+#     ssao_apply.frag, ssaoApplyProg_). shaders/ssao_blur.frag declares
 #     ssaoTex a SECOND time and binds it via a SECOND receiver (ssaoBlurProg_)
 #     to a DIFFERENT unit (1 — the blur pass puts sceneDepthTex on 0). That is
 #     legitimate multiplexing, not drift: two passes, two unit assignments.
@@ -149,7 +148,7 @@ MULTIPLEX_ANCHORS = {
 DEMOTED_ANCHORS = tuple(sorted(MULTIPLEX_ANCHORS))
 
 # ---------------------------------------------------------------------------
-# Vulkan descriptor-contract cross-reference (SAMPLER-UNIT-MANIFEST-1)
+# Vulkan descriptor-contract cross-reference
 # ---------------------------------------------------------------------------
 # RenderCore/vulkan_contract.h enumerates exactly 4 CombinedImageSampler rows —
 # FBO-backed images the enum-registry OWNS and that are sampled downstream. Each
@@ -384,7 +383,7 @@ def main():
         for p in problems:
             fails.append(f"hard-anchor '{name}' (expect unit {exp_unit}): {p}")
 
-    # FAIL 4 (multiplex anchors, MULTIPLEX-ANCHOR-1): a name demoted out of
+    # FAIL 4 (multiplex anchors): a name demoted out of
     # HARD_ANCHORS is anchored PER PASS instead of being merely recorded. See the
     # MULTIPLEX_ANCHORS comment for why each clause exists.
     multiplex = []

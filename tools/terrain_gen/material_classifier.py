@@ -35,7 +35,7 @@ class TerrainMasks:
     valley:       np.ndarray   # float32 [0,1]  high = low/flat areas
     noise:        np.ndarray   # float32 [0,1]  mid-freq variation
     terrain_type: np.ndarray   # uint8, TerrainType values
-    # MAP-FEATURE-MASKS-1 (A1): semantic feature maps shared with the Arc-B stock
+    # Semantic feature maps shared with the Arc-B stock
     # analyzer's mask language (cliffs/rivers/banks/flats/wet zones).
     flow:           np.ndarray  # float32 [0,1]  drainage accumulation (river paths)
     ridge:          np.ndarray  # float32 [0,1]  convex-up crests
@@ -140,7 +140,7 @@ class MaterialClassifier:
         # Steep + above snow line = cliff
         tt[(altitude > m.snow_line) & (slope > 0.3)] = TerrainType.CLIFF
 
-        # --- MAP-FEATURE-MASKS-1 (A1): derived semantic feature maps ---
+        # --- Derived semantic feature maps ---
         # Ridge: convex-up crests (negative laplacian = local high). Reuses lap.
         ridge = np.clip(-lap * 4.0, 0.0, 1.0).astype(np.float32)
 

@@ -77,7 +77,7 @@ namespace gosFX
 		static ClassData
 			*DefaultData;
 
-		typedef Singleton__Specification Specification;
+		using Specification = Singleton__Specification;
 
 	protected:
 		Stuff::DynamicArrayOf<char>

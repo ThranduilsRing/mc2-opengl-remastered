@@ -22,7 +22,7 @@ class CCampaignDialog : public CDialog
 {
 // Construction
 public:
-	CCampaignDialog(CWnd* pParent = NULL);   // standard constructor
+	CCampaignDialog(CWnd* pParent = nullptr);   // standard constructor
 
 	CCampaignData m_CampaignData;
 	CCampaignData m_LastSavedCampaignData;

@@ -207,7 +207,6 @@ namespace Stuff {
 #include"extentbox.hpp"
 #include"filestream.hpp"
 #include"filestreammanager.hpp"
-#include"line.hpp"
 #include"marray.hpp"
 #include"matrix.hpp"
 #include"linearmatrix.hpp"

@@ -14,10 +14,10 @@
 //---------------------------------------------------------------------------
 
 class TurretType;
-typedef TurretType* TurretTypePtr;
+using TurretTypePtr = TurretType*;
 
 class Turret;
-typedef Turret* TurretPtr;
+using TurretPtr = Turret*;
 
 //***************************************************************************
 

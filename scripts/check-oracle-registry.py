@@ -30,7 +30,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # The golden artifact dir may live in the nifty-mendeleev worktree (the
 # canonical smoke-artifact store) rather than this worktree's tests/ tree.
 # We probe both locations and fall back gracefully.
-_NIFTY_WORKTREE = "A:/Games/mc2-main"  # canonical worktree (moved 2026-07-05)
+_NIFTY_WORKTREE = "A:/Games/mc2-main"  # canonical worktree
 _GOLDEN_STEM = os.path.join("tests", "smoke", "artifacts", "2026-06-09T19-27-36")
 
 def _find_default_artifact_dir():
@@ -110,7 +110,7 @@ def main():
         default=DEFAULT_GATE_DOC,
         help="Path to oracle-dynamic-pipeline-gate.md",
     )
-    # UNWIRED-CHECK-CLOSE-1 (2026-07-30). This check has TWO sources of
+    # This check has TWO sources of
     # required tags: the gate doc, and the versioned tags found in a golden
     # artifact log dir. The artifact dir is a smoke-run output that is often
     # absent -- and when it is, scan_logs() printed a WARNING to stderr,

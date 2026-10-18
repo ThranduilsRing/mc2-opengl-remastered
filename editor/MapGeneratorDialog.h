@@ -12,7 +12,7 @@
 #define MAP_GENERATOR_DIALOG_H
 
 // Forward-declare OpenGL type to avoid GL header pollution in this header.
-typedef unsigned int GLuint;
+using GLuint = unsigned int;
 
 namespace MapGeneratorDialog {
 

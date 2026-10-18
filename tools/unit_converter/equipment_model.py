@@ -39,8 +39,8 @@ WT_ANY = "Any"
 
 # --- fireExecutor default names (mirror weapon_definition.h WeaponFireExecutorId
 #     docstring: beam_direct / projectile_ballistic / missile_salvo / ...). These
-#     are STARTING DEFAULTS derived from FORM + missile-type; a later slice /
-#     author refines them. Kept as stable names (no fixed enum). ------------------
+#     are STARTING DEFAULTS derived from FORM + missile-type; an author may
+#     refine them. Kept as stable names (no fixed enum). -------------------------
 FX_BEAM_DIRECT = "beam_direct"
 FX_PROJECTILE_BALLISTIC = "projectile_ballistic"
 FX_MISSILE_SALVO = "missile_salvo"
@@ -68,7 +68,7 @@ class WeaponAmmoFacet:
     ammo_category empty == self-powered (energy). ammo_master_id kept as
     provenance of the stock +65 ammo-offset arithmetic for the shadow slice."""
     ammo_category: str = ""          # named category id (empty = none)
-    ammo_master_id: int = 0          # stock ammo master-id column (provenance)
+    ammo_master_id: int = 0          # stock ammo master-id column
 
 
 @dataclass
@@ -98,7 +98,7 @@ class EquipmentPresentation:
     Undeductible cues are WAIVED, not faked."""
     icon: str = ""                       # Logistics Icon 1 (tga token), if present
     ui_name_string_id: Optional[int] = None   # String Index column (localized name)
-    special_fx_id: Optional[int] = None  # stock Special FX ID (provenance)
+    special_fx_id: Optional[int] = None  # stock Special FX ID
 
 
 @dataclass
@@ -115,7 +115,7 @@ class EquipmentDefinition:
     presentation: EquipmentPresentation = field(default_factory=EquipmentPresentation)
     heat: float = 0.0                # component metadata (EquipmentMetadata.heat)
     cost: float = 0.0               # RP / value metric (EquipmentMetadata.cost)
-    # EQUIP-ENABLE-WIRE-1: purchase enable-wire flag. Default False; the stock
+    # Purchase enable-wire flag. Default False; the stock
     # converter NEVER sets it (compbas has no such column), so stock-generated
     # defs carry no Enabled key and the engine wire is a no-op on stock. A mod
     # def sets it True to force its (populated) legacy ordinal purchasable.

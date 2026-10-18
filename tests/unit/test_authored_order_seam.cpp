@@ -207,6 +207,148 @@ TEST_CASE("ABLArena/the environment owns its blocks: zero-filled, freed one by o
     CHECK_FALSE(ABL_ownsBlock(nullptr));
 }
 
+extern ABLModulePtr* ModuleInstanceRegistry;
+
+namespace {
+// In-memory save target for ABLi_saveEnvironment: written files land in `saved` when closed.
+struct SaveSink {
+    static std::map<std::string, std::string> saved;
+    static std::set<void*> writers;
+    static long (*fixtureClose)(void**);
+    struct Writer { std::string name, text; };
+    static long create(void** file, const char* name) {
+        auto* w = new Writer{name, {}};
+        writers.insert(w);
+        *file = w;
+        return 0;
+    }
+    static long close(void** file) {
+        if (writers.erase(*file)) {
+            auto* w = static_cast<Writer*>(*file);
+            saved[w->name] = w->text;
+            delete w;
+            *file = nullptr;
+            return 0;
+        }
+        return fixtureClose(file);
+    }
+    static long write(void* file, unsigned char* buffer, long length) {
+        static_cast<Writer*>(file)->text.append(reinterpret_cast<const char*>(buffer), static_cast<size_t>(length));
+        return length;
+    }
+    static long writeByte(void* file, unsigned char byte) { return write(file, &byte, 1); }
+    static long writeInt(void* file, int32_t value) {
+        return write(file, reinterpret_cast<unsigned char*>(&value), sizeof(value));
+    }
+    static long writeString(void* file, const char* text) {
+        return write(file, reinterpret_cast<unsigned char*>(const_cast<char*>(text)), static_cast<long>(std::strlen(text)));
+    }
+    SaveSink() {
+        fixtureClose = ABLFile::closeCB;
+        ABLFile::createCB = create;
+        ABLFile::closeCB = close;
+        ABLFile::writeCB = write;
+        ABLFile::writeByteCB = writeByte;
+        ABLFile::writeIntCB = writeInt;
+        ABLFile::writeStringCB = writeString;
+    }
+    ~SaveSink() { ABLFile::closeCB = fixtureClose; }
+};
+std::map<std::string, std::string> SaveSink::saved;
+std::set<void*> SaveSink::writers;
+long (*SaveSink::fixtureClose)(void**) = nullptr;
+
+// stepOne completes (returns 1, its order flag is set); stepTwo does not (returns 0, so run returns there). A second pass
+// must skip stepOne. The module counts how often each order body ran.
+constexpr const char* kResumeModule =
+    "module resume;\nvar\nstatic integer firstRuns;\nstatic integer secondRuns;\n"
+    "order stepOne : integer;\ncode\nfirstRuns = firstRuns + 1;\nreturn(1);\nendorder;\n"
+    "order stepTwo : integer;\ncode\nsecondRuns = secondRuns + 1;\nreturn(0);\nendorder;\n"
+    "order run : integer;\ncode\nstepOne;\nstepTwo;\nreturn(1);\nendorder;\n"
+    "code\nrun;\nendmodule.\n";
+
+struct Counts { long first, second; unsigned long flags; };
+Counts countsOf(ABLModule& module) {
+    return {module.getStaticData()[0].integer, module.getStaticData()[1].integer, module.getOrderCallFlags()[0]};
+}
+
+std::string saveEnvironment(const char* name) {
+    SaveSink sink;
+    ABLFile file;
+    REQUIRE(file.create(name) == 0);
+    ABLi_saveEnvironment(&file);
+    file.close();
+    return SaveSink::saved.at(name);
+}
+
+ABLModule* loadEnvironment(CompileFixture& fixture, const std::string& image) {
+    fixture.sources["resume.sav"] = image;
+    ABLFile file;
+    REQUIRE(file.open("resume.sav") == 0);
+    ABLi_loadEnvironment(&file, true);
+    file.close();
+    return ModuleInstanceRegistry[0];
+}
+}
+
+TEST_CASE("ABLSave/completed orders survive a save: resumed execution equals uninterrupted execution") {
+    Counts uninterrupted{};
+    {
+        CompileFixture fixture;
+        fixture.sources["resume.abl"] = kResumeModule;
+        const int handle = ABLi_preProcess("resume.abl");
+        REQUIRE(handle >= 0);
+        ABLModule module;
+        REQUIRE(module.init(handle) == ABL_NO_ERR);
+        module.execute();
+        const Counts afterOne = countsOf(module);
+        CHECK(afterOne.first == 1);
+        CHECK(afterOne.second == 1);
+        CHECK(afterOne.flags != 0); // stepOne's completion is recorded
+        module.execute();
+        uninterrupted = countsOf(module);
+        CHECK(uninterrupted.first == 1); // the completed order is not repeated
+        CHECK(uninterrupted.second == 2);
+    }
+    std::string image, legacyImage;
+    {
+        CompileFixture fixture;
+        fixture.sources["resume.abl"] = kResumeModule;
+        const int handle = ABLi_preProcess("resume.abl");
+        REQUIRE(handle >= 0);
+        auto* module = new ABLModule;
+        REQUIRE(module->init(handle) == ABL_NO_ERR);
+        legacyImage = saveEnvironment("fresh.sav"); // nothing completed yet: no trailing section
+        module->execute();
+        image = saveEnvironment("resume.sav");
+        delete module;
+    }
+    // A save with no completed order is the legacy layout: it ends with the module record.
+    CHECK(image.size() > legacyImage.size());
+    CHECK(image.compare(image.size() - 8, 4, "FDRO") == 0); // ABL_ORDER_FLAGS_MARK, little-endian
+    {
+        CompileFixture fixture;
+        fixture.sources["resume.abl"] = kResumeModule;
+        ABLModule* module = loadEnvironment(fixture, image);
+        REQUIRE(module != nullptr);
+        CHECK(countsOf(*module).flags == uninterrupted.flags);
+        module->execute();
+        const Counts resumed = countsOf(*module);
+        CHECK(resumed.first == uninterrupted.first);
+        CHECK(resumed.second == uninterrupted.second);
+        delete module;
+    }
+    {
+        // A legacy image (no trailing section) still loads, with every order flag clear.
+        CompileFixture fixture;
+        fixture.sources["resume.abl"] = kResumeModule;
+        ABLModule* module = loadEnvironment(fixture, legacyImage);
+        REQUIRE(module != nullptr);
+        CHECK(countsOf(*module).flags == 0);
+        delete module;
+    }
+}
+
 TEST_CASE("ABLCompile/statements includes and library calls preserve parent bytecode after rejection") {
     extern ModuleEntryPtr ModuleRegistry;
     CompileFixture fixture;

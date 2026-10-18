@@ -86,8 +86,8 @@ namespace gosFX
 		static void InitializeClass();
 		static void	TerminateClass();
 
-		typedef ShapeCloud__Specification Specification;
-		typedef ShapeCloud__Particle Particle;
+		using Specification = ShapeCloud__Specification;
+		using Particle = ShapeCloud__Particle;
 
 	//----------------------------------------------------------------------------
 	// Class Data Support

@@ -20,7 +20,7 @@ class CGroupDialog : public CDialog
 {
 // Construction
 public:
-	CGroupDialog(CWnd* pParent = NULL);   // standard constructor
+	CGroupDialog(CWnd* pParent = nullptr);   // standard constructor
 
 	int m_TuneNumber;
 	CMissionList m_MissionList;

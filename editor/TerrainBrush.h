@@ -25,7 +25,7 @@ class TerrainBrush: public Brush
 
 			terrainType = Type;
 			s_lastType = Type;
-			pAction = NULL;
+			pAction = nullptr;
 			radius  = s_lastRadius;
 		}
 		virtual ~TerrainBrush(){}

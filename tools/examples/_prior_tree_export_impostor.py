@@ -1,7 +1,6 @@
 import bpy, sys, math
 from mathutils import Vector
 
-# FOLIAGE-IMPOSTOR-PIPELINE-MVP-1
 # Bake the lush tree canopy to an alpha cutout texture, then build a 2-card
 # cross-quad impostor GLB sized to the LOD0 bounds. The cross collapses ~27
 # overlapping leaf cards -> 2 quads (kills alpha-card overdraw) and ~27 recipes

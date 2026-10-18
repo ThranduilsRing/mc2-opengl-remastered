@@ -62,7 +62,7 @@ from mission_terrain_analyzer import (  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pak_append  # noqa: E402
 
-# STOCK-DATA-TRUTH-1: no hard-coded mission dir. See tools/mc2data/stock_missions.py.
+# No hard-coded mission dir. See tools/mc2data/stock_missions.py.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
 from stock_missions import (  # noqa: E402
     StockDataError, add_allow_nonstock_arg, add_missions_dir_arg,
@@ -70,18 +70,17 @@ from stock_missions import (  # noqa: E402
 )
 
 # --- reserved objTypeNums (user ruling #4) -----------------------------------
-# v0 originally reused MarbleCliff itself (FitID 1188, hand-placeable) as the
-# scatter prop, which meant a re-cook's "delete by objTypeNum" step could nuke
+# Reusing MarbleCliff itself (FitID 1188, hand-placeable) as the scatter prop
+# would let a re-cook's "delete by objTypeNum" step nuke
 # hand placements sharing that same type. Fixed by installing a DEDICATED
 # scatter clone -- "MarbleCliffScatter" (FitID/objTypeNum 1189, same
 # AppearanceName="marblecliff" so it renders identically) -- via
-# tools/install_cliff_dressing.py --with-scatter-clone. Scatter cooks now
-# exclusively use 1189; 1188 (hand-placeable MarbleCliff) is never touched by
+# tools/install_cliff_dressing.py --with-scatter-clone. Scatter cooks use 1189
+# exclusively; 1188 (hand-placeable MarbleCliff) is never touched by
 # a re-cook. If a further scatter prop type is later installed, its
 # FitID/objTypeNum must be appended to this tuple and documented here (do not
 # reuse a hand-placed building's type).
-# TERRAIN-TREE-SCATTER-V0: three dedicated TREE-class scatter clones were
-# added (by the since-retired install_tree_scatter.py) -- "PineScatter1/2/3", FitID/
+# Three dedicated TREE-class scatter clones exist -- "PineScatter1/2/3", FitID/
 # objTypeNum 1190/1191/1192, reusing stock AppearanceName="Pine1"/"Pine2"/
 # "Pine3" (shapes+icons already fully resolved via tgl.fst/art.fst, no new
 # art). Same rationale as the rock clone: a dedicated objTypeNum per class
@@ -95,9 +94,8 @@ MARBLECLIFF_OBJTYPENUM = 1189
 
 # Per-channel prop lists: "rock" scatters a single objTypeNum; "tree" picks
 # randomly per-instance across all three PineScatter clones for silhouette
-# variety (no per-instance scale field exists on the 40-byte record -- see
-# TERRAIN-SCATTER-MASK-1-RECON.md landmine #2 -- so variety must come from
-# prop *type*, not scale).
+# variety (no per-instance scale field exists on the 40-byte record), so
+# variety must come from prop *type*, not scale).
 PROP_CHANNELS = {
     "rock": (MARBLECLIFF_OBJTYPENUM,),
     "tree": PINE_SCATTER_OBJTYPENUMS,
@@ -106,9 +104,9 @@ PROP_CHANNELS = {
 HARD_CAP = 500
 DEFAULT_MIN_DIST_WU = 256.0  # blue-noise minimum spacing, world units
 DEFAULT_SLOPE_MAX_DEG = 40.0  # reject if steeper (single-point grounding risk) -- rock channel
-# Tree channel favors a moderate slope band (per TERRAIN-TREE-SCATTER-ASSET-
-# RECON-1 recommendation: conifers on gaea_peaks-style slopes read best in a
-# 5-25 degree band -- too flat looks planted-in-a-field, too steep is both
+# Tree channel favors a moderate slope band: conifers on gaea_peaks-style
+# slopes read best in a 5-25 degree band -- too flat looks planted-in-a-field,
+# too steep is both
 # visually wrong for a rooted tree and a single-point-grounding risk same as
 # rock). Trees EXCLUDE outside this band; rock instead prefers the shoulder
 # around the cliff band (see load_density_mask).
@@ -566,7 +564,7 @@ def cmd_plan(args) -> int:
 
 
 def cmd_cook(args) -> int:
-    # STOCK-DATA-TRUTH-2: `plan` resolves + verifies a missions DIR; `cook` takes
+    # `plan` resolves + verifies a missions DIR; `cook` takes
     # a raw --pak and did not. Scatter reads the terrain object list, which
     # differs between the shipped mission.fst and the Carver5 tree (mc2_04/05/06/11).
     try:

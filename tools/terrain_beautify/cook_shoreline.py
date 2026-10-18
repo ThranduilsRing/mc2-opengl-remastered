@@ -110,7 +110,7 @@ from mission_terrain_analyzer import (  # noqa: E402
     read_packets, locate_mapdata, extract_layers, read_water_elevation,
 )
 
-# STOCK-DATA-TRUTH-1: verify the batch-cook corpus. See tools/mc2data/stock_missions.py.
+# Verify the batch-cook corpus. See tools/mc2data/stock_missions.py.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
 from stock_missions import (  # noqa: E402
     StockDataError, add_allow_nonstock_arg, resolve_missions_dir,
@@ -119,13 +119,12 @@ from stock_missions import (  # noqa: E402
 
 WORLD_UNITS_PER_VERTEX = 128.0
 
-# Band-width floors (recon landmine #4): a band derived from a runtime/authored
+# Band-width floors: a band derived from a runtime/authored
 # parameter must never collapse to zero width.
 MIN_BAND_WU = 1.0
-# VISUAL-QUALITY FIX (post-ship, user report: bands read as huge bright "paint
-# stripes" on mc2_17): the original 64wu damp / 24wu foam solid bands were far
-# too wide/bright at the coarse-grid resolution these cooks actually shipped
-# at. Narrowed to the target range from the fix brief -- damp 24-32wu subtle
+# User report: bands read as huge bright "paint stripes" on mc2_17. The
+# 64wu damp / 24wu foam solid bands were too wide/bright at the coarse-grid
+# resolution these cooks ship at. Use damp 24-32wu subtle
 # darkening, foam 4-8wu narrow noise-broken rim -- with headroom kept in the
 # CLI flags for per-mission tuning.
 DEFAULT_DAMP_WIDTH_WU = 28.0    # land-side wet/damp darken ramp extent
@@ -177,7 +176,7 @@ def build_mask_rgba(signed_d_wu: np.ndarray, damp_w: float, foam_w: float) -> np
     r_norm = np.clip(signed_d_wu / BAND_NORM_WU * 0.5 + 0.5, 0.0, 1.0)
 
     # G: wet/damp weight on the LAND side only (d in [0, damp_w] -> 1..0 ramp).
-    # Terrain-side-only v1 (recon Sec.3): water-side (d<0) gets G=0, the water
+    # Terrain-side-only: water-side (d<0) gets G=0, the water
     # FS already owns the water-surface colour ramp. NOTE: clip(d,0,None) alone
     # would map d<0 (water) to land_d=0 -> wet=1, painting the whole water body
     # "wet" -- the explicit `np.where(signed_d_wu > 0, ..., 0.0)` guard below is
@@ -281,7 +280,7 @@ def cook_one(pak: Path, out_path: Path, *, fit: Path | None = None,
 
 
 def cmd_cook(args) -> int:
-    # STOCK-DATA-TRUTH-2: `all-missions` verifies its corpus (cb4cd5ef); this
+    # `all-missions` verifies its corpus; this
     # per-mission sibling did not, and it is the mode that produced the
     # committed mc2_17 masks. Same argument, other half of the tool.
     try:
@@ -302,7 +301,7 @@ def cmd_cook(args) -> int:
     return 0
 
 
-# --- all-missions (SHORELINE-BATCH-COOK-1) -----------------------------------
+# --- all-missions ------------------------------------------------------------
 def cmd_all_missions(args) -> int:
     """Batch-cook shoreline masks for every water-bearing mission in a dir.
 
@@ -319,7 +318,7 @@ def cmd_all_missions(args) -> int:
     import glob as _glob
     import json as _json
 
-    # STOCK-DATA-TRUTH-1: --missions-dir is REQUIRED here, so this subcommand
+    # --missions-dir is REQUIRED here, so this subcommand
     # never had the silent-default defect -- but "required" is not "correct".
     # The standing batch-cook recipe named A:/Games/Carver5-feasibility/data/
     # missions, which differs from the shipped mission.fst on all 24 campaign

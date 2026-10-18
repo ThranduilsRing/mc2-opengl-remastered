@@ -247,12 +247,12 @@ def main():
             callsite_count += count_callsites_in_all_functions(f.readlines(), r'^(?:static\s+)?(?:void|bool)\s+apply\w+\s*\(')
     commit_count   = count_callsites_in_commit(lines)
 
-    # DISPATCH-INTENT-CLEARMOVEORDERS-1: clearMoveOrders() is a movement function and is
+    # clearMoveOrders() is a movement function and is
     # FORBIDDEN in dispatch. Every call must live inside commitBrainIntents (the sole
     # permitted mutator). total > commit ⇒ a direct/forbidden call leaked into dispatch.
     clearmove_total  = count_clearmove_total(lines)
     clearmove_commit = count_clearmove_in_commit(lines)
-    # UNITQUERY-SETTARGETPRIORITY-1: setTargetPriority() is contract-forbidden in dispatch;
+    # setTargetPriority() is contract-forbidden in dispatch;
     # every call must be inside commitBrainIntents (the sole permitted mutator).
     settarget_total  = count_settarget_total(lines)
     settarget_commit = count_settarget_in_commit(lines)
@@ -280,7 +280,7 @@ def main():
     if commit_count < 0:
         findings.append(("WARN", "commitBrainIntents not found in source — BRAIN-DECISION-INTENT-QUEUE-1 not yet landed"))
 
-    # DISPATCH-INTENT-CLEARMOVEORDERS-1 invariant.
+    # clearMoveOrders() dispatch invariant.
     clearmove_ok = (clearmove_total == clearmove_commit)
     findings.append(("INFO", f"clearMoveOrders_total={clearmove_total}  clearMoveOrders_in_commit={clearmove_commit}"))
     if not clearmove_ok:

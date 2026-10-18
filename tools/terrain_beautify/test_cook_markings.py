@@ -19,11 +19,11 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 TOOL = HERE / "cook_markings.py"
-# STOCK-DATA-TRUTH-1: this used to be
+# These "real stock .pak" tests must not use
 #   CARVER5_MISSIONS = Path("A:/Games/Carver5-feasibility/data/missions")
-# which differs from the shipped mission.fst on ALL 24 campaign maps, so these
-# "real stock .pak" tests were asserting against terrain the engine never
-# loads. STOCK_MISSIONS is byte-verified against the shipped bytes, or None --
+# because it differs from the shipped mission.fst on ALL 24 campaign maps,
+# so such tests would assert against terrain the engine never loads.
+# STOCK_MISSIONS is byte-verified against the shipped bytes, or None --
 # a test that cannot get stock data SKIPS rather than passing on wrong data.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
 from stock_missions import stock_missions_dir_or_none  # noqa: E402
@@ -39,9 +39,9 @@ def _have_stock(stem: str) -> bool:
     return bool(STOCK_MISSIONS) and (STOCK_MISSIONS / f"{stem}.pak").is_file()
 
 
-# DATA-PROVENANCE-CLOSE-1: this used to be
+# Tests must not use
 #   STOCK_OVERLAYS = Path("A:/Games/mc2-srcdata/textures/64Overlays")
-# an EDITABLE checkout read as if it were the shipped tile art. The engine
+# an editable checkout as if it were the shipped tile art. The engine
 # loads `data/textures/64overlays/*` out of `textures.fst`; 475 members, and
 # both source trees currently reproduce all 475 byte-for-byte -- but nothing
 # checked, so a retouched tile would have silently changed what these tests

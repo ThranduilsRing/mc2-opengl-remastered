@@ -887,7 +887,7 @@ void Mission::initWeatherCamera(MissionInitFrame& f) {
 	
 	eye = new GameCamera;
 	eye->init();
-	gosASSERT(eye != NULL);
+	gosASSERT(eye != nullptr);
 
 	result = eye->init(missionFile);
 	gosASSERT(result == NO_ERR);
@@ -971,7 +971,7 @@ void Mission::initLabTimingAndClose() {
 #endif
 
 	missionFile->close();
-	missionFile = NULL;
+	missionFile = nullptr;
 }
 
 // Finalise the static-prop and mech geometry and the GPU cull buffers.

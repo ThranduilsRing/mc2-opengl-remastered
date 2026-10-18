@@ -76,7 +76,7 @@ inline constexpr int NUM_CRITICAL_SPACES_TURRET = 1;
 inline constexpr int MAX_TOADS = 10;
 inline constexpr int MAX_SEATS = 4;
 
-typedef enum {
+enum VehicleLocationType {
 	GROUNDVEHICLE_LOCATION_ANY = -1,
 	GROUNDVEHICLE_LOCATION_FRONT,
 	GROUNDVEHICLE_LOCATION_LEFT,
@@ -84,16 +84,16 @@ typedef enum {
 	GROUNDVEHICLE_LOCATION_REAR,
 	GROUNDVEHICLE_LOCATION_TURRET,
 	NUM_GROUNDVEHICLE_LOCATIONS
-} VehicleLocationType;
+};
 
-typedef enum {
+enum GroundVehicleChassisType {
 	GROUNDVEHICLE_CHASSIS_WHEELED,
 	GROUNDVEHICLE_CHASSIS_TRACKED,
 	GROUNDVEHICLE_CHASSIS_HOVER,
 	NUM_GROUNDVEHICLE_CHASSIS
-} GroundVehicleChassisType;
+};
 
-typedef enum {
+enum GroundVehicleCriticalHitType {
 	GROUNDVEHICLE_CRITICAL_NO_EFFECT,
 	GROUNDVEHICLE_CRITICAL_AMMO_POWER_HIT,
 	GROUNDVEHICLE_CRITICAL_FUEL_TANK_HIT,
@@ -106,7 +106,7 @@ typedef enum {
 	GROUNDVEHICLE_CRITICAL_HOVERCRAFT_MOVEMENT_HINDERED,
 	GROUNDVEHICLE_CRITICAL_TURRET_JAMMED,
 	NUM_GROUNDVEHICLE_CRITICAL_HIT_TYPES
-} GroundVehicleCriticalHitType;
+};
 
 //******************************************************************************************
 
@@ -177,7 +177,7 @@ class GroundVehicleType : public ObjectType {
 };
 
 //---------------------------------------------------------------------------
-typedef struct _GroundVehicleData : public MoverData
+struct _GroundVehicleData : public MoverData
 {
 	float				accel;			
 	float				velocityMag;	
@@ -221,7 +221,7 @@ typedef struct _GroundVehicleData : public MoverData
 	bool				sensorOK;
 	bool				isVehiclePilot;
 
-} GroundVehicleData;
+}; using GroundVehicleData = _GroundVehicleData;
 
 class GroundVehicle : public Mover {
 
@@ -339,7 +339,7 @@ class GroundVehicle : public Mover {
 
 		virtual long calcCV (bool calcMax = false);
 
-		virtual float calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, Stuff::Vector3D* targetPoint = NULL);
+		virtual float calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, Stuff::Vector3D* targetPoint = nullptr);
 
 		virtual float getTotalEffectiveness(void);
 
@@ -438,7 +438,7 @@ class GroundVehicle : public Mover {
 #ifdef USE_SALVAGE
 		virtual bool isCaptureable (long capturingTeamID) {
 			//return ((captureable || salvage != NULL) && (getTeamId() != capturingTeamID) && !isDestroyed());
-			return ((getFlag(OBJECT_FLAG_CAPTURABLE) || (salvage != NULL)) && (getTeamId() != capturingTeamID) && !isDestroyed());
+			return ((getFlag(OBJECT_FLAG_CAPTURABLE) || (salvage != nullptr)) && (getTeamId() != capturingTeamID) && !isDestroyed());
 		}
 #else
 		virtual bool isCaptureable (long capturingTeamID) {

@@ -6,6 +6,7 @@
 //===========================================================================//
 
 #include"stuffheaders.hpp"
+#include"../math/mc2_math.h"
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ EulerAngles ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -27,23 +28,6 @@ static void __stdcall Activate_UseFastLerp() {UseFastLerp = !UseFastLerp;}
 static void __stdcall Activate_UseFastNormalize() {UseFastNormalize = !UseFastNormalize;}
 
 
-
-//
-//#############################################################################
-//#############################################################################
-//
-EulerAngles&
-	EulerAngles::operator=(const YawPitchRoll &angles)
-{
-	Check_Pointer(this);
-	Check_Object(&angles);
-
-	LinearMatrix4D m;
-	m.BuildRotation(angles);
-	*this = m;
-
-	return *this;
-}
 
 //
 //#############################################################################
@@ -216,9 +200,9 @@ EulerAngles&
 {
 	Check_Pointer(this);
 
-	pitch.Normalize();
-	yaw.Normalize();
-	roll.Normalize();
+	pitch = mc2::math::wrapAngleMember(pitch);
+	yaw = mc2::math::wrapAngleMember(yaw);
+	roll = mc2::math::wrapAngleMember(roll);
 	return *this;
 }
 
@@ -235,222 +219,11 @@ EulerAngles&
 	{
 		Check_Object(&angle);
 		SPEW((group, "<+"));
-		Spew(group, angle.pitch);
+		SPEW((group, "%f rad+", angle.pitch));
 		SPEW((group, ",+"));
-		Spew(group, angle.yaw);
+		SPEW((group, "%f rad+", angle.yaw));
 		SPEW((group, ",+"));
-		Spew(group, angle.roll);
-		SPEW((group, ">+"));
-	}
-#endif
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ YawPitchRoll ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-const YawPitchRoll
-	YawPitchRoll::Identity(0.0f, 0.0f, 0.0f);
-
-//
-//#############################################################################
-//#############################################################################
-//
-YawPitchRoll&
-	YawPitchRoll::operator=(const EulerAngles &angles)
-{
-	Check_Pointer(this);
-	Check_Object(&angles);
-
-	LinearMatrix4D m;
-	m.BuildRotation(angles);
-	*this = m;
-
-	return *this;
-}
-
-//
-//#############################################################################
-//#############################################################################
-//
-YawPitchRoll&
-	YawPitchRoll::operator=(const UnitQuaternion &quaternion)
-{
-	Check_Pointer(this);
-	Check_Object(&quaternion);
-
-	LinearMatrix4D m;
-	m.BuildRotation(quaternion);
-	return *this = m;
-}
-
-//
-//#############################################################################
-//#############################################################################
-//
-YawPitchRoll&
-	YawPitchRoll::operator=(const LinearMatrix4D &matrix)
-{
-	Check_Pointer(this);
-	Check_Object(&matrix);
-
-	Verify(
-		Vector3D::Forward.z == 1.0f && Vector3D::Right.x == -1.0f && Vector3D::Up.y == 1.0f
-		 || Vector3D::Forward.z == -1.0f && Vector3D::Right.x == 1.0f && Vector3D::Up.y == 1.0f
-	);
-
-	Scalar
-		pSine, pCosine,
-		ySine, yCosine,
-		rSine, rCosine;
-
-	//
-	//---------------------------------------------------
-	// First deal with the singularity of 90 degree pitch
-	//---------------------------------------------------
-	//
-	pSine = -matrix(2,1);
-	if (Close_Enough(pSine,1.0f,0.0001f))
-	{
-		ySine = matrix(1,0);
-		yCosine = matrix(0,0);
-		yaw = Arctan(ySine, yCosine);
-		pitch = Pi_Over_2;
-		roll = 0.0f;
-		return *this;
-	}
-
-	//
-	//-------------------------------
-	// Now deal with -90 degree pitch
-	//-------------------------------
-	//
-	else if (Close_Enough(pSine,-1.0f,0.0001f))
-	{
-		ySine = matrix(0,2);
-		yCosine = matrix(0,0);
-		yaw = Arctan(ySine, yCosine);
-		pitch = -Pi_Over_2;
-		roll = 0.0f;
-		return *this;
-	}
-
-	//
-	//------------------------------------------------------------------------
-	// Otherwise, assume that pitch must be constrained between +/- 90 degrees
-	//------------------------------------------------------------------------
-	//
-	else {
-		pCosine = Sqrt(1.0f - pSine*pSine);
-		ySine = matrix(2,0) / pCosine;
-		yCosine = matrix(2,2) / pCosine;
-		rSine = matrix(0,1) / pCosine;
-		rCosine = matrix(1,1) / pCosine;
-		Verify(
-			Close_Enough(
-				yCosine*rCosine + pSine*ySine*rSine,
-				matrix(0,0),
-				1e-4f
-			)
-		);
-	}
-
-	pitch = Arctan(pSine, pCosine);
-	yaw = Arctan(ySine, yCosine);
-	roll = Arctan(rSine, rCosine);
-	return *this;
-}
-
-//
-//#############################################################################
-//#############################################################################
-//
-bool
-	Stuff::Small_Enough(
-		const YawPitchRoll& angles,
-		Scalar e
-	)
-{
-	Check_Object(&angles);
-
-	return
-		Small_Enough(angles.pitch,e)
-		 && Small_Enough(angles.yaw,e)
-		 && Small_Enough(angles.roll,e);
-}
-
-//
-//#############################################################################
-//#############################################################################
-//
-bool
-	Stuff::Close_Enough(
-		const YawPitchRoll& a1,
-		const YawPitchRoll& a2,
-		Scalar e
-	)
-{
-	Check_Object(&a1);
-	Check_Object(&a2);
-
-	return
-		Close_Enough(a1.pitch,a2.pitch,e)
-		 && Close_Enough(a1.yaw,a2.yaw,e)
-		 && Close_Enough(a1.roll,a2.roll,e);
-}
-
-//
-//#############################################################################
-//#############################################################################
-//
-YawPitchRoll&
-	YawPitchRoll::Lerp(
-		const YawPitchRoll &a1,
-		const YawPitchRoll &a2,
-		Scalar t
-	)
-{
-	Check_Pointer(this);
-	Check_Object(&a1);
-	Check_Object(&a2);
-
-	yaw = Stuff::Lerp(a1.yaw,a2.yaw,t);
-	pitch = Stuff::Lerp(a1.pitch,a2.pitch,t);
-	roll = Stuff::Lerp(a1.roll,a2.roll,t);
-	return *this;
-}
-
-//
-//#############################################################################
-//#############################################################################
-//
-YawPitchRoll&
-	YawPitchRoll::Normalize()
-{
-	Check_Pointer(this);
-
-	yaw.Normalize();
-	pitch.Normalize();
-	roll.Normalize();
-	return *this;
-}
-
-//
-//#############################################################################
-//#############################################################################
-//
-#if !defined(Spew)
-	void
-		Spew(
-			const char* group,
-			const YawPitchRoll &angle
-		)
-	{
-		Check_Object(&angle);
-
-		SPEW((group, "<+"));
-		Spew(group, angle.yaw);
-		SPEW((group, ",+"));
-		Spew(group, angle.pitch);
-		SPEW((group, ",+"));
-		Spew(group, angle.roll);
+		SPEW((group, "%f rad+", angle.roll));
 		SPEW((group, ">+"));
 	}
 #endif
@@ -576,14 +349,101 @@ UnitQuaternion&
 //#############################################################################
 //#############################################################################
 //
-UnitQuaternion&
-	UnitQuaternion::operator=(const YawPitchRoll &angles)
+UnitQuaternion
+	Stuff::Quaternion_From_Yaw_Pitch_Roll(Scalar yaw, Scalar pitch, Scalar roll)
 {
+	const Scalar
+		xSine = sinf(pitch), xCosine = cosf(pitch),
+		ySine = sinf(yaw), yCosine = cosf(yaw),
+		zSine = sinf(roll), zCosine = cosf(roll);
+
 	LinearMatrix4D	lin_matrix;
-	lin_matrix.BuildRotation(angles);
-	*this = lin_matrix;
-   return *this;
+	lin_matrix(0,0) = yCosine*zCosine + xSine*ySine*zSine;
+	lin_matrix(0,1) = xCosine*zSine;
+	lin_matrix(0,2) = xSine*yCosine*zSine - ySine*zCosine;
+
+	lin_matrix(1,0) = xSine*ySine*zCosine - yCosine*zSine;
+	lin_matrix(1,1) = xCosine*zCosine;
+	lin_matrix(1,2) = ySine*zSine + xSine*yCosine*zCosine;
+
+	lin_matrix(2,0) = xCosine*ySine;
+	lin_matrix(2,1) = -xSine;
+	lin_matrix(2,2) = xCosine*yCosine;
+
+	UnitQuaternion q;
+	q = lin_matrix;
+	return q;
 }
+
+//
+//#############################################################################
+//#############################################################################
+//
+void
+	Stuff::Yaw_Pitch_Roll_From_Quaternion(const UnitQuaternion &q, Scalar *yaw, Scalar *pitch, Scalar *roll)
+{
+	Check_Object(&q);
+	Check_Pointer(yaw);
+	Check_Pointer(pitch);
+	Check_Pointer(roll);
+
+	LinearMatrix4D matrix;
+	matrix.BuildRotation(q);
+
+	Scalar
+		pSine, pCosine,
+		ySine, yCosine,
+		rSine, rCosine;
+
+	//
+	//---------------------------------------------------
+	// First deal with the singularity of 90 degree pitch
+	//---------------------------------------------------
+	//
+	pSine = -matrix(2,1);
+	if (Close_Enough(pSine,1.0f,0.0001f))
+	{
+		ySine = matrix(1,0);
+		yCosine = matrix(0,0);
+		*yaw = Arctan(ySine, yCosine);
+		*pitch = Pi_Over_2;
+		*roll = 0.0f;
+		return;
+	}
+
+	//
+	//-------------------------------
+	// Now deal with -90 degree pitch
+	//-------------------------------
+	//
+	else if (Close_Enough(pSine,-1.0f,0.0001f))
+	{
+		ySine = matrix(0,2);
+		yCosine = matrix(0,0);
+		*yaw = Arctan(ySine, yCosine);
+		*pitch = -Pi_Over_2;
+		*roll = 0.0f;
+		return;
+	}
+
+	//
+	//------------------------------------------------------------------------
+	// Otherwise, assume that pitch must be constrained between +/- 90 degrees
+	//------------------------------------------------------------------------
+	//
+	else {
+		pCosine = Sqrt(1.0f - pSine*pSine);
+		ySine = matrix(2,0) / pCosine;
+		yCosine = matrix(2,2) / pCosine;
+		rSine = matrix(0,1) / pCosine;
+		rCosine = matrix(1,1) / pCosine;
+	}
+
+	*pitch = Arctan(pSine, pCosine);
+	*yaw = Arctan(ySine, yCosine);
+	*roll = Arctan(rSine, rCosine);
+}
+
 //
 //#############################################################################
 //#############################################################################
@@ -690,7 +550,7 @@ UnitQuaternion&
 	// rotation
 	//---------------------------------------------------------------------
 	//
-	const Scalar half = 0.5f * Radian::Normalize(rotation);
+	const Scalar half = 0.5f * mc2::math::wrapAngleStatic(rotation);
 	const Scalar
 		half_angleSine = sinf(half),
 		half_angleCosine = cosf(half);
@@ -736,7 +596,7 @@ Scalar
 		return 0.0f;
 	}
 
-	Radian angle;
+	Scalar angle;
 	angle = Arctan(sine_of_half, w);
 
 	return angle * 2.0f;
@@ -837,7 +697,7 @@ UnitQuaternion&
 		return *this;
 	}
 
-	Radian angle;
+	Scalar angle;
 	angle = Arctan(sine_of_half, q.w);
 	angle *= t;
 	const Scalar

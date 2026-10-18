@@ -26,7 +26,8 @@ CRASH_PATTERNS = (
     re.compile(r"^CRASH:", re.M),
     re.compile(r"^\[CRASHBUNDLE\]", re.M),
     # The engine crash bundle (gos_crashbundle.cpp) announces itself with these two lines on every fatal fault, including the heap-corruption
-    # exit; without them such a run was classified as an external, evidence-free crash_silent.
+    # exit; without them such a run would be classified as an external,
+    # evidence-free crash_silent.
     re.compile(r"^MC2 Remastered Crash Report", re.M),
     re.compile(r"^\[CRASH\] FAST-EXIT ", re.M),
     re.compile(r"unhandled exception", re.I),
@@ -37,7 +38,7 @@ SHADER_ERROR_PATTERNS = (
     re.compile(r"shader.*compile.*fail", re.I),
     re.compile(r"GLSL link.*failed", re.I),
     # GL: shader_builder.cpp reports EVERY error as "[SHADER ERROR] ..." (its SHADER_LOG_ERROR macro; CompileShader/LinkProgram also print
-    # the token to stdout). The pattern above missed "CompileShader: ERROR: ...": a static_prop.frag compile failure once passed tier1 5/5
+    # the token to stdout). A bare "CompileShader: ERROR: ..." is easy to miss: a static_prop.frag compile failure can pass tier1 5/5
     # with every static prop missing. test_logparse.py reads the macro, so the producer and this pattern cannot drift apart.
     re.compile(r"\[SHADER ERROR\]"),
     re.compile(r"\[GPUPROPS\] failed to compile"),
@@ -52,7 +53,7 @@ MISSING_FILE_PATTERNS = (
     re.compile(r"Missing file:", re.I),
 )
 
-# SMOKE-MODMISSION-ENV-GUARDS-1: detect engine STOP("Unable to open Mission File")
+# Detect engine STOP("Unable to open Mission File")
 # abort during load phase.  mission.cpp:2072 calls this when .fit resolution fails.
 MISSION_LOAD_FAIL_PATTERNS = (
     re.compile(r"Unable to open Mission File", re.I),
@@ -61,18 +62,17 @@ MISSION_LOAD_FAIL_PATTERNS = (
 
 
 # ---------------------------------------------------------------------------
-# META-FIX INFRA-3: table-driven marker buckets.
+# Table-driven marker buckets.
 #
-# Generalizes the VEG-SMOKE-FLOOR / asset_oob clone-per-feature pattern ONCE:
+# Generalizes the clone-per-feature marker pattern ONCE:
 # each recurrence-proofing design registers ONE ROW here instead of re-cloning
 # a bespoke counter + gate + manifest key. A row is scanned per stdout line;
 # counts land in LogSummary.marker_counts[bucket]; gates.py turns red-severity
 # counts into verdict buckets (per-mission downgrade via the manifest override
 # key, mirroring allow_asset_oob); advisory-severity counts become details only.
 #
-# Later batches append one row each (design A: [MOVER_COHERENCE] VIOLATION;
-# design B: asset_load_fail; design F: ORDER_LIVENESS via the summary-parser
-# path) — see .claude/META-FIX-PLAN-2026-07-16.md INFRA-3.
+# Designs A and B are below; design F (ORDER_LIVENESS) is handled through the
+# summary-parser path.
 # ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
@@ -96,9 +96,9 @@ class PresenceRule:
 
 
 PRESENCE_RULES: tuple = (
-    # The in-mission video surface (owner ruling 2026-10-13, M1): mc2_10 requests its briefing movies through the ABL play-video call, and the request is
-    # logged before the frame-rate check, so the line appears whether or not the movie decodes. The October 10 split of MissionBegin::update once lost the
-    # campaign-start cinematic without any gate noticing; a vanished request line is the same regression for the in-mission calls.
+    # The in-mission video surface: mc2_10 requests its briefing movies through the ABL play-video call, and the request is
+    # logged before the frame-rate check, so the line appears whether or not the movie decodes. A vanished request line
+    # means the in-mission video path is gone and the cinematic can disappear silently.
     PresenceRule("mc2_10", re.compile(r"\[VIDEO v1\] event=play_requested"), "video_floor_missing",
                  "no [VIDEO v1] event=play_requested line: the in-mission video request path is gone"),
 )
@@ -115,17 +115,17 @@ MARKER_BUCKETS: tuple = (
     # warn=premain_read (whether or not its value changed; warn=premain is the changed-value case).
     MarkerBucket(re.compile(r"\[CONFIG v1\] warn=premain_read name=MC2_VK_"),
                  "config_premain_vk", "red", None),
-    # Design A runtime tier (META-FIX-BATCH-3): mover-registry coherence.
+    # Design A runtime tier: mover-registry coherence.
     # Emitter: code/mission.cpp auditMoverCoherence under
     # MC2_MOVER_COHERENCE_AUDIT (force-set by run_smoke for --tier runs).
-    # VIOLATION = registry divergence (#50 class) -> red; ADVISORY (I1b
+    # VIOLATION = registry divergence -> red; ADVISORY (I1b
     # bar-full, I2b self/commander-origin order) surfaces in details only —
     # this is what makes those carve-outs safe.
     MarkerBucket(re.compile(r"\[MOVER_COHERENCE\] VIOLATION\b"),
                  "mover_coherence", "red", "allow_mover_coherence"),
     MarkerBucket(re.compile(r"\[MOVER_COHERENCE\] ADVISORY\b"),
                  "mover_coherence_advisory", "advisory", None),
-    # Design B (META-FIX-BATCH-3): fail-loud asset-load policy.
+    # Design B: fail-loud asset-load policy.
     # asset_load_fail counts parse_fail + required_missing + appr_type_fail
     # ONLY — deliberately NOT bare file_missing (missing optional slots are
     # normal stock degradation and are not logged). These lines are
@@ -134,17 +134,16 @@ MARKER_BUCKETS: tuple = (
     MarkerBucket(re.compile(
         r"\[ASSET_LOAD v1\] event=(parse_fail|required_missing|appr_type_fail)\b"),
         "asset_load_fail", "red", "allow_asset_load_fail"),
-    # icon_oob ARMED RED 2026-07-16: precondition met — the
+    # icon_oob ARMED RED: precondition met -- the
     # cellForIndexChecked/iconTileChecked row bound was validated against
     # all three shipped atlas geometries (retail 256x256, MC2X 512,
-    # MCO 1024/40) by tools/icon_atlas_harness (16/16 PASS, batch-3).
+    # MCO 1024/40) by tools/icon_atlas_harness (16/16 PASS).
     MarkerBucket(re.compile(r"\[ASSET_LOAD v1\] event=icon_oob\b"),
                  "icon_oob", "red", "allow_icon_oob"),
     # appear_audit REGISTERED BUT DISARMED (advisory): whether any object
     # class legitimately reports NULL appearance at mission_ready is
     # unverified. Promote to red ONLY after a full 24-map MC2_APPEAR_AUDIT=1
-    # failed=0 baseline (tier1-missions baseline shipped with batch 3; the
-    # 24-map run is the documented follow-up).
+    # failed=0 baseline over all 24 maps; a tier1-only baseline is not enough.
     MarkerBucket(re.compile(r"\[APPEAR_AUDIT v1\] event=missing\b"),
                  "appear_audit", "advisory", None),
     # The Vulkan device profile REFUSED the device (a required item of the 1.2 profile is missing): the engine fell back to GL, so a run that asked
@@ -198,10 +197,10 @@ class LogSummary:
     smoke_summary_stage: Optional[str] = None
     destroys: int = 0
     perf: PerfRow = field(default_factory=PerfRow)
-    # SMOKE-MODMISSION-ENV-GUARDS-1: set True if the engine printed an
+    # Set True if the engine printed an
     # "Unable to open Mission File" / STOP line before play phase started.
     mission_load_fail_seen: bool = False
-    # META-FIX INFRA-3: per-bucket marker counts (bucket -> hit count) for
+    # Per-bucket marker counts (bucket -> hit count) for
     # every registered MARKER_BUCKETS row. Empty dict when no marker fired.
     marker_counts: dict = field(default_factory=dict)
     # Sim determinism: how many `[SIMID v1] simframe=` lines the engine printed (MC2_SIM_IDENTITY_TRACE) and a short digest of all of them.

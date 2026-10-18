@@ -76,16 +76,16 @@ inline constexpr int GAMEOBJECT_BYTES = 1;
 #define	RELPOS_FLAG_PASSABLE_START		2
 #define	RELPOS_FLAG_PASSABLE_GOAL		4
 
-typedef enum {
+enum AttackSourceType {
 	ATTACKSOURCE_WEAPONFIRE,
 	ATTACKSOURCE_COLLISION,
 	ATTACKSOURCE_DFA,
 	ATTACKSOURCE_MINE,
 	ATTACKSOURCE_ARTILLERY,
 	NUM_ATTACKSOURCES
-} AttackSourceType;
+};
 
-typedef struct _WeaponShotInfo {
+struct _WeaponShotInfo {
 	GameObjectWatchID	attackerWID;
 	long				masterId;			// attack weapon master ID
 	float				damage;				// damage caused by this shot
@@ -102,15 +102,15 @@ typedef struct _WeaponShotInfo {
 		init(copy.attackerWID, copy.masterId, copy.damage, copy.hitLocation, copy.entryAngle);
 	}
 	
-} WeaponShotInfo;
+}; using WeaponShotInfo = _WeaponShotInfo;
 
 //---------------------------------------------------------------------------
 
-typedef struct _SalvageItem {
+struct _SalvageItem {
 	unsigned char		itemID;			// id from MasterComponentList;
 	unsigned char		numItems;		// how many are there?
 	unsigned char		numSalvagers;	// how many are salvagers are going for this item?
-} SalavageItem;
+}; using SalavageItem = _SalvageItem;
 
 //------------------------------------------------------------------------------------------
 
@@ -270,7 +270,7 @@ class WeaponHitChunk {
 };
  
 //------------------------------------------------------------------------------------------
-typedef struct _GameObjectData
+struct _GameObjectData
 {
 	int32_t						objectTypeNum;
 	ObjectClass					objectClass;		
@@ -304,7 +304,7 @@ typedef struct _GameObjectData
 	unsigned char				numAttackers;
 
 	int32_t						drawFlags;			
-} GameObjectData;
+}; using GameObjectData = _GameObjectData;
 
 class GameObject {
 
@@ -428,7 +428,7 @@ class GameObject {
 		unsigned long getWatchID (bool assign = true);
 
 		virtual char* getName (void) {
-			return(NULL);
+			return(nullptr);
 		}
 
 		virtual float getStatusRating (void) {
@@ -507,7 +507,7 @@ class GameObject {
 		}
 
 		virtual TeamPtr getTeam (void) {
-			return(NULL);
+			return(nullptr);
 		}
 
 		virtual long setTeam (TeamPtr _team) {
@@ -670,7 +670,7 @@ class GameObject {
 		}
 
 		virtual MechWarriorPtr getPilot (void) {
-			return(NULL);
+			return(nullptr);
 		}
 
 		virtual long getCommanderId (void) {
@@ -1078,14 +1078,14 @@ class GameObject {
 		}
 				
 		virtual SalvageItemPtr getSalvage (void) {
-			return(NULL);
+			return(nullptr);
 		}
 		
 		virtual long getWindowsVisible (void) {
 			return(windowsVisible);
 		}
 		
-		virtual long getCaptureBlocker (GameObjectPtr capturingMover, GameObjectPtr* blockerList = NULL);
+		virtual long getCaptureBlocker (GameObjectPtr capturingMover, GameObjectPtr* blockerList = nullptr);
 
 		virtual long kill (void);
 
@@ -1172,7 +1172,7 @@ class GameObject {
 
 		virtual GameObjectPtr getParent (void)
 		{
-			return NULL;
+			return nullptr;
 		}
 
 		virtual void setParentId (DWORD pId)
@@ -1180,7 +1180,7 @@ class GameObject {
 			//Do Nothing.  Most of the time, this is OK!
 		}
 
-		virtual SensorSystem* getSensorSystem(){ return NULL; }
+		virtual SensorSystem* getSensorSystem(){ return nullptr; }
 
 		static void setInitialize (bool setting) {
 			initialize = setting;

@@ -111,7 +111,7 @@ R2_DECLARES = re.compile(
 )
 R2_BLOCK = 30           # lines after the limiter that form its emission block
 # The declaration must appear in an EMITTED STRING, not anywhere in the source.
-# Caught by the lane's ratchet test: stripping the real `sample=first%d` token out
+# Without this, a constant named stripping the real `sample=first%d` token out
 # of [TREE_DIAG] left R2 green, because the constant named `kTreeDiagSample`
 # contains "Sample" and the search was case-insensitive over raw source. A rule an
 # identifier can satisfy does not make any log line honest.

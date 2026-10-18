@@ -413,21 +413,6 @@ void
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-bool
-	MLRPrimitiveBase::CastRay(
-		Line3D *line,
-		Normal3D *normal
-	)
-{
-	Check_Object(this);
-	Check_Object(line);
-	Check_Pointer(normal);
-	STOP(("Not implemented"));
-	return false;
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
 MLRShape*
 	MidLevelRenderer::CreateIndexedIcosahedron(IcoInfo& icoInfo, Stuff::DynamicArrayOf<MLRState> *states)
 {

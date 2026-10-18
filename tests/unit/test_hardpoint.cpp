@@ -1,5 +1,4 @@
 // tests/unit/test_hardpoint.cpp
-// HARDPOINT-ID-SCHEMA-1 (Phase 2, slice 1 of the UNIT-PROFILE arc).
 //
 // Pure-logic doctest coverage for hardpoint.h: the logical-hardpoint JOIN KEY.
 // PURE SCHEMA -- no engine behavior. Covers: HardpointId value equality + name

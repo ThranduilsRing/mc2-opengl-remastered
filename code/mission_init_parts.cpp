@@ -56,7 +56,7 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, Stuff::Vector3D* dro
 		//-----------------------------------------------------
 		// Since we leave part 0 unused, malloc numParts + 1...
 		parts = (PartPtr)missionHeap->Malloc(sizeof(Part) * (numParts + 1));
-		gosASSERT(parts != NULL);
+		gosASSERT(parts != nullptr);
 
 		memset(parts,0,sizeof(Part) * (numParts + 1));
 

@@ -55,16 +55,17 @@ void GameSoundSystem::purgeSoundSystem (void)
 	//---------------------------------------------------------
 	// Toss everybody's radio.  This MUST happen AFTER
 	// all of the currently queued radio messages are dumped.
-	// Radios all come from the Radio Heap now.  This dumps 'em.
+	// The warriors are already gone (Mission::destroy shuts them down first), so free each Radio here,
+	// exactly once, while the Radio Heap is still alive.  Deleting the heap alone runs no destructor.
 	for (long i=0;i<MAX_RADIOS;i++)
 	{
+		delete Radio::radioList[i];
 		Radio::radioList[i] = nullptr;
 		radioMessageFiles[i].reset();
 		Radio::messagesFile[i] = nullptr; 
 	}
 
-	delete Radio::radioHeap;
-	Radio::radioHeap = nullptr;
+	Radio::radioHeap.reset();
 		
 	radioNoiseFile.reset();
 	Radio::noiseFile = nullptr;

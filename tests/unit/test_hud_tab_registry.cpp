@@ -1,4 +1,4 @@
-// IN-MISSION-HUD-IMGUI-SCOPE-1 slice C (MC2_HUD_IMGUI_TABS):
+// In-mission HUD ImGui tabs (MC2_HUD_IMGUI_TABS):
 // HudTabs::Registry order/cycle/lookup invariants. Pure logic, offline.
 //
 // The load-bearing invariant: registration order == hotkey cycle order, and

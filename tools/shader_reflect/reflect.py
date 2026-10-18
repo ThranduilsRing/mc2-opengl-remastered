@@ -81,7 +81,7 @@ SHADER_VARIANTS: dict[str, list[dict]] = {
     "shaders/mech.frag": [
         _v("default",  []),
         _v("objectid", ["MC2_OBJECT_ID_BUFFER=1"]),
-        # MECH-SPECULAR-V1: the ViewUniforms variant compiles the specular block
+        # The ViewUniforms variant compiles the specular block
         # (u_cameraWorldPos + the spec uniforms) — covers its GLSL validity and
         # locks the binding=3 ViewUniformsBlock interface in the fragment stage.
         _v("viewuniforms", ["MC2_USE_VIEW_UNIFORMS=1"]),
@@ -89,7 +89,7 @@ SHADER_VARIANTS: dict[str, list[dict]] = {
     "shaders/mech.vert": [
         _v("default",      []),
         _v("objectid",     ["MC2_OBJECT_ID_BUFFER=1"]),
-        # MECH-VIEWUNIFORMS-BLOCKBINDING-1: reflect the gated UBO path so
+        # Reflect the gated UBO path so
         # binding=3 (ViewUniformsBlock) is visible in the golden and the legacy
         # u_worldToClipGL uniform is confirmed absent on this variant.
         _v("viewuniforms", ["MC2_USE_VIEW_UNIFORMS=1"]),
@@ -104,7 +104,7 @@ SHADER_VARIANTS: dict[str, list[dict]] = {
     "shaders/fixtures/view_uniforms_contract.frag": [
         _v("default", []),
     ],
-    # TRACKV D-04: gpu_cull compute variants.
+    # gpu_cull compute variants.
     # C1b mode adds VisibleIds/perBucketCount/actorVisBits/StickyBits SSBOs.
     # C2_READBACK adds ReadbackBuf at binding=READBACK_SSBO_BINDING (14).
     # READBACK_SSBO_BINDING is normally injected by build_cull_program at
@@ -114,7 +114,7 @@ SHADER_VARIANTS: dict[str, list[dict]] = {
         _v("c1b",        ["GPU_CULL_C1B_INDIRECT"]),
         _v("c2_readback", ["GPU_CULL_C2_READBACK", "READBACK_SSBO_BINDING=14"]),
     ],
-    # TRACKV D-04: cardcloud_sim.comp ABI golden.
+    # cardcloud_sim.comp ABI golden.
     # Single SSBO (CardCloudSimBuf, binding=0) containing Particle array (64 B).
     "shaders/cardcloud_sim.comp": [
         _v("default", []),
@@ -133,7 +133,7 @@ KNOWN_VARIANT_MACROS: frozenset[str] = frozenset(
 # ---------------------------------------------------------------------------
 REQUIRED_INVARIANTS: list[dict] = [
     # objectId MRT: static_prop.frag must write v_objectId at location=2.
-    # M2: check BOTH object-ID variants (objectid AND coalesce_objectid).
+    # Check BOTH object-ID variants (objectid AND coalesce_objectid).
     {
         "shader": "shaders/static_prop.frag",
         "variant": "objectid",
@@ -172,7 +172,7 @@ REQUIRED_INVARIANTS: list[dict] = [
     # PerDrawEntry is the element type of PerDrawData.entries[].
     # "type_member" checks the named struct type directly in raw["types"],
     # not the SSBO block (which only has an "entries" array member).
-    # Value confirmed by --update bootstrap run 2026-05-23.
+    # Value confirmed by an --update bootstrap run.
     {
         "shader": "shaders/static_prop.frag",
         "variant": "coalesce_objectid",
@@ -345,7 +345,7 @@ def compile_to_spv(
         if proc.returncode != 0:
             diag = (_decode(proc.stdout) + _decode(proc.stderr)).strip()
             diag = diag.replace(tmp.name, shader.name).replace(str(tmp), str(shader))
-            # M4: clean up any partial .spv glslangValidator may have written.
+            # Clean up any partial .spv glslangValidator may have written.
             try:
                 spv_path.unlink()
             except OSError:
@@ -368,7 +368,7 @@ def compile_to_spv(
 def reflect_spv(spv_path: Path, spirv_cross: str) -> tuple[bool, str, dict]:
     """Run spirv-cross --reflect. Returns (ok, diagnostic, raw_json_dict)."""
     try:
-        # C2: input file first, then --reflect flag (standard spirv-cross CLI shape).
+        # Input file first, then --reflect flag (standard spirv-cross CLI shape).
         proc = subprocess.run(
             [spirv_cross, str(spv_path), "--reflect"],
             capture_output=True,
@@ -411,7 +411,7 @@ def _norm_member(m: dict) -> dict:
 
 
 def _norm_block(raw: dict, b: dict) -> dict:
-    # C1: spirv-cross --reflect does NOT inline members on UBO/SSBO resources.
+    # spirv-cross --reflect does NOT inline members on UBO/SSBO resources.
     # Members live in raw["types"][str(type_id)]["members"].
     type_id = b.get("type")
     members_list: list[dict] = []
@@ -515,7 +515,7 @@ def check_variant_coverage(
     if shader_rel in SHADER_VARIANTS:
         return []
     try:
-        # M3: use include-expanded source so macros in headers are caught.
+        # Use include-expanded source so macros in headers are caught.
         src = shader_common.build_shader_source(shader)
     except (OSError, ValueError):
         return []
@@ -770,7 +770,7 @@ def main() -> int:
     # raw_by_key: keyed by "shader_rel/variant" -> raw spirv-cross JSON
     # Required for type_member invariant checks on nested structs.
     raw_by_key: dict[str, dict] = {}
-    # C4: collect --update writes; only commit to disk after invariant checks pass.
+    # Collect --update writes; only commit to disk after invariant checks pass.
     pending_updates: list[tuple[str, str, dict]] = []
 
     for shader in targets:
@@ -838,7 +838,7 @@ def main() -> int:
             raw_by_key[key] = raw
 
             if args.update:
-                # C4: stash; write only after invariant checks pass.
+                # Stash; write only after invariant checks pass.
                 pending_updates.append((shader_rel, variant_name, contract))
                 print(f"[UPDATE] {label}")
                 passed += 1
@@ -877,7 +877,7 @@ def main() -> int:
     for v in violations:
         print(v, file=sys.stderr)
 
-    # C4: write goldens only when --update AND no invariant violations.
+    # Write goldens only when --update AND no invariant violations.
     # If violations exist, goldens are NOT written — bad values never land on disk.
     if args.update:
         if violations:

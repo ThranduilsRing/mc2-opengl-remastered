@@ -249,10 +249,10 @@ static void writeJsonFloatObj(FILE* f, const std::map<std::string,float>& obj, i
     const char* close = (depth == 1) ? "  "   : "    ";
     mc2::fmt::print(f, "{{\n");
     bool first = true;
-    for (auto& kv : obj) {
+    for (auto& [key, value] : obj) {
         if (!first) mc2::fmt::print(f, ",\n");
         first = false;
-        mc2::fmt::print(f, "{}\"{}\": {:g}", mc2::fmt::safe(inner), kv.first.c_str(), kv.second);
+        mc2::fmt::print(f, "{}\"{}\": {:g}", mc2::fmt::safe(inner), key.c_str(), value);
     }
     mc2::fmt::print(f, "\n{}}}", mc2::fmt::safe(close));
 }
@@ -264,11 +264,11 @@ static void writeJson(FILE* f,
     writeJsonFloatObj(f, defs, 1);
     mc2::fmt::print(f, ",\n  \"missions\": {{\n");
     bool firstM = true;
-    for (auto& mkv : missions) {
+    for (auto& [mission, values] : missions) {
         if (!firstM) mc2::fmt::print(f, ",\n");
         firstM = false;
-        mc2::fmt::print(f, "    \"{}\": ", mkv.first.c_str());
-        writeJsonFloatObj(f, mkv.second, 2);
+        mc2::fmt::print(f, "    \"{}\": ", mission.c_str());
+        writeJsonFloatObj(f, values, 2);
     }
     mc2::fmt::print(f, "\n  }}\n}}\n");
 }
@@ -305,12 +305,12 @@ void visualTuning_applyProfile(const char* missionName) {
     jp.root(defs, missions);
 
     int count = 0;
-    for (auto& kv : defs) applyKey(kv.first.c_str(), kv.second, count);
+    for (auto& [key, value] : defs) applyKey(key.c_str(), value, count);
 
     if (missionName && missionName[0]) {
         auto it = missions.find(missionName);
         if (it != missions.end())
-            for (auto& kv : it->second) applyKey(kv.first.c_str(), kv.second, count);
+            for (auto& [key, value] : it->second) applyKey(key.c_str(), value, count);
     }
 
     s_appliedKeys = count;

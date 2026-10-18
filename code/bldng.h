@@ -40,12 +40,12 @@
 
 inline constexpr int MAX_PRISONERS = 4;
 
-typedef enum {
+enum BuildingSubType {
 	BUILDING_SUBTYPE_NONE,
 	BUILDING_SUBTYPE_WALL,
 	BUILDING_SUBTYPE_LANDBRIDGE,
 	NUM_BUILDING_SUBTYPES
-} BuildingSubType;
+};
 
 //---------------------------------------------------------------------------
 
@@ -108,7 +108,7 @@ class BuildingType : public ObjectType {
 };
 
 //---------------------------------------------------------------------------
-typedef struct _BuildingData : public TerrainObjectData
+struct _BuildingData : public TerrainObjectData
 {
 	char					teamId;
 	unsigned char			baseTileId;
@@ -123,7 +123,7 @@ typedef struct _BuildingData : public TerrainObjectData
 	bool					moverInProximity;
 	float					proximityTimer;
 	int32_t					updatedTurn;
-} BuildingData;
+}; using BuildingData = _BuildingData;
 
 class Building : public TerrainObject 
 {
@@ -148,9 +148,9 @@ class Building : public TerrainObject
 	public:
 
 		virtual void init (bool create) {
-			sensorSystem = NULL;
+			sensorSystem = nullptr;
 			setFlag(OBJECT_FLAG_JUSTCREATED, true);
-			adoptAppearance(NULL);
+			adoptAppearance(nullptr);
 			vertexNumber = 0;
 			blockNumber = 0;
 			baseTileId = 0;
@@ -162,8 +162,8 @@ class Building : public TerrainObject
 			powerSupply = 0;
 			numSubAreas0 = 0;
 			numSubAreas1 = 0;
-			subAreas0 = NULL;
-			subAreas1 = NULL;
+			subAreas0 = nullptr;
+			subAreas1 = nullptr;
 			listID = 255;
 			captureTime = 0.0;
 			scoreTime = 0.0;

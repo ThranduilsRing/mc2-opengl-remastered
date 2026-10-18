@@ -78,7 +78,7 @@ ALLOWLIST = {
     "scripts/check-stock-mission-data.py",
 }
 
-# Per-LITERAL exemptions (DATA-PROVENANCE-CLOSE-1). Deliberately not
+# Per-LITERAL exemptions. Deliberately not
 # whole-file: a file listed here still fails on any OTHER hard-coded data path,
 # so exempting one known string cannot quietly bless the next one. Each entry
 # must carry a reason. These are the two classes this gate deliberately does
@@ -114,13 +114,13 @@ PATH_EXEMPTIONS: dict[str, list[tuple[str, str]]] = {
 }
 
 # Trees PROVEN to differ from the shipped bytes. Must never appear as a
-# resolver candidate. (Carver5-feasibility: differs on all 24 campaign maps,
-# .pak and .fit, measured 2026-07-30.)
+# resolver candidate. (Carver5-feasibility differs on all 24 campaign maps,
+# .pak and .fit.)
 KNOWN_DIVERGENT = ("carver5-feasibility",)
 
-# Directory names that identify an FST-backed data corpus. `missions` was the
-# only one STOCK-DATA-TRUTH-1 policed; the rest are the corpora
-# DATA-PROVENANCE-CLOSE-1 added (data/tgl <- tgl.fst, data/textures <-
+# Directory names that identify an FST-backed data corpus. `missions` is only
+# one of the corpora this gate covers
+# (data/tgl <- tgl.fst, data/textures <-
 # textures.fst incl. 64Overlays, data/objects <- misc.fst) plus the source-tree
 # roots themselves.
 CORPUS_DIR_NAMES = ("missions", "tgl", "textures", "64overlays", "objects",
@@ -132,8 +132,8 @@ CORPUS_DIR_NAMES = ("missions", "tgl", "textures", "64overlays", "objects",
 # `Carver5-feasibility` would let the identical defect return under a different
 # wrong path; banning hard-coded absolute data paths cannot.
 #
-# Two deliberate narrowings, each of which killed real false positives when
-# measured over the live tree (2026-07-30):
+# Two deliberate narrowings, each of which killed real false positives measured
+# over the live tree:
 #   * a POSIX-rooted string needs >=2 leading components. `'/tgl/'` and
 #     `'/64overlays/'` in tools/registry/build_index.py and
 #     tools/overlay_upscale/ are SUBSTRING MATCHERS, not machine paths, and a
@@ -161,19 +161,18 @@ CORPUS_DIR_FLAGS = {
 }
 
 # ---------------------------------------------------------------------------
-# A1d (STOCK-DATA-TRUTH-2) -- per-mission `--pak` entry points.
+# A1d -- per-mission `--pak` entry points.
 #
 # The flag rules above police DEFAULTS. They cannot see the second family of
 # sites: a tool whose corpus arrives as a REQUIRED `--pak`. Nothing is defaulted,
-# so nothing is flagged, and STOCK-DATA-TRUTH-1 read that as safe. `cb4cd5ef`
-# disproved it for the directory case -- requiredness forces a value to be TYPED,
-# it says nothing about whether the value is RIGHT -- but fixed only that half.
+# so nothing is flagged, yet requiredness proves nothing: it forces a value to be
+# TYPED, not whether the value is RIGHT.
 # Every function that reads `args.pak` must therefore actually CALL the verifier.
 #
-# Checked by AST, on the CALL, deliberately: this lane's brief records checks
-# that passed while blind because they were satisfied by an identifier sitting in
-# a comment. A substring search for "verify_pak" over the file would be exactly
-# that failure. The rule here is "a Call node inside the same function body".
+# Checked by AST, on the CALL, deliberately: a text check can pass on an
+# identifier sitting in a comment. A substring search for "verify_pak" over the
+# file would be exactly that failure. The rule is "a Call node inside the same
+# function body".
 #
 # Exemptions carry a REASON and are policed for staleness below, same as
 # PATH_EXEMPTIONS: an exemption whose file no longer reads `args.pak` is dead and
@@ -274,7 +273,7 @@ def scan_file(path: Path, rel_override: str | None = None) -> list[str]:
                  if isinstance(a, ast.Constant) and isinstance(a.value, str)]
         # DIRECTORY flags only. A bare `--missions` / positional `missions` is
         # a list of mission STEMS (mc2_01, ...) and a default there is fine --
-        # matching it flagged three call sites that were never the defect.
+        # matching it flags innocent call sites.
         matched = [n for n in names
                    if n.startswith("-")
                    and n.lstrip("-").replace("_", "-") in CORPUS_DIR_FLAGS]
@@ -814,8 +813,8 @@ _INJECT_SRCDATA_DEFAULT = (
     "    ap.add_argument('--srcdata-root', default=SOME_CONSTANT)\n"
     "SOME_CONSTANT = 1\n"
 )
-# NOT paths: a substring classifier and a usage line. Both were live false
-# positives before the regex was narrowed (tools/registry/build_index.py,
+# NOT paths: a substring classifier and a usage line, which a looser regex
+# would flag (tools/registry/build_index.py,
 # tools/overlay_upscale/overlay_tile_upscale.py, tools/mech_import/
 # build_marauder.py). A gate that fails on these gets turned off.
 _SUBSTRING_MATCHER = (

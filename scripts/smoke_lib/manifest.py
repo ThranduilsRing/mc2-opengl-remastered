@@ -23,7 +23,7 @@ VALID_TIERS = {"tier1", "tier2", "tier3", "resolution", "skip"}
 VALID_KEYS = {"duration", "heartbeat_timeout_load", "heartbeat_timeout_play",
               "profile", "active", "reason", "allow_asset_oob", "mod", "deps", "resolution"}
 
-# META-FIX INFRA-3: manifest override keys registered by marker-bucket rows
+# Manifest override keys registered by marker-bucket rows
 # (allow_asset_oob analog — downgrades that bucket to advisory per mission).
 MARKER_OVERRIDE_KEY_TO_BUCKET = {
     mb.manifest_override_key: mb.bucket
@@ -43,14 +43,14 @@ class Entry:
     active: bool = False
     reason: str = ""
     allow_asset_oob: bool = False
-    # SMOKE-MODMISSION-ENV-GUARDS-1: structured mod fields.
+    # Structured mod fields.
     # mod: exact mods/<DirName> for the mod this mission belongs to (empty = stock).
     # deps: comma-separated compat layer dir names (e.g. "mc2x-compat,mco-compat").
     mod: str = ""
     deps: str = ""
     # `resolution` tier: the drawable size as "WxH" ("" = options.cfg size).
     resolution: str = ""
-    # META-FIX INFRA-3: per-mission marker-bucket downgrades (bucket -> True).
+    # Per-mission marker-bucket downgrades (bucket -> True).
     marker_overrides: dict = field(default_factory=dict)
     source_line: int = 0
 

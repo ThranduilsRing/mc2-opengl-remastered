@@ -110,7 +110,7 @@ REGISTRY = [
     # terrain_tier1_skirt.vert; the VK block spans an else-branch boundary) but no GL
     # markers in shaders/terrain_lod_chunk.vert, so there is nothing to diff. Re-add
     # both rows when the GL block is marked.
-    # VK-WATER-TIER1 (rung 6): armed-water base-layer color math (waveLOD/fBm/
+    # Armed-water base-layer color math (waveLOD/fBm/
     # absorption/shore/light/crest/glint), GL MDI water FS vs the VK water FS.
     # Real VK gap pinned in the allowlist: GL's shore-meander block is absent in VK.
     Port("waterBaseColor", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag",
@@ -121,7 +121,7 @@ REGISTRY = [
                  (r"\bF\.f5\b", "u_shoreHeightBounds"),
                  (r"\bF\.f6\b", "u_shoreMaskBounds"),
                  (r"\bF\.f7\.x\b", "waterElevation")]),
-    # RUNG 6.5: water reflection block (SH-L2 coeffs + HDRI equirect eval + SH eval
+    # Water reflection block (SH-L2 coeffs + HDRI equirect eval + SH eval
     # + wave-normal/reflect setup + Fresnel mix). Terrain-RT contact sub-block NOT
     # ported (MC2_WATER_REFLECTION_RT default-OFF -> GL no-op in the field config).
     Port("waterSkyShCoeffs", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag"),
@@ -131,7 +131,7 @@ REGISTRY = [
          rename=[(r"\bF\.f9\.w\b", "u_waterProjAspect"),
                  (r"\bF\.f9\.xyz\b", "u_waterSkyTintColor")]),
     Port("waterReflMix", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag"),
-    # RUNG 8.3 (VK-POST-SCREENFX-NATIVE-1): cloud-shadow pass (inlined simplex fbm
+    # Cloud-shadow pass (inlined simplex fbm
     # + world-reconstruct main) and shoreline-foam pass (noise.hglsl fbm the GL
     # frag #includes + main). UBO plumbing differs by design (#define aliases);
     # the marked math blocks must stay verbatim.

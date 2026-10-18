@@ -76,14 +76,14 @@ def test_building_pbr_payload_exists(t: Ctx) -> bool:
 
 
 def test_target_presets_allowlisted(t: Ctx) -> bool:
-    # CONTRACT-HARNESS-REPAIR-1: this used to be `no_stale_v04c_target`, a
+    # This used to be `no_stale_v04c_target`, a
     # whole-file grep for the substring "v0.4c" in deploy_payload.py. That check
     # rotted the moment DEPLOY_ALLOWLIST gained the legitimate shared deploy
     # folder "mc2-win64-v0.4c" — the grep cannot tell an allowlist member from a
     # mis-pointed preset, so it failed on correct code.
     #
-    # The invariant actually worth guarding (MEMORY: deploy target corrected to
-    # mc2-win64-v0.4) is structural and version-agnostic:
+    # The invariant actually worth guarding (the deploy target is mc2-win64-v0.4)
+    # is structural and version-agnostic:
     #   1. the "game" preset must not point at a 0.4c folder (that folder is the
     #      EDITOR install; the historical bug was the game preset aimed there);
     #   2. every preset's target dir must be a DEPLOY_ALLOWLIST member, so a

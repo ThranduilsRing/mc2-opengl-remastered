@@ -95,7 +95,7 @@ def check_artifacts(scan_root: Path, strict_missing: bool) -> list[str]:
         if rec is None and isinstance(doc.get("identity"), dict):
             rec = doc["identity"].get("mc2_env")
         if rec is None:
-            # Pre-CAPTURE-ENV-PIN-1 artifacts have no record at all. Those are
+            # Artifacts predating environment pinning have no record at all. Those are
             # exactly the captures whose environment is unknowable after the
             # fact -- report them under --strict-missing, but do not fail a
             # normal contract run on historical artifacts nobody can retrofit.

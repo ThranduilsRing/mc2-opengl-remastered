@@ -126,8 +126,8 @@ namespace gosFX
 		static ClassData
 			*DefaultData;
 
-		typedef ParticleCloud__Specification Specification;
-		typedef ParticleCloud__Particle Particle;
+		using Specification = ParticleCloud__Specification;
+		using Particle = ParticleCloud__Particle;
 
 	protected:
 		int

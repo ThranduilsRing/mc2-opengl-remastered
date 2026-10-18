@@ -99,7 +99,7 @@ void drawCameraBookmarkSave() {
         static char s_bookmarkPath[512] = {0};
         static bool s_hzbFailed = false;
         ImGui::Spacing();
-        // Primary: bookmark-schema JSON save (BOOKMARK-SAVE-BUTTON-1).
+        // Primary: bookmark-schema JSON save.
         // Directory = MC2_BOOKMARK_SAVE_DIR or ./saved_bookmarks; the file is
         // directly consumable by MC2_VISUAL_BOOKMARK_CAPTURE.
         if (ImGui::Button("Save Camera Bookmark")) {
@@ -199,7 +199,7 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
             }
 
             // Pipeline name. Prefer Render Spine row (authoritative) over stale
-            // lk.pipelineId (which is 0/unknown for static props in M1.5 lookup).
+            // lk.pipelineId (which is 0/unknown for static props in the lookup).
             {
                 const DrawPacketSelectedPropSnapshot& rs = g_dpSelProp;
                 const uint32_t pipeId =
@@ -235,11 +235,9 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                 ImGui::TextDisabled("  material       (no GPU material data)");
             }
 
-            // V-LIGHTING-STATIC-0 — factual lighting-model labels.
-            // Source: docs/static-prop-lighting-audit.md. These are
-            // descriptive of the shader at HEAD 9a9d6eb0; if the static_prop
-            // .frag adds normal/PBR/IBL/emissive sampling, update both the
-            // audit doc and these strings in lockstep.
+            // Factual lighting-model labels. These are descriptive of the
+            // shader; if the static_prop .frag adds normal/PBR/IBL/emissive
+            // sampling, update these strings in lockstep.
             if (s_selection.kind == RenderWorld::RenderObjectKind::StaticProp) {
                 // Lighting model — directional + ambient via LightsData
                 // SSBO 20 (see lighting.hglsl:43-56 + calc_light()).
@@ -256,7 +254,7 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                                       "only for the GBuffer1 write. normalTex is\n"
                                       "declared in MaterialGpu but unused today.");
 
-                // V-AMBIENT-STATIC-1: hemisphere ambient fill mode (default ON).
+                // Hemisphere ambient fill mode (default ON).
                 // Read the published option (this panel only runs when
                 // MC2_IMGUI_INSPECTOR is on).
                 bool ambOn = mc2::options::current().staticPropAmbient;
@@ -267,8 +265,7 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                                       "options.cfg: StaticPropAmbient = TRUE.\n"
                                       "OFF -> u_ambientV1Strength=0.0 (byte-identical).");
 
-                // DEBUG-VIEW-REGISTRY-1: interactive debug view combo for StaticPropOpaque.
-                // Replaces the prior read-only env-text display.
+                // Interactive debug view combo for StaticPropOpaque.
                 {
                     // Use canonical helpers to avoid duplicating the mapping table.
                     RenderDebugView curView = StaticPropShaderModeToView(batcher_getDebugMaterialMode());
@@ -293,7 +290,6 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                                           "Runtime selection only; starts at Final.");
                 }
 
-                // V-IBL-STATIC-1 + V-IBL-DEFAULT-FLIP (2026-05-27):
                 // SH-L2 image-based ambient on the StaticPropOpaque lane.
                 // Default-ON: unset env -> gate ON, uploads g_iblShStrength
                 // (default 0.5). Explicit "=0" -> gate OFF -> uploads 0.0
@@ -303,7 +299,7 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                 // MUST match s_iblShEnabled lambda in gos_static_prop_batcher.cpp.
                 bool iblOn = mc2::options::current().staticPropIblSh;
                 if (iblOn) {
-                    // V-IBL-STATIC-2: surface active per-mission SH set name.
+                    // Surface active per-mission SH set name.
                     const char* shSetName = ibl_sh_runtime_currentSetName();
                     ImGui::Text("  ibl sh         on (set=%s, strength=%.2f)",
                                 shSetName ? shSetName : "default",
@@ -323,7 +319,7 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                 // for diagnostic readability; the sliders themselves are not
                 // duplicated here.
 
-                // V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel + power-lobe
+                // Per-vertex Schlick-Fresnel + power-lobe
                 // specular status (read-only here; slider in Graphics Options).
                 bool pbrOn = mc2::options::current().staticPropPbr;
                 if (pbrOn) {
@@ -333,7 +329,7 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                     ImGui::Text("  pbr v1         off (env-gated)");
                 }
 
-                // V-MATERIAL-PBR-3-TUNE-UI: roughness-override status.
+                // Roughness-override status.
                 if (pbrOn) {
                     ImGui::Text("  pbr rough      %s (override=%.2f)",
                                 g_pbrV1RoughnessOverrideEnabled
@@ -660,7 +656,7 @@ void drawMechLighting() {
                                   "with the paint. 0 = no fill.");
         }
 
-        // MECH-SPECULAR-V1: Blinn specular sheen + glass/cockpit heuristic.
+        // Blinn specular sheen + glass/cockpit heuristic.
         // Per-flush uniforms — no VBO rebuild. Requires MC2_MECH_VIEWUNIFORMS=1
         // (camera position data); no effect on the default shader variant.
         ImGui::Separator();
@@ -831,7 +827,7 @@ void drawTerrainPass() {
         ImGui::BulletText("surface (solid):      %u", ts.surfaceProgramId);
         ImGui::BulletText("thin records:         %u", ts.thinProgramId);
         ImGui::BulletText("water fast:           %u", ts.waterFastProgramId);
-        // WATER-DEBUG-VIEWS-1: read-only readout of the MDI water FS debug mode
+        // Read-only readout of the MDI water FS debug mode
         // (live control is deferred to Graphics Options > Water per panel discipline).
         // ::-qualified -> global symbol (decl at file top), not EditorInspector::.
         ImGui::BulletText("water FS debug mode:  %d  (MC2_WATER_DEBUG_MODE; 0=Final)",
@@ -916,7 +912,7 @@ void drawVfxPass() {
                 "ViewUniforms (binding=3): NOT consumed (legacy gosFX path)");
         }
         ImGui::Separator();
-        // VFX-DEBUG-VIEWS-1: active debug mode (read-only; driven by
+        // Active debug mode (read-only; driven by
         // MC2_VFX_DEBUG_MODE). Mode 0 is byte-identical default output.
         {
             static const char* kVfxModes[] = {
@@ -958,7 +954,7 @@ void drawVfxPass() {
         // TODO: wire per-kind draw counts — not currently tracked by Batcher.
         // gosFX legacy specs use distinct names (Card/PertCloud/PointCloud/etc.)
         // but the GPU path collapses them into a single SSBO; per-kind counts
-        // would require a new counter and are out of scope for VFX-SPINE-0.
+        // would require a new counter and are out of scope.
         ImGui::BulletText("None         (no trail)         draws: n/a");
         ImGui::BulletText("MissileSmoke (handle 41)         draws: n/a");
         ImGui::BulletText("PpcBolt      (handle 33)         draws: n/a");
@@ -1016,8 +1012,8 @@ void drawMaterialInventory() {
             ImGui::TableSetupColumn("dims");
             ImGui::TableSetupColumn("uses");
             ImGui::TableSetupColumn("flags");
-            ImGui::TableSetupColumn("rough");   // V-MATERIAL-PBR-1
-            ImGui::TableSetupColumn("metal");   // V-MATERIAL-PBR-1
+            ImGui::TableSetupColumn("rough");
+            ImGui::TableSetupColumn("metal");
             ImGui::TableHeadersRow();
             unsigned placeholderCount = 0u;
             for (uint32_t i = 0; i < invCount; ++i) {
@@ -1041,8 +1037,8 @@ void drawMaterialInventory() {
                                                        e.textureWidth, e.textureHeight);
                 ImGui::TableNextColumn(); ImGui::Text("%u", e.usageCount);
                 ImGui::TableNextColumn(); ImGui::Text("0x%08X", e.flags);
-                ImGui::TableNextColumn(); ImGui::Text("%.2f", e.roughnessFactor);  // V-MATERIAL-PBR-1
-                ImGui::TableNextColumn(); ImGui::Text("%.2f", e.metallicFactor);   // V-MATERIAL-PBR-1
+                ImGui::TableNextColumn(); ImGui::Text("%.2f", e.roughnessFactor);
+                ImGui::TableNextColumn(); ImGui::Text("%.2f", e.metallicFactor);
             }
             ImGui::EndTable();
             ImGui::Separator();

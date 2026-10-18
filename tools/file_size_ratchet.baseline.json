@@ -31,7 +31,7 @@
   "code/mechicon.cpp": 1984,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1626,
-  "code/missionbegin.cpp": 2165,
+  "code/missionbegin.cpp": 2166,
   "code/mover.h": 1906,
   "code/mpparameterscreen.cpp": 2408,
   "code/multplyr.h": 1849,
@@ -45,7 +45,7 @@
   "code/warrior.h": 2176,
   "editor/tests/test_objectives.cpp": 1996,
   "gui/alistbox.cpp": 1513,
-  "mclib/ablenv.cpp": 1541,
+  "mclib/ablenv.cpp": 1571,
   "mclib/ablrtn.cpp": 1798,
   "mclib/assimp_importer.cpp": 1576,
   "mclib/camera.h": 1814,
@@ -57,12 +57,12 @@
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
   "mclib/move.h": 1860,
   "mclib/render_contract.cpp": 1530,
-  "mclib/stuff/rotation.cpp": 1679,
+  "mclib/stuff/rotation.cpp": 1539,
   "mclib/terrtxm.cpp": 1823,
   "mclib/tgl.h": 1787,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "c9161d368",
+ "head": "95b25584d",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -80,7 +80,7 @@
    "files": 14,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1200
+   "max_lines": 1196
   },
   "RenderCore": {
    "files": 55,
@@ -113,7 +113,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 591,
+   "files": 586,
    "files_over_1500": 15,
    "files_over_3000": 0,
    "max_lines": 2630
@@ -180,7 +180,7 @@
   },
   {
    "file": "code/missionbegin.cpp",
-   "lines": 2165
+   "lines": 2166
   },
   {
    "file": "code/logisticsdialog.cpp",
@@ -252,7 +252,7 @@
   }
  ],
  "total": {
-  "files": 1924,
+  "files": 1919,
   "files_over_1500": 48,
   "files_over_3000": 1,
   "max_lines": 3757

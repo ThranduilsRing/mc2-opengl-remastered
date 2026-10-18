@@ -70,8 +70,8 @@ namespace graphics {
 struct RenderWindow;
 struct RenderContext;
 
-typedef RenderWindow*   RenderWindowHandle;
-typedef RenderContext*   RenderContextHandle;
+using RenderWindowHandle = RenderWindow*;
+using RenderContextHandle = RenderContext*;
 
 void set_verbose(bool is_verbose);
 
@@ -106,7 +106,7 @@ RenderContextHandle init_render_context     (RenderWindowHandle render_window);
 void                make_current_context    (RenderContextHandle ctx_h);
 void                destroy_render_context  (RenderContextHandle rc_handle);
 // The process is about to exit: makes the context non-current and drops the wrapper but does not delete the GL context. Deleting it blocks inside the AMD
-// driver (wglDeleteContext waits 1 to 5 s in whole seconds on a kernel object; BUGS 82) and the OS frees the context with the process anyway.
+// driver (wglDeleteContext waits 1 to 5 s in whole seconds on a kernel object; BUGS 87) and the OS frees the context with the process anyway.
 void                release_render_context_at_exit(RenderContextHandle rc_handle);
 
 SDL_Window*         getSDLWindow            () noexcept;

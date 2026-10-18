@@ -78,13 +78,10 @@ add_library(mc2_tglloader STATIC
     "${CMAKE_SOURCE_DIR}/code/jobs_fatal.cpp"
     # --- Stuff library TUs (game-free math + containers) ---
     "${CMAKE_SOURCE_DIR}/mclib/stuff/affinematrix.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/stuff/angle.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/color.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/extentbox.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/stuff/line.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/linearmatrix.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/matrix.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/stuff/normal.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/obb.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/plane.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/point3d.cpp"

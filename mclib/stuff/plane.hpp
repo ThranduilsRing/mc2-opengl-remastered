@@ -8,7 +8,7 @@
 #pragma once
 
 #include"stuff.hpp"
-#include"normal.hpp"
+#include"unitvector.hpp"
 #include"point3d.hpp"
 
 namespace Stuff {class Plane;}
@@ -26,7 +26,6 @@ namespace Stuff {
 	class Sphere;
 	class ExtentBox;
 	class OBB;
-	class Line3D;
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Plane ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -36,7 +35,7 @@ namespace Stuff {
 		//
 		// The plane equation is P*normal = offset, where P is a homogeneous
 		//
-		Normal3D
+		UnitVector3D
 			normal;
 		Scalar
 			offset;
@@ -56,7 +55,7 @@ namespace Stuff {
 			offset(offset)
 				{}
 		Plane(
-			const Normal3D& n,
+			const UnitVector3D& n,
 			Scalar offset
 		):
 			normal(n),

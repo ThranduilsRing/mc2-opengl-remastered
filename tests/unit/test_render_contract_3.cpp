@@ -71,7 +71,7 @@ static void test_vfx_reads_maindepth_after_geometry() {
     printf("PASS: vfx_reads_maindepth_satisfied\n");
 }
 
-// RENDER-PASS-DAG-CONTRACT-1: lossy PassIdentity -> RenderPassId mapping.
+// Lossy PassIdentity -> RenderPassId mapping.
 static void test_to_render_pass_id_mapping() {
     using PI = render_contract::PassIdentity;
     using R  = RenderCore::RenderPassId;

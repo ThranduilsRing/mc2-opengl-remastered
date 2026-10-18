@@ -25,7 +25,6 @@ namespace Stuff {
 
     class MStringRepresentation;
 
-    class Radian;
 }
 
 // sebi [
@@ -33,20 +32,6 @@ namespace Stuff {
 // maybe better create additional color.h and scalar.h files with those definitions
 //
 
-// angle.hpp
-namespace MemoryStreamIO {
-
-	inline Stuff::MemoryStream&
-		Read(
-			Stuff::MemoryStream* stream,
-			Stuff::Radian *output
-		);
-	inline Stuff::MemoryStream&
-		Write(
-			Stuff::MemoryStream* stream,
-			const Stuff::Radian *input
-		);
-}
 
 // mstring
 namespace MemoryStreamIO {

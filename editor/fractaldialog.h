@@ -19,7 +19,7 @@ class FractalDlg : public CDialog
 {
 	public:
 // Construction
-	FractalDlg(CWnd* pParent = NULL);   // standard constructor
+	FractalDlg(CWnd* pParent = nullptr);   // standard constructor
 
 	unsigned char GetNoise(){ return m_noise; }
 	unsigned char GetThreshold(){ return m_threshold; }

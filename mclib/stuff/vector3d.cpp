@@ -57,7 +57,7 @@ Vector3D&
 		return *this = Identity;
 	}
 
-	Radian angle;
+	Scalar angle;
 	angle = Arctan(sine_of_half, q.w);
 	Scalar len = angle * 2.0f / sine_of_half;
 	x = q.x * len;

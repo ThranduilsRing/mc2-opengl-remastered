@@ -73,8 +73,7 @@ from checklib import (EXIT_HARNESS_ERROR, EXIT_OK, EXIT_VIOLATION, ROOT,
 STAMPS_PATH = "scripts/split-path-stamps.json"
 
 # ---------------------------------------------------------------------------
-# RULE 1 tables (verified ground truth as of META-FIX-BATCH-1; see
-# docs/render-backend-seams/split-path-pairs.md for the review notes)
+# RULE 1 tables
 # ---------------------------------------------------------------------------
 
 # FS conventions for every shader declaring interface var `in ... vec4 Color;`.
@@ -95,7 +94,7 @@ FS_CONVENTIONS = {
     "shaders/decal.frag":                 "fs-raw",
     # terrain_overlay.frag declares Color but no active read remains.
     "shaders/terrain_overlay.frag":       "fs-dead",
-    # VK-PARITY-OVERLAY-1: VK ports of terrain_overlay.frag / decal.frag. The shared VK VS
+    # VK ports of terrain_overlay.frag / decal.frag. The shared VK VS
     # (include/terrain_overlay_vs.glsl) pre-swizzles (Color = a_color.bgra); decal FS reads raw,
     # overlay FS declares Color but (like its GL source) has no active read.
     "shaders/vulkan/terrain_decal_tier1.frag":   "fs-raw",
@@ -104,7 +103,7 @@ FS_CONVENTIONS = {
     "shaders/gos_text.frag":              "fs-dead",
 }
 
-# Sibling families that must share ONE convention (the #24 red check: the
+# Sibling families that must share ONE convention (the parity check: the
 # untextured member losing .bgra while the textured member keeps it).
 FS_FAMILIES = {
     "gos_quad_fs": ["shaders/gos_vertex.frag",
@@ -164,14 +163,10 @@ BIAS_APPLICATION_PINS = [
 
 TESS_TOKENS_RE = re.compile(
     r"RendererFeature::TerrainTessellation|MC2_TERRAIN_TESS\b")
-# CONTRACT-GREEN-1 (2026-07-31): entries are graded, not asserted. Each one below
-# was measured to still shelter a hit in CODE (comments lexed out); the two that
-# sheltered nothing were REMOVED in the same commit rather than left as decor --
-# a file on this list is exempt whether or not the reason still holds, so a dead
-# entry is a standing permission slip for a consumption nobody has written yet:
-#   GameOS/include/gameos.hpp            0 hits raw, 0 in code   -- removed
-#   GameOS/gameos/gos_mech_killswitch.h  0 hits raw, 0 in code   -- removed
-# Both are back in scope now; a real token added to either is a finding again.
+# Entries are graded, not asserted. Each one below shelters a hit in CODE
+# (comments lexed out). A file on this list is exempt whether or not the reason
+# still holds, so a dead entry is a standing permission slip for a consumption
+# nobody has written yet.
 TESS_TOKEN_ALLOWLIST = {
     # 5 code hits: enum TerrainTessellation = 3 + the kFeatureTable row.
     "RenderCore/RendererFeatureRegistry.h",
@@ -203,8 +198,7 @@ PAIRS = {
 ISLANDS = {
     "shaders/vulkan/edge_fog.vert":   "VK fullscreen-triangle VS for edge_fog; GL pass has no dedicated .vert sibling",
     "shaders/vulkan/fog_oob.vert":    "VK fullscreen-triangle VS for fog_oob; GL pass has no dedicated .vert sibling",
-    # --- MERGE-WAVE-2 reconcile (2026-07-22): native VK tier-1 islands that landed
-    # with the claude/vk-interop-bridge-1 merge (MERGE-WAVE-1 #3). One shared reason.
+    # --- Native VK tier-1 islands. One shared reason.
     "shaders/vulkan/cloud_shadow.vert":
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
     "shaders/vulkan/cloud_shadow.frag":
@@ -376,8 +370,8 @@ def rule1_color(ctx: Ctx) -> list[str]:
 
     for rel in ctx.list_shader_files((".frag",)):
         text = ctx.read(rel)
-        # Exact raw pre-filter before the comment lexer (STRIPPER-AUDIT-1 made
-        # strip_comments a per-character scan). Stripping only ever DELETES, so
+        # Exact raw pre-filter before the comment lexer (strip_comments is a
+        # per-character scan). Stripping only ever DELETES, so
         # a declaration absent from the raw text cannot appear after stripping.
         if not _COLOR_DECL_RE.search(text):
             continue
@@ -402,7 +396,7 @@ def rule1_color(ctx: Ctx) -> list[str]:
                 "RULE1: table row %s no longer declares Color — remove or "
                 "update the row" % rel)
 
-    # (c) family parity — one member drifting is the historical #24 signature.
+    # (c) family parity — one member drifting is the failure signature.
     for fam, members in FS_FAMILIES.items():
         convs = {m: observed.get(m, "<missing>") for m in members}
         if len(set(convs.values())) > 1:
@@ -699,7 +693,7 @@ def self_test() -> int:
               "tree)", file=sys.stderr)
         return EXIT_VIOLATION
 
-    # RULE1: strip the .bgra off the untextured quad FS — the exact #24 turn.
+    # RULE1: strip the .bgra off the untextured quad FS — the exact regression.
     t = checklib.read_text("shaders/gos_vertex.frag").replace(
         "Color.bgra", "Color")
     failures.append(("RULE1 #24 swizzle-drop",
@@ -725,7 +719,7 @@ def self_test() -> int:
         "#include <cstdlib>\nbool f(){return getenv(\"MC2_TERRAIN_TESS\");}\n"
     }), True)))
 
-    # RULE3 ANTI-REGRESSION (CONTRACT-GREEN-1). The comment-blind fix is only
+    # RULE3 ANTI-REGRESSION. The comment-blind fix is only
     # safe while the stripper is a real lexer. checklib.strip_comments -- the
     # obvious thing to reach for -- treats the `/*` inside a `//` comment as a
     # block-comment opener and deletes everything to the next `*/`, which on

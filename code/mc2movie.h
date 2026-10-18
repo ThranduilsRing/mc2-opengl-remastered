@@ -36,8 +36,8 @@ class MC2Movie
 			stillPlaying = false;
 			separateWAVE = false;
 
-			waveName     = NULL;
-			m_MC2Name    = NULL;
+			waveName     = nullptr;
+			m_MC2Name    = nullptr;
 			m_session    = nullptr;
 			m_sessionDone = false;
 		}
@@ -100,6 +100,6 @@ class MC2Movie
 		bool		m_sessionDone;
 };
 
-typedef MC2Movie *MC2MoviePtr;
+using MC2MoviePtr = MC2Movie *;
 //--------------------------------------------------------------------------
 #endif

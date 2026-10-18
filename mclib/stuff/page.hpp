@@ -205,27 +205,6 @@ namespace Stuff {
 			);
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	// YawPitchRoll access
-	//
-	public:
-		bool
-			GetEntry(
-				const char *entryname,
-				YawPitchRoll *value,
-				bool required=false
-			);
-		void
-			SetEntry(
-				const char *entryname,
-				const YawPitchRoll &value
-			);
-		void
-			AppendEntry(
-				const char *entryname,
-				const YawPitchRoll &value
-			);
-
-	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// UnitQuaternion access
 	//
 	public:

@@ -1,8 +1,8 @@
 // tests/unit/test_csvfile.cpp
 //
-// MINIMAL-VIABLE-HARNESS-2 (TU-1): brings mclib/csvfile.cpp under unit test
+// Brings mclib/csvfile.cpp under unit test
 // game-free, on the same malloc-backed heap shim + real file stack that
-// MINIMAL-VIABLE-HARNESS-1 established. CSVFile is a File subclass, so it adds
+// the file-stack harness established. CSVFile is a File subclass, so it adds
 // ZERO new link frontier (same shim, same base class) -- it completes the
 // data-ingest spine: FIT (test_file_inifile.cpp) + CSV (here) + ini all
 // offline-verifiable. Pattern doc: docs/testing/minimal-viable-harness.md.

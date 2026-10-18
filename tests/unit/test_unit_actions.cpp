@@ -1,10 +1,8 @@
 // tests/unit/test_unit_actions.cpp
-// UNITPROFILE-OFFLINE-HARNESS-1 (Phase 0 of the UNIT-PROFILE arc).
-//
 // Pure-logic doctest coverage for the two shared contracts that future
-// slices implement against:
-//   * unit_action.h            -- resolveAction() precedence (slice 2)
-//   * action_executor_registry.h -- bind / compatibility resolution (slice 3)
+// implementations use:
+//   * unit_action.h            -- resolveAction() precedence
+//   * action_executor_registry.h -- bind / compatibility resolution
 //
 // These headers are header-only and drag NO engine/GL/IO code, so they
 // compile into the `mc2_tests` target unchanged. Mirror the style of
@@ -108,7 +106,7 @@ TEST_CASE("resolveAction: missing resource is the lowest non-Available reason") 
 
 TEST_CASE("resolveAction: BattleMech legacy logic is expressible") {
     // Old world: canJump == (capability && executor). Nothing else modeled.
-    // Reproduce it by leaving all the facets future slices add satisfied.
+    // Reproduce it by leaving all the added facets satisfied.
     auto legacyCanJump = [](bool cap, bool exec) {
         ActionQueryInputs q;
         q.validForSchema     = cap;   // no-cap == not-that-kind-of-thing
@@ -146,7 +144,7 @@ TEST_CASE("resolveAction: every reason is reachable") {
 }
 
 // ---------------------------------------------------------------------------
-// UNIT-ACTION-QUERY-RESULT-1 (slice 2): jumpQueryInputs() — the pure engine-side
+// jumpQueryInputs() — the pure engine-side
 // mapping Mover::queryAction(Jump) uses. Verifies the three outcomes the old
 // bare `bool canPerform` reduced to, now expressed as reasons.
 // ---------------------------------------------------------------------------
@@ -235,7 +233,7 @@ TEST_CASE("registry: isCompatible on unbound action is false, not a crash") {
 }
 
 TEST_CASE("registry: feeds resolveAction's executor fields (integration)") {
-    // Demonstrates the slice-3 -> slice-2 seam: the registry answers the two
+    // Demonstrates the registry/resolveAction seam: the registry answers the two
     // executor-shaped facts that resolveAction consumes.
     ActionExecutorRegistry reg;
     reg.bind(UnitAction::Jump, 1, {LOCO_MECH_WALKER});
@@ -258,10 +256,10 @@ TEST_CASE("registry: feeds resolveAction's executor fields (integration)") {
 }
 
 // ---------------------------------------------------------------------------
-// ACTION-EXECUTOR-REGISTRY-1 (slice 3): the engine-side singleton binds
+// The engine-side singleton binds
 // UnitAction::Jump to the mech jump-jet executor, compatible ONLY with
 // LOCO_MECH_WALKER. Mover::queryAction feeds isCompatible(Jump, locomotionModel())
-// as the `hasExecutor` fact (locomotionSupports stays true this slice), so:
+// as the `hasExecutor` fact (locomotionSupports stays true), so:
 //   * a BattleMech (locomotionModel == LOCO_MECH_WALKER) + CAP_JUMP -> Available
 //   * a vehicle (non-mech-walker locomotion) even if granted CAP_JUMP ->
 //     MissingExecutor (the "capability-granted vehicle" audit case)
@@ -299,20 +297,20 @@ TEST_CASE("slice3 binding: mech-walker jet -> Available; vehicle -> MissingExecu
 }
 
 // ---------------------------------------------------------------------------
-// LOCOMOTION-FACET-1 (slice 4): data-owned locomotion model.
+// Data-owned locomotion model.
 //
 // The locomotion model id that queryAction feeds into isCompatible() no longer
 // comes from the C++ class (Mover=wheeled, BattleMech=mech-walker). It is a data
 // facet carried on the UnitProfile, resolved from an optional
 // `.fit [UnitProfile] Locomotion=` token via parseLocomotionModel(), falling
-// back to the caller's class-default when the token is absent. This slice moves
-// WHERE the value comes from, not the values -- so mech-default + no token still
+// back to the caller's class-default when the token is absent. It moves WHERE
+// the value comes from, not the values -- so mech-default + no token still
 // resolves LOCO_MECH_WALKER and a jet mech is still Available.
 // ---------------------------------------------------------------------------
 
 TEST_CASE("locomotion facet: absent/empty/null token falls back to class-default") {
     // Stock .fits carry no Locomotion key -> the class-default is preserved,
-    // which is the whole parity contract of this slice.
+    // which is the whole parity contract.
     CHECK(parseLocomotionModel(nullptr, LOCO_MECH_WALKER) == LOCO_MECH_WALKER);
     CHECK(parseLocomotionModel("",      LOCO_MECH_WALKER) == LOCO_MECH_WALKER);
     CHECK(parseLocomotionModel(nullptr, LOCO_WHEELED)     == LOCO_WHEELED);
@@ -330,7 +328,7 @@ TEST_CASE("locomotion facet: recognized tokens map to the enum (case-insensitive
 }
 
 TEST_CASE("locomotion facet: data-resolved model drives jump executor compatibility") {
-    // The end-to-end slice-4 seam, pure: the facet resolves a locomotion model,
+    // The end-to-end locomotion seam, pure: the facet resolves a locomotion model,
     // and THAT id (not the class) is what the registry compatibility uses.
     ActionExecutorRegistry reg;
     reg.bind(UnitAction::Jump, kMechJumpExecutor, {LOCO_MECH_WALKER}); // == singleton
@@ -351,7 +349,7 @@ TEST_CASE("locomotion facet: data-resolved model drives jump executor compatibil
 }
 
 // ---------------------------------------------------------------------------
-// VEHICLE-JUMP-PROOF-1 (slice 7, Phase-1 closer): the jump DECISION is no longer
+// The jump DECISION is no longer
 // class-locked. A GroundVehicle is a different C++ class than BattleMech, yet the
 // only thing that decides can-jump is DATA: the CAP_JUMP capability + the
 // locomotion facet the executor registry checks. Prove it purely: hold the class
@@ -386,19 +384,19 @@ TEST_CASE("vehicle-jump-proof: verdict follows data facets, not the C++ class") 
 }
 
 // ---------------------------------------------------------------------------
-// DAMAGE-SCHEMA-FACET-1 (slice 5): data-owned hit-location model.
+// Data-owned hit-location model.
 //
 // Which damage schema a unit uses (mech 8 parts / vehicle facings / squad /
 // single actor) is a pure DATA facet on UnitProfile, resolved from an optional
 // `.fit [UnitProfile] DamageSchema=` token via parseDamageSchema(), falling back
-// to the caller's type-load default when the token is absent. This slice adds the
-// vocabulary + a pure location-membership query the Phase-2 HardpointId validator
+// to the caller's type-load default when the token is absent. It adds the
+// vocabulary + a pure location-membership query the HardpointId validator
 // consults; it changes NO armor/hit-application math (nobody reads the facet yet).
 // ---------------------------------------------------------------------------
 
 TEST_CASE("damage schema: absent/empty/null token falls back to type-load default") {
     // Stock .fits carry no DamageSchema key -> the type-load default is preserved,
-    // which is the parity contract of this slice.
+    // which is the parity contract.
     CHECK(parseDamageSchema(nullptr, DMG_MECH_8PART)      == DMG_MECH_8PART);
     CHECK(parseDamageSchema("",      DMG_MECH_8PART)      == DMG_MECH_8PART);
     CHECK(parseDamageSchema(nullptr, DMG_VEHICLE_FACINGS) == DMG_VEHICLE_FACINGS);

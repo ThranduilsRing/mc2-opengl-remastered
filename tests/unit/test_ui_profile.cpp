@@ -1,6 +1,4 @@
 // tests/unit/test_ui_profile.cpp
-// UI-PROFILE-1 (Phase 2, slice 6 of the UNIT-PROFILE arc).
-//
 // Pure-logic doctest coverage for ui_profile.h (the UI facet + accessor-override
 // helpers) and the UPV_UI_ASSET_MISSING validator check in
 // unit_profile_validator.h. PURE -- no engine behavior, no atlas blit math.
@@ -86,7 +84,7 @@ TEST_CASE("ui validate: a missing declared asset => one UPV_UI_ASSET_MISSING") {
 }
 
 TEST_CASE("ui validate: reason code is appended, not renumbered") {
-    // UI-PROFILE-1 added its code LAST; the earlier LIVE codes keep their values
+    // UPV_UI_ASSET_MISSING is LAST; the earlier LIVE codes keep their values
     // so logs / mod tooling keying on the number never break.
     CHECK(UPV_JUMP_GRANTED_NO_COMPATIBLE_EXECUTOR == 0);
     CHECK(UPV_UI_ASSET_MISSING < UPV__COUNT);

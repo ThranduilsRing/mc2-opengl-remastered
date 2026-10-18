@@ -6,9 +6,9 @@
 #define DGOAL_H
 
 class GoalObject;
-typedef GoalObject* GoalObjectPtr;
+using GoalObjectPtr = GoalObject*;
 
 class GoalManager;
-typedef GoalManager* GoalManagerPtr;
+using GoalManagerPtr = GoalManager*;
 
 #endif

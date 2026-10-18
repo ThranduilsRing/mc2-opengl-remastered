@@ -73,7 +73,7 @@ MLRSpotLight::MLRSpotLight(
 			lightMask |= MLRState::LightMapLightingMode;
 		}
 	}
-	Radian angle;
+	Scalar angle;
 	*stream >> angle;
 	SetSpreadAngle(angle);
 }
@@ -102,7 +102,7 @@ MLRSpotLight::MLRSpotLight(Stuff::Page *page):
 	// The spread is authored in degrees.
 	Scalar degrees = 45.0f;
 	page->GetEntry("Spread", &degrees);
-	SetSpreadAngle(Radian(degrees * Radians_Per_Degree));
+	SetSpreadAngle(degrees * Radians_Per_Degree);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -170,7 +170,7 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	MLRSpotLight::SetSpreadAngle(const Radian &radian)
+	MLRSpotLight::SetSpreadAngle(Scalar radian)
 {
 	Check_Object(this);
 
@@ -183,7 +183,7 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 bool
-	MLRSpotLight::GetSpreadAngle(Radian *angle)
+	MLRSpotLight::GetSpreadAngle(Scalar *angle)
 {
 	Check_Object(this);
 

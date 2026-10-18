@@ -1,4 +1,4 @@
-// LOADOUT-EQUIPMENT-ID-ALIAS-1 (equipment arc, engine slice E5) -- offline tests
+// Offline tests
 // for the PURE loadout-ref resolution logic (resolveLoadoutEquipmentRef): the
 // qualified-id branch (core:<slug> via the registry), the legacy numeric-ordinal
 // branch, and the not-found / needs-widen sentinels. Reuses the pure

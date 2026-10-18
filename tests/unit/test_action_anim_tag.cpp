@@ -1,5 +1,4 @@
 // tests/unit/test_action_anim_tag.cpp
-// ACTION-ANIMATION-BINDINGS-1 (Phase-2 slice 5 of the UNIT-PROFILE arc).
 //
 // Pure-logic doctest coverage for code/action_anim_tag.h: the semantic
 // ActionAnimTag -> legacy-gesture-id resolver with data-driven fallback chains,

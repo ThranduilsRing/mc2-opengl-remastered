@@ -42,20 +42,20 @@
 #endif
 
 //---------------------------------------------------------------------------
-typedef struct _CommanderData
+struct _CommanderData
 {
 	long					id;
 	long					teamId;
 	MoverGroupData			groups[MAX_MOVERGROUPS];
 
-} CommanderData;
+}; using CommanderData = _CommanderData;
 
-typedef struct _StaticCommanderData
+struct _StaticCommanderData
 {
 	long	numCommanders;
 	long	homeCommanderId;
 
-} StaticCommanderData;
+}; using StaticCommanderData = _StaticCommanderData;
 
 class Commander {
 

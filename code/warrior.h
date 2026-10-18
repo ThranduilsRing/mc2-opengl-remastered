@@ -126,14 +126,14 @@ inline constexpr int MOVEPATH_ERR_TACORDER_CLEARED = -14;
 inline constexpr int MAX_QUEUED_TACORDERS = 2000;
 inline constexpr int MAX_QUEUED_TACORDERS_PER_WARRIOR = 16;
 
-typedef enum {
+enum OrderType {
 	ORDER_CURRENT,
 	ORDER_ISSUED,
 	ORDER_PENDING,
 	NUM_ORDER_TYPES
-} OrderType;
+};
 
-typedef enum {
+enum SituationType {
 	SITUATION_NORMAL,
 	SITUATION_ENGAGE,
 	SITUATION_WITHDRAW,
@@ -142,9 +142,9 @@ typedef enum {
 	SITUATION_BERSERK,
 	SITUATION_SUICIDAL,
 	NUM_SITUATIONS
-} SituationType;
+};
 
-typedef enum {
+enum MechType {
 	MECH_TYPE_NONE,
 	MECH_TYPE_HOLLANDER,
 	MECH_TYPE_COMMANDO,
@@ -166,49 +166,49 @@ typedef enum {
 	MECH_TYPE_AWESOME,
 	MECH_TYPE_MASAKARI,
 	NUM_MECH_TYPES
-} MechType;
+};
 
-typedef enum {
+enum WeaponClass {
 	WEAPON_CLASS_NONE,
 	WEAPON_CLASS_BALLISTIC,
 	WEAPON_CLASS_ENERGY,
 	WEAPON_CLASS_MISSILE,
 	NUM_WEAPON_CLASSES
-} WeaponClass;
+};
 
-typedef enum {
+enum MechWarriorRole {
 	MWR_POINT,
 	MWR_WINGMAN,
 	MWR_REARGUARD,
 	MWR_SCOUT,
 	NUM_MECHWARRIOR_ROLES
-} MechWarriorRole;
+};
 
-typedef enum {
+enum Skill {
 	MWS_PILOTING,
 	MWS_SENSORS,
 	MWS_GUNNERY,
 	NUM_SKILLS
-} Skill;
+};
 
-typedef enum {
+enum PersonalityTrait {
 	MWP_PROFESSIONALISM,
 	MWP_DECORUM,
 	MWP_AGGRESSIVENESS,
 	MWP_COURAGE,
 	NUM_PERSONALITY_TRAITS
-} PersonalityTrait;
+};
 
-typedef enum {
+enum WarriorRank {
 	WARRIOR_RANK_GREEN,
 	WARRIOR_RANK_REGULAR,
 	WARRIOR_RANK_VETERAN,
 	WARRIOR_RANK_ELITE,
 	WARRIOR_RANK_ACE,
 	NUM_WARRIOR_RANKS
-} WarriorRank;
+};
 
-typedef enum {
+enum SpecialtySkill {
 	LIGHT_MECH_SPECIALIST,	
 	LASER_SPECIALIST,		
 	LIGHT_AC_SPECIALIST,	
@@ -233,7 +233,7 @@ typedef enum {
 	GAUSS_SPECIALIST,		
 	SHARPSHOOTER,
 	NUM_SPECIALTY_SKILLS
-} SpecialtySkill;
+};
 
 
 enum SpecialtySkillType
@@ -250,20 +250,20 @@ inline constexpr int FIRST_VETERAN_SPECIALTY = 8;
 inline constexpr int FIRST_ELITE_SPECIALTY = 14;
 inline constexpr int FIRST_ACE_SPECIALTY = 20;
 
-typedef enum {
+enum CombatValueType {
 	CV_CURRENT,
 	CV_FIELDED,
 	CV_NEW,
 	NUM_CV_TYPES
-} CombatValueType;
+};
 
-typedef enum {
+enum CombatStats {
 	COMBAT_STAT_CAREER,
 	COMBAT_STAT_MISSION,
 	NUM_COMBAT_STATS
-} CombatStats;
+};
 
-typedef enum {
+enum WarriorStatus {
 	WARRIOR_STATUS_NORMAL,
 	WARRIOR_STATUS_WITHDRAWING,
 	WARRIOR_STATUS_WITHDRAWN,
@@ -273,9 +273,9 @@ typedef enum {
 	WARRIOR_STATUS_CAPTURED,
 	WARRIOR_STATUS_BASECAMP,
 	NUM_WARRIOR_STATUSES
-} WarriorStatus;
+};
 
-typedef enum {
+enum MoveStateType {
 	MOVESTATE_STAND,
 	MOVESTATE_FORWARD,
 	MOVESTATE_REVERSE,
@@ -283,13 +283,13 @@ typedef enum {
 	MOVESTATE_PIVOT_REVERSE,
 	MOVESTATE_PIVOT_TARGET,
 	NUM_MOVESTATES
-} MoveStateType;
+};
 
 //---------------------------------------------------------------------------
 
 inline constexpr int MAX_ALARM_TRIGGERS = 15;
 
-typedef enum {
+enum PilotAlarmType {
 	PILOT_ALARM_TARGET_OF_WEAPONFIRE,
 	PILOT_ALARM_HIT_BY_WEAPONFIRE,
 	PILOT_ALARM_DAMAGE_TAKEN_RATE,
@@ -310,17 +310,17 @@ typedef enum {
 	PILOT_ALARM_FIRED_WEAPON,
 	PILOT_ALARM_NEW_MOVER,
 	NUM_PILOT_ALARMS
-} PilotAlarmType;
+};
 
-typedef struct {
+struct PilotAlarm {
 	char			code;
 	unsigned char	numTriggers;			
 	int32_t         trigger[MAX_ALARM_TRIGGERS];
-} PilotAlarm;
+};
 
 //---------------------------------------------------------------------------
 
-typedef struct {
+struct RadioLog {
 	float				lastUnderFire;			// time of last under fire message
 	bool				weaponsIneffective;		// true if already informed player
 	bool				weaponsOut;				// true if already informed player
@@ -328,14 +328,14 @@ typedef struct {
 	RadioMessageType	lastMessageType;		// e.g. RADIO_WEAPONS_OUT
 	DWORD				lastMessage;			// PacketNumber of message
 	float				lastMessageTime;		// time of last message (of any type)
-} RadioLog;
+};
 
 
 //---------------------------------------------------------------------------
 
 inline constexpr int MAX_TARGET_PRIORITIES = 20;
 
-typedef enum {
+enum TargetPriorityType {
 	TARGET_PRIORITY_NONE,
 	TARGET_PRIORITY_GAMEOBJECT,
 	TARGET_PRIORITY_MOVER,
@@ -357,14 +357,14 @@ typedef enum {
 	TARGET_PRIORITY_EVENT_FRIENDLY_WITHDRAWS,
 	TARGET_PRIORITY_SKIP,
 	NUM_TARGET_PRIORITIES
-} TargetPriorityType;
+};
 
-typedef struct _TargetPriority {
+struct _TargetPriority {
 	int32_t				type;
 	int32_t				params[3];
-} TargetPriority;
+}; using TargetPriority = _TargetPriority;
 
-typedef TargetPriority* TargetPriorityPtr;
+using TargetPriorityPtr = TargetPriority*;
 
 class TargetPriorityList {
 
@@ -406,29 +406,29 @@ class TargetPriorityList {
 
 //---------------------------------------------------------------------------
 
-typedef enum {
+enum OrderStateType {
 	ORDERSTATE_GENERAL,
 	ORDERSTATE_PLAYER,
 	ORDERSTATE_ALARM,
 	NUM_ORDERSTATES
-} OrderStateType;
+};
 
-typedef struct _AttackerRec {
+struct _AttackerRec {
 	unsigned long				WID;
 	float						lastTime;
-} AttackerRec;
+}; using AttackerRec = _AttackerRec;
 
-typedef AttackerRec* AttackerRecPtr;
+using AttackerRecPtr = AttackerRec*;
 
 #define MAX_GLOBAL_PATH			50
 
-typedef enum {
+enum MovePathType {
 	MOVEPATH_UNDEFINED,
 	MOVEPATH_SIMPLE,
 	MOVEPATH_COMPLEX
-} MovePathType;
+};
 
-typedef struct _MoveOrders {
+struct _MoveOrders {
 	//------------------
 	// order  parameters
 	float						time;
@@ -467,9 +467,9 @@ typedef struct _MoveOrders {
 
 	void init (void);
 
-} MoveOrders;
+}; using MoveOrders = _MoveOrders;
 
-typedef struct _SaveableMoveOrders {
+struct _SaveableMoveOrders {
 	//------------------
 	// order  parameters
 	float						time;
@@ -586,9 +586,9 @@ typedef struct _SaveableMoveOrders {
 	}
 
 
-} SaveableMoveOrders;
+}; using SaveableMoveOrders = _SaveableMoveOrders;
 
-typedef struct _AttackOrders {
+struct _AttackOrders {
 	float						time;
 	char						origin;
 	long						type;				// to kill, to disable, etc.
@@ -601,9 +601,9 @@ typedef struct _AttackOrders {
 
 	void init (void);
 
-} AttackOrders;
+}; using AttackOrders = _AttackOrders;
 
-typedef struct _SituationOrders {
+struct _SituationOrders {
 	float						time;
 	// general orders
 	long						mode;				// NORMAL, WITHDRAW, RETREAT, ETC.
@@ -619,23 +619,23 @@ typedef struct _SituationOrders {
 
 	void init (void);
 
-} SituationOrders;
+}; using SituationOrders = _SituationOrders;
 
 #if 0
-typedef struct _RoleOrders {
+struct _RoleOrders {
 	float						time;
 	MechWarriorRole				role;
-} RoleOrders;
+}; using RoleOrders = _RoleOrders;
 #endif
 
 //------------------------------------------------------------------------------------------
 
 inline constexpr int NUM_MEMORY_CELLS = 60;
 
-typedef union _MemoryCell {
+union _MemoryCell {
 	float						real;
 	int                         integer;
-} MemoryCell;
+}; using MemoryCell = _MemoryCell;
 
 //------------------------------------------------------------------------------------------
 
@@ -643,7 +643,7 @@ inline constexpr int MAX_ATTACKERS = 50;
 
 //------------------------------------------------------------------------------------------
 
-typedef struct _QueuedTacOrder 
+struct _QueuedTacOrder
 {
 	long						id;
 	Stuff::Vector3D				point;
@@ -651,9 +651,9 @@ typedef struct _QueuedTacOrder
 	unsigned char				tactic;
 	BldgAppearance*				marker;
 	unsigned char 				moveMode;			//So save/load can recreate this lovely pointer!
-} QueuedTacOrder;
+}; using QueuedTacOrder = _QueuedTacOrder;
 
-typedef QueuedTacOrder* QueuedTacOrderPtr;
+using QueuedTacOrderPtr = QueuedTacOrder*;
 
 //------------------------------------------------------------------------------------------
 
@@ -666,7 +666,7 @@ inline constexpr int MAXLEN_PILOT_VIDEO = 20;
 inline constexpr int MAXLEN_PILOT_AUDIO = 20;
 inline constexpr int MAXLEN_PILOT_BRAIN = 40;
 
-typedef enum {
+enum GoalActionType {
 	GOAL_ACTION_NONE,
 	GOAL_ACTION_UNDECIDED,
 	GOAL_ACTION_MOVE,
@@ -674,9 +674,9 @@ typedef enum {
 	GOAL_ACTION_CAPTURE,
 	GOAL_ACTION_GUARD,
 	NUM_GOAL_ACTIONS
-} GoalActionType;
+};
 
-typedef struct _MechWarriorData
+struct _MechWarriorData
 {
 	bool					used;
 	char					name[MAXLEN_PILOT_NAME];
@@ -786,9 +786,9 @@ typedef struct _MechWarriorData
 	unsigned char			oldPilot;
 
 	int32_t                 warriorBrainHandle;
-} MechWarriorData;
+}; using MechWarriorData = _MechWarriorData;
 
-typedef struct _StaticMechWarriorData
+struct _StaticMechWarriorData
 {
 	int32_t				numWarriors;
 	int32_t				numWarriorsInCombat;
@@ -799,7 +799,7 @@ typedef struct _StaticMechWarriorData
 	float				maxVisualRadius;
 	int32_t				curEventID;
 	int32_t				curEventTrigger;
-} StaticMechWarriorData;
+}; using StaticMechWarriorData = _StaticMechWarriorData;
 
 class MechWarrior {
 

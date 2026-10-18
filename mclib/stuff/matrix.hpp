@@ -24,7 +24,6 @@ namespace Stuff {
 
 	class AffineMatrix4D;
 	class EulerAngles;
-	class YawPitchRoll;
 	class Point3D;
 	class UnitQuaternion;
 
@@ -63,8 +62,6 @@ namespace Stuff {
 			{*this = m;}
 		explicit Matrix4D(const EulerAngles &angles)
 			{*this = angles;}
-		explicit Matrix4D(const YawPitchRoll &angles)
-			{*this = angles;}
 		explicit Matrix4D(const UnitQuaternion &q)
 			{*this = q;}
 		explicit Matrix4D(const Point3D &p)
@@ -85,16 +82,12 @@ namespace Stuff {
 		Matrix4D&
 			operator=(const EulerAngles &angles);
 		Matrix4D&
-			operator=(const YawPitchRoll &angles);
-		Matrix4D&
 			operator=(const UnitQuaternion &q);
 		Matrix4D&
 			operator=(const Point3D &p);
 
 		Matrix4D&
 			BuildRotation(const EulerAngles &angles);
-		Matrix4D&
-			BuildRotation(const YawPitchRoll &angles);
 		Matrix4D&
 			BuildRotation(const UnitQuaternion &q);
 		Matrix4D&
@@ -624,14 +617,14 @@ namespace Stuff {
 			SetPerspective(
 				Scalar near_clip,
 				Scalar far_clip,
-				const Radian &horizontal_fov,
+				Scalar horizontal_fov,
 				Scalar height_to_width
 			);
 		void
 			GetPerspective(
 				Scalar *near_clip,
 				Scalar *far_clip,
-				Radian *horizontal_fov,
+				Scalar *horizontal_fov,
 				Scalar *height_to_width
 			) const;
 

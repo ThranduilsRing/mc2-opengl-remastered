@@ -87,7 +87,7 @@ from mission_terrain_analyzer import (  # noqa: E402
 )
 from overlay_extract import classify_concrete  # noqa: E402
 
-# STOCK-DATA-TRUTH-2: this tool reads textureData + terrainType, BOTH of which
+# This tool reads textureData + terrainType, BOTH of which
 # differ between the shipped mission.fst and the Carver5 tree (measured: 115367
 # and 104501 vertices respectively). Its corpus is load-bearing.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
@@ -127,7 +127,7 @@ OVERLAY_FAMILIES = [  # (fit OverlayName, NumOverlays) in OverlayType0..16 order
     ("x_pavedroad_bridge", 50),
     ("bridgedam", 15),
 ]
-# runtime-mutable families: NEVER statically baked (recon landmine; bridges
+# runtime-mutable families: NEVER statically baked (bridges
 # swap tiles at runtime, bldng.cpp:861-876)
 BRIDGE_FAMILIES = {"bridge", "x_pavedroad_bridge", "bridgedam"}
 
@@ -154,7 +154,7 @@ def decode_overlay_handle(hi: int) -> tuple[str, int] | None:
 
 
 # --- cement-region classification (DETECTION/REPORT ONLY -- no paint) ---------
-# Kept from the first slice for the mc2_01 "extraction gap" requirement: the
+# The mc2_01 "extraction gap" requirement: the
 # overlay scan cannot see CEMENT terrain-type runways/pads. Detection uses
 # PCA elongation of the distance-transform core (bbox aspect fails on
 # diagonal strips: mc2_01 bbox aspect 1.06 vs core PCA elongation ~3.5).
@@ -310,8 +310,8 @@ MIN_COMP_PX = 8             # despeckle: ignore paint specks below this (at 256p
 # legacy art is authored dark (dash lum ~121 on ~62 asphalt reads "white"
 # only by contrast; measured on runway0000/0011/pavedroad0000).
 #
-# ROOT-CAUSE FIX (overlay_v2 "solid white runway"): a fixed `median + 26`
-# delta is NOT a marking-vs-body discriminator on this art. Measured body
+# A fixed `median + 26` delta is NOT a marking-vs-body discriminator on this
+# art. Measured body
 # luminance distributions have NO bimodal gap -- there is a smooth gradient
 # from the dark asphalt core up through edge antialiasing, and `med+26` swept
 # in 5-19% of the BODY on runway tiles (runway0000 pure-asphalt taxiway:
@@ -645,8 +645,7 @@ def cmd_compose(args) -> int:
     # the parity raster IS the base and stays visually identical (user
     # ruling: footprint/surface pixel-faithful; only paint gets crisper).
     #
-    # ROOT-CAUSE FIX (overlay_v2 "scalloped semi-transparent cement transition
-    # blobs"): the parity raster is a coarse per-vertex-cell binary mask
+    # The parity raster is a coarse per-vertex-cell binary mask
     # (side x side, e.g. 100x100 for mc2_01, hard 0/255 alpha at cement
     # boundaries). BICUBIC-upsampling that to the 8192 canvas SMOOTHED the
     # binary alpha into a soft ramp -- ~458k texels landed at partial alpha

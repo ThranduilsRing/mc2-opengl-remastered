@@ -73,8 +73,8 @@ namespace gosFX
 		static void InitializeClass();
 		static void	TerminateClass();
 
-		typedef EffectCloud__Specification Specification;
-		typedef EffectCloud__Particle Particle;
+		using Specification = EffectCloud__Specification;
+		using Particle = EffectCloud__Particle;
 
 		enum {
 			ParticleSize = sizeof(Particle)

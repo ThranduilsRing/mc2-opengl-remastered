@@ -5,8 +5,8 @@
 #include <map>
 #include "utils/graphics.h"
 
-typedef GLvoid (APIENTRY *UNIFORM_FUNC)(GLint location, GLsizei count, const void *value);
-typedef GLvoid (APIENTRY *UNIFORM_MAT_FUNC)(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+using UNIFORM_FUNC = GLvoid (APIENTRY *)(GLint location, GLsizei count, const void *value);
+using UNIFORM_MAT_FUNC = GLvoid (APIENTRY *)(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 
 // Recursive #include resolver used by glsl_shader::makeShader (the makeProgram
 // path). Reads `fname`, splices `#include <...>` bodies and injects #line
@@ -110,9 +110,9 @@ struct glsl_program {
 	glsl_shader* gsh_;
     char* prefix_;
 
-    typedef std::map<std::string, glsl_uniform*> UniArr_t;
-	typedef std::map<std::string, glsl_sampler*> SamplerArr_t;
-    typedef std::map<std::string, glsl_uniform_block*> UniBlockArr_t;
+    using UniArr_t = std::map<std::string, glsl_uniform*>;
+	using SamplerArr_t = std::map<std::string, glsl_sampler*>;
+    using UniBlockArr_t = std::map<std::string, glsl_uniform_block*>;
     UniArr_t uniforms_;
 	UniBlockArr_t uniform_blocks_;
 	SamplerArr_t samplers_;

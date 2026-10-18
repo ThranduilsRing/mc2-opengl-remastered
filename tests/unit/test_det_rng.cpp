@@ -1,4 +1,4 @@
-// DETERMINISTIC-RNG-1: offline doctest for the GL-free LCG kernel.
+// Offline doctest for the GL-free deterministic RNG kernel.
 // Proves: same seed => same sequence; output range; mission-name hash stability.
 #include "doctest.h"
 #include "mclib/det_rng.h"

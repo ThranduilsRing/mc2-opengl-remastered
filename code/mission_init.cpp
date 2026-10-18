@@ -158,7 +158,7 @@ void Mission::initCoreSystems() {
 	mission_phase_mark("setup_tgl_ready"); // LOAD-PHASE-FACTS-1
 	
 	missionHeap = new UserHeap;
-	gosASSERT(missionHeap != NULL);
+	gosASSERT(missionHeap != nullptr);
 	
 	missionHeap->init(missionHeapSize,"MISSION");
 }
@@ -617,7 +617,7 @@ void Mission::initTeamsAndCommanders(long loadType, Stuff::Vector3D* dropZoneLis
 		MC2_VERIFY((Team::teams[0] != NULL) && (Commander::commanders[0] != NULL),
 			"mission has no commanders -- invalid mission data (no [Parts] with TeamId/CommanderId): %s",
 			missionName ? missionName : "(null)");
-		if ((Team::teams[0] == NULL) || (Commander::commanders[0] == NULL))
+		if ((Team::teams[0] == nullptr) || (Commander::commanders[0] == nullptr))
 			STOP(("mission has no commanders -- invalid mission data (no [Parts] with TeamId/CommanderId): %s",
 			      missionName ? missionName : "(null)"));
 		Team::home = Team::teams[0];
@@ -650,10 +650,10 @@ void Mission::initTriggerAndDropZone(MissionInitFrame& f) {
 	auto& result = f.result;
 	if (Mover::triggerAreaMgr) {
 		delete Mover::triggerAreaMgr;
-		Mover::triggerAreaMgr = NULL;
+		Mover::triggerAreaMgr = nullptr;
 	}
 	Mover::triggerAreaMgr = new TriggerAreaManager;
-	Assert(Mover::triggerAreaMgr != NULL, 0, " Mossion.init: unable to init triggerAreaMgr ");
+	Assert(Mover::triggerAreaMgr != nullptr, 0, " Mossion.init: unable to init triggerAreaMgr ");
 
 	SensorManager = std::make_unique<SensorSystemManager>();
 	Assert(SensorManager != nullptr, 0, " Unable to init sensor system manager ");
@@ -739,7 +739,7 @@ void Mission::initTerrain(MissionInitFrame& f) {
 
 	land->getColorMapName(missionFile);
 
-	gosASSERT(land != NULL);
+	gosASSERT(land != nullptr);
 
 	loadProgress = 15.0f;
 
@@ -824,7 +824,7 @@ void Mission::initPathfinding(MissionInitFrame& f) {
 		if (moveSide > 0) {
 			mc2::fmt::print_out("[MISSION] synthesizing blank MOVE: moveSide={:d} (terrainVtx={:d})\n", mc2::fmt::as_i32(moveSide), mc2::fmt::as_i32((int)Terrain::realVerticesMapSide));
 			fflush(stdout);
-			MOVE_buildData(moveSide, moveSide, NULL /*all-passable blank*/, 0, NULL);
+			MOVE_buildData(moveSide, moveSide, nullptr /*all-passable blank*/, 0, nullptr);
 			if (GameMap)
 				GameMap->placeMoversCallback = PlaceMovers;
 		}
@@ -917,7 +917,7 @@ void Mission::initMissionScript(MissionInitFrame& f) {
 	}
 	
 	missionBrain = new ABLModule;
-	gosASSERT(missionBrain != NULL);
+	gosASSERT(missionBrain != nullptr);
 		
 #ifdef _DEBUG
 	long brainErr = 
@@ -928,7 +928,7 @@ void Mission::initMissionScript(MissionInitFrame& f) {
 	missionBrain->setName("Mission");
 
 	missionBrainParams = new ABLParam;
-	gosASSERT(missionBrainParams != NULL);
+	gosASSERT(missionBrainParams != nullptr);
 
 	missionBrainCallback = missionBrain->findFunction("handlemessage", TRUE);
 

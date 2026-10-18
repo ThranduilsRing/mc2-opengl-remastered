@@ -670,25 +670,3 @@ void
 		allPrimitives[i]->Lighting(lights, nrLights);
 	}
 }
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-bool
-	MLRShape::CastRay (
-		Line3D *line,
-		Normal3D *normal
-	)
-{
-	Check_Object(this);
-	Check_Object(line);
-	Check_Pointer(normal);
-
-	bool result = false;
-	for(int i=0; i<numPrimitives; i++)
-	{
-		Check_Object(allPrimitives[i]);
-		if (allPrimitives[i]->CastRay(line, normal))
-			result = true;
-	}
-	return result;
-}

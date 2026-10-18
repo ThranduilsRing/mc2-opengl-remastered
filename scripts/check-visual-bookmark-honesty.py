@@ -58,20 +58,16 @@ ROOT = Path(__file__).resolve().parents[1]
 BOOKMARK_DIR = ROOT / "tests" / "visual" / "bookmarks"
 GOLDEN_DIR = ROOT / "tests" / "visual" / "goldens"
 
-# DETERMINISM-RATCHET-2: the two pose populations, and why both must be graded.
+# The two pose populations, and why both must be graded.
 #
-# This checker was written for tests/visual/bookmarks/ -- the poses an ad-hoc
-# lane A/B uses. It never looked at the poses that grade RELEASES. Those come
-# from <install>/saved_bookmarks/ and are vendored per golden set as
-# tests/visual/goldens/<set>/poses/*.json. The two sets are DISJOINT: a
+# Poses in tests/visual/bookmarks/ serve an ad-hoc lane A/B. Poses that grade
+# RELEASES come from <install>/saved_bookmarks/ and are vendored per golden set
+# as tests/visual/goldens/<set>/poses/*.json. The two sets are DISJOINT: a
 # fraudulent golden pose -- one that frames empty terrain, so both arms match
-# and every region "passes" -- was outside this checker entirely.
+# and every region "passes" -- would otherwise escape this checker.
 #
-# GOLDEN-REBLESS-2 hit this and audited its 10 golden poses BY HAND, recording
-# the hole in its own golden.json as
-#   pose_provenance.honesty_audit.checker_coverage_gap
-# A hand audit is not a ratchet; the next golden gets no such treatment. Now
-# both populations are graded by the same rules.
+# A hand audit is not a ratchet; the next golden gets no such treatment. Both
+# populations are graded by the same rules.
 GOLDEN_POSE_GLOB = "*/poses/*.json"
 REGION_DIR = ROOT / "tools" / "visual_verify" / "regions"
 

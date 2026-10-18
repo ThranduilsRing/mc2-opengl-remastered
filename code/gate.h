@@ -112,7 +112,7 @@ class GateType : public ObjectType
 };
 
 //---------------------------------------------------------------------------
-typedef struct _GateData : public TerrainObjectData
+struct _GateData : public TerrainObjectData
 {
 	char					teamId;
 
@@ -134,7 +134,7 @@ typedef struct _GateData : public TerrainObjectData
 	long					buildingDescriptionID;
 
 	long					updatedTurn;
-} GateData;
+}; using GateData = _GateData;
 
 class Gate : public TerrainObject
 {
@@ -182,7 +182,7 @@ class Gate : public TerrainObject
 			justDestroyed = FALSE;
 			lastMarkedOpen = false;
 
-			closestObject = NULL;
+			closestObject = nullptr;
 			
 			parentId = 0xffffffff;
 			parent = 0;

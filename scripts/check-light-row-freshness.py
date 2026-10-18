@@ -66,7 +66,7 @@ STAMP_REF = re.compile(r"\bcachedFrame_\b|\bgetCachedFrame\s*\(|\bsetCachedFrame
 #   cachedGpuLightIndex_ = <expr>;      (but NOT ==, !=, >=, <=)
 INDEX_WRITE_ONLY = re.compile(r"^\s*(?:\w+\s*->\s*|\w+\s*\.\s*)?cachedGpuLightIndex_\s*=[^=]")
 
-# path -> reason.  An entry here is a deliberate, reviewed exception, and every
+# path -> reason.  An entry here is a deliberate exception, and every
 # reason is PRINTED on a passing run so an exemption cannot quietly become the
 # place a defect lives.
 _BDACTOR_PRODUCER = (
@@ -84,20 +84,18 @@ EXEMPT: dict[str, str] = {
     "mclib/bdactor_tree.cpp": _BDACTOR_PRODUCER,
     "mclib/bdactor_tree_static.cpp": _BDACTOR_PRODUCER,
     "mclib/bdactor_update.cpp": _BDACTOR_PRODUCER,
-    # mclib/mech3d.cpp was exempt here until MECH-LIGHTROW-FRESHNESS-1 made the
-    # GPU-mech submit path read getCachedFrame() (unconditional since gate
-    # amnesty wave 1). The exemption is deleted rather than reworded so this file
-    # stops advertising an open defect that is closed.
+    # mclib/mech3d.cpp is intentionally absent from this table: the GPU-mech
+    # submit path reads getCachedFrame() unconditionally. An exemption here
+    # would advertise an open defect that is closed.
     #
-    # MECH-DECLINE-FIX-1 amendment: that slice originally DECLINED the submit on
-    # a stale stamp, on the stated ground that the mech would still be drawn by
-    # the CPU MLR fallback. That ground was false -- inside the submit block's
-    # own enclosing gate (g_useGpuMechs && !previewContext) mechShape has been
-    # transformed by _HierarchyOnly, so TG_Shape::Render returns at the
-    # lastTurnTransformed guard (mclib/tgl.cpp:3190) without drawing, and the
-    # decline made the mech VANISH. The site now RECORDS the stale stamp and
-    # submits anyway (plus a bounds clamp). What this checker requires is
-    # unchanged and still satisfied: the consumer references the freshness
+    # Declining the submit on a stale stamp is wrong. The stated ground was that
+    # the mech would still be drawn by the CPU MLR fallback, but inside the
+    # submit block's own enclosing gate (g_useGpuMechs && !previewContext)
+    # mechShape has been transformed by _HierarchyOnly, so TG_Shape::Render
+    # returns at the lastTurnTransformed guard (mclib/tgl.cpp:3190) without
+    # drawing, and the decline made the mech VANISH. The site RECORDS the stale
+    # stamp and submits anyway (plus a bounds clamp). What this checker requires
+    # is unchanged and still satisfied: the consumer references the freshness
     # stamp. The rule is "does not trust the index blindly", not "declines".
 }
 

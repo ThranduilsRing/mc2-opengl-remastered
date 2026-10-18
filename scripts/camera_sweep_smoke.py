@@ -24,7 +24,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-# BACKGROUND-SMOKE-1: single chokepoint for non-activating launch + guarded focus.
+# Single chokepoint for non-activating launch + guarded focus.
 from smoke_lib import nofocus  # noqa: E402
 DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe")
 ARTIFACT_ROOT = ROOT / "tests" / "smoke" / "artifacts"
@@ -93,7 +93,7 @@ def run(exe: Path, mission: str, duration: int, screenshot_at: int,
             "--duration", str(duration)]
     print(f"[camsweep] launch {mission}: {' '.join(args)}")
     t0 = time.time()
-    # NOFOCUS-FINISH-1: this harness grades the DESKTOP COMPOSITE (pyautogui
+    # This harness grades the DESKTOP COMPOSITE (pyautogui
     # below), which sees nothing of a window parked at (-32000,-32000) -- so it
     # must declare offscreen=False. nofocus then REFUSES the launch unless
     # MC2_HARNESS_ALLOW_FOREGROUND=1, rather than letting the sweep save the

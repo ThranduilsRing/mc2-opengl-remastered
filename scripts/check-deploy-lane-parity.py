@@ -68,8 +68,8 @@ DOCUMENTED_DIVERGENCE: dict[str, str] = {
         "must NOT be reachable via `run_smoke.py --deploy 0.3`.",
 
     # --- lease-only lanes (leasable, but the deploy-target validator does not
-    # know them). Found by this checker on its first run, 2026-07-29 -- none of
-    # these were in the brief; all pre-date this lane.
+    # know them). These lanes pre-date this checker and the deploy-target
+    # validator's list.
     "0.4c":
         "lease-only. mc2-win64-v0.4c is in check-deploy-target's KNOWN_BAD map "
         "by basename (broken tree: stock+modified exe both crash_silent), so it "

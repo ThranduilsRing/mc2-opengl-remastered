@@ -1,10 +1,10 @@
-// SINGLE-SOURCE-UNIT-DEFINITION-1 (Phase 2, slice 7): offline doctest for the
+// Offline doctest for the
 // UnitDefinition facade + the single UI-facet resolution point (mergeUIProfile).
 // Pure logic only -- no engine/GL/IO. Proves: (a) the facade is a non-owning view
 // that reads facets straight off the UnitProfile source of truth, (b) mergeUIProfile
 // is the ONE deterministic merge both readers share (registry over inline, unset
 // falls through), (c) an all-unset result yields legacy at every accessor (stock
-// parity), fixing the slice-6 split where the two readers resolved UI separately.
+// parity), so the two readers share one UI resolution.
 #include "doctest.h"
 #include "unit_definition.h"
 #include <string>
@@ -95,7 +95,7 @@ TEST_CASE("mergeUIProfile: registry override wins per declared field, unset fall
     CHECK(merged.minimap.empty());
 }
 
-// --- The slice-6 split fix, expressed as an equivalence: whichever reader builds
+// --- Single-source UI resolution, expressed as an equivalence: whichever reader builds
 //     the facade, feeding the SAME two sources through mergeUIProfile yields the
 //     SAME facet -> the sim-side ui() can no longer diverge from the mechlab. ---
 TEST_CASE("both readers resolve to identical UI facet via the shared merge") {

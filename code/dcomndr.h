@@ -12,7 +12,7 @@
 #define DCOMNDR_H
 
 class Commander;
-typedef Commander* CommanderPtr;
+using CommanderPtr = Commander*;
 
 #endif
 

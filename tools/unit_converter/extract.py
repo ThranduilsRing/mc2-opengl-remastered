@@ -28,7 +28,7 @@ from .fitparse import ChassisCsv, CompBas, FitIni, VariantBlock
 
 
 def _namespaced(stem: str, namespace: str = "core") -> str:
-    # UNIT-ID-NAMESPACE-1: canonicalize through the shared qualified-id convention
+    # Canonicalize through the shared qualified-id convention
     # (mirror of code/qualified_id.h) so every emitted id is a validated
     # `namespace:name` string. Stock conversion always emits into the reserved
     # `core` namespace. Raises if the derived id violates the charset rules.
@@ -220,7 +220,7 @@ def extract_vehicle(fit_path: str, tgl_path: str, compbas: CompBas,
 
     tonnage = _to_float(fit.get("General", "CurTonnage", fit.get("General", "TonnageClass")))
 
-    # LOADOUT-THREE-LAYER-1: vehicles have a single stock loadout, so the variant
+    # Vehicles have a single stock loadout, so the variant
     # IS the chassis (variant_index 0, variant_name == display). unit_id stays the
     # bare chassis id (no variant suffix) -> the shadow-compare join falls back to
     # the chassis-level match, matching the empty-variant dump rows for vehicles.

@@ -1741,8 +1741,8 @@ long TacticalOrder::status (MechWarriorPtr warrior) {
 							targetLocation.x += offset.x;
 							targetLocation.y += offset.y;
 							toad->setPosition(targetLocation);
-							toad->transport = NULL;
-							((GroundVehiclePtr) warrior->getVehicle())->toads[i] = NULL;
+							toad->transport = nullptr;
+							((GroundVehiclePtr) warrior->getVehicle())->toads[i] = nullptr;
 							if (deployCount == 0)
 							{
 								time = scenarioTime;	// come back for another load

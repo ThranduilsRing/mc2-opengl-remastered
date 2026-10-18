@@ -1,4 +1,4 @@
-// EQUIPMENT-REGISTRY-FACADE-1 (equipment arc, engine slice E2) -- offline tests
+// Offline tests
 // for the PURE registry logic: slug derivation (must mirror the converter's
 // tools/unit_converter/equipment_extract.py `_slug`), form->kind mapping, and the
 // lookup/query API. No engine, no MasterComponent -- the population walk that
@@ -98,7 +98,7 @@ TEST_CASE("registry query API: byId / byOrdinal / round-trip") {
 }
 
 // ---------------------------------------------------------------------------
-// EQUIP-ENABLE-WIRE-1 (ADD-ladder S1): the pure enabled->purchase force rule.
+// The pure enabled->purchase force rule.
 // Full (defEnabled, legacyMasterId, rowPopulated) combo grid: the ONLY combo
 // that flips available[] is enabled + in-range ordinal + populated row.
 // ---------------------------------------------------------------------------
@@ -117,9 +117,9 @@ TEST_CASE("EQUIP-ENABLE-WIRE-1: equipmentEnableWireShouldForce combo grid") {
     // Ordinal outside the 8-bit purchase array (available[255]) -> never force.
     CHECK_FALSE(equipmentEnableWireShouldForce(true, -1, true));   // no alias
     CHECK_FALSE(equipmentEnableWireShouldForce(true, 255, true));  // 0xff sentinel
-    CHECK_FALSE(equipmentEnableWireShouldForce(true, 300, true));  // E4-widen land
+    CHECK_FALSE(equipmentEnableWireShouldForce(true, 300, true));  // wide ordinal
 
-    // Unpopulated ("undefined" compbas row): enabling it is S2's job, not S1's.
+    // Unpopulated ("undefined" compbas row): enabling it is the ADD fill pass's job.
     CHECK_FALSE(equipmentEnableWireShouldForce(true, 39, false));
     CHECK_FALSE(equipmentEnableWireShouldForce(true, 254, false));
 

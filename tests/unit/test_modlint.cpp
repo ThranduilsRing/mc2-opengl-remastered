@@ -1,6 +1,4 @@
 // tests/unit/test_modlint.cpp
-// UNIT-MODLINT-CLI-1 (Phase-3 slice 3 of the UNIT-PROFILE arc).
-//
 // Offline doctest coverage for the mc2_modlint pieces: the reason-code -> message
 // table (unit_profile_findings_text.h), the facts-JSON parser (modlint_input.h),
 // and the finding formatter (modlint_report.h). Proves modlint reuses the SAME
