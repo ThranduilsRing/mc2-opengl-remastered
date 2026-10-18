@@ -185,13 +185,6 @@ class MapData : public HeapManager
 		long update (void);
 		void makeLists (VertexPtr vertexList, long &numVerts, TerrainQuadPtr quadList, long &numTiles);
 
-		// VPL-#shadow Phase 1+2: feed the FULL map terrain into the static
-		// shadow FBO ONCE (replaces the camera-windowed masterVertexNodes
-		// feed that starved the depth atlas -> half-map wash). idxArray =
-		// identity WORD index buffer (caller's, >= chunk size); texHandle =
-		// any valid terrain colormap (depth-only pass, not sampled for
-		// depth). Stock-safe no-op if blocks unallocated.
-		void renderStaticTerrainShadowFullMap (WORD* idxArray, unsigned long texHandle);
 
 		Stuff::Vector2DOf<float> getTopLeftVertex (void) 
 		{

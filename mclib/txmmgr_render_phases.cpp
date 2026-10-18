@@ -481,23 +481,8 @@ void MC_TextureManager::renderListsStaticShadowBuild (void)
 		gos_BuildStaticLightMatrix();   // world-fixed, camera-independent
 		gos_MarkStaticLightMatrixBuilt();
 
-		// Any valid terrain colormap: the shadow prepass is depth-only
-		// (shadow_terrain.tese = plain lightSpaceMatrix*worldPos, not
-		// sampled for depth), so the exact texture is irrelevant -- bind
-		// the first terrain node's, else the solid default (idx 0).
-		unsigned long shTex = masterTextureNodes[0].get_gosTextureHandle();
-		for (long si = 0; si < nextAvailableVertexNode; si++) {
-			if ((masterVertexNodes[si].flags & MC2_DRAWSOLID) &&
-				(masterVertexNodes[si].flags & MC2_ISTERRAIN)) {
-				shTex = masterTextureNodes[masterVertexNodes[si].textureIndex].get_gosTextureHandle();
-				break;
-			}
-		}
-
-		gos_BeginShadowPrePass(true);   // one-shot clear (no accumulate)
-		Terrain::mapData->renderStaticTerrainShadowFullMap(indexArray, shTex);
-		gos_EndShadowPrePass();
-
+		// The static shadow map itself is the VK shadow island's (it draws the terrain and the buildings from the map data); this is only the matrix
+		// and the build generation the island and the terrain feed key on.
 	}
 }
 

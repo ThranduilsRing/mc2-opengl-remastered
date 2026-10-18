@@ -154,9 +154,6 @@ public:
     const float* getLightSpaceMatrix() const { return staticLightSpaceMatrix_; }
     GLuint getShadowFBO() const { return shadowFBO_; }
     int getShadowMapSize() const { return shadowMapSize_; }
-    void beginShadowPass();
-    void beginShadowPassNoClear();  // accumulate into existing shadow map
-    void endShadowPass();
     bool shadowsEnabled_;
 
     // Shadow debug overlay

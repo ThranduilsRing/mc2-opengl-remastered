@@ -165,64 +165,6 @@ void gosPostProcess::initShadows()
     }
 }
 
-void gosPostProcess::beginShadowPass()
-{
-    if (!shadowsEnabled_ || !shadowFBO_) return;
-
-    glGetIntegerv(GL_VIEWPORT, savedViewport_);
-    glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO_);
-    glViewport(0, 0, shadowMapSize_, shadowMapSize_);
-    // Reverse-Z (U2) state-safe partition: shadow stays forward-Z; scene
-    // set glClearDepth(0), so force 1.0f here and restore 0 after.
-    glClearDepth(1.0f);
-    glClear(GL_DEPTH_BUFFER_BIT);
-    glClearDepth(0.0f);
-
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-    glDepthMask(GL_TRUE);
-
-    // Polygon offset to reduce shadow acne
-    glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(shadowBiasFactor_, shadowBiasUnits_);
-
-    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-
-    // Disable culling so both faces write depth
-    glDisable(GL_CULL_FACE);
-}
-
-void gosPostProcess::beginShadowPassNoClear()
-{
-    if (!shadowsEnabled_ || !shadowFBO_) return;
-
-    glGetIntegerv(GL_VIEWPORT, savedViewport_);
-    glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO_);
-    glViewport(0, 0, shadowMapSize_, shadowMapSize_);
-    // NO glClear — accumulate depth from previous frames
-
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-    glDepthMask(GL_TRUE);
-
-    glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(shadowBiasFactor_, shadowBiasUnits_);
-
-    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    glDisable(GL_CULL_FACE);
-}
-
-void gosPostProcess::endShadowPass()
-{
-    if (!shadowsEnabled_ || !shadowFBO_) return;
-
-    glDisable(GL_POLYGON_OFFSET_FILL);
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_); // restore to scene FBO
-    glViewport(savedViewport_[0], savedViewport_[1], savedViewport_[2], savedViewport_[3]);
-
-}
-
 void gosPostProcess::destroyShadows()
 {
     if (shadowFBO_) { glDeleteFramebuffers(1, &shadowFBO_); shadowFBO_ = 0; }
