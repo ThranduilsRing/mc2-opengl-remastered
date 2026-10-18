@@ -37,6 +37,13 @@ void Logistics::destroy (void)
 }	
 		
 //----------------------------------------------------------------------------------
+void Logistics::releaseAblModules (void)
+{
+	if (missionBegin)
+		missionBegin->releaseLogisticsBrain();
+}
+
+//----------------------------------------------------------------------------------
 bool Logistics::initObjectiveFixture(const char* missionName)
 {
 	if (!SmokeMode::state().enabled ||

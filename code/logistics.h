@@ -72,6 +72,8 @@ class Logistics
 		}
 		
 		void destroy (void);
+		// Frees the ABL modules the front end holds; the shutdown calls it before Mission::destroy closes ABL (BUGS row 76).
+		void releaseAblModules (void);
 		
 		void initSplashScreen (char *screenFile, char *artFile);
 		void destroySplashScreen (void);

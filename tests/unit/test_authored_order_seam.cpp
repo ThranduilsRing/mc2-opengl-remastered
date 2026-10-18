@@ -19,6 +19,9 @@
 #include <regex>
 #include <set>
 #include "abl.h"
+#include "logistics.h"
+#include "missionbegin.h"
+#include "logisticsdata.h"
 #include "ablscan.h"
 #include <io.h>
 #include <stdexcept>
@@ -347,6 +350,67 @@ TEST_CASE("ABLSave/completed orders survive a save: resumed execution equals uni
         CHECK(countsOf(*module).flags == 0);
         delete module;
     }
+    // A tail that is not exactly the section is refused whole (BUGS row 77): no flag word is installed, and a failed read
+    // never becomes 0xFFFFFFFF (every order complete).
+    const std::string mark = image.substr(image.size() - 8, 4);
+    const struct { const char* name; std::string bytes; } refused[] = {
+        {"truncated section", image.substr(0, image.size() - 2)},
+        {"section missing its flag word", image.substr(0, image.size() - 4)},
+        {"section with a word too many", image + std::string(4, '')},
+        {"legacy tail ending in the mark", legacyImage + mark},
+        {"legacy tail of two words ending in the mark", legacyImage + std::string(4, '"') + mark},
+    };
+    for (const auto& tail : refused) {
+        CAPTURE(tail.name);
+        CompileFixture fixture;
+        fixture.sources["resume.abl"] = kResumeModule;
+        ABLModule* module = loadEnvironment(fixture, tail.bytes);
+        REQUIRE(module != nullptr);
+        CHECK(countsOf(*module).flags == 0);
+        delete module;
+    }
+}
+
+TEST_CASE("LogisticsTeardown/the tutorial brain is freed before ABL closes (BUGS row 76)") {
+    {
+        // The hazard: a module with static data freed after the environment closed reaches the closed-arena fatal.
+        // The module is left allocated on purpose: its destructor would retry the free and throw out of a destructor.
+        auto* stranded = new ABLModule;
+        {
+            CompileFixture fixture;
+            fixture.sources["resume.abl"] = kResumeModule;
+            const int handle = ABLi_preProcess("resume.abl");
+            REQUIRE(handle >= 0);
+            REQUIRE(stranded->init(handle) == ABL_NO_ERR);
+            REQUIRE(stranded->getStaticData() != nullptr);
+        }
+        CHECK_THROWS_WITH(stranded->destroy(), doctest::Contains("free after the environment closed"));
+    }
+    // The shutdown order (mechcmd2_frame.cpp): Logistics::releaseAblModules, Mission::destroy (closeABL), Logistics::destroy.
+    struct FrontEnd : Logistics {
+        void install(MissionBegin* begin) { missionBegin = begin; }
+    };
+    auto* frontEnd = new FrontEnd;
+    auto* begin = new MissionBegin;
+    frontEnd->install(begin);
+    {
+        CompileFixture fixture;
+        fixture.sources["resume.abl"] = kResumeModule;
+        const int handle = ABLi_preProcess("resume.abl");
+        REQUIRE(handle >= 0);
+        const auto beforeBrain = ABL_liveBlocks();
+        auto brain = std::make_unique<ABLModule>();
+        REQUIRE(brain->init(handle) == ABL_NO_ERR);
+        REQUIRE(brain->getStaticData() != nullptr);
+        CHECK(ABL_liveBlocks() > beforeBrain);
+        begin->adoptLogisticsBrain(std::move(brain));
+        frontEnd->releaseAblModules();
+        CHECK_FALSE(begin->hasLogisticsBrain());
+        CHECK(ABL_liveBlocks() == beforeBrain);
+    } // closeABL
+    CHECK_NOTHROW(frontEnd->destroy());
+    delete frontEnd;
+    LogisticsData::instance = nullptr; // ~LogisticsData leaves the singleton pointer behind
 }
 
 TEST_CASE("ABLCompile/statements includes and library calls preserve parent bytecode after rejection") {

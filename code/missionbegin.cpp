@@ -684,7 +684,7 @@ void MissionBegin::init()
 void MissionBegin::end()
 {
 	// The tutorial logistics module lives on the ABL pools: free it before they close (BUGS row 72).
-	logisticsBrain.reset();
+	releaseLogisticsBrain();
 	closeABL();
 }
 

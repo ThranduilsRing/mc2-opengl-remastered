@@ -44,6 +44,10 @@ class MissionBegin
 
 		void begin();
 		void end();
+		// The tutorial brain lives on the ABL pools: whoever closes ABL first frees it (BUGS row 76).
+		void adoptLogisticsBrain(std::unique_ptr<ABLModule> brain) { logisticsBrain = std::move(brain); }
+		void releaseLogisticsBrain() { logisticsBrain.reset(); }
+		bool hasLogisticsBrain() const { return logisticsBrain != nullptr; }
 		bool isDone(){ return bDone; }
 		bool readyToLoad() { return bReadyToLoad; }
 
@@ -85,7 +89,7 @@ class MissionBegin
 		bool						bDone;
 		bool						bReadyToLoad;
 
-		std::unique_ptr<ABLModule>	logisticsBrain;	// owner; freed in end() before closeABL
+		std::unique_ptr<ABLModule>	logisticsBrain;	// owner; freed before closeABL (end(), Logistics::releaseAblModules)
 		long						logisticsScriptHandle;
 
 		aAnimation					leftAnim;

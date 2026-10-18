@@ -182,6 +182,10 @@ void __stdcall TerminateGameEngine()
 		delete theClipper;
 		theClipper = nullptr;
 
+		// Mission::destroy closes ABL: the front end's tutorial brain must go first (BUGS row 76).
+		if (logistics)
+			logistics->releaseAblModules();
+
 		if (mission)
 		{
 			mission->destroy(false);

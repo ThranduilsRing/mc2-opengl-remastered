@@ -224,6 +224,11 @@ class ABLFile {
 
 		bool eof (void);
 
+		// Bytes left to read, or -1 when the file or the host's remaining callback is absent.
+		long remaining (void) {
+			return (file && remainingCB) ? remainingCB(file) : -1;
+		}
+
 		long read (unsigned char* buffer, long length);
 
 		int32_t readInt (void);

@@ -183,6 +183,8 @@ UserFilePtr			UserFile::files[MAX_USER_FILES];
 static int32_t ABL_ENV_MARK = 999;
 // Order-completion flags trail the module records (BUGS row 71). The section is written only when some instance has a
 // completed order recorded, so a save without one keeps the legacy bytes and a legacy save loads as before (flags clear).
+// The ABL save is a file of its own: the section is present only when the bytes left after the module records are exactly
+// the mark plus the instances' flag words (BUGS row 77); any other tail is refused whole and every flag stays clear.
 static constexpr int32_t ABL_ORDER_FLAGS_MARK = 0x4F524446;
 
 static long orderFlagWords (ABLModule* module) {
@@ -1560,10 +1562,24 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 	}
 
 	// The trailing order-completion section (absent in a save with no completed order and in a legacy save).
-	if (!ablFile->eof() && ablFile->readInt() == ABL_ORDER_FLAGS_MARK)
-		for (ABLModulePtr module : readOrder)
-			for (long w = 0; w < orderFlagWords(module); w++)
-				module->getOrderCallFlags()[w] = static_cast<unsigned long>(static_cast<uint32_t>(ablFile->readInt()));
+	long sectionWords = 0;
+	for (ABLModulePtr module : readOrder)
+		sectionWords += orderFlagWords(module);
+	const long left = ablFile->remaining();
+	if (left == 0 || (left < 0 && ablFile->eof()))
+		return;
+	const long sectionBytes = static_cast<long>(sizeof(int32_t)) * (1 + sectionWords);
+	std::vector<int32_t> section(static_cast<size_t>(1 + sectionWords));
+	if (left != sectionBytes || ablFile->read(reinterpret_cast<unsigned char*>(section.data()), sectionBytes) != sectionBytes ||
+		section[0] != ABL_ORDER_FLAGS_MARK) {
+		MC2_LOG(Sim, Error, "[ABL_ORDER_FLAGS_BAD] save tail of {} bytes is not the {}-byte order-flags section; every order flag left clear",
+			left, sectionBytes);
+		return;
+	}
+	size_t next = 1;
+	for (ABLModulePtr module : readOrder)
+		for (long w = 0; w < orderFlagWords(module); w++)
+			module->getOrderCallFlags()[w] = static_cast<unsigned long>(static_cast<uint32_t>(section[next++]));
 }
 
 //***************************************************************************
