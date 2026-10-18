@@ -70,7 +70,7 @@ def test_first_save_only_records_a_masked_baseline_although_the_resave_leaves_th
     first, noisy_first, resave = save("a.ims"), save("b.ims", 10100), save("c.ims", 5)    # 10100 is masked run noise; 5 is a pilot string byte, never masked
     monkeypatch.setattr(rt, "BASELINE_DIR", str(tmp_path / "baselines"))
     monkeypatch.setattr(rt, "ROOT", str(tmp_path))                  # the tool prints the baseline path relative to the repo root
-    monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), first, resave, {"sha": "x", "dirty": 0}))
+    monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), first, resave, {"sha": "x", "dirty": 0}, 0))
 
     def main(*extra):
         return rt.main(["baseline", "--mission", "m", "--mask", mask, *extra])
@@ -78,10 +78,10 @@ def test_first_save_only_records_a_masked_baseline_although_the_resave_leaves_th
     assert main() == 1                                                # the re-save gate: refused
     assert main("--first-save-only") == 0                             # recorded
     assert json.load(open(rt.baseline_path("m")))["judged"] == "first-save-only"   # a weak baseline says so
-    monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), noisy_first, resave, {"sha": "x", "dirty": 0}))
+    monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), noisy_first, resave, {"sha": "x", "dirty": 0}, 0))
     assert rt.main(["check", "--mission", "m", "--mask", mask, "--first-save-only"]) == 0     # run-to-run noise in a masked byte does not fail the check
     assert "WEAK baseline: judged first-save-only" in capsys.readouterr().out                  # and the check reports the weakness
-    monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), save("d.ims", 5), resave, {"sha": "x", "dirty": 0}))
+    monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), save("d.ims", 5), resave, {"sha": "x", "dirty": 0}, 0))
     assert rt.main(["check", "--mission", "m", "--mask", mask, "--first-save-only"]) == 1     # a changed pilot string byte does
     capsys.readouterr()
 
@@ -101,3 +101,67 @@ def test_a_baseline_without_frames_is_refused_by_name():
     args = type("Args", (), {"save_at": None, "load_at": None})()
     refusal = rt.frames_from_baseline(args, {"load_at": 1100})
     assert refusal and "no save_at" in refusal and "--baseline" in refusal
+
+
+def _save(path, size=64):
+    rt.si.scs.write(str(path), [(0, b"ver\0"), (4, bytes(size))], False)
+    return str(path)
+
+
+def test_a_missing_resave_is_a_fail(tmp_path, monkeypatch, capsys):
+    """WHY: the quickload crashed and wrote no re-save, so the tool compared nothing and still printed PASS."""
+    first = _save(tmp_path / "a.ims")
+    monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), first, None, {"sha": "x", "dirty": 0}, 0))
+    assert rt.main(["resave", "--mission", "m"]) == 1
+    out = capsys.readouterr().out
+    assert "resave: FAIL" in out and "no re-save was written" in out
+
+
+def test_an_empty_resave_is_a_fail(tmp_path, monkeypatch, capsys):
+    first = _save(tmp_path / "a.ims")
+    empty = str(tmp_path / "empty.ims")
+    open(empty, "wb").close()
+    monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), first, empty, {"sha": "x", "dirty": 0}, 0))
+    assert rt.main(["resave", "--mission", "m"]) == 1
+    out = capsys.readouterr().out
+    assert "resave: FAIL" in out and "empty" in out
+
+
+def test_a_crashed_child_is_a_fail_even_with_two_saves(tmp_path, monkeypatch, capsys):
+    """WHY: a non-zero run_smoke exit means the quickload did not complete; identical files cannot make that a pass."""
+    first, second = _save(tmp_path / "a.ims"), _save(tmp_path / "b.ims")
+    monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), first, second, {"sha": "x", "dirty": 0}, 3))
+    assert rt.main(["resave", "--mission", "m"]) == 1
+    out = capsys.readouterr().out
+    assert "resave: FAIL" in out and "exited 3" in out
+
+
+def test_a_positive_round_trip_passes(tmp_path, monkeypatch, capsys):
+    first, second = _save(tmp_path / "a.ims"), _save(tmp_path / "b.ims")
+    monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), first, second, {"sha": "x", "dirty": 0}, 0))
+    assert rt.main(["resave", "--mission", "m"]) == 0
+    assert "resave: PASS" in capsys.readouterr().out
+
+
+def test_check_fails_when_the_run_has_no_resave_even_under_first_save_only(tmp_path, monkeypatch, capsys):
+    """WHY: --first-save-only waives the lossy re-save's content, never its existence: with no re-save the check compared nothing."""
+    first, resave = _save(tmp_path / "a.ims"), _save(tmp_path / "b.ims")
+    monkeypatch.setattr(rt, "BASELINE_DIR", str(tmp_path / "baselines"))
+    monkeypatch.setattr(rt, "ROOT", str(tmp_path))
+    monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), first, resave, {"sha": "x", "dirty": 0}, 0))
+    assert rt.main(["baseline", "--mission", "m", "--first-save-only"]) == 0
+    monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), first, None, {"sha": "x", "dirty": 0}, 0))
+    assert rt.main(["check", "--mission", "m", "--first-save-only"]) == 1
+    out = capsys.readouterr().out
+    assert "check: FAIL" in out and "no re-save" in out
+
+
+def test_a_baseline_without_runs_cannot_pass_a_check(tmp_path):
+    """A baseline or run with no packets must not compare equal by zip() over nothing."""
+    path = _save(tmp_path / "a.ims")
+    fp = {"sha": "x", "dirty": 0}
+    rec = rt.baseline_record("m", 10, 20, path, path, fp)
+    ok, lines = rt.check_baseline_record(dict(rec, runs=[], overall="x"), rec)
+    assert not ok and "no packets" in " ".join(lines)
+    ok, lines = rt.check_baseline_record(rec, dict(rec, runs=[], packets=0))
+    assert not ok and "no packets" in " ".join(lines)

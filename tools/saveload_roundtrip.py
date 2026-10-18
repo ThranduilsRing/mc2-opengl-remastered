@@ -134,6 +134,11 @@ def selftest() -> int:
             fails.append("a save that differs at packet 2 offset 77 must fail and say where: " + "; ".join(rep))
         if resave_verdict(f1, None)[0] or resave_verdict(None, f2)[0]:
             fails.append("a missing save or re-save must fail")
+        empty = mkfile("empty.ims", [])
+        if resave_verdict(f1, empty)[0] or resave_verdict(empty, f1)[0]:
+            fails.append("an empty save must fail, not compare nothing")
+        if resave_verdict(f1, f2, rc=1)[0] or resave_verdict(f1, None, rc=1)[0]:
+            fails.append("a crashed child must fail even when both files exist")
         fp = {"sha": "abc", "dirty": 0}
         rec = baseline_record("m", 10, 20, f1, f2, fp)
         ok, rep = check_baseline_record(rec, baseline_record("m", 10, 20, f2, f1, fp))
@@ -179,6 +184,8 @@ def selftest() -> int:
             fails.append("historical unmasked hashes must never silently become masked baselines")
         if fixture_verdict(f1, None, mask_path)[0]:
             fails.append("a mask cannot excuse a missing resave")
+        if fixture_verdict(f1, f2, mask_path, rc=1)[0]:
+            fails.append("a mask cannot excuse a crashed child")
         if smoke_target("lane3") != ["--deploy", "lane3"] or smoke_target(sd.resolve_install("lane3")) != ["--deploy", "lane3"]:
             fails.append("lane3 names and paths must route to lane3")
         import contextlib
@@ -189,21 +196,24 @@ def selftest() -> int:
             json.dump(masked_base, fh)
         with patch(__name__ + ".baseline_path", return_value=baseline_json), contextlib.redirect_stdout(io.StringIO()):
             for save, expected in ((ni, 0), (f4, 1)):
-                with patch(__name__ + ".run_fixture", return_value=(td, save, nf, fp)) as fixture:
+                with patch(__name__ + ".run_fixture", return_value=(td, save, nf, fp, 0)) as fixture:
                     verdict = main(["--check", "--mission", "m", "--save-at", "10", "--load-at", "20", "--install", "lane3",
                                     "--save-dir", td, "--mask", mask_path])
                     if verdict != expected or fixture.call_args.args[-4:] != (sd.resolve_install("lane3"), td, None, None):
                         fails.append("--check must apply --mask and route --install/--save-dir end to end")
-            with patch(__name__ + ".run_fixture", return_value=(td, ni, nf, fp)) as fixture:
+            with patch(__name__ + ".run_fixture", return_value=(td, ni, nf, fp, 0)) as fixture:
                 if main(["--check", "--mission", "m", "--mask", mask_path]) != 0 or fixture.call_args.args[1:3] != (10, 20):
                     fails.append("--check without frame flags must run at the baseline's frames")
-            with patch(__name__ + ".run_fixture", return_value=(td, ni, nf, fp)) as fixture:
+            with patch(__name__ + ".run_fixture", return_value=(td, ni, nf, fp, 0)) as fixture:
                 main(["--check", "--mission", "m", "--mask", mask_path, "--sim-speed", "4"])
                 if fixture.call_args.kwargs.get("sim_speed") != 4 or speed_args(4) != ["--sim-speed", "4"] or speed_args(1):
                     fails.append("--sim-speed must reach run_smoke, and 1x must add no argument")
-            with patch(__name__ + ".run_fixture", return_value=(td, ni, nf, fp)) as fixture:
+            with patch(__name__ + ".run_fixture", return_value=(td, ni, nf, fp, 0)) as fixture:
                 if main(["--check", "--mission", "m", "--save-at", "11", "--mask", mask_path]) != 1 or fixture.called:
                     fails.append("--check with frames that contradict the baseline must refuse before launching")
+            with patch(__name__ + ".run_fixture", return_value=(td, ni, nf, fp, 1)):
+                if main(["--check", "--mission", "m", "--mask", mask_path, "--first-save-only"]) != 1:
+                    fails.append("--first-save-only must not excuse a crashed child")
     for f in fails:
         print("saveload_roundtrip selftest FAIL: " + f)
     print("saveload_roundtrip selftest: " + ("FAIL" if fails else "ok"))
@@ -233,6 +243,10 @@ def run(mission: str, frames: int, deploy: bool, out: str | None, install: str =
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", "28", *smoke_target(install, ref_exe, ref_commit),
                             "--keep-logs", *speed_args(sim_speed)], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
                            **console_child.child_kwargs(redirected=True))
+    # WHY: run_smoke exits non-zero on a crash or a failed smoke gate; its log can still hold a clock jump, so the verdict must not ignore it.
+    if r.returncode:
+        return False, [f"the smoke run failed (rc={r.returncode}): the quickload did not complete, so there is no round trip to judge\n"
+                       + "\n".join(r.stdout.splitlines()[-8:])]
     arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
     if not arts or not os.path.exists(os.path.join(arts[-1], mission + ".log")):
         sys.exit("saveload_roundtrip: the smoke run produced no log:\n" + "\n".join(r.stdout.splitlines()[-8:]))
@@ -286,27 +300,54 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
             sys.exit("saveload_roundtrip: the smoke run produced no log:\n" + "\n".join(r.stdout.splitlines()[-8:]))
         shutil.copytree(arts[-1], os.path.join(dest, "run"), dirs_exist_ok=True)
         first = second = None
-        if os.path.exists(os.path.join(sdir, "testgame.ims")):
+        first_src = os.path.join(sdir, "testgame.ims")
+        if os.path.exists(first_src):
             first = os.path.join(dest, "save1.ims")
-            shutil.copy2(os.path.join(sdir, "testgame.ims"), first)
+            shutil.copy2(first_src, first)
         if os.path.exists(second_src):
             second = os.path.join(dest, "save2.ims")
             shutil.move(second_src, second)
     with open(os.path.join(dest, "run", mission + ".log"), encoding="utf-8", errors="replace") as fh:
         m = _FINGERPRINT.search(fh.read())
-    return dest, first, second, ({"sha": m.group(1), "dirty": int(m.group(2))} if m else None)
+    return dest, first, second, ({"sha": m.group(1), "dirty": int(m.group(2))} if m else None), r.returncode
 
 
-def resave_verdict(first: str | None, second: str | None):
-    """-> (ok, report lines): are the save and the save made right after loading it the same bytes? Names the first differing packet and offset."""
-    if not first or not os.path.exists(first):
+def save_evidence(path: str | None, what: str) -> str | None:
+    """-> None when `path` is a readable, non-empty save; otherwise the reason the comparison has no evidence to judge."""
+    if not path:
+        return f"no {what} was written: the fixture did not fire"
+    if not os.path.isfile(path):
+        return f"the {what} is missing ({path})"
+    if os.path.getsize(path) == 0:
+        return f"the {what} is empty ({path})"
+    try:
+        si.load(path)
+    except Exception as err:  # noqa: BLE001  a truncated or corrupt file is a missing save, not a crash of the checker
+        return f"the {what} is unreadable ({path}: {err})"
+    return None
+
+
+def resave_verdict(first: str | None, second: str | None, rc: int | None = None):
+    """-> (ok, report lines): are the save and the save made right after loading it the same bytes? Names the first differing packet and offset.
+    A missing, empty or unreadable save, or a child that exited non-zero, is a FAIL: a comparison of nothing is not a pass."""
+    if rc:
+        return False, [f"the smoke run exited {rc}: the quickload did not complete, so the re-save cannot be trusted (see the run log)"]
+    if not first:
         return False, ["no quicksave was written: the quicksave fixture did not fire (SAVE_AT is a render frame; the run may have ended first)"]
-    if not second or not os.path.exists(second):
+    if not second:
         return False, ["no re-save was written: the quickload did not run or failed (see the run log and saveload_trace.log)"]
-    res = si.compare(si.load(first)[1], si.load(second)[1])
+    reason = save_evidence(first, "quicksave") or save_evidence(second, "re-save")
+    if reason:
+        return False, [reason]
+    try:
+        res = si.compare(si.load(first)[1], si.load(second)[1])
+    except Exception as err:  # noqa: BLE001  a truncated or corrupt file is a missing save, not a crash of the checker
+        return False, [f"a save could not be read ({err}): nothing was compared"]
     with open(first, "rb") as fa, open(second, "rb") as fb:
         same_file = fa.read() == fb.read()
     lines = si.describe(res)
+    if res["equal"] and not res["packets_a"]:
+        return False, ["both saves are empty (0 packets): nothing was compared"]
     if res["equal"] and not same_file:
         lines.append("(every packet is equal, the container bytes differ: compressor or seek table)")
     return res["equal"], lines
@@ -346,16 +387,18 @@ def masked_packets(pk, policy: dict):
 
 
 def baseline_record(mission: str, save_at: int, load_at: int, first: str, second: str | None, fingerprint: dict | None,
-                    mask_path: str | None = None, first_save_only: bool = False) -> dict:
+                    mask_path: str | None = None, first_save_only: bool = False, rc: int | None = None) -> dict:
     pk = si.load(first)[1]
     policy = mask_policy(mask_path)
-    identical, _ = resave_verdict(first, second)
-    ok, _ = fixture_verdict(first, second, mask_path)
+    identical, _ = resave_verdict(first, second, rc)
+    ok, _ = fixture_verdict(first, second, mask_path, rc)
     pk = masked_packets(pk, policy)
     return {"mission": mission, "save_at": save_at, "load_at": load_at, "gates": resave_env(save_at, load_at), "exe": fingerprint,
             "comparison": policy,
             # WHY recorded: a first-save-only baseline never proved the re-save, so a reader must be able to tell it from a strong one.
             "judged": "first-save-only" if first_save_only else "first-save-and-resave",
+            # WHY recorded: --first-save-only waives the re-save's CONTENT, not its existence: a run with no re-save proved nothing.
+            "resave_present": save_evidence(second, "re-save") is None,
             "packets": len(pk), "overall": si.overall(pk), "resave_identical": identical, "resave_matches_policy": ok,
             "runs": [list(r) for r in si.runs(pk)],
             "about": "digest of the quicksave a round-trip fixture writes; tools/saveload_roundtrip.py --baseline / --check"}
@@ -366,6 +409,10 @@ def check_baseline_record(base: dict, cur: dict):
     lines = []
     if not isinstance(base, dict) or not isinstance(base.get("runs"), list) or not isinstance(base.get("overall"), str):
         return False, ["malformed baseline: it needs a 'runs' list and an 'overall' digest; record it again with --baseline"]
+    if not base["runs"] or not isinstance(cur.get("runs"), list) or not cur["runs"] or not cur.get("packets"):
+        return False, ["nothing to compare: the baseline or this run has no packets"]
+    if not cur.get("resave_present"):
+        return False, ["no valid re-save this run: a missing, empty or crashed re-save is not a pass"]
     if json.dumps(base.get("comparison", {"mode": "exact"}), sort_keys=True) != json.dumps(cur.get("comparison", {"mode": "exact"}), sort_keys=True):
         return False, ["baseline comparison policy differs; historical hashes cannot be remasked: record --baseline with the same --mask"]
     # A save taken at another frame is another scenario moment: its digest cannot match, and a silent mismatch once hid a re-record at the CLI default.
@@ -388,9 +435,10 @@ def check_baseline_record(base: dict, cur: dict):
         lines.append(f"runs match but the overall digest differs ({base['overall']} vs {cur['overall']})")
         return False, lines
     lines.append(f"save matches the {cur.get('comparison', {'mode': 'exact'})['mode']} baseline: {cur['packets']} packets, digest {cur['overall']}")
-    if base.get("resave_matches_policy", base.get("resave_identical")) and not cur.get("resave_matches_policy", cur.get("resave_identical")):
-        lines.append("the re-save no longer matches the save's comparison policy")
-        return False, lines
+    if not base.get("judged") or base.get("judged") == "first-save-and-resave":
+        if base.get("resave_matches_policy", base.get("resave_identical")) and not cur.get("resave_matches_policy", cur.get("resave_identical")):
+            lines.append("the re-save no longer matches the save's comparison policy")
+            return False, lines
     return True, lines
 
 
@@ -398,18 +446,25 @@ def baseline_path(mission: str) -> str:
     return os.path.join(BASELINE_DIR, mission + ".json")
 
 
-def masked_resave_verdict(first: str, second: str, mask_path: str):
+def masked_resave_verdict(first: str | None, second: str | None, mask_path: str, rc: int | None = None):
     """-> (ok, report lines) judging a re-save against the byte-offset noise mask instead of byte identity: ok when every differing byte lies inside it.
     WHY across builds: a planted save is written by ANOTHER exe by definition (that is what the leg proves), so the mask's cross-build ranges apply."""
+    if rc:
+        return False, [f"the smoke run exited {rc}: the quickload did not complete, so the re-save cannot be trusted (see the run log)"]
+    reason = save_evidence(first, "quicksave") or save_evidence(second, "re-save")
+    if reason:
+        return False, [reason]
     res = si.compare(si.load(first)[1], si.load(second)[1], si.load_mask(mask_path), across_builds=True)
+    if not res["packets_a"]:
+        return False, ["both saves are empty (0 packets): nothing was compared"]
     return res["first_outside"] is None, si.describe(res)
 
 
-def fixture_verdict(first: str | None, second: str | None, mask_path: str | None = None):
-    ok, lines = resave_verdict(first, second)
-    if mask_path and first and second and os.path.isfile(first) and os.path.isfile(second):
-        return masked_resave_verdict(first, second, mask_path)
-    return ok, lines
+def fixture_verdict(first: str | None, second: str | None, mask_path: str | None = None, rc: int | None = None):
+    # WHY: the mask is the policy under which a differing re-save can still pass; masked_resave_verdict also refuses a missing/empty/crashed run.
+    if mask_path:
+        return masked_resave_verdict(first, second, mask_path, rc)
+    return resave_verdict(first, second, rc)
 
 
 def frames_from_baseline(args, base: dict | None) -> str | None:
@@ -447,22 +502,23 @@ def cmd_fixture(args) -> int:
     if refusal:
         print("saveload_roundtrip check: FAIL\n" + refusal)
         return 1
-    dest, first, second, fp = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration, args.plant,
-                                        args.install, args.save_dir, args.ref_exe, args.ref_commit, sim_speed=args.sim_speed)
-    ok, lines = fixture_verdict(first, second, args.mask)
+    dest, first, second, fp, rc = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration, args.plant,
+                                             args.install, args.save_dir, args.ref_exe, args.ref_commit, sim_speed=args.sim_speed)
+    ok, lines = fixture_verdict(first, second, args.mask, rc)
     print(f"files kept in {dest}")
     if args.cmd == "resave":
         print(("saveload_roundtrip resave: PASS" if ok else "saveload_roundtrip resave: FAIL") + "\n" + "\n".join(lines))
         return 0 if ok else 1
+    # WHY: --first-save-only waives the (known lossy) re-save comparison, never a crashed child or a missing first save: that is no evidence at all.
+    if rc or not first or save_evidence(first, "quicksave") or save_evidence(second, "re-save"):
+        print(f"saveload_roundtrip {args.cmd}: FAIL\n" + "\n".join(lines))
+        return 1
     if args.mask and not ok and not args.first_save_only:
         print(f"saveload_roundtrip {args.cmd}: FAIL\n" + "\n".join(lines))
         return 1
     if args.mask and not ok:
         print("the re-save leaves the mask (information only, --first-save-only):\n" + "\n".join(lines[:3]))
-    if not first:
-        print("saveload_roundtrip: " + lines[0])
-        return 1
-    rec = baseline_record(args.mission, args.save_at, args.load_at, first, second, fp, args.mask, args.first_save_only)
+    rec = baseline_record(args.mission, args.save_at, args.load_at, first, second, fp, args.mask, args.first_save_only, rc)
     # WHY: a baseline pins the declared stock-plus-overlay data (tools/sim_determinism.py), not whatever a lane's install carries.
     rec["data_fingerprint"] = sd.data_fingerprint(args.install)
     if args.cmd == "baseline":
