@@ -127,7 +127,7 @@ MANIFEST_PREFIX = "data/missions/"
 # LISTED HERE, however convenient -- "a source tree someone edits is treated as
 # authoritative" is the exact defect this module exists to kill, and
 # `A:/Games/mc2-srcdata/missions` demonstrates it: it carries local edits to
-# mc2_01 and mc2_13 (measured 2026-07-30). It stays reachable by explicit
+# mc2_01 and mc2_13. It stays reachable by explicit
 # `--missions-dir` or $MC2_STOCK_MISSIONS_DIR, where per-stem verification
 # accepts the 122 files that still match and refuses the 4 that do not.
 # `scripts/check-stock-mission-data.py` enforces the rule: every candidate
@@ -395,15 +395,13 @@ def verify_dir(directory: Path,
 # ---------------------------------------------------------------------------
 # Per-mission verification, for the raw `--pak` entry points
 # ---------------------------------------------------------------------------
-# STOCK-DATA-TRUTH-2. `resolve_missions_dir` above serves tools that take a
+# `resolve_missions_dir` above serves tools that take a
 # DIRECTORY and pick missions out of it. A second family of tools takes ONE
 # `--pak` path (cook_shoreline `cook`, overlay_extract, control_map_tool,
 # cook_markings, scatter_tool `cook`/`revert`) and had no provenance check at
-# all -- `--pak` is `required=True`, and STOCK-DATA-TRUTH-1 read requiredness
-# as sufficient. `cb4cd5ef` then disproved that for `all-missions` ("requiredness
-# only forces a value to be typed; it says nothing about whether the value is
-# right") but applied the fix only to the directory sibling. This closes the
-# per-mission half with the same argument.
+# all -- `--pak` is `required=True`, and requiredness was once read as
+# sufficient. It is not: it only forces a value to be typed; it says nothing
+# about whether the value is right.
 #
 # THE RULE, and why it is not simply "refuse anything unverified":
 #
@@ -413,17 +411,16 @@ def verify_dir(directory: Path,
 #
 # The masquerade case -- row 2 -- is the actual defect: the Carver5 tree's files
 # carry the SAME NAMES as the shipped ones, so a wrong `--pak` reads as right at
-# every glance. Measured 2026-07-30: all 24 `mc2_01..24` `.pak` AND `.fit` differ
-# from the shipped `mission.fst`. That is now unmissable.
+# every glance. All 24 `mc2_01..24` `.pak` AND `.fit` differ from the shipped
+# `mission.fst`, so a wrong path is unmissable.
 #
 # Row 3 proceeds ON PURPOSE. Authoring a custom map is a first-class use of these
 # tools, and every synthetic test fixture in the tree is a non-stock NAME
 # (`synth_island.pak`, `wet_map.pak`, `synthetic_scatter.pak`). Refusing row 3
 # would put `--allow-nonstock` on ~20 test invocations, and a flag that appears
 # on twenty routine call sites is one people copy into real recipes without
-# reading -- which is how the wrong path got into
-# `.claude/SHORELINE-BATCH-COOK-1.md` in the first place. Keeping the opt-out
-# RARE is what keeps it meaningful. Row 3 is never silent: it prints a NON-STOCK
+# reading -- which is how the wrong path gets into a working recipe. Keeping the
+# opt-out RARE is what keeps it meaningful. Row 3 is never silent: it prints a NON-STOCK
 # banner, so the corpus is always stated, which is the property that was missing.
 
 

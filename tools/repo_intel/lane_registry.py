@@ -217,13 +217,12 @@ def register_lane(repo_root: Path, name: str, worktree: str = "",
         if ln != name and rec["deploy_lane"] and e.get("deploy_lane") == rec["deploy_lane"]
     ]
 
-    # LINK-GUARD-1 (2026-07-30): deploy_clash above compares deploy_lane
-    # STRINGS, so it only ever catches two lanes that named the same dir. On
-    # 2026-07-30 four dirs under A:/Games/mc2-opengl had different names and
-    # ~1530 shared inodes; that clash list was empty the whole time and the
-    # registry reported every one of them free. Report the LINK GROUP, not just
-    # the path, so a lane asking "is this install really mine?" gets a true
-    # answer.
+    # deploy_clash above compares deploy_lane STRINGS, so it only ever catches
+    # two lanes that named the same dir. Four
+    # dirs under A:/Games/mc2-opengl had different names yet shared ~1530
+    # inodes; that clash list was empty the whole time and the registry
+    # reported every one of them free. Report the LINK GROUP, not just the
+    # path, so a lane asking "is this install really mine?" gets a true answer.
     link_warnings: list = []
     link_group_info: dict = {}
     same_bytes: list = []

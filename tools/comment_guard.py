@@ -105,8 +105,8 @@ PROTECT = ([(n, re.compile(p)) for n, p in _CS] +
 _PRAGMA_LINE = re.compile(r"^\s*#\s*pragma\b|\bstatic_assert\b|\b_Static_assert\b")
 
 # Gate names are protective only when the compiled gate table registers them: `MC2_VERIFY` and
-# friends are macros. Slice/phase tags (BUILDING-GLASS-1) are history, so they are masked out
-# before the keyword rules run (a date such as FOO-2026-10-09 is not masked).
+# friends are macros. Slice/phase tags are history, so they are masked out
+# before the keyword rules run (a date-only tag is not masked).
 _MC2_TOKEN = re.compile(r"(?<![A-Za-z0-9_])MC2_[A-Z0-9_]*[A-Z0-9]")
 _SLICE_TAG = re.compile(r"(?<![A-Za-z0-9_-])[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+-\d+(?![A-Za-z0-9_])")
 _DATE_IN_TAG = re.compile(r"20[0-9]{2}-[0-9]{2}")

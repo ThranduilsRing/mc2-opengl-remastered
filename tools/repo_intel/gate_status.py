@@ -180,8 +180,8 @@ def gate_status(repo_root: Path, var: str) -> dict:
         return {"error": f"invalid gate name {var!r} (expected MC2_[A-Z0-9_]+)"}
     repo_root = Path(repo_root)
 
-    # REGISTRY-PARSER-TRUTH-1: "the registry did not parse" must NEVER be
-    # rendered as "this gate is not registered".  Until 2026-07-31 this tool
+    # "The registry did not parse" must NEVER be
+    # rendered as "this gate is not registered".  This tool once
     # answered `registered: false, registry_entry: null, verdict: "OK",
     # flags: []` about MC2_LIGHTING_DEBUG_VIEW -- a registered gate -- while its
     # own reader list cited the registry line the parser had choked on.  That is

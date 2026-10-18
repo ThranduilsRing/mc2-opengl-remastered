@@ -154,11 +154,11 @@ def _index_mod_layer(
         return
 
     for root, dirs, files in os.walk(str(data_dir)):
-        # Skip dot-prefixed directories (ruling C4 -- mirrors file.cpp:225)
+        # Skip dot-prefixed directories (mirrors file.cpp:225)
         dirs[:] = [d for d in dirs if not d.startswith(".")]
 
         for fname in files:
-            # Skip dot-prefixed files (ruling C4 -- mirrors file.cpp:225)
+            # Skip dot-prefixed files (mirrors file.cpp:225)
             if fname.startswith("."):
                 continue
             abs_path = os.path.join(root, fname)
@@ -360,7 +360,7 @@ def resolve(req: str, config: ResolverConfig) -> dict:
     Layer names match the engine S3 trace exactly:
       "mod:<id>", "base-loose", "base-strip", "fastfile", "cd", "MISS"
     """
-    # Step 1: normalize (mirrors file.cpp:743-752 + NormalizeKey:105)
+    # Normalize (mirrors file.cpp:743-752 + NormalizeKey:105)
     key = normalize_key(req)
 
     def _result(layer: str, path: str, shadowed_layers: Optional[List[str]] = None) -> dict:
@@ -373,7 +373,7 @@ def resolve(req: str, config: ResolverConfig) -> dict:
             "shadowed": shadowed_layers if shadowed_layers is not None else [],
         }
 
-    # Step 2: mod overlay (mirrors TryModOpen file.cpp:412-431)
+    # Mod overlay (mirrors TryModOpen file.cpp:412-431)
     if config.mod_index and should_search_mods(key):
         if key in config.mod_index:
             abs_path, mod_id = config.mod_index[key]
@@ -387,23 +387,23 @@ def resolve(req: str, config: ResolverConfig) -> dict:
             return _result(f"mod:{mod_id}", abs_path, shadowed_list)
         # mod-miss: fall through to base
 
-    # Step 3: base loose file (mirrors file.cpp:780)
+    # Base loose file (mirrors file.cpp:780)
     base_path = os.path.join(config.game_dir, key.replace("/", os.sep))
     if os.path.isfile(base_path):
         return _result("base-loose", base_path.replace("\\", "/"))
 
-    # Step 4: numeric-size-subdir strip (mirrors file.cpp:788-806)
+    # Numeric-size-subdir strip (mirrors file.cpp:788-806)
     stripped = _strip_size_subdir(key)
     if stripped is not None:
         stripped_path = os.path.join(config.game_dir, stripped.replace("/", os.sep))
         if os.path.isfile(stripped_path):
             return _result("base-strip", stripped_path.replace("\\", "/"))
 
-    # Step 5: FastFile membership (mirrors FastFileFind file.cpp:814)
+    # FastFile membership (mirrors FastFileFind file.cpp:814)
     if key in config.fst_set:
         return _result("fastfile", "")
 
-    # Step 6: CD path -- unreachable in modern deploys (Environment.checkCDForFiles=false)
+    # CD path -- unreachable in modern deploys (Environment.checkCDForFiles=false)
     # Not simulated here; would need a CD install path parameter.
     # The skip-list in parity_smoke.py documents this as an acceptable divergence.
 

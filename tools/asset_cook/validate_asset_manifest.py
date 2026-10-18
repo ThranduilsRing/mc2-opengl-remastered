@@ -357,7 +357,7 @@ def _b_validate_texture_refs(refs, errs: list) -> set:
                     f"'{_B_SLOT_COLORSPACE[slot]}', got '{cs}'"
                 )
 
-        # ASSET-MANIFEST-0-EXTEND: optional cooked-asset metadata shape.
+        # Optional cooked-asset metadata shape.
         if "vkFormat" in ref and not (
             isinstance(ref["vkFormat"], int) and not isinstance(ref["vkFormat"], bool)
         ):
