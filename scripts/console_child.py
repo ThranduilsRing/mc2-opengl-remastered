@@ -97,6 +97,56 @@ def _std_arg(fd: int):
         return subprocess.DEVNULL
 
 
+# Parent-with-no-console support. Codex-style agents run every command from a
+# parent with NO console; giving each child CREATE_NO_WINDOW then makes one
+# hidden conhost.exe per child (hundreds per build/contracts run), which crashed
+# the owner's PIA VPN daemon again on 2026-10-17. Instead the parent adopts ONE
+# hidden console, owned by a tiny helper process, and all children share it.
+_SHARED_CONSOLE = False
+_SHARED_TRIED = False
+
+# The helper only holds its console open and exits when the parent process does.
+_HELPER_CODE = (
+    "import ctypes,sys;k=ctypes.windll.kernel32;k.OpenProcess.restype=ctypes.c_void_p;"
+    "h=k.OpenProcess(0x00100000,False,int(sys.argv[1]));"
+    "k.WaitForSingleObject(ctypes.c_void_p(h),0xFFFFFFFF) if h else None"
+)
+
+
+def _adopt_shared_console() -> bool:
+    """Give THIS process one hidden console (once). False -> caller keeps the old flag path.
+
+    A helper is spawned with CREATE_NO_WINDOW (its own single hidden console, never visible, never focused); we AttachConsole to it.
+    The helper waits on our process handle, so it dies with us. Any failure leaves the process console-less.
+    """
+    global _SHARED_CONSOLE, _SHARED_TRIED
+    if _SHARED_TRIED:
+        return _SHARED_CONSOLE
+    _SHARED_TRIED = True
+    if os.environ.get("MC2_NO_SHARED_CONSOLE"):
+        return False
+    try:
+        import ctypes
+        import time
+        k32 = ctypes.windll.kernel32
+        helper = subprocess.Popen(  # background-launch: allow single helper owning the shared hidden console
+            [sys.executable, "-I", "-S", "-c", _HELPER_CODE, str(os.getpid())],
+            creationflags=CREATE_NO_WINDOW, stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True)
+        deadline = time.monotonic() + 5.0
+        while time.monotonic() < deadline:
+            if helper.poll() is not None:
+                return False
+            if k32.AttachConsole(helper.pid):
+                _SHARED_CONSOLE = True
+                return True
+            time.sleep(0.02)
+        helper.kill()
+    except Exception:
+        pass
+    return False
+
+
 def child_kwargs(*, redirected: bool = False, **extra) -> dict:
     """Kwargs to splat into a console-child subprocess call.
 
@@ -119,7 +169,20 @@ def child_kwargs(*, redirected: bool = False, **extra) -> dict:
             s.flush()
         except Exception:
             pass
-    if sys.platform != "win32" or has_console():
+    if sys.platform != "win32":
+        return kw
+    if not _SHARED_CONSOLE:
+        if has_console():
+            return kw
+        if not _adopt_shared_console():
+            pass  # fall back: CREATE_NO_WINDOW per child
+    if _SHARED_CONSOLE:
+        # Shared hidden console: no flag (no new conhost), but our std handles
+        # are not that console's, so forward them explicitly as before.
+        if redirected:
+            return kw
+        for name, fd in (("stdin", 0), ("stdout", 1), ("stderr", 2)):
+            kw.setdefault(name, _std_arg(fd))
         return kw
     kw["creationflags"] = kw.get("creationflags", 0) | CREATE_NO_WINDOW
     if redirected:

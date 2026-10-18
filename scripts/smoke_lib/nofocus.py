@@ -70,9 +70,9 @@ import time
 from typing import List, Optional, Sequence
 
 try:    # imported as scripts.smoke_lib (package context)
-    from ..console_child import has_console
+    from ..console_child import has_console, _adopt_shared_console
 except ImportError:    # imported as top-level smoke_lib with scripts/ on sys.path
-    from console_child import has_console
+    from console_child import has_console, _adopt_shared_console
 
 __all__ = [
     "DesktopOccupancyRefused",
@@ -322,7 +322,7 @@ def hidden_kwargs(**extra) -> dict:
     kw = dict(extra)
     if sys.platform != "win32":
         return kw
-    if not has_console():
+    if not has_console() and not _adopt_shared_console():
         kw["creationflags"] = kw.get("creationflags", 0) | CREATE_NO_WINDOW
     si = kw.get("startupinfo") or subprocess.STARTUPINFO()
     si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
