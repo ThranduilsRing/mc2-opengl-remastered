@@ -190,11 +190,15 @@ class ModuleTestCache:
                                          for a in rest):
                 return "list", desc
             return "tree", desc
-        if exe == "cmd" and [t.lower() for t in toks[1:]] == ["/c", "ver"]:
+        if exe == "cmd" and [t.lower().strip(chr(34)) for t in toks[1:]] == ["/c", "ver"]:
             return "harmless", desc
         tmp = os.path.normpath(tempfile.gettempdir()).replace(bs, "/").lower() + "/"
         if os.path.isabs(toks[0]) and os.path.normpath(toks[0]).replace(bs, "/").lower().startswith(tmp):
             return "foreign", desc          # an executable the test itself built into the temp dir
+        if os.path.isabs(toks[0]) and any(
+                (os.path.normpath(toks[0]).replace(bs, "/").lower() + "/").startswith(root_l + n + "/")
+                for n in OUTPUT_DIRS):
+            return "foreign", desc          # ... or into the git-ignored scratch / run output dirs
         if exe in ("glslc", "glslangvalidator", "glslang", "spirv-cross", "spirv-val", "spirv-opt", "spirv-dis",
                    "slangc"):
             return "tool", toks[0]
