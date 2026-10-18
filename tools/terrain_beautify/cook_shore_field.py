@@ -15,9 +15,11 @@ the coarse data beats the quantization.
 
 RECIPE (owner + outside reviewer, 2026-10-18: "upsample, then erode only at the shore")
 ------
-  1. continuous field: visual_height_4x.r32 (else the coarse pak grid),
-     cubic-spline upsampled --upsample x (default 4 -> 8 wu cells, 16x coarse),
-     corner-aligned (side = (n-1)*f+1, texel centres on grid vertices).
+  1. continuous field: the coarse pak heightfield the terrain mesh is drawn from
+     (--source coarse, default; --source visual uses visual_height_4x.r32, whose
+     re-authored coast drifts from the rendered land), cubic-spline upsampled
+     --upsample x over the 128 wu grid (default 16 -> 8 wu cells), corner-aligned
+     (side = (n-1)*f+1, texel centres on grid vertices).
   2. threshold at the mission water level -> land/water; morphological open
      (removes spikes) and close (fills notches).
   3. signed distance field, + land / - water, in world units.
@@ -61,7 +63,8 @@ from mission_terrain_analyzer import (  # noqa: E402
 WORLD_UNITS_PER_VERTEX = 128.0
 FIELD_NAME = "shore_field.r16f"
 
-DEFAULT_UPSAMPLE = 4           # over visual_height_4x -> 8 wu cells
+DEFAULT_SOURCE = "coarse"
+DEFAULT_UPSAMPLE = 16          # over the coarse 128 wu grid -> 8 wu cells (4 over visual_height_4x)
 DEFAULT_STORE = 2              # over visual_height_4x -> 16 wu cells stored
 DEFAULT_OPEN_WU = 16.0         # morphological open radius (spikes), wu
 DEFAULT_CLOSE_WU = 16.0        # morphological close radius (notches), wu
@@ -72,10 +75,13 @@ DEFAULT_DEPTH_SIGMA_WU = 96.0  # smoothing of the real depth used beyond the ban
 DEFAULT_SHORE_SLOPE = 0.2      # depth (wu) per wu offshore inside the band
 
 
-def load_source(pak: Path, visual_height: Path | None) -> tuple[np.ndarray, float, float]:
-    """Returns (grid, cell_wu, water_elevation). Row 0 = north (vertex row 0)."""
+def load_source(pak: Path, visual_height: Path | None, source: str = "coarse") -> tuple[np.ndarray, float, float]:
+    """Returns (grid, cell_wu, water_elevation). Row 0 = north (vertex row 0).
+    source="coarse" (default): the pak heightfield the terrain mesh is actually drawn from, so the
+    smoothed coast stays on the rendered land; "visual": visual_height_4x.r32, whose re-authored
+    coast drifts from the rendered terrain (water then paints over dry land)."""
     welev = read_water_elevation(pak.with_suffix(".fit"))
-    if visual_height is not None and visual_height.is_file():
+    if source == "visual" and visual_height is not None and visual_height.is_file():
         data = np.fromfile(visual_height, dtype="<f4")
         v = int(round(data.size ** 0.5))
         if v * v == data.size:
@@ -134,14 +140,17 @@ def build_field(h: np.ndarray, welev: float, cell_wu: float, *, open_wu: float, 
     return {"field": welev - depth, "sdf": sdf, "sdf0": sdf0, "band": band}
 
 
-def cook_field(pak: Path, visual_height: Path | None, *, upsample_f: int = DEFAULT_UPSAMPLE,
+def cook_field(pak: Path, visual_height: Path | None, *, source: str = DEFAULT_SOURCE,
+               upsample_f: int = DEFAULT_UPSAMPLE,
                store_f: int = DEFAULT_STORE, open_wu: float = DEFAULT_OPEN_WU, close_wu: float = DEFAULT_CLOSE_WU,
                sdf_sigma_wu: float = DEFAULT_SDF_SIGMA_WU, sdf_passes: int = DEFAULT_SDF_PASSES,
                band_wu: float = DEFAULT_BAND_WU, depth_sigma_wu: float = DEFAULT_DEPTH_SIGMA_WU,
                shore_slope: float = DEFAULT_SHORE_SLOPE) -> dict:
-    src, src_cell, welev = load_source(pak, visual_height)
-    fine = upsample(src, upsample_f)
-    fine_cell = src_cell / max(upsample_f, 1)
+    src, src_cell, welev = load_source(pak, visual_height, source)
+    # upsample_f is relative to the coarse grid; a visual (32 wu) source needs a quarter of it
+    f = upsample_f if src_cell == WORLD_UNITS_PER_VERTEX else max(upsample_f // 4, 1)
+    fine = upsample(src, f)
+    fine_cell = src_cell / max(f, 1)
     res = build_field(fine, welev, fine_cell, open_wu=open_wu, close_wu=close_wu, sdf_sigma_wu=sdf_sigma_wu,
                       sdf_passes=sdf_passes, band_wu=band_wu, depth_sigma_wu=depth_sigma_wu,
                       shore_slope=shore_slope)
@@ -182,7 +191,7 @@ def coast_preview(res: dict, crop: tuple[float, float, float, float] | None, sca
 
 
 def _tuning(args) -> dict:
-    return dict(upsample_f=args.upsample, store_f=args.store, open_wu=args.open, close_wu=args.close,
+    return dict(source=args.source, upsample_f=args.upsample, store_f=args.store, open_wu=args.open, close_wu=args.close,
                 sdf_sigma_wu=args.sigma, sdf_passes=args.passes, band_wu=args.band,
                 depth_sigma_wu=args.depth_sigma, shore_slope=args.shore_slope)
 
@@ -248,6 +257,7 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     def tuning(p):
+        p.add_argument("--source", choices=("coarse", "visual"), default=DEFAULT_SOURCE)
         p.add_argument("--upsample", type=int, default=DEFAULT_UPSAMPLE)
         p.add_argument("--store", type=int, default=DEFAULT_STORE)
         p.add_argument("--open", type=float, default=DEFAULT_OPEN_WU)
