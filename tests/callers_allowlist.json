@@ -55,6 +55,7 @@
   "scripts/tests/test_deploy_build_layout.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_deploy_coherence.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_deploy_disk_space.py": "Pytest-discovered module through the scripts_tests board row.",
+  "scripts/tests/test_deploy_fast_path.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/tests/test_deploy_folder_lease.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/tests/test_deploy_staleness.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_dup_lines_ratchet.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
