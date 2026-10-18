@@ -176,10 +176,14 @@ not by op: op-by-op porting cannot delete a type.
 - WHAT "bit-identical" promises: the same exe repeats itself, across job-system worker counts and across save/load (SIMID chain,
   saveload digests). It does NOT promise identity across compilers (MSVC vs clang-cl presets) or platforms.
 - PINNED in `mclib/math/glm_config.h` (included by `mc2_math.h`; compile-time, fails the build on change): GLM 1.0.1, scalar
-  (`GLM_CONFIG_SIMD == GLM_DISABLE` via GLM_FORCE_PURE), no aligned gentypes, no forced intrinsics/FMA; under MSVC no `/fp:fast`,
-  `/fp:contract` or `/fp:strict` (the build passes no /fp flag = /fp:precise; MSVC defines `_M_FP_PRECISE` only for an explicit
-  flag, so the check is on the deviating macros). The identity corpus TUs keep their explicit `/fp:precise` (clang: `-ffp-contract=off`).
-  OPEN: clang-cl presets contract by default (`-ffp-contract=on`) outside the corpus TUs; not checked (cross-compiler is not promised).
+  (`GLM_CONFIG_SIMD == GLM_DISABLE` via GLM_FORCE_PURE), no aligned gentypes, no forced intrinsics/FMA.
+- PINNED per command line (s23, replaces the s22 `_M_FP_*` preprocessor guard, which ran only in TUs that included GLM and was
+  bypassed under clang-cl): `cmake/Mc2SimFpContract.cmake` adds `/fp:precise` to every first-party TU (root project after the vendored
+  subdirectories, every standalone project through Mc2Standalone.cmake) and under clang-cl `/clang:-ffp-contract=off` (clang-cl's
+  `/fp:precise` alone means `-ffp-contract=on`, verified with `clang-cl -###`); configure fails when the global flags carry
+  `/fp:fast|contract|strict`, `-ffast-math`, `-ffp-model=fast|strict` or `-ffp-contract=fast|on`. `scripts/check-sim-fp-contract.py`
+  (check-contracts row `sim_fp_contract`) checks every code/, mclib/ and GameOS/ entry of the compile database (last `/fp:` is precise,
+  no forbidden flag, clang-cl last `-ffp-contract=` off) and the CMake sources; `--selftest` and the pytest are the rejection probes.
 - Retained exact wrappers (mc2_math.h), one line each:
   - `transformPoint/transformVector`: row-vector p*M (Stuff convention); glm's `M*p` is the column convention, a different product.
   - `divide(v, s)`: one float reciprocal then three multiplies, as Stuff::Vector3D::Divide; glm `v / s` divides each component (1 ULP).

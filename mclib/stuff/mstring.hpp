@@ -513,26 +513,28 @@ namespace Stuff {
 		//
 		Verify(sizeof(IteratorPosition) == sizeof(DWORD));
 
-		static int andAway[3] = {0x000000ff, 0x0000ffff, 0x00ffffff };
-
 		IteratorPosition ret = 0;
 
 		/*register*/ int i, r, len = stringLength >> 2;
 
+		// Whole words are copied out (the text is a char array). The shift is the x64 one: the count is masked to five
+		// bits, which is what the arithmetic shift always compiled to (a count of 32 or more is undefined in C++).
 		for(i=0;i<len;i++)
 		{
-			r = ((int *)stringText)[i];
-// sebi: !NB            
-#ifndef LINUX_BUILD
-			_asm mov ecx, i
-			_asm ror r, cl
-#else
-            r = r >> i;
-#endif
+			memcpy(&r, stringText + 4 * i, sizeof(r));
+			r = r >> (i & 31);
 			ret += r;
 		}
 
-		ret += stringLength&0x3 ? ((int *)stringText)[i] & andAway[stringLength&0x3-1] : 0;
+		// The 1-3 trailing bytes, zero-extended: the low bytes of the next word, read without passing the text. The old mask
+		// index (stringLength&0x3-1, i.e. &2) kept a third byte for a remainder of two, which is the NUL terminator.
+		const int tailBytes = stringLength & 0x3;
+		if (tailBytes)
+		{
+			int tail = 0;
+			memcpy(&tail, stringText + 4 * i, tailBytes);
+			ret += tail;
+		}
 
 		return (ret & 0x7fffffff);
 	}

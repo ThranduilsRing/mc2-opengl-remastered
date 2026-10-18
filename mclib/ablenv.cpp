@@ -12,6 +12,7 @@
 #include<string.h>
 #include<cassert>
 #include<set>
+#include<vector>
 #include"platform_str.h"
 #include "Gates/gate.h"
 
@@ -180,6 +181,16 @@ long ProfileLogFunctionTimeLimit = 5;
 UserFilePtr			UserFile::files[MAX_USER_FILES];
 
 static int32_t ABL_ENV_MARK = 999;
+// Order-completion flags trail the module records (BUGS row 71). The section is written only when some instance has a
+// completed order recorded, so a save without one keeps the legacy bytes and a legacy save loads as before (flags clear).
+static constexpr int32_t ABL_ORDER_FLAGS_MARK = 0x4F524446;
+
+static long orderFlagWords (ABLModule* module) {
+	if (!module || !module->getOrderCallFlags())
+		return 0;
+	long numOrderCalls = ModuleRegistry[module->getHandle()].numOrderCalls;
+	return numOrderCalls ? 1 + numOrderCalls / 32 : 0;
+}
 
 //***************************************************************************
 // PROFILING LOG routines
@@ -1452,6 +1463,16 @@ void ABLi_saveEnvironment (ABLFile* ablFile) {
 		if (ModuleInstanceRegistry[i])
 			ModuleInstanceRegistry[i]->write(ablFile);
 	}
+	bool anyCompleted = false;
+	for (int i = 0; i < NumModules && !anyCompleted; i++)
+		for (long w = 0; w < orderFlagWords(ModuleInstanceRegistry[i]); w++)
+			anyCompleted = anyCompleted || ModuleInstanceRegistry[i]->getOrderCallFlags()[w] != 0;
+	if (anyCompleted) {
+		ablFile->writeInt(ABL_ORDER_FLAGS_MARK);
+		for (int i = 0; i < NumModules; i++)
+			for (long w = 0; w < orderFlagWords(ModuleInstanceRegistry[i]); w++)
+				ablFile->writeInt(static_cast<int32_t>(ModuleInstanceRegistry[i]->getOrderCallFlags()[w]));
+	}
 }
 
 //---------------------------------------------------------------------------
@@ -1521,9 +1542,11 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 			clearScalarSlotPointerArm(dataPtr);
 		}
 	}
+	std::vector<ABLModulePtr> readOrder;
 	for (int i = 0; i < numLibs; i++) {
 		ABLModulePtr library = LibraryInstanceRegistry[i];
 		library->read(ablFile);
+		readOrder.push_back(library);
 	}
 
 	for (int i = 0; i < (numMods - numLibs); i++) {
@@ -1533,7 +1556,14 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 		else
 			module = ModuleInstanceRegistry[numLibs + i];
 		module->read(ablFile);
+		readOrder.push_back(module);
 	}
+
+	// The trailing order-completion section (absent in a save with no completed order and in a legacy save).
+	if (!ablFile->eof() && ablFile->readInt() == ABL_ORDER_FLAGS_MARK)
+		for (ABLModulePtr module : readOrder)
+			for (long w = 0; w < orderFlagWords(module); w++)
+				module->getOrderCallFlags()[w] = static_cast<unsigned long>(static_cast<uint32_t>(ablFile->readInt()));
 }
 
 //***************************************************************************
