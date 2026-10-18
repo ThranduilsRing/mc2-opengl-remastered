@@ -46,13 +46,13 @@
       "next": "visual_proven"
     },
     "MechOpaque": {
-      "status": "SPIRV_ELIGIBLE",
+      "status": "DESCRIPTIVE_REGISTERED",
       "renderPassId": "MechOpaque",
       "pipelineId": "MechOpaque",
       "shaderBase": "mech",
-      "stateOwner": "applyPipeline",
-      "evidence": "gos_mech_batcher.cpp applyPipeline(MechOpaque); SPIRV-MECHOPAQUE-PILOT shipped + mc2_24 byte-identical",
-      "next": "none (furthest lifecycle state)"
+      "stateOwner": "vulkan_island",
+      "evidence": "the GL mech draw (applyPipeline(MechOpaque)) was deleted in s59 M1; the descriptor stays registered for the frame-graph model and the pass is drawn by the Vulkan mech island",
+      "next": "retire the descriptor with the RenderCore frame-graph islands (3.9)"
     },
     "ShadowTerrain": {
       "status": "VISUAL_PROVEN",
