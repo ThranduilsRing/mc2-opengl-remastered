@@ -11,7 +11,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1100"
  },
  "exe": {
-  "sha": "e6134a43525a",
+  "sha": "621321942e88",
   "dirty": 0
  },
  "comparison": {
@@ -899,7 +899,7 @@
  ],
  "about": "digest of the quicksave a round-trip fixture writes; tools/saveload_roundtrip.py --baseline / --check",
  "data_fingerprint": {
-  "digest": "ab0dd57ba93dcad7",
+  "digest": "9ffe5ce425438ded",
   "inputs": [
    "mission.fst",
    "tgl.fst",
@@ -912,7 +912,7 @@
    "data/missions/",
    "data/warriors/"
   ],
-  "stock_digest": "8d4e57136dcf513e",
+  "stock_digest": "41173451b5049406",
   "overlay": {
    "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
    "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4",
