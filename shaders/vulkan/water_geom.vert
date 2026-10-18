@@ -58,6 +58,13 @@ layout(set = 0, binding = 0, std140) uniform WaterVsParams {
     vec4  p3;   // (alphaDeepByte, shoreFlat (mode 3 flat plane, 0/1), shoreDepthK, _pad)
 } U;
 
+// HORIZON-WAVE-1: the vertex stage reads the camera position (f0.yzw, MC2 world, the same space as
+// WorldPos) from the FS parameter block; only its leading vec4s are declared here (std140 prefix).
+layout(set = 0, binding = 1, std140) uniform WaterFsParams {
+    vec4 fog_color;
+    vec4 f0;    // (time, cameraPosX, cameraPosY, cameraPosZ)
+} F;
+
 // Output varyings -> water_geom.frag (base-layer subset of gos_terrain_water_mdi.frag).
 layout(location = 0) out vec4  Color;
 layout(location = 1) out vec2  Texcoord;
@@ -149,6 +156,16 @@ void main() {
     WaterThickness = waterElevation - velev;   // negative = above waterline
     float shoreBlendVS = max(alphaDepth, 1.0);
     float waveCos = ((waterBits & 0x80u) != 0u) ? -frameCos : frameCos;
+    // HORIZON-WAVE-1: the legacy wave lifts or drops every vertex by +/-frameCos (Terrain::waterAmplitude,
+    // 10 wu stock) with a RANDOM sign per vertex (mapdata.cpp RollDice). Seen from above that reads as a
+    // gentle bob; seen at a grazing angle the far edge of the plane IS the horizon, and the random
+    // per-vertex offsets turn it into a stepped, wavy line. Fade the displacement out as the view ray
+    // flattens toward the water plane: steep (gameplay) views keep the full wave, the horizon is flat.
+    {
+        vec3  toVert   = vec3(vxy, waterElevation) - F.f0.yzw;
+        float sinGraze = abs(toVert.z) / max(length(toVert), 1.0);
+        waveCos *= smoothstep(0.03, 0.12, sinGraze);
+    }
     // Shore mode 3 (U.p3.y != 0): flat animated plane everywhere; the FS carves the
     // shoreline from the bicubic sidecar. Mirrors gos_terrain_water_fast_mdi.vert u_shoreFlat.
     const bool shoreFlat = (U.p3.y != 0.0);
