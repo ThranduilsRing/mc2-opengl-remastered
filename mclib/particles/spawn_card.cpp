@@ -35,14 +35,13 @@
 #include "batcher.h"
 #include "fx_trace/fx_trace.h"
 
-#include <stuff/linearmatrix.hpp>
-#include <stuff/point3d.hpp>
+#include "../math/mc2_xform.h"
 
 namespace mc2 {
 namespace particles {
 
 void SpawnCard(const gosFX::Card__Specification* spec,
-               const Stuff::LinearMatrix4D*      parentToWorld,
+               const glm::mat4*      parentToWorld,
                float                              spawnSeed,
                float                              callerAge)
 {
@@ -103,9 +102,9 @@ void SpawnCard(const gosFX::Card__Specification* spec,
     // vertices around the origin). Same idiom as card.cpp:503 (Point3D
     // card_in_world(local_to_world)) — extracts the translation from the
     // affine matrix.
-    Stuff::Point3D worldPos(0.0f, 0.0f, 0.0f);
+    glm::vec3 worldPos(0.0f, 0.0f, 0.0f);
     if (parentToWorld) {
-        worldPos = Stuff::Point3D(*parentToWorld);
+        worldPos = mc2::math::getTranslation(*parentToWorld);
     }
 
     // Store raw MLR pool index; resolved to GOS handle at flush time.

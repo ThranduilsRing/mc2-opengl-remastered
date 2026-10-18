@@ -56,14 +56,13 @@
 #include "batcher.h"
 #include "fx_trace/fx_trace.h"
 
-#include <stuff/linearmatrix.hpp>
-#include <stuff/point3d.hpp>
+#include "../math/mc2_xform.h"
 
 namespace mc2 {
 namespace particles {
 
 void SpawnTube(const gosFX::Tube__Specification* spec,
-               const Stuff::LinearMatrix4D*      parentToWorld,
+               const glm::mat4*      parentToWorld,
                float                              spawnSeed,
                float                              callerAge)
 {
@@ -104,9 +103,9 @@ void SpawnTube(const gosFX::Tube__Specification* spec,
     // the head profile is created at this matrix's origin at Start). For
     // the marker we use the translation directly - same idiom as
     // SpawnCard / SpawnShard.
-    Stuff::Point3D worldPos(0.0f, 0.0f, 0.0f);
+    glm::vec3 worldPos(0.0f, 0.0f, 0.0f);
     if (parentToWorld) {
-        worldPos = Stuff::Point3D(*parentToWorld);
+        worldPos = mc2::math::getTranslation(*parentToWorld);
     }
 
     // Store raw MLR pool index; resolved to GOS handle at flush time.

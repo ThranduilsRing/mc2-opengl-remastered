@@ -28,7 +28,7 @@
 
 #include "gosfx/effect.hpp"
 
-namespace Stuff { class LinearMatrix4D; }
+#include "../math/glm_config.h"
 
 namespace mc2 {
 namespace particles {
@@ -57,7 +57,7 @@ namespace particles {
 //   false - spec is null OR its ClassID is one of Pert / Shape / Debris /
 //           EffectCloud (B2 deferred) OR an unknown subclass.
 bool Spawn(gosFX::Effect::Specification* spec,
-           const Stuff::LinearMatrix4D*  parentToWorld,
+           const glm::mat4*  parentToWorld,
            float                          spawnSeed,
            float                          callerAge = 0.5f);
 

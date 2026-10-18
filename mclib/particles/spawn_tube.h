@@ -52,7 +52,7 @@
 
 #include "spec.h"
 
-namespace Stuff { class LinearMatrix4D; }
+#include "../math/glm_config.h"
 namespace gosFX { class Tube__Specification; }
 
 namespace mc2 {
@@ -91,7 +91,7 @@ namespace particles {
 //   spec != nullptr. parentToWorld may be null only if caller knows the
 //   producer always supplies one (gosFX always does).
 void SpawnTube(const gosFX::Tube__Specification* spec,
-               const Stuff::LinearMatrix4D*      parentToWorld,
+               const glm::mat4*      parentToWorld,
                float                              spawnSeed,
                float                              callerAge = 0.5f);
 
