@@ -119,7 +119,6 @@ extern "C" void mc2_vk_sky_island_destroy();            // VK-PARITY-F3
 // [VK_SHADOW_INTEROP] health line (forbidden_* counters). No-op if never born.
 extern "C" void mc2_vk_shadow_island_destroy();
 #endif
-extern "C" uint32_t gos_getMechShadowProgramId();
 extern "C" uint32_t gos_getMechShadowTypesDrawn();
 extern "C" uint32_t gos_getMechShadowInstDrawn();
 extern "C" uint32_t gos_getStaticPropShadowTypesDrawn();

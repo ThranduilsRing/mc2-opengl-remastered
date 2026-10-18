@@ -306,14 +306,6 @@ void EditorInspector::drawImGui() {
     } else if (s_selection.pickKind == InspectorPickKind::Mech) {
         drawMechData();
 
-        // interactive debug view combo for the mech lane.
-        // Shown in the Mech inspector context (a mech is picked), mirroring the
-        // StaticProp combo's pick-context placement. NOT gated on
-        // MC2_SNAPSHOT_MECH_EXTRACT — it is a render control, independent of
-        // snapshot extraction. The selection is global (drives s_mechDebugMode
-        // for all mechs), not per-picked-mech.
-        drawMechDebugView();
-
         // live normal recompute controls. Default mode 0
         // (Cooked) is byte-identical to the unmodified path — no performance
         // cost, no visual change. Mode 1 (Faceted) and 2 (Smoothed) trigger

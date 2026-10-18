@@ -306,7 +306,6 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
                 extern int      gos_getDynShadowMapSize();
                 EditorInspector::ShadowPassSnapshot sp;
                 sp.terrainShadowProgramId      = gos_getTerrainShadowProgramId();
-                sp.mechShadowProgramId         = gos_getMechShadowProgramId();
                 sp.staticPropShadowProgramId   = gos_getStaticPropShadowProgramId();
                 sp.shadowsEnabled              = gos_getShadowsEnabled();
                 sp.staticLightMatrixBuilt      = gos_StaticLightMatrixBuilt();

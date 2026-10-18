@@ -412,68 +412,17 @@ void uploadMechGeometryVbo() {
         }
     }
 
-    // Delete the old VBO if this is a rebuild (immutable buffer must be re-created).
-    if (s_sharedVbo != 0) {
-        glDeleteBuffers(1, &s_sharedVbo);
-        s_sharedVbo = 0;
-    }
-
-    glGenBuffers(1, &s_sharedVbo);
-    glBindBuffer(GL_ARRAY_BUFFER, s_sharedVbo);
-    glBufferStorage(GL_ARRAY_BUFFER,
-                    (GLsizeiptr)work.size(),
-                    work.data(), 0);  // immutable, GPU-only
-
-#ifdef MC2_VULKAN_ISLAND
-    // VK-RUNG8 item-9 (native feed now MANDATORY): persist the EXACT uploaded bytes
-    // for the native geometry feed whenever the VK mech island is active. The old
-    // GL buffer-readback fallback in the island was deleted, so this copy is the
-    // island's only geometry source. Copy-once per map / normals rebuild; the copy
-    // exists only under the VK backend (vkMechGateOn()), never in the pure-GL product.
-    if (vkMechGateOn()) {
-        s_vkVboNativeCopy = work;
-        ++s_vkMechGeomGen;
-    }
-#endif
-
-    // Vertex attribute setup — 48-byte GpuMechVertex, 7 attributes.
-    // glVertexAttribPointer binds each attrib to the currently bound GL_ARRAY_BUFFER
-    // (s_sharedVbo just bound above). The VAO's GL_ELEMENT_ARRAY_BUFFER binding
-    // (s_sharedIbo) is a separate piece of VAO state and is not disturbed here.
-    auto enableF = [](GLuint loc, GLint sz, GLenum type, GLboolean norm,
-                      GLsizei stride, size_t offset) {
-        glEnableVertexAttribArray(loc);
-        glVertexAttribPointer(loc, sz, type, norm, stride, (void*)offset);
-    };
-    auto enableI = [](GLuint loc, GLint sz, GLenum type,
-                      GLsizei stride, size_t offset) {
-        glEnableVertexAttribArray(loc);
-        glVertexAttribIPointer(loc, sz, type, stride, (void*)offset);
-    };
-
-    const GLsizei S = (GLsizei)sizeof(GpuMechVertex);
-    enableF(0, 3, GL_FLOAT,          GL_FALSE, S, offsetof(GpuMechVertex, position));
-    enableF(1, 3, GL_FLOAT,          GL_FALSE, S, offsetof(GpuMechVertex, normal));
-    enableF(2, 2, GL_FLOAT,          GL_FALSE, S, offsetof(GpuMechVertex, uv));
-    enableI(3, 4, GL_UNSIGNED_BYTE,            S, offsetof(GpuMechVertex, boneIndices));
-    enableF(4, 4, GL_UNSIGNED_BYTE,  GL_TRUE,  S, offsetof(GpuMechVertex, boneWeights));
-    enableF(5, 2, GL_SHORT,          GL_TRUE,  S, offsetof(GpuMechVertex, tangentOct));
-    enableI(6, 1, GL_UNSIGNED_INT,             S, offsetof(GpuMechVertex, aRGBLight));
+    // The exact bytes the Vulkan islands upload (the normals-recomputed copy; s_stagingVbo stays the pristine cooked data).
+    // Copy-once per map / normals rebuild.
+    s_vkVboNativeCopy = std::move(work);
+    ++s_vkMechGeomGen;
 }
 
 void GpuMechBatcher::finalizeGeometry() {
     if (s_geometryFinalized) return;
-    loadProgramsIfNeeded();
-    // Slice C1: init named material profile SSBO (binding 7) once per process.
-    // Idempotent; requires GL context (already active at finalizeGeometry call site).
+    noteDeprecatedMechFeedNative();
+    // Slice C1: init the named material profile table once per process (idempotent).
     gos_materials::init();
-
-    // Bail cleanly if shader failed: geometry upload skipped.
-    // submit() fast-rejects on s_geometryFinalized==false.
-    if (s_programLoadFailed) {
-        MC2_DIAGFE(stderr, "[MECHBATCHER v1] event=finalize_skip reason=shader_fail\n");
-        return;
-    }
 
     if (s_stagingVbo.empty()) {
         MC2_DIAGFE(stderr, "[MECHBATCHER v1] event=finalize_empty — no types registered\n");
@@ -481,37 +430,10 @@ void GpuMechBatcher::finalizeGeometry() {
         return;
     }
 
-    glGenVertexArrays(1, &s_sharedVao);
-    glBindVertexArray(s_sharedVao);
-
-    // VBO creation + vertex attrib setup delegated to uploadMechGeometryVbo()
-    // so batcher_rebuildMechNormals() can re-run just the VBO part without
-    // recreating the VAO, IBO, or sampler.
+    // VBO bytes via uploadMechGeometryVbo() so batcher_rebuildMechNormals() can re-run just that part.
     uploadMechGeometryVbo();
-
-    glGenBuffers(1, &s_sharedIbo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, s_sharedIbo);
-    glBufferStorage(GL_ELEMENT_ARRAY_BUFFER,
-                    (GLsizeiptr)(s_stagingIbo.size() * sizeof(uint32_t)),
-                    s_stagingIbo.data(), 0);
-#ifdef MC2_VULKAN_ISLAND
     // The VK shadow feed hands out s_stagingIbo too: a new index set is a new geometry generation.
-    if (vkMechGateOn()) ++s_vkMechGeomGen;
-#endif
-
-    glBindVertexArray(0);
-
-    // Session-lifetime sampler: GL_REPEAT / GL_LINEAR.
-    // GL_LINEAR (not GL_LINEAR_MIPMAP_LINEAR) because mech textures may not
-    // have mipmaps generated — sampling a mipmap chain that doesn't exist
-    // is undefined behavior on AMD, often black. Slice A+ can revisit if
-    // mech textures get mipmaps from the upscaler pipeline.
-    // TEX-CLASS: per-pass-rebind -- mech-skin sampler object (bound per draw)
-    glGenSamplers(1, &s_sampler);
-    glSamplerParameteri(s_sampler, GL_TEXTURE_WRAP_S,     GL_REPEAT);
-    glSamplerParameteri(s_sampler, GL_TEXTURE_WRAP_T,     GL_REPEAT);
-    glSamplerParameteri(s_sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glSamplerParameteri(s_sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ++s_vkMechGeomGen;
 
     // Staging RETAINED (not cleared/shrunk) so finalizePending() can
     // append a late type and rebuild from the full original+late
@@ -538,55 +460,15 @@ void GpuMechBatcher::finalizeGeometry() {
 void GpuMechBatcher::finalizePending() {
     if (!s_pendingLateTypes) return;
 
-    // VPL-#11 shadow-regression hardening (2026-05-16): finalizePending
-    // runs mid-mission-setup; save EVERY GL binding it perturbs and
-    // restore on exit so it is provably state-neutral to the rest of the
-    // frame (vulkan_prep_explicit_device_discipline). The mech advisor
-    // ruled GL-state OUT as the half-map-shadow cause (left-bound buffer
-    // is overwritten before first render), but this removes it as a
-    // variable definitively and is correct discipline regardless.
-    GLint prevVao = 0, prevArr = 0, prevElem = 0;
-    glGetIntegerv(GL_VERTEX_ARRAY_BINDING,        &prevVao);
-    glGetIntegerv(GL_ARRAY_BUFFER_BINDING,        &prevArr);
-    glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING,&prevElem);
-
-    // Drain ring fences before deleting GL objects (defensive; mirrors
-    // onMapUnload). No draw can be in flight here per (a), so this is
-    // belt-and-suspenders, not load-bearing.
-    for (uint32_t i = 0; i < MECH_RING_FRAMES; ++i) {
-        if (s_fence[i]) {
-            glClientWaitSync(s_fence[i], GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
-            glDeleteSync(s_fence[i]);
-            s_fence[i] = 0;
-        }
-    }
-    // Delete the immutable shared geometry objects finalizeGeometry()
-    // glGen'd; it will recreate all four from the retained staging.
-    if (s_sharedVao) { glDeleteVertexArrays(1, &s_sharedVao); s_sharedVao = 0; }
-    if (s_sharedVbo) { glDeleteBuffers(1, &s_sharedVbo);      s_sharedVbo = 0; }
-    if (s_sharedIbo) { glDeleteBuffers(1, &s_sharedIbo);      s_sharedIbo = 0; }
-    if (s_sampler)   { glDeleteSamplers(1, &s_sampler);       s_sampler   = 0; }
-
     const uint32_t lateAdded = s_lateStagedCount;
     s_lateStagedCount   = 0;
     s_pendingLateTypes  = false;
     s_geometryFinalized = false;   // re-open the guard so finalizeGeometry runs
     finalizeGeometry();            // rebuilds VBO/IBO/VAO from full retained staging
 
-    // The rebuild above repopulates s_packets with new indices/order, so
-    // the persisted shadow draw list (pre-rebuild globalPacketIdx values)
-    // is now stale. Clear it (mirrors onMapLoad); the next flush() will
-    // repopulate it consistently with the rebuilt s_packets. flushShadow()
-    // early-returns on empty s_lastDrawCalls until then.
-    s_lastDrawCalls.clear();
-    s_lastTotalInstances = 0;
-    s_lastTotalBones     = 0;
-
-    // Restore the bindings finalizeGeometry left dirty (it ends on
-    // glBindVertexArray(0) with GL_ARRAY_BUFFER still = the new s_sharedVbo).
-    glBindVertexArray((GLuint)prevVao);
-    glBindBuffer(GL_ARRAY_BUFFER,         (GLuint)prevArr);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, (GLuint)prevElem);
+    // The rebuild above repopulates s_packets with new indices/order, so the feed snapshots (run firstIndex values
+    // of the old set) are stale: the geometry generation bump already makes the feeds decline them until the next
+    // flush() rebuilds them against the new set.
 
     MC2_DIAGFE(stderr,
         "[MECHBATCHER v1] event=finalize_pending types=%zu lateAdded=%u rebuilt=%d\n",

@@ -88,20 +88,19 @@ extern "C" void gos_SetGlobalDebugView(int view)
     if (view < 0) view = 0;
     if (view > 6) view = 6;
     g_mc2GlobalDebugView = view;
-    static const struct { int lighting; int mech; int vfx; int propMat; } kMap[7] = {
-        { -1,  0, 0, 0 },   // 0 off
-        { 44,  3, 0, 0 },   // 1 shadow factor
-        { 50, 50, 0, 0 },   // 2 normalized depth
-        { 40,  2, 1, 0 },   // 3 unlit albedo
-        { 51, 51, 4, 0 },   // 4 overdraw proxy
-        { 41,  4, 0, 0 },   // 5 world normals
-        { 52, 52, 3, 2 },   // 6 chunk/LOD tint
+    static const struct { int lighting; int vfx; int propMat; } kMap[7] = {
+        { -1, 0, 0 },   // 0 off
+        { 44, 0, 0 },   // 1 shadow factor
+        { 50, 0, 0 },   // 2 normalized depth
+        { 40, 1, 0 },   // 3 unlit albedo
+        { 51, 4, 0 },   // 4 overdraw proxy
+        { 41, 0, 0 },   // 5 world normals
+        { 52, 3, 2 },   // 6 chunk/LOD tint
     };
     g_mc2LightingDebugOverride = kMap[view].lighting;
-    batcher_setMechDebugMode(kMap[view].mech);
     gos_vfx_setDebugMode(kMap[view].vfx);
     batcher_setDebugMaterialMode(kMap[view].propMat);
-    mc2::fmt::print_err("[DEBUG_VIEW v1] view={:d} lighting={:d} mech={:d} vfx={:d} propMat={:d}\n", mc2::fmt::as_i32(view), mc2::fmt::as_i32(kMap[view].lighting), mc2::fmt::as_i32(kMap[view].mech), mc2::fmt::as_i32(kMap[view].vfx), mc2::fmt::as_i32(kMap[view].propMat));
+    mc2::fmt::print_err("[DEBUG_VIEW v1] view={:d} lighting={:d} vfx={:d} propMat={:d}\n", mc2::fmt::as_i32(view), mc2::fmt::as_i32(kMap[view].lighting), mc2::fmt::as_i32(kMap[view].vfx), mc2::fmt::as_i32(kMap[view].propMat));
 }
 extern "C" int gos_GetGlobalDebugView() { return g_mc2GlobalDebugView; }
 

@@ -816,7 +816,6 @@ void gos_GetStaticBuildingShadowCounts(int& types, int& inst, int& draws);
 // Registered MC2_DEBUG_VIEW (boot seed); runtime via `debugview N` verb.
 void batcher_setDebugMaterialMode(int shaderMode);      // gos_static_prop_batcher.h
 
-extern "C" void batcher_setMechDebugMode(int shaderMode);   // gos_mech_batcher.cpp
 
 extern "C" void gos_vfx_setDebugMode(int mode);             // gos_particle_bridge.h
 

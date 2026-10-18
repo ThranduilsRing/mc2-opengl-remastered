@@ -3,9 +3,9 @@
 #include "gos_mech_batcher_internal.h"
 #include "mc2fmt.h"
 #include "../../RenderCore/FramePackets.h"
+#include "gos_terrain_lighting.h"      // GetObjectLightPoolParams
 
 
-#ifdef MC2_VULKAN_ISLAND
 // ---------------------------------------------------------------------------
 // VK-P14 MECH TIER-1: island feed accessors (Vulkan-free; the island never
 // includes this batcher). Geometry is copy-once; the per-frame feed points at
@@ -17,7 +17,7 @@ extern "C" uint32_t mc2_mech_vertex_stride(void) { return (uint32_t)sizeof(GpuMe
 
 extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
     if (!out) return 0;
-    if (!vkMechGateOn() || !s_geometryFinalized) return 0;
+    if (!s_geometryFinalized) return 0;
     // The CPU bytes the GL buffers are uploaded from: the normals-recomputed vertex blob and the staged indices.
     const uint64_t vboBytes = (uint64_t)s_stagingVbo.size();
     const uint64_t iboBytes = (uint64_t)s_stagingIbo.size() * sizeof(uint32_t);
@@ -33,9 +33,9 @@ extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
 }
 
 extern "C" int mc2_mech_island_get_shadow_feed(Mc2MechShadowFeed* out) {
-    if (!out || !vkMechGateOn()) return 0;
+    if (!out) return 0;
     if (!mc2::gate::get<"MC2_SHADOW_ENABLE">()) return 0;
-    if (!g_useGpuMechs || !s_geometryFinalized || s_programLoadFailed) return 0;
+    if (!g_useGpuMechs || !s_geometryFinalized) return 0;
     if (s_vkMechInstSnapshot.empty() || s_vkMechRunSnapshot.empty() || s_vkMechBoneSnapshot.empty()) return 0;
     // The snapshot's runs index the geometry of the generation it was built against; after a rebuild they name ranges of a different index set.
     if (s_vkMechSnapshotGeomGen != s_vkMechGeomGen) return 0;
@@ -53,7 +53,7 @@ extern "C" int mc2_mech_island_get_shadow_feed(Mc2MechShadowFeed* out) {
 
 extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     if (!out) return 0;
-    if (!vkMechGateOn() || !s_vkMechFrameReady) return 0;
+    if (!s_vkMechFrameReady) return 0;
     if (s_vkMechInstSnapshot.empty() || s_vkMechRunSnapshot.empty()) return 0;
     // Stale snapshot from before a geometry rebuild (new map, late types): its firstIndex values index the OLD index set (the draw would
     // read past the new buffer). The next flush() rebuilds it against the new set.
@@ -142,7 +142,6 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     }
     return 1;
 }
-#endif // MC2_VULKAN_ISLAND
 
 void batcher_compareMechSnapshot(RenderSnapshot* snap) {
     if (!snap) return;
@@ -177,15 +176,6 @@ void batcher_compareMechSnapshot(RenderSnapshot* snap) {
 // accessors in gameos_graphics.cpp). Each returns 0 / nullptr when the
 // underlying state is not yet initialized. Read-only — no GL state touched,
 // no draw-path mutation.
-extern "C" uint32_t gos_getMechProgramId() {
-    return (uint32_t)s_mechProgram;
-}
-extern "C" uint32_t gos_getMechShadowProgramId() {
-    auto pit = glsl_program::s_programs.find("shadow_mech");
-    if (pit == glsl_program::s_programs.end() || !pit->second)
-        return 0u;
-    return (uint32_t)pit->second->shp_;
-}
 // SHADOW-SPINE-0: read-only accessors for mech shadow caster counts written
 // at the end of flushShadow(). Returns last-frame values; not reset.
 extern "C" uint32_t gos_getMechShadowTypesDrawn() {
@@ -197,41 +187,6 @@ extern "C" uint32_t gos_getMechShadowInstDrawn() {
 extern "C" const char* gos_getMechTextureNameByNodeIdx(uint32_t nodeIdx) {
     if (nodeIdx == 0xFFFFFFFFu || !mcTextureManager) return nullptr;
     return mcTextureManager->getTextureName((DWORD)nodeIdx);
-}
-
-// MECH-DEBUG-VIEWS-1: RenderDebugView <-> mech.frag u_debugMode mapping.
-// Shader branch numbers: 0=Final, 1=magenta, 2=texOnly(Albedo),
-// 3=lightOnly(LightingOnly), 4=normal-as-color(Normal), 5=UV, 6=alpha, 7..9=diag.
-// Mirror of StaticPropViewToShaderMode/StaticPropShaderModeToView in
-// gos_static_prop_batcher.cpp; co-located here to stay with the flush site
-// and the s_mechDebugMode state it drives.
-int MechViewToFragDebugMode(RenderDebugView v) {
-    switch (v) {
-        case RenderDebugView::Final:        return 0;
-        case RenderDebugView::Albedo:       return 2;
-        case RenderDebugView::Normal:       return 4;
-        case RenderDebugView::LightingOnly: return 3;
-        default:                            return 0;  // unsupported -> Final
-    }
-}
-
-RenderDebugView MechFragDebugModeToView(int m) {
-    switch (m) {
-        case 0: return RenderDebugView::Final;
-        case 2: return RenderDebugView::Albedo;
-        case 4: return RenderDebugView::Normal;
-        case 3: return RenderDebugView::LightingOnly;
-        default: return RenderDebugView::Final;
-    }
-}
-
-extern "C" void batcher_setMechDebugMode(int shaderMode) {
-    if (shaderMode < 0) shaderMode = 0;
-    s_mechDebugMode = shaderMode;
-}
-
-extern "C" int batcher_getMechDebugMode() {
-    return s_mechDebugMode;
 }
 
 // MECH-NORMALS-FIX-1: runtime getter/setter API for the normals mode and
@@ -327,74 +282,14 @@ extern "C" void  batcher_setMechGlassMaxChanThresh(float t) {
 extern "C" float batcher_getMechGlassMaxChanThresh()         { return s_mechGlassMaxChanThresh; }
 extern "C" void  batcher_setMechSpecDebugMask(int on)        { s_mechSpecDebugMask = (on != 0); }
 extern "C" int   batcher_getMechSpecDebugMask()              { return s_mechSpecDebugMask ? 1 : 0; }
-extern "C" float batcher_getMechBackFillStrength()           { return s_mechBackFillStrength; }
-extern "C" void  batcher_setMechBackFillStrength(float v) {
-    if (v < 0.0f) v = 0.0f;
-    if (v > 4.0f) v = 4.0f;
-    s_mechBackFillStrength = v;
-}
 
-// PBR-TUNE-1: StandardLit GGX toggle + material influence knobs.
-// All per-flush uniforms — no VBO rebuild needed.
-extern "C" void  batcher_setStandardLitEnabled(int on)  { s_standardLitEnabled = (on != 0) ? 1 : 0; }
-extern "C" int   batcher_getStandardLitEnabled()        { return s_standardLitEnabled; }
-extern "C" void  batcher_setPbrMetallicInfluence(float v) {
-    if (v < 0.0f) v = 0.0f; if (v > 1.0f) v = 1.0f;
-    s_pbrMetallicInfluence = v;
-}
-extern "C" float batcher_getPbrMetallicInfluence()      { return s_pbrMetallicInfluence; }
-extern "C" void  batcher_setPbrRoughnessMin(float v) {
-    if (v < 0.0f) v = 0.0f; if (v > 1.0f) v = 1.0f;
-    s_pbrRoughnessMin = v;
-}
-extern "C" float batcher_getPbrRoughnessMin()           { return s_pbrRoughnessMin; }
-extern "C" void  batcher_setPbrRoughnessMax(float v) {
-    if (v < 0.0f) v = 0.0f; if (v > 1.0f) v = 1.0f;
-    s_pbrRoughnessMax = v;
-}
-extern "C" float batcher_getPbrRoughnessMax()           { return s_pbrRoughnessMax; }
-extern "C" void  batcher_setPbrAmbientSpecularStrength(float v) {
-    if (v < 0.0f) v = 0.0f; if (v > 2.0f) v = 2.0f;
-    s_pbrAmbientSpecularStrength = v;
-}
-extern "C" float batcher_getPbrAmbientSpecularStrength() { return s_pbrAmbientSpecularStrength; }
-
-// PBR-LAYERED-1: wear blend + triplanar knobs.
-extern "C" void  batcher_setPbrWearStrength(float v) {
-    if (v < 0.0f) v = 0.0f; if (v > 4.0f) v = 4.0f;
-    s_pbrWearStrength = v;
-}
-extern "C" float batcher_getPbrWearStrength()        { return s_pbrWearStrength; }
-extern "C" void  batcher_setPbrTriplanar(int on)     { s_pbrTriplanar = (on != 0) ? 1 : 0; }
-extern "C" int   batcher_getPbrTriplanar()           { return s_pbrTriplanar; }
-extern "C" void  batcher_setPbrTriplanarScale(float v) {
-    if (v < 0.001f) v = 0.001f; if (v > 10.0f) v = 10.0f;
-    s_pbrTriplanarScale = v;
-}
-extern "C" float batcher_getPbrTriplanarScale()      { return s_pbrTriplanarScale; }
-
-// batcher_rebuildMechNormals: re-upload the mech geometry VBO with the current
-// s_mechNormalsMode and s_mechNormalsSmoothDeg. No-op if geometry is not yet
-// finalized. Saves and restores the current VAO and ARRAY_BUFFER bindings so
-// it is safe to call from an ImGui callback between frames.
+// batcher_rebuildMechNormals: rebuild the geometry bytes the Vulkan islands upload with the current
+// s_mechNormalsMode and s_mechNormalsSmoothDeg. No-op if geometry is not yet finalized. The new
+// geometry generation makes every consumer re-upload exactly once.
 extern "C" void batcher_rebuildMechNormals() {
-    if (!s_geometryFinalized || s_sharedVao == 0) return;
+    if (!s_geometryFinalized) return;
 
-    // Save current bindings that uploadMechGeometryVbo() will perturb.
-    GLint prevVao = 0, prevArr = 0;
-    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
-    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &prevArr);
-
-    // uploadMechGeometryVbo() expects the VAO to be bound (attrib pointers are
-    // VAO state). It also preserves the VAO's existing element-array binding
-    // (s_sharedIbo) — see the comment in uploadMechGeometryVbo().
-    glBindVertexArray(s_sharedVao);
     uploadMechGeometryVbo();
-    glBindVertexArray(0);
-
-    // Restore bindings so nothing upstream is surprised.
-    glBindVertexArray((GLuint)prevVao);
-    glBindBuffer(GL_ARRAY_BUFFER, (GLuint)prevArr);
 
     MC2_DIAGFE(stderr,
         "[MECHBATCHER v1] event=normals_rebuild mode=%d smoothDeg=%.1f nodes=%zu vbo_bytes=%zu\n",
