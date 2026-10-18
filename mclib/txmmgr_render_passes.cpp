@@ -85,22 +85,11 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 			}
 #endif
 			// Item 1 P1: caster set used by the CSM cascade replay (set in the
-			// prop-caster path below; nullptr => CSM replay uses flushShadow).
+			// prop-caster path below).
 			const std::vector<GpuStaticPropInstance>* csmCasterSet = nullptr;
-			// SHADOW-DYNAMIC-PROP-CASTERS-1 (gate, DEFAULT ON; =0 kill-switch): the camera-visible
-			// flushShadow feed (s_typeRanges) only admits props the camera frustum
-			// cull marked visible this frame, so most trees never cast into the (now
-			// correctly camera-fit) dynamic map -- only the few nearest the camera.
-			// When enabled, replay ALL registered NON-building props from the
-			// registry (visibility-independent) into the dynamic map instead, so
-			// every tree/prop in the light box casts. Buildings cast via the
-			// world-fixed static map and are left out of this feed (a dynamic copy would be
-			// a redundant fuzzy double-shadow). flushShadow is skipped entirely in this mode (it would
-			// only double-draw the camera-visible subset). Mechs still cast via their
-			// own batcher. Gate OFF -> byte-identical to prior behavior.
-			static const bool s_dynPropCasters =
-				!mc2::gate::is<"MC2_SHADOW_DYNAMIC_PROP_CASTERS", "0">();  // DEFAULT ON; =0 kill-switch
-			if (s_dynPropCasters) {
+			// The caster set is the whole registry of non-building props (visibility-independent), so every tree and prop in the light box casts;
+			// buildings cast via the world-fixed static map. Only the VK shadow island draws it (the GL caster draws are gone).
+			{
 				static std::vector<GpuStaticPropInstance> s_dynPropInsts; // reused; accessor clears
 					// SHADOW-DYNAMIC-PROP-DIRTY-ONLY-1 (gate, DEFAULT OFF; set env to enable):
 					// The caster set (registry-indexed instances: modelMatrix + typeID) is
@@ -225,14 +214,6 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 							}
 						}
 					}
-				{
-				// LANE-D measure-first: give the dynamic prop shadow CASTER draw its
-				// own GPU timestamp so its cost is deconflated from GpuSP.BatcherFlush
-				// (which previously absorbed it as first-GPU-zone self-time).
-				ZoneScopedN("RenderLists.DynShadowDraw");
-				TracyGpuZone("GpuSP.DynShadowDraw");
-				GpuStaticPropBatcher::instance().drawDynamicPropShadows(*dynShadowSet);
-			}
 #ifdef MC2_VULKAN_ISLAND
 				// VK-P8a SHADOW-INTEROP (gate MC2_VK_SHADOW_INTEROP, default-OFF): the SECOND
 				// VK geometry region and the FIRST VK-PRODUCES-DEPTH region. VK re-renders the
@@ -266,8 +247,6 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 				}
 #endif
 				csmCasterSet = dynShadowSet;   // Item 1 P1: remember for the cascade replay
-			} else {
-				GpuStaticPropBatcher::instance().flushShadow();
 			}
 			gos_EndDynamicShadowPass();
 			render_contract::executorOwnEndTopLevel(render_contract::PassIdentity::ShadowCaster,
@@ -287,10 +266,6 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 					const int csmN = ppCsm->getDynamicShadowCascadeCount();
 					for (int ci = 0; ci < csmN; ++ci) {
 						if (!ppCsm->beginDynamicShadowCascade(ci)) continue;
-						if (csmCasterSet)
-							GpuStaticPropBatcher::instance().drawDynamicPropShadows(*csmCasterSet);
-						else
-							GpuStaticPropBatcher::instance().flushShadow();
 						ppCsm->endDynamicShadowCascadePass();
 #ifdef MC2_VULKAN_ISLAND
 						if (ci < csmN - 1 && csmCasterSet && mc2_vk_shadow_island_enabled()) {

@@ -148,8 +148,6 @@ void queryShadowFeed(int32_t recipeIndex, ShadowFeedReport& out)
     out = ShadowFeedReport();
 
     out.modernShadowPathActive = gos_IsModernShadowPathActive();
-    gos_GetStaticBuildingShadowCounts(out.bldgDrawTypes, out.bldgDrawInst,
-                                      out.bldgDrawCalls);
 
     out.registryQueried = true;
 

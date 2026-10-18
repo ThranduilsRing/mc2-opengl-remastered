@@ -18,12 +18,6 @@
 namespace RenderCore { struct MaterialGpu; }
 namespace RenderCore { struct StaticPropTypeDesc; }
 
-// SHADOW-STABILITY-1: read-only accessor for the last static-building shadow
-// caster counts (types/instances/draw-calls). Zero until the static building
-// shadow has drawn this mission. Consumed by the shadow state trace in
-// gameos_graphics.cpp.
-void gos_GetStaticBuildingShadowCounts(int& types, int& inst, int& draws);
-
 // Per-instance shader-visible struct: GpuStaticPropInstance (112 B, std430).
 // SINGLE SOURCE OF TRUTH is RenderCore/gpu_abi/GpuStaticPropInstance.h; the
 // shader-side struct is generated into shaders/include/gpu_abi_static_prop_instance.gen.hglsl
@@ -287,30 +281,6 @@ private:
     void releaseGlGuards(StaticPropFlushFrame& f);
     void finishFlush();
 public:
-    // depth-only into the dynamic shadow FBO. Building types are omitted: they cast
-    // via the world-fixed static map, so a dynamic copy would be a redundant fuzzy
-    // double-shadow.
-    void flushShadow();
-
-    // SHADOW-STATIC-BUILDINGS-2: depth-only draw of ALL registered rigid-building
-    // recipe leaves (from GpuStaticPropRegistry::getBuildingShadowInstances — the
-    // full registry, visibility-INDEPENDENT, NOT per-frame buckets) into the
-    // currently-bound (static) shadow FBO using the static world-fixed light
-    // matrix. One-shot (caller latches it to the static-map build). Builds/uploads
-    // a dedicated all-buildings instance SSBO grouped by typeID; reuses the
-    // resident per-type geometry + shadow_static_prop program. Trees excluded
-    // upstream by the Building population filter.
-    void drawStaticBuildingShadows(const std::vector<GpuStaticPropInstance>& instances);
-
-    // SHADOW-DYNAMIC-PROP-CASTERS-1: depth-only draw of registry-supplied
-    // NON-building prop leaves (trees/fences/props, visibility-INDEPENDENT) into
-    // the currently-bound DYNAMIC shadow FBO using the per-frame dynamic light
-    // matrix. Same machinery as drawStaticBuildingShadows but bound to
-    // getDynamicLightSpaceMatrix() and rebuilt every frame; replaces the
-    // camera-visible s_typeRanges feed (flushShadow) which only admitted props
-    // near the camera. Caller must bracket with gos_BeginDynamicShadowPass().
-    void drawDynamicPropShadows(const std::vector<GpuStaticPropInstance>& instances);
-
     // Debug: color-address validation mode. 0=off, 1=gradient, 2=hash.
     void setDebugAddrMode(int mode);
     int  getDebugAddrMode() const { return debugAddrMode_; }

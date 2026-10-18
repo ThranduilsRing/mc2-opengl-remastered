@@ -498,22 +498,6 @@ void MC_TextureManager::renderListsStaticShadowBuild (void)
 		Terrain::mapData->renderStaticTerrainShadowFullMap(indexArray, shTex);
 		gos_EndShadowPrePass();
 
-		// SHADOW-STATIC-BUILDINGS-2: append rigid BUILDING casters to the world-
-		// fixed static shadow map, ONCE (same one-shot build block as terrain).
-		// Source = the FULL registry (all buildings, visibility-independent, baked
-		// at mission-load registerStatic), NOT per-frame visible buckets (Option B's
-		// failure). Trees excluded by the Building population filter. Appends to the
-		// terrain depth (gos_BeginShadowPrePass(false) = no clear). Relies on C-pre min-combine
-		// (7ea32b83) so a building in both this and the dynamic bounded-near map does
-		// not double-darken terrain. Only runs when the prepass actually activates.
-		if (gos_BeginShadowPrePass(false)) {  // append, no clear
-			// Local (not static): runs once per mission; getBuildingShadowInstances
-			// clears+fills it. No need to retain capacity for the process lifetime.
-			std::vector<GpuStaticPropInstance> bldgShadowInstances;
-			GpuStaticPropRegistry::getBuildingShadowInstances(bldgShadowInstances);
-			GpuStaticPropBatcher::instance().drawStaticBuildingShadows(bldgShadowInstances);
-			gos_EndShadowPrePass();
-		}
 	}
 }
 

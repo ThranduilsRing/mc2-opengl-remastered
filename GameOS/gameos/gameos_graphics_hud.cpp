@@ -284,35 +284,6 @@ void gosRenderer::drawText(const char* text) {
     afterDrawCall();
 }
 
-void gosRenderer::replayTextQuads(const HudDrawCall& call)
-{
-    if (call.vertices.empty()) return;
-
-    text_->addVertices(const_cast<gos_VERTEX*>(call.vertices.data()),
-                       (int)call.vertices.size());
-
-    int prev_texture = getRenderState(gos_State_Texture);
-    setRenderState(gos_State_Texture, call.fontTexId);
-    setRenderState(gos_State_Filter, gos_FilterNone);
-
-    applyRenderStates();
-    gosRenderMaterial* mat = text_material_;
-
-    vec4 fg;
-    fg.x = (float)((call.foregroundColor & 0xFF0000) >> 16) / 255.0f;
-    fg.y = (float)((call.foregroundColor & 0xFF00)   >>  8) / 255.0f;
-    fg.z = (float)( call.foregroundColor & 0xFF)            / 255.0f;
-    fg.w = 1.0f;
-    mat->getShader()->setFloat4(s_Foreground, fg);
-
-    mat->setTransform(projection_);
-    mat->setFogColor(fog_color_);
-    text_->draw(mat);
-    text_->rewind();
-
-    setRenderState(gos_State_Texture, prev_texture);
-}
-
 #ifdef MC2_VULKAN
 static bool vkHudDrawRepresentable(const mc2vk::VkHudDraw& draw)
 {
@@ -740,40 +711,15 @@ void gosRenderer::flushHUDBatch()
     }
 #endif
 
-    uint32_t priorState[gos_MaxState];
-    memcpy(priorState, renderStates_, sizeof(priorState));
-    mat4 priorProjection = projection_;
-
-    for (const HudDrawCall& call : hudBatch_) {
-        memcpy(renderStates_, call.stateSnapshot, sizeof(renderStates_));
-        renderStates_[gos_State_IsHUD] = 0;   // clear to prevent re-buffering on replay
-        projection_ = call.projection;
-
-        switch (call.kind) {
-            case kHudQuadBatch:
-                if (s_uiPassMeasure) mc2_ui_pass_note_draw(0);
-                drawQuads(const_cast<gos_VERTEX*>(call.vertices.data()),
-                          (int)call.vertices.size());
-                break;
-            case kHudLineBatch:
-                if (s_uiPassMeasure) mc2_ui_pass_note_draw(1);
-                drawLines(const_cast<gos_VERTEX*>(call.vertices.data()),
-                          (int)call.vertices.size());
-                break;
-            case kHudTriBatch:
-                if (s_uiPassMeasure) mc2_ui_pass_note_draw(2);
-                drawTris(const_cast<gos_VERTEX*>(call.vertices.data()),
-                         (int)call.vertices.size());
-                break;
-            case kHudTextQuadBatch:
-                if (s_uiPassMeasure) mc2_ui_pass_note_draw(3);
-                replayTextQuads(call);
-                break;
+    // The native tail declined the frame (no Vulkan present path): there is no GL replay, the batch is dropped.
+    {
+        static unsigned s_hudDeclineLogs = 0;
+        if (s_hudDeclineLogs < 4) {
+            ++s_hudDeclineLogs;
+            mc2::fmt::print_err("[VK_HUD_DECLINE v1] draws={:d} native tail declined the frame; the HUD batch is dropped
+", mc2::fmt::as_u32((unsigned)hudBatch_.size()));
         }
     }
-
-    memcpy(renderStates_, priorState, sizeof(priorState));
-    projection_ = priorProjection;
     hudFlushed_ = true;
 
     // Auto-clear the scale-exemption latch each frame so it can never leak into

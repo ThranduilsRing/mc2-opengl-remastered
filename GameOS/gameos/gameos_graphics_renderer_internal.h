@@ -234,7 +234,6 @@ class gosRenderer {
         void drawQuads(gos_VERTEX* vertices, int count);
         void drawLines(gos_VERTEX* vertices, int count);
         void flushHUDBatch();
-        void replayTextQuads(const HudDrawCall& call);
         void drawPoints(gos_VERTEX* vertices, int count);
         void drawTris(gos_VERTEX* vertices, int count);
         void drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* indices, int num_indices);
