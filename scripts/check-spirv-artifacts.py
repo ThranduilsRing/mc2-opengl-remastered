@@ -80,7 +80,7 @@ def main():
     spv_dir = root / cfg.get("spv_dir", "shaders/spv")
     occ = occupancy_slots(root)
 
-    # SPIRV-KEYED-VARIANT-CONSUMER-1: the runtime consumer resolves variants via
+    # The runtime consumer resolves variants via
     # this index (base|stage|sorted-defines -> artifact). Load it for coverage.
     idx_path = spv_dir / "spirv_index.json"
     index = {}

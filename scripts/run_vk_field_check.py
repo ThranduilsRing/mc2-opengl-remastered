@@ -65,14 +65,14 @@ CHROMA_MIN = 15.0   # broken grey wash ~4.2, correct terrain ~43.1
 
 
 def screenshot_primary(out_png: str) -> None:
-    # NOTE (VK-FIELD-ENV-CONTENT-STACK-ARM-1, 2026-07-11): capture is a BARE PrimaryScreen
-    # grab -- deliberately NON-perturbing. An earlier hardening attempt that called
-    # ShowWindow/SetForegroundWindow on the mc2 window to guarantee it was in front instead
-    # PERTURBED the renderer: the focus/restore triggered a swapchain rebuild that blanked
-    # the scene frame (grey scene, HUD tail still drawn) at capture time -- a self-induced
-    # false negative. So the chroma reading is a SOFT signal only (see main(): the LOAD-
+    # NOTE: capture is a BARE PrimaryScreen
+    # grab -- deliberately NON-perturbing. Do NOT call ShowWindow/SetForegroundWindow
+    # on the mc2 window to force it in front: the focus/restore triggers a swapchain
+    # rebuild that blanks the scene frame (grey scene, HUD tail still drawn) at
+    # capture time -- a self-induced false negative. So the chroma reading is a SOFT
+    # signal only (see main(): the LOAD-
     # BEARING assertion is the per-layer used_vulkan receipts, which deterministically catch
-    # the round-2 vanishing state -- water/fog/coverage were used_vulkan==0 there). If the
+    # the vanishing state, where water/fog/coverage report used_vulkan==0). If the
     # game is not foreground the grab may catch the desktop (also low chroma) -> eyeball the
     # PNG, do not treat low chroma alone as a hard regression.
     ps = (
@@ -174,16 +174,16 @@ def layer_receipts(install: Path):
         "water": g("vulkan_water_island", "water_fallback_reason", ""),
         "fog": g("vk_post_fog_native", "postfog_fallback_reason", ""),
     }
-    # Terrain LOD coverage: lod_chunk is the VK-owned LOD-chunk draw count. In the broken
-    # round-2 state only LOD0/1 were VK-owned; the umbrella must now own all bands.
+    # Terrain LOD coverage: lod_chunk is the VK-owned LOD-chunk draw count.
+    # The umbrella must own all bands, not only LOD0/1.
     used["terrain_lod_chunks"] = g("terrain_path", "lod_chunk")
     return used, reasons
 
 
-# --- Props-pose hard assert (VK-FIELD-ORACLE-1) --------------------------------
-# The round-3 field bug: static props drew (island used_vulkan>0) but the color
-# pipeline's vertex binding stride was 0 -> all triangles collapsed to a degenerate
-# point -> ZERO rasterized fragments -> props invisible while shadows still cast
+# --- Props-pose hard assert ----------------------------------------------------
+# Static props can report VK ownership (island used_vulkan>0) yet be invisible if
+# the color pipeline's vertex binding stride is 0: all triangles collapse to a
+# degenerate point -> ZERO rasterized fragments -> props invisible while shadows cast
 # (shadow island = separate correctly-strided pipeline). The receipt (used_vulkan)
 # is TRUE in that broken state, so this must be a PIXEL assert. We pin the camera to
 # the props-dense airport pose via MC2_HZB_VIEW_FILE and dump the composited VK
@@ -287,7 +287,7 @@ def main() -> int:
             layer_fail.append(f"{k}: used_vulkan<=0")
         if reasons.get(k):
             layer_fail.append(f"{k}: declined-to-GL ({reasons[k]})")
-    # Terrain LOD coverage guard (round-2 bug = only LOD0/1 VK-owned).
+    # Terrain LOD coverage guard (every band must be VK-owned).
     if used.get("terrain_lod_chunks", 0) <= 0:
         layer_fail.append("terrain: lod_chunk==0 (no VK-owned LOD bands)")
 
@@ -295,7 +295,7 @@ def main() -> int:
     print(f"[vk-field-check] backbuffer scene chroma={chroma:.2f} (min {CHROMA_MIN})")
     if hud_bottom is not None:
         # SOFT: HUD chrome should be bottom-anchored, not in the top-left quadrant
-        # (HUD-CANVAS-EXTENT-FIX). Only meaningful when the grab actually caught HUD
+        # Only meaningful when the grab actually caught HUD
         # green at all; a null reading == desktop/non-foreground capture -> eyeball.
         if hud_bottom + hud_topleft < 50:
             print("[vk-field-check] HUD-placement: no HUD green captured "
@@ -314,7 +314,7 @@ def main() -> int:
         print("[vk-field-check] FAIL: no debug_state dump found (need MC2_DEBUG_STATE_DUMP=1).")
 
     # LOAD-BEARING: the per-layer VK-ownership receipts. These deterministically catch the
-    # round-2 field state the user saw (terrain LOD0/1 only + props/water/fog/HUD absent):
+    # broken field state (terrain LOD0/1 only + props/water/fog/HUD absent):
     # water/fog reported used_vulkan==0 there, so an unarmed content stack FAILS here.
     layers_ok = bool(used) and not layer_fail
     if layer_fail:
@@ -334,7 +334,7 @@ def main() -> int:
     print("[vk-field-check] NOTE: HUD/sky are eyeballed from the saved backbuffer PNG "
           "(no dump counter); HUD must show the pilot panel + command cursor, sky is the "
           "flat VK clear-colour stand-in (no VK HDRI pass -- pre-existing, documented).")
-    # VK-FIELD-ORACLE-1: props-pose PIXEL assert (hard). Receipts pass in the
+    # Props-pose PIXEL assert (hard). Receipts pass in the
     # degenerate-stride broken state, so this is load-bearing for the props layer.
     props_ok = True
     if not args.skip_props_pose:

@@ -73,7 +73,7 @@ TRANSPORT_PASSTHROUGH = frozenset({
     "MC2_CAPTURE_ENV_DECLARE",
 })
 
-#: HARNESS-CONTROL vars (BACKGROUND-SMOKE-1). These govern WINDOWING, FOCUS and
+#: HARNESS-CONTROL vars. These govern WINDOWING, FOCUS and
 #: CURSOR -- where the OS puts the window and who owns the pointer -- not what
 #: the renderer draws into it. They are harness plumbing and must ALWAYS reach
 #: the child, because the alternative is an agent run taking over the user's
@@ -96,17 +96,17 @@ HARNESS_CONTROL = frozenset({
     # Never ClipCursor, never warp the pointer, never activate the window
     # (drives SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN engine-side).
     "MC2_NO_CURSOR_GRAB",
-    # NOFOCUS-FINISH-1: never occupy visible desktop area at all. The four
+    # Never occupy visible desktop area at all. The four
     # above make the window small, windowed and unactivated -- it is still ON
     # the user's screen. Only this one keeps it off (gos_render.cpp creates it
     # hidden at (-32000,-32000) and re-asserts that origin after every mode
-    # change). It was MISSING here, and because this policy is deny-by-default,
-    # scripts/run_visual_capture.py -- which builds its child env through
-    # build_pinned_env() rather than nofocus.apply_env() -- delivered an inert
-    # var to the engine and fell back to the 250ms external poller. That is
-    # precisely the multi-second desktop-covering flash NOFOCUS-HARDEN-1 exists
-    # to delete. Pixel-neutral: the GL drawable keeps its full size, so golden
-    # capture resolution is unchanged (unlike MC2_WIDTH/MC2_HEIGHT below).
+    # change). This policy is deny-by-default, so a call path that builds its
+    # child env through build_pinned_env() (e.g. scripts/run_visual_capture.py)
+    # must list it here; otherwise the engine receives an inert var and falls
+    # back to the 250ms external poller, producing a multi-second
+    # desktop-covering flash. Pixel-neutral: the GL drawable keeps its full size,
+    # so golden capture resolution is unchanged (unlike MC2_WIDTH/MC2_HEIGHT
+    # below).
     "MC2_WINDOW_OFFSCREEN",
 })
 
@@ -187,7 +187,7 @@ def build_pinned_env(
     scrubbed = scrubbable_ambient(src)
     passthrough = {k: v for k, v in ambient_mc2(src).items()
                    if k in TRANSPORT_PASSTHROUGH}
-    # BACKGROUND-SMOKE-1: windowing/focus/cursor always survives the scrub.
+    # Windowing/focus/cursor always survives the scrub.
     # Ambient value first; a harness_set below still wins, which is what makes
     # the no-focus default apply even to a totally clean shell.
     harness_control = {k: v for k, v in ambient_mc2(src).items()
@@ -219,7 +219,7 @@ def build_pinned_env(
         "declared": dict(sorted(declared.items())),
         "declared_via_channel": channel_names,
         "transport_passthrough": dict(sorted(passthrough.items())),
-        # BACKGROUND-SMOKE-1: windowing/focus/cursor actually delivered to the
+        # Windowing/focus/cursor actually delivered to the
         # child, from EITHER the ambient shell or harness_sets. Recorded on its
         # own key because MC2_WINDOWED / MC2_WIDTH / MC2_HEIGHT move the
         # drawable size and therefore can move a golden's resolution -- a

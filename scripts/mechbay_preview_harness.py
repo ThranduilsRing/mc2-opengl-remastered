@@ -97,7 +97,7 @@ def main():
         "MC2_SOAK_AUTOWIN": "1",
         "MC2_SOAK_WIN_AFTER_SEC": str(args.win_after_sec),
         "MC2_SOAK_STOP_AT_BAY": "1",   # park at the bay, never NEXT past it
-        # VERIFY-INTEGRITY-3: engine-side cursor release (commit f0c07b87).
+        # Engine-side cursor release is required here.
         # NOT MC2_SMOKE_MODE -- this harness deliberately drives the real
         # logistics/front-end path and smoke mode skips movies and screens.
         "MC2_NO_CURSOR_GRAB": "1",

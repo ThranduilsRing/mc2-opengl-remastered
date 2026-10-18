@@ -134,14 +134,14 @@ NOFOCUS_ENV = {
     # user options.cfg with FullScreen=TRUE cannot beat it:
     #   * boot        -- gameosmain.cpp:1534 zeroes Environment.fullScreen
     #                    AFTER options.cfg has been parsed;
-    #   * re-issue    -- gameos_graphics.cpp:9086 (WINDOWED-8006-1) forces
+    #   * re-issue    -- gameos_graphics.cpp:9086 forces
     #                    GotoWindowMode on every later prefs.applyPrefs()
-    #                    SetScreenMode, which is what used to bounce the
-    #                    window back to fullscreen mid-run.
+    #                    SetScreenMode; without this the window bounces
+    #                    back to fullscreen mid-run.
     # It is a long-shipped gate, so this works on already-deployed exes with
     # no rebuild.
     "MC2_WINDOWED": "1",
-    # NO-LAUNCHER-WINDOW. gameosmain.cpp main() hands a directly-started mc2.exe
+    # No launcher window. gameosmain.cpp main() hands a directly-started mc2.exe
     # off to mc2-launcher.exe (a visible GUI) unless it sees one of a handful of
     # "automation" env vars -- and MC2_NO_CURSOR_GRAB / MC2_WINDOW_OFFSCREEN are
     # NOT among them. A harness that deliberately runs WITHOUT MC2_SMOKE_MODE (the
@@ -162,17 +162,17 @@ NOFOCUS_ENV = {
 #: which is the actual complaint. So default small too.
 #:
 #: setdefault, so any harness that grades pixels at a specific resolution
-#: (golden captures, scripts/check-capture-resolution.py, the #49 resolution
+#: (golden captures, scripts/check-capture-resolution.py, the resolution
 #: matrix) keeps full control by setting MC2_WIDTH/MC2_HEIGHT explicitly.
 SMALL_WINDOW_ENV = {
     "MC2_WIDTH": "854",
     "MC2_HEIGHT": "480",
 }
 
-#: NOFOCUS-HARDEN-1 -- the actual invariant: an agent-launched engine window
+#: The actual invariant: an agent-launched engine window
 #: must never occupy visible desktop area at ANY point in its lifetime.
 #:
-#: Small + windowed + unactivated is NOT that. Two holes stayed open:
+#: Small + windowed + unactivated is NOT that. Two traps remain:
 #:   (a) SMALL_WINDOW_ENV is setdefault, and the busiest launch paths
 #:       deliberately do NOT set the size (run_visual_capture grades goldens at
 #:       options.cfg resolution; smoke_lib.runner never set it at all), so those
@@ -183,8 +183,8 @@ SMALL_WINDOW_ENV = {
 #: MC2_WINDOW_OFFSCREEN=1 (gos_render.cpp) creates the SDL window HIDDEN at
 #: (-32000,-32000) and re-asserts that origin synchronously after every later
 #: mode change. Nothing is ever mapped to a visible pixel, so the SIZE stops
-#: mattering and golden capture resolution is preserved. An exe built before
-#: this change is refused by exe_guard instead of being chased by a poller.
+#: mattering and golden capture resolution is preserved. An exe without this
+#: support is refused by exe_guard instead of being chased by a poller.
 OFFSCREEN_ENV = {
     "MC2_WINDOW_OFFSCREEN": "1",
     # Agent launches are SILENT: SDL dummy audio driver (user is at the desk).

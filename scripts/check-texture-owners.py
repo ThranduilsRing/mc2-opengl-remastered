@@ -41,7 +41,7 @@ import sys
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Runtime renderer TUs. Editor/asset_viewer/ui_editor deliberately excluded
-# (out of engine scope per TEXTURE-SAMPLER-REGISTRY-RECON-1 §F).
+# (out of engine scope).
 SCAN_DIRS = [
     os.path.join(REPO_ROOT, "GameOS", "gameos"),
     os.path.join(REPO_ROOT, "RenderCore"),
