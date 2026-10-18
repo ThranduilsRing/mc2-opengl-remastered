@@ -17,6 +17,8 @@
 #include"heap.h"
 #endif
 
+#include <new>
+
 // NS3 boundary: the GOS font handle/scale used by float-help text belong to
 // this subsystem, not to whatever game/tool main links it. extern'd for all
 // consumers in floathelp.h. Previously redefined in every main.
@@ -31,20 +33,13 @@ FloatHelp*	FloatHelp::floatHelps = nullptr;			//POinters to all of them.
 // class FloatHelp
 void FloatHelp::init (long maxHelps)
 {
-	floatHelps = (FloatHelp *)systemHeap->Malloc(sizeof(FloatHelp) * MAX_FLOAT_HELPS);
+	floatHelps = static_cast<FloatHelp*>(systemHeap->Malloc(sizeof(FloatHelp) * MAX_FLOAT_HELPS));
+	ownsPool = true;
 	gosASSERT(floatHelps != nullptr);
 	
 	FloatHelp *tmp = floatHelps;
 	for (long i=0;i<MAX_FLOAT_HELPS;i++,tmp++)
-	{
-		tmp->text[0] = 0;
-		tmp->screenPos.x = tmp->screenPos.y = tmp->screenPos.z = tmp->screenPos.w = 0.0f;
-		tmp->foregroundColor = SD_WHITE;
-		tmp->backgroundColor = SD_BLACK;
-		tmp->scale = 1.0f;
-		tmp->proportional = true;
-		tmp->bold = tmp->italic = tmp->wordWrap = false;
-	}
+		::new (static_cast<void*>(tmp)) FloatHelp;
 	
 	currentFloatHelp = 0;
 }
@@ -52,7 +47,12 @@ void FloatHelp::init (long maxHelps)
 //-----------------------------------------------------------------------------------------
 void FloatHelp::destroy (void)
 {
-	systemHeap->Free(floatHelps);
+	if (floatHelps)
+	{
+		for (long i = 0; i < MAX_FLOAT_HELPS; ++i)
+			floatHelps[i].~FloatHelp();
+		systemHeap->Free(floatHelps);
+	}
 	floatHelps = nullptr;
 	currentFloatHelp = 0;
 }

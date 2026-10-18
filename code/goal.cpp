@@ -28,6 +28,7 @@
 
 #include"heap.h"
 #include"mclib.h"
+#include <new>
 
 extern UserHeapPtr missionHeap;
 
@@ -151,6 +152,8 @@ void GoalManager::init (void) {
 void GoalManager::destroy (void) {
 
 	if (goalObjectPool) {
+		for (long i = 0; i < goalObjectPoolSize; ++i)
+			goalObjectPool[i].~GoalObject();
 		missionHeap->Free(goalObjectPool);
 		goalObjectPool = nullptr;
 	}
@@ -200,7 +203,9 @@ void GoalManager::setup (long poolSize) {
 	if (goalObjectPoolSize  < 10)
 		Fatal(0, " GoalManager.setup: goalObjectPoolSize must be greater than 10 ");
 
-	goalObjectPool = (GoalObjectPtr)missionHeap->Malloc(sizeof(GoalObject) * goalObjectPoolSize);
+	goalObjectPool = static_cast<GoalObjectPtr>(missionHeap->Malloc(sizeof(GoalObject) * goalObjectPoolSize));
+	for (long i = 0; i < goalObjectPoolSize; ++i)
+		::new (static_cast<void*>(&goalObjectPool[i])) GoalObject;
 	clear();
 }
 
