@@ -57,9 +57,9 @@
       "status": "keep",
       "reason": "Regression floor of the video surface (owner ruling 2026-10-13, M1): one line per movie request, skip or play (campaign-start and won-mission pre-videos in code/missionbegin.cpp / logistics.cpp / logistics_begin.cpp, in-mission videos in controlgui_chat.cpp as event=play_requested), a few lines per session. Parsed by scripts/smoke_lib/logparse.py PRESENCE_RULES (an absence rule: tier1/tier2 mc2_10 must print an event=play_requested line or the row is red, bucket video_floor_missing; scripts/smoke_lib/gates.py applies it). The campaign-start pre_video line is not yet enforced: it needs a campaign-boot run, so until one exists the proof procedure greps it."
     },
-    "WATER_SHORE_EDGE v1": {
+    "VK_PROFILE v1": {
       "status": "keep",
-      "reason": "FAIL-LOUD by design (mclib/terrain.cpp): default shore mode 2 silently degrades to mask mode when visual_height_4x.r32 is missing from the install; NOT FOUND/size/read failures print once per mission load. LOADED is MC2_DIAGF (2026-10-07)."
+      "reason": "scripts/smoke_lib/vk_profile.py and logparse.py parse the verdict line; a refused device profile is graded red (vulkan_context.cpp VK_PROFILE)."
     },
     "VRAM v1": {
       "status": "keep",
@@ -68,6 +68,10 @@
     "VRAM_ADAPTER v1": {
       "status": "keep",
       "reason": "Printed once before the first [VRAM v1] line, under the same smoke / MC2_DIAG_VERBOSE guard, and says which rule (luid or most_dedicated) picked the DXGI adapter the VRAM numbers come from; a reader of a VRAM figure on a two-GPU host needs it. No parser consumes it."
+    },
+    "WATER_SHORE_EDGE v1": {
+      "status": "keep",
+      "reason": "FAIL-LOUD by design (mclib/terrain.cpp): default shore mode 2 silently degrades to mask mode when visual_height_4x.r32 is missing from the install; NOT FOUND/size/read failures print once per mission load. LOADED is MC2_DIAGF (2026-10-07)."
     }
   }
 }
