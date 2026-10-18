@@ -607,7 +607,7 @@ void frameCameraPark(graphics::RenderWindowHandle win) {
                 int vkW = 0, vkH = 0;
                 graphics::get_drawable_size(win, &vkW, &vkH);
                 if (vkW > 0 && vkH > 0)
-                    gos::visual_capture::onPostRenderFrame(g_mc2FrameCounter, vkW, vkH);
+                    gos::visual_capture::onPostRenderFrame(g_mc2RenderFrame, vkW, vkH);
             }
         }
 }
@@ -628,7 +628,7 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
             {
                 ZoneScopedN("SwapWindow.SDL");
                 // The shared host present (Vulkan composite + present, or the GL swap): also the editor's.
-                gos::host::presentOrSwap(win, g_mc2FrameCounter);
+                gos::host::presentOrSwap(win, g_mc2RenderFrame);
             }
             render_contract::renderPassTelemetryFrameTick();  // [RENDER_PASS v1] frame boundary
             render_contract::renderPassScopeFrameBoundary();   // ENFORCEMENT-1 missing-end flush

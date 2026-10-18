@@ -58,7 +58,8 @@
 #  include "tracy/TracyOpenGL.hpp"
 #endif
 
-extern uint32_t g_mc2FrameCounter;   // engine frame clock (mclib/tgl.cpp), advanced by gos::host::advanceFrameCounter
+extern uint32_t g_mc2FrameCounter;   // engine logic-pass epoch (mclib/tgl.cpp), advanced by gos::host::advanceFrameCounter
+extern uint32_t g_mc2RenderFrame;    // render-frame clock (mclib/tgl.cpp), once per presented frame
 
 #ifdef MC2_IMGUI
 #include "GuiRuntime.h"
@@ -847,7 +848,7 @@ DWORD __stdcall RunGameOSLogic()
     EditorViewportCaptureTick();
     // The game's present: VK composite+swapchain present when the Vulkan backend is up, else the GL swap.
     gos::host::advanceFrameCounter();   // the shared engine frame clock (props' light cache, readback tags); the game advances it at the same point
-    gos::host::presentOrSwap(g_editorRenderWindow, g_mc2FrameCounter);
+    gos::host::presentOrSwap(g_editorRenderWindow, g_mc2RenderFrame);
     EditorFramePhase_Mark("swap");
     EditorFramePhase_End();
 

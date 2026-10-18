@@ -112,7 +112,15 @@ static const bool s_tglPoolTrace = mc2::gate::get<"MC2_TGL_POOL_TRACE">();
 // pak, makefst, makersp) that link mclib but NOT gameosmain still resolve
 // the symbol. The per-frame increment still lives in gameosmain.cpp's frame
 // loop; data tools never increment it and see a harmless zero.
+//
+// CONTRACT. g_mc2FrameCounter is the engine LOGIC-PASS epoch: monotonic, advanced once per rendered frame and, under
+// MC2_SIM_SPEED>=2 with the fixed-step harness, once more between the extra DoGameLogic substeps (gameosmain_frame.cpp), so every
+// per-frame-keyed sim path (brain tick accumulator, light-row / cachedFrame_ freshness stamps) sees one logic pass per value. Sim
+// code keys on it and must not change. g_mc2RenderFrame is the RENDER-frame clock: advanced exactly once per presented frame by
+// gos::host::advanceFrameCounter() (game and editor); the present path, readback tags and frame-pinned captures key on it.
+// At one logic pass per frame the two are equal.
 uint32_t g_mc2FrameCounter = 0;
+uint32_t g_mc2RenderFrame = 0;
 
 // VK-FIELD-VFX-5: fire-event present-capture arm. 0 = unarmed; the
 // MC2_FX_FORCE_SPAWN=loop fixture (code/warrior.cpp) sets it to the frame

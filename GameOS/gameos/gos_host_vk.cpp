@@ -22,7 +22,8 @@
 
 extern SDL_Window* g_sdl_window;
 extern uint32_t g_mc2FxFireCaptureFrame;   // mclib/tgl.cpp
-extern uint32_t g_mc2FrameCounter;         // mclib/tgl.cpp
+extern uint32_t g_mc2FrameCounter;         // mclib/tgl.cpp: logic-pass epoch
+extern uint32_t g_mc2RenderFrame;          // mclib/tgl.cpp: render-frame clock, once per presented frame
 
 #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
 // Render-island teardown entry points (each defined in its vulkan_*_island*.cpp; no-ops if the island was never born).
@@ -120,7 +121,7 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
 
 namespace gos { namespace host {
 
-void advanceFrameCounter() { ++g_mc2FrameCounter; }
+void advanceFrameCounter() { ++g_mc2FrameCounter; ++g_mc2RenderFrame; }
 
 void shutdownVulkanBackend() {
 #ifdef MC2_VULKAN

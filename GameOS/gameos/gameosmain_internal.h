@@ -145,6 +145,7 @@ extern "C" unsigned long long mc2_vfx_getTrailSpawnTotal();
 extern "C" unsigned long long mc2_vfx_getTrailHeadTotal();
 
 extern uint32_t g_mc2FrameCounter;
+extern uint32_t g_mc2RenderFrame;
 extern void gos_GetTerrainCameraPos(float* x, float* y, float* z);
 extern void mc2_executor_own_begin_postprocess(gosPostProcess* pp);
 extern void mc2_executor_own_end_postprocess(gosPostProcess* pp);
