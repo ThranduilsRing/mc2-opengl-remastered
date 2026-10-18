@@ -414,9 +414,13 @@ def prepare_stock_scratch(deploy: Path, destination: Path, allowances: dict) -> 
     scratch = (REPO / "scratch").resolve()
     deploy = deploy.resolve()
     data_root = (deploy / "data").resolve()
-    lane3 = Path("A:/Games/mc2-opengl/mc2-win64-lane3").resolve()
-    if (not deploy.is_relative_to(scratch) and deploy != lane3) or not data_root.is_relative_to(deploy):
-        raise ValueError("--prepare-stock-scratch is restricted to this worktree's scratch runtime or lane3")
+    # Lane installs (mc2-win64-lane<N>) are disposable scratch runtimes owned by one lane each.
+    lane_root = Path("A:/Games/mc2-opengl").resolve()
+    is_lane = deploy.parent == lane_root and re.fullmatch(r"mc2-win64-lane\d+", deploy.name) is not None
+    if (not deploy.is_relative_to(scratch) and not is_lane) or not data_root.is_relative_to(deploy):
+        raise ValueError("--prepare-stock-scratch is restricted to this worktree's scratch runtime or a "
+                         "lane install (A:/Games/mc2-opengl/mc2-win64-lane<N>); the stock audit then passes "
+                         "against archive-exact loose data")
     system = fit_fields((deploy / "system.cfg").read_bytes())
     count = int(system["FastFiles/NumFastFiles"][0].split(" ", 1)[1])
     stock, changes = {}, []

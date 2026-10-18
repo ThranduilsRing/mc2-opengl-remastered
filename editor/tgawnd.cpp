@@ -33,6 +33,7 @@ TGAWnd::TGAWnd()
 
 	m_pMemDC = nullptr;
 	m_hBitmap = nullptr;
+	m_pBits = nullptr;   // set by CreateDIBSection on the first paint; a never-painted window must not read garbage
 
 	m_hSplashBitMap = nullptr;
 
