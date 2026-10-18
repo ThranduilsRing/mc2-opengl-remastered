@@ -146,28 +146,30 @@ void vkImageResourceDestroy(VkImageResource* r, VkDevice) {
 int vkImageResourceLiveCount() { return g_liveImages.load(std::memory_order_relaxed); }
 
 VkFrameSync vkImageResourceBeginFrame(VkImageResource* r) {
-    const uint32_t p = r->frameParity;
+    const RenderCore::FrameFenceCore::Begin slot = r->frames.begin();
+    // A disabled resource (a failed CancelFrame) has a reset fence nothing will signal: wait on nothing and hand back a null fence.
+    if (!slot.mayWait) return VkFrameSync{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, slot.slot};
+    const uint32_t p = slot.slot;
     // Blocker #4: guarantee the prior submit on this slot retired before its binary
     // semaphore is re-signalled. Fence created SIGNALED so frame 0 does not block.
     const VkFence fence = r->frameFence[p].get();
     vkWaitForFences(r->device, 1, &fence, VK_TRUE, UINT64_MAX);
     vkResetFences(r->device, 1, &fence);
     // signal = GL->VK sem (submit waits it); vk2gl = VK->GL sem (submit signals it, P1.5).
-    VkFrameSync s{r->frameFence[p].get(), r->glToVkSem[p].get(), r->vkToGlSem[p].get(), p};
-    r->frameParity ^= 1u;
-    return s;
+    return VkFrameSync{r->frameFence[p].get(), r->glToVkSem[p].get(), r->vkToGlSem[p].get(), p};
 }
 
-void vkImageResourceCancelFrame(VkImageResource* r, const VkFrameSync& sync) {
-    if (!r || sync.parity > 1u) return;
+bool vkImageResourceCancelFrame(VkImageResource* r, const VkFrameSync& sync) {
+    if (!r || sync.parity > 1u || !sync.fence) return false;
     VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
     fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     const VkDevice device = r->device;
-    if (!mc2vk::create(r->frameFence[sync.parity], device, [&](VkFence* out) { return vkCreateFence(device, &fci, nullptr, out); })) {
-        // vkCreateFence fails only on device loss or out of memory; the owner is left empty and the island's next failing call disables it.
-        return;
-    }
-    r->frameParity = sync.parity;
+    // Create beside the old fence and swap on success: a failed vkCreateFence (device loss, out of memory) must not empty the owner.
+    mc2vk::OwnedFence fresh;
+    const bool recreated = mc2vk::create(fresh, device, [&](VkFence* out) { return vkCreateFence(device, &fci, nullptr, out); });
+    if (recreated) r->frameFence[sync.parity] = std::move(fresh);
+    r->frames.cancel(sync.parity, recreated);   // on failure the resource is disabled: BeginFrame never waits the reset, unsignalled old fence
+    return recreated;
 }
 
 #endif // MC2_VULKAN_ISLAND

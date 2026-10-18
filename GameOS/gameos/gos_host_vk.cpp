@@ -22,6 +22,19 @@
 
 extern SDL_Window* g_sdl_window;
 extern uint32_t g_mc2FxFireCaptureFrame;   // mclib/tgl.cpp
+extern uint32_t g_mc2FrameCounter;         // mclib/tgl.cpp
+
+#if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
+// Render-island teardown entry points (each defined in its vulkan_*_island*.cpp; no-ops if the island was never born).
+extern "C" void mc2_vk_water_island_destroy();
+extern "C" void mc2_vk_vfx_island_destroy();
+extern "C" void mc2_vk_color_prop_island_destroy();
+extern "C" void mc2_vk_terrain_island_destroy();
+extern "C" void mc2_vk_mech_island_destroy();
+extern "C" void mc2_vk_legacy_shape_island_destroy();
+extern "C" void mc2_vk_sky_island_destroy();
+extern "C" void mc2_vk_shadow_island_destroy();
+#endif
 
 // VK-FAILSOFT-DISARM-1: present init hit a zero surface extent (window minimized at boot) and was DEFERRED instead of fail-softing
 // the session to GL. The frame loop retries EnginePresentVk::init once the drawable is non-zero.
@@ -105,6 +118,28 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
 }
 
 namespace gos { namespace host {
+
+void advanceFrameCounter() { ++g_mc2FrameCounter; }
+
+void shutdownVulkanBackend() {
+#ifdef MC2_VULKAN
+#ifdef MC2_VULKAN_ISLAND
+    // Islands first: each frees its Vulkan objects (and the GL interop FBO / imported texture, if any) while the GL context and the shared
+    // device are both alive. The shadow island also emits the [VK_SHADOW_INTEROP] health line (forbidden_* counters).
+    mc2_vk_water_island_destroy();
+    mc2_vk_color_prop_island_destroy();
+    mc2_vk_terrain_island_destroy();
+    mc2_vk_vfx_island_destroy();
+    mc2_vk_mech_island_destroy();
+    mc2_vk_legacy_shape_island_destroy();
+    mc2_vk_sky_island_destroy();
+    mc2_vk_shadow_island_destroy();
+#endif
+    // Then the present path (copy-1 FBO / imported texture, swapchain), then the shared device.
+    mc2vk::getOrCreateEnginePresentVk().destroy();
+    mc2vk::getOrCreateEngineVulkanContext().destroy();
+#endif
+}
 
 // The render-object handle slots reuse an index only after the frame that may name it completed. One clock for every host (game and editor): it runs
 // after the present that closed the frame, whatever that present did.

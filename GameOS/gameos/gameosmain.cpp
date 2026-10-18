@@ -1266,7 +1266,7 @@ int main(int argc, char** argv)
             // frame counter, then drain TGL pool null counters. Per-frame
             // line is env-gated; monotonic summary every 600 frames is not.
             ZoneScopedN("Frame.DrainTglPoolStats");
-            g_mc2FrameCounter++;
+            gos::host::advanceFrameCounter();
             drainTglPoolStats();
             // [OBJECT_RECON v1] slice-2 recon-zero accumulator drain.
             // No-op cost (~1 cmp + 1 branch) when env not set.
@@ -1360,36 +1360,8 @@ int main(int argc, char** argv)
 #endif
     gos_DestroyRenderer();
 
-#ifdef MC2_VULKAN
-#ifdef MC2_VULKAN_ISLAND
-    // VK-P9a WATER-INTEROP: tear down the water island (pipeline/render-pass/images/
-    // buffers/command pool/exportable color seam) BEFORE the shared device is destroyed,
-    // so its objects don't leak (vkDestroyDevice would report them). No-op if never born.
-    // Must run while both the GL context (deletes the interop FBO / imported tex) and the
-    // shared device are alive — same ordering rationale as the present teardown below.
-    mc2_vk_water_island_destroy();
-    // VK-P11 STATIC-PROP COLOR: tear down the color-prop island alongside water.
-    mc2_vk_color_prop_island_destroy();
-    // VK-P10 TERRAIN TIER-1: tear down the terrain island alongside the others.
-    mc2_vk_terrain_island_destroy();
-    // VK-FIELD-VFX-1: tear down the VFX particle island alongside the others.
-    mc2_vk_vfx_island_destroy();
-    // VK-P14 MECH TIER-1: tear down the mech island alongside the others.
-    mc2_vk_mech_island_destroy();
-    mc2_vk_legacy_shape_island_destroy();   // VK-PARITY-F1
-    mc2_vk_sky_island_destroy();            // VK-PARITY-F3
-    // VK-P8 SHADOW INTEROP: tear down the shadow island (was previously never called --
-    // its VK CSM producer objects leaked at shutdown and its [VK_SHADOW_INTEROP] health
-    // line, carrying the forbidden_* counters, never reached the log).
-    mc2_vk_shadow_island_destroy();
-#endif
-    // VK-P13-SELECTOR-1 / T3: tear down the VK present path FIRST -- it deletes GL
-    // objects (copy-1 FBO / imported tex) and VK resources on the shared device,
-    // so it must run while both the GL context and the shared device are alive.
-    mc2vk::getOrCreateEnginePresentVk().destroy();
-    // T2: then tear down the shared engine Vulkan context (no-op if never born).
-    mc2vk::getOrCreateEngineVulkanContext().destroy();
-#endif
+    // Islands, then the present path, then the shared VulkanContext: one order, shared with the editor (gos_host_vk.cpp).
+    gos::host::shutdownVulkanBackend();
 
     graphics::destroy_render_context(ctx);
     graphics::destroy_window(win);

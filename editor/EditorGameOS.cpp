@@ -58,6 +58,8 @@
 #  include "tracy/TracyOpenGL.hpp"
 #endif
 
+extern uint32_t g_mc2FrameCounter;   // engine frame clock (mclib/tgl.cpp), advanced by gos::host::advanceFrameCounter
+
 #ifdef MC2_IMGUI
 #include "GuiRuntime.h"
 #include "gos_host_vk.h"          // initVulkanBackend / presentOrSwap: the game's VK bring-up and present, shared
@@ -866,10 +868,8 @@ DWORD __stdcall RunGameOSLogic()
     // renderer own its own program lifecycle.
     EditorViewportCaptureTick();
     // The game's present: VK composite+swapchain present when the Vulkan backend is up, else the GL swap.
-    {
-        static unsigned long s_editorFrame = 0;
-        gos::host::presentOrSwap(g_editorRenderWindow, ++s_editorFrame);
-    }
+    gos::host::advanceFrameCounter();   // the shared engine frame clock (props' light cache, readback tags); the game advances it at the same point
+    gos::host::presentOrSwap(g_editorRenderWindow, g_mc2FrameCounter);
     EditorFramePhase_Mark("swap");
     EditorFramePhase_End();
 
@@ -921,6 +921,9 @@ void EditorGameOS_Shutdown(void)
         EditorGameOSTrace("EditorGameOS_Shutdown: before gos_DestroyRenderer");
         gos_DestroyRenderer();
         EditorGameOSTrace("EditorGameOS_Shutdown: after gos_DestroyRenderer");
+        // Same order as the game: islands, present path, VulkanContext, then the GL context and the window below.
+        gos::host::shutdownVulkanBackend();
+        EditorGameOSTrace("EditorGameOS_Shutdown: after shutdownVulkanBackend");
     }
 
     if (g_editorRenderContext)
