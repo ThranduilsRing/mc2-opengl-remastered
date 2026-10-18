@@ -1055,7 +1055,7 @@ class MovePath {
 
 		MovePath (void) {
 			// Saves write this struct raw; zero it so padding (e.g. after 'marked') is deterministic.
-			memset((void*)this, 0, sizeof(MovePath));
+			memset(static_cast<void*>(this), 0, sizeof(MovePath));
 			init();
 		}
 		
