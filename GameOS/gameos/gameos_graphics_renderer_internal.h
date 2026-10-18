@@ -777,11 +777,6 @@ class gosRenderer {
 
 		vec4 render_viewport_;
         
-        gosMesh* quads_;
-        gosMesh* tris_;
-        gosMesh* indexed_tris_;
-        gosMesh* lines_;
-        gosMesh* points_;
         gosMesh* text_;
         gosRenderMaterial* basic_material_;
         gosRenderMaterial* basic_tex_material_;

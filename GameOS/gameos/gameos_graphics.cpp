@@ -221,17 +221,7 @@ void gosRenderer::init() {
 
     {
         ZoneScopedN("gosRenderer::init meshes");
-        quads_ = gosMesh::makeMesh(PRIMITIVE_TRIANGLELIST, 1024*10);
-        gosASSERT(quads_);
-        tris_ = gosMesh::makeMesh(PRIMITIVE_TRIANGLELIST, 1024*10);
-        gosASSERT(tris_);
-        indexed_tris_ = gosMesh::makeMesh(PRIMITIVE_TRIANGLELIST, 1024*60, 1024*60);
-        gosASSERT(indexed_tris_);
-        lines_ = gosMesh::makeMesh(PRIMITIVE_LINELIST, 1024*10);
-        gosASSERT(lines_);
-        points_= gosMesh::makeMesh(PRIMITIVE_POINTLIST, 1024*10);
-        gosASSERT(points_);
-        text_ = gosMesh::makeMesh(PRIMITIVE_TRIANGLELIST, 4024 * 6);
+        text_ = gosMesh::makeMesh(4024 * 6);
         gosASSERT(text_);
     }
 
@@ -540,11 +530,6 @@ void gosRenderer::destroy() {
     gos_TerrainLodChunk_Destroy();
     TerrainPatchStream::destroy();
 
-    gosMesh::destroy(quads_);
-    gosMesh::destroy(tris_);
-    gosMesh::destroy(indexed_tris_);
-    gosMesh::destroy(lines_);
-    gosMesh::destroy(points_);
     gosMesh::destroy(text_);
 
     for(size_t i=0; i<fontList_.size(); i++) {

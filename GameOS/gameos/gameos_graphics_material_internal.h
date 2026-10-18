@@ -584,114 +584,32 @@ class gosRenderMaterial {
 // Cached once on first query (single predicted-false branch when unset).
 // SPLIT-1 slice 4: gosLightGrowOnceEnabled moved to gameos_graphics_light_ssbo.cpp.
 
+// CPU glyph staging for native HUD batches. No GL buffers or draw ownership.
 class gosMesh {
-    public:
-        using INDEX_TYPE = WORD;
+public:
+    static gosMesh* makeMesh(int capacity) { return new gosMesh(capacity); }
+    static void destroy(gosMesh* mesh) { delete mesh; }
+    ~gosMesh() { delete[] vertices_; }
 
-        static gosMesh* makeMesh(gosPRIMITIVETYPE prim_type, int vertex_capacity, int index_capacity = 0) {
-            GLuint vb = makeBuffer(GL_ARRAY_BUFFER, nullptr, sizeof(gos_VERTEX)*vertex_capacity, GL_DYNAMIC_DRAW);
-            if(!vb)
-                return nullptr;
+    bool addVertices(gos_VERTEX* vertices, int count) {
+        if (size_ + count > capacity_) return false;
+        memcpy(vertices_ + size_, vertices, sizeof(gos_VERTEX) * count);
+        size_ += count;
+        return true;
+    }
+    int getVertexCapacity() const { return capacity_; }
+    int getNumVertices() const { return size_; }
+    const gos_VERTEX* getVertices() const { return vertices_; }
+    void rewind() { size_ = 0; }
 
-            GLuint ib = 0;
-            if(index_capacity > 0) {
-                ib = makeBuffer(GL_ELEMENT_ARRAY_BUFFER, nullptr, sizeof(INDEX_TYPE)*index_capacity, GL_DYNAMIC_DRAW);
-                if(!ib)
-                    return nullptr;
-            }
+    static const std::string s_tex1;
 
-            gosMesh* mesh = new gosMesh(prim_type, vertex_capacity, index_capacity);
-            mesh->vb_ = vb;
-            mesh->ib_ = ib;
-            mesh->pvertex_data_ = new gos_VERTEX[vertex_capacity];
-            mesh->pindex_data_ = new INDEX_TYPE[index_capacity];
-            return mesh;
-        }
-
-        static void destroy(gosMesh* pmesh) {
-
-            gosASSERT(pmesh);
-
-            delete[] pmesh->pvertex_data_;
-            delete[] pmesh->pindex_data_;
-
-            GLuint b[] = {pmesh->vb_, pmesh->ib_};
-            glDeleteBuffers(sizeof(b)/sizeof(b[0]), b);
-        }
-
-        bool addVertices(gos_VERTEX* vertices, int count) {
-            if(num_vertices_ + count <= vertex_capacity_) {
-                memcpy(pvertex_data_ + num_vertices_, vertices, sizeof(gos_VERTEX)*count);
-                num_vertices_ += count;
-                return true;
-            }
-            return false;
-        }
-
-        bool addIndices(INDEX_TYPE* indices, int count) {
-            if(num_indices_ + count <= index_capacity_) {
-                memcpy(pindex_data_ + num_indices_, indices, sizeof(INDEX_TYPE)*count);
-                num_indices_ += count;
-                return true;
-            }
-            return false;
-        }
-
-        int getVertexCapacity() const { return vertex_capacity_; }
-        int getIndexCapacity() const { return index_capacity_; }
-        int getNumVertices() const { return num_vertices_; }
-        int getNumIndices() const { return num_indices_; }
-        const gos_VERTEX* getVertices() const { return pvertex_data_; }
-        const WORD* getIndices() const { return pindex_data_; }
-
-        int getIndexSizeBytes() const { return sizeof(INDEX_TYPE); }
-
-        GLuint getVB() const { return vb_; }
-        GLuint getIB() const { return ib_; }
-
-        void uploadBuffers() {
-            if (num_vertices_ > 0) {
-                updateBuffer(vb_, GL_ARRAY_BUFFER, pvertex_data_,
-                    num_vertices_ * sizeof(gos_VERTEX), GL_DYNAMIC_DRAW);
-            }
-            if (num_indices_ > 0) {
-                updateBuffer(ib_, GL_ELEMENT_ARRAY_BUFFER, pindex_data_,
-                    num_indices_ * sizeof(INDEX_TYPE), GL_DYNAMIC_DRAW);
-            }
-        }
-
-        void rewind() { num_vertices_ = 0; num_indices_ = 0; }
-
-
-
-		static const std::string s_tex1;
-
-    private:
-
-        gosMesh(gosPRIMITIVETYPE prim_type, int vertex_capacity, int index_capacity)
-            : vertex_capacity_(vertex_capacity)
-            , index_capacity_(index_capacity)
-            , num_vertices_(0)
-            , num_indices_(0)
-            , pvertex_data_(nullptr)    
-            , pindex_data_(nullptr)    
-            , prim_type_(prim_type)
-            , vb_(-1)
-            ,ib_(-1)
-         {
-         }
-
-        int vertex_capacity_;
-        int index_capacity_;
-        int num_vertices_;
-        int num_indices_;
-        gos_VERTEX* pvertex_data_;
-        INDEX_TYPE* pindex_data_;
-        gosPRIMITIVETYPE prim_type_;
-
-        GLuint vb_;
-        GLuint ib_;
-
+private:
+    explicit gosMesh(int capacity)
+        : capacity_(capacity), vertices_(new gos_VERTEX[capacity]) {}
+    int capacity_;
+    int size_ = 0;
+    gos_VERTEX* vertices_;
 };
 
 
