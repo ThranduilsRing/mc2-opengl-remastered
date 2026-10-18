@@ -184,45 +184,24 @@ namespace Stuff {
 			);
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	// Vector3D access
+	// glm::vec3 access
 	//
 	public:
 		bool
 			GetEntry(
 				const char *entryname,
-				Vector3D *value,
+				glm::vec3 *value,
 				bool required=false
 			);
 		void
 			SetEntry(
 				const char *entryname,
-				const Vector3D &value
+				const glm::vec3 &value
 			);
 		void
 			AppendEntry(
 				const char *entryname,
-				const Vector3D &value
-			);
-
-	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	// UnitQuaternion access
-	//
-	public:
-		bool
-			GetEntry(
-				const char *entryname,
-				UnitQuaternion *value,
-				bool required=false
-			);
-		void
-			SetEntry(
-				const char *entryname,
-				const UnitQuaternion &value
-			);
-		void
-			AppendEntry(
-				const char *entryname,
-				const UnitQuaternion &value
+				const glm::vec3 &value
 			);
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
