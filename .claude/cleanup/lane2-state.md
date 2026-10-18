@@ -1,5 +1,39 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## FIFTY-NINTH session (2026-10-18, Sonnet 5.5) -- s58 review fixed, the VK umbrella retired, the mech batcher is CPU only
+
+Commits (local, on cb0492e35): 0cf94f8ce U1 islands | (U2) umbrellaOn deleted | ec516734a M1 mech | b0676a32f review 1 frame clock | 17d7fac41 review 2 gates/docs/census | 337b2275b review 3 capture harness | test_gate floor | pass-coverage ledger | state. Code tip = the ledger commit before the state commit.
+
+### Item 0 (s58 review, PASS-WITH-FIXES)
+1. Frame clock: `g_mc2RenderFrame` (mclib/tgl.cpp) advances once per presented frame in `gos::host::advanceFrameCounter()` (game and editor). The present call, the capture hook, the present readback tag and the frame-pinned dump key on it. `g_mc2FrameCounter` stays the logic-pass epoch (it also advances per extra MC2_SIM_SPEED substep, which the brain tick accumulator needs); the contract is written at its definition. The static-prop `cachedFrame_` caches (stamped at sim update, compared at render) stay on the logic epoch on purpose. Equal at one logic pass per frame, sim stepping untouched. NOT proven live at MC2_SIM_SPEED>=2 (no run); the 1x equality is by construction and tier1 / captures at 1x are unchanged.
+2. Red checks: gate rows (14 mech rows with no reader left), gate_gen, registry, flags.auto.yaml regenerated; log_tag_baseline re-frozen (this also takes the open s55-s56 TOOLVK / VK_TIMELINE / VK_UPLOAD / VK_FRAMERING rows and the new `[RENDER_BACKEND]` umbrella note); printf corpus lost 12 rows of deleted lines; split_map, gated-layout-macros, gl_shader_variants regenerated; pch skip list; callers.json and background-launch inventory regenerated (my script deletion moved line numbers: named, merge-follow-up style); cxx17 baseline re-frozen: tools LG20 +6 (the s54-s56 tool MC2_TOOL_* literals).
+3. Capture harness is Vulkan only (`capture_backend.requested` always vulkan, `ab.py` requires `--skip-gl` against `.claude/l2cap/s56-gl-baseline`, `capture_ab` has no GL arm; tests updated).
+4. Stale mentions fixed: tool_vk_shell.h, tests/unit/CMakeLists.txt, tier1_env_vars / renderer-feature-flags / debugging-render-issues lines, two GL-era docs marked historical, `data/defs/debug/source_diagnostics.fit` lost its two GL_DEBUG string blocks. render_backend_select.h stale IFACE comment removed.
+
+### Item 1: GL deletion
+- U1 (0cf94f8ce, 24 files) + U2 (22 files): `MC2_VK_SHARED_GBUFFER` is retired (`=0` is ignored, `[RENDER_BACKEND]` line; the row stays as a parsed no-op). `umbrellaOn()` and every island gate function folded: terrain / prop / mech / legacy / sky / vfx / water / shadow islands, the native post direct-chain checks, the scene-resource gates, present-tail gates, HUD queue / skip gates (the GL HUD replay is now only reachable when the native queue declines), VFX / selection IsHUD routes. `check-vk-umbrella-readers.py` and its test rows deleted.
+- M1 (ec516734a, 17 files, about -1,330 lines net with the scripts): `GpuMechBatcher` is CPU only. Deleted: the GL program load, uniform locations, ring SSBOs and fences, VAO/VBO/IBO/sampler, the GL draw, the GL shadow pass `flushShadow`, GL material SSBO, the uniform upload block, all GL state save/restore. `flush()` writes instance, bone and run feeds straight into the VK snapshots; geometry is the CPU copy. GL-only knobs removed with their ImGui sections: StandardLit, PBR tuning, back fill, wear / triplanar, mech debug view, program id readouts.
+- Proof: `vk_feed_dump` byte equality before / after on the same frame, both maps (`scratch/s59/feed_base_*` vs `feed_m1_*`, `cmp` identical; `tools/vk_feed_diff.py` exit 0); night capture PNG sha identical, day capture 15 pixels differ (MAD 8e-5, water noise), both viewed: `.claude/l2cap/s59-base` vs `.claude/l2cap/s59-m1`.
+- What GL remains and why: the static-prop batcher GL flush / flushShadow / drawDynamicPropShadows, terrain LOD-chunk and indirect GL draws, water GL stream, the GL post passes (effects, skybox, executor, shadow bodies), the legacy gos_* draw path, mclib GL halves, particle bridge GL draw, the GL scene FBO / SDL GL context (3.9). Reasons verified this session: the static-prop feeds (`mc2_color_prop_island_get_material_feed`, `glTexArrayOn`) read GL texture arrays built in `finalize_textures`, the VK terrain feed reads GL postprocess shadow textures / sizes (`getDynamicShadowTextureRaw`), and the RenderCore frame-graph tables (ApplyPassId, kTopLevelStateDesc, ~30 tests) still model the GL passes. The GL dynamic-shadow draws of props (`drawDynamicPropShadows`) and the GL HUD replay are dead work every frame (output unused when VK succeeds) and are the next deletion targets. Batch 0 (feeds into neutral owners) and 3.9 were NOT done; item 1b is partial (mech only), 1c not started.
+
+### Proof
+| claim | evidence |
+|---|---|
+| doctest at the tip | `build_contract_harnesses --run --unit` EXIT 0 (`scratch/s59/doctest2.log`); the first run found `test_gate` row floor 960 > 947 rows, fixed |
+| tier1 sync validation N=2 30 s | 5/5 PASS errors=0 warnings=0 (`scratch/s59/t1.log`) |
+| smoke-lite | PASS 2/2 without validation (`lite3.log`); under sync mc2_10 `heartbeat_freeze_play` in 5 of 6 runs (BUGS 82, open) |
+| editor smoke sync (gen_map_basic, stock_roundtrip:mc2_01, clean_close) | 3/3 PASS (`scratch/s59/ed1.log`, `scratch/editor-smoke/2026-10-18T03-32-02`) |
+| editor captures day + night VIEWED | `scratch/s59-edcap/mc2_01.png` (3 shaded mechs, shadows, ImGui) and `mc2_10.png` (identical to the viewed s58 pair) |
+| game capture pair day + night VIEWED | `.claude/l2cap/s59-m1/mc2_01_saved_205644`, `mc2_10_saved_204523` |
+| check-contracts | all rows green except `tools_tests` `test_saveload_roundtrip first_save_only` (lane2 install data is not the declared stock set; pre-existing since s57, not code); `scratch/s59/contracts2.log` (`pass_coverage` fixed afterwards: MechOpaque ledger row now descriptive) |
+| build_all_targets -j2 | every stage built, EXIT 0 (`scratch/s59/bat.log`) |
+
+### Ratchets / OPEN
+- Rises named: cxx17 tools LG20 +6 (s54-s56 literals, baseline re-frozen); log_tag_baseline re-frozen (s55-s56 rows + mine). file_size warn: code/gamecam.cpp +18 (within baseline).
+- BUGS 81 (fixed), 82 (open).
+- OPEN: static-prop / terrain / water / post / mclib GL halves, batch 0, 3.9, BUGS 80 cursor re-draw (not started), `weaponbolt_render.cpp` keeps dead `addVertices` else branches (`useImmediate` is constant true), ApplyPassId / frame-graph GL model.
+- Merge note: nifty now has lane 1 s23 (cmake/Mc2SimFpContract.cmake) and the NULL/typedef sweep: expect conflicts in GameOS files on the next merge.
+
 ## FIFTY-EIGHTH session (2026-10-18, Sonnet 5.5) -- s57 review fixed, lane2 data back to stock tgl.fst, game GL opt-out + GL layers deleted
 
 Code tip 7b74f46ae (state commit on top). Commits (local, on 6fa70a098): 0ffba83c6 editor smoke prep clones | 7705170f5 review fixes | 2de28d047 + aabe40b0a + c39d06f8b editor smoke `clean_close` | 131e74601 + 05163cb4e GL opt-out deleted | 3918c1a0c IRenderBackend layer deleted | 1421493f4 dead reader + docs | 7b74f46ae GL ImGui renderer + GL debug deleted.
