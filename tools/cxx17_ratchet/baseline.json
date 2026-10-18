@@ -182,7 +182,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 11
+   "LG20": 16
   },
   "mclib": {
    "LG01": 337,
@@ -196,7 +196,7 @@
    "LG09": 1949,
    "LG10": 33,
    "LG11": 67,
-   "LG12a": 201,
+   "LG12a": 200,
    "LG12b": 233,
    "LG13": 447,
    "LG14": 112,
@@ -486,13 +486,13 @@
    "LG20": 1
   },
   "GameOS/gameos/gameosmain_frame.cpp": {
-   "LG09": 20,
+   "LG09": 17,
    "LG12a": 4
   },
   "GameOS/gameos/gameosmain_init.cpp": {
    "LG02": 1,
    "LG06": 1,
-   "LG09": 7,
+   "LG09": 6,
    "LG11": 4,
    "LG12a": 2
   },
@@ -562,6 +562,9 @@
   },
   "GameOS/gameos/gos_hdri.h": {
    "LG06": 1
+  },
+  "GameOS/gameos/gos_host_vk.cpp": {
+   "LG09": 4
   },
   "GameOS/gameos/gos_input.cpp": {
    "LG05": 1,
@@ -3117,10 +3120,10 @@
    "LG20": 2
   },
   "editor/EditorMFC.cpp": {
-   "LG20": 2
+   "LG20": 4
   },
   "editor/EditorPlaytest.cpp": {
-   "LG20": 5
+   "LG20": 8
   },
   "editor/EditorTaskRunner.cpp": {
    "LG19": 1
@@ -4564,7 +4567,7 @@
    "LG12a": 4
   },
   "mclib/stuff/angle.cpp": {
-   "LG12a": 2
+   "LG12a": 1
   },
   "mclib/stuff/armoron.hpp": {
    "LG01": 1,
@@ -5102,7 +5105,7 @@
    "LG20": 3
   }
  },
- "head": "a7585245a",
+ "head": "d6fd0b7fd",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
