@@ -14,7 +14,7 @@ extern unsigned short *indexOffset;	// [MidLevelRenderer::Max_Number_Vertices_Pe
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	CLASSNAME::TransformNoClip(Matrix4D *mat, GOSVertexPool *vt, bool db)
+	CLASSNAME::TransformNoClip(glm::mat4 *mat, GOSVertexPool *vt, bool db)
 {
 	Check_Object(this);
 	Check_Object(vt);
@@ -36,9 +36,9 @@ void
 		textureAnimation = texture->GetAnimateTexture();
 		if(textureAnimation)
 		{
-			Stuff::AffineMatrix4D &textureMatrix = texture->GetTextureMatrix();
-			deltaU = textureMatrix(3, 0);
-			deltaV = textureMatrix(3, 1);
+			glm::mat4 &textureMatrix = texture->GetTextureMatrix();
+			deltaU = textureMatrix[0][3];
+			deltaV = textureMatrix[1][3];
 		}
 	}
 
@@ -274,9 +274,9 @@ void
 			textureAnimation = texture->GetAnimateTexture();
 			if(textureAnimation)
 			{
-				Stuff::AffineMatrix4D &textureMatrix = texture->GetTextureMatrix();
-				deltaU = textureMatrix(3, 0);
-				deltaV = textureMatrix(3, 1);
+				glm::mat4 &textureMatrix = texture->GetTextureMatrix();
+				deltaU = textureMatrix[0][3];
+				deltaV = textureMatrix[1][3];
 			}
 		}
 
@@ -468,7 +468,7 @@ static MLRClippingState theAnd, theOr, theTest;
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Now it gets serious
 int
-	CLASSNAME::TransformAndClip(Matrix4D *mat, MLRClippingState clippingFlags, GOSVertexPool *vt, bool db)
+	CLASSNAME::TransformAndClip(glm::mat4 *mat, MLRClippingState clippingFlags, GOSVertexPool *vt, bool db)
 {
 	Check_Object(this);
 
@@ -504,7 +504,7 @@ int
 	}
 
 	Stuff::Vector4D *v4d = transformedCoords->GetData();
-	Stuff::Point3D *p3d = coords.GetData();
+	glm::vec3 *p3d = coords.GetData();
 	int *cs = (int *)clipPerVertex->GetData();
 	unsigned char *viv = visibleIndexedVertices.GetData();
 
@@ -568,9 +568,9 @@ int
 		textureAnimation = texture->GetAnimateTexture();
 		if(textureAnimation)
 		{
-			Stuff::AffineMatrix4D &textureMatrix = texture->GetTextureMatrix();
-			deltaU = textureMatrix(3, 0);
-			deltaV = textureMatrix(3, 1);
+			glm::mat4 &textureMatrix = texture->GetTextureMatrix();
+			deltaU = textureMatrix[0][3];
+			deltaV = textureMatrix[1][3];
 		}
 	}
 
@@ -587,9 +587,9 @@ int
 		textureAnimation2 = texture->GetAnimateTexture();
 		if(textureAnimation2)
 		{
-			Stuff::AffineMatrix4D &textureMatrix = texture->GetTextureMatrix();
-			deltaU2 = textureMatrix(3, 0);
-			deltaV2 = textureMatrix(3, 1);
+			glm::mat4 &textureMatrix = texture->GetTextureMatrix();
+			deltaU2 = textureMatrix[0][3];
+			deltaV2 = textureMatrix[1][3];
 		}
 	}
 

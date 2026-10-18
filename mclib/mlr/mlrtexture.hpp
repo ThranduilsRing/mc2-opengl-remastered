@@ -92,11 +92,11 @@ namespace MidLevelRenderer {
 					else
 					{
 						textureMatrixIsIdentity = true;
-						textureMatrix = Stuff::AffineMatrix4D::Identity;
+						textureMatrix = glm::mat4(1.0f);
 					}
 				}
 
-		Stuff::AffineMatrix4D&
+		glm::mat4&
 			GetTextureMatrix()
 				{ Check_Object(this); return textureMatrix; }
 
@@ -127,7 +127,7 @@ namespace MidLevelRenderer {
 
 		bool textureMatrixIsIdentity;
 
-		Stuff::AffineMatrix4D textureMatrix;
+		glm::mat4 textureMatrix;
 
 		GOSImage *image;
 

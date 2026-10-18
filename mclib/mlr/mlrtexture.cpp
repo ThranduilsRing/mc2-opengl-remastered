@@ -39,7 +39,7 @@ MLRTexture::MLRTexture(
 
 	instance = _instance;
 
-	textureMatrix = AffineMatrix4D::Identity;
+	textureMatrix = glm::mat4(1.0f);
 	textureMatrixIsIdentity = true;
 
 	image = thePool->GetImage(textureName);
@@ -68,7 +68,7 @@ MLRTexture::MLRTexture(
 
 	instance = 0;
 
-	textureMatrix = AffineMatrix4D::Identity;
+	textureMatrix = glm::mat4(1.0f);
 	textureMatrixIsIdentity = true;
 
 	hint = _hint;

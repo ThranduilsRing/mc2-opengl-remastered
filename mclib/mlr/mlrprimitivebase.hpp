@@ -140,12 +140,12 @@ namespace MidLevelRenderer {
 
 		virtual void
 			SetCoordData(
-				const Stuff::Point3D *array,
+				const glm::vec3 *array,
 				int point_count
 			);
 		virtual void
 			GetCoordData(
-				Stuff::Point3D **array,
+				glm::vec3 **array,
 				int *point_count
 			);
 
@@ -161,7 +161,7 @@ namespace MidLevelRenderer {
 			);
 
 	//	is to call befor clipping, parameter: camera point
-		virtual int	FindBackFace(const Stuff::Point3D&) = 0;
+		virtual int	FindBackFace(const glm::vec3&) = 0;
 
 		virtual void	Lighting(MLRLight* const*, int nrLights) = 0;
 
@@ -192,24 +192,24 @@ namespace MidLevelRenderer {
 			PaintMe(const Stuff::RGBAColor *paintMe) = 0;
 
 		virtual int
-			TransformAndClip(Stuff::Matrix4D*, MLRClippingState, GOSVertexPool*,bool=false) = 0;
+			TransformAndClip(glm::mat4*, MLRClippingState, GOSVertexPool*,bool=false) = 0;
 
 		virtual void
-			TransformNoClip(Stuff::Matrix4D*, GOSVertexPool*,bool=false) = 0;
+			TransformNoClip(glm::mat4*, GOSVertexPool*,bool=false) = 0;
 
 		virtual int
 			GetNumPasses()
 				{ Check_Object(this); return passes; }
 
 		virtual void
-			HurtMe(const Stuff::LinearMatrix4D&, Stuff::Scalar radius)
+			HurtMe(const glm::mat4&, Stuff::Scalar radius)
 				{ Check_Object(this); }
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// This functions using the static buffers
 	//
 		void
-			SetClipCoord(Stuff::Point3D &point, int index)
+			SetClipCoord(glm::vec3 &point, int index)
 				{
 					Check_Object(this); Verify(clipExtraCoords->GetLength() > index);
 					(*clipExtraCoords)[index].x = point.x;
@@ -293,7 +293,7 @@ namespace MidLevelRenderer {
 
 	protected:
 		virtual void
-			Transform(Stuff::Matrix4D*);
+			Transform(glm::mat4*);
 
 		static ClipPolygon2 *clipBuffer;
 
@@ -306,7 +306,7 @@ namespace MidLevelRenderer {
 //		int		numVertices;	// number of verts for stats and vert arrays
 //		Replaced by GetNumVertices
 
-		Stuff::DynamicArrayOf<Stuff::Point3D> coords;	// Base address of coordinate list 
+		Stuff::DynamicArrayOf<glm::vec3> coords;	// Base address of coordinate list 
 		Stuff::DynamicArrayOf<Vector2DScalar> texCoords;	// Base address of texture coordinate list 
 
 		static Stuff::DynamicArrayOf<Stuff::Vector4D> *transformedCoords;

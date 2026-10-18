@@ -549,7 +549,7 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // p is the eye point
 void
-	MLRShape::HurtMe(const Stuff::LinearMatrix4D& pain, Stuff::Scalar radius)
+	MLRShape::HurtMe(const glm::mat4& pain, Stuff::Scalar radius)
 {
 	for(int i=0;i<numPrimitives;i++)
 	{
@@ -562,15 +562,15 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // p is the eye point
 int
-	MLRShape::FindBackFace(const Point3D& p)
+	MLRShape::FindBackFace(const glm::vec3& p)
 {
 	Check_Object(this); 
 
 	int i, ret = 0;
 
-	Point3D sp;
+	glm::vec3 sp;
 	
-	sp.Multiply(p, *worldToShape);
+	sp = mc2::math::transformPoint(p, *worldToShape);
 
 	for(i=0;i<numPrimitives;i++)
 	{
@@ -585,7 +585,7 @@ int
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 /*
 void
-	MLRShape::Transform(Matrix4D *mat)
+	MLRShape::Transform(glm::mat4 *mat)
 {
 	Check_Object(this); 
 
@@ -643,7 +643,7 @@ int
 //
 void
 	MLRShape::Lighting (
-		const LinearMatrix4D& WorldToShape, 
+		const glm::mat4& WorldToShape, 
 		MLRLight* const* lights,
 		int nrLights
 	)
