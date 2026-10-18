@@ -2532,7 +2532,6 @@
    "keys": [
     "view",
     "lighting",
-    "mech",
     "vfx",
     "propMat"
    ],
@@ -3643,6 +3642,15 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
+    "event"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ESMOKE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
     "event",
     "exit",
     "log",
@@ -4094,15 +4102,6 @@
     "slot"
    ],
    "count": 1
-  },
-  {
-   "tag": "GL_DEBUG",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "MC2_GL_DEBUG"
-   ],
-   "count": 2
   },
   {
    "tag": "GOM_UPDATE_COST",
@@ -5563,16 +5562,6 @@
    "stream": "stderr",
    "keys": [
     "event",
-    "max_ssbo_block"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LIGHTSSBO",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
     "old",
     "new"
    ],
@@ -6123,18 +6112,6 @@
    "count": 3
   },
   {
-   "tag": "MC2_GL_DEBUG_FATAL",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "severity",
-    "source",
-    "type",
-    "id"
-   ],
-   "count": 1
-  },
-  {
    "tag": "MDI_SUBMIT",
    "ver": -1,
    "stream": "stderr",
@@ -6465,33 +6442,6 @@
    "count": 1
   },
   {
-   "tag": "MECH_VU_DIAG",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "prog",
-    "vu_block_idx",
-    "binding",
-    "loc_u_worldToClipGL"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "MECH_VU_DIAG",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "submits",
-    "binding3_ubo",
-    "max_diff_vs_terrainMVP",
-    "ubo_row0",
-    "mvp_row0"
-   ],
-   "count": 1
-  },
-  {
    "tag": "MENU_CANARY",
    "ver": -1,
    "stream": "stdout",
@@ -6614,7 +6564,6 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [
-    "gl_debug",
     "vsync",
     "tracy"
    ],
@@ -7679,18 +7628,6 @@
    "count": 1
   },
   {
-   "tag": "PIPELINE_VARIANT",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "pipeline",
-    "glProgram",
-    "key",
-    "vertexLayout"
-   ],
-   "count": 1
-  },
-  {
    "tag": "POSTPROCESS_BLUR",
    "ver": 1,
    "stream": "stderr",
@@ -8255,6 +8192,15 @@
     "MC2_RENDER_BACKEND"
    ],
    "count": 2
+  },
+  {
+   "tag": "RENDER_BACKEND",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "MC2_VK_SHARED_GBUFFER"
+   ],
+   "count": 1
   },
   {
    "tag": "RENDER_CONTRACT",
@@ -11043,6 +10989,40 @@
    "count": 1
   },
   {
+   "tag": "TOOLVK",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 11
+  },
+  {
+   "tag": "TOOLVK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "TOOLVK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "device",
+    "api",
+    "validation"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TOOLVK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "errors"
+   ],
+   "count": 1
+  },
+  {
    "tag": "TRACY",
    "ver": -1,
    "stream": "stdout",
@@ -12006,6 +11986,16 @@
    "count": 1
   },
   {
+   "tag": "VK_FRAMERING",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "capacity",
+    "peak_used"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_HUD_AUDIT",
    "ver": 1,
    "stream": "stderr",
@@ -12062,8 +12052,7 @@
     "serial",
     "rgba",
     "alpha",
-    "verts",
-    "perDrawDecline"
+    "verts"
    ],
    "count": 1
   },
@@ -12602,6 +12591,49 @@
     "record_submit_us",
     "fence_wait_us",
     "island_total_us"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_TIMELINE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "deferred_entries",
+    "deferred_bytes",
+    "oldest_age_frames"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_TIMELINE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "last_submitted",
+    "completed",
+    "in_flight"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_UPLOAD",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_UPLOAD",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "flushes",
+    "queued",
+    "dedicated_stages",
+    "dropped",
+    "frame_ring_growths"
    ],
    "count": 1
   },
@@ -13342,6 +13374,7 @@
   "TEXMGR_MISSING",
   "TGL_POOL",
   "TIMING",
+  "TOOLVK",
   "VEG_SUMMARY",
   "VFX_",
   "VFX_BIRTH",

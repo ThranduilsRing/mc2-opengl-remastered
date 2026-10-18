@@ -53,8 +53,6 @@ These control the GPU-direct fast paths added in the 0.4 arc.
 | `MC2_IMGUI` | **on** | Dear ImGui overlay (Ctrl+Shift+G to open) |
 | `MC2_IMGUI_INSPECTOR` | off | Object Inspector panel (click-to-pick pixels) |
 | `MC2_DEBUG_RENDERER` | off | World-space debug primitive renderer (lines, boxes) |
-| `MC2_GL_DEBUG` | off | GL debug message callback → stderr |
-| `MC2_GL_DEBUG_FATAL` | off | Abort on `GL_DEBUG_SEVERITY_HIGH` (use in CI) |
 | `MC2_RENDER_CONTRACT_ASSERT` | off | Runtime GL state assertions from `render_contract.hglsl` |
 
 ---

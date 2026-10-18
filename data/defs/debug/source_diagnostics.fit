@@ -10983,19 +10983,6 @@ String {
     firstLine = 760
 }
 
-String {
-    key = "debug.source.gl_debug_mc2_gl_debug_1_gl_debug_context_active_this_reduces_bd33d04a"
-    text = "[GL_DEBUG] MC2_GL_DEBUG=1 -- GL debug context active. This reduces performance.\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "bd33d04aa3a7"
-    occurrenceCount = 2
-    activeOccurrenceCount = 2
-    sourceAreas = "Editor;GameOS"
-    categories = "debug_log_candidate"
-    firstSourceFile = "Editor/EditorGosRender.cpp"
-    firstLine = 351
-}
 
 String {
     key = "debug.source.gpu_renderer_percents"
@@ -28777,19 +28764,6 @@ String {
     firstLine = 542
 }
 
-String {
-    key = "debug.source.mc2_gl_debug"
-    text = "MC2_GL_DEBUG"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "d566fc717311"
-    occurrenceCount = 5
-    activeOccurrenceCount = 5
-    sourceAreas = "Editor;GameOS"
-    categories = "debug_log_candidate"
-    firstSourceFile = "Editor/EditorGosRender.cpp"
-    firstLine = 348
-}
 
 String {
     key = "debug.source.mc2_heartbeat"

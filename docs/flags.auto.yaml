@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 961
+gate_count: 947
 registry_entry_count: 193
-verified_count: 951
+verified_count: 937
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -3128,26 +3128,12 @@ flags:
     owner: mech
     doc: ""
     verified: true
-  - name: MC2_MECH_BACK_FILL
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: mech
-    doc: ""
-    verified: true
   - name: MC2_MECH_BATCHER_STATS
     kind: Bool
     default: false
     rule: Presence
     owner: mech
     doc: ""
-    verified: true
-  - name: MC2_MECH_FRAG_DEBUG
-    kind: Int
-    default: 0
-    rule: Prefix
-    owner: mech
-    doc: "MC2_MECH_FRAG_DEBUG=N: legacy env path; wins over ImGui s_mechDebugMode."
     verified: true
   - name: MC2_MECH_GLASS_LUMA_THRESH
     kind: Float
@@ -3172,13 +3158,6 @@ flags:
     owner: mech
     doc: ""
     range: {lo: 0.04, hi: 1, style: clamp}
-    verified: true
-  - name: MC2_MECH_IBL_SH
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: mech
-    doc: ""
     verified: true
   - name: MC2_MECH_IMPORT_ANIMATE
     kind: Bool
@@ -3402,24 +3381,10 @@ flags:
     doc: "Gate: MC2_MECH_SURFACE_MATERIAL controls which profiles to load."
     tokens: "|0|metal061b|none|painted_subtle"
     verified: true
-  - name: MC2_MECH_TEX_READBACK
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: mech
-    doc: "Pixel-readback diagnostic - gated on its own env var (NOT MC2_MECH_BATCHER_STATS) because glGetTexImage is a synchronous GPU stall that pollutes any perf..."
-    verified: true
   - name: MC2_MECH_VIEWUNIFORMS
     kind: Bool
     default: true
     rule: Lead0Kill
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_MECH_VIEWUNIFORMS_DIAG
-    kind: Bool
-    default: false
-    rule: Lead1
     owner: mech
     doc: ""
     verified: true
@@ -3919,62 +3884,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_PAVED_OVERLAY_CLASS, kind: Feature, order: -1, default_on: false}
-  - name: MC2_PBR_AMBIENT_SPECULAR
-    kind: Float
-    default: 0.25
-    rule: Prefix
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_PBR_METALLIC_INFLUENCE
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_PBR_ROUGHNESS_MAX
-    kind: Float
-    default: 0.899999976
-    rule: Prefix
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_PBR_ROUGHNESS_MIN
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_PBR_TILE_SCALE
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_PBR_TRIPLANAR
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_PBR_TRIPLANAR_SCALE
-    kind: Float
-    default: 0.200000003
-    rule: Prefix
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_PBR_WEAR_STRENGTH
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: mech
-    doc: ""
-    verified: true
   - name: MC2_PICK_BEHIND_LEGACY
     kind: Bool
     default: false
@@ -5111,13 +5020,6 @@ flags:
     owner: props
     doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
     smoke_passthrough: true
-    verified: true
-  - name: MC2_STANDARD_LIT_V1
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: mech
-    doc: ""
     verified: true
   - name: MC2_STATICPROP_BC7
     kind: Bool
@@ -7000,7 +6902,7 @@ flags:
     default: true
     rule: Lead0Kill
     owner: vk
-    doc: "The VK umbrella, default ON since the 2026-10-17 default flip; =0 is a kill switch."
+    doc: "Retired: the Vulkan scene path is unconditional; =0 is ignored with a [RENDER_BACKEND] line (render_backend_select.cpp)."
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_VK_SHARED_GBUFFER, kind: Feature, order: -1, default_on: true}

@@ -147,7 +147,6 @@ Set before launching the exe (PowerShell):
 $env:MC2_IMGUI = "1"
 $env:MC2_IMGUI_INSPECTOR = "1"
 $env:MC2_RENDER_CONTRACT_ASSERT = "1"   # catch GL state violations
-$env:MC2_GL_DEBUG = "1"                 # GL debug callback to stderr
 .\mc2.exe
 ```
 

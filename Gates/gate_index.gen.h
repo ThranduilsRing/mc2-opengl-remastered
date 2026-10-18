@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 961;
+inline constexpr std::size_t kGateCount = 947;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -416,13 +416,10 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_MECH_AMBIENT_V1", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MECH_AMBIENT_V1_STRENGTH", Kind::Float, Rule::Prefix, {}},
     {"MC2_MECH_ANIM_ROTATION_ONLY", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_MECH_BACK_FILL", Kind::Float, Rule::Prefix, {}},
     {"MC2_MECH_BATCHER_STATS", Kind::Bool, Rule::Presence, {}},
-    {"MC2_MECH_FRAG_DEBUG", Kind::Int, Rule::Prefix, {}},
     {"MC2_MECH_GLASS_LUMA_THRESH", Kind::Float, Rule::Prefix, {}},
     {"MC2_MECH_GLASS_MAXCHAN_THRESH", Kind::Float, Rule::Prefix, {}},
     {"MC2_MECH_GLASS_ROUGHNESS", Kind::Float, Rule::Prefix, {}},
-    {"MC2_MECH_IBL_SH", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MECH_IMPORT_ANIMATE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_MECH_IMPORT_CLIP_DIAG", Kind::Bool, Rule::Presence, {}},
     {"MC2_MECH_IMPORT_DYNAMIC_LIFT", Kind::Bool, Rule::Lead1, {}},
@@ -454,9 +451,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_MECH_SPECULAR_STRENGTH", Kind::Float, Rule::Prefix, {}},
     {"MC2_MECH_SPECULAR_V1", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MECH_SURFACE_MATERIAL", Kind::Enum, Rule::Std, "|0|metal061b|none|painted_subtle"},
-    {"MC2_MECH_TEX_READBACK", Kind::Bool, Rule::Presence, {}},
     {"MC2_MECH_VIEWUNIFORMS", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_MECH_VIEWUNIFORMS_DIAG", Kind::Bool, Rule::Lead1, {}},
     {"MC2_MENU_CANARY_SKIP_INTRO", Kind::Bool, Rule::Lead0, {}},
     {"MC2_MIF_SPLIT", Kind::Bool, Rule::Presence, {}},
     {"MC2_MISSING_RUNWAY_FIX", Kind::Bool, Rule::Lead0Kill, {}},
@@ -520,14 +515,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_PATH_JUMP_FAIL_BACKOFF", Kind::Bool, Rule::Presence, {}},
     {"MC2_PATH_SOLVE_ISOLATED", Kind::Bool, Rule::Lead1, {}},
     {"MC2_PAVED_OVERLAY_CLASS", Kind::Int, Rule::Prefix, {}},
-    {"MC2_PBR_AMBIENT_SPECULAR", Kind::Float, Rule::Prefix, {}},
-    {"MC2_PBR_METALLIC_INFLUENCE", Kind::Float, Rule::Prefix, {}},
-    {"MC2_PBR_ROUGHNESS_MAX", Kind::Float, Rule::Prefix, {}},
-    {"MC2_PBR_ROUGHNESS_MIN", Kind::Float, Rule::Prefix, {}},
-    {"MC2_PBR_TILE_SCALE", Kind::Float, Rule::Prefix, {}},
-    {"MC2_PBR_TRIPLANAR", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_PBR_TRIPLANAR_SCALE", Kind::Float, Rule::Prefix, {}},
-    {"MC2_PBR_WEAR_STRENGTH", Kind::Float, Rule::Prefix, {}},
     {"MC2_PICK_BEHIND_LEGACY", Kind::Bool, Rule::Presence, {}},
     {"MC2_PICK_CAP_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_PICK_RECON", Kind::Bool, Rule::Presence, {}},
@@ -674,7 +661,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_STABLE_LIGHT_SKIP", Kind::Bool, Rule::Std, {}},
     {"MC2_STABLE_LIGHT_SKIP_DIAG", Kind::Bool, Rule::Std, {}},
     {"MC2_STABLE_LIGHT_SKIP_TOUCH", Kind::Bool, Rule::Std, {}},
-    {"MC2_STANDARD_LIT_V1", Kind::Bool, Rule::Lead1, {}},
     {"MC2_STATICPROP_BC7", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_STATICPROP_MATERIAL_PBR_SLOTS", Kind::Bool, Rule::Lead0, {}},
     {"MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP", Kind::Bool, Rule::Lead0Kill, {}},

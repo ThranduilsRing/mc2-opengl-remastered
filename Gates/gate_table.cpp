@@ -576,13 +576,10 @@ L(Presence, "MC2_MDI_SUBMIT_TRACE", Bool, false, "gameos", "", "", passthrough |
 L(Lead0Kill, "MC2_MECH_AMBIENT_V1", Bool, true, "mech", "", "", verified),
 P("MC2_MECH_AMBIENT_V1_STRENGTH", Float, 0.15, "mech", "", "", clampRange(0.0, 2.0) | verified),
 L(Lead0Kill, "MC2_MECH_ANIM_ROTATION_ONLY", Bool, true, "mech", "", "", verified),
-P("MC2_MECH_BACK_FILL", Float, 0.0, "mech", "", "", verified),
 L(Presence, "MC2_MECH_BATCHER_STATS", Bool, false, "mech", "", "", verified),
-P("MC2_MECH_FRAG_DEBUG", Int, 0, "mech", "", "MC2_MECH_FRAG_DEBUG=N: legacy env path; wins over ImGui s_mechDebugMode.", verified),  // default not derivable from the tree
 P("MC2_MECH_GLASS_LUMA_THRESH", Float, 0.12, "mech", "", "", clampRange(0.0, 1.0) | verified),
 P("MC2_MECH_GLASS_MAXCHAN_THRESH", Float, 0.18, "mech", "", "", clampRange(0.0, 1.0) | verified),
 P("MC2_MECH_GLASS_ROUGHNESS", Float, 0.25, "mech", "", "", clampRange(0.04, 1.0) | verified),
-L(Lead0Kill, "MC2_MECH_IBL_SH", Bool, true, "mech", "", "", verified),
 L(Lead1, "MC2_MECH_IMPORT_ANIMATE", Bool, false, "code", "", "Opt-in, default OFF (static FORCE_CLIP bake stays the safe path).", verified),
 L(Presence, "MC2_MECH_IMPORT_CLIP_DIAG", Bool, false, "mech", "", "", verified),
 L(Lead1, "MC2_MECH_IMPORT_DYNAMIC_LIFT", Bool, false, "code", "", "Default: static rest lift (steady torso).", verified),
@@ -614,9 +611,7 @@ L(Presence, "MC2_MECH_SKEL_TRACE", Bool, false, "code", "", "BT2018-SKEL-ENGINE-
 P("MC2_MECH_SPECULAR_STRENGTH", Float, 0.05, "mech", "", "", clampRange(0.0, 4.0) | verified),
 L(Lead0Kill, "MC2_MECH_SPECULAR_V1", Bool, true, "mech", "", "", verified),
 G("MC2_MECH_SURFACE_MATERIAL", Enum, "", "mech", "", "Gate: MC2_MECH_SURFACE_MATERIAL controls which profiles to load.", tokens("|0|metal061b|none|painted_subtle") | verified),
-L(Presence, "MC2_MECH_TEX_READBACK", Bool, false, "mech", "", "Pixel-readback diagnostic - gated on its own env var (NOT MC2_MECH_BATCHER_STATS) because glGetTexImage is a synchronous GPU stall that pollutes any perf...", verified),
 L(Lead0Kill, "MC2_MECH_VIEWUNIFORMS", Bool, true, "mech", "", "", verified),
-L(Lead1, "MC2_MECH_VIEWUNIFORMS_DIAG", Bool, false, "mech", "", "", verified),
 L(Lead0, "MC2_MENU_CANARY_SKIP_INTRO", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_MIF_SPLIT", Bool, false, "code", "", "", passthrough | verified),
 L(Lead0Kill, "MC2_MISSING_RUNWAY_FIX", Bool, true, "terrain", "", "", verified),
@@ -700,14 +695,6 @@ L(Presence, "MC2_PATH_JUMP_FAIL_BACKOFF", Bool, false, "code", "", "PATHFINDING-
 L(Lead1, "MC2_PATH_SOLVE_ISOLATED", Bool, false, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_PAVED_OVERLAY_CLASS
 P("MC2_PAVED_OVERLAY_CLASS", Int, 0, "terrain", "", "DEFAULT 0 (OFF).", passthrough | registry(Feature, "MC2_FEATURE_PAVED_OVERLAY_CLASS", -1, false) | range(0, 2) | verified),
-P("MC2_PBR_AMBIENT_SPECULAR", Float, 0.25, "mech", "", "", verified),
-P("MC2_PBR_METALLIC_INFLUENCE", Float, 0.0, "mech", "", "", verified),  // default not derivable from the tree
-P("MC2_PBR_ROUGHNESS_MAX", Float, 0.9, "mech", "", "", verified),
-P("MC2_PBR_ROUGHNESS_MIN", Float, 0.0, "mech", "", "", verified),  // default not derivable from the tree
-P("MC2_PBR_TILE_SCALE", Float, 0.0, "mech", "", "", verified),  // default not derivable from the tree
-L(Lead1, "MC2_PBR_TRIPLANAR", Bool, false, "mech", "", "", verified),
-P("MC2_PBR_TRIPLANAR_SCALE", Float, 0.2, "mech", "", "", verified),
-P("MC2_PBR_WEAR_STRENGTH", Float, 0.0, "mech", "", "", verified),  // default not derivable from the tree
 L(Presence, "MC2_PICK_BEHIND_LEGACY", Bool, false, "code", "", "INPUT-CURSOR-OFFSCREEN-TARGET-RECON-1 / -FIX-1: a near-plane-clipped OBB corner projects to (0,0) with w<=1e-4 (camera.h:860-862).", verified),
 L(Presence, "MC2_PICK_CAP_TRACE", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_PICK_RECON", Bool, false, "code", "", "", passthrough | verified),
@@ -921,7 +908,6 @@ L(Lead0, "MC2_SSAO_DEBUG", Bool, false, "post", "", "SSAO-GTAO-LITE-MVP-1: when 
 G("MC2_STABLE_LIGHT_SKIP", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", passthrough | verified),
 G("MC2_STABLE_LIGHT_SKIP_DIAG", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
 G("MC2_STABLE_LIGHT_SKIP_TOUCH", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
-L(Lead1, "MC2_STANDARD_LIT_V1", Bool, false, "mech", "", "", verified),
 // history: docs/gate-history.md#MC2_STATICPROP_BC7
 L(Lead0P, "MC2_STATICPROP_BC7", Bool, false, "props", "", "COMPRESSION-BC7-STATICPROP-1: upload BC7-compressed KTX2 static-prop texture arrays through the existing static-prop KTX path (gos_static_prop_batcher.cpp)...", registry(Feature, "MC2_FEATURE_STATICPROP_BC7", 22, false) | verified),
 // Static-prop ORM (PBR) — load-only feature + trace

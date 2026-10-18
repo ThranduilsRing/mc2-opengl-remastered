@@ -171,9 +171,6 @@ float s_mechGlassRoughness = mc2::gate::get<"MC2_MECH_GLASS_ROUGHNESS">();
 float s_mechGlassLumaThresh = mc2::gate::get<"MC2_MECH_GLASS_LUMA_THRESH">();
 float s_mechGlassMaxChanThresh = mc2::gate::get<"MC2_MECH_GLASS_MAXCHAN_THRESH">();
 bool  s_mechSpecDebugMask = false;  // ImGui only; no env var
-// MECH-BACK-FILL-1: cool-sky fill for the StandardLit shadow hemisphere.
-// Default OFF (0.0). Enable via MC2_MECH_BACK_FILL=<strength> (e.g. 1.5).
-float s_mechBackFillStrength = mc2::gate::get<"MC2_MECH_BACK_FILL">();
 
 // BT2018-MECH-MATERIAL-TUNING-1: live ImGui-tunable imported-mech albedo knobs
 // (external linkage; bound by the Graphics Options "BT2018 Imported Skin" sliders).

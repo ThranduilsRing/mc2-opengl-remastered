@@ -1,7 +1,7 @@
 // tool_vk_shell -- the Vulkan window shell the viewport tools share (asset_viewer, mc2fx_preview, mc2weapon_gui).
 //
 // WHAT: SDL2 Vulkan surface + instance + device + swapchain + one render pass, with Dear ImGui's Vulkan backend
-//   (imgui_impl_vulkan, the same backend the game's MC2_VK_IMGUI path uses) drawn into it. Replaces each tool's private
+//   (imgui_impl_vulkan, the same backend the game's ImGui path uses) drawn into it. Replaces each tool's private
 //   SDL_GL context + imgui_impl_opengl3.
 // ENV: MC2_VULKAN_VALIDATION=1 turns on VK_LAYER_KHRONOS_validation and counts errors ("[TOOLVK] validation errors=N" at exit).
 //   MC2_TOOL_CAPTURE=<file.png> writes the swapchain image after frame MC2_TOOL_CAPTURE_FRAME (default 12) and end() then
