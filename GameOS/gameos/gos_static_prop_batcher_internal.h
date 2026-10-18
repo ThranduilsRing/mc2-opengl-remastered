@@ -135,7 +135,6 @@ constexpr size_t   INITIAL_COLORS_PER_FRAME    = 1'000'000;  // uint32 ARGB entr
 constexpr uint32_t BASE_INSTANCE_SSBO_BINDING     = 16u;
 }  // namespace gos_static_prop_batcher_detail
 
-#define s_dynamicPropShadowSsbo (static_cast<GLuint>(s_dynamicPropShadowOwner.backendHandle))
 namespace gos_static_prop_batcher_detail {
 
 
@@ -431,9 +430,6 @@ extern uint64_t s_sharedVboBytes;
 extern uint64_t s_sharedIboBytes;
 extern GLuint s_sharedVao;
 extern GLuint s_perTypeSsbo;
-extern GLuint s_staticBldgShadowSsbo;
-extern RenderCore::GpuBufferOwner s_dynamicPropShadowOwner;
-extern std::unordered_set<uint32_t> s_buildingShadowTypeIDs;
 extern GLuint   s_instanceSsbo;
 extern GLuint   s_colorSsbo;
 extern RenderCore::GpuBufferOwner s_instanceSsboOwner;

@@ -28,35 +28,6 @@ GLuint s_sharedVao = 0;
 // binding 2 to feed get_base_light()'s per-type magic-color parameters.
 // 48 bytes per type × ~50 types ≈ 2.4 KB total.
 GLuint s_perTypeSsbo = 0;
-// SHADOW-STATIC-BUILDINGS-2: one-shot all-buildings static shadow instance SSBO
-// (declared here so onMapUnload can free it; built in drawStaticBuildingShadows).
-GLuint s_staticBldgShadowSsbo = 0;
-// SHADOW-DYNAMIC-PROP-CASTERS-1: one-shot all-non-building-props dynamic shadow
-// instance SSBO (declared here so onMapUnload can free it; built per-frame in
-// drawDynamicPropShadows). Separate from the static building SSBO so the two
-// passes never alias.
-// SCENE-SSBO-OWNER-SWEEP-1: this is the ONE live default-path buffer in COMPLETENESS-
-// SWEEP gap B#5 -- the dynamic prop-shadow caster path is gated MC2_SHADOW_DYNAMIC_PROP_
-// CASTERS (DEFAULT ON) inside the always-on dynamic shadow pass, so it is created on the
-// stock run. Narrowed behind a GpuBufferOwner identity record; every gen/bind/bufferData/
-// bindbase/delete site reaches the raw handle ONLY via s_dynamicPropShadowSsbo (the
-// #define below aliases the bare name to a READ-ONLY GLuint view of owner.backendHandle
-// -> zero site churn; writes go through the owner field via a GLuint local, L6.1). Same
-// GL args/slot/flags/order. Mission lifetime: rebuilt per frame but freed on onMapUnload;
-// registered at create (bufferData), invalidated on destroy.
-// The sibling buffers in gap B#5 are DEFERRED to the exclusion ledger (created only under
-// default-OFF gates): s_blockVisSsbo (gos_vegetation.cpp, MC2_VEGETATION_CARDS, default OFF); particle
-// s_ssbo (gos_particle_bridge.cpp, MC2_GPU_PARTICLES, default OFF -- CPU/MLR is the stock
-// path) + s_tubePos/Col/UvSsbo (MC2_VFX_ORACLE_TUBE, default OFF/parked).
-RenderCore::GpuBufferOwner s_dynamicPropShadowOwner{
-    RenderCore::RenderResourceId::DynamicPropShadowSsbo,
-    RenderCore::RenderResourceLifetime::Mission,
-    "DynamicPropShadowSsbo",
-    0u};
-// typeIDs drawn into the static building shadow map. When the static building
-// shadow is active, flushShadow() skips these in the
-// DYNAMIC pass so buildings don't cast a redundant (fuzzy) second shadow.
-std::unordered_set<uint32_t> s_buildingShadowTypeIDs;
 
 GLuint   s_instanceSsbo = 0;
 GLuint   s_colorSsbo    = 0;

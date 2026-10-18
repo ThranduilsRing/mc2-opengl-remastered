@@ -122,8 +122,6 @@ extern "C" void mc2_vk_shadow_island_destroy();
 #endif
 extern "C" uint32_t gos_getMechShadowTypesDrawn();
 extern "C" uint32_t gos_getMechShadowInstDrawn();
-extern "C" uint32_t gos_getStaticPropShadowTypesDrawn();
-extern "C" uint32_t gos_getStaticPropShadowInstDrawn();
 
 // VFX-SPINE-0: C-linkage accessors from the particle bridge + batcher TUs.
 // Same file-scope rule as the shadow accessors above (extern "C" cannot live

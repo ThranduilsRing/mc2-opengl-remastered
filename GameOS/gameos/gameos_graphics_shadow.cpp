@@ -123,12 +123,7 @@ static void traceShadowPass(const char* passName,
     if (restored) {
         if (seen != 0 && (seen % kShadowTraceEvery) != 0) return;
     }
-    char bldg[96] = {0};
-    if (includeBldgCounts) {
-        int t=0,i=0,d=0;
-        gos_GetStaticBuildingShadowCounts(t, i, d);
-        mc2::fmt::to_buf(bldg, " bldg={:d}/{:d}/{:d}(types/inst/draws)", mc2::fmt::as_i32(t), mc2::fmt::as_i32(i), mc2::fmt::as_i32(d));
-    }
+    const char bldg[1] = {0};
     mc2::fmt::print_err("[SHADOW_STATE v1] pass={} fbo={:d} vp={:d},{:d},{:d},{:d} clearDepth={:g} depthTest={:d} depthFunc={} depthMask={:d} colorMask={:d}{:d}{:d}{:d} cull={}/{}/{} clipOrigin=0x{:X} clipDepth=0x{:X} restored={:d}{}\n", mc2::fmt::safe(passName), mc2::fmt::as_i32(pass.fbo), mc2::fmt::as_i32(pass.viewport[0]), mc2::fmt::as_i32(pass.viewport[1]), mc2::fmt::as_i32(pass.viewport[2]), mc2::fmt::as_i32(pass.viewport[3]), (double)pass.clearDepth, mc2::fmt::as_i32(pass.depthTest ? 1 : 0), mc2::fmt::safe(depthFuncName(pass.depthFunc)), mc2::fmt::as_i32(pass.depthMask ? 1 : 0), mc2::fmt::as_i32(pass.colorMask[0]?1:0), mc2::fmt::as_i32(pass.colorMask[1]?1:0), mc2::fmt::as_i32(pass.colorMask[2]?1:0), mc2::fmt::as_i32(pass.colorMask[3]?1:0), mc2::fmt::safe(pass.cullEnabled ? "on" : "off"), mc2::fmt::safe(pass.cullFace == GL_FRONT ? "front" : "back"), mc2::fmt::safe(pass.frontFace == GL_CW ? "CW" : "CCW"), mc2::fmt::as_u32((unsigned)pass.clipOrigin), mc2::fmt::as_u32((unsigned)pass.clipDepth), mc2::fmt::as_i32(restored ? 1 : 0), mc2::fmt::safe(bldg));
     fflush(stderr);
 }
