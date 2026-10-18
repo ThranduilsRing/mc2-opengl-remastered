@@ -3,6 +3,17 @@ cmake_minimum_required (VERSION 3.10)
 cmake_policy(SET CMP0072 NEW) # cmake --help-policy CMP0072
 project(mc2)
 
+# Opt-in shared compile cache (scripts/configure_ninja.py --compile-cache). sccache cannot cache a compile that writes the shared
+# compiler PDB (/Zi + /Fd), so the cached tree swaps /Zi for /Z7 (debug info lives in each .obj; the linker still writes mc2.pdb).
+# Every other flag, the sim FP contract included, is untouched. OFF by default: the default tree keeps /Zi.
+option(MC2_COMPILE_CACHE "Compile through a shared cache launcher: /Zi becomes /Z7 so the compiles are cacheable" OFF)
+if(MC2_COMPILE_CACHE AND MSVC)
+    foreach(_mc2_cc_var CMAKE_C_FLAGS_RELWITHDEBINFO CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_C_FLAGS_DEBUG CMAKE_CXX_FLAGS_DEBUG)
+        string(REGEX REPLACE "[-/]Z[iI]( |$)" "/Z7\\1" ${_mc2_cc_var} "${${_mc2_cc_var}}")
+    endforeach()
+    message(STATUS "MC2_COMPILE_CACHE=ON: /Zi -> /Z7 (${CMAKE_CXX_FLAGS_RELWITHDEBINFO})")
+endif()
+
 # C++ standard: one cache variable, MC2_CXX_STANDARD (20 or 23; default 23 = MSVC /std:c++23preview).
 # The gate registry (Gates/gate.h) needs C++20 class-type template parameters and consteval, so 17 is
 # not an option; standalone projects take the same variable through cmake/Mc2Standalone.cmake.
