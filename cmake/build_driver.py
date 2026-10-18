@@ -1,5 +1,6 @@
 """Compiler selection and complete stage logs shared by the two build entry points."""
 from pathlib import Path
+import os
 import re
 import subprocess
 import sys
@@ -68,8 +69,10 @@ def verify_compiler(tree, preset):
             raise RuntimeError(f"{tree}: C compiler is not clang-cl with the MSVC frontend")
 
 
-def run(cmd, root, stage, phase, log_dir=None, vcvars=False, capture=False):
+def run(cmd, root, stage, phase, log_dir=None, vcvars=False, capture=False, env=None):
+    """env: extra variables layered over os.environ (the compile-cache SCCACHE_* set)."""
     shell = False
+    full_env = dict(os.environ, **env) if env else None
     if vcvars:
         cmd = f'call "{cn.VCVARS}" >nul && {subprocess.list2cmdline(cmd)}'
         shell = True
@@ -80,15 +83,15 @@ def run(cmd, root, stage, phase, log_dir=None, vcvars=False, capture=False):
         with path.open("w", encoding="utf-8", newline="\n") as log:
             log.write((cmd if shell else subprocess.list2cmdline(cmd)) + "\n")
             log.flush()
-            result = subprocess.run(cmd, cwd=root, shell=shell, stdout=log, stderr=subprocess.STDOUT,
+            result = subprocess.run(cmd, cwd=root, shell=shell, env=full_env, stdout=log, stderr=subprocess.STDOUT,
                                     **console_child.child_kwargs(redirected=True))
         output = path.read_text(encoding="utf-8", errors="replace")
         return result.returncode, output
     if capture:
-        result = subprocess.run(cmd, cwd=root, shell=shell, capture_output=True, text=True,
+        result = subprocess.run(cmd, cwd=root, shell=shell, env=full_env, capture_output=True, text=True,
                                 errors="replace", **console_child.child_kwargs(redirected=True))
         return result.returncode, result.stdout + result.stderr
-    return subprocess.run(cmd, cwd=root, shell=shell, **console_child.child_kwargs()).returncode, ""
+    return subprocess.run(cmd, cwd=root, shell=shell, env=full_env, **console_child.child_kwargs()).returncode, ""
 
 
 def build_args(cm, tree, config, targets, jobs=None, preset=None, keep_going=False):

@@ -65,6 +65,15 @@ def ensure_cache_server(root, env_extra):
         subprocess.run([SCCACHE_EXE, "--start-server"], env=env, capture_output=True, **console_child.child_kwargs(redirected=True))
 
 
+def cache_cmake_args(root):
+    """(cmake -D args, env) that put a tree behind the shared compile cache; the caller still decides PCH (the cache needs it off).
+    Single-sourced for every tree that wants the cache: the dev tree, tools/build_all_targets.py and the harness corpus."""
+    env = compile_cache_env(root)
+    ensure_cache_server(root.replace("\\", "/"), env)
+    return ["-DMC2_COMPILE_CACHE=ON", f"-DCMAKE_C_COMPILER_LAUNCHER={SCCACHE_EXE}",
+            f"-DCMAKE_CXX_COMPILER_LAUNCHER={SCCACHE_EXE}"], env
+
+
 def tree_uses_cache(root, tree):
     try:
         with open(f"{root}/{tree}/CMakeCache.txt", encoding="utf-8", errors="replace") as f:
