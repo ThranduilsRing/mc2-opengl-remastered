@@ -1,5 +1,34 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## SIXTIETH session (2026-10-18, Sonnet 5.5) -- s59 review fixed, BUGS 87 (smoke-lite heartbeat) root-caused, nifty aca971300 merged
+
+Commits (local, on 19bce94d7): 0812cd6fd review fixes | game exit skips wglDeleteContext | d394422be merge of nifty aca971300 | gos_render one destroy implementation | merge follow-ups (background-launch inventory, cxx17 baseline, callers.json) | state. Code tip = the callers.json commit. Temporary branch `s60-diag` (stage timers, stack probe, skip probe) is local only and not for merging.
+
+### Item 1 (s59 review)
+- One clock per pair: `gos::screenshot::request` stamps `g_mc2RenderFrame` (readbacks carry it); the fire capture arms `g_mc2FxFireCaptureFrame` from `g_mc2RenderFrame` and the PPM fire pin compares the render clock. Proof: `MC2_SIM_SPEED=2` smoke-lite with `MC2_SCREENSHOT_AT_FRAME=120` wrote `scratch/s60/ss2.tga` (before: expired unwritten).
+- Shared-scene clear: `mc2_vk_scene_clear` (vulkan_terrain_island_run.cpp): a clear-only pass on the terrain island's own render pass, skipped when the terrain pass already cleared this render frame. Called at the frame start when the last frame had no terrain and at the end of `Terrain::flushDrawCommands` (before props / mechs draw). If the terrain island itself is declined or disabled there is no island to record it (that state has no VK terrain at all). Proof: mech bay capture `scratch/s60/bay.png` viewed (black background, no stale scene); smoke-lite, tier1 and captures unchanged.
+
+### Item 2: BUGS 87 root cause
+The "freeze" is the process exit, not the frames: the runner measures wallclock to process exit against the last heartbeat (3 s) and mc2.exe stayed alive 1-5 s after its last log line. Stage timers on `s60-diag`: `SDL_GL_DeleteContext` (wglDeleteContext) blocks in whole seconds (1035/2035/3043/5039 ms) on a kernel wait inside the AMD driver (stack probe: ZwWaitForSingleObject under wglDeleteContext); glFinish before it is instant. Bisect by build: U1 alone (0cf94f8ce) 6/6 clean (ctx 30-100 ms); U2 does not build alone (its last reader is fixed by M1); ec516734a (U2+M1) and the tip are 5/6 bad. The GL object the driver waits for was not isolated. Fix: the game exit makes the GL context non-current and leaves its deletion to process teardown (`graphics::release_render_context_at_exit`, one shared destroy implementation); the skip build passed 6/6 and the tip fix passed 6/6 smoke-lite under `MC2_VULKAN_VALIDATION=sync`.
+
+### Item 3: merge of nifty aca971300
+Conflicts: GuiRuntime.cpp and EditorInspector_sections.cpp (hunks in code lane 2 deleted: deleted side kept); BUGS rows (nifty keeps 71-75, lane 2 rows renumbered +5, now 76-87, new 88-90); background-launch inventory, callers.json and the cxx17 baseline took nifty's side and were regenerated once at the merged tree. Ratchet rises: tools LG20 44->50 (the s54-s56 tool MC2_ literals, already named in s59), RenderCore LG08 0->1 and mclib LG09 +4 (merged code, repo totals fell).
+
+### Proof at the merged tip
+| claim | evidence |
+|---|---|
+| build_all_targets -j2 | every stage built, EXIT 0 (`scratch/s60/bat.log`) |
+| check-contracts -j2 | only `script_callers` red (stale after the merge, regenerated once; `scratch/s60/cc2.log`); the first run's cxx17 / background-launch / own_inventory rows fixed (RenderContext.delete stays 2) |
+| doctest (`build_contract_harnesses --run --unit -j2`) | EXIT 0 (`scratch/s60/dt.log`) |
+| tier1 sync validation N=2, 30 s | 5/5 PASS twice, errors=0 warnings=0 (`scratch/s60/t1_1.log`, `t1_2.log`) |
+| smoke-lite sync x6 | 6/6 PASS (`scratch/s60/S1..S6.log`) |
+| editor smoke sync (gen_map_basic, stock_roundtrip:mc2_01, clean_close) | 3/3 PASS (`scratch/s60/ed.log`) |
+| capture pair clean, day + night VIEWED | `.claude/l2cap/s60-merged/mc2_01_saved_205644`, `mc2_10_saved_204523` |
+
+### OPEN
+- BUGS 90: the in-game HUD art is garbled or missing (frames, buttons, portraits; pink 1x1 placeholders in the mech bay). The s56 HUD capture (`.claude/l2cap/s56-final-hud`) is intact; the s58 tip exe (cb0492e35) shows the same garbage (`.claude/l2cap/s60-s58hud`), so it is not s59/s60 code. Candidates: the s58 switch of the lane2 data to the stock tgl.fst, or s57-s58 code. Not attributed. Clean captures hide the HUD, which is why s58/s59 did not see it.
+- Unchanged from s59: static-prop / terrain / water / post / mclib GL halves, batch 0, 3.9, BUGS 85 cursor re-draw, weaponbolt dead else branches, frame-graph GL model. Item 4 (GL dynamic prop-shadow draws, GL HUD replay) not started.
+
 ## FIFTY-NINTH session (2026-10-18, Sonnet 5.5) -- s58 review fixed, the VK umbrella retired, the mech batcher is CPU only
 
 Commits (local, on cb0492e35): 0cf94f8ce U1 islands | (U2) umbrellaOn deleted | ec516734a M1 mech | b0676a32f review 1 frame clock | 17d7fac41 review 2 gates/docs/census | 337b2275b review 3 capture harness | test_gate floor | pass-coverage ledger | state. Code tip = the ledger commit before the state commit.
