@@ -59,7 +59,7 @@ ARTIFACT_ROOT = ROOT / "tests" / "smoke" / "artifacts"
 TAG_RE = re.compile(r"\[([A-Z][A-Z0-9_]{2,})\s+v(\d+)\]")
 
 # Env vars whose presence means the log is NOT a clean default-build sample.
-# QUIET-DEFAULT-BUILD-1: this tuple was declared but never consulted -- the
+# This tuple was declared but never consulted -- the
 # selector took the newest run unconditionally, so a tier1 run (which sets
 # MC2_DEBUG_STATE_DUMP / MC2_DIAG_TAGS) would be graded as if it were a default
 # build and fail on tags the user never sees. Runs are now filtered on their
@@ -107,7 +107,7 @@ def newest_smoke_logs() -> list[Path]:
     runs = sorted((d for d in ARTIFACT_ROOT.iterdir() if d.is_dir()),
                   key=lambda d: d.stat().st_mtime, reverse=True)
     for run in runs:
-        # QUIET-DEFAULT-BUILD-1: only a run taken with no output-affecting
+        # Only a run taken with no output-affecting
         # MC2_* env can be graded against the default-build baseline.
         if not is_default_env_run(run):
             continue

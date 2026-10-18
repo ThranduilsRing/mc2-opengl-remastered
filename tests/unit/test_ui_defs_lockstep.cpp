@@ -1,7 +1,6 @@
-// UI-DEFS-LOCKSTEP-HARDEN-1: pure decision logic for the data/defs/ui <-> exe
-// lockstep contract (gui/UiDefsLockstep.h). Locks the BLACK-MENU-BISECT-1
-// hardening: package version-compare, zero-element load decision, and the
-// zero-draw fail-soft-to-legacy decision.
+// Pure decision logic for the data/defs/ui <-> exe
+// lockstep contract (gui/UiDefsLockstep.h). Locks package version-compare,
+// zero-element load decision, and the zero-draw fail-soft-to-legacy decision.
 
 #include "doctest.h"
 

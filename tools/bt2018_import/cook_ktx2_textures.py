@@ -76,7 +76,7 @@ def main():
             if not im.name:
                 continue
             n = im.name.lower()
-            # Cook albedo + AO (+ normal for Slice 2B). All BC7 (the txmmgr KTX_PRIMARY
+            # Cook albedo + AO (+ normal). All BC7 (the txmmgr KTX_PRIMARY
             # decoder accepts only BC7 vkFormat 145/146), homogeneous. blip atlas skipped.
             if "blip" in n or not any(k in n for k in ("alb", "amb", "nrm")):
                 continue

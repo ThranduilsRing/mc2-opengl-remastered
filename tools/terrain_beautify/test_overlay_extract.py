@@ -13,11 +13,11 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 TOOL = HERE / "overlay_extract.py"
-# STOCK-DATA-TRUTH-1: this used to be
+# These "real stock .pak" tests must not use
 #   CARVER5_MISSIONS = Path("A:/Games/Carver5-feasibility/data/missions")
-# which differs from the shipped mission.fst on ALL 24 campaign maps, so these
-# "real stock .pak" tests were asserting against terrain the engine never
-# loads. STOCK_MISSIONS is byte-verified against the shipped bytes, or None --
+# because it differs from the shipped mission.fst on ALL 24 campaign maps,
+# so such tests would assert against terrain the engine never loads.
+# STOCK_MISSIONS is byte-verified against the shipped bytes, or None --
 # a test that cannot get stock data SKIPS rather than passing on wrong data.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
 from stock_missions import stock_missions_dir_or_none  # noqa: E402
@@ -155,7 +155,7 @@ def test_bridge_gate_exclusion_does_not_swallow_non_bridge_concrete():
 
     # And it must still classify at least mc2_24's known concrete coverage
     # once the false-positive exclusion is fixed (no regression to 0 baked
-    # concrete on the mission this slice ships for).
+    # concrete on the mission under test).
     kept = int((concrete & ~bridge_gate).sum())
     assert kept == int(concrete.sum()), (
         "expected NO concrete cells excluded on mc2_24 (0 real bridge/gate "

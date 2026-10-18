@@ -184,7 +184,7 @@ def grade(setdir, runs, max_pct, quiet=False):
             print(f"[capdet] {nm:58} {pair:9} {ps} {p8}  {flag}")
         print(f"[capdet] worst pct_any={worst:.3f} threshold={max_pct:.3f} -> {verdict}")
     if verdict == "EMPTY":
-        # DETERMINISM-RATCHET-2 defect 2: a set that exists but yields nothing
+        # A set that exists but yields nothing
         # comparable is the exact shape of this check's own past failure. Say so.
         print(f"[capdet] FAIL: set {setdir} exists with "
               f"{len(runs)} run dir(s) but produced NO comparable artifact "
@@ -195,7 +195,7 @@ def grade(setdir, runs, max_pct, quiet=False):
 def grade_or_fail(setdir, runs, args):
     """Enforce the min-runs rule, then grade. Returns a process exit code."""
     if len(runs) < args.min_runs:
-        # DETERMINISM-RATCHET-2 defect 3.
+        # Too few runs for a verdict.
         print(f"[capdet] FAIL: set {setdir} has {len(runs)} run dir(s), "
               f"need >= {args.min_runs}. Two runs can agree byte-perfectly on a "
               f"region that is unstable against a third "

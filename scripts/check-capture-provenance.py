@@ -119,24 +119,13 @@ import provenance_gate as pg        # noqa: E402
 
 #: Artifact trees the repo treats as EVIDENCE.
 #:
-#: PROVENANCE-RATCHET-SCOPE-1 (2026-07-30): `scratch/` was originally excluded as
-#: "operator working space", which meant this checker's DEFAULT run skipped the
-#: exact corpus its own docstring cites as the smoking gun -- scratch/mc203reg
-#: and scratch/mc203air, the 23 arms recording seven different git.commit values
-#: for one binary. With scratch excluded the default run scanned 53 manifests and
-#: returned FAIL=0 WARN=53: every single one unverifiable, nothing confirmed, and
-#: a green "capture_provenance PASS" certifying nothing. Adding scratch/ took the
-#: scan to 141 manifests and immediately surfaced 3 real FAILs (2 zero-byte
-#: manifests from the ENOSPC truncation incident, 1 provably misattributed arm).
-#:
-#: Operator working space is where conclusions actually get formed, so it is
-#: exactly where attribution has to hold. A ratchet aimed away from the incident
-#: that motivated it is decoration.
-#: GOLDEN-PROVENANCE-TRUTH-1: `tests/visual/goldens` was missing here, and
-#: `golden.json` was missing from MANIFEST_NAMES below. Both were needed -- a
-#: filename this checker does not recognise inside a root it does not walk is
-#: invisible twice over -- so the artifact class that GRADES RELEASES was 100%
-#: unscanned while the checker reported on 141 lesser manifests.
+#: `scratch/` must stay included. Operator working space is where conclusions
+#: are formed, so it is exactly where attribution has to hold; excluding it left
+#: the default run skipping the corpus most likely to be misattributed (arms
+#: recording different git.commit values for one binary) and certifying nothing.
+#: `tests/visual/goldens` and `golden.json` are likewise required: a filename
+#: this checker does not recognise inside a root it does not walk is invisible
+#: twice over, which left the artifact class that GRADES RELEASES unscanned.
 DEFAULT_ROOTS = ("tests/visual/captures", "tests/visual/baselines",
                  "tests/visual/goldens", "run", "scratch")
 
@@ -157,7 +146,7 @@ IRREPARABLE_CODES = ("EMPTY-MANIFEST", "UNPARSEABLE")
 #: suppression list -- it is consumed exactly, in both directions.
 LEDGER_PATH = ROOT / "scripts" / "provenance-known-failures.json"
 
-#: PROVENANCE-FORGERY-CLOSE-1. The longest acknowledgement this ledger accepts.
+#: The longest acknowledgement this ledger accepts.
 #:
 #: A KNOWN row never touches the suite's exit code -- that is the whole point of
 #: the tri-state runner, and it is defensible only because an acknowledgement is
@@ -171,8 +160,8 @@ LEDGER_PATH = ROOT / "scripts" / "provenance-known-failures.json"
 #: every sprint, short enough that every entry is re-decided by a human who can
 #: still remember why it is there.
 #:
-#: WHAT THIS CAP DOES NOT DO -- state it rather than let the number imply more
-#: (TRISTATE-WIRE-1, 2026-07-31). The window is measured from the RUN DATE
+#: WHAT THIS CAP DOES NOT DO -- state it rather than let the number imply more.
+#: The window is measured from the RUN DATE
 #: (`today + MAX_ACK_DAYS` in reconcile_ledger below), not from when the entry
 #: was first written. `acknowledged_utc` is recorded on every entry and is read
 #: by NOTHING in this file -- grep it. So an entry CAN sit amber indefinitely:
@@ -314,7 +303,7 @@ def check_manifest(path: Path, strict_unverifiable: bool) -> list[Finding]:
     if not isinstance(doc, dict):
         return [Finding(path, "FAIL", "UNPARSEABLE", "top level is not an object")]
 
-    # ---- GOLDEN species (GOLDEN-PROVENANCE-TRUTH-1) ------------------------
+    # ---- GOLDEN species ------------------------------------------------------
     # A golden is the reference releases are graded against, so it gets the
     # strongest available statement rather than the generic exe rules:
     # provenance_gate.establish() accepts only a content digest plus the
@@ -341,7 +330,7 @@ def check_manifest(path: Path, strict_unverifiable: bool) -> list[Finding]:
                 "of the binary) and records the blesser's HEAD under "
                 "`source_worktree_head_at_bless` with describes_binary=false."))
         # `self_path` so a golden cannot be offered as its own corroborating
-        # witness (PROVENANCE-FORGERY-CLOSE-1).
+        # witness.
         est = pg.establish(doc, "golden", self_path=Path(path))
         if not est["ok"]:
             out.append(Finding(
@@ -857,7 +846,7 @@ def _selftest() -> int:
             ok = False
             print("[self-test] FAIL: --write emitted CRLF", file=sys.stderr)
 
-        # ---- GOLDEN-PROVENANCE-TRUTH-1 -----------------------------------
+        # ---- GOLDEN species -----------------------------------------------
         # 9. The committed-golden shape: exe named by path + mtime. This is a
         #    byte-for-byte copy of what tests/visual/goldens/v0.5.1-baseline
         #    records, and the artifact class this checker could not see at all
@@ -887,7 +876,7 @@ def _selftest() -> int:
 
         # 10. An otherwise-perfect golden that re-introduces the defect: a
         #     NON-NULL top-level blessed_commit, which is literally what the
-        #     pre-GOLDEN-PROVENANCE-TRUTH-1 bless.py wrote
+        #     bless.py used to write
         #     (`golden["blessed_commit"] = _git(ROOT, "rev-parse", "HEAD")`).
         good_exe = {"path": str(binp), "sha256": true_sha256,
                     "embedded_fingerprint": dict(fp)}
@@ -1006,7 +995,7 @@ def _selftest() -> int:
         k, u, pr = reconcile_ledger([empty_f], [led(expires_utc=None)], today)
         _c("an acknowledgement with no expiry is refused",
            any("expires_utc" in x for x in pr))
-        # PROVENANCE-FORGERY-CLOSE-1: a MISSING expiry was refused as "a
+        # A MISSING expiry was refused as "a
         # permanent suppression" while a year-2999 expiry sailed through -- the
         # same suppression, spelled so it parses. A KNOWN row never touches the
         # exit code, so this was the one way the ledger could quietly outlive

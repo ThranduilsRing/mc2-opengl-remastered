@@ -403,10 +403,10 @@ def _clear_modindex_cache(mod_dir):
         pass
 
 
-# Marker filenames any importer tool may have written (FIX-2: unified, but accept
-# both for back-compat with mco-compat dirs built before the unification).
+# Marker filenames any importer tool may have written (unified, but accept both
+# for back-compat with mco-compat dirs built before the unification).
 _MARKER_NAMES = ("mc2x_import_report.json", "mco_compat_report.json")
-# generated_by values that mean "this folder is OWNED by our importer suite" (FIX-1/FIX-2).
+# generated_by values that mean "this folder is OWNED by our importer suite".
 _OWNED_BY = ("import_tool", "build_mco_compat", "transfer_mc2x_campaign", "mc2x_import")
 
 
@@ -468,7 +468,7 @@ def _plan(folder, probe, deploy):
             "tool": "transfer_mc2x_campaign.py",
             "module": os.path.join(_MC2X, "transfer_mc2x_campaign.py"),
             # MCO campaigns keep missions LOOSE under data/missions (no mission.fst) ->
-            # pass --fsts empty so transfer doesn't false-report mission.fst as missing (FIX-4).
+            # pass --fsts empty so transfer doesn't false-report mission.fst as missing.
             "args": ["--source", src,
                      "--refs", "<DEPLOY>/mods/mco-compat/data", "<DEPLOY>/data",
                      "--out", "<STAGING>/mods/" + campaign_id, "--fsts"]
@@ -549,7 +549,7 @@ def cmd_auto(folder, deploy, force=False, dry_run=False, want_json=False):
                     "message": "Already imported, unchanged (fingerprint %s)." % fp,
                     "probe": probe}
 
-    # FIX-1: decide per-step which compat builds to ADOPT (present-with-data) vs build.
+    # Decide per-step which compat builds to ADOPT (present-with-data) vs build.
     # An existing compat layer with a data/ tree is reused as-is regardless of marker; we
     # never error and never demand --force for a compat target. Only CAMPAIGN targets keep
     # the foreign-guard (clobbering a user's campaign mod is what actually matters).
@@ -597,7 +597,7 @@ def cmd_auto(folder, deploy, force=False, dry_run=False, want_json=False):
 
     def _swap_target(t):
         """Validate + swap one staged target into DEPLOY, marker it, classify it."""
-        # FIX-1: adopted compat is left in place untouched (no swap, no re-marker).
+        # Adopted compat is left in place untouched (no swap, no re-marker).
         if t in adopted_set:
             if t not in compat_written:
                 compat_written.append(t)
@@ -627,7 +627,7 @@ def cmd_auto(folder, deploy, force=False, dry_run=False, want_json=False):
                 mods_written.append(t)
 
     try:
-        # FIX-5: run each step into staging, then IMMEDIATELY swap its targets into
+        # Run each step into staging, then IMMEDIATELY swap its targets into
         # DEPLOY before the next step runs. The plan is ordered compat-build first,
         # campaign-transfer second; a transfer step's `--refs <DEPLOY>/mods/<compat>/data`
         # only resolves on a fresh machine if the freshly-built compat has already been
@@ -636,7 +636,7 @@ def cmd_auto(folder, deploy, force=False, dry_run=False, want_json=False):
         # Staging crash-safety is preserved: each target swaps via _swap_in (swap-aside
         # *.importbak), and any unswapped staging is rmtree'd in finally.
         for s in steps:
-            # FIX-1: skip a compat-BUILD step entirely when that compat is adopted (present
+            # Skip a compat-BUILD step entirely when that compat is adopted (present
             # with data/). Don't rebuild a heavy 302MB mco-compat that already exists.
             if adopted_set and all(t in adopted_set for t in s["targets"]):
                 probe["warnings"].append("skipped build step '%s' (compat adopted)" % s["tool"])

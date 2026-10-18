@@ -81,7 +81,7 @@ DEFAULT_DEPLOY_DIR = "A:/Games/mc2-opengl/mc2-win64-v0.4"
 CODE_PATHS = ["code", "mclib", "GameOS", "shaders"]
 PREFIX = "[DEPLOY_COHERENCE]"
 
-# --- KIT-COHERENCE-1: post-deploy files the payload manifest cannot see -----
+# --- Post-deploy files the payload manifest cannot see -----
 # Lives in the repo (git-tracked), NOT in the install, so a redeploy cannot
 # erase it and a re-bless is a reviewable diff. See the module docstring.
 KIT_DIGESTS_NAME = "kit-digests.csv"
@@ -408,7 +408,7 @@ def check(deploy_dir: Path, worktree: Path, out=sys.stdout) -> int:
                      "(remember: v0.4 = game, 0.4c = editor; deploy BOTH "
                      "targets you intend to run)")
 
-    # Post-deploy kit (KIT-COHERENCE-1). Runs after the manifest arm so the
+    # Post-deploy kit. Runs after the manifest arm so the
     # summary line below cannot claim OK while the kit is drifted.
     check_kit(deploy_dir, worktree, warn, info)
 

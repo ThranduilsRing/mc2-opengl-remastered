@@ -43,15 +43,15 @@ from mission_terrain_analyzer import (  # noqa: E402
 )
 from mission_terrain_analyzer import label_components  # noqa: E402
 
-# STOCK-DATA-TRUTH-1: no hard-coded mission dir. See tools/mc2data/stock_missions.py.
+# No hard-coded mission dir. See tools/mc2data/stock_missions.py.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
 from stock_missions import (  # noqa: E402
     StockDataError, add_missions_dir_arg, resolve_from_args,
 )
-from visual_heightfield import (  # noqa: E402  TERRAIN-REAUTH-UNPIN-1 gates
+from visual_heightfield import (  # noqa: E402  reauth gates
     upsample_corner_pinned, detect_coarse_extrema, mountain_rock_mask, _box3,
-    coarse_cliff_mask, onesided_step, _bilinear_sample,  # CLIFF-SMOOTH-1
-    extract_waterline_contours, smooth_contour, _polyline_arclen,  # SHORE-CONTOUR-1
+    coarse_cliff_mask, onesided_step, _bilinear_sample,  # cliff smoothing
+    extract_waterline_contours, smooth_contour, _polyline_arclen,  # shore contour
     contour_facet_stats,
 )
 
@@ -193,7 +193,7 @@ def blockiness(elev):
     return float((sr * sr + sc * sc).mean())
 
 
-# --- CLIFF-SMOOTH-1: reference-cliff cross-section ----------------------------
+# --- Reference-cliff cross-section --------------------------------------------
 def cliff_reference_section(elev, water, protect=None,
                             cliff_slope_deg=30.0, half_len=10.0):
     """Slope census -> reference cliff cross-section.
@@ -306,7 +306,7 @@ def run(mission: str, missions_dir: Path, beauty_root: Path, out_root: Path) -> 
 
     # --- visual heightfield (visual_height_<F>x.r32), if present ---
     visual = None; factor = None
-    cliff_prof_img = None; cliff_metrics = None    # CLIFF-SMOOTH-1
+    cliff_prof_img = None; cliff_metrics = None    # cliff smoothing
     rep = bdir / "visual_height_report.json"
     if rep.is_file():
         vmeta = json.loads(rep.read_text())
@@ -319,13 +319,13 @@ def run(mission: str, missions_dir: Path, beauty_root: Path, out_root: Path) -> 
             cerr = float(np.abs(cs - elev).max())
             reauth = vmeta.get("reauth")
             if reauth:
-                # TERRAIN-REAUTH-UNPIN-1: corners are intentionally UNpinned;
+                # Corners are intentionally UNpinned;
                 # the guarantee flips to landform fidelity. All gates below are
                 # RECOMPUTED from the .r32 (report values not trusted).
-                # CLIFF-SMOOTH-1 recalibration (documented): on the cliff mask
+                # Cliff smoothing recalibration: on the cliff mask
                 # the drift ceiling is cliff_drift, terrace-step (non-regional)
                 # extrema are exempt, and shape fidelity gates OFF-cliff; the
-                # on-cliff relaxation is the slice working as designed.
+                # on-cliff relaxation works as designed.
                 cliff_meta = reauth.get("cliff") or {}
                 cliff_on = float(cliff_meta.get("cliff_drift_wu", 0.0)) > 0.0 \
                     and int(cliff_meta.get("coarse_cliff_cells", 0)) > 0
@@ -357,10 +357,10 @@ def run(mission: str, missions_dir: Path, beauty_root: Path, out_root: Path) -> 
                     chk("shape_fidelity_corr", "PASS" if corr >= 0.99 else "FAIL",
                         f"coarse landform correlation before/after = {corr:.4f} (want >= 0.99)")
                 tol_frac = float(reauth.get("shape_tolerance", 0.10))
-                # SHORE-CONTOUR-1: a non-regional extremum inside the shore band
+                # A non-regional extremum inside the shore band
                 # is a bank facet edge the reshape intentionally moves; the bake
                 # relaxes it (shore_w > 0.05 at the guard point), so the
-                # workbench gate must too or it flags the slice's own deliverable
+                # workbench gate must too or it flags the intended reshape
                 # as a violation. The band weight is recomputed deterministically
                 # from the bilinear baseline (same input the bake reshape sees).
                 shore_wc = None
@@ -422,7 +422,7 @@ def run(mission: str, missions_dir: Path, beauty_root: Path, out_root: Path) -> 
                     # creases are themselves high-frequency, so the smoothing
                     # removes about as much energy as the ridges add.)
                     from visual_heightfield import reauth_visual
-                    # SHORE-CONTOUR-1: the smooth-only reference must run the
+                    # The smooth-only reference must run the
                     # SAME shore reshape (mountainify off) so d = visual - plain
                     # isolates ONLY the added ridged detail. Without it the
                     # reference lacks the up-to-max_adjust bank displacement and
@@ -435,7 +435,7 @@ def run(mission: str, missions_dir: Path, beauty_root: Path, out_root: Path) -> 
                         max_drift=float(reauth.get("max_drift_wu", 24.0)),
                         passes=int(reauth.get("passes", 150)),
                         water_coarse=layers["water"],
-                        # CLIFF-SMOOTH-1: the smooth-only reference must melt
+                        # The smooth-only reference must melt
                         # the same cliffs, so the diff isolates ADDED detail.
                         cliff_drift=float(cliff_meta.get("cliff_drift_wu", 0.0)),
                         cliff_slope_deg=cliff_deg,
@@ -449,7 +449,7 @@ def run(mission: str, missions_dir: Path, beauty_root: Path, out_root: Path) -> 
                     rockw = mountain_rock_mask(plain, elev, factor,
                                                water_coarse=layers["water"])
                     if shore_wf is not None:
-                        # SHORE-CONTOUR-1: the bake excludes ridged detail in the
+                        # The bake excludes ridged detail in the
                         # shore band (rock *= 1 - shore_w), so the detected-detail
                         # census must exclude it too, or the reference `plain`
                         # (which has NO shore reshape) shows spurious diff there
@@ -468,7 +468,7 @@ def run(mission: str, missions_dir: Path, beauty_root: Path, out_root: Path) -> 
                             f"(calm {rms_calm:.2f}wu; want >=0.8wu and >=2x calm)")
                     else:
                         chk("mountain_detail_present", "WARN", "no rock-channel cells found")
-                # CLIFF-SMOOTH-1: reference-cliff cross-section (slope census
+                # Reference-cliff cross-section (slope census
                 # picks the largest cliff component — mc2_17's big water-facing
                 # bluff class). The user-visible deliverable: terraced steps
                 # must melt into a continuous face.
@@ -567,7 +567,7 @@ def run(mission: str, missions_dir: Path, beauty_root: Path, out_root: Path) -> 
                                                colorize(layers["water"], (30, 60, 160), hillshade(elev)))),
                               "water + shoreline"))
 
-    # --- SHORE-CONTOUR-1 deliverable: blocky-before (red) vs smoothed (blue)
+    # --- Shore contour deliverable: blocky-before (red) vs smoothed (blue)
     #     waterline overlay (the user's blue-line comparison). Drawn from the
     #     shipped visual surface when the shore stage ran; the "after" contour
     #     is extracted directly from the final .r32, so it is what actually
@@ -642,7 +642,7 @@ def run(mission: str, missions_dir: Path, beauty_root: Path, out_root: Path) -> 
     if cliff_prof_img is not None:
         cliff_prof_img.save(out / "cliff_profile.png")
     if shore_overlay_img is not None:
-        # SHORE-CONTOUR-1 deliverable at panel*2 for legibility of the two lines.
+        # Shore contour at panel*2 for legibility of the two lines.
         shore_overlay_img.resize((PANEL * 2, PANEL * 2), Image.NEAREST).save(
             out / "shore_contour.png")
 
@@ -656,7 +656,7 @@ def run(mission: str, missions_dir: Path, beauty_root: Path, out_root: Path) -> 
         "summary": summary, "checks": checks,
         "pyramid_count": len(pyramids),
         "blockiness_orig": blockiness(elev),
-        "cliff_section": cliff_metrics,     # CLIFF-SMOOTH-1 reference cliff
+        "cliff_section": cliff_metrics,     # reference cliff
     }
     (out / "workbench_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
 

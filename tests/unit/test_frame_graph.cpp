@@ -1,4 +1,4 @@
-// FRAME-GRAPH-SKELETON-1 offline validation.
+// Frame-graph offline validation.
 //
 // Proves the resource DAG declared by kRenderPassContracts[] + kFramePassOrder[] is
 // self-consistent (every pass's reads are produced by an earlier pass or are external)
@@ -9,14 +9,14 @@
 #include "RenderCore/ambient_contract.h"
 #include "RenderCore/fbo_ledger.h"
 #include "RenderCore/terrain_subpass_contract.h"
-#include "RenderCore/frame_pass_trace.h"   // FRAME-GRAPH-EXECUTOR-DRYRUN-1 pure kernel
-#include "RenderCore/frame_executor.h"     // FRAME-GRAPH-EXECUTOR-ISLAND-1 IslandContract
-#include "RenderCore/postprocess_subgraph.h" // POSTPROCESS-SUBGRAPH-1 PostProcessSubpass table
-#include "RenderCore/render_state_desc.h"  // FRAMEGRAPH-STATEPACK-SKELETON-1
-#include "RenderCore/top_level_pass_executor.h" // SAME-ORDER-EXECUTOR-VALIDATE-1
-#include "RenderCore/scheduler_legal_reorder.h" // SCHEDULER-EDGE-CLASSIFY-1
-#include <string>   // PER-PASS-APPLY-COUNTERS-1
-#include <cstring>  // PER-PASS-APPLY-COUNTERS-1
+#include "RenderCore/frame_pass_trace.h"   // pure dry-run kernel
+#include "RenderCore/frame_executor.h"     // IslandContract
+#include "RenderCore/postprocess_subgraph.h" // PostProcessSubpass table
+#include "RenderCore/render_state_desc.h"  // RenderStateDesc
+#include "RenderCore/top_level_pass_executor.h" // TopLevelPassContract
+#include "RenderCore/scheduler_legal_reorder.h" // scheduler legality
+#include <string>   // apply counters
+#include <cstring>  // apply counters
 
 using namespace RenderCore;
 using namespace RenderCore::framegraph;
@@ -102,7 +102,7 @@ TEST_CASE("ambient ledger: colorMask handshake is declared (shadow OFF, terrain 
 }
 
 TEST_CASE("SHADOW-OBSERVE-2: shadow colorMaskOnEntry=Inherit + disablesColorWrite=true + depthFunc=ShadowLess") {
-    // SHADOW-OBSERVE-2: Active shadow pre-pass enforces depth-only via FBO attachment
+    // Active shadow pre-pass enforces depth-only via FBO attachment
     // (DrawBufferSet::ShadowDepthOnly), NOT glColorMask. colorMask is AllOn at the observe
     // point (beginShadowPrePass:6270). colorMaskOnEntry relaxed to Inherit so the ambient
     // guard skips colorMask comparison (avoids AllOn-vs-AllOff false mismatch).
@@ -363,8 +363,7 @@ TEST_CASE("terrain subpass latch audit: all reachable branches set markTerrainDr
     for (int i = 0; i < kTerrainSubPassCount; ++i)
         CHECK(kTerrainSubPasses[i].producesTerrainLatch == true);
 
-    // TERRAIN-INDIRECT-LATCH-FIX-1 (26ee9bdd) closed the IndirectBridge gap: all four
-    // branches now call markTerrainDrawn. This is now a REGRESSION GUARD — if any branch's
+    // All four branches call markTerrainDrawn. This is a REGRESSION GUARD — if any branch's
     // markTerrainDrawn is removed and latchActuallyImplemented is not also set false, this
     // test will trip, catching the regression offline before it ships.
     CHECK(allDeclaredLatchProducersImplemented() == true);
@@ -405,7 +404,7 @@ TEST_CASE("terrain subpass active-branch probe: pure kernel with synthetic count
 }
 
 // ---------------------------------------------------------------------------
-// FRAME-GRAPH-EXECUTOR-DRYRUN-1: pure dryRunCompare() kernel (offline, no engine).
+// Pure dryRunCompare() kernel (offline, no engine).
 // Fabricated traces only — proves fired-set/order/terrain-mutex/latch-miss classification
 // and (critically) that UNOBSERVED passes are NOT counted as divergences.
 // ---------------------------------------------------------------------------
@@ -436,8 +435,8 @@ TEST_CASE("dryrun (b): only 7 observable passes fired, 4 invisible -> unobserved
     // NOTE: kFramePassOrder now reflects the real engine fire order:
     // StaticPropOpaque(slot1) before MechOpaque(slot2) — Static flush fires at renderLists
     // preamble (~txmmgr:3250); Mech GPU draw fires after (~txmmgr:3271).
-    // MECHOPAQUE-ORDER-FIX-2: enqueue-time tgl.cpp note removed; OpaqueObject observed only
-    // at its draw site. TerrainOverlay(slot4) fires before TerrainDecal(slot5) — txmmgr:3275/3311.
+    // OpaqueObject is observed only at its draw site. TerrainOverlay(slot4) fires before
+    // TerrainDecal(slot5) — txmmgr:3275/3311.
     const RenderPassId fired[] = {
         RenderPassId::StaticPropOpaque,
         RenderPassId::MechOpaque,
@@ -458,7 +457,7 @@ TEST_CASE("dryrun (b): only 7 observable passes fired, 4 invisible -> unobserved
 
 TEST_CASE("dryrun (c): two NON-whitelisted passes swapped -> outOfOrder>0 with an offender") {
     // Swap MechOpaque before StaticPropOpaque (declared order: Static then Mech).
-    // MECHOPAQUE-ORDER-FIX-2: kFramePassOrder now has StaticPropOpaque(slot1) before
+    // kFramePassOrder has StaticPropOpaque(slot1) before
     // MechOpaque(slot2) — Static flush precedes Mech GPU draw. Reversing them here is
     // the intentional OOO case. Neither has knownEarlyDrawSite, so generic detection fires.
     const RenderPassId fired[] = {
@@ -483,8 +482,7 @@ TEST_CASE("dryrun (c): two NON-whitelisted passes swapped -> outOfOrder>0 with a
 }
 
 TEST_CASE("dryrun (d): latch-miss is data-driven regression guard (false for both IndirectBridge and LODChunk)") {
-    // TERRAIN-INDIRECT-LATCH-FIX-1 (26ee9bdd) closed the IndirectBridge latch gap.
-    // Now ALL rows have latchActuallyImplemented=true, so terrainLatchMissActive==false
+    // ALL rows have latchActuallyImplemented=true, so terrainLatchMissActive==false
     // for ANY dominant branch. This test re-encodes that reality and would re-trip if a
     // row's latchActuallyImplemented were regressed back to false.
     framegraph::FramePassTrace t = buildTrace(kFramePassOrder, kFramePassOrderCount);
@@ -493,7 +491,7 @@ TEST_CASE("dryrun (d): latch-miss is data-driven regression guard (false for bot
     {
         const framegraph::DryRunReport r =
             framegraph::dryRunCompare(t, kFramePassOrder, kFramePassOrderCount);
-        CHECK(r.terrainLatchMissActive == false);  // fix landed; no longer a miss
+        CHECK(r.terrainLatchMissActive == false);  // implemented; no miss
         CHECK(r.terrainMutexViolation == false);
     }
     t.terrainBranch = framegraph::TerrainPath::LODChunk;
@@ -514,11 +512,11 @@ TEST_CASE("dryrun (e): two terrain branches drew -> mutex violation") {
 }
 
 TEST_CASE("dryrun (f): Option B knownEarlyDrawSite suppression proof") {
-    // DRYRUN-DRAWSITE-ORDER-1: Terrain fires before StaticPropOpaque in the LOD-chunk path
+    // Terrain fires before StaticPropOpaque in the LOD-chunk path
     // (gamecam.cpp:508 pre-renderLists). This is an apparent out-of-order vs kFramePassOrder.
     // Without knownEarly -> outOfOrderCount>0 (kernel detects it). With knownEarly -> suppressed.
     //
-    // MECHOPAQUE-ORDER-FIX-2: kFramePassOrder now has StaticPropOpaque(slot1) before
+    // kFramePassOrder has StaticPropOpaque(slot1) before
     // MechOpaque(slot2). The LOD-chunk runtime fire order: Terrain early (knownEarly),
     // then renderLists (StaticProp flush, then Mech GPU draw).
     // fired[] reflects real renderLists order (Static before Mech) — only Terrain is early.
@@ -558,16 +556,14 @@ TEST_CASE("dryrun (f): Option B knownEarlyDrawSite suppression proof") {
     }
 }
 
-// FRAME-GRAPH-EXECUTOR-ISLAND-1/2/3: offline tests for the pure IslandContract table.
+// Offline tests for the pure IslandContract table.
 // GL-free — tests only the constexpr descriptor, not the GL wrapper.
-// ISLAND-2: re-keyed IslandContract to ExecutorIslandId; added EdgeFog + FogOob rows.
-// ISLAND-3: added Shoreline + CloudShadow rows.
-// EXECUTOR-ISLAND-SCREENSHADOW-1: added ScreenShadow row (6th island, leak fixed by a0b4189b).
+// Rows: PostProcess, EdgeFog, FogOob, Shoreline, CloudShadow, ScreenShadow.
 
 TEST_CASE("executor island (a): kExecutorIslands has PostProcess + EdgeFog + FogOob + Shoreline + CloudShadow + ScreenShadow rows") {
     using namespace RenderCore::framegraph;
     // Six rows: PostProcess(0), EdgeFog(1), FogOob(2), Shoreline(3), CloudShadow(4), ScreenShadow(5).
-    // EXECUTOR-ISLAND-SCREENSHADOW-1: ScreenShadow added as 6th validate-only island.
+    // ScreenShadow is the 6th validate-only island.
     CHECK(kExecutorIslandCount == 6u);
     CHECK(static_cast<unsigned>(kExecutorIslands[0].id) ==
           static_cast<unsigned>(ExecutorIslandId::PostProcess));
@@ -658,7 +654,7 @@ TEST_CASE("executor island (f): findIslandContract(CloudShadow) returns non-null
     }
 }
 
-// EXECUTOR-ISLAND-SCREENSHADOW-1: ScreenShadow contract test.
+// ScreenShadow contract test.
 // postconditions ground-truthed from runScreenShadow() exit (lines 2149-2160):
 //   postRequiresBlendDisabled=true  (glDisable(GL_BLEND) line 2150)
 //   postRequiresActiveTexture0=true (glActiveTexture(GL_TEXTURE0) line 2160)
@@ -684,13 +680,13 @@ TEST_CASE("executor island (h): findIslandContract(Count) returns nullptr (out-o
 }
 
 // ---------------------------------------------------------------------------
-// POSTPROCESS-SUBGRAPH-1: offline tests for the GL-free PostProcessSubpass table.
+// Offline tests for the GL-free PostProcessSubpass table.
 // Pure constexpr declaration checks — no GL, no engine, no smoke.
 // ---------------------------------------------------------------------------
 
 TEST_CASE("postprocess subgraph (a): kPostProcessSubpassCount == 14") {
     using namespace RenderCore::framegraph;
-    // POSTPROCESS-SUBGRAPH-2: 14 total rows (6 Slice-1 + 8 Slice-2).
+    // 14 total rows (6 original + 8 added).
     CHECK(kPostProcessSubpassCount == 14u);
 }
 
@@ -723,21 +719,21 @@ TEST_CASE("postprocess subgraph (c): validateShippedPostProcessSubgraph().ok == 
 
 TEST_CASE("postprocess subgraph (d): owned flags match spec (6 executor-owned; SUBGRAPH-2 non-ScreenShadow + ShadowDebugOverlay not owned)") {
     using namespace RenderCore::framegraph;
-    // EXECUTOR-ISLAND-SCREENSHADOW-1: ScreenShadow now owned (6th). CloudShadow/Shoreline/EdgeFog/FogOob/Composite unchanged.
+    // ScreenShadow is owned (6th). CloudShadow/Shoreline/EdgeFog/FogOob/Composite unchanged.
     const ExecutorIslandId ownedIds[] = {
         ExecutorIslandId::CloudShadow,
         ExecutorIslandId::Shoreline,
         ExecutorIslandId::EdgeFog,
         ExecutorIslandId::FogOob,
         ExecutorIslandId::Composite,
-        ExecutorIslandId::ScreenShadow,   // EXECUTOR-ISLAND-SCREENSHADOW-1: newly owned
+        ExecutorIslandId::ScreenShadow,   // newly owned
     };
     for (int i = 0; i < 6; ++i) {
         const PostProcessSubpass* sp = findPostProcessSubpass(ownedIds[i]);
         REQUIRE(sp != nullptr);
         CHECK(sp->ownedByExecutor == true);
     }
-    // ShadowDebugOverlay + 7 remaining SUBGRAPH-2 rows (ScreenShadow now owned, not here).
+    // ShadowDebugOverlay + 7 remaining added rows (ScreenShadow is owned, not here).
     const ExecutorIslandId notOwnedIds[] = {
         ExecutorIslandId::ShadowDebugOverlay,
         ExecutorIslandId::HzbReduce,
@@ -768,7 +764,7 @@ TEST_CASE("postprocess subgraph (e): Composite is unconditional; all 13 others a
         ExecutorIslandId::EdgeFog,
         ExecutorIslandId::FogOob,
         ExecutorIslandId::ShadowDebugOverlay,
-        // POSTPROCESS-SUBGRAPH-2 additions:
+        // Added sub-stage rows:
         ExecutorIslandId::HzbReduce,
         ExecutorIslandId::HzbProbe,
         ExecutorIslandId::ClusterDepthPyramid,
@@ -807,7 +803,7 @@ TEST_CASE("postprocess subgraph (f): order regression — Composite before a Mai
     // validation fails with offendingSubpass != Count.
     using namespace RenderCore::framegraph;
 
-    // External set WITHOUT MainColor. POSTPROCESS-SUBGRAPH-2: row 0 is now HzbReduce
+    // External set WITHOUT MainColor. Row 0 is HzbReduce
     // (reads MainDepth, writes HzbPyramid). Subsequent rows that write MainColor (ScreenShadow,
     // CloudShadow, etc.) do so before Composite reads it — so the shipped table must still pass.
     // Also include SsaoOcclusion (self-loop external for Ssao single-row model) and SceneDepthCopy
@@ -817,7 +813,7 @@ TEST_CASE("postprocess subgraph (f): order regression — Composite before a Mai
         RenderResourceId::MainNormal,
         RenderResourceId::ShadowStaticMap,
         RenderResourceId::ShadowDynamicMap,
-        RenderResourceId::SceneObjectId,    // POSTPROCESS-SCENEOBJECTID-RESOURCE-1
+        RenderResourceId::SceneObjectId,    // object-id RT
         RenderResourceId::SceneDepthCopy,   // BoxDecals cross-boundary external
         RenderResourceId::SsaoOcclusion,    // Ssao self-loop external
     };
@@ -842,7 +838,7 @@ TEST_CASE("postprocess subgraph (f): order regression — Composite before a Mai
 }
 
 // ---------------------------------------------------------------------------
-// POSTPROCESS-SUBGRAPH-2: offline tests for the 8 new sub-stage rows.
+// Offline tests for the 8 added sub-stage rows.
 // ---------------------------------------------------------------------------
 
 TEST_CASE("postprocess subgraph (g): SUBGRAPH-2 rows are all findable by id") {
@@ -948,7 +944,7 @@ TEST_CASE("postprocess subgraph (k): HzbReduce writes HzbPyramid; HzbProbe reads
 }
 
 // ---------------------------------------------------------------------------
-// POSTPROCESS-MAINNORMAL-PRODUCER-1: verify MainNormal producer/consumer
+// Verify MainNormal producer/consumer
 // declarations are present and load-bearing in the shipped frame graph.
 // ---------------------------------------------------------------------------
 
@@ -1011,7 +1007,7 @@ TEST_CASE("MainNormal regression: removing all producers causes PostProcess unsa
 }
 
 // ---------------------------------------------------------------------------
-// POSTPROCESS-SCENEDEPTHCOPY-RESOURCE-1: offline tests for SceneDepthCopy
+// Offline tests for SceneDepthCopy
 // logical resource identity + VFX producer declaration.
 // Pure / GL-free. No smoke required.
 // ---------------------------------------------------------------------------
@@ -1033,7 +1029,7 @@ TEST_CASE("SceneDepthCopy: VFX pass declares it in writes[]") {
 
 TEST_CASE("SceneDepthCopy: validateShippedFrameGraph still ok with VFX producer declared") {
     // Adding SceneDepthCopy to VFX writes must not break the shipped frame-graph DAG
-    // validation (no pass reads SceneDepthCopy in the shipped Slice-1 table, so it is
+    // validation (no MAIN-order pass reads SceneDepthCopy, so it is
     // producerless-read-safe; adding the write is purely additive).
     const ValidationResult r = validateShippedFrameGraph();
     CHECK(r.ok == true);
@@ -1042,15 +1038,15 @@ TEST_CASE("SceneDepthCopy: validateShippedFrameGraph still ok with VFX producer 
 }
 
 // ---------------------------------------------------------------------------
-// REGISTRY-SCENECOLORCOPY-PRODUCER-1: offline tests for SceneColorCopy
+// Offline tests for SceneColorCopy
 // producer declaration (closes the id-without-producer gap). Pure / GL-free.
 // ---------------------------------------------------------------------------
 
 TEST_CASE("SceneColorCopy: VFX pass declares it in writes[]") {
     // Ground-truth: copySceneColorForVfx() is called from gos_particle_bridge.cpp:1097
     // during the VFX/particle flush (gated MC2_VFX_SCENECOLOR_GRAB), same window as the
-    // soft-particle depth copy. The VFX pass is the producer; before this slice the id
-    // (enum 20) had no modeled producer. Lock the declaration as a regression guard.
+    // soft-particle depth copy. The VFX pass is the producer; the id (enum 20) otherwise
+    // has no modeled producer. Lock the declaration as a regression guard.
     bool vfxWritesColorCopy = false;
     for (int i = 0; i < kRenderPassContractCount; ++i) {
         if (kRenderPassContracts[i].id != RenderPassId::VFX) continue;
@@ -1074,7 +1070,7 @@ TEST_CASE("SceneColorCopy: validateShippedFrameGraph still ok with VFX producer 
 
 TEST_CASE("SceneDepthCopy: present in PP subgraph external set (validateShippedPostProcessSubgraph ok)") {
     // SceneDepthCopy must appear in validateShippedPostProcessSubgraph's kExternal[] so
-    // that when BoxDecals (SUBGRAPH-2) reads it in a future slice, the subgraph validator
+    // that when BoxDecals reads it in a future subpass, the subgraph validator
     // accepts the read as externally produced, not producerless.
     using namespace RenderCore::framegraph;
     const PostProcessValidationResult r = validateShippedPostProcessSubgraph();
@@ -1107,10 +1103,8 @@ TEST_CASE("SceneDepthCopy: synthetic PP subpass reading it validates ONLY becaus
         (void)extWith;        // explicitly included; validated transitively via shipped function.
     }
 
-    // External set WITHOUT SceneDepthCopy -> BoxDecals (SUBGRAPH-2 row) reads it, so
-    // the validator must now flag BoxDecals as having an unsatisfied read.
-    // POSTPROCESS-SUBGRAPH-2: BoxDecals is now in the table and reads SceneDepthCopy.
-    // Removing SceneDepthCopy from external causes BoxDecals to fail validation.
+    // External set WITHOUT SceneDepthCopy -> BoxDecals reads it, so the validator must
+    // flag BoxDecals as having an unsatisfied read.
     {
         const RenderResourceId extWithout[] = {
             RenderResourceId::MainColor,
@@ -1118,12 +1112,12 @@ TEST_CASE("SceneDepthCopy: synthetic PP subpass reading it validates ONLY becaus
             RenderResourceId::MainNormal,
             RenderResourceId::ShadowStaticMap,
             RenderResourceId::ShadowDynamicMap,
-            RenderResourceId::SceneObjectId,   // POSTPROCESS-SCENEOBJECTID-RESOURCE-1
+            RenderResourceId::SceneObjectId,   // object-id RT
             RenderResourceId::SsaoOcclusion,   // Ssao self-loop external
             // SceneDepthCopy intentionally omitted
         };
         const PostProcessValidationResult r2 = validatePostProcessSubgraph(extWithout, 7);
-        // SUBGRAPH-2: BoxDecals reads SceneDepthCopy; without it in external, validation fails.
+        // BoxDecals reads SceneDepthCopy; without it in external, validation fails.
         CHECK(r2.ok == false);
         CHECK(static_cast<unsigned>(r2.offendingSubpass) ==
               static_cast<unsigned>(ExecutorIslandId::BoxDecals));
@@ -1133,7 +1127,7 @@ TEST_CASE("SceneDepthCopy: synthetic PP subpass reading it validates ONLY becaus
 }
 
 // ---------------------------------------------------------------------------
-// POSTPROCESS-SCENEOBJECTID-RESOURCE-1: offline tests for SceneObjectId
+// Offline tests for SceneObjectId
 // logical resource identity — GBuffer2 COLOR_ATTACHMENT2 object-id RT.
 // Pure / GL-free. No smoke required.
 // ---------------------------------------------------------------------------
@@ -1159,9 +1153,8 @@ TEST_CASE("SceneObjectId: MechOpaque and StaticPropOpaque declare it in writes[]
 }
 
 TEST_CASE("SceneObjectId: Composite subpass reads it (closes the SUBGRAPH-1 gap)") {
-    // POSTPROCESS-SUBGRAPH-1 flagged sceneObjectIdTex_ (unit 2) as id-less.
-    // After POSTPROCESS-SCENEOBJECTID-RESOURCE-1 the Composite row's reads[] must
-    // include SceneObjectId so the subgraph validator sees the read declared.
+    // sceneObjectIdTex_ (unit 2) previously had no logical id. The Composite row's
+    // reads[] must include SceneObjectId so the subgraph validator sees the read declared.
     using namespace RenderCore::framegraph;
     const PostProcessSubpass* composite = findPostProcessSubpass(ExecutorIslandId::Composite);
     REQUIRE(composite != nullptr);
@@ -1199,8 +1192,8 @@ TEST_CASE("SceneObjectId: external entry is load-bearing for Composite read") {
     // Composite as having an unsatisfied read.
     using namespace RenderCore::framegraph;
 
-    // External set without SceneObjectId — Composite's reads[SceneObjectId] is now unsatisfied.
-    // POSTPROCESS-SUBGRAPH-2: must also include SsaoOcclusion (Ssao self-loop) and SceneDepthCopy
+    // External set without SceneObjectId — Composite's reads[SceneObjectId] is unsatisfied.
+    // Must also include SsaoOcclusion (Ssao self-loop) and SceneDepthCopy
     // (BoxDecals cross-boundary) so those rows don't trip the validator before Composite.
     const RenderResourceId extWithout[] = {
         RenderResourceId::MainColor,
@@ -1219,7 +1212,7 @@ TEST_CASE("SceneObjectId: external entry is load-bearing for Composite read") {
 }
 
 // ---------------------------------------------------------------------------
-// FRAMEGRAPH-STATEPACK-SKELETON-1: offline tests for the GL-free RenderStateDesc
+// Offline tests for the GL-free RenderStateDesc
 // vocabulary. Pure / no GL / no engine. Validates that the unified StatePack agrees
 // with the per-axis ledgers it was derived from.
 // ---------------------------------------------------------------------------
@@ -1341,7 +1334,7 @@ TEST_CASE("statepack (g): consistency validator catches a deliberately-wrong Ren
 }
 
 // ---------------------------------------------------------------------------
-// SAME-ORDER-EXECUTOR-VALIDATE-1: offline tests for the pure TopLevelPassContract table.
+// Offline tests for the pure TopLevelPassContract table.
 // GL-free — tests only the constexpr descriptor, not the GL wrapper.
 // ---------------------------------------------------------------------------
 
@@ -1353,16 +1346,16 @@ TEST_CASE("top-level executor (a): kTopLevelExecutorPasses has 10 rows (UI-SAME-
 TEST_CASE("top-level executor (b): findTopLevelExecutorPass returns non-null for all 10 wrappable passes") {
     using namespace RenderCore::framegraph;
     const RenderPassId wrappable[] = {
-        RenderPassId::Shadow,           // SAME-ORDER-EXECUTOR-SLICE-2
-        RenderPassId::MechOpaque,       // SAME-ORDER-EXECUTOR-SLICE-2
+        RenderPassId::Shadow,
+        RenderPassId::MechOpaque,
         RenderPassId::StaticPropOpaque,
         RenderPassId::Terrain,
         RenderPassId::TerrainOverlay,
         RenderPassId::TerrainDecal,
-        RenderPassId::Water,            // WATER-SAME-ORDER-VALIDATE-1
+        RenderPassId::Water,
         RenderPassId::VegetationCards,
-        RenderPassId::VFX,              // VFX-FBO-ONLY-VALIDATE-1
-        RenderPassId::UI,               // UI-SAME-ORDER-VALIDATE-1
+        RenderPassId::VFX,              // FBO-only
+        RenderPassId::UI,
     };
     for (int i = 0; i < 10; ++i) {
         const TopLevelPassContract* c = findTopLevelExecutorPass(wrappable[i]);
@@ -1371,9 +1364,8 @@ TEST_CASE("top-level executor (b): findTopLevelExecutorPass returns non-null for
 }
 
 TEST_CASE("top-level executor (c): all top-level passes now executor-owned (0 deferred)") {
-    // UI-SAME-ORDER-VALIDATE-1: UI now owned -> NO deferred top-level passes remain.
-    // VFX (VFX-FBO-ONLY-VALIDATE-1); Water (WATER-SAME-ORDER-VALIDATE-1);
-    // Shadow + MechOpaque (SLICE-2).
+    // UI is owned -> NO deferred top-level passes remain.
+    // VFX, Water, Shadow + MechOpaque are owned too.
     using namespace RenderCore::framegraph;
     // Confirm Shadow + MechOpaque + Water + VFX + UI are ALL owned (none deferred):
     CHECK(findTopLevelExecutorPass(RenderPassId::Shadow)     != nullptr);
@@ -1386,7 +1378,7 @@ TEST_CASE("top-level executor (c): all top-level passes now executor-owned (0 de
 TEST_CASE("top-level executor (d): ambient + FBO flags match declared ledger declarations") {
     using namespace RenderCore::framegraph;
 
-    // SAME-ORDER-EXECUTOR-SLICE-2: Shadow has AmbientContract (ShadowLess/ShadowMap) + FBO
+    // Shadow has AmbientContract (ShadowLess/ShadowMap) + FBO
     // ledger (ShadowDynamicMap). MechOpaque has AmbientContract (SceneGEqual) + FBO (MainColor).
     const TopLevelPassContract* shadow = findTopLevelExecutorPass(RenderPassId::Shadow);
     REQUIRE(shadow != nullptr);
@@ -1432,14 +1424,14 @@ TEST_CASE("top-level executor (d): ambient + FBO flags match declared ledger dec
     CHECK(veg->validateAmbient == false);
     CHECK(veg->validateFbo     == false);
 
-    // VFX-FBO-ONLY-VALIDATE-1: VFX has FBO ledger (MainColor) but NO AmbientContract row
+    // VFX has FBO ledger (MainColor) but NO AmbientContract row
     // (note seam fires pre-body in a different TU -> ambient not honestly declarable).
     const TopLevelPassContract* vfx = findTopLevelExecutorPass(RenderPassId::VFX);
     REQUIRE(vfx != nullptr);
     CHECK(vfx->validateAmbient == false);
     CHECK(vfx->validateFbo     == true);
 
-    // UI-SAME-ORDER-VALIDATE-1: UI has FBO ledger (Backbuffer) but NO AmbientContract row
+    // UI has FBO ledger (Backbuffer) but NO AmbientContract row
     // (UI ambient is per-draw legacy gos dynamic state -> DO_NOT_MODEL).
     const TopLevelPassContract* ui = findTopLevelExecutorPass(RenderPassId::UI);
     REQUIRE(ui != nullptr);
@@ -1453,16 +1445,16 @@ TEST_CASE("top-level executor (e): ambient ledger cross-check — Shadow/MechOpa
     CHECK(findAmbient(RenderPassId::MechOpaque)       != nullptr);  // SceneGEqual+MainScene
     CHECK(findAmbient(RenderPassId::StaticPropOpaque) != nullptr);
     CHECK(findAmbient(RenderPassId::Terrain)          != nullptr);
-    CHECK(findAmbient(RenderPassId::Water)            != nullptr);  // WATER-SAME-ORDER-VALIDATE-1
+    CHECK(findAmbient(RenderPassId::Water)            != nullptr);  // modeled
     CHECK(findAmbient(RenderPassId::TerrainOverlay)   == nullptr);
     CHECK(findAmbient(RenderPassId::TerrainDecal)     == nullptr);
     CHECK(findAmbient(RenderPassId::VegetationCards)  == nullptr);
-    CHECK(findAmbient(RenderPassId::VFX)              == nullptr);  // VFX-FBO-ONLY-VALIDATE-1 (FBO-only)
-    CHECK(findAmbient(RenderPassId::UI)               != nullptr);  // UI-PASS-MODEL-1 (now modeled; verified observe-only)
+    CHECK(findAmbient(RenderPassId::VFX)              == nullptr);  // FBO-only
+    CHECK(findAmbient(RenderPassId::UI)               != nullptr);  // modeled; verified observe-only
 }
 
 TEST_CASE("UI-PASS-MODEL-1: UI ambient row declares the measured entry state") {
-    // UI-PASS-DRAWCOUNT-AMBIENT-MEASURE-1 measured: colorMask AllOn, blend Off, depthWrite On,
+    // Measured entry state: colorMask AllOn, blend Off, depthWrite On,
     // depthFunc Inherit (unconstrained), viewport MainScene (FB0 backbuffer classifies MainScene).
     const AmbientContract* ui = findAmbient(RenderPassId::UI);
     REQUIRE(ui != nullptr);
@@ -1492,15 +1484,15 @@ TEST_CASE("top-level executor (f): FBO ledger cross-check — Shadow=ShadowDynam
     const unsigned sdm = rid(RenderResourceId::ShadowDynamicMap);
     const unsigned bb  = rid(RenderResourceId::Backbuffer);
     const unsigned unk = rid(RenderResourceId::Unknown);
-    CHECK(rid(declaredFboTarget(RenderPassId::Shadow))           == sdm);  // SLICE-2
-    CHECK(rid(declaredFboTarget(RenderPassId::MechOpaque))       == mc);   // SLICE-2
+    CHECK(rid(declaredFboTarget(RenderPassId::Shadow))           == sdm);
+    CHECK(rid(declaredFboTarget(RenderPassId::MechOpaque))       == mc);
     CHECK(rid(declaredFboTarget(RenderPassId::StaticPropOpaque)) == mc);
     CHECK(rid(declaredFboTarget(RenderPassId::Terrain))          == mc);
     CHECK(rid(declaredFboTarget(RenderPassId::TerrainOverlay))   == mc);
     CHECK(rid(declaredFboTarget(RenderPassId::TerrainDecal))     == mc);
-    CHECK(rid(declaredFboTarget(RenderPassId::Water))           == mc);   // WATER-SAME-ORDER-VALIDATE-1
-    CHECK(rid(declaredFboTarget(RenderPassId::VFX))             == mc);   // VFX-FBO-ONLY-VALIDATE-1
-    CHECK(rid(declaredFboTarget(RenderPassId::UI))             == bb);   // UI-SAME-ORDER-VALIDATE-1 (Backbuffer, first such row)
+    CHECK(rid(declaredFboTarget(RenderPassId::Water))           == mc);
+    CHECK(rid(declaredFboTarget(RenderPassId::VFX))             == mc);
+    CHECK(rid(declaredFboTarget(RenderPassId::UI))             == bb);   // Backbuffer, first such row
     CHECK(rid(declaredFboTarget(RenderPassId::VegetationCards))  == unk);
 }
 
@@ -1512,14 +1504,13 @@ TEST_CASE("top-level executor (g): note field is non-null for all wrappable pass
 }
 
 TEST_CASE("top-level executor (h): kTopLevelDeferredPassCount == 0 (UI-SAME-ORDER-VALIDATE-1: all top-level passes owned)") {
-    // Shadow + MechOpaque owned in SLICE-2; Water in WATER-SAME-ORDER-VALIDATE-1;
-    // VFX in VFX-FBO-ONLY-VALIDATE-1; UI in UI-SAME-ORDER-VALIDATE-1 -> 0 deferred.
+    // Shadow + MechOpaque, Water, VFX and UI are all owned -> 0 deferred.
     using namespace RenderCore::framegraph;
     CHECK(kTopLevelDeferredPassCount == 0u);
 }
 
 // ---------------------------------------------------------------------------
-// APPLY-STATE-TERRAINDECAL-1: offline tests for the top-level apply-state table
+// Offline tests for the top-level apply-state table
 // (kTopLevelStateDesc / findTopLevelStateDesc). Pure/GL-free — mirrors the
 // findSubStageState coverage below. The pre-apply GL calls are not tested here
 // (GL context required); only the descriptor table shape is asserted.
@@ -1527,7 +1518,7 @@ TEST_CASE("top-level executor (h): kTopLevelDeferredPassCount == 0 (UI-SAME-ORDE
 
 TEST_CASE("top-level apply-state (a): kTopLevelStateDesc has exactly 6 rows (TerrainDecal, TerrainOverlay, StaticPropOpaque, MechOpaque, Water, Shadow)") {
     using namespace RenderCore::framegraph;
-    CHECK(kTopLevelStateDescCount == 6u);  // APPLY-STATE-SHADOW-1: +Shadow (render-target MODE)
+    CHECK(kTopLevelStateDescCount == 6u);  // includes Shadow (render-target MODE)
 }
 
 TEST_CASE("top-level apply-state (i): findTopLevelStateDesc(MechOpaque) = MechOpaque pipeline, FBO/viewport inherit (not applied)") {
@@ -1573,16 +1564,16 @@ TEST_CASE("top-level apply-state (b): findTopLevelStateDesc(TerrainDecal) = Terr
 
 TEST_CASE("top-level apply-state (c): findTopLevelStateDesc returns nullptr for a non-apply pass (Terrain)") {
     using namespace RenderCore::framegraph;
-    // Terrain is validate-owned but the executor does NOT apply its state this slice.
+    // Terrain is validate-owned but the executor does NOT apply its state.
     CHECK(findTopLevelStateDesc(RenderCore::RenderPassId::Terrain) == nullptr);
-    // APPLY-STATE-SHADOW-1: Shadow is NOW an apply consumer (render-target MODE) -> non-null.
+    // Shadow is an apply consumer (render-target MODE) -> non-null.
     CHECK(findTopLevelStateDesc(RenderCore::RenderPassId::Shadow)  != nullptr);
 }
 
-// APPLY-STATE-SHADOW-1/2: Shadow descriptor — first FULL render-target-MODE row.
+// Shadow descriptor — first FULL render-target-MODE row.
 // Pipeline = ShadowMech (the BASE caster pipeline; per-caster ShadowStaticProp re-applies in
-// the body). APPLY-STATE-SHADOW-2: fboTarget/viewport are NOW lifted (ShadowDynamicMap/ShadowMap)
-// — Shadow is a full render-target-mode owner (FBO+viewport+clear+pipeline). clear = DepthForwardZ
+// the body). fboTarget/viewport are lifted (ShadowDynamicMap/ShadowMap) — Shadow is a
+// full render-target-mode owner (FBO+viewport+clear+pipeline). clear = DepthForwardZ
 // (the SOLE non-None ClearSpec in the table).
 // ★Shadow is intentionally EXEMPT from the "lifted pipeline matches the authoritative
 // kPassRenderState row" invariant: the authoritative Shadow row is PipelineId::Invalid
@@ -1595,7 +1586,7 @@ TEST_CASE("top-level apply-state (l): findTopLevelStateDesc(Shadow) = ShadowMech
     REQUIRE(d != nullptr);
     CHECK(static_cast<unsigned>(d->id)         == static_cast<unsigned>(RenderPassId::Shadow));
     CHECK(static_cast<unsigned>(d->pipelineId) == static_cast<unsigned>(PipelineId::ShadowMech));
-    // APPLY-STATE-SHADOW-2: FBO + viewport NOW lifted (full render-target-mode ownership).
+    // FBO + viewport are lifted (full render-target-mode ownership).
     CHECK(static_cast<unsigned>(d->fboTarget)  == static_cast<unsigned>(RenderResourceId::ShadowDynamicMap));
     CHECK(static_cast<unsigned>(d->viewport)   == static_cast<unsigned>(ViewportKind::ShadowMap));
     // First DepthForwardZ consumer.
@@ -1621,7 +1612,7 @@ TEST_CASE("top-level apply-state (d): lifted pipelineId matches the authoritativ
     CHECK(found);
 }
 
-// APPLY-STATE-TERRAINOVERLAY-1: second top-level apply-state consumer.
+// Second top-level apply-state consumer.
 TEST_CASE("top-level apply-state (e): findTopLevelStateDesc(TerrainOverlay) = TerrainOverlay pipeline, FBO/viewport inherit (not applied)") {
     using namespace RenderCore;
     using namespace RenderCore::framegraph;
@@ -1653,10 +1644,10 @@ TEST_CASE("top-level apply-state (f): TerrainOverlay lifted pipelineId matches t
     CHECK(found);
 }
 
-// APPLY-STATE-STATICPROP-1: third top-level apply-state consumer — first one whose
+// Third top-level apply-state consumer — first one whose
 // ON-path body-skip is actually exercised at runtime (StaticPropOpaque runs every
 // tier1 frame).
-// FRAMEGRAPH-APPLY-STATE-EXTEND-1 SELF-PROOF: StaticPropOpaque is re-expressed to EXPLICITLY
+// SELF-PROOF: StaticPropOpaque is re-expressed to EXPLICITLY
 // apply MainColor/MainScene (the axes it already inherits + runs every tier1 frame) -> proves
 // the richer apply path is byte-identical to inheritance. clear stays None.
 TEST_CASE("top-level apply-state (g): findTopLevelStateDesc(StaticPropOpaque) = StaticPropOpaque pipeline, EXPLICIT MainColor/MainScene, clear None") {
@@ -1674,10 +1665,10 @@ TEST_CASE("top-level apply-state (g): findTopLevelStateDesc(StaticPropOpaque) = 
     CHECK(static_cast<unsigned>(d->clear)      == static_cast<unsigned>(ClearSpec::None));
 }
 
-// FRAMEGRAPH-APPLY-STATE-EXTEND-1: the 4 non-self-proof consumers stay byte-identical —
+// The 4 non-self-proof consumers stay byte-identical —
 // fboTarget=Unknown / viewport=Inherit (skip-sentinels) and clear defaults to None.
-// StaticPropOpaque is the SOLE row with explicit FBO/viewport this slice.
-// APPLY-STATE-SHADOW-1: Shadow is the SOLE row with clear=DepthForwardZ (asserted separately
+// StaticPropOpaque is the SOLE row with explicit FBO/viewport.
+// Shadow is the SOLE row with clear=DepthForwardZ (asserted separately
 // in test (l)); it is NOT in this unchanged-consumers loop.
 TEST_CASE("top-level apply-state (k): EXTEND — 4 consumers unchanged (Unknown/Inherit); ClearSpec default None (decal/overlay/mech/water + staticprop)") {
     using namespace RenderCore;
@@ -1717,13 +1708,13 @@ TEST_CASE("top-level apply-state (h): StaticPropOpaque lifted pipelineId matches
 }
 
 // ---------------------------------------------------------------------------
-// FRAMEGRAPH-APPLY-STATE-ISLAND-1: offline tests for SubStageStateDesc table.
+// Offline tests for SubStageStateDesc table.
 // Pure/GL-free — the pre-apply GL calls are not tested here (GL context required).
 // ---------------------------------------------------------------------------
 
 TEST_CASE("apply-state-island (a): kSubStageState has exactly 5 rows") {
     using namespace RenderCore::framegraph;
-    // APPLY-STATE-SCREENSHADOW-1: ScreenShadow is the 5th wired row.
+    // ScreenShadow is the 5th wired row.
     CHECK(kSubStageStateCount == 5u);
 }
 
@@ -1754,7 +1745,7 @@ TEST_CASE("apply-state-island (d): all table rows have valid PipelineId (not Inv
     }
 }
 
-// FRAMEGRAPH-APPLY-STATE-ISLAND-2: FogOob/Shoreline/CloudShadow apply islands now wired.
+// FogOob/Shoreline/CloudShadow apply islands wired.
 // Pure/GL-free — tests confirm the descriptor table rows are correct.
 TEST_CASE("apply-state-island (e): findSubStageState(FogOob) returns PostProcessFogOob + MainColor + MainScene") {
     using namespace RenderCore;
@@ -1789,7 +1780,7 @@ TEST_CASE("apply-state-island (g): findSubStageState(CloudShadow) returns PostPr
     CHECK(static_cast<unsigned>(d->viewport)   == static_cast<unsigned>(ViewportKind::MainScene));
 }
 
-// APPLY-STATE-SCREENSHADOW-1: ScreenShadow apply island now wired (6th apply-state island).
+// ScreenShadow apply island wired (6th apply-state island).
 TEST_CASE("apply-state-island (i): findSubStageState(ScreenShadow) returns PostProcessScreenShadow + MainColor + MainScene") {
     using namespace RenderCore;
     using namespace RenderCore::framegraph;
@@ -1803,7 +1794,7 @@ TEST_CASE("apply-state-island (i): findSubStageState(ScreenShadow) returns PostP
 
 TEST_CASE("apply-state-island (h): all 5 apply-island descriptors present (EdgeFog/FogOob/Shoreline/CloudShadow/ScreenShadow)") {
     using namespace RenderCore::framegraph;
-    // All 5 sub-stages from ISLAND-1+2 + SCREENSHADOW-1 must be in the table.
+    // All 5 sub-stages must be in the table.
     CHECK(findSubStageState(ExecutorIslandId::EdgeFog)      != nullptr);
     CHECK(findSubStageState(ExecutorIslandId::FogOob)       != nullptr);
     CHECK(findSubStageState(ExecutorIslandId::Shoreline)    != nullptr);
@@ -1813,7 +1804,7 @@ TEST_CASE("apply-state-island (h): all 5 apply-island descriptors present (EdgeF
 
 TEST_CASE("per-pass-apply-counters-1: ApplyPassId table is complete + names unique/non-Unknown") {
     using namespace RenderCore::framegraph;
-    // Exactly 11 apply paths: 5 PostProcess sub-stages + 6 top-level (APPLY-STATE-SHADOW-1: +Shadow).
+    // Exactly 11 apply paths: 5 PostProcess sub-stages + 6 top-level (including Shadow).
     CHECK(static_cast<unsigned>(ApplyPassId::Count) == 11u);
     // Spot-check representative mappings.
     CHECK(std::string(applyPassName(ApplyPassId::StaticPropOpaque)) == "StaticPropOpaque");
@@ -1833,7 +1824,7 @@ TEST_CASE("per-pass-apply-counters-1: ApplyPassId table is complete + names uniq
     CHECK(std::string(applyPassName(ApplyPassId::Count)) == "Unknown");
 }
 
-// APPLY-STATE-REGISTRATION-CHECK-1 (Part A.3): each of the 5 TOP-LEVEL apply
+// Each of the 5 TOP-LEVEL apply
 // passes (TerrainDecal / TerrainOverlay / StaticPropOpaque / MechOpaque / Water) maps to a RenderPassId
 // whose kPassRenderState[] row declares a CONCRETE (non-Invalid) pipelineId. You
 // must not declare a top-level apply on a multi-pipeline / Invalid pass — the
@@ -1844,7 +1835,7 @@ TEST_CASE("apply-state-registration (top-level): each top-level ApplyPassId maps
 
     // name -> RenderPassId mapping for the top-level apply ids whose pipeline is the
     // authoritative single pipeline (small local switch).
-    // ★APPLY-STATE-SHADOW-1: ApplyPassId::Shadow is DELIBERATELY EXCLUDED from this invariant.
+    // ★ApplyPassId::Shadow is DELIBERATELY EXCLUDED from this invariant.
     // Shadow's authoritative kPassRenderState row is PipelineId::Invalid (3 descriptive
     // sub-caster pipelines ShadowTerrain/ShadowMech/ShadowStaticProp), so passHasStaticPipeline
     // (Shadow) is false and there is no single representative pipeline to match. Shadow's
@@ -1872,7 +1863,7 @@ TEST_CASE("apply-state-registration (top-level): each top-level ApplyPassId maps
     }
 }
 
-// APPLY-STATE-REGISTRATION-CHECK-1 (Part A.4): each PostProcess ApplyPassId has a
+// Each PostProcess ApplyPassId has a
 // matching kSubStageState[] row (by ExecutorIslandId), and every kSubStageState row's
 // island exists in kExecutorIslands[]. Confirms the PostProcess apply vocabulary is
 // internally closed (apply id -> sub-stage desc -> owned island contract).
@@ -1902,7 +1893,7 @@ TEST_CASE("apply-state-registration (post-process): each PostProcess ApplyPassId
 }
 
 // ---------------------------------------------------------------------------
-// SCHEDULER-EDGE-CLASSIFY-1: GL-free edge classifier + current-order legality
+// GL-free edge classifier + current-order legality
 // baseline (tier-C proof infrastructure; no reorderer, no pass movement).
 // ---------------------------------------------------------------------------
 
@@ -1922,7 +1913,7 @@ TEST_CASE("edge classify (a): expected HardResource edge set against kFramePassO
         return false;
     };
 
-    // E1-E3: Shadow produces ShadowDynamicMap; the three opaque/terrain consumers read it.
+    // Shadow produces ShadowDynamicMap; the three opaque/terrain consumers read it.
     // (Shadow is first in kFramePassOrder, so the producer-walk derives these directly.)
     CHECK(hasHR(RenderPassId::Shadow, RenderPassId::StaticPropOpaque, RenderResourceId::ShadowDynamicMap));
     CHECK(hasHR(RenderPassId::Shadow, RenderPassId::MechOpaque,       RenderResourceId::ShadowDynamicMap));
@@ -2068,7 +2059,7 @@ TEST_CASE("edge classify (f): SoftState colorMask-reassert + LegacyLatch terrain
 }
 
 // ---------------------------------------------------------------------------
-// SCHEDULER-REORDER-ORACLE-1: GL-free permutation-legality oracle. PROOF-ONLY —
+// GL-free permutation-legality oracle. PROOF-ONLY —
 // the oracle moves nothing and executes nothing; a Legal verdict = "eligible for
 // a future MEASURED reorder experiment", NOT an approved/scheduled reorder.
 // ---------------------------------------------------------------------------
@@ -2151,11 +2142,10 @@ TEST_CASE("oracle (c): Terrain moved AFTER PostProcess breaks the sceneHasTerrai
 
 TEST_CASE("oracle (d): legalAdjacentSwaps -> ZERO true (post MEASURED-REORDER-SPMECH-1)") {
     using namespace RenderCore::framegraph;
-    // ORACLE-STRENGTHEN-1: StaticProp<->Mech was once the single candidate-legal adjacent
-    // swap, but the gated reorder experiment MEASURED-REORDER-SPMECH-1 (@2461d37e) PROVED it
-    // fails parity (pixel diff 3-6x noise; depth-equal ties resolve order-dependently). It is
-    // now a CONCRETE deferred-soft-state pair -> BlockedByDeferredSoftState. The honest
-    // post-experiment state: the shipped baseline has NO clean legal adjacent swap.
+    // StaticProp<->Mech was once the single candidate-legal adjacent swap, but a gated
+    // reorder experiment PROVED it fails parity (pixel diff 3-6x noise; depth-equal ties
+    // resolve order-dependently). It is now a CONCRETE deferred-soft-state pair ->
+    // BlockedByDeferredSoftState. The shipped baseline has NO clean legal adjacent swap.
     bool swaps[32] = { false };
     legalAdjacentSwaps(swaps, kFramePassOrderCount);
 
@@ -2190,9 +2180,8 @@ TEST_CASE("oracle (e): forbidden-edges-hold but crosses a deferred soft-state pa
 
 TEST_CASE("oracle (f): StaticProp<->Mech swap -> BlockedByDeferredSoftState (depth-tie; MEASURED-REORDER-SPMECH-1)") {
     using namespace RenderCore::framegraph;
-    // ORACLE-STRENGTHEN-1 — the validator LEARNED from the execution experiment.
-    // MEASURED-REORDER-SPMECH-1 (@2461d37e) ran the gated StaticProp<->Mech reorder and
-    // MEASURED a parity FAIL: pixel diff 3-6x above the noise floor. Root cause: the two
+    // A gated StaticProp<->Mech reorder experiment measured a parity FAIL: pixel diff
+    // 3-6x above the noise floor. Root cause: the two
     // opaque passes overlap in screen space and their fragments resolve to a DIFFERENT
     // winner under depth-EQUAL / coplanar ties when draw order swaps (last-writer-wins is
     // order-dependent). The resource DAG sees NO hard edge between them ("resource-legal"),

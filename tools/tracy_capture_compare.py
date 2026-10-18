@@ -107,8 +107,8 @@ DEFAULT_POSE = "-6656,-6656,150.625,10.9094,6045.2358@600"
 DEFAULT_BASELINE_MISSION = "mc2_10"
 DEFAULT_BASELINE_SECONDS = 15  # 15s runs (standing launch rule); ~9s of parked frames
 DEFAULT_ARMS = ["vk"]
-# The only arm: perf is measured on the shipped backend, and the selfcheck proves the harness on VK. A GL arm was retired with
-# GL deletion step 1; a request for any other arm is refused.
+# The only arm: perf is measured on the shipped backend, and the selfcheck proves
+# the harness on VK; a request for any other arm is refused.
 ARMS = ("vk",)
 BASELINE_ROOT = Path("release_assets/tracy-baselines")  # gitignored; traces never committed
 REGRESS_WARN_PCT = 5.0   # frame-count drop that WARNs (exit 1)
@@ -187,17 +187,16 @@ def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env) -> dict:
     env.update({
         "MC2_NO_LAUNCHER": "1",
         "MC2_SMOKE_MODE": "1",
-        # BACKGROUND-SMOKE-1: never fullscreen / never grab the pointer.
+        # Never fullscreen / never grab the pointer.
         # setdefault-equivalent is not used here because this dict IS the
         # harness intent; a caller overriding via --env still wins downstream.
         "MC2_WINDOWED": "1",
         "MC2_NO_CURSOR_GRAB": "1",
-        # NOFOCUS-FINISH-1: and never occupy visible desktop area. This harness
-        # was invisible to BOTH guards until now -- it hand-rolls its own
-        # STARTUPINFO and its own Popen (no nofocus), and its argv name
-        # `game_cmd` was not in check-background-launch's ENGINE_ARGV heuristic,
-        # so it never appeared in the launch inventory either. Combined with
-        # SW_SHOWNOACTIVATE below that made it the one harness that put a
+        # Never occupy visible desktop area: this harness hand-rolls its own
+        # STARTUPINFO and Popen (no nofocus), and its argv name `game_cmd` is
+        # not in check-background-launch's ENGINE_ARGV heuristic, so it does
+        # not appear in the launch inventory. Combined with SW_SHOWNOACTIVATE
+        # below, that would put a
         # genuinely VISIBLE, options.cfg-sized window on the user's desktop for
         # the entire capture.
         #
@@ -211,7 +210,7 @@ def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env) -> dict:
         # swapchain surface extent comes from the drawable, which keeps its full
         # size, so the VK present path does not fail-soft to GL.
         "MC2_WINDOW_OFFSCREEN": "1",
-        # PERF-HARNESS-TRUTH-1: without this the engine sends stdout to NUL and
+        # Without this the engine sends stdout to NUL and
         # the .game.log is zero bytes -- no pose/gate/mission receipt survives,
         # so nothing about the run can be verified afterwards.
         "MC2_LOG": "1",
@@ -367,7 +366,7 @@ def zone_stats(trace: Path, zone: str, export_exe: Path):
     return {"total_ns": total, "counts": cnt, "mean_ns": total / cnt}
 
 
-# ------------------------------------------------- PERF-HARNESS-TRUTH-1 ----
+# ------------------------------------------------- Log capture guard --------
 
 # The engine's background-throttle zone (gameosmain.cpp). Its PRESENCE in a
 # trace is positive proof the window was minimized/hidden for at least one
@@ -778,7 +777,7 @@ def cmd_regress(args: argparse.Namespace) -> int:
 # Two drawable sizes that MUST measure apart: the 4K arm shades four times the
 # fragments of the pinned 1080p arm with the same scene, so the pair is a known
 # fragment-bound cost on the VK frame (the shipped backend): 33.0% p50 apart on
-# mc2_10 (2026-10-16), against the selfcheck's 8% bar. The former pair, the GL
+# mc2_10, against the selfcheck's 8% bar. The retired GL
 # light-pool cap 64 vs 256, moves the VK frame only 1.3%, so it could not prove a
 # VK harness.
 SELFCHECK_SIZES = (render_resolution.RESOLUTION_TIER_SIZES[0], render_resolution.RESOLUTION_TIER_SIZES[1])
@@ -819,7 +818,7 @@ def _measure_pose(install: Path, out_dir: Path, tag: str, mission: str, pose: st
             "p50_ms": p50, "p99_ms": pct(s, 99),
             "mean_ms": sum(s) / len(s),
             "fps_p50": 1000.0 / p50 if p50 else 0.0,
-            # kept for contrast: the number the old harness reported.
+            # Kept for contrast: the CPU-zone timing, not wall-clock frame time.
             "cpu_zone_p50_ms": (pct(cpu, 50) / 1e6) if cpu else None}
 
 

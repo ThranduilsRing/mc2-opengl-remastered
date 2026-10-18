@@ -44,7 +44,7 @@ FULL_ALLOW = {
 # object-phase draw. A raw snapshot read here is allowed ONLY on a line carrying the
 # TERRAIN-PHASE-RAW-MVP-OK tag. Object-phase reads (e.g. object shadows) must instead
 # use gos_GetObjectDrawMVP(). This closes the hole that let gos_SetupObjectShadows
-# read the raw snapshot blind under a whole-file allowlist (OBJECT-SHADOW-MVP-CURRENCY-1).
+# read the raw snapshot blind under a whole-file allowlist.
 MARKER_REQUIRED = {
     "gameos_graphics.cpp",
     "gameos_graphics_draw.cpp",
@@ -65,15 +65,14 @@ RAW = re.compile(r"\bgos_terrain_indirect_getDispatchMvp16\b")
 SCAN_DIRS = ["GameOS/gameos", "mclib", "code", "RenderCore", "RenderWorld", "GameAdapters"]
 EXTS = {".cpp", ".cc", ".cxx", ".h", ".hpp", ".inl"}
 
-# CORPUS FLOOR (UNWIRED-CHECK-CLOSE-1, 2026-07-30).
+# CORPUS FLOOR.
 # This check reports a violation-free PASS by finding nothing. That verdict is
 # indistinguishable from finding nothing because it LOOKED AT NOTHING: the
 # `if not base.is_dir(): continue` below silently skips a scan dir that has
 # been renamed, moved or is absent because the check ran from the wrong cwd.
 # Rename all six dirs and this prints "OK (no raw dispatch-MVP reads...)"
-# having opened zero files. The corpus was 1147 files when this floor was set;
-# 200 is a deliberately loose floor that a real refactor will not trip but a
-# blind run always will.
+# having opened zero files. 200 is a deliberately loose floor that a real
+# refactor will not trip but a blind run always will.
 CORPUS_FLOOR = 200
 
 

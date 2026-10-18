@@ -49,7 +49,7 @@ from ctypes import wintypes
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "scripts"))
-# BACKGROUND-SMOKE-1: single chokepoint for non-activating launch + guarded focus.
+# Single chokepoint for non-activating launch + guarded focus.
 from smoke_lib import nofocus  # noqa: E402
 
 
@@ -94,12 +94,12 @@ def main():
     except Exception:
         u32.SetProcessDPIAware()
 
-    # BACKGROUND-SMOKE-1: launch non-activating (and with MC2_NO_CURSOR_GRAB=1).
+    # Launch non-activating (and with MC2_NO_CURSOR_GRAB=1).
     # show_window=True keeps the window VISIBLE (SW_SHOWNOACTIVATE) rather than
     # minimized, because this tool grabs the client rect -- a minimized window
     # has no on-screen pixels to grab. It still never takes focus.
     #
-    # NOFOCUS-FINISH-1: show_window is no longer sufficient. It used to imply
+    # show_window is no longer sufficient. It used to imply
     # offscreen=False via `offscreen = not show_window`, but those two are
     # orthogonal (a window can be shown AND parked at (-32000,-32000)), and the
     # coupling was silently putting perf-run windows back on the user's desktop.
@@ -134,7 +134,7 @@ def main():
             return 2
         h = hwnds[0]
 
-        # BACKGROUND-SMOKE-1: restore+foreground is a deliberate foreground
+        # Restore+foreground is a deliberate foreground
         # steal (with an ALT-tap below to defeat the foreground lock). It is
         # user-present-only now; by default the window is already visible but
         # unactivated, and ImageGrab reads its on-screen pixels regardless.
@@ -143,7 +143,7 @@ def main():
             nofocus.set_foreground_window(h)
         time.sleep(2)
         # Synthetic keystrokes land in whatever window has focus -- forbidden
-        # unless the session is user-present (BACKGROUND-SMOKE-1).
+        # unless the session is user-present.
         if args.esc_taps and not nofocus.allow_foreground():
             print("[menu_oracle] --esc-taps ignored: needs "
                   "MC2_HARNESS_ALLOW_FOREGROUND=1", flush=True)
@@ -154,7 +154,7 @@ def main():
                 time.sleep(2)
 
         # Bring to front and VERIFY with WindowFromPoint before grabbing.
-        # BACKGROUND-SMOKE-1: the whole raise-and-verify dance (ALT tap to
+        # The whole raise-and-verify dance (ALT tap to
         # defeat the foreground lock, TOPMOST reposition, SetForegroundWindow)
         # is a foreground steal, so it runs only when explicitly allowed. In
         # background mode we grab the unactivated window's rect directly and

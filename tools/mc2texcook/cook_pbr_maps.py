@@ -204,7 +204,7 @@ def pack_orm(ao_path, roughness_path, metalness_path, out_png):
 
 
 # ---------------------------------------------------------------------------
-# TERRAIN-MATERIAL-TEXTURE-REMAP-1 prep: PolyHaven/EXR-aware source normalization
+# PolyHaven/EXR-aware source normalization
 # ---------------------------------------------------------------------------
 #
 # The AmbientCG packs above are already _Color.png/_NormalGL.png (8-bit PNG) --

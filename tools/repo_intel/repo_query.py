@@ -261,7 +261,7 @@ def get_dirty_state(repo_root: Path, expect_branch: str = None,
 _HARNESSES = {
     "build": {
         "description": "Build mc2 exe (RelWithDebInfo)",
-        # Extracted from CLAUDE.md 'Codex build/deploy rails' + cmake path
+        # Extracted from the canonical build/deploy rails + cmake path
         "search_patterns": [
             # CMake path line
             re.compile(r"CMake:\s+(.+cmake\.exe)", re.I),
@@ -420,7 +420,7 @@ def preflight(repo_root: Path, claude_md_path: Path, expect_branch: str = None,
 
 
 # ---------------------------------------------------------------------------
-# Slice preflight - anti-rediscovery / stale-base gate (DEV-EFFICIENCY-BOOTSTRAP-1)
+# Preflight - anti-rediscovery / stale-base gate
 # ---------------------------------------------------------------------------
 
 def slice_preflight(repo_root, *, slice_name=None, symbols=None, paths=None,

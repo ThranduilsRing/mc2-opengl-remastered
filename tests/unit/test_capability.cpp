@@ -1,6 +1,6 @@
 // tests/unit/test_capability.cpp
 // Tier 2: CapabilitySet — first UnitProfile facet, pure bitmask behind an
-// interface that hides representation (UNIT-PROFILE-SEAM-1).
+// interface that hides representation.
 #include "doctest.h"
 #include "capability.h"
 

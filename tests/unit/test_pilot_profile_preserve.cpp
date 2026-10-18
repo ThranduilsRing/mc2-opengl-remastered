@@ -1,5 +1,4 @@
-// PILOT-PROFILE-PRESERVE-1 (QUICKSTART-PILOT-DROP-RECON-1 follow-up):
-// pure decision kernel for which [WarriorN] Profile string the editor's
+// Pure decision kernel for which [WarriorN] Profile string the editor's
 // mission save writes. Locks the fix for the Bubba x3 regression where a
 // broken pilots.csv environment blanked every Profile on re-save.
 

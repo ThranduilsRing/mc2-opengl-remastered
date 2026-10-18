@@ -127,7 +127,7 @@ def reflect(spv: Path, spirv_cross: str, slang_source=None, root=ROOT):
 
 PACKAGE_SCHEMA_VERSION = 1
 
-# --- SHADER-ARTIFACT-PACKAGE-METADATA-1 -------------------------------------
+# --- Deterministic shader package metadata -----------------------------------
 # Canonical, portable content hashes over the deployed artifact set. Used by
 # BOTH this generator and scripts/check-shader-package.py (imported), so the
 # hashing stays in lockstep by construction. All inputs are content-based
@@ -398,7 +398,7 @@ def main():
     elif index:
         idx_path.write_text(json.dumps(idx_doc, indent=2), encoding="utf-8")
 
-    # SHADER-ARTIFACT-PACKAGE-METADATA-1: deterministic package metadata file.
+    # Deterministic package metadata file.
     pkg_path = spv_dir / "spirv_package.json"
     if index:
         pkg = build_package(cfg, spv_dir, index, glslang, spirv_cross, slangc)

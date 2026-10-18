@@ -1,5 +1,5 @@
 // tests/unit/test_gpu_buffer_owner.cpp
-// GPU-BUFFER-OWNER-SKELETON-1: GL-free unit tests for the GpuBufferOwner record
+// GL-free unit tests for the GpuBufferOwner record
 // and the 3 new RenderResourceIds. No GL context, no engine, pure value logic.
 #include "doctest.h"
 #include "GpuBufferOwner.h"
@@ -53,8 +53,8 @@ TEST_CASE("GpuBufferOwner id and lifetime round-trip the stored fields") {
     CHECK(o.valid());
 }
 
-// TERRAIN-HEIGHT-SSBO-OWNER-1: the LOD-chunk height SSBO (id 14, already-existing,
-// already-registered) is now narrowed behind a GpuBufferOwner like type/cement.
+// The LOD-chunk height SSBO (id 14, already-existing, already-registered) is
+// narrowed behind a GpuBufferOwner like type/cement.
 TEST_CASE("TERRAIN-HEIGHT-SSBO-OWNER-1 height owner round-trips id/lifetime/name and valid->invalid") {
     GpuBufferOwner o{
         RenderResourceId::TerrainHeightSsbo,
@@ -320,11 +320,11 @@ TEST_CASE("GPU-BUFFER-OWNER-SKELETON-1 new ids toString and ordering") {
 
 } // TEST_SUITE("GpuBufferOwner")
 
-// GPU-BUFFER-OWNER-LIFETIME-CHECK-1: offline guard that the 4 GPU-owner
+// Offline guard that the 4 GPU-owner
 // RenderResourceIds (view-UBO / terrain type / cement / height), when
 // registered as valid Buffer resources, carry a concrete (non-Unset) lifetime
-// and pass the registry lifetime validator. This locks in the prior owner
-// slices against a future registration that defaults the lifetime to Unset.
+// and pass the registry lifetime validator. This locks the owner registrations
+// against a future registration that defaults the lifetime to Unset.
 // GL-free, offline; uses only the existing registry API.
 TEST_SUITE("GpuBufferOwnerLifetimeCheck") {
 
@@ -389,7 +389,7 @@ TEST_CASE("the 4 GPU-owner ids register as Buffer resources with non-Unset lifet
 
 // Guards the failure direction: an owner id registered with a DEFAULTED
 // (Unset) lifetime must be caught by the validator and named. This is exactly
-// the future regression this slice exists to block.
+// the future regression this guard exists to block.
 TEST_CASE("a GPU-owner id registered with a defaulted Unset lifetime is detected by the validator") {
     REQUIRE(getRenderResourceCount() == 0);
 

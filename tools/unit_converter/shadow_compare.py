@@ -166,9 +166,9 @@ def load_engine_facets(dump: dict) -> Dict[str, UnitFacets]:
         chassis = (r.get("chassis") or "").strip()
         if not chassis:
             continue
-        # LOADOUT-THREE-LAYER-1: join by (chassis, variant) so a spawned variant
+        # Join by (chassis, variant) so a spawned variant
         # diffs against the SAME converted variant, not the chassis' first (Prime)
-        # variant. `variant` is absent in pre-Phase-3 dumps -> chassis-level join.
+        # variant. Dumps without `variant` fall back to a chassis-level join.
         variant = (r.get("variant") or "").strip()
         uid = variant_join_id(chassis, variant)
         facets = UnitFacets(

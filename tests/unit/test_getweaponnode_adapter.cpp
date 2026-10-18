@@ -1,11 +1,10 @@
 // tests/unit/test_getweaponnode_adapter.cpp
-// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase 2, slice 4 of the UNIT-PROFILE arc).
 //
 // Pure-logic doctest coverage for chooseWeaponNode() in hardpoint.h: the
 // authoritative-with-fallback weapon-node selection rule. This proves the ROUTE
 // (declared hardpoint socket wins over legacy round-robin) WITHOUT a full data
 // unit -- the in-mission visual proof of a declared hardpoint mounting to its
-// socket is deferred to slice 9 (NON-MECH-DATA-UNIT-PROOF-1).
+// socket is covered by the non-mech data-unit proof.
 //
 // The whole point is the parity guarantee: stock weapons carry hardpointId == 0
 // so hasHardpoint is false so the round-robin node is ALWAYS returned, i.e. the

@@ -1,5 +1,4 @@
 // tests/unit/test_equipment_modlint.cpp
-// WEAPON-MODLINT-1 (equipment arc, slice 7).
 //
 // Offline doctest coverage for the mc2_modlint equipment pieces: the EQV_ reason-
 // code -> message table (equipment_findings_text.h), the equipment facts-JSON
@@ -195,7 +194,7 @@ TEST_CASE("equipment modlint: converter roster surfaces a broken component (no e
 }
 
 // ---------------------------------------------------------------------------
-// EQUIP-ENABLE-WIRE-1 (ADD-ladder S1): facts-JSON drives EQV_ENABLE_UNRESOLVED.
+// Facts-JSON drives EQV_ENABLE_UNRESOLVED.
 // ---------------------------------------------------------------------------
 
 TEST_CASE("equipment modlint: enabled=true with no legacy_master_id -> EQV_ENABLE_UNRESOLVED") {

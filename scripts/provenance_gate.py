@@ -164,13 +164,11 @@ ROOT = _HERE.parent
 
 #: Levels that may be graded against, strongest first. UNCORROBORATED is
 #: deliberately absent: a record that only agrees with itself is the forgery
-#: shape this module exists to refuse (PROVENANCE-FORGERY-CLOSE-1).
+#: shape this module exists to refuse.
 GRADEABLE = ("VERIFIED-LIVE", "CORROBORATED-AT-MINT")
 
-#: A sha256 is 64 hex characters. Exactly. The forged golden that opened
-#: PROVENANCE-FORGERY-CLOSE-1 carried 65 and graded clean, because the only
-#: thing ever done with this field was compare it to another field in the same
-#: file -- and 65 characters compare equal to themselves just fine.
+#: A sha256 is exactly 64 hex characters. A 65-character value can still
+#: compare equal to itself, so the length is independently enforced.
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 #: An abbreviated-or-full git commit id.
 _HEXCOMMIT = re.compile(r"^[0-9a-f]{7,40}$")
@@ -428,11 +426,11 @@ def establish(doc: "dict[str, Any]", label: str = "artifact",
     p = Path(blk.get("path") or "")
     live_sha = _sha256_file(p) if p.name and p.exists() else None
 
-    # ---- PROVENANCE-FORGERY-CLOSE-1 -------------------------------------- #
+    # ---- External corroboration ------------------------------------------ #
     # Everything checked so far lives INSIDE this one JSON object and was typed
     # in one keystroke by whoever wrote it. Before the binary is consulted, ask
-    # what outside this file agrees. `establish` used to skip this question
-    # entirely and answer OK on the strength of the file agreeing with itself.
+    # what outside this file agrees. Without this question, `establish` would
+    # answer OK on the strength of the file agreeing with itself.
     witnesses: "list[str]" = []
     no_commit_witness = (
         f"commit {commit} is not a commit object in {ROOT}"
@@ -693,14 +691,13 @@ def _selftest() -> int:
             not e["ok"] and "hand-added" in e["why"], e["level"])
 
         # ------------------------------------------------------------------ #
-        # PROVENANCE-FORGERY-CLOSE-1: THE CASE THIS SELF-TEST USED TO MISS.
+        # A CAREFUL FORGERY: every field typed.
         #
-        # WHY THE ORIGINAL WAS BLIND: the "handadded" case above OMITS
+        # The "handadded" case above OMITS
         # `exe_sha256_at_scan`. That single missing field is the only thing that
-        # failed it -- so the test proved a CARELESS forgery is caught and
-        # reported that as proof against a CAREFUL one. A forger's entire
-        # obligation was to type the field the test declined to type. Below it
-        # IS typed, which is the actual threat, and the whole block names a
+        # failed it -- so that test proves only that a CARELESS forgery is
+        # caught. A forger's entire obligation here is to type the field.
+        # Below it IS typed, which is the actual threat, and the block names a
         # binary that has never existed anywhere.
         # ------------------------------------------------------------------ #
         forged_sha = "ab" * 32

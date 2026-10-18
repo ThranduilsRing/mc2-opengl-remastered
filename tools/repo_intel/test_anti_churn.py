@@ -236,7 +236,7 @@ def test_gate_status_live_repo_known_gate():
 
 
 # ---------------------------------------------------------------------------
-# ENV-DROP-CLOSE-1: ENV_DROP_RISK is conditional on the runner's real policy
+# ENV_DROP_RISK is conditional on the runner's real policy
 # ---------------------------------------------------------------------------
 
 def test_runner_env_policy_live_repo():
@@ -328,8 +328,8 @@ def test_registry_parse_failure_is_not_unregistered(tmp_path):
     assert not any(f.startswith("UNREGISTERED") for f in r["flags"]), r["flags"]
     assert not any(f.startswith("GHOST") for f in r["flags"]), r["flags"]
 
-    # 2. header absent entirely -- the OTHER silent-degradation path: the old
-    #    parser returned {} for "file missing" and for "registry empty" alike.
+    # 2. header absent entirely -- the OTHER silent-degradation path: a parser
+    #    that returns {} for "file missing" and "registry empty" alike.
     hdr.unlink()
     r = gs.gate_status(root, "MC2_ALLOWED_GATE")
     assert r["registered"] == "UNKNOWN"
@@ -380,14 +380,13 @@ def test_deploy_status_missing_dir(tmp_path):
 def test_deploy_status_known_lane_names():
     import deploy_status as ds
     names = ds._lane_names(REPO_ROOT)
-    # Installs were reorganized 2026-10-05 (ONE-lane reset): only the dev lane
-    # (0.4) and the golden lane (0.4c) remain registered, plus lane2; the old
-    # release/testing lanes were archived off-disk and dropped from the maps.
+    # Only the dev lane (0.4) and the golden lane (0.4c) are registered, plus
+    # lane2; release/testing lanes are archived off-disk and absent from the maps.
     assert "0.4" in names
     assert "0.4c" in names
-    # Second builder lane (registered 2026-10-09).
+    # Second builder lane.
     assert names["lane2"].replace("\\", "/").endswith("/mc2-win64-lane2")
-    # Archived lanes must not be resurrected.
+    # Archived lanes must stay absent.
     assert not any(n.startswith("0.5") or n.startswith("0.4d") for n in names)
 
 

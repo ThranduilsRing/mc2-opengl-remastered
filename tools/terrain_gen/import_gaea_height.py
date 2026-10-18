@@ -111,7 +111,7 @@ def write_clean_pak(template: str, out_pak: Path, pkt0: bytes, clear_objects: bo
         # be forced to RAW (0) or the engine (packet.cpp STORAGE_TYPE_ZLIB branch) and
         # any offline tooling (mission_terrain_analyzer.decode_packet) will try to
         # zlib-decompress raw terrain data -- silent corruption / "no MapData packet
-        # matched signature" downstream (TERRAIN-GAEA-RELIEF-1).
+        # matched signature" downstream.
     if clear_objects and n > 1:
         packets[1] = [0, _s.pack('<i', 0)]                # terrain objects: count=0 (RAW)
     # re-serialize with a fresh seek table (offsets shift because packet 1 resized).

@@ -1,5 +1,5 @@
 // tests/unit/test_mod_conflict.cpp
-// MOD-LOAD-ORDER-CONFLICT-REPORT-1: pure conflict classifier (mclib/mod_conflict.h).
+// Pure conflict classifier (mclib/mod_conflict.h).
 //
 // The SAME classifier runs engine-side (mclib/file.cpp InitModSearchPaths) and
 // offline (mc2_modlint --mod). Coverage: def-key/qualified-id helpers, reserved

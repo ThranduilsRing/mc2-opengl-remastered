@@ -200,7 +200,7 @@ def deploy_status(repo_root: Path, lane: str, expected_sha: str = "",
     # 5. Manifest coherence
     stale, coh_notes = cdt.check_manifest_coherence(str(target_p), exp_sha or None)
     src_commit = cdt.read_manifest_src_commit(str(target_p))
-    # DIRTY-BUILD GUARD (2026-07-12): deploy_payload suffixes src_commit with
+    # DIRTY-BUILD GUARD: deploy_payload suffixes src_commit with
     # "-dirty" for uncommitted-tree builds; surface it as its own field so a
     # caller never has to re-derive it from the raw string (and the [:12]
     # truncation below would silently drop the suffix).
@@ -215,7 +215,7 @@ def deploy_status(repo_root: Path, lane: str, expected_sha: str = "",
         "manifest_mtime_utc": _mtime_iso(manifest_csv),
     }
 
-    # 6. Link group (LINK-GUARD-1): is this install really THIS lane's, or are
+    # 6. Link group: is this install really THIS lane's, or are
     #    its written artifacts the same inodes as another dir's? Everything
     #    above answers a path-keyed question and therefore cannot see this.
     try:

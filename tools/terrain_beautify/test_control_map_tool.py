@@ -13,11 +13,11 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 TOOL = HERE / "control_map_tool.py"
-# STOCK-DATA-TRUTH-1: this used to be
+# These "real stock .pak" tests must not use
 #   CARVER5_MISSIONS = Path("A:/Games/Carver5-feasibility/data/missions")
-# which differs from the shipped mission.fst on ALL 24 campaign maps, so these
-# "real stock .pak" tests were asserting against terrain the engine never
-# loads. STOCK_MISSIONS is byte-verified against the shipped bytes, or None --
+# because it differs from the shipped mission.fst on ALL 24 campaign maps,
+# so such tests would assert against terrain the engine never loads.
+# STOCK_MISSIONS is byte-verified against the shipped bytes, or None --
 # a test that cannot get stock data SKIPS rather than passing on wrong data.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
 from stock_missions import stock_missions_dir_or_none  # noqa: E402

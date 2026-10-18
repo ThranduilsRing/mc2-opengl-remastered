@@ -1,23 +1,20 @@
 // tests/unit/test_nonmech_data_unit_proof.cpp
-// NON-MECH-DATA-UNIT-PROOF-1 (Phase 2, slice 9 — the Phase-2 CLOSER).
-//
 // Offline pure-logic coverage for the DATA-DRIVEN presentation/loadout stack.
-// (The throwaway slice-9 engine proof hook that once exercised this end-to-end
-// was removed; the pure verdicts below are the real shipped branches.) Here we
+// (The pure verdicts below are the real shipped branches.) Here we
 // prove those branches' pure verdicts in isolation, GL/IO-free:
 //
-//   1. Mount route (slices 2+4): a declared HardpointProfile whose socket names a
+//   1. Mount route: a declared HardpointProfile whose socket names a
 //      REAL model node resolves to that node's INDEX, and chooseWeaponNode() picks
 //      it OVER the legacy round-robin -> the mount is DATA-selected, not class.
-//   2. UI override (slices 6/7): a declared UIProfile icon wins over the legacy
+//   2. UI override: a declared UIProfile icon wins over the legacy
 //      accessor value via the SAME pure chooseUIAsset() the logistics UI uses.
-//   3. Validation (slice 8): validateUnitDefinition() reports the declared config
+//   3. Validation: validateUnitDefinition() reports the declared config
 //      COHERENT (zero findings) when the socket is present; flipping the socket to
 //      absent yields exactly one finding; restoring it returns to zero.
 //
 // HONEST FRAMING: this proves the DATA path is selected by DATA (not the C++
 // class) and is coherent. It is a proof of the mechanism, not a shipped data unit
-// (Phase 3 = UnitDefinition facade + legacy synthesis).
+// The UnitDefinition facade and legacy synthesis are separate from this proof.
 #include "doctest.h"
 
 #include <string>
@@ -29,8 +26,8 @@
 
 // A model whose weapon nodes are indices [numSmokeNodes, numSmokeNodes+N). The
 // engine's resolveWeaponNodeBySocketName() is a name->index scan of that range;
-// here we model the OUTPUT of that scan directly (the pure verdict is what slice
-// 9 relies on), matching the two integers chooseWeaponNode() consumes.
+// here we model the OUTPUT of that scan directly (the pure verdict), matching
+// the two integers chooseWeaponNode() consumes.
 
 TEST_CASE("mount route: declared socket resolving to a real node wins over round-robin") {
     // The proof declares a hardpoint socketed to the LAST weapon node. Say the
@@ -61,7 +58,7 @@ TEST_CASE("UI override: a declared icon is DATA-selected over the legacy accesso
     CHECK(std::string(chooseUIAsset(stock.icon, legacy)) == "legacy_stock_icon");
 }
 
-// Build the validation inputs the slice-9 proof config implies: a walker+jump
+// Build the validation inputs the proof config implies: a walker+jump
 // unit (coherent) that declares ONE presentation socket. `socketPresent` toggles
 // whether that socket resolves on the model.
 static UnitDefinitionValidationInputs proofConfig(bool socketPresent) {

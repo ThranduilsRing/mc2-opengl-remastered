@@ -253,14 +253,14 @@ def cook(exr_path, ktx2_path, ktx_exe, texconv_exe):
     print(f"Input EXR: {exr_path}", flush=True)
     cook_start = time.perf_counter()
 
-    # Step 1: EXR -> Radiance HDR (lossless RGBE, in-memory)
+    # EXR -> Radiance HDR (lossless RGBE, in-memory)
     print("Converting EXR -> Radiance HDR...", flush=True)
     t0 = time.perf_counter()
     w, h, hdr_bytes = exr_to_radiance_hdr(exr_path)
     t1 = time.perf_counter()
     print(f"  {w}x{h}, {len(hdr_bytes)/(1024*1024):.1f} MB HDR ({t1-t0:.1f}s)", flush=True)
 
-    # Step 2: texconv GPU-encodes HDR -> BC6H_UF16 DDS
+    # texconv GPU-encodes HDR -> BC6H_UF16 DDS
     with tempfile.TemporaryDirectory() as tmpdir:
         hdr_tmp = os.path.join(tmpdir, 'hdri_tmp.hdr')
         with open(hdr_tmp, 'wb') as f:
@@ -273,13 +273,13 @@ def cook(exr_path, ktx2_path, ktx_exe, texconv_exe):
         t1 = time.perf_counter()
         print(f"  texconv done in {t1-t0:.1f}s", flush=True)
 
-        # Step 3: Strip DDS header -> raw BC6H blocks
+        # Strip DDS header -> raw BC6H blocks
         raw_blocks = strip_dds_header(dds_path, w, h)
 
-        # Step 4: Sanity-check a few decoded blocks
+        # Sanity-check a few decoded blocks
         sanity_check_blocks(raw_blocks, w, h, n_samples=5)
 
-        # Step 5: Write raw blocks to temp file and create KTX2 via ktx.exe --raw
+        # Write raw blocks to temp file and create KTX2 via ktx.exe --raw
         raw_tmp = os.path.join(tmpdir, 'blocks.raw')
         with open(raw_tmp, 'wb') as f:
             f.write(raw_blocks)

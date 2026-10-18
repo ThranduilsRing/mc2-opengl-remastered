@@ -5,7 +5,7 @@
 #include "../GameOS/gameos/debug_renderer.h"
 
 
-// TERRAIN-DECAL-SLICE-0C — live cliff mesh-decal tuning panel.
+// Live cliff mesh-decal tuning panel.
 // Forward-declared plain API (defined in mclib/cliff_decal_tuning.cpp; resolved at
 // mc2 link) so this TU need not pull in Stuff/batcher headers. See that file.
 namespace CliffDecalTuning {
@@ -203,10 +203,10 @@ bool GuiRuntime::GetDisplaySize(float& w, float& h)
 {
     w = 0.0f;
     h = 0.0f;
-    // LOAD-TRANSITION-DISPLAY-TRUTH-1 (queue #4 loading-flash class): prefer
+    // Prefer
     // Environment.drawableWidth/Height — the values gos updates SYNCHRONOUSLY
     // on every resolution/window change (gos_SetScreenMode handleEvents,
-    // FREE-RESIZE-1 SIZE_CHANGED). io.DisplaySize is fed FROM these via
+    // SIZE_CHANGED). io.DisplaySize is fed FROM these via
     // NotifyResize but lags during the load-time resolution-transition window
     // (the async load pump renders between the change request and the next
     // ImGui NewFrame), which drew load art / text with two different scales
@@ -234,18 +234,15 @@ bool GuiRuntime::GetDisplaySize(float& w, float& h)
 
 void GuiRuntime::InitEditorOpenGLOnly()
 {
-    // MERGE-CONFLICT-UI-PHASE1: base had no InitEditorOpenGLOnly(); this is a
-    // theirs-only addition (editor WGL path, no SDL GL context). Ours' Init()
-    // separately grew editor-mode/dockspace bootstrap that this entry point does
-    // NOT run (no SetEditorMode-driven docking flags are set here, no
-    // s_editorMode-gated ConfigFlags). If EditRel.exe (GPU-only editor target)
-    // ever calls this instead of GuiRuntime::Init(), the dockspace/RTT/viewport
-    // machinery added by our in-house tooling (BuildEditorDockspace, DockingEnable,
-    // AutoDock) will silently NOT run for that entry point. Currently unclear
-    // whether EditRel.exe calls Init() or InitEditorOpenGLOnly() -- verify before
-    // relying on docking in that target. Left as-is (additive, theirs' code
-    // untouched) since no caller of InitEditorOpenGLOnly() was found repo-wide
-    // at merge time; flagging so it isn't silently assumed equivalent to Init().
+    // InitEditorOpenGLOnly() is a separate editor WGL path (no SDL GL context).
+    // GuiRuntime::Init() also bootstraps editor mode and the dockspace, which
+    // this entry point does NOT run (no SetEditorMode-driven docking flags are
+    // set here, no s_editorMode-gated ConfigFlags). If EditRel.exe (GPU-only
+    // editor target) calls this instead of GuiRuntime::Init(), the
+    // dockspace/RTT/viewport machinery (BuildEditorDockspace, DockingEnable,
+    // AutoDock) will silently NOT run for that entry point. Verify which entry
+    // point EditRel.exe calls before relying on docking in that target; no
+    // caller of InitEditorOpenGLOnly() was found repo-wide.
     if (!isEnabled())
         return;
     if (g_imguiInitialized)
@@ -265,7 +262,7 @@ void GuiRuntime::InitEditorOpenGLOnly()
     // SDL_PushEvent in GameOSWinProc so ImGui still receives input events
     // through the normal ImGui_ImplOpenGL3_NewFrame + io.MousePos path.
     ImGui_ImplOpenGL3_Init("#version 430");
-    s_openGlRendererInitialized = true;   // MERGE-WAVE-1: keep GL shutdown/frame paths armed for the editor entry point
+    s_openGlRendererInitialized = true;   // keep GL shutdown/frame paths armed for the editor entry point
 
     g_imguiInitialized = true;
 }
@@ -278,7 +275,7 @@ void GuiRuntime::Init() {
     s_imguiContext = ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    // HW-CURSOR-SUPPRESS-1: stop the ImGui SDL backend from managing the OS
+    // Stop the ImGui SDL backend from managing the OS
     // cursor (it calls SDL_ShowCursor/SDL_SetCursor every frame over its
     // windows). MC2 hides the OS cursor (SDL_ShowCursor(SDL_DISABLE)) and draws
     // its own in-game cursor sprite; without this flag the ImGui menu re-shows
@@ -286,18 +283,15 @@ void GuiRuntime::Init() {
     io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     // The MC2R cursor sprite is drawn in the HUD batch that flushes BEFORE
     // GuiRuntime::Render(), so it was hidden behind the new defs/ImGui UI
-    // pages (user-confirmed: "cursor draws behind screens, can't see what I
-    // click"). First attempt was io.MouseDrawCursor = true here -- WRONG: that
-    // draws ImGui's own generic software-arrow cursor on top, not MC2's custom
-    // cursor sprite (user-confirmed via screenshot: got the OS-style arrow
-    // instead of the custom in-game cursor). Reverted. Real fix is
-    // CURSOR-ON-TOP-OF-IMGUI-1 in mechcmd2.cpp: the actual MC2 cursor draw
+    // pages. io.MouseDrawCursor = true here would draw ImGui's own generic
+    // software-arrow cursor on top, not MC2's custom cursor sprite. The fix is
+    // in mechcmd2.cpp: the actual MC2 cursor draw
     // (userInput->render()) is re-issued as a GuiRuntime::RegisterPostImGuiRender
     // callback right after its normal HUD-batch draw, so the SAME custom
     // sprite composites again on top of the ImGui frame instead of being
     // replaced by a different cursor here.
     //
-    // Docking (vendored ImGui swapped to v1.91.8-docking): floating editor panels ->
+    // Docking (vendored ImGui v1.91.8-docking): floating editor panels ->
     // real dockable layout, default-docked into a right-side column on first run (see
     // BuildEditorDockspace). Layout persists via imgui.ini. Opt out: MC2_EDITOR_DOCK=0.
     // EDITOR ONLY: docking is an editor affordance. In the GAME (s_editorMode
@@ -338,7 +332,7 @@ void GuiRuntime::Init() {
 void GuiRuntime::Shutdown() {
     if (!g_imguiInitialized) return;
 #ifdef MC2_VULKAN
-    // VK-IMGUI: shut the Vulkan ImGui renderer down first when it owns the frame.
+    // Shut the Vulkan ImGui renderer down first when it owns the frame.
     if (vkImguiRequested() && mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
         mc2vk::getOrCreateEnginePresentVk().shutdownImguiVulkanRenderer();
     }
@@ -395,10 +389,10 @@ static int s_fixedX = 0, s_fixedY = 0;     // fixed-layout rect from EditorGameO
 static int s_fixedW = 0, s_fixedH = 0;     // (w>0 => override the dynamic central node)
 
 bool GuiRuntime::RttEnabled() {
-    // DEFAULT OFF (2026-06-10): the RTT scene-shrink reproduces a position-dependent
+    // DEFAULT OFF: the RTT scene-shrink reproduces a position-dependent
     // pick error (objects parallax + picking drifts toward screen edges) because the
     // shrunk scene projection diverges from the legacy object/pick projection. The
-    // full-window scene (RTT off) picks PERFECTLY (user-bisected). Panels overlay the
+    // full-window scene (RTT off) picks PERFECTLY. Panels overlay the
     // map's right edge and are collapsible instead. Opt back in: MC2_EDITOR_RTT=1.
     // The RTT viewport blits the GL back buffer into a GL texture; under Vulkan the scene lives in the present
     // image, so the full-window scene is the only mode there.
@@ -670,7 +664,7 @@ static bool demoEnabled() {
     return cached == 1;
 }
 
-// TERRAIN-DECAL-SLICE-0C: live cliff mesh-decal placement panel. Renders only when a
+// Live cliff mesh-decal placement panel. Renders only when a
 // CLIFF_WALL decal was captured this mission (a MarbleCliff was placed). Dragging a
 // slider recomputes the decal's face-frame transform and re-uploads it to the
 // static-prop registry the same frame — no relaunch. No decal captured => draws nothing.
@@ -696,7 +690,7 @@ static void DrawCliffDecalPanel() {
     if (changed)
         CliffDecalTuning::cliffDecal_setKnobsAndApply(scale, offset, lateral, lift, yaw, pitch);
 
-    // TERRAIN-DECAL-FILL-1: shadow-side ambient/fill floor. Drives the batcher's
+    // Shadow-side ambient/fill floor. Drives the batcher's
     // g_terrainDecalFill global, which is uploaded to u_terrainDecalFill every
     // frame and applied per-fragment ONLY to the flag-tagged cliff decal. No
     // transform re-apply needed — just write the value live. 0.0 => shadow side
@@ -706,7 +700,7 @@ static void DrawCliffDecalPanel() {
         ImGui::SliderFloat("Fill (shadow side)", &g_terrainDecalFill, 0.0f, 1.0f, "%.3f");
     }
 
-    // TERRAIN-DECAL-COLORBLEND-1: RVT-style terrain-colormap blend. Drives the
+    // RVT-style terrain-colormap blend. Drives the
     // batcher's g_terrainDecalColorBlend global (uploaded to
     // u_terrainDecalColorBlend), applied per-fragment ONLY to the flag-tagged
     // cliff decal: mixes the decal albedo toward the terrain colormap sampled at
@@ -765,7 +759,7 @@ void GuiRuntime::Render() {
     GraphicsOptionsWindow::draw();
     DrawCliffDecalPanel();
 
-    // CANVAS-FLANK-CLEAR-1 (UI-LAYER-CONTRACT slice): when the front-end 16:9
+    // When the front-end 16:9
     // canvas is active and smaller than the display, paint the flank pads
     // opaque black in the foreground layer — appended here they sit on top of
     // everything drawn this frame (legacy HUD composites before ImGui; page
@@ -883,20 +877,16 @@ void GuiRuntime::Render() {
         }
     }
 
-    // MERGE-CONFLICT-UI-PHASE1: theirs' Render() called gos_InvalidateRenderStateCache()
-    // + gos_PrepareForPostImGuiRender() immediately after ImGui_ImplOpenGL3_RenderDrawData(),
-    // because ImGui_ImplOpenGL3_RenderDrawData() leaves GL_DEPTH_TEST disabled and
-    // glDepthMask(GL_FALSE), which without invalidation makes GOS's render-state cache
-    // skip a full re-apply, and post-ImGui 3D camera renders (RegisterPostImGuiRender
-    // callbacks below) come out invisible. Ours' Render() has ADDITIONAL diagnostic
-    // glReadPixels/glGetIntegerv probes inserted between RenderDrawData and here (see
-    // above) that were NOT present when theirs' invalidation call was written; those
-    // probes read GL_FRAMEBUFFER_BINDING/GL_CURRENT_PROGRAM/GL_VIEWPORT and do NOT
-    // themselves change render state, so ordering vs. the probes should be harmless,
-    // but this was never verified against theirs' new UI Editor FIT 3D-camera-in-panel
-    // use case. Keeping theirs' invalidation calls (additive, no direct clash with any
-    // ours-only code) but flagging because this is the one place Render()'s tail
-    // sequencing changed on both sides independently and wasn't validated together.
+    // gos_InvalidateRenderStateCache() + gos_PrepareForPostImGuiRender() run
+    // immediately after ImGui_ImplOpenGL3_RenderDrawData(), because that call
+    // leaves GL_DEPTH_TEST disabled and glDepthMask(GL_FALSE); without
+    // invalidation GOS's render-state cache skips a full re-apply, and
+    // post-ImGui 3D camera renders (RegisterPostImGuiRender callbacks below)
+    // come out invisible. The diagnostic glReadPixels/glGetIntegerv probes
+    // between RenderDrawData and here (see above) read
+    // GL_FRAMEBUFFER_BINDING/GL_CURRENT_PROGRAM/GL_VIEWPORT and do NOT change
+    // render state, so their ordering should be harmless, but this was not
+    // verified against the UI Editor FIT 3D-camera-in-panel use case.
     gos_InvalidateRenderStateCache();
     gos_PrepareForPostImGuiRender();
 

@@ -30,27 +30,27 @@ REGISTRY = [
     # The terrain, color-prop, mech and legacy-shape frame blocks are not listed:
     # RenderCore/gpu_abi/Gpu*FrameUBO.h generates both the C++ offset asserts and the GLSL
     # block (tools/gpu_abi_gen.py --check).
-    # RUNG-6.5: water island FS params (grew for the reflection port).
+    # Water island FS params (grew for the reflection port).
     ("waterfs", "GameOS/gameos/vulkan_water_island_internal.h", "WaterFsParams",
      "shaders/vulkan/water_geom.frag", "WaterFsParams"),
-    # RUNG-8.1 (VK-POST-FOG-NATIVE-1): the native fog pair reuses the subgraph's
+    # The native fog pair reuses the subgraph's
     # shaders verbatim; its UBO PODs must stay byte-identical to those blocks.
     ("postfog_edge", "GameOS/gameos/vulkan_post_fog_native.cpp", "EdgeFogParams",
      "shaders/vulkan/edge_fog.frag", "EdgeFogParams"),
     ("postfog_oob", "GameOS/gameos/vulkan_post_fog_native.cpp", "FogOobParams",
      "shaders/vulkan/fog_oob.frag", "FogOobParams"),
-    # RUNG-8.2 (VK-POST-SSAO-NATIVE-1): the native SSAO pair reuses the island's
+    # The native SSAO pair reuses the island's
     # shaders verbatim; its UBO PODs must stay byte-identical to those blocks.
     ("ssaonat_occ", "GameOS/gameos/vulkan_post_ssao_native.cpp", "SsaoNativeOcclusionParams",
      "shaders/vulkan/ssao.frag", "SSAOParams"),
     ("ssaonat_apply", "GameOS/gameos/vulkan_post_ssao_native.cpp", "SsaoNativeApplyParams",
      "shaders/vulkan/ssao_apply.frag", "SSAOApplyParams"),
-    # RUNG-8.3 (VK-POST-SCREENFX-NATIVE-1): native cloud-shadow + shoreline UBOs.
+    # Native cloud-shadow + shoreline UBOs.
     ("screenfx_cloud", "GameOS/gameos/vulkan_post_screenfx_native.cpp", "ScreenFxCloudParams",
      "shaders/vulkan/cloud_shadow.frag", "CloudFxParams"),
     ("screenfx_shore", "GameOS/gameos/vulkan_post_screenfx_native.cpp", "ScreenFxShoreParams",
      "shaders/vulkan/shoreline.frag", "ShorelineFxParams"),
-    # M2 (consistency audit): UBO mirrors that previously had neither static_asserts
+    # UBO mirrors that previously had neither static_asserts
     # nor a registry row.
     ("watervs", "GameOS/gameos/vulkan_water_island_internal.h", "WaterVsParams",
      "shaders/vulkan/water_geom.vert", "WaterVsParams"),

@@ -212,8 +212,9 @@ for f in files:
             ok = False
             print(f"FAIL {name}: baseline must have no delta, got {delta}")
     elif name.startswith("AB-7-"):
-        # documented bundle; the filename cannot carry several tokens. The ambient and PBR members of the original four became always-on
-        # options.cfg entries (StaticPropAmbient, StaticPropPbr), so only the two env gates are left to set.
+        # Documented bundle; the filename cannot carry several tokens. Ambient and
+        # PBR are always-on options.cfg entries (StaticPropAmbient, StaticPropPbr),
+        # so only the two env gates are left to set.
         expect = {"MC2_CLOUD_SHADOW", "MC2_WATER_SKYTINT"}
         if set(delta) != expect or any(v[1] != "1" for v in delta.values()):
             ok = False

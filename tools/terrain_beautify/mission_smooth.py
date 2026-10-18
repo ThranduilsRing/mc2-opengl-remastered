@@ -33,7 +33,7 @@ from mission_terrain_analyzer import (  # noqa: E402
     read_water_elevation, _dilate, WORLD_UNITS_PER_VERTEX,
 )
 
-# STOCK-DATA-TRUTH-1: no hard-coded mission dir. See tools/mc2data/stock_missions.py.
+# No hard-coded mission dir. See tools/mc2data/stock_missions.py.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
 from stock_missions import (  # noqa: E402
     StockDataError, add_missions_dir_arg, manifest_header, resolve_from_args,
@@ -124,9 +124,9 @@ def main() -> int:
     foot, _objs, _ = read_object_footprints(read_packets(pak), side)
     # Hard-protect ONLY gameplay structures (road/runway/bridge overlays + building
     # footprints). NOT water: `elev <= waterElevation` also captures gently-sloped
-    # SHORE land, which froze a ~3-tile inland band and left <10% editable. The
-    # advisor's plan beautifies shorelines (gentle, clamped) rather than freezing
-    # them, so water/shore are editable here; water is still shown in the overlay
+    # SHORE land, which froze a ~3-tile inland band and left <10% editable.
+    # Shorelines are beautified (gentle, clamped) rather than frozen, so
+    # water/shore are editable here; water is still shown in the overlay
     # (protected.r8 level 1) as informational.
     protect_hard = layers["overlay"] | foot
 
@@ -150,7 +150,7 @@ def main() -> int:
     beauty = sidecar.write_sidecar(Path(args.out), args.mission, pak, delta,
                                    note=note, provenance=prov)
 
-    # B7c protected-zone overlay: per-cell protection level for the editor to draw.
+    # Protected-zone overlay: per-cell protection level for the editor to draw.
     #   2 = structural hard (road/runway/bridge overlays + building footprints,
     #       1-ring dilated) -> "do not touch"; 1 = water; 0 = editable.
     structural = _dilate(layers["overlay"] | foot)

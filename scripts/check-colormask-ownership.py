@@ -21,10 +21,10 @@ REGISTRY = ROOT / "RenderCore" / "PipelineRegistry.cpp"
 BINDER = ROOT / "GameOS" / "gameos" / "pipeline_binder.cpp"
 
 # Rows that opt in to colorMask ownership. KEEP IN SYNC with rowOwnsColorMask().
-# Composite re-opts-in under COLORMASK-ROLLOUT-1 (the beginScene all-TRUE keystone heals
+# Composite re-opts-in: (the beginScene all-TRUE keystone heals
 # its set-only leak each frame). This checker is the black-frame guard: an opted-in row
 # masking color0 (the scene color attachment) OFF would draw black -> FAIL.
-# COLORMASK-ROLLOUT-POSTFX-1: the whole PostProcess-phase family opts in. Each modulates
+# The whole PostProcess-phase family opts in. Each modulates
 # the scene color attachment (color0) only; registry rows are {true,false,false} so color0
 # stays true (no black frame) and 1/2 OFF protects the GBuffer. Keep in sync with
 # rowOwnsColorMask() in pipeline_binder.cpp.

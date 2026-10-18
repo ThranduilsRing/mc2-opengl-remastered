@@ -39,7 +39,7 @@ KTX2_MAGIC = b"\xabKTX 20\xbb\r\n\x1a\n"
 REQUIRED_CHANNELS = ('rock', 'grass', 'dirt', 'concrete', 'snow', 'cliff')
 OPTIONAL_CHANNELS = ('shore_sand', 'wet_rock')
 
-# TERRAIN-MATERIAL-TEXTURES-1-FIX (fix A): the canonical channel->layer order the
+# The canonical channel->layer order the
 # albedo array is built and sampled in. Index i = layer i in the GL_TEXTURE_2D_ARRAY;
 # the value is the frag MAT_LAYER_* constant name. This test module asserts the frag
 # header, the C++ loader name table, and the manifest all agree with THIS list --
@@ -122,7 +122,6 @@ class TestManifestSchema(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # 1b. INDEX ORACLE: channel -> array-layer order agreement across the three
 #     sources of truth (frag MAT_LAYER_* header, C++ loader name table, manifest).
-#     TERRAIN-MATERIAL-TEXTURES-1-FIX (fix A).
 # ---------------------------------------------------------------------------
 
 class TestChannelLayerIndexAgreement(unittest.TestCase):

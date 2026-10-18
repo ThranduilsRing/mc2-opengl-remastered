@@ -73,7 +73,7 @@ class BurninRenderer:
         def to_f(rgb):
             return np.array([v / 255.0 for v in rgb], dtype=np.float32)
 
-        # Phase 3: optional tiled detail textures. Each configured texture is tiled
+        # Optional tiled detail textures. Each configured texture is tiled
         # to (res,res,3) and multiplied by the palette color (tint). Unset -> flat
         # palette color (identical to the pre-texture render). Textures are loaded at
         # the shading `res` so they upscale with the burnin if res != target_res.

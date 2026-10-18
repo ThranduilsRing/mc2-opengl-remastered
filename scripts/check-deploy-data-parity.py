@@ -147,7 +147,7 @@ def enumerate_folder(root: Path) -> Dict[str, int]:
     Classifiable files (LEGIT-EXCLUDED etc.) are still included so we can
     report them; callers filter by classify().
     """
-    # PERF (VERIFY-INTEGRITY-3): os.scandir, not os.walk + Path.stat().
+    # PERF: os.scandir, not os.walk + Path.stat().
     #
     # os.walk gives filenames only, so the old code rebuilt a Path per file and
     # issued a SECOND stat() syscall for the size -- discarding the size the

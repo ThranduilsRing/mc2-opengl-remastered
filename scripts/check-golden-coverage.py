@@ -60,21 +60,21 @@ GOLDENS = ROOT / "tests" / "visual" / "goldens"
 REQUIRED_HOLE_KEYS = ("bookmark", "region", "rule", "reason", "subject_protected")
 
 # ---------------------------------------------------------------------------
-# Legacy waivers (VERIFY-DEBT-1)
+# Legacy waivers
 # ---------------------------------------------------------------------------
-# Golden sets minted BEFORE this ledger existed. Their findings are reported as
+# Golden sets predating this ledger. Their findings are reported as
 # WARN, not FAIL, so the contract can gate new work without this lane silently
 # rewriting artifacts that are somebody else's decision. Each waiver must carry a
 # reason; the waiver list is itself checked (an unknown or stale id FAILs), so a
 # waiver cannot outlive the set it excuses.
 #
-# The degenerate mc2_10_saved_204907/distant_ridge_base crop that motivated
-# DEGENERATE-CROP-REFUSAL-1 is present in several sets. Removing a region from a
-# set is a decision on the record, so it is waived-and-surfaced, not edited here.
+# The degenerate mc2_10_saved_204907/distant_ridge_base crop is present in
+# several sets. Removing a region from a set is a decision on the record, so it
+# is waived-and-surfaced, not edited here.
 LEGACY_WAIVERS = {}
 
 # ---------------------------------------------------------------------------
-# Pending user decision (PENDING-SET-STATE-1)
+# Pending user decision
 # ---------------------------------------------------------------------------
 # A THIRD lifecycle state, distinct from both of the above.
 #
@@ -88,7 +88,7 @@ LEGACY_WAIVERS = {}
 #                      correct. Present = the deciding user's working tree.
 #                      Absent = every other checkout, CI, and fresh clone.
 #
-# Before this table existed, the only way to excuse a pending set's findings was
+# Without this table, the only way to excuse a pending set's findings was
 # a LEGACY_WAIVERS entry -- but that list FAILs on a waiver whose set is not on
 # disk, so the entry was correct in the author's tree and a hard contract FAIL
 # everywhere else. The state was not representable; this makes it representable.
@@ -98,28 +98,22 @@ LEGACY_WAIVERS = {}
 PENDING_SETS = {}
 
 # ---------------------------------------------------------------------------
-# "Deliberately untracked" is a claim about GIT, so ASK GIT (PENDING-UNTRACKED-1)
+# "Deliberately untracked" is a claim about GIT, so ASK GIT
 # ---------------------------------------------------------------------------
-# PENDING-SET-STATE-1 introduced the table above in response to a near-miss in
-# which a sweep STAGED all 40 files of v0.5.2-baseline-PROPOSED, and wrote
-# "deliberately UNTRACKED -- it must not be committed" into the docstring. But
-# the checker it wrote that into never called git: there was no `subprocess`
-# import anywhere in this file, and the only set-existence knowledge it had came
-# from `gdir_root.iterdir()` -- i.e. from DIRECTORIES ON DISK. A pending set is
-# on disk in exactly the same way whether it is committed or untracked, so
-# committing all 40 files would have left this suite at bit-identical pass/fail.
-# The rule was a comment, in the file whose entire purpose is to stop rules from
-# being comments.
+# A pending set must stay untracked: committing it would pre-empt the user's
+# promotion decision. Being on disk says nothing about tracked-ness, because a
+# pending set is on disk the same way whether committed or untracked, so a rule
+# based only on existence would pass identically in both states.
 #
 # So the tracked-ness question is asked of git directly, and asked of the INDEX
-# (`git ls-files`) rather than of HEAD: the near-miss was a `git add` that had
-# not been committed yet, and a rule that only notices after the commit lands
-# has already missed the moment where it was cheap to fix.
+# (`git ls-files`) rather than of HEAD: a `git add` has staged the files before
+# they are committed, and a rule that only notices after the commit lands has
+# already missed the moment where it was cheap to fix.
 #
 # THIS DOES NOT FAIL OPEN. If git cannot be run, or answers non-zero, that is a
 # FAIL and not a silent pass -- "the tool could not tell" and "the tool checked
 # and it was fine" must never produce the same exit code. (Same lesson as
-# DISK-GUARD-3, "stop failing open".)
+# "stop failing open".)
 
 
 class GitQueryError(RuntimeError):
@@ -156,7 +150,7 @@ def _raise_git_error(_gid: str) -> "list[str]":
     raise GitQueryError("simulated: git binary unavailable")
 
 # ---------------------------------------------------------------------------
-# Retired sets (GOLDEN-6C47-AUDIT-1)
+# Retired sets
 # ---------------------------------------------------------------------------
 # A golden set that was deleted from the tree ON PURPOSE, with the reasoning
 # kept here so the deletion is a decision on the record and not an unexplained
@@ -302,7 +296,7 @@ def run(quiet: bool = False, goldens: "Path | None" = None,
         else:
             fails += f
     # A PENDING set's defining property is that it is UNTRACKED. Ask git, not
-    # the filesystem -- being on disk says nothing either way (PENDING-UNTRACKED-1).
+    # the filesystem -- being on disk says nothing either way.
     pending_tracked: dict = {}
     if tracked_query is not None:
         for pid in sorted(pending):
@@ -453,7 +447,7 @@ def _selftest() -> int:
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
-    # C6-C10: the three lifecycle states (PENDING-SET-STATE-1)
+    # C6-C10: the three lifecycle states
     HOLE = [{"bookmark": BM, "region": "b", "rule": "R", "reason": "why",
              "subject_protected": "what"}]
     lifecycle = [
@@ -480,7 +474,7 @@ def _selftest() -> int:
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
-    # C12-C15: the tracked-ness rule (PENDING-UNTRACKED-1). These are UNIT
+    # C12-C15: the tracked-ness rule. These are UNIT
     # cases with an injected query and they are NOT the proof -- the proof is
     # the live injection recorded in the commit message (`git add` the real 40
     # paths, watch this contract go red, unstage, watch it go green). They exist
@@ -518,7 +512,7 @@ def _selftest() -> int:
     except GitQueryError as exc:
         check("C15b git_tracked_under sees a known-tracked file", False, str(exc))
 
-    # C11: a retired set reappearing on disk still FAILs (GOLDEN-6C47-AUDIT-1
+    # C11: a retired set reappearing on disk still FAILs
     # guard -- must survive the PENDING_SETS change intact)
     tmp = Path(tempfile.mkdtemp(prefix="covsel_"))
     try:

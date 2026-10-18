@@ -1,5 +1,5 @@
 // tests/unit/test_frame_arena.cpp
-// GL-free unit tests for RenderCore::FrameArena (FRAME-ARENA-1).
+// GL-free unit tests for RenderCore::FrameArena.
 //
 // FrameArena is the typed L2 (frame-lifetime) linear allocator already in
 // production behind render_snapshot.cpp's ping-pong buffers. These tests pin

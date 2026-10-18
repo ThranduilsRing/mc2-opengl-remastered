@@ -118,7 +118,7 @@ LANES = [
 ]
 
 MISSION_RE = re.compile(r"^[A-Za-z0-9_]+$")
-# `%s` is the printf spelling; `{}` is the same placeholder after the buffer-format conversion to mc2::fmt::to_buf (C++23 step 3).
+# `%s` is the printf spelling; `{}` is the same placeholder after the buffer-format conversion to mc2::fmt::to_buf.
 LITERAL_RE = re.compile(r'"data/missions/(?:%s|\{\})\.beauty/([^"]+)"')
 
 

@@ -15,11 +15,11 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 TOOL = HERE / "cook_shoreline.py"
-# STOCK-DATA-TRUTH-1: this used to be
+# These "real stock .pak" tests must not use
 #   CARVER5_MISSIONS = Path("A:/Games/Carver5-feasibility/data/missions")
-# which differs from the shipped mission.fst on ALL 24 campaign maps, so these
-# "real stock .pak" tests were asserting against terrain the engine never
-# loads. STOCK_MISSIONS is byte-verified against the shipped bytes, or None --
+# because it differs from the shipped mission.fst on ALL 24 campaign maps,
+# so such tests would assert against terrain the engine never loads.
+# STOCK_MISSIONS is byte-verified against the shipped bytes, or None --
 # a test that cannot get stock data SKIPS rather than passing on wrong data.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
 from stock_missions import stock_missions_dir_or_none  # noqa: E402
@@ -96,8 +96,8 @@ def test_build_mask_rgba_channels_synthetic_pond():
     water = ((yy - cy) ** 2 + (xx - cx) ** 2) < radius ** 2
     # cell_wu=1.0 (fine spacing): isolates the RGBA-band math from grid
     # resolution -- a 128wu-spaced coarse grid cannot resolve a 24wu foam band
-    # at all (min nonzero EDT step == cell_wu), which is exactly why the recon
-    # requires hi-res sourcing; see test_cook_falls_back_to_coarse_foam_is_empty.
+    # at all (min nonzero EDT step == cell_wu), so hi-res sourcing is required;
+    # see test_cook_falls_back_to_coarse_foam_is_empty.
     d = cs.compute_signed_distance_wu(water, cell_wu=1.0)
     rgba = cs.build_mask_rgba(d, damp_w=64.0, foam_w=24.0)
 
@@ -416,9 +416,9 @@ def test_install_without_bounds_warns(tmp_path):
     assert "WARN" in r.stdout
 
 
-# --- all-missions batch (SHORELINE-BATCH-COOK-1) ---
+# --- all-missions batch ---
 # NOTE --allow-nonstock below: these fixtures are SYNTHETIC paks, which is
-# exactly the case STOCK-DATA-TRUTH-1 wants stated out loud rather than
+# exactly the case the stock-data guard must state out loud rather than
 # assumed. Without it cook_shoreline refuses the dir -- and it should.
 # -----------------------------
 @pytest.fixture()
@@ -442,7 +442,7 @@ def test_all_missions_cooks_water_skips_dry(synthetic_missions_dir, tmp_path):
     census = tmp_path / "census.json"
     # foam-width 24: this synthetic dir has no <stem>.beauty bake, so cook falls
     # back to the coarse 128wu pak grid (16wu cells at ss=8) -- a 6wu foam band
-    # can't land on that (same coarse-grid landmine the real batch avoids by
+    # can't land on that (same coarse-grid limit the real batch avoids by
     # baking a 4x hi-res source first). Widen foam so the census row is nonzero;
     # the real batch keeps the 6wu default against its hi-res bakes.
     r = run("all-missions", "--allow-nonstock",

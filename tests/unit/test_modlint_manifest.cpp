@@ -1,5 +1,5 @@
 // tests/unit/test_modlint_manifest.cpp
-// MOD-PACKAGE-MANIFEST-1: mod.json manifest validation (modlint_manifest.h).
+// mod.json manifest validation (modlint_manifest.h).
 //
 // Pure coverage for the MODMAN_* reason-code table, the manifest facts parser,
 // the field rules (id token / dotted version / type enum / deps), and the

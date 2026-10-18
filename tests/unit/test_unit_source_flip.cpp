@@ -1,5 +1,5 @@
 // tests/unit/test_unit_source_flip.cpp
-// UNIT-SOURCE-FLIP-SWITCH-1: pure logic for the MC2_UNIT_DEFINITION_SOURCE gate.
+// Pure logic for the MC2_UNIT_DEFINITION_SOURCE gate.
 // Covers (a) the env parser (generated ONLY on the exact token; everything else
 // legacy), (b) the variant-slug mirror of the converter's extract.py::_variant_slug,
 // and (c) the token-apply helpers (generated-present -> facet sourced from the

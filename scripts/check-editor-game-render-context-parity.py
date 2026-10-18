@@ -115,7 +115,7 @@ def main():
                     # Only the convention-SETTING form (literal GL_* clip-origin /
                     # depth-mode tokens) is in scope. A glClipControl that takes
                     # variables — e.g. restoreShadowGLState re-asserting a captured
-                    # value after an FBO switch (GLSTATE-SHADOW-CLIP-RESTORE-1) — is
+                    # value after an FBO switch — is
                     # a per-frame state restore, not an init convention, so skip it.
                     if "GL_LOWER_LEFT" not in sig and "GL_UPPER_LEFT" not in sig \
                        and "GL_ZERO_TO_ONE" not in sig and "GL_NEGATIVE_ONE_TO_ONE" not in sig:

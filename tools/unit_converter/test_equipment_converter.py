@@ -205,7 +205,7 @@ def test_report_alias_map_matches_defs(converted):
 
 
 # ---------------------------------------------------------------------------
-# EQUIP-ENABLE-WIRE-1: `enabled` emission contract.
+# `enabled` emission contract.
 # ---------------------------------------------------------------------------
 
 def test_enabled_absent_by_default():

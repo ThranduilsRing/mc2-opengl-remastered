@@ -114,7 +114,7 @@ def find_renderdoccmd(explicit: str | None) -> Path:
 # whatever order suits it). We drop them entirely from the diff input -- if
 # the engine binds a different program or texture, that diff fires from the
 # surrounding glBindTexture / glUseProgram / glDraw* chunks, which ARE order-
-# stable. See docs/testing-strategy.md Tier 5 for the rationale.
+# stable.
 DRIVER_BOOKKEEPING_BLOCKS = [
     "Internal::Coherent Mapped Memory Write",
 ]
@@ -193,9 +193,8 @@ def run_capture(args) -> Path:
         args.out, args.mission, args.frame)).resolve()
     rdc_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # DISK-GUARD-1: a single .rdc runs ~1 GB (two near-1 GB captures were found
-    # on the full drive on 2026-07-29), and the XML conversion writes another
-    # large file alongside it. Advisory here -- a capture is cheap to redo and
+    # A single .rdc can run ~1 GB, and the XML conversion writes another large
+    # file alongside it. Advisory here -- a capture is cheap to redo and
     # this is a developer tool, so it warns rather than blocks.
     _disk_guard_advisory(rdc_path.parent, need_gb=3,
                          label="RenderDoc capture (.rdc + XML)")

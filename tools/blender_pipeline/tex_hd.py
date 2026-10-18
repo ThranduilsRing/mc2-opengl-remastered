@@ -69,11 +69,9 @@ import os as _os, sys as _sys  # noqa: E401
 _sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
-# DATA-PROVENANCE-CLOSE-1: `--ase-root` used to default to the absolute path
-# `A:/Games/mc2-srcdata/tgl` -- an EDITABLE checkout, taken on faith. It agrees
-# with the shipped tgl.fst today; it was never checked, and nothing here could
-# have told you if it stopped. There is no default now: the resolver finds a
-# tree and proves it. See tools/mc2data/stock_corpus.py.
+# `--ase-root` has no default: the resolver finds a tree and proves it, because
+# an editable checkout taken on faith can silently drift from the shipped
+# tgl.fst. See tools/mc2data/stock_corpus.py.
 DEFAULT_SCALE = 4  # mc2texcook cook_tgl_upscale_single.py default (128 -> 512)
 
 # .ase material record:  *BITMAP "\\Aas1\mc2\Art\...\A_Quonset.tga"

@@ -78,13 +78,9 @@ SCRIPTS = Path(__file__).resolve().parent
 
 GIB = 1024 ** 3
 
-# LINK-GUARD-2 (2026-07-30, handoff from DISK-RECLAIM-EXECUTE-1): the
-# convention root for private lane installs. Before this existed every lane
-# invented its own location -- `C:\mc2-priv-fcr1`, `concrete-deliver-1-private`
-# -- because `--to` was a free-form required path with nothing behind it. One
-# of those inventions was a 7.00 GB full-byte copy on the user's SYSTEM drive.
-# `--lane NAME` resolves here so that the cheap, correct path is also the
-# shortest one to type; previously the expensive one was the easier one.
+# The convention root for private lane installs. `--lane NAME` resolves here so
+# that the cheap, correct path is also the shortest one to type; a free-form
+# `--to` invites ad-hoc locations and full-byte copies on the SYSTEM drive.
 PRIVATE_ROOT = Path("A:/Games/mc2-opengl/private")
 
 # Lane names become a directory under PRIVATE_ROOT, so they are validated
@@ -420,7 +416,7 @@ def selftest() -> int:
               same_volume(src, tmp / "not-yet-created"))
 
         # ------------------------------------------------------------------
-        # LINK-GUARD-2: default destination + system-drive refusal
+        # Default destination + system-drive refusal
         # ------------------------------------------------------------------
         def exit_code(fn, *a, **kw):
             """Run fn; return its sys.exit code, or None if it did not exit."""
@@ -556,7 +552,7 @@ def main(argv=None) -> int:
     if not src.is_dir():
         fail(f"--from is not a directory: {src}", 2)
 
-    # LINK-GUARD-2: FIRST of the destination checks, deliberately. Every check
+    # FIRST of the destination checks, deliberately. Every check
     # below also refuses a bad C: path, but each does so for an incidental
     # reason and says something less useful: an existing C: dir would report
     # "already exists", and `A: -> C:` would report a volume mismatch. Only
