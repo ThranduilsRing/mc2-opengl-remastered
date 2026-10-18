@@ -219,6 +219,15 @@ void main() {
     // GL clip emit + water reverse-Z depth bias (pre-divide). SAME as GL VS.
     vec4 clip = U.worldToClipGL * vec4(worldPos, 1.0);
     clip.z   += fudge * clip.w;
-    if (shoreFlat) clip.z += U.p3.z * clip.z;   // mode 3: depth-only lift (u_shoreDepthK)
+    // Mode 3 depth-only lift so coarse terrain poking just above the flat plane where the smooth
+    // shore field says water does not cut notches into it. SHORE-FIELD-1: the lift is a bounded
+    // WORLD distance toward the camera (U.p3.z wu), not the GL proportional clip.z *= 1+K: in
+    // reverse-Z that moved the plane ~K of the camera distance (140 wu at a 4.7 km top-down view),
+    // so the water won over every low plateau and beach near the waterline.
+    if (shoreFlat && U.p3.z > 0.0) {
+        vec3 toCam   = F.f0.yzw - worldPos;
+        vec4 clipL   = U.worldToClipGL * vec4(worldPos + toCam * (U.p3.z / max(length(toCam), 1.0)), 1.0);
+        clip.z = (clipL.z / clipL.w + fudge) * clip.w;
+    }
     gl_Position = clip;
 }
