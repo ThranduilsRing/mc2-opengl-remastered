@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 947
 registry_entry_count: 193
-verified_count: 920
+verified_count: 918
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -2447,7 +2447,6 @@ flags:
     owner: code
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts."
     smoke_passthrough: true
-    verified: true
     registry: {feature_id: MC2_LEGACY_LIT_MC2_FRAME, kind: Feature, order: 28, default_on: true}
   - name: MC2_LEGACY_LOAD_BANNER
     kind: Bool
@@ -6341,7 +6340,6 @@ flags:
     owner: code
     doc: "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
     smoke_passthrough: true
-    verified: true
     registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 32, default_on: true}
   - name: MC2_VEHICLE_LIT_PATH
     kind: Bool

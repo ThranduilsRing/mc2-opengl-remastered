@@ -362,17 +362,9 @@ void __stdcall gos_RenderIndexedArray( gos_VERTEX_2UV* pVertexArray, DWORD Numbe
    gosASSERT(0 && "not implemented");
 }
 
-void __stdcall gos_RenderIndexedArray(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl, const float* mvp)
-{
-    gosASSERT(g_gos_renderer);
-    g_gos_renderer->drawIndexedTris(ib, vb, vdecl, mvp);
-}
 
-void __stdcall gos_RenderIndexedArray(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl)
-{
-    gosASSERT(g_gos_renderer);
-    g_gos_renderer->drawIndexedTris(ib, vb, vdecl);
-}
+
+
 
 void __stdcall gos_SetRenderState( gos_RenderState RenderState, int Value )
 {

@@ -691,10 +691,7 @@ class gosMesh {
         void rewind() { num_vertices_ = 0; num_indices_ = 0; }
 
         void draw(gosRenderMaterial* material) const;
-        void drawIndexed(gosRenderMaterial* material) const;
 
-		static void drawIndexed(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl, gosRenderMaterial* material);
-		static void drawIndexed(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl);
 
 		static const std::string s_tex1;
 

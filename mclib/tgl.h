@@ -1217,13 +1217,6 @@ public:
 	float viewport_[4];
     uint32_t light_data_buffer_index_;
     bool isHudElement_;
-	HGOSRENDERMATERIAL programOverride_;
-	DWORD pbrNormalTexture_;
-	DWORD pbrOrmTexture_;
-	DWORD pbrMaterialSsbo_;
-	float pbrTileScale_;
-	float pbrRoughnessBias_;
-	float pbrMetallicInfluence_;
 };
 ////////////////////////////////////////////////////////////////////////////////
 

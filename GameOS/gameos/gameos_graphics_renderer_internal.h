@@ -237,8 +237,6 @@ class gosRenderer {
         void drawPoints(gos_VERTEX* vertices, int count);
         void drawTris(gos_VERTEX* vertices, int count);
         void drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* indices, int num_indices);
-		void drawIndexedTris(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl, const float* mvp);
-		void drawIndexedTris(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl);
         void drawText(const char* text);
         void terrainBindUniformsForPatchStream(gosRenderMaterial* material);
         // Returns ssboRecordBase uniform location in the thin program, or -1.

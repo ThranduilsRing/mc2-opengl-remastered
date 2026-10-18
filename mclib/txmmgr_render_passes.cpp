@@ -288,11 +288,8 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 	g_numShadowShapes.store(0, std::memory_order_relaxed);
 }
 
-void MC_TextureManager::renderListsTerrainSolid ([[maybe_unused]] const RenderListsFrame& st)
+void MC_TextureManager::renderListsTerrainSolid (void)
 {
-#ifdef MC2_VULKAN_ISLAND
-	const bool vkLegacyOn = st.vkLegacyOn;
-#endif
 	// No special depth state for DRAWSOLID terrain
 
 	{
@@ -503,56 +500,14 @@ void MC_TextureManager::renderListsTerrainSolid ([[maybe_unused]] const RenderLi
 					gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
 					gos_SetRenderState( gos_State_Terrain, 0 );
 
-					DWORD totalVertices = masterVertexNodes[i].numVertices;
-					if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
-					{
-						totalVertices = masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices;
-					}
-
 #ifdef MC2_VULKAN_ISLAND
-					if (vkLegacyOn)
-					{
-						// VK-PARITY-F1: hand this node's CPU-lit gos_VERTEX triangle list to the
-						// VK legacy-shape island (drawn after the loop) instead of GL.
-						vkLegacySubmitNode(i, MC2_LEGACY_PASS_SOLID, 0);
-						continue;
-					}
+                    vkLegacySubmitNode(i, MC2_LEGACY_PASS_SOLID, 0);
 #endif
-					// LEGACY-MLR-DELETE-1: dead (terrain skipped above); non-terrain nodes never have terrain extras.
-					gos_SetTerrainBatchExtras(nullptr, 0);
-
-					if (totalVertices && (totalVertices < MAX_SENDDOWN))
-					{
-						gos_SetRenderState( gos_State_Texture, tex_resolve(masterVertexNodes[i].textureIndex));
-						gos_RenderIndexedArray( masterVertexNodes[i].vertices, totalVertices, indexArray, totalVertices );
-					}
-					else if (totalVertices > MAX_SENDDOWN)
-					{
-						gos_SetRenderState( gos_State_Texture, tex_resolve(masterVertexNodes[i].textureIndex));
-
-						//Must divide up vertices into batches of 10,000 each to send down.
-						// Somewhere around 20000 to 30000 it really gets screwy!!!
-						long currentVertices = 0;
-						while (currentVertices < totalVertices)
-						{
-							gos_VERTEX *v = masterVertexNodes[i].vertices + currentVertices;
-							long tVertices = totalVertices - currentVertices;
-							if (tVertices > MAX_SENDDOWN)
-								tVertices = MAX_SENDDOWN;
-
-							gos_RenderIndexedArray(v, tVertices, indexArray, tVertices );
-
-							currentVertices += tVertices;
-						}
-					}
-					//Reset the list to zero length to avoid drawing more then once!
-					//Also comes in handy if gameLogic is not called.
 					masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
 				}
 			}
 #ifdef MC2_VULKAN_ISLAND
-		if (vkLegacyOn)
-			vkLegacyRun();   // VK-PARITY-F1: queued legacy SOLID nodes -> shared GBuffer
+		vkLegacyRun();   // VK-PARITY-F1: queued legacy SOLID nodes -> shared GBuffer
 #endif
 		// Emit one [BUCKET_CENSUS v1] line per frame (env-gated). Runs
 		// after flush() has populated the modern-side stats and after

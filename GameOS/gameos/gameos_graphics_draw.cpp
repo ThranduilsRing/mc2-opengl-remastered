@@ -96,143 +96,11 @@ void gosMesh::draw(gosRenderMaterial* material) const
         ring->endFrame();   // fence the slot AFTER the draw consumes it.
 }
 
-void gosMesh::drawIndexed(gosRenderMaterial* material) const
-{
-    gosASSERT(material);
 
-    if(num_vertices_ == 0)
-        return;
 
-    // GPU-BUFFER-WRAPPER-TIER0-HUD-1: ring path (gate ON) vs legacy orphan (OFF).
-    // Ring path uses glDrawElementsBaseVertex so the same index data (offset 0
-    // relative to the slot) addresses the same vertices (shifted by baseVertex).
-    // The legacy branch is the EXACT original two-orphan + glDrawElements path.
-    mc2gpu::GpuMeshRing* ring =
-        gosHudRingEnabled() ? const_cast<gosMesh*>(this)->ensureRing() : nullptr;
 
-    GLint  baseVertex   = 0;
-    GLvoid* indexOffset = nullptr;
-    GLuint drawVb = vb_;
-    GLuint drawIb = ib_;
-    if (ring) {
-        ring->beginFrame();
-        if (gosHudRingForceWrap()) {
-            // NEGATIVE TEST: see gosMesh::draw — trips the fence-per-frame guard.
-            ring->beginFrame();
-        }
-        baseVertex  = ring->writeVertices(pvertex_data_, (uint32_t)num_vertices_);
-        indexOffset = (GLvoid*)(uintptr_t)ring->writeIndices(pindex_data_, (uint32_t)num_indices_);
-        drawVb = ring->vb();
-        drawIb = ring->ib();
-    } else {
-        updateBuffer(vb_, GL_ARRAY_BUFFER, pvertex_data_, num_vertices_*sizeof(gos_VERTEX), GL_DYNAMIC_DRAW);
-        updateBuffer(ib_, GL_ELEMENT_ARRAY_BUFFER, pindex_data_, num_indices_*sizeof(INDEX_TYPE), GL_DYNAMIC_DRAW);
-    }
 
-    material->apply();
 
-    material->setSamplerUnit(s_tex1, 0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, drawVb);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawIb);
-    CHECK_GL_ERROR;
-
-    material->applyVertexDeclaration();
-    CHECK_GL_ERROR;
-
-    GLenum pt = GL_TRIANGLES;
-    switch(prim_type_) {
-        case PRIMITIVE_POINTLIST:
-            pt = GL_POINTS;
-            break;
-        case PRIMITIVE_LINELIST:
-            pt = GL_LINES;
-            break;
-        case PRIMITIVE_TRIANGLELIST:
-            pt = GL_TRIANGLES;
-            break;
-        default:
-            gosASSERT(0 && "Wrong primitive type");
-    }
-
-    const GLenum idxType = getIndexSizeBytes()==2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
-    if (ring)
-        glDrawElementsBaseVertex(pt, num_indices_, idxType, indexOffset, baseVertex);
-    else
-        glDrawElements(pt, num_indices_, idxType, indexOffset);
-
-    material->endVertexDeclaration();
-    material->end();
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    if (ring)
-        ring->endFrame();   // fence the slot AFTER the draw consumes it.
-}
-
-void gosMesh::drawIndexed(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl, gosRenderMaterial* material)
-{
-	gosASSERT(material);
-
-	int index_size = ib->element_size_;
-	gosASSERT(index_size == 2 || index_size == 4);
-
-	if (ib->count_ == 0)
-		return;
-
-	material->apply();
-	CHECK_GL_ERROR;
-
-	material->setSamplerUnit(s_tex1, 0);
-	CHECK_GL_ERROR;
-
-	glBindBuffer(GL_ARRAY_BUFFER, vb->buffer_);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->buffer_);
-	CHECK_GL_ERROR;
-
-	vdecl->apply();
-	CHECK_GL_ERROR;
-
-	GLenum pt = GL_TRIANGLES;
-	glDrawElements(pt, ib->count_, index_size == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, nullptr);
-
-	vdecl->end();
-	material->end();
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-}
-
-void gosMesh::drawIndexed(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl)
-{
-	int index_size = ib->element_size_;
-	gosASSERT(index_size == 2 || index_size == 4);
-
-	if (ib->count_ == 0)
-		return;
-
-	CHECK_GL_ERROR;
-
-	glBindBuffer(GL_ARRAY_BUFFER, vb->buffer_);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->buffer_);
-	CHECK_GL_ERROR;
-
-	vdecl->apply();
-	CHECK_GL_ERROR;
-
-	GLenum pt = GL_TRIANGLES;
-	glDrawElements(pt, ib->count_, index_size == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, nullptr);
-
-	vdecl->end();
-
-	glUseProgram(0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-}
 
 void gosRenderer::initRenderStates() {
     // RENDER_STATES v1: zero-init the entire arrays so the equality check has
@@ -918,14 +786,4 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
     }
 
     // World geometry reaches Vulkan through the typed scene feeds.
-}
-
-void gosRenderer::drawIndexedTris(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl, const float* mvp)
-{
-    // Retained C API until the mclib GL hardware-shape caller is retired.
-}
-
-void gosRenderer::drawIndexedTris(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl)
-{
-    // Retained C API until the mclib GL hardware-shape caller is retired.
 }

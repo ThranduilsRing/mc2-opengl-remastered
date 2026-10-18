@@ -363,18 +363,6 @@ public:
 
 struct TG_HWLightsData;
 
-struct TG_HWSceneData {
-    float fog_start;
-    float fog_end;
-    float min_haze_dist;
-    float dist_factor;
-    float cam_pos[4];
-    float fog_color[4];
-    vec4 baseVertexColor;
-};
-
-typedef TG_HWSceneData* TG_HWSceneDataPtr;
-
 //----------------------------------------------------------------------
 class MC_TextureManager
 {
@@ -447,8 +435,6 @@ class MC_TextureManager
         uint32_t                        lightDataStructuresCount;
 		// [LIGHTSSBO v1] lightDataBuffer_ removed: LightsData is now an
 		// SSBO owned by gameos_graphics.cpp (gos_LightDataSsbo_*).
-        TG_HWSceneData*                 sceneData_;
-		gosBuffer						*sceneDataBuffer_;
 		
 	//Member Functions
 	//-----------------
@@ -480,8 +466,6 @@ class MC_TextureManager
             lightDataStructuresCapacity = 0;
             lightDataStructuresCount = 0;
 
-			sceneData_ = nullptr;
-            sceneDataBuffer_ = nullptr;
 		}
 
 		MC_TextureManager (void)
@@ -1312,7 +1296,6 @@ class MC_TextureManager
 
 	private:
 		// renderLists phases, in execution order (txmmgr_render.cpp).
-		struct RenderListsFrame;
 		void renderListsPreamble (void);
 		void renderListsLightDataUpload (void);
 		void renderListsSceneDataUpload (void);
@@ -1321,15 +1304,15 @@ class MC_TextureManager
 		void renderListsStaticShadowBuild (void);
 		void renderListsStaticPropRegistryFlush (void);
 		void renderListsDynamicShadowPass (void);
-		void renderListsTerrainSolid (const RenderListsFrame& st);
+		void renderListsTerrainSolid (void);
 		void renderListsGpuStaticProps (void);
 		void renderListsOverlayBatches (void);
 		void renderListsOverlaysWaterLoops (void);
 		void renderListsOverlaysNoUnderlayer (void);
-		void renderListsOverlaysShadowBlobs (const RenderListsFrame& st);
-		void renderListsOverlaysNonTerrainAlpha (const RenderListsFrame& st);
-		void renderListsOverlaysVfxHudSubmit (const RenderListsFrame& st);
-		void renderListsOverlaysOld (const RenderListsFrame& st);
+		void renderListsOverlaysShadowBlobs (void);
+		void renderListsOverlaysNonTerrainAlpha (void);
+		void renderListsOverlaysVfxHudSubmit (void);
+		void renderListsOverlaysOld (void);
 		// VK legacy-shape island queue / run (defined only under MC2_VULKAN_ISLAND).
 		void vkLegacySubmitNode (long i, uint32_t pass, uint32_t alphaTest);
 		void vkLegacyRun (void);

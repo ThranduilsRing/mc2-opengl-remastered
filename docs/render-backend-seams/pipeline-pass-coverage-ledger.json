@@ -137,14 +137,12 @@
       "proofStatus": "nondeterministic_visual_gate_pending",
       "renderPassId": "VFX",
       "pipelineIds": [
-        "VfxBillboardAlpha",
-        "VfxBillboardAdditive",
         "VfxTubeAlpha",
         "VfxTubeAdditive",
         "VfxMeshAlpha",
         "VfxMeshAdditive"
       ],
-      "shaderBase": "particle_billboard/tube_ribbon/vfx_mesh",
+      "shaderBase": "tube_ribbon/vfx_mesh",
       "stateOwner": "applyPipeline (per-item blend)",
       "evidence": "VFX-VISUAL-GATE-1 (2026-06-23) built the full gate + proved TWO of three facts, but the pass is CONFIRMED pixel-nondeterministic so VISUAL_PROVEN is withheld (honest). PROVEN: (1) tube coverage — MC2_VFX_ORACLE_TUBE occlusion oracle samples=3325 into the scene FBO (fbo=1), the tube VFX pass rasterizes; (2) additive NOT collapsed — runtime [PIPELINE_BIND] blend= trace (new this slice) shows VfxTubeAdditive=AdditiveOneOne (ONE/ONE) vs VfxBillboardAdditive=AdditiveSrcAlphaOne (SRC_ALPHA/ONE); the static check-vfx-blend-distinction.py catches a collapse at check-time (proven: FAILs on a planted tube->billboard collapse). NOT PROVEN: 3-run pixel stability — captures DRIFT (max_abs_delta=241), particle output is not seeded by MC2_SMOKE_SEED (sim-freeze froze the clock but not the particle RNG). Per scope (no weakening the test for nondeterminism), the byte/perceptual gate honestly FAILS.",
       "proofNote": "Routing + blend-distinction are GOVERNANCE-COMPLETE (checker + runtime trace catch the tube ONE/ONE vs billboard/mesh SRC_ALPHA/ONE collapse). VISUAL_PROVEN requires either (a) a deterministic particle seed so 3-run capture is stable (engine work, out of this slice's scope), or (b) operator acceptance that oracle_coverage + blend-non-collapse is sufficient proof for a deliberately-nondeterministic pass. Held at ROUTED/pending until that decision.",
@@ -214,6 +212,18 @@
       "shaderBase": "mineProg",
       "stateOwner": "legacy/ad-hoc",
       "next": "needs_pass_reg_first: stable alpha-test state but NO RenderPassId — add an id or fold into TerrainOverlay before any PipelineDesc row"
+    },
+    "VfxBillboardVkNative": {
+      "status": "DESCRIPTIVE_REGISTERED",
+      "renderPassId": "VFX",
+      "pipelineIds": [
+        "VfxBillboardAlpha",
+        "VfxBillboardAdditive"
+      ],
+      "shaderBase": "particle_billboard",
+      "stateOwner": "vulkan_native",
+      "evidence": "s63 G1 deleted the GL billboard draw; gos_particle_bridge_flush dispatches only vulkan_vfx_island. The CPU particle/group/camera inputs are unchanged.",
+      "next": "retire the GL descriptors with the RenderCore cleanup"
     }
   }
 }

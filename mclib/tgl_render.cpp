@@ -67,24 +67,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 
 	if (!numVertices)		//WE are the root Shape which may have no shape or a helper shape which defintely has no shape!
 	{
-		// MERGE-CONFLICT-UI-PHASE1: theirs (mc2r_ui_phase1) adds a hardware-only-shape
-		// emission branch here (numVertices==0 but ib_/vb_ populated by the Assimp
-		// import path — root/helper node repurposed by MultiTransformShape's new
-		// GPU-only-shape branch above, gated by bShadersDrawPathEnabled).
-		// NOT applied: ours already has a richer TG_RenderShape emission block further
-		// down this function (~tgl.cpp:3319-3344, the `theShape->ib_ && theShape->vb_`
-		// branch) carrying PBR-override fields (programOverride_/pbrNormalTexture_/
-		// pbrOrmTexture_/pbrMaterialSsbo_/pbrTileScale_/pbrRoughnessBias_/
-		// pbrMetallicInfluence_) and the LcsScope<LcsBucket::C2> light-cost-split
-		// wrapper that theirs' plain patch (built against the pre-PBR-override,
-		// pre-LCS base) does not know about. Porting their numVertices==0 branch
-		// verbatim would emit TG_RenderShape structs missing those fields (silently
-		// defaulting the PBR override off / skipping LCS accounting) — needs a
-		// deliberate port that reuses the existing field set, not a blind copy.
-		// Their source (base->theirs hunk, tgl.cpp:2979+) for reference:
-		//   TG_TypeShapePtr hwType = (myType && myType->GetNodeType()==SHAPE_NODE) ? (TG_TypeShapePtr)myType : nullptr;
-		//   if (hwType && hwType->ib_ && hwType->vb_ && hwType->listOfTypeTriangles &&
-		//       hwType->listOfTextures && shapeToClip && shapeToWorld && (lastTurnTransformed==turn)) { ...addRenderShape(&rs)... }
+		// Root/helper nodes have no CPU triangles to submit.
 		return;
 	}
 
@@ -400,13 +383,6 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
             rs.mvp_ = mvp;
 			rs.mw_ = *shapeToWorld;
 			memcpy(rs.viewport_, cur_viewport, 4 * sizeof(float));
-			rs.programOverride_ = s_activeRenderShapePbrOverride.program;
-			rs.pbrNormalTexture_ = s_activeRenderShapePbrOverride.normalTexture;
-			rs.pbrOrmTexture_ = s_activeRenderShapePbrOverride.ormTexture;
-			rs.pbrMaterialSsbo_ = s_activeRenderShapePbrOverride.materialSsbo;
-			rs.pbrTileScale_ = s_activeRenderShapePbrOverride.tileScale;
-			rs.pbrRoughnessBias_ = s_activeRenderShapePbrOverride.roughnessBias;
-			rs.pbrMetallicInfluence_ = s_activeRenderShapePbrOverride.metallicInfluence;
 			{
 				LcsScope<LcsBucket::C2> _lcs;
 				rs.light_data_buffer_index_ = mcTextureManager->addLightDataStructure(&lightData_);

@@ -35,39 +35,6 @@ void MC_TextureManager::renderListsOverlaysWaterLoops (void)
                     gos_SetRenderState(gos_State_Water, waterMode);
                 }
 
-                DWORD totalVertices = masterVertexNodes[i].numVertices;
-                if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
-                {
-                    totalVertices = masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices;
-                }
-
-                if (totalVertices && (totalVertices < MAX_SENDDOWN))
-                {
-                    gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-                    gos_RenderIndexedArray( masterVertexNodes[i].vertices, totalVertices, indexArray, totalVertices );
-                }
-                else if (totalVertices > MAX_SENDDOWN)
-                {
-                    gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-
-                    //Must divide up vertices into batches of 10,000 each to send down.
-                    // Somewhere around 20000 to 30000 it really gets screwy!!!
-                    long currentVertices = 0;
-                    while (currentVertices < totalVertices)
-                    {
-                        gos_VERTEX *v = masterVertexNodes[i].vertices + currentVertices;
-                        long tVertices = totalVertices - currentVertices;
-                        if (tVertices > MAX_SENDDOWN)
-                            tVertices = MAX_SENDDOWN;
-
-                        gos_RenderIndexedArray(v, tVertices, indexArray, tVertices );
-
-                        currentVertices += tVertices;
-                    }
-                }
-
-                //Reset the list to zero length to avoid drawing more then once!
-                //Also comes in handy if gameLogic is not called.
                 masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
             }
         }
@@ -95,45 +62,6 @@ void MC_TextureManager::renderListsOverlaysNoUnderlayer (void)
 			(masterVertexNodes[i].flags & MC2_GPUOVERLAY) &&
 			(masterVertexNodes[i].vertices))
 		{
-			DWORD totalVertices = masterVertexNodes[i].numVertices;
-			if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
-			{
-				totalVertices = masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices;
-			}
-	
-			gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneZero);
-			gos_SetRenderState( gos_State_ZCompare, 0);
-			gos_SetRenderState(gos_State_Overlay, 1);
-			if (totalVertices && (totalVertices < MAX_SENDDOWN))
-			{
-				gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-				gos_RenderIndexedArray( masterVertexNodes[i].vertices, totalVertices, indexArray, totalVertices );
-			}
-			else if (totalVertices > MAX_SENDDOWN)
-			{
-				gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-				
-				//Must divide up vertices into batches of 10,000 each to send down.
-				// Somewhere around 20000 to 30000 it really gets screwy!!!
-				long currentVertices = 0;
-				while (currentVertices < totalVertices)
-				{
-					gos_VERTEX *v = masterVertexNodes[i].vertices + currentVertices;
-					long tVertices = totalVertices - currentVertices;
-					if (tVertices > MAX_SENDDOWN)
-						tVertices = MAX_SENDDOWN;
-					
-					gos_RenderIndexedArray(v, tVertices, indexArray, tVertices );
-					
-					currentVertices += tVertices;
-				}
-			}
-			gos_SetRenderState(gos_State_Overlay, 0);
-			gos_SetRenderState( gos_State_ZCompare, 1);
-			gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
-			
-			//Reset the list to zero length to avoid drawing more then once!			
-			//Also comes in handy if gameLogic is not called.
 			masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
 		}
 	}
@@ -141,11 +69,8 @@ void MC_TextureManager::renderListsOverlaysNoUnderlayer (void)
 	//<< sebi: end of added block
 }
 
-void MC_TextureManager::renderListsOverlaysShadowBlobs ([[maybe_unused]] const RenderListsFrame& st)
+void MC_TextureManager::renderListsOverlaysShadowBlobs (void)
 {
-#ifdef MC2_VULKAN_ISLAND
-	const bool vkLegacyOn = st.vkLegacyOn;
-#endif
 	// Cement overlays (MC2_ISCRATERS|MC2_ISTERRAIN) and decals (!MC2_ISTERRAIN|MC2_ISCRATERS)
 	// are now drawn by gos_DrawTerrainOverlays() and gos_DrawDecals() before Render.Overlays.
 	// The old Render.CraterOverlays and non-terrain crater loops are removed.
@@ -181,57 +106,20 @@ void MC_TextureManager::renderListsOverlaysShadowBlobs ([[maybe_unused]] const R
 				(masterVertexNodes[i].vertices))
 			{
 #ifdef MC2_VULKAN_ISLAND
-				if (vkLegacyOn) { vkLegacySubmitNode(i, MC2_LEGACY_PASS_SHADOW, 0); continue; }   // VK-PARITY-F1
+				vkLegacySubmitNode(i, MC2_LEGACY_PASS_SHADOW, 0);
 #endif
-				DWORD totalVertices = masterVertexNodes[i].numVertices;
-				if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
-				{
-					totalVertices = masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices;
-				}
-			
-				if (totalVertices && (totalVertices < MAX_SENDDOWN))
-				{
-					gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-					gos_RenderIndexedArray( masterVertexNodes[i].vertices, totalVertices, indexArray, totalVertices );
-				}
-				else if (totalVertices > MAX_SENDDOWN)
-				{
-					gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-					
-					//Must divide up vertices into batches of 10,000 each to send down.
-					// Somewhere around 20000 to 30000 it really gets screwy!!!
-					long currentVertices = 0;
-					while (currentVertices < totalVertices)
-					{
-						gos_VERTEX *v = masterVertexNodes[i].vertices + currentVertices;
-						long tVertices = totalVertices - currentVertices;
-						if (tVertices > MAX_SENDDOWN)
-							tVertices = MAX_SENDDOWN;
-						
-						gos_RenderIndexedArray(v, tVertices, indexArray, tVertices );
-						
-						currentVertices += tVertices;
-					}
-				}
-				
-				//Reset the list to zero length to avoid drawing more then once!
-				//Also comes in handy if gameLogic is not called.
 				masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
 			}
 		}
 	}
 #ifdef MC2_VULKAN_ISLAND
-	if (vkLegacyOn)
-		vkLegacyRun();   // VK-PARITY-F1: queued legacy blob-shadow nodes -> shared GBuffer
+	vkLegacyRun();   // VK-PARITY-F1: queued legacy blob-shadow nodes -> shared GBuffer
 #endif
 	} // end RenderLists.ShadowBlobs
 }
 
-void MC_TextureManager::renderListsOverlaysNonTerrainAlpha ([[maybe_unused]] const RenderListsFrame& st)
+void MC_TextureManager::renderListsOverlaysNonTerrainAlpha (void)
 {
-#ifdef MC2_VULKAN_ISLAND
-	const bool vkLegacyOn = st.vkLegacyOn;
-#endif
 	{
 	ZoneScopedN("RenderLists.NonTerrainAlphaLoops");
 	gos_SetRenderState( gos_State_ZCompare, 1);
@@ -258,41 +146,8 @@ void MC_TextureManager::renderListsOverlaysNonTerrainAlpha ([[maybe_unused]] con
                     (masterVertexNodes[i].vertices))
             {
 #ifdef MC2_VULKAN_ISLAND
-                if (vkLegacyOn) { vkLegacySubmitNode(i, MC2_LEGACY_PASS_ALPHA, (uint32_t)states); continue; }   // VK-PARITY-F1
+                vkLegacySubmitNode(i, MC2_LEGACY_PASS_ALPHA, (uint32_t)states);
 #endif
-                DWORD totalVertices = masterVertexNodes[i].numVertices;
-                if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
-                {
-                    totalVertices = masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices;
-                }
-
-                if (totalVertices && (totalVertices < MAX_SENDDOWN))
-                {
-                    gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-                    gos_RenderIndexedArray( masterVertexNodes[i].vertices, totalVertices, indexArray, totalVertices );
-                }
-                else if (totalVertices > MAX_SENDDOWN)
-                {
-                    gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-
-                    //Must divide up vertices into batches of 10,000 each to send down.
-                    // Somewhere around 20000 to 30000 it really gets screwy!!!
-                    long currentVertices = 0;
-                    while (currentVertices < totalVertices)
-                    {
-                        gos_VERTEX *v = masterVertexNodes[i].vertices + currentVertices;
-                        long tVertices = totalVertices - currentVertices;
-                        if (tVertices > MAX_SENDDOWN)
-                            tVertices = MAX_SENDDOWN;
-
-                        gos_RenderIndexedArray(v, tVertices, indexArray, tVertices );
-
-                        currentVertices += tVertices;
-                    }
-                }
-
-                //Reset the list to zero length to avoid drawing more then once!
-                //Also comes in handy if gameLogic is not called.
                 masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
             }
         }
@@ -308,11 +163,8 @@ void MC_TextureManager::renderListsOverlaysNonTerrainAlpha ([[maybe_unused]] con
 	} // end RenderLists.NonTerrainAlphaLoops
 }
 
-void MC_TextureManager::renderListsOverlaysVfxHudSubmit ([[maybe_unused]] const RenderListsFrame& st)
+void MC_TextureManager::renderListsOverlaysVfxHudSubmit (void)
 {
-#ifdef MC2_VULKAN_ISLAND
-	const bool vkLegacyOn = st.vkLegacyOn;
-#endif
 	{
 	ZoneScopedN("RenderLists.VfxHudSubmit");
 	if (Environment.Renderer == 3)
@@ -344,41 +196,8 @@ void MC_TextureManager::renderListsOverlaysVfxHudSubmit ([[maybe_unused]] const 
 			(masterVertexNodes[i].vertices))
 		{
 #ifdef MC2_VULKAN_ISLAND
-			if (vkLegacyOn) { vkLegacySubmitNode(i, MC2_LEGACY_PASS_ADD, 0); continue; }   // VK-PARITY-F1
+			vkLegacySubmitNode(i, MC2_LEGACY_PASS_ADD, 0);
 #endif
-			DWORD totalVertices = masterVertexNodes[i].numVertices;
-			if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
-			{
-				totalVertices = masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices;
-			}
-			
-			if (totalVertices && (totalVertices < MAX_SENDDOWN))
-			{
-				gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-				gos_RenderIndexedArray( masterVertexNodes[i].vertices, totalVertices, indexArray, totalVertices );
-			}
-			else if (totalVertices > MAX_SENDDOWN)
-			{
-				gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-				
-				//Must divide up vertices into batches of 10,000 each to send down.
-				// Somewhere around 20000 to 30000 it really gets screwy!!!
-				long currentVertices = 0;
-				while (currentVertices < totalVertices)
-				{
-					gos_VERTEX *v = masterVertexNodes[i].vertices + currentVertices;
-					long tVertices = totalVertices - currentVertices;
-					if (tVertices > MAX_SENDDOWN)
-						tVertices = MAX_SENDDOWN;
-					
-					gos_RenderIndexedArray(v, tVertices, indexArray, tVertices );
-					
-					currentVertices += tVertices;
-				}
-			}
-	
-			//Reset the list to zero length to avoid drawing more then once!
-			//Also comes in handy if gameLogic is not called.
 			masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
 		}
 	}
@@ -394,48 +213,14 @@ void MC_TextureManager::renderListsOverlaysVfxHudSubmit ([[maybe_unused]] const 
 			(masterVertexNodes[i].vertices))
 		{
 #ifdef MC2_VULKAN_ISLAND
-			if (vkLegacyOn) { vkLegacySubmitNode(i, MC2_LEGACY_PASS_ADD, 0); continue; }   // VK-PARITY-F1
+			vkLegacySubmitNode(i, MC2_LEGACY_PASS_ADD, 0);
 #endif
-			DWORD totalVertices = masterVertexNodes[i].numVertices;
-			if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
-			{
-				totalVertices = masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices;
-			}
-			
-			if (totalVertices && (totalVertices < MAX_SENDDOWN))
-			{
-				gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-				gos_RenderIndexedArray( masterVertexNodes[i].vertices, totalVertices, indexArray, totalVertices );
-			}
-			else if (totalVertices > MAX_SENDDOWN)
-			{
-				gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-				
-				//Must divide up vertices into batches of 10,000 each to send down.
-				// Somewhere around 20000 to 30000 it really gets screwy!!!
-				long currentVertices = 0;
-				while (currentVertices < totalVertices)
-				{
-					gos_VERTEX *v = masterVertexNodes[i].vertices + currentVertices;
-					long tVertices = totalVertices - currentVertices;
-					if (tVertices > MAX_SENDDOWN)
-						tVertices = MAX_SENDDOWN;
-					
-					gos_RenderIndexedArray(v, tVertices, indexArray, tVertices );
-					
-					currentVertices += tVertices;
-				}
-			}
-	
-			//Reset the list to zero length to avoid drawing more then once!
-			//Also comes in handy if gameLogic is not called.
 			masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
 		}
 	}
 	
 #ifdef MC2_VULKAN_ISLAND
-	if (vkLegacyOn)
-		vkLegacyRun();   // VK-PARITY-F1: queued legacy alpha + additive effect / spotlight-cone nodes
+	vkLegacyRun();   // VK-PARITY-F1: queued legacy alpha + additive effect / spotlight-cone nodes
 #endif
 	gos_SetRenderState( gos_State_ZWrite, 0);
 	gos_SetRenderState( gos_State_ZCompare, 0);
@@ -448,39 +233,6 @@ void MC_TextureManager::renderListsOverlaysVfxHudSubmit ([[maybe_unused]] const 
 		if ((masterVertexNodes[i].flags & MC2_ISCOMPASS) &&
 			(masterVertexNodes[i].vertices))
 		{
-			DWORD totalVertices = masterVertexNodes[i].numVertices;
-			if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
-			{
-				totalVertices = masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices;
-			}
-			
-			if (totalVertices && (totalVertices < MAX_SENDDOWN))
-			{
-				gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-				gos_RenderIndexedArray( masterVertexNodes[i].vertices, totalVertices, indexArray, totalVertices );
-			}
-			else if (totalVertices > MAX_SENDDOWN)
-			{
-				gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-				
-				//Must divide up vertices into batches of 10,000 each to send down.
-				// Somewhere around 20000 to 30000 it really gets screwy!!!
-				long currentVertices = 0;
-				while (currentVertices < totalVertices)
-				{
-					gos_VERTEX *v = masterVertexNodes[i].vertices + currentVertices;
-					long tVertices = totalVertices - currentVertices;
-					if (tVertices > MAX_SENDDOWN)
-						tVertices = MAX_SENDDOWN;
-					
-					gos_RenderIndexedArray(v, tVertices, indexArray, tVertices );
-					
-					currentVertices += tVertices;
-				}
-			}
-	
-			//Reset the list to zero length to avoid drawing more then once!
-			//Also comes in handy if gameLogic is not called.
 			masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
 		}
 	}
@@ -492,39 +244,6 @@ void MC_TextureManager::renderListsOverlaysVfxHudSubmit ([[maybe_unused]] const 
 		if ((masterVertexNodes[i].flags & MC2_ISHUDLMNT) &&
 			(masterVertexNodes[i].vertices))
 		{
-			DWORD totalVertices = masterVertexNodes[i].numVertices;
-			if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
-			{
-				totalVertices = masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices;
-			}
-			
-			if (totalVertices && (totalVertices < MAX_SENDDOWN))
-			{
-				gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-				gos_RenderIndexedArray( masterVertexNodes[i].vertices, totalVertices, indexArray, totalVertices );
-			}
-			else if (totalVertices > MAX_SENDDOWN)
-			{
-				gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-				
-				//Must divide up vertices into batches of 10,000 each to send down.
-				// Somewhere around 20000 to 30000 it really gets screwy!!!
-				long currentVertices = 0;
-				while (currentVertices < totalVertices)
-				{
-					gos_VERTEX *v = masterVertexNodes[i].vertices + currentVertices;
-					long tVertices = totalVertices - currentVertices;
-					if (tVertices > MAX_SENDDOWN)
-						tVertices = MAX_SENDDOWN;
-					
-					gos_RenderIndexedArray(v, tVertices, indexArray, tVertices );
-					
-					currentVertices += tVertices;
-				}
-			}
-	
-			//Reset the list to zero length to avoid drawing more then once!
-			//Also comes in handy if gameLogic is not called.
 			masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
 		}
 	}
@@ -537,7 +256,7 @@ void MC_TextureManager::renderListsOverlaysVfxHudSubmit ([[maybe_unused]] const 
 	} // end RenderLists.VfxHudSubmit
 }
 
-void MC_TextureManager::renderListsOverlaysOld (const RenderListsFrame& st)
+void MC_TextureManager::renderListsOverlaysOld (void)
 {
 	{
 		ZoneScopedN("Render.Overlays");
@@ -555,8 +274,8 @@ void MC_TextureManager::renderListsOverlaysOld (const RenderListsFrame& st)
 	
 	renderListsOverlaysWaterLoops();
 	renderListsOverlaysNoUnderlayer();
-	renderListsOverlaysShadowBlobs(st);
-	renderListsOverlaysNonTerrainAlpha(st);
-	renderListsOverlaysVfxHudSubmit(st);
+	renderListsOverlaysShadowBlobs();
+	renderListsOverlaysNonTerrainAlpha();
+	renderListsOverlaysVfxHudSubmit();
 	} // end Render.Overlays zone
 }

@@ -442,7 +442,7 @@ L(Lead0Kill, "MC2_LAUNCHER_ENV_JSON", Bool, true, "gameos", "", "", verified),
 L(Lead0P, "MC2_LEGACY_INSTANCE_POOLS", Bool, false, "props", "", "", verified),
 // LegacyLitMc2Frame (VEHICLE-NIGHT-LIT-1)
 // history: docs/gate-history.md#MC2_LEGACY_LIT_MC2_FRAME
-L(Lead0Kill, "MC2_LEGACY_LIT_MC2_FRAME", Bool, true, "code", "", "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts.", passthrough | registry(Feature, "MC2_LEGACY_LIT_MC2_FRAME", 28, true) | verified),
+L(Lead0Kill, "MC2_LEGACY_LIT_MC2_FRAME", Bool, true, "code", "", "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts.", passthrough | registry(Feature, "MC2_LEGACY_LIT_MC2_FRAME", 28, true)),
 L(Presence, "MC2_LEGACY_LOAD_BANNER", Bool, false, "code", "", "", verified),
 // LetterboxOpaque (DETERMINISM-RATCHET-2)
 // history: docs/gate-history.md#MC2_LETTERBOX_OPAQUE
@@ -1177,7 +1177,7 @@ L(Lead0, "MC2_VEG_DEBUG_FORCE_VISIBLE", Bool, false, "gameos", "", "", verified)
 P("MC2_VEG_MAX_DIST", Float, 4096.0, "gameos", "", "", verified),
 // VehicleAmbientFloor (VEHICLE-AMBIENT-FLOOR-1)
 // history: docs/gate-history.md#MC2_VEHICLE_AMBIENT_FLOOR
-L(Lead0Kill, "MC2_VEHICLE_AMBIENT_FLOOR", Bool, true, "code", "", "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON.", passthrough | registry(Feature, "MC2_VEHICLE_AMBIENT_FLOOR", 32, true) | verified),
+L(Lead0Kill, "MC2_VEHICLE_AMBIENT_FLOOR", Bool, true, "code", "", "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON.", passthrough | registry(Feature, "MC2_VEHICLE_AMBIENT_FLOOR", 32, true)),
 // VehicleLitPath (VEHICLE-LIGHTING-PATH-1)
 // history: docs/gate-history.md#MC2_VEHICLE_LIT_PATH
 L(Lead0Kill, "MC2_VEHICLE_LIT_PATH", Bool, true, "mech", "", "VEHICLE-LIGHTING-PATH-1: put GROUND VEHICLES on the same lighting path as every other object class.", passthrough | registry(Feature, "MC2_VEHICLE_LIT_PATH", 30, true) | verified),

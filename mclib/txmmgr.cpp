@@ -236,9 +236,6 @@ void MC_TextureManager::start (void)
 		lightData_.data(),
 		(size_t)lightDataStructuresCapacity * sizeof(TG_HWLightsData));
 
-    sceneData_ = new TG_HWSceneData;
-	sceneDataBuffer_ = gos_CreateBuffer(gosBUFFER_TYPE::UNIFORM, gosBUFFER_USAGE::STATIC_DRAW, sizeof(TG_HWSceneData), 1, nullptr);
-	gos_BindBufferBase(sceneDataBuffer_, SCENE_DATA_ATTACHMENT_SLOT);
 
 	initTexResolveTable();
 }
@@ -301,12 +298,6 @@ void MC_TextureManager::destroy (void)
 
     std::vector<TG_HWLightsData>().swap(lightData_);
 
-	if(sceneDataBuffer_)
-		gos_DestroyBuffer(sceneDataBuffer_);
-	sceneDataBuffer_ = nullptr;
-
-    delete sceneData_;
-    sceneData_ = nullptr;
 }
 
 MC_TextureManager::~MC_TextureManager (void)
