@@ -1057,8 +1057,8 @@ void
 		spec->m_maximumDeviation.ComputeValue(m_age, seed) - pitch_min;
 	if (pitch_range < 0.0f)
 		pitch_range = 0.0f;
-	Stuff::Radian angle = pitch_min + Stuff::Random::GetFraction() * pitch_range;
-	const Stuff::Scalar xySine = glm::sin(angle.angle), xyCosine = glm::cos(angle.angle);
+	const Stuff::Scalar angle = pitch_min + Stuff::Random::GetFraction() * pitch_range;
+	const Stuff::Scalar xySine = glm::sin(angle), xyCosine = glm::cos(angle);
 	profile->m_direction.x = (Stuff::Random::GetFraction() >= 0.5f) ? xySine : -xySine;
 	profile->m_direction.y = 0.0f;
 	profile->m_direction.z = xyCosine;

@@ -31,6 +31,25 @@ bool Small_Enough(const Vector4D& v, Scalar e) {
 }  // namespace Stuff
 
 namespace {
+// The two Stuff::Radian::Normalize bodies (mclib/stuff/angle.cpp, deleted at S5.10), verbatim, as the oracle of the exact
+// wrappers that replaced them: same unqualified fmod as the non-PCH stuff library (stuff.hpp precedes <cmath> here).
+float legacyRadianNormalizeStatic(float Value) {
+    float temp = static_cast<float>(fmod(Value, Stuff::Two_Pi));
+    if (temp > Stuff::Pi)
+        temp -= Stuff::Two_Pi;
+    else if (temp <= -Stuff::Pi)
+        temp += Stuff::Two_Pi;
+    return temp;
+}
+float legacyRadianNormalizeMember(float angle) {
+    angle = static_cast<float>(fmod(angle, Stuff::Two_Pi));
+    if (angle > Stuff::Pi)
+        angle -= Stuff::Two_Pi;
+    else if (angle < -Stuff::Pi)
+        angle += Stuff::Two_Pi;
+    return angle;
+}
+
 constexpr unsigned seed = 0x53545546;
 constexpr unsigned randomCases = 100000;
 
@@ -157,20 +176,14 @@ void scalars(Corpus& corpus, float x, float y) {
     if (!Stuff::Small_Enough(x) || !Stuff::Small_Enough(y))
         corpus.exact("exact.atan2", Stuff::Arctan(y, x), mc2::math::atan2D(y, x));
     corpus.exact("exact.acos", Stuff::Arccos(bounded), mc2::math::acosD(bounded));
-    corpus.exact("exact.wrap-static", Stuff::Radian::Normalize(x), mc2::math::wrapAngleStatic(x));
-    {
-        Stuff::Radian member(x);
-        member.Normalize();
-        corpus.exact("exact.wrap-member", member.angle, mc2::math::wrapAngleMember(x));
-    }
+    corpus.exact("exact.wrap-static", legacyRadianNormalizeStatic(x), mc2::math::wrapAngleStatic(x));
+    corpus.exact("exact.wrap-member", legacyRadianNormalizeMember(x), mc2::math::wrapAngleMember(x));
     // S5.6: SinCosPair is gone; its sites call sinf/cosf (Stuff) or glm::sin/cos (gosFX tube).
     corpus.scalar("angle.sincos-sin", sinf(x), glm::sin(x));
     corpus.scalar("angle.sincos-cos", cosf(x), glm::cos(x));
-    corpus.scalar("angle.wrap-static", Stuff::Radian::Normalize(x),
+    corpus.scalar("angle.wrap-static", mc2::math::wrapAngleStatic(x),
                   glm::mod(x + Stuff::Pi, Stuff::Two_Pi) - Stuff::Pi);
-    Stuff::Radian angle(x);
-    angle.Normalize();
-    corpus.scalar("angle.wrap-member", angle.angle,
+    corpus.scalar("angle.wrap-member", mc2::math::wrapAngleMember(x),
                   glm::mod(x + Stuff::Pi, Stuff::Two_Pi) - Stuff::Pi);
 }
 

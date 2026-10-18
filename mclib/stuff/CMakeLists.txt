@@ -5,7 +5,6 @@ set(SOURCES ${SOURCES}
     style.cpp
     trace.cpp
     affinematrix.cpp
-    angle.cpp
     color.cpp
     extentbox.cpp
     line.cpp

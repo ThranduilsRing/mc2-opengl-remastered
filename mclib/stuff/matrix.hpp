@@ -617,14 +617,14 @@ namespace Stuff {
 			SetPerspective(
 				Scalar near_clip,
 				Scalar far_clip,
-				const Radian &horizontal_fov,
+				Scalar horizontal_fov,
 				Scalar height_to_width
 			);
 		void
 			GetPerspective(
 				Scalar *near_clip,
 				Scalar *far_clip,
-				Radian *horizontal_fov,
+				Scalar *horizontal_fov,
 				Scalar *height_to_width
 			) const;
 

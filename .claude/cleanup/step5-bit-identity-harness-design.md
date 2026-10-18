@@ -171,6 +171,11 @@ Finding: the 1-ULP trig rows were the HARNESS include order. The gameos/mclib/mc
   notation accessors (Note/Page), the matrix/Euler/quaternion constructors and assignments, Small_Enough/Close_Enough/Lerp/Normalize,
   the stream I/O and Spew went with it (no caller). Phase A corpus: both directions equal the class on 20000 samples incl. both +/-90
   degree pitch branches (0 mismatches); the output digest 4785bc9cd9dfa939 is the REQUIRED row after the deletion.
+- S5.10 (lane 1 s23) Stuff::Radian deleted: angles are Scalar radians. EulerAngles/YawPitchRange members, the Matrix4D perspective
+  field of view, the MLR spotlight spread, the light-manager spread and the gosFX tube deviation are Scalar; EulerAngles::Normalize
+  and the quaternion-from-rotation-vector half angle call mc2::math::wrapAngleMember / wrapAngleStatic (corpus-exact); angle.cpp is
+  gone (the Radian Lerp had no caller: EulerAngles::Lerp already used the Scalar Stuff::Lerp). The corpus wrap rows now compare the
+  wrappers with the verbatim Radian::Normalize bodies kept in the test.
 Proof every batch: sim pair mc2_03/mc2_24 identical to the pre-port reference (exe 579b60e2c) and to the committed baselines; saveload mc2_03
 fb63e85ac66966cf and mc2_01 d46e3e5e30d26b15 = baselines; S5.2/S5.4 GL/VK capture pair day mc2_01 + night mc2_10 viewed.
 Left on Stuff: the types themselves (Vector3D ~2,000 uses outside stuff/, Point3D, the matrices, UnitQuaternion, angles) and every op whose

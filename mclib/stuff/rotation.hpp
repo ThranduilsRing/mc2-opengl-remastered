@@ -48,7 +48,7 @@ namespace Stuff {
 	class EulerAngles
 	{
 	public:
-		Radian
+		Scalar
 			pitch,
 			yaw,
 			roll;
@@ -62,9 +62,9 @@ namespace Stuff {
 		EulerAngles()
 			{}
 		EulerAngles(
-			const Radian &p,
-			const Radian &y,
-			const Radian &r
+			Scalar p,
+			Scalar y,
+			Scalar r
 		)
 			{pitch = p; yaw = y; roll = r;}
 		EulerAngles(const EulerAngles &a)
@@ -122,14 +122,14 @@ namespace Stuff {
 				return 3;
 			}
 
-		const Radian&
+		const Scalar&
 			operator[](size_t index) const
 				{
 					Check_Pointer(this);
 					Verify(static_cast<unsigned>(index) <= Z_Axis);
 					return (&pitch)[index];
 				}
-		Radian&
+		Scalar&
 			operator[](size_t index)
 				{
 					Check_Pointer(this);

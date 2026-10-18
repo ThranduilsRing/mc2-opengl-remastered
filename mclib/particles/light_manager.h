@@ -43,7 +43,7 @@ public:
             m_intensity,
             m_inner,
             m_outer;
-        Stuff::Radian
+        Stuff::Scalar
             m_spread;
     };
 

@@ -6,6 +6,7 @@
 //===========================================================================//
 
 #include"stuffheaders.hpp"
+#include"../math/mc2_math.h"
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ EulerAngles ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -199,9 +200,9 @@ EulerAngles&
 {
 	Check_Pointer(this);
 
-	pitch.Normalize();
-	yaw.Normalize();
-	roll.Normalize();
+	pitch = mc2::math::wrapAngleMember(pitch);
+	yaw = mc2::math::wrapAngleMember(yaw);
+	roll = mc2::math::wrapAngleMember(roll);
 	return *this;
 }
 
@@ -218,11 +219,11 @@ EulerAngles&
 	{
 		Check_Object(&angle);
 		SPEW((group, "<+"));
-		Spew(group, angle.pitch);
+		SPEW((group, "%f rad+", angle.pitch));
 		SPEW((group, ",+"));
-		Spew(group, angle.yaw);
+		SPEW((group, "%f rad+", angle.yaw));
 		SPEW((group, ",+"));
-		Spew(group, angle.roll);
+		SPEW((group, "%f rad+", angle.roll));
 		SPEW((group, ">+"));
 	}
 #endif
@@ -549,7 +550,7 @@ UnitQuaternion&
 	// rotation
 	//---------------------------------------------------------------------
 	//
-	const Scalar half = 0.5f * Radian::Normalize(rotation);
+	const Scalar half = 0.5f * mc2::math::wrapAngleStatic(rotation);
 	const Scalar
 		half_angleSine = sinf(half),
 		half_angleCosine = cosf(half);
@@ -595,7 +596,7 @@ Scalar
 		return 0.0f;
 	}
 
-	Radian angle;
+	Scalar angle;
 	angle = Arctan(sine_of_half, w);
 
 	return angle * 2.0f;
@@ -696,7 +697,7 @@ UnitQuaternion&
 		return *this;
 	}
 
-	Radian angle;
+	Scalar angle;
 	angle = Arctan(sine_of_half, q.w);
 	angle *= t;
 	const Scalar

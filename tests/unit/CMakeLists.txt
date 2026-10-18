@@ -430,7 +430,6 @@ endif()
 if(TARGET glm::glm)
     set(MC2_IDENTITY_SOURCES
         test_stuff_glm_identity.cpp
-        ${MC2_WORKTREE_ROOT}/mclib/stuff/angle.cpp
         ${MC2_WORKTREE_ROOT}/mclib/stuff/vector3d.cpp
         ${MC2_WORKTREE_ROOT}/mclib/stuff/point3d.cpp
         ${MC2_WORKTREE_ROOT}/mclib/stuff/matrix.cpp

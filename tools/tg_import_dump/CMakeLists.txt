@@ -77,7 +77,6 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/object_admission_predicate.cpp
     # --- Stuff library (game-free math + containers) ---
     ${MC2_ROOT}/mclib/stuff/affinematrix.cpp
-    ${MC2_ROOT}/mclib/stuff/angle.cpp
     ${MC2_ROOT}/mclib/stuff/color.cpp
     ${MC2_ROOT}/mclib/stuff/extentbox.cpp
     ${MC2_ROOT}/mclib/stuff/line.cpp

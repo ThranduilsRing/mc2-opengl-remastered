@@ -27,7 +27,7 @@ namespace Stuff {
 	class YawPitchRange
 	{
 	public:
-		Radian
+		Scalar
 			yaw,
 			pitch;
 		Scalar
@@ -42,8 +42,8 @@ namespace Stuff {
 		YawPitchRange()
 			{}
 		YawPitchRange(
-			const Radian &y,
-			const Radian &p,
+			Scalar y,
+			Scalar p,
 			const Scalar r
 		)
 			{Check_Pointer(this); pitch = p; yaw = y; range = r;}
