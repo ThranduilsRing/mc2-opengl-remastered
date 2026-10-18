@@ -13,18 +13,18 @@
   "gui"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2950,
+  "GameOS/gameos/engine_present_vk.cpp": 2900,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1749,
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2366,
   "GameOS/gameos/utils/shader_builder.cpp": 1550,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1808,
-  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1575,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1717,
+  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1565,
   "GameOS/include/gameos.hpp": 3757,
-  "RenderCore/RendererFeatureRegistry.h": 1678,
+  "RenderCore/RendererFeatureRegistry.h": 1664,
   "code/artlry.cpp": 1841,
   "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2770,
-  "code/gamecam.cpp": 1596,
+  "code/gamecam.cpp": 1614,
   "code/gameobj.cpp": 2255,
   "code/infowindow.cpp": 1728,
   "code/logisticsdialog.cpp": 2148,
@@ -45,10 +45,10 @@
   "code/warrior.h": 2176,
   "editor/tests/test_objectives.cpp": 1996,
   "gui/alistbox.cpp": 1513,
-  "mclib/ablenv.cpp": 1571,
+  "mclib/ablenv.cpp": 1601,
   "mclib/ablrtn.cpp": 1798,
   "mclib/assimp_importer.cpp": 1576,
-  "mclib/camera.h": 1814,
+  "mclib/camera.h": 1815,
   "mclib/file.cpp": 2599,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/mapdata.cpp": 2630,
@@ -62,7 +62,7 @@
   "mclib/tgl.h": 1787,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "95b25584d",
+ "head": "c8b831f86",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -71,7 +71,7 @@
    "max_lines": 485
   },
   "GameOS": {
-   "files": 359,
+   "files": 364,
    "files_over_1500": 7,
    "files_over_3000": 1,
    "max_lines": 3757
@@ -80,19 +80,19 @@
    "files": 14,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1196
+   "max_lines": 1154
   },
   "RenderCore": {
-   "files": 55,
+   "files": 58,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 1678
+   "max_lines": 1664
   },
   "RenderWorld": {
-   "files": 6,
+   "files": 8,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1116
+   "max_lines": 1040
   },
   "code": {
    "files": 408,
@@ -113,7 +113,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 586,
+   "files": 578,
    "files_over_1500": 15,
    "files_over_3000": 0,
    "max_lines": 2630
@@ -136,7 +136,7 @@
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2950
+   "lines": 2900
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -244,15 +244,15 @@
   },
   {
    "file": "mclib/camera.h",
-   "lines": 1814
+   "lines": 1815
   },
   {
-   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
-   "lines": 1808
+   "file": "mclib/ablrtn.cpp",
+   "lines": 1798
   }
  ],
  "total": {
-  "files": 1919,
+  "files": 1921,
   "files_over_1500": 48,
   "files_over_3000": 1,
   "max_lines": 3757

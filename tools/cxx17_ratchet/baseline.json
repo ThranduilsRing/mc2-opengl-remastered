@@ -196,7 +196,7 @@
    "LG09": 1934,
    "LG10": 33,
    "LG11": 67,
-   "LG12a": 200,
+   "LG12a": 190,
    "LG12b": 233,
    "LG13": 447,
    "LG14": 112,
@@ -4416,9 +4416,6 @@
   "mclib/stuff/color.cpp": {
    "LG10": 2
   },
-  "mclib/stuff/extentbox.cpp": {
-   "LG12a": 1
-  },
   "mclib/stuff/filestream.cpp": {
    "LG03": 11,
    "LG05": 1,
@@ -4535,18 +4532,12 @@
    "LG03": 1,
    "LG06": 7
   },
-  "mclib/stuff/plane.cpp": {
-   "LG12a": 2
-  },
   "mclib/stuff/plug.cpp": {
    "LG03": 5
   },
   "mclib/stuff/plug.hpp": {
    "LG02": 2,
    "LG03": 1
-  },
-  "mclib/stuff/polar.cpp": {
-   "LG12a": 5
   },
   "mclib/stuff/random.cpp": {
    "LG03": 2
@@ -4590,9 +4581,6 @@
    "LG01": 4,
    "LG03": 6,
    "LG14": 2
-  },
-  "mclib/stuff/sphere.cpp": {
-   "LG12a": 2
   },
   "mclib/stuff/stuff.cpp": {
    "LG03": 2
@@ -4945,7 +4933,7 @@
    "LG20": 3
   }
  },
- "head": "75e39b2a2",
+ "head": "c8b831f86",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
