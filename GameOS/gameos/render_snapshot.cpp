@@ -12,6 +12,7 @@
 // RenderCore::FrameArena instances. No per-frame heap allocation.
 
 #include "render_snapshot.h"
+#include "../../RenderCore/FramePackets.h"
 #include "../../RenderWorld/RenderWorld.h"
 #include "gos_static_prop_registry.h"
 #include "gos_static_prop_batcher.h"
@@ -57,9 +58,8 @@ struct CachedSnapshotCounters {
 static CachedSnapshotCounters s_cachedCounters = {};
 static constexpr size_t kArenaBytes = 1024u * 1024u;
 alignas(16) static uint8_t s_arenaBuffers[2][kArenaBytes];
-static RenderCore::FrameArena s_frameArenas[2];
-static bool                   s_arenasInited = false;
-static uint32_t               s_arenaIndex   = 0;
+static RenderCore::FrameSlotArenas s_slotArenas;   // slot = frame % 2; the frame's first user resets the slot's arena
+static bool                        s_arenasInited = false;
 
 // ---------------------------------------------------------------------------
 // v2.3: last-produced snapshot, valid for one full frame.
@@ -93,14 +93,11 @@ RenderSnapshot ExtractRenderSnapshot()
     snap.arenaOverflow = false;
     // Lazy init on first call (avoids static-init order dependency).
     if (!s_arenasInited) {
-        s_frameArenas[0].init(s_arenaBuffers[0], kArenaBytes);
-        s_frameArenas[1].init(s_arenaBuffers[1], kArenaBytes);
+        s_slotArenas.init(s_arenaBuffers[0], s_arenaBuffers[1], kArenaBytes);
         s_arenasInited = true;
     }
-    // Ping-pong: flip to the idle arena, reset it, and use it for this frame.
-    s_arenaIndex ^= 1u;
-    s_frameArenas[s_arenaIndex].reset(static_cast<uint32_t>(s_frameIndex));
-    snap.frameArena = s_frameArenas[s_arenaIndex];
+    // The frame's slot arena (frame % 2): reset here, the previous frame's data sits untouched in the other slot.
+    snap.frameArena = s_slotArenas.begin(s_frameIndex);
 
     // -----------------------------------------------------------------------
     // v0: mech placeholder (legacy zero-size struct; kept for log line compat)

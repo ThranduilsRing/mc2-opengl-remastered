@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_mech_batcher_internal.h.
 #include "gos_mech_batcher_internal.h"
 #include "mc2fmt.h"
+#include "../../RenderCore/FramePackets.h"
 
 
 #ifdef MC2_VULKAN_ISLAND
@@ -89,7 +90,7 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     }
     // VK-PARITY-MECH-1: default mech FS shading inputs from the GL producers.
     {
-        const RenderCore::ViewUniforms& vu = RenderCore::getCurrentView().viewUniforms;
+        const RenderCore::ViewUniforms& vu = RenderCore::framePackets().mainView().uniforms;
         for (int k = 0; k < 4; ++k) out->cameraWorldPos[k] = vu.cameraWorldPos[k];
         GpuMechShadingParams shp{};
         gpuMechShadingParams(&shp);

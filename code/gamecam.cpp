@@ -12,6 +12,7 @@
 // Include Files
 #ifndef GAMECAM_H
 #include"gamecam.h"
+#include"../RenderCore/FramePackets.h"
 #include"tex_resolve_table.h"
 #endif
 
@@ -103,18 +104,10 @@ CameraPtr eye = NULL;
 // MC2_SCENE_LIGHTING_ASSERT=1 (additionally WARN, never abort, when the camera
 // sun and terrain sun diverge — that divergence is EXPECTED today and is the
 // headline fragmentation this slice surfaces). No-op when neither gate is set.
-void mc2SceneLightingTrace()
+// Fills `s` from the camera lights and the terrain / sky / IBL sources. False when there is no camera yet.
+static bool captureSceneLighting(SceneLighting& s)
 {
-    const bool doTrace  = mc2::gate::get<"MC2_SCENE_LIGHTING_TRACE">();
-    const bool doAssert = mc2::gate::get<"MC2_SCENE_LIGHTING_ASSERT">();
-    if (!doTrace && !doAssert) return;
-
-    static unsigned s_frame = 0;
-    ++s_frame;
-    if ((s_frame % 300u) != 1u) return;   // self-throttle: one window per ~300 frames
-    if (!eye) return;
-
-    SceneLighting s;
+    if (!eye) return false;
     s.sun_dir[0] = eye->lightDirection.x;
     s.sun_dir[1] = eye->lightDirection.y;
     s.sun_dir[2] = eye->lightDirection.z;
@@ -144,6 +137,23 @@ void mc2SceneLightingTrace()
     s.active_light_count = (int)eye->getNumLights();  // public accessor returns numActiveLights (frustum-filtered)
     s.sky_number   = gos_GetSkyNumber();
     s.ibl_sh_present = (g_iblShStrength > 0.0f);
+    return true;
+}
+
+void mc2SceneLightingTrace()
+{
+    const bool doTrace  = mc2::gate::get<"MC2_SCENE_LIGHTING_TRACE">();
+    const bool doAssert = mc2::gate::get<"MC2_SCENE_LIGHTING_ASSERT">();
+    if (!doTrace && !doAssert) return;
+
+    static unsigned s_frame = 0;
+    ++s_frame;
+    if ((s_frame % 300u) != 1u) return;   // self-throttle: one window per ~300 frames
+    // The published LightingPacket of this frame (GameCamera::renderViewUniforms captured it); the trace reads what recording reads.
+    const RenderCore::LightingPacket& lp = RenderCore::framePackets().published().lighting;
+    if (!lp.valid) return;
+    const SceneLighting& s = lp.scene;
+    const float tx = s.terrain_light_dir_current[0], ty = s.terrain_light_dir_current[1], tz = s.terrain_light_dir_current[2];
 
     // Parity headline: angle between the OBJECT/camera sun and the TERRAIN sun.
     float lc = sqrtf(s.sun_dir[0]*s.sun_dir[0] + s.sun_dir[1]*s.sun_dir[1] + s.sun_dir[2]*s.sun_dir[2]);
@@ -249,6 +259,23 @@ void GameCamera::renderViewUniforms() {
 			mainView.mode = RenderCore::ViewMode::Visual;
 			mainView.kind = RenderCore::ViewKind::MainScene;
 			RenderCore::setCurrentView(mainView);
+
+			// PUBLISH POINT (shared-foundations P1): the frame's views and scene lighting are built here, once, and frozen. Recording (the island
+			// feeds, the lighting trace) reads the published packets, not the live globals.
+			extern uint32_t g_mc2FrameCounter;
+			if (RenderCore::FramePackets* fp = RenderCore::framePackets().begin(g_mc2FrameCounter)) {
+				RenderCore::ViewPacket vp{};
+				vp.id = mainView.id;
+				vp.kind = mainView.kind;
+				vp.mode = mainView.mode;
+				for (int i = 0; i < 4; ++i) vp.viewport[i] = mainView.viewport[i];
+				vp.uniforms = vu;
+				vp.frame = g_mc2FrameCounter;
+				vp.simTick = static_cast<uint64_t>(turn);   // the sim tick (mclib/timing.h) the frame renders
+				fp->addView(vp);
+				fp->lighting.valid = captureSceneLighting(fp->lighting.scene);
+				RenderCore::framePackets().publish();
+			}
 		}
 
 		// F1-3D flip: upload UBO by default; kill-switch MC2_VIEW_UNIFORMS=0.
