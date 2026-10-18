@@ -3,7 +3,7 @@
 #include "Gates/gate.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "stuff/stuff.hpp"   // Stuff::Vector4D
-#include "stuff/vector3d.hpp" // Stuff::Vector3D (for logProjectZBypassDisagreement)
+#include "math/mc2_xform.h" // glm::vec3 (for logProjectZBypassDisagreement)
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -196,7 +196,7 @@ ProjectZBypassMode projectZBypassMode() {
 }
 
 void logProjectZBypassDisagreement(const char* wrapper,
-                                   const Stuff::Vector3D& world,
+                                   const glm::vec3& world,
                                    const Stuff::Vector4D& legacyRawClip,
                                    bool legacyAdmit,
                                    const Stuff::Vector4D& bypassClipGL,
@@ -228,7 +228,7 @@ void logProjectZBypassDisagreement(const char* wrapper,
     std::fflush(stdout);
 }
 
-void logSelectionPickingScreenDelta(const Stuff::Vector3D& world,
+void logSelectionPickingScreenDelta(const glm::vec3& world,
                                     const Stuff::Vector4D& legacyScreen,
                                     float bypassScreenX, float bypassScreenY,
                                     float dxPx, float dyPx)
@@ -279,7 +279,7 @@ ScreenXYPredicateMode screenXYPredicateMode() {
     return s_sxyMode;
 }
 
-void logScreenXYScreenDelta(const Stuff::Vector3D& world,
+void logScreenXYScreenDelta(const glm::vec3& world,
                             const Stuff::Vector4D& legacyScreen,
                             float bypassScreenX, float bypassScreenY,
                             float dxPx, float dyPx)

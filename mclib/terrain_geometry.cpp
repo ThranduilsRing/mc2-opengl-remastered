@@ -104,7 +104,7 @@ void Terrain::geometry (void)
 	//---------------------------------------------------------------------
 	//-----------------------------------
 
-	Stuff::Vector3D cameraPos;
+	glm::vec3 cameraPos;
 	cameraPos.x = -eye->getCameraOrigin().x;
 	cameraPos.y = eye->getCameraOrigin().z;
 	cameraPos.z = eye->getCameraOrigin().y;
@@ -238,11 +238,11 @@ void Terrain::geometry (void)
 			if (objBlockInfo[b].active) continue;
 			const long bx = b % blocksMapSide;
 			const long by = b / blocksMapSide;
-			Stuff::Vector3D mn(
+			glm::vec3 mn(
 				float(bx * verticesBlockSide - halfVerticesMapSide) * worldUnitsPerVertex,
 				float(halfVerticesMapSide - (by + 1) * verticesBlockSide) * worldUnitsPerVertex,
 				kBlockZMin);
-			Stuff::Vector3D mx(
+			glm::vec3 mx(
 				mn.x + worldUnitsBlockSide,
 				mn.y + worldUnitsBlockSide,
 				kBlockZMax);
@@ -305,15 +305,15 @@ void Terrain::geometry (void)
 		for (long b = 0; b < nB; ++b)
 		{
 			const long bx = b % blocksMapSide, by = b / blocksMapSide;
-			Stuff::Vector3D bc(
+			glm::vec3 bc(
 				(float(bx * verticesBlockSide) + verticesBlockSide * 0.5f) * worldUnitsPerVertex - hMapW,
 				hMapW - (float(by * verticesBlockSide) + verticesBlockSide * 0.5f) * worldUnitsPerVertex,
 				cameraPos.z);
-			Stuff::Vector3D oc; oc.Subtract(bc, cameraPos);
+			glm::vec3 oc; oc = bc - cameraPos;
 			Camera::cameraFrame.trans_to_frame(oc);
-			const float distEye = oc.GetApproximateLength();
-			Stuff::Vector3D cv = oc; cv.z = 0.0f;
-			const float distClip = cv.GetApproximateLength();
+			const float distEye = glm::length(oc);
+			glm::vec3 cv = oc; cv.z = 0.0f;
+			const float distClip = glm::length(cv);
 			bool act = (distClip <= (kNearField + blockR));
 			if (!act)
 			{

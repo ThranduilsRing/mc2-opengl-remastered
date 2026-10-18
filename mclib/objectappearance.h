@@ -70,7 +70,7 @@ class ObjectAppearance: public Appearance
 		Stuff::Vector2DOf<long>						shapeMin;
 		Stuff::Vector2DOf<long>						shapeMax;
 
-		Stuff::Vector3D								position;
+		glm::vec3								position;
 		float										rotation;
 		long										selected; // actually a bit field...
 		long										teamId;

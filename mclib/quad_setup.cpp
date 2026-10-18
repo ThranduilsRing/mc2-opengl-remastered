@@ -578,7 +578,7 @@ void TerrainQuad::setupTextures (void)
 		(vertices[2]->pVertex->water & 1) ||
 		(vertices[3]->pVertex->water & 1))
 	{
-		Stuff::Vector3D vertex3D(vertices[0]->vx,vertices[0]->vy,Terrain::waterElevation);
+		glm::vec3 vertex3D(vertices[0]->vx,vertices[0]->vy,Terrain::waterElevation);
 		Stuff::Vector4D screenPos;
 
 		long clipped1 = vertices[0]->clipInfo + vertices[1]->clipInfo + vertices[2]->clipInfo;

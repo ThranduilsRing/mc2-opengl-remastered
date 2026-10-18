@@ -256,7 +256,7 @@ static void emit_summary(uint32_t frames) {
 void projectz_trace_dispatch(
     const char*            siteId,
     const char*            siteCat,
-    const Stuff::Vector3D& worldPt,
+    const glm::vec3& worldPt,
     const Stuff::Vector4D& rawClip,
     const Stuff::Vector4D& screen,
     bool                   usePerspective,

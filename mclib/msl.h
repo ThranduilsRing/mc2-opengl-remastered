@@ -102,8 +102,8 @@ class TG_TypeMultiShape
 #endif
 		
 	public:			
-		Stuff::Vector3D		maxBox;					//Bounding Box Max Coords
-		Stuff::Vector3D		minBox;					//Bounding Box Min Coords
+		glm::vec3		maxBox;					//Bounding Box Max Coords
+		glm::vec3		minBox;					//Bounding Box Min Coords
 		float				extentRadius;			//Bounding Sphere Coords
 		
 	//-----------------
@@ -201,9 +201,9 @@ class TG_TypeMultiShape
 			return NULL;
 		}
 
-		Stuff::Point3D GetNodeCenter (long shapeNum)
+		glm::vec3 GetNodeCenter (long shapeNum)
 		{
-			Stuff::Point3D result;
+			glm::vec3 result;
 			result.x = result.y = result.z = 0.0f;
 
 			if ((shapeNum >= 0) && (shapeNum < numTG_TypeShapes))
@@ -212,9 +212,9 @@ class TG_TypeMultiShape
 			return result;
 		}
 
-		Stuff::Point3D GetNodeCenter (char * nodeId)
+		glm::vec3 GetNodeCenter (char * nodeId)
 		{
-			Stuff::Point3D result;
+			glm::vec3 result;
 			result.x = result.y = result.z = 0.0f;
 
 			for (int i=0;i<numTG_TypeShapes;i++)
@@ -448,7 +448,7 @@ class TG_MultiShape
 		//Function returns 0 if any one vertex screen position is off screen.
 		//Function returns 1 is all vertex screen positions are on screen.
 		// NOTE:  THIS IS NOT A RIGOROUS CLIP!!!!!!!!!
-		long TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuaternion *rot);
+		long TransformMultiShape (glm::vec3 *pos, glm::quat *rot);
 
 		// Slice 2 (object-offload) — Stage 2.B: positions-only variant.
 		// Same body as TransformMultiShape (heirarchy animation, shapeToClip
@@ -461,14 +461,14 @@ class TG_MultiShape
 		// existing inView||g_useGpuStaticProps cull gate, gated on
 		// g_useGpuObjects && !needsFullBakeNextFrame &&
 		// GpuStaticPropBatcher::isMultiShapeEligibleForGpuObjects(this).
-		long TransformMultiShape_PositionsOnly (Stuff::Point3D *pos, Stuff::UnitQuaternion *rot);
+		long TransformMultiShape_PositionsOnly (glm::vec3 *pos, glm::quat *rot);
 
 		// Track B (widen registry): recipe-build-only variant.
 		// Runs the hierarchy traversal to populate listOfShapes[i].shapeToWorld
 		// per leaf without allocating from TGL vertex/face/color pools and without
 		// requiring TG_Shape::s_cameraOrigin to be non-null. Safe to call during
 		// Mission::init before the camera is initialized.
-		long TransformMultiShape_BuildRecipe (Stuff::Point3D *pos, Stuff::UnitQuaternion *rot);
+		long TransformMultiShape_BuildRecipe (glm::vec3 *pos, glm::quat *rot);
 
 		// Slice D-leaf-skip-v2 (2026-05-09): runtime alias of _BuildRecipe for the
 		// GPU mech body callsite. Reuses s_buildRecipeOnly mechanism to skip
@@ -477,14 +477,14 @@ class TG_MultiShape
 		// the GPU mech batcher's submitActor and getNodePosition read).
 		// Aliased rather than reusing _BuildRecipe directly for self-documenting
 		// use at the mech runtime callsite vs the static-prop registry init use.
-		long TransformMultiShape_HierarchyOnly (Stuff::Point3D *pos, Stuff::UnitQuaternion *rot);
+		long TransformMultiShape_HierarchyOnly (glm::vec3 *pos, glm::quat *rot);
 
 		//This function rotates the heirarchy from this node down.  Used for torso twists, arms, etc.
 		// SHould only be called once this way.  This way is DAMNED SLOW!!!  STRICMP!  IT returns the node num
 		// Call that from then on!
-		long SetNodeRotation (const char *nodeName, Stuff::UnitQuaternion *rot);
+		long SetNodeRotation (const char *nodeName, glm::quat *rot);
 
-		void SetNodeRotation (long nodeNum, Stuff::UnitQuaternion *rot)
+		void SetNodeRotation (long nodeNum, glm::quat *rot)
 		{
 			if ((nodeNum >= 0) && (nodeNum < numTG_Shapes))
 				listOfShapes[nodeNum].baseRotation = *rot;
@@ -530,8 +530,8 @@ class TG_MultiShape
 			return 0;
 		}
 
-		Stuff::Vector3D GetShapeVertexInWorld(long shapeNum, long vertexNum, float rotation);
-		Stuff::Vector3D GetShapeVertexInEditor(long shapeNum, long vertexNum, float rotation);
+		glm::vec3 GetShapeVertexInWorld(long shapeNum, long vertexNum, float rotation);
+		glm::vec3 GetShapeVertexInEditor(long shapeNum, long vertexNum, float rotation);
 		
 		float GetFrameNum (void)
 		{
@@ -579,12 +579,12 @@ class TG_MultiShape
 			return myMultiType->extentRadius;
 		}
 		
-		Stuff::Vector3D GetMaxBox (void)
+		glm::vec3 GetMaxBox (void)
 		{
 			return myMultiType->maxBox;
 		}
 		
-		Stuff::Vector3D GetMinBox (void)
+		glm::vec3 GetMinBox (void)
 		{
 			return myMultiType->minBox;
 		}
@@ -597,9 +597,9 @@ class TG_MultiShape
 			return myMultiType->SetTextureAlpha(textureNum,alphaFlag);
 		}
 
-		Stuff::Point3D GetRootNodeCenter (void)
+		glm::vec3 GetRootNodeCenter (void)
 		{
-			Stuff::Point3D result;
+			glm::vec3 result;
 			result.x = result.y = result.z = 0.0f;
 			for (int i=0;i<numTG_Shapes;i++)
 			{
@@ -612,9 +612,9 @@ class TG_MultiShape
 			return result;
 		}
 
-		Stuff::Point3D GetRootRelativeNodeCenter (void)
+		glm::vec3 GetRootRelativeNodeCenter (void)
 		{
-			Stuff::Point3D result;
+			glm::vec3 result;
 			result.x = result.y = result.z = 0.0f;
 			for (int i=0;i<numTG_Shapes;i++)
 			{
@@ -653,8 +653,8 @@ class TG_MultiShape
 				listOfShapes[i].node->SetLightsOut(lightFlag);
 		}
 		
- 		Stuff::Vector3D GetTransformedNodePosition (Stuff::Point3D *pos, Stuff::UnitQuaternion *rot, const char *nodeId);
- 		Stuff::Vector3D GetTransformedNodePosition (Stuff::Point3D *pos, Stuff::UnitQuaternion *rot, long nodeId);
+ 		glm::vec3 GetTransformedNodePosition (glm::vec3 *pos, glm::quat *rot, const char *nodeId);
+ 		glm::vec3 GetTransformedNodePosition (glm::vec3 *pos, glm::quat *rot, long nodeId);
 
 		TG_TypeMultiShapePtr GetMultiType (void)
 		{

@@ -1041,7 +1041,7 @@ long SoundSystem::findOpenChannel (long start, long end)
 }	
 
 //---------------------------------------------------------------------------
-long SoundSystem::playDigitalSample (unsigned long sampleId, Stuff::Vector3D pos, bool allowDupes)
+long SoundSystem::playDigitalSample (unsigned long sampleId, glm::vec3 pos, bool allowDupes)
 {
 	if ((useSound && allowDupes) || (!isPlayingSample(sampleId) && !allowDupes))
 	{
@@ -1056,9 +1056,9 @@ long SoundSystem::playDigitalSample (unsigned long sampleId, Stuff::Vector3D pos
 			float panVolume = 0.0f;
 			if (eye && (pos.z != -9999.0f))
 			{
-				Stuff::Vector3D distance;
-				distance.Subtract(eye->getPosition(),pos);
-				float dist = distance.GetApproximateLength();
+				glm::vec3 distance;
+				distance = eye->getPosition() - pos;
+				float dist = glm::length(distance);
 				if (dist < FALLOFF_DISTANCE)
 					distanceVolume = (FALLOFF_DISTANCE - dist) / FALLOFF_DISTANCE;
 				else

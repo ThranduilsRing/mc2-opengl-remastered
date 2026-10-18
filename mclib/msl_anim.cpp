@@ -22,20 +22,20 @@ void _TG_Animation::SaveBinaryCopy (File *binFile)
 		binFile->writeFloat(tickRate);
 		
 		if (quat)
-			binFile->writeInt(sizeof(Stuff::UnitQuaternion) * numFrames);
+			binFile->writeInt(sizeof(glm::quat) * numFrames);
 		else
 			binFile->writeInt(0);
 			
 		if (pos)
-			binFile->writeInt(sizeof(Stuff::Point3D) * numFrames);
+			binFile->writeInt(sizeof(glm::vec3) * numFrames);
 		else
 			binFile->writeInt(0);
 		
 		if (quat)
-			binFile->write((MemoryPtr)quat,sizeof(Stuff::UnitQuaternion) * numFrames);
+			binFile->write((MemoryPtr)quat,sizeof(glm::quat) * numFrames);
 			
 		if (pos)
-			binFile->write((MemoryPtr)pos,sizeof(Stuff::Point3D) * numFrames);
+			binFile->write((MemoryPtr)pos,sizeof(glm::vec3) * numFrames);
 	}
 }
 
@@ -54,8 +54,8 @@ bool _TG_Animation::LoadBinaryCopy (File *binFile)
 	// Frame counts and track sizes are file content: a track must be exactly numFrames records, and no animation has this many frames.
 	constexpr DWORD kMaxFrames = 100000;
 	const bool sizesOK = numFrames <= kMaxFrames
-		&& (quatRAM == 0 || static_cast<size_t>(quatRAM) == sizeof(Stuff::UnitQuaternion) * numFrames)
-		&& (posRAM == 0 || static_cast<size_t>(posRAM) == sizeof(Stuff::Point3D) * numFrames)
+		&& (quatRAM == 0 || static_cast<size_t>(quatRAM) == sizeof(glm::quat) * numFrames)
+		&& (posRAM == 0 || static_cast<size_t>(posRAM) == sizeof(glm::vec3) * numFrames)
 		&& quatRAM >= 0 && posRAM >= 0;
 	if (!sizesOK)
 	{
@@ -413,7 +413,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 						listOfAnimation[i].tickRate = tickRate;
 						listOfAnimation[i].shapeId = 0xffffffff;
 		
-						Stuff::Point3D thisOffset = shape->GetNodeCenter(i);
+						glm::vec3 thisOffset = shape->GetNodeCenter(i);
 		
 						char LineData[1024];
 						GetNextLine(animScan,LineData);
@@ -497,7 +497,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 							mc2::fmt::to_buf(nodeName, "{} {:d}", mc2::fmt::safe(ASE_ANIM_ROT_SAMPLE), mc2::fmt::as_i32((int)timeStamp));
 							scanData = strstr(LineData,nodeName);
 		
-							Stuff::UnitQuaternion thisFrame;
+							glm::quat thisFrame;
 	
 							float b=0.0f,c=0.0f,d=0.0f,phi=0.0f;
 		
@@ -542,14 +542,14 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 		
 							if (!j)
 							{
-								thisFrame.Normalize();
+								thisFrame = glm::normalize(thisFrame);
 								listOfAnimation[i].quat[j] = thisFrame;
 							}
 							else
 							{
-								thisFrame.Normalize();
-								listOfAnimation[i].quat[j].Multiply(listOfAnimation[i].quat[j-1],thisFrame);
-								listOfAnimation[i].quat[j].Normalize();
+								thisFrame = glm::normalize(thisFrame);
+								listOfAnimation[i].quat[j] = mc2::math::composeQuat(listOfAnimation[i].quat[j-1], thisFrame);
+								listOfAnimation[i].quat[j] = glm::normalize(listOfAnimation[i].quat[j]);
 							}
 		
 							timeStamp += tickRate;

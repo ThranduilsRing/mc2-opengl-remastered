@@ -112,7 +112,7 @@ long TG_TypeMultiShape::SetTextureAlpha (DWORD textureNum, bool alphaFlag)
 
 //-------------------------------------------------------------------------------
 //This function rotates the heirarchy from this node down.  Used for torso twists, arms, etc.
-long TG_MultiShape::SetNodeRotation (const char *nodeName, Stuff::UnitQuaternion *rot)
+long TG_MultiShape::SetNodeRotation (const char *nodeName, glm::quat *rot)
 {
 	for (long i=0;i<numTG_Shapes;i++)
 	{
@@ -130,9 +130,9 @@ long TG_MultiShape::SetNodeRotation (const char *nodeName, Stuff::UnitQuaternion
 
 //----------------------------------------------------------------------------------------------------
 //This function returns the world translated position of the vertex asked for with rotation applied.
-Stuff::Vector3D TG_MultiShape::GetShapeVertexInEditor(long shapeNum, long vertexNum, float rotation)
+glm::vec3 TG_MultiShape::GetShapeVertexInEditor(long shapeNum, long vertexNum, float rotation)
 {
-	Stuff::Vector3D result;
+	glm::vec3 result;
 	result.x = result.y = result.z = 0.0f;
 	
 	if ((shapeNum >= 0) && (shapeNum < numTG_Shapes) && 
@@ -140,7 +140,7 @@ Stuff::Vector3D TG_MultiShape::GetShapeVertexInEditor(long shapeNum, long vertex
 	{
 		//-------------------------------
 		// Get the vertex in question.
-		Stuff::Vector3D vertexPos;
+		glm::vec3 vertexPos;
 		TG_TypeShapePtr typeShape = (TG_TypeShapePtr)myMultiType->listOfTypeShapes[shapeNum];
 		vertexPos.x = -(typeShape->listOfTypeVertices[vertexNum].position.x + typeShape->GetRelativeNodeCenter().x + GetRootNodeCenter().x);
 		vertexPos.z = typeShape->listOfTypeVertices[vertexNum].position.y + typeShape->GetRelativeNodeCenter().y + GetRootNodeCenter().y; 
@@ -163,9 +163,9 @@ Stuff::Vector3D TG_MultiShape::GetShapeVertexInEditor(long shapeNum, long vertex
 
 //----------------------------------------------------------------------------------------------------
 //This function returns the world translated position of the vertex asked for with rotation applied.
-Stuff::Vector3D TG_MultiShape::GetShapeVertexInWorld(long shapeNum, long vertexNum, float rotation)
+glm::vec3 TG_MultiShape::GetShapeVertexInWorld(long shapeNum, long vertexNum, float rotation)
 {
-	Stuff::Vector3D result;
+	glm::vec3 result;
 	result.x = result.y = result.z = 0.0f;
 
 	if ((shapeNum >= 0) && (shapeNum < numTG_Shapes) && 
@@ -173,10 +173,10 @@ Stuff::Vector3D TG_MultiShape::GetShapeVertexInWorld(long shapeNum, long vertexN
 	{
 		//-------------------------------
 		// Get the vertex in question.
-		Stuff::Point3D vertexPos;
+		glm::vec3 vertexPos;
 		TG_TypeShapePtr typeShape = (TG_TypeShapePtr)myMultiType->listOfTypeShapes[shapeNum];
 		
-		vertexPos.Multiply(typeShape->listOfTypeVertices[vertexNum].position,listOfShapes[shapeNum].shapeToWorld);
+		vertexPos = mc2::math::transformPoint(typeShape->listOfTypeVertices[vertexNum].position, listOfShapes[shapeNum].shapeToWorld);
 		
 		mc2ToRender(result, vertexPos);
 		
@@ -216,21 +216,21 @@ long TG_MultiShape::SetLightList (TG_LightPtr *lightList, DWORD nLights)
 }	
 
 //-------------------------------------------------------------------------------
-Stuff::Vector3D TG_MultiShape::GetTransformedNodePosition (Stuff::Point3D *pos, Stuff::UnitQuaternion *rot, const char *nodeId)
+glm::vec3 TG_MultiShape::GetTransformedNodePosition (glm::vec3 *pos, glm::quat *rot, const char *nodeId)
 {
-	Stuff::LinearMatrix4D 	shapeOrigin;
-	Stuff::LinearMatrix4D 	localShapeOrigin;
+	glm::mat4 	shapeOrigin;
+	glm::mat4 	localShapeOrigin;
 //	Stuff::LinearMatrix4D 	invShapeOrigin;
 	
-	shapeOrigin.BuildRotation(*rot);
-	shapeOrigin.BuildTranslation(*pos);
+	mc2::math::buildRotation(shapeOrigin, *rot);
+	mc2::math::buildTranslation(shapeOrigin, *pos);
 //	invShapeOrigin.Invert(shapeOrigin);
 	
-	Stuff::EulerAngles angles(*rot);
+	mc2::math::Euler angles = mc2::math::eulerFromQuat(*rot);
 
 	long i=0;
 
-	Stuff::Vector3D result;
+	glm::vec3 result;
 	result.x = result.y = result.z = 0.0f;
 	
 	for (i=0;i<numTG_Shapes;i++)
@@ -241,9 +241,9 @@ Stuff::Vector3D TG_MultiShape::GetTransformedNodePosition (Stuff::Point3D *pos, 
 		// This thing may not have updated itself this turn yet!!!
 		if (S_stricmp(listOfShapes[i].node->myType->getNodeId(),nodeId) == 0)
 		{
-			result.x = -listOfShapes[i].shapeToWorld.entries[3];
-			result.z = listOfShapes[i].shapeToWorld.entries[7];
-			result.y = listOfShapes[i].shapeToWorld.entries[11];
+			result.x = -glm::value_ptr(listOfShapes[i].shapeToWorld)[3];
+			result.z = glm::value_ptr(listOfShapes[i].shapeToWorld)[7];
+			result.y = glm::value_ptr(listOfShapes[i].shapeToWorld)[11];
 			
 			return result;
 		}
@@ -253,26 +253,26 @@ Stuff::Vector3D TG_MultiShape::GetTransformedNodePosition (Stuff::Point3D *pos, 
 }
 
 //-------------------------------------------------------------------------------
-Stuff::Vector3D TG_MultiShape::GetTransformedNodePosition (Stuff::Point3D *pos, Stuff::UnitQuaternion *rot, long nodeId)
+glm::vec3 TG_MultiShape::GetTransformedNodePosition (glm::vec3 *pos, glm::quat *rot, long nodeId)
 {
-	Stuff::LinearMatrix4D 	shapeOrigin;
-	Stuff::LinearMatrix4D 	localShapeOrigin;
+	glm::mat4 	shapeOrigin;
+	glm::mat4 	localShapeOrigin;
 //	Stuff::LinearMatrix4D 	invShapeOrigin;
 	
-	shapeOrigin.BuildRotation(*rot);
-	shapeOrigin.BuildTranslation(*pos);
+	mc2::math::buildRotation(shapeOrigin, *rot);
+	mc2::math::buildTranslation(shapeOrigin, *pos);
 //	invShapeOrigin.Invert(shapeOrigin);
 	
-	Stuff::EulerAngles angles(*rot);
+	mc2::math::Euler angles = mc2::math::eulerFromQuat(*rot);
 
-	Stuff::Vector3D result;
+	glm::vec3 result;
 	result.x = result.y = result.z = 0.0f;
 	
 	if ((nodeId >= 0) && (nodeId < numTG_Shapes))
 	{
-		result.x = -listOfShapes[nodeId].shapeToWorld.entries[3];
-		result.z = listOfShapes[nodeId].shapeToWorld.entries[7];
-		result.y = listOfShapes[nodeId].shapeToWorld.entries[11];
+		result.x = -glm::value_ptr(listOfShapes[nodeId].shapeToWorld)[3];
+		result.z = glm::value_ptr(listOfShapes[nodeId].shapeToWorld)[7];
+		result.y = glm::value_ptr(listOfShapes[nodeId].shapeToWorld)[11];
 			
 		return result;
 	}
@@ -280,7 +280,7 @@ Stuff::Vector3D TG_MultiShape::GetTransformedNodePosition (Stuff::Point3D *pos, 
 	return result;
 }
 
-Stuff::UnitQuaternion moveem;
+glm::quat moveem;
 
 //-------------------------------------------------------------------------------
 //This function takes the current listOfVisibleFaces and draws them using
@@ -302,10 +302,10 @@ void TG_MultiShape::Render (bool refreshTextures, float forceZ)
 				}
 			}
 
-			Stuff::Matrix4D  shapeToClip;
-			shapeToClip.Multiply(listOfShapes[i].shapeToWorld, TG_Shape::s_worldToClip);
+			glm::mat4  shapeToClip;
+			shapeToClip = listOfShapes[i].shapeToWorld * TG_Shape::s_worldToClip;
 		
-            Stuff::Matrix4D shape2world(listOfShapes[i].shapeToWorld);
+            glm::mat4 shape2world = glm::mat4(listOfShapes[i].shapeToWorld);
 			listOfShapes[i].node->Render(forceZ,isHudElement,alphaValue,isClamped, &shapeToClip, &shape2world);
 		}
 	}
@@ -363,7 +363,7 @@ void TG_MultiShape::StopUsing (const char *nodeName)
 			childChain[curChild] = childChain[curChild-1]->parentNode;
 		}
 
-		Stuff::Point3D zero;
+		glm::vec3 zero;
 		zero.x = zero.y = zero.z = 0.0f;
 		for (long j=curChild;j>=0;j--)
 		{
@@ -411,7 +411,7 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 			childChain[curChild] = childChain[curChild-1]->parentNode;
 		}
 
-		Stuff::Point3D zero;
+		glm::vec3 zero;
 		zero.x = zero.y = zero.z = 0.0f;
 		for (long j=curChild;j>=0;j--)
 		{
@@ -515,7 +515,7 @@ bool TG_MultiShape::isChildOf (const char *nodeName, const char* parentName)
 			childChain[curChild] = childChain[curChild-1]->parentNode;
 		}
 
-		Stuff::Point3D zero;
+		glm::vec3 zero;
 		zero.x = zero.y = zero.z = 0.0f;
 		for (long j=curChild;j>=0;j--)
 		{

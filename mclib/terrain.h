@@ -200,7 +200,7 @@ class Terrain
 		static const float						oneOverVerticesBlockSide;
 		static const float						worldUnitsBlockSide;		//Total world units each block of 20 vertices is.  2560.0f in current universe.
 
-		static Stuff::Vector3D					mapTopLeft3d;				//Where does the terrain start.
+		static glm::vec3					mapTopLeft3d;				//Where does the terrain start.
 		
 		static MapDataPtr						mapData;					//Pointer to class that manages terrain mesh data.
 		static TerrainTexturesPtr				terrainTextures;			//Pointer to class that manages terrain textures.
@@ -270,12 +270,12 @@ class Terrain
 				volatile float& percent,
 					float percentRange); // pass in null for a blank new map
 
-		float getTerrainElevation (const Stuff::Vector3D &position);
-		short getTerrainType (const Stuff::Vector3D &position);
-		float getTerrainAngle (const Stuff::Vector3D &position, Stuff::Vector3D* normal = NULL);
-		Stuff::Vector3D getTerrainNormal (const Stuff::Vector3D &position);
-		float getTerrainLight (const Stuff::Vector3D& position);
-		bool isVisible (const Stuff::Vector3D &looker, const Stuff::Vector3D &looked_at);
+		float getTerrainElevation (const glm::vec3 &position);
+		short getTerrainType (const glm::vec3 &position);
+		float getTerrainAngle (const glm::vec3 &position, glm::vec3* normal = NULL);
+		glm::vec3 getTerrainNormal (const glm::vec3 &position);
+		float getTerrainLight (const glm::vec3& position);
+		bool isVisible (const glm::vec3 &looker, const glm::vec3 &looked_at);
 
 		float getWaterElevation ()
 		{
@@ -301,9 +301,9 @@ class Terrain
 
 		void drawTopView (void);
 
-		static bool IsValidTerrainPosition (const Stuff::Vector3D pos);
-		static bool IsEditorSelectTerrainPosition (const Stuff::Vector3D pos);
-		static bool IsGameSelectTerrainPosition (const Stuff::Vector3D pos);
+		static bool IsValidTerrainPosition (const glm::vec3 pos);
+		static bool IsEditorSelectTerrainPosition (const glm::vec3 pos);
+		static bool IsGameSelectTerrainPosition (const glm::vec3 pos);
 
 		// FREE helper: world (raw MC2: x=east, y=north) -> terrain block index.
 		// Replicates GameObject::getBlockAndVertexNumber's block math EXACTLY
@@ -350,16 +350,16 @@ class Terrain
 		void setObjBlockActive (long blockNum, bool active);
 		void clearObjBlocksActive (void);
 
-		inline void worldToTile( const Stuff::Vector3D& pos, int& tileR, int& tileC );
-		inline void worldToCell( const Stuff::Vector3D& pos, int& cellR, int& cellC );
+		inline void worldToTile( const glm::vec3& pos, int& tileR, int& tileC );
+		inline void worldToCell( const glm::vec3& pos, int& cellR, int& cellC );
 		// Editor placement snap: round-to-nearest vertex (worldToCell floors -> up-left bias).
 		// Game keeps worldToCell's floor for AI-grid stability.
-		inline void worldToCellNearest( const Stuff::Vector3D& pos, int& cellR, int& cellC );
-		inline void worldToTileCell (const Stuff::Vector3D& pos, int& tileR, int& tileC, int& cellR, int& cellC);
-		inline void tileCellToWorld (int tileR, int tileC, int cellR, int cellC, Stuff::Vector3D& worldPos);
-		inline void cellToWorld (int cellR, int cellC, Stuff::Vector3D& worldPos);
+		inline void worldToCellNearest( const glm::vec3& pos, int& cellR, int& cellC );
+		inline void worldToTileCell (const glm::vec3& pos, int& tileR, int& tileC, int& cellR, int& cellC);
+		inline void tileCellToWorld (int tileR, int tileC, int cellR, int cellC, glm::vec3& worldPos);
+		inline void cellToWorld (int cellR, int cellC, glm::vec3& worldPos);
 
-		inline void getCellPos( int cellR, int cellC,  Stuff::Vector3D& cellPos );
+		inline void getCellPos( int cellR, int cellC,  glm::vec3& cellPos );
 		
 		void initMapCellArrays(void);
 
@@ -384,7 +384,7 @@ class Terrain
 		void reCalcLight(bool doShadows = false);
 		void clearShadows();
 
-		long getWater (const Stuff::Vector3D& worldPos);
+		long getWater (const glm::vec3& worldPos);
 
 		float getClipRange()
 		{
@@ -466,7 +466,7 @@ extern TerrainPtr land;
 
 //---------------------------------------------------------------------------
 
-inline void Terrain::worldToTile( const Stuff::Vector3D& pos, int& tileR, int& tileC )
+inline void Terrain::worldToTile( const glm::vec3& pos, int& tileR, int& tileC )
 {
 	float tmpX = pos.x - land->mapTopLeft3d.x;
 	float tmpY = land->mapTopLeft3d.y - pos.y;
@@ -477,7 +477,7 @@ inline void Terrain::worldToTile( const Stuff::Vector3D& pos, int& tileR, int& t
 
 //---------------------------------------------------------------------------
 
-inline void Terrain::worldToCell( const Stuff::Vector3D& pos, int& cellR, int& cellC )
+inline void Terrain::worldToCell( const glm::vec3& pos, int& cellR, int& cellC )
 {
 	cellC = static_cast<int>(( pos.x - land->mapTopLeft3d.x ) * (oneOverWorldUnitsPerVertex*3.0f));
 	cellR = static_cast<int>(( land->mapTopLeft3d.y - pos.y ) * (oneOverWorldUnitsPerVertex*3.0f));
@@ -487,7 +487,7 @@ inline void Terrain::worldToCell( const Stuff::Vector3D& pos, int& cellR, int& c
 
 // Editor placement snap: round-to-nearest vertex (worldToCell floors -> up-left bias).
 // Game keeps worldToCell's floor for AI-grid stability.
-inline void Terrain::worldToCellNearest( const Stuff::Vector3D& pos, int& cellR, int& cellC )
+inline void Terrain::worldToCellNearest( const glm::vec3& pos, int& cellR, int& cellC )
 {
 	cellC = static_cast<int>(( pos.x - land->mapTopLeft3d.x ) * (oneOverWorldUnitsPerVertex*3.0f) + 0.5f);
 	cellR = static_cast<int>(( land->mapTopLeft3d.y - pos.y ) * (oneOverWorldUnitsPerVertex*3.0f) + 0.5f);
@@ -495,7 +495,7 @@ inline void Terrain::worldToCellNearest( const Stuff::Vector3D& pos, int& cellR,
 
 //---------------------------------------------------------------------------
 
-inline void Terrain::worldToTileCell( const Stuff::Vector3D& pos, int& tileR, int& tileC, int& cellR, int& cellC )
+inline void Terrain::worldToTileCell( const glm::vec3& pos, int& tileR, int& tileC, int& cellR, int& cellC )
 {
 	float tmpX = pos.x - land->mapTopLeft3d.x;
 	float tmpY = land->mapTopLeft3d.y - pos.y;
@@ -520,7 +520,7 @@ inline void Terrain::worldToTileCell( const Stuff::Vector3D& pos, int& tileR, in
 
 //---------------------------------------------------------------------------
 
-inline void Terrain::tileCellToWorld (int tileR, int tileC, int cellR, int cellC, Stuff::Vector3D& worldPos) 
+inline void Terrain::tileCellToWorld (int tileR, int tileC, int cellR, int cellC, glm::vec3& worldPos) 
 {
 	if ((tileC < 0) ||
 		(tileR < 0) ||
@@ -546,7 +546,7 @@ inline void Terrain::tileCellToWorld (int tileR, int tileC, int cellR, int cellC
 
 //---------------------------------------------------------------------------
 
-inline void Terrain::cellToWorld (int cellR, int cellC, Stuff::Vector3D& worldPos) 
+inline void Terrain::cellToWorld (int cellR, int cellC, glm::vec3& worldPos) 
 {
 	if ((cellR < 0) || 
 		(cellC < 0) || 
@@ -569,7 +569,7 @@ inline void Terrain::cellToWorld (int cellR, int cellC, Stuff::Vector3D& worldPo
 
 //---------------------------------------------------------------------------
 
-inline void Terrain::getCellPos( int cellR, int cellC,  Stuff::Vector3D& cellPos )
+inline void Terrain::getCellPos( int cellR, int cellC,  glm::vec3& cellPos )
 {
 	cellPos.x = (cellC * (worldUnitsPerVertex/3.)) + (worldUnitsPerVertex/6.);
 	cellPos.y = (cellR * (worldUnitsPerVertex/3.)) + (worldUnitsPerVertex/6.);
