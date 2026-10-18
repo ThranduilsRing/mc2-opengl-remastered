@@ -1,7 +1,7 @@
 {
  "counts": {
   "GameAdapters": 0,
-  "GameOS": 4826,
+  "GameOS": 4726,
   "GuiRuntime": 48,
   "HostServices": 0,
   "RenderCore": 577,
@@ -47,7 +47,7 @@
   "GameOS/gameos/gos_postprocess_blur.cpp": 33,
   "GameOS/gameos/gos_postprocess_effects.cpp": 54,
   "GameOS/gameos/gos_postprocess_executor.cpp": 52,
-  "GameOS/gameos/gos_postprocess_shadow.cpp": 66,
+  "GameOS/gameos/gos_postprocess_shadow.cpp": 50,
   "GameOS/gameos/gos_postprocess_skybox.cpp": 177,
   "GameOS/gameos/gos_render_pass_timer.cpp": 25,
   "GameOS/gameos/gos_static_prop_batcher.h": 14,
@@ -58,7 +58,6 @@
   "GameOS/gameos/gos_static_prop_batcher_mapload.cpp": 26,
   "GameOS/gameos/gos_static_prop_batcher_program.cpp": 8,
   "GameOS/gameos/gos_static_prop_batcher_seam.cpp": 8,
-  "GameOS/gameos/gos_static_prop_batcher_shadow.cpp": 84,
   "GameOS/gameos/gos_static_prop_batcher_submit.cpp": 17,
   "GameOS/gameos/gos_static_prop_registry.cpp": 8,
   "GameOS/gameos/gos_static_prop_registry.h": 8,
@@ -621,8 +620,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "0bf43b1f5",
+ "head": "2d523287b",
  "n": 8,
- "total": 52499,
+ "total": 52399,
  "version": 1
 }
