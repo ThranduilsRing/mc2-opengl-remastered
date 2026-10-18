@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 964;
+inline constexpr std::size_t kGateCount = 961;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -241,8 +241,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_GLTF_GROUND", Kind::Int, Rule::Prefix, {}},
     {"MC2_GLTF_YAW_DEG", Kind::Float, Rule::Prefix, {}},
     {"MC2_GLTF_YOFF", Kind::Float, Rule::Prefix, {}},
-    {"MC2_GL_DEBUG", Kind::Bool, Rule::Presence, {}},
-    {"MC2_GL_DEBUG_FATAL", Kind::Bool, Rule::Presence, {}},
     {"MC2_GOM_RECON", Kind::Bool, Rule::Presence, {}},
     {"MC2_GOM_UPDATE_COST_SPLIT", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_GOSFX_GROUP_LOG", Kind::Bool, Rule::Lead1, {}},
@@ -894,7 +892,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_FRAMES_IN_FLIGHT", Kind::Int, Rule::Prefix, {}},
     {"MC2_VK_GPU_TIMESTAMPS", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_HUD_DRAW_DUMP", Kind::Bool, Rule::Presence, {}},
-    {"MC2_VK_IMGUI", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_LIGHTFEED_DEDUP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_MECH_FEED_NATIVE", Kind::Bool, Rule::Is01, {}},
     {"MC2_VK_MECH_FENCE_DEFER", Kind::Bool, Rule::Lead0Kill, {}},

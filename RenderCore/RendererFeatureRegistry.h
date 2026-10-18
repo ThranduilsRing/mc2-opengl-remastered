@@ -1496,13 +1496,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "VK-P13-SELECTOR-1: presence-gated =1, default OFF.",
     },
     {
-        "MC2_FEATURE_VK_IMGUI",
-        "MC2_VK_IMGUI",
-        EnvVarKind::Feature,
-        true,
-        "ImGui draws through the Vulkan renderer under a Vulkan backend (default ON); =0 is a kill-switch back to GL ImGui.",
-    },
-    {
         "MC2_TRACE_VK_NO_GL_INTEROP_RESOURCE_STRICT",
         "MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT",
         EnvVarKind::Trace,

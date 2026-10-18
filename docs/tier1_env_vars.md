@@ -179,7 +179,6 @@ Present-level transient failures (zero surface extent while minimized, `NATIVE_W
 
 - `MC2_VK_POST_HZB=1` - rung-8.4 native HZB gate. envTriState opt-in, default-OFF. Highest precedence at the HZB site when `MC2_HZB_BUILD=1`: samples the shared scene depth directly on the shared engine VulkanContext, builds the reverse-Z pyramid natively with one separate R32F image per ceil-ladder level, and falls back to the unchanged GL `runHzbReduce()` body if not ready. `MC2_HZB_PROBE=1` intentionally forces the native gate to decline so the probe keeps reading the fresh GL pyramid instead of stale GL textures. Zero-copy normal path: no `glGetTexImage` depth ingress, no `glTexSubImage2D` egress.
 - `MC2_VK_PRESENT_SKIP_GL_HANDOFF=1` - rung-8.7 present handoff proof gate. Default-OFF. With `MC2_RENDER_BACKEND=vulkan`, `MC2_VK_PRESENT_DIRECT_FBO=1`, and `MC2_VK_POST_COMPOSITE=1`, `EnginePresentVk::presentGLFrame()` can consume a present image already written by Vulkan without issuing or waiting a GL->VK interop semaphore. Proof field: `[VK_PRESENT] gl_handoff_skip_frames=N`. This is intentionally explicit because any remaining GL writer to the shared present image still requires the normal handoff.
-- `MC2_VK_IMGUI` - default ON; `=0` is a kill-switch back to GL ImGui. Under `MC2_RENDER_BACKEND=vulkan`, `GuiRuntime` builds ImGui draw data without the OpenGL3 renderer backend and `EnginePresentVk` renders it through `ImGui_ImplVulkan` inside the final present command buffer. Proof lines: `[VK_IMGUI] requested=1 used_vulkan=1 fallback_reason=""`. If the Vulkan renderer is not ready it logs `used_vulkan=0` and does not render ImGui through GL in that run. A GL-backend run ignores the gate and keeps GL ImGui.
 
 ## SPFLUSH cost-split decomposition (SPFLUSH-COST-SPLIT-1)
 
@@ -241,7 +240,6 @@ Present-level transient failures (zero surface extent while minimized, `NATIVE_W
 - `MC2_DESTROY_TRACE=1` — per-destruction lifecycle snapshot
 - `MC2_HEARTBEAT=1` — stderr heartbeat per second
 - `MC2_REVERSE_Z_TRACE=1` — reverse-Z lifecycle prints
-- `MC2_GL_DEBUG_FATAL=1` — abort on GL_DEBUG_SEVERITY_HIGH
 - `MC2_XFORM_PARITY_FATAL=1` — abort when F1-3C clip-space parity probe fails (ViewUniforms.worldToClipGL vs legacy terrain MVP, max_diff>1e-5). Default **OFF** = log-only. Host counterpart: `tests/unit/test_xform_convention.cpp` (XFORM-CONVENTION-HARNESS-1).
 
 ## Load-phase timing (LOAD-PHASE-FACTS-1)

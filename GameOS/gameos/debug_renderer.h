@@ -63,7 +63,7 @@ void flushWorldPrims();
 // frame after the UI frame has begun. The UI frame opens at the top of the frame, before the scene queues anything,
 // so the overlay shows the previous frame's primitives with the previous frame's matrix (one frame of lag, no skew).
 // Lines are not depth-tested. No-op when nothing is frozen. Under Vulkan the overlay
-// is visible only while the Vulkan ImGui renderer is on (MC2_VK_IMGUI).
+// is drawn by the Vulkan ImGui renderer.
 void drawFrozenPrimsToOverlay();
 
 // Reserved: future crisp HUD/debug-text pass (post post-process). No-op in M1.

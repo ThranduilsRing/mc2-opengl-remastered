@@ -16,9 +16,7 @@
 //     (glClearDepth(0.0)) remains at each host's per-frame site because it is
 //     a per-frame operation, not context init.
 //
-// GL debug-output setup is deliberately NOT centralized here: only the game
-// init path installs it (gated on MC2_GL_DEBUG), the editor never did, so it
-// is host-specific and stays at the game call site.
+// There is no GL debug-output setup (the MC2_GL_DEBUG callback was removed with the GL backend).
 #ifndef GOS_RENDER_CONTEXT_H
 #define GOS_RENDER_CONTEXT_H
 

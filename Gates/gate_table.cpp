@@ -328,8 +328,6 @@ P("MC2_GLTF_AXIS", Int, 0, "props", "", "Coordinate transforms (spec ?6).", rere
 P("MC2_GLTF_GROUND", Int, 2, "code", "", "", verified),
 P("MC2_GLTF_YAW_DEG", Float, 0.0, "props", "", "", reread | verified),
 P("MC2_GLTF_YOFF", Float, 0.0, "code", "", "", verified),
-L(Presence, "MC2_GL_DEBUG", Bool, false, "gameos", "", "Install GL debug callback only when MC2_GL_DEBUG is set.", passthrough | verified),
-L(Presence, "MC2_GL_DEBUG_FATAL", Bool, false, "gameos", "", "Tier 1.2 (docs/testing-strategy.md): opt-in fatal abort on GL_DEBUG_SEVERITY_HIGH.", passthrough | verified),
 L(Presence, "MC2_GOM_RECON", Bool, false, "code", "", "GOM Recon: object type classification & mutation tracking (read-only).", verified),
 // GOM_UPDATE_COST v1: per-phase GameObjectManager update CPU cost trace.
 // history: docs/gate-history.md#MC2_GOM_UPDATE_COST_SPLIT
@@ -1257,8 +1255,6 @@ L(Lead0, "MC2_VK_FORCE_FAIL", Bool, false, "vk", "", "VK-P13-SELECTOR-1: presenc
 P("MC2_VK_FRAMES_IN_FLIGHT", Int, 2, "vk", "", "Frames in flight of the Vulkan present path: 2 (default); =1 is the kill switch back to one frame.", passthrough | verified),
 L(Presence, "MC2_VK_GPU_TIMESTAMPS", Bool, false, "vk", "", "", passthrough | verified),
 L(Presence, "MC2_VK_HUD_DRAW_DUMP", Bool, false, "gameos", "", "Env-token-only memo (no disarm interaction): the env block is process-static, so one getenv per process is exact.", verified),
-// history: docs/gate-history.md#MC2_VK_IMGUI
-L(Lead0Kill, "MC2_VK_IMGUI", Bool, true, "code", "", "ImGui draws through the Vulkan renderer under a Vulkan backend (default ON); =0 is a kill-switch back to GL ImGui.", passthrough | registry(Feature, "MC2_FEATURE_VK_IMGUI", -1, true) | verified),
 L(Lead0Kill, "MC2_VK_LIGHTFEED_DEDUP", Bool, true, "vk", "", "", verified | passthrough),
 L(Is01, "MC2_VK_MECH_FEED_NATIVE", Bool, false, "mech", "", "", verified | passthrough),
 L(Lead0Kill, "MC2_VK_MECH_FENCE_DEFER", Bool, true, "vk", "", "", verified | passthrough),

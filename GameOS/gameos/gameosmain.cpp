@@ -758,48 +758,6 @@ static void draw_screen( void )
 extern float frameRate;
 
 
-const char* getStringForType(GLenum type)
-{
-	switch (type)
-	{
-	case GL_DEBUG_TYPE_ERROR: return "DEBUG_TYPE_ERROR";
-	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "DEBUG_TYPE_DEPRECATED_BEHAVIOR";
-	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: return "DEBUG_TYPE_UNDEFINED_BEHAVIOR";
-	case GL_DEBUG_TYPE_PERFORMANCE: return "DEBUG_TYPE_PERFORMANCE";
-	case GL_DEBUG_TYPE_PORTABILITY: return "DEBUG_TYPE_PORTABILITY";
-	case GL_DEBUG_TYPE_MARKER: return "DEBUG_TYPE_MARKER";
-	case GL_DEBUG_TYPE_PUSH_GROUP: return "DEBUG_TYPE_PUSH_GROUP";
-	case GL_DEBUG_TYPE_POP_GROUP: return "DEBUG_TYPE_POP_GROUP";
-	case GL_DEBUG_TYPE_OTHER: return "DEBUG_TYPE_OTHER";
-	default: return "(undefined)";
-	}
-}
-
-const char* getStringForSource(GLenum type)
-{
-	switch (type)
-	{
-	case GL_DEBUG_SOURCE_API: return "DEBUG_SOURCE_API";
-	case GL_DEBUG_SOURCE_SHADER_COMPILER: return "DEBUG_SOURCE_SHADER_COMPILER";
-	case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "DEBUG_SOURCE_WINDOW_SYSTEM";
-	case GL_DEBUG_SOURCE_THIRD_PARTY: return "DEBUG_SOURCE_THIRD_PARTY";
-	case GL_DEBUG_SOURCE_APPLICATION: return "DEBUG_SOURCE_APPLICATION";
-	case GL_DEBUG_SOURCE_OTHER: return "DEBUG_SOURCE_OTHER";
-	default: return "(undefined)";
-	}
-}
-
-const char* getStringForSeverity(GLenum type)
-{
-	switch (type)
-	{
-	case GL_DEBUG_SEVERITY_HIGH: return "DEBUG_SEVERITY_HIGH";
-	case GL_DEBUG_SEVERITY_MEDIUM: return "DEBUG_SEVERITY_MEDIUM";
-	case GL_DEBUG_SEVERITY_LOW: return "DEBUG_SEVERITY_LOW";
-	case GL_DEBUG_SEVERITY_NOTIFICATION: return "DEBUG_SEVERITY_NOTIFICATION";
-	default: return "(undefined)";
-	}
-}
 // External linkage: the gameosmain_*.cpp pieces call startup_phase().
     // Startup phase timing. Anchor at the top of main(). Cheap printfs --
     // total cost is microseconds, but the signal for triage is high.
@@ -887,41 +845,6 @@ extern "C" void mission_phase_report()
     fflush(stdout);
     // Mission load is over: the GPU memory every later frame starts from (the smoke report's load-end VRAM line).
     mc2::gpumem::log("load_end");
-}
-
-//typedef void (GLAPIENTRY *GLDEBUGPROCARB)(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
-#ifdef PLATFORM_WINDOWS
-void GLAPIENTRY OpenGLDebugLog(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
-#else
-void GLAPIENTRY OpenGLDebugLog(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, GLvoid* userParam)
-#endif
-{
-	if (severity != GL_DEBUG_SEVERITY_NOTIFICATION && severity != GL_DEBUG_SEVERITY_LOW)
-	{
-		printf("Type: %s; Source: %s; ID: %d; Severity : %s\n",
-			getStringForType(type),
-			getStringForSource(source),
-			id,
-			getStringForSeverity(severity)
-		);
-		printf("Message : %s\n", message);
-	}
-	// Tier 1.2 (docs/testing-strategy.md): opt-in fatal abort on GL_DEBUG_SEVERITY_HIGH.
-	// Default behavior unchanged. Catches the GL state-leak / sampler-inheritance /
-	// depth-state-inheritance bug class documented in
-	// memory/{blend,sampler,gpu_direct_depth}_state_inheritance.md.
-	// MEDIUM/LOW are too noisy on AMD (perf warnings on every TGL stream).
-	// Function-scope static: 99.9% of callback invocations are a single load+branch.
-	static const bool s_glDebugFatal = mc2::gate::get<"MC2_GL_DEBUG_FATAL">();
-	if (s_glDebugFatal && severity == GL_DEBUG_SEVERITY_HIGH)
-	{
-		std::fprintf(stderr,
-			"[MC2_GL_DEBUG_FATAL] severity=HIGH source=0x%x type=0x%x "
-			"id=%u\n  %.*s\n",
-			source, type, id, (int)length, message);
-		std::fflush(stderr);
-		std::abort();
-	}
 }
 
 #ifndef DISABLE_GAMEOS_MAIN
@@ -1130,17 +1053,6 @@ int main(int argc, char** argv)
     }
     fflush(stdout);
     initVulkanBackend(win, w, h);
-
-	// Install GL debug callback only when MC2_GL_DEBUG is set. In shipping
-	// builds this keeps stdout free of harmless driver warnings (esp. the
-	// AMD ~glsl_program double-detach chatter) and saves the sync-debug
-	// overhead. Paired with the context-flag gate in gos_render.cpp.
-	if (mc2::gate::get<"MC2_GL_DEBUG">()) {
-		glEnable(GL_DEBUG_OUTPUT);
-		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-		glDebugMessageControlARB(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
-		glDebugMessageCallbackARB((GLDEBUGPROC)&OpenGLDebugLog, NULL);
-	}
 
     // GAMEOS-RENDER-CONTEXT-PARITY-1: clip-control + reverse-Z depth baseline
     // are established by the shared function so the game and the editor cannot

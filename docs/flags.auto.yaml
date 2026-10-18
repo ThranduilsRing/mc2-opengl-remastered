@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 964
-registry_entry_count: 194
-verified_count: 954
+gate_count: 961
+registry_entry_count: 193
+verified_count: 951
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -1764,22 +1764,6 @@ flags:
     rule: Prefix
     owner: code
     doc: ""
-    verified: true
-  - name: MC2_GL_DEBUG
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: "Install GL debug callback only when MC2_GL_DEBUG is set."
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_GL_DEBUG_FATAL
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: "Tier 1.2 (docs/testing-strategy.md): opt-in fatal abort on GL_DEBUG_SEVERITY_HIGH."
-    smoke_passthrough: true
     verified: true
   - name: MC2_GOM_RECON
     kind: Bool
@@ -6804,15 +6788,6 @@ flags:
     owner: gameos
     doc: "Env-token-only memo (no disarm interaction): the env block is process-static, so one getenv per process is exact."
     verified: true
-  - name: MC2_VK_IMGUI
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: code
-    doc: "ImGui draws through the Vulkan renderer under a Vulkan backend (default ON); =0 is a kill-switch back to GL ImGui."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VK_IMGUI, kind: Feature, order: -1, default_on: true}
   - name: MC2_VK_LIGHTFEED_DEDUP
     kind: Bool
     default: true
