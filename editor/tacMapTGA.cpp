@@ -91,6 +91,10 @@ void TacMapTGA::refreshBmp()
 	// by Methuselas: refreshes the backing bitmap at 128x128 for mission
 	// packet compatibility.  The floating Editor tacmap window itself is
 	// enlarged to 2x by EDITOR_TACMAP_DISPLAY_SIZE and stretched by TGAWnd.
+	// The DIB backing store exists only after the window's first paint; a headless or minimized
+	// editor (playtest smoke) saves with no tac map window painted, and has no bitmap to refresh.
+	if (!m_pBits)
+		return;
 	EditorData::instance->drawTacMap( (BYTE*)m_pBits, EDITOR_TACMAP_BITMAP_SIZE * EDITOR_TACMAP_BITMAP_SIZE * 4, EDITOR_TACMAP_BITMAP_SIZE );
 	RedrawWindow( );
 }

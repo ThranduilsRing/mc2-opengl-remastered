@@ -21,7 +21,7 @@
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1575,
   "GameOS/include/gameos.hpp": 3757,
   "RenderCore/RendererFeatureRegistry.h": 1678,
-  "code/artlry.cpp": 1849,
+  "code/artlry.cpp": 1841,
   "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2770,
   "code/gamecam.cpp": 1596,
@@ -39,14 +39,14 @@
   "code/optionsarea.cpp": 1842,
   "code/pilotreviewarea.cpp": 1844,
   "code/tacordr.cpp": 2117,
-  "code/terrobj.cpp": 1723,
+  "code/terrobj.cpp": 1722,
   "code/turret.cpp": 2337,
   "code/warrior.cpp": 2691,
   "code/warrior.h": 2176,
   "editor/tests/test_objectives.cpp": 1996,
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1541,
-  "mclib/ablrtn.cpp": 1748,
+  "mclib/ablrtn.cpp": 1798,
   "mclib/assimp_importer.cpp": 1576,
   "mclib/camera.h": 1814,
   "mclib/file.cpp": 2599,
@@ -57,12 +57,12 @@
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
   "mclib/move.h": 1860,
   "mclib/render_contract.cpp": 1530,
-  "mclib/stuff/rotation.cpp": 1672,
+  "mclib/stuff/rotation.cpp": 1679,
   "mclib/terrtxm.cpp": 1823,
   "mclib/tgl.h": 1787,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "22b97bfc7",
+ "head": "c9161d368",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -71,7 +71,7 @@
    "max_lines": 485
   },
   "GameOS": {
-   "files": 357,
+   "files": 359,
    "files_over_1500": 7,
    "files_over_3000": 1,
    "max_lines": 3757
@@ -113,7 +113,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 597,
+   "files": 591,
    "files_over_1500": 15,
    "files_over_3000": 0,
    "max_lines": 2630
@@ -223,10 +223,6 @@
    "lines": 1860
   },
   {
-   "file": "code/artlry.cpp",
-   "lines": 1849
-  },
-  {
    "file": "code/multplyr.h",
    "lines": 1849
   },
@@ -237,6 +233,10 @@
   {
    "file": "code/optionsarea.cpp",
    "lines": 1842
+  },
+  {
+   "file": "code/artlry.cpp",
+   "lines": 1841
   },
   {
    "file": "mclib/terrtxm.cpp",
@@ -252,7 +252,7 @@
   }
  ],
  "total": {
-  "files": 1928,
+  "files": 1924,
   "files_over_1500": 48,
   "files_over_3000": 1,
   "max_lines": 3757

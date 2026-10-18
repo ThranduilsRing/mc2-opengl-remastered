@@ -29,6 +29,7 @@
 #include "EditorGpuTimer.h"  // EditorFramePhase_* whole-frame timing (MC2_EDITOR_GPU_TIMERS)
 #include "EditorWatchdog.h"  // EditorWatchdog_Heartbeat (MC2_EDITOR_WATCHDOG)
 #include <cstdarg>
+#include <vector>
 #include <stdlib.h>
 #include <cstdio>
 #include <cstring>
@@ -59,6 +60,9 @@
 
 #ifdef MC2_IMGUI
 #include "GuiRuntime.h"
+#include "gos_host_vk.h"          // initVulkanBackend / presentOrSwap: the game's VK bring-up and present, shared
+#include "gos_screenshot.h"        // -capture on the Vulkan backend
+#include "render_backend_select.h"
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_opengl3.h"
@@ -350,6 +354,12 @@ void __stdcall InitGameOS(HINSTANCE /*hInstance*/, HWND hWindow, char* commandLi
                 // Shared scene shaders require reverse-Z with [0,1] NDC depth.
                 // Initialize the same depth conventions in both hosts before renderer creation;
                 // the shared initializer rejects contexts without clip control.
+                // Same VK bring-up as the game (gameosmain.cpp): shared engine context + present on this HWND.
+                // A no-op unless the Vulkan backend is selected; a failed bring-up is fatal inside it.
+                EditorGameOSTrace("InitGameOS: before initVulkanBackend backend=%s", mc2::renderBackendName(mc2::renderBackend()));
+                initVulkanBackend(g_editorRenderWindow, w, h);
+                EditorGameOSTrace("InitGameOS: after initVulkanBackend");
+
                 EditorGameOSTrace("InitGameOS: before InitializeRenderContextConventions(Editor)");
                 InitializeRenderContextConventions(RenderHostKind::Editor);
                 EditorGameOSTrace("InitGameOS: after InitializeRenderContextConventions(Editor)");
@@ -463,8 +473,52 @@ LRESULT CALLBACK GameOSWinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 //
 // We deliberately do NOT sleep here — MFC already throttles calls through
 // its message loop.
+
+// -capture=<tga>: the shown window (scene + ImGui panels) to a TGA after N loaded frames. GL reads the back
+// buffer before the swap; Vulkan queues the present path's readback (the same source the game captures use).
+extern const char* EditorCliCapturePath();
+extern int EditorCliCaptureFrame();
+static bool g_captureDone = false;
+static void EditorCaptureDone(const char* path, bool ok, int w, int h)
+{
+    g_captureDone = true;
+    fprintf(stderr, "[EDITOR_CAPTURE v1] path=\"%s\" ok=%d size=%dx%d\n", path ? path : "", ok ? 1 : 0, w, h);
+    fflush(stderr);
+}
+static void EditorViewportCaptureTick()
+{
+    static int s_frames = 0;
+    static bool s_queued = false;
+    const char* path = EditorCliCapturePath();
+    if (g_captureDone || !path || !path[0] || !land) return;
+    if (++s_frames < EditorCliCaptureFrame()) return;
+    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan)
+    {
+        if (!s_queued) s_queued = gos::screenshot::request(path, EditorCaptureDone);
+        return;
+    }
+    int w = 0, h = 0;
+    if (SDL_Window* sw = graphics::getSDLWindow()) SDL_GetWindowSize(sw, &w, &h);
+    if (w <= 0 || h <= 0) return;
+    std::vector<unsigned char> rgba((size_t)w * h * 4);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    glReadBuffer(GL_BACK);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+    std::vector<unsigned char> bgr((size_t)w * h * 3);
+    for (size_t i = 0; i < (size_t)w * h; ++i) { bgr[i*3] = rgba[i*4+2]; bgr[i*3+1] = rgba[i*4+1]; bgr[i*3+2] = rgba[i*4]; }
+    unsigned char hdr[18] = {0};
+    hdr[2] = 2; hdr[12] = (unsigned char)(w & 255); hdr[13] = (unsigned char)(w >> 8);
+    hdr[14] = (unsigned char)(h & 255); hdr[15] = (unsigned char)(h >> 8); hdr[16] = 24;   // bottom-up rows: TGA native origin
+    FILE* f = fopen(path, "wb");
+    bool ok = f && fwrite(hdr, 1, 18, f) == 18 && fwrite(bgr.data(), 1, bgr.size(), f) == bgr.size();
+    if (f) fclose(f);
+    EditorCaptureDone(path, ok, w, h);
+}
+
 extern void gos_RendererBeginFrame();
 extern void gos_RendererEndFrame();
+extern void gos_RendererFlushHUDBatch();
 extern void gos_RendererHandleEvents();
 extern bool gosExitGameOS();
 
@@ -732,6 +786,11 @@ DWORD __stdcall RunGameOSLogic()
     }
     EditorFramePhase_Mark("endScene");
 
+    // Under Vulkan the selection brackets and health bars route through the HUD batch (VkHudRouteScope, mclib/appear.cpp);
+    // the game replays that batch here (gameosmain.cpp), so the editor must too or they never reach the present tail.
+    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan)
+        gos_RendererFlushHUDBatch();
+
 #ifdef MC2_IMGUI
     // RENDER-TO-TEXTURE viewport: endScene() composited the scene into the bottom-left
     // (0,0,viewport_w,viewport_h) region of FBO 0. Capture it into an editor-owned
@@ -805,7 +864,12 @@ DWORD __stdcall RunGameOSLogic()
     // is managed by the gosRenderer; forcibly unbinding it after EndFrame tears
     // down state the renderer expects to persist across the swap.  Let the
     // renderer own its own program lifecycle.
-    graphics::swap_window(g_editorRenderWindow);
+    EditorViewportCaptureTick();
+    // The game's present: VK composite+swapchain present when the Vulkan backend is up, else the GL swap.
+    {
+        static unsigned long s_editorFrame = 0;
+        gos::host::presentOrSwap(g_editorRenderWindow, ++s_editorFrame);
+    }
     EditorFramePhase_Mark("swap");
     EditorFramePhase_End();
 
