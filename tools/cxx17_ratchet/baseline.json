@@ -193,13 +193,13 @@
    "LG06": 662,
    "LG07": 0,
    "LG08": 70,
-   "LG09": 1934,
+   "LG09": 1924,
    "LG10": 33,
    "LG11": 67,
-   "LG12a": 190,
+   "LG12a": 169,
    "LG12b": 233,
-   "LG13": 447,
-   "LG14": 112,
+   "LG13": 428,
+   "LG14": 111,
    "LG15": 0,
    "LG16": 156,
    "LG17": 95,
@@ -3750,6 +3750,9 @@
    "LG14": 2,
    "LG17": 2
   },
+  "mclib/math/mc2_xform.h": {
+   "LG14": 1
+  },
   "mclib/mc2_audit.cpp": {
    "LG06": 3,
    "LG12b": 1
@@ -4398,9 +4401,6 @@
   "mclib/static_light_row_guard.h": {
    "LG14": 2
   },
-  "mclib/stuff/affinematrix.cpp": {
-   "LG12a": 4
-  },
   "mclib/stuff/armoron.hpp": {
    "LG01": 1,
    "LG12a": 1
@@ -4454,10 +4454,6 @@
    "LG09": 2,
    "LG17": 6
   },
-  "mclib/stuff/matrix.cpp": {
-   "LG09": 2,
-   "LG12a": 4
-  },
   "mclib/stuff/memoryblock.cpp": {
    "LG09": 1,
    "LG12a": 7
@@ -4508,22 +4504,16 @@
    "LG14": 1
   },
   "mclib/stuff/note.cpp": {
-   "LG09": 10,
+   "LG09": 8,
    "LG13": 1
   },
   "mclib/stuff/note.hpp": {
    "LG06": 2
   },
-  "mclib/stuff/obb.cpp": {
-   "LG12a": 4
-  },
-  "mclib/stuff/obb.hpp": {
-   "LG14": 1
-  },
   "mclib/stuff/page.cpp": {
    "LG03": 4,
    "LG06": 4,
-   "LG09": 9,
+   "LG09": 8,
    "LG13": 1
   },
   "mclib/stuff/page.hpp": {
@@ -4550,11 +4540,6 @@
    "LG01": 1,
    "LG02": 2,
    "LG06": 5
-  },
-  "mclib/stuff/rotation.cpp": {
-   "LG09": 5,
-   "LG12a": 8,
-   "LG13": 1
   },
   "mclib/stuff/safesocket.hpp": {
    "LG02": 1,
@@ -4615,13 +4600,6 @@
   },
   "mclib/stuff/vector2d.hpp": {
    "LG12a": 3
-  },
-  "mclib/stuff/vector3d.cpp": {
-   "LG12a": 1
-  },
-  "mclib/stuff/vector3d.hpp": {
-   "LG13": 18,
-   "LG14": 1
   },
   "mclib/stuff/vector4d.cpp": {
    "LG12a": 1
@@ -4933,7 +4911,7 @@
    "LG20": 3
   }
  },
- "head": "1397eb062",
+ "head": "0bf43b1f5",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
