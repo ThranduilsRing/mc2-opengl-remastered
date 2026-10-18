@@ -162,7 +162,7 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 		else
 			soundSystem->playDigitalSample(SALVAGE_CRAFT,vPos[commanderID]);
 
-		Stuff::Vector3D newPos = vPos[commanderID];
+		glm::vec3 newPos = vPos[commanderID];
 		float rotation = 0.f;  // this needs to be pointing 180 degrees from drop point
 
 		vTol[commanderID]->setObjectParameters( newPos, 0, false, Team::home->id, 0);
@@ -173,16 +173,16 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 
 		if (dustCloud[commanderID])
 		{
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D	localToWorld;
-			Stuff::LinearMatrix4D	localResult;
+			glm::mat4 	shapeOrigin;
+			glm::mat4	localToWorld;
+			glm::mat4	localResult;
 
-			Stuff::Vector3D dustPos = vTol[commanderID]->position;
-			Stuff::Point3D wakePos;
+			glm::vec3 dustPos = vTol[commanderID]->position;
+			glm::vec3 wakePos;
 			mc2ToRender(wakePos, dustPos);
 
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(wakePos);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, wakePos);
 
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 

@@ -209,7 +209,7 @@ class MoveChunk {
 
 		void build (MoverPtr mover, MovePath* path1, MovePath* path2 = nullptr);
 
-		void build (MoverPtr mover, Stuff::Vector3D jumpGoal);
+		void build (MoverPtr mover, glm::vec3 jumpGoal);
 
 		void pack (MoverPtr mover);
 
@@ -625,8 +625,8 @@ struct _MoverData : public GameObjectData
 {
 	bool				killed;
 	bool				lost;
-	Stuff::Vector3D		positionNormal;						
-	Stuff::Vector3D		velocity;							
+	glm::vec3		positionNormal;						
+	glm::vec3		velocity;							
 	char				name[MAXLEN_MOVER_NAME];			
 	unsigned char		chassis;							
 	bool				startDisabled;
@@ -716,7 +716,7 @@ struct _MoverData : public GameObjectData
 	bool				withdrawing;
 
 	float				yieldTimeLeft;					
-	Stuff::Vector3D		lastValidPosition;				
+	glm::vec3		lastValidPosition;				
 	char				pivotDirection;					
 	float				lastHustleTime;					
 
@@ -734,7 +734,7 @@ struct _MoverData : public GameObjectData
 	float				crashYieldTime;
 	int32_t				pathLockLength;
 	int32_t				pathLockList[MAX_LOCK_RANGE][2];
-	Stuff::Vector3D		moveCenter;
+	glm::vec3		moveCenter;
 	float				moveRadius;
 
 	int32_t				overlayWeightClass;
@@ -749,7 +749,7 @@ struct _MoverData : public GameObjectData
 
 	bool 				mechSalvage;					
 
-	Stuff::Vector3D		teleportPosition;				
+	glm::vec3		teleportPosition;				
 	int32_t				debugPage;
 
 	bool				pathLocks;						
@@ -784,8 +784,8 @@ class Mover : public GameObject {
 	
 	public:
 
-		Stuff::Vector3D		positionNormal;						// normal to terrain at current position
-		Stuff::Vector3D		velocity;							//How fast am I going?
+		glm::vec3		positionNormal;						// normal to terrain at current position
+		glm::vec3		velocity;							//How fast am I going?
 		char				name[MAXLEN_MOVER_NAME];		// Name of this particular mover
 		unsigned char		chassis;							// type of mover's chassis
 		bool				startDisabled;
@@ -912,7 +912,7 @@ class Mover : public GameObject {
 		bool				withdrawing;
 	
 		float				yieldTimeLeft;					// How much time do I have left to wait
-		Stuff::Vector3D		lastValidPosition;				// Last valid move path point I've been to
+		glm::vec3		lastValidPosition;				// Last valid move path point I've been to
 		char				pivotDirection;					// Used in pivotTo(): -1 = not pivoting
 		float				lastHustleTime;					// last time we had to hustle (on bridge, etc.)
 
@@ -932,7 +932,7 @@ class Mover : public GameObject {
 		float				crashYieldTime;
 		int32_t				pathLockLength;
 		int32_t             pathLockList[MAX_LOCK_RANGE][2];
-		Stuff::Vector3D		moveCenter;
+		glm::vec3		moveCenter;
 		float				moveRadius;
 
 		int32_t				overlayWeightClass;
@@ -948,7 +948,7 @@ class Mover : public GameObject {
 
 		bool 				mechSalvage;					//As this guy dies, ONLY check once if he's salvagable!
 
-		Stuff::Vector3D		teleportPosition;				//debug feature :)
+		glm::vec3		teleportPosition;				//debug feature :)
 		int32_t				debugPage;
 
 		static float		newThreatMultiplier;
@@ -1042,9 +1042,9 @@ class Mover : public GameObject {
 
 		virtual void setPartId (long newPartId);
 
-		virtual void setPosition (Stuff::Vector3D& newPosition);
+		virtual void setPosition (glm::vec3& newPosition);
 		
-		virtual void setTeleportPosition (Stuff::Vector3D& newPos);
+		virtual void setTeleportPosition (glm::vec3& newPos);
 
 		ContactInfoPtr getContactInfo (void) {
 			return(contactInfo);
@@ -1074,21 +1074,21 @@ class Mover : public GameObject {
 			followRoads = setting;
 		}
 
-		virtual Stuff::Vector3D getVelocity (void) {
+		virtual glm::vec3 getVelocity (void) {
 			return(velocity);
 		}
 
-		virtual void setVelocity (Stuff::Vector3D& newVelocity) {
+		virtual void setVelocity (glm::vec3& newVelocity) {
 			velocity = newVelocity;
 		}
 
 		virtual float getSpeed (void) {
-			return(velocity.GetLength());
+			return(glm::length(velocity));
 		}
 
 		virtual bool hasWeaponNode (void);
 
-		Stuff::Vector3D getLOSPosition (void);
+		glm::vec3 getLOSPosition (void);
 
 		virtual void rotate (float angle);
 
@@ -1103,7 +1103,7 @@ class Mover : public GameObject {
 
 		void drawWaypointPath();
 		void drawOverviewMovePath( unsigned long color );
-		bool getMoveDestination( Stuff::Vector3D& out );
+		bool getMoveDestination( glm::vec3& out );
 		void getWeaponBandsPresent( bool present[3] );	// short/medium/long weapon ranges
 
 		void updateDrawWaypointPath();
@@ -1126,13 +1126,13 @@ class Mover : public GameObject {
 //			frame = newFrame;
 //		}
 		
-		virtual Stuff::Vector3D relativePosition (float angle, float radius, unsigned long flags);
+		virtual glm::vec3 relativePosition (float angle, float radius, unsigned long flags);
 
 		virtual void setSensorRange (float range);
 		
-		virtual Stuff::Vector3D getRotationVector (void) 
+		virtual glm::vec3 getRotationVector (void) 
 		{
-			Stuff::Vector3D rotationVec;
+			glm::vec3 rotationVec;
 			rotationVec.x = 0.0f;
 			rotationVec.y = -1.0f;
 			rotationVec.z = 0.0f;
@@ -1483,16 +1483,16 @@ class Mover : public GameObject {
 
 		long scanBattlefield (long quadrant, long contactType, long potentialContactType);
 
-		virtual Stuff::Vector3D calcOffsetMoveGoal (Stuff::Vector3D target);
+		virtual glm::vec3 calcOffsetMoveGoal (glm::vec3 target);
 
-		virtual long calcGlobalPath (GlobalPathStep* globalPath, GameObjectPtr obj, Stuff::Vector3D* location, bool useClosedAreas);
+		virtual long calcGlobalPath (GlobalPathStep* globalPath, GameObjectPtr obj, glm::vec3* location, bool useClosedAreas);
 
 		virtual long calcMoveGoal (GameObjectPtr target,
-						  Stuff::Vector3D moveCenter,
+						  glm::vec3 moveCenter,
 						  float moveRadius,
-						  Stuff::Vector3D moveGoal,
+						  glm::vec3 moveGoal,
 						  long selectionIndex,
-						  Stuff::Vector3D& newGoal,
+						  glm::vec3& newGoal,
 						  long numValidAreas,
 						  short* validAreas,
 						  unsigned long moveParams);
@@ -1500,28 +1500,28 @@ class Mover : public GameObject {
 
 		virtual int calcMovePath (MovePathPtr path,
 								   long pathType,
-								   Stuff::Vector3D start,
-								   Stuff::Vector3D goal,
+								   glm::vec3 start,
+								   glm::vec3 goal,
 								   int* goalCell,
 								   unsigned long moveParams = MOVEPARAM_NONE);
 
 		virtual int calcEscapePath (MovePathPtr path,
-									 Stuff::Vector3D start,
-									 Stuff::Vector3D goal,
+									 glm::vec3 start,
+									 glm::vec3 goal,
 									 int* goalCell,
 									 unsigned long moveParams,
-									 Stuff::Vector3D& escapeGoal);
+									 glm::vec3& escapeGoal);
 
 		virtual int calcMovePath (MovePathPtr path,
-								   Stuff::Vector3D start,
+								   glm::vec3 start,
 								   long thruArea[2],
 								   long goalDoor,
-								   Stuff::Vector3D finalGoal,
-								   Stuff::Vector3D* goalWorldPos,
+								   glm::vec3 finalGoal,
+								   glm::vec3* goalWorldPos,
 								   int* goalCell,
 								   unsigned long moveParams = MOVEPARAM_NONE);
 
-		virtual float weaponLocked (long weaponIndex, Stuff::Vector3D targetPosition);
+		virtual float weaponLocked (long weaponIndex, glm::vec3 targetPosition);
 
 		virtual bool weaponInRange (long weaponIndex, float metersToTarget, float buffer);
 
@@ -1595,7 +1595,7 @@ class Mover : public GameObject {
 		
 		virtual long sortWeapons (int* weaponList, long* valueList, long listSize, long sortType, bool skillCheck);
 
-		virtual float calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, Stuff::Vector3D* targetPoint = nullptr);
+		virtual float calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, glm::vec3* targetPoint = nullptr);
 
 		virtual float calcAttackModifier (GameObjectPtr target, long weaponIndex, bool skillCheck) {
 			return(0.0);
@@ -1629,13 +1629,13 @@ class Mover : public GameObject {
 
 		virtual void ammoExplosion (long ammoIndex);
 
-		virtual long fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, Stuff::Vector3D* targetPoint, float &damageDone) {
+		virtual long fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, glm::vec3* targetPoint, float &damageDone) {
 			return(NO_ERR);
 		}
 
 		virtual long handleWeaponFire (long weaponIndex,
 									   GameObjectPtr target,
-									   Stuff::Vector3D* targetPoint,
+									   glm::vec3* targetPoint,
 									   bool hit,
 									   float entryAngle,
 									   long numMissiles,
@@ -1643,25 +1643,25 @@ class Mover : public GameObject {
 			return(NO_ERR);
 		}
 
-		virtual void printFireWeaponDebugInfo (GameObjectPtr target, Stuff::Vector3D* targetPoint, long chance, long aimLocation, long roll, WeaponShotInfo* shotInfo);
+		virtual void printFireWeaponDebugInfo (GameObjectPtr target, glm::vec3* targetPoint, long chance, long aimLocation, long roll, WeaponShotInfo* shotInfo);
 
 		virtual void printHandleWeaponHitDebugInfo (WeaponShotInfo* shotInfo);
 
-		virtual float relFacingDelta (Stuff::Vector3D goalPos, Stuff::Vector3D targetPos);
+		virtual float relFacingDelta (glm::vec3 goalPos, glm::vec3 targetPos);
 
-		virtual float relFacingTo (Stuff::Vector3D goal, long bodyLocation = -1);
+		virtual float relFacingTo (glm::vec3 goal, long bodyLocation = -1);
 
-		virtual float relViewFacingTo (Stuff::Vector3D goal) {
+		virtual float relViewFacingTo (glm::vec3 goal) {
 			return(GameObject::relFacingTo(goal));
 		}
 
-		bool canMoveHere (Stuff::Vector3D worldPos);
+		bool canMoveHere (glm::vec3 worldPos);
 
-		void setLastValidPosition (Stuff::Vector3D pt) {
+		void setLastValidPosition (glm::vec3 pt) {
 			lastValidPosition = pt;
 		}
 
-		Stuff::Vector3D getLastValidPosition (void) {
+		glm::vec3 getLastValidPosition (void) {
 			return(lastValidPosition);
 		}
 
@@ -1742,7 +1742,7 @@ class Mover : public GameObject {
 			return(0.0);
 		}
 
-		virtual bool isJumping (Stuff::Vector3D* jumpGoal = nullptr) {
+		virtual bool isJumping (glm::vec3* jumpGoal = nullptr) {
 			return(false);
 		}
 
@@ -1778,10 +1778,10 @@ class Mover : public GameObject {
 			return(-1);
 		}
 
-		virtual Stuff::Vector3D getPositionFromHS (long weaponType) 
+		virtual glm::vec3 getPositionFromHS (long weaponType) 
 		{
-			Stuff::Vector3D pos;
-			pos.Zero();
+			glm::vec3 pos;
+			pos = glm::vec3(0.0f);
 			return(pos);
 		}
 
@@ -1815,7 +1815,7 @@ class Mover : public GameObject {
 		
 		static long loadGameSystem (FitIniFilePtr mechFile, float visualRange);
 
-		bool isCloseToFirstTacOrder( Stuff::Vector3D& pos );
+		bool isCloseToFirstTacOrder( glm::vec3& pos );
 
 		void removeFromUnitGroup( int id );
 		void addToUnitGroup( int id );
@@ -1881,7 +1881,7 @@ struct _MoverInitData {
 	DWORD           controlType;
 	DWORD           controlDataType;
 	DWORD           variant;
-	Stuff::Vector3D	position;
+	glm::vec3	position;
 	int32_t 		rotation;
 	char			teamID;
 	char			commanderID;

@@ -208,7 +208,7 @@ int MissionInterfaceManager::teleport() {
 	static double lastTime = 0.0;
 	if ((lastTime + 0.5) < gos_GetElapsedTime()) {
 		Team* pTeam = Team::home;
-		Stuff::Vector3D moveGoals[MAX_MOVERS];
+		glm::vec3 moveGoals[MAX_MOVERS];
 		long numMovers = 0;
 		for (long i = 0; i < pTeam->getRosterSize(); i++) {
 			Mover* mover = pTeam->getMover(i);

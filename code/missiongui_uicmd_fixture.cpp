@@ -193,7 +193,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 					else data.objNumber = on;
 				}
 				if (ok) {
-					Stuff::Vector3D pos; pos.x = x; pos.y = y; pos.z = 0.0f;
+					glm::vec3 pos; pos.x = x; pos.y = y; pos.z = 0.0f;
 					if (land) pos.z = land->getTerrainElevation(pos);
 					data.position = pos; data.rotation = 0;
 					data.controlType = (data.commanderID == (char)homeCmdr && !MPlayer)
@@ -249,7 +249,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 				GameObjectPtr obj = ObjectManager->findByPartId(pid);
 				if (!obj || !obj->isMover()) { result = "blocked"; note = "no such mover"; }
 				else {
-					Stuff::Vector3D pos; pos.x = x; pos.y = y; pos.z = 0.0f;
+					glm::vec3 pos; pos.x = x; pos.y = y; pos.z = 0.0f;
 					if (land) pos.z = land->getTerrainElevation(pos);
 					((Mover*)obj)->setTeleportPosition(pos);   // engine teleport hook
 					result = "ok";

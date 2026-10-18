@@ -158,7 +158,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 				const unsigned long cls = ap->getAppearanceClass();
 				const int32_t recipe = ap->getStaticRecipeIndex();
 				AppearanceTypePtr at = ap->getAppearanceType();
-				Stuff::Vector3D p = obj->getPosition();
+				glm::vec3 p = obj->getPosition();
 				Stuff::Vector4D sp = ap->getScreenPos();
 
 				// Verdict vocabulary, derived from the three mutually
@@ -253,7 +253,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 				const int32_t recipe = ap->getStaticRecipeIndex();
 				gos_render_probe::ShadowFeedReport rep;
 				gos_render_probe::queryShadowFeed(recipe, rep);
-				Stuff::Vector3D p = obj->getPosition();
+				glm::vec3 p = obj->getPosition();
 				char b[448];
 
 				mc2::fmt::to_buf(b, "  feed: registryQueried={:d} recipe={:d} recipeResolved={:d} buildingFeed={:d} dynamicFeed={:d} modernShadowPath={:d}\n", mc2::fmt::as_i32(rep.registryQueried ? 1 : 0), mc2::fmt::as_i32((int)recipe), mc2::fmt::as_i32(rep.recipeResolved ? 1 : 0), mc2::fmt::as_i32(rep.buildingFeedTotal), mc2::fmt::as_i32(rep.dynamicFeedTotal), mc2::fmt::as_i32(rep.modernShadowPathActive ? 1 : 0));
@@ -310,7 +310,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 		if (!land) {
 			result = "blocked"; note = "no terrain loaded";
 		} else {
-			Stuff::Vector3D q; q.x = 0; q.y = 0; q.z = 0;
+			glm::vec3 q; q.x = 0; q.y = 0; q.z = 0;
 			GameObjectPtr obj = nullptr;
 			bool haveQuery = false;
 			float fx = 0, fy = 0;
@@ -331,7 +331,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 				const float terr  = land->getTerrainElevation(q);
 				const float water = land->getWaterElevation();
 				const short ttype = land->getTerrainType(q);
-				Stuff::Vector3D n = land->getTerrainNormal(q);
+				glm::vec3 n = land->getTerrainNormal(q);
 				mc2::fmt::to_buf(b, "  at=({:.3f},{:.3f}) terrainZ={:.4f} waterZ={:.4f} terrainType={:d} normal=({:.4f},{:.4f},{:.4f}) terrainLight={:.4f}\n", q.x, q.y, terr, water, mc2::fmt::as_i32((int)ttype), n.x, n.y, n.z, land->getTerrainLight(q));
 				extra += b;
 				if (obj) {
@@ -342,7 +342,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 					float mm[16];
 					if (recipe >= 0 &&
 						GameAdapters::StaticProp::recipeModelMatrix(recipe, mm)) {
-						Stuff::Vector3D rq; rq.x = mm[3]; rq.y = mm[7]; rq.z = mm[11];
+						glm::vec3 rq; rq.x = mm[3]; rq.y = mm[7]; rq.z = mm[11];
 						const float rterr = land->getTerrainElevation(rq);
 						mc2::fmt::to_buf(b, "  recipe: idx={:d} baked=({:.3f},{:.3f},{:.3f}) recipeTerrainZ={:.4f} recipeAboveGround={:.4f} recipeVsObj={:.4f}\n", mc2::fmt::as_i32((int)recipe), mm[3], mm[7], mm[11], rterr, mm[11] - rterr, mm[11] - q.z);
 						extra += b;
@@ -395,7 +395,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 				result = "blocked"; note = "no camera";
 			} else {
 				worldForm = true;
-				Stuff::Vector3D wp; wp.x = wx; wp.y = wy;
+				glm::vec3 wp; wp.x = wx; wp.y = wy;
 				wp.z = (nf >= 3) ? wz
 					 : (land ? land->getTerrainElevation(wp) : 0.0f);
 				wz = wp.z;
@@ -421,7 +421,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 					// then scaling to the FBO cannot disagree with the
 					// on-screen verdict above.
 					int fw = 0, fh = 0;
-					const Stuff::Vector3D sres = eye->getScreenRes();
+					const glm::vec3 sres = eye->getScreenRes();
 					if (gos_render_probe::sceneFboSize(&fw, &fh) &&
 						sres.x > 0.0f && sres.y > 0.0f) {
 						const float nx = screen.x / sres.x;

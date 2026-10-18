@@ -407,8 +407,8 @@ void Mover::init (bool create) {
 
 	lowestWeaponNodeZ = -9999.9f;
 
-	positionNormal.Zero();
-	velocity.Zero();
+	positionNormal = glm::vec3(0.0f);
+	velocity = glm::vec3(0.0f);
 	name[0] = '\0';
 	chassis = 0;
 	startDisabled = false;
@@ -503,7 +503,7 @@ void Mover::init (bool create) {
 	withdrawing = false;
 
 	yieldTimeLeft = 0.0;
-	lastValidPosition.Zero();
+	lastValidPosition = glm::vec3(0.0f);
 	pivotDirection = 0;
 	lastHustleTime = -999.0;
 
@@ -521,7 +521,7 @@ void Mover::init (bool create) {
 
 	moveType = MOVETYPE_GROUND;
 	moveLevel = 0;
-	moveCenter.Zero();
+	moveCenter = glm::vec3(0.0f);
 	moveRadius = -1.0;
 	followRoads = false;
 

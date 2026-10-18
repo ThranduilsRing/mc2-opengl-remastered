@@ -344,7 +344,7 @@ MoverGroupPtr Mover::getGroup (void) {
 	return(Commander::commanders[commanderId]->getGroup(groupId));
 }
 
-void Mover::setPosition (Stuff::Vector3D& newPosition) {
+void Mover::setPosition (glm::vec3& newPosition) {
 
 	// Confirm position as on map and move it
 	// back on map if necessary
@@ -443,7 +443,7 @@ void Mover::setAwake (bool set) {
 		pilot->orderPowerUp(false, ORDER_ORIGIN_SELF);
 }
 
-float Mover::relFacingDelta (Stuff::Vector3D goalPos, Stuff::Vector3D targetPos) {
+float Mover::relFacingDelta (glm::vec3 goalPos, glm::vec3 targetPos) {
 
 	float relFacingToGoal = relFacingTo(goalPos);
 	float relFacingToTarget = relFacingTo(targetPos);
@@ -475,25 +475,25 @@ float Mover::relFacingDelta (Stuff::Vector3D goalPos, Stuff::Vector3D targetPos)
 	return(facingDelta);
 }
 
-float Mover::relFacingTo (Stuff::Vector3D goal, long bodyLocation) {
+float Mover::relFacingTo (glm::vec3 goal, long bodyLocation) {
 
 #if 1
-	Stuff::Vector3D facingVec = getRotationVector();
+	glm::vec3 facingVec = getRotationVector();
 
-	Stuff::Vector3D goalVec;
-	goalVec.Subtract(goal, position);
+	glm::vec3 goalVec;
+	goalVec = goal - position;
 	goalVec.z = 0.0;
 
 	float angle = angle_from(facingVec, goalVec);
-	Stuff::Vector3D angleSign;
-	angleSign.Cross(facingVec, goalVec); 
+	glm::vec3 angleSign;
+	angleSign = glm::cross(facingVec, goalVec); 
 	if (angleSign.z >= 0.0)
 	{
 		angle = -angle;
 	}
 	return(angle);
 #else
-	Stuff::Vector3D curPos = position;
+	glm::vec3 curPos = position;
 	curPos.z = 0;
 	goal.z = 0;
 
@@ -502,15 +502,15 @@ float Mover::relFacingTo (Stuff::Vector3D goal, long bodyLocation) {
 	//float angle45 = 45.0;
 	//workFrame.rotate_about_k(angle45);
 
- 	Stuff::Vector3D velVect = -(workFrame.j);
+ 	glm::vec3 velVect = -(workFrame.j);
 
-	Stuff::Vector3D goalVec;
+	glm::vec3 goalVec;
 	goalVec = goal - curPos;
 	goalVec.normalize();
 	
 	float resultAngle = velVect.angle_from(goalVec);
 
-	Stuff::Vector3D angleSign = velVect CROSS goalVec; 
+	glm::vec3 angleSign = velVect CROSS goalVec; 
 	if (angleSign.z >= 0.0)
 	{
 		resultAngle = -resultAngle;
@@ -537,8 +537,8 @@ float Mover::relFacingTo (Stuff::Vector3D goal, long bodyLocation) {
 
 float Mover::getTerrainAngle (void) {
 
-	Stuff::Vector3D worldK(0.0, 0.0, 1.0);
-	float result = positionNormal * worldK;
+	glm::vec3 worldK(0.0, 0.0, 1.0);
+	float result = glm::dot(positionNormal, worldK);
 	result = my_acos(result) * RADS_TO_DEGREES;
 
 	return(result);
@@ -547,9 +547,9 @@ float Mover::getTerrainAngle (void) {
 float Mover::getVelocityTilt (void) {
 
 	// Create vector for velocity
-	Stuff::Vector3D facingVec = getRotationVector();
+	glm::vec3 facingVec = getRotationVector();
 
-	float result = positionNormal * facingVec;
+	float result = glm::dot(positionNormal, facingVec);
 	result = my_acos(result) * RADS_TO_DEGREES;
 
 	return(result);
@@ -588,7 +588,7 @@ void Mover::destroy (void)
 	}
 }
 
-Stuff::Vector3D Mover::relativePosition (float angle, float distance, unsigned long flags) {
+glm::vec3 Mover::relativePosition (float angle, float distance, unsigned long flags) {
 
 	// Note that the angle should be -180 <= angle <= 180, and
 	// the distance is in meters...
@@ -596,7 +596,7 @@ Stuff::Vector3D Mover::relativePosition (float angle, float distance, unsigned l
 	distance *= -worldUnitsPerMeter;
 	
 	// Absolute facing, based upon north facing...
-	Stuff::Vector3D shiftVect(0.0, 1.0, 0.0);
+	glm::vec3 shiftVect(0.0, 1.0, 0.0);
 	if ((flags & RELPOS_FLAG_ABS) == 0) {
 		// Create vector for facing, rotated to adjust for the
 		// relative angle...
@@ -606,12 +606,12 @@ Stuff::Vector3D Mover::relativePosition (float angle, float distance, unsigned l
 	Rotate(shiftVect, angle);
 	shiftVect *= distance;
 
-	Stuff::Vector3D curPos(position.x, position.y, 0.0);
-	Stuff::Vector3D relPos(curPos.x + shiftVect.x, curPos.y + shiftVect.y, 0.0);
+	glm::vec3 curPos(position.x, position.y, 0.0);
+	glm::vec3 relPos(curPos.x + shiftVect.x, curPos.y + shiftVect.y, 0.0);
 
-	Stuff::Vector3D start;
-	Stuff::Vector3D goal;
-	Stuff::Vector3D deltaVector;
+	glm::vec3 start;
+	glm::vec3 goal;
+	glm::vec3 deltaVector;
 	if (flags & RELPOS_FLAG_PASSABLE_START) {
 		start  = curPos;
 		goal = relPos;
@@ -620,15 +620,15 @@ Stuff::Vector3D Mover::relativePosition (float angle, float distance, unsigned l
 		start = relPos;
 		goal = curPos;
 	}
-	deltaVector.Subtract(goal, start);
+	deltaVector = goal - start;
 
 	// First, we need to calc the delta vector--how much we extend
 	// the ray everytime we check the map cell for clear placement.
-	deltaVector.Normalize(deltaVector);
+	deltaVector = glm::normalize(deltaVector);
 	float cellLength = Terrain::worldUnitsPerCell;
 	cellLength *= 0.5;
 	deltaVector *= cellLength;
-	if (deltaVector.GetLength() == 0.0)
+	if (glm::length(deltaVector) == 0.0)
 		return(curPos);
 
 	// Determine the max length the ray must be cast...
@@ -637,22 +637,22 @@ Stuff::Vector3D Mover::relativePosition (float angle, float distance, unsigned l
 	// We'll start at the target, and if it's blocked, we'll move
 	// toward our start location, looking for the first valid/open
 	// cell...
-	Stuff::Vector3D curPoint = start;
-	Stuff::Vector3D curRay;
-	curRay.Zero();
+	glm::vec3 curPoint = start;
+	glm::vec3 curRay;
+	curRay = glm::vec3(0.0f);
 	float rayLength = 0.0;
 
 	int cellR, cellC;
 	land->worldToCell(curPoint, cellR, cellC);
 	bool cellClear = GameMap->getPassable(cellR, cellC);
 
-	Stuff::Vector3D lastGoodPoint = curPoint;
+	glm::vec3 lastGoodPoint = curPoint;
 	if (flags & RELPOS_FLAG_PASSABLE_START)
 		while (cellClear && (rayLength < maxLength)) {
 			lastGoodPoint = curPoint;
 			curPoint += deltaVector;
-			curRay.Subtract(curPoint, start);
-			rayLength = curRay.GetLength();
+			curRay = curPoint - start;
+			rayLength = glm::length(curRay);
 
 			land->worldToCell(curPoint, cellR, cellC);
 			cellClear = GameMap->getPassable(cellR, cellC);
@@ -661,8 +661,8 @@ Stuff::Vector3D Mover::relativePosition (float angle, float distance, unsigned l
 		while (!cellClear && (rayLength < maxLength)) {
 			lastGoodPoint = curPoint;
 			curPoint += deltaVector;
-			curRay.Subtract(curPoint, start);
-			rayLength = curRay.GetLength();
+			curRay = curPoint - start;
+			rayLength = glm::length(curRay);
 
 			land->worldToCell(curPoint, cellR, cellC);
 			cellClear = GameMap->getPassable(cellR, cellC);

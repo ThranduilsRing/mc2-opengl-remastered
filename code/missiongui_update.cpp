@@ -380,7 +380,7 @@ void MissionInterfaceManager::update (void)
 				// active formation drag.
 				Stuff::Vector2DOf<long> sXY;
 				sXY.x = fmx; sXY.y = fmy;
-				Stuff::Vector3D w;
+				glm::vec3 w;
 				eye->inverseProject( sXY, w );
 				{
 					Mover* flMovers[32];
@@ -415,7 +415,7 @@ void MissionInterfaceManager::update (void)
 		{
 			Stuff::Vector2DOf<long> sXY;
 			sXY.x = fmx; sXY.y = fmy;
-			Stuff::Vector3D w;
+			glm::vec3 w;
 			eye->inverseProject( sXY, w );
 			g_tacticalOverview.flOnDragMove( w );
 
@@ -444,7 +444,7 @@ void MissionInterfaceManager::update (void)
 					// v1 assignment: iterate snapshot order, each mover takes
 					// nearest free slot. Orders FIRST, then flOnRelease
 					// (release clears the snapshot).
-					Stuff::Vector3D slots[32];
+					glm::vec3 slots[32];
 					int ns = g_tacticalOverview.flComputeSlots( slots, 32 );
 					// Endpoints sit on the terrain; interpolated slots can
 					// float over dips - drop each onto the surface.
@@ -462,7 +462,7 @@ void MissionInterfaceManager::update (void)
 							continue;
 						int   best = -1;
 						float bestD2 = 0.0f;
-						Stuff::Vector3D mp = pMover->getPosition();
+						glm::vec3 mp = pMover->getPosition();
 						for ( int s = 0; s < ns; s++ )
 						{
 							if ( slotUsed[s] ) continue;
@@ -763,10 +763,10 @@ void MissionInterfaceManager::update (void)
 	// repointed inverseProject (Step 3 3a) walks every quad. Skip the walk
 	// when neither the cursor pixel (exact, >=1px, no tolerance) nor the
 	// camera world->clip matrix changed since the last real projection.
-	const Stuff::Matrix4D& curW2C = eye->getWorldToClip();
+	const glm::mat4& curW2C = eye->getWorldToClip();
 	const bool mouseSame = (mouseX == prevMouseX) && (mouseY == prevMouseY);
 	const bool camSame   = inverseProjectCacheValid &&
-		(memcmp(&cachedWorldToClip, &curW2C, sizeof(Stuff::Matrix4D)) == 0);
+		(memcmp(&cachedWorldToClip, &curW2C, sizeof(glm::mat4)) == 0);
 	if (inverseProjectCacheValid && mouseSame && camSame)
 	{
 		wPos = cachedWPos;
@@ -813,7 +813,7 @@ void MissionInterfaceManager::update (void)
 				const int cyPix = Environment.screenHeight / 2;
 				Stuff::Vector2DOf<long> centerXY;
 				centerXY.x = cxPix; centerXY.y = cyPix;
-				Stuff::Vector3D centerW;
+				glm::vec3 centerW;
 				eye->inverseProject(centerXY, centerW);
 				gpCenterProbe(cxPix, cyPix, centerW.x, centerW.y, centerW.z);
 			}
@@ -1232,7 +1232,7 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 		static const bool s_cursorTargetTrace = mc2::gate::get<"MC2_CURSOR_TARGET_TRACE">();
 		if ( s_cursorTargetTrace && target && eye && mc2_diag::tagEnabled("CURSOR_TARGET") )
 		{
-			Stuff::Vector3D _ct_pos = target->getPosition();
+			glm::vec3 _ct_pos = target->getPosition();
 			Stuff::Vector4D _ct_sp;
 			eye->projectForScreenXY( _ct_pos, _ct_sp );
 			bool  _ct_behind = (_ct_sp.w <= 1e-4f);

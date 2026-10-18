@@ -379,7 +379,7 @@ class WorldChunk {
 
 		void buildArtillery (long artilleryType,
 							 long teamId,
-							 Stuff::Vector3D location,
+							 glm::vec3 location,
 							 long seconds);
 
 		void buildMine (long tileR,
@@ -1633,7 +1633,7 @@ class MultiPlayer {
 
 //		long addTerrainAlignmentChunk (GameObjectPtr object, long alignment);
 
-		long addArtilleryChunk (long artilleryType, long teamId, Stuff::Vector3D location, long seconds);
+		long addArtilleryChunk (long artilleryType, long teamId, glm::vec3 location, long seconds);
 
 		long addMineChunk (long tileR, long tileC, long teamId, long mineState, long explosionType);
 
@@ -1762,7 +1762,7 @@ class MultiPlayer {
 
 		void sendEndMission (long result);
 
-		void sendReinforcement (long vehicleID, long rosterIndex, const char pilotName[16], long commanderID, Stuff::Vector3D pos, unsigned char stage);
+		void sendReinforcement (long vehicleID, long rosterIndex, const char pilotName[16], long commanderID, glm::vec3 pos, unsigned char stage);
 
 		void sendNewServer (void);
 
@@ -1783,7 +1783,7 @@ class MultiPlayer {
 								   MoverPtr* moverList,
 								   long point);
 
-		void sendPlayerArtillery (long strikeType, Stuff::Vector3D location, long seconds);
+		void sendPlayerArtillery (long strikeType, glm::vec3 location, long seconds);
 			
 		long sendPing(void);
 

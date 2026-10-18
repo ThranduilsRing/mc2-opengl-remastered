@@ -112,7 +112,7 @@ void WorldChunk::buildTerrainFire (GameObjectPtr object,
 
 void WorldChunk::buildArtillery (long commanderId,
 								 long artilleryType,
-								 Stuff::Vector3D location,
+								 glm::vec3 location,
 								 long seconds) {
 
 }

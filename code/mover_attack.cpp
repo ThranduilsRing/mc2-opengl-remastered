@@ -11,12 +11,12 @@
 #define MAX_LONG_RANGE		(180.0f * worldUnitsPerMeter)
 
 extern float applyDifficultySkill (float chance, bool isPlayer);
-float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, Stuff::Vector3D* targetPoint) 
+float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, glm::vec3* targetPoint) 
 {
 	if ((weaponIndex < numOther) || (weaponIndex >= numOther + numWeapons))
 		return(-9999.0);
 
-	Stuff::Vector3D targetPosition;
+	glm::vec3 targetPosition;
 	BattleMechPtr mech = nullptr;
 	GroundVehiclePtr vehicle = nullptr;
 	
@@ -313,7 +313,7 @@ void Mover::disable (unsigned long cause)
 
 		if (isMech() && (getMoveType() != MOVETYPE_AIR))
 		{
-			Stuff::Vector3D explosionLoc;
+			glm::vec3 explosionLoc;
 			explosionLoc = appearance->getNodeNamePosition("cockpit");
 			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,nullptr,explosionLoc,0.0f,0.0f);
 

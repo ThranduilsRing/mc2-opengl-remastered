@@ -393,7 +393,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 			note = "order move <x> <y> [run|walk]";
 		} else {
 			const bool walk = (nf >= 3 && strcmp(mode, "walk") == 0);
-			Stuff::Vector3D pos; pos.x = x; pos.y = y; pos.z = 0.0f;
+			glm::vec3 pos; pos.x = x; pos.y = y; pos.z = 0.0f;
 			if (land) pos.z = land->getTerrainElevation(pos);
 			Team* pTeam = Team::home;
 			const long homeCmdr = Commander::home ? Commander::home->getId() : -1;
@@ -497,7 +497,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		if (nf < 2) { note = "camera <x> <y> [rotDeg] [zoomAlt]"; }
 		else if (!eye) { result = "blocked"; note = "no camera"; }
 		else {
-			Stuff::Vector3D pos; pos.x = x; pos.y = y; pos.z = 0.0f;
+			glm::vec3 pos; pos.x = x; pos.y = y; pos.z = 0.0f;
 			if (land) pos.z = land->getTerrainElevation(pos);
 			eye->setPosition(pos, true);              // swoopy = goal-seek smoothing
 			if (nf >= 3) eye->setCameraRotation(rot, rot);
@@ -529,7 +529,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 				if (!obj) { result = "blocked"; note = "no such object"; }
 				else {
 					eye->setCameraTargetId(pid);
-					Stuff::Vector3D p = obj->getPosition();
+					glm::vec3 p = obj->getPosition();
 					result = "ok";
 					char b[96];
 					mc2::fmt::to_buf(b, "following {:d} at ({:.1f},{:.1f})", mc2::fmt::as_i32(pid), p.x, p.y);
@@ -571,7 +571,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 			Mover* m = (Mover*)pTeam->getMover(i);
 			if (!(m && m->isSelected() && m->getCommander()->getId() == homeCmdr))
 				continue;
-			Stuff::Vector3D p = m->getPosition();
+			glm::vec3 p = m->getPosition();
 			char b[224];
 			mc2::fmt::to_buf(b, "  [id={:d} name={} pos=({:.1f},{:.1f},{:.1f}) hp={:.3f}{}]\n", mc2::fmt::as_i32(m->getPartId()), mc2::fmt::safe((m->getName() ? m->getName() : "?")), p.x, p.y, p.z, m->getStatusRating(), mc2::fmt::safe(m->isDestroyed() ? " DESTROYED" : ""));
 			extra += b;
@@ -654,7 +654,7 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 							mask[mi++] = (char)('0' + g);
 					mask[mi] = '\0';
 					if (mi > 0) ++animatable;
-					Stuff::Vector3D p = o->getPosition();
+					glm::vec3 p = o->getPosition();
 					const char* cls = getObjectClassName(o->getObjectClass());
 					char b[352];
 					mc2::fmt::to_buf(b, "  [id={:d} type={} class={} pos=({:.1f},{:.1f},{:.1f}) gesture={:d} animGestures={} staticReg={:d} recipe={:d} staticNow={:d} eligible={:d}]\n", mc2::fmt::as_i32(pid), mc2::fmt::safe((ba->appearType->name ? ba->appearType->name : "?")), mc2::fmt::safe(cls ? cls : "?"), p.x, p.y, p.z, mc2::fmt::as_i32(ba->getCurrentGestureId()), mc2::fmt::safe(mi > 0 ? mask : "-"), mc2::fmt::as_i32(ba->isStaticRegistered() ? 1 : 0), mc2::fmt::as_i32((int)ba->getStaticRecipeIndex()), mc2::fmt::as_i32(ba->IsStaticNow() ? 1 : 0), mc2::fmt::as_i32(ba->isStaticEligible() ? 1 : 0));
@@ -712,7 +712,7 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 						hay[c] = (char)toupper((unsigned char)hay[c]);
 					if (hay.find(wantClass) == std::string::npos) continue;
 				}
-				Stuff::Vector3D p = m->getPosition();
+				glm::vec3 p = m->getPosition();
 				AppearancePtr ap = m->getAppearance();
 				char b[288];
 				mc2::fmt::to_buf(b, "  [id={:d} name={} class={} team={:d} cmdr={:d} pos=({:.1f},{:.1f},{:.1f}) hp={:.3f} sel={:d} gui={:d} inView={:d}{}{}]\n", mc2::fmt::as_i32(m->getPartId()), mc2::fmt::safe((m->getName() ? m->getName() : "?")), mc2::fmt::safe(cls ? cls : "?"), mc2::fmt::as_i32(m->getTeamId()), mc2::fmt::as_i32(m->getCommanderId()), p.x, p.y, p.z, m->getStatusRating(), mc2::fmt::as_i32(m->isSelected() ? 1 : 0), mc2::fmt::as_i32(m->isOnGUI() ? 1 : 0), mc2::fmt::as_i32((ap && ap->canBeSeen()) ? 1 : 0), mc2::fmt::safe(m->isDisabled()  ? " DISABLED"  : ""), mc2::fmt::safe(m->isDestroyed() ? " DESTROYED" : ""));
@@ -740,7 +740,7 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 			GameObjectPtr obj = ObjectManager ? ObjectManager->findByPartId(pid) : nullptr;
 			if (!obj) { result = "blocked"; note = "no such object"; }
 			else {
-				Stuff::Vector3D p = obj->getPosition();
+				glm::vec3 p = obj->getPosition();
 				char b[512];
 				mc2::fmt::to_buf(b, "  id={:d} name={} class={} pos=({:.2f},{:.2f},{:.2f}) hp={:.3f} exists={:d} disabled={:d} destroyed={:d}\n", mc2::fmt::as_i32(pid), mc2::fmt::safe((obj->getName() ? obj->getName() : "?")), mc2::fmt::safe(getObjectClassName(obj->getObjectClass())), p.x, p.y, p.z, obj->getStatusRating(), mc2::fmt::as_i32(obj->getExists() ? 1 : 0), mc2::fmt::as_i32(obj->isDisabled() ? 1 : 0), mc2::fmt::as_i32(obj->isDestroyed() ? 1 : 0));
 				extra += b;

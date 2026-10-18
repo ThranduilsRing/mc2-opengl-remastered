@@ -19,7 +19,7 @@ void MissionInterfaceManager::addAirstrike()
 }
 
 
-MoverPtr BringInReinforcement (long vehicleID, long rosterIndex, long commanderID, Stuff::Vector3D pos, bool exists) {
+MoverPtr BringInReinforcement (long vehicleID, long rosterIndex, long commanderID, glm::vec3 pos, bool exists) {
 
 	MoverInitData data;
 	memset( &data, 0, sizeof( data ) );
@@ -82,7 +82,7 @@ MoverPtr BringInReinforcement (long vehicleID, long rosterIndex, long commanderI
 }
 
 
-void MissionInterfaceManager::addVehicle( const Stuff::Vector3D& pos )
+void MissionInterfaceManager::addVehicle( const glm::vec3& pos )
 {
 	
 
@@ -103,9 +103,9 @@ void MissionInterfaceManager::addVehicle( const Stuff::Vector3D& pos )
 	reinforcement = BringInReinforcement(vehicleID[Commander::home->getId()], 255, Commander::home->getId(), pos, true);
 }
 
-void MissionInterfaceManager::beginVtol (long supportID, long commanderID, Stuff::Vector3D* reinforcePos, MoverPtr salvageTarget)
+void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::vec3* reinforcePos, MoverPtr salvageTarget)
 {
-	Stuff::Vector3D vtolPos = wPos;
+	glm::vec3 vtolPos = wPos;
 	if (reinforcePos)
 		vtolPos = *reinforcePos;
 
@@ -258,7 +258,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, Stuff
 		}
 	}
 
-	Stuff::Vector3D newPos = vtolPos;
+	glm::vec3 newPos = vtolPos;
 	float rotation = 0.f;  // this needs to be pointing 180 degrees from drop point
 	
 	if (vehicleID[commanderID] == 147)
@@ -286,16 +286,16 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, Stuff
 
 	if (dustCloud[commanderID])
 	{
-		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D	localToWorld;
-		Stuff::LinearMatrix4D	localResult;
+		glm::mat4 	shapeOrigin;
+		glm::mat4	localToWorld;
+		glm::mat4	localResult;
 					
-		Stuff::Vector3D dustPos = vTol[commanderID]->position;
-		Stuff::Point3D wakePos;
+		glm::vec3 dustPos = vTol[commanderID]->position;
+		glm::vec3 wakePos;
 		mc2ToRender(wakePos, dustPos);
 			
-		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(wakePos);
+		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, wakePos);
 					
 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 	
@@ -617,7 +617,7 @@ int MissionInterfaceManager::gotoNextNavMarker()
 		{
 			if ( pObjective->Status(Team::home->objectives) == OS_UNDETERMINED  && pObjective->DisplayMarker() == NAV )
 			{
-				Stuff::Vector3D pos;
+				glm::vec3 pos;
 				pos.x = pObjective->MarkerX();
 				pos.y = pObjective->MarkerY();
 				if ( !pos.x && !pos.y )
