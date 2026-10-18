@@ -55,22 +55,22 @@
       "next": "retire the descriptor with the RenderCore frame-graph islands (3.9)"
     },
     "ShadowTerrain": {
-      "status": "VISUAL_PROVEN",
+      "status": "DESCRIPTIVE_REGISTERED",
       "renderPassId": "Shadow",
       "pipelineId": "ShadowTerrain",
       "shaderBase": "shadow_terrain",
-      "stateOwner": "applyPipeline",
-      "evidence": "gameos_graphics.cpp beginShadowPrePass applyPipeline(ShadowTerrain); mc2_24 before/after byte-identical (ridge_lowangle e0fb9cc8)",
-      "next": "spirv_eligible (needs depth-parity gate — SPIRV-SHADOW-FAMILY-RECON)"
+      "stateOwner": "vulkan_island",
+      "evidence": "the GL static terrain shadow prepass (beginShadowPrePass applyPipeline(ShadowTerrain)) was deleted in s61; the descriptor stays registered for the frame-graph model and the static map is drawn by the Vulkan shadow island",
+      "next": "retire the descriptor with the RenderCore frame-graph islands (3.9)"
     },
     "ShadowStaticProp": {
-      "status": "VISUAL_PROVEN",
+      "status": "DESCRIPTIVE_REGISTERED",
       "renderPassId": "Shadow",
       "pipelineId": "ShadowStaticProp",
       "shaderBase": "shadow_static_prop",
-      "stateOwner": "applyPipeline",
-      "evidence": "gos_static_prop_batcher.cpp prop shadow draw applyPipeline(ShadowStaticProp); mc2_24 byte-identical (highangle_wide c6df715e)",
-      "next": "spirv_eligible (depth-parity gate)"
+      "stateOwner": "vulkan_island",
+      "evidence": "the GL prop shadow draws (flushShadow, drawStaticBuildingShadows, drawDynamicPropShadows: applyPipeline(ShadowStaticProp)) were deleted in s61; the descriptor stays registered for the frame-graph model and the casters are drawn by the Vulkan shadow island",
+      "next": "retire the descriptor with the RenderCore frame-graph islands (3.9)"
     },
     "ShadowMech": {
       "status": "VISUAL_PROVEN",
