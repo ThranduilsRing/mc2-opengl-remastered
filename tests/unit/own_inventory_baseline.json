@@ -5826,9 +5826,6 @@
     "code/mission_init.cpp": {
      "new": 1
     },
-    "code/radio.cpp": {
-     "new": 1
-    },
     "code/saveload.cpp": {
      "new": 1
     },
@@ -5851,7 +5848,7 @@
      "new": 2
     }
    },
-   "new": 12,
+   "new": 11,
    "new_array": 0,
    "owners": [
     "",

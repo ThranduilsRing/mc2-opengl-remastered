@@ -707,7 +707,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/make-isolated-deploy.py",
-          "line": 281,
+          "line": 277,
           "evidence": "command",
           "reference": "A:/Games/mc2-main/scripts/check-disk-space.py",
           "text": "rc = subprocess.run("
@@ -929,7 +929,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/make-isolated-deploy.py",
-          "line": 126,
+          "line": 122,
           "evidence": "load module",
           "reference": "A:\\Games\\mc2-main\\scripts/check-hardlink-isolation.py",
           "text": "spec = importlib.util.spec_from_file_location(\"check_hardlink_isolation\","
@@ -7826,7 +7826,7 @@
         },
         {
           "path": "tools/terrain_beautify/mission_terrain_analyzer.py",
-          "line": 49,
+          "line": 48,
           "evidence": "import",
           "reference": "stock_missions",
           "text": "from stock_missions import (  # noqa: E402"
@@ -8835,7 +8835,7 @@
         },
         {
           "path": "tools/repo_intel/test_anti_churn.py",
-          "line": 467,
+          "line": 466,
           "evidence": "import",
           "reference": "dead_gate_scan",
           "text": "import dead_gate_scan as dgs"
@@ -8878,7 +8878,7 @@
         },
         {
           "path": "tools/repo_intel/test_anti_churn.py",
-          "line": 397,
+          "line": 396,
           "evidence": "import",
           "reference": "deploy_status",
           "text": "import deploy_status as ds"
@@ -9015,7 +9015,7 @@
         },
         {
           "path": "tools/repo_intel/test_anti_churn.py",
-          "line": 398,
+          "line": 397,
           "evidence": "import",
           "reference": "lane_model",
           "text": "import lane_model"
@@ -9059,7 +9059,7 @@
         },
         {
           "path": "tools/repo_intel/lane_registry.py",
-          "line": 232,
+          "line": 231,
           "evidence": "import",
           "reference": "link_group",
           "text": "import link_group as lgrp  # noqa: PLC0415 -- sibling module, lazy"
@@ -9088,7 +9088,7 @@
         },
         {
           "path": "tools/repo_intel/test_anti_churn.py",
-          "line": 422,
+          "line": 421,
           "evidence": "import",
           "reference": "mission_facts",
           "text": "import mission_facts as mf"
@@ -9779,14 +9779,14 @@
         },
         {
           "path": "tools/terrain_beautify/scatter_tool.py",
-          "line": 422,
+          "line": 420,
           "evidence": "import",
           "reference": "mission_terrain_analyzer",
           "text": "from mission_terrain_analyzer import decode_packet as _decode"
         },
         {
           "path": "tools/terrain_beautify/scatter_tool.py",
-          "line": 472,
+          "line": 470,
           "evidence": "import",
           "reference": "mission_terrain_analyzer",
           "text": "from mission_terrain_analyzer import decode_packet as _decode"
@@ -10076,7 +10076,7 @@
           "line": 51,
           "evidence": "import",
           "reference": "visual_heightfield",
-          "text": "from visual_heightfield import (  # noqa: E402  TERRAIN-REAUTH-UNPIN-1 gates"
+          "text": "from visual_heightfield import (  # noqa: E402  reauth gates"
         },
         {
           "path": "tools/terrain_beautify/terrain_workbench.py",
@@ -11791,7 +11791,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/check-golden-coverage.py",
-          "line": 395,
+          "line": 389,
           "evidence": "import",
           "reference": "png_io",
           "text": "from png_io import encode_png"
