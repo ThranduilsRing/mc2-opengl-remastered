@@ -292,6 +292,24 @@ def sync_verified(root, outdir=None):
     return 0
 
 
+def persistent_build_dir(root):
+    """A per-worktree gate_dump build tree under the git dir. Configured once; later runs are a no-op configure
+    plus an incremental build (exact header deps), so the compile verdict is unchanged but an untouched tree costs
+    seconds instead of a fresh configure + full compile. Falls back to a temp dir when git cannot place one."""
+    import tempfile
+    try:
+        r = subprocess.run(["git", "rev-parse", "--git-path", "mc2_gate_dump_build"], cwd=root,
+                           capture_output=True, text=True, **nofocus.hidden_kwargs())
+        p = r.stdout.strip()
+        if r.returncode == 0 and p:
+            p = os.path.normpath(p if os.path.isabs(p) else os.path.join(root, p))
+            os.makedirs(p, exist_ok=True)
+            return p
+    except OSError:
+        pass
+    return tempfile.mkdtemp(prefix="gate_dump_")
+
+
 def build_gate_dump(root, outdir):
     """Configure and build tools/gate_dump into `outdir`; return the exe path or None."""
     src = os.path.join(root, "tools", "gate_dump")
@@ -361,18 +379,17 @@ def check(root, rebuild=False):
     if ov > base:
         fails.append("per-site rule overrides rose: %d (baseline %d)" % (ov, base))
     if rebuild and not fails:
-        import tempfile
-        with tempfile.TemporaryDirectory(prefix="gate_dump_") as td:
-            exe = build_gate_dump(root, td)
-            if exe is None:
-                fails.append("tools/gate_dump did not build")
-            else:
-                r = subprocess.run([exe], capture_output=True, text=True, **nofocus.hidden_kwargs())
-                want = open(os.path.join(root, TABLE_JSON_REL.replace("/", os.sep)), "r", encoding="utf-8",
-                            newline="").read()
-                if r.returncode != 0:
-                    fails.append("gate_dump exited %d" % r.returncode)
-                elif r.stdout.replace("\r\n", "\n") != want.replace("\r\n", "\n"):
-                    fails.append("%s differs from what the compiled table emits: rebuild tools/gate_dump and commit "
-                                 "its output (default/doc/owner drift)" % TABLE_JSON_REL)
+        td = persistent_build_dir(root)
+        exe = build_gate_dump(root, td)
+        if exe is None:
+            fails.append("tools/gate_dump did not build")
+        else:
+            r = subprocess.run([exe], capture_output=True, text=True, **nofocus.hidden_kwargs())
+            want = open(os.path.join(root, TABLE_JSON_REL.replace("/", os.sep)), "r", encoding="utf-8",
+                        newline="").read()
+            if r.returncode != 0:
+                fails.append("gate_dump exited %d" % r.returncode)
+            elif r.stdout.replace("\r\n", "\n") != want.replace("\r\n", "\n"):
+                fails.append("%s differs from what the compiled table emits: rebuild tools/gate_dump and commit "
+                             "its output (default/doc/owner drift)" % TABLE_JSON_REL)
     return fails

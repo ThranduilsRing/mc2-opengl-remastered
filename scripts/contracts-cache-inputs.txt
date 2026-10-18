@@ -1,0 +1,58 @@
+# Row input declarations for the check-contracts.sh result cache (scripts/contracts_cache.py).
+#
+# A row listed here is skipped ("PASS (cached)") when a previous run PASSED against byte-identical inputs. A row NOT
+# listed is never cached. Inputs = the specs below + the check's own code, which the helper finds by itself (repo files
+# named in the row command, their local imports, repo paths they mention, same-stem sibling baselines).
+#
+# Spec forms (git-tracked + modified + untracked-not-ignored files are the universe):
+#   dir or file path     prefix match          .   everything
+#   glob:PATTERN         fnmatch on the path ('**' behaves like '*')
+#   !SPEC                exclusion             +ignored   also include git-ignored files (for rows that os.walk/rglob)
+# Rule for adding a row: list EVERYTHING the check reads that is not its own code. When unsure, use "." (wider key,
+# never wrong). Rows that read an install, a build tree, a compiler or a capture on disk must stay undeclared.
+
+@CPP = code mclib gui editor GameAdapters GameOS Viewer EditorBridge RenderCore RenderWorld Visibility MeshRenderer MaterialSystem DebugRenderer RenderDeviceGL GuiRuntime HostServices Gates cmake CMakeLists.txt
+@SHD = shaders
+@ALLSRC = @CPP @SHD
+
+# whole-repo scanners and the two test tiers
+log_tag_census: .
+script_callers: .
+cxx_standard_floor: .
+cxx17_ratchet: .
+journal_comment_ratchet: .
+doc_links: .
+golden_coverage: .
+asset_manifests: .
+asset_manifest_fixtures: .
+stock_mission_data: .
+scripts_tests: .
+tools_tests: .
+sim_include_firewall: .
+
+# background_launch: rglob("*.py") under scripts/tools/.claude/tests (ignored files included) plus every launcher
+background_launch: glob:scripts/**.py glob:tools/**.py glob:.claude/**.py glob:tests/**.py glob:**.bat glob:**.cmd glob:**.ps1 +ignored
+
+# C++ source scanners
+gate_echo_reads: @CPP
+gate_gen_check: @CPP docs/flags.auto.yaml
+gated_layout_macros: @CPP
+counter_honesty: @CPP
+own_inventory: @CPP
+pointer_order_scan: @CPP
+dup_lines_ratchet: @ALLSRC
+file_size_ratchet: @ALLSRC
+axis_swizzle_ratchet: @ALLSRC docs/axis-conversion-sites.md
+render_contract_gbuf1: @ALLSRC
+asset_scale_callers: @CPP
+mover_registry_coherence: code mclib gui editor GameAdapters
+tgl_load_callers: code mclib gui editor GameAdapters GameOS Viewer EditorBridge
+include_firewall: RenderCore RenderWorld Visibility MeshRenderer MaterialSystem DebugRenderer RenderDeviceGL EditorBridge Gates editor
+material_gpu_mirror: RenderCore GameOS mclib code shaders
+binding_slots: GameOS RenderCore RenderWorld GameAdapters mclib code shaders
+sampler_bindings: GameOS RenderCore RenderWorld GameAdapters mclib code shaders
+unified_projection_retirement: shaders code GameOS mclib
+
+# shader-side (rows that run an external compiler -- glslang, slang -- are deliberately NOT declared: the toolchain is not in the key)
+vk_pipeline_layout: shaders GameOS RenderCore
+gpu_abi: RenderCore shaders
