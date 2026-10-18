@@ -574,6 +574,25 @@ class EditorSmokeTests(unittest.TestCase):
             self.assertEqual({c["action"] for c in changes}, {"remove-nonstock-loose", "replace-from-stock"})
         with self.assertRaisesRegex(ValueError, "restricted"):
             smoke.prepare_stock_scratch(smoke.REPO.parent / "mc2-opengl/mc2-win64-v0.4c", smoke.REPO / "unused.json", {})
+        with self.assertRaisesRegex(ValueError, "restricted"):  # a lane install is an install too
+            smoke.prepare_stock_scratch(Path("A:/Games/mc2-opengl/mc2-win64-lane2"), smoke.REPO / "unused.json", {})
+
+    def test_clone_for_stock_scratch_leaves_the_install_untouched(self):
+        with scratch_directory() as temp:
+            install = temp / "install"
+            (install / "data/art").mkdir(parents=True)
+            (install / "data/art/x.csv").write_bytes(b"mod")
+            (install / "mc2.exe").write_bytes(b"exe")
+            (install / "mc2.pdb").write_bytes(b"pdb")
+            (install / "shaders").mkdir()
+            (install / "shaders/a.glsl").write_bytes(b"s")
+            with patch.object(smoke, "REPO", temp / "repo"):
+                clone = smoke.clone_install_for_stock_scratch(install)
+            self.assertTrue((clone / "mc2.exe").exists())
+            self.assertTrue((clone / "shaders/a.glsl").exists())
+            self.assertFalse((clone / "mc2.pdb").exists())
+            self.assertEqual(list((clone / "data").iterdir()), [])
+            self.assertEqual((install / "data/art/x.csv").read_bytes(), b"mod")
 
     def test_malformed_baseline_is_rejected_with_a_diagnostic(self):
         with scratch_directory() as temp:
