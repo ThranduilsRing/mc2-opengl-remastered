@@ -1160,7 +1160,9 @@ int EditorInterface::Quit()
 
 int EditorInterface::PromptAndSaveIfNecessary()
 {
+	extern bool g_cliSuppressModals;   // smoke/headless: no save prompt, the close proceeds without saving
 	int res = IDNO;
+	if (g_cliSuppressModals) return res;
 	bool endFlag = false;
 	while (!endFlag) {
 		endFlag = true;
