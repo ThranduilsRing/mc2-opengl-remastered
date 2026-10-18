@@ -27,6 +27,8 @@ lane2 tgl.fst is the stock 34,295,854-byte archive (sha1 7fc8e4841ef2, from A:/G
 | editor smoke sync validation (gen_map_basic, stock_roundtrip:mc2_01, clean_close) | PASS 3/3 at B2 (`s58_ed6.log`) and B3 (`s58_ed7.log`) |
 | captures day mc2_01_saved_205644 + night mc2_10_saved_204523, VIEWED | `.claude/l2cap/s58-b1` (viewed; MAD 0.010/0.003 vs the viewed s57 pair), `s58-b2` (night viewed; MAD 0.0002/0.0 vs b1), `s58-b3` (MAD 0.0001/0.0 vs b2); editor captures VIEWED `scratch/s58-edcap/mc2_01.png`, `mc2_10.png` (ImGui panels through Vulkan, brackets, props) |
 
+| build_all_targets -j2 at 7b74f46ae | every stage built, EXIT 0 (`scratch/s58_bat.log`) |
+
 ### Ratchets / OPEN
 - No ratchet rises. Gate rows deleted with `tools/gate_gen.py --write` (967 -> 960); the seed file was edited by hand (round-trip checked). `log_tag_baseline.json`, callers.json and the inventory were not regenerated.
 - Stale: the comment in `render_backend_select.h` still names the deleted `MC2_RENDER_BACKEND_IFACE` (the header is included everywhere; fix with the next full rebuild).
