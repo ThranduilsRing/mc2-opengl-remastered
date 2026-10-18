@@ -15,7 +15,7 @@
 
 #include <cstdint>
 
-namespace Stuff { class Matrix4D; class Vector3D; }
+#include "math/glm_config.h"
 
 namespace CliffDecalTuning {
 
@@ -45,17 +45,17 @@ Knobs& knobs();
 // xlatPosition: shape-world placement origin (Stuff row-vector translation row).
 // nAcc: accumulated (un-normalized) terrain normal in WORLD axes (nx,ny,nz).
 // Reads the current knobs(). Writes the CLIFF_WALL mat4 into out.
-void buildCliffWallMatrix(const Stuff::Vector3D& xlatPosition,
-                          const Stuff::Vector3D& nAcc,
+void buildCliffWallMatrix(const glm::vec3& xlatPosition,
+                          const glm::vec3& nAcc,
                           const Knobs& k,
-                          Stuff::Matrix4D& out);
+                          glm::mat4& out);
 
 // Called by registerStatic once the CLIFF_WALL decal recipe is registered.
 // Captures the context needed to recompute the transform live. recipeIndex<0
 // clears the captured decal (no live target this mission).
 void captureDecalContext(int32_t recipeIndex,
-                         const Stuff::Vector3D& xlatPosition,
-                         const Stuff::Vector3D& nAcc);
+                         const glm::vec3& xlatPosition,
+                         const glm::vec3& nAcc);
 
 // Cleared at mission unload so a stale recipe index can't be written into a new
 // mission's registry.

@@ -183,14 +183,14 @@ long GVAppearance::render (long depthFixup)
 				drawInfo.m_state = mlrState;
 				drawInfo.m_clippingFlags = 0x0;
 	
-				Stuff::LinearMatrix4D 	shapeOrigin;
-				Stuff::LinearMatrix4D	localToWorld;
-				Stuff::Point3D			tPosition;
+				glm::mat4 	shapeOrigin;
+				glm::mat4	localToWorld;
+				glm::vec3			tPosition;
 				
 				mc2ToRender(tPosition, position);
 				
-				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-				shapeOrigin.BuildTranslation(tPosition);
+				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+				mc2::math::buildTranslation(shapeOrigin, tPosition);
 				
 				drawInfo.m_parentToWorld = &shapeOrigin;
 				
@@ -214,22 +214,22 @@ long GVAppearance::render (long depthFixup)
 					drawInfo.m_state = mlrState;
 					drawInfo.m_clippingFlags = 0x0;
 
-					Stuff::LinearMatrix4D 	shapeOrigin;
-					Stuff::LinearMatrix4D	localToWorld;
-					Stuff::LinearMatrix4D	localResult;
+					glm::mat4 	shapeOrigin;
+					glm::mat4	localToWorld;
+					glm::mat4	localResult;
 							
-					Stuff::Point3D wakePos;
+					glm::vec3 wakePos;
 					wakePos.x = -position.x;
 					wakePos.y = Terrain::waterElevation;
 					wakePos.z = position.y;
 					
-					shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-					shapeOrigin.BuildTranslation(wakePos);
+					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+					mc2::math::buildTranslation(shapeOrigin, wakePos);
 							
-					Stuff::UnitQuaternion effectRot;
-					effectRot = Stuff::EulerAngles(90.0f * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f);
-					localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-					localResult.Multiply(localToWorld,shapeOrigin);
+					glm::quat effectRot;
+					effectRot = mc2::math::quatFromEuler(mc2::math::Euler(90.0f * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f));
+					localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
+					localResult = localToWorld * shapeOrigin;
 		
 					drawInfo.m_parentToWorld = &localResult;
 					if (!MLRVertexLimitReached)
@@ -249,25 +249,25 @@ long GVAppearance::render (long depthFixup)
 					drawInfo.m_state = mlrState;
 					drawInfo.m_clippingFlags = 0x0;
 
-					Stuff::LinearMatrix4D 	shapeOrigin;
-					Stuff::LinearMatrix4D	localToWorld;
-					Stuff::LinearMatrix4D	localResult;
+					glm::mat4 	shapeOrigin;
+					glm::mat4	localToWorld;
+					glm::mat4	localResult;
 							
 					if (dustNodeIndex == -1)
 						dustNodeIndex = gvShape->GetNodeNameId("dust_body");
 
-					Stuff::Vector3D dustPos = getNodeIdPosition(dustNodeIndex);
+					glm::vec3 dustPos = getNodeIdPosition(dustNodeIndex);
 
-					Stuff::Point3D wakePos;
+					glm::vec3 wakePos;
 					mc2ToRender(wakePos, dustPos);
 					
-					shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-					shapeOrigin.BuildTranslation(wakePos);
+					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+					mc2::math::buildTranslation(shapeOrigin, wakePos);
 							
-					Stuff::UnitQuaternion effectRot;
-					effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
-					localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-					localResult.Multiply(localToWorld,shapeOrigin);
+					glm::quat effectRot;
+					effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,rotation * DEGREES_TO_RADS,0.0f));
+					localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
+					localResult = localToWorld * shapeOrigin;
 		
 					drawInfo.m_parentToWorld = &localResult;
 					if (!MLRVertexLimitReached)
@@ -288,19 +288,19 @@ long GVAppearance::render (long depthFixup)
 					drawInfo.m_state = mlrState;
 					drawInfo.m_clippingFlags = 0x0;
 
-					Stuff::LinearMatrix4D 	shapeOrigin;
-					Stuff::LinearMatrix4D	localToWorld;
-					Stuff::LinearMatrix4D	localResult;
+					glm::mat4 	shapeOrigin;
+					glm::mat4	localToWorld;
+					glm::mat4	localResult;
 							
 					if (activityNodeIndex == -1)
 						activityNodeIndex = gvShape->GetNodeNameId("activity_node");
 
-					Stuff::Vector3D dustPos = getNodeIdPosition(activityNodeIndex);
-					Stuff::Point3D wakePos;
+					glm::vec3 dustPos = getNodeIdPosition(activityNodeIndex);
+					glm::vec3 wakePos;
 					mc2ToRender(wakePos, dustPos);
 					
-					shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-					shapeOrigin.BuildTranslation(wakePos);
+					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+					mc2::math::buildTranslation(shapeOrigin, wakePos);
 					
 		
 					drawInfo.m_parentToWorld = &shapeOrigin;

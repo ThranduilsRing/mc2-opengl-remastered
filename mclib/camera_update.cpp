@@ -12,8 +12,8 @@ void Camera::updateGoalVelocity (void)
 {
 	if (goalVelTime > 0.0)
 	{
-		Stuff::Vector3D velDiff;
-		velDiff.Subtract(goalVelocity,velocity);
+		glm::vec3 velDiff;
+		velDiff = goalVelocity - velocity;
 		velDiff /= goalVelTime;
 		velDiff *= frameLength;
 		goalVelTime -= frameLength;
@@ -21,7 +21,7 @@ void Camera::updateGoalVelocity (void)
 		if (goalVelTime < 0.0)
 			velocity = goalVelocity;
 		else
-			velocity.Add(velocity,velDiff);
+			velocity = velocity + velDiff;
 	}
 	else
 	{
@@ -91,12 +91,12 @@ void Camera::updateGoalRotation (void)
 }
 
 //---------------------------------------------------------------------------
-void Camera::updateGoalPosition (Stuff::Vector3D &pos)
+void Camera::updateGoalPosition (glm::vec3 &pos)
 {
 	if (goalPosTime > 0.0)
 	{
-		Stuff::Vector3D posDiff;
-		posDiff.Subtract(goalPosition,pos);
+		glm::vec3 posDiff;
+		posDiff = goalPosition - pos;
 		//sebi
 		//posDiff /= goalPosTime;
 		//posDiff *= frameLength;
@@ -106,7 +106,7 @@ void Camera::updateGoalPosition (Stuff::Vector3D &pos)
 		if (goalPosTime < 0.0f)
 			pos = goalPosition;
 		else
-			pos.Add(position,posDiff);
+			pos = position + posDiff;
 	}
 	else
 	{
@@ -221,7 +221,7 @@ long Camera::update (void)
 		lightDirection.z = sin(sunPitchRad);
 	}
 
-	lightDirection.Normalize(lightDirection);
+	lightDirection = glm::normalize(lightDirection);
 
 	//If we are not transitioning, we need to set the night/day flags and factors.
 	//If we ARE transitioning, they have already been set in updateDaylight!
@@ -276,7 +276,7 @@ long Camera::update (void)
  	//--------------------------------------------------
 	// Camera Scripting Here.
 	// Basically, update anything we have to do.
-	Stuff::Vector3D newPosition = position;
+	glm::vec3 newPosition = position;
 	
 	//------------------
 	// Velocity Update
@@ -286,7 +286,7 @@ long Camera::update (void)
 		(velocity.y != 0.0) &&
 		(velocity.z != 0.0))
 	{
-		Stuff::Vector3D posOffset;
+		glm::vec3 posOffset;
 		posOffset = velocity;
 		posOffset *= frameLength;
 		
@@ -376,7 +376,7 @@ long Camera::update (void)
 		float frac = 1.0f - (cameraAltitude / zoomAnchorH0);
 		if (frac > 1.0f) frac = 1.0f;
 		if (frac < -1.0f) frac = -1.0f;
-		Stuff::Vector3D Tnew = zoomAnchorPivot;
+		glm::vec3 Tnew = zoomAnchorPivot;
 		Tnew.x = zoomAnchorPivot.x + (zoomAnchorWorld.x - zoomAnchorPivot.x) * frac;
 		Tnew.y = zoomAnchorPivot.y + (zoomAnchorWorld.y - zoomAnchorPivot.y) * frac;
 		setPosition(Tnew, false);   // instant, no swoop double-smoothing
@@ -427,7 +427,7 @@ long Camera::update (void)
 		ZoneScopedN("Camera.MotionTracking");
 		static bool   s_motionInit       = false;
 		static float  s_prevRotation     = 0.0f;
-		static Stuff::Vector3D s_prevPosition;  // default-ctor zeroed; actual prev seeded on first call
+		static glm::vec3 s_prevPosition;  // default-ctor zeroed; actual prev seeded on first call
 		static uint32_t s_motionFrames     = 0;
 		static uint32_t s_motionStationary = 0;
 		static uint32_t s_motionMoving     = 0;

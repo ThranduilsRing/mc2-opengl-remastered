@@ -22,7 +22,7 @@
 
 // Forward declaration using 'class' (not 'struct') to match Stuff::Vector3D's
 // actual definition — MSVC name mangling differs between class (V) and struct (U).
-namespace Stuff { class Vector3D; }
+#include "math/glm_config.h"
 
 namespace DynDecal {
 
@@ -45,7 +45,7 @@ static constexpr int kCapacity = 64;
 //            to the protected craterTextureIndices via the class method).
 // rotationRad: rotation angle in RADIANS (caller converts from game degrees).
 // lifetimeMs: total fade duration (0 = use default 6000 ms).
-void spawn(const Stuff::Vector3D& worldPos, float radius,
+void spawn(const glm::vec3& worldPos, float radius,
            float rotationRad, unsigned int texHandle, uint16_t lifetimeMs = 0);
 
 // ─── Update + Gather ────────────────────────────────────────────────────────

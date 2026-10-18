@@ -101,7 +101,7 @@ extern bool MLRVertexLimitReached;
 extern bool InEditor;
 extern bool useNonWeaponEffects;
 extern bool useHighObjectDetail;
-extern Stuff::Vector3D debugGVActorPosition;
+extern glm::vec3 debugGVActorPosition;
 extern float vehicleDebugAngle;
 extern float turretDebugAngle;
 extern float debugVelMag;

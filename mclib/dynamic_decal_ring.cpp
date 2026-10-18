@@ -92,7 +92,7 @@ unsigned int packBGRA(float r, float g, float b, float a)
 void elevate(float x, float y, float& z)
 {
     if (!land) return;
-    Stuff::Vector3D p;
+    glm::vec3 p;
     p.x = x; p.y = y; p.z = 0.0f;
     z = TerrainRuntime::decalElevation(p);
 }
@@ -144,7 +144,7 @@ void pushQuad(const Slot& sl, unsigned int argb)
 // Public API
 // ─────────────────────────────────────────────────────────────────────────────
 
-void spawn(const Stuff::Vector3D& worldPos, float radius,
+void spawn(const glm::vec3& worldPos, float radius,
            float rotationRad, unsigned int texHandle, uint16_t lifetimeMs)
 {
     if (!isEnabled()) return;

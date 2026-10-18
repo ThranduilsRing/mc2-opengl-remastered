@@ -323,7 +323,7 @@ class GVAppearance : public ObjectAppearance
 
 		virtual bool isMouseOver (float px, float py);
 		
-		virtual void setObjectParameters (const Stuff::Vector3D &pos, float rot, long selected, long team, long homeRelations);
+		virtual void setObjectParameters (const glm::vec3 &pos, float rot, long selected, long team, long homeRelations);
 
 		virtual void setMoverParameters (float turretRot, float lArmRot = 0.0f, float rArmRot = 0.0f, bool isAirborne = false);
 
@@ -368,11 +368,11 @@ class GVAppearance : public ObjectAppearance
 		// Once site Objects are in place, go get 'em
 		virtual void setWeaponNodeUsed (long nodeId);
 		
-		virtual Stuff::Vector3D getWeaponNodePosition (long nodeId);
+		virtual glm::vec3 getWeaponNodePosition (long nodeId);
 		
-		virtual Stuff::Vector3D getSmokeNodePosition (long nodeId);
+		virtual glm::vec3 getSmokeNodePosition (long nodeId);
 		
-		virtual Stuff::Vector3D getDustNodePosition (long nodeId);
+		virtual glm::vec3 getDustNodePosition (long nodeId);
 		
 		virtual long getWeaponNode (long weapontype);
 		
@@ -380,13 +380,13 @@ class GVAppearance : public ObjectAppearance
 
 		virtual long getLowestWeaponNode (void);
 		
-		virtual Stuff::Vector3D getNodeNamePosition (const char *nodeName);
+		virtual glm::vec3 getNodeNamePosition (const char *nodeName);
 		
  		virtual bool PerPolySelect (long mouseX, long mouseY);
 		
-		virtual Stuff::Point3D getRootNodeCenter (void)
+		virtual glm::vec3 getRootNodeCenter (void)
 		{
-			Stuff::Point3D result = gvShape->GetRootNodeCenter();
+			glm::vec3 result = gvShape->GetRootNodeCenter();
 			return result;
 		}
 		
@@ -410,9 +410,9 @@ class GVAppearance : public ObjectAppearance
 		virtual void startActivity (long effectId, bool loop);
 		virtual void stopActivity (void);
 
-		virtual Stuff::Vector3D getNodeIdPosition (long nodeId);
+		virtual glm::vec3 getNodeIdPosition (long nodeId);
 
-		virtual Stuff::Vector3D getHitNode (void);
+		virtual glm::vec3 getHitNode (void);
 };
 
 //***************************************************************************

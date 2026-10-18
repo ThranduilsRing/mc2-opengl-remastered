@@ -200,7 +200,7 @@ void CraterManager::destroy (void)
 }			
 
 //---------------------------------------------------------------------
-long CraterManager::addCrater (long craterType, Stuff::Vector3D &position, float rotation)
+long CraterManager::addCrater (long craterType, glm::vec3 &position, float rotation)
 {
 	if (!useNonWeaponEffects)
 		return NO_ERR;
@@ -247,10 +247,10 @@ long CraterManager::addCrater (long craterType, Stuff::Vector3D &position, float
 		OppRotate(craterList[currentCrater].position[2],cRotation);
 		OppRotate(craterList[currentCrater].position[3],cRotation);
 		
-		craterList[currentCrater].position[0].Add(craterList[currentCrater].position[0],position);
-		craterList[currentCrater].position[1].Add(craterList[currentCrater].position[1],position);
-		craterList[currentCrater].position[2].Add(craterList[currentCrater].position[2],position);
-		craterList[currentCrater].position[3].Add(craterList[currentCrater].position[3],position);
+		craterList[currentCrater].position[0] = craterList[currentCrater].position[0] + position;
+		craterList[currentCrater].position[1] = craterList[currentCrater].position[1] + position;
+		craterList[currentCrater].position[2] = craterList[currentCrater].position[2] + position;
+		craterList[currentCrater].position[3] = craterList[currentCrater].position[3] + position;
 		
 		craterList[currentCrater].position[0].z = TerrainRuntime::decalElevation(craterList[currentCrater].position[0]);
 		craterList[currentCrater].position[1].z = TerrainRuntime::decalElevation(craterList[currentCrater].position[1]);
@@ -354,13 +354,13 @@ void CraterManager::render (void)
 			float hazeFactor = 0.0f;
 			if (eye->usePerspective)
 			{
-				Stuff::Point3D Distance;
-				Stuff::Point3D objPosition;
-				Stuff::Point3D eyePosition(eye->getCameraOrigin());
+				glm::vec3 Distance;
+				glm::vec3 objPosition;
+				glm::vec3 eyePosition(eye->getCameraOrigin());
 				mc2ToRender(objPosition, currCrater->position[0]);
 		
-				Distance.Subtract(objPosition,eyePosition);
-				float eyeDistance = Distance.GetApproximateLength();
+				Distance = objPosition - eyePosition;
+				float eyeDistance = glm::length(Distance);
 				if (eyeDistance > Camera::MaxClipDistance)
 				{
 					onScreen1 = false;

@@ -51,7 +51,7 @@ inline constexpr int SMALL_CRATER_OFFSET = 1;
 typedef struct _CraterData
 {
 	int 			craterShapeId;
-	Stuff::Vector3D position[4];
+	glm::vec3 position[4];
 	Stuff::Vector4D screenPos[4];
 } CraterData;
 
@@ -119,7 +119,7 @@ class CraterManager
 		
 		void destroy (void);
 		
-		long addCrater (long craterType, Stuff::Vector3D &position, float rotation);
+		long addCrater (long craterType, glm::vec3 &position, float rotation);
 		
 		long update (void);
 		void render (void);

@@ -126,9 +126,9 @@ long GenericAppearance::render (long depthFixup)
 #ifdef DRAW_BOX
 		//---------------------------------------------------------
 		// Render the Bounding Box to see if it is OK.
-		Stuff::Vector3D nodeCenter = bldgShape->GetRootNodeCenter();
-		Stuff::Vector3D boxStart;
-		Stuff::Vector3D boxEnd;
+		glm::vec3 nodeCenter = bldgShape->GetRootNodeCenter();
+		glm::vec3 boxStart;
+		glm::vec3 boxEnd;
 		boxStart.x = -(bldgShape->GetMinBox().x + nodeCenter.x);
 		boxStart.z = bldgShape->GetMinBox().y + nodeCenter.y;
 		boxStart.y = bldgShape->GetMinBox().z + nodeCenter.z;
@@ -137,8 +137,8 @@ long GenericAppearance::render (long depthFixup)
 		boxEnd.z = bldgShape->GetMaxBox().y + nodeCenter.y;
 		boxEnd.y = bldgShape->GetMaxBox().z + nodeCenter.z;
 		
- 		Stuff::Vector3D boxCoords[8];
-		Stuff::Vector3D addCoords;
+ 		glm::vec3 boxCoords[8];
+		glm::vec3 addCoords;
 		
 		addCoords.x = boxStart.x;
 		addCoords.y = boxStart.y;
@@ -294,10 +294,10 @@ long GenericAppearance::update (bool animate)
 	::mc2_object_recon::Scope _recon_generic_(
 		&::mc2_object_recon::g_per_frame.generic_update_ns,
 		&::mc2_object_recon::g_per_frame.generic_update_calls);
-	Stuff::Point3D xlatPosition;
-	Stuff::UnitQuaternion rot;
-	Stuff::UnitQuaternion yawAngle;
-	Stuff::UnitQuaternion pitchAngle;
+	glm::vec3 xlatPosition;
+	glm::quat rot;
+	glm::quat yawAngle;
+	glm::quat pitchAngle;
 
 	if (inView)
 	{
@@ -311,10 +311,10 @@ long GenericAppearance::update (bool animate)
 		// Does math necessary to draw Tree
 		float yaw = rotation * DEGREES_TO_RADS;
 		float p = pitch * DEGREES_TO_RADS;
-		pitchAngle = Stuff::EulerAngles(p, 0.0f, 0.0f);
-		yawAngle = Stuff::EulerAngles(0.0f,yaw,0.0f); 
+		pitchAngle = mc2::math::quatFromEuler(mc2::math::Euler(p, 0.0f, 0.0f));
+		yawAngle = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,yaw,0.0f)); 
 		rot = pitchAngle;
-		rot.Multiply(pitchAngle,yawAngle);
+		rot = mc2::math::composeQuat(pitchAngle, yawAngle);
 	
 		unsigned char lightr,lightg,lightb;
 		float lightIntensity = 1.0f;

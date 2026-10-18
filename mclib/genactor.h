@@ -231,7 +231,7 @@ class GenericAppearance : public ObjectAppearance
 
 		virtual bool isMouseOver (float px, float py);
 		
-		virtual void setObjectParameters (const Stuff::Vector3D &pos, float rot, long selected, long alignment, long homeRelations);
+		virtual void setObjectParameters (const glm::vec3 &pos, float rot, long selected, long alignment, long homeRelations);
 		
 		virtual void setMoverParameters (float turretRot, float lArmRot = 0.0f, float rArmRot = 0.0f, bool isAirborne = false);
 		
@@ -251,9 +251,9 @@ class GenericAppearance : public ObjectAppearance
 			genShape->ScaleShape(scaleFactor);
 		}
 		
-		virtual Stuff::Point3D getRootNodeCenter (void)
+		virtual glm::vec3 getRootNodeCenter (void)
 		{
-			Stuff::Point3D result = genShape->GetRootNodeCenter();
+			glm::vec3 result = genShape->GetRootNodeCenter();
 			return result;
 		}
 		

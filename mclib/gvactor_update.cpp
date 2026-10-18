@@ -54,47 +54,47 @@ void GVAppearance::updateGeometry (void)
 			land->worldToCell(position,cellR, cellC);
 			if (GameMap && !GameMap->getDeepWater(cellR, cellC) && !GameMap->getShallowWater(cellR, cellC))
 			{
-				Stuff::Vector3D worldK;
+				glm::vec3 worldK;
 				land->getTerrainAngle(position,&worldK);
 
 				Rotate(worldK,rotation);
 
-				Stuff::Vector3D pitchK;
+				glm::vec3 pitchK;
 				pitchK = worldK;
 				pitchK.x = 0.0f;
-				pitchK.Normalize(pitchK);
+				pitchK = glm::normalize(pitchK);
 
-				Stuff::Vector3D rollK;
+				glm::vec3 rollK;
 				rollK = worldK;
 				rollK.y = 0.0f;
-				rollK.Normalize(rollK);
+				rollK = glm::normalize(rollK);
 
-				Stuff::Vector3D up;
+				glm::vec3 up;
 				up.x = up.y = 0.0f;
 				up.z = 1.0f;
 
-				pitchAngle = up * pitchK;
+				pitchAngle = glm::dot(up, pitchK);
 				pitchAngle = acos(pitchAngle) * RADS_TO_DEGREES;
 				if (pitchK.y < 0.0f)
 					pitchAngle = -pitchAngle;
 
-				rollAngle = up * rollK;
+				rollAngle = glm::dot(up, rollK);
 				rollAngle = acos(rollAngle) * RADS_TO_DEGREES;
 				if (rollK.x < 0.0f)
 					rollAngle = -rollAngle;
 			}
 		}
 		
-		Stuff::UnitQuaternion rot, pitchRoll;
+		glm::quat rot, pitchRoll;
 		float yaw = rotation * DEGREES_TO_RADS;
 		pitchAngle *= DEGREES_TO_RADS;
 		rollAngle *= DEGREES_TO_RADS;
 	
-		Stuff::UnitQuaternion totalRotation;
-		rot = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+		glm::quat totalRotation;
+		rot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
 	
-		pitchRoll = Stuff::EulerAngles(pitchAngle, 0.0f, rollAngle);
-		totalRotation.Multiply(pitchRoll,rot);
+		pitchRoll = mc2::math::quatFromEuler(mc2::math::Euler(pitchAngle, 0.0f, rollAngle));
+		totalRotation = mc2::math::composeQuat(pitchRoll, rot);
 	
 		unsigned char lightr,lightg,lightb;
 		float lightIntensity = 1.0f;
@@ -114,7 +114,7 @@ void GVAppearance::updateGeometry (void)
 		float fogStart = eye->fogStart;
 		float fogFull = eye->fogFull;
 	
-		Stuff::Point3D xlatPosition;
+		glm::vec3 xlatPosition;
 		mc2ToRender(xlatPosition, position);
 	
 		if (xlatPosition.y < fogStart)
@@ -150,8 +150,8 @@ void GVAppearance::updateGeometry (void)
 		else
 			gvShape->SetFogRGB(0xffffffff);
 	
-		Stuff::UnitQuaternion turretRot;
-		turretRot = Stuff::EulerAngles(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f);
+		glm::quat turretRot;
+		turretRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f));
 		if (rotationalNodeIndex == -1)
 		   	rotationalNodeIndex = gvShape->SetNodeRotation(appearType->rotationalNodeId,&turretRot);
 
@@ -265,7 +265,7 @@ void GVAppearance::updateGeometry (void)
 			// visible && (sensorLevel > 4) && !InEditor, plus isNight.
 			for (size_t k = 0; k < spotlightLights_.size(); ++k)
 			{
-				Stuff::Vector3D childPos =
+				glm::vec3 childPos =
 					getNodeIdPosition(spotlightNodeIds_[k]);
 				// LIGHT-CONE-MODELS-1 (A/C): place the pool at the authored
 				// cone's FAR END — aim comes from the node's live transform
@@ -277,7 +277,7 @@ void GVAppearance::updateGeometry (void)
 				bool coneAimed = false;
 				if (mc2_cone_glow::nodes_enabled())
 				{
-					Stuff::Vector3D aimW;
+					glm::vec3 aimW;
 					float coneLen = 0.0f;
 					if (mc2_cone_glow::GetNodeAim(gvShape, spotlightNodeIds_[k], aimW, coneLen))
 					{
@@ -300,7 +300,7 @@ void GVAppearance::updateGeometry (void)
 					const float fwdWu = mc2_spotlight_diag::mover_light_fwd_offset();
 					if (fwdWu > 0.0f)
 					{
-						Stuff::Vector3D fwdv;
+						glm::vec3 fwdv;
 						fwdv.x = 0.0f; fwdv.y = -1.0f; fwdv.z = 0.0f;
 						Rotate(fwdv, -rotation);
 						childPos.x += fwdv.x * fwdWu;
@@ -313,11 +313,11 @@ void GVAppearance::updateGeometry (void)
 				// alone and the light's effective world position is lost.
 				// Translation-only matrix matches the canonical pattern at
 				// mech3d.cpp and bdactor.cpp.
-				Stuff::LinearMatrix4D lightToWorldMatrix;
-				Stuff::Point3D childPosP;
+				glm::mat4 lightToWorldMatrix;
+				glm::vec3 childPosP;
 				childPosP.x = childPos.x; childPosP.y = childPos.y; childPosP.z = childPos.z;
-				lightToWorldMatrix.BuildTranslation(childPosP);
-				lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(0.0f, 0.0f, 0.0f));
+				mc2::math::buildTranslation(lightToWorldMatrix, childPosP);
+				mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(0.0f, 0.0f, 0.0f));
 				spotlightLights_[k]->SetLightToWorld(&lightToWorldMatrix);
 				// T1.13: dropped (sensorLevel > 4) gate. The original gate
 				// was copied verbatim from the anubis searchlight pattern at
@@ -359,16 +359,16 @@ void GVAppearance::updateGeometry (void)
 	
 	if (destructFX && destructFX->IsExecuted())
 	{
-		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D 	localToWorld;
-		Stuff::Point3D			tPosition;
+		glm::mat4 	shapeOrigin;
+		glm::mat4 	localToWorld;
+		glm::vec3			tPosition;
 			
-		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(tPosition);
+		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, tPosition);
 
 		mc2ToRender(tPosition, position);
 		
-		Stuff::OBB boundingBox;
+		mc2::math::Obb boundingBox;
 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 
 		bool result = destructFX->Execute(&info);
@@ -381,24 +381,24 @@ void GVAppearance::updateGeometry (void)
 	
 	if (waterWake && isWaking)
 	{
-		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D	localToWorld;
-		Stuff::LinearMatrix4D	localResult;
+		glm::mat4 	shapeOrigin;
+		glm::mat4	localToWorld;
+		glm::mat4	localResult;
 				
-		Stuff::Point3D wakePos;
+		glm::vec3 wakePos;
 		wakePos.x = -position.x;
 		wakePos.y = Terrain::waterElevation;
 		wakePos.z = position.y;
 		
- 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(wakePos);
+ 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, wakePos);
 				
-		Stuff::UnitQuaternion effectRot;
-		effectRot = Stuff::EulerAngles(90.0f * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f);
-		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-		localResult.Multiply(localToWorld,shapeOrigin);
+		glm::quat effectRot;
+		effectRot = mc2::math::quatFromEuler(mc2::math::Euler(90.0f * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f));
+		localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
+		localResult = localToWorld * shapeOrigin;
 		
- 		Stuff::OBB boundingBox;
+ 		mc2::math::Obb boundingBox;
 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
 		
 		waterWake->Execute(&info);
@@ -418,25 +418,25 @@ void GVAppearance::updateGeometry (void)
 		
 		if (!dustCloudStart)
 		{
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D	localToWorld;
-			Stuff::LinearMatrix4D	localResult;
+			glm::mat4 	shapeOrigin;
+			glm::mat4	localToWorld;
+			glm::mat4	localResult;
 					
 			if (dustNodeIndex == -1)
 				dustNodeIndex = gvShape->GetNodeNameId("dust_body");
 
-			Stuff::Vector3D dustPos = getNodeIdPosition(dustNodeIndex);
+			glm::vec3 dustPos = getNodeIdPosition(dustNodeIndex);
 
-			Stuff::Point3D wakePos;
+			glm::vec3 wakePos;
 			mc2ToRender(wakePos, dustPos);
  			
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(wakePos);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, wakePos);
 					
-			Stuff::UnitQuaternion effectRot;
-			effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
-			localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-			localResult.Multiply(localToWorld,shapeOrigin);
+			glm::quat effectRot;
+			effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,rotation * DEGREES_TO_RADS,0.0f));
+			localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
+			localResult = localToWorld * shapeOrigin;
 				
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 	
@@ -444,27 +444,27 @@ void GVAppearance::updateGeometry (void)
 			dustCloudStart = true;
 		}
 	
-		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D	localToWorld;
-		Stuff::LinearMatrix4D	localResult;
+		glm::mat4 	shapeOrigin;
+		glm::mat4	localToWorld;
+		glm::mat4	localResult;
 				
 		if (dustNodeIndex == -1)
 			dustNodeIndex = gvShape->GetNodeNameId("dust_body");
 
-		Stuff::Vector3D dustPos = getNodeIdPosition(dustNodeIndex);
+		glm::vec3 dustPos = getNodeIdPosition(dustNodeIndex);
 
-		Stuff::Point3D wakePos;
+		glm::vec3 wakePos;
 		mc2ToRender(wakePos, dustPos);
 		
- 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(wakePos);
+ 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, wakePos);
 				
-		Stuff::UnitQuaternion effectRot;
-		effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
-		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-		localResult.Multiply(localToWorld,shapeOrigin);
+		glm::quat effectRot;
+		effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,rotation * DEGREES_TO_RADS,0.0f));
+		localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
+		localResult = localToWorld * shapeOrigin;
 		
- 		Stuff::OBB boundingBox;
+ 		mc2::math::Obb boundingBox;
 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
 		
 		dustCloud->Execute(&info);
@@ -472,23 +472,23 @@ void GVAppearance::updateGeometry (void)
 	
 	if (activity && isActivitying)
 	{
- 		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D	localToWorld;
-		Stuff::LinearMatrix4D	localResult;
+ 		glm::mat4 	shapeOrigin;
+		glm::mat4	localToWorld;
+		glm::mat4	localResult;
 				
 		if (activityNodeIndex == -1)
 			activityNodeIndex = gvShape->GetNodeNameId("activity_node");
 
-		Stuff::Vector3D dustPos = getNodeIdPosition(activityNodeIndex);
+		glm::vec3 dustPos = getNodeIdPosition(activityNodeIndex);
 
-		Stuff::Point3D wakePos;
+		glm::vec3 wakePos;
 		mc2ToRender(wakePos, dustPos);
 		
- 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(wakePos);
+ 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, wakePos);
 				
 		
- 		Stuff::OBB boundingBox;
+ 		mc2::math::Obb boundingBox;
 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 		
 		activity->Execute(&info);
@@ -507,7 +507,7 @@ void GVAppearance::updateGeometry (void)
 	if (sensorSpin < -180)
 		sensorSpin += 360;
 
-	totalRotation = Stuff::EulerAngles(0.0f,sensorSpin * DEGREES_TO_RADS,0.0f);
+	totalRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,sensorSpin * DEGREES_TO_RADS,0.0f));
 	sensorTriangleShape->SetFogRGB(0xffffffff);
 	sensorTriangleShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 	sensorTriangleShape->TransformMultiShape (&xlatPosition,&totalRotation);
@@ -630,21 +630,21 @@ long GVAppearance::update (bool animate)
 		mc2_vis::trace("vehicle", (const void*)this, vs_);
 		if (ownerOn)
 		{
-			Stuff::Vector3D lpos = position;
+			glm::vec3 lpos = position;
 			const float fwdWu = mc2_spotlight_diag::mover_light_fwd_offset();
 			if (fwdWu > 0.0f)
 			{
-				Stuff::Vector3D fwdv;
+				glm::vec3 fwdv;
 				fwdv.x = 0.0f; fwdv.y = -1.0f; fwdv.z = 0.0f;
 				Rotate(fwdv, -rotation);
 				lpos.x += fwdv.x * fwdWu;
 				lpos.y += fwdv.y * fwdWu;
 			}
-			Stuff::LinearMatrix4D l2w;
-			Stuff::Point3D lposP;
+			glm::mat4 l2w;
+			glm::vec3 lposP;
 			lposP.x = lpos.x; lposP.y = lpos.y; lposP.z = lpos.z;
-			l2w.BuildTranslation(lposP);
-			l2w.BuildRotation(Stuff::EulerAngles(0.0f, 0.0f, 0.0f));
+			mc2::math::buildTranslation(l2w, lposP);
+			mc2::math::buildRotation(l2w, mc2::math::Euler(0.0f, 0.0f, 0.0f));
 			for (size_t k = 0; k < spotlightLights_.size(); ++k)
 			{
 				spotlightLights_[k]->ownerEnabled = 1;
@@ -775,22 +775,22 @@ void GVAppearance::startWaterWake (void)
 	
 	if (waterWake && !isWaking)		//Start the effect if we are not running it yet!!
 	{
-		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D	localToWorld;
-		Stuff::LinearMatrix4D	localResult;
+		glm::mat4 	shapeOrigin;
+		glm::mat4	localToWorld;
+		glm::mat4	localResult;
 				
-		Stuff::Point3D wakePos;
+		glm::vec3 wakePos;
 		wakePos.x = -position.x;
 		wakePos.y = Terrain::waterElevation;	//Wake is at Water Level!
 		wakePos.z = position.y;
 		
- 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(wakePos);
+ 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, wakePos);
 				
-		Stuff::UnitQuaternion effectRot;
-		effectRot = Stuff::EulerAngles(90.0f * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f);
-		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-		localResult.Multiply(localToWorld,shapeOrigin);
+		glm::quat effectRot;
+		effectRot = mc2::math::quatFromEuler(mc2::math::Euler(90.0f * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f));
+		localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
+		localResult = localToWorld * shapeOrigin;
 			
  		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 
@@ -838,20 +838,20 @@ void GVAppearance::startActivity (long effectId, bool loop)
 	
 	if (!isActivitying && activity)		//Start the effect if we are not running it yet!!
 	{
-		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D	localToWorld;
-		Stuff::LinearMatrix4D	localResult;
+		glm::mat4 	shapeOrigin;
+		glm::mat4	localToWorld;
+		glm::mat4	localResult;
 		
 		if (activityNodeIndex == -1)
 			activityNodeIndex = gvShape->GetNodeNameId("activity_node");
 
-		Stuff::Vector3D nodePos = getNodeIdPosition(activityNodeIndex);
+		glm::vec3 nodePos = getNodeIdPosition(activityNodeIndex);
 
-		Stuff::Point3D wakePos;
+		glm::vec3 wakePos;
 		mc2ToRender(wakePos, nodePos);	//Wake is at Water Level!
 		
- 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(wakePos);
+ 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, wakePos);
 				
 			
  		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);

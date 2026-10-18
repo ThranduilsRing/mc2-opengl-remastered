@@ -251,19 +251,19 @@ void GVAppearance::setGesture (unsigned long gestureId)
 	canTransition = false;
 }
 
-Stuff::Vector3D GVAppearance::getHitNode (void)
+glm::vec3 GVAppearance::getHitNode (void)
 {
 	if (hitNodeId == -1)
 		hitNodeId = gvShape->GetNodeNameId("hitnode");
 
-	Stuff::Vector3D result = getNodeIdPosition(hitNodeId);
+	glm::vec3 result = getNodeIdPosition(hitNodeId);
  	return result;
 }
 
-void GVAppearance::setObjectParameters (const Stuff::Vector3D &pos, float Rot, long sel, long team, long homeRelations)
+void GVAppearance::setObjectParameters (const glm::vec3 &pos, float Rot, long sel, long team, long homeRelations)
 {
 	movedThisFrame = false;
-	if ((rotation != Rot) || (pos != position))
+	if ((rotation != Rot) || (!mc2::math::closeEnough(pos, position)))
 		movedThisFrame = true;
 	
 	rotation = Rot;
@@ -335,7 +335,7 @@ void GVAppearance::debugUpdate (void)
 		debugVelMag = 0.0;
 	}
 
-	Stuff::Vector3D velocity;
+	glm::vec3 velocity;
 	velocity.x = 0.7071f;
 	velocity.z = 0.0;
 	velocity.y = -0.7071f;
@@ -344,7 +344,7 @@ void GVAppearance::debugUpdate (void)
 
 	float velMag = debugVelMag;
 
-	Stuff::Vector3D currentNormal = land->getTerrainNormal(debugGVActorPosition);
+	glm::vec3 currentNormal = land->getTerrainNormal(debugGVActorPosition);
 	float angle = angle_from(velocity,currentNormal);
 	if (angle != 90.0)
 	{
@@ -403,13 +403,13 @@ bool GVAppearance::recalcBounds (void)
 		
 		if (eye->usePerspective)
 		{
-			Stuff::Point3D Distance;
-			Stuff::Point3D objPosition;
-			Stuff::Point3D eyePosition(eye->getCameraOrigin());
+			glm::vec3 Distance;
+			glm::vec3 objPosition;
+			glm::vec3 eyePosition(eye->getCameraOrigin());
 			mc2ToRender(objPosition, position);
 	
-			Distance.Subtract(objPosition,eyePosition);
-			eyeDistance = Distance.GetApproximateLength();
+			Distance = objPosition - eyePosition;
+			eyeDistance = glm::length(Distance);
 			if (eyeDistance > Camera::MaxClipDistance)
 			{
 				hazeFactor = 1.0f;
@@ -428,15 +428,15 @@ bool GVAppearance::recalcBounds (void)
 			
 			if (inView)
 			{
-				Stuff::Vector3D Distance;
-				Stuff::Point3D objPosition;
-				Stuff::Point3D eyePosition(eye->getCameraOrigin());
+				glm::vec3 Distance;
+				glm::vec3 objPosition;
+				glm::vec3 eyePosition(eye->getCameraOrigin());
 				mc2ToRender(objPosition, position);
 		
-				Distance.Subtract(objPosition,eyePosition);
-				Distance.Normalize(Distance);
+				Distance = objPosition - eyePosition;
+				Distance = glm::normalize(Distance);
 				
-				float cosine = Distance * eye->getLookVector();
+				float cosine = glm::dot(Distance, eye->getLookVector());
  				if (cosine > eye->cosHalfFOV)
 					setVisibilityGatesFromLegacy(true);
 				else
@@ -477,13 +477,13 @@ bool GVAppearance::recalcBounds (void)
 				(upperLeft.x <= eye->getScreenResX()) &&
 				(upperLeft.y <= eye->getScreenResY()))
 			{
-				Stuff::Vector3D boxCoords[8];
+				glm::vec3 boxCoords[8];
 				Stuff::Vector4D bcsp[8];
 
-				Stuff::Vector3D minBox;
+				glm::vec3 minBox;
 				mc2ToRender(minBox, appearType->typeUpperLeft);
 				
-				Stuff::Vector3D maxBox;
+				glm::vec3 maxBox;
 				mc2ToRender(maxBox, appearType->typeLowerRight);
 				
 				if (rotation != 0.0f)
@@ -725,14 +725,14 @@ bool GVAppearance::playDestruction (void)
 		
 			MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 		
-			Stuff::Point3D			tPosition;
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D	localToWorld;
+			glm::vec3			tPosition;
+			glm::mat4 	shapeOrigin;
+			glm::mat4	localToWorld;
 			
 			mc2ToRender(tPosition, position);
 			
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(tPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, tPosition);
 			
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 			destructFX->Start(&info);
@@ -746,9 +746,9 @@ bool GVAppearance::playDestruction (void)
 	return false;		//We didn't have a destruct effect.  Tell the object to play its default.
 }
 
-Stuff::Vector3D GVAppearance::getNodeNamePosition (const char *nodeName)
+glm::vec3 GVAppearance::getNodeNamePosition (const char *nodeName)
 {
-	Stuff::Vector3D result = position;
+	glm::vec3 result = position;
 
 	// C3: route to GPU-lagged visibility when killswitch is enabled.
 	if (s_gpuCullLifecycle) {
@@ -759,15 +759,15 @@ Stuff::Vector3D GVAppearance::getNodeNamePosition (const char *nodeName)
 			return result;
 	}
 
-   	Stuff::UnitQuaternion qRotation;
+   	glm::quat qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
-   	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+   	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
    
-   	Stuff::Point3D xlatPosition;
+   	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
    
-   	Stuff::UnitQuaternion torsoRot;
-   	torsoRot = Stuff::EulerAngles(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f);
+   	glm::quat torsoRot;
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = gvShape->SetNodeRotation(appearType->rotationalNodeId,&torsoRot);
 
@@ -783,9 +783,9 @@ Stuff::Vector3D GVAppearance::getNodeNamePosition (const char *nodeName)
 	return result;
 }
 
-Stuff::Vector3D GVAppearance::getNodeIdPosition (long nodeId)
+glm::vec3 GVAppearance::getNodeIdPosition (long nodeId)
 {
-	Stuff::Vector3D result = position;
+	glm::vec3 result = position;
 
 	// C3: route to GPU-lagged visibility when killswitch is enabled.
 	if (s_gpuCullLifecycle) {
@@ -796,15 +796,15 @@ Stuff::Vector3D GVAppearance::getNodeIdPosition (long nodeId)
 			return result;
 	}
 
-   	Stuff::UnitQuaternion qRotation;
+   	glm::quat qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
-   	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+   	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
    
-   	Stuff::Point3D xlatPosition;
+   	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
    
-   	Stuff::UnitQuaternion torsoRot;
-   	torsoRot = Stuff::EulerAngles(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f);
+   	glm::quat torsoRot;
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = gvShape->SetNodeRotation(appearType->rotationalNodeId,&torsoRot);
 

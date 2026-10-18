@@ -73,7 +73,7 @@ const TG_ShapeRec* resolveSpotNode(TG_MultiShape* shape, long nodeId,
 // is authored at/near the node pivot, so the vertex centroid direction IS the
 // beam direction; length = max vertex projection along it. Returns false on
 // degenerate geometry (too few verts / centroid at origin).
-bool localConeAxis(const TG_TypeShape* ts, Stuff::Point3D& axisOut, float& lenOut)
+bool localConeAxis(const TG_TypeShape* ts, glm::vec3& axisOut, float& lenOut)
 {
     const TG_TypeVertex* verts = ts->GetTypeVertices();
     const int n = const_cast<TG_TypeShape*>(ts)->GetNumTypeVertices();
@@ -392,25 +392,25 @@ static bool aim_flip_enabled()
 // ---- (A) node aim -----------------------------------------------------------
 
 bool GetNodeAim(TG_MultiShape* shape, long nodeId,
-                Stuff::Vector3D& aimWorldOut, float& coneLenOut)
+                glm::vec3& aimWorldOut, float& coneLenOut)
 {
     const TG_TypeShape* ts = nullptr;
     const TG_ShapeRec* rec = resolveSpotNode(shape, nodeId, &ts);
     if (!rec) return false;
 
-    Stuff::Point3D axisLocal;
+    glm::vec3 axisLocal;
     float lenLocal = 0.0f;
     if (!localConeAxis(ts, axisLocal, lenLocal)) return false;
 
     // Transform origin and axis tip through the node's live matrix, convert
     // both to the MC2 frame, subtract -> world aim (handles any node basis).
-    Stuff::Point3D zeroLocal;
+    glm::vec3 zeroLocal;
     zeroLocal.x = zeroLocal.y = zeroLocal.z = 0.0f;
-    Stuff::Point3D oMax, aMax;
-    oMax.Multiply(zeroLocal, rec->shapeToWorld);
-    aMax.Multiply(axisLocal, rec->shapeToWorld);
+    glm::vec3 oMax, aMax;
+    oMax = mc2::math::transformPoint(zeroLocal, rec->shapeToWorld);
+    aMax = mc2::math::transformPoint(axisLocal, rec->shapeToWorld);
 
-    Stuff::Vector3D aim;
+    glm::vec3 aim;
     aim.x = (-aMax.x) - (-oMax.x);
     aim.y = ( aMax.z) - ( oMax.z);
     aim.z = ( aMax.y) - ( oMax.y);
@@ -440,7 +440,7 @@ bool GetNodeAim(TG_MultiShape* shape, long nodeId,
         if (s_calls <= 48 || (s_calls % 600) == 0)
         {
             // Apex (node origin) in MC2 frame — same swizzle as the aim.
-            Stuff::Point3D apexMc2;
+            glm::vec3 apexMc2;
             mc2ToRender(apexMc2, oMax);
             mc2::fmt::print_err("[CONE_AIM_DIAG v1] shape={:016X} node={:d} apexMC2=({:.1f},{:.1f},{:.1f}) aimMC2=({:.3f},{:.3f},{:.3f}) lenLocal={:.1f} coneLen={:.1f} axisLocal=({:.3f},{:.3f},{:.3f}) flip={:d}\n", mc2::fmt::as_ptr((void*)shape), mc2::fmt::as_i32(nodeId), apexMc2.x, apexMc2.y, apexMc2.z, aimWorldOut.x, aimWorldOut.y, aimWorldOut.z, lenLocal, coneLenOut, axisLocal.x, axisLocal.y, axisLocal.z, mc2::fmt::as_i32(aim_flip_enabled() ? 1 : 0));
             std::fflush(stderr);
@@ -508,7 +508,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
         return;
 
     // Beam fade parameterisation (apex bright -> far end dim).
-    Stuff::Point3D axisLocal;
+    glm::vec3 axisLocal;
     float lenLocal = 0.0f;
     const bool haveAxis = localConeAxis(ts, axisLocal, lenLocal);
 
@@ -519,9 +519,9 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
     // sit at EXACT world origin (terrain elevation alone is nonzero), so a
     // near-zero translation is a reliable "not yet transformed" sentinel.
     {
-        const float tx = rec->shapeToWorld.entries[3];
-        const float ty = rec->shapeToWorld.entries[7];
-        const float tz = rec->shapeToWorld.entries[11];
+        const float tx = glm::value_ptr(rec->shapeToWorld)[3];
+        const float ty = glm::value_ptr(rec->shapeToWorld)[7];
+        const float tz = glm::value_ptr(rec->shapeToWorld)[11];
         if (std::fabs(tx) + std::fabs(ty) + std::fabs(tz) < 0.01f)
             return;
     }
@@ -535,8 +535,8 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
     if (s_tris.size() >= kMaxFrameTris) return;
 
     // Compose shapeToClip exactly like msl.cpp:2068.
-    Stuff::Matrix4D shapeToClip;
-    shapeToClip.Multiply(rec->shapeToWorld, TG_Shape::s_worldToClip);
+    glm::mat4 shapeToClip;
+    shapeToClip = rec->shapeToWorld * TG_Shape::s_worldToClip;
 
     const float scalar = rec->node->GetShapeScalarValue();
     const float viewMulX = TG_Shape::viewMulX, viewAddX = TG_Shape::viewAddX;
@@ -558,7 +558,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
         ++s_qcalls;
         if (s_qcalls <= 48 || (s_qcalls % 600) == 0)
         {
-            mc2::fmt::print_err("[CONE_QUEUE_DIAG v1] shape={:016X} node={:d} apexMC2=({:.1f},{:.1f},{:.1f}) rgb={:06x} alphaPeak={:.1f} nightFactor={:.2f}\n", mc2::fmt::as_ptr((void*)shape), mc2::fmt::as_i32(nodeId), -rec->shapeToWorld.entries[3], rec->shapeToWorld.entries[11], rec->shapeToWorld.entries[7], mc2::fmt::as_u32((unsigned long)rgb), alphaPeak, nightFactor);
+            mc2::fmt::print_err("[CONE_QUEUE_DIAG v1] shape={:016X} node={:d} apexMC2=({:.1f},{:.1f},{:.1f}) rgb={:06x} alphaPeak={:.1f} nightFactor={:.2f}\n", mc2::fmt::as_ptr((void*)shape), mc2::fmt::as_i32(nodeId), -glm::value_ptr(rec->shapeToWorld)[3], glm::value_ptr(rec->shapeToWorld)[11], glm::value_ptr(rec->shapeToWorld)[7], mc2::fmt::as_u32((unsigned long)rgb), alphaPeak, nightFactor);
             std::fflush(stderr);
         }
     }
@@ -568,14 +568,14 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
     XV xv[kMaxConeVerts];
     for (int j = 0; j < nVerts; ++j)
     {
-        Stuff::Point3D pos = verts[j].position;
+        glm::vec3 pos = verts[j].position;
         if (scalar > 0.0f)
         {
             pos.x *= scalar; pos.y *= scalar; pos.z *= scalar;
         }
 
         Stuff::Vector4D xf;
-        xf.Multiply(pos, shapeToClip);
+        xf.MultiplyPoint(pos, shapeToClip);
 
         float sx, sy, sz, rhw;
         if (eye->usePerspective)
@@ -628,9 +628,9 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
         if (featherExp > 0.001f)
         {
             // Apex (local origin) and axis tip, through the same transform.
-            auto projectLocal = [&](const Stuff::Point3D& p, float& ox, float& oy) -> bool {
+            auto projectLocal = [&](const glm::vec3& p, float& ox, float& oy) -> bool {
                 Stuff::Vector4D xf;
-                xf.Multiply(p, shapeToClip);
+                xf.MultiplyPoint(p, shapeToClip);
                 if (eye->usePerspective)
                 {
                     if (xf.w == 0.0f) return false;
@@ -646,8 +646,8 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
                 return true;
             };
 
-            Stuff::Point3D apexL; apexL.x = apexL.y = apexL.z = 0.0f;
-            Stuff::Point3D tipL;
+            glm::vec3 apexL; apexL.x = apexL.y = apexL.z = 0.0f;
+            glm::vec3 tipL;
             const float sc = (scalar > 0.0f) ? scalar : 1.0f;
             tipL.x = axisLocal.x * lenLocal * sc;
             tipL.y = axisLocal.y * lenLocal * sc;
@@ -829,9 +829,9 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
         // "Not yet transformed" sentinel, same as QueueConeGlow: a real prop
         // is never at EXACT world origin.
         {
-            const float tx = recp->shapeToWorld.entries[3];
-            const float ty = recp->shapeToWorld.entries[7];
-            const float tz = recp->shapeToWorld.entries[11];
+            const float tx = glm::value_ptr(recp->shapeToWorld)[3];
+            const float ty = glm::value_ptr(recp->shapeToWorld)[7];
+            const float tz = glm::value_ptr(recp->shapeToWorld)[11];
             if (std::fabs(tx) + std::fabs(ty) + std::fabs(tz) < 0.01f)
             { ++dUntransformed; continue; }
         }
@@ -839,12 +839,12 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
         const DWORD rgb = beaconRgbFromName(child->getNodeName());
 
         // Project the node origin exactly the way the cone path does.
-        Stuff::Matrix4D shapeToClip;
-        shapeToClip.Multiply(recp->shapeToWorld, TG_Shape::s_worldToClip);
+        glm::mat4 shapeToClip;
+        shapeToClip = recp->shapeToWorld * TG_Shape::s_worldToClip;
 
-        Stuff::Point3D originL; originL.x = originL.y = originL.z = 0.0f;
+        glm::vec3 originL; originL.x = originL.y = originL.z = 0.0f;
         Stuff::Vector4D xf;
-        xf.Multiply(originL, shapeToClip);
+        xf.MultiplyPoint(originL, shapeToClip);
 
         SV c;
         float pixPerWu;
