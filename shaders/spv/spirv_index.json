@@ -104,42 +104,10 @@
       "defines": []
     },
     {
-      "key": "fog_oob|frag|",
-      "artifact": "fog_oob.frag.default.498ade97.spv",
-      "variantId": "498ade97a4ed",
-      "base": "fog_oob",
-      "stage": "frag",
-      "defines": []
-    },
-    {
-      "key": "edge_fog|frag|",
-      "artifact": "edge_fog.frag.default.07734eb0.spv",
-      "variantId": "07734eb02c4f",
-      "base": "edge_fog",
-      "stage": "frag",
-      "defines": []
-    },
-    {
       "key": "hzb_reduce|frag|",
       "artifact": "hzb_reduce.frag.default.ae9dd014.spv",
       "variantId": "ae9dd0144f82",
       "base": "hzb_reduce",
-      "stage": "frag",
-      "defines": []
-    },
-    {
-      "key": "cloud|frag|",
-      "artifact": "cloud.frag.default.982ec002.spv",
-      "variantId": "982ec002a690",
-      "base": "cloud",
-      "stage": "frag",
-      "defines": []
-    },
-    {
-      "key": "shoreline|frag|",
-      "artifact": "shoreline.frag.default.3dac14be.spv",
-      "variantId": "3dac14bea7f7",
-      "base": "shoreline",
       "stage": "frag",
       "defines": []
     }

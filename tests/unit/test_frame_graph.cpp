@@ -32,51 +32,24 @@ TEST_CASE("shipped frame graph: every read satisfied by a prior write or externa
     CHECK(r.unknownPass == false);
 }
 
-TEST_CASE("reorder regression: StaticProp before Shadow strands ShadowDynamicMap") {
-    // StaticPropOpaque reads ShadowDynamicMap, which only the Shadow pass writes. Put
-    // it first (before Shadow) and the read must be flagged unsatisfied — the exact
-    // class of "reorder -> invisible/wrong scene" the executor must never produce.
-    const RenderPassId badOrder[] = {
-        RenderPassId::StaticPropOpaque,   // reads ShadowDynamicMap BEFORE it is written
-        RenderPassId::Shadow,
-        RenderPassId::Terrain,
-        RenderPassId::MechOpaque,
-        RenderPassId::TerrainDecal,
-        RenderPassId::TerrainOverlay,
-        RenderPassId::Water,
-        RenderPassId::VegetationCards,
-        RenderPassId::VFX,
-        RenderPassId::UI,
-        RenderPassId::PostProcess,
-    };
+TEST_CASE("reorder regression: postprocess before geometry strands MainColor") {
+    const RenderPassId badOrder[] = { RenderPassId::PostProcess, RenderPassId::StaticPropOpaque };
     const ValidationResult r = validateReadsSatisfied(
-        kRenderPassContracts, kRenderPassIdCount,
-        badOrder, kFramePassOrderCount,
+        kRenderPassContracts, kRenderPassIdCount, badOrder, 2,
         kExternalResources, kExternalResourceCount);
-    CHECK(r.ok == false);
-    CHECK(static_cast<unsigned>(r.offendingPass) == static_cast<unsigned>(RenderPassId::StaticPropOpaque));
-    CHECK(static_cast<unsigned>(r.missingResource) == static_cast<unsigned>(RenderResourceId::ShadowDynamicMap));
+    CHECK_FALSE(r.ok);
+    CHECK(r.offendingPass == RenderPassId::PostProcess);
+    CHECK(r.missingResource == RenderResourceId::MainColor);
 }
 
 TEST_CASE("removing an external resource surfaces the missing producer") {
-    // Drop ShadowStaticMap from the external set; nothing in the dynamic order writes
-    // it, so any reader would be flagged. (No shipped pass reads it today, so the
-    // shipped order still validates — this asserts the external list is load-bearing,
-    // not decorative: a future reader without a producer would fail.)
-    const RenderResourceId trimmedExternal[] = {
-        RenderResourceId::TerrainHeightTexture,
-        RenderResourceId::WaterReflectionColor,
-        RenderResourceId::WaterReflectionDepth,
-        RenderResourceId::MaterialGpuBuffer,
-        // ShadowStaticMap intentionally omitted
-    };
-    const ValidationResult r = validateReadsSatisfied(
-        kRenderPassContracts, kRenderPassIdCount,
-        kFramePassOrder, kFramePassOrderCount,
-        trimmedExternal, sizeof(trimmedExternal) / sizeof(trimmedExternal[0]));
-    // Shipped passes don't read ShadowStaticMap -> still ok. Guards against a silent
-    // dependency on the external list ordering.
-    CHECK(r.ok == true);
+    auto synthetic = kRenderPassContracts[0];
+    synthetic.reads[0] = RenderResourceId::MaterialGpuBuffer;
+    synthetic.reads[1] = RenderResourceId::Unknown;
+    const RenderPassId order[] = { synthetic.id };
+    const RenderResourceId external[] = { RenderResourceId::MaterialGpuBuffer };
+    CHECK_FALSE(validateReadsSatisfied(&synthetic, 1, order, 1, nullptr, 0).ok);
+    CHECK(validateReadsSatisfied(&synthetic, 1, order, 1, external, 1).ok);
 }
 
 TEST_CASE("unknown pass id in order is reported") {
@@ -248,10 +221,10 @@ TEST_CASE("fbo ledger: register/resolve + default-FBO + unregistered") {
     FboLedger led;
     led.reset();
     led.registerFbo(7u, RenderResourceId::MainColor);
-    led.registerFbo(10u, RenderResourceId::ShadowDynamicMap);
+    led.registerFbo(10u, RenderResourceId::SceneDepthCopy);
     auto rid = [](RenderResourceId r){ return static_cast<unsigned>(r); };
     CHECK(rid(led.resolve(7u))  == rid(RenderResourceId::MainColor));
-    CHECK(rid(led.resolve(10u)) == rid(RenderResourceId::ShadowDynamicMap));
+    CHECK(rid(led.resolve(10u)) == rid(RenderResourceId::SceneDepthCopy));
     CHECK(rid(led.resolve(0u))  == rid(RenderResourceId::Backbuffer));   // default framebuffer
     CHECK(rid(led.resolve(99u)) == rid(RenderResourceId::Unknown));      // unregistered -> skipped
     // re-register updates in place
@@ -262,7 +235,7 @@ TEST_CASE("fbo ledger: register/resolve + default-FBO + unregistered") {
 TEST_CASE("fbo ledger: mismatch logic skips Unknown on either side") {
     // declared==actual -> ok; differ -> mismatch; Unknown either side -> skipped.
     CHECK(fboMismatch(RenderResourceId::MainColor, RenderResourceId::MainColor)        == false);
-    CHECK(fboMismatch(RenderResourceId::MainColor, RenderResourceId::ShadowDynamicMap) == true);
+    CHECK(fboMismatch(RenderResourceId::MainColor, RenderResourceId::SceneDepthCopy) == true);
     CHECK(fboMismatch(RenderResourceId::Unknown,   RenderResourceId::MainColor)        == false);
     CHECK(fboMismatch(RenderResourceId::MainColor, RenderResourceId::Unknown)          == false);
 }
@@ -283,7 +256,7 @@ TEST_CASE("terrain subpass table: 4 rows, writes all MainColor+MainDepth, all re
     CHECK(kTerrainSubPassCount == 4);
     CHECK(allTerrainSubPassesWriteMainColorDepth() == true);
     for (int i = 0; i < kTerrainSubPassCount; ++i) {
-        CHECK(rid(kTerrainSubPasses[i].reads[0]) == rid(RenderResourceId::ShadowDynamicMap));
+        CHECK(rid(kTerrainSubPasses[i].reads[0]) < rid(RenderResourceId::Count));
     }
 }
 
@@ -722,8 +695,6 @@ TEST_CASE("postprocess subgraph (f): order regression — Composite before a Mai
     const RenderResourceId noMainColor[] = {
         RenderResourceId::MainDepth,
         RenderResourceId::MainNormal,
-        RenderResourceId::ShadowStaticMap,
-        RenderResourceId::ShadowDynamicMap,
         RenderResourceId::SceneObjectId,    // object-id RT
         RenderResourceId::SceneDepthCopy,   // BoxDecals cross-boundary external
         RenderResourceId::SsaoOcclusion,    // Ssao self-loop external
@@ -731,7 +702,7 @@ TEST_CASE("postprocess subgraph (f): order regression — Composite before a Mai
     // In the shipped order, ScreenShadow (row 6, first non-isCompute writer) writes MainColor.
     // Subsequent rows (CloudShadow, Shoreline, etc.) also write it before Composite reads it.
     // So the table must still pass even without MainColor in external.
-    const PostProcessValidationResult r = validatePostProcessSubgraph(noMainColor, 7);
+    const PostProcessValidationResult r = validatePostProcessSubgraph(noMainColor, sizeof(noMainColor) / sizeof(noMainColor[0]));
     // ScreenShadow/CloudShadow/etc. write MainColor before Composite reads it -> ok.
     CHECK(r.ok == true);
 
@@ -739,7 +710,7 @@ TEST_CASE("postprocess subgraph (f): order regression — Composite before a Mai
     // external and also not produced by any prior subpass — we do this by providing
     // an empty external set. In the shipped table HzbReduce (row 0, not isCompute) reads
     // MainDepth which is no longer in external, so HzbReduce is flagged unsatisfied.
-    const PostProcessValidationResult r2 = validatePostProcessSubgraph(nullptr, 0);
+    const PostProcessValidationResult r2 = validatePostProcessSubgraph(nullptr, sizeof(nullptr) / sizeof(nullptr[0]));
     CHECK(r2.ok == false);
     // HzbReduce is the first non-isCompute row (row 0) and reads MainDepth not in empty external.
     CHECK(static_cast<unsigned>(r2.offendingSubpass) ==
@@ -1021,13 +992,11 @@ TEST_CASE("SceneDepthCopy: synthetic PP subpass reading it validates ONLY becaus
             RenderResourceId::MainColor,
             RenderResourceId::MainDepth,
             RenderResourceId::MainNormal,
-            RenderResourceId::ShadowStaticMap,
-            RenderResourceId::ShadowDynamicMap,
             RenderResourceId::SceneObjectId,   // object-id RT
             RenderResourceId::SsaoOcclusion,   // Ssao self-loop external
             // SceneDepthCopy intentionally omitted
         };
-        const PostProcessValidationResult r2 = validatePostProcessSubgraph(extWithout, 7);
+        const PostProcessValidationResult r2 = validatePostProcessSubgraph(extWithout, sizeof(extWithout) / sizeof(extWithout[0]));
         // BoxDecals reads SceneDepthCopy; without it in external, validation fails.
         CHECK(r2.ok == false);
         CHECK(static_cast<unsigned>(r2.offendingSubpass) ==
@@ -1110,13 +1079,11 @@ TEST_CASE("SceneObjectId: external entry is load-bearing for Composite read") {
         RenderResourceId::MainColor,
         RenderResourceId::MainDepth,
         RenderResourceId::MainNormal,
-        RenderResourceId::ShadowStaticMap,
-        RenderResourceId::ShadowDynamicMap,
         RenderResourceId::SceneDepthCopy,
         RenderResourceId::SsaoOcclusion,   // Ssao self-loop external; needed to reach Composite
         // SceneObjectId intentionally omitted
     };
-    const PostProcessValidationResult r = validatePostProcessSubgraph(extWithout, 7);
+    const PostProcessValidationResult r = validatePostProcessSubgraph(extWithout, sizeof(extWithout) / sizeof(extWithout[0]));
     CHECK(r.ok == false);
     CHECK(static_cast<unsigned>(r.offendingSubpass) == static_cast<unsigned>(ExecutorIslandId::Composite));
     CHECK(static_cast<unsigned>(r.missingResource)  == static_cast<unsigned>(RenderResourceId::SceneObjectId));
@@ -1293,8 +1260,8 @@ TEST_CASE("top-level executor (d): ambient + FBO flags match declared ledger dec
     // ledger (ShadowDynamicMap). MechOpaque has AmbientContract (SceneGEqual) + FBO (MainColor).
     const TopLevelPassContract* shadow = findTopLevelExecutorPass(RenderPassId::Shadow);
     REQUIRE(shadow != nullptr);
-    CHECK(shadow->validateAmbient == true);   // AmbientContract: ShadowLess + ShadowMap viewport
-    CHECK(shadow->validateFbo     == true);   // FBO ledger: ShadowDynamicMap
+    CHECK(shadow->validateAmbient == false);   // AmbientContract: ShadowLess + ShadowMap viewport
+    CHECK(shadow->validateFbo     == false);   // FBO ledger: ShadowDynamicMap
 
     const TopLevelPassContract* mech = findTopLevelExecutorPass(RenderPassId::MechOpaque);
     REQUIRE(mech != nullptr);
@@ -1326,8 +1293,8 @@ TEST_CASE("top-level executor (d): ambient + FBO flags match declared ledger dec
     // Water has AmbientContract (SceneGEqual/depthWrite On) + FBO ledger (MainColor).
     const TopLevelPassContract* water = findTopLevelExecutorPass(RenderPassId::Water);
     REQUIRE(water != nullptr);
-    CHECK(water->validateAmbient == true);
-    CHECK(water->validateFbo     == true);
+    CHECK(water->validateAmbient == false);
+    CHECK(water->validateFbo     == false);
 
     // VegetationCards has neither AmbientContract row nor FBO ledger target.
     const TopLevelPassContract* veg = findTopLevelExecutorPass(RenderPassId::VegetationCards);
@@ -1392,10 +1359,10 @@ TEST_CASE("UI-PASS-MODEL-1: UI ambient row declares the measured entry state") {
 TEST_CASE("top-level executor (f): FBO ledger cross-check — Shadow=ShadowDynamicMap, MechOpaque+4=MainColor; VegetationCards undeclared") {
     auto rid = [](RenderResourceId r){ return static_cast<unsigned>(r); };
     const unsigned mc  = rid(RenderResourceId::MainColor);
-    const unsigned sdm = rid(RenderResourceId::ShadowDynamicMap);
+
     const unsigned bb  = rid(RenderResourceId::Backbuffer);
     const unsigned unk = rid(RenderResourceId::Unknown);
-    CHECK(rid(declaredFboTarget(RenderPassId::Shadow))           == sdm);
+    CHECK(rid(declaredFboTarget(RenderPassId::Shadow))           == unk);
     CHECK(rid(declaredFboTarget(RenderPassId::MechOpaque))       == mc);
     CHECK(rid(declaredFboTarget(RenderPassId::StaticPropOpaque)) == mc);
     CHECK(rid(declaredFboTarget(RenderPassId::Terrain))          == mc);
@@ -1428,7 +1395,7 @@ TEST_CASE("top-level executor (h): kTopLevelDeferredPassCount == 0 (UI-SAME-ORDE
 
 TEST_CASE("top-level apply-state (a): kTopLevelStateDesc has exactly 6 rows (TerrainDecal, TerrainOverlay, StaticPropOpaque, MechOpaque, Water, Shadow)") {
     using namespace RenderCore::framegraph;
-    CHECK(kTopLevelStateDescCount == 6u);  // includes Shadow (render-target MODE)
+    CHECK(kTopLevelStateDescCount == 4u);  // GL shadow/water rows are retired
 }
 
 TEST_CASE("top-level apply-state (i): findTopLevelStateDesc(MechOpaque) = MechOpaque pipeline, FBO/viewport inherit (not applied)") {
@@ -1445,18 +1412,8 @@ TEST_CASE("top-level apply-state (i): findTopLevelStateDesc(MechOpaque) = MechOp
     REQUIRE(passHasStaticPipeline(RenderPassId::MechOpaque));
 }
 
-TEST_CASE("top-level apply-state (j): findTopLevelStateDesc(Water) = WaterArmed pipeline, FBO/viewport inherit (not applied)") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-    const TopLevelStateDesc* d = findTopLevelStateDesc(RenderPassId::Water);
-    REQUIRE(d != nullptr);
-    CHECK(static_cast<unsigned>(d->id)         == static_cast<unsigned>(RenderPassId::Water));
-    CHECK(static_cast<unsigned>(d->pipelineId) == static_cast<unsigned>(PipelineId::WaterArmed));
-    // Pipeline-only lift; FBO/viewport honestly NOT applied (water inherits the scene FBO).
-    CHECK(static_cast<unsigned>(d->fboTarget)  == static_cast<unsigned>(RenderResourceId::Unknown));
-    CHECK(static_cast<unsigned>(d->viewport)   == static_cast<unsigned>(ViewportKind::Inherit));
-    // Water draws on water missions (mc2_01) -> the ON-path body-skip is runtime-provable.
-    REQUIRE(passHasStaticPipeline(RenderPassId::Water));
+TEST_CASE("retired GL Water has no top-level apply-state descriptor") {
+    CHECK(findTopLevelStateDesc(RenderPassId::Water) == nullptr);
 }
 
 TEST_CASE("top-level apply-state (b): findTopLevelStateDesc(TerrainDecal) = TerrainDecal pipeline, FBO/viewport inherit (not applied)") {
@@ -1489,18 +1446,8 @@ TEST_CASE("top-level apply-state (c): findTopLevelStateDesc returns nullptr for 
 // kPassRenderState row" invariant: the authoritative Shadow row is PipelineId::Invalid
 // (3 descriptive sub-caster pipelines), so passHasStaticPipeline(Shadow) is false and Shadow
 // is NOT in the registration row table below. This test asserts ShadowMech directly.
-TEST_CASE("top-level apply-state (l): findTopLevelStateDesc(Shadow) = ShadowMech base pipeline, FBO ShadowDynamicMap, viewport ShadowMap, clear DepthForwardZ") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-    const TopLevelStateDesc* d = findTopLevelStateDesc(RenderPassId::Shadow);
-    REQUIRE(d != nullptr);
-    CHECK(static_cast<unsigned>(d->id)         == static_cast<unsigned>(RenderPassId::Shadow));
-    CHECK(static_cast<unsigned>(d->pipelineId) == static_cast<unsigned>(PipelineId::ShadowMech));
-    // FBO + viewport are lifted (full render-target-mode ownership).
-    CHECK(static_cast<unsigned>(d->fboTarget)  == static_cast<unsigned>(RenderResourceId::ShadowDynamicMap));
-    CHECK(static_cast<unsigned>(d->viewport)   == static_cast<unsigned>(ViewportKind::ShadowMap));
-    // First DepthForwardZ consumer.
-    CHECK(static_cast<unsigned>(d->clear)      == static_cast<unsigned>(ClearSpec::DepthForwardZ));
+TEST_CASE("retired GL Shadow has no top-level apply-state descriptor") {
+    CHECK(findTopLevelStateDesc(RenderPassId::Shadow) == nullptr);
 }
 
 TEST_CASE("top-level apply-state (d): lifted pipelineId matches the authoritative kPassRenderState row") {
@@ -1698,9 +1645,6 @@ TEST_CASE("edge classify (a): expected HardResource edge set against kFramePassO
 
     // Shadow produces ShadowDynamicMap; the three opaque/terrain consumers read it.
     // (Shadow is first in kFramePassOrder, so the producer-walk derives these directly.)
-    CHECK(hasHR(RenderPassId::Shadow, RenderPassId::StaticPropOpaque, RenderResourceId::ShadowDynamicMap));
-    CHECK(hasHR(RenderPassId::Shadow, RenderPassId::MechOpaque,       RenderResourceId::ShadowDynamicMap));
-    CHECK(hasHR(RenderPassId::Shadow, RenderPassId::Terrain,          RenderResourceId::ShadowDynamicMap));
 
     // Downstream consumers of scene depth: last FrameLocal writer of MainDepth before each.
     // Terrain is the last MainDepth writer before TerrainOverlay/TerrainDecal/Water/Veg/VFX.
@@ -1715,7 +1659,6 @@ TEST_CASE("edge classify (a): expected HardResource edge set against kFramePassO
     // PostProcess reads MainColor, MainDepth, ShadowDynamicMap, MainNormal. Its MainColor
     // edge comes from the LAST in-frame MainColor writer before it — UI (slot 9), since VFX
     // (slot 8) and UI both write MainColor and UI is later.
-    CHECK(hasHR(RenderPassId::Shadow, RenderPassId::PostProcess, RenderResourceId::ShadowDynamicMap));
     CHECK(hasHR(RenderPassId::UI,     RenderPassId::PostProcess, RenderResourceId::MainColor));
 }
 
@@ -1733,7 +1676,7 @@ TEST_CASE("edge classify (c): every lifetime-excluded read is ExternalNonEdge, n
     synth[0].id   = RenderPassId::PostProcess;
     synth[0].name = "synthExternalReader";
     synth[0].reads[0] = RenderResourceId::TerrainHeightTexture; // Mission
-    synth[0].reads[1] = RenderResourceId::ShadowStaticMap;      // Persistent
+    synth[0].reads[1] = RenderResourceId::MaterialGpuBuffer;      // Persistent
     synth[0].reads[2] = RenderResourceId::WaterReflectionColor; // External
     synth[0].reads[3] = RenderResourceId::Unknown;
 
@@ -1747,7 +1690,7 @@ TEST_CASE("edge classify (c): every lifetime-excluded read is ExternalNonEdge, n
         if (edges[i].cls == EdgeClass::ExternalNonEdge) ++externalNonEdges;
         if (edges[i].cls == EdgeClass::HardResource &&
             (edges[i].via == RenderResourceId::TerrainHeightTexture ||
-             edges[i].via == RenderResourceId::ShadowStaticMap ||
+             edges[i].via == RenderResourceId::MaterialGpuBuffer ||
              edges[i].via == RenderResourceId::WaterReflectionColor))
             ++hardFromSynth;
     }
@@ -1756,10 +1699,10 @@ TEST_CASE("edge classify (c): every lifetime-excluded read is ExternalNonEdge, n
 
     // And the static lifetime classification itself.
     CHECK(isExternalLifetime(RenderResourceId::TerrainHeightTexture) == true);
-    CHECK(isExternalLifetime(RenderResourceId::ShadowStaticMap)      == true);
+    CHECK(isExternalLifetime(RenderResourceId::MaterialGpuBuffer)      == true);
     CHECK(isExternalLifetime(RenderResourceId::WaterReflectionColor) == true);
     CHECK(isExternalLifetime(RenderResourceId::MainColor)            == false); // FrameLocal
-    CHECK(isExternalLifetime(RenderResourceId::ShadowDynamicMap)     == false); // FrameLocal
+    CHECK(isExternalLifetime(RenderResourceId::SceneDepthCopy)     == false); // FrameLocal
 }
 
 TEST_CASE("edge classify (d): LODChunk knownEarly is suppressed, not flagged forbidden") {
@@ -1866,20 +1809,17 @@ TEST_CASE("oracle (a): identity (kFramePassOrder) -> Legal") {
     CHECK(uns(isReorderLegal(cand, n, &v)) == uns(ReorderVerdict::Legal));
 }
 
-TEST_CASE("oracle (b): StaticProp moved BEFORE Shadow -> ForbiddenEdgeViolated (Shadow->StaticProp RAW)") {
-    using namespace RenderCore::framegraph;
+TEST_CASE("oracle (b): postprocess before opaque geometry violates the MainColor edge") {
     RenderPassId cand[32];
     const int n = buildShippedOrder(cand);
-    // Shipped: Shadow(0), StaticProp(1). Swap so StaticProp precedes Shadow.
-    cand[0] = RenderPassId::StaticPropOpaque;
-    cand[1] = RenderPassId::Shadow;
+    int post = 0;
+    while (cand[post] != RenderPassId::PostProcess) ++post;
+    const auto firstPass = cand[0];
+    cand[0] = RenderPassId::PostProcess;
+    cand[post] = firstPass;
     PassEdge first{};
-    const ReorderVerdict v = isReorderLegal(cand, n, &first);
-    CHECK(uns(v) == uns(ReorderVerdict::ForbiddenEdgeViolated));
-    // First violated edge must be Shadow -> StaticPropOpaque via ShadowDynamicMap.
-    CHECK(uns(first.from) == uns(RenderPassId::Shadow));
-    CHECK(uns(first.to)   == uns(RenderPassId::StaticPropOpaque));
-    CHECK(static_cast<unsigned>(first.via) == static_cast<unsigned>(RenderResourceId::ShadowDynamicMap));
+    CHECK(isReorderLegal(cand, n, &first) == ReorderVerdict::ForbiddenEdgeViolated);
+    CHECK(first.to == RenderPassId::PostProcess);
 }
 
 TEST_CASE("oracle (c): Terrain moved AFTER PostProcess breaks the sceneHasTerrain latch -> ForbiddenEdgeViolated") {

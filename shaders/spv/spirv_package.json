@@ -18,11 +18,7 @@
     "postprocess",
     "mech",
     "ssao",
-    "fog_oob",
-    "edge_fog",
-    "hzb_reduce",
-    "cloud",
-    "shoreline"
+    "hzb_reduce"
   ],
   "excluded_families": [
     "shadow_mech (shadow_mech.vert + shadow_instanced.frag) \u2014 separate program, stays GLSL",
@@ -105,32 +101,6 @@
       ]
     },
     {
-      "base": "fog_oob",
-      "variants": [
-        {
-          "name": "default",
-          "defines": [],
-          "variantId": "498ade97a4ed",
-          "stages": {
-            "frag": "fog_oob.frag.default.498ade97.spv"
-          }
-        }
-      ]
-    },
-    {
-      "base": "edge_fog",
-      "variants": [
-        {
-          "name": "default",
-          "defines": [],
-          "variantId": "07734eb02c4f",
-          "stages": {
-            "frag": "edge_fog.frag.default.07734eb0.spv"
-          }
-        }
-      ]
-    },
-    {
       "base": "hzb_reduce",
       "variants": [
         {
@@ -142,36 +112,10 @@
           }
         }
       ]
-    },
-    {
-      "base": "cloud",
-      "variants": [
-        {
-          "name": "default",
-          "defines": [],
-          "variantId": "982ec002a690",
-          "stages": {
-            "frag": "cloud.frag.default.982ec002.spv"
-          }
-        }
-      ]
-    },
-    {
-      "base": "shoreline",
-      "variants": [
-        {
-          "name": "default",
-          "defines": [],
-          "variantId": "3dac14bea7f7",
-          "stages": {
-            "frag": "shoreline.frag.default.3dac14be.spv"
-          }
-        }
-      ]
     }
   ],
   "hashes": {
-    "spirv_index_sha256": "9bbd913e3463d0b9a503b29042a1a2107458b8bc1a69c5374155ddf1eec2acb8",
+    "spirv_index_sha256": "c1e592e19007a0588070dd3d14106ae1f982d818194d3d81a95e83dc4b0f9c10",
     "sidecars_sha256": "2a56eb1572abd13fa49e765c5cad469efdf5a6648c2a42e096320cbbf6780022",
     "source_set_sha256": "fd6e81ddb7d5d3e87faa8f04f3c98e610d0208765aa5f387da9229ef017b2bfd"
   }
