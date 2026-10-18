@@ -220,16 +220,8 @@ public:
     // The dynamic shadow state exists (the single map; the cascades when ShadowCSM is on). What the Vulkan terrain feed asks instead of the GL handles.
     bool dynShadowBuilt() const { return dynShadowBuilt_; }
     bool csmBuilt() const { return csmBuilt_; }
-    // When CSM is active during the caster pass, this returns the matrix for the
-    // cascade currently being rendered (csmActiveCascade_), so the existing
-    // batcher caster sites (which all upload getDynamicLightSpaceMatrix() as
-    // "lightSpaceMatrix") render into the correct layer with NO batcher edits.
-    // Outside the caster pass / when CSM is off it returns the legacy single matrix.
-    const float* getDynamicLightSpaceMatrix() const {
-        if (dynShadowArrayTex_ && csmActiveCascade_ >= 0 && csmActiveCascade_ < csmCount_)
-            return &dynamicCascadeMatrices_[csmActiveCascade_ * 16];
-        return dynamicLightSpaceMatrix_;
-    }
+    // The single (legacy) dynamic light-space matrix; the cascade matrices are getDynamicCascadeMatrices().
+    const float* getDynamicLightSpaceMatrix() const { return dynamicLightSpaceMatrix_; }
     int getDynamicShadowMapSize() const { return dynShadowMapSize_; }
     // VK-P8a SHADOW-INTEROP: the dynamic prop caster draw enables polygon offset via
     // glPolygonOffset(shadowBiasFactor_, shadowBiasUnits_) (gos_static_prop_batcher.cpp
@@ -259,11 +251,6 @@ public:
     // World-texel footprint of the last (full-map) cascade, computed with the
     // separate texture's resolution (NOT the array's). Used for the depth bias.
     float  getDynamicFullMapTexelWorld() const { return dynamicFullMapTexelWorld_; }
-
-    // Bind the per-layer FBO + viewport + forward-Z clear for caster layer i.
-    // Returns false if CSM inactive or i out of range (caller skips).
-    bool beginDynamicShadowCascade(int i);
-    void endDynamicShadowCascadePass();
 
     // Toggles and parameters
     float exposure_;
@@ -718,7 +705,6 @@ private:
     float  dynamicCascadeMatrices_[kMaxCsmCascades * 16]; // per-cascade col-major
     float  dynamicCascadeTexelWorld_[kMaxCsmCascades];    // 2*cRad/mapSize per cascade, world units
     float  csmDepthSpan_;                                 // (farP-nearP) of shared ortho z-row
-    int    csmActiveCascade_;                  // cascade the caster pass is drawing
     int    csmDebugLayer_;                     // which layer the debug blit shows
 
     // --- Per-cascade shadow resolution: separate full-map (last) cascade -----
@@ -733,23 +719,6 @@ private:
     GLuint dynamicFullMapDummyColorTex_;        // 7900 XTX FBO-completeness dummy
     int    dynamicFullMapSize_;                 // edge in texels (default 4096)
     float  dynamicFullMapTexelWorld_;           // 2*cRad/dynamicFullMapSize_ for last cascade
-
-    // CSM caster-loop GL-state save/restore. beginDynamicShadowCascade() captures
-    // the caller's full scene GL state on the FIRST cascade (csmStateSaved_ flips
-    // true); endDynamicShadowCascadePass() restores it on the LAST cascade. This
-    // mirrors gosRenderer::begin/endDynamicShadowPass (captureShadowGLState /
-    // restoreShadowGLState in gameos_graphics.cpp) so the forward-Z 4096^2 array
-    // pass does not leak FBO/viewport/depth/blend/cull into the reverse-Z scene
-    // passes (props/actors/water) that draw after the cascade loop.
-    bool      csmStateSaved_ = false;
-    GLint     csmSavedFBO_ = 0;
-    GLint     csmSavedViewport_[4] = {0,0,0,0};
-    GLfloat   csmSavedClearDepth_ = 0.0f;
-    GLboolean csmSavedDepthTest_ = GL_FALSE;
-    GLint     csmSavedDepthFunc_ = 0;
-    GLboolean csmSavedDepthMask_ = GL_TRUE;
-    GLboolean csmSavedBlend_ = GL_FALSE;
-    GLboolean csmSavedCull_ = GL_FALSE;
 
     // Post-process screen shadow
     glsl_program* screenShadowProg_;

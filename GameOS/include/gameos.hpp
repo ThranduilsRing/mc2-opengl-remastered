@@ -2370,9 +2370,6 @@ void gos_ResetStaticShadowPriming();
 // VPL-#shadow Phase 1: gos_RequestFullShadowRebuild / gos_ShadowRebuildPending
 // / gos_ClearShadowRebuildPending RETIRED (camera-windowed-accumulate
 // machinery; only caller was the deleted txmmgr prime block).
-// Dynamic object shadow pass (camera-centered, per-frame)
-void gos_BeginDynamicShadowPass();
-void gos_EndDynamicShadowPass();
 void gos_BuildDynamicLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
                                   const float camFitCornersMC2[8][3],
                                   const float shadowCenterXYZ[3], bool shadowCenterValid);
