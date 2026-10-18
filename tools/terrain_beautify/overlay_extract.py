@@ -77,7 +77,7 @@ from mission_terrain_analyzer import (  # noqa: E402
     read_packets, locate_mapdata, extract_layers, read_water_elevation,
 )
 
-# STOCK-DATA-TRUTH-2: this tool reads textureData, which is one of the fields
+# This tool reads textureData, which is one of the fields
 # that DIFFERS between the shipped mission.fst and the Carver5 tree (measured:
 # 115367 vertices across the 24 campaign maps). Its corpus is load-bearing.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
@@ -94,7 +94,7 @@ _CONCRETE = {10, 13, 14, 15, 16, 17, 18, 19, 20}
 
 # Placeholder flat "cement" diffuse colour for the v1 parity oracle (mid-grey,
 # distinct from any stock terrain colormap hue so coverage is visually obvious
-# in a contact sheet). Real art-matched colour is a follow-on (EDGE-BLEND-1 /
+# in a contact sheet). Real art-matched colour is a follow-on (edge blending /
 # authoring tool), not required for the coverage/gate parity proof here.
 _CEMENT_RGB = (150, 150, 150)
 
@@ -178,7 +178,7 @@ def cmd_extract(args) -> int:
 
     bridge_gate = read_bridge_gate_overlay_cells(side, blocks, water_elev)
     excluded = int((concrete & bridge_gate).sum())
-    concrete = concrete & ~bridge_gate  # landmine #7/#2: never bake bridge/gate overlay cells
+    concrete = concrete & ~bridge_gate  # never bake bridge/gate overlay cells
 
     ss = max(1, int(args.supersample))
     res = side * ss

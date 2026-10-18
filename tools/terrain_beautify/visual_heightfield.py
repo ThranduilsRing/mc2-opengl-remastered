@@ -100,7 +100,7 @@ from mission_terrain_analyzer import (  # noqa: E402
     WORLD_UNITS_PER_VERTEX, CLIFF_SLOPE_DEG,
 )
 
-# STOCK-DATA-TRUTH-1: no hard-coded mission dir. See tools/mc2data/stock_missions.py.
+# No hard-coded mission dir. See tools/mc2data/stock_missions.py.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
 from stock_missions import (  # noqa: E402
     StockDataError, add_missions_dir_arg, resolve_from_args,
@@ -182,14 +182,14 @@ def reshape_visual(base: np.ndarray, elev: np.ndarray, factor: int,
     cor = work[::factor, ::factor]
     cor_clamped = elev + np.clip(cor - elev, -corner_clamp, corner_clamp)
     # distribute the corner correction so we don't reintroduce facets: just set corners,
-    # the surrounding fine verts already smooth toward them next time; acceptable for v1.
+    # the surrounding fine verts already smooth toward them next time; acceptable.
     work[::factor, ::factor] = cor_clamped
     work = base + np.clip(work - base, -max_delta, max_delta)
     work[protect_fine] = base[protect_fine]
     return work
 
 
-# --- TERRAIN-REAUTH-UNPIN-1: corner-UNpinned landform-preserving re-authoring ---
+# --- Corner-UNpinned landform-preserving re-authoring -------------------------
 
 def _filter3(a: np.ndarray, reduce_fn, iterations: int) -> np.ndarray:
     """Iterated 3x3 morphological max/min filter (edge-padded, numpy-only)."""
@@ -297,7 +297,7 @@ def mountain_rock_mask(work: np.ndarray, elev: np.ndarray, factor: int,
     return rock
 
 
-# --- CLIFF-SMOOTH-1: terraced-cliff melting + gradient-aligned striation -----
+# --- Terraced-cliff melting + gradient-aligned striation ---------------------
 
 def onesided_step(elev: np.ndarray) -> np.ndarray:
     """Per-cell max |elevation jump| to any 4-neighbor (wu). The true riser
@@ -388,7 +388,7 @@ def striation_field(surface: np.ndarray, seed: int, iters: int = 24,
     return (r - r.mean()) * 2.0
 
 
-# --- SHORE-CONTOUR-1: smooth-waterline bank reshape ---------------------------
+# --- Smooth-waterline bank reshape --------------------------------------------
 #
 # USER SPEC (mc2_17 river screenshot, hand-drawn blue lines): the visible water
 # edge is blocky polygons where the coarse terrain crosses the water plane; the
@@ -690,7 +690,7 @@ def shore_contour_reshape(work: np.ndarray, factor: int, water_elev: float,
     adjust = max_adjust * np.tanh((w * (target - work)) / max(1e-9, max_adjust))
     out = work + adjust
 
-    # SHORE-CONTOUR-1 fragment suppression: the band blend can nudge an isolated
+    # Fragment suppression: the band blend can nudge an isolated
     # cell a hair below the water plane where the smoothed curve pulls away from
     # the blocky original, spawning sub-coarse-cell micro-puddles that read as
     # new tiny blocky shores. Lift any water component (out < waterElev) that is
@@ -797,7 +797,7 @@ def reauth_visual(elev: np.ndarray, factor: int, protect_coarse,
         work += lam * (_box3(work) - work)
         work += mu * (_box3(work) - work)
 
-    # 1b) CLIFF-SMOOTH-1 melt: Taubin is band-pass BY DESIGN (the landform band
+    # 1b) Cliff melt: Taubin is band-pass BY DESIGN (the landform band
     #     passes ~unchanged), so a giant terraced face — whose treads live in
     #     the landform band — survives it. On the cliff weight only, run plain
     #     weighted diffusion: the staircase relaxes toward the harmonic
@@ -813,9 +813,9 @@ def reauth_visual(elev: np.ndarray, factor: int, protect_coarse,
             for _ in range(cliff_melt_passes):
                 work += melt_step * (_box3(work) - work)
 
-    # 2) soft drift bound. With CLIFF-SMOOTH-1 the bound is a FIELD: scalar
+    # 2) soft drift bound. With cliff smoothing, the bound is a FIELD: scalar
     #    max_drift on flats, ramping (feathered) to cliff_drift on the cliff
-    #    mask so the melt can actually move terrace treads ~half a step.
+    #    mask so the melt can move terrace treads ~half a step.
     drift_cap = None
     eff_drift = max_drift
     if max_drift > 0:
@@ -833,7 +833,7 @@ def reauth_visual(elev: np.ndarray, factor: int, protect_coarse,
     # legitimate new curvature, so it is measured before that stage too).
     crease_smooth = _crease_energy(work)
 
-    # 2s) SHORE-CONTOUR-1: reshape the shore band so the terrain/water-plane
+    # 2s) Reshape the shore band so the terrain/water-plane
     #     intersection follows the smoothed waterline contour. The adjustment
     #     has its own bound (shore_max_adjust, cliff-drift class) — fold it
     #     into the effective drift the PASS gates read.
@@ -853,14 +853,14 @@ def reauth_visual(elev: np.ndarray, factor: int, protect_coarse,
     if mountainify_amp > 0.0:
         rock = mountain_rock_mask(work, elev, factor, water_coarse=water_coarse)
         if shore_w is not None:
-            # SHORE-CONTOUR-1: no ridged detail inside the shore band — the
+            # No ridged detail inside the shore band — the
             # bank must cross the water plane on the smoothed curve, not on
             # curve + noise.
             rock = rock * (1.0 - shore_w)
         detail = (_ridged_fbm(V, max(6, V // 16), seed) - 0.5) * 2.0  # [-1,1]
         stria_rms_on_cliff = None
         if cliff_w is not None:
-            # CLIFF-SMOOTH-1 cliff-ness: on the cliff weight, bias the synthesis
+            # Cliff-ness: on the cliff weight, bias the synthesis
             # toward gradient-aligned striation (erosion runs DOWN the face)
             # instead of isotropic bumps; modest amplitude (0.75x).
             stria = striation_field(work, seed)
@@ -870,7 +870,7 @@ def reauth_visual(elev: np.ndarray, factor: int, protect_coarse,
         if max_drift > 0:
             cap = drift_cap if drift_cap is not None else max_drift
             if shore_w is not None:
-                # SHORE-CONTOUR-1: the composite re-limit must not crush the
+                # The composite re-limit must not crush the
                 # shore-band bank reshape — widen the cap by the shore
                 # allowance inside the band (0 outside).
                 cap = cap + shore_max_adjust * shore_w
@@ -892,7 +892,7 @@ def reauth_visual(elev: np.ndarray, factor: int, protect_coarse,
     # 3) extrema re-injection: shrinking-sigma rounds so nearby guard points stop
     #    fighting (a wide correction for A can push neighbour B out of ITS budget;
     #    each round narrows the support and re-measures honestly).
-    #    CLIFF-SMOOTH-1 relaxation (documented): extrema ON the cliff mask that
+    #    Cliff relaxation: extrema ON the cliff mask that
     #    are NOT regional summits/pits are terrace-step edges — re-injecting
     #    them would rebuild the exact staircase the melt removed. They are
     #    exempted; true peaks/pits (is_regional) stay pinned everywhere.
@@ -904,7 +904,7 @@ def reauth_visual(elev: np.ndarray, factor: int, protect_coarse,
         extrema = []
         for e in all_extrema:
             on_cliff = have_cliff and cliff_mask[e["r"], e["c"]]
-            # SHORE-CONTOUR-1: a non-regional extremum anywhere the shore band
+            # A non-regional extremum anywhere the shore band
             # has weight is a bank facet edge — re-injecting it would rebuild
             # the blocky crossing the reshape removed. The threshold matches the
             # (1 - shore_w) field attenuation below (> 0.05): an enforced
@@ -927,7 +927,7 @@ def reauth_visual(elev: np.ndarray, factor: int, protect_coarse,
         kern = np.exp(-(xx * xx + yy * yy) / (2.0 * sigma * sigma))
         fld = np.zeros_like(work)
         any_fix = False
-        guard_pts = []                                 # SHORE-CONTOUR-1
+        guard_pts = []                                 # shore guards
         for e in extrema:
             fr, fc = e["r"] * factor, e["c"] * factor
             tol = max(0.5, shape_tolerance * e["relief"]) * 0.75  # keep margin
@@ -944,7 +944,7 @@ def reauth_visual(elev: np.ndarray, factor: int, protect_coarse,
         if not any_fix:
             break
         if shore_w is not None:
-            # SHORE-CONTOUR-1: the extrema kernel (up to ~3*1.25*factor cells
+            # The extrema kernel (up to ~3*1.25*factor cells
             # wide) is far wider than the shore band, so a LAND guard point just
             # outside the band splats a Gaussian TAIL into the reshaped band and
             # drags the crossing back toward the blocky bilinear base. Inside the
@@ -970,7 +970,7 @@ def reauth_visual(elev: np.ndarray, factor: int, protect_coarse,
         pf[_fine_mask(protect_coarse, factor)] = 1.0
         work = pf * base + (1.0 - pf) * work
 
-    # SHORE-CONTOUR-1 after-stats: facet census of the FINAL surface's
+    # After-stats: facet census of the FINAL surface's
     # waterline (post extrema re-injection + structural pin — the contour that
     # actually ships), same 3-coarse-cell keep filter as the reshape's before
     # census. The band reshape can nudge isolated cells a hair across the water
@@ -1012,7 +1012,7 @@ def reauth_visual(elev: np.ndarray, factor: int, protect_coarse,
     corner_move = np.abs(corners - elev)
     ev, cv = elev.ravel(), corners.ravel()
     corr = float(np.corrcoef(ev, cv)[0, 1]) if ev.std() > 1e-9 else 1.0
-    # SHORE-CONTOUR-1: banks are SUPPOSED to move (that is the deliverable);
+    # Banks are SUPPOSED to move (that is the deliverable);
     # shape fidelity gates off-shore, same pattern as the cliff relaxation.
     corr_off_shore = corr
     if shore_w is not None:
@@ -1105,7 +1105,7 @@ def build_object_damp(side: int, foot: np.ndarray, radius_wu: float = 256.0,
     return t * t * (3.0 - 2.0 * t)   # smoothstep
 
 
-# TERRAIN-LOD-GEOMORPH-1: coarse-band vertex strides the renderer decimates to
+    # Coarse-band vertex strides the renderer decimates to
 # (mclib/terrain.cpp LOD_STEPS[1:]). One max-reduced level is emitted per stride.
 MIP_STRIDES = (2, 4, 5, 10, 20)
 
@@ -1224,7 +1224,7 @@ def bake(mission: str, missions_dir: Path, out_root: Path, factor: int,
     reauth_info = None
     damp = None
     if reauth:
-        # TERRAIN-REAUTH-UNPIN-1: corner-UNpinned landform-preserving re-auth.
+        # Corner-UNpinned landform-preserving re-auth.
         foot, _o, _ = read_object_footprints(read_packets(pak), side)
         protect = _dilate(layers["overlay"] | foot)
         visual, reauth_info = reauth_visual(
@@ -1234,7 +1234,7 @@ def bake(mission: str, missions_dir: Path, out_root: Path, factor: int,
             water_coarse=layers["water"],
             cliff_drift=cliff_drift, cliff_slope_deg=cliff_slope_deg,
             cliff_melt_passes=cliff_melt_passes,
-            # SHORE-CONTOUR-1: only meaningful when the mission has water.
+            # Only meaningful when the mission has water.
             water_elev=(water_elev if layers["water"].any() else None),
             shore_smooth_radius=shore_smooth_radius,
             shore_band_cells=shore_band_cells,
@@ -1280,13 +1280,12 @@ def bake(mission: str, missions_dir: Path, out_root: Path, factor: int,
 
     delta = visual - nearest_coarse(elev, factor)             # smoothing introduced
 
-    # TERRAIN-LOD-GEOMORPH-1: max-preserving mip levels, built from the FINAL
+    # Max-preserving mip levels, built from the FINAL
     # fine bake (post-reshape / post-any-future-reauth) so silhouette maxes
     # track whatever surface actually ships. Emitted as a sibling sidecar the
     # engine appends to the binding-26 SSBO; absent file = legacy behavior.
-    # Provenance: sha256 of the EXACT bytes written to visual_height_<F>x.r32,
-    # so a stale mips sidecar (or a tool) can be caught against the fine bake it
-    # was supposed to come from (GEOMORPH-NEXT-SLICES.md staleness ruling).
+    # sha256 of the EXACT bytes written to visual_height_<F>x.r32, so a stale
+    # mips sidecar (or a tool) can be caught against the fine bake it came from.
     fine_bytes = visual.astype("<f4").tobytes()
     fine_sha = hashlib.sha256(fine_bytes).hexdigest()
 
@@ -1374,7 +1373,7 @@ def main() -> int:
     ap.add_argument("--corner-clamp", type=float, default=0.0, help="max coarse-vertex move (wu)")
     ap.add_argument("--max-delta", type=float, default=40.0, help="max visual deviation (wu)")
     ap.add_argument("--passes", type=int, default=24)
-    # TERRAIN-REAUTH-UNPIN-1 knobs (own the mode; --corner-clamp is the seed only)
+    # Reauth knobs (own the mode; --corner-clamp is the seed only)
     ap.add_argument("--reauth", action="store_true",
                     help="corner-UNpinned landform-preserving re-auth (Taubin band-pass)")
     ap.add_argument("--shape-tolerance", type=float, default=0.10,
@@ -1390,23 +1389,23 @@ def main() -> int:
     ap.add_argument("--mountainify-amp", type=float, default=14.0,
                     help="mountainify detail amplitude (wu) at full rock weight")
     ap.add_argument("--seed", type=int, default=1337, help="mountainify noise seed")
-    # CLIFF-SMOOTH-1 knobs (active with --reauth; 0 disables)
+    # Cliff smoothing knobs (active with --reauth; 0 disables)
     ap.add_argument("--cliff-drift", type=float, default=112.0,
                     help="drift bound ON the cliff mask (wu); flats keep "
-                         "--max-drift. 0 disables CLIFF-SMOOTH-1 entirely")
+                          "--max-drift. 0 disables CLIFF-SMOOTH-1 entirely")
     ap.add_argument("--cliff-slope-deg", type=float, default=30.0,
                     help="one-sided coarse slope threshold for the cliff mask")
     ap.add_argument("--cliff-melt-passes", type=int, default=300,
                     help="cliff-weighted diffusion passes (terrace melt)")
-    # SHORE-CONTOUR-1 knobs (active with --reauth on water missions; 0 disables)
+    # Shore contour knobs (active with --reauth on water missions; 0 disables)
     ap.add_argument("--shore-smooth-radius", type=float, default=3.5,
                     help="waterline contour Gaussian smoothing radius in COARSE "
-                         "cells (default 3.5; 0 disables SHORE-CONTOUR-1)")
+                          "cells (default 3.5; 0 disables SHORE-CONTOUR-1)")
     ap.add_argument("--shore-band-cells", type=float, default=1.5,
                     help="shore reshape band half-width in coarse cells")
     ap.add_argument("--shore-max-adjust", type=float, default=64.0,
                     help="soft bound on shore-band bank adjustment (wu, tanh)")
-    # TERRAIN-LOD-GEOMORPH-1 knob
+    # Terrain LOD geomorph knob
     ap.add_argument("--no-mips", action="store_true",
                     help="skip TERRAIN-LOD-GEOMORPH-1 max-mip sidecar emission")
     args = ap.parse_args()
@@ -1445,10 +1444,10 @@ def main() -> int:
             # unpinned AND drift inside the soft bound (+tanh slack).
             # corner cap: extrema re-injection may locally exceed the tanh soft
             # bound while restoring a peak (that is the guarantee WORKING) ->
-            # allow 25% headroom over the EFFECTIVE drift (CLIFF-SMOOTH-1: the
+            # allow 25% headroom over the EFFECTIVE drift (cliff smoothing: the
             # cliff mask allows cliff_drift; flats keep max_drift).
             eff = float(ra.get("effective_max_drift_wu", args.max_drift))
-            # SHORE-CONTOUR-1: gate on the off-shore correlation when the
+            # Gate on the off-shore correlation when the
             # shore stage ran (== global when it didn't).
             corr_gate = float(ra.get("landform_correlation_off_shore",
                                      ra["landform_correlation"]))
@@ -1492,7 +1491,7 @@ def main() -> int:
                 ri = rep["reshape"]
                 extra = (f" pyr_score {ri['pyramid_top_score_before']:.2f}->{ri['pyramid_top_score_after']:.2f}"
                          f" corner_move<={ri['max_corner_move_wu']:.1f}wu")
-        # TERRAIN-LOD-GEOMORPH-1: mip max-lift per stride (all modes)
+        # Mip max-lift per stride (all modes)
         if rep.get("max_mips"):
             lifts = ["%d:%.0f" % (lv["stride"], lv["max_lift_wu"])
                      for lv in rep["max_mips"]["levels"]]

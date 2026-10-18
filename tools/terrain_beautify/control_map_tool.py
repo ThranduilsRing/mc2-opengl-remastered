@@ -68,7 +68,7 @@ from mission_terrain_analyzer import (  # noqa: E402
     VALID_GRID_SIDES, WORLD_UNITS_PER_VERTEX,
 )
 
-# STOCK-DATA-TRUTH-2: material classification reads textureData + terrainType,
+# Material classification reads textureData + terrainType,
 # both of which differ between the shipped mission.fst and the Carver5 tree.
 # Its corpus is load-bearing.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
@@ -107,13 +107,12 @@ def material_to_rgba(material: np.ndarray) -> np.ndarray:
     return rgba
 
 
-# --- generate-from-height (TERRAIN-CONTROLMAP-GENERATE-1) ---------------------
+# --- generate-from-height -----------------------------------------------------
 # Hi-res heightfield classifier: slope + altitude bands -> soft rock/grass/dirt
 # weights, optionally blended with authored Gaea deposition masks, smoothed,
 # normalized, and area-averaged down to the mission's vertex-resolution grid.
-# A (concrete) is left at 0 here -- concrete/cement is a separate authored/runtime
-# axis (see TERRAIN-CONTROLMAP-GENERATE-1-RECON.md landmine #3), this classifier
-# only ever proposes R/G/B.
+# A (concrete) is left at 0 here: concrete/cement is a separate authored/runtime
+# axis, so this classifier only ever proposes R/G/B.
 
 def _read_r32(path: Path, res: int) -> np.ndarray:
     """Read a single-channel float32 Gaea raw export, res x res, row-major.

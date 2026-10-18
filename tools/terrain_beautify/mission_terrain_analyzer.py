@@ -40,11 +40,10 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-# STOCK-DATA-TRUTH-1: `--missions-dir` used to default to
-# A:/Games/Carver5-feasibility/data/missions, which differs from the shipped
-# mission.fst on ALL 24 campaign maps. There is no default any more; the
-# resolver below finds stock data and PROVES it byte-matches what the engine
-# loads, or refuses to run.
+# `--missions-dir` has no default, and any supplied directory must match the
+# shipped mission data byte-for-byte. A Carver5 tree differs from mission.fst
+# on ALL 24 campaign maps. The resolver below finds stock data and PROVES it
+# byte-matches what the engine loads, or refuses to run.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
 from stock_missions import (  # noqa: E402
     StockDataError, add_missions_dir_arg, resolve_from_args,

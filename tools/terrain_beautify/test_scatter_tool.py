@@ -20,11 +20,11 @@ import pytest
 
 HERE = Path(__file__).resolve().parent
 TOOL = HERE / "scatter_tool.py"
-# STOCK-DATA-TRUTH-1: this used to be
+# These "real stock .pak" tests must not use
 #   CARVER5_MISSIONS = Path("A:/Games/Carver5-feasibility/data/missions")
-# which differs from the shipped mission.fst on ALL 24 campaign maps, so these
-# "real stock .pak" tests were asserting against terrain the engine never
-# loads. STOCK_MISSIONS is byte-verified against the shipped bytes, or None --
+# because it differs from the shipped mission.fst on ALL 24 campaign maps,
+# so such tests would assert against terrain the engine never loads.
+# STOCK_MISSIONS is byte-verified against the shipped bytes, or None --
 # a test that cannot get stock data SKIPS rather than passing on wrong data.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
 from stock_missions import stock_missions_dir_or_none  # noqa: E402
@@ -286,7 +286,7 @@ def test_recook_is_idempotent_delete_and_reemit(tmp_path):
     assert stats_b["final_object_count"] == 1 + 5
 
 
-# --- tree channel (TERRAIN-TREE-SCATTER-V0) ----------------------------------
+# --- tree channel ------------------------------------------------------------
 def test_tree_slope_gate_excludes_outside_band():
     """Tree channel's exclusion is the recon's 'slope-gate flip': rock
     excludes ONLY too-steep; tree excludes BOTH too-flat and too-steep,

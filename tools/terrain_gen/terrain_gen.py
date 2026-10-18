@@ -453,7 +453,7 @@ def main() -> None:
             _save_terrain_type(masks.terrain_type, out / "terrain_type.png")
             print("  height.png  slope.png  altitude.png  valley.png  terrain_type.png")
 
-            # MAP-FEATURE-MASKS-1 (A1): semantic feature maps.
+            # Semantic feature maps.
             _save_gray(masks.curvature,      out / "curvature.png")
             _save_gray(masks.flow,           out / "flow.png")
             _save_gray(masks.ridge,          out / "ridge.png")
@@ -466,7 +466,7 @@ def main() -> None:
         recipe.to_json(out / f"{name}.recipe.json")
         print(f"  {name}.recipe.json")
 
-    # Phase 4: PCG foliage sidecar. Sources rules from --foliage-rules (file) or
+    # PCG foliage sidecar. Sources rules from --foliage-rules (file) or
     # recipe.foliage; no rules -> no file. Independent of the elev/burnin contract.
     if args.generate_foliage:
         from terrain_gen.foliage_generator import FoliageGenerator, load_rules, write_foliage
