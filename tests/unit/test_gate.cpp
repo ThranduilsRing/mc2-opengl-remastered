@@ -1865,18 +1865,15 @@ TEST_CASE("scoped gate override: a nullptr value clears a variable that was set,
     static_assert(!std::is_copy_constructible_v<gate::ScopedEnv>);
 }
 
-TEST_CASE("MC2_RENDER_BACKEND text: only gl/GL selects GL, a typo is Vulkan and flagged")
+TEST_CASE("MC2_RENDER_BACKEND text: gl/GL is the removed backend, a typo is flagged, everything runs on Vulkan")
 {
-	using mc2::RenderBackend;
-	bool ok = false;
-	CHECK(mc2::backendFromText(nullptr, &ok) == RenderBackend::Vulkan);   CHECK(ok);
-	CHECK(mc2::backendFromText("", &ok) == RenderBackend::Vulkan);        CHECK(ok);
-	CHECK(mc2::backendFromText("gl", &ok) == RenderBackend::GL);          CHECK(ok);
-	CHECK(mc2::backendFromText("GL", &ok) == RenderBackend::GL);          CHECK(ok);
-	CHECK(mc2::backendFromText("vulkan", &ok) == RenderBackend::Vulkan);  CHECK(ok);
-	CHECK(mc2::backendFromText("vk", &ok) == RenderBackend::Vulkan);      CHECK(ok);
-	for (const char* typo : {"opengl", "Vulkan", "Gl", "gl "}) {
-		CHECK(mc2::backendFromText(typo, &ok) == RenderBackend::Vulkan);
-		CHECK_FALSE(ok);
-	}
+	using mc2::BackendRequest;
+	CHECK(mc2::backendRequestFromText(nullptr) == BackendRequest::None);
+	CHECK(mc2::backendRequestFromText("") == BackendRequest::None);
+	CHECK(mc2::backendRequestFromText("vulkan") == BackendRequest::None);
+	CHECK(mc2::backendRequestFromText("vk") == BackendRequest::None);
+	CHECK(mc2::backendRequestFromText("gl") == BackendRequest::RemovedGl);
+	CHECK(mc2::backendRequestFromText("GL") == BackendRequest::RemovedGl);
+	for (const char* typo : {"opengl", "Vulkan", "Gl", "gl "})
+		CHECK(mc2::backendRequestFromText(typo) == BackendRequest::Unrecognized);
 }

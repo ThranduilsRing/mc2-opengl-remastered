@@ -48,10 +48,9 @@ TEST_CASE("screenshot slot: take hands the request over and restarts the wait fo
 
 TEST_CASE("screenshot slot: refusal names each reason a request cannot be queued") {
     Slot s;
-    CHECK(s.refusal("a.tga", true) == nullptr);
-    CHECK(std::string(s.refusal(nullptr, true)) == "empty path");
-    CHECK(std::string(s.refusal("", true)) == "empty path");
-    CHECK(std::string(s.refusal("a.tga", false)) == "the Vulkan backend is not drawing");   // a GL run
+    CHECK(s.refusal("a.tga") == nullptr);
+    CHECK(std::string(s.refusal(nullptr)) == "empty path");
+    CHECK(std::string(s.refusal("")) == "empty path");
     CHECK(s.begin("a.tga", nullptr));
-    CHECK(std::string(s.refusal("b.tga", true)) == "a request is still pending");
+    CHECK(std::string(s.refusal("b.tga")) == "a request is still pending");
 }
