@@ -117,8 +117,8 @@ namespace MidLevelRenderer {
 
 		inline void
 			GOSTransformNoClip(
-				const Stuff::Point3D &v,
-				const Stuff::Matrix4D &m,
+				const glm::vec3 &v,
+				const glm::mat4 &m,
 				Stuff::Scalar *uv
 #if FOG_HACK
 				, int foggy
@@ -152,8 +152,8 @@ namespace MidLevelRenderer {
 
 void
 	GOSVertex::GOSTransformNoClip(
-		const Stuff::Point3D& _v,
-		const Stuff::Matrix4D &m,
+		const glm::vec3& _v,
+		const glm::mat4 &m,
 		Stuff::Scalar *uv
 #if FOG_HACK
 				, int foggy
@@ -268,10 +268,10 @@ void
 	}
 #else
     //!NB looks like this was rarely(never?) tested
-	x = _v.x*m(0,0) + _v.y*m(1,0) + _v.z*m(2,0) + m(3,0);
-	y = _v.x*m(0,1) + _v.y*m(1,1) + _v.z*m(2,1) + m(3,1);
-	z = _v.x*m(0,2) + _v.y*m(1,2) + _v.z*m(2,2) + m(3,2);
-	rhw = _v.x*m(0,3) + _v.y*m(1,3) + _v.z*m(2,3) + m(3,3);
+	x = _v.x*m[0][0] + _v.y*m[0][1] + _v.z*m[0][2] + m[0][3];
+	y = _v.x*m[1][0] + _v.y*m[1][1] + _v.z*m[1][2] + m[1][3];
+	z = _v.x*m[2][0] + _v.y*m[2][1] + _v.z*m[2][2] + m[2][3];
+	rhw = _v.x*m[3][0] + _v.y*m[3][1] + _v.z*m[3][2] + m[3][3];
 #endif
 	
 #if 0	//USE_ASSEMBLER_CODE
