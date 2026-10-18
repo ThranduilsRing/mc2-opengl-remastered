@@ -640,7 +640,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1493,
+          "line": 1530,
           "evidence": "command",
           "reference": "A:/Games/mc2-main/scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -2347,7 +2347,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 50,
+          "line": 51,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)"
@@ -3349,6 +3349,13 @@
           "text": "from scripts import deploy_payload as dp  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_install_hygiene.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "scripts.deploy_payload",
+          "text": "from scripts import deploy_payload as dp"
+        },
+        {
           "path": "scripts/tests/test_lane_names.py",
           "line": 13,
           "evidence": "import",
@@ -3864,6 +3871,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/run_editor_capture.py",
+      "basename": "run_editor_capture.py",
+      "stem": "run_editor_capture",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/run_editor_playtest_smoke.py",
       "basename": "run_editor_playtest_smoke.py",
       "stem": "run_editor_playtest_smoke",
@@ -4194,14 +4208,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 677,
+          "line": 666,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 717,
+          "line": 706,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -4508,6 +4522,20 @@
           "text": "from scripts.smoke_lib import host_load  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_install_hygiene.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import gates, logparse"
+        },
+        {
+          "path": "scripts/tests/test_install_hygiene.py",
+          "line": 145,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import manifest"
+        },
+        {
           "path": "tests/smoke/test_capture_backend.py",
           "line": 13,
           "evidence": "import",
@@ -4595,7 +4623,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 717,
+          "line": 706,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -4761,7 +4789,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 677,
+          "line": 666,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease"
@@ -4915,6 +4943,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from .gates import GateConfig, Verdict, evaluate"
+        },
+        {
+          "path": "scripts/tests/test_install_hygiene.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.gates",
+          "text": "from scripts.smoke_lib import gates, logparse"
         },
         {
           "path": "tests/smoke/test_gates.py",
@@ -5116,6 +5151,13 @@
           "text": "from .logparse import LogSummary, parse_log"
         },
         {
+          "path": "scripts/tests/test_install_hygiene.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.logparse",
+          "text": "from scripts.smoke_lib import gates, logparse"
+        },
+        {
           "path": "tests/smoke/test_gates.py",
           "line": 1,
           "evidence": "import",
@@ -5227,6 +5269,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.manifest",
           "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
+        },
+        {
+          "path": "scripts/tests/test_install_hygiene.py",
+          "line": 145,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.manifest",
+          "text": "from scripts.smoke_lib import manifest"
         },
         {
           "path": "tests/smoke/test_manifest.py",
@@ -5952,6 +6001,13 @@
       "path": "scripts/tests/test_include_guards_unique.py",
       "basename": "test_include_guards_unique.py",
       "stem": "test_include_guards_unique",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_install_hygiene.py",
+      "basename": "test_install_hygiene.py",
+      "stem": "test_install_hygiene",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -7302,8 +7358,15 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
+          "path": "scripts/tests/test_install_hygiene.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "fst_repack_drop",
+          "text": "import fst_repack_drop"
+        },
+        {
           "path": "tools/residency_slim.py",
-          "line": 34,
+          "line": 16,
           "evidence": "import",
           "reference": "fst_repack_drop",
           "text": "import fst_repack_drop as fstlib  # parse(), ENTRY_SIZE"
@@ -9045,7 +9108,15 @@
       "basename": "residency_slim.py",
       "stem": "residency_slim",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_install_hygiene.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "residency_slim",
+          "text": "import residency_slim"
+        }
+      ]
     },
     {
       "path": "tools/save_craft_stale.py",
@@ -9202,7 +9273,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 466,
+          "line": 469,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""
