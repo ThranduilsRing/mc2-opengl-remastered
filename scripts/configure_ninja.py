@@ -51,6 +51,17 @@ def compile_cache_env(root):
             "SCCACHE_BASEDIRS": ";".join(sorted(roots))}
 
 
+def ensure_cache_server(root, env_extra):
+    """The sccache server reads SCCACHE_BASEDIRS once, at start. A worktree created after the server started is not on its list
+    and would never share entries, so restart the server when this root is missing (only ever when a new worktree first builds)."""
+    env = dict(os.environ, **env_extra)
+    want = root.replace("\\", "/").lower().rstrip("/") + "/"
+    shown = subprocess.run([SCCACHE_EXE, "-s"], env=env, capture_output=True, text=True).stdout.lower()
+    if want not in shown:
+        subprocess.run([SCCACHE_EXE, "--stop-server"], env=env, capture_output=True)
+        subprocess.run([SCCACHE_EXE, "--start-server"], env=env, capture_output=True)
+
+
 def tree_uses_cache(root, tree):
     try:
         with open(f"{root}/{tree}/CMakeCache.txt", encoding="utf-8", errors="replace") as f:
@@ -82,6 +93,7 @@ def configure(root, tree=DEFAULT_TREE, compile_cache=False, cache_pch=False):
         args += ["-DMC2_COMPILE_CACHE=ON", f"-DCMAKE_C_COMPILER_LAUNCHER={SCCACHE_EXE}",
                  f"-DCMAKE_CXX_COMPILER_LAUNCHER={SCCACHE_EXE}"]
         env = compile_cache_env(root)
+        ensure_cache_server(root, env)
     rc = under_vcvars(subprocess.list2cmdline(args), env)
     if rc:
         sys.exit(f"configure_ninja: cmake configure failed (rc={rc})")
@@ -91,6 +103,8 @@ def configure(root, tree=DEFAULT_TREE, compile_cache=False, cache_pch=False):
 def build(tree_path, targets=DEFAULT_TARGETS):
     root, tree = os.path.dirname(tree_path), os.path.basename(tree_path)
     env = compile_cache_env(root) if tree_uses_cache(root, tree) else None
+    if env:
+        ensure_cache_server(root, env)
     rc = under_vcvars(subprocess.list2cmdline([NINJA, "-C", tree_path] + targets), env)
     if rc:
         sys.exit(f"configure_ninja: ninja build failed (rc={rc})")

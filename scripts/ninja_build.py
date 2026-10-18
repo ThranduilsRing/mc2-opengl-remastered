@@ -16,7 +16,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from configure_ninja import (DEFAULT_TARGETS, DEFAULT_TREE, NINJA, compile_cache_env, configure, tree_uses_cache,  # noqa: E402
+from configure_ninja import (DEFAULT_TARGETS, DEFAULT_TREE, NINJA, compile_cache_env, configure, ensure_cache_server, tree_uses_cache,
                              under_vcvars)  # noqa: E402
 
 
@@ -35,6 +35,8 @@ def main():
     if tree != DEFAULT_TREE and not os.path.exists(f"{root}/{tree}/build.ninja"):
         configure(root, tree)
     env = compile_cache_env(root) if tree_uses_cache(root, tree) else None  # opt-in sccache tree (configure_ninja.py --compile-cache)
+    if env:
+        ensure_cache_server(root, env)
     sys.exit(under_vcvars(subprocess.list2cmdline([NINJA, "-C", f"{root}/{tree}"] + argv), env))
 
 
