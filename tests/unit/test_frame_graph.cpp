@@ -1804,13 +1804,12 @@ TEST_CASE("apply-state-island (h): all 5 apply-island descriptors present (EdgeF
 
 TEST_CASE("per-pass-apply-counters-1: ApplyPassId table is complete + names unique/non-Unknown") {
     using namespace RenderCore::framegraph;
-    // Exactly 11 apply paths: 5 PostProcess sub-stages + 6 top-level (including Shadow).
-    CHECK(static_cast<unsigned>(ApplyPassId::Count) == 11u);
+    // Exactly 10 apply paths: 5 PostProcess sub-stages + 5 top-level.
+    CHECK(static_cast<unsigned>(ApplyPassId::Count) == 10u);
     // Spot-check representative mappings.
     CHECK(std::string(applyPassName(ApplyPassId::StaticPropOpaque)) == "StaticPropOpaque");
     CHECK(std::string(applyPassName(ApplyPassId::MechOpaque))       == "MechOpaque");
     CHECK(std::string(applyPassName(ApplyPassId::Water))            == "Water");
-    CHECK(std::string(applyPassName(ApplyPassId::Shadow))           == "Shadow");
     // All ids return a non-"Unknown", unique name.
     const char* seen[(int)ApplyPassId::Count] = {nullptr};
     for (int i = 0; i < (int)ApplyPassId::Count; ++i) {

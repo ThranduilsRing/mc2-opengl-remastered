@@ -224,8 +224,8 @@ inline const SubStageStateDesc* findSubStageState(ExecutorIslandId id) {
 // look like variance) with one counter slot per apply site, so each path is
 // observable on its own in the render-state dump. The aggregate is now derived
 // as the SUM over these ids (back-compat: the total is byte-stable).
-// 5 PostProcess sub-stage applies + 6 top-level applies (TerrainDecal,
-// TerrainOverlay, StaticPropOpaque, MechOpaque, Water, Shadow).
+// 5 PostProcess sub-stage applies + 5 top-level applies (TerrainDecal,
+// TerrainOverlay, StaticPropOpaque, MechOpaque, Water). Shadow left with the GL dynamic shadow pass (s61).
 enum class ApplyPassId : uint8_t {
     PostProcessEdgeFog = 0,
     PostProcessFogOob,
@@ -237,7 +237,6 @@ enum class ApplyPassId : uint8_t {
     StaticPropOpaque,
     MechOpaque,   // APPLY-STATE-MECHOPAQUE-1: top-level mech-opaque pipeline apply
     Water,        // APPLY-STATE-WATER-1: top-level water pipeline apply (body-site post-compute-dispatch)
-    Shadow,       // APPLY-STATE-SHADOW-1: first render-target-MODE apply -- ShadowMech base pipeline + DepthForwardZ clear at the dynamic shadow seam
     Count,
 };
 
@@ -254,7 +253,6 @@ inline const char* applyPassName(ApplyPassId id) {
         case ApplyPassId::StaticPropOpaque:        return "StaticPropOpaque";
         case ApplyPassId::MechOpaque:              return "MechOpaque";
         case ApplyPassId::Water:                   return "Water";
-        case ApplyPassId::Shadow:                  return "Shadow";
         default:                                   return "Unknown";
     }
 }

@@ -73,13 +73,13 @@
       "next": "retire the descriptor with the RenderCore frame-graph islands (3.9)"
     },
     "ShadowMech": {
-      "status": "VISUAL_PROVEN",
+      "status": "DESCRIPTIVE_REGISTERED",
       "renderPassId": "Shadow",
       "pipelineId": "ShadowMech",
       "shaderBase": "shadow_mech",
-      "stateOwner": "applyPipeline",
-      "evidence": "gameos_graphics.cpp beginDynamicShadowPass applyPipeline(ShadowMech); mc2_24 before/after byte-identical",
-      "next": "spirv_eligible (depth-parity gate)"
+      "stateOwner": "vulkan_island",
+      "evidence": "the GL dynamic shadow pass (beginDynamicShadowPass applyPipeline(ShadowMech)) was deleted in s61; the descriptor stays registered for the frame-graph model and the mech casters are drawn by the Vulkan shadow island",
+      "next": "retire the descriptor with the RenderCore frame-graph islands (3.9)"
     },
     "Terrain": {
       "status": "ROUTED_BY_APPLYPIPELINE",
