@@ -388,6 +388,13 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
     return dN * lodNear;
 }
 
+// CEMENT-MIP-EDGE-1: antialiased "x < 0.5" for the cement transition cut; fw = the cut form's
+// per-pixel footprint, so the edge is one pixel of coverage at any distance instead of a hard stair.
+float cCutLt(float x, float fw) {
+    float w = max(fw, 1e-4);
+    return 1.0 - smoothstep(0.5 - w, 0.5 + w, x);
+}
+
 void main() {
     vec3 base;
     // VK-TERRAIN-LIGHTING: track whether this fragment resolved to a solid cement slab.
@@ -443,6 +450,10 @@ void main() {
         float cLod     = 0.5 * log2(max(max(dot(cGx, cGx), dot(cGy, cGy)) * cCellTex * cCellTex, 1e-12));
         cLod = clamp(cLod, 0.0, min(max(log2(cCellTex) - 1.0, 0.0), float(textureQueryLevels(u_cementAtlas) - 1)));
         float cInsetLod = min(0.5 * exp2(cLod) / cCellTex, 0.25);
+        // CEMENT-MIP-EDGE-1: per-pixel tile-UV footprint, for the antialiased transition cut below
+        // (the marching-squares cut was binary, a hard aliased stair along every road side).
+        float cFu = abs(cGx.x) + abs(cGy.x);
+        float cFv = abs(cGx.y) + abs(cGy.y);
         int  ctX = clamp(int(floor((v_worldPos.x + uT.halfMap) / 128.0)), 0, uT.mapSide - 1);
         int  ctY = clamp(int(floor((uT.halfMap - v_worldPos.y) / 128.0)), 0, uT.mapSide - 1);
         uint cw  = uC.cementWordsF[ctX + ctY * uT.mapSide];
@@ -497,33 +508,33 @@ void main() {
                     } else if (cfg == 15) {
                         alpha = 1.0;
                     } else if (cfg == 8) {        // cTL only
-                        alpha = (u + v < 0.5) ? 1.0 : 0.0;
+                        alpha = cCutLt(u + v, cFu + cFv);
                     } else if (cfg == 4) {        // cTR only
-                        alpha = ((1.0 - u) + v < 0.5) ? 1.0 : 0.0;
+                        alpha = cCutLt((1.0 - u) + v, cFu + cFv);
                     } else if (cfg == 2) {        // cBR only
-                        alpha = ((1.0 - u) + (1.0 - v) < 0.5) ? 1.0 : 0.0;
+                        alpha = cCutLt((1.0 - u) + (1.0 - v), cFu + cFv);
                     } else if (cfg == 1) {        // cBL only
-                        alpha = (u + (1.0 - v) < 0.5) ? 1.0 : 0.0;
+                        alpha = cCutLt(u + (1.0 - v), cFu + cFv);
                     } else if (cfg == 7) {        // missing cTL
-                        alpha = (u + v >= 0.5) ? 1.0 : 0.0;
+                        alpha = (1.0 - cCutLt(u + v, cFu + cFv));
                     } else if (cfg == 11) {       // missing cTR
-                        alpha = ((1.0 - u) + v >= 0.5) ? 1.0 : 0.0;
+                        alpha = (1.0 - cCutLt((1.0 - u) + v, cFu + cFv));
                     } else if (cfg == 13) {       // missing cBR
-                        alpha = ((1.0 - u) + (1.0 - v) >= 0.5) ? 1.0 : 0.0;
+                        alpha = (1.0 - cCutLt((1.0 - u) + (1.0 - v), cFu + cFv));
                     } else if (cfg == 14) {       // missing cBL
-                        alpha = (u + (1.0 - v) >= 0.5) ? 1.0 : 0.0;
+                        alpha = (1.0 - cCutLt(u + (1.0 - v), cFu + cFv));
                     } else if (cfg == 12) {       // cTL+cTR, top
-                        alpha = (v < 0.5) ? 1.0 : 0.0;
+                        alpha = cCutLt(v, cFv);
                     } else if (cfg == 6) {        // cTR+cBR, right
-                        alpha = (u >= 0.5) ? 1.0 : 0.0;
+                        alpha = (1.0 - cCutLt(u, cFu));
                     } else if (cfg == 3) {        // cBR+cBL, bottom
-                        alpha = (v >= 0.5) ? 1.0 : 0.0;
+                        alpha = (1.0 - cCutLt(v, cFv));
                     } else if (cfg == 9) {        // cBL+cTL, left
-                        alpha = (u < 0.5) ? 1.0 : 0.0;
+                        alpha = cCutLt(u, cFu);
                     } else if (cfg == 10) {       // cTL+cBR
-                        alpha = ((u + v < 0.5) || ((1.0 - u) + (1.0 - v) < 0.5)) ? 1.0 : 0.0;
+                        alpha = max(cCutLt(u + v, cFu + cFv), cCutLt((1.0 - u) + (1.0 - v), cFu + cFv));
                     } else if (cfg == 5) {        // cTR+cBL
-                        alpha = (((1.0 - u) + v < 0.5) || (u + (1.0 - v) < 0.5)) ? 1.0 : 0.0;
+                        alpha = max(cCutLt((1.0 - u) + v, cFu + cFv), cCutLt(u + (1.0 - v), cFu + cFv));
                     }
                     base = mix(base, cementColor, alpha);
                     if (alpha > 0.5) { cementHit = true; pureConcrete = true; }
