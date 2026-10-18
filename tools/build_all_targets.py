@@ -88,7 +88,7 @@ def build_root(args) -> int:
     cache = use_cache(args)
     # A tree configured in the other mode is reconfigured, not silently reused (the -D vars would not change on their own).
     built = os.path.exists(os.path.join(ROOT, tree, marker))
-    stale_mode = (not args.preset) and built and cn.tree_uses_cache(root, tree) != cache
+    stale_mode = (not args.preset) and built and (cn.tree_uses_cache(root, tree) != cache or (cache and not cn.tree_cache_current(root, tree)))
     if args.reconfigure or stale_mode or not built:
         if configure(root, args.preset, args.log_dir, cache):
             return 1

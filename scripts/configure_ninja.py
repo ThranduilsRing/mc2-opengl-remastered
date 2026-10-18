@@ -36,6 +36,8 @@ DEFAULT_TARGETS = ["mc2", "mc2_launcher"]
 
 SCCACHE_EXE = os.environ.get("MC2_SCCACHE", "A:/Games/tools/sccache/sccache.exe")
 SCCACHE_DIR = os.environ.get("SCCACHE_DIR", "E:/mc2-compile-cache")
+# Every cached compile goes through this wrapper, not sccache directly: see its docstring (replayed /showIncludes paths).
+LAUNCHER_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cc_launcher.py").replace("\\", "/")
 
 
 def compile_cache_env(root):
@@ -70,8 +72,18 @@ def cache_cmake_args(root):
     Single-sourced for every tree that wants the cache: the dev tree, tools/build_all_targets.py and the harness corpus."""
     env = compile_cache_env(root)
     ensure_cache_server(root.replace("\\", "/"), env)
-    return ["-DMC2_COMPILE_CACHE=ON", f"-DCMAKE_C_COMPILER_LAUNCHER={SCCACHE_EXE}",
-            f"-DCMAKE_CXX_COMPILER_LAUNCHER={SCCACHE_EXE}"], env
+    launcher = ";".join([sys.executable.replace("\\", "/"), "-S", "-E", LAUNCHER_SCRIPT, root.replace("\\", "/"), SCCACHE_EXE])
+    return ["-DMC2_COMPILE_CACHE=ON", f"-DCMAKE_C_COMPILER_LAUNCHER={launcher}",
+            f"-DCMAKE_CXX_COMPILER_LAUNCHER={launcher}"], env
+
+
+def tree_cache_current(root, tree):
+    """True when the tree was configured with the include-path-rewriting launcher (a tree configured before it must be reconfigured)."""
+    try:
+        with open(f"{root}/{tree}/CMakeCache.txt", encoding="utf-8", errors="replace") as f:
+            return "cc_launcher.py" in f.read()
+    except OSError:
+        return False
 
 
 def tree_uses_cache(root, tree):
@@ -102,10 +114,8 @@ def configure(root, tree=DEFAULT_TREE, compile_cache=False, cache_pch=False):
         # sccache does not cache precompiled-header users (/Yu), so the cached tree defaults to PCH off (--cache-pch keeps it).
         if not cache_pch:
             args[args.index("-DMC2_PCH=ON")] = "-DMC2_PCH=OFF"
-        args += ["-DMC2_COMPILE_CACHE=ON", f"-DCMAKE_C_COMPILER_LAUNCHER={SCCACHE_EXE}",
-                 f"-DCMAKE_CXX_COMPILER_LAUNCHER={SCCACHE_EXE}"]
-        env = compile_cache_env(root)
-        ensure_cache_server(root, env)
+        cache_flags, env = cache_cmake_args(root)
+        args += cache_flags
     rc = under_vcvars(subprocess.list2cmdline(args), env)
     if rc:
         sys.exit(f"configure_ninja: cmake configure failed (rc={rc})")

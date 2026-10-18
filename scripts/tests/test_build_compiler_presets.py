@@ -79,6 +79,7 @@ def test_default_run_goes_through_the_compile_cache(monkeypatch):
     fake_env = {"SCCACHE_DIR": "cache"}
     monkeypatch.setattr(bat.cn, "cache_cmake_args", lambda root: (["-DMC2_COMPILE_CACHE=ON"], fake_env))
     monkeypatch.setattr(bat.cn, "tree_uses_cache", lambda root, tree: True)
+    monkeypatch.setattr(bat.cn, "tree_cache_current", lambda root, tree: True)
     monkeypatch.setattr(bat.cn, "compile_cache_env", lambda root: fake_env)
     children = []
     monkeypatch.setattr(bat.subprocess, "run", lambda cmd, **kw: children.append(cmd) or SimpleNamespace(returncode=0))
@@ -300,3 +301,22 @@ def test_vcvars_preserves_quoted_paths_repo_cwd_and_failure_code(monkeypatch):
     assert command.startswith(f'call "{bd.cn.VCVARS}" >nul && "C:/Program Files/CMake/cmake.exe"')
     assert run.call_args.kwargs["cwd"] == "A:/Games/mc2-s1"
     assert run.call_args.kwargs["shell"] is True
+
+
+def test_cache_launcher_rewrites_replayed_include_paths(tmp_path, monkeypatch):
+    """A cache hit replays the first checkout's /showIncludes lines; the launcher maps them onto this checkout."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import cc_launcher as cl
+    own, other = tmp_path / "own", tmp_path / "other"
+    for base in (own, other):
+        (base / "mclib").mkdir(parents=True)
+        (base / "mclib" / "a.h").write_text("x")
+    (own / "bld" / "generated").mkdir(parents=True)
+    (own / "bld" / "generated" / "fp.h").write_text("x")
+    monkeypatch.setenv("SCCACHE_BASEDIRS", f"{own};{other}")
+    roots = cl.roots_from_env(str(own))
+    assert roots == [str(other)]
+    incs = cl.include_dirs(["/nologo", f"-I{own / 'bld' / 'generated'}", "/I", str(own / "mclib")])
+    assert Path(cl.remap(str(other / "mclib" / "a.h"), str(own), roots, incs)) == own / "mclib" / "a.h"
+    assert Path(cl.remap(str(other / "oldbld" / "generated" / "fp.h"), str(own), roots, incs)) == own / "bld" / "generated" / "fp.h"
+    assert cl.remap("C:/Program Files/sdk/x.h", str(own), roots, incs) == "C:/Program Files/sdk/x.h"
