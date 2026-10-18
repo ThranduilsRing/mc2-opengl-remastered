@@ -107,14 +107,14 @@ void populatePlaceholder(TG_TypeMultiShape* shape)
 		tr.uvdata.u0 = 0.0f; tr.uvdata.v0 = 0.0f;
 		tr.uvdata.u1 = 1.0f; tr.uvdata.v1 = 0.0f;
 		tr.uvdata.u2 = 1.0f; tr.uvdata.v2 = 1.0f;
-		Stuff::Vector3D fn;
+		glm::vec3 fn;
 		fn.x = verts[tr.Vertices[0]].normal.x + verts[tr.Vertices[1]].normal.x + verts[tr.Vertices[2]].normal.x;
 		fn.y = verts[tr.Vertices[0]].normal.y + verts[tr.Vertices[1]].normal.y + verts[tr.Vertices[2]].normal.y;
 		fn.z = verts[tr.Vertices[0]].normal.z + verts[tr.Vertices[1]].normal.z + verts[tr.Vertices[2]].normal.z;
 		tr.faceNormal = fn;
 	}
 
-	Stuff::Point3D zero;
+	glm::vec3 zero;
 	zero.x = zero.y = zero.z = 0.0f;
 	ts->InitFromImportedMesh("mc2_load_placeholder", "None", zero, std::move(verts), std::move(tris));
 

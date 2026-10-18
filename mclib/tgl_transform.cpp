@@ -3,9 +3,6 @@
 #include "tgl_internal.h"
 #include "tgl_transform_frame.h"
 #include "Gates/gate.h"
-#include "math/stuff_glm_bridge.h"
-
-
 // MC2_LIGHT_BILLBOARD_TWOSIDED=1 suppresses legacy backface culling of edge-light
 // cards, so a card survives when the camera orbits behind it. Parsed once.
 //
@@ -34,14 +31,14 @@ bool s_hotGreenLightTraceEnabled = mc2::gate::get<"MC2_OBJECT_PARITY_TRACE">();
 //This function sets up the camera Matrices for this TG_Shape to transform
 //itself with.  These matrices are static and only need to be set once per
 //render pass if the camera does not change for that pass.
-void TG_Shape::SetCameraMatrices (Stuff::LinearMatrix4D *camOrigin, Stuff::Matrix4D *camToClip)
+void TG_Shape::SetCameraMatrices (glm::mat4 *camOrigin, glm::mat4 *camToClip)
 {
 	s_cameraOrigin = camOrigin;
 	s_cameraToClip = camToClip;
 
-	mc2::math::fromGlm(s_worldToCamera, glm::inverse(mc2::math::toGlm(*s_cameraOrigin)));
+	s_worldToCamera = glm::inverse((*s_cameraOrigin));
 
-	s_worldToClip.Multiply(s_worldToCamera, *s_cameraToClip);
+	s_worldToClip = s_worldToCamera * *s_cameraToClip;
 }	
 
 void TG_Shape::SetFog (DWORD fRGB, float fStart, float fFull)
@@ -114,7 +111,7 @@ void TG_TypeShape::movePosRelativeCenterNode (void)
 
 
 // Claim the hardware vertex slot of a GPU-only shape that has no software vertices.
-void TG_Shape::xformGpuOnlyShape(Stuff::Matrix4D* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped) {
+void TG_Shape::xformGpuOnlyShape(glm::mat4* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped) {
 		// [UI-PHASE1] carried from mc2r_ui_phase1 (base->theirs hunk @tgl.cpp:1722+).
 		// GPU-only shape: Assimp-imported mesh with ib_/vb_ but no SW vertex pipeline.
 		// Claim the hardware vertex node slot now so TG_Shape::Render can fill it via
@@ -154,15 +151,15 @@ void TG_Shape::xformGpuOnlyShape(Stuff::Matrix4D* shapeToClip, bool isHudElement
 }
 
 // Project one vertex to screen space and track the on-screen flags and preview bounds.
-void TG_Shape::xformVertexProject(Stuff::Matrix4D* shapeToClip, bool& oneOff, bool& oneOn, TG_TypeShapePtr theShape, long j) {
-	Stuff::Point3D pos = theShape->listOfTypeVertices[j].position;
+void TG_Shape::xformVertexProject(glm::mat4* shapeToClip, bool& oneOff, bool& oneOn, TG_TypeShapePtr theShape, long j) {
+	glm::vec3 pos = theShape->listOfTypeVertices[j].position;
 	if (shapeScalar > 0.0f)
 		pos *= shapeScalar;
 		
 	Stuff::Vector4D xformCoords;
 	Stuff::Vector4D screen;
 
-	xformCoords.Multiply(pos,*shapeToClip);
+	xformCoords.MultiplyPoint(pos, *shapeToClip);
 
 	if (eye->usePerspective)
 	{
@@ -208,7 +205,7 @@ void TG_Shape::xformVertexProject(Stuff::Matrix4D* shapeToClip, bool& oneOff, bo
 }
 
 // Queue the whole shape for the modern shader path.
-void TG_Shape::xformEmitShape(Stuff::Matrix4D* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped, TG_TypeShapePtr theShape) {
+void TG_Shape::xformEmitShape(glm::mat4* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped, TG_TypeShapePtr theShape) {
 	if (bShadersDrawPathEnabled && !eligibleForGpuObjects(this) && !isSpotlight && !isWindow && !theShape->listOfTextures[theShape->listOfTypeTriangles[0].localTextureHandle].textureAlpha && (alphaValue == 0xff))
 	{
 		DWORD addFlags = 0;
@@ -248,7 +245,7 @@ void TG_Shape::xformEmitShape(Stuff::Matrix4D* shapeToClip, bool isHudElement, B
 // Transforms, lights and queues one shape. The timing scopes, the pool allocation, the per-vertex and per-face loop
 // headers with their colour frame, the face cull test and the result stay here; each phase body is a member
 // helper declared in tgl.h.
-long TG_Shape::MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D *backFacePoint, TG_ShapeRecPtr parentNode, bool isHudElement, BYTE alphaValue, bool isClamped)
+long TG_Shape::MultiTransformShape (glm::mat4 *shapeToClip, glm::vec3 *backFacePoint, TG_ShapeRecPtr parentNode, bool isHudElement, BYTE alphaValue, bool isClamped)
 {
 	// [OBJECT_RECON v1] outer scope. No-op when MC2_OBJECT_RECON_TRACY unset.
 	::mc2_object_recon::Scope _recon_total_(
@@ -350,7 +347,7 @@ long TG_Shape::MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D
 	for (unsigned int j=0;j<numTriangles;j++,tri++)
 	{
 		float cosine = 0.0;
-		cosine = (*backFacePoint * (tri->faceNormal));
+		cosine = (glm::dot(*backFacePoint, (tri->faceNormal)));
 		// EDGE-LIGHT-BILLBOARD-CULL-1 (master-FAIL #8): edge-light glow cards are
 		// two-sided so they stay lit as the camera orbits toward top-down instead
 		// of backface-culling. MC2_LIGHT_BILLBOARD_TWOSIDED=0 restores legacy cull.
@@ -409,7 +406,7 @@ long TG_Shape::MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D
 // Stage 2.A: declared and defined; NO call sites wired (dead code under flag-off).
 // Stage 2.B wires the call sites in BldgAppearance/TreeAppearance/GenericAppearance
 // ::update inside their existing cull gates, behind g_useGpuObjects.
-long TG_Shape::MultiTransformShape_PositionsOnly (Stuff::Matrix4D *shapeToClip, Stuff::Point3D *backFacePoint, TG_ShapeRecPtr parentNode, bool isHudElement, BYTE alphaValue, bool isClamped)
+long TG_Shape::MultiTransformShape_PositionsOnly (glm::mat4 *shapeToClip, glm::vec3 *backFacePoint, TG_ShapeRecPtr parentNode, bool isHudElement, BYTE alphaValue, bool isClamped)
 {
 	// [OBJECT_RECON v1] outer scope. No-op when MC2_OBJECT_RECON_TRACY unset.
 	::mc2_object_recon::Scope _recon_total_(
@@ -484,14 +481,14 @@ long TG_Shape::MultiTransformShape_PositionsOnly (Stuff::Matrix4D *shapeToClip, 
 		&::mc2_object_recon::g_per_frame.shape_vlight_ns);
 	for (long j=0;j<numVertices;j++)
 	{
-		Stuff::Point3D pos = theShape->listOfTypeVertices[j].position;
+		glm::vec3 pos = theShape->listOfTypeVertices[j].position;
 		if (shapeScalar > 0.0f)
 			pos *= shapeScalar;
 
 		Stuff::Vector4D xformCoords;
 		Stuff::Vector4D screen;
 
-		xformCoords.Multiply(pos,*shapeToClip);
+		xformCoords.MultiplyPoint(pos, *shapeToClip);
 
 		if (eye->usePerspective)
 		{
@@ -556,7 +553,7 @@ long TG_Shape::MultiTransformShape_PositionsOnly (Stuff::Matrix4D *shapeToClip, 
 	for (unsigned int j=0;j<numTriangles;j++,tri++)
 	{
 		float cosine = 0.0;
-		cosine = (*backFacePoint * (tri->faceNormal));
+		cosine = (glm::dot(*backFacePoint, (tri->faceNormal)));
 		// EDGE-LIGHT-BILLBOARD-CULL-1 (master-FAIL #8): edge-light glow cards are
 		// two-sided so they stay lit as the camera orbits toward top-down instead
 		// of backface-culling. MC2_LIGHT_BILLBOARD_TWOSIDED=0 restores legacy cull.

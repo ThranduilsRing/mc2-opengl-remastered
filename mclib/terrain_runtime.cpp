@@ -20,13 +20,13 @@ extern Terrain* land;
 namespace TerrainRuntime
 {
 
-float sampleGameplayHeight(const Stuff::Vector3D& worldPos)
+float sampleGameplayHeight(const glm::vec3& worldPos)
 {
 	// Authoritative gameplay surface. Identical to every grounding/pathing call.
 	return land ? land->getTerrainElevation(worldPos) : 0.0f;
 }
 
-float groundElevation(const Stuff::Vector3D& worldPos)
+float groundElevation(const glm::vec3& worldPos)
 {
 	if (!land)
 		return 0.0f;
@@ -37,7 +37,7 @@ float groundElevation(const Stuff::Vector3D& worldPos)
 	              : land->getTerrainElevation(worldPos);
 }
 
-float sampleVisualHeight(const Stuff::Vector3D& worldPos)
+float sampleVisualHeight(const glm::vec3& worldPos)
 {
 	// Render surface. SAME buffer as gameplay today; a future visual-height
 	// slice (resample/displacement) will diverge this without touching the
@@ -45,7 +45,7 @@ float sampleVisualHeight(const Stuff::Vector3D& worldPos)
 	return land ? land->getTerrainElevation(worldPos) : 0.0f;
 }
 
-float decalElevation(const Stuff::Vector3D& worldPos)
+float decalElevation(const glm::vec3& worldPos)
 {
 	if (!land)
 		return 0.0f;
@@ -56,25 +56,25 @@ float decalElevation(const Stuff::Vector3D& worldPos)
 	              : land->getTerrainElevation(worldPos);
 }
 
-float sampleWaterLevel(const Stuff::Vector3D& /*worldPos*/)
+float sampleWaterLevel(const glm::vec3& /*worldPos*/)
 {
 	// Flat plane today (waterDepth). Position reserved for a future
 	// per-cell / sloped-water model.
 	return land ? land->getWaterElevation() : 0.0f;
 }
 
-int sampleMaterialId(const Stuff::Vector3D& worldPos)
+int sampleMaterialId(const glm::vec3& worldPos)
 {
 	return land ? (int)land->getTerrainType(worldPos) : 0;
 }
 
-long sampleWaterClass(const Stuff::Vector3D& worldPos)
+long sampleWaterClass(const glm::vec3& worldPos)
 {
 	// Pure forward — single legacy impl, byte-identical relocation onto the spine.
 	return land ? land->getWater(worldPos) : 0;
 }
 
-float sampleFeatureMask(const Stuff::Vector3D& worldPos, FeatureMask kind)
+float sampleFeatureMask(const glm::vec3& worldPos, FeatureMask kind)
 {
 	if (!land)
 		return 0.0f;

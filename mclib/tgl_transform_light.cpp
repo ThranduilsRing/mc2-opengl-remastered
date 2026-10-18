@@ -202,12 +202,12 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 								// Mul that result by shinyness.
 								// Multiply THAT through color and apply!
 								float mirrorScalar = cosine * 2.0f;
-								Stuff::Vector3D MirrorVector(listOfVertices[i].normal);
+								glm::vec3 MirrorVector(listOfVertices[i].normal);
 								MirrorVector *= mirrorScalar;
 								MirrorVector.Subtract(MirrorVector,s_lightDir[i]);
 								MirrorVector.Normalize(MirrorVector);
 
-								Stuff::Vector3D SpecPoint;
+								glm::vec3 SpecPoint;
 								if (turn > 3)
 									SpecPoint.Normalize(*backFacePoint);
 								float specular = SpecPoint.x * MirrorVector.x;
@@ -240,11 +240,11 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 
 						case TG_LIGHT_INFINITEWITHFALLOFF:
 						{
-							Stuff::Point3D vertexToLight;
-							vertexToLight = s_lightToShape[i];
+							glm::vec3 vertexToLight;
+							vertexToLight = mc2::math::getTranslation(s_lightToShape[i]);
 							vertexToLight -= theShape->listOfTypeVertices[j].position;
 
-							float length = vertexToLight.GetApproximateLength();
+							float length = glm::length(vertexToLight);
 
 							float falloff = 1.0f;
 
@@ -252,7 +252,7 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 
 							if (s_listOfLights[i]->GetFalloff(length, falloff))
 							{
-								float cosine = -(s_lightDir[i] * (theShape->listOfTypeVertices[j].normal));
+								float cosine = -(glm::dot(s_lightDir[i], (theShape->listOfTypeVertices[j].normal)));
 
 								red = float((startLight>>16) & 0x000000ff) * falloff;
 								green = float((startLight>>8) & 0x000000ff) * falloff;
@@ -271,19 +271,19 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 
 						case TG_LIGHT_POINT:
 						{
-							Stuff::Point3D vertexToLight;
+							glm::vec3 vertexToLight;
 							vertexToLight = s_lightDir[i];
-							float length = vertexToLight.GetApproximateLength();
+							float length = glm::length(vertexToLight);
 
 							if (length > Stuff::SMALL)
 							{	
-								vertexToLight.Normalize(vertexToLight);
+								vertexToLight = glm::normalize(vertexToLight);
 	
 								float falloff = 1.0f;
 	
 								if (s_listOfLights[i]->GetFalloff(length, falloff))
 								{
-									float cosine = vertexToLight * (theShape->listOfTypeVertices[j].normal);
+									float cosine = glm::dot(vertexToLight, (theShape->listOfTypeVertices[j].normal));
 	
 									float red,green,blue;
 	
@@ -334,11 +334,11 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 						{
 							if (useShadows)
 							{
-								Stuff::Point3D vertexToLight;
-								Stuff::Vector3D pos = theShape->listOfTypeVertices[j].position;
+								glm::vec3 vertexToLight;
+								glm::vec3 pos = theShape->listOfTypeVertices[j].position;
 								RotateLight(pos,yawRotation);
-								vertexToLight.Add(s_lightDir[i],pos);
-								float length = vertexToLight.GetApproximateLength();
+								vertexToLight = s_lightDir[i] + pos;
+								float length = glm::length(vertexToLight);
 	
 								if (length > Stuff::SMALL)
 								{	
@@ -367,18 +367,18 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 						
  							case TG_LIGHT_SPOT:
 						{
-							Stuff::Point3D vertexToLight;
+							glm::vec3 vertexToLight;
 							vertexToLight = s_lightDir[i];
 							
 							//-------------------------------------------------
 							// Defines the actual spot of light on the ground
-							float length = vertexToLight.GetApproximateLength();
+							float length = glm::length(vertexToLight);
 
 							//-------------------------------------------------
 							// Defines the REAL direction of the spot light.
 							vertexToLight = s_spotDir[i];
-							if (vertexToLight.GetApproximateLength() > Stuff::SMALL)
-								vertexToLight.Normalize(vertexToLight);
+							if (glm::length(vertexToLight) > Stuff::SMALL)
+								vertexToLight = glm::normalize(vertexToLight);
 							else
 								length = 99999999999999.0f;
 
@@ -386,7 +386,7 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 
 							if (s_listOfLights[i]->GetFalloff(length, falloff))
 							{
-								float cosine = vertexToLight * (theShape->listOfTypeVertices[j].normal);
+								float cosine = glm::dot(vertexToLight, (theShape->listOfTypeVertices[j].normal));
 
 								float red,green,blue;
 
@@ -568,10 +568,10 @@ void TG_Shape::xformFaceLight(TG_TypeShapePtr theShape, long j, TgXformFrame& f)
 				{
 					case TG_LIGHT_INFINITE:
 					{
-						if (s_lightDir[i].GetLength() > Stuff::SMALL)
-							s_lightDir[i].Normalize(s_lightDir[i]);
+						if (glm::length(s_lightDir[i]) > Stuff::SMALL)
+							s_lightDir[i] = glm::normalize(s_lightDir[i]);
 
-						float cosine = -(s_lightDir[i] * (theShape->listOfTypeTriangles[j].faceNormal));
+						float cosine = -(glm::dot(s_lightDir[i], (theShape->listOfTypeTriangles[j].faceNormal)));
 
 						if (cosine > 0.0f)
 						{
@@ -588,16 +588,16 @@ void TG_Shape::xformFaceLight(TG_TypeShapePtr theShape, long j, TgXformFrame& f)
 
 					case TG_LIGHT_INFINITEWITHFALLOFF:
 					{
-						if (s_lightDir[i].GetLength() > Stuff::SMALL)
-							s_lightDir[i].Normalize(s_lightDir[i]);
+						if (glm::length(s_lightDir[i]) > Stuff::SMALL)
+							s_lightDir[i] = glm::normalize(s_lightDir[i]);
 
-						float cosine = -(s_lightDir[i] * (theShape->listOfTypeTriangles[j].faceNormal));
+						float cosine = -(glm::dot(s_lightDir[i], (theShape->listOfTypeTriangles[j].faceNormal)));
 
-						Stuff::Point3D vertexToLight;
-						vertexToLight = s_lightToShape[i];
+						glm::vec3 vertexToLight;
+						vertexToLight = mc2::math::getTranslation(s_lightToShape[i]);
 						vertexToLight -= theShape->listOfTypeVertices[theShape->listOfTypeTriangles[j].Vertices[0]].position;
 
-						float length = vertexToLight.GetApproximateLength();
+						float length = glm::length(vertexToLight);
 
 						float falloff = 1.0f;
 
@@ -622,18 +622,18 @@ void TG_Shape::xformFaceLight(TG_TypeShapePtr theShape, long j, TgXformFrame& f)
 
 					case TG_LIGHT_POINT:
 					{
-						Stuff::Point3D vertexToLight;
-						vertexToLight = s_lightToShape[i];
+						glm::vec3 vertexToLight;
+						vertexToLight = mc2::math::getTranslation(s_lightToShape[i]);
 						vertexToLight -= theShape->listOfTypeVertices[theShape->listOfTypeTriangles[j].Vertices[0]].position;
 
-						float length = vertexToLight.GetApproximateLength();
+						float length = glm::length(vertexToLight);
 
-						vertexToLight.Normalize(vertexToLight);
+						vertexToLight = glm::normalize(vertexToLight);
 						float falloff = 1.0f;
 
 						if (s_listOfLights[i]->GetFalloff(length, falloff))
 						{
-							float cosine = -(vertexToLight * (theShape->listOfTypeTriangles[j].faceNormal));
+							float cosine = -(glm::dot(vertexToLight, (theShape->listOfTypeTriangles[j].faceNormal)));
 
 							float red,green,blue;
 

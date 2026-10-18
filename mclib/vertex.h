@@ -39,7 +39,7 @@ struct PostcompVertex
 	//
 	// Replaces the pVertex pointer in Vertex Class
 	
-	Stuff::Vector3D		vertexNormal;		//Used for lighting
+	glm::vec3		vertexNormal;		//Used for lighting
 
 	float				elevation;			//Stored here so terrain can be locally deformed
 

@@ -3,8 +3,6 @@
 
 #include "txmmgr_render_internal.h"
 #include "mc2fmt.h"
-#include "math/stuff_glm_bridge.h"
-
 void MC_TextureManager::renderListsDynamicShadowPass (void)
 {
 	// GPU-driven dynamic sun shadow (Phase 1): frustum-fit + flushShadow.
@@ -40,8 +38,8 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 			};
 			float cornersMC2[8][3];
 			// Invert(src) stores the inverse of src into *this (matrix.hpp).
-			Stuff::Matrix4D clipToWorldGL;
-			mc2::math::fromGlm(clipToWorldGL, glm::inverse(mc2::math::toGlm(eye->worldToClipGL())));
+			glm::mat4 clipToWorldGL;
+			clipToWorldGL = glm::inverse((eye->worldToClipGL()));
 			for (int c = 0; c < 8; ++c) {
 				Stuff::Vector4D in, out;
 				in.x = ndc[c][0]; in.y = ndc[c][1]; in.z = ndc[c][2]; in.w = 1.0f;
@@ -62,7 +60,7 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 			// clamped up to waterElevation), giving the correct water-clamped
 			// look-at height in the same MC2 world space as cornersMC2
 			// (x=east,y=north,z=elev). Always valid -- no raycast fallback needed.
-			Stuff::Vector3D camTgt = eye->getPosition();        // MC2-world orbit target (east,north)
+			glm::vec3 camTgt = eye->getPosition();        // MC2-world orbit target (east,north)
 			float shadowCenterXYZ[3] = { camTgt.x, camTgt.y, eye->getCameraShiftZ() };
 			bool scOk = true;                                   // camera target always valid
 			gos_BuildDynamicLightMatrix(-lx, -ly, -lz, cornersMC2,

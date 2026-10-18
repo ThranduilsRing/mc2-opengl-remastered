@@ -21,17 +21,17 @@ namespace mc2xform {
 // DO NOT "correct" the sign to stock OpenGL -Z forward; this matches the
 // existing legacy upload bit-for-bit. Stage A-pre basis-vector test
 // (Task 3) verifies empirically.
-Stuff::Matrix4D makeAxisSwapMC2toGL()
+glm::mat4 makeAxisSwapMC2toGL()
 {
-    Stuff::Matrix4D m;
+    glm::mat4 m;
     for (int r = 0; r < 4; ++r)
         for (int c = 0; c < 4; ++c)
-            m(r, c) = (r == c) ? 1.0f : 0.0f;
-    m(0, 0) = -1.0f;
-    m(1, 1) = 0.0f;
-    m(1, 2) = 1.0f;
-    m(2, 2) = 0.0f;
-    m(2, 1) = 1.0f;
+            m[c][r] = (r == c) ? 1.0f : 0.0f;
+    m[0][0] = -1.0f;
+    m[1][1] = 0.0f;
+    m[2][1] = 1.0f;
+    m[2][2] = 0.0f;
+    m[1][2] = 1.0f;
     return m;
 }
 
@@ -85,18 +85,18 @@ Stuff::Matrix4D makeAxisSwapMC2toGL()
 // The negation that Task 7g folded into kAxisSwapMC2toGL is subsumed
 // by M_fix's row 3 (which negates w directly), so kAxisSwapMC2toGL
 // reverts to the pure axis-permutation literal.
-Stuff::Matrix4D makePixelHomogToGLNDC()
+glm::mat4 makePixelHomogToGLNDC()
 {
-    Stuff::Matrix4D m;
+    glm::mat4 m;
     for (int r = 0; r < 4; ++r)
         for (int c = 0; c < 4; ++c)
-            m(r, c) = 0.0f;
-    m(0, 0) = -2.0f;
-    m(1, 1) =  2.0f;
-    m(2, 2) = -1.0f;
-    m(3, 0) =  1.0f;
-    m(3, 1) = -1.0f;
-    m(3, 3) = -1.0f;
+            m[c][r] = 0.0f;
+    m[0][0] = -2.0f;
+    m[1][1] =  2.0f;
+    m[2][2] = -1.0f;
+    m[0][3] =  1.0f;
+    m[1][3] = -1.0f;
+    m[3][3] = -1.0f;
     return m;
 }
 

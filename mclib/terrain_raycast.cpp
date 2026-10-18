@@ -237,7 +237,7 @@ bool Terrain::raycastTerrain(
 }
 
 //---------------------------------------------------------------------------
-bool Terrain::IsValidTerrainPosition (const Stuff::Vector3D pos)
+bool Terrain::IsValidTerrainPosition (const glm::vec3 pos)
 {
 	float metersCheck = (Terrain::worldUnitsMapSide / 2.0f);
 
@@ -253,7 +253,7 @@ bool Terrain::IsValidTerrainPosition (const Stuff::Vector3D pos)
 }
 
 //---------------------------------------------------------------------------
-bool Terrain::IsEditorSelectTerrainPosition (const Stuff::Vector3D pos)
+bool Terrain::IsEditorSelectTerrainPosition (const glm::vec3 pos)
 {
 	float metersCheck = (Terrain::worldUnitsMapSide / 2.0f) - Terrain::worldUnitsPerVertex;
 
@@ -269,7 +269,7 @@ bool Terrain::IsEditorSelectTerrainPosition (const Stuff::Vector3D pos)
 }
 
 //---------------------------------------------------------------------------
-bool Terrain::IsGameSelectTerrainPosition (const Stuff::Vector3D pos)
+bool Terrain::IsGameSelectTerrainPosition (const glm::vec3 pos)
 {
 	float metersCheck = (Terrain::worldUnitsMapSide / 2.0f) - (Terrain::worldUnitsPerVertex * 2.0f);
 

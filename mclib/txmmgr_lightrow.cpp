@@ -215,16 +215,16 @@ inline void flattenLight(const TG_LightPtr src, olr::LightInput& dst)
 	dst.aRGB   = (uint32_t)src->GetaRGB();
 
 	// Same AMBIENT->Identity substitution as the legacy path.
-	Stuff::LinearMatrix4D light2world;
+	glm::mat4 light2world;
 	if (TG_LIGHT_AMBIENT != src->lightType)
 		light2world = src->lightToWorld;
 	else
-		light2world = Stuff::LinearMatrix4D::Identity;
+		light2world = glm::mat4(1.0f);
 
-	memcpy(dst.l2w, (const float*)light2world, 12 * sizeof(float));
+	memcpy(dst.l2w, (const float*)glm::value_ptr(light2world), 12 * sizeof(float));
 
-	Stuff::UnitVector3D uVec;
-	light2world.GetLocalForwardInWorld(&uVec);
+	glm::vec3 uVec;
+	uVec = mc2::math::localForwardInWorld(light2world);
 	dst.fwd[0] = uVec.x;
 	dst.fwd[1] = uVec.y;
 	dst.fwd[2] = uVec.z;
@@ -442,11 +442,11 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 
 			const DWORD type = listOfLights[iLight]->lightType;
 
-			Stuff::LinearMatrix4D light2world;
+			glm::mat4 light2world;
 			if (TG_LIGHT_AMBIENT != type)
 				light2world = listOfLights[iLight]->lightToWorld;
 			else
-				light2world = Stuff::LinearMatrix4D::Identity;
+				light2world = glm::mat4(1.0f);
 
 			// LIGHT-POS-COLUMN-1 — light world POSITION never reaches the GPU.
 			// Stuff::AffineMatrix4D is 3 columns x 4 rows, indexed
@@ -481,7 +481,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 			// (msl.cpp) sources POINT position from TG_Light::direction and
 			// never reads this matrix. The rotation 3x3 left in [0..11] stays as
 			// shipped — no consumer reads it.
-			memcpy(lights->lightToWorld[num_lights], (const float*)light2world, 12*sizeof(float));
+			memcpy(lights->lightToWorld[num_lights], (const float*)glm::value_ptr(light2world), 12*sizeof(float));
 			if (s_lightPosColumnFix)
 			{
 				lights->lightToWorld[num_lights][12] = lights->lightToWorld[num_lights][3];
@@ -494,8 +494,8 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 			}
 			lights->lightToWorld[num_lights][15] = 1.0f;
 
-			Stuff::UnitVector3D uVec;
-			light2world.GetLocalForwardInWorld(&uVec);
+			glm::vec3 uVec;
+			uVec = mc2::math::localForwardInWorld(light2world);
 			lights->lightDir[num_lights][0] = uVec.x;
 			lights->lightDir[num_lights][1] = uVec.y;
 			lights->lightDir[num_lights][2] = uVec.z;

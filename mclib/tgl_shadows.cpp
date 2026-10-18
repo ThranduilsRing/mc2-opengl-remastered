@@ -4,7 +4,7 @@
 #include "tgl_internal.h"
 
 //
-void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D *s2w, float rotation)
+void TG_Shape::MultiTransformShadows (glm::vec3 *pos, glm::mat4 *s2w, float rotation)
 {
 	if (!numVertices)		//WE are the root Shape which may have no shape or a helper shape which defintely has no shape!
 		return;
@@ -20,16 +20,16 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 		!listOfVisibleShadows)
 		return;
 
-	Stuff::Matrix4D identityMatrix;
-	identityMatrix.BuildIdentity();
+	glm::mat4 identityMatrix;
+	identityMatrix = glm::mat4(1.0f);
 	
 	TG_TypeShapePtr theShape = (TG_TypeShapePtr)myType;
 	//
 	// 
 	//
 	// Again, note that after first iteration of infinite light we only need to transform infinite shadows!
-	Stuff::Matrix4D shapeToLocal;
-	Stuff::Matrix4D shapeToClip;
+	glm::mat4 shapeToLocal;
+	glm::mat4 shapeToClip;
 	
 	long shadowNum = 0;
 
@@ -56,7 +56,7 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 						// The Sun casts no shadows at night!!!
 						if (!eye->getIsNight())
 						{
-							Stuff::Vector3D s_lightDir = s_rootLightDir[i];
+							glm::vec3 s_lightDir = s_rootLightDir[i];
 							RotateLight(s_lightDir,rotation);
 							
 							for (long j=0;j<numVertices;j++)
@@ -76,11 +76,11 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 													//Movers will recalc every frame.  Non-Movers will recalc 
 													//when the sun moves enough!
 								{
-									Stuff::Point3D post = theShape->listOfTypeVertices[j].position;
+									glm::vec3 post = theShape->listOfTypeVertices[j].position;
 									Stuff::Vector4D up;
-									Stuff::Point3D s_position;
-									shapeToLocal.Multiply(*s2w,identityMatrix);
-									up.Multiply(post,shapeToLocal);
+									glm::vec3 s_position;
+									shapeToLocal = *s2w * identityMatrix;
+									up.MultiplyPoint(post, shapeToLocal);
 
 									//Everything is in WORLD coords now.
 									//But this assumes terrain is FLAT and at zero elevation.
@@ -101,7 +101,7 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 									s_position.y = 0.0f;
 			
 									
-									Stuff::Vector3D rPos;
+									glm::vec3 rPos;
 									rPos.x = -s_position.x;
 									rPos.y = s_position.z;
 									rPos.z = land->getTerrainElevation(rPos);
@@ -184,12 +184,12 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 							// Point light does cast a shadow.  LightDir Will change every frame relative to the point.
 							// I.e. we DO need to recalc every frame.
 							
-							Stuff::Point3D vertexToLight;
+							glm::vec3 vertexToLight;
 							vertexToLight = s_lightDir[i];
-							float length = vertexToLight.GetApproximateLength();
+							float length = glm::length(vertexToLight);
 							
 							vertexToLight = s_rootLightDir[i];
-							float spotLength = s_listOfLights[i]->maxSpotLength - vertexToLight.GetApproximateLength();
+							float spotLength = s_listOfLights[i]->maxSpotLength - glm::length(vertexToLight);
 							if (spotLength < 50.0f)
 								spotLength = 50.0f;
 									
@@ -202,11 +202,11 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 								{
 									long index = j + (shadowNum * numVertices);
 									
-									Stuff::Point3D post = theShape->listOfTypeVertices[j].position;
+									glm::vec3 post = theShape->listOfTypeVertices[j].position;
 									Stuff::Vector4D up;
-									Stuff::Point3D s_position;
-									shapeToLocal.Multiply(*s2w,identityMatrix);
-									up.Multiply(post,shapeToLocal);
+									glm::vec3 s_position;
+									shapeToLocal = *s2w * identityMatrix;
+									up.MultiplyPoint(post, shapeToLocal);
 	
 									//Everything is in WORLD coords now.
 									//But this assumes terrain is FLAT and at zero elevation.
@@ -229,7 +229,7 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 									s_position.y = 0.0f;
 		
 	
-									Stuff::Vector3D rPos;
+									glm::vec3 rPos;
 									rPos.x = -s_position.x;
 									rPos.y = s_position.z;
 									rPos.z = land->getTerrainElevation(rPos);

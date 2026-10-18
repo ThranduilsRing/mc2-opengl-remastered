@@ -214,7 +214,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			faceData += strlen(faceId);
 			GetNumberData(faceData,numberData);
 	
-			Stuff::Vector3D tVFaces;
+			glm::vec3 tVFaces;
 	
 			mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_MESH_TFACE_ID), mc2::fmt::as_i32(i));
 	
@@ -365,7 +365,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			faceData += strlen(faceId);
 			GetNumberData(faceData,numberData);
 
-			Stuff::Vector3D cVFaces;
+			glm::vec3 cVFaces;
 
 			mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_MESH_CFACE_ID), mc2::fmt::as_i32(i));
 
@@ -577,8 +577,8 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			listOfTypeVertices[i].normal.y /= float(vertexNormalCount[i]);
 			listOfTypeVertices[i].normal.z /= float(vertexNormalCount[i]);
 
-			if (listOfTypeVertices[i].normal.GetLength() > Stuff::SMALL)
-				listOfTypeVertices[i].normal.Normalize(listOfTypeVertices[i].normal);
+			if (glm::length(listOfTypeVertices[i].normal) > Stuff::SMALL)
+				listOfTypeVertices[i].normal = glm::normalize(listOfTypeVertices[i].normal);
 		}
 	}
 
@@ -745,7 +745,7 @@ long TG_TypeShape::SetTextureAlpha (DWORD textureNum, bool alphaFlag)
 // init() defaults (alphaTestOn=false, filterOn=true, hot* sentinels) remain
 // in place; callers that need different values use the existing setters.
 void TG_TypeShape::InitFromImportedMesh(const char* nodeIdIn, const char* parentIdIn,
-                                        const Stuff::Point3D& center,
+                                        const glm::vec3& center,
                                         std::vector<TG_TypeVertex>&& vertices,
                                         std::vector<TG_TypeTriangle>&& triangles)
 {

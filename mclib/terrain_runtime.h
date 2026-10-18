@@ -19,7 +19,7 @@
 #ifndef TERRAIN_RUNTIME_H
 #define TERRAIN_RUNTIME_H
 
-namespace Stuff { class Vector3D; }
+#include "math/glm_config.h"
 
 namespace TerrainRuntime
 {
@@ -34,7 +34,7 @@ namespace TerrainRuntime
 	using enum FeatureMask;
 
 	// Gameplay-authoritative surface height. == land->getTerrainElevation(pos).
-	float sampleGameplayHeight(const Stuff::Vector3D& worldPos);
+	float sampleGameplayHeight(const glm::vec3& worldPos);
 
 	// Grounding chokepoint: the single seam every per-frame object/unit Z-onto-
 	// terrain call routes through (TERRAIN-RUNTIME-CONSUMER-GROUNDING-1). Gate
@@ -43,10 +43,10 @@ namespace TerrainRuntime
 	// terrain. This is the one place a future gameplay/visual split decides how
 	// grounding samples height. Use this, not raw land->getTerrainElevation, at
 	// grounding sites.
-	float groundElevation(const Stuff::Vector3D& worldPos);
+	float groundElevation(const glm::vec3& worldPos);
 
 	// Render/visual surface height. == gameplay height today; may diverge later.
-	float sampleVisualHeight(const Stuff::Vector3D& worldPos);
+	float sampleVisualHeight(const glm::vec3& worldPos);
 
 	// Decal chokepoint: terrain decals (craters, impact rings) sit ON the rendered
 	// surface, so they belong on VISUAL height — unlike grounding, which stays on
@@ -54,24 +54,24 @@ namespace TerrainRuntime
 	// MC2_TERRAIN_RUNTIME_DECALS (default-OFF). Byte-identical today
 	// (sampleVisualHeight == gameplay); the future split is exactly where decals
 	// (visual) and units (gameplay) must diverge to avoid z-fight.
-	float decalElevation(const Stuff::Vector3D& worldPos);
+	float decalElevation(const glm::vec3& worldPos);
 
 	// Flat water plane level. == land->getWaterElevation() (position ignored today).
-	float sampleWaterLevel(const Stuff::Vector3D& worldPos);
+	float sampleWaterLevel(const glm::vec3& worldPos);
 
 	// Material / terrain class at world pos. == land->getTerrainType(pos).
-	int sampleMaterialId(const Stuff::Vector3D& worldPos);
+	int sampleMaterialId(const glm::vec3& worldPos);
 
 	// Gameplay water classification (deep/shallow/dry) at a position — the
 	// chokepoint every gameplay water-threshold query routes through
 	// (TERRAIN-RUNTIME-CONSUMER-WATER-1). == land->getWater(pos) today (single
 	// impl, so no gate). The future gameplay/visual split keeps water-class on
 	// gameplay height here, independent of the visual waterline mesh.
-	long sampleWaterClass(const Stuff::Vector3D& worldPos);
+	long sampleWaterClass(const glm::vec3& worldPos);
 
 	// Derived feature query in [0,1]. Live for FM_Cliff / FM_Shoreline; the
 	// remaining masks return 0 until their data layer exists.
-	float sampleFeatureMask(const Stuff::Vector3D& worldPos, FeatureMask kind);
+	float sampleFeatureMask(const glm::vec3& worldPos, FeatureMask kind);
 
 	// Gated parity self-test driver (MC2_TERRAIN_RUNTIME_PARITY=1). The actual
 	// grid walk lives in Terrain::update (in-scope to the inline cell helpers);

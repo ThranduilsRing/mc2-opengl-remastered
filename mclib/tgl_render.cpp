@@ -49,7 +49,7 @@ void TG_ClearRenderShapePbrOverride()
 //   May also act as Pass=AlphaObject when material flags select alpha-test
 //   or alpha-blend; see ShadowContract::castsDynamicShadow conjunction at
 //   tgl.cpp:2700-2730. Phase 1 documents only; centralization is F4.
-void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool isClamped, const Stuff::Matrix4D* shapeToClip, const Stuff::Matrix4D* shapeToWorld)
+void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool isClamped, const glm::mat4* shapeToClip, const glm::mat4* shapeToWorld)
 {
 	const bool traceBuildingPbr = s_activeRenderShapePbrOverride.program && mc2::gate::get<"MC2_BUILDING_PBR_TRACE">();
 	if (traceBuildingPbr) {
@@ -348,7 +348,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 			!isSpotlight && !isWindow && !isHudElement && !isClamped &&
 			!theShape->alphaTestOn && (alphaValue == 0xff) && shapeToWorld;
 		if (eligibleForDynamicShadow) {
-			addShadowShape(theShape->vb_, theShape->ib_, theShape->vdecl_, shapeToWorld->entries);
+			addShadowShape(theShape->vb_, theShape->ib_, theShape->vdecl_, glm::value_ptr(*shapeToWorld));
 		}
 	}
 
@@ -380,14 +380,14 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 			// TODO: split on per texture batches basis
 			TG_TypeTriangle triType = firstTriType;
 
-			Stuff::Matrix4D mvp;
+			glm::mat4 mvp;
 			if ((forceZ >= 0.0f) && (forceZ < 1.0f))
 			{
 				// matrix that will make (x,y,w * forceZ, w) from (x,y,z,w), so that later after division by w, it will become just forceZ
-				Stuff::Matrix4D forceZMatrix = Stuff::Matrix4D::Identity;
-				forceZMatrix(2, 2) = 0.0f;
-				forceZMatrix(3, 2) = forceZ;
-				mvp.Multiply(cur_shape2clip, forceZMatrix);
+				glm::mat4 forceZMatrix = glm::mat4(1.0f);
+				forceZMatrix[2][2] = 0.0f;
+				forceZMatrix[2][3] = forceZ;
+				mvp = cur_shape2clip * forceZMatrix;
 			}
 			else {
 				mvp = cur_shape2clip;
@@ -505,7 +505,7 @@ bool TG_Shape::PerPolySelect (float mouseX, float mouseY)
 		if (listOfVisibleFaces[j] < numTriangles)
 		{
 			TG_TypeTriangle triType = theShape->listOfTypeTriangles[listOfVisibleFaces[j]];
-			Stuff::Point3D v0,v1,v2;
+			glm::vec3 v0,v1,v2;
 			v0.x = listOfVertices[triType.Vertices[0]].x;
 			v0.y = listOfVertices[triType.Vertices[0]].y;
 			
@@ -529,10 +529,10 @@ bool TG_Shape::PerPolySelect (float mouseX, float mouseY)
 			//
 			// Dx is the same sign for each line as the correct sign for clockwise or counterclockwise vertices!
 			//
-			Stuff::Vector3D line1;
-			Stuff::Vector3D line2;
-			line1.Subtract(v0,v1);
-			line2.Subtract(v1,v2);
+			glm::vec3 line1;
+			glm::vec3 line2;
+			line1 = v0 - v1;
+			line2 = v1 - v2;
 			
 			float order = line2.x * line1.y - line1.x * line2.y;
 			order = sign2(order);
