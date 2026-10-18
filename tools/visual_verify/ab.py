@@ -152,11 +152,9 @@ def main():
         sys.exit("--bookmarks required")
     out = Path(a.out_root) if a.out_root else ROOT / "tests/visual/captures" / f"ab_{stamp}"
     out.mkdir(parents=True, exist_ok=True)
-    if a.skip_gl:
-        gl = Path(a.skip_gl)
-    else:
-        gl = out / "gl"
-        run_capture(a.install, a.bookmarks, gl, ["MC2_RENDER_BACKEND=gl"])  # unset means Vulkan: pin the GL arm
+    if not a.skip_gl:
+        sys.exit("--skip-gl GL_DIR is required: the engine has no GL arm to capture; compare against the gl-baseline-s56 captures")
+    gl = Path(a.skip_gl)
     vk = out / "vk"
     run_capture(a.install, a.bookmarks, vk,
                 ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + a.env)
