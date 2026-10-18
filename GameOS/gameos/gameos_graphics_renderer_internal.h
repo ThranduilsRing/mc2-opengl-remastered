@@ -481,15 +481,6 @@ class gosRenderer {
             probeWorldToClipGLValid_ = true;
         }
 
-        // Shadow pre-pass (separate pass over all terrain batches before shading)
-        void beginShadowPrePass(bool clearDepth = true);
-        void drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
-            WORD* indices, int numIndices,
-            const gos_TERRAIN_EXTRA* extras, int extraCount);
-        void drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
-            HGOSVERTEXDECLARATION vdecl, const float* worldMatrix4x4);
-        void endShadowPrePass();
-
         // Dynamic object shadow pass (camera-centered, per-frame)
         void beginDynamicShadowPass();
         void endDynamicShadowPass();
