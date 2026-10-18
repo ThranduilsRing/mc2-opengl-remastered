@@ -271,6 +271,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedShaderModule t1_vert, t1_frag;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline t1_pipe;         // depthWrite ON GEQUAL, 2 outputs, no blend
+    mc2vk::OwnedPipeline t1_fringePipe;   // PROP-COVERAGE-1: depth test only, MRT0 alpha-blended, MRT1 masked
     mc2vk::OwnedCommandPool cpool;
 };
 
@@ -958,7 +959,8 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // pack into half floats or move to the per-instance SSBO path.
         VkPushConstantRange pcr{};
         pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        pcr.offset = 0; pcr.size = 20; // int32 packetLayerOff, int32 packetLayerOn, float uvScaleX, float uvScaleY, int32 packetAlphaTest
+        pcr.offset = 0; pcr.size = 24; // int32 packetLayerOff, int32 packetLayerOn, float uvScaleX, float uvScaleY, int32 packetAlphaTest,
+                                       // int32 coverageFringePass (PROP-COVERAGE-1)
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -1060,6 +1062,27 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             vlog("TIER-1 vkCreateGraphicsPipelines failed."); setFallback("tier1_pipeline_failed"); return false;
         }
         mc2vk::nameObject(s->device, s->t1_pipe.get(), "colorprop.tier1Pipe");
+
+        // PROP-COVERAGE-1 fringe pipeline: the second pass over the alpha-tested packets that
+        // blends the coverage the core pass cut (see color_prop_tier1.frag). Same shaders and
+        // layout; depth TEST only (a fringe never hides what is behind it), MRT0 straight-alpha
+        // over with the destination alpha kept, MRT1 (normal + shadow class, not blendable)
+        // write-masked. Per-attachment state relies on independentBlend, which the device
+        // profile requires.
+        ds.depthWriteEnable = VK_FALSE;
+        cba[0].blendEnable = VK_TRUE;
+        cba[0].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        cba[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        cba[0].colorBlendOp = VK_BLEND_OP_ADD;
+        cba[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        cba[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        cba[0].alphaBlendOp = VK_BLEND_OP_ADD;
+        cba[1].blendEnable = VK_FALSE;
+        cba[1].colorWriteMask = 0;
+        if (!mc2vk::create(s->t1_fringePipe, s->device, [&](VkPipeline* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
+            vlog("TIER-1 fringe vkCreateGraphicsPipelines failed."); setFallback("tier1_pipeline_failed"); return false;
+        }
+        mc2vk::nameObject(s->device, s->t1_fringePipe.get(), "colorprop.tier1FringePipe");
     }
 
     // ---- Command pool + 2 command buffers (per parity). ----
@@ -1554,6 +1577,12 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         }
 
         unsigned long typeRuns = 0;
+        // PROP-COVERAGE-1: pass 0 draws every packet (alpha-tested ones cut at the coverage
+        // threshold); pass 1 re-draws only the alpha-tested packets with the fringe pipeline,
+        // after every core is in the depth buffer.
+        for (int32_t fringePass = 0; fringePass < 2; ++fringePass) {
+        if (fringePass == 1)
+            vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->t1_fringePipe.get());
         uint32_t i = 0;
         while (i < instanceCount) {
             const uint32_t tid = insts[i].typeID;
@@ -1572,14 +1601,17 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                     // FENCE-UVSCALE-1: push this packet's own uvScaleX/Y alongside
                     // its layer -- default 1.0 (no crop) matches pre-fix behavior
                     // for any packet the feed didn't cover.
-                    struct { int32_t layerOff, layerOn; float uvScaleX, uvScaleY; int32_t alphaTest; } pc = {
+                    struct { int32_t layerOff, layerOn; float uvScaleX, uvScaleY; int32_t alphaTest, fringe; } pc = {
                         (pk < s->packetLayerOff.size())  ? s->packetLayerOff[pk]  : -1,
                         (pk < s->packetLayerOn.size())   ? s->packetLayerOn[pk]   : -1,
                         (pk < s->packetUvScaleX.size())  ? s->packetUvScaleX[pk]  : 1.0f,
                         (pk < s->packetUvScaleY.size())  ? s->packetUvScaleY[pk]  : 1.0f,
                         mc2_static_prop_packet_alpha_test(pk),
+                        fringePass,
                     };
-                    if (s_pktDump)
+                    // Only packets the FS can alpha-test have a fringe (the alpha-ON layer or the per-packet bit).
+                    if (fringePass == 1 && pc.layerOn < 0 && pc.alphaTest == 0) continue;
+                    if (s_pktDump && fringePass == 0)
                         std::fprintf(s_pktDump, "%u,%u,%d,%d,%.4f,%.4f,%u,%u,%d,%u,%u\n",
                                      tid, pk, pc.layerOff, pc.layerOn, pc.uvScaleX, pc.uvScaleY,
                                      pkt.indexCount, pkt.firstIndex,
@@ -1589,9 +1621,10 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                     vkCmdDrawIndexed(cb, pkt.indexCount, instCount,
                                      pkt.firstIndex, (int32_t)pkt.baseVertex, i);
                 }
-                ++typeRuns;
+                if (fringePass == 0) ++typeRuns;
             }
             i = j;
+        }
         }
         if (s_pktDump) { std::fclose(s_pktDump); s_pktDump = nullptr; }
         g_health.typeRuns = typeRuns;

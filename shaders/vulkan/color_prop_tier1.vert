@@ -78,6 +78,7 @@ layout(push_constant) uniform PacketLayerPC {
     float packetUvScaleX;
     float packetUvScaleY;
     int   packetAlphaTest;   // GL's live per-packet ALPHA_TEST bit (the FS reads it)
+    int   coverageFringePass;   // PROP-COVERAGE-1 (FS only)
 } uPacket;
 
 #include "../include/gpu_abi_static_prop_instance.gen.hglsl"
