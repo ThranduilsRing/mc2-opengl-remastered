@@ -1,0 +1,23 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_01",
+  "_note": "LANE1-POST s26 repro poses for the owner's 2026-10-18 screenshot (wide, low camera over the airbase bay toward the open sea; owner circled the wavy horizon, the screen-door dither on tree cards / fences / hillside, and the dark outline on the hill road right of the hangar). Derived from the user-authored mc2_01_saved_205644 dump (same pos and rot) with the projection angle lowered so the horizon sits in frame as in the owner's shot, plus a zoomed variant that frames the hill road and the tree line at full size.",
+  "bookmarks": [
+    {
+      "name": "owner_lowwide",
+      "pos": [2453.333, -1984.0001, 411.1892],
+      "rot": -176.75,
+      "proj": 5.0,
+      "alt": 2599.0798,
+      "covers": ["horizon", "static_prop_alpha", "water", "terrain_cement"]
+    },
+    {
+      "name": "owner_lowwide_zoom",
+      "pos": [2453.333, -1984.0001, 411.1892],
+      "rot": -176.75,
+      "proj": 5.0,
+      "alt": 1500.0,
+      "covers": ["horizon", "static_prop_alpha", "terrain_cement"]
+    }
+  ]
+}

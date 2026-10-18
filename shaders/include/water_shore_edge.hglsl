@@ -42,6 +42,24 @@ float wse_bicubicHeight(sampler2D tex, vec2 hn)
     return wse_catmull(f.y, col[0], col[1], col[2], col[3]);
 }
 
+// SHORE-FIELD-1: water thickness (waterElev - field) at this fragment from the SAME smooth field
+// mode 3 cuts the edge from (the cooked shore_field.r16f, else visual_height_4x). The depth tint
+// reads it instead of the coarse per-vertex WaterThickness, whose bilinear interpolation across
+// 128 wu triangles drew a deep-water diamond around every lone low vertex. Returns false (thick
+// untouched) outside mode 3, without the field, or outside its bounds.
+bool wse_fieldThickness(int shoreMode, int hasHeight, sampler2D heightTex, vec4 hB,
+                        vec2 worldXY, float waterElev, out float thick)
+{
+    thick = 0.0;
+    if (shoreMode != 3 || hasHeight == 0) return false;
+    vec2 hn;
+    hn.x = (worldXY.x - hB.x) / max(hB.z, 1e-5);
+    hn.y = (hB.y - worldXY.y) / max(hB.w, 1e-5);
+    if (hn.x < 0.0 || hn.x > 1.0 || hn.y < 0.0 || hn.y > 1.0) return false;
+    thick = waterElev - wse_bicubicHeight(heightTex, hn);
+    return true;
+}
+
 float wse_shoreFeather(float shore, int shoreMode, int hasHeight, int hasMask,
                        sampler2D heightTex, sampler2D maskTex,
                        vec4 hB, vec4 mB, float featherWu,

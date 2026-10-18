@@ -2,6 +2,10 @@
 // Declared in the class headers; shared names in terrain_internal.h.
 #include "terrain_internal.h"
 #include "mc2fmt.h"
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <vector>
 
 
 //---------------------------------------------------------------------------
@@ -607,6 +611,58 @@ void Terrain::lodShorelineMask() {
 	}
 }
 
+namespace {
+// SHORE-FIELD-1: IEEE half -> float for the float16 shore field sidecar.
+float shoreFieldHalfToFloat(uint16_t h) {
+	const uint32_t sign = (uint32_t)(h & 0x8000u) << 16;
+	uint32_t exp = (h >> 10) & 0x1Fu;
+	uint32_t man = h & 0x3FFu;
+	uint32_t bits;
+	if (exp == 0) {
+		if (man == 0) bits = sign;
+		else {   // subnormal: renormalise
+			exp = 1;
+			while ((man & 0x400u) == 0) { man <<= 1; --exp; }
+			man &= 0x3FFu;
+			bits = sign | ((exp + 112u) << 23) | (man << 13);
+		}
+	} else if (exp == 31) bits = sign | 0x7F800000u | (man << 13);
+	else bits = sign | ((exp + 112u) << 23) | (man << 13);
+	float f;
+	std::memcpy(&f, &bits, sizeof(f));
+	return f;
+}
+
+// SHORE-FIELD-1: the cooked coastline field (tools/terrain_beautify/cook_shore_field.py):
+// a float16 pseudo-height grid, corner-aligned on the map (side = (mapSide-1)*k+1 for any
+// k >= 1). Returns false when the sidecar is absent or does not fit the map.
+bool loadShoreField(const char* stem, int mapSide, std::vector<float>& out, int& side) {
+	char path[600];
+	mc2::fmt::to_buf(path, "data/missions/{}.beauty/shore_field.r16f", mc2::fmt::safe(stem));
+	FILE* f = fopen(path, "rb");  // path-audit: loose-only
+	if (!f) return false;
+	fseek(f, 0, SEEK_END);
+	const long bytes = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	const int s = (int)std::lround(std::sqrt((double)bytes / 2.0));
+	if (s < 2 || (long)s * (long)s * 2 != bytes || mapSide < 2 || (s - 1) % (mapSide - 1) != 0) {
+		mc2::fmt::print_out("[WATER_SHORE_EDGE v1] shore field {} does not fit the map (bytes={:d} mapSide={:d}) -- ignored\n",
+		                    mc2::fmt::safe(path), mc2::fmt::as_i32(bytes), mc2::fmt::as_i32(mapSide));
+		fclose(f);
+		return false;
+	}
+	std::vector<uint16_t> halves((size_t)s * (size_t)s);
+	const size_t rd = fread(halves.data(), sizeof(uint16_t), halves.size(), f);
+	fclose(f);
+	if (rd != halves.size()) return false;
+	out.resize(halves.size());
+	for (size_t i = 0; i < halves.size(); ++i) out[i] = shoreFieldHalfToFloat(halves[i]);
+	side = s;
+	MC2_DIAGF("[WATER_SHORE_EDGE v1] LOADED shore field path=%s side=%d\n", path, s);
+	return true;
+}
+}  // namespace
+
 // LOD chunk: build the water-shore edge data when the shore mode asks for it.
 void Terrain::lodWaterShore() {
 	// WATER-SHORE-EDGE-1: per-fragment water shore edge (mode 2, the
@@ -626,6 +682,8 @@ void Terrain::lodWaterShore() {
 		{
 			const int WV = (wsMapSide - 1) * 4 + 1;
 			char wsPath[600];
+			const float wsHalfF = Terrain::worldUnitsMapSide * 0.5f;
+			const float wsSpanF = (float)(wsMapSide - 1) * Terrain::worldUnitsPerVertex;
 			if (mc2::gate::isSet<"MC2_TERRAIN_VISUAL_HEIGHT_FILE">())   // set, even when empty (the old getenv test)
 			{
 				const std::string ovStr = mc2::gate::str<"MC2_TERRAIN_VISUAL_HEIGHT_FILE">();
@@ -642,6 +700,14 @@ void Terrain::lodWaterShore() {
 				strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
 				stem[sizeof(stem) - 1] = '\0';
 				if (char* dot = strrchr(stem, '.')) *dot = '\0';
+				// SHORE-FIELD-1: the cooked smooth coastline field wins over the raw visual heights
+				// (same bounds contract, any corner-aligned density).
+				std::vector<float> sf;
+				int sfSide = 0;
+				if (loadShoreField(stem, wsMapSide, sf, sfSide)) {
+					gos_TerrainLodChunk_UploadWaterShoreHeight(sf.data(), sfSide, sfSide, -wsHalfF, wsHalfF, wsSpanF, wsSpanF);
+					return;
+				}
 				mc2::fmt::to_buf(wsPath, "data/missions/{}.beauty/visual_height_4x.r32", mc2::fmt::safe(stem));
 			}
 			FILE* wf = fopen(wsPath, "rb");  // path-audit: loose-only

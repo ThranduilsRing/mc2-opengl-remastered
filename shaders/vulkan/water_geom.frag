@@ -173,7 +173,16 @@ void main(void)
     PREC vec2  q1 = WorldPos.xy * WAVE_FREQ * 1.70 + vec2(-0.80, -1.10) * sc;
     PREC float nz = (fbm3(q0) + fbm3(q1)) - 0.875;
 
-    PREC float trans    = clamp(exp(-WaterThickness * ABSORPTION_DENSITY), 0.0, 1.0);
+    // SHORE-FIELD-1: deep/shallow tint from the smooth shore field (mode 3), not the coarse
+    // per-vertex thickness -- no more deep-water diamonds around single low vertices.
+    PREC float tintThick = WaterThickness;
+    {
+        float fieldThick;
+        if (wse_fieldThickness(int(F.f4.x + 0.5), int(F.f4.y + 0.5), u_shoreHeightTex, F.f5,
+                               WorldPos.xy, F.f7.x, fieldThick))
+            tintThick = max(fieldThick, 0.0);
+    }
+    PREC float trans    = clamp(exp(-tintThick * ABSORPTION_DENSITY), 0.0, 1.0);
     PREC vec3  waterCol = mix(DEEP_COLOR, SHALLOW_COLOR, trans);
 
     PREC float shoreBlend = max(alphaDepth, 1.0);
