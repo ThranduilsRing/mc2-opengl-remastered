@@ -1,5 +1,11 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## SIXTY-THIRD session (2026-10-18, GPT-6 Sol) -- GL deletion G
+
+Base a8bf4617b; worktree/branch/install unchanged. Compile cache OFF; configure_ninja.py without --compile-cache. Existing untracked files left alone. Proof artifacts and measured command times: scratch/s63/.
+
+- G1: 6fc2b001b (3 files, +13 -830): retired the GL non-HUD quad/line/point/triangle/indexed primitive bodies and HGOSBUFFER draw bodies; kept the IsHUD CPU batches and indexed expansion Vulkan consumes. Billboard bridge now dispatches only the native Vulkan island, with no GL program/SSBO/sampler/uniforms/fallback. Caller audit: scratch/s63/g1_callers.txt (native masterVertexNodes submission and IsHUD clipper routes retained; GL fallback wrote discarded scene). Pre-edit AND post-edit feeds byte-identical to s62 F1 on mc2_01/mc2_10. Build -j2 PASS 31.67 s; targeted contracts 7/7 PASS; smoke-lite sync 2/2 PASS (fingerprint OK). Captures VIEWED: day coast/base, three yellow mechs, shadows, water and trees intact; night lit structures, dark terrain and turquoise shore intact. Night pixel-identical; day 90 changed pixels (water noise). Regenerated scripts/gl_shader_variants.json (203 variants). log_tag_census requires owner re-freeze for removed B2/GOSFX_GPU/GPU_PARTICLES GL emitters; tests/unit/log_tag_baseline.json is owner-reserved and was NOT modified.
+
 ## SIXTY-SECOND session (2026-10-18, Sonnet 5.5) -- GL deletion continued (batches D onward)
 
 Branch rebased onto nifty b8b2b6862 (clean, 9 commits replayed, no conflicts; the log tag baseline did not conflict). Ninja tree reconfigured with `--compile-cache`; first full rebuild 861 steps, 23 min, sccache server stats afterwards 1868 hits / 3667 requests (50.97 %; shared with the other lanes, so not this build alone).
