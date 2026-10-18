@@ -22,22 +22,22 @@ enum class CarnageEnumType {
 using enum CarnageEnumType;
 
 class CarnageType;
-typedef CarnageType* CarnageTypePtr;
+using CarnageTypePtr = CarnageType*;
 
 class Carnage;
-typedef Carnage* CarnagePtr;
+using CarnagePtr = Carnage*;
 
 class Light;
-typedef Light *LightPtr;
+using LightPtr = Light *;
 
 class FireType;
-typedef FireType *FireTypePtr;
+using FireTypePtr = FireType *;
 
 class ExplosionType;
-typedef ExplosionType* ExplosionTypePtr;
+using ExplosionTypePtr = ExplosionType*;
 
 class LightType;
-typedef LightType *LightTypePtr;
+using LightTypePtr = LightType *;
 
 //***************************************************************************
 

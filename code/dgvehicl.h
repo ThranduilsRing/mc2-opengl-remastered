@@ -12,10 +12,10 @@
 // class Definitions
 
 class GroundVehicleType;
-typedef GroundVehicleType* GroundVehicleTypePtr;
+using GroundVehicleTypePtr = GroundVehicleType*;
 
 class GroundVehicle;
-typedef GroundVehicle* GroundVehiclePtr;
+using GroundVehiclePtr = GroundVehicle*;
 
 //------------------------------------------------------------------------------
 

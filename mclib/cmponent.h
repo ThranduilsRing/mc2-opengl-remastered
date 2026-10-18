@@ -47,7 +47,7 @@ inline constexpr int COMPONENT_USE_VEHICLE = 2;
 inline constexpr int COMPONENT_USE_CLAN = 16;
 inline constexpr int COMPONENT_USE_INNERSPHERE = 32;
 
-typedef enum {
+enum ComponentFormType {
 	COMPONENT_FORM_SIMPLE = 0,
 	COMPONENT_FORM_COCKPIT,
 	COMPONENT_FORM_SENSOR,
@@ -69,32 +69,32 @@ typedef enum {
 	COMPONENT_FORM_JAMMER,
 	COMPONENT_FORM_BULK,
 	NUM_COMPONENT_FORMS
-} ComponentFormType;
+};
 
-typedef enum {
+enum WeaponAmmoType {
 	WEAPON_AMMO_NONE,		// unlimited ammo (energy weapons)
 	WEAPON_AMMO_SRM,
 	WEAPON_AMMO_LRM,
 	WEAPON_AMMO_ST,
 	WEAPON_AMMO_LIMITED,	// not SRM, LRM or ST, but still finite ammo amount
 	NUM_WEAPON_AMMO_TYPES
-} WeaponAmmoType;
+};
 
-typedef enum {
+enum WeaponStateType {
 	WEAPON_STATE_READY,
 	WEAPON_STATE_RECYCLING,
 	WEAPON_STATE_DAMAGED,
 	WEAPON_STATE_DESTROYED
-} WeaponStateType;
+};
 
-typedef enum {
+enum WeaponRangeType {
 	WEAPON_RANGE_SHORT,
 	WEAPON_RANGE_MEDIUM,
 	WEAPON_RANGE_LONG,
 	WEAPON_RANGE_SHORT_MEDIUM,
 	WEAPON_RANGE_MEDIUM_LONG,
 	NUM_WEAPON_RANGE_TYPES
-} WeaponRangeType;
+};
 
 //******************************************************************************************
 
@@ -103,7 +103,7 @@ inline constexpr int WEAPON_FLAG_INFERNO = 2;
 inline constexpr int WEAPON_FLAG_LBX = 4;
 inline constexpr int WEAPON_FLAG_ARTILLERY = 8;
 
-typedef union {
+union ComponentStats {
 	struct {
 		float				range;			// in meters
 	} sensor;
@@ -142,12 +142,12 @@ typedef union {
 	struct {
 		long				rangeMod;		// range modifier
 	} jumpjet;
-} ComponentStats;
+};
 
 //******************************************************************************************
 
 class MasterComponent;
-typedef MasterComponent* MasterComponentPtr;
+using MasterComponentPtr = MasterComponent*;
 
 class MasterComponent {
 

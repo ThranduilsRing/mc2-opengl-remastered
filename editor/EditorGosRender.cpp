@@ -778,7 +778,7 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
 
     // load wglCreateContextAttribsARB and wglChoosePixelFormatARB through
     // the legacy context, then upgrade to a core 4.3 context.
-    typedef HGLRC (WINAPI* PFNWGLCREATECONTEXTATTRIBSARBPROC)(HDC, HGLRC, const int*);
+    using PFNWGLCREATECONTEXTATTRIBSARBPROC = HGLRC (WINAPI*)(HDC, HGLRC, const int*);
     PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB =
         (PFNWGLCREATECONTEXTATTRIBSARBPROC)::wglGetProcAddress("wglCreateContextAttribsARB");
 
@@ -814,7 +814,7 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
         return nullptr;
     }
 
-    typedef BOOL (WINAPI* PFNWGLSWAPINTERVALEXTPROC)(int);
+    using PFNWGLSWAPINTERVALEXTPROC = BOOL (WINAPI*)(int);
     PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT =
         (PFNWGLSWAPINTERVALEXTPROC)::wglGetProcAddress("wglSwapIntervalEXT");
     const bool vsync_on = mc2::gate::get<"MC2_VSYNC">();

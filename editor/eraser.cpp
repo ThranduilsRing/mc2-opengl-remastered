@@ -38,7 +38,7 @@ Action* Eraser::endPaint()
 	// Erasing terrain overlays/types NULLs the face cache; rebuild so erased cells
 	// don't render black.
 	EditorData::refreshTerrainAfterEdit();
-	Action* pRetAction = NULL;
+	Action* pRetAction = nullptr;
 	if (pCurAction)
 	{
 		if ( !pCurAction->vertexInfoList.empty() || !pCurAction->bldgAction.objInfoPtrList.empty() )
@@ -51,7 +51,7 @@ Action* Eraser::endPaint()
 		}
 	}
 	
-	pCurAction = NULL;
+	pCurAction = nullptr;
 	return pRetAction;
 }
 
@@ -173,7 +173,7 @@ bool Eraser::canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int 
 Action* Eraser::applyToSelection()
 {
 	if ( !land )
-		return NULL;  // no terrain -> realVerticesMapSide loop derefs NULL
+		return nullptr;  // no terrain -> realVerticesMapSide loop derefs NULL
 
 	EraserAction* pRetAction = new EraserAction;
 

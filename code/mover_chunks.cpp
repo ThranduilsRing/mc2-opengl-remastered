@@ -463,7 +463,7 @@ void StatusChunk::pack (MoverPtr mover) {
 		case STATUSCHUNK_TARGET_MOVER: {
 			if ((targetId < 0) || (targetId >= MAX_MULTIPLAYER_MOVERS)) {
 				#ifdef ASSERT_STATUSCHUNK
-					DebugStatusChunk(mover, this, NULL);
+					DebugStatusChunk(mover, this, nullptr);
 					char errMsg[1024];
 					sprintf(errMsg, " StatusChunk.pack: bad targetId %d (save stchunk.dbg file) ", targetId);
 					Assert(false, targetId, errMsg);
@@ -478,7 +478,7 @@ void StatusChunk::pack (MoverPtr mover) {
 			GameObjectPtr target = ObjectManager->findByPartId(targetId);
 			if (!target) {
 				#ifdef ASSERT_STATUSCHUNK
-					DebugStatusChunk(mover, this, NULL);
+					DebugStatusChunk(mover, this, nullptr);
 					char errMsg[1024];
 					sprintf(errMsg, " StatusChunk.pack: NULL Terrain Target (save stchunk.dbg file) ");
 					Assert(false, targetId, errMsg);
@@ -492,7 +492,7 @@ void StatusChunk::pack (MoverPtr mover) {
 			GameObjectPtr target = ObjectManager->findByPartId(targetId);
 			if (!target) {
 				#ifdef ASSERT_STATUSCHUNK
-					DebugStatusChunk(mover, this, NULL);
+					DebugStatusChunk(mover, this, nullptr);
 					char errMsg[1024];
 					sprintf(errMsg, " StatusChunk.pack: NULL Special Target (save stchunk.dbg file) ");
 					Assert(false, targetId, errMsg);
@@ -506,7 +506,7 @@ void StatusChunk::pack (MoverPtr mover) {
 			break;
 		default:
 			#ifdef ASSERT_STATUSCHUNK
-				DebugStatusChunk(mover, this, NULL);
+				DebugStatusChunk(mover, this, nullptr);
 				char errMsg[1024];
 				sprintf(errMsg, " StatusChunk.pack: bad targetType %d (save stchunk.dbg file) ", targetType);
 				Assert(false, targetType, errMsg);
@@ -584,7 +584,7 @@ void StatusChunk::unpack (MoverPtr mover) {
 		case STATUSCHUNK_TARGET_MOVER: {
 			if ((targetId < 0) || (targetId >= MAX_MULTIPLAYER_MOVERS)) {
 				#ifdef ASSERT_STATUSCHUNK
-					DebugStatusChunk(mover, this, NULL);
+					DebugStatusChunk(mover, this, nullptr);
 					char errMsg[1024];
 					sprintf(errMsg, " StatusChunk.unpack: bad targetId %d (save stchunk.dbg file) ", targetId);
 					Assert(false, targetId, errMsg);
@@ -599,7 +599,7 @@ void StatusChunk::unpack (MoverPtr mover) {
 			GameObjectPtr target = ObjectManager->findByPartId(targetId);
 			if (!target) {
 				#ifdef ASSERT_STATUSCHUNK
-					DebugStatusChunk(mover, this, NULL);
+					DebugStatusChunk(mover, this, nullptr);
 					char errMsg[1024];
 					sprintf(errMsg, " StatusChunk.unpack: NULL Terrain Target (save stchunk.dbg file) ");
 					Assert(false, targetId, errMsg);
@@ -613,7 +613,7 @@ void StatusChunk::unpack (MoverPtr mover) {
 			GameObjectPtr target = ObjectManager->findByPartId(targetId);
 			if (!target) {
 				#ifdef ASSERT_STATUSCHUNK
-					DebugStatusChunk(mover, this, NULL);
+					DebugStatusChunk(mover, this, nullptr);
 					char errMsg[1024];
 					sprintf(errMsg, " StatusChunk.unpack: NULL Special Target (save stchunk.dbg file) ");
 					Assert(false, targetId, errMsg);
@@ -627,7 +627,7 @@ void StatusChunk::unpack (MoverPtr mover) {
 			break;
 		default:
 			#ifdef ASSERT_STATUSCHUNK
-				DebugStatusChunk(mover, this, NULL);
+				DebugStatusChunk(mover, this, nullptr);
 				char errMsg[1024];
 				sprintf(errMsg, " StatusChunk.unpack: bad targetType %d (save stchunk.dbg file) ", targetType);
 				Assert(false, targetType, errMsg);

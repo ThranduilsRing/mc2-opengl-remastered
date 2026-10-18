@@ -119,10 +119,10 @@ extern const int COLOR_BUFFER;
 extern const int DEPTH_BUFFER;
 extern const int STENCIL_BUFFER;
 
-typedef int TextureID;      /**< Texture handle. */
-typedef int ShaderID;       /**< Shader handle. */
-typedef int VertexFormatID; /**< Vertex format handle. */
-typedef int VertexBufferID; /**< Vertex buffer handle. */
-typedef int IndexBufferID;  /**< Index buffer handle. */
+using TextureID = int;      /**< Texture handle. */
+using ShaderID = int;       /**< Shader handle. */
+using VertexFormatID = int; /**< Vertex format handle. */
+using VertexBufferID = int; /**< Vertex buffer handle. */
+using IndexBufferID = int;  /**< Index buffer handle. */
 
 #endif // RENDER_CONSTANTS_H

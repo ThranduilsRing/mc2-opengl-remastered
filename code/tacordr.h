@@ -41,16 +41,16 @@ inline constexpr int NUM_MOVE_SPEEDS = 4;
 inline constexpr int TACORDER_FAILURE = 0;
 inline constexpr int TACORDER_SUCCESS = 1;
 
-typedef enum {
+enum MoveSpeedType {
 	MOVE_SPEED_BEST,
 	MOVE_SPEED_MAXIMUM,
 	MOVE_SPEED_SLOW,
 	MOVE_SPEED_MODERATE
-} MoveSpeedType;
+};
 
 inline constexpr int NUM_MOVE_PATTERNS = 7;
 
-typedef enum {
+enum MovePatternType {
 	MOVE_PATTERN_DIRECT,
 	MOVE_PATTERN_ZIGZAG_NARROW,
 	MOVE_PATTERN_ZIGZAG_MEDIUM,
@@ -58,22 +58,22 @@ typedef enum {
 	MOVE_PATTERN_RANDOM_NARROW,
 	MOVE_PATTERN_RANDOM_MEDIUM,
 	MOVE_PATTERN_RANDOM_WIDE
-} MovePatternType;
+};
 
 inline constexpr int NUM_ATTITUDES = 6;
 
-typedef enum {
+enum AttitudeType {
 	ATTITUDE_CAUTIOUS,
 	ATTITUDE_CONSERVATIVE,
 	ATTITUDE_NORMAL,
 	ATTITUDE_AGGRESSIVE,
 	ATTITUDE_BERSERKER,
 	ATTITUDE_SUICIDAL
-} AttitudeType;
+};
 
 //#define	FIRERANGE_OPTIMUM	-1
 
-typedef enum {
+enum FireRangeType {
 	FIRERANGE_DEFAULT = -4,
 	FIRERANGE_RAMMING,
 	FIRERANGE_LONGEST,
@@ -83,33 +83,33 @@ typedef enum {
 	FIRERANGE_LONG,
 	FIRERANGE_CURRENT,
 	NUM_FIRERANGES
-} FireRangeType;
+};
 
-typedef enum {
+enum AttackType {
 	ATTACK_NONE,
 	ATTACK_TO_DESTROY,
 	ATTACK_TO_DISABLE,
 	ATTACK_CONSERVING_AMMO,
 	NUM_ATTACK_TYPES
-} AttackType;
+};
 
-typedef enum {
+enum AttackMethod {
 	ATTACKMETHOD_RANGED,
 	ATTACKMETHOD_DFA,
 	ATTACKMETHOD_RAMMING,
 	NUM_ATTACKMETHODS
-} AttackMethod;
+};
 
-typedef enum {
+enum FireOddsType {
 	FIREODDS_LUCKY,
 	FIREODDS_BAD,
 	FIREODDS_MEDIUM,
 	FIREODDS_GOOD,
 	FIREODDS_GREAT,
 	NUM_FIREODDS
-} FireOddsType;
+};
 
-typedef enum {
+enum TacticType {
 	TACTIC_NONE,
 	TACTIC_FLANK_LEFT,
 	TACTIC_FLANK_RIGHT,
@@ -124,15 +124,15 @@ typedef enum {
 	TACTIC_PURSUE,            // 10 — aggressive pursuit of fleeing targets
 	TACTIC_HIT_AND_RUN,       // 11 — harass-then-disengage
 	NUM_TACTICS               // 12
-} TacticType;
+};
 
-typedef enum {
+enum OrderOriginType {
 	ORDER_ORIGIN_PLAYER,
 	ORDER_ORIGIN_COMMANDER,
 	ORDER_ORIGIN_SELF
-} OrderOriginType;
+};
 
-typedef enum {
+enum TacticalOrderCode {
 	TACTICAL_ORDER_NONE,
 	TACTICAL_ORDER_WAIT,
 	TACTICAL_ORDER_MOVETO_POINT,
@@ -161,7 +161,7 @@ typedef enum {
 	TACTICAL_ORDER_DEPLOY_ELEMENTALS,
 	TACTICAL_ORDER_RECOVER,
 	NUM_TACTICAL_ORDERS	// IF THIS CHANGES, ADD GUARD_POINT AS SEP. ORDER (see pack/unpack hack)
-} TacticalOrderCode;
+};
 
 //***************************************************************************
 
@@ -171,29 +171,29 @@ struct LocationNode {
 	LocationNodePtr	next;
 };
 
-typedef enum _TravelModeType {
+enum _TravelModeType {
 	TRAVEL_MODE_INVALID = -1,
 	TRAVEL_MODE_SLOW,
 	TRAVEL_MODE_FAST,
 	TRAVEL_MODE_JUMP,
 	NUM_TRAVEL_MODES
-} TravelModeType;
+}; using TravelModeType = _TravelModeType;
 
-typedef struct _WayPath {
+struct _WayPath {
 	long			numPoints;
 	long			curPoint;
 	float			points[3 * MAX_WAYPTS];
 	unsigned char	mode[MAX_WAYPTS];
-} WayPath;
+}; using WayPath = _WayPath;
 
-typedef WayPath* WayPathPtr;
+using WayPathPtr = WayPath*;
 
-typedef enum {
+enum SpecialMoveMode {
 	MOVE_MODE_NORMAL,
 	MOVE_MODE_MINELAYING
-} SpecialMoveMode;
+};
 
-typedef struct _TacOrderMoveParams {
+struct _TacOrderMoveParams {
 	WayPath			wayPath;
 	bool			faceObject;
 	bool			wait;
@@ -202,9 +202,9 @@ typedef struct _TacOrderMoveParams {
 	bool			jump;
 	long			fromArea;
 	bool			keepMoving;
-} TacOrderMoveParams;
+}; using TacOrderMoveParams = _TacOrderMoveParams;
 
-typedef struct _TacOrderAttackParams {
+struct _TacOrderAttackParams {
 	AttackType		type; //NO LONGER USED! 1/7/00
 	AttackMethod	method;
 	FireRangeType	range;
@@ -213,7 +213,7 @@ typedef struct _TacOrderAttackParams {
 	bool			pursue;
 	bool			obliterate;
 	Stuff::Vector3D	targetPoint;
-} TacOrderAttackParams;
+}; using TacOrderAttackParams = _TacOrderAttackParams;
 
 class TacticalOrder {
 

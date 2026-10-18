@@ -600,8 +600,8 @@ public: /* we could make this protected if only the editdialog is to acces these
 	static CObjectiveAction *new_CObjectiveAction(action_species_type actionSpecies, int alignment);
 	static std::string DescriptionOfActionSpecies(action_species_type actionSpecies);
 public:
-	typedef CObjectiveConditionList condition_list_type;
-	typedef CObjectiveActionList action_list_type;
+	using condition_list_type = CObjectiveConditionList;
+	using action_list_type = CObjectiveActionList;
 	condition_list_type m_conditions;
 	action_list_type m_actionList;
 	condition_list_type m_failureConditionList;

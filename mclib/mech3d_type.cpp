@@ -133,7 +133,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 				lodDistance[i] *= 5.0f;
 
 				mechShape[i] = new TG_TypeMultiShape;
-				gosASSERT(mechShape[i] != NULL);
+				gosASSERT(mechShape[i] != nullptr);
 			
 				// ASSIMP-MECH-IMPORT-1 — strict opt-in: only LOD0 of a mech with
 				// an [Import] Source= override uses the modern importer; every
@@ -170,7 +170,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 	else
 	{
 		mechShape[0] = new TG_TypeMultiShape;
-		gosASSERT(mechShape[0] != NULL);
+		gosASSERT(mechShape[0] != nullptr);
 
 		// ASSIMP-MECH-IMPORT-1 — strict opt-in single-LOD case.
 		// META-FIX design B PART 1: REQUIRED slot — checked load.
@@ -199,7 +199,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 	if (result == NO_ERR)
 	{
 		mechShadowShape = new TG_TypeMultiShape;
-		gosASSERT(mechShadowShape != NULL);
+		gosASSERT(mechShadowShape != nullptr);
 	
 		FullPathFileName gvName;
 		gvName.init(tglPath,aseFileName,".ase");
@@ -220,7 +220,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 	mechRightArmName.init(tglPath,rightArmName,".ase");
 
 	rightArm = new TG_TypeMultiShape;
-	gosASSERT(rightArm != NULL);
+	gosASSERT(rightArm != nullptr);
 	
 	result = rightArm->LoadTGMultiShapeFromASE(mechRightArmName); // TGL-LOAD-EXEMPT(optional arm; delete-on-fail is normal stock degradation)
 	if (result)
@@ -230,7 +230,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 	}
 	
 	leftArm = new TG_TypeMultiShape;
-	gosASSERT(leftArm != NULL);
+	gosASSERT(leftArm != nullptr);
 	
 	result = leftArm->LoadTGMultiShapeFromASE(mechLeftArmName); // TGL-LOAD-EXEMPT(optional arm; delete-on-fail is normal stock degradation)
 	if (result)
@@ -252,7 +252,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 		dmgName.init(tglPath,forwardName,".ase");
 
 		mechForwardDmgShape = new TG_TypeMultiShape;
-		gosASSERT(mechForwardDmgShape != NULL);
+		gosASSERT(mechForwardDmgShape != nullptr);
 		mechForwardDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional fall-damage shape; GetNumShapes-checked)
 
 		if (!mechForwardDmgShape->GetNumShapes())
@@ -267,7 +267,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 		dmgName.init(tglPath,backwardName,".ase");
 
 		mechBackwardDmgShape = new TG_TypeMultiShape;
-		gosASSERT(mechBackwardDmgShape != NULL);
+		gosASSERT(mechBackwardDmgShape != nullptr);
 		mechBackwardDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional fall-damage shape; GetNumShapes-checked)
 
 		if (!mechBackwardDmgShape->GetNumShapes())
@@ -308,7 +308,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 			if (fileExists(animPath) || fileExists(otherPath))
 			{
 				mechAnim[i] = new TG_AnimateShape;
-				gosASSERT(mechAnim[i] != NULL);
+				gosASSERT(mechAnim[i] != nullptr);
 
 				// If this animation does not exist, it is not a problem!
 				// Mech will simply freeze until animation is "over" and then move to next animation in chain.
@@ -447,7 +447,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 		sensorName.init(tglPath,"squarecontact",".ase");
 
 		SensorSquareShape = new TG_TypeMultiShape;
-		gosASSERT(SensorSquareShape != NULL);
+		gosASSERT(SensorSquareShape != nullptr);
 
 		// META-FIX design B PART 1: REQUIRED static (sensor contact art).
 		tglLoadShapeChecked(SensorSquareShape, sensorName,
@@ -460,7 +460,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 		sensorName.init(tglPath,"circularcontact",".ase");
 
 		GVAppearanceType::SensorCircleShape = new TG_TypeMultiShape;
-		gosASSERT(GVAppearanceType::SensorCircleShape != NULL);
+		gosASSERT(GVAppearanceType::SensorCircleShape != nullptr);
 
 		tglLoadShapeChecked(GVAppearanceType::SensorCircleShape, sensorName,
 			"mech3d.sensor_circle", nullptr);
@@ -472,7 +472,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 		sensorName.init(tglPath,"trianglecontact",".ase");
 
 		GVAppearanceType::SensorTriangleShape = new TG_TypeMultiShape;
-		gosASSERT(GVAppearanceType::SensorTriangleShape != NULL);
+		gosASSERT(GVAppearanceType::SensorTriangleShape != nullptr);
 
 		tglLoadShapeChecked(GVAppearanceType::SensorTriangleShape, sensorName,
 			"mech3d.sensor_triangle", nullptr);
@@ -629,7 +629,7 @@ void Mech3DAppearanceType::destroy (void)
 
 void Mech3DAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animationNum)
 {
-	gosASSERT(shape != NULL);
+	gosASSERT(shape != nullptr);
 	gosASSERT(animationNum != 0xffffffff);
 	gosASSERT(animationNum < MaxGestures);
 

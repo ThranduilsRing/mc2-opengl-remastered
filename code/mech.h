@@ -157,7 +157,7 @@ typedef enum {
 	NUM_MECH_BODY_LOCATIONS
 } MechBodyLocationType;
 
-typedef enum {
+enum MechArmorLocationType {
 	MECH_ARMOR_LOCATION_ANY = -1,
 	MECH_ARMOR_LOCATION_HEAD,
 	MECH_ARMOR_LOCATION_CTORSO,
@@ -171,37 +171,37 @@ typedef enum {
 	MECH_ARMOR_LOCATION_RLTORSO,
 	MECH_ARMOR_LOCATION_RRTORSO,
 	NUM_MECH_ARMOR_LOCATIONS
-} MechArmorLocationType;
+};
 
-typedef enum {
+enum LegStatusType {
 	LEG_STATUS_NORMAL,
 	LEG_STATUS_HURTING,
 	LEG_STATUS_IMPAIRED_LEFT,
 	LEG_STATUS_IMPAIRED_RIGHT,
 	LEG_STATUS_DESTROYED,
 	NUM_LEG_STATUSES
-} LegStatusType;
+};
 
-typedef enum {
+enum TorsoStatusType {
 	TORSO_STATUS_NORMAL,
 	TORSO_STATUS_IMPAIRED,
 	NUM_TORSO_STATUSES
-} TorsoStatusType;
+};
 
-typedef enum {
+enum MechPilotCheckCondition {
 	MECH_PILOT_CHECK_CONDITION_NO_LEG,
 	MECH_PILOT_CHECK_CONDITION_NO_HIP,
 	NUM_MECH_PILOT_CHECK_CONDITIONS
-} MechPilotCheckCondition;
+};
 
-typedef enum {
+enum MechStatusChunkBodyState {
 	MECH_STATUSCHUNK_BODYSTATE_NORMAL,
 	MECH_STATUSCHUNK_BODYSTATE_STANDING,
 	MECH_STATUSCHUNK_BODYSTATE_PARKED,
 	MECH_STATUSCHUNK_BODYSTATE_FALLEN_BACKWARD,
 	MECH_STATUSCHUNK_BODYSTATE_FALLEN_FORWARD,
 	MECH_STATUSCHUNK_BODYSTATE_DESTROYED
-} MechStatusChunkBodyState;
+};
 
 //---------------------------------------------------------------------------
 // classes and structs
@@ -273,7 +273,7 @@ class BattleMechType : public ObjectType {
 };
 
 //---------------------------------------------------------------------------
-typedef struct _MechData : public MoverData
+struct _MechData : public MoverData
 {
 	char				chassisClass;				   
 	int32_t				chassisBR;					   
@@ -335,7 +335,7 @@ typedef struct _MechData : public MoverData
 	int32_t				cBills;
 
 	MechAppearanceData	apData;
-} MechData;
+}; using MechData = _MechData;
 
 class BattleMech : public Mover {
 
@@ -510,7 +510,7 @@ class BattleMech : public Mover {
 
 		virtual bool isWeaponReady (long weaponIndex);
 
-		virtual float calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, Stuff::Vector3D* targetPoint = NULL);
+		virtual float calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, Stuff::Vector3D* targetPoint = nullptr);
 
 		virtual float getTotalEffectiveness(void);
 
@@ -606,7 +606,7 @@ class BattleMech : public Mover {
 			return(appearance->getOldGestureGoal() == MECH_STATE_STANDING);
 		}
 
-		bool isWalking (long* throttle = NULL) 
+		bool isWalking (long* throttle = nullptr)
 		{
 			if (throttle)
 				*throttle = control.settings.mech.throttle;
@@ -619,7 +619,7 @@ class BattleMech : public Mover {
 			return(appearance->getOldGestureGoal() == MECH_STATE_RUNNING);
 		}
 
-		virtual bool isJumping (Stuff::Vector3D* jumpGoal = NULL);
+		virtual bool isJumping (Stuff::Vector3D* jumpGoal = nullptr);
 
 		bool isReversing (void) 
 		{
@@ -695,7 +695,7 @@ class BattleMech : public Mover {
 		virtual const char* getVariantName (void) const { return variantName; }
 		virtual long getVariantId (void) const { return variantID; }
 
-		virtual float getJumpRange (long* numOffsets = NULL, long* jumpCost = NULL);
+		virtual float getJumpRange (long* numOffsets = nullptr, long* jumpCost = nullptr);
 
 		virtual bool handleFall (bool forward);
 

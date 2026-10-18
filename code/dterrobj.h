@@ -17,10 +17,10 @@ inline constexpr int MEDIUM_WALL = 0x08;
 inline constexpr int LIGHT_WALL = 0x09;
 
 class TerrainObjectType;
-typedef TerrainObjectType* TerrainObjectTypePtr;
+using TerrainObjectTypePtr = TerrainObjectType*;
 
 class TerrainObject;
-typedef TerrainObject* TerrainObjectPtr;
+using TerrainObjectPtr = TerrainObject*;
 
 //---------------------------------------------------------------------------
 

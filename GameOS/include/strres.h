@@ -3,10 +3,10 @@
 
 #pragma once
 
-typedef const char* (*get_string_by_id_fptr)(unsigned int);
+using get_string_by_id_fptr = const char* (*)(unsigned int);
 
-    typedef void(*init_string_resources_fptr)(void);
-    typedef void(*free_string_resources_fptr)(void);
+    using init_string_resources_fptr = void(*)(void);
+    using free_string_resources_fptr = void(*)(void);
 
 struct gos_StringRes {
     const char** strings;

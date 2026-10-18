@@ -1165,7 +1165,7 @@ long SensorSystemManager::init (bool debug) {
 		Fatal(0, " Way too few sensors in Sensor System Manager! ");
 
 	sensorPool = (SensorSystemPtr*)missionHeap->Malloc(MAX_SENSORS * sizeof(SensorSystemPtr));
-	gosASSERT(sensorPool!=NULL);
+	gosASSERT(sensorPool!=nullptr);
 
 	for (long i = 0; i < MAX_SENSORS; i++)
 		sensorPool[i] = new SensorSystem;

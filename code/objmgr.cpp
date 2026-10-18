@@ -608,7 +608,7 @@ ElementalPtr GameObjectManager::addElemental (void) {
 		setPartId(elementals[numElementals], -1, -1, -1);
 		return(elementals[numElementals++]);
 	}
-	return(NULL);
+	return(nullptr);
 }
 
 #endif

@@ -231,7 +231,7 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 							// [PROJECTZ:DebugOnly id=debug_los_line_c1]
 							eye->projectForDebugOverlay(endPos,lineEnd);
 
-							debugLines[currentLineElement++] = new LineElement(lineStart,lineEnd,SD_RED,NULL,-1);
+							debugLines[currentLineElement++] = new LineElement(lineStart,lineEnd,SD_RED,nullptr,-1);
 						}
 #endif
 						return false;
@@ -254,7 +254,7 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 			// [PROJECTZ:DebugOnly id=debug_los_line_d1]
 			eye->projectForDebugOverlay(endPos,lineEnd);
 
-			debugLines[currentLineElement++] = new LineElement(lineStart,lineEnd,SD_GREEN,NULL,-1);
+			debugLines[currentLineElement++] = new LineElement(lineStart,lineEnd,SD_GREEN,nullptr,-1);
 		}
 #endif
 	}

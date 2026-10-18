@@ -46,7 +46,7 @@ inline constexpr int GOALFLAG_AVAILABLE = 4;
 inline constexpr int GOALFLAG_NO_NEIGHBORS = 8;
 inline constexpr int GOALFLAG_MOVER_HERE = 16;
 
-typedef struct _GoalMapNode {
+struct _GoalMapNode {
 	short				cost;								// normal cost to travel here, based upon terrain
 	//long				parent;								// where we came from (parent cell)
 	unsigned char		flags;								// CLOSED, OPEN, STEP flags
@@ -61,9 +61,9 @@ typedef struct _GoalMapNode {
 	void clearFlag (unsigned char flag) {
 		flags &= (flag ^ 0xFFFFFFFF);
 	}
-} GoalMapNode;
+}; using GoalMapNode = _GoalMapNode;
 
-typedef struct _MoverGroupData
+struct _MoverGroupData
 {
 	long					id;
 	long					numMovers;
@@ -71,7 +71,7 @@ typedef struct _MoverGroupData
 	GameObjectWatchID		pointWID;
 	bool					disbandOnNoPoint;
 
-} MoverGroupData;
+}; using MoverGroupData = _MoverGroupData;
 
 class MoverGroup {
 
@@ -95,7 +95,7 @@ class MoverGroup {
 			numMovers = 0;
 			pointWID = 0;
 			disbandOnNoPoint = false;
-			goalMap = NULL;
+			goalMap = nullptr;
 		}
 		
 		void init (MoverGroupData &data);
@@ -164,7 +164,7 @@ class MoverGroup {
 
 		long calcMoveGoals (Stuff::Vector3D goal, Stuff::Vector3D* goalList);
 
-		long calcJumpGoals (Stuff::Vector3D goal, Stuff::Vector3D* goalList, GameObjectPtr DFATarget = NULL);
+		long calcJumpGoals (Stuff::Vector3D goal, Stuff::Vector3D* goalList, GameObjectPtr DFATarget = nullptr);
 
 		//----------------
 		// Tactical Orders

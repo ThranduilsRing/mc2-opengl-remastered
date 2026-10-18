@@ -427,13 +427,13 @@ long CollisionSystem::init (FitIniFile *scenarioFile)
 	alertTime = 2.5;                                     //This is in seconds
 		
 	collisionHeap = new UserHeap;
-	gosASSERT(collisionHeap != NULL);
+	gosASSERT(collisionHeap != nullptr);
 		
 	long result = collisionHeap->init(65535);
 	gosASSERT(result == NO_ERR);
 	
 	collisionGrid = new CollisionGrid;
-	gosASSERT(collisionGrid != NULL);
+	gosASSERT(collisionGrid != nullptr);
 
 	globalCollisionAlert = new GlobalCollisionAlert;
 	gosASSERT(globalCollisionAlert);
@@ -481,7 +481,7 @@ void CollisionSystem::checkObjects (void)
 	//---------------------------------------------------------
 	// Convert to Glenn's Magical New Object System!
 	ObjectQueueNodePtr objList = objectList->getHeadList(); 		//Start with the default list.
-	ObjectNodePtr objNode = NULL;
+	ObjectNodePtr objNode = nullptr;
 	unsigned long objectsPerList[MAX_LISTS_TO_CHECK] = 
 	{
 		0,0,0
@@ -494,7 +494,7 @@ void CollisionSystem::checkObjects (void)
 		// Something like the sun or terrain.  DO NOT CHECK!!
 		// We cast as a GameObject and that will seriously
 		// mess up if we are just a baseObject!
-		if (objNode && objNode->getObjectType() != NULL)
+		if (objNode && objNode->getObjectType() != nullptr)
 		{
 			result = collisionGrid->add((GameObjectPtr)objNode);
 			objectsPerList[currentList]++;
@@ -519,7 +519,7 @@ void CollisionSystem::checkObjects (void)
 			objNode = objList->head;
 		}
 		
-		if (objNode == NULL)
+		if (objNode == nullptr)
 		{
 			objList = objList->next;
 			currentList++;

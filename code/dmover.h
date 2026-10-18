@@ -29,10 +29,10 @@ enum {
 };
 
 struct LocationNode;
-typedef LocationNode *LocationNodePtr;
+using LocationNodePtr = LocationNode *;
 
 class Mover;
-typedef Mover* MoverPtr;
+using MoverPtr = Mover*;
 
 //******************************************************************************************
 

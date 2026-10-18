@@ -222,13 +222,13 @@ struct Part
 	bool restoreRecord(const mc2::save::Part& record, mc2::save::Diagnostic diagnostic = {});
 };
 
-typedef Part *PartPtr;
+using PartPtr = Part *;
 
 //----------------------------------------------------------------------------------
 // This is the struct definition for the Scenario Objectives.
 // These can be displayed in a window.  For now they are drawn with just text.
 // There are a whole series of ABL commands to address these objectives.
-typedef unsigned long	ObjectiveType;
+using ObjectiveType = unsigned long;
 inline constexpr int InvisibleGoal = -1;
 inline constexpr int PrimaryGoal = 0;
 inline constexpr int SecondaryGoal = 1;
@@ -236,7 +236,7 @@ inline constexpr int OtherGoal = 2;
 inline constexpr int BonusGoal = 3;
 inline constexpr int InvalidGoal = 9999;
 
-typedef unsigned long	ObjectiveStatus;
+using ObjectiveStatus = unsigned long;
 #define					Incomplete		0
 #define					Success			1
 #define					Failed			2
@@ -262,12 +262,12 @@ inline constexpr int InvalidStatus = 9999;
 
 inline constexpr int MAX_OBJECTIVES = 50;
 
-typedef enum {
+enum MissionLoadType {
 	MISSION_LOAD_SP_QUICKSTART,
 	MISSION_LOAD_SP_LOGISTICS,
 	MISSION_LOAD_MP_QUICKSTART,
 	MISSION_LOAD_MP_LOGISTICS
-} MissionLoadType;
+};
 
 struct Objective
 {
@@ -280,7 +280,7 @@ struct Objective
 	float				radius;
 };
 
-typedef Objective *ObjectivePtr;
+using ObjectivePtr = Objective *;
 
 //----------------------------------------------------------------------------------
 // SIM-SPEED-BUTTON-1 (mission.cpp): runtime-settable sim-speed multiplier,
@@ -413,19 +413,19 @@ class Mission
 	
 		void init (void)
 		{
-			missionFile = NULL;
+			missionFile = nullptr;
 
 			operationId = missionId = -1;
 
-			missionBrain = NULL;
-			missionParams = NULL;
-			missionBrainCallback = NULL;
+			missionBrain = nullptr;
+			missionParams = nullptr;
+			missionBrainCallback = nullptr;
 
 			numParts = 0;
-			parts = NULL;
+			parts = nullptr;
 
 			numObjectives = 0;
-			objectives = NULL;
+			objectives = nullptr;
 
 			duration = 0;
 
@@ -440,11 +440,11 @@ class Mission
 			
 			missionScriptHandle = -1;
 			
-			missionInterface = NULL;
+			missionInterface = nullptr;
 
 			missionFileName[0] = 0;
 
-			missionBrainParams = NULL;
+			missionBrainParams = nullptr;
 		}
 		
 		Mission (void)
@@ -623,9 +623,9 @@ class Mission
 		GameObjectPtr getPartObject (long partNumber)
 		{
 			if ((partNumber <= 0) || ((unsigned long)partNumber > numParts))
-				return NULL;
+				return nullptr;
 			if (!ObjectManager)
-				return(NULL);
+				return(nullptr);
 			return ((GameObjectPtr) ObjectManager->getByWatchID(parts[partNumber].objectWID));
 		}
 

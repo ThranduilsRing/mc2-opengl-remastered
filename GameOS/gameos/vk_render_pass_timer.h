@@ -13,7 +13,7 @@
 #include "vk_render_pass_timer_ring.h"
 
 // The Vulkan handle type, declared as vulkan_core.h declares it, so GL-side includers need no Vulkan headers.
-typedef struct VkCommandBuffer_T* VkCommandBuffer;
+using VkCommandBuffer = struct VkCommandBuffer_T*;
 
 #include <cstdint>
 

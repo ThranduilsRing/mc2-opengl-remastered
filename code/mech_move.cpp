@@ -939,10 +939,10 @@ void BattleMech::endJumpFX (void) {
 	if (jumpJets[0] || jumpJets[1])
 	{
 		delete jumpJets[0];
-		jumpJets[0] = NULL;
+		jumpJets[0] = nullptr;
 		
 		delete jumpJets[1];
-		jumpJets[1] = NULL;
+		jumpJets[1] = nullptr;
 	}
 #endif
 }	

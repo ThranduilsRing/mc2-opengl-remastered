@@ -17,7 +17,7 @@ ChooseUnitDlg.h		: Interface for the ChooseUnitDlg component.
 class ChooseUnitDlg: public CDialog
 {
 public:
-	typedef Unit *unit_ptr_type;
+	using unit_ptr_type = Unit *;
 
 	ChooseUnitDlg( unit_ptr_type &unitPtr, int alignmentToExclude = -1 );
 
@@ -31,7 +31,7 @@ public:
 	BOOL OnInitDialog();
 
 private:
-	typedef CDialog inherited;
+	using inherited = CDialog;
 
 	// suppressing these
 	inline ChooseUnitDlg();

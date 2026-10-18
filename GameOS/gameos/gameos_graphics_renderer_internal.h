@@ -15,7 +15,7 @@ class gosRenderer {
 
     friend class gosShapeRenderer;
 
-    typedef uint32_t RenderState[gos_MaxState];
+    using RenderState = uint32_t[gos_MaxState];
 	static const std::string s_Foreground;
 
     public:

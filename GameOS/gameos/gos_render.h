@@ -70,8 +70,8 @@ namespace graphics {
 struct RenderWindow;
 struct RenderContext;
 
-typedef RenderWindow*   RenderWindowHandle;
-typedef RenderContext*   RenderContextHandle;
+using RenderWindowHandle = RenderWindow*;
+using RenderContextHandle = RenderContext*;
 
 void set_verbose(bool is_verbose);
 

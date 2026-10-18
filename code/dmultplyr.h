@@ -76,7 +76,7 @@ enum {
 //---------------------------------------------------------------------------
 
 class WorldChunk;
-typedef WorldChunk* WorldChunkPtr;
+using WorldChunkPtr = WorldChunk*;
 
 #endif
 
