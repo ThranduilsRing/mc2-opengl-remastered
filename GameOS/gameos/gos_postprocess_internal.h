@@ -76,7 +76,6 @@ void setSceneDrawBuffers(SceneDrawBufferMode mode, bool objectIdAttachmentReady)
 
 
 // Free functions defined in the split pieces.
-bool postprocessBackendWantsVk();
 bool mc2ShadowCsmEnabled();
 bool mc2VkSharedSceneDepthEnabled();
 bool mc2VkSharedSceneColorNeeded();

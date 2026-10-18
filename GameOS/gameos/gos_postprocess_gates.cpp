@@ -5,13 +5,6 @@
 #include "Gates/render_options.h"
 
 
-// MC2_POSTPROCESS_BACKEND selects the backend of every routed region: "vk" (or "vulkan") asks for the
-// Vulkan island, anything else (and unset) stays on GL.
-bool postprocessBackendWantsVk()
-{
-    return mc2::gate::is<"MC2_POSTPROCESS_BACKEND", "vk">() || mc2::gate::is<"MC2_POSTPROCESS_BACKEND", "vulkan">();
-}
-
 // === Item 1: Cascaded Shadow Maps gate (dynamic shadow path) ==============
 // ShadowCSM (options.cfg) : master switch, default on; off selects the legacy single dynamic
 //                   map path. See docs/tier1_env_vars.md "Dynamic CSM".

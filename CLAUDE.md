@@ -52,7 +52,7 @@ Full smoke (launches the game off-screen, ~3 min):
 MC2_DEBUG_STATE_DUMP=1 MC2_DIAG_TAGS=CONFIG,BUILD,DEVICE py -3 scripts/run_smoke.py --tier tier1 --duration 30 --keep-logs --deploy 0.4
 ```
 
-The default env runs the Vulkan backend (default since 2026-10-17); `MC2_RENDER_BACKEND=gl` is a temporary opt-out whose tier1 run is optional, not a required gate. `tier1` = mc2_01/03/10/17/24. Evidence is the `[DEPLOY_FINGERPRINT] OK: exe sha=… matches worktree HEAD` line plus 5/5 PASS. Don't set `MC2_DIAGNOSTIC_TRACE_FILE` (the runner owns it and refuses the run).
+The default env runs the Vulkan backend (default since 2026-10-17); there is no GL opt-out any more (`MC2_RENDER_BACKEND=gl` is ignored with a `[RENDER_BACKEND]` log line). `tier1` = mc2_01/03/10/17/24. Evidence is the `[DEPLOY_FINGERPRINT] OK: exe sha=… matches worktree HEAD` line plus 5/5 PASS. Don't set `MC2_DIAGNOSTIC_TRACE_FILE` (the runner owns it and refuses the run).
 
 ## Where things are
 
