@@ -250,7 +250,7 @@ static bool s_moveDirty = false;
 				if ((*it)->getSpecialType() == EditorObjectMgr::EDITOR_GATE)
 				{
 					(*it)->markTerrain( pInfo, SPECIAL_GATE, gateCount );
-					Stuff::Vector3D pos = (*it)->appearance()->position;
+					glm::vec3 pos = (*it)->appearance()->position;
 					int r, c;
 					land->worldToCell(pos, r, c);
 					specialAreaFootPrints[gateCount].cellPositionRow = r;
@@ -260,7 +260,7 @@ static bool s_moveDirty = false;
 				else if ((*it)->getSpecialType() == EditorObjectMgr::WALL)
 				{
 					(*it)->markTerrain( pInfo, SPECIAL_WALL, gateTotalCount + wallCount);
-					Stuff::Vector3D pos = (*it)->appearance()->position;
+					glm::vec3 pos = (*it)->appearance()->position;
 					int r, c;
 					land->worldToCell(pos, r, c);
 					specialAreaFootPrints[gateTotalCount + wallCount].cellPositionRow = r;
@@ -270,7 +270,7 @@ static bool s_moveDirty = false;
 				else if ((*it)->getSpecialType() == EditorObjectMgr::EDITOR_BRIDGE)
 				{
 					(*it)->markTerrain( pInfo, SPECIAL_LAND_BRIDGE, gateTotalCount + wallTotalCount + landBridgeCount);
-					Stuff::Vector3D pos = (*it)->appearance()->position;
+					glm::vec3 pos = (*it)->appearance()->position;
 					int r, c;
 					land->worldToCell(pos, r, c);
 					specialAreaFootPrints[gateTotalCount + wallTotalCount + landBridgeCount].cellPositionRow = r;

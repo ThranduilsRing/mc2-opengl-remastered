@@ -32,7 +32,7 @@ Action* DragTool::endPaint()
 	return nullptr;
 }
 
-bool DragTool::paint( Stuff::Vector3D& worldPos, int screenX, int screenY  )
+bool DragTool::paint( glm::vec3& worldPos, int screenX, int screenY  )
 {
 	if ( lastX != -1 )
 	{

@@ -67,7 +67,7 @@ namespace
 		if ( s_gridOnWaterPlane )
 			return Terrain::waterElevation + s_heightBias;
 
-		Stuff::Vector3D p;
+		glm::vec3 p;
 		p.x = wx; p.y = wy; p.z = 0.0f;
 		return land->getTerrainElevation( p ) + s_heightBias;
 	}
@@ -75,7 +75,7 @@ namespace
 	// Project a world point; returns false if it should break the line strip.
 	bool projectPt( Camera* eye, float wx, float wy, float wz, float& sx, float& sy )
 	{
-		Stuff::Vector3D world;  world.x = wx; world.y = wy; world.z = wz;
+		glm::vec3 world;  world.x = wx; world.y = wy; world.z = wz;
 		Stuff::Vector4D scr;
 		if ( !eye->projectForScreenXY( world, scr ) )
 			return false;
@@ -91,7 +91,7 @@ namespace
 	// vanish on zoom. Used by the patrol/guard overlay.
 	bool projectPtGL( Camera* eye, float wx, float wy, float wz, float& sx, float& sy )
 	{
-		Stuff::Vector3D world; world.x = wx; world.y = wy; world.z = wz;
+		glm::vec3 world; world.x = wx; world.y = wy; world.z = wz;
 		ModernClipResult r = eye->projectModernClipGL( world );
 		if ( r.clip.w <= 1e-4f ) return false;
 		float vmx = 0.f, vmy = 0.f, vax = 0.f, vay = 0.f;
@@ -346,7 +346,7 @@ namespace
 		{
 			if ( !obj || !obj->appearance() )
 				return;
-			Stuff::Vector3D wpos = obj->getPosition();
+			glm::vec3 wpos = obj->getPosition();
 
 			// Modern zoom-correct projection (projectPtGL) — legacy projectForScreenXY
 			// diverges/rejects when zoomed in (X-collapse), making labels jump/vanish.
@@ -469,11 +469,11 @@ static void drawOnePatrol( Camera* eye, Unit* unit )
 	const DWORD ccol = base | ( sel ? 0xff000000u : 0x60000000u );   // connector
 
 	// Unit's own screen position (connector start + guard ring center).
-	const Stuff::Vector3D& up = unit->getPosition();
+	const glm::vec3& up = unit->getPosition();
 	float uX, uY;
 	const bool uok = projectPtGL( eye, up.x, up.y, land->getTerrainElevation( up ) + 12.0f, uX, uY );
 
-	const std::vector<Stuff::Vector3D>& wps = unit->getWaypoints();
+	const std::vector<glm::vec3>& wps = unit->getWaypoints();
 	if ( wps.empty() )
 	{
 		// Guard brains hold their spawn position -> draw a guard ring at the unit.

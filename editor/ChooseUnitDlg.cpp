@@ -70,7 +70,7 @@ BOOL ChooseUnitDlg::OnInitDialog()
 		auto it = m_unitList.begin();
 		while (it != m_unitList.end()) {
 			std::string tmpEStr;
-			Stuff::Vector3D pos = (*it)->getPosition();
+			glm::vec3 pos = (*it)->getPosition();
 			const char *szDisplayName = (*it)->getDisplayName(); // nb: localization
 			assert(szDisplayName);
 			tmpEStr = std::format("(pos: {:.3f}, {:.3f}) {}", pos.x, pos.y, mc2::fmt::safe(szDisplayName));

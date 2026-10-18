@@ -409,7 +409,7 @@ bool ModifyBuildingAction::doRedo()
             pBuilding->getCells(row, column);
             // Preserve free placement across the cell/link bookkeeping update.
             ObjectAppearance* pUndoApp = pBuilding->appearance();
-            Stuff::Vector3D undoFreePos;
+            glm::vec3 undoFreePos;
             if (pUndoApp)
                 undoFreePos = pUndoApp->position;
             EditorObjectMgr::instance()->moveBuilding(pBuilding, row, column);
@@ -566,7 +566,7 @@ void ModifyBuildingAction::updateNotedObjectPositions()
 //*************************************************************************************************
 
 static void EditorOrderSnapFromUnit( Unit* unit, int& orderType, int& stance,
-	std::vector<Stuff::Vector3D>& waypoints )
+	std::vector<glm::vec3>& waypoints )
 {
 	orderType = unit->getOrderType();
 	stance    = unit->getStance();

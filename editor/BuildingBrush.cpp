@@ -78,7 +78,7 @@ static inline bool editorTerrainMeshReady()
 // [+1+stride]) fall inside the array bounds that terrainElevation actually honors,
 // i.e. meshOffset in [0, verticesMapSide-2] on both axes. This adds the low-side
 // bounds check the engine lacks, without touching the engine.
-static inline bool editorElevationSampleSafe( const Stuff::Vector3D& samplePos )
+static inline bool editorElevationSampleSafe( const glm::vec3& samplePos )
 {
 	const long verticesMapSide = Terrain::verticesBlockSide * Terrain::blocksMapSide;
 	if ( verticesMapSide < 2 )
@@ -107,7 +107,7 @@ static inline bool editorElevationSampleSafe( const Stuff::Vector3D& samplePos )
 // position getCellPos() would query, verifies that position is safely sample-able,
 // and only then performs the real getCellPos() (which re-derives it + the elevation
 // lookup). If anything is unsafe, `pos` is left at the raw unprojected point.
-static inline void editorSnapToCellSafe( Stuff::Vector3D& pos )
+static inline void editorSnapToCellSafe( glm::vec3& pos )
 {
 	if ( !editorTerrainMeshReady() )
 		return;
@@ -119,7 +119,7 @@ static inline void editorSnapToCellSafe( Stuff::Vector3D& pos )
 
 	// Reconstruct getCellPos()'s cell-center XY (terrain.h getCellPos(), minus the
 	// elevation line) so we test the exact position terrainElevation() will index.
-	Stuff::Vector3D cellPos;
+	glm::vec3 cellPos;
 	cellPos.x = ( cc * (Terrain::worldUnitsPerVertex / 3.0) ) + (Terrain::worldUnitsPerVertex / 6.0);
 	cellPos.y = ( cr * (Terrain::worldUnitsPerVertex / 3.0) ) + (Terrain::worldUnitsPerVertex / 6.0);
 	cellPos.x += land->mapTopLeft3d.x;
@@ -166,7 +166,7 @@ BuildingBrush::~BuildingBrush()
 		delete pCursor;
 }
 
-bool BuildingBrush::canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags )
+bool BuildingBrush::canPaint( glm::vec3& worldPos, int screenX, int screenY, int flags )
 {
 	if ( !EditorObjectMgr::instance()->canAddBuilding( worldPos, pCursor->rotation, group, indexInGroup ) )
 	{
@@ -187,7 +187,7 @@ bool BuildingBrush::beginPaint()
 	return true; // need to set up undo here
 }
 
-bool BuildingBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
+bool BuildingBrush::paint( glm::vec3& worldPos, int screenX, int screenY )
 {
 	// Patch: Editor placement must not be blocked by the legacy appearance-heap
 	// warning threshold.  New/editor-created maps can report very low remaining
@@ -281,7 +281,7 @@ void BuildingBrush::BuildingAction::addBuildingInfo(EditorObject& info)
 // out of bounds -> 0xC0000005. Clamp to the valid cell grid before snapping.
 // Shared by update() and the -smoke-place-oob regression test so both exercise
 // the identical guard.
-void BuildingBrush::snapToTerrainCell( Terrain* terr, Stuff::Vector3D& pos )
+void BuildingBrush::snapToTerrainCell( Terrain* terr, glm::vec3& pos )
 {
 	if ( !terr )
 		return;
@@ -302,7 +302,7 @@ void BuildingBrush::update( int ScreenMouseX, int ScreenMouseY )
 	if ( !pCursor )
 		return;
 	
-	Stuff::Vector3D pos;
+	glm::vec3 pos;
 	Stuff::Vector2DOf<long> pt;
 	pt.x = ScreenMouseX;
 	pt.y = ScreenMouseY;
@@ -335,7 +335,7 @@ void BuildingBrush::render( int ScreenMouseX, int ScreenMouseY )
 	// prop draw on the live builder, a cursor left at a stale position renders as a
 	// persistent DUPLICATE prop "elsewhere on the map". Updating position + bounds +
 	// visibility per frame makes the cursor track the mouse instead of ghosting.
-	Stuff::Vector3D pos;
+	glm::vec3 pos;
 	Stuff::Vector2DOf<long> pt;
 	pt.x = ScreenMouseX;
 	pt.y = ScreenMouseY;

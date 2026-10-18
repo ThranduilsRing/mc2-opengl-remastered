@@ -35,8 +35,8 @@ class BuildingBrush: public Brush
 
 		virtual bool beginPaint();
 		virtual Action* endPaint();
-		virtual bool paint( Stuff::Vector3D& worldPos, int screenX, int screenY );
-		virtual bool canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags );
+		virtual bool paint( glm::vec3& worldPos, int screenX, int screenY );
+		virtual bool canPaint( glm::vec3& worldPos, int screenX, int screenY, int flags );
 		virtual void render( int ScreenMouseX, int ScreenMouseY);
 		virtual void update( int screenX, int screenY );
 
@@ -44,7 +44,7 @@ class BuildingBrush: public Brush
 		// that cell's centre. Guards the unbounded worldToCell/terrainElevation
 		// OOB read (0xC0000005). Static so the placement-OOB smoke can exercise
 		// the exact production guard. terr may be null (no-op).
-		static void snapToTerrainCell( class Terrain* terr, Stuff::Vector3D& pos );
+		static void snapToTerrainCell( class Terrain* terr, glm::vec3& pos );
 
 		void rotateBrush( int direction );
 		void addRotationDegrees( float deg );

@@ -23,8 +23,8 @@ public:
 	virtual ~Brush(){}
 	virtual bool beginPaint()  = 0;
 	virtual Action* endPaint() = 0;
-	virtual bool paint( Stuff::Vector3D& worldPos, int screenX, int screenY  )  = 0;
-	virtual bool canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags ) { return true; } 
+	virtual bool paint( glm::vec3& worldPos, int screenX, int screenY  )  = 0;
+	virtual bool canPaint( glm::vec3& worldPos, int screenX, int screenY, int flags ) { return true; } 
 	virtual bool canPaintSelection( ){ return true; }
 	virtual Action* applyToSelection(){ return nullptr;}
 

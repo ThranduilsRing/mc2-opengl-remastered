@@ -21,8 +21,8 @@ class DragTool: public Brush
 
 		virtual bool beginPaint();
 		virtual Action* endPaint();
-		virtual bool paint( Stuff::Vector3D& worldPos, int screenX, int screenY  );
-		virtual bool canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags ) { return true; } 
+		virtual bool paint( glm::vec3& worldPos, int screenX, int screenY  );
+		virtual bool canPaint( glm::vec3& worldPos, int screenX, int screenY, int flags ) { return true; } 
 		virtual bool canPaintSelection( ){ return false; }
 
 

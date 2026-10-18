@@ -890,7 +890,7 @@ void EditorInterface::renderObjectInfoPanel()
 	const char* name = obj->getDisplayName();
 	ImGui::Text("%s", (name && name[0]) ? name : "(unnamed)");
 	ImGui::Text("ID %ld   %s", obj->getID(), InspectorPanel::CategoryToken(obj));
-	const Stuff::Vector3D& p = obj->getPosition();
+	const glm::vec3& p = obj->getPosition();
 	ImGui::Text("Pos  %.0f, %.0f, %.0f", p.x, p.y, p.z);
 	if (sel > 1)
 		ImGui::TextDisabled("(+%d more selected)", sel - 1);
@@ -1280,7 +1280,7 @@ void EditorInterface::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 
 	
 	/* this calculation was based in the code for Camera::moveRight(float amount) */
-	Stuff::Vector3D direction;
+	glm::vec3 direction;
 	if (!eye->usePerspective)
 	{
 		direction.x = 1.0;
@@ -1296,14 +1296,14 @@ void EditorInterface::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 	float worldCameraRotation = eye->getCameraRotation();
 	OppRotate(direction,worldCameraRotation);
 
-	Stuff::Vector3D eyeDisplacement = eye->getPosition();
+	glm::vec3 eyeDisplacement = eye->getPosition();
 
 	/* maxVisual was taken from Camera::setPosition(). */
 	float maxVisual = (Terrain::worldUnitsMapSide / 2) - Terrain::worldUnitsPerVertex;
 	float bound = SQRT_2 * maxVisual;
 	float amount = bound * 2.0f * (((float)pt.x) / HSCROLLBAR_RANGE - 0.5f);
 
-	float amountMore = amount - direction * eyeDisplacement;
+	float amountMore = amount - glm::dot(direction, eyeDisplacement);
 	
 	eye->moveRight(amountMore);
 

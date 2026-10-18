@@ -179,7 +179,7 @@ public:
 	
 		MidLevelRenderer::PerspectiveMode = usePerspective;
 		theClipper->StartDraw(cameraOrigin, cameraToClip, fColor, &fColor, default_state, &z);
-		MidLevelRenderer::GOSVertex::farClipReciprocal = (1.0f-cameraToClip(2, 2))/cameraToClip(3, 2);
+		MidLevelRenderer::GOSVertex::farClipReciprocal = (1.0f-cameraToClip[2][2])/cameraToClip[2][3];
 
 		if (s_ecrLog)
 			EditorCameraTrace("EditorCamera::render frame=%ld gate(active && turn>1)=%d",
@@ -195,15 +195,15 @@ public:
 			// stale or zero view uniforms put the props off-screen.
 			{
 				RenderCore::ViewUniforms vu{};
-				auto stuffToRowMajor = [](const Stuff::Matrix4D& m, float out[16]) {
-					const float* col = m.entries;
+				auto stuffToRowMajor = [](const glm::mat4& m, float out[16]) {
+					const float* col = glm::value_ptr(m);
 					for (int r = 0; r < 4; ++r)
 						for (int c = 0; c < 4; ++c)
 							out[r * 4 + c] = col[c * 4 + r];
 				};
 				stuffToRowMajor(eye->worldToClipGL(), vu.worldToClipGL);
 				stuffToRowMajor(eye->worldToViewGL(), vu.worldToViewGL);
-				const Stuff::Vector3D orig = eye->cameraOriginGL();
+				const glm::vec3 orig = eye->cameraOriginGL();
 				vu.cameraWorldPos[0] = orig.x;
 				vu.cameraWorldPos[1] = orig.y;
 				vu.cameraWorldPos[2] = orig.z;
@@ -236,7 +236,7 @@ public:
 			// zero-initialized defaults, breaking distance-based tessellation
 			// admission and producing the "GPU path renders zero / falls back to
 			// CPU look" symptom. Mirrors code/gamecam.cpp:178-185 exactly.
-			Stuff::Vector3D camOrig = getCameraOrigin();
+			glm::vec3 camOrig = getCameraOrigin();
 			gos_SetTerrainCameraPos(camOrig.x, camOrig.y, camOrig.z);
 			gos_SetTerrainLightDir(lightDirection.x, lightDirection.y, lightDirection.z);
 
@@ -404,7 +404,7 @@ public:
 		// the scene size as the LAST word before this frame's render + the next
 		// mouse-pick. (Equal to the gos width when undocked, so no-op there.)
 		{
-			Stuff::Vector3D sceneRes;
+			glm::vec3 sceneRes;
 			sceneRes.x = (float)Environment.drawableWidth;
 			sceneRes.y = (float)Environment.drawableHeight;
 			sceneRes.z = 0.0f;
@@ -451,7 +451,7 @@ public:
    	   		useFog = false;
    			useShadows = false;
    	   		
-   	   		Stuff::Vector3D pos = getPosition();
+   	   		glm::vec3 pos = getPosition();
    	   		compass->setObjectParameters(pos,0.0f,false,0,0);
    	   		compass->setMoverParameters(0.0f);
    	   		compass->setGesture(0);
@@ -471,7 +471,7 @@ public:
 				// eye, making the sphere appear as a wall at ground level. Adding
 				// cameraAltitude centers the sphere at the actual eye height so the
 				// camera is always inside the sphere regardless of zoom level.
-				Stuff::Vector3D pos = getPosition();
+				glm::vec3 pos = getPosition();
 				pos.z = cameraShiftZ + cameraAltitude;
 
 				theSky->setObjectParameters(pos,0.0f,false,0,0);
