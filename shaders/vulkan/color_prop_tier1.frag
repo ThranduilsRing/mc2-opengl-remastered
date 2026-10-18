@@ -100,15 +100,19 @@ layout(location = 1) out vec4 oGBuffer1;  // MRT1 normal + shadow class
 //     the core cut are alpha-blended over the scene with alpha a/kCoverCut (continuous at the cut);
 //     the pipeline depth-tests without writing depth and masks GBuffer1, so a fringe never punches
 //     a hole in what is behind it and never rewrites the normal or shadow class.
-const float kCoverCut = 0.5;
+// The cut rises with the mip level: at mip 0 alpha is the authored cutout (crisp 0.5 edge); once
+// the texture is minified, alpha is box-filtered COVERAGE (a chain-link fence at distance averages
+// to ~0.5-0.7), and a 0.5 cut would turn it into a solid slab -- so minified partial coverage goes
+// to the blended fringe at close to its true alpha instead.
 const float kCoverMin = 0.02;   // below this a fringe is invisible; skip the blend
-float propCoverage(float a) {
+float propCoverage(float a, float lod) {
+    float cut = mix(0.5, 0.9, clamp(lod * 0.5, 0.0, 1.0));
     if (uPacket.coverageFringePass == 0) {
-        if (a < kCoverCut) discard;
+        if (a < cut) discard;
         return 1.0;
     }
-    if (a >= kCoverCut || a < kCoverMin) discard;
-    return a / kCoverCut;
+    if (a >= cut || a < kCoverMin) discard;
+    return a / cut;
 }
 #include "../include/axis.hglsl"
 
@@ -178,7 +182,7 @@ void main() {
         float lodOn = 0.5 * log2(max(max(dot(duv1, duv1), dot(duv2, duv2)), 1e-12));
         lodOn = max(lodOn, 0.0);
         vec4 texc = textureLod(uAlbedoOn, vec3(uvSampledOn, float(vLayerOn)), lodOn);
-        cover = propCoverage(texc.a);   // PROP-COVERAGE-1 (replaces the Bayer screen-door dither)
+        cover = propCoverage(texc.a, lodOn);   // PROP-COVERAGE-1 (replaces the Bayer screen-door dither)
         // ★VK-FLIP-FIELD-REPORT-1 BLACK-FENCE FIX: the alpha-ON group is the ALPHA_TEST
         // class (tree cards / fences / foliage). GL static_prop.frag:339 floors their lit
         // color at max(litRgb, vec3(0.5)) so the dark, light-facing-falloff side doesn't
@@ -203,7 +207,7 @@ void main() {
         // A packet GL alpha-tests although its type sits in the alpha-OFF group (its texture's alpha flag is set after the arrays
         // were built, e.g. the hex lattice props): GL's dither discard, its alpha-test light floor and its alpha-test shadow class.
         if (uPacket.packetAlphaTest != 0) {
-            cover = propCoverage(texOff.a);   // PROP-COVERAGE-1
+            cover = propCoverage(texOff.a, textureQueryLod(uAlbedo, fract(vUv) * vUvScale).y);   // PROP-COVERAGE-1
             rgb = albedo * max(vArgb, vec3(0.5));
             alphaTestClass = true;
         }
