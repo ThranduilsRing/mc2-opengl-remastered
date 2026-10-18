@@ -358,7 +358,7 @@ void __stdcall InitGameOS(HINSTANCE /*hInstance*/, HWND hWindow, char* commandLi
                 // the shared initializer rejects contexts without clip control.
                 // Same VK bring-up as the game (gameosmain.cpp): shared engine context + present on this HWND.
                 // A no-op unless the Vulkan backend is selected; a failed bring-up is fatal inside it.
-                EditorGameOSTrace("InitGameOS: before initVulkanBackend backend=%s", mc2::renderBackendName(mc2::renderBackend()));
+                EditorGameOSTrace("InitGameOS: before initVulkanBackend backend=%s", "vulkan");
                 initVulkanBackend(g_editorRenderWindow, w, h);
                 EditorGameOSTrace("InitGameOS: after initVulkanBackend");
 
@@ -494,28 +494,7 @@ static void EditorViewportCaptureTick()
     const char* path = EditorCliCapturePath();
     if (g_captureDone || !path || !path[0] || !land) return;
     if (++s_frames < EditorCliCaptureFrame()) return;
-    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan)
-    {
-        if (!s_queued) s_queued = gos::screenshot::request(path, EditorCaptureDone);
-        return;
-    }
-    int w = 0, h = 0;
-    if (SDL_Window* sw = graphics::getSDLWindow()) SDL_GetWindowSize(sw, &w, &h);
-    if (w <= 0 || h <= 0) return;
-    std::vector<unsigned char> rgba((size_t)w * h * 4);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-    glReadBuffer(GL_BACK);
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
-    std::vector<unsigned char> bgr((size_t)w * h * 3);
-    for (size_t i = 0; i < (size_t)w * h; ++i) { bgr[i*3] = rgba[i*4+2]; bgr[i*3+1] = rgba[i*4+1]; bgr[i*3+2] = rgba[i*4]; }
-    unsigned char hdr[18] = {0};
-    hdr[2] = 2; hdr[12] = (unsigned char)(w & 255); hdr[13] = (unsigned char)(w >> 8);
-    hdr[14] = (unsigned char)(h & 255); hdr[15] = (unsigned char)(h >> 8); hdr[16] = 24;   // bottom-up rows: TGA native origin
-    FILE* f = fopen(path, "wb");
-    bool ok = f && fwrite(hdr, 1, 18, f) == 18 && fwrite(bgr.data(), 1, bgr.size(), f) == bgr.size();
-    if (f) fclose(f);
-    EditorCaptureDone(path, ok, w, h);
+    if (!s_queued) s_queued = gos::screenshot::request(path, EditorCaptureDone);
 }
 
 extern void gos_RendererBeginFrame();
@@ -790,8 +769,7 @@ DWORD __stdcall RunGameOSLogic()
 
     // Under Vulkan the selection brackets and health bars route through the HUD batch (VkHudRouteScope, mclib/appear.cpp);
     // the game replays that batch here (gameosmain.cpp), so the editor must too or they never reach the present tail.
-    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan)
-        gos_RendererFlushHUDBatch();
+    gos_RendererFlushHUDBatch();
 
 #ifdef MC2_IMGUI
     // RENDER-TO-TEXTURE viewport: endScene() composited the scene into the bottom-left

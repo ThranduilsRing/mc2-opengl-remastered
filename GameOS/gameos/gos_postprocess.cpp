@@ -951,7 +951,7 @@ void gosPostProcess::endScene()
     GLuint directFbo = 0;
     bool directVkOnly = false;
 #ifdef MC2_VULKAN
-    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+    {
         mc2vk::EnginePresentVk& present = mc2vk::getOrCreateEnginePresentVk();
         directFbo = (GLuint)present.presentDirectFbo();
         if (directFbo == 0)
@@ -1045,7 +1045,7 @@ void gosPostProcess::endScene()
     if (effectiveModeForComposite == 1 && sceneObjectIdTex_ == 0)
         effectiveModeForComposite = 0;
 #ifdef MC2_VULKAN
-    if ((directFbo != 0 || directVkOnly) && mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
+    if ((directFbo != 0 || directVkOnly) &&
         (effectiveModeForComposite == 0 || effectiveModeForComposite == 1 ||
          effectiveModeForComposite == 3 || effectiveModeForComposite == 5)) {
         nativeCompositeDone = mc2vk::getOrCreateEnginePresentVk().renderNativeCompositeVisual(

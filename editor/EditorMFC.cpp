@@ -190,10 +190,8 @@ static void editor_set_default_env_vars()
     // the exe directly without a .bat. Bat overrides still work because we
     // only set when unset.
     if (!mc2::gate::isSet<"MC2_EDITOR_TRACE">())            _putenv_s("MC2_EDITOR_TRACE",              "1");
-    // The editor viewport renders on the same Vulkan path as the game (step 3.6). MC2_RENDER_BACKEND=gl
-    // stays as the temporary opt-out; the umbrella arms the VK islands the shared scene driver feeds.
-    if (!mc2::gate::isSet<"MC2_RENDER_BACKEND">())          _putenv_s("MC2_RENDER_BACKEND",            "vulkan");
-    // MC2_VK_SHARED_GBUFFER needs no bake: the umbrella is default ON and reads false under the gl opt-out.
+    // The editor viewport renders on the same Vulkan path as the game (step 3.6); the backend has no selector to bake and
+    // MC2_VK_SHARED_GBUFFER (the umbrella) is default ON.
     // S3 (2026-05-25): MC2_GPU_DRIVEN, MC2_EDITOR_BYPASS_BLDG_CULL, MC2_STATIC_PROP_REGISTRY
     // sidesteps retired -- editor now runs canonical default-ON chain.
 }

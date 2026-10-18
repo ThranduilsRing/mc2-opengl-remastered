@@ -1101,7 +1101,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_RENDER_BACKEND",
         EnvVarKind::Feature,
         false,
-        "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default vulkan; unset/unrecognized -> vulkan; gl is the temporary opt-out).",
+        "Legacy selector, read only to report an ignored value: the engine renders on Vulkan only (the gl opt-out was removed).",
     },
     {
         "MC2_FEATURE_RENDER_BACKEND_IFACE",
@@ -1563,7 +1563,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_VK_SHARED_GBUFFER",
         EnvVarKind::Feature,
         true,
-        "The VK umbrella, default ON since the 2026-10-17 default flip; =0 is a kill switch (no effect under MC2_RENDER_BACKEND=gl).",
+        "The VK umbrella, default ON since the 2026-10-17 default flip; =0 is a kill switch.",
     },
     {
         "MC2_TRACE_VK_SHARED_SCENE_STRICT",

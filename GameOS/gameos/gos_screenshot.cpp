@@ -20,7 +20,7 @@ Slot g_slot;
 }  // namespace
 
 bool request(const char* path, DoneFn done) {
-    if (const char* why = g_slot.refusal(path, mc2::renderBackend() == mc2::RenderBackend::Vulkan)) {
+    if (const char* why = g_slot.refusal(path)) {
         mc2::fmt::print_err("[SCREENSHOT v1] request rejected: {}\n", mc2::fmt::safe(why));
         return false;
     }

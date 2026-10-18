@@ -39,7 +39,6 @@
 #include "vulkan_shadow_island_live.h"  // VK CSM direct shadow debug overlay view
 #include "vulkan_sky_island.h"         // VK-PARITY-F3: HDRI sky VK owner
 #endif
-#include "render_backend_select.h"      // VK-P14b: mc2::renderBackend() (GL-safe, no VK dep)
 #ifdef MC2_VULKAN
 #include "engine_present_vk.h"          // VK-P14b: MC2_VK_PRESENT_DIRECT_FBO present-FBO accessor
 #endif

@@ -54,8 +54,7 @@ static bool vkImguiRequested() {
 #endif
     }
 #ifdef MC2_VULKAN
-    // Only a Vulkan backend has a Vulkan ImGui renderer; a GL run keeps the GL one whatever the gate says.
-    return cachedGate == 1 && mc2::renderBackend() == mc2::RenderBackend::Vulkan;
+    return cachedGate == 1;
 #else
     return false;
 #endif
@@ -339,7 +338,7 @@ void GuiRuntime::Shutdown() {
     if (!g_imguiInitialized) return;
 #ifdef MC2_VULKAN
     // VK-IMGUI: shut the Vulkan ImGui renderer down first when it owns the frame.
-    if (vkImguiRequested() && mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+    if (vkImguiRequested()) {
         mc2vk::getOrCreateEnginePresentVk().shutdownImguiVulkanRenderer();
     }
 #endif
@@ -403,13 +402,14 @@ bool GuiRuntime::RttEnabled() {
     // The RTT viewport blits the GL back buffer into a GL texture; under Vulkan the scene lives in the present
     // image, so the full-window scene is the only mode there.
 #ifdef MC2_VULKAN
-    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) return false;
-#endif
+    return false;
+#else
     static int s_on = -1;
     if (s_on < 0) {
         s_on = mc2::gate::get<"MC2_EDITOR_RTT">();   // default OFF
     }
     return s_on != 0;
+#endif
 }
 bool GuiRuntime::AutoDockActive() {
     if (!s_editorMode) return false;   // GAME: nothing auto-docks
@@ -543,8 +543,7 @@ void GuiRuntime::NewFrame() {
         ImGui_ImplOpenGL3_NewFrame();
     } else if (vkImguiRequested()) {
 #ifdef MC2_VULKAN
-        if (mc2::renderBackend() == mc2::RenderBackend::Vulkan)
-            mc2vk::getOrCreateEnginePresentVk().prepareImguiVulkanFrame();
+        mc2vk::getOrCreateEnginePresentVk().prepareImguiVulkanFrame();
 #endif
     }
     if (s_useSDL2Backend)
@@ -733,10 +732,7 @@ static void maybeTraceVkImguiDecline() {
 
     int directPresentArmed = 0;
 #ifdef MC2_VULKAN
-    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
-        mc2vk::EnginePresentVk& vkpres = mc2vk::getOrCreateEnginePresentVk();
-        directPresentArmed = vkpres.directPresentFrameArmed() ? 1 : 0;
-    }
+    directPresentArmed = mc2vk::getOrCreateEnginePresentVk().directPresentFrameArmed() ? 1 : 0;
 #endif
     if (directPresentArmed) {
         if (s_tracedArmed) return;
@@ -823,8 +819,7 @@ void GuiRuntime::Render() {
 
     if (!s_openGlRendererInitialized && vkImguiRequested()) {
 #ifdef MC2_VULKAN
-        if (mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
-            mc2vk::getOrCreateEnginePresentVk().renderImguiVulkanDrawData(ImGui::GetDrawData())) {
+        if (mc2vk::getOrCreateEnginePresentVk().renderImguiVulkanDrawData(ImGui::GetDrawData())) {
             static bool s_tracedVkUsed = false;
             if (!s_tracedVkUsed) {
                 s_tracedVkUsed = true;

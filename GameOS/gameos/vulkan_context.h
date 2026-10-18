@@ -9,7 +9,7 @@
 // getOrCreateEngineVulkanContext() and must not create their own device.
 // A grep for VkDevice ownership must land here.
 //
-// The context is born once at engine init when renderBackend()==Vulkan
+// The context is born once at engine init
 // (gameosmain), fail-soft: any failure logs a reason, leaves the accessor
 // returning a context whose device() is VK_NULL_HANDLE, and the caller forces
 // the session back to GL. Never crashes.

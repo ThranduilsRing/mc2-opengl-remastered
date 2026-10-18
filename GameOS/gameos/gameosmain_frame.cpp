@@ -603,7 +603,7 @@ void frameCameraPark(graphics::RenderWindowHandle win) {
             // a single int/pointer check with no allocation when neither
             // MC2_VISUAL_CAPTURE_FRAME nor MC2_VISUAL_BOOKMARK_CAPTURE is set,
             // so we resolve the FBO lazily only when one of them is active.
-            if (gos::visual_capture::active() && mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+            if (gos::visual_capture::active()) {
                 // The shown image is the VK present: capture_to() queues a present readback (the GL scene FBO is not read any more).
                 int vkW = 0, vkH = 0;
                 graphics::get_drawable_size(win, &vkW, &vkH);

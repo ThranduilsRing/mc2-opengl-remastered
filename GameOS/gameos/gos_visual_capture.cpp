@@ -300,7 +300,7 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
     buf += "  \"readback_source\": \""; buf += g_readbackSource; buf += "\",\n";
     // The backend that DREW this frame, not the one requested: a harness has to tell a GL frame from a Vulkan frame
     // (a Vulkan context that fails to start now exits the process).
-    buf += "  \"backend\": \""; buf += mc2::renderBackendName(mc2::renderBackend()); buf += "\",\n";
+    buf += "  \"backend\": \""; buf += "vulkan"; buf += "\",\n";
     // VK-FIRST-BOOKMARK-POSE-1: record the ACTUAL camera pose the JUST-RENDERED
     // frame used (stashed at the rendered_pose_matches point, BEFORE the per-settle
     // re-apply -- so it reflects what update()+render produced, not the value we
@@ -361,7 +361,7 @@ void capture_to(const std::string& dir, const std::string& base,
                 long triggerFrame, bool deterministic) {
     std::string png = dir + "/" + base + ".png";
     std::string js  = dir + "/" + base + ".json";
-    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+    {
         // VK-VISUAL-CAPTURE-1: defer the PNG to this frame's VK present
         // readback (vkCaptureDeliver). Sidecar now: it snapshots per-frame
         // globals (rendered pose) that the next bookmark would overwrite.

@@ -89,7 +89,7 @@ TimerState* state(bool create) {
 }  // namespace
 
 bool Active() {
-    return mc2::renderBackend() == mc2::RenderBackend::Vulkan && gos_render_pass_timer::Enabled();
+    return gos_render_pass_timer::Enabled();
 }
 
 void Begin(VkCommandBuffer cb, gos_render_pass_timer::Pass p) {

@@ -136,7 +136,7 @@ int64_t bytesToMib(int64_t v) { return v < 0 ? kUnavailable : v / (1024 * 1024);
 
 Snapshot take() {
     Snapshot s;
-    s.backend = (mc2::renderBackend() == mc2::RenderBackend::Vulkan) ? "vk" : "gl";
+    s.backend = "vk";
 #ifdef MC2_VULKAN
     readVulkan(s);
 #endif

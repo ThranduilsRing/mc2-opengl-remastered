@@ -50,7 +50,8 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
     // VK device that P6/P8/P9/P14 will reuse. Present is still GL swap (T3 wires
     // the VK present intercept later). On =gl/unset this whole block is skipped
     // -> byte-identical GL behavior.
-    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+    mc2::noteBackendEnv();
+    {
 #ifdef MC2_VULKAN
         // R2 INTERLOCK (plan §6/R2, landed here since the device is born here):
         // volkLoadDevice writes a PROCESS-GLOBAL dispatch table. Both the engine
@@ -167,7 +168,7 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
     // to GL for the rest of the session (never breaks the GL path).
     bool vkPresented = false;
     bool vkPresentAttempted = false;   // presentGLFrame ran (it ends the Vulkan frame itself on every exit)
-    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+    {
         mc2vk::EnginePresentVk& vkpres = mc2vk::getOrCreateEnginePresentVk();
         // VK-FAILSOFT-DISARM-1: present init was deferred on a zero
         // surface extent (window minimized at boot). Retry once per
@@ -279,8 +280,7 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
         // frame for the sub-second gap (or stays blank while
         // minimized, where nothing is visible anyway). If the
         // retry budget runs out the process exits (fatalBackendFailure).
-        if (mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
-            g_vkPresentInitDeferred) {
+        if (g_vkPresentInitDeferred) {
             // hold the frame: no GL present while VK retries the HWND
         } else {
             graphics::swap_window(win);

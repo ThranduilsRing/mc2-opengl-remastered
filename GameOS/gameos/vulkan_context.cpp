@@ -2,8 +2,8 @@
 //
 // VK-P13-SELECTOR-1 / T2 -- the standalone shared engine Vulkan context.
 // Owns instance + physical device + logical device + graphics queue + VMA +
-// volk device dispatch. Born once at engine init (gameosmain) when
-// renderBackend()==Vulkan; any error is reported to the caller (fatal). Device ownership lives HERE;
+// volk device dispatch. Born once at engine init (gameosmain);
+// any error is reported to the caller (fatal). Device ownership lives HERE;
 // consumers borrow it.
 //
 // Whole TU is inert unless MC2_VULKAN is defined. Device bring-up keeps the

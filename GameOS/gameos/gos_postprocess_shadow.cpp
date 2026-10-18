@@ -17,8 +17,7 @@ void gosPostProcess::drawShadowDebugOverlay()
     // (csmDebugLayer_) via the array sampler. Static map (mode 0) stays 2D.
     const bool csmDynamic = (mc2ShadowCsmEnabled() && dynShadowArrayTex_ != 0 && shadowDebugMode_ != 0);
 #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
-    if (csmDynamic && mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
-        mc2_vk_shadow_island_csm_array_ready()) {
+    if (csmDynamic && mc2_vk_shadow_island_csm_array_ready()) {
         int layer = csmDebugLayer_;
         if (layer < 0) layer = 0;
         if (layer >= csmCount_) layer = csmCount_ - 1;

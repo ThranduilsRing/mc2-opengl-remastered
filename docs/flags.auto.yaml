@@ -4297,7 +4297,7 @@ flags:
     default: ""
     rule: Std
     owner: unclassified
-    doc: "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default vulkan; unset/unrecognized -> vulkan; gl is the temporary opt-out)."
+    doc: "Legacy selector, read only to report an ignored value: the engine renders on Vulkan only (the gl opt-out was removed)."
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_RENDER_BACKEND, kind: Feature, order: -1, default_on: false}
@@ -7051,7 +7051,7 @@ flags:
     default: true
     rule: Lead0Kill
     owner: vk
-    doc: "The VK umbrella, default ON since the 2026-10-17 default flip; =0 is a kill switch (no effect under MC2_RENDER_BACKEND=gl)."
+    doc: "The VK umbrella, default ON since the 2026-10-17 default flip; =0 is a kill switch."
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_VK_SHARED_GBUFFER, kind: Feature, order: -1, default_on: true}
