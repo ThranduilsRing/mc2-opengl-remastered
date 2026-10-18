@@ -14,7 +14,7 @@ static inline float camWrap180 (float a)
 const float CAM_THRESHOLD = 150.0f;
 
 //---------------------------------------------------------------------------
-void Camera::setPosition(Stuff::Vector3D newPosition, bool swoopy)
+void Camera::setPosition(glm::vec3 newPosition, bool swoopy)
 {
 #if MC2_SIM_TRACE
 	MC2_SIM_TRACE_LINE("SETPOS new=%g,%g old=%g,%g", static_cast<double>(newPosition.x), static_cast<double>(newPosition.y), static_cast<double>(position.x), static_cast<double>(position.y));
@@ -78,8 +78,8 @@ void Camera::setPosition(Stuff::Vector3D newPosition, bool swoopy)
 	float zoomInClip = 375.0;
 	float MAX_CORNER_DISTANCE = 1300.0;
 	
-	Stuff::Vector3D cornerPos1(maxVisual,0,0), cornerPos2(0,maxVisual,0), cornerPos3(-maxVisual,0,0), cornerPos4(0,-maxVisual,0);
-	Stuff::Vector3D distance1, distance2, distance3, distance4;
+	glm::vec3 cornerPos1(maxVisual,0,0), cornerPos2(0,maxVisual,0), cornerPos3(-maxVisual,0,0), cornerPos4(0,-maxVisual,0);
+	glm::vec3 distance1, distance2, distance3, distance4;
 
 	distance1.Subtract(newPosition,cornerPos1);
 	distance2.Subtract(newPosition,cornerPos2);
@@ -517,9 +517,9 @@ void Camera::rotateNormal (void)
 }
 
 //---------------------------------------------------------------------------
-void Camera::movePosLeft(float amount, Stuff::Vector3D &pos)
+void Camera::movePosLeft(float amount, glm::vec3 &pos)
 {
-	Stuff::Vector3D direction;
+	glm::vec3 direction;
 	direction.x = -0.7071f;
 	direction.y = -0.7071f;
 	direction.z = 0.0;
@@ -532,9 +532,9 @@ void Camera::movePosLeft(float amount, Stuff::Vector3D &pos)
 }
 
 //---------------------------------------------------------------------------
-void Camera::movePosRight(float amount, Stuff::Vector3D &pos)
+void Camera::movePosRight(float amount, glm::vec3 &pos)
 {
-	Stuff::Vector3D direction;
+	glm::vec3 direction;
 	direction.x = 0.7071f;
 	direction.y = 0.7071f;
 	direction.z = 0.0;
@@ -547,9 +547,9 @@ void Camera::movePosRight(float amount, Stuff::Vector3D &pos)
 }
 
 //---------------------------------------------------------------------------
-void Camera::movePosUp(float amount, Stuff::Vector3D &pos)
+void Camera::movePosUp(float amount, glm::vec3 &pos)
 {
-	Stuff::Vector3D direction;
+	glm::vec3 direction;
 	direction.x = -0.7071f;
 	direction.y = 0.7071f;
 	direction.z = 0.0;
@@ -562,9 +562,9 @@ void Camera::movePosUp(float amount, Stuff::Vector3D &pos)
 }
 
 //---------------------------------------------------------------------------
-void Camera::movePosDown(float amount, Stuff::Vector3D &pos)
+void Camera::movePosDown(float amount, glm::vec3 &pos)
 {
-	Stuff::Vector3D direction;
+	glm::vec3 direction;
 	direction.x = 0.7071f;
 	direction.y = -0.7071f;
 	direction.z = 0.0;
@@ -579,7 +579,7 @@ void Camera::movePosDown(float amount, Stuff::Vector3D &pos)
 //---------------------------------------------------------------------------
 void Camera::moveLeft(float amount)
 {
-	Stuff::Vector3D direction;
+	glm::vec3 direction;
 	
 	if (!usePerspective)
 	{
@@ -603,7 +603,7 @@ void Camera::moveLeft(float amount)
 //---------------------------------------------------------------------------
 void Camera::moveRight(float amount)
 {
-	Stuff::Vector3D direction;
+	glm::vec3 direction;
 	
 	if (!usePerspective)
 	{
@@ -627,7 +627,7 @@ void Camera::moveRight(float amount)
 //---------------------------------------------------------------------------
 void Camera::moveUp(float amount)
 {
-	Stuff::Vector3D direction;
+	glm::vec3 direction;
 	
 	if (!usePerspective)
 	{
@@ -651,7 +651,7 @@ void Camera::moveUp(float amount)
 //---------------------------------------------------------------------------
 void Camera::moveDown(float amount)
 {
-	Stuff::Vector3D direction;
+	glm::vec3 direction;
 	
 	if (!usePerspective)
 	{
@@ -686,7 +686,7 @@ void Camera::applyScrollDelta(float dx, float dy)
 #endif
 	if (camSmoothTau() <= 0.0f)
 	{
-		Stuff::Vector3D newPosition = position;
+		glm::vec3 newPosition = position;
 		newPosition.x += dx;
 		newPosition.y += dy;
 		setPosition(newPosition);
@@ -748,7 +748,7 @@ bool Camera::inputSmoothingEnabled (void)
 // smoother moved the pose since our last step (bookmark apply, scripted
 // swoop, drag-jump, findObject), the goal is dropped immediately — hard-set
 // paths stay hard-set and captures stay deterministic.
-void Camera::updateInputSmoothing (Stuff::Vector3D &newPosition)
+void Camera::updateInputSmoothing (glm::vec3 &newPosition)
 {
 	if (scrollSmoothActive)
 	{
@@ -781,7 +781,7 @@ void Camera::updateInputSmoothing (Stuff::Vector3D &newPosition)
 			float a  = camSmoothAlpha(frameLength);
 			float dx = scrollSmoothGoalX - position.x;
 			float dy = scrollSmoothGoalY - position.y;
-			Stuff::Vector3D p = position;
+			glm::vec3 p = position;
 			if ((fabsf(dx) < 0.05f) && (fabsf(dy) < 0.05f))
 			{
 				p.x = scrollSmoothGoalX;
@@ -838,10 +838,10 @@ void Camera::rotateLightLeft(float amount)
 		lightYaw -= 360;
 
 	//Replace with TGL Lights
-	Stuff::LinearMatrix4D lightToWorldMatrix;
+	glm::mat4 lightToWorldMatrix;
 
-	lightToWorldMatrix.BuildTranslation(Stuff::Point3D(0.0,0.0,0.0));
-	lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
+	mc2::math::buildTranslation(lightToWorldMatrix, glm::vec3(0.0,0.0,0.0));
+	mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
 
 	worldLights[0]->SetLightToWorld(&lightToWorldMatrix);
 }	
@@ -854,9 +854,9 @@ void Camera::rotateLightRight(float amount)
 		lightYaw += 360;
 
 	//Replace with TGL Lights
-	Stuff::LinearMatrix4D lightToWorldMatrix;
-	lightToWorldMatrix.BuildTranslation(Stuff::Point3D(0.0,0.0,0.0));
-	lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
+	glm::mat4 lightToWorldMatrix;
+	mc2::math::buildTranslation(lightToWorldMatrix, glm::vec3(0.0,0.0,0.0));
+	mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
 
 	worldLights[0]->SetLightToWorld(&lightToWorldMatrix);
 }	
@@ -869,10 +869,10 @@ void Camera::rotateLightUp(float amount)
 		lightPitch = 90.0;
 
 	//Replace with TGL Lights
-	Stuff::LinearMatrix4D lightToWorldMatrix;
+	glm::mat4 lightToWorldMatrix;
 	
-	lightToWorldMatrix.BuildTranslation(Stuff::Point3D(0.0,0.0,0.0));
-	lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
+	mc2::math::buildTranslation(lightToWorldMatrix, glm::vec3(0.0,0.0,0.0));
+	mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
 
 	worldLights[0]->SetLightToWorld(&lightToWorldMatrix);
 }	
@@ -885,10 +885,10 @@ void Camera::rotateLightDown(float amount)
 		lightPitch = 5.0f;
 
 	//Replace with TGL Lights
-	Stuff::LinearMatrix4D lightToWorldMatrix;
+	glm::mat4 lightToWorldMatrix;
 	
-	lightToWorldMatrix.BuildTranslation(Stuff::Point3D(0.0,0.0,0.0));
-	lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
+	mc2::math::buildTranslation(lightToWorldMatrix, glm::vec3(0.0,0.0,0.0));
+	mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
 
 	worldLights[0]->SetLightToWorld(&lightToWorldMatrix);
 }	

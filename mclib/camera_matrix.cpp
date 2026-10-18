@@ -2,9 +2,6 @@
 // Declared in the class headers; shared names in camera_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "camera_internal.h"
-#include "math/stuff_glm_bridge.h"
-
-
 namespace {
 // XFORM-CONVENTION-HARNESS-1: the two canonical clip-space convention
 // matrices used to live here as anonymous-namespace free functions. They were
@@ -14,8 +11,8 @@ namespace {
 // choices is preserved at the new TU's function definitions. camera.cpp keeps
 // its two file-scope constants and simply initializes them from the lifted
 // functions; the hot paths below are byte-identical to before.
-const Stuff::Matrix4D kAxisSwapMC2toGL   = mc2xform::makeAxisSwapMC2toGL();
-const Stuff::Matrix4D kPixelHomogToGLNDC = mc2xform::makePixelHomogToGLNDC();
+const glm::mat4 kAxisSwapMC2toGL   = mc2xform::makeAxisSwapMC2toGL();
+const glm::mat4 kPixelHomogToGLNDC = mc2xform::makePixelHomogToGLNDC();
 } // namespace
 
 //---------------------------------------------------------------------------
@@ -37,11 +34,11 @@ float one = 1.0f;
 float point1 = 0.000001f;
 
 //---------------------------------------------------------------------------
-void Camera::projectCamera (Stuff::Vector3D &point)
+void Camera::projectCamera (glm::vec3 &point)
 {
 	//--------------------------------------------------------------------
 	// This is already in -x,z,y reference frame.
-	point *= worldToCameraMatrix;
+	point = mc2::math::transformVector(point, worldToCameraMatrix);
 }
  
 //------------------------------------------------------------------------------
@@ -78,29 +75,29 @@ void Camera::setOrthogonal(void)
 		// X, Y, and Z axis values (when divided by W) will all be between 0 and 1
 		//------------------------------------------------------------------------
 		//
-		cameraToClip(LEFT_AXIS, LEFT_AXIS) = 1.0f / (left_clip-right_clip);
-		cameraToClip(LEFT_AXIS, UP_AXIS) = 0.0f;
-		cameraToClip(LEFT_AXIS, FORWARD_AXIS) = 0.0f;
-		cameraToClip(LEFT_AXIS, 3) = 0.0f;
+		cameraToClip[LEFT_AXIS][LEFT_AXIS] = 1.0f / (left_clip-right_clip);
+		cameraToClip[UP_AXIS][LEFT_AXIS] = 0.0f;
+		cameraToClip[FORWARD_AXIS][LEFT_AXIS] = 0.0f;
+		cameraToClip[3][LEFT_AXIS] = 0.0f;
 
-		cameraToClip(UP_AXIS, LEFT_AXIS) = 0.0f;
-		cameraToClip(UP_AXIS, UP_AXIS) = 1.0f / (top_clip-bottom_clip);
-		cameraToClip(UP_AXIS, FORWARD_AXIS) = 0.0f;
-		cameraToClip(UP_AXIS, 3) = 0.0f;
+		cameraToClip[LEFT_AXIS][UP_AXIS] = 0.0f;
+		cameraToClip[UP_AXIS][UP_AXIS] = 1.0f / (top_clip-bottom_clip);
+		cameraToClip[FORWARD_AXIS][UP_AXIS] = 0.0f;
+		cameraToClip[3][UP_AXIS] = 0.0f;
 
-		cameraToClip(FORWARD_AXIS, LEFT_AXIS) = 0.0;
-		cameraToClip(FORWARD_AXIS, UP_AXIS) = 0.0;
+		cameraToClip[LEFT_AXIS][FORWARD_AXIS] = 0.0;
+		cameraToClip[UP_AXIS][FORWARD_AXIS] = 0.0;
 		// Reverse-Z (U1): parallel/ortho z:[near,far]->NDC[1,0] (was [0,1]).
-		cameraToClip(FORWARD_AXIS, FORWARD_AXIS) = -1.0f / (far_clip-near_clip);
-		cameraToClip(FORWARD_AXIS, 3) = 0.0;
+		cameraToClip[FORWARD_AXIS][FORWARD_AXIS] = -1.0f / (far_clip-near_clip);
+		cameraToClip[3][FORWARD_AXIS] = 0.0;
 
-		cameraToClip(3, LEFT_AXIS) = -right_clip / (left_clip-right_clip);
-		cameraToClip(3, UP_AXIS) = -bottom_clip / (top_clip-bottom_clip);
+		cameraToClip[LEFT_AXIS][3] = -right_clip / (left_clip-right_clip);
+		cameraToClip[UP_AXIS][3] = -bottom_clip / (top_clip-bottom_clip);
 		// Reverse-Z (U1): translate term flips sign and uses far_clip.
-		cameraToClip(3, FORWARD_AXIS) = far_clip / (far_clip-near_clip);
-		cameraToClip(3, 3) = 1.0f;
+		cameraToClip[FORWARD_AXIS][3] = far_clip / (far_clip-near_clip);
+		cameraToClip[3][3] = 1.0f;
 		// F2 unified-projection: keep GL-native product in sync with cameraToClip.
-		cameraToClipGL.Multiply(cameraToClip, kPixelHomogToGLNDC);
+		cameraToClipGL = cameraToClip * kPixelHomogToGLNDC;
 	}
 	else
 	{
@@ -208,31 +205,31 @@ void Camera::setOrthogonal(void)
 		// X, Y, and Z axis values (when divided by W) will all be between 0 and 1
 		//------------------------------------------------------------------------
 		//
-		cameraToClip(LEFT_AXIS, LEFT_AXIS) = near_clip * horizontal_range;
-		cameraToClip(LEFT_AXIS, UP_AXIS) = 0.0f;
-		cameraToClip(LEFT_AXIS, FORWARD_AXIS) = 0.0f;
-		cameraToClip(LEFT_AXIS, 3) = 0.0f;
+		cameraToClip[LEFT_AXIS][LEFT_AXIS] = near_clip * horizontal_range;
+		cameraToClip[UP_AXIS][LEFT_AXIS] = 0.0f;
+		cameraToClip[FORWARD_AXIS][LEFT_AXIS] = 0.0f;
+		cameraToClip[3][LEFT_AXIS] = 0.0f;
 	
-		cameraToClip(UP_AXIS, LEFT_AXIS) = 0.0f;
-		cameraToClip(UP_AXIS, UP_AXIS) = near_clip * vertical_range;
-		cameraToClip(UP_AXIS, FORWARD_AXIS) = 0.0f;
-		cameraToClip(UP_AXIS, 3) = 0.0f;
+		cameraToClip[LEFT_AXIS][UP_AXIS] = 0.0f;
+		cameraToClip[UP_AXIS][UP_AXIS] = near_clip * vertical_range;
+		cameraToClip[FORWARD_AXIS][UP_AXIS] = 0.0f;
+		cameraToClip[3][UP_AXIS] = 0.0f;
 	
-		cameraToClip(FORWARD_AXIS, LEFT_AXIS) = -right_clip * horizontal_range;
-		cameraToClip(FORWARD_AXIS, UP_AXIS) = -bottom_clip * vertical_range;
+		cameraToClip[LEFT_AXIS][FORWARD_AXIS] = -right_clip * horizontal_range;
+		cameraToClip[UP_AXIS][FORWARD_AXIS] = -bottom_clip * vertical_range;
 		// Reverse-Z (U1): for NDC=(A*z+B)/z, near->1/far->0 gives
 		// A=-near/(far-near), B=+near*far/(far-near). depth_range already
 		// carries 1/(far-near) and the axis sign, so: negate-and-near-swap
 		// the FF term, sign-flip the 3F term.
-		cameraToClip(FORWARD_AXIS, FORWARD_AXIS) = -near_clip * depth_range;
-		cameraToClip(FORWARD_AXIS, 3) = 1.0f;
+		cameraToClip[FORWARD_AXIS][FORWARD_AXIS] = -near_clip * depth_range;
+		cameraToClip[3][FORWARD_AXIS] = 1.0f;
 
-		cameraToClip(3, LEFT_AXIS) = 0.0f;
-		cameraToClip(3, UP_AXIS) = 0.0f;
-		cameraToClip(3, FORWARD_AXIS) = far_clip * near_clip * depth_range;
-		cameraToClip(3, 3) = 0.0f;
+		cameraToClip[LEFT_AXIS][3] = 0.0f;
+		cameraToClip[UP_AXIS][3] = 0.0f;
+		cameraToClip[FORWARD_AXIS][3] = far_clip * near_clip * depth_range;
+		cameraToClip[3][3] = 0.0f;
 		// F2 unified-projection: keep GL-native product in sync with cameraToClip.
-		cameraToClipGL.Multiply(cameraToClip, kPixelHomogToGLNDC);
+		cameraToClipGL = cameraToClip * kPixelHomogToGLNDC;
 
 		// [REVERSE_Z v1] env-gated lifecycle print (MC2_REVERSE_Z_TRACE=1),
 		// silent by default; one-shot via a static latch. Matches the
@@ -245,8 +242,8 @@ void Camera::setOrthogonal(void)
 		if (s_rzTrace) {
 			static int s_rzBuild = 0;
 			++s_rzBuild;
-			const float FF = (float)cameraToClip(FORWARD_AXIS, FORWARD_AXIS);
-			const float B  = (float)cameraToClip(3, FORWARD_AXIS);
+			const float FF = (float)cameraToClip[FORWARD_AXIS][FORWARD_AXIS];
+			const float B  = (float)cameraToClip[FORWARD_AXIS][3];
 			const float ndcNear = (FF * near_clip + B) / near_clip;
 			const float ndcFar  = (FF * far_clip  + B) / far_clip;
 			fprintf(stderr,
@@ -286,14 +283,14 @@ void Camera::setOrthogonal(void)
 
 extern bool useLOSAngle;
 extern float	worldUnitsPerMeter;
-Stuff::Vector3D actualPosition;
+glm::vec3 actualPosition;
 
 constexpr float MOVE_IN_INC = 50.0f;
 constexpr float ELEVATION_BUFFER = 125.0f;
 constexpr float ANGLE_UP_INC = 0.25f;
 
 //-----------------------------------------------------------------------------------------------
-bool CameraLineOfSight (Stuff::Vector3D position, Stuff::Vector3D targetPosition) 
+bool CameraLineOfSight (glm::vec3 position, glm::vec3 targetPosition) 
 {
 	int posCellR, posCellC;
 	int tarCellR, tarCellC;
@@ -309,9 +306,9 @@ bool CameraLineOfSight (Stuff::Vector3D position, Stuff::Vector3D targetPosition
 	// Check is really simple.
 	// Find deltaCellRow and deltaCellCol and iterate over them from source to dest.
 	// If the magic line ever goes BELOW the terrainElevation PLUS localElevation return false.
-	Stuff::Vector3D startPos, endPos;
-	startPos.Zero();
-	endPos.Zero();
+	glm::vec3 startPos, endPos;
+	startPos = glm::vec3(0.0f);
+	endPos = glm::vec3(0.0f);
 	
 	int tCellRow = tarCellR, tCellCol = tarCellC;
 	int mCellRow = posCellR, mCellCol = posCellC;
@@ -322,13 +319,13 @@ bool CameraLineOfSight (Stuff::Vector3D position, Stuff::Vector3D targetPosition
 //	land->getCellPos(mCellRow,mCellCol,startPos);
 //	startPos.z = position.z;
 
-	Stuff::Vector3D deltaCellVec;
+	glm::vec3 deltaCellVec;
 	deltaCellVec.y = tCellRow - mCellRow;
 	deltaCellVec.x = tCellCol - mCellCol;
 	deltaCellVec.z = 0.0f;
 	float startHeight = startPos.z;
 	
-	float length = deltaCellVec.GetApproximateLength();
+	float length = glm::length(deltaCellVec);
 	
 	if (length > Stuff::SMALL)
 	{
@@ -345,9 +342,9 @@ bool CameraLineOfSight (Stuff::Vector3D position, Stuff::Vector3D targetPosition
 		float endCellRow = tCellRow;
 		float endCellCol = tCellCol;
 		
-		Stuff::Vector3D currentPos = startPos;
-		Stuff::Vector3D dist;
-		dist.Subtract(endPos,currentPos);
+		glm::vec3 currentPos = startPos;
+		glm::vec3 dist;
+		dist = endPos - currentPos;
 		
 		bool colDone = false, rowDone = false;
 		while (!colDone || !rowDone)
@@ -398,17 +395,17 @@ void Camera::setCameraOrigin (void)
 		//Parallel Projection
 		cameraDirection.range = -3000.0f;
 		//cameraDirection.pitch = cameraDirection.pitch;
-		cameraOrigin.BuildRotation(Stuff::EulerAngles(cameraDirection.pitch, cameraDirection.yaw, 0.0f));
+		mc2::math::buildRotation(cameraOrigin, mc2::math::Euler(cameraDirection.pitch, cameraDirection.yaw, 0.0f));
 
-		Stuff::Point3D translation = mc2::math::toPoint3D(mc2::math::polarToVector(cameraDirection));
+		glm::vec3 translation = (mc2::math::polarToVector(cameraDirection));
 
 		translation.x -= cameraShift.x;
 		translation.z += cameraShift.y;
 		translation.y += cameraShiftZ;
 
-		cameraOrigin.BuildTranslation(translation);
+		mc2::math::buildTranslation(cameraOrigin, translation);
 		
-		lookVector.Normalize(translation);
+		lookVector = glm::normalize(translation);
 	}
 	else
 	{
@@ -421,12 +418,12 @@ void Camera::setCameraOrigin (void)
 		{
 			cameraDirection.range = localAltitude;
 			cameraDirection.pitch = -localAngle * DEGREES_TO_RADS;
-			cameraOrigin.BuildRotation(Stuff::EulerAngles(cameraDirection.pitch, cameraDirection.yaw, 0.0f));
+			mc2::math::buildRotation(cameraOrigin, mc2::math::Euler(cameraDirection.pitch, cameraDirection.yaw, 0.0f));
 	
-			Stuff::Point3D translation = mc2::math::toPoint3D(mc2::math::polarToVector(cameraDirection));
+			glm::vec3 translation = (mc2::math::polarToVector(cameraDirection));
 			lookVector = translation;
-			lookVector.Normalize(lookVector);
-			lookVector.Negate(lookVector);
+			lookVector = glm::normalize(lookVector);
+			lookVector = -lookVector;
 			
 			translation.x += -cameraShift.x;
 			translation.z += cameraShift.y;
@@ -473,30 +470,30 @@ void Camera::setCameraOrigin (void)
 					float dz = cameraShiftZ - translation.y;
 					float horiz = sqrtf(dx*dx + dy*dy);
 					float newPitch = (horiz > 0.1f) ? atan2f(dz, horiz) : (dz < 0.0f ? -1.5707f : 0.0f);
-					cameraOrigin.BuildRotation(Stuff::EulerAngles(newPitch, cameraDirection.yaw, 0.0f));
+					mc2::math::buildRotation(cameraOrigin, mc2::math::Euler(newPitch, cameraDirection.yaw, 0.0f));
 				}
 			}
 
 			isOKView = true;
-			cameraOrigin.BuildTranslation(translation);
+			mc2::math::buildTranslation(cameraOrigin, translation);
 			physicalPos = translation;
 		}
 	}
 
 	//------------------------------------------------------------
 	// DO Exactly what MLR does to create its Internal Matrices.
-	Stuff::LinearMatrix4D cameraToWorldMatrix(cameraOrigin);
+	glm::mat4 cameraToWorldMatrix(cameraOrigin);
 																  
-	mc2::math::fromGlm(worldToCameraMatrix, glm::inverse(mc2::math::toGlm(cameraToWorldMatrix)));
+	worldToCameraMatrix = glm::inverse(cameraToWorldMatrix);
 
-	worldToClip.Multiply(worldToCameraMatrix, cameraToClip);
+	worldToClip = worldToCameraMatrix * cameraToClip;
 	
 	if (usePerspective)
-		mc2::math::fromGlm(clipToWorld, glm::inverse(mc2::math::toGlm(worldToClip)));
+		clipToWorld = glm::inverse(worldToClip);
 }
 
 //---------------------------------------------------------------------------
-Stuff::Matrix4D Camera::worldToClipGL() const
+glm::mat4 Camera::worldToClipGL() const
 {
     // F2 unified-projection: GPU-path projection product.
     //   = kAxisSwapMC2toGL * worldToCameraMatrix * cameraToClipGL
@@ -504,54 +501,54 @@ Stuff::Matrix4D Camera::worldToClipGL() const
     // cameraToClipGL.Multiply invocations after every cameraToClip write
     // in calculateProjectionConstants). Replaces the prior per-call
     // kPixelHomogToGLNDC Multiply.
-    Stuff::Matrix4D viewClipGL;
-    viewClipGL.Multiply(worldToCameraMatrix, cameraToClipGL);
-    Stuff::Matrix4D out;
-    out.Multiply(kAxisSwapMC2toGL, viewClipGL);
+    glm::mat4 viewClipGL;
+    viewClipGL = worldToCameraMatrix * cameraToClipGL;
+    glm::mat4 out;
+    out = kAxisSwapMC2toGL * viewClipGL;
     return out;
 }
 
 //---------------------------------------------------------------------------
-Stuff::Matrix4D Camera::worldToViewGL() const
+glm::mat4 Camera::worldToViewGL() const
 {
     // F1-3A ViewUniforms: view matrix = kAxisSwapMC2toGL * worldToCameraMatrix.
     // Mirrors worldToClipGL() but stops before cameraToClipGL multiply.
     // Uses Matrix4D::Multiply(const AffineMatrix4D&, const Matrix4D&) overload,
     // valid because LinearMatrix4D inherits AffineMatrix4D.
-    Stuff::Matrix4D out;
+    glm::mat4 out;
     // Reuse worldToClipGL() intermediate: out = kAxisSwapMC2toGL * worldToCameraMatrix
     // There is no Multiply(Matrix4D, LinearMatrix4D) directly, but LinearMatrix4D
     // IS-A AffineMatrix4D, so we produce a temporary Matrix4D first.
-    Stuff::Matrix4D viewM(worldToCameraMatrix); // AffineMatrix4D -> Matrix4D promotion
-    out.Multiply(kAxisSwapMC2toGL, viewM);
+    glm::mat4 viewM = glm::mat4(worldToCameraMatrix); // AffineMatrix4D -> Matrix4D promotion
+    out = kAxisSwapMC2toGL * viewM;
     return out;
 }
 
 //---------------------------------------------------------------------------
-Stuff::Vector3D Camera::cameraOriginGL() const
+glm::vec3 Camera::cameraOriginGL() const
 {
     // F1-3A ViewUniforms: camera world position transformed to GL coord space.
     // kAxisSwapMC2toGL: x' = -x, y' = z, z' = y.
     // physicalPos holds the camera world position in MC2 space (set in updateCameraInfo
     // as physicalPos = translation).
-    Stuff::Vector3D renderPos;
+    glm::vec3 renderPos;
     mc2ToRender(renderPos, physicalPos);
     return renderPos;
 }
 
 //---------------------------------------------------------------------------
-ModernClipResult Camera::projectModernClipGL(const Stuff::Vector3D& world) const
+ModernClipResult Camera::projectModernClipGL(const glm::vec3& world) const
 {
     // F4 projectZ-bypass helper. Row-vector convention:
     //   clip_row = world_row * M
     // world.w = 1.
     // M = worldToClipGL() = kAxisSwapMC2toGL * worldToCameraMatrix * cameraToClipGL.
-    Stuff::Matrix4D M = worldToClipGL();
+    glm::mat4 M = worldToClipGL();
     ModernClipResult r;
-    r.clip.x = world.x * M(0,0) + world.y * M(1,0) + world.z * M(2,0) + M(3,0);
-    r.clip.y = world.x * M(0,1) + world.y * M(1,1) + world.z * M(2,1) + M(3,1);
-    r.clip.z = world.x * M(0,2) + world.y * M(1,2) + world.z * M(2,2) + M(3,2);
-    r.clip.w = world.x * M(0,3) + world.y * M(1,3) + world.z * M(2,3) + M(3,3);
+    r.clip.x = world.x * M[0][0] + world.y * M[0][1] + world.z * M[0][2] + M[0][3];
+    r.clip.y = world.x * M[1][0] + world.y * M[1][1] + world.z * M[1][2] + M[1][3];
+    r.clip.z = world.x * M[2][0] + world.y * M[2][1] + world.z * M[2][2] + M[2][3];
+    r.clip.w = world.x * M[3][0] + world.y * M[3][1] + world.z * M[3][2] + M[3][3];
     r.admit  = clipSpaceFrustumAdmitGL(r.clip);
     return r;
 }
@@ -568,7 +565,7 @@ void Camera::calculateProjectionConstants (void)
 	
 	if (usePerspective)
 	{
-		float oneOverResMag = screenResolution.GetLength();
+		float oneOverResMag = glm::length(screenResolution);
 		if (oneOverResMag > Stuff::SMALL)
 			oneOverResMag = 1.0f / oneOverResMag;
 
@@ -577,7 +574,7 @@ void Camera::calculateProjectionConstants (void)
 		
 		cameraFrame.reset_to_world_frame();
 		
-		Stuff::Vector3D rotationVector(-projectionAngle,0.0f,cameraRotation);
+		glm::vec3 rotationVector(-projectionAngle,0.0f,cameraRotation);
 		cameraFrame.rotate(rotationVector);
 	}
 

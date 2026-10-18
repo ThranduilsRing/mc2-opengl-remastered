@@ -384,10 +384,10 @@ long Camera::init (FitIniFilePtr cameraFile )
 		numTerrainLights = 0;
 	}
 	
-  	Stuff::LinearMatrix4D lightToWorldMatrix;
+  	glm::mat4 lightToWorldMatrix;
 	
-	lightToWorldMatrix.BuildTranslation(Stuff::Point3D(0.0,0.0,0.0));
-	lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
+	mc2::math::buildTranslation(lightToWorldMatrix, glm::vec3(0.0,0.0,0.0));
+	mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
 
 	worldLights[0]->SetLightToWorld(&lightToWorldMatrix);
 
@@ -527,7 +527,7 @@ void Camera::destroy (void)
 void Camera::getClosestVertex (Stuff::Vector2DOf<long>& screenPos,
                                long& row, long& col)
 {
-	Stuff::Vector3D worldPoint;
+	glm::vec3 worldPoint;
 	worldPoint.x = worldPoint.y = worldPoint.z = 0.0f;
 
 	// Modern picking authority: screen -> fresh world point. Returns 0 when
@@ -591,7 +591,7 @@ void Camera::getClosestVertex (Stuff::Vector2DOf<long>& screenPos,
 // only, so scale is irrelevant.
 void Camera::extractFrustumPlanes (float planes[6][4]) const
 {
-	const Stuff::Matrix4D M = worldToClipGL();
+	const glm::mat4 M = worldToClipGL();
 
 	// Per plane: axis clip column, sign on w (col 3), sign on the axis column.
 	// plane = wSign * M(:,3) + aSign * M(:,axisCol).
@@ -610,10 +610,10 @@ void Camera::extractFrustumPlanes (float planes[6][4]) const
 		const int   c  = sel[p].axisCol;
 		const float ws = sel[p].wSign;
 		const float as = sel[p].aSign;
-		planes[p][0] = ws * M(0, 3) + as * M(0, c);   // world X coef
-		planes[p][1] = ws * M(1, 3) + as * M(1, c);   // world Y coef
-		planes[p][2] = ws * M(2, 3) + as * M(2, c);   // world Z coef
-		planes[p][3] = ws * M(3, 3) + as * M(3, c);   // constant
+		planes[p][0] = ws * M[3][0] + as * M[c][0];   // world X coef
+		planes[p][1] = ws * M[3][1] + as * M[c][1];   // world Y coef
+		planes[p][2] = ws * M[3][2] + as * M[c][2];   // world Z coef
+		planes[p][3] = ws * M[3][3] + as * M[c][3];   // constant
 	}
 }
 
@@ -624,8 +624,8 @@ void Camera::extractFrustumPlanes (float planes[6][4]) const
 // false-negative; may false-positive slightly outside (acceptable - picking
 // refines with an exact forward-projection screen test downstream).
 bool Camera::quadAabbInFrustum (const float planes[6][4],
-                                const Stuff::Vector3D& mn,
-                                const Stuff::Vector3D& mx) const
+                                const glm::vec3& mn,
+                                const glm::vec3& mx) const
 {
 	// CAMERA-FRUSTUM-HARNESS-1: delegate the pure test to camera_frustum_math.h
 	// (same arithmetic), adapting Stuff::Vector3D -> float[3] at the boundary.
@@ -642,8 +642,8 @@ bool Camera::quadAabbInFrustum (const float planes[6][4],
 // camera angle near terrain already passes the near plane, so dropping that
 // term is a no-op there.
 bool Camera::quadAabbInFrustumSkipNear (const float planes[6][4],
-                                        const Stuff::Vector3D& mn,
-                                        const Stuff::Vector3D& mx) const
+                                        const glm::vec3& mn,
+                                        const glm::vec3& mx) const
 {
 	const float fmn[3] = { mn.x, mn.y, mn.z };
 	const float fmx[3] = { mx.x, mx.y, mx.z };

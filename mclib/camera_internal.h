@@ -110,6 +110,6 @@ float camSmoothTau (void);
 float camSmoothAlpha (float dt);
 
 // Free functions defined in the split pieces.
-bool CameraLineOfSight (Stuff::Vector3D position, Stuff::Vector3D targetPosition);
+bool CameraLineOfSight (glm::vec3 position, glm::vec3 targetPosition);
 
 #endif // CAMERA_INTERNAL_H

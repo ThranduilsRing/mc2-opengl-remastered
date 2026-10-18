@@ -52,8 +52,8 @@ class AppearanceType
 		char 				*name;				//Appearance Base FileName.  A view of nameStore.
 		std::string			nameStore;			//Owns the name text; a type is never copied or moved, so the view stays valid.
 	
-		Stuff::Vector3D		typeUpperLeft;		//For Designer defined extents of objects
-		Stuff::Vector3D		typeLowerRight;		//For Designer defined extents of objects
+		glm::vec3		typeUpperLeft;		//For Designer defined extents of objects
+		glm::vec3		typeLowerRight;		//For Designer defined extents of objects
 
 		float				boundsUpperLeftX;
 		float				boundsUpperLeftY;
@@ -83,8 +83,8 @@ class AppearanceType
 
 			name = NULL;
 
-			typeUpperLeft.Zero();
-			typeLowerRight.Zero();
+			typeUpperLeft = glm::vec3(0.0f);
+			typeLowerRight = glm::vec3(0.0f);
 			designerTypeBounds = false;
 			baseShapeLoadFailed = false;
  		}

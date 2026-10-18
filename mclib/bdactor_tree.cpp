@@ -18,7 +18,7 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	hazeFactor = 0.0f;
 
 	screenPos.x = screenPos.y = screenPos.z = screenPos.w = -999.0f;
-	position.Zero();
+	position = glm::vec3(0.0f);
 	rotation = 0.0;;
 	selected = 0;
 	teamId = 0;
@@ -85,8 +85,8 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			}
 		}
 		
-		Stuff::Vector3D boxCoords[8];
-		Stuff::Vector3D nodeCenter = treeShape->GetRootNodeCenter();
+		glm::vec3 boxCoords[8];
+		glm::vec3 nodeCenter = treeShape->GetRootNodeCenter();
 
 		boxCoords[0].x = position.x + treeShape->GetMinBox().x + nodeCenter.x;
 		boxCoords[0].y = position.y + treeShape->GetMinBox().z + nodeCenter.z;
@@ -124,7 +124,7 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		for (int i=0;i<8;i++)
 		{
-			testRadius = boxCoords[i].GetLength();
+			testRadius = glm::length(boxCoords[i]);
 			if (OBBRadius < testRadius)
 				OBBRadius = testRadius;
 		}
@@ -242,7 +242,7 @@ void TreeAppearance::setObjStatus (long oStatus)
 	status = oStatus;
 }
 
-void TreeAppearance::setObjectParameters (const Stuff::Vector3D &pos, float Rot, long sel, long team, long homeRelations)
+void TreeAppearance::setObjectParameters (const glm::vec3 &pos, float Rot, long sel, long team, long homeRelations)
 {
 	rotation = Rot;
 
@@ -303,17 +303,17 @@ bool TreeAppearance::recalcBounds (void)
 		unsigned long long _tsA = s_tobjSplitBdOn ? __rdtsc() : 0ULL;
 		if (eye->usePerspective)
 		{
-			Stuff::Vector3D cameraPos;
+			glm::vec3 cameraPos;
 			cameraPos.x = -eye->getCameraOrigin().x;
 			cameraPos.y = eye->getCameraOrigin().z;
 			cameraPos.z = eye->getCameraOrigin().y;
 			float vClipConstant = eye->verticalSphereClipConstant;
 			float hClipConstant = eye->horizontalSphereClipConstant;
 
-			Stuff::Vector3D objectCenter;
-			objectCenter.Subtract(position,cameraPos);
+			glm::vec3 objectCenter;
+			objectCenter = position - cameraPos;
 			Camera::cameraFrame.trans_to_frame(objectCenter);
-			float distanceToEye = objectCenter.GetApproximateLength();
+			float distanceToEye = glm::length(objectCenter);
 			float clip_distance = fabs(1.0f / objectCenter.y);
 
 			//Is vertex on Screen OR close enough to screen that its triangle MAY be visible?
@@ -382,12 +382,12 @@ long TreeAppearance::update (bool animate)
 	// selecting only in update() froze activeLOD at first registration.
 	selectActiveLOD();
 
-	Stuff::UnitQuaternion rot;
+	glm::quat rot;
 	float yawAngle = (rotation * DEGREES_TO_RADS) + (yaw * DEGREES_TO_RADS);
 	float pitchAngle = (pitch * DEGREES_TO_RADS);
-	rot = Stuff::EulerAngles(pitchAngle, yawAngle, 0.0f);
+	rot = mc2::math::quatFromEuler(mc2::math::Euler(pitchAngle, yawAngle, 0.0f));
 
-	Stuff::Point3D xlatPosition;
+	glm::vec3 xlatPosition;
 	mc2ToRender(xlatPosition, position);
 
 	if (!fogLightSet)
@@ -618,9 +618,9 @@ void TreeAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		{
 			for (int j=0;j<treeShape->GetNumVerticesInShape(i);j++)
 			{
-				Stuff::Vector3D vertexPos, worldPos;
+				glm::vec3 vertexPos, worldPos;
 				vertexPos = treeShape->GetShapeVertexInEditor(i,j,-rotation);
-				worldPos.Add(position,vertexPos);
+				worldPos = position + vertexPos;
 	
 				int cellR, cellC;
 				land->worldToCell(worldPos,cellR,cellC);
@@ -672,9 +672,9 @@ void TreeAppearance::markLOS (bool clearIt)
 		{
 			for (int j=0;j<treeShape->GetNumVerticesInShape(i);j++)
 			{
-				Stuff::Vector3D vertexPos, worldPos;
+				glm::vec3 vertexPos, worldPos;
 				vertexPos = treeShape->GetShapeVertexInEditor(i,j,-rotation);
-				worldPos.Add(position,vertexPos);
+				worldPos = position + vertexPos;
 	
 				int cellR, cellC;
 				land->worldToCell(worldPos,cellR,cellC);
@@ -737,12 +737,12 @@ void TreeAppearance::selectActiveLOD()
 		// the GL command queue that then drained at SDL_GL_SwapWindow (25-47ms).
 		const float _far  = s_impostorDist * 1.08f;
 		const float _near = s_impostorDist * 0.92f;
-		Stuff::Vector3D _camP;
+		glm::vec3 _camP;
 		_camP.x = -eye->getCameraOrigin().x;
 		_camP.y =  eye->getCameraOrigin().z;
 		_camP.z =  eye->getCameraOrigin().y;
-		Stuff::Vector3D _d; _d.Subtract(position, _camP);
-		const float _dist = _d.GetApproximateLength();
+		glm::vec3 _d; _d = position - _camP;
+		const float _dist = glm::length(_d);
 		if (activeLOD < _maxAvailLOD && _dist > _far)  _wantLOD = _maxAvailLOD; // far->impostor
 		else if (activeLOD > 0       && _dist < _near) _wantLOD = 0;            // near->LOD0
 	}

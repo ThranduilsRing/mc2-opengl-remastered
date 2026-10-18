@@ -20,8 +20,8 @@ long BldgAppearance::update (bool animate)
 	::mc2_object_recon::Scope _recon_bldg_(
 		&::mc2_object_recon::g_per_frame.bldg_update_ns,
 		&::mc2_object_recon::g_per_frame.bldg_update_calls);
-	Stuff::Point3D xlatPosition;
-	Stuff::UnitQuaternion rot;
+	glm::vec3 xlatPosition;
+	glm::quat rot;
 
 	// Recycle the weapon Nodes
 	if (!nodeRecycle.empty())
@@ -52,14 +52,14 @@ long BldgAppearance::update (bool animate)
 		
 		if (pointLight)
 		{
-			Stuff::Point3D ourPosition;
+			glm::vec3 ourPosition;
 			mc2ToRender(ourPosition, position);
 	
 			pointLight->direction = ourPosition;
 	
-			Stuff::LinearMatrix4D lightToWorldMatrix;
-			lightToWorldMatrix.BuildTranslation(ourPosition);
-			lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+			glm::mat4 lightToWorldMatrix;
+			mc2::math::buildTranslation(lightToWorldMatrix, ourPosition);
+			mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(0.0f,0.0f,0.0f));
 			pointLight->SetLightToWorld(&lightToWorldMatrix);
 			pointLight->SetPosition(&position);
 			pointLight->SetIntensity(appearType->terrainLightIntensity * eye->getNightFactor());
@@ -171,7 +171,7 @@ long BldgAppearance::update (bool animate)
 		// transitions toggle active via the gate below; lights stay allocated.
 		for (size_t k = 0; k < spotlightLights_.size(); ++k)
 		{
-			Stuff::Vector3D childPos =
+			glm::vec3 childPos =
 				getNodeIdPosition(spotlightNodeIds_[k]);
 			// LIGHT-CONE-MODELS-1 (A/C): pool at the authored cone's FAR END
 			// (node transform × cone geometry axis), grounded on terrain —
@@ -185,7 +185,7 @@ long BldgAppearance::update (bool animate)
 			bool coneMissedGround = false;
 			if (mc2_cone_glow::nodes_enabled())
 			{
-				Stuff::Vector3D aimW;
+				glm::vec3 aimW;
 				float coneLen = 0.0f;
 				const bool haveAim =
 					mc2_cone_glow::GetNodeAim(bldgShape, spotlightNodeIds_[k], aimW, coneLen);
@@ -209,7 +209,7 @@ long BldgAppearance::update (bool animate)
 					// short of the visible cone tip. The march is a fixed step
 					// COUNT, so dropping the clamp costs no extra samples.
 					const float spill = coneLen * mc2_cone_glow::spill_scale();
-					Stuff::Vector3D hit;
+					glm::vec3 hit;
 					const bool got = mc2ConeGroundHit(childPos, aimW, spill, hit);
 
 					// CONE-SPILL-COUPLING-1 evidence (reuses the already
@@ -227,7 +227,7 @@ long BldgAppearance::update (bool animate)
 						{
 							float oldSpill = spill;
 							if (oldSpill > 200.0f) oldSpill = 200.0f;
-							Stuff::Vector3D oldP;
+							glm::vec3 oldP;
 							oldP.x = childPos.x + aimW.x * oldSpill;
 							oldP.y = childPos.y + aimW.y * oldSpill;
 							oldP.z = childPos.z + aimW.z * oldSpill;
@@ -284,7 +284,7 @@ long BldgAppearance::update (bool animate)
 							{
 								const float reach =
 									spill * mc2_cone_glow::pool_reach_scale();
-								Stuff::Vector3D poolHit;
+								glm::vec3 poolHit;
 								if (mc2ConeGroundHit(childPos, aimW, reach, poolHit))
 									childPos = poolHit;
 								else
@@ -307,8 +307,8 @@ long BldgAppearance::update (bool animate)
 			// Anubis sets this same matrix; existing per-building pointLight
 			// at bdactor.cpp also sets it. Translation-only suffices
 			// for POINT lights (matches the anubis/terrain-light pattern).
-			Stuff::LinearMatrix4D lightToWorldMatrix;
-			Stuff::Point3D childPosP;
+			glm::mat4 lightToWorldMatrix;
+			glm::vec3 childPosP;
 			if (mc2_cone_glow::spot_direction_fix_enabled())
 			{
 				// SPOTLIGHT-DIRECTION-1. TRAP: despite the name, TG_Light::
@@ -332,7 +332,7 @@ long BldgAppearance::update (bool animate)
 				// is discarded downstream. Diagnostic only.
 				if (mc2_cone_glow::spot_direction_exaggerate())
 				{
-					Stuff::Point3D wild;
+					glm::vec3 wild;
 					wild.x = 100000.0f; wild.y = 100000.0f; wild.z = 100000.0f;
 					spotlightLights_[k]->direction = wild;
 				}
@@ -341,8 +341,8 @@ long BldgAppearance::update (bool animate)
 			{
 				childPosP.x = childPos.x; childPosP.y = childPos.y; childPosP.z = childPos.z;
 			}
-			lightToWorldMatrix.BuildTranslation(childPosP);
-			lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(0.0f, 0.0f, 0.0f));
+			mc2::math::buildTranslation(lightToWorldMatrix, childPosP);
+			mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(0.0f, 0.0f, 0.0f));
 			spotlightLights_[k]->SetLightToWorld(&lightToWorldMatrix);
 			// eye->isNight is a bare field at camera.h (C-r3 C2). visible
 			// matches anubis at mech3d.cpp (C-r1 C5). forceLightsOut
@@ -422,7 +422,7 @@ long BldgAppearance::update (bool animate)
 
 		// Does math necessary to draw Tree
 		float yaw = rotation * DEGREES_TO_RADS;
-		rot = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+		rot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
 	
 		if (appearType->spinMe && land)
 		{
@@ -490,8 +490,8 @@ long BldgAppearance::update (bool animate)
 		else
 			bldgShape->SetFogRGB(0xffffffff);
 	
-		Stuff::UnitQuaternion turretRot;
-		turretRot = Stuff::EulerAngles((turretPitch * DEGREES_TO_RADS),(turretYaw * DEGREES_TO_RADS),0.0f);
+		glm::quat turretRot;
+		turretRot = mc2::math::quatFromEuler(mc2::math::Euler((turretPitch * DEGREES_TO_RADS),(turretYaw * DEGREES_TO_RADS),0.0f));
 		if (rotationalNodeId == -1)
 	   		rotationalNodeId = bldgShape->SetNodeRotation(appearType->rotationalNodeId,&turretRot);
    
@@ -676,9 +676,9 @@ long BldgAppearance::update (bool animate)
 		// Update GOSFX
 		if (destructFX && destructFX->IsExecuted())
 		{
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D 	localToWorld;
-			Stuff::Point3D			tPosition;
+			glm::mat4 	shapeOrigin;
+			glm::mat4 	localToWorld;
+			glm::vec3			tPosition;
 				
 			//Stuff::Vector3D offsetPosition;
 			//offsetPosition.x = Terrain::worldUnitsPerVertex / 3.0f;
@@ -687,18 +687,18 @@ long BldgAppearance::update (bool animate)
 
 			//OppRotate(offsetPosition,rotation);
 
-			Stuff::Vector3D actualPosition = position;
+			glm::vec3 actualPosition = position;
 			//actualPosition.Add(position,offsetPosition);
 
 			mc2ToRender(tPosition, actualPosition);
 
 			float yaw = (180.0f + rotation) * DEGREES_TO_RADS;
-			Stuff::UnitQuaternion rot;
-			rot = Stuff::EulerAngles(0.0f, yaw, 0.0f);
- 			shapeOrigin.BuildRotation(rot);
-			shapeOrigin.BuildTranslation(tPosition);
+			glm::quat rot;
+			rot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
+ 			mc2::math::buildRotation(shapeOrigin, rot);
+			mc2::math::buildTranslation(shapeOrigin, tPosition);
 
-	 		Stuff::OBB boundingBox;
+	 		mc2::math::Obb boundingBox;
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 	
 			bool result = destructFX->Execute(&info);
@@ -711,13 +711,13 @@ long BldgAppearance::update (bool animate)
 		
 		if (isActivitying)
 		{
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D	localToWorld;
-			Stuff::LinearMatrix4D	localResult;
+			glm::mat4 	shapeOrigin;
+			glm::mat4	localToWorld;
+			glm::mat4	localResult;
 					
 			if (activityNodeId == -1)
 				activityNodeId = bldgShape->GetNodeNameId("activity_node");
-			Stuff::Vector3D dustPos = getNodeIdPosition(activityNodeId);
+			glm::vec3 dustPos = getNodeIdPosition(activityNodeId);
 
 			if (rotationalNodeId == -1)
 			{
@@ -730,20 +730,20 @@ long BldgAppearance::update (bool animate)
 			if (rotationalNodeId >= 0)
 				dustPos = getNodeIdPosition(rotationalNodeId);
  			
-			Stuff::Point3D wakePos;
+			glm::vec3 wakePos;
 			mc2ToRender(wakePos, dustPos);
 			
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(wakePos);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, wakePos);
 					
 			/*
-			Stuff::UnitQuaternion effectRot;
-			effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
+			glm::quat effectRot;
+			effectRot = mc2::math::Euler(0.0f,rotation * DEGREES_TO_RADS,0.0f);
 			localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
 			localResult.Multiply(localToWorld,shapeOrigin);
 			*/
 			
-			Stuff::OBB boundingBox;
+			mc2::math::Obb boundingBox;
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 			
 			// sebi: make as all other do with Execute(), otherwise ther is constanrt assert in Execute() function (at line Verify(IsExecuted()) )
@@ -762,7 +762,7 @@ long BldgAppearance::update (bool animate)
 			{
 				if (activityNodeId == -1)
 					activityNodeId = bldgShape->GetNodeNameId("activity_node");
-				Stuff::Vector3D dustPos = getNodeIdPosition(activityNodeId);
+				glm::vec3 dustPos = getNodeIdPosition(activityNodeId);
 	
 				if (rotationalNodeId == -1)
 				{
@@ -775,20 +775,20 @@ long BldgAppearance::update (bool animate)
 				if (rotationalNodeId >= 0)
 					dustPos = getNodeIdPosition(rotationalNodeId);
 				
-				Stuff::Point3D wakePos;
+				glm::vec3 wakePos;
 				mc2ToRender(wakePos, dustPos);
 				
-				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-				shapeOrigin.BuildTranslation(wakePos);
+				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+				mc2::math::buildTranslation(shapeOrigin, wakePos);
 						
 				/*
-				Stuff::UnitQuaternion effectRot;
-				effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
+				glm::quat effectRot;
+				effectRot = mc2::math::Euler(0.0f,rotation * DEGREES_TO_RADS,0.0f);
 				localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
 				localResult.Multiply(localToWorld,shapeOrigin);
 				*/
 				
-				Stuff::OBB boundingBox;
+				mc2::math::Obb boundingBox;
 				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 				
 				//sebi:
@@ -832,8 +832,8 @@ void BldgAppearance::startActivity (long effectId, bool loop)
 				activity = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
 				gosASSERT(activity != nullptr);
 				
-				Stuff::Vector3D testPos = getNodeNamePosition("activity_node1");
-				if (testPos != position)
+				glm::vec3 testPos = getNodeNamePosition("activity_node1");
+				if (!mc2::math::closeEnough(testPos, position))
 				{
 					activity1 = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
 					gosASSERT(activity1 != nullptr);
@@ -846,13 +846,13 @@ void BldgAppearance::startActivity (long effectId, bool loop)
 	
 	if (!isActivitying && activity)		//Start the effect if we are not running it yet!!
 	{
-		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D	localToWorld;
-		Stuff::LinearMatrix4D	localResult;
+		glm::mat4 	shapeOrigin;
+		glm::mat4	localToWorld;
+		glm::mat4	localResult;
 		
 		if (activityNodeId == -1)
    			activityNodeId = bldgShape->GetNodeNameId("activity_node");
-   		Stuff::Vector3D nodePos = getNodeIdPosition(activityNodeId);
+   		glm::vec3 nodePos = getNodeIdPosition(activityNodeId);
 
    		if (rotationalNodeId == -1)
    		{
@@ -865,15 +865,15 @@ void BldgAppearance::startActivity (long effectId, bool loop)
    		if (rotationalNodeId >= 0)
    			nodePos = getNodeIdPosition(rotationalNodeId);
 
- 		Stuff::Point3D wakePos;
+ 		glm::vec3 wakePos;
 		mc2ToRender(wakePos, nodePos);	//Wake is at Water Level!
 		
- 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(wakePos);
+ 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, wakePos);
 				
 		/*
-		Stuff::UnitQuaternion effectRot;
-		effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
+		glm::quat effectRot;
+		effectRot = mc2::math::Euler(0.0f,rotation * DEGREES_TO_RADS,0.0f);
 		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
 		localResult.Multiply(localToWorld,shapeOrigin);
 		*/
@@ -886,7 +886,7 @@ void BldgAppearance::startActivity (long effectId, bool loop)
 		{
 			if (activityNode1Id == -1)
 				activityNode1Id = bldgShape->GetNodeNameId("activity_node1");
-			Stuff::Vector3D nodePos = getNodeIdPosition(activityNode1Id);
+			glm::vec3 nodePos = getNodeIdPosition(activityNode1Id);
 
 			if (rotationalNodeId == -1)
 			{
@@ -899,15 +899,15 @@ void BldgAppearance::startActivity (long effectId, bool loop)
 			if (rotationalNodeId >= 0)
 				nodePos = getNodeIdPosition(rotationalNodeId);
 			
- 			Stuff::Point3D wakePos;
+ 			glm::vec3 wakePos;
 			mc2ToRender(wakePos, nodePos);	//Wake is at Water Level!
 			
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(wakePos);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, wakePos);
 					
 			/*
-			Stuff::UnitQuaternion effectRot;
-			effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
+			glm::quat effectRot;
+			effectRot = mc2::math::Euler(0.0f,rotation * DEGREES_TO_RADS,0.0f);
 			localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
 			localResult.Multiply(localToWorld,shapeOrigin);
 			*/

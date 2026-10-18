@@ -353,21 +353,21 @@ long BldgAppearance::render (long depthFixup)
 			drawInfo.m_state = mlrState;
 			drawInfo.m_clippingFlags = 0x0;
 
- 			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D	localToWorld;
-			Stuff::Point3D			tPosition;
+ 			glm::mat4 	shapeOrigin;
+			glm::mat4	localToWorld;
+			glm::vec3			tPosition;
 			
 
 
-			Stuff::Vector3D actualPosition = position;
+			glm::vec3 actualPosition = position;
 
 			mc2ToRender(tPosition, actualPosition);
 
 			float yaw = (180.0f + rotation) * DEGREES_TO_RADS;
-			Stuff::UnitQuaternion rot;
-			rot = Stuff::EulerAngles(0.0f, yaw, 0.0f);
- 			shapeOrigin.BuildRotation(rot);
-			shapeOrigin.BuildTranslation(tPosition);
+			glm::quat rot;
+			rot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
+ 			mc2::math::buildRotation(shapeOrigin, rot);
+			mc2::math::buildTranslation(shapeOrigin, tPosition);
 			
 			drawInfo.m_parentToWorld = &shapeOrigin;
 			
@@ -389,13 +389,13 @@ long BldgAppearance::render (long depthFixup)
 			drawInfo.m_state = mlrState;
 			drawInfo.m_clippingFlags = 0x0;
 
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D	localToWorld;
-			Stuff::LinearMatrix4D	localResult;
+			glm::mat4 	shapeOrigin;
+			glm::mat4	localToWorld;
+			glm::mat4	localResult;
 
 			if (activityNodeId == -1)
 				activityNodeId = bldgShape->GetNodeNameId("activity_node");
-			Stuff::Vector3D dustPos = getNodeIdPosition(activityNodeId);
+			glm::vec3 dustPos = getNodeIdPosition(activityNodeId);
 
 			if (rotationalNodeId == -1)
 			{
@@ -408,11 +408,11 @@ long BldgAppearance::render (long depthFixup)
 			if (rotationalNodeId >= 0)
 				dustPos = getNodeIdPosition(rotationalNodeId);
 				
-			Stuff::Point3D wakePos;
+			glm::vec3 wakePos;
 			mc2ToRender(wakePos, dustPos);
 			
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(wakePos);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, wakePos);
 					
 
 			drawInfo.m_parentToWorld = &shapeOrigin;
@@ -423,7 +423,7 @@ long BldgAppearance::render (long depthFixup)
 			{
 				if (activityNodeId == -1)
 					activityNodeId = bldgShape->GetNodeNameId("activity_node");
-				Stuff::Vector3D dustPos = getNodeIdPosition(activityNodeId);
+				glm::vec3 dustPos = getNodeIdPosition(activityNodeId);
 	
 				if (rotationalNodeId == -1)
 				{
@@ -436,11 +436,11 @@ long BldgAppearance::render (long depthFixup)
 				if (rotationalNodeId >= 0)
 					dustPos = getNodeIdPosition(rotationalNodeId);
 					
-				Stuff::Point3D wakePos;
+				glm::vec3 wakePos;
 				mc2ToRender(wakePos, dustPos);
 				
-				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-				shapeOrigin.BuildTranslation(wakePos);
+				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+				mc2::math::buildTranslation(shapeOrigin, wakePos);
 						
 	
 				drawInfo.m_parentToWorld = &shapeOrigin;

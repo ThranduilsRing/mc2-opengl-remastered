@@ -148,28 +148,28 @@ class Camera
 	protected:
 		float						projectionAngle;				//Angle of orthogonal projection
 
-		Stuff::Vector3D				screenResolution;				//Resolution of screen in pixels
-		Stuff::Vector3D				screenCenter;					//Center coordinate of screen
-		Stuff::Vector3D				lookVector;						//Direction camera is looking.
-		Stuff::Vector3D				physicalPos;					//Actual Physical Position of camera in world.
+		glm::vec3				screenResolution;				//Resolution of screen in pixels
+		glm::vec3				screenCenter;					//Center coordinate of screen
+		glm::vec3				lookVector;						//Direction camera is looking.
+		glm::vec3				physicalPos;					//Actual Physical Position of camera in world.
 		
 		CameraClass					cameraClass;					//Type of camera.w
 
 		// data for Camera Movement
-		Stuff::Vector3D				position;						//Position of camera in 3Space.
+		glm::vec3				position;						//Position of camera in 3Space.
 		float						cameraRotation;					//Current Direction camera is looking.
 		float						worldCameraRotation;			//Current Direction camera is facing in World Frame of reference.
 
 		float						zoomLevelLODScale[MAX_LODS];	//Data to help calc which LOD at which zoom.
 		
-		Stuff::LinearMatrix4D		cameraOrigin;					//Translation and rotation of Camera
-		Stuff::LinearMatrix4D		worldToCameraMatrix;			//Inverse of the above.
+		glm::mat4		cameraOrigin;					//Translation and rotation of Camera
+		glm::mat4		worldToCameraMatrix;			//Inverse of the above.
 
 		mc2::math::YawPitchRange	cameraDirection;				//Direction camera is looking.
 		
 		Stuff::Vector2DOf<float>	cameraShift;					//Position camera is looking At.
 		
-		Stuff::Matrix4D				cameraToClip;					//Camera Clip Matrix--Used for projection and zoom.
+		glm::mat4				cameraToClip;					//Camera Clip Matrix--Used for projection and zoom.
 		// F2 unified-projection: parallel GL-native projection product.
 		// = cameraToClip * kPixelHomogToGLNDC (precomputed at camera-update
 		// time). Consumed by Camera::worldToClipGL() for the GPU path.
@@ -177,9 +177,9 @@ class Camera
 		// CPU projectZ + 8 wrappers + MLR. Mclib/camera.cpp keeps both in
 		// sync via cameraToClipGL.Multiply(cameraToClip, kPixelHomogToGLNDC)
 		// called after every cameraToClip write in calculateProjectionConstants.
-		Stuff::Matrix4D				cameraToClipGL;
-		Stuff::Matrix4D				worldToClip;					//Matrix used to bring a point from world space to camera/clip space
-		Stuff::Matrix4D				clipToWorld;					//Matrix used to bring a point from camera/clip space to world space
+		glm::mat4				cameraToClipGL;
+		glm::mat4				worldToClip;					//Matrix used to bring a point from world space to camera/clip space
+		glm::mat4				clipToWorld;					//Matrix used to bring a point from camera/clip space to world space
 		float						cachedFrustumPlanes_[6][4];		// F6 T2 cache; valid after cacheFrustumPlanes() per frame.
 
 		// Pick screen-rect cache: monotonically increments when camera inputs change
@@ -202,18 +202,18 @@ class Camera
 		gosBuffer*					lights_shader_data_;
 		
  		//Camera Scripting stuff
-		Stuff::Vector3D				goalPosition;
-		Stuff::Vector3D				lookPosition;
+		glm::vec3				goalPosition;
+		glm::vec3				lookPosition;
 		float						goalPosTime;
 		
-		Stuff::Vector3D				goalRotation;
+		glm::vec3				goalRotation;
 		float						goalRotTime;
 		
 		float						goalFOV;
 		float						goalFOVTime;
 		
-		Stuff::Vector3D				velocity;
-		Stuff::Vector3D				goalVelocity;
+		glm::vec3				velocity;
+		glm::vec3				goalVelocity;
 		float						goalVelTime;
 		
 		long						lookTargetObject;
@@ -238,7 +238,7 @@ class Camera
 		bool					ready;					//Is camera ready to be activated?
 		bool					usePerspective;			//Switch camera from Parallel to perspective view
 												
-		Stuff::Vector3D			lightDirection;			//Direction of Spot Light
+		glm::vec3			lightDirection;			//Direction of Spot Light
 
 		float					lightYaw;				//Direction of Light in Azimuth, elevation
 		float					lightPitch;
@@ -325,8 +325,8 @@ class Camera
 		// [MOUSE-ANCHORED-ZOOM-1 v2] eased zoom-anchor state (see beginZoomAnchor / update()).
 		bool					zoomAnchorActive = false;
 		float					zoomAnchorH0 = 1.0f;
-		Stuff::Vector3D			zoomAnchorWorld;
-		Stuff::Vector3D			zoomAnchorPivot;
+		glm::vec3			zoomAnchorWorld;
+		glm::vec3			zoomAnchorPivot;
 
 		// [CAMERA-SMOOTHING-1] gameplay camera smoothing (MC2_CAMERA_SMOOTH ms,
 		// default ~100, 0 = legacy verbatim). Edge/keyboard scroll and rotation
@@ -397,17 +397,17 @@ class Camera
 			screenResolution.x = 400.0;
 			screenResolution.y = 400.0;
 
-			position.Zero();
+			position = glm::vec3(0.0f);
 
 			// The matrix members have empty default constructors, so until the first calculateProjectionConstants() they held whatever
 			// the allocation held. Terrain LOD runs before the camera's first update and read them through cacheFrustumPlanes(): NaN
 			// planes in one run, zeros in the next (the frame-2 [TerrainLOD v1] DIAG plane lines). Start from identity and zero planes.
-			cameraOrigin.BuildIdentity();
-			worldToCameraMatrix.BuildIdentity();
-			cameraToClip.BuildIdentity();
-			cameraToClipGL.BuildIdentity();
-			worldToClip.BuildIdentity();
-			clipToWorld.BuildIdentity();
+			cameraOrigin = glm::mat4(1.0f);
+			worldToCameraMatrix = glm::mat4(1.0f);
+			cameraToClip = glm::mat4(1.0f);
+			cameraToClipGL = glm::mat4(1.0f);
+			worldToClip = glm::mat4(1.0f);
+			clipToWorld = glm::mat4(1.0f);
 			for (auto& plane : cachedFrustumPlanes_)
 				plane[0] = plane[1] = plane[2] = plane[3] = 0.0f;
 
@@ -419,7 +419,7 @@ class Camera
 
 			cameraShiftZ = goalPositionZ = 0.0f;
 	
-			lightDirection.Zero();
+			lightDirection = glm::vec3(0.0f);
 			
 			newScaleFactor = 0.5;
 
@@ -455,8 +455,8 @@ class Camera
 			isNight = false;
 			forceShadowRecalc = false;
 			
-			goalPosition.Zero();
-			lookPosition.Zero();
+			goalPosition = glm::vec3(0.0f);
+			lookPosition = glm::vec3(0.0f);
 			goalPosTime = 0.0;
 			
 			goalRotation.x = goalRotation.y = goalRotation.z = 0.0;
@@ -465,8 +465,8 @@ class Camera
 			goalFOV = 0.0;
 			goalFOVTime = 0.0;
 			
-			velocity.Zero();
-			goalVelocity.Zero();
+			velocity = glm::vec3(0.0f);
+			goalVelocity = glm::vec3(0.0f);
 			goalVelTime = 0.0;
 			
 			lookTargetObject = -1;
@@ -583,7 +583,7 @@ class Camera
 		// the cursor world point A, the ACTUAL altitude h0, and the pivot T0 at the
 		// wheel event; Camera::update() then shifts position toward A locked to the
 		// eased altitude until it settles. See camera.cpp update().
-		void beginZoomAnchor (const Stuff::Vector3D& A, float h0, const Stuff::Vector3D& T0)
+		void beginZoomAnchor (const glm::vec3& A, float h0, const glm::vec3& T0)
 		{
 			if (h0 < 1.0f) h0 = 1.0f;
 			zoomAnchorWorld = A;
@@ -610,7 +610,7 @@ class Camera
 		//---------------------------------------------------------------------------
 		[[deprecated("Use an intent-specific projectFor*Admission/projectForScreenXY/etc. wrapper. "
 		             "See docs/superpowers/specs/2026-04-26-projectz-policy-split-design.md.")]]
-		bool projectZ (Stuff::Vector3D &point, Stuff::Vector4D &screen,
+		bool projectZ (glm::vec3 &point, Stuff::Vector4D &screen,
 		               LegacyProjectionResult* optionalResult = nullptr)
 		{
 			// F3 CPU projection cost-baseline: eventdriven projectZ
@@ -624,10 +624,10 @@ class Camera
 			//--------------------------------------------------------------------
 			// Now run the NEW project code
 			Stuff::Vector4D xformCoords;
-			Stuff::Point3D coords;
+			glm::vec3 coords;
 			mc2ToRender(coords, point);
 
-			xformCoords.Multiply(coords,worldToClip);
+			xformCoords.MultiplyPoint(coords, worldToClip);
 
 			if (usePerspective)
 			{
@@ -706,7 +706,7 @@ class Camera
 		//---------------------------------------------------------------------------
 
 		// Terrain vertex admission — bool gates submission; per-vertex wedge-risk concentration.
-		inline bool projectForTerrainAdmission (Stuff::Vector3D& point,
+		inline bool projectForTerrainAdmission (glm::vec3& point,
 		                                        Stuff::Vector4D& screen) {
 			// R3 narrow-subset sidecar (see cpu_proj_cost_split.h).
 			const int64_t _f3_terrain_t0 = ::mc2_cpu_proj_cost::terrain_admission_begin_ns();
@@ -725,7 +725,7 @@ class Camera
 		}
 
 		// Object lifecycle admission — bool feeds windowsVisible → canBeSeen() cull chain.
-		inline bool projectForObjectAdmission (Stuff::Vector3D& point,
+		inline bool projectForObjectAdmission (glm::vec3& point,
 		                                       Stuff::Vector4D& screen) {
 			// R2 cull-admission instrumentation. begin_ns returns 0 when env
 			// OFF; end_ns short-circuits the same way. Inline pair is safe in
@@ -785,7 +785,7 @@ class Camera
 		// projectForObjectAdmission. projScale = max column-xyz-norm (cols 0/1) of
 		// worldToClip — the SAME matrix that produced rawClip (see projectZ:503),
 		// matching the documented clipSpaceFrustumAdmitSphere contract / gpu_cull.comp.
-		inline bool projectForObjectAdmissionSphere (Stuff::Vector3D& point,
+		inline bool projectForObjectAdmissionSphere (glm::vec3& point,
 		                                             Stuff::Vector4D& screen,
 		                                             float worldRadius) {
 			// Default ON for this low-camera build; set MC2_LOWCAM_OBJ_NEARPAD=0 to disable.
@@ -817,7 +817,7 @@ class Camera
 				// through the same predicate as the strict bypass admit would be,
 				// padded only on the near plane via the shared tol.
 				ModernClipResult r = projectModernClipGL(point);
-				const Stuff::Matrix4D M = worldToClipGL();
+				const glm::mat4 M = worldToClipGL();
 				const float projScale = objectNearPadProjScale(M);
 				ret = clipSpaceFrustumAdmitSphere(r.clip, worldRadius, projScale);
 			} else {
@@ -838,9 +838,9 @@ class Camera
 		// clip-component columns of the xyz coefficient magnitude. Mirrors the
 		// gpu_cull.comp derivation (there: row norms of the column-major viewProj;
 		// here: column norms of the row-vector worldToClip). Depth-independent.
-		static inline float objectNearPadProjScale (const Stuff::Matrix4D& M) {
+		static inline float objectNearPadProjScale (const glm::mat4& M) {
 			auto colNorm = [&](int c) {
-				const float a = M(0, c), b = M(1, c), d = M(2, c);
+				const float a = M[c][0], b = M[c][1], d = M[c][2];
 				return sqrtf(a * a + b * b + d * d);
 			};
 			const float nx = colNorm(0);
@@ -849,7 +849,7 @@ class Camera
 		}
 
 		// Effect billboard admission — bool gates submission; same wedge-class hazard as terrain.
-		inline bool projectForEffectAdmission (Stuff::Vector3D& point,
+		inline bool projectForEffectAdmission (glm::vec3& point,
 		                                       Stuff::Vector4D& screen) {
 			// R3 narrow-subset sidecar (see cpu_proj_cost_split.h).
 			const int64_t _f3_effect_t0 = ::mc2_cpu_proj_cost::effect_admission_begin_ns();
@@ -898,7 +898,7 @@ class Camera
 
 		// Lighting / shadow activation — bool gates light->active; screen discarded.
 		// F3 modernized via clipSpaceFrustumAdmit when MC2_LIGHTING_SHADOW_PREDICATE_MODE=Modern.
-		inline bool projectForLightingShadow (Stuff::Vector3D& point,
+		inline bool projectForLightingShadow (glm::vec3& point,
 		                                      Stuff::Vector4D& screen) {
 			const int64_t _f3_lshadow_t0 = ::mc2_cpu_proj_cost::lighting_shadow_begin_ns();
 
@@ -949,7 +949,7 @@ class Camera
 		// GL-NDC -> pixel remap (Y-down, Y-flip baked). Callers at camera.cpp:892,960,1026
 		// use screen.x/y as pixel coords (Y-down from top-left, compared against
 		// screenResolution and screenPos which are also pixel Y-down).
-		inline bool projectForSelectionPicking (Stuff::Vector3D& point,
+		inline bool projectForSelectionPicking (glm::vec3& point,
 		                                        Stuff::Vector4D& screen) {
 			const int64_t _f3_pick_t0 = ::mc2_cpu_proj_cost::selection_picking_begin_ns();
 
@@ -1033,7 +1033,7 @@ class Camera
 		// mode validates pre-flip. Default: Legacy (conservative).
 		// Env MC2_SCREENXY_PREDICATE_MODE=Modern + MC2_PROJECTZ_BYPASS_MODE=Compare
 		// logs pixel-delta events when bypass screen.xy disagrees >1px.
-		inline bool projectForScreenXY (Stuff::Vector3D& point,
+		inline bool projectForScreenXY (glm::vec3& point,
 		                                Stuff::Vector4D& screen) {
 			const int64_t _f3_sxy_t0 = ::mc2_cpu_proj_cost::screenxy_begin_ns();
 
@@ -1095,7 +1095,7 @@ class Camera
 
 		// Debug overlays — LAB_ONLY / drawTerrainGrid-gated draw paths.
 		// F3 modernized via clipSpaceFrustumAdmit when MC2_DEBUG_OVERLAY_PREDICATE_MODE=Modern.
-		inline bool projectForDebugOverlay (Stuff::Vector3D& point,
+		inline bool projectForDebugOverlay (glm::vec3& point,
 		                                    Stuff::Vector4D& screen) {
 			const int64_t _f3_dbg_t0 = ::mc2_cpu_proj_cost::debug_overlay_begin_ns();
 
@@ -1137,38 +1137,38 @@ class Camera
 			return ret;
 		}
 
-		void projectCamera (Stuff::Vector3D &point);
+		void projectCamera (glm::vec3 &point);
 
 		// Read-only view of the world->clip matrix. Used by the per-frame
 		// inverseProject delta-cache (VPL-retirement Step 3 3b) to detect a
 		// camera-matrix change via memcmp without re-projecting every frame.
-		const Stuff::Matrix4D& getWorldToClip (void) const { return worldToClip; }
+		const glm::mat4& getWorldToClip (void) const { return worldToClip; }
 
 		// F1 unified-projection: single composition source for runtime GPU
 		// uniform path. axisSwap * worldToCameraMatrix * cameraToClip,
 		// post-axisSwap GL convention. Distinct from `Camera::worldToClip`
 		// (pre-axisSwap; feeds projectZ body and 8 wrappers). See spec
 		// 2026-05-22 §0.1 invariant.
-		Stuff::Matrix4D worldToClipGL() const;
+		glm::mat4 worldToClipGL() const;
 
 		// HDRI-SKY-1: expose view matrix component (worldToCameraMatrix) separately
 		// for sky rendering. Used by GameAdapters::Sky::renderHdri alongside
 		// cameraToClipGL_const(). See docs/superpowers/explorations/2026-05-25-hdri-sky-matrix-source.md.
-		const Stuff::LinearMatrix4D& worldToCameraGL() const { return worldToCameraMatrix; }
+		const glm::mat4& worldToCameraGL() const { return worldToCameraMatrix; }
 
 		// HDRI-SKY-1: expose projection matrix component separately for sky rendering.
 		// Used by GameAdapters::Sky::renderHdri alongside worldToCameraGL(). Both
 		// matrices are column-major (GL convention) and safe to cast to float* for GPU.
-		const Stuff::Matrix4D& cameraToClipGL_const() const { return cameraToClipGL; }
+		const glm::mat4& cameraToClipGL_const() const { return cameraToClipGL; }
 
 		// F1-3A ViewUniforms: view matrix without projection component.
 		//   = kAxisSwapMC2toGL * worldToCameraMatrix
 		// Parallel to worldToClipGL() but stops before multiplying cameraToClipGL.
-		Stuff::Matrix4D worldToViewGL() const;
+		glm::mat4 worldToViewGL() const;
 
 		// F1-3A ViewUniforms: camera world position in GL coordinate space.
 		// Applies the MC2->GL axis swap (x'=-x, y'=z, z'=y) to physicalPos.
-		Stuff::Vector3D cameraOriginGL() const;
+		glm::vec3 cameraOriginGL() const;
 
 		// Pick screen-rect cache invalidation key. Increments when worldToClip
 		// changes (position/rotation/FOV/viewport). 0 = uninitialized.
@@ -1178,7 +1178,7 @@ class Camera
 		// for a single world point. Used by the 5 Modern-default wrappers when
 		// MC2_PROJECTZ_BYPASS_MODE = Compare or Bypass. Does NOT touch
 		// cameraToClip / projectZ / worldToClip (legacy paths preserved).
-		ModernClipResult projectModernClipGL(const Stuff::Vector3D& world) const;
+		ModernClipResult projectModernClipGL(const glm::vec3& world) const;
 
 		// Shared CPU camera-frustum x quad-AABB primitive (VPL-retirement Step 3 3a
 		// OWNS the definition; Step 5B references it). Pure CPU, no GL, no readback.
@@ -1189,8 +1189,8 @@ class Camera
 		// quadAabbInFrustum: conservative p-vertex AABB-vs-frustum test. Never
 		// false-negative (may false-positive slightly outside - acceptable).
 		bool quadAabbInFrustum (const float planes[6][4],
-		                        const Stuff::Vector3D& mn,
-		                        const Stuff::Vector3D& mx) const;
+		                        const glm::vec3& mn,
+		                        const glm::vec3& mx) const;
 
 		// [LOW-CAMERA-TERRAIN-CULL-1 / FIX-2] As quadAabbInFrustum, but omits the
 		// near plane (index 4 in the {left,right,bottom,top,near,far} order) so the
@@ -1198,8 +1198,8 @@ class Camera
 		// grazing pitch. The other 5 planes (left/right/top/bottom/far) are tested
 		// identically — this is NOT a global cull-widen. Terrain-only; gated.
 		bool quadAabbInFrustumSkipNear (const float planes[6][4],
-		                                const Stuff::Vector3D& mn,
-		                                const Stuff::Vector3D& mx) const;
+		                                const glm::vec3& mn,
+		                                const glm::vec3& mx) const;
 
 		// F6 T2: per-frame frustum-planes cache, populated by Terrain::geometry
 		// once per frame before the setupTextures loop. Shared with
@@ -1219,7 +1219,7 @@ class Camera
 		// events that genuinely need the exact terrain hit (e.g. a click).
 		//
 		// LESSON: never call terrain picking from paint/input UI affordances.
-		unsigned long inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff::Vector3D &point);
+		unsigned long inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::vec3 &point);
 
 		// screenToGroundPlaneApprox: O(1) screen-pixel -> world point on the
 		// z=0 ground plane via the inverse clip matrix + ray/plane intersect.
@@ -1227,7 +1227,7 @@ class Camera
 		// cheap, approximate overlays (e.g. the tacmap view rectangle) where
 		// exact terrain intersection is unnecessary. Do NOT substitute for
 		// inverseProject() when a real terrain hit is required.
-		bool screenToGroundPlaneApprox (long screenX, long screenY, Stuff::Vector3D &outWorld, float z_plane = 0.0f);
+		bool screenToGroundPlaneApprox (long screenX, long screenY, glm::vec3 &outWorld, float z_plane = 0.0f);
 
 		// screenToTerrainApprox: screenToGroundPlaneApprox refined onto the
 		// terrain surface by iterating the plane height (fixed 3 steps, O(1),
@@ -1241,7 +1241,7 @@ class Camera
 		// surface hit use inverseProject (forward-projection quad scanner).
 		// These approx functions remain for non-sculpt editor paths and cursor
 		// overlay (brush centre display), where O(1) performance matters.
-		bool screenToTerrainApprox (long screenX, long screenY, Stuff::Vector3D &outWorld);
+		bool screenToTerrainApprox (long screenX, long screenY, glm::vec3 &outWorld);
 
 		// getClosestVertex: screen-click -> terrain vertex (row,col).
 		// Reinstated 2026-05-24 for the EditRel Mission Editor (sole caller
@@ -1256,7 +1256,7 @@ class Camera
 		void calculateProjectionConstants (void);
 		void calculateTopViewConstants (void);
 
-		void changeResolution (Stuff::Vector3D newRes)
+		void changeResolution (glm::vec3 newRes)
 		{
 			screenResolution = newRes;
 			// The pixel-space scale (viewMulX/Y) is what projectZ() and the legacy
@@ -1286,7 +1286,7 @@ class Camera
 
 		void setClass(CameraClass newClass) {cameraClass = newClass;}
 		
-		Stuff::Vector3D getPosition (void)
+		glm::vec3 getPosition (void)
 		{
 			return position;
 		}
@@ -1417,7 +1417,7 @@ class Camera
 		}
 
 
-		Stuff::Vector3D getScreenRes (void)
+		glm::vec3 getScreenRes (void)
 		{
 			return screenResolution;
 		}
@@ -1498,12 +1498,12 @@ class Camera
 		//-----------------------------------------
 		// Returns Vector in Direction of Camera.
 		// For BackFacing Object Checks
-		Stuff::Vector3D getLookVector (void)
+		glm::vec3 getLookVector (void)
 		{
 			return lookVector;
 		}
 
-		Stuff::Vector3D getCameraOrigin (void)
+		glm::vec3 getCameraOrigin (void)
 		{
 			return physicalPos;
 		}
@@ -1559,10 +1559,10 @@ class Camera
 		void tiltDown (float amount);
 		void tiltNormal (void);
 		
-		void movePosLeft(float amount, Stuff::Vector3D &pos);
-		void movePosRight(float amount, Stuff::Vector3D &pos);
-		void movePosUp(float amount, Stuff::Vector3D &pos);
-		void movePosDown(float amount, Stuff::Vector3D &pos);
+		void movePosLeft(float amount, glm::vec3 &pos);
+		void movePosRight(float amount, glm::vec3 &pos);
+		void movePosUp(float amount, glm::vec3 &pos);
+		void movePosDown(float amount, glm::vec3 &pos);
 		
 		virtual void moveLeft(float amount);
 		virtual void moveRight(float amount);
@@ -1575,7 +1575,7 @@ class Camera
 		// [CAMERA-SMOOTHING-1] input accumulators (see camera.cpp).
 		void applyScrollDelta(float dx, float dy);
 		void queueRotationDelta(float amount);
-		void updateInputSmoothing(Stuff::Vector3D &newPosition);
+		void updateInputSmoothing(glm::vec3 &newPosition);
 		static bool inputSmoothingEnabled(void);	// MC2_CAMERA_SMOOTH > 0
 
 		void rotateNormal (void);
@@ -1589,7 +1589,7 @@ class Camera
 		unsigned char getLightGreen (float intensity);
 		unsigned char getLightBlue (float intensity);
 
-		void setPosition(Stuff::Vector3D newPosition, bool swoopy = true);
+		void setPosition(glm::vec3 newPosition, bool swoopy = true);
 
 		bool save( FitIniFile* fileName );
 
@@ -1658,22 +1658,22 @@ class Camera
 			return goalFOV;
 		}
 				
-		void setGoalPosition (Stuff::Vector3D goalPos)
+		void setGoalPosition (glm::vec3 goalPos)
 		{
 			goalPosition = goalPos;
 		}
 
-		void setLookPosition (Stuff::Vector3D goalPos)
+		void setLookPosition (glm::vec3 goalPos)
 		{
 			lookPosition = goalPos;
 		}
 
-		Stuff::Vector3D getGoalPosition (void)
+		glm::vec3 getGoalPosition (void)
 		{
 			return goalPosition;
 		}
 		
-		Stuff::Vector3D getLookPosition (void)
+		glm::vec3 getLookPosition (void)
 		{
 			return lookPosition;
 		}
@@ -1683,16 +1683,16 @@ class Camera
 			goalPosTime = time;
 		}
 
-		Stuff::Vector3D getRotation (void)
+		glm::vec3 getRotation (void)
 		{
-			Stuff::Vector3D rot(0.0,0.0,0.0);
+			glm::vec3 rot(0.0,0.0,0.0);
 			rot.x = projectionAngle;
 			rot.y = cameraRotation;
 			
 			return rot;
 		}
 		
-		void setRotation (Stuff::Vector3D rot)
+		void setRotation (glm::vec3 rot)
 		{
 			projectionAngle = rot.x;
 			setCameraRotation(rot.y,rot.y);
@@ -1726,8 +1726,8 @@ class Camera
 			goalRotation.z = cameraAltitude;
 			goalRotTime    = 0.0f;
 			goalFOVTime    = 0.0f;
-			velocity.Zero();
-			goalVelocity.Zero();
+			velocity = glm::vec3(0.0f);
+			goalVelocity = glm::vec3(0.0f);
 			goalVelTime    = 0.0f;
 			// Pin the altitude EASE target too: update() lerps cameraAltitude
 			// toward cameraAltitudeDesired each frame, so leaving Desired stale
@@ -1743,12 +1743,12 @@ class Camera
 			rotSmoothActive = false;
 		}
 
-		void setGoalRotation (Stuff::Vector3D goalRot)
+		void setGoalRotation (glm::vec3 goalRot)
 		{
 			goalRotation = goalRot;
 		}
 		
-		Stuff::Vector3D getGoalRotation (void)
+		glm::vec3 getGoalRotation (void)
 		{
 			return goalRotation;
 		}
@@ -1758,22 +1758,22 @@ class Camera
 			goalRotTime = time;
 		}
 
-		Stuff::Vector3D getVelocity (void)
+		glm::vec3 getVelocity (void)
 		{
 			return velocity;
 		}
 		
- 		void setVelocity (Stuff::Vector3D vel)
+ 		void setVelocity (glm::vec3 vel)
 		{
 			velocity = vel;
 		}
 		
-		Stuff::Vector3D getGoalVelocity (void)
+		glm::vec3 getGoalVelocity (void)
 		{
 			return goalVelocity;
 		}
 		
-  		void setGoalVelocity (Stuff::Vector3D goalVel)
+  		void setGoalVelocity (glm::vec3 goalVel)
 		{
 			goalVelocity = goalVel;
 		}
@@ -1784,7 +1784,7 @@ class Camera
 		}
 		
 		void updateGoalVelocity(void);
-		void updateGoalPosition (Stuff::Vector3D &pos);
+		void updateGoalPosition (glm::vec3 &pos);
 		void updateGoalRotation (void);
 		void updateGoalFOV (void);
 		

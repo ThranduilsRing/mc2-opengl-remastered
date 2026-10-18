@@ -340,13 +340,13 @@ static DWORD footprintShadowColor(float strength)
 	return (DWORD)(a << 24);
 }
 
-static Stuff::Vector3D buildingFootprintCorner(const Stuff::Vector3D& origin,
+static glm::vec3 buildingFootprintCorner(const glm::vec3& origin,
                                                float localX,
                                                float localY,
                                                float rotationDegrees,
                                                float z)
 {
-	Stuff::Vector3D v;
+	glm::vec3 v;
 	v.x = localX;
 	v.y = localY;
 	v.z = 0.0f;
@@ -358,8 +358,8 @@ static Stuff::Vector3D buildingFootprintCorner(const Stuff::Vector3D& origin,
 	return v;
 }
 
-static void pushFootprintTri(const Stuff::Vector3D& a, const Stuff::Vector3D& b,
-                             const Stuff::Vector3D& c, DWORD ca, DWORD cb, DWORD cc)
+static void pushFootprintTri(const glm::vec3& a, const glm::vec3& b,
+                             const glm::vec3& c, DWORD ca, DWORD cb, DWORD cc)
 {
 	WorldOverlayVert tri[3] = {
 		{ a.x, a.y, a.z, -1.0f, 0.0f, 1.0f, ca },
@@ -379,9 +379,9 @@ void submitBuildingFootprintShadow(const BldgAppearance* appearance)
 	if (type->buildingFootprintShadowStrength <= 0.0f)
 		return;
 
-	const Stuff::Vector3D minBox = appearance->bldgShape->GetMinBox();
-	const Stuff::Vector3D maxBox = appearance->bldgShape->GetMaxBox();
-	const Stuff::Vector3D center = appearance->bldgShape->GetRootNodeCenter();
+	const glm::vec3 minBox = appearance->bldgShape->GetMinBox();
+	const glm::vec3 maxBox = appearance->bldgShape->GetMaxBox();
+	const glm::vec3 center = appearance->bldgShape->GetRootNodeCenter();
 	const float softness = std::max(0.0f, type->buildingFootprintShadowSoftness);
 	const float z = appearance->position.z + type->buildingFootprintShadowHeightBias;
 	const DWORD inner = footprintShadowColor(type->buildingFootprintShadowStrength);
@@ -396,14 +396,14 @@ void submitBuildingFootprintShadow(const BldgAppearance* appearance)
 	const float oy0 = iy0 - softness;
 	const float oy1 = iy1 + softness;
 
-	Stuff::Vector3D i00 = buildingFootprintCorner(appearance->position, ix0, iy0, appearance->rotation, z);
-	Stuff::Vector3D i10 = buildingFootprintCorner(appearance->position, ix1, iy0, appearance->rotation, z);
-	Stuff::Vector3D i11 = buildingFootprintCorner(appearance->position, ix1, iy1, appearance->rotation, z);
-	Stuff::Vector3D i01 = buildingFootprintCorner(appearance->position, ix0, iy1, appearance->rotation, z);
-	Stuff::Vector3D o00 = buildingFootprintCorner(appearance->position, ox0, oy0, appearance->rotation, z);
-	Stuff::Vector3D o10 = buildingFootprintCorner(appearance->position, ox1, oy0, appearance->rotation, z);
-	Stuff::Vector3D o11 = buildingFootprintCorner(appearance->position, ox1, oy1, appearance->rotation, z);
-	Stuff::Vector3D o01 = buildingFootprintCorner(appearance->position, ox0, oy1, appearance->rotation, z);
+	glm::vec3 i00 = buildingFootprintCorner(appearance->position, ix0, iy0, appearance->rotation, z);
+	glm::vec3 i10 = buildingFootprintCorner(appearance->position, ix1, iy0, appearance->rotation, z);
+	glm::vec3 i11 = buildingFootprintCorner(appearance->position, ix1, iy1, appearance->rotation, z);
+	glm::vec3 i01 = buildingFootprintCorner(appearance->position, ix0, iy1, appearance->rotation, z);
+	glm::vec3 o00 = buildingFootprintCorner(appearance->position, ox0, oy0, appearance->rotation, z);
+	glm::vec3 o10 = buildingFootprintCorner(appearance->position, ox1, oy0, appearance->rotation, z);
+	glm::vec3 o11 = buildingFootprintCorner(appearance->position, ox1, oy1, appearance->rotation, z);
+	glm::vec3 o01 = buildingFootprintCorner(appearance->position, ox0, oy1, appearance->rotation, z);
 
 	pushFootprintTri(i00, i10, i11, inner, inner, inner);
 	pushFootprintTri(i00, i11, i01, inner, inner, inner);
