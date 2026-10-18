@@ -900,8 +900,7 @@ static DWORD WINAPI s_smoke_thread(LPVOID)
 			{
 				::PostMessageA((HWND)g_smokeMainHwnd, WM_CLOSE, 0, 0);
 				::Sleep(30000);   // the normal shutdown ends the process before this returns
-				fprintf(stderr, "[ESMOKE v1] event=clean_close_timeout
-");
+				fprintf(stderr, "[ESMOKE v1] event=clean_close_timeout\n");
 				fflush(stderr);
 				::ExitProcess(4);
 			}
