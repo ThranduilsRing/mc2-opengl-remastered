@@ -39,6 +39,7 @@
 
 #include<gameos.hpp>
 #include<cstdint>
+#include<cstring>
 #include<vector>
 #include"open_heap.h"	// the per-solver open list (mc2::OpenHeap)
 
@@ -1053,6 +1054,8 @@ class MovePath {
 		long crossesClosedGate (long start, long range);
 
 		MovePath (void) {
+			// Saves write this struct raw; zero it so padding (e.g. after 'marked') is deterministic.
+			memset((void*)this, 0, sizeof(MovePath));
 			init();
 		}
 		
