@@ -177,9 +177,9 @@ void TreeAppearance::registerStatic() {
 	// yaw includes the per-instance yaw offset (matches first-render path exactly).
 	float yawAngle = (rotation * DEGREES_TO_RADS) + (yaw * DEGREES_TO_RADS);
 	float pitchAngle = (pitch * DEGREES_TO_RADS);
-	Stuff::UnitQuaternion rot;
-	rot = Stuff::EulerAngles(pitchAngle, yawAngle, 0.0f);
-	Stuff::Point3D xlatPosition;
+	glm::quat rot;
+	rot = mc2::math::quatFromEuler(mc2::math::Euler(pitchAngle, yawAngle, 0.0f));
+	glm::vec3 xlatPosition;
 	xlatPosition.x = -position.x;
 	xlatPosition.y = TerrainRuntime::groundElevation(position);
 	xlatPosition.z = position.y;
@@ -238,7 +238,7 @@ void TreeAppearance::registerStatic() {
 			if (child->GetLightsOut())   flags |= (1u << 0);
 			if (child->GetIsWindow())    flags |= (1u << 1);
 			if (child->GetIsAlphaTest())   flags |= (1u << 2);   // FOLIAGE-ALPHAFLAG-1: kFlagIsAlphaTest, as submitMultiShape sets it
-			Stuff::Matrix4D xform(rec->shapeToWorld);
+			glm::mat4 xform = glm::mat4(rec->shapeToWorld);
 			GpuStaticPropInstance inst;
 			if (!GpuStaticPropBatcher::instance().buildRecipeFromShape(
 					child, xform,
@@ -456,13 +456,13 @@ bool TreeAppearance::prewarmStaticLightBake(Camera* cam)
 	// xlatPosition/rot: same transform as TreeAppearance::update (line ~6129-6132).
 	// Trees use pitch + yaw combined; position.y is world-Y but terrain height
 	// is overridden in touchSerialCommit (registerStatic path uses position directly).
-	Stuff::Point3D xlatPosition;
+	glm::vec3 xlatPosition;
 	mc2ToRender(xlatPosition, position);
 
 	float yawAngle   = (rotation * DEGREES_TO_RADS) + (yaw * DEGREES_TO_RADS);
 	float pitchAngle = (pitch    * DEGREES_TO_RADS);
-	Stuff::UnitQuaternion rot;
-	rot = Stuff::EulerAngles(pitchAngle, yawAngle, 0.0f);
+	glm::quat rot;
+	rot = mc2::math::quatFromEuler(mc2::math::Euler(pitchAngle, yawAngle, 0.0f));
 
 	treeShape->TransformMultiShape_HierarchyOnly(&xlatPosition, &rot);
 

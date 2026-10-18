@@ -242,7 +242,7 @@ void ControlGui::handleVehicleClick( int ID )
 				int cost = vehicleCosts[i];
 				LogisticsData::instance->decrementResourcePoints( cost );
 				if (MPlayer) {
-					Stuff::Vector3D pos;
+					glm::vec3 pos;
 					MPlayer->sendReinforcement(-cost, 0, "noname", MPlayer->commanderID, pos, 6);
 				}
 

@@ -106,10 +106,10 @@ namespace MidLevelRenderer {
 					yFac = yScale;
 				}
 
-		int	TransformAndClip(Stuff::Matrix4D *, MLRClippingState, GOSVertexPool*,bool=false) override;
+		int	TransformAndClip(glm::mat4 *, MLRClippingState, GOSVertexPool*,bool=false) override;
 
 		void
-			TransformNoClip(Stuff::Matrix4D*, GOSVertexPool*,bool=false) override;
+			TransformNoClip(glm::mat4*, GOSVertexPool*,bool=false) override;
 
 		void
 			SetReferenceState(const MLRState& _state, int pass=0) override

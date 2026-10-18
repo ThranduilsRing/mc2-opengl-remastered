@@ -536,7 +536,7 @@ long GlobalMap::calcPath (long startArea,
 	return(0);
 }
 
-long GlobalMap::calcPath (Stuff::Vector3D start, Stuff::Vector3D goal, GlobalPathStepPtr path) {
+long GlobalMap::calcPath (glm::vec3 start, glm::vec3 goal, GlobalPathStepPtr path) {
 
 	int startR, startC;
 	land->worldToCell(start, startR, startC);

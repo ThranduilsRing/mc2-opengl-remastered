@@ -231,7 +231,7 @@ void Render( Camera* eye )
 	{
 		const Instance& in = g_instances[i];
 
-		Stuff::Vector3D base;
+		glm::vec3 base;
 		base.x = in.x; base.y = in.y; base.z = in.z;
 		Stuff::Vector4D sb;
 		// NOTE: projectForScreenXY's bool return is the legacy projectZ "accepted"
@@ -256,7 +256,7 @@ void Render( Camera* eye )
 		if ( !onScreen )                               // far off-screen (no screen-filling quad)
 			continue;
 
-		Stuff::Vector3D top = base;
+		glm::vec3 top = base;
 		top.z += kKindHeight[in.kind] * ( in.scale > 0.01f ? in.scale : 1.0f );
 		Stuff::Vector4D st;
 		eye->projectForScreenXY( top, st );

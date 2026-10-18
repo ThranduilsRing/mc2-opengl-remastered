@@ -40,8 +40,8 @@ namespace MidLevelRenderer {
 		MLRShape *shape;
 		MLRState state;
 		MLRClippingState clippingFlags;
-		const Stuff::LinearMatrix4D *shapeToWorld;
-		const Stuff::LinearMatrix4D *worldToShape;
+		const glm::mat4 *shapeToWorld;
+		const glm::mat4 *worldToShape;
 
 		MLRLight *const *activeLights;
 		int	nrOfActiveLights;
@@ -56,7 +56,7 @@ namespace MidLevelRenderer {
 	public:
 		DrawScalableShapeInformation();
 
-		const Stuff::Vector3D *scaling;
+		const glm::vec3 *scaling;
 
 		const Stuff::RGBAColor *paintMe;
 
@@ -79,7 +79,7 @@ namespace MidLevelRenderer {
 
 		MLRState state;
 		MLRClippingState clippingFlags;
-		const Stuff::LinearMatrix4D *effectToWorld;
+		const glm::mat4 *effectToWorld;
 
 #if 0 // for the time being no lights on the effects
 		MLRLight *const *activeLights;
@@ -135,8 +135,8 @@ namespace MidLevelRenderer {
 
 //	lets begin the dance
 		void StartDraw(
-			const Stuff::LinearMatrix4D& camera_to_world,
-			const Stuff::Matrix4D& clip_matrix,
+			const glm::mat4& camera_to_world,
+			const glm::mat4& clip_matrix,
 			const Stuff::RGBAColor &fog_color,		// NOT USED ANYMORE
 			const Stuff::RGBAColor *background_color,
 			const MLRState &default_state,
@@ -173,13 +173,13 @@ namespace MidLevelRenderer {
 		Stuff::Scalar GetTime () const
 			{ Check_Object(this); return nowTime; }
 
-		const Stuff::LinearMatrix4D&
+		const glm::mat4&
 			GetCameraToWorldMatrix()
 				{Check_Object(this); return cameraToWorldMatrix;}
-		const Stuff::LinearMatrix4D&
+		const glm::mat4&
 			GetWorldToCameraMatrix()
 				{Check_Object(this); return worldToCameraMatrix;}
-		const Stuff::Matrix4D&
+		const glm::mat4&
 			GetCameraToClipMatrix()
 				{Check_Object(this); return cameraToClipMatrix;}
 
@@ -209,19 +209,19 @@ namespace MidLevelRenderer {
 		Stuff::Scalar nowTime;
 
 //	world-to-camera matrix
-		Stuff::LinearMatrix4D
+		glm::mat4
 			worldToCameraMatrix;
 
-		Stuff::LinearMatrix4D
+		glm::mat4
 			cameraToWorldMatrix;
 
-		Stuff::Matrix4D
+		glm::mat4
 			cameraToClipMatrix;
 
-		Stuff::Matrix4D
+		glm::mat4
 			worldToClipMatrix;
 
-		Stuff::Point3D
+		glm::vec3
 			cameraPosition;
 
 // this is the film

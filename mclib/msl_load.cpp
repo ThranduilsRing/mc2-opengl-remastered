@@ -166,7 +166,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 				// Scan list of vertices and create minBox, maxBox and extentRadius
 				for (long j=0;j<listOfTypeShapes[i]->GetNumTypeVertices();j++)
 				{
-					Stuff::Vector3D relNodeCenter;
+					glm::vec3 relNodeCenter;
 					relNodeCenter = listOfTypeShapes[i]->GetRelativeNodeCenter();
 					
 					TG_TypeShapePtr typeShape = (TG_TypeShapePtr)listOfTypeShapes[i];
@@ -192,8 +192,8 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 			}
 		}
 	
-		float minBoxLength = minBox.GetLength();
-		float maxBoxLength = maxBox.GetLength();
+		float minBoxLength = glm::length(minBox);
+		float maxBoxLength = glm::length(maxBox);
 		if (minBoxLength > extentRadius)
 			extentRadius = minBoxLength;
 
@@ -902,7 +902,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 					// Scan list of vertices and create minBox, maxBox and extentRadius
 					for (int j=0;j<listOfTypeShapes[i]->GetNumTypeVertices();j++)
 					{
-						Stuff::Vector3D relNodeCenter;
+						glm::vec3 relNodeCenter;
 						relNodeCenter = listOfTypeShapes[i]->GetRelativeNodeCenter();
 						
 						TG_TypeShapePtr typeShape = (TG_TypeShapePtr)listOfTypeShapes[i];
@@ -927,8 +927,8 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 				}
 			}
 		
-			float minBoxLength = minBox.GetLength();
-			float maxBoxLength = maxBox.GetLength();
+			float minBoxLength = glm::length(minBox);
+			float maxBoxLength = glm::length(maxBox);
 			if (minBoxLength > extentRadius)
 				extentRadius = minBoxLength;
 				

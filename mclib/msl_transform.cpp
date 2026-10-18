@@ -1,8 +1,6 @@
 // Multi shape layer: TG_MultiShape::TransformMultiShape (and its variants) and the GPU light-data cache.
 // Declared in the class headers; shared names in msl_internal.h.
 #include "msl_internal.h"
-#include "math/stuff_glm_bridge.h"
-
 //-------------------------------------------------------------------------------
 //This function does the actual transform math, clip checks and lighting math.
 //The matrices passed in are the translation/rotation matrix for the shape and
@@ -31,7 +29,7 @@ static bool s_multiShapePositionsOnly = false;
 // pool-allocating MultiTransformShape_* dispatch and the s_cameraOrigin read.
 static bool s_buildRecipeOnly = false;
 
-long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuaternion *rot)
+long TG_MultiShape::TransformMultiShape (glm::vec3 *pos, glm::quat *rot)
 {
 	::mc2_object_recon::Scope _recon_mShape_(
 		&::mc2_object_recon::g_per_frame.mShape_total_ns,
@@ -47,30 +45,30 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
     x=GetCycles();
 #endif
 
-    Stuff::LinearMatrix4D 	shapeOrigin;
-    Stuff::LinearMatrix4D	shadowOrigin;
-    Stuff::LinearMatrix4D 	localShapeOrigin;
+    glm::mat4 	shapeOrigin;
+    glm::mat4	shadowOrigin;
+    glm::mat4 	localShapeOrigin;
 
-    shapeOrigin.BuildRotation(*rot);
-    shapeOrigin.BuildTranslation(*pos);
+    mc2::math::buildRotation(shapeOrigin, *rot);
+    mc2::math::buildTranslation(shapeOrigin, *pos);
 
-    Stuff::EulerAngles angles(*rot);
+    mc2::math::Euler angles = mc2::math::eulerFromQuat(*rot);
     yawRotation = angles.yaw;
 
-    shadowOrigin.BuildRotation(Stuff::EulerAngles(-angles.pitch,0.0f,0.0f));
-    shadowOrigin.BuildTranslation(*pos);
+    mc2::math::buildRotation(shadowOrigin, mc2::math::Euler(-angles.pitch,0.0f,0.0f));
+    mc2::math::buildTranslation(shadowOrigin, *pos);
 
     long i=0;
-    Stuff::Point3D camPosition;
+    glm::vec3 camPosition;
     // Guard null — s_cameraOrigin is unset during Mission::init (before first Camera::update).
     // s_buildRecipeOnly skips per-vertex dispatch so camPosition is never used in that mode.
     if (TG_Shape::s_cameraOrigin)
-        camPosition = *TG_Shape::s_cameraOrigin;
+        camPosition = mc2::math::getTranslation(*TG_Shape::s_cameraOrigin);
     else
         { camPosition.x = camPosition.y = camPosition.z = 0.0f; }
 
-    Stuff::Matrix4D  shapeToClip, rootShapeToClip;
-    Stuff::Point3D backFacePoint;
+    glm::mat4  shapeToClip, rootShapeToClip;
+    glm::vec3 backFacePoint;
 
     TG_ShapeRecPtr childChain[MAX_NODES];
 
@@ -112,7 +110,7 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
 
         long fNum = float2long(frameNum);
 
-        Stuff::Point3D zero;
+        glm::vec3 zero;
         zero.x = zero.y = zero.z = 0.0f;
         for (int j=curChild;j>=0;j--)
         {
@@ -127,7 +125,7 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                     {
                         //--------------------------------------
                         // Slerp between current and next frame
-                        Stuff::UnitQuaternion slerpQuat;
+                        glm::quat slerpQuat;
                         slerpQuat.x = slerpQuat.y = slerpQuat.z = 0.0f;
                         slerpQuat.w = 1.0f;
 
@@ -137,7 +135,7 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                         //--------------------------------------
                         //First Apply Animation to this local piece of heirarchy.
                         // If piece had base rotation, apply it.  Otherwise, no.
-                        Stuff::UnitQuaternion totalRotation = slerpQuat;
+                        glm::quat totalRotation = slerpQuat;
                         if ((childChain[j]->baseRotation.w == 1.0f) && 
                                 (childChain[j]->baseRotation.x == 0.0f) &&
                                 (childChain[j]->baseRotation.y == 0.0f) && 
@@ -146,36 +144,36 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                         }
                         else
                         {
-                            totalRotation.Multiply(slerpQuat,childChain[j]->baseRotation);
-                            totalRotation.Normalize();
+                            totalRotation = mc2::math::composeQuat(slerpQuat, childChain[j]->baseRotation);
+                            totalRotation = glm::normalize(totalRotation);
                         }
 
-                        localShapeOrigin.BuildRotation(totalRotation);
+                        mc2::math::buildRotation(localShapeOrigin, totalRotation);
 
                         if (childChain[j]->currentAnimation->pos)
-                            localShapeOrigin.BuildTranslation(childChain[j]->currentAnimation->pos[fNum]);		//SPECIAL.  ROOT HAS ITS OWN OFFSETS!
+                            mc2::math::buildTranslation(localShapeOrigin, childChain[j]->currentAnimation->pos[fNum]);		//SPECIAL.  ROOT HAS ITS OWN OFFSETS!
                         else
-                            localShapeOrigin.BuildTranslation(childChain[j]->node->myType->GetNodeCenter());
+                            mc2::math::buildTranslation(localShapeOrigin, childChain[j]->node->myType->GetNodeCenter());
 
                         childChain[j]->localShapeToWorld = localShapeOrigin;
 
                         //------------------------------------------------------------------
                         //Then move the piece of the heirarchy into the frame of the parent
-                        childChain[j]->shapeToWorld.Multiply(childChain[j]->localShapeToWorld,shapeOrigin);
+                        childChain[j]->shapeToWorld = childChain[j]->localShapeToWorld * shapeOrigin;
 
-                        mc2::math::fromGlm(childChain[j]->worldToShape, glm::inverse(mc2::math::toGlm(childChain[j]->shapeToWorld)));
+                        childChain[j]->worldToShape = glm::inverse(childChain[j]->shapeToWorld);
                         childChain[j]->calcedThisFrame = turn;
                     }
                     else
                     {
-                        localShapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-                        localShapeOrigin.BuildTranslation(childChain[j]->node->myType->GetNodeCenter());
+                        mc2::math::buildRotation(localShapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+                        mc2::math::buildTranslation(localShapeOrigin, childChain[j]->node->myType->GetNodeCenter());
 
                         childChain[j]->localShapeToWorld = localShapeOrigin;
 
-                        childChain[j]->shapeToWorld.Multiply(childChain[j]->localShapeToWorld,shapeOrigin);
+                        childChain[j]->shapeToWorld = childChain[j]->localShapeToWorld * shapeOrigin;
 
-                        mc2::math::fromGlm(childChain[j]->worldToShape, glm::inverse(mc2::math::toGlm(childChain[j]->shapeToWorld)));
+                        childChain[j]->worldToShape = glm::inverse(childChain[j]->shapeToWorld);
                         childChain[j]->calcedThisFrame = turn;
                     }
                 }
@@ -187,7 +185,7 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                     {
                         //--------------------------------------
                         // Slerp between current and next frame
-                        Stuff::UnitQuaternion slerpQuat;
+                        glm::quat slerpQuat;
                         slerpQuat.x = slerpQuat.y = slerpQuat.z = 0.0f;
                         slerpQuat.w = 1.0f;
 
@@ -197,7 +195,7 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                         //--------------------------------------
                         //First Apply Animation to this local piece of heirarchy.
                         // If piece had base rotation, apply it.  Otherwise, no.
-                        Stuff::UnitQuaternion totalRotation = slerpQuat;
+                        glm::quat totalRotation = slerpQuat;
                         if ((childChain[j]->baseRotation.w == 1.0f) && 
                                 (childChain[j]->baseRotation.x == 0.0f) &&
                                 (childChain[j]->baseRotation.y == 0.0f) && 
@@ -206,28 +204,28 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                         }
                         else
                         {
-                            totalRotation.Multiply(slerpQuat,childChain[j]->baseRotation);
-                            totalRotation.Normalize();
+                            totalRotation = mc2::math::composeQuat(slerpQuat, childChain[j]->baseRotation);
+                            totalRotation = glm::normalize(totalRotation);
                         }
 
-                        localShapeOrigin.BuildRotation(totalRotation);
+                        mc2::math::buildRotation(localShapeOrigin, totalRotation);
 
                         if (childChain[j]->currentAnimation->pos)
-                            localShapeOrigin.BuildTranslation(childChain[j]->currentAnimation->pos[fNum]);
+                            mc2::math::buildTranslation(localShapeOrigin, childChain[j]->currentAnimation->pos[fNum]);
                         else
-                            localShapeOrigin.BuildTranslation(childChain[j]->node->myType->GetRelativeNodeCenter());
+                            mc2::math::buildTranslation(localShapeOrigin, childChain[j]->node->myType->GetRelativeNodeCenter());
 
                         childChain[j]->localShapeToWorld = localShapeOrigin;
 
                         //------------------------------------------------------------------
                         //Then move the piece of the heirarchy into the frame of the parent
-                        childChain[j]->localShapeToWorld.Multiply(localShapeOrigin,childChain[j+1]->localShapeToWorld);
+                        childChain[j]->localShapeToWorld = localShapeOrigin * childChain[j+1]->localShapeToWorld;
 
                         //------------------------------------------------------------------
                         // Then deal with global translation.
-                        childChain[j]->shapeToWorld.Multiply(childChain[j]->localShapeToWorld,shapeOrigin);
+                        childChain[j]->shapeToWorld = childChain[j]->localShapeToWorld * shapeOrigin;
 
-                        mc2::math::fromGlm(childChain[j]->worldToShape, glm::inverse(mc2::math::toGlm(childChain[j]->shapeToWorld)));
+                        childChain[j]->worldToShape = glm::inverse(childChain[j]->shapeToWorld);
                         childChain[j]->calcedThisFrame = turn;
                     }
                     else
@@ -236,22 +234,22 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                         // NO Animation if we are here.
                         //
                         // Apply Base Rotation.  If it is Zero, no problem!
-                        Stuff::UnitQuaternion totalRotation = childChain[j]->baseRotation;
-                        localShapeOrigin.BuildRotation(totalRotation);
-                        localShapeOrigin.BuildTranslation(childChain[j]->node->myType->GetRelativeNodeCenter());
+                        glm::quat totalRotation = childChain[j]->baseRotation;
+                        mc2::math::buildRotation(localShapeOrigin, totalRotation);
+                        mc2::math::buildTranslation(localShapeOrigin, childChain[j]->node->myType->GetRelativeNodeCenter());
 
                         childChain[j]->localShapeToWorld = localShapeOrigin;
 
                         //------------------------------------------------------------------
                         //Then move the piece of the heirarchy into the frame of the parent
                         localShapeOrigin = childChain[j]->localShapeToWorld;
-                        childChain[j]->localShapeToWorld.Multiply(localShapeOrigin,childChain[j+1]->localShapeToWorld);
+                        childChain[j]->localShapeToWorld = localShapeOrigin * childChain[j+1]->localShapeToWorld;
 
                         //------------------------------------------------------------------
                         // Then deal with global translation.
-                        childChain[j]->shapeToWorld.Multiply(childChain[j]->localShapeToWorld,shapeOrigin);
+                        childChain[j]->shapeToWorld = childChain[j]->localShapeToWorld * shapeOrigin;
 
-                        mc2::math::fromGlm(childChain[j]->worldToShape, glm::inverse(mc2::math::toGlm(childChain[j]->shapeToWorld)));
+                        childChain[j]->worldToShape = glm::inverse(childChain[j]->shapeToWorld);
                         childChain[j]->calcedThisFrame = turn;
                     }
                 }
@@ -280,9 +278,9 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                                 {
                                     if (TG_Shape::s_listOfLights[iLight] != nullptr)
                                     {
-                                        TG_Shape::s_lightToShape[iLight].Multiply(TG_Shape::s_listOfLights[iLight]->lightToWorld,listOfShapes[i].worldToShape);
-                                        Stuff::UnitVector3D uVec;
-                                        TG_Shape::s_lightToShape[iLight].GetLocalForwardInWorld(&uVec);
+                                        TG_Shape::s_lightToShape[iLight] = TG_Shape::s_listOfLights[iLight]->lightToWorld * listOfShapes[i].worldToShape;
+                                        glm::vec3 uVec;
+                                        uVec = mc2::math::localForwardInWorld(TG_Shape::s_lightToShape[iLight]);
                                         TG_Shape::s_lightDir[iLight] = uVec;
 
                                         if (listOfShapes[i].parentNode == nullptr)
@@ -299,9 +297,9 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                                 {
                                     if (TG_Shape::s_listOfLights[iLight] != nullptr)
                                     {
-                                        TG_Shape::s_lightToShape[iLight].Multiply(TG_Shape::s_listOfLights[iLight]->lightToWorld,listOfShapes[i].worldToShape);
-                                        Stuff::UnitVector3D uVec;
-                                        TG_Shape::s_lightToShape[iLight].GetLocalForwardInWorld(&uVec);
+                                        TG_Shape::s_lightToShape[iLight] = TG_Shape::s_listOfLights[iLight]->lightToWorld * listOfShapes[i].worldToShape;
+                                        glm::vec3 uVec;
+                                        uVec = mc2::math::localForwardInWorld(TG_Shape::s_lightToShape[iLight]);
                                         TG_Shape::s_lightDir[iLight] = uVec;
 
                                         if (listOfShapes[i].parentNode == nullptr)
@@ -316,11 +314,11 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                                 {
                                     if (TG_Shape::s_listOfLights[iLight] != nullptr)
                                     {
-                                        Stuff::Point3D lightPos;
+                                        glm::vec3 lightPos;
                                         lightPos = TG_Shape::s_listOfLights[iLight]->direction;
 
-                                        Stuff::Point3D shapePosition;
-                                        shapePosition = listOfShapes[i].shapeToWorld;
+                                        glm::vec3 shapePosition;
+                                        shapePosition = mc2::math::getTranslation(listOfShapes[i].shapeToWorld);
 
                                         shapePosition -= lightPos;
                                         shapePosition.y = 0.0f;
@@ -340,11 +338,11 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                                 {
                                     if (TG_Shape::s_listOfLights[iLight] != nullptr)
                                     {
-                                        Stuff::Point3D lightPos;
+                                        glm::vec3 lightPos;
                                         lightPos = TG_Shape::s_listOfLights[iLight]->direction;
 
-                                        Stuff::Point3D shapePosition;
-                                        shapePosition = listOfShapes[i].shapeToWorld;
+                                        glm::vec3 shapePosition;
+                                        shapePosition = mc2::math::getTranslation(listOfShapes[i].shapeToWorld);
 
                                         shapePosition -= lightPos;
                                         shapePosition.y = 0.0f;
@@ -362,11 +360,11 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                                 {
                                     if (TG_Shape::s_listOfLights[iLight] != nullptr)
                                     {
-                                        Stuff::Point3D lightPos;
+                                        glm::vec3 lightPos;
                                         lightPos = TG_Shape::s_listOfLights[iLight]->direction;
 
-                                        Stuff::Point3D shapePosition;
-                                        shapePosition = listOfShapes[i].shapeToWorld;
+                                        glm::vec3 shapePosition;
+                                        shapePosition = mc2::math::getTranslation(listOfShapes[i].shapeToWorld);
 
                                         shapePosition -= lightPos;
                                         shapePosition.y = 0.0f;
@@ -375,7 +373,7 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                                         //	RotateLight(TG_Shape::s_lightDir[iLight],-angles.yaw);
 
                                         lightPos = TG_Shape::s_listOfLights[iLight]->spotDir;
-                                        shapePosition = listOfShapes[i].shapeToWorld;
+                                        shapePosition = mc2::math::getTranslation(listOfShapes[i].shapeToWorld);
 
                                         shapePosition -= lightPos;
                                         shapePosition.y = 0.0f;
@@ -396,8 +394,8 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
             }
         }
 
-        shapeToClip.Multiply(listOfShapes[i].shapeToWorld,TG_Shape::s_worldToClip);
-        backFacePoint.Multiply(camPosition,listOfShapes[i].worldToShape);
+        shapeToClip = listOfShapes[i].shapeToWorld * TG_Shape::s_worldToClip;
+        backFacePoint = mc2::math::transformPoint(camPosition, listOfShapes[i].worldToShape);
 
 #ifdef LAB_ONLY
         x=GetCycles()-x;
@@ -462,7 +460,7 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
 // all run unchanged), then clears the flag. The flag is read at the per-leaf
 // MultiTransformShape call site near the bottom of TransformMultiShape's body.
 //-------------------------------------------------------------------------------
-long TG_MultiShape::TransformMultiShape_PositionsOnly (Stuff::Point3D *pos, Stuff::UnitQuaternion *rot)
+long TG_MultiShape::TransformMultiShape_PositionsOnly (glm::vec3 *pos, glm::quat *rot)
 {
     s_multiShapePositionsOnly = true;
     long result = TransformMultiShape(pos, rot);
@@ -477,7 +475,7 @@ long TG_MultiShape::TransformMultiShape_PositionsOnly (Stuff::Point3D *pos, Stuf
 // TG_Shape::s_cameraOrigin to be non-null. Called from BldgAppearance/
 // TreeAppearance::registerStatic during Mission::init before Camera::update.
 //-------------------------------------------------------------------------------
-long TG_MultiShape::TransformMultiShape_BuildRecipe (Stuff::Point3D *pos, Stuff::UnitQuaternion *rot)
+long TG_MultiShape::TransformMultiShape_BuildRecipe (glm::vec3 *pos, glm::quat *rot)
 {
     s_buildRecipeOnly = true;
     long result = TransformMultiShape(pos, rot);
@@ -494,7 +492,7 @@ long TG_MultiShape::TransformMultiShape_BuildRecipe (Stuff::Point3D *pos, Stuff:
 // tessellation; PerPolySelect-on-mechs theoretical via fallback findObjectByMouse
 // but findMoverByMouse rect-only test catches all real mech selection).
 //-------------------------------------------------------------------------------
-long TG_MultiShape::TransformMultiShape_HierarchyOnly (Stuff::Point3D *pos, Stuff::UnitQuaternion *rot)
+long TG_MultiShape::TransformMultiShape_HierarchyOnly (glm::vec3 *pos, glm::quat *rot)
 {
     // ANIM-HIERARCHYONLY-DEDUP-1: this was a byte-identical copy of
     // TransformMultiShape_BuildRecipe (same s_buildRecipeOnly mechanism). Kept as a

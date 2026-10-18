@@ -128,7 +128,7 @@ long Terrain::update (void)
 		const float legacyWater = getWaterElevation();
 		for (int i = 0; i < 4; ++i)
 		{
-			Stuff::Vector3D pos;
+			glm::vec3 pos;
 			getCellPos(cells[i][0], cells[i][1], pos);   // fills xy + z=legacy elevation
 			if (!Terrain::IsValidTerrainPosition(pos))
 				continue;
@@ -227,7 +227,7 @@ long Terrain::update (void)
 		// getCameraOrigin() returns Stuff/MLR coords (.x=west, .y=elev, .z=north).
 		// Terrain rendering space: east = -west, north = .z.
 		// Use east/north for ground-plane LOD distance to block center.
-		Stuff::Vector3D camOriginLod = eye->getCameraOrigin();
+		glm::vec3 camOriginLod = eye->getCameraOrigin();
 		const float eyeX = -camOriginLod.x;   // east = -west
 		const float eyeY =  camOriginLod.z;   // north = Stuff/MLR .z
 
@@ -310,7 +310,7 @@ long Terrain::update (void)
 			int cbx = s_terrainChunkSide / 2, cby = s_terrainChunkSide / 2;
 			const TerrainBlockMeta& cbm = s_blockMeta[cbx + cby * s_terrainChunkSide];
 			float cbHalfMap = worldUnitsMapSide * 0.5f;
-			Stuff::Vector3D cbMn, cbMx;
+			glm::vec3 cbMn, cbMx;
 			cbMn.x = float(cbm.originX) * 128.0f - cbHalfMap;
 			cbMx.x = float(cbm.originX + cbm.quadCountX) * 128.0f - cbHalfMap;
 			cbMx.y = cbHalfMap - float(cbm.originY) * 128.0f;
@@ -336,7 +336,7 @@ long Terrain::update (void)
 			{
 				SuperchunkMeta& sc = s_superchunkMeta[scX + scY * s_superchunkSide];
 
-				Stuff::Vector3D scMn, scMx;
+				glm::vec3 scMn, scMx;
 				scMn.x = sc.worldMinX; scMn.y = sc.worldMinY; scMn.z = sc.worldMinZ;
 				scMx.x = sc.worldMaxX; scMx.y = sc.worldMaxY; scMx.z = sc.worldMaxZ;
 
@@ -374,7 +374,7 @@ long Terrain::update (void)
 							recomputeBlockAabb(bm);
 
 						// World-space AABB (same formula as recomputeSuperchunkAabb).
-						Stuff::Vector3D bmMn, bmMx;
+						glm::vec3 bmMn, bmMx;
 						bmMn.x =  float(bm.originX)                  * 128.0f - halfMap;
 						bmMx.x =  float(bm.originX + bm.quadCountX)  * 128.0f - halfMap;
 						bmMx.y =  halfMap - float(bm.originY)                  * 128.0f;
@@ -530,7 +530,7 @@ long Terrain::update (void)
 		// cascade radii use. Defaults R0=512, R1=4096.
 		extern float mc2ShadowCsmR0();
 		extern float mc2ShadowCsmR1();
-		const Stuff::Vector3D shadowTierCenter = eye->getPosition();  // cascade center
+		const glm::vec3 shadowTierCenter = eye->getPosition();  // cascade center
 		const float shadowR1 = mc2ShadowCsmR1();   // near-cascade outer radius (~4096)
 		// Mid/far split: chunks past the near cascades but within a few R1 still
 		// receive the full-map cascade at usable density -> tier 1 (coarse
@@ -767,11 +767,11 @@ long Terrain::update (void)
 		// gos_SetTerrainLightDir(eye->lightDirection.x, eye->lightDirection.y, eye->lightDirection.z);
 
 		// Pass camera world position in raw MC2 space (matching vs_WorldPos for TCS distance LOD)
-		Stuff::Vector3D camOrigin = eye->getCameraOrigin();
+		glm::vec3 camOrigin = eye->getCameraOrigin();
 		gos_SetTerrainCameraPos(camOrigin.x, camOrigin.y, camOrigin.z);
 
 		// Pass camera look direction for POM (direction camera looks toward terrain)
-		Stuff::Vector3D lookDir = eye->getLookVector();
+		glm::vec3 lookDir = eye->getLookVector();
 		// Swizzle same as camera pos, then normalize
 		float lx = -lookDir.x, ly = lookDir.z, lz = lookDir.y;
 		float len = sqrtf(lx*lx + ly*ly + lz*lz);

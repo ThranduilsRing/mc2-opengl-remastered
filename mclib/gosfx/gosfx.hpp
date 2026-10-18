@@ -52,8 +52,8 @@ namespace gosFX
 	// Hooked from gos_RendererEndFrame (sibling of mc2_cpu_proj_cost::frame_end).
 	void DiagFrameTick();
 
-	extern const Stuff::LinearMatrix4D &Effect_Into_Motion;
-	extern const Stuff::LinearMatrix4D &Effect_Against_Motion;
+	extern const glm::mat4 &Effect_Into_Motion;
+	extern const glm::mat4 &Effect_Against_Motion;
 
 	DECLARE_TIMER(extern, Animation_Time);
 	DECLARE_TIMER(extern, Draw_Time);

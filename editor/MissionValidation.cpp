@@ -301,7 +301,7 @@ std::vector<MissionCheck> MissionValidator::ValidateForPakSave() {
             for (auto it = buildings.begin(); it != buildings.end(); it++) {
                 EditorObject* b = (*it);
                 if (!b || !b->appearance()) continue;
-                const Stuff::Vector3D& pos = b->getPosition();
+                const glm::vec3& pos = b->getPosition();
                 if (pos.x < -halfExtent || pos.x > halfExtent ||
                     pos.y < -halfExtent || pos.y > halfExtent)
                     ++oobCount;
@@ -312,7 +312,7 @@ std::vector<MissionCheck> MissionValidator::ValidateForPakSave() {
             for (auto it = units3.begin(); it != units3.end(); it++) {
                 Unit* u = (*it);
                 if (!u || !u->appearance()) continue;
-                const Stuff::Vector3D& pos = u->getPosition();
+                const glm::vec3& pos = u->getPosition();
                 if (pos.x < -halfExtent || pos.x > halfExtent ||
                     pos.y < -halfExtent || pos.y > halfExtent)
                     ++oobCount;

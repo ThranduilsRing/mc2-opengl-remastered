@@ -137,8 +137,8 @@ void TerrainQuad::drawSetup(QuadDrawFrame& f) {
 		maxV = uvData.maxV;
 	}
 
-	Stuff::Point3D camPosition;
-	camPosition = *TG_Shape::s_cameraOrigin;
+	glm::vec3 camPosition;
+	camPosition = mc2::math::getTranslation(*TG_Shape::s_cameraOrigin);
 }
 
 // Decide whether the M2 fast path takes this quad and run the path-mix diagnostic.
@@ -241,7 +241,7 @@ void TerrainQuad::fastPzGate(QuadFastFrame& fp) {
 	            // projectZ z is still in [0,1) would flip pzc false->true — the
 	            // divergence v1 Finding 1 closes).
 	            if (vertices[c]->clipInfo == 0) { pzc[c] = false; continue; }
-	            Stuff::Vector3D ov3D(vertices[c]->vx, vertices[c]->vy,
+	            glm::vec3 ov3D(vertices[c]->vx, vertices[c]->vy,
 	                                 vertices[c]->pVertex->elevation);
 	            Stuff::Vector4D osp;
 	            eye->projectForTerrainAdmission(ov3D, osp);

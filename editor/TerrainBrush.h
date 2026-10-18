@@ -32,8 +32,8 @@ class TerrainBrush: public Brush
 
 		bool beginPaint();
 		Action* endPaint();
-		virtual bool paint( Stuff::Vector3D& worldPos, int screenX, int screenY );
-		virtual bool canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags ) { return true; }
+		virtual bool paint( glm::vec3& worldPos, int screenX, int screenY );
+		virtual bool canPaint( glm::vec3& worldPos, int screenX, int screenY, int flags ) { return true; }
 		virtual void render( int screenX, int screenY );
 
 		virtual Action* applyToSelection();

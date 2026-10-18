@@ -7,8 +7,6 @@
 #include<cstdio>   // VFX-ORACLE diagnostics
 #include<cmath>    // std::atan2 for spin extraction (VFX-SHARDCLOUD-SPIN-ASPECT-1)
 #include "mc2fmt.h"
-#include "math/stuff_glm_bridge.h"
-
 //==========================================================================//
 // File:	 gosFX_ShardCloud.cpp											//
 // Contents: Base gosFX::ShardCloud Component								//
@@ -185,8 +183,8 @@ gosFX::ShardCloud::ShardCloud(
 	gos_PopCurrentHeap();
 
 	unsigned index = spec->m_maxParticleCount*sizeof(Particle);
-	m_P_vertices = Cast_Pointer(Stuff::Point3D*, &m_data[index]);
-	index += 3*spec->m_maxParticleCount*sizeof(Stuff::Point3D);
+	m_P_vertices = Cast_Pointer(glm::vec3*, &m_data[index]);
+	index += 3*spec->m_maxParticleCount*sizeof(glm::vec3);
 	m_P_color = Cast_Pointer(Stuff::RGBAColor*, &m_data[index]);
 
 	m_cloudImplementation->SetData(
@@ -225,7 +223,7 @@ gosFX::ShardCloud*
 bool
 	gosFX::ShardCloud::AnimateParticle(
 		unsigned index,
-		const Stuff::LinearMatrix4D *world_to_new_local,
+		const glm::mat4 *world_to_new_local,
 		Stuff::Time till
 	)
 {
@@ -266,7 +264,7 @@ bool
 void
 	gosFX::ShardCloud::CreateNewParticle(
 		unsigned index,
-		Stuff::Point3D *translation
+		glm::vec3 *translation
 	)
 {
 	Check_Object(this);
@@ -328,8 +326,8 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 				    am == MidLevelRenderer::MLRState::AlphaOneMode)
 					blendMode = 1;
 			}
-			Stuff::LinearMatrix4D local_to_world;
-			local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
+			glm::mat4 local_to_world;
+			local_to_world = m_localToParent * *info->m_parentToWorld;
 
 			mc2::particles::Batcher &batcher = mc2::particles::Batcher::Instance();
 			batcher.BeginGroup(mlrTex, 0.0f, 0.0f, 1.0f, 1.0f, blendMode, 0u);
@@ -343,8 +341,8 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 				Particle *p = GetParticle(i);
 				Check_Object(p);
 				if (p->m_age >= 1.0f) continue;   // skip dead slots (legacy filter)
-				Stuff::Point3D wc;
-				wc.Multiply(p->m_localTranslation, local_to_world);
+				glm::vec3 wc;
+				wc = mc2::math::transformPoint(p->m_localTranslation, local_to_world);
 				// Shards remain billboards; triangle-shape parity is a separate migration.
 				const Stuff::Scalar radius = p->m_scale * p->m_radius;
 				const Stuff::RGBAColor &c = m_P_color[i * 3];
@@ -434,10 +432,10 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 				// Get the camera location into local space
 				//-----------------------------------------
 				//
-				Stuff::Point3D
-					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
+				glm::vec3
+					camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+				glm::vec3 camera_in_cloud;
+				camera_in_cloud = (mc2::math::transformPoint(camera_in_world, glm::inverse(local_to_world)));
 
 				//
 				//--------------------------------------
@@ -456,20 +454,12 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 						// Build the local to cloud matrix
 						//--------------------------------
 						//
-						Stuff::Vector3D direction_in_cloud;
-						direction_in_cloud.Subtract(
-							camera_in_cloud,
-							particle->m_localTranslation
-						);
-						Stuff::LinearMatrix4D shard_to_cloud;
-						shard_to_cloud.BuildRotation(particle->m_localRotation);
-						shard_to_cloud.AlignLocalAxisToWorldVector(
-							direction_in_cloud,
-							Stuff::Z_Axis,
-							Stuff::Y_Axis,
-							Stuff::X_Axis
-						);
-						shard_to_cloud.BuildTranslation(particle->m_localTranslation);
+						glm::vec3 direction_in_cloud;
+						direction_in_cloud = camera_in_cloud - particle->m_localTranslation;
+						glm::mat4 shard_to_cloud;
+						mc2::math::buildRotation(shard_to_cloud, particle->m_localRotation);
+						mc2::math::alignLocalAxisToWorldVector(shard_to_cloud, direction_in_cloud, Stuff::Z_Axis, Stuff::Y_Axis, Stuff::X_Axis);
+						mc2::math::buildTranslation(shard_to_cloud, particle->m_localTranslation);
 
 						//
 						//--------------------------------------------------
@@ -477,30 +467,21 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 						//--------------------------------------------------
 						//
 						Stuff::Scalar scale = particle->m_scale;
-						m_P_vertices[vert++].Multiply(
-							Stuff::Point3D(
+						m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 								0.0f,
 								-0.5f*scale*particle->m_radius,
 								0.0f
-							),
-							shard_to_cloud
-						);
-						m_P_vertices[vert++].Multiply(
-							Stuff::Point3D(
+							), shard_to_cloud);
+						m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 								scale*particle->m_angle*particle->m_radius,
 								scale*particle->m_radius*0.5f,
 								0.0f
-							),
-							shard_to_cloud
-						);
-						m_P_vertices[vert++].Multiply(
-							Stuff::Point3D(
+							), shard_to_cloud);
+						m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 								-scale*particle->m_angle*particle->m_radius,
 								scale*particle->m_radius*0.5f,
 								0.0f
-							),
-							shard_to_cloud
-						);
+							), shard_to_cloud);
 					}
 					else
 						vert += 3;
@@ -519,10 +500,10 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 				// Get the camera location into local space
 				//-----------------------------------------
 				//
-				Stuff::Point3D
-					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
+				glm::vec3
+					camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+				glm::vec3 camera_in_cloud;
+				camera_in_cloud = (mc2::math::transformPoint(camera_in_world, glm::inverse(local_to_world)));
 
 				//
 				//--------------------------------------
@@ -541,20 +522,12 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 						// Build the local to cloud matrix
 						//--------------------------------
 						//
-						Stuff::Vector3D direction_in_cloud;
-						direction_in_cloud.Subtract(
-							camera_in_cloud,
-							particle->m_localTranslation
-						);
-						Stuff::LinearMatrix4D shard_to_cloud;
-						shard_to_cloud.BuildRotation(particle->m_localRotation);
-						shard_to_cloud.AlignLocalAxisToWorldVector(
-							direction_in_cloud,
-							Stuff::Z_Axis,
-							Stuff::X_Axis,
-							-1
-						);
-						shard_to_cloud.BuildTranslation(particle->m_localTranslation);
+						glm::vec3 direction_in_cloud;
+						direction_in_cloud = camera_in_cloud - particle->m_localTranslation;
+						glm::mat4 shard_to_cloud;
+						mc2::math::buildRotation(shard_to_cloud, particle->m_localRotation);
+						mc2::math::alignLocalAxisToWorldVector(shard_to_cloud, direction_in_cloud, Stuff::Z_Axis, Stuff::X_Axis, -1);
+						mc2::math::buildTranslation(shard_to_cloud, particle->m_localTranslation);
 
 						//
 						//--------------------------------------------------
@@ -562,30 +535,21 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 						//--------------------------------------------------
 						//
 						Stuff::Scalar scale = particle->m_scale;
-						m_P_vertices[vert++].Multiply(
-							Stuff::Point3D(
+						m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 								0.0f,
 								-0.5f*scale*particle->m_radius,
 								0.0f
-							),
-							shard_to_cloud
-						);
-						m_P_vertices[vert++].Multiply(
-							Stuff::Point3D(
+							), shard_to_cloud);
+						m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 								scale*particle->m_angle*particle->m_radius,
 								scale*particle->m_radius*0.5f,
 								0.0f
-							),
-							shard_to_cloud
-						);
-						m_P_vertices[vert++].Multiply(
-							Stuff::Point3D(
+							), shard_to_cloud);
+						m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 								-scale*particle->m_angle*particle->m_radius,
 								scale*particle->m_radius*0.5f,
 								0.0f
-							),
-							shard_to_cloud
-						);
+							), shard_to_cloud);
 					}
 					else
 						vert += 3;
@@ -605,10 +569,10 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 			// Get the camera location into local space
 			//-----------------------------------------
 			//
-			Stuff::Point3D
-				camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-			Stuff::Point3D camera_in_cloud;
-			camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
+			glm::vec3
+				camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+			glm::vec3 camera_in_cloud;
+			camera_in_cloud = (mc2::math::transformPoint(camera_in_world, glm::inverse(local_to_world)));
 
 			//
 			//--------------------------------------
@@ -627,20 +591,12 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 					// Build the local to cloud matrix
 					//--------------------------------
 					//
-					Stuff::Vector3D direction_in_cloud;
-					direction_in_cloud.Subtract(
-						camera_in_cloud,
-						particle->m_localTranslation
-					);
-					Stuff::LinearMatrix4D shard_to_cloud;
-					shard_to_cloud.BuildRotation(particle->m_localRotation);
-					shard_to_cloud.AlignLocalAxisToWorldVector(
-						direction_in_cloud,
-						Stuff::Z_Axis,
-						Stuff::Y_Axis,
-						-1
-					);
-					shard_to_cloud.BuildTranslation(particle->m_localTranslation);
+					glm::vec3 direction_in_cloud;
+					direction_in_cloud = camera_in_cloud - particle->m_localTranslation;
+					glm::mat4 shard_to_cloud;
+					mc2::math::buildRotation(shard_to_cloud, particle->m_localRotation);
+					mc2::math::alignLocalAxisToWorldVector(shard_to_cloud, direction_in_cloud, Stuff::Z_Axis, Stuff::Y_Axis, -1);
+					mc2::math::buildTranslation(shard_to_cloud, particle->m_localTranslation);
 
 					//
 					//--------------------------------------------------
@@ -648,30 +604,21 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 					//--------------------------------------------------
 					//
 					Stuff::Scalar scale = particle->m_scale;
-					m_P_vertices[vert++].Multiply(
-						Stuff::Point3D(
+					m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 							0.0f,
 							-0.5f*scale*particle->m_radius,
 							0.0f
-						),
-						shard_to_cloud
-					);
-					m_P_vertices[vert++].Multiply(
-						Stuff::Point3D(
+						), shard_to_cloud);
+					m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 							scale*particle->m_angle*particle->m_radius,
 							scale*particle->m_radius*0.5f,
 							0.0f
-						),
-						shard_to_cloud
-					);
-					m_P_vertices[vert++].Multiply(
-						Stuff::Point3D(
+						), shard_to_cloud);
+					m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 							-scale*particle->m_angle*particle->m_radius,
 							scale*particle->m_radius*0.5f,
 							0.0f
-						),
-						shard_to_cloud
-					);
+						), shard_to_cloud);
 				}
 				else
 					vert += 3;
@@ -698,9 +645,9 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 					// Build the local to cloud matrix
 					//--------------------------------
 					//
-					Stuff::LinearMatrix4D shard_to_cloud;
-					shard_to_cloud.BuildRotation(particle->m_localRotation);
-					shard_to_cloud.BuildTranslation(particle->m_localTranslation);
+					glm::mat4 shard_to_cloud;
+					mc2::math::buildRotation(shard_to_cloud, particle->m_localRotation);
+					mc2::math::buildTranslation(shard_to_cloud, particle->m_localTranslation);
 
 					//
 					//--------------------------------------------------
@@ -708,30 +655,21 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 					//--------------------------------------------------
 					//
 					Stuff::Scalar scale = particle->m_scale;
-					m_P_vertices[vert++].Multiply(
-						Stuff::Point3D(
+					m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 							0.0f,
 							-0.5f*scale*particle->m_radius,
 							0.0f
-						),
-						shard_to_cloud
-					);
-					m_P_vertices[vert++].Multiply(
-						Stuff::Point3D(
+						), shard_to_cloud);
+					m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 							scale*particle->m_angle*particle->m_radius,
 							scale*particle->m_radius*0.5f,
 							0.0f
-						),
-						shard_to_cloud
-					);
-					m_P_vertices[vert++].Multiply(
-						Stuff::Point3D(
+						), shard_to_cloud);
+					m_P_vertices[vert++] = mc2::math::transformPoint(glm::vec3(
 							-scale*particle->m_angle*particle->m_radius,
 							scale*particle->m_radius*0.5f,
 							0.0f
-						),
-						shard_to_cloud
-					);
+						), shard_to_cloud);
 				}
 				else
 					vert += 3;

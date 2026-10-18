@@ -320,10 +320,10 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 // Returns false when the beam never meets ground within its own length —
 // aimed at a wall, over a cliff edge, or off the map. Callers must then emit
 // NO pool at all; planting one anyway is the phantom-pool artefact.
-bool mc2ConeGroundHit (const Stuff::Vector3D& apex,
-                              const Stuff::Vector3D& aim,
+bool mc2ConeGroundHit (const glm::vec3& apex,
+                              const glm::vec3& aim,
                               float beamLen,
-                              Stuff::Vector3D& hitOut)
+                              glm::vec3& hitOut)
 {
 	if (!land || !(beamLen > 0.0f))
 		return false;
@@ -335,7 +335,7 @@ bool mc2ConeGroundHit (const Stuff::Vector3D& apex,
 	const int   kRefineIters = 10;
 	const float dt = beamLen / (float)kCoarseSteps;
 
-	Stuff::Vector3D prev = apex;
+	glm::vec3 prev = apex;
 	// Height is only meaningful on-map; an apex already outside the playfield
 	// has nothing to intersect.
 	bool prevInside = Terrain::IsGameSelectTerrainPosition(prev);
@@ -344,7 +344,7 @@ bool mc2ConeGroundHit (const Stuff::Vector3D& apex,
 	for (int i = 1; i <= kCoarseSteps; ++i)
 	{
 		const float t = dt * (float)i;
-		Stuff::Vector3D cur;
+		glm::vec3 cur;
 		cur.x = apex.x + aim.x * t;
 		cur.y = apex.y + aim.y * t;
 		cur.z = apex.z + aim.z * t;
@@ -362,10 +362,10 @@ bool mc2ConeGroundHit (const Stuff::Vector3D& apex,
 		{
 			// Bisect the bracket. f is continuous over the bilinear
 			// heightfield, so this converges on the crossing.
-			Stuff::Vector3D lo = prev, hi = cur;
+			glm::vec3 lo = prev, hi = cur;
 			for (int r = 0; r < kRefineIters; ++r)
 			{
-				Stuff::Vector3D mid;
+				glm::vec3 mid;
 				mid.x = (lo.x + hi.x) * 0.5f;
 				mid.y = (lo.y + hi.y) * 0.5f;
 				mid.z = (lo.z + hi.z) * 0.5f;

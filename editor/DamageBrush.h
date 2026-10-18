@@ -30,8 +30,8 @@ class DamageBrush: public Brush
 	~DamageBrush() override{}
 	bool beginPaint() override;
 	Action* endPaint() override;
-	bool paint( Stuff::Vector3D& worldPos, int screenX, int screenY  ) override;
-	bool canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags ) override; 
+	bool paint( glm::vec3& worldPos, int screenX, int screenY  ) override;
+	bool canPaint( glm::vec3& worldPos, int screenX, int screenY, int flags ) override; 
 	bool canPaintSelection( ) override;
 	Action* applyToSelection() override;
 	bool	damage;

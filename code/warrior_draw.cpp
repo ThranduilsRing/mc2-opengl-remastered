@@ -8,13 +8,13 @@ void MechWarrior::drawWaypointPath()
 {
 	if ( tacOrderQueue )
 	{
-		Stuff::Vector3D tmpPos = this->getVehicle()->getPosition();
+		glm::vec3 tmpPos = this->getVehicle()->getPosition();
 		
 		{
 			Stuff::Vector4D screenPos1;
 			Stuff::Vector4D screenPos2;
 
-			Stuff::Vector3D pos;
+			glm::vec3 pos;
 			pos.x = getCurTacOrder()->moveParams.wayPath.points[0];
 			pos.y = getCurTacOrder()->moveParams.wayPath.points[1];
 			pos.z = getCurTacOrder()->moveParams.wayPath.points[2];
@@ -119,11 +119,11 @@ void MechWarrior::drawOverviewMovePath( unsigned long color )
 	// move target, then any queued waypoints. (Full A* route tracing was tried
 	// but the path data isn't reliable here; revisit after the pathfinding work.)
 	const int kMaxPts = 64;
-	Stuff::Vector3D pts[kMaxPts];
+	glm::vec3 pts[kMaxPts];
 	int np = 0;
 	pts[np++] = getVehicle()->getPosition();
 
-	Stuff::Vector3D first;
+	glm::vec3 first;
 	first.x = getCurTacOrder()->moveParams.wayPath.points[0];
 	first.y = getCurTacOrder()->moveParams.wayPath.points[1];
 	first.z = getCurTacOrder()->moveParams.wayPath.points[2];
@@ -183,7 +183,7 @@ void MechWarrior::drawOverviewMovePath( unsigned long color )
 	gos_SetHudScaleExempt( prevExempt );
 }
 
-void drawOverviewArrowWorld( const Stuff::Vector3D& from, const Stuff::Vector3D& to, unsigned long color )
+void drawOverviewArrowWorld( const glm::vec3& from, const glm::vec3& to, unsigned long color )
 {
 	float vmx, vmy, vax, vay;
 	gos_GetViewport( &vmx, &vmy, &vax, &vay );
@@ -214,7 +214,7 @@ void drawOverviewArrowWorld( const Stuff::Vector3D& from, const Stuff::Vector3D&
 	gos_SetHudScaleExempt( pe );
 }
 
-bool MechWarrior::getMoveDestination( Stuff::Vector3D& out )
+bool MechWarrior::getMoveDestination( glm::vec3& out )
 {
 	if ( !tacOrderQueue )
 		return false;
@@ -223,7 +223,7 @@ bool MechWarrior::getMoveDestination( Stuff::Vector3D& out )
 		out = tacOrderQueue[numTacOrdersQueued - 1].point;
 		return true;
 	}
-	Stuff::Vector3D first;
+	glm::vec3 first;
 	first.x = getCurTacOrder()->moveParams.wayPath.points[0];
 	first.y = getCurTacOrder()->moveParams.wayPath.points[1];
 	if ( first.x != 0.0f && first.y != 0.0f )
@@ -256,13 +256,13 @@ void MechWarrior::updateDrawWaypointPath()
 	}
 }
 
-bool MechWarrior::isCloseToFirstTacOrder( Stuff::Vector3D& pos )
+bool MechWarrior::isCloseToFirstTacOrder( glm::vec3& pos )
 {
 	if ( tacOrderQueue )
 	{
-		Stuff::Vector3D tmp;
-		tmp.Subtract(tacOrderQueue[0].point, pos );
-		if ( tmp.GetLength() < 5 ) // random amount
+		glm::vec3 tmp;
+		tmp = tacOrderQueue[0].point - pos;
+		if ( glm::length(tmp) < 5 ) // random amount
 			return true;
 	}
 

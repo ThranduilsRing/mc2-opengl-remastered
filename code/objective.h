@@ -101,9 +101,9 @@ public:
 	virtual bool Save( FitIniFile* file ) { return true; }
 	virtual objective_status_type Status() = 0;
 	virtual void CastAndCopy(const CObjectiveCondition *pMaster) { (*this) = (*pMaster); }
-	virtual Stuff::Vector3D GetObjectivePosition()		//Used to draw on tacmap
+	virtual glm::vec3 GetObjectivePosition()		//Used to draw on tacmap
 	{
-		return Stuff::Vector3D(-999999.0f,-999999.0f,-999999.0f);
+		return glm::vec3(-999999.0f,-999999.0f,-999999.0f);
 	}
 };
 
@@ -163,13 +163,13 @@ public:
 	virtual bool Save( FitIniFile* file );
 	virtual void CastAndCopy(const CObjectiveCondition *pMaster) { (*this) = (*(dynamic_cast<const CSpecificStructureObjectiveCondition *>(pMaster))); }
 	
-	virtual Stuff::Vector3D GetObjectivePosition()		//Used to draw on tacmap
+	virtual glm::vec3 GetObjectivePosition()		//Used to draw on tacmap
 	{
 		Building *m_pBuilding = (Building *)ObjectManager->getByWatchID(m_pBuildingWID);
 		if (m_pBuilding)
 			return m_pBuilding->getPosition();
 			
-		return Stuff::Vector3D(-999999.0f,-999999.0f,-999999.0f);
+		return glm::vec3(-999999.0f,-999999.0f,-999999.0f);
 	}
 };
 
@@ -276,9 +276,9 @@ public:
 	virtual bool Save( FitIniFile* file );
 	virtual void CastAndCopy(const CObjectiveCondition *pMaster) { (*this) = (*(dynamic_cast<const CAreaObjectiveCondition *>(pMaster))); }
 	
-	virtual Stuff::Vector3D GetObjectivePosition()		//Used to draw on tacmap
+	virtual glm::vec3 GetObjectivePosition()		//Used to draw on tacmap
 	{
- 		return Stuff::Vector3D(m_targetCenterX,m_targetCenterY,0.0f);
+ 		return glm::vec3(m_targetCenterX,m_targetCenterY,0.0f);
 	}
 };
 

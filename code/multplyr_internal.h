@@ -147,7 +147,7 @@ extern GameLog* NetLog;
 extern bool LaunchedFromLobby;
 extern UserHeapPtr systemHeap;
 extern char* startupPakFile;
-extern void SortMoverList (long numMovers, MoverPtr* moverList, Stuff::Vector3D dest);
+extern void SortMoverList (long numMovers, MoverPtr* moverList, glm::vec3 dest);
 extern void killTheGame(void);
 extern MultiPlayer* MPlayer;
 

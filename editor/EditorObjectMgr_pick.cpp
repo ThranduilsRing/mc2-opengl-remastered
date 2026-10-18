@@ -63,7 +63,7 @@ static void EditorObjectMgr_ConsiderScreenCenter(EditorObject* pObject, int scre
 	float worldRadius = pApp->getRadius();
 	if (worldRadius < 1.0f)
 		worldRadius = 1.0f;
-	Stuff::Vector3D edgeWorld = pApp->position;
+	glm::vec3 edgeWorld = pApp->position;
 	edgeWorld.x += worldRadius;
 	Stuff::Vector4D edge;
 	// If the edge point rejects, fall back to the floored pixel radius below by
@@ -88,7 +88,7 @@ static void EditorObjectMgr_ConsiderScreenCenter(EditorObject* pObject, int scre
 	}
 }
 
-EditorObject* EditorObjectMgr::getObjectAtPosition( const Stuff::Vector3D& position )
+EditorObject* EditorObjectMgr::getObjectAtPosition( const glm::vec3& position )
 {
 	// World-space match: nearest object whose footprint (extent radius, with a
 	// terrain-cell tolerance floor) contains the given world point. The old path
@@ -162,7 +162,7 @@ EditorObject* EditorObjectMgr::getObjectAtPosition( const Stuff::Vector3D& posit
 // cull (a2cebf34): off-screen-but-in-front points get a real screen.xy and are
 // filtered by the caller's pixel-distance test. Same transform the scene renders
 // with, so the pick lines up with what is on screen.
-bool EditorObjectMgr_ProjectScreenXY_GL(const Stuff::Vector3D& wp, Stuff::Vector4D& sp)
+bool EditorObjectMgr_ProjectScreenXY_GL(const glm::vec3& wp, Stuff::Vector4D& sp)
 {
 	if (!eye)
 		return false;
@@ -212,9 +212,9 @@ static void EditorObjectMgr_ConsiderScreenPick(EditorObject* pObject,
 	// (ground + half height), and top (ground + full height). We center the pick
 	// on the bounding-center so the hit-region sits on the visible model, not its
 	// feet; ground+top give us the on-screen vertical span.
-	Stuff::Vector3D wGround = pApp->position;   // real position, real elevation
-	Stuff::Vector3D wCenter = wGround;  wCenter.z += 0.5f * worldH;
-	Stuff::Vector3D wTop    = wGround;  wTop.z    += worldH;
+	glm::vec3 wGround = pApp->position;   // real position, real elevation
+	glm::vec3 wCenter = wGround;  wCenter.z += 0.5f * worldH;
+	glm::vec3 wTop    = wGround;  wTop.z    += worldH;
 
 	Stuff::Vector4D sCenter;
 	if (!EditorObjectMgr_ProjectScreenXY_GL(wCenter, sCenter))  // behind near plane (signed w) / no camera
@@ -257,7 +257,7 @@ static void EditorObjectMgr_ConsiderScreenPick(EditorObject* pObject,
 	// final hit-circle covers the full on-screen extent.
 	if (worldR > 1.0f)
 	{
-		Stuff::Vector3D wr = wCenter;
+		glm::vec3 wr = wCenter;
 		wr.x += worldR;
 		Stuff::Vector4D sr;
 		if (EditorObjectMgr_ProjectScreenXY_GL(wr, sr) && sr.w > 1e-4f
@@ -321,12 +321,12 @@ EditorObject* EditorObjectMgr::getObjectAtScreenPosition( int screenX, int scree
 		if ( s_pickTrace )
 		{
 			float nbest = 1.0e30f, nSx = -1.f, nSy = -1.f;
-			Stuff::Vector3D nWorld; nWorld.x = nWorld.y = nWorld.z = 0.f;
+			glm::vec3 nWorld; nWorld.x = nWorld.y = nWorld.z = 0.f;
 			const char* nKind = "none";
 			for ( auto i = buildings.begin(); i != buildings.end(); i++ )
 			{
 				if ( !(*i) || !(*i)->appearance() ) continue;
-				Stuff::Vector3D wp = (*i)->appearance()->position; Stuff::Vector4D sp;
+				glm::vec3 wp = (*i)->appearance()->position; Stuff::Vector4D sp;
 				if ( !EditorObjectMgr_ProjectScreenXY_GL( wp, sp ) ) continue;
 				float dx = sp.x - clickX, dy = sp.y - clickY, d2 = dx*dx + dy*dy;
 				if ( d2 < nbest ) { nbest = d2; nWorld = wp; nSx = sp.x; nSy = sp.y; nKind = "bldg"; }
@@ -334,7 +334,7 @@ EditorObject* EditorObjectMgr::getObjectAtScreenPosition( int screenX, int scree
 			for ( auto i = units.begin(); i != units.end(); i++ )
 			{
 				if ( !(*i) || !(*i)->appearance() ) continue;
-				Stuff::Vector3D wp = (*i)->appearance()->position; Stuff::Vector4D sp;
+				glm::vec3 wp = (*i)->appearance()->position; Stuff::Vector4D sp;
 				if ( !EditorObjectMgr_ProjectScreenXY_GL( wp, sp ) ) continue;
 				float dx = sp.x - clickX, dy = sp.y - clickY, d2 = dx*dx + dy*dy;
 				if ( d2 < nbest ) { nbest = d2; nWorld = wp; nSx = sp.x; nSy = sp.y; nKind = "unit"; }

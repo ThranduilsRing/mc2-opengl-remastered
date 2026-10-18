@@ -647,7 +647,7 @@ class MissionMap {
 			map[row * width + col].setPassable(passable);
 		}
 
-		bool getPassable (Stuff::Vector3D cellPosition);
+		bool getPassable (glm::vec3 cellPosition);
 
 		bool getPathlock (long level, long row, long col) {
 			if (!inBounds(row, col)) {
@@ -927,17 +927,17 @@ class MissionMap {
 			numPreservedCells++;
 		}
 
-		long getLOF (Stuff::Vector3D position);
+		long getLOF (glm::vec3 position);
 
-		unsigned long cellPassable (Stuff::Vector3D cellPosition);
+		unsigned long cellPassable (glm::vec3 cellPosition);
 
-		void lineOfSensor (Stuff::Vector3D start, Stuff::Vector3D target, long& numBlockingTiles, long& numBlockingObjects);
+		void lineOfSensor (glm::vec3 start, glm::vec3 target, long& numBlockingTiles, long& numBlockingObjects);
 
 		long getOverlayWeight (long row, long col, long moverOverlayWeightClass, long moverRelation);
 
 		void spreadState (long r, long c, long radius);
 
-		long placeObject (Stuff::Vector3D position, float radius);
+		long placeObject (glm::vec3 position, float radius);
 
 		void placeTerrainObject (long row,
 								 long col,
@@ -965,7 +965,7 @@ inline constexpr int MAX_STEPS_PER_MOVEPATH = 200;
 typedef struct _PathStep {
 	short					cell[2];							// obvious
 	float					distanceToGoal;						// dist, in meters, to goal from this step
-	Stuff::Vector3D			destination;						// world pos of this step
+	glm::vec3			destination;						// world pos of this step
 	char					direction;							// 0 thru 7 direction into this step
 	short					area;
 } PathStep;
@@ -976,8 +976,8 @@ class MovePath {
 
 	public:
 	
-		Stuff::Vector3D		goal;								// world pos of path goal
-		Stuff::Vector3D		target;								// world pos of object target
+		glm::vec3		goal;								// world pos of path goal
+		glm::vec3		target;								// world pos of object target
 		long				numSteps;							// if paused or no steps, == 0, else == numStepsWhenNotPaused
 		long				numStepsWhenNotPaused;				// total number of steps
 		long				curStep;							// cuurent step we're headed for
@@ -992,7 +992,7 @@ class MovePath {
 		void operator delete (void* us);
 		
 		void init (void) {
-			goal.Zero();
+			goal = glm::vec3(0.0f);
 			numSteps = 0;
 			numStepsWhenNotPaused = 0;
 			curStep = 0;
@@ -1021,11 +1021,11 @@ class MovePath {
 			return(stepList[stepNumber].distanceToGoal);
 		}
 
-		void setDestination (long stepNumber, Stuff::Vector3D	v) {
+		void setDestination (long stepNumber, glm::vec3	v) {
 			stepList[stepNumber].destination = v;
 		}
 
-		Stuff::Vector3D getDestination (long stepNumber) {
+		glm::vec3 getDestination (long stepNumber) {
 			return(stepList[stepNumber].destination);
 		}
 
@@ -1034,7 +1034,7 @@ class MovePath {
 			stepList[stepNumber].cell[1] = c;
 		}
 
-		float getDistanceLeft (Stuff::Vector3D position, long stepNumber = -1);
+		float getDistanceLeft (glm::vec3 position, long stepNumber = -1);
 
 		void lock (long level, long start, long range, bool setting);
 
@@ -1177,8 +1177,8 @@ typedef struct _GlobalPathStep {
 	int					startDoor;
 	int					thruArea;
 	int					goalDoor;
-	Stuff::Vector3D			start;			// "start" in this area
-	Stuff::Vector3D			goal;			// "goal" in this area
+	glm::vec3			start;			// "start" in this area
+	glm::vec3			goal;			// "goal" in this area
 	int					goalCell[2];	// which cell did we actually exit thru
 	int					costToGoal;
 } GlobalPathStep;
@@ -1475,7 +1475,7 @@ class GlobalMap {
 					   long goalRow = -1,
 					   long goalCol = -1);
 
-		long calcPath (Stuff::Vector3D start, Stuff::Vector3D goal, GlobalPathStepPtr path);
+		long calcPath (glm::vec3 start, glm::vec3 goal, GlobalPathStepPtr path);
 
 		long calcArea (long row, long col) {
 			// Bounds guard: synthesized blank MOVE grids are clamped to
@@ -1497,7 +1497,7 @@ class GlobalMap {
 			sectorC = areas[area].sectorC;
 		}
 
-		Stuff::Vector3D getDoorWorldPos (long area, long door, long* goalCell);
+		glm::vec3 getDoorWorldPos (long area, long door, long* goalCell);
 
 		void openDoor (long door);
 
@@ -1597,17 +1597,17 @@ class MoveMap {
 		std::vector<int>			mapRowTable;		// row of each cell index
 		std::vector<int>			mapColTable;		// column of each cell index
 		int				    moveLevel;
-		Stuff::Vector3D		start;
+		glm::vec3		start;
 		int				    startR;
 		int				    startC;
-		Stuff::Vector3D		goal;			// actual world-coord goal
+		glm::vec3		goal;			// actual world-coord goal
 		int				    goalR;			// cell goal row relative to move map
 		int				    goalC;			// cell goal col relative to move map
 		int				    thruAreas[2];
 		int				    door;
 		int				    doorSide;
 		int				    doorDirection;	// if goal is not a door, set to -1
-		Stuff::Vector3D		target;			// actual world-coord target
+		glm::vec3		target;			// actual world-coord target
 		int				    clearCost;		// cost, in tenths of secs, to move to clear cell
 		int				    jumpCost;		// cost, in tenths of secs, to jump to cell
 		int				    numOffsets;		// set by calcMovePath function (don't touch:)
@@ -1676,7 +1676,7 @@ class MoveMap {
 			goalC = -1;
 			thruAreas[0] = -1;
 			thruAreas[1] = -1;
-			goal.Zero();
+			goal = glm::vec3(0.0f);
 			door = -1;
 			doorSide = -1;
 			doorDirection = -1;
@@ -1714,10 +1714,10 @@ class MoveMap {
 					long height,
 					long width,
 					long moveLevel,
-					Stuff::Vector3D* startPos,
+					glm::vec3* startPos,
 					long startRow,
 					long startCol,
-					Stuff::Vector3D goalPos,
+					glm::vec3 goalPos,
 					long goalRow,
 					long goalCol,
 					long clearCellCost,
@@ -1726,12 +1726,12 @@ class MoveMap {
 					unsigned long params = MOVEPARAM_NONE);
 
 		long setUp (long moveLevel,
-					Stuff::Vector3D* startPos,
+					glm::vec3* startPos,
 					long startRow,
 					long startCol,
 					long thruArea[2],
 					long goalDoor,
-					Stuff::Vector3D finalGoal,
+					glm::vec3 finalGoal,
 					long clearCellCost,
 					long jumpCellCost,
 					long offsets,
@@ -1745,17 +1745,17 @@ class MoveMap {
 			overlayWeightTable = table;
 		}
 
-		void setStart (Stuff::Vector3D* startPos, long startCellRow, long startCellCol);
+		void setStart (glm::vec3* startPos, long startCellRow, long startCellCol);
 
-		void setGoal (Stuff::Vector3D goalPos, long goalCellRow, long goalCellCol);
+		void setGoal (glm::vec3 goalPos, long goalCellRow, long goalCellCol);
 
 		void setGoal (long thruArea, long goalDoor);
 
-		long markGoals (Stuff::Vector3D finalGoal);
+		long markGoals (glm::vec3 finalGoal);
 
-		long markEscapeGoals (Stuff::Vector3D finalGoal);
+		long markEscapeGoals (glm::vec3 finalGoal);
 
-		void setTarget (Stuff::Vector3D targetPos);
+		void setTarget (glm::vec3 targetPos);
 
 		char getCost (long row, long col) {
 			// Off-map: return a high (avoid) cost rather than indexing map[] OOB.
@@ -1797,11 +1797,11 @@ class MoveMap {
 			moverWithdrawing = withdrawing;
 		}
 
-		long calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* goalCell);
+		long calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell);
 
-		long calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* goalCell);
+		long calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell);
 
-		long calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, long* goalCell);
+		long calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* goalCell);
 
 		float getDistanceFloat (long rowDelta, long colDelta) {
 			return(distanceFloat[rowDelta][colDelta]);

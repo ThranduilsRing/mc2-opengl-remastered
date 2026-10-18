@@ -1567,7 +1567,7 @@ bool tickOpordMove(MechWarrior* warrior, MechBrainRuntime* runtime, int wid) {
             return false;
         }
         if (e && !e->isDisabled()) {
-            Stuff::Vector3D ep = e->getPosition();
+            glm::vec3 ep = e->getPosition();
             float d = veh->distanceFrom(ep);
             if (d > 120.0f) {                            // stay within ~120 of the escortee
                 emitBrainIntent(runtime, wid, TACTICAL_ORDER_MOVETO_POINT, -1, ep.x, ep.y, ep.z, 0);
@@ -1582,7 +1582,7 @@ bool tickOpordMove(MechWarrior* warrior, MechBrainRuntime* runtime, int wid) {
 
     // ReturnToPost — a guard that wandered (pursuing a now-cleared threat) walks back to its post.
     if (runtime->guardHold && runtime->swReturnToPost == 1 && runtime->postSet) {
-        Stuff::Vector3D post; post.x = runtime->postPos[0]; post.y = runtime->postPos[1]; post.z = runtime->postPos[2];
+        glm::vec3 post; post.x = runtime->postPos[0]; post.y = runtime->postPos[1]; post.z = runtime->postPos[2];
         float d = veh->distanceFrom(post);
         if (d > 100.0f) {                                // returned-to-post tolerance
             emitBrainIntent(runtime, wid, TACTICAL_ORDER_MOVETO_POINT, -1, post.x, post.y, post.z, 0);

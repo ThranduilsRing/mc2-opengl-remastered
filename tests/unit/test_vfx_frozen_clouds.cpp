@@ -125,12 +125,12 @@ public:
     void distinguishParticles()
     {
         // Distinct channels and slots expose zero-fill, swapped fields and dead-slot packing.
-        this->m_localToParent.BuildTranslation(Stuff::Point3D(0.5f, -0.25f, 0.75f));
+        mc2::math::buildTranslation(this->m_localToParent, glm::vec3(0.5f, -0.25f, 0.75f));
         for (unsigned slot = 0; slot < active(); ++slot) {
             auto* p = this->GetParticle(slot);
             const float n = static_cast<float>(slot + 1);
             p->m_age = n * 0.125f;
-            const Stuff::Point3D position(n * 0.25f, n * -0.375f, n * 0.5f);
+            const glm::vec3 position(n * 0.25f, n * -0.375f, n * 0.5f);
             if constexpr (std::is_same_v<Cloud, gosFX::PointCloud>) {
                 this->m_P_localTranslation[slot] = position;
             } else {
@@ -184,19 +184,19 @@ public:
         appendBytes(bytes, rng.draws);
         return bytes;
     }
-    std::vector<GpuParticle> expectedPayload(const Stuff::LinearMatrix4D& parent)
+    std::vector<GpuParticle> expectedPayload(const glm::mat4& parent)
     {
         std::vector<GpuParticle> result;
-        Stuff::LinearMatrix4D localToWorld;
-        localToWorld.Multiply(this->m_localToParent, parent);
+        glm::mat4 localToWorld;
+        localToWorld = this->m_localToParent * parent;
         for (unsigned slot = 0; slot < active(); ++slot) {
             const auto* p = this->GetParticle(slot);
             if (p->m_age >= 1.0f) continue;
-            Stuff::Point3D world;
+            glm::vec3 world;
             if constexpr (std::is_same_v<Cloud, gosFX::PointCloud>)
-                world.Multiply(this->m_P_localTranslation[slot], localToWorld);
+                world = mc2::math::transformPoint(this->m_P_localTranslation[slot], localToWorld);
             else
-                world.Multiply(p->m_localTranslation, localToWorld);
+                world = mc2::math::transformPoint(p->m_localTranslation, localToWorld);
             constexpr unsigned colorsPerParticle = std::is_same_v<Cloud, gosFX::ShardCloud> ? 3 : 1;
             const auto& color = this->m_P_color[slot * colorsPerParticle];
             GpuParticle record{};
@@ -216,9 +216,9 @@ public:
                     record.velocity[0] = p->m_scale * p->m_halfX;
                     record.velocity[1] = p->m_scale * p->m_halfY;
                     record.size = p->m_scale * Stuff::Sqrt(p->m_halfX * p->m_halfX + p->m_halfY * p->m_halfY);
-                    Stuff::UnitQuaternion parentRotation, rotation;
+                    glm::quat parentRotation, rotation;
                     parentRotation = parent;
-                    rotation.Multiply(p->m_localRotation, parentRotation);
+                    rotation = mc2::math::composeQuat(p->m_localRotation, parentRotation);
                     record.velocity[2] = 2.0f * std::atan2(rotation.z, rotation.w);
                 } else {
                     record.size = p->m_scale * p->m_radius;
@@ -273,9 +273,9 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
         spec.m_alignZUsingX = alignX;
         spec.m_alignZUsingY = alignY;
     }
-    Stuff::LinearMatrix4D transform = Stuff::LinearMatrix4D::Identity;
-    transform.BuildTranslation(Stuff::Point3D(0.0f, 0.0f, 10.0f));
-    Stuff::OBB bounds = Stuff::OBB::Identity;
+    glm::mat4 transform = glm::mat4(1.0f);
+    mc2::math::buildTranslation(transform, glm::vec3(0.0f, 0.0f, 10.0f));
+    mc2::math::Obb bounds = mc2::math::Obb();
     gosFX::Effect::ExecuteInfo info(Stuff::Time(0), &transform, &bounds, 0.5f);
     FrozenCloud<Cloud> cloud(&spec);
     cloud.Start(&info);
@@ -290,8 +290,8 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
     MidLevelRenderer::MLRTexturePool textures(new MidLevelRenderer::TGAFilePool(""));
     auto* sorter = new PayloadSorter(&textures);
     MidLevelRenderer::MLRClipper clipper(nullptr, sorter);
-    Stuff::Matrix4D projection;
-    projection.SetPerspective(1.0f, 100.0f, 1.2f, 1.0f);
+    glm::mat4 projection;
+    mc2::math::setPerspective(projection, 1.0f, 100.0f, 1.2f, 1.0f);
     const Stuff::RGBAColor fog(0.0f, 0.0f, 0.0f, 1.0f);
     MidLevelRenderer::MLRState state;
     gosFX::Effect::DrawInfo draw{};
@@ -312,8 +312,8 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
         REQUIRE(expected.size() == (gpu ? live : 0));
         std::vector<GpuParticle> firstPayload;
         std::array<std::vector<char>, 2> firstMlrPayload;
-        Stuff::LinearMatrix4D camera = Stuff::LinearMatrix4D::Identity;
-        if (outside) camera.BuildTranslation(Stuff::Point3D(1000.0f, 0.0f, 0.0f));
+        glm::mat4 camera = glm::mat4(1.0f);
+        if (outside) mc2::math::buildTranslation(camera, glm::vec3(1000.0f, 0.0f, 0.0f));
         for (int repeat = 0; repeat < 8; ++repeat) {
             CAPTURE(repeat);
             CAPTURE(live);
@@ -322,10 +322,10 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
             clipper.StartDraw(camera, projection, fog, nullptr, state, nullptr);
             sorter->payload.clear();
             draw.m_clippingFlags = repeat % 2 ? 0x3f : 0;
-            Stuff::Matrix4D worldToClip;
-            worldToClip.Multiply(clipper.GetWorldToCameraMatrix(), projection);
+            glm::mat4 worldToClip;
+            worldToClip = clipper.GetWorldToCameraMatrix() * projection;
             Stuff::Vector4D projected;
-            projected.Multiply(Stuff::Point3D(transform), worldToClip);
+            projected.MultiplyPoint(mc2::math::getTranslation(transform), worldToClip);
             MidLevelRenderer::MLRClippingState culled;
             culled.Clip4dVertex(&projected);
             CHECK((culled.GetClippingState() != 0) == outside);

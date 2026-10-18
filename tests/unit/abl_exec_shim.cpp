@@ -53,6 +53,6 @@ GameObjectPtr CurObject = nullptr;
 GameObjectManager* ObjectManager = nullptr;
 GameObject* GameObjectManager::findByPartId(long) { return nullptr; }  // the tests name the current object (id -1), never a part id
 
-Stuff::Vector3D Mover::relativePosition(float, float, unsigned long) { return Stuff::Vector3D(); }
+glm::vec3 Mover::relativePosition(float, float, unsigned long) { return glm::vec3(); }
 
-Stuff::Vector3D relativePositionToPoint(Stuff::Vector3D, float, float, unsigned long) { return Stuff::Vector3D(); }
+glm::vec3 relativePositionToPoint(glm::vec3, float, float, unsigned long) { return glm::vec3(); }

@@ -133,7 +133,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 	if ( MPlayer )
 		MPlayer->getPlayers(numPlayers);
 	long numMoversPerCommander[MAX_MC_PLAYERS] = {12, 12, 12, 9, 7, 6, 5, 4};
-	Stuff::Vector3D dropZoneList[255]; // ubsurdly large, but sometimes we overrun this.
+	glm::vec3 dropZoneList[255]; // ubsurdly large, but sometimes we overrun this.
 	long dropZoneID = 0;
 	if (MPlayer) {
 		//dropZoneID = MPlayer->commanderID;
@@ -293,7 +293,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 		data.rosterIndex = 255;
 		data.controlType = 2;
 		data.controlDataType = 1;
-		data.position.Zero(); // need to get the drop zone location
+		data.position = glm::vec3(0.0f); // need to get the drop zone location
 		data.rotation = 0;
 		data.teamID = Team::home->getId();
 		data.commanderID = Team::home->getId();
@@ -308,15 +308,15 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 		strcpy( data.pilotFileName, "pmw00031" );
 		strcpy( data.brainFileName, "pbrain" );
 	
-		Stuff::Vector3D vector;
+		glm::vec3 vector;
 		vector.x = 0.f;
 		vector.y = 1.f;
 		vector.z = 0.f;
-		Stuff::Vector3D scaled;
+		glm::vec3 scaled;
 		for ( auto iter = list.begin(); iter != list.end(); ++iter ) {
 			scaled = vector;
 			scaled *= 128.;
-			data.position.Add(dropZoneList[0], scaled);
+			data.position = dropZoneList[0] + scaled;
 			//data.position = dropZoneList[dropZoneIndex++];
 			data.objNumber = (*iter)->getFitID();
 			strcpy( data.csvFileName, (*iter)->getFileName().c_str() );

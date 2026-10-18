@@ -109,7 +109,7 @@ namespace gosFX
 			m_halfY;
 		std::unique_ptr<MidLevelRenderer::MLRCardCloud>
 			m_cardCloud;
-		Stuff::Point3D
+		glm::vec3
 			m_vertices[4];
 		Stuff::RGBAColor
 			m_colors[4];

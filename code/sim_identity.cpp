@@ -103,7 +103,7 @@ void collectMovers(std::vector<MoverRecord>& out) {
 		r.id   = (int32_t)mover->getPartId();
 		r.team = (int32_t)mover->getTeamId();
 
-		Stuff::Vector3D pos = mover->getPosition();
+		glm::vec3 pos = mover->getPosition();
 		r.px  = pos.x;
 		r.py  = pos.y;
 		r.pz  = pos.z;

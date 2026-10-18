@@ -292,7 +292,7 @@ struct _MechData : public MoverData
 	unsigned char		numJumpJets;
 	float				lastJumpTime;
 	bool				inJump;
-	Stuff::Vector3D		jumpGoal;
+	glm::vec3		jumpGoal;
 	float				centerTorsoBlowTime;
 	bool				hitFromBehindThisFrame;
 	bool				hitFromFrontThisFrame;
@@ -366,7 +366,7 @@ class BattleMech : public Mover {
 		unsigned char		numJumpJets;
 		float				lastJumpTime;
 		bool				inJump;
-		Stuff::Vector3D		jumpGoal;
+		glm::vec3		jumpGoal;
 		float				centerTorsoBlowTime;
 		bool				hitFromBehindThisFrame;
 		bool				hitFromFrontThisFrame;
@@ -470,7 +470,7 @@ class BattleMech : public Mover {
 
 		virtual long handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChunk = false);
 
-		virtual float weaponLocked (long weaponIndex, Stuff::Vector3D targetPosition);
+		virtual float weaponLocked (long weaponIndex, glm::vec3 targetPosition);
 
 		virtual float getWeaponHeat (long weaponIndex) {
 			return(MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponHeat());
@@ -510,7 +510,7 @@ class BattleMech : public Mover {
 
 		virtual bool isWeaponReady (long weaponIndex);
 
-		virtual float calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, Stuff::Vector3D* targetPoint = nullptr);
+		virtual float calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, glm::vec3* targetPoint = nullptr);
 
 		virtual float getTotalEffectiveness(void);
 
@@ -536,23 +536,23 @@ class BattleMech : public Mover {
 
 		virtual long handleWeaponFire (long weaponIndex,
 									   GameObjectPtr target,
-									   Stuff::Vector3D* targetPoint,
+									   glm::vec3* targetPoint,
 									   bool hit,
 									   float entryAngle,
 									   long numMissiles,
 									   long hitLocation);
 
-		virtual long fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, Stuff::Vector3D* targetPoint, float &damageDone);
+		virtual long fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, glm::vec3* targetPoint, float &damageDone);
 
-		virtual float relFacingTo (Stuff::Vector3D goal, long bodyLocation = -1);
+		virtual float relFacingTo (glm::vec3 goal, long bodyLocation = -1);
 
-		virtual float relViewFacingTo (Stuff::Vector3D goal) {
+		virtual float relViewFacingTo (glm::vec3 goal) {
 			return(relFacingTo(goal, MECH_BODY_LOCATION_CTORSO));
 		}
 
 		virtual bool canPowerUp (void);
 
-		virtual Stuff::Vector3D getPositionFromHS (long weaponType);
+		virtual glm::vec3 getPositionFromHS (long weaponType);
 
 		virtual long getBodyState (void);
 
@@ -568,7 +568,7 @@ class BattleMech : public Mover {
 		
 		void endJumpFX (void);
 		
-		Stuff::Vector3D getJumpPosition (void);
+		glm::vec3 getJumpPosition (void);
 
 		long getActuatorMax (long actuatorId) {
 			return(MasterComponent::masterList[inventory[actuator[actuatorId]].masterID].getHealth());
@@ -619,7 +619,7 @@ class BattleMech : public Mover {
 			return(appearance->getOldGestureGoal() == MECH_STATE_RUNNING);
 		}
 
-		virtual bool isJumping (Stuff::Vector3D* jumpGoal = nullptr);
+		virtual bool isJumping (glm::vec3* jumpGoal = nullptr);
 
 		bool isReversing (void) 
 		{

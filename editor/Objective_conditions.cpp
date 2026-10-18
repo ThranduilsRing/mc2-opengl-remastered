@@ -170,7 +170,7 @@ bool CSpecificUnitObjectiveCondition::EditDialog() {
 
 std::string CSpecificUnitObjectiveCondition::InstanceDescription() {
 	std::string tmpEStr;
-	Stuff::Vector3D pos = m_pUnit->getPosition();
+	glm::vec3 pos = m_pUnit->getPosition();
 	const char *szDisplayName = m_pUnit->getDisplayName(); // nb: localization
 	assert(szDisplayName);
 	tmpEStr = std::format("(pos: {:.3f}, {:.3f}) {}", pos.x, pos.y, mc2::fmt::safe(szDisplayName));
@@ -180,7 +180,7 @@ std::string CSpecificUnitObjectiveCondition::InstanceDescription() {
 std::string CSpecificUnitObjectiveCondition::ReadableTarget() {
 	std::string s;
 	if (m_pUnit) {
-		Stuff::Vector3D pos = m_pUnit->getPosition();
+		glm::vec3 pos = m_pUnit->getPosition();
 		const char *name = m_pUnit->getDisplayName();
 		s = std::format("{}  ({:.0f}, {:.0f})", (name && name[0]) ? name : "unit", pos.x, pos.y);
 	} else {
@@ -308,7 +308,7 @@ bool CSpecificStructureObjectiveCondition::EditDialog() {
 
 std::string CSpecificStructureObjectiveCondition::InstanceDescription() {
 	std::string tmpEStr;
-	Stuff::Vector3D pos = m_pBuilding->getPosition();
+	glm::vec3 pos = m_pBuilding->getPosition();
 	const char *szDisplayName = m_pBuilding->getDisplayName(); // nb: localization
 	assert(szDisplayName);
 	tmpEStr = std::format("(pos: {:.3f}, {:.3f}) {}", pos.x, pos.y, mc2::fmt::safe(szDisplayName));
@@ -318,7 +318,7 @@ std::string CSpecificStructureObjectiveCondition::InstanceDescription() {
 std::string CSpecificStructureObjectiveCondition::ReadableTarget() {
 	std::string s;
 	if (m_pBuilding) {
-		Stuff::Vector3D pos = m_pBuilding->getPosition();
+		glm::vec3 pos = m_pBuilding->getPosition();
 		const char *name = m_pBuilding->getDisplayName();
 		s = std::format("{}  ({:.0f}, {:.0f})", (name && name[0]) ? name : "structure", pos.x, pos.y);
 	} else {

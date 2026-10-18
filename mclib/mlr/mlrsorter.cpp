@@ -319,8 +319,8 @@ ToBeDrawnPrimitive::ToBeDrawnPrimitive()
 {
 	primitive = nullptr;
 
-	cameraPosition = Stuff::LinearMatrix4D::Identity;
-	shapeToClipMatrix = Stuff::LinearMatrix4D::Identity;
+	cameraPosition = mc2::math::getTranslation(glm::mat4(1.0f));
+	shapeToClipMatrix = glm::mat4(1.0f);
 
 	for(int i=0;i<Limits::Max_Number_Of_Lights_Per_Primitive;i++)
 	{

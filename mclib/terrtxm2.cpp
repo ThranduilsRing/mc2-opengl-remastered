@@ -189,7 +189,7 @@ DWORD TerrainColorMap::resolveTextureHandle (VertexPtr vMin, VertexPtr vMax, Ter
 {
 	float posX = 0.0f, posY = 0.0f, maxX = 0.0f, maxY = 0.0f;
 	
-	Stuff::Vector3D pos1(vMin->vx,vMin->vy,0.0f),pos2(vMax->vx,vMax->vy,0.0f);
+	glm::vec3 pos1(vMin->vx,vMin->vy,0.0f),pos2(vMax->vx,vMax->vy,0.0f);
 	if (Terrain::IsValidTerrainPosition(pos1) && Terrain::IsValidTerrainPosition(pos2))
 	{
 		//-----------------------------------------------------------------------------------------------------

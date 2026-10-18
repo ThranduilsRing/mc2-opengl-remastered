@@ -227,17 +227,17 @@ MLR_I_DeT_PMesh*
 
 	ret->SetDetailData(xOff, yOff, xFac, yFac);
 
-	Point3D *coords = new Point3D [8];
+	glm::vec3 *coords = new glm::vec3 [8];
 	Register_Object(coords);
 
-	coords[0] = Point3D( half, -half,  half);
-	coords[1] = Point3D(-half, -half,  half);
-	coords[2] = Point3D( half, -half, -half);
-	coords[3] = Point3D(-half, -half, -half);
-	coords[4] = Point3D(-half,  half,  half);
-	coords[5] = Point3D( half,  half,  half);
-	coords[6] = Point3D( half,  half, -half);
-	coords[7] = Point3D(-half,  half, -half);
+	coords[0] = glm::vec3( half, -half,  half);
+	coords[1] = glm::vec3(-half, -half,  half);
+	coords[2] = glm::vec3( half, -half, -half);
+	coords[3] = glm::vec3(-half, -half, -half);
+	coords[4] = glm::vec3(-half,  half,  half);
+	coords[5] = glm::vec3( half,  half,  half);
+	coords[6] = glm::vec3( half,  half, -half);
+	coords[7] = glm::vec3(-half,  half, -half);
 
 	unsigned char *lengths = new unsigned char [6];
 	Register_Pointer(lengths);
@@ -381,7 +381,7 @@ MLRShape*
 
 	int i, j, k;
 	long    nrTri = (long) ceil (icoInfo.all * pow (4.0f, icoInfo.depth));
-	Point3D v[3];
+	glm::vec3 v[3];
 
 	if(3*nrTri >= Limits::Max_Number_Vertices_Per_Mesh)
 	{
@@ -396,13 +396,13 @@ MLRShape*
 		lengths[i] = 3;
 	}
 
-	Point3D *coords = new Point3D [nrTri*3];
+	glm::vec3 *coords = new glm::vec3 [nrTri*3];
 	Register_Pointer(coords);
 	
-	Point3D *collapsedCoords = nullptr;
+	glm::vec3 *collapsedCoords = nullptr;
 	if(icoInfo.indexed==true)
 	{
-		collapsedCoords = new Point3D [nrTri*3];
+		collapsedCoords = new glm::vec3 [nrTri*3];
 		Register_Pointer(collapsedCoords);
 	}
 
@@ -439,7 +439,7 @@ MLRShape*
 			{
 				for(j=0;j<uniquePoints;j++)
 				{
-					if(coords[i] == collapsedCoords[j])
+					if(mc2::math::closeEnough(coords[i], collapsedCoords[j]))
 					{
 						break;
 					}

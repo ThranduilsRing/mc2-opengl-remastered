@@ -76,10 +76,10 @@ namespace MidLevelRenderer {
 		MLRPrimitiveBase *primitive;
 
 		MLRState state;
-		Stuff::Point3D cameraPosition;
+		glm::vec3 cameraPosition;
 		MLRClippingState clippingFlags;
-		Stuff::Matrix4D shapeToClipMatrix;
-		Stuff::LinearMatrix4D worldToShape;
+		glm::mat4 shapeToClipMatrix;
+		glm::mat4 worldToShape;
 
 		static GOSVertexPool *allVerticesToDraw;
 

@@ -431,13 +431,13 @@ class BldgAppearance : public ObjectAppearance
 
 		virtual bool isMouseOver (float px, float py);
 		
-		virtual void setObjectParameters (const Stuff::Vector3D &pos, float rot, long selected, long alignment, long homeRelations);
+		virtual void setObjectParameters (const glm::vec3 &pos, float rot, long selected, long alignment, long homeRelations);
 		
 		virtual void setMoverParameters (float turretRot, float lArmRot = 0.0f, float rArmRot = 0.0f, bool isAirborne = false);
 		
 		virtual void setObjStatus (long oStatus);
 		
-		virtual long calcCellsCovered (Stuff::Vector3D& pos, short* cellList);
+		virtual long calcCellsCovered (glm::vec3& pos, short* cellList);
 
 		virtual void markTerrain(_ScenarioMapCellInfo* pInfo, int type, int counter);
 		
@@ -473,7 +473,7 @@ class BldgAppearance : public ObjectAppearance
 		
 		virtual float getWeaponNodeRecycle (long node);
 		
-		virtual Stuff::Vector3D getWeaponNodePosition (long node);
+		virtual glm::vec3 getWeaponNodePosition (long node);
 
 		virtual bool isSelectable()
 		{
@@ -507,25 +507,25 @@ class BldgAppearance : public ObjectAppearance
 			return appearType->isForestClump;
 		}
 		
-		virtual Stuff::Point3D getRootNodeCenter (void)
+		virtual glm::vec3 getRootNodeCenter (void)
 		{
-			Stuff::Point3D result = bldgShape->GetRootNodeCenter();
+			glm::vec3 result = bldgShape->GetRootNodeCenter();
 			return result;
 		}
 		
-		virtual Stuff::Vector3D getNodeNamePosition (const char *nodeName);
+		virtual glm::vec3 getNodeNamePosition (const char *nodeName);
 		
 		virtual void startActivity (long effectId, bool loop);
 		virtual void stopActivity (void);
 
-		virtual Stuff::Vector3D getHitNode (void);
+		virtual glm::vec3 getHitNode (void);
 
 		virtual bool hasAnimationData (long gestureId)
 		{
 			return (appearType->bdAnimData[gestureId] != NULL);
 		}
 
-		virtual Stuff::Vector3D getNodeIdPosition (long nodeId);
+		virtual glm::vec3 getNodeIdPosition (long nodeId);
 };
 
 //***************************************************************************
@@ -736,7 +736,7 @@ class TreeAppearance : public ObjectAppearance
 
 		virtual bool isMouseOver (float px, float py);
 
-		virtual void setObjectParameters (const Stuff::Vector3D &pos, float rot, long selected, long alignment, long homeRelations);
+		virtual void setObjectParameters (const glm::vec3 &pos, float rot, long selected, long alignment, long homeRelations);
 
 		virtual void setMoverParameters (float pitchAngle, float lArmRot = 0.0f, float rArmRot = 0.0f, bool isAirborne = false);
 		
@@ -765,9 +765,9 @@ class TreeAppearance : public ObjectAppearance
 		
 		virtual void markTerrain(_ScenarioMapCellInfo* pInfo, int type, int counter);
 
- 		virtual Stuff::Point3D getRootNodeCenter (void)
+ 		virtual glm::vec3 getRootNodeCenter (void)
 		{
-			Stuff::Point3D result = treeShape->GetRootNodeCenter();
+			glm::vec3 result = treeShape->GetRootNodeCenter();
 			return result;
 		}
 

@@ -200,6 +200,22 @@ Finding: the 1-ULP trig rows were the HARNESS include order. The gameos/mclib/mc
   the AlignLocalAxisToWorldVector and light-vector sites convert through the bridge. Callerless and gone: Plane::Multiply, the
   OBB tests and OBB::Intersects(Plane). Corpus rows exact.normalize, exact.plane-normal/offset/distance (REQUIRED) against
   the Stuff UnitVector3D/Vector3D operations.
+- S5.17 (lane 1 s25, 2026-10-18; the step 5 tail, design E:/mc2-archive-2026-10/plans/step5-matrices-design-2026-10-18.md) every
+  remaining Stuff math type deleted in one change set (25 commits of <= 25 files, built together): Vector3D, Point3D, UnitVector3D
+  -> glm::vec3; LinearMatrix4D, AffineMatrix4D, Matrix4D -> glm::mat4 holding the Stuff ROW-convention matrix (entry (r, c) at
+  m[c][r], translation in row 3, column 3 (0, 0, 0, 1) for an affine one: GLM_FORCE_CTOR_INIT); UnitQuaternion -> glm::quat
+  (x, y, z, w storage, built by quatXYZW); EulerAngles -> mc2::math::Euler; OBB -> mc2::math::Obb. Method: a clang-query
+  inventory of every member call, operator and non-copy constructor of those classes over the 288 TUs that name them (PCH flags
+  stripped), rewritten by AST range (macro arguments by their source text), then the type names lexically (strings, comments and
+  enum members skipped). Owner ruling 2026-10-18: P/R by default, exact only for byte formats (E1 anim-cache quaternion bytes,
+  E2 48-byte matrix / 64-byte OBB stream records in mclib/stuff/glmstream.hpp, E3 12-byte vectors in the save *Data structs).
+  Convention adapters (mclib/math/mc2_xform.h) keep the Stuff bodies verbatim; corpus tests/unit/test_glm_math_identity.cpp
+  (10 REQUIRED rows vs the legacy bodies, the convention guard with its negative control, the E rows) replaces
+  test_stuff_glm_identity.cpp; lint row glm_convention. RESULT: the sim pair stayed IDENTICAL to the cd53af7df reference on
+  mc2_03/24/10/16 over the whole windows and every baseline passed (no re-record); saveload x2 = baselines. The R relaxations
+  (glm::normalize for the quaternion Normalize, quat_cast for quaternion-from-matrix, 4-term mat4 products) did not move a
+  single SIMID digest in the windows run. Left on Stuff: glmstream.hpp (E2 records, the Axes enum and axis macros), Vector4D
+  (on glm::mat4: MultiplyPoint / MultiplyVector / MultiplyAffine), Note/Page vector entries on glm::vec3, the scalar helpers.
 Proof every batch: sim pair mc2_03/mc2_24 identical to the pre-port reference (exe 579b60e2c) and to the committed baselines; saveload mc2_03
 fb63e85ac66966cf and mc2_01 d46e3e5e30d26b15 = baselines; S5.2/S5.4 GL/VK capture pair day mc2_01 + night mc2_10 viewed.
 Left on Stuff: the types themselves (Vector3D ~2,000 uses outside stuff/, Point3D, the matrices, UnitQuaternion, angles) and every op whose

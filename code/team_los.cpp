@@ -10,7 +10,7 @@ extern LineElement *debugLines[];
 #endif
 
 //---------------------------------------------------------------------------
-bool Team::teamLineOfSight (Stuff::Vector3D tPos, float extRad)
+bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 {
 	//-----------------------------------------------------------
 	// For each member of the team, check LOS to point provided.
@@ -19,9 +19,9 @@ bool Team::teamLineOfSight (Stuff::Vector3D tPos, float extRad)
 		MoverPtr obj = (MoverPtr)ObjectManager->getByWatchID(roster[i]);
 		if (!obj->isDisabled() && !obj->isDestroyed() && (obj->getStatus() != OBJECT_STATUS_SHUTDOWN))
 		{
-			Stuff::Vector3D distance;
-			distance.Subtract(tPos,obj->getPosition());
-			float dist = distance.GetApproximateLength();
+			glm::vec3 distance;
+			distance = tPos - obj->getPosition();
+			float dist = glm::length(distance);
 		
 			//Figure out altitude above minimum terrain altitude and look up in table.
 			float baseElevation = MapData::waterDepth;
@@ -72,9 +72,9 @@ bool Team::teamLineOfSight (Stuff::Vector3D tPos, float extRad)
 			GameObjectPtr obj = ObjectManager->specialBuildings[spBuilding];
 			if (!obj->isDisabled() && !obj->isDestroyed() && (obj->getStatus() != OBJECT_STATUS_SHUTDOWN))
 			{
-				Stuff::Vector3D distance;
-				distance.Subtract(tPos,obj->getPosition());
-				float dist = distance.GetApproximateLength();
+				glm::vec3 distance;
+				distance = tPos - obj->getPosition();
+				float dist = glm::length(distance);
 			
 				//Figure out altitude above minimum terrain altitude and look up in table.
 				float baseElevation = MapData::waterDepth;
@@ -142,22 +142,22 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 		// Check is really simple.
 		// Find deltaCellRow and deltaCellCol and iterate over them from source to dest.
 		// If the magic line ever goes BELOW the terrainElevation PLUS localElevation return false.
-		Stuff::Vector3D startPos, endPos;
-		startPos.Zero();
-		endPos.Zero();
+		glm::vec3 startPos, endPos;
+		startPos = glm::vec3(0.0f);
+		endPos = glm::vec3(0.0f);
 		
 		land->getCellPos(tCellRow,tCellCol,endPos);
 		land->getCellPos(mCellRow,mCellCol,startPos);
 		startPos.z += startLocal;
 		endPos.z += endLocal;
 
-		Stuff::Vector3D deltaCellVec;
+		glm::vec3 deltaCellVec;
 		deltaCellVec.y = tCellRow - mCellRow;
 		deltaCellVec.x = tCellCol - mCellCol;
 		deltaCellVec.z = 0.0f;
 		float startHeight = startPos.z;
 		
-		float length = deltaCellVec.GetApproximateLength();
+		float length = glm::length(deltaCellVec);
 		length *= ACCURACY_ADJUST;
 		
 		if (length > Stuff::SMALL)
@@ -166,15 +166,15 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 			float rowLength = (endPos.y - startPos.y) / length;
 			float heightLen = (endPos.z - startPos.z) / (length + ACCURACY_ADJUST);
 			
-			Stuff::Vector3D currentPos = startPos;
+			glm::vec3 currentPos = startPos;
 			currentPos.z = land->getTerrainElevation(currentPos);
 			long maxDistIter = (length - 0.5f);
 			long maxTrees = 0;
 
-			Stuff::Vector3D dist;
-			dist.Subtract(endPos,currentPos);
+			glm::vec3 dist;
+			dist = endPos - currentPos;
 			
-			float remainingDist = dist.GetApproximateLength();
+			float remainingDist = glm::length(dist);
 			bool checkExtent = (extRad > Stuff::SMALL);
 			bool checkStart = (startExtRad > Stuff::SMALL);
 			extRad += HALF_CELL_DIST;
@@ -183,10 +183,10 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 				bool outsideStartRadius = true;
 				if (checkStart)
 				{
-					Stuff::Vector3D distance;
-					distance.Subtract(currentPos,startPos);
+					glm::vec3 distance;
+					distance = currentPos - startPos;
 					distance.z = 0.0f;
-					float dist = distance.GetApproximateLength();
+					float dist = glm::length(distance);
 					if (dist <= startExtRad)
 						outsideStartRadius = false;
 				}
@@ -203,8 +203,8 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 				// If we are and we haven't returned false since we're here, we can see it!!!!
 				if (checkExtent)
 				{
-					dist.Subtract(endPos,currentPos);
-					remainingDist = dist.GetApproximateLength();
+					dist = endPos - currentPos;
+					remainingDist = glm::length(dist);
 					if (remainingDist <= extRad)
 						break;
 				}
@@ -224,7 +224,7 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 #ifdef LAB_ONLY
 						if (drawTerrainGrid)
 						{
-							Stuff::Vector3D realStart = startPos;
+							glm::vec3 realStart = startPos;
 							Stuff::Vector4D lineStart, lineEnd;
 							// [PROJECTZ:DebugOnly id=debug_los_line_c0]
 							eye->projectForDebugOverlay(realStart,lineStart);
@@ -247,7 +247,7 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 #ifdef LAB_ONLY
 		if (drawTerrainGrid)
 		{
-			Stuff::Vector3D realStart = startPos;
+			glm::vec3 realStart = startPos;
 			Stuff::Vector4D lineStart, lineEnd;
 			// [PROJECTZ:DebugOnly id=debug_los_line_d0]
 			eye->projectForDebugOverlay(realStart,lineStart);
@@ -264,7 +264,7 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 }
 
 //---------------------------------------------------------------------------
-bool Team::lineOfSight (Stuff::Vector3D position, Stuff::Vector3D targetPosition, long teamId, float extRad, float startExtRad) 
+bool Team::lineOfSight (glm::vec3 position, glm::vec3 targetPosition, long teamId, float extRad, float startExtRad) 
 {
 	int posCellR, posCellC;
 	int tarCellR, tarCellC;

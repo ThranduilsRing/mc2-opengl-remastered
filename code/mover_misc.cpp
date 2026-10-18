@@ -33,7 +33,7 @@ void Mover::drawOverviewMovePath( unsigned long color )
 		getPilot()->drawOverviewMovePath( color );
 }
 
-bool Mover::getMoveDestination( Stuff::Vector3D& out )
+bool Mover::getMoveDestination( glm::vec3& out )
 {
 	return getPilot() ? getPilot()->getMoveDestination( out ) : false;
 }
@@ -99,7 +99,7 @@ void Mover::initOptimalCells (long numIncrements) {
 	char rangedMap[MAX_ATTACK_CELLRANGE * 2 + 1][MAX_ATTACK_CELLRANGE * 2 + 1];
 	for (int r = 0; r < (MAX_ATTACK_CELLRANGE * 2 + 1); r++)
 		for (long c = 0; c < (MAX_ATTACK_CELLRANGE * 2 + 1); c++) {
-			Stuff::Vector3D start, goal;
+			glm::vec3 start, goal;
 			start.x = c;
 			start.y = r;
 			start.z = 0;
@@ -231,7 +231,7 @@ void PlaceStationaryMovers (MoveMap* map) {
 	}
 }
 
-bool Mover::isCloseToFirstTacOrder( Stuff::Vector3D& pos )
+bool Mover::isCloseToFirstTacOrder( glm::vec3& pos )
 {
 	return getPilot()->isCloseToFirstTacOrder( pos );
 }

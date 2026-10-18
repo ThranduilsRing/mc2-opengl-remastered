@@ -120,9 +120,9 @@ void EditorObjMgrTrace(const char* fmt, ...);
 
 // Forward decl: GL-correct world->screen projection (defined below). Used by the
 // pick helpers, which precede the definition.
-bool EditorObjectMgr_ProjectScreenXY_GL(const Stuff::Vector3D& wp, Stuff::Vector4D& sp);
+bool EditorObjectMgr_ProjectScreenXY_GL(const glm::vec3& wp, Stuff::Vector4D& sp);
 
 // Free functions defined in the split pieces.
-bool EditorObjectMgr_ProjectScreenXY_GL(const Stuff::Vector3D& wp, Stuff::Vector4D& sp);
+bool EditorObjectMgr_ProjectScreenXY_GL(const glm::vec3& wp, Stuff::Vector4D& sp);
 
 #endif // EDITOROBJECTMGR_INTERNAL_H

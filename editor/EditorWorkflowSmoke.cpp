@@ -36,7 +36,7 @@ void EditorInterface::runCatalogReferenceSmoke()
 		auto* brush = identified ? dynamic_cast<BuildingBrush*>(curBrush) : nullptr;
 		const auto count = mgr->getBuildings().size() + mgr->getUnits().size();
 		EditorObject* placed{};
-		Stuff::Vector3D position{};
+		glm::vec3 position{};
 		bool painted{}, undone{}, redone{}, saved{}, removed{}, reloaded{};
 		for (int row = mid; brush && row < mid + 24 && !placed; ++row)
 			for (int col = mid; col < mid + 24 && !placed; ++col)
@@ -97,7 +97,7 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 	bool restored = false;
 	if (brush)
 	{
-		Stuff::Vector3D point;
+		glm::vec3 point;
 		point.x = land->mapTopLeft3d.x + mid * land->worldUnitsPerVertex;
 		point.y = land->mapTopLeft3d.y - mid * land->worldUnitsPerVertex;
 		point.z = land->getTerrainElevation(point);
@@ -115,14 +115,14 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 	EditorObjectMgr* mgr = EditorObjectMgr::instance();
 	auto* placement = dynamic_cast<BuildingBrush*>(curBrush);
 	EditorObject* placed = nullptr;
-	Stuff::Vector3D placedPosition;
+	glm::vec3 placedPosition;
 	bool placementUndo = false;
 	if (activated && placement)
 	{
 		for (int row = mid; row < mid + 12 && !placed; ++row)
 			for (int col = mid; col < mid + 12 && !placed; ++col)
 			{
-				Stuff::Vector3D point;
+				glm::vec3 point;
 				land->cellToWorld(row, col, point);
 				point.z = land->getTerrainElevation(point);
 				if (!placement->canPaint(point, 0, 0, 0))
@@ -178,7 +178,7 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 		}
 	}
 	const long brainID = brainUnit ? brainUnit->getID() : -1;
-	const Stuff::Vector3D brainPosition = brainUnit ? brainUnit->getPosition() : Stuff::Vector3D{};
+	const glm::vec3 brainPosition = brainUnit ? brainUnit->getPosition() : glm::vec3{};
 	const auto waypointCount = brainUnit ? brainUnit->getWaypointCount() : 0;
 	const int orderType = brainUnit ? brainUnit->getOrderType() : Unit::ORDER_NONE;
 	const int stance = brainUnit ? brainUnit->getStance() : -1;

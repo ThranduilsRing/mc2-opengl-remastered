@@ -247,12 +247,12 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			{
 				FILE* f = fopen("preview_debug.log","a");
 				if (f) {
-					mc2::fmt::print(f, "[PREVIEW] cameraToClip=[{:.3f} {:.3f} {:.3f} {:.3f} / {:.3f} {:.3f} {:.3f} {:.3f} / {:.3f} {:.3f} {:.3f} {:.3f} / {:.3f} {:.3f} {:.3f} {:.3f}]\n", cameraToClip(0,0), cameraToClip(0,1), cameraToClip(0,2), cameraToClip(0,3), cameraToClip(1,0), cameraToClip(1,1), cameraToClip(1,2), cameraToClip(1,3), cameraToClip(2,0), cameraToClip(2,1), cameraToClip(2,2), cameraToClip(2,3), cameraToClip(3,0), cameraToClip(3,1), cameraToClip(3,2), cameraToClip(3,3));
+					mc2::fmt::print(f, "[PREVIEW] cameraToClip=[{:.3f} {:.3f} {:.3f} {:.3f} / {:.3f} {:.3f} {:.3f} {:.3f} / {:.3f} {:.3f} {:.3f} {:.3f} / {:.3f} {:.3f} {:.3f} {:.3f}]\n", cameraToClip[0][0], cameraToClip[1][0], cameraToClip[2][0], cameraToClip[3][0], cameraToClip[0][1], cameraToClip[1][1], cameraToClip[2][1], cameraToClip[3][1], cameraToClip[0][2], cameraToClip[1][2], cameraToClip[2][2], cameraToClip[3][2], cameraToClip[0][3], cameraToClip[1][3], cameraToClip[2][3], cameraToClip[3][3]);
 					fflush(f); fclose(f);
 				}
 			}
 			theClipper->StartDraw(cameraOrigin, cameraToClip, fColor, &fColor, default_state, &z);
-			MidLevelRenderer::GOSVertex::farClipReciprocal = (1.0f-cameraToClip(2, 2))/cameraToClip(3, 2);
+			MidLevelRenderer::GOSVertex::farClipReciprocal = (1.0f-cameraToClip[2][2])/cameraToClip[2][3];
 
 			//--------------------------------
 			//Set States for Software Renderer
@@ -533,7 +533,7 @@ long SimpleCamera::update()
 		pObject->scale(shapeScale);
 
 		// we don't want to center around the feet
-		Stuff::Vector3D mechPos = pObject->getRootNodeCenter();
+		glm::vec3 mechPos = pObject->getRootNodeCenter();
 		mechPos.x = -mechPos.x/2.f;
 		float tmp = -mechPos.y/2.f;
 		mechPos.y = -mechPos.z/2.f;

@@ -161,7 +161,7 @@ long MechWarrior::getBrainState (void) {
 }
 
 
-long MechWarrior::coreMoveTo (Stuff::Vector3D location, unsigned long params) {
+long MechWarrior::coreMoveTo (glm::vec3 location, unsigned long params) {
 
 	bool run = ((params & TACORDER_PARAM_RUN) != 0);
 	bool jump = ((params & TACORDER_PARAM_JUMP) != 0);
@@ -233,14 +233,14 @@ long MechWarrior::coreMoveToObject (GameObjectPtr object, unsigned long params) 
 	if (!object)
 		return(1);
 
-	Stuff::Vector3D goal;
+	glm::vec3 goal;
 	if (object->isMover())
 		goal = object->getPosition();
 	else {
 		// If not a mover, then pick an open cell adjacent
 		// to it. If it happens to be adjacent to blocked
 		// cells, this could be off...
-		Stuff::Vector3D objectPos = object->getPosition();
+		glm::vec3 objectPos = object->getPosition();
 		goal = getVehicle()->calcOffsetMoveGoal(objectPos);
 	}
 	
@@ -270,7 +270,7 @@ long MechWarrior::coreMoveToObject (GameObjectPtr object, unsigned long params) 
 		clearCurTacOrder();
 
 	tacOrder.targetWID = object->getWatchID();
-	Stuff::Vector3D pos = object->getPosition();
+	glm::vec3 pos = object->getPosition();
 	setMoveGoal(object->getWatchID(), &pos, object);
 	setMoveRun(run);
 
@@ -576,7 +576,7 @@ long MechWarrior::coreScan (GameObjectPtr object, unsigned long params) {
 		}
 		}
 	else {
-		Stuff::Vector3D myPosition = getVehicle()->getPosition();
+		glm::vec3 myPosition = getVehicle()->getPosition();
 		int32_t action = -1;
 		coreScanTargetWID = targetPriorityList.calcTarget(this, myPosition, params, action);
 		return(coreScanTargetWID);

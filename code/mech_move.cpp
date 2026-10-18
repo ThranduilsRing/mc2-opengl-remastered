@@ -104,7 +104,7 @@ bool BattleMech::pivotTo (void) {
 		isRunning = (pilot->getMovePath()->numStepsWhenNotPaused > 0) && pilot->getMoveRun();
 
 	bool hasTarget = false;
-	Stuff::Vector3D targetPosition;
+	glm::vec3 targetPosition;
 	GameObjectPtr target = pilot->getCurrentTarget();
 	float relFacingToTarget = 0.0;
 	if (target) 
@@ -126,7 +126,7 @@ bool BattleMech::pivotTo (void) {
 		{
 			if ((path->numStepsWhenNotPaused > 0) && (path->curStep < path->numStepsWhenNotPaused)) 
 			{
-				Stuff::Vector3D wayPt = path->stepList[path->curStep].destination;
+				glm::vec3 wayPt = path->stepList[path->curStep].destination;
 
 				appearance->setGestureGoal(MECH_STATE_STANDING);
 				control.settings.mech.throttle = 100;
@@ -167,7 +167,7 @@ bool BattleMech::pivotTo (void) {
 		{
 			if ((path->numStepsWhenNotPaused > 0) && (path->curStep < path->numStepsWhenNotPaused)) 
 			{
-				Stuff::Vector3D wayPt = path->stepList[path->curStep].destination;
+				glm::vec3 wayPt = path->stepList[path->curStep].destination;
 
 				appearance->setGestureGoal(MECH_STATE_STANDING);
 				control.settings.mech.throttle = 100;
@@ -277,8 +277,8 @@ void BattleMech::updateMoveStateGoal (void) {
 
 	MovePathPtr path = pilot->getMovePath();
 
-	Stuff::Vector3D targetPosition;
-	targetPosition.Zero();
+	glm::vec3 targetPosition;
+	targetPosition = glm::vec3(0.0f);
 	GameObjectPtr target = pilot->getLastTarget();
 	bool hasTarget = false;
 	if (target) {
@@ -306,7 +306,7 @@ void BattleMech::updateMoveStateGoal (void) {
 		}
 		if (hasTarget) {
 			if ((path->numStepsWhenNotPaused > 0) && (path->curStep < path->numStepsWhenNotPaused)) {
-				Stuff::Vector3D wayPt = path->stepList[path->curStep].destination;
+				glm::vec3 wayPt = path->stepList[path->curStep].destination;
 
 				float facingDelta = relFacingDelta(wayPt, targetPosition);
 				float totalFireArc = getFireArc() + dynamics.max.mech.torsoYaw;
@@ -411,7 +411,7 @@ bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, lon
 			if (path->curStep == path->numSteps)
 				goalReached = true;
 			else {
-				Stuff::Vector3D wayPt = path->stepList[path->curStep].destination;
+				glm::vec3 wayPt = path->stepList[path->curStep].destination;
 				
 				// Let's record our last valid position, in case we need to
 				// crawl back from impassable terrain we get knocked onto.
@@ -628,7 +628,7 @@ bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, lon
 void BattleMech::setNextMovePath (char& newThrottleSetting, long& newGestureStateGoal) {
 
 
-	Stuff::Vector3D nextWayPoint;
+	glm::vec3 nextWayPoint;
 	bool haveWayPoint = pilot->getNextWayPoint(nextWayPoint, true);
 	if (haveWayPoint) {
 		pilot->setMoveGoal(MOVEGOAL_LOCATION, &nextWayPoint);
@@ -901,7 +901,7 @@ void BattleMech::updateMovement (void) {
 }
 
 
-Stuff::Vector3D BattleMech::getPositionFromHS (long nodeId)
+glm::vec3 BattleMech::getPositionFromHS (long nodeId)
 {
 	return(appearance->getWeaponNodePosition(nodeId));
 }
@@ -947,9 +947,9 @@ void BattleMech::endJumpFX (void) {
 #endif
 }	
 
-Stuff::Vector3D BattleMech::getJumpPosition (void) 
+glm::vec3 BattleMech::getJumpPosition (void) 
 {
-	Stuff::Vector3D result;
+	glm::vec3 result;
 	result.x = result.y = result.z = 0.0f;
 
 	return result;

@@ -537,7 +537,7 @@ TEST_CASE("AuthoredOrderProduction/BattleMech patrol reverses at endpoints (warr
     actors.path(TACTICAL_ORDER_PATROL_PATH);
     const int expected[] = {1, 2, 1, 0, 1};
     for (const auto index : expected) {
-        Stuff::Vector3D next;
+        glm::vec3 next;
         REQUIRE(actors.pilot.getNextWayPoint(next, false));
         const auto cursor = actors.pilot.getMoveOrders()->curWayPt;
         REQUIRE(actors.pilot.getNextWayPoint(next, false));
@@ -557,7 +557,7 @@ TEST_CASE("AuthoredOrderProduction/BattleMech traverse consumes extra mode senti
     auto& path = actors.pilot.getCurTacOrder()->moveParams.wayPath;
     REQUIRE(path.numPoints < MAX_WAYPTS);
     path.mode[path.numPoints] = TRAVEL_MODE_FAST;
-    Stuff::Vector3D next;
+    glm::vec3 next;
     for (int index = 1; index < path.numPoints; ++index) {
         REQUIRE(actors.pilot.getNextWayPoint(next, true));
         CHECK(next.x == 100.0f * (index + 1));
@@ -576,7 +576,7 @@ TEST_CASE("AuthoredOrderProduction/BattleMech waypoint reset depends on InitWayP
     SeamWorldResources resources;
     RouteActors actors;
     actors.path(TACTICAL_ORDER_PATROL_PATH);
-    Stuff::Vector3D next;
+    glm::vec3 next;
     REQUIRE(actors.pilot.getNextWayPoint(next, true));
     auto& path = actors.pilot.getCurTacOrder()->moveParams.wayPath;
     InitWayPath = false;
@@ -611,8 +611,8 @@ TEST_CASE("AuthoredOrderProduction/BattleMech path orders cannot reach the queue
         auto& order = *actors.pilot.getCurTacOrder();
         order.init(ORDER_ORIGIN_SELF, code, false);
         order.moveParams.wayPath.numPoints = 2;
-        order.setWayPoint(0, Stuff::Vector3D(100.0f, 200.0f, 0.0f));
-        order.setWayPoint(1, Stuff::Vector3D(300.0f, 400.0f, 0.0f));
+        order.setWayPoint(0, glm::vec3(100.0f, 200.0f, 0.0f));
+        order.setWayPoint(1, glm::vec3(300.0f, 400.0f, 0.0f));
         long message = 0;
         CHECK(order.execute(&actors.pilot, message) == TACORDER_FAILURE);
         CHECK(message == -1);

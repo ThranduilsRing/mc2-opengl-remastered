@@ -45,7 +45,7 @@ Action* FlattenBrush::endPaint()
 }
 
 //-------------------------------------------------------------------------------------------------
-bool FlattenBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
+bool FlattenBrush::paint( glm::vec3& worldPos, int screenX, int screenY )
 {
 	if ( !land || !pCurAction )
 		return false;  // no terrain/action -> NULL deref (sibling StampBrush.cpp:66)

@@ -15,7 +15,7 @@ void EditorInterface::handleLeftButtonDown( int PosX, int PosY )
 	// the same space as handleMouseMove (which also offsets). No-op when RTT off.
 	EditorRttClientToViewport( PosX, PosY );
 
-	Stuff::Vector3D vector;
+	glm::vec3 vector;
 	Stuff::Vector2DOf<long> v2( PosX, PosY );
 	eye->inverseProject( v2, vector );
 
@@ -65,7 +65,7 @@ void EditorInterface::handleLeftButtonDown( int PosX, int PosY )
 	// building-placement coordinate; snap Z to terrain.
 	if ( UnitBrainPanel::WaypointPlaceActive() )
 	{
-		Stuff::Vector3D wp = vector;
+		glm::vec3 wp = vector;
 		if ( land )
 			wp.z = land->getTerrainElevation( wp );
 		if ( UnitBrainPanel::HandlePlacementClick( wp.x, wp.y, wp.z ) )
@@ -138,7 +138,7 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 	// deltas are offset-invariant, so this is safe for all consumers here.
 	EditorRttClientToViewport( PosX, PosY );
 
-	Stuff::Vector3D vector;
+	glm::vec3 vector;
 	Stuff::Vector2DOf<long> v2( PosX, PosY );
 	// Per-move cursor world position. Use the cheap O(1) ground-plane unproject,
 	// NOT the legacy terrain picker (eye->inverseProject scans ~40k quads — it was
@@ -200,7 +200,7 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 		// per-frame cursor pixel delta to a world delta. Recomputed at the object's
 		// real position each move -> 1:1 tracking, no jitter, and the near-plane guard
 		// replaces the inverseProject garbage-far-point teleport the prior fix chased.
-		auto projGL = [&]( const Stuff::Vector3D& wp, float& outSx, float& outSy ) -> bool {
+		auto projGL = [&]( const glm::vec3& wp, float& outSx, float& outSy ) -> bool {
 			ModernClipResult r = eye->projectModernClipGL( wp );
 			if ( r.clip.w <= 1e-4f )            // at/behind the near plane (signed w)
 				return false;
@@ -213,9 +213,9 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 			return true;
 		};
 		const float D = 50.0f;   // world-unit probe for the forward jacobian
-		Stuff::Vector3D w0  = pDragApp->position;
-		Stuff::Vector3D wXp = w0; wXp.x += D;
-		Stuff::Vector3D wYp = w0; wYp.y += D;
+		glm::vec3 w0  = pDragApp->position;
+		glm::vec3 wXp = w0; wXp.x += D;
+		glm::vec3 wYp = w0; wYp.y += D;
 		float s0x, s0y, sXx, sXy, sYx, sYy;
 		if ( !projGL( w0, s0x, s0y ) || !projGL( wXp, sXx, sXy ) || !projGL( wYp, sYx, sYy ) )
 		{
@@ -252,7 +252,7 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 			if ( !pObj ) return;
 			ObjectAppearance* pApp = pObj->appearance();
 			if ( !pApp ) return;
-			Stuff::Vector3D np = pApp->position;
+			glm::vec3 np = pApp->position;
 			np.x += worldDx;
 			np.y += worldDy;
 			int row = 0, col = 0;
@@ -316,7 +316,7 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 		// brushes during an active stroke (painting == true), matching the existing
 		// BuildingBrush guard. The per-move cursor position (vector) remains approx
 		// for the cursor overlay / non-painting hover display.
-		Stuff::Vector3D paintPos = vector;
+		glm::vec3 paintPos = vector;
 		if ( dynamic_cast<BuildingBrush*>( curBrush ) ||
 		     dynamic_cast<HeightBrush*>( curBrush )   ||
 		     dynamic_cast<FlattenBrush*>( curBrush )  ||
@@ -374,7 +374,7 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 	((MainFrame*)AfxGetMainWnd())->m_wndDlgBar.GetDlgItem( IDC_ALTITUDE_EDIT )->SetWindowText( buffer3 );
 
 	vector -= lastClickPos;
-	float distance = vector.GetLength();
+	float distance = glm::length(vector);
 
 	char buffer[256];
 	sprintf( buffer, "%.3f", distance );
@@ -395,13 +395,13 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 			// including immediately after left-click selection.  Guard the legacy
 			// appearance pointer so restored mouse routing cannot crash the status
 			// bar when a catalog object is only partially initialized.
-			Stuff::Point3D eyePosition(eye->getCameraOrigin());
-			Stuff::Point3D objPosition;
+			glm::vec3 eyePosition(eye->getCameraOrigin());
+			glm::vec3 objPosition;
 			mc2ToRender(objPosition, pAppearance->position);
 	
-			Stuff::Vector3D Distance;
-			Distance.Subtract(objPosition,eyePosition);
-			eyeDistance = Distance.GetApproximateLength();
+			glm::vec3 Distance;
+			Distance = objPosition - eyePosition;
+			eyeDistance = glm::length(Distance);
 		}
 	}	
 
@@ -977,13 +977,13 @@ BOOL EditorInterface::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 		const ObjectAppearance* pAppearance = pInfo ? pInfo->appearance() : nullptr;
 		if ( pAppearance )
 		{
-			Stuff::Point3D eyePosition(eye->getCameraOrigin());
-			Stuff::Point3D objPosition;
+			glm::vec3 eyePosition(eye->getCameraOrigin());
+			glm::vec3 objPosition;
 			mc2ToRender(objPosition, pAppearance->position);
 
-			Stuff::Vector3D Distance;
-			Distance.Subtract(objPosition,eyePosition);
-			eyeDistance = Distance.GetApproximateLength();
+			glm::vec3 Distance;
+			Distance = objPosition - eyePosition;
+			eyeDistance = glm::length(Distance);
 		}
 	}
 
@@ -1040,7 +1040,7 @@ void EditorInterface::renderTerrainSelection()
 			if ( !land->isVertexSelected( j, i ) )
 				continue;
 
-			Stuff::Vector3D c[4];
+			glm::vec3 c[4];
 			c[0].x = land->mapTopLeft3d.x + (float)i * wupv;       c[0].y = land->mapTopLeft3d.y - (float)j * wupv;
 			c[1].x = land->mapTopLeft3d.x + (float)(i + 1) * wupv; c[1].y = c[0].y;
 			c[2].x = c[1].x;                                       c[2].y = land->mapTopLeft3d.y - (float)(j + 1) * wupv;

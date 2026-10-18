@@ -45,8 +45,8 @@ MLRLight::MLRLight(ClassData *class_data) :
 	Verify(gos_GetCurrentHeap() == Heap);
 	intensity = 1.0f;
 
-	lightToWorld = LinearMatrix4D::Identity;
-	lightToShape = LinearMatrix4D::Identity;
+	lightToWorld = glm::mat4(1.0f);
+	lightToShape = glm::mat4(1.0f);
 
 	color = RGBColor(0.0f, 0.0f, 0.0f);
 }
@@ -63,7 +63,7 @@ MLRLight::MLRLight(
 	Check_Object(stream);
 	Verify(gos_GetCurrentHeap() == Heap);
 
-	LinearMatrix4D matrix;
+	glm::mat4 matrix;
 	*stream >> intensity >> color >> matrix;
 
 	if(version>=9)
@@ -97,14 +97,14 @@ MLRLight::MLRLight(
 	color = RGBColor(0.0f, 0.0f, 0.0f);
 	page->GetEntry("Color", &color);
 
-	LinearMatrix4D matrix(true);
-	Point3D position = Point3D::Identity;
+	glm::mat4 matrix = glm::mat4(1.0f);
+	glm::vec3 position = glm::vec3(0.0f);
 	page->GetEntry("Position", &position);
-	matrix.BuildTranslation(position);
+	mc2::math::buildTranslation(matrix, position);
 
-	Vector3D direction(0.0f, 0.0f, 1.0f);
+	glm::vec3 direction(0.0f, 0.0f, 1.0f);
 	page->GetEntry("Direction", &direction);
-	matrix.AlignLocalAxisToWorldVector(direction, Z_Axis, Y_Axis, X_Axis);
+	mc2::math::alignLocalAxisToWorldVector(matrix, direction, Z_Axis, Y_Axis, X_Axis);
 
 	SetLightToWorldMatrix(matrix);
 }
@@ -226,11 +226,11 @@ void
 	page->SetEntry("Intensity", intensity);
 	page->SetEntry("Color", color);
 
-	Point3D position(lightToWorld);
+	glm::vec3 position = mc2::math::getTranslation(lightToWorld);
 	page->SetEntry("Position", position);
 
-	UnitVector3D direction;
-	lightToWorld.GetLocalForwardInWorld(&direction);
+	glm::vec3 direction;
+	direction = mc2::math::localForwardInWorld(lightToWorld);
 	page->SetEntry("Direction", direction);
 }
 
@@ -245,17 +245,17 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	MLRLight::SetLightToShapeMatrix(const LinearMatrix4D& worldToShape)
+	MLRLight::SetLightToShapeMatrix(const glm::mat4& worldToShape)
 {
 	Check_Object(this);
 
-	lightToShape.Multiply(lightToWorld, worldToShape);
+	lightToShape = lightToWorld * worldToShape;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	MLRLight::SetLightToWorldMatrix(const LinearMatrix4D& matrix)
+	MLRLight::SetLightToWorldMatrix(const glm::mat4& matrix)
 {
 	Check_Object(this);
 

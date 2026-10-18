@@ -40,8 +40,6 @@
 #include "Gates/gate.h"
 #include "Gates/render_options.h"
 #include "mc2fmt.h"
-#include "math/stuff_glm_bridge.h"
-
 //---------------------------------------------------------------------------
 // c'tors for postCompVertex
 PostcompVertex& PostcompVertex::operator=( const PostcompVertex& src )
@@ -697,7 +695,7 @@ void MapData::calcLight (void)
 	height = width = Terrain::verticesBlockSide * Terrain::blocksMapSide;
 	long totalVertices = height * width;
 
-	Stuff::Vector3D lightDir;
+	glm::vec3 lightDir;
 	lightDir.x = lightDir.y = 0.0f;
 	lightDir.z = 1.0f;
 	
@@ -755,7 +753,7 @@ void MapData::calcLight (void)
 			// Try and project shadow lines.
 			if (Terrain::recalcShadows)
 			{
-				Stuff::Vector3D vertexPos;
+				glm::vec3 vertexPos;
 				vertexPos.x = ((float(x) * Terrain::worldUnitsPerVertex) + Terrain::mapTopLeft3d.x);
 				vertexPos.y = (Terrain::mapTopLeft3d.y - (float(y) * Terrain::worldUnitsPerVertex));
 				vertexPos.z = 0.0f;
@@ -764,7 +762,7 @@ void MapData::calcLight (void)
 				
 				if ((lightDir.x != 0.0f) || (lightDir.y != 0.0f))
 				{
-					vertexPos.Add(vertexPos,lightDir);
+					vertexPos = vertexPos + lightDir;
 					while (eye && Terrain::IsValidTerrainPosition(vertexPos))
 					{
 						float elev = terrainElevation(vertexPos);
@@ -774,13 +772,13 @@ void MapData::calcLight (void)
 							break;				//Its in shadow.  Stop Projecting!
 						}
 						
-						vertexPos.Add(vertexPos,lightDir);
+						vertexPos = vertexPos + lightDir;
 					}
 				}
 			}
 				
-			Stuff::Vector3D		normals[8];
-			Stuff::Vector3D		triVect[2];
+			glm::vec3		normals[8];
+			glm::vec3		triVect[2];
 			
 			//-------------------------------------
 			// Tri 021
@@ -792,10 +790,10 @@ void MapData::calcLight (void)
 			triVect[1].y = Terrain::worldUnitsPerVertex;
 			triVect[1].z = (v1->getElevation() - v0->getElevation()) * ContrastEnhance;
 			
-			normals[0].Cross(triVect[0],triVect[1]);
+			normals[0] = glm::cross(triVect[0], triVect[1]);
 			gosASSERT(normals[0].z > 0.0);
 			
-			normals[0].Normalize(normals[0]);
+			normals[0] = glm::normalize(normals[0]);
 			
 			//-------------------------------------
 			// Tri 032
@@ -807,10 +805,10 @@ void MapData::calcLight (void)
 			triVect[1].y = Terrain::worldUnitsPerVertex;
 			triVect[1].z = (v2->getElevation() - v0->getElevation()) * ContrastEnhance;
 			
-			normals[1].Cross(triVect[0],triVect[1]);
+			normals[1] = glm::cross(triVect[0], triVect[1]);
 			gosASSERT(normals[1].z > 0.0);
 			
-			normals[1].Normalize(normals[1]);
+			normals[1] = glm::normalize(normals[1]);
 			
 			//-------------------------------------
 			// Tri 043
@@ -823,10 +821,10 @@ void MapData::calcLight (void)
 			triVect[1].z = (v3->getElevation() - v0->getElevation()) * ContrastEnhance;
 			
 		
-			normals[2].Cross(triVect[0],triVect[1]);
+			normals[2] = glm::cross(triVect[0], triVect[1]);
 			gosASSERT(normals[2].z > 0.0);
 			
-			normals[2].Normalize(normals[2]);
+			normals[2] = glm::normalize(normals[2]);
 			
 			//-------------------------------------
 			// Tri 054
@@ -838,10 +836,10 @@ void MapData::calcLight (void)
 			triVect[1].y = -Terrain::worldUnitsPerVertex;
 			triVect[1].z = (v4->getElevation() - v0->getElevation()) * ContrastEnhance;
 			
-			normals[3].Cross(triVect[0],triVect[1]);
+			normals[3] = glm::cross(triVect[0], triVect[1]);
 			gosASSERT(normals[3].z > 0.0);
 			
-			normals[3].Normalize(normals[3]);
+			normals[3] = glm::normalize(normals[3]);
 				
 			//-------------------------------------
 			// Tri 065
@@ -853,10 +851,10 @@ void MapData::calcLight (void)
 			triVect[1].y = -Terrain::worldUnitsPerVertex;
 			triVect[1].z = (v5->getElevation() - v0->getElevation()) * ContrastEnhance;
 			
-			normals[4].Cross(triVect[0],triVect[1]);
+			normals[4] = glm::cross(triVect[0], triVect[1]);
 			gosASSERT(normals[4].z > 0.0);
 			
-			normals[4].Normalize(normals[4]);
+			normals[4] = glm::normalize(normals[4]);
 			
 			//-------------------------------------
 			// Tri 076
@@ -868,10 +866,10 @@ void MapData::calcLight (void)
 			triVect[1].y = -Terrain::worldUnitsPerVertex;
 			triVect[1].z = (v6->getElevation() - v0->getElevation()) * ContrastEnhance;
 			
-			normals[5].Cross(triVect[0],triVect[1]);
+			normals[5] = glm::cross(triVect[0], triVect[1]);
 			gosASSERT(normals[5].z > 0.0);
 			
-			normals[5].Normalize(normals[5]);
+			normals[5] = glm::normalize(normals[5]);
 	
 			//-------------------------------------
 			// Tri 087
@@ -883,10 +881,10 @@ void MapData::calcLight (void)
 			triVect[1].y = -Terrain::worldUnitsPerVertex;
 			triVect[1].z = (v7->getElevation() - v0->getElevation()) * ContrastEnhance;
 			
-			normals[6].Cross(triVect[0],triVect[1]);
+			normals[6] = glm::cross(triVect[0], triVect[1]);
 			gosASSERT(normals[6].z > 0.0);
 			
-			normals[6].Normalize(normals[6]);
+			normals[6] = glm::normalize(normals[6]);
 	
 			//-------------------------------------
 			// Tri 018
@@ -898,10 +896,10 @@ void MapData::calcLight (void)
 			triVect[1].y = 0.0;
 			triVect[1].z = (v8->getElevation() - v0->getElevation()) * ContrastEnhance;
 			
-			normals[7].Cross(triVect[0],triVect[1]);
+			normals[7] = glm::cross(triVect[0], triVect[1]);
 			gosASSERT(normals[7].z > 0.0);
 			
-			normals[7].Normalize(normals[7]);
+			normals[7] = glm::normalize(normals[7]);
 			
 			currentVertex->vertexNormal.x = normals[0].x + normals[1].x + normals[2].x + normals[3].x + normals[4].x + normals[5].x + normals[6].x + normals[7].x;
 			currentVertex->vertexNormal.y = normals[0].y + normals[1].y + normals[2].y + normals[3].y + normals[4].y + normals[5].y + normals[6].y + normals[7].y;
@@ -974,7 +972,7 @@ long MapData::update (void)
 		blankVertex->localRGBLight = 0xffffffff;
 	}
 
-	Stuff::Vector3D position;
+	glm::vec3 position;
 	if (eye)
 		position = eye->getPosition();
 	else
@@ -1586,21 +1584,21 @@ long MapData::getOverlayTile (long block, long vertex)
 }	
 
 //---------------------------------------------------------------------------
-float MapData::terrainAngle (const Stuff::Vector3D &position, Stuff::Vector3D* normal)
+float MapData::terrainAngle (const glm::vec3 &position, glm::vec3* normal)
 {
 	//-------------------------------------------------------------------
 	// Recoded for real 3D terrain on march 3, 1999.  Uses new triangle
 	// method!
-	Stuff::Vector3D triVert[3];
+	glm::vec3 triVert[3];
 	Stuff::Vector2DOf<float> upperLeft;
-	Stuff::Vector3D triPos;
-	Stuff::Vector3D triangleVector[2];
-	Stuff::Vector3D perpendicularVec;
+	glm::vec3 triPos;
+	glm::vec3 triangleVector[2];
+	glm::vec3 perpendicularVec;
 	float result = 0.0;
 
-	triVert[0].Zero();
-	triVert[1].Zero();
-	triVert[2].Zero();
+	triVert[0] = glm::vec3(0.0f);
+	triVert[1] = glm::vec3(0.0f);
+	triVert[2] = glm::vec3(0.0f);
 	
 	if (!Terrain::IsValidTerrainPosition(position))
 	{
@@ -1704,8 +1702,8 @@ float MapData::terrainAngle (const Stuff::Vector3D &position, Stuff::Vector3D* n
 			triVert[2].y = triVert[0].y - Terrain::worldUnitsPerVertex;
 			triVert[2].z = pVertex3->elevation;
 		
-			triangleVector[0].Subtract(triVert[1],triVert[0]);
-			triangleVector[1].Subtract(triVert[2],triVert[0]);
+			triangleVector[0] = triVert[1] - triVert[0];
+			triangleVector[1] = triVert[2] - triVert[0];
 		}
 		else
 		{
@@ -1721,8 +1719,8 @@ float MapData::terrainAngle (const Stuff::Vector3D &position, Stuff::Vector3D* n
 			triVert[2].y = triVert[1].y;
 			triVert[2].z = pVertex4->elevation;
 		
-			triangleVector[0].Subtract(triVert[2],triVert[0]);
-			triangleVector[1].Subtract(triVert[1],triVert[0]);
+			triangleVector[0] = triVert[2] - triVert[0];
+			triangleVector[1] = triVert[1] - triVert[0];
 		}
 	}
 	else if (uvMode == BOTTOMLEFT)
@@ -1746,8 +1744,8 @@ float MapData::terrainAngle (const Stuff::Vector3D &position, Stuff::Vector3D* n
 			triVert[2].y = triVert[1].y - Terrain::worldUnitsPerVertex;
 			triVert[2].z = pVertex4->elevation;
 		
-			triangleVector[0].Subtract(triVert[1],triVert[0]);
-			triangleVector[1].Subtract(triVert[2],triVert[0]);
+			triangleVector[0] = triVert[1] - triVert[0];
+			triangleVector[1] = triVert[2] - triVert[0];
 		}
 		else
 		{
@@ -1765,8 +1763,8 @@ float MapData::terrainAngle (const Stuff::Vector3D &position, Stuff::Vector3D* n
 			triVert[2].y = triVert[1].y;
 			triVert[2].z = pVertex3->elevation;
 		
-			triangleVector[0].Subtract(triVert[2],triVert[0]);
-			triangleVector[1].Subtract(triVert[1],triVert[0]);
+			triangleVector[0] = triVert[2] - triVert[0];
+			triangleVector[1] = triVert[1] - triVert[0];
 		}
 
 		deltaX = -deltaX;		//Must reverse for Bottom_left triangles
@@ -1774,34 +1772,34 @@ float MapData::terrainAngle (const Stuff::Vector3D &position, Stuff::Vector3D* n
 	
 	//----------------------------------------------
 	//Calculate Normal vector to the Triangle Plane
-	triangleVector[0].Normalize(triangleVector[0]);
-	triangleVector[1].Normalize(triangleVector[1]);
+	triangleVector[0] = glm::normalize(triangleVector[0]);
+	triangleVector[1] = glm::normalize(triangleVector[1]);
 	
-	perpendicularVec.Cross(triangleVector[0],triangleVector[1]);
+	perpendicularVec = glm::cross(triangleVector[0], triangleVector[1]);
 		
 	//------------------------------
 	//Calculate terrain angle
 	gosASSERT(perpendicularVec.z != 0L);
 	{
-		Stuff::Vector3D worldK;
+		glm::vec3 worldK;
 		worldK.x = 0.0;
 		worldK.y = 0.0;
 		worldK.z = 1.0;
 	
 		if (perpendicularVec.z < 0L)
 		{
-			perpendicularVec.Negate(perpendicularVec);
+			perpendicularVec = -perpendicularVec;
 		}
 
-		perpendicularVec.Normalize(perpendicularVec);
+		perpendicularVec = glm::normalize(perpendicularVec);
 
 		if (normal)
-			normal->Normalize(perpendicularVec);
+			(*normal) = glm::normalize(perpendicularVec);
 
 		//We ONLY want PITCH!  No roll should be included!
 		perpendicularVec.y = 0.0f;	
 		
-		result = perpendicularVec * worldK;
+		result = glm::dot(perpendicularVec, worldK);
 		result = acos(result) * RADS_TO_DEGREES;
 	}
 
@@ -1809,7 +1807,7 @@ float MapData::terrainAngle (const Stuff::Vector3D &position, Stuff::Vector3D* n
 }
 
 //---------------------------------------------------------------------------
-float MapData::terrainLight (const Stuff::Vector3D &position)
+float MapData::terrainLight (const glm::vec3 &position)
 {
 	if (!Terrain::IsValidTerrainPosition(position))
 		return(1.0f);
@@ -1834,7 +1832,7 @@ float MapData::terrainLight (const Stuff::Vector3D &position)
 	PostcompVertexPtr pVertex3 = &blocks[(PVx+1) + ((PVy+1) * Terrain::realVerticesMapSide)];
 	PostcompVertexPtr pVertex4 = &blocks[PVx     + ((PVy+1) * Terrain::realVerticesMapSide)];
 	
-	Stuff::Vector3D vPos1,vPos2,vPos3,vPos4;
+	glm::vec3 vPos1,vPos2,vPos3,vPos4;
 	vPos1.x = (PVx * Terrain::worldUnitsPerVertex) + Terrain::mapTopLeft3d.x;
 	vPos1.y = Terrain::mapTopLeft3d.y - (PVy * Terrain::worldUnitsPerVertex);
 	vPos1.z = terrainElevation(vPos1);
@@ -1851,15 +1849,15 @@ float MapData::terrainLight (const Stuff::Vector3D &position)
 	vPos4.y = vPos3.y;
 	vPos4.z = terrainElevation(vPos4);
 	
-	vPos1.Subtract(position,vPos1);
-	vPos2.Subtract(position,vPos2);
-	vPos3.Subtract(position,vPos3);
-	vPos4.Subtract(position,vPos4);
+	vPos1 = position - vPos1;
+	vPos2 = position - vPos2;
+	vPos3 = position - vPos3;
+	vPos4 = position - vPos4;
 
-	float dist1 = vPos1.GetLength();
-	float dist2 = vPos2.GetLength();
-	float dist3 = vPos3.GetLength();
-	float dist4 = vPos4.GetLength();
+	float dist1 = glm::length(vPos1);
+	float dist2 = glm::length(vPos2);
+	float dist3 = glm::length(vPos3);
+	float dist4 = glm::length(vPos4);
 
 	//---------------------------------------
 	// CLOSEST vertex has GREATEST weight
@@ -1870,7 +1868,7 @@ float MapData::terrainLight (const Stuff::Vector3D &position)
 	dist4 = maxDist - dist4;
 
 	float distWeight = dist1 + dist2 + dist3 + dist4;
-	Stuff::Vector3D weightedNormal;
+	glm::vec3 weightedNormal;
 
 	weightedNormal.x = (pVertex1->vertexNormal.x * dist1) +
 						(pVertex2->vertexNormal.x * dist2) +
@@ -1889,33 +1887,33 @@ float MapData::terrainLight (const Stuff::Vector3D &position)
 
 
 	if ( distWeight > Stuff::SMALL )
-		weightedNormal = mc2::math::toVector3D(mc2::math::divide(mc2::math::toGlm(weightedNormal), distWeight));
+		weightedNormal = (mc2::math::divide(weightedNormal, distWeight));
 	else
-		weightedNormal = Stuff::Vector3D( 0.0, 0.0, 1.0 );
+		weightedNormal = glm::vec3( 0.0, 0.0, 1.0 );
 		
-	float lightIntensity = weightedNormal * eye->lightDirection;
+	float lightIntensity = glm::dot(weightedNormal, eye->lightDirection);
 
 	return (lightIntensity);
 }
 
 //---------------------------------------------------------------------------
-Stuff::Vector3D MapData::terrainNormal (const Stuff::Vector3D& position)
+glm::vec3 MapData::terrainNormal (const glm::vec3& position)
 {
 	//-------------------------------------------------------------------
 	// Recoded for real 3D terrain on march 3, 1999.  Uses new triangle
 	// method!
-	Stuff::Vector3D triVert[3];
+	glm::vec3 triVert[3];
 	Stuff::Vector2DOf<float> upperLeft;
-	Stuff::Vector3D triPos;
-	Stuff::Vector3D triangleVector[2];
-	Stuff::Vector3D perpendicularVec;
+	glm::vec3 triPos;
+	glm::vec3 triangleVector[2];
+	glm::vec3 perpendicularVec;
 
-	triVert[0].Zero();
-	triVert[1].Zero();
-	triVert[2].Zero();
+	triVert[0] = glm::vec3(0.0f);
+	triVert[1] = glm::vec3(0.0f);
+	triVert[2] = glm::vec3(0.0f);
 	
 	if (!Terrain::IsValidTerrainPosition(position))
-		return(Stuff::Vector3D(0.0f,0.0f,1.0f));
+		return(glm::vec3(0.0f,0.0f,1.0f));
 
 	//--------------------------------------------------------
 	// find closest vertex in UpperLeft direction to Position
@@ -1944,7 +1942,7 @@ Stuff::Vector3D MapData::terrainNormal (const Stuff::Vector3D& position)
 		((meshOffset.y + 1) >= Terrain::realVerticesMapSide) ||
 		(meshOffset.x < 0) || 
 		(meshOffset.y < 0))
-		return(Stuff::Vector3D(0.0f,0.0f,1.0f));
+		return(glm::vec3(0.0f,0.0f,1.0f));
 
 	PostcompVertexPtr pVertex1 = &blocks[meshOffset.x     + (meshOffset.y     * Terrain::realVerticesMapSide)];
 	PostcompVertexPtr pVertex2 = &blocks[(meshOffset.x+1) + (meshOffset.y     * Terrain::realVerticesMapSide)];
@@ -2012,8 +2010,8 @@ Stuff::Vector3D MapData::terrainNormal (const Stuff::Vector3D& position)
 			triVert[2].y = triVert[0].y - Terrain::worldUnitsPerVertex;
 			triVert[2].z = pVertex3->elevation;
 		
-			triangleVector[0].Subtract(triVert[1],triVert[0]);
-			triangleVector[1].Subtract(triVert[2],triVert[0]);
+			triangleVector[0] = triVert[1] - triVert[0];
+			triangleVector[1] = triVert[2] - triVert[0];
 		}
 		else
 		{
@@ -2029,8 +2027,8 @@ Stuff::Vector3D MapData::terrainNormal (const Stuff::Vector3D& position)
 			triVert[2].y = triVert[1].y;
 			triVert[2].z = pVertex4->elevation;
 		
-			triangleVector[0].Subtract(triVert[2],triVert[0]);
-			triangleVector[1].Subtract(triVert[1],triVert[0]);
+			triangleVector[0] = triVert[2] - triVert[0];
+			triangleVector[1] = triVert[1] - triVert[0];
 		}
 	}
 	else if (uvMode == BOTTOMLEFT)
@@ -2054,8 +2052,8 @@ Stuff::Vector3D MapData::terrainNormal (const Stuff::Vector3D& position)
 			triVert[2].y = triVert[1].y - Terrain::worldUnitsPerVertex;
 			triVert[2].z = pVertex4->elevation;
 		
-			triangleVector[0].Subtract(triVert[1],triVert[0]);
-			triangleVector[1].Subtract(triVert[2],triVert[0]);
+			triangleVector[0] = triVert[1] - triVert[0];
+			triangleVector[1] = triVert[2] - triVert[0];
 		}
 		else
 		{
@@ -2073,8 +2071,8 @@ Stuff::Vector3D MapData::terrainNormal (const Stuff::Vector3D& position)
 			triVert[2].y = triVert[1].y;
 			triVert[2].z = pVertex3->elevation;
 		
-			triangleVector[0].Subtract(triVert[2],triVert[0]);
-			triangleVector[1].Subtract(triVert[1],triVert[0]);
+			triangleVector[0] = triVert[2] - triVert[0];
+			triangleVector[1] = triVert[1] - triVert[0];
 		}
 
 		deltaX = -deltaX;		//Must reverse for Bottom_left triangles
@@ -2082,19 +2080,19 @@ Stuff::Vector3D MapData::terrainNormal (const Stuff::Vector3D& position)
 	
 	//----------------------------------------------
 	//Calculate Normal vector to the Triangle Plane
-	triangleVector[0].Normalize(triangleVector[0]);
-	triangleVector[1].Normalize(triangleVector[1]);
+	triangleVector[0] = glm::normalize(triangleVector[0]);
+	triangleVector[1] = glm::normalize(triangleVector[1]);
 	
-	perpendicularVec.Cross(triangleVector[0],triangleVector[1]);
+	perpendicularVec = glm::cross(triangleVector[0], triangleVector[1]);
 		
 	//------------------------------
 	//Calculate terrain Normal
 	if (perpendicularVec.z < 0L)
 	{
-		perpendicularVec.Negate(perpendicularVec);
+		perpendicularVec = -perpendicularVec;
 	}
 
-	perpendicularVec.Normalize(perpendicularVec);
+	perpendicularVec = glm::normalize(perpendicularVec);
 
 	return (perpendicularVec);
 }
@@ -2184,21 +2182,21 @@ static void cpu_sampleColormap(const unsigned char* data, int size, float u, flo
 }
 
 //---------------------------------------------------------------------------
-float MapData::terrainElevation (const Stuff::Vector3D &position)
+float MapData::terrainElevation (const glm::vec3 &position)
 {
 	//-------------------------------------------------------------------
 	// Recoded for real 3D terrain on march 3, 1999.  Uses new triangle
 	// method!
-	Stuff::Vector3D triVert[3];
+	glm::vec3 triVert[3];
 	Stuff::Vector2DOf<float> upperLeft;
-	Stuff::Vector3D triPos;
-	Stuff::Vector3D triangleVector[2];
-	Stuff::Vector3D perpendicularVec;
+	glm::vec3 triPos;
+	glm::vec3 triangleVector[2];
+	glm::vec3 perpendicularVec;
 	float result = 0.0;
 
-	triVert[0].Zero();
-	triVert[1].Zero();
-	triVert[2].Zero();
+	triVert[0] = glm::vec3(0.0f);
+	triVert[1] = glm::vec3(0.0f);
+	triVert[2] = glm::vec3(0.0f);
 
 	if (!Terrain::IsValidTerrainPosition(position))
 		return(0.0f);
@@ -2314,8 +2312,8 @@ float MapData::terrainElevation (const Stuff::Vector3D &position)
 			triVert[2].y = triVert[0].y - Terrain::worldUnitsPerVertex;
 			triVert[2].z = pVertex3->elevation;
 		
-			triangleVector[0].Subtract(triVert[1],triVert[0]);
-			triangleVector[1].Subtract(triVert[2],triVert[0]);
+			triangleVector[0] = triVert[1] - triVert[0];
+			triangleVector[1] = triVert[2] - triVert[0];
 		}
 		else
 		{
@@ -2331,8 +2329,8 @@ float MapData::terrainElevation (const Stuff::Vector3D &position)
 			triVert[2].y = triVert[1].y;
 			triVert[2].z = pVertex4->elevation;
 		
-			triangleVector[0].Subtract(triVert[2],triVert[0]);
-			triangleVector[1].Subtract(triVert[1],triVert[0]);
+			triangleVector[0] = triVert[2] - triVert[0];
+			triangleVector[1] = triVert[1] - triVert[0];
 		}
 	}
 	else if (uvMode == BOTTOMLEFT)
@@ -2356,8 +2354,8 @@ float MapData::terrainElevation (const Stuff::Vector3D &position)
 			triVert[2].y = triVert[1].y - Terrain::worldUnitsPerVertex;
 			triVert[2].z = pVertex4->elevation;
 		
-			triangleVector[0].Subtract(triVert[1],triVert[0]);
-			triangleVector[1].Subtract(triVert[2],triVert[0]);
+			triangleVector[0] = triVert[1] - triVert[0];
+			triangleVector[1] = triVert[2] - triVert[0];
 		}
 		else
 		{
@@ -2375,8 +2373,8 @@ float MapData::terrainElevation (const Stuff::Vector3D &position)
 			triVert[2].y = triVert[1].y;
 			triVert[2].z = pVertex3->elevation;
 		
-			triangleVector[0].Subtract(triVert[2],triVert[0]);
-			triangleVector[1].Subtract(triVert[1],triVert[0]);
+			triangleVector[0] = triVert[2] - triVert[0];
+			triangleVector[1] = triVert[1] - triVert[0];
 		}
 
 		deltaX = -deltaX;		//Must reverse for Bottom_left triangles
@@ -2384,10 +2382,10 @@ float MapData::terrainElevation (const Stuff::Vector3D &position)
 	
 	//----------------------------------------------
 	//Calculate Normal vector to the Triangle Plane
-	triangleVector[0].Normalize(triangleVector[0]);
-	triangleVector[1].Normalize(triangleVector[1]);
+	triangleVector[0] = glm::normalize(triangleVector[0]);
+	triangleVector[1] = glm::normalize(triangleVector[1]);
 	
-	perpendicularVec.Cross(triangleVector[0],triangleVector[1]);
+	perpendicularVec = glm::cross(triangleVector[0], triangleVector[1]);
 	
 	//------------------------------
 	//Calculate terrain elevation
@@ -2395,7 +2393,7 @@ float MapData::terrainElevation (const Stuff::Vector3D &position)
 	{
 		if (perpendicularVec.z < 0L)
 		{
-			perpendicularVec.Negate(perpendicularVec);
+			perpendicularVec = -perpendicularVec;
 		}
 			
 		float perpendX = perpendicularVec.x / perpendicularVec.z;
@@ -2494,19 +2492,19 @@ float MapData::terrainElevation (const Stuff::Vector3D &position)
 			float px = position.x, py = position.y, pz = result;
 			float projZ0, projZ1, projZ2;
 			{
-				Stuff::Vector3D& n = triPV[0]->vertexNormal;
+				glm::vec3& n = triPV[0]->vertexNormal;
 				float dx2 = px - triVert[0].x, dy2 = py - triVert[0].y, dz2 = pz - triVert[0].z;
 				float dot = dx2 * n.x + dy2 * n.y + dz2 * n.z;
 				projZ0 = pz - dot * n.z;
 			}
 			{
-				Stuff::Vector3D& n = triPV[1]->vertexNormal;
+				glm::vec3& n = triPV[1]->vertexNormal;
 				float dx2 = px - triVert[1].x, dy2 = py - triVert[1].y, dz2 = pz - triVert[1].z;
 				float dot = dx2 * n.x + dy2 * n.y + dz2 * n.z;
 				projZ1 = pz - dot * n.z;
 			}
 			{
-				Stuff::Vector3D& n = triPV[2]->vertexNormal;
+				glm::vec3& n = triPV[2]->vertexNormal;
 				float dx2 = px - triVert[2].x, dy2 = py - triVert[2].y, dz2 = pz - triVert[2].z;
 				float dot = dx2 * n.x + dy2 * n.y + dz2 * n.z;
 				projZ2 = pz - dot * n.z;

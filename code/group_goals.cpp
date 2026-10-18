@@ -106,7 +106,7 @@ char CellSpiralIncrement[JUMPMAP_CELL_DIM * JUMPMAP_CELL_DIM * 2] = {
 
 constexpr int GOALMAP_DIM = 61;
 
-long MoverGroup::calcMoveGoals (Stuff::Vector3D goal, long numMovers, Stuff::Vector3D* goalList) {
+long MoverGroup::calcMoveGoals (glm::vec3 goal, long numMovers, glm::vec3* goalList) {
 
 	if ( !numMovers ) // 07/24/HKG: crashes if no movers
 		return 0;
@@ -240,7 +240,7 @@ long MoverGroup::calcMoveGoals (Stuff::Vector3D goal, long numMovers, Stuff::Vec
 
 #define DEBUGJUMPGOALS TRUE
 
-long MoverGroup::calcJumpGoals (Stuff::Vector3D goal, long numMovers, Stuff::Vector3D* goalList, GameObjectPtr DFATarget) {
+long MoverGroup::calcJumpGoals (glm::vec3 goal, long numMovers, glm::vec3* goalList, GameObjectPtr DFATarget) {
 
 	long numJumping = 0;
 
@@ -390,7 +390,7 @@ long MoverGroup::calcJumpGoals (Stuff::Vector3D goal, long numMovers, Stuff::Vec
 
 //---------------------------------------------------------------------------
 
-long MoverGroup::calcJumpGoals (Stuff::Vector3D goal, Stuff::Vector3D* goalList, GameObjectPtr DFATarget) {
+long MoverGroup::calcJumpGoals (glm::vec3 goal, glm::vec3* goalList, GameObjectPtr DFATarget) {
 
 	return(calcJumpGoals(goal, numMovers, goalList, DFATarget));
 }

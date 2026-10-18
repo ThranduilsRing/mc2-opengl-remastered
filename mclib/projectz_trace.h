@@ -16,7 +16,8 @@
 #include <stdint.h>
 
 // Forward-declare Stuff vector types (fully defined in stuff/stuff.hpp via camera.h).
-namespace Stuff { class Vector3D; class Vector4D; }
+#include "math/glm_config.h"
+namespace Stuff { class Vector4D; }
 
 //--------------------------------------------------------------------
 // Per-vertex predicates: seven booleans + perspective flag.
@@ -80,7 +81,7 @@ void projectz_trace_init();
 void projectz_trace_dispatch(
     const char*          siteId,
     const char*          siteCat,
-    const Stuff::Vector3D& worldPt,
+    const glm::vec3& worldPt,
     const Stuff::Vector4D& rawClip,   // xformCoords pre-divide
     const Stuff::Vector4D& screen,    // post-divide screen vector
     bool                 usePerspective,

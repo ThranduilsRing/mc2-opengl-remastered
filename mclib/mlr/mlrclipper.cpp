@@ -6,8 +6,6 @@
 #include "../cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (n_prims_clipped)
 #include "../fx_trace/fx_trace.h"    // fx_trace v1: gated MLR-leaf invocation counter
 #include "mlr_gate.h"                // MC2_DISABLE_GOSFX env-gate (plan v6 §2)
-#include "math/stuff_glm_bridge.h"
-
 extern DWORD gShowBirdView, gEnableDetailTexture, gEnableMultiTexture, gEnableLightMaps;
 
 DrawShapeInformation::DrawShapeInformation()
@@ -118,8 +116,8 @@ MLRClipper::~MLRClipper()
 //
 void
 	MLRClipper::StartDraw (
-		const LinearMatrix4D &camera_to_world,
-		const Matrix4D &cameraToClip,
+		const glm::mat4 &camera_to_world,
+		const glm::mat4 &cameraToClip,
 		const RGBAColor &,
 		const RGBAColor *background_color,
 		const MLRState &default_state,
@@ -207,13 +205,13 @@ void
 	gos_SetRenderState( gos_State_Fog, 0 );
 
 
-	sorter->SetFarClipReciprocal((1.0f-cameraToClip(2, 2))/cameraToClip(3, 2));
+	sorter->SetFarClipReciprocal((1.0f-cameraToClip[2][2])/cameraToClip[2][3]);
 
 	sorter->StartDraw(default_state);
 
 	cameraToWorldMatrix = camera_to_world;
 
-	mc2::math::fromGlm(worldToCameraMatrix, glm::inverse(mc2::math::toGlm(cameraToWorldMatrix)));
+	worldToCameraMatrix = glm::inverse(cameraToWorldMatrix);
 
 #ifdef LAB_ONLY
 
@@ -221,7 +219,7 @@ void
 	{
 		static mc2::math::YawPitchRange Camera_Direction(-Pi_Over_6, 0.0f, 15.0f);
 		static Vector2DOf<Scalar> Camera_Shift(0.0f, 0.0f);
-		static LinearMatrix4D birdsEye = LinearMatrix4D::Identity;
+		static glm::mat4 birdsEye = glm::mat4(1.0f);
 
 		//
 		//---------------
@@ -281,19 +279,19 @@ void
 		//----------------------
 		//
 		birdsEye.BuildRotation(
-			EulerAngles(Camera_Direction.pitch, Camera_Direction.yaw, 0.0f)
+			mc2::math::Euler(Camera_Direction.pitch, Camera_Direction.yaw, 0.0f)
 		);
-		UnitVector3D
+		glm::vec3
 			world_left,
 			world_up;
 		birdsEye.GetLocalLeftInWorld(&world_left);
 		birdsEye.GetLocalUpInWorld(&world_up);
-		Point3D translation = mc2::math::toPoint3D(mc2::math::polarToVector(Camera_Direction));
+		glm::vec3 translation = (mc2::math::polarToVector(Camera_Direction));
 		translation.AddScaled(translation, world_left, Camera_Shift.x);
 		translation.AddScaled(translation, world_up, Camera_Shift.y);
 		birdsEye.BuildTranslation(translation);
 
-		LinearMatrix4D worldToBird = LinearMatrix4D::Identity;
+		glm::mat4 worldToBird = glm::mat4(1.0f);
 
 		worldToBird.Multiply(worldToCameraMatrix, birdsEye);
 		worldToCameraMatrix = worldToBird;
@@ -301,7 +299,7 @@ void
 //	push the far clip out
 
 		Scalar near_clip, far_clip, left_clip, right_clip,	top_clip, bottom_clip;
-		Matrix4D birdToClip;
+		glm::mat4 birdToClip;
 
 		cameraToClip.GetPerspective(&near_clip, &far_clip, &left_clip, &right_clip,	&top_clip, &bottom_clip);
 		
@@ -319,9 +317,9 @@ void
 	else
 #endif
 
-	worldToClipMatrix.Multiply(worldToCameraMatrix, cameraToClip);
+	worldToClipMatrix = worldToCameraMatrix * cameraToClip;
 
-	cameraPosition = cameraToWorldMatrix;
+	cameraPosition = mc2::math::getTranslation(cameraToWorldMatrix);
 
 //	Tell_Value(cameraPosition);
 
@@ -395,7 +393,7 @@ void
 //
 }
 
-static	AffineMatrix4D scaledShapeToWorld;
+static	glm::mat4 scaledShapeToWorld;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -426,16 +424,16 @@ void
 		dInfo->nrOfActiveLights = Limits::Max_Number_Of_Lights_Per_Primitive;
 	}
 
-	shape->shapeToClipMatrix.Multiply(*dInfo->shapeToWorld, worldToClipMatrix);
+	shape->shapeToClipMatrix = *dInfo->shapeToWorld * worldToClipMatrix;
 
 	shape->worldToShape = dInfo->worldToShape;
 
 	shape->InitializePrimitives(true, dInfo->state);
 
 	int i, j;
-	Point3D sp;
+	glm::vec3 sp;
 	int	nrOfLightMaps = 0;
-	sp.Multiply(cameraPosition, *shape->worldToShape);
+	sp = mc2::math::transformPoint(cameraPosition, *shape->worldToShape);
 
 	for(i=0;i<dInfo->nrOfActiveLights;i++)
 	{
@@ -541,7 +539,7 @@ void
 
 				if(primitive->IsDerivedFrom(MLRIndexedPrimitiveBase::DefaultData))
 				{
-					Point3D *coords;
+					glm::vec3 *coords;
 					unsigned short *indices;
 					int nr;
 
@@ -584,7 +582,7 @@ void
 	MLRShape *shape = dInfo->shape;
 	MLRPrimitiveBase *primitive = NULL;
 
-	shape->shapeToClipMatrix.Multiply(*dInfo->shapeToWorld, worldToClipMatrix);
+	shape->shapeToClipMatrix = *dInfo->shapeToWorld * worldToClipMatrix;
 
 	shape->worldToShape = dInfo->worldToShape;
 
@@ -592,19 +590,19 @@ void
 
 	if(dInfo->scaling != NULL)
 	{
-		LinearMatrix4D scale = LinearMatrix4D::Identity;
+		glm::mat4 scale = glm::mat4(1.0f);
 
-		scale(0,0) = dInfo->scaling->x;
-		scale(1,1) = dInfo->scaling->y;
-		scale(2,2) = dInfo->scaling->z; 
+		scale[0][0] = dInfo->scaling->x;
+		scale[1][1] = dInfo->scaling->y;
+		scale[2][2] = dInfo->scaling->z; 
 
-		scaledShapeToWorld.Multiply(scale, *dInfo->shapeToWorld);
+		scaledShapeToWorld = scale * *dInfo->shapeToWorld;
 
-		shape->shapeToClipMatrix.Multiply(scaledShapeToWorld, worldToClipMatrix);
+		shape->shapeToClipMatrix = scaledShapeToWorld * worldToClipMatrix;
 	}
 	else
 	{
-		shape->shapeToClipMatrix.Multiply(*dInfo->shapeToWorld, worldToClipMatrix);
+		shape->shapeToClipMatrix = *dInfo->shapeToWorld * worldToClipMatrix;
 	}
 
 	shape->worldToShape = NULL;

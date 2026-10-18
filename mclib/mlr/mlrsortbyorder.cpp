@@ -355,7 +355,7 @@ void
 
 						if(primitive->IsDerivedFrom(MLRIndexedPrimitiveBase::DefaultData))
 						{
-							Point3D *coords;
+							glm::vec3 *coords;
 							unsigned short *indices;
 							int nr;
 
@@ -417,7 +417,7 @@ void
 
 						if(primitive->IsDerivedFrom(MLRIndexedPrimitiveBase::DefaultData))
 						{
-							Point3D *coords;
+							glm::vec3 *coords;
 							unsigned short *indices;
 							int nr;
 

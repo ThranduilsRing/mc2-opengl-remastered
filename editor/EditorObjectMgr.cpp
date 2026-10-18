@@ -481,7 +481,7 @@ float EditorObjectMgr::ExtractNextFloat( unsigned char*& pFileLine )
 }
 
 
-bool EditorObjectMgr::canAddBuilding( const Stuff::Vector3D& position,
+bool EditorObjectMgr::canAddBuilding( const glm::vec3& position,
 								float rotation,
 								unsigned long group,
 								unsigned long indexWithinGroup )
@@ -505,7 +505,7 @@ bool EditorObjectMgr::canAddBuilding( const Stuff::Vector3D& position,
 	return land->IsEditorSelectTerrainPosition(position);
 }
 
-bool EditorObjectMgr::canAddDropZone( const Stuff::Vector3D& position, int alignment, bool bVTol )
+bool EditorObjectMgr::canAddDropZone( const glm::vec3& position, int alignment, bool bVTol )
 {
 
 	int alignmentCount = 0;
@@ -536,7 +536,7 @@ bool EditorObjectMgr::addBuilding( EditorObject* pObj )
 		true : false;
 }
 
-EditorObject* EditorObjectMgr::addDropZone( const Stuff::Vector3D& position, int alignment, bool bVTol )
+EditorObject* EditorObjectMgr::addDropZone( const glm::vec3& position, int alignment, bool bVTol )
 {
 	gosASSERT( (canAddDropZone( position, alignment, bVTol )  ) );
 	
@@ -556,7 +556,7 @@ EditorObject* EditorObjectMgr::addDropZone( const Stuff::Vector3D& position, int
 	pLast->cellColumn = cellColumn;
 	pLast->id = DROPZONE << 24 | -1<< 16 | -1 << 8;
 
-	Stuff::Vector3D realPos;
+	glm::vec3 realPos;
 	land->getCellPos( pLast->cellRow, pLast->cellColumn, realPos );
 	long homeRelations[9] = {0, 0, 2, 1, 1, 1, 1, 1, 1};
 	gosASSERT((8 > alignment) && (-1 <= alignment));
@@ -572,7 +572,7 @@ EditorObject* EditorObjectMgr::addDropZone( const Stuff::Vector3D& position, int
 }
 
 
-EditorObject* EditorObjectMgr::addBuilding( const Stuff::Vector3D& position, unsigned long group,
+EditorObject* EditorObjectMgr::addBuilding( const glm::vec3& position, unsigned long group,
 									 unsigned long indexWithinGroup, int alignment, float rotation,
 									 float scale, bool bSnapToCell )
 {
@@ -616,11 +616,11 @@ EditorObject* EditorObjectMgr::addBuilding( const Stuff::Vector3D& position, uns
 	info->cellColumn = cellColumn;
 	info->id = type << 24 | group << 16 | indexWithinGroup << 8;
 
-	Stuff::Vector3D realPos;
+	glm::vec3 realPos;
 	land->getCellPos( info->cellRow, info->cellColumn, realPos );
 	long homeRelations[9] = {0, 0, 2, 1, 1, 1, 1, 1, 1};
 	gosASSERT((8 > alignment) && (-1 <= alignment));
-    Stuff::Vector3D pos = bSnapToCell ? realPos : position;
+    glm::vec3 pos = bSnapToCell ? realPos : position;
 	info->appearance()->setObjectParameters( pos, 0, false, alignment,homeRelations[alignment+1]);
 	if (auto* unit = dynamic_cast<Unit*>(info)) unit->refreshPartFromCatalog();
 
@@ -905,7 +905,7 @@ bool EditorObjectMgr::moveBuilding( EditorObject* pInfo, long cellJ, long cellI 
 	BuildingLink* pLink = getLinkWithParent( pInfo );
 	if ( pLink )
 	{
-		Stuff::Vector3D worldPos;
+		glm::vec3 worldPos;
 		land->cellToWorld( cellJ, cellI, worldPos );
 		worldPos.z = land->getTerrainElevation( worldPos );
 		pLink->SetParentPosition( worldPos );
@@ -917,7 +917,7 @@ bool EditorObjectMgr::moveBuilding( EditorObject* pInfo, long cellJ, long cellI 
 		pLink->RemoveObject( pInfo );
 	}
 	
-	Stuff::Vector3D position;
+	glm::vec3 position;
 	land->cellToWorld( cellJ, cellI, position );
 
 	position.z = land->getTerrainElevation( position );

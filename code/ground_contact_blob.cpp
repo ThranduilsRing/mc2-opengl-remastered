@@ -100,7 +100,7 @@ float ambientCoupledAlpha()
 }
 
 // Push one contact-darkening quad (2 triangles) centered at worldPos.
-void pushBlob(const Stuff::Vector3D& worldPos, float radius, unsigned int argb)
+void pushBlob(const glm::vec3& worldPos, float radius, unsigned int argb)
 {
     float wz[4];
     float wx[4] = { worldPos.x - radius, worldPos.x + radius,
@@ -108,7 +108,7 @@ void pushBlob(const Stuff::Vector3D& worldPos, float radius, unsigned int argb)
     float wy[4] = { worldPos.y - radius, worldPos.y - radius,
                     worldPos.y + radius, worldPos.y + radius };
     for (int i = 0; i < 4; ++i) {
-        Stuff::Vector3D p;
+        glm::vec3 p;
         p.x = wx[i]; p.y = wy[i]; p.z = 0.0f;
         wz[i] = TerrainRuntime::decalElevation(p);
     }

@@ -106,7 +106,7 @@ namespace gosFX
 		bool
 			m_insideOut;
 
-		Stuff::DynamicArrayOf<Stuff::Point3D>
+		Stuff::DynamicArrayOf<glm::vec3>
 			m_vertices;
 		Stuff::DynamicArrayOf<Stuff::Vector2DOf<Stuff::Scalar> >
 			m_uvs;
@@ -125,9 +125,9 @@ namespace gosFX
 	class Tube__Profile
 	{
 	public:
-		Stuff::LinearMatrix4D
+		glm::mat4
 			m_profileToWorld;
-		Stuff::UnitVector3D
+		glm::vec3
 			m_direction;
 		Stuff::Scalar
 			m_age,
@@ -174,7 +174,7 @@ namespace gosFX
 			m_data;
 		std::unique_ptr<MidLevelRenderer::MLRIndexedTriangleCloud>
 			m_mesh;
-		Stuff::Point3D
+		glm::vec3
 			*m_P_vertices;
 		Stuff::RGBAColor
 			*m_P_colors;
@@ -237,14 +237,14 @@ namespace gosFX
 			AnimateProfile(
 				unsigned index,
 				unsigned profile,
-				const Stuff::LinearMatrix4D &world_to_new_local,
+				const glm::mat4 &world_to_new_local,
 				Stuff::Time till,
 				mc2::math::Sphere *sphere
 			);
 		void
 			CreateNewProfile(
 				unsigned index,
-				const Stuff::LinearMatrix4D &origin
+				const glm::mat4 &origin
 			);
 		void
 			DestroyProfile(unsigned index);

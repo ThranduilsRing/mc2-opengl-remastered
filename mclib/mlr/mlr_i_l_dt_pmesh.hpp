@@ -58,12 +58,12 @@ namespace MidLevelRenderer {
 	public:
 		virtual void
 			SetNormalData(
-				const Stuff::Vector3D *array,
+				const glm::vec3 *array,
 				int point_count
 			);
 		virtual void
 			GetNormalData(
-				Stuff::Vector3D **array,
+				glm::vec3 **array,
 				int *point_count
 			);
 
@@ -90,10 +90,10 @@ namespace MidLevelRenderer {
 			PaintMe(const Stuff::RGBAColor *paintMe);
 #endif
 
-		virtual int	TransformAndClip(Stuff::Matrix4D *, MLRClippingState, GOSVertexPool*,bool=false);
+		virtual int	TransformAndClip(glm::mat4 *, MLRClippingState, GOSVertexPool*,bool=false);
 
 		virtual void
-			TransformNoClip(Stuff::Matrix4D*, GOSVertexPool*,bool=false);
+			TransformNoClip(glm::mat4*, GOSVertexPool*,bool=false);
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Class Data Support
@@ -121,7 +121,7 @@ namespace MidLevelRenderer {
 		}
 
 	protected:
-		Stuff::DynamicArrayOf<Stuff::Vector3D> normals;		// Base address of normal list 
+		Stuff::DynamicArrayOf<glm::vec3> normals;		// Base address of normal list 
 
 #if COLOR_AS_DWORD
 		Stuff::DynamicArrayOf<DWORD> litColors;

@@ -50,7 +50,7 @@ namespace gosFX
 		unsigned
 			m_flags,
 			m_effectID;
-		Stuff::LinearMatrix4D
+		glm::mat4
 			m_localToParent;
 
 	protected:
@@ -187,15 +187,15 @@ namespace gosFX
 				m_seed,					// 0 <= m_seed <= 1
 				m_age,
 				m_ageRate;
-			const Stuff::LinearMatrix4D
+			const glm::mat4
 				*m_parentToWorld;
-			Stuff::OBB
+			mc2::math::Obb
 				*m_bounds;
 
 			ExecuteInfo(
 				Stuff::Time time,
-				const Stuff::LinearMatrix4D *parent_to_world,
-				Stuff::OBB *bounds,
+				const glm::mat4 *parent_to_world,
+				mc2::math::Obb *bounds,
 				Stuff::Scalar seed = -1.0f
 			)
 				{
@@ -210,15 +210,15 @@ namespace gosFX
 		private:
 			ExecuteInfo(
 				Stuff::Scalar time,
-				const Stuff::LinearMatrix4D *parent_to_world,
-				Stuff::OBB *bounds,
+				const glm::mat4 *parent_to_world,
+				mc2::math::Obb *bounds,
 				Stuff::Scalar seed = -1.0f
 			);
 		};
 
 		struct DrawInfo
 		{
-			const Stuff::LinearMatrix4D *m_parentToWorld;
+			const glm::mat4 *m_parentToWorld;
 			MidLevelRenderer::MLRClippingState m_clippingFlags;
 			MidLevelRenderer::MLRState m_state;
 			MidLevelRenderer::MLRClipper *m_clipper;
@@ -310,9 +310,9 @@ namespace gosFX
 			SimulationModeMask = 12
 		};
 
-		static Stuff::Vector3D
+		static glm::vec3
 			s_ether;
-		static Stuff::Vector3D
+		static glm::vec3
 			s_gravity;
 
 	public:
@@ -359,11 +359,11 @@ namespace gosFX
 			GetSimulationFlags()
 				{Check_Object(this); return m_flags;}
 
-		Stuff::LinearMatrix4D
+		glm::mat4
 			m_localToWorld;
 
 	protected:
-		Stuff::LinearMatrix4D
+		glm::mat4
 			m_localToParent;
 		Stuff::Time
 			m_lastRan;

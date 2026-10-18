@@ -201,12 +201,12 @@ class MapData : public HeapManager
 		void calcLight (void);
 		void clearShadows();
 		
-		float terrainElevation (const Stuff::Vector3D &position);
+		float terrainElevation (const glm::vec3 &position);
 		float terrainElevation ( long tileR, long tileC );
 
-		float terrainAngle (const Stuff::Vector3D &position, Stuff::Vector3D* normal = NULL);
-		Stuff::Vector3D terrainNormal (const Stuff::Vector3D& position);
-		float terrainLight (const Stuff::Vector3D& position);
+		float terrainAngle (const glm::vec3 &position, glm::vec3* normal = NULL);
+		glm::vec3 terrainNormal (const glm::vec3& position);
+		float terrainLight (const glm::vec3& position);
 		
 		float getTopLeftElevation (void);
 		
@@ -242,7 +242,7 @@ class MapData : public HeapManager
 		
 		float waterElevation () { return waterDepth; }
 
-		void markSeen (const Stuff::Vector2DOf<float> &topLeftPosition, VertexPtr vertexList, const Stuff::Vector3D &looker, const Stuff::Vector3D &lookVector, float cone, float dist, byte who);
+		void markSeen (const Stuff::Vector2DOf<float> &topLeftPosition, VertexPtr vertexList, const glm::vec3 &looker, const glm::vec3 &lookVector, float cone, float dist, byte who);
 
 		void unselectAll();
 		void unhighlightAll();

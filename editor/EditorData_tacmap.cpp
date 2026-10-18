@@ -78,7 +78,7 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 	gosASSERT(tacMapBmp != nullptr);
 	memset(tacMapBmp,0,ramSize*4);
 
-	Stuff::Vector3D optimalLight;
+	glm::vec3 optimalLight;
 	optimalLight.x = cos(LIGHT_YAW * DEGREES_TO_RADS);
 	optimalLight.y = sin(LIGHT_YAW * DEGREES_TO_RADS);
 	optimalLight.z = sin(LIGHT_PITCH * DEGREES_TO_RADS);
@@ -189,10 +189,10 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 			PostcompVertex *pVertex3 = currentVertex + land->realVerticesMapSide + 1;
 			PostcompVertex *pVertex4 = currentVertex + land->realVerticesMapSide;
 			
- 			float lightIntensity1 = pVertex1->vertexNormal * optimalLight;
-			float lightIntensity2 = pVertex2->vertexNormal * optimalLight;
-			float lightIntensity3 = pVertex3->vertexNormal * optimalLight;
-			float lightIntensity4 = pVertex4->vertexNormal * optimalLight;
+ 			float lightIntensity1 = glm::dot(pVertex1->vertexNormal, optimalLight);
+			float lightIntensity2 = glm::dot(pVertex2->vertexNormal, optimalLight);
+			float lightIntensity3 = glm::dot(pVertex3->vertexNormal, optimalLight);
+			float lightIntensity4 = glm::dot(pVertex4->vertexNormal, optimalLight);
 
 			unsigned long *tBMP = &(tacMapBmp[(x * 3) + ((y * 3) * land->realVerticesMapSide * 3)]); 
 			float totalR1, totalG1, totalB1, totalR2, totalG2, totalB2, totalR3, totalG3, totalB3, totalR4, totalG4, totalB4;

@@ -4,7 +4,7 @@
 #include "mc2fmt.h"
 
 
-std::unique_ptr<BldgAppearance> MechWarrior::getWayPointMarker( const Stuff::Vector3D& pos, const char* name )
+std::unique_ptr<BldgAppearance> MechWarrior::getWayPointMarker( const glm::vec3& pos, const char* name )
 {
 	int appearanceType = (BLDG_TYPE << 24);
 	AppearanceTypePtr buildingAppearanceType = appearanceTypeList->getAppearance(appearanceType, name );
@@ -17,7 +17,7 @@ std::unique_ptr<BldgAppearance> MechWarrior::getWayPointMarker( const Stuff::Vec
 	
 	appearance->init((BldgAppearanceType*)buildingAppearanceType, (GameObjectPtr)this);
 
-	appearance->setObjectParameters( (const_cast<Stuff::Vector3D&>(pos)), 0, 1, 0, 0);
+	appearance->setObjectParameters( (const_cast<glm::vec3&>(pos)), 0, 1, 0, 0);
 	appearance->recalcBounds();
 	appearance->update();
 
@@ -37,7 +37,7 @@ std::unique_ptr<BldgAppearance> MechWarrior::getWayPointMarker( const Stuff::Vec
 
 long MechWarrior::calcTacOrder (long goalAction,
 								long goalWID,
-								Stuff::Vector3D goalLocation,
+								glm::vec3 goalLocation,
 								float controlRadius,
 								long aggressiveness,
 								long searchDepth,
@@ -64,7 +64,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 				else
 					goalAction = GOAL_ACTION_ATTACK;
 				goalWID = turretTarget->getWatchID();
-				goalLocation.Zero();
+				goalLocation = glm::vec3(0.0f);
 			}
 			alreadyAssessedTurrets = true;
 		}
@@ -77,7 +77,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 		if (!mainTarget) {
 			goalAction = GOAL_ACTION_NONE;
 			goalWID = 0;
-			goalLocation.Zero();
+			goalLocation = glm::vec3(0.0f);
 			lastGoalPathSize = 0;
 			return(-1);
 		}
@@ -85,7 +85,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 
 	long currentAction = goalAction;
 	long currentWID = goalWID;
-	Stuff::Vector3D currentLocation = goalLocation;
+	glm::vec3 currentLocation = goalLocation;
 	GameObjectPtr currentTarget = mainTarget;
 
 	OrderOriginType orderOrigin = ORDER_ORIGIN_COMMANDER;
@@ -131,7 +131,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 			else
 				currentAction = canCapture ? GOAL_ACTION_CAPTURE : GOAL_ACTION_ATTACK;
 			currentWID = turretTarget->getWatchID();
-			currentLocation.Zero();
+			currentLocation = glm::vec3(0.0f);
 			currentTarget = turretTarget;
 		}
 	}
@@ -169,8 +169,8 @@ long MechWarrior::calcTacOrder (long goalAction,
 				if (gate && !gate->isDestroyed() && (gate->getTeam() != getTeam())) {
 					GameObjectPtr controlBuilding = ObjectManager->getByWatchID(gate->parent);
 					if (canCapture && controlBuilding && (searchDepth > 0)) {
-						Stuff::Vector3D tempLocation;
-						tempLocation.Zero();
+						glm::vec3 tempLocation;
+						tempLocation = glm::vec3(0.0f);
 						long result = calcTacOrder(GOAL_ACTION_CAPTURE, controlBuilding->getWatchID(), tempLocation, -1.0, aggressiveness, searchDepth - 1, -1.0, 0, newTacOrder);
 						return(result);
 						}
@@ -211,7 +211,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 
 		if (currentTarget) {
 			long fromArea = -1;	// change this?
-			Stuff::Vector3D goal;
+			glm::vec3 goal;
 			if (currentTarget->isMover())
 				goal = currentTarget->getPosition();
 			else {
@@ -225,12 +225,12 @@ long MechWarrior::calcTacOrder (long goalAction,
 					if (foundGoal)
 						land->cellToWorld(goalRow, goalCol, goal);
 					else {
-						Stuff::Vector3D objectPos = currentTarget->getPosition();
+						glm::vec3 objectPos = currentTarget->getPosition();
 						goal = getVehicle()->calcOffsetMoveGoal(objectPos);
 					}
 					}
 				else {
-					Stuff::Vector3D objectPos = currentTarget->getPosition();
+					glm::vec3 objectPos = currentTarget->getPosition();
 					goal = getVehicle()->calcOffsetMoveGoal(objectPos);
 				}
 			}
@@ -275,8 +275,8 @@ long MechWarrior::calcTacOrder (long goalAction,
 				if (gate && !gate->isDestroyed() && (gate->getTeam() != getTeam())) {
 					GameObjectPtr controlBuilding = ObjectManager->getByWatchID(gate->parent);
 					if (canCapture && controlBuilding && (searchDepth > 0)) {
-						Stuff::Vector3D tempLocation;
-						tempLocation.Zero();
+						glm::vec3 tempLocation;
+						tempLocation = glm::vec3(0.0f);
 						long result = calcTacOrder(GOAL_ACTION_CAPTURE, controlBuilding->getWatchID(), tempLocation, -1.0, aggressiveness, searchDepth - 1, -1.0, 0, newTacOrder);
 						return(result);
 						}
@@ -365,7 +365,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 
 				currentAction = GOAL_ACTION_ATTACK;
 				currentWID = blockerList[blockerToAttack]->getWatchID();
-				currentLocation.Zero();
+				currentLocation = glm::vec3(0.0f);
 				currentTarget = blockerList[blockerToAttack];
 			}
 			GlobalPathStep globalPath[50];
@@ -382,8 +382,8 @@ long MechWarrior::calcTacOrder (long goalAction,
 					if (gate && !gate->isDestroyed() && (gate->getTeam() != getTeam())) {
 						GameObjectPtr controlBuilding = ObjectManager->getByWatchID(gate->parent);
 						if (controlBuilding && (searchDepth > 0)) {
-							Stuff::Vector3D tempLocation;
-							tempLocation.Zero();
+							glm::vec3 tempLocation;
+							tempLocation = glm::vec3(0.0f);
 							calcTacOrder(GOAL_ACTION_CAPTURE, controlBuilding->getWatchID(), tempLocation, -1.0, aggressiveness, searchDepth - 1, -1.0, 0, newTacOrder);
 							return(0);
 							}
@@ -480,14 +480,14 @@ long MechWarrior::calcTacOrder (long goalAction,
 					GameObjectPtr turretControl = ObjectManager->getByWatchID(((TurretPtr)nextTarget)->parent);
 					if (turretControl && (mainTarget/*getVehicle()*/->distanceFrom(turretControl->getPosition()) < controlRadius))
 						if (!turretControl->isDisabled()) {
-							Stuff::Vector3D tempLocation;
-							tempLocation.Zero();
+							glm::vec3 tempLocation;
+							tempLocation = glm::vec3(0.0f);
 							calcTacOrder(GOAL_ACTION_CAPTURE, turretControl->getWatchID(), tempLocation, -1.0, aggressiveness, searchDepth - 1, -1.0, 0, newTacOrder);
 							return(0);
 						}
 				}
-				Stuff::Vector3D tempLocation;
-				tempLocation.Zero();
+				glm::vec3 tempLocation;
+				tempLocation = glm::vec3(0.0f);
 				calcTacOrder(GOAL_ACTION_ATTACK, nextTarget->getWatchID(), tempLocation, -1.0, aggressiveness, searchDepth, -1.0, 0, newTacOrder);
 				return(0);
 			}

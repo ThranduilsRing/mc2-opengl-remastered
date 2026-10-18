@@ -11,7 +11,7 @@
 
 // Target-plan helpers used by the strike and help-request bindings below.
 
-long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float radius, long teamID, long commanderID, bool getEnemies, bool sortDescending, bool ignoreOrder) {
+long getMoversWithinRadius (MoverPtr* moverList, glm::vec3 center, float radius, long teamID, long commanderID, bool getEnemies, bool sortDescending, bool ignoreOrder) {
 
 	// Candidates in scan order, keyed by threat rating. The list is sorted in full; equal ratings keep scan order (mc2::sort_scored), so the first mover
 	// of an equal group is the first one the walk found.
@@ -246,7 +246,7 @@ void execGetCameraPosition (void) {
 	const auto output = ABLi_popRealBuf();
 	float camPos[3] = {};
 
-	Stuff::Vector3D result(0.0,0.0,0.0);
+	glm::vec3 result(0.0,0.0,0.0);
 	if (eye)
 		result = eye->getPosition();
 
@@ -265,7 +265,7 @@ void execSetCameraPosition(void) {
 
 	float* camPos = ABLi_popRealPtr();
 
-	Stuff::Vector3D result(0.0,0.0,0.0);
+	glm::vec3 result(0.0,0.0,0.0);
 	result.x = camPos[0];
 	result.y = camPos[1];
 	result.z = camPos[2];
@@ -285,7 +285,7 @@ void execSetCameraGoalPosition (void) {
 	float* camPos = ABLi_popRealPtr();
 	float time = ABLi_popReal();
 
-	Stuff::Vector3D result(0.0,0.0,0.0);
+	glm::vec3 result(0.0,0.0,0.0);
 	result.x = camPos[0];
 	result.y = camPos[1];
 	result.z = camPos[2];
@@ -306,7 +306,7 @@ void execGetCameraGoalPosition (void) {
 	const auto output = ABLi_popRealBuf();
 	float camPos[3] = {};
 
-	Stuff::Vector3D result(0.0,0.0,0.0);
+	glm::vec3 result(0.0,0.0,0.0);
 
 	if (eye)
 		result = eye->getGoalPosition();
@@ -327,7 +327,7 @@ void execGetCameraRotation (void) {
 	const auto output = ABLi_popRealBuf();
 	float camRot[3] = {};
 
-	Stuff::Vector3D result(0.0,0.0,0.0);
+	glm::vec3 result(0.0,0.0,0.0);
 	if (eye)
 		result = eye->getRotation();
 
@@ -346,7 +346,7 @@ void execSetCameraRotation (void) {
 
 	float* camRot = ABLi_popRealPtr();
 
-	Stuff::Vector3D result(0.0,0.0,0.0);
+	glm::vec3 result(0.0,0.0,0.0);
 	
 	result.x = camRot[0];
 	result.y = camRot[1];
@@ -367,7 +367,7 @@ void execSetCameraGoalRotation (void) {
 	float* camRot = ABLi_popRealPtr();
 	float time = ABLi_popReal();
 
-	Stuff::Vector3D result(0.0,0.0,0.0);
+	glm::vec3 result(0.0,0.0,0.0);
 	result.x = camRot[0];
 	result.y = camRot[1];
 	result.z = camRot[2];
@@ -388,7 +388,7 @@ void execGetCameraGoalRotation (void) {
 	const auto output = ABLi_popRealBuf();
 	float camRot[3] = {};
 
-	Stuff::Vector3D result(0.0,0.0,0.0);
+	glm::vec3 result(0.0,0.0,0.0);
 
 	if (eye)
 		result = eye->getGoalRotation();
@@ -469,7 +469,7 @@ void execSetCameraVelocity (void) {
 		return;
 	}
 
-	Stuff::Vector3D result(0.0,0.0,0.0);
+	glm::vec3 result(0.0,0.0,0.0);
 	result.x = camVel[0];
 	result.y = camVel[1];
 	result.z = camVel[2];
@@ -488,7 +488,7 @@ void execGetCameraVelocity (void) {
 	const auto output = ABLi_popRealBuf();
 	float camVel[3] = {};
 
-	Stuff::Vector3D result(0.0,0.0,0.0);
+	glm::vec3 result(0.0,0.0,0.0);
 
 	if (eye)
 		result = eye->getVelocity();
@@ -515,7 +515,7 @@ void execSetCameraGoalVelocity (void) {
 		return;
 	}
 
-	Stuff::Vector3D result(0.0,0.0,0.0);
+	glm::vec3 result(0.0,0.0,0.0);
 	result.x = camVel[0];
 	result.y = camVel[1];
 	result.z = camVel[2];
@@ -537,7 +537,7 @@ void execGetCameraGoalVelocity (void) {
 	const auto output = ABLi_popRealBuf();
 	float camVel[3] = {};
 
-	Stuff::Vector3D result(0.0,0.0,0.0);
+	glm::vec3 result(0.0,0.0,0.0);
 
 	if (eye)
 		result = eye->getGoalVelocity();
@@ -754,7 +754,7 @@ void execRequestHelp (void) {
 	long priority = ABLi_popInteger();
 
 	if (CurWarrior->getTeam()) {
-		Stuff::Vector3D friendlyPos;
+		glm::vec3 friendlyPos;
 		friendlyPos.x = friendlyCenter[0];
 		friendlyPos.y = friendlyCenter[1];
 		friendlyPos.z = 0.0;
@@ -773,7 +773,7 @@ void execRequestHelp (void) {
 
 		GameObjectPtr enemy = ObjectManager->findByPartId(enemyPartID);
 		if (enemy && enemy->getTeam() && (enemy->getTeam() != CurWarrior->getTeam())) {
-			Stuff::Vector3D enemyPos;
+			glm::vec3 enemyPos;
 			enemyPos.x = enemyCenter[0];
 			enemyPos.y = enemyCenter[1];
 			enemyPos.z = 0.0;
@@ -792,7 +792,7 @@ void execRequestTarget (void) {
 	float radius = ABLi_popReal();
 
 	if (CurWarrior->getTeam()) {
-		Stuff::Vector3D friendlyPos;
+		glm::vec3 friendlyPos;
 		friendlyPos.x = center[0];
 		friendlyPos.y = center[1];
 		friendlyPos.z = 0.0;

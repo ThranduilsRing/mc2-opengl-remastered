@@ -195,7 +195,7 @@ void ablEndlessStateCallback (UserFile* log) {
 	if (LastCoreAttackTarget) {
 		mc2::fmt::to_buf(s, "Target = {} ({:d})", mc2::fmt::safe(LastCoreAttackTarget->getName()), mc2::fmt::as_i32(LastCoreAttackTarget->getPartId()));
 		log->write(s);
-		Stuff::Vector3D pos;
+		glm::vec3 pos;
 		pos = LastCoreAttackTarget->getPosition();
 		mc2::fmt::to_buf(s, "Target Position = ({:.3f}, {:.3f}, {:.3f}) [{:d}, {:d}]", pos.x, pos.y, pos.z, mc2::fmt::as_i32(LastCoreAttackTarget->cellPositionRow), mc2::fmt::as_i32(LastCoreAttackTarget->cellPositionCol));
 		log->write(s);

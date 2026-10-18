@@ -100,22 +100,13 @@ namespace Stuff {
 			SetEntry(bool value);
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	// Vector3D access
+	// glm::vec3 access
 	//
 	public:
 		void
-			GetEntry(Vector3D *value);
+			GetEntry(glm::vec3 *value);
 		void
-			SetEntry(const Vector3D &value);
-
-	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	// UnitQuaternion access
-	//
-	public:
-		void
-			GetEntry(UnitQuaternion *value);
-		void
-			SetEntry(const UnitQuaternion &value);
+			SetEntry(const glm::vec3 &value);
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// RGBColor access

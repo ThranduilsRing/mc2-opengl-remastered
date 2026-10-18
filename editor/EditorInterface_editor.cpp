@@ -538,7 +538,7 @@ void Editor::update()
 			// diverge increasingly toward the right. Driving screenResolution from the
 			// scene size unifies render + projection + picking. (Equal to viewMul* when
 			// not docked, so undocked behavior is unchanged.)
-			Stuff::Vector3D newRes;
+			glm::vec3 newRes;
 			newRes.x = (float)Environment.drawableWidth;
 			newRes.y = (float)Environment.drawableHeight;
 			newRes.z = 0.0f;

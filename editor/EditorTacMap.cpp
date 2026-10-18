@@ -85,7 +85,7 @@ void EditorTacMap::OnTga()
 	screen.y = pt.y;
 
 
-	Stuff::Vector3D world;
+	glm::vec3 world;
 
 	TacMap::tacMapToWorld( screen, (long)EDITOR_TACMAP_DISPLAY_SIZE, (long)EDITOR_TACMAP_DISPLAY_SIZE, world );
 

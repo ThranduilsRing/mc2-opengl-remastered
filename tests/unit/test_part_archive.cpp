@@ -41,15 +41,15 @@ void GameObject::operator delete(void*) {}
 void GameObject::getBlockAndVertexNumber(int&, int&) {}
 ObjectTypePtr GameObject::getObjectType() { return nullptr; }
 void GameObject::init(bool, ObjectTypePtr) {}
-Stuff::Vector3D GameObject::relativePosition(float, float, unsigned long) { return {}; }
-void GameObject::setPosition(const Stuff::Vector3D&, bool) {}
-float GameObject::distanceFrom(Stuff::Vector3D) { return 0; }
-long GameObject::cellDistanceFrom(Stuff::Vector3D) { return 0; }
+glm::vec3 GameObject::relativePosition(float, float, unsigned long) { return {}; }
+void GameObject::setPosition(const glm::vec3&, bool) {}
+float GameObject::distanceFrom(glm::vec3) { return 0; }
+long GameObject::cellDistanceFrom(glm::vec3) { return 0; }
 long GameObject::cellDistanceFrom(GameObjectPtr) { return 0; }
 long GameObject::getLineOfSightNodes(long, long, long*) { return 0; }
-bool GameObject::lineOfSight(Stuff::Vector3D) { return false; }
+bool GameObject::lineOfSight(glm::vec3) { return false; }
 bool GameObject::lineOfSight(GameObjectPtr, float) { return false; }
-float GameObject::relFacingTo(Stuff::Vector3D, long) { return 0; }
+float GameObject::relFacingTo(glm::vec3, long) { return 0; }
 float GameObject::getExtentRadius() { return 0; }
 void GameObject::setExtentRadius(float) {}
 bool GameObject::canBeSeen_instr() const { return false; }
@@ -94,7 +94,7 @@ struct PilotFixture : MechWarrior {
 struct WatchFixture : GameObject {
     MechWarrior* pilot = nullptr;
     MechWarriorPtr getPilot() override { return pilot; }
-    Stuff::Vector3D getRotationVector() override { return {}; }
+    glm::vec3 getRotationVector() override { return {}; }
 };
 struct LiveParts {
     UserHeap heap;

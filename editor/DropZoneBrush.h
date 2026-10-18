@@ -22,8 +22,8 @@ class DropZoneBrush: public BuildingBrush
 	public:
 
 	DropZoneBrush( int alignment = 0, bool bVTol = 0 );
-	virtual bool paint( Stuff::Vector3D& worldPos, int screenX, int screenY  );
-	virtual bool canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags );
+	virtual bool paint( glm::vec3& worldPos, int screenX, int screenY  );
+	virtual bool canPaint( glm::vec3& worldPos, int screenX, int screenY, int flags );
 
 	private:
 

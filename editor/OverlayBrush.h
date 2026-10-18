@@ -30,8 +30,8 @@ class OverlayBrush: public Brush
 
 		void render( int ScreenMousex, int ScreenMouseY ) override{} // need to figure this out
 
-		virtual bool canPaint( Stuff::Vector3D&, int screenX, int screenY, int& flags ){ return true; }
-		bool paint( Stuff::Vector3D& worldPos, int screenX, int screenY ) override;
+		virtual bool canPaint( glm::vec3&, int screenX, int screenY, int& flags ){ return true; }
+		bool paint( glm::vec3& worldPos, int screenX, int screenY ) override;
 
 		bool beginPaint() override; // not doing anything yet
 		Action* endPaint() override;

@@ -14,10 +14,10 @@
 
 //-------------------------------------------------------------------------------
 // Statics
-Stuff::LinearMatrix4D 	*TG_Shape::s_cameraOrigin = nullptr;
-Stuff::Matrix4D			*TG_Shape::s_cameraToClip = nullptr;
-Stuff::LinearMatrix4D	TG_Shape::s_worldToCamera;
-Stuff::Matrix4D			TG_Shape::s_worldToClip;
+glm::mat4 	*TG_Shape::s_cameraOrigin = nullptr;
+glm::mat4			*TG_Shape::s_cameraToClip = nullptr;
+glm::mat4	TG_Shape::s_worldToCamera;
+glm::mat4			TG_Shape::s_worldToClip;
 
 float					TG_Shape::viewMulX = 0.0;
 float					TG_Shape::viewAddX = 0.0;
@@ -31,10 +31,10 @@ float					TG_Shape::fogFull = 0.0f;
 TG_LightPtr				*TG_Shape::s_listOfLights = nullptr;
 DWORD					TG_Shape::s_numLights = 0;
 
-Stuff::LinearMatrix4D 	TG_Shape::s_lightToShape[MAX_LIGHTS_IN_WORLD];
-Stuff::Vector3D			TG_Shape::s_lightDir[MAX_LIGHTS_IN_WORLD];
-Stuff::Vector3D			TG_Shape::s_rootLightDir[MAX_LIGHTS_IN_WORLD];
-Stuff::Vector3D			TG_Shape::s_spotDir[MAX_LIGHTS_IN_WORLD];
+glm::mat4 	TG_Shape::s_lightToShape[MAX_LIGHTS_IN_WORLD];
+glm::vec3			TG_Shape::s_lightDir[MAX_LIGHTS_IN_WORLD];
+glm::vec3			TG_Shape::s_rootLightDir[MAX_LIGHTS_IN_WORLD];
+glm::vec3			TG_Shape::s_spotDir[MAX_LIGHTS_IN_WORLD];
 
 
 DWORD					TG_Shape::lighteningLevel = 0;

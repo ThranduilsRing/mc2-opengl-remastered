@@ -101,7 +101,7 @@ MLREffect::MLREffect(int nr, ClassData *class_data):
 	TurnAllOff();
 	TurnAllVisible();
 
-	worldToEffect = LinearMatrix4D::Identity;
+	worldToEffect = glm::mat4(1.0f);
 
 	gos_vertices = nullptr;
 	numGOSVertices = 0;
@@ -132,7 +132,7 @@ void
 
 		for(k=j;k<j+nrOfVertices;k++)
 		{
-			(*transformedCoords)[k].Multiply(points[k], effectToClipMatrix);
+			(*transformedCoords)[k].MultiplyPoint(points[k], effectToClipMatrix);
 		}
 	}
 	Stop_Timer(Transform_Time);

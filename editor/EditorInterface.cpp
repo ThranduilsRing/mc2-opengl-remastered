@@ -228,13 +228,13 @@ void EditorInterface::handleKeyDown( int Key )
 		const ObjectAppearance* pAppearance = pInfo ? pInfo->appearance() : nullptr;
 		if ( pAppearance )
 		{
-			Stuff::Point3D eyePosition(eye->getCameraOrigin());
-			Stuff::Point3D objPosition;
+			glm::vec3 eyePosition(eye->getCameraOrigin());
+			glm::vec3 objPosition;
 			mc2ToRender(objPosition, pAppearance->position);
 
-			Stuff::Vector3D Distance;
-			Distance.Subtract(objPosition,eyePosition);
-			eyeDistance = Distance.GetApproximateLength();
+			glm::vec3 Distance;
+			Distance = objPosition - eyePosition;
+			eyeDistance = glm::length(Distance);
 		}
 	}
 
@@ -774,7 +774,7 @@ void EditorInterface::update()
 		}
 
 		if ( eye )
-			eye->setPosition( Stuff::Vector3D( locX, locY, 0.0f ), true );
+			eye->setPosition( glm::vec3( locX, locY, 0.0f ), true );
 
 		// Leave the object-select handoff. Do NOT reopen the objectives dialog
 		// chain: Locate ends with the dialogs closed so the camera move is visible.
@@ -799,7 +799,7 @@ void EditorInterface::update()
 		bool applied = MapGeneratorDialog::ApplyPendingGenerate();
 		if ( applied && land )
 		{
-			eye->setPosition( Stuff::Vector3D(0.0f, 0.0f, 0.0f), false );
+			eye->setPosition( glm::vec3(0.0f, 0.0f, 0.0f), false );
 			addBuildingsToNewMenu();
 			syncScrollBars();
 			initTacMap();
@@ -868,7 +868,7 @@ void EditorInterface::update()
 			if (!MapGeneratorDialog::IsOpen())
 			{
 				if ( land )
-					eye->setPosition( Stuff::Vector3D(0.0f, 0.0f, 0.0f), false );
+					eye->setPosition( glm::vec3(0.0f, 0.0f, 0.0f), false );
 				if ( land )
 				{
 					addBuildingsToNewMenu();
@@ -985,7 +985,7 @@ void EditorInterface::render()
 
 	ModifyStyle( 0, WS_HSCROLL | WS_VSCROLL );
 
-	Stuff::Vector3D worldPos;
+	glm::vec3 worldPos;
 	Stuff::Vector2DOf<long> screenPos;
 
 	screenPos.x = Environment.screenWidth/2;
@@ -1106,7 +1106,7 @@ void EditorInterface::render()
 void EditorInterface::syncHScroll()
 {
 	/* this calculation was based in the code for Camera::moveRight(float amount) */
-	Stuff::Vector3D direction;
+	glm::vec3 direction;
 	if (!eye->usePerspective)
 	{
 		direction.x = 1.0;
@@ -1122,20 +1122,20 @@ void EditorInterface::syncHScroll()
 	float worldCameraRotation = eye->getCameraRotation();
 	OppRotate(direction,worldCameraRotation);
 
-	Stuff::Vector3D eyeDisplacement = eye->getPosition();
+	glm::vec3 eyeDisplacement = eye->getPosition();
 
 	/* maxVisual was taken from Camera::setPosition(). */
 	float maxVisual = (Terrain::worldUnitsMapSide / 2) - Terrain::worldUnitsPerVertex;
 	float bound = SQRT_2 * maxVisual;
 
-	float scrollPos = ((direction * eyeDisplacement) / bound * 0.5f + 0.5f) * HSCROLLBAR_RANGE;
+	float scrollPos = ((glm::dot(direction, eyeDisplacement)) / bound * 0.5f + 0.5f) * HSCROLLBAR_RANGE;
 	SetScrollRange( SB_HORZ, 0, HSCROLLBAR_RANGE, true );
 	SetScrollPos(SB_HORZ, (int)scrollPos);
 
 	{
 		/* figure out what proportion of the map is visible */
  		Stuff::Vector2DOf< long > screen;
-		Stuff::Vector3D world1, world2;
+		glm::vec3 world1, world2;
 		screen.y = Environment.screenHeight / 2;
 		screen.x = 1;
 		eye->screenToGroundPlaneApprox( screen.x, screen.y, world1 );  // cheap: span only needs x,y
@@ -1159,7 +1159,7 @@ void EditorInterface::syncHScroll()
 void EditorInterface::syncVScroll()
 {
 	/* this calculation was based in the code for Camera::moveRight(float amount) */
-	Stuff::Vector3D direction;
+	glm::vec3 direction;
 	if (!eye->usePerspective)
 	{
 		direction.x = 0.0;
@@ -1175,20 +1175,20 @@ void EditorInterface::syncVScroll()
 	float worldCameraRotation = eye->getCameraRotation();
 	OppRotate(direction,worldCameraRotation);
 
-	Stuff::Vector3D eyeDisplacement = eye->getPosition();
+	glm::vec3 eyeDisplacement = eye->getPosition();
 
 	/* maxVisual was taken from Camera::setPosition(). */
 	float maxVisual = (Terrain::worldUnitsMapSide / 2) - Terrain::worldUnitsPerVertex;
 	float bound = SQRT_2 * maxVisual;
 
-	float scrollPos = ((direction * eyeDisplacement) / bound * 0.5f + 0.5f) * VSCROLLBAR_RANGE;
+	float scrollPos = ((glm::dot(direction, eyeDisplacement)) / bound * 0.5f + 0.5f) * VSCROLLBAR_RANGE;
 	SetScrollRange( SB_VERT, 0, VSCROLLBAR_RANGE, false );
 	SetScrollPos(SB_VERT, (int)scrollPos);
 
 	{
 		/* figure out what proportion of the map is visible */
  		Stuff::Vector2DOf< long > screen;
-		Stuff::Vector3D world1, world2;
+		glm::vec3 world1, world2;
 		screen.x = Environment.screenWidth / 2;
 		screen.y = 1;
 		eye->screenToGroundPlaneApprox( screen.x, screen.y, world1 );  // cheap: span only needs x,y

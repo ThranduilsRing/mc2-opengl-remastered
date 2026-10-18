@@ -35,7 +35,7 @@ void TacMapTGA::OnPaint()
 	{
  		Stuff::Vector2DOf< long > screen;
 		gos_VERTEX tmp;
-		Stuff::Vector3D world;
+		glm::vec3 world;
 		POINT pts[5];
 
 

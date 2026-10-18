@@ -383,7 +383,7 @@ struct MovementWorld {
         Terrain::halfVerticesMapSide = 30;
         Terrain::blocksMapSide = 3;
         Terrain::worldUnitsMapSide = 60 * Terrain::worldUnitsPerVertex;
-        Terrain::mapTopLeft3d = Stuff::Vector3D(-Terrain::worldUnitsMapSide / 2, Terrain::worldUnitsMapSide / 2, 0);
+        Terrain::mapTopLeft3d = glm::vec3(-Terrain::worldUnitsMapSide / 2, Terrain::worldUnitsMapSide / 2, 0);
         Terrain::terrainHeap = new UserHeap;
         Terrain::terrainHeap->init(1024 * 1024, "offline-terrain");
         Terrain::tileRowToWorldCoord = Terrain::tileColToWorldCoord = nullptr;
@@ -415,8 +415,8 @@ struct MovementWorld {
     ~MovementWorld() {
         if (queue && pilot) queue->remove(pilot.get());
     }
-    Stuff::Vector3D point(int col) const {
-        Stuff::Vector3D result;
+    glm::vec3 point(int col) const {
+        glm::vec3 result;
         land->cellToWorld(90, col, result);
         return result;
     }
@@ -448,7 +448,7 @@ struct BufferSnapshot {
     MovePath* identity;
     long steps, pausedSteps, cursor, globalStep, cost;
     bool marked;
-    Stuff::Vector3D goal;
+    glm::vec3 goal;
     std::vector<std::array<int, 2>> cells;
     std::vector<std::array<float, 3>> destinations;
     std::vector<std::array<int, 2>> directionsAndAreas;
@@ -611,7 +611,7 @@ struct StandingRouteWorld : MovementWorld {
         if (!queue->queueFront) return false;
         CHECK(pilot->getMoveRun() == (execution().path.mode[cursor] == mc2::sim::TravelMode::Fast));
         const auto sequence = execution().eventSequence;
-        Stuff::Vector3D query;
+        glm::vec3 query;
         CHECK(pilot->getNextWayPoint(query, false));
         CHECK(query.x == execution().path.points[cursor].x);
         CHECK(execution().eventSequence == sequence);
@@ -831,7 +831,7 @@ TEST_CASE("AuthoredOrderProduction/terminal routes cancel movement and cannot fa
         CHECK(world.pilot->getMoveOrders()->numWayPts == 0);
         const auto position = world.mech->getPosition();
         for (int tick = 0; tick < 3; ++tick) {
-            Stuff::Vector3D next;
+            glm::vec3 next;
             CHECK_FALSE(world.pilot->getNextWayPoint(next, true));
             LastMoveCalcErr = 12345;
             CHECK(world.pilot->calcMovePath(-1, MOVEPARAM_INIT) == NO_ERR);
@@ -889,7 +889,7 @@ TEST_CASE("AuthoredOrderProduction/player cancellation and dead pilots cannot em
         const auto sequence = world.execution().eventSequence;
         CHECK(world.execution().state == RouteState::Interrupted);
         if (ending == 2) world.pilot->clearCurTacOrder();
-        Stuff::Vector3D point;
+        glm::vec3 point;
         world.pilot->getNextWayPoint(point, true);
         world.poll();
         CHECK(world.execution().eventSequence == sequence);

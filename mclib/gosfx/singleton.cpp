@@ -249,12 +249,12 @@ bool
 	// Calculate the bounding volume
 	//------------------------------
 	//
-	Stuff::OBB bounds;
+	mc2::math::Obb bounds;
 	bounds.sphereRadius = m_radius*m_scale;
 	if (bounds.sphereRadius < Stuff::SMALL)
 		bounds.sphereRadius = 0.01f;
 	bounds.localToParent = m_localToParent;
-	bounds.axisExtents = Stuff::Vector3D::Identity;
-	info->m_bounds->Union(*info->m_bounds, bounds);
+	bounds.axisExtents = glm::vec3(0.0f);
+	(*info->m_bounds) = mc2::math::unite(*info->m_bounds, bounds);
 	return true;
 }

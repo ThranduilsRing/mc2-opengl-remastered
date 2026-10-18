@@ -651,10 +651,10 @@ void WeaponBolt::setTarget (GameObjectPtr who)
 }
 
 //---------------------------------------------------------------------------
-void WeaponBolt::setTargetPosition (Stuff::Vector3D pos)
+void WeaponBolt::setTargetPosition (glm::vec3 pos)
 {
 	if (!targetPosition)
-		targetPosition = new Stuff::Vector3D;
+		targetPosition = new glm::vec3;
 		
 	*targetPosition = pos;
 }
@@ -678,8 +678,8 @@ void WeaponBolt::CopyTo (WeaponBoltData *data)
 	data->targetWID = targetWID;
 	data->targetHotSpot = targetHotSpot;
 
-	Stuff::Vector3D dmy;
-	dmy.Zero();
+	glm::vec3 dmy;
+	dmy = glm::vec3(0.0f);
 
 	if (targetPosition)
 		data->targetPosition = *targetPosition;
@@ -692,8 +692,8 @@ void WeaponBolt::CopyTo (WeaponBoltData *data)
 	data->weaponShot = weaponShot;
 
 	data->laserPosition = laserPosition;
-	memcpy(data->laserVertices,laserVertices,sizeof(Stuff::Vector3D) * 4);
-	memcpy(data->laserSide,laserSide,sizeof(Stuff::Vector3D) * 4);
+	memcpy(data->laserVertices,laserVertices,sizeof(glm::vec3) * 4);
+	memcpy(data->laserSide,laserSide,sizeof(glm::vec3) * 4);
 
 	data->effectId = effectId;
 	data->hitTarget = hitTarget;
@@ -733,7 +733,7 @@ void WeaponBolt::Load (WeaponBoltData *data)
 		targetPosition = nullptr;
 	else
 	{
-		targetPosition = new Stuff::Vector3D;
+		targetPosition = new glm::vec3;
 		*targetPosition = data->targetPosition;
 	}
 
@@ -743,8 +743,8 @@ void WeaponBolt::Load (WeaponBoltData *data)
 	weaponShot = data->weaponShot;
 
 	laserPosition = data->laserPosition;
-	memcpy(laserVertices,data->laserVertices,sizeof(Stuff::Vector3D) * 4);
-	memcpy(laserSide,data->laserSide,sizeof(Stuff::Vector3D) * 4);
+	memcpy(laserVertices,data->laserVertices,sizeof(glm::vec3) * 4);
+	memcpy(laserSide,data->laserSide,sizeof(glm::vec3) * 4);
 
 	effectId = data->effectId;
 	hitTarget = data->hitTarget;

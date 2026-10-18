@@ -111,7 +111,7 @@ void
 
 	int len;
 	unsigned short *_index;
-	Point3D *_coords;
+	glm::vec3 *_coords;
 	Vector2DScalar *_texCoords;
 	unsigned char *_lengths;
 
@@ -229,7 +229,7 @@ void
 	Check_Object(this); 
 
 	int i, j, stride, numPrimitives = GetNumPrimitives();
-	Vector3D v;
+	glm::vec3 v;
 
 	Verify(index.GetLength() > 0);
 
@@ -238,9 +238,9 @@ void
 		stride = lengths[i];
 
 		facePlanes[i].buildPlane(
-			mc2::math::toGlm(coords[index[j]]),
-			mc2::math::toGlm(coords[index[j+1]]),
-			mc2::math::toGlm(coords[index[j+2]])
+			coords[index[j]],
+			(coords[index[j+1]]),
+			(coords[index[j+2]])
 		);
 
 		j += stride;
@@ -250,7 +250,7 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 int
-	MLR_I_PMesh::FindBackFace(const Point3D& u)
+	MLR_I_PMesh::FindBackFace(const glm::vec3& u)
 {
 	Check_Object(this);
 
@@ -278,7 +278,7 @@ int
 	{
 		for(i=0;i<numPrimitives;i++,p++,iPtr++)
 		{
-			*iPtr = (p->distanceTo(mc2::math::toGlm(u)) >= 0.0f) ? (unsigned char)0xff : (unsigned char)0;
+			*iPtr = (p->distanceTo(u) >= 0.0f) ? (unsigned char)0xff : (unsigned char)0;
 			
 			ret += *iPtr;
 		}
@@ -350,7 +350,7 @@ extern DWORD gEnableTextureSort, gEnableAlphaSort;
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	MLR_I_PMesh::Transform(Matrix4D *mat)
+	MLR_I_PMesh::Transform(glm::mat4 *mat)
 {
 	Check_Object(this);
 
@@ -365,7 +365,7 @@ void
 	}
 
 	Stuff::Vector4D *v4d = transformedCoords->GetData();
-	Stuff::Point3D *p3d = coords.GetData();
+	glm::vec3 *p3d = coords.GetData();
 	MLRClippingState *cs = clipPerVertex->GetData();
 	unsigned char *viv = visibleIndexedVertices.GetData();
 
@@ -376,7 +376,7 @@ void
 			continue;
 		}
 		
-		v4d->Multiply(*p3d, *mat);
+		v4d->MultiplyPoint(*p3d, *mat);
 #ifdef LAB_ONLY
 		Set_Statistic(TransformedVertices, TransformedVertices+1);
 #endif
@@ -554,9 +554,9 @@ void
 
 	unsigned short stride;
 	int i, j, k, len = static_cast<int>(lengths.GetLength());
-	LinearMatrix4D matrix = LinearMatrix4D::Identity;
-	Point3D lightPosInShape, hitPoint;
-	UnitVector3D up, left, forward;
+	glm::mat4 matrix = glm::mat4(1.0f);
+	glm::vec3 lightPosInShape, hitPoint;
+	glm::vec3 up, left, forward;
 	bool lm;
 	Scalar f, rhf, falloff = 1.0f, distance;
 
@@ -584,7 +584,7 @@ void
 					continue;
 				}
 
-				f = facePlanes[i].distanceTo(mc2::math::toGlm(lightPosInShape));
+				f = facePlanes[i].distanceTo(lightPosInShape);
 				
 				lm = false;
 
@@ -592,11 +592,11 @@ void
 				{
 					rhf = 1.0f/f;
 
-					matrix = LinearMatrix4D::Identity;
-					matrix.AlignLocalAxisToWorldVector(mc2::math::toVector3D(facePlanes[i].normal), Z_Axis, Y_Axis, X_Axis);
-					matrix.GetWorldLeftInLocal(&left);
-					matrix.GetWorldUpInLocal(&up);
-					matrix.GetWorldForwardInLocal(&forward);
+					matrix = glm::mat4(1.0f);
+					mc2::math::alignLocalAxisToWorldVector(matrix, facePlanes[i].normal, Z_Axis, Y_Axis, X_Axis);
+					left = mc2::math::worldLeftInLocal(matrix);
+					up = mc2::math::worldUpInLocal(matrix);
+					forward = mc2::math::worldForwardInLocal(matrix);
 					Verify(Small_Enough(up*left));
 
 		#if defined(_ARMOR)
@@ -607,16 +607,16 @@ void
 		#endif
 
 					Check_Object(&forward);
-					hitPoint.Multiply(forward, -f);
+					hitPoint = forward * -f;
 					hitPoint+=lightPosInShape;
 
 					for(k=0;k<stride;k++)
 					{
-						Vector3D vec(coords[index[k+j]]);
+						glm::vec3 vec(coords[index[k+j]]);
 						vec-=hitPoint;
 
-						(*lightMapUVs)[k][0] = -(left*vec)*rhf;
-						(*lightMapUVs)[k][1] = -(up*vec)*rhf;
+						(*lightMapUVs)[k][0] = -(glm::dot(left, vec))*rhf;
+						(*lightMapUVs)[k][1] = -(glm::dot(up, vec))*rhf;
 
 						if(
 							(*lightMapUVs)[k][0] >= -0.5f && (*lightMapUVs)[k][0] <= 0.5f &&
@@ -663,13 +663,13 @@ void
 			lightMap->AddState(referenceState.GetPriority()+1);
 			
 			light->GetInShapePosition(matrix);
-			lightPosInShape = matrix;
+			lightPosInShape = mc2::math::getTranslation(matrix);
 
 			Scalar tanSpeadAngle = Cast_Object(MLRSpotLight*, light)->GetTanSpreadAngle();
 
-			matrix.GetLocalLeftInWorld(&left);
-			matrix.GetLocalUpInWorld(&up);
-			matrix.GetLocalForwardInWorld(&forward);
+			left = mc2::math::localLeftInWorld(matrix);
+			up = mc2::math::localUpInWorld(matrix);
+			forward = mc2::math::localForwardInWorld(matrix);
 
 			Verify(Small_Enough(up*left));
 
@@ -686,7 +686,7 @@ void
 
 				lm = false;
 
-				if(!facePlanes[i].isSeenBy(mc2::math::toGlm(lightPosInShape)))
+				if(!facePlanes[i].isSeenBy(lightPosInShape))
 				{
 					continue;
 				}
@@ -694,10 +694,10 @@ void
 				int tooBig = 0;
 				for(k=0;k<stride;k++)
 				{
-					Vector3D vec;
-					vec.Subtract(coords[index[k+j]], lightPosInShape);
+					glm::vec3 vec;
+					vec = coords[index[k+j]] - lightPosInShape;
 
-					distance = (vec*forward);
+					distance = (glm::dot(vec, forward));
 
 					if(distance > SMALL)
 					{
@@ -713,8 +713,8 @@ void
 						break;
 					}
 
-					(*lightMapUVs)[k][0] = (left*vec)/(2.0f*distance*tanSpeadAngle);
-					(*lightMapUVs)[k][1] = -(up*vec)/(2.0f*distance*tanSpeadAngle);
+					(*lightMapUVs)[k][0] = (glm::dot(left, vec))/(2.0f*distance*tanSpeadAngle);
+					(*lightMapUVs)[k][1] = -(glm::dot(up, vec))/(2.0f*distance*tanSpeadAngle);
 
 					if(
 						(*lightMapUVs)[k][0] >= -0.5f && (*lightMapUVs)[k][0] <= 0.5f &&
@@ -860,17 +860,17 @@ MLR_I_PMesh*
 	MLR_I_PMesh *ret = new MLR_I_PMesh();
 	Register_Object(ret);
 
-	Point3D *coords = new Point3D [8];
+	glm::vec3 *coords = new glm::vec3 [8];
 	Register_Object(coords);
 
-	coords[0] = Point3D( half, -half,  half);
-	coords[1] = Point3D(-half, -half,  half);
-	coords[2] = Point3D( half, -half, -half);
-	coords[3] = Point3D(-half, -half, -half);
-	coords[4] = Point3D(-half,  half,  half);
-	coords[5] = Point3D( half,  half,  half);
-	coords[6] = Point3D( half,  half, -half);
-	coords[7] = Point3D(-half,  half, -half);
+	coords[0] = glm::vec3( half, -half,  half);
+	coords[1] = glm::vec3(-half, -half,  half);
+	coords[2] = glm::vec3( half, -half, -half);
+	coords[3] = glm::vec3(-half, -half, -half);
+	coords[4] = glm::vec3(-half,  half,  half);
+	coords[5] = glm::vec3( half,  half,  half);
+	coords[6] = glm::vec3( half,  half, -half);
+	coords[7] = glm::vec3(-half,  half, -half);
 
 	unsigned char *lengths = new unsigned char [6];
 	Register_Pointer(lengths);
@@ -976,25 +976,25 @@ long MidLevelRenderer::triDrawn = 0;
 //
 void
 	MidLevelRenderer::subdivide (
-		Point3D *coords,
-		Point3D& v1,
-		Point3D& v2,
-		Point3D& v3,
+		glm::vec3 *coords,
+		glm::vec3& v1,
+		glm::vec3& v2,
+		glm::vec3& v3,
 		long depth,
 		long tri2draw, 
         float rad
 	)
 {
-	Point3D v12(0.0f, 0.0f, 0.0f), v23(0.0f, 0.0f, 0.0f), v31(0.0f, 0.0f, 0.0f);
+	glm::vec3 v12(0.0f, 0.0f, 0.0f), v23(0.0f, 0.0f, 0.0f), v31(0.0f, 0.0f, 0.0f);
 	int i;
 
 	if (depth == 0)
 	{
 		if (tri2draw > triDrawn)
 		{
-			coords[3*triDrawn].Multiply(v1, rad);
-			coords[3*triDrawn+1].Multiply(v3, rad);
-			coords[3*triDrawn+2].Multiply(v2, rad);
+			coords[3*triDrawn] = v1 * rad;
+			coords[3*triDrawn+1] = v3 * rad;
+			coords[3*triDrawn+2] = v2 * rad;
 		}
 		triDrawn++;
 		return;
@@ -1006,9 +1006,9 @@ void
 		v23[i] = v2[i] + v3[i];
 		v31[i] = v3[i] + v1[i];
 	}
-	v12.Normalize(v12);
-	v23.Normalize(v23);
-	v31.Normalize(v31);
+	v12 = glm::normalize(v12);
+	v23 = glm::normalize(v23);
+	v31 = glm::normalize(v31);
 
 	MidLevelRenderer::subdivide (coords, v1, v12, v31, depth-1, tri2draw, rad);
 	MidLevelRenderer::subdivide (coords, v2, v23, v12, depth-1, tri2draw, rad);
@@ -1043,7 +1043,7 @@ MLRShape*
 
 	int i, j, k;
 	long    nrTri = (long) ceil (icoInfo.all * pow (4.0f, icoInfo.depth));
-	Point3D v[3];
+	glm::vec3 v[3];
 
 	if(3*nrTri >= Limits::Max_Number_Vertices_Per_Mesh)
 	{
@@ -1058,13 +1058,13 @@ MLRShape*
 		lengths[i] = 3;
 	}
 
-	Point3D *coords = new Point3D [nrTri*3];
+	glm::vec3 *coords = new glm::vec3 [nrTri*3];
 	Register_Pointer(coords);
 	
-	Point3D *collapsedCoords = nullptr;
+	glm::vec3 *collapsedCoords = nullptr;
 	if(icoInfo.indexed==true)
 	{
-		collapsedCoords = new Point3D [nrTri*3];
+		collapsedCoords = new glm::vec3 [nrTri*3];
 		Register_Pointer(collapsedCoords);
 	}
 
@@ -1102,7 +1102,7 @@ MLRShape*
 			{
 				for(j=0;j<uniquePoints;j++)
 				{
-					if(coords[i] == collapsedCoords[j])
+					if(mc2::math::closeEnough(coords[i], collapsedCoords[j]))
 					{
 						break;
 					}

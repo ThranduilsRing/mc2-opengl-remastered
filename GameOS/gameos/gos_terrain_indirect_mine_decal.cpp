@@ -185,14 +185,14 @@ void BuildMineStaticVBO() {
                     if (mine == 0) continue;
                     const uint32_t layer = (mine == 2) ? 1u : 0u;
 
-                    Stuff::Vector3D center;
+                    glm::vec3 center;
                     land->tileCellToWorld(tR, tC, cR, cC, center);
 
                     // Four corners around cell center. tileCellToWorld returns
                     // cell center XY (with half-cell offset baked in per
                     // terrain.h:416-417); we expand to the 4 cell corners.
-                    Stuff::Vector3D c00 = center, c10 = center;
-                    Stuff::Vector3D c11 = center, c01 = center;
+                    glm::vec3 c00 = center, c10 = center;
+                    glm::vec3 c11 = center, c01 = center;
                     c00.x -= halfCell; c00.y += halfCell;  // top-left
                     c10.x += halfCell; c10.y += halfCell;  // top-right
                     c11.x += halfCell; c11.y -= halfCell;  // bottom-right
@@ -202,7 +202,7 @@ void BuildMineStaticVBO() {
                     c11.z = land->getTerrainElevation(c11);
                     c01.z = land->getTerrainElevation(c01);
 
-                    auto pushVert = [&](const Stuff::Vector3D& p, float u, float v) {
+                    auto pushVert = [&](const glm::vec3& p, float u, float v) {
                         MineVert mv;
                         mv.pos[0] = p.x; mv.pos[1] = p.y; mv.pos[2] = p.z;
                         mv.uv[0]  = u;   mv.uv[1]  = v;

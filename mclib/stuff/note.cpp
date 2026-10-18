@@ -110,7 +110,7 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	Note::GetEntry(Vector3D *value)
+	Note::GetEntry(glm::vec3 *value)
 {
 	Check_Object(this);
 	Check_Pointer(value);
@@ -145,7 +145,7 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	Note::SetEntry(const Vector3D &value)
+	Note::SetEntry(const glm::vec3 &value)
 {
 	Check_Object(this);
 
@@ -153,62 +153,6 @@ void
 	int temp;
 	temp = mc2::fmt::to_buf(contents, "{:f} {:f} {:f}", value.x, value.y, value.z);
 	Verify (temp <sizeof(contents));
-	SetEntry(contents);
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
-	Note::GetEntry(UnitQuaternion *value)
-{
-	Check_Object(this);
-	Check_Pointer(value);
-
-	const char *contents = nullptr;
-	GetEntry(&contents);
-	Check_Pointer(contents);
-	Scalar yaw, pitch, roll;
-	int count =
-		sscanf(
-			contents,
-			"%f %f %f",
-			&yaw,
-			&pitch,
-			&roll
-		);
-	if (count != 3)
-	{
-		Page *page = m_page;
-		Check_Object(page);
-		NotationFile *file = page->m_notationFile;
-		Check_Object(file);
-		STOP((
-			"%s: {[%s]%s=%s} is not a UnitQuaternion!",
-			file->GetFileName(),
-			(const char*)page->m_name,
-			(const char*)m_name,
-			contents
-		));
-	}
-	yaw *= Radians_Per_Degree;
-	pitch *= Radians_Per_Degree;
-	roll *= Radians_Per_Degree;
-	*value = Quaternion_From_Yaw_Pitch_Roll(yaw, pitch, roll);
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
-	Note::SetEntry(const UnitQuaternion &value)
-{
-	Check_Object(this);
-
-	static char
-		contents[32];
-	Scalar yaw, pitch, roll;
-	Yaw_Pitch_Roll_From_Quaternion(value, &yaw, &pitch, &roll);
-	Verify(strlen(contents) < sizeof(contents));
-	mc2::fmt::to_buf(contents, "{:f} {:f} {:f}", yaw * Degrees_Per_Radian, pitch * Degrees_Per_Radian, roll * Degrees_Per_Radian);
 	SetEntry(contents);
 }
 

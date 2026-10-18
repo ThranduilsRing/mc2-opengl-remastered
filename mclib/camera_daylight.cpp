@@ -137,9 +137,9 @@ float Camera::setSunPitch (float pitchDeg, bool setYaw, float yawDeg)
 	// directional light keeps pointing at the old sun while every other consumer
 	// has moved. Same expression as updateDaylight / Camera::init.
 	if (worldLights && worldLights[0]) {
-		Stuff::LinearMatrix4D lightToWorldMatrix;
-		lightToWorldMatrix.BuildTranslation(Stuff::Point3D(0.0f, 0.0f, 0.0f));
-		lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(
+		glm::mat4 lightToWorldMatrix;
+		mc2::math::buildTranslation(lightToWorldMatrix, glm::vec3(0.0f, 0.0f, 0.0f));
+		mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(
 			lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
 		worldLights[0]->SetLightToWorld(&lightToWorldMatrix);
 	}
@@ -387,9 +387,9 @@ void Camera::updateDaylight (bool bInitialize)
 		lightGreen = fLightGreen;
 		lightBlue = fLightBlue;
 
-		Stuff::LinearMatrix4D lightToWorldMatrix;
-		lightToWorldMatrix.BuildTranslation(Stuff::Point3D(0.0f,0.0f,0.0f));
-		lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
+		glm::mat4 lightToWorldMatrix;
+		mc2::math::buildTranslation(lightToWorldMatrix, glm::vec3(0.0f,0.0f,0.0f));
+		mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
 		worldLights[0]->SetLightToWorld(&lightToWorldMatrix);
 
 		/* In the real world, fog color is generally varies with the ambient color, but in our
@@ -591,7 +591,7 @@ void Camera::updateLights()
 					{
 						for (int lo = 0; lo < 4 && !lightOnScreen; ++lo)
 						{
-							Stuff::Vector3D probe = light->position;
+							glm::vec3 probe = light->position;
 							if      (lo == 0) probe.x += lightR;
 							else if (lo == 1) probe.x -= lightR;
 							else if (lo == 2) probe.y += lightR;

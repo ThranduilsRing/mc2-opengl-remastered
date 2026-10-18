@@ -125,8 +125,8 @@ Action* SelectionBrush::endPaint()
 
 float SelectionBrush::calcNewHeight( int vertexRow, int vertexCol, float deltaScreen )
 {
-	Stuff::Vector3D world;
-	Stuff::Vector3D newWorld;
+	glm::vec3 world;
+	glm::vec3 newWorld;
 	Stuff::Vector4D screenVertex;
 	Stuff::Vector4D screenNewVertex;
 
@@ -145,7 +145,7 @@ float SelectionBrush::calcNewHeight( int vertexRow, int vertexCol, float deltaSc
 	
 }
 
-bool SelectionBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
+bool SelectionBrush::paint( glm::vec3& worldPos, int screenX, int screenY )
 {
 	if ( !land )
 		return false;  // no terrain -> land deref in every paint branch
@@ -175,7 +175,7 @@ bool SelectionBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY 
 				// with), invert that 2x2 dScreen/dWorld jacobian, and advance the object
 				// by J^-1 * (per-frame cursor pixel delta). All cell/link bookkeeping and
 				// the invalidate/update/register re-bake sequence below are unchanged.
-				auto projGL = [&]( const Stuff::Vector3D& wp, float& outSx, float& outSy ) -> bool {
+				auto projGL = [&]( const glm::vec3& wp, float& outSx, float& outSy ) -> bool {
 					ModernClipResult r = eye->projectModernClipGL( wp );
 					if ( r.clip.w <= 1e-4f )            // at/behind the near plane (signed w)
 						return false;
@@ -188,9 +188,9 @@ bool SelectionBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY 
 					return true;
 				};
 				const float D = 50.0f;   // world-unit probe for the forward jacobian
-				Stuff::Vector3D w0  = pApp->position;
-				Stuff::Vector3D wXp = w0; wXp.x += D;
-				Stuff::Vector3D wYp = w0; wYp.y += D;
+				glm::vec3 w0  = pApp->position;
+				glm::vec3 wXp = w0; wXp.x += D;
+				glm::vec3 wYp = w0; wYp.y += D;
 				float s0x, s0y, sXx, sXy, sYx, sYy;
 				// Per-frame cursor screen delta from the dedicated last-screen state.
 				const float dsx = (float)screenX - m_lastDragScreen.x;
@@ -239,7 +239,7 @@ bool SelectionBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY 
 					if ( !pSelApp )
 						continue;
 
-					Stuff::Vector3D newPos = pSelApp->position;
+					glm::vec3 newPos = pSelApp->position;
 					newPos.x += worldDx;
 					newPos.y += worldDy;
 					newPos.z = land->getTerrainElevation( newPos );
@@ -454,7 +454,7 @@ void SelectionBrush::render( int screenX, int screenY )
 
 		}
 		
-		Stuff::Vector3D world;
+		glm::vec3 world;
 		Stuff::Vector4D screen;
 
 		if ( 	!GetAsyncKeyState( KEY_LSHIFT ) && !GetAsyncKeyState( KEY_LCONTROL ) )
@@ -494,7 +494,7 @@ void SelectionBrush::render( int screenX, int screenY )
 }
 
 
-bool SelectionBrush::paintSmooth( Stuff::Vector3D& worldPos, int screenX, int screenY, int radius )
+bool SelectionBrush::paintSmooth( glm::vec3& worldPos, int screenX, int screenY, int radius )
 {
 	int minI = INT_MAX;
 	int maxI = 0;
@@ -529,7 +529,7 @@ bool SelectionBrush::paintSmooth( Stuff::Vector3D& worldPos, int screenX, int sc
 	return false;
 }
 
-bool   SelectionBrush::paintSmoothArea( Stuff::Vector3D& worldPos, int screenX, int screenY, float radY, float radX,
+bool   SelectionBrush::paintSmoothArea( glm::vec3& worldPos, int screenX, int screenY, float radY, float radX,
 									   int j, int i)
 {
 	Stuff::Vector4D endPos;
@@ -580,7 +580,7 @@ bool   SelectionBrush::paintSmoothArea( Stuff::Vector3D& worldPos, int screenX, 
 
 								if ( (deltaX * deltaX)/a + (deltaY * deltaY)/b <= 1 )
 								{
-									Stuff::Vector3D edge;
+									glm::vec3 edge;
 
 									if ( deltaX == 0 )
 									{

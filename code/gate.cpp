@@ -184,8 +184,8 @@ bool GateType::handleCollision (GameObjectPtr collidee, GameObjectPtr collider)
 		case GROUNDVEHICLE:
 		case ELEMENTAL:
 		{
-			Stuff::Vector3D colliderRangeV3;
-			colliderRangeV3.Subtract(gate->getPosition(),collider->getPosition());
+			glm::vec3 colliderRangeV3;
+			colliderRangeV3 = gate->getPosition() - collider->getPosition();
 			float colliderRange = colliderRangeV3.x * colliderRangeV3.x + colliderRangeV3.y * colliderRangeV3.y;
 
 			if ((collider->getTeamId() == gate->getTeamId()) || (gate->getTeamId() == -1))
@@ -378,8 +378,8 @@ void Gate::blowAnyOffendingObject (void)
 
 	if (closestObject)
 	{
-		Stuff::Vector3D objectRangeV3;
-		objectRangeV3.Subtract(getPosition(),closestObject->getPosition());
+		glm::vec3 objectRangeV3;
+		objectRangeV3 = getPosition() - closestObject->getPosition();
 		float objectRange = objectRangeV3.x * objectRangeV3.x + objectRangeV3.y * objectRangeV3.y;
 		float littleRadius = (getLittleExtent() + closestObject->getObjectType()->getExtentRadius());
 		littleRadius *= littleRadius;

@@ -133,13 +133,13 @@ namespace gosFX
 		bool
 			AnimateParticle(
 				unsigned index,
-				const Stuff::LinearMatrix4D *world_to_new_local,
+				const glm::mat4 *world_to_new_local,
 				Stuff::Time till
 			);
 		void
 			CreateNewParticle(
 				unsigned index,
-				Stuff::Point3D *translation
+				glm::vec3 *translation
 			);
 		void
 			DestroyParticle(unsigned index);

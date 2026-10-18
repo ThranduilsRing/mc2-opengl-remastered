@@ -4,9 +4,9 @@
 #include "mover_internal.h"
 
 
-Stuff::Vector3D Mover::calcOffsetMoveGoal (Stuff::Vector3D target) {
+glm::vec3 Mover::calcOffsetMoveGoal (glm::vec3 target) {
 
-	Stuff::Vector3D start = getPosition();
+	glm::vec3 start = getPosition();
 
 	Stuff::Vector2DOf<float> start2d;
 	start2d.x = start.x;
@@ -40,7 +40,7 @@ Stuff::Vector3D Mover::calcOffsetMoveGoal (Stuff::Vector3D target) {
 	float rayLength = 0.0;
 
 	int cellR, cellC;
-	Stuff::Vector3D curPoint3d(curPoint.x, curPoint.y, 0.0);
+	glm::vec3 curPoint3d(curPoint.x, curPoint.y, 0.0);
 	land->worldToCell(curPoint3d, cellR, cellC);
 	if (!GameMap->getPassable(cellR, cellC))
 		while (rayLength < distanceToTarget) {
@@ -84,21 +84,21 @@ inline bool inMapBounds (long r, long c, long mapHeight, long mapWidth) {
 long calcBestGoalFromTarget (int targetPos[2], int maxPos[2], float minRange, float bestRange, int* bestCell) {
 float startLocal = 40.0f;
 
-	Stuff::Vector3D startPos, endPos;
-	startPos.Zero();
-	endPos.Zero();
+	glm::vec3 startPos, endPos;
+	startPos = glm::vec3(0.0f);
+	endPos = glm::vec3(0.0f);
 		
 	land->getCellPos(maxPos[0], maxPos[1], endPos);
 	land->getCellPos(targetPos[0], targetPos[1], startPos);
 
-	Stuff::Vector3D deltaCellVec;
+	glm::vec3 deltaCellVec;
 	deltaCellVec.y = maxPos[0] - targetPos[0];
 	deltaCellVec.x = maxPos[1] - targetPos[1];
 	deltaCellVec.z = 0.0f;
 	float startHeight = startPos.z;
 
 	float cellLength = (Terrain::worldUnitsPerCell * metersPerWorldUnit);
-	float length = deltaCellVec.GetApproximateLength();
+	float length = glm::length(deltaCellVec);
 
 	long lastCellR = -1;
 	long lastCellC = -1;
@@ -116,11 +116,11 @@ float startLocal = 40.0f;
 		float endCellRow = maxPos[0];
 		float endCellCol = maxPos[1];
 			
-		Stuff::Vector3D currentPos = startPos;
-		Stuff::Vector3D dist;
-		dist.Subtract(endPos,currentPos);
+		glm::vec3 currentPos = startPos;
+		glm::vec3 dist;
+		dist = endPos - currentPos;
 			
-		float remainingDist = dist.GetApproximateLength();
+		float remainingDist = glm::length(dist);
 		float bestRemainingDist = remainingDist - (bestRange * worldUnitsPerMeter);
 
 		bool colDone = false, rowDone = false;
@@ -157,8 +157,8 @@ float startLocal = 40.0f;
 					return(1);
 				}
 
-			dist.Subtract(endPos,currentPos);
-			remainingDist = dist.GetApproximateLength();
+			dist = endPos - currentPos;
+			remainingDist = glm::length(dist);
 
 			if (fabs(remainingDist - bestRemainingDist) < cellLength)
 				if (remainingDist > bestRemainingDist)
@@ -207,7 +207,7 @@ void Mover::setMoveType (long type) {
 }
 
 
-long Mover::calcGlobalPath (GlobalPathStep* globalPath, GameObjectPtr obj, Stuff::Vector3D* location, bool useClosedAreas) {
+long Mover::calcGlobalPath (GlobalPathStep* globalPath, GameObjectPtr obj, glm::vec3* location, bool useClosedAreas) {
 
 #if 1
 	long startArea = GlobalMoveMap[moveLevel]->calcArea(cellPositionRow, cellPositionCol);
@@ -216,7 +216,7 @@ long Mover::calcGlobalPath (GlobalPathStep* globalPath, GameObjectPtr obj, Stuff
 	if (obj) {
 		goalArea = GlobalMoveMap[moveLevel]->calcArea(obj->cellPositionRow, obj->cellPositionCol);
 		if (goalArea == -1) {
-			Stuff::Vector3D goalPos = obj->getPosition();
+			glm::vec3 goalPos = obj->getPosition();
 			if (obj->isBuilding()) {
 				BuildingPtr building = (BuildingPtr)obj;
 				long goalRow = 0, goalCol = 0;
@@ -224,12 +224,12 @@ long Mover::calcGlobalPath (GlobalPathStep* globalPath, GameObjectPtr obj, Stuff
 				if (foundGoal)
 					land->cellToWorld(goalRow, goalCol, goalPos);
 				else {
-					Stuff::Vector3D objectPos = obj->getPosition();
+					glm::vec3 objectPos = obj->getPosition();
 					goalPos = calcOffsetMoveGoal(objectPos);
 				}
 				}
 			else {
-				Stuff::Vector3D objectPos = obj->getPosition();
+				glm::vec3 objectPos = obj->getPosition();
 				goalPos = calcOffsetMoveGoal(objectPos);
 			}
 			land->worldToCell(goalPos, goalCell[0], goalCell[1]);
@@ -265,7 +265,7 @@ long Mover::calcGlobalPath (GlobalPathStep* globalPath, GameObjectPtr obj, Stuff
 #endif
 }
 
-bool Mover::canMoveHere (Stuff::Vector3D worldPos) {
+bool Mover::canMoveHere (glm::vec3 worldPos) {
 
 	if (moveLevel == 2)
 		return(true);
@@ -280,11 +280,11 @@ bool Mover::canMoveHere (Stuff::Vector3D worldPos) {
 }
 
 long Mover::calcMoveGoal (GameObjectPtr target,
-						  Stuff::Vector3D moveCenter,
+						  glm::vec3 moveCenter,
 						  float moveRadius,
-						  Stuff::Vector3D moveGoal,
+						  glm::vec3 moveGoal,
 						  long selectionIndex,
-						  Stuff::Vector3D& newGoal,
+						  glm::vec3& newGoal,
 						  long numValidAreas,
 						  short* validAreas,
 						  unsigned long moveParams) {
@@ -314,17 +314,17 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 	}
 
 	if (moveParams & MOVEPARAM_STEP_TOWARD_TARGET) {
-		Stuff::Vector3D aimVector;
-		aimVector.Subtract(moveGoal, position);
+		glm::vec3 aimVector;
+		aimVector = moveGoal - position;
 		aimVector.z = 0;
-		if (aimVector.GetLength() > 0.0) {
-			aimVector.Normalize(aimVector);
+		if (glm::length(aimVector) > 0.0) {
+			aimVector = glm::normalize(aimVector);
 			float stepLength = (Terrain::worldUnitsPerVertex * 1.5);
 			aimVector.x *= stepLength;
 			aimVector.y *= stepLength;
 			aimVector.z = land->getTerrainElevation(aimVector);
-			Stuff::Vector3D targetGoal;
-			targetGoal.Add(position, aimVector);
+			glm::vec3 targetGoal;
+			targetGoal = position + aimVector;
 			newGoal = calcOffsetMoveGoal(targetGoal);
 		}
 
@@ -349,7 +349,7 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 	mapCellUL[0] = centerCell[0] - GOALMAP_CELL_DIM / 2;
 	mapCellUL[1] = centerCell[1] - GOALMAP_CELL_DIM / 2;
 	
-				Stuff::Vector3D start;
+				glm::vec3 start;
 				land->cellToWorld(mapCellUL[0], mapCellUL[1], start);
 
 	bool isAttackOrder = pilot->getCurTacOrder()->isCombatOrder();
@@ -494,7 +494,7 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 			if (mates[i] == this)
 				continue;
 			MechWarriorPtr pilot = mates[i]->getPilot();
-			Stuff::Vector3D goal;
+			glm::vec3 goal;
 			goal.x = goal.y = goal.z = 0.0f;
 			if (pilot && pilot->getMoveGlobalGoal(goal)) {
 			    int worldCell[2];
@@ -643,7 +643,7 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 	curGoalCell[1] = mapCellUL[1] + goalMapRowCol[goalList[0][0]][1];
 		
 	if (hasWeaponNode()) {
-		Stuff::Vector3D curMoverPosition;
+		glm::vec3 curMoverPosition;
 		curMoverPosition = position;
 		long curMoverRow = cellPositionRow;
 		long curMoverCol = cellPositionCol;
@@ -661,7 +661,7 @@ long Mover::calcMoveGoal (GameObjectPtr target,
             // we'll also read from behind goalList array at last iteration (when i == MaxMoveGoalChecks)
 			//if (goalList[i][1] > -900000) {
 			if (weight > -900000) {
-				Stuff::Vector3D start;
+				glm::vec3 start;
 				land->cellToWorld(curGoalCell[0], curGoalCell[1], start);
 				start.z = land->getTerrainElevation(start)/* + 25.0f*/;		//For that matter, so do we!
 				position = start;
@@ -780,8 +780,8 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 
 int Mover::calcMovePath (MovePathPtr path,
 						  long pathType,
-						  Stuff::Vector3D start,
-						  Stuff::Vector3D goal,
+						  glm::vec3 start,
+						  glm::vec3 goal,
 						  int* goalCell,
 						  unsigned long moveParams) {
 
@@ -954,11 +954,11 @@ int Mover::calcMovePath (MovePathPtr path,
 }
 
 int Mover::calcEscapePath (MovePathPtr path,
-							Stuff::Vector3D start,
-							Stuff::Vector3D goal,
+							glm::vec3 start,
+							glm::vec3 goal,
 							int* goalCell,
 							unsigned long moveParams,
-							Stuff::Vector3D& escapeGoal) {
+							glm::vec3& escapeGoal) {
 
 	escapeGoal.x = -999999.0;
 	escapeGoal.y = -999999.0;
@@ -1157,7 +1157,7 @@ long Mover::bounceToAdjCell (void) {
 			bool pathLockMarked = GameMap->getPathlock((moveLevel == 2), cellPositionRow, cellPositionCol);
 			if (pathLockMarked)
 				updatePathLock(false);
-			Stuff::Vector3D newPosition;
+			glm::vec3 newPosition;
 			land->cellToWorld(adjRow, adjCol, newPosition);
 			setPosition(newPosition);
 			pilot->pausePath();
@@ -1170,11 +1170,11 @@ long Mover::bounceToAdjCell (void) {
 }
 
 int Mover::calcMovePath (MovePathPtr path,
-						  Stuff::Vector3D start,
+						  glm::vec3 start,
 						  long thruArea[2],
 						  long goalDoor,
-						  Stuff::Vector3D finalGoal,
-						  Stuff::Vector3D* goal,
+						  glm::vec3 finalGoal,
+						  glm::vec3* goal,
 						  int* goalCell,
 						  unsigned long moveParams) {
 

@@ -285,7 +285,7 @@ bool
 	// Animate the color and intensity
 	//--------------------------------
 	//
-	Stuff::LinearMatrix4D local_to_world;
+	glm::mat4 local_to_world;
 
 	//
 	//-----------------------------------------------------------
@@ -296,7 +296,7 @@ bool
 	light_info.m_color.red = spec->m_red.ComputeValue(m_age, m_seed);
 	light_info.m_color.green = spec->m_green.ComputeValue(m_age, m_seed);
 	light_info.m_color.blue = spec->m_blue.ComputeValue(m_age, m_seed);
-	light_info.m_origin.Multiply(m_localToParent, *info->m_parentToWorld);
+	light_info.m_origin = m_localToParent * *info->m_parentToWorld;
 	light_info.m_intensity = spec->m_intensity.ComputeValue(m_age, m_seed);
 	light_info.m_inner = spec->m_innerRadius.ComputeValue(m_age, m_seed);
 	light_info.m_outer = spec->m_outerRadius.ComputeValue(m_age, m_seed);

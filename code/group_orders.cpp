@@ -10,7 +10,7 @@
 // TAC ORDERS
 //---------------------------------------------------------------------------
 
-long MoverGroup::orderMoveToPoint (bool setTacOrder, long origin, Stuff::Vector3D location, unsigned long params) {
+long MoverGroup::orderMoveToPoint (bool setTacOrder, long origin, glm::vec3 location, unsigned long params) {
 
 	long result = TACORDER_FAILURE;
 
@@ -122,7 +122,7 @@ long MoverGroup::orderAttackObject (long origin, GameObjectPtr target, long atta
 
 //---------------------------------------------------------------------------
 
-long MoverGroup::orderWithdraw (long origin, Stuff::Vector3D location) {
+long MoverGroup::orderWithdraw (long origin, glm::vec3 location) {
 
 	long result = TACORDER_FAILURE;
 

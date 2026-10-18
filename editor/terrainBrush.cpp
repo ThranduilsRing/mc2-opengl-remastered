@@ -29,7 +29,7 @@ float TerrainBrush::s_lastRadius = 0.0f;   // 0 => single-vertex (legacy) until 
 // Modern GL forward projection (projectModernClipGL + viewport remap) -- the same
 // zoom-correct transform the sculpt cursor uses. Legacy projectZ diverges when
 // zoomed in. Returns false (skip primitive) behind the near plane.
-static bool projectPtGL_terrainbrush( Camera* eye, const Stuff::Vector3D& wp, float& sx, float& sy )
+static bool projectPtGL_terrainbrush( Camera* eye, const glm::vec3& wp, float& sx, float& sy )
 {
 	ModernClipResult r = eye->projectModernClipGL( wp );
 	if ( r.clip.w <= 1e-4f ) return false;
@@ -77,7 +77,7 @@ Action* TerrainBrush::endPaint()
 //-------------------------------------------------------------------------------------------------
 // Paint EVERY vertex within the world-space brush radius (mirrors HeightBrush's
 // disk loop). radius<=0 falls back to the single closest vertex (legacy behaviour).
-bool TerrainBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
+bool TerrainBrush::paint( glm::vec3& worldPos, int screenX, int screenY )
 {
 	if ( !pAction )
 		return false;
@@ -145,7 +145,7 @@ void TerrainBrush::render( int screenX, int screenY )
 	if ( !eye || !land || radius <= 0.0f )
 		return;
 
-	Stuff::Vector3D center;
+	glm::vec3 center;
 	Stuff::Vector2DOf<long> sp;
 	sp.x = screenX; sp.y = screenY;
 	eye->inverseProject( sp, center );
@@ -160,7 +160,7 @@ void TerrainBrush::render( int screenX, int screenY )
 	for ( int k = 0; k <= N; ++k )
 	{
 		const float ang = (float)k / (float)N * 6.2831853f;
-		Stuff::Vector3D wp = center;
+		glm::vec3 wp = center;
 		wp.x += cosf( ang ) * radius;
 		wp.y += sinf( ang ) * radius;
 		wp.z = land->getTerrainElevation( wp );

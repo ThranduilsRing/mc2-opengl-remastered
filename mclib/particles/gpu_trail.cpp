@@ -94,8 +94,8 @@ const GpuTrailTuning& GpuTrailEmitter::tuning_for(GpuTrailKind k)
 }
 
 void GpuTrailEmitter::Spawn(GpuTrailKind kind,
-                            const Stuff::Vector3D& prev_world,
-                            const Stuff::Vector3D& cur_world,
+                            const glm::vec3& prev_world,
+                            const glm::vec3& cur_world,
                             float deltaT)
 {
     if (kind == GpuTrailKind::None) return;

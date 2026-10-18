@@ -20,12 +20,12 @@ DWORD
 	gosFX::Shape_Count,
 	gosFX::Profile_Count;
 
-static Stuff::LinearMatrix4D
-	Effect_Into_Motion_data(true),
-	Effect_Against_Motion_data(true);
-const Stuff::LinearMatrix4D&
+static glm::mat4
+	Effect_Into_Motion_data = glm::mat4(1.0f),
+	Effect_Against_Motion_data = glm::mat4(1.0f);
+const glm::mat4&
 	gosFX::Effect_Into_Motion = Effect_Into_Motion_data;
-const Stuff::LinearMatrix4D&
+const glm::mat4&
 	gosFX::Effect_Against_Motion = Effect_Against_Motion_data;
 
 //-----------------------------------------------------------------------------
@@ -58,15 +58,15 @@ void
 
 	EffectLibrary::InitializeClass();
 
-	Effect_Into_Motion_data(1,1) = 0.0f;
-	Effect_Into_Motion_data(1,2) = 1.0f;
-	Effect_Into_Motion_data(2,1) = -1.0f;
-	Effect_Into_Motion_data(2,2) = 0.0f;
+	Effect_Into_Motion_data[1][1] = 0.0f;
+	Effect_Into_Motion_data[2][1] = 1.0f;
+	Effect_Into_Motion_data[1][2] = -1.0f;
+	Effect_Into_Motion_data[2][2] = 0.0f;
 
-	Effect_Against_Motion_data(1,1) = 0.0f;
-	Effect_Against_Motion_data(1,2) = -1.0f;
-	Effect_Against_Motion_data(2,1) = 1.0f;
-	Effect_Against_Motion_data(2,2) = 0.0f;
+	Effect_Against_Motion_data[1][1] = 0.0f;
+	Effect_Against_Motion_data[2][1] = -1.0f;
+	Effect_Against_Motion_data[1][2] = 1.0f;
+	Effect_Against_Motion_data[2][2] = 0.0f;
 
 	gos_PopCurrentHeap();
 

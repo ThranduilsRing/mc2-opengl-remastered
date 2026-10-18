@@ -249,13 +249,13 @@ MC_TextureManager* mcTextureManager = nullptr;  // game texture singleton
 
 // Camera statics/methods (render-time projection; never on load path).
 float Camera::HazeFactor = 0.0f;
-ModernClipResult Camera::projectModernClipGL(const Stuff::Vector3D&) const
+ModernClipResult Camera::projectModernClipGL(const glm::vec3&) const
 {
     ModernClipResult r; std::memset(&r, 0, sizeof(r)); return r;
 }
 
 // Terrain elevation query (transform-time only).
-float Terrain::getTerrainElevation(const Stuff::Vector3D&) { return 0.0f; }
+float Terrain::getTerrainElevation(const glm::vec3&) { return 0.0f; }
 
 // MC_TextureManager / MC_TextureNode (GPU texture bind; render only).
 gos_VERTEXManager* MC_TextureManager::gvManager = nullptr;

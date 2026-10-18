@@ -46,7 +46,7 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
         const int   liftIdx = 3 + 4 * (liftAxis & 3);                // F[3]/F[7]/F[11]
         float Msw[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
         if (desc.mechShape->GetNumShapes() > 0) {
-            const float* e = (const float*)desc.mechShape->listOfShapes[0].shapeToWorld.entries;
+            const float* e = (const float*)glm::value_ptr(desc.mechShape->listOfShapes[0].shapeToWorld);
             for (int k = 0; k < 12; ++k) Msw[k] = e[k];
         }
         for (int b = 0; b < mdCount && b < (int)rec.numBones && md; ++b) {
@@ -68,7 +68,7 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
         const int numShapes = desc.mechShape->GetNumShapes();
         for (int i = 0; i < numShapes && i < (int)rec.numBones; ++i) {
             const TG_ShapeRec& sr = desc.mechShape->listOfShapes[i];
-            const float* e = (const float*)sr.shapeToWorld.entries;
+            const float* e = (const float*)glm::value_ptr(sr.shapeToWorld);
             GpuMechBone bone;
             bone.row0[0]=e[0]; bone.row0[1]=e[4]; bone.row0[2]=e[ 8]; bone.row0[3]=0.0f;
             bone.row1[0]=e[1]; bone.row1[1]=e[5]; bone.row1[2]=e[ 9]; bone.row1[3]=0.0f;

@@ -172,7 +172,7 @@ long ObjectType::init (FitIniFilePtr objFile) {
 
 //---------------------------------------------------------------------------
 
-void ObjectType::createExplosion (Stuff::Vector3D& position, float dmg, float rad) 
+void ObjectType::createExplosion (glm::vec3& position, float dmg, float rad) 
 {
 	long effectId = weaponEffects->GetEffectObjNum(explosionObject);
 	if (explosionObject >= 0) 
@@ -208,7 +208,7 @@ bool ObjectType::handleDestruction (GameObjectPtr collidee, GameObjectPtr collid
 	// has, in fact, gone south.  The object is NOT
 	// removed from the object list here!!  Please don't
 	// do it here either since it will screw up much code.
-	Stuff::Vector3D pos = collidee->getPosition();
+	glm::vec3 pos = collidee->getPosition();
 	createExplosion(pos);
 
 	return(true);

@@ -23,10 +23,10 @@ class SelectionBrush: public Brush
 		virtual ~SelectionBrush();
 		virtual bool beginPaint();
 		virtual Action* endPaint();
-		virtual bool paint( Stuff::Vector3D& worldPos, int screenX, int screenY );
-		virtual bool canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags ) { return true; } 
+		virtual bool paint( glm::vec3& worldPos, int screenX, int screenY );
+		virtual bool canPaint( glm::vec3& worldPos, int screenX, int screenY, int flags ) { return true; } 
 		virtual void render( int screenX, int screenY );
-		bool    paintSmooth( Stuff::Vector3D& worldPos, int screenX, int screenY, int radius );
+		bool    paintSmooth( glm::vec3& worldPos, int screenX, int screenY, int radius );
 
 	private:
 
@@ -34,12 +34,12 @@ class SelectionBrush: public Brush
 		SelectionBrush( const SelectionBrush& electionBrush );
 		SelectionBrush& operator=( const SelectionBrush& electionBrush );
 		static float calcNewHeight( int vertexRow, int vertexCol, float screenDeltaY );
-		bool   paintSmoothArea( Stuff::Vector3D& worldPos, int screenX, int screenY, float radiusX, float radiusY,
+		bool   paintSmoothArea( glm::vec3& worldPos, int screenX, int screenY, float radiusX, float radiusY,
 									   int j, int i);
 
 		Stuff::Vector4D		lastPos;
-		Stuff::Vector3D		firstWorldPos;
-		Stuff::Vector3D		lastWorldPos;
+		glm::vec3		firstWorldPos;
+		glm::vec3		lastWorldPos;
 
 		// Dedicated last-cursor-screen state for the hand-tool (pDragBuilding) move.
 		// lastPos doubles as the height-drag delta tracker and is zeroed in beginPaint,

@@ -138,7 +138,7 @@ bool
 	Check_Object(pMesh);
 
 	int len;
-	Vector3D *_normals;
+	glm::vec3 *_normals;
 
 	MLR_I_C_TMesh::Copy(pMesh);
 
@@ -152,7 +152,7 @@ bool
 //
 void
 	MLR_I_L_TMesh::SetNormalData(
-		const Vector3D *data,
+		const glm::vec3 *data,
 		int dataSize
 	)
 {
@@ -170,7 +170,7 @@ void
 //
 void
 	MLR_I_L_TMesh::GetNormalData(
-		Vector3D **data,
+		glm::vec3 **data,
 		int *dataSize
 	)
 {
@@ -302,20 +302,20 @@ MLRShape*
 
 	int i, j, k;
 	long    nrTri = (long) ceil (icoInfo.all * pow (4.0f, icoInfo.depth));
-	Point3D v[3];
+	glm::vec3 v[3];
 
 	if(3*nrTri >= Limits::Max_Number_Vertices_Per_Mesh)
 	{
 		nrTri = Limits::Max_Number_Vertices_Per_Mesh/3;
 	}
 
-	Point3D *coords = new Point3D [nrTri*3];
+	glm::vec3 *coords = new glm::vec3 [nrTri*3];
 	Register_Pointer(coords);
 	
-	Point3D *collapsedCoords = nullptr;
+	glm::vec3 *collapsedCoords = nullptr;
 	if(icoInfo.indexed==true)
 	{
-		collapsedCoords = new Point3D [nrTri*3];
+		collapsedCoords = new glm::vec3 [nrTri*3];
 		Register_Pointer(collapsedCoords);
 	}
 
@@ -325,7 +325,7 @@ MLRShape*
 	Register_Pointer(texCoords);
 	RGBAColor *colors = new RGBAColor[nrTri*3];
 	Register_Pointer(colors);
-	Vector3D *normals = new Vector3D[nrTri*3];
+	glm::vec3 *normals = new glm::vec3[nrTri*3];
 	Register_Pointer(normals);
 
 	int uniquePoints = 0;
@@ -356,7 +356,7 @@ MLRShape*
 			{
 				for(j=0;j<uniquePoints;j++)
 				{
-					if(coords[i] == collapsedCoords[j])
+					if(mc2::math::closeEnough(coords[i], collapsedCoords[j]))
 					{
 						break;
 					}
@@ -449,7 +449,7 @@ MLRShape*
 						(1.0f + collapsedCoords[i].z)/2.0f,
 						1.0f
 					);
-				normals[i].Normalize(collapsedCoords[i]);
+				normals[i] = glm::normalize(collapsedCoords[i]);
 			}
 		}
 		else
@@ -463,7 +463,7 @@ MLRShape*
 						(1.0f + coords[i].z)/2.0f,
 						1.0f
 					);
-				normals[i].Normalize(coords[i]);
+				normals[i] = glm::normalize(coords[i]);
 			}
 		}
 		mesh->SetColorData(colors, uniquePoints);

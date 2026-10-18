@@ -54,7 +54,7 @@ bool EditorObjectMgr::save( PacketFile& PakFile, int whichPacket )
 			BuildingLink* pLink = getLinkWithChild(*iter);
 			if ( pLink )
 			{
-				Stuff::Vector3D pos = pLink->GetParentPosition();
+				glm::vec3 pos = pLink->GetParentPosition();
 				int cellI, cellJ;
 				land->worldToCell( pos, cellJ, cellI );
 
@@ -138,7 +138,7 @@ bool EditorObjectMgr::load( PacketFile& PakFile, int whichPacket )
 	{
 		int id = file.readLong();
 
-		Stuff::Vector3D vector;
+		glm::vec3 vector;
 		vector.x = file.readFloat();
 		vector.y = file.readFloat();
 		vector.z = file.readFloat();
@@ -180,7 +180,7 @@ bool EditorObjectMgr::load( PacketFile& PakFile, int whichPacket )
 			long cellJ = cells >> 16;
 			long cellI = cells & 0x0000ffff;
 
-			Stuff::Vector3D pos;
+			glm::vec3 pos;
 
 			land->cellToWorld( cellJ, cellI, pos );
 			pos.z = land->getTerrainElevation( pos );
@@ -189,7 +189,7 @@ bool EditorObjectMgr::load( PacketFile& PakFile, int whichPacket )
 			for ( auto iter = links.begin();
 			iter != links.end(); iter++ )
 			{
-				if ( (*iter)->GetParentPosition() == pos )
+				if ( mc2::math::closeEnough((*iter)->GetParentPosition(), pos) )
 				{
 					(*iter)->AddChild( pInfo );
 					bFound = true;
@@ -255,7 +255,7 @@ bool  EditorObjectMgr::loadMechs( FitIniFile& file )
 		return EditorFit::reject("Part count");
 
 	int alternativeInstancesCounter = count + 1;
-	Stuff::Vector3D position;
+	glm::vec3 position;
 	position.x = position.y = position.z = 0;
 	char buffer[256];
 	for ( int i = 1; i < count + 1; ++i )
@@ -662,7 +662,7 @@ bool EditorObjectMgr::loadDropZones( FitIniFile& file )
 		bool bVTol;
 		file.readIdBoolean( "IsVTOL", bVTol );
 
-		Stuff::Vector3D pos;
+		glm::vec3 pos;
 		file.readIdFloat( "PositionX", pos.x );
 		file.readIdFloat( "PositionY", pos.y );
 

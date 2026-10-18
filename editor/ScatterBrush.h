@@ -24,7 +24,7 @@ public:
 
 	virtual bool    beginPaint();
 	virtual Action* endPaint();
-	virtual bool    paint( Stuff::Vector3D& worldPos, int screenX, int screenY );
+	virtual bool    paint( glm::vec3& worldPos, int screenX, int screenY );
 	virtual void    render( int screenX, int screenY );
 	virtual void    update( int screenX, int screenY ) {}
 

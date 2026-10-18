@@ -16,7 +16,7 @@ DropZoneBrush::DropZoneBrush(int align, bool bVtol)
 	bVTol = bVtol;
 }
 
-bool DropZoneBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
+bool DropZoneBrush::paint( glm::vec3& worldPos, int screenX, int screenY )
 {
 	EditorObject* pInfo = EditorObjectMgr::instance()->addDropZone( worldPos, alignment, bVTol );
 	if ( pInfo && pAction )
@@ -28,7 +28,7 @@ bool DropZoneBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
 	return false;
 }
 
-bool DropZoneBrush::canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags )
+bool DropZoneBrush::canPaint( glm::vec3& worldPos, int screenX, int screenY, int flags )
 {
 	return EditorObjectMgr::instance()->canAddDropZone( worldPos, alignment, bVTol );
 }

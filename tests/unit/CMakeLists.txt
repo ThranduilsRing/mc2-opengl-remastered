@@ -437,13 +437,7 @@ if(NOT TARGET glm::glm)
 endif()
 if(TARGET glm::glm)
     set(MC2_IDENTITY_SOURCES
-        test_stuff_glm_identity.cpp
-        ${MC2_WORKTREE_ROOT}/mclib/stuff/vector3d.cpp
-        ${MC2_WORKTREE_ROOT}/mclib/stuff/point3d.cpp
-        ${MC2_WORKTREE_ROOT}/mclib/stuff/matrix.cpp
-        ${MC2_WORKTREE_ROOT}/mclib/stuff/affinematrix.cpp
-        ${MC2_WORKTREE_ROOT}/mclib/stuff/linearmatrix.cpp
-        ${MC2_WORKTREE_ROOT}/mclib/stuff/rotation.cpp
+        test_glm_math_identity.cpp   # step 5: the glm engine math (convention adapters, byte formats)
     )
     target_sources(mc2_tests PRIVATE ${MC2_IDENTITY_SOURCES})
     target_link_libraries(mc2_tests PRIVATE glm::glm)

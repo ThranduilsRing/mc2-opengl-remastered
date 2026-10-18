@@ -167,7 +167,7 @@ gosFX::EffectCloud*
 void
 	gosFX::EffectCloud::CreateNewParticle(
 		unsigned index,
-		Stuff::Point3D *translation
+		glm::vec3 *translation
 	)
 {
 	Check_Object(this);
@@ -204,8 +204,8 @@ void
 	// Set the transform on the effect, then start the child effect
 	//-------------------------------------------------------------
 	//
-	effect->m_localToParent.BuildTranslation(particle->m_localTranslation);
-	effect->m_localToParent.BuildRotation(particle->m_localRotation);
+	mc2::math::buildTranslation(effect->m_localToParent, particle->m_localTranslation);
+	mc2::math::buildRotation(effect->m_localToParent, particle->m_localRotation);
 	ExecuteInfo
 		local_info(
 			m_lastRan,
@@ -223,7 +223,7 @@ void
 bool
 	gosFX::EffectCloud::AnimateParticle(
 		unsigned index,
-		const Stuff::LinearMatrix4D *world_to_new_local,
+		const glm::mat4 *world_to_new_local,
 		Stuff::Time till
 	)
 {
@@ -248,15 +248,15 @@ bool
 	//
 	Effect *effect = particle->m_effect;
 	Check_Object(effect);
-	effect->m_localToParent.BuildTranslation(particle->m_localTranslation);
-	effect->m_localToParent.BuildRotation(particle->m_localRotation);
+	mc2::math::buildTranslation(effect->m_localToParent, particle->m_localTranslation);
+	mc2::math::buildRotation(effect->m_localToParent, particle->m_localRotation);
 
 	//
 	//-----------------------
 	// Execute all the effect
 	//-----------------------
 	//
-	Stuff::OBB bounds;
+	mc2::math::Obb bounds;
 	ExecuteInfo
 		info(
 			till,
@@ -265,8 +265,8 @@ bool
 		);
 	if (effect->Execute(&info))
 	{
-		Stuff::Point3D center(bounds.localToParent);
-		particle->m_radius = center.GetLength() + bounds.sphereRadius;
+		glm::vec3 center = mc2::math::getTranslation(bounds.localToParent);
+		particle->m_radius = glm::length(center) + bounds.sphereRadius;
 		return true;
 	}
 

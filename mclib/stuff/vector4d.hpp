@@ -8,7 +8,7 @@
 #pragma once
 
 #include"stuff.hpp"
-#include"point3d.hpp"
+#include"glmstream.hpp"
 
 namespace Stuff {class Vector4D;}
 
@@ -22,8 +22,6 @@ namespace Stuff {class Vector4D;}
 
 namespace Stuff {
 
-	class AffineMatrix4D;
-	class Matrix4D;
 	class Vector4D;
 
     bool Small_Enough(const Vector4D &v,Scalar e = SMALL);
@@ -56,10 +54,6 @@ namespace Stuff {
 				{x=X; y=Y; z=Z; w=W;}
 		Vector4D(const Vector4D &v)
 			{x=v.x; y=v.y; z=v.z; w=v.w;}
-		explicit Vector4D(const Vector3D &v)
-			{*this = v;}
-		explicit Vector4D(const Point3D &p)
-			{*this = p;}
 
 		//
 		// Assignment operators
@@ -69,18 +63,6 @@ namespace Stuff {
 				{
 					Check_Pointer(this); Check_Object(&v);
 					x = v.x; y = v.y; z = v.z; w = v.w; return *this;
-				}
-		Vector4D&
-			operator=(const Vector3D &v)
-				{
-					Check_Pointer(this); Check_Object(&v);
-					x = v.x; y = v.y; z = v.z; w = 0.0f; return *this;
-				}
-		Vector4D&
-			operator=(const Point3D &p)
-				{
-					Check_Pointer(this); Check_Object(&p);
-					x = p.x; y = p.y; z = p.z; w = 1.0f; return *this;
 				}
 
 		//
@@ -225,148 +207,45 @@ namespace Stuff {
 			operator/=(const Vector4D &v)
 				{return Divide(*this,v);}
 
+		//  Transforms (step 5: the matrices are glm::mat4 holding the engine's ROW-convention matrix, entry (r, c) at m[c][r])
 		//
-		//  Transforms
-		//
+		// v * M with an affine M (column 3 ignored, w kept)
 		Vector4D&
-			Multiply(
+			MultiplyAffine(
 				const Vector4D &v,
-				const AffineMatrix4D &m
+				const glm::mat4 &m
 			);
-		Vector4D&
-			operator*=(const AffineMatrix4D &M)
-				{Vector4D src(*this); return Multiply(src,M);}
 		Vector4D& Multiply(
 			const Vector4D &v,
-			const Matrix4D &m
+			const glm::mat4 &m
 		);
 		Vector4D&
-			operator*=(const Matrix4D &m)
+			operator*=(const glm::mat4 &m)
 				{Vector4D src(*this); return Multiply(src,m);}
-		Vector4D& Multiply(
-			const Vector3D &v,
-			const Matrix4D &m
+		// (x, y, z, 0) * M: a direction (the former Multiply(const Vector3D&, const Matrix4D&))
+		Vector4D& MultiplyVector(
+			const glm::vec3 &v,
+			const glm::mat4 &m
 		);
-
-		Vector4D& Multiply(
-			const Point3D &v,
-			const Matrix4D &m
+		// (x, y, z, 1) * M: a point (the former Multiply(const Point3D&, const Matrix4D&))
+		Vector4D& MultiplyPoint(
+			const glm::vec3 &v,
+			const glm::mat4 &m
 		)
 			{
-				Check_Pointer(this);
-				Check_Object(&v);
-				Check_Object(&m);
-
-#if USE_ASSEMBLER_CODE
-				Scalar *f = &x;
-				_asm {
-		mov         edx, m
-		
-		mov         eax, v
-
-		fld			dword ptr [eax]			//	v.x
-		fld			dword ptr [eax+4]		//	v.y
-		fld			dword ptr [eax+8]		//	v.z
-
-		mov         eax, f
-
-		fld         dword ptr [edx+34h]		//	m[1][3]
-		fmul        st, st(2)				//	v.y
-		
-		fld         dword ptr [edx+38h]		//	m[2][3]
-		fmul        st, st(2)				//	v.z
-
-		fxch		st(1)
-		fadd        dword ptr [edx+3Ch]		//	m[3][3]
-		
-		fld         dword ptr [edx+30h]		//	m[0][3]
-		fmul        st, st(5)				//	v.x
-
-		fxch		st(2)
-		faddp       st(1),st
-
-		fld         dword ptr [edx+14h]		//	m[1][1]
-		fmul        st, st(4)				//	v.y
-
-		fxch		st(2)
-		faddp       st(1),st
-
-		fld         dword ptr [edx+18h]		//	m[2][1]
-		fmul        st, st(3)				//	v.z
-		
-		fxch		st(1)
-		fstp        dword ptr [eax+0Ch]		//	w
-
-		fadd        dword ptr [edx+1Ch]		//	m[3][1]
-
-		fld         dword ptr [edx+10h]		//	m[0][1]
-		fmul        st, st(5)				//	v.x
-
-		fxch		st(2)
-		faddp       st(1),st
-
-		fld         dword ptr [edx+24h]		//	m[1][2]
-		fmul        st, st(4)				//	v.y
-
-		fxch		st(2)
-		faddp       st(1),st
-
-		fld         dword ptr [edx+28h]		//	m[2][2]
-		fmul        st, st(3)				//	v.z
-		
-		fxch		st(1)
-		fstp        dword ptr [eax+4]		//	y
-
-		fadd        dword ptr [edx+2Ch]		//	m[3][2]
-		
-		fld         dword ptr [edx+20h]		//	m[0][2]
-		fmul        st, st(5)				//	v.x
-
-		fxch		st(2)
-		faddp       st(1),st
-
-		fld         dword ptr [edx+4]		//	m[1][0]
-		fmul        st, st(4)				//	v.y
-
-		fxch		st(2)
-		faddp       st(1),st
-
-		fld         dword ptr [edx+8]		//	m[2][0]
-		fmul        st, st(3)				//	v.z
-
-		fxch		st(1)
-		fstp        dword ptr [eax+8]		//	z
-
-		fadd        dword ptr [edx+0Ch]		//	m[3][0]
-		
-		fld         dword ptr [edx]			//	m[0][0]
-		fmul        st, st(5)				//	v.x
-		
-		fxch		st(2)
-		faddp       st(1),st
-
-		faddp       st(1),st
-
-//	get rid of x, y, z
-		fstp		st(1)
-		fstp		st(1)
-		fstp		st(1)
-
-		fstp        dword ptr [eax]			//	x
-
-	}
-#else
-				x = v.x*m(0,0) + v.y*m(1,0) + v.z*m(2,0) + m(3,0);
-				y = v.x*m(0,1) + v.y*m(1,1) + v.z*m(2,1) + m(3,1);
-				z = v.x*m(0,2) + v.y*m(1,2) + v.z*m(2,2) + m(3,2);
-				w = v.x*m(0,3) + v.y*m(1,3) + v.z*m(2,3) + m(3,3);
-#endif
+				x = v.x*m[0][0] + v.y*m[0][1] + v.z*m[0][2] + m[0][3];
+				y = v.x*m[1][0] + v.y*m[1][1] + v.z*m[1][2] + m[1][3];
+				z = v.x*m[2][0] + v.y*m[2][1] + v.z*m[2][2] + m[2][3];
+				w = v.x*m[3][0] + v.y*m[3][1] + v.z*m[3][2] + m[3][3];
 				return *this;
 			}
 
+		static Vector4D FromVector(const glm::vec3 &v) {return Vector4D(v.x, v.y, v.z, 0.0f);}
+		static Vector4D FromPoint(const glm::vec3 &p) {return Vector4D(p.x, p.y, p.z, 1.0f);}
+
 		Vector4D& MultiplySetClip(
-			const Point3D &v,
-			const Matrix4D &m,
+			const glm::vec3 &v,
+			const glm::mat4 &m,
 			int *clipper
 		);
 /*
@@ -569,5 +448,12 @@ namespace Stuff {
 		static bool
 			TestClass();
 	};
+
+	// The former Point3D = Vector4D: the homogeneous divide (one reciprocal, three multiplies).
+	inline glm::vec3 Project(const Vector4D& v)
+	{
+		const Scalar scale = 1.0f / v.w;
+		return glm::vec3(v.x*scale, v.y*scale, v.z*scale);
+	}
 
 }

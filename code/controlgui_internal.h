@@ -14,7 +14,7 @@
 #include"objmgr.h"            // Tactical Overview: enemy/contact marker scan
 #include"mover.h"
 // Squad-level overview move arrow (defined in warrior.cpp).
-void drawOverviewArrowWorld( const Stuff::Vector3D& from, const Stuff::Vector3D& to, unsigned long color );
+void drawOverviewArrowWorld( const glm::vec3& from, const glm::vec3& to, unsigned long color );
 extern HGOSFONT3D gosFontHandle;   // global font for sensor-view range labels
 extern float worldUnitsPerMeter;   // sensor range is in world units; /this = meters
 #include"team.h"

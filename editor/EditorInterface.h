@@ -367,8 +367,8 @@ private:
 	ModifyBuildingAction*		m_pDragAction;
 	int							m_dragStartX;
 	int							m_dragStartY;
-	Stuff::Vector3D				m_dragStartWorld;
-	Stuff::Vector3D				m_dragObjStartPos;
+	glm::vec3				m_dragStartWorld;
+	glm::vec3				m_dragObjStartPos;
 	// last cursor screen pos during a drag; the per-frame screen->world delta uses
 	// a LOCALLY-sampled map (inverseProject snaps to the 128-unit grid, and a single
 	// grab-time map overshoots as world-units-per-pixel changes across the screen).
@@ -389,7 +389,7 @@ private:
 	bool						bSmooth;
 
 	static EditorInterface*		s_instance;
-	Stuff::Vector3D				lastClickPos;
+	glm::vec3				lastClickPos;
 
 	HCURSOR						hCursor;
 	int							curCursorID;

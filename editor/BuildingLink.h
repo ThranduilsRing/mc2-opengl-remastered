@@ -20,15 +20,15 @@ public:
 	BuildingLink( const EditorObject* pParent );
 	BuildingLink( const BuildingLink& Link );
 	BuildingLink& operator=( const BuildingLink& );
-	BuildingLink( const Stuff::Vector3D& ParentPosition );
+	BuildingLink( const glm::vec3& ParentPosition );
 
 	bool	HasChild( const EditorObject* ) const;
 	bool	HasParent( const EditorObject* ) const;
 	int		GetLinkCount() const;
 	bool	RemoveObject( const EditorObject* );
-	const	Stuff::Vector3D& GetParentPosition() const;
-	void	SetParentPosition( const Stuff::Vector3D& pos );
-	int		GetChildrenPositions( Stuff::Vector3D*, int MaxNumberOfPoints ) const;
+	const	glm::vec3& GetParentPosition() const;
+	void	SetParentPosition( const glm::vec3& pos );
+	int		GetChildrenPositions( glm::vec3*, int MaxNumberOfPoints ) const;
 	bool	AddChild( const EditorObject* pObject );
 	void	SetParentAlignment( int alignment );
 	void	FixHeights();
@@ -45,7 +45,7 @@ private:
 	 struct Info
 	 {
 		 long m_ID;		 
-		 Stuff::Vector3D pos;
+		 glm::vec3 pos;
 	 	 bool operator==( const Info& Src )const;
 	 };
 

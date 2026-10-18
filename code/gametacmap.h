@@ -48,7 +48,7 @@ class GameTacMap: public TacMap
 	bool animate (long objectiveId, long nFlashes);
 
 	// if the world coords do not lie on the map, they will be changed.
-	void worldToTacMap( Stuff::Vector3D& world, gos_VERTEX& tac );	
+	void worldToTacMap( glm::vec3& world, gos_VERTEX& tac );	
 
 
 	bool inRegion( int x, int y ){ return x > left && x < right && y > top && y < bottom; }
@@ -71,19 +71,19 @@ class GameTacMap: public TacMap
 	unsigned long viewRectHandle;
 	unsigned long blipHandle;
 
-	Stuff::Vector3D navMarkers[6];
+	glm::vec3 navMarkers[6];
 	unsigned long navMarkerCount;
 	unsigned long curNavMarker;
 
-	void drawSensor( const Stuff::Vector3D& pos, float radius, long color);
-	void drawBlip( const Stuff::Vector3D& pos, long color, int shape  );
+	void drawSensor( const glm::vec3& pos, float radius, long color);
+	void drawBlip( const glm::vec3& pos, long color, int shape  );
 
 	// shared blip/sensor collection (sensor towers + movers, colors by
 	// team/selection/contact) — factored verbatim from the legacy render()
 	// loops so the ImGui path draws from the SAME data (arrays sized
 	// MAX_MOVERS by the callers). Returns count.
 	int collectBlips( unsigned long* colors, unsigned long* ringColors,
-					  Stuff::Vector3D* positions, unsigned long* ranges,
+					  glm::vec3* positions, unsigned long* ranges,
 					  bool* selected );
 
 	const static float s_blinkLength;

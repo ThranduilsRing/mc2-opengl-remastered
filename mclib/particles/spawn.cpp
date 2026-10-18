@@ -65,7 +65,7 @@ float resolveSampleAge(float callerAge) {
 }
 
 bool Spawn(gosFX::Effect::Specification* spec,
-           const Stuff::LinearMatrix4D*  parentToWorld,
+           const glm::mat4*  parentToWorld,
            float                          spawnSeed,
            float                          callerAge)
 {

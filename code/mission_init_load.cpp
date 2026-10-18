@@ -228,7 +228,7 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 						if (tidx >= 0 && tidx < 12) rt->tacticWeights[tidx] = b.tacticWeight[ti];
 					}
 					if (w->getVehicle()) {
-						Stuff::Vector3D vp = w->getVehicle()->getPosition();
+						glm::vec3 vp = w->getVehicle()->getPosition();
 						rt->postPos[0] = vp.x; rt->postPos[1] = vp.y; rt->postPos[2] = vp.z; rt->postSet = true;
 					}
 					switch (pType) {
@@ -236,7 +236,7 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 							int wc = (b.primary.waypointCount > 8) ? 8 : b.primary.waypointCount;
 							if (wc <= 0) { rt->guardHold = true; ++mfGuard; break; }
 							for (int wi = 0; wi < wc; ++wi) {
-								Stuff::Vector3D wp; wp.x = b.primary.waypoints[wi].x; wp.y = b.primary.waypoints[wi].y; wp.z = 0.0f;
+								glm::vec3 wp; wp.x = b.primary.waypoints[wi].x; wp.y = b.primary.waypoints[wi].y; wp.z = 0.0f;
 								float z = land ? land->getTerrainElevation(wp) : 0.0f;
 								rt->patrolWaypoints[wi][0] = b.primary.waypoints[wi].x;
 								rt->patrolWaypoints[wi][1] = b.primary.waypoints[wi].y;
@@ -263,7 +263,7 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 							int wc = (b.primary.waypointCount > 8) ? 8 : b.primary.waypointCount;
 							if (wc > 0) {
 								for (int wi = 0; wi < wc; ++wi) {
-									Stuff::Vector3D wp; wp.x = b.primary.waypoints[wi].x; wp.y = b.primary.waypoints[wi].y; wp.z = 0.0f;
+									glm::vec3 wp; wp.x = b.primary.waypoints[wi].x; wp.y = b.primary.waypoints[wi].y; wp.z = 0.0f;
 									float z = land ? land->getTerrainElevation(wp) : 0.0f;
 									rt->patrolWaypoints[wi][0] = b.primary.waypoints[wi].x;
 									rt->patrolWaypoints[wi][1] = b.primary.waypoints[wi].y;
@@ -282,7 +282,7 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 							int wc = (b.primary.waypointCount > 8) ? 8 : b.primary.waypointCount;
 							if (wc > 0) {
 								for (int wi = 0; wi < wc; ++wi) {
-									Stuff::Vector3D wp; wp.x = b.primary.waypoints[wi].x; wp.y = b.primary.waypoints[wi].y; wp.z = 0.0f;
+									glm::vec3 wp; wp.x = b.primary.waypoints[wi].x; wp.y = b.primary.waypoints[wi].y; wp.z = 0.0f;
 									float z = land ? land->getTerrainElevation(wp) : 0.0f;
 									rt->patrolWaypoints[wi][0] = b.primary.waypoints[wi].x;
 									rt->patrolWaypoints[wi][1] = b.primary.waypoints[wi].y;
@@ -301,7 +301,7 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 							int wc = (b.primary.waypointCount > 8) ? 8 : b.primary.waypointCount;
 							if (wc > 0) {
 								for (int wi = 0; wi < wc; ++wi) {
-									Stuff::Vector3D wp; wp.x = b.primary.waypoints[wi].x; wp.y = b.primary.waypoints[wi].y; wp.z = 0.0f;
+									glm::vec3 wp; wp.x = b.primary.waypoints[wi].x; wp.y = b.primary.waypoints[wi].y; wp.z = 0.0f;
 									float z = land ? land->getTerrainElevation(wp) : 0.0f;
 									rt->patrolWaypoints[wi][0] = b.primary.waypoints[wi].x;
 									rt->patrolWaypoints[wi][1] = b.primary.waypoints[wi].y;

@@ -2079,7 +2079,7 @@ bool CObjective::RenderMarkers(GameTacMap *tacMap, bool blink )
 	} 
 	else 
 	{
-			Stuff::Vector3D objectivePos;
+			glm::vec3 objectivePos;
 			objectivePos.x = m_markerX;
 			objectivePos.y = m_markerY;
 			long color = SD_YELLOW;
@@ -2133,7 +2133,7 @@ void CObjective::RenderOverviewMarker( Camera* eye, float alpha )
 
 	// World position of the marker, lifted to the terrain surface so it projects
 	// onto the ground at altitude (objectives are authored at z=0).
-	Stuff::Vector3D wp;
+	glm::vec3 wp;
 	wp.x = m_markerX;
 	wp.y = m_markerY;
 	wp.z = 0.0f;
@@ -2214,7 +2214,7 @@ bool ReadNavMarkers( FitIniFile* missionFile, CObjectives &objectives )
 
 int C_RemoveStructure::Execute()
 {
-	Stuff::Vector3D ludicrousPos;
+	glm::vec3 ludicrousPos;
 	ludicrousPos.x = 100000.f;
 	ludicrousPos.y = 100000.f;
 	ludicrousPos.z = 100000.f;

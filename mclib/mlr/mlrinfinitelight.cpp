@@ -92,7 +92,7 @@ void
 void
 	MLRInfiniteLight::LightVertex(const MLRVertexData& vertexData)
 {
-	UnitVector3D light_z;
+	glm::vec3 light_z;
 
 	GetInShapeDirection(light_z);
 
@@ -102,7 +102,7 @@ void
 	// cosine of the angle between light and normal
 	//-------------------------------------------------------------------
 	//
-	Scalar cosine = -(light_z * (*vertexData.normal)) * intensity;
+	Scalar cosine = -(glm::dot(light_z, (*vertexData.normal))) * intensity;
 
 #if COLOR_AS_DWORD
 	TO_DO;

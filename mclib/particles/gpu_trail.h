@@ -17,7 +17,7 @@
 
 #include <cstdint>
 
-namespace Stuff { class Vector3D; }
+#include "../math/glm_config.h"
 
 namespace mc2 { namespace particles {
 
@@ -47,8 +47,8 @@ public:
     // Spawn trail particles along the segment prev->cur, plus optional head sprite
     // at cur. Caller owns prev/cur (do not store internally).
     static void Spawn(GpuTrailKind kind,
-                      const Stuff::Vector3D& prev_world,
-                      const Stuff::Vector3D& cur_world,
+                      const glm::vec3& prev_world,
+                      const glm::vec3& cur_world,
                       float deltaT);
 
 private:

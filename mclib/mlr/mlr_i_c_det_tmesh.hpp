@@ -83,10 +83,10 @@ namespace MidLevelRenderer {
 			PaintMe(const Stuff::RGBAColor *paintMe);
 #endif
 
-		virtual int	TransformAndClip(Stuff::Matrix4D *, MLRClippingState, GOSVertexPool*,bool=false);
+		virtual int	TransformAndClip(glm::mat4 *, MLRClippingState, GOSVertexPool*,bool=false);
 
 		virtual void
-			TransformNoClip(Stuff::Matrix4D*, GOSVertexPool*,bool=false);
+			TransformNoClip(glm::mat4*, GOSVertexPool*,bool=false);
 
 		void
 			Copy(
@@ -102,7 +102,7 @@ namespace MidLevelRenderer {
 			Copy(MLR_I_C_DeT_PMesh*);
 
 		virtual void
-			HurtMe(const Stuff::LinearMatrix4D&, Stuff::Scalar radius);
+			HurtMe(const glm::mat4&, Stuff::Scalar radius);
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Class Data Support

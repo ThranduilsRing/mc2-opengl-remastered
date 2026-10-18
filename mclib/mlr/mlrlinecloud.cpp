@@ -7,8 +7,6 @@
 #if !defined(MLR_MLRCLIPTRICK_HPP)
 #include<mlr/mlrcliptrick.hpp>
 #endif
-#include "math/stuff_glm_bridge.h"
-
 //#############################################################################
 //#########################    MLRLineCloud    ###############################
 //#############################################################################
@@ -67,7 +65,7 @@ MLRLineCloud::~MLRLineCloud()
 void 
 	MLRLineCloud::SetData(
 		const int *count,
-		const Stuff::Point3D *point_data,
+		const glm::vec3 *point_data,
 		const Stuff::RGBAColor *color_data
 	)
 {
@@ -86,7 +84,7 @@ void
 {
 	Check_Object(this);
 
-	mc2::math::fromGlm(worldToEffect, glm::inverse(mc2::math::toGlm(*dInfo->effectToWorld)));
+	worldToEffect = glm::inverse((*dInfo->effectToWorld));
 
 	Transform(*usedNrOfVertices, 1);
 
@@ -117,7 +115,7 @@ void
 			continue;
 		}
 
-		(*transformedCoords)[i].Multiply(points[i], effectToClipMatrix);
+		(*transformedCoords)[i].MultiplyPoint(points[i], effectToClipMatrix);
 	}
 	Stop_Timer(Transform_Time);
 }

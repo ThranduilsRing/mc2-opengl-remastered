@@ -287,14 +287,14 @@ bool Mover::hasWeaponNode (void)
 	if ((lowestWeaponNodeID == -1) || (lowestWeaponNodeID == -2) || (turn < 6))
 	{
 		lowestWeaponNodeID = appearance->getLowestWeaponNode();
-		Stuff::Vector3D nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
+		glm::vec3 nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
 		lowestWeaponNodeZ = nodePos.z - land->getTerrainElevation(nodePos);
 	}
 
 	return (lowestWeaponNodeID != -1);
 }
 
-Stuff::Vector3D Mover::getLOSPosition (void)
+glm::vec3 Mover::getLOSPosition (void)
 {
 	float jumpLowestNode = 0.0f;
 	if (appearance)
@@ -318,7 +318,7 @@ Stuff::Vector3D Mover::getLOSPosition (void)
 				lowestWeaponNodeID = appearance->getLowestWeaponNode();
 			}
 
-			Stuff::Vector3D nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
+			glm::vec3 nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
 			lowestWeaponNodeZ = nodePos.z - land->getTerrainElevation(nodePos);
 		}
 
@@ -331,21 +331,21 @@ Stuff::Vector3D Mover::getLOSPosition (void)
 			// the stale cached Z (often below terrain) -- every weapon's
 			// lineOfSight test fails that frame. Clamp to the same
 			// shutdown-mech fudge used as the fallback below.
-			Stuff::Vector3D nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
+			glm::vec3 nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
 			float rawZ = nodePos.z - land->getTerrainElevation(nodePos);
 			jumpLowestNode = (rawZ > 15.0f) ? rawZ : 15.0f;
 		}
 
 		if (lowestWeaponNodeZ <= 0.0f)
 		{
-			Stuff::Vector3D nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
+			glm::vec3 nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
 			lowestWeaponNodeZ = nodePos.z - land->getTerrainElevation(nodePos);
 		}
 
 		appearance->setInView(oldInView);
 	}
 
-	Stuff::Vector3D losPos = position;
+	glm::vec3 losPos = position;
 	if (lowestWeaponNodeZ != -9999.9f)
 		losPos.z += lowestWeaponNodeZ;
 	else
@@ -472,7 +472,7 @@ long Mover::updateWeaponFireChunks (long which) {
 							 chunk.hitLocation);
 			}
 		else if (chunk.targetType == 3 /*WEAPONFIRECHUNK_TARGET_LOCATION*/) {
-			Stuff::Vector3D targetPoint;
+			glm::vec3 targetPoint;
 			targetPoint.x = (float)chunk.targetCell[1] * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
 			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - ((float)chunk.targetCell[0] * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
 			targetPoint.z = land->getTerrainElevation(targetPoint);
@@ -598,7 +598,7 @@ bool Mover::enemyRevealed (void)
 	return(false);
 }
 
-void Mover::setTeleportPosition (Stuff::Vector3D& newPos) {
+void Mover::setTeleportPosition (glm::vec3& newPos) {
 
 	teleportPosition = newPos;
 }
@@ -645,7 +645,7 @@ long Mover::getContactStatus (long scanningTeamID, bool includingAllies) {
 	return(getContactInfo()->getContactStatus(scanningTeamID, true));
 }
 
-float Mover::weaponLocked (long weaponIndex, Stuff::Vector3D targetPosition) {
+float Mover::weaponLocked (long weaponIndex, glm::vec3 targetPosition) {
 
 	long bodyLocation = inventory[weaponIndex].bodyLocation;
 	return(relFacingTo(targetPosition, bodyLocation));
@@ -699,7 +699,7 @@ long Mover::getWeaponsLocked (int* list, int listSize) {
 	if (!target)
 		return(-2);
 
-	Stuff::Vector3D targetPosition = target->getPosition();
+	glm::vec3 targetPosition = target->getPosition();
 
 	long numLocked = 0;
 	float fireArc = getFireArc();

@@ -155,7 +155,7 @@ void execOrderMoveTo (void) {
 	}
 
 	long result = TACORDER_FAILURE;
-	Stuff::Vector3D location;
+	glm::vec3 location;
 	location.x = coordList[0];
 	location.y = coordList[1];
 	location.z = coordList[2];
@@ -333,8 +333,8 @@ void execOrderWithdraw(void) {
 
 	ABLi_pushInteger(1);
 	if (!ABLi_getSkipOrder()) {
-		Stuff::Vector3D location;
-		location.Zero();
+		glm::vec3 location;
+		location = glm::vec3(0.0f);
 		ABLi_pushInteger(0);
 
 		if (CurWarrior)
@@ -394,7 +394,7 @@ void execCoreMoveTo (void) {
 	long result = 0;
 	if (CurWarrior) 
 	{
-		Stuff::Vector3D loc(location[0], location[1], 0.0);
+		glm::vec3 loc(location[0], location[1], 0.0);
 		result = CurWarrior->coreMoveTo(loc, params);
 	}
 

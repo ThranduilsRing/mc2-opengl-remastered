@@ -51,7 +51,7 @@ namespace MidLevelRenderer {
 		SetMapOrigin(Scalar x, Scalar y, Scalar z)
 			{ Check_Object(this); mapOrigin.x = x; mapOrigin.y = y; mapOrigin.z = z; }
 
-	Point3D
+	glm::vec3
 		GetMapOrigin()
 			{ Check_Object(this); return mapOrigin; }
 
@@ -83,7 +83,7 @@ namespace MidLevelRenderer {
 		GetMapZoneSizeZ()
 			{ Check_Object(this); return zoneSizeZ; }
 
-	void SetLightToShapeMatrix(const Stuff::LinearMatrix4D&);
+	void SetLightToShapeMatrix(const glm::mat4&);
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Class Data Support
@@ -103,7 +103,7 @@ namespace MidLevelRenderer {
 		bool
 			LoadMap();
 
-		Point3D mapOrigin;
+		glm::vec3 mapOrigin;
 		Scalar zoneSizeX, zoneSizeZ;
 		Scalar one_Over_zoneSizeX, one_Over_zoneSizeZ;
 
@@ -112,7 +112,7 @@ namespace MidLevelRenderer {
 
 		unsigned char **maps;
 
-		Stuff::LinearMatrix4D
+		glm::mat4
 			shapeToWorld;
 	};
 

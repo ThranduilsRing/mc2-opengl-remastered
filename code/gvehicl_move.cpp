@@ -20,7 +20,7 @@ bool GroundVehicle::pivotTo (void) {
 		isRunning = (pilot->getMovePath()->numStepsWhenNotPaused > 0) && pilot->getMoveRun();
 
 	bool hasTarget = false;
-	Stuff::Vector3D targetPosition;
+	glm::vec3 targetPosition;
 	GameObjectPtr target = pilot->getCurrentTarget();
 	float relFacingToTarget = 0.0;
 	if (target) 
@@ -42,7 +42,7 @@ bool GroundVehicle::pivotTo (void) {
 		{
 			if ((path->numStepsWhenNotPaused > 0) && (path->curStep < path->numStepsWhenNotPaused)) 
 			{
-				Stuff::Vector3D wayPt = path->stepList[path->curStep].destination;
+				glm::vec3 wayPt = path->stepList[path->curStep].destination;
 
 				control.settings.groundVehicle.throttle = 0;
 				float relFacingToWayPt = relFacingTo(wayPt);
@@ -105,7 +105,7 @@ bool GroundVehicle::pivotTo (void) {
 	{
 		if ((moveStateGoal == MOVESTATE_PIVOT_REVERSE) || (moveStateGoal == MOVESTATE_REVERSE)) {
 			if ((path->numStepsWhenNotPaused > 0) && (path->curStep < path->numStepsWhenNotPaused)) {
-				Stuff::Vector3D wayPt = path->stepList[path->curStep].destination;
+				glm::vec3 wayPt = path->stepList[path->curStep].destination;
 
 				control.settings.groundVehicle.throttle = 0;
 				float relFacingToWayPt = relFacingTo(wayPt);
@@ -245,8 +245,8 @@ long GroundVehicle::getSpeedState (void) {
 
 void GroundVehicle::updateMoveStateGoal (void) {
 
-	Stuff::Vector3D targetPosition;
-	targetPosition.Zero();
+	glm::vec3 targetPosition;
+	targetPosition = glm::vec3(0.0f);
 	GameObjectPtr target = pilot->getLastTarget();
 	bool hasTarget = false;
 	if (target) {
@@ -275,7 +275,7 @@ void GroundVehicle::updateMoveStateGoal (void) {
 		}
 		if (hasTarget) {
 			if ((path->numStepsWhenNotPaused > 0) && (path->curStep < path->numStepsWhenNotPaused)) {
-				Stuff::Vector3D wayPt = path->stepList[path->curStep].destination;
+				glm::vec3 wayPt = path->stepList[path->curStep].destination;
 				float facingDelta = relFacingDelta(wayPt, targetPosition);
 				float totalFireArc = getFireArc() + dynamics.max.groundVehicle.turretYaw;
 				long moveStateGoal = pilot->getMoveStateGoal();
@@ -376,7 +376,7 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 			goalReached = true;
 		else 
 		{
-			Stuff::Vector3D wayPt = path->stepList[path->curStep].destination;
+			glm::vec3 wayPt = path->stepList[path->curStep].destination;
 
 			//---------------------------------------------------------
 			// Let's record our last valid position, in case we need to
@@ -569,7 +569,7 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 void GroundVehicle::setNextMovePath (char& newThrottleSetting) {
 
 
-	Stuff::Vector3D nextWayPoint;
+	glm::vec3 nextWayPoint;
 	bool haveWayPoint = pilot->getNextWayPoint(nextWayPoint, true);
 	if (haveWayPoint) {
 		pilot->setMoveGoal(MOVEGOAL_LOCATION, &nextWayPoint);
@@ -719,7 +719,7 @@ bool GroundVehicle::netUpdateMovePath (float& newRotate, char& newThrottleSettin
 		if (path->curStep == path->numSteps)
 			goalReached = true;
 		else {
-			Stuff::Vector3D wayPt = path->stepList[path->curStep].destination;
+			glm::vec3 wayPt = path->stepList[path->curStep].destination;
 
 			lastValidPosition = wayPt;
 
@@ -852,7 +852,7 @@ void GroundVehicle::netUpdateMovement (void) {
 	MovePathPtr path = pilot->getMovePath();
 	bool atEndOfPath = (path->curStep == (path->numSteps - 1));
 	
-	Stuff::Vector3D wayPt;
+	glm::vec3 wayPt;
 	float distanceFromWayPt = 1000000.0;
 	if ((path->curStep > -1) && (path->curStep < path->numSteps)) {
 		wayPt = path->stepList[path->curStep].destination;
@@ -933,13 +933,13 @@ bool GroundVehicle::crashAvoidanceSystem (void) {
 	if (pilot->getMoveWaitForPointTime() > 999990.0)
 		return(false);
 
-	Stuff::Vector3D vel = getRotationVector();
+	glm::vec3 vel = getRotationVector();
 	vel *= -velocityMag;
 	vel *= frameLength;
 	vel *= worldUnitsPerMeter;
 
-	Stuff::Vector3D newPosition;
-	newPosition.Add(position, vel);
+	glm::vec3 newPosition;
+	newPosition = position + vel;
 
 	int cellR, cellC;
 	land->worldToCell(newPosition, cellR, cellC);

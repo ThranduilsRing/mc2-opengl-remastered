@@ -37,7 +37,7 @@ public:
     struct Info {
         Stuff::RGBColor
             m_color;
-        Stuff::LinearMatrix4D
+        glm::mat4
             m_origin;
         Stuff::Scalar
             m_intensity,

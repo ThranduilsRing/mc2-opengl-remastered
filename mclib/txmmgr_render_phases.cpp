@@ -5,26 +5,15 @@
 #include "mc2fmt.h"
 #include "Gates/render_options.h"
 
-mat4 gos2my(Stuff::Matrix4D& m)
+mat4 gos2my(const glm::mat4& m)
 {
 	mat4 m2(
-		m.entries[0], m.entries[1], m.entries[2], m.entries[3],
-		m.entries[4], m.entries[5], m.entries[6], m.entries[7],
-		m.entries[8], m.entries[9], m.entries[10], m.entries[11],
-		m.entries[12], m.entries[13], m.entries[14], m.entries[15]);
+		glm::value_ptr(m)[0], glm::value_ptr(m)[1], glm::value_ptr(m)[2], glm::value_ptr(m)[3],
+		glm::value_ptr(m)[4], glm::value_ptr(m)[5], glm::value_ptr(m)[6], glm::value_ptr(m)[7],
+		glm::value_ptr(m)[8], glm::value_ptr(m)[9], glm::value_ptr(m)[10], glm::value_ptr(m)[11],
+		glm::value_ptr(m)[12], glm::value_ptr(m)[13], glm::value_ptr(m)[14], glm::value_ptr(m)[15]);
 	return m2;
 }
-
-mat4 gos2my(Stuff::LinearMatrix4D& m)
-{
-	mat4 m2(
-		m.entries[0], m.entries[1], m.entries[2], m.entries[3],
-		m.entries[4], m.entries[5], m.entries[6], m.entries[7],
-		m.entries[8], m.entries[9], m.entries[10], m.entries[11],
-		0.0f, 0.0f, 0.0f, 1.0f);
-	return m2;
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 class ShapeRenderer {
@@ -335,7 +324,7 @@ void MC_TextureManager::renderListsLightDataUpload (void)
 void MC_TextureManager::renderListsSceneDataUpload (void)
 {
     // update scene data uniform buffer
-    Stuff::Vector3D cp = eye->getCameraOrigin();
+    glm::vec3 cp = eye->getCameraOrigin();
     {
         ZoneScopedN("Camera.SceneDataUpload");
         sceneData_->fog_start = eye->fogStart;
@@ -408,7 +397,7 @@ void MC_TextureManager::renderListsObjects3D (void)
 
 					//gos_SetRenderViewport(0, 0, Environment.drawableWidth, Environment.drawableHeight);
 					// TODO: set mvp_ in a separate function, like gos_set_render_camera(mvp_)...
-					gos_RenderIndexedArray(rs->ib_, rs->vb_, rs->vdecl_, (const float*)rs->mvp_);
+					gos_RenderIndexedArray(rs->ib_, rs->vb_, rs->vdecl_, (const float*)glm::value_ptr(rs->mvp_));
 				}
 				else
 				{

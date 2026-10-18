@@ -73,7 +73,7 @@ namespace {
 			char              name[64];
 			bridgeSanitize(name, sizeof(name), mover->getName());
 			long              team   = mover->getTeamId();
-			Stuff::Vector3D   pos    = mover->getPosition();
+			glm::vec3   pos    = mover->getPosition();
 
 			// HP as a 0..1 damage-derived fraction (getDamageLevel is the only
 			// HP signal reachable without poking per-location body arrays).
@@ -93,11 +93,11 @@ namespace {
 			// and the editor parser never has to handle optional fields.
 			long              brainState = -1;   // ABL brain FSM state index (opaque)
 			long              moveState  = -1;   // moveOrders.moveState
-			Stuff::Vector3D   pgoal;             pgoal.Zero();   // world goal of active path
+			glm::vec3   pgoal;             pgoal = glm::vec3(0.0f);   // world goal of active path
 			long              pCurStep   = -1;   // step index being headed for
 			long              pNumSteps  = 0;    // total steps in active path
 			long              pCost      = -1;   // A* total path cost
-			Stuff::Vector3D   tgtPos;            tgtPos.Zero();  // current target world pos
+			glm::vec3   tgtPos;            tgtPos = glm::vec3(0.0f);  // current target world pos
 
 			MechWarriorPtr    pilot     = mover->getPilot();
 			if (pilot) {

@@ -334,13 +334,13 @@ bool Team::isCapturing (GameObjectWatchID targetWID, GameObjectWatchID exceptWID
 
 //---------------------------------------------------------------------------
 
-Stuff::Vector3D Team::calcEscapeVector (MoverPtr mover, float threatRange) {
+glm::vec3 Team::calcEscapeVector (MoverPtr mover, float threatRange) {
 
 	static float distance[100];
-	static Stuff::Vector3D delta[100];
+	static glm::vec3 delta[100];
 
-	Stuff::Vector3D escapeVector;
-	escapeVector.Zero();
+	glm::vec3 escapeVector;
+	escapeVector = glm::vec3(0.0f);
 
 	//------------------------------
 	// Get the initial delta info...
@@ -351,7 +351,7 @@ Stuff::Vector3D Team::calcEscapeVector (MoverPtr mover, float threatRange) {
 		if (obj) {
 			float distanceToObj = mover->distanceFrom(obj->getPosition());
 			if (distanceToObj <= threatRange) {
-				delta[i].Subtract(mover->getPosition(), obj->getPosition());
+				delta[i] = mover->getPosition() - obj->getPosition();
 				distance[i] = distanceToObj;
 				if (distance[i] > longest)
 					longest = i;
@@ -377,7 +377,7 @@ Stuff::Vector3D Team::calcEscapeVector (MoverPtr mover, float threatRange) {
 	//--------------------------------------------------------------------------------
 	// We don't care about the length, just the direction (we assume you want to go as
 	// FAR as necessary)...
-	escapeVector.Normalize(escapeVector);
+	escapeVector = glm::normalize(escapeVector);
 
 	return(escapeVector);
 }

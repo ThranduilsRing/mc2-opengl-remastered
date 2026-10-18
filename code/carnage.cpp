@@ -381,9 +381,9 @@ bool ExplosionType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 					//---------------------------------------------------
 					// An explosion may NOT damage a gate or turret unless
 					// is is within the "little" extent radius.
-					Stuff::Vector3D distance = collider->getPosition();
+					glm::vec3 distance = collider->getPosition();
 					distance -= collidee->getPosition();
-					float range = distance.GetLength();
+					float range = glm::length(distance);
 
 			 		float littleExtent = ((TurretPtr)collider)->getLittleExtent();
 					if (littleExtent < range) 
@@ -409,9 +409,9 @@ bool ExplosionType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 					//---------------------------------------------------
 					// An explosion may NOT damage a gate or turret unless
 					// is is within the "little" extent radius.
-					Stuff::Vector3D distance = collider->getPosition();
+					glm::vec3 distance = collider->getPosition();
 					distance -= collidee->getPosition();
-					float range = distance.GetLength();
+					float range = glm::length(distance);
 
 					float littleExtent = ((TurretPtr)collider)->getLittleExtent();
 					if (littleExtent < range) 
@@ -577,12 +577,12 @@ void Carnage::handleStaticCollision (void)
 						
 						if (mineResult == 1)
 						{
-							Stuff::Vector3D minePosition;
+							glm::vec3 minePosition;
 							land->cellToWorld(i,j,minePosition);
-							Stuff::Vector3D distance;
-							distance.Subtract(getPosition(),minePosition);
+							glm::vec3 distance;
+							distance = getPosition() - minePosition;
 							distance.z = 0.0f;
-							float dist = distance.GetApproximateLength();
+							float dist = glm::length(distance);
 							if (dist < info.explosion.radius)
 							{
 								GameMap->setMine(i,j,2);
@@ -664,14 +664,14 @@ long Carnage::update (void)
 		{
 			setFlag(OBJECT_FLAG_JUSTCREATED, false);
 				
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D	localToWorld;
+			glm::mat4 	shapeOrigin;
+			glm::mat4	localToWorld;
 				
-			Stuff::Point3D actualPosition;
+			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, position);
 	
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 			
 			if (gosEffect && gosEffect->IsExecuted())
 			{
@@ -740,14 +740,14 @@ long Carnage::update (void)
 
 				duration -= frameLength;
 				
-				Stuff::Point3D ourPosition;
+				glm::vec3 ourPosition;
 				mc2ToRender(ourPosition, position);
 			
 				pointLight->direction = ourPosition;
 			
-				Stuff::LinearMatrix4D lightToWorldMatrix;
-				lightToWorldMatrix.BuildTranslation(ourPosition);
-				lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+				glm::mat4 lightToWorldMatrix;
+				mc2::math::buildTranslation(lightToWorldMatrix, ourPosition);
+				mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(0.0f,0.0f,0.0f));
 				pointLight->SetLightToWorld(&lightToWorldMatrix);
 				pointLight->SetPosition(&position);
 			}
@@ -775,17 +775,17 @@ long Carnage::update (void)
 		// Update GOSFX
 		if (gosEffect && gosEffect->IsExecuted())
 		{
-			Stuff::Point3D actualPosition;
+			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, position);
 			
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D 	localToWorld;
+			glm::mat4 	shapeOrigin;
+			glm::mat4 	localToWorld;
 			   
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
-			localToWorld.Multiply(shapeOrigin,gosFX::Effect_Into_Motion);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
+			localToWorld = shapeOrigin * gosFX::Effect_Into_Motion;
 		
- 			Stuff::OBB boundingBox;
+ 			mc2::math::Obb boundingBox;
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 			
 			bool result = gosEffect->Execute(&info);
@@ -843,14 +843,14 @@ void Carnage::render (void)
 			drawInfo.m_state = mlrState;
 			drawInfo.m_clippingFlags = 0x0;
 	
-			Stuff::Point3D actualPosition;
+			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, position);
 			
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D	localToWorld;
+			glm::mat4 	shapeOrigin;
+			glm::mat4	localToWorld;
 			
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 			
 			drawInfo.m_parentToWorld = &shapeOrigin;
 	 
@@ -868,7 +868,7 @@ void Carnage::traceCombat(std::string_view event, std::string_view reason,
                               GameObjectPtr target, const WeaponShotInfo* shot)
 {
     combatTrace.write("carnage", getHandle(), turn, event, reason, position,
-        [] { return static_cast<const Stuff::Vector3D*>(nullptr); }, target, shot);
+        [] { return static_cast<const glm::vec3*>(nullptr); }, target, shot);
 }
 
 void Carnage::traceCombatRetire(std::string_view reason)

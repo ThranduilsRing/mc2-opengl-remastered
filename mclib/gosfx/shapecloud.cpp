@@ -1,6 +1,4 @@
 #include"gosfxheaders.hpp"
-#include "math/stuff_glm_bridge.h"
-
 //==========================================================================//
 // File:	 gosFX_ShapeCloud.cpp											//
 // Contents: Base gosFX::ShapeCloud Component								//
@@ -163,12 +161,12 @@ void
 		{
 			MidLevelRenderer::MLRPrimitiveBase *primitive = m_shape->Find(i);
 			Check_Object(primitive);
-			Stuff::Point3D *points;
+			glm::vec3 *points;
 			int vertex_count;
 			primitive->GetCoordData(&points, &vertex_count);
 			for (int v=0; v<vertex_count; ++v)
 			{
-				Stuff::Scalar len = points[v].GetLengthSquared();
+				Stuff::Scalar len = mc2::math::lengthSquared(points[v]);
 				if (len > m_radius)
 					m_radius = len;
 			}
@@ -245,7 +243,7 @@ gosFX::ShapeCloud*
 void
 	gosFX::ShapeCloud::CreateNewParticle(
 		unsigned index,
-		Stuff::Point3D *translation
+		glm::vec3 *translation
 	)
 {
 	Check_Object(this);
@@ -268,7 +266,7 @@ void
 bool
 	gosFX::ShapeCloud::AnimateParticle(
 		unsigned index,
-		const Stuff::LinearMatrix4D *world_to_new_local,
+		const glm::mat4 *world_to_new_local,
 		Stuff::Time till
 	)
 {
@@ -326,8 +324,8 @@ void gosFX::ShapeCloud::Draw(DrawInfo *info)
 		dinfo.activeLights = nullptr;
 		dinfo.nrOfActiveLights = 0;
 		dinfo.shape = shape;
-		Stuff::LinearMatrix4D local_to_world;
-		local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
+		glm::mat4 local_to_world;
+		local_to_world = m_localToParent * *info->m_parentToWorld;
 
 		//
 		//--------------------------------------------------------------
@@ -344,10 +342,10 @@ void gosFX::ShapeCloud::Draw(DrawInfo *info)
 				// Get the camera location into local space
 				//-----------------------------------------
 				//
-				Stuff::Point3D
-					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
+				glm::vec3
+					camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+				glm::vec3 camera_in_cloud;
+				camera_in_cloud = (mc2::math::transformPoint(camera_in_world, glm::inverse(local_to_world)));
 				for (unsigned i = 0; i < m_activeParticleCount; i++)
 				{
 					Particle *particle = GetParticle(i);
@@ -361,27 +359,16 @@ void gosFX::ShapeCloud::Draw(DrawInfo *info)
 					//
 					if (particle->m_age < 1.0f)
 					{
-						Stuff::Vector3D direction_in_cloud;
-						direction_in_cloud.Subtract(
-							camera_in_cloud,
-							particle->m_localTranslation
-						);
-						Stuff::LinearMatrix4D shape_to_cloud;
-						shape_to_cloud.BuildRotation(particle->m_localRotation);
-						shape_to_cloud.AlignLocalAxisToWorldVector(
-							direction_in_cloud,
-							Stuff::Z_Axis,
-							Stuff::Y_Axis,
-							Stuff::X_Axis
-						);
-						shape_to_cloud.BuildTranslation(particle->m_localTranslation);
-						Stuff::LinearMatrix4D shape_to_world;
-						shape_to_world.Multiply(
-							shape_to_cloud,
-							local_to_world
-						);
+						glm::vec3 direction_in_cloud;
+						direction_in_cloud = camera_in_cloud - particle->m_localTranslation;
+						glm::mat4 shape_to_cloud;
+						mc2::math::buildRotation(shape_to_cloud, particle->m_localRotation);
+						mc2::math::alignLocalAxisToWorldVector(shape_to_cloud, direction_in_cloud, Stuff::Z_Axis, Stuff::Y_Axis, Stuff::X_Axis);
+						mc2::math::buildTranslation(shape_to_cloud, particle->m_localTranslation);
+						glm::mat4 shape_to_world;
+						shape_to_world = shape_to_cloud * local_to_world;
 						dinfo.shapeToWorld = &shape_to_world;
-						Stuff::Vector3D
+						glm::vec3
 							scale(
 								particle->m_scale,
 								particle->m_scale,
@@ -406,10 +393,10 @@ void gosFX::ShapeCloud::Draw(DrawInfo *info)
 				// Get the camera location into local space
 				//-----------------------------------------
 				//
-				Stuff::Point3D
-					camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-				Stuff::Point3D camera_in_cloud;
-				camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
+				glm::vec3
+					camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+				glm::vec3 camera_in_cloud;
+				camera_in_cloud = (mc2::math::transformPoint(camera_in_world, glm::inverse(local_to_world)));
 				for (unsigned i = 0; i < m_activeParticleCount; i++)
 				{
 					Particle *particle = GetParticle(i);
@@ -423,27 +410,16 @@ void gosFX::ShapeCloud::Draw(DrawInfo *info)
 					//
 					if (particle->m_age < 1.0f)
 					{
-						Stuff::Vector3D direction_in_cloud;
-						direction_in_cloud.Subtract(
-							camera_in_cloud,
-							particle->m_localTranslation
-						);
-						Stuff::LinearMatrix4D shape_to_cloud;
-						shape_to_cloud.BuildRotation(particle->m_localRotation);
-						shape_to_cloud.AlignLocalAxisToWorldVector(
-							direction_in_cloud,
-							Stuff::Z_Axis,
-							Stuff::X_Axis,
-							-1
-						);
-						shape_to_cloud.BuildTranslation(particle->m_localTranslation);
-						Stuff::LinearMatrix4D shape_to_world;
-						shape_to_world.Multiply(
-							shape_to_cloud,
-							local_to_world
-						);
+						glm::vec3 direction_in_cloud;
+						direction_in_cloud = camera_in_cloud - particle->m_localTranslation;
+						glm::mat4 shape_to_cloud;
+						mc2::math::buildRotation(shape_to_cloud, particle->m_localRotation);
+						mc2::math::alignLocalAxisToWorldVector(shape_to_cloud, direction_in_cloud, Stuff::Z_Axis, Stuff::X_Axis, -1);
+						mc2::math::buildTranslation(shape_to_cloud, particle->m_localTranslation);
+						glm::mat4 shape_to_world;
+						shape_to_world = shape_to_cloud * local_to_world;
 						dinfo.shapeToWorld = &shape_to_world;
-						Stuff::Vector3D
+						glm::vec3
 							scale(
 								particle->m_scale,
 								particle->m_scale,
@@ -469,10 +445,10 @@ void gosFX::ShapeCloud::Draw(DrawInfo *info)
 			// Get the camera location into local space
 			//-----------------------------------------
 			//
-			Stuff::Point3D
-				camera_in_world(info->m_clipper->GetCameraToWorldMatrix());
-			Stuff::Point3D camera_in_cloud;
-			camera_in_cloud = mc2::math::toPoint3D(mc2::math::transformPoint(mc2::math::toGlm(camera_in_world), glm::inverse(mc2::math::toGlm(local_to_world))));
+			glm::vec3
+				camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
+			glm::vec3 camera_in_cloud;
+			camera_in_cloud = (mc2::math::transformPoint(camera_in_world, glm::inverse(local_to_world)));
 			for (unsigned i = 0; i < m_activeParticleCount; i++)
 			{
 				Particle *particle = GetParticle(i);
@@ -486,27 +462,16 @@ void gosFX::ShapeCloud::Draw(DrawInfo *info)
 				//
 				if (particle->m_age < 1.0f)
 				{
-					Stuff::Vector3D direction_in_cloud;
-					direction_in_cloud.Subtract(
-						camera_in_cloud,
-						particle->m_localTranslation
-					);
-					Stuff::LinearMatrix4D shape_to_cloud;
-					shape_to_cloud.BuildRotation(particle->m_localRotation);
-					shape_to_cloud.AlignLocalAxisToWorldVector(
-						direction_in_cloud,
-						Stuff::Z_Axis,
-						Stuff::Y_Axis,
-						-1
-					);
-					shape_to_cloud.BuildTranslation(particle->m_localTranslation);
-					Stuff::LinearMatrix4D shape_to_world;
-					shape_to_world.Multiply(
-						shape_to_cloud,
-						local_to_world
-					);
+					glm::vec3 direction_in_cloud;
+					direction_in_cloud = camera_in_cloud - particle->m_localTranslation;
+					glm::mat4 shape_to_cloud;
+					mc2::math::buildRotation(shape_to_cloud, particle->m_localRotation);
+					mc2::math::alignLocalAxisToWorldVector(shape_to_cloud, direction_in_cloud, Stuff::Z_Axis, Stuff::Y_Axis, -1);
+					mc2::math::buildTranslation(shape_to_cloud, particle->m_localTranslation);
+					glm::mat4 shape_to_world;
+					shape_to_world = shape_to_cloud * local_to_world;
 					dinfo.shapeToWorld = &shape_to_world;
-					Stuff::Vector3D
+					glm::vec3
 						scale(
 							particle->m_scale,
 							particle->m_scale,
@@ -540,16 +505,13 @@ void gosFX::ShapeCloud::Draw(DrawInfo *info)
 				//
 				if (particle->m_age < 1.0f)
 				{
-					Stuff::LinearMatrix4D shape_to_cloud;
-					shape_to_cloud.BuildTranslation(particle->m_localTranslation);
-					shape_to_cloud.BuildRotation(particle->m_localRotation);
-					Stuff::LinearMatrix4D shape_to_world;
-					shape_to_world.Multiply(
-						shape_to_cloud,
-						local_to_world
-					);
+					glm::mat4 shape_to_cloud;
+					mc2::math::buildTranslation(shape_to_cloud, particle->m_localTranslation);
+					mc2::math::buildRotation(shape_to_cloud, particle->m_localRotation);
+					glm::mat4 shape_to_world;
+					shape_to_world = shape_to_cloud * local_to_world;
 					dinfo.shapeToWorld = &shape_to_world;
-					Stuff::Vector3D
+					glm::vec3
 						scale(
 							particle->m_scale,
 							particle->m_scale,

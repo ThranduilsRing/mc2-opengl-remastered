@@ -229,7 +229,7 @@ void GenericAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	skyNumber = 0;
 
 	screenPos.x = screenPos.y = screenPos.z = screenPos.w = -999.0f;
-	position.Zero();
+	position = glm::vec3(0.0f);
 	rotation = 0.0f;
 	pitch = 0.0f;
 	selected = 0;
@@ -283,8 +283,8 @@ void GenericAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			}
 		}
 
-		Stuff::Vector3D boxCoords[8];
-		Stuff::Vector3D nodeCenter = genShape->GetRootNodeCenter();
+		glm::vec3 boxCoords[8];
+		glm::vec3 nodeCenter = genShape->GetRootNodeCenter();
 
 		boxCoords[0].x = position.x + genShape->GetMinBox().x + nodeCenter.x;
 		boxCoords[0].y = position.y + genShape->GetMinBox().z + nodeCenter.z;
@@ -322,7 +322,7 @@ void GenericAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		for (int i=0;i<8;i++)
 		{
-			testRadius = boxCoords[i].GetLength();
+			testRadius = glm::length(boxCoords[i]);
 			if (OBBRadius < testRadius)
 				OBBRadius = testRadius;
 		}
@@ -441,7 +441,7 @@ void GenericAppearance::setMoverParameters (float turretRot, float lArmRot, floa
 }
 
 //-----------------------------------------------------------------------------
-void GenericAppearance::setObjectParameters (const Stuff::Vector3D &pos, float Rot, long sel, long team, long homeRelations)
+void GenericAppearance::setObjectParameters (const glm::vec3 &pos, float Rot, long sel, long team, long homeRelations)
 {
 	rotation = Rot;
 
@@ -561,12 +561,12 @@ bool GenericAppearance::recalcBounds (void)
 		// if object too far from camera.  Far Clip Plane.
 		if (eye->usePerspective)
 		{
-			Stuff::Point3D Distance;
-			Stuff::Point3D eyePosition(eye->getPosition());
-			Stuff::Point3D objPosition(position);
+			glm::vec3 Distance;
+			glm::vec3 eyePosition(eye->getPosition());
+			glm::vec3 objPosition(position);
 	
-			Distance.Subtract(objPosition,eyePosition);
-			float eyeDistance = Distance.GetApproximateLength();
+			Distance = objPosition - eyePosition;
+			float eyeDistance = glm::length(Distance);
 			if (eyeDistance > Camera::MaxClipDistance)
 			{
 				hazeFactor = 1.0f;
@@ -589,15 +589,15 @@ bool GenericAppearance::recalcBounds (void)
 			// to Target.  If angle is less then halfFOV, object is visible.
 			if (inView)
 			{
-				Stuff::Vector3D Distance;
-				Stuff::Point3D objPosition;
-				Stuff::Point3D eyePosition(eye->getCameraOrigin());
+				glm::vec3 Distance;
+				glm::vec3 objPosition;
+				glm::vec3 eyePosition(eye->getCameraOrigin());
 				mc2ToRender(objPosition, position);
 		
-				Distance.Subtract(objPosition,eyePosition);
-				Distance.Normalize(Distance);
+				Distance = objPosition - eyePosition;
+				Distance = glm::normalize(Distance);
 				
-				float cosine = Distance * eye->getLookVector();
+				float cosine = glm::dot(Distance, eye->getLookVector());
  				if (cosine > eye->cosHalfFOV)
 					setVisibilityGatesFromLegacy(true);
 				else
@@ -641,7 +641,7 @@ bool GenericAppearance::recalcBounds (void)
 				(upperLeft.y <= eye->getScreenResY()))
 			{
 				//We are on screen.  Figure out selection box.
-				Stuff::Vector3D boxCoords[8];
+				glm::vec3 boxCoords[8];
 				Stuff::Vector4D bcsp[8];
 	
 				boxCoords[0].x = position.x + appearType->typeUpperLeft.x;

@@ -156,7 +156,7 @@ class VFXAppearance : public Appearance
 		Stuff::Vector2DOf<long>		shapeMin;
 		Stuff::Vector2DOf<long>		shapeMax;
 
-		Stuff::Vector3D				position;
+		glm::vec3				position;
 		float						rotation;
 		long						selected;
 		long						alignment;
@@ -213,7 +213,7 @@ class VFXAppearance : public Appearance
 			fadeTable = fTable;
 		}
 		
-		void setObjectParameters (const Stuff::Vector3D &pos, float rot, long selected);
+		void setObjectParameters (const glm::vec3 &pos, float rot, long selected);
 		
 		long stateExists (ActorState typeId);
 		

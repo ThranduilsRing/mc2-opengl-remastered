@@ -4,8 +4,6 @@
 
 #include"mlrheaders.hpp"
 #include "mc2fmt.h"
-#include "math/stuff_glm_bridge.h"
-
 //#############################################################################
 //#########################    MLRLookUpLight    ################################
 //#############################################################################
@@ -280,13 +278,13 @@ bool
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	MLRLookUpLight::SetLightToShapeMatrix(const LinearMatrix4D& worldToShape)
+	MLRLookUpLight::SetLightToShapeMatrix(const glm::mat4& worldToShape)
 {
 	Check_Object(this);
 
-	lightToShape.Multiply(lightToWorld, worldToShape);
+	lightToShape = lightToWorld * worldToShape;
 
-	mc2::math::fromGlm(shapeToWorld, glm::inverse(mc2::math::toGlm(worldToShape)));
+	shapeToWorld = glm::inverse(worldToShape);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -302,15 +300,15 @@ void
 void
 	MLRLookUpLight::LightVertex(const MLRVertexData& vertexData)
 {
-	UnitVector3D light_z;
+	glm::vec3 light_z;
 
 	GetInShapeDirection(light_z);
 
 	const Scalar One_Over_255 = 1.f/255.0f;
 
-	Point3D worldPoint;
+	glm::vec3 worldPoint;
 
-	worldPoint.Multiply(*(vertexData.point), shapeToWorld);
+	worldPoint = mc2::math::transformPoint(*(vertexData.point), shapeToWorld);
 
 	Scalar prep_x = mapZoneCountX*zoneSizeX - worldPoint.x + mapOrigin.x;
 	Scalar prep_z = mapZoneCountZ*zoneSizeZ - worldPoint.z + mapOrigin.z;
@@ -333,7 +331,7 @@ void
 	// cosine of the angle between light and normal
 	//-------------------------------------------------------------------
 	//
-	Scalar cosine = -(light_z * (*vertexData.normal))*mapIntensity*intensity;
+	Scalar cosine = -(glm::dot(light_z, (*vertexData.normal)))*mapIntensity*intensity;
 
 
 

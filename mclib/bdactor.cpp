@@ -101,26 +101,26 @@ void BldgAppearance::setWeaponNodeUsed (long weaponNode)
 	}
 }
 
-Stuff::Vector3D BldgAppearance::getWeaponNodePosition (long nodeId)
+glm::vec3 BldgAppearance::getWeaponNodePosition (long nodeId)
 {
-	Stuff::Vector3D result = position;
+	glm::vec3 result = position;
 	if ((nodeId < 0) || (nodeId >= appearType->numWeaponNodes))
 		return result;
 	
 	//We already know we are using this node.  Do NOT increment recycle or nodeUsed!
 		
    	// Create Matrix to conform to.
-   	Stuff::UnitQuaternion qRotation;
+   	glm::quat qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
-   	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+   	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
    
-   	Stuff::Point3D xlatPosition;
+   	glm::vec3 xlatPosition;
    	xlatPosition.x = -position.x;
    	xlatPosition.y = TerrainRuntime::groundElevation(position);
    	xlatPosition.z = position.y;
    
-   	Stuff::UnitQuaternion torsoRot;
-   	torsoRot = Stuff::EulerAngles(0.0f,(turretYaw * DEGREES_TO_RADS),0.0f);
+   	glm::quat torsoRot;
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(turretYaw * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeId == -1)
 	{
 		if (S_stricmp(appearType->rotationalNodeId,"NONE") != 0)
@@ -142,12 +142,12 @@ Stuff::Vector3D BldgAppearance::getWeaponNodePosition (long nodeId)
  	return result;
 }
 
-Stuff::Vector3D BldgAppearance::getHitNode (void)
+glm::vec3 BldgAppearance::getHitNode (void)
 {
 	if (hitNodeId == -1)
 		hitNodeId = bldgShape->GetNodeNameId("hitnode");
 
-	Stuff::Vector3D result = getNodeIdPosition(hitNodeId);
+	glm::vec3 result = getNodeIdPosition(hitNodeId);
  	return result;
 }
 
@@ -225,7 +225,7 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	spotlightsRegistered_ = false;
 	
 	screenPos.x = screenPos.y = screenPos.z = screenPos.w = -999.0f;
-	position.Zero();
+	position = glm::vec3(0.0f);
 	rotation = 0.0f;
 	selected = 0;
 	teamId = -1;
@@ -295,8 +295,8 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			}
 		}
 		
-		Stuff::Vector3D boxCoords[8];
-		Stuff::Vector3D nodeCenter = bldgShape->GetRootNodeCenter();
+		glm::vec3 boxCoords[8];
+		glm::vec3 nodeCenter = bldgShape->GetRootNodeCenter();
 
 		boxCoords[0].x = position.x + bldgShape->GetMinBox().x + nodeCenter.x;
 		boxCoords[0].y = position.y + bldgShape->GetMinBox().z + nodeCenter.z;
@@ -334,7 +334,7 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		for (int i=0;i<8;i++)
 		{
-			testRadius = boxCoords[i].GetLength();
+			testRadius = glm::length(boxCoords[i]);
 			if (OBBRadius < testRadius)
 				OBBRadius = testRadius;
 
@@ -350,9 +350,9 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		if (!appearType->getDesignerTypeBounds())
 		{
-			Stuff::Vector3D nodeCenter = bldgShape->GetRootNodeCenter();
-			appearType->typeUpperLeft.Add(bldgShape->GetMinBox(),nodeCenter);
-			appearType->typeLowerRight.Add(bldgShape->GetMaxBox(),nodeCenter);
+			glm::vec3 nodeCenter = bldgShape->GetRootNodeCenter();
+			appearType->typeUpperLeft = bldgShape->GetMinBox() + nodeCenter;
+			appearType->typeLowerRight = bldgShape->GetMaxBox() + nodeCenter;
 		}
 		
 		if (appearType->numWeaponNodes > 0)
@@ -509,16 +509,16 @@ void BldgAppearance::setObjStatus (long oStatus)
 	status = oStatus;
 }
 
-Stuff::Vector3D BldgAppearance::getNodeNamePosition (const char *nodeName)
+glm::vec3 BldgAppearance::getNodeNamePosition (const char *nodeName)
 {
-	Stuff::Vector3D result = position;
+	glm::vec3 result = position;
 	
    	// Create Matrix to conform to.
-   	Stuff::UnitQuaternion qRotation;
+   	glm::quat qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
-   	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+   	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
    
-   	Stuff::Point3D xlatPosition;
+   	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
    
 	result = bldgShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeName);
@@ -531,16 +531,16 @@ Stuff::Vector3D BldgAppearance::getNodeNamePosition (const char *nodeName)
 	return result;
 }
 
-Stuff::Vector3D BldgAppearance::getNodeIdPosition (long nodeId)
+glm::vec3 BldgAppearance::getNodeIdPosition (long nodeId)
 {
-	Stuff::Vector3D result = position;
+	glm::vec3 result = position;
 	
    	// Create Matrix to conform to.
-   	Stuff::UnitQuaternion qRotation;
+   	glm::quat qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
-   	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+   	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
    
-   	Stuff::Point3D xlatPosition;
+   	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
    
 	result = bldgShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeId);
@@ -642,7 +642,7 @@ void BldgAppearance::setMoverParameters (float turretRot, float lArmRot, float r
 	turretPitch = lArmRot;
 }
 
-void BldgAppearance::setObjectParameters (const Stuff::Vector3D &pos, float Rot, long sel, long team, long homeRelations)
+void BldgAppearance::setObjectParameters (const glm::vec3 &pos, float Rot, long sel, long team, long homeRelations)
 {
 	rotation = Rot;
 
@@ -699,17 +699,17 @@ bool BldgAppearance::recalcBounds (void)
 		unsigned long long _tsA = s_tobjSplitBdOn ? __rdtsc() : 0ULL;
 		if (eye->usePerspective)
 		{
-			Stuff::Vector3D cameraPos;
+			glm::vec3 cameraPos;
 			cameraPos.x = -eye->getCameraOrigin().x;
 			cameraPos.y = eye->getCameraOrigin().z;
 			cameraPos.z = eye->getCameraOrigin().y;
 			float vClipConstant = eye->verticalSphereClipConstant;
 			float hClipConstant = eye->horizontalSphereClipConstant;
 
-			Stuff::Vector3D objectCenter;
-			objectCenter.Subtract(position,cameraPos);
+			glm::vec3 objectCenter;
+			objectCenter = position - cameraPos;
 			Camera::cameraFrame.trans_to_frame(objectCenter);
-			float distanceToEye = objectCenter.GetApproximateLength();
+			float distanceToEye = glm::length(objectCenter);
 			float clip_distance = fabs(1.0f / objectCenter.y);
 
 			//Is vertex on Screen OR close enough to screen that its triangle MAY be visible?
@@ -779,9 +779,9 @@ bool BldgAppearance::playDestruction (void)
 		
 			MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 		
-			Stuff::Point3D			tPosition;
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D	localToWorld;
+			glm::vec3			tPosition;
+			glm::mat4 	shapeOrigin;
+			glm::mat4	localToWorld;
 			
             //Stuff::Vector3D offsetPosition;
 			//offsetPosition.x = Terrain::worldUnitsPerVertex / 3.0f;
@@ -790,17 +790,17 @@ bool BldgAppearance::playDestruction (void)
 
 			//OppRotate(offsetPosition,rotation);
 
-			Stuff::Vector3D actualPosition = position;
+			glm::vec3 actualPosition = position;
 			//actualPosition.Add(position,offsetPosition);
 
 			mc2ToRender(tPosition, actualPosition);
 
 			float yaw = (180.0f + rotation) * DEGREES_TO_RADS;
-			Stuff::UnitQuaternion rot;
-			rot = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+			glm::quat rot;
+			rot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
 
-			shapeOrigin.BuildRotation(rot);
-			shapeOrigin.BuildTranslation(tPosition);
+			mc2::math::buildRotation(shapeOrigin, rot);
+			mc2::math::buildTranslation(shapeOrigin, tPosition);
 			
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 			destructFX->Start(&info);

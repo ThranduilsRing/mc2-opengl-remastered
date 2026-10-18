@@ -190,7 +190,7 @@ void DEBUGWINS_setGameObject (long debugObj, GameObjectPtr obj) {
 void DEBUGWINS_viewGameObject (long debugObj) {
 
 	if (DebugGameObject[debugObj]) {
-		Stuff::Vector3D newPos = DebugGameObject[debugObj]->getPosition();
+		glm::vec3 newPos = DebugGameObject[debugObj]->getPosition();
 		eye->setPosition(newPos,false);
 	}
 }

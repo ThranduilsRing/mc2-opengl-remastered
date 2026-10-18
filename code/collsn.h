@@ -106,7 +106,7 @@ class CollisionGrid
 		CollisionGridNodePtr	nodes;				//Actual grid nodes available to layout in space.
 		
 		unsigned long			nextAvailableNode;	//next node in nodes which can be used.
-		Stuff::Vector3D			gridOrigin;			//Center point of the grid.
+		glm::vec3			gridOrigin;			//Center point of the grid.
 		
 		bool					gridIsGo;			//Have we already allocated everything?
 		
@@ -138,7 +138,7 @@ class CollisionGrid
 			
 			nextAvailableNode = 0;
 			
-			gridOrigin.Zero();
+			gridOrigin = glm::vec3(0.0f);
 			
 			gridIsGo = FALSE;
 		}
@@ -148,7 +148,7 @@ class CollisionGrid
 			init();
 		}
 		
-		long init (Stuff::Vector3D &newOrigin);
+		long init (glm::vec3 &newOrigin);
 		
 		void destroy (void);
 		

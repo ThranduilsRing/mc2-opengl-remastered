@@ -12,8 +12,7 @@ inline constexpr int MAX_SENDDOWN = 10002;
 // Number of shadow-shape slots reserved this frame (see addShadowShape).
 extern std::atomic<int> g_numShadowShapes;
 
-mat4 gos2my(Stuff::Matrix4D& m);
-mat4 gos2my(Stuff::LinearMatrix4D& m);
+mat4 gos2my(const glm::mat4& m);
 
 // Per-frame state the renderLists phases share.
 struct MC_TextureManager::RenderListsFrame

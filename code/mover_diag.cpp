@@ -99,8 +99,8 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 		strcat(ChunkDebugMsg, "\nCHUNK1\n");
 
 		GameObjectPtr target = nullptr;
-		Stuff::Vector3D targetPoint;
-		targetPoint.Zero();
+		glm::vec3 targetPoint;
+		targetPoint = glm::vec3(0.0f);
 		bool isTargetPoint = false;
 		if (chunk1->targetType == STATUSCHUNK_TARGET_MOVER)
 			target = (GameObjectPtr)MPlayer->moverRoster[chunk1->targetId];
@@ -188,8 +188,8 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 		strcat(ChunkDebugMsg, "\nCHUNK2\n");
 
 		GameObjectPtr target = nullptr;
-		Stuff::Vector3D targetPoint;
-		targetPoint.Zero();
+		glm::vec3 targetPoint;
+		targetPoint = glm::vec3(0.0f);
 		bool isTargetPoint = false;
 		if (chunk1->targetType == STATUSCHUNK_TARGET_MOVER)
 			target = (GameObjectPtr)MPlayer->moverRoster[chunk2->targetId];
@@ -504,7 +504,7 @@ void Mover::updateDebugWindow (GameDebugWindow* debugWindow) {
 	}
 }
 
-void Mover::printFireWeaponDebugInfo (GameObjectPtr target, Stuff::Vector3D* targetPoint, long chance, long aimLocation, long roll, WeaponShotInfo* shotInfo) {
+void Mover::printFireWeaponDebugInfo (GameObjectPtr target, glm::vec3* targetPoint, long chance, long aimLocation, long roll, WeaponShotInfo* shotInfo) {
 
 	if (!CombatLog)
 		return;

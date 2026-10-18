@@ -40,7 +40,7 @@ long MechWarrior::orderStop (bool unitOrder, bool setTacOrder) {
 	return(tacOrder.status(this));
 }
 
-long MechWarrior::orderMoveToPoint (bool unitOrder, bool setTacOrder, long origin, Stuff::Vector3D location, long selectionIndex, unsigned long params) {
+long MechWarrior::orderMoveToPoint (bool unitOrder, bool setTacOrder, long origin, glm::vec3 location, long selectionIndex, unsigned long params) {
     if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	bool jump = ((params & TACORDER_PARAM_JUMP) != 0);
@@ -109,7 +109,7 @@ long MechWarrior::orderMoveToObject (bool unitOrder, bool setTacOrder, long orig
 	if (!target)
 		return(TACORDER_SUCCESS);
 
-	Stuff::Vector3D goal;
+	glm::vec3 goal;
 	if (target->isMover())
 		goal = target->getPosition();
 	else {
@@ -121,12 +121,12 @@ long MechWarrior::orderMoveToObject (bool unitOrder, bool setTacOrder, long orig
 			if (foundGoal)
 				land->cellToWorld(goalRow, goalCol, goal);
 			else {
-				Stuff::Vector3D objectPos = target->getPosition();
+				glm::vec3 objectPos = target->getPosition();
 				goal = getVehicle()->calcOffsetMoveGoal(objectPos);
 			}
 			}
 		else {
-			Stuff::Vector3D objectPos = target->getPosition();
+			glm::vec3 objectPos = target->getPosition();
 			goal = getVehicle()->calcOffsetMoveGoal(objectPos);
 		}
 	}
@@ -150,7 +150,7 @@ long MechWarrior::orderMoveToObject (bool unitOrder, bool setTacOrder, long orig
 		return(TACORDER_SUCCESS);
 
 	tacOrder.targetWID = target->getWatchID();
-	Stuff::Vector3D pos = target->getPosition();
+	glm::vec3 pos = target->getPosition();
 	setMoveGoal(target->getWatchID(), &pos, target);
 	setMoveRun(run);
 
@@ -175,7 +175,7 @@ long MechWarrior::orderMoveToObject (bool unitOrder, bool setTacOrder, long orig
 	return(result);
 }
 
-long MechWarrior::orderJumpToPoint (bool unitOrder, bool setTacOrder, long origin, Stuff::Vector3D location, long selectionIndex) {
+long MechWarrior::orderJumpToPoint (bool unitOrder, bool setTacOrder, long origin, glm::vec3 location, long selectionIndex) {
     if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	MoverPtr myVehicle = getVehicle();
@@ -215,7 +215,7 @@ long MechWarrior::orderJumpToObject (bool unitOrder, bool setTacOrder, long orig
     if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	MoverPtr myVehicle = getVehicle();
-	Stuff::Vector3D location = target->getPosition();
+	glm::vec3 location = target->getPosition();
 
 	if (target->isMover()) {
 		if (target->getTeam() == myVehicle->getTeam())
@@ -269,7 +269,7 @@ long MechWarrior::orderTraversePath (bool unitOrder, bool setTacOrder, long orig
 	if (result == TACORDER_SUCCESS)
 		return(TACORDER_SUCCESS);
 
-	Stuff::Vector3D location;
+	glm::vec3 location;
 	location.x = tacOrder.moveParams.wayPath.points[0];
 	location.y = tacOrder.moveParams.wayPath.points[1];
 	location.z = tacOrder.moveParams.wayPath.points[2];
@@ -297,7 +297,7 @@ long MechWarrior::orderPatrolPath (bool unitOrder, bool setTacOrder, long origin
 	if (result == TACORDER_SUCCESS)
 		return(TACORDER_SUCCESS);
 
-	Stuff::Vector3D location;
+	glm::vec3 location;
 	location.x = tacOrder.moveParams.wayPath.points[0];
 	location.y = tacOrder.moveParams.wayPath.points[1];
 	location.z = tacOrder.moveParams.wayPath.points[2];
@@ -383,7 +383,7 @@ long MechWarrior::orderUseSpeed (float speed) {
 	return(TACORDER_SUCCESS);
 }
 
-long MechWarrior::orderOrbitPoint (Stuff::Vector3D location) {
+long MechWarrior::orderOrbitPoint (glm::vec3 location) {
 
 	return(1);
 }
@@ -513,7 +513,7 @@ long MechWarrior::orderAttackObject (bool unitOrder, long origin, GameObjectPtr 
 	return(TACORDER_FAILURE);
 }
 
-long MechWarrior::orderAttackPoint (bool unitOrder, long origin, Stuff::Vector3D location, long type, long method, long range, unsigned long params) {
+long MechWarrior::orderAttackPoint (bool unitOrder, long origin, glm::vec3 location, long type, long method, long range, unsigned long params) {
     if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	bool pursue = ((params & TACORDER_PARAM_PURSUE) != 0);
@@ -571,7 +571,7 @@ long MechWarrior::orderAttackPoint (bool unitOrder, long origin, Stuff::Vector3D
 	return(TACORDER_FAILURE);
 }
 
-long MechWarrior::orderWithdraw (bool unitOrder, long origin, Stuff::Vector3D location) {
+long MechWarrior::orderWithdraw (bool unitOrder, long origin, glm::vec3 location) {
     if (absorbsGeneralOrder(this, origin)) return TACORDER_SUCCESS;
 
 	TacticalOrder tacOrder;

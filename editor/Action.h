@@ -120,7 +120,7 @@ private:
         Stuff::Vector2DOf<long> shapeMin;
         Stuff::Vector2DOf<long> shapeMax;
 
-        Stuff::Vector3D position;
+        glm::vec3 position;
         float rotation;
         long selected;
         long teamId;
@@ -169,7 +169,7 @@ public:
     void capture( Unit* unit );   // call BEFORE the edit: records id + before-state
     void commit( Unit* unit );    // call AFTER the edit: records after-state
 private:
-    struct Snap { int orderType; int stance; bool authored; std::vector<Stuff::Vector3D> waypoints; };
+    struct Snap { int orderType; int stance; bool authored; std::vector<glm::vec3> waypoints; };
     bool apply( const Snap& s );
     long m_unitId;
     Snap m_before;

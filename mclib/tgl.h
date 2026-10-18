@@ -39,8 +39,8 @@ typedef DWORD* DWORDPtr;
 typedef struct _TG_TypeVertex
 {
 	//Only changes at load time.
-	Stuff::Point3D	position;				//Position of vertex relative to base position of shape.
-	Stuff::Vector3D normal;					//Vertex Normal
+	glm::vec3	position;				//Position of vertex relative to base position of shape.
+	glm::vec3 normal;					//Vertex Normal
 	DWORD    		aRGBLight;				//Vertex Light and Alpha
 
 } TG_TypeVertex;
@@ -53,8 +53,8 @@ typedef  TG_TypeVertex* TG_TypeVertexPtr;
 typedef struct _TG_HWTypeVertex
 {
 	//Only changes at load time.
-	Stuff::Point3D	position;				//Position of vertex relative to base position of shape.
-	Stuff::Vector3D normal;					//Vertex Normal
+	glm::vec3	position;				//Position of vertex relative to base position of shape.
+	glm::vec3 normal;					//Vertex Normal
 	DWORD    		aRGBLight;				//Vertex Light and Alpha
 	float			u;
 	float			v;
@@ -85,7 +85,7 @@ typedef struct _TG_ShadowVertex
 {
 	//Changes every frame if local light.  Rarely for the sun.  Moves slowly!
 	bool 			bDataIsNotValid;		//Indicates that the struct contains unitialized data
-	Stuff::Point3D	position;				//Position of vertex relative to base position of shape.
+	glm::vec3	position;				//Position of vertex relative to base position of shape.
 } TG_ShadowVertex;
 
 typedef  TG_ShadowVertex* TG_ShadowVertexPtr;
@@ -129,7 +129,7 @@ typedef struct _TG_TypeTriangle
 	DWORD    		renderStateFlags;		//Flags about render for this face.
 											//Bit 0 -- backFacing
 	TG_UVData  		uvdata;					//Texture UVs for this face.
-	Stuff::Vector3D faceNormal;				//Normal Vector to face
+	glm::vec3 faceNormal;				//Normal Vector to face
 } TG_TypeTriangle;
 
 // Texture handle can change from frame to frame. Texture Animation!
@@ -218,10 +218,10 @@ typedef struct _TG_Light
 	float    				closeDistance;		//Distance out light is constant
 	float    				farDistance;		//Distance at which light is off
 	float					oneOverDistance;	//Used for falloff calc
-	Stuff::Point3D 			direction;			//Direction in world of light source.  This is the light spot center for POINT and SPOT
-	Stuff::LinearMatrix4D	lightToWorld;		//Transformation Matrix
-	Stuff::Vector3D			position;			//Explicit position to aid terrain code with point sources.
-	Stuff::Point3D			spotDir;			//Direction of the actual Spotlight to help with shadows, etc.
+	glm::vec3 			direction;			//Direction in world of light source.  This is the light spot center for POINT and SPOT
+	glm::mat4	lightToWorld;		//Transformation Matrix
+	glm::vec3			position;			//Explicit position to aid terrain code with point sources.
+	glm::vec3			spotDir;			//Direction of the actual Spotlight to help with shadows, etc.
 	float					maxSpotLength;		//Maximum length spotlight can be from target.
 
 	void init (DWORD lType)
@@ -252,12 +252,12 @@ typedef struct _TG_Light
 		return aRGB;
 	}
 	
-	void SetLightToWorld (Stuff::LinearMatrix4D *l2w)
+	void SetLightToWorld (glm::mat4 *l2w)
 	{
 		lightToWorld = *l2w;
 	}
 
-	void SetPosition (Stuff::Vector3D *pos)
+	void SetPosition (glm::vec3 *pos)
 	{
 		position = *pos;
 	}
@@ -415,10 +415,10 @@ typedef struct _TG_Animation
 	DWORD						numFrames;				//Number of Frames of animation.
 	float 						frameRate;				//Number of Frames Per Second.
 	float						tickRate;				//Number of Ticks Per Second.
-	Stuff::UnitQuaternion		*quat = nullptr;		//Stores animation offset in Quaternion rotation.  A view of quatStore.
-	Stuff::Point3D				*pos = nullptr;			//Stores Positional offsets if present.  OTHERWISE NULL!!!!!!!!  A view of posStore.
-	std::vector<Stuff::UnitQuaternion>	quatStore;		//Owns the rotation track; sized once (numFrames) before quat is taken.
-	std::vector<Stuff::Point3D>			posStore;		//Owns the position track.
+	glm::quat		*quat = nullptr;		//Stores animation offset in Quaternion rotation.  A view of quatStore.
+	glm::vec3				*pos = nullptr;			//Stores Positional offsets if present.  OTHERWISE NULL!!!!!!!!  A view of posStore.
+	std::vector<glm::quat>	quatStore;		//Owns the rotation track; sized once (numFrames) before quat is taken.
+	std::vector<glm::vec3>			posStore;		//Owns the position track.
 
 	// A copy would leave the views pointing at the original's tracks; a move keeps the buffers.
 	_TG_Animation (void) = default;
@@ -440,14 +440,14 @@ typedef TG_Animation *TG_AnimationPtr;
 typedef struct _TG_ShapeRec
 {
 	std::unique_ptr<TG_Shape>	node;					//OWNS the TG_Shape for this piece (B7o.6b); moved only by transferFrom
-	Stuff::LinearMatrix4D		localShapeToWorld;		//Matrix to transform this TG_Shape.
-	Stuff::LinearMatrix4D		shapeToWorld;			//Matrix to transform this TG_Shape.
-	Stuff::LinearMatrix4D		worldToShape;			//Inverse of above Matrix.
+	glm::mat4		localShapeToWorld;		//Matrix to transform this TG_Shape.
+	glm::mat4		shapeToWorld;			//Matrix to transform this TG_Shape.
+	glm::mat4		worldToShape;			//Inverse of above Matrix.
 	int32_t                     calcedThisFrame;		//Turn number this matrix is current for.
 	bool						processMe;				//Flag indicating if I should transform/draw this.  Used for arms off.
 	TG_AnimationPtr				currentAnimation;		//Animation data being applied to this shape.  OK if NULL
 	_TG_ShapeRec				*parentNode;			//Parent Node.  OK if NULL but only for ROOT node!
-	Stuff::UnitQuaternion		baseRotation;			//Always ZERO unless set by appearance controlling this shape.
+	glm::quat		baseRotation;			//Always ZERO unless set by appearance controlling this shape.
 	
 	// A record owns its node, so it is never copied (B7o.6b: the old copy assignment duplicated the owner).
 	_TG_ShapeRec (void) = default;
@@ -489,8 +489,8 @@ class TG_TypeNode
 	//---------------
 	// Data Members
 	protected:
-		Stuff::Point3D			nodeCenter;
-		Stuff::Point3D			relativeNodeCenter;
+		glm::vec3			nodeCenter;
+		glm::vec3			relativeNodeCenter;
 		char					nodeId[TG_NODE_ID];
 		char					parentId[TG_NODE_ID];
 		
@@ -522,17 +522,17 @@ class TG_TypeNode
 			return parentId;
 		}
 
-		Stuff::Point3D GetNodeCenter (void)
+		glm::vec3 GetNodeCenter (void)
 		{
 			return nodeCenter;
 		}
 
-		Stuff::Point3D GetRelativeNodeCenter (void)
+		glm::vec3 GetRelativeNodeCenter (void)
 		{
 			return relativeNodeCenter;
 		}
 
-		void MoveNodeCenterRelative (Stuff::Point3D parent)
+		void MoveNodeCenterRelative (glm::vec3 parent)
 		{
 			relativeNodeCenter = nodeCenter;
 			relativeNodeCenter -= parent;
@@ -858,7 +858,7 @@ class TG_TypeShape : public TG_TypeNode
 		// CreateListOfTextures method (driven from TG_TypeMultiShape).
 		// No Assimp types appear in this signature — header stays clean.
 		void InitFromImportedMesh(const char* nodeIdIn, const char* parentIdIn,
-		                          const Stuff::Point3D& center,
+		                          const glm::vec3& center,
 		                          std::vector<TG_TypeVertex>&& vertices,
 		                          std::vector<TG_TypeTriangle>&& triangles);
 
@@ -911,7 +911,7 @@ class TG_Shape
 															//Means all done, no more to draw.
 
 		float					cur_viewport[4];
-		Stuff::Matrix4D			cur_shape2clip;
+		glm::mat4			cur_shape2clip;
         TG_HWLightsData         lightData_;
 
 		std::vector<TG_ShadowVertex>	shadowVertexStore;	//Owns the shadow vertices (built in CreateFrom, released in destroy(): the instance memory is freed without a destructor).
@@ -946,10 +946,10 @@ class TG_Shape
 
 	public:
 		//Matrices used to transform the shapes.
-		static Stuff::LinearMatrix4D 	*s_cameraOrigin;
-		static Stuff::Matrix4D			*s_cameraToClip;
-		static Stuff::Matrix4D			s_worldToClip;
-		static Stuff::LinearMatrix4D	s_worldToCamera;
+		static glm::mat4 	*s_cameraOrigin;
+		static glm::mat4			*s_cameraToClip;
+		static glm::mat4			s_worldToClip;
+		static glm::mat4	s_worldToCamera;
 		static TG_LightPtr				*s_listOfLights;		//List passed in a transform time
 		static DWORD					s_numLights;
 
@@ -962,10 +962,10 @@ class TG_Shape
 		static float					fogFull;
 		static float					fogStart;
 
-		static Stuff::LinearMatrix4D 	s_lightToShape[MAX_LIGHTS_IN_WORLD];
-		static Stuff::Vector3D			s_lightDir[MAX_LIGHTS_IN_WORLD];
-		static Stuff::Vector3D			s_spotDir[MAX_LIGHTS_IN_WORLD];
-		static Stuff::Vector3D			s_rootLightDir[MAX_LIGHTS_IN_WORLD];
+		static glm::mat4 	s_lightToShape[MAX_LIGHTS_IN_WORLD];
+		static glm::vec3			s_lightDir[MAX_LIGHTS_IN_WORLD];
+		static glm::vec3			s_spotDir[MAX_LIGHTS_IN_WORLD];
+		static glm::vec3			s_rootLightDir[MAX_LIGHTS_IN_WORLD];
 
 		static DWORD					lighteningLevel;
 
@@ -973,15 +973,15 @@ class TG_Shape
 	//Member Functions
 	protected:
 		// MultiTransformShape phases (tgl_transform.cpp, tgl_transform_light.cpp).
-		void xformGpuOnlyShape(Stuff::Matrix4D* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped);
-		void xformVertexProject(Stuff::Matrix4D* shapeToClip, bool& oneOff, bool& oneOn, TG_TypeShapePtr theShape, long j);
+		void xformGpuOnlyShape(glm::mat4* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped);
+		void xformVertexProject(glm::mat4* shapeToClip, bool& oneOff, bool& oneOn, TG_TypeShapePtr theShape, long j);
 		void xformVertexBaseColor(bool isHudElement, bool isNight, float nightFactor, TG_TypeShapePtr theShape, long j, TgXformFrame& f);
 		void xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame& f);
 		void xformVertexFog(TG_ShapeRecPtr parentNode, TG_TypeShapePtr theShape, long j, TgXformFrame& f);
 		void xformFaceLight(TG_TypeShapePtr theShape, long j, TgXformFrame& f);
 		void xformFaceCorners(BYTE alphaValue, TG_TypeShapePtr theShape, long j, TgXformFrame& f);
 		void xformFaceQueue(bool isHudElement, BYTE alphaValue, bool isClamped, TG_TypeShapePtr theShape, long j);
-		void xformEmitShape(Stuff::Matrix4D* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped, TG_TypeShapePtr theShape);
+		void xformEmitShape(glm::mat4* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped, TG_TypeShapePtr theShape);
 
 	public:
 		void init (void)
@@ -1061,7 +1061,7 @@ class TG_Shape
 		//This function sets up the camera Matrices for this TG_Shape to transform
 		//itself with.  These matrices are static and only need to be set once per
 		//render pass if the camera does not change for that pass.
-		static void SetCameraMatrices (Stuff::LinearMatrix4D *camOrigin, Stuff::Matrix4D *camToClip);
+		static void SetCameraMatrices (glm::mat4 *camOrigin, glm::mat4 *camToClip);
 
 		static void SetViewport (float mulX, float mulY, float addX, float addY);
 
@@ -1084,7 +1084,7 @@ class TG_Shape
 		//Function returns 0 if any one vertex screen position is off screen.
 		//Function returns 1 is all vertex screen positions are on screen.
 		// NOTE:  THIS IS NOT A RIGOROUS CLIP!!!!!!!!!
-		long MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D *backFacePoint, TG_ShapeRecPtr parentNode, bool isHudElement, BYTE alphaValue, bool isClamped);
+		long MultiTransformShape (glm::mat4 *shapeToClip, glm::vec3 *backFacePoint, TG_ShapeRecPtr parentNode, bool isHudElement, BYTE alphaValue, bool isClamped);
 
 		// Slice 2 (object-offload): reduced CPU pass — copy-and-strip variant
 		// of MultiTransformShape that keeps transform / screen-space positions /
@@ -1097,7 +1097,7 @@ class TG_Shape
 		// addRenderShape block. Stage 2.A: declared and defined but unused;
 		// Stage 2.B wires call sites in BldgAppearance/TreeAppearance/
 		// GenericAppearance::update inside their existing cull gates.
-		long MultiTransformShape_PositionsOnly (Stuff::Matrix4D *shapeToClip, Stuff::Point3D *backFacePoint, TG_ShapeRecPtr parentNode, bool isHudElement, BYTE alphaValue, bool isClamped);
+		long MultiTransformShape_PositionsOnly (glm::mat4 *shapeToClip, glm::vec3 *backFacePoint, TG_ShapeRecPtr parentNode, bool isHudElement, BYTE alphaValue, bool isClamped);
 
 		// Slice 2 (object-offload): per-actor light-data cache without the
 		// per-vertex bake side-effects of MultiTransformShape. Uses the
@@ -1116,11 +1116,11 @@ class TG_Shape
 
 		//This function creates the list of shadows and transforms them in preparation to drawing.
 		//
-		void MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D *s2w, float rotation);
+		void MultiTransformShadows (glm::vec3 *pos, glm::mat4 *s2w, float rotation);
 
 		//This function takes the current listOfVisibleFaces and draws them using
 		//gos_DrawTriangle.  Does clipping, too!
-		void Render (float forceZ = -1.0f, bool isHudElement = false, BYTE alphaValue = 0xff, bool isClamped = false, const Stuff::Matrix4D* shapeToClip = nullptr, const Stuff::Matrix4D* shapeToWorld = nullptr);
+		void Render (float forceZ = -1.0f, bool isHudElement = false, BYTE alphaValue = 0xff, bool isClamped = false, const glm::mat4* shapeToClip = nullptr, const glm::mat4* shapeToWorld = nullptr);
 
 		//This function takes the current listOfShadowTriangles and draws them using
 		//gos_DrawTriangle.  Does clipping, too!
@@ -1175,7 +1175,7 @@ class TG_Shape
 			return myType->getNodeId();
 		}
 		
-		Stuff::Point3D GetRelativeNodeCenter (void)
+		glm::vec3 GetRelativeNodeCenter (void)
 		{
 			return myType->GetRelativeNodeCenter();
 		}
@@ -1212,8 +1212,8 @@ public:
 	HGOSBUFFER vb_;
 	HGOSBUFFER ib_;
 	HGOSVERTEXDECLARATION vdecl_;
-	Stuff::Matrix4D mvp_; // model -> projection
-	Stuff::Matrix4D mw_; // model -> world
+	glm::mat4 mvp_; // model -> projection
+	glm::mat4 mw_; // model -> world
 	float viewport_[4];
     uint32_t light_data_buffer_index_;
     bool isHudElement_;

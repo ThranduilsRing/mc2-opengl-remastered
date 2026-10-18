@@ -159,7 +159,7 @@ void CollisionGrid::operator delete (void *us)
 }
 
 //------------------------------------------------------------------------------
-long CollisionGrid::init (Stuff::Vector3D &newOrigin)
+long CollisionGrid::init (glm::vec3 &newOrigin)
 {
 	//--------------------------------------------------
 	// Check if stuff is allocated.  Once this happens
@@ -450,7 +450,7 @@ void CollisionSystem::checkObjects (void)
 {
 	mc2_collision_trace::CollideScope _collideScope;  // COLLISION-FACTS-1 (default-OFF)
 
-	Stuff::Vector3D gridCenter(0L,0L,0L);
+	glm::vec3 gridCenter(0L,0L,0L);
 
 	collisionGrid->init(gridCenter);
 
@@ -570,10 +570,10 @@ void CollisionSystem::detectCollision (GameObjectPtr obj1, GameObjectPtr obj2)
 		//--------------------------------------------------------
 		// First we check and see if we are already colliding.
 		// If so, dump us to checkExtents.
-		Stuff::Vector3D obj1Pos = obj1->getPosition();
-		Stuff::Vector3D obj2Pos = obj2->getPosition();
-		Stuff::Vector3D pos;
-		pos.Subtract(obj2Pos, obj1Pos);
+		glm::vec3 obj1Pos = obj1->getPosition();
+		glm::vec3 obj2Pos = obj2->getPosition();
+		glm::vec3 pos;
+		pos = obj2Pos - obj1Pos;
 		pos.z = 0.0;		//Ignore Elevation.  May cause explosion/artillery f-ups!
 		float distMag = pos.x * pos.x + pos.y * pos.y;//pos.magnitude();
 
@@ -602,10 +602,10 @@ void CollisionSystem::detectStaticCollision (GameObjectPtr obj1, GameObjectPtr o
 	//--------------------------------------------------------
 	// First we check and see if we are already colliding.
 	// If so, dump us to checkExtents.
-	Stuff::Vector3D obj1Pos = obj1->getPosition();
-	Stuff::Vector3D obj2Pos = obj2->getPosition();
-	Stuff::Vector3D pos;
-	pos.Subtract(obj2Pos,obj1Pos);
+	glm::vec3 obj1Pos = obj1->getPosition();
+	glm::vec3 obj2Pos = obj2->getPosition();
+	glm::vec3 pos;
+	pos = obj2Pos - obj1Pos;
 
 	float distMag = pos.x * pos.x + pos.y * pos.y;
 
@@ -724,10 +724,10 @@ float CollisionSystem::timeToImpact (GameObjectPtr obj1, GameObjectPtr obj2)
 	//--------------------------------------------------------
 	// First we check and see if we are already colliding.
 	// If so, dump us to checkExtents.
-	Stuff::Vector3D obj1Pos = obj1->getPosition();
-	Stuff::Vector3D obj2Pos = obj2->getPosition();
-	Stuff::Vector3D pos;
-	pos.Subtract(obj2Pos,obj1Pos);
+	glm::vec3 obj1Pos = obj1->getPosition();
+	glm::vec3 obj2Pos = obj2->getPosition();
+	glm::vec3 pos;
+	pos = obj2Pos - obj1Pos;
 
 	float distMag = pos.x * pos.x + pos.y * pos.y;		//pos.magnitude();
 	float dist0 = obj1->getExtentRadius();
@@ -750,23 +750,23 @@ float CollisionSystem::timeToImpact (GameObjectPtr obj1, GameObjectPtr obj2)
 	// positions for the this frame and determine if the
 	// objects are moving toward or away from each other.
 	// If away, we're done.  If not, next step.
-	Stuff::Vector3D obj1Vel = obj1->getVelocity();
-	Stuff::Vector3D obj2Vel = obj2->getVelocity();
+	glm::vec3 obj1Vel = obj1->getVelocity();
+	glm::vec3 obj2Vel = obj2->getVelocity();
 	
-	Stuff::Vector3D obj1FPos;
+	glm::vec3 obj1FPos;
 	obj1Vel *= frameLength;
-	obj1FPos.Add(obj1Pos,obj1Vel);
+	obj1FPos = obj1Pos + obj1Vel;
 
-	Stuff::Vector3D obj2FPos;
+	glm::vec3 obj2FPos;
 	obj2Vel *= frameLength;
-	obj2FPos.Add(obj2Pos,obj2Vel);
+	obj2FPos = obj2Pos + obj2Vel;
 	
-	Stuff::Vector3D obj1RPos;
-	obj1RPos.Subtract(obj1FPos,obj1Pos);
-	Stuff::Vector3D obj2RPos;
-	obj2RPos.Subtract(obj2FPos,obj2Pos);
+	glm::vec3 obj1RPos;
+	obj1RPos = obj1FPos - obj1Pos;
+	glm::vec3 obj2RPos;
+	obj2RPos = obj2FPos - obj2Pos;
 	
-	float headingResult = obj1RPos * obj2RPos;
+	float headingResult = glm::dot(obj1RPos, obj2RPos);
 	
 	//--------------------------------------------------------------
 	// If this is negative, objects are heading towards each other.
@@ -775,18 +775,18 @@ float CollisionSystem::timeToImpact (GameObjectPtr obj1, GameObjectPtr obj2)
 		//--------------------------------------------------------------
 		// Now find the time of closest approach.  This is given by the
 		// formula (pos DOT vel) / (vel DOT vel) = -timeOfClosest.
-		Stuff::Vector3D vel;
-		vel.Subtract(obj2Vel,obj1Vel);
+		glm::vec3 vel;
+		vel = obj2Vel - obj1Vel;
 		
-		float timeOfClosest = -((pos * vel) / (vel * vel));
+		float timeOfClosest = -((glm::dot(pos, vel)) / (glm::dot(vel, vel)));
 		if (timeOfClosest <= frameLength)
 		{
 			//------------------------------------------------
 			// They are closest during this frame.
 			// Find out what distance this is.
-			Stuff::Vector3D dist;
+			glm::vec3 dist;
 			vel *= timeOfClosest;
-			dist.Add(pos, vel);
+			dist = pos + vel;
 			
 			float distMag = dist.x*dist.x + dist.y*dist.y;		//dist.magnitude();
 			

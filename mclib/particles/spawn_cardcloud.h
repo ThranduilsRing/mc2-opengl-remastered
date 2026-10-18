@@ -18,7 +18,7 @@
 
 #include "spec.h"
 
-namespace Stuff { class LinearMatrix4D; }
+#include "../math/glm_config.h"
 namespace gosFX { class CardCloud__Specification; }
 
 namespace mc2 {
@@ -80,7 +80,7 @@ namespace particles {
 // Pre-conditions:
 //   spec != nullptr.
 void SpawnCardCloud(const gosFX::CardCloud__Specification* spec,
-                    const Stuff::LinearMatrix4D*           parentToWorld,
+                    const glm::mat4*           parentToWorld,
                     float                                   spawnSeed,
                     float                              callerAge = 0.5f);
 

@@ -17,7 +17,7 @@ TacMap::TacMap()
 }
 
 
-void TacMap::worldToTacMap( Stuff::Vector3D& world, int xOffset, int yOffset, int xSize, int ySize, gos_VERTEX& tac )
+void TacMap::worldToTacMap( glm::vec3& world, int xOffset, int yOffset, int xSize, int ySize, gos_VERTEX& tac )
 {
 	int tacX;
 	int tacY;
@@ -40,7 +40,7 @@ void TacMap::worldToTacMap( Stuff::Vector3D& world, int xOffset, int yOffset, in
 
 }
 
-void TacMap::tacMapToWorld( const Stuff::Vector2DOf<long>& screen, int xSize, int ySize,  Stuff::Vector3D& world )
+void TacMap::tacMapToWorld( const Stuff::Vector2DOf<long>& screen, int xSize, int ySize,  glm::vec3& world )
 {
 	// The editor can fire tac-map clicks before any mission/terrain is
 	// loaded, when the global `land` is still NULL; the cell math below

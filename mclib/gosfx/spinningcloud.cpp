@@ -1,7 +1,5 @@
 #include"gosfxheaders.hpp"
 #include"fx_trace/fx_cost_split.h"  // Q2-S0 FX cost-split (env MC2_FX_COST_SPLIT)
-#include "math/stuff_glm_bridge.h"
-
 //==========================================================================//
 // File:	 gosFX_SpinningCloud.cpp										//
 // Contents: Base gosFX::SpinningCloud Component							//
@@ -311,19 +309,19 @@ bool
 		Verify(box.max.x >= box.min.x);
 		Verify(box.max.y >= box.min.y);
 		Verify(box.max.z >= box.min.z);
-		Stuff::OBB local_bounds = Stuff::OBB::Identity;
+		mc2::math::Obb local_bounds = mc2::math::Obb();
 		local_bounds.axisExtents.x = 0.5f * (box.max.x - box.min.x);
 		local_bounds.axisExtents.y = 0.5f * (box.max.y - box.min.y);
 		local_bounds.axisExtents.z = 0.5f * (box.max.z - box.min.z);
-		local_bounds.localToParent(3,0) = box.min.x + local_bounds.axisExtents.x;
-		local_bounds.localToParent(3,1) = box.min.y + local_bounds.axisExtents.y;
-		local_bounds.localToParent(3,2) = box.min.z + local_bounds.axisExtents.z;
-		local_bounds.sphereRadius = local_bounds.axisExtents.GetLength();
+		local_bounds.localToParent[0][3] = box.min.x + local_bounds.axisExtents.x;
+		local_bounds.localToParent[1][3] = box.min.y + local_bounds.axisExtents.y;
+		local_bounds.localToParent[2][3] = box.min.z + local_bounds.axisExtents.z;
+		local_bounds.sphereRadius = glm::length(local_bounds.axisExtents);
 		if (local_bounds.sphereRadius < Stuff::SMALL)
 			local_bounds.sphereRadius = 0.01f;
-		Stuff::OBB parent_bounds;
-		parent_bounds.Multiply(local_bounds, m_localToParent);
-		info->m_bounds->Union(*info->m_bounds, parent_bounds);
+		mc2::math::Obb parent_bounds;
+		parent_bounds = mc2::math::multiply(local_bounds, m_localToParent);
+		(*info->m_bounds) = mc2::math::unite(*info->m_bounds, parent_bounds);
 	}
 
 	//
@@ -339,7 +337,7 @@ bool
 void
 	gosFX::SpinningCloud::CreateNewParticle(
 		unsigned index,
-		Stuff::Point3D *translation
+		glm::vec3 *translation
 	)
 {
 	//
@@ -378,27 +376,22 @@ void
 	//
 	if (spec->m_alignYUsingVelocity)
 	{
-		Stuff::LinearMatrix4D basis(true);
-		basis.AlignLocalAxisToWorldVector(
-			particle->m_localLinearVelocity,
-			Stuff::Y_Axis,
-			Stuff::X_Axis,
-			Stuff::Z_Axis
-		);
-		particle->m_localRotation = basis;
+		glm::mat4 basis = glm::mat4(1.0f);
+		mc2::math::alignLocalAxisToWorldVector(basis, particle->m_localLinearVelocity, Stuff::Y_Axis, Stuff::X_Axis, Stuff::Z_Axis);
+		particle->m_localRotation = mc2::math::quatFromRotation(basis);
 	}
 	else if (spec->m_randomStartingRotation)
 	{
-		Stuff::EulerAngles
+		mc2::math::Euler
 			rotation(
 				Stuff::Two_Pi*Stuff::Random::GetFraction(),
 				Stuff::Pi*Stuff::Random::GetFraction(),
 				Stuff::Two_Pi*Stuff::Random::GetFraction()
 			);
-		particle->m_localRotation = rotation;
+		particle->m_localRotation = mc2::math::quatFromEuler(rotation);
 	}
 	else
-		particle->m_localRotation = Stuff::UnitQuaternion::Identity;
+		particle->m_localRotation = mc2::math::QuatIdentity;
 }
 
 //------------------------------------------------------------------------------
@@ -406,7 +399,7 @@ void
 bool
 	gosFX::SpinningCloud::AnimateParticle(
 		unsigned index,
-		const Stuff::LinearMatrix4D *world_to_new_local,
+		const glm::mat4 *world_to_new_local,
 		Stuff::Time till
 	)
 {
@@ -430,18 +423,18 @@ bool
 	// the dead-particle early-return so only live particles are timed.
 	mc2::fx_cost_split::Scope _fxcs(mc2::fx_cost_split::B_SPINNINGCLOUD_ANIMATE);
 
-	Stuff::Point3D *translation = &particle->m_localTranslation;
-	Stuff::UnitQuaternion *rotation = &particle->m_localRotation;
-	Stuff::Vector3D *velocity = &particle->m_localLinearVelocity;
+	glm::vec3 *translation = &particle->m_localTranslation;
+	glm::quat *rotation = &particle->m_localRotation;
+	glm::vec3 *velocity = &particle->m_localLinearVelocity;
 	int sim_mode = GetSimulationMode();
 	if (sim_mode == DynamicWorldSpaceSimulationMode)
 	{
-		particle->m_worldTranslation.Multiply(*translation, m_localToWorld);
-		Stuff::LinearMatrix4D local_rot(*rotation);
-		Stuff::LinearMatrix4D world_rot;
-		world_rot.Multiply(local_rot, m_localToWorld);
-		particle->m_worldRotation = world_rot;
-		particle->m_worldLinearVelocity.Multiply(*velocity, m_localToWorld);
+		particle->m_worldTranslation = mc2::math::transformPoint(*translation, m_localToWorld);
+		glm::mat4 local_rot = mc2::math::rotationMatrix(*rotation);
+		glm::mat4 world_rot;
+		world_rot = local_rot * m_localToWorld;
+		particle->m_worldRotation = mc2::math::quatFromRotation(world_rot);
+		particle->m_worldLinearVelocity = mc2::math::transformVector(*velocity, m_localToWorld);
 		translation = &particle->m_worldTranslation;
 		rotation = &particle->m_worldRotation;
 		velocity = &particle->m_worldLinearVelocity;
@@ -459,14 +452,14 @@ bool
 	Stuff::Scalar seed = particle->m_seed;
 	Specification *spec = GetSpecification();
 	Check_Object(spec);
-	Stuff::Vector3D accel(Stuff::Vector3D::Identity);
+	glm::vec3 accel(glm::vec3(0.0f));
 	{
 	// Q2-S0b: curve-heavy force calc (7 of 8 ComputeValue calls in this
 	// function) — the region the curve-cache / GPU-offload decision hinges on.
 	mc2::fx_cost_split::Scope _fxf(mc2::fx_cost_split::B_FX_FORCES);
 	Stuff::Scalar drag = -spec->m_pDrag.ComputeValue(age, seed);
 	Max_Clamp(drag, 0.0f);
-	Stuff::Vector3D ether;
+	glm::vec3 ether;
 	ether.x = spec->m_pEtherVelocityX.ComputeValue(age, seed);
 	ether.y = spec->m_pEtherVelocityY.ComputeValue(age, seed);
 	ether.z = spec->m_pEtherVelocityZ.ComputeValue(age, seed);
@@ -480,25 +473,25 @@ bool
 	//
 	if (sim_mode == StaticWorldSpaceSimulationMode)
 	{
-		Stuff::LinearMatrix4D world_to_effect;
-		mc2::math::fromGlm(world_to_effect, glm::inverse(mc2::math::toGlm(m_localToWorld)));
-		Stuff::Vector3D local_ether;
-		local_ether = mc2::math::toVector3D(mc2::math::transformVector(mc2::math::toGlm(ether), glm::inverse(mc2::math::toGlm(world_to_effect))));
-		Stuff::Vector3D rel_vel;
-		rel_vel.Subtract(*velocity, local_ether);
-		accel.Multiply(rel_vel, drag);
+		glm::mat4 world_to_effect;
+		world_to_effect = glm::inverse(m_localToWorld);
+		glm::vec3 local_ether;
+		local_ether = (mc2::math::transformVector(ether, glm::inverse(world_to_effect)));
+		glm::vec3 rel_vel;
+		rel_vel = *velocity - local_ether;
+		accel = rel_vel * drag;
 
 		//
 		//-----------------------------------------
 		// Now, add in acceleration of the particle
 		//-----------------------------------------
 		//
-		Stuff::Vector3D world_accel;
+		glm::vec3 world_accel;
 		world_accel.x = spec->m_pAccelerationX.ComputeValue(age, seed);
 		world_accel.y = spec->m_pAccelerationY.ComputeValue(age, seed);
 		world_accel.z = spec->m_pAccelerationZ.ComputeValue(age, seed);
-		Stuff::Vector3D local_accel;
-		local_accel.Multiply(world_accel, world_to_effect);
+		glm::vec3 local_accel;
+		local_accel = mc2::math::transformVector(world_accel, world_to_effect);
 		accel += local_accel;
 	}
 
@@ -509,9 +502,9 @@ bool
 	//
 	else
 	{
-		Stuff::Vector3D rel_vel;
-		rel_vel.Subtract(*velocity, ether);
-		accel.Multiply(rel_vel, drag);
+		glm::vec3 rel_vel;
+		rel_vel = *velocity - ether;
+		accel = rel_vel * drag;
 
 		//
 		//-----------------------------------------
@@ -534,8 +527,8 @@ bool
 	mc2::fx_cost_split::Scope _fxi(mc2::fx_cost_split::B_FX_INTEGRATE);
 	Stuff::Scalar time_slice =
 		static_cast<Stuff::Scalar>(till - m_lastRan);
-	velocity->AddScaled(*velocity, accel, time_slice);
-	translation->AddScaled(*translation, *velocity, time_slice);
+	(*velocity) = *velocity + accel * time_slice;
+	(*translation) = *translation + *velocity * time_slice;
 
 	//
 	//-----------------------
@@ -544,12 +537,12 @@ bool
 	//
 	if (!spec->m_alignYUsingVelocity)
 	{
-		Stuff::Vector3D omega(particle->m_angularVelocity);
+		glm::vec3 omega(particle->m_angularVelocity);
 		omega *= time_slice;
-		Stuff::UnitQuaternion omega_q;
-		omega_q = omega;
-		rotation->Multiply(omega_q, Stuff::UnitQuaternion(*rotation));
-		rotation->Normalize();
+		glm::quat omega_q;
+		omega_q = mc2::math::quatFromRotationVector(omega);
+		(*rotation) = mc2::math::composeQuat(omega_q, *rotation);
+		(*rotation) = glm::normalize((*rotation));
 	}
 	}  // end B_FX_INTEGRATE scope
 
@@ -562,12 +555,12 @@ bool
 	if (sim_mode == DynamicWorldSpaceSimulationMode)
 	{
 		Check_Object(world_to_new_local);
-		particle->m_localLinearVelocity.Multiply(*velocity, *world_to_new_local);
-		particle->m_localTranslation.Multiply(*translation, *world_to_new_local);
-		Stuff::LinearMatrix4D world_rot(*rotation);
-		Stuff::LinearMatrix4D local_rot;
-		local_rot.Multiply(world_rot, *world_to_new_local);
-		particle->m_localRotation = local_rot;
+		particle->m_localLinearVelocity = mc2::math::transformVector(*velocity, *world_to_new_local);
+		particle->m_localTranslation = mc2::math::transformPoint(*translation, *world_to_new_local);
+		glm::mat4 world_rot = mc2::math::rotationMatrix(*rotation);
+		glm::mat4 local_rot;
+		local_rot = world_rot * *world_to_new_local;
+		particle->m_localRotation = mc2::math::quatFromRotation(local_rot);
 	}
 
 	//
@@ -577,14 +570,9 @@ bool
 	//
 	if (spec->m_alignYUsingVelocity)
 	{
-		Stuff::LinearMatrix4D basis(true);
-		basis.AlignLocalAxisToWorldVector(
-			particle->m_localLinearVelocity,
-			Stuff::Y_Axis,
-			Stuff::X_Axis,
-			Stuff::Z_Axis
-		);
-		particle->m_localRotation = basis;
+		glm::mat4 basis = glm::mat4(1.0f);
+		mc2::math::alignLocalAxisToWorldVector(basis, particle->m_localLinearVelocity, Stuff::Y_Axis, Stuff::X_Axis, Stuff::Z_Axis);
+		particle->m_localRotation = mc2::math::quatFromRotation(basis);
 	}
 
 	//

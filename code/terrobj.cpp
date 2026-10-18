@@ -928,16 +928,16 @@ long TerrainObject::update (void) {
 
 			if (bldgDustPoofEffect && bldgDustPoofEffect->IsExecuted())
 			{
-				Stuff::Point3D			actualPosition;
-				Stuff::LinearMatrix4D 	shapeOrigin;
-				Stuff::LinearMatrix4D 	localToWorld;
+				glm::vec3			actualPosition;
+				glm::mat4 	shapeOrigin;
+				glm::mat4 	localToWorld;
 					
 				mc2ToRender(actualPosition, position);
 			
- 				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-				shapeOrigin.BuildTranslation(actualPosition);
+ 				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+				mc2::math::buildTranslation(shapeOrigin, actualPosition);
 		
-				Stuff::OBB boundingBox;
+				mc2::math::Obb boundingBox;
 				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 		
 				bool result = bldgDustPoofEffect->Execute(&info);
@@ -1039,14 +1039,14 @@ void TerrainObject::render (void) {
 		
 		if (bldgDustPoofEffect && bldgDustPoofEffect->IsExecuted())
 		{
-			Stuff::Point3D			actualPosition;
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D	localToWorld;
+			glm::vec3			actualPosition;
+			glm::mat4 	shapeOrigin;
+			glm::mat4	localToWorld;
 
 			mc2ToRender(actualPosition, position);
 							
- 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(actualPosition);
+ 			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 				
 			drawInfo.m_parentToWorld = &shapeOrigin;
 	 
@@ -1293,14 +1293,14 @@ long TerrainObject::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 						
 						if (bldgDustPoofEffect)
 						{
-							Stuff::Point3D			actualPosition;
-							Stuff::LinearMatrix4D 	shapeOrigin;
-							Stuff::LinearMatrix4D	localToWorld;
+							glm::vec3			actualPosition;
+							glm::mat4 	shapeOrigin;
+							glm::mat4	localToWorld;
 							
 							mc2ToRender(actualPosition, position);
 							
-							shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-							shapeOrigin.BuildTranslation(actualPosition);
+							mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+							mc2::math::buildTranslation(shapeOrigin, actualPosition);
 							
 							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 							bldgDustPoofEffect->Start(&info);
@@ -1361,7 +1361,7 @@ long TerrainObject::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 
 //---------------------------------------------------------------------------
 
-void TerrainObject::setTerrainPosition (const Stuff::Vector3D& position, const Stuff::Vector2DOf<long>& numbers)
+void TerrainObject::setTerrainPosition (const glm::vec3& position, const Stuff::Vector2DOf<long>& numbers)
 {
 	setPosition( position );
 				
@@ -1377,7 +1377,7 @@ void TerrainObject::setRotation( float rot )
 
 //---------------------------------------------------------------------------
 
-void TerrainObject::calcCellFootprint (Stuff::Vector3D& pos) {
+void TerrainObject::calcCellFootprint (glm::vec3& pos) {
 
 	short cellList[MAX_CELL_COORDS];
 	cellList[0] = MAX_CELL_COORDS;
@@ -1418,10 +1418,10 @@ void TerrainObject::calcCellFootprint (Stuff::Vector3D& pos) {
 		cellFootprint[2] = 0;
 		cellFootprint[3] = 0;
 
-		vectorFootprint[0].Zero();
-		vectorFootprint[1].Zero();
-		vectorFootprint[2].Zero();
-		vectorFootprint[3].Zero();
+		vectorFootprint[0] = glm::vec3(0.0f);
+		vectorFootprint[1] = glm::vec3(0.0f);
+		vectorFootprint[2] = glm::vec3(0.0f);
+		vectorFootprint[3] = glm::vec3(0.0f);
 	}
 }
 
@@ -1655,7 +1655,7 @@ void TerrainObject::CopyTo (TerrainObjectData *data)
 	data->fallRate = fallRate;
 	data->powerSupply = powerSupply;
 	memcpy(data->cellFootprint,cellFootprint,sizeof(short) * 4);
-	memcpy(data->vectorFootprint,vectorFootprint,sizeof(Stuff::Vector3D) * 4);
+	memcpy(data->vectorFootprint,vectorFootprint,sizeof(glm::vec3) * 4);
 	data->numSubAreas0 = numSubAreas0;
 	data->numSubAreas1 = numSubAreas1;
 
@@ -1692,7 +1692,7 @@ void TerrainObject::Load (TerrainObjectData *data)
 	fallRate = data->fallRate;
 	powerSupply = data->powerSupply;
 	memcpy(cellFootprint,data->cellFootprint,sizeof(short) * 4);
-	memcpy(vectorFootprint,data->vectorFootprint,sizeof(Stuff::Vector3D) * 4);
+	memcpy(vectorFootprint,data->vectorFootprint,sizeof(glm::vec3) * 4);
 	numSubAreas0 = data->numSubAreas0;
 	numSubAreas1 = data->numSubAreas1;
 

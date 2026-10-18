@@ -6,7 +6,7 @@
 
 
 
-float GroundVehicle::relFacingTo (Stuff::Vector3D goal, long bodyLocation) {
+float GroundVehicle::relFacingTo (glm::vec3 goal, long bodyLocation) {
 
 	float relFacing = Mover::relFacingTo(goal);
 
@@ -23,7 +23,7 @@ float GroundVehicle::relFacingTo (Stuff::Vector3D goal, long bodyLocation) {
 }
 
 
-float GroundVehicle::calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, Stuff::Vector3D* targetPoint) {
+float GroundVehicle::calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, glm::vec3* targetPoint) {
 
 	if ((weaponIndex < numOther) || (weaponIndex >= numOther + numWeapons))
 		return(-1000.0);
@@ -242,7 +242,7 @@ long GroundVehicle::handleMoveChunk (unsigned long chunk) {
 #pragma optimize("",on)
 
 
-float GroundVehicle::weaponLocked (long weaponIndex, Stuff::Vector3D targetPosition) {
+float GroundVehicle::weaponLocked (long weaponIndex, glm::vec3 targetPosition) {
 
 	return(relFacingTo(targetPosition, GROUNDVEHICLE_LOCATION_TURRET));
 }
@@ -414,7 +414,7 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 }
 
 
-long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, Stuff::Vector3D* targetPoint, float &dmgDone) {
+long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, glm::vec3* targetPoint, float &dmgDone) {
 
 	if (status != OBJECT_STATUS_NORMAL)
 		return(1);
@@ -784,7 +784,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 					// invisible, just hit the target with zero points of damage.
 					float missRadius = target ? 25.0 : 5.0;
 	
-					Stuff::Vector3D positionOffset;
+					glm::vec3 positionOffset;
 					if (target)
 						positionOffset = target->getPosition();
 					else if (targetPoint)
@@ -880,7 +880,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 				// invisible, just hit the target with zero points of damage.
 				float missRadius = target ? 25.0 : 5.0;
 
-				Stuff::Vector3D positionOffset;
+				glm::vec3 positionOffset;
 				if (target)
 					positionOffset = target->getPosition();
 				else if (targetPoint)
@@ -979,7 +979,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 
 long GroundVehicle::handleWeaponFire (long weaponIndex,
 								   GameObjectPtr target,
-								   Stuff::Vector3D* targetPoint,
+								   glm::vec3* targetPoint,
 								   bool hit,
 								   float entryAngle,
 								   long numMissiles,

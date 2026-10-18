@@ -480,7 +480,7 @@ void execGetObjectPosition (void) {
 		
 	GameObjectPtr obj = getObject(objectId);
 	if (obj) {
-		Stuff::Vector3D pos = obj->getPosition();
+		glm::vec3 pos = obj->getPosition();
 		coordList[0] = pos.x;
 		coordList[1] = pos.y;
 		coordList[2] = pos.z;
@@ -800,7 +800,7 @@ void execGetTacOrder(void) {
 			if (pilot) {
 				code = pilot->getCurTacOrder()->getParamData(time, paramList);
 				GameObjectPtr goalObj = nullptr;
-				Stuff::Vector3D goalLoc;
+				glm::vec3 goalLoc;
 				float goalRange = 0.0;
 				paramList[17] = pilot->getMainGoal(goalObj, goalLoc, goalRange);
 				paramList[18] = goalObj ? goalObj->getPartId() : 0;

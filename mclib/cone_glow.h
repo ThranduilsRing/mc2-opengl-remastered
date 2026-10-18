@@ -85,7 +85,7 @@ float spill_scale();        // MC2_LIGHT_CONE_SPILL (0..3)
 // Returns false (outputs untouched) when the node has no usable cone
 // geometry — caller falls back to its existing heuristic.
 bool GetNodeAim(TG_MultiShape* shape, long nodeId,
-                Stuff::Vector3D& aimWorldOut, float& coneLenOut);
+                glm::vec3& aimWorldOut, float& coneLenOut);
 
 // (B) Queue the cone mesh under `nodeId` for additive glow this frame.
 // argb = light color (alpha byte ignored), nightFactor 0..1 scales alpha.

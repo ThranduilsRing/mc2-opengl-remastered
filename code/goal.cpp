@@ -483,14 +483,14 @@ GoalObjectPtr GoalManager::calcGoal (GameObjectPtr attacker, GameObjectPtr targe
 
 //---------------------------------------------------------------------------
 
-GoalObjectPtr GoalManager::calcGoal (GameObjectPtr attacker, Stuff::Vector3D location) {
+GoalObjectPtr GoalManager::calcGoal (GameObjectPtr attacker, glm::vec3 location) {
 
 	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
 
-GoalObjectPtr GoalManager::calcGoal (Stuff::Vector3D start, Stuff::Vector3D location) {
+GoalObjectPtr GoalManager::calcGoal (glm::vec3 start, glm::vec3 location) {
 
 	int startCell[2], locationCell[2];
 	land->worldToCell(start, startCell[0], startCell[1]);

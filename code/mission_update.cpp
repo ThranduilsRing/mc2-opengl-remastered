@@ -164,7 +164,7 @@ namespace {
 		mc2::gate::get<"MC2_FIXTURE_ORDER_LIVENESS">();
 	struct OrderLivenessEntry {
 		unsigned long   wid;
-		Stuff::Vector3D startPos;
+		glm::vec3 startPos;
 	};
 	static const int kOrderLivenessCap = 32;   // bounded, s_firedWIDs precedent
 	static OrderLivenessEntry s_olEntries[kOrderLivenessCap];
@@ -471,7 +471,7 @@ void Mission::updateCratersAndDamp() {
 			MoverPtr mv = ObjectManager->getMover(mi);
 			if (!mv || !mv->getExists())
 				continue;
-			Stuff::Vector3D mp = mv->getPosition();
+			glm::vec3 mp = mv->getPosition();
 			s_moverCells.push_back((mp.x + halfMap) / wupv);
 			s_moverCells.push_back((halfMap - mp.y) / wupv);
 		}
@@ -980,8 +980,8 @@ void Mission::updateOrderLiveness() {
 				if (!Team::home || pM->getTeamId() != Team::home->id) continue;
 				MechWarriorPtr olPilot = pM->getPilot();
 				if (!olPilot) continue;
-				Stuff::Vector3D olPos = pM->getPosition();
-				Stuff::Vector3D olGoal = olPos;
+				glm::vec3 olPos = pM->getPosition();
+				glm::vec3 olGoal = olPos;
 				const float olLen = sqrtf(olPos.x * olPos.x + olPos.y * olPos.y);
 				if (olLen > 1.0f)
 				{

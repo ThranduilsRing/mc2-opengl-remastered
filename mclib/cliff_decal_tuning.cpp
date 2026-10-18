@@ -18,8 +18,8 @@ namespace {
 
 // Captured live-update context for the single active CLIFF_WALL decal.
 int32_t          s_recipeIndex = -1;
-Stuff::Vector3D  s_xlatPosition;   // shape-world placement origin
-Stuff::Vector3D  s_nAcc;           // accumulated world-axis terrain normal
+glm::vec3  s_xlatPosition;   // shape-world placement origin
+glm::vec3  s_nAcc;           // accumulated world-axis terrain normal
 
 Knobs s_knobs;
 
@@ -29,20 +29,20 @@ Knobs& knobs() {
     return s_knobs;
 }
 
-void buildCliffWallMatrix(const Stuff::Vector3D& xlatPosition,
-                          const Stuff::Vector3D& nAcc,
+void buildCliffWallMatrix(const glm::vec3& xlatPosition,
+                          const glm::vec3& nAcc,
                           const Knobs& k,
-                          Stuff::Matrix4D& out) {
+                          glm::mat4& out) {
     // Outward facing = horizontal projection of the terrain normal, remapped to
     // shape-world axes (-nx, 0, ny). Points downslope toward the low side.
-    Stuff::Vector3D facing;
+    glm::vec3 facing;
     facing.x = -nAcc.x; facing.y = 0.0f; facing.z = nAcc.y;
     float fl = std::sqrt(facing.x * facing.x + facing.z * facing.z);
     if (fl < 1e-4f) { facing.x = 0.0f; facing.z = 1.0f; fl = 1.0f; } // flat: pick +Zsw
     facing.x /= fl; facing.z /= fl;
-    Stuff::Vector3D up(0.0f, 1.0f, 0.0f);
+    glm::vec3 up(0.0f, 1.0f, 0.0f);
     // tangent (contour) = up x facing (right-handed), horizontal.
-    Stuff::Vector3D tangent;
+    glm::vec3 tangent;
     tangent.x = up.y * facing.z - up.z * facing.y; // = facing.z
     tangent.y = up.z * facing.x - up.x * facing.z; // = 0
     tangent.z = up.x * facing.y - up.y * facing.x; // = -facing.x
@@ -74,7 +74,7 @@ void buildCliffWallMatrix(const Stuff::Vector3D& xlatPosition,
         const float cp = std::cos(pr), sp = std::sin(pr);
         // up'    = up*cp + (tangent x up)*sp    = up*cp + facing*sp
         // facing'= facing*cp + (tangent x facing)*sp = facing*cp - up*sp
-        Stuff::Vector3D newUp, newFacing;
+        glm::vec3 newUp, newFacing;
         newUp.x = up.x * cp + facing.x * sp;
         newUp.y = up.y * cp + facing.y * sp;
         newUp.z = up.z * cp + facing.z * sp;
@@ -88,33 +88,33 @@ void buildCliffWallMatrix(const Stuff::Vector3D& xlatPosition,
     // SCALE: uniform scale of the wall mesh. Multiply the 3 basis rows by k.scale
     // before translation. Uniform only -> no inverse-transpose needed for normals.
     const float sc = k.scale;
-    out.BuildIdentity();
+    out = glm::mat4(1.0f);
     // ROW 0 = local X (wall width / contour) -> tangent
-    out(Stuff::X_Axis, Stuff::X_Axis) = tangent.x * sc;
-    out(Stuff::X_Axis, Stuff::Y_Axis) = tangent.y * sc;
-    out(Stuff::X_Axis, Stuff::Z_Axis) = tangent.z * sc;
+    out[Stuff::X_Axis][Stuff::X_Axis] = tangent.x * sc;
+    out[Stuff::Y_Axis][Stuff::X_Axis] = tangent.y * sc;
+    out[Stuff::Z_Axis][Stuff::X_Axis] = tangent.z * sc;
     // ROW 1 = local Y (wall height) -> world up
-    out(Stuff::Y_Axis, Stuff::X_Axis) = up.x * sc;
-    out(Stuff::Y_Axis, Stuff::Y_Axis) = up.y * sc;
-    out(Stuff::Y_Axis, Stuff::Z_Axis) = up.z * sc;
+    out[Stuff::X_Axis][Stuff::Y_Axis] = up.x * sc;
+    out[Stuff::Y_Axis][Stuff::Y_Axis] = up.y * sc;
+    out[Stuff::Z_Axis][Stuff::Y_Axis] = up.z * sc;
     // ROW 2 = local Z (relief / face) -> outward facing
-    out(Stuff::Z_Axis, Stuff::X_Axis) = facing.x * sc;
-    out(Stuff::Z_Axis, Stuff::Y_Axis) = facing.y * sc;
-    out(Stuff::Z_Axis, Stuff::Z_Axis) = facing.z * sc;
+    out[Stuff::X_Axis][Stuff::Z_Axis] = facing.x * sc;
+    out[Stuff::Y_Axis][Stuff::Z_Axis] = facing.y * sc;
+    out[Stuff::Z_Axis][Stuff::Z_Axis] = facing.z * sc;
     // Translation = placement origin + OUTWARD offset (facing) + LATERAL (tangent)
     // + LIFT (world up). Knob-tuned; defaults reproduce Slice 0A.
     const float kOutwardOffset = k.offset;
-    out(Stuff::W_Axis, Stuff::X_Axis) =
+    out[Stuff::X_Axis][Stuff::W_Axis] =
         xlatPosition.x + facing.x * kOutwardOffset + tangent.x * k.lateral + up.x * k.lift;
-    out(Stuff::W_Axis, Stuff::Y_Axis) =
+    out[Stuff::Y_Axis][Stuff::W_Axis] =
         xlatPosition.y + facing.y * kOutwardOffset + tangent.y * k.lateral + up.y * k.lift;
-    out(Stuff::W_Axis, Stuff::Z_Axis) =
+    out[Stuff::Z_Axis][Stuff::W_Axis] =
         xlatPosition.z + facing.z * kOutwardOffset + tangent.z * k.lateral + up.z * k.lift;
 }
 
 void captureDecalContext(int32_t recipeIndex,
-                         const Stuff::Vector3D& xlatPosition,
-                         const Stuff::Vector3D& nAcc) {
+                         const glm::vec3& xlatPosition,
+                         const glm::vec3& nAcc) {
     s_recipeIndex  = recipeIndex;
     s_xlatPosition = xlatPosition;
     s_nAcc         = nAcc;
@@ -147,13 +147,13 @@ void cliffDecal_setKnobsAndApply(float scale, float offset, float lateral,
     s_knobs.yawDeg   = yawDeg;
     s_knobs.pitchDeg = pitchDeg;
     if (s_recipeIndex < 0) return;
-    Stuff::Matrix4D m;
+    glm::mat4 m;
     buildCliffWallMatrix(s_xlatPosition, s_nAcc, s_knobs, m);
     // buildRecipeFromShape fills GpuStaticPropInstance.modelMatrix by raw memcpy of
     // Matrix4D's 16-float `entries` array (gos_static_prop_batcher.cpp), so the live
     // update must hand the registry the SAME raw entries layout. Matrix4D exposes a
     // `const Scalar*` conversion returning &entries[0]; copy those 16 floats verbatim.
-    const float* entries = static_cast<const float*>(m);
+    const float* entries = static_cast<const float*>(glm::value_ptr(m));
     GpuStaticPropRegistry::staticPropSetAllLeafMatrices(s_recipeIndex, entries);
 }
 

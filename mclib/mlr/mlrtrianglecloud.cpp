@@ -7,8 +7,6 @@
 #if !defined(MLR_MLRCLIPTRICK_HPP)
 #include<mlr/mlrcliptrick.hpp>
 #endif
-#include "math/stuff_glm_bridge.h"
-
 extern DWORD gShowClippedPolys;
 
 //#############################################################################
@@ -100,7 +98,7 @@ void
 	MLRTriangleCloud::SetData
 	(
 		const int *count,
-		const Stuff::Point3D *point_data,
+		const glm::vec3 *point_data,
 		const Stuff::RGBAColor *color_data
 	)
 {
@@ -119,7 +117,7 @@ void
 {
 	Check_Object(this);
 
-	mc2::math::fromGlm(worldToEffect, glm::inverse(mc2::math::toGlm(*dInfo->effectToWorld)));
+	worldToEffect = glm::inverse((*dInfo->effectToWorld));
 
 	Transform(*usedNrOfTriangles, 3);
 

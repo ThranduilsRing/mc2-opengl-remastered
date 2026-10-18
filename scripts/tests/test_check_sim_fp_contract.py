@@ -10,7 +10,7 @@ spec = importlib.util.spec_from_file_location("check_sim_fp_contract", SCRIPT)
 fp = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fp)
 
-SIM_SRC = os.path.join(fp.ROOT, "mclib", "stuff", "affinematrix.cpp")
+SIM_SRC = os.path.join(fp.ROOT, "mclib", "stuff", "vector4d.cpp")
 MSVC = "cl.exe /nologo /TP /O2 /fp:precise -c " + SIM_SRC
 CLANG = "C:/LLVM/bin/clang-cl.exe /nologo /TP /O2 /fp:precise /clang:-ffp-contract=off -c " + SIM_SRC
 

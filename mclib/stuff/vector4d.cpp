@@ -42,9 +42,9 @@ bool
 //###########################################################################
 //
 Vector4D&
-	Vector4D::Multiply(
+	Vector4D::MultiplyAffine(
 		const Vector4D& v,
-		const AffineMatrix4D& m
+		const glm::mat4& m
 	)
 {
 	Check_Pointer(this);
@@ -52,9 +52,9 @@ Vector4D&
 	Check_Object(&m);
 	Verify(this != &v);
 
-	x = v.x*m(0,0) + v.y*m(1,0) + v.z*m(2,0) + v.w*m(3,0);
-	y = v.x*m(0,1) + v.y*m(1,1) + v.z*m(2,1) + v.w*m(3,1);
-	z = v.x*m(0,2) + v.y*m(1,2) + v.z*m(2,2) + v.w*m(3,2);
+	x = v.x*m[0][0] + v.y*m[0][1] + v.z*m[0][2] + v.w*m[0][3];
+	y = v.x*m[1][0] + v.y*m[1][1] + v.z*m[1][2] + v.w*m[1][3];
+	z = v.x*m[2][0] + v.y*m[2][1] + v.z*m[2][2] + v.w*m[2][3];
 	w = v.w;
 	return *this;
 }
@@ -66,7 +66,7 @@ Vector4D&
 Vector4D&
 	Vector4D::Multiply(
 		const Vector4D& v,
-		const Matrix4D& m
+		const glm::mat4& m
 	)
 {
 	Check_Pointer(this);
@@ -74,10 +74,10 @@ Vector4D&
 	Check_Object(&m);
 	Verify(this != &v);
 
-	x = v.x*m(0,0) + v.y*m(1,0) + v.z*m(2,0) + v.w*m(3,0);
-	y = v.x*m(0,1) + v.y*m(1,1) + v.z*m(2,1) + v.w*m(3,1);
-	z = v.x*m(0,2) + v.y*m(1,2) + v.z*m(2,2) + v.w*m(3,2);
-	w = v.x*m(0,3) + v.y*m(1,3) + v.z*m(2,3) + v.w*m(3,3);
+	x = v.x*m[0][0] + v.y*m[0][1] + v.z*m[0][2] + v.w*m[0][3];
+	y = v.x*m[1][0] + v.y*m[1][1] + v.z*m[1][2] + v.w*m[1][3];
+	z = v.x*m[2][0] + v.y*m[2][1] + v.z*m[2][2] + v.w*m[2][3];
+	w = v.x*m[3][0] + v.y*m[3][1] + v.z*m[3][2] + v.w*m[3][3];
 	return *this;
 }
 
@@ -86,19 +86,19 @@ Vector4D&
 //###########################################################################
 //
 Vector4D&
-	Vector4D::Multiply(
-		const Vector3D& v,
-		const Matrix4D& m
+	Vector4D::MultiplyVector(
+		const glm::vec3& v,
+		const glm::mat4& m
 	)
 {
 	Check_Pointer(this);
 	Check_Object(&v);
 	Check_Object(&m);
 
-	x = v.x*m(0,0) + v.y*m(1,0) + v.z*m(2,0);
-	y = v.x*m(0,1) + v.y*m(1,1) + v.z*m(2,1);
-	z = v.x*m(0,2) + v.y*m(1,2) + v.z*m(2,2);
-	w = v.x*m(0,3) + v.y*m(1,3) + v.z*m(2,3);
+	x = v.x*m[0][0] + v.y*m[0][1] + v.z*m[0][2];
+	y = v.x*m[1][0] + v.y*m[1][1] + v.z*m[1][2];
+	z = v.x*m[2][0] + v.y*m[2][1] + v.z*m[2][2];
+	w = v.x*m[3][0] + v.y*m[3][1] + v.z*m[3][2];
 	return *this;
 }
 
@@ -117,10 +117,10 @@ Vector4D&
 	Check_Object(&v);
 	Check_Object(&m);
 
-	x = v.x*m(0,0) + v.y*m(1,0) + v.z*m(2,0) + m(3,0);
-	y = v.x*m(0,1) + v.y*m(1,1) + v.z*m(2,1) + m(3,1);
-	z = v.x*m(0,2) + v.y*m(1,2) + v.z*m(2,2) + m(3,2);
-	w = v.x*m(0,3) + v.y*m(1,3) + v.z*m(2,3) + m(3,3);
+	x = v.x*m[0][0] + v.y*m[0][1] + v.z*m[0][2] + m[0][3];
+	y = v.x*m[1][0] + v.y*m[1][1] + v.z*m[1][2] + m[1][3];
+	z = v.x*m[2][0] + v.y*m[2][1] + v.z*m[2][2] + m[2][3];
+	w = v.x*m[3][0] + v.y*m[3][1] + v.z*m[3][2] + m[3][3];
 	return *this;
 }
 #endif
@@ -143,8 +143,8 @@ Vector4D&
 
 Vector4D&
 	Vector4D::MultiplySetClip(
-		const Point3D &v,
-		const Matrix4D &m,
+		const glm::vec3 &v,
+		const glm::mat4 &m,
 		int *clipper
 	)
 {
@@ -152,10 +152,10 @@ Vector4D&
 	Check_Object(&v);
 	Check_Object(&m);
 
-	x = v.x*m(0,0) + v.y*m(1,0) + v.z*m(2,0) + m(3,0);
-	y = v.x*m(0,1) + v.y*m(1,1) + v.z*m(2,1) + m(3,1);
-	z = v.x*m(0,2) + v.y*m(1,2) + v.z*m(2,2) + m(3,2);
-	w = v.x*m(0,3) + v.y*m(1,3) + v.z*m(2,3) + m(3,3);
+	x = v.x*m[0][0] + v.y*m[0][1] + v.z*m[0][2] + m[0][3];
+	y = v.x*m[1][0] + v.y*m[1][1] + v.z*m[1][2] + m[1][3];
+	z = v.x*m[2][0] + v.y*m[2][1] + v.z*m[2][2] + m[2][3];
+	w = v.x*m[3][0] + v.y*m[3][1] + v.z*m[3][2] + m[3][3];
 
 	*clipper = 0;
 

@@ -18,7 +18,7 @@ HeightBrush.cpp : see HeightBrush.h
 // Modern GL forward projection (projectModernClipGL + viewport remap) -- the same
 // zoom-correct transform object selection uses. Legacy projectZ diverges/rejects
 // when zoomed in (X-collapse). Returns false (skip primitive) behind the near plane.
-static bool projectPtGL_brush( Camera* eye, const Stuff::Vector3D& wp, float& sx, float& sy )
+static bool projectPtGL_brush( Camera* eye, const glm::vec3& wp, float& sx, float& sy )
 {
 	ModernClipResult r = eye->projectModernClipGL( wp );
 	if ( r.clip.w <= 1e-4f ) return false;
@@ -87,7 +87,7 @@ Action* HeightBrush::endPaint()
 }
 
 //-------------------------------------------------------------------------------------------------
-bool HeightBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
+bool HeightBrush::paint( glm::vec3& worldPos, int screenX, int screenY )
 {
 	if ( !land || !pCurAction )
 		return false;
@@ -197,7 +197,7 @@ void HeightBrush::render( int screenX, int screenY )
 	if ( !eye || !land )
 		return;
 
-	Stuff::Vector3D center;
+	glm::vec3 center;
 	Stuff::Vector2DOf<long> sp;
 	sp.x = screenX; sp.y = screenY;
 	eye->inverseProject( sp, center );
@@ -213,7 +213,7 @@ void HeightBrush::render( int screenX, int screenY )
 	for ( int k = 0; k <= N; ++k )
 	{
 		const float ang = (float)k / (float)N * 6.2831853f;
-		Stuff::Vector3D wp = center;
+		glm::vec3 wp = center;
 		wp.x += cosf( ang ) * radius;
 		wp.y += sinf( ang ) * radius;
 		wp.z = land->getTerrainElevation( wp );

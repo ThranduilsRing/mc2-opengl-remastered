@@ -405,7 +405,7 @@ class Appearance
 		{
 		}
 
-		virtual bool setJumpParameters (Stuff::Vector3D &jumpGoal)
+		virtual bool setJumpParameters (glm::vec3 &jumpGoal)
 		{
 			return false;
 		}
@@ -437,49 +437,49 @@ class Appearance
 		{
 		}
 		
-		virtual Stuff::Vector3D getSmokeNodePosition (long nodeId)
+		virtual glm::vec3 getSmokeNodePosition (long nodeId)
 		{
-			Stuff::Vector3D position;
+			glm::vec3 position;
 			position.x = position.y = position.z = 0.0f;
 
 			return position;
 		}
 		
-		virtual Stuff::Vector3D getDustNodePosition (long nodeId)
+		virtual glm::vec3 getDustNodePosition (long nodeId)
 		{
-			Stuff::Vector3D position;
+			glm::vec3 position;
 			position.x = position.y = position.z = 0.0f;
 
 			return position;
 		}
 		
- 		virtual Stuff::Vector3D getWeaponNodePosition (long node)
+ 		virtual glm::vec3 getWeaponNodePosition (long node)
 		{
-			Stuff::Vector3D position;
+			glm::vec3 position;
 			position.x = position.y = position.z = 0.0f;
 
 			return position;
 		}
 
-		virtual Stuff::Vector3D getNodePosition (long nodeId)
+		virtual glm::vec3 getNodePosition (long nodeId)
 		{
-			Stuff::Vector3D position;
-			position.x = position.y = position.z = 0.0f;
-
-			return position;
-		}
-		
-		virtual Stuff::Vector3D getNodeNamePosition (const char *nodeName)
-		{
-			Stuff::Vector3D position;
+			glm::vec3 position;
 			position.x = position.y = position.z = 0.0f;
 
 			return position;
 		}
 		
-		virtual Stuff::Vector3D getNodeIdPosition (long nodeId)
+		virtual glm::vec3 getNodeNamePosition (const char *nodeName)
 		{
-			Stuff::Vector3D position;
+			glm::vec3 position;
+			position.x = position.y = position.z = 0.0f;
+
+			return position;
+		}
+		
+		virtual glm::vec3 getNodeIdPosition (long nodeId)
+		{
+			glm::vec3 position;
 			position.x = position.y = position.z = 0.0f;
 
 			return position;
@@ -504,7 +504,7 @@ class Appearance
 		{
 		}
 
-		virtual void setObjectParameters (const Stuff::Vector3D &pos, float rot, long selected, long team, long homeRelations) = 0;
+		virtual void setObjectParameters (const glm::vec3 &pos, float rot, long selected, long team, long homeRelations) = 0;
 
 		virtual void setMoverParameters (float turretRot, float lArmRot = 0.0f, float rArmRot = 0.0f, bool isAirborne = false)
 		{
@@ -576,7 +576,7 @@ class Appearance
 		{
 		}
 		
-		virtual long calcCellsCovered (Stuff::Vector3D& pos, short* cellList) {
+		virtual long calcCellsCovered (glm::vec3& pos, short* cellList) {
 			return(0);
 		}
 
@@ -633,10 +633,10 @@ class Appearance
 		{
 		}
 		
-		virtual Stuff::Vector3D getVelocity (void)
+		virtual glm::vec3 getVelocity (void)
 		{
-			Stuff::Vector3D result;
-			result.Zero();
+			glm::vec3 result;
+			result = glm::vec3(0.0f);
 			return result;
 		}
 
@@ -674,10 +674,10 @@ class Appearance
 			return false;
 		}
 		
-		virtual Stuff::Point3D getRootNodeCenter (void)
+		virtual glm::vec3 getRootNodeCenter (void)
 		{
-			Stuff::Point3D result;
-			result.Zero();
+			glm::vec3 result;
+			result = glm::vec3(0.0f);
 			return result;
 		}
 		
@@ -719,24 +719,24 @@ class Appearance
 		{
 		}
 
-		virtual Stuff::Vector3D getHitNode (void)
+		virtual glm::vec3 getHitNode (void)
 		{
-			Stuff::Point3D result;
-			result.Zero();
+			glm::vec3 result;
+			result = glm::vec3(0.0f);
 			return result;
 		}
 
-		virtual Stuff::Vector3D getHitNodeLeft (void)
+		virtual glm::vec3 getHitNodeLeft (void)
 		{
-			Stuff::Point3D result;
-			result.Zero();
+			glm::vec3 result;
+			result = glm::vec3(0.0f);
 			return result;
 		}
 
-		virtual Stuff::Vector3D getHitNodeRight (void)
+		virtual glm::vec3 getHitNodeRight (void)
 		{
-			Stuff::Point3D result;
-			result.Zero();
+			glm::vec3 result;
+			result = glm::vec3(0.0f);
 			return result;
 		}
 

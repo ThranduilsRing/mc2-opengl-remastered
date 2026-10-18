@@ -87,9 +87,9 @@ void BuildingSettingsDlg::applyChanges()
 	// Preserve each selected object's world position across the appearance/shape
 	// swaps below (setAppearance / setDamage can swap the mesh and otherwise shift
 	// the object); restored + re-baked at the end of this function.
-	std::vector<Stuff::Vector3D> savedPos;
+	std::vector<glm::vec3> savedPos;
 	for ( auto pit = units.begin(); pit != units.end(); pit++ )
-		savedPos.push_back( (*pit)->appearance() ? (*pit)->appearance()->position : Stuff::Vector3D() );
+		savedPos.push_back( (*pit)->appearance() ? (*pit)->appearance()->position : glm::vec3() );
 
 	// get the type info from the dlg box
 	int index = m_Group.GetCurSel( );

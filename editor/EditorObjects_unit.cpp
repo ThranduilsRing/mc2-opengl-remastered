@@ -285,7 +285,7 @@ bool Unit::load( FitIniFile* file, int warriorNumber )
 			orderAuthored = true;
 			for ( unsigned long i = 0; i < wpCount; ++i )
 			{
-				Stuff::Vector3D wp; wp.x = wp.y = wp.z = 0.0f;
+				glm::vec3 wp; wp.x = wp.y = wp.z = 0.0f;
 				char k[64];
 				sprintf( k, "Waypoint%luX", i ); file->readIdFloat( k, wp.x );
 				sprintf( k, "Waypoint%luY", i ); file->readIdFloat( k, wp.y );
@@ -365,7 +365,7 @@ Unit& Unit::operator=( const Unit& src )
 // <warriorPath><brainName>.abl): extract any patrol path (startPatrolPath[i,0/1]
 // literals), the fsm name, and a coarse behavior tag. Returns true if the file
 // opened (even with no patrol). fsmOut/behaviorOut are always written.
-static bool EditorAnalyzeBrain( const char* brainName, std::vector<Stuff::Vector3D>& wpOut,
+static bool EditorAnalyzeBrain( const char* brainName, std::vector<glm::vec3>& wpOut,
 	char* fsmOut, size_t fsmCap, int& behaviorOut )
 {
 	wpOut.clear();
@@ -452,7 +452,7 @@ static bool EditorAnalyzeBrain( const char* brainName, std::vector<Stuff::Vector
 			// PositionX/Y (verified: mc2_01_Pat1 unit (3434,1983) sits next to its
 			// startBase1PatrolPath[0]=(3008,1472); both mc2_01 and mc2_03 patrol coords
 			// span the same +/- world range as their unit positions). No transform.
-			Stuff::Vector3D wp; wp.x = xs[i]; wp.y = ys[i]; wp.z = 0.0f;
+			glm::vec3 wp; wp.x = xs[i]; wp.y = ys[i]; wp.z = 0.0f;
 			wpOut.push_back( wp );
 		}
 
@@ -474,7 +474,7 @@ static bool EditorAnalyzeBrain( const char* brainName, std::vector<Stuff::Vector
 // to the legacy .abl PatrolPath[] literal scan (EditorAnalyzeBrain above), which remains the
 // only source for missions with no declarative Brain{} block.
 static bool EditorImportDeclarativePatrol( float ux, float uy,
-	std::vector<Stuff::Vector3D>& wpOut, bool& loopOut )
+	std::vector<glm::vec3>& wpOut, bool& loopOut )
 {
 	wpOut.clear();
 	loopOut = false;
@@ -484,7 +484,7 @@ static bool EditorImportDeclarativePatrol( float ux, float uy,
 		return false;
 	for ( int i = 0; i < b->primary.waypointCount; ++i )
 	{
-		Stuff::Vector3D wp;
+		glm::vec3 wp;
 		wp.x = b->primary.waypoints[i].x;
 		wp.y = b->primary.waypoints[i].y;
 		wp.z = 0.0f;   // overlay re-samples terrain elevation when drawing, same as the .abl path
@@ -502,7 +502,7 @@ void Unit::importPatrolFromBrainIfNeeded()
 
 	// .abl analysis always runs: it supplies brainFsm + a coarse brainBehavior tag for the
 	// "AI Brain" panel section regardless of which source ends up supplying the patrol path.
-	std::vector<Stuff::Vector3D> wps;
+	std::vector<glm::vec3> wps;
 	EditorAnalyzeBrain( brain.getBrainName(), wps, brainFsm, sizeof( brainFsm ), brainBehavior );
 	bool loop = true;   // legacy .abl patrols: always closed-loop (unchanged prior behavior)
 
@@ -510,7 +510,7 @@ void Unit::importPatrolFromBrainIfNeeded()
 	// spawn position matches one (carver_v_enhanced content) -- overrides the .abl scan above.
 	if ( appearance() )
 	{
-		std::vector<Stuff::Vector3D> declWps;
+		std::vector<glm::vec3> declWps;
 		bool declLoop = false;
 		if ( EditorImportDeclarativePatrol( (float)appearance()->position.x,
 			(float)appearance()->position.y, declWps, declLoop ) )

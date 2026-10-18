@@ -152,7 +152,7 @@ bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
 
 		if (!setupOnly && !playedCriticalHit)
 		{
-			Stuff::Vector3D smokePos = appearance->getNodePosition(0);
+			glm::vec3 smokePos = appearance->getNodePosition(0);
 			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,nullptr,smokePos);
 
 			appearance->startSmoking(1);
@@ -496,7 +496,7 @@ bool BattleMech::injureBodyLocation (long bodyLocation, float damage) {
 	return(false);
 }
 
-float BattleMech::weaponLocked (long weaponIndex, Stuff::Vector3D targetPosition) {
+float BattleMech::weaponLocked (long weaponIndex, glm::vec3 targetPosition) {
 
 	return(relFacingTo(targetPosition, inventory[weaponIndex].bodyLocation));
 }

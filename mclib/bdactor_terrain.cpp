@@ -4,7 +4,7 @@
 
 #define HEIGHT_THRESHOLD 10.0f
 
-long BldgAppearance::calcCellsCovered (Stuff::Vector3D& pos, short* cellList) {
+long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
 
 	gosASSERT((Terrain::realVerticesMapSide * MAPCELL_DIM) == GameMap->width);
 	long numCoords = 0;
@@ -33,9 +33,9 @@ long BldgAppearance::calcCellsCovered (Stuff::Vector3D& pos, short* cellList) {
 		{
 			for (int j=0;j<bldgShape->GetNumVerticesInShape(i);j++) 
 			{
-				Stuff::Vector3D vertexPos, worldPos;
+				glm::vec3 vertexPos, worldPos;
 				vertexPos = bldgShape->GetShapeVertexInEditor(i,j,-rotation);
-				worldPos.Add(pos,vertexPos);
+				worldPos = pos + vertexPos;
 	
 				bool recordCell = false;
 				if (appearType->isForestClump)
@@ -96,9 +96,9 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 			{
 				for (int j=0;j<bldgShape->GetNumVerticesInShape(i);j++)
 				{
-					Stuff::Vector3D vertexPos, worldPos;
+					glm::vec3 vertexPos, worldPos;
 					vertexPos = bldgShape->GetShapeVertexInEditor(i,j,-rotation);
-					worldPos.Add(position,vertexPos);
+					worldPos = position + vertexPos;
 		
 					int cellR, cellC;
 					land->worldToCell(worldPos,cellR,cellC);
@@ -167,9 +167,9 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 			{
 				for (int j=0;j<bldgShape->GetNumVerticesInShape(i);j++)
 				{
-					Stuff::Vector3D vertexPos, worldPos;
+					glm::vec3 vertexPos, worldPos;
 					vertexPos = bldgShape->GetShapeVertexInEditor(i,j,-rotation);
-					worldPos.Add(position,vertexPos);
+					worldPos = position + vertexPos;
 		
 					int cellR, cellC;
 					land->worldToCell(worldPos,cellR,cellC);
@@ -264,9 +264,9 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 			{
 				for (int j=0;j<bldgShape->GetNumVerticesInShape(i);j++)
 				{
-					Stuff::Vector3D vertexPos, worldPos;
+					glm::vec3 vertexPos, worldPos;
 					vertexPos = bldgShape->GetShapeVertexInEditor(i,j,-rotation);
-					worldPos.Add(position,vertexPos);
+					worldPos = position + vertexPos;
 		
 					int cellR, cellC;
 					land->worldToCell(worldPos,cellR,cellC);
@@ -352,9 +352,9 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 			{
 				for (int j=0;j<tempBldgShape->GetNumVerticesInShape(i);j++) 
 				{
-					Stuff::Vector3D vertexPos, worldPos;
+					glm::vec3 vertexPos, worldPos;
 					vertexPos = tempBldgShape->GetShapeVertexInWorld(i,j,-rotation);
-					worldPos.Add(position,vertexPos);
+					worldPos = position + vertexPos;
 	
 					int cellR, cellC;
 					land->worldToCell(worldPos,cellR,cellC);
@@ -390,9 +390,9 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 			{
 				for (int j=0;j<tempBldgShape->GetNumVerticesInShape(i);j++)
 				{
-					Stuff::Vector3D vertexPos, worldPos;
+					glm::vec3 vertexPos, worldPos;
 					vertexPos = tempBldgShape->GetShapeVertexInWorld(i,j,-rotation);
-					worldPos.Add(position,vertexPos);
+					worldPos = position + vertexPos;
 	
 					int cellR, cellC;
 					land->worldToCell(worldPos,cellR,cellC);
@@ -464,9 +464,9 @@ void BldgAppearance::markLOS (bool clearIt)
 		{
 			for (int j=0;j<tempBldgShape->GetNumVerticesInShape(i);j++)
 			{
-				Stuff::Vector3D vertexPos, worldPos;
+				glm::vec3 vertexPos, worldPos;
 				vertexPos = tempBldgShape->GetShapeVertexInEditor(i,j,-rotation);
-				worldPos.Add(position,vertexPos);
+				worldPos = position + vertexPos;
 	
 				int cellR, cellC;
 				land->worldToCell(worldPos,cellR,cellC);
@@ -528,9 +528,9 @@ void BldgAppearance::calcAdjCell (long& row, long& col)
 	{
 		for (int j=0;j<bldgShape->GetNumVerticesInShape(i);j++)
 		{
-			Stuff::Vector3D vertexPos, worldPos;
+			glm::vec3 vertexPos, worldPos;
 			vertexPos = bldgShape->GetShapeVertexInWorld(i,j,-rotation);
-			worldPos.Add(position,vertexPos);
+			worldPos = position + vertexPos;
 
 			{
 				numVert++;

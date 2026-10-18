@@ -146,9 +146,9 @@ void BldgAppearance::registerStatic() {
 	// At mission-load time position.z may not yet hold terrain elevation (set by
 	// bldng.cpp on first update), so use getTerrainElevation() directly.
 	float yaw = rotation * DEGREES_TO_RADS;
-	Stuff::UnitQuaternion rot;
-	rot = Stuff::EulerAngles(0.0f, yaw, 0.0f);
-	Stuff::Point3D xlatPosition;
+	glm::quat rot;
+	rot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
+	glm::vec3 xlatPosition;
 	xlatPosition.x = -position.x;
 	xlatPosition.y = TerrainRuntime::groundElevation(position);
 	xlatPosition.z = position.y;
@@ -173,23 +173,23 @@ void BldgAppearance::registerStatic() {
 	// seeded from the MC2_TERRAIN_DECAL_* env defaults). The face-frame math is factored into CliffDecalTuning::buildCliffWall
 	// Matrix(), shared by this registration path and the live ImGui tuning panel.
 	bool useCliffWallFrame = false;
-	Stuff::Matrix4D cliffWallXform;
-	Stuff::Vector3D decalNAcc;  // captured for the live-update panel
+	glm::mat4 cliffWallXform;
+	glm::vec3 decalNAcc;  // captured for the live-update panel
 	if (appearType && appearType->name &&
 	    _stricmp(appearType->name, "MarbleCliff") == 0) {
 		// Sample the terrain normal at the placement site (average the 4
 		// enclosing corners via small offsets for stability — the raw normal is
 		// per-triangle/faceted). worldUnitsPerVertex ~ heightfield cell size.
-		Stuff::Vector3D nAcc; nAcc.Zero();
+		glm::vec3 nAcc; nAcc = glm::vec3(0.0f);
 		const float d = 32.0f; // ~half a heightfield cell for a 4-corner average
 		const float dx[4] = { -d,  d, -d,  d };
 		const float dy[4] = { -d, -d,  d,  d };
 		Terrain* landPtr = land; // file-scope terrain pointer
 		for (int c = 0; c < 4; ++c) {
-			Stuff::Vector3D sp = position;
+			glm::vec3 sp = position;
 			sp.x += dx[c]; sp.y += dy[c];
-			Stuff::Vector3D nc = landPtr ? landPtr->getTerrainNormal(sp)
-			                             : Stuff::Vector3D(0.0f, 0.0f, 1.0f);
+			glm::vec3 nc = landPtr ? landPtr->getTerrainNormal(sp)
+			                             : glm::vec3(0.0f, 0.0f, 1.0f);
 			nAcc.x += nc.x; nAcc.y += nc.y; nAcc.z += nc.z;
 		}
 		decalNAcc = nAcc;
@@ -271,7 +271,7 @@ void BldgAppearance::registerStatic() {
 		if (child->GetIsWindow())    flags |= (1u << 1);
 		if (child->GetIsAlphaTest())   flags |= (1u << 2);   // FOLIAGE-ALPHAFLAG-1: kFlagIsAlphaTest, as submitMultiShape sets it
 		// rec->shapeToWorld is LinearMatrix4D; convert to Matrix4D for buildRecipeFromShape().
-		Stuff::Matrix4D xform(rec->shapeToWorld);
+		glm::mat4 xform = glm::mat4(rec->shapeToWorld);
 		// TERRAIN-DECAL-SLICE-0A: replace the yaw-only leaf transform with the
 		// explicit CLIFF_WALL face frame when the decal gate armed this type.
 		// Uniform scale only (Slice 0) — the wall GLB carries its own world-scale
@@ -457,12 +457,12 @@ bool BldgAppearance::prewarmStaticLightBake(Camera* cam)
 
 	// Build xlatPosition/rot from the appearance world position/rotation.
 	// Same coordinate transform as BldgAppearance::update (line ~3281):
-	Stuff::Point3D xlatPosition;
+	glm::vec3 xlatPosition;
 	mc2ToRender(xlatPosition, position);
 
 	float yaw = rotation * DEGREES_TO_RADS;
-	Stuff::UnitQuaternion rot;
-	rot = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+	glm::quat rot;
+	rot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
 
 	// Hierarchy-only walk: fills shapeToWorld matrices without touching TGL pools.
 	// Safe to call from mission load: no GL calls, no frame-pool alloc.

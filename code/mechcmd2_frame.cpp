@@ -655,7 +655,7 @@ void __stdcall DoGameLogic()
 			static const int s_barrageN = std::getenv("S10_BARRAGE") ? std::atoi(std::getenv("S10_BARRAGE")) : 0;
 			if (s_barrage < s_barrageN && g_mc2FrameCounter >= 420 && !loadInMissionSave && mission && eye)
 			{
-				Stuff::Vector3D strikeAt = eye->getPosition();
+				glm::vec3 strikeAt = eye->getPosition();
 				IfaceCallStrike(ARTILLERY_LARGE, &strikeAt, nullptr, true, false, 3.0f);
 				++s_barrage;
 				extern unsigned g_mc2ArtCreated, g_mc2ArtReinit, g_mc2ArtReinitFreed, g_mc2ArtEnded, g_mc2ArtBoomNoFx;
@@ -689,7 +689,7 @@ void __stdcall DoGameLogic()
 				mc2::fmt::print_out("[ALLOC_TICK] n={} frame={} live={} bytes={}\n", mc2::fmt::as_i32(s_cycle), mc2::fmt::as_i64(g_mc2FrameCounter), mc2::fmt::as_i64(liveTick), mc2::fmt::as_i64(bytesTick));
 				if (s_strike)
 				{
-					Stuff::Vector3D strikeAt = eye->getPosition();
+					glm::vec3 strikeAt = eye->getPosition();
 					IfaceCallStrike(ARTILLERY_LARGE, &strikeAt, nullptr, true, false, 30.0f);
 				}
 				// Cycle 0 only quicksaves (the boot fixture's save is not reliably there), later cycles reload it.

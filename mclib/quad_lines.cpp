@@ -219,7 +219,7 @@ void TerrainQuad::drawLine (void)
 						Stuff::Vector4D pos3;
 						Stuff::Vector4D pos4;
 						
-						Stuff::Vector3D thePoint(vertices[0]->vx,vertices[0]->vy,vertices[0]->pVertex->elevation);
+						glm::vec3 thePoint(vertices[0]->vx,vertices[0]->vy,vertices[0]->pVertex->elevation);
 						
 						thePoint.x += (cellC) * cellWidth;
 						thePoint.y -= (cellR) * cellWidth;
@@ -374,7 +374,7 @@ void TerrainQuad::drawLine (void)
 					xLength = GlobalMoveMap[0]->doors[currentDoor].length;
 				}
 
-				Stuff::Vector3D thePoint(vertices[0]->vx,vertices[0]->vy,vertices[0]->pVertex->elevation);
+				glm::vec3 thePoint(vertices[0]->vx,vertices[0]->vy,vertices[0]->pVertex->elevation);
 				
 				thePoint.x += (GlobalMoveMap[0]->doors[currentDoor].col - cellC) * cellWidth;
 				thePoint.y -= (GlobalMoveMap[0]->doors[currentDoor].row - cellR) * cellWidth;
@@ -472,7 +472,7 @@ void TerrainQuad::drawLOSLine (void)
 						Stuff::Vector4D pos3;
 						Stuff::Vector4D pos4;
 
-						Stuff::Vector3D thePoint(vertices[0]->vx,vertices[0]->vy,vertices[0]->pVertex->elevation);
+						glm::vec3 thePoint(vertices[0]->vx,vertices[0]->vy,vertices[0]->pVertex->elevation);
 
 						thePoint.x += (cellC) * cellWidth;
 						thePoint.y -= (cellR) * cellWidth;
@@ -749,7 +749,7 @@ void TerrainQuad::drawDebugCellLine (void)
 						Stuff::Vector4D pos3;
 						Stuff::Vector4D pos4;
 
-						Stuff::Vector3D thePoint(vertices[0]->vx,vertices[0]->vy,vertices[0]->pVertex->elevation);
+						glm::vec3 thePoint(vertices[0]->vx,vertices[0]->vy,vertices[0]->pVertex->elevation);
 
 						thePoint.x += (cellC) * cellWidth;
 						thePoint.y -= (cellR) * cellWidth;
@@ -873,7 +873,7 @@ void TerrainQuad::drawMine (void)
 					//------------------------------------------------------------------------------------
 					// Dig the actual Vertex information out of the projected vertices already done.
 					// In this way, the draw requires only interpolation and not Giant Matrix multiplies.
-					Stuff::Vector3D thePoint(vertices[0]->vx,vertices[0]->vy,vertices[0]->pVertex->elevation);
+					glm::vec3 thePoint(vertices[0]->vx,vertices[0]->vy,vertices[0]->pVertex->elevation);
 
 					thePoint.x += (cellC) * cellWidth;
 					thePoint.y -= (cellR) * cellWidth;

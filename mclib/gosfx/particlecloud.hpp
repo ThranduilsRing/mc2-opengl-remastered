@@ -97,7 +97,7 @@ namespace gosFX
 	class ParticleCloud__Particle
 	{
 	public:
-		Stuff::Vector3D
+		glm::vec3
 			m_localLinearVelocity,
 			m_worldLinearVelocity;
 		Stuff::Scalar
@@ -182,13 +182,13 @@ namespace gosFX
 		virtual bool
 			AnimateParticle(
 				unsigned index,
-				const Stuff::LinearMatrix4D *world_to_new_local,
+				const glm::mat4 *world_to_new_local,
 				Stuff::Time till
 			)=0;
 		virtual void
 			CreateNewParticle(
 				unsigned index,
-				Stuff::Point3D *translation
+				glm::vec3 *translation
 			);
 		virtual void
 			DestroyParticle(unsigned index);

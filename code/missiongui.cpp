@@ -205,15 +205,15 @@ MissionInterfaceManager::Command		MissionInterfaceManager::commands[MAX_COMMAND]
 void MissionInterfaceManager::init (void)
 {
 	realRotation = 0.0;
-	dragStart.Zero();
-	dragEnd.Zero();
+	dragStart = glm::vec3(0.0f);
+	dragEnd = glm::vec3(0.0f);
 	isDragging = FALSE;
 	terrainLineChanged = 0;
 
 	// VPL-retirement Step 3 3b: invalidate the per-frame inverseProject cache.
 	prevMouseX = -2147483647;
 	prevMouseY = -2147483647;
-	cachedWPos.Zero();
+	cachedWPos = glm::vec3(0.0f);
 	inverseProjectCacheValid = false;
 	
 	for (long i=0;i<MAX_TEAMS;i++)
@@ -450,16 +450,16 @@ void MissionInterfaceManager::drawVTOL (void)
 				gosFX::Effect::DrawInfo drawInfo;
 				drawInfo.m_clipper = theClipper;
 	
-				Stuff::LinearMatrix4D 	shapeOrigin;
-				Stuff::LinearMatrix4D	localToWorld;
-				Stuff::LinearMatrix4D	localResult;
+				glm::mat4 	shapeOrigin;
+				glm::mat4	localToWorld;
+				glm::mat4	localResult;
 						
-				Stuff::Vector3D dustPos = vTol[vtolNum]->position;
-				Stuff::Point3D wakePos;
+				glm::vec3 dustPos = vTol[vtolNum]->position;
+				glm::vec3 wakePos;
 				mc2ToRender(wakePos, dustPos);
 				
-				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-				shapeOrigin.BuildTranslation(wakePos);
+				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+				mc2::math::buildTranslation(shapeOrigin, wakePos);
 						
 				drawInfo.m_parentToWorld = &shapeOrigin;
 				if (!MLRVertexLimitReached)
@@ -471,16 +471,16 @@ void MissionInterfaceManager::drawVTOL (void)
 				gosFX::Effect::DrawInfo drawInfo;
 				drawInfo.m_clipper = theClipper;
 	
-				Stuff::LinearMatrix4D 	shapeOrigin;
-				Stuff::LinearMatrix4D	localToWorld;
-				Stuff::LinearMatrix4D	localResult;
+				glm::mat4 	shapeOrigin;
+				glm::mat4	localToWorld;
+				glm::mat4	localResult;
 						
-				Stuff::Vector3D dustPos = vTol[vtolNum]->position;
-				Stuff::Point3D wakePos;
+				glm::vec3 dustPos = vTol[vtolNum]->position;
+				glm::vec3 wakePos;
 				mc2ToRender(wakePos, dustPos);
 				
-				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-				shapeOrigin.BuildTranslation(wakePos);
+				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+				mc2::math::buildTranslation(shapeOrigin, wakePos);
 						
 				drawInfo.m_parentToWorld = &shapeOrigin;
 				if (!MLRVertexLimitReached)
@@ -639,13 +639,13 @@ void MissionInterfaceManager::render (void)
 			if (eye->usePerspective)
 			{
 				//Depth cue the cursor.
-				Stuff::Vector3D Distance;
-				Stuff::Point3D objPosition;
-				Stuff::Point3D eyePosition(eye->getCameraOrigin());
+				glm::vec3 Distance;
+				glm::vec3 objPosition;
+				glm::vec3 eyePosition(eye->getCameraOrigin());
 				mc2ToRender(objPosition, wPos);
 		
-				Distance.Subtract(objPosition,eyePosition);
-				float eyeDistance = Distance.GetApproximateLength();
+				Distance = objPosition - eyePosition;
+				float eyeDistance = glm::length(Distance);
 				float scaleFactor = 0.0f;
 				scaleFactor = eyeDistance / (Camera::MaxClipDistance * 2.0f);
 				scaleFactor = 1.5f - scaleFactor;

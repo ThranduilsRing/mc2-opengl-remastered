@@ -52,7 +52,7 @@ void BattleMech::init (bool create) {
 	numJumpJets = 0;
 	lastJumpTime = -100.0;
 	inJump = false;
-	jumpGoal.Zero();
+	jumpGoal = glm::vec3(0.0f);
 	centerTorsoBlowTime = -1.0;
 	hitFromBehindThisFrame = false;
 	hitFromFrontThisFrame = false;

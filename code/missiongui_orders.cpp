@@ -30,7 +30,7 @@ void MissionInterfaceManager::doAttack()
 			static uint64_t s_tg_orders = 0, s_tg_staleWID = 0, s_tg_behind = 0, s_tg_far = 0;
 			++s_tg_orders;
 			const bool _tg_staleWID = (ObjectManager->getByWatchID( target->getWatchID() ) != target);
-			Stuff::Vector3D _tg_pos = target->getPosition();
+			glm::vec3 _tg_pos = target->getPosition();
 			Stuff::Vector4D _tg_sp;
 			eye->projectForScreenXY( _tg_pos, _tg_sp );
 			const bool  _tg_behind = (_tg_sp.w <= 1e-4f);
@@ -331,7 +331,7 @@ int MissionInterfaceManager::selectVisible()
 
 int MissionInterfaceManager::addVisibleToSelection()
 {
-	dragStart.Zero();		
+	dragStart = glm::vec3(0.0f);		
 	dragEnd = eye->getScreenRes();
 	
 	for (int i=0;i<ObjectManager->getNumMovers();i++)
@@ -346,8 +346,8 @@ int MissionInterfaceManager::addVisibleToSelection()
 		}
 	}
 
-	dragStart.Zero();
-	dragEnd.Zero();
+	dragStart = glm::vec3(0.0f);
+	dragEnd = glm::vec3(0.0f);
 
 	return 1;
 }
@@ -564,7 +564,7 @@ int MissionInterfaceManager::eject()
 
 int MissionInterfaceManager::bigAirStrike()
 {
-	Stuff::Vector3D v = makeAirStrikeTarget( wPos );
+	glm::vec3 v = makeAirStrikeTarget( wPos );
 
 	IfaceCallStrike (ARTILLERY_LARGE,&v,nullptr);
 		soundSystem->playSupportSample(SUPPORT_AIRSTRIKE);
@@ -572,7 +572,7 @@ int MissionInterfaceManager::bigAirStrike()
 }
 int MissionInterfaceManager::smlAirStrike()
 {
-	Stuff::Vector3D v = makeAirStrikeTarget( wPos );
+	glm::vec3 v = makeAirStrikeTarget( wPos );
 
 	IfaceCallStrike (ARTILLERY_SMALL,&v,nullptr);
 		soundSystem->playSupportSample(SUPPORT_AIRSTRIKE);
@@ -580,16 +580,16 @@ int MissionInterfaceManager::smlAirStrike()
 }
 int MissionInterfaceManager::snsAirStrike()
 {
-	Stuff::Vector3D v = makeAirStrikeTarget( wPos );
+	glm::vec3 v = makeAirStrikeTarget( wPos );
 
 	IfaceCallStrike (ARTILLERY_SENSOR,&v,nullptr);
 		soundSystem->playSupportSample(SUPPORT_PROBE);
 	return 1;
 }
 
-Stuff::Vector3D MissionInterfaceManager::makeAirStrikeTarget( const Stuff::Vector3D& pos )
+glm::vec3 MissionInterfaceManager::makeAirStrikeTarget( const glm::vec3& pos )
 {
-	Stuff::Vector3D newPos = pos;
+	glm::vec3 newPos = pos;
 /*	bool 	lineOfSight = Team::home->teamLineOfSight(pos);
 	if ( !lineOfSight )
 	{
@@ -707,7 +707,7 @@ int MissionInterfaceManager::handleOrders( TacticalOrder& order)
 	Team* pTeam = Team::home;
 
 	bool isMoveOrder = false;
-	Stuff::Vector3D moveGoals[MAX_MOVERS];
+	glm::vec3 moveGoals[MAX_MOVERS];
 	long numMovers = 0;
 	if (order.code == TACTICAL_ORDER_JUMPTO_POINT) {
 		for (long i = 0; i < pTeam->getRosterSize(); i++) {
@@ -828,7 +828,7 @@ void MissionInterfaceManager::anchoredZoom(long mx, long my, int (MissionInterfa
 	// Fix: capture cursor-world A, the ACTUAL altitude h0, and pivot T0 here,
 	// then let Camera::update() shift the pivot each frame LOCKED to the eased
 	// altitude (frac = 1 - cameraAltitude/h0) until it settles. ZOOMs, no pan.
-	Stuff::Vector3D A;
+	glm::vec3 A;
 	bool haveA = eye->screenToTerrainApprox(mx, my, A);
 
 	(this->*zoomFn)();   // updates cameraAltitudeDesired (the zoom target)
@@ -1048,7 +1048,7 @@ int MissionInterfaceManager::changeLighting()
 	return 1;
 }
 
-void MissionInterfaceManager::doMove(const Stuff::Vector3D& pos)
+void MissionInterfaceManager::doMove(const glm::vec3& pos)
 {
 	/*if ( controlGui.getGuardTower()  )
 	{
@@ -1057,7 +1057,7 @@ void MissionInterfaceManager::doMove(const Stuff::Vector3D& pos)
 	}*/
 	if ( controlGui.isAddingAirstrike() &&  controlGui.isButtonPressed( ControlGui::SENSOR_PROBE ))
 	{
-		Stuff::Vector3D tmp = wPos;
+		glm::vec3 tmp = wPos;
 		wPos = pos;
 		addAirstrike( );
 		wPos = tmp;
@@ -1113,9 +1113,9 @@ bool MissionInterfaceManager::makePatrolPath()
 			}
 			else 
 			{
-				Stuff::Vector3D tmp;
-				tmp.Subtract( wPos, pMover->getPosition() );
-				if ( tmp.GetLength() < 25 ) // random amount
+				glm::vec3 tmp;
+				tmp = wPos - pMover->getPosition();
+				if ( glm::length(tmp) < 25 ) // random amount
 				{
 					userInput->setMouseCursor( mState_LINK );
 					if ( commandClicked )

@@ -274,7 +274,7 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	MLR_I_C_TMesh::HurtMe(const Stuff::LinearMatrix4D& pain, Stuff::Scalar radius)
+	MLR_I_C_TMesh::HurtMe(const glm::mat4& pain, Stuff::Scalar radius)
 {
 	Check_Object(this); 
 
@@ -282,15 +282,15 @@ void
 
 	int i, len = static_cast<int>(colors.GetLength());
 
-	Point3D painpoint;
-	Vector3D diff;
-	UnitVector3D up, left, forward;
+	glm::vec3 painpoint;
+	glm::vec3 diff;
+	glm::vec3 up, left, forward;
 	Scalar x, y, sqRadius = radius*radius;
 
-	painpoint = pain;
-	pain.GetLocalLeftInWorld(&left);
-	pain.GetLocalUpInWorld(&up);
-	pain.GetLocalForwardInWorld(&forward);
+	painpoint = mc2::math::getTranslation(pain);
+	left = mc2::math::localLeftInWorld(pain);
+	up = mc2::math::localUpInWorld(pain);
+	forward = mc2::math::localForwardInWorld(pain);
 
 	if(FindBackFace(painpoint) && FindVisibleVertices())
 	{
@@ -298,10 +298,10 @@ void
 		{
 			if(visibleIndexedVertices[i]>0)
 			{
-				diff.Subtract(coords[i], painpoint);
+				diff = coords[i] - painpoint;
 
-				x = diff*left;
-				y = diff*up;
+				x = glm::dot(diff, left);
+				y = glm::dot(diff, up);
 
 				if((x*x + y*y) < sqRadius)
 				{
@@ -380,20 +380,20 @@ MLRShape*
 
 	int i, j, k;
 	long    nrTri = (long) ceil (icoInfo.all * pow (4.0f, icoInfo.depth));
-	Point3D v[3];
+	glm::vec3 v[3];
 
 	if(3*nrTri >= Limits::Max_Number_Vertices_Per_Mesh)
 	{
 		nrTri = Limits::Max_Number_Vertices_Per_Mesh/3;
 	}
 
-	Point3D *coords = new Point3D [nrTri*3];
+	glm::vec3 *coords = new glm::vec3 [nrTri*3];
 	Register_Pointer(coords);
 	
-	Point3D *collapsedCoords = nullptr;
+	glm::vec3 *collapsedCoords = nullptr;
 	if(icoInfo.indexed==true)
 	{
-		collapsedCoords = new Point3D [nrTri*3];
+		collapsedCoords = new glm::vec3 [nrTri*3];
 		Register_Pointer(collapsedCoords);
 	}
 
@@ -432,7 +432,7 @@ MLRShape*
 			{
 				for(j=0;j<uniquePoints;j++)
 				{
-					if(coords[i] == collapsedCoords[j])
+					if(mc2::math::closeEnough(coords[i], collapsedCoords[j]))
 					{
 						break;
 					}

@@ -13,9 +13,9 @@
 class frameOfRef
 {
 public:
-	Stuff::Vector3D i;
-	Stuff::Vector3D j;
-	Stuff::Vector3D k;
+	glm::vec3 i;
+	glm::vec3 j;
+	glm::vec3 k;
 
 	frameOfRef(void);
 
@@ -24,19 +24,19 @@ public:
 		*this = copy;
 	}
 
-	frameOfRef & set_i (Stuff::Vector3D &new_i)
+	frameOfRef & set_i (glm::vec3 &new_i)
 	{
 		i = new_i;
 		return *this;
 	}
 
-	frameOfRef & set_j (Stuff::Vector3D &new_j)
+	frameOfRef & set_j (glm::vec3 &new_j)
 	{
 		j = new_j;
 		return *this;
 	}
 
-	frameOfRef & set_k (Stuff::Vector3D &new_k)
+	frameOfRef & set_k (glm::vec3 &new_k)
 	{
 		k = new_k;
 		return *this;
@@ -69,12 +69,12 @@ public:
 						float &j_angle,
 						float &k_angle);
 
-	frameOfRef & rotate(Stuff::Vector3D &rotation_vector);
+	frameOfRef & rotate(glm::vec3 &rotation_vector);
 
 	frameOfRef & trans_to_frame (frameOfRef &new_frame);
 	frameOfRef & trans_from_frame (frameOfRef &old_frame);
 	
-	void trans_to_frame (Stuff::Vector3D &vector)
+	void trans_to_frame (glm::vec3 &vector)
 	{
 		float vx = vector.x;
 		float vy = vector.y;
@@ -88,23 +88,23 @@ public:
 
 void Rotate (Stuff::Vector2DOf<float> &vec, float angle);
 
-void Rotate (Stuff::Vector3D &vec, float angle);
+void Rotate (glm::vec3 &vec, float angle);
 
-void RotateLight (Stuff::Vector3D &vec, float angle);
+void RotateLight (glm::vec3 &vec, float angle);
 
-void OppRotate (Stuff::Vector3D &vec, float angle);
+void OppRotate (glm::vec3 &vec, float angle);
 
-float distance_from (Stuff::Vector3D &v1, Stuff::Vector3D &v2);
+float distance_from (glm::vec3 &v1, glm::vec3 &v2);
 
 float my_acos (float val);
 
 float angle_from (Stuff::Vector2DOf<float>&v1, Stuff::Vector2DOf<float> &v2);
 
-float angle_from (Stuff::Vector3D &v1, Stuff::Vector3D &v2);
+float angle_from (glm::vec3 &v1, glm::vec3 &v2);
 
-float world_angle_between (Stuff::Vector3D &v1, Stuff::Vector3D &v2);
+float world_angle_between (glm::vec3 &v1, glm::vec3 &v2);
 
-Stuff::Vector3D relativePositionToPoint (Stuff::Vector3D point, float angle, float distance, unsigned long flags);
+glm::vec3 relativePositionToPoint (glm::vec3 point, float angle, float distance, unsigned long flags);
 
 long RandomNumber (long range);
 

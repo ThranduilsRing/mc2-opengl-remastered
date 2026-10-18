@@ -138,14 +138,14 @@ public:
 		float						vTolSpeed;
 		const char*					vehicleFile;
 		long						vehicleID[MAX_TEAMS];
-		Stuff::Vector3D				dragStart;
-		Stuff::Vector3D				dragEnd;
+		glm::vec3				dragStart;
+		glm::vec3				dragEnd;
 		bool						selectClicked;			// left click
 		bool						commandClicked;			// usually right clicked
 		bool						cameraClicked;
 		
 		ControlGui					controlGui;
-		Stuff::Vector3D				wPos;					//World Position of camera cursor.
+		glm::vec3				wPos;					//World Position of camera cursor.
 
 		// VPL-retirement Step 3 3b: mandatory per-frame inverseProject
 		// delta-cache. update() runs every frame and calls eye->inverseProject
@@ -153,12 +153,12 @@ public:
 		// the cursor pixel nor the camera matrix changed since last projection.
 		long						prevMouseX;
 		long						prevMouseY;
-		Stuff::Vector3D				cachedWPos;
-		Stuff::Matrix4D				cachedWorldToClip;
+		glm::vec3				cachedWPos;
+		glm::mat4				cachedWorldToClip;
 		bool						inverseProjectCacheValid;
 		
 		//vTol
-		Stuff::Vector3D				vPos[MAX_TEAMS];		// vehicle position
+		glm::vec3				vPos[MAX_TEAMS];		// vehicle position
 		std::unique_ptr<BldgAppearance>				vTol[MAX_TEAMS] = {};	// B7o.5: owned drop-ship VTOL / Karnov per team
 		bool						paintingVtol[MAX_TEAMS];
 		float						vTolTime[MAX_TEAMS];
@@ -337,10 +337,10 @@ public:
 		int		toggleHoldPosition();
 		int		showObjectives();
 		int		showObjectives(bool on);
-		void	doMove(const Stuff::Vector3D& pos);
+		void	doMove(const glm::vec3& pos);
 		void	doGuard(GameObject* pObj);
 		int toggleHotKeys();
-		void	beginVtol(long supportID, long commanderID = 0, Stuff::Vector3D* reinforcePos = NULL, MoverPtr salvageTarget = NULL);
+		void	beginVtol(long supportID, long commanderID = 0, glm::vec3* reinforcePos = NULL, MoverPtr salvageTarget = NULL);
 
 		//Tutorial Stuff goes here.
 		bool startAnimation(long buttonId,bool isButton,bool isPressed,float timeToScroll,long numFlashes);
@@ -512,8 +512,8 @@ public:
 		int rotateObjectLeft ();
 		int rotateObjectRight ();
 
-		bool	canAddVehicle( const Stuff::Vector3D& pos );
-		bool	canRecover( const Stuff::Vector3D& pos );
+		bool	canAddVehicle( const glm::vec3& pos );
+		bool	canRecover( const glm::vec3& pos );
 		long	makeNoTargetCursor( bool passable, bool lineOfSight, bool ctrl, bool bGui,
 			long moverCount, long nonMoverCount );
 		long	makeRangeCursor( bool LOS);
@@ -526,7 +526,7 @@ public:
 
 
 		void	addAirstrike();
-		void	addVehicle( const Stuff::Vector3D& pos );
+		void	addVehicle( const glm::vec3& pos );
 		void	updateTarget(bool bCursorIsInGui);
 		void	drawWayPointPaths();
 
@@ -544,7 +544,7 @@ public:
 
 
 
-		Stuff::Vector3D makeAirStrikeTarget( const Stuff::Vector3D& pos );
+		glm::vec3 makeAirStrikeTarget( const glm::vec3& pos );
 
 		GameObject*		oldTargets[MAX_ICONS];
 

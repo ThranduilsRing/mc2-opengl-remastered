@@ -58,7 +58,7 @@ namespace MidLevelRenderer {
 
 		virtual void
 			SetCoordData(
-				const Stuff::Point3D *array,
+				const glm::vec3 *array,
 				int point_count
 			);
 
@@ -83,10 +83,10 @@ namespace MidLevelRenderer {
 				{ Check_Object(this); return numGOSIndices; }
 
 		virtual void
-			Transform(Stuff::Matrix4D*);
+			Transform(glm::mat4*);
 
 		virtual void
-			TransformNoClip(Stuff::Matrix4D*, GOSVertexPool*,bool=false) = 0;
+			TransformNoClip(glm::mat4*, GOSVertexPool*,bool=false) = 0;
 
 		void
 			TheIndexer(int num)

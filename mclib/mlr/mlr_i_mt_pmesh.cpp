@@ -153,7 +153,7 @@ void
 	Verify(gos_GetCurrentHeap() == Heap);
 
 	int num;
-	Point3D *points;
+	glm::vec3 *points;
 
 	referenceState = pMesh->GetReferenceState();
 	multiReferenceState[0] = referenceState;
@@ -373,7 +373,7 @@ MLRShape*
 	int i, j, k;
 	int nrOfPasses = static_cast<int>(states->GetLength());
 	long    nrTri = (long) ceil (icoInfo.all * pow (4.0f, icoInfo.depth));
-	Point3D v[3];
+	glm::vec3 v[3];
 
 	if(3*nrTri >= Limits::Max_Number_Vertices_Per_Mesh)
 	{
@@ -388,13 +388,13 @@ MLRShape*
 		lengths[i] = 3;
 	}
 
-	Point3D *coords = new Point3D [nrTri*3];
+	glm::vec3 *coords = new glm::vec3 [nrTri*3];
 	Register_Pointer(coords);
 	
-	Point3D *collapsedCoords = nullptr;
+	glm::vec3 *collapsedCoords = nullptr;
 	if(icoInfo.indexed==true)
 	{
-		collapsedCoords = new Point3D [nrTri*3];
+		collapsedCoords = new glm::vec3 [nrTri*3];
 		Register_Pointer(collapsedCoords);
 	}
 
@@ -437,7 +437,7 @@ MLRShape*
 			{
 				for(j=0;j<uniquePoints;j++)
 				{
-					if(coords[i] == collapsedCoords[j])
+					if(mc2::math::closeEnough(coords[i], collapsedCoords[j]))
 					{
 						break;
 					}

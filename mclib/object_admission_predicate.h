@@ -16,7 +16,7 @@
 // Include the umbrella header so the Stuff type hierarchy is initialized in correct order
 // (stuff.hpp -> point3d.hpp -> vector3d.hpp; stuff.hpp -> vector4d.hpp).
 #include "stuff/stuff.hpp"
-#include "stuff/vector3d.hpp"
+#include "math/mc2_xform.h"
 
 // Mode probed at startup from MC2_OBJECT_ADMISSION_PREDICATE env var.
 enum class ObjectAdmissionPredicateMode {
@@ -91,7 +91,7 @@ ProjectZBypassMode projectZBypassMode();
 // wrapper per process). Wrapper-name is one of: object, effect,
 // lighting_shadow, debug_overlay, selection_picking.
 void logProjectZBypassDisagreement(const char* wrapper,
-                                   const Stuff::Vector3D& world,
+                                   const glm::vec3& world,
                                    const Stuff::Vector4D& legacyRawClip,
                                    bool legacyAdmit,
                                    const Stuff::Vector4D& bypassClipGL,
@@ -100,7 +100,7 @@ void logProjectZBypassDisagreement(const char* wrapper,
 // F5 T1: rate-limited (first ~64 events) screen.xy parity logger for
 // selection_picking Compare mode. Tracks legacy-vs-bypass screen pixel
 // disagreements >1px.
-void logSelectionPickingScreenDelta(const Stuff::Vector3D& world,
+void logSelectionPickingScreenDelta(const glm::vec3& world,
                                     const Stuff::Vector4D& legacyScreen,
                                     float bypassScreenX, float bypassScreenY,
                                     float dxPx, float dyPx);
@@ -108,7 +108,7 @@ void logSelectionPickingScreenDelta(const Stuff::Vector3D& world,
 // F5 T2: rate-limited (first ~64 events) screen.xy parity logger for
 // projectForScreenXY Compare mode. Tracks legacy-vs-bypass screen pixel
 // disagreements >1px.
-void logScreenXYScreenDelta(const Stuff::Vector3D& world,
+void logScreenXYScreenDelta(const glm::vec3& world,
                             const Stuff::Vector4D& legacyScreen,
                             float bypassScreenX, float bypassScreenY,
                             float dxPx, float dyPx);

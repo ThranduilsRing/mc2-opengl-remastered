@@ -40,7 +40,7 @@ Action* DamageBrush::endPaint()
 	return pRetAction;
 }
 
-bool DamageBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY  )
+bool DamageBrush::paint( glm::vec3& worldPos, int screenX, int screenY  )
 {
 	// screen-projection pick (like Select) so tall static
 	// props are hittable; world-footprint pick missed them (cursor ground point != base).
@@ -55,7 +55,7 @@ bool DamageBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY  )
 	return true;
 }
 
-bool DamageBrush::canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags )
+bool DamageBrush::canPaint( glm::vec3& worldPos, int screenX, int screenY, int flags )
 {
 	const EditorObject* pObject = EditorPickObjectAtScreen( screenX, screenY );
 

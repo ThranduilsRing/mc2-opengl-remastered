@@ -211,7 +211,7 @@ public:
     // the gather call between submitMultiShape's two for-loops and
     // broadcasts the index into every leaf's submit() in the second loop.
     [[nodiscard]] bool submit(TG_Shape* shape,
-                              const Stuff::Matrix4D& shapeToWorld,
+                              const glm::mat4& shapeToWorld,
                               uint32_t highlightARGB,
                               uint32_t fogARGB,
                               uint32_t flags,
@@ -375,7 +375,7 @@ public:
     // submitCachedInstance patches them per-frame at draw time.
     [[nodiscard]] bool buildRecipeFromShape(
             TG_Shape* shape,
-            const Stuff::Matrix4D& shapeToWorld,
+            const glm::mat4& shapeToWorld,
             uint32_t highlightARGB,
             uint32_t fogARGB,
             uint32_t flags,

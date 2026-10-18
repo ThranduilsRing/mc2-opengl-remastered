@@ -2,12 +2,9 @@
 // Declared in the class headers; shared names in camera_internal.h.
 #include "camera_internal.h"
 #include "mc2fmt.h"
-#include "math/stuff_glm_bridge.h"
-
-
 //---------------------------------------------------------------------------
 
-inline void mapTileCellToWorldPos (long tileR, long tileC, long cellR, long cellC, Stuff::Vector3D& worldPos) {
+inline void mapTileCellToWorldPos (long tileR, long tileC, long cellR, long cellC, glm::vec3& worldPos) {
 
 	worldPos.x = Terrain::tileColToWorldCoord[tileC] + Terrain::cellToWorldCoord[cellC] + Terrain::halfWorldUnitsPerCell;
 	worldPos.y = Terrain::tileRowToWorldCoord[tileR] - Terrain::cellToWorldCoord[cellR] - Terrain::halfWorldUnitsPerCell;
@@ -16,7 +13,7 @@ inline void mapTileCellToWorldPos (long tileR, long tileC, long cellR, long cell
 
 //---------------------------------------------------------------------------
 
-inline void mapCellToWorldPos (long cellR, long cellC, Stuff::Vector3D& worldPos) {
+inline void mapCellToWorldPos (long cellR, long cellC, glm::vec3& worldPos) {
 
 	worldPos.x = Terrain::cellColToWorldCoord[cellC] + Terrain::halfWorldUnitsPerCell;
 	worldPos.y = Terrain::cellRowToWorldCoord[cellR] - Terrain::halfWorldUnitsPerCell;
@@ -30,9 +27,9 @@ inline void mapCellToWorldPos (long cellR, long cellC, Stuff::Vector3D& worldPos
 // projectForSelectionPicking; valid[4] flags whether each projected inside the
 // viewport rect. A tile is "over" the cursor if it contains it in either of
 // its two triangles (0,1,2) / (0,2,3) - same theorem as the original.
-static inline bool s_pointInScreenTri (const Stuff::Point3D& v0,
-                                       const Stuff::Point3D& v1,
-                                       const Stuff::Point3D& v2,
+static inline bool s_pointInScreenTri (const glm::vec3& v0,
+                                       const glm::vec3& v1,
+                                       const glm::vec3& v2,
                                        long mouseX, long mouseY)
 {
 	// CAMERA-FRUSTUM-HARNESS-1: delegate to camera_frustum_math.h (same arithmetic).
@@ -40,7 +37,7 @@ static inline bool s_pointInScreenTri (const Stuff::Point3D& v0,
 	                                             v2.x, v2.y, mouseX, mouseY);
 }
 
-static inline bool s_overThisTileProjected (const Stuff::Point3D corners[4],
+static inline bool s_overThisTileProjected (const glm::vec3 corners[4],
                                              const bool valid[4],
                                              long mouseX, long mouseY)
 {
@@ -65,8 +62,8 @@ static inline bool s_overThisTileProjected (const Stuff::Point3D corners[4],
 //   - raycast miss -> leave the legacy point/return unchanged.
 static unsigned long parityReport (Stuff::Vector2DOf<long> &screenPos,
                                    bool raycastHit,
-                                   const Stuff::Vector3D &raycastPt,
-                                   Stuff::Vector3D &point,
+                                   const glm::vec3 &raycastPt,
+                                   glm::vec3 &point,
                                    unsigned long legacyRet)
 {
 	const long verticesMapSideDivTwo = Terrain::realVerticesMapSide / 2;
@@ -112,12 +109,12 @@ static unsigned long parityReport (Stuff::Vector2DOf<long> &screenPos,
 // inverse-VP cursor->world helpers below (preview + mouse-anchored zoom); the
 // global Matrix4D::Invert is left byte-identical, and terrain PICKING uses the
 // forward-projection path, not this — so no working path is affected.
-static bool lowCamInvert4x4 (const Stuff::Matrix4D& M, Stuff::Matrix4D& out)
+static bool lowCamInvert4x4 (const glm::mat4& M, glm::mat4& out)
 {
 	double a[4][8];
 	for (int r = 0; r < 4; ++r)
 		for (int c = 0; c < 4; ++c)
-		{ a[r][c] = (double)M(r,c); a[r][c+4] = (r==c)?1.0:0.0; }
+		{ a[r][c] = (double)M[c][r]; a[r][c+4] = (r==c)?1.0:0.0; }
 	for (int col = 0; col < 4; ++col)
 	{
 		int piv = col; double best = fabs(a[col][col]);
@@ -132,7 +129,7 @@ static bool lowCamInvert4x4 (const Stuff::Matrix4D& M, Stuff::Matrix4D& out)
 	}
 	for (int r = 0; r < 4; ++r)
 		for (int c = 0; c < 4; ++c)
-			out(r,c) = (float)a[r][c+4];
+			out[c][r] = (float)a[r][c+4];
 	return true;
 }
 
@@ -140,14 +137,14 @@ static bool lowCamInvert4x4 (const Stuff::Matrix4D& M, Stuff::Matrix4D& out)
 // O(1) screen -> z=0 ground-plane unproject. No quad scan, no terrain pick.
 // See header. Mirrors the matrix-inverse unproject used by the LOD-chunk pick
 // path, then intersects the camera ray with the world z=0 plane.
-bool Camera::screenToGroundPlaneApprox (long screenX, long screenY, Stuff::Vector3D &outWorld, float z_plane)
+bool Camera::screenToGroundPlaneApprox (long screenX, long screenY, glm::vec3 &outWorld, float z_plane)
 {
 	outWorld.x = outWorld.y = outWorld.z = 0.0f;
 	if (turn < 4)
 		return false;
 
-	Stuff::Matrix4D M = worldToClipGL();
-	Stuff::Matrix4D Minv;
+	glm::mat4 M = worldToClipGL();
+	glm::mat4 Minv;
 	if (!lowCamInvert4x4(M, Minv)) return false;
 
 	const float w = screenResolution.x;
@@ -159,23 +156,23 @@ bool Camera::screenToGroundPlaneApprox (long screenX, long screenY, Stuff::Vecto
 	const float ndcY =  1.0f - 2.0f * (float(screenY) / h);
 
 	// clip_row * Minv (row-vector convention), perspective divide.
-	auto unprojectNDC = [&](float nz) -> Stuff::Vector3D {
-		float wx = ndcX*Minv(0,0) + ndcY*Minv(1,0) + nz*Minv(2,0) + Minv(3,0);
-		float wy = ndcX*Minv(0,1) + ndcY*Minv(1,1) + nz*Minv(2,1) + Minv(3,1);
-		float wz = ndcX*Minv(0,2) + ndcY*Minv(1,2) + nz*Minv(2,2) + Minv(3,2);
-		float ww = ndcX*Minv(0,3) + ndcY*Minv(1,3) + nz*Minv(2,3) + Minv(3,3);
+	auto unprojectNDC = [&](float nz) -> glm::vec3 {
+		float wx = ndcX*Minv[0][0] + ndcY*Minv[0][1] + nz*Minv[0][2] + Minv[0][3];
+		float wy = ndcX*Minv[1][0] + ndcY*Minv[1][1] + nz*Minv[1][2] + Minv[1][3];
+		float wz = ndcX*Minv[2][0] + ndcY*Minv[2][1] + nz*Minv[2][2] + Minv[2][3];
+		float ww = ndcX*Minv[3][0] + ndcY*Minv[3][1] + nz*Minv[3][2] + Minv[3][3];
 		const float invW = (fabsf(ww) > 1e-8f) ? (1.0f / ww) : 0.0f;
-		Stuff::Vector3D v; v.x = wx*invW; v.y = wy*invW; v.z = wz*invW;
+		glm::vec3 v; v.x = wx*invW; v.y = wy*invW; v.z = wz*invW;
 		return v;
 	};
 	// GL-swapped (x'=-x, y'=z, z'=y) -> MC2 world (x=-glX, y=glZ, z=glY).
-	auto glToMC2 = [](const Stuff::Vector3D& g) -> Stuff::Vector3D {
-		Stuff::Vector3D r; mc2ToRender(r, g); return r;
+	auto glToMC2 = [](const glm::vec3& g) -> glm::vec3 {
+		glm::vec3 r; mc2ToRender(r, g); return r;
 	};
 
 	// REVERSE-Z, ZERO_TO_ONE: near plane is NDC z=1, far is z=0 (see inverseProject).
-	Stuff::Vector3D ro = glToMC2(unprojectNDC(1.0f));    // near
-	Stuff::Vector3D rf = glToMC2(unprojectNDC( 0.0f));   // far
+	glm::vec3 ro = glToMC2(unprojectNDC(1.0f));    // near
+	glm::vec3 rf = glToMC2(unprojectNDC( 0.0f));   // far
 
 	const float dz = rf.z - ro.z;
 	if (fabsf(dz) < 1e-6f) { outWorld = ro; outWorld.z = 0.0f; return false; }
@@ -188,14 +185,14 @@ bool Camera::screenToGroundPlaneApprox (long screenX, long screenY, Stuff::Vecto
 }
 
 //---------------------------------------------------------------------------
-bool Camera::screenToTerrainApprox (long screenX, long screenY, Stuff::Vector3D &outWorld)
+bool Camera::screenToTerrainApprox (long screenX, long screenY, glm::vec3 &outWorld)
 {
 	outWorld.x = outWorld.y = outWorld.z = 0.0f;
 	if (turn < 4)
 		return false;
 
-	Stuff::Matrix4D M = worldToClipGL();
-	Stuff::Matrix4D Minv;
+	glm::mat4 M = worldToClipGL();
+	glm::mat4 Minv;
 	if (!lowCamInvert4x4(M, Minv)) return false;
 
 	const float w = screenResolution.x;
@@ -206,22 +203,22 @@ bool Camera::screenToTerrainApprox (long screenX, long screenY, Stuff::Vector3D 
 	const float ndcX =  2.0f * (float(screenX) / w) - 1.0f;
 	const float ndcY =  1.0f - 2.0f * (float(screenY) / h);
 
-	auto unprojectNDC = [&](float nz) -> Stuff::Vector3D {
-		float wx = ndcX*Minv(0,0) + ndcY*Minv(1,0) + nz*Minv(2,0) + Minv(3,0);
-		float wy = ndcX*Minv(0,1) + ndcY*Minv(1,1) + nz*Minv(2,1) + Minv(3,1);
-		float wz = ndcX*Minv(0,2) + ndcY*Minv(1,2) + nz*Minv(2,2) + Minv(3,2);
-		float ww = ndcX*Minv(0,3) + ndcY*Minv(1,3) + nz*Minv(2,3) + Minv(3,3);
+	auto unprojectNDC = [&](float nz) -> glm::vec3 {
+		float wx = ndcX*Minv[0][0] + ndcY*Minv[0][1] + nz*Minv[0][2] + Minv[0][3];
+		float wy = ndcX*Minv[1][0] + ndcY*Minv[1][1] + nz*Minv[1][2] + Minv[1][3];
+		float wz = ndcX*Minv[2][0] + ndcY*Minv[2][1] + nz*Minv[2][2] + Minv[2][3];
+		float ww = ndcX*Minv[3][0] + ndcY*Minv[3][1] + nz*Minv[3][2] + Minv[3][3];
 		const float invW = (fabsf(ww) > 1e-8f) ? (1.0f / ww) : 0.0f;
-		Stuff::Vector3D v; v.x = wx*invW; v.y = wy*invW; v.z = wz*invW;
+		glm::vec3 v; v.x = wx*invW; v.y = wy*invW; v.z = wz*invW;
 		return v;
 	};
-	auto glToMC2 = [](const Stuff::Vector3D& g) -> Stuff::Vector3D {
-		Stuff::Vector3D r; mc2ToRender(r, g); return r;
+	auto glToMC2 = [](const glm::vec3& g) -> glm::vec3 {
+		glm::vec3 r; mc2ToRender(r, g); return r;
 	};
 
 	// REVERSE-Z, ZERO_TO_ONE: near plane is NDC z=1, far is z=0.
-	Stuff::Vector3D ro = glToMC2(unprojectNDC(1.0f));    // near
-	Stuff::Vector3D rf = glToMC2(unprojectNDC( 0.0f));   // far
+	glm::vec3 ro = glToMC2(unprojectNDC(1.0f));    // near
+	glm::vec3 rf = glToMC2(unprojectNDC( 0.0f));   // far
 
 	const float dz = rf.z - ro.z;
 	if (fabsf(dz) < 1e-6f) { outWorld = ro; return false; }
@@ -230,7 +227,7 @@ bool Camera::screenToTerrainApprox (long screenX, long screenY, Stuff::Vector3D 
 	// the terrain height of the previous hit. Converges in 2-3 steps on any
 	// terrain a camera ray can see (slope bounded by the tilt).
 	float planeZ = 0.0f;
-	Stuff::Vector3D hit;
+	glm::vec3 hit;
 	hit.x = hit.y = hit.z = 0.0f;
 	for (int iter = 0; iter < 3; ++iter)
 	{
@@ -253,7 +250,7 @@ bool Camera::screenToTerrainApprox (long screenX, long screenY, Stuff::Vector3D 
 }
 
 //---------------------------------------------------------------------------
-unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff::Vector3D &point)
+unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::vec3 &point)
 {
 	if (turn < 4)
 	{
@@ -284,14 +281,14 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 	// mode (raycast-if-flag-on-else-legacy) would have returned.
 	static const bool s_pickParity = mc2::gate::get<"MC2_TERRAIN_PICK_PARITY">();
 	bool   parityRaycastHit = false;
-	Stuff::Vector3D parityRaycastPt;
+	glm::vec3 parityRaycastPt;
 	parityRaycastPt.x = parityRaycastPt.y = parityRaycastPt.z = 0.0f;
 	if (s_lodChunkPick && land)
 	{
 		// Build the GL clip-to-world inverse matrix.
-		Stuff::Matrix4D M = worldToClipGL();
-		Stuff::Matrix4D Minv;
-		mc2::math::fromGlm(Minv, glm::inverse(mc2::math::toGlm(M)));
+		glm::mat4 M = worldToClipGL();
+		glm::mat4 Minv;
+		Minv = glm::inverse(M);
 
 		// Convert screen pixel to GL NDC.
 		// screenPos: Y-down from top-left (same convention as screenResolution).
@@ -304,13 +301,13 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 		// Unproject near and far NDC points to world space.
 		// Row-vector convention: world_row = clip_row * Minv.
 		// Clip near: (ndcX, ndcY, -1, 1); Clip far: (ndcX, ndcY, +1, 1).
-		auto unprojectNDC = [&](float nx, float ny, float nz) -> Stuff::Vector3D {
+		auto unprojectNDC = [&](float nx, float ny, float nz) -> glm::vec3 {
 			// clip_row * Minv; w=1
-			float wx = nx * Minv(0,0) + ny * Minv(1,0) + nz * Minv(2,0) + Minv(3,0);
-			float wy = nx * Minv(0,1) + ny * Minv(1,1) + nz * Minv(2,1) + Minv(3,1);
-			float wz = nx * Minv(0,2) + ny * Minv(1,2) + nz * Minv(2,2) + Minv(3,2);
-			float ww = nx * Minv(0,3) + ny * Minv(1,3) + nz * Minv(2,3) + Minv(3,3);
-			Stuff::Vector3D v;
+			float wx = nx * Minv[0][0] + ny * Minv[0][1] + nz * Minv[0][2] + Minv[0][3];
+			float wy = nx * Minv[1][0] + ny * Minv[1][1] + nz * Minv[1][2] + Minv[1][3];
+			float wz = nx * Minv[2][0] + ny * Minv[2][1] + nz * Minv[2][2] + Minv[2][3];
+			float ww = nx * Minv[3][0] + ny * Minv[3][1] + nz * Minv[3][2] + Minv[3][3];
+			glm::vec3 v;
 			const float invW = (fabsf(ww) > 1e-8f) ? (1.0f / ww) : 0.0f;
 			v.x = wx * invW;
 			v.y = wy * invW;
@@ -323,20 +320,20 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 		// here (it came out ABOVE the camera, inverting the ray), so we do NOT use
 		// it. Instead build the ray from the known camera eye position (MC2 world)
 		// toward the well-conditioned near-plane point.
-		Stuff::Vector3D nearPt = unprojectNDC(ndcX, ndcY, 1.0f);
+		glm::vec3 nearPt = unprojectNDC(ndcX, ndcY, 1.0f);
 
 		// worldToClipGL uses the GL axis swap (x'=-x, y'=z, z'=y); invert it:
 		//   mc2X = -glX,  mc2Y = glZ,  mc2Z = glY
-		auto glToMC2 = [](const Stuff::Vector3D& g) -> Stuff::Vector3D {
-			Stuff::Vector3D r;
+		auto glToMC2 = [](const glm::vec3& g) -> glm::vec3 {
+			glm::vec3 r;
 			mc2ToRender(r, g);
 			return r;
 		};
-		Stuff::Vector3D nearMc = glToMC2(nearPt);
+		glm::vec3 nearMc = glToMC2(nearPt);
 
 		// Origin = camera eye (the matrix the GPU renders with is built from this);
 		// direction = eye -> near-plane point (on the pixel ray, in front of eye).
-		Stuff::Vector3D ro = getPosition();
+		glm::vec3 ro = getPosition();
 		float rdx = nearMc.x - ro.x;
 		float rdy = nearMc.y - ro.y;
 		float rdz = nearMc.z - ro.z;
@@ -422,7 +419,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 		for (long i = 0; i < (long)numTiles; i += sampleStride)
 		{
 			TerrainQuadPtr q = st + i;
-			Stuff::Vector3D wp;
+			glm::vec3 wp;
 			wp.x = q->vertices[0]->vx;
 			wp.y = q->vertices[0]->vy;
 			wp.z = q->vertices[0]->pVertex->elevation;
@@ -466,7 +463,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 		TerrainQuadPtr t = land->getQuadList();
 		for (long i = 0; i < (long)numTiles; i++, t++)
 		{
-			Stuff::Vector3D mn, mx;
+			glm::vec3 mn, mx;
 			mn.x = mx.x = t->vertices[0]->vx;
 			mn.y = mx.y = t->vertices[0]->vy;
 			mn.z = mx.z = t->vertices[0]->pVertex->elevation;
@@ -483,12 +480,12 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 				continue;
 			admitted++;
 
-			Stuff::Point3D corners[4];
+			glm::vec3 corners[4];
 			bool valid[4];
 			float cx = 0.0f, cy = 0.0f, cz = 0.0f;   // world tile center
 			for (int c = 0; c < 4; c++)
 			{
-				Stuff::Vector3D wp;
+				glm::vec3 wp;
 				wp.x = t->vertices[c]->vx;
 				wp.y = t->vertices[c]->vy;
 				wp.z = t->vertices[c]->pVertex->elevation;
@@ -530,7 +527,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 	// coords per vertex.h:75). Keep the existing cap-100 + guard.
 	for (long i=0;i<(long)numTiles;i++)
 	{
-		Stuff::Vector3D mn, mx;
+		glm::vec3 mn, mx;
 		mn.x = mx.x = currentTile->vertices[0]->vx;
 		mn.y = mx.y = currentTile->vertices[0]->vy;
 		mn.z = mx.z = currentTile->vertices[0]->pVertex->elevation;
@@ -566,12 +563,12 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 		for (long i = 0; i < currentClosest; i++)
 		{
 			TerrainQuadPtr t = closestTiles[i];
-			Stuff::Point3D corners[4];
+			glm::vec3 corners[4];
 			bool valid[4];
 			double tileNearestSq = 1.0e30;
 			for (int c = 0; c < 4; c++)
 			{
-				Stuff::Vector3D wp;
+				glm::vec3 wp;
 				wp.x = t->vertices[c]->vx;
 				wp.y = t->vertices[c]->vy;
 				wp.z = t->vertices[c]->pVertex->elevation;
@@ -683,7 +680,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 		// closest vertex
 		float dis = 999999999.f;
 		int closeRow = 0, closeCol = 0;
-		Stuff::Vector3D tmpWorld;
+		glm::vec3 tmpWorld;
 		Stuff::Vector4D tmpScreen;
 		
 		/*for ( int column = 0; column < land->realVerticesMapSide; column += land->realVerticesMapSide - 1 )

@@ -105,14 +105,14 @@ namespace gosFX
 		enum {
 			ParticleSize =
 				sizeof(Particle)
-				 + 4*sizeof(Stuff::Point3D)
+				 + 4*sizeof(glm::vec3)
 				 + sizeof(Stuff::RGBAColor)
 				 + 4*sizeof(Stuff::Vector2DOf<Stuff::Scalar>)
 		};
 
 	protected:
 		std::unique_ptr<MidLevelRenderer::MLRCardCloud> m_cloudImplementation;						// point to an MLR triangle cloud by Michael
-		Stuff::Point3D							*m_P_vertices;
+		glm::vec3							*m_P_vertices;
 		Stuff::RGBAColor						*m_P_color;
 		Stuff::Vector2DOf<Stuff::Scalar>	*m_P_uvs;
 
@@ -169,13 +169,13 @@ namespace gosFX
 		bool
 			AnimateParticle(
 				unsigned index,
-				const Stuff::LinearMatrix4D *world_to_new_local,
+				const glm::mat4 *world_to_new_local,
 				Stuff::Time till
 			);
 		void
 			CreateNewParticle(
 				unsigned index,
-				Stuff::Point3D *translation
+				glm::vec3 *translation
 			);
 		void
 			DestroyParticle(unsigned index);

@@ -230,7 +230,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
             // index type for each API.
             ++diagCellsTotal;
 
-            const Stuff::Vector3D samplePos(wx, wy, 0.0f);
+            const glm::vec3 samplePos(wx, wy, 0.0f);
             int tileR = 0, tileC = 0, subR = 0, subC = 0;
             land->worldToTileCell(samplePos, tileR, tileC, subR, subC);
             const long mapSide = static_cast<long>(Terrain::realVerticesMapSide);
@@ -297,7 +297,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 const float instWy = clumpCy + (h2 - 0.5f) * 20.0f;
 
                 ++instTriedTotal;
-                const Stuff::Vector3D instPos(instWx, instWy, 0.0f);
+                const glm::vec3 instPos(instWx, instWy, 0.0f);
                 const float elevation = land->getTerrainElevation(instPos);
                 if (elevation <= Terrain::waterElevation) { ++instRejWater; continue; }
 
@@ -336,7 +336,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 // probability so the edge is organic rather than a sharp line.
                 // Position-based hash (deterministic, no rand()) for the fade.
                 {
-                    Stuff::Vector3D slopeNormal;
+                    glm::vec3 slopeNormal;
                     const float angle = land->getTerrainAngle(instPos, &slopeNormal);
                     constexpr float kSlopeHard  = 60.0f;   // hard reject above this
                     constexpr float kSlopeSoft  = 45.0f;   // fade begins here
@@ -405,7 +405,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
             for (int sj = 0; sj < 40; ++sj) {
                 const float sx = originX + stepX * (si + 0.5f);
                 const float sy = originY - stepY * (sj + 0.5f);
-                const Stuff::Vector3D sp(sx, sy, 0.0f);
+                const glm::vec3 sp(sx, sy, 0.0f);
                 const float e = land->getTerrainElevation(sp);
                 if (e < elevMin) elevMin = e;
                 if (e > elevMax) elevMax = e;
@@ -423,9 +423,9 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
             const float gy = originY - mapSpan * ((gr + 0.5f) / 5.0f);
             for (int gc = 0; gc < 5; ++gc) {
                 const float gx = originX + mapSpan * ((gc + 0.5f) / 5.0f);
-                const float ge = land->getTerrainElevation(Stuff::Vector3D(gx, gy, 0.0f));
+                const float ge = land->getTerrainElevation(glm::vec3(gx, gy, 0.0f));
                 int gTR = 0, gTC = 0, gSR = 0, gSC = 0;
-                land->worldToTileCell(Stuff::Vector3D(gx, gy, 0.0f), gTR, gTC, gSR, gSC);
+                land->worldToTileCell(glm::vec3(gx, gy, 0.0f), gTR, gTC, gSR, gSC);
                 const long gMapSide = static_cast<long>(Terrain::realVerticesMapSide);
                 VegDensity gvd = VegDensity::kHard;
                 if (gTR >= 0 && gTC >= 0 && gTR < gMapSide && gTC < gMapSide) {

@@ -45,16 +45,13 @@
 #include "batcher.h"
 #include "fx_trace/fx_trace.h"
 
-#include <stuff/linearmatrix.hpp>
-#include <stuff/point3d.hpp>
+#include "../math/mc2_xform.h"
 #include <stuff/random.hpp>
-#include "math/stuff_glm_bridge.h"
-
 namespace mc2 {
 namespace particles {
 
 void SpawnPoint(const gosFX::PointCloud__Specification* spec,
-                const Stuff::LinearMatrix4D*            parentToWorld,
+                const glm::mat4*            parentToWorld,
                 float                                    spawnSeed,
                 float                                    callerAge)
 {
@@ -115,9 +112,9 @@ void SpawnPoint(const gosFX::PointCloud__Specification* spec,
     // a per-particle random emitter-volume scaled by m_emitterSize{X,Y,Z}
     // (particlecloud.cpp:558-570); the local offset is transformed through
     // parentToWorld for the GPU world-space spawn position.
-    Stuff::Point3D parent_origin(0.0f, 0.0f, 0.0f);
+    glm::vec3 parent_origin(0.0f, 0.0f, 0.0f);
     if (parentToWorld) {
-        parent_origin = Stuff::Point3D(*parentToWorld);
+        parent_origin = mc2::math::getTranslation(*parentToWorld);
     }
 
     // Store raw MLR pool index; resolved to GOS handle at flush time.
@@ -170,15 +167,15 @@ void SpawnPoint(const gosFX::PointCloud__Specification* spec,
             Stuff::Random::GetFraction() * Stuff::Two_Pi,
             Stuff::Random::GetFraction() * Stuff::Pi - Stuff::Pi_Over_2,
             Stuff::Random::GetFraction());
-        Stuff::Vector3D unit_pos = mc2::math::toVector3D(mc2::math::polarToVector(initial_p));
-        Stuff::Point3D local_offset(
+        glm::vec3 unit_pos = (mc2::math::polarToVector(initial_p));
+        glm::vec3 local_offset(
             unit_pos.x * mut_spec->m_emitterSizeX.ComputeValue(parent_age, child_seed),
             unit_pos.y * mut_spec->m_emitterSizeY.ComputeValue(parent_age, child_seed),
             unit_pos.z * mut_spec->m_emitterSizeZ.ComputeValue(parent_age, child_seed));
 
-        Stuff::Point3D world_pos;
+        glm::vec3 world_pos;
         if (parentToWorld) {
-            world_pos.Multiply(local_offset, *parentToWorld);
+            world_pos = mc2::math::transformPoint(local_offset, *parentToWorld);
         } else {
             world_pos = local_offset;
         }
@@ -202,10 +199,10 @@ void SpawnPoint(const gosFX::PointCloud__Specification* spec,
             Stuff::Random::GetFraction() * Stuff::Two_Pi,
             pitch_min,
             mut_spec->m_startingSpeed.ComputeValue(parent_age, child_seed));
-        Stuff::Vector3D local_velocity = mc2::math::toVector3D(mc2::math::polarToVector(initial_v));
-        Stuff::Vector3D world_velocity;
+        glm::vec3 local_velocity = (mc2::math::polarToVector(initial_v));
+        glm::vec3 world_velocity;
         if (parentToWorld) {
-            world_velocity.Multiply(local_velocity, *parentToWorld);
+            world_velocity = mc2::math::transformVector(local_velocity, *parentToWorld);
         } else {
             world_velocity = local_velocity;
         }

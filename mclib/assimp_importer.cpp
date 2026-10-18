@@ -88,13 +88,13 @@ static inline void axisMap(const aiVector3D& v, float& X, float& Y, float& Z) {
 	}
 	applyYaw(X, Z);
 }
-inline Stuff::Point3D toMC2Pos(const aiVector3D& v) {
-	Stuff::Point3D p; float X,Y,Z; axisMap(v,X,Y,Z);
+inline glm::vec3 toMC2Pos(const aiVector3D& v) {
+	glm::vec3 p; float X,Y,Z; axisMap(v,X,Y,Z);
 	p.x = X; p.y = Y + s_gltfYoff(); p.z = Z;
 	return p;
 }
-inline Stuff::Vector3D toMC2Vec(const aiVector3D& v) {
-	Stuff::Vector3D n; float X,Y,Z; axisMap(v,X,Y,Z);
+inline glm::vec3 toMC2Vec(const aiVector3D& v) {
+	glm::vec3 n; float X,Y,Z; axisMap(v,X,Y,Z);
 	n.x = X; n.y = Y; n.z = Z;   // normals: no translation
 	return n;
 }
@@ -163,11 +163,11 @@ inline aiVector3D rotRowMajor16(const float* m, const aiVector3D& v) {
 // X=-x, Y=+y, Z=-z) and baked as the skinned-mech default. Even parity (two flips)
 // so triangle winding is preserved. Buildings/props keep the global axisMap default;
 // the mech's own up-axis differs, so it carries its own fixed mapping here.
-inline Stuff::Point3D mechToMC2Pos(const aiVector3D& v) {
-    Stuff::Point3D p; p.x = -v.x; p.y = v.y; p.z = -v.z; return p;
+inline glm::vec3 mechToMC2Pos(const aiVector3D& v) {
+    glm::vec3 p; p.x = -v.x; p.y = v.y; p.z = -v.z; return p;
 }
-inline Stuff::Vector3D mechToMC2Vec(const aiVector3D& v) {
-    Stuff::Vector3D n; n.x = -v.x; n.y = v.y; n.z = -v.z; return n;
+inline glm::vec3 mechToMC2Vec(const aiVector3D& v) {
+    glm::vec3 n; n.x = -v.x; n.y = v.y; n.z = -v.z; return n;
 }
 
 // Damage/destruction/UI parts excluded from the intact bind-pose import (they
@@ -429,7 +429,7 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 	// component, flipped to MC2 space. (Rotation/scale are not propagated to
 	// TG_TypeShape — those live in the per-instance TG_ShapeRec / animation
 	// channels, which are M2.)
-	Stuff::Point3D center;
+	glm::vec3 center;
 	center.x = center.y = center.z = 0.0f;
 	if (meshNode) {
 		aiVector3D pos, scale;
@@ -517,7 +517,7 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		// the renderer uses for lighting; sufficient for MVP. Per-face
 		// recompute via cross-product would be more accurate but the engine
 		// re-uses faceNormal mainly for backface culling, which is sign-only.
-		Stuff::Vector3D fn;
+		glm::vec3 fn;
 		fn.x = verts[face.mIndices[0]].normal.x
 		     + verts[face.mIndices[1]].normal.x
 		     + verts[face.mIndices[2]].normal.x;
@@ -631,7 +631,7 @@ long PopulateMergedSkinnedShape(const aiScene* scene, TG_TypeMultiShape* out, Sk
 			// skin from texture slot 0, and the GLB's material 0 is a blip atlas.
 			t.localTextureHandle = 0;
 			t.renderStateFlags = 0;
-			Stuff::Vector3D fn;
+			glm::vec3 fn;
 			fn.x = verts[t.Vertices[0]].normal.x + verts[t.Vertices[1]].normal.x + verts[t.Vertices[2]].normal.x;
 			fn.y = verts[t.Vertices[0]].normal.y + verts[t.Vertices[1]].normal.y + verts[t.Vertices[2]].normal.y;
 			fn.z = verts[t.Vertices[0]].normal.z + verts[t.Vertices[1]].normal.z + verts[t.Vertices[2]].normal.z;
@@ -648,7 +648,7 @@ long PopulateMergedSkinnedShape(const aiScene* scene, TG_TypeMultiShape* out, Sk
 		vOff += me->mNumVertices; tOff += me->mNumFaces;
 	}
 
-	Stuff::Point3D zero; zero.x = zero.y = zero.z = 0.0f;
+	glm::vec3 zero; zero.x = zero.y = zero.z = 0.0f;
 	shape->InitFromImportedMesh("imported_mech", "None", zero, std::move(verts), std::move(tris));
 	return 0;
 }

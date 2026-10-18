@@ -166,7 +166,7 @@ enum TacticalOrderCode {
 //***************************************************************************
 
 struct LocationNode {
-	Stuff::Vector3D	location;
+	glm::vec3	location;
 	bool			run;
 	LocationNodePtr	next;
 };
@@ -212,7 +212,7 @@ struct _TacOrderAttackParams {
 	long			aimLocation;
 	bool			pursue;
 	bool			obliterate;
-	Stuff::Vector3D	targetPoint;
+	glm::vec3	targetPoint;
 }; using TacOrderAttackParams = _TacOrderAttackParams;
 
 class TacticalOrder {
@@ -234,7 +234,7 @@ class TacticalOrder {
 		long					selectionIndex;
 		char					stage;
 		char					statusCode;
-		Stuff::Vector3D			lastMoveGoal;
+		glm::vec3			lastMoveGoal;
 
 		// for network use only
 		char					pointLocalMoverId;
@@ -300,11 +300,11 @@ class TacticalOrder {
 
 		long status (MechWarriorPtr warrior);
 
-		Stuff::Vector3D getWayPoint (long index);
+		glm::vec3 getWayPoint (long index);
 
-		void setWayPoint (long index, Stuff::Vector3D wayPoint);
+		void setWayPoint (long index, glm::vec3 wayPoint);
 
-		void addWayPoint (Stuff::Vector3D wayPoint, long travelMode);
+		void addWayPoint (glm::vec3 wayPoint, long travelMode);
 
 		GameObjectPtr getRamTarget (void);
 

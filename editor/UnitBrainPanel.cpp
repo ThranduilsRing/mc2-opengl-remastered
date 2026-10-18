@@ -204,7 +204,7 @@ bool UnitBrainPanel::HandlePlacementClick( float worldX, float worldY, float wor
 		EndWaypointPlace();
 		return false;
 	}
-	Stuff::Vector3D wp; wp.x = worldX; wp.y = worldY; wp.z = worldZ;
+	glm::vec3 wp; wp.x = worldX; wp.y = worldY; wp.z = worldZ;
 	applyOrderEdit( unit, [&]() {
 		// Adding a path implies an order — default a None unit to PATROL on first point.
 		if ( unit->getOrderType() == Unit::ORDER_NONE )
@@ -336,7 +336,7 @@ void UnitBrainPanel::Draw()
 		else
 		{
 			MissionFitBrainSource::Refresh();
-			const Stuff::Vector3D& p = obj->getPosition();
+			const glm::vec3& p = obj->getPosition();
 			const int brainCount = MissionFitBrainSource::BrainCount();
 
 			// Diagnostics (collapsed): the path we read, how many brains parsed, the selected
@@ -450,7 +450,7 @@ void UnitBrainPanel::Draw()
 			applyOrderEdit(unit, [&]() { unit->clearWaypoints(); });
 
 		// Point list.
-		const std::vector<Stuff::Vector3D>& wps = unit->getWaypoints();
+		const std::vector<glm::vec3>& wps = unit->getWaypoints();
 		if (!wps.empty() && ImGui::BeginChild("wplist", ImVec2(0.f, 90.f), true))
 		{
 			for (size_t i = 0; i < wps.size(); ++i)

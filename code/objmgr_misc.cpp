@@ -344,7 +344,7 @@ bool GameObjectManager::isTeamCapturing (TeamPtr team, GameObjectWatchID targetW
 
 CarnagePtr GameObjectManager::createFire (ObjectTypeNumber fireObjTypeHandle,
 										  GameObjectPtr owner,
-										  Stuff::Vector3D& position,
+										  glm::vec3& position,
 										  float tonnage) {
 
 	CarnagePtr fire = getCarnage(CARNAGE_FIRE);
@@ -370,7 +370,7 @@ CarnagePtr GameObjectManager::createFire (ObjectTypeNumber fireObjTypeHandle,
 
 CarnagePtr GameObjectManager::createExplosion (long effectId,
 											   GameObjectPtr owner,
-											   Stuff::Vector3D& position,
+											   glm::vec3& position,
 											   float damage,
 											   float radius) 
 {
@@ -432,8 +432,8 @@ LightPtr GameObjectManager::createLight (ObjectTypeNumber lightObjTypeHandle) {
 		light->init(false, objectType);
 //		light->setOwner(owner);
 //		light->setTonnage(tonnage);
-		Stuff::Vector3D startPosition;
-		startPosition.Zero();
+		glm::vec3 startPosition;
+		startPosition = glm::vec3(0.0f);
 		light->setPosition(startPosition);
 		light->setExists(true);
 	}
@@ -470,7 +470,7 @@ WeaponBoltPtr GameObjectManager::createWeaponBolt (long effectId)
 
 //---------------------------------------------------------------------------
 
-ArtilleryPtr GameObjectManager::createArtillery (long artilleryType, Stuff::Vector3D& position) 
+ArtilleryPtr GameObjectManager::createArtillery (long artilleryType, glm::vec3& position) 
 {
 	ArtilleryPtr artillery = getArtillery();
 	if (artillery) 
@@ -515,7 +515,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						if (objList[objIndex]->getAppearance()->recalcBounds()) 
 						{
 							// Must force here as well.
-							Stuff::Vector3D pos = objList[objIndex]->getPosition();
+							glm::vec3 pos = objList[objIndex]->getPosition();
 							float rot = objList[objIndex]->getRotation();
 							pos.z = TerrainRuntime::groundElevation(pos);
 							long drawFlags = objList[objIndex]->drawFlags;
@@ -543,7 +543,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						mechs[i]->windowsVisible = turn;
 					
 					// Must force here as well.
-					Stuff::Vector3D pos = mechs[i]->getPosition();
+					glm::vec3 pos = mechs[i]->getPosition();
 					float rot = mechs[i]->getRotation();
 					pos.z = TerrainRuntime::groundElevation(pos);
 					bool selected = mechs[i]->isSelected();
@@ -564,7 +564,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 					vehicles[i]->windowsVisible = turn;
 
 					// Must force here as well.
-					Stuff::Vector3D pos = vehicles[i]->getPosition();
+					glm::vec3 pos = vehicles[i]->getPosition();
 					float rot = vehicles[i]->getRotation();
 					pos.z = TerrainRuntime::groundElevation(pos);
 					if ((pos.z < MapData::waterDepth))
@@ -591,7 +591,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 					if (turrets[i]->getAppearance()->recalcBounds())
 					{
 						// Must force here as well.
-						Stuff::Vector3D pos = turrets[i]->getPosition();
+						glm::vec3 pos = turrets[i]->getPosition();
 						float rot = turrets[i]->getRotation();
 						pos.z = TerrainRuntime::groundElevation(pos);
 						bool selected = turrets[i]->isSelected();

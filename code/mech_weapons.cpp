@@ -22,7 +22,7 @@ static void fireGateTrace (unsigned long wid, long weaponIndex, const char* site
 	mc2_diag::writeEvent("COMBAT", 1, 0, _fg);
 }
 
-long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, Stuff::Vector3D* targetPoint, float &dmgDone) {
+long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, glm::vec3* targetPoint, float &dmgDone) {
 
 
 	if ((status == OBJECT_STATUS_SHUTDOWN) ||
@@ -429,7 +429,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 						// invisible, just hit the target with zero points of damage.
 						float missRadius = target ? 25.0 : 5.0;
 
-						Stuff::Vector3D positionOffset;
+						glm::vec3 positionOffset;
 						if (target)
 							positionOffset = target->getPosition();
 						else if (targetPoint)
@@ -525,7 +525,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 
 				float missRadius = target ? 25.0 : 5.0;
 
-				Stuff::Vector3D positionOffset;
+				glm::vec3 positionOffset;
 				if (target)
 					positionOffset = target->getPosition();
 				else if (targetPoint)
@@ -629,7 +629,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 
 long BattleMech::handleWeaponFire (long weaponIndex,
 								   GameObjectPtr target,
-								   Stuff::Vector3D* targetPoint,
+								   glm::vec3* targetPoint,
 								   bool hit,
 								   float entryAngle,
 								   long numMissiles,

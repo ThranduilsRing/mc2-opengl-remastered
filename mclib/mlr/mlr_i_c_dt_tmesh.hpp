@@ -83,10 +83,10 @@ namespace MidLevelRenderer {
 			PaintMe(const Stuff::RGBAColor *paintMe);
 #endif
 
-		virtual int	TransformAndClip(Stuff::Matrix4D *, MLRClippingState, GOSVertexPool*,bool=false);
+		virtual int	TransformAndClip(glm::mat4 *, MLRClippingState, GOSVertexPool*,bool=false);
 
 		virtual void
-			TransformNoClip(Stuff::Matrix4D*, GOSVertexPool*,bool=false);
+			TransformNoClip(glm::mat4*, GOSVertexPool*,bool=false);
 
 		bool
 			Copy(MLR_I_C_DT_PMesh*);

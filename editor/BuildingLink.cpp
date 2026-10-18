@@ -18,7 +18,7 @@
 //-------------------------------------------------------------------------------------------------
 // Modern GL forward projection (projectModernClipGL + viewport remap). Legacy
 // projectZ diverges/rejects when zoomed in (X-collapse). False = behind near plane.
-static bool projectPtGL_link( Camera* eye, const Stuff::Vector3D& wp, float& sx, float& sy )
+static bool projectPtGL_link( Camera* eye, const glm::vec3& wp, float& sx, float& sy )
 {
 	if ( !eye ) return false;
 	ModernClipResult r = eye->projectModernClipGL( wp );
@@ -42,7 +42,7 @@ BuildingLink::BuildingLink( const EditorObject* pParent )
 	parent.pos = pParent->getPosition();
 }
 
-BuildingLink::BuildingLink( const Stuff::Vector3D& pos )
+BuildingLink::BuildingLink( const glm::vec3& pos )
 {
 	parent.pos = pos;
 	parent.m_ID = -1;
@@ -78,7 +78,7 @@ bool BuildingLink::AddChild( const EditorObject* pObject )
 	
 	for ( const auto& child : children )
 	{
-		if ( child.pos == pObject->getPosition() &&
+		if ( mc2::math::closeEnough(child.pos, pObject->getPosition()) &&
 			 child.m_ID == ID )
 		{
 			SPEW( (0, "Link::AddChild, not adding an object because it is"
@@ -104,7 +104,7 @@ int BuildingLink::GetLinkCount( ) const
 }
 
 
-const Stuff::Vector3D& BuildingLink::GetParentPosition() const
+const glm::vec3& BuildingLink::GetParentPosition() const
 {
 	return parent.pos;
 }
@@ -117,7 +117,7 @@ bool BuildingLink::HasChild( const EditorObject* pObject ) const
 	
 	for ( const auto& child : children )
 	{
-		if ( child.pos == pObject->getPosition() )
+		if ( mc2::math::closeEnough(child.pos, pObject->getPosition()) )
 		{
 			if ( child.m_ID == ID )
 				return true;
@@ -132,7 +132,7 @@ bool BuildingLink::HasParent( const EditorObject* pObject ) const
 	int ID = pObject->getID();
 
 	// ignore damage bit and rotation
-	if ( parent.pos == pObject->getPosition() && parent.m_ID == ID )
+	if ( mc2::math::closeEnough(parent.pos, pObject->getPosition()) && parent.m_ID == ID )
 		return true;
 
 	return false;
@@ -208,12 +208,12 @@ bool BuildingLink::RemoveObject( const EditorObject* pObject )
 		return false;
 	}
 
-	Stuff::Vector3D pos = pObject->getPosition( );
+	glm::vec3 pos = pObject->getPosition( );
 	long ID = pObject->getID();
 	
 	for ( auto iter = children.begin(); iter != children.end(); ++iter )
 	{
-		if ( ID == (*iter).m_ID && pos == (*iter).pos  )
+		if ( ID == (*iter).m_ID && mc2::math::closeEnough(pos, (*iter).pos)  )
 		{
 			children.erase( iter );
 			return true;
@@ -224,7 +224,7 @@ bool BuildingLink::RemoveObject( const EditorObject* pObject )
 	return false;
 }
 
-int BuildingLink::GetChildrenPositions( Stuff::Vector3D* pos, int Count ) const
+int BuildingLink::GetChildrenPositions( glm::vec3* pos, int Count ) const
 {
 	if ( children.size() > static_cast<unsigned long>(Count) )
 		return static_cast<int>(children.size());
@@ -238,7 +238,7 @@ int BuildingLink::GetChildrenPositions( Stuff::Vector3D* pos, int Count ) const
 	return i; 
 }
 
-static bool isInView(const Point3D &position)
+static bool isInView(const glm::vec3 &position)
 {
 	bool inView = false;
 
@@ -249,12 +249,12 @@ static bool isInView(const Point3D &position)
 		// if object too far from camera.  Far Clip Plane.
 		if (eye->usePerspective)
 		{
-			Stuff::Point3D Distance;
-			Stuff::Point3D eyePosition(eye->getPosition());
-			Stuff::Point3D objPosition(position);
+			glm::vec3 Distance;
+			glm::vec3 eyePosition(eye->getPosition());
+			glm::vec3 objPosition(position);
 	
-			Distance.Subtract(objPosition,eyePosition);
-			float eyeDistance = Distance.GetApproximateLength();
+			Distance = objPosition - eyePosition;
+			float eyeDistance = glm::length(Distance);
 			if (eyeDistance > Camera::MaxClipDistance)
 			{
 				inView = false;
@@ -276,15 +276,15 @@ static bool isInView(const Point3D &position)
 			// to Target.  If angle is less then halfFOV, object is visible.
 			if (inView)
 			{
-				Stuff::Vector3D Distance;
-				Stuff::Point3D objPosition;
-				Stuff::Point3D eyePosition(eye->getCameraOrigin());
+				glm::vec3 Distance;
+				glm::vec3 objPosition;
+				glm::vec3 eyePosition(eye->getCameraOrigin());
 				mc2ToRender(objPosition, position);
 		
-				Distance.Subtract(objPosition,eyePosition);
-				Distance.Normalize(Distance);
+				Distance = objPosition - eyePosition;
+				Distance = glm::normalize(Distance);
 				
-				float cosine = Distance * eye->getLookVector();
+				float cosine = glm::dot(Distance, eye->getLookVector());
  				if (cosine > eye->cosHalfFOV)
 					inView = true;
 				else
@@ -307,9 +307,9 @@ void BuildingLink::render()
 	for ( const auto& child : children )
 	{
 		// Short segments keep long links visible under coarse object culling.
-		Stuff::Vector3D diffVect;
-		diffVect.Subtract(child.pos, parent.pos);
-		float lineLength = diffVect.GetLength();
+		glm::vec3 diffVect;
+		diffVect = child.pos - parent.pos;
+		float lineLength = glm::length(diffVect);
 		const float lengthOfATypicalLargeObject = 150.0/*arbitrary*/;
 		int numSegments = lineLength / lengthOfATypicalLargeObject;
 		if (1 > numSegments)
@@ -317,16 +317,16 @@ void BuildingLink::render()
 			numSegments = 1;
 		}
 		float segmentLength = lineLength / numSegments;
-		Stuff::Vector3D segVect = diffVect;
-		segVect.Normalize(segVect);
+		glm::vec3 segVect = diffVect;
+		segVect = glm::normalize(segVect);
 		segVect *= segmentLength;
 
-		Stuff::Point3D p1(parent.pos.x, parent.pos.y, parent.pos.z);
+		glm::vec3 p1(parent.pos.x, parent.pos.y, parent.pos.z);
 		bool p1IsInView = isInView(p1);
 		int i;
 		for (i = 0 ; i < numSegments; i += 1)
 		{
-			Stuff::Point3D p2 = p1;
+			glm::vec3 p2 = p1;
 			p2 += segVect;
 			bool p2IsInView = isInView(p2);
 
@@ -391,7 +391,7 @@ void	BuildingLink::FixHeights()
 		child.pos.z = land->getTerrainElevation(child.pos );
 	}
 }
-void	BuildingLink::SetParentPosition( const Stuff::Vector3D& pos )
+void	BuildingLink::SetParentPosition( const glm::vec3& pos )
 {
 	parent.pos = pos;
 }

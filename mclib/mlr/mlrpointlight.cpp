@@ -163,9 +163,9 @@ void
 void
 	MLRPointLight::LightVertex(const MLRVertexData& vertexData)
 {
-	UnitVector3D light_z;
+	glm::vec3 light_z;
 	RGBColor light_color(color);
-	Point3D vertex_to_light;
+	glm::vec3 vertex_to_light;
 
 	Verify(GetFalloffDistance(vertex_to_light.x, vertex_to_light.y));
 
@@ -180,7 +180,7 @@ void
 	// light level as appropriate to the distance
 	//--------------------------------------------------------------
 	//
-	Scalar length = vertex_to_light.GetApproximateLength();
+	Scalar length = glm::length(vertex_to_light);
 
 	Scalar falloff = 1.0f;
 	if(GetFalloff(length, falloff))
@@ -195,7 +195,7 @@ void
 	}
 
 	length = -1.0f / length;
-	light_z.Vector3D::Multiply(vertex_to_light, length);
+	light_z = vertex_to_light * length;
 
 	//
 	//-------------------------------------------------------------------
@@ -203,7 +203,7 @@ void
 	// cosine of the angle between light and normal
 	//-------------------------------------------------------------------
 	//
-	Scalar cosine = -(light_z * (*vertexData.normal)) * intensity;
+	Scalar cosine = -(glm::dot(light_z, (*vertexData.normal))) * intensity;
 
 #if COLOR_AS_DWORD
 #else

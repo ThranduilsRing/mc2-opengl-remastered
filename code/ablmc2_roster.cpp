@@ -163,7 +163,7 @@ void execTeleportToPoint (void) {
 	if (!coordList)
 		return;
 
-	Stuff::Vector3D pos;
+	glm::vec3 pos;
 	pos.x = coordList[0];
 	pos.y = coordList[1];
 	pos.z = coordList[2];
@@ -396,8 +396,8 @@ void execGetTargetRelativePosition (void) {
 	if (!tgt)
 		return;
 
-	Stuff::Vector3D myPos = CurObject->getPosition();
-	Stuff::Vector3D tgtPos = tgt->getPosition();
+	glm::vec3 myPos = CurObject->getPosition();
+	glm::vec3 tgtPos = tgt->getPosition();
 	float dx = tgtPos.x - myPos.x;
 	float dy = tgtPos.y - myPos.y;
 	float range = sqrt(dx * dx + dy * dy);
@@ -425,8 +425,8 @@ void execGetRelativePositionToTarget (void) {
 	if (!tgt)
 		{ abl::copyRealArray(output, outPoint, "getrelativepositiontotarget_truncated"); return; }
 
-	Stuff::Vector3D myPos = CurObject->getPosition();
-	Stuff::Vector3D tgtPos = tgt->getPosition();
+	glm::vec3 myPos = CurObject->getPosition();
+	glm::vec3 tgtPos = tgt->getPosition();
 	float dx = tgtPos.x - myPos.x;
 	float dy = tgtPos.y - myPos.y;
 	float len = sqrt(dx * dx + dy * dy);
@@ -459,8 +459,8 @@ void execNewDistanceToPosition (void) {
 	if (!coordList)
 		return;
 
-	Stuff::Vector3D position2;
-	position2.Zero();
+	glm::vec3 position2;
+	position2 = glm::vec3(0.0f);
 	position2.x = coordList[0];
 	position2.y = coordList[1];
 
@@ -471,7 +471,7 @@ void execNewDistanceToPosition (void) {
 			MoverPtr m = moverList[i];
 			if (!m || !m->getExistsAndAwake())
 				continue;
-			Stuff::Vector3D p1 = m->getPosition();
+			glm::vec3 p1 = m->getPosition();
 			float dx = position2.x - p1.x;
 			float dy = position2.y - p1.y;
 			float d = sqrt(dx * dx + dy * dy);
@@ -484,7 +484,7 @@ void execNewDistanceToPosition (void) {
 	else {
 		GameObjectPtr obj = getObject(partId);
 		if (obj) {
-			Stuff::Vector3D p1 = obj->getPosition();
+			glm::vec3 p1 = obj->getPosition();
 			float dx = position2.x - p1.x;
 			float dy = position2.y - p1.y;
 			float d = sqrt(dx * dx + dy * dy);
@@ -499,7 +499,7 @@ static long countMoversWithinRadius (bool friendly, float radius) {
 		return 0;
 
 	TeamPtr selfTeam = CurObject->getTeam();
-	Stuff::Vector3D myPos = CurObject->getPosition();
+	glm::vec3 myPos = CurObject->getPosition();
 	float r2 = radius * radius;
 	long count = 0;
 
@@ -518,7 +518,7 @@ static long countMoversWithinRadius (bool friendly, float radius) {
 			MoverPtr m = team->getMover(i);
 			if (!m || !m->getExistsAndAwake())
 				continue;
-			Stuff::Vector3D p = m->getPosition();
+			glm::vec3 p = m->getPosition();
 			float dx = p.x - myPos.x;
 			float dy = p.y - myPos.y;
 			if (dx * dx + dy * dy <= r2)
@@ -955,7 +955,7 @@ void execSetMoveArea (void) {
 	}
 
 	if (CurObject->isMover()) {
-		Stuff::Vector3D loc;
+		glm::vec3 loc;
 		loc.x = center[0];
 		loc.y = center[1];
 		loc.z =  land->getTerrainElevation(loc);
@@ -1020,7 +1020,7 @@ void execIsOffMap (void) {
 		return;
 	}
 
-	Stuff::Vector3D pos;
+	glm::vec3 pos;
 	pos.x = worldPos[0];
 	pos.y = worldPos[1];
 	if (pos.x > 999000) {

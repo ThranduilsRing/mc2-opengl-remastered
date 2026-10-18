@@ -72,12 +72,12 @@ namespace gosFX
 		public ParticleCloud__Particle
 	{
 	public:
-		Stuff::Vector3D
+		glm::vec3
 			m_angularVelocity;
-		Stuff::Point3D
+		glm::vec3
 			m_localTranslation,
 			m_worldTranslation;
-		Stuff::UnitQuaternion
+		glm::quat
 			m_localRotation,
 			m_worldRotation;
 		Stuff::Scalar
@@ -149,13 +149,13 @@ namespace gosFX
 		bool
 			AnimateParticle(
 				unsigned index,
-				const Stuff::LinearMatrix4D *world_to_new_local,
+				const glm::mat4 *world_to_new_local,
 				Stuff::Time till
 			);
 		void
 			CreateNewParticle(
 				unsigned index,
-				Stuff::Point3D *translation
+				glm::vec3 *translation
 			);
 
 	public:

@@ -146,7 +146,7 @@ void
 //
 void
 	MLRIndexedPrimitiveBase::SetCoordData(
-		const Point3D *data,
+		const glm::vec3 *data,
 		int dataSize
 	)
 {
@@ -214,7 +214,7 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	MLRIndexedPrimitiveBase::Transform(Matrix4D *mat)
+	MLRIndexedPrimitiveBase::Transform(glm::mat4 *mat)
 {
 	Check_Object(this);
 
@@ -222,7 +222,7 @@ void
 
 	for(i=0;i<len;i++)
 	{
-		(*transformedCoords)[i].Multiply(coords[i], *mat);
+		(*transformedCoords)[i].MultiplyPoint(coords[i], *mat);
 	}
 	
 	#ifdef LAB_ONLY

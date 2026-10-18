@@ -459,7 +459,7 @@ gosFX::Effect::Effect(
 	m_age = 0.0f;
 	m_flags = flags;
 	m_lastRan = -1.0f;
-	m_localToParent = Stuff::LinearMatrix4D::Identity;
+	m_localToParent = glm::mat4(1.0f);
 
 	// [B1 C16] (diagnostic) Effect create counter — increments for every
 	// gosFX::Effect subclass via base ctor. Env-gated read inside DiagFrameTick.
@@ -577,7 +577,7 @@ void
 	//--------------------
 	//
 	Check_Object(info->m_parentToWorld);
-	m_localToWorld.Multiply(m_localToParent, *info->m_parentToWorld);
+	m_localToWorld = m_localToParent * *info->m_parentToWorld;
 
 	//
 	//-------------------------
@@ -629,7 +629,7 @@ bool gosFX::Effect::Execute(ExecuteInfo *info)
 	Stuff::Scalar age =
 		m_age + static_cast<Stuff::Scalar>(info->m_time - m_lastRan) * m_ageRate;
 	Verify(age >= 0.0f && age >= m_age);
-	*info->m_bounds = Stuff::OBB::Identity;
+	*info->m_bounds = mc2::math::Obb();
 
 	//
 	//--------------------------------
@@ -637,7 +637,7 @@ bool gosFX::Effect::Execute(ExecuteInfo *info)
 	//--------------------------------
 	//
 	Check_Object(info->m_parentToWorld);
-	m_localToWorld.Multiply(m_localToParent, *info->m_parentToWorld);
+	m_localToWorld = m_localToParent * *info->m_parentToWorld;
 
 	//
 	//--------------------------------------------------
@@ -704,7 +704,7 @@ bool gosFX::Effect::Execute(ExecuteInfo *info)
 	// Execute all the children.  If any of them finish, kill them
 	//------------------------------------------------------------
 	//
-	Stuff::OBB child_obb = Stuff::OBB::Identity;
+	mc2::math::Obb child_obb = mc2::math::Obb();
 	ExecuteInfo
 		child_info(
 			info->m_time,
@@ -729,9 +729,9 @@ bool gosFX::Effect::Execute(ExecuteInfo *info)
 		// parent
 		//--------------------------------------------------------------
 		//
-		Stuff::OBB parent_bounds;
-		parent_bounds.Multiply(child_obb, m_localToParent);
-		info->m_bounds->Union(*info->m_bounds, parent_bounds);
+		mc2::math::Obb parent_bounds;
+		parent_bounds = mc2::math::multiply(child_obb, m_localToParent);
+		(*info->m_bounds) = mc2::math::unite(*info->m_bounds, parent_bounds);
 	}
 	if (released)
 		std::erase(m_children, nullptr);
@@ -819,8 +819,8 @@ void gosFX::Effect::Draw(DrawInfo *info)
 	DrawInfo new_info;
 	Check_Object(m_specification);
 	new_info.m_state.Combine(info->m_state, m_specification->m_state);
-	Stuff::LinearMatrix4D local_to_world;
-	local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
+	glm::mat4 local_to_world;
+	local_to_world = m_localToParent * *info->m_parentToWorld;
 	new_info.m_parentToWorld = &local_to_world;
 	new_info.m_clipper = info->m_clipper;
 	new_info.m_clippingFlags = info->m_clippingFlags;

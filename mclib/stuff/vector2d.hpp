@@ -8,7 +8,7 @@
 #pragma once
 
 #include"stuff.hpp"
-#include"vector3d.hpp"
+#include"scalar.hpp"
 
 namespace Stuff {
 

@@ -45,7 +45,7 @@ float						Terrain::oneOverWorldUnitsMapSide = 0.0f;
 long						Terrain::halfVerticesMapSide = 0;
 long						Terrain::realVerticesMapSide = 0;
 
-Stuff::Vector3D				Terrain::mapTopLeft3d;					//Calced during load.
+glm::vec3				Terrain::mapTopLeft3d;					//Calced during load.
 
 UserHeapPtr					Terrain::terrainHeap = nullptr;			//Setup at load time.
 char *						Terrain::terrainName = nullptr;
@@ -730,7 +730,7 @@ void Terrain::destroy (void)
 	
 	worldUnitsMapSide = 0.0f;
 	
-	mapTopLeft3d.Zero();
+	mapTopLeft3d = glm::vec3(0.0f);
 		
 	numObjBlocks = 0;
 
@@ -837,7 +837,7 @@ float Terrain::getVertexHeight( int VertexIndex )
 }
 
 //---------------------------------------------------------------------------
-float Terrain::getTerrainElevation (const Stuff::Vector3D &position)
+float Terrain::getTerrainElevation (const glm::vec3 &position)
 {
 	float result = mapData->terrainElevation(position);
 	return(result);
@@ -857,7 +857,7 @@ float Terrain::getTerrainElevation( long tileR, long tileC )
 // the sibling tile accessors: world->tile via worldToTile, then the per-tile
 // terrainType from MapData::getTerrain. getTerrain gosASSERTs its bounds, so
 // guard OOB here and return -1 (the bridge's documented "unavailable" sentinel).
-short Terrain::getTerrainType (const Stuff::Vector3D &position)
+short Terrain::getTerrainType (const glm::vec3 &position)
 {
 	int tileR = 0, tileC = 0;
 	worldToTile(position, tileR, tileC);
@@ -875,23 +875,23 @@ unsigned long Terrain::getTexture( long tileR, long tileC )
 }
 
 //---------------------------------------------------------------------------
-float Terrain::getTerrainAngle (const Stuff::Vector3D &position, Stuff::Vector3D* normal)
+float Terrain::getTerrainAngle (const glm::vec3 &position, glm::vec3* normal)
 {
 	float result = mapData->terrainAngle(position, normal);
 	return(result);
 }
 
 //---------------------------------------------------------------------------
-float Terrain::getTerrainLight (const Stuff::Vector3D &position)
+float Terrain::getTerrainLight (const glm::vec3 &position)
 {
 	float result = mapData->terrainLight(position);
 	return(result);
 }
 
 //---------------------------------------------------------------------------
-Stuff::Vector3D Terrain::getTerrainNormal (const Stuff::Vector3D &position)
+glm::vec3 Terrain::getTerrainNormal (const glm::vec3 &position)
 {
-	Stuff::Vector3D result = Terrain::mapData->terrainNormal(position);
+	glm::vec3 result = Terrain::mapData->terrainNormal(position);
 	return(result);
 }
 
@@ -1019,7 +1019,7 @@ void Terrain::unselectAll()
 //---------------------------------------------------------------------------
 void Terrain::selectVerticesInRect( const Stuff::Vector4D& topLeft, const Stuff::Vector4D& bottomRight, bool bToggle )
 {
-	Stuff::Vector3D worldPos;
+	glm::vec3 worldPos;
 	Stuff::Vector4D screenPos;
 
 	int xMin, xMax;
@@ -1200,7 +1200,7 @@ void Terrain::clearShadows()
 
 //---------------------------------------------------------------------------
 
-long Terrain::getWater (const Stuff::Vector3D& worldPos) {
+long Terrain::getWater (const glm::vec3& worldPos) {
 	//-------------------------------------------------
 	// Get elevation at this point and compare to deep
 	// water altitude for this map.

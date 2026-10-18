@@ -214,8 +214,8 @@ long BattleMech::update (void)
 			teleportPosition.z = -999990.0;
 		}
 
-		Stuff::Vector3D newPosition;
-		Stuff::Vector3D vel = getRotationVector();
+		glm::vec3 newPosition;
+		glm::vec3 vel = getRotationVector();
 
 		if (!appearance->isJumpAirborne())
 		{
@@ -236,7 +236,7 @@ long BattleMech::update (void)
 			vel *= velMult * worldUnitsPerMeter;
 			setVelocity(vel);
 	
-			newPosition.Add(position, vel);
+			newPosition = position + vel;
 			newPosition.z = TerrainRuntime::groundElevation(newPosition);
 			if ((getMoveType() == MOVETYPE_AIR) &&
 				(newPosition.z < MapData::waterDepth))
@@ -248,19 +248,19 @@ long BattleMech::update (void)
 			vel *= frameLength;
 			setVelocity(vel);
 			
-			newPosition.Add(position, vel);
+			newPosition = position + vel;
 			newPosition.z = TerrainRuntime::groundElevation(newPosition);
 		}
 
 		if (newMoveChunk) {
 			if (!statusChunk.jumpOrder) {
-				Stuff::Vector3D correctPos;
+				glm::vec3 correctPos;
 				land->cellToWorld(moveChunk.stepPos[0][0], moveChunk.stepPos[0][1], correctPos);
 				correctPos.z = 0.0;
-				Stuff::Vector3D curPos = position;
+				glm::vec3 curPos = position;
 				curPos.z = 0.0;
-				curPos.Subtract(curPos, correctPos);
-				float posDelta = curPos.GetLength();
+				curPos = curPos - correctPos;
+				float posDelta = glm::length(curPos);
 				if (posDelta > MPlayer->warpFactor)
 					newPosition = correctPos;
 				if (!GameMap->inBounds(moveChunk.stepPos[0][0], moveChunk.stepPos[0][1]))
@@ -276,7 +276,7 @@ long BattleMech::update (void)
 		if (status != OBJECT_STATUS_SHUTDOWN)
 			updateDynamics();
 
-		markDistanceMoved += vel.GetLength();
+		markDistanceMoved += glm::length(vel);
 
 		if (!isDisabled())
 			updatePathLock(true);
@@ -349,13 +349,13 @@ long BattleMech::update (void)
 
 		float velMag = appearance->getVelocityMagnitude();
 
-		Stuff::Vector3D vel = getRotationVector();
+		glm::vec3 vel = getRotationVector();
 		vel *= velMag * worldUnitsPerMeter;
 		vel *= frameLength;
 		setVelocity(vel);
 
-		Stuff::Vector3D newPosition;
-		newPosition.Add(position, vel);
+		glm::vec3 newPosition;
+		newPosition = position + vel;
 		newPosition.z = TerrainRuntime::groundElevation(newPosition);
 
 		setPosition(newPosition);
@@ -385,7 +385,7 @@ long BattleMech::update (void)
 				// DO NOT play disable effect if pilot is dead!!
 				if (getPilot()->alive())
 				{
-					Stuff::Vector3D cockpitPos = appearance->getNodeNamePosition("cockpit");
+					glm::vec3 cockpitPos = appearance->getNodeNamePosition("cockpit");
 					ObjectManager->createExplosion(MECH_DISABLE_EXPLOSION_ID,nullptr,cockpitPos,0.0f,0.0f);
 				}
 
@@ -407,13 +407,13 @@ long BattleMech::update (void)
 
 		float velMag = appearance->getVelocityMagnitude();
 
-		Stuff::Vector3D vel = getRotationVector();
+		glm::vec3 vel = getRotationVector();
 		vel *= velMag * worldUnitsPerMeter;
 		vel *= frameLength;
 		setVelocity(vel);
 
-		Stuff::Vector3D newPosition;
-		newPosition.Add(position, vel);
+		glm::vec3 newPosition;
+		newPosition = position + vel;
 		newPosition.z = TerrainRuntime::groundElevation(newPosition);
 
 		setPosition(newPosition);
@@ -448,7 +448,7 @@ long BattleMech::update (void)
 			timeLeft -= frameLength;
 			if ((timeLeft < 0.4) && !exploding)
 			{
-				Stuff::Vector3D cockpitPos = appearance->getNodeNamePosition("cockpit");
+				glm::vec3 cockpitPos = appearance->getNodeNamePosition("cockpit");
 				if (getMoveType() != MOVETYPE_AIR)
 					ObjectManager->createExplosion(MECH_EXPLOSION_ID,nullptr,cockpitPos,((BattleMechTypePtr)getObjectType())->explDmg,((BattleMechTypePtr)getObjectType())->explRad);
 				else
@@ -776,8 +776,8 @@ void BattleMech::render (void)
 			{
 				if (i != (path->numSteps-1))
 				{
-					Stuff::Vector3D startPos = path->stepList[i].destination;
-					Stuff::Vector3D endPos = path->stepList[i+1].destination;
+					glm::vec3 startPos = path->stepList[i].destination;
+					glm::vec3 endPos = path->stepList[i+1].destination;
 					startPos.z = TerrainRuntime::groundElevation(startPos);
 					endPos.z = TerrainRuntime::groundElevation(endPos);
 					
@@ -826,7 +826,7 @@ void BattleMech::renderShadows (void)
 	}
 }	
 
-float BattleMech::relFacingTo (Stuff::Vector3D goal, long bodyLocation) {
+float BattleMech::relFacingTo (glm::vec3 goal, long bodyLocation) {
 
 	float relFacing = Mover::relFacingTo(goal);
 
@@ -877,7 +877,7 @@ bool BattleMech::isWeaponReady (long weaponIndex) {
 	return(true);
 }
 
-float BattleMech::calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, Stuff::Vector3D* targetPoint) {
+float BattleMech::calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, glm::vec3* targetPoint) {
 
 	if ((weaponIndex < numOther) || (weaponIndex >= numOther + numWeapons))
 		return(-1000.0);
@@ -943,7 +943,7 @@ long BattleMech::transferHitLocation (long hitLocation) {
 	return(MechTransferHitTable[hitLocation]);
 }
 
-bool BattleMech::isJumping (Stuff::Vector3D* goal) {
+bool BattleMech::isJumping (glm::vec3* goal) {
 
 	if (goal)
 		*goal = jumpGoal;

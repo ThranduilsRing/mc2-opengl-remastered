@@ -17,7 +17,7 @@
 void vfx_test_bind_rng(std::uint32_t* state);
 
 namespace {
-constexpr size_t EFFECT_SIZE = 200;
+constexpr size_t EFFECT_SIZE = 232;  // step 5 (2026-10-18): the 48-byte Stuff LinearMatrix4D members are 64-byte glm::mat4
 struct Platform {
     ContractEnvironment deterministic{"MC2_DETERMINISTIC_RNG", "1"};
     ContractEnvironment fixedStep{"MC2_SMOKE_FIXED_TIMESTEP", "1"};
@@ -62,6 +62,7 @@ TEST_CASE_FIXTURE(Platform, "CardCloud retains the pre-G2 runtime ABI")
     // The pre-G2 ParticleCloud object wrote its array at 0xd8. Enlarging Effect
     // silently linked incompatible constructors and destructors in the failing VS build.
     // B8a: m_children became std::vector<EffectPtr> (was a Stuff::ChainOf); the sizes moved with it.
+    // Step 5: the two matrix members are glm::mat4 (64 bytes, was the 48-byte affine block): Effect grew by 32.
     CHECK(sizeof(gosFX::Effect) == EFFECT_SIZE);
     CHECK(sizeof(gosFX::Effect::ExecuteInfo) == 40);
     CHECK(sizeof(gosFX::ParticleCloud) == EFFECT_SIZE + 24);
@@ -85,8 +86,8 @@ TEST_CASE_FIXTURE(Platform, "CardCloud births and retirement through Effect Exec
         spec.m_particlesPerSecond.SetCurve(0.0f);
         spec.m_lifeSpan.SetCurve(0.1f);
         spec.m_pLifeSpan.m_ageCurve.SetCurve(0.1f);
-        const Stuff::LinearMatrix4D transform = Stuff::LinearMatrix4D::Identity;
-        Stuff::OBB bounds = Stuff::OBB::Identity;
+        const glm::mat4 transform = glm::mat4(1.0f);
+        mc2::math::Obb bounds = mc2::math::Obb();
         gosFX::Effect::ExecuteInfo info(Stuff::Time(0), &transform, &bounds);
         Parent parent(&parentSpec);
         parent.Start(&info);
@@ -128,13 +129,13 @@ TEST_CASE_FIXTURE(Platform, "Effect is the one owner of its children: create, fi
     gosFX::Effect::Specification longSpec;
     longSpec.BuildDefaults();
     longSpec.m_lifeSpan.SetCurve(10.0f);
-    const Stuff::LinearMatrix4D transform = Stuff::LinearMatrix4D::Identity;
+    const glm::mat4 transform = glm::mat4(1.0f);
 
     SUBCASE("a parent destroyed with live children frees each child once")
     {
         g_childDestroyed = 0;
         {
-            Stuff::OBB bounds = Stuff::OBB::Identity;
+            mc2::math::Obb bounds = mc2::math::Obb();
             gosFX::Effect::ExecuteInfo info(Stuff::Time(0), &transform, &bounds);
             Parent parent(&parentSpec);
             parent.Start(&info);
@@ -153,7 +154,7 @@ TEST_CASE_FIXTURE(Platform, "Effect is the one owner of its children: create, fi
         g_childDestroyed = 0;
         gosFX::Effect* survivor = nullptr;
         {
-            Stuff::OBB bounds = Stuff::OBB::Identity;
+            mc2::math::Obb bounds = mc2::math::Obb();
             gosFX::Effect::ExecuteInfo info(Stuff::Time(0), &transform, &bounds);
             Parent parent(&parentSpec);
             parent.Start(&info);
@@ -179,7 +180,7 @@ TEST_CASE_FIXTURE(Platform, "Effect is the one owner of its children: create, fi
     {
         g_childDestroyed = 0;
         {
-            Stuff::OBB bounds = Stuff::OBB::Identity;
+            mc2::math::Obb bounds = mc2::math::Obb();
             gosFX::Effect::ExecuteInfo info(Stuff::Time(0), &transform, &bounds);
             Parent parent(&parentSpec);
             parent.Start(&info);
@@ -264,8 +265,8 @@ struct LoadedLibrary {
 // Starts the cloud, runs `frames` 30 Hz frames and returns how many of its particles own a live effect afterwards.
 int runCloud(gosFX::EffectPtr& cloud, int frames)
 {
-    const Stuff::LinearMatrix4D transform = Stuff::LinearMatrix4D::Identity;
-    Stuff::OBB bounds = Stuff::OBB::Identity;
+    const glm::mat4 transform = glm::mat4(1.0f);
+    mc2::math::Obb bounds = mc2::math::Obb();
     gosFX::Effect::ExecuteInfo info(Stuff::Time(0), &transform, &bounds);
     cloud->Start(&info);
     for (int frame = 1; frame <= frames; ++frame) {

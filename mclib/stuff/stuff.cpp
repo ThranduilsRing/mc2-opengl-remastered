@@ -99,14 +99,6 @@ void
 	#endif
 
 
-	//
-	//------------------------------------
-	// Build the quatenion fast lerp table
-	//------------------------------------
-	//
-	
-
-	UnitQuaternion::InitializeClass();
 
 	//
 	//-------------------
@@ -137,7 +129,6 @@ void
 	if ( !FileStream::DefaultData ) // yet again, nobody every checks for NULL pointers
 		return;
 
-	UnitQuaternion::TerminateClass();
 
 	#if defined(TRACE_ENABLED)
 		TraceManager::TerminateClass();

@@ -42,7 +42,7 @@ bool EditorNavLayer::BuildFromTerrain()
 
             // Query water type via center MOVE sub-cell of this terrain tile.
             // cellToWorld() takes MOVE-cell coords (1 terrain cell = 3×3 MOVE cells).
-            Stuff::Vector3D worldPos;
+            glm::vec3 worldPos;
             land->cellToWorld(r * MAPCELL_DIM + 1, c * MAPCELL_DIM + 1, worldPos);
 
             long waterType = land->getWater(worldPos);

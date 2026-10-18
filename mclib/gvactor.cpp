@@ -390,7 +390,7 @@ void GVAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animationNum)
 
 //-----------------------------------------------------------------------------
 
-Stuff::Vector3D debugGVActorPosition;
+glm::vec3 debugGVActorPosition;
 float vehicleDebugAngle = 0.0;
 float turretDebugAngle = 0.0;
 float debugVelMag = 0.0;
@@ -408,9 +408,9 @@ void GVAppearance::setWeaponNodeUsed (long weaponNode)
 }
 
 //-----------------------------------------------------------------------------
-Stuff::Vector3D GVAppearance::getWeaponNodePosition (long nodeId)
+glm::vec3 GVAppearance::getWeaponNodePosition (long nodeId)
 {
-	Stuff::Vector3D result = position;
+	glm::vec3 result = position;
 	if ((nodeId < appearType->numSmokeNodes) || (nodeId >= (appearType->numSmokeNodes+appearType->numWeaponNodes)))
 		return result;
 
@@ -432,15 +432,15 @@ Stuff::Vector3D GVAppearance::getWeaponNodePosition (long nodeId)
 	
    	//-------------------------------------------
    	// Create Matrix to conform to.
-   	Stuff::UnitQuaternion qRotation;
+   	glm::quat qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
-   	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+   	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
    
-   	Stuff::Point3D xlatPosition;
+   	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
    
-   	Stuff::UnitQuaternion torsoRot;
-   	torsoRot = Stuff::EulerAngles(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f);
+   	glm::quat torsoRot;
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = gvShape->SetNodeRotation(appearType->rotationalNodeId,&torsoRot);
 
@@ -466,9 +466,9 @@ Stuff::Vector3D GVAppearance::getWeaponNodePosition (long nodeId)
 }
 
 //-----------------------------------------------------------------------------
-Stuff::Vector3D GVAppearance::getSmokeNodePosition (long nodeId)
+glm::vec3 GVAppearance::getSmokeNodePosition (long nodeId)
 {
-	Stuff::Vector3D result = position;
+	glm::vec3 result = position;
 	if ((nodeId < 0) || (nodeId >= appearType->numSmokeNodes))
 		return result;
 
@@ -483,15 +483,15 @@ Stuff::Vector3D GVAppearance::getSmokeNodePosition (long nodeId)
 
 	//-------------------------------------------
    	// Create Matrix to conform to.
-   	Stuff::UnitQuaternion qRotation;
+   	glm::quat qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
-   	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+   	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
    
-   	Stuff::Point3D xlatPosition;
+   	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
    
-   	Stuff::UnitQuaternion torsoRot;
-   	torsoRot = Stuff::EulerAngles(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f);
+   	glm::quat torsoRot;
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = gvShape->SetNodeRotation(appearType->rotationalNodeId,&torsoRot);
 
@@ -503,9 +503,9 @@ Stuff::Vector3D GVAppearance::getSmokeNodePosition (long nodeId)
 }
 
 //-----------------------------------------------------------------------------
-Stuff::Vector3D GVAppearance::getDustNodePosition (long nodeId)
+glm::vec3 GVAppearance::getDustNodePosition (long nodeId)
 {
-	Stuff::Vector3D result = position;
+	glm::vec3 result = position;
 	if ((nodeId < 0) || (nodeId >= appearType->numFootNodes))
 		return result;
 
@@ -520,15 +520,15 @@ Stuff::Vector3D GVAppearance::getDustNodePosition (long nodeId)
 
    	//-------------------------------------------
    	// Create Matrix to conform to.
-   	Stuff::UnitQuaternion qRotation;
+   	glm::quat qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
-   	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+   	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
    
-   	Stuff::Point3D xlatPosition;
+   	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
    
-   	Stuff::UnitQuaternion torsoRot;
-   	torsoRot = Stuff::EulerAngles(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f);
+   	glm::quat torsoRot;
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = gvShape->SetNodeRotation(appearType->rotationalNodeId,&torsoRot);
 
@@ -550,7 +550,7 @@ long GVAppearance::getLowestWeaponNode (void)
 	lowestPosZ = 9999999999999.0f;
 	for (long i=0;i<appearType->numWeaponNodes;i++)
 	{
-		Stuff::Vector3D nodePosition = getWeaponNodePosition(i+numSmokeNodes);
+		glm::vec3 nodePosition = getWeaponNodePosition(i+numSmokeNodes);
 		if (((nodePosition.z - position.z) < lowestPosZ) && (nodePosition.z != position.z))
 		{
 			lowestPosZ = nodePosition.z - position.z;
@@ -690,7 +690,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	spotlightsRegistered_ = false;
 
 	screenPos.x = screenPos.y = screenPos.z = screenPos.w = -999.0f;
-	position.Zero();
+	position = glm::vec3(0.0f);
 	rotation = 0.0;;
 	turretRotation= 0.0;
 	selected = 0;
@@ -911,8 +911,8 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			}
 		}
     		 
- 		Stuff::Vector3D boxCoords[8];
-		Stuff::Vector3D nodeCenter = gvShape->GetRootNodeCenter();
+ 		glm::vec3 boxCoords[8];
+		glm::vec3 nodeCenter = gvShape->GetRootNodeCenter();
 
 		boxCoords[0].x = position.x + gvShape->GetMinBox().x + nodeCenter.x;
 		boxCoords[0].y = position.y + gvShape->GetMinBox().z + nodeCenter.z;
@@ -950,7 +950,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		for (int i=0;i<8;i++)
 		{
-			testRadius = boxCoords[i].GetLength();
+			testRadius = glm::length(boxCoords[i]);
 			if (OBBRadius < testRadius)
 				OBBRadius = testRadius;
 		}

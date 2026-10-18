@@ -392,7 +392,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 			float startX = Terrain::mapTopLeft3d.x;
 			for (long x=0;x<pixelWidth;x++)
 			{
-				Stuff::Vector3D pos;
+				glm::vec3 pos;
 				pos.x = startX;
 				pos.y = startY;
 				pos.z = 0.0f;
@@ -419,14 +419,14 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 	//----------------------------------------------------------
 	// We now have a MUCH more accurate height map then we did.
 	// Do normal calculations first.
-	Stuff::Vector3D lightDir;
+	glm::vec3 lightDir;
 	lightDir.x = lightDir.y = 0.0f;
 	lightDir.z = 1.0f;
 	
 	if (eye)
 		lightDir = eye->lightDirection;
 		
-	Stuff::Vector3D shadowDir(lightDir);
+	glm::vec3 shadowDir(lightDir);
 	shadowDir *= worldUnitsPerPixel;		//Distance which is the per pixel distance for checking shadows
 	
 	//---------------------
@@ -488,14 +488,14 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 			{
 				//-----------------------------------------------------
 				// Try and project shadow lines.
-				Stuff::Vector3D vertexPos;
+				glm::vec3 vertexPos;
 				vertexPos.x = ((float(x) * worldUnitsPerPixel) + Terrain::mapTopLeft3d.x);
 				vertexPos.y = (Terrain::mapTopLeft3d.y - (float(y) * worldUnitsPerPixel));
 				vertexPos.z = *thisHeight * ShadowEnhance;
 					
 				if ((shadowDir.x != 0.0f) || (shadowDir.y != 0.0f))
 				{
-					vertexPos.Add(vertexPos,shadowDir);
+					vertexPos = vertexPos + shadowDir;
 					if (!heightMapExists)
 					{
 						while (eye && (vertexPos.z < highPoint) && Terrain::IsValidTerrainPosition(vertexPos))
@@ -507,7 +507,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 								break;						//Stop Looking!!
 							}
 							
-							vertexPos.Add(vertexPos,shadowDir);
+							vertexPos = vertexPos + shadowDir;
 						}
 					}
 					else
@@ -529,7 +529,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 
 							tx += lightDir.x;
 							ty -= lightDir.y;
-							vertexPos.Add(vertexPos,shadowDir);
+							vertexPos = vertexPos + shadowDir;
 						}							
 					}
 				}
@@ -537,8 +537,8 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 				
 			if (*thisShadow != -1.0f)
 			{
-				Stuff::Vector3D		normals[8];
-				Stuff::Vector3D		triVect[2];
+				glm::vec3		normals[8];
+				glm::vec3		triVect[2];
 				
 				//-------------------------------------
 				// Tri 021
@@ -550,10 +550,10 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 				triVect[1].y = worldUnitsPerPixel;
 				triVect[1].z = (v1 - v0) * ContrastEnhance;
 				
-				normals[0].Cross(triVect[0],triVect[1]);
+				normals[0] = glm::cross(triVect[0], triVect[1]);
 				gosASSERT(normals[0].z > 0.0);
 				
-				normals[0].Normalize(normals[0]);
+				normals[0] = glm::normalize(normals[0]);
 				
 				//-------------------------------------
 				// Tri 032
@@ -565,10 +565,10 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 				triVect[1].y = worldUnitsPerPixel;
 				triVect[1].z = (v2 - v0) * ContrastEnhance;
 				
-				normals[1].Cross(triVect[0],triVect[1]);
+				normals[1] = glm::cross(triVect[0], triVect[1]);
 				gosASSERT(normals[1].z > 0.0);
 				
-				normals[1].Normalize(normals[1]);
+				normals[1] = glm::normalize(normals[1]);
 				
 				//-------------------------------------
 				// Tri 043
@@ -581,10 +581,10 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 				triVect[1].z = (v3 - v0) * ContrastEnhance;
 				
 			
-				normals[2].Cross(triVect[0],triVect[1]);
+				normals[2] = glm::cross(triVect[0], triVect[1]);
 				gosASSERT(normals[2].z > 0.0);
 				
-				normals[2].Normalize(normals[2]);
+				normals[2] = glm::normalize(normals[2]);
 				
 				//-------------------------------------
 				// Tri 054
@@ -596,10 +596,10 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 				triVect[1].y = 0.0f;
 				triVect[1].z = (v4 - v0) * ContrastEnhance;
 				
-				normals[3].Cross(triVect[0],triVect[1]);
+				normals[3] = glm::cross(triVect[0], triVect[1]);
 				gosASSERT(normals[3].z > 0.0);
 				
-				normals[3].Normalize(normals[3]);
+				normals[3] = glm::normalize(normals[3]);
 					
 				//-------------------------------------
 				// Tri 065
@@ -611,10 +611,10 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 				triVect[1].y = -worldUnitsPerPixel;
 				triVect[1].z = (v5 - v0) * ContrastEnhance;
 				
-				normals[4].Cross(triVect[0],triVect[1]);
+				normals[4] = glm::cross(triVect[0], triVect[1]);
 				gosASSERT(normals[4].z > 0.0);
 				
-				normals[4].Normalize(normals[4]);
+				normals[4] = glm::normalize(normals[4]);
 				
 				//-------------------------------------
 				// Tri 076
@@ -626,10 +626,10 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 				triVect[1].y = -worldUnitsPerPixel;
 				triVect[1].z = (v6 - v0) * ContrastEnhance;
 				
-				normals[5].Cross(triVect[0],triVect[1]);
+				normals[5] = glm::cross(triVect[0], triVect[1]);
 				gosASSERT(normals[5].z > 0.0);
 				
-				normals[5].Normalize(normals[5]);
+				normals[5] = glm::normalize(normals[5]);
 		
 				//-------------------------------------
 				// Tri 087
@@ -641,10 +641,10 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 				triVect[1].y = -worldUnitsPerPixel;
 				triVect[1].z = (v7 - v0) * ContrastEnhance;
 				
-				normals[6].Cross(triVect[0],triVect[1]);
+				normals[6] = glm::cross(triVect[0], triVect[1]);
 				gosASSERT(normals[6].z > 0.0);
 				
-				normals[6].Normalize(normals[6]);
+				normals[6] = glm::normalize(normals[6]);
 		
 				//-------------------------------------
 				// Tri 018
@@ -656,12 +656,12 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 				triVect[1].y = 0.0;
 				triVect[1].z = (v8 - v0) * ContrastEnhance;
 				
-				normals[7].Cross(triVect[0],triVect[1]);
+				normals[7] = glm::cross(triVect[0], triVect[1]);
 				gosASSERT(normals[7].z > 0.0);
 				
-				normals[7].Normalize(normals[7]);
+				normals[7] = glm::normalize(normals[7]);
 				
-				Stuff::Vector3D vertexNormal;
+				glm::vec3 vertexNormal;
 				vertexNormal.x = normals[0].x + normals[1].x + normals[2].x + normals[3].x + normals[4].x + normals[5].x + normals[6].x + normals[7].x;
 				vertexNormal.y = normals[0].y + normals[1].y + normals[2].y + normals[3].y + normals[4].y + normals[5].y + normals[6].y + normals[7].y;
 				vertexNormal.z = normals[0].z + normals[1].z + normals[2].z + normals[3].z + normals[4].z + normals[5].z + normals[6].z + normals[7].z;
@@ -671,7 +671,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 	
 				gosASSERT(vertexNormal.z > 0.0);
 				
-				*thisShadow = vertexNormal * lightDir;
+				*thisShadow = glm::dot(vertexNormal, lightDir);
 			}
 			
 			thisHeight++;

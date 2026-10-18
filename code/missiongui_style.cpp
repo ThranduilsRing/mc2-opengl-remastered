@@ -93,16 +93,16 @@ void MissionInterfaceManager::updateVTol()
 					
 					if (recoveryBeam[vtolNum])
 					{
-						Stuff::LinearMatrix4D 	shapeOrigin;
-						Stuff::LinearMatrix4D	localToWorld;
-						Stuff::LinearMatrix4D	localResult;
+						glm::mat4 	shapeOrigin;
+						glm::mat4	localToWorld;
+						glm::mat4	localResult;
 									
-						Stuff::Vector3D dustPos = vTol[vtolNum]->position;
-						Stuff::Point3D wakePos;
+						glm::vec3 dustPos = vTol[vtolNum]->position;
+						glm::vec3 wakePos;
 						mc2ToRender(wakePos, dustPos);
 							
-						shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-						shapeOrigin.BuildTranslation(wakePos);
+						mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+						mc2::math::buildTranslation(shapeOrigin, wakePos);
 									
 						gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 					
@@ -188,7 +188,7 @@ void MissionInterfaceManager::updateVTol()
 					if (!mechRecovered[vtolNum]) {
 						if (MPlayer) {
 							if (MPlayer->isServer()) {
-								Stuff::Vector3D pos;
+								glm::vec3 pos;
 								MPlayer->sendReinforcement(10000, 0, "noname", vtolNum, pos, 6);
 							}
 							}
@@ -203,18 +203,18 @@ void MissionInterfaceManager::updateVTol()
 	
 			if (dustCloud[vtolNum] && dustCloud[vtolNum]->IsExecuted())
 			{
-				Stuff::LinearMatrix4D 	shapeOrigin;
-				Stuff::LinearMatrix4D	localToWorld;
-				Stuff::LinearMatrix4D	localResult;
+				glm::mat4 	shapeOrigin;
+				glm::mat4	localToWorld;
+				glm::mat4	localResult;
 						
-				Stuff::Vector3D dustPos = vTol[vtolNum]->position;
-				Stuff::Point3D wakePos;
+				glm::vec3 dustPos = vTol[vtolNum]->position;
+				glm::vec3 wakePos;
 				mc2ToRender(wakePos, dustPos);
 				
-				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-				shapeOrigin.BuildTranslation(wakePos);
+				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+				mc2::math::buildTranslation(shapeOrigin, wakePos);
 						
-				Stuff::OBB boundingBox;
+				mc2::math::Obb boundingBox;
 				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 				
 				dustCloud[vtolNum]->Execute(&info);
@@ -222,18 +222,18 @@ void MissionInterfaceManager::updateVTol()
 			
 			if (recoveryBeam[vtolNum] && recoveryBeam[vtolNum]->IsExecuted())
 			{
-				Stuff::LinearMatrix4D 	shapeOrigin;
-				Stuff::LinearMatrix4D	localToWorld;
-				Stuff::LinearMatrix4D	localResult;
+				glm::mat4 	shapeOrigin;
+				glm::mat4	localToWorld;
+				glm::mat4	localResult;
 						
-				Stuff::Vector3D dustPos = vTol[vtolNum]->position;
-				Stuff::Point3D wakePos;
+				glm::vec3 dustPos = vTol[vtolNum]->position;
+				glm::vec3 wakePos;
 				mc2ToRender(wakePos, dustPos);
 				
-				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-				shapeOrigin.BuildTranslation(wakePos);
+				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+				mc2::math::buildTranslation(shapeOrigin, wakePos);
 						
-				Stuff::OBB boundingBox;
+				mc2::math::Obb boundingBox;
 				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 				
 				recoveryBeam[vtolNum]->Execute(&info);

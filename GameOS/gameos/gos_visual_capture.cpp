@@ -246,7 +246,7 @@ void collect_gate_env(std::vector<std::string>& names) {
 // VK-FIRST-BOOKMARK-POSE-1: the pose the just-rendered frame actually used,
 // stashed each settle frame BEFORE the per-settle re-apply and emitted into the
 // sidecar (see onPostRenderFrame). File-scope so write_sidecar can read it.
-Stuff::Vector3D g_renderedPos{0, 0, 0};
+glm::vec3 g_renderedPos{0, 0, 0};
 float g_renderedProj = 0.0f;
 float g_renderedRot  = 0.0f;
 float g_renderedAlt  = 0.0f;
@@ -509,8 +509,8 @@ struct ReplayState {
     bool triggered = false;         // sweep has begun (sim frozen)
     // Saved camera pose for restore after the sweep.
     bool saved = false;
-    Stuff::Vector3D savePos;
-    Stuff::Vector3D saveRot;
+    glm::vec3 savePos;
+    glm::vec3 saveRot;
     float saveAlt = 1200.0f;        // cameraAltitude (getRotation drops z=0)
     // Saved pre-sweep mission pause flags (restored verbatim).
     bool pauseStateSaved = false;
@@ -556,11 +556,11 @@ void parse_replay_cfg() {
 void apply_bookmark(const Bookmark& b) {
     if (!eye) return;
     if (b.hasPos) {
-        Stuff::Vector3D p;
+        glm::vec3 p;
         p.x = b.pos[0]; p.y = b.pos[1]; p.z = b.pos[2];
         eye->setPosition(p, false);   // hard set, no swoop
     }
-    Stuff::Vector3D rot;
+    glm::vec3 rot;
     rot.x = b.proj;   // projectionAngle
     rot.y = b.rot;    // cameraRotation
     rot.z = b.alt;    // altitude (setRotation writes cameraAltitude = rot.z)
@@ -584,11 +584,11 @@ void apply_bookmark(const Bookmark& b) {
 bool rendered_pose_matches(const Bookmark& b) {
     if (!eye) return true;
     if (b.hasPos) {
-        Stuff::Vector3D p = eye->getPosition();
+        glm::vec3 p = eye->getPosition();
         if (fabsf(p.x - b.pos[0]) > 2.0f) return false;
         if (fabsf(p.y - b.pos[1]) > 2.0f) return false;
     }
-    Stuff::Vector3D rot = eye->getRotation();   // x=proj, y=cameraRotation, z=0
+    glm::vec3 rot = eye->getRotation();   // x=proj, y=cameraRotation, z=0
     if (fabsf(rot.x - b.proj) > 0.5f) return false;
     // cameraRotation wraps at 360; compare on the circle.
     float dr = fabsf(rot.y - b.rot);
@@ -611,7 +611,7 @@ bool rendered_pose_matches(const Bookmark& b) {
 void restore_camera_pose() {
     if (!eye || !g_replay.saved) return;
     eye->setPosition(g_replay.savePos, false);
-    Stuff::Vector3D rot = g_replay.saveRot;   // x=projectionAngle, y=cameraRotation
+    glm::vec3 rot = g_replay.saveRot;   // x=projectionAngle, y=cameraRotation
     rot.z = g_replay.saveAlt;                 // restore altitude (was 0 in saveRot)
     eye->setRotation(rot);
 }
@@ -805,7 +805,7 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
         // sidecar records the true rendered pose, not the value we re-assert below.
         if (eye) {
             g_renderedPos = eye->getPosition();
-            Stuff::Vector3D rr = eye->getRotation();
+            glm::vec3 rr = eye->getRotation();
             g_renderedProj = rr.x;
             g_renderedRot  = rr.y;
             g_renderedAlt  = eye->cameraAltitude;
@@ -879,9 +879,9 @@ void cameraParkTick(unsigned int frame)
     }
     if (s_park && !s_parked && (long)frame >= s_parkFrame) {
         s_parked = true;
-        Stuff::Vector3D p; p.x = pv[0]; p.y = pv[1]; p.z = 0.0f;
+        glm::vec3 p; p.x = pv[0]; p.y = pv[1]; p.z = 0.0f;
         eye->setPosition(p, false);
-        Stuff::Vector3D rot; rot.x = pv[3]; rot.y = pv[2]; rot.z = pv[4];
+        glm::vec3 rot; rot.x = pv[3]; rot.y = pv[2]; rot.z = pv[4];
         eye->setRotation(rot);
         eye->freezeScriptedCameraForCapture();
         mc2::fmt::print_err("[CAMERA_PARK v1] frame={:d} pos={:.0f},{:.0f} rot={:.0f} proj={:.0f} alt={:.0f}\n", mc2::fmt::as_u32(frame), pv[0], pv[1], pv[2], pv[3], pv[4]);

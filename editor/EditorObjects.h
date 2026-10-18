@@ -68,7 +68,7 @@ public:
 
 	const char*			getDisplayName() const;
 
-	const Stuff::Vector3D&	getPosition() const { return appearance()->position; }
+	const glm::vec3&	getPosition() const { return appearance()->position; }
 	
 	void 				markTerrain (_ScenarioMapCellInfo* pInfo, int type, int counter)
 	{
@@ -279,9 +279,9 @@ public:
 	void setOrderType( int t ) { orderType = t; }
 	int  getStance() const { return stance; }
 	void setStance( int s ) { stance = s; }
-	const std::vector<Stuff::Vector3D>& getWaypoints() const { return waypoints; }
+	const std::vector<glm::vec3>& getWaypoints() const { return waypoints; }
 	unsigned long getWaypointCount() const { return (unsigned long)waypoints.size(); }
-	void addWaypoint( const Stuff::Vector3D& wp ) { waypoints.push_back( wp ); }
+	void addWaypoint( const glm::vec3& wp ) { waypoints.push_back( wp ); }
 	void removeLastWaypoint() { if ( !waypoints.empty() ) waypoints.pop_back(); }
 	void clearWaypoints() { waypoints.clear(); }
 
@@ -321,7 +321,7 @@ protected:
 	// Patrol/Move order authoring (see public accessors above).
 	int orderType;   // UnitOrderType (default ORDER_NONE)
 	int stance;      // AttitudeType index (default 2 = Normal)
-	std::vector<Stuff::Vector3D> waypoints;
+	std::vector<glm::vec3> waypoints;
 	bool orderAuthored;   // transient (NOT saved): user edited orders in-editor
 	bool importChecked;   // transient (NOT saved): brain-.abl patrol import attempted
 	char brainFsm[64];    // transient: fsm name parsed from the brain .abl
@@ -340,7 +340,7 @@ class DropZone : public EditorObject
 {
 public:
 
-	DropZone( const Stuff::Vector3D& position, int alignment, bool bVTol );
+	DropZone( const glm::vec3& position, int alignment, bool bVTol );
 	DropZone& operator=( const DropZone& src ) { bVTol = src.bVTol; EditorObject::operator=( src ); return *this; }
 	void CastAndCopy(const EditorObject &master) override;
 	EditorObject *Clone() override { return(new DropZone(*this)); }

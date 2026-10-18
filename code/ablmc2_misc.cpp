@@ -399,13 +399,13 @@ void execConvertCoords (void) {
 	if (!land) return;
 	if (convertType == 0) {
 		if (worldPos.size() < 3) { abl::reportBadArgument("convertcoords", "worldPos"); return; }
-		Stuff::Vector3D worldP(worldPos[0], worldPos[1], worldPos[2]);
+		glm::vec3 worldP(worldPos[0], worldPos[1], worldPos[2]);
 		int cells[2] = {};
 		land->worldToCell(worldP, cells[0], cells[1]);
 		abl::copyIntArray(cellPos, cells, "convertcoords_truncated");
 	} else {
 		if (cellPos.size() < 2) { abl::reportBadArgument("convertcoords", "cellPos"); return; }
-		Stuff::Vector3D worldP;
+		glm::vec3 worldP;
 		land->cellToWorld(cellPos[0], cellPos[1], worldP);
 		const float coords[] = {worldP.x, worldP.y, 0.0f};
 		abl::copyRealArray(worldPos, coords, "convertcoords_truncated");

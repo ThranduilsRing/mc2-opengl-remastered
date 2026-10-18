@@ -33,12 +33,12 @@ namespace mc2xform {
 //   GL.y =  MC2.elevation  (was z; elevation -> up)
 //   GL.z =  MC2.ground     (was y; ground -> forward, POSITIVE)
 // Odd permutation + one negation => determinant == -1 (handedness change).
-Stuff::Matrix4D makeAxisSwapMC2toGL();
+glm::mat4 makeAxisSwapMC2toGL();
 
 // D3D-pixel-homogeneous -> GL-NDC conversion (Stuff row-vector convention).
 // Carries the Y-flip, the reverse-Z mapping, and the w-sign so an in-front
 // MC2 vertex yields clip.w > 0.
-Stuff::Matrix4D makePixelHomogToGLNDC();
+glm::mat4 makePixelHomogToGLNDC();
 
 } // namespace mc2xform
 

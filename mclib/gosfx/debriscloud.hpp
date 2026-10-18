@@ -90,12 +90,12 @@ namespace gosFX
 	//-------------------------------------------------------------------------
 	// Data
 	//
-		Stuff::Point3D
+		glm::vec3
 			centerOfForce;
 
 		Stuff::DynamicArrayOf<MidLevelRenderer::MLRShape*>
 			debrisPieces;
-		Stuff::DynamicArrayOf<Stuff::Point3D>
+		Stuff::DynamicArrayOf<glm::vec3>
 			debrisPositions;
 		Stuff::DynamicArrayOf<mc2::math::Sphere>
 			debrisSpheres;
@@ -110,7 +110,7 @@ namespace gosFX
 	class DebrisCloud__Particle
 	{
 	public:
-		Stuff::LinearMatrix4D
+		glm::mat4
 			m_localToParent;
 
 		Stuff::Scalar
@@ -118,7 +118,7 @@ namespace gosFX
 			m_ageRate,
 			m_seed;
 
-		Stuff::Vector3D
+		glm::vec3
 			m_angularVelocity,
 			m_linearVelocity;
 
@@ -200,7 +200,7 @@ namespace gosFX
 		bool
 			AnimateParticle(
 				unsigned index,
-				const Stuff::LinearMatrix4D *world_to_new_local,
+				const glm::mat4 *world_to_new_local,
 				Stuff::Time till
 			);
 		virtual void

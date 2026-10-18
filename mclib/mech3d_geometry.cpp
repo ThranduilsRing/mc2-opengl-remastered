@@ -206,7 +206,7 @@ void Mech3DAppearance::updateGeometry (void)
 		mechShape->SetLightsOut(false);
 	}
 	
-   	Stuff::Point3D xlatPosition;
+   	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
 
 	//Update flashing regardless of view!!!
@@ -228,9 +228,9 @@ void Mech3DAppearance::updateGeometry (void)
 	}
 
 	{
-		Stuff::UnitQuaternion qRotation;
+		glm::quat qRotation;
 		float yaw = rotation * DEGREES_TO_RADS;
-		qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+		qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
 	
 		unsigned char lightr,lightg,lightb;
 		float lightIntensity = 1.0f;
@@ -289,8 +289,8 @@ void Mech3DAppearance::updateGeometry (void)
 			if (lightCircleNodeIndex == -1)
 				lightCircleNodeIndex = mechShape->GetNodeNameId("SLCircle_anubis");
 
-			Stuff::Vector3D lightPos = getNodeIdPosition(lightCircleNodeIndex);
-			if (lightPos != position)
+			glm::vec3 lightPos = getNodeIdPosition(lightCircleNodeIndex);
+			if (!mc2::math::closeEnough(lightPos, position))
 			{
 				pointLight = (TG_LightPtr)malloc(sizeof(TG_Light));
 				pointLight->init(TG_LIGHT_SPOT);
@@ -321,9 +321,9 @@ void Mech3DAppearance::updateGeometry (void)
 				if (lightCircleNodeIndex == -1)
 					lightCircleNodeIndex = mechShape->GetNodeNameId("SLCircle_anubis");
 
-				Stuff::Vector3D lightPos = getNodeIdPosition(lightCircleNodeIndex);
+				glm::vec3 lightPos = getNodeIdPosition(lightCircleNodeIndex);
 
-				Stuff::Point3D ourPosition;
+				glm::vec3 ourPosition;
 				mc2ToRender(ourPosition, lightPos);
 		
 				pointLight->direction = ourPosition;
@@ -332,9 +332,9 @@ void Mech3DAppearance::updateGeometry (void)
 
 				pointLight->maxSpotLength = 50.0f;
 
-				Stuff::LinearMatrix4D lightToWorldMatrix;
-				lightToWorldMatrix.BuildTranslation(ourPosition);
-				lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+				glm::mat4 lightToWorldMatrix;
+				mc2::math::buildTranslation(lightToWorldMatrix, ourPosition);
+				mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(0.0f,0.0f,0.0f));
 				pointLight->SetLightToWorld(&lightToWorldMatrix);
 				pointLight->SetPosition(&lightPos);
 				pointLight->active = true;
@@ -429,7 +429,7 @@ void Mech3DAppearance::updateGeometry (void)
 			// > 4) && !InEditor, plus isNight (bare field, no parens, per C-r3 C2).
 			for (size_t k = 0; k < spotlightLights_.size(); ++k)
 			{
-				Stuff::Vector3D childPos =
+				glm::vec3 childPos =
 					getNodeIdPosition(spotlightNodeIds_[k]);
 				// LIGHT-CONE-MODELS-1 (A/C): pool at the authored cone's FAR
 				// END (node transform × cone geometry axis), grounded on
@@ -439,7 +439,7 @@ void Mech3DAppearance::updateGeometry (void)
 				bool coneAimed = false;
 				if (mc2_cone_glow::nodes_enabled())
 				{
-					Stuff::Vector3D aimW;
+					glm::vec3 aimW;
 					float coneLen = 0.0f;
 					if (mc2_cone_glow::GetNodeAim(mechShape, spotlightNodeIds_[k], aimW, coneLen))
 					{
@@ -463,7 +463,7 @@ void Mech3DAppearance::updateGeometry (void)
 					const float fwdWu = mc2_spotlight_diag::mover_light_fwd_offset();
 					if (fwdWu > 0.0f)
 					{
-						Stuff::Vector3D fwdv;
+						glm::vec3 fwdv;
 						fwdv.x = 0.0f; fwdv.y = -1.0f; fwdv.z = 0.0f;
 						Rotate(fwdv, -rotation);
 						childPos.x += fwdv.x * fwdWu;
@@ -476,11 +476,11 @@ void Mech3DAppearance::updateGeometry (void)
 				// collapses to worldToShape alone and the light's effective
 				// world position is lost. Matches the existing anubis
 				// pattern at mech3d.cpp (translation-only).
-				Stuff::LinearMatrix4D lightToWorldMatrix;
-				Stuff::Point3D childPosP;
+				glm::mat4 lightToWorldMatrix;
+				glm::vec3 childPosP;
 				childPosP.x = childPos.x; childPosP.y = childPos.y; childPosP.z = childPos.z;
-				lightToWorldMatrix.BuildTranslation(childPosP);
-				lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(0.0f, 0.0f, 0.0f));
+				mc2::math::buildTranslation(lightToWorldMatrix, childPosP);
+				mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(0.0f, 0.0f, 0.0f));
 				spotlightLights_[k]->SetLightToWorld(&lightToWorldMatrix);
 				// T1.13: dropped (sensorLevel > 4) gate. The original gate
 				// was inherited verbatim from the anubis-specific pointLight
@@ -548,8 +548,8 @@ void Mech3DAppearance::updateGeometry (void)
 			}
 		}
 	
-		Stuff::UnitQuaternion torsoRot;
-		torsoRot = Stuff::EulerAngles(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f);
+		glm::quat torsoRot;
+		torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f));
 		if (rotationalNodeIndex == -1)
 	   		rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 
@@ -644,7 +644,7 @@ void Mech3DAppearance::updateGeometry (void)
 	{
 		ZoneScopedN("Mech3D.UpdateGeometry.Effects");
 		// Having already transformed the mech, the foot poofs go here.
-		Stuff::Vector3D rFootPos, lFootPos;
+		glm::vec3 rFootPos, lFootPos;
 		long footId1 = mechType->getTotalNodes() - 2;
 		long footId0 = mechType->getTotalNodes() - 1;
 		
@@ -659,14 +659,14 @@ void Mech3DAppearance::updateGeometry (void)
 	
 			if (rightDustPoofEffect[currentRightPoof] && (currentGestureId != 13))
 			{
-				Stuff::Point3D			actualPosition;
-				Stuff::LinearMatrix4D 	shapeOrigin;
-				Stuff::LinearMatrix4D	localToWorld;
+				glm::vec3			actualPosition;
+				glm::mat4 	shapeOrigin;
+				glm::mat4	localToWorld;
 				
 				mc2ToRender(rFootPosition[currentRightPoof], rFootPos);
 				
-				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-				shapeOrigin.BuildTranslation(rFootPosition[currentRightPoof]);
+				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+				mc2::math::buildTranslation(shapeOrigin, rFootPosition[currentRightPoof]);
 				
 				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 				rightDustPoofEffect[currentRightPoof]->Start(&info);
@@ -689,14 +689,14 @@ void Mech3DAppearance::updateGeometry (void)
 	
 			if (rightDustPoofEffect[currentRightPoof] && (currentGestureId != 13))
 			{
-				Stuff::Point3D			actualPosition;
-				Stuff::LinearMatrix4D 	shapeOrigin;
-				Stuff::LinearMatrix4D	localToWorld;
+				glm::vec3			actualPosition;
+				glm::mat4 	shapeOrigin;
+				glm::mat4	localToWorld;
 				
 				mc2ToRender(rFootPosition[currentRightPoof], rFootPos);
 				
-				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-				shapeOrigin.BuildTranslation(rFootPosition[currentRightPoof]);
+				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+				mc2::math::buildTranslation(shapeOrigin, rFootPosition[currentRightPoof]);
 				
 				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 				rightDustPoofEffect[currentRightPoof]->Start(&info);
@@ -733,14 +733,14 @@ void Mech3DAppearance::updateGeometry (void)
 	
 			if (leftDustPoofEffect[currentLeftPoof] && (currentGestureId != 13))
 			{
-				Stuff::Point3D			actualPosition;
-				Stuff::LinearMatrix4D 	shapeOrigin;
-				Stuff::LinearMatrix4D	localToWorld;
+				glm::vec3			actualPosition;
+				glm::mat4 	shapeOrigin;
+				glm::mat4	localToWorld;
 				
 				mc2ToRender(lFootPosition[currentLeftPoof], lFootPos);
 				
-				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-				shapeOrigin.BuildTranslation(lFootPosition[currentLeftPoof]);
+				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+				mc2::math::buildTranslation(shapeOrigin, lFootPosition[currentLeftPoof]);
 				
 				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 				leftDustPoofEffect[currentLeftPoof]->Start(&info);
@@ -763,14 +763,14 @@ void Mech3DAppearance::updateGeometry (void)
 	
 			if (leftDustPoofEffect[currentLeftPoof] && (currentGestureId != 13))
 			{
-				Stuff::Point3D			actualPosition;
-				Stuff::LinearMatrix4D 	shapeOrigin;
-				Stuff::LinearMatrix4D	localToWorld;
+				glm::vec3			actualPosition;
+				glm::mat4 	shapeOrigin;
+				glm::mat4	localToWorld;
 				
 				mc2ToRender(lFootPosition[currentLeftPoof], lFootPos);
 				
-				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-				shapeOrigin.BuildTranslation(lFootPosition[currentLeftPoof]);
+				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+				mc2::math::buildTranslation(shapeOrigin, lFootPosition[currentLeftPoof]);
 				
 				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 				leftDustPoofEffect[currentLeftPoof]->Start(&info);
@@ -816,7 +816,7 @@ void Mech3DAppearance::updateGeometry (void)
 	const bool skipSensors = g_useGpuMechs &&
 		(sensorLevel == 0 || sensorLevel >= 5);
 	if (!skipSensors) {
-	Stuff::UnitQuaternion totalRotation;
+	glm::quat totalRotation;
 	// VK-MECH-CAPTURE-DETERMINISM-1: the sensor marker spins off the wall-clock
 	// frameLength every render frame; during a frozen capture sweep it drifted
 	// run-to-run (a rotating triangle/square near detected enemy mechs). Freeze
@@ -829,7 +829,7 @@ void Mech3DAppearance::updateGeometry (void)
 	if (sensorSpin < -180)
 		sensorSpin += 360;
 
-	totalRotation = Stuff::EulerAngles(0.0f,sensorSpin * DEGREES_TO_RADS,0.0f);
+	totalRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,sensorSpin * DEGREES_TO_RADS,0.0f));
 
 	float baseRootNodeDifference = baseRootNodeHeight;
 	if (isHelicopter)
@@ -849,22 +849,22 @@ void Mech3DAppearance::updateGeometry (void)
 	if (!jumpFXSetup && (currentGestureId == GestureJump) && inJump && jumpJetEffect)
 	{
 		long jumpNodeId = mechType->numSmokeNodes + mechType->numWeaponNodes;
-		Stuff::Vector3D jumpNodePos = getNodePosition(jumpNodeId);
+		glm::vec3 jumpNodePos = getNodePosition(jumpNodeId);
 		
-		Stuff::Point3D			actualPosition;
-		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D	localToWorld;
-		Stuff::LinearMatrix4D	localResult;
+		glm::vec3			actualPosition;
+		glm::mat4 	shapeOrigin;
+		glm::mat4	localToWorld;
+		glm::mat4	localResult;
 		
 		mc2ToRender(actualPosition, jumpNodePos);
 		
-		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(actualPosition);
+		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, actualPosition);
 		
-		Stuff::UnitQuaternion effectRot;
-		effectRot = Stuff::EulerAngles(JUMP_PITCH * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f);
-		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-		localResult.Multiply(localToWorld,shapeOrigin);
+		glm::quat effectRot;
+		effectRot = mc2::math::quatFromEuler(mc2::math::Euler(JUMP_PITCH * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f));
+		localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
+		localResult = localToWorld * shapeOrigin;
 					
  		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 		jumpJetEffect->Start(&info);
@@ -876,13 +876,13 @@ void Mech3DAppearance::updateGeometry (void)
 	{
 		if (rightFootPoofDraw[i] && rightDustPoofEffect[i] && rightDustPoofEffect[i]->IsExecuted())
 		{
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D 	localToWorld;
+			glm::mat4 	shapeOrigin;
+			glm::mat4 	localToWorld;
 				
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(rFootPosition[i]);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, rFootPosition[i]);
 	
-			Stuff::OBB boundingBox;
+			mc2::math::Obb boundingBox;
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 	
 			bool result = rightDustPoofEffect[i]->Execute(&info);
@@ -894,13 +894,13 @@ void Mech3DAppearance::updateGeometry (void)
 		
 		if (leftFootPoofDraw[i] && leftDustPoofEffect[i] && leftDustPoofEffect[i]->IsExecuted())
 		{
-			Stuff::LinearMatrix4D 	shapeOrigin;
-			Stuff::LinearMatrix4D 	localToWorld;
+			glm::mat4 	shapeOrigin;
+			glm::mat4 	localToWorld;
 				
-			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-			shapeOrigin.BuildTranslation(lFootPosition[i]);
+			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+			mc2::math::buildTranslation(shapeOrigin, lFootPosition[i]);
 	
-			Stuff::OBB boundingBox;
+			mc2::math::Obb boundingBox;
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 	
 			bool result = leftDustPoofEffect[i]->Execute(&info);
@@ -914,24 +914,24 @@ void Mech3DAppearance::updateGeometry (void)
 	if ((currentGestureId == GestureJump) && inJump && jumpJetEffect && jumpJetEffect->IsExecuted())
 	{
 		long jumpNodeId = mechType->numSmokeNodes + mechType->numWeaponNodes;
-		Stuff::Vector3D jumpNodePos = getNodePosition(jumpNodeId);
+		glm::vec3 jumpNodePos = getNodePosition(jumpNodeId);
 		
-		Stuff::Point3D			actualPosition;
-		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D	localToWorld;
-		Stuff::LinearMatrix4D	localResult;
+		glm::vec3			actualPosition;
+		glm::mat4 	shapeOrigin;
+		glm::mat4	localToWorld;
+		glm::mat4	localResult;
 		
 		mc2ToRender(actualPosition, jumpNodePos);
 		
-		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(actualPosition);
+		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, actualPosition);
 		
-		Stuff::UnitQuaternion effectRot;
-		effectRot = Stuff::EulerAngles(JUMP_PITCH * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f);
-		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-		localResult.Multiply(localToWorld,shapeOrigin);
+		glm::quat effectRot;
+		effectRot = mc2::math::quatFromEuler(mc2::math::Euler(JUMP_PITCH * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f));
+		localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
+		localResult = localToWorld * shapeOrigin;
 					
- 		Stuff::OBB boundingBox;
+ 		mc2::math::Obb boundingBox;
    		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
 		jumpJetEffect->Execute(&info);
 	}
@@ -944,25 +944,25 @@ void Mech3DAppearance::updateGeometry (void)
 	
 	if (leftShoulderBoom)
 	{
-		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D	localToWorld;
-		Stuff::LinearMatrix4D	localResult;
+		glm::mat4 	shapeOrigin;
+		glm::mat4	localToWorld;
+		glm::mat4	localResult;
 				
 		if (leftArmNodeIndex == -1)
 			leftArmNodeIndex = mechShape->GetNodeNameId("joint_luarm");
 
-		Stuff::Vector3D leftNodePos = getNodeIdPosition(leftArmNodeIndex);
+		glm::vec3 leftNodePos = getNodeIdPosition(leftArmNodeIndex);
 		mc2ToRender(leftShoulderPos, leftNodePos);
 		
-		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(leftShoulderPos);
+		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, leftShoulderPos);
 				
-		Stuff::UnitQuaternion effectRot;
-		effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
-		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-		localResult.Multiply(localToWorld,shapeOrigin);
+		glm::quat effectRot;
+		effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,rotation * DEGREES_TO_RADS,0.0f));
+		localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
+		localResult = localToWorld * shapeOrigin;
 		
- 		Stuff::OBB boundingBox;
+ 		mc2::math::Obb boundingBox;
 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
 		bool result = leftShoulderBoom->Execute(&info);
 		if (!result)
@@ -974,25 +974,25 @@ void Mech3DAppearance::updateGeometry (void)
 	
 	if (rightShoulderBoom)
 	{
-		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D	localToWorld;
-		Stuff::LinearMatrix4D	localResult;
+		glm::mat4 	shapeOrigin;
+		glm::mat4	localToWorld;
+		glm::mat4	localResult;
 				
 		if (rightArmNodeIndex == -1)
 			rightArmNodeIndex = mechShape->GetNodeNameId("joint_ruarm");
 
-		Stuff::Vector3D rightNodePos = getNodeIdPosition(rightArmNodeIndex);
+		glm::vec3 rightNodePos = getNodeIdPosition(rightArmNodeIndex);
 		mc2ToRender(rightShoulderPos, rightNodePos);
 		
- 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(rightShoulderPos);
+ 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, rightShoulderPos);
 				
-		Stuff::UnitQuaternion effectRot;
-		effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
-		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-		localResult.Multiply(localToWorld,shapeOrigin);
+		glm::quat effectRot;
+		effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,rotation * DEGREES_TO_RADS,0.0f));
+		localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
+		localResult = localToWorld * shapeOrigin;
 		
- 		Stuff::OBB boundingBox;
+ 		mc2::math::Obb boundingBox;
 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
 		bool result = rightShoulderBoom->Execute(&info);
 		if (!result)
@@ -1004,17 +1004,17 @@ void Mech3DAppearance::updateGeometry (void)
 	
 	if ((criticalSmoke && (isSmoking > 0)) || (smokeEffect && (isSmoking == 0)))
 	{
-		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D	localToWorld;
+		glm::mat4 	shapeOrigin;
+		glm::mat4	localToWorld;
 				
-		Stuff::Vector3D smokeNodePos = getNodePosition(0);
-		Stuff::Point3D smokePos;
+		glm::vec3 smokeNodePos = getNodePosition(0);
+		glm::vec3 smokePos;
 		mc2ToRender(smokePos, smokeNodePos);
 		
- 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(smokePos);
+ 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, smokePos);
 				
-		Stuff::OBB boundingBox;
+		mc2::math::Obb boundingBox;
 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 		
 		if (isSmoking > 0)
@@ -1040,27 +1040,27 @@ void Mech3DAppearance::updateGeometry (void)
 			waterWake->SetExecuteOn();
 		}
 		
- 		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D	localToWorld;
-		Stuff::LinearMatrix4D	localResult;
+ 		glm::mat4 	shapeOrigin;
+		glm::mat4	localToWorld;
+		glm::mat4	localResult;
 				
-		Stuff::Point3D wakePos;
+		glm::vec3 wakePos;
 		wakePos.x = -position.x;
 		wakePos.y = Terrain::waterElevation;
 		wakePos.z = position.y;
 		
- 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(wakePos);
+ 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, wakePos);
 				
-		Stuff::UnitQuaternion effectRot;
-		effectRot = Stuff::EulerAngles(90.0f * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f);
+		glm::quat effectRot;
+		effectRot = mc2::math::quatFromEuler(mc2::math::Euler(90.0f * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f));
 		if (!inReverse)
-			localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
+			localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
 		else
-			localToWorld.Multiply(gosFX::Effect_Into_Motion,effectRot);
-		localResult.Multiply(localToWorld,shapeOrigin);
+			localToWorld = mc2::math::multiply(gosFX::Effect_Into_Motion, effectRot);
+		localResult = localToWorld * shapeOrigin;
 		
- 		Stuff::OBB boundingBox;
+ 		mc2::math::Obb boundingBox;
 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
 		
 		waterWake->Execute(&info);
@@ -1068,18 +1068,18 @@ void Mech3DAppearance::updateGeometry (void)
 	
 	if (helicopterDustCloud && isDusting)
 	{
- 		Stuff::LinearMatrix4D 	shapeOrigin;
-		Stuff::LinearMatrix4D	localToWorld;
-		Stuff::LinearMatrix4D	localResult;
+ 		glm::mat4 	shapeOrigin;
+		glm::mat4	localToWorld;
+		glm::mat4	localResult;
 				
-		Stuff::Point3D wakePos;
+		glm::vec3 wakePos;
 		mc2ToRender(wakePos, position);
 		
- 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
-		shapeOrigin.BuildTranslation(wakePos);
+ 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, wakePos);
 				
 		
- 		Stuff::OBB boundingBox;
+ 		mc2::math::Obb boundingBox;
 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
 		
 		bool result = helicopterDustCloud->Execute(&info);
@@ -1107,20 +1107,20 @@ void Mech3DAppearance::updateSimPose (void)
 		mechShape->SetFrameNum(currentFrame);
 	}
 
-	Stuff::UnitQuaternion torsoRot;
-	torsoRot = Stuff::EulerAngles(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f);
+	glm::quat torsoRot;
+	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 		rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 	mechShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
 
-	Stuff::UnitQuaternion qRotation;
-	qRotation = Stuff::EulerAngles(0.0f, rotation * DEGREES_TO_RADS, 0.0f);
-	Stuff::Point3D xlatPosition;
+	glm::quat qRotation;
+	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
+	glm::vec3 xlatPosition;
 	mc2ToRender(xlatPosition, position);
 	mechShape->TransformMultiShape_BuildRecipe(&xlatPosition, &qRotation);
 }
 
-bool Mech3DAppearance::setJumpParameters (Stuff::Vector3D &end)
+bool Mech3DAppearance::setJumpParameters (glm::vec3 &end)
 {
 	if (!inJump)
 	{
@@ -1142,13 +1142,13 @@ bool Mech3DAppearance::leftArmRecalc (void)
 	float eyeDistance = 0.0f;
 	if (eye->usePerspective)
 	{
-		Stuff::Point3D Distance;
-		Stuff::Point3D objPosition;
-		Stuff::Point3D eyePosition(eye->getCameraOrigin());
+		glm::vec3 Distance;
+		glm::vec3 objPosition;
+		glm::vec3 eyePosition(eye->getCameraOrigin());
 		mc2ToRender(objPosition, leftArmPos);
 
-		Distance.Subtract(objPosition,eyePosition);
-		eyeDistance = Distance.GetApproximateLength();
+		Distance = objPosition - eyePosition;
+		eyeDistance = glm::length(Distance);
 		if (eyeDistance > Camera::MaxClipDistance)
 		{
 			leftArmHazeFactor = 1.0f;
@@ -1170,9 +1170,9 @@ bool Mech3DAppearance::leftArmRecalc (void)
 			: inView;
 		if (armParentVisL)
 		{
-			Distance.Normalize(Distance);
+			Distance = glm::normalize(Distance);
 
-			float cosine = Distance * eye->getLookVector();
+			float cosine = glm::dot(Distance, eye->getLookVector());
 			if (cosine > eye->cosHalfFOV)
 				leftArmInView = true;
 			else
@@ -1192,13 +1192,13 @@ bool Mech3DAppearance::rightArmRecalc (void)
 	float eyeDistance = 0.0f;
 	if (eye->usePerspective)
 	{
-		Stuff::Point3D Distance;
-		Stuff::Point3D objPosition;
-		Stuff::Point3D eyePosition(eye->getCameraOrigin());
+		glm::vec3 Distance;
+		glm::vec3 objPosition;
+		glm::vec3 eyePosition(eye->getCameraOrigin());
 		mc2ToRender(objPosition, rightArmPos);
 
-		Distance.Subtract(objPosition,eyePosition);
-		eyeDistance = Distance.GetApproximateLength();
+		Distance = objPosition - eyePosition;
+		eyeDistance = glm::length(Distance);
 		if (eyeDistance > Camera::MaxClipDistance)
 		{
 			rightArmHazeFactor = 1.0f;
@@ -1220,9 +1220,9 @@ bool Mech3DAppearance::rightArmRecalc (void)
 			: inView;
 		if (armParentVisR)
 		{
-			Distance.Normalize(Distance);
+			Distance = glm::normalize(Distance);
 
-			float cosine = Distance * eye->getLookVector();
+			float cosine = glm::dot(Distance, eye->getLookVector());
 			if (cosine > eye->cosHalfFOV)
 				rightArmInView = true;
 			else

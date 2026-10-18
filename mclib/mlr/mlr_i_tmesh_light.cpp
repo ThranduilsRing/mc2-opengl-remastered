@@ -13,9 +13,9 @@ void
 	MLR_I_TMesh::LightMapLighting(MLRLight *light)
 {
 	int i, j, k, len = numOfTriangles;
-	LinearMatrix4D matrix = LinearMatrix4D::Identity;
-	Point3D lightPosInShape, hitPoint;
-	UnitVector3D up, left, forward;
+	glm::mat4 matrix = glm::mat4(1.0f);
+	glm::vec3 lightPosInShape, hitPoint;
+	glm::vec3 up, left, forward;
 	bool lm;
 	Scalar f, rhf, falloff = 1.0f, distance;
 
@@ -46,7 +46,7 @@ void
 					continue;
 				}
 
-				f = facePlanes[i].distanceTo(mc2::math::toGlm(lightPosInShape));
+				f = facePlanes[i].distanceTo(lightPosInShape);
 				
 				lm = false;
 
@@ -54,11 +54,11 @@ void
 				{
 					rhf = 1.0f/f;
 
-					matrix = LinearMatrix4D::Identity;
-					matrix.AlignLocalAxisToWorldVector(mc2::math::toVector3D(facePlanes[i].normal), Z_Axis, X_Axis, Y_Axis);
-					matrix.GetLocalLeftInWorld(&left);
-					matrix.GetLocalUpInWorld(&up);
-					matrix.GetLocalForwardInWorld(&forward);
+					matrix = glm::mat4(1.0f);
+					mc2::math::alignLocalAxisToWorldVector(matrix, facePlanes[i].normal, Z_Axis, X_Axis, Y_Axis);
+					left = mc2::math::localLeftInWorld(matrix);
+					up = mc2::math::localUpInWorld(matrix);
+					forward = mc2::math::localForwardInWorld(matrix);
 					Verify(Small_Enough(up*left));
 
 		#if defined(_ARMOR)
@@ -69,17 +69,17 @@ void
 		#endif
 
 					Check_Object(&forward);
-					hitPoint.Multiply(forward, -f);
+					hitPoint = forward * -f;
 					hitPoint+=lightPosInShape;
 
 					tooBig = 0;
 					for(k=0;k<3;k++)
 					{
-						Vector3D vec(coords[index[k+j]]);
+						glm::vec3 vec(coords[index[k+j]]);
 						vec-=hitPoint;
 
-						(*lightMapUVs)[k][0] = -(left*vec)*rhf;
-						(*lightMapUVs)[k][1] = -(up*vec)*rhf;
+						(*lightMapUVs)[k][0] = -(glm::dot(left, vec))*rhf;
+						(*lightMapUVs)[k][1] = -(glm::dot(up, vec))*rhf;
 
 						if(
 							(*lightMapUVs)[k][0] >= -0.5f && (*lightMapUVs)[k][0] <= 0.5f &&
@@ -111,13 +111,13 @@ void
 					lightMap->AddUShort(3);
 
 #if 0
-					Vector3D vec(coords[index[j]]);
+					glm::vec3 vec(coords[index[j]]);
 					SPEW(("micgaert", "\nvertex1 = %f,%f,%f", vec.x, vec.y, vec.z));
 					vec = coords[index[j+1]];
 					SPEW(("micgaert", "vertex2 = %f,%f,%f", vec.x, vec.y, vec.z));
 					vec = coords[index[j+2]];
 					SPEW(("micgaert", "vertex3 = %f,%f,%f", vec.x, vec.y, vec.z));
-					vec = mc2::math::toVector3D(facePlanes[i].normal);
+					vec = facePlanes[i].normal;
 					SPEW(("micgaert", "normal = %f,%f,%f", vec.x, vec.y, vec.z));
 					SPEW(("micgaert", "forward = %f,%f,%f", forward.x, forward.y, forward.z));
 					SPEW(("micgaert", "distance = %f", f));
@@ -152,18 +152,18 @@ void
 			lightMap->AddState(referenceState.GetPriority()+1);
 			
 			light->GetInShapePosition(matrix);
-			lightPosInShape = matrix;
+			lightPosInShape = mc2::math::getTranslation(matrix);
 
 			Scalar tanSpeadAngle = Cast_Object(MLRSpotLight*, light)->GetTanSpreadAngle();
 
 #ifndef TOP_DOWN_ONLY
-			matrix.GetLocalLeftInWorld(&left);
-			matrix.GetLocalUpInWorld(&up);
-			matrix.GetLocalForwardInWorld(&forward);
+			left = mc2::math::localLeftInWorld(matrix);
+			up = mc2::math::localUpInWorld(matrix);
+			forward = mc2::math::localForwardInWorld(matrix);
 #else
-			forward = UnitVector3D(0.0f, -1.0f, 0.0);
-			up = UnitVector3D(1.0f, 0.0f, 0.0);
-			left = UnitVector3D(0.0f, 0.0f, 1.0);
+			forward = glm::vec3(0.0f, -1.0f, 0.0);
+			up = glm::vec3(1.0f, 0.0f, 0.0);
+			left = glm::vec3(0.0f, 0.0f, 1.0);
 #endif
 
 			Verify(Small_Enough(up*left));
@@ -180,7 +180,7 @@ void
 
 				lm = false;
 
-				if(!facePlanes[i].isSeenBy(mc2::math::toGlm(lightPosInShape)))
+				if(!facePlanes[i].isSeenBy(lightPosInShape))
 				{
 					continue;
 				}
@@ -234,13 +234,13 @@ void
 				tooBig = 0;
 				for(k=0;k<3;k++)
 				{
-					Vector3D vec;
+					glm::vec3 vec;
 					Scalar oneOver;
 
-					vec.Subtract(coords[index[k+j]], lightPosInShape);
+					vec = coords[index[k+j]] - lightPosInShape;
 
 #ifndef TOP_DOWN_ONLY
-					distance = (vec*forward);
+					distance = (glm::dot(vec, forward));
 #else
 					distance = -vec.y;
 #endif
@@ -275,8 +275,8 @@ void
 					}
 
 #ifndef TOP_DOWN_ONLY
-					(*lightMapUVs)[k][0] = (left*vec) * oneOver;
-					(*lightMapUVs)[k][1] = -(up*vec) * oneOver;
+					(*lightMapUVs)[k][0] = (glm::dot(left, vec)) * oneOver;
+					(*lightMapUVs)[k][1] = -(glm::dot(up, vec)) * oneOver;
 #else
 					(*lightMapUVs)[k][0] = vec.x * oneOver;
 					(*lightMapUVs)[k][1] = -vec.z * oneOver;
@@ -331,7 +331,7 @@ void
 	#endif
 				}
 	#if SPEW_AWAY
-				Vector3D vec = mc2::math::toVector3D(facePlanes[i].normal);
+				glm::vec3 vec = facePlanes[i].normal;
 				SPEW(("micgaert", "normal = %f,%f,%f", vec.x, vec.y, vec.z));
 				SPEW(("micgaert", "forward = %f,%f,%f", forward.x, forward.y, forward.z));
 				SPEW(("micgaert", "left = %f,%f,%f", left.x, left.y, left.z));

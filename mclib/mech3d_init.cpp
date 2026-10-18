@@ -98,7 +98,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	OBBRadius = 0.0f;
 	currentLOD = 0;
 	
-	jumpVelocity.Zero();
+	jumpVelocity = glm::vec3(0.0f);
 	jumpFXSetup = false;
 	
 
@@ -296,8 +296,8 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				mechType->nodeData[i+mechType->numSmokeNodes].isLArmNode = false;
 		}
 
-		Stuff::Vector3D boxCoords[8];
-		Stuff::Vector3D nodeCenter = mechShape->GetRootNodeCenter();
+		glm::vec3 boxCoords[8];
+		glm::vec3 nodeCenter = mechShape->GetRootNodeCenter();
 
 		boxCoords[0].x = position.x + mechShape->GetMinBox().x + nodeCenter.x;
 		boxCoords[0].y = position.y + mechShape->GetMinBox().z + nodeCenter.z;
@@ -335,7 +335,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		for (int i=0;i<8;i++)
 		{
-			testRadius = boxCoords[i].GetLength();
+			testRadius = glm::length(boxCoords[i]);
 			if (OBBRadius < testRadius)
 				OBBRadius = testRadius;
 		}

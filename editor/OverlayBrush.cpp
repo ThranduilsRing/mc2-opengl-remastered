@@ -508,7 +508,7 @@ static void paintRoadStep( int fromR, int fromC, int toR, int toC, int dir,
 	                  indexOffsetFromTexture(newToTex) );
 }
 
-bool OverlayBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
+bool OverlayBrush::paint( glm::vec3& worldPos, int screenX, int screenY )
 {
 	 int tileC;
 	 int tileR;

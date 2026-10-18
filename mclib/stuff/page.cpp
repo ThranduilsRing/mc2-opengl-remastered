@@ -420,7 +420,7 @@ void
 bool
 	Page::GetEntry(
 		const char *entryname,
-		Vector3D *contents,
+		glm::vec3 *contents,
 		bool required
 	)
 {
@@ -451,7 +451,7 @@ bool
 void
 	Page::SetEntry(
 		const char *entryname,
-		const Vector3D &value
+		const glm::vec3 &value
 	)
 {
 	Check_Object(this);
@@ -469,72 +469,7 @@ void
 void
 	Page::AppendEntry(
 		const char *entryname,
-		const Vector3D &value
-	)
-{
-	Check_Object(this);
-	Check_Pointer(entryname);
-
-	Note *note = AddNote(entryname);
-	Check_Object(note);
-	note->SetEntry(value);
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-bool
-	Page::GetEntry(
-		const char *entryname,
-		UnitQuaternion *contents,
-		bool required
-	)
-{
-	Check_Object(this);
-	Check_Pointer(entryname);
-	Check_Pointer(contents);
-
-	Note *note = FindNote(entryname);
-	if (note)
-	{
-		Check_Object(note);
-		note->GetEntry(contents);
-		return true;
-	}
-
-	if (required)
-		STOP((
-			"%s: [%s]%s is a required entry!",
-			m_notationFile->GetFileName(),
-			(const char*)m_name,
-			entryname
-		));
-	return false;
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
-	Page::SetEntry(
-		const char *entryname,
-		const UnitQuaternion &value
-	)
-{
-	Check_Object(this);
-	Check_Pointer(entryname);
-
-	Note *note = FindNote(entryname);
-	if (!note)
-		note = AddNote(entryname);
-	Check_Object(note);
-	note->SetEntry(value);
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
-	Page::AppendEntry(
-		const char *entryname,
-		const UnitQuaternion &value
+		const glm::vec3 &value
 	)
 {
 	Check_Object(this);

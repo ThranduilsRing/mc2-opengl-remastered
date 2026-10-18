@@ -874,7 +874,7 @@ void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjec
 				obj->setRotation(objData->rotation);
 
 			if (obj->isTerrainObject()) {
-				Stuff::Vector3D pos = objData->vector;
+				glm::vec3 pos = objData->vector;
 				((TerrainObjectPtr)obj)->calcCellFootprint(pos);
 				if (obj->getObjectClass() == BUILDING) {
 					if (objType->getSubType() == BUILDING_SUBTYPE_WALL) {

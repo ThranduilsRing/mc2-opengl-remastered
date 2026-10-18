@@ -213,7 +213,7 @@ void MoveChunk::build (MoverPtr mover, MovePathPtr path1, MovePathPtr path2) {
 // DON'T USE THIS NOW, AS JUMPGOAL IS STORED IN THE STATUS CHUNK IF IT'S
 // A JUMP ORDER!
 
-void MoveChunk::build (MoverPtr mover, Stuff::Vector3D jumpGoal) {
+void MoveChunk::build (MoverPtr mover, glm::vec3 jumpGoal) {
 
 	int jumpCoords[2];
 	land->worldToCell(jumpGoal, jumpCoords[0], jumpCoords[1]);
@@ -375,7 +375,7 @@ void Mover::setMoveChunk (MovePathPtr path, MoveChunkPtr chunk) {
 		land->cellToWorld(pathStep->cell[0], pathStep->cell[1], pathStep->destination);
 	}
 	path->goal = path->stepList[chunk->numSteps - 1].destination;
-	path->target.Zero();
+	path->target = glm::vec3(0.0f);
 	path->numSteps = path->numStepsWhenNotPaused = chunk->numSteps;
 	path->curStep = 0;
 	path->cost = -1;

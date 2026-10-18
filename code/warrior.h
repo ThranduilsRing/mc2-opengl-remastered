@@ -397,7 +397,7 @@ class TargetPriorityList {
 
 		int32_t calcAction (MechWarriorPtr pilot, GameObjectPtr target);
 
-		int32_t calcTarget (MechWarriorPtr pilot, Stuff::Vector3D location, int32_t contactCriteria, int32_t& action);
+		int32_t calcTarget (MechWarriorPtr pilot, glm::vec3 location, int32_t contactCriteria, int32_t& action);
 };
 
 //---------------------------------------------------------------------------
@@ -439,19 +439,19 @@ struct _MoveOrders {
 	char						speedThrottle;			// if speedState is walk, else ignored
 	unsigned long				goalType;				// is there no goal, a location or object?
 	GameObjectWatchID			goalObjectWID;			// if our goal is an object...
-	Stuff::Vector3D				goalObjectPosition;		// object's position at time of path calc
-	Stuff::Vector3D				goalLocation;			// goal location, if any
+	glm::vec3				goalObjectPosition;		// object's position at time of path calc
+	glm::vec3				goalLocation;			// goal location, if any
 	//----------------------
 	// pathfinding guts/data
 	float						nextUpdate;
 	bool						newGoal;
-	Stuff::Vector3D				wayPath[MAX_WAYPTS];	// if this move order has a way path...
+	glm::vec3				wayPath[MAX_WAYPTS];	// if this move order has a way path...
 	char						numWayPts;				// how many way points?
 	char						curWayPt;				// current goal waypoint
 	char						curWayDir;				// waypath direction: 1 = forward, -1 = backward
 	char						pathType;				// "quick" path or global/long-range?
-	Stuff::Vector3D				originalGlobalGoal[2];	// 0 = original final goal, 1 = actual final goal
-	Stuff::Vector3D				globalGoalLocation;
+	glm::vec3				originalGlobalGoal[2];	// 0 = original final goal, 1 = actual final goal
+	glm::vec3				globalGoalLocation;
 	GlobalPathStep				globalPath[MAX_GLOBAL_PATH];
 	char						numGlobalSteps;
 	char						curGlobalStep;
@@ -480,19 +480,19 @@ struct _SaveableMoveOrders {
 	char						speedThrottle;			// if speedState is walk, else ignored
 	unsigned long				goalType;				// is there no goal, a location or object?
 	GameObjectWatchID			goalObjectWID;			// if our goal is an object...
-	Stuff::Vector3D				goalObjectPosition;		// object's position at time of path calc
-	Stuff::Vector3D				goalLocation;			// goal location, if any
+	glm::vec3				goalObjectPosition;		// object's position at time of path calc
+	glm::vec3				goalLocation;			// goal location, if any
 	//----------------------
 	// pathfinding guts/data
 	float						nextUpdate;
 	bool						newGoal;
-	Stuff::Vector3D				wayPath[MAX_WAYPTS];	// if this move order has a way path...
+	glm::vec3				wayPath[MAX_WAYPTS];	// if this move order has a way path...
 	char						numWayPts;				// how many way points?
 	char						curWayPt;				// current goal waypoint
 	char						curWayDir;				// waypath direction: 1 = forward, -1 = backward
 	char						pathType;				// "quick" path or global/long-range?
-	Stuff::Vector3D				originalGlobalGoal[2];	// 0 = original final goal, 1 = actual final goal
-	Stuff::Vector3D				globalGoalLocation;
+	glm::vec3				originalGlobalGoal[2];	// 0 = original final goal, 1 = actual final goal
+	glm::vec3				globalGoalLocation;
 	GlobalPathStep				globalPath[MAX_GLOBAL_PATH];
 	char						numGlobalSteps;
 	char						curGlobalStep;
@@ -519,7 +519,7 @@ struct _SaveableMoveOrders {
 		goalLocation = orders.goalLocation;
 		nextUpdate = orders.nextUpdate;
 		newGoal = orders.newGoal;
-		memcpy(wayPath,orders.wayPath,sizeof(Stuff::Vector3D) * MAX_WAYPTS);
+		memcpy(wayPath,orders.wayPath,sizeof(glm::vec3) * MAX_WAYPTS);
 		numWayPts = orders.numWayPts;
 		curWayPt = orders.curWayPt;
 		curWayDir = orders.curWayDir;	// SAVE/LOAD-CURWAYDIR-1: was omitted -> patrol dir lost across save/load
@@ -555,7 +555,7 @@ struct _SaveableMoveOrders {
 		orders.goalLocation = goalLocation;
 		orders.nextUpdate = nextUpdate;
 		orders.newGoal = newGoal;
-		memcpy(orders.wayPath,wayPath,sizeof(Stuff::Vector3D) * MAX_WAYPTS);
+		memcpy(orders.wayPath,wayPath,sizeof(glm::vec3) * MAX_WAYPTS);
 		orders.numWayPts = numWayPts;
 		orders.curWayPt = curWayPt;
 		orders.curWayDir = curWayDir;	// SAVE/LOAD-CURWAYDIR-1: was omitted -> patrol dir lost across save/load
@@ -593,7 +593,7 @@ struct _AttackOrders {
 	char						origin;
 	long						type;				// to kill, to disable, etc.
 	GameObjectWatchID			targetWID;		// current object targeted for attack, if attacking object
-	Stuff::Vector3D				targetPoint;		// target location targeted for attack, if attacking point
+	glm::vec3				targetPoint;		// target location targeted for attack, if attacking point
 	long						aimLocation;
 	bool						pursue;				// does this attack entail a move order too?
 	long						tactic;
@@ -646,7 +646,7 @@ inline constexpr int MAX_ATTACKERS = 50;
 struct _QueuedTacOrder
 {
 	long						id;
-	Stuff::Vector3D				point;
+	glm::vec3				point;
 	unsigned long				packedData[2];
 	unsigned char				tactic;
 	BldgAppearance*				marker;
@@ -740,7 +740,7 @@ struct _MechWarriorData
 	bool					useGoalPlan;
 	int32_t					mainGoalAction;
 	GameObjectWatchID		mainGoalObjectWID;
-	Stuff::Vector3D			mainGoalLocation;
+	glm::vec3			mainGoalLocation;
 	float					mainGoalControlRadius;
 	short					lastGoalPathSize;
 	short					lastGoalPath[MAX_GLOBAL_PATH];
@@ -883,7 +883,7 @@ class MechWarrior {
 		bool					useGoalPlan;
 		int32_t					mainGoalAction;
 		GameObjectWatchID		mainGoalObjectWID;
-		Stuff::Vector3D			mainGoalLocation;
+		glm::vec3			mainGoalLocation;
 		float					mainGoalControlRadius;
 		short					lastGoalPathSize;
 		short					lastGoalPath[MAX_GLOBAL_PATH];
@@ -1308,9 +1308,9 @@ class MechWarrior {
 			return(useGoalPlan);
 		}
 
-		void setMainGoal (long action, GameObjectPtr obj, Stuff::Vector3D* location, float range);
+		void setMainGoal (long action, GameObjectPtr obj, glm::vec3* location, float range);
 
-		long getMainGoal (GameObjectPtr& obj, Stuff::Vector3D& location, float& range);
+		long getMainGoal (GameObjectPtr& obj, glm::vec3& location, float& range);
 
 		long getNumTacOrdersQueued (void) {
 			return(numTacOrdersQueued);
@@ -1318,7 +1318,7 @@ class MechWarrior {
 
 		void drawWaypointPath();
 		void drawOverviewMovePath( unsigned long color );
-		bool getMoveDestination( Stuff::Vector3D& out );
+		bool getMoveDestination( glm::vec3& out );
 		void updateDrawWaypointPath();
 
 		void executeTacOrderQueue (void);
@@ -1546,11 +1546,11 @@ class MechWarrior {
 			return(moveOrders.speedThrottle);
 		}
 
-		long setMoveGoal (unsigned long type, Stuff::Vector3D* location, GameObjectPtr obj = nullptr);
+		long setMoveGoal (unsigned long type, glm::vec3* location, GameObjectPtr obj = nullptr);
 
-		unsigned long getMoveGoal (Stuff::Vector3D* location = nullptr, GameObjectPtr* obj = nullptr);
+		unsigned long getMoveGoal (glm::vec3* location = nullptr, GameObjectPtr* obj = nullptr);
 
-		bool getMoveGlobalGoal (Stuff::Vector3D& location) {
+		bool getMoveGlobalGoal (glm::vec3& location) {
 			if (moveOrders.pathType != MOVEPATH_UNDEFINED) {
 				location = moveOrders.originalGlobalGoal[1];
 				return(true);
@@ -1590,11 +1590,11 @@ class MechWarrior {
 
 		MovePathPtr getMovePath (void);
 
-		void setMoveGoalObjectPos (Stuff::Vector3D pos) {
+		void setMoveGoalObjectPos (glm::vec3 pos) {
 			moveOrders.goalObjectPosition = pos;
 		}
 
-		Stuff::Vector3D getMoveGoalObjectPos (void) {
+		glm::vec3 getMoveGoalObjectPos (void) {
 			return(moveOrders.goalObjectPosition);
 		}
 
@@ -1686,7 +1686,7 @@ class MechWarrior {
 
 		float getMoveDistanceLeft (void);
 
-		bool isJumping (Stuff::Vector3D* jumpGoal = nullptr);
+		bool isJumping (glm::vec3* jumpGoal = nullptr);
 
 		void setWillHelp (bool setting) {
 			willHelp = setting;
@@ -1702,7 +1702,7 @@ class MechWarrior {
 
 		void setMoveWayPath (WayPathPtr wayPath, bool patrol = false);
 
-		void addMoveWayPoint (Stuff::Vector3D wayPt, bool patrol = false);
+		void addMoveWayPoint (glm::vec3 wayPt, bool patrol = false);
 
 		void setMoveGlobalPath (GlobalPathStepPtr path, long numSteps);
 
@@ -1739,7 +1739,7 @@ class MechWarrior {
 			return(100);
 		}
 
-		bool getNextWayPoint (Stuff::Vector3D& nextPoint, bool incWayPoint);
+		bool getNextWayPoint (glm::vec3& nextPoint, bool incWayPoint);
 
 		//--------------
 		// Attack Orders
@@ -1796,11 +1796,11 @@ class MechWarrior {
 			return(attackOrders.aimLocation);
 		}
 
-		void setAttackTargetPoint (Stuff::Vector3D location) {
+		void setAttackTargetPoint (glm::vec3 location) {
 			attackOrders.targetPoint = location;
 		}
 
-		Stuff::Vector3D getAttackTargetPoint (void) {
+		glm::vec3 getAttackTargetPoint (void) {
 			return(attackOrders.targetPoint);
 		}
 
@@ -1808,7 +1808,7 @@ class MechWarrior {
 			return(attackOrders.targetTime);
 		}
 
-		GameObjectPtr getAttackTargetPosition (Stuff::Vector3D& pos);
+		GameObjectPtr getAttackTargetPosition (glm::vec3& pos);
 
 		void clearAttackOrders (void);
 
@@ -1903,13 +1903,13 @@ class MechWarrior {
 		// Command/Observation
 		long executeTacticalOrder (TacticalOrderPtr order = nullptr);
 
-		long calcWeaponsStatus (GameObjectPtr target, int* weaponList, Stuff::Vector3D* targetPoint = nullptr);
+		long calcWeaponsStatus (GameObjectPtr target, int* weaponList, glm::vec3* targetPoint = nullptr);
 
 		void printWeaponsStatus (char* s);
 
 		long combatDecisionTree (void);
 
-		Stuff::Vector3D calcWithdrawGoal (float withdrawRange = 1000.0);
+		glm::vec3 calcWithdrawGoal (float withdrawRange = 1000.0);
 
 		bool movingOverBlownBridge (void);
 
@@ -1985,7 +1985,7 @@ class MechWarrior {
 			return(coreScanTargetWID);
 		}
 
-		long coreMoveTo (Stuff::Vector3D location, unsigned long params);
+		long coreMoveTo (glm::vec3 location, unsigned long params);
 
 		long coreMoveToObject (GameObjectPtr object, unsigned long params);
 
@@ -2012,13 +2012,13 @@ class MechWarrior {
 
 		long orderStop (bool unitOrder, bool setTacOrder);
 
-		long orderMoveToPoint (bool unitOrder, bool setTacOrder, long origin, Stuff::Vector3D location, long selectionIndex = -1, unsigned long params = TACORDER_PARAM_NONE);
+		long orderMoveToPoint (bool unitOrder, bool setTacOrder, long origin, glm::vec3 location, long selectionIndex = -1, unsigned long params = TACORDER_PARAM_NONE);
 
 		long orderFormation (bool unitOrder, bool setTacOrder, long origin);
 
 		long orderMoveToObject (bool unitOrder, bool setTacOrder, long origin, GameObjectPtr target, long fromArea, long selectionIndex = -1, unsigned long params = TACORDER_PARAM_FACE_OBJECT);
 
-		long orderJumpToPoint (bool unitOrder, bool setTacOrder, long origin, Stuff::Vector3D location, long selectionIndex = -1);
+		long orderJumpToPoint (bool unitOrder, bool setTacOrder, long origin, glm::vec3 location, long selectionIndex = -1);
 
 		long orderJumpToObject (bool unitOrder, bool setTacOrder, long origin, GameObjectPtr target, long selectionIndex = -1);
 
@@ -2034,7 +2034,7 @@ class MechWarrior {
 
 		long orderUsePattern (long pattern);
 
-		long orderOrbitPoint (Stuff::Vector3D location);
+		long orderOrbitPoint (glm::vec3 location);
 
 		long orderOrbitObject (GameObjectPtr target);
 
@@ -2042,9 +2042,9 @@ class MechWarrior {
 
 		long orderAttackObject (bool unitOrder, long origin, GameObjectPtr target, long type, long method, long range, long aimLocation = -1, long fromArea = -1, unsigned long params = TACORDER_PARAM_NONE);
 
-		long orderAttackPoint (bool unitOrder, long origin, Stuff::Vector3D location, long type, long method, long range, unsigned long params = TACORDER_PARAM_NONE);
+		long orderAttackPoint (bool unitOrder, long origin, glm::vec3 location, long type, long method, long range, unsigned long params = TACORDER_PARAM_NONE);
 
-		long orderWithdraw (bool unitOrder, long origin, Stuff::Vector3D location);
+		long orderWithdraw (bool unitOrder, long origin, glm::vec3 location);
 
 		long orderEject (bool unitOrder, bool setTacOrder, long origin);
 
@@ -2113,9 +2113,9 @@ class MechWarrior {
 
 		void calcRank (void);
 
-		bool isCloseToFirstTacOrder( Stuff::Vector3D& pos );
+		bool isCloseToFirstTacOrder( glm::vec3& pos );
 
-		std::unique_ptr<BldgAppearance> getWayPointMarker( const Stuff::Vector3D& pos, const char* name );
+		std::unique_ptr<BldgAppearance> getWayPointMarker( const glm::vec3& pos, const char* name );
 
 
 		void setDebugString (long stringNum, char* s) {
@@ -2137,7 +2137,7 @@ class MechWarrior {
 
 		long calcTacOrder (long goalAction,
 						   long goalWID,
-						   Stuff::Vector3D goalLocation,
+						   glm::vec3 goalLocation,
 						   float controlRange,
 						   long aggressiveness,
 						   long searchDepth,

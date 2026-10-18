@@ -103,10 +103,10 @@ namespace MidLevelRenderer {
 
 	// lights the geometry, uses the worldToShape matrix and an array of lights which
 	// affect the shape in this frame and the number of lights in this array
-		void	Lighting(const Stuff::LinearMatrix4D&, MLRLight* const*, int nrLights);
+		void	Lighting(const glm::mat4&, MLRLight* const*, int nrLights);
 
 		void
-			HurtMe(const Stuff::LinearMatrix4D&, Stuff::Scalar radius);
+			HurtMe(const glm::mat4&, Stuff::Scalar radius);
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Class Data Support
@@ -159,7 +159,7 @@ namespace MidLevelRenderer {
 
 	protected:
 		int
-			FindBackFace(const Stuff::Point3D&);
+			FindBackFace(const glm::vec3&);
 
 //		void
 //			Transform(Stuff::Matrix4D*);
@@ -170,10 +170,10 @@ namespace MidLevelRenderer {
 		Stuff::DynamicArrayOf<MLRPrimitiveBase*>
 			allPrimitives;
 
-		const Stuff::LinearMatrix4D
+		const glm::mat4
 			*worldToShape;
 
-		Stuff::Matrix4D
+		glm::mat4
 			shapeToClipMatrix;
 
 	private:

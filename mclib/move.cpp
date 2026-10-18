@@ -262,19 +262,19 @@ float MoveMap::distanceFloat[DISTANCE_TABLE_DIM][DISTANCE_TABLE_DIM];
 int MoveMap::distanceInt[DISTANCE_TABLE_DIM][DISTANCE_TABLE_DIM];
 int MoveMap::forestCost = 50;
 
-Stuff::Vector3D relativePositionToPoint (Stuff::Vector3D point, float angle, float distance, unsigned long flags) {
+glm::vec3 relativePositionToPoint (glm::vec3 point, float angle, float distance, unsigned long flags) {
 
 	// Note that the angle should be -180 <= angle <= 180, and
 	// the distance is in meters...
 
-	Stuff::Vector3D curPos;
+	glm::vec3 curPos;
 	curPos.x = point.x;
 	curPos.y = point.y;
 	curPos.z = 0.0;
 
 	distance *= -worldUnitsPerMeter;
 
-	Stuff::Vector3D shiftVect;
+	glm::vec3 shiftVect;
 	shiftVect.x = 0.0;
 	shiftVect.y = 1.0;
 	shiftVect.z = 0.0;
@@ -282,13 +282,13 @@ Stuff::Vector3D relativePositionToPoint (Stuff::Vector3D point, float angle, flo
 	Rotate(shiftVect,angle);
 
 	shiftVect *= distance;
-	Stuff::Vector3D relPos;
-	relPos.Zero();
-	relPos.Add(curPos,shiftVect);
+	glm::vec3 relPos;
+	relPos = glm::vec3(0.0f);
+	relPos = curPos + shiftVect;
 
-	Stuff::Vector3D start2d;
-	Stuff::Vector3D goal2d;
-	Stuff::Vector3D deltaVector;
+	glm::vec3 start2d;
+	glm::vec3 goal2d;
+	glm::vec3 deltaVector;
 	if (flags & RELPOS_FLAG_PASSABLE_START) {
 		start2d  = curPos;
 		goal2d = relPos;
@@ -298,13 +298,13 @@ Stuff::Vector3D relativePositionToPoint (Stuff::Vector3D point, float angle, flo
 		goal2d = curPos;
 	}
 
-	deltaVector.Subtract(goal2d,start2d);
+	deltaVector = goal2d - start2d;
 
 	// First, we need to calc the delta vector--how much we extend
 	// the ray everytime we check the map cell for clear placement.
-	deltaVector.Normalize(deltaVector);
+	deltaVector = glm::normalize(deltaVector);
 	deltaVector *= Terrain::halfWorldUnitsPerCell;
-	if (deltaVector.GetLength() == 0.0)
+	if (glm::length(deltaVector) == 0.0)
 		return(curPos);
 
 	// Determine the max length the ray must be cast...
@@ -313,23 +313,23 @@ Stuff::Vector3D relativePositionToPoint (Stuff::Vector3D point, float angle, flo
 	// We'll start at the target, and if it's blocked, we'll move
 	// toward our start location, looking for the first valid/open
 	// cell...
-	Stuff::Vector3D curPoint = start2d;
-	Stuff::Vector3D curRay;
-	curRay.Zero();
+	glm::vec3 curPoint = start2d;
+	glm::vec3 curRay;
+	curRay = glm::vec3(0.0f);
 	float rayLength = 0.0;
 
 	int cellR, cellC;
-	Stuff::Vector3D curPoint3d(curPoint.x, curPoint.y, 0.0);
+	glm::vec3 curPoint3d(curPoint.x, curPoint.y, 0.0);
 	land->worldToCell(curPoint3d, cellR, cellC);
 	unsigned int cellClear = GameMap->getPassable(cellR, cellC);
 
-	Stuff::Vector3D lastGoodPoint = curPoint;
+	glm::vec3 lastGoodPoint = curPoint;
 	if (flags & RELPOS_FLAG_PASSABLE_START)
 		while (cellClear && (rayLength < maxLength)) {
 			lastGoodPoint = curPoint;
 			curPoint += deltaVector;
-			curRay.Subtract(curPoint,start2d);
-			rayLength = curRay.GetLength();
+			curRay = curPoint - start2d;
+			rayLength = glm::length(curRay);
 
 			curPoint3d.x = curPoint.x;
 			curPoint3d.x = curPoint.y;
@@ -342,8 +342,8 @@ Stuff::Vector3D relativePositionToPoint (Stuff::Vector3D point, float angle, flo
 		while (!cellClear && (rayLength < maxLength)) {
 			lastGoodPoint = curPoint;
 			curPoint += deltaVector;
-			curRay.Subtract(curPoint,start2d);
-			rayLength = curRay.GetLength();
+			curRay = curPoint - start2d;
+			rayLength = glm::length(curRay);
 
 			curPoint3d.x = curPoint.x;
 			curPoint3d.x = curPoint.y;
@@ -455,7 +455,7 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 	long numOffMap = 0;
 	for (long r = 0; r < height; r++)
 		for (long c = 0; c < width; c++) {
-			Stuff::Vector3D worldPos;
+			glm::vec3 worldPos;
 			land->cellToWorld(r, c, worldPos);
 			bool set = (land->IsEditorSelectTerrainPosition(worldPos) && !land->IsGameSelectTerrainPosition(worldPos));
 			GameMap->setOffMap(r, c, set);
@@ -825,7 +825,7 @@ long MissionMap::write (PacketFile* packetFile, long whichPacket) {
 	return(NUM_MISSIONMAP_PACKETS);
 }
 
-bool MissionMap::getPassable (Stuff::Vector3D cellPosition) {
+bool MissionMap::getPassable (glm::vec3 cellPosition) {
 
 	int row, col;
 	land->worldToCell(cellPosition, row, col);
@@ -863,7 +863,7 @@ long MissionMap::init (long cellHeight, long cellWidth, long curPlanet, MissionM
 				setForest(row, col, mapData[row * width + col].forest);
 				setBuildWall(row, col, false);
 				setBuildGate(row, col, false);
-				Stuff::Vector3D worldPos;
+				glm::vec3 worldPos;
 				land->cellToWorld(row, col, worldPos);
 				long cellWaterType = TerrainRuntime::sampleWaterClass(worldPos);
 				if (cellWaterType == WATER_TYPE_SHALLOW)
@@ -953,7 +953,7 @@ void MissionMap::spreadState (long cellRow, long cellCol, long radius) {
 	}
 }
 
-long MissionMap::placeObject (Stuff::Vector3D position, float radius) {
+long MissionMap::placeObject (glm::vec3 position, float radius) {
 
 	int cellRow, cellCol;
 	land->worldToCell(position, cellRow, cellCol);
@@ -1073,7 +1073,7 @@ void MovePath::destroy (void) {
 	numSteps = 0;
 }
 
-float MovePath::getDistanceLeft (Stuff::Vector3D position, long stepNumber) {
+float MovePath::getDistanceLeft (glm::vec3 position, long stepNumber) {
 
 	if (stepNumber == -1)
 		stepNumber = curStep;

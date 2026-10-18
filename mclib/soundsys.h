@@ -240,7 +240,7 @@ class SoundSystem
 		static bool createWaveResource (HGOSAUDIO *handle, const std::vector<uint8_t>& wave);	//false (nothing created) when the wave header is unreadable
 		long findOpenChannel (long start, long end);
 
-		long playDigitalSample (unsigned long sampleId, Stuff::Vector3D pos = Stuff::Vector3D(-9999.0f,-9999.0,-9999.0f), bool allowDupes = false);
+		long playDigitalSample (unsigned long sampleId, glm::vec3 pos = glm::vec3(-9999.0f,-9999.0,-9999.0f), bool allowDupes = false);
 		
 		long playDigitalMusic (long musicId);
 		
