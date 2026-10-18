@@ -77,7 +77,13 @@ struct YawPitchRange {
 struct Aabb {
 	glm::vec3 min{0.0f}, max{0.0f};
 };
-inline Aabb unite(const Aabb& a, const Aabb& b) { return {glm::min(b.min, a.min), glm::max(b.max, a.max)}; }
+inline Aabb unite(const Aabb& a, const Aabb& b)
+{
+	Aabb out;
+	out.min = glm::min(b.min, a.min);
+	out.max = glm::max(b.max, a.max);
+	return out;
+}
 
 // The former Stuff::Sphere (S5.15): a center and a radius (gosFX debris pieces, tube profile bounds). Data only.
 struct Sphere {
