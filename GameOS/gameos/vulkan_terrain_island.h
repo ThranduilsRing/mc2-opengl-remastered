@@ -221,6 +221,11 @@ struct Mc2TerrainTier1Feed {
     int32_t                     shorelineMaskW, shorelineMaskH;
     uint64_t                    shorelineMaskVersion;  // changes on every load; the island re-imports on a change
     float                       shorelineBounds[4];    // topLeftX, topLeftY (= max Y), sizeX, sizeY (world units)
+    // SHORE-FIELD-1: the water shore field (R32F pseudo-height) the coastal colormap follows; null = none (FS skips it).
+    const float*                shoreFieldTexels;
+    int32_t                     shoreFieldW, shoreFieldH;
+    uint64_t                    shoreFieldVersion;
+    float                       shoreFieldBounds[4];   // topLeftX, topLeftY (= max Y), spanX, spanY (world units)
 };
 
 // Provided BY the GL terrain path (gos_terrain_lod_chunk.cpp). The island calls this

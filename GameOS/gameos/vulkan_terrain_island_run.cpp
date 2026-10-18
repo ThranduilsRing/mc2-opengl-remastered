@@ -297,6 +297,10 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.shorelineEdgeJitter   = feed.shorelineEdgeJitter;
     u.shorelineBoundsX = feed.shorelineBounds[0]; u.shorelineBoundsY = feed.shorelineBounds[1];
     u.shorelineBoundsW = feed.shorelineBounds[2]; u.shorelineBoundsH = feed.shorelineBounds[3];
+    // SHORE-FIELD-1: coastal colormap follows the water's smooth shore field.
+    u.shoreFieldOn = s->shoreFieldReady ? 1 : 0;
+    u.shoreFieldBoundsX = feed.shoreFieldBounds[0]; u.shoreFieldBoundsY = feed.shoreFieldBounds[1];
+    u.shoreFieldBoundsW = feed.shoreFieldBounds[2]; u.shoreFieldBoundsH = feed.shoreFieldBounds[3];
 }
 
 extern "C" int mc2_vk_terrain_island_run(int w, int h) {
@@ -349,6 +353,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     import_cement(s, feed);
     snapshot_cement(s, feed);
     import_shore_mask(s, feed);
+    import_shore_field(s, feed);   // SHORE-FIELD-1
 
     // VK-TERRAIN-VISUALDISPLACE-FAR-1: version-gated mission-load snapshot of the 4x
     // visual-height bake (no-op unless the sub-gate armed the feed fields AND the bake

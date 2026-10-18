@@ -156,7 +156,13 @@ struct TerrainFrameUBO {
     float   shorelineBoundsY;      // top-left Y (= max Y)
     float   shorelineBoundsW;      // size X
     float   shorelineBoundsH;      // size Y
-    int32_t _pad[48];  // @cpp_only slot tail padding to the 1024B stride
+    // SHORE-FIELD-1: the smooth shore field (binding 15) the coastal colormap follows (owner: "colormap tint for now").
+    int32_t shoreFieldOn;          // the bound field is the mission's (mode 3 + sidecar), not the dummy
+    float   shoreFieldBoundsX;     // field bounds, world units: top-left X
+    float   shoreFieldBoundsY;     // top-left Y (= max Y)
+    float   shoreFieldBoundsW;     // grid span X
+    float   shoreFieldBoundsH;     // grid span Y
+    int32_t _pad[43];  // @cpp_only slot tail padding to the 1024B stride
 };
 
 #include "GpuTerrainFrameUBO.layout.gen.h"
