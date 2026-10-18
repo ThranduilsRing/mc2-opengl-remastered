@@ -5,18 +5,18 @@
 
 
 
-Stuff::Vector3D GroundVehicle::getPositionFromHS (long nodeId) 
+glm::vec3 GroundVehicle::getPositionFromHS (long nodeId) 
 {
 
 	// NEED TO IMPLEMENT PROPER HOTSPOTS FOR VEHICLES...
 	// How about now?
 	// -fs
 
-	Stuff::Vector3D hsPos = position;
+	glm::vec3 hsPos = position;
 	if (appearance)
 	{
 		hsPos = appearance->getHitNode();
-		if ((nodeId != -1) || (hsPos == position))
+		if ((nodeId != -1) || (mc2::math::closeEnough(hsPos, position)))
 		{
 			hsPos = appearance->getWeaponNodePosition(nodeId);
 		}
@@ -135,8 +135,8 @@ void GroundVehicle::createVehiclePilot (void)
 	pilot->clearAttackOrders();
 	pilot->clearMoveOrders();
 	
-	Stuff::Vector3D location;
-	location.Zero();
+	glm::vec3 location;
+	location = glm::vec3(0.0f);
 	
 	pilot->orderMoveToPoint (false, true, ORDER_ORIGIN_PLAYER, location, -1, TACORDER_PARAM_RUN);
 
@@ -303,9 +303,9 @@ long GroundVehicle::updateAnimations (void)
 					if (refitBuddyWID)
 					{
 						GameObjectPtr refitMech = ObjectManager->getByWatchID(refitBuddyWID);
-						Stuff::Vector3D distance;
-						distance.Subtract(refitMech->getPosition(),getPosition());
-						float dist = distance.GetApproximateLength();
+						glm::vec3 distance;
+						distance = refitMech->getPosition() - getPosition();
+						float dist = glm::length(distance);
 						if (dist <= 128.0f)
 							appearance->setGesture(3);
 					}
@@ -324,9 +324,9 @@ long GroundVehicle::updateAnimations (void)
 					if (refitBuddyWID)
 					{
 						GameObjectPtr refitMech = ObjectManager->getByWatchID(refitBuddyWID);
-						Stuff::Vector3D distance;
-						distance.Subtract(refitMech->getPosition(),getPosition());
-						float dist = distance.GetApproximateLength();
+						glm::vec3 distance;
+						distance = refitMech->getPosition() - getPosition();
+						float dist = glm::length(distance);
 						if (dist <= 128.0f)
 							appearance->setGesture(3);
 					}
@@ -345,9 +345,9 @@ long GroundVehicle::updateAnimations (void)
 					if (refitBuddyWID)
 					{
 						GameObjectPtr refitMech = ObjectManager->getByWatchID(refitBuddyWID);
-						Stuff::Vector3D distance;
-						distance.Subtract(refitMech->getPosition(),getPosition());
-						float dist = distance.GetApproximateLength();
+						glm::vec3 distance;
+						distance = refitMech->getPosition() - getPosition();
+						float dist = glm::length(distance);
 						if (dist <= 128.0f)
 							appearance->setGesture(3);
 					}

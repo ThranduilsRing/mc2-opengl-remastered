@@ -607,9 +607,9 @@ void GroundVehicle::init (bool create) {
 
 	lowestWeaponNodeID = -2;
 
-	dVel.Zero();
-	dRot.Zero();
-	dAcc.Zero();
+	dVel = glm::vec3(0.0f);
+	dRot = glm::vec3(0.0f);
+	dAcc = glm::vec3(0.0f);
 };
 
 //------------------------------------------------------------------------------------------
@@ -1100,7 +1100,7 @@ void GroundVehicle::mineCheck (void) {
 		if (mineSweeper)
 		{
 			sweepTime = 0;
-			Stuff::Vector3D curPos = getPosition();
+			glm::vec3 curPos = getPosition();
 			ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, curPos);
 			armor[GROUNDVEHICLE_LOCATION_FRONT].curArmor--;
 			if (MPlayer) 
@@ -1139,7 +1139,7 @@ void GroundVehicle::mineCheck (void) {
 			// Mine here, deal with it...
 			if (tonnage > 35.0f)
 			{
-				Stuff::Vector3D curPos;
+				glm::vec3 curPos;
 				curPos = getPosition();
 				ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, curPos, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 				WeaponShotInfo shot;

@@ -119,7 +119,7 @@ void ForceGroupBar::renderOverviewIcons( Camera* eye, float alpha )
 		ForceGroupIcon* ic = icons[i];
 		if ( !ic || !ic->unit ) continue;
 		if ( ic->unit->isDestroyed() || ic->unit->isDisabled() ) continue;
-		Stuff::Vector3D wp = ic->unit->getPosition();
+		glm::vec3 wp = ic->unit->getPosition();
 		// Project through the SAME GL clip matrix the GPU renders the mechs with
 		// (worldToClipGL). The default projectForScreenXY routes through the
 		// legacy projectZ/cameraToClip path, which disagrees with the GL render

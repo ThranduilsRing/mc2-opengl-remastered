@@ -211,11 +211,11 @@ struct _GroundVehicleData : public MoverData
 
 	float				timeInCurrent;					
 
-	Stuff::Vector3D		dVel;
-	Stuff::Vector3D		dRot;
-	Stuff::Vector3D		dAcc;
-	Stuff::Vector3D		dRVel;
-	Stuff::Vector3D		dRacc;
+	glm::vec3		dVel;
+	glm::vec3		dRot;
+	glm::vec3		dAcc;
+	glm::vec3		dRVel;
+	glm::vec3		dRacc;
 	float				dTime;
 
 	bool				sensorOK;
@@ -265,11 +265,11 @@ class GroundVehicle : public Mover {
 		bool				isVehiclePilot;					//Is this a pilot running away?
 		
 		//Destruction Coolness
-		Stuff::Vector3D		dVel;
-		Stuff::Vector3D		dRot;
-		Stuff::Vector3D		dAcc;
-		Stuff::Vector3D		dRVel;
-		Stuff::Vector3D		dRacc;
+		glm::vec3		dVel;
+		glm::vec3		dRot;
+		glm::vec3		dAcc;
+		glm::vec3		dRVel;
+		glm::vec3		dRacc;
 		float				dTime;
 		
 	//----------------
@@ -313,7 +313,7 @@ class GroundVehicle : public Mover {
 
 		virtual long handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChunk = false);
 
-		virtual float weaponLocked (long weaponIndex, Stuff::Vector3D targetPosition);
+		virtual float weaponLocked (long weaponIndex, glm::vec3 targetPosition);
 
 		virtual void pilotingCheck (void);
 
@@ -339,7 +339,7 @@ class GroundVehicle : public Mover {
 
 		virtual long calcCV (bool calcMax = false);
 
-		virtual float calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, Stuff::Vector3D* targetPoint = nullptr);
+		virtual float calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, glm::vec3* targetPoint = nullptr);
 
 		virtual float getTotalEffectiveness(void);
 
@@ -361,21 +361,21 @@ class GroundVehicle : public Mover {
 
 		virtual long handleWeaponFire (long weaponIndex,
 									   GameObjectPtr target,
-									   Stuff::Vector3D* targetPoint,
+									   glm::vec3* targetPoint,
 									   bool hit,
 									   float entryAngle,
 									   long numMissiles,
 									   long hitLocation);
 
-		virtual long fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, Stuff::Vector3D* targetPoint, float &damageDone);
+		virtual long fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, glm::vec3* targetPoint, float &damageDone);
 
-		virtual float relFacingTo (Stuff::Vector3D goal, long bodyLocation = -1);
+		virtual float relFacingTo (glm::vec3 goal, long bodyLocation = -1);
 		
-		virtual float relViewFacingTo (Stuff::Vector3D goal) {
+		virtual float relViewFacingTo (glm::vec3 goal) {
 			return(relFacingTo(goal, GROUNDVEHICLE_LOCATION_TURRET));
 		}
 
-		virtual Stuff::Vector3D getPositionFromHS (long weaponType);
+		virtual glm::vec3 getPositionFromHS (long weaponType);
 
 		virtual bool canMove (void) {
 			return(movementEnabled && (dynamics.max.groundVehicle.speed != 0) );

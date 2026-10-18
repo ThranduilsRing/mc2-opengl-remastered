@@ -579,7 +579,7 @@ void BattleMech::mineCheck (void)
 			pilot->clearCurTacOrder();		//Force the pilot to recalc based on new data.
 			
 			// Mine here, deal with it...
-			Stuff::Vector3D explosionPosition;
+			glm::vec3 explosionPosition;
 			explosionPosition = getPosition();
 			ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, explosionPosition, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 			

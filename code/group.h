@@ -162,14 +162,14 @@ class MoverGroup {
 
 		void addToGUI (bool visible = true);
 
-		long calcMoveGoals (Stuff::Vector3D goal, Stuff::Vector3D* goalList);
+		long calcMoveGoals (glm::vec3 goal, glm::vec3* goalList);
 
-		long calcJumpGoals (Stuff::Vector3D goal, Stuff::Vector3D* goalList, GameObjectPtr DFATarget = nullptr);
+		long calcJumpGoals (glm::vec3 goal, glm::vec3* goalList, GameObjectPtr DFATarget = nullptr);
 
 		//----------------
 		// Tactical Orders
 
-		long orderMoveToPoint (bool setTacOrder, long origin, Stuff::Vector3D location, unsigned long params);
+		long orderMoveToPoint (bool setTacOrder, long origin, glm::vec3 location, unsigned long params);
 
 		long orderMoveToObject (bool setTacOrder, long origin, GameObjectPtr target, long fromArea, unsigned long params);
 
@@ -183,7 +183,7 @@ class MoverGroup {
 
 		long orderAttackObject (long origin, GameObjectPtr target, long attackType, long attackMethod, long attackRange, long aimLocation, long fromArea, unsigned long params);
 
-		long orderWithdraw (long origin, Stuff::Vector3D location);
+		long orderWithdraw (long origin, glm::vec3 location);
 
 		long orderEject (long origin);
 
@@ -202,9 +202,9 @@ class MoverGroup {
 		void handleMateFiredWeapon (unsigned long mateWID);
 
 
-		static long calcMoveGoals (Stuff::Vector3D goal, long numMovers, Stuff::Vector3D* goalList);
+		static long calcMoveGoals (glm::vec3 goal, long numMovers, glm::vec3* goalList);
 
-		static long calcJumpGoals (Stuff::Vector3D goal, long numMovers, Stuff::Vector3D* goalList, GameObjectPtr DFATarget);
+		static long calcJumpGoals (glm::vec3 goal, long numMovers, glm::vec3* goalList, GameObjectPtr DFATarget);
 
 		//----------------
 		// Save Load

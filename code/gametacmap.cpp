@@ -134,7 +134,7 @@ void GameTacMap::update()
 		screen.x -= left;
 		screen.y -= top;
 		
-		Stuff::Vector3D world;
+		glm::vec3 world;
 
 		tacMapToWorld( screen, width, height, world );
 		if (MissionInterfaceManager::instance()->getControlGui()->isAddingAirstrike() &&  
@@ -151,7 +151,7 @@ void GameTacMap::update()
 		screen.x -= left;
 		screen.y -= top;
 		
-		Stuff::Vector3D world;
+		glm::vec3 world;
 
 		tacMapToWorld( screen, width, height, world );
 
@@ -303,7 +303,7 @@ void GameTacMap::render()
 
 	unsigned long colors[MAX_MOVERS];
 	unsigned long ringColors[MAX_MOVERS];
-	Stuff::Vector3D positions[MAX_MOVERS];
+	glm::vec3 positions[MAX_MOVERS];
 	unsigned long ranges[MAX_MOVERS];
 	bool		  selected[MAX_MOVERS];
 
@@ -333,7 +333,7 @@ void GameTacMap::render()
 // factored VERBATIM from the legacy render() (slice E) — shared by the legacy
 // draw above and the ImGui overlay path. Arrays are caller-sized MAX_MOVERS.
 int GameTacMap::collectBlips( unsigned long* colors, unsigned long* ringColors,
-							  Stuff::Vector3D* positions, unsigned long* ranges,
+							  glm::vec3* positions, unsigned long* ranges,
 							  bool* selected )
 {
 	int count = 0;
@@ -556,7 +556,7 @@ bool GameTacMap::renderImGui()
 			if ( !o->IsResolved() && o->DisplayMarker() && o->IsActive()
 				 && o->DisplayMarker() != NAV )
 			{
-				Stuff::Vector3D objectivePos;
+				glm::vec3 objectivePos;
 				objectivePos.x = o->MarkerX();
 				objectivePos.y = o->MarkerY();
 				objectivePos.z = 0.f;
@@ -578,7 +578,7 @@ bool GameTacMap::renderImGui()
 	//      same order, unselected-then-selected passes)
 	unsigned long colors[MAX_MOVERS];
 	unsigned long ringColors[MAX_MOVERS];
-	Stuff::Vector3D positions[MAX_MOVERS];
+	glm::vec3 positions[MAX_MOVERS];
 	unsigned long ranges[MAX_MOVERS];
 	bool		  selected[MAX_MOVERS];
 	const int count = collectBlips( colors, ringColors, positions, ranges, selected );
@@ -648,14 +648,14 @@ bool GameTacMap::renderImGui()
 		if ( screen.x > (long)hudW ) screen.x = (long)hudW;
 		if ( screen.y > (long)hudH ) screen.y = (long)hudH;
 
-		Stuff::Vector3D world;
+		glm::vec3 world;
 		tacMapToWorld( screen, (int)hudW, (int)hudH, world );
 
 		if ( leftClick || rightClick )
 		{
 			// witness line (slice discipline, cf. [HUD-TABS v1]): proves the
 			// ImGui hit-test -> tacMapToWorld -> dispatch chain fired
-			const Stuff::Vector3D camBefore = eye ? eye->getPosition() : Stuff::Vector3D( 0.f, 0.f, 0.f );
+			const glm::vec3 camBefore = eye ? eye->getPosition() : glm::vec3( 0.f, 0.f, 0.f );
 			fprintf( stderr, "[HUD-TACMAP v1] %s-click panel=(%ld,%ld) -> world=(%.1f,%.1f) cam_before=(%.1f,%.1f)\n",
 					 leftClick ? "left" : "right", screen.x, screen.y,
 					 world.x, world.y, camBefore.x, camBefore.y );
@@ -686,7 +686,7 @@ bool GameTacMap::renderImGui()
 	return true;
 }
 
-void GameTacMap::worldToTacMap( Stuff::Vector3D& world, gos_VERTEX& tac )
+void GameTacMap::worldToTacMap( glm::vec3& world, gos_VERTEX& tac )
 {
 	TacMap::worldToTacMap( world, left, top, right - left, bottom - top, tac );
 }	
@@ -728,7 +728,7 @@ void GameTacMap::initBuildings( unsigned char* data, int size )
 	}
 }
 
-void GameTacMap::drawSensor( const Stuff::Vector3D& pos, float radius, long color )
+void GameTacMap::drawSensor( const glm::vec3& pos, float radius, long color )
 {
 	if ( color == 0 )
 		return;
@@ -747,7 +747,7 @@ void GameTacMap::drawSensor( const Stuff::Vector3D& pos, float radius, long colo
 		sqare[i].frgb = 0;
 	}
 
-	worldToTacMap( (Stuff::Vector3D&)pos, sqare[0] );
+	worldToTacMap( (glm::vec3&)pos, sqare[0] );
 
 	sqare[1].x = sqare[0].x;
 	sqare[1].y = sqare[0].y + 1;
@@ -776,7 +776,7 @@ void GameTacMap::drawSensor( const Stuff::Vector3D& pos, float radius, long colo
 
 }
 
-void GameTacMap::drawBlip( const Stuff::Vector3D& pos, long color, int type )
+void GameTacMap::drawBlip( const glm::vec3& pos, long color, int type )
 {
 	if ( color == 0 )
 		return;
@@ -803,7 +803,7 @@ void GameTacMap::drawBlip( const Stuff::Vector3D& pos, long color, int type )
 
 	
 
-	worldToTacMap( (Stuff::Vector3D&)pos, triangle[0] );
+	worldToTacMap( (glm::vec3&)pos, triangle[0] );
 	triangle[0].x -= 2.f;
 	triangle[1].x = triangle[0].x;
 	triangle[2].x = triangle[3].x = triangle[0].x + 4.1f;

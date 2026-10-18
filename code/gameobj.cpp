@@ -364,8 +364,8 @@ void DebugWeaponFireChunk (WeaponFireChunkPtr chunk1, WeaponFireChunkPtr chunk2,
 		strcat(ChunkDebugMsg, "\nCHUNK1\n");
 
 		GameObjectPtr target = nullptr;
-		Stuff::Vector3D targetPoint;
-		targetPoint.Zero();
+		glm::vec3 targetPoint;
+		targetPoint = glm::vec3(0.0f);
 		bool isTargetPoint = false;
 		if (chunk1->targetType == WEAPONFIRECHUNK_TARGET_MOVER)
 			target = (GameObjectPtr)MPlayer->moverRoster[chunk1->targetId];
@@ -436,8 +436,8 @@ void DebugWeaponFireChunk (WeaponFireChunkPtr chunk1, WeaponFireChunkPtr chunk2,
 		strcat(ChunkDebugMsg, "\nCHUNK2\n");
 
 		GameObjectPtr target = nullptr;
-		Stuff::Vector3D targetPoint;
-		targetPoint.Zero();
+		glm::vec3 targetPoint;
+		targetPoint = glm::vec3(0.0f);
 		bool isTargetPoint = false;
 		if (chunk2->targetType == WEAPONFIRECHUNK_TARGET_MOVER)
 			target = (GameObjectPtr)MPlayer->moverRoster[chunk2->targetId];
@@ -632,7 +632,7 @@ void WeaponFireChunk::buildCameraDroneTarget (GameObjectPtr target,
 
 //---------------------------------------------------------------------------
 
-void WeaponFireChunk::buildLocationTarget (Stuff::Vector3D location,
+void WeaponFireChunk::buildLocationTarget (glm::vec3 location,
 										   long _weaponIndex,
 										   bool _hit,
 										   long _numMissiles) {
@@ -1520,7 +1520,7 @@ void GameObject::init (bool create) {
 	partId = 0;
 	watchID = 0;
 	typeHandle = 0;
-	position.Zero();
+	position = glm::vec3(0.0f);
 	cellPositionRow = 0;
 	cellPositionCol = 0;
 	flags = OBJECT_FLAG_USEME | OBJECT_FLAG_AWAKE;
@@ -1635,12 +1635,12 @@ long GameObject::kill (void)
 
 //---------------------------------------------------------------------------
 
-float GameObject::relFacingTo (Stuff::Vector3D goal, long bodyLocation) {
+float GameObject::relFacingTo (glm::vec3 goal, long bodyLocation) {
 
-	Stuff::Vector3D facingVec = getRotationVector();
+	glm::vec3 facingVec = getRotationVector();
 
-	Stuff::Vector3D goalVec;
-	goalVec.Subtract(goal, position);
+	glm::vec3 goalVec;
+	goalVec = goal - position;
 
 	float angle = angle_from(facingVec, goalVec);
 
@@ -1655,7 +1655,7 @@ float GameObject::relFacingTo (Stuff::Vector3D goal, long bodyLocation) {
 
 //---------------------------------------------------------------------------
 
-Stuff::Vector3D GameObject::relativePosition (float angle, float distance, unsigned long flags) {
+glm::vec3 GameObject::relativePosition (float angle, float distance, unsigned long flags) {
 
 	//--------------------------------------------------------
 	// Note that the angle should be -180 <= angle <= 180, and
@@ -1730,7 +1730,7 @@ Stuff::Vector3D GameObject::relativePosition (float angle, float distance, unsig
 	float rayLength = 0.0;
 
 	long tileR, tileC, cellR, cellC;
-	Stuff::Vector3D curPoint3d;
+	glm::vec3 curPoint3d;
 	curPoint3d.init(curPoint.x, curPoint.y, 0.0);
 	GameMap->worldToMapPos(curPoint3d, tileR, tileC, cellR, cellC);
 	bool cellClear = GameMap->cellPassable(tileR, tileC, cellR, cellC);
@@ -1769,7 +1769,7 @@ Stuff::Vector3D GameObject::relativePosition (float angle, float distance, unsig
 
 //---------------------------------------------------------------------------
 
-void GameObject::setPosition (const Stuff::Vector3D& newPosition, bool calcPositions) {
+void GameObject::setPosition (const glm::vec3& newPosition, bool calcPositions) {
 
 	position = newPosition;
 
@@ -1807,18 +1807,18 @@ void GameObject::setPosition (const Stuff::Vector3D& newPosition, bool calcPosit
 
 //---------------------------------------------------------------------------
 
-float GameObject::distanceFrom (Stuff::Vector3D goal) {
+float GameObject::distanceFrom (glm::vec3 goal) {
 
-	Stuff::Vector3D result;
+	glm::vec3 result;
 	result.x = position.x - goal.x;
 	result.y = position.y - goal.y;
 	result.z = 0.0;
-	return((result.GetLength() * metersPerWorldUnit));
+	return((glm::length(result) * metersPerWorldUnit));
 }
 
 //---------------------------------------------------------------------------
 
-long GameObject::cellDistanceFrom (Stuff::Vector3D goal) {
+long GameObject::cellDistanceFrom (glm::vec3 goal) {
 
 	int cellRow = 0;
 	int cellCol = 0;
@@ -1865,10 +1865,10 @@ long GameObject::getLineOfSightNodes (long eyeCellRow, long eyeCellCol, long* ce
 
 //---------------------------------------------------------------------------
 
-bool GameObject::lineOfSight (Stuff::Vector3D point) {
+bool GameObject::lineOfSight (glm::vec3 point) {
 
-	Stuff::Vector3D firingPosition = getLOSPosition();
-	Stuff::Vector3D targetPosition = point;
+	glm::vec3 firingPosition = getLOSPosition();
+	glm::vec3 targetPosition = point;
 	
 	bool LOSclear = false;
 	if (land->IsGameSelectTerrainPosition(point))
@@ -1892,9 +1892,9 @@ bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad)
 		return false;
 	}
 
-	Stuff::Vector3D distance;
-	distance.Subtract(target->getPosition(),getPosition());
-	float dist = distance.GetApproximateLength();
+	glm::vec3 distance;
+	distance = target->getPosition() - getPosition();
+	float dist = glm::length(distance);
 
 	//Figure out altitude above minimum terrain altitude and look up in table.
 	float baseElevation = MapData::waterDepth;
@@ -1989,7 +1989,7 @@ bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad)
 			float elev = TerrainRuntime::groundElevation(getLOSPosition());
 			float localStart = getLOSPosition().z - elev;
 
-			Stuff::Vector3D targetPosition = target->getLOSPosition();
+			glm::vec3 targetPosition = target->getLOSPosition();
 		
 			if (Team::lineOfSight(getLOSPosition(), target->getLOSPosition(), getTeamId(), target->getAppearRadius(), startExtRad))
 			{
@@ -2023,7 +2023,7 @@ bool GameObject::onScreen (void) {
 	// is number of windows that object can be seen in.
 	long isVisible = 0;
 	if (eye) {
-		Stuff::Vector3D objPosition = position;
+		glm::vec3 objPosition = position;
 		// [PROJECTZ:BoolAdmission id=gameobj_visibility_admit]
 		PROJECTZ_SITE("gameobj_visibility_admit", "BoolAdmission");
 		// [LOW-CAMERA-OBJECT-CULL-1 / FIX-3] sphere-aware admit pads the near

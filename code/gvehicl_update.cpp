@@ -52,39 +52,39 @@ long GroundVehicle::update (void)
 
 		if (!deadByCrushed)
 		{
-			float speed = dVel.GetLength();
+			float speed = glm::length(dVel);
 			if (speed)
 			{
-				Stuff::Vector3D velDiff = dAcc;
+				glm::vec3 velDiff = dAcc;
 				velDiff *= frameLength;
-				dVel.Add(dVel,velDiff);
-				speed = dVel.GetLength(); 
+				dVel = dVel + velDiff;
+				speed = glm::length(dVel); 
 				if (speed < Stuff::SMALL)
 				{
 					dVel.x = dVel.y = dVel.z = 0.0;
 				}
 				
-				Stuff::Vector3D posDiff = dVel;
+				glm::vec3 posDiff = dVel;
 				posDiff *= frameLength;
-				position.Add(position,posDiff);
+				position = position + posDiff;
 				float elev = TerrainRuntime::groundElevation(position);
 				if (position.z < elev)
 				{
 					position.z = elev;
-					dRacc.Zero();
-					dRVel.Zero();
+					dRacc = glm::vec3(0.0f);
+					dRVel = glm::vec3(0.0f);
 					dTime -= frameLength;
 					if (dTime < 0.0)
 						dVel.x = dVel.y = dVel.z = 0.0;
 				}
 				
-				Stuff::Vector3D rvDiff = dRacc;
+				glm::vec3 rvDiff = dRacc;
 				rvDiff *= frameLength;
-				dRVel.Add(dRVel,rvDiff);
+				dRVel = dRVel + rvDiff;
 				
-				Stuff::Vector3D rotDiff = dRVel;
+				glm::vec3 rotDiff = dRVel;
 				rotDiff *= frameLength;
-				dRot.Add(dRot,rotDiff);
+				dRot = dRot + rotDiff;
 			}
 		}
 		else
@@ -296,8 +296,8 @@ long GroundVehicle::update (void)
 
 	if (isVehiclePilot && (pilot->getCurTacOrder()->code == TACTICAL_ORDER_NONE) )
 	{
-		Stuff::Vector3D location;
-		location.Zero();
+		glm::vec3 location;
+		location = glm::vec3(0.0f);
 
 		pilot->orderMoveToPoint (false, true, ORDER_ORIGIN_PLAYER, location, -1, TACORDER_PARAM_RUN);
 	}
@@ -316,25 +316,25 @@ long GroundVehicle::update (void)
 	// the normal to the tile and the vehicle's J vector.
 	// This angle will be less than 90 if the vehicle is going uphill
 	// and greater than 90 if the vehicle is going downhill.
-	Stuff::Vector3D vel = getRotationVector();
+	glm::vec3 vel = getRotationVector();
 	if (velMag > Stuff::SMALL)
 	{
-		Stuff::Vector3D worldK;
+		glm::vec3 worldK;
 
 		worldK = land->getTerrainNormal(position);
 
 		Rotate(worldK,rotation);
 
-		Stuff::Vector3D pitchK;
+		glm::vec3 pitchK;
 		pitchK = worldK;
 		pitchK.x = 0.0f;
-		pitchK.Normalize(pitchK);
+		pitchK = glm::normalize(pitchK);
 
-		Stuff::Vector3D up;
+		glm::vec3 up;
 		up.x = up.y = 0.0f;
 		up.z = 1.0f;
 
-		float pitchAngle = up * pitchK;
+		float pitchAngle = glm::dot(up, pitchK);
 		pitchAngle = acos(pitchAngle) * RADS_TO_DEGREES;
 		if (pitchK.y < 0.0f)
 			pitchAngle = -pitchAngle;
@@ -358,8 +358,8 @@ long GroundVehicle::update (void)
 	vel *= velMult * worldUnitsPerMeter;
 
 	{
-		Stuff::Vector3D newPosition;
-		newPosition.Add(position, vel);
+		glm::vec3 newPosition;
+		newPosition = position + vel;
 		newPosition.z = TerrainRuntime::groundElevation(newPosition);
 		if ((moveLevel == 1) && (newPosition.z < Terrain::waterElevation))
 			newPosition.z = Terrain::waterElevation;
@@ -372,23 +372,23 @@ long GroundVehicle::update (void)
 
 	setVelocity(vel);
 
-	markDistanceMoved += vel.GetLength();
+	markDistanceMoved += glm::length(vel);
 
-	Stuff::Vector3D newPosition;
-	newPosition.Add(position, vel);
+	glm::vec3 newPosition;
+	newPosition = position + vel;
 	newPosition.z = TerrainRuntime::groundElevation(newPosition);
 	if ((moveLevel == 1) && (newPosition.z < Terrain::waterElevation))
 		newPosition.z = Terrain::waterElevation;
 
 	if (newMoveChunk) {
 		if (!statusChunk.jumpOrder) {
-			Stuff::Vector3D correctPos;
+			glm::vec3 correctPos;
 			land->cellToWorld(moveChunk.stepPos[0][0], moveChunk.stepPos[0][1], correctPos);
 			correctPos.z = 0.0;
-			Stuff::Vector3D curPos = position;
+			glm::vec3 curPos = position;
 			curPos.z = 0.0;
-			curPos.Subtract(curPos, correctPos);
-			float posDelta = curPos.GetLength();
+			curPos = curPos - correctPos;
+			float posDelta = glm::length(curPos);
 			if (posDelta > MPlayer->warpFactor)
 				newPosition = correctPos;
 			if (!GameMap->inBounds(moveChunk.stepPos[0][0], moveChunk.stepPos[0][1]))
@@ -446,9 +446,9 @@ long GroundVehicle::update (void)
 			float dist = 0.0f;
 			if (curTarget) 
 			{
-				Stuff::Vector3D distance;
-				distance.Subtract(curTarget->getPosition(),getPosition());
-				dist = distance.GetApproximateLength();
+				glm::vec3 distance;
+				distance = curTarget->getPosition() - getPosition();
+				dist = glm::length(distance);
 				dist *= metersPerWorldUnit;
 			}
 
@@ -779,8 +779,8 @@ void GroundVehicle::render (void)
 			{
 				if (i != (path->numSteps-1))
 				{
-					Stuff::Vector3D startPos = path->stepList[i].destination;
-					Stuff::Vector3D endPos = path->stepList[i+1].destination;
+					glm::vec3 startPos = path->stepList[i].destination;
+					glm::vec3 endPos = path->stepList[i+1].destination;
 					startPos.z = TerrainRuntime::groundElevation(startPos);
 					endPos.z = TerrainRuntime::groundElevation(endPos);
 					

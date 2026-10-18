@@ -220,15 +220,15 @@ void GameCamera::renderViewUniforms() {
 		// Stuff::Matrix4D stores column-major (entries[c*4+r]).
 		// ViewUniforms wants row-major (GL_FALSE upload convention).
 		// Transpose: row-major[r*4+c] = col-major[c*4+r].
-		auto stuffToRowMajor = [](const Stuff::Matrix4D& m, float out[16]) {
-			const float* col = m.entries;
+		auto stuffToRowMajor = [](const glm::mat4& m, float out[16]) {
+			const float* col = glm::value_ptr(m);
 			for (int r = 0; r < 4; ++r)
 				for (int c = 0; c < 4; ++c)
 					out[r * 4 + c] = col[c * 4 + r];
 		};
 		stuffToRowMajor(eye->worldToClipGL(), vu.worldToClipGL);
 		stuffToRowMajor(eye->worldToViewGL(), vu.worldToViewGL);
-		const Stuff::Vector3D orig = eye->cameraOriginGL();
+		const glm::vec3 orig = eye->cameraOriginGL();
 		vu.cameraWorldPos[0] = orig.x;
 		vu.cameraWorldPos[1] = orig.y;
 		vu.cameraWorldPos[2] = orig.z;
@@ -358,7 +358,7 @@ void GameCamera::renderVanishProbe() {
 // Push the camera position, light direction, flat light, night state and daylight level to the terrain.
 void GameCamera::renderTerrainSceneState() {
 	// Camera position in MC2 world space for TCS distance LOD
-	Stuff::Vector3D camOrig = getCameraOrigin();
+	glm::vec3 camOrig = getCameraOrigin();
 	gos_SetTerrainCameraPos(camOrig.x, camOrig.y, camOrig.z);
 
 	// Light direction in raw MC2 world space (x, y, elevation)
@@ -428,7 +428,7 @@ void GameCamera::renderTacticalArcOverlay() {
 			for (long mi = 0; mi < nMovers; ++mi) {
 				MoverPtr mover = ObjectManager->getMover(mi);
 				if (!mover || !mover->getSelected()) continue;
-				Stuff::Vector3D p = mover->getPosition();
+				glm::vec3 p = mover->getPosition();
 				// Stuff (x=east, y=north, z=elevation) -> debug-renderer
 				// world (x=east, y=up, z=north); matches the
 				// EditorInspector selection crosshair convention.
@@ -747,7 +747,7 @@ void GameCamera::render (void)
 		    ::mc2_cpu_proj_cost::BUCKET_MLR_TOTAL);
 		theClipper->StartDraw(cameraOrigin, cameraToClip, fColor, &fColor, default_state, &z);
 	}
-	MidLevelRenderer::GOSVertex::farClipReciprocal = (1.0f-cameraToClip(2, 2))/cameraToClip(3, 2);
+	MidLevelRenderer::GOSVertex::farClipReciprocal = (1.0f-cameraToClip[2][2])/cameraToClip[2][3];
 
 	if (active && turn > 1)
 	{
@@ -785,11 +785,11 @@ void GameCamera::render (void)
 				// Both matrices column-major; LinearMatrix4D is 12-float affine
 				// and Matrix4D is 16-float full 4x4 — renderHdri only
 				// reads indices 0..10 (upper 3x3 of view) and the full 16 of proj.
-				const Stuff::LinearMatrix4D& view = eye->worldToCameraGL();
-				const Stuff::Matrix4D& proj = eye->cameraToClipGL_const();
+				const glm::mat4& view = eye->worldToCameraGL();
+				const glm::mat4& proj = eye->cameraToClipGL_const();
 				GameAdapters::Sky::renderHdri(
-					reinterpret_cast<const float*>(&view.entries[0]),
-					reinterpret_cast<const float*>(&proj.entries[0])
+					reinterpret_cast<const float*>(&glm::value_ptr(view)[0]),
+					reinterpret_cast<const float*>(&glm::value_ptr(proj)[0])
 				);
 			}
 			// else: black sky baseline (no fallback to theSky per SPEC).
@@ -899,7 +899,7 @@ void GameCamera::render (void)
 				// Camera position in terrain-chunk space for distance fade + wind LOD.
 				// Use orbit target (game world: x=east, y=north) — same frame as instance encode.
 				// getCameraOrigin() returns Stuff/MLR (west,elev,north) — wrong axes for this.
-				Stuff::Vector3D camTgt = getPosition();
+				glm::vec3 camTgt = getPosition();
 				const float vegHalfMap = Terrain::worldUnitsMapSide * 0.5f;
 				const float vegCamCX = camTgt.x - Terrain::mapTopLeft3d.x - vegHalfMap;
 				const float vegCamCY = camTgt.y - Terrain::mapTopLeft3d.y + vegHalfMap;
@@ -926,10 +926,10 @@ void GameCamera::render (void)
 				// used in particle_billboard.vert (GL_x=-Stuff_x, GL_y=Stuff_z, GL_z=Stuff_y)
 				// so the bridge vectors land in the same space as worldPos in the shader.
 				{
-					Stuff::UnitVector3D stuffRight, stuffUp;
-					cameraOrigin.GetLocalRightInWorld(&stuffRight);
-					cameraOrigin.GetLocalUpInWorld(&stuffUp);
-					Stuff::Vector3D camRightGL, camUpGL;
+					glm::vec3 stuffRight, stuffUp;
+					stuffRight = mc2::math::localRightInWorld(cameraOrigin);
+					stuffUp = mc2::math::localUpInWorld(cameraOrigin);
+					glm::vec3 camRightGL, camUpGL;
 					mc2ToRender(camRightGL, stuffRight);
 					mc2ToRender(camUpGL, stuffUp);
 					float camRight[3] = { camRightGL.x, camRightGL.y, camRightGL.z };
@@ -1085,7 +1085,7 @@ long GameCamera::activate (void)
 	
 	if (firstMover)
 	{
-		Stuff::Vector3D newPosition(firstMover->getPosition());
+		glm::vec3 newPosition(firstMover->getPosition());
 		setPosition(newPosition);
 	}
 
@@ -1230,8 +1230,8 @@ long GameCamera::update (void)
 
 	// Shared pin lambda: zero all jitter sources so viewProj is byte-stable.
 	auto hzbPinCamera = [&]() {
-		velocity.Zero();
-		goalVelocity.Zero();
+		velocity = glm::vec3(0.0f);
+		goalVelocity = glm::vec3(0.0f);
 		goalVelTime  = 0.0f;
 		goalPosition = position;
 		goalPosTime  = 0.0f;
@@ -1455,7 +1455,7 @@ long GameCamera::update (void)
 
 	if (theSky)
 	{
-		Stuff::Vector3D pos = getPosition();
+		glm::vec3 pos = getPosition();
 		
    		theSky->setObjectParameters(pos,0.0f,false,0,0);
    		theSky->setMoverParameters(0.0f);
@@ -1490,7 +1490,7 @@ extern "C" int mc2_hzb_dump_camera_view(void)
 		fflush(stderr);
 		return 0;
 	}
-	Stuff::Vector3D pos = eye->getPosition();
+	glm::vec3 pos = eye->getPosition();
 	float rot   = eye->getCameraRotation();
 	float angle = eye->getProjectionAngle();
 	float alt   = eye->getCameraAltitude();
@@ -1549,7 +1549,7 @@ extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen)
 	char path[512];
 	snprintf(path, sizeof(path), "%s/%s_saved_%s.json", dir, stem, stamp);
 
-	Stuff::Vector3D pos = eye->getPosition();
+	glm::vec3 pos = eye->getPosition();
 	float rot   = eye->getCameraRotation();
 	float proj  = eye->getProjectionAngle();
 	float alt   = eye->getCameraAltitude();

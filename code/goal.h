@@ -164,9 +164,9 @@ class GoalManager {
 
 		GoalObjectPtr calcGoal (GameObjectPtr attacker, GameObjectPtr target);
 		
-		GoalObjectPtr calcGoal (GameObjectPtr attacker, Stuff::Vector3D location);
+		GoalObjectPtr calcGoal (GameObjectPtr attacker, glm::vec3 location);
 		
-		GoalObjectPtr calcGoal (Stuff::Vector3D start, Stuff::Vector3D location);
+		GoalObjectPtr calcGoal (glm::vec3 start, glm::vec3 location);
 };
 
 #endif

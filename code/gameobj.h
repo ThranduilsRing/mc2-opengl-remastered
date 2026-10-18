@@ -181,7 +181,7 @@ class WeaponFireChunk {
 									 float _entryAngle,
 									 long _numMissiles);
 
-		void buildLocationTarget (Stuff::Vector3D location,
+		void buildLocationTarget (glm::vec3 location,
 								  long weaponIndex,
 								  bool hit,
 								  long numMissiles);
@@ -279,7 +279,7 @@ struct _GameObjectData
 	uint32_t                    watchID;			
 
 	GameObjectTypeHandle		typeHandle;
-	Stuff::Vector3D				position;			
+	glm::vec3				position;			
 	unsigned short				cellPositionRow;	
 	unsigned short				cellPositionCol;
 	int32_t						d_vertexNum;		
@@ -316,7 +316,7 @@ class GameObject {
 		uint32_t                    watchID;			//Used to reference in the game engine
 
 		GameObjectTypeHandle		typeHandle;			//Who made me?
-		Stuff::Vector3D				position;			//Where am I?
+		glm::vec3				position;			//Where am I?
 		unsigned short				cellPositionRow;	//Cell RC position
 		unsigned short				cellPositionCol;
 		int32_t                     d_vertexNum;		//Physical Vertex in mapData array that I'm lower right from
@@ -526,17 +526,17 @@ class GameObject {
 			return(true);
 		}
 
-		virtual Stuff::Vector3D getPosition (void) {
+		virtual glm::vec3 getPosition (void) {
 			return(position);
 		}
 
-		virtual Stuff::Vector3D getLOSPosition (void) {
+		virtual glm::vec3 getLOSPosition (void) {
 			return(position);
 		}
 
-		virtual Stuff::Vector3D relativePosition (float angle, float distance, unsigned long flags);
+		virtual glm::vec3 relativePosition (float angle, float distance, unsigned long flags);
 		
-		virtual Stuff::Vector3D getPositionFromHS (long weaponType) 
+		virtual glm::vec3 getPositionFromHS (long weaponType) 
 		{
 			//-----------------------------------------
 			// No hot spots with regular game objects.
@@ -544,14 +544,14 @@ class GameObject {
 			return(position);
 		}
 		
-		virtual void setPosition (const Stuff::Vector3D& newPosition, bool calcPositions = true);
+		virtual void setPosition (const glm::vec3& newPosition, bool calcPositions = true);
 		
-		virtual void setTerrainPosition (const Stuff::Vector3D& position, 
+		virtual void setTerrainPosition (const glm::vec3& position, 
 			const Stuff::Vector2DOf<long>& numbers){}
 
-		virtual Stuff::Vector3D getVelocity (void) {
-			Stuff::Vector3D result;
-			result.Zero();
+		virtual glm::vec3 getVelocity (void) {
+			glm::vec3 result;
+			result = glm::vec3(0.0f);
 			return(result);
 		}
 		
@@ -559,7 +559,7 @@ class GameObject {
 			return(screenPos);
 		}
 		
-		virtual void setVelocity (Stuff::Vector3D &newVelocity) {
+		virtual void setVelocity (glm::vec3 &newVelocity) {
 		}
 
 		virtual float getSpeed (void) {
@@ -588,9 +588,9 @@ class GameObject {
 		{
 		}
 		
-		virtual Stuff::Vector3D getRotationVector (void) 
+		virtual glm::vec3 getRotationVector (void) 
 		{
-			Stuff::Vector3D rotationVec;
+			glm::vec3 rotationVec;
 			rotationVec.x = 0.0f;
 			rotationVec.y = -1.0f;
 			rotationVec.z = 0.0f;
@@ -683,9 +683,9 @@ class GameObject {
 			return NO_ERR;
 		}
 		
-		virtual float distanceFrom (Stuff::Vector3D goal);
+		virtual float distanceFrom (glm::vec3 goal);
 
-		virtual long cellDistanceFrom (Stuff::Vector3D goal);
+		virtual long cellDistanceFrom (glm::vec3 goal);
 
 		virtual long cellDistanceFrom (GameObjectPtr obj);
 
@@ -694,13 +694,13 @@ class GameObject {
 
 		virtual long getLineOfSightNodes (long eyeCellRow, long eyeCellCol, long* cells);
 
-		virtual bool lineOfSight (Stuff::Vector3D point);
+		virtual bool lineOfSight (glm::vec3 point);
 
 		virtual bool lineOfSight (GameObjectPtr target, float startExtRad = 0.0f);
 	
-		virtual float relFacingTo (Stuff::Vector3D goal, long bodyLocation = -1);
+		virtual float relFacingTo (glm::vec3 goal, long bodyLocation = -1);
 
-		virtual float relViewFacingTo (Stuff::Vector3D goal) 
+		virtual float relViewFacingTo (glm::vec3 goal) 
 		{
 			return(GameObject::relFacingTo(goal));
 		}
