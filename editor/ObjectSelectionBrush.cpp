@@ -81,7 +81,7 @@ Action* ObjectSelectionBrush::endPaint()
 	return pRetAction;
 }
 
-bool ObjectSelectionBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
+bool ObjectSelectionBrush::paint( glm::vec3& worldPos, int screenX, int screenY )
 {
 	if ( !land )
 		return false;  // no terrain -> land deref below (sibling StampBrush.cpp:66)

@@ -56,7 +56,7 @@ Action* Eraser::endPaint()
 }
 
 constexpr int DEFAULT_TERRAIN = 2;
-bool Eraser::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
+bool Eraser::paint( glm::vec3& worldPos, int screenX, int screenY )
 {
 	if ( !land )
 		return false;  // no terrain -> worldToTileCell/getOverlay deref NULL (sibling StampBrush.cpp:66)
@@ -132,7 +132,7 @@ bool Eraser::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
 	return false;
 
 }
-bool Eraser::canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags )
+bool Eraser::canPaint( glm::vec3& worldPos, int screenX, int screenY, int flags )
 {
 	if ( EditorPickObjectAtScreen( screenX, screenY ) )
 		return true;

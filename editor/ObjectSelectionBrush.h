@@ -26,8 +26,8 @@ class ObjectSelectionBrush: public Brush
 		~ObjectSelectionBrush() override;
 		bool beginPaint() override;
 		Action* endPaint() override;
-		bool paint( Stuff::Vector3D& worldPos, int screenX, int screenY ) override;
-		bool canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags ) override { return true; } 
+		bool paint( glm::vec3& worldPos, int screenX, int screenY ) override;
+		bool canPaint( glm::vec3& worldPos, int screenX, int screenY, int flags ) override { return true; } 
 		void render( int screenX, int screenY ) override;
 		EditorObjectPointerList selectedObjectPointerList();
 
@@ -38,7 +38,7 @@ class ObjectSelectionBrush: public Brush
 		ObjectSelectionBrush& operator=( const ObjectSelectionBrush& electionBrush );
 
 		Stuff::Vector4D		lastPos;
-		Stuff::Vector3D		lastWorldPos;
+		glm::vec3		lastWorldPos;
 
 		bool bPainting;
 		bool bFirstClick;

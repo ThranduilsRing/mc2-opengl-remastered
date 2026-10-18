@@ -38,7 +38,7 @@ Action* MineBrush::endPaint()
 	return pRetAction;
 }
 
-bool MineBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY  )
+bool MineBrush::paint( glm::vec3& worldPos, int screenX, int screenY  )
 {
 	if (!GameMap)
 		return false;  // MOVE data not built yet; can't place mines without GameMap
@@ -76,7 +76,7 @@ bool MineBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY  )
 	return true;
 }
 
-bool MineBrush::canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags )
+bool MineBrush::canPaint( glm::vec3& worldPos, int screenX, int screenY, int flags )
 {
 	return true;
 }

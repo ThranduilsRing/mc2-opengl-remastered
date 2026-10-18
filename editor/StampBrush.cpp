@@ -22,7 +22,7 @@ extern Terrain*  land;
 //-------------------------------------------------------------------------------------------------
 // Modern GL forward projection (projectModernClipGL + viewport remap). Legacy
 // projectZ diverges/rejects when zoomed in (X-collapse). False = behind near plane.
-static bool projectPtGL_brush( Camera* eye, const Stuff::Vector3D& wp, float& sx, float& sy )
+static bool projectPtGL_brush( Camera* eye, const glm::vec3& wp, float& sx, float& sy )
 {
 	ModernClipResult r = eye->projectModernClipGL( wp );
 	if ( r.clip.w <= 1e-4f ) return false;
@@ -61,7 +61,7 @@ static inline float stampFalloff( float t )
 	return 1.0f - t * t * ( 3.0f - 2.0f * t );
 }
 
-bool StampBrush::paint( Stuff::Vector3D& worldPos, int /*screenX*/, int /*screenY*/ )
+bool StampBrush::paint( glm::vec3& worldPos, int /*screenX*/, int /*screenY*/ )
 {
 	if ( !land || !m_pAction || m_applied )
 		return false;   // one-shot per click-stroke
@@ -151,7 +151,7 @@ void StampBrush::render( int screenX, int screenY )
 	if ( !eye || !land )
 		return;
 
-	Stuff::Vector3D center;
+	glm::vec3 center;
 	Stuff::Vector2DOf<long> sp;
 	sp.x = screenX; sp.y = screenY;
 	eye->inverseProject( sp, center );
@@ -166,7 +166,7 @@ void StampBrush::render( int screenX, int screenY )
 	for ( int k = 0; k <= N; ++k )
 	{
 		const float ang = (float)k / (float)N * 6.2831853f;
-		Stuff::Vector3D wp = center;
+		glm::vec3 wp = center;
 		wp.x += cosf( ang ) * m_radius;
 		wp.y += sinf( ang ) * m_radius;
 		wp.z = land->getTerrainElevation( wp );

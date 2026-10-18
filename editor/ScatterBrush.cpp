@@ -26,7 +26,7 @@ extern Terrain*  land;
 //-------------------------------------------------------------------------------------------------
 // Modern GL forward projection (projectModernClipGL + viewport remap). Legacy
 // projectZ diverges/rejects when zoomed in (X-collapse). False = behind near plane.
-static bool projectPtGL_brush( Camera* eye, const Stuff::Vector3D& wp, float& sx, float& sy )
+static bool projectPtGL_brush( Camera* eye, const glm::vec3& wp, float& sx, float& sy )
 {
 	ModernClipResult r = eye->projectModernClipGL( wp );
 	if ( r.clip.w <= 1e-4f ) return false;
@@ -81,7 +81,7 @@ Action* ScatterBrush::endPaint()
 	return pAct;
 }
 
-bool ScatterBrush::paint( Stuff::Vector3D& worldPos, int /*screenX*/, int /*screenY*/ )
+bool ScatterBrush::paint( glm::vec3& worldPos, int /*screenX*/, int /*screenY*/ )
 {
 	if ( !land )
 		return false;
@@ -118,7 +118,7 @@ bool ScatterBrush::paint( Stuff::Vector3D& worldPos, int /*screenX*/, int /*scre
 		// Uniform random point in the brush disc (sqrt for area-uniform).
 		const float ang = frand01( m_rng ) * 6.2831853f;
 		const float rr  = sqrtf( frand01( m_rng ) ) * s_radius;
-		Stuff::Vector3D p = worldPos;
+		glm::vec3 p = worldPos;
 		p.x += cosf( ang ) * rr;
 		p.y += sinf( ang ) * rr;
 		p.z = land->getTerrainElevation( p );
@@ -127,7 +127,7 @@ bool ScatterBrush::paint( Stuff::Vector3D& worldPos, int /*screenX*/, int /*scre
 		// one vertex spacing in either axis.
 		if ( s_maxSlopeRise > 0.0f && wupv > 0.0f )
 		{
-			Stuff::Vector3D px = p, py = p;
+			glm::vec3 px = p, py = p;
 			px.x += wupv; py.y += wupv;
 			const float dzx = fabsf( land->getTerrainElevation( px ) - p.z );
 			const float dzy = fabsf( land->getTerrainElevation( py ) - p.z );
@@ -172,7 +172,7 @@ void ScatterBrush::render( int screenX, int screenY )
 	if ( !eye || !land )
 		return;
 
-	Stuff::Vector3D center;
+	glm::vec3 center;
 	Stuff::Vector2DOf<long> sp;
 	sp.x = screenX; sp.y = screenY;
 	eye->inverseProject( sp, center );
@@ -187,7 +187,7 @@ void ScatterBrush::render( int screenX, int screenY )
 	for ( int k = 0; k <= N; ++k )
 	{
 		const float ang = (float)k / (float)N * 6.2831853f;
-		Stuff::Vector3D wp = center;
+		glm::vec3 wp = center;
 		wp.x += cosf( ang ) * s_radius;
 		wp.y += sinf( ang ) * s_radius;
 		wp.z = land->getTerrainElevation( wp );

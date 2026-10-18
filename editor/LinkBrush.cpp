@@ -20,7 +20,7 @@ extern EditorObject* EditorPickObjectAtScreen(int screenX, int screenY);
 //-------------------------------------------------------------------------------------------------
 // Modern GL forward projection (projectModernClipGL + viewport remap). Legacy
 // projectZ diverges/rejects when zoomed in (X-collapse). False = behind near plane.
-static bool projectPtGL_link( Camera* eye, const Stuff::Vector3D& wp, float& sx, float& sy )
+static bool projectPtGL_link( Camera* eye, const glm::vec3& wp, float& sx, float& sy )
 {
 	if ( !eye ) return false;
 	ModernClipResult r = eye->projectModernClipGL( wp );
@@ -66,7 +66,7 @@ Action* LinkBrush::endPaint()
 	return nullptr;
 }
 
-bool LinkBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
+bool LinkBrush::paint( glm::vec3& worldPos, int screenX, int screenY )
 {
 	if ( !bLink )
 		return unPaint( worldPos, screenX, screenY );
@@ -145,7 +145,7 @@ bool LinkBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
 }
 
 
-bool LinkBrush::canPaint( Stuff::Vector3D& pos, int x, int y, int flags ) 
+bool LinkBrush::canPaint( glm::vec3& pos, int x, int y, int flags ) 
 { 
 	if ( !bLink )
 		return canUnPaint( pos, x, y, flags );
@@ -170,7 +170,7 @@ bool LinkBrush::canPaint( Stuff::Vector3D& pos, int x, int y, int flags )
 	return false;
 }
 
-bool LinkBrush::canUnPaint( Stuff::Vector3D& pos, int x, int y, int flags )
+bool LinkBrush::canUnPaint( glm::vec3& pos, int x, int y, int flags )
 { 
 
 	const EditorObject* pBuilding = EditorPickObjectAtScreen( x, y );
@@ -193,7 +193,7 @@ void LinkBrush::LinkAction::AddToListOnce( const LinkBrush::LinkInfo& Info )
 {
 	for ( const auto& changed : changedLinks )
 	{
-		if ( changed.m_LinkCopy.GetParentPosition() == Info.m_LinkCopy.GetParentPosition() )
+		if ( mc2::math::closeEnough(changed.m_LinkCopy.GetParentPosition(), Info.m_LinkCopy.GetParentPosition()) )
 		{
 			return;  // assume if parents are in the same place, we have the same link
 		}
@@ -215,7 +215,7 @@ bool LinkBrush::LinkAction::undo( )
 		{
 			(*iter).type = LinkInfo::REMOVE;
 
-			Stuff::Vector3D pos = (*iter).m_LinkCopy.GetParentPosition();
+			glm::vec3 pos = (*iter).m_LinkCopy.GetParentPosition();
 			
 			const EditorObject* pBuilding = EditorObjectMgr::instance()->getObjectAtLocation( pos.x, pos.y );
 			gosASSERT( pBuilding );
@@ -240,10 +240,10 @@ bool LinkBrush::LinkAction::undo( )
 
 			// make sure each of the buildings in the link has the right alignment
 			int LinkCount = (*iter).m_LinkCopy.GetLinkCount();
-			Stuff::Vector3D* pPoints = new Stuff::Vector3D[LinkCount];
+			glm::vec3* pPoints = new glm::vec3[LinkCount];
 			(*iter).m_LinkCopy.GetChildrenPositions( pPoints, LinkCount );
 
-			Stuff::Vector3D pos = (*iter).m_LinkCopy.GetParentPosition();
+			glm::vec3 pos = (*iter).m_LinkCopy.GetParentPosition();
 
 			const EditorObject* pBuilding = EditorObjectMgr::instance()->getObjectAtLocation( pos.x, pos.y );
 			if ( !pBuilding )
@@ -263,7 +263,7 @@ bool LinkBrush::LinkAction::undo( )
 		}
 		else if ( (*iter).type == LinkInfo::EDIT )
 		{
-			Stuff::Vector3D pos = (*iter).m_LinkCopy.GetParentPosition();
+			glm::vec3 pos = (*iter).m_LinkCopy.GetParentPosition();
 			const EditorObject* pBuilding = EditorObjectMgr::instance()->getObjectAtLocation( pos.x, pos.y );
 			if ( pBuilding )
 			{
@@ -291,7 +291,7 @@ bool LinkBrush::LinkAction::undo( )
 
 }
 
-bool LinkBrush::unPaint( Stuff::Vector3D& pos, int XPos, int yPos )
+bool LinkBrush::unPaint( glm::vec3& pos, int XPos, int yPos )
 {
  
 	const EditorObject* pBuilding = EditorPickObjectAtScreen( XPos, yPos );
@@ -347,7 +347,7 @@ void LinkBrush::render( int screenX, int screenY )
 
 	if ( parent )
 	{
-		Stuff::Vector3D parentPos = parent->getPosition();
+		glm::vec3 parentPos = parent->getPosition();
 		Stuff::Vector4D curScreen;
 		curScreen.x = screenX;
 		curScreen.y = screenY;

@@ -677,7 +677,7 @@ void ObjectiveDlg::OnObjectiveLocateConditionButton()
 		// must be non-null (getPosition derefs appearance()->position unguarded).
 		if (pUnit && ((EditorObject *)pUnit)->appearance()) {
 			pLocObj = (EditorObject *)pUnit;
-			const Stuff::Vector3D &pos = pLocObj->getPosition();
+			const glm::vec3 &pos = pLocObj->getPosition();
 			locX = pos.x;
 			locY = pos.y;
 		}
@@ -689,7 +689,7 @@ void ObjectiveDlg::OnObjectiveLocateConditionButton()
 		EditorObject *pBld = pS->BuildingPtr();   // may be null (stale/deleted)
 		if (pBld && pBld->appearance()) {
 			pLocObj = pBld;
-			const Stuff::Vector3D &pos = pLocObj->getPosition();
+			const glm::vec3 &pos = pLocObj->getPosition();
 			locX = pos.x;
 			locY = pos.y;
 		}

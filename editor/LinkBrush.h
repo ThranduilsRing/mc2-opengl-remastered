@@ -38,18 +38,18 @@ class LinkBrush: public Brush
 	virtual ~LinkBrush();
 	virtual bool beginPaint();
 	virtual Action* endPaint();
-	virtual bool paint( Stuff::Vector3D& worldPos, int screenX, int screenY  );
-	virtual bool canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags );
+	virtual bool paint( glm::vec3& worldPos, int screenX, int screenY  );
+	virtual bool canPaint( glm::vec3& worldPos, int screenX, int screenY, int flags );
 	virtual bool canPaintSelection( ){ return false; }
 	virtual void render( int screenX, int screenY );
 
 	const EditorObject*		parent;
-	Stuff::Vector3D			parentPos;
+	glm::vec3			parentPos;
 	bool					bLink;
 
 
-	bool unPaint( Stuff::Vector3D& worldPos, int screenX, int screenY  );
-	bool canUnPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags );
+	bool unPaint( glm::vec3& worldPos, int screenX, int screenY  );
+	bool canUnPaint( glm::vec3& worldPos, int screenX, int screenY, int flags );
 
 	struct LinkInfo
 	{
