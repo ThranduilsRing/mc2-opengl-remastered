@@ -28,6 +28,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
     // GL_REPEAT semantics work for tiling textures.
     layerForType.assign(typeCount, -1);
     for (auto& a : albedoArrays_) a = {};
+    albedoKey_ = {};
     // 2026-05-11 per-packet rework: layerForPacket[globalPacketIdx] gives the
     // group-relative texture-array layer for that packet. The previous
     // per-type layerForType is kept for backward-compat but now records the
@@ -381,7 +382,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                     MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed "
                                  "reason=malformed_type type=%u pkt=%u group=%s\n",
                                  typeID, pIdx, group == 0u ? "off" : "on");
-                    coalesceRollbackTexBuild(newlyPinnedThisBuild);
+                    coalesceRollbackTexBuild(newlyPinnedThisBuild); albedoKey_ = {};
                     s_coalesceLayoutReady = false;
                     s_coalesceEnabled     = false;
                     s_coalesceArmed       = false;
@@ -492,7 +493,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                              "group=off expected=%dx%d got=%dx%d (forced)\n",
                              uniques[0].w, uniques[0].h,
                              uniques[0].w + 1, uniques[0].h + 1);
-                coalesceRollbackTexBuild(newlyPinnedThisBuild);
+                coalesceRollbackTexBuild(newlyPinnedThisBuild); albedoKey_ = {};
                 s_coalesceLayoutReady = false;
                 s_coalesceEnabled     = false;
                 s_coalesceArmed       = false;
@@ -626,7 +627,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=alloc_failed "
                          "(group=%s maxDims=%dx%d after skip-no-dims pass)\n",
                          group == 0u ? "off" : "on", maxW, maxH);
-            coalesceRollbackTexBuild(newlyPinnedThisBuild);
+            coalesceRollbackTexBuild(newlyPinnedThisBuild); albedoKey_ = {};
             s_coalesceLayoutReady = false;
             s_coalesceEnabled     = false;
             s_coalesceArmed       = false;
@@ -852,6 +853,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         if (!ktxMipLayers.empty())
             mc2::fmt::print_err("[KTX2_MIP] summary: {:d} KTX layers, {:d} pre-baked mips used\n", mc2::fmt::as_size(ktxMipLayers.size()), mc2::fmt::as_i32(bakedLevels));
 
+        { static uint32_t s_albedoKeySerial = 0; albedoKey_[group] = ++s_albedoKeySerial; }
         // TEX-CLASS: asset-pool -- static-prop material 2D_ARRAY (content)
         glGenTextures(1, &outArray);
         glBindTexture(GL_TEXTURE_2D_ARRAY, outArray);

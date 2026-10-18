@@ -186,7 +186,10 @@ private:
     // The CPU copy of the alpha-OFF (0) and alpha-ON (1) albedo arrays of the RGBA8 group path, per map; empty when a group has
     // no array or its array came from the BC7 path. The Vulkan prop island copies it instead of reading the GL arrays back.
     std::array<mc2tex::TextureArrayCpu, 2> albedoArrays_;
+    // Per group: 0 until the group array of this map is built, then a serial that is new for every build (the change key of the island's copy).
+    std::array<uint32_t, 2> albedoKey_{};
 public:
+    uint32_t albedoKey(uint32_t group) const { return albedoKey_[group & 1u]; }
     const mc2tex::TextureArrayCpu& albedoArray(uint32_t group) const { return albedoArrays_[group & 1u]; }
     // True when GL alpha-tests packet `packet` of the shared geometry this frame: its material's ALPHA_TEST bit or its texture's live alpha
     // flag (set after load for some textures, so it can differ from the packet's group).

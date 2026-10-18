@@ -142,11 +142,10 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->dynShadowsEnabled = 0;
         out->dynamicShadowSize = 0;
         std::memset(out->dynamicLightSpaceMatrix, 0, sizeof(out->dynamicLightSpaceMatrix));
-        if (pp && pp->shadowsEnabled_ && pp->getDynamicShadowFBO()
+        if (pp && pp->shadowsEnabled_ && pp->dynShadowBuilt()
             && !mc2ShadowCsmEnabled()) {
-            const GLuint dTex = pp->getDynamicShadowTextureRaw();
             const int    dSize = pp->getDynamicShadowMapSize();
-            if (dTex != 0 && dSize > 0) {
+            if (dSize > 0) {
                 out->dynShadowsEnabled = 1;
                 out->dynamicShadowSize = dSize;
                 std::memcpy(out->dynamicLightSpaceMatrix, pp->getDynamicLightSpaceMatrix(),
@@ -184,11 +183,10 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         if (!out->dynShadowsEnabled && pp && pp->shadowsEnabled_
             && mc2ShadowCsmEnabled()
             && mc2::gate::get<"MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL">()) {
-            const GLuint fTex  = pp->getDynamicFullMapTexture();
             const int    fSize = pp->getDynamicFullMapSize();
             const int    ccount = pp->getDynamicShadowCascadeCount();
             const float* mats  = pp->getDynamicCascadeMatrices();
-            if (fTex != 0 && fSize > 0 && ccount > 0 && mats) {
+            if (pp->csmBuilt() && fSize > 0 && ccount > 0 && mats) {
                 out->dynShadowsEnabled = 1;
                 out->dynamicShadowSize = fSize;
                 // Full-map cascade = the LAST cascade; its matrix is row (ccount-1).
@@ -227,12 +225,10 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->csmFullMapSize = 0;
         out->csmFullMapTexelWorld = 0.0f;
         if (pp && pp->shadowsEnabled_ && mc2ShadowCsmEnabled()) {
-            const GLuint arrTex  = pp->getDynamicShadowArrayTexture();
-            const GLuint fmTex   = pp->getDynamicFullMapTexture();
             const int    ccount2 = pp->getDynamicShadowCascadeCount();
             const float* mats2   = pp->getDynamicCascadeMatrices();
             const float* texelW  = pp->getDynamicCascadeTexelWorld();
-            if (arrTex != 0 && fmTex != 0 && ccount2 > 0 && ccount2 <= 3 && mats2 && texelW) {
+            if (pp->csmBuilt() && ccount2 > 0 && ccount2 <= 3 && mats2 && texelW) {
                 out->csmEnabled = 1;
                 out->csmArraySize  = pp->getDynamicShadowMapSize();
                 out->csmCount      = ccount2;

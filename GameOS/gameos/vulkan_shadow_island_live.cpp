@@ -1108,7 +1108,7 @@ static void refresh_alpha_casters(ShadowIsland* s) {
     }
     if (!s->alphaTableBuilt) {
         Mc2ColorPropMaterialFeed mf{};
-        if (!mc2_color_prop_island_get_material_feed(&mf) || mf.bucketed || mf.glTexArrayOn == 0 || !mf.packetAlbedoLayer) return;
+        if (!mc2_color_prop_island_get_material_feed(&mf) || mf.bucketed || mf.arrayKeyOn == 0 || !mf.packetAlbedoLayer) return;
         s->packetAlpha.assign(s->packets.size(), ShadowIsland::PacketAlpha{});
         uint32_t alphaPackets = 0;
         for (uint32_t t = 0; t < mf.typeCount && t < s->typeRuns.size(); ++t) {
