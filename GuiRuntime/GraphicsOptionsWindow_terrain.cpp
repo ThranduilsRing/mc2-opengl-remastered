@@ -338,7 +338,7 @@ void drawTerrainTuningSection() {
     }
 
     // ── Normals-from-Height ──
-    // Consolidated home for the height-texture / resample / strength controls so all
+    // Home for the height-texture / resample / strength controls so all
     // terrain tuning is in one window.
     ImGui::SeparatorText("Normals-from-Height");
 
@@ -410,7 +410,7 @@ void drawTerrainTuningSection() {
     }
 
     // ── Material color classifier ──────────────────────────────────────────────
-    // TERRAIN-CLASSIFY-TUNING-1: tune the HSV thresholds that map colormap pixels
+    // Tune the HSV thresholds that map colormap pixels
     // to rock / grass / dirt. Saved to visual_tuning.json via "Set as Mission Defaults".
     // Debug Mode 4 = Material Weights (R=rock  G=grass  B=dirt) to visualise effect.
     ImGui::SeparatorText("Material Color Classifier");
@@ -481,12 +481,12 @@ void drawTerrainTuningSection() {
 }
 
 
-// Static-prop visual tuning. Previously lived in the Object Inspector PBR
-// block (selection-driven); consolidated here so the controls are reachable
-// without picking a prop. Env gates remain authoritative — sliders only
+// Static-prop visual tuning. The controls live here so they are reachable
+// without picking a prop (the Object Inspector PBR block is selection-driven).
+// Env gates remain authoritative — sliders only
 // modulate strength when the matching env gate is ON.
 void drawStaticPropTuningSection() {
-    // IBL SH ambient (V-IBL-STATIC-1; default-ON env). Slider modulates
+    // IBL SH ambient (default-ON env). Slider modulates
     // strength when the StaticPropIblSh option is on (default on).
     ImGui::SeparatorText("IBL SH ambient");
     {
@@ -511,7 +511,7 @@ void drawStaticPropTuningSection() {
         ImGui::EndDisabled();
     }
 
-    // PBR V1 specular (V-MATERIAL-PBR-3; options.cfg StaticPropPbr, default OFF). When the option is ON,
+    // PBR V1 specular (options.cfg StaticPropPbr, default OFF). When the option is ON,
     // slider controls strength. Default value 0.5 (dialled back from 1.0).
     ImGui::SeparatorText("PBR V1 specular");
     {
@@ -535,10 +535,9 @@ void drawStaticPropTuningSection() {
         ImGui::EndDisabled();
     }
 
-    // PBR roughness override (V-MATERIAL-PBR-3-TUNE-UI). Forces roughness
+    // PBR roughness override. Forces roughness
     // to a fixed value across all materials when enabled. Default
-    // enabled=true / value=0.95 (was disabled/0.6) — the 0.6 literal made
-    // legacy assets too glossy.
+    // enabled=true / value=0.95; a 0.6 value makes legacy assets too glossy.
     ImGui::SeparatorText("PBR roughness override");
     {
         bool pbrOn = mc2::options::current().staticPropPbr;
@@ -574,10 +573,10 @@ void drawStaticPropTuningSection() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WATER-TUNING-UI-1 / WATER-DEBUG-VIEWS-1: MDI water FS debug view + material
+// MDI water FS debug view + material
 // tuning. ONLY the GPU-driven/MDI water path (gos_terrain_water_mdi.frag)
 // consumes these — arm it with MC2_GPU_DRIVEN_WATER=1; the legacy sin-wave FS
-// ignores them. Defaults match the former shader consts EXACTLY; Reset buttons
+// ignores them. Defaults match the shader consts EXACTLY; Reset buttons
 // restore them (so the default render stays byte-identical).
 void drawWaterSection() {
     ImGui::SeparatorText("Debug View (MDI path)");
@@ -690,7 +689,7 @@ void drawWaterSection() {
 
     ImGui::SeparatorText("Terrain Reflection RT (gated; blends over sky)");
     {
-        // Env is the HARD gate (also drives the C1 RT fill pass); slider disabled
+        // Env is the HARD gate (also drives the RT fill pass); slider disabled
         // when OFF so it cannot bypass it. Needs BOTH this + Sky Reflection ON to
         // contribute (the RT modulates the reflected COLOR; Sky Reflection drives
         // the reflection mix factor). ~0% coverage at the steep camera -> falls

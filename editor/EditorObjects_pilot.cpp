@@ -250,11 +250,10 @@ void Pilot::save( FitIniFile* file, int bGoodGuy )
 	// blank a Profile that existed on disk. When initPilots() loads zero
 	// pilots (pilots.csv zlib-compressed inside the FST / warriors/*.fit
 	// missing), every Pilot::load falls back to s_GoodPilots[0] whose
-	// fileName is NULL and the old code wrote "" for EVERY warrior (the
-	// Bubba x3 quickstart data loss). rawProfile carries the string read
-	// from the mission .fit and wins; the catalog match covers freshly
-	// placed units; "" remains the crash-safe last resort (42d4aa9e), but
-	// now with a loud warning.
+	// fileName is NULL and an empty string would be written for EVERY
+	// warrior. rawProfile carries the string read from the mission .fit
+	// and wins; the catalog match covers freshly placed units; "" remains
+	// the crash-safe last resort, but with a loud warning.
 	bool dataLoss = false;
 	const char* profileName =
 		PilotProfileForSave( rawProfile, info ? info->fileName : nullptr, &dataLoss );
@@ -361,8 +360,8 @@ void Pilot::initPilots()
 			if ( bytesRead < 2 )
 				break;
 
-			// Guard: if the FST reader ever leaks compressed bytes (historic
-			// 78 9c deflate leak), a non-printable byte in the name means the
+			// Guard: if the FST reader ever leaks compressed bytes (78 9c
+			// deflate leak), a non-printable byte in the name means the
 			// data is corrupt/binary — stop loading.
 			// File::readLine counts its trailing NUL; the terminator is not part
 			// of the name and must be excluded from printable-character validation.
@@ -461,7 +460,7 @@ void Pilot::initPilots()
 
 	}
 
-	// startup witness. good must be > 0 for the
+	// Log startup counts. good must be > 0 for the
 	// pilot picker / Pilot::load catalog matching to work at all.
 	{
 		FILE* f = fopen( "editor-startup.log", "a" );
