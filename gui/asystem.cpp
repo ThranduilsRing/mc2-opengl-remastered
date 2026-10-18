@@ -22,14 +22,14 @@ extern bool __stdcall gos_ComputeUiCanvasBox(int w, int h, int* ox, int* oy, int
 static bool  s_guiBridgeActive = false;
 static float s_guiBridgeSx = 1.0f;
 static float s_guiBridgeSy = 1.0f;
-static float s_guiBridgeOx = 0.0f;   // UI-LAYER-CONTRACT-2: canvas pad origin
+static float s_guiBridgeOx = 0.0f;   // canvas pad origin
 static float s_guiBridgeOy = 0.0f;
 
 static bool  s_textBridgeActive = false;
 static float s_textBridgeSx = 1.0f;
 static float s_textBridgeSy = 1.0f;
 static float s_textBridgeFontScale = 1.0f;
-static float s_textBridgeOx = 0.0f;   // UI-ASPECT-ANCHOR-1: canvas pad origin
+static float s_textBridgeOx = 0.0f;   // canvas pad origin
 static float s_textBridgeOy = 0.0f;
 
 void aObject::beginGuiBridge(float scaleX, float scaleY)
@@ -37,7 +37,7 @@ void aObject::beginGuiBridge(float scaleX, float scaleY)
 	beginGuiBridge(scaleX, scaleY, 0.0f, 0.0f);
 }
 
-// DEFS-METER-BRIDGE-1: drawRect/drawEmptyRect (mclib/utilities.cpp) are raw gos
+// drawRect/drawEmptyRect (mclib/utilities.cpp) are raw gos
 // quads used by aRect outlines and the attribute/weight meters; buried under an
 // ImGui defs page. While the GUI bridge is active, reroute them to the ImGui
 // layer at the bridge transform. Installed as a hook so mclib stays unlinked
@@ -65,7 +65,7 @@ void aObject::beginGuiBridge(float scaleX, float scaleY, float offX, float offY)
 	g_uiBridgeRectHook = uiBridgeRectDraw;
 }
 
-// UI-LAYER-CONTRACT-2: canvas-aware bridge begin. Display size + the 16:9
+// Canvas-aware bridge begin. Display size + the 16:9
 // UI canvas box give the exact transform the defs pages use (UiDefs
 // PageScale), so bridged legacy widgets stay aligned with page content at
 // every aspect. Falls back to full-stretch when no canvas is active.
@@ -177,7 +177,7 @@ static void renderObjectViaGuiBridge(const gos_VERTEX* location, unsigned long t
 	const unsigned int argb = location[0].argb;
 	if ((argb & 0xff000000) == 0)
 	{
-		// MECH-ICON-BLANK-1 diagnostic: alpha-0 skips are invisible by design,
+		// Diagnostic: alpha-0 skips are invisible by design,
 		// but a PERMANENTLY alpha-0 mech icon is the blank-icon bug signature.
 		if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && textureHandle && mcTextureManager)
 		{
@@ -206,7 +206,7 @@ static void renderObjectViaGuiBridge(const gos_VERTEX* location, unsigned long t
 			glTexture = gos_GetGLTextureName(gosID);
 	}
 
-	// MECH-ICON-BLANK-1 diagnostic: trace every bridge draw of the mech-icon
+	// Diagnostic: trace every bridge draw of the mech-icon
 	// atlas (texture handle 59 observed via [MECHICON] loadTexture log lines —
 	// name lookup keeps this robust across runs).
 	if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && textureHandle && mcTextureManager)
