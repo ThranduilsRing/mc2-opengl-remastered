@@ -188,46 +188,6 @@ bool
 //#############################################################################
 //
 bool
-	Plane::ContainsSomeOf(
-		const ExtentBox &box,
-		Scalar thickness
-	) const
-{
-	Check_Object(this);
-	Check_Object(&box);
-
-	Point3D test;
-	test.x = (normal.x > 0.0f) ? box.minX : box.maxX;
-	test.y = (normal.y > 0.0f) ? box.minY : box.maxY;
-	test.z = (normal.z > 0.0f) ? box.minZ : box.maxZ;
-	return normal * test < offset - thickness;
-}
-
-//
-//#############################################################################
-//#############################################################################
-//
-bool
-	Plane::ContainsAllOf(
-		const ExtentBox &box,
-		Scalar thickness
-	) const
-{
-	Check_Object(this);
-	Check_Object(&box);
-
-	Point3D test;
-	test.x = (normal.x < 0.0f) ? box.minX : box.maxX;
-	test.y = (normal.y < 0.0f) ? box.minY : box.maxY;
-	test.z = (normal.z < 0.0f) ? box.minZ : box.maxZ;
-	return normal * test <= offset + thickness;
-}
-
-//
-//#############################################################################
-//#############################################################################
-//
-bool
 	Plane::Intersects(
 		const Sphere &sphere,
 		Scalar thickness
@@ -235,26 +195,6 @@ bool
 {
 	Scalar dist = normal*sphere.center - offset;
 	return Abs(dist) <= sphere.radius + thickness;
-}
-
-//
-//#############################################################################
-//#############################################################################
-//
-bool
-	Plane::Intersects(
-		const ExtentBox &box,
-		Scalar thickness
-	) const
-{
-	if (!ContainsSomeOf(box, thickness))
-	{
-		return false;
-	}
-	STOP(("What is this????"));
-	Plane inverse(-normal.x, -normal.y, -normal.z, -offset);
-	return false;
-//	return inverse.ContainsSomeOf(box);
 }
 
 //

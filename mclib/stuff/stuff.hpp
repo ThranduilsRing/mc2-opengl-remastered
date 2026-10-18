@@ -204,7 +204,8 @@ namespace Stuff {
 #include"hash.hpp"
 #include"angle.hpp"
 #include"color.hpp"
-#include"extentbox.hpp"
+#include"marray.hpp"	// marray and plane were reached through extentbox.hpp; matrix.hpp needs the affine matrix plane brings
+#include"plane.hpp"
 #include"filestream.hpp"
 #include"filestreammanager.hpp"
 #include"marray.hpp"

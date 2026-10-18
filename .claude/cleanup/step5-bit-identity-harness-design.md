@@ -186,6 +186,11 @@ Finding: the 1-ULP trig rows were the HARNESS include order. The gameos/mclib/mc
   `mc2::math::polarToVector` (verbatim sinf/cosf; glm::euclidean has another axis convention). The three-argument constructor is
   kept so the spawn sites' three Random::GetFraction() arguments keep a constructor call. The vector-to-polar direction had no
   caller and went with the type. Corpus row exact.polar-to-vector (REQUIRED) compares it with the verbatim legacy body.
+- S5.14 (lane 1 s24) Stuff::ExtentBox deleted: the four gosFX bounds accumulators (debris, point, spinning, tube clouds) use
+  `mc2::math::Aabb` (glm min/max vec3) and `unite`, which is ExtentBox::Union bit for bit with glm::min/max called with the
+  arguments REVERSED (Stuff Min(a, b) = a < b ? a : b = glm::min(b, a); the order decides +0/-0 and NaN). Callerless and gone with
+  it: MLRPrimitiveBase::GetExtend, the Plane ExtentBox tests, Find_Planes_Of_Boxes, Use_Scalar_In_Sorted_Array, the ASCII
+  reader. Corpus rows exact.box-union-min/max (REQUIRED) against the style.hpp Min/Max macros.
 Proof every batch: sim pair mc2_03/mc2_24 identical to the pre-port reference (exe 579b60e2c) and to the committed baselines; saveload mc2_03
 fb63e85ac66966cf and mc2_01 d46e3e5e30d26b15 = baselines; S5.2/S5.4 GL/VK capture pair day mc2_01 + night mc2_10 viewed.
 Left on Stuff: the types themselves (Vector3D ~2,000 uses outside stuff/, Point3D, the matrices, UnitQuaternion, angles) and every op whose

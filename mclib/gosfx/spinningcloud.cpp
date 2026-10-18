@@ -226,7 +226,7 @@ bool
 	//
 	if (m_activeParticleCount > 0)
 	{
-		Stuff::ExtentBox box(Stuff::Point3D::Identity, Stuff::Point3D::Identity);
+		mc2::math::Aabb box;
 		unsigned i=0;
 
 		//
@@ -247,22 +247,22 @@ bool
 			//
 			if (particle->m_age < 1.0f)
 			{
-				box.maxX =
+				box.max.x =
 					particle->m_localTranslation.x
 					 + particle->m_radius*particle->m_scale;
-				box.minX =
+				box.min.x =
 					particle->m_localTranslation.x
 					 - particle->m_radius*particle->m_scale;
-				box.maxY =
+				box.max.y =
 					particle->m_localTranslation.y
 					 + particle->m_radius*particle->m_scale;
-				box.minY =
+				box.min.y =
 					particle->m_localTranslation.y
 					 - particle->m_radius*particle->m_scale;
-				box.maxZ =
+				box.max.z =
 					particle->m_localTranslation.z
 					 + particle->m_radius*particle->m_scale;
-				box.minZ =
+				box.min.z =
 					particle->m_localTranslation.z
 					 - particle->m_radius*particle->m_scale;
 				break;
@@ -280,26 +280,26 @@ bool
 			Check_Object(particle);
 			if (particle->m_age < 1.0f)
 			{
-				Stuff::ExtentBox local_box;
-				local_box.minX =
+				mc2::math::Aabb local_box;
+				local_box.min.x =
 					particle->m_localTranslation.x
 					 - particle->m_radius*particle->m_scale;
-				local_box.maxX =
+				local_box.max.x =
 					particle->m_localTranslation.x
 					 + particle->m_radius*particle->m_scale;
-				local_box.minY =
+				local_box.min.y =
 					particle->m_localTranslation.y
 					 - particle->m_radius*particle->m_scale;
-				local_box.maxY =
+				local_box.max.y =
 					particle->m_localTranslation.y
 					 + particle->m_radius*particle->m_scale;
-				local_box.minZ =
+				local_box.min.z =
 					particle->m_localTranslation.z
 					 - particle->m_radius*particle->m_scale;
-				local_box.maxZ =
+				local_box.max.z =
 					particle->m_localTranslation.z
 					 + particle->m_radius*particle->m_scale;
-				box.Union(box, local_box);
+				box = mc2::math::unite(box, local_box);
 			}
 		}
 
@@ -308,16 +308,16 @@ bool
 		// Now, build a info->m_bounds around this box
 		//------------------------------------
 		//
-		Verify(box.maxX >= box.minX);
-		Verify(box.maxY >= box.minY);
-		Verify(box.maxZ >= box.minZ);
+		Verify(box.max.x >= box.min.x);
+		Verify(box.max.y >= box.min.y);
+		Verify(box.max.z >= box.min.z);
 		Stuff::OBB local_bounds = Stuff::OBB::Identity;
-		local_bounds.axisExtents.x = 0.5f * (box.maxX - box.minX);
-		local_bounds.axisExtents.y = 0.5f * (box.maxY - box.minY);
-		local_bounds.axisExtents.z = 0.5f * (box.maxZ - box.minZ);
-		local_bounds.localToParent(3,0) = box.minX + local_bounds.axisExtents.x;
-		local_bounds.localToParent(3,1) = box.minY + local_bounds.axisExtents.y;
-		local_bounds.localToParent(3,2) = box.minZ + local_bounds.axisExtents.z;
+		local_bounds.axisExtents.x = 0.5f * (box.max.x - box.min.x);
+		local_bounds.axisExtents.y = 0.5f * (box.max.y - box.min.y);
+		local_bounds.axisExtents.z = 0.5f * (box.max.z - box.min.z);
+		local_bounds.localToParent(3,0) = box.min.x + local_bounds.axisExtents.x;
+		local_bounds.localToParent(3,1) = box.min.y + local_bounds.axisExtents.y;
+		local_bounds.localToParent(3,2) = box.min.z + local_bounds.axisExtents.z;
 		local_bounds.sphereRadius = local_bounds.axisExtents.GetLength();
 		if (local_bounds.sphereRadius < Stuff::SMALL)
 			local_bounds.sphereRadius = 0.01f;

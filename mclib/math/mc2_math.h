@@ -71,6 +71,14 @@ struct YawPitchRange {
 
 // Stuff::Vector3D = YawPitchRange (vector3d.cpp), verbatim: the float CRT sinf/cosf (== glm::sin/cos, corpus rows), y from
 // the pitch, x and z from the horizontal length. glm::euclidean uses another axis convention.
+// The former Stuff::ExtentBox (S5.14) as a glm min/max pair. unite == ExtentBox::Union bit for bit: Stuff's Min(a, b) is
+// a < b ? a : b == glm::min(b, a) and Max(a, b) is a > b ? a : b == glm::max(b, a); the argument order decides equal values
+// of opposite sign (+0/-0) and NaN, so it is reversed on purpose.
+struct Aabb {
+	glm::vec3 min{0.0f}, max{0.0f};
+};
+inline Aabb unite(const Aabb& a, const Aabb& b) { return {glm::min(b.min, a.min), glm::max(b.max, a.max)}; }
+
 inline glm::vec3 polarToVector(const YawPitchRange& polar)
 {
 	const float azimuthSine = sinf(polar.yaw), azimuthCosine = cosf(polar.yaw), altitudeSine = sinf(polar.pitch),

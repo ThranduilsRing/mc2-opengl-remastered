@@ -6,7 +6,6 @@ set(SOURCES ${SOURCES}
     trace.cpp
     affinematrix.cpp
     color.cpp
-    extentbox.cpp
     linearmatrix.cpp
     matrix.cpp
     obb.cpp

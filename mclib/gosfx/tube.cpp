@@ -877,7 +877,7 @@ bool gosFX::Tube::Execute(ExecuteInfo *info)
 	// Deal with all the active profiles
 	//----------------------------------
 	//
-	Stuff::ExtentBox box(Stuff::Point3D::Identity, Stuff::Point3D::Identity);
+	mc2::math::Aabb box;
 	int i = m_headProfile;
 	int profile_count = 0;
 	Verify(i >= 0);
@@ -907,23 +907,23 @@ bool gosFX::Tube::Execute(ExecuteInfo *info)
 		//
 		if (i == m_headProfile)
 		{
-			box.maxX = bounds.center.x + bounds.radius;
-			box.minX = bounds.center.x - bounds.radius;
-			box.maxY = bounds.center.y + bounds.radius;
-			box.minY = bounds.center.y - bounds.radius;
-			box.maxZ = bounds.center.z + bounds.radius;
-			box.minZ = bounds.center.z - bounds.radius;
+			box.max.x = bounds.center.x + bounds.radius;
+			box.min.x = bounds.center.x - bounds.radius;
+			box.max.y = bounds.center.y + bounds.radius;
+			box.min.y = bounds.center.y - bounds.radius;
+			box.max.z = bounds.center.z + bounds.radius;
+			box.min.z = bounds.center.z - bounds.radius;
 		}
 		else
 		{
-			Stuff::ExtentBox local_box;
-			local_box.maxX = bounds.center.x + bounds.radius;
-			local_box.minX = bounds.center.x - bounds.radius;
-			local_box.maxY = bounds.center.y + bounds.radius;
-			local_box.minY = bounds.center.y - bounds.radius;
-			local_box.maxZ = bounds.center.z + bounds.radius;
-			local_box.minZ = bounds.center.z - bounds.radius;
-			box.Union(box, local_box);
+			mc2::math::Aabb local_box;
+			local_box.max.x = bounds.center.x + bounds.radius;
+			local_box.min.x = bounds.center.x - bounds.radius;
+			local_box.max.y = bounds.center.y + bounds.radius;
+			local_box.min.y = bounds.center.y - bounds.radius;
+			local_box.max.z = bounds.center.z + bounds.radius;
+			local_box.min.z = bounds.center.z - bounds.radius;
+			box = mc2::math::unite(box, local_box);
 		}
 
 		//
@@ -951,16 +951,16 @@ bool gosFX::Tube::Execute(ExecuteInfo *info)
 	// Now, build a info->m_bounds around this box
 	//--------------------------------------------
 	//
-	Verify(box.maxX >= box.minX);
-	Verify(box.maxY >= box.minY);
-	Verify(box.maxZ >= box.minZ);
+	Verify(box.max.x >= box.min.x);
+	Verify(box.max.y >= box.min.y);
+	Verify(box.max.z >= box.min.z);
 	Stuff::OBB local_bounds = Stuff::OBB::Identity;
-	local_bounds.axisExtents.x = 0.5f * (box.maxX - box.minX);
-	local_bounds.axisExtents.y = 0.5f * (box.maxY - box.minY);
-	local_bounds.axisExtents.z = 0.5f * (box.maxZ - box.minZ);
-	local_bounds.localToParent(3,0) = box.minX + local_bounds.axisExtents.x;
-	local_bounds.localToParent(3,1) = box.minY + local_bounds.axisExtents.y;
-	local_bounds.localToParent(3,2) = box.minZ + local_bounds.axisExtents.z;
+	local_bounds.axisExtents.x = 0.5f * (box.max.x - box.min.x);
+	local_bounds.axisExtents.y = 0.5f * (box.max.y - box.min.y);
+	local_bounds.axisExtents.z = 0.5f * (box.max.z - box.min.z);
+	local_bounds.localToParent(3,0) = box.min.x + local_bounds.axisExtents.x;
+	local_bounds.localToParent(3,1) = box.min.y + local_bounds.axisExtents.y;
+	local_bounds.localToParent(3,2) = box.min.z + local_bounds.axisExtents.z;
 	local_bounds.sphereRadius = local_bounds.axisExtents.GetLength();
 	Stuff::OBB parent_bounds;
 	parent_bounds.Multiply(local_bounds, m_localToParent);

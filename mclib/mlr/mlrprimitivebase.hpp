@@ -290,8 +290,6 @@ namespace MidLevelRenderer {
 			return ret;
 		}
 
-		void
-			GetExtend(Stuff::ExtentBox *box);
 
 	protected:
 		virtual void

@@ -79,7 +79,6 @@ add_library(mc2_tglloader STATIC
     # --- Stuff library TUs (game-free math + containers) ---
     "${CMAKE_SOURCE_DIR}/mclib/stuff/affinematrix.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/color.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/stuff/extentbox.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/linearmatrix.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/matrix.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/obb.cpp"

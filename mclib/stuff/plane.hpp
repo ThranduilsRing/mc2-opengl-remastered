@@ -24,7 +24,6 @@ namespace Stuff {class Plane;}
 namespace Stuff {
 
 	class Sphere;
-	class ExtentBox;
 	class OBB;
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Plane ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -125,16 +124,6 @@ namespace Stuff {
 			) const;
 		bool
 			ContainsSomeOf(
-				const ExtentBox &box,
-				Scalar thickness=SMALL
-			) const;
-		bool
-			ContainsAllOf(
-				const ExtentBox &box,
-				Scalar thickness=SMALL
-			) const;
-		bool
-			ContainsSomeOf(
 				const OBB &box,
 				Scalar thickness=SMALL
 			) const;
@@ -150,11 +139,6 @@ namespace Stuff {
 		bool
 			Intersects(
 				const Sphere &sphere,
-				Scalar thickness=SMALL
-			) const;
-		bool
-			Intersects(
-				const ExtentBox &box,
 				Scalar thickness=SMALL
 			) const;
 		bool

@@ -530,7 +530,7 @@ bool
 	// the first legal point we find
 	//-------------------------------------------------------------------
 	//
-	Stuff::ExtentBox box(Stuff::Point3D::Identity, Stuff::Point3D::Identity);
+	mc2::math::Aabb box;
 	for(i=0;i<debrisPieces.GetLength();i++)
 	{
 		Particle *particle = GetParticle(i);
@@ -548,14 +548,14 @@ bool
 
 			point.Multiply(spec->debrisSpheres[i].center, particle->m_localToParent);
 
-			box.maxX = point.x + radius;
-			box.minX = point.x - radius;
+			box.max.x = point.x + radius;
+			box.min.x = point.x - radius;
 
-			box.maxY = point.y + radius;
-			box.minY = point.y - radius;
+			box.max.y = point.y + radius;
+			box.min.y = point.y - radius;
 
-			box.maxZ = point.z + radius;
-			box.minZ = point.z - radius;
+			box.max.z = point.z + radius;
+			box.min.z = point.z - radius;
 
 			break;
 		}
@@ -574,22 +574,22 @@ bool
 
 		if (particle->m_age < 1.0f)
 		{
-			Stuff::ExtentBox local_box;
+			mc2::math::Aabb local_box;
 			Stuff::Point3D point;
 			Stuff::Scalar radius = spec->debrisSpheres[i].radius;
 
 			point.Multiply(spec->debrisSpheres[i].center, particle->m_localToParent);
 
-			local_box.maxX = point.x + radius;
-			local_box.minX = point.x - radius;
+			local_box.max.x = point.x + radius;
+			local_box.min.x = point.x - radius;
 
-			local_box.maxY = point.y + radius;
-			local_box.minY = point.y - radius;
+			local_box.max.y = point.y + radius;
+			local_box.min.y = point.y - radius;
 
-			local_box.maxZ = point.z + radius;
-			local_box.minZ = point.z - radius;
+			local_box.max.z = point.z + radius;
+			local_box.min.z = point.z - radius;
 
-			box.Union(box, local_box);
+			box = mc2::math::unite(box, local_box);
 		}
 		i++;
 	}
@@ -599,16 +599,16 @@ bool
 	// Now, build a info->m_bounds around this box
 	//------------------------------------
 	//
-	Verify(box.maxX >= box.minX);
-	Verify(box.maxY >= box.minY);
-	Verify(box.maxZ >= box.minZ);
+	Verify(box.max.x >= box.min.x);
+	Verify(box.max.y >= box.min.y);
+	Verify(box.max.z >= box.min.z);
 	Stuff::OBB local_bounds = Stuff::OBB::Identity;
-	local_bounds.axisExtents.x = 0.5f * (box.maxX - box.minX);
-	local_bounds.axisExtents.y = 0.5f * (box.maxY - box.minY);
-	local_bounds.axisExtents.z = 0.5f * (box.maxZ - box.minZ);
-	local_bounds.localToParent(3,0) = box.minX + local_bounds.axisExtents.x;
-	local_bounds.localToParent(3,1) = box.minY + local_bounds.axisExtents.y;
-	local_bounds.localToParent(3,2) = box.minZ + local_bounds.axisExtents.z;
+	local_bounds.axisExtents.x = 0.5f * (box.max.x - box.min.x);
+	local_bounds.axisExtents.y = 0.5f * (box.max.y - box.min.y);
+	local_bounds.axisExtents.z = 0.5f * (box.max.z - box.min.z);
+	local_bounds.localToParent(3,0) = box.min.x + local_bounds.axisExtents.x;
+	local_bounds.localToParent(3,1) = box.min.y + local_bounds.axisExtents.y;
+	local_bounds.localToParent(3,2) = box.min.z + local_bounds.axisExtents.z;
 	local_bounds.sphereRadius = local_bounds.axisExtents.GetLength();
 	if (local_bounds.sphereRadius < Stuff::SMALL)
 		local_bounds.sphereRadius = 0.01f;

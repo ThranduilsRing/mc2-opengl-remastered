@@ -367,52 +367,6 @@ void
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-void
-	MLRPrimitiveBase::GetExtend(Stuff::ExtentBox *box)
-{
-	Check_Object(this);
-	Check_Object(box);
-
-	if(coords.GetLength()==0)
-	{
-		return;
-	}
-
-	box->minX = box->maxX = coords[0].x;
-	box->minY = box->maxY = coords[0].y;
-	box->minZ = box->maxZ = coords[0].z;
-
-	for(int i=0;i<coords.GetLength();i++)
-	{
-		if(coords[i].x < box->minX)
-		{
-			box->minX = coords[i].x;
-		}
-		if(coords[i].y < box->minY)
-		{
-			box->minY = coords[i].y;
-		}
-		if(coords[i].z < box->minZ)
-		{
-			box->minZ = coords[i].z;
-		}
-		if(coords[i].x > box->maxX)
-		{
-			box->maxX = coords[i].x;
-		}
-		if(coords[i].y > box->maxY)
-		{
-			box->maxY = coords[i].y;
-		}
-		if(coords[i].z > box->maxZ)
-		{
-			box->maxZ = coords[i].z;
-		}
-	}
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
 MLRShape*
 	MidLevelRenderer::CreateIndexedIcosahedron(IcoInfo& icoInfo, Stuff::DynamicArrayOf<MLRState> *states)
 {

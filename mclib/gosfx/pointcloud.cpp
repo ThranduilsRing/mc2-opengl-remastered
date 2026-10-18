@@ -185,7 +185,7 @@ bool
 	//
 	if (m_activeParticleCount > 0)
 	{
-		Stuff::ExtentBox box(Stuff::Point3D::Identity, Stuff::Point3D::Identity);
+		mc2::math::Aabb box;
 		Stuff::Point3D *vertex = &m_P_localTranslation[0];
 		unsigned i=0;
 
@@ -202,12 +202,12 @@ bool
 			if (particle->m_age < 1.0f)
 			{
 				Check_Object(vertex);
-				box.maxX = vertex->x;
-				box.minX = vertex->x;
-				box.maxY = vertex->y;
-				box.minY = vertex->y;
-				box.maxZ = vertex->z;
-				box.minZ = vertex->z;
+				box.max.x = vertex->x;
+				box.min.x = vertex->x;
+				box.max.y = vertex->y;
+				box.min.y = vertex->y;
+				box.max.z = vertex->z;
+				box.min.z = vertex->z;
 				++vertex;
 				++i;
 				break;
@@ -228,20 +228,20 @@ bool
 			if (particle->m_age < 1.0f)
 			{
 				Check_Object(vertex);
-				if (vertex->x > box.maxX)
-					box.maxX = vertex->x;
-				else if (vertex->x < box.minX)
-					box.minX = vertex->x;
+				if (vertex->x > box.max.x)
+					box.max.x = vertex->x;
+				else if (vertex->x < box.min.x)
+					box.min.x = vertex->x;
 
-				if (vertex->y > box.maxY)
-					box.maxY = vertex->y;
-				else if (vertex->y < box.minY)
-					box.minY = vertex->y;
+				if (vertex->y > box.max.y)
+					box.max.y = vertex->y;
+				else if (vertex->y < box.min.y)
+					box.min.y = vertex->y;
 
-				if (vertex->z > box.maxZ)
-					box.maxZ = vertex->z;
-				else if (vertex->z < box.minZ)
-					box.minZ = vertex->z;
+				if (vertex->z > box.max.z)
+					box.max.z = vertex->z;
+				else if (vertex->z < box.min.z)
+					box.min.z = vertex->z;
 			}
 			++vertex;
 			++i;
@@ -252,16 +252,16 @@ bool
 		// Now, build a info->m_bounds around this box
 		//------------------------------------
 		//
-		Verify(box.maxX >= box.minX);
-		Verify(box.maxY >= box.minY);
-		Verify(box.maxZ >= box.minZ);
+		Verify(box.max.x >= box.min.x);
+		Verify(box.max.y >= box.min.y);
+		Verify(box.max.z >= box.min.z);
 		Stuff::OBB local_bounds = Stuff::OBB::Identity;
-		local_bounds.axisExtents.x = 0.5f * (box.maxX - box.minX);
-		local_bounds.axisExtents.y = 0.5f * (box.maxY - box.minY);
-		local_bounds.axisExtents.z = 0.5f * (box.maxZ - box.minZ);
-		local_bounds.localToParent(3,0) = box.minX + local_bounds.axisExtents.x;
-		local_bounds.localToParent(3,1) = box.minY + local_bounds.axisExtents.y;
-		local_bounds.localToParent(3,2) = box.minZ + local_bounds.axisExtents.z;
+		local_bounds.axisExtents.x = 0.5f * (box.max.x - box.min.x);
+		local_bounds.axisExtents.y = 0.5f * (box.max.y - box.min.y);
+		local_bounds.axisExtents.z = 0.5f * (box.max.z - box.min.z);
+		local_bounds.localToParent(3,0) = box.min.x + local_bounds.axisExtents.x;
+		local_bounds.localToParent(3,1) = box.min.y + local_bounds.axisExtents.y;
+		local_bounds.localToParent(3,2) = box.min.z + local_bounds.axisExtents.z;
 		local_bounds.sphereRadius = local_bounds.axisExtents.GetLength();
 		if (local_bounds.sphereRadius < Stuff::SMALL)
 			local_bounds.sphereRadius = 0.01f;

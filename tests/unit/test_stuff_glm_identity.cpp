@@ -62,6 +62,10 @@ Stuff::Vector3D legacyPolarToVector(float yaw, float pitch, float range) {
     return out;
 }
 
+// Stuff::ExtentBox::Union (mclib/stuff/extentbox.cpp, deleted at S5.14) through the Min/Max macros of style.hpp, verbatim.
+glm::vec3 legacyBoxMin(glm::vec3 a, glm::vec3 b) { return {Min(a.x, b.x), Min(a.y, b.y), Min(a.z, b.z)}; }
+glm::vec3 legacyBoxMax(glm::vec3 a, glm::vec3 b) { return {Max(a.x, b.x), Max(a.y, b.y), Max(a.z, b.z)}; }
+
 constexpr unsigned seed = 0x53545546;
 constexpr unsigned randomCases = 100000;
 
@@ -151,6 +155,10 @@ void vectors(Corpus& corpus, const Stuff::Vector3D& a, const Stuff::Vector3D& b,
         corpus.vector("unit-vector.normalize", unit, glm::normalize(ga));
     }
     Stuff::Point3D point;
+    const mc2::math::Aabb boxA{ga, gb}, boxB{gb, -ga};
+    const auto united = mc2::math::unite(boxA, boxB);
+    corpus.vector("exact.box-union-min", mc2::math::toVector3D(legacyBoxMin(boxA.min, boxB.min)), united.min, true);
+    corpus.vector("exact.box-union-max", mc2::math::toVector3D(legacyBoxMax(boxA.max, boxB.max)), united.max, true);
     corpus.vector("point.add", point.Add(a, b), ga + gb, true);
     corpus.vector("bridge.round-trip", mc2::math::toVector3D(ga), ga, true);
     corpus.vector("point.subtract", point.Subtract(Stuff::Point3D(a), b), ga - gb, true);
@@ -292,7 +300,7 @@ TEST_CASE("Stuff/GLM identity detects byte changes and classifies migration cand
         matrices(corpus, rng, i);
     }
     std::printf("[STUFF_GLM] seed=%u random_cases=%u glm=1.0.1 mode=scalar-precise\n", seed, randomCases);
-    REQUIRE(corpus.rows.size() == 54);  // S5.3 deleted Arcsin, Tan, MultiplyByInverse; S5.13 added exact.polar-to-vector
+    REQUIRE(corpus.rows.size() == 56);  // S5.3 deleted Arcsin, Tan, MultiplyByInverse; S5.13/S5.14 added the polar and box rows
     // Step 5: every operation identical on the opening corpus is now REQUIRED identical (a port relies on it), as are the exact
     // wrappers (mclib/math/mc2_math.h) and the bridge. Differing render-only operations stay characterized.
     static const char* const identical[] = {"angle.sincos-cos", "angle.sincos-sin", "chain.line-of-sight-step",

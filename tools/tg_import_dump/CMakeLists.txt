@@ -78,7 +78,6 @@ add_executable(tg_import_dump
     # --- Stuff library (game-free math + containers) ---
     ${MC2_ROOT}/mclib/stuff/affinematrix.cpp
     ${MC2_ROOT}/mclib/stuff/color.cpp
-    ${MC2_ROOT}/mclib/stuff/extentbox.cpp
     ${MC2_ROOT}/mclib/stuff/linearmatrix.cpp
     ${MC2_ROOT}/mclib/stuff/matrix.cpp
     ${MC2_ROOT}/mclib/stuff/obb.cpp
