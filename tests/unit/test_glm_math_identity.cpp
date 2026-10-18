@@ -58,7 +58,7 @@ struct Corpus {
 struct L4 {
     float m[4][4];
 };
-L4 identity4() {
+L4 legacyIdentity() {
     L4 r{};
     for (int i = 0; i < 4; ++i) r.m[i][i] = 1.0f;
     return r;
@@ -92,7 +92,7 @@ void legacyRotationQuat(L4& t, float x, float y, float z, float w) {
 }
 // LinearMatrix4D::Invert.
 L4 legacyInvertRigid(const L4& s) {
-    L4 t = identity4();
+    L4 t = legacyIdentity();
     for (int i = 0; i < 3; ++i)
         for (int j = 0; j < 3; ++j) t.m[i][j] = s.m[j][i];
     t.m[3][0] = -s.m[3][0] * s.m[0][0] - s.m[3][1] * s.m[0][1] - s.m[3][2] * s.m[0][2];
@@ -141,7 +141,7 @@ TEST_CASE("glm engine math: convention adapters keep the Stuff bodies (REQUIRED,
     Corpus corpus;
     for (unsigned i = 0; i < randomCases; ++i) {
         const float p = angle(rng), y = angle(rng), r = angle(rng);
-        L4 le = identity4();
+        L4 le = legacyIdentity();
         legacyRotationEuler(le, p, y, r);
         le.m[3][0] = angle(rng);
         le.m[3][1] = angle(rng);
@@ -153,7 +153,7 @@ TEST_CASE("glm engine math: convention adapters keep the Stuff bodies (REQUIRED,
         float qx = angle(rng), qy = angle(rng), qz = angle(rng), qw = angle(rng);
         const float len = 1.0f / std::sqrt(qx * qx + qy * qy + qz * qz + qw * qw);
         qx *= len; qy *= len; qz *= len; qw *= len;
-        L4 lq = identity4();
+        L4 lq = legacyIdentity();
         legacyRotationQuat(lq, qx, qy, qz, qw);
         corpus.mat("exact.rotation-from-quat", lq.m, mc2::math::rotationMatrix(mc2::math::quatXYZW(qx, qy, qz, qw)));
         corpus.mat("exact.invert-rigid", legacyInvertRigid(le).m, mc2::math::invertRigid(ge));

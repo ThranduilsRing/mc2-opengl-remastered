@@ -21,6 +21,7 @@
 // NO GL CONTEXT is created or required (doctest, pure CPU). Cross-references
 // test_depth_hzb.cpp for the reverse-Z endpoint contract (near->1 / far->0).
 
+#include "math/mc2_xform.h"
 #include "doctest.h"
 
 #include "xform_conventions.h"   // the lifted convention matrices under test
@@ -34,25 +35,25 @@ namespace {
 
 // ---------------------------------------------------------------------------
 // Local reference helpers. Index convention matches Stuff::Matrix4D::operator()
-//   m(row, col) == entries[col*4 + row]   (column-major storage).
+//   mc2::math::at(m, row, col) == entries[col*4 + row]   (column-major storage).
 // ---------------------------------------------------------------------------
 
 // Row-vector convention: out_row = in_row * M.
-//   out[c] = sum_r in[r] * M(r, c)   (homogeneous, in[3] supplied by caller)
+//   out[c] = sum_r in[r] * mc2::math::at(M, r, c)   (homogeneous, in[3] supplied by caller)
 struct Vec4 { double x, y, z, w; };
 
 Vec4 rowVecTimesMatrix(const Vec4& v, const glm::mat4& M) {
     Vec4 o;
-    o.x = v.x*M(0,0) + v.y*M(1,0) + v.z*M(2,0) + v.w*M(3,0);
-    o.y = v.x*M(0,1) + v.y*M(1,1) + v.z*M(2,1) + v.w*M(3,1);
-    o.z = v.x*M(0,2) + v.y*M(1,2) + v.z*M(2,2) + v.w*M(3,2);
-    o.w = v.x*M(0,3) + v.y*M(1,3) + v.z*M(2,3) + v.w*M(3,3);
+    o.x = v.x*mc2::math::at(M, 0, 0) + v.y*mc2::math::at(M, 1, 0) + v.z*mc2::math::at(M, 2, 0) + v.w*mc2::math::at(M, 3, 0);
+    o.y = v.x*mc2::math::at(M, 0, 1) + v.y*mc2::math::at(M, 1, 1) + v.z*mc2::math::at(M, 2, 1) + v.w*mc2::math::at(M, 3, 1);
+    o.z = v.x*mc2::math::at(M, 0, 2) + v.y*mc2::math::at(M, 1, 2) + v.z*mc2::math::at(M, 2, 2) + v.w*mc2::math::at(M, 3, 2);
+    o.w = v.x*mc2::math::at(M, 0, 3) + v.y*mc2::math::at(M, 1, 3) + v.z*mc2::math::at(M, 2, 3) + v.w*mc2::math::at(M, 3, 3);
     return o;
 }
 
 double det4(const glm::mat4& m) {
     // 4x4 determinant via cofactor expansion (small, exact enough for a sign).
-    auto M = [&](int r, int c) -> double { return (double)m(r,c); };
+    auto M = [&](int r, int c) -> double { return (double)mc2::math::at(m, r, c); };
     double det = 0.0;
     for (int c0 = 0; c0 < 4; ++c0) {
         // minor of (0, c0)
@@ -184,7 +185,7 @@ TEST_CASE("ClipW: an in-front MC2 vertex yields clip.w > 0 after the chain") {
 // --- Row-major repack round-trip (gos_SetWorldToClipGL == stuffToRowMajor) --
 
 TEST_CASE("RowMajorRepack: col->row transpose matches both call sites") {
-    // Stuff stores column-major: col[c*4 + r] == m(r, c).
+    // Stuff stores column-major: col[c*4 + r] == mc2::math::at(m, r, c).
     // gos_SetWorldToClipGL (gameos_graphics.cpp:8964-8967):
     //     M[i*4 + j] = col[j*4 + i]
     // stuffToRowMajor   (gamecam.cpp:291-296):
@@ -193,7 +194,7 @@ TEST_CASE("RowMajorRepack: col->row transpose matches both call sites") {
     glm::mat4 m;
     for (int r = 0; r < 4; ++r)
         for (int c = 0; c < 4; ++c)
-            m(r, c) = (float)(r * 4 + c) + 0.5f;   // distinct, asymmetric entries
+            mc2::math::at(m, r, c) = (float)(r * 4 + c) + 0.5f;   // distinct, asymmetric entries
 
     const float* col = (const float*)&m;   // column-major (operator const Scalar*)
 
@@ -213,22 +214,22 @@ TEST_CASE("RowMajorRepack: col->row transpose matches both call sites") {
     // And both equal the row-major reading of operator()(row,col).
     for (int r = 0; r < 4; ++r)
         for (int c = 0; c < 4; ++c)
-            CHECK(M_gos[r*4 + c] == doctest::Approx(m(r, c)));
+            CHECK(M_gos[r*4 + c] == doctest::Approx(mc2::math::at(m, r, c)));
 }
 
 // --- Static-prop v*M: shapeToWorld convention ------------------------------
 
 TEST_CASE("StaticProp shapeToWorld: det > 0 and column-3 holds the origin") {
     // Row-vector convention with uniform scale: a static prop's shapeToWorld is
-    // built so that the translation lives in row 3 (m(3,*)) under Stuff's
+    // built so that the translation lives in row 3 (mc2::math::at(m, 3, *)) under Stuff's
     // (row,col) operator. Construct a known scale + translation and assert.
     const double sc = 2.0;
     const double tx = 100.0, ty = -250.0, tz = 37.5;
 
     glm::mat4 S;
-    for (int r = 0; r < 4; ++r) for (int c = 0; c < 4; ++c) S(r,c) = 0.0f;
-    S(0,0) = (float)sc; S(1,1) = (float)sc; S(2,2) = (float)sc; S(3,3) = 1.0f;
-    S(3,0) = (float)tx; S(3,1) = (float)ty; S(3,2) = (float)tz;  // translation row
+    for (int r = 0; r < 4; ++r) for (int c = 0; c < 4; ++c) mc2::math::at(S, r, c) = 0.0f;
+    mc2::math::at(S, 0, 0) = (float)sc; mc2::math::at(S, 1, 1) = (float)sc; mc2::math::at(S, 2, 2) = (float)sc; mc2::math::at(S, 3, 3) = 1.0f;
+    mc2::math::at(S, 3, 0) = (float)tx; mc2::math::at(S, 3, 1) = (float)ty; mc2::math::at(S, 3, 2) = (float)tz;  // translation row
 
     // Uniform positive scale => positive determinant (no accidental mirror).
     CHECK(det4(S) > 0.0);

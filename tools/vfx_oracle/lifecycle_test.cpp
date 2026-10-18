@@ -17,7 +17,7 @@
 void vfx_test_bind_rng(std::uint32_t* state);
 
 namespace {
-constexpr size_t EFFECT_SIZE = 200;
+constexpr size_t EFFECT_SIZE = 232;  // step 5 (2026-10-18): the 48-byte Stuff LinearMatrix4D members are 64-byte glm::mat4
 struct Platform {
     ContractEnvironment deterministic{"MC2_DETERMINISTIC_RNG", "1"};
     ContractEnvironment fixedStep{"MC2_SMOKE_FIXED_TIMESTEP", "1"};
@@ -62,6 +62,7 @@ TEST_CASE_FIXTURE(Platform, "CardCloud retains the pre-G2 runtime ABI")
     // The pre-G2 ParticleCloud object wrote its array at 0xd8. Enlarging Effect
     // silently linked incompatible constructors and destructors in the failing VS build.
     // B8a: m_children became std::vector<EffectPtr> (was a Stuff::ChainOf); the sizes moved with it.
+    // Step 5: the two matrix members are glm::mat4 (64 bytes, was the 48-byte affine block): Effect grew by 32.
     CHECK(sizeof(gosFX::Effect) == EFFECT_SIZE);
     CHECK(sizeof(gosFX::Effect::ExecuteInfo) == 40);
     CHECK(sizeof(gosFX::ParticleCloud) == EFFECT_SIZE + 24);
