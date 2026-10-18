@@ -1,5 +1,35 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
+## SIXTY-FIRST session (2026-10-18, Sonnet 5.5) -- BUGS 94 (HUD) was install data, GL prop/static/dynamic shadow draws and the GL HUD replay deleted, batch 0 feeds neutral
+
+Branch rebased onto nifty 03403e3ed. Commits (local): batch A | batch 0 | BUGS row | batch B | two check regenerations | batch C | Shadow ApplyPassId retired + ledger/manifests. Code tip = the commit before this state commit (a5859d86d).
+
+### BUGS 94 (was 90): HUD art
+Data, not code. art.fst / camera.fst / effect.fst / tgl.fst of lane2 are byte-identical to v0.4; lane2 `data/art/` held 631 loose stock files v0.4 does not have (buttonlayout*.fit, cursors*, a_compass_small.tga ...) that override the FST entries. Moved exactly those 631 files out (`scratch/s61/quarantine/art`, reversible); clean HUD at the same pose with the same exe (`.claude/l2cap/s61-hud-noart`, viewed). Origin: the s57 `--prepare-stock-scratch` data rewrite (BUGS 84); the s58 guard already refuses non-scratch targets. The other ~4,700 loose files were left (no visible effect); a full robocopy from v0.4 was not done because the proven fix is smaller.
+
+### GL deletion (about -3,700 lines in GameOS/mclib)
+- A (14 files): static-prop batcher GL shadow draws `flushShadow`, `drawStaticBuildingShadows`, `drawDynamicPropShadows` (+ prop shadow alpha/atlas helpers, dynamic caster SSBO owner), the GL HUD replay loop and `replayTextQuads` (a native tail decline now drops the batch with one `[VK_HUD_DECLINE v1]` line). Gate `MC2_SHADOW_DYNAMIC_PROP_CASTERS` stays as a parsed no-op row.
+- 0 (11 files): `Mc2ColorPropMaterialFeed` carries `arrayKeyOff/On` (a per-build serial from `GpuStaticPropBatcher::albedoKey`) instead of GL texture names; the terrain shadow feed reads `gosPostProcess::dynShadowBuilt()/csmBuilt()` instead of GL FBO/texture handles. Particles: no GL-produced feed is read by a VK island, nothing to move.
+- B (8 files): GL static terrain shadow prepass (`MapData::renderStaticTerrainShadowFullMap`, `gos_Begin/EndShadowPrePass`, tessellated and object shadow batch draws, `gosPostProcess::beginShadowPass*`).
+- C (8 files): GL dynamic shadow passes (`begin/endDynamicShadowPass`, per-cascade FBO bind and clears, `executorApplyShadowState`, the SHADOW_STATE trace); `ApplyPassId::Shadow` retired.
+- Remaining GL and why: the GL shadow map resources themselves (static 4096^2, dynamic 8192^2, CSM array + full map; initShadows / initDynamicShadows, about 700 MB VRAM, now only sampled by GL forward consumers whose output is unused) are NEXT (batch D): tied to RenderResource rows, FBO ledger registrations and the debug overlay. Also GL terrain LOD-chunk / indirect, water stream, GL post passes, legacy gos_* draws, mclib GL halves, particle bridge, SDL GL context (3.9), RenderCore frame-graph tables.
+
+### Proof
+| claim | evidence |
+|---|---|
+| smoke-lite sync, A+0 / B / C | PASS 2/2, validation 0/0 each (`scratch/s61/lite1.log`, `b_lite.log`, `c_lite.log`) |
+| editor smoke sync (gen_map_basic, stock_roundtrip:mc2_01, clean_close) | 3/3 each (`ed1.log`, `b_ed.log`, `c_ed.log`) |
+| vk_feed_dump byte equality vs s59 dumps, both maps | cmp IDENTICAL after A+0, B, C (`scratch/s61/feed/`) |
+| capture pair day + night VIEWED | `.claude/l2cap/s61-a-*`, `s61-c-*`; night pixel-identical to s60-merged, day differs only in a ~40 px water band (y 155-198, same as s59) |
+| tier1 sync at rebased tip 4584419e0 | 5/5 PASS, errors=0 warnings=0, fingerprint OK (`f_t1.log`) |
+| build_all_targets -j2 | EXIT 0 (`f_bat.log`) |
+| doctest | EXIT 0 (`dt.log`, `dt2.log`) |
+| check-contracts -j2 at 4584419e0 | 6 red: apply_pass_bumped, gl_shader_variants, pass_coverage, gated_layout_macros, tools_tests (gl_shader_variants test) fixed in a5859d86d and re-run individually green; `script_callers` still stale (callers.json NOT regenerated, per rule) |
+
+### Ratchets / OPEN
+- No rises. Removed log tags (SHADOWSTATIC, SHADOW_DIAG x2, SHADOW_DYN_PROP, SHADOW_STATE) and one new (VK_HUD_DECLINE): `log_tag_baseline.json` re-frozen twice (named). Gate rows re-marked (6 readers deleted), split_map, pass-coverage ledger (3 shadow rows DESCRIPTIVE), gl_shader_variants.json and gated-layout-macros.md regenerated.
+- OPEN: batch D (GL shadow resources), callers.json stale. The deployed mc2.exe / Mission Editor.exe are from 4584419e0 (later commits: enum/test/docs only, no rebuild).
+
 ## SIXTIETH session (2026-10-18, Sonnet 5.5) -- s59 review fixed, BUGS 87 (smoke-lite heartbeat) root-caused, nifty aca971300 merged
 
 Commits (local, on 19bce94d7): 0812cd6fd review fixes | game exit skips wglDeleteContext | d394422be merge of nifty aca971300 | gos_render one destroy implementation | merge follow-ups (background-launch inventory, cxx17 baseline, callers.json) | state. Code tip = the callers.json commit. Temporary branch `s60-diag` (stage timers, stack probe, skip probe) is local only and not for merging.

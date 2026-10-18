@@ -9009,23 +9009,6 @@
    "count": 1
   },
   {
-   "tag": "SHADOWSTATIC",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "builds",
-    "RV",
-    "quads",
-    "tris",
-    "verts",
-    "bboxXY",
-    "mapHalfWorld",
-    "maxChunkVerts"
-   ],
-   "count": 1
-  },
-  {
    "tag": "SHADOWZRANGE",
    "ver": 1,
    "stream": "stderr",
@@ -9083,57 +9066,6 @@
    "count": 3
   },
   {
-   "tag": "SHADOW_DIAG",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "finalized",
-    "vao",
-    "isVao",
-    "ssbo",
-    "isBuf",
-    "elemBind",
-    "prog",
-    "link",
-    "errPre",
-    "typeRanges",
-    "types",
-    "packets"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOW_DIAG",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "type",
-    "byteOff",
-    "byteSize",
-    "instCnt",
-    "firstPkt",
-    "pktCnt",
-    "pktIdx",
-    "idxCnt",
-    "firstIdx",
-    "baseV",
-    "errPre"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOW_DYN_PROP",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "recipes_in",
-    "types",
-    "inst",
-    "draws"
-   ],
-   "count": 1
-  },
-  {
    "tag": "SHADOW_FRUSTUM_DIAG",
    "ver": -1,
    "stream": "stderr",
@@ -9179,26 +9111,6 @@
    "stream": "stdout",
    "keys": [
     "prog"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOW_STATE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "pass",
-    "fbo",
-    "vp",
-    "clearDepth",
-    "depthTest",
-    "depthFunc",
-    "depthMask",
-    "colorMask",
-    "cull",
-    "clipOrigin",
-    "clipDepth",
-    "restored"
    ],
    "count": 1
   },
@@ -12019,6 +11931,15 @@
     "alpha1",
     "alpha2",
     "alpha3"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_HUD_DECLINE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "draws"
    ],
    "count": 1
   },

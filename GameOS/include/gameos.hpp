@@ -2367,34 +2367,9 @@ void gos_ResetStaticLightMatrix();
 // is just the static-light-matrix reset; coexists
 // idempotently with the Terrain::destroy gos_ResetStaticLightMatrix path.
 void gos_ResetStaticShadowPriming();
-// Returns true if the shadow prepass actually activated (shadows enabled +
-// renderer ready); false = no-op (shadowsEnabled_ toggled off). Casters appended
-// after the terrain build must skip their draws + gos_EndShadowPrePass when
-// false, or they would draw into the wrong (scene) FBO. void-context callers
-// (terrain static build) are unaffected.
-bool gos_BeginShadowPrePass(bool clearDepth = true);
-void gos_DrawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
-    WORD* indices, int numIndices,
-    const gos_TERRAIN_EXTRA* extras, int extraCount);
-void gos_EndShadowPrePass();
 // VPL-#shadow Phase 1: gos_RequestFullShadowRebuild / gos_ShadowRebuildPending
 // / gos_ClearShadowRebuildPending RETIRED (camera-windowed-accumulate
 // machinery; only caller was the deleted txmmgr prime block).
-void gos_DrawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
-    HGOSVERTEXDECLARATION vdecl, const float* worldMatrix4x4);
-// CP-2: submit an arbitrary TG_Shape mesh as a STATIC shadow caster - bakes
-// into the world-fixed static shadow map using staticLightSpaceMatrix_.
-// Must be called inside the static shadow pre-pass
-// (gos_BeginShadowPrePass ... gos_EndShadowPrePass). Uses the same
-// shadow_object shader and active_light_space_matrix_ already bound by
-// gos_BeginShadowPrePass; differs from gos_DrawShadowObjectBatch only in
-// call-site intent (static vs dynamic context).
-void gos_DrawShadowObjectBatchStatic(HGOSBUFFER vb, HGOSBUFFER ib,
-    HGOSVERTEXDECLARATION vdecl, const float* worldMatrix4x4);
-
-// Dynamic object shadow pass (camera-centered, per-frame)
-void gos_BeginDynamicShadowPass();
-void gos_EndDynamicShadowPass();
 void gos_BuildDynamicLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
                                   const float camFitCornersMC2[8][3],
                                   const float shadowCenterXYZ[3], bool shadowCenterValid);

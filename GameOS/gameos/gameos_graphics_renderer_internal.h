@@ -234,7 +234,6 @@ class gosRenderer {
         void drawQuads(gos_VERTEX* vertices, int count);
         void drawLines(gos_VERTEX* vertices, int count);
         void flushHUDBatch();
-        void replayTextQuads(const HudDrawCall& call);
         void drawPoints(gos_VERTEX* vertices, int count);
         void drawTris(gos_VERTEX* vertices, int count);
         void drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* indices, int num_indices);
@@ -482,18 +481,6 @@ class gosRenderer {
             probeWorldToClipGLValid_ = true;
         }
 
-        // Shadow pre-pass (separate pass over all terrain batches before shading)
-        void beginShadowPrePass(bool clearDepth = true);
-        void drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
-            WORD* indices, int numIndices,
-            const gos_TERRAIN_EXTRA* extras, int extraCount);
-        void drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
-            HGOSVERTEXDECLARATION vdecl, const float* worldMatrix4x4);
-        void endShadowPrePass();
-
-        // Dynamic object shadow pass (camera-centered, per-frame)
-        void beginDynamicShadowPass();
-        void endDynamicShadowPass();
 
         void setTerrainLightDir(float x, float y, float z) { terrain_light_dir_ = vec4(x, y, z, 0.0f); }
         const vec4& getTerrainLightDir() const { return terrain_light_dir_; }
@@ -684,18 +671,6 @@ class gosRenderer {
         // caller). Gate OFF -> flag stays false -> body applies as before -> byte-identical.
         void executorApplyWaterState();
         bool waterStateAppliedByExecutor_ = false;
-        // APPLY-STATE-SHADOW-1: first render-target-MODE apply-state consumer.
-        // When MC2_FRAMEGRAPH_EXECUTOR is ON, the executor (at the dynamic-shadow seam,
-        // beginDynamicShadowPass) applies the ShadowMech BASE pipeline + the forward-Z
-        // depth clear (DepthForwardZ) via the EXTEND helper, and sets this flag; the body
-        // then skips its own applyPipeline(ShadowMech) AND its forward-Z clear (one-shot
-        // reset). FBO bind (ShadowDynamicMap) + viewport (ShadowMap size) stay body-owned
-        // this slice (deferred to SHADOW-2). Gate OFF -> flag stays false -> body applies +
-        // clears as before -> byte-identical. The capture/restore bracket, AMD feedback-unbind,
-        // GL_TEXTURE_COMPARE_MODE flip, material/lsm upload, per-caster ShadowStaticProp, and
-        // the noteRenderPass(ShadowCaster) seam all remain body-owned.
-        void executorApplyShadowState();
-        bool shadowStateAppliedByExecutor_ = false;
         // Slice A — draw the mission-static cement-overlay bake. Reproduces
         // drawTerrainOverlays()'s exact state/shader/uniforms/VAO but draws
         // the passed static VBO with per-overlayTexId ranges and does NOT
@@ -889,12 +864,8 @@ class gosRenderer {
         glsl_program* shadow_mech_prog_        = nullptr;  // shadow_mech.vert + shadow_instanced.frag
         glsl_program* shadow_static_prop_prog_ = nullptr;  // shadow_static_prop.vert + shadow_instanced.frag
         bool shadow_mode_ = false;
-        bool shadow_prepass_active_ = false;
         float terrain_shadow_softness_ = mc2ShadowCsmSoftness();  // env-overridable via MC2_SHADOW_CSM_SOFTNESS
         bool terrain_draw_enabled_ = true;
-        GLint shadow_prepass_prev_fbo_ = 0;
-        GLint shadow_prepass_prev_viewport_[4] = {0};
-        const float* active_light_space_matrix_ = nullptr;  // routes static or dynamic LSM
 
         // Terrain splatting textures (from main source, needed for material normal maps)
         vec4 terrain_light_dir_;

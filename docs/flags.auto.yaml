@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 947
 registry_entry_count: 193
-verified_count: 937
+verified_count: 931
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -956,7 +956,6 @@ flags:
     rule: Presence
     owner: code
     doc: ""
-    verified: true
   - name: MC2_DEBUG_SHADOW_ZRANGE
     kind: Bool
     default: false
@@ -4553,7 +4552,6 @@ flags:
     rule: Presence
     owner: props
     doc: ""
-    verified: true
   - name: MC2_SHADOW_DIST_FADE
     kind: Float
     default: 80
@@ -4580,7 +4578,6 @@ flags:
     doc: "SHADOW-DYNAMIC-PROP-CASTERS-1: feed the per-frame DYNAMIC sun-shadow caster pass from the full registry (registered props, visibility-independent) instead..."
     tokens: "1|0|2"
     smoke_passthrough: true
-    verified: true
     registry: {feature_id: MC2_FEATURE_SHADOW_DYNAMIC_PROP_CASTERS, kind: Feature, order: -1, default_on: true}
   - name: MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY
     kind: Bool
@@ -4693,7 +4690,6 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_SHADOW_PROP_ALPHA_ATLAS
     kind: Bool
     default: true
@@ -4701,7 +4697,6 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_SHADOW_ROBUST_BASIS
     kind: Bool
     default: true
@@ -4716,7 +4711,6 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_SHADOW_STATIC_BANDFIX
     kind: Bool
     default: true

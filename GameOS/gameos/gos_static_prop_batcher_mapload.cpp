@@ -134,17 +134,6 @@ void GpuStaticPropBatcher::onMapUnload() {
     // Slice 2 (object-offload) — Stage 2.C.2: per-type hot-color SSBO is
     // also per-map; rebuild on next finalizeGeometry.
     if (s_perTypeSsbo) { glDeleteBuffers(1, &s_perTypeSsbo); s_perTypeSsbo = 0; }
-    // SHADOW-STATIC-BUILDINGS-2: per-map one-shot building shadow SSBO.
-    if (s_staticBldgShadowSsbo) { glDeleteBuffers(1, &s_staticBldgShadowSsbo); s_staticBldgShadowSsbo = 0; }
-    if (s_dynamicPropShadowSsbo) {
-        GLuint dynShadowLocal = static_cast<GLuint>(s_dynamicPropShadowOwner.backendHandle);
-        glDeleteBuffers(1, &dynShadowLocal); s_dynamicPropShadowOwner.backendHandle = 0;
-        // SCENE-SSBO-OWNER-SWEEP-1: mark the registry slot unavailable on teardown.
-        RenderCore::RenderResourceDesc invalid;
-        invalid.id    = RenderCore::RenderResourceId::DynamicPropShadowSsbo;
-        invalid.valid = false;
-        RenderCore::registerOrUpdateRenderResource(invalid);
-    }
     // Ring buffers are kept across maps (sized to map's worst case -- grow on demand).
 
     //
@@ -224,6 +213,7 @@ void GpuStaticPropBatcher::onMapUnload() {
     if (s_texArrayOff)     { glDeleteTextures(1, &s_texArrayOff);     s_texArrayOff     = 0; }
     if (s_texArrayOn)      { glDeleteTextures(1, &s_texArrayOn);      s_texArrayOn      = 0; }
     for (auto& a : albedoArrays_) a = {};   // released with the GL arrays they mirror, not just cleared
+    albedoKey_ = {};
     staticPropReleaseBuckets();  // COMPRESSION-BC7-STATICPROP-2 (no-op when gate OFF)
     if (s_perDrawSsbo)      { glDeleteBuffers(1,  &s_perDrawSsbo);      s_perDrawSsbo      = 0; }
     if (s_permutationSsbo)  { glDeleteBuffers(1,  &s_permutationSsbo);  s_permutationSsbo  = 0; }

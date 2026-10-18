@@ -790,7 +790,6 @@ extern "C" void     gos_terrain_indirect_getDispatchMvpFloats4(float out[4]);
 //
 // (declared in gos_static_prop_batcher.h; forward-declared here to avoid
 //  pulling that header into this TU)
-void gos_GetStaticBuildingShadowCounts(int& types, int& inst, int& draws);
 
 
 // ---------------------------------------------------------------------------

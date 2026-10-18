@@ -313,8 +313,6 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
                 sp.dynShadowMapSize            = gos_getDynShadowMapSize();
                 sp.mechShadowTypesDrawn        = gos_getMechShadowTypesDrawn();
                 sp.mechShadowInstDrawn         = gos_getMechShadowInstDrawn();
-                sp.staticPropShadowTypesDrawn  = gos_getStaticPropShadowTypesDrawn();
-                sp.staticPropShadowInstDrawn   = gos_getStaticPropShadowInstDrawn();
                 // v1: shadow shaders do not consume ViewUniforms (binding=3).
                 sp.viewUniformsBoundForShadow  = false;
                 EditorInspector::setShadowPassSnapshot(sp);
@@ -370,8 +368,8 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
                     gos_render_pass_timer::Pass_SpColor, spSlots, spSlots);
                 gos_frame_pass_stats::SetPassCounts(
                     gos_render_pass_timer::Pass_ShadowDyn,
-                    gos_getMechShadowInstDrawn() + gos_getStaticPropShadowInstDrawn(),
-                    gos_getMechShadowInstDrawn() + gos_getStaticPropShadowInstDrawn());
+                    gos_getMechShadowInstDrawn(),
+                    gos_getMechShadowInstDrawn());
             }
 
         }

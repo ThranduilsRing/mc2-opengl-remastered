@@ -470,39 +470,8 @@ void MC_TextureManager::renderListsStaticShadowBuild (void)
 		gos_BuildStaticLightMatrix();   // world-fixed, camera-independent
 		gos_MarkStaticLightMatrixBuilt();
 
-		// Any valid terrain colormap: the shadow prepass is depth-only
-		// (shadow_terrain.tese = plain lightSpaceMatrix*worldPos, not
-		// sampled for depth), so the exact texture is irrelevant -- bind
-		// the first terrain node's, else the solid default (idx 0).
-		unsigned long shTex = masterTextureNodes[0].get_gosTextureHandle();
-		for (long si = 0; si < nextAvailableVertexNode; si++) {
-			if ((masterVertexNodes[si].flags & MC2_DRAWSOLID) &&
-				(masterVertexNodes[si].flags & MC2_ISTERRAIN)) {
-				shTex = masterTextureNodes[masterVertexNodes[si].textureIndex].get_gosTextureHandle();
-				break;
-			}
-		}
-
-		gos_BeginShadowPrePass(true);   // one-shot clear (no accumulate)
-		Terrain::mapData->renderStaticTerrainShadowFullMap(indexArray, shTex);
-		gos_EndShadowPrePass();
-
-		// SHADOW-STATIC-BUILDINGS-2: append rigid BUILDING casters to the world-
-		// fixed static shadow map, ONCE (same one-shot build block as terrain).
-		// Source = the FULL registry (all buildings, visibility-independent, baked
-		// at mission-load registerStatic), NOT per-frame visible buckets (Option B's
-		// failure). Trees excluded by the Building population filter. Appends to the
-		// terrain depth (gos_BeginShadowPrePass(false) = no clear). Relies on C-pre min-combine
-		// (7ea32b83) so a building in both this and the dynamic bounded-near map does
-		// not double-darken terrain. Only runs when the prepass actually activates.
-		if (gos_BeginShadowPrePass(false)) {  // append, no clear
-			// Local (not static): runs once per mission; getBuildingShadowInstances
-			// clears+fills it. No need to retain capacity for the process lifetime.
-			std::vector<GpuStaticPropInstance> bldgShadowInstances;
-			GpuStaticPropRegistry::getBuildingShadowInstances(bldgShadowInstances);
-			GpuStaticPropBatcher::instance().drawStaticBuildingShadows(bldgShadowInstances);
-			gos_EndShadowPrePass();
-		}
+		// The static shadow map itself is the VK shadow island's (it draws the terrain and the buildings from the map data); this is only the matrix
+		// and the build generation the island and the terrain feed key on.
 	}
 }
 

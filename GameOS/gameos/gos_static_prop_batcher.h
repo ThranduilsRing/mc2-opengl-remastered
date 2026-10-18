@@ -18,12 +18,6 @@
 namespace RenderCore { struct MaterialGpu; }
 namespace RenderCore { struct StaticPropTypeDesc; }
 
-// SHADOW-STABILITY-1: read-only accessor for the last static-building shadow
-// caster counts (types/instances/draw-calls). Zero until the static building
-// shadow has drawn this mission. Consumed by the shadow state trace in
-// gameos_graphics.cpp.
-void gos_GetStaticBuildingShadowCounts(int& types, int& inst, int& draws);
-
 // Per-instance shader-visible struct: GpuStaticPropInstance (112 B, std430).
 // SINGLE SOURCE OF TRUTH is RenderCore/gpu_abi/GpuStaticPropInstance.h; the
 // shader-side struct is generated into shaders/include/gpu_abi_static_prop_instance.gen.hglsl
@@ -192,7 +186,10 @@ private:
     // The CPU copy of the alpha-OFF (0) and alpha-ON (1) albedo arrays of the RGBA8 group path, per map; empty when a group has
     // no array or its array came from the BC7 path. The Vulkan prop island copies it instead of reading the GL arrays back.
     std::array<mc2tex::TextureArrayCpu, 2> albedoArrays_;
+    // Per group: 0 until the group array of this map is built, then a serial that is new for every build (the change key of the island's copy).
+    std::array<uint32_t, 2> albedoKey_{};
 public:
+    uint32_t albedoKey(uint32_t group) const { return albedoKey_[group & 1u]; }
     const mc2tex::TextureArrayCpu& albedoArray(uint32_t group) const { return albedoArrays_[group & 1u]; }
     // True when GL alpha-tests packet `packet` of the shared geometry this frame: its material's ALPHA_TEST bit or its texture's live alpha
     // flag (set after load for some textures, so it can differ from the packet's group).
@@ -287,30 +284,6 @@ private:
     void releaseGlGuards(StaticPropFlushFrame& f);
     void finishFlush();
 public:
-    // depth-only into the dynamic shadow FBO. Building types are omitted: they cast
-    // via the world-fixed static map, so a dynamic copy would be a redundant fuzzy
-    // double-shadow.
-    void flushShadow();
-
-    // SHADOW-STATIC-BUILDINGS-2: depth-only draw of ALL registered rigid-building
-    // recipe leaves (from GpuStaticPropRegistry::getBuildingShadowInstances — the
-    // full registry, visibility-INDEPENDENT, NOT per-frame buckets) into the
-    // currently-bound (static) shadow FBO using the static world-fixed light
-    // matrix. One-shot (caller latches it to the static-map build). Builds/uploads
-    // a dedicated all-buildings instance SSBO grouped by typeID; reuses the
-    // resident per-type geometry + shadow_static_prop program. Trees excluded
-    // upstream by the Building population filter.
-    void drawStaticBuildingShadows(const std::vector<GpuStaticPropInstance>& instances);
-
-    // SHADOW-DYNAMIC-PROP-CASTERS-1: depth-only draw of registry-supplied
-    // NON-building prop leaves (trees/fences/props, visibility-INDEPENDENT) into
-    // the currently-bound DYNAMIC shadow FBO using the per-frame dynamic light
-    // matrix. Same machinery as drawStaticBuildingShadows but bound to
-    // getDynamicLightSpaceMatrix() and rebuilt every frame; replaces the
-    // camera-visible s_typeRanges feed (flushShadow) which only admitted props
-    // near the camera. Caller must bracket with gos_BeginDynamicShadowPass().
-    void drawDynamicPropShadows(const std::vector<GpuStaticPropInstance>& instances);
-
     // Debug: color-address validation mode. 0=off, 1=gradient, 2=hash.
     void setDebugAddrMode(int mode);
     int  getDebugAddrMode() const { return debugAddrMode_; }
