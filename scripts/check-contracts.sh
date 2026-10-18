@@ -70,6 +70,10 @@ QUIET=0
 JOBS="${CONTRACTS_JOBS:-}"
 SELFTEST=0
 SELFTEST_RENDER=0
+# Row-level result cache (scripts/contracts_cache.py + scripts/contracts-cache-inputs.txt): a row that PASSED against
+# byte-identical declared inputs is reported "PASS (cached)" and not run. --no-cache (or CONTRACTS_NO_CACHE=1) runs
+# everything. Only PASS is ever cached; undeclared rows always run. Parallel mode only (-j2 and up, the default).
+NO_CACHE="${CONTRACTS_NO_CACHE:-0}"
 # --rows REGEX runs only the rows whose label matches (ERE, unanchored): the inner-loop filter for iterating on one check. It is a
 # PARTIAL board and says so; the full board stays mandatory per batch.
 ROWS_RE=""
@@ -93,6 +97,7 @@ for arg in "$@"; do
         --quiet|-q) QUIET=1 ;;
         --selftest) SELFTEST=1 ;;
         --serial) JOBS=1 ;;
+        --no-cache) NO_CACHE=1 ;;
         -j[0-9]*) JOBS="${arg#-j}" ;;
         --jobs=*) JOBS="${arg#--jobs=}" ;;
         --rows=*) ROWS_RE="${arg#--rows=}"
@@ -104,7 +109,8 @@ for arg in "$@"; do
         # selftest can grade what the REAL runners render. Not for humans.
         --selftest-render) SELFTEST_RENDER=1 ;;
         --help|-h)
-            echo "Usage: bash $0 [--quiet] [--selftest] [--serial | -jN | --jobs=N] [--rows REGEX]"
+            echo "Usage: bash $0 [--quiet] [--selftest] [--serial | -jN | --jobs=N] [--rows REGEX] [--no-cache]"
+            echo "  --no-cache    run every row (default: rows that PASSED on identical declared inputs are 'PASS (cached)')"
             echo "  --rows REGEX  run only rows whose label matches (ERE, unanchored), e.g. --rows 'ratchet|dup_lines'."
             echo "                A PARTIAL board: it is for iterating mid-batch, never a substitute for the full board."
             echo "  --rows split  the file-split rows (cxx17_ratchet dup_lines gate_gen file_size split_path split_map background_launch scripts_tests)"
@@ -420,12 +426,33 @@ _drain_queue() {
             rest+=("$i")
         fi
     done
-    for i in "${first[@]}" "${rest[@]}"; do
+    # Result cache: one helper call keys every declared queued row; a HIT is filled in as an instant PASS.
+    local -A ckey=() chit=()
+    if [ "$NO_CACHE" != "1" ]; then
+        local tsv="" lbl key st
+        for ((i = 0; i < n; i++)); do
+            case "${Q_CMD[$i]}" in *$'\t'*|*$'\n'*) continue ;; esac
+            tsv+="${Q_LABEL[$i]}"$'\t'"${Q_CMD[$i]}"$'\n'
+        done
+        local res
+        res="$(printf '%s' "$tsv" | py -3 -B "$SCRIPT_DIR/contracts_cache.py" keys "$WORKTREE_ROOT" 2>/dev/null)" || res=""
+        while IFS=$'\t' read -r lbl key st; do
+            [ -n "$lbl" ] || continue
+            st="${st%$'\r'}"    # python on Windows ends lines with CRLF
+            ckey["$lbl"]="$key"
+            [ "$st" = "HIT" ] && chit["$lbl"]=1
+        done <<< "$res"
+    fi
+    local -a first2=() rest2=() ser2=()
+    for i in "${first[@]}"; do if [ "${chit[${Q_LABEL[$i]}]:-0}" = 1 ]; then _cache_fill "$i"; else first2+=("$i"); fi; done
+    for i in "${rest[@]}";  do if [ "${chit[${Q_LABEL[$i]}]:-0}" = 1 ]; then _cache_fill "$i"; else rest2+=("$i");  fi; done
+    for i in "${order_ser[@]}"; do if [ "${chit[${Q_LABEL[$i]}]:-0}" = 1 ]; then _cache_fill "$i"; else ser2+=("$i"); fi; done
+    for i in "${first2[@]}" "${rest2[@]}"; do
         while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do wait -n 2>/dev/null || true; done
         _par_worker "$i" &
     done
     wait
-    for i in "${order_ser[@]}"; do _par_worker "$i"; done
+    for i in "${ser2[@]}"; do _par_worker "$i"; done
     # Replay in registration order through the serial finishing code.
     local out rc ms
     for ((i = 0; i < n; i++)); do
@@ -440,7 +467,24 @@ _drain_queue() {
             _finish_check "${Q_LABEL[$i]}" "${Q_CMD[$i]}" "$out" "$rc" "$ms"
         fi
     done
+    # Record every uncached row that PASSED (rc 0) against the key computed before it ran. FAIL / KNOWN never stored.
+    local store=""
+    for ((i = 0; i < n; i++)); do
+        [ -n "${ckey[${Q_LABEL[$i]}]:-}" ] || continue
+        [ "${chit[${Q_LABEL[$i]}]:-0}" = "1" ] && continue
+        [ "$(cat "$_PAR_DIR/$i.rc" 2>/dev/null)" = "0" ] || continue
+        store+="${Q_LABEL[$i]}"$'\t'"${ckey[${Q_LABEL[$i]}]}"$'\n'
+    done
+    if [ -n "$store" ]; then printf '%s' "$store" | py -3 -B "$SCRIPT_DIR/contracts_cache.py" store "$WORKTREE_ROOT" 2>/dev/null || true; fi
     rm -rf "$_PAR_DIR"
+}
+
+CACHED_SET=" "
+_cache_fill() {   # $1 idx: a cache HIT is a PASS with no run
+    printf '%s' "(cached: PASS on identical inputs; --no-cache to force)" > "$_PAR_DIR/$1.out"
+    printf '%s' 0 > "$_PAR_DIR/$1.ms"
+    printf '%s' 0 > "$_PAR_DIR/$1.rc"
+    CACHED_SET+="${Q_LABEL[$1]} "
 }
 
 # ---------------------------------------------------------------------------
@@ -1473,7 +1517,9 @@ run_check "manifest_schema"            "py -3 scripts/check-manifest-schema.py -
 # note above refuses for the same reason. scripts/check-doctest-count-locks.py
 # is the mechanism that manages a count lock properly if this tier ever needs
 # one.
-run_check "scripts_tests"              "py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider"
+# pytest-xdist, when installed, runs the tier on the lane's 2 cores (-n 2); without it the tier stays serial.
+_XDIST_N=""; if py -3 -c "import xdist" >/dev/null 2>&1; then _XDIST_N="-n 2"; fi
+run_check "scripts_tests"              "py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider $_XDIST_N"
 
 # ---------------------------------------------------------------------------
 # TOOLS-TESTS-WIRE-1 (2026-10-09) -- the pytest modules that live NEXT TO their tools
@@ -1520,6 +1566,7 @@ for i in "${!NAMES[@]}"; do
         mark=""
     fi
     if [ "$result" = "PASS" ]; then
+        case "$CACHED_SET" in *" $label "*) mark=" (cached)$mark" ;; esac
         printf "  %-40s %8ss  PASS%s\n" "$label" "$secs" "$mark"
     elif [ "$result" = "KNOWN" ]; then
         printf "  %-40s %8ss  KNOWN (correct failure, ledger-pinned)%s\n" "$label" "$secs" "$mark"

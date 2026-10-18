@@ -148,7 +148,7 @@ def _run_module_once(mod: str) -> tuple[str, int, list[str], str]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--jobs", type=int,
-                    default=min(8, os.cpu_count() or 4))
+                    default=min(2, os.cpu_count() or 2))   # the 2-core lane cap; measured: batching modules into few pytest processes was NOT faster (tests, not startup, dominate)
     ap.add_argument("--list", action="store_true", help="print modules and exit")
     args = ap.parse_args()
 
