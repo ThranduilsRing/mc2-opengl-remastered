@@ -1434,19 +1434,22 @@ void ABLModule::destroy (void) {
 		breakPointManager = nullptr;
 	}
 
-	// The instance's own blocks go back now, not at ABLi_close (BUGS row 78): the sized statics and the order flags.
-	if (staticData) {
-		const long* sizeList = ModuleRegistry[handle].sizeStaticVars;
-		for (long i = 0; i < ModuleRegistry[handle].numStaticVars; i++)
-			if (sizeList[i] > 0)
-				ABL_free(ABLPool::Stack, staticData[i].address);
-		ABL_free(ABLPool::Stack, staticData);
-		staticData = nullptr;
-	}
-
+	// The instance's own blocks go back now, not at ABLi_close (BUGS row 78): the order flags and the sized statics. After
+	// ABLi_close the registry is gone and the first free reports the closed environment.
 	if (orderCallFlags) {
 		ABL_free(ABLPool::Stack, orderCallFlags);
 		orderCallFlags = nullptr;
+	}
+
+	if (staticData) {
+		if (ModuleRegistry) {
+			const long* sizeList = ModuleRegistry[handle].sizeStaticVars;
+			for (long i = 0; i < ModuleRegistry[handle].numStaticVars; i++)
+				if (sizeList[i] > 0)
+					ABL_free(ABLPool::Stack, staticData[i].address);
+		}
+		ABL_free(ABLPool::Stack, staticData);
+		staticData = nullptr;
 	}
 }
 
