@@ -39,6 +39,8 @@ import contracts_cache as cc  # noqa: E402
 
 AUDIT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_audit_site")
 SKIP_NAMES = ("__pycache__", ".pytest_cache")
+# Repo-relative directories the tests use as scratch output (git-ignored): not inputs.
+OUTPUT_DIRS = ("scratch", "run")
 # What a C++ compiler child can read in the repo: the source trees (same set as @CPP in contracts-cache-inputs.txt).
 CXX_SCOPE = ("code", "mclib", "gui", "editor", "GameAdapters", "GameOS", "Viewer", "EditorBridge", "RenderCore",
              "RenderWorld", "Visibility", "MeshRenderer", "MaterialSystem", "DebugRenderer", "RenderDeviceGL",
@@ -79,6 +81,7 @@ class ModuleTestCache:
         self.entries: dict = self.data.setdefault("modules", {})
         self.memo: dict = self.data.setdefault("memo", {})      # rel -> [size, mtime_ns, sha1]
         self._extras = None
+        self.miss: dict[str, str] = {}
         self.meta = f"{cc.CACHE_VERSION}|{cc.versions()}"
         self.stats = {"hit": 0, "ran": 0, "uncacheable": 0}
 
@@ -179,10 +182,19 @@ class ModuleTestCache:
                 if refs and all(re.match(r"^[0-9a-f]{7,40}([^:]*)(:.*)?$", x) for x in refs):
                     return "harmless", desc
                 return "tree", desc
+            if sub in ("init", "clone") and [a for a in rest if not a.startswith("-")]                     and all(not inside(a) for a in rest if not a.startswith("-")):
+                return "foreign", desc
+            if sub == "hash-object" and "--stdin" in rest:
+                return "harmless", desc
             if sub == "ls-files" and all(a in ("-z", "--cached", "-c", "--full-name", "--") or not a.startswith("-")
                                          for a in rest):
                 return "list", desc
             return "tree", desc
+        if exe == "cmd" and [t.lower() for t in toks[1:]] == ["/c", "ver"]:
+            return "harmless", desc
+        tmp = os.path.normpath(tempfile.gettempdir()).replace(bs, "/").lower() + "/"
+        if os.path.isabs(toks[0]) and os.path.normpath(toks[0]).replace(bs, "/").lower().startswith(tmp):
+            return "foreign", desc          # an executable the test itself built into the temp dir
         if exe in ("glslc", "glslangvalidator", "glslang", "spirv-cross", "spirv-val", "spirv-opt", "spirv-dis",
                    "slangc"):
             return "tool", toks[0]
@@ -192,31 +204,42 @@ class ModuleTestCache:
 
     # -- lookup / store -------------------------------------------------------------------------------------------
     def lookup(self, label: str, cmd: str) -> bool:
+        why = self._lookup(label, cmd)
+        if why:
+            self.miss[label] = why
+            return False
+        self.stats["hit"] += 1
+        return True
+
+    def _lookup(self, label: str, cmd: str) -> str:
+        """"" for a HIT, else the reason for the miss (reported with --report)."""
         if not self.enabled:
-            return False
+            return "cache off"
         e = self.entries.get(label)
-        if not e or e.get("meta") != self.meta or e.get("cmd") != cmd:
-            return False
+        if not e:
+            return "no entry"
+        if e.get("meta") != self.meta or e.get("cmd") != cmd:
+            return "tool versions / command changed"
         for rel, ident in e["reads"].items():
             if self.file_ident(rel) != ident:
-                return False
+                return "file changed: " + rel
         for rel, ident in e["dirs"].items():
             if self.dir_ident(rel) != ident:
-                return False
+                return "directory listing changed: " + rel
         ex = e.get("extras") or {}
         if ex:
             now = self.extras_now()
-            if any(ex.get(k) != now[k] for k in ("tree", "head", "list", "scope", "cc") if k in ex):
-                return False
+            for k in ("tree", "head", "list", "scope", "cc"):
+                if k in ex and ex[k] != now[k]:
+                    return "coarse key changed: " + k
             for exe, st in (ex.get("tools") or {}).items():
                 try:
                     stt = os.stat(exe)
                     if [stt.st_size, stt.st_mtime_ns] != st:
-                        return False
+                        return "tool binary changed: " + exe
                 except OSError:
-                    return False
-        self.stats["hit"] += 1
-        return True
+                    return "tool binary missing: " + exe
+        return ""
 
     def new_audit(self) -> tuple[dict, str]:
         """(env for the child process, audit out dir)."""
@@ -240,6 +263,8 @@ class ModuleTestCache:
         finally:
             shutil.rmtree(out, ignore_errors=True)
         reads, dirs, opaque, globs = {}, {}, [], []
+        def noise(rel):
+            return any(rel == n or rel.startswith(n + "/") for n in OUTPUT_DIRS)
         for r in recs:
             for rel, (ident, t) in r.get("reads", {}).items():
                 if rel not in reads or t < reads[rel][1]:
@@ -248,6 +273,8 @@ class ModuleTestCache:
                 dirs.setdefault(rel, ident)
             opaque += r.get("opaque", [])
             globs += r.get("globs", [])
+        reads = {k: v for k, v in reads.items() if not noise(k)}
+        dirs = {k: v for k, v in dirs.items() if not noise(k)}
         if not recs:
             self.stats["uncacheable"] += 1
             return {"opaque": ["no audit record"], "secs": secs}

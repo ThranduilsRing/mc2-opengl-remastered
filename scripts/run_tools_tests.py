@@ -175,6 +175,7 @@ def run_all(mods: list[str], jobs: int, tier: str, no_cache: bool = False, repor
         rows = sorted(((i or {}).get("secs", 0), m, i or {}) for m, i in infos.items())
         for secs, m, i in reversed(rows):
             ks = i.get("kinds") or {}
+            print(f"[test-cache:{tier}] ran {secs:6.1f}s {m}: {cache.miss.get(m, '?')}")
             if i.get("tree"):
                 print(f"[test-cache:{tier}] WHOLE-TREE {secs:6.1f}s {m}: {'; '.join(i.get('opaque', [])[:2])}")
             elif set(ks) - {"foreign", "harmless"}:
