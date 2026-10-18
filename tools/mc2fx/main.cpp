@@ -80,9 +80,7 @@ int cmdRebuild(const char* inPath, const char* outPath)
     if (!lib) { std::fprintf(stderr, "mc2fx: load failed\n"); return 4; }
 
     std::vector<unsigned char> outBytes;
-    // Pre-size the Save stream from the input: the engine's Save writer never
-    // grows its buffer (size_t/DWORD virtual-override mismatch), so the stream
-    // must be born big enough. 4x input + 1MiB headroom covers any re-emit growth.
+    // Pre-size the Save stream from the input to avoid reallocations (it grows on demand).
     size_t reserveHint = inBytes.size() * 4 + (1u << 20);
     if (!mc2fx::saveBlob(lib, outBytes, reserveHint)) {
         std::fprintf(stderr, "mc2fx: save failed (no terminating size found)\n");

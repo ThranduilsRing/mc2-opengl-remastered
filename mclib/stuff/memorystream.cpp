@@ -874,12 +874,13 @@ bool
 MemoryStream&
 	DynamicMemoryStream::WriteBytes(
 		const void *ptr,
-		DWORD number_of_bytes
+		size_t number_of_bytes_
 	)
 {
 	Check_Object(this);
 	Check_Pointer(ptr);
-	Verify(number_of_bytes > 0);
+	Verify(number_of_bytes_ > 0);
+	const DWORD number_of_bytes = static_cast<DWORD>(number_of_bytes_);
 
 	//
 	//--------------------------------------------------------------------

@@ -229,7 +229,7 @@ struct LoadedLibrary {
     std::unique_ptr<gosFX::EffectLibrary> library;
     LoadedLibrary(float childLife, float particleLife)
     {
-        // Born large and rewound, as tools/mc2fx saveBlob: the base WriteBytes never grows a DynamicMemoryStream.
+        // Born large and rewound, as tools/mc2fx saveBlob.
         Stuff::DynamicMemoryStream stream(64u * 1024u);
         stream.Rewind();
         gosFX::WriteGFXVersion(&stream);

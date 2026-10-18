@@ -105,14 +105,9 @@ unsigned applyPatch(mc2::particles::SpecLibrary* lib,
 // Re-emit the loaded library to a byte blob via SpecLibrary::Save. Returns true
 // on success; `out` receives exactly the bytes the Save path wrote.
 //
-// `reserveHint` pre-sizes the backing stream buffer. This is LOAD-BEARING, not an
-// optimization: the engine's MemoryStream::WriteBytes(const void*, size_t) virtual
-// (the one the Save path actually dispatches to) does NOT grow the buffer — the
-// would-be growing override DynamicMemoryStream::WriteBytes is declared with a
-// DWORD arg, so on x64 (DWORD != size_t) it never overrides the size_t virtual and
-// is dead on this path. So the stream must be born large enough to hold the whole
-// blob or the base writer overruns the heap. Pass >= expected output size (e.g.
-// 4x the input). 0 keeps the legacy zero-size buffer (will overrun for real blobs).
+// `reserveHint` pre-sizes the backing stream buffer (it grows on demand since the
+// DynamicMemoryStream::WriteBytes override was fixed, BUGS row 79; a large hint
+// avoids the reallocations).
 bool saveBlob(mc2::particles::SpecLibrary* lib, std::vector<unsigned char>& out,
               size_t reserveHint = 0);
 

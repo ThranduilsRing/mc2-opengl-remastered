@@ -475,14 +475,7 @@ bool saveBlob(mc2::particles::SpecLibrary* lib, std::vector<unsigned char>& out,
               size_t reserveHint)
 {
     if (!lib) return false;
-    // ASan ground truth (memorystream.cpp:275): the Save path writes through the
-    // virtual MemoryStream::WriteBytes(const void*, size_t). DynamicMemoryStream's
-    // would-be growing override is declared WriteBytes(const void*, DWORD); on x64
-    // DWORD(32) != size_t(64), so it does NOT override the size_t virtual and is
-    // never dispatched on this path. The base writer does a raw Mem_Copy +
-    // AdvancePointer with NO reallocation -> a buffer born too small overruns the
-    // heap (the non-deterministic __fastfail). Fix tool-side by pre-sizing the
-    // stream large enough to hold the whole blob so the base writer never overruns.
+    // The stream grows on demand (BUGS row 79); the reserve only avoids reallocations.
     gos_PushCurrentHeap(gosFX::Heap);
     if (std::getenv("MC2FX_SAVE_TRACE")) {
         // Per-spec probe: localize which effect's Save faults, with SEH so a
@@ -542,8 +535,8 @@ unsigned classIdForName(const std::string& t)
     return 0u;
 }
 
-// Save a single spec to its own DynamicMemoryStream (born-large; the base
-// WriteBytes never grows — see saveBlob note). Returns the record bytes. SEH-free
+// Save a single spec to its own DynamicMemoryStream (born large to avoid
+// reallocations). Returns the record bytes. SEH-free
 // here; callers that fear a fault should route through the build path's existing
 // SEH probe. Returns false on empty output.
 bool saveSpecToBytes(gosFX::Effect::Specification* spec, std::vector<unsigned char>& out)

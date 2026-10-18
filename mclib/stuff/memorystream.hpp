@@ -664,11 +664,11 @@ namespace Stuff {
 		MemoryStream&
 			WriteBytes(
 				const void *ptr,
-				DWORD number_of_bytes
-			);
+				size_t number_of_bytes
+			) override;	// size_t: with DWORD it hid the virtual, so writes through MemoryStream& never grew the buffer (BUGS row 79)
 		
 		bool
-			AllocateBytes(DWORD count);
+			AllocateBytes(DWORD count) override;
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Private data

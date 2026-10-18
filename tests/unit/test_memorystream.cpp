@@ -60,4 +60,29 @@ TEST_CASE("ReadBytes past the end zero-fills the missing tail and stops at the e
 	Stuff::RegisteredClass::TerminateClass();
 }
 
+TEST_CASE("DynamicMemoryStream born small grows on writes through a MemoryStream reference (BUGS row 79)")
+{
+	Stuff::RegisteredClass::InitializeClass();
+	Stuff::MemoryStream::InitializeClass();
+	{
+		Stuff::DynamicMemoryStream grown(5); // as NotationFile/Note build a nested page: a 128-byte buffer
+		Stuff::MemoryStream& base = grown;
+		unsigned char chunk[100];
+		for (int i = 0; i < 10; ++i) {
+			std::memset(chunk, i + 1, sizeof(chunk));
+			base.WriteBytes(chunk, sizeof(chunk));
+		}
+		base << "tail";
+		CHECK(grown.GetBytesUsed() == 1004);
+		CHECK(grown.GetBufferSize() >= 1004);
+		grown.Rewind();
+		const auto* bytes = static_cast<const unsigned char*>(grown.GetPointer());
+		for (int i = 0; i < 10; ++i)
+			CHECK(bytes[i * 100] == i + 1);
+		CHECK(std::memcmp(bytes + 1000, "tail", 4) == 0);
+	}
+	Stuff::MemoryStream::TerminateClass();
+	Stuff::RegisteredClass::TerminateClass();
+}
+
 }
