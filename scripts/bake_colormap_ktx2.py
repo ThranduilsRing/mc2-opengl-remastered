@@ -91,7 +91,7 @@ def bake_one(src: Path, ktx_tool: str, dry_run: bool, max_edge: int = 0) -> bool
 
         img_rgba.save(png_path, format="PNG")
 
-        # Step 1: encode to UASTC (intermediate, required by ktx transcode)
+        # Encode to UASTC (intermediate, required by ktx transcode)
         create_cmd = [
             ktx_tool, "create",
             "--encode", "uastc",
@@ -107,7 +107,7 @@ def bake_one(src: Path, ktx_tool: str, dry_run: bool, max_edge: int = 0) -> bool
                   file=sys.stderr)
             return False
 
-        # Step 2: transcode UASTC -> BC7
+        # Transcode UASTC -> BC7
         transcode_cmd = [
             ktx_tool, "transcode", "--target", "bc7",
             str(uastc_path), str(dst),

@@ -47,7 +47,7 @@ EXCLUDE_SUBSTR = [
 CPP_EXT = (".h", ".hpp", ".cpp", ".cc", ".cxx")
 GLSL_EXT = (".vert", ".frag", ".comp", ".tesc", ".tese", ".geom", ".glsl", ".hglsl")
 
-# Cross-file same-PIPELINE collisions that were RESOLVED by an explicit slice
+# Cross-file same-PIPELINE collisions that were RESOLVED deliberately
 # (this same-file checker cannot see cross-file/cross-stage collisions — the
 # per-pipeline classifier scripts/check-vulkan-bindings.py owns that. This list
 # is a documentation cross-reference + regression breadcrumb, printed for

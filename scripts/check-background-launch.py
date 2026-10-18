@@ -176,18 +176,19 @@ def load_allow(root: Path = ROOT):
 #: The vars that keep an agent run off the user's screen. Any launch path that
 #: can prevent these reaching the child engine is a regression.
 #:
-#: MC2_WINDOW_OFFSCREEN joined the list in NOFOCUS-FINISH-1 and is the one that
+#: MC2_WINDOW_OFFSCREEN is the one that
 #: matters most: the other four make the window small, windowed and
 #: unactivated, but it is still ON the desktop. Only this one keeps it off,
 #: and it was being scrubbed -- scripts/mc2_env_pin.py is deny-by-default and
 #: did not name it, so scripts/run_visual_capture.py (which builds its env
 #: through env_pin, not through nofocus.apply_env) delivered an inert var to
 #: the engine and fell back to the 250ms poller -- i.e. exactly the
-#: multi-second desktop-covering flash NOFOCUS-HARDEN-1 was written to delete.
+#: multi-second desktop-covering flash: with the var stripped the engine falls
+#: back to the slow poller and flashes a desktop-covering window.
 WINDOWING_VARS = ("MC2_WINDOWED", "MC2_WIDTH", "MC2_HEIGHT", "MC2_NO_CURSOR_GRAB",
                   "MC2_WINDOW_OFFSCREEN")
 
-#: NOFOCUS-FINISH-1. Harnesses that capture the DESKTOP COMPOSITE rather than
+#: Harnesses that capture the DESKTOP COMPOSITE rather than
 #: reading the engine's own framebuffer. This is the constant the nofocus
 #: apply_env() docstring names -- it was cited before it existed, which is the
 #: same class of defect as a documented default that contradicts its reader.
@@ -279,8 +280,8 @@ LAUNCH_CALLS = ("subprocess.Popen", "subprocess.run", "subprocess.call",
 SAFE_LAUNCH_CALLS = ("nofocus.spawn", "nofocus.run")
 
 #: Heuristic for "this call launches the game engine".
-#: `game_cmd` added by NOFOCUS-FINISH-1: tools/tracy_capture_compare.py builds
-#: its argv into that name and hand-rolls both STARTUPINFO and Popen, so it was
+#: tools/tracy_capture_compare.py builds its argv into `game_cmd` and
+#: hand-rolls both STARTUPINFO and Popen, so it was
 #: invisible to this checker AND to nofocus -- a perf capture that shows a
 #: genuinely visible, full-size, unparked window for the whole run.
 ENGINE_ARGV = re.compile(
