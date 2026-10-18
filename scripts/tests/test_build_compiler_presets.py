@@ -59,9 +59,10 @@ def test_default_msvc_commands_unchanged(monkeypatch):
     calls = record_runs(monkeypatch, bat)
     children = []
     monkeypatch.setattr(bat.subprocess, "run", lambda cmd, **kw: children.append(cmd) or SimpleNamespace(returncode=0))
-    assert bat.main(["--reconfigure"]) == 0
+    assert bat.main(["--reconfigure", "--no-compile-cache"]) == 0
     root_cfg = calls[0][0]
     assert "--preset" not in root_cfg
+    assert "-DMC2_COMPILE_CACHE=ON" not in root_cfg
     assert root_cfg[root_cfg.index("-B") + 1].endswith("/build-alltargets")
     assert calls[1][0][-2:] == ["all", "ui_editor"]
     for src, tree, target in bat.STANDALONE:
@@ -71,6 +72,28 @@ def test_default_msvc_commands_unchanged(monkeypatch):
         assert "-A" in cfg[0] and not cfg[3]["vcvars"]
         assert "-k" not in build[0]
     assert children == [[sys.executable, str(ROOT / "tools" / "build_contract_harnesses.py"), "--unit"]]
+
+
+def test_default_run_goes_through_the_compile_cache(monkeypatch):
+    calls = record_runs(monkeypatch, bat)
+    fake_env = {"SCCACHE_DIR": "cache"}
+    monkeypatch.setattr(bat.cn, "cache_cmake_args", lambda root: (["-DMC2_COMPILE_CACHE=ON"], fake_env))
+    monkeypatch.setattr(bat.cn, "tree_uses_cache", lambda root, tree: True)
+    monkeypatch.setattr(bat.cn, "compile_cache_env", lambda root: fake_env)
+    children = []
+    monkeypatch.setattr(bat.subprocess, "run", lambda cmd, **kw: children.append(cmd) or SimpleNamespace(returncode=0))
+    assert bat.main(["--reconfigure", "-j", "2"]) == 0
+    root_cfg = calls[0][0]
+    assert "-DMC2_COMPILE_CACHE=ON" in root_cfg and "-DMC2_PCH=OFF" in root_cfg and "-DMC2_PCH=ON" not in root_cfg
+    assert calls[0][3]["env"] is fake_env and calls[1][3]["env"]["SCCACHE_DIR"]
+    assert calls[1][0][-3:] == ["all", "ui_editor", "mc2_authored_order_seam"]
+    for src, tree, target in bat.STANDALONE:
+        cfg, build = [c for c in calls if c[1] == target]
+        assert cfg[0][cfg[0].index("-G") + 1] == "Ninja" and "-DMC2_COMPILE_CACHE=ON" in cfg[0]
+        assert cfg[0][cfg[0].index("-B") + 1].endswith(bat.cc_tree(tree))
+        assert cfg[3]["vcvars"] and cfg[3]["env"] is fake_env
+    tail = children[0]
+    assert "--compile-cache" in tail and tail[tail.index("--seam-tree") + 1] == bat.TREE and "--seam-prebuilt" in tail
 
 
 @pytest.mark.parametrize("preset", [None, *bd.PRESETS])
