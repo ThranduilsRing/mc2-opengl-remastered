@@ -209,7 +209,7 @@ def test_csv_manifest_detects_exe_mutation(deploy, tmp_path):
     assert "drift" in text and "mc2.exe" in text
 
 
-# --- KIT-COHERENCE-1: post-deploy kit files the payload manifest cannot see --
+# --- Post-deploy kit files the payload manifest cannot see --
 #
 # The bug these guard: .deployed_manifest.csv lists only what deploy_payload.py
 # COPIED, so files a lane writes into the install afterwards (the A/B kit) had
