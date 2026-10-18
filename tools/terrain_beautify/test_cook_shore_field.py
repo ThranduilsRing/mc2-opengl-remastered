@@ -74,8 +74,11 @@ def test_upsample_is_corner_aligned():
 
 def test_write_field_float16_roundtrip(tmp_path):
     f = np.linspace(-20, 700, 9 * 9).reshape(9, 9)
+    f[4, 4] = 80.003                       # near the water level precision must be fine
     p = tmp_path / "shore_field.r16f"
-    csf.write_field(p, f)
-    back = np.fromfile(p, dtype="<f2").astype(np.float64).reshape(9, 9)
-    assert p.stat().st_size == 9 * 9 * 2
+    csf.write_field(p, f, 80.0)
+    back, welev = csf.read_field(p)
+    assert p.stat().st_size == 16 + 9 * 9 * 2
+    assert welev == 80.0
     assert np.allclose(back, f, atol=0.5)
+    assert abs(back[4, 4] - 80.003) < 1e-4

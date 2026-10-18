@@ -30,8 +30,8 @@ RECIPE (owner + outside reviewer, 2026-10-18: "upsample, then erode only at the 
        tint and translucency; lone low vertices stop drawing diamonds), with its sign
        forced to that of -SDF by a gentle floor ramp (shore_slope * |SDF|), so the
        edge is exactly SDF = 0.
-  6. store at --store x over visual (default 2 -> 16 wu) as little-endian float16
-     `<stem>.beauty/shore_field.r16f`.
+  6. store at --store x over visual (default 2 -> 16 wu) as `<stem>.beauty/shore_field.r16f`:
+     16-byte header (SHF1, side, water elevation) + float16 of (height - water elevation).
 Gameplay terrain heights are untouched; only the water edge/tint reads this.
 The engine (mclib/terrain_init.cpp lodWaterShore) prefers shore_field.r16f over
 visual_height_4x.r32 for the water shore texture; shore mode 3 cuts the edge
@@ -185,9 +185,28 @@ def cook_field(pak: Path, visual_height: Path | None, *, source: str = DEFAULT_S
     return res
 
 
-def write_field(path: Path, field: np.ndarray) -> None:
+FIELD_MAGIC = b"SHF1"
+
+
+def write_field(path: Path, field: np.ndarray, welev: float) -> None:
+    """16-byte header (magic SHF1, uint32 side, float32 water elevation, uint32 0) then side*side
+    little-endian float16 of (height - water elevation): float16 is precise near zero, where the
+    coast is cut (absolute heights near 80 quantize to 1/16 wu, which scalloped the edge)."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    np.ascontiguousarray(field, dtype="<f2").tofile(path)
+    side = int(field.shape[0])
+    header = FIELD_MAGIC + np.array([side], "<u4").tobytes() + np.array([welev], "<f4").tobytes() + bytes(4)
+    with open(path, "wb") as f:
+        f.write(header)
+        f.write(np.ascontiguousarray(field - welev, dtype="<f2").tobytes())
+
+
+def read_field(path: Path) -> tuple[np.ndarray, float]:
+    raw = Path(path).read_bytes()
+    assert raw[:4] == FIELD_MAGIC, path
+    side = int(np.frombuffer(raw[4:8], "<u4")[0])
+    welev = float(np.frombuffer(raw[8:12], "<f4")[0])
+    rel = np.frombuffer(raw[16:], "<f2").astype(np.float64).reshape(side, side)
+    return rel + welev, welev
 
 
 def coast_preview(res: dict, crop: tuple[float, float, float, float] | None, scale: int) -> Image.Image:
@@ -228,7 +247,7 @@ def cmd_cook(args) -> int:
     pak = Path(args.pak)
     vh = Path(args.visual_height) if args.visual_height else _vh_for(pak, None)
     res = cook_field(pak, vh, **_tuning(args))
-    write_field(Path(args.out), res["stored"])
+    write_field(Path(args.out), res["stored"], res["welev"])
     print(f"[shore-field] {pak.stem}: {res['stored'].shape[0]}^2 @ {res['store_cell_wu']:.1f} wu -> {args.out}")
     return 0
 
@@ -253,7 +272,7 @@ def cmd_all(args) -> int:
             census["skipped"].append({"mission": stem, "reason": "no water"})
             continue
         out = out_root / f"{stem}.beauty" / FIELD_NAME
-        write_field(out, res["stored"])
+        write_field(out, res["stored"], res["welev"])
         census["cooked"].append({"mission": stem, "side": int(res["stored"].shape[0]),
                                  "cell_wu": res["store_cell_wu"], "water_elev": res["welev"]})
         print(f"[shore-field] {stem}: {res['stored'].shape[0]}^2 -> {out}")

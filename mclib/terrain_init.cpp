@@ -634,18 +634,25 @@ float shoreFieldHalfToFloat(uint16_t h) {
 }
 
 // SHORE-FIELD-1: the cooked coastline field (tools/terrain_beautify/cook_shore_field.py):
-// a float16 pseudo-height grid, corner-aligned on the map (side = (mapSide-1)*k+1 for any
+// a float16 pseudo-height grid stored relative to the water level, corner-aligned on the map (side = (mapSide-1)*k+1 for any
 // k >= 1). Returns false when the sidecar is absent or does not fit the map.
 bool loadShoreField(const char* stem, int mapSide, std::vector<float>& out, int& side) {
 	char path[600];
 	mc2::fmt::to_buf(path, "data/missions/{}.beauty/shore_field.r16f", mc2::fmt::safe(stem));
 	FILE* f = fopen(path, "rb");  // path-audit: loose-only
 	if (!f) return false;
+	// Header: "SHF1", uint32 side, float32 water elevation, uint32 reserved; then side*side float16
+	// of (height - water elevation) -- float16 is precise near zero, where the coast is cut.
 	fseek(f, 0, SEEK_END);
 	const long bytes = ftell(f);
 	fseek(f, 0, SEEK_SET);
-	const int s = (int)std::lround(std::sqrt((double)bytes / 2.0));
-	if (s < 2 || (long)s * (long)s * 2 != bytes || mapSide < 2 || (s - 1) % (mapSide - 1) != 0) {
+	char magic[4] = {};
+	uint32_t hdrSide = 0, hdrPad = 0;
+	float hdrWater = 0.0f;
+	const bool hdrOk = fread(magic, 1, 4, f) == 4 && std::memcmp(magic, "SHF1", 4) == 0 &&
+	                   fread(&hdrSide, 4, 1, f) == 1 && fread(&hdrWater, 4, 1, f) == 1 && fread(&hdrPad, 4, 1, f) == 1;
+	const int s = (int)hdrSide;
+	if (!hdrOk || s < 2 || (long)s * (long)s * 2 + 16 != bytes || mapSide < 2 || (s - 1) % (mapSide - 1) != 0) {
 		mc2::fmt::print_out("[WATER_SHORE_EDGE v1] shore field {} does not fit the map (bytes={:d} mapSide={:d}) -- ignored\n",
 		                    mc2::fmt::safe(path), mc2::fmt::as_i32(bytes), mc2::fmt::as_i32(mapSide));
 		fclose(f);
@@ -656,7 +663,7 @@ bool loadShoreField(const char* stem, int mapSide, std::vector<float>& out, int&
 	fclose(f);
 	if (rd != halves.size()) return false;
 	out.resize(halves.size());
-	for (size_t i = 0; i < halves.size(); ++i) out[i] = shoreFieldHalfToFloat(halves[i]);
+	for (size_t i = 0; i < halves.size(); ++i) out[i] = shoreFieldHalfToFloat(halves[i]) + hdrWater;
 	side = s;
 	MC2_DIAGF("[WATER_SHORE_EDGE v1] LOADED shore field path=%s side=%d\n", path, s);
 	return true;
