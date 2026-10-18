@@ -98,7 +98,7 @@ namespace gosFX
 		static ClassData
 			*DefaultData;
 
-		typedef PointLight__Specification Specification;
+		using Specification = PointLight__Specification;
 
 		static PointLight*
 			Make(

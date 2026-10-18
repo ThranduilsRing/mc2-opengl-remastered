@@ -74,7 +74,7 @@ namespace gosFX
 		static void InitializeClass();
 		static void	TerminateClass();
 
-		typedef Shape__Specification Specification;
+		using Specification = Shape__Specification;
 
 	//----------------------------------------------------------------------------
 	// Class Data Support

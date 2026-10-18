@@ -142,8 +142,8 @@ namespace gosFX
 		static void InitializeClass();
 		static void	TerminateClass();
 
-		typedef DebrisCloud__Specification Specification;
-		typedef DebrisCloud__Particle Particle;
+		using Specification = DebrisCloud__Specification;
+		using Particle = DebrisCloud__Particle;
 
 	//----------------------------------------------------------------------------
 	// Class Data Support

@@ -378,7 +378,7 @@ void drawUiListElement(UiElement& e, int xOffset, int yOffset, const PageScale& 
 
     const int itemCount = static_cast<int>(e.items.size());
     const int maxScroll = std::max(0, itemCount - visibleRows);
-    e.scrollOffset = std::min(std::max(e.scrollOffset, 0), maxScroll);
+    e.scrollOffset = std::clamp(e.scrollOffset, 0, maxScroll);
 
     // Scrollbar: kScrollbarLocalW-unit track on right edge when content overflows.
     // Using local units keeps the bar proportionally sized across display resolutions.
@@ -456,8 +456,8 @@ void drawUiSliderElement(UiElement& e, int xOffset, int yOffset, const PageScale
         return;
 
     const float frac = (e.sliderMax > 0)
-        ? std::min(1.0f, std::max(0.0f, static_cast<float>(e.sliderValue) /
-                                        static_cast<float>(e.sliderMax)))
+        ? std::clamp(static_cast<float>(e.sliderValue) / static_cast<float>(e.sliderMax),
+                     0.0f, 1.0f)
         : 0.0f;
 
     const float grooveH = std::max(3.0f, r.h * 0.34f);
