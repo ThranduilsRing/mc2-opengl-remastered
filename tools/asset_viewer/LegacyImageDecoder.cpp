@@ -1,6 +1,7 @@
 // tools/asset_viewer/LegacyImageDecoder.cpp
 #include "LegacyImageDecoder.h"
-#include "UiEditorImageCache.h"
+#include "tool_vk_gpu.h"
+#include "stb_image.h"   // implementation lives in MaterialTextureLoader.cpp
 #include <cstdint>
 #include <vector>
 
@@ -18,19 +19,21 @@ bool LegacyImageDecoder::handles(const std::string& extLower) const
 DecodedTexture LegacyImageDecoder::load(const std::string& path) const
 {
     DecodedTexture d;
-    const UiEditorImageTexture* tex = UiEditorImageCache_Get(path.c_str());
-    if (!tex || !tex->loaded) {
-        d.error = (tex && tex->unavailable)
-            ? "Image format not supported or file unreadable."
-            : "Failed to load image (not found or decode error).";
+    int w = 0, h = 0, n = 0;
+    stbi_set_flip_vertically_on_load(0);
+    unsigned char* px = stbi_load(path.c_str(), &w, &h, &n, 4);   // force RGBA
+    if (!px) {
+        d.error = std::string("Failed to load image (not found or decode error): ") + stbi_failure_reason();
         return d;
     }
-    d.glTexture = static_cast<uint32_t>(static_cast<uintptr_t>(tex->textureId));  // ImU64 -> GLuint (GL ids fit in 32 bits)
-    d.width         = tex->width;
-    d.height        = tex->height;
+    d.texId = toolvk::createTexture(w, h, toolvk::TexFormat::Rgba8Unorm, px, {}, false, false);
+    stbi_image_free(px);
+    if (!d.texId) { d.error = "Vulkan texture upload failed."; return d; }
+    d.width         = w;
+    d.height        = h;
     d.mipCount      = 1;
     d.formatLabel   = "RGBA8";
     d.isCompressed  = false;
-    d.ownsGlTexture = false;   // cache-owned
+    d.ownsTexture   = true;
     return d;
 }

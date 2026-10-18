@@ -68,8 +68,6 @@ RenderDebugView StaticPropShaderModeToView(int shaderMode);
 // read-only accessors for mech pass-level state. Defined in
 // gos_mech_batcher.cpp; declared here so the inspector can reference them
 // without including engine-private mech batcher headers.
-extern "C" uint32_t gos_getMechProgramId();
-extern "C" uint32_t gos_getMechShadowProgramId();
 extern "C" const char* gos_getMechTextureNameByNodeIdx(uint32_t nodeIdx);
 
 // debug-mode getter/setter + view<->shaderMode helpers
@@ -77,8 +75,6 @@ extern "C" const char* gos_getMechTextureNameByNodeIdx(uint32_t nodeIdx);
 // Not declared extern "C": pure C++ functions over RenderDebugView enum.
 int             MechViewToFragDebugMode(RenderDebugView view);
 RenderDebugView MechFragDebugModeToView(int shaderMode);
-extern "C" void batcher_setMechDebugMode(int shaderMode);
-extern "C" int  batcher_getMechDebugMode();
 
 // live normal recompute API (gos_mech_batcher.cpp).
 // Declared extern "C" to avoid including gos_mech_batcher.h which
@@ -131,7 +127,6 @@ void drawLookup(const RenderWorld::LookupResult& lk);
 void drawStaticPropData();
 void drawRenderSpine();
 void drawMechData();
-void drawMechDebugView();
 void drawMechNormals();
 void drawMechLighting();
 void drawMechSnapshot();

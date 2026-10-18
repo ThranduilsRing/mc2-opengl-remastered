@@ -1,9 +1,7 @@
 // render_backend_select.cpp
 //
-// VK-P13-SELECTOR-1 / T1 -- implementation of the memoized MC2_RENDER_BACKEND
-// selector. GL-safe (no Vulkan headers); the whole TU compiles in the shipping
-// GL-only build. The selector adds only a single memoized getenv on the =gl /
-// unset path, so GL behavior is byte-identical.
+// MC2_RENDER_BACKEND: the engine renders on Vulkan only; the variable is read once to report an ignored value.
+// No Vulkan headers (this TU also serves the unit tests).
 
 #include "render_backend_select.h"
 #include "Gates/gate.h"
@@ -22,45 +20,30 @@
 
 namespace mc2 {
 
-namespace {
+BackendRequest backendRequestFromText(const char* text) {
+    if (!text || text[0] == '\0') return BackendRequest::None;
+    if (std::strcmp(text, "gl") == 0 || std::strcmp(text, "GL") == 0) return BackendRequest::RemovedGl;
+    if (std::strcmp(text, "vulkan") == 0 || std::strcmp(text, "VULKAN") == 0 || std::strcmp(text, "vk") == 0) return BackendRequest::None;
+    return BackendRequest::Unrecognized;
+}
 
-// Cached backend. -1 = not yet resolved; 0 = GL; 1 = Vulkan.
-int s_cached = -1;
-
-RenderBackend resolveOnce() {
+void noteBackendEnv() {
+    if (!mc2::gate::get<"MC2_VK_SHARED_GBUFFER">()) {
+        mc2::fmt::print_out("[RENDER_BACKEND] MC2_VK_SHARED_GBUFFER=0 ignored: the Vulkan scene path is unconditional.\n");
+        std::fflush(stdout);
+    }
     const std::string envText = mc2::gate::str<"MC2_RENDER_BACKEND">();   // "" when unset or empty
-    bool recognized = true;
-    const RenderBackend b = backendFromText(envText.c_str(), &recognized);
-    if (!recognized) {
-        mc2::fmt::print_out("[RENDER_BACKEND] MC2_RENDER_BACKEND={} unrecognized (expected gl|vulkan); coercing to Vulkan.\n", mc2::fmt::safe(envText.c_str()));
-        std::fflush(stdout);
-    } else if (b == RenderBackend::Vulkan && !envText.empty()) {
-        mc2::fmt::print_out("[RENDER_BACKEND] MC2_RENDER_BACKEND={} -> Vulkan backend selected.\n", mc2::fmt::safe(envText.c_str()));
-        std::fflush(stdout);
+    switch (backendRequestFromText(envText.c_str())) {
+    case BackendRequest::RemovedGl:
+        mc2::fmt::print_out("[RENDER_BACKEND] MC2_RENDER_BACKEND={} ignored: the OpenGL backend was removed; running on Vulkan.\n", mc2::fmt::safe(envText.c_str()));
+        break;
+    case BackendRequest::Unrecognized:
+        mc2::fmt::print_out("[RENDER_BACKEND] MC2_RENDER_BACKEND={} unrecognized; running on Vulkan.\n", mc2::fmt::safe(envText.c_str()));
+        break;
+    case BackendRequest::None:
+        return;
     }
-    return b;
-}
-
-}  // namespace
-
-RenderBackend backendFromText(const char* text, bool* recognized) {
-    if (recognized) *recognized = true;
-    if (!text || text[0] == '\0') return RenderBackend::Vulkan;   // unset: Vulkan, silent
-    if (std::strcmp(text, "gl") == 0 || std::strcmp(text, "GL") == 0) return RenderBackend::GL;
-    if (std::strcmp(text, "vulkan") == 0 || std::strcmp(text, "VULKAN") == 0 || std::strcmp(text, "vk") == 0) return RenderBackend::Vulkan;
-    if (recognized) *recognized = false;   // a typo must not select GL while the VK umbrella reads it as on
-    return RenderBackend::Vulkan;
-}
-
-RenderBackend renderBackend() {
-    if (s_cached < 0) {
-        s_cached = static_cast<int>(resolveOnce());
-    }
-    return static_cast<RenderBackend>(s_cached);
-}
-
-const char* renderBackendName(RenderBackend b) {
-    return b == RenderBackend::Vulkan ? "vulkan" : "gl";
+    std::fflush(stdout);
 }
 
 void fatalBackendFailure(const char* reason) {

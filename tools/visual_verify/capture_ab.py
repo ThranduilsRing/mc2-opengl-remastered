@@ -104,22 +104,17 @@ def compare(root: str, before: str, after: str, bookmarks: list[str]) -> list[st
     return out
 
 
-def capture_cmd(install: str, out_dir: str, bookmarks: str, vulkan: bool, freeze_anim: bool = True) -> list[str]:
+def capture_cmd(install: str, out_dir: str, bookmarks: str, freeze_anim: bool = True) -> list[str]:
     cmd = [sys.executable, os.path.join(HERE, "capture.py"), "--install", install, "--bookmarks", bookmarks,
            "--out", out_dir, "--clean"]
     if freeze_anim:
         cmd += ["--env", "MC2_SMOKE_FREEZE_ANIM=1"]      # no animation-phase noise in the A/B (needs an exe built with the gate, on BOTH sets)
-    if vulkan:
-        # The umbrella, not the bare selector: with MC2_RENDER_BACKEND=vulkan alone the engine finds the present image not VK-owned, forces GL
-        # for the session and the "Vulkan" arm is a GL capture (capture.py now refuses that).
-        cmd += ["--env", "MC2_RENDER_BACKEND=vulkan", "--env", "MC2_VK_SHARED_GBUFFER=1"]
-    else:
-        cmd += ["--env", "MC2_RENDER_BACKEND=gl"]        # unset means Vulkan, so the GL arm names its backend
+    cmd += ["--env", "MC2_RENDER_BACKEND=vulkan", "--env", "MC2_VK_SHARED_GBUFFER=1"]   # golden-compatible declared env (the umbrella var is inert)
     return cmd
 
 
-def run_capture(install: str, out_dir: str, bookmarks: str, vulkan: bool, freeze_anim: bool = True) -> int:
-    cmd = capture_cmd(install, out_dir, bookmarks, vulkan, freeze_anim)
+def run_capture(install: str, out_dir: str, bookmarks: str, freeze_anim: bool = True) -> int:
+    cmd = capture_cmd(install, out_dir, bookmarks, freeze_anim)
     env = dict(os.environ, MC2_CURSOR_NO_PARK="1")
     print("[capture_ab] " + " ".join(cmd[1:]), flush=True)
     return subprocess.run(cmd, cwd=REPO, env=env, **console_child.child_kwargs()).returncode
@@ -157,7 +152,7 @@ def main(argv: list[str] | None = None) -> int:
     os.makedirs(args.root, exist_ok=True)
     rc = 0
     for name, _ in arms(args.tag):
-        rc = run_capture(args.install, os.path.join(args.root, name), args.bookmarks, True, not args.keep_anim) or rc
+        rc = run_capture(args.install, os.path.join(args.root, name), args.bookmarks, not args.keep_anim) or rc
     return rc
 
 

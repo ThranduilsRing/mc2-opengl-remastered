@@ -96,9 +96,10 @@ private:
     // One-shot startup check of the lighting compute: a synthetic vertex/light set (4096 vertices, 8 lights, every branch) is run on the GPU and compared with a
     // C++ transcription of the quad.cpp math. Logs [VK_PRODUCER_SELFTEST v1]. Returns the mismatch count (0 = exact).
     uint32_t selfTestLighting();
-    bool growHost(OwnedBuffer& buf, VkDeviceSize& cap, VkDeviceSize need, VkBufferUsageFlags usage, const char* name, uint32_t par);
     bool makeDevice(OwnedBuffer& buf, VkDeviceSize size, VkBufferUsageFlags usage, const char* name, int i0 = -1);
     void writeAll();
+    // Points slot `par`'s frame-ring bindings (lighting set 0 lightIn, 1 lights, 3 params; cull set 3 params) at `buffer` when they do not already name it.
+    void syncInputs(uint32_t par, VkBuffer buffer, VkDeviceSize range);
 
     bool ready_ = false;
     VkDevice device_ = VK_NULL_HANDLE;
@@ -112,9 +113,10 @@ private:
     ComputePipeline lightP_, cullP_, argsP_;
     ComputeSets lightSets_, cullSets_, argsSets_;
     OwnedBuffer lightOut_;                       // numVertices x 8 B, device-local, written by the lighting compute, read by the cull
-    OwnedBuffer lightIn_[kSlots], lights_[kSlots];   // host-visible, rewritten per frame
-    VkDeviceSize lightInCap_[kSlots] = {0, 0}, lightsCap_[kSlots] = {0, 0};
-    OwnedBuffer lightUbo_[kSlots], cullUbo_[kSlots], argsUbo_[kSlots];
+    // The per-frame inputs (lighting vertices and lights, the two parameter blocks) are frame-ring spans bound with dynamic offsets; ringBound_[par] = the
+    // ring buffer slot `par`'s bindings currently name (the slot's set is rewritten only after the island's slot fence retired its last use).
+    VkBuffer ringBound_[kSlots] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    OwnedBuffer argsUbo_[kSlots];   // constant: the thin capacity
     OwnedBuffer header_[kSlots], drawArgs_[kSlots], thin_[kSlots];   // device-local
     // Parity readback (host-visible), made on first use.
     OwnedBuffer parityHdr_, parityThin_, parityLight_;

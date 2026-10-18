@@ -1,16 +1,13 @@
 #include "TexturePreview2D.h"
 #include "TextureDecoderRegistry.h"
 #include "imgui.h"
-#include <GL/glew.h>
+#include "tool_vk_gpu.h"
 #include <filesystem>
 #include <system_error>
 
 void TexturePreview2D::releaseOwned()
 {
-    if (current_.ownsGlTexture && current_.glTexture) {
-        GLuint t = current_.glTexture;
-        glDeleteTextures(1, &t);
-    }
+    if (current_.ownsTexture && current_.texId) toolvk::destroyTexture(current_.texId);
     current_ = DecodedTexture{};
 }
 
@@ -29,7 +26,7 @@ void TexturePreview2D::setSource(const std::string& path)
     if (!ec) meta_.fileBytes = sz;
 
     current_ = textureDecoderRegistry().load(path);
-    if (!current_.error.empty() || current_.glTexture == 0) {
+    if (!current_.error.empty() || current_.texId == 0) {
         hasError_ = true;
         errorText_ = current_.error.empty() ? "Failed to load texture." : current_.error;
         // Do not hold a half-result that could be mistaken for a live texture.
@@ -50,7 +47,7 @@ void TexturePreview2D::draw(const ImVec2& availableSize)
         ImGui::TextWrapped("Path: %s", path_.c_str());
         return;
     }
-    if (current_.glTexture == 0) {
+    if (current_.texId == 0) {
         ImGui::TextDisabled("No texture selected.");
         return;
     }
@@ -60,6 +57,6 @@ void TexturePreview2D::draw(const ImVec2& availableSize)
     ImGui::BeginChild("tex_scroll", availableSize, true, ImGuiWindowFlags_HorizontalScrollbar);
     ImVec2 region = ImGui::GetContentRegionAvail();
     FitSize fs = FitTextureDisplaySize(meta_.width, meta_.height, region.x, region.y, zoom_);
-    ImGui::Image((ImTextureID)(intptr_t)current_.glTexture, ImVec2(fs.w, fs.h));
+    ImGui::Image((ImTextureID)toolvk::imguiTex(current_.texId), ImVec2(fs.w, fs.h));
     ImGui::EndChild();
 }

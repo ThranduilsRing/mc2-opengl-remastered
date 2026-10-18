@@ -412,19 +412,6 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
     // 4.6 core; 4.3 is the minimum feature level we need.
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 
-    // MC2_GL_DEBUG=1 enables the OpenGL debug context AND the debug-message
-    // callback (installed in gameosmain.cpp). Debug contexts run driver-side
-    // validation on every GL call and can cost 10-30% perf, especially on
-    // NVIDIA; the callback also floods stdout with harmless AMD-driver
-    // warnings in our workload. Off by default in shipped builds;
-    // env-gated rather than NDEBUG-gated so it can be flipped on a
-    // deployed binary without rebuilding.
-    const bool gl_debug = mc2::gate::get<"MC2_GL_DEBUG">();
-    if (gl_debug) {
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
-        printf("[GL_DEBUG] MC2_GL_DEBUG=1 -- GL debug context active. This reduces performance.\n");
-    }
-
     if (VERBOSE_MODES) {
         SDL_DisplayMode mode;
         int bpp;
@@ -843,8 +830,7 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
                (int)(rc2.right - rc2.left), (int)(rc2.bottom - rc2.top),
                rw->width_, rw->height_);
     }
-    const bool gl_debug_mode = mc2::gate::get<"MC2_GL_DEBUG">();
-    printf("[MODE] gl_debug=%d vsync=%d tracy=on-demand\n", gl_debug_mode ? 1 : 0, vsync_on ? 1 : 0);
+    printf("[MODE] vsync=%d tracy=on-demand\n", vsync_on ? 1 : 0);
     printf("[TRACY] on-demand mode -- profiler listening on TCP 8086, no capture until a GUI attaches.\n");
 
     RenderContext* rc = new RenderContext();

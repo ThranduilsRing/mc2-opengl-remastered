@@ -26,7 +26,7 @@ Split commit: `d9f3d13b6`.
 |---|---|
 | `gos_mech_batcher.cpp` | keeps the file-scope state (GL names, program locations, rings, tuning values), program loading, ring capacity, map load / unload and flushShadow |
 | `gos_mech_batcher_api.cpp` | GpuMechBatcher: the VK island feed accessors, the render-snapshot compare and the extern C tuning / debug setters and getters. |
-| `gos_mech_batcher_flush.cpp` | GpuMechBatcher: submitActor, the executor opaque-state apply and GpuMechBatcher::flush (one 970-line function). |
+| `gos_mech_batcher_flush.cpp` | GpuMechBatcher: submitActor and GpuMechBatcher::flush. flush() is CPU only: it builds the instance, bone and run feeds (the persisted snapshots) the Vulkan mech island and the VK shadow cascades consume. |
 | `gos_mech_batcher_geometry.cpp` | GpuMechBatcher: mech type / LOD registration, the shared vertex buffer upload, normal recomputation and geometry finalise. |
 | `gos_mech_batcher_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
@@ -50,7 +50,6 @@ Split commit: `f0521b300`.
 | `gos_postprocess_executor.cpp` | gosPostProcess: frame-graph executor ownership accessors, apply-state wrappers and counters. |
 | `gos_postprocess_fbo.cpp` | gosPostProcess: gosPostProcess teardown, resize, scene/post FBO creation and destruction, and the particle/VFX scene copies. |
 | `gos_postprocess_gates.cpp` | gosPostProcess: gate readers for the shared-scene, Vulkan tier-1 and shadow knobs, scene placeholder textures, and the skybox-fog and screen-shadow canary gates. |
-| `gos_postprocess_region.cpp` | gosPostProcess: SSAO, fog and HZB regions routed through the render backend, and their health exports. |
 | `gos_postprocess_shadow.cpp` | gosPostProcess: shadow debug overlay, static and cascaded shadow maps and their light matrices. |
 | `gos_postprocess_skybox.cpp` | gosPostProcess: skybox and HDRI skybox rendering. |
 | `gos_postprocess_internal.h` | shared include bundle, extern globals and declarations of the pieces |

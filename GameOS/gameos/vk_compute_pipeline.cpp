@@ -67,18 +67,22 @@ bool ComputePipeline::create(VkDevice device, std::string_view spvPath, const st
     return true;
 }
 
-void ComputePipeline::bind(VkCommandBuffer cb, VkDescriptorSet set) const {
+void ComputePipeline::bind(VkCommandBuffer cb, VkDescriptorSet set, std::span<const uint32_t> dynamicOffsets) const {
     vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipe_.get());
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, layout_.get(), 0, 1, &set, 0, nullptr);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, layout_.get(), 0, 1, &set, static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.data());
 }
 
 bool ComputeSets::create(VkDevice device, const ComputePipeline& pipe, uint32_t count, std::string_view name) {
-    uint32_t nStorage = 0, nUniform = 0;
-    for (const ComputeBinding& b : pipe.bindings()) (b.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ? nUniform : nStorage) += 1;
-    VkDescriptorPoolSize sizes[2]{};
+    // One pool size per descriptor type the layout uses: storage, uniform, storage dynamic, uniform dynamic.
+    const VkDescriptorType kTypes[4] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC};
+    VkDescriptorPoolSize sizes[4]{};
     uint32_t nSizes = 0;
-    if (nStorage) sizes[nSizes++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nStorage * count};
-    if (nUniform) sizes[nSizes++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, nUniform * count};
+    for (const VkDescriptorType t : kTypes) {
+        uint32_t n = 0;
+        for (const ComputeBinding& b : pipe.bindings()) n += (b.type == t) ? 1u : 0u;
+        if (n) sizes[nSizes++] = {t, n * count};
+    }
     VkDescriptorPoolCreateInfo pci{};
     pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     pci.maxSets = count;

@@ -18,23 +18,6 @@
 #include <time.h>
 #include "gameosmain_internal.h"
 
-// Terrain native first-owner (the island CLEARs shared color0/normal/depth; GL
-// frame-entry clears + clearGBuffer1 must be skipped) is a structural property of the
-// armed terrain Tier-1 island: mc2vkgate::umbrellaOn(). An explicit
-// MC2_VK_TERRAIN_TIER1=0 (island off, GL owns terrain) restores the GL clears.
-static bool mc2_vk_terrain_native_prefix_clear_requested()
-{
-#ifdef MC2_VULKAN_ISLAND
-    static int state = -1;
-    if (state == -1) {
-        state = mc2vkgate::umbrellaOn() ? 1 : 0;
-    }
-    return state == 1;
-#else
-    return false;
-#endif
-}
-
 // sebi 2026-04-22: unhandled-exception filter that symbolizes the stack via
 // DbgHelp (PDB-based). Needed because release/RelWithDebInfo builds otherwise
 // die silently with "read violation at 0xNN" and no frames — Tracy only resolves
@@ -624,13 +607,8 @@ static void draw_screen( void )
         pp->resize(viewport_w, viewport_h);
         pp->beginScene();
     }
-    const bool vkTerrainNativePrefixClear = mc2_vk_terrain_native_prefix_clear_requested();
 
     glViewport(0, 0, viewport_w, viewport_h);
-    if (!vkTerrainNativePrefixClear) {
-        glClearDepth(0.0f);   // reverse-Z (U2): far plane = depth 0
-        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-    }
 	/*
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
@@ -650,29 +628,15 @@ static void draw_screen( void )
     {
         gosPostProcess* ppClear = getGosPostProcess();
         const bool blueGrey = ppClear && ppClear->prevFrameHadTerrain_;
+        // The terrain island CLEARs shared color0/normal/depth first; the GL scene FBO is not cleared.
         if (blueGrey)
-            glClearColor(0.55f, 0.62f, 0.72f, 1.0f);
+            mc2_vk_terrain_set_native_prefix_clear_color(0.55f, 0.62f, 0.72f, 1.0f);
         else
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-#ifdef MC2_VULKAN_ISLAND
-        if (vkTerrainNativePrefixClear) {
-            if (blueGrey)
-                mc2_vk_terrain_set_native_prefix_clear_color(0.55f, 0.62f, 0.72f, 1.0f);
-            else
-                mc2_vk_terrain_set_native_prefix_clear_color(0.0f, 0.0f, 0.0f, 1.0f);
-        }
-#endif
+            mc2_vk_terrain_set_native_prefix_clear_color(0.0f, 0.0f, 0.0f, 1.0f);
+        // No terrain last frame (menu, loading, mech bay): nothing will clear the shared scene before the first island draws, so clear it now. A frame
+        // with terrain is cleared by the terrain pass, or by the terrain flush's own guarantee.
+        if (!blueGrey) (void)mc2_vk_scene_clear(viewport_w, viewport_h);
     }
-    if (!vkTerrainNativePrefixClear) {
-        glClearDepth(0.0f);   // reverse-Z (U2): far plane = depth 0
-        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
-    }
-
-    // F3: overwrite attachment 1 (GBuffer1) with the post-shadow-eligible sentinel.
-    // glClearColor sets alpha=1.0 in both gameplay and menu paths, which would
-    // otherwise leave non-overwritten pixels reading "shadow handled". This
-    // sentinel ensures defense-in-depth coherence per F3 design v2 §5A.
-    if (pp && !vkTerrainNativePrefixClear) pp->clearGBuffer1();
 
     // Skybox disabled — terrain fog provides atmosphere, bright sky looked jarring
     // if (pp) pp->renderSkybox(0.3f, 0.7f, 0.2f);
@@ -758,48 +722,6 @@ static void draw_screen( void )
 extern float frameRate;
 
 
-const char* getStringForType(GLenum type)
-{
-	switch (type)
-	{
-	case GL_DEBUG_TYPE_ERROR: return "DEBUG_TYPE_ERROR";
-	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "DEBUG_TYPE_DEPRECATED_BEHAVIOR";
-	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: return "DEBUG_TYPE_UNDEFINED_BEHAVIOR";
-	case GL_DEBUG_TYPE_PERFORMANCE: return "DEBUG_TYPE_PERFORMANCE";
-	case GL_DEBUG_TYPE_PORTABILITY: return "DEBUG_TYPE_PORTABILITY";
-	case GL_DEBUG_TYPE_MARKER: return "DEBUG_TYPE_MARKER";
-	case GL_DEBUG_TYPE_PUSH_GROUP: return "DEBUG_TYPE_PUSH_GROUP";
-	case GL_DEBUG_TYPE_POP_GROUP: return "DEBUG_TYPE_POP_GROUP";
-	case GL_DEBUG_TYPE_OTHER: return "DEBUG_TYPE_OTHER";
-	default: return "(undefined)";
-	}
-}
-
-const char* getStringForSource(GLenum type)
-{
-	switch (type)
-	{
-	case GL_DEBUG_SOURCE_API: return "DEBUG_SOURCE_API";
-	case GL_DEBUG_SOURCE_SHADER_COMPILER: return "DEBUG_SOURCE_SHADER_COMPILER";
-	case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "DEBUG_SOURCE_WINDOW_SYSTEM";
-	case GL_DEBUG_SOURCE_THIRD_PARTY: return "DEBUG_SOURCE_THIRD_PARTY";
-	case GL_DEBUG_SOURCE_APPLICATION: return "DEBUG_SOURCE_APPLICATION";
-	case GL_DEBUG_SOURCE_OTHER: return "DEBUG_SOURCE_OTHER";
-	default: return "(undefined)";
-	}
-}
-
-const char* getStringForSeverity(GLenum type)
-{
-	switch (type)
-	{
-	case GL_DEBUG_SEVERITY_HIGH: return "DEBUG_SEVERITY_HIGH";
-	case GL_DEBUG_SEVERITY_MEDIUM: return "DEBUG_SEVERITY_MEDIUM";
-	case GL_DEBUG_SEVERITY_LOW: return "DEBUG_SEVERITY_LOW";
-	case GL_DEBUG_SEVERITY_NOTIFICATION: return "DEBUG_SEVERITY_NOTIFICATION";
-	default: return "(undefined)";
-	}
-}
 // External linkage: the gameosmain_*.cpp pieces call startup_phase().
     // Startup phase timing. Anchor at the top of main(). Cheap printfs --
     // total cost is microseconds, but the signal for triage is high.
@@ -887,41 +809,6 @@ extern "C" void mission_phase_report()
     fflush(stdout);
     // Mission load is over: the GPU memory every later frame starts from (the smoke report's load-end VRAM line).
     mc2::gpumem::log("load_end");
-}
-
-//typedef void (GLAPIENTRY *GLDEBUGPROCARB)(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
-#ifdef PLATFORM_WINDOWS
-void GLAPIENTRY OpenGLDebugLog(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
-#else
-void GLAPIENTRY OpenGLDebugLog(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, GLvoid* userParam)
-#endif
-{
-	if (severity != GL_DEBUG_SEVERITY_NOTIFICATION && severity != GL_DEBUG_SEVERITY_LOW)
-	{
-		printf("Type: %s; Source: %s; ID: %d; Severity : %s\n",
-			getStringForType(type),
-			getStringForSource(source),
-			id,
-			getStringForSeverity(severity)
-		);
-		printf("Message : %s\n", message);
-	}
-	// Tier 1.2 (docs/testing-strategy.md): opt-in fatal abort on GL_DEBUG_SEVERITY_HIGH.
-	// Default behavior unchanged. Catches the GL state-leak / sampler-inheritance /
-	// depth-state-inheritance bug class documented in
-	// memory/{blend,sampler,gpu_direct_depth}_state_inheritance.md.
-	// MEDIUM/LOW are too noisy on AMD (perf warnings on every TGL stream).
-	// Function-scope static: 99.9% of callback invocations are a single load+branch.
-	static const bool s_glDebugFatal = mc2::gate::get<"MC2_GL_DEBUG_FATAL">();
-	if (s_glDebugFatal && severity == GL_DEBUG_SEVERITY_HIGH)
-	{
-		std::fprintf(stderr,
-			"[MC2_GL_DEBUG_FATAL] severity=HIGH source=0x%x type=0x%x "
-			"id=%u\n  %.*s\n",
-			source, type, id, (int)length, message);
-		std::fflush(stderr);
-		std::abort();
-	}
 }
 
 #ifndef DISABLE_GAMEOS_MAIN
@@ -1131,17 +1018,6 @@ int main(int argc, char** argv)
     fflush(stdout);
     initVulkanBackend(win, w, h);
 
-	// Install GL debug callback only when MC2_GL_DEBUG is set. In shipping
-	// builds this keeps stdout free of harmless driver warnings (esp. the
-	// AMD ~glsl_program double-detach chatter) and saves the sync-debug
-	// overhead. Paired with the context-flag gate in gos_render.cpp.
-	if (mc2::gate::get<"MC2_GL_DEBUG">()) {
-		glEnable(GL_DEBUG_OUTPUT);
-		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-		glDebugMessageControlARB(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
-		glDebugMessageCallbackARB((GLDEBUGPROC)&OpenGLDebugLog, NULL);
-	}
-
     // GAMEOS-RENDER-CONTEXT-PARITY-1: clip-control + reverse-Z depth baseline
     // are established by the shared function so the game and the editor cannot
     // diverge. The fail-closed contract (abort if glClipControl is unavailable)
@@ -1227,6 +1103,9 @@ int main(int argc, char** argv)
 #endif
 
     static uint32_t s_hitchFrame = 0u;
+#ifdef MC2_VULKAN
+    if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().beginFrame();   // frame 1 of the completion tracker
+#endif
     while( !g_exit ) {
         ZoneScopedN("Frame");
 
@@ -1263,7 +1142,7 @@ int main(int argc, char** argv)
             // frame counter, then drain TGL pool null counters. Per-frame
             // line is env-gated; monotonic summary every 600 frames is not.
             ZoneScopedN("Frame.DrainTglPoolStats");
-            g_mc2FrameCounter++;
+            gos::host::advanceFrameCounter();
             drainTglPoolStats();
             // [OBJECT_RECON v1] slice-2 recon-zero accumulator drain.
             // No-op cost (~1 cmp + 1 branch) when env not set.
@@ -1287,7 +1166,7 @@ int main(int argc, char** argv)
         // after the timer FrameEnd; advisory, OFF=zero cost.
         gos_frame_pass_stats::FrameEnd((unsigned long)g_mc2FrameCounter);
 
-    frameSwapWindow(win);
+    frameSwapWindow(win);   // the shared host present also ends the Vulkan frame and advances the handle-slot clock
     frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
 
         {
@@ -1357,38 +1236,10 @@ int main(int argc, char** argv)
 #endif
     gos_DestroyRenderer();
 
-#ifdef MC2_VULKAN
-#ifdef MC2_VULKAN_ISLAND
-    // VK-P9a WATER-INTEROP: tear down the water island (pipeline/render-pass/images/
-    // buffers/command pool/exportable color seam) BEFORE the shared device is destroyed,
-    // so its objects don't leak (vkDestroyDevice would report them). No-op if never born.
-    // Must run while both the GL context (deletes the interop FBO / imported tex) and the
-    // shared device are alive — same ordering rationale as the present teardown below.
-    mc2_vk_water_island_destroy();
-    // VK-P11 STATIC-PROP COLOR: tear down the color-prop island alongside water.
-    mc2_vk_color_prop_island_destroy();
-    // VK-P10 TERRAIN TIER-1: tear down the terrain island alongside the others.
-    mc2_vk_terrain_island_destroy();
-    // VK-FIELD-VFX-1: tear down the VFX particle island alongside the others.
-    mc2_vk_vfx_island_destroy();
-    // VK-P14 MECH TIER-1: tear down the mech island alongside the others.
-    mc2_vk_mech_island_destroy();
-    mc2_vk_legacy_shape_island_destroy();   // VK-PARITY-F1
-    mc2_vk_sky_island_destroy();            // VK-PARITY-F3
-    // VK-P8 SHADOW INTEROP: tear down the shadow island (was previously never called --
-    // its VK CSM producer objects leaked at shutdown and its [VK_SHADOW_INTEROP] health
-    // line, carrying the forbidden_* counters, never reached the log).
-    mc2_vk_shadow_island_destroy();
-#endif
-    // VK-P13-SELECTOR-1 / T3: tear down the VK present path FIRST -- it deletes GL
-    // objects (copy-1 FBO / imported tex) and VK resources on the shared device,
-    // so it must run while both the GL context and the shared device are alive.
-    mc2vk::getOrCreateEnginePresentVk().destroy();
-    // T2: then tear down the shared engine Vulkan context (no-op if never born).
-    mc2vk::getOrCreateEngineVulkanContext().destroy();
-#endif
+    // Islands, then the present path, then the shared VulkanContext: one order, shared with the editor (gos_host_vk.cpp).
+    gos::host::shutdownVulkanBackend();
 
-    graphics::destroy_render_context(ctx);
+    graphics::release_render_context_at_exit(ctx);   // not deleted: wglDeleteContext stalls 1-5 s in the AMD driver (BUGS 87)
     graphics::destroy_window(win);
 
     gos_DestroyAudio();

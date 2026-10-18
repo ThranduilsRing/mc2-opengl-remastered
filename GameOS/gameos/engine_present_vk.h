@@ -162,6 +162,10 @@ public:
     // Returns false (fail-soft) on a hard error -- caller then forces GL.
     // `verifyReadback` (T5): if true, reads back the shared image once this frame
     // and folds a cheap checksum into health (proves real, changing content).
+    //
+    // The present IS the frame boundary: every exit of this function (presented, skipped for a zero extent or a swapchain rebuild, declined, or
+    // failed) ends with the context's frameBoundary(), so any host that presents through it (the game, the editor viewport) advances the frame
+    // tracker, the frame ring and the deferred-destroy queue without a separate call.
     bool presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
                         bool verifyReadback);
 
@@ -252,6 +256,10 @@ private:
     void verifyReadbackContent();
 
     Impl* impl_ = nullptr;
+
+    bool presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawableH, bool verifyReadback);
+    // Drains the outstanding presented-image readback (if any) before the shared image it copies is destroyed.
+    void drainReadbackBeforeImageDestroy();
 
     bool created_ = false;
     // VK-P14b: last FBO id handed out by presentDirectFbo() this frame (0 == none

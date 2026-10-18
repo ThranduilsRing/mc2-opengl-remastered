@@ -638,8 +638,6 @@ def main():
                     help="resolve and vet the install (lease, exe guard), print the "
                          "[SMOKE] exe=... src_commit=... line, then exit without "
                          "launching anything")
-    ap.add_argument("--gl-debug-fatal", action="store_true",
-                    help="set MC2_GL_DEBUG_FATAL=1 (abort on GL_DEBUG_SEVERITY_HIGH)")
     # Deploy-coherence preflight (reuses deploy_payload.py --verify-only; does
     # NOT reimplement hashing). --verify-only = pure preflight (no mission, no
     # lock, no artifacts), advisory unless --strict. --verify-preflight = run
@@ -706,8 +704,6 @@ def main():
         print("[runner] [SMOKE-LITE] mc2_10 + mc2_01 @ "
               f"{args.duration}s, all gates on. Inner-loop check only; run "
               "full --tier tier1 before milestones.", file=sys.stderr)
-    if args.gl_debug_fatal:
-        os.environ["MC2_GL_DEBUG_FATAL"] = "1"
 
     # SMOKE-LATENCY-WINS-1 win #1: --duration hard cap + quick-tier banner.
     # CLAUDE.md rule: NEVER --duration > 30 (soak/parity tier is 30s fixed); the one exception is a sim_determinism pair, which may run 60 (owner 2026-10-13).

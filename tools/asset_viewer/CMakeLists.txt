@@ -180,7 +180,6 @@ set(ASSET_VIEWER_SOURCES
     LegacyImageDecoder.cpp
     Ktx2Decoder.cpp
     "${CMAKE_SOURCE_DIR}/RenderCore/KtxLoader.cpp"
-    "${CMAKE_SOURCE_DIR}/ui_editor/UiEditorImageCache.cpp"
     "${CMAKE_SOURCE_DIR}/GameOS/gameos/utils/Image.cpp"
     # engine-independent override-manifest parser (validates/round-trips models.json)
     "${CMAKE_SOURCE_DIR}/mclib/model_override_registry.cpp"
@@ -201,16 +200,13 @@ set(ASSET_VIEWER_SOURCES
     ShaderIncludeResolver.cpp
     # Backend-A v2 Task 3: shader contract report model + ImGui view
     ShaderContractReport.cpp
-    # Backend-A v2 Task 4: standalone scene stubs (SSBO seam; v3 swap point)
-    StandaloneSceneStubs.cpp
-    # Backend-A v2 Task 5: engine-shader preview surface
+    # Backend-A v2 Task 5: engine-shader preview surface (stub: not ported to Vulkan)
     ModelPreviewEngineShader.cpp
 )
 
 add_executable(mc2_asset_viewer ${ASSET_VIEWER_SOURCES})
 
 target_compile_features(mc2_asset_viewer PRIVATE cxx_std_17)
-target_compile_definitions(mc2_asset_viewer PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLEW)
 
 if(NOT TARGET SDL2::SDL2)
     find_package(SDL2 CONFIG REQUIRED)
@@ -305,6 +301,9 @@ if(TARGET SDL2::SDL2main)
     target_link_libraries(mc2_asset_viewer PRIVATE SDL2::SDL2main)
 endif()
 
+# The viewer draws through Vulkan only (tools/common mc2_tool_vk). OpenGL/GLEW stay on the link line solely because the isolated
+# mc2_tglloader engine closure (render_contract.cpp, tgl.cpp -> gos_static_prop_batcher.h) still references GL symbols; no GL context is
+# ever created.
 target_link_libraries(mc2_asset_viewer PRIVATE OpenGL::GL)
 
 if(WIN32)
@@ -317,6 +316,40 @@ target_link_libraries(mc2_asset_viewer PRIVATE GLEW::GLEW)
 
 # Link the TGL loader lib (NS3 game-free loader + engine_stubs, isolated).
 target_link_libraries(mc2_asset_viewer PRIVATE mc2_tglloader)
+
+# Vulkan window + offscreen-render layer shared by the viewport tools.
+if(NOT TARGET mc2_tool_vk)
+    add_subdirectory("${CMAKE_SOURCE_DIR}/tools/common" "${CMAKE_BINARY_DIR}/tools_common")
+endif()
+target_link_libraries(mc2_asset_viewer PRIVATE mc2_tool_vk)
+
+# GLSL 450 preview shaders -> SPIR-V next to the exe (shaders_vk/), loaded at runtime by toolvk::shaderDir().
+set(MC2_AV_SHADERS mesh_lit.vert mesh_lit.frag pbr_sphere.vert pbr_sphere.frag)
+if(NOT Vulkan_GLSLANG_VALIDATOR_EXECUTABLE)
+    find_program(Vulkan_GLSLANG_VALIDATOR_EXECUTABLE glslangValidator HINTS "$ENV{VULKAN_SDK}/Bin" "$ENV{VULKAN_SDK}/bin")
+endif()
+if(NOT Vulkan_GLSLANG_VALIDATOR_EXECUTABLE)
+    message(FATAL_ERROR "glslangValidator not found (Vulkan SDK): needed to compile tools/asset_viewer/shaders_vk")
+endif()
+set(MC2_AV_SPV_DIR "$<TARGET_FILE_DIR:mc2_asset_viewer>/shaders_vk")
+set(MC2_AV_SPV_OUT)
+foreach(_sh IN LISTS MC2_AV_SHADERS)
+    add_custom_command(
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/shaders_vk/${_sh}.spv"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/shaders_vk"
+        COMMAND "${Vulkan_GLSLANG_VALIDATOR_EXECUTABLE}" -V "${CMAKE_CURRENT_SOURCE_DIR}/shaders_vk/${_sh}"
+                -o "${CMAKE_CURRENT_BINARY_DIR}/shaders_vk/${_sh}.spv"
+        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/shaders_vk/${_sh}"
+        COMMENT "glslangValidator ${_sh}"
+        VERBATIM)
+    list(APPEND MC2_AV_SPV_OUT "${CMAKE_CURRENT_BINARY_DIR}/shaders_vk/${_sh}.spv")
+endforeach()
+add_custom_target(mc2_asset_viewer_shaders DEPENDS ${MC2_AV_SPV_OUT})
+add_dependencies(mc2_asset_viewer mc2_asset_viewer_shaders)
+add_custom_command(TARGET mc2_asset_viewer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${MC2_AV_SPV_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MC2_AV_SPV_OUT} "${MC2_AV_SPV_DIR}"
+    VERBATIM)
 
 # The viewer also needs GameOS/gameos headers for engine_stubs-exposed types.
 # mc2_tglloader already exposes mclib + GameOS/include as PUBLIC; add gameos:

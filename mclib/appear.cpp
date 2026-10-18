@@ -37,7 +37,6 @@
 //#endif
 
 #include <gameos.hpp>
-#include "vk_umbrella_light.h"   // VK-FIELD-SELECT-1: umbrella detection
 #include "gos_visual_capture.h"       // VISUAL-CAPTURE-CLEAN-1
 #include "gos_postprocess.h"   // VK-GL-LOST-DRAWS tags
 
@@ -62,20 +61,14 @@ extern bool useFog;
 // decoration from its unit. Umbrella OFF -> IsHUD untouched -> byte-identical GL.
 namespace {
 struct VkHudRouteScope {
-    bool active;
     bool prevExempt;
-    VkHudRouteScope() : active(mc2vkgate::umbrellaOn()), prevExempt(false) {
-        if (active) {
-            prevExempt = gos_GetHudScaleExempt();
-            gos_SetHudScaleExempt(true);
-            gos_SetRenderState(gos_State_IsHUD, 1);
-        }
+    VkHudRouteScope() : prevExempt(gos_GetHudScaleExempt()) {
+        gos_SetHudScaleExempt(true);
+        gos_SetRenderState(gos_State_IsHUD, 1);
     }
     ~VkHudRouteScope() {
-        if (active) {
-            gos_SetRenderState(gos_State_IsHUD, 0);
-            gos_SetHudScaleExempt(prevExempt);
-        }
+        gos_SetRenderState(gos_State_IsHUD, 0);
+        gos_SetHudScaleExempt(prevExempt);
     }
 };
 } // namespace

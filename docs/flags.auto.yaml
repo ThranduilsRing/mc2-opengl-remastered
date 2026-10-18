@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 967
-registry_entry_count: 195
-verified_count: 957
+gate_count: 947
+registry_entry_count: 193
+verified_count: 937
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -1765,22 +1765,6 @@ flags:
     owner: code
     doc: ""
     verified: true
-  - name: MC2_GL_DEBUG
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: "Install GL debug callback only when MC2_GL_DEBUG is set."
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_GL_DEBUG_FATAL
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: "Tier 1.2 (docs/testing-strategy.md): opt-in fatal abort on GL_DEBUG_SEVERITY_HIGH."
-    smoke_passthrough: true
-    verified: true
   - name: MC2_GOM_RECON
     kind: Bool
     default: false
@@ -3144,26 +3128,12 @@ flags:
     owner: mech
     doc: ""
     verified: true
-  - name: MC2_MECH_BACK_FILL
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: mech
-    doc: ""
-    verified: true
   - name: MC2_MECH_BATCHER_STATS
     kind: Bool
     default: false
     rule: Presence
     owner: mech
     doc: ""
-    verified: true
-  - name: MC2_MECH_FRAG_DEBUG
-    kind: Int
-    default: 0
-    rule: Prefix
-    owner: mech
-    doc: "MC2_MECH_FRAG_DEBUG=N: legacy env path; wins over ImGui s_mechDebugMode."
     verified: true
   - name: MC2_MECH_GLASS_LUMA_THRESH
     kind: Float
@@ -3188,13 +3158,6 @@ flags:
     owner: mech
     doc: ""
     range: {lo: 0.04, hi: 1, style: clamp}
-    verified: true
-  - name: MC2_MECH_IBL_SH
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: mech
-    doc: ""
     verified: true
   - name: MC2_MECH_IMPORT_ANIMATE
     kind: Bool
@@ -3418,24 +3381,10 @@ flags:
     doc: "Gate: MC2_MECH_SURFACE_MATERIAL controls which profiles to load."
     tokens: "|0|metal061b|none|painted_subtle"
     verified: true
-  - name: MC2_MECH_TEX_READBACK
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: mech
-    doc: "Pixel-readback diagnostic - gated on its own env var (NOT MC2_MECH_BATCHER_STATS) because glGetTexImage is a synchronous GPU stall that pollutes any perf..."
-    verified: true
   - name: MC2_MECH_VIEWUNIFORMS
     kind: Bool
     default: true
     rule: Lead0Kill
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_MECH_VIEWUNIFORMS_DIAG
-    kind: Bool
-    default: false
-    rule: Lead1
     owner: mech
     doc: ""
     verified: true
@@ -3935,62 +3884,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_PAVED_OVERLAY_CLASS, kind: Feature, order: -1, default_on: false}
-  - name: MC2_PBR_AMBIENT_SPECULAR
-    kind: Float
-    default: 0.25
-    rule: Prefix
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_PBR_METALLIC_INFLUENCE
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_PBR_ROUGHNESS_MAX
-    kind: Float
-    default: 0.899999976
-    rule: Prefix
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_PBR_ROUGHNESS_MIN
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_PBR_TILE_SCALE
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_PBR_TRIPLANAR
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_PBR_TRIPLANAR_SCALE
-    kind: Float
-    default: 0.200000003
-    rule: Prefix
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_PBR_WEAR_STRENGTH
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: mech
-    doc: ""
-    verified: true
   - name: MC2_PICK_BEHIND_LEGACY
     kind: Bool
     default: false
@@ -4042,15 +3935,6 @@ flags:
     rule: Lead0Kill
     owner: gameos
     doc: ""
-    verified: true
-  - name: MC2_POSTPROCESS_BACKEND
-    kind: Enum
-    default: "gl"
-    rule: Std
-    owner: post
-    doc: ""
-    tokens: "gl|vk|vulkan"
-    smoke_passthrough: true
     verified: true
   - name: MC2_POSTPROCESS_COMPUTE_BLUR
     kind: Bool
@@ -4297,27 +4181,10 @@ flags:
     default: ""
     rule: Std
     owner: unclassified
-    doc: "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default vulkan; unset/unrecognized -> vulkan; gl is the temporary opt-out)."
+    doc: "Legacy selector, read only to report an ignored value: the engine renders on Vulkan only (the gl opt-out was removed)."
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_RENDER_BACKEND, kind: Feature, order: -1, default_on: false}
-  - name: MC2_RENDER_BACKEND_IFACE
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: post
-    doc: "RENDER-BACKEND-SEAMS arc: routes select GL calls (e.g."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_RENDER_BACKEND_IFACE, kind: Feature, order: -1, default_on: false}
-  - name: MC2_RENDER_BACKEND_REGION_IFACE
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-    verified: true
   - name: MC2_RENDER_CONTRACT_ASSERT
     kind: Bool
     default: false
@@ -5153,13 +5020,6 @@ flags:
     owner: props
     doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
     smoke_passthrough: true
-    verified: true
-  - name: MC2_STANDARD_LIT_V1
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: mech
-    doc: ""
     verified: true
   - name: MC2_STATICPROP_BC7
     kind: Bool
@@ -6716,13 +6576,6 @@ flags:
     doc: "VK-FIELD-VFX-8: GL twin of MC2_VK_PRESENT_DUMP_ON_FIRE."
     verified: true
     registry: {feature_id: MC2_TRACE_VISUAL_CAPTURE_ON_FIRE, kind: Trace, order: -1, default_on: false}
-  - name: MC2_VISUAL_CAPTURE_POST
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: gameos
-    doc: "VK-PARITY-F2: MC2_VISUAL_CAPTURE_POST=1 (default OFF = byte-identical) reads the composited back buffer (post exposure/sunset grade, what the player sees)..."
-    verified: true
   - name: MC2_VISUAL_DIFF_CAPTURE
     kind: Bool
     default: false
@@ -6814,6 +6667,14 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_VK_FORCE_FAIL, kind: Trace, order: -1, default_on: false}
+  - name: MC2_VK_FRAMES_IN_FLIGHT
+    kind: Int
+    default: 2
+    rule: Prefix
+    owner: vk
+    doc: "Frames in flight of the Vulkan present path: 2 (default); =1 is the kill switch back to one frame."
+    smoke_passthrough: true
+    verified: true
   - name: MC2_VK_GPU_TIMESTAMPS
     kind: Bool
     default: false
@@ -6829,15 +6690,6 @@ flags:
     owner: gameos
     doc: "Env-token-only memo (no disarm interaction): the env block is process-static, so one getenv per process is exact."
     verified: true
-  - name: MC2_VK_IMGUI
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: code
-    doc: "ImGui draws through the Vulkan renderer under a Vulkan backend (default ON); =0 is a kill-switch back to GL ImGui."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VK_IMGUI, kind: Feature, order: -1, default_on: true}
   - name: MC2_VK_LIGHTFEED_DEDUP
     kind: Bool
     default: true
@@ -7050,7 +6902,7 @@ flags:
     default: true
     rule: Lead0Kill
     owner: vk
-    doc: "The VK umbrella, default ON since the 2026-10-17 default flip; =0 is a kill switch (no effect under MC2_RENDER_BACKEND=gl)."
+    doc: "Retired: the Vulkan scene path is unconditional; =0 is ignored with a [RENDER_BACKEND] line (render_backend_select.cpp)."
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_VK_SHARED_GBUFFER, kind: Feature, order: -1, default_on: true}

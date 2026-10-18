@@ -85,9 +85,9 @@ void vlog(const char* fmt, ...) {
 // Health snapshot — read by debug_state_dump.cpp via the extern "C" getter below
 // (used_vulkan receipt for every VK capture, per the arc's evidence protocol).
 struct PostFogNativeHealth {
-    int  runtimeGate   = 0;   // MC2_VK_POST_FOG_NATIVE resolved ON
+    int  runtimeGate   = 1;   // the native fog pair is always on
     int  substrateLive = 0;   // shared color0 + depth resources present at init
-    int  directChain   = 0;   // direct-chain engaged
+    int  directChain   = 1;   // direct-chain engaged
     unsigned long attempted  = 0;  // frames the native path was entered
     unsigned long usedVulkan = 0;  // frames BOTH fogs actually rendered via VK
     unsigned long usedInterop = 0; // frames that used GL<->VK semaphores
@@ -181,10 +181,8 @@ struct gosPostProcess::VkPostFogNative {
     mc2vk::OwnedPipeline   edgePipe;
     mc2vk::OwnedPipeline   oobPipe;
     mc2vk::OwnedCommandPool cpool;
-    mc2vk::OwnedFence      submitFence; // VK-QWI-TO-FENCE-1: per-submit retire fence
+    uint64_t ticket = 0;   // timeline value of this pass's last submit (0 = never): waited at the NEXT run, not inline after the submit
 };
-
-static bool vkPostFogDirectChainEnabled();
 
 namespace {
 
@@ -497,46 +495,6 @@ void gosPostProcess::VkPostFogNativeDeleter::operator()(VkPostFogNative* s) cons
 }
 
 // ---------------------------------------------------------------------------
-// vkPostFogNativeEnabled(): UMBRELLA-ARMED, NOT an opt-in: ON iff MC2_VK_SHARED_GBUFFER=1
-// . The SKYBOX-FOG-EXCLUDE parity guard
-// below is therefore reachable on the default umbrella launch and is load-bearing.
-// ---------------------------------------------------------------------------
-bool gosPostProcess::vkPostFogNativeEnabled()
-{
-    static int state = -1;
-    if (state == -1) {
-        // VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): an umbrella family member.
-        // Post-VK-RUNG8-ITEM8 the GL fog pass this used to fail-soft to draws into the
-        // DISCARDED GL backbuffer under VK-only present, so an unarmed native fog means
-        // the scene atmospheric fog VANISHES (the user's "OOB fog missing"). Native fog
-        // still engages only when upstream is direct-chain, so umbrella-arming it is
-        // safe: a degenerate forced-hybrid config still declines.
-        state = mc2vkgate::umbrellaOn() ? 1 : 0;
-        g_pf.runtimeGate = state;
-        if (state == 1)
-            vlog("rung-8.1 native fog pair gate ON "
-                 "(umbrella-armed; lazy init at the fog site; fail-soft to subgraph/island/GL).");
-    }
-    return state == 1;
-}
-
-// Native fog runs only in direct-chain, engaged when the upstream scene producers left the
-// shared GBuffer Vulkan-owned (umbrellaOn); otherwise it declines and the
-// GL fog pass runs.
-static bool vkPostFogDirectChainEnabled()
-{
-    static int state = -1;
-    if (state == -1) {
-        state = mc2vkgate::umbrellaOn() ? 1 : 0;
-        g_pf.directChain = state;
-        if (state == 1)
-            vlog("native fog direct-chain: upstream left the shared GBuffer VK-owned; "
-                 "no fog GL<->VK handoff.");
-    }
-    return state == 1;
-}
-
-// ---------------------------------------------------------------------------
 // runVkPostFogNative(): render BOTH fog effects natively in VK. Returns true only
 // when both draws were submitted (caller skips BOTH GL fog sites); ANY not-ready
 // condition returns false and the unchanged precedence chain runs.
@@ -558,6 +516,21 @@ bool gosPostProcess::runVkPostFogNative()
     if (!vkPostFogNative_) vkPostFogNative_.reset(new VkPostFogNative());
     VkPostFogNative* s = vkPostFogNative_.get();
     if (s->disabled) return false;
+    // The previous submit of this pass must have completed before its host-visible inputs are rewritten and its command buffer is reused. A timeline
+    // ticket waited here (a frame after the submit, normally already complete) replaces the fence the pass used to wait inline right after every submit.
+    {
+        const std::chrono::steady_clock::time_point tWait0 = std::chrono::steady_clock::now();
+        if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{s->ticket, 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
+            setFallback("fence_timeout"); s->disabled = true; return false;
+        }
+        g_pf.waitUsLast = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - tWait0).count();
+        g_pf.waitUsAccum += g_pf.waitUsLast;
+        ++g_pf.waitSamples;
+        if ((g_pf.waitSamples % 600) == 1)
+            vlog("[QWI-WAIT] wait_us_last=%.1f wait_us_avg=%.1f samples=%lu",
+                 g_pf.waitUsLast,
+                 g_pf.waitUsAccum / (double)g_pf.waitSamples, g_pf.waitSamples);
+    }
     if (!s->inited || s->width != width_ || s->height != height_) {
         if (s->inited) destroy_state(s);
         if (!build_state(s, width_, height_)) {
@@ -620,7 +593,6 @@ bool gosPostProcess::runVkPostFogNative()
     // ---- Shared resource ownership (VK-RUNG8 item-4: direct-chain only). Native fog
     // engages only when upstream left the shared GBuffer Vulkan-owned; otherwise decline
     // to the GL fog pass (native-or-decline). No GL<->VK semaphore handoff. ----
-    if (!vkPostFogDirectChainEnabled()) { setFallback("upstream_not_direct_chain"); return false; }
     VkCommandBuffer cb = s->cbuf[0u];
 
     vkResetCommandBuffer(cb, 0);
@@ -672,8 +644,8 @@ bool gosPostProcess::runVkPostFogNative()
     // Depth back to the GL hand-off layout (layout-stable across the boundary).
     depthBarrier(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                 VK_ACCESS_SHADER_READ_BIT, 0,
-                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+                 VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 
     vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Post);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) {
@@ -682,47 +654,15 @@ bool gosPostProcess::runVkPostFogNative()
 
     // ---- Submit (VK-RUNG8 item-4: direct-chain only — no GL<->VK semaphores). The
     // images stay Vulkan-owned for the following native post/composite pass. ----
-    // VK-QWI-TO-FENCE-1: retire THIS submit via a dedicated per-submit fence instead
-    // of a queue-wide vkQueueWaitIdle drain. The slot-recycle guarantee only needs
-    // this pass's own cbuf retired before reuse next frame; the fence preserves that
-    // exactly (a vkQueueSubmit fence signal is also ordered after all earlier
-    // submission-order work on the queue, so the wait is never WEAKER than the drain
-    // it replaces). Fail-soft: if fence creation ever fails, keep the queue drain.
-    if (!s->submitFence) {
-        VkFenceCreateInfo fci{};
-        fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        mc2vk::create(s->submitFence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });   // empty on failure: the queue drain below stands in
-    }
+    // The submit goes through the completion tracker; its timeline value is waited at the next run of this pass (top of the function), not here.
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (vkQueueSubmit(s->queue, 1, &si, s->submitFence.get()) != VK_SUCCESS) {
+    if (mc2vk::getOrCreateEngineVulkanContext().submit(si, VK_NULL_HANDLE, &s->ticket) != VK_SUCCESS) {
         setFallback("submit_failed"); s->disabled = true; return false;
     }
     timerGuard.submitted();
 
-    // Slot-recycle guard: this frame's command buffer must be retired before reuse
-    // next frame (per-submit fence; QWI only as the fence-creation fail-soft).
-    {
-        const clk::time_point tWait0 = clk::now();
-        if (s->submitFence) {
-            const VkFence submitFence = s->submitFence.get();
-            if (vkWaitForFences(s->device, 1, &submitFence, VK_TRUE,
-                                5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
-                setFallback("fence_timeout"); s->disabled = true; return false;
-            }
-            vkResetFences(s->device, 1, &submitFence);
-        } else if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
-            setFallback("queue_wait_idle_failed"); s->disabled = true; return false;
-        }
-        g_pf.waitUsLast = std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
-        g_pf.waitUsAccum += g_pf.waitUsLast;
-        ++g_pf.waitSamples;
-        if ((g_pf.waitSamples % 600) == 1)
-            vlog("[QWI-WAIT] wait_us_last=%.1f wait_us_avg=%.1f samples=%lu",
-                 g_pf.waitUsLast,
-                 g_pf.waitUsAccum / (double)g_pf.waitSamples, g_pf.waitSamples);
-    }
 
     g_pf.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
     ++g_pf.usedVulkan;

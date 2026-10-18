@@ -12,6 +12,7 @@
 #include "mc2_hitch_trace.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
+#include "../../RenderWorld/RenderWorld.h"   // advanceFrame: the handle-slot clock
 #include <SDL2/SDL.h>
 #include <string>
 #ifdef MC2_VULKAN
@@ -21,6 +22,20 @@
 
 extern SDL_Window* g_sdl_window;
 extern uint32_t g_mc2FxFireCaptureFrame;   // mclib/tgl.cpp
+extern uint32_t g_mc2FrameCounter;         // mclib/tgl.cpp: logic-pass epoch
+extern uint32_t g_mc2RenderFrame;          // mclib/tgl.cpp: render-frame clock, once per presented frame
+
+#if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
+// Render-island teardown entry points (each defined in its vulkan_*_island*.cpp; no-ops if the island was never born).
+extern "C" void mc2_vk_water_island_destroy();
+extern "C" void mc2_vk_vfx_island_destroy();
+extern "C" void mc2_vk_color_prop_island_destroy();
+extern "C" void mc2_vk_terrain_island_destroy();
+extern "C" void mc2_vk_mech_island_destroy();
+extern "C" void mc2_vk_legacy_shape_island_destroy();
+extern "C" void mc2_vk_sky_island_destroy();
+extern "C" void mc2_vk_shadow_island_destroy();
+#endif
 
 // VK-FAILSOFT-DISARM-1: present init hit a zero surface extent (window minimized at boot) and was DEFERRED instead of fail-softing
 // the session to GL. The frame loop retries EnginePresentVk::init once the drawable is non-zero.
@@ -36,7 +51,8 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
     // VK device that P6/P8/P9/P14 will reuse. Present is still GL swap (T3 wires
     // the VK present intercept later). On =gl/unset this whole block is skipped
     // -> byte-identical GL behavior.
-    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+    mc2::noteBackendEnv();
+    {
 #ifdef MC2_VULKAN
         // R2 INTERLOCK (plan §6/R2, landed here since the device is born here):
         // volkLoadDevice writes a PROCESS-GLOBAL dispatch table. Both the engine
@@ -105,6 +121,42 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
 
 namespace gos { namespace host {
 
+void advanceFrameCounter() { ++g_mc2FrameCounter; ++g_mc2RenderFrame; }
+
+void shutdownVulkanBackend() {
+#ifdef MC2_VULKAN
+#ifdef MC2_VULKAN_ISLAND
+    // Islands first: each frees its Vulkan objects (and the GL interop FBO / imported texture, if any) while the GL context and the shared
+    // device are both alive. The shadow island also emits the [VK_SHADOW_INTEROP] health line (forbidden_* counters).
+    mc2_vk_water_island_destroy();
+    mc2_vk_color_prop_island_destroy();
+    mc2_vk_terrain_island_destroy();
+    mc2_vk_vfx_island_destroy();
+    mc2_vk_mech_island_destroy();
+    mc2_vk_legacy_shape_island_destroy();
+    mc2_vk_sky_island_destroy();
+    mc2_vk_shadow_island_destroy();
+#endif
+    // Then the present path (copy-1 FBO / imported texture, swapchain), then the shared device.
+    mc2vk::getOrCreateEnginePresentVk().destroy();
+    mc2vk::getOrCreateEngineVulkanContext().destroy();
+#endif
+}
+
+// The render-object handle slots reuse an index only after the frame that may name it completed. One clock for every host (game and editor): it runs
+// after the present that closed the frame, whatever that present did.
+static void advanceHandleClock(unsigned long frameCounter) {
+    uint64_t frameNo = frameCounter, doneFrame = frameNo > 2 ? frameNo - 2 : 0;
+#ifdef MC2_VULKAN
+    if (mc2vk::engineVulkanContextValid()) {
+        const mc2vk::VulkanContext& vkctx = mc2vk::getOrCreateEngineVulkanContext();
+        frameNo = vkctx.tracker().frameNo();
+        doneFrame = vkctx.completedFrame();
+    }
+#endif
+    RenderWorld::advanceFrame(frameNo, doneFrame);
+}
+
 // Present the finished frame: the Vulkan present when the backend is up, else the GL swap.
 void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter) {
     // Outside the Vulkan block so a request expires on a run whose Vulkan present is down or never entered.
@@ -116,7 +168,8 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
     // swapchain instead of SDL_GL_SwapWindow. Any hard error fail-softs
     // to GL for the rest of the session (never breaks the GL path).
     bool vkPresented = false;
-    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+    bool vkPresentAttempted = false;   // presentGLFrame ran (it ends the Vulkan frame itself on every exit)
+    {
         mc2vk::EnginePresentVk& vkpres = mc2vk::getOrCreateEnginePresentVk();
         // VK-FAILSOFT-DISARM-1: present init was deferred on a zero
         // surface extent (window minimized at boot). Retry once per
@@ -184,6 +237,7 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
                  inVerifyWindow && (frameCounter % 60 == 0)) ||
                 gos::visual_capture::vkCapturePending() ||   // VK-VISUAL-CAPTURE-1
                 gos::screenshot::pending();
+            vkPresentAttempted = true;
             if (vkpres.presentGLFrame((uint32_t)pdw, (uint32_t)pdh, verify)) {
                 vkPresented = true;
                 static unsigned long s_vkHealthCadence = 0;
@@ -227,16 +281,18 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
         // frame for the sub-second gap (or stays blank while
         // minimized, where nothing is visible anyway). If the
         // retry budget runs out the process exits (fatalBackendFailure).
-        if (mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
-            g_vkPresentInitDeferred) {
+        if (g_vkPresentInitDeferred) {
             // hold the frame: no GL present while VK retries the HWND
         } else {
             graphics::swap_window(win);
         }
     }
+    // No present ran (init deferred, present torn down, a retry frame): the Vulkan frame still ends, or the tracker and the ring would stop advancing.
+    if (!vkPresentAttempted && mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().frameBoundary();
 #else
     graphics::swap_window(win);
 #endif
+    advanceHandleClock(frameCounter);
 }
 
 }}  // namespace gos::host

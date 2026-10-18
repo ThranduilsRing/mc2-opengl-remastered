@@ -328,8 +328,6 @@ P("MC2_GLTF_AXIS", Int, 0, "props", "", "Coordinate transforms (spec ?6).", rere
 P("MC2_GLTF_GROUND", Int, 2, "code", "", "", verified),
 P("MC2_GLTF_YAW_DEG", Float, 0.0, "props", "", "", reread | verified),
 P("MC2_GLTF_YOFF", Float, 0.0, "code", "", "", verified),
-L(Presence, "MC2_GL_DEBUG", Bool, false, "gameos", "", "Install GL debug callback only when MC2_GL_DEBUG is set.", passthrough | verified),
-L(Presence, "MC2_GL_DEBUG_FATAL", Bool, false, "gameos", "", "Tier 1.2 (docs/testing-strategy.md): opt-in fatal abort on GL_DEBUG_SEVERITY_HIGH.", passthrough | verified),
 L(Presence, "MC2_GOM_RECON", Bool, false, "code", "", "GOM Recon: object type classification & mutation tracking (read-only).", verified),
 // GOM_UPDATE_COST v1: per-phase GameObjectManager update CPU cost trace.
 // history: docs/gate-history.md#MC2_GOM_UPDATE_COST_SPLIT
@@ -578,13 +576,10 @@ L(Presence, "MC2_MDI_SUBMIT_TRACE", Bool, false, "gameos", "", "", passthrough |
 L(Lead0Kill, "MC2_MECH_AMBIENT_V1", Bool, true, "mech", "", "", verified),
 P("MC2_MECH_AMBIENT_V1_STRENGTH", Float, 0.15, "mech", "", "", clampRange(0.0, 2.0) | verified),
 L(Lead0Kill, "MC2_MECH_ANIM_ROTATION_ONLY", Bool, true, "mech", "", "", verified),
-P("MC2_MECH_BACK_FILL", Float, 0.0, "mech", "", "", verified),
 L(Presence, "MC2_MECH_BATCHER_STATS", Bool, false, "mech", "", "", verified),
-P("MC2_MECH_FRAG_DEBUG", Int, 0, "mech", "", "MC2_MECH_FRAG_DEBUG=N: legacy env path; wins over ImGui s_mechDebugMode.", verified),  // default not derivable from the tree
 P("MC2_MECH_GLASS_LUMA_THRESH", Float, 0.12, "mech", "", "", clampRange(0.0, 1.0) | verified),
 P("MC2_MECH_GLASS_MAXCHAN_THRESH", Float, 0.18, "mech", "", "", clampRange(0.0, 1.0) | verified),
 P("MC2_MECH_GLASS_ROUGHNESS", Float, 0.25, "mech", "", "", clampRange(0.04, 1.0) | verified),
-L(Lead0Kill, "MC2_MECH_IBL_SH", Bool, true, "mech", "", "", verified),
 L(Lead1, "MC2_MECH_IMPORT_ANIMATE", Bool, false, "code", "", "Opt-in, default OFF (static FORCE_CLIP bake stays the safe path).", verified),
 L(Presence, "MC2_MECH_IMPORT_CLIP_DIAG", Bool, false, "mech", "", "", verified),
 L(Lead1, "MC2_MECH_IMPORT_DYNAMIC_LIFT", Bool, false, "code", "", "Default: static rest lift (steady torso).", verified),
@@ -616,9 +611,7 @@ L(Presence, "MC2_MECH_SKEL_TRACE", Bool, false, "code", "", "BT2018-SKEL-ENGINE-
 P("MC2_MECH_SPECULAR_STRENGTH", Float, 0.05, "mech", "", "", clampRange(0.0, 4.0) | verified),
 L(Lead0Kill, "MC2_MECH_SPECULAR_V1", Bool, true, "mech", "", "", verified),
 G("MC2_MECH_SURFACE_MATERIAL", Enum, "", "mech", "", "Gate: MC2_MECH_SURFACE_MATERIAL controls which profiles to load.", tokens("|0|metal061b|none|painted_subtle") | verified),
-L(Presence, "MC2_MECH_TEX_READBACK", Bool, false, "mech", "", "Pixel-readback diagnostic - gated on its own env var (NOT MC2_MECH_BATCHER_STATS) because glGetTexImage is a synchronous GPU stall that pollutes any perf...", verified),
 L(Lead0Kill, "MC2_MECH_VIEWUNIFORMS", Bool, true, "mech", "", "", verified),
-L(Lead1, "MC2_MECH_VIEWUNIFORMS_DIAG", Bool, false, "mech", "", "", verified),
 L(Lead0, "MC2_MENU_CANARY_SKIP_INTRO", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_MIF_SPLIT", Bool, false, "code", "", "", passthrough | verified),
 L(Lead0Kill, "MC2_MISSING_RUNWAY_FIX", Bool, true, "terrain", "", "", verified),
@@ -702,14 +695,6 @@ L(Presence, "MC2_PATH_JUMP_FAIL_BACKOFF", Bool, false, "code", "", "PATHFINDING-
 L(Lead1, "MC2_PATH_SOLVE_ISOLATED", Bool, false, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_PAVED_OVERLAY_CLASS
 P("MC2_PAVED_OVERLAY_CLASS", Int, 0, "terrain", "", "DEFAULT 0 (OFF).", passthrough | registry(Feature, "MC2_FEATURE_PAVED_OVERLAY_CLASS", -1, false) | range(0, 2) | verified),
-P("MC2_PBR_AMBIENT_SPECULAR", Float, 0.25, "mech", "", "", verified),
-P("MC2_PBR_METALLIC_INFLUENCE", Float, 0.0, "mech", "", "", verified),  // default not derivable from the tree
-P("MC2_PBR_ROUGHNESS_MAX", Float, 0.9, "mech", "", "", verified),
-P("MC2_PBR_ROUGHNESS_MIN", Float, 0.0, "mech", "", "", verified),  // default not derivable from the tree
-P("MC2_PBR_TILE_SCALE", Float, 0.0, "mech", "", "", verified),  // default not derivable from the tree
-L(Lead1, "MC2_PBR_TRIPLANAR", Bool, false, "mech", "", "", verified),
-P("MC2_PBR_TRIPLANAR_SCALE", Float, 0.2, "mech", "", "", verified),
-P("MC2_PBR_WEAR_STRENGTH", Float, 0.0, "mech", "", "", verified),  // default not derivable from the tree
 L(Presence, "MC2_PICK_BEHIND_LEGACY", Bool, false, "code", "", "INPUT-CURSOR-OFFSCREEN-TARGET-RECON-1 / -FIX-1: a near-plane-clipped OBB corner projects to (0,0) with w<=1e-4 (camera.h:860-862).", verified),
 L(Presence, "MC2_PICK_CAP_TRACE", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_PICK_RECON", Bool, false, "code", "", "", passthrough | verified),
@@ -717,7 +702,6 @@ L(Lead0, "MC2_PIPELINE_BIND_TRACE", Bool, false, "gameos", "", "", passthrough |
 L(Lead0, "MC2_PIPELINE_COLORMASK", Bool, false, "gameos", "", "", verified),
 G("MC2_PLAYTEST_EXE", String, "", "editor", "", "", verified),
 L(Lead0Kill, "MC2_PNG_MAGENTA_KEY", Bool, true, "gameos", "", "", verified),
-G("MC2_POSTPROCESS_BACKEND", Enum, "gl", "post", "", "", passthrough | tokens("gl|vk|vulkan") | verified),
 L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR", Bool, false, "post", "", "", verified),
 L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR_PLANT", Bool, false, "post", "", "", verified),
 L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR_VERIFY", Bool, false, "post", "", "", verified),
@@ -758,10 +742,7 @@ L(Exact1, "MC2_RENDERSTATES_LEGACY", Bool, false, "gameos", "", "", verified),
 L(Presence, "MC2_RENDERSTATES_TRACE", Bool, false, "gameos", "", "Optional diagnostic: print the first 8 mismatch reasons.", verified),
 // VK-P13-SELECTOR-1 / T1: the top-level GL-vs-Vulkan backend selector.
 // history: docs/gate-history.md#MC2_RENDER_BACKEND
-G("MC2_RENDER_BACKEND", String, "", "unclassified", "", "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default vulkan; unset/unrecognized -> vulkan; gl is the temporary opt-out).", passthrough | registry(Feature, "MC2_FEATURE_RENDER_BACKEND", -1, false) | verified),
-// history: docs/gate-history.md#MC2_RENDER_BACKEND_IFACE
-L(Lead1, "MC2_RENDER_BACKEND_IFACE", Bool, false, "post", "", "RENDER-BACKEND-SEAMS arc: routes select GL calls (e.g.", passthrough | registry(Feature, "MC2_FEATURE_RENDER_BACKEND_IFACE", -1, false) | verified),
-L(Lead1, "MC2_RENDER_BACKEND_REGION_IFACE", Bool, false, "post", "", "", passthrough | verified),
+G("MC2_RENDER_BACKEND", String, "", "unclassified", "", "Legacy selector, read only to report an ignored value: the engine renders on Vulkan only (the gl opt-out was removed).", passthrough | registry(Feature, "MC2_FEATURE_RENDER_BACKEND", -1, false) | verified),
 L(Lead0, "MC2_RENDER_CONTRACT_ASSERT", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_RENDER_FRAME_DRIVER", Bool, false, "gameos", "", "GAME-EDITOR-RENDER-FRAME-DRIVER-1 (Slice 6): gated A/B adoption of the shared RenderFrameDriver seam.", verified),
 L(Presence, "MC2_RENDER_FRAME_PLAN_TRACE", Bool, false, "gameos", "", "", passthrough | verified),
@@ -927,7 +908,6 @@ L(Lead0, "MC2_SSAO_DEBUG", Bool, false, "post", "", "SSAO-GTAO-LITE-MVP-1: when 
 G("MC2_STABLE_LIGHT_SKIP", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", passthrough | verified),
 G("MC2_STABLE_LIGHT_SKIP_DIAG", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
 G("MC2_STABLE_LIGHT_SKIP_TOUCH", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
-L(Lead1, "MC2_STANDARD_LIT_V1", Bool, false, "mech", "", "", verified),
 // history: docs/gate-history.md#MC2_STATICPROP_BC7
 L(Lead0P, "MC2_STATICPROP_BC7", Bool, false, "props", "", "COMPRESSION-BC7-STATICPROP-1: upload BC7-compressed KTX2 static-prop texture arrays through the existing static-prop KTX path (gos_static_prop_batcher.cpp)...", registry(Feature, "MC2_FEATURE_STATICPROP_BC7", 22, false) | verified),
 // Static-prop ORM (PBR) — load-only feature + trace
@@ -1244,7 +1224,6 @@ L(Presence, "MC2_VISUAL_CAPTURE_EXIT_AFTER", Bool, false, "gameos", "", "VK-NOIN
 P("MC2_VISUAL_CAPTURE_FRAME", Int, -1, "vk", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_VISUAL_CAPTURE_ON_FIRE
 L(Presence, "MC2_VISUAL_CAPTURE_ON_FIRE", Bool, false, "unclassified", "", "VK-FIELD-VFX-8: GL twin of MC2_VK_PRESENT_DUMP_ON_FIRE.", registry(Trace, "MC2_TRACE_VISUAL_CAPTURE_ON_FIRE", -1, false) | verified),
-L(Lead0, "MC2_VISUAL_CAPTURE_POST", Bool, false, "gameos", "", "VK-PARITY-F2: MC2_VISUAL_CAPTURE_POST=1 (default OFF = byte-identical) reads the composited back buffer (post exposure/sunset grade, what the player sees)...", verified),
 L(Lead0, "MC2_VISUAL_DIFF_CAPTURE", Bool, false, "gameos", "", "", verified),
 P("MC2_VISUAL_DIFF_FRAME_N", Int, 90, "gameos", "", "", verified),
 P("MC2_VISUAL_DIFF_MAX_FRAMES", Int, 0, "gameos", "", "", verified),  // default not derivable from the tree
@@ -1259,10 +1238,9 @@ G("MC2_VK_FEED_DUMP", String, "", "vk", "", "", verified),
 // VK-P13-SELECTOR-1 / T4: fail-soft proof knob for the engine VK context.
 // history: docs/gate-history.md#MC2_VK_FORCE_FAIL
 L(Lead0, "MC2_VK_FORCE_FAIL", Bool, false, "vk", "", "VK-P13-SELECTOR-1: presence-gated =1, default OFF.", passthrough | registry(Trace, "MC2_FEATURE_VK_FORCE_FAIL", -1, false) | verified),
+P("MC2_VK_FRAMES_IN_FLIGHT", Int, 2, "vk", "", "Frames in flight of the Vulkan present path: 2 (default); =1 is the kill switch back to one frame.", passthrough | verified),
 L(Presence, "MC2_VK_GPU_TIMESTAMPS", Bool, false, "vk", "", "", passthrough | verified),
 L(Presence, "MC2_VK_HUD_DRAW_DUMP", Bool, false, "gameos", "", "Env-token-only memo (no disarm interaction): the env block is process-static, so one getenv per process is exact.", verified),
-// history: docs/gate-history.md#MC2_VK_IMGUI
-L(Lead0Kill, "MC2_VK_IMGUI", Bool, true, "code", "", "ImGui draws through the Vulkan renderer under a Vulkan backend (default ON); =0 is a kill-switch back to GL ImGui.", passthrough | registry(Feature, "MC2_FEATURE_VK_IMGUI", -1, true) | verified),
 L(Lead0Kill, "MC2_VK_LIGHTFEED_DEDUP", Bool, true, "vk", "", "", verified | passthrough),
 L(Is01, "MC2_VK_MECH_FEED_NATIVE", Bool, false, "mech", "", "", verified | passthrough),
 L(Lead0Kill, "MC2_VK_MECH_FENCE_DEFER", Bool, true, "vk", "", "", verified | passthrough),
@@ -1302,7 +1280,7 @@ L(Lead1, "MC2_VK_SELECT_TEST", Bool, false, "code", "", "", verified),
 L(Lead0, "MC2_VK_SHADOW_MATRIX_DIAG", Bool, false, "vk", "", "VK shadow producer/consumer evidence (default OFF = zero cost; GameOS/gameos/vulkan_shadow_island_live.cpp).", passthrough | registry(Trace, "MC2_TRACE_VK_SHADOW_MATRIX_DIAG", -1, false) | verified),
 // VK-P14 GATE-CONSOLIDATION-1: the ONE umbrella for the shared-GBuffer scene path.
 // history: docs/gate-history.md#MC2_VK_SHARED_GBUFFER
-L(Lead0Kill, "MC2_VK_SHARED_GBUFFER", Bool, true, "vk", "", "The VK umbrella, default ON since the 2026-10-17 default flip; =0 is a kill switch (no effect under MC2_RENDER_BACKEND=gl).", passthrough | registry(Feature, "MC2_FEATURE_VK_SHARED_GBUFFER", -1, true) | verified),
+L(Lead0Kill, "MC2_VK_SHARED_GBUFFER", Bool, true, "vk", "", "Retired: the Vulkan scene path is unconditional; =0 is ignored with a [RENDER_BACKEND] line (render_backend_select.cpp).", passthrough | registry(Feature, "MC2_FEATURE_VK_SHARED_GBUFFER", -1, true) | verified),
 // VK-TIER1 SHARED SCENE DEPTH: the shared-depth substrate slice (step 2).
 // history: docs/gate-history.md#MC2_VK_SHARED_SCENE_STRICT
 L(Exact1, "MC2_VK_SHARED_SCENE_STRICT", Bool, false, "post", "", "VK shared-scene deletion-readiness canary.", passthrough | registry(Trace, "MC2_TRACE_VK_SHARED_SCENE_STRICT", -1, false) | verified),

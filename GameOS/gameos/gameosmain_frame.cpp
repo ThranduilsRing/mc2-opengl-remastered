@@ -306,7 +306,6 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
                 extern int      gos_getDynShadowMapSize();
                 EditorInspector::ShadowPassSnapshot sp;
                 sp.terrainShadowProgramId      = gos_getTerrainShadowProgramId();
-                sp.mechShadowProgramId         = gos_getMechShadowProgramId();
                 sp.staticPropShadowProgramId   = gos_getStaticPropShadowProgramId();
                 sp.shadowsEnabled              = gos_getShadowsEnabled();
                 sp.staticLightMatrixBuilt      = gos_StaticLightMatrixBuilt();
@@ -604,33 +603,11 @@ void frameCameraPark(graphics::RenderWindowHandle win) {
             // MC2_VISUAL_CAPTURE_FRAME nor MC2_VISUAL_BOOKMARK_CAPTURE is set,
             // so we resolve the FBO lazily only when one of them is active.
             if (gos::visual_capture::active()) {
-                gosPostProcess* ppVc = getGosPostProcess();
-                GLuint vcFbo = ppVc ? ppVc->getSceneFBO() : 0;
-                int vcW = ppVc ? ppVc->getWidth()  : 0;
-                int vcH = ppVc ? ppVc->getHeight() : 0;
-                if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
-                    // VK-VISUAL-CAPTURE-1: GL scene FBO is not the shown image;
-                    // capture_to() queues a VK present readback instead.
-                    int vkW = 0, vkH = 0;
-                    graphics::get_drawable_size(win, &vkW, &vkH);
-                    if (vkW > 0 && vkH > 0)
-                        gos::visual_capture::onPostRenderFrame(g_mc2FrameCounter, vkW, vkH);
-                } else if (vcFbo && vcW > 0 && vcH > 0) {
-                    // VK-PARITY-F2: MC2_VISUAL_CAPTURE_POST=1 (default OFF = byte-identical)
-                    // reads the composited back buffer (post exposure/sunset grade, what the
-                    // player sees) instead of the pre-composite scene FBO, so GL captures
-                    // are comparable with VK captures (which read the presented image).
-                    static const bool s_vcPost = mc2::gate::get<"MC2_VISUAL_CAPTURE_POST">();
-                    if (s_vcPost) {
-                        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-                        glReadBuffer(GL_BACK);
-                    } else {
-                        glBindFramebuffer(GL_READ_FRAMEBUFFER, vcFbo);
-                        glReadBuffer(GL_COLOR_ATTACHMENT0);
-                    }
-                    gos::visual_capture::onPostRenderFrame(g_mc2FrameCounter, vcW, vcH);
-                    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-                }
+                // The shown image is the VK present: capture_to() queues a present readback (the GL scene FBO is not read any more).
+                int vkW = 0, vkH = 0;
+                graphics::get_drawable_size(win, &vkW, &vkH);
+                if (vkW > 0 && vkH > 0)
+                    gos::visual_capture::onPostRenderFrame(g_mc2RenderFrame, vkW, vkH);
             }
         }
 }
@@ -651,7 +628,7 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
             {
                 ZoneScopedN("SwapWindow.SDL");
                 // The shared host present (Vulkan composite + present, or the GL swap): also the editor's.
-                gos::host::presentOrSwap(win, g_mc2FrameCounter);
+                gos::host::presentOrSwap(win, g_mc2RenderFrame);
             }
             render_contract::renderPassTelemetryFrameTick();  // [RENDER_PASS v1] frame boundary
             render_contract::renderPassScopeFrameBoundary();   // ENFORCEMENT-1 missing-end flush

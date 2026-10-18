@@ -58,14 +58,15 @@ bool cleanFrame();
 // frame from gameosmain.cpp. Default OFF = one static pointer check.
 void cameraParkTick(unsigned int frame);
 
-// VK-VISUAL-CAPTURE-1: Vulkan-backend readback seam. Under
-// mc2::renderBackend()==Vulkan the GL scene FBO is not what is shown, so
+// VK-VISUAL-CAPTURE-1: Vulkan readback seam. The GL scene FBO is not what is shown, so
 // capture_to() does not glReadPixels; it queues a one-shot request here
 // (sidecar written immediately, PNG deferred). gameosmain.cpp forces the VK
 // present readback while vkCapturePending(), and engine_present_vk.cpp hands
 // the presented RGBA8 rows (bottom-up, shared-image orientation, w*h*4 bytes)
 // to vkCaptureDeliver() in the same frame, which flips them and writes the PNG.
 bool vkCapturePending();
+// The frame counter when the pending capture's sidecar was written; only a readback requested at or after it shows that frame.
+unsigned long long vkCapturePendingSince();
 void vkCaptureDeliver(unsigned int w, unsigned int h, const unsigned char* rgbaBottomUp);
 
 }}  // namespace gos::visual_capture

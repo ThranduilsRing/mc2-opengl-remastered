@@ -5,12 +5,12 @@
 
 enum class MaterialSlotKind { BaseColor, Normal, Orm, Emissive };
 
-// Decodes an image file (PNG/JPG/BMP/TGA via stb_image) and uploads it to a GL
+// Decodes an image file (PNG/JPG/BMP/TGA via stb_image) and uploads it to a Vulkan
 // texture with a SLOT-AWARE internalformat:
-//   BaseColor/Emissive -> GL_SRGB8_ALPHA8 (GL linearizes on sample)
-//   Normal/Orm         -> GL_RGBA8        (linear)
-// Returns the GL texture id, or 0 on failure (errorOut set). The caller owns
-// the texture and must glDeleteTextures it.
+//   BaseColor/Emissive -> R8G8B8A8_SRGB (the sampler linearizes on sample)
+//   Normal/Orm         -> R8G8B8A8_UNORM (linear)
+// Returns the toolvk texture id, or 0 on failure (errorOut set). The caller owns
+// the texture and must toolvk::destroyTexture it.
 uint32_t MaterialTextureLoader_Load(const std::string& path,
                                     MaterialSlotKind kind,
                                     std::string* errorOut);

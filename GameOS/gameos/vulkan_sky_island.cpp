@@ -18,6 +18,7 @@
 
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
+#include "vk_one_shot.h"
 #include "vulkan_context.h"
 #include "vulkan_sky_island.h"
 #include "vk_hdri_source.h"
@@ -50,12 +51,6 @@ void vlog(const char* fmt, ...) {
     va_list ap; va_start(ap, fmt);
     vk_island_util::vlogv("[VK_SKY] ", fmt, ap);
     va_end(ap);
-}
-
-bool gateRequested() {
-    static int state = -1;
-    if (state == -1) state = mc2vkgate::umbrellaOn() ? 1 : 0;
-    return state == 1;
 }
 
 std::string spv_dir() { return vk_island_util::spvDir(); }
@@ -133,15 +128,7 @@ bool submit_once(Island* s, const std::function<void(VkCommandBuffer)>& record) 
     vkEndCommandBuffer(cb);
     VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    mc2vk::OwnedFence fence;
-    VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    mc2vk::create(fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });   // empty on failure: the queue idle below stands in
-    const VkFence fenceHandle = fence.get();
-    bool ok = vkQueueSubmit(s->queue, 1, &si, fenceHandle) == VK_SUCCESS;
-    if (fence) {
-        if (ok) ok = vkWaitForFences(s->device, 1, &fenceHandle, VK_TRUE, 30ull * 1000 * 1000 * 1000) == VK_SUCCESS;
-        if (!ok) vkDeviceWaitIdle(s->device);   // the fence is released on return: the GPU must be done with it
-    } else { vkQueueWaitIdle(s->queue); }
+    const bool ok = mc2vk::submitAndWait(mc2vk::getOrCreateEngineVulkanContext(), si, 30ull * 1000 * 1000 * 1000, "sky copy-once");
     vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
     return ok;
 }
@@ -378,7 +365,7 @@ bool init_island(Island* s, int w, int h) {
 
 } // namespace
 
-extern "C" int mc2_vk_sky_island_enabled(void) { return (gateRequested() && !g_sessionDeclined) ? 1 : 0; }
+extern "C" int mc2_vk_sky_island_enabled(void) { return g_sessionDeclined ? 0 : 1; }
 
 extern "C" void mc2_vk_sky_submit(const float* invProj16, const float* invViewRot9, float skyYaw, unsigned int hdriGlTex) {
     if (!invProj16 || !invViewRot9) return;
@@ -391,7 +378,7 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     ZoneScopedN("VK-sky-island");
     Pending p = g_pending;
     g_pending.valid = false;   // consume: a frame with no sky submit draws no sky
-    if (!gateRequested() || g_sessionDeclined || !p.valid || w <= 0 || h <= 0) return 0;
+    if (g_sessionDeclined || !p.valid || w <= 0 || h <= 0) return 0;
 
     // The island lives in the engine context's slot: the context releases it ahead of the device whatever path ends the process.
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
@@ -445,7 +432,7 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO; si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     { ZoneScopedN("VKIsl.Sky.Submit");
-      if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+      if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
     ++g_health.usedVulkan;
     static bool s_firstOk = false;
     if (!s_firstOk) { vlog("first HDRI sky co-write (hdriReal=%d).", s->hdriReal ? 1 : 0); s_firstOk = true; }

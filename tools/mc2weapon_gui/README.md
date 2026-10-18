@@ -1,7 +1,7 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # mc2weapon_gui
 
-Dear ImGui (SDL2 + OpenGL3) weapon editor for MechCommander 2. A **foolproof
+Dear ImGui (SDL2 + Vulkan, tools/common/tool_vk_shell) weapon editor for MechCommander 2. A **foolproof
 front-end** over the same weapon model as the [`mc2weapon`](../mc2weapon/) CLI:
 enum fields are dropdowns (you can't typo a Type / Range / FX), numbers are
 validated live, and **Save is disabled while anything is invalid**. Saving writes a

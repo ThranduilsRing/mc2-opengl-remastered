@@ -53,25 +53,6 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
-// MC2_VK_WATER_TIER1 (rung 6, VK full-ownership ladder): render the armed water
-// BASE layer IN-PLACE into the shared scene GBuffer (color0+normal+depth) like
-// the terrain/prop/mech Tier-1 islands — no offscreen target, no GL composite,
-// no depth readback.
-//
-// VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now resolved via the umbrella
-// so MC2_VK_SHARED_GBUFFER=1 arms it. Water is BASE scene
-// content, not an enhancement -- post-VK-RUNG8-ITEM8 the native VK composite is the sole
-// present-image producer and there is no per-layer GL fallback, so an unarmed water layer
-// VANISHES (the field bug). This ALSO reconciles a latent inconsistency: gos_postprocess.cpp
-// and the post chain already read the water tier as an umbrella member, while this producer
-// read it as an explicit "1" -- so under the umbrella the
-// post chain believed water was armed while the island declined. Now both agree. The strict
-// proof armed WATER_TIER1=1 and passed its parity check.
-bool waterTier1Requested() {
-    const bool s_on = mc2vkgate::umbrellaOn();   // per-call: VK-FAILSOFT-DISARM-1 (water must return to GL after fail-soft)
-    return s_on;
-}
-
 // MC2_VK_WATER_PERF — fine-grained per-sub-step microsecond breakdown of the VK
 // water interop path (additive diagnostic; zero cost when OFF). Emits a
 // [VK_WATER_PERF] line per frame with the readback/stage/depth-in/sem/submit/
@@ -132,36 +113,37 @@ bool make_buffer(WaterIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkB
     return true;
 }
 
-// Write the 4-binding descriptor set (0=vsUbo, 1=fsUbo, 5=recipe, 6=thin).
+// Write the descriptor set (0=vsUbo, 1=fsUbo: frame-ring dynamic bindings; 5=recipe, 6=thin).
 // Called at init (after the set is allocated) and whenever a buffer is (re)allocated.
 // No-op until the descriptor SET exists — ensure_thin_capacity / recipe realloc can
 // run during init BEFORE vkAllocateDescriptorSets, and writing to a NULL set is a
 // validation error + crash (dstSet == VK_NULL_HANDLE). The post-alloc write_descriptors
 // in init_island covers the initial bind; later reallocs re-write with a valid set.
-void write_descriptors(WaterIsland* s) {
-    // VK-WATER-FENCE-DEFER-1: write BOTH parity sets (set[i] binds buffers[i]).
+void write_descriptors(WaterIsland* s, int only) {
+    // VK-WATER-FENCE-DEFER-1: write BOTH parity sets (set[i] binds buffers[i]) unless `only` names one slot (the caller then owns
+    // that slot's retirement: the per-frame feed rebind runs after the slot fence wait).
     // Callers (re)allocating any bound buffer are vkDeviceWaitIdle-guarded, so no
     // in-flight command buffer can be using either set during the update.
     for (int i = 0; i < 2; ++i) {
+        if (only >= 0 && i != only) continue;
         if (s->set[i] == VK_NULL_HANDLE) continue;   // set not allocated yet (early init path)
-        VkDescriptorBufferInfo vsInfo{ s->vsUbo[i].get(), 0, VK_WHOLE_SIZE };
-        VkDescriptorBufferInfo fsInfo{ s->fsUbo[i].get(), 0, VK_WHOLE_SIZE };
+        // Bindings 0 and 1 (the parameter UBOs) at the frame ring's current buffer; the slot re-points them at its next frame (ringBound cleared).
+        if (const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer()) {
+            mc2vk::writeDynamicBinding(s->device, s->set[i], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, sizeof(WaterVsParams));
+            mc2vk::writeDynamicBinding(s->device, s->set[i], 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, sizeof(WaterFsParams));
+        }
+        s->ringBound[i] = VK_NULL_HANDLE;
         VkDescriptorBufferInfo recInfo{ s->recipeBuf.get(), 0, VK_WHOLE_SIZE };
-        // STEP 3.4P: binding 6 is the GPU-produced thin buffer once the native producers are up.
-        VkDescriptorBufferInfo thinInfo{ (s->native && s->native->ready()) ? s->native->thin(static_cast<uint32_t>(i)) : s->thinBuf[i].get(), 0, VK_WHOLE_SIZE };
-        VkWriteDescriptorSet w[4]{};
+        // STEP 3.4P: binding 6 is the GPU-produced thin buffer only for the slot whose last feed was the native one (thinNative[i]);
+        // a frame that takes the readback feed (opt-out, null MVP) rebinds its slot to thinBuf first (vulkan_water_island_run.cpp).
+        VkDescriptorBufferInfo thinInfo{ (s->thinNative[i] && s->native && s->native->ready()) ? s->native->thin(static_cast<uint32_t>(i)) : s->thinBuf[i].get(), 0, VK_WHOLE_SIZE };
+        VkWriteDescriptorSet w[2]{};
         w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = s->set[i];
-        w[0].dstBinding = 0; w[0].descriptorCount = 1;
-        w[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[0].pBufferInfo = &vsInfo;
+        w[0].dstBinding = 5; w[0].descriptorCount = 1;
+        w[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[0].pBufferInfo = &recInfo;
         w[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[1].dstSet = s->set[i];
-        w[1].dstBinding = 1; w[1].descriptorCount = 1;
-        w[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[1].pBufferInfo = &fsInfo;
-        w[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[2].dstSet = s->set[i];
-        w[2].dstBinding = 5; w[2].descriptorCount = 1;
-        w[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[2].pBufferInfo = &recInfo;
-        w[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[3].dstSet = s->set[i];
-        w[3].dstBinding = 6; w[3].descriptorCount = 1;
-        w[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[3].pBufferInfo = &thinInfo;
+        w[1].dstBinding = 6; w[1].descriptorCount = 1;
+        w[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[1].pBufferInfo = &thinInfo;
         // Binding 2 (HDRI equirect) is written separately by ensure_hdri() once the
         // image exists — it may not yet at init time (write of a NULL view is invalid).
         VkDescriptorImageInfo hdriInfo{};
@@ -173,7 +155,7 @@ void write_descriptors(WaterIsland* s) {
             w4.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w4.pImageInfo = &hdriInfo;
             vkUpdateDescriptorSets(s->device, 1, &w4, 0, nullptr);
         }
-        vkUpdateDescriptorSets(s->device, 4, w, 0, nullptr);
+        vkUpdateDescriptorSets(s->device, 2, w, 0, nullptr);
         // VK-PARITY-WATER-SHORE-1: bindings 3/4 (shore height / mask), once imported.
         if (s->shHView && s->shMView && s->hdriSampler) {
             VkDescriptorImageInfo shInfo[2] = {
@@ -255,7 +237,7 @@ bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& rec
             VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
             si.commandBufferCount = 1; si.pCommandBuffers = &cb;
             const VkFence f = fence.get();
-            ok = (vkQueueSubmit(s->queue, 1, &si, f) == VK_SUCCESS) &&
+            ok = (mc2vk::submitGraphics(si, f) == VK_SUCCESS) &&
                  (vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull*1000*1000*1000) == VK_SUCCESS);
         }
     }
@@ -310,16 +292,16 @@ extern "C" void mc2_render_backend_water_region_health(
 // True when the Tier-1 gate requests the VK water region (the caller then SKIPS the GL
 // MDI draw and calls mc2_vk_water_island_run instead — mutually exclusive).
 extern "C" int mc2_vk_water_island_enabled() {
-    return waterTier1Requested() ? 1 : 0;
+    return 1;
 }
 
 // STEP 3.4P: 0 = the GL cull/pack feeds the island by readback; 1 = the native VK producers run (the GL cull dispatch is skipped); 2 = native, and the GL
-// dispatch runs as well so the outputs can be compared (parity frames: native frames 60, 600, then every 3600th).
+// dispatch runs as well so the outputs can be compared (parity frames: native frames 60 and 600).
 extern "C" int mc2_vk_water_native_mode() {
     WaterIsland* s = parkedIsland();
     if (!s || s->disabled || !s->inited || !s->native || !s->native->ready()) return 0;
     const uint64_t f = s->nativeFrames;
-    return (f == 60 || f == 600 || (f > 0 && f % 3600 == 0)) ? 2 : 1;
+    return (f == 60 || f == 600) ? 2 : 1;   // two parity frames per session: a periodic one is a full stall (waitIdle + GL readbacks) in shipped code
 }
 
 // Teardown (called from gosPostProcess::destroy or renderer shutdown).

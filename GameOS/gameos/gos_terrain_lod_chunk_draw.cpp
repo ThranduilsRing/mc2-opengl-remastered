@@ -1260,6 +1260,13 @@ void TerrainLodSubmitFrame::submitVkIsland(int& s_submitCount) {
 #endif
 }
 
+void gos_TerrainLodChunk_EnsureSceneClear() {
+#ifdef MC2_VULKAN_ISLAND
+    if (gosPostProcess* pp = getGosPostProcess())
+        (void)mc2_vk_scene_clear(pp->getWidth(), pp->getHeight());
+#endif
+}
+
 // Submits the LOD chunk draw commands. The early bail-outs, the top-level pass guard and the MVP fetch stay here;
 // each phase below is a verbatim helper, run in the original order.
 void gos_TerrainLodChunk_SubmitDrawCommands(

@@ -164,7 +164,8 @@ def main() -> int:
     exe = Path(args.exe)
     deploy = exe.parent
     # Fixture: `stock:mc2_01` names a stock mission materialized loose in the install by
-    # `run_editor_smoke.py --prepare-stock-scratch` (lane/scratch installs).
+    # `run_editor_smoke.py --prepare-stock-scratch` (it clones the install into scratch/stock-runtime/<name>; run this script
+    # with that clone's editor exe).
     if args.mission.lower().startswith("stock:"):
         args.mission = str(deploy / "data" / "missions" / (args.mission.split(":", 1)[1] + ".pak"))
     mission = Path(args.mission)
@@ -177,8 +178,8 @@ def main() -> int:
         return 2
     if not mission.exists():
         print(f"ERROR: mission pak not found: {mission}\nStock missions live in mission.fst; materialize them with "
-              f"`run_editor_smoke.py --exe <editor> --prepare-stock-scratch --case gen_map_basic` on a lane install, "
-              f"then pass --mission stock:mc2_01.")
+              f"`run_editor_smoke.py --exe <editor> --prepare-stock-scratch --case gen_map_basic` (clones into scratch/stock-runtime), "
+              f"then run this script with that clone's editor exe and --mission stock:mc2_01.")
         return 2
 
     # PER-INSTALL GUARD: refuse only if a running mc2.exe lives in the SAME

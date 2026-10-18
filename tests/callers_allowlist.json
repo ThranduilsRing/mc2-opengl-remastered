@@ -27,6 +27,7 @@
   "scripts/run_editor_smoke.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "scripts/run_smoke_asan.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "scripts/run_smoke_matrix.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
+  "scripts/run_tool_capture.py": "Operator entry point: the launch-and-screenshot runner for the Vulkan viewport tools (asset_viewer, mc2fx_preview, mc2weapon_gui); run by hand and by agents, no script calls it.",
   "scripts/run_vk_field_check.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "scripts/smoke_lib/baselines.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track.",
   "scripts/smoke_lib/crash_evidence.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track.",

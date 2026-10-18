@@ -101,26 +101,8 @@ extern "C" float batcher_getImportedMechAoStrength(void);
 extern "C" void  batcher_setImportedMechAoStrength(float s);
 extern "C" float batcher_getImportedMechNormalStrength(void);
 extern "C" void  batcher_setImportedMechNormalStrength(float s);
-extern "C" int   batcher_getStandardLitEnabled(void);
-extern "C" void  batcher_setStandardLitEnabled(int on);
-extern "C" float batcher_getPbrMetallicInfluence(void);
-extern "C" void  batcher_setPbrMetallicInfluence(float v);
-extern "C" float batcher_getPbrRoughnessMin(void);
-extern "C" void  batcher_setPbrRoughnessMin(float v);
-extern "C" float batcher_getPbrRoughnessMax(void);
-extern "C" void  batcher_setPbrRoughnessMax(float v);
-extern "C" float batcher_getPbrAmbientSpecularStrength(void);
-extern "C" void  batcher_setPbrAmbientSpecularStrength(float v);
-extern "C" float batcher_getPbrWearStrength(void);
-extern "C" void  batcher_setPbrWearStrength(float v);
-extern "C" int   batcher_getPbrTriplanar(void);
-extern "C" void  batcher_setPbrTriplanar(int on);
-extern "C" float batcher_getPbrTriplanarScale(void);
-extern "C" void  batcher_setPbrTriplanarScale(float v);
 extern "C" float batcher_getMechGlassRoughness(void);
 extern "C" void  batcher_setMechGlassRoughness(float r);
-extern "C" float batcher_getMechBackFillStrength(void);
-extern "C" void  batcher_setMechBackFillStrength(float v);
 // GPU particle debug-mode + intensity scales (defined in
 // GameOS/gameos/gos_particle_bridge.cpp). All scales default 1.0 = no-op.
 extern "C" int   gos_vfx_getDebugMode(void);

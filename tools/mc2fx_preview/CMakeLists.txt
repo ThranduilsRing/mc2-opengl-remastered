@@ -2,7 +2,7 @@
 #
 # Loads an .fx blob headless (reuses tools/mc2fx/mc2fx_core.cpp), lists effects,
 # and PLOTS each selected effect's animation curves vs particle age (0..1) with
-# Dear ImGui (SDL2 + OpenGL3). This is a curve grapher, NOT a particle renderer.
+# Dear ImGui (SDL2 + Vulkan). This is a curve grapher, NOT a particle renderer.
 #
 # Build with -DENABLE_MC2FX_PREVIEW=ON (guarded in the top CMakeLists).
 #
@@ -73,22 +73,16 @@ endif()
 target_link_libraries(mc2fx_corelib PRIVATE mc2_gate)
 
 # ---------------------------------------------------------------------------
-# mc2fx_preview — SDL2 + OpenGL + Dear ImGui shell (curve grapher).
+# mc2fx_preview — SDL2 + Vulkan + Dear ImGui shell (curve grapher).
 # ---------------------------------------------------------------------------
 add_executable(mc2fx_preview
     main.cpp
 )
 target_compile_features(mc2fx_preview PRIVATE cxx_std_17)
-target_compile_definitions(mc2fx_preview PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLEW)
+target_compile_definitions(mc2fx_preview PRIVATE)
 
 if(NOT TARGET SDL2::SDL2)
     find_package(SDL2 CONFIG REQUIRED)
-endif()
-if(NOT TARGET OpenGL::GL)
-    find_package(OpenGL REQUIRED)
-endif()
-if(NOT TARGET GLEW::GLEW)
-    find_package(GLEW REQUIRED)
 endif()
 
 # SDL include discovery (copied from tools/asset_viewer).
@@ -143,7 +137,11 @@ if(TARGET SDL2::SDL2main)
     target_link_libraries(mc2fx_preview PRIVATE SDL2::SDL2main)
 endif()
 
-target_link_libraries(mc2fx_preview PRIVATE OpenGL::GL GLEW::GLEW)
+# Vulkan shell shared by the viewport tools (tools/common). It carries imgui + SDL2 + volk.
+if(NOT TARGET mc2_tool_vk)
+    add_subdirectory("${CMAKE_SOURCE_DIR}/tools/common" "${CMAKE_BINARY_DIR}/tools_common")
+endif()
+target_link_libraries(mc2fx_preview PRIVATE mc2_tool_vk)
 if(WIN32)
     target_link_libraries(mc2fx_preview PRIVATE Psapi)
 endif()

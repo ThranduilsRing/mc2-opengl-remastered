@@ -2,8 +2,8 @@
 //
 // VK-P13-SELECTOR-1 / T2 -- the standalone shared engine Vulkan context.
 // Owns instance + physical device + logical device + graphics queue + VMA +
-// volk device dispatch. Born once at engine init (gameosmain) when
-// renderBackend()==Vulkan; any error is reported to the caller (fatal). Device ownership lives HERE;
+// volk device dispatch. Born once at engine init (gameosmain);
+// any error is reported to the caller (fatal). Device ownership lives HERE;
 // consumers borrow it.
 //
 // Whole TU is inert unless MC2_VULKAN is defined. Device bring-up keeps the
@@ -23,6 +23,7 @@
 #endif
 
 #include "vulkan_context.h"
+#include "mc2_diag_verbose.h"
 #include "diagnostic_trace.h"
 #include "vk_device_profile.h"
 #include "vk_validation_line.h"
@@ -40,6 +41,7 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
+#include <algorithm>
 #include <cstring>
 #include <memory>
 #include <vector>
@@ -415,6 +417,25 @@ bool VulkanContext::init(bool wantPresent) {
     volkLoadDevice(device_);
     vkGetDeviceQueue(device_, gfxFamily_, 0, &gfxQueue_);
 
+    // ---- the graphics timeline (CompletionTracker's semaphore; the profile requires timeline semaphores) ----
+    {
+        VkSemaphoreTypeCreateInfo tci{VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO};
+        tci.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+        tci.initialValue = 0;
+        VkSemaphoreCreateInfo sci{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+        sci.pNext = &tci;
+        if (vkCreateSemaphore(device_, &sci, nullptr, &gfxTimeline_) != VK_SUCCESS) { gfxTimeline_ = VK_NULL_HANDLE; return fail("graphics timeline semaphore"); }
+        tracker_ = CompletionTracker{};
+    }
+#ifdef MC2_VULKAN_ISLAND
+    {
+        VkPhysicalDeviceProperties props{};
+        vkGetPhysicalDeviceProperties(phys_, &props);
+        const VkDeviceSize a = std::max<VkDeviceSize>({props.limits.minUniformBufferOffsetAlignment, props.limits.minStorageBufferOffsetAlignment, 16});
+        frameAlign_ = a;
+    }
+#endif
+
     // ---- VMA allocator (volk-imported functions) ----
     {
         VmaAllocatorCreateInfo aci{};
@@ -448,6 +469,7 @@ void VulkanContext::retireIsland(IslandSlot slot) {
     static_assert(sizeof(kSlotNames) / sizeof(kSlotNames[0]) == static_cast<size_t>(IslandSlot::Count), "name every island slot");
     if (mc2_diag::tagRequested("VK_SHUTDOWN")) ctxlog("retire island slot=%s.", kSlotNames[static_cast<size_t>(slot)]);
     waitIdle("retire_island");
+    deferred_.drainAll();   // parked owners may name this island's pools (a retired sprite page frees its set): they go while the island is still alive
     parked.reset();
 }
 #endif
@@ -459,12 +481,166 @@ void VulkanContext::waitIdle(std::string_view why) const {
     if (r != VK_SUCCESS) ctxlog("vkDeviceWaitIdle failed before %.*s: VkResult=%d.", static_cast<int>(why.size()), why.data(), static_cast<int>(r));
 }
 
+VkResult VulkanContext::submit(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const {
+    if (device_ == VK_NULL_HANDLE || gfxTimeline_ == VK_NULL_HANDLE) return VK_ERROR_DEVICE_LOST;
+    std::lock_guard<std::mutex> lock(submitMutex_);   // the value and the queue order must agree
+#ifdef MC2_VULKAN_ISLAND
+    flushUploadsLocked();   // queued uploads run ahead of every submit that may sample them
+#endif
+    return submitLocked(si, fence, outValue);
+}
+
+#ifdef MC2_VULKAN_ISLAND
+void VulkanContext::flushUploadsLocked() const {
+    if (!uploads_.pending()) return;
+    OwnedCommandPool pool;
+    VkCommandBuffer cb = VK_NULL_HANDLE;
+    if (!uploads_.build(*this, pool, cb)) return;
+    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &cb;
+    if (submitLocked(si, VK_NULL_HANDLE, nullptr) != VK_SUCCESS) ctxlog("the upload batch submit failed: the queued uploads are lost.");
+    // The command buffer lives in its pool and the dedicated staging buffers belong to the batch: both go with the frame.
+    deferred_.retire(tracker_, std::move(pool));
+    deferred_.retire(tracker_, uploads_.takeDedicated());
+}
+
+void VulkanContext::flushUploads() const {
+    std::lock_guard<std::mutex> lock(submitMutex_);
+    flushUploadsLocked();
+}
+#endif
+
+VkResult VulkanContext::submitLocked(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const {
+    assert(si.pNext == nullptr && "submit(): the timeline info is appended here; pass a plain VkSubmitInfo");
+    if (si.signalSemaphoreCount > 7 || si.waitSemaphoreCount > 8) return VK_ERROR_INITIALIZATION_FAILED;
+    const uint64_t value = tracker_.noteSubmit(QueueKind::Graphics);
+    // The caller's binary signals first, the timeline last (binary entries ignore their value).
+    VkSemaphore signals[8];
+    uint64_t signalValues[8] = {};
+    uint64_t waitValues[8] = {};
+    for (uint32_t i = 0; i < si.signalSemaphoreCount; ++i) signals[i] = si.pSignalSemaphores[i];
+    signals[si.signalSemaphoreCount] = gfxTimeline_;
+    signalValues[si.signalSemaphoreCount] = value;
+    VkTimelineSemaphoreSubmitInfo tsi{VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
+    tsi.waitSemaphoreValueCount = si.waitSemaphoreCount;
+    tsi.pWaitSemaphoreValues = si.waitSemaphoreCount ? waitValues : nullptr;
+    tsi.signalSemaphoreValueCount = si.signalSemaphoreCount + 1;
+    tsi.pSignalSemaphoreValues = signalValues;
+    VkSubmitInfo out = si;
+    out.pNext = &tsi;
+    out.signalSemaphoreCount = si.signalSemaphoreCount + 1;
+    out.pSignalSemaphores = signals;
+    const VkResult r = vkQueueSubmit(gfxQueue_, 1, &out, fence);
+    if (r != VK_SUCCESS) {
+        // A refused submit signals nothing: give the value back so the counter and the timeline stay in step.
+        tracker_.unnoteSubmit(QueueKind::Graphics, value);
+        return r;
+    }
+    if (outValue) *outValue = value;
+    return r;
+}
+
+void VulkanContext::poll() const {
+    if (gfxTimeline_ == VK_NULL_HANDLE) return;
+    uint64_t v = 0;
+    if (vkGetSemaphoreCounterValue(device_, gfxTimeline_, &v) == VK_SUCCESS) {
+        std::lock_guard<std::mutex> lock(submitMutex_);
+        tracker_.setCompleted(QueueKind::Graphics, v);
+    }
+}
+
+bool VulkanContext::isComplete(const GpuTicket& t) const {
+    if (tracker_.isComplete(t)) return true;
+    poll();
+    return tracker_.isComplete(t);
+}
+
+bool VulkanContext::wait(const GpuTicket& t, uint64_t timeoutNs, std::string_view why) const {
+    if (isComplete(t)) return true;
+    if (gfxTimeline_ == VK_NULL_HANDLE) return false;
+    VkSemaphoreWaitInfo wi{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
+    wi.semaphoreCount = 1;
+    wi.pSemaphores = &gfxTimeline_;
+    wi.pValues = &t.gfx;
+    const VkResult r = vkWaitSemaphores(device_, &wi, timeoutNs);
+    if (r != VK_SUCCESS) ctxlog("timeline wait for %.*s ended with VkResult=%d (ticket gfx=%llu).", static_cast<int>(why.size()), why.data(), static_cast<int>(r), static_cast<unsigned long long>(t.gfx));
+    poll();
+    return tracker_.isComplete(t);
+}
+
+void VulkanContext::beginFrame() {
+    if (tracker_.frameOpen()) return;
+    poll();
+    tracker_.beginFrame();
+    deferred_.collect(tracker_);
+#ifdef MC2_VULKAN_ISLAND
+    // The ring slot of this frame was last written by frame F-2: its work must be done before the slot restarts. The islands' own fences keep this
+    // true today; the wait only costs anything if one of them let a frame run further ahead.
+    const uint64_t f = tracker_.frameNo();
+    // The slot restarts only when that completion is proven: a timed-out wait falls back to a device idle, and if even that leaves the ticket
+    // incomplete (device lost) the slot keeps its head, so the CPU never overwrites bytes the GPU may still read.
+    bool slotFree = true;
+    if (f > FrameRingCore::kSlots) {
+        const GpuTicket t = tracker_.frameTicket(f - FrameRingCore::kSlots);
+        if (!wait(t, 5ull * 1000 * 1000 * 1000, "frame_ring_slot")) {
+            waitIdle("frame_ring_slot_timeout");
+            poll();
+            slotFree = tracker_.isComplete(t);
+            if (!slotFree) ctxlog("frame %llu: ticket of frame %llu never completed; ring slot NOT restarted.", static_cast<unsigned long long>(f), static_cast<unsigned long long>(f - FrameRingCore::kSlots));
+        }
+    }
+    frameRing_.beginFrame(f, slotFree);
+#endif
+}
+
+void VulkanContext::drainDeferred(std::string_view why) {
+    if (deferred_.size() == 0) return;
+    waitIdle(why);
+    poll();
+    const uint32_t n = deferred_.drainAll();
+    ctxlog("drained %u deferred destroy entr%s (%.*s).", n, n == 1 ? "y" : "ies", static_cast<int>(why.size()), why.data());
+}
+
+void VulkanContext::endFrame() {
+#ifdef MC2_VULKAN_ISLAND
+    flushUploads();   // an upload queued this frame is submitted inside it, so the frame ticket covers its staging
+#endif
+    tracker_.endFrame();
+    deferred_.sealFrame(tracker_.frameTicket(tracker_.frameNo()));
+    if (tracker_.frameNo() % 600 == 0 && mc2DiagVerbose()) {   // the periodic summaries are MC2_DIAG_VERBOSE lines (a default build stays quiet)
+        poll();
+#ifdef MC2_VULKAN_ISLAND
+        if (uploads_.queued() != 0)
+            std::fprintf(stderr, "[VK_UPLOAD v1] flushes=%llu queued=%llu dedicated_stages=%llu dropped=%llu frame_ring_growths=%u\n",
+                         static_cast<unsigned long long>(uploads_.flushes()), static_cast<unsigned long long>(uploads_.queued()),
+                         static_cast<unsigned long long>(uploads_.dedicatedStages()), static_cast<unsigned long long>(uploads_.dropped()), frameRing_.growths());
+#endif
+        const DeferredDestroy::Stats ds = deferred_.stats(tracker_);
+        std::fprintf(stderr, "[VK_TIMELINE v1] deferred_entries=%u deferred_bytes=%llu oldest_age_frames=%llu\n", ds.entries,
+                     static_cast<unsigned long long>(ds.bytes), static_cast<unsigned long long>(ds.oldestAgeFrames));
+#ifdef MC2_VULKAN_ISLAND
+        std::fprintf(stderr, "[VK_FRAMERING v1] capacity=%llu peak_used=%llu\n", static_cast<unsigned long long>(frameRing_.capacityPerSlot()),
+                     static_cast<unsigned long long>(frameRing_.peakPerSlot()));
+#endif
+        std::fprintf(stderr, "[VK_TIMELINE v1] frame=%llu last_submitted=%llu completed=%llu in_flight=%llu\n",
+                     static_cast<unsigned long long>(tracker_.frameNo()),
+                     static_cast<unsigned long long>(tracker_.lastSubmitted(QueueKind::Graphics)),
+                     static_cast<unsigned long long>(tracker_.completed(QueueKind::Graphics)),
+                     static_cast<unsigned long long>(tracker_.lastSubmitted(QueueKind::Graphics) - tracker_.completed(QueueKind::Graphics)));
+        std::fflush(stderr);
+    }
+}
+
 void VulkanContext::destroy() {
     g_debugNames = false;
+    if (device_ != VK_NULL_HANDLE) { waitIdle("teardown"); deferred_.drainAll(); }   // parked owners go ahead of the allocator and the device
 #ifdef MC2_VULKAN_ISLAND
     // The islands consume the light feed, so they go first; both go before the allocator and the device their objects were made on.
     for (size_t i = 0; i < islands_.size(); ++i) retireIsland(static_cast<IslandSlot>(i));
     lightFeed_.release();
+    frameRing_.release();
+    readbacks_.releaseAll();
     // PRECONDITION: the owners that live outside the context (the shared scene colour / depth / normal images, the present path's shared image, the
     // shadow island's images) were destroyed by the engine shutdown ahead of this call. A resource still alive here would release its image on a device
     // that is gone, so the count is checked and a violation is logged where the validation layer would otherwise report it far from its cause.
@@ -475,6 +651,7 @@ void VulkanContext::destroy() {
 #endif
     if (allocator_) { vmaDestroyAllocator(allocator_); allocator_ = nullptr; }
     if (device_ != VK_NULL_HANDLE) {
+        if (gfxTimeline_ != VK_NULL_HANDLE) { vkDestroySemaphore(device_, gfxTimeline_, nullptr); gfxTimeline_ = VK_NULL_HANDLE; }
         vkDestroyDevice(device_, nullptr);
         device_ = VK_NULL_HANDLE;
     }

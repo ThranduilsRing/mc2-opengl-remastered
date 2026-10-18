@@ -394,19 +394,6 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
     // 4.6 core; 4.3 is the minimum feature level we need.
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 
-    // MC2_GL_DEBUG=1 enables the OpenGL debug context AND the debug-message
-    // callback (installed in gameosmain.cpp). Debug contexts run driver-side
-    // validation on every GL call and can cost 10-30% perf, especially on
-    // NVIDIA; the callback also floods stdout with harmless AMD-driver
-    // warnings in our workload. Off by default in shipped builds;
-    // env-gated rather than NDEBUG-gated so it can be flipped on a
-    // deployed binary without rebuilding.
-    const bool gl_debug = mc2::gate::get<"MC2_GL_DEBUG">();
-    if (gl_debug) {
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
-        printf("[GL_DEBUG] MC2_GL_DEBUG=1 -- GL debug context active. This reduces performance.\n");
-    }
-
     if (VERBOSE_MODES) {
         SDL_DisplayMode mode;
         int bpp;
@@ -706,12 +693,7 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
 
     // Single-line summary of effective runtime mode. Anchor for log pastes:
     // grep [MODE] and you see every toggle state at a glance.
-    // NB: gl_debug is set on the attribute in create_window()'s scope; we
-    // re-read the env here because that local doesn't carry across functions.
-    const bool gl_debug_mode = mc2::gate::get<"MC2_GL_DEBUG">();
-    printf("[MODE] gl_debug=%d vsync=%d tracy=on-demand\n",
-           gl_debug_mode ? 1 : 0,
-           vsync_on ? 1 : 0);
+    printf("[MODE] vsync=%d tracy=on-demand\n", vsync_on ? 1 : 0);
     printf("[TRACY] on-demand mode -- profiler listening on TCP 8086, no capture until a GUI attaches.\n");
 
     if(VERBOSE_RENDER) {
@@ -807,14 +789,29 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
 }
 
 //==============================================================================
-void destroy_render_context(RenderContextHandle rc_handle)
+static void destroy_render_context_impl(RenderContextHandle rc_handle, bool deleteGlContext)
 {
     RenderContext* rc = (RenderContext*)rc_handle;
     assert(rc);
 
-    SDL_GL_DeleteContext(rc->glcontext_);
+    if (deleteGlContext) {
+        SDL_GL_DeleteContext(rc->glcontext_);
+    } else {
+        SDL_GL_MakeCurrent(rc->render_window_ ? rc->render_window_->window_ : nullptr, nullptr);   // left to process teardown
+    }
     g_sdl_glcontext = nullptr;
     delete rc;
+}
+
+void destroy_render_context(RenderContextHandle rc_handle)
+{
+    destroy_render_context_impl(rc_handle, true);
+}
+
+//==============================================================================
+void release_render_context_at_exit(RenderContextHandle rc_handle)
+{
+    destroy_render_context_impl(rc_handle, false);
 }
 
 //==============================================================================

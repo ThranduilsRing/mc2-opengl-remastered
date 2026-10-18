@@ -188,8 +188,9 @@ struct WaterIsland : mc2vk::IslandState {
 
     // Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
     // parked island ahead of the device). An image is declared before its view so the view is released first.
-    mc2vk::OwnedBuffer vsUbo[2];
-    mc2vk::OwnedBuffer fsUbo[2];
+    // The vertex and fragment parameter UBOs live in the engine frame ring (one span per frame); set[par] binds them with dynamic offsets (bindings 0, 1).
+    // ringBound[par] = the ring buffer they currently point at; a frame whose span came from another buffer re-points them after the slot fence.
+    VkBuffer ringBound[2] = {};
     mc2vk::OwnedBuffer recipeBuf;
     mc2vk::OwnedBuffer thinBuf[2];
     mc2vk::OwnedRenderPass rpass;
@@ -213,6 +214,7 @@ struct WaterIsland : mc2vk::IslandState {
     // GL readback feed stays in use for the session.
     std::unique_ptr<mc2vk::NativeProducers> native;
     bool     nativeFailed = false;
+    bool     thinNative[2] = {false, false};   // what binding 6 of each parity set currently points at: true = native thin_, false = thinBuf
     uint64_t nativeFrames = 0;   // frames the native path completed; schedules the parity frames
 };
 
@@ -232,7 +234,6 @@ std::unique_ptr<mc2vk::IslandState>& islandSlot();
 WaterIsland* parkedIsland();
 void setFallback(std::string_view reason);
 void vlog(const char* fmt, ...);
-bool waterTier1Requested();
 bool waterPerfGateRequested();
 bool waterFenceDeferEnabled();
 bool waterDirectChainRequested();
@@ -240,7 +241,7 @@ std::string spv_dir();
 VkShaderModule load_spv(VkDevice device, std::string_view path);
 bool make_buffer(WaterIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage,
                  std::string_view name, int i0 = -1, int i1 = -1);
-void write_descriptors(WaterIsland* s);
+void write_descriptors(WaterIsland* s, int only = -1);
 bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes);
 bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeCount);
 bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& record);

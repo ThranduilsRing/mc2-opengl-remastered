@@ -18,6 +18,8 @@
 #include <volk.h>
 #include <cstdint>
 
+#include "../../RenderCore/FrameFenceCore.h"
+
 #include "vk_owned.h"
 
 // The reusable, GL-free VK-owned image + its VK-side sync objects. The resource owns every handle: vkImageResourceDestroy (or the destructor)
@@ -48,7 +50,7 @@ struct VkImageResource {
     mc2vk::OwnedSemaphore glToVkSem[2];
     mc2vk::OwnedSemaphore vkToGlSem[2];
     mc2vk::OwnedFence     frameFence[2];
-    uint32_t          frameParity     = 0;        // ^=1 each frame; picks [frameParity]
+    RenderCore::FrameFenceCore frames;             // parity (^=1 each frame) and whether the slot fences may still be waited (disabled by a failed CancelFrame)
 
     // Cached device handle so vkImageResourceBeginFrame (which takes only the
     // resource) can reset the fence without threading VkDevice through every call.
@@ -78,6 +80,12 @@ int vkImageResourceLiveCount();
 
 // Advance to the frame's parity slot; wait+reset its fence; return the sync trio.
 VkFrameSync vkImageResourceBeginFrame(VkImageResource* r);
+// Undoes a BeginFrame whose frame then recorded and submitted nothing: BeginFrame reset the slot's fence and only a submit signals it again, so a
+// caller that returns early without submitting must call this, or the next BeginFrame on that slot waits forever. It re-creates the fence signaled
+// (nothing is in flight on it: BeginFrame waited it) and gives the parity back.
+// False when the fence could not be re-created (device loss, out of memory): the resource is then DISABLED, BeginFrame returns a null fence and waits on
+// nothing, and the caller must stop using the resource (the water island disables itself).
+bool vkImageResourceCancelFrame(VkImageResource* r, const VkFrameSync& sync);
 
 #endif // MC2_VULKAN_ISLAND
 #endif // MC2_VK_IMAGE_RESOURCE_H

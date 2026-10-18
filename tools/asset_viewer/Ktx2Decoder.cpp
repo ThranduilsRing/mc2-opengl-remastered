@@ -1,6 +1,6 @@
 // tools/asset_viewer/Ktx2Decoder.cpp
 #include "Ktx2Decoder.h"
-#include <GL/glew.h>
+#include "tool_vk_gpu.h"
 #include <cstdio>
 #include <cstring>
 #include <cstdint>
@@ -81,63 +81,31 @@ DecodedTexture Ktx2Decoder::load(const std::string& path) const
     d.mipCount      = img.mipCount;
     d.isCompressed  = img.isCompressed;
 
-    GLuint tex = 0;
-    while (glGetError() != GL_NO_ERROR) {}   // drain stale errors so our check only sees OUR upload
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-
     if (!img.isCompressed) {
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        const GLenum internal = img.isSrgb ? GL_SRGB8_ALPHA8 : GL_RGBA8;     // color-space per metadata
-        glTexImage2D(GL_TEXTURE_2D, 0, internal, img.width, img.height, 0,
-                     GL_RGBA, GL_UNSIGNED_BYTE,
-                     img.pixels.data() + img.mipByteOffsets[0]);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);   // restore default
+        d.texId = toolvk::createTexture(img.width, img.height,
+                                        img.isSrgb ? toolvk::TexFormat::Rgba8Srgb : toolvk::TexFormat::Rgba8Unorm,
+                                        img.pixels.data() + img.mipByteOffsets[0], {}, false, false);
         d.formatLabel = img.isSrgb ? "RGBA8 (sRGB)" : "RGBA8";
-        // mip-0 only — must NOT use a mipmap min-filter or the texture is mip-incomplete
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     } else {
-        if (!GLEW_ARB_texture_compression_bptc) {
-            glDeleteTextures(1, &tex);
-            glGetError();   // consume any gen/bind error so it doesn't leak to the next load()
-            d.error = "BC7 preview requires GL_ARB_texture_compression_bptc, "
-                      "unavailable on this GPU/context.";
+        if (!toolvk::hasBc7()) {
+            d.error = "BC7 preview requires textureCompressionBC, unavailable on this GPU.";
             return d;
         }
-        const GLenum internal = img.isSrgb ? GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM
-                                           : GL_COMPRESSED_RGBA_BPTC_UNORM;
+        std::vector<toolvk::MipLevel> levels;
         for (int lvl = 0; lvl < img.mipCount; ++lvl) {
-            const int lw = (img.width  >> lvl) ? (img.width  >> lvl) : 1;
-            const int lh = (img.height >> lvl) ? (img.height >> lvl) : 1;
             const uint64_t off  = img.mipByteOffsets[lvl];
-            const uint64_t next = (lvl + 1 < img.mipCount) ? img.mipByteOffsets[lvl + 1]
-                                                           : (uint64_t)img.pixels.size();
-            const GLsizei size  = (GLsizei)(next - off);
-            glCompressedTexImage2D(GL_TEXTURE_2D, lvl, internal, lw, lh, 0,
-                                   size, img.pixels.data() + off);
+            const uint64_t next = (lvl + 1 < img.mipCount) ? img.mipByteOffsets[lvl + 1] : (uint64_t)img.pixels.size();
+            levels.push_back({(size_t)off, (size_t)(next - off)});
         }
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, img.mipCount - 1);
-        // Full mip chain uploaded + MAX_LEVEL set — mip-complete, use mip-aware filter
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                        img.mipCount > 1 ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+        d.texId = toolvk::createTexture(img.width, img.height,
+                                        img.isSrgb ? toolvk::TexFormat::Bc7Srgb : toolvk::TexFormat::Bc7Unorm,
+                                        img.pixels.data(), levels, false, false);
         char buf[64];
         std::snprintf(buf, sizeof(buf), "BC7%s, %d mip%s",
                       img.isSrgb ? " (sRGB)" : "", img.mipCount, img.mipCount > 1 ? "s" : "");
         d.formatLabel = buf;
     }
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    const GLenum e = glGetError();
-    if (e != GL_NO_ERROR) {
-        glDeleteTextures(1, &tex);
-        char buf[128];
-        std::snprintf(buf, sizeof(buf), "GL upload failed (0x%x) for %s", e, path.c_str());
-        d.error = buf;
-        return d;
-    }
-    glBindTexture(GL_TEXTURE_2D, 0);
-    d.glTexture     = tex;
-    d.ownsGlTexture = true;
+    if (!d.texId) { d.error = "Vulkan texture upload failed for " + path; return d; }
+    d.ownsTexture = true;
     return d;
 }

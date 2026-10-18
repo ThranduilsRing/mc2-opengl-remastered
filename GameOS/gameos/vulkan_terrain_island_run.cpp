@@ -11,8 +11,11 @@
 // PUBLIC ENTRY POINTS.
 // ===========================================================================
 
+extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
+static uint32_t g_sceneClearedRenderFrame = 0;   // render frame + 1 of the last shared-scene clear (0 = never)
+
 extern "C" int mc2_vk_terrain_island_enabled() {
-    return terrainTier1Requested() ? 1 : 0;
+    return 1;
 }
 
 extern "C" int mc2_vk_terrain_all_lods_enabled() {
@@ -38,7 +41,6 @@ extern "C" int mc2_vk_terrain_visualdisplace_far_enabled() {
 // LOD0), and the first successful run() flips it ready for subsequent frames — a one-frame
 // GL-draw-then-VK-takeover with no hole.
 extern "C" int mc2_vk_terrain_island_ready() {
-    if (!terrainTier1Requested()) return 0;
     const TerrainIsland* island = parkedIsland();
     if (!island) return 0;                   // not born yet -> GL owns LOD0 this frame
     if (island->disabled) return 0;          // latched off by a prior fatal (spv/pipeline/device)
@@ -56,7 +58,6 @@ extern "C" int mc2_vk_terrain_island_ready() {
 // and the island would only be born from a non-empty feed produced by the skip
 // (chicken-egg deadlock -> island never births -> LOD0 always GL-drawn).
 bool ensure_island_ready(int w, int h) {
-    if (!terrainTier1Requested()) return false;
     if (w <= 0 || h <= 0) return false;
     // Item-2 boot-level native-or-decline: a prior PERMANENT init failure declined this
     // island for the whole session -> GL owns terrain, no per-frame re-init churn.
@@ -106,18 +107,17 @@ extern "C" int mc2_vk_terrain_island_prepare(int w, int h) {
 // per-frame cadence as GL's PackAndDispatch/BuildAndUploadLightGrid uploads). Any
 // staging failure degrades to "no pools" (numPoolLights=0), never a hole.
 // (Factored out of mc2_vk_terrain_island_run for VK-PARITY-OVERLAY-1 reuse.)
-void stage_light_pool(TerrainIsland* s, uint32_t par, const Mc2TerrainTier1Feed& feed,
-                             int32_t& vkPoolLights, int32_t& vkGridDim) {
+bool stage_light_pool(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
+                             int32_t& vkPoolLights, int32_t& vkGridDim, mc2vk::FrameAlloc (&lp)[3]) {
+    (void)s;
+    mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
     {
         ZoneScopedN("VKIsl.Terrain.LightPoolStage");
         auto stage = [&](int k, const void* src, VkDeviceSize bytes) -> bool {
             if (!src || bytes == 0) return true;
-            if (!ensure_lightpool_capacity(s, par, k, bytes)) return false;
-            void* dst = nullptr;
-            if (vmaMapMemory(s->allocator, s->lpBuf[par][k].allocation(), &dst) != VK_SUCCESS) return false;
-            std::memcpy(dst, src, (size_t)bytes);
-            vmaUnmapMemory(s->allocator, s->lpBuf[par][k].allocation());
-            vmaFlushAllocation(s->allocator, s->lpBuf[par][k].allocation(), 0, VK_WHOLE_SIZE);
+            lp[k] = ctx.frameAlloc(bytes);
+            if (!lp[k]) return false;
+            std::memcpy(lp[k].ptr, src, (size_t)bytes);
             return true;
         };
         if (vkPoolLights > 0 && feed.poolLights) {
@@ -134,6 +134,10 @@ void stage_light_pool(TerrainIsland* s, uint32_t par, const Mc2TerrainTier1Feed&
             vkGridDim = 0;
         }
     }
+    // Bindings 11-13 are always bound: what this frame did not stage is a small placeholder (the shader reads them only when numPoolLights / gridDim say so).
+    for (int k = 0; k < 3; ++k)
+        if (!lp[k]) lp[k] = ctx.frameAlloc(256);
+    return lp[0] && lp[1] && lp[2];
 }
 
 // Fill one TerrainFrameUBO slot from the frame feed + one patch record (shared MVP /
@@ -297,7 +301,6 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
 
 extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     ZoneScopedN("VK-terrain-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
-    if (!terrainTier1Requested()) return 0;
     if (w <= 0 || h <= 0) return 0;
 
     using clk = std::chrono::steady_clock;
@@ -420,6 +423,16 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // added after the beginFrame wait so stageUs never absorbs the deferred retire.
     const double usStagePre = usSince(tStage0);
 
+    // Per-frame data goes into the engine frame ring BEFORE beginFrame (a ring failure after it could strand the fence; the ring slot belongs to the
+    // frame, not to the parity, so staging here races nothing): the per-patch dynamic UBO and the light pool + grid spans.
+    mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
+    const uint32_t patchCount = feed.patchCount;
+    const mc2vk::FrameAlloc uboSpan = rctx.frameAlloc((VkDeviceSize)patchCount * sizeof(TerrainFrameUBO));
+    int32_t vkPoolLights = feed.numPoolLights;
+    int32_t vkGridDim    = feed.lightGridDim;
+    mc2vk::FrameAlloc lpSpans[3];
+    if (!uboSpan || !stage_light_pool(s, feed, vkPoolLights, vkGridDim, lpSpans)) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
+
     // VK-TERRAIN-FENCE-DEFER-1 (water-pilot template): begin the shared-slot frame
     // BEFORE the per-frame UBO staging. The slot-fence wait inside beginFrame IS the
     // deferred retire of the submit that last used this parity slot, and it protects
@@ -436,29 +449,16 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
 
     // Fill one dynamic-UBO slot per LOD0 patch (shared MVP/mapSide/halfMap + per-patch
     // blockOrigin). quadCount comes from the patch record (drives grid rebuild).
-    const uint32_t patchCount = feed.patchCount;
-    const VkDeviceSize needUbo = (VkDeviceSize)patchCount * sizeof(TerrainFrameUBO);
-    if (!ensure_ubo_capacity(s, par, needUbo)) { s->disabled = true; return 0; }
-
-    // VK-PARITY-TERRAIN-2: stage this frame's light pool + grid into slot [par] (same
-    // per-frame cadence as GL's PackAndDispatch/BuildAndUploadLightGrid uploads). Any
-    // staging failure degrades to "no pools" (numPoolLights=0), never a hole.
-    int32_t vkPoolLights = feed.numPoolLights;
-    int32_t vkGridDim    = feed.lightGridDim;
-    stage_light_pool(s, par, feed, vkPoolLights, vkGridDim);
     {
         ZoneScopedN("VKIsl.Terrain.UboFill");   // VK-ISLAND-TRACY-1: per-patch dynamic-UBO fill
-        void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->ubo[par].allocation(), &p) == VK_SUCCESS) {
-            uint8_t* slots = static_cast<uint8_t*>(p);   // memcpy, not a typed store: the mapped offset is not guaranteed to match the struct's alignment
-            for (uint32_t i = 0; i < patchCount; ++i) {
-                TerrainFrameUBO u{};
-                fill_frame_ubo(s, feed, feed.patches[i], vkPoolLights, vkGridDim, u);
-                std::memcpy(slots + (size_t)i * sizeof(TerrainFrameUBO), &u, sizeof(TerrainFrameUBO));
-            }
-            vmaUnmapMemory(s->allocator, s->ubo[par].allocation());
+        uint8_t* slots = static_cast<uint8_t*>(uboSpan.ptr);   // memcpy, not a typed store: the span offset is not guaranteed to match the struct's alignment
+        for (uint32_t i = 0; i < patchCount; ++i) {
+            TerrainFrameUBO u{};
+            fill_frame_ubo(s, feed, feed.patches[i], vkPoolLights, vkGridDim, u);
+            std::memcpy(slots + (size_t)i * sizeof(TerrainFrameUBO), &u, sizeof(TerrainFrameUBO));
         }
     }
+    sync_ring_bindings(s, par, uboSpan, lpSpans);
     g_health.stageUs = usStagePre + usSince(tUboFill0);
     g_health.patchRecords = patchCount;
 
@@ -498,6 +498,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     clears[1].color.float32[3] = 0.0f;
     clears[2].depthStencil = {0.0f, 0u};
 
+    g_sceneClearedRenderFrame = g_mc2RenderFrame + 1u;   // this pass CLEARs color0 / normal / depth (see mc2_vk_scene_clear)
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
@@ -520,8 +521,9 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         const Mc2TerrainTier1Patch& pr = feed.patches[i];
         const PatchMesh* pm = getOrBuildPatch(s, pr.quadCountX, pr.quadCountY, pr.lodStep);
         if (!pm || pm->indexCount == 0) continue;
-        const uint32_t dynOff = i * (uint32_t)sizeof(TerrainFrameUBO);
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 1, &dynOff);
+        const uint32_t dynOffs[4] = {static_cast<uint32_t>(uboSpan.offset + i * sizeof(TerrainFrameUBO)), static_cast<uint32_t>(lpSpans[0].offset),
+                                     static_cast<uint32_t>(lpSpans[1].offset), static_cast<uint32_t>(lpSpans[2].offset)};
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 4, dynOffs);
         vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
         VkDeviceSize vboOff = 0;
         { const VkBuffer vb = pm->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &vboOff); }
@@ -562,7 +564,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     { ZoneScopedN("VKIsl.Terrain.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
-      if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+      if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
     timerGuard.submitted();
 
     // VK-TERRAIN-FENCE-DEFER-1: the inline retire wait is GONE — the submit's fence
@@ -617,6 +619,47 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
             mc2::fmt::as_u32(patchCount), g_health.stageUs, g_health.drawUs, us_fence_wait, g_health.totalUs);
         std::fflush(stderr);
     }
+    return 1;
+}
+
+// The shared scene's own clear. The terrain pass is the normal clear (CLEAR loadOps), but it does not run when the frame has no terrain (menu,
+// loading, mech bay) or when it declines before recording, and every later island LOADs: without this the composite would show the previous frame.
+// `g_sceneClearedRenderFrame` holds the render frame (plus one) of the last clear, so a frame the terrain pass already cleared is not cleared twice.
+// Callers: the frame start when the last frame had no terrain, and the point right after the terrain flush (before any prop / mech draw).
+extern "C" int mc2_vk_scene_clear(int w, int h) {
+    if (w <= 0 || h <= 0) return 0;
+    if (g_sceneClearedRenderFrame == g_mc2RenderFrame + 1u) return 1;
+    if (!ensure_island_ready(w, h)) return 0;
+    TerrainIsland* s = parkedIsland();
+    if (!s || s->disabled || !s->inited) return 0;
+
+    VkFrameSync fsC{};
+    fsC = vkImageResourceBeginFrame(s->colorRes);
+    const uint32_t par = fsC.parity & 1u;
+    VkCommandBuffer cb = s->cbuf[par];
+    vkResetCommandBuffer(cb, 0);
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("clear_record_failed"); s->disabled = true; return 0; }
+
+    VkClearValue clears[3]{};
+    for (int k = 0; k < 4; ++k) clears[0].color.float32[k] = g_prefixClearColor[k];
+    clears[1].color.float32[0] = 0.5f; clears[1].color.float32[1] = 0.5f; clears[1].color.float32[2] = 1.0f; clears[1].color.float32[3] = 0.0f;
+    clears[2].depthStencil = {0.0f, 0u};
+    VkRenderPassBeginInfo rbi{};
+    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
+    rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    rbi.clearValueCount = 3; rbi.pClearValues = clears;
+    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdEndRenderPass(cb);
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("clear_record_failed"); s->disabled = true; return 0; }
+    VkSubmitInfo si{};
+    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+    if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("clear_submit_failed"); s->disabled = true; return 0; }
+    g_sceneClearedRenderFrame = g_mc2RenderFrame + 1u;
     return 1;
 }
 

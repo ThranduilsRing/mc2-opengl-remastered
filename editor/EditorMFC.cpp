@@ -176,6 +176,9 @@ bool         g_cliSmokeWorkDone   = false;
 // visibility/count at each step into the [ESMOKE v1] summary for the runner to
 // verify. Implies -smoke-foliage (so there is foliage loaded to toggle first).
 bool         g_cliSmokeFoliageMenu = false;
+// -smoke-clean-close: end the run through the real shutdown (WM_CLOSE -> ExitInstance -> EditorGameOS_Shutdown) instead of a hard ExitProcess, so the
+// Vulkan/GL teardown and its validation output are exercised. A close that does not finish in 30 s ends the process with code 4.
+bool         g_cliSmokeCleanClose = false;
 void*        g_smokeMainHwnd       = nullptr;   // HWND (typed void* -- declared before windows.h)
 int          g_menuVis0 = -1, g_menuVis1 = -1, g_menuVis2 = -1;   // visibility across two toggles
 int          g_menuClearCount = -1;          // Count() after Clear (expect 0)
@@ -187,10 +190,8 @@ static void editor_set_default_env_vars()
     // the exe directly without a .bat. Bat overrides still work because we
     // only set when unset.
     if (!mc2::gate::isSet<"MC2_EDITOR_TRACE">())            _putenv_s("MC2_EDITOR_TRACE",              "1");
-    // The editor viewport renders on the same Vulkan path as the game (step 3.6). MC2_RENDER_BACKEND=gl
-    // stays as the temporary opt-out; the umbrella arms the VK islands the shared scene driver feeds.
-    if (!mc2::gate::isSet<"MC2_RENDER_BACKEND">())          _putenv_s("MC2_RENDER_BACKEND",            "vulkan");
-    // MC2_VK_SHARED_GBUFFER needs no bake: the umbrella is default ON and reads false under the gl opt-out.
+    // The editor viewport renders on the same Vulkan path as the game (step 3.6); the backend has no selector to bake and
+    // MC2_VK_SHARED_GBUFFER (the umbrella) is default ON.
     // S3 (2026-05-25): MC2_GPU_DRIVEN, MC2_EDITOR_BYPASS_BLDG_CULL, MC2_STATIC_PROP_REGISTRY
     // sidesteps retired -- editor now runs canonical default-ON chain.
 }
@@ -356,6 +357,10 @@ static void s_cli_parse(const char* cmd)
 		         s_cli_starts_with(tok, "--smoke-exit-sec=", &rest))
 		{
 			g_cliExitAfterSec = atoi(rest);
+		}
+		else if (s_cli_flag_match(tok, "-smoke-clean-close", "--smoke-clean-close"))
+		{
+			g_cliSmokeCleanClose = true;
 		}
 		else if (s_cli_flag_match(tok, "-smoke-foliage-menu", "--smoke-foliage-menu"))
 		{
@@ -889,6 +894,14 @@ static DWORD WINAPI s_smoke_thread(LPVOID)
 		if (loadedDone || absBackstop)
 		{
 			s_emit_esmoke(loadedDone ? "smoke_thread" : "abs_backstop");
+			if (g_cliSmokeCleanClose && loadedDone && g_smokeMainHwnd)
+			{
+				::PostMessageA((HWND)g_smokeMainHwnd, WM_CLOSE, 0, 0);
+				::Sleep(30000);   // the normal shutdown ends the process before this returns
+				fprintf(stderr, "[ESMOKE v1] event=clean_close_timeout\n");
+				fflush(stderr);
+				::ExitProcess(4);
+			}
 			::ExitProcess(0);
 		}
 		::Sleep(200);
@@ -1220,7 +1233,7 @@ BOOL EditorMFCApp::OnIdle(LONG lCount)
 
 	// Capture the main frame HWND on the main thread so the smoke driver thread can
 	// PostMessage WM_COMMAND foliage-menu commands to it (-smoke-foliage-menu).
-	if (g_cliSmokeFoliageMenu && g_smokeMainHwnd == nullptr && AfxGetMainWnd())
+	if ((g_cliSmokeFoliageMenu || g_cliSmokeCleanClose) && g_smokeMainHwnd == nullptr && AfxGetMainWnd())
 		g_smokeMainHwnd = AfxGetMainWnd()->GetSafeHwnd();
 
 	EditorPlaytestSmokeDriverTick();

@@ -1,10 +1,11 @@
 // tools/asset_viewer/MaterialRenderBackend.h
 #pragma once
 #include <cstdint>
+#include "tool_vk_gpu.h"
 
 class SphereMesh;
 
-// The four PBR slot textures as raw GL texture ids (0 = unassigned).
+// The four PBR slot textures as toolvk texture ids (0 = unassigned).
 struct MaterialSlotTextures {
     uint32_t baseColor = 0;   // sRGB-uploaded
     uint32_t normal    = 0;   // linear; 0 => treat as flat (0,0,1)
@@ -30,7 +31,7 @@ public:
     virtual ~MaterialRenderBackend() = default;
     virtual bool init() = 0;                                  // compile/link program; false on failure
     virtual void setMaterial(const MaterialSlotTextures& slots) = 0;
-    virtual void render(const RenderInputs& in) = 0;          // assumes target FBO already bound
+    virtual void render(const RenderInputs& in, toolvk::Pass& pass) = 0;   // records into an open offscreen pass
     virtual void shutdown() = 0;
     virtual const char* name() const = 0;                     // e.g. "LocalPBR (approximate)"
     virtual bool isApproximate() const = 0;                   // Backend B => true

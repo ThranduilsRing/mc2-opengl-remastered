@@ -47,6 +47,7 @@
 
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
+#include "vk_one_shot.h"
 #include "vulkan_context.h"
 #include "vulkan_mech_island.h"
 #include "texture_decode.h"              // gos_GetTextureTexels: material texels without a GL readback
@@ -107,15 +108,6 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
-bool mechGateRequested() {
-    static int state = -1;
-    if (state == -1) {
-        // Umbrella member: MC2_VK_SHARED_GBUFFER=1 arms it.
-        state = mc2vkgate::umbrellaOn() ? 1 : 0;   // require shared depth
-    }
-    return state == 1;
-}
-
 bool mechFenceDeferEnabled() {
     static int state = -1;
     if (state == -1)
@@ -134,26 +126,6 @@ bool mechPerfGateRequested() {
 // The mech island always renders direct-chain (terrain leaves the shared GBuffer
 // Vulkan-owned); there is no GL<->VK semaphore-handoff co-write path.
 
-// MC2_VK_MECH_MATERIAL (follow-on): copy-once single 2D albedo for the covered
-// stock mech type. DEFERRED general case = per-frame slot0 handle -> VK-descriptor
-// cache. Default-OFF -> flat color.
-bool mechMaterialRequested() {
-    // Umbrella member.
-    static int state = -1;
-    if (state == -1) state = mc2vkgate::umbrellaOn() ? 1 : 0;
-    return state == 1;
-}
-
-// MC2_VK_MECH_LIGHTING (follow-on): per-vertex calc_light Lambert (matches the GL
-// default mech path). Default-OFF -> flat-white lit (v_litColor = 1). Independent of
-// MC2_VK_MECH_MATERIAL, but only visible when material is on (albedo * litColor).
-bool mechLightingRequested() {
-    // Umbrella member.
-    static int state = -1;
-    if (state == -1) state = mc2vkgate::umbrellaOn() ? 1 : 0;
-    return state == 1;
-}
-
 // VK-RUNG8 item-9: the native
 // CPU geometry + LightsData feed is unconditional under the VK mech island.
 // The env name MC2_VK_MECH_FEED_NATIVE is still parsed + noted as deprecated in gos_mech_batcher.cpp; there is no per-frame gate to query here.
@@ -170,7 +142,6 @@ VkShaderModule load_spv(VkDevice device, std::string_view path) {
 
 // VK-PARITY-MECH-1: object light-pool SSBO cap (GpuTerrainLight 48B; GL caps 256).
 const uint32_t kMaxPoolLights = 256;
-const VkDeviceSize kPoolBytes = (VkDeviceSize)kMaxPoolLights * 48ull;
 
 const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT;
 
@@ -201,21 +172,14 @@ struct MechIsland : mc2vk::IslandState {
     bool     geomUploaded = false;
     uint32_t geomGen = 0;   // generation of the feed the buffers were filled from
 
-    // Per-frame instance + bone SSBOs (host-visible; grown as needed).
-    VkDeviceSize instCap[2] = {};
-    VkDeviceSize boneCap[2] = {};
+    // Per-frame data (UBO, instance + bone snapshots, LightsData, night pool) lives in the engine frame ring; every scheme set binds it with dynamic
+    // offsets (bindings 0, 1, 2, 4, 5). ringBound[par][binding] = the ring buffer that binding of every scheme set of that parity points at; a frame
+    // that allocated from another buffer (the ring grew) or a set created since rewrites it.
+    VkBuffer ringBound[2][8] = {};
 
-    // VK-MECH-MATERIAL-LIGHTING-1: per-frame LightsData SSBO copy (binding 4) for calc_light.
-    VkDeviceSize lightCap[2] = {};
+    // VK-MECH-MATERIAL-LIGHTING-1: per-frame LightsData span (binding 4) for calc_light.
     bool     wantLighting  = false;   // MC2_VK_MECH_LIGHTING gate
     bool     lightingReady = false;   // LightsData copied this frame (>=1 ObjectLights)
-    // VK-LIGHTFEED-DEDUP-1: what every scheme set's binding-4 [par] descriptor
-    // currently points at -- the shared ring slot (changes every frame) or the
-    // island's own lightBuf[par] (killswitch / fail-soft). Drives the no-op
-    // rebind check in bind_light_buffer_all. NOTE: write_buffer_bindings keeps
-    // writing lightBuf[par] (a valid handle at scheme-set creation / grow);
-    // bind_light_buffer_all re-points binding 4 after acquire each frame.
-    VkBuffer boundLightBuf[2] = {};
 
     // VK-PARITY-MECH-1: per-frame object light-pool SSBO (binding 5, FS) = CPU copy
     // of the GL binding-28 pool array (GetObjectLightPoolParams().pool).
@@ -254,7 +218,6 @@ struct MechIsland : mc2vk::IslandState {
 
     // Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
     // parked island ahead of the device). The timer owns its query pool and is torn down first.
-    mc2vk::OwnedBuffer instBuf[2], boneBuf[2], lightBuf[2], ubo[2], poolBuf[2];
     mc2vk::OwnedCommandPool cpool;
     mc2vk::OwnedRenderPass rpass;
     mc2vk::OwnedFramebuffer fb;
@@ -303,76 +266,42 @@ bool make_buffer(MechIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBu
     return true;
 }
 
-// Write the four per-frame BUFFER bindings (0 UBO / 1 inst / 2 bone / 4 lights) into
-// ONE descriptor set. binding-3 (albedo) is written separately per scheme by
-// bind_scheme_images (3/6/7) — this keeps buffer-grow and image-import independent.
-void write_buffer_bindings(MechIsland* s, VkDescriptorSet set, uint32_t par) {
+// Write the five per-frame BUFFER bindings (0 UBO / 1 inst / 2 bone / 4 lights / 5 pool) of ONE descriptor set at the frame ring's current buffer, and mark
+// the set's parity as needing a rewrite at its next frame (the frame knows which buffer its span came from). binding-3 (albedo) is written separately
+// per scheme by bind_scheme_images (3/6/7).
+constexpr VkDeviceSize kUboRange = sizeof(MechFrameUBO);
+
+void write_ring_bindings(MechIsland* s, VkDescriptorSet set) {
     if (set == VK_NULL_HANDLE) return;
-    VkDescriptorBufferInfo uboInfo { s->ubo[par].get(),     0, VK_WHOLE_SIZE };
-    VkDescriptorBufferInfo instInfo{ s->instBuf[par].get(), 0, VK_WHOLE_SIZE };
-    VkDescriptorBufferInfo boneInfo{ s->boneBuf[par].get(), 0, VK_WHOLE_SIZE };
-    VkDescriptorBufferInfo lightInfo{ s->lightBuf[par].get(), 0, VK_WHOLE_SIZE };
-    VkDescriptorBufferInfo poolInfo{ s->poolBuf[par].get(), 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[5]{}; uint32_t n = 0;
-    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = set;
-    w[n].dstBinding = 0; w[n].descriptorCount = 1;
-    w[n].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[n].pBufferInfo = &uboInfo; ++n;
-    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = set;
-    w[n].dstBinding = 1; w[n].descriptorCount = 1;
-    w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &instInfo; ++n;
-    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = set;
-    w[n].dstBinding = 2; w[n].descriptorCount = 1;
-    w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &boneInfo; ++n;
-    if (s->lightBuf[par]) {
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = set;
-        w[n].dstBinding = 4; w[n].descriptorCount = 1;
-        w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &lightInfo; ++n;
-    }
-    if (s->poolBuf[par]) {   // VK-PARITY-MECH-1: binding 5 pool SSBO
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = set;
-        w[n].dstBinding = 5; w[n].descriptorCount = 1;
-        w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &poolInfo; ++n;
-    }
-    vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
+    const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer();
+    if (ring == VK_NULL_HANDLE) return;
+    const VkDeviceSize range = mc2vk::getOrCreateEngineVulkanContext().frameRingRange();
+    mc2vk::writeDynamicBinding(s->device, set, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, kUboRange);
+    for (const uint32_t b : {1u, 2u, 4u, 5u})
+        mc2vk::writeDynamicBinding(s->device, set, b, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, range);
 }
 
-// Re-write buffer bindings into EVERY cached scheme set (after a buffer grow swaps a
-// VkBuffer handle). Albedo binding-3 in each set is untouched (per-scheme, stable).
-void write_buffer_bindings_all(MechIsland* s) {
-    for (auto& e : s->schemes)
-        for (uint32_t par = 0; par < 2; ++par)
-            write_buffer_bindings(s, e.set[par], par);
-    // VK-LIGHTFEED-DEDUP-1: the loop above re-pointed binding 4 at the island's
-    // own lightBuf -- reset the rebind tracker so bind_light_buffer_all's no-op
-    // check doesn't skip the shared re-point this frame.
-    s->boundLightBuf[0] = s->lightBuf[0].get();
-    s->boundLightBuf[1] = s->lightBuf[1].get();
-}
-
-// VK-LIGHTFEED-DEDUP-1: point binding-4 of EVERY cached scheme set's [par]
-// slot at `buf` -- the shared per-frame LightsData ring slot (handle changes
-// every frame), or the island's own lightBuf[par] on the killswitch /
-// fail-soft path. Safe post-beginFrame: the parity fence retired all [par]
-// consumers; [1-par] sets (possibly in flight) are untouched and get their
-// own rebind next frame before recording. No-op when already bound. Newly
-// created scheme sets this frame were written with lightBuf[par] by
-// write_buffer_bindings (always a valid handle); since the shared ring handle
-// differs from the tracker every shared frame, the rewrite below covers them.
-void bind_light_buffer_all(MechIsland* s, uint32_t par, VkBuffer buf) {
-    if (buf == VK_NULL_HANDLE || s->boundLightBuf[par] == buf) return;
-    VkDescriptorBufferInfo lightInfo{ buf, 0, VK_WHOLE_SIZE };
-    std::vector<VkWriteDescriptorSet> w;
-    w.reserve(s->schemes.size());
-    for (auto& e : s->schemes) {
-        if (e.set[par] == VK_NULL_HANDLE) continue;
-        VkWriteDescriptorSet ws{};
-        ws.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        ws.dstSet = e.set[par]; ws.dstBinding = 4; ws.descriptorCount = 1;
-        ws.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; ws.pBufferInfo = &lightInfo;
-        w.push_back(ws);
+// Point the ring bindings of EVERY cached scheme set's [par] slot at the buffers this frame's spans live in. Safe after beginFrame (the parity fence
+// retired every [par] consumer); the [1-par] sets, possibly in flight, are untouched and follow at their own frame. A binding already pointing at its
+// buffer is skipped.
+void sync_ring_bindings(MechIsland* s, uint32_t par, const mc2vk::FrameAlloc& mainSpan, const mc2vk::FrameAlloc& lightSpan) {
+    struct Want { uint32_t binding; VkDescriptorType type; VkBuffer buf; VkDeviceSize range; };
+    const VkBuffer mainBuf = mainSpan.buffer;
+    const VkBuffer lightBuf = lightSpan ? lightSpan.buffer : mainSpan.buffer;
+    const VkDeviceSize lightRange = lightSpan ? lightSpan.range : mainSpan.range;
+    const Want want[5] = {
+        {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, mainBuf, kUboRange},
+        {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, mainSpan.range},
+        {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, mainSpan.range},
+        {4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, lightBuf, lightRange},
+        {5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, mainSpan.range},
+    };
+    for (const Want& w : want) {
+        if (w.buf == VK_NULL_HANDLE || s->ringBound[par][w.binding] == w.buf) continue;
+        for (const auto& e : s->schemes)
+            if (e.set[par] != VK_NULL_HANDLE) mc2vk::writeDynamicBinding(s->device, e.set[par], w.binding, w.type, w.buf, w.range);
+        s->ringBound[par][w.binding] = w.buf;
     }
-    if (!w.empty()) vkUpdateDescriptorSets(s->device, (uint32_t)w.size(), w.data(), 0, nullptr);
-    s->boundLightBuf[par] = buf;
 }
 
 // Point a scheme set's binding-3 (albedo) / 6 (AO) / 7 (normal) at its images + the
@@ -395,19 +324,6 @@ void bind_scheme_images(MechIsland* s, VkDescriptorSet set, VkImageView albedo,
     vkUpdateDescriptorSets(s->device, 3, w, 0, nullptr);
 }
 
-bool ensure_buf_capacity(MechIsland* s, mc2vk::OwnedBuffer& buf, VkDeviceSize* cap,
-                         VkDeviceSize bytes, std::string_view name, int slot) {
-    if (buf && bytes <= *cap) return true;
-    // The descriptor rewrite below touches BOTH parity sets for every scheme, and the old buffer may still be read by an in-flight submit.
-    if (!s->schemes.empty()) mc2vk::getOrCreateEngineVulkanContext().waitIdle("mech_buffer_grow");
-    buf.reset();
-    VkDeviceSize c = bytes + bytes / 2 + 4096;
-    if (!make_buffer(s, buf, c, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, name, slot)) return false;
-    *cap = c;
-    write_buffer_bindings_all(s);
-    return true;
-}
-
 // MC2_VK_MECH_MATERIAL: one-shot command helpers + copy-once single-2D albedo import.
 VkCommandBuffer cp_begin(MechIsland* s) {
     VkCommandBufferAllocateInfo cbi{};
@@ -424,18 +340,7 @@ void cp_end(MechIsland* s, VkCommandBuffer cb) {
     vkEndCommandBuffer(cb);
     VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    // VK-QWI-TO-FENCE-1: transient per-submit fence instead of a queue-wide drain
-    // (copy-once helper, not per-frame; fail-soft to QWI if fence creation fails).
-    mc2vk::OwnedFence fence;
-    VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    mc2vk::create(fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });   // empty on failure: the queue idle below stands in
-    vkQueueSubmit(s->queue, 1, &si, fence.get());
-    if (fence) {
-        const VkFence f = fence.get();
-        vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull * 1000 * 1000 * 1000);
-    } else {
-        vkQueueWaitIdle(s->queue);
-    }
+    mc2vk::submitAndWait(mc2vk::getOrCreateEngineVulkanContext(), si, 5ull * 1000 * 1000 * 1000, "mech copy-once");
     vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
 }
 
@@ -497,7 +402,8 @@ bool alloc_scheme_sets(MechIsland* s, VkImageView albedo, VkImageView ao, VkImag
     dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
     if (vkAllocateDescriptorSets(s->device, &dsai, out) != VK_SUCCESS) return false;
     for (uint32_t par = 0; par < 2; ++par) {
-        write_buffer_bindings(s, out[par], par);
+        write_ring_bindings(s, out[par]);
+        for (VkBuffer& b : s->ringBound[par]) b = VK_NULL_HANDLE;   // the next frame of this parity rewrites its sets at the buffers its spans live in
         bind_scheme_images(s, out[par], albedo, ao, nrm);
     }
     return true;
@@ -591,8 +497,8 @@ bool init_island(MechIsland* s, int w, int h) {
         std::strncpy(g_health.deviceName, props.deviceName, sizeof(g_health.deviceName) - 1);
     }
 
-    s->wantMaterial = mechMaterialRequested();
-    s->wantLighting = mechLightingRequested();
+    s->wantMaterial = true;
+    s->wantLighting = true;
 
     // Fetch the SHARED scene color/normal/depth exportable images the GL scene renders
     // terrain into. Fail-soft: any missing => GL fallback (the GL mech flush runs).
@@ -610,20 +516,6 @@ bool init_island(MechIsland* s, int w, int h) {
     // Readiness gates (context + shared GBuffer) passed: any failure past this point is a
     // PERMANENT build failure -> the island declines for the session (item-2).
     g_mechInitReachedBuild = 1;
-
-    // Instance + bone + UBO buffers.
-    for (int i = 0; i < 2; ++i) {
-    if (!ensure_buf_capacity(s, s->instBuf[i], &s->instCap[i], 256 * 1024, "mech.instBuf", static_cast<int>(i))) return false;
-    if (!ensure_buf_capacity(s, s->boneBuf[i], &s->boneCap[i], 256 * 1024, "mech.boneBuf", static_cast<int>(i))) return false;
-    // LightsData copy buffer — valid before the first frame so binding4 is always bound
-    // (one ObjectLights record is 3600B; start with a few slots).
-    if (!ensure_buf_capacity(s, s->lightBuf[i], &s->lightCap[i], 32 * 1024, "mech.lightBuf", static_cast<int>(i))) return false;
-    if (!make_buffer(s, s->ubo[i], sizeof(MechFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "mech.ubo", static_cast<int>(i))) return false;
-    // VK-PARITY-MECH-1: fixed-size object light-pool SSBO (256 x 48B).
-    if (!make_buffer(s, s->poolBuf[i], kPoolBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "mech.poolBuf", static_cast<int>(i), -1, true)) return false;
-    }
-    // Pre-create tiny inst/bone SSBOs so scheme descriptor sets never bind a null buffer
-    // (they grow in run() via ensure_buf_capacity, which rewrites all cached sets).
 
     // Command pool + 2 command buffers (parity).
     {
@@ -708,18 +600,18 @@ bool init_island(MechIsland* s, int w, int h) {
     // Descriptor layout: 0=UBO(VS/FS), 1=instance SSBO(VS), 2=bone SSBO(VS), 3=albedo(FS).
     {
         VkDescriptorSetLayoutBinding b[8]{};
-        b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
         b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        b[2].binding = 2; b[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[2].binding = 2; b[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
         b[2].descriptorCount = 1; b[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         b[3].binding = 3; b[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[3].descriptorCount = 1; b[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        b[4].binding = 4; b[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;   // LightsData
+        b[4].binding = 4; b[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;   // LightsData
         b[4].descriptorCount = 1; b[4].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         // VK-PARITY-MECH-1: 5 = object light-pool SSBO, 6 = AO map, 7 = normal map (FS).
-        b[5].binding = 5; b[5].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[5].binding = 5; b[5].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
         b[5].descriptorCount = 1; b[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         b[6].binding = 6; b[6].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[6].descriptorCount = 1; b[6].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -733,8 +625,8 @@ bool init_island(MechIsland* s, int w, int h) {
         // each set = 1 UBO + 4 SSBO (inst/bone/lights/pool) + 3 samplers (albedo/AO/normal).
         const uint32_t N = MechIsland::kMaxSchemes;
         VkDescriptorPoolSize sizes[3]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 2 * N;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 8 * N;  // inst+bone+lights+pool, two parities
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 2 * N;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; sizes[1].descriptorCount = 8 * N;  // inst+bone+lights+pool, two parities
         sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 6 * N;  // albedo+AO+normal, two parities
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -893,12 +785,11 @@ bool upload_geometry_once(MechIsland* s) {
 // ===========================================================================
 
 extern "C" int mc2_vk_mech_island_enabled() {
-    return mechGateRequested() ? 1 : 0;
+    return 1;
 }
 
 extern "C" int mc2_vk_mech_island_run(int w, int h) {
     ZoneScopedN("VK-mech-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
-    if (!mechGateRequested()) return 0;
     if (w <= 0 || h <= 0) return 0;
 
     using clk = std::chrono::steady_clock;
@@ -977,20 +868,21 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     const unsigned long f0b = g_forbidden.glGetTexImage;
     const unsigned long f0c = g_forbidden.glReadPixels;
 
-    // Grow both slots BEFORE beginFrame: a growth failure after beginFrame resets
-    // the acquired shared fence and could strand it unsignalled.
+    // Per-frame data goes into the engine frame ring BEFORE beginFrame: a ring failure after beginFrame would reset the acquired shared fence and could
+    // strand it unsignalled. The ring slot belongs to the frame, not to the island's parity, so staging here races nothing.
+    mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
+    const VkDeviceSize ringAlign = rctx.frameAlignment();
     const VkDeviceSize instBytes = (VkDeviceSize)feed.instanceCount * 64ull;
     const VkDeviceSize boneBytes = (VkDeviceSize)(feed.boneCount ? feed.boneCount : 1) * 64ull;
     const bool nativeLight = feed.lightDataCpu && feed.lightDataCpuBytes >= 3600ull;
-    for (uint32_t i = 0; i < 2; ++i) {
-        if (!ensure_buf_capacity(s, s->instBuf[i], &s->instCap[i], instBytes, "mech.instBuf", static_cast<int>(i)) ||
-            !ensure_buf_capacity(s, s->boneBuf[i], &s->boneCap[i], boneBytes, "mech.boneBuf", static_cast<int>(i)) ||
-            (s->wantLighting && nativeLight &&
-             !ensure_buf_capacity(s, s->lightBuf[i], &s->lightCap[i],
-                                  (VkDeviceSize)feed.lightDataCpuBytes, "mech.lightBuf", (int)i))) {
-            s->disabled = true; return 0;
-        }
-    }
+    int poolN = (feed.poolLights48 && feed.numPoolLights > 0) ? feed.numPoolLights : 0;
+    if (poolN > (int)kMaxPoolLights) poolN = (int)kMaxPoolLights;
+    const VkDeviceSize instOff = mc2vk::alignUp(sizeof(MechFrameUBO), ringAlign);
+    const VkDeviceSize boneOff = mc2vk::alignUp(instOff + (instBytes ? instBytes : 64ull), ringAlign);
+    const VkDeviceSize poolOff = mc2vk::alignUp(boneOff + boneBytes, ringAlign);
+    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + (VkDeviceSize)(poolN > 0 ? poolN : 1) * 48ull);
+    if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
+    uint8_t* const mainPtr = static_cast<uint8_t*>(mainSpan.ptr);
 
     // VK-MECH-FENCE-DEFER-1: retire the parity slot before ANY per-frame CPU
     // staging that the slot's prior submit may still read.
@@ -1003,52 +895,29 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     const uint32_t par = fsC.parity & 1u;
 
     const clk::time_point tStage0 = clk::now();
-    // Upload instance + bone snapshots.
+    // Upload instance + bone snapshots into the frame span.
     { ZoneScopedN("VK-mech-instance-bone-upload");   // VK-FLIP-FIELD-REPORT-1: per-frame skinning feed staging
-    { void* p = nullptr;
-      if ((p = s->instBuf[par].map()) != nullptr) { std::memcpy(p, feed.instances64, (size_t)instBytes); s->instBuf[par].unmap(); } }
-    if (feed.boneCount) { void* p = nullptr;
-      if ((p = s->boneBuf[par].map()) != nullptr) { std::memcpy(p, feed.bones64, (size_t)(feed.boneCount * 64ull)); s->boneBuf[par].unmap(); } } }
+      if (instBytes) std::memcpy(mainPtr + instOff, feed.instances64, (size_t)instBytes);
+      if (feed.boneCount) std::memcpy(mainPtr + boneOff, feed.bones64, (size_t)(feed.boneCount * 64ull)); }
     g_health.instRecords = feed.instanceCount;
     g_health.boneRecords = feed.boneCount;
 
-    // VK-MECH-MATERIAL-LIGHTING-1: per-frame copy of the live GL LightsData SSBO into
-    // the VK SSBO (binding 4) so calc_light reads the same ObjectLights[] the GL mech VS
-    // does. Copy-per-frame (light cache is per-actor/per-frame). glGetBufferSubData is a
-    // buffer readback, NOT a color-surface readback — does NOT touch g_forbidden (mirrors
-    // the once/frame geometry+bone copies already on this path).
+    // VK-MECH-MATERIAL-LIGHTING-1: per-frame copy of the CPU LightsData array (the byte source of the GL SSBO upload) into a frame-ring span (binding 4)
+    // so calc_light reads the same ObjectLights[] the GL mech VS does. If the CPU array is not ready this frame, lighting is simply not marked ready
+    // (the shader falls back to flat-lit via u.lightingReady=0). Binding 4 still names a valid span (the main one) then.
     s->lightingReady = false;
-    // VK-RUNG8 item-9: the CPU LightsData array (the byte source of the GL SSBO upload)
-    // is now the ONLY per-frame lighting feed; the per-frame glGetBufferSubData GL SSBO
-    // readback fallback was deleted. If the CPU array is not ready this frame, lighting
-    // is simply not marked ready (the shader falls back to flat-lit via u.lightingReady=0)
-    // -- no GL readback rescue.
+    mc2vk::FrameAlloc lightSpan;
     if (s->wantLighting && nativeLight) {
-        // VK-LIGHTFEED-DEDUP-1: try the shared once-per-frame LightsData ring
-        // first (ONE copy total across the mech + prop islands instead of twin
-        // ~3.5 MB copies; the copy is zoned VKIsl.Shared.LightFeed inside
-        // acquire). On the shared path only the binding-4 descriptors move
-        // (all cached scheme sets' [par] slot; fence-retired by the beginFrame
-        // above). Killswitch MC2_VK_LIGHTFEED_DEDUP=0 or any acquire fail-soft
-        // (mid-frame light-count growth, ring alloc failure) runs the
-        // pre-slice per-island copy below (zone VKIsl.Mech.LightFeed).
-        if (const VkBuffer sharedLight = mc2vkSharedLightFeedAcquire(s->allocator, s->device,
-                                                                     feed.lightDataCpu,
-                                                                     feed.lightDataCpuBytes)) {
-            bind_light_buffer_all(s, par, sharedLight);
-            s->lightingReady = true;
-        } else {
-            ZoneScopedN("VKIsl.Mech.LightFeed");   // VK-ISLAND-TRACY-1: per-frame LightsData CPU->VK copy (twin-copy path)
-            const VkDeviceSize lbytes = (VkDeviceSize)feed.lightDataCpuBytes;
-            void* p = nullptr;
-            if ((p = s->lightBuf[par].map()) != nullptr) {
-                std::memcpy(p, feed.lightDataCpu, (size_t)lbytes);
-                s->lightBuf[par].unmap();
-                // Restore the own-buffer bindings after any shared frames.
-                bind_light_buffer_all(s, par, s->lightBuf[par].get());
-                s->lightingReady = true;
-            }
+        // VK-LIGHTFEED-DEDUP-1: the shared once-per-frame LightsData span first (ONE copy total across the mech + prop islands; the copy is zoned
+        // VKIsl.Shared.LightFeed inside acquire). Killswitch MC2_VK_LIGHTFEED_DEDUP=0 or any acquire fail-soft (mid-frame light-count growth, ring
+        // failure) copies into this island's own span below (zone VKIsl.Mech.LightFeed).
+        lightSpan = mc2vkSharedLightFeedAcquire(feed.lightDataCpu, feed.lightDataCpuBytes);
+        if (!lightSpan) {
+            ZoneScopedN("VKIsl.Mech.LightFeed");   // VK-ISLAND-TRACY-1: per-frame LightsData CPU->VK copy (own-span path)
+            lightSpan = rctx.frameAlloc((VkDeviceSize)feed.lightDataCpuBytes);
+            if (lightSpan) std::memcpy(lightSpan.ptr, feed.lightDataCpu, (size_t)feed.lightDataCpuBytes);
         }
+        s->lightingReady = static_cast<bool>(lightSpan);
     }
 
     // Upload UBO.
@@ -1069,16 +938,20 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.shadeB[0] = feed.glassLumaThresh;  u.shadeB[1] = feed.glassMaxChanThresh;
       u.shadeB[2] = feed.importedGamma;    u.shadeB[3] = feed.importedAlbedoScale;
       u.shadeC[0] = feed.aoStrength;       u.shadeC[1] = feed.normalStrength;
-      int poolN = (feed.poolLights48 && feed.numPoolLights > 0) ? feed.numPoolLights : 0;
-      if (poolN > (int)kMaxPoolLights) poolN = (int)kMaxPoolLights;
-      // Flushed because the sequential-write placement need not be host-coherent; a failed upload turns the term off.
-      if (poolN > 0 && !s->poolBuf[par].upload(feed.poolLights48, static_cast<VkDeviceSize>(poolN) * 48u)) poolN = 0;
+      if (poolN > 0) std::memcpy(mainPtr + poolOff, feed.poolLights48, static_cast<size_t>(poolN) * 48u);
       u.poolF[0] = feed.poolMoverDim; u.poolF[1] = feed.poolMoverScale; u.poolF[2] = feed.poolObjScale;
       u.poolI[0] = poolN;             u.poolI[1] = feed.poolSoft;
       u.poolI[2] = feed.poolMoverMax; u.poolI[3] = feed.poolCompress;
       u.miscI[0] = feed.specDebugMask;
-      void* p = nullptr;
-      if ((p = s->ubo[par].map()) != nullptr) { std::memcpy(p, &u, sizeof(u)); s->ubo[par].unmap(); } }
+      std::memcpy(mainPtr, &u, sizeof(u)); }
+    // Every scheme set of this parity follows the buffers the spans came from; the draw passes the offsets.
+    sync_ring_bindings(s, par, mainSpan, lightSpan);
+    const uint32_t dynOffsets[5] = {
+        static_cast<uint32_t>(mainSpan.offset),
+        static_cast<uint32_t>(mainSpan.offset + instOff),
+        static_cast<uint32_t>(mainSpan.offset + boneOff),
+        static_cast<uint32_t>(lightSpan ? lightSpan.offset : mainSpan.offset),
+        static_cast<uint32_t>(mainSpan.offset + poolOff)};
     g_health.stageUs = usSince(tStage0);
 
     // ---- Shared-GBuffer co-write (VK-RUNG8 item-4: direct-chain only). Terrain left
@@ -1136,7 +1009,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
             ? get_scheme_set(s, run.slot0Tex, run.aoTex, run.normalTex, par) : dummySet;
         if (set == VK_NULL_HANDLE) set = dummySet;
         if (set != boundSet) {
-            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 0, nullptr);
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 5, dynOffsets);
             boundSet = set;
         }
         // VK-PARITY-MECH-1: per-run ALPHA_TEST flag (mech.frag u_materialFlags).
@@ -1161,7 +1034,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     { ZoneScopedN("VKIsl.Mech.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
-      if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+      if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
     timerGuard.submitted();
 
     if (!mechFenceDeferEnabled()) {

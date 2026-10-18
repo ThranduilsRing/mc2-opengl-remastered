@@ -1101,14 +1101,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_RENDER_BACKEND",
         EnvVarKind::Feature,
         false,
-        "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default vulkan; unset/unrecognized -> vulkan; gl is the temporary opt-out).",
-    },
-    {
-        "MC2_FEATURE_RENDER_BACKEND_IFACE",
-        "MC2_RENDER_BACKEND_IFACE",
-        EnvVarKind::Feature,
-        false,
-        "RENDER-BACKEND-SEAMS arc: routes select GL calls (e.g.",
+        "Legacy selector, read only to report an ignored value: the engine renders on Vulkan only (the gl opt-out was removed).",
     },
     {
         "MC2_FEATURE_RENDER_PASS_ORDER",
@@ -1503,13 +1496,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "VK-P13-SELECTOR-1: presence-gated =1, default OFF.",
     },
     {
-        "MC2_FEATURE_VK_IMGUI",
-        "MC2_VK_IMGUI",
-        EnvVarKind::Feature,
-        true,
-        "ImGui draws through the Vulkan renderer under a Vulkan backend (default ON); =0 is a kill-switch back to GL ImGui.",
-    },
-    {
         "MC2_TRACE_VK_NO_GL_INTEROP_RESOURCE_STRICT",
         "MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT",
         EnvVarKind::Trace,
@@ -1563,7 +1549,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_VK_SHARED_GBUFFER",
         EnvVarKind::Feature,
         true,
-        "The VK umbrella, default ON since the 2026-10-17 default flip; =0 is a kill switch (no effect under MC2_RENDER_BACKEND=gl).",
+        "Retired: the Vulkan scene path is unconditional; =0 is ignored with a [RENDER_BACKEND] line (render_backend_select.cpp).",
     },
     {
         "MC2_TRACE_VK_SHARED_SCENE_STRICT",

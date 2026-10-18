@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 973,
+ "count": 941,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -6435,76 +6435,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_GL_DEBUG",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "Install GL debug callback only when MC2_GL_DEBUG is set.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameosmain.cpp:1697",
-     "idiom": "Presence"
-    },
-    {
-     "at": "GameOS/gameos/gos_render.cpp:402",
-     "idiom": "Presence"
-    },
-    {
-     "at": "GameOS/gameos/gos_render.cpp:716",
-     "idiom": "Presence"
-    },
-    {
-     "at": "editor/EditorGosRender.cpp:431",
-     "idiom": "Presence"
-    },
-    {
-     "at": "editor/EditorGosRender.cpp:863",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_GL_DEBUG_FATAL",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "Tier 1.2 (docs/testing-strategy.md): opt-in fatal abort on GL_DEBUG_SEVERITY_HIGH.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameosmain.cpp:1003",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_GOM_RECON",
    "kind": "Bool",
    "default": false,
@@ -11542,32 +11472,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_MECH_BACK_FILL",
-   "kind": "Float",
-   "default": 0.0,
-   "rule": "Prefix",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:363",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 0,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_MECH_BATCHER_STATS",
    "kind": "Bool",
    "default": false,
@@ -11596,32 +11500,6 @@
    "registryKind": "",
    "featureId": "",
    "retireVerdict": ""
-  },
-  {
-   "name": "MC2_MECH_FRAG_DEBUG",
-   "kind": "Int",
-   "default": null,
-   "rule": "Prefix",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "MC2_MECH_FRAG_DEBUG=N: legacy env path; wins over ImGui s_mechDebugMode.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:2551",
-     "idiom": "Num(atoi,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": "tierB:MERGE"
   },
   {
    "name": "MC2_MECH_GLASS_LUMA_THRESH",
@@ -11708,36 +11586,6 @@
     "style": "compare-reject"
    },
    "readerDefault": 0.25,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_MECH_IBL_SH",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:416",
-     "idiom": "Lead0Kill"
-    },
-    {
-     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:1747",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -12635,32 +12483,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_MECH_TEX_READBACK",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "Pixel-readback diagnostic — gated on its own env var (NOT MC2_MECH_BATCHER_STATS) because glGetTexImage is a synchronous GPU stall that pollutes any perf measurement.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:2771",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_MECH_VIEWUNIFORMS",
    "kind": "Bool",
    "default": true,
@@ -12685,32 +12507,6 @@
    "registryKind": "",
    "featureId": "",
    "retireVerdict": ""
-  },
-  {
-   "name": "MC2_MECH_VIEWUNIFORMS_DIAG",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:255",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": "tierB:MERGE"
   },
   {
    "name": "MC2_MENU_CANARY_SKIP_INTRO",
@@ -14429,214 +14225,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_PBR_AMBIENT_SPECULAR",
-   "kind": "Float",
-   "default": 0.25,
-   "rule": "Prefix",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:393",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 0.25,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_PBR_METALLIC_INFLUENCE",
-   "kind": "Float",
-   "default": null,
-   "rule": "Prefix",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:375",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_PBR_ROUGHNESS_MAX",
-   "kind": "Float",
-   "default": 0.9,
-   "rule": "Prefix",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:387",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 0.9,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_PBR_ROUGHNESS_MIN",
-   "kind": "Float",
-   "default": null,
-   "rule": "Prefix",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:381",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_PBR_TILE_SCALE",
-   "kind": "Float",
-   "default": null,
-   "rule": "Prefix",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:2459",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_PBR_TRIPLANAR",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:406",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_PBR_TRIPLANAR_SCALE",
-   "kind": "Float",
-   "default": 0.2,
-   "rule": "Prefix",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:410",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": 0.2,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_PBR_WEAR_STRENGTH",
-   "kind": "Float",
-   "default": null,
-   "rule": "Prefix",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:400",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_PICK_BEHIND_LEGACY",
    "kind": "Bool",
    "default": false,
@@ -14815,44 +14403,6 @@
    "harnessValues": [],
    "numericRange": null,
    "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_POSTPROCESS_BACKEND",
-   "kind": "Enum",
-   "default": "",
-   "rule": "Std",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:3929",
-     "idiom": "Token/State"
-    },
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:4094",
-     "idiom": "Token/State"
-    },
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:4330",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "enum": [
-     "v"
-    ]
-   },
-   "readerDefault": "",
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -15759,64 +15309,6 @@
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_RENDER_BACKEND",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_RENDER_BACKEND_IFACE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "RENDER-BACKEND-SEAMS arc: routes select GL calls (e.g. scene FBO bind) through the GLBackend seam instead of direct GL.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:3671",
-     "idiom": "Lead1"
-    },
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:4600",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_RENDER_BACKEND_IFACE",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_RENDER_BACKEND_REGION_IFACE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:3786",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
    "retireVerdict": ""
   },
   {
@@ -18876,32 +18368,6 @@
     {
      "at": "mclib/bdactor.cpp:2954",
      "idiom": "Std(def=off)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_STANDARD_LIT_V1",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_mech_batcher.cpp:371",
-     "idiom": "Lead1"
     }
    ],
    "conflict": false,
@@ -24553,34 +24019,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VISUAL_CAPTURE_POST",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "gameos",
-   "retireBy": "",
-   "doc": "VK-PARITY-F2: MC2_VISUAL_CAPTURE_POST=1 (default OFF = byte-identical) reads the composited back buffer (post exposure/sunset grade, what the player sees) instead of the pre-composite scene FBO, so GL captures are comparable with VK captures (which read the presented image).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameosmain.cpp:2499",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VISUAL_DIFF_CAPTURE",
    "kind": "Bool",
    "default": false,
@@ -24954,34 +24392,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VK_IMGUI",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
-   "owner": "code",
-   "retireBy": "",
-   "doc": "VK-IMGUI-NATIVE-1 (rung 8.6): default-OFF ImGui Vulkan renderer gate.",
-   "readers": [
-    {
-     "at": "GuiRuntime/GuiRuntime.cpp:97",
-     "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VK_IMGUI",
    "retireVerdict": ""
   },
   {

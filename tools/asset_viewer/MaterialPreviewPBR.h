@@ -19,8 +19,8 @@ public:
     void draw(const ImVec2& availableSize) override;
     const char* label() const override { return "Material (PBR)"; }
 
-    // Slot assignment (called by MaterialSlots UI in Task 5). Takes ownership of the GL texture.
-    void setSlotTexture(MaterialSlotKind kind, uint32_t glTex);
+    // Slot assignment (called by MaterialSlots UI in Task 5). Takes ownership of the toolvk texture.
+    void setSlotTexture(MaterialSlotKind kind, uint32_t tex);
 
     // Camera/light controls exposed so the UI (Task 5) can drive them.
     float& orbitYaw()   { return yaw_; }
@@ -28,11 +28,8 @@ public:
     float& zoom()       { return dist_; }
     float* lightDir()   { return lightDir_; }
 
-    // Test hook: render the sphere with current slots into an internal FBO and read it back.
-    bool renderToPixels(int w, int h, std::vector<uint8_t>& rgbaOut);
-
 private:
-    void ensureGL(int w, int h);     // lazy backend/mesh init + (re)create FBO on size change
+    void ensureGL(int w, int h);     // lazy backend/mesh init + (re)create the offscreen target on size change
     void destroyFbo();
     void buildViewProj(int w, int h, float out[16], float camPosOut[3]) const;
 
@@ -43,8 +40,7 @@ private:
     bool backendOk_ = false;     // review fix MAJOR 6: backend_->init() succeeded
     bool fboComplete_ = false;   // review fix MAJOR 6: last FBO build was complete
 
-    unsigned fbo_ = 0, colorTex_ = 0, depthRbo_ = 0;
-    int fboW_ = 0, fboH_ = 0;
+    toolvk::Target target_;
 
     float yaw_ = 0.6f, pitch_ = 0.3f, dist_ = 3.0f;
     float lightDir_[3] = { -0.4f, -0.7f, -0.5f };

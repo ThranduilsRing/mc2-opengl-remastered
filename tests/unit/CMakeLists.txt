@@ -46,6 +46,14 @@ add_executable(mc2_tests
     test_view_currency.cpp  # VIEW-EPOCH-DEDUPE-1: object MVP currency kernel (offline)
     test_frame_graph.cpp    # FRAME-GRAPH-SKELETON-1: resource-DAG validation (offline)
     test_gpu_buffer_owner.cpp  # GPU-BUFFER-OWNER-SKELETON-1: owner record invariants (offline)
+    test_completion_tracker.cpp  # the Vulkan completion tracker: ticket math and frame sealing (offline)
+    test_deferred_destroy.cpp  # the Vulkan deferred-destroy queue: not before the ticket, after it, negative control (offline)
+    test_frame_ring.cpp  # the Vulkan frame ring offset arithmetic: slots, alignment, growth sizing (offline)
+    test_readback.cpp  # the Vulkan readback ring: ticket, tag and generation checks, wrong-tag negative control (offline)
+    test_texture_service.cpp  # P4a texture/material identity: key dedupe, mod precedence, paint variants, stale handles, material sets (offline)
+    test_frame_fence_core.cpp  # the frame resource slot decision: parity flip, cancel, a failed fence re-create disables it (offline)
+    test_handle_slots.cpp  # P3 handle slots: ticket-gated reuse, stale handles refused, generation wrap, range exhaustion (offline)
+    test_frame_packets.cpp  # P1 frame packets: publish freezes a frame's views and lighting, per-slot arenas, republish and recycle (offline)
     test_det_rng.cpp        # DETERMINISTIC-RNG-1: LCG kernel determinism (offline)
     test_appearance_rng.cpp # the appearance-side random stream: replayable, in range, apart from the simulation's
     test_script_music.cpp   # the music state an ABL script sees: its own request on the scenario clock, never the device
@@ -120,7 +128,7 @@ add_executable(mc2_tests
     test_mc2fmt.cpp         # STEP3-LOGGING-B0: mc2fmt.h to_buf/to_buf_n/safe/as_* vs snprintf (offline)
     test_printf_corpus.cpp  # STEP3-LOGGING-B0: generated format corpus, printf vs mc2::fmt::to_buf byte equality
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils/mc2log.cpp  # LOGGING-FACADE-P0: leaf TU (no engine deps)
-    ${MC2_WORKTREE_ROOT}/GameOS/gameos/render_backend_select.cpp  # the one MC2_RENDER_BACKEND parser (backendFromText)
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/render_backend_select.cpp  # the MC2_RENDER_BACKEND reporter (backendRequestFromText)
     test_texture_decode.cpp  # backend-neutral texture decode + upload policy (no GL)
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/texture_decode.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils/Image.cpp     # the TGA / PNG decoders texture_decode wraps (WIC for PNG)

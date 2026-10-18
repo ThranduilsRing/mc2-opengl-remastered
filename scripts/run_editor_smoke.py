@@ -48,6 +48,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import struct
 import sys
@@ -409,18 +410,50 @@ def dependency_manifest(deploy: Path, destination: Path, allowlist: dict | None 
     return manifest
 
 
+STOCK_CLONE_SKIP = ("data", "_rdoc", "_pngcap", "debug_state", "crashes", "dev_shell_out", "terrain_gen_out",
+                    "saved_bookmarks")
+
+
+def load_stock_allowances(args) -> dict:
+    allowances = (read_json_object(args.stock_allowlist) if args.stock_allowlist
+                  else read_json_object(args.baseline).get("stock_allowlist", {}) if args.baseline.exists() else {})
+    if not isinstance(allowances, dict) or any(not isinstance(value, dict)
+            or not isinstance(value.get("reason"), str) or not isinstance(value.get("sha256"), str)
+            for value in allowances.values()):
+        raise ValueError("stock allowances must map paths to sha256/reason strings")
+    return allowances
+
+
+def clone_install_for_stock_scratch(install: Path, allowances: dict | None = None) -> Path:
+    """Copy an install's runtime (exe, dlls, archives, shaders, tools; NOT data or logs) to a scratch
+    directory of this worktree and return it. The preparation then rewrites only the copy; the install
+    it was pointed at is never modified."""
+    install = install.resolve()
+    target = (REPO / "scratch" / "stock-runtime" / install.name).resolve()
+    if target.exists():
+        shutil.rmtree(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(install, target, ignore=lambda _dir, names: [
+        n for n in names if (Path(_dir) == install and n in STOCK_CLONE_SKIP) or n.lower().endswith(".pdb")])
+    (target / "data").mkdir(exist_ok=True)
+    # The waived stock-derived files (allowlist: path + sha256) are not in any archive; carry them over when the install holds the exact bytes.
+    for relative, waiver in (allowances or {}).items():
+        source = install / relative
+        if source.is_file() and hashlib.sha256(source.read_bytes()).hexdigest() == waiver["sha256"]:
+            (target / relative).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target / relative)
+    return target
+
+
 def prepare_stock_scratch(deploy: Path, destination: Path, allowances: dict) -> None:
-    """Replace overlays only in this worktree's scratch runtime; record every change."""
+    """Replace overlays only in this worktree's scratch runtime; record every change.
+    An install (lane or otherwise) is refused: it is cloned first by clone_install_for_stock_scratch."""
     scratch = (REPO / "scratch").resolve()
     deploy = deploy.resolve()
     data_root = (deploy / "data").resolve()
-    # Lane installs (mc2-win64-lane<N>) are disposable scratch runtimes owned by one lane each.
-    lane_root = Path("A:/Games/mc2-opengl").resolve()
-    is_lane = deploy.parent == lane_root and re.fullmatch(r"mc2-win64-lane\d+", deploy.name) is not None
-    if (not deploy.is_relative_to(scratch) and not is_lane) or not data_root.is_relative_to(deploy):
-        raise ValueError("--prepare-stock-scratch is restricted to this worktree's scratch runtime or a "
-                         "lane install (A:/Games/mc2-opengl/mc2-win64-lane<N>); the stock audit then passes "
-                         "against archive-exact loose data")
+    if not deploy.is_relative_to(scratch) or not data_root.is_relative_to(deploy):
+        raise ValueError("--prepare-stock-scratch is restricted to this worktree's scratch runtime; an install "
+                         "is cloned into scratch/stock-runtime by the caller and never rewritten")
     system = fit_fields((deploy / "system.cfg").read_bytes())
     count = int(system["FastFiles/NumFastFiles"][0].split(" ", 1)[1])
     stock, changes = {}, []
@@ -876,6 +909,16 @@ def run_case(name: str, exe: Path, deploy: Path, exit_sec: int, timeout: int,
                 bucket = "foliage_not_run"; detail = "foliage smoke step did not run"
         if expect == "saved" and esmoke.get("saved") != "1":
             bucket = "save_failed"; detail = f"expected saved=1, got {esmoke.get('saved')}"
+        if expect == "clean_close":
+            # The process must leave through EditorGameOS_Shutdown, after the Vulkan teardown, with the validation layer silent.
+            try:
+                startup = log.read_text(errors="replace")
+            except OSError:
+                startup = ""
+            if "EditorGameOS_Shutdown: after shutdownVulkanBackend" not in startup:
+                bucket, detail = "shutdown_not_reached", "editor-startup.log has no 'after shutdownVulkanBackend' line"
+            elif "VUID-" in combined or re.search(r"validation_errors=[1-9]", combined):
+                bucket, detail = "validation_at_shutdown", "validation error reported in the editor output"
         if expect == "menu":
             # Drove the foliage menu commands via WM_COMMAND: visibility must toggle
             # off (vis1) then back on (vis2), Clear must drop the count to 0, and
@@ -1025,6 +1068,7 @@ def build_suite(deploy: Path):
         "foliage_missing": (["-gen-map=0,0", "-smoke-foliage=terrain_gen_out\\__does_not_exist__.json"], "foliage_tolerated"),
         "foliage_garbage": (["-gen-map=0,0", "-smoke-foliage=terrain_gen_out\\garbage.foliage.json"], "foliage_tolerated"),
         "foliage_menu_commands": (["-gen-map=0,0", "-smoke-foliage-menu"], "menu"),
+        "clean_close":     (["-gen-map=0,0", "-smoke-clean-close"], "clean_close"),  # exits through the real shutdown (Vulkan teardown)
         "outliner":        (["-gen-map=0,0", "-smoke-outliner"], "outliner"),  # read-only Scene Outliner
         "inspector":       (["-gen-map=0,0", "-smoke-inspector"], "inspector"),  # read-only Inspector
         "validate":        (["-gen-map=0,0", "-smoke-validate"], "validate"),  # live Mission validator
@@ -1716,6 +1760,11 @@ def main() -> int:
         print("ERROR: stock editor proof refuses MC2_ACTIVE_MOD or MC2_MOD_DEPS; clear mod selection before running")
         return 2
 
+    if args.prepare_stock_scratch and not deploy.resolve().is_relative_to((REPO / "scratch").resolve()):
+        deploy = clone_install_for_stock_scratch(deploy, load_stock_allowances(args))
+        exe = deploy / exe.name
+        print(f"[STOCK_SCRATCH] cloned the install into {deploy}; the install itself is not modified")
+
     suite = build_suite(deploy)
     ALL = ["stock_roundtrip", "workflows", "legacy_catalog_reference"] + list(suite.keys()) + ["gen_save_load", "new_model"] + list(PANEL_OPERATIONS) + list(FILE_CASES)
     single_stock = {f"stock_roundtrip:{mission}": mission for mission in STOCK_MISSIONS}
@@ -1730,12 +1779,7 @@ def main() -> int:
     rptdir.mkdir(parents=True, exist_ok=False)
     stock, groups = None, {}
     try:
-        allowances = (read_json_object(args.stock_allowlist) if args.stock_allowlist
-                      else read_json_object(args.baseline).get("stock_allowlist", {}) if args.baseline.exists() else {})
-        if not isinstance(allowances, dict) or any(not isinstance(value, dict)
-                or not isinstance(value.get("reason"), str) or not isinstance(value.get("sha256"), str)
-                for value in allowances.values()):
-            raise ValueError("stock allowances must map paths to sha256/reason strings")
+        allowances = load_stock_allowances(args)
         if args.prepare_stock_scratch:
             prepare_stock_scratch(deploy, rptdir / "preparation.json", allowances)
         dependencies = dependency_manifest(deploy, rptdir / "dependencies.json", allowances)

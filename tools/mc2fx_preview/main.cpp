@@ -29,11 +29,11 @@
 
 #include "mc2fx_core.h"
 
-#include <GL/glew.h>
 #include <SDL.h>
+#include "tool_vk_shell.h"
 #include "imgui.h"
 #include "backends/imgui_impl_sdl2.h"
-#include "backends/imgui_impl_opengl3.h"
+#include "backends/imgui_impl_vulkan.h"
 
 namespace {
 
@@ -291,17 +291,10 @@ int main(int argc, char** argv)
         return 3;
     }
 
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-
-    Uint32 winFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
-    if (headlessSmoke) winFlags |= SDL_WINDOW_HIDDEN;
+    Uint32 winFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
+    if (headlessSmoke || toolvk::captureRequested()) winFlags |= SDL_WINDOW_HIDDEN;
     SDL_Window* window = SDL_CreateWindow(
-        "mc2fx_preview — gosFX curve previewer",
+        "mc2fx_preview - gosFX curve previewer",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         1280, 800, winFlags);
     if (!window) {
@@ -311,36 +304,26 @@ int main(int argc, char** argv)
         return 3;
     }
 
-    SDL_GLContext glc = SDL_GL_CreateContext(window);
-    if (!glc) {
-        std::fprintf(stderr, "SDL_GL_CreateContext failed: %s\n", SDL_GetError());
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        if (headlessSmoke) return sampleOnlySmoke(app);  // fallback
-        return 3;
-    }
-    SDL_GL_MakeCurrent(window, glc);
-    SDL_GL_SetSwapInterval(headlessSmoke ? 0 : 1);
-
-    glewExperimental = GL_TRUE;
-    GLenum gerr = glewInit();
-    if (gerr != GLEW_OK) {
-        std::fprintf(stderr, "glewInit failed: %s\n", glewGetErrorString(gerr));
-        SDL_GL_DeleteContext(glc);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        if (headlessSmoke) return sampleOnlySmoke(app);  // fallback
-        return 3;
-    }
-    while (glGetError() != GL_NO_ERROR) {}  // drain spurious glewInit error
-
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
-    ImGui_ImplSDL2_InitForOpenGL(window, glc);
-    ImGui_ImplOpenGL3_Init("#version 130");
+    toolvk::Shell vk;
+    if (!toolvk::init(vk, window, "mc2fx_preview")) {
+        std::fprintf(stderr, "Vulkan shell init failed\n");
+        toolvk::shutdown(vk);
+        ImGui::DestroyContext();
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        if (headlessSmoke) return sampleOnlySmoke(app);  // fallback
+        return 3;
+    }
+    // The launch-and-screenshot proof (MC2_TOOL_CAPTURE) shows a plotted effect, not the empty selection.
+    if (std::getenv("MC2_TOOL_CAPTURE") && mc2fx::effectCount(app.lib) > 0) {
+        app.selected = 0;
+        resample(app);
+    }
 
-    std::printf("[mode] full-GL-headless-smoke (GL context + ImGui up)\n");
+    std::printf("[mode] full-VK-headless-smoke (Vulkan shell + ImGui up)\n");
     if (headlessSmoke) {
         // Print sampling evidence too (proves the shared core path under GL).
         const char* tn = nullptr; const char* nm = nullptr;
@@ -374,7 +357,8 @@ int main(int argc, char** argv)
                 running = false;
         }
 
-        ImGui_ImplOpenGL3_NewFrame();
+        if (!toolvk::begin(vk)) { SDL_Delay(10); continue; }
+        ImGui_ImplVulkan_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
@@ -382,13 +366,7 @@ int main(int argc, char** argv)
         drawCurvePanel(app);
 
         ImGui::Render();
-        int dw = 0, dh = 0;
-        SDL_GL_GetDrawableSize(window, &dw, &dh);
-        glViewport(0, 0, dw, dh);
-        glClearColor(0.10f, 0.11f, 0.13f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        SDL_GL_SwapWindow(window);
+        if (toolvk::end(vk)) running = false;
 
         ++frame;
         if (headlessSmoke && frame >= frames) running = false;
@@ -397,10 +375,9 @@ int main(int argc, char** argv)
     if (headlessSmoke)
         std::printf("rendered %d frames, exiting cleanly\n", frame);
 
-    ImGui_ImplOpenGL3_Shutdown();
+    toolvk::shutdown(vk);
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
-    SDL_GL_DeleteContext(glc);
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;

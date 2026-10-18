@@ -317,10 +317,10 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const gate::Row* rows = gate::tableData();
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
-    // The table is exactly 967 rows (gate_table.json `count`). REQUIRE(n == kGateCount) only ties the table to the
+    // The table is exactly 947 rows (gate_table.json `count`). REQUIRE(n == kGateCount) only ties the table to the
     // generated header, so a bad regeneration that shrinks both passes it; this floor catches that loss. It sits a
     // few rows under the real count and moves down with an amnesty wave that deletes rows on purpose.
-    REQUIRE(n >= 960);
+    REQUIRE(n >= 940);
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);
@@ -1123,11 +1123,7 @@ TEST_CASE("G5 postprocess clamp rows reproduce the clamping lambdas they replace
     CHECK(fl("MC2_SHADOW_CSM_R0", "10") == 10.0f);
 }
 
-TEST_CASE("G5 postprocess text rows and the backend selector") {
-    const gate::Row& be = g1b::rowNamed("MC2_POSTPROCESS_BACKEND");
-    CHECK(be.kind == Kind::Enum);
-    CHECK(gate::rows::tokenListHas(be.tokens, "vk"));
-    CHECK(gate::rows::tokenListHas(be.tokens, "vulkan"));
+TEST_CASE("G5 postprocess text rows") {
     for (const char* name : {"MC2_SHADOW_DEBUG_MODE", "MC2_VIEW_MODE", "MC2_OOB_FOG_COLOR"})
         CHECK(g1b::rowNamed(name).kind == Kind::String);
 }
@@ -1865,18 +1861,15 @@ TEST_CASE("scoped gate override: a nullptr value clears a variable that was set,
     static_assert(!std::is_copy_constructible_v<gate::ScopedEnv>);
 }
 
-TEST_CASE("MC2_RENDER_BACKEND text: only gl/GL selects GL, a typo is Vulkan and flagged")
+TEST_CASE("MC2_RENDER_BACKEND text: gl/GL is the removed backend, a typo is flagged, everything runs on Vulkan")
 {
-	using mc2::RenderBackend;
-	bool ok = false;
-	CHECK(mc2::backendFromText(nullptr, &ok) == RenderBackend::Vulkan);   CHECK(ok);
-	CHECK(mc2::backendFromText("", &ok) == RenderBackend::Vulkan);        CHECK(ok);
-	CHECK(mc2::backendFromText("gl", &ok) == RenderBackend::GL);          CHECK(ok);
-	CHECK(mc2::backendFromText("GL", &ok) == RenderBackend::GL);          CHECK(ok);
-	CHECK(mc2::backendFromText("vulkan", &ok) == RenderBackend::Vulkan);  CHECK(ok);
-	CHECK(mc2::backendFromText("vk", &ok) == RenderBackend::Vulkan);      CHECK(ok);
-	for (const char* typo : {"opengl", "Vulkan", "Gl", "gl "}) {
-		CHECK(mc2::backendFromText(typo, &ok) == RenderBackend::Vulkan);
-		CHECK_FALSE(ok);
-	}
+	using mc2::BackendRequest;
+	CHECK(mc2::backendRequestFromText(nullptr) == BackendRequest::None);
+	CHECK(mc2::backendRequestFromText("") == BackendRequest::None);
+	CHECK(mc2::backendRequestFromText("vulkan") == BackendRequest::None);
+	CHECK(mc2::backendRequestFromText("vk") == BackendRequest::None);
+	CHECK(mc2::backendRequestFromText("gl") == BackendRequest::RemovedGl);
+	CHECK(mc2::backendRequestFromText("GL") == BackendRequest::RemovedGl);
+	for (const char* typo : {"opengl", "Vulkan", "Gl", "gl "})
+		CHECK(mc2::backendRequestFromText(typo) == BackendRequest::Unrecognized);
 }

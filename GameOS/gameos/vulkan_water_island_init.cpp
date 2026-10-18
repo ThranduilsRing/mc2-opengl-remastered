@@ -46,11 +46,7 @@ bool init_island(WaterIsland* s, int w, int h) {
     // the retired gate was explicitly set (result ignored — always direct-chain-native).
     (void)waterDirectChainRequested();
 
-    s->tier1 = waterTier1Requested();
-    if (!s->tier1) {
-        setFallback("gate_off");
-        return false;
-    }
+    s->tier1 = true;
     s->sColorRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
     s->sNormalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
     s->sDepthRes  = mc2SharedSceneDepthGetResource();
@@ -66,12 +62,6 @@ bool init_island(WaterIsland* s, int w, int h) {
     g_health.vk2glSemActive = 0;
     vlog("TIER-1 shared scene GBuffer seam ACTIVE - in-place water co-write "
          "(color0+normal+depth, no composite, direct-chain native, no interop).");
-    // ---- UBOs (per parity slot, VK-WATER-FENCE-DEFER-1). ----
-    for (int i = 0; i < 2; ++i) {
-        if (!make_buffer(s, s->vsUbo[i], sizeof(WaterVsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "water.vsUbo", static_cast<int>(i))) return false;
-        if (!make_buffer(s, s->fsUbo[i], sizeof(WaterFsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "water.fsUbo", static_cast<int>(i))) return false;
-    }
-
     // ---- Recipe SSBO (mission-static, copied once at first run). Sized to the
     // current recipe count; if empty now, deferred to run() first frame. ----
     {
@@ -164,9 +154,9 @@ bool init_island(WaterIsland* s, int w, int h) {
     // ---- Descriptor layout/pool/set (2 UBO + 2 SSBO), both stages. ----
     {
         VkDescriptorSetLayoutBinding b[7]{};
-        b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         b[2].binding = 5; b[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b[2].descriptorCount = 1; b[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -188,7 +178,7 @@ bool init_island(WaterIsland* s, int w, int h) {
         }
         // VK-WATER-FENCE-DEFER-1: TWO sets (one per parity slot), so pool sizes double.
         VkDescriptorPoolSize sizes[3]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 4;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 4;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 4;
         sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 6;
         VkDescriptorPoolCreateInfo pci{};

@@ -56,7 +56,7 @@ FIELD_ENV = {
 # these leaks in from the outer shell we scrub it so the check stays honest.
 SCRUB = (
     "MC2_VK_SHARED_SCENE_STRICT", "MC2_VK_PRESENT_NATIVE_STRICT",
-    "MC2_VK_PRESENT_SKIP_GL_HANDOFF", "MC2_VK_IMGUI",
+    "MC2_VK_PRESENT_SKIP_GL_HANDOFF",
     "MC2_VISUAL_BOOKMARK_CAPTURE",
     "MC2_SMOKE_FIXED_TIMESTEP", "MC2_SMOKE_MODE",
 )

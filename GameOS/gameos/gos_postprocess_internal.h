@@ -26,7 +26,6 @@
 #include "gl_state_guard.h"  // GLSTATE-GUARD-ADOPTION-1: GlScopedTextureUnit (composite tex-unit leak)
 #include "../../RenderCore/PipelineRegistry.h"  // POSTPROCESS-COMPOSITE-REGISTRATION-1
 #include "pipeline_binder.h"                     // applyPipeline — composite FF state
-#include "GLBackend.h"                           // RENDER-BACKEND-IFACE-POSTPROCESS-1: getGLBackend()
 #include "render_frame_plan.h"                   // RENDER-FRAME-PLAN-SCAFFOLD-1
 #include "gos_cluster_depth_pyramid.h"  // CLUSTER-DEPTH-PYRAMID-NATIVE-1 (gated substrate)
 #include "gos_lightgrid_build.h"         // MC2-LIGHTGRID-BUILD-NATIVE-1 (gated, inert)
@@ -39,7 +38,6 @@
 #include "vulkan_shadow_island_live.h"  // VK CSM direct shadow debug overlay view
 #include "vulkan_sky_island.h"         // VK-PARITY-F3: HDRI sky VK owner
 #endif
-#include "render_backend_select.h"      // VK-P14b: mc2::renderBackend() (GL-safe, no VK dep)
 #ifdef MC2_VULKAN
 #include "engine_present_vk.h"          // VK-P14b: MC2_VK_PRESENT_DIRECT_FBO present-FBO accessor
 #endif
@@ -78,11 +76,7 @@ void setSceneDrawBuffers(SceneDrawBufferMode mode, bool objectIdAttachmentReady)
 
 
 // Free functions defined in the split pieces.
-bool postprocessBackendWantsVk();
 bool mc2ShadowCsmEnabled();
-bool mc2VkSharedSceneDepthEnabled();
-bool mc2VkSharedSceneColorNeeded();
-bool mc2VkSharedSceneDirectResourceEnabled();
 GLuint createSceneColorPlaceholderTex(int w, int h, GLint internalFormat, GLenum format, GLenum type, GLint minMagFilter);
 GLuint createSceneDepthPlaceholderTex(int w, int h);
 int mc2ShadowCsmCount();

@@ -21,10 +21,9 @@ GL_SIDECAR = {"backend": "gl", "readback_source": "gl_fbo"}
 def test_requested_follows_the_engine_selector():
     for text in ("vulkan", "VULKAN", "vk"):
         assert cb.requested({"MC2_RENDER_BACKEND": text}) == "vulkan"
-    for text in ("gl", "GL"):
-        assert cb.requested({"MC2_RENDER_BACKEND": text}) == "gl"   # the only way to ask for GL (the temporary opt-out)
-    for env in (None, {}, {"MC2_RENDER_BACKEND": ""}, {"MC2_RENDER_BACKEND": "Vulkan "}, {"MC2_RENDER_BACKEND": "bogus"}):
-        assert cb.requested(env) == "vulkan"   # unset or unrecognised is the default, Vulkan (flip of 2026-10-17)
+    for env in (None, {}, {"MC2_RENDER_BACKEND": ""}, {"MC2_RENDER_BACKEND": "Vulkan "}, {"MC2_RENDER_BACKEND": "bogus"},
+                {"MC2_RENDER_BACKEND": "gl"}, {"MC2_RENDER_BACKEND": "GL"}):
+        assert cb.requested(env) == "vulkan"   # the engine has one backend: gl is ignored (render_backend_select.cpp)
 
 
 def test_a_vulkan_request_drawn_by_gl_is_refused():
@@ -32,13 +31,8 @@ def test_a_vulkan_request_drawn_by_gl_is_refused():
     assert len(out) == 1 and "requested vulkan" in out[0] and "gl drew it" in out[0]
 
 
-def test_a_vulkan_capture_passes_and_a_gl_capture_passes():
+def test_a_vulkan_capture_passes():
     assert cb.check("vulkan", [("a", VK_SIDECAR), ("b", VK_SIDECAR)]) == []
-    assert cb.check("gl", [("a", GL_SIDECAR)]) == []
-
-
-def test_a_gl_request_that_came_out_vulkan_is_refused():
-    assert cb.check("gl", [("a", VK_SIDECAR)])
 
 
 def test_the_readback_source_is_checked_even_when_the_backend_field_agrees():
@@ -55,7 +49,6 @@ def test_an_older_sidecar_without_backend_reads_the_readback_source():
 def test_a_missing_or_empty_sidecar_is_not_evidence():
     assert cb.check("vulkan", [("a", None)])
     assert cb.check("vulkan", [("a", {})])
-    assert cb.check("gl", [("a", None)])   # unknown is unknown for either request
 
 
 def test_every_bad_pose_is_named():
@@ -76,7 +69,7 @@ def test_the_capture_driver_env_carries_the_declared_backend(tmp_path):
     env, _ = rvc.build_capture_env(*args, None)
     assert cb.requested(env) == "vulkan"   # an ambient shell value is scrubbed; nothing declared means the default, Vulkan
     env, _ = rvc.build_capture_env(*args, {"MC2_RENDER_BACKEND": "gl"})
-    assert cb.requested(env) == "gl"
+    assert cb.requested(env) == "vulkan"   # a declared gl is ignored by the engine and by the harness
 
 
 @pytest.mark.parametrize("drew,fails", [("vulkan", False), ("gl", True)])
@@ -101,12 +94,6 @@ def test_the_sweep_fails_on_a_backend_mismatch(tmp_path, drew, fails):
         cap_rvc.run_one = real
     assert manifest["backend"] == {"requested": "vulkan", "drew": [drew]}
     assert bool(capture.backend_failures(manifest)) is fails
-
-
-def test_a_gl_request_whose_pixels_came_from_a_vulkan_present_is_refused():
-    # backend says gl but the readback is the VK present image: the sidecar contradicts itself, so it is not a GL capture.
-    out = cb.check("gl", [("a", {"backend": "gl", "readback_source": "vk_present"})])
-    assert len(out) == 1 and "requested gl" in out[0] and "vk_present" in out[0]
 
 
 # --- the exit codes of the two drivers (the contract the A/B tooling relies on) -------------------------------------------------------------

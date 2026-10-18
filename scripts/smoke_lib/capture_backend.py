@@ -1,7 +1,7 @@
 # scripts/smoke_lib/capture_backend.py
 """Which render backend a capture asked for, which one drew it, and the refusal when they differ.
 
-WHAT: `requested(env)` reads MC2_RENDER_BACKEND the way the engine does (render_backend_select.cpp); `check(requested, sidecars)` returns one
+WHAT: `requested(env)` is always Vulkan (the engine ignores MC2_RENDER_BACKEND=gl: render_backend_select.cpp); `check(requested, sidecars)` returns one
 message per sidecar whose backend or readback source is not what was asked for. An empty list means the capture is what it says it is.
 WHY: a Vulkan context that fails to start used to put the whole session back on GL (the fallback is gone; old sidecars and `MC2_RENDER_BACKEND` typos still produce GL frames). The GL frame is then read back from the GL
 framebuffer and written as an ordinary capture, so a "Vulkan arm" of an A/B can be a second GL capture and nobody sees it until the sidecar is
@@ -16,14 +16,12 @@ from typing import Mapping, Optional, Sequence
 GL = "gl"
 VULKAN = "vulkan"
 
-_GL_SPELLINGS = ("gl", "GL")   # the engine's only GL spellings (the temporary opt-out); unset, empty or unrecognised is Vulkan
 _SOURCE_BACKEND = {"vk_present": VULKAN, "gl_fbo": GL}
 
 
 def requested(env: Optional[Mapping[str, str]]) -> str:
-    """The backend `env` selects: 'gl' for gl/GL, otherwise 'vulkan' (unset, empty, vulkan, vk or unrecognised, as in the engine)."""
-    text = str((env or {}).get("MC2_RENDER_BACKEND", "") or "")
-    return GL if text in _GL_SPELLINGS else VULKAN
+    """The backend `env` selects: always 'vulkan'. The engine has one backend; MC2_RENDER_BACKEND=gl is ignored (render_backend_select.cpp)."""
+    return VULKAN
 
 
 def drew(sidecar: Optional[Mapping[str, object]]) -> Optional[str]:
@@ -48,6 +46,4 @@ def check(want: str, sidecars: "Sequence[tuple[str, Optional[Mapping[str, object
             problems.append(f"{name}: requested {want} but the sidecar says {got} drew it (readback_source={source})")
         elif want == VULKAN and source != "vk_present":
             problems.append(f"{name}: requested vulkan but the pixels came from readback_source={source}, not vk_present")
-        elif want == GL and source not in (None, "gl_fbo"):
-            problems.append(f"{name}: requested gl but readback_source={source}")
     return problems

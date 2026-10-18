@@ -47,18 +47,18 @@
    "LG20": 0
   },
   "GameOS": {
-   "LG01": 8,
+   "LG01": 6,
    "LG02": 172,
    "LG03": 263,
    "LG04": 6,
-   "LG05": 138,
-   "LG06": 516,
+   "LG05": 137,
+   "LG06": 510,
    "LG07": 0,
-   "LG08": 262,
-   "LG09": 1952,
-   "LG10": 42,
+   "LG08": 257,
+   "LG09": 1902,
+   "LG10": 41,
    "LG11": 89,
-   "LG12a": 93,
+   "LG12a": 90,
    "LG12b": 30,
    "LG13": 319,
    "LG14": 61,
@@ -78,7 +78,7 @@
    "LG06": 12,
    "LG07": 2,
    "LG08": 1,
-   "LG09": 45,
+   "LG09": 42,
    "LG10": 2,
    "LG11": 1,
    "LG12a": 0,
@@ -90,7 +90,7 @@
    "LG17": 2,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 21
+   "LG20": 20
   },
   "RenderCore": {
    "LG01": 0,
@@ -100,7 +100,7 @@
    "LG05": 28,
    "LG06": 15,
    "LG07": 0,
-   "LG08": 0,
+   "LG08": 1,
    "LG09": 35,
    "LG10": 0,
    "LG11": 0,
@@ -147,7 +147,7 @@
    "LG06": 472,
    "LG07": 2,
    "LG08": 17,
-   "LG09": 2237,
+   "LG09": 2236,
    "LG10": 20,
    "LG11": 103,
    "LG12a": 100,
@@ -182,7 +182,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 13
+   "LG20": 9
   },
   "mclib": {
    "LG01": 281,
@@ -193,10 +193,10 @@
    "LG06": 662,
    "LG07": 0,
    "LG08": 70,
-   "LG09": 1930,
+   "LG09": 1934,
    "LG10": 33,
    "LG11": 67,
-   "LG12a": 190,
+   "LG12a": 200,
    "LG12b": 233,
    "LG13": 447,
    "LG14": 112,
@@ -251,7 +251,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 44
+   "LG20": 50
   }
  },
  "dirs": [
@@ -335,8 +335,8 @@
   "GameOS/gameos/engine_present_vk.cpp": {
    "LG03": 2,
    "LG06": 4,
-   "LG08": 16,
-   "LG09": 64,
+   "LG08": 15,
+   "LG09": 63,
    "LG10": 2
   },
   "GameOS/gameos/gameos.cpp": {
@@ -475,12 +475,12 @@
    "LG17": 2
   },
   "GameOS/gameos/gameosmain.cpp": {
-   "LG01": 7,
+   "LG01": 5,
    "LG03": 2,
    "LG04": 1,
    "LG06": 1,
-   "LG09": 18,
-   "LG12a": 34,
+   "LG09": 17,
+   "LG12a": 32,
    "LG12b": 7,
    "LG20": 1
   },
@@ -589,26 +589,24 @@
    "LG06": 1
   },
   "GameOS/gameos/gos_mech_batcher.cpp": {
-   "LG06": 1,
-   "LG08": 2,
-   "LG09": 14
+   "LG09": 4
   },
   "GameOS/gameos/gos_mech_batcher.h": {
    "LG05": 1
   },
   "GameOS/gameos/gos_mech_batcher_api.cpp": {
-   "LG08": 3,
-   "LG09": 13,
-   "LG10": 9
+   "LG08": 1,
+   "LG09": 11,
+   "LG10": 8
   },
   "GameOS/gameos/gos_mech_batcher_flush.cpp": {
    "LG05": 1,
    "LG08": 7,
-   "LG09": 37
+   "LG09": 27
   },
   "GameOS/gameos/gos_mech_batcher_geometry.cpp": {
    "LG08": 2,
-   "LG09": 28,
+   "LG09": 26,
    "LG10": 1
   },
   "GameOS/gameos/gos_object_recon_tracy.cpp": {
@@ -652,10 +650,6 @@
    "LG06": 1,
    "LG09": 22
   },
-  "GameOS/gameos/gos_postprocess_region.cpp": {
-   "LG06": 3,
-   "LG09": 15
-  },
   "GameOS/gameos/gos_postprocess_shadow.cpp": {
    "LG09": 2,
    "LG10": 5
@@ -670,7 +664,7 @@
    "LG03": 4,
    "LG06": 1,
    "LG09": 13,
-   "LG12a": 14,
+   "LG12a": 13,
    "LG20": 1
   },
   "GameOS/gameos/gos_render.h": {
@@ -915,9 +909,9 @@
    "LG09": 5
   },
   "GameOS/gameos/gos_visual_capture.cpp": {
-   "LG05": 3,
+   "LG05": 2,
    "LG06": 7,
-   "LG09": 40,
+   "LG09": 35,
    "LG11": 5,
    "LG17": 1,
    "LG19": 1
@@ -1153,11 +1147,11 @@
    "LG11": 1
   },
   "GameOS/gameos/vk_native_producers.cpp": {
-   "LG06": 3,
+   "LG06": 2,
    "LG13": 2
   },
   "GameOS/gameos/vk_native_producers.h": {
-   "LG06": 2
+   "LG06": 1
   },
   "GameOS/gameos/vk_render_pass_timer.cpp": {
    "LG06": 1
@@ -1166,14 +1160,14 @@
    "LG05": 3
   },
   "GameOS/gameos/vk_shared_light_feed.cpp": {
-   "LG09": 7
+   "LG09": 6
   },
   "GameOS/gameos/vma_impl.cpp": {
    "LG13": 2
   },
   "GameOS/gameos/vulkan_color_prop_island.cpp": {
    "LG06": 2,
-   "LG09": 28,
+   "LG09": 29,
    "LG10": 1,
    "LG13": 4,
    "LG17": 2
@@ -1188,7 +1182,7 @@
   },
   "GameOS/gameos/vulkan_legacy_shape_island.cpp": {
    "LG06": 2,
-   "LG08": 2,
+   "LG08": 3,
    "LG09": 10,
    "LG13": 2
   },
@@ -1197,7 +1191,7 @@
   },
   "GameOS/gameos/vulkan_mech_island.cpp": {
    "LG06": 2,
-   "LG09": 19,
+   "LG09": 17,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_post_fog_native.cpp": {
@@ -1269,8 +1263,8 @@
    "LG09": 30
   },
   "GameOS/gameos/vulkan_terrain_island_overlay.cpp": {
-   "LG08": 7,
-   "LG09": 16
+   "LG08": 6,
+   "LG09": 15
   },
   "GameOS/gameos/vulkan_terrain_island_run.cpp": {
    "LG06": 1,
@@ -1281,7 +1275,7 @@
    "LG05": 6,
    "LG06": 2,
    "LG08": 3,
-   "LG09": 8,
+   "LG09": 7,
    "LG13": 2,
    "LG14": 1
   },
@@ -1425,7 +1419,7 @@
   },
   "GuiRuntime/GraphicsOptionsWindow_mech.cpp": {
    "LG09": 1,
-   "LG20": 15
+   "LG20": 14
   },
   "GuiRuntime/GraphicsOptionsWindow_passes.cpp": {
    "LG09": 13
@@ -1436,7 +1430,7 @@
   "GuiRuntime/GuiRuntime.cpp": {
    "LG05": 1,
    "LG06": 3,
-   "LG09": 26,
+   "LG09": 23,
    "LG10": 1,
    "LG11": 1
   },
@@ -1475,6 +1469,9 @@
   "RenderCore/KtxLoader.h": {
    "LG05": 1,
    "LG06": 1
+  },
+  "RenderCore/MaterialRegistry.h": {
+   "LG08": 1
   },
   "RenderCore/MechVisualState.h": {
    "LG14": 1
@@ -2670,7 +2667,7 @@
    "LG03": 21,
    "LG05": 4,
    "LG06": 1,
-   "LG09": 31,
+   "LG09": 30,
    "LG12a": 2,
    "LG12b": 2
   },
@@ -2990,10 +2987,10 @@
    "LG20": 2
   },
   "editor/EditorMFC.cpp": {
-   "LG20": 2
+   "LG20": 1
   },
   "editor/EditorPlaytest.cpp": {
-   "LG20": 7
+   "LG20": 4
   },
   "editor/EditorTaskRunner.cpp": {
    "LG19": 1
@@ -4419,6 +4416,9 @@
   "mclib/stuff/color.cpp": {
    "LG10": 2
   },
+  "mclib/stuff/extentbox.cpp": {
+   "LG12a": 1
+  },
   "mclib/stuff/filestream.cpp": {
    "LG03": 11,
    "LG05": 1,
@@ -4535,12 +4535,18 @@
    "LG03": 1,
    "LG06": 7
   },
+  "mclib/stuff/plane.cpp": {
+   "LG12a": 2
+  },
   "mclib/stuff/plug.cpp": {
    "LG03": 5
   },
   "mclib/stuff/plug.hpp": {
    "LG02": 2,
    "LG03": 1
+  },
+  "mclib/stuff/polar.cpp": {
+   "LG12a": 5
   },
   "mclib/stuff/random.cpp": {
    "LG03": 2
@@ -4584,6 +4590,9 @@
    "LG01": 4,
    "LG03": 6,
    "LG14": 2
+  },
+  "mclib/stuff/sphere.cpp": {
+   "LG12a": 2
   },
   "mclib/stuff/stuff.cpp": {
    "LG03": 2
@@ -4847,7 +4856,7 @@
   "mclib/txmmgr_texture.cpp": {
    "LG05": 2,
    "LG06": 6,
-   "LG09": 33,
+   "LG09": 37,
    "LG11": 1,
    "LG12a": 1
   },
@@ -4919,15 +4928,24 @@
   "tests/unit/test_vfx_frozen_driver.cpp": {
    "LG20": 7
   },
+  "tools/common/tool_vk_gpu.cpp": {
+   "LG20": 1
+  },
+  "tools/common/tool_vk_shell.cpp": {
+   "LG20": 4
+  },
   "tools/mc2_launcher/mc2_launcher.cpp": {
    "LG19": 1,
    "LG20": 41
+  },
+  "tools/mc2fx_preview/main.cpp": {
+   "LG20": 1
   },
   "tools/vfx_oracle/lifecycle_test.cpp": {
    "LG20": 3
   }
  },
- "head": "42f57f869",
+ "head": "75e39b2a2",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

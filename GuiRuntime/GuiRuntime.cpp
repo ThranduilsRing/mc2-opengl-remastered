@@ -31,9 +31,8 @@ static std::vector<std::function<void()>> s_postRenderFns;
 namespace gui_runtime_detail {
 
 bool s_frameActive = false;
-bool s_useSDL2Backend = false;   // false when initialised via InitEditorOpenGLOnly
+bool s_useSDL2Backend = false;
 std::unordered_map<std::string, ImFont*> s_uiFonts;
-static bool s_openGlRendererInitialized = false;
 
 static bool isEnabled() {
     static int cached = -1;
@@ -43,23 +42,7 @@ static bool isEnabled() {
     return cached == 1;
 }
 
-static bool vkImguiRequested() {
-    // Both inputs are fixed once the engine is up (the gate is cached, the backend is immutable).
-    static int cachedGate = -1;
-    if (cachedGate < 0) {
-#ifdef MC2_VULKAN
-        cachedGate = mc2::gate::get<"MC2_VK_IMGUI">() ? 1 : 0;
-#else
-        cachedGate = 0;
-#endif
-    }
-#ifdef MC2_VULKAN
-    // Only a Vulkan backend has a Vulkan ImGui renderer; a GL run keeps the GL one whatever the gate says.
-    return cachedGate == 1 && mc2::renderBackend() == mc2::RenderBackend::Vulkan;
-#else
-    return false;
-#endif
-}
+// ImGui always draws through the Vulkan renderer (the GL ImGui renderer and its MC2_VK_IMGUI kill switch were removed).
 
 static bool traceEnabled()
 {
@@ -232,41 +215,6 @@ bool GuiRuntime::GetDisplaySize(float& w, float& h)
     return true;
 }
 
-void GuiRuntime::InitEditorOpenGLOnly()
-{
-    // InitEditorOpenGLOnly() is a separate editor WGL path (no SDL GL context).
-    // GuiRuntime::Init() also bootstraps editor mode and the dockspace, which
-    // this entry point does NOT run (no SetEditorMode-driven docking flags are
-    // set here, no s_editorMode-gated ConfigFlags). If EditRel.exe (GPU-only
-    // editor target) calls this instead of GuiRuntime::Init(), the
-    // dockspace/RTT/viewport machinery (BuildEditorDockspace, DockingEnable,
-    // AutoDock) will silently NOT run for that entry point. Verify which entry
-    // point EditRel.exe calls before relying on docking in that target; no
-    // caller of InitEditorOpenGLOnly() was found repo-wide.
-    if (!isEnabled())
-        return;
-    if (g_imguiInitialized)
-        return;
-
-    IMGUI_CHECKVERSION();
-    s_imguiContext = ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-
-    loadUiFonts(io);
-    ImGui::StyleColorsDark();
-
-    // The editor renders via WGL (SDL_CreateWindowFrom path) — there is no
-    // SDL_GLContext handle, so ImGui_ImplSDL2_InitForOpenGL cannot be used.
-    // Use the OpenGL3 backend alone; keyboard/mouse state is delivered via
-    // SDL_PushEvent in GameOSWinProc so ImGui still receives input events
-    // through the normal ImGui_ImplOpenGL3_NewFrame + io.MousePos path.
-    ImGui_ImplOpenGL3_Init("#version 430");
-    s_openGlRendererInitialized = true;   // keep GL shutdown/frame paths armed for the editor entry point
-
-    g_imguiInitialized = true;
-}
-
 void GuiRuntime::Init() {
     if (!isEnabled()) return;
     if (g_imguiInitialized) return;
@@ -316,14 +264,8 @@ void GuiRuntime::Init() {
     loadUiFonts(io);
     ImGui::StyleColorsDark();
 
-    if (vkImguiRequested()) {
-        ImGui_ImplSDL2_InitForVulkan(graphics::getSDLWindow());
-        io.Fonts->Build();
-    } else {
-        ImGui_ImplSDL2_InitForOpenGL(graphics::getSDLWindow(), graphics::getSDLGLContext());
-        ImGui_ImplOpenGL3_Init("#version 430");
-        s_openGlRendererInitialized = true;
-    }
+    ImGui_ImplSDL2_InitForVulkan(graphics::getSDLWindow());
+    io.Fonts->Build();
 
     g_imguiInitialized = true;
     s_useSDL2Backend = true;
@@ -332,10 +274,8 @@ void GuiRuntime::Init() {
 void GuiRuntime::Shutdown() {
     if (!g_imguiInitialized) return;
 #ifdef MC2_VULKAN
-    // Shut the Vulkan ImGui renderer down first when it owns the frame.
-    if (vkImguiRequested() && mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
-        mc2vk::getOrCreateEnginePresentVk().shutdownImguiVulkanRenderer();
-    }
+    // VK-IMGUI: shut the Vulkan ImGui renderer down first when it owns the frame.
+    mc2vk::getOrCreateEnginePresentVk().shutdownImguiVulkanRenderer();
 #endif
     g_imguiInitialized = false;
     s_frameActive = false;
@@ -359,10 +299,6 @@ void GuiRuntime::Shutdown() {
 #if defined(_WIN32)
     __try {
 #endif
-        if (s_openGlRendererInitialized) {
-            ImGui_ImplOpenGL3_Shutdown();
-            s_openGlRendererInitialized = false;
-        }
         if (s_useSDL2Backend)
             ImGui_ImplSDL2_Shutdown();
         ImGui::DestroyContext();
@@ -397,13 +333,14 @@ bool GuiRuntime::RttEnabled() {
     // The RTT viewport blits the GL back buffer into a GL texture; under Vulkan the scene lives in the present
     // image, so the full-window scene is the only mode there.
 #ifdef MC2_VULKAN
-    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) return false;
-#endif
+    return false;
+#else
     static int s_on = -1;
     if (s_on < 0) {
         s_on = mc2::gate::get<"MC2_EDITOR_RTT">();   // default OFF
     }
     return s_on != 0;
+#endif
 }
 bool GuiRuntime::AutoDockActive() {
     if (!s_editorMode) return false;   // GAME: nothing auto-docks
@@ -528,19 +465,9 @@ static void BuildEditorDockspace() {
 
 void GuiRuntime::NewFrame() {
     if (!g_imguiInitialized) return;
-    if (!s_openGlRendererInitialized && !vkImguiRequested()) {
-        // Init chose the Vulkan renderer, then the session fell back to GL: bring the GL renderer up now.
-        ImGui_ImplOpenGL3_Init("#version 430");
-        s_openGlRendererInitialized = true;
-    }
-    if (s_openGlRendererInitialized) {
-        ImGui_ImplOpenGL3_NewFrame();
-    } else if (vkImguiRequested()) {
 #ifdef MC2_VULKAN
-        if (mc2::renderBackend() == mc2::RenderBackend::Vulkan)
-            mc2vk::getOrCreateEnginePresentVk().prepareImguiVulkanFrame();
+    mc2vk::getOrCreateEnginePresentVk().prepareImguiVulkanFrame();
 #endif
-    }
     if (s_useSDL2Backend)
         ImGui_ImplSDL2_NewFrame();
 
@@ -721,16 +648,12 @@ static void DrawCliffDecalPanel() {
 }
 
 static void maybeTraceVkImguiDecline() {
-    if (!vkImguiRequested()) return;
     static bool s_tracedInitial = false;
     static bool s_tracedArmed = false;
 
     int directPresentArmed = 0;
 #ifdef MC2_VULKAN
-    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
-        mc2vk::EnginePresentVk& vkpres = mc2vk::getOrCreateEnginePresentVk();
-        directPresentArmed = vkpres.directPresentFrameArmed() ? 1 : 0;
-    }
+    directPresentArmed = mc2vk::getOrCreateEnginePresentVk().directPresentFrameArmed() ? 1 : 0;
 #endif
     if (directPresentArmed) {
         if (s_tracedArmed) return;
@@ -793,114 +716,22 @@ void GuiRuntime::Render() {
     ImGui::Render();
     s_frameActive = false;
 
-    // One-shot diagnostic: dump ImDrawData stats and GL state to stderr.
-    // editor-stderr.log captures this via run-editor.bat's 2> redirect.
-    if (s_openGlRendererInitialized) {
-        static bool s_traced = false;
-        if (!s_traced) {
-            s_traced = true;
-            ImDrawData* dd = ImGui::GetDrawData();
-            GLint boundFbo = -1, boundProg = -1;
-            GLint vp[4] = {};
-            glGetIntegerv(GL_FRAMEBUFFER_BINDING, &boundFbo);
-            glGetIntegerv(GL_CURRENT_PROGRAM, &boundProg);
-            glGetIntegerv(GL_VIEWPORT, vp);
-            GLenum err = glGetError();
-            if (dd) {
-                mc2::fmt::print_err("[GuiRuntime::Render] frame0 CmdLists={:d} TotalVtx={:d} TotalIdx={:d} DisplaySize=({:.0f},{:.0f}) FbScale=({:.3f},{:.3f}) fbo={:d} prog={:d} vp=({:d},{:d},{:d},{:d}) glErr=0x{:X}\n", mc2::fmt::as_i32(dd->CmdListsCount), mc2::fmt::as_i32(dd->TotalVtxCount), mc2::fmt::as_i32(dd->TotalIdxCount), dd->DisplaySize.x, dd->DisplaySize.y, dd->FramebufferScale.x, dd->FramebufferScale.y, mc2::fmt::as_i32(boundFbo), mc2::fmt::as_i32(boundProg), mc2::fmt::as_i32(vp[0]), mc2::fmt::as_i32(vp[1]), mc2::fmt::as_i32(vp[2]), mc2::fmt::as_i32(vp[3]), mc2::fmt::as_u32((unsigned)err));
-            } else {
-                mc2::fmt::print_err("[GuiRuntime::Render] frame0 GetDrawData() returned NULL\n");
-            }
-            fflush(stderr);
-        }
-    }
-
-    if (!s_openGlRendererInitialized && vkImguiRequested()) {
+    // The Vulkan ImGui renderer draws the frame; when it declines the frame is dropped (and traced once).
 #ifdef MC2_VULKAN
-        if (mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
-            mc2vk::getOrCreateEnginePresentVk().renderImguiVulkanDrawData(ImGui::GetDrawData())) {
-            static bool s_tracedVkUsed = false;
-            if (!s_tracedVkUsed) {
-                s_tracedVkUsed = true;
-                mc2::fmt::print_err("[VK_IMGUI] requested=1 used_vulkan=1 fallback_reason=\"\"\n");
-                std::fflush(stderr);
-            }
-            return;
+    if (mc2vk::getOrCreateEnginePresentVk().renderImguiVulkanDrawData(ImGui::GetDrawData())) {
+        static bool s_tracedVkUsed = false;
+        if (!s_tracedVkUsed) {
+            s_tracedVkUsed = true;
+            mc2::fmt::print_err("[VK_IMGUI] requested=1 used_vulkan=1 fallback_reason=\"\"\n");
+            std::fflush(stderr);
         }
-#endif
+    } else {
         maybeTraceVkImguiDecline();
-        return;
     }
-
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-    {
-        static bool s_errTraced = false;
-        if (!s_errTraced) {
-            s_errTraced = true;
-            GLenum err = glGetError();
-            if (err != GL_NO_ERROR)
-                mc2::fmt::print_err("[GuiRuntime::Render] glError after RenderDrawData: 0x{:X}\n", mc2::fmt::as_u32((unsigned)err));
-            else
-                mc2::fmt::print_err("[GuiRuntime::Render] RenderDrawData completed, no GL error\n");
-            fflush(stderr);
-        }
-    }
-
-    // Pixel probe (fires on 3rd Render call so terrain is in the buffer)
-    {
-        static int s_renderCallCount = 0;
-        ++s_renderCallCount;
-        if (s_renderCallCount == 3) {
-            // Backend name: non-null only if ImGui_ImplOpenGL3_Init() succeeded
-            const char* backendName = ImGui::GetIO().BackendRendererName;
-            // Font texture handle: 0 if CreateDeviceObjects never ran
-            ImTextureID fontTexID = ImGui::GetIO().Fonts->TexID;
-
-            // Sample a pixel inside the "MC2 Editor" window title bar.
-            // Window Pos=(10,10), Size=(220,60). Title bar centre ~ ImGui(120,19).
-            // OpenGL origin is bottom-left, so gl_y = fb_height - 1 - imgui_y.
-            ImDrawData* dd = ImGui::GetDrawData();
-            int fbh = dd ? (int)(dd->DisplaySize.y * dd->FramebufferScale.y) : 0;
-            int fbw = dd ? (int)(dd->DisplaySize.x * dd->FramebufferScale.x) : 0;
-            GLubyte imguiPx[4] = {};
-            GLubyte terrainPx[4] = {};
-            if (fbh > 0 && fbw > 0) {
-                int gl_y_imgui  = fbh - 1 - 19;   // ImGui y=19 (title bar)
-                int gl_y_terrain = fbh / 2;         // screen centre
-                glReadPixels(120,       gl_y_imgui,   1, 1, GL_RGBA, GL_UNSIGNED_BYTE, imguiPx);
-                glReadPixels(fbw / 2,   gl_y_terrain, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, terrainPx);
-            }
-
-            mc2::fmt::print_err("[GuiRuntime PROBE] BackendRendererName={} FontTexID={:016X} imgui_px(120,19)=RGBA({:d},{:d},{:d},{:d}) terrain_mid_px=RGBA({:d},{:d},{:d},{:d})\n", mc2::fmt::safe(backendName ? backendName : "NULL"), mc2::fmt::as_ptr((void*)(uintptr_t)fontTexID), mc2::fmt::as_i32(imguiPx[0]), mc2::fmt::as_i32(imguiPx[1]), mc2::fmt::as_i32(imguiPx[2]), mc2::fmt::as_i32(imguiPx[3]), mc2::fmt::as_i32(terrainPx[0]), mc2::fmt::as_i32(terrainPx[1]), mc2::fmt::as_i32(terrainPx[2]), mc2::fmt::as_i32(terrainPx[3]));
-            fflush(stderr);
-        }
-    }
-
-    // gos_InvalidateRenderStateCache() + gos_PrepareForPostImGuiRender() run
-    // immediately after ImGui_ImplOpenGL3_RenderDrawData(), because that call
-    // leaves GL_DEPTH_TEST disabled and glDepthMask(GL_FALSE); without
-    // invalidation GOS's render-state cache skips a full re-apply, and
-    // post-ImGui 3D camera renders (RegisterPostImGuiRender callbacks below)
-    // come out invisible. The diagnostic glReadPixels/glGetIntegerv probes
-    // between RenderDrawData and here (see above) read
-    // GL_FRAMEBUFFER_BINDING/GL_CURRENT_PROGRAM/GL_VIEWPORT and do NOT change
-    // render state, so their ordering should be harmless, but this was not
-    // verified against the UI Editor FIT 3D-camera-in-panel use case.
-    gos_InvalidateRenderStateCache();
-    gos_PrepareForPostImGuiRender();
-
-    // Post-ImGui GL renders (3D cameras, direct-GL images) fire here so they
-    // composite on top of the ImGui overlay rather than underneath it.
-    std::vector<std::function<void()>> fns;
-    fns.swap(s_postRenderFns);
-    static bool s_cbDiagOnce = false;
-    if (!s_cbDiagOnce && !fns.empty()) {
-        s_cbDiagOnce = true;
-        mc2::fmt::print_err("[3DVIEW_DIAG v2] GuiRuntime::Render firing {:d} callbacks\n", mc2::fmt::as_size(fns.size()));
-    }
-    for (auto& fn : fns)
-        fn();
+#endif
+    // The post-ImGui callbacks (cursor re-draw) are GL draws into a buffer the Vulkan present never shows; drop them so the list cannot
+    // grow one entry per frame (they were never run under Vulkan either).
+    s_postRenderFns.clear();
 }
 
 void GuiRuntime::RegisterPostImGuiRender(std::function<void()> fn)

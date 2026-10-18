@@ -78,6 +78,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     const float*              morphFactors,
     int                       count);
 
+// The end of the terrain flush: guarantees the shared scene was cleared this frame (a frame with no terrain draw, or one the terrain pass declined, would
+// otherwise leave the previous frame's scene under the props, mechs and effects).
+void gos_TerrainLodChunk_EnsureSceneClear();
+
 // Upload full heightfield to GPU SSBO at map load.
 // elevations: float[mapSide*mapSide] row-major.
 void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide);

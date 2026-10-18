@@ -130,12 +130,7 @@ void gosPostProcess::loadHdri(const char* path, float* outSunAz, bool* outSunVal
         hdriTex_ = 0;
     }
     hdriCpu_.reset();
-    // Only a Vulkan consumer reads the CPU copy (about 85 MB for a 4K RGBA16F chain), so GL-only runs do not keep one.
-    bool wantCpu = false;
-#ifdef MC2_VULKAN_ISLAND
-    wantCpu = mc2vkgate::umbrellaOn();
-#endif
-    auto cpu = wantCpu ? std::make_shared<HdriCpuImage>() : nullptr;
+    auto cpu = std::make_shared<HdriCpuImage>();
     hdriTex_ = loadHdriTexture(path, outSunAz, outSunValid, cpu.get());
     if (hdriTex_ && cpu && !cpu->levels.empty()) {
         cpu->generation = ++hdriCpuGeneration_;
@@ -773,9 +768,7 @@ void gosPostProcess::endScene()
             runHzbReduce();
     } else
 #endif
-    if (regionIfaceEnabled()) {
-        runHzbRegionThroughBackend();
-    } else {
+    {
         runHzbReduce();
     }
     runHzbProbe();   // diagnostic-only; reads the pyramid, suppresses no draws
@@ -844,17 +837,6 @@ void gosPostProcess::endScene()
         executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::Shoreline);
     }
 
-    // RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): master gate read ONCE, shared by
-    // the SSAO region below and the fog region further down (hoisted here so both
-    // sites can gate on the same value without re-reading getenv per-site).
-    const bool regionRouted = regionIfaceEnabled();
-
-    // SSAO grounding pass (multiplicative darkening into scene color). Default-OFF
-    // (MC2_SSAO gates whether it runs at all, unchanged). VK-REGION-SSAO-1: when the
-    // SAME master gate as fog (MC2_RENDER_BACKEND_REGION_IFACE) is ON, route through
-    // IRenderBackend::runRegion (MC2_POSTPROCESS_BACKEND=gl|vk picks the impl, VK
-    // falls back to GL on failure) instead of calling runSSAO() directly. Gate OFF ->
-    // the original direct call runs verbatim (byte-identical).
     // VK-POST-SSAO-NATIVE-1 (rung 8.2): HIGHEST precedence at the SSAO site. When
     // MC2_VK_POST_SSAO=1 and the shared-GBuffer substrate is live, SSAO gen+apply
     // render natively on the shared engine context (zero copies, zero readbacks)
@@ -866,9 +848,7 @@ void gosPostProcess::endScene()
         // native path did gen+apply; GL SSAO site skipped (no double-apply).
     } else
 #endif
-    if (regionRouted) {
-        runSSAORegionThroughBackend();
-    } else {
+    {
         runSSAO();
     }
 
@@ -880,27 +860,16 @@ void gosPostProcess::endScene()
     // After SSAO so AO-darkening is preserved under the fog.
     // FRAME-GRAPH-EXECUTOR-ISLAND-2: validate->call-unchanged->validate (default-OFF).
     executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::EdgeFog);
-    // RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): when the master gate is ON,
-    // route the WHOLE fog region (edge + oob) through IRenderBackend::runRegion
-    // ONCE here, and skip BOTH original fog sites (guard below). Selector
-    // MC2_POSTPROCESS_BACKEND=gl|vk picks the impl; VK falls back to the GL
-    // wrapper on failure. Gate OFF -> the original direct sites run verbatim
-    // (byte-identical). Precedence when ON: region-iface > (subgraph > island > GL
-    // inside the GL/VK impls). The region-iface path is mutually exclusive with
-    // the legacy in-site subgraph/island paths (which stay reachable gate-OFF).
-    // (regionRouted computed once above, shared with the SSAO region site.)
     bool subgraphRanThisFrame = false;   // scope spans to the FogOob site below
     (void)subgraphRanThisFrame;          // read only under MC2_VULKAN_ISLAND
-    if (regionRouted) {
-        runFogRegionThroughBackend();   // does BOTH edge + oob (GL wrapper or VK subgraph)
-    } else {
+    {
 #ifdef MC2_VULKAN_ISLAND
     // VK-POST-FOG-NATIVE-1 (rung 8.1): HIGHEST precedence at the fog site. When
     // MC2_VK_POST_FOG_NATIVE=1 and the shared-GBuffer substrate is live, BOTH fog
     // effects render natively on the shared engine context (zero copies, zero
     // readbacks) and BOTH GL sites are skipped. runVkPostFogNative() returns false
     // on ANY not-ready condition -> the unchanged GL chain below runs (fail-soft).
-    if (vkPostFogNativeEnabled() && runVkPostFogNative()) {
+    if (runVkPostFogNative()) {
         subgraphRanThisFrame = true;    // -> OOB site is skipped below (no double-apply)
     } else
 #endif
@@ -912,12 +881,7 @@ void gosPostProcess::endScene()
     // After edge fog so the two cloud colors match seamlessly.
     // FRAME-GRAPH-EXECUTOR-ISLAND-2: validate->call-unchanged->validate (default-OFF).
     executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::FogOob);
-    // RENDER-BACKEND-REGION-IFACE-1: when the fog region was routed through the
-    // backend above, it ALREADY did the oob fog -> skip this site ENTIRELY (no GL,
-    // no island). Explicit no-double-apply guard, symmetric with subgraphRanThisFrame.
-    if (regionRouted) {
-        // region iface did edge+oob; nothing to do here.
-    } else {
+    {
 #ifdef MC2_VULKAN_ISLAND
     // If native fog already ran this frame it ALSO did the oob fog, so this site
     // is skipped entirely (no GL, no island).
@@ -930,12 +894,6 @@ void gosPostProcess::endScene()
     executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::FogOob);
 
     // Bind default framebuffer (the backbuffer) for the composite output edge.
-    // RENDER-BACKEND-IFACE-POSTPROCESS-1: first render-backend boundary route.
-    // Gate MC2_RENDER_BACKEND_IFACE (default-OFF). OFF = direct GL, byte-
-    // identical. ON = the SAME glBindFramebuffer(0) via GLBackend — both GL, so
-    // output is identical; the gate just proves the seam routes. The interface
-    // grows one edge at a time; only this bind is routed in this slice.
-    static const bool s_backendIface = mc2::gate::get<"MC2_RENDER_BACKEND_IFACE">();
     // VK-P14b (MC2_VK_PRESENT_DIRECT_FBO, copy-1 elimination): when the Vulkan
     // backend owns present AND the direct-composite gate is on, redirect this
     // single backbuffer bind to the FBO wrapping the shared exportable present
@@ -951,7 +909,7 @@ void gosPostProcess::endScene()
     GLuint directFbo = 0;
     bool directVkOnly = false;
 #ifdef MC2_VULKAN
-    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+    {
         mc2vk::EnginePresentVk& present = mc2vk::getOrCreateEnginePresentVk();
         directFbo = (GLuint)present.presentDirectFbo();
         if (directFbo == 0)
@@ -960,8 +918,6 @@ void gosPostProcess::endScene()
 #endif
     if (directFbo != 0) {
         glBindFramebuffer(GL_FRAMEBUFFER, directFbo);
-    } else if (s_backendIface) {
-        RenderCore::getGLBackend().bindBackbuffer();
     } else {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
@@ -988,36 +944,19 @@ void gosPostProcess::endScene()
         if (s_oobLetterbox) {
             const GLboolean prevScissor = glIsEnabled(GL_SCISSOR_TEST);
             if (prevScissor) glDisable(GL_SCISSOR_TEST);
-            // RENDER-BACKEND-IFACE-CLEAR-1: route the OOB letterbox clear.
-            if (s_backendIface) {
-                RenderCore::getGLBackend().clear(GL_COLOR_BUFFER_BIT, 0.0f, 0.0f, 0.0f, 1.0f);
-            } else {
-                glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-                glClear(GL_COLOR_BUFFER_BIT);
-            }
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
             if (prevScissor) glEnable(GL_SCISSOR_TEST);
         }
         int bx, by, bw, bh;
         if (gos_Compute43Box(width_, height_, &bx, &by, &bw, &bh)) {
-            // RENDER-BACKEND-IFACE-VIEWPORT-1 / -CLEAR-1: route FORCE-43 pillarbox.
-            if (s_backendIface) {
-                RenderCore::getGLBackend().setViewport(0, 0, width_, height_);
-                RenderCore::getGLBackend().clear(GL_COLOR_BUFFER_BIT, 0.0f, 0.0f, 0.0f, 1.0f);
-                RenderCore::getGLBackend().setViewport(bx, by, bw, bh);
-            } else {
-                glViewport(0, 0, width_, height_);
-                glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-                glClear(GL_COLOR_BUFFER_BIT);
-                glViewport(bx, by, bw, bh);
-            }
+            glViewport(0, 0, width_, height_);
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glViewport(bx, by, bw, bh);
             compositeVpX = bx; compositeVpY = by; compositeVpW = bw; compositeVpH = bh;
         } else {
-            // RENDER-BACKEND-IFACE-VIEWPORT-1: route the non-pillarbox composite viewport.
-            if (s_backendIface) {
-                RenderCore::getGLBackend().setViewport(0, 0, width_, height_);
-            } else {
-                glViewport(0, 0, width_, height_);
-            }
+            glViewport(0, 0, width_, height_);
             compositeVpX = 0; compositeVpY = 0; compositeVpW = width_; compositeVpH = height_;
         }
     }
@@ -1045,7 +984,7 @@ void gosPostProcess::endScene()
     if (effectiveModeForComposite == 1 && sceneObjectIdTex_ == 0)
         effectiveModeForComposite = 0;
 #ifdef MC2_VULKAN
-    if ((directFbo != 0 || directVkOnly) && mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
+    if ((directFbo != 0 || directVkOnly) &&
         (effectiveModeForComposite == 0 || effectiveModeForComposite == 1 ||
          effectiveModeForComposite == 3 || effectiveModeForComposite == 5)) {
         nativeCompositeDone = mc2vk::getOrCreateEnginePresentVk().renderNativeCompositeVisual(

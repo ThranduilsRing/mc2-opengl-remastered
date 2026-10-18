@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
 #include "mc2fmt.h"
+#include "../RenderCore/TextureService.h"
 #include <algorithm>
 
 DWORD actualTextureSize = 0;
@@ -164,6 +165,18 @@ DWORD MC_TextureManager::textureInstanceExists (const char *textureFullPathName,
 	return 0;
 }
 
+// P4a: the named node is reported to the texture service (key <-> handle <-> node). The key is built from the node's own fields, so a cache hit with
+// different caller hints still resolves to the first load's identity, exactly as the manager dedupes. No behavior change.
+static void txmIdentityAcquire (const MC_TextureNode& n, long node)
+{
+	RenderCore::TextureKey k;
+	k.source = RenderCore::makeTextureSourceId("txmmgr", n.nodeName ? n.nodeName : "", 0);
+	k.variant = (uint32_t)n.uniqueInstance;
+	k.format = (uint32_t)n.key;
+	k.hints = (uint32_t)n.hints;
+	RenderCore::textureService().acquire(k, (uint32_t)node);
+}
+
 DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_TextureFormat key, DWORD hints, DWORD uniqueInstance, DWORD nFlush)
 {
 	ZoneScopedN("MC_TextureManager::loadTexture");
@@ -195,6 +208,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 				if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(textureFullPathName, "mechicon"))
 					mc2::fmt::print_out("[MECHICON] loadTexture CACHE-HIT id={:d}: {}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(textureFullPathName));
 				masterTextureNodes[i].numUsers++;
+				txmIdentityAcquire(masterTextureNodes[i], i);
 				return(i);							//Return the texture Node Id Now.
 			}
 			else
@@ -237,6 +251,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	masterTextureNodes[i].hints = hints;
 	masterTextureNodes[i].uniqueInstance = uniqueInstance;
 	masterTextureNodes[i].neverFLUSH = nFlush;
+	txmIdentityAcquire(masterTextureNodes[i], i);
 	masterTextureNodes[i].logicalWidth = 0;
 	masterTextureNodes[i].logicalHeight = 0;
 

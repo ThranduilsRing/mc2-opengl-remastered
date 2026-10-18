@@ -30,14 +30,15 @@ code and the proof of a finished conversion, not a leak detector.
 | image_resource | 2 | 0 | 0 | +0 | 0 | - |
 | shared_scene | 6 | 0 | 0 | +0 | 0 | - |
 | light_feed | 2 | 0 | 0 | +0 | 0 | - |
-| context | 2 | 0 | 0 | +0 | 0 | - |
+| context | 2 | 1 | 1 | +0 | 2 | - |
 
-Total over all islands: created 0, released 0, imbalance +0.
+Total over all islands: created 1, released 1, imbalance +0.
 
 ## Files
 
 | File | Created | Released | Imbalance |
 |---|---:|---:|---:|
+| `vulkan_context.cpp` | 1 | 1 | +0 |
 
 ## Conversion order
 
@@ -94,7 +95,7 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 | terrain | CommandBuffers | 3 | 1 |
 | terrain | DescriptorSets | 2 | 0 |
 | vfx | CommandBuffers | 1 | 0 |
-| vfx | DescriptorSets | 2 | 1 |
+| vfx | DescriptorSets | 2 | 2 |
 | water | CommandBuffers | 2 | 1 |
 | water | DescriptorSets | 1 | 0 |
 | present | CommandBuffers | 3 | 0 |

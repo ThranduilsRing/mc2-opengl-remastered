@@ -1,46 +1,29 @@
 // render_backend_select.h
 //
-// VK-P13-SELECTOR-1 / T1 -- the top-level MC2_RENDER_BACKEND selector seam.
+// MC2_RENDER_BACKEND seam. The engine renders on Vulkan only (the GL opt-out was removed); this header reports an ignored
+// MC2_RENDER_BACKEND value and holds the fatal-failure path for a Vulkan that cannot start.
 //
-// A single memoized accessor that reads MC2_RENDER_BACKEND once at first call
-// and caches the result for the process lifetime. This is the ONE place the
-// engine (gos_render/gameosmain) and future Vulkan consumers (P6/P8/P9/P14)
-// ask "which render backend did the user select?".
-//
-// DISTINCT from MC2_RENDER_BACKEND_IFACE (gos_postprocess.cpp) -- that is a
-// per-region post-process interface toggle; this is the top-level GL-vs-Vulkan
-// backend selector. Do not conflate them.
-//
-// This header is GL-safe: it pulls in NO Vulkan headers and has NO #ifdef
-// MC2_VULKAN dependency, so it compiles identically in the shipping GL-only
-// build. The accessor adds only one memoized getenv.
+// No Vulkan headers and no MC2_VULKAN dependency.
 
 #ifndef MC2_RENDER_BACKEND_SELECT_H
 #define MC2_RENDER_BACKEND_SELECT_H
 
 namespace mc2 {
 
-enum class RenderBackend {
-    GL = 0,      // MC2_RENDER_BACKEND=gl (the temporary opt-out)
-    Vulkan = 1,  // default / unset / unrecognized / =vulkan
+// What MC2_RENDER_BACKEND text asked for. The engine has ONE backend (Vulkan); the variable is only read to tell the user
+// that an old value is ignored.
+enum class BackendRequest {
+    None,         // unset / empty / "vulkan" / "VULKAN" / "vk"
+    RemovedGl,    // "gl" / "GL": the OpenGL backend no longer exists
+    Unrecognized, // anything else
 };
+BackendRequest backendRequestFromText(const char* text);
 
-// The one parsing rule: "gl"/"GL" -> GL; "vulkan"/"VULKAN"/"vk"/unset/empty -> Vulkan; anything else
-// -> Vulkan with *recognized=false (a typo must not select GL). Pure; used by renderBackend() and tests.
-RenderBackend backendFromText(const char* text, bool* recognized = nullptr);
+// Once at engine init: logs a [RENDER_BACKEND] line when MC2_RENDER_BACKEND names the removed GL backend or is unrecognized,
+// or when the retired MC2_VK_SHARED_GBUFFER is set to 0 (the run continues on Vulkan either way). Silent otherwise.
+void noteBackendEnv();
 
-// Memoized accessor. Reads MC2_RENDER_BACKEND once (values "gl" | "vulkan";
-// default Vulkan; anything unrecognized -> Vulkan, coercion logged once). Idempotent
-// and cheap after the first call. Thread-safety: intended to be first called
-// during single-threaded engine init (gameosmain), after which it is a pure
-// read of a cached value.
-RenderBackend renderBackend();
-
-// Human-readable name for logs ("gl" | "vulkan").
-const char* renderBackendName(RenderBackend b);
-
-// Fatal backend failure (there is no GL fallback). Called when the Vulkan
-// backend is selected (the default) and Vulkan cannot come up (device /
+// Fatal backend failure (there is no GL fallback). Called when Vulkan cannot come up (device /
 // extensions / validation layer failure, no MC2_VULKAN in the build, or a present
 // path that cannot be VK-owned). Logs "[RENDER_BACKEND] FATAL: <reason>", shows a
 // message box unless the run is automated (smoke / crash-fast-exit), and ends the

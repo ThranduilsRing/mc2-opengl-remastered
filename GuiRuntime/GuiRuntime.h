@@ -23,10 +23,6 @@ namespace GuiRuntime {
     void NewFrame();  // call each frame before game/UI drawing
     void Render();    // call each frame after all game drawing, before swap
 
-    // Editor-only init: skips ImGui_ImplSDL2 (the editor uses a WGL context
-    // created via SDL_CreateWindowFrom — no SDL GL context handle exists).
-    // Input events are injected manually through GameOSWinProc/SDL_PushEvent.
-    void InitEditorOpenGLOnly();  // call once after WGL context is current
 
     // Called whenever the framebuffer is resized (e.g. gos_SetScreenMode).
     // Updates io.DisplaySize so ImGui layout and hit-testing match the actual

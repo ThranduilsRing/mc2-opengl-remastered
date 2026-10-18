@@ -9,7 +9,7 @@
 // getOrCreateEngineVulkanContext() and must not create their own device.
 // A grep for VkDevice ownership must land here.
 //
-// The context is born once at engine init when renderBackend()==Vulkan
+// The context is born once at engine init
 // (gameosmain), fail-soft: any failure logs a reason, leaves the accessor
 // returning a context whose device() is VK_NULL_HANDLE, and the caller forces
 // the session back to GL. Never crashes.
@@ -24,9 +24,14 @@
 
 #include <volk.h>
 
+#include "vk_completion_tracker.h"
+#include "vk_deferred_destroy.h"
 #include "vk_device_profile.h"
 #ifdef MC2_VULKAN_ISLAND
+#include "vk_frame_ring.h"
+#include "vk_readback.h"
 #include "vk_shared_light_feed.h"
+#include "vk_upload.h"
 #endif
 
 #include <array>
@@ -34,6 +39,7 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
 
@@ -148,6 +154,67 @@ public:
     void retireIsland(IslandSlot slot);
 #endif
 
+    // THE submit path of the engine device. Every graphics-queue submit goes through here and none through a raw vkQueueSubmit (a contract row
+    // greps for it): the submit gets the next value of the graphics timeline semaphore as one more signal, so a GpuTicket proves "everything submitted
+    // up to here has finished". `si` keeps its binary waits and signals; `fence` (may be null) is passed through unchanged. `si.pNext` must be empty.
+    // On success *outValue (when given) is the timeline value this submit signals. Thread-safe.
+    VkResult submit(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue = nullptr) const;
+private:
+    VkResult submitLocked(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const;   // submitMutex_ held
+    void flushUploadsLocked() const;
+public:
+    CompletionTracker&       tracker()       { return tracker_; }
+    const CompletionTracker& tracker() const { return tracker_; }
+    // Refreshes the completed counter from the timeline semaphore (cheap; once per frame begin is enough).
+    void poll() const;
+    bool isComplete(const GpuTicket& t) const;
+    // Blocks until the ticket completes or the timeout passes. A timeout or a lost device is logged with `why`; returns whether the ticket is complete.
+    bool wait(const GpuTicket& t, uint64_t timeoutNs, std::string_view why) const;
+    // Frame bracket: beginFrame polls the counter, opens a frame, collects the deferred-destroy entries that completed and restarts the frame-ring slot
+    // (a call on an open frame does nothing); endFrame seals the frame with the graphics value submitted so far and emits the [VK_TIMELINE v1] summary at
+    // its cadence. A host that presents calls frameBoundary() right after the present: endFrame, then beginFrame of the next frame.
+    void beginFrame();
+    void endFrame();
+    void frameBoundary() { endFrame(); beginFrame(); }
+    // The newest sealed frame whose graphics work completed (0 when none within the tracker's ring). Frames complete in order, so everything older is done too.
+    uint64_t completedFrame() const {
+        poll();
+        const uint64_t open = tracker_.frameNo();
+        for (uint64_t g = open > 0 ? open - 1 : 0; g > 0 && open - g < CompletionTracker::kFrameRing; --g)
+            if (tracker_.isComplete(tracker_.frameTicket(g))) return g;
+        return 0;
+    }
+
+#ifdef MC2_VULKAN_ISLAND
+    // Per-frame transient memory (vertex data, dynamic-offset uniform and storage rows, copy sources): host-visible, written through the returned pointer,
+    // valid until the frame that asked for it has completed. `align` 0 = the device uniform / storage offset alignment. An empty result means the
+    // allocation failed; the caller declines its draw. Main thread only.
+    FrameAlloc frameAlloc(VkDeviceSize size, VkDeviceSize align = 0) { return frameRing_.alloc(*this, size, align ? align : frameAlign_); }
+    // The frame the engine loop is recording, the number of frames the engine keeps in flight (2, or 1 under MC2_VK_FRAMES_IN_FLIGHT=1) and the slot every
+    // per-frame object of the present path uses (frame % framesInFlight; 0 at N=1). The frame ring itself always alternates its two regions.
+    struct FrameContext { uint64_t frame = 0; uint32_t slot = 0; uint32_t framesInFlight = 1; };
+    FrameContext frameContext() const { return {tracker_.frameNo(), framesInFlight_ < 2 ? 0u : static_cast<uint32_t>(tracker_.frameNo() % framesInFlight_), framesInFlight_}; }
+    void setFramesInFlight(uint32_t n) { framesInFlight_ = n < 2 ? 1u : 2u; }
+    const FrameRing& frameRing() const { return frameRing_; }
+    // GPU -> CPU readbacks that never block (see vk_readback.h).
+    ReadbackRing& readbacks() { return readbacks_; }
+    // Streaming uploads (see vk_upload.h): stage into the frame ring and queue the copy; it is submitted ahead of the next graphics submit, no CPU wait.
+    UploadBatch& uploads() { return uploads_; }
+    const UploadBatch& uploads() const { return uploads_; }
+    void flushUploads() const;   // the queued uploads, now (the next submit and endFrame do it anyway)
+    VkBuffer frameRingBuffer() { return frameRing_.ensureBuffer(*this); }
+    VkDeviceSize frameAlignment() const { return frameAlign_; }
+    VkDeviceSize frameRingRange() const { return frameRing_.bindRange(); }
+#endif
+
+    // Parks an owner (a buffer, an image, a container of them) until the GPU has finished the frame that may use it, then destroys it: the replacement
+    // for "waitIdle, then reset". Main thread only. Owners must be move-only types or movable values.
+    template <class Owner>
+    void retire(Owner&& owner, uint64_t bytes = 0) { deferred_.retire(tracker_, std::forward<Owner>(owner), bytes); }
+    // Mission unload, swapchain recreate, teardown: idles the device and destroys everything parked. The only sanctioned device-idle besides init failure.
+    void drainDeferred(std::string_view why);
+    const DeferredDestroy& deferred() const { return deferred_; }
+
     // Waits for the device to drain before the caller drops objects that may be in flight, and logs a failed wait (a lost device). A no-op without a device.
     void waitIdle(std::string_view why) const;
 
@@ -165,6 +232,17 @@ private:
     uint32_t         gfxFamily_         = UINT32_MAX;
     VmaAllocator     allocator_         = nullptr;
     profile::Evaluation profile_ = [] { profile::Evaluation e; e.accepted = false; return e; }();   // the chosen device's verdict (see profile())
+    VkSemaphore      gfxTimeline_       = VK_NULL_HANDLE;   // the graphics queue's timeline: signalled with CompletionTracker::noteSubmit values
+    mutable CompletionTracker tracker_;
+#ifdef MC2_VULKAN_ISLAND
+    FrameRing        frameRing_;
+    uint32_t         framesInFlight_ = 1;
+    mutable UploadBatch uploads_;
+    ReadbackRing     readbacks_;
+    VkDeviceSize     frameAlign_ = 256;   // max(uniform, storage offset alignment, 16): set at device birth
+#endif
+    mutable DeferredDestroy deferred_;   // after the allocator's owners are gone: destroy() drains it first
+    mutable std::mutex submitMutex_;
     uint8_t          luid_[8]           = {0, 0, 0, 0, 0, 0, 0, 0};
     bool             luidValid_         = false;
 
@@ -208,6 +286,9 @@ VulkanContext& getOrCreateEngineVulkanContext();
 
 // Convenience: true if the engine context has been born and holds a live device.
 bool engineVulkanContextValid();
+
+// Submits on the shared engine context's graphics queue through the completion tracker (VulkanContext::submit). The only way an engine TU submits.
+inline VkResult submitGraphics(const VkSubmitInfo& si, VkFence fence) { return getOrCreateEngineVulkanContext().submit(si, fence); }
 
 // On-demand shared-context birth DECOUPLED from present. Lazy + idempotent: returns
 // true if the shared context is already valid; else brings it up once via

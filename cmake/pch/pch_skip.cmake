@@ -5,7 +5,6 @@
 
 set(MC2_PCH_SKIP_gameos
     "3rdparty/vk_bootstrap/VkBootstrap.cpp"
-    "GameOS/gameos/GLBackend.cpp"
     "GameOS/gameos/debug_state_dump.cpp"
     "GameOS/gameos/engine_present_vk.cpp"
     "GameOS/gameos/gos_gpu_sync.cpp"
@@ -18,7 +17,6 @@ set(MC2_PCH_SKIP_gameos
     "GameOS/gameos/gos_postprocess_executor.cpp"
     "GameOS/gameos/gos_postprocess_fbo.cpp"
     "GameOS/gameos/gos_postprocess_gates.cpp"
-    "GameOS/gameos/gos_postprocess_region.cpp"
     "GameOS/gameos/gos_postprocess_shadow.cpp"
     "GameOS/gameos/gos_postprocess_skybox.cpp"
     "GameOS/gameos/gos_rdoc_capture.cpp"

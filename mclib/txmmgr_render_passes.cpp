@@ -269,7 +269,6 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 			} else {
 				GpuStaticPropBatcher::instance().flushShadow();
 			}
-			GpuMechBatcher::instance().flushShadow();
 			gos_EndDynamicShadowPass();
 			render_contract::executorOwnEndTopLevel(render_contract::PassIdentity::ShadowCaster,
 			                                        "renderLists_gos_EndDynamicShadowPass");
@@ -292,7 +291,6 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 							GpuStaticPropBatcher::instance().drawDynamicPropShadows(*csmCasterSet);
 						else
 							GpuStaticPropBatcher::instance().flushShadow();
-						GpuMechBatcher::instance().flushShadow();
 						ppCsm->endDynamicShadowCascadePass();
 #ifdef MC2_VULKAN_ISLAND
 						if (ci < csmN - 1 && csmCasterSet && mc2_vk_shadow_island_enabled()) {
@@ -752,20 +750,15 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 			render_contract::noteRenderPass(render_contract::PassIdentity::OpaqueObject,
 			                               "GpuMechBatcher_flush(submit)");
 			// APPLY-STATE-MECHOPAQUE-1: when MC2_FRAMEGRAPH_EXECUTOR is ON and a
-			// kTopLevelStateDesc row exists, the executor pre-applies the MechOpaque
-			// pipeline here (at the real flush call site, NOT the begin seam which wraps
-			// non-mech draws too); flush()'s body then skips its own applyPipeline.
-			// Gate OFF -> not called -> body applies -> byte-identical.
+			// kTopLevelStateDesc row exists, the executor records the MechOpaque pass here
+			// (at the real flush call site, NOT the begin seam which wraps non-mech draws too).
 			if (render_contract::isTopLevelExecutorEnabled() &&
 			    RenderCore::framegraph::findTopLevelStateDesc(RenderCore::RenderPassId::MechOpaque) != nullptr) {
 				GpuMechBatcher::instance().executorApplyMechOpaqueState();
 			}
-			// VK-P14 MECH TIER-1 (gate MC2_VK_MECH_TIER1, requires MC2_VK_SHARED_SCENE_DEPTH,
-			// default-OFF): flush() still BUILDS the instance/bone SSBOs + feed snapshot but
-			// SKIPS its GL color draws when the gate is on; the island then co-writes the
-			// skinned mechs IN-PLACE into the shared GBuffer. Fail-soft (island 0) = mechs
-			// dropped this frame (GL draws already skipped), no corruption. Gate OFF ->
-			// enabled()==0 -> flush() draws GL as before (byte-identical).
+			// VK-P14 MECH TIER-1: flush() BUILDS the instance/bone/run feeds (CPU only); the island
+			// then co-writes the skinned mechs IN-PLACE into the shared GBuffer. Fail-soft (island 0)
+			// = mechs dropped this frame, no corruption.
 			GpuMechBatcher::instance().flush();
 #ifdef MC2_VULKAN_ISLAND
 			if (mc2_vk_mech_island_enabled()) {

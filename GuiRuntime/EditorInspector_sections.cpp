@@ -581,35 +581,6 @@ void drawMechData() {
     }
 }
 
-// Draw the mech debug-view selector.
-void drawMechDebugView() {
-    if (ImGui::CollapsingHeader("Mech Debug View##mdv", ImGuiTreeNodeFlags_DefaultOpen)) {
-        RenderDebugView curView = MechFragDebugModeToView(batcher_getMechDebugMode());
-        const char* curName = RenderDebugViewName(curView);
-        if (ImGui::BeginCombo("Debug View##mech", curName)) {
-            for (int i = 0; i < int(RenderDebugView::_Count); ++i) {
-                RenderDebugView v = RenderDebugView(i);
-                if (!RenderDebugViewSupported(v, kDebugViewMask_Mech))
-                    continue;
-                bool selected = (v == curView);
-                if (ImGui::Selectable(RenderDebugViewName(v), selected)) {
-                    batcher_setMechDebugMode(MechViewToFragDebugMode(v));
-                }
-                if (selected) ImGui::SetItemDefaultFocus();
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("%s", RenderDebugViewDescription(v));
-            }
-            ImGui::EndCombo();
-        }
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("MECH-DEBUG-VIEWS-1 debug view for the mech lane.\n"
-                              "Legacy MC2_MECH_FRAG_DEBUG env var takes precedence\n"
-                              "when set. ImGui selection drives s_mechDebugMode\n"
-                              "only when env is unset. Default (mode 0) = Final\n"
-                              "(byte-identical to unmodified path).");
-    }
-}
-
 // Draw the experimental mech normals controls.
 void drawMechNormals() {
     if (ImGui::CollapsingHeader("Mech Normals (experimental)##mn")) {
@@ -777,18 +748,6 @@ void drawMechSnapshot() {
                     "countMis=0 handleMis=0 objectIdMis=0 texMis=0 matMis=0");
             }
 
-            // Pass-level program ids (legacy path — mech
-            // is NOT on the PipelineDesc registry yet; surfacing the gap
-            // here mirrors the "ViewUniforms not bound"
-            // red-flag label).
-            ImGui::Separator();
-            const uint32_t mechProg   = gos_getMechProgramId();
-            const uint32_t shadowProg = gos_getMechShadowProgramId();
-            ImGui::Text("mech program       %u", mechProg);
-            ImGui::Text("shadow_mech program %u", shadowProg);
-            ImGui::TextColored(ImVec4(1.f, 0.7f, 0.2f, 1.f),
-                "PipelineDesc: legacy (not on registry)");
-            ImGui::TextDisabled("pass: opaque + shadow (legacy mech path)");
 
             // Per-selected-mech row (match by objectIdRaw == handle.raw())
             ImGui::Separator();
@@ -913,7 +872,6 @@ void drawShadowPass() {
         ImGui::Separator();
         ImGui::Text("Programs:");
         ImGui::BulletText("terrain shadow:     %u", sp.terrainShadowProgramId);
-        ImGui::BulletText("mech shadow:        %u", sp.mechShadowProgramId);
         ImGui::BulletText("static-prop shadow: %u", sp.staticPropShadowProgramId);
         ImGui::Separator();
         ImGui::Text("Caster counts (last flushShadow):");

@@ -107,6 +107,7 @@ extern "C" void mc2_vk_color_prop_island_destroy();
 // registries. No-op if never born.
 extern "C" void mc2_vk_terrain_island_destroy();
 extern "C" void mc2_vk_terrain_set_native_prefix_clear_color(float r, float g, float b, float a);
+extern "C" int mc2_vk_scene_clear(int w, int h);   // vulkan_terrain_island_run.cpp
 // VK-P14 MECH TIER-1: mech island shutdown teardown (defined in vulkan_mech_island.cpp
 // under the same #ifdef). Frees the VK renderpass/framebuffer/pipeline + instance/bone/
 // geometry buffers + copy-once albedo while the shared device is alive. The shared
@@ -119,7 +120,6 @@ extern "C" void mc2_vk_sky_island_destroy();            // VK-PARITY-F3
 // [VK_SHADOW_INTEROP] health line (forbidden_* counters). No-op if never born.
 extern "C" void mc2_vk_shadow_island_destroy();
 #endif
-extern "C" uint32_t gos_getMechShadowProgramId();
 extern "C" uint32_t gos_getMechShadowTypesDrawn();
 extern "C" uint32_t gos_getMechShadowInstDrawn();
 extern "C" uint32_t gos_getStaticPropShadowTypesDrawn();
@@ -146,6 +146,7 @@ extern "C" unsigned long long mc2_vfx_getTrailSpawnTotal();
 extern "C" unsigned long long mc2_vfx_getTrailHeadTotal();
 
 extern uint32_t g_mc2FrameCounter;
+extern uint32_t g_mc2RenderFrame;
 extern void gos_GetTerrainCameraPos(float* x, float* y, float* z);
 extern void mc2_executor_own_begin_postprocess(gosPostProcess* pp);
 extern void mc2_executor_own_end_postprocess(gosPostProcess* pp);

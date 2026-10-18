@@ -97,7 +97,6 @@ void setTerrainPassSnapshot(const TerrainPassSnapshot& ts);
 struct ShadowPassSnapshot {
     // Programs (raw GL program object ids; 0 if not linked).
     uint32_t terrainShadowProgramId    = 0;
-    uint32_t mechShadowProgramId       = 0;
     uint32_t staticPropShadowProgramId = 0;
     // gosPostProcess state.
     bool     shadowsEnabled            = false;

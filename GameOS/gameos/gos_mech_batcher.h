@@ -131,10 +131,6 @@ enum class GpuMechFallbackReason : uint8_t {
     StaleLightRow     = 5,
 };
 
-// Ring depth — must match STATIC_PROP_RING_FRAMES to share fence semantics
-// with the static-prop fence ring. Cross-checked by static_assert in .cpp.
-constexpr uint32_t MECH_RING_FRAMES = 3u;
-
 class GpuMechBatcher {
 public:
     static GpuMechBatcher& instance();
@@ -170,17 +166,13 @@ public:
     // CPU-fallback (mechShape->Render(true)) this frame when false.
     [[nodiscard]] bool submitActor(const GpuMechSubmitDesc& desc);
 
-    // APPLY-STATE-MECHOPAQUE-1: executor-driven pre-apply of the MechOpaque pipeline
-    // (program + fixed-function depth/blend/cull). Called from txmmgr renderLists() at
-    // the flush call site when MC2_FRAMEGRAPH_EXECUTOR is ON; flush()'s body then skips
-    // its own applyPipeline (one-shot). No-op behaviour when gate OFF (never called).
+    // APPLY-STATE-MECHOPAQUE-1: the frame-graph executor's record of the MechOpaque top-level pass (counts the pass in the
+    // apply-state ledger; the pipeline itself is the Vulkan mech island's). Called from txmmgr renderLists() when
+    // MC2_FRAMEGRAPH_EXECUTOR is ON.
     void executorApplyMechOpaqueState();
 
-    // Post-renderLists() draw flush.
+    // Per-frame flush: builds the instance, bone and run feeds the Vulkan mech island consumes (CPU only).
     void flush();
-    // Phase 1: draws the previous-frame (already-fenced) mech instance set into the dynamic
-    // shadow FBO depth-only.  Called from txmmgr's GPU shadow region before flush().
-    void flushShadow();
 
     bool wasLastFailureLateRegistration() const;
 
