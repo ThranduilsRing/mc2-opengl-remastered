@@ -161,7 +161,7 @@ void BattleMech::init (bool create, ObjectTypePtr _type) {
 	    }
 	    releaseAppearance();
 	}
-	adoptAppearance(new Mech3DAppearance);
+	adoptAppearance(std::make_unique_for_overwrite<Mech3DAppearance>());
 	gosASSERT(appearance != nullptr);
 
 	// The only kind of appearanceType the mechs currently know how

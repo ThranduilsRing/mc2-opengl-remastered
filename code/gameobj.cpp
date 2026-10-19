@@ -1553,9 +1553,9 @@ void GameObject::init (bool create) {
 // B7o.3: appearanceOwner owns the appearance; `appearance` is a view synced here. Adopting over a live appearance frees the previous
 // one (the init replacement paths used to overwrite it). The owner's destructor is a backstop for an actor that is destroyed
 // without releasing (destroy() still releases at the same position as before, see G2).
-void GameObject::adoptAppearance (AppearancePtr newAppearance) {
+void GameObject::adoptAppearance (std::unique_ptr<Appearance> newAppearance) {
 
-	mc2::adoptOwnedView(appearanceOwner, appearance, newAppearance);
+	mc2::adoptOwnedView(appearanceOwner, appearance, newAppearance.release());
 }
 
 void GameObject::releaseAppearance (void) {

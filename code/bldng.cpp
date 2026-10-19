@@ -1259,7 +1259,7 @@ void Building::init (bool create, ObjectTypePtr objType) {
 		}
 	}
 	  
-   	adoptAppearance(new BldgAppearance);
+	adoptAppearance(std::make_unique_for_overwrite<BldgAppearance>());
 	gosASSERT(appearance != nullptr);
 
 	//--------------------------------------------------------------

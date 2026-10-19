@@ -1573,7 +1573,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 				}
 			}
 			  
-			adoptAppearance(new BldgAppearance);
+			adoptAppearance(std::make_unique_for_overwrite<BldgAppearance>());
 			gosASSERT(appearance != NULL);
 		
 			//--------------------------------------------------------------
@@ -1641,7 +1641,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 				}
 			}
 			  
-			adoptAppearance(new BldgAppearance);
+			adoptAppearance(std::make_unique_for_overwrite<BldgAppearance>());
 			gosASSERT(appearance != NULL);
 		
 			//--------------------------------------------------------------
@@ -1709,7 +1709,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 				}
 			}
 			  
-			adoptAppearance(new BldgAppearance);
+			adoptAppearance(std::make_unique_for_overwrite<BldgAppearance>());
 			gosASSERT(appearance != NULL);
 		
 			//--------------------------------------------------------------
