@@ -317,10 +317,10 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const gate::Row* rows = gate::tableData();
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
-    // The table has 937 rows after retiring 8 SSAO/box-decal gates. REQUIRE(n == kGateCount) only ties the table to the
+    // The table has 935 rows after retiring 10 SSAO/box-decal/GL-HZB gates. REQUIRE(n == kGateCount) only ties the table to the
     // generated header, so a bad regeneration that shrinks both passes it; this floor catches that loss. It sits a
     // few rows under the real count and moves down with an amnesty wave that deletes rows on purpose.
-    REQUIRE(n >= 932);
+    REQUIRE(n >= 930);
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);
@@ -896,8 +896,7 @@ TEST_CASE("the VK opt-in and kill-switch rows read like the envTriState expressi
         return v[0] == '1' ? 1 : v[0] == '0' ? 0 : -1;
     };
     constexpr const char* kProbe[] = {nullptr, "", "0", "false", "1", "yes", "10", "2.5", "00", "0x", "01"};
-    const char* exact1[] = {"MC2_VK_POST_HZB",
-                            "MC2_VK_TERRAIN_LODFADE",
+    const char* exact1[] = {"MC2_VK_TERRAIN_LODFADE",
                             "MC2_VK_TERRAIN_VISUALDISPLACE_FAR"};
     const char* killSwitch[] = {"MC2_VK_LIGHTFEED_DEDUP", "MC2_VK_MECH_FENCE_DEFER", "MC2_VK_POST_SCREENFX", "MC2_VK_POST_SCREENFX_CLOUD",
                                 "MC2_VK_POST_SCREENFX_SHADOW", "MC2_VK_POST_SCREENFX_SHORELINE",

@@ -4884,23 +4884,6 @@
    "count": 1
   },
   {
-   "tag": "HZB_BUILD",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "HZB_BUILD",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "mips",
-    "count"
-   ],
-   "count": 1
-  },
-  {
    "tag": "HZB_CAM",
    "ver": 1,
    "stream": "stderr",
@@ -4911,65 +4894,6 @@
     "lookY",
     "rot",
     "angle"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "HZB_PROBE_CULLCAND",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "idx",
-    "rectUV",
-    "objClosest",
-    "hzbMin",
-    "gap",
-    "L",
-    "neverAppliedToDraws"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "HZB_PROBE_LOD",
-   "ver": 1,
-   "stream": "buffer",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "HZB_PROBE_MARGIN",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "minGap",
-    "maxGap",
-    "closestToZeroNegGap",
-    "neverAppliedToDraws"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "HZB_PROBE_OBJ",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [
-    "active",
-    "scanned",
-    "tested",
-    "wouldKeep",
-    "wouldCullRaw",
-    "wouldCullGuarded",
-    "skippedCameraDiscont",
-    "nearClippedKeep",
-    "offscreen",
-    "invalidRect",
-    "Lmin",
-    "cameraDiscontinuity",
-    "fwdAngleDeg",
-    "posDelta",
-    "discontFramesCumulative",
-    "unsafeForCull",
-    "neverAppliedToDraws"
    ],
    "count": 1
   },
@@ -7547,16 +7471,6 @@
    "stream": "file",
    "keys": [
     "z"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PROJECTED_DECALS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "enabled",
-    "MC2_PROJECTED_DECALS"
    ],
    "count": 1
   },

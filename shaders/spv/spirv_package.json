@@ -16,8 +16,7 @@
   },
   "pilot_families": [
     "postprocess",
-    "mech",
-    "hzb_reduce"
+    "mech"
   ],
   "excluded_families": [
     "shadow_mech (shadow_mech.vert + shadow_instanced.frag) \u2014 separate program, stays GLSL",
@@ -85,24 +84,11 @@
           }
         }
       ]
-    },
-    {
-      "base": "hzb_reduce",
-      "variants": [
-        {
-          "name": "default",
-          "defines": [],
-          "variantId": "ae9dd0144f82",
-          "stages": {
-            "frag": "hzb_reduce.frag.default.ae9dd014.spv"
-          }
-        }
-      ]
     }
   ],
   "hashes": {
-    "spirv_index_sha256": "3bbf22bab7a8c09a2a38a263d93b91f9d564593517f84f016e8758354ff887a8",
-    "sidecars_sha256": "a7d7f1f5a43f60befdc0d529d690010bbb6589029612d86c8793dd92261a2100",
-    "source_set_sha256": "50cc60a77a108c6c9b1f597133c42ae70aa2e19c11e10c997028ba9e15247179"
+    "spirv_index_sha256": "ba285fbaabcb18419fd6ea9c882808d3a7f17f2928829df86c4eef00a04f3c6c",
+    "sidecars_sha256": "32d8045d086c8d6918c561893fc87b798eae0e2b426a170718a2e1762529c95d",
+    "source_set_sha256": "9ed93baf42e9efd8409e603715f1730c8ea32a82724d1b57e5236b6feee6963a"
   }
 }

@@ -1,9 +1,4 @@
-// VK-REGION-HZB-1 -- fullscreen-triangle vertex shader for the Vulkan HZB
-// reduce passes. Mirrors shaders/vulkan/ssao.vert exactly: emits a single
-// oversized triangle covering the viewport with no vertex buffer. The
-// interpolated TexCoord is the [0,1] screen UV the GL hzb_reduce.frag calls
-// "TexCoord" (same as the GL postprocess.vert output), so the ported
-// fragment math gets bit-for-bit the same input as the GL path.
+// Fullscreen triangle for native Vulkan depth reduction.
 #version 450
 
 layout(location = 0) out vec2 TexCoord;

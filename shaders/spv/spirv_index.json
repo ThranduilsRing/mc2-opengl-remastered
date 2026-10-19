@@ -94,14 +94,6 @@
         "MC2_OBJECT_ID_BUFFER=1",
         "MC2_USE_VIEW_UNIFORMS=1"
       ]
-    },
-    {
-      "key": "hzb_reduce|frag|",
-      "artifact": "hzb_reduce.frag.default.ae9dd014.spv",
-      "variantId": "ae9dd0144f82",
-      "base": "hzb_reduce",
-      "stage": "frag",
-      "defines": []
     }
   ]
 }

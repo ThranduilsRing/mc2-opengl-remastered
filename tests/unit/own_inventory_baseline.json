@@ -5933,18 +5933,6 @@
    "new_array": 0,
    "owners": []
   },
-  "VkPostSsaoNative": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/vulkan_post_ssao_native.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "WINDOW": {
    "delete": 2,
    "delete_array": 0,
@@ -7246,7 +7234,6 @@
   "GameOS/gameos/vulkan_post_fog_native.cpp": 1,
   "GameOS/gameos/vulkan_post_hzb_native.cpp": 1,
   "GameOS/gameos/vulkan_post_screenfx_native.cpp": 1,
-  "GameOS/gameos/vulkan_post_ssao_native.cpp": 1,
   "code/componentlistbox.cpp": 1,
   "code/forcegroupbar.cpp": 5,
   "code/gamesound.cpp": 1,
