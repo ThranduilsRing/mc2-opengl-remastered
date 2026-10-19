@@ -244,8 +244,8 @@ bool ResourcesReady() {
         MC2_DIAGFE(stderr,
             "[TERRAIN_INDIRECT v1] event=resources_ready "
             "thinSSBO=%u indirectBuf=%u ringFrames=%d maxThin=%zu atlasGLTex=%u\n",
-            (unsigned)g_thinRecordSSBO, (unsigned)g_indirectCmdBuffer,
-            kThinRingFrames, kMaxThinRecords, (unsigned)g_atlasGLTex);
+            static_cast<unsigned>(g_thinRecordSSBO), static_cast<unsigned>(g_indirectCmdBuffer),
+            kThinRingFrames, kMaxThinRecords, static_cast<unsigned>(g_atlasGLTex));
         fflush(stderr);
     }
     return true;
@@ -320,7 +320,7 @@ int PackThinRecordsForFrame() {
     static TerrainQuadThinRecord s_shadow[kMaxThinRecords];
     int packed = 0;
 
-    for (long qi = 0; qi < total && (size_t)packed < kMaxThinRecords; ++qi) {
+    for (long qi = 0; qi < total && static_cast<size_t>(packed) < kMaxThinRecords; ++qi) {
         const TerrainQuad& q = quads[qi];
 
         // 1. Pointer guards (pVertex not required here — we only need
@@ -410,10 +410,10 @@ int PackThinRecordsForFrame() {
         uint16_t idx = 0xFFFFu;
         if (g_cementLayerMapReady && q.vertices[0] && q.vertices[0]->pVertex) {
             const DWORD slot = q.vertices[0]->pVertex->textureData & 0xFFFFu;
-            if (slot < (DWORD)MC_MAX_TERRAIN_TXMS) {
+            if (slot < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS)) {
                 idx = g_cementLayerIndexBySlot[slot];
                 if (idx != 0xFFFFu) {
-                    cementWord = kCementLayerValidBit | ((uint32_t)idx & 0xFFFFu);
+                    cementWord = kCementLayerValidBit | (static_cast<uint32_t>(idx) & 0xFFFFu);
                     ++g_cementMappedThisFrame;
                 }
             }
@@ -500,7 +500,7 @@ int PackThinRecordsForFrame() {
         static uint32_t s_frameCount = 0;
         ++s_frameCount;
         if (traceOn() && (s_frameCount % 60u == 0u)) {
-            mc2::fmt::print_out("[CEMENT_FRAME v1] frame={:d} packed_total={:d} cement_mapped={:d} concrete_all_corners={:d}\n", mc2::fmt::as_u32((unsigned)s_frameCount), mc2::fmt::as_u32((unsigned)packed), mc2::fmt::as_u32((unsigned)g_cementMappedThisFrame), mc2::fmt::as_u32((unsigned)g_concreteAllCornersThisFrame));
+            mc2::fmt::print_out("[CEMENT_FRAME v1] frame={:d} packed_total={:d} cement_mapped={:d} concrete_all_corners={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(s_frameCount)), mc2::fmt::as_u32(static_cast<unsigned>(packed)), mc2::fmt::as_u32(static_cast<unsigned>(g_cementMappedThisFrame)), mc2::fmt::as_u32(static_cast<unsigned>(g_concreteAllCornersThisFrame)));
             fflush(stdout);
         }
     }
@@ -552,8 +552,8 @@ uint32_t UploadTerrainHandleLUT() {
     static uint32_t lut[MC_MAXTEXTURES];
     memset(lut, 0, sizeof(lut));
     for (uint32_t nodeId : g_uniqueTerrainNodeIds) {
-        if (nodeId > 0u && nodeId < (uint32_t)MC_MAXTEXTURES) {
-            const uint32_t th = static_cast<uint32_t>(tex_resolve((DWORD)nodeId));
+        if (nodeId > 0u && nodeId < static_cast<uint32_t>(MC_MAXTEXTURES)) {
+            const uint32_t th = static_cast<uint32_t>(tex_resolve(static_cast<DWORD>(nodeId)));
             lut[nodeId] = (th == 0u || th == 0xffffffffu) ? 0u : th;
         }
     }
@@ -568,16 +568,16 @@ uint32_t UploadTerrainHandleLUT() {
             s_lutFirstPrinted = true;
             int nonZero = 0;
             for (uint32_t nodeId : g_uniqueTerrainNodeIds) {
-                if (nodeId > 0u && nodeId < (uint32_t)MC_MAXTEXTURES && lut[nodeId] != 0u)
+                if (nodeId > 0u && nodeId < static_cast<uint32_t>(MC_MAXTEXTURES) && lut[nodeId] != 0u)
                     ++nonZero;
             }
             MC2_DIAGFE(stderr, "[TERRAIN_INDIRECT v1] event=lut_upload unique=%d nonzero=%d\n",
-                    (int)g_uniqueTerrainNodeIds.size(), nonZero);
+                    static_cast<int>(g_uniqueTerrainNodeIds.size()), nonZero);
             fflush(stderr);
         }
     }
 
-    return (uint32_t)g_denseRecipes.size();
+    return static_cast<uint32_t>(g_denseRecipes.size());
 }
 
 // ---------------------------------------------------------------------------
@@ -603,21 +603,21 @@ uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow) {
 
     if (!narrowOn || g_solidWindowStaging.empty()) {
         if (outUseWindow) *outUseWindow = 0;
-        return (uint32_t)g_denseRecipes.size();
+        return static_cast<uint32_t>(g_denseRecipes.size());
     }
 
     // Cap the window at the thin-record capacity — the GPU output array is
     // kMaxThinRecords entries; dispatching more invocations than that cannot
     // admit more records, and over-large windows waste GPU threads.
-    uint32_t windowCount = (uint32_t)g_solidWindowStaging.size();
+    uint32_t windowCount = static_cast<uint32_t>(g_solidWindowStaging.size());
     if (windowCount > (uint32_t)kMaxThinRecords)
-        windowCount = (uint32_t)kMaxThinRecords;
+        windowCount = static_cast<uint32_t>(kMaxThinRecords);
     if (windowCount == 0) {
         if (outUseWindow) *outUseWindow = 0;
-        return (uint32_t)g_denseRecipes.size();
+        return static_cast<uint32_t>(g_denseRecipes.size());
     }
 
-    const uint32_t bytesNeeded = windowCount * (uint32_t)sizeof(uint32_t);
+    const uint32_t bytesNeeded = windowCount * static_cast<uint32_t>(sizeof(uint32_t));
 
     // Lazy-grow via the CPU-side capacity mirror (no GPU round-trip).  Cap the
     // allocation at kMaxThinRecords entries (the hard upper bound).
@@ -628,7 +628,7 @@ uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow) {
     }
     if (g_solidQuadWindowSsbo == 0) {
         const uint32_t cap =
-            (uint32_t)(kMaxThinRecords * sizeof(uint32_t));
+            static_cast<uint32_t>((kMaxThinRecords * sizeof(uint32_t)));
         // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &g_solidQuadWindowSsbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_solidQuadWindowSsbo);
@@ -674,15 +674,15 @@ uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow) {
         winSet.assign(N, 0u);
         for (uint32_t i = 0; i < windowCount; ++i) {
             const uint32_t v = g_solidWindowStaging[i];
-            if (v < (uint32_t)N) winSet[v] = 1u;
+            if (v < static_cast<uint32_t>(N)) winSet[v] = 1u;
         }
 
         uint64_t refVisible = 0;
         uint64_t dropped    = 0;
         if (mapSide > 0) {
             for (size_t vn = 0; vn < N; ++vn) {
-                const long mx = (long)vn % mapSide;
-                const long my = (long)vn / mapSide;
+                const long mx = static_cast<long>(vn) % mapSide;
+                const long my = static_cast<long>(vn) / mapSide;
                 // GPU edge-skip (gpu_driven_terrain_solid.comp:244).
                 if (mx >= mapSide - 1 || my >= mapSide - 1) continue;
 
@@ -693,7 +693,7 @@ uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow) {
                 // objVertexActive[] the slim loop writes via
                 // setObjVertexActive(rv->vertexNum,true) — read independently
                 // here, NOT via g_solidWindowStaging.
-                if (!Terrain::getObjVertexActive((long)vn)) continue;
+                if (!Terrain::getObjVertexActive(static_cast<long>(vn))) continue;
 
                 const TerrainQuadRecipe& rec = g_denseRecipes[vn];
                 uint32_t nodeId = 0u, cementWord = 0u;
@@ -704,11 +704,11 @@ uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow) {
                 // GPU thSlot gate (comp:285-294): non-cement quads need a
                 // resolvable nodeId; cement quads pass regardless.
                 bool gpuKeep;
-                if (nodeId == 0u || nodeId >= (uint32_t)MC_MAXTEXTURES) {
+                if (nodeId == 0u || nodeId >= static_cast<uint32_t>(MC_MAXTEXTURES)) {
                     gpuKeep = cementQuad;
                 } else {
                     const uint32_t th =
-                        static_cast<uint32_t>(tex_resolve((DWORD)nodeId));
+                        static_cast<uint32_t>(tex_resolve(static_cast<DWORD>(nodeId)));
                     const bool resolvable =
                         (th != 0u && th != 0xffffffffu);
                     gpuKeep = resolvable || cementQuad;
@@ -717,7 +717,7 @@ uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow) {
 
                 // Restrict to quads that are actually live drawables this
                 // frame (a recipe slot with no current quad cannot vanish).
-                if (!gos_terrain_indirect::RecipeForVertexNum((int32_t)vn)) continue;
+                if (!gos_terrain_indirect::RecipeForVertexNum(static_cast<int32_t>(vn))) continue;
 
                 ++refVisible;
                 if (vn < N && winSet[vn] == 0u) ++dropped;
@@ -732,11 +732,11 @@ uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow) {
         s_parityTotDrop += dropped;
 
         if (frame < 64) {
-            mc2::fmt::print_err("[TERRAIN_SOLID_WINDOW v1] event=frame frame={:d} window={:d} ref_visible={:d} dropped={:d}\n", mc2::fmt::as_i32(frame), mc2::fmt::as_u32(windowCount), mc2::fmt::as_u32((unsigned)refVisible), mc2::fmt::as_u32((unsigned)dropped));
+            mc2::fmt::print_err("[TERRAIN_SOLID_WINDOW v1] event=frame frame={:d} window={:d} ref_visible={:d} dropped={:d}\n", mc2::fmt::as_i32(frame), mc2::fmt::as_u32(windowCount), mc2::fmt::as_u32(static_cast<unsigned>(refVisible)), mc2::fmt::as_u32(static_cast<unsigned>(dropped)));
             fflush(stderr);
         }
         if (frame > 0 && (frame % 600) == 0) {
-            mc2::fmt::print_err("[TERRAIN_SOLID_WINDOW v1] event=summary frames={:d} max_window={:d} total_dropped={:d}\n", mc2::fmt::as_u32((unsigned)frame), mc2::fmt::as_u32(s_parityMaxWin), mc2::fmt::as_u64((unsigned long long)s_parityTotDrop));
+            mc2::fmt::print_err("[TERRAIN_SOLID_WINDOW v1] event=summary frames={:d} max_window={:d} total_dropped={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(frame)), mc2::fmt::as_u32(s_parityMaxWin), mc2::fmt::as_u64(static_cast<unsigned long long>(s_parityTotDrop)));
             fflush(stderr);
         }
         // CRITICAL-1: catastrophic-axis tripwire — gated unconditional stderr,
@@ -745,7 +745,7 @@ uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow) {
         // assert() compiles to a no-op and a dropped visible quad would pass
         // silently.  fprintf always fires regardless of NDEBUG.
         if (dropped) {
-            mc2::fmt::print_err("[TERRAIN_SOLID_WINDOW v1] event=catastrophic dropped={:d} frame={:d}\n", mc2::fmt::as_u64((unsigned long long)dropped), mc2::fmt::as_i32(frame));
+            mc2::fmt::print_err("[TERRAIN_SOLID_WINDOW v1] event=catastrophic dropped={:d} frame={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(dropped)), mc2::fmt::as_i32(frame));
             fflush(stderr);
         }
         (void)dropped;

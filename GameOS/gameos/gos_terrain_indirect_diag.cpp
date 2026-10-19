@@ -186,7 +186,7 @@ int ParityCompareRecipeFrame() {
         if (q.vertices[0]->vertexNum < 0 || q.vertices[1]->vertexNum < 0 ||
             q.vertices[2]->vertexNum < 0 || q.vertices[3]->vertexNum < 0) continue;
 
-        const int32_t vn0 = (int32_t)q.vertices[0]->vertexNum;
+        const int32_t vn0 = static_cast<int32_t>(q.vertices[0]->vertexNum);
 
         const TerrainQuadRecipe* rec = RecipeForVertexNum(vn0);
         if (!rec) continue;
@@ -263,7 +263,7 @@ int ParityCompareRecipeFrame() {
             float _gf = (got_f), _ef = (exp_f); \
             memcpy(&_g, &_gf, 4); memcpy(&_e, &_ef, 4); \
             if (_g != _e) { \
-                ParityPrintMismatch((int)frame, (int)qi, "recipe", 0, 0, fname, _e, _g); \
+                ParityPrintMismatch(static_cast<int>(frame), static_cast<int>(qi), "recipe", 0, 0, fname, _e, _g); \
             } \
         } while(0)
 
@@ -299,7 +299,7 @@ int ParityCompareRecipeFrame() {
         FCMP("maxV", rec->maxV, e_maxV);
 
         if (g_tpacked != e_tpacked) {
-            ParityPrintMismatch((int)frame, (int)qi, "recipe", 0, 0,
+            ParityPrintMismatch(static_cast<int>(frame), static_cast<int>(qi), "recipe", 0, 0,
                                 "_wp0", e_tpacked, g_tpacked);
         }
 

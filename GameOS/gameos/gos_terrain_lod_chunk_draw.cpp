@@ -199,7 +199,7 @@ void TerrainLodSubmitFrame::bindProgramAndVisualHeight(const float* mvp) {
         static bool s_geoLogged = false;
         if (!s_geoLogged && visualDisplaceActive) {
             s_geoLogged = true;
-            mc2::fmt::print_out("[GEOMORPH v1] active={:d} mipFloats={:d} kill={:d} locMips={:d} locMorph={:d} locLodStep={:d}\n", mc2::fmt::as_i32(geomorphActive ? 1 : 0), mc2::fmt::as_i32(s_visualMipFloats), mc2::fmt::as_i32(s_geomorphKill ? 1 : 0), mc2::fmt::as_i32((int)s_locGeomorphMips), mc2::fmt::as_i32((int)s_locMorphFactor), mc2::fmt::as_i32((int)s_locLodStep));
+            mc2::fmt::print_out("[GEOMORPH v1] active={:d} mipFloats={:d} kill={:d} locMips={:d} locMorph={:d} locLodStep={:d}\n", mc2::fmt::as_i32(geomorphActive ? 1 : 0), mc2::fmt::as_i32(s_visualMipFloats), mc2::fmt::as_i32(s_geomorphKill ? 1 : 0), mc2::fmt::as_i32(static_cast<int>(s_locGeomorphMips)), mc2::fmt::as_i32(static_cast<int>(s_locMorphFactor)), mc2::fmt::as_i32(static_cast<int>(s_locLodStep)));
             fflush(stdout);
         }
     }
@@ -989,7 +989,7 @@ void TerrainLodSubmitFrame::drawChunks(int count, const TerrainDrawCommand* cmds
         glDisableVertexAttribArray(1);
         patch.vbo.bind();
         glEnableVertexAttribArray(0);
-        glVertexAttribIPointer(0, 2, GL_SHORT, (GLsizei)(2 * sizeof(int16_t)), (const void*)0);
+        glVertexAttribIPointer(0, 2, GL_SHORT, (GLsizei)(2 * sizeof(int16_t)), reinterpret_cast<const void*>(0));
 
         patch.ibo.bind();
 
@@ -1041,9 +1041,9 @@ void TerrainLodSubmitFrame::drawChunks(int count, const TerrainDrawCommand* cmds
                 // Attrib 1: isSkirt (third int16_t of SkirtVertex, offset=4).
                 patch.skirtVbo.bind();
                 glEnableVertexAttribArray(0);
-                glVertexAttribIPointer(0, 2, GL_SHORT, (GLsizei)(4 * sizeof(int16_t)), (const void*)0);
+                glVertexAttribIPointer(0, 2, GL_SHORT, (GLsizei)(4 * sizeof(int16_t)), reinterpret_cast<const void*>(0));
                 glEnableVertexAttribArray(1);
-                glVertexAttribIPointer(1, 1, GL_SHORT, (GLsizei)(4 * sizeof(int16_t)), (const void*)(2 * sizeof(int16_t)));
+                glVertexAttribIPointer(1, 1, GL_SHORT, (GLsizei)(4 * sizeof(int16_t)), reinterpret_cast<const void*>((2 * sizeof(int16_t))));
 
                 patch.skirtIbo.bind();
                 // Phase 10.2b: draw ONLY the edges flagged in the per-block mask
@@ -1053,7 +1053,7 @@ void TerrainLodSubmitFrame::drawChunks(int count, const TerrainDrawCommand* cmds
                     if (((mask >> e) & 1u) == 0u) continue;
                     if (patch.skirtEdgeCount[e] <= 0) continue;
                     glDrawElements(GL_TRIANGLES, patch.skirtEdgeCount[e], GL_UNSIGNED_SHORT,
-                                   (const void*)(size_t)(patch.skirtEdgeOffset[e] * sizeof(uint16_t)));
+                                   reinterpret_cast<const void*>(static_cast<size_t>((patch.skirtEdgeOffset[e] * sizeof(uint16_t)))));
                 }
 
                 glDisableVertexAttribArray(1);

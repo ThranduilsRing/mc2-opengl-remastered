@@ -37,7 +37,7 @@ static float s_cliffTessClamped = -1.0f;   // set once at program build (GL vali
 static float clampTess(float want) {
     GLint maxGen = 0;
     glGetIntegerv(GL_MAX_TESS_GEN_LEVEL, &maxGen);
-    float m = (maxGen > 0) ? (float)maxGen : 64.0f;   // GL spec floor is 64
+    float m = (maxGen > 0) ? static_cast<float>(maxGen) : 64.0f;   // GL spec floor is 64
     float c = want < 1.0f ? 1.0f : (want > m ? m : want);
     if (c != want)
         mc2::fmt::print_err("[CLIFF_TESS 3a] tess {:.1f} clamped to GL_MAX_TESS_GEN_LEVEL {:.0f}\n", want, m);
@@ -115,7 +115,7 @@ void mirrorTerrainUniforms(GLuint src, GLuint dst) {
                 // corruption. Fail loud + skip rather than corrupt (see the
                 // COMPLETENESS note above; 3b must add a per-element path).
                 if (size > 1) {
-                    mc2::fmt::print_err("[CLIFF_TESS 3a] WARN unmirrored float ARRAY uniform '{}' size={:d} (not handled; skipped)\n", mc2::fmt::safe(name), mc2::fmt::as_i32((int)size));
+                    mc2::fmt::print_err("[CLIFF_TESS 3a] WARN unmirrored float ARRAY uniform '{}' size={:d} (not handled; skipped)\n", mc2::fmt::safe(name), mc2::fmt::as_i32(static_cast<int>(size)));
                     break;
                 }
                 float v[4]={0,0,0,0}; glGetnUniformfv(src, sloc, sizeof(v), v);
@@ -156,7 +156,7 @@ void mirrorTerrainUniforms(GLuint src, GLuint dst) {
                 // corruption. Fail loud + skip rather than corrupt (see the
                 // COMPLETENESS note above; 3b must add a per-element path).
                 if (size > 1) {
-                    mc2::fmt::print_err("[CLIFF_TESS 3a] WARN unmirrored int/sampler ARRAY uniform '{}' size={:d} type=0x{:x} (not handled; skipped)\n", mc2::fmt::safe(name), mc2::fmt::as_i32((int)size), mc2::fmt::as_u32((unsigned)type));
+                    mc2::fmt::print_err("[CLIFF_TESS 3a] WARN unmirrored int/sampler ARRAY uniform '{}' size={:d} type=0x{:x} (not handled; skipped)\n", mc2::fmt::safe(name), mc2::fmt::as_i32(static_cast<int>(size)), mc2::fmt::as_u32(static_cast<unsigned>(type)));
                     break;
                 }
                 GLint v[4]={0,0,0,0}; glGetnUniformiv(src, sloc, sizeof(v), v);
@@ -171,7 +171,7 @@ void mirrorTerrainUniforms(GLuint src, GLuint dst) {
                 // No other uniform types exist in terrain_lod_chunk. If one is
                 // ever added, this warns rather than silently dropping it.
                 mc2::fmt::print_err("[CLIFF_TESS 3a] WARN unmirrored uniform '{}' type=0x{:x}\n",
-                             mc2::fmt::safe(name), mc2::fmt::as_u32((unsigned)type));
+                             mc2::fmt::safe(name), mc2::fmt::as_u32(static_cast<unsigned>(type)));
                 break;
         }
     }
@@ -643,7 +643,7 @@ void gos_TerrainLodChunk_Init()
             s_locShaderTime        = glGetUniformLocation(s_terrainProgram, "u_shaderTime");
             s_locShorelineStrength     = glGetUniformLocation(s_terrainProgram, "u_shorelineStrength");
             s_locShorelineFoamStrength = glGetUniformLocation(s_terrainProgram, "u_shorelineFoamStrength");
-            mc2::fmt::print_out("[TerrainLodChunk] shader loaded prog={:d} locs: originX={:d} originY={:d} mapSide={:d} halfMap={:d} mvp={:d} lodStep={:d} skirtDepth={:d} forceColor={:d}\n", mc2::fmt::as_u32((unsigned)s_terrainProgram), mc2::fmt::as_i32(s_locBlockOriginX), mc2::fmt::as_i32(s_locBlockOriginY), mc2::fmt::as_i32(s_locMapSide), mc2::fmt::as_i32(s_locHalfMap), mc2::fmt::as_i32(s_locMvp), mc2::fmt::as_i32(s_locLodStep), mc2::fmt::as_i32(s_locSkirtDepth), mc2::fmt::as_i32(s_locForceColor));
+            mc2::fmt::print_out("[TerrainLodChunk] shader loaded prog={:d} locs: originX={:d} originY={:d} mapSide={:d} halfMap={:d} mvp={:d} lodStep={:d} skirtDepth={:d} forceColor={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(s_terrainProgram)), mc2::fmt::as_i32(s_locBlockOriginX), mc2::fmt::as_i32(s_locBlockOriginY), mc2::fmt::as_i32(s_locMapSide), mc2::fmt::as_i32(s_locHalfMap), mc2::fmt::as_i32(s_locMvp), mc2::fmt::as_i32(s_locLodStep), mc2::fmt::as_i32(s_locSkirtDepth), mc2::fmt::as_i32(s_locForceColor));
             fflush(stdout);
             // Phase 7.5: separate startup confirmation line for easy grep.
             mc2::fmt::print_out("[TerrainLOD v1] shader program compiled OK (program={:d})\n", mc2::fmt::as_u32(s_terrainProgram));
@@ -669,7 +669,7 @@ void gos_TerrainLodChunk_Init()
                 s_cliffTessClamped = clampTess(s_cliffTessWanted);
                 s_locCliffTessLevel =
                     glGetUniformLocation(s_terrainTessProgram->shp_, "u_cliffTessLevel");
-                mc2::fmt::print_err("[CLIFF_TESS 3a] tess program compiled (prog={:d} maxTess={:.1f} locTess={:d})\n", mc2::fmt::as_u32((unsigned)s_terrainTessProgram->shp_), s_cliffTessClamped, mc2::fmt::as_i32((int)s_locCliffTessLevel));
+                mc2::fmt::print_err("[CLIFF_TESS 3a] tess program compiled (prog={:d} maxTess={:.1f} locTess={:d})\n", mc2::fmt::as_u32(static_cast<unsigned>(s_terrainTessProgram->shp_)), s_cliffTessClamped, mc2::fmt::as_i32(static_cast<int>(s_locCliffTessLevel)));
             }
         }
     }

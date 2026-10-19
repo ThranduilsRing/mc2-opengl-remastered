@@ -41,7 +41,7 @@ bool computeBuildProgram() {
         MC2_GL_UseProgram(g_solidComputeProgram);
         const GLint locMTR  = glGetUniformLocation(g_solidComputeProgram, "u_maxThinRecords");
         const GLint locWUPV = glGetUniformLocation(g_solidComputeProgram, "u_worldUnitsPerVertex");
-        if (locMTR  >= 0) glUniform1i(locMTR, (int)kMaxThinRecords);
+        if (locMTR  >= 0) glUniform1i(locMTR, static_cast<int>(kMaxThinRecords));
         if (locWUPV >= 0) glUniform1f(locWUPV, Terrain::worldUnitsPerVertex);
         MC2_GL_UseProgram(0);
     }
@@ -105,7 +105,7 @@ void computeRingFenceWait(int probedSlot, GLenum& waitResult, uint64_t& waitUs) 
         waitResult = glClientWaitSync(g_thinRingFences[probedSlot],
                          GL_SYNC_FLUSH_COMMANDS_BIT, 0u /*non-blocking*/);
         const auto t1 = std::chrono::steady_clock::now();
-        waitUs = (uint64_t)std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
+        waitUs = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count());
         if (waitResult != GL_TIMEOUT_EXPIRED && waitResult != GL_WAIT_FAILED) {
             // Fence signaled (GL_ALREADY_SIGNALED or GL_CONDITION_SATISFIED).
             glDeleteSync(g_thinRingFences[probedSlot]);
@@ -141,9 +141,9 @@ void computeTripwireMiss(FILE* s_probeSink, uint64_t ringFrameIdx, int probedSlo
             PROBE_LOG(
                 "[RING_TRIPWIRE v1] frame=%llu slot=%d fence=%d wait=0x%x wait_us=%llu "
                 "totalMiss=%u totalTimeout=%u mvpFp=0x%08x\n",
-                (unsigned long long)ringFrameIdx, probedSlot, (int)fencePresent,
-                (unsigned)waitResult, (unsigned long long)waitUs,
-                (unsigned)totalMiss, (unsigned)totalTimeout, (unsigned)mvpFp);
+                static_cast<unsigned long long>(ringFrameIdx), probedSlot, static_cast<int>(fencePresent),
+                static_cast<unsigned>(waitResult), static_cast<unsigned long long>(waitUs),
+                static_cast<unsigned>(totalMiss), static_cast<unsigned>(totalTimeout), static_cast<unsigned>(mvpFp));
         }
     }
 }
@@ -195,15 +195,15 @@ void computeBucketHeaderReadback(FILE* s_probeSink, bool s_ringTrace, uint64_t r
         if (prevVisible > s_peakVisible) s_peakVisible = prevVisible;
         if (prevNearW   > s_peakNearW  ) s_peakNearW   = prevNearW;
         if (prevNearW > 0) ++s_nearWFrames;
-        const bool overshot = (prevVisible >= (uint32_t)kMaxThinRecords);
+        const bool overshot = (prevVisible >= static_cast<uint32_t>(kMaxThinRecords));
         if (overshot) {
             ++s_overshootCount;
             PROBE_LOG(
                 "[RING_OVERSHOOT v1] frame=%llu prev_visible=%u cap=%zu "
                 "overshootCount=%u peak=%u mvpFp=0x%08x\n",
-                (unsigned long long)ringFrameIdx, (unsigned)prevVisible,
-                kMaxThinRecords, (unsigned)s_overshootCount,
-                (unsigned)s_peakVisible, (unsigned)mvpFp);
+                static_cast<unsigned long long>(ringFrameIdx), static_cast<unsigned>(prevVisible),
+                kMaxThinRecords, static_cast<unsigned>(s_overshootCount),
+                static_cast<unsigned>(s_peakVisible), static_cast<unsigned>(mvpFp));
         }
         // Probe 6 (FULL COVERAGE): compare thin[i].recipeIdx vs canary[i]
         // for EVERY i in [0, visibleCount).  Compute writes both at the same
@@ -222,15 +222,15 @@ void computeBucketHeaderReadback(FILE* s_probeSink, bool s_ringTrace, uint64_t r
         // thin.recipeIdx = ~80KB/frame at peak visibleCount=10000. PCIe stall
         // possible but acceptable for diagnostic.
         if (s_thinCanaryEnabled && g_thinCanarySSBO != 0 && g_thinRecordSSBO != 0 && prevVisible > 0) {
-            const uint32_t vis = prevVisible < (uint32_t)kMaxThinRecords
-                                ? prevVisible : (uint32_t)kMaxThinRecords;
+            const uint32_t vis = prevVisible < static_cast<uint32_t>(kMaxThinRecords)
+                                ? prevVisible : static_cast<uint32_t>(kMaxThinRecords);
             const int priorSlot = (g_thinRingSlot + kThinRingFrames - 1) % kThinRingFrames;
             const GLintptr thinSlotByteOffset = (GLintptr)(priorSlot * kThinRecordBytes);
 
             static std::vector<uint32_t> s_canaryBuf;
             static std::vector<uint32_t> s_thinBlock;
-            if (s_canaryBuf.size() < (size_t)vis * 2u) s_canaryBuf.resize((size_t)vis * 2u);
-            const size_t thinDwords = (size_t)vis * 8u;
+            if (s_canaryBuf.size() < static_cast<size_t>(vis) * 2u) s_canaryBuf.resize(static_cast<size_t>(vis) * 2u);
+            const size_t thinDwords = static_cast<size_t>(vis) * 8u;
             if (s_thinBlock.size() < thinDwords) s_thinBlock.resize(thinDwords);
 
             // 1) Bulk-read canary[0..2*vis-1] (single readback, vis*8 bytes).
@@ -290,11 +290,11 @@ void computeBucketHeaderReadback(FILE* s_probeSink, bool s_ringTrace, uint64_t r
                         "mismatch_in_frame=%u first_bad_idx=%u "
                         "first_bad_canary=%u first_bad_thin=%u "
                         "frames=%u total=%llu mvpFp=0x%08x\n",
-                        (unsigned long long)ringFrameIdx, (unsigned)vis, priorSlot,
-                        (unsigned)recipeMismatchInFrame, (unsigned)firstBadIdxR,
-                        (unsigned)firstBadCanaryR, (unsigned)firstBadThinR,
-                        (unsigned)s_recipeIdxMismatchFrames,
-                        (unsigned long long)s_recipeIdxMismatchTotal, (unsigned)mvpFp);
+                        static_cast<unsigned long long>(ringFrameIdx), static_cast<unsigned>(vis), priorSlot,
+                        static_cast<unsigned>(recipeMismatchInFrame), static_cast<unsigned>(firstBadIdxR),
+                        static_cast<unsigned>(firstBadCanaryR), static_cast<unsigned>(firstBadThinR),
+                        static_cast<unsigned>(s_recipeIdxMismatchFrames),
+                        static_cast<unsigned long long>(s_recipeIdxMismatchTotal), static_cast<unsigned>(mvpFp));
                     s_nextRecipeReportAt = s_nextRecipeReportAt < 100
                         ? (s_nextRecipeReportAt + 1) : (s_nextRecipeReportAt * 10);
                 }
@@ -307,11 +307,11 @@ void computeBucketHeaderReadback(FILE* s_probeSink, bool s_ringTrace, uint64_t r
                         "mismatch_in_frame=%u first_bad_idx=%u "
                         "first_bad_canary=0x%x first_bad_thin=0x%x "
                         "frames=%u total=%llu mvpFp=0x%08x\n",
-                        (unsigned long long)ringFrameIdx, (unsigned)vis, priorSlot,
-                        (unsigned)flagsMismatchInFrame, (unsigned)firstBadIdxF,
-                        (unsigned)firstBadCanaryF, (unsigned)firstBadThinF,
-                        (unsigned)s_flagsMismatchFrames,
-                        (unsigned long long)s_flagsMismatchTotal, (unsigned)mvpFp);
+                        static_cast<unsigned long long>(ringFrameIdx), static_cast<unsigned>(vis), priorSlot,
+                        static_cast<unsigned>(flagsMismatchInFrame), static_cast<unsigned>(firstBadIdxF),
+                        static_cast<unsigned>(firstBadCanaryF), static_cast<unsigned>(firstBadThinF),
+                        static_cast<unsigned>(s_flagsMismatchFrames),
+                        static_cast<unsigned long long>(s_flagsMismatchTotal), static_cast<unsigned>(mvpFp));
                     s_nextFlagsReportAt = s_nextFlagsReportAt < 100
                         ? (s_nextFlagsReportAt + 1) : (s_nextFlagsReportAt * 10);
                 }
@@ -334,9 +334,9 @@ void computeBucketHeaderReadback(FILE* s_probeSink, bool s_ringTrace, uint64_t r
                 PROBE_LOG(
                     "[RING_SPREAD v1] frame=%llu spread_count=%u spread_frames=%u "
                     "peak_spread=%u prev_visible=%u mvpFp=0x%08x\n",
-                    (unsigned long long)ringFrameIdx, (unsigned)prevSpread,
-                    (unsigned)s_spreadFrames, (unsigned)s_peakSpread,
-                    (unsigned)prevVisible, (unsigned)mvpFp);
+                    static_cast<unsigned long long>(ringFrameIdx), static_cast<unsigned>(prevSpread),
+                    static_cast<unsigned>(s_spreadFrames), static_cast<unsigned>(s_peakSpread),
+                    static_cast<unsigned>(prevVisible), static_cast<unsigned>(mvpFp));
                 s_nextSpreadReportAt = s_nextSpreadReportAt < 100 ? (s_nextSpreadReportAt + 1)
                                      : (s_nextSpreadReportAt * 10);
             }
@@ -353,15 +353,15 @@ void computeBucketHeaderReadback(FILE* s_probeSink, bool s_ringTrace, uint64_t r
                 PROBE_LOG(
                     "[RING_NEARW v1] frame=%llu near_w_count=%u total_near_w_frames=%u "
                     "peak_near_w=%u prev_visible=%u mvpFp=0x%08x\n",
-                    (unsigned long long)ringFrameIdx, (unsigned)prevNearW,
-                    (unsigned)s_nearWFrames, (unsigned)s_peakNearW,
-                    (unsigned)prevVisible, (unsigned)mvpFp);
+                    static_cast<unsigned long long>(ringFrameIdx), static_cast<unsigned>(prevNearW),
+                    static_cast<unsigned>(s_nearWFrames), static_cast<unsigned>(s_peakNearW),
+                    static_cast<unsigned>(prevVisible), static_cast<unsigned>(mvpFp));
                 s_nextNearWReportAt = s_nextNearWReportAt < 100 ? (s_nextNearWReportAt + 1)
                                     : (s_nextNearWReportAt * 10);
             }
         }
         if (s_ringTrace) {
-            mc2::fmt::print_out("[RING v1] frame={:d} slot={:d} fence={:d} wait=0x{:x} wait_us={:d} prev_visible={:d} near_w={:d} peak={:d} peakNearW={:d} mvpFp=0x{:08x}\n", mc2::fmt::as_u64((unsigned long long)ringFrameIdx), mc2::fmt::as_i32(probedSlot), mc2::fmt::as_i32((int)fencePresent), mc2::fmt::as_u32((unsigned)waitResult), mc2::fmt::as_u64((unsigned long long)waitUs), mc2::fmt::as_u32((unsigned)prevVisible), mc2::fmt::as_u32((unsigned)prevNearW), mc2::fmt::as_u32((unsigned)s_peakVisible), mc2::fmt::as_u32((unsigned)s_peakNearW), mc2::fmt::as_u32((unsigned)mvpFp));
+            mc2::fmt::print_out("[RING v1] frame={:d} slot={:d} fence={:d} wait=0x{:x} wait_us={:d} prev_visible={:d} near_w={:d} peak={:d} peakNearW={:d} mvpFp=0x{:08x}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(ringFrameIdx)), mc2::fmt::as_i32(probedSlot), mc2::fmt::as_i32(static_cast<int>(fencePresent)), mc2::fmt::as_u32(static_cast<unsigned>(waitResult)), mc2::fmt::as_u64(static_cast<unsigned long long>(waitUs)), mc2::fmt::as_u32(static_cast<unsigned>(prevVisible)), mc2::fmt::as_u32(static_cast<unsigned>(prevNearW)), mc2::fmt::as_u32(static_cast<unsigned>(s_peakVisible)), mc2::fmt::as_u32(static_cast<unsigned>(s_peakNearW)), mc2::fmt::as_u32(static_cast<unsigned>(mvpFp)));
             fflush(stdout);
         }
         // Periodic peak summary even when MC2_RING_TRACE is off so manual
@@ -371,12 +371,12 @@ void computeBucketHeaderReadback(FILE* s_probeSink, bool s_ringTrace, uint64_t r
             PROBE_LOG(
                 "[RING_PEAK v1] frame=%llu peak_visible=%u cap=%zu "
                 "overshootCount=%u peak_near_w=%u near_w_frames=%u\n",
-                (unsigned long long)ringFrameIdx, (unsigned)s_peakVisible,
-                kMaxThinRecords, (unsigned)s_overshootCount,
-                (unsigned)s_peakNearW, (unsigned)s_nearWFrames);
+                static_cast<unsigned long long>(ringFrameIdx), static_cast<unsigned>(s_peakVisible),
+                kMaxThinRecords, static_cast<unsigned>(s_overshootCount),
+                static_cast<unsigned>(s_peakNearW), static_cast<unsigned>(s_nearWFrames));
         }
     } else if (s_ringTrace) {
-        mc2::fmt::print_out("[RING v1] frame={:d} slot={:d} fence={:d} wait=0x{:x} wait_us={:d} mvpFp=0x{:08x}\n", mc2::fmt::as_u64((unsigned long long)ringFrameIdx), mc2::fmt::as_i32(probedSlot), mc2::fmt::as_i32((int)fencePresent), mc2::fmt::as_u32((unsigned)waitResult), mc2::fmt::as_u64((unsigned long long)waitUs), mc2::fmt::as_u32((unsigned)mvpFp));
+        mc2::fmt::print_out("[RING v1] frame={:d} slot={:d} fence={:d} wait=0x{:x} wait_us={:d} mvpFp=0x{:08x}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(ringFrameIdx)), mc2::fmt::as_i32(probedSlot), mc2::fmt::as_i32(static_cast<int>(fencePresent)), mc2::fmt::as_u32(static_cast<unsigned>(waitResult)), mc2::fmt::as_u64(static_cast<unsigned long long>(waitUs)), mc2::fmt::as_u32(static_cast<unsigned>(mvpFp)));
         fflush(stdout);
     }
 }
@@ -390,8 +390,8 @@ bool computeRingSkipGuard(FILE* s_probeSink, uint64_t ringFrameIdx, int probedSl
         static uint32_t s_ringSkipCount = 0;
         ++s_ringSkipCount;
         PROBE_LOG("[RING_SKIP v1] frame=%llu slot=%d wait=0x%x skip_total=%u\n",
-            (unsigned long long)ringFrameIdx, probedSlot,
-            (unsigned)waitResult, (unsigned)s_ringSkipCount);
+            static_cast<unsigned long long>(ringFrameIdx), probedSlot,
+            static_cast<unsigned>(waitResult), static_cast<unsigned>(s_ringSkipCount));
         return true;
     }
     return false;
@@ -451,7 +451,7 @@ bool computeBindAndUniforms(GLuint lightSsbo, bool s_bucketHeaderTrace, uint32_t
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2,
                      g_terrainHandleLutSSBO ? g_terrainHandleLutSSBO : 0);
     gpuBindSsboRange(3, g_thinRecordSSBO,
-                     (long long)thinSlotOffset, (long long)kThinRecordBytes,
+                     static_cast<long long>(thinSlotOffset), static_cast<long long>(kThinRecordBytes),
                      "terrain.thinRecord");
     // Step 2b: bucket-header SSBO only bound when MC2_BUCKET_HEADER_TRACE
     // armed.  When unbound, the shader sees u_bucketHeaderTrace=0 and skips
@@ -485,11 +485,11 @@ bool computeBindAndUniforms(GLuint lightSsbo, bool s_bucketHeaderTrace, uint32_t
         return true;
     }
 
-    glUniform1i(g_locSolidWC, (int)windowCount);
+    glUniform1i(g_locSolidWC, static_cast<int>(windowCount));
     // Per-frame: the current map's side. Stale-from-first-map here = all-black on
     // any later different-size map (the shader's edge cull + index decompose use it).
     if (g_locSolidMS >= 0)
-        glUniform1i(g_locSolidMS, (int)Terrain::realVerticesMapSide);
+        glUniform1i(g_locSolidMS, static_cast<int>(Terrain::realVerticesMapSide));
     if (g_locSolidAO >= 0)
         glUniform1i(g_locSolidAO, Terrain::terrainTextures2 != nullptr ? 1 : 0);
     // Step 2b: upload u_bucketHeaderTrace gate every frame.  Uniform values
@@ -679,12 +679,12 @@ void computeDepthTransitionProbe() {
 
             auto emitLine = [&](const DtLine& L, const char* kind) {
                 const long long cpuStampDelta =
-                    (long long)L.cStamp - (long long)s_prevCpuStamp;
+                    static_cast<long long>(L.cStamp) - static_cast<long long>(s_prevCpuStamp);
                 // cpuw_fresh=1 only if the CPU sampler advanced its stamp
                 // since the previous emitted line AND it found a vertex.
                 const int cpuwFresh =
                     (L.cAny && cpuStampDelta != 0) ? 1 : 0;
-                mc2::fmt::print_out("[DEPTH_TRANSITION v1] kind={} f={:d} maxMvpDelta={:.7f} z_terr={:.7f} z_cpuw={:.7f} z_gpuw={:.7f} z_decal={:.7f} dz_cpuw={:.7f} dz_gpuw={:.7f} dz_decal={:.7f} cpuw_fresh={:d} cpuw_any={:d} cpuw_stamp={:d} cpuw_stamp_delta={:d} decal_ok={:d} decal_z_approx=0\n", mc2::fmt::safe(kind), mc2::fmt::as_u64((unsigned long long)L.f), (double)L.md, (double)L.zt, (double)L.zc, (double)L.zg, (double)L.zd, (double)(L.zc - L.zt), (double)(L.zg - L.zt), (double)(L.zd - L.zt), mc2::fmt::as_i32(cpuwFresh), mc2::fmt::as_i32(L.cAny), mc2::fmt::as_u64((unsigned long long)L.cStamp), mc2::fmt::as_i64(cpuStampDelta), mc2::fmt::as_i32(decalOk));
+                mc2::fmt::print_out("[DEPTH_TRANSITION v1] kind={} f={:d} maxMvpDelta={:.7f} z_terr={:.7f} z_cpuw={:.7f} z_gpuw={:.7f} z_decal={:.7f} dz_cpuw={:.7f} dz_gpuw={:.7f} dz_decal={:.7f} cpuw_fresh={:d} cpuw_any={:d} cpuw_stamp={:d} cpuw_stamp_delta={:d} decal_ok={:d} decal_z_approx=0\n", mc2::fmt::safe(kind), mc2::fmt::as_u64(static_cast<unsigned long long>(L.f)), static_cast<double>(L.md), static_cast<double>(L.zt), static_cast<double>(L.zc), static_cast<double>(L.zg), static_cast<double>(L.zd), static_cast<double>((L.zc - L.zt)), static_cast<double>((L.zg - L.zt)), static_cast<double>((L.zd - L.zt)), mc2::fmt::as_i32(cpuwFresh), mc2::fmt::as_i32(L.cAny), mc2::fmt::as_u64(static_cast<unsigned long long>(L.cStamp)), mc2::fmt::as_i64(cpuStampDelta), mc2::fmt::as_i32(decalOk));
                 fflush(stdout);
                 s_prevCpuStamp = L.cStamp;
             };
@@ -749,7 +749,7 @@ void computePostDispatchProbes(FILE* s_probeSink, bool s_ringTrace, uint64_t rin
             glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)sizeof(vis), &vis);
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
             expectedCount =
-                (vis < (uint32_t)kMaxThinRecords ? vis : (uint32_t)kMaxThinRecords) * 6u;
+                (vis < static_cast<uint32_t>(kMaxThinRecords) ? vis : static_cast<uint32_t>(kMaxThinRecords)) * 6u;
         }
         if (g_solidBucketHeaderSsbo != 0 && cmdQuad[0] != expectedCount) {
             static uint32_t s_cmdMismatchCount = 0;
@@ -757,10 +757,10 @@ void computePostDispatchProbes(FILE* s_probeSink, bool s_ringTrace, uint64_t rin
             PROBE_LOG(
                 "[RING_CMDPATCH v1] frame=%llu cmd_count=%u expected=%u "
                 "visible=%u inst=%u first=%u base=%u mismatchCount=%u\n",
-                (unsigned long long)ringFrameIdx, (unsigned)cmdQuad[0],
-                (unsigned)expectedCount, (unsigned)vis,
-                (unsigned)cmdQuad[1], (unsigned)cmdQuad[2], (unsigned)cmdQuad[3],
-                (unsigned)s_cmdMismatchCount);
+                static_cast<unsigned long long>(ringFrameIdx), static_cast<unsigned>(cmdQuad[0]),
+                static_cast<unsigned>(expectedCount), static_cast<unsigned>(vis),
+                static_cast<unsigned>(cmdQuad[1]), static_cast<unsigned>(cmdQuad[2]), static_cast<unsigned>(cmdQuad[3]),
+                static_cast<unsigned>(s_cmdMismatchCount));
         }
     }
 

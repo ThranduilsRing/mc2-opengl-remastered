@@ -43,12 +43,12 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     const mc2terrain::TerrainFieldStore* fields = gos_TerrainFieldStore();
     if (!fields || s_mapSide <= 0 || fields->mapSide() != s_mapSide) return 0;
     out->patches    = s_vkTerrainPatches.data();
-    out->patchCount = (uint32_t)s_vkTerrainPatches.size();
+    out->patchCount = static_cast<uint32_t>(s_vkTerrainPatches.size());
     std::memcpy(out->worldToClipGL, s_vkTerrainMvp, sizeof(out->worldToClipGL));
     out->mapSide       = s_mapSide;
     out->halfMap       = s_halfMap;
     out->heightCpu     = fields->height().data();
-    out->heightBytes   = (uint64_t)fields->height().size() * sizeof(float);
+    out->heightBytes   = static_cast<uint64_t>(fields->height().size()) * sizeof(float);
     out->heightVersion = fields->heightVersion();
     // COLORMAP-BASE sub-slice: hand the GL colormap atlas tex + UV params to the
     // island so it can copy-once import the colormap and sample the REAL base color.
@@ -88,9 +88,9 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->cementDiagConnect = mc2::gate::get<"MC2_TERRAIN_CEMENT_DIAG_CONNECT">() ? 1 : 0;
     }
     // Null until the words of this map were uploaded: the island then keeps an all-zero (no cement) field of the same size.
-    const bool cementMatchesMap = fields->cementWords().size() == (size_t)s_mapSide * (size_t)s_mapSide;
+    const bool cementMatchesMap = fields->cementWords().size() == static_cast<size_t>(s_mapSide) * static_cast<size_t>(s_mapSide);
     out->cementCpu          = cementMatchesMap ? fields->cementWords().data() : nullptr;
-    out->cementBytes        = (uint64_t)s_mapSide * (uint64_t)s_mapSide * sizeof(unsigned int);
+    out->cementBytes        = static_cast<uint64_t>(s_mapSide) * static_cast<uint64_t>(s_mapSide) * sizeof(unsigned int);
     out->cementVersion      = fields->cementVersion();
 
     // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): hand the 4x visual-height bake SSBO +
@@ -106,7 +106,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         && s_visualSide > 0 && fields->visualSide() == s_visualSide) {
         // The fine bake only (the mip maxes that follow it are a GL-path geomorph input).
         out->visualHeightCpu     = fields->visualHeight().data();
-        out->visualHeightBytes   = (uint64_t)s_visualSide * (uint64_t)s_visualSide * sizeof(float);
+        out->visualHeightBytes   = static_cast<uint64_t>(s_visualSide) * static_cast<uint64_t>(s_visualSide) * sizeof(float);
         out->visualHeightVersion = fields->visualHeightVersion();
         out->visualSide          = s_visualSide;
         out->visualDisplaceFar   = terrainVisualDisplaceFarParam();
@@ -249,7 +249,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     // detailEnabled=0 -> VK N stays flat-up, byte-identical to the lighting-only frame).
     {
         out->detailEnabled       = 1;
-        out->glMatNormalArrayTex = (uint32_t)gos_GetTerrainNormalArrayTex();
+        out->glMatNormalArrayTex = static_cast<uint32_t>(gos_GetTerrainNormalArrayTex());
         for (int slot = 0; slot < 9; ++slot)
             out->matNormalHandles[slot] = gos_GetTerrainMaterialNormalHandle(slot);
         // GL uniform values (gameos_graphics.cpp member defaults; all 1.0). The VK frag
@@ -409,7 +409,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
             unsigned displacedPatches = 0;
             for (uint32_t i = 0; i < out->patchCount; ++i)
                 if (out->patches[i].visualMode == 2) ++displacedPatches;
-            mc2::fmt::print(f, "{{\"island\":\"terrain\",\"patchCount\":{:d},\"mapSide\":{:d},\"halfMap\":{:.6f},\"heightVersion\":{:d},\"cementVersion\":{:d},\"useCement\":{:d},\"lightingEnabled\":{:d},\"shadowsEnabled\":{:d},\"dynShadowsEnabled\":{:d},\"detailEnabled\":{:d},\"lodFadeEnabled\":{:d},\"visualSide\":{:d},\"visualDisplaceFar\":{:.6f},\"displacedPatches\":{:d},\"patches\":[", mc2::fmt::as_u32(out->patchCount), mc2::fmt::as_i32(out->mapSide), out->halfMap, mc2::fmt::as_u64((unsigned long long)out->heightVersion), mc2::fmt::as_u64((unsigned long long)out->cementVersion), mc2::fmt::as_i32(out->useCement), mc2::fmt::as_i32(out->lightingEnabled), mc2::fmt::as_i32(out->shadowsEnabled), mc2::fmt::as_i32(out->dynShadowsEnabled), mc2::fmt::as_i32(out->detailEnabled), mc2::fmt::as_i32(out->lodFadeEnabled), mc2::fmt::as_i32(out->visualSide), out->visualDisplaceFar, mc2::fmt::as_u32(displacedPatches));
+            mc2::fmt::print(f, "{{\"island\":\"terrain\",\"patchCount\":{:d},\"mapSide\":{:d},\"halfMap\":{:.6f},\"heightVersion\":{:d},\"cementVersion\":{:d},\"useCement\":{:d},\"lightingEnabled\":{:d},\"shadowsEnabled\":{:d},\"dynShadowsEnabled\":{:d},\"detailEnabled\":{:d},\"lodFadeEnabled\":{:d},\"visualSide\":{:d},\"visualDisplaceFar\":{:.6f},\"displacedPatches\":{:d},\"patches\":[", mc2::fmt::as_u32(out->patchCount), mc2::fmt::as_i32(out->mapSide), out->halfMap, mc2::fmt::as_u64(static_cast<unsigned long long>(out->heightVersion)), mc2::fmt::as_u64(static_cast<unsigned long long>(out->cementVersion)), mc2::fmt::as_i32(out->useCement), mc2::fmt::as_i32(out->lightingEnabled), mc2::fmt::as_i32(out->shadowsEnabled), mc2::fmt::as_i32(out->dynShadowsEnabled), mc2::fmt::as_i32(out->detailEnabled), mc2::fmt::as_i32(out->lodFadeEnabled), mc2::fmt::as_i32(out->visualSide), out->visualDisplaceFar, mc2::fmt::as_u32(displacedPatches));
             for (uint32_t i = 0; i < out->patchCount; ++i) {
                 const Mc2TerrainTier1Patch& p = out->patches[i];
                 mc2::fmt::print(f, "{}{{\"qcX\":{:d},\"qcY\":{:d},\"blockOriginX\":{:d},\"blockOriginY\":{:d},\"lodStep\":{:d},\"skirtDepth\":{:.6f},\"skirtEdgeMask\":{:d}}}", mc2::fmt::safe(i ? "," : ""), mc2::fmt::as_i32(p.quadCountX), mc2::fmt::as_i32(p.quadCountY), mc2::fmt::as_i32(p.blockOriginX), mc2::fmt::as_i32(p.blockOriginY), mc2::fmt::as_i32(p.lodStep), p.skirtDepth, mc2::fmt::as_u32(p.skirtEdgeMask));

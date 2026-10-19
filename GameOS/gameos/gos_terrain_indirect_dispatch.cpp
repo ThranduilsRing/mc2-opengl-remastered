@@ -65,7 +65,7 @@ void BeginFrameSolidWindow() {
     // vector::clear on a trivially-destructible uint32_t is a size reset; no
     // allocation occurs in the hot loop once the high-water mark is reached.
     const size_t reserve =
-        (size_t)(g_solidWindowMaxSeen + (g_solidWindowMaxSeen / 10) + 64);
+        static_cast<size_t>((g_solidWindowMaxSeen + (g_solidWindowMaxSeen / 10) + 64));
     if (g_solidWindowStaging.capacity() < reserve)
         g_solidWindowStaging.reserve(reserve);
     g_solidWindowStaging.clear();
@@ -78,14 +78,14 @@ void AppendSolidWindowCandidate(int32_t vn0) {
     // terrainHandle, NO _wp2 filter — the GPU shader still does all of those
     // per-thread.  Looseness == guaranteed superset == no terrain-vanish.
     if (vn0 < 0) return;
-    g_solidWindowStaging.push_back((uint32_t)vn0);
+    g_solidWindowStaging.push_back(static_cast<uint32_t>(vn0));
     if (g_solidWindowStaging.size() > g_solidWindowMaxSeen)
-        g_solidWindowMaxSeen = (uint32_t)g_solidWindowStaging.size();
+        g_solidWindowMaxSeen = static_cast<uint32_t>(g_solidWindowStaging.size());
 }
 
 // Phase 8b A/B: read-only view of the legacy staging window. No mutation.
 const uint32_t* SolidWindowStagingData(uint32_t* outCount) {
-    if (outCount) *outCount = (uint32_t)g_solidWindowStaging.size();
+    if (outCount) *outCount = static_cast<uint32_t>(g_solidWindowStaging.size());
     return g_solidWindowStaging.empty() ? nullptr : g_solidWindowStaging.data();
 }
 
@@ -194,11 +194,11 @@ bool ComputePreflight() {
         if (g_loadRaceTrace) {
             g_loadRaceLastTerrainPath = 1;
             if (g_loadRaceArmFirstFrame < 0) {
-                g_loadRaceArmFirstFrame = (long)g_mc2FrameCounter;
+                g_loadRaceArmFirstFrame = static_cast<long>(g_mc2FrameCounter);
                 fprintf(stderr, "[LOADRACE] gpu terrain first-arm frame=%ld "
                         "scenarioTime=%.2f atlasTex=%u nodeIds=%zu\n",
                         g_loadRaceArmFirstFrame, scenarioTime,
-                        (unsigned)g_atlasGLTex, g_uniqueTerrainNodeIds.size());
+                        static_cast<unsigned>(g_atlasGLTex), g_uniqueTerrainNodeIds.size());
                 fflush(stderr);
             }
         }
@@ -207,7 +207,7 @@ bool ComputePreflight() {
             if (!s_firstArm) {
                 s_firstArm = true;
                 MC2_DIAGFE(stderr, "[TERRAIN_INDIRECT v1] event=first_arm path=gpu nodeIds=%zu atlasTex=%u\n",
-                        g_uniqueTerrainNodeIds.size(), (unsigned)g_atlasGLTex);
+                        g_uniqueTerrainNodeIds.size(), static_cast<unsigned>(g_atlasGLTex));
                 fflush(stderr);
             }
         }
@@ -311,7 +311,7 @@ void ComputeDispatch() {
         FILE* f = fopen("ring_trace.log", "a");
         if (f) {
             fprintf(f, "\n[RING_SINK v1] event=open time=%lld\n",
-                    (long long)time(nullptr));
+                    static_cast<long long>(time(nullptr)));
             fflush(f);
         }
         return f;
@@ -443,7 +443,7 @@ bool DrawIndirect() {
             s_warnedOnce = true;
             MC2_DIAGFE(stderr, "[TERRAIN_INDIRECT v1] event=draw_indirect_skip "
                    "armed=%d process_disabled=%d\n",
-                   (int)s_frameSolidArmed, (int)s_processArmingDisabled);
+                   static_cast<int>(s_frameSolidArmed), static_cast<int>(s_processArmingDisabled));
             fflush(stderr);
         }
         return false;
@@ -530,7 +530,7 @@ void RenderWaterReflectionPass() {
     // Mirror MVP: clip = G * R * world, where R reflects MC2 world Z across the
     // water plane (z' = 2*we - z). With G[r][c] = M[c*4+r] (M uploaded GL_FALSE),
     // R only touches columns 2,3: negate column 2; column3 += 2*we * orig col2.
-    const float we2 = 2.0f * (float)Terrain::waterElevation;
+    const float we2 = 2.0f * static_cast<float>(Terrain::waterElevation);
     float saved[16]; for (int i = 0; i < 16; ++i) saved[i] = M[i];
     float mir[16];   for (int i = 0; i < 16; ++i) mir[i]   = M[i];
     for (int r = 0; r < 4; ++r) {
@@ -621,11 +621,11 @@ void RenderWaterReflectionPass() {
         if (!s_pixelProof) {
             fprintf(stderr, "[WATER_REFL_RT v1] frame=%ld gate=1 fbo=%u dims=%dx%d drew=%d "
                     "mirrored_cmd_count=%u\n",
-                    s_frame, (unsigned)fbo, rw, rh, (int)drew, (unsigned)mirroredCmdCount);
+                    s_frame, static_cast<unsigned>(fbo), rw, rh, static_cast<int>(drew), static_cast<unsigned>(mirroredCmdCount));
             fflush(stderr);
         } else {
             glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-            std::vector<float> px((size_t)rw * rh * 4, 0.0f);
+            std::vector<float> px(static_cast<size_t>(rw) * rh * 4, 0.0f);
             glReadPixels(0, 0, rw, rh, GL_RGBA, GL_FLOAT, px.data());
             glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prevFBO);
             int n = rw * rh, colorHits = 0, alphaHits = 0; float maxL = 0.0f; double acc = 0.0;
@@ -640,9 +640,9 @@ void RenderWaterReflectionPass() {
             fprintf(stderr, "[WATER_REFL_RT v1] frame=%ld gate=1 fbo=%u dims=%dx%d drew=%d "
                     "mirrored_cmd_count=%u coverage=%.1f%% alpha_cov=%.1f%% max_luma=%.4f "
                     "avg_luma=%.5f gl_err=0x%x\n",
-                    s_frame, (unsigned)fbo, rw, rh, (int)drew, (unsigned)mirroredCmdCount,
+                    s_frame, static_cast<unsigned>(fbo), rw, rh, static_cast<int>(drew), static_cast<unsigned>(mirroredCmdCount),
                     100.0*colorHits/(n?n:1), 100.0*alphaHits/(n?n:1), maxL,
-                    (n?acc/n:0.0), (unsigned)err);
+                    (n?acc/n:0.0), static_cast<unsigned>(err));
             fflush(stderr);
         }
     }
@@ -688,16 +688,16 @@ const float* gos_terrain_indirect_getRingSlotMvp() {
 extern "C" {
 
 unsigned int gos_terrain_indirect_getRecipeSSBO() {
-    return (unsigned int)g_recipeSSBO;
+    return static_cast<unsigned int>(g_recipeSSBO);
 }
 
 int gos_terrain_indirect_getRecipeMapSide() {
-    return (int)g_recipeMapSide;
+    return static_cast<int>(g_recipeMapSide);
 }
 
 int gos_terrain_indirect_getRecipeQuadCount() {
     // The dense recipe is indexed by vertexNum = mx + my*mapSide, sized mapSide^2.
-    return (int)g_recipeMapSide * (int)g_recipeMapSide;
+    return static_cast<int>(g_recipeMapSide) * static_cast<int>(g_recipeMapSide);
 }
 
 uint32_t gos_terrain_indirect_getDispatchMvpFp() {

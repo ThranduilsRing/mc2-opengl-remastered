@@ -123,7 +123,7 @@ void ensureInitialized() {
             s_prog = nullptr;
             return;
         }
-        mc2::fmt::print_err("[VFX_MESH v1] event=prog_compiled prog={:d}\n", mc2::fmt::as_u32((unsigned)s_prog->shp_));
+        mc2::fmt::print_err("[VFX_MESH v1] event=prog_compiled prog={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(s_prog->shp_)));
         std::fflush(stderr);
         s_loc_worldToClipGL = glGetUniformLocation(s_prog->shp_, "u_worldToClipGL");
         s_loc_modelToWorld  = glGetUniformLocation(s_prog->shp_, "u_modelToWorld");
@@ -144,7 +144,7 @@ bool uploadMesh(const GosVfxMeshUpload& up, CachedMesh& out) {
     // Build interleaved buffer: 5 floats per vertex.
     const unsigned vc = up.vertexCount;
     std::vector<float> interleaved;
-    interleaved.resize((size_t)vc * 5u);
+    interleaved.resize(static_cast<size_t>(vc) * 5u);
     for (unsigned i = 0; i < vc; ++i) {
         interleaved[i*5+0] = up.positions[i*3+0];
         interleaved[i*5+1] = up.positions[i*3+1];
@@ -175,10 +175,10 @@ bool uploadMesh(const GosVfxMeshUpload& up, CachedMesh& out) {
     // location 0 = pos (3 floats), location 1 = uv (2 floats), stride 5 floats.
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float),
-                          (const void*)0);
+                          reinterpret_cast<const void*>(0));
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float),
-                          (const void*)(3 * sizeof(float)));
+                          reinterpret_cast<const void*>((3 * sizeof(float))));
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -191,7 +191,7 @@ bool uploadMesh(const GosVfxMeshUpload& up, CachedMesh& out) {
 void maybeDumpSummary() {
     if (!logEnabled()) return;
     if ((g_flushCalls % 240ull) != 0ull) return;
-    mc2::fmt::print_err("[VFX_MESH v1] event=summary flushCalls={:d} instancesSubmitted={:d} drawsIssued={:d} missingTexture={:d} meshesUploaded={:d}\n", mc2::fmt::as_u64(g_flushCalls), mc2::fmt::as_u64(g_instancesSubmitted), mc2::fmt::as_u64(g_drawsIssued), mc2::fmt::as_u64(g_missingTexture), mc2::fmt::as_u32((unsigned)s_meshCache.size()));
+    mc2::fmt::print_err("[VFX_MESH v1] event=summary flushCalls={:d} instancesSubmitted={:d} drawsIssued={:d} missingTexture={:d} meshesUploaded={:d}\n", mc2::fmt::as_u64(g_flushCalls), mc2::fmt::as_u64(g_instancesSubmitted), mc2::fmt::as_u64(g_drawsIssued), mc2::fmt::as_u64(g_missingTexture), mc2::fmt::as_u32(static_cast<unsigned>(s_meshCache.size())));
     std::fflush(stderr);
 }
 
@@ -221,7 +221,7 @@ extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload*   uploads,
         if (uploadMesh(up, cm)) {
             s_meshCache.emplace(up.meshId, cm);
             if (logEnabled()) {
-                mc2::fmt::print_err("[VFX_MESH v1] event=mesh_upload meshId={:d} verts={:d} indices={:d} cacheSize={:d}\n", mc2::fmt::as_u64((unsigned long long)up.meshId), mc2::fmt::as_u32(up.vertexCount), mc2::fmt::as_u32(up.indexCount), mc2::fmt::as_u32((unsigned)s_meshCache.size()));
+                mc2::fmt::print_err("[VFX_MESH v1] event=mesh_upload meshId={:d} verts={:d} indices={:d} cacheSize={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(up.meshId)), mc2::fmt::as_u32(up.vertexCount), mc2::fmt::as_u32(up.indexCount), mc2::fmt::as_u32(static_cast<unsigned>(s_meshCache.size())));
                 std::fflush(stderr);
             }
         }
@@ -310,7 +310,7 @@ extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload*   uploads,
             inst.blendMode == 1 ? "VfxMeshAdditive" : "VfxMeshAlpha");
 
         glBindVertexArray(cm.vao);
-        glDrawElements(GL_TRIANGLES, cm.indexCount, GL_UNSIGNED_SHORT, (const void*)0);
+        glDrawElements(GL_TRIANGLES, cm.indexCount, GL_UNSIGNED_SHORT, reinterpret_cast<const void*>(0));
         ++g_drawsIssued;
     }
 

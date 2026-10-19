@@ -10,11 +10,11 @@ std::map<uint32_t, PatchShape> s_patchCache;
 // phasings. Gate OFF -> parity bits always 0 (only the fixed-TL-BR patch built).
 static uint32_t patchKey(int qcX, int qcY, int lodStep, int parityX, int parityY)
 {
-    return ((uint32_t)qcX & 0xFF)
-         | (((uint32_t)qcY    & 0xFF) << 8)
-         | (((uint32_t)lodStep & 0xFF) << 16)
-         | (((uint32_t)(parityX & 1)) << 24)
-         | (((uint32_t)(parityY & 1)) << 25);
+    return (static_cast<uint32_t>(qcX) & 0xFF)
+         | ((static_cast<uint32_t>(qcY)    & 0xFF) << 8)
+         | ((static_cast<uint32_t>(lodStep) & 0xFF) << 16)
+         | ((static_cast<uint32_t>((parityX & 1))) << 24)
+         | ((static_cast<uint32_t>((parityY & 1))) << 25);
 }
 
 // Build sample positions along one axis, always including far edge.
@@ -52,7 +52,7 @@ const PatchShape& getOrBuildPatch(int qcX, int qcY, int lodStep,
     verts.reserve(xs.size() * ys.size());
     for (int yy : ys)
         for (int xx : xs)
-            verts.push_back({(int16_t)xx, (int16_t)yy});
+            verts.push_back({static_cast<int16_t>(xx), static_cast<int16_t>(yy)});
 
     // Two CCW triangles per quad cell.
     //   FIXED / BOTTOMRIGHT (TL-BR diagonal): {TL,BL,BR} + {TL,BR,TR}
@@ -65,13 +65,13 @@ const PatchShape& getOrBuildPatch(int qcX, int qcY, int lodStep,
     // NOTE xs[i] is the LOD-decimated map-cell coordinate (lodStep==1 here, so
     // xs[i] is exactly the cell index), used directly — NOT the raw loop i.
     std::vector<uint16_t> indices;
-    int W = (int)xs.size();
-    for (int j = 0; j < (int)ys.size() - 1; ++j) {
-        for (int i = 0; i < (int)xs.size() - 1; ++i) {
-            uint16_t tl = (uint16_t)(j*W+i);
-            uint16_t tr = (uint16_t)(j*W+i+1);
-            uint16_t bl = (uint16_t)((j+1)*W+i);
-            uint16_t br = (uint16_t)((j+1)*W+i+1);
+    int W = static_cast<int>(xs.size());
+    for (int j = 0; j < static_cast<int>(ys.size()) - 1; ++j) {
+        for (int i = 0; i < static_cast<int>(xs.size()) - 1; ++i) {
+            uint16_t tl = static_cast<uint16_t>((j*W+i));
+            uint16_t tr = static_cast<uint16_t>((j*W+i+1));
+            uint16_t bl = static_cast<uint16_t>(((j+1)*W+i));
+            uint16_t br = static_cast<uint16_t>(((j+1)*W+i+1));
 
             bool bottomRight = true;  // fixed default == BOTTOMRIGHT (TL-BR)
             if (checkerDiag) {
@@ -93,17 +93,17 @@ const PatchShape& getOrBuildPatch(int qcX, int qcY, int lodStep,
     }
 
     PatchShape ps;
-    ps.vertexCount = (int)verts.size();
-    ps.indexCount  = (int)indices.size();
+    ps.vertexCount = static_cast<int>(verts.size());
+    ps.indexCount  = static_cast<int>(indices.size());
 
     ps.vbo.create();
     ps.vbo.bind();
-    ps.vbo.bufferData((intptr_t)(verts.size() * sizeof(LocalVertex)),
+    ps.vbo.bufferData(static_cast<intptr_t>((verts.size() * sizeof(LocalVertex))),
                       verts.data(), RenderCore::GpuBufferUsage::StaticDraw);
 
     ps.ibo.create();
     ps.ibo.bind();
-    ps.ibo.bufferData((intptr_t)(indices.size() * sizeof(uint16_t)),
+    ps.ibo.bufferData(static_cast<intptr_t>((indices.size() * sizeof(uint16_t))),
                       indices.data(), RenderCore::GpuBufferUsage::StaticDraw);
 
     ps.vbo.unbind();  // GL_ARRAY_BUFFER -> 0
@@ -130,40 +130,40 @@ const PatchShape& getOrBuildPatch(int qcX, int qcY, int lodStep,
 
     auto buildEdge = [&](const std::vector<int>& uPos, int fixedCoord, bool fixedIsY)
     {
-        int base = (int)skirtVerts.size();
-        int n    = (int)uPos.size();
+        int base = static_cast<int>(skirtVerts.size());
+        int n    = static_cast<int>(uPos.size());
         for (int i = 0; i < n; ++i) {
-            int16_t lx = fixedIsY ? (int16_t)uPos[i] : (int16_t)fixedCoord;
-            int16_t ly = fixedIsY ? (int16_t)fixedCoord : (int16_t)uPos[i];
+            int16_t lx = fixedIsY ? static_cast<int16_t>(uPos[i]) : static_cast<int16_t>(fixedCoord);
+            int16_t ly = fixedIsY ? static_cast<int16_t>(fixedCoord) : static_cast<int16_t>(uPos[i]);
             skirtVerts.push_back({lx, ly, 0, 0});  // surface
             skirtVerts.push_back({lx, ly, 1, 0});  // below
         }
         for (int i = 0; i < n - 1; ++i) {
-            uint16_t t0 = (uint16_t)(base + 2*i);
-            uint16_t b0 = (uint16_t)(base + 2*i + 1);
-            uint16_t t1 = (uint16_t)(base + 2*(i+1));
-            uint16_t b1 = (uint16_t)(base + 2*(i+1) + 1);
+            uint16_t t0 = static_cast<uint16_t>((base + 2*i));
+            uint16_t b0 = static_cast<uint16_t>((base + 2*i + 1));
+            uint16_t t1 = static_cast<uint16_t>((base + 2*(i+1)));
+            uint16_t b1 = static_cast<uint16_t>((base + 2*(i+1) + 1));
             skirtIdx.insert(skirtIdx.end(), {t0, b0, b1, t0, b1, t1});
         }
     };
 
     // Phase 10.2b: record each edge's index range (build order N,S,W,E).
-    ps.skirtEdgeOffset[0] = (int)skirtIdx.size(); buildEdge(xs, (int)ys.front(), false); ps.skirtEdgeCount[0] = (int)skirtIdx.size() - ps.skirtEdgeOffset[0]; // North (y=ys[0])
-    ps.skirtEdgeOffset[1] = (int)skirtIdx.size(); buildEdge(xs, (int)ys.back(),  false); ps.skirtEdgeCount[1] = (int)skirtIdx.size() - ps.skirtEdgeOffset[1]; // South (y=ys.back)
-    ps.skirtEdgeOffset[2] = (int)skirtIdx.size(); buildEdge(ys, (int)xs.front(), true ); ps.skirtEdgeCount[2] = (int)skirtIdx.size() - ps.skirtEdgeOffset[2]; // West  (x=xs[0])
-    ps.skirtEdgeOffset[3] = (int)skirtIdx.size(); buildEdge(ys, (int)xs.back(),  true ); ps.skirtEdgeCount[3] = (int)skirtIdx.size() - ps.skirtEdgeOffset[3]; // East  (x=xs.back)
+    ps.skirtEdgeOffset[0] = static_cast<int>(skirtIdx.size()); buildEdge(xs, static_cast<int>(ys.front()), false); ps.skirtEdgeCount[0] = static_cast<int>(skirtIdx.size()) - ps.skirtEdgeOffset[0]; // North (y=ys[0])
+    ps.skirtEdgeOffset[1] = static_cast<int>(skirtIdx.size()); buildEdge(xs, static_cast<int>(ys.back()),  false); ps.skirtEdgeCount[1] = static_cast<int>(skirtIdx.size()) - ps.skirtEdgeOffset[1]; // South (y=ys.back)
+    ps.skirtEdgeOffset[2] = static_cast<int>(skirtIdx.size()); buildEdge(ys, static_cast<int>(xs.front()), true ); ps.skirtEdgeCount[2] = static_cast<int>(skirtIdx.size()) - ps.skirtEdgeOffset[2]; // West  (x=xs[0])
+    ps.skirtEdgeOffset[3] = static_cast<int>(skirtIdx.size()); buildEdge(ys, static_cast<int>(xs.back()),  true ); ps.skirtEdgeCount[3] = static_cast<int>(skirtIdx.size()) - ps.skirtEdgeOffset[3]; // East  (x=xs.back)
 
-    ps.skirtVertexCount = (int)skirtVerts.size();
-    ps.skirtIndexCount  = (int)skirtIdx.size();
+    ps.skirtVertexCount = static_cast<int>(skirtVerts.size());
+    ps.skirtIndexCount  = static_cast<int>(skirtIdx.size());
 
     ps.skirtVbo.create();
     ps.skirtVbo.bind();
-    ps.skirtVbo.bufferData((intptr_t)(skirtVerts.size() * sizeof(SkirtVertex)),
+    ps.skirtVbo.bufferData(static_cast<intptr_t>((skirtVerts.size() * sizeof(SkirtVertex))),
                            skirtVerts.data(), RenderCore::GpuBufferUsage::StaticDraw);
 
     ps.skirtIbo.create();
     ps.skirtIbo.bind();
-    ps.skirtIbo.bufferData((intptr_t)(skirtIdx.size() * sizeof(uint16_t)),
+    ps.skirtIbo.bufferData(static_cast<intptr_t>((skirtIdx.size() * sizeof(uint16_t))),
                            skirtIdx.data(), RenderCore::GpuBufferUsage::StaticDraw);
 
     ps.skirtVbo.unbind();  // GL_ARRAY_BUFFER -> 0

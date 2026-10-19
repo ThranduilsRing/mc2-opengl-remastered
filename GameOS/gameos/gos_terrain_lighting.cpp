@@ -564,7 +564,7 @@ static GLuint tl_build_terrain_lighting_program(const char* compFname,
     srcStrs.push_back(kVersion);
     srcStrs.push_back(fullSrc.c_str());
 
-    GLuint sh = tl_compile_compute_shader(srcStrs.data(), (int)srcStrs.size());
+    GLuint sh = tl_compile_compute_shader(srcStrs.data(), static_cast<int>(srcStrs.size()));
     if (!sh) {
         MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=shader_load_fail compile_failed=%s\n", debugName);
         fflush(stdout);
@@ -1508,15 +1508,15 @@ void PackAndDispatch() {
         MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=first_dispatch "
                "frame=%llu totalVerts=%u dispatchRange=[%u,%u] numGroups=%u "
                "eye=%s ambR=%d ambG=%d ambB=%d lightR=%d lightG=%d lightB=%d\n",
-               (unsigned long long)s_frameIndex, s_numVertices,
+               static_cast<unsigned long long>(s_frameIndex), s_numVertices,
                dispatchStart, dispatchStart + dispatchCount, numGroups,
                eye ? "ok" : "NULL",
-               eye ? (int)eye->ambientRed   : -1,
-               eye ? (int)eye->ambientGreen : -1,
-               eye ? (int)eye->ambientBlue  : -1,
-               eye ? (int)eye->lightRed     : -1,
-               eye ? (int)eye->lightGreen   : -1,
-               eye ? (int)eye->lightBlue    : -1);
+               eye ? static_cast<int>(eye->ambientRed)   : -1,
+               eye ? static_cast<int>(eye->ambientGreen) : -1,
+               eye ? static_cast<int>(eye->ambientBlue)  : -1,
+               eye ? static_cast<int>(eye->lightRed)     : -1,
+               eye ? static_cast<int>(eye->lightGreen)   : -1,
+               eye ? static_cast<int>(eye->lightBlue)    : -1);
         fflush(stdout);
     }
 
@@ -1644,10 +1644,10 @@ void CopyResultsToVertexPool(TerrainQuad* quadList, int numberQuads) {
     if (s_fallbackSummaryFrames % 600 == 0) {
         MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=fallback_summary frames=%llu "
                "n1=%llu n2=%llu conservative=%llu\n",
-               (unsigned long long)s_fallbackSummaryFrames,
-               (unsigned long long)s_lightingFallbackN1,
-               (unsigned long long)s_lightingFallbackN2,
-               (unsigned long long)s_lightingFallbackConservative);
+               static_cast<unsigned long long>(s_fallbackSummaryFrames),
+               static_cast<unsigned long long>(s_lightingFallbackN1),
+               static_cast<unsigned long long>(s_lightingFallbackN2),
+               static_cast<unsigned long long>(s_lightingFallbackConservative));
         fflush(stdout);
     }
 }

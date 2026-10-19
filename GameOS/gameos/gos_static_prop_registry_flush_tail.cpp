@@ -79,7 +79,7 @@ void flushZeroLightProbe(uint64_t s_diag_flush_calls) {
                 if (!mc2IsStaticLightSlotBaked(ri)) ++zeroLightSlots;
             }
         }
-        mc2::fmt::print_err("[STATIC_LIGHT_ZERO v1] frame={:d} aliveProps={:d} zeroLightSlots={:d} eager={:d}\n", mc2::fmt::as_u64((unsigned long long)s_diag_flush_calls), mc2::fmt::as_u32(aliveProps), mc2::fmt::as_u32(zeroLightSlots), mc2::fmt::as_i32(s_staticEagerGate ? 1 : 0));
+        mc2::fmt::print_err("[STATIC_LIGHT_ZERO v1] frame={:d} aliveProps={:d} zeroLightSlots={:d} eager={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_flush_calls)), mc2::fmt::as_u32(aliveProps), mc2::fmt::as_u32(zeroLightSlots), mc2::fmt::as_i32(s_staticEagerGate ? 1 : 0));
         fflush(stderr);
 
         // PROP-RECIPE-BAKE-1: per-recipe row dump, ONCE, under the same
@@ -126,7 +126,7 @@ void flushDiagSummary(uint64_t s_diag_flush_calls, uint64_t& s_diag_ranges_total
             ? (static_cast<double>(s_diag_total_ns) /
                static_cast<double>(s_diag_flush_calls)) / 1000.0
             : 0.0;
-        mc2::fmt::print_err("[REGFLUSH_DIAG v1] event=summary calls={:d} ranges_seen={:d} tombstone={:d} stale_frame={:d} stale_after_drawn={:d} drawn={:d} leaves_appended={:d} liveSize={:d} mean_us={:.2f}\n", mc2::fmt::as_u64((unsigned long long)s_diag_flush_calls), mc2::fmt::as_u64((unsigned long long)s_diag_ranges_total), mc2::fmt::as_u64((unsigned long long)s_diag_ranges_tombstone), mc2::fmt::as_u64((unsigned long long)s_diag_ranges_stale_frame), mc2::fmt::as_u64((unsigned long long)s_diag_ranges_stale_after_drawn), mc2::fmt::as_u64((unsigned long long)s_diag_ranges_drawn), mc2::fmt::as_u64((unsigned long long)s_diag_leaves_appended), mc2::fmt::as_size(s_liveRangeIndices.size()), mean_us);
+        mc2::fmt::print_err("[REGFLUSH_DIAG v1] event=summary calls={:d} ranges_seen={:d} tombstone={:d} stale_frame={:d} stale_after_drawn={:d} drawn={:d} leaves_appended={:d} liveSize={:d} mean_us={:.2f}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_flush_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_ranges_total)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_ranges_tombstone)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_ranges_stale_frame)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_ranges_stale_after_drawn)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_ranges_drawn)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_leaves_appended)), mc2::fmt::as_size(s_liveRangeIndices.size()), mean_us);
         fflush(stderr);
         // GUARD-2 addendum: persistent-vanish count + worst stale typeID. A nonzero
         // persistent_vanish (or a single typeID dominating stale_by_type) is the
@@ -135,7 +135,7 @@ void flushDiagSummary(uint64_t s_diag_flush_calls, uint64_t& s_diag_ranges_total
             int worstType = -1; uint64_t worstCount = 0;
             for (const auto& kv : s_staleByType)
                 if (kv.second > worstCount) { worstCount = kv.second; worstType = kv.first; }
-            mc2::fmt::print_err("[REGFLUSH_GUARD2 v1] event=summary persistent_vanish={:d} stale_types={:d} worst_typeID={:d} worst_stale_total={:d} live_streaks={:d}\n", mc2::fmt::as_u64((unsigned long long)s_diag_persistent_vanish), mc2::fmt::as_size(s_staleByType.size()), mc2::fmt::as_i32(worstType), mc2::fmt::as_u64((unsigned long long)worstCount), mc2::fmt::as_size(s_staleStreak.size()));
+            mc2::fmt::print_err("[REGFLUSH_GUARD2 v1] event=summary persistent_vanish={:d} stale_types={:d} worst_typeID={:d} worst_stale_total={:d} live_streaks={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_persistent_vanish)), mc2::fmt::as_size(s_staleByType.size()), mc2::fmt::as_i32(worstType), mc2::fmt::as_u64(static_cast<unsigned long long>(worstCount)), mc2::fmt::as_size(s_staleStreak.size()));
             fflush(stderr);
         }
     }

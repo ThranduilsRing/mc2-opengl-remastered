@@ -97,7 +97,7 @@ void onFrameTick() {
     if (!s_state.paramsResolved) {
         s_state.frameN    = mc2::gate::get<"MC2_VISUAL_DIFF_FRAME_N">();   // row default 90
         s_state.maxFrames = mc2::gate::isNonEmpty<"MC2_VISUAL_DIFF_MAX_FRAMES">()
-                              ? (int)mc2::gate::get<"MC2_VISUAL_DIFF_MAX_FRAMES">() : s_state.frameN + 60;
+                              ? static_cast<int>(mc2::gate::get<"MC2_VISUAL_DIFF_MAX_FRAMES">()) : s_state.frameN + 60;
         s_state.paramsResolved = true;
         const std::string mission = mc2::gate::str<"MC2_VISUAL_DIFF_MISSION">();
         mc2::fmt::print_err("[VISUAL_DIFF v1] event=capture_armed mission={} frameN={:d} maxFrames={:d}\n", mc2::fmt::safe(mc2::gate::isSet<"MC2_VISUAL_DIFF_MISSION">() ? mission.c_str() : "(unset)"), mc2::fmt::as_i32(s_state.frameN), mc2::fmt::as_i32(s_state.maxFrames));

@@ -251,8 +251,8 @@ static void releasePinsForRange(RecipeRange& rng) {
             mcTextureManager->unpinNode(nodeIdx);
             ++s_totalUnpinCalls;
             TEX_LC_PIN("event=unpin nodeIdx=%lu refcount=%lu",
-                       (unsigned long)nodeIdx,
-                       (unsigned long)mcTextureManager->getPinCount(nodeIdx));
+                       static_cast<unsigned long>(nodeIdx),
+                       static_cast<unsigned long>(mcTextureManager->getPinCount(nodeIdx)));
         }
     }
     rng.pinnedTextureNodes.clear();
@@ -363,7 +363,7 @@ void destroy() {
     // reach flush in time for at least one registration; escalate if nonzero.
     MC2_DIAGFE(stderr,
         "[STATIC_FIRST_FRAME v1] event=summary skip_count=%llu\n",
-        (unsigned long long)s_firstFrameSkipCount);
+        static_cast<unsigned long long>(s_firstFrameSkipCount));
     fflush(stderr);
     s_firstFrameSkipCount = 0;
 
@@ -372,7 +372,7 @@ void destroy() {
     // count>0 identifies types that fell through to the first-render path.
     MC2_DIAGFE(stderr,
         "[STATIC_PROP_REG v1] event=type_unknown_at_late_spawn count=%llu\n",
-        (unsigned long long)s_lateSpawnTypeUnknownCount);
+        static_cast<unsigned long long>(s_lateSpawnTypeUnknownCount));
     fflush(stderr);
     s_lateSpawnTypeUnknownCount = 0;
 
@@ -387,9 +387,9 @@ void destroy() {
     if (s_texPinTrace) {
         printf("[TEX_LIFECYCLE v1] event=pin_summary mission_end "
                "totalPinCalls=%llu totalUnpinCalls=%llu leakedPins=%lld\n",
-               (unsigned long long)s_totalPinCalls,
-               (unsigned long long)s_totalUnpinCalls,
-               (long long)((int64_t)s_totalPinCalls - (int64_t)s_totalUnpinCalls));
+               static_cast<unsigned long long>(s_totalPinCalls),
+               static_cast<unsigned long long>(s_totalUnpinCalls),
+               static_cast<long long>((static_cast<int64_t>(s_totalPinCalls) - static_cast<int64_t>(s_totalUnpinCalls))));
         fflush(stdout);
     }
     s_totalPinCalls   = 0;
@@ -489,9 +489,9 @@ int32_t registerRecipe(TG_MultiShape* multi,
                 storedRng.pinnedTextureNodes.push_back(nodeIdx);
                 ++s_totalPinCalls;
                 TEX_LC_PIN("event=pin nodeIdx=%lu refcount=%lu regIdx=%d multi=%p",
-                           (unsigned long)nodeIdx,
-                           (unsigned long)mcTextureManager->getPinCount(nodeIdx),
-                           regIdx, (void*)multi);
+                           static_cast<unsigned long>(nodeIdx),
+                           static_cast<unsigned long>(mcTextureManager->getPinCount(nodeIdx)),
+                           regIdx, static_cast<void*>(multi));
             }
         }
     }
