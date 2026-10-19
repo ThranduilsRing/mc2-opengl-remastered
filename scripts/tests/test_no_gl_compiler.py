@@ -26,7 +26,7 @@ def test_current_owned_sources_have_no_gl_compiler():
     assert not checker.audit(checker.snapshot())
 
 
-@pytest.mark.parametrize('source', ['glReadPixels(0);', 'glewInit();', 'wglCreateContext(dc);',
+@pytest.mark.parametrize('source', ['TracyGpuZone("render");', 'glReadPixels(0);', 'glewInit();', 'wglCreateContext(dc);',
     'SDL_GL_CreateContext(window);', 'ImGui_ImplOpenGL3_RenderDrawData(draw);',
     '#include <GL/glew.h>', '#include "imgui_impl_opengl3.h"',
     'SDL_GLContext context;', 'auto flags = SDL_WINDOW_OPENGL;',
@@ -51,3 +51,14 @@ def test_module_observation_and_native_sdk_are_allowed():
 def test_retired_stage_cannot_be_reintroduced_but_native_stages_are_allowed():
     assert checker.audit({'shaders/mech.vert': '#version 430\nvoid main() {}'})
     assert not checker.audit({'shaders/vulkan/mech_tier1.vert': '#version 450\nvoid main() {}'})
+
+
+def test_retired_vendor_loader_or_renderer_source_cannot_return():
+    assert checker.audit({'3rdparty/include/GL/glew.h': '// no active code yet'})
+    assert checker.audit({'3rdparty/imgui/backends/imgui_impl_opengl3.cpp': ''})
+
+
+def test_legacy_encoded_owned_header_is_still_audited(tmp_path, monkeypatch):
+    (tmp_path / 'legacy.cpp').write_bytes(b'// old quote: \x92\nvoid f() { glBindTexture(0); }')
+    monkeypatch.setattr(checker.subprocess, 'check_output', lambda *a, **kw: 'legacy.cpp\n')
+    assert checker.audit(checker.snapshot(tmp_path))

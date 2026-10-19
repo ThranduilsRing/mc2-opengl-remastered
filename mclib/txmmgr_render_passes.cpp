@@ -292,7 +292,6 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 
 	{
 		ZoneScopedN("Render.TerrainSolid");
-		TracyGpuZone("Render.TerrainSolid");
 
 		// MC2_LOAD_RACE_TRACE: terrain GPU-residency probe. The degraded
 		// mission-load state renders terrain flat/untextured; this latches the
@@ -465,7 +464,6 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 	// on top of terrain, below decals/roads.
 	{
 		ZoneScopedN("Render.GpuStaticProps");
-		TracyGpuZone("Render.GpuStaticProps");
 		extern bool g_useGpuStaticProps;
 		extern bool g_useGpuObjects;
 		if (g_useGpuStaticProps || g_useGpuObjects) {
@@ -507,7 +505,6 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 				// GL_SAMPLES_PASSED segment holding only compute + barriers returns a garbage
 				// ~1e12 on this driver (begin snapshot never taken) and mis-attributes the frame's
 				// real draws to it. Suspend the query for it.
-				TracyGpuZone("GpuSP.CullDispatch");
 				gpu_cull::compute_dispatch();
 			}
 
@@ -532,7 +529,6 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 			extern bool g_useGpuObjects;
 			if (g_useGpuStaticProps || g_useGpuObjects) {
 				ZoneScopedN("GpuSP.BatcherFlush");
-				TracyGpuZone("GpuSP.BatcherFlush");
 				GpuStaticPropBatcher::instance().flush(getLastRenderSnapshot());
 			}
 		};
@@ -544,7 +540,6 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 		// flush itself. Pass_Mechs is a disjoint GL_TIME_ELAPSED scope.
 		auto runMechFlushUnit = []() {
 			ZoneScopedN("Render.GpuMechs");
-			TracyGpuZone("Render.GpuMechs");
 			// [RENDER_PASS v1] advisory telemetry (env-gated, rate-limited).
 			// MECHOPAQUE-NOTE-RELOCATE-1: note fires at the real mech GPU draw
 			// site (after shadow, after static-prop flush) — NOT at the preamble.
@@ -597,7 +592,6 @@ void MC_TextureManager::renderListsOverlayBatches (void)
 	// Render order matches design: terrain → cement overlays → decals → (old overlays).
 	{
 		ZoneScopedN("Render.TerrainOverlays");
-		TracyGpuZone("Render.TerrainOverlays");
 		gos_DrawTerrainOverlays();
 	}
 	// Slice A — cement-overlay static-bake draw. Mirrors the Render.Terrain
@@ -610,7 +604,6 @@ void MC_TextureManager::renderListsOverlayBatches (void)
 	// same slot the per-frame batch used (before mines/decals/old overlays).
 	{
 		ZoneScopedN("Render.TerrainOverlaysStatic");
-		TracyGpuZone("Render.TerrainOverlaysStatic");
 		if (gos_terrain_indirect::IsFrameOverlayArmed()) {
 			gos_terrain_indirect::DrawDecalStatic();
 		}
@@ -622,14 +615,12 @@ void MC_TextureManager::renderListsOverlayBatches (void)
 	// MC2_TERRAIN_INDIRECT_MINE=1 AND the texture-array has been built.
 	{
 		ZoneScopedN("Render.TerrainMines");
-		TracyGpuZone("Render.TerrainMines");
 		if (gos_terrain_indirect::IsFrameMineArmed()) {
 			gos_terrain_indirect::DrawMineStatic();
 		}
 	}
 	{
 		ZoneScopedN("Render.Decals");
-		TracyGpuZone("Render.Decals");
 		// MC2_DYNAMIC_DECALS: push dynamic impact decals into the batch before flushing.
 		// Gate-off: gatherToDecalBatch() is a no-op; gate-on: pushes faded quads.
 		// frameLength = duration of last frame in seconds (timing.h).

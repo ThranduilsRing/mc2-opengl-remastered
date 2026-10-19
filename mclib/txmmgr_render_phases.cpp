@@ -119,7 +119,6 @@ void MC_TextureManager::renderListsStaticShadowBuild (void)
 	if (gos_IsModernShadowPathActive() && !gos_StaticLightMatrixBuilt() &&
 	    Terrain::mapData) {
 		ZoneScopedN("Shadow.StaticFullMapBuild");
-		TracyGpuZone("Shadow.StaticFullMapBuild");
 
 		gos_BuildStaticLightMatrix();   // world-fixed, camera-independent
 		gos_MarkStaticLightMatrixBuilt();

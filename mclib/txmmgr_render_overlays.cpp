@@ -48,7 +48,6 @@ void MC_TextureManager::renderListsOverlaysNoUnderlayer (void)
 {
 	//<< sebi: added this section to draw objects which do not have terrain underlayer (those are added in quad.cpp, see (*) there )
 	{ ZoneScopedN("Render.NoUnderlayer");
-	  TracyGpuZone("Render.NoUnderlayer");
 	if (Environment.Renderer != 3)
 	{
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
@@ -259,7 +258,6 @@ void MC_TextureManager::renderListsOverlaysOld (void)
 {
 	{
 		ZoneScopedN("Render.Overlays");
-		TracyGpuZone("Render.Overlays");
 	if (Environment.Renderer == 3)
 	{
 		//Do NOT draw the water as transparent in software

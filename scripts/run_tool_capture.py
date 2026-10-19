@@ -30,6 +30,7 @@ from smoke_lib import host_lease, nofocus  # noqa: E402
 
 TOOLS = {
     "asset_viewer": "mc2_asset_viewer.exe",
+    "ui_editor": "ui_editor.exe",
     "mc2fx_preview": "mc2fx_preview.exe",
     "mc2weapon_gui": "mc2weapon_gui.exe",
 }
