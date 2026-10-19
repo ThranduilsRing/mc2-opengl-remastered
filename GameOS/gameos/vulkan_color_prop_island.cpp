@@ -40,6 +40,7 @@
 #include "vulkan_shadow_island_live.h"   // Mc2ShadowGeomFeed + Mc2ColorPropFeed contracts
 #include "vulkan_color_prop_island.h"
 #include "texture_decode.h"
+#include "vk_texture_residency.h"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
@@ -259,12 +260,12 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedFramebuffer t1_fb;        // over the 3 shared image views
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
-    mc2vk::OwnedImage   albedoImg;
-    mc2vk::OwnedImageView albedoView;
+    mc2vk::ResidentTextureRef albedoTexture;
+    bool descriptorsDirty[2]={true,true};
+    std::array<VkImageView,2> boundTextures[2]{};
     mc2vk::OwnedSampler albedoSamp;
     mc2vk::OwnedBuffer  layerBuf;         // per-type int layer SSBO
-    mc2vk::OwnedImage   albedoOnImg;
-    mc2vk::OwnedImageView albedoOnView;
+    mc2vk::ResidentTextureRef albedoOnTexture;
     mc2vk::OwnedSampler albedoOnSamp;
     mc2vk::OwnedBuffer  layerOnBuf;       // per-type int layer SSBO (class 1)
     mc2vk::OwnedBuffer  hotBuf;           // per-type hot-colour night emission colours (3 vec4 per type)
@@ -332,14 +333,10 @@ void sync_ring_bindings(ColorPropIsland* s, uint32_t par, const mc2vk::FrameAllo
     }
 }
 
-void write_descriptors(ColorPropIsland* s) {
-    // VK-PROP-FENCE-DEFER-1: write BOTH parity sets (set[i] binds ubo/inst/light[i];
-    // the material bindings are identical single-instance state). Callers must
-    // guarantee no in-flight command buffer can be using either set: buffer-grow
-    // callers vkDeviceWaitIdle first, and the map-load material import runs right
-    // after a cp_end_oneshot inline fence wait (which retires ALL earlier
-    // submission-order work on the queue).
-    for (int i = 0; i < 2; ++i) {
+void write_descriptors(ColorPropIsland* s, int parity = -1) {
+    if (parity<0) { s->descriptorsDirty[0]=s->descriptorsDirty[1]=true; return; }
+    for (int i=parity;i<=parity;++i) {
+    s->descriptorsDirty[i]=false;
     if (s->set[i] == VK_NULL_HANDLE) continue;
     // The ring bindings (0 UBO, 1 instances, 4 LightsData, 8 pool) at the frame ring's current buffer; the next frame of this parity re-points them at
     // the buffer its spans live in (ringBound is cleared).
@@ -358,14 +355,14 @@ void write_descriptors(ColorPropIsland* s) {
     VkWriteDescriptorSet   wm[5]{};   // alpha-OFF (2/3) + alpha-ON (5/6) material writes
     uint32_t m = 0;
     if (s->wantMaterial && s->tier1 && s->layerBuf &&
-        s->albedoView && s->albedoSamp &&
+        s->albedoTexture && s->albedoSamp &&
         s->layerOnBuf &&
-        s->albedoOnView && s->albedoOnSamp) {
+        s->albedoOnTexture && s->albedoOnSamp) {
         layerInfo = VkDescriptorBufferInfo{ s->layerBuf.get(), 0, VK_WHOLE_SIZE };
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
         wm[m].dstBinding = 2; wm[m].descriptorCount = 1;
         wm[m].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; wm[m].pBufferInfo = &layerInfo; ++m;
-        albInfo.sampler = s->albedoSamp.get(); albInfo.imageView = s->albedoView.get();
+        albInfo.sampler = s->albedoSamp.get(); albInfo.imageView = s->albedoTexture.view();
         albInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
         wm[m].dstBinding = 3; wm[m].descriptorCount = 1;
@@ -375,7 +372,7 @@ void write_descriptors(ColorPropIsland* s) {
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
         wm[m].dstBinding = 5; wm[m].descriptorCount = 1;
         wm[m].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; wm[m].pBufferInfo = &layerOnInfo; ++m;
-        albOnInfo.sampler = s->albedoOnSamp.get(); albOnInfo.imageView = s->albedoOnView.get();
+        albOnInfo.sampler = s->albedoOnSamp.get(); albOnInfo.imageView = s->albedoOnTexture.view();
         albOnInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
         wm[m].dstBinding = 6; wm[m].descriptorCount = 1;
@@ -494,8 +491,7 @@ void cp_end_oneshot(ColorPropIsland* s, VkCommandBuffer cb) {
 // VK-P11 STATIC-PROP MATERIAL: a single array-import target (alpha-OFF or alpha-ON).
 // Both albedo groups share the same import code via this indirection.
 struct AlbedoTarget {
-    mc2vk::OwnedImage*     img;
-    mc2vk::OwnedImageView* view;
+    mc2vk::ResidentTextureRef* texture;
     mc2vk::OwnedSampler*   samp;
     uint32_t*      layers;
     uint32_t*      importedGlName;
@@ -503,11 +499,11 @@ struct AlbedoTarget {
     const char*    tag;   // "alpha-OFF" / "alpha-ON" for logs
 };
 AlbedoTarget cp_target_off(ColorPropIsland* s) {
-    return AlbedoTarget{ &s->albedoImg, &s->albedoView, &s->albedoSamp,
+    return AlbedoTarget{ &s->albedoTexture, &s->albedoSamp,
                          &s->albedoLayers, &s->albedoGlTexImported, &s->materialReady, "alpha-OFF" };
 }
 AlbedoTarget cp_target_on(ColorPropIsland* s) {
-    return AlbedoTarget{ &s->albedoOnImg, &s->albedoOnView, &s->albedoOnSamp,
+    return AlbedoTarget{ &s->albedoOnTexture, &s->albedoOnSamp,
                          &s->albedoOnLayers, &s->albedoOnGlTexImported, &s->materialReadyOn, "alpha-ON" };
 }
 
@@ -518,7 +514,7 @@ bool cp_make_albedo_sampler(ColorPropIsland* s, mc2vk::OwnedSampler* samp, uint3
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
     sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;           // LINEAR_MIPMAP_LINEAR
     sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    sci.maxLod = (mipLevels > 0) ? (float)(mipLevels - 1) : 0.0f;
+    sci.maxLod = VK_LOD_CLAMP_NONE; // image view bounds the immutable sampler to its supplied mip chain
     return mc2vk::create(*samp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
@@ -531,50 +527,18 @@ bool cp_upload_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt,
                             uint32_t layers, uint32_t mips, bool compressed,
                             const void* bytes, VkDeviceSize byteCount,
                             const std::vector<VkBufferImageCopy>& regions) {
-    tgt.view->reset();
-    tgt.img->reset();
-    (void)compressed;
-
-    mc2vk::OwnedBuffer stg;   // released on return; cp_end_oneshot has waited for the copy by then
-    if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "colorprop.staging")) return false;
-    { void* p = stg.map();
-      if (!p) return false;
-      std::memcpy(p, bytes, (size_t)byteCount); stg.unmap(); }
-
-    VkImageCreateInfo ici{};
-    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    ici.imageType = VK_IMAGE_TYPE_2D; ici.format = fmt;
-    ici.extent = {w, h, 1}; ici.mipLevels = mips; ici.arrayLayers = layers;
-    ici.samples = VK_SAMPLE_COUNT_1_BIT; ici.tiling = VK_IMAGE_TILING_OPTIMAL;
-    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (!tgt.img->create(s->allocator, s->device, ici, aci, "colorprop.texture")) return false;
-
-    VkCommandBuffer cb = cp_begin_oneshot(s);
-    if (cb == VK_NULL_HANDLE) return false;
-    VkImageMemoryBarrier bar{};
-    bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = tgt.img->get();
-    bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, layers};
-    bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &bar);
-    vkCmdCopyBufferToImage(cb, stg.get(), tgt.img->get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                           (uint32_t)regions.size(), regions.data());
-    bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &bar);
-    cp_end_oneshot(s, cb);
-
-    VkImageViewCreateInfo vci{};
-    vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = tgt.img->get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY; vci.format = fmt;
-    vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, layers};
-    if (!mc2vk::create(*tgt.view, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vci, nullptr, h); })) return false;
-    *tgt.layers = layers;
+    RenderCore::KtxImage image; image.width=w; image.height=h; image.mipCount=mips;
+    image.vkFormat=uint32_t(fmt); image.isCompressed=compressed; image.blockSizeBytes=compressed ? 16 : 0;
+    image.pixels.assign(static_cast<const uint8_t*>(bytes),static_cast<const uint8_t*>(bytes)+byteCount);
+    for (const auto& region : regions) image.mipByteOffsets.push_back(size_t(region.bufferOffset));
+    uint64_t hash=1469598103934665603ull;
+    for (uint8_t byte : image.pixels) { hash^=byte; hash*=1099511628211ull; }
+    RenderCore::TextureKey key;
+    key.source="prop-array:"+std::to_string(hash)+":"+std::to_string(w)+":"+std::to_string(h)+":"+std::to_string(layers);
+    key.format=uint32_t(fmt); key.hints=mips>1 ? gosHint_MipmapFilter0 : 0;
+    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key,image,{w,h,w,h},layers,true);
+    if (!texture) return false;
+    *tgt.texture=std::move(texture); *tgt.layers=layers;
     return true;
 }
 
@@ -583,7 +547,7 @@ bool cp_upload_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt,
 // keeps flat teal (never samples the dummy).
 bool cp_ensure_dummy_albedo(ColorPropIsland* s, const AlbedoTarget& tgt) {
     if (!cp_make_albedo_sampler(s, tgt.samp, 1)) return false;
-    if (*tgt.view) return true;
+    if (*tgt.texture) return true;
     const uint8_t px[4] = {255, 0, 255, 255};
     std::vector<VkBufferImageCopy> rgn(1);
     rgn[0].bufferOffset = 0;
@@ -624,7 +588,6 @@ bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_
     const VkFormat vkFmt = static_cast<VkFormat>(a->vkFormat);
 
     // (Re)create sampler with the real mip count.
-    tgt.samp->reset();
     if (!cp_make_albedo_sampler(s, tgt.samp, mips)) return false;
 
     if (!cp_upload_albedo_array(s, tgt, vkFmt, a->width, a->height, a->layers,
@@ -1171,8 +1134,9 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
 
 extern "C" int mc2_color_prop_island_get_alpha_array(void** view, uint32_t* generation) {
     const ColorPropIsland* s = parkedIsland();
-    if (!view || !generation || !s || !s->materialReadyOn || !s->albedoOnView) return 0;
-    *view = reinterpret_cast<void*>(s->albedoOnView.get());
+    if (!view || !generation || !s || !s->materialReadyOn || !s->albedoOnTexture) return 0;
+    if (!mc2vk::getOrCreateEngineVulkanContext().textures().ready(s->albedoOnTexture.get())) return 0;
+    *view = reinterpret_cast<void*>(s->albedoOnTexture.view());
     *generation = s->mapGeneration;
     return 1;
 }
@@ -1346,6 +1310,10 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
       fsC = vkImageResourceBeginFrame(colorRes); }
     us_fence_wait = usSince(tFence0);
     const uint32_t par = fsC.parity & 1u;
+    const std::array<VkImageView,2> views{s->albedoTexture.view(),s->albedoOnTexture.view()};
+    if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
+        write_descriptors(s,int(par)); s->boundTextures[par]=views;
+    }
 
     // VK-PROP-AMBIENT-IBL-1 / VK-PROP-LIGHTFEED-NATIVE-1: per-frame copy of the game's
     // CPU LightsData array (mcTextureManager lightData_, the byte source of the GL SSBO
@@ -1412,8 +1380,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // VK-P11 STATIC-PROP MATERIAL: gate FS albedo sample + computePBR on the real
         // import having landed (Tier-1 only). material-disabled paths leave these zero (the shaders
         // never read them).
-        u.materialReady = (s->wantMaterial && s->tier1 && s->materialReady) ? 1 : 0;
-        u.materialReadyOn = (s->wantMaterial && s->tier1 && s->materialReadyOn) ? 1 : 0;
+        u.materialReady = (s->wantMaterial && s->tier1 && s->materialReady && rctx.textures().ready(s->albedoTexture.get())) ? 1 : 0;
+        u.materialReadyOn = (s->wantMaterial && s->tier1 && s->materialReadyOn && rctx.textures().ready(s->albedoOnTexture.get())) ? 1 : 0;
         u.terrainSunMC2[0] = s->terrainSunMC2[0];
         u.terrainSunMC2[1] = s->terrainSunMC2[1];
         u.terrainSunMC2[2] = s->terrainSunMC2[2];

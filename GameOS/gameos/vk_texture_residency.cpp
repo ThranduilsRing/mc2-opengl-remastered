@@ -127,12 +127,14 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
     const bool blocks=bc1 || image.vkFormat==137 || image.vkFormat==138 || image.vkFormat==141 || (image.vkFormat>=143 && image.vkFormat<=146);
     if ((!rgba && !floating && !blocks) || image.isCompressed!=blocks || (blocks && image.blockSizeBytes!=(bc1?8u:16u))) return {};
     const uint32_t w=image.width,h=image.height;
-    if (!layers || layers>256 || (!arrayView && layers!=1)) return {};
+    if (!layers || layers>4096 || (!arrayView && layers!=1)) return {};
     if (!w || !h || w>RenderCore::kKtxMaxEdge || h>RenderCore::kKtxMaxEdge || image.mipCount<1 ||
         image.mipCount>15 || image.mipByteOffsets.size()!=size_t(image.mipCount)) return {};
     uint32_t fullChain=1;
     for (uint32_t edge=std::max(w,h);edge>1;edge>>=1) ++fullChain;
     if (uint32_t(image.mipCount)>fullChain) return {};
+    VkPhysicalDeviceProperties deviceProps{}; vkGetPhysicalDeviceProperties(ctx_.physicalDevice(),&deviceProps);
+    if (layers>deviceProps.limits.maxImageArrayLayers) return {};
     VkFormatProperties properties{}; vkGetPhysicalDeviceFormatProperties(ctx_.physicalDevice(), VkFormat(image.vkFormat), &properties);
     constexpr auto need=VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
     if ((properties.optimalTilingFeatures & need)!=need) return {};
@@ -183,11 +185,11 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
     return resource;
 }
 
-ResidentTextureRef TextureResidency::acquire(const RenderCore::TextureKey& key, const RenderCore::KtxImage& image, RenderCore::TextureDimensions dimensions) {
+ResidentTextureRef TextureResidency::acquire(const RenderCore::TextureKey& key, const RenderCore::KtxImage& image, RenderCore::TextureDimensions dimensions, uint32_t layers, bool arrayView) {
     auto handle=service_.acquire(key,RenderCore::kNoTextureNode,dimensions);
     if (!handle.isValid()) return {};
     if (residents_.contains(handle.raw())) return ResidentTextureRef(*this,handle);
-    residents_.emplace(handle.raw(),Resident{{},0,mc2tex::wantsMipmaps(key.hints)});
+    residents_.emplace(handle.raw(),Resident{{},0,mc2tex::wantsMipmaps(key.hints),layers,arrayView});
     residents_.at(handle.raw()).contentVersion=service_.contentVersion(handle);
     pending_.push_back({handle,std::make_shared<RenderCore::KtxImage>(image),service_.contentVersion(handle)});
     return ResidentTextureRef(*this,handle);
@@ -249,7 +251,7 @@ ResidentTextureRef TextureResidency::acquireLegacy(uint32_t width,uint32_t heigh
 }
 ResidentTextureRef TextureResidency::acquirePixels(uint32_t width,uint32_t height,VkFormat format,const void* bytes,size_t count,
                                                    bool mipmaps,uint32_t layers,bool arrayView) {
-    if (!bytes || !width || !height || width>RenderCore::kKtxMaxEdge || height>RenderCore::kKtxMaxEdge || !layers || layers>256) return {};
+    if (!bytes || !width || !height || width>RenderCore::kKtxMaxEdge || height>RenderCore::kKtxMaxEdge || !layers || layers>4096) return {};
     const bool compressed=format>=131 && format<=146;
     const size_t expected=(compressed ? size_t((width+3)/4)*((height+3)/4)*(format<=134?8u:16u) : size_t(width)*height*(format==VK_FORMAT_R16G16B16A16_SFLOAT ? 8u : 4u))*layers;
     if (count!=expected) return {};

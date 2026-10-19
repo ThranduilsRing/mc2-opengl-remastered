@@ -146,7 +146,7 @@ static void ensureTexture(UiElement& e)
     if (legacyKey.empty() && e.texturePath.rfind("data/art/gui/",0)==0)
         legacyKey=std::filesystem::path(e.texturePath).stem().string();
     if (!onDisk && !fileExists(loadName.c_str()) && !legacyKey.empty()) {
-        const std::string legacyName=std::string(artPath)+legacyKey+".tga";
+        const std::string legacyName=std::string(artPath)+std::filesystem::path(legacyKey).stem().string()+".tga";
         if (fileExists(legacyName.c_str())) {
             loadName=legacyName;
             e.textureWidth=e.textureHeight=0;

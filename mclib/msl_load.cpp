@@ -395,6 +395,7 @@ void TG_MultiShape::destroy (void)
 	listOfShapes = nullptr;
 
 	numTG_Shapes = 0;
+    instanceTextures_.clear(); instanceMaterials_.clear(); materialSet_={};
 }	
 
 //-------------------------------------------------------------------------------

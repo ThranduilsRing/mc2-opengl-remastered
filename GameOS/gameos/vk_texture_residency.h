@@ -44,7 +44,7 @@ public:
     // A legacy node already owns this identity; attach its pixels without adding a second CPU reference.
     void attach(RenderCore::TextureHandle handle, std::shared_ptr<const RenderCore::KtxImage> image, bool useMips = false);
     ResidentTextureRef acquire(const RenderCore::TextureKey& key, const RenderCore::KtxImage& image,
-                               RenderCore::TextureDimensions dimensions);
+                               RenderCore::TextureDimensions dimensions, uint32_t layers = 1, bool arrayView = false);
     // VFS resolution/extraction happens before this call. The worker never touches shared archives.
     ResidentTextureRef requestKtx(const RenderCore::TextureKey& key, std::vector<uint8_t> bytes,
                                   RenderCore::TextureDimensions dimensions);

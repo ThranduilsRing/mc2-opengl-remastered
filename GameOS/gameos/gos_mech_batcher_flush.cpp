@@ -96,10 +96,8 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
         const GpuMechPacket& pkt = s_packets[rec.firstPacket + p];
         if (pkt.textureSlot == 0) {
             ps.packetTexHandles[p] = desc.slot0TexHandle;
-        } else if (pkt.owningTypeShape && pkt.owningTypeShape->listOfTextures &&
-                   pkt.textureSlot < (uint32_t)pkt.owningTypeShape->numTextures) {
-            ps.packetTexHandles[p] =
-                pkt.owningTypeShape->listOfTextures[pkt.textureSlot].gosTextureHandle;
+        } else if (pkt.textureSlot < static_cast<uint32_t>(desc.mechShape->GetNumTextures())) {
+            ps.packetTexHandles[p]=mcTextureManager->get_gosTextureHandle(desc.mechShape->GetTextureHandle(pkt.textureSlot));
         }
     }
 

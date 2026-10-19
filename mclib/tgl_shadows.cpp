@@ -323,15 +323,15 @@ void TG_Shape::MultiTransformShadows (glm::vec3 *pos, glm::mat4 *s2w, float rota
 			//--------------------------------------------------
 			// Any sorting we need to do occurs in here as well!
 			// So, find out what texture this face is using and mark that texture as needing 3 more vertices.
-			if (theShape->listOfTextures[triType.localTextureHandle + (theShape->numTextures>>1)].gosTextureHandle != 0xffffffff)
+			if (materialTextures()[triType.localTextureHandle + (theShape->numTextures>>1)].gosTextureHandle != 0xffffffff)
 			{
 				for (long k=0;k<totalShadows;k++)
-					mcTextureManager->addTriangle(theShape->listOfTextures[triType.localTextureHandle + (theShape->numTextures>>1)].mcTextureNodeIndex,MC2_DRAWALPHA | MC2_ISSHADOWS);
+					mcTextureManager->addTriangle(materialTextures()[triType.localTextureHandle + (theShape->numTextures>>1)].mcTextureNodeIndex,MC2_DRAWALPHA | MC2_ISSHADOWS);
 			}
 			else
 			{
 				for (long k=0;k<totalShadows;k++)
-					mcTextureManager->addTriangle(theShape->listOfTextures[triType.localTextureHandle].mcTextureNodeIndex,MC2_DRAWALPHA | MC2_ISSHADOWS);
+					mcTextureManager->addTriangle(materialTextures()[triType.localTextureHandle].mcTextureNodeIndex,MC2_DRAWALPHA | MC2_ISSHADOWS);
 			}
 		}
 	}
@@ -420,10 +420,10 @@ long TG_Shape::RenderShadows (long startFace)
 	
 					if (drawOldWay)
 					{
-						if (theShape->listOfTextures[triType.localTextureHandle + (theShape->numTextures>>1)].gosTextureHandle != 0xffffffff)
-							gos_SetRenderState( gos_State_Texture, theShape->listOfTextures[triType.localTextureHandle + (theShape->numTextures>>1)].gosTextureHandle );
-						else if (theShape->listOfTextures[triType.localTextureHandle].gosTextureHandle != 0xffffffff)
-							gos_SetRenderState( gos_State_Texture, theShape->listOfTextures[triType.localTextureHandle].gosTextureHandle );
+						if (materialTextures()[triType.localTextureHandle + (theShape->numTextures>>1)].gosTextureHandle != 0xffffffff)
+							gos_SetRenderState( gos_State_Texture, materialTextures()[triType.localTextureHandle + (theShape->numTextures>>1)].gosTextureHandle );
+						else if (materialTextures()[triType.localTextureHandle].gosTextureHandle != 0xffffffff)
+							gos_SetRenderState( gos_State_Texture, materialTextures()[triType.localTextureHandle].gosTextureHandle );
 						else
 							gos_SetRenderState( gos_State_Texture, 0 );
 							
@@ -446,13 +446,13 @@ long TG_Shape::RenderShadows (long startFace)
 							(gVertex[2].z >= 0.0f) &&  
 							(gVertex[2].z < 1.0f))
 						{
-							if (theShape->listOfTextures[triType.localTextureHandle + (theShape->numTextures>>1)].gosTextureHandle != 0xffffffff)
+							if (materialTextures()[triType.localTextureHandle + (theShape->numTextures>>1)].gosTextureHandle != 0xffffffff)
 							{
-								mcTextureManager->addVertices(theShape->listOfTextures[triType.localTextureHandle + (theShape->numTextures>>1)].mcTextureNodeIndex,gVertex,MC2_ISSHADOWS | MC2_DRAWALPHA);
+								mcTextureManager->addVertices(materialTextures()[triType.localTextureHandle + (theShape->numTextures>>1)].mcTextureNodeIndex,gVertex,MC2_ISSHADOWS | MC2_DRAWALPHA);
 							}
 							else
 							{
-								mcTextureManager->addVertices(theShape->listOfTextures[triType.localTextureHandle].mcTextureNodeIndex,gVertex,MC2_ISSHADOWS | MC2_DRAWALPHA);
+								mcTextureManager->addVertices(materialTextures()[triType.localTextureHandle].mcTextureNodeIndex,gVertex,MC2_ISSHADOWS | MC2_DRAWALPHA);
 							}
 						}
 					}

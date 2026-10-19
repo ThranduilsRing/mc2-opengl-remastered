@@ -189,6 +189,31 @@ TEST_CASE("handles and set refs the registry did not issue are refused") {
     CHECK_FALSE(r.materialOfSetSlot(big, 3).isValid());
 }
 
+
+TEST_CASE("TXM material slots reject registration snapshots after replacement and node reuse") {
+    TextureService service;
+    TextureKey source; source.source="mod:props/a.tga";
+    const auto a=service.acquire(source,7);
+    source.source="mod:props/b.tga"; const auto b=service.acquire(source,8);
+    auto& materials=service.materials();
+    auto bind=[&](TextureHandle texture) { return materials.acquireSet({materials.acquire(matKey(0x1234,0,texture))}); };
+    auto textureOf=[&](MaterialSetRef set) { return materials.keyOf(materials.materialOfSetSlot(set,0))->albedo; };
+    const auto first=bind(a), sibling=bind(b);
+    CHECK_FALSE(first==sibling);
+    CHECK(textureOf(first)==a); CHECK(textureOf(sibling)==b);
+    const auto registrationSnapshot=first;
+    const auto replaced=bind(b);
+    CHECK(replaced==sibling);
+    CHECK_FALSE(textureOf(registrationSnapshot)==textureOf(replaced)); // negative control must reject the cached registration handle
+    service.release(a);
+    source.source="mod:props/damage.tga"; const auto damage=service.acquire(source,7);
+    CHECK(damage!=a); CHECK_FALSE(service.isLive(textureOf(registrationSnapshot)));
+    CHECK(textureOf(bind(damage))==damage);
+    CHECK(textureOf(sibling)==b); // late spawn / damage swap never mutates the sibling
+    service.clear();
+    CHECK_FALSE(service.isLive(damage)); CHECK_FALSE(service.isLive(b));
+}
+
 }  // TEST_SUITE
 
 // Keep MSVC from expanding the generation-exhaustion loop into the test body.

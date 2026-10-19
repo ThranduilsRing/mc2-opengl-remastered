@@ -424,7 +424,7 @@ void frameBegin() {
 
 int32_t registerRecipe(TG_MultiShape* multi,
                        const std::vector<GpuStaticPropInstance>& batch) {
-    if (batch.empty() || !multi) return -1;
+    if (batch.empty() || !multi || !multi->usesTypeMaterials()) return -1;
     RecipeRange rng;
     rng.first = static_cast<uint32_t>(s_recipes.size());
     rng.count = static_cast<uint32_t>(batch.size());
@@ -546,6 +546,7 @@ StaticSubmitResult markVisibleChecked(int32_t regIdx, uint32_t lightDataIndex,
     const RecipeRange& rng = s_recipeRanges[static_cast<uint32_t>(regIdx)];
     if (rng.count == 0)  return StaticSubmitResult::Tombstoned;   // dead handle
     if (!rng.multi)      return StaticSubmitResult::InvalidRecipe; // flush would skip it
+    if (!rng.multi->usesTypeMaterials()) return StaticSubmitResult::InvalidRecipe;
     markVisible(regIdx, lightDataIndex, extentRadius);            // accept (queues for flush)
     return StaticSubmitResult::Submitted;
 }

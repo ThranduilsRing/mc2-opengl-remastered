@@ -15,6 +15,7 @@
 
 #ifndef MSL_H
 #define MSL_H
+#include "../RenderCore/MaterialRegistry.h"
 //-------------------------------------------------------------------------------
 // Include Files
 
@@ -81,6 +82,7 @@ class TG_TypeMultiShape
 		std::vector<std::unique_ptr<TG_TypeNode>>	typeNodeStore;
 		std::vector<TG_TypeNodePtr>	typeNodeView;
 		std::vector<TG_Texture>		textureStore;
+        std::vector<uint8_t> materialDefaultsDefined_; // first source establishes defaults; instances never overwrite them
 
 		// The one (re)allocation point of the node arrays (binary load, imported mesh, ASE): count empty owners and a null view.
 		void bindTypeNodes (long count)
@@ -114,6 +116,7 @@ class TG_TypeMultiShape
 		void init (void)
 		{
 			numTG_TypeShapes = 0;
+            materialDefaultsDefined_.clear();
 			listOfTypeShapes = NULL;
 
 			numTextures = 0;
@@ -311,6 +314,10 @@ class TG_MultiShape
 	//-------------
 	//Data Members
 	protected:
+        std::vector<TG_TinyTexture> instanceTextures_;
+        std::vector<RenderCore::MaterialHandle> instanceMaterials_;
+        RenderCore::MaterialSetRef materialSet_;
+        void initMaterialSlots();
 		TG_TypeMultiShapePtr	myMultiType;			//Pointer to the type
 		int                     numTG_Shapes;			//Number of TG_Shapes
 		TG_ShapeRecPtr			listOfShapes;			//Memory holding all TG_ShapeRecs; a view of shapeRecStore
@@ -346,6 +353,7 @@ class TG_MultiShape
 	public:
 		void init (void)
 		{
+            instanceTextures_.clear(); instanceMaterials_.clear(); materialSet_={};
 			myMultiType = NULL;
 			numTG_Shapes = 0;
 			listOfShapes = NULL;
@@ -564,15 +572,11 @@ class TG_MultiShape
 		//Function returns 0 if OK.  -1 if textureNum is out of range of numTextures.
 		//This function takes the gosTextureHandle passed in and assigns it to the
 		//textureNum entry of the listOfTextures;
-		long SetTextureHandle (DWORD textureNum, DWORD gosTextureHandle)
-		{
-			return myMultiType->SetTextureHandle(textureNum,gosTextureHandle);
-		}
-
-		DWORD GetTextureHandle (DWORD textureNum)
-		{
-			return myMultiType->GetTextureHandle(textureNum);
-		}
+        long SetTextureHandle(DWORD textureNum, DWORD node);
+        DWORD GetTextureHandle(DWORD textureNum) const;
+        void BindMaterials();
+        bool usesTypeMaterials() const;
+        RenderCore::MaterialSetRef materialSet() const { return materialSet_; }
 
 		float GetExtentRadius (void)
 		{
@@ -592,10 +596,7 @@ class TG_MultiShape
 		//Function returns 0 if OK.  -1 if textureNum is out of range of numTextures.
 		//This function takes the gosTextureHandle passed in and assigns it to the
 		//textureNum entry of the listOfTextures;
-		long SetTextureAlpha (DWORD textureNum, bool alphaFlag)
-		{
-			return myMultiType->SetTextureAlpha(textureNum,alphaFlag);
-		}
+        long SetTextureAlpha(DWORD textureNum, bool alphaFlag);
 
 		glm::vec3 GetRootNodeCenter (void)
 		{

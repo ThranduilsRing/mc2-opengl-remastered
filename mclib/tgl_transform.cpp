@@ -121,10 +121,10 @@ void TG_Shape::xformGpuOnlyShape(glm::mat4* shapeToClip, bool isHudElement, BYTE
 		TG_TypeShapePtr hwShape = (myType && myType->GetNodeType() == SHAPE_NODE)
 			? (TG_TypeShapePtr)myType : nullptr;
 		if (bShadersDrawPathEnabled && hwShape && hwShape->ib_ && hwShape->vb_
-			&& hwShape->listOfTypeTriangles && hwShape->listOfTextures
+			&& hwShape->listOfTypeTriangles && materialTextures()
 			&& shapeToClip
 			&& !eligibleForGpuObjects(this) && !isSpotlight && !isWindow
-			&& !hwShape->listOfTextures[hwShape->listOfTypeTriangles[0].localTextureHandle].textureAlpha
+			&& !materialTextures()[hwShape->listOfTypeTriangles[0].localTextureHandle].textureAlpha
 			&& (alphaValue == 0xff))
 		{
 			DWORD addFlags = 0;
@@ -143,7 +143,7 @@ void TG_Shape::xformGpuOnlyShape(glm::mat4* shapeToClip, bool isHudElement, BYTE
 			cur_shape2clip = *shapeToClip;
 
 			mcTextureManager->addRenderShape(
-				hwShape->listOfTextures[hwShape->listOfTypeTriangles[0].localTextureHandle].mcTextureNodeIndex,
+				materialTextures()[hwShape->listOfTypeTriangles[0].localTextureHandle].mcTextureNodeIndex,
 				MC2_DRAWSOLID | addFlags);
 
 			lastTurnTransformed = turn;
@@ -206,7 +206,7 @@ void TG_Shape::xformVertexProject(glm::mat4* shapeToClip, bool& oneOff, bool& on
 
 // Queue the whole shape for the modern shader path.
 void TG_Shape::xformEmitShape(glm::mat4* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped, TG_TypeShapePtr theShape) {
-	if (bShadersDrawPathEnabled && !eligibleForGpuObjects(this) && !isSpotlight && !isWindow && !theShape->listOfTextures[theShape->listOfTypeTriangles[0].localTextureHandle].textureAlpha && (alphaValue == 0xff))
+	if (bShadersDrawPathEnabled && !eligibleForGpuObjects(this) && !isSpotlight && !isWindow && !materialTextures()[theShape->listOfTypeTriangles[0].localTextureHandle].textureAlpha && (alphaValue == 0xff))
 	{
 		DWORD addFlags = 0;
 		if (isHudElement)
@@ -237,7 +237,7 @@ void TG_Shape::xformEmitShape(glm::mat4* shapeToClip, bool isHudElement, BYTE al
 			cur_shape2clip = *shapeToClip;
 
 			// FIXME: this (listOfTypeTriangles[0]) is not correct if model has more than 1 texture! 
-			mcTextureManager->addRenderShape(theShape->listOfTextures[theShape->listOfTypeTriangles[0].localTextureHandle].mcTextureNodeIndex, MC2_DRAWSOLID | addFlags);
+			mcTextureManager->addRenderShape(materialTextures()[theShape->listOfTypeTriangles[0].localTextureHandle].mcTextureNodeIndex, MC2_DRAWSOLID | addFlags);
 		}
 	}
 }

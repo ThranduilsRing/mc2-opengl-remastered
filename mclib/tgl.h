@@ -897,6 +897,7 @@ class TG_Shape
 	//-------------
 	//Data Members
 	protected:
+        const TG_TinyTexture* instanceTextures_ = nullptr; // borrowed from the owning multishape
 		TG_TypeNodePtr			myType;						//Pointer to the instance of the shape.
 		DWORD					numVertices;				//Number of vertices in Shape
 		DWORD					numTriangles;				//NUmber of triangles in Shape
@@ -1025,6 +1026,7 @@ class TG_Shape
 
             // sebi: init to not contain garbage
             fogRGB = 0xFFFFFFFF;
+            instanceTextures_ = nullptr;
             myType = NULL;
             numVisibleShadows = 0;
             listOfColors = NULL;
@@ -1148,6 +1150,20 @@ class TG_Shape
 		// type geometry (cone axis derivation + additive re-render) and the
 		// instance scale legacy MultiTransformShape applies (pos *= shapeScalar
 		// at tgl.cpp:1921). Non-friend caller, hence public accessors.
+        const TG_TinyTexture* materialTextures() const {
+            if (!myType || myType->GetNodeType()!=SHAPE_NODE) return nullptr;
+            return instanceTextures_ ? instanceTextures_ : static_cast<const TG_TypeShape*>(myType)->listOfTextures;
+        }
+        bool matchesTypeMaterials() const {
+            if (!myType || myType->GetNodeType()!=SHAPE_NODE) return false;
+            const auto* type=static_cast<const TG_TypeShape*>(myType);
+            const auto* slots=materialTextures();
+            if (!slots || !type->listOfTextures) return type->numTextures==0;
+            for (DWORD i=0;i<type->numTextures;++i)
+                if (slots[i].mcTextureNodeIndex!=type->listOfTextures[i].mcTextureNodeIndex ||
+                    slots[i].textureAlpha!=type->listOfTextures[i].textureAlpha) return false;
+            return true;
+        }
 		TG_TypeNodePtr GetMyType (void) const { return myType; }
 		float GetShapeScalarValue (void) const { return shapeScalar; }
 		// 2026-05-10: SHAPE_NODE filter accessor for non-friend callers

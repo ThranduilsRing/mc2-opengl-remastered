@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "Handle.h"
+#include "MaterialRegistry.h"
 
 namespace RenderCore {
 
@@ -98,6 +99,8 @@ inline TextureHandle uiTextureHandle(uint64_t id) {
 
 class TextureService {
 public:
+    // Render-thread material identity shares the texture service session lifetime.
+    MaterialRegistry& materials() { return materials_; }
     std::function<void(TextureHandle)> onRetired; // context residency borrows the session; callback only queues invalidations
     // The handle of `key`: a new one bound to `node`, or the existing one (its user count rises; `node` is ignored, the first residency stays).
     TextureHandle acquire(const TextureKey& key, uint32_t node = kNoTextureNode, TextureDimensions dimensions = {}) {
@@ -227,6 +230,7 @@ public:
     }
 
 private:
+    MaterialRegistry materials_;
     struct Entry {
         bool        live = false;
         uint32_t    generation = 1;

@@ -37,7 +37,7 @@ uint64_t GpuStaticPropBatcher::getDisallowedLateRegEventCount() {
 bool GpuStaticPropBatcher::isMultiShapeEligibleForGpuObjects(
         const TG_MultiShape* multi) const {
     if (!g_useGpuObjects) return false;
-    if (!multi) return false;
+    if (!multi || !multi->usesTypeMaterials()) return false;
 
     const int n = multi->numTG_Shapes;
     if (n <= 0 || !multi->listOfShapes) return false;
@@ -64,7 +64,7 @@ bool GpuStaticPropBatcher::isMultiShapeEligibleForGpuObjects(
 // MUST NOT mutate any batcher state.
 bool eligibleForGpuObjects(TG_Shape* shape) {
     if (!g_useGpuObjects) return false;
-    if (!shape) return false;
+    if (!shape || !shape->matchesTypeMaterials()) return false;
     if (!shape->myType) return false;
     if (shape->myType->GetNodeType() != SHAPE_NODE) return false;
     const TG_TypeShape* ts = static_cast<const TG_TypeShape*>(shape->myType);
