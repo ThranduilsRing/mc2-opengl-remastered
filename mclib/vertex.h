@@ -21,8 +21,8 @@
 
 //---------------------------------------------------------------------------
 // Macro Definitions
-#define BOTTOMRIGHT			0
-#define BOTTOMLEFT			1
+inline constexpr int BOTTOMRIGHT = 0;
+inline constexpr int BOTTOMLEFT = 1;
 
 #ifndef NO_ERR
 #define NO_ERR				0

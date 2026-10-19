@@ -48,7 +48,7 @@
 #define FALSE 0
 #endif
 
-#define SHAPE_FILE_VERSION '01.1' // 1.10 backwards for big-endian compare
+inline constexpr int SHAPE_FILE_VERSION = '01.1'; // 1.10 backwards for big-endian compare
 
 
 //

@@ -683,7 +683,7 @@ float MapData::getVertexHeight( int VertexIndex )
 	return blocks[VertexIndex].elevation;
 }
 
-#define ContrastEnhance 1.0f
+inline constexpr float ContrastEnhance = 1.0f;
 //---------------------------------------------------------------------------
 void MapData::calcLight (void)
 {

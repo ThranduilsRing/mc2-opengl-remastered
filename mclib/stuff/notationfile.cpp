@@ -5,7 +5,7 @@
 #include"stuffheaders.hpp"
 #include"platform_str.h"
 
-#define MAX_LINE_SIZE 512
+inline constexpr int MAX_LINE_SIZE = 512;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //

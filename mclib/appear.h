@@ -37,8 +37,8 @@ class Camera;
 
 #define HUD_DEPTH		0.9999f			//HUD Objects draw over everything else (reverse-Z: near=1, far=0).
 
-#define WIDTH			19				// really half the width...
-#define HEIGHT			4
+inline constexpr int WIDTH = 19; // really half the width...
+inline constexpr int HEIGHT = 4;
 
 inline constexpr float BARTEST = 0.001f;
 

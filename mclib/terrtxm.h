@@ -35,13 +35,13 @@ inline constexpr int MC_MAX_TERRAIN_TXMS = 3000;
 
 inline constexpr int MC_MASK_NUM = 14;
 
-#define MC_MAX_MIP_LEVELS			1
+inline constexpr int MC_MAX_MIP_LEVELS = 1;
 
 #define USE_SOFTWARE_MIPMAP
 
-#define BASE_CEMENT_TYPE			10
-#define START_CEMENT_TYPE			13
-#define END_CEMENT_TYPE				20
+inline constexpr int BASE_CEMENT_TYPE = 10;
+inline constexpr int START_CEMENT_TYPE = 13;
+inline constexpr int END_CEMENT_TYPE = 20;
 
 extern int TERRAIN_TXM_SIZE;
 

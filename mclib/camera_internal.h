@@ -70,8 +70,8 @@ inline constexpr int RAMPED_RED = 239;
 inline constexpr int RAMPED_GREEN = 248;
 inline constexpr int NO_RAM_FOR_SCALE_TABLE = 0x12120001;
 
-#define NIGHT_START_PITCH		(25.0f)
-#define NIGHT_LIGHT_PITCH		(10.0f)
+inline constexpr float NIGHT_START_PITCH = (25.0f);
+inline constexpr float NIGHT_LIGHT_PITCH = (10.0f);
 inline constexpr float TERRAIN_LIGHTS_ON = 40.0f;
 
 inline constexpr float NORM_PERSPECTIVE = 35.0f;

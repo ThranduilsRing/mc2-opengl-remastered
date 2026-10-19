@@ -49,12 +49,12 @@
 #include "mc2_dialog.h"
 #include "Gates/gate.h"
 
-#define COLOR_MAP_TEXTURE_SIZE			256
+inline constexpr int COLOR_MAP_TEXTURE_SIZE = 256;
 #define COLOR_MAP_RES					float(COLOR_MAP_TEXTURE_SIZE)
 
 void* DecodeJPG( const char* FileName, BYTE* Data, DWORD DataSize, DWORD* TextureWidth, DWORD* TextureHeight, bool TextureLoad, void *pDestSurf );
 
-#define MBOK		1
+inline constexpr int MBOK = static_cast<int>(1);
 
 // Globals defined in terrtxm2.cpp (or elsewhere in the engine) that the split pieces share.
 extern bool forceShadowBurnIn;

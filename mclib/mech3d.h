@@ -79,7 +79,7 @@ inline constexpr int GestureRollover = 21;
 inline constexpr int GestureGetUp = 22;
 inline constexpr int GestureFallenForward = 23;
 inline constexpr int GestureFallenBackward = 24;
-#define MaxGestures						25
+inline constexpr int MaxGestures = 25;
 
 #define MAX_MECH_ANIMATIONS				MaxGestures
 

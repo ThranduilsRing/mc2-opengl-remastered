@@ -62,9 +62,9 @@ enum FileClass
 
 //---------------------------------------------------------------------------
 //Returns 1 if file is on HardDrive and 2 if file is in FastFile
-#define FILE_NOT_FOUND	0
-#define FILE_ON_DISK	1
-#define FILE_ON_FST		2
+inline constexpr int FILE_NOT_FOUND = 0;
+inline constexpr int FILE_ON_DISK = 1;
+inline constexpr int FILE_ON_FST = 2;
 
 // Function Declarations
 long fileExists(const char *fName, long destination_mask = FILE_ON_DISK|FILE_ON_FST);
@@ -95,27 +95,27 @@ void EnumerateModFitFiles(const char* keyPrefix, ModFitCallback cb, void* userDa
 #define	NO_ERR					0x00000000
 #endif
 
-#define	DISK_FULL_ERR			0xBADF0001
-#define	SHARE_ERR				0xBADF0002
-#define	FILE_NOT_FOUND_ERR		0xBADF0003
-#define	PACKET_OUT_OF_RANGE		0xBADF0004
-#define	PACKET_WRONG_SIZE		0xBADF0005
-#define	READ_ONLY_ERR			0xBADF0006
-#define	TOO_MANY_FILES_ERR		0xBADF0007
-#define	READ_PAST_EOF_ERR		0xBADF0008
-#define	INVALID_SEEK_ERR		0xBADF0009
-#define	BAD_WRITE_ERR			0xBADF000A
-#define	BAD_PACKET_VERSION		0xBADF000B
-#define	NO_RAM_FOR_SEEK_TABLE	0xBADF000C
-#define	NO_RAM_FOR_FILENAME		0xBADF000D
-#define	PARENT_NULL				0xBADF000E
-#define	TOO_MANY_CHILDREN		0xBADF000F
-#define	FILE_NOT_OPEN			0xBADF0010
-#define	CANT_WRITE_TO_CHILD		0xBADF0011
-#define	NO_RAM_FOR_CHILD_LIST	0xBADF0012
-#define MAPPED_WRITE_NOT_SUPPORTED	0xBADF0013
-#define COULD_NOT_MAP_FILE		0xBADF0014
-#define FILE_ALREADY_OPEN       0xBADF0015  //sebi
+inline constexpr unsigned int DISK_FULL_ERR = 0xBADF0001;
+inline constexpr unsigned int SHARE_ERR = 0xBADF0002;
+inline constexpr unsigned int FILE_NOT_FOUND_ERR = 0xBADF0003;
+inline constexpr unsigned int PACKET_OUT_OF_RANGE = 0xBADF0004;
+inline constexpr unsigned int PACKET_WRONG_SIZE = 0xBADF0005;
+inline constexpr unsigned int READ_ONLY_ERR = 0xBADF0006;
+inline constexpr unsigned int TOO_MANY_FILES_ERR = 0xBADF0007;
+inline constexpr unsigned int READ_PAST_EOF_ERR = 0xBADF0008;
+inline constexpr unsigned int INVALID_SEEK_ERR = 0xBADF0009;
+inline constexpr unsigned int BAD_WRITE_ERR = 0xBADF000A;
+inline constexpr unsigned int BAD_PACKET_VERSION = 0xBADF000B;
+inline constexpr unsigned int NO_RAM_FOR_SEEK_TABLE = 0xBADF000C;
+inline constexpr unsigned int NO_RAM_FOR_FILENAME = 0xBADF000D;
+inline constexpr unsigned int PARENT_NULL = 0xBADF000E;
+inline constexpr unsigned int TOO_MANY_CHILDREN = 0xBADF000F;
+inline constexpr unsigned int FILE_NOT_OPEN = 0xBADF0010;
+inline constexpr unsigned int CANT_WRITE_TO_CHILD = 0xBADF0011;
+inline constexpr unsigned int NO_RAM_FOR_CHILD_LIST = 0xBADF0012;
+inline constexpr unsigned int MAPPED_WRITE_NOT_SUPPORTED = 0xBADF0013;
+inline constexpr unsigned int COULD_NOT_MAP_FILE = 0xBADF0014;
+inline constexpr unsigned int FILE_ALREADY_OPEN = 0xBADF0015; //sebi
 
 //---------------------------------------------------------------------------
 //									File

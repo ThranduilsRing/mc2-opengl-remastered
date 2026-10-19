@@ -480,7 +480,7 @@ void GenericAppearance::destroy (void)
 	appearanceTypeList->removeAppearance(appearType);
 }
 
-#define HEIGHT_THRESHOLD 10.0f
+inline constexpr float HEIGHT_THRESHOLD = 10.0f;
 //-----------------------------------------------------------------------------
 void GenericAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int counter)
 {

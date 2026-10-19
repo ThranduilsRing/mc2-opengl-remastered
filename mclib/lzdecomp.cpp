@@ -8,12 +8,12 @@
 //---------------------------------------------------------------------------
 // Static Globals
 
-#define HASH_CLEAR		256               //clear hash table command code
-#define HASH_EOF        257               //End Of Data command code
-#define HASH_FREE       258               //First Hash Table Chain Offset Value
+inline constexpr int HASH_CLEAR = 256; //clear hash table command code
+inline constexpr int HASH_EOF = 257; //End Of Data command code
+inline constexpr int HASH_FREE = 258; //First Hash Table Chain Offset Value
 
-#define BASE_BITS       9
-#define MAX_BIT_INDEX   (1 << BASE_BITS)
+inline constexpr int BASE_BITS = 9;
+inline constexpr int MAX_BIT_INDEX = (1 << BASE_BITS);
 constexpr unsigned int NO_RAM_FOR_LZ_DECOMP = 0xCBCB0002;
 
 #ifndef NULL

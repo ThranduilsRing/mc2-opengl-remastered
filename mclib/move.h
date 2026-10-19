@@ -150,34 +150,34 @@ inline constexpr int MOVEPARAM_RANDOM_OPTIMAL = 524288;
 inline constexpr int MOVEPARAM_JUMP = 1048576;
 
 inline constexpr int TACORDER_PARAM_NONE = 0;
-#define	TACORDER_PARAM_RUN					(1<<0)
-#define	TACORDER_PARAM_WAIT					(1<<1)
-#define	TACORDER_PARAM_FACE_OBJECT			(1<<2)
-#define	TACORDER_PARAM_LAY_MINES			(1<<3)
-#define	TACORDER_PARAM_PURSUE				(1<<4)
-#define	TACORDER_PARAM_OBLITERATE			(1<<5)
-#define	TACORDER_PARAM_ESCAPE_TILE			(1<<6)
-#define	TACORDER_PARAM_SCAN					(1<<7)
-#define	TACORDER_PARAM_ATTACK_DFA			(1<<8)
-#define	TACORDER_PARAM_ATTACK_RAMMING		(1<<9)
-#define	TACORDER_PARAM_RANGE_RAMMING		(1<<10)
-#define	TACORDER_PARAM_RANGE_LONGEST		(1<<11)
-#define	TACORDER_PARAM_RANGE_OPTIMAL		(1<<12)
-#define	TACORDER_PARAM_RANGE_SHORT			(1<<13)
-#define	TACORDER_PARAM_RANGE_MEDIUM			(1<<14)
-#define	TACORDER_PARAM_RANGE_LONG			(1<<15)
-#define	TACORDER_PARAM_AIM_HEAD				(1<<16)
-#define	TACORDER_PARAM_AIM_LEG				(1<<17)
-#define	TACORDER_PARAM_AIM_ARM				(1<<18)
-#define	TACORDER_PARAM_DONT_SET_ORDER		(1<<19)
-#define	TACORDER_PARAM_JUMP					(1<<20)
-#define	TACORDER_PARAM_DONT_KEEP_MOVING		(1<<21)
-#define	TACORDER_PARAM_TACTIC_FLANK_RIGHT	(1<<22) //4194304
-#define	TACORDER_PARAM_TACTIC_FLANK_LEFT	(1<<23) //8388608
-#define	TACORDER_PARAM_TACTIC_FLANK_REAR	(1<<24) //16777216
-#define	TACORDER_PARAM_TACTIC_STOP_AND_FIRE	(1<<25) //33554432
-#define	TACORDER_PARAM_TACTIC_TURRET		(1<<26) //67108864
-#define	TACORDER_PARAM_TACTIC_JOUST			(1<<27) //134217728
+inline constexpr auto TACORDER_PARAM_RUN = (1<<0);
+inline constexpr auto TACORDER_PARAM_WAIT = (1<<1);
+inline constexpr auto TACORDER_PARAM_FACE_OBJECT = (1<<2);
+inline constexpr auto TACORDER_PARAM_LAY_MINES = (1<<3);
+inline constexpr auto TACORDER_PARAM_PURSUE = (1<<4);
+inline constexpr auto TACORDER_PARAM_OBLITERATE = (1<<5);
+inline constexpr auto TACORDER_PARAM_ESCAPE_TILE = (1<<6);
+inline constexpr auto TACORDER_PARAM_SCAN = (1<<7);
+inline constexpr auto TACORDER_PARAM_ATTACK_DFA = (1<<8);
+inline constexpr auto TACORDER_PARAM_ATTACK_RAMMING = (1<<9);
+inline constexpr auto TACORDER_PARAM_RANGE_RAMMING = (1<<10);
+inline constexpr auto TACORDER_PARAM_RANGE_LONGEST = (1<<11);
+inline constexpr auto TACORDER_PARAM_RANGE_OPTIMAL = (1<<12);
+inline constexpr auto TACORDER_PARAM_RANGE_SHORT = (1<<13);
+inline constexpr auto TACORDER_PARAM_RANGE_MEDIUM = (1<<14);
+inline constexpr auto TACORDER_PARAM_RANGE_LONG = (1<<15);
+inline constexpr auto TACORDER_PARAM_AIM_HEAD = (1<<16);
+inline constexpr auto TACORDER_PARAM_AIM_LEG = (1<<17);
+inline constexpr auto TACORDER_PARAM_AIM_ARM = (1<<18);
+inline constexpr auto TACORDER_PARAM_DONT_SET_ORDER = (1<<19);
+inline constexpr auto TACORDER_PARAM_JUMP = (1<<20);
+inline constexpr auto TACORDER_PARAM_DONT_KEEP_MOVING = (1<<21);
+inline constexpr auto TACORDER_PARAM_TACTIC_FLANK_RIGHT = (1<<22); //4194304
+inline constexpr auto TACORDER_PARAM_TACTIC_FLANK_LEFT = (1<<23); //8388608
+inline constexpr auto TACORDER_PARAM_TACTIC_FLANK_REAR = (1<<24); //16777216
+inline constexpr auto TACORDER_PARAM_TACTIC_STOP_AND_FIRE = (1<<25); //33554432
+inline constexpr auto TACORDER_PARAM_TACTIC_TURRET = (1<<26); //67108864
+inline constexpr auto TACORDER_PARAM_TACTIC_JOUST = (1<<27); //134217728
 
 inline constexpr int TACORDER_ATTACK_MASK = 0x00000300;
 inline constexpr int TACORDER_RANGE_MASK = 0x0000FC00;

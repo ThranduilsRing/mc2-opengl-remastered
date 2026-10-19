@@ -63,7 +63,7 @@ TG_TypeMultiShapePtr Mech3DAppearanceType::SensorSquareShape = nullptr;
 
 bool Mech3DAppearanceType::animationLoadingEnabled = true;
 
-#define MAX_MECHS					1
+inline constexpr int MAX_MECHS = 1;
 glm::vec3 debugMechActorPosition[MAX_MECHS];
 float mechDebugAngle[MAX_MECHS];
 float torsoDebugAngle[MAX_MECHS];

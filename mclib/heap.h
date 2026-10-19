@@ -33,15 +33,15 @@
 #define NO_ERR	0
 #endif
 
-#define OUT_OF_MEMORY	0xBADD0001
-#define ALLOC_ZERO		0xBADD0002
-#define ALLOC_OVERFLOW	0xBADD0003
-#define NULL_FREE_LIST	0xBADD0004
-#define HEAP_CORRUPTED	0xBADD0005
-#define BAD_FREED_PTR	0xBADD0006
-#define ALLOC_TOO_BIG	0xBADD0007
-#define COULDNT_COMMIT	0xBADD0008
-#define COULDNT_CREATE	0xBADD0009
+inline constexpr unsigned int OUT_OF_MEMORY = 0xBADD0001;
+inline constexpr unsigned int ALLOC_ZERO = 0xBADD0002;
+inline constexpr unsigned int ALLOC_OVERFLOW = 0xBADD0003;
+inline constexpr unsigned int NULL_FREE_LIST = 0xBADD0004;
+inline constexpr unsigned int HEAP_CORRUPTED = 0xBADD0005;
+inline constexpr unsigned int BAD_FREED_PTR = 0xBADD0006;
+inline constexpr unsigned int ALLOC_TOO_BIG = 0xBADD0007;
+inline constexpr unsigned int COULDNT_COMMIT = 0xBADD0008;
+inline constexpr unsigned int COULDNT_CREATE = 0xBADD0009;
 
 #ifdef _DEBUG
 #define allocatedBlockSize 12
@@ -49,17 +49,17 @@
 #define allocatedBlockSize 8
 #endif
 
-#define BASE_HEAP		0
-#define USER_HEAP		1
+inline constexpr int BASE_HEAP = 0;
+inline constexpr int USER_HEAP = 1;
 
-#define MAX_HEAPS		256
+inline constexpr int MAX_HEAPS = 256;
 //---------------------------------------------------------------------------
 extern UserHeapPtr systemHeap;
 
 //---------------------------------------------------------------------------
 // Additional Debug Information
 #ifdef _DEBUG
-#define NUMMEMRECORDS 128000
+inline constexpr int NUMMEMRECORDS = 128000;
 
 struct _memRecord
 {

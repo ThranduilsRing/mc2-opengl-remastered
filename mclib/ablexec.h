@@ -24,17 +24,17 @@
 
 //***************************************************************************
 
-#define	STATEMENT_MARKER	0x70
-#define	ADDRESS_MARKER		0x71
+inline constexpr int STATEMENT_MARKER = 0x70;
+inline constexpr int ADDRESS_MARKER = 0x71;
 
 //***************************************************************************
 
 //--------------
 // ABL Parameter
 
-#define	ABL_PARAM_VOID			0
-#define	ABL_PARAM_INTEGER		1
-#define	ABL_PARAM_REAL			2
+inline constexpr int ABL_PARAM_VOID = 0;
+inline constexpr int ABL_PARAM_INTEGER = 1;
+inline constexpr int ABL_PARAM_REAL = 2;
 
 enum ABLStackItemType {
 	ABL_STACKITEM_CHAR,

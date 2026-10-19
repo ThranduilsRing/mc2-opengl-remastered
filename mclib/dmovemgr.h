@@ -13,7 +13,7 @@
 
 //***************************************************************************
 
-#define	MAX_MOVERS		255	// Should probably equal that in Collision System
+inline constexpr int MAX_MOVERS = 255; // Should probably equal that in Collision System
 
 using PathQueueRecPtr = struct _PathQueueRec*;
 

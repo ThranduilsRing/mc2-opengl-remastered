@@ -83,9 +83,9 @@ struct StateHandleInfo {
 
 using StateHandleInfoPtr = StateHandleInfo*;
 
-#define	ROUTINE_FLAG_ORDER	1
-#define	ROUTINE_FLAG_FSM	2
-#define	ROUTINE_FLAG_STATE	4
+inline constexpr int ROUTINE_FLAG_ORDER = 1;
+inline constexpr int ROUTINE_FLAG_FSM = 2;
+inline constexpr int ROUTINE_FLAG_STATE = 4;
 
 struct _Routine {
 	RoutineKey				key;
@@ -166,8 +166,8 @@ enum FunctionReturnType {
 // the old 256 cap OOB-wrote adjacent BSS (symptom: FunctionCallbackTable[47]
 // upper 32 bits zeroed between registration and dispatch, crash with
 // `...690B` low-word pattern).
-#define	MAX_STANDARD_FUNCTIONS	512
-#define	MAX_FUNCTION_PARAMS		20
+inline constexpr int MAX_STANDARD_FUNCTIONS = 512;
+inline constexpr int MAX_FUNCTION_PARAMS = 20;
 
 struct StandardFunctionInfo {
 	SymTableNodePtr			symbol;
