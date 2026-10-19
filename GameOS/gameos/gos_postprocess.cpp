@@ -99,7 +99,7 @@ void gosPostProcess::setSkyNumber(int skyNumber)
     bool  newSunValid = false;
     loadHdri(newPath, &newSunAz, &newSunValid);   // deletes the old texture first
 
-    if (hdriTex_) {
+    if (hdriCpu_) {
         hdriBakedSunAz_   = newSunAz;
         hdriBakedSunValid_ = newSunValid;
         std::strncpy(hdriCurrentPath_, newPath, sizeof(hdriCurrentPath_) - 1);
@@ -116,14 +116,10 @@ void gosPostProcess::setSkyNumber(int skyNumber)
 
 void gosPostProcess::loadHdri(const char* path, float* outSunAz, bool* outSunValid)
 {
-    if (hdriTex_) {
-        glDeleteTextures(1, &hdriTex_);
-        hdriTex_ = 0;
-    }
     hdriCpu_.reset();
     auto cpu = std::make_shared<HdriCpuImage>();
-    hdriTex_ = loadHdriTexture(path, outSunAz, outSunValid, cpu.get());
-    if (hdriTex_ && cpu && !cpu->levels.empty()) {
+    const bool decoded = decodeHdriSource(path, outSunAz, outSunValid, cpu.get());
+    if (decoded && !cpu->levels.empty()) {
         cpu->generation = ++hdriCpuGeneration_;
         hdriCpu_ = std::move(cpu);
     }
@@ -260,12 +256,12 @@ void gosPostProcess::init(int w, int h)
             // Item 2: also scan for the baked sun azimuth (read-only; used only
             // when sun-sync is enabled at draw time).
             loadHdri(hdrPath, &hdriBakedSunAz_, &hdriBakedSunValid_);  // logs failures internally
-            if (hdriTex_) {
+            if (hdriCpu_) {
                 std::strncpy(hdriCurrentPath_, hdrPath, sizeof(hdriCurrentPath_) - 1);
                 hdriCurrentPath_[sizeof(hdriCurrentPath_) - 1] = '\0';
             }
 
-            hdriReady_ = hdriTex_ != 0;
+            hdriReady_ = bool(hdriCpu_);
 
         } else {
             MC2_DIAGFE(stderr,

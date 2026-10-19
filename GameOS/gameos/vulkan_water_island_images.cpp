@@ -15,9 +15,9 @@ namespace vk_water_detail {
 // Cost: one ~24 MB (BC6H 4K mip 0) or ~85 MB (RGBA16F 4K + chain) staging copy and one upload submit, once per load.
 // Fail-soft: bind a 1x1 black dummy and patch the FS UBO's u_waterHdriLod to -1 (SH-L2 fallback), as GL does when
 // !isHdriReady().
-bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
+bool ensure_hdri(WaterIsland* s, uint64_t hdriGeneration) {
     // Keyed on the CPU copy's load generation: a reloaded HDRI can come back under the same GL name.
-    const uint64_t generation = hdriGlTex != 0 ? mc2vk::hdriCpuGeneration() : 0;
+    const uint64_t generation = hdriGeneration;
     if (s->hdriAttempted && s->hdriGeneration == generation) {
         s->hdriRealImported=s->hdriSourceReal && mc2vk::getOrCreateEngineVulkanContext().textures().ready(s->hdriTexture.get());
         return bool(s->hdriTexture);
@@ -78,8 +78,8 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
     s->hdriRealImported=false;
     // Real art is published after the service upload ticket; descriptors follow the retired slot.
     write_descriptors(s);   // binding 2 now valid
-    vlog("hdri %s import: %dx%d fmt=%d mips=%u glTex=%u (copy-once, zero per-frame cost).",
-         haveReal ? "REAL" : "DUMMY", w, h, (int)fmt, mips, hdriGlTex);
+    vlog("hdri %s import: %dx%d fmt=%d mips=%u source_version=%llu (copy-once, zero per-frame cost).",
+         haveReal ? "REAL" : "DUMMY", w, h, (int)fmt, mips, (unsigned long long)hdriGeneration);
     return true;
 }
 

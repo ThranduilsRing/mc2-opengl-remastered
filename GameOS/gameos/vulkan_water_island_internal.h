@@ -247,7 +247,7 @@ void write_descriptors(WaterIsland* s, int only = -1);
 bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes);
 bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeCount);
 bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& record);
-bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex);
+bool ensure_hdri(WaterIsland* s, uint64_t hdriGeneration);
 bool import_shore_tex(WaterIsland* s, const void* texels, int texelsW, int texelsH, bool isFloat, mc2vk::ResidentTextureRef& texture, bool* real);
 bool ensure_shore(WaterIsland* s);
 bool init_island(WaterIsland* s, int w, int h);

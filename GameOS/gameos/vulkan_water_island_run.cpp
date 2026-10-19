@@ -19,7 +19,7 @@ extern "C" int mc2_vk_water_island_run(
     unsigned int sceneColorTex, unsigned int sceneDepthTex, int w, int h,
     const void* recipes, unsigned int recipeCount,
     const void* vsParams, const void* fsParams,
-    unsigned int hdriGlTex,
+    uint64_t hdriGeneration,
     const void* nativeInputsIn) {
     if (!nativeInputsIn || recipeCount == 0 || w <= 0 || h <= 0) return 0;
     ZoneScopedN("VKIsl.Water.Run");   // VK-ISLAND-TRACY-1 per-frame island total (CPU)
@@ -66,7 +66,7 @@ extern "C" int mc2_vk_water_island_run(
     // descriptor here: ensure_hdri device-idles before its descriptor update
     // (VK-WATER-FENCE-DEFER-1 — the old "previous frame's fence was waited
     // inline" guarantee is gone under the deferred retire).
-    if (!ensure_hdri(s, hdriGlTex)) {
+    if (!ensure_hdri(s, hdriGeneration)) {
         setFallback("hdri_binding_setup_failed"); s->disabled = true; return 0;
     }
 

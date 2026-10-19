@@ -28,7 +28,7 @@ public:
     void endScene();
 
     bool   isHdriReady()  const { return hdriReady_; }
-    GLuint getHdriTex()   const { return hdriTex_; }   // WATER-HDRI-REFL-1
+    uint64_t getHdriGeneration() const { return hdriCpu_ ? hdriCpuGeneration_ : 0; }
     const struct HdriCpuImage* getHdriCpu() const { return hdriCpu_.get(); }
 
     // FRAME-GRAPH-EXECUTOR-ISLAND-1: read-only accessors used by the executor
@@ -43,7 +43,7 @@ public:
     // HDRI-SKY-NUMBER-1: reload the HDRI texture to match theSkyNumber from the
     // .fit file.  Called by GameAdapters::Sky::setSkyNumber() at mission load.
     // No-op when HDRI is disabled (MC2_HDRI_SKY=0) or skyNumber==0.
-    // Swaps hdriTex_ only when the resolved path differs from the current one.
+    // Replaces the retained source only when the resolved path differs from the current one.
     void setSkyNumber(int skyNumber);
     int  getSkyNumber() const { return skyNumber_; }  // SCENE-LIGHTING-STATE-1: last requested sky #
 
@@ -422,11 +422,10 @@ private:
 
     // HDRI-SKY-1: background sky from a single equirect HDRI.
     // All HDRI state is null/false when MC2_HDRI_SKY=0 or load fails.
-    GLuint        hdriTex_         = 0;
-    // The CPU bytes of hdriTex_ the Vulkan sky and water islands upload; kept only while the Vulkan umbrella is armed.
+    // The retained HDRI source bytes the Vulkan sky and water islands upload; kept only while the Vulkan umbrella is armed.
     std::shared_ptr<struct HdriCpuImage> hdriCpu_;
     uint64_t      hdriCpuGeneration_ = 0;
-    void          loadHdri(const char* path, float* outSunAz, bool* outSunValid);   // sets hdriTex_ and hdriCpu_
+    void          loadHdri(const char* path, float* outSunAz, bool* outSunValid);   // sets hdriCpu_ and its generation
     bool          hdriEnabled_     = false;  // resolved once from env at init
     bool          hdriReady_       = false;  // HDRI source is available to Vulkan
     // HDRI-SKY Item 2: GL-equirect azimuth (radians) of the baked sun in the

@@ -58,10 +58,6 @@ void gosPostProcess::destroy()
     // resources. No-op when the gate was never enabled.
     postprocess_blur::Shutdown();
 
-    if (hdriTex_) {
-        glDeleteTextures(1, &hdriTex_);
-        hdriTex_ = 0;
-    }
     hdriCpu_.reset();
     hdriReady_ = false;
     hdriEnabled_ = false;

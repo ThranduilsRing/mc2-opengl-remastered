@@ -97,7 +97,7 @@ struct Island : mc2vk::IslandState {
 bool g_sessionDeclined = false;
 int  g_initReachedBuild = 0;
 
-struct Pending { bool valid = false; float invProj[16] = {}; float rot[9] = {}; float yaw = 0.f; unsigned int tex = 0; };
+struct Pending { bool valid = false; float invProj[16] = {}; float rot[9] = {}; float yaw = 0.f; uint64_t hdriGeneration = 0; };
 Pending g_pending;
 
 // The HDRI is replaced when the GL texture changes: the caller idles the GPU first.
@@ -135,9 +135,8 @@ bool submit_once(Island* s, const std::function<void(VkCommandBuffer)>& record) 
 
 // Copy-once HDRI import from the engine's CPU copy (the water island's ensure_hdri does the same). Called before recording.
 // On failure/absence a 1x1 black dummy is bound (sky = black, the same as GL's "no HDRI" baseline).
-bool ensure_hdri(Island* s, unsigned int glTex) {
+bool ensure_hdri(Island* s, uint64_t generation) {
     // Keyed on the CPU copy's load generation: a reloaded HDRI can come back under the same GL name.
-    const uint64_t generation = glTex != 0 ? mc2vk::hdriCpuGeneration() : 0;
     if (s->hdriAttempted && s->hdriGeneration == generation) return static_cast<bool>(s->hdriView);
     s->hdriAttempted = true; s->hdriGeneration = generation; s->hdriReal = false;
     if (s->hdriView || s->hdriImg) { vkDeviceWaitIdle(s->device); destroy_hdri(s); }
@@ -218,7 +217,7 @@ bool ensure_hdri(Island* s, unsigned int glTex) {
     s->hdriReal = haveReal;
     vkDeviceWaitIdle(s->device);   // rare (<=2x per session): descriptor rewrite safety
     update_set(s);
-    vlog("HDRI %s import: %dx%d fmt=%d mips=%u glTex=%u (copy-once).", haveReal ? "REAL" : "DUMMY", w, h, (int)fmt, mips, glTex);
+    vlog("HDRI %s import: %dx%d fmt=%d mips=%u source_version=%llu (copy-once).", haveReal ? "REAL" : "DUMMY", w, h, (int)fmt, mips, (unsigned long long)generation);
     return true;
 }
 
@@ -367,11 +366,11 @@ bool init_island(Island* s, int w, int h) {
 
 extern "C" int mc2_vk_sky_island_enabled(void) { return g_sessionDeclined ? 0 : 1; }
 
-extern "C" void mc2_vk_sky_submit(const float* invProj16, const float* invViewRot9, float skyYaw, unsigned int hdriGlTex) {
+extern "C" void mc2_vk_sky_submit(const float* invProj16, const float* invViewRot9, float skyYaw, uint64_t hdriGeneration) {
     if (!invProj16 || !invViewRot9) return;
     std::memcpy(g_pending.invProj, invProj16, sizeof(g_pending.invProj));
     std::memcpy(g_pending.rot, invViewRot9, sizeof(g_pending.rot));
-    g_pending.yaw = skyYaw; g_pending.tex = hdriGlTex; g_pending.valid = true;
+    g_pending.yaw = skyYaw; g_pending.hdriGeneration = hdriGeneration; g_pending.valid = true;
 }
 
 extern "C" int mc2_vk_sky_island_run(int w, int h) {
@@ -399,7 +398,7 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     }
     Island* s = static_cast<Island*>(slot.get());
     if (s->disabled || !s->inited) return 0;
-    if (!ensure_hdri(s, p.tex) || !s->hdriView) { setFallback("hdri_import_failed"); return 0; }
+    if (!ensure_hdri(s, p.hdriGeneration) || !s->hdriView) { setFallback("hdri_import_failed"); return 0; }
 
     VkImageResource* colorRes = s->colorRes;
     VkFrameSync fsC{};

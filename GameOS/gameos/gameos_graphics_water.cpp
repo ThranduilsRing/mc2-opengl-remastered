@@ -197,7 +197,7 @@ extern "C" int mc2_vk_water_island_run(
     unsigned int sceneColorTex, unsigned int sceneDepthTex, int w, int h,
     const void* recipes, unsigned int recipeCount,
     const void* vsParams, const void* fsParams,
-    unsigned int hdriGlTex,
+    uint64_t hdriGeneration,
     const void* nativeInputs);
 #endif
 
@@ -358,7 +358,7 @@ void gosRenderer::renderWaterFastPath(
         (unsigned int)ppVk->getSceneDepthTexture(),
         ppVk->getWidth(), ppVk->getHeight(),
         vkRecipes, vkRecipeN, &vsP, &fsP,
-        ppVk->isHdriReady() ? (unsigned int)ppVk->getHdriTex() : 0u,
+        ppVk->isHdriReady() ? ppVk->getHdriGeneration() : 0,
         &vkNat);
 #else
     (void)waterElevation; (void)alphaDepth; (void)alphaEdgeByte; (void)alphaMiddleByte; (void)alphaDeepByte;

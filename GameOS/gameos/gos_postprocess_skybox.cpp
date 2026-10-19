@@ -9,7 +9,7 @@ static float hdriAzOffsetRadians()
 
 void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat)
 {
-    if (!hdriReady_ || !hdriTex_ || !viewMat || !projMat) return;
+    if (!hdriReady_ || !hdriCpu_ || !viewMat || !projMat) return;
     // Compute the inverse projection. Convert float arrays to mat4 structs.
     // mat4 constructor takes column-major order; projMat is already column-major.
     mat4 projMat4;
@@ -36,6 +36,6 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
         yaw += hdriBakedSunAz_ - atan2f(ly, -lx);
     }
     skyYaw_ = yaw;
-    mc2_vk_sky_submit(invProjArray, invViewRot, yaw, (unsigned int)hdriTex_);
+    mc2_vk_sky_submit(invProjArray, invViewRot, yaw, getHdriGeneration());
 #endif
 }
