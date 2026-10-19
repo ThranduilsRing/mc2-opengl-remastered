@@ -47,7 +47,6 @@ long						Terrain::realVerticesMapSide = 0;
 
 glm::vec3				Terrain::mapTopLeft3d;					//Calced during load.
 
-UserHeapPtr					Terrain::terrainHeap = nullptr;			//Setup at load time.
 char *						Terrain::terrainName = nullptr;
 char * 						Terrain::colorMapName = nullptr;
 
@@ -300,31 +299,31 @@ void Terrain::initMapCellArrays (void)
 {
 	if (!tileRowToWorldCoord)
 	{
-		tileRowToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide);
+		tileRowToWorldCoord = (float *)std::malloc(sizeof(float) * realVerticesMapSide);
 		gosASSERT(tileRowToWorldCoord != nullptr);
 	}
 
 	if (!tileColToWorldCoord)
 	{
-		tileColToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide); 
+		tileColToWorldCoord = (float *)std::malloc(sizeof(float) * realVerticesMapSide);
 		gosASSERT(tileColToWorldCoord != nullptr);
 	}
 
 	if (!cellToWorldCoord)
 	{
-		cellToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * MAPCELL_DIM); 
+		cellToWorldCoord = (float *)std::malloc(sizeof(float) * MAPCELL_DIM);
 		gosASSERT(cellToWorldCoord != nullptr);
 	}
 
 	if (!cellColToWorldCoord)
 	{
-		cellColToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide * MAPCELL_DIM); 
+		cellColToWorldCoord = (float *)std::malloc(sizeof(float) * realVerticesMapSide * MAPCELL_DIM);
 		gosASSERT(cellColToWorldCoord != nullptr);
 	}
 
 	if (!cellRowToWorldCoord)
 	{
-		cellRowToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide * MAPCELL_DIM); 
+		cellRowToWorldCoord = (float *)std::malloc(sizeof(float) * realVerticesMapSide * MAPCELL_DIM);
 		gosASSERT(cellRowToWorldCoord != nullptr);
 	}
 
@@ -431,24 +430,24 @@ void Terrain::saveColorMapName (FitIniFile *file)
 
 void Terrain::resetVisibleVertices (long maxVisibleVertices)
 {
-	terrainHeap->Free(vertexList);
+	std::free(vertexList);
 	vertexList = nullptr;
 
-	terrainHeap->Free(quadList);
+	std::free(quadList);
 	quadList = nullptr;
 
 	visibleVerticesPerSide = maxVisibleVertices;
 	//----------------------------------------------------------------------
 	// Create the VertexList
 	numberVertices = 0;
-	vertexList = (VertexPtr)terrainHeap->Malloc(sizeof(Vertex) * visibleVerticesPerSide * visibleVerticesPerSide);
+	vertexList = (VertexPtr)std::malloc(sizeof(Vertex) * visibleVerticesPerSide * visibleVerticesPerSide);
 	gosASSERT(vertexList != nullptr);
 	memset(vertexList,0,sizeof(Vertex) * visibleVerticesPerSide * visibleVerticesPerSide);
 
 	//----------------------------------------------------------------------
 	// Create the QuadList
 	numberQuads = 0;
-	quadList = (TerrainQuadPtr)terrainHeap->Malloc(sizeof(TerrainQuad) * visibleVerticesPerSide * visibleVerticesPerSide);
+	quadList = (TerrainQuadPtr)std::malloc(sizeof(TerrainQuad) * visibleVerticesPerSide * visibleVerticesPerSide);
 	gosASSERT(quadList != nullptr);
 	memset(quadList,0,sizeof(TerrainQuad) * visibleVerticesPerSide * visibleVerticesPerSide);
 
@@ -602,9 +601,9 @@ void Terrain::destroy (void)
 	// Terrain LOD chunk Phase 1 teardown — free before terrainHeap destroy.
 	// MC2_TERRAIN_LOD_CHUNK=1 gate; idempotent (NULL guards prevent double-free).
 	if (mc2TerrainLodChunkEnabled()) {
-		if (s_blockMeta)      { terrainHeap->Free(s_blockMeta);      s_blockMeta      = nullptr; }
-		if (s_superchunkMeta) { terrainHeap->Free(s_superchunkMeta); s_superchunkMeta = nullptr; }
-		if (s_drawCmds)       { terrainHeap->Free(s_drawCmds);       s_drawCmds       = nullptr; }
+		if (s_blockMeta)      { std::free(s_blockMeta);      s_blockMeta      = nullptr; }
+		if (s_superchunkMeta) { std::free(s_superchunkMeta); s_superchunkMeta = nullptr; }
+		if (s_drawCmds)       { std::free(s_drawCmds);       s_drawCmds       = nullptr; }
 		delete[] s_skirtDepths; s_skirtDepths = nullptr;
 		s_terrainChunkSide = 0;
 		s_superchunkSide   = 0;
@@ -642,76 +641,71 @@ void Terrain::destroy (void)
 
 	if (tileRowToWorldCoord)
 	{
-		terrainHeap->Free(tileRowToWorldCoord);
+		std::free(tileRowToWorldCoord);
 		tileRowToWorldCoord = nullptr;
 	}
 
 	if (tileColToWorldCoord)
 	{
-		terrainHeap->Free(tileColToWorldCoord); 
+		std::free(tileColToWorldCoord);
 		tileColToWorldCoord = nullptr;
 	}
 
 	if (cellToWorldCoord)
 	{
-		terrainHeap->Free(cellToWorldCoord); 
+		std::free(cellToWorldCoord);
 		cellToWorldCoord = nullptr;
 	}
 
 	if (cellColToWorldCoord)
 	{
-		terrainHeap->Free(cellColToWorldCoord); 
+		std::free(cellColToWorldCoord);
 		cellColToWorldCoord = nullptr;
 	}
 
 	if (cellRowToWorldCoord)
 	{
-		terrainHeap->Free(cellRowToWorldCoord); 
+		std::free(cellRowToWorldCoord);
 		cellRowToWorldCoord = nullptr;
 	}
 
 	if (moverBlockList)
 	{
-		terrainHeap->Free(moverBlockList);
+		std::free(moverBlockList);
 		moverBlockList = nullptr;
 	}
 
 	if (usedBlockList)
 	{
-		terrainHeap->Free(usedBlockList);
+		std::free(usedBlockList);
 		usedBlockList = nullptr;
 	}
 
 	if (vertexList)
 	{
-		terrainHeap->Free(vertexList);
+		std::free(vertexList);
 		vertexList = nullptr;
 	}
 
 	if (quadList)
 	{
-		terrainHeap->Free(quadList);
+		std::free(quadList);
 		quadList = nullptr;
 	}
 
 	if (objBlockInfo)
 	{
-		terrainHeap->Free(objBlockInfo);
+		std::free(objBlockInfo);
 		objBlockInfo = nullptr;
 	}
 	
 	if (objVertexActive)
 	{
-		terrainHeap->Free(objVertexActive);
+		std::free(objVertexActive);
 		objVertexActive = nullptr;
 	}
 	
- 	if (terrainHeap)
-	{
-		terrainHeap->destroy();
-		delete terrainHeap;
-		terrainHeap = nullptr;
-	}
+
 	
 	numberVertices =
 	numberQuads =

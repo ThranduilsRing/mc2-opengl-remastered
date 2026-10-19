@@ -201,8 +201,8 @@ class File
 
 			//Used to dig the LZ data directly out of the fastfiles.
 			// For textures.
-			//long readRAW (unsigned long * &buffer, UserHeapPtr heap);
-			long readRAW (DWORD* &buffer, UserHeapPtr heap);
+			//long readRAW (unsigned long * &buffer);
+			long readRAW (DWORD* &buffer);
 
 			unsigned char readByte (void);
 			short readWord (void);

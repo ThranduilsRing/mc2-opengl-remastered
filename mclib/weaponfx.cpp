@@ -20,7 +20,7 @@ char mc2_word_none[5] = "NONE";
 //---------------------------------------------------------------------------------
 void WeaponEffects::destroy (void)
 {
-	systemHeap->Free(effects);
+	std::free(effects);
 	effects = nullptr;
 	numEffects = 0;
 }
@@ -38,7 +38,7 @@ void WeaponEffects::init (const char *effectCSVFileName)
 		
 	numEffects = effectFile.getNumLines() - 1;	//Always subtract one for the column headers
 
-	effects = (EffectData *)systemHeap->Malloc(sizeof(EffectData) * numEffects);
+	effects = (EffectData *)std::malloc(sizeof(EffectData) * numEffects);
 	gosASSERT(effects != nullptr);
 	
 	for (long i=0;i<numEffects;i++)

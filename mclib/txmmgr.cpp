@@ -178,12 +178,7 @@ void MC_TextureManager::start (void)
 	masterHardwareVertexNodeStore.assign(MC_MAXTEXTURES, MC_HardwareVertexArrayNode{});
 	masterHardwareVertexNodes = masterHardwareVertexNodeStore.data();
 
-	textureCacheHeap = new UserHeap;
-	textureCacheHeap->init(TEXTURE_CACHE_SIZE,"TXMCache");
-	textureCacheHeap->setMallocFatals(false);
 	
-	textureStringHeap = new UserHeap;
-	textureStringHeap->init(512000,"TXMString");
 
 	if (!textureManagerInstrumented)
 	{
@@ -288,11 +283,7 @@ void MC_TextureManager::destroy (void)
 	std::vector<MC_HardwareVertexArrayNode>().swap(masterHardwareVertexNodeStore);
 	std::vector<WORD>().swap(indexArrayStore);
 	
-	delete textureCacheHeap;
-	textureCacheHeap = nullptr;
 
-	delete textureStringHeap;
-	textureStringHeap = nullptr;
 
 	gos_LightDataSsbo_Destroy();  // [LIGHTSSBO v1]
 
@@ -308,10 +299,10 @@ MC_TextureManager::~MC_TextureManager (void)
 		if (lzBuffer1)
 		{
 			gosASSERT(lzBuffer2 != nullptr);
-			if (textureCacheHeap)
+			
 			{
-				textureCacheHeap->Free(lzBuffer1);
-				textureCacheHeap->Free(lzBuffer2);
+				std::free(lzBuffer1);
+				std::free(lzBuffer2);
 			}
 			lzBuffer1 = nullptr;
 			lzBuffer2 = nullptr;
@@ -932,8 +923,8 @@ void MC_TextureNode::destroy (void)
 		gos_DestroyTexture(gosTextureHandle);
 	}
 	
-	mcTextureManager->textureStringHeap->Free(nodeName);
-	mcTextureManager->textureCacheHeap->Free(textureData);
+	std::free(nodeName);
+	std::free(textureData);
 	RenderCore::textureService().onNodeDestroyed(static_cast<uint32_t>(this - mcTextureManager->masterTextureNodes));   // P4a: the node's handle goes stale
 	init();
 }

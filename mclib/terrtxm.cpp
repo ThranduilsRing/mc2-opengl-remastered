@@ -107,6 +107,7 @@ extern bool InEditor;
 // the textures can be preloaded during the init.
 long TerrainTextures::init (const char *fileName, const char *baseName)
 {
+	metadataLoaded = true;
 	if (InEditor)
 		quickLoad = false;
 	else
@@ -165,11 +166,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 
 	//--------------------------------------------------------
 	// First setup the user heap with amount of RAM requested
-	tileHeap = new UserHeap;
-	gosASSERT(tileHeap != nullptr);
 
-	tileRAMHeap = new UserHeap;
-	gosASSERT(tileRAMHeap != nullptr);
 
 	txmFileName.init(texturePath,fileName,".FIT");
 
@@ -201,18 +198,16 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 	result = textureFile.readIdULong("TextureMemSize",terrainTileCacheSize);
 	gosASSERT(result == NO_ERR);
 
-	result = tileHeap->init(65536,"TextureRAM");
 	gosASSERT(result == NO_ERR);
 
-	result = tileRAMHeap->init(terrainTileCacheSize,"TextureRAM");
 	gosASSERT(result == NO_ERR);
 
-	localBaseName = (char *)tileRAMHeap->Malloc(strlen(baseName)+1);
+	localBaseName = (char *)std::malloc(strlen(baseName)+1);
 	strcpy(localBaseName,baseName);
 
 	//--------------------------------------------------------
 	// Create the lists of pointers to the textures.
-	textures = (TerrainTXMPtr)tileHeap->Malloc(numTxms * sizeof(TerrainTXM));
+	textures = (TerrainTXMPtr)std::malloc(numTxms * sizeof(TerrainTXM));
 	gosASSERT(textures != nullptr);
 
 	memset(textures,-1,numTxms * sizeof(TerrainTXM));
@@ -223,22 +218,22 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 	for (long i = 0; i < numTxms; ++i)
 		textures[i].flags = 0;
 
-	types = (MC_TerrainTypePtr)tileRAMHeap->Malloc(numTypes * sizeof(MC_TerrainType));
+	types = (MC_TerrainTypePtr)std::malloc(numTypes * sizeof(MC_TerrainType));
 	gosASSERT(types != nullptr);
 
 	memset(types,0,numTypes * sizeof(MC_TerrainType));
 
-	overlays = (MC_OverlayTypePtr)tileRAMHeap->Malloc(numOverlays * sizeof(MC_OverlayType));
+	overlays = (MC_OverlayTypePtr)std::malloc(numOverlays * sizeof(MC_OverlayType));
 	gosASSERT(overlays != nullptr);
 
 	memset(overlays, 0, numOverlays * sizeof(MC_OverlayType));
 
-	details = (MC_DetailTypePtr)tileHeap->Malloc(numDetails * sizeof(MC_DetailType));
+	details = (MC_DetailTypePtr)std::malloc(numDetails * sizeof(MC_DetailType));
 	gosASSERT(details != nullptr);
 
 	memset(details, 0, numDetails * sizeof(MC_DetailType));
 
-	transitions = (TransitionTypePtr)tileRAMHeap->Malloc(numTransitions * sizeof(TransitionType));
+	transitions = (TransitionTypePtr)std::malloc(numTransitions * sizeof(TransitionType));
 	gosASSERT(transitions != nullptr);
 
 	memset(transitions, -1, numTransitions * sizeof(TransitionType));
@@ -259,13 +254,13 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 			char tmpy[2048];
 			result = textureFile.readIdString("TerrainName",tmpy,2047);
 			gosASSERT(result == NO_ERR);
-			types[i].terrainName = (char *)tileRAMHeap->Malloc(strlen(tmpy)+1);
+			types[i].terrainName = (char *)std::malloc(strlen(tmpy)+1);
 			gosASSERT(types[i].terrainName != nullptr);
 			strcpy(types[i].terrainName,tmpy);
 	
 			result = textureFile.readIdString("MaskName",tmpy,2047);
 			gosASSERT(result == NO_ERR);
-			types[i].maskName = (char *)tileRAMHeap->Malloc(strlen(tmpy)+1);
+			types[i].maskName = (char *)std::malloc(strlen(tmpy)+1);
 			gosASSERT(types[i].maskName != nullptr);
 			strcpy(types[i].maskName,tmpy);
 	
@@ -300,12 +295,12 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 	{
 		if ((i && (types[i].terrainId != types[0].terrainId)) || !i)
 		{
-			types[i].textureData = (MemoryPtr *)tileRAMHeap->Malloc(sizeof(MemoryPtr) * MC_MAX_MIP_LEVELS);
+			types[i].textureData = (MemoryPtr *)std::malloc(sizeof(MemoryPtr) * MC_MAX_MIP_LEVELS);
 			gosASSERT(types[i].textureData != nullptr);
 			
 			memset(types[i].textureData,0,sizeof(MemoryPtr) * MC_MAX_MIP_LEVELS);
 
-			types[i].maskData = (MemoryPtr *)tileRAMHeap->Malloc(sizeof(MemoryPtr) * MC_MASK_NUM * MC_MAX_MIP_LEVELS);
+			types[i].maskData = (MemoryPtr *)std::malloc(sizeof(MemoryPtr) * MC_MASK_NUM * MC_MAX_MIP_LEVELS);
 			gosASSERT(types[i].maskData != nullptr);
 			
 			memset(types[i].maskData,0,sizeof(MemoryPtr) * MC_MASK_NUM);
@@ -317,14 +312,14 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 		}
 		else if (i && (types[i].terrainId == types[0].terrainId))
 		{
-			MemoryPtr ourRAM = (MemoryPtr)tileRAMHeap->Malloc(16 * 16 * sizeof(DWORD));
+			MemoryPtr ourRAM = (MemoryPtr)std::malloc(16 * 16 * sizeof(DWORD));
 			gosASSERT(ourRAM != nullptr);
 			
 			memset(ourRAM,0,16 * 16 * sizeof(DWORD));
 			
 			textures[nextAvailable].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw((DWORD *)ourRAM,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,16);
 			// textureFromMemoryRaw memcpy's into its own cache block, so this buffer is scratch (BUGS 53: it was never freed, 181 blocks per mission).
-			tileRAMHeap->Free(ourRAM);
+			std::free(ourRAM);
 			mcTextureManager->setTextureNeverFlush(textures[nextAvailable].mcTextureNodeIndex, 0x1);
 			nextAvailable++;
 
@@ -351,7 +346,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 		char tmpy[2048];
 		result = textureFile.readIdString("OverlayName",tmpy,2047);
 		gosASSERT(result == NO_ERR);
-		overlays[i].overlayName = (char *)tileRAMHeap->Malloc(strlen(tmpy)+1);
+		overlays[i].overlayName = (char *)std::malloc(strlen(tmpy)+1);
 		gosASSERT(overlays[i].overlayName != nullptr);
 		strcpy(overlays[i].overlayName,tmpy);
 
@@ -375,7 +370,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 	// Now preload the overlay texture data 
 	for (int i=0;i<numOverlays;i++)
 	{
-		overlays[i].overlayData = (MemoryPtr *)tileRAMHeap->Malloc(sizeof(MemoryPtr) * overlays[i].numTextures * MC_MAX_MIP_LEVELS);
+		overlays[i].overlayData = (MemoryPtr *)std::malloc(sizeof(MemoryPtr) * overlays[i].numTextures * MC_MAX_MIP_LEVELS);
 		gosASSERT(overlays[i].overlayData != nullptr);
 
 		memset(overlays[i].overlayData,0,sizeof(MemoryPtr) * overlays[i].numTextures * MC_MAX_MIP_LEVELS);
@@ -383,7 +378,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 		// OVERLAY-TILE-HIRES-1: parallel per-tile edge-size table. Default every
 		// slot to the legacy TERRAIN_TXM_SIZE; initOverlay() overwrites per file
 		// when the hires gate resyncs a tile to its actual TGA dimensions.
-		overlays[i].overlayDataSizes = (long *)tileRAMHeap->Malloc(sizeof(long) * overlays[i].numTextures * MC_MAX_MIP_LEVELS);
+		overlays[i].overlayDataSizes = (long *)std::malloc(sizeof(long) * overlays[i].numTextures * MC_MAX_MIP_LEVELS);
 		gosASSERT(overlays[i].overlayDataSizes != nullptr);
 		for (long s=0;s<overlays[i].numTextures * MC_MAX_MIP_LEVELS;s++)
 			overlays[i].overlayDataSizes[s] = TERRAIN_TXM_SIZE;
@@ -415,7 +410,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 		char tmpy[2048];
 		result = textureFile.readIdString("DetailName",tmpy,2047);
 		gosASSERT(result == NO_ERR);
-		details[i].detailName = (char *)tileRAMHeap->Malloc(strlen(tmpy)+1);
+		details[i].detailName = (char *)std::malloc(strlen(tmpy)+1);
 		gosASSERT(details[i].detailName != nullptr);
 		strcpy(details[i].detailName,tmpy);
 
@@ -435,7 +430,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 	// Now preload the detail texture data 
 	for (int i=0;i<numDetails;i++)
 	{
-		details[i].detailData = (MemoryPtr *)tileRAMHeap->Malloc(sizeof(MemoryPtr) * details[i].numDetails * MC_MAX_MIP_LEVELS);
+		details[i].detailData = (MemoryPtr *)std::malloc(sizeof(MemoryPtr) * details[i].numDetails * MC_MAX_MIP_LEVELS);
 		gosASSERT(details[i].detailData != nullptr);
 		
 		memset(details[i].detailData,0,sizeof(MemoryPtr) * details[i].numDetails * MC_MAX_MIP_LEVELS);
@@ -681,7 +676,7 @@ long TerrainTextures::initTexture (long typeNum)
 	
 			tgaFile.seek(0);
 	
-			MemoryPtr ourRAM = (MemoryPtr)tileRAMHeap->Malloc(mipSize * mipSize * sizeof(DWORD));
+			MemoryPtr ourRAM = (MemoryPtr)std::malloc(mipSize * mipSize * sizeof(DWORD));
 			gosASSERT(ourRAM != nullptr);
 	
 			loadTGATexture(&tgaFile,ourRAM,mipSize,mipSize);
@@ -753,7 +748,7 @@ void TerrainTextures::initMask (long typeNum)
 			tgaFile.open(fileName);
 			gosASSERT(result == NO_ERR);
 
-			MemoryPtr ourRAM = (MemoryPtr)tileRAMHeap->Malloc(mipSize * mipSize * sizeof(BYTE));
+			MemoryPtr ourRAM = (MemoryPtr)std::malloc(mipSize * mipSize * sizeof(BYTE));
 			gosASSERT(ourRAM != nullptr);
 
 			loadTGAMask(&tgaFile,ourRAM,mipSize,mipSize);
@@ -873,7 +868,7 @@ long TerrainTextures::initOverlay (long overlayNum, long txmNum, char *txmName)
 					mipSize = hw;
 			}
 
-			MemoryPtr ourRAM = (MemoryPtr)tileRAMHeap->Malloc(mipSize * mipSize * sizeof(DWORD));
+			MemoryPtr ourRAM = (MemoryPtr)std::malloc(mipSize * mipSize * sizeof(DWORD));
 			gosASSERT(ourRAM != nullptr);
 
 			loadTGATexture(&tgaFile,ourRAM,mipSize,mipSize);
@@ -1425,7 +1420,7 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 
 			//-------------------------------------------------------
 			// This one does not exist.  Make it.
-			MemoryPtr ourRAM = (MemoryPtr)tileRAMHeap->Malloc(mipSize * mipSize * sizeof(DWORD));
+			MemoryPtr ourRAM = (MemoryPtr)std::malloc(mipSize * mipSize * sizeof(DWORD));
 
 			BYTE v0Type = typeInfo & 0x000000ff;
 			BYTE v1Type = typeInfo >> 8;
@@ -1572,7 +1567,7 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 			if (kmp == 0)
 				txmResult = result;
 
-			tileRAMHeap->Free(ourRAM);
+			std::free(ourRAM);
 		}
 
 		transitions[nextTransition].transitionIndex = typeInfo;
@@ -1702,14 +1697,14 @@ long TerrainTextures::setDetail (DWORD typeInfo, DWORD frameNum)
 void TerrainTextures::update (void)
 {
 	ZoneScopedN("TerrainTextures::update");
-	if (tileRAMHeap)
+	if (metadataLoaded)
 	{
 		// BUGS 53: UserHeap::destroy() hands nothing back to the allocator (gos_DestroyMemoryHeap deletes the heap record only),
 		// so every block init() took from tileRAMHeap leaked once per mission (538 blocks on mc2_03). Free them here, where the
 		// pointers are dropped. Owner of each block: types[] / overlays[] / details[] entries own their name strings and mip tables;
 		// the mip entries are non-null only when init() ran the non-quickLoad path (editor, or no .lst); none of them aliases
 		// another table (the tables hold one malloc each, written once in init()).
-		auto freeBlock = [this](void* block) { if (block) tileRAMHeap->Free(block); };
+		auto freeBlock = [this](void* block) { if (block) std::free(block); };
 		auto freeTable = [&freeBlock](MemoryPtr* table, long entries) {
 			if (!table)
 				return;
@@ -1764,9 +1759,8 @@ void TerrainTextures::update (void)
 		}
 
 		localBaseName = nullptr;
+		metadataLoaded = false;
 
-		delete tileRAMHeap;
-		tileRAMHeap = nullptr;
 	}
 }
 
@@ -1800,20 +1794,18 @@ void TerrainTextures::destroy (void)
 
 	// tileHeap blocks (BUGS 53): the heap's destroy frees none of them. textures[] and details[] stay readable all mission
 	// (isCement, getTilingFactor), so they are released here and only here.
-	if (tileHeap)
+	
 	{
 		if (textures)
-			tileHeap->Free(textures);
+			std::free(textures);
 		if (details)
-			tileHeap->Free(details);
+			std::free(details);
 	}
 	textures = nullptr;
 	details = nullptr;
 	numTxms = 0;
 	numDetails = 0;
 
-	delete tileHeap;
-	tileHeap = nullptr;
 }
 
 //---------------------------------------------------------------------------

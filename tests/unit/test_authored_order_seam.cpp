@@ -500,9 +500,6 @@ struct DisconnectedApplication : mc2::sim::OrderApplication {
     mc2::sim::ApplicationOutcome applySupport(const mc2::sim::OrderEnvelope& e) override { return adapter.applySupport(e); }
 };
 struct SeamWorldResources {
-    UserHeap heap;
-    UserHeap* previousHeap = systemHeap;
-    UserHeap* previousMissionHeap = missionHeap;
     bool previousInitialize = GameObject::initialize;
     unsigned long previousIcon = Mover::holdFireIconHandle;
     GameObjectManager* previousObjects = ObjectManager;
@@ -511,17 +508,12 @@ struct SeamWorldResources {
     bool previousBrain = MechWarrior::brainsEnabled[0];
     long previousTeamCount = Team::numTeams;
     SeamWorldResources() {
-        heap.init(1024 * 1024, "authored-order-seam");
-        systemHeap = &heap;
-        missionHeap = &heap;
         GameObject::initialize = true;
         Mover::holdFireIconHandle = 1;
     }
     ~SeamWorldResources() {
         Mover::holdFireIconHandle = previousIcon;
         GameObject::initialize = previousInitialize;
-        systemHeap = previousHeap;
-        missionHeap = previousMissionHeap;
         ObjectManager = previousObjects;
         MechWarrior::warriorList[7] = previousPilot;
         Team::teams[0] = previousTeam;
@@ -740,12 +732,10 @@ TEST_CASE("AuthoredOrderProduction/mission admission resolves recipient and reco
     SUBCASE("destroy discards live routes and rejections before a mission reload") {
         REQUIRE(owner.onRouteEvent(input));
         CHECK_FALSE(owner.onRouteEvent(input));
-        ObjectManager = nullptr; MechWarrior::warriorList[7] = nullptr; missionHeap = nullptr;
-        Team::teams[0] = nullptr;
+        ObjectManager = nullptr; MechWarrior::warriorList[7] = nullptr; Team::teams[0] = nullptr;
         owner.destroy(false);
         Team::teams[0] = &team;
-        ObjectManager = &objects; MechWarrior::warriorList[7] = &pilot; missionHeap = &resources.heap;
-        CHECK(owner.authoredExecutions().empty()); CHECK(owner.rejectedRouteSignals.empty());
+        ObjectManager = &objects; MechWarrior::warriorList[7] = &pilot; CHECK(owner.authoredExecutions().empty()); CHECK(owner.rejectedRouteSignals.empty());
         CHECK(owner.authoredRoutes.empty()); CHECK_FALSE(owner.orderRecipient(2));
         CHECK_FALSE(owner.onRouteEvent(input));
         owner.bindOrderRecipients();

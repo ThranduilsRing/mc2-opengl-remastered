@@ -33,7 +33,7 @@ FloatHelp*	FloatHelp::floatHelps = nullptr;			//POinters to all of them.
 // class FloatHelp
 void FloatHelp::init (long maxHelps)
 {
-	floatHelps = static_cast<FloatHelp*>(systemHeap->Malloc(sizeof(FloatHelp) * MAX_FLOAT_HELPS));
+	floatHelps = static_cast<FloatHelp*>(std::malloc(sizeof(FloatHelp) * MAX_FLOAT_HELPS));
 	ownsPool = true;
 	gosASSERT(floatHelps != nullptr);
 	
@@ -51,7 +51,7 @@ void FloatHelp::destroy (void)
 	{
 		for (long i = 0; i < MAX_FLOAT_HELPS; ++i)
 			floatHelps[i].~FloatHelp();
-		systemHeap->Free(floatHelps);
+		std::free(floatHelps);
 	}
 	floatHelps = nullptr;
 	currentFloatHelp = 0;

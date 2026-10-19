@@ -45,9 +45,6 @@ struct CombatRetirementSeam {
 
 namespace {
 struct World {
-    UserHeap heap;
-    UserHeap* oldHeap = systemHeap;
-    UserHeap* oldMissionHeap = missionHeap;
     Mission* oldMission = mission;
     GameObjectManager* oldObjects = ObjectManager;
     bool oldInitialize = GameObject::initialize;
@@ -72,8 +69,6 @@ struct World {
     World() {
         std::memcpy(oldRelations, Team::relations, sizeof(oldRelations));
         std::memcpy(oldNetworkRelations, TeamRelations, sizeof(oldNetworkRelations));
-        heap.init(1024 * 1024, "combat-retirement-seam");
-        systemHeap = missionHeap = &heap;
         objects = std::make_unique<Watches>();
         GameObject::initialize = true;
         mission = &storage.owner;
@@ -100,8 +95,7 @@ struct World {
         frameLength = oldFrame; renderObjects = oldRender; MPlayer = oldMultiplayer;
         ObjectManager = oldObjects; mission = oldMission;
         GameObject::initialize = oldInitialize;
-        systemHeap = oldHeap; missionHeap = oldMissionHeap;
-    }
+        }
 };
 struct Bolt : WeaponBolt {
     WeaponBoltType* type;

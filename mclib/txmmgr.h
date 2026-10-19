@@ -401,8 +401,6 @@ class MC_TextureManager
 		// calls addTriangle while holding the lock (same thread, same mutex).
 		mutable std::recursive_mutex	m_vertexNodeMu;
 													
-		UserHeapPtr						textureCacheHeap;			//Heap used to cache textures from vidCard to system RAM.
-		UserHeapPtr						textureStringHeap;			//Heap used to store filenames of textures so no dupes.
 		bool 							textureManagerInstrumented;	//Texture Manager Instrumented.
 		long							totalCacheMisses;			//NUmber of times flush has been called.
 		
@@ -453,8 +451,6 @@ class MC_TextureManager
 		{
 			masterTextureNodes = nullptr;
 
-			textureCacheHeap = nullptr;
-			textureStringHeap = nullptr;
 			textureManagerInstrumented = false;
 			totalCacheMisses = 0;
 			currentUsedTextures = 0;
@@ -1362,15 +1358,7 @@ class MC_TextureManager
 		void  unpinNode  (DWORD nodeIdx);
 		DWORD getPinCount(DWORD nodeIdx) const;
 
-		bool checkCacheHeap (void)
-		{
-			if (textureCacheHeap->totalCoreLeft() <= (TEXTURE_CACHE_SIZE - MAX_CACHE_SIZE))
-			{
-				return false;
-			}
-			
-			return true;
-		}
+		bool checkCacheHeap(void) { return false; }
 		
 };
 

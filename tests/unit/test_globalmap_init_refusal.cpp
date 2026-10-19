@@ -34,16 +34,9 @@ struct TestStateGuard
 {
 	std::FILE* capture = nullptr;
 	std::string path;
-	UserHeap heap;
-	UserHeapPtr savedSystemHeap = systemHeap;
-	TestStateGuard ()
-	{
-		heap.init(1024 * 1024, "globalmap-init-refusal");
-		systemHeap = &heap;
-	}
+
 	~TestStateGuard ()
 	{
-		systemHeap = savedSystemHeap;
 		mc2::log::setStreamOverrideForTest(mc2::log::Stream::Err, nullptr);
 		if (capture)
 			std::fclose(capture);

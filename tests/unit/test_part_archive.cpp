@@ -8,7 +8,6 @@
 #include <limits>
 
 // The FIT/heap spine is real; these are the surrounding session services used by the init phase.
-UserHeapPtr missionHeap = nullptr;
 MultiPlayer* MPlayer = nullptr;
 long GameDifficulty = 0;
 float loadProgress = 0;
@@ -77,7 +76,7 @@ struct MissionPartArchiveTest {
         mission.initPartsLoad(MISSION_LOAD_SP_QUICKSTART, -1, nullptr, nullptr, 0, frame);
     }
     static void release(Mission& mission) {
-        if (mission.parts) missionHeap->Free(mission.parts);
+        if (mission.parts) std::free(mission.parts);
         mission.parts = nullptr;
         mission.numParts = 0;
     }
@@ -97,7 +96,6 @@ struct WatchFixture : GameObject {
     glm::vec3 getRotationVector() override { return {}; }
 };
 struct LiveParts {
-    UserHeap heap;
     FitIniFile fit;
     Mission mission;
     std::array<PilotFixture, 2> pilots;
@@ -108,7 +106,6 @@ struct LiveParts {
     std::array<ObjectTypePtr, 64> typeTable{};
     std::array<GameObjectPtr, 3> watches{};
     LiveParts() {
-        missionHeap = &heap;
         ObjectManager = &objects;
         objects.objTypeManager = &types;
         types.numObjectTypes = static_cast<long>(typeTable.size());
@@ -143,7 +140,6 @@ struct LiveParts {
     }
     ~LiveParts() {
         MissionPartArchiveTest::release(mission);
-        missionHeap = nullptr;
         ObjectManager = nullptr;
         MechWarrior::warriorList[1] = nullptr;
         MechWarrior::warriorList[2] = nullptr;

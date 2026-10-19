@@ -2,9 +2,6 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
-static UserHeap testHeap;
-static const auto initialized = testHeap.init(0);
-UserHeapPtr systemHeap = &testHeap;
 
 // Environment: file.cpp reads Environment.checkCDForFiles on the FST-miss
 // path. Zero-initialized => no CD probing, exactly what tests want.

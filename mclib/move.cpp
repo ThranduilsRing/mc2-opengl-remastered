@@ -466,12 +466,12 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 	printf("[MOVE_BD] offMap loop done numOffMap=%ld\n", numOffMap); fflush(stdout);
 
 	if (tempSpecialAreaFootPrints) {
-		systemHeap->Free(tempSpecialAreaFootPrints);
+		std::free(tempSpecialAreaFootPrints);
 		tempSpecialAreaFootPrints = nullptr;
 	}
 	tempNumSpecialAreas = numSpecialAreas;
 	if (tempNumSpecialAreas) {
-		tempSpecialAreaFootPrints = (GameObjectFootPrint*)systemHeap->Malloc(sizeof(GameObjectFootPrint) * tempNumSpecialAreas);
+		tempSpecialAreaFootPrints = (GameObjectFootPrint*)std::malloc(sizeof(GameObjectFootPrint) * tempNumSpecialAreas);
 		memcpy(tempSpecialAreaFootPrints, specialAreaFootPrints, sizeof(GameObjectFootPrint) * tempNumSpecialAreas);
 	}
 	if (!PathFindMap[SECTOR_PATHMAP])
@@ -622,7 +622,7 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 		if (numBytes <= 0)
 			Fatal(numBytes, " MOVE_readData: Unable to read num special areas ");
 		if (tempSpecialAreaFootPrints) {
-			systemHeap->Free(tempSpecialAreaFootPrints);
+			std::free(tempSpecialAreaFootPrints);
 			tempSpecialAreaFootPrints = nullptr;
 		}
 		if (tempNumSpecialAreas > 0) {
@@ -638,7 +638,7 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 			size_t packetSize = (size_t)packetFile->getPacketSize();
 			size_t expectedSize = sizeof(GameObjectFootPrint) * (size_t)tempNumSpecialAreas;
 			size_t allocSize = (packetSize > expectedSize) ? packetSize : expectedSize;
-			tempSpecialAreaFootPrints = (GameObjectFootPrint*)systemHeap->Malloc(allocSize);
+			tempSpecialAreaFootPrints = (GameObjectFootPrint*)std::malloc(allocSize);
 			numBytes = packetFile->readPacket(footprintPkt, (unsigned char*)tempSpecialAreaFootPrints);
 			if (numBytes <= 0)
 				Fatal(numBytes, " MOVE_readData: Unable to read num special areas ");

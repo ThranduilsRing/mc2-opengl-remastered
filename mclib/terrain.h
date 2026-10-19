@@ -205,7 +205,6 @@ class Terrain
 		static MapDataPtr						mapData;					//Pointer to class that manages terrain mesh data.
 		static TerrainTexturesPtr				terrainTextures;			//Pointer to class that manages terrain textures.
 		static TerrainColorMapPtr				terrainTextures2;			//Pointer to class that manages the NEW color map terrain texture.
-		static UserHeapPtr						terrainHeap;				//Heap used for terrain.
 
 		static char 							*terrainName;				//Name of terrain data file.
 		static char								*colorMapName;				//Name of colormap, if different from terrainName.

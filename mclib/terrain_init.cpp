@@ -39,13 +39,7 @@ void Terrain::initMapExtents(unsigned long verticesPerMapSide, unsigned long vis
 void Terrain::initTerrainHeap(volatile float& percent, float percentRange) {
 	//-----------------------------------------------------------------
 	// Startup to Terrain Heap
-	if( !terrainHeap )
-	{
-		ZoneScopedN("Terrain::init terrainHeap");
-		terrainHeap = new UserHeap;
-		gosASSERT(terrainHeap != nullptr);
-		terrainHeap->init(terrainHeapSize,"TERRAIN");
-	}
+
 
 	percent += percentRange/5.f;
 }
@@ -121,20 +115,20 @@ void Terrain::initObjBlockLists(volatile float& percent, float percentRange) {
 	long numberBlocks = blocksMapSide * blocksMapSide;
 	
 	numObjBlocks = numberBlocks;
-	objBlockInfo = (ObjBlockInfo *)terrainHeap->Malloc(sizeof(ObjBlockInfo)*numObjBlocks);
+	objBlockInfo = (ObjBlockInfo *)std::malloc(sizeof(ObjBlockInfo)*numObjBlocks);
 	gosASSERT(objBlockInfo != nullptr);
 	
 	memset(objBlockInfo,0,sizeof(ObjBlockInfo)*numObjBlocks);
 	
-	objVertexActive = (bool *)terrainHeap->Malloc(sizeof(bool) * realVerticesMapSide * realVerticesMapSide);
+	objVertexActive = (bool *)std::malloc(sizeof(bool) * realVerticesMapSide * realVerticesMapSide);
 	gosASSERT(objVertexActive != nullptr);
 	
 	memset(objVertexActive,0,sizeof(bool)*numObjBlocks);
 	
-	moverBlockList = (long *)terrainHeap->Malloc(sizeof(long) * numberBlocks);
+	moverBlockList = (long *)std::malloc(sizeof(long) * numberBlocks);
 	gosASSERT(moverBlockList != nullptr);
 	
-	usedBlockList = (long *)terrainHeap->Malloc(sizeof(long) * numberBlocks);
+	usedBlockList = (long *)std::malloc(sizeof(long) * numberBlocks);
 	gosASSERT(usedBlockList != nullptr);
 	
 	clearList();
@@ -189,9 +183,9 @@ void Terrain::lodAllocMeta() {
 	int nBlocks      = s_terrainChunkSide * s_terrainChunkSide;
 	int nSuperchunks = s_superchunkSide   * s_superchunkSide;
 
-	s_blockMeta      = (TerrainBlockMeta*)  terrainHeap->Malloc(sizeof(TerrainBlockMeta)   * nBlocks);
-	s_superchunkMeta = (SuperchunkMeta*)    terrainHeap->Malloc(sizeof(SuperchunkMeta)      * nSuperchunks);
-	s_drawCmds       = (TerrainDrawCommand*)terrainHeap->Malloc(sizeof(TerrainDrawCommand)  * nBlocks);
+	s_blockMeta      = (TerrainBlockMeta*)  std::malloc(sizeof(TerrainBlockMeta)   * nBlocks);
+	s_superchunkMeta = (SuperchunkMeta*)    std::malloc(sizeof(SuperchunkMeta)      * nSuperchunks);
+	s_drawCmds       = (TerrainDrawCommand*)std::malloc(sizeof(TerrainDrawCommand)  * nBlocks);
 	s_skirtDepths    = new float[nBlocks];
 
 	gosASSERT(s_blockMeta      != nullptr);
@@ -1100,14 +1094,14 @@ void Terrain::initVertexQuadLists(unsigned long visibleVertices) {
 	//----------------------------------------------------------------------
 	// Create the VertexList
 	numberVertices = 0;
-	vertexList = (VertexPtr)terrainHeap->Malloc(sizeof(Vertex) * visibleVertices * visibleVertices);
+	vertexList = (VertexPtr)std::malloc(sizeof(Vertex) * visibleVertices * visibleVertices);
 	gosASSERT(vertexList != nullptr);
 	memset(vertexList,0,sizeof(Vertex) * visibleVertices * visibleVertices);
 
 	//----------------------------------------------------------------------
 	// Create the QuadList
 	numberQuads = 0;
-	quadList = (TerrainQuadPtr)terrainHeap->Malloc(sizeof(TerrainQuad) * visibleVertices * visibleVertices);
+	quadList = (TerrainQuadPtr)std::malloc(sizeof(TerrainQuad) * visibleVertices * visibleVertices);
 	gosASSERT(quadList != nullptr);
 	memset(quadList,0,sizeof(TerrainQuad) * visibleVertices * visibleVertices);
 
