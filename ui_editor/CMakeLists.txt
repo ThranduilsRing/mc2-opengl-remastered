@@ -15,15 +15,11 @@ set(UI_EDITOR_SOURCES
 add_executable(ui_editor ${UI_EDITOR_SOURCES})
 
 target_compile_features(ui_editor PRIVATE cxx_std_17)
-target_compile_definitions(ui_editor PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLEW)
 
 if(NOT TARGET SDL2::SDL2)
     find_package(SDL2 CONFIG REQUIRED)
 endif()
 
-if(NOT TARGET OpenGL::GL)
-    find_package(OpenGL REQUIRED)
-endif()
 
 set(MC2R_UI_EDITOR_SDL_INCLUDE_DIRS)
 

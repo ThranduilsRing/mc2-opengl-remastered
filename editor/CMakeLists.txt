@@ -202,12 +202,10 @@ target_include_directories(EditRel PRIVATE
 
 # --- Dependencies ---
 # SDL2 is found by the root CMakeLists.txt; inherit its variables.
-# GLEW, OpenGL, ZLIB also found at root scope.
+# ZLIB is also found at root scope.
 find_package(SDL2 REQUIRED CONFIG REQUIRED COMPONENTS SDL2)
 find_package(SDL2_mixer REQUIRED)
 find_package(SDL2_ttf REQUIRED)
-find_package(GLEW REQUIRED)
-find_package(OpenGL REQUIRED)
 find_package(ZLIB REQUIRED)
 
 target_link_libraries(EditRel PRIVATE
@@ -228,10 +226,6 @@ target_link_libraries(EditRel PRIVATE
 
     # windows provides platform shims (string, IO, mmsystem) — no WinMain or InitGameOS.
     windows
-
-    # OpenGL stack
-    GLEW::GLEW
-    OpenGL::GL
 
     # SDL (matches root CMakeLists conventions)
     SDL2::SDL2
@@ -277,7 +271,7 @@ set_target_properties(EditRel PROPERTIES
 # TARGET_RUNTIME_DLLS, but root floor is 3.10 (see top-level
 # CMakeLists.txt), so we use TARGET_FILE generator expressions for
 # imported targets whose IMPORTED_LOCATION is the .dll (SDL2/SDL2_mixer/
-# SDL2_ttf/mc2res) and explicit filenames for the rest (GLEW/ZLIB
+# SDL2_ttf/mc2res) and explicit filenames for the rest (ZLIB
 # expose only the .lib via IMPORTED_LOCATION). All vcpkg DLLs are
 # colocated next to SDL2.dll, so anchor on $<TARGET_FILE_DIR:SDL2::SDL2>.
 set(_editor_runtime_dll_targets
@@ -294,7 +288,7 @@ foreach(_t IN LISTS _editor_runtime_dll_targets)
     )
 endforeach()
 
-foreach(_dll_name glew32.dll zlib1.dll)
+foreach(_dll_name zlib1.dll)
     add_custom_command(TARGET EditRel POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "$<TARGET_FILE_DIR:SDL2::SDL2>/${_dll_name}"

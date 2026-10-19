@@ -23,8 +23,7 @@ include_directories("${CMAKE_SOURCE_DIR}/code")
 # as PRIVATE deps, so any consumer must link the same closure mc2 does or the
 # link fails with ~200 unresolved renderer externals. Mirror mc2's engine lib
 # set here (the tools pull in the renderer purely to satisfy gameos's symbol
-# references; the offline code paths never call into it). GL/GLEW are required
-# because the renderer TUs reference them.
+# references; the offline code paths never call into it).
 set(DATA_TOOLS_ENGINE_LIBS
     mclib
     gameadapters
@@ -42,10 +41,8 @@ set(DATA_TOOLS_ENGINE_LIBS
     windows
     ZLIB::ZLIB
     ${SDL2_LIBRARIES}
-    GLEW::GLEW
     SDL2_mixer::SDL2_mixer
     ${ADDITIONAL_LIBS}
-    OpenGL::GL
 )
 
 add_executable(makefst ${MAKEFST_SOURCES})

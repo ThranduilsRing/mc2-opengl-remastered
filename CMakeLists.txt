@@ -1,6 +1,4 @@
 cmake_minimum_required (VERSION 3.10)
-# select GLVND versus legacy OpenGL libraries
-cmake_policy(SET CMP0072 NEW) # cmake --help-policy CMP0072
 project(mc2)
 
 # Opt-in shared compile cache (scripts/configure_ninja.py --compile-cache). sccache cannot cache a compile that writes the shared
@@ -233,8 +231,6 @@ find_package(SDL2 REQUIRED CONFIG REQUIRED COMPONENTS SDL2main)
 find_package(SDL2_mixer REQUIRED)
 #required by text_tool
 find_package(SDL2_ttf REQUIRED)
-find_package(GLEW REQUIRED)
-find_package(OpenGL REQUIRED)
 find_package(ZLIB REQUIRED)
 
 list(APPEND CMAKE_MODULE_PATH "${MC2_SOURCE_DIR_CMAKE}/cmake")
@@ -244,12 +240,8 @@ include_directories("${CMAKE_BINARY_DIR}/generated")
 
 message("Found SDL2 package ${SDL2_LIBRARIES}" )
 message("SDL2 prefix: ${SDL2_PREFIX}")
-message("OPENGL library found in ${OPENGL}")
-message("GLEW library found in ${GLEW}")
 message("Zlib library found in ${ZLIB}")
 
-message("OpenGL library linking: ${OPENGL_gl_LIBRARY}")
-message("OpenGL library include: ${OPENGL_INCLUDE_DIR}")
 
 
 get_filename_component(COM_PATH1 "./GameOS/include" ABSOLUTE)
@@ -717,7 +709,7 @@ if(MC2_VULKAN)
         "${CMAKE_SOURCE_DIR}/3rdparty/volk"
         ${Vulkan_INCLUDE_DIR})
 endif()
-target_link_libraries(mc2 mclib fx_trace particles gosfx mlr stuff gui gameos gameos_main windows ZLIB::ZLIB ${SDL2_LIBRARIES} GLEW::GLEW SDL2_mixer::SDL2_mixer ${ADDITIONAL_LIBS} OpenGL::GL renderworld gameadapters editorbridge imgui gui_runtime mc2_gate)
+target_link_libraries(mc2 mclib fx_trace particles gosfx mlr stuff gui gameos gameos_main windows ZLIB::ZLIB ${SDL2_LIBRARIES} SDL2_mixer::SDL2_mixer ${ADDITIONAL_LIBS} renderworld gameadapters editorbridge imgui gui_runtime mc2_gate)
 
 if(MC2_IMGUI)
     target_compile_definitions(mc2 PRIVATE MC2_IMGUI=1)
@@ -763,12 +755,12 @@ foreach(_dll ${FFmpegLGPL_RUNTIME_DLLS})
 endforeach()
 install(FILES ${FFmpegLGPL_RUNTIME_DLLS} DESTINATION ".")
 
-# Other runtime DLLs (SDL2/GLEW/ZLIB/mc2res). Same rationale as the
+# Other runtime DLLs (SDL2/ZLIB/mc2res). Same rationale as the
 # editor target — without these mc2.exe fails at launch with a
 # missing-DLL error after a clean build. Root floor is CMake 3.10, so
 # TARGET_RUNTIME_DLLS (3.21+) is unavailable; we use TARGET_FILE for
 # imported targets whose IMPORTED_LOCATION is the .dll (SDL2/SDL2_mixer/
-# mc2res) and explicit filenames for GLEW/ZLIB (their IMPORTED_LOCATION
+# mc2res) and explicit filenames for ZLIB (their IMPORTED_LOCATION
 # points at the .lib import library). vcpkg colocates all DLLs next to
 # SDL2.dll, so anchor on $<TARGET_FILE_DIR:SDL2::SDL2>.
 set(_mc2_runtime_dll_targets
@@ -784,7 +776,7 @@ foreach(_t IN LISTS _mc2_runtime_dll_targets)
     )
 endforeach()
 
-foreach(_dll_name glew32.dll zlib1.dll)
+foreach(_dll_name zlib1.dll)
     add_custom_command(TARGET mc2 POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "$<TARGET_FILE_DIR:SDL2::SDL2>/${_dll_name}"
@@ -968,7 +960,7 @@ if(MC2_BUILD_TESTS)
         add_custom_command(TARGET mc2_authored_order_seam POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${_t}>" "$<TARGET_FILE_DIR:mc2_authored_order_seam>")
     endforeach()
-    foreach(_dll glew32.dll zlib1.dll)
+    foreach(_dll zlib1.dll)
         add_custom_command(TARGET mc2_authored_order_seam POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE_DIR:SDL2::SDL2>/${_dll}" "$<TARGET_FILE_DIR:mc2_authored_order_seam>")
     endforeach()

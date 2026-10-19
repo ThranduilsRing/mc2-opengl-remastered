@@ -268,8 +268,8 @@ add_custom_target(rendercore_tests
 
 # CONTRACT-3: per-frame resource-ordering tracking test.
 # Standalone binary (own int main, no doctest) because render_contract.cpp
-# carries a GL include that the main mc2_tests target deliberately avoids.
-# Links glew32 for compilation; CONTRACT-3 paths never call GL at runtime.
+# exercises ordering independently of the doctest runner.
+# Native target ownership is supplied by native_render_state.cpp.
 add_executable(test_render_contract_3
     test_render_contract_3.cpp
     ${MC2_WORKTREE_ROOT}/mclib/render_contract.cpp
@@ -297,10 +297,6 @@ if(MSVC)
     target_compile_options(test_render_contract_3 PRIVATE /W4 /WX-)
 endif()
 
-target_link_libraries(test_render_contract_3 PRIVATE
-    ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/glew32.lib
-    opengl32
-)
 # render_contract.cpp reads its gates through the typed registry.
 mc2_link_gate(test_render_contract_3)
 
