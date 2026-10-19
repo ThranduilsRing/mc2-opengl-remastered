@@ -1036,8 +1036,6 @@ TEST_CASE("statepack (f): routed passes have non-Invalid pipelineId; non-routed 
     const RenderPassId routed[] = {
         RenderPassId::StaticPropOpaque,
         RenderPassId::MechOpaque,
-        RenderPassId::TerrainOverlay,
-        RenderPassId::TerrainDecal,
     };
     for (RenderPassId id : routed) {
         const RenderStateDesc* r = findPassRenderState(id);
@@ -1047,6 +1045,8 @@ TEST_CASE("statepack (f): routed passes have non-Invalid pipelineId; non-routed 
     }
     // Passes with no single PipelineId (multi-pipeline, descriptive-only, or no routing):
     const RenderPassId invalid[] = {
+        RenderPassId::TerrainOverlay,
+        RenderPassId::TerrainDecal,
         RenderPassId::Terrain,
         RenderPassId::Water,
         RenderPassId::Shadow,
