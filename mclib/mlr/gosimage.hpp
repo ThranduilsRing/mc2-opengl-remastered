@@ -5,9 +5,9 @@
 #pragma once
 #define MLR_GOSIMAGE_HPP
 
+#include "../texture_assets.h"
 #if !defined(MLR_MLR_HPP)
 #include<mlr/mlr.hpp>
-#include "../texture_assets.h"
 #endif
 
 #if !defined(GAMEOS_HPP)

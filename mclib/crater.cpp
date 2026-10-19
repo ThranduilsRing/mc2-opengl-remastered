@@ -8,9 +8,9 @@
 
 //---------------------------------------------------------------------
 // Include Files
+#include "texture_assets.h"
 #ifndef CRATER_H
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
-#include "texture_assets.h"
 #include"crater.h"
 #endif
 

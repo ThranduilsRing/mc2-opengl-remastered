@@ -4,9 +4,9 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
+#include "texture_assets.h"
 #ifndef BDACTOR_H
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
-#include "texture_assets.h"
 #include"bdactor.h"
 #endif
 

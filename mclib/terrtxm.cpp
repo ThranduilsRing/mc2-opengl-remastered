@@ -8,9 +8,9 @@
 
 //---------------------------------------------------------------------------
 // Include Files
+#include "texture_assets.h"
 #ifndef TERRTXM_H
 #include"terrtxm.h"
-#include "texture_assets.h"
 #endif
 
 #ifndef MATHFUNC_H

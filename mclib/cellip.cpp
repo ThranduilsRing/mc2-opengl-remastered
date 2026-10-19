@@ -9,9 +9,9 @@
 //---------------------------------------------------------------------------
 // Include files
 
+#include "texture_assets.h"
 #ifndef CELLIP_H
 #include"cellip.h"
-#include "texture_assets.h"
 #endif
 
 #ifndef VPORT_H
