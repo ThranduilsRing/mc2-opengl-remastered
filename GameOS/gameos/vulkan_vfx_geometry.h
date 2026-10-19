@@ -14,12 +14,11 @@ void mc2_vk_vfx_vegetation_atlas(const GosTexels& atlas);
 #else
 inline void mc2_vk_vfx_vegetation_atlas(const GosTexels&) {}
 #endif
-enum VfxGeometryFlags : uint32_t {
-    VfxGeometryMesh = 4u,
-    VfxGeometryTube = 8u,
-    VfxGeometryUntextured = 32u,
-    VfxGeometryOneOne = 2u,
-};
+// Flags travel in a uint32_t shader field; keep the host constants the same type.
+inline constexpr uint32_t VfxGeometryMesh = 4u;
+inline constexpr uint32_t VfxGeometryTube = 8u;
+inline constexpr uint32_t VfxGeometryUntextured = 32u;
+inline constexpr uint32_t VfxGeometryOneOne = 2u;
 struct VfxGeometryVertex {
     float position[3]{};
     float pad0{};

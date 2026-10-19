@@ -23,25 +23,7 @@ layout(location = 3) in vec4 v_vegData;
 layout(location = 4) in vec2 v_vegAux;
 void main() {
     if ((v_flags & 16u) != 0u) {
-    // Unified Bayer gate: gate = lodFade * distFade.
-    //   LOD0 near  (gate=1.0): never discard — full density.
-    //   LOD1 near  (gate=0.4): discard ~60% → sparser beyond block LOD boundary.
-    //   LOD0 far   (gate<1.0): progressive discard → smooth fade to invisible.
-    //   LOD1 far   (gate~0.2): very sparse — thin out then gone.
-    // Shimmer note: screen-space Bayer shifts with camera motion. Accepted for v1;
-    // instance-stable hash dithering is planned for v2.
-    float gate = v_vegAux.x;
-    const float bayer[16] = float[16](
-         0.0/16.0,  8.0/16.0,  2.0/16.0, 10.0/16.0,
-        12.0/16.0,  4.0/16.0, 14.0/16.0,  6.0/16.0,
-         3.0/16.0, 11.0/16.0,  1.0/16.0,  9.0/16.0,
-        15.0/16.0,  7.0/16.0, 13.0/16.0,  5.0/16.0
-    );
-    int bx = int(gl_FragCoord.x) & 3;
-    int by = int(gl_FragCoord.y) & 3;
-    if (gate < bayer[by * 4 + bx]) discard;
-
-    // LOD bias -1.5 applied at bind site.
+    // Whole-clump projected-size/distance LOD is resolved before upload.
     vec4 col = texture(uAtlas, v_uv);
 
     // Alpha test: top/cap cards use softer threshold (0.25) for wispy edges.

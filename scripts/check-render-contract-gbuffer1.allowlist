@@ -139,3 +139,10 @@ shaders/vulkan/water_geom.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 0.0);
 # The SOLID pipeline writes it; the ALPHA/SHADOW/ADD pipelines set cba[1].colorWriteMask = 0
 # (vulkan_legacy_shape_island.cpp) so blended passes never touch MRT1.
 shaders/vulkan/legacy_shape_tier1.frag::oGBuffer1 = vec4(0.5, 0.5, 1.0, 0.0);
+
+# NATIVE VEGETATION. Matches rc_gbuffer1_shadowHandled_flatUp() in
+# shaders/include/render_contract.hglsl and gos_vegetation_card.frag's
+# GBuffer1 = rc_gbuffer1_shadowHandled_flatUp(): up normal, alpha 1.0.
+# The vegetation pipeline alone enables all four attachment-1 write bits;
+# billboard, tube and mesh pipelines keep attachment 1 masked off.
+shaders/vulkan/vfx_particle.frag::o_normal = vec4(0.5,0.5,1.0,1.0);

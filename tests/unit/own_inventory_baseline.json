@@ -6600,16 +6600,19 @@
    "owners": []
   },
   "gosBuffer": {
-   "delete": 0,
+   "delete": 1,
    "delete_array": 0,
    "files": {
     "GameOS/gameos/gameos_graphics_capi.cpp": {
+     "delete": 1,
      "new": 1
     }
    },
    "new": 1,
    "new_array": 0,
-   "owners": []
+   "owners": [
+    ""
+   ]
   },
   "gosFX::Card": {
    "delete": 0,
@@ -7210,7 +7213,6 @@
   "GameOS/gameos/gameos.cpp": 4,
   "GameOS/gameos/gameos_fileio.cpp": 1,
   "GameOS/gameos/gameos_graphics.cpp": 1,
-  "GameOS/gameos/gameos_graphics_capi.cpp": 1,
   "GameOS/gameos/gameos_graphics_font.cpp": 18,
   "GameOS/gameos/gameos_graphics_internal.h": 4,
   "GameOS/gameos/gameos_graphics_material_internal.h": 6,

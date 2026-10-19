@@ -113,26 +113,20 @@ static constexpr RenderStateDesc kPassRenderState[] = {
         ViewportKind::MainScene,
         RenderResourceId::MainColor
     },
-    // TerrainOverlay: routed via applyPipeline(TerrainOverlay) in gameos_graphics.cpp:9810.
-    // pipelineDescRegistered = true (FRAMEGRAPH-STATEPACK-SKELETON-1).
-    // ambient_contract: not declared (Inherit/Inherit/Inherit/Inherit).
-    // fbo: kPassFboTarget declares MainColor.
+    // Native TerrainOverlay owns its pipeline; no GL apply state remains.
     {
         RenderPassId::TerrainOverlay,
-        RenderCore::PipelineId::TerrainOverlay,
+        RenderCore::PipelineId::Invalid,
         ColorMaskState::Inherit,
         DepthWriteState::Inherit,
         DepthFuncState::Inherit,
         ViewportKind::Inherit,
         RenderResourceId::MainColor
     },
-    // TerrainDecal: routed via applyPipeline(TerrainDecal) in gameos_graphics.cpp:10005.
-    // pipelineDescRegistered = true (FRAMEGRAPH-STATEPACK-SKELETON-1).
-    // ambient_contract: not declared.
-    // fbo: kPassFboTarget declares MainColor.
+    // Native TerrainDecal owns its pipeline; no GL apply state remains.
     {
         RenderPassId::TerrainDecal,
-        RenderCore::PipelineId::TerrainDecal,
+        RenderCore::PipelineId::Invalid,
         ColorMaskState::Inherit,
         DepthWriteState::Inherit,
         DepthFuncState::Inherit,

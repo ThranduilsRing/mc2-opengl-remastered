@@ -6,6 +6,7 @@
 #include <array>
 #include <unordered_map>
 #include <vector>
+#include <span>
 extern const float* gos_GetTerrainMVPMat4();
 
 namespace {
@@ -17,10 +18,9 @@ struct Mesh {
 std::unordered_map<uint64_t, Mesh> meshes;
 }
 
-extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload* uploads, unsigned numUploads,
-                                   const GosVfxMeshInstance* instances, unsigned numInstances) {
-    if (uploads) for (unsigned n = 0; n < numUploads; ++n) {
-        const auto& up = uploads[n];
+namespace {
+void flush(std::span<const GosVfxMeshUpload> uploads, std::span<const GosVfxMeshInstance> instances) {
+    for (const auto& up : uploads) {
         if (meshes.contains(up.meshId) || !up.positions || !up.indices || !up.vertexCount || !up.indexCount) continue;
         Mesh mesh;
         mesh.positions.resize(up.vertexCount);
@@ -33,7 +33,7 @@ extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload* uploads, unsigned num
         if (std::any_of(mesh.indices.begin(), mesh.indices.end(), [&](auto i) { return i >= up.vertexCount; })) continue;
         meshes.emplace(up.meshId, std::move(mesh));
     }
-    if (!instances || !numInstances) return;
+    if (instances.empty()) return;
 #ifdef MC2_VULKAN_ISLAND
     if (!mc2_vk_vfx_island_enabled()) return;
     const float* mvp = gos_GetTerrainMVPMat4();
@@ -41,8 +41,7 @@ extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload* uploads, unsigned num
     if (!mvp || !pp) return;
     std::vector<VfxGeometryVertex> vertices;
     std::vector<VfxParticleDraw> draws;
-    for (unsigned n = 0; n < numInstances; ++n) {
-        const auto& inst = instances[n];
+    for (const auto& inst : instances) {
         const auto it = meshes.find(inst.meshId);
         if (it == meshes.end()) continue;
         const auto& mesh = it->second;
@@ -69,4 +68,13 @@ extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload* uploads, unsigned num
     if (!vertices.empty()) mc2_vk_vfx_island_run(vertices.data(), static_cast<uint32_t>(vertices.size()),
         draws.data(), static_cast<uint32_t>(draws.size()), mvp, nullptr, nullptr, pp->getWidth(), pp->getHeight());
 #endif
+}
+}
+
+// Preserve the existing C ABI at the boundary; the native implementation uses spans.
+extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload* uploads,
+                                   unsigned int numUploads,
+                                   const GosVfxMeshInstance* instances,
+                                   unsigned int numInstances) {
+    flush({uploads, uploads ? numUploads : 0u}, {instances, instances ? numInstances : 0u});
 }

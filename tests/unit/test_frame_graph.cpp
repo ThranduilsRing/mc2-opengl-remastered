@@ -1276,7 +1276,7 @@ TEST_CASE("top-level executor (h): kTopLevelDeferredPassCount == 0 (UI-SAME-ORDE
 
 TEST_CASE("top-level apply-state (a): kTopLevelStateDesc has exactly 6 rows (TerrainDecal, TerrainOverlay, StaticPropOpaque, MechOpaque, Water, Shadow)") {
     using namespace RenderCore::framegraph;
-    CHECK(kTopLevelStateDescCount == 4u);  // GL shadow/water rows are retired
+    CHECK(kTopLevelStateDescCount == 2u);  // native decal/overlay/shadow/water have no GL apply
 }
 
 TEST_CASE("top-level apply-state (i): findTopLevelStateDesc(MechOpaque) = MechOpaque pipeline, FBO/viewport inherit (not applied)") {
@@ -1297,17 +1297,9 @@ TEST_CASE("retired GL Water has no top-level apply-state descriptor") {
     CHECK(findTopLevelStateDesc(RenderPassId::Water) == nullptr);
 }
 
-TEST_CASE("top-level apply-state (b): findTopLevelStateDesc(TerrainDecal) = TerrainDecal pipeline, FBO/viewport inherit (not applied)") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-    const TopLevelStateDesc* d = findTopLevelStateDesc(RenderPassId::TerrainDecal);
-    REQUIRE(d != nullptr);
-    CHECK(static_cast<unsigned>(d->id)         == static_cast<unsigned>(RenderPassId::TerrainDecal));
-    // pipelineId reused from the authoritative kPassRenderState[] row — not duplicated.
-    CHECK(static_cast<unsigned>(d->pipelineId) == static_cast<unsigned>(PipelineId::TerrainDecal));
-    // Only the pipeline is lifted this slice; FBO/viewport are honestly NOT applied.
-    CHECK(static_cast<unsigned>(d->fboTarget)  == static_cast<unsigned>(RenderResourceId::Unknown));
-    CHECK(static_cast<unsigned>(d->viewport)   == static_cast<unsigned>(ViewportKind::Inherit));
+TEST_CASE("native TerrainDecal has no GL apply-state descriptor (b)") {
+    CHECK(findTopLevelStateDesc(RenderPassId::TerrainDecal) == nullptr);
+    CHECK_FALSE(passHasStaticPipeline(RenderPassId::TerrainDecal));
 }
 
 TEST_CASE("top-level apply-state (c): findTopLevelStateDesc returns nullptr for a non-apply pass (Terrain)") {
@@ -1331,55 +1323,20 @@ TEST_CASE("retired GL Shadow has no top-level apply-state descriptor") {
     CHECK(findTopLevelStateDesc(RenderPassId::Shadow) == nullptr);
 }
 
-TEST_CASE("top-level apply-state (d): lifted pipelineId matches the authoritative kPassRenderState row") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-    const TopLevelStateDesc* td = findTopLevelStateDesc(RenderPassId::TerrainDecal);
-    REQUIRE(td != nullptr);
-    // passHasStaticPipeline(TerrainDecal) is true with pipelineId=TerrainDecal in
-    // render_state_desc.h — the top-level table must reuse the SAME id, not re-pick.
-    REQUIRE(passHasStaticPipeline(RenderPassId::TerrainDecal));
-    bool found = false;
-    for (int i = 0; i < kPassRenderStateCount; ++i) {
-        if (kPassRenderState[i].id == RenderPassId::TerrainDecal) {
-            CHECK(static_cast<unsigned>(td->pipelineId) ==
-                  static_cast<unsigned>(kPassRenderState[i].pipelineId));
-            found = true;
-        }
-    }
-    CHECK(found);
+TEST_CASE("native TerrainDecal has no GL apply-state descriptor (d)") {
+    CHECK(findTopLevelStateDesc(RenderPassId::TerrainDecal) == nullptr);
+    CHECK_FALSE(passHasStaticPipeline(RenderPassId::TerrainDecal));
 }
 
 // Second top-level apply-state consumer.
-TEST_CASE("top-level apply-state (e): findTopLevelStateDesc(TerrainOverlay) = TerrainOverlay pipeline, FBO/viewport inherit (not applied)") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-    const TopLevelStateDesc* d = findTopLevelStateDesc(RenderPassId::TerrainOverlay);
-    REQUIRE(d != nullptr);
-    CHECK(static_cast<unsigned>(d->id)         == static_cast<unsigned>(RenderPassId::TerrainOverlay));
-    // pipelineId reused from the authoritative kPassRenderState[] row — not duplicated.
-    CHECK(static_cast<unsigned>(d->pipelineId) == static_cast<unsigned>(PipelineId::TerrainOverlay));
-    // Only the pipeline is lifted this slice; FBO/viewport are honestly NOT applied
-    // (overlay inherits Terrain's scene FBO/drawBuffers/viewport).
-    CHECK(static_cast<unsigned>(d->fboTarget)  == static_cast<unsigned>(RenderResourceId::Unknown));
-    CHECK(static_cast<unsigned>(d->viewport)   == static_cast<unsigned>(ViewportKind::Inherit));
+TEST_CASE("native TerrainOverlay has no GL apply-state descriptor (e)") {
+    CHECK(findTopLevelStateDesc(RenderPassId::TerrainOverlay) == nullptr);
+    CHECK_FALSE(passHasStaticPipeline(RenderPassId::TerrainOverlay));
 }
 
-TEST_CASE("top-level apply-state (f): TerrainOverlay lifted pipelineId matches the authoritative kPassRenderState row") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-    const TopLevelStateDesc* td = findTopLevelStateDesc(RenderPassId::TerrainOverlay);
-    REQUIRE(td != nullptr);
-    REQUIRE(passHasStaticPipeline(RenderPassId::TerrainOverlay));
-    bool found = false;
-    for (int i = 0; i < kPassRenderStateCount; ++i) {
-        if (kPassRenderState[i].id == RenderPassId::TerrainOverlay) {
-            CHECK(static_cast<unsigned>(td->pipelineId) ==
-                  static_cast<unsigned>(kPassRenderState[i].pipelineId));
-            found = true;
-        }
-    }
-    CHECK(found);
+TEST_CASE("native TerrainOverlay has no GL apply-state descriptor (f)") {
+    CHECK(findTopLevelStateDesc(RenderPassId::TerrainOverlay) == nullptr);
+    CHECK_FALSE(passHasStaticPipeline(RenderPassId::TerrainOverlay));
 }
 
 // Third top-level apply-state consumer — first one whose
@@ -1412,7 +1369,6 @@ TEST_CASE("top-level apply-state (k): EXTEND — 3 consumers unchanged (Unknown/
     using namespace RenderCore;
     using namespace RenderCore::framegraph;
     const RenderPassId unchanged[] = {
-        RenderPassId::TerrainDecal, RenderPassId::TerrainOverlay,
         RenderPassId::MechOpaque,
     };
     for (RenderPassId id : unchanged) {
@@ -1447,8 +1403,8 @@ TEST_CASE("top-level apply-state (h): StaticPropOpaque lifted pipelineId matches
 
 TEST_CASE("per-pass-apply-counters-1: ApplyPassId table is complete + names unique/non-Unknown") {
     using namespace RenderCore::framegraph;
-    // Exactly 4 apply paths, all top-level (the GL PostProcess sub-stage, Shadow and Water applies are gone).
-    CHECK(static_cast<unsigned>(ApplyPassId::Count) == 4u);
+    // Two surviving top-level GL applies; native decal/overlay counters are retired.
+    CHECK(static_cast<unsigned>(ApplyPassId::Count) == 2u);
     // Spot-check representative mappings.
     CHECK(std::string(applyPassName(ApplyPassId::StaticPropOpaque)) == "StaticPropOpaque");
     CHECK(std::string(applyPassName(ApplyPassId::MechOpaque))       == "MechOpaque");
@@ -1484,8 +1440,6 @@ TEST_CASE("apply-state-registration (top-level): each top-level ApplyPassId maps
     // in the body); it is asserted directly in test (l), not cross-checked here.
     struct Row { ApplyPassId apply; RenderPassId pass; };
     const Row topLevel[] = {
-        { ApplyPassId::TerrainDecal,     RenderPassId::TerrainDecal     },
-        { ApplyPassId::TerrainOverlay,   RenderPassId::TerrainOverlay   },
         { ApplyPassId::StaticPropOpaque, RenderPassId::StaticPropOpaque },
         { ApplyPassId::MechOpaque,       RenderPassId::MechOpaque       },
     };
