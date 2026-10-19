@@ -141,7 +141,7 @@ static void emit_window_stats() {
     bool over = (projP95 / 1000) > BUDGET_US;
     int64_t winEnd = s_windowStartFrame + static_cast<int64_t>(nFrames) - 1;
 
-    mc2::fmt::print_err("[CPU_PROJ v1] window={:d}..{:d} worst-case-camera={}\n  projection_total           p50={:.1f}us p95={:.1f}us max={:.1f}us  budget={:d}us status={}\n", mc2::fmt::as_i64((long long)s_windowStartFrame), mc2::fmt::as_i64((long long)winEnd), mc2::fmt::safe(WORST_CASE_LABEL), ns_to_us(projP50), ns_to_us(projP95), ns_to_us(projMax), mc2::fmt::as_i64((long long)BUDGET_US), mc2::fmt::safe(over ? "OVER" : "PASS"));
+    mc2::fmt::print_err("[CPU_PROJ v1] window={:d}..{:d} worst-case-camera={}\n  projection_total           p50={:.1f}us p95={:.1f}us max={:.1f}us  budget={:d}us status={}\n", mc2::fmt::as_i64(static_cast<long long>(s_windowStartFrame)), mc2::fmt::as_i64(static_cast<long long>(winEnd)), mc2::fmt::safe(WORST_CASE_LABEL), ns_to_us(projP50), ns_to_us(projP95), ns_to_us(projMax), mc2::fmt::as_i64(static_cast<long long>(BUDGET_US)), mc2::fmt::safe(over ? "OVER" : "PASS"));
 
     for (int b = 0; b < BUCKET_COUNT; ++b) {
         std::vector<int64_t> tmpA(s_winNs[b]);
@@ -151,7 +151,7 @@ static void emit_window_stats() {
         int64_t mx  = max_inplace(s_winNs[b]);
         std::vector<int64_t> tmpW(s_winWorkload[b]);
         int64_t wlP50 = percentile_inplace(tmpW, 50);
-        mc2::fmt::print_err("    {:<24} p50={:.1f}us p95={:.1f}us max={:.1f}us  workload_p50={:d}\n", mc2::fmt::safe(kBucketName[b]), ns_to_us(p50), ns_to_us(p95), ns_to_us(mx), mc2::fmt::as_i64((long long)wlP50));
+        mc2::fmt::print_err("    {:<24} p50={:.1f}us p95={:.1f}us max={:.1f}us  workload_p50={:d}\n", mc2::fmt::safe(kBucketName[b]), ns_to_us(p50), ns_to_us(p95), ns_to_us(mx), mc2::fmt::as_i64(static_cast<long long>(wlP50)));
         // Capture per-window p95 for full-stats.
         s_fullBucketP95Ns[b].push_back(p95);
     }
@@ -166,7 +166,7 @@ static void emit_window_stats() {
         int64_t mx  = max_inplace(s_winSidecarNs[s]);
         std::vector<int64_t> tmpW(s_winSidecarWorkload[s]);
         int64_t wlP50 = percentile_inplace(tmpW, 50);
-        mc2::fmt::print_err("    {:<26} p50={:.1f}us p95={:.1f}us max={:.1f}us  n_calls_p50={:d}\n", mc2::fmt::safe(kSidecarName[s]), ns_to_us(p50), ns_to_us(p95), ns_to_us(mx), mc2::fmt::as_i64((long long)wlP50));
+        mc2::fmt::print_err("    {:<26} p50={:.1f}us p95={:.1f}us max={:.1f}us  n_calls_p50={:d}\n", mc2::fmt::safe(kSidecarName[s]), ns_to_us(p50), ns_to_us(p95), ns_to_us(mx), mc2::fmt::as_i64(static_cast<long long>(wlP50)));
     }
 
     // Retain for final.
@@ -194,7 +194,7 @@ void init_from_env() {
     if (mc2::gate::get<"MC2_CPU_PROJ_COST_SPLIT">()) {
         g_cpuProjEnabled = true;
         mc2::fmt::print_err("[INSTR v1] enabled: CPU_PROJ_COST_SPLIT (spec v4, budget={:d}us)\n",
-            mc2::fmt::as_i64((long long)BUDGET_US));
+            mc2::fmt::as_i64(static_cast<long long>(BUDGET_US)));
     } else {
         g_cpuProjEnabled = false;
         mc2::fmt::print_err("[CPU_PROJ v1 disabled] set MC2_CPU_PROJ_COST_SPLIT=1 to enable\n");
@@ -295,7 +295,7 @@ void final_stats(const char* reason) {
     int64_t worstWinP95 = max_inplace(s_windowProjTotalP95Ns);
     bool over = (worstWinP95 / 1000) > BUDGET_US;
 
-    mc2::fmt::print_err("[CPU_PROJ v1 final] frames={:d} reason={} worst-case-camera={}\n  projection_total p50={:.1f}us p95={:.1f}us max={:.1f}us  worst_window_p95={:.1f}us  budget={:d}us status={}\n", mc2::fmt::as_i64((long long)frames), mc2::fmt::safe(reason ? reason : "(none)"), mc2::fmt::safe(WORST_CASE_LABEL), ns_to_us(projP50), ns_to_us(projP95), ns_to_us(projMax), ns_to_us(worstWinP95), mc2::fmt::as_i64((long long)BUDGET_US), mc2::fmt::safe(over ? "OVER" : "PASS"));
+    mc2::fmt::print_err("[CPU_PROJ v1 final] frames={:d} reason={} worst-case-camera={}\n  projection_total p50={:.1f}us p95={:.1f}us max={:.1f}us  worst_window_p95={:.1f}us  budget={:d}us status={}\n", mc2::fmt::as_i64(static_cast<long long>(frames)), mc2::fmt::safe(reason ? reason : "(none)"), mc2::fmt::safe(WORST_CASE_LABEL), ns_to_us(projP50), ns_to_us(projP95), ns_to_us(projMax), ns_to_us(worstWinP95), mc2::fmt::as_i64(static_cast<long long>(BUDGET_US)), mc2::fmt::safe(over ? "OVER" : "PASS"));
 
     // Per-bucket worst-window p95 (max of window p95s).
     for (int b = 0; b < BUCKET_COUNT; ++b) {

@@ -69,7 +69,7 @@ static int s_writeHead = 0;
 float slotAlpha(const Slot& sl)
 {
     if (sl.lifetimeMs == 0) return 0.0f;
-    float t = (float)sl.ageMs / (float)sl.lifetimeMs;
+    float t = static_cast<float>(sl.ageMs) / static_cast<float>(sl.lifetimeMs);
     if (t >= kFadeStartFraction) {
         float fadeT = (t - kFadeStartFraction) / (1.0f - kFadeStartFraction);
         return 1.0f - fadeT;  // linear 1 -> 0
@@ -81,10 +81,10 @@ float slotAlpha(const Slot& sl)
 // Layout: bits [31:24]=A [23:16]=R [15:8]=G [7:0]=B (little-endian BGRA).
 unsigned int packBGRA(float r, float g, float b, float a)
 {
-    unsigned int ib = (unsigned int)(b * 255.0f + 0.5f);
-    unsigned int ig = (unsigned int)(g * 255.0f + 0.5f);
-    unsigned int ir = (unsigned int)(r * 255.0f + 0.5f);
-    unsigned int ia = (unsigned int)(a * 255.0f + 0.5f);
+    unsigned int ib = static_cast<unsigned int>((b * 255.0f + 0.5f));
+    unsigned int ig = static_cast<unsigned int>((g * 255.0f + 0.5f));
+    unsigned int ir = static_cast<unsigned int>((r * 255.0f + 0.5f));
+    unsigned int ia = static_cast<unsigned int>((a * 255.0f + 0.5f));
     return (ia << 24) | (ir << 16) | (ig << 8) | ib;
 }
 
@@ -169,7 +169,7 @@ void gatherToDecalBatch(float frameDeltaSec)
     if (!isEnabled()) return;
     if (!s_init)      return;  // nothing spawned yet
 
-    uint16_t deltaMs = (uint16_t)(frameDeltaSec * 1000.0f + 0.5f);
+    uint16_t deltaMs = static_cast<uint16_t>((frameDeltaSec * 1000.0f + 0.5f));
     if (deltaMs == 0) deltaMs = 1;  // advance at least 1 ms per frame
 
     for (int i = 0; i < kCapacity; ++i) {
@@ -177,14 +177,14 @@ void gatherToDecalBatch(float frameDeltaSec)
         if (sl.lifetimeMs == 0) continue;  // empty slot
 
         // Advance age first.
-        int newAge = (int)sl.ageMs + deltaMs;
-        if (newAge >= (int)sl.lifetimeMs) {
+        int newAge = static_cast<int>(sl.ageMs) + deltaMs;
+        if (newAge >= static_cast<int>(sl.lifetimeMs)) {
             // Slot expired — mark empty.
             sl.lifetimeMs = 0;
             sl.ageMs      = 0;
             continue;
         }
-        sl.ageMs = (uint16_t)newAge;
+        sl.ageMs = static_cast<uint16_t>(newAge);
 
         float alpha = slotAlpha(sl);
         if (alpha <= 0.0f) continue;

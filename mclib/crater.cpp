@@ -166,7 +166,7 @@ long CraterManager::init (long numCraters, unsigned long craterTypeSize, const c
 
 	//-----------------------------------------------------
 	// Setup pointer and initial values
-	craterList = (CraterDataPtr)craterPosHeap->getHeapPtr();
+	craterList = static_cast<CraterDataPtr>(craterPosHeap->getHeapPtr());
 	memset(craterPosHeap->getHeapPtr(),-1,craterPosHeapSize);
 
 	return(NO_ERR);
@@ -292,7 +292,7 @@ long CraterManager::update (void)
 	//---------------------------------------------------------------
 	// Run through all craters in list and do geometry during update
 	CraterDataPtr currentCrater = craterList;
-	for (long i=0;i<(long)maxCraters;i++,currentCrater++)
+	for (long i=0;i<static_cast<long>(maxCraters);i++,currentCrater++)
 	{
 		if (currentCrater->craterShapeId != -1)
 		{
@@ -323,7 +323,7 @@ void CraterManager::render (void)
 	// which not clipped or an invalid_crater
 	CraterDataPtr currCrater = craterList;
 
-	for (long i=0;i<(long)maxCraters;i++,currCrater++)
+	for (long i=0;i<static_cast<long>(maxCraters);i++,currCrater++)
 	{
 		if (currCrater->craterShapeId != -1)
 		{
@@ -396,9 +396,9 @@ void CraterManager::render (void)
 				{
 					if (TerrainQuad::rainLightLevel < 1.0f)
 					{
-						lightr = (float)lightr * TerrainQuad::rainLightLevel;
-						lightb = (float)lightb * TerrainQuad::rainLightLevel;
-						lightg = (float)lightg * TerrainQuad::rainLightLevel;
+						lightr = static_cast<float>(lightr) * TerrainQuad::rainLightLevel;
+						lightb = static_cast<float>(lightb) * TerrainQuad::rainLightLevel;
+						lightg = static_cast<float>(lightg) * TerrainQuad::rainLightLevel;
 					}
 					
 					if (TerrainQuad::lighteningLevel > 0x0)
@@ -565,7 +565,7 @@ void CraterManager::render (void)
 					// UVs and argb come from the proven gVertex/sVertex layout; world
 					// position comes from currCrater->position[] (MC2 world space: x=east, y=north, z=elev).
 					{
-						float fogFloat = (float)((fogRGB >> 24) & 0xFF) / 255.0f;
+						float fogFloat = static_cast<float>(((fogRGB >> 24) & 0xFF)) / 255.0f;
 						DWORD texIdx = mcTextureManager->get_gosTextureHandle(craterTextureIndices[handleOffset]);
 
 						WorldOverlayVert gWov[3];

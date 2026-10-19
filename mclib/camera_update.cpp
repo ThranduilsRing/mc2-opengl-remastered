@@ -511,7 +511,7 @@ long Camera::update (void)
 				       "stationary_pct=%.1f threshold_deg=%.2f threshold_pos=%.2f\n",
 				       s_motionFrames, s_motionStationary, s_motionMoving,
 				       (s_motionFrames > 0u)
-				           ? (100.0f * (float)s_motionStationary / (float)s_motionFrames)
+				           ? (100.0f * static_cast<float>(s_motionStationary) / static_cast<float>(s_motionFrames))
 				           : 0.0f,
 				       STATIONARY_ROT_DEG, STATIONARY_POS_UNI);
 				fflush(stdout);

@@ -235,11 +235,11 @@ long FastFile::open (const char* fName)
 		return lastError;
 	}
 
-	files = (FILE_HANDLE*)malloc(sizeof(FILE_HANDLE) * numFiles);
+	files = static_cast<FILE_HANDLE*>(malloc(sizeof(FILE_HANDLE) * numFiles));
 
 	for (DWORD i=0;i<numFiles;i++)
 	{
-		files[i].pfe = (FILEENTRY *)malloc(sizeof(FILEENTRY));
+		files[i].pfe = static_cast<FILEENTRY *>(malloc(sizeof(FILEENTRY)));
 		memset(files[i].pfe,0,sizeof(FILEENTRY));
 
 		unsigned long result = 0;
@@ -337,11 +337,11 @@ long FastFile::reserve(int num_files)
 	if(NO_ERR != res)
 		return res;
 
-	files = (FILE_HANDLE*)malloc(sizeof(FILE_HANDLE) * numFiles);
+	files = static_cast<FILE_HANDLE*>(malloc(sizeof(FILE_HANDLE) * numFiles));
 
 	for (DWORD i=0;i<numFiles;i++)
 	{
-		files[i].pfe = (FILEENTRY *)calloc(1, sizeof(FILEENTRY));
+		files[i].pfe = static_cast<FILEENTRY *>(calloc(1, sizeof(FILEENTRY)));
 		files[i].inuse = FALSE;
 		files[i].pos = 0;
 	}
@@ -398,7 +398,7 @@ long FastFile::seekFast (DWORD fastFileHandle, DWORD off, DWORD how)
 				break;
 	
 			case SEEK_END:
-				if (((DWORD)abs((long)off) > files[fastFileHandle].pfe->size) || (off > 0))
+				if ((static_cast<DWORD>(abs(static_cast<long>(off))) > files[fastFileHandle].pfe->size) || (off > 0))
 				{
 					return READ_PAST_EOF_ERR;
 				}
@@ -479,17 +479,17 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 		{
 			if (!LZPacketBuffer)
 			{
-				LZPacketBuffer = (MemoryPtr)malloc(LZPacketBufferSize);
+				LZPacketBuffer = static_cast<MemoryPtr>(malloc(LZPacketBufferSize));
 				if (!LZPacketBuffer)
 					return 0;
 			}
 				
-			if ((DWORD)LZPacketBufferSize < files[fastFileHandle].pfe->size)
+			if (static_cast<DWORD>(LZPacketBufferSize) < files[fastFileHandle].pfe->size)
 			{
 				LZPacketBufferSize = files[fastFileHandle].pfe->size;
 				
 				free(LZPacketBuffer);
-				LZPacketBuffer = (MemoryPtr)malloc(LZPacketBufferSize);
+				LZPacketBuffer = static_cast<MemoryPtr>(malloc(LZPacketBufferSize));
 				if (!LZPacketBuffer)
 					return 0;
 			}
@@ -554,8 +554,8 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 					if (files[fastFileHandle].pfe->size > 2 && zb0 == 0x78 && ((zb0 * 256 + zb1) % 31) == 0)
 					{
 						unsigned long tryLength = files[fastFileHandle].pfe->realSize;
-						if (Z_OK == uncompress((MemoryPtr)bfr, &tryLength, LZPacketBuffer, files[fastFileHandle].pfe->size)
-							&& tryLength == (unsigned long)files[fastFileHandle].pfe->realSize)
+						if (Z_OK == uncompress(reinterpret_cast<MemoryPtr>(bfr), &tryLength, LZPacketBuffer, files[fastFileHandle].pfe->size)
+							&& tryLength == static_cast<unsigned long>(files[fastFileHandle].pfe->realSize))
 						{
 							if (s_ffTrace) { CB_PRINTF("[FF] RAW-ZLIB %s size=%u real=%u (size==realSize but valid zlib; inflated)", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); }
 							copiedVerbatim = false;
@@ -572,20 +572,20 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 				else if (useLZCompress)
 				{
 					if (s_ffTrace) { CB_PRINTF("[FF] LZSS %s size=%u real=%u", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); }
-					decompLength = static_cast<unsigned long>(LZDecomp((MemoryPtr)bfr,LZPacketBuffer,files[fastFileHandle].pfe->size,files[fastFileHandle].pfe->realSize));
+					decompLength = static_cast<unsigned long>(LZDecomp(reinterpret_cast<MemoryPtr>(bfr),LZPacketBuffer,files[fastFileHandle].pfe->size,files[fastFileHandle].pfe->realSize));
 				}
 				else
 				{
-					if (s_ffTrace) { CB_PRINTF("[FF] ZLIB %s size=%u real=%u firstbytes=%02x%02x%02x%02x", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize, (unsigned char)LZPacketBuffer[0], (unsigned char)LZPacketBuffer[1], (unsigned char)LZPacketBuffer[2], (unsigned char)LZPacketBuffer[3]); }
+					if (s_ffTrace) { CB_PRINTF("[FF] ZLIB %s size=%u real=%u firstbytes=%02x%02x%02x%02x", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize, static_cast<unsigned char>(LZPacketBuffer[0]), static_cast<unsigned char>(LZPacketBuffer[1]), static_cast<unsigned char>(LZPacketBuffer[2]), static_cast<unsigned char>(LZPacketBuffer[3])); }
 					decompLength = files[fastFileHandle].pfe->realSize;
-					long error = uncompress((MemoryPtr)bfr,&decompLength,LZPacketBuffer,files[fastFileHandle].pfe->size);
+					long error = uncompress(reinterpret_cast<MemoryPtr>(bfr),&decompLength,LZPacketBuffer,files[fastFileHandle].pfe->size);
 					if (error != Z_OK) {
 						if (s_ffTrace) { CB_PRINTF("[FF] ZLIB FAILED error=%ld %s", error, files[fastFileHandle].pfe->name); }
 						STOP(("Error %d UnCompressing File %s from FastFile %s",error,files[fastFileHandle].pfe->name,fileName));
 					}
 				}
 
-				if ((long)decompLength != files[fastFileHandle].pfe->realSize)
+				if (static_cast<long>(decompLength) != files[fastFileHandle].pfe->realSize)
 					result = 0;
 				else
 					result = decompLength;
@@ -630,7 +630,7 @@ long FastFile::writeFast (const char* fastFileName, void* buffer, int nbytes)
 
 		if (!LZPacketBuffer)
 		{
-			LZPacketBuffer = (MemoryPtr)malloc(LZPacketBufferSize);
+			LZPacketBuffer = static_cast<MemoryPtr>(malloc(LZPacketBufferSize));
 			if (!LZPacketBuffer)
 				return 0;
 		}
@@ -640,15 +640,15 @@ long FastFile::writeFast (const char* fastFileName, void* buffer, int nbytes)
 			LZPacketBufferSize = workBufferSize;
 				
 			free(LZPacketBuffer);
-			LZPacketBuffer = (MemoryPtr)malloc(LZPacketBufferSize);
+			LZPacketBuffer = static_cast<MemoryPtr>(malloc(LZPacketBufferSize));
 			if (!LZPacketBuffer)
 				return 0;
 		}
 
 		gosASSERT(LZPacketBuffer);
 
-		size_t compressedSize = LZCompress(LZPacketBuffer, (Bytef*)buffer, nbytes);
-		size_t uncompressedSize = LZDecomp((Bytef*)buffer, LZPacketBuffer, compressedSize, nbytes);
+		size_t compressedSize = LZCompress(LZPacketBuffer, static_cast<Bytef*>(buffer), nbytes);
+		size_t uncompressedSize = LZDecomp(static_cast<Bytef*>(buffer), LZPacketBuffer, compressedSize, nbytes);
 		if (nbytes != uncompressedSize)
 			STOP(("fast File size changed after compression.  Was %d is now %d", nbytes, uncompressedSize));
 
@@ -673,7 +673,7 @@ long FastFile::writeFast (const char* fastFileName, void* buffer, int nbytes)
 
 			gosASSERT(memcmp(LZPacketBuffer, fbc, compressedSize) == 0);
 
-			size_t uncompressedSize = LZDecomp((Bytef*)fb, (Bytef*)fbc, compressedSize, nbytes);
+			size_t uncompressedSize = LZDecomp(reinterpret_cast<Bytef*>(fb), reinterpret_cast<Bytef*>(fbc), compressedSize, nbytes);
 			gosASSERT(nbytes == uncompressedSize);
 		}
 	}

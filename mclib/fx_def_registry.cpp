@@ -36,14 +36,14 @@ void fxdefLog(const char* why, const std::string& key) {
 
 std::string fxdefLower(const std::string& s) {
     std::string out = s;
-    for (char& c : out) c = (char)std::tolower((unsigned char)c);
+    for (char& c : out) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return out;
 }
 
 std::string fxdefTrim(const std::string& s) {
     size_t b = 0, e = s.size();
-    while (b < e && std::isspace((unsigned char)s[b])) ++b;
-    while (e > b && std::isspace((unsigned char)s[e - 1])) --e;
+    while (b < e && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
+    while (e > b && std::isspace(static_cast<unsigned char>(s[e - 1]))) --e;
     return s.substr(b, e - b);
 }
 
@@ -199,7 +199,7 @@ int EffectDefRegistry::loadFromDir(const std::string& dir) {
         byKey_[def.effectKey] = defs_.size();
         defs_.push_back(std::move(def));
     }
-    return (int)defs_.size();
+    return static_cast<int>(defs_.size());
 }
 
 int EffectDefRegistry::mergeFromDir(const std::string& dir) {

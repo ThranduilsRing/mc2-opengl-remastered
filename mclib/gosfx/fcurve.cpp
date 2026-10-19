@@ -326,28 +326,28 @@ gosFX::Curve::ExpensiveCompute(Stuff::Scalar tme,int curvenum)
 	{
 	case e_ConstantType:
 		{
-			ConstantCurve *SCurve=(ConstantCurve *)this;
+			ConstantCurve *SCurve=static_cast<ConstantCurve *>(this);
 			return SCurve->ComputeValue(tme,0.0f);
 		}
 		break;
 		
 	case e_LinearType:
 		{
-			LinearCurve *SCurve=(LinearCurve *)this;
+			LinearCurve *SCurve=static_cast<LinearCurve *>(this);
 			return SCurve->ComputeValue(tme,0.0f);
 		}
 		break;
 		
 	case e_SplineType:
 		{
-			SplineCurve *SCurve=(SplineCurve *)this;
+			SplineCurve *SCurve=static_cast<SplineCurve *>(this);
 			return SCurve->ComputeValue(tme,0.0f);
 		}
 		break;
 		
 	case e_ComplexType:
 		{
-			ComplexCurve *SCurve=(ComplexCurve *)this;
+			ComplexCurve *SCurve=static_cast<ComplexCurve *>(this);
 			return SCurve->ComputeValue(tme,0.0f);
 		}
 		break;
@@ -454,28 +454,28 @@ gosFX::Curve::ExpensiveComputeRange(
 	{
 	case e_ConstantType:
 		{
-			ConstantCurve *SCurve=(ConstantCurve *)this;
+			ConstantCurve *SCurve=static_cast<ConstantCurve *>(this);
 			SCurve->ComputeRange(low,hi);
 		}
 		break;
 		
 	case e_LinearType:
 		{
-			LinearCurve *SCurve=(LinearCurve *)this;
+			LinearCurve *SCurve=static_cast<LinearCurve *>(this);
 			SCurve->ComputeRange(low,hi);
 		}
 		break;
 		
 	case e_SplineType:
 		{
-			SplineCurve *SCurve=(SplineCurve *)this;
+			SplineCurve *SCurve=static_cast<SplineCurve *>(this);
 			SCurve->ComputeRange(low,hi);
 		}
 		break;
 		
 	case e_ComplexType:
 		{
-			ComplexCurve *SCurve=(ComplexCurve *)this;
+			ComplexCurve *SCurve=static_cast<ComplexCurve *>(this);
 			SCurve->ComputeRange(low,hi);
 		}
 		break;
@@ -580,28 +580,28 @@ gosFX::Curve::ExpensiveComputeRange(
 	{
 	case e_ConstantType:
 		{
-			ConstantCurve *SCurve=(ConstantCurve *)this;
+			ConstantCurve *SCurve=static_cast<ConstantCurve *>(this);
 			SCurve->ComputeRange(low,hi);
 		}
 		break;
 		
 	case e_LinearType:
 		{
-			LinearCurve *SCurve=(LinearCurve *)this;
+			LinearCurve *SCurve=static_cast<LinearCurve *>(this);
 			SCurve->ComputeRange(low,hi);
 		}
 		break;
 		
 	case e_SplineType:
 		{
-			SplineCurve *SCurve=(SplineCurve *)this;
+			SplineCurve *SCurve=static_cast<SplineCurve *>(this);
 			SCurve->ComputeRange(low,hi);
 		}
 		break;
 		
 	case e_ComplexType:
 		{
-			ComplexCurve *SCurve=(ComplexCurve *)this;
+			ComplexCurve *SCurve=static_cast<ComplexCurve *>(this);
 			SCurve->ComputeRange(low,hi);
 		}
 		break;
@@ -686,14 +686,14 @@ gosFX::Curve::TranslateTo(Stuff::Scalar pos,int curvenum)
 	{
 	case e_ConstantType:
 		{
-			ConstantCurve *SCurve=(ConstantCurve *)this;
+			ConstantCurve *SCurve=static_cast<ConstantCurve *>(this);
 			SCurve->SetCurve(pos);
 		}
 		break;
 		
 	case e_LinearType:
 		{
-			LinearCurve *SCurve=(LinearCurve *)this;
+			LinearCurve *SCurve=static_cast<LinearCurve *>(this);
 			Stuff::Scalar s;
 			s=SCurve->ComputeSlope(0.0f);
 			SCurve->SetCurve(pos,pos+s);
@@ -702,7 +702,7 @@ gosFX::Curve::TranslateTo(Stuff::Scalar pos,int curvenum)
 		
 	case e_SplineType:
 		{
-			SplineCurve *SCurve=(SplineCurve *)this;
+			SplineCurve *SCurve=static_cast<SplineCurve *>(this);
 			Stuff::Scalar v0,v1,s0,s1;
 			v0=SCurve->ComputeValue(0.0f,0.0f);
 			v1=SCurve->ComputeValue(1.0f,0.0f);
@@ -718,7 +718,7 @@ gosFX::Curve::TranslateTo(Stuff::Scalar pos,int curvenum)
 		
 	case e_ComplexType:
 		{
-			ComplexCurve *SCurve=(ComplexCurve *)this;
+			ComplexCurve *SCurve=static_cast<ComplexCurve *>(this);
 			Stuff::Scalar delta,x1,x2,y1,y2,slp;
 			
 			delta=pos-SCurve->ComputeValue(0.0f,0.0f);
@@ -838,14 +838,14 @@ gosFX::Curve::TranslateBy(Stuff::Scalar delta,int curvenum)
 	{
 	case e_ConstantType:
 		{
-			ConstantCurve *SCurve=(ConstantCurve *)this;
+			ConstantCurve *SCurve=static_cast<ConstantCurve *>(this);
 			SCurve->SetCurve(SCurve->ComputeValue(0.0f,0.0f)+delta);
 		}
 		break;
 		
 	case e_LinearType:
 		{
-			LinearCurve *SCurve=(LinearCurve *)this;
+			LinearCurve *SCurve=static_cast<LinearCurve *>(this);
 			Stuff::Scalar s,v;
 			s=SCurve->ComputeSlope(0.0f);
 			v=SCurve->ComputeValue(0.0f,0.0f);
@@ -855,7 +855,7 @@ gosFX::Curve::TranslateBy(Stuff::Scalar delta,int curvenum)
 		
 	case e_SplineType:
 		{
-			SplineCurve *SCurve=(SplineCurve *)this;
+			SplineCurve *SCurve=static_cast<SplineCurve *>(this);
 			Stuff::Scalar v0,v1,s0,s1;
 			v0=SCurve->ComputeValue(0.0f,0.0f);
 			v1=SCurve->ComputeValue(1.0f,0.0f);
@@ -871,7 +871,7 @@ gosFX::Curve::TranslateBy(Stuff::Scalar delta,int curvenum)
 		
 	case e_ComplexType:
 		{
-			ComplexCurve *SCurve=(ComplexCurve *)this;
+			ComplexCurve *SCurve=static_cast<ComplexCurve *>(this);
 			Stuff::Scalar x1,x2,y1,y2;
 			
 			int key = 0;
@@ -995,14 +995,14 @@ gosFX::Curve::AxisScale(Stuff::Scalar sfactor,Stuff::Scalar axis,int curvenum)
 	{
 	case e_ConstantType:
 		{
-			ConstantCurve *SCurve=(ConstantCurve *)this;
+			ConstantCurve *SCurve=static_cast<ConstantCurve *>(this);
 			SCurve->SetCurve(axis+(SCurve->ComputeValue(0.0f,0.0f)-axis)*sfactor);
 		}
 		break;
 		
 	case e_LinearType:
 		{
-			LinearCurve *SCurve=(LinearCurve *)this;
+			LinearCurve *SCurve=static_cast<LinearCurve *>(this);
 			Stuff::Scalar v0,v1;
 			v0=SCurve->ComputeValue(0.0f,0.0f);
 			v1=SCurve->ComputeValue(1.0f,0.0f);
@@ -1014,7 +1014,7 @@ gosFX::Curve::AxisScale(Stuff::Scalar sfactor,Stuff::Scalar axis,int curvenum)
 		
 	case e_SplineType:
 		{
-			SplineCurve *SCurve=(SplineCurve *)this;
+			SplineCurve *SCurve=static_cast<SplineCurve *>(this);
 			Stuff::Scalar v0,v1,s0,s1;
 			v0=SCurve->ComputeValue(0.0f,0.0f);
 			v1=SCurve->ComputeValue(1.0f,0.0f);
@@ -1032,7 +1032,7 @@ gosFX::Curve::AxisScale(Stuff::Scalar sfactor,Stuff::Scalar axis,int curvenum)
 		
 	case e_ComplexType:
 		{
-			ComplexCurve *SCurve=(ComplexCurve *)this;
+			ComplexCurve *SCurve=static_cast<ComplexCurve *>(this);
 			Stuff::Scalar x1,x2,y1,y2;
 			
 			int key=0;
@@ -1724,7 +1724,7 @@ gosFX::ComplexCurve::InsertKey(Stuff::Scalar m_time)
 	//-----------------------------------------------------------------------
 	//
 	int before = GetKeyIndex(m_time);
-	int key_count = (int)m_keys.GetLength();
+	int key_count = static_cast<int>(m_keys.GetLength());
 	m_keys.SetLength(key_count+1);
 	for (int i=key_count-1; i>=before; --i)
 		m_keys[i+1] = m_keys[i];
@@ -1798,7 +1798,7 @@ gosFX::ComplexCurve::DeleteKey(int index)
 	// If this is the last key, we just resize and return
 	//---------------------------------------------------
 	//
-	int key_count = (int)m_keys.GetLength();
+	int key_count = static_cast<int>(m_keys.GetLength());
 	if (index == key_count-1)
 	{
 		m_keys.SetLength(index);
@@ -1885,7 +1885,7 @@ gosFX::ComplexCurve::ComputeRange(
 	// If the key is empty, set everything to zero
 	//--------------------------------------------
 	//
-	int key_count = (int)m_keys.GetLength();
+	int key_count = static_cast<int>(m_keys.GetLength());
 	if (!key_count)
 	{
 		*low = *hi = 0.0f;
