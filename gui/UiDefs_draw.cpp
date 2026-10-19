@@ -138,7 +138,8 @@ static void ensureTexture(UiElement& e)
 
     // Try loading even when not on disk — texture may be pak-packed (FST archive)
     // and findable by the texture manager's own search, which fileExistsPath() misses.
-    const char* loadPath = onDisk ? p.string().c_str() : e.texturePath.c_str();
+    const std::string loadName = onDisk ? p.string() : e.texturePath;
+    const char* loadPath = loadName.c_str();
     e.textureNode = mcTextureManager->loadTexture(loadPath, gos_Texture_Alpha, 0, 0, 0x2);
     e.textureNodeAssigned = true;
     if (!e.textureNode) {
@@ -146,7 +147,7 @@ static void ensureTexture(UiElement& e)
         return;
     }
     {
-        e.gosTexture = mcTextureManager->get_gosTextureHandle(e.textureNode);
+
         if (e.textureWidth == 0 || e.textureHeight == 0) {
             DWORD logicalWidth = 0;
             DWORD logicalHeight = 0;
@@ -238,40 +239,10 @@ unsigned int sampleLegacyAnim(const UiElement::AnimKeyframe* kf, int count,
 bool drawUiImageElement(UiElement& e, int xOffset, int yOffset, const PageScale& s,
                                 unsigned int tint)
 {
-    DWORD gosTex = 0;
-    if (e.gosTextureOverride != 0) {
-        // Direct raw gos handle (e.g. a live decoded video frame): draw whatever
-        // GL texture this handle currently backs and skip the texture manager —
-        // the override is NOT a manager node, so get_gosTextureHandle() must not
-        // run on it.  drawn full-frame; UVs are reset to 0..1 when the override
-        // is set (see setElementGosTexture).
-        gosTex = static_cast<DWORD>(e.gosTextureOverride);
-    } else {
-        ensureTexture(e);
-        if (!e.textureNodeAssigned)
-            return false;
-
-        // Re-resolve every frame rather than trusting a handle cached at first
-        // draw: MC_TextureManager::update()/flushCache() can gos_DestroyTexture()
-        // a node that hasn't been "used" (lastUsed refreshed) in ~60 turns, which
-        // is exactly what happens to a texture whose handle is only fetched once.
-        // get_gosTextureHandle() both refreshes lastUsed (so an on-screen UI
-        // texture is never considered idle) and re-caches the texture in
-        // (recreating the GL texture) if it had already been evicted -- matching
-        // how the legacy aButton/asystem draw paths call it every frame.
-        e.gosTexture = mcTextureManager->get_gosTextureHandle(e.textureNode);
-        gosTex = static_cast<DWORD>(e.gosTexture);
-    }
-    if (!gosTex)
-        return false;
-
-    const unsigned int glTexture = gos_GetGLTextureName(gosTex);
-    if (!glTexture) {
-        if (uiDefsTraceEnabled())
-            uiDefsTrace("UI texture has no GL name: key=%s texture=%s gos=%u",
-                        e.key.c_str(), e.texturePath.c_str(), e.gosTexture);
-        return false;
-    }
+    uint64_t glTexture=0;
+    if (e.gosTextureOverride) glTexture=gos_GetGLTextureName(e.gosTextureOverride);
+    else { ensureTexture(e); if (e.textureNodeAssigned) glTexture=mcTextureManager->getUiTextureId(e.textureNode); }
+    if (!glTexture) return false;
 
     float u1 = 0.0f;
     float v1 = 0.0f;
@@ -290,7 +261,7 @@ bool drawUiImageElement(UiElement& e, int xOffset, int yOffset, const PageScale&
             s_lastDump = e.texturePath;
             printf("[PHOTO] key=%s path='%s' node=%d gos=%u gl=%u texWH=%dx%d uvXYWH=%d,%d,%d,%d "
                    "uv=(%.3f,%.3f)-(%.3f,%.3f) rect=(%.0f,%.0f %.0fx%.0f)\n",
-                e.key.c_str(), e.texturePath.c_str(), e.textureNode, e.gosTexture, glTexture,
+                e.key.c_str(), e.texturePath.c_str(), e.textureNode, e.gosTexture, (unsigned)glTexture,
                 e.textureWidth, e.textureHeight, e.uvX, e.uvY, e.uvW, e.uvH,
                 u1, v1, u2, v2, r.x, r.y, r.w, r.h);
             fflush(stdout);

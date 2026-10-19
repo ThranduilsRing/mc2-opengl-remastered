@@ -33,7 +33,11 @@ private:
 class TextureResidency {
 public:
     TextureResidency(VulkanContext& ctx, RenderCore::TextureService& service);
+    ~TextureResidency();
     bool init();
+    bool contains(RenderCore::TextureHandle handle) const { return residents_.contains(handle.raw()); }
+    // A legacy node already owns this identity; attach its pixels without adding a second CPU reference.
+    void attach(RenderCore::TextureHandle handle, std::shared_ptr<const RenderCore::KtxImage> image, bool useMips = false);
     ResidentTextureRef acquire(const RenderCore::TextureKey& key, const RenderCore::KtxImage& image,
                                RenderCore::TextureDimensions dimensions);
     // VFS resolution/extraction happens before this call. The worker never touches shared archives.
@@ -84,6 +88,8 @@ private:
     RenderCore::TextureStagingBudget budget_;
     std::deque<Pending> pending_;
     std::deque<Upload> uploading_;
+    std::mutex retiredMutex_;
+    std::vector<RenderCore::TextureHandle> retired_;
     RenderCore::TextureDecodeWorker worker_;
 
 };

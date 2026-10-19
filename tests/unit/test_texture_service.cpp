@@ -269,3 +269,21 @@ TEST_CASE("TextureService: delayed streaming staging cancellation and reload") {
     CHECK(table.index(old)==0);
     budget.complete(16); CHECK(budget.used==0);
 }
+
+TEST_CASE("TextureService: UI ids retain every generation bit and signal node retirement") {
+    const auto high=TextureHandle::make(0xfffffu,0xfffu);
+    CHECK(uiTextureHandle(uiTextureId(high))==high);
+    CHECK_FALSE(isUiTextureId(42));
+    CHECK_FALSE(uiTextureHandle(42).isValid());
+    TextureService service;
+    TextureHandle retired;
+    service.onRetired=[&](TextureHandle h) { retired=h; };
+    const auto original=service.acquire(keyOf("base","cursor",1),7,{256,128,64,32});
+    REQUIRE(service.retain(original)); // copying then releasing the original keeps dimensions
+    REQUIRE(service.release(original));
+    CHECK(service.dimensions(original).logicalHeight==32);
+    CHECK(service.users(original)==1);
+    service.onNodeDestroyed(7);
+    CHECK(retired==original);
+    CHECK_FALSE(service.isLive(uiTextureHandle(uiTextureId(original))));
+}

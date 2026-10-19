@@ -20,6 +20,7 @@
 #include "mc2fmt.h"
 #include "mc2_hitch_trace.h"   // frame-fence wait attribution for the hitch trace
 #include "vk_island_util.h"
+#include "vk_texture_residency.h"
 #include "texture_decode.h"   // gos_GetTextureTexelsByGlName
 
 #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
@@ -31,6 +32,7 @@
 #endif
 
 #include "vulkan_context.h"
+#include "vk_texture_residency.h"
 #include "mc2_diag_verbose.h"
 #include "vk_image_resource.h"
 // VK-RUNG8-ITEM8: the present tail no longer uses gl_interop_view (GL view /
@@ -162,6 +164,8 @@ struct EnginePresentVk::Impl {
     // GL texture name (the ImTextureID the game passes) -> a Vulkan image and the descriptor set ImGui_ImplVulkan binds for it.
     // Members release in reverse order: view, image, memory. The upload's staging bytes live in the frame ring.
     struct ImguiTexEntry {
+        mc2vk::ResidentTextureRef serviceTexture;
+        VkImageView serviceView=VK_NULL_HANDLE;
         mc2vk::OwnedDeviceMemory memory;
         mc2vk::OwnedRawImage image;
         mc2vk::OwnedImageView view;
@@ -172,7 +176,7 @@ struct EnginePresentVk::Impl {
         uint64_t checkedFrame = 0;      // last frame srcPtr was compared
         uint64_t lastUsedFrame = 0;
     };
-    std::unordered_map<uint32_t, ImguiTexEntry> imguiTex;
+    std::unordered_map<uint64_t, ImguiTexEntry> imguiTex;
     std::unordered_map<uint32_t, uint64_t> imguiTexRetryAt;   // GL names with no texels: next frame to ask again
     mc2vk::OwnedSampler imguiTexSampler;
     uint64_t imguiTexFrame = 0;
@@ -1387,7 +1391,7 @@ void imguiTexSweep(EnginePresentVk::Impl& s) {
     const uint64_t now = ++s.imguiTexFrame;
     for (auto it = s.imguiTex.begin(); it != s.imguiTex.end();) {
         auto& e = it->second;
-        if (e.src.expired()) {   // the texture was released or recreated: retire the set, destroy it once the GPU is done with it
+        if (RenderCore::isUiTextureId(it->first) ? !RenderCore::textureService().isLive(e.serviceTexture.get()) : e.src.expired()) {   // the texture was released or recreated: retire the set, destroy it once the GPU is done with it
             s.ctx->retire(std::make_unique<ImguiTexRetired>(std::move(e)));
             it = s.imguiTex.erase(it);
         } else {
@@ -1397,7 +1401,7 @@ void imguiTexSweep(EnginePresentVk::Impl& s) {
 }
 
 // Moves a live entry to the deferred-destroy queue (destroyed once the frame that may sample it has completed).
-void imguiTexRetire(EnginePresentVk::Impl& s, std::unordered_map<uint32_t, EnginePresentVk::Impl::ImguiTexEntry>::iterator it) {
+void imguiTexRetire(EnginePresentVk::Impl& s, std::unordered_map<uint64_t, EnginePresentVk::Impl::ImguiTexEntry>::iterator it) {
     s.ctx->retire(std::make_unique<ImguiTexRetired>(std::move(it->second)));
     s.imguiTex.erase(it);
 }
@@ -1405,7 +1409,30 @@ void imguiTexRetire(EnginePresentVk::Impl& s, std::unordered_map<uint32_t, Engin
 // Records the upload into `cb` (outside the render pass). Returns 0 when the name has no VK image. Everything that can fail
 // (buffers, image, view, the descriptor set) happens BEFORE the first command is recorded, so a failure never leaves a recorded
 // command naming a destroyed resource.
-ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint32_t glName) {
+ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint64_t textureId) {
+    if (RenderCore::isUiTextureId(textureId)) {
+        const auto handle=RenderCore::uiTextureHandle(textureId);
+        auto& textures=s.ctx->textures();
+        if (!RenderCore::textureService().isLive(handle)) return 0;
+        const auto view=textures.view(handle);
+        auto it=s.imguiTex.find(textureId);
+        if (it!=s.imguiTex.end()) {
+            if (it->second.serviceView==view) { it->second.lastUsedFrame=s.imguiTexFrame; return (ImTextureID)it->second.set; }
+            imguiTexRetire(s,it);
+        }
+        if (s.imguiTex.size()+g_imguiTexRetiredPending>=2*kImguiTexCap) return 0;
+        if (!s.imguiTexSampler) {
+            VkSamplerCreateInfo sci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO}; sci.magFilter=sci.minFilter=VK_FILTER_LINEAR;
+            sci.addressModeU=sci.addressModeV=sci.addressModeW=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            if (!mc2vk::create(s.imguiTexSampler,s.dev,[&](VkSampler* h){return vkCreateSampler(s.dev,&sci,nullptr,h);})) return 0;
+        }
+        EnginePresentVk::Impl::ImguiTexEntry e;
+        e.serviceTexture=textures.retain(handle); e.serviceView=view; e.lastUsedFrame=s.imguiTexFrame;
+        e.set=ImGui_ImplVulkan_AddTexture(s.imguiTexSampler.get(),view,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        if (!e.set) return 0;
+        const auto set=(ImTextureID)e.set; s.imguiTex.emplace(textureId,std::move(e)); return set;
+    }
+    const uint32_t glName=uint32_t(textureId);
     auto it = s.imguiTex.find(glName);
     if (it != s.imguiTex.end()) {
         auto& e = it->second;
@@ -1574,7 +1601,7 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
                 if (c.UserCallback || c.ElemCount == 0 || c.GetTexID() == fontTex)
                     continue;
                 saved.push_back({&c, c.TextureId, c.ClipRect});
-                const ImTextureID set = imguiTexResolve(s, cb, (uint32_t)c.GetTexID());
+                const ImTextureID set = imguiTexResolve(s, cb, (uint64_t)c.GetTexID());
                 if (set) {
                     c.TextureId = set;
                 } else {

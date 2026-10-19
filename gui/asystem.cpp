@@ -198,12 +198,10 @@ static void renderObjectViaGuiBridge(const gos_VERTEX* location, unsigned long t
 	if (w <= 0.0f || h <= 0.0f)
 		return;
 
-	unsigned int glTexture = 0;
+	uint64_t glTexture = 0;
 	if (textureHandle && mcTextureManager)
 	{
-		const unsigned long gosID = mcTextureManager->get_gosTextureHandle(textureHandle);
-		if (gosID && gosID != 0xffffffff)
-			glTexture = gos_GetGLTextureName(gosID);
+		glTexture = mcTextureManager->getUiTextureId(textureHandle);
 	}
 
 	// Diagnostic: trace every bridge draw of the mech-icon
@@ -215,7 +213,7 @@ static void renderObjectViaGuiBridge(const gos_VERTEX* location, unsigned long t
 		if (nm && strstr(nm, "mechicon"))
 		{
 			printf("[mechicon-draw] bridge handle=%lu glTex=%u rect=(%.0f,%.0f %.0fx%.0f) argb=%08X uv=(%.3f,%.3f)-(%.3f,%.3f)\n",
-				textureHandle, glTexture, x, y, w, h, argb,
+				textureHandle, (unsigned)glTexture, x, y, w, h, argb,
 				location[0].u, location[0].v, location[2].u, location[2].v);
 			fflush(stdout);
 		}
@@ -373,19 +371,8 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 			}
 			else
 			{
-				unsigned long gosID = mcTextureManager->get_gosTextureHandle( ID );
-				TEXTUREPTR textureData;
-				{
-					ZoneScopedN("aObject::init fit gos_LockTexture");
-					gos_LockTexture( gosID, 0, 0, 	&textureData );
-				}
-				fileWidth = textureData.Width / mcTextureManager->getUVScale(ID);
-				// fileHeight intentionally NOT auto-set (see note above).
-				{
-					ZoneScopedN("aObject::init fit gos_UnLockTexture");
-					gos_UnLockTexture( gosID );
-				}
-			}
+                fileWidth = RenderCore::textureService().dimensions(RenderCore::textureService().handleOfNode(ID)).logicalWidth;
+		}
 
 			// Remember canonical asset key so vertex setup below can query
 			// AssetScale::isChromeAsset() for the 1-pixel chrome overlap.
@@ -748,17 +735,8 @@ void	aObject::setTexture( const char* fileName )
 		fileWidth = logicalWidth;
 	else
 	{
-		int gosID = mcTextureManager->get_gosTextureHandle( textureHandle );
-		if ( gosID )
-		{
-			TEXTUREPTR textureData;
-			gos_LockTexture( gosID, 0, 0, 	&textureData );
-			fileWidth = textureData.Width / mcTextureManager->getUVScale(textureHandle);
-			gos_UnLockTexture( gosID );
+        fileWidth = RenderCore::textureService().dimensions(RenderCore::textureService().handleOfNode(textureHandle)).logicalWidth;
 		}
-		else
-			fileWidth = 256; // guess
-	}
 
 }
 
@@ -779,11 +757,7 @@ void	aObject::setTexture(unsigned long newHandle )
 			fileWidth = logicalWidth;
 		else
 		{
-			int gosID = mcTextureManager->get_gosTextureHandle( newHandle );
-			TEXTUREPTR textureData;
-			gos_LockTexture( gosID, 0, 0, 	&textureData );
-			fileWidth = textureData.Width / mcTextureManager->getUVScale(newHandle);
-			gos_UnLockTexture( gosID );
+            fileWidth = RenderCore::textureService().dimensions(RenderCore::textureService().handleOfNode(newHandle)).logicalWidth;
 		}
 	}
 

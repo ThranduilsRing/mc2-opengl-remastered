@@ -4,6 +4,11 @@
 #include "mc2fmt.h"
 #include "../RenderCore/TextureService.h"
 #include <algorithm>
+#include "../GameOS/gameos/texture_decode.h"
+#ifdef MC2_VULKAN_ISLAND
+#include "../GameOS/gameos/vulkan_context.h"
+#include "../GameOS/gameos/vk_texture_residency.h"
+#endif
 
 DWORD actualTextureSize = 0;
 DWORD compressedTextureSize = 0;
@@ -692,12 +697,66 @@ long MC_TextureManager::saveTexture (DWORD textureIndex, const char *textureFull
 	return NO_ERR;
 }
 
+std::shared_ptr<const RenderCore::KtxImage> MC_TextureManager::textureImage(DWORD nodeId)
+{
+    if (nodeId>=MC_MAXTEXTURES) return {};
+    auto& n=masterTextureNodes[nodeId];
+    if (!n.numUsers || !n.textureData) return {};
+    const DWORD kind=n.width & 0xf0000000u;
+    const bool file=kind==MC_TEXCACHE_FILE_LZ || kind==MC_TEXCACHE_FILE_RAW;
+    const size_t count=(kind==MC_TEXCACHE_FILE_LZ || kind==MC_TEXCACHE_FILE_RAW || kind==MC_TEXCACHE_MEM_RAW)
+        ? n.width & MC_TEXCACHE_SIZE_MASK : size_t(n.width)*n.width*4;
+    if (!count || count>=MAX_LZ_BUFFER_SIZE) return {};
+    std::vector<uint8_t> source(count);
+    if (kind==MC_TEXCACHE_FILE_RAW || kind==MC_TEXCACHE_MEM_RAW) memcpy(source.data(),n.textureData,count);
+    else if (LZDecomp(source.data(),(MemoryPtr)n.textureData,n.lzCompSize,count)!=count) return {};
+    auto image=std::make_shared<RenderCore::KtxImage>();
+    if (file) {
+        auto decoded=mc2tex::decodeMemory(source.data(),source.size(),n.nodeName,n.key,n.hints);
+        if (!decoded) return {};
+        image->width=decoded->width; image->height=decoded->height;
+        if (decoded->layout==mc2tex::PixelLayout::RGB8) {
+            image->pixels.resize(size_t(image->width)*image->height*4);
+            for (size_t i=0,j=0;i<decoded->pixels.size() && j<image->pixels.size();i+=3,j+=4) {
+                if (i+2>=decoded->pixels.size()) break;
+                std::copy_n(decoded->pixels.data()+i,3,image->pixels.data()+j); image->pixels[j+3]=255;
+            }
+        } else image->pixels=std::move(decoded->pixels);
+    } else {
+        image->width=n.logicalWidth; image->height=n.logicalHeight;
+        if (source.size()!=size_t(image->width)*image->height*4) return {};
+        image->pixels=std::move(source);
+        for (size_t i=0;i<image->pixels.size();i+=4) std::swap(image->pixels[i],image->pixels[i+2]); // packed ARGB -> RGBA
+    }
+    image->vkFormat=37; image->mipCount=1; image->mipByteOffsets={0};
+    return image;
+}
+uint64_t MC_TextureManager::getUiTextureId(DWORD nodeId)
+{
+#ifdef MC2_VULKAN_ISLAND
+    if (nodeId>=MC_MAXTEXTURES || !masterTextureNodes[nodeId].numUsers) return 0;
+    auto& service=RenderCore::textureService();
+    auto handle=service.handleOfNode(nodeId);
+    if (!handle.isValid()) {
+        const auto& n=masterTextureNodes[nodeId];
+        txmIdentityAcquire(n,nodeId,n.logicalWidth,n.logicalHeight);
+        handle=service.handleOfNode(nodeId);
+    }
+    auto& textures=mc2vk::getOrCreateEngineVulkanContext().textures();
+    if (!textures.contains(handle)) textures.attach(handle,textureImage(nodeId));
+    return RenderCore::uiTextureId(handle);
+#else
+    return 0;
+#endif
+}
+
 DWORD MC_TextureManager::copyTexture( DWORD texNodeID )
 {
 	gosASSERT( texNodeID < MC_MAXTEXTURES );
-	if ( masterTextureNodes[texNodeID].gosTextureHandle != -1 )
+	if ( masterTextureNodes[texNodeID].numUsers && masterTextureNodes[texNodeID].gosTextureHandle != -1 )
 	{
 		masterTextureNodes[texNodeID].numUsers++;
+        RenderCore::textureService().retain(RenderCore::textureService().handleOfNode(texNodeID));
 		return texNodeID;
 	}
 	else

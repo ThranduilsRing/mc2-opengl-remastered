@@ -16,7 +16,15 @@ ResidentTextureRef& ResidentTextureRef::operator=(ResidentTextureRef&& o) noexce
     if (this != &o) { if (owner_) owner_->release(handle_); owner_ = std::exchange(o.owner_, nullptr); handle_ = o.handle_; }
     return *this;
 }
-TextureResidency::TextureResidency(VulkanContext& ctx, RenderCore::TextureService& service) : ctx_(ctx), service_(service) {}
+TextureResidency::TextureResidency(VulkanContext& ctx, RenderCore::TextureService& service) : ctx_(ctx), service_(service) {
+    service_.onRetired=[this](RenderCore::TextureHandle h) { std::lock_guard lock(retiredMutex_); retired_.push_back(h); };
+}
+TextureResidency::~TextureResidency() { service_.onRetired={}; }
+void TextureResidency::attach(RenderCore::TextureHandle handle, std::shared_ptr<const RenderCore::KtxImage> image, bool useMips) {
+    if (!service_.isLive(handle) || residents_.contains(handle.raw())) return;
+    residents_.emplace(handle.raw(),Resident{{},0,useMips});
+    if (image) pending_.push_back({handle,std::move(image)});
+}
 
 bool TextureResidency::init() {
     VkPhysicalDeviceProperties props{}; vkGetPhysicalDeviceProperties(ctx_.physicalDevice(), &props);
@@ -124,6 +132,13 @@ ResidentTextureRef TextureResidency::requestKtx(const RenderCore::TextureKey& ke
     return ResidentTextureRef(*this,handle);
 }
 void TextureResidency::pump() {
+    std::vector<RenderCore::TextureHandle> retired;
+    { std::lock_guard lock(retiredMutex_); retired.swap(retired_); }
+    for (auto handle : retired) {
+        table_->erase(handle);
+        auto it=residents_.find(handle.raw());
+        if (it!=residents_.end()) { if (it->second.image) ctx_.retire(std::move(it->second.image)); residents_.erase(it); }
+    }
     for (auto& result : worker_.take())
         if (result.image && service_.isLive(result.handle)) pending_.push_back({result.handle,std::move(result.image)});
     // Queue order makes completion a prefix: idle resident images are never scanned.

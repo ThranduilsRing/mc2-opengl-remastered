@@ -381,19 +381,8 @@ void aButton::init( FitIniFile& buttonFile, const char* str, HGOSFONT3D font )
 		}
 		else
 		{
-			int gosID = mcTextureManager->get_gosTextureHandle( ID );
-			TEXTUREPTR textureData;
-			{
-				ZoneScopedN("aButton::init gos_LockTexture");
-				gos_LockTexture( gosID, 0, 0, 	&textureData );
-			}
-			{
-				ZoneScopedN("aButton::init gos_UnLockTexture");
-				gos_UnLockTexture( gosID );
-			}
-
-			data.fileWidth = textureData.Width / mcTextureManager->getUVScale(ID);
-			data.fileHeight = data.fileWidth;
+            const auto dims=RenderCore::textureService().dimensions(RenderCore::textureService().handleOfNode(ID));
+            data.fileWidth=dims.logicalWidth; data.fileHeight=dims.logicalHeight;
 		}
 	}
 

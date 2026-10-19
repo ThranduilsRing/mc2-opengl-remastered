@@ -12,6 +12,7 @@
 #pragma once
 
 #include <cassert>
+#include <functional>
 #include <cstdint>
 #include <utility>
 #include <mutex>
@@ -88,8 +89,16 @@ inline uint64_t textureContentHash(const uint8_t* bytes, size_t size) {
     return hash;
 }
 
+inline constexpr uint64_t kUiTextureTag = 0x54584d3100000000ull;
+inline uint64_t uiTextureId(TextureHandle handle) { return handle.isValid() ? kUiTextureTag | handle.raw() : 0; }
+inline bool isUiTextureId(uint64_t id) { return (id & 0xffffffff00000000ull)==kUiTextureTag; }
+inline TextureHandle uiTextureHandle(uint64_t id) {
+    return isUiTextureId(id) ? TextureHandle::make(uint32_t(id) & 0xfffffu, uint32_t(id) >> 20) : TextureHandle::invalid();
+}
+
 class TextureService {
 public:
+    std::function<void(TextureHandle)> onRetired; // context residency borrows the session; callback only queues invalidations
     // The handle of `key`: a new one bound to `node`, or the existing one (its user count rises; `node` is ignored, the first residency stays).
     TextureHandle acquire(const TextureKey& key, uint32_t node = kNoTextureNode, TextureDimensions dimensions = {}) {
         std::lock_guard<std::mutex> lk(mu_);
@@ -235,6 +244,7 @@ private:
     Entry* resolve(TextureHandle h) { return const_cast<Entry*>(static_cast<const TextureService*>(this)->resolve(h)); }
     void retire(uint32_t idx) {
         Entry& e = entries_[idx];
+        if (onRetired) onRetired(TextureHandle::make(idx,e.generation));
         byKey_.erase(e.key);
         e.live = false;
         e.node = kNoTextureNode;

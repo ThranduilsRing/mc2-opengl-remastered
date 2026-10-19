@@ -107,20 +107,9 @@ void ControlButton::initButtons( FitIniFile& buttonFile, long buttonCount, Contr
 			}
 			else
 			{
-				int gosID = mcTextureManager->get_gosTextureHandle( ID );
-				TEXTUREPTR textureData;
-				{
-					ZoneScopedN("ControlGui::initButtons gos_LockTexture");
-					gos_LockTexture( gosID, 0, 0, 	&textureData );
-				}
-				{
-					ZoneScopedN("ControlGui::initButtons gos_UnLockTexture");
-					gos_UnLockTexture( gosID );
-				}
-
-				Buttons[i].data->fileWidth = textureData.Width / mcTextureManager->getUVScale(ID);
-				Buttons[i].data->fileHeight = Buttons[i].data->fileWidth;
-			}
+            const auto dims=RenderCore::textureService().dimensions(RenderCore::textureService().handleOfNode(ID));
+            Buttons[i].data->fileWidth=dims.logicalWidth; Buttons[i].data->fileHeight=dims.logicalHeight;
+		}
 		}
 
 		{

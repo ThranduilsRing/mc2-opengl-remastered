@@ -19,6 +19,7 @@
 //----------------------------------------------------------------------
 #ifndef TXMMGR_H
 #define TXMMGR_H
+#include "../RenderCore/TextureService.h"
 
 #ifndef DSTD_H
 #include"dstd.h"
@@ -544,6 +545,8 @@ class MC_TextureManager
 		DWORD textureFromMemoryRaw (DWORD *data, gos_TextureFormat key, DWORD hints, DWORD width, DWORD bitDepth = 4);
 
 		// increments the ref count
+        uint64_t getUiTextureId(DWORD nodeId);
+        std::shared_ptr<const RenderCore::KtxImage> textureImage(DWORD nodeId);
 		DWORD copyTexture( DWORD texNodeID );
 
 		//------------------------------------------------------

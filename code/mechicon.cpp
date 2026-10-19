@@ -1881,11 +1881,7 @@ PilotIcon::PilotIcon()
 			s_pilotTextureWidth = logicalWidth;
 		else
 		{
-			int gosID = mcTextureManager->get_gosTextureHandle( s_pilotTextureHandle );
-			TEXTUREPTR textureData;
-			gos_LockTexture( gosID, 0, 0, 	&textureData );
-			s_pilotTextureWidth = textureData.Width / mcTextureManager->getUVScale(s_pilotTextureHandle);
-			gos_UnLockTexture( gosID );
+            s_pilotTextureWidth=RenderCore::textureService().dimensions(RenderCore::textureService().handleOfNode(s_pilotTextureHandle)).logicalWidth;
 		}
 	}
 
@@ -1966,15 +1962,11 @@ void PilotIcon::swapResolutions( bool bForce)
 		// Find its logical width without forcing texture realization when metadata is available.
 		DWORD logicalWidth = 0;
 		DWORD logicalHeight = 0;
-		if ( mcTextureManager->tryGetTextureLogicalSize( s_pilotTextureHandle, logicalWidth, logicalHeight ) )
+		if  ( mcTextureManager->tryGetTextureLogicalSize( s_pilotTextureHandle, logicalWidth, logicalHeight ) )
 			s_pilotTextureWidth = logicalWidth;
 		else
 		{
-			int gosID = mcTextureManager->get_gosTextureHandle( s_pilotTextureHandle );
-			TEXTUREPTR textureData;
-			gos_LockTexture( gosID, 0, 0, 	&textureData );
-			s_pilotTextureWidth = textureData.Width / mcTextureManager->getUVScale(s_pilotTextureHandle);
-			gos_UnLockTexture( gosID );
+            s_pilotTextureWidth=RenderCore::textureService().dimensions(RenderCore::textureService().handleOfNode(s_pilotTextureHandle)).logicalWidth;
 		}
 	}
 
