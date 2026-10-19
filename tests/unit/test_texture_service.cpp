@@ -206,6 +206,8 @@ TEST_CASE("TXM material slots reject registration snapshots after replacement an
     CHECK(replaced==sibling);
     CHECK_FALSE(textureOf(registrationSnapshot)==textureOf(replaced)); // negative control must reject the cached registration handle
     service.release(a);
+    CHECK(service.isLive(a)); // node identity remains live until the manager destroys its node
+    service.onNodeDestroyed(7);
     source.source="mod:props/damage.tga"; const auto damage=service.acquire(source,7);
     CHECK(damage!=a); CHECK_FALSE(service.isLive(textureOf(registrationSnapshot)));
     CHECK(textureOf(bind(damage))==damage);
