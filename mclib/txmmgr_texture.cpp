@@ -741,8 +741,8 @@ uint64_t MC_TextureManager::getUiTextureId(DWORD nodeId)
         txmIdentityAcquire(n,nodeId,n.logicalWidth,n.logicalHeight);
         handle=service.handleOfNode(nodeId);
     }
-    auto& textures=mc2vk::getOrCreateEngineVulkanContext().textures();
-    if (!textures.contains(handle)) textures.attach(handle,textureImage(nodeId));
+    // Device access stays behind the GameOS consumer boundary.
+    if (!mc2vk::hasUiImage(handle)) mc2vk::attachUiImage(handle,textureImage(nodeId));
     return RenderCore::uiTextureId(handle);
 #else
     return 0;
