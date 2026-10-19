@@ -210,12 +210,6 @@ static float mc2WaterShoreFeatherWu()
     return s_shoreFeatherWu;
 }
 
-// Shore mode 3 depth-only lift K (fraction of clip.z). Shared by GL uniform + VK UBO.
-static float mc2WaterShore3DepthK()
-{
-    return 0.03f;
-}
-
 // WATER-HDRI-REFL-PERF-1 LOD default, shared by the GL MDI bind block and the
 // VK water island fsParams pack (RUNG-6.5) so the two paths cannot drift.
 // MC2_WATER_HDRI_LOD (float) overrides; else MC2_WATER_HDRI_REFL_FULL=1 -> 1.0,
@@ -311,7 +305,6 @@ void gosRenderer::renderWaterFastPath(
     vsP.p3[0]=(float)alphaDeepByte;
     // Mode 3 lifts the Vulkan shore plane toward the camera by a bounded world distance.
     vsP.p3[2]=20.0f;
-    vsP.p3[2]=mc2WaterShore3DepthK();   // shore mode 3 depth lift K (p3[1] flat flag set by the VK island)
     {
         const vec4 waterFog = uint32_to_vec4(renderStates_[gos_State_Fog]);
         memcpy(fsP.fog, &waterFog, 4*sizeof(float));

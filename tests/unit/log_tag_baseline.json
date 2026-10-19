@@ -12698,6 +12698,16 @@
    "ver": 1,
    "stream": "stdout",
    "keys": [
+    "bytes",
+    "mapSide"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_SHORE_EDGE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
     "path"
    ],
    "count": 1

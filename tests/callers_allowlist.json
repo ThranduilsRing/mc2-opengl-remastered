@@ -206,6 +206,7 @@
   "tools/terrain_beautify/test_cliff_smooth.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/terrain_beautify/test_control_map_tool.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/terrain_beautify/test_cook_markings.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
+  "tools/terrain_beautify/test_cook_shore_field.py": "Dynamically discovered pytest module through scripts/run_tools_tests.py (tools_tests); no literal caller names the module.",
   "tools/terrain_beautify/test_cook_shoreline.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/terrain_beautify/test_density_policy_sim.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/terrain_beautify/test_overlay_extract.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
