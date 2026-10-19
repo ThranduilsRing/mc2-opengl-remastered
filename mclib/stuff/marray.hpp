@@ -301,14 +301,14 @@ namespace Stuff {
 	template<class T>
 		DynamicArrayOf<T>::DynamicArrayOf() 
 	{ 
-		data = NULL;
+		data = nullptr;
 		length = 0;
 	}
 
 	template<class T>
 		DynamicArrayOf<T>::DynamicArrayOf(const DynamicArrayOf<T> &array) 
 	{
-		data = NULL;
+		data = nullptr;
 		length = 0;
 		CopyArray(array);
 	}
@@ -316,7 +316,7 @@ namespace Stuff {
 	template<class T>
 		DynamicArrayOf<T>::DynamicArrayOf(size_t length_to_set) 
 	{
-		data = NULL;
+		data = nullptr;
 		length = 0;
 		SetStorageLength(length_to_set);
 		Verify(length == length_to_set);
@@ -331,7 +331,7 @@ namespace Stuff {
 	template<class T>
 		DynamicArrayOf<T>::DynamicArrayOf(const T &value, size_t length_to_set) 
 	{
-		data = NULL;
+		data = nullptr;
 		length = 0;
 		AssignValue(value, length_to_set);
 	}
@@ -339,7 +339,7 @@ namespace Stuff {
 	template<class T>
 		DynamicArrayOf<T>::DynamicArrayOf(const T *data_to_copy, size_t length_to_set) 
 	{
-		data = NULL;
+		data = nullptr;
 		length = 0;
 		AssignData(data_to_copy, length_to_set);
 	}
@@ -347,7 +347,7 @@ namespace Stuff {
 	template<class T>
 		DynamicArrayOf<T>::~DynamicArrayOf() 
 	{ 
-		if (data != NULL)
+		if (data != nullptr)
 		{
 			Unregister_Pointer(data);
 			delete[] data;
@@ -405,7 +405,7 @@ namespace Stuff {
 			{
 				T* new_data = new T[length_to_set];
 				Register_Pointer(new_data);
-				if (data != NULL)
+				if (data != nullptr)
 				{
 					// Do not memcopy, object semantics may be required
 					size_t i = Min(length_to_set, length);
@@ -420,7 +420,7 @@ namespace Stuff {
 			{
 				Unregister_Pointer(data);
 				delete[] data;
-				data = NULL;
+				data = nullptr;
 			}
 			length = length_to_set;
 		}
@@ -448,7 +448,7 @@ namespace Stuff {
 		{
 			if (length_to_set > 0)
 			{
-				if (data != NULL)
+				if (data != nullptr)
 				{
 					Unregister_Pointer(data);
 					delete[] data;
@@ -462,7 +462,7 @@ namespace Stuff {
 				Verify(length_to_set == 0);
 				Unregister_Pointer(data);
 				delete[] data;
-				data = NULL;
+				data = nullptr;
 			}
 		}
 	}
@@ -478,8 +478,8 @@ namespace Stuff {
 		else
 		{
 			Verify(array.length == 0);
-			Verify(array.data == NULL);
-			if (data != NULL)
+			Verify(array.data == nullptr);
+			if (data != nullptr)
 			{
 				Unregister_Pointer(data);
 				delete[] data;

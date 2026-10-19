@@ -38,15 +38,15 @@ inline constexpr int MAX_WATER_DETAIL_TEXTURES = 256;
 inline constexpr int TOTAL_COLORMAP_TYPES = 5;
 //---------------------------------------------------------------------------
 // Class Definitions
-typedef struct _ColorMapTextures
+struct _ColorMapTextures
 {
 	mc2::TextureRef	mcTextureNodeIndex;	//Owns one reference to the texture node
-} ColorMapTextures;
+}; using ColorMapTextures = _ColorMapTextures;
 
-typedef struct _ColorMapRAM
+struct _ColorMapRAM
 {
 	MemoryPtr 	ourRAM;
-} ColorMapRAM;
+}; using ColorMapRAM = _ColorMapRAM;
 
 class TerrainColorMap
 {
@@ -259,7 +259,7 @@ class TerrainColorMap
 		//Pass in filename of height map to write new data to.
 		void refractalizeBaseMesh (const char *fileName, long Threshold, long Noise);
 		
-		void burnInShadows (bool doBumpPass = true, const char * fileName = NULL);
+		void burnInShadows (bool doBumpPass = true, const char * fileName = nullptr);
 		
 		void recalcLight(const char *fileName);
 
@@ -280,7 +280,7 @@ class TerrainColorMap
 		void getScaledColorMap (MemoryPtr bfr, long width);
 };
 
-typedef TerrainColorMap *TerrainColorMapPtr;
+using TerrainColorMapPtr = TerrainColorMap*;
 //---------------------------------------------------------------------------
 #endif
 

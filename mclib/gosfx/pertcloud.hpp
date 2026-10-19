@@ -96,8 +96,8 @@ namespace gosFX
 		static void InitializeClass();
 		static void	TerminateClass();
 
-		typedef PertCloud__Specification Specification;
-		typedef PertCloud__Particle Particle;
+		using Specification = PertCloud__Specification;
+		using Particle = PertCloud__Particle;
 
 	protected:
 		std::unique_ptr<MidLevelRenderer::MLRNGonCloud> m_cloudImplementation;						// Pert to an MLR Pert cloud by Jim

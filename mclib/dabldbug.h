@@ -13,9 +13,9 @@ class WatchManager;
 class BreakPointManager;
 class Debugger;
 
-typedef BreakPointManager* BreakPointManagerPtr;
-typedef WatchManager* WatchManagerPtr;
-typedef Debugger* DebuggerPtr;
+using BreakPointManagerPtr = BreakPointManager*;
+using WatchManagerPtr = WatchManager*;
+using DebuggerPtr = Debugger*;
  
 #endif
 

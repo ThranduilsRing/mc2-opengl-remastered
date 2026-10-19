@@ -21,7 +21,7 @@ namespace Stuff {
 	class Note;
 
 	class Macro;
-	typedef TreeOf<Macro *, MString> MacroTree;
+	using MacroTree = TreeOf<Macro* , MString>;
 
 	class Macro:
 		public Plug
@@ -110,8 +110,8 @@ namespace Stuff {
 			Type type=Standard
 		);
 		NotationFile(
-			MemoryStream *stream=NULL,
-			MacroTree *macro_tree=NULL
+			MemoryStream *stream=nullptr,
+			MacroTree *macro_tree=nullptr
 		);
 
 		~NotationFile();
@@ -202,7 +202,7 @@ namespace Stuff {
 
 		bool
 			DoesPageExist(const char *pagename)
-				{Check_Object(this); return FindPage(pagename) != NULL;}
+				{Check_Object(this); return FindPage(pagename) != nullptr;}
 		Page*
 			FindPage(const char* pagename);
 		Page*
@@ -210,7 +210,7 @@ namespace Stuff {
 		Page*
 			GetPage(const char* pagename);
 
-		typedef ChainIteratorOf<Page*> PageIterator;
+		using PageIterator = ChainIteratorOf<Page* >;
 		PageIterator*
 			MakePageIterator()
 				{Check_Object(this); return new PageIterator(&m_pages);}

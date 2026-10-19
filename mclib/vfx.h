@@ -72,20 +72,20 @@ extern "C" {
 #ifndef TYPEDEFS1
 #define TYPEDEFS1
 
-typedef unsigned char  UBYTE;
-typedef unsigned short UWORD;
-typedef unsigned long  ULONG;
-typedef unsigned char  BYTE;
+using UBYTE = unsigned char;
+using UWORD = unsigned short;
+using ULONG = unsigned long;
+using BYTE = unsigned char;
 
 // sebi
 //#ifndef WIN32
 //typedef unsigned		  WORD;
 //#endif
 
-typedef signed   long  LONG;
-typedef          float FLOAT;
-typedef signed   long  FIXED16;   // 16:16 fixed-VFX_POINT type [-32K,+32K]
-typedef signed   long  FIXED30;   // 2:30 fixed-VFX_POINT type [-1.999,+1.999]
+using LONG = signed   long;
+using FLOAT = float;
+using FIXED16 = signed   long;   // 16:16 fixed-VFX_POINT type [-32K,+32K]
+using FIXED30 = signed   long;   // 2:30 fixed-VFX_POINT type [-1.999,+1.999]
 
 #endif
 
@@ -144,9 +144,9 @@ inline constexpr int PL_CONTAINED = 2;            // Contained within another pa
 // VFX data structures
 //
 
-typedef unsigned char STENCIL;
+using STENCIL = unsigned char;
 
-typedef struct _window
+struct _window
 {
 	UBYTE   *buffer;
 	LONG     x_max;
@@ -154,80 +154,65 @@ typedef struct _window
 
    STENCIL *stencil;
    UBYTE   *shadow;
-} 
-WINDOW;
+}; using WINDOW = _window;
 
-typedef struct _pane
+struct _pane
 {
 	WINDOW *window;
 	LONG x0;
 	LONG y0;
 	LONG x1;
 	LONG y1;
-} 
-PANE;
+}; using PANE = _pane;
 
-typedef struct _pane_list
+struct _pane_list
 {
    PANE  *array;
    ULONG *flags;
    LONG   size;
-}
-PANE_LIST;
+}; using PANE_LIST = _pane_list;
 
-typedef union
-{
+union FLEX_PTR {
    void  *v;
    UBYTE *b;
    UWORD *w;
    ULONG *d;
-} 
-FLEX_PTR;
+};
 
-typedef struct
-{
+struct VFX_DESC {
    LONG scrn_width;
    LONG scrn_height;
    LONG bytes_per_pixel;
    LONG ncolors;
    LONG npages;
    ULONG flags;
-}
-VFX_DESC;
+};
 
-typedef struct
-{
+struct VFX_RGB {
    UBYTE r;
    UBYTE g;
    UBYTE b;
-}
-VFX_RGB;
+};
 
-typedef struct
-{
+struct VFX_CRGB {
    UBYTE color;
    VFX_RGB   VFX_RGB;
-}
-VFX_CRGB;
+};
 
-typedef struct
-{
+struct VFX_POINT {
    LONG x;
    LONG y;
-}
-VFX_POINT;
+};
 
-typedef struct
-{
+struct FONT {
    LONG version;
    LONG char_count;
    LONG char_height;
    LONG font_background;
-}
-FONT;
+};
 
-typedef struct            // Vertex structure used by polygon primitives
-{
+struct            // Vertex structure used by polygon primitives
+SCRNVERTEX {
    LONG x;                // Screen X
    LONG y;                // Screen Y
 
@@ -236,17 +221,14 @@ typedef struct            // Vertex structure used by polygon primitives
    FIXED16 u;             // Texture source X
    FIXED16 v;             // Texture source Y
    FIXED30 w;             // Homogeneous perspective divisor (unused by VFX3D)
-}
-SCRNVERTEX;               
+};
 
-typedef struct
-{
+struct VFX_RECT {
    LONG x0;
    LONG y0;
    LONG x1;
    LONG y1;
-}
-VFX_RECT;
+};
 
 #define INT_TO_FIXED16(x)       (((long)(int)(x)) << 16)
 #define DOUBLE_TO_FIXED16(x)    ((long) ((x) * 65536.0 + 0.5))

@@ -123,7 +123,7 @@ class Appearance
 			visible = seen = false;
 		}
 
-		virtual void init (AppearanceTypePtr tree = NULL, GameObjectPtr obj = NULL)
+		virtual void init (AppearanceTypePtr tree = nullptr, GameObjectPtr obj = nullptr)
 		{
 			inView = FALSE;
 			// alpha-Stage 1 v3 §5 Stage 1 init zero-init contract
@@ -221,7 +221,7 @@ class Appearance
 
 		virtual AppearanceTypePtr getAppearanceType (void)
 		{
-			return NULL;
+			return nullptr;
 		}
 
 		bool canBeSeen (void)
@@ -584,7 +584,7 @@ class Appearance
 		{
 		}
 		
-		virtual long markMoveMap (bool passable, long* lineOfSightRect, bool useheight = false, short* cellList = NULL)
+		virtual long markMoveMap (bool passable, long* lineOfSightRect, bool useheight = false, short* cellList = nullptr)
 		{
 			return(0);
 		}

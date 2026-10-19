@@ -151,10 +151,10 @@ class MapData : public HeapManager
 
 			topLeftVertex.Zero();			
 
-			blocks = NULL;
-			terrainFaceCache = NULL;
+			blocks = nullptr;
+			terrainFaceCache = nullptr;
 
-			blankVertex = NULL;
+			blankVertex = nullptr;
 
 			hasSelection = false;
 
@@ -197,7 +197,7 @@ class MapData : public HeapManager
 		float terrainElevation (const glm::vec3 &position);
 		float terrainElevation ( long tileR, long tileC );
 
-		float terrainAngle (const glm::vec3 &position, glm::vec3* normal = NULL);
+		float terrainAngle (const glm::vec3 &position, glm::vec3* normal = nullptr);
 		glm::vec3 terrainNormal (const glm::vec3& position);
 		float terrainLight (const glm::vec3& position);
 		
@@ -223,8 +223,8 @@ class MapData : public HeapManager
 
 		unsigned long getTexture( long tileR, long tileC );
 		void invalidateTerrainFaceCache (void);
-		void buildTerrainFaceCache (volatile float* progress = NULL, float progressRange = 0.0f);
-		void warmTerrainFaceCacheResidency (volatile float* progress = NULL, float progressRange = 0.0f);
+		void buildTerrainFaceCache (volatile float* progress = nullptr, float progressRange = 0.0f);
+		void warmTerrainFaceCacheResidency (volatile float* progress = nullptr, float progressRange = 0.0f);
 		const WorldQuadTerrainCacheEntry* getTerrainFaceCacheEntry (long tileR, long tileC) const;
 		bool ensureTerrainFaceCacheEntryResident (const WorldQuadTerrainCacheEntry& entry, bool duringMissionLoad) const;
 

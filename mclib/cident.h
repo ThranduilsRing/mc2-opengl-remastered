@@ -215,7 +215,7 @@ class FullPathFileName
 
 		void init (void)
 		{
-			fullName = NULL;
+			fullName = nullptr;
 		}
 
 		void init (const char *dir_path, const char *name, const char *ext, bool do_not_make_lower = false);

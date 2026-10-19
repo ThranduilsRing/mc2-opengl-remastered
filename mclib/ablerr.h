@@ -17,7 +17,7 @@
 
 #pragma warning( disable : 4514 )  
 
-typedef enum {
+enum SyntaxErrorType {
 	ABL_ERR_SYNTAX_NONE,									// 0
 	ABL_ERR_SYNTAX_ERROR,
 	ABL_ERR_SYNTAX_TOO_MANY_ERRORS,
@@ -87,9 +87,9 @@ typedef enum {
 	ABL_ERR_MISSING_STATE_IDENTIFIER,
 	ABL_ERR_SYNTAX_MISSING_END_FSM,
 	NUM_ABL_SYNTAX_ERRORS
-} SyntaxErrorType;
+};
 
-typedef enum {
+enum RuntimeErrorType {
 	ABL_ERR_RUNTIME_STACK_OVERFLOW,
 	ABL_ERR_RUNTIME_INFINITE_LOOP,
 	ABL_ERR_RUNTIME_NESTED_FUNCTION_CALL,
@@ -101,7 +101,7 @@ typedef enum {
 	ABL_ERR_RUNTIME_ABORT,
 	ABL_ERR_RUNTIME_NULL_PREVSTATE,
 	NUM_ABL_RUNTIME_ERRORS
-} RuntimeErrorType;
+};
 
 //***************************************************************************
 

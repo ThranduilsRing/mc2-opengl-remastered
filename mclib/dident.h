@@ -15,10 +15,10 @@
 inline constexpr int ID_SIZE = 8;	// enough for an old DOS file name
 
 class IDString;
-typedef IDString *IDStringPtr;
+using IDStringPtr = IDString*;
 
 class FullPathFileName;
-typedef FullPathFileName *FullPathFileNamePtr;
+using FullPathFileNamePtr = FullPathFileName*;
 //---------------------------------------------------------------------------
 #endif
 

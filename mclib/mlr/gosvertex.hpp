@@ -143,7 +143,7 @@ namespace MidLevelRenderer {
 		static Stuff::Scalar AddY;
 	};
 
-	typedef Stuff::Vector2DOf<Stuff::Scalar> Vector2DScalar;
+	using Vector2DScalar = Stuff::Vector2DOf<Stuff::Scalar>;
 	
 	const float float_cheat = 12582912.0f/256.0f;
 	const float One_Over_256 = 1.0f/256.0f;

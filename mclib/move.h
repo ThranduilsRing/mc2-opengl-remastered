@@ -69,11 +69,11 @@ inline constexpr int NUM_EXTRA_DOOR_LINKS = 2;
 inline constexpr int SIMPLE_PATHMAP = 0;
 inline constexpr int SECTOR_PATHMAP = 1;
 
-typedef enum {
+enum GlobalMapDoorOffset {
 	DOOR_OFFSET_START,
 	DOOR_OFFSET_GOAL,
 	NUM_DOOR_OFFSETS
-} GlobalMapDoorOffset;
+};
 
 inline constexpr int SECTOR_DIM = 30;
 
@@ -114,14 +114,14 @@ inline constexpr int SCENARIOMAP_MAX_OVERLAYTYPE = 127;
 //#define	SCENARIOMAP_LAST_BASETYPE_INDEX		63
 
 //TileType and OverlayType now in terrain.h!
-typedef enum {
+enum OverlayWeightClass {
 	OVERLAY_WEIGHT_VEHICLE,
 	OVERLAY_WEIGHT_MECH,
 	OVERLAY_WEIGHT_OTHER1,
 	OVERLAY_WEIGHT_OTHER2,
 	OVERLAY_WEIGHT_OTHER3,
 	NUM_OVERLAY_WEIGHT_CLASSES
-} OverlayWeightClass;
+};
 
 //------------------
 // class Definitions
@@ -219,7 +219,7 @@ inline constexpr int MINE_NONE = 0;
 inline constexpr int MINE_INTACT = 1;
 inline constexpr int MINE_EXPLODED = 2;
 
-typedef struct _ScenarioMapCellInfo {
+struct _ScenarioMapCellInfo {
 	unsigned char		terrain;
 	unsigned char		overlay;
 	bool				road;
@@ -230,7 +230,7 @@ typedef struct _ScenarioMapCellInfo {
 	short				specialID;
 	bool				passable;
 	int                 lineOfSight;
-} MissionMapCellInfo;
+}; using MissionMapCellInfo = _ScenarioMapCellInfo;
 
 //---------------------------------------------------------------------------
 
@@ -302,7 +302,7 @@ inline constexpr int MAPCELL_BUILD_SPECIAL_MASK = 0x60000800;
 inline constexpr int MAPCELL_BUILD_NOT_SET_SHIFT = 31;
 inline constexpr unsigned int MAPCELL_BUILD_NOT_SET_MASK = 0x80000000;
 
-typedef struct _MapCell {
+struct _MapCell {
 	unsigned int data;
 
 	unsigned int getTerrain (void) {
@@ -504,17 +504,17 @@ typedef struct _MapCell {
 			data |= MAPCELL_BUILD_NOT_SET_MASK;
 	}
 
-} MapCell;
+}; using MapCell = _MapCell;
 
-typedef MapCell* MapCellPtr;
+using MapCellPtr = MapCell*;
 
-typedef struct _PreservedCell {
+struct _PreservedCell {
 	short				row;
 	short				col;
 	unsigned int        data;
-} PreservedCell;
+}; using PreservedCell = _PreservedCell;
 
-typedef PreservedCell* PreservedCellPtr;
+using PreservedCellPtr = PreservedCell*;
 
 #pragma pack()
 
@@ -562,7 +562,7 @@ class MissionMap {
             planet = 0;
 			preserveCells = false;
 			numPreservedCells = 0;
-			placeMoversCallback = NULL;
+			placeMoversCallback = nullptr;
 			numDebugCells = 0;
 			tileMineCount.clear();
 			tileMineCountWidth = 0;
@@ -951,27 +951,27 @@ class MissionMap {
 		void print (char* fileName);
 };
 
-typedef MissionMap* MissionMapPtr;
+using MissionMapPtr = MissionMap*;
 
 //***************************************************************************
 
 
 class MovePath;
-typedef MovePath* MovePathPtr;
+using MovePathPtr = MovePath*;
 
 
 //---------------------------------------------------------------------------
 inline constexpr int MAX_STEPS_PER_MOVEPATH = 200;
 
-typedef struct _PathStep {
+struct _PathStep {
 	short					cell[2];							// obvious
 	float					distanceToGoal;						// dist, in meters, to goal from this step
 	glm::vec3			destination;						// world pos of this step
 	char					direction;							// 0 thru 7 direction into this step
 	short					area;
-} PathStep;
+}; using PathStep = _PathStep;
 
-typedef PathStep* PathStepPtr;
+using PathStepPtr = PathStep*;
 
 class MovePath {
 
@@ -1039,9 +1039,9 @@ class MovePath {
 
 		void lock (long level, long start, long range, bool setting);
 
-		bool isLocked (long level, long start, long range, bool* reachedEnd = NULL);
+		bool isLocked (long level, long start, long range, bool* reachedEnd = nullptr);
 
-		bool isBlocked (long start, long range, bool* reachedEnd = NULL);
+		bool isBlocked (long start, long range, bool* reachedEnd = nullptr);
 
 		long crossesBridge (long start, long range);
 
@@ -1095,16 +1095,16 @@ inline constexpr int GLOBALPATH_EXISTS_FALSE = 2;
 
 #pragma pack(1)
 
-typedef struct _DoorLink {
+struct _DoorLink {
 	short					doorIndex;
 	char					doorSide;
 	int					cost;
 	int					openCost;
-} DoorLink;
+}; using DoorLink = _DoorLink;
 
-typedef DoorLink* DoorLinkPtr;
+using DoorLinkPtr = DoorLink*;
 
-typedef struct _GlobalMapDoor {
+struct _GlobalMapDoor {
 	//----------------
 	// Map layout data
 	short					row;
@@ -1127,34 +1127,34 @@ typedef struct _GlobalMapDoor {
 	int					g;
 	int					hPrime;
 	int					fPrime;
-} GlobalMapDoor;
+}; using GlobalMapDoor = _GlobalMapDoor;
 
-typedef GlobalMapDoor* GlobalMapDoorPtr;
+using GlobalMapDoorPtr = GlobalMapDoor*;
 
-typedef struct _DoorInfo {
+struct _DoorInfo {
 	short					doorIndex;
 	char					doorSide;
-} DoorInfo;
+}; using DoorInfo = _DoorInfo;
 
-typedef DoorInfo* DoorInfoPtr;
+using DoorInfoPtr = DoorInfo*;
 
-typedef enum _AreaType {
+enum _AreaType {
 	AREA_TYPE_NORMAL,
 	AREA_TYPE_WALL,
 	AREA_TYPE_GATE,
 	AREA_TYPE_LAND_BRIDGE,
 	AREA_TYPE_FOREST,
 	NUM_AREA_TYPES
-} AreaType;
+}; using AreaType = _AreaType;
 
-typedef enum _WaterType {
+enum _WaterType {
 	WATER_TYPE_NONE,
 	WATER_TYPE_SHALLOW,
 	WATER_TYPE_DEEP,
 	NUM_WATER_TYPES
-} WaterType;
+}; using WaterType = _WaterType;
 
-typedef struct _GlobalMapArea {
+struct _GlobalMapArea {
 	//----------------
 	// Map layout data
 	short					sectorR;
@@ -1170,13 +1170,13 @@ typedef struct _GlobalMapArea {
     // sebi: 64bit fix 
 	//short*					cellsCovered;
 	DWORD                   cellsCovered_Legacy32bitPtr;
-} GlobalMapArea;
+}; using GlobalMapArea = _GlobalMapArea;
 
 #pragma pack()
 
-typedef GlobalMapArea* GlobalMapAreaPtr;
+using GlobalMapAreaPtr = GlobalMapArea*;
 
-typedef struct _GlobalPathStep {
+struct _GlobalPathStep {
 	int					startDoor;
 	int					thruArea;
 	int					goalDoor;
@@ -1184,9 +1184,9 @@ typedef struct _GlobalPathStep {
 	glm::vec3			goal;			// "goal" in this area
 	int					goalCell[2];	// which cell did we actually exit thru
 	int					costToGoal;
-} GlobalPathStep;
+}; using GlobalPathStep = _GlobalPathStep;
 
-typedef GlobalPathStep* GlobalPathStepPtr;
+using GlobalPathStepPtr = GlobalPathStep*;
 
 inline constexpr int MAX_SPECIAL_AREAS = 1500;
 inline constexpr int MAX_SPECIAL_SUB_AREAS = 25;
@@ -1194,23 +1194,23 @@ inline constexpr int MAX_CELLS_PER_SUB_AREA = 49;
 inline constexpr int MAX_OFFMAP_AREAS = 60;
 inline constexpr int MAX_GAME_OBJECT_CELLS = 64;
 
-typedef struct _GameObjectFootPrint {
+struct _GameObjectFootPrint {
 	short				cellPositionRow;
 	short				cellPositionCol;
 	short				preNumCells;
 	short				numCells;
 	short				cells[MAX_GAME_OBJECT_CELLS][2];
-} GameObjectFootPrint;
+}; using GameObjectFootPrint = _GameObjectFootPrint;
 
-typedef struct _GlobalSpecialAreaInfo {
+struct _GlobalSpecialAreaInfo {
 	unsigned char			type;
 	short					numSubAreas;
 	short					subAreas[MAX_SPECIAL_SUB_AREAS];
 	short					numCells;
 	short					cells[MAX_CELLS_PER_SUB_AREA][2];
-} GlobalSpecialAreaInfo;
+}; using GlobalSpecialAreaInfo = _GlobalSpecialAreaInfo;
 
-typedef DoorLinkPtr DoorInfoLinksPtr[2];
+using DoorInfoLinksPtr = DoorLinkPtr[2];
 class GlobalMap {
 
 	public:
@@ -1307,20 +1307,20 @@ class GlobalMap {
 			sectorWidth = 0;
 
 			numAreas = 0;
-			areaMap = NULL;
-			areas = NULL;
-            areas_cellsCovered = NULL;
-            areas_doors = NULL;
+			areaMap = nullptr;
+			areas = nullptr;
+            areas_cellsCovered = nullptr;
+            areas_doors = nullptr;
 
 			numDoors = 0;
 			numDoorInfos = 0;
 			numDoorLinks = 0;
-			doors = NULL;
-            doors_links = NULL;
-			doorInfos = NULL;
-			doorLinks = NULL;
-			doorBuildList = NULL;
-			doorBuildList_links = NULL;
+			doors = nullptr;
+            doors_links = nullptr;
+			doorInfos = nullptr;
+			doorLinks = nullptr;
+			doorBuildList = nullptr;
+			doorBuildList_links = nullptr;
 
 			goalSector[0] = goalSector[1] = 0;
 			blank = false;
@@ -1334,7 +1334,7 @@ class GlobalMap {
 			goalCell[0] = -1;
 			goalCell[1] = -1;
 
-			specialAreas = NULL;
+			specialAreas = nullptr;
 			closes = false;
 			opens = false;
 			numOffMapAreas = 0;
@@ -1347,16 +1347,16 @@ class GlobalMap {
 			// MSVC /fsanitize=address `0xBE` stack/heap poison pattern) and
 			// the null-guard in those methods passes because the garbage is
 			// non-zero. See docs/asan-follow-ups.md finding #2.
-			pathExistsTable = NULL;
+			pathExistsTable = nullptr;
 #ifdef USE_PATH_COST_TABLE
-			pathCostTable = NULL;
+			pathCostTable = nullptr;
 #endif
 
-			log = NULL;
+			log = nullptr;
 			logEnabled = false;
 
-			isGateDisabledCallback = NULL;
-			isGateOpenCallback = NULL;
+			isGateDisabledCallback = nullptr;
+			isGateOpenCallback = nullptr;
 		}
 
 		GlobalMap (void) {
@@ -1549,13 +1549,13 @@ class GlobalMap {
 		static void writeLog (char* s);
 };
 
-typedef GlobalMap* GlobalMapPtr;
+using GlobalMapPtr = GlobalMap*;
 
 //******************************************************************************************
 
 inline constexpr int NUM_ADJ_CELLS = 8;
 
-typedef struct _MoveMapNode {
+struct _MoveMapNode {
     // sebi moved 'cost' field up for less data cache misses (I hope)
     // maybe will have to move adjCells in a separate array
 	int				cost;								// normal cost to travel here, based upon terrain
@@ -1574,9 +1574,9 @@ typedef struct _MoveMapNode {
 	void clearFlag (unsigned int flag) {
 		flags &= (flag ^ 0xFFFFFFFF);
 	}
-} MoveMapNode;
+}; using MoveMapNode = _MoveMapNode;
 
-typedef MoveMapNode* MoveMapNodePtr;
+using MoveMapNodePtr = MoveMapNode*;
 
 inline constexpr int DISTANCE_TABLE_DIM = 80;
 
@@ -1692,9 +1692,9 @@ class MoveMap {
 			calcTime = 0.0;
 			travelOffMap = false;
 			cannotEnterOffMap = true;
-			overlayWeightTable = NULL;
-			blockedDoorCallback = NULL;
-			placeStationaryMoversCallback = NULL;
+			overlayWeightTable = nullptr;
+			blockedDoorCallback = nullptr;
+			placeStationaryMoversCallback = nullptr;
 			solveJumpOnBlocked = false;
 		}
 		

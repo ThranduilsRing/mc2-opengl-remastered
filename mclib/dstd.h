@@ -14,8 +14,8 @@
 
 //---------------------------------------------------------------------------
 // Type Definitions
-typedef unsigned char* MemoryPtr;
-typedef unsigned char byte;
+using MemoryPtr = unsigned char*;
+using byte = unsigned char;
 //sebi
 //typedef unsigned size_t;
 
@@ -40,15 +40,15 @@ inline constexpr float COS_SIN_45 = 0.70710678f;		 	// Used to convert results i
 
 // !NB sebi
 #ifndef PLATFORM_WINDOWS
-typedef unsigned int DWORD;
-typedef unsigned int UINT;
-typedef unsigned char BYTE;
-typedef void *PVOID;
+using DWORD = unsigned int;
+using UINT = unsigned int;
+using BYTE = unsigned char;
+using PVOID = void*;
 #else
-typedef unsigned long DWORD; // sizeof(long) is 32bit on both 32bit and 64 bit Visual C++ compilers 
-typedef unsigned int UINT;
-typedef unsigned char BYTE;
-typedef void *PVOID;
+using DWORD = unsigned long; // sizeof(long) is 32bit on both 32bit and 64 bit Visual C++ compilers
+using UINT = unsigned int;
+using BYTE = unsigned char;
+using PVOID = void*;
 #endif
 
 //--------------------------------------------------------------------------

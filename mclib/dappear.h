@@ -20,9 +20,9 @@
 //---------------------------------------------------------------------------
 // Class definitions
 class Appearance;
-typedef Appearance *AppearancePtr;
+using AppearancePtr = Appearance*;
 
 class GameObject;
-typedef GameObject *GameObjectPtr;
+using GameObjectPtr = GameObject*;
 //---------------------------------------------------------------------------
 #endif

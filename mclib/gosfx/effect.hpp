@@ -89,11 +89,7 @@ namespace gosFX
 				int gfx_version
 			);
 
-		typedef Effect__Specification*
-			(*Factory)(
-				Stuff::MemoryStream *stream,
-				int gfx_version
-			);
+		using Factory = Effect__Specification*(*)(Stuff::MemoryStream *stream, int gfx_version);
 
 		static Effect__Specification*
 			Make(
@@ -227,8 +223,8 @@ namespace gosFX
 				{}
 		};
 
-		typedef Effect__Specification Specification;
-		typedef Effect__ClassData ClassData;
+		using Specification = Effect__Specification;
+		using ClassData = Effect__ClassData;
 
 	//----------------------------------------------------------------------------
 	// Initialization
@@ -252,11 +248,7 @@ namespace gosFX
 	public:
 		~Effect();
 
-		typedef Effect*
-			(*Factory)(
-				Specification *spec,
-				unsigned flags
-			);
+		using Factory = Effect*(*)(Specification *spec, unsigned flags);
 
 		static Effect*
 			Make(

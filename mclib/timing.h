@@ -96,7 +96,7 @@ class Timer
 		}
 };		
 
-typedef Timer *TimerPtr;
+using TimerPtr = Timer*;
 //----------------------------------------------------------------------------------
 class TimerManager
 {
@@ -136,7 +136,7 @@ class TimerManager
 			if ((index >= 0) && (index < MAX_TIMERS))
 				return &(timers[index]);
 				
-			return NULL;
+			return nullptr;
 		}
 		
 		void update (void)
@@ -148,14 +148,14 @@ class TimerManager
 		}
 };
 
-typedef TimerManager *TimerManagerPtr;
+using TimerManagerPtr = TimerManager*;
 //----------------------------------------------------------------------------------
 extern TimerManagerPtr timerManager;			
 
 extern const char *monthName[];
 //----------------------------------------------------------------------------------
 // Find out actual system time
-typedef struct _MC_SYSTEMTIME
+struct _MC_SYSTEMTIME
 {
     DWORD dwYear; 
 	DWORD dwMonth; 
@@ -168,7 +168,7 @@ typedef struct _MC_SYSTEMTIME
 
 	void copyFromSystemTime (void *systemTime);
 
-} MC_SYSTEMTIME;
+}; using MC_SYSTEMTIME = _MC_SYSTEMTIME;
 
 DWORD MCTiming_GetTimeZoneInforation(void *timeData);
 

@@ -48,14 +48,14 @@ inline constexpr int BIG_CRATER_OFFSET = 0;
 inline constexpr int SMALL_CRATER_OFFSET = 1;
 //---------------------------------------------------------------------
 // struct CraterData
-typedef struct _CraterData
+struct _CraterData
 {
 	int 			craterShapeId;
 	glm::vec3 position[4];
 	Stuff::Vector4D screenPos[4];
-} CraterData;
+}; using CraterData = _CraterData;
 
-typedef CraterData *CraterDataPtr;
+using CraterDataPtr = CraterData*;
 //---------------------------------------------------------------------
 // class CraterManager
 class CraterManager
@@ -89,20 +89,20 @@ class CraterManager
 	
 		void init (void)
 		{
-			craterPosHeap = NULL;
-			craterShpHeap = NULL;
+			craterPosHeap = nullptr;
+			craterShpHeap = nullptr;
 
 			craterPosHeapSize = craterShpHeapSize = 0;
 			
 			currentCrater = maxCraters = 0;
-			craterList = NULL;
+			craterList = nullptr;
 
 			numCraterTextures = 0;
 			
 			craterTextureHandles.clear();
 			craterTextureIndices.clear();
 			
-			craterFile = NULL;
+			craterFile = nullptr;
 		}
 		
 		CraterManager (void)
@@ -126,7 +126,7 @@ class CraterManager
 };
 
 //---------------------------------------------------------------------
-typedef CraterManager *CraterManagerPtr;
+using CraterManagerPtr = CraterManager*;
 extern CraterManagerPtr craterManager;
 
 //---------------------------------------------------------------------

@@ -92,7 +92,7 @@ namespace gosFX
 		static void InitializeClass();
 		static void	TerminateClass();
 
-		typedef Card__Specification Specification;
+		using Specification = Card__Specification;
 
 	//----------------------------------------------------------------------------
 	// Class Data Support

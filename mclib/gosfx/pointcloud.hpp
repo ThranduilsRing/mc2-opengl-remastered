@@ -69,8 +69,8 @@ namespace gosFX
 		static ClassData
 			*DefaultData;
 
-		typedef PointCloud__Specification Specification;
-		typedef PointCloud__Particle Particle;
+		using Specification = PointCloud__Specification;
+		using Particle = PointCloud__Particle;
 
 		enum {
 			ParticleSize = sizeof(Particle) + sizeof(glm::vec3) + sizeof(Stuff::RGBAColor)

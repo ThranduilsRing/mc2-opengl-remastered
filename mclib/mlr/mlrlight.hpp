@@ -121,7 +121,7 @@ namespace MidLevelRenderer {
 	//
 		virtual MLRLightMap *
 			GetLightMap()
-				{Check_Object(this); return NULL; }
+				{Check_Object(this); return nullptr; }
 
 		int
 			GetLightMask()

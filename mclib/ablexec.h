@@ -36,7 +36,7 @@
 #define	ABL_PARAM_INTEGER		1
 #define	ABL_PARAM_REAL			2
 
-typedef enum {
+enum ABLStackItemType {
 	ABL_STACKITEM_CHAR,
 	ABL_STACKITEM_INTEGER,
 	ABL_STACKITEM_REAL,
@@ -46,29 +46,29 @@ typedef enum {
 	ABL_STACKITEM_REAL_PTR,
 	ABL_STACKITEM_BOOLEAN_PTR,
 	NUM_ABL_STACKITEMS
-} ABLStackItemType;
+};
 
-typedef struct {
+struct ABLParam {
 	char		type;
 	int         integer;
 	float		real;
-} ABLParam;
+};
 
-typedef ABLParam* ABLParamPtr;
+using ABLParamPtr = ABLParam*;
 
 //---------------
 // RUN-TIME STACK
 
-typedef union {
+union StackItem {
 	int             integer;
 	float			real;
 	unsigned char	byte;
 	Address			address;
-} StackItem;
+};
 
-typedef StackItem* StackItemPtr;
+using StackItemPtr = StackItem*;
 
-typedef struct {
+struct ABLStackItem {
 	long			type;
 	union {
 		int         integer;
@@ -80,18 +80,18 @@ typedef struct {
 		bool*		booleanPtr;
 		char*		characterPtr;
 	} data;
-} ABLStackItem;
+};
 
-typedef ABLStackItem* ABLStackItemPtr;
+using ABLStackItemPtr = ABLStackItem*;
 
-typedef struct {
+struct StackFrameHeader {
 	StackItem	functionValue;
 	StackItem	staticLink;
 	StackItem	dynamicLink;
 	StackItem	returnAddress;
-} StackFrameHeader;
+};
 
-typedef StackFrameHeader* StackFrameHeaderPtr;
+using StackFrameHeaderPtr = StackFrameHeader*;
 
 //***************************************************************************
 

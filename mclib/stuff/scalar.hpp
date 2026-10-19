@@ -16,7 +16,7 @@ namespace Stuff {
 		#define M_PI 3.14159265358979323846
 	#endif
 
-	typedef float Scalar;
+	using Scalar = float;
 	const Scalar Pi=static_cast<Scalar>(M_PI);
 	const Scalar Pi_Over_2=static_cast<Scalar>(M_PI/2.0);
 	const Scalar Pi_Over_3=static_cast<Scalar>(M_PI/3.0);
@@ -204,7 +204,7 @@ namespace Stuff {
 		return static_cast<Scalar>(atof(v));
 	}
 
-	typedef double Time;
+	using Time = double;
 }
 
 namespace MemoryStreamIO {

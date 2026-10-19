@@ -509,7 +509,7 @@ void Mech3DAppearance::initFX (void)
 				for (long i=0;i<MAX_DUST_POOFS;i++)
 				{
 					rightDustPoofEffect[i] = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-					gosASSERT(rightDustPoofEffect[i] != NULL);
+					gosASSERT(rightDustPoofEffect[i] != nullptr);
 				}
 				
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
@@ -528,7 +528,7 @@ void Mech3DAppearance::initFX (void)
 				for (long i=0;i<MAX_DUST_POOFS;i++)
 				{
 					leftDustPoofEffect[i] = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-					gosASSERT(leftDustPoofEffect[i] != NULL);
+					gosASSERT(leftDustPoofEffect[i] != nullptr);
 				}
 				
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
@@ -545,7 +545,7 @@ void Mech3DAppearance::initFX (void)
 			if (gosEffectSpec)
 			{
 				smokeEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(smokeEffect != NULL);
+				gosASSERT(smokeEffect != nullptr);
 			
 				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}
@@ -561,7 +561,7 @@ void Mech3DAppearance::initFX (void)
 			if (gosEffectSpec)
 			{
 				jumpJetEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(jumpJetEffect != NULL);
+				gosASSERT(jumpJetEffect != nullptr);
 			
 				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}

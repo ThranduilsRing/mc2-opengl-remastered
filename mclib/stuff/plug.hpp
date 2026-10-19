@@ -20,7 +20,7 @@ namespace Stuff {
 
 	class PlugIterator;
 
-	typedef RegisteredClass__ClassData Plug__ClassData;
+	using Plug__ClassData = RegisteredClass__ClassData;
 
 	extern HGOSHEAP ConnectionEngineHeap;
 
@@ -50,7 +50,7 @@ namespace Stuff {
 	// Class Data Support
 	//
 	public:
-		typedef Plug__ClassData ClassData;
+		using ClassData = Plug__ClassData;
 
 		static ClassData
 			*DefaultData;

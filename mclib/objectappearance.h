@@ -37,7 +37,7 @@ inline constexpr int MECH3D_WEAPONTYPE_DIRECT = 5;
 // Each mech MUST have a place for each kind of weapon to fire.
 // I.e. There must be at least one zero OR at least a 3 and 4 OR at least a 1, 2 and 4 or its an ERROR!!!!!!!!
 
-typedef struct _NodeData
+struct _NodeData
 {
 	char 			*nodeId = nullptr;		//Used to determine where jumpjets, smoke and weapon fire come from.  A view of nodeName.
 	long			weaponType = 0;			//What kind of weapon can use this node
@@ -55,7 +55,7 @@ typedef struct _NodeData
 		nodeName = name ? name : "";
 		nodeId = nodeName.data();
 	}
-} NodeData;
+}; using NodeData = _NodeData;
 
 /**************************************************************************************************
 CLASS DESCRIPTION

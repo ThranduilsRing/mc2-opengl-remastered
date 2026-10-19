@@ -64,16 +64,16 @@ class GenericAppearanceType : public AppearanceType
 	
 		void init (void)
 		{
-			genShape = NULL;
+			genShape = nullptr;
 
             //sebi: init so will not contain garbage
-            genDmgShape = NULL; 
+            genDmgShape = nullptr;
             MemSet(rotationalNodeId, 0);
             //
 
 			for (long i=0;i<MAX_GEN_ANIMATIONS;i++)
             {
-				genAnimData[i] = NULL;
+				genAnimData[i] = nullptr;
 
                 //sebi: init so will not contain garbage
 		        genAnimLoop[i] = false;
@@ -179,7 +179,7 @@ class GenericAppearance : public ObjectAppearance
 		
 	public:
 
-		virtual void init (AppearanceTypePtr tree = NULL, GameObjectPtr obj = NULL);
+		virtual void init (AppearanceTypePtr tree = nullptr, GameObjectPtr obj = nullptr);
 
 		virtual AppearanceTypePtr getAppearanceType (void)
 		{

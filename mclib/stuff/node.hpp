@@ -14,7 +14,7 @@ namespace Stuff {
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Node ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	typedef Plug__ClassData Node__ClassData;
+	using Node__ClassData = Plug__ClassData;
 
 	class Node:
 		public Plug
@@ -41,7 +41,7 @@ namespace Stuff {
 	// Class Data Support
 	//
 	public:
-		typedef Node__ClassData ClassData;
+		using ClassData = Node__ClassData;
 
 		static ClassData
 			*DefaultData;

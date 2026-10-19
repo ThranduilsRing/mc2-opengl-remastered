@@ -61,21 +61,21 @@ extern UserHeapPtr systemHeap;
 #ifdef _DEBUG
 #define NUMMEMRECORDS 128000
 
-typedef struct _memRecord 
+struct _memRecord
 {
 	void*			ptr;
 	unsigned long	size;
 	unsigned long	stack[12];
-} memRecord;
+}; using memRecord = _memRecord;
 #endif
 
-typedef struct _GlobalHeapRec
+struct _GlobalHeapRec
 {
 	HeapManagerPtr 	thisHeap;
 	unsigned long	heapSize;
 	unsigned long   totalCoreLeft;
 	unsigned long	coreLeft;
-} GlobalHeapRec;
+}; using GlobalHeapRec = _GlobalHeapRec;
 
 //---------------------------------------------------------------------------
 // Class Definitions
@@ -181,7 +181,7 @@ class UserHeap : public HeapManager
 	public:
 	
 		UserHeap (void);
-		long init (unsigned long memSize, const char *heapId = NULL, bool useGOS = true);
+		long init (unsigned long memSize, const char *heapId = nullptr, bool useGOS = true);
 		
 		~UserHeap (void);
 		void destroy (void);
@@ -292,7 +292,7 @@ class HeapList
 };
 
 //---------------------------------------------------------------------------
-typedef HeapList *HeapListPtr;
+using HeapListPtr = HeapList*;
 extern HeapListPtr globalHeapList;
 
 //---------------------------------------------------------------------------

@@ -51,10 +51,8 @@ namespace Stuff {
 		Stuff::MString
 			currentDirectoryString;
 
-		typedef Stuff::PlugOf<Stuff::MString>
-			DirectoryEntry;
-		typedef Stuff::PlugOf<Stuff::MString>
-			DirectoryFolder;
+		using DirectoryEntry = Stuff::PlugOf<Stuff::MString>;
+		using DirectoryFolder = Stuff::PlugOf<Stuff::MString>;
 
 
 		Stuff::SortedChainOf<DirectoryFolder*, Stuff::MString>
@@ -111,7 +109,7 @@ namespace Stuff {
 
 		void
 			Open(
-				const char* file_name = NULL,
+				const char* file_name = nullptr,
 				WriteStatus writable = ReadOnly
 			);
 		void

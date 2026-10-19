@@ -38,12 +38,12 @@
 
 //***************************************************************************
 
-typedef struct _SourceFile {
+struct _SourceFile {
 	char					fileName[MAXLEN_FILENAME];
 	unsigned char			fileNumber;
 	ABLFile*				filePtr;
 	long					lineNumber;
-} SourceFile;
+}; using SourceFile = _SourceFile;
 
 //---------------------------------------------------------------------------
 
@@ -115,17 +115,17 @@ class UserFile {
 #define	MAX_LIBRARIES_USED				25			// per module
 #define	MAX_STATE_HANDLES_PER_MODULE	10
 
-typedef struct {
+struct VariableInfo {
 	char					name[128];
 	int                     size;
-} VariableInfo;
+};
 
-typedef struct {
+struct RoutineInfo {
 	char					name[128];
 	long					codeSegmentSize;
-} RoutineInfo;
+};
 
-typedef struct {
+struct ModuleInfo {
 	char					name[128];
 	char					fileName[128];
 	int                     numStaticVars;
@@ -134,9 +134,9 @@ typedef struct {
 	long					totalCodeSegmentSize;
 	long					numRoutines;
 	RoutineInfo				routineInfo[128];
-} ModuleInfo;
+};
 
-typedef struct {
+struct ModuleEntry {
 	char*					fileName;
 	SymTableNodePtr			moduleIdPtr;
 	long					numSourceFiles;
@@ -151,9 +151,9 @@ typedef struct {
 	long					totalSizeStaticVars;
 	long					numInstances;
 	long					compileErrorCount;	// OMNITECH-ABL-EXECEXPRESSION: STOPSYNTAX count at compile; gates execute()
-} ModuleEntry;
+};
 
-typedef ModuleEntry* ModuleEntryPtr;
+using ModuleEntryPtr = ModuleEntry*;
 
 class ABLModule {
 
@@ -186,14 +186,14 @@ class ABLModule {
 			id = -1;
 			name[0] = '\0';
 			handle = -1;
-			staticData = NULL;
+			staticData = nullptr;
 			orderCallFlags = nullptr;
 			returnVal.integer = 0;
 			initCalled = false;
-			prevState = NULL;
-			state = NULL;
-			watchManager = NULL;
-			breakPointManager = NULL;
+			prevState = nullptr;
+			state = nullptr;
+			watchManager = nullptr;
+			breakPointManager = nullptr;
 			trace = false;
 			step = false;
 			traceEntry = false;
@@ -306,10 +306,10 @@ class ABLModule {
 			return(step);
 		}
 
-		long execute (ABLParamPtr paramList = NULL);
+		long execute (ABLParamPtr paramList = nullptr);
 		long execute (ABLParamPtr moduleParamList, SymTableNodePtr functionIdPtr);
 
-		SymTableNodePtr findSymbol (const char* symbolName, SymTableNodePtr curFunction = NULL, bool searchLibraries = false);
+		SymTableNodePtr findSymbol (const char* symbolName, SymTableNodePtr curFunction = nullptr, bool searchLibraries = false);
 
 		SymTableNodePtr findFunction (const char* functionName, bool searchLibraries = false);
 

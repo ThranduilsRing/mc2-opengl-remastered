@@ -76,7 +76,7 @@ long TG_Shape::SetLightList (TG_LightPtr *lightList, DWORD nLights)
 	}
 	else
 	{
-		s_listOfLights = NULL;
+		s_listOfLights = nullptr;
 		s_numLights = 0;
 	}
 
@@ -283,7 +283,7 @@ long TG_Shape::MultiTransformShape (glm::mat4 *shapeToClip, glm::vec3 *backFaceP
 	if (isSpotlight && (!isNight
 		|| mc2_cone_glow::cone_geom_hidden_by_alpha(alphaValue)))
 	{
-		listOfVertices = NULL;		//Mark this as untransformed!!
+		listOfVertices = nullptr;		//Mark this as untransformed!!
 		return(1);
 	}
 		
@@ -441,7 +441,7 @@ long TG_Shape::MultiTransformShape_PositionsOnly (glm::mat4 *shapeToClip, glm::v
 	if (isSpotlight && (!isNight
 		|| mc2_cone_glow::cone_geom_hidden_by_alpha(alphaValue)))
 	{
-		listOfVertices = NULL;		//Mark this as untransformed!!
+		listOfVertices = nullptr;		//Mark this as untransformed!!
 		return(1);
 	}
 

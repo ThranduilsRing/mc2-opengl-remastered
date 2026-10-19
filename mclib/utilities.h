@@ -49,13 +49,13 @@ public:
 
 
 
-typedef struct _GUI_RECTd
+struct _GUI_RECTd
 {
 	long left;
 	long top;
 	long right;
 	long bottom;
-} GUI_RECT;
+}; using GUI_RECT = _GUI_RECTd;
 
 
 void drawEmptyRect( const GUI_RECT& rect, unsigned long leftBorderColor = 0xffffffff,

@@ -39,7 +39,7 @@ namespace MidLevelRenderer {
 	// this is the abstract base class for all geometry. it has contains geometry
 	// with one and only one renderer state !!!
 
-	typedef Stuff::Vector2DOf<Stuff::Scalar> Vector2DScalar;
+	using Vector2DScalar = Stuff::Vector2DOf<Stuff::Scalar>;
     
     // sebi: I;ve added it but do not understand why is this needed? 
     // MLRSHape is included anyway, but it does not want to compile 
@@ -60,7 +60,7 @@ namespace MidLevelRenderer {
 			InitializeClass();
 		static void
 			TerminateClass();
-		typedef MLRPrimitiveBase__ClassData ClassData;
+		using ClassData = MLRPrimitiveBase__ClassData;
 		static ClassData
 			*DefaultData;
 
@@ -79,11 +79,7 @@ namespace MidLevelRenderer {
 	public:
 		MLRPrimitiveBase(ClassData *class_data);
 
-		typedef MLRPrimitiveBase*
-			(*Factory)(
-				Stuff::MemoryStream *stream,
-				int version
-			);
+		using Factory = MLRPrimitiveBase*(*)(Stuff::MemoryStream *stream, int version);
 
 		static MLRPrimitiveBase*
 			Make(
@@ -182,7 +178,7 @@ namespace MidLevelRenderer {
 
 		virtual GOSVertex2UV*
 			GetGOSVertices2UV(int=0)
-				{ Check_Object(this); return NULL; }
+				{ Check_Object(this); return nullptr; }
 
 		int
 			GetSortDataMode()

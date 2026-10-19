@@ -31,26 +31,26 @@
 //-------------------------------------------------------------------------------
 // Structs used by layer.
 //
-typedef DWORD* DWORDPtr;
+using DWORDPtr = DWORD*;
 
 //-------------------------------------------------------------------------------
 // TG_TypeVertex
 //This Structure stores information for each vertex of the shape which DOES NOT CHANGE by instance
-typedef struct _TG_TypeVertex
+struct _TG_TypeVertex
 {
 	//Only changes at load time.
 	glm::vec3	position;				//Position of vertex relative to base position of shape.
 	glm::vec3 normal;					//Vertex Normal
 	DWORD    		aRGBLight;				//Vertex Light and Alpha
 
-} TG_TypeVertex;
+}; using TG_TypeVertex = _TG_TypeVertex;
 
-typedef  TG_TypeVertex* TG_TypeVertexPtr;
+using TG_TypeVertexPtr = TG_TypeVertex*;
 
 //-------------------------------------------------------------------------------
 // TG_HWTypeVertex
 //This Structure stores information for each vertex of the shape which DOES NOT CHANGE by instance
-typedef struct _TG_HWTypeVertex
+struct _TG_HWTypeVertex
 {
 	//Only changes at load time.
 	glm::vec3	position;				//Position of vertex relative to base position of shape.
@@ -59,54 +59,54 @@ typedef struct _TG_HWTypeVertex
 	float			u;
 	float			v;
 
-} TG_HWTypeVertex;
+}; using TG_HWTypeVertex = _TG_HWTypeVertex;
 
-typedef  TG_HWTypeVertex* TG_HWTypeVertexPtr;
+using TG_HWTypeVertexPtr = TG_HWTypeVertex*;
 
 //-------------------------------------------------------------------------------
 // TG_Vertex
 // This Structure stores information for each vertex of the shape which is instance specific
 // Its used to store UNCHANGING or rarely changing Light/Fog data so I don't have to calc every frame!
-typedef struct _TG_Vertex
+struct _TG_Vertex
 {
 	BYTE			fog;
 	BYTE			redSpec;
 	BYTE			greenSpec;
 	BYTE			blueSpec;
-} TG_Vertex;
+}; using TG_Vertex = _TG_Vertex;
 
-typedef  TG_Vertex* TG_VertexPtr;
+using TG_VertexPtr = TG_Vertex*;
 
 //-------------------------------------------------------------------------------
 // TG_ShadowVertex
 //This Structure stores information for each vertex of the shadow for this shape.
 // Nothing changes frame to frame here anymore unless light source is moving which is now RARE!
-typedef struct _TG_ShadowVertex
+struct _TG_ShadowVertex
 {
 	//Changes every frame if local light.  Rarely for the sun.  Moves slowly!
 	bool 			bDataIsNotValid;		//Indicates that the struct contains unitialized data
 	glm::vec3	position;				//Position of vertex relative to base position of shape.
-} TG_ShadowVertex;
+}; using TG_ShadowVertex = _TG_ShadowVertex;
 
-typedef  TG_ShadowVertex* TG_ShadowVertexPtr;
+using TG_ShadowVertexPtr = TG_ShadowVertex*;
 
 //-----------------------------------------------------------------------------------
 // TG_ShadowVertexTemp
 // Stores VOLATILE information for the shadow vertices.  These can come from a pool!
-typedef struct _TG_ShadowVertexTemp
+struct _TG_ShadowVertexTemp
 {
 	DWORD    		fRGBFog;				//Vertex Fog and Specular Color.  Needed if shadow is fogged.
 											//Every frame for local light.  Once in a blue moon for infinite light.
 
 	//Changes each call to Transform.
 	Stuff::Vector4D transformedPosition;	//ScreenCoords with Z depth.  Valid after Transform called.
-} TG_ShadowVertexTemp;
+}; using TG_ShadowVertexTemp = _TG_ShadowVertexTemp;
 
-typedef  TG_ShadowVertexTemp* TG_ShadowVertexTempPtr;
+using TG_ShadowVertexTempPtr = TG_ShadowVertexTemp*;
 
 //-------------------------------------------------------------------------------
 // TG_UVData
-typedef struct _TG_UVData
+struct _TG_UVData
 {
 	float			u0;						//UV Data for each vertex of the triangle
 	float 			v0;						//Allows same vertex to have different UVs
@@ -115,14 +115,14 @@ typedef struct _TG_UVData
 	float			u2;
 	float			v2;
 
-} TG_UVData;
+}; using TG_UVData = _TG_UVData;
 
-typedef  TG_UVData* TG_UVDataPtr;
+using TG_UVDataPtr = TG_UVData*;
 
 //-------------------------------------------------------------------------------
 // TG_TypeTriangle
 // This structure stores the information needed to draw the triangle which does NOT change per instance
-typedef struct _TG_TypeTriangle
+struct _TG_TypeTriangle
 {
 	DWORD    		Vertices[3];			//Indices into Vertex List.
 	DWORD    		localTextureHandle;		//Index into texture List.
@@ -130,36 +130,36 @@ typedef struct _TG_TypeTriangle
 											//Bit 0 -- backFacing
 	TG_UVData  		uvdata;					//Texture UVs for this face.
 	glm::vec3 faceNormal;				//Normal Vector to face
-} TG_TypeTriangle;
+}; using TG_TypeTriangle = _TG_TypeTriangle;
 
 // Texture handle can change from frame to frame. Texture Animation!
 
-typedef TG_TypeTriangle* TG_TypeTrianglePtr;
+using TG_TypeTrianglePtr = TG_TypeTriangle*;
 
 //-------------------------------------------------------------------------------
 // TG_Triangle
 // This structure stores the information needed to draw the triangle per instance.
-typedef struct _TG_Triangle
+struct _TG_Triangle
 {
 	DWORD    		aRGBLight[3];			//RGB Light for this triangle's vertices.
 	DWORD    		fRGBLight[3];			//RGB Fog for this triangle's vertices.
-} TG_Triangle;
+}; using TG_Triangle = _TG_Triangle;
 
 // Texture handle can change from frame to frame. Texture Animation!
 
-typedef TG_Triangle* TG_TrianglePtr;
+using TG_TrianglePtr = TG_Triangle*;
 
 //-------------------------------------------------------------------------------
 // TG_ShadowTriangle
 // This structure stores the information needed to draw the shadow triangle.
-typedef struct _TG_ShadowTriangle
+struct _TG_ShadowTriangle
 {
 	DWORD    		Vertices[3];			//Indices into Shadow Vertex List.
-} TG_ShadowTriangle;
+}; using TG_ShadowTriangle = _TG_ShadowTriangle;
 
 // Texture handle can change from frame to frame. Texture Animation!
 
-typedef TG_ShadowTriangle* TG_ShadowTrianglePtr;
+using TG_ShadowTrianglePtr = TG_ShadowTriangle*;
 
 //-------------------------------------------------------------------------------
 // TG_LightTypes
@@ -200,7 +200,7 @@ inline constexpr int MAX_SHADOWS = 1;
 //-------------------------------------------------------------------------------
 // TG_Light
 // This structure stores the information necessary to light the shape.
-typedef struct _TG_Light
+struct _TG_Light
 {
 	DWORD    				lightType;			//Ambient, directional, etc.
 	bool					active;				//Should this light be considered on?
@@ -301,9 +301,9 @@ typedef struct _TG_Light
 		return true;
 	}
 
-} TG_Light;
+}; using TG_Light = _TG_Light;
 
-typedef  TG_Light *TG_LightPtr;
+using TG_LightPtr = TG_Light*;
 
 // LIGHT-ABI-WIDEN-STAGE0-1: C++ per-object GPU ABI cap, derived from the single-source
 // record in RenderCore/gpu_abi/GpuObjectLights.h (its generated asserts and
@@ -330,7 +330,7 @@ struct TG_HWLightsData : GpuObjectLights {
 static_assert(sizeof(TG_HWLightsData) == sizeof(GpuObjectLights),
               "TG_HWLightsData must add no members to the shared GPU record");
 
-typedef TG_HWLightsData* TG_HWLightsDataPtr;
+using TG_HWLightsDataPtr = TG_HWLightsData*;
 
 //-------------------------------------------------------------------------------
 // RENDERER-INPUT-READBACK-1 -- backing call for the `light_row <partId>`
@@ -378,26 +378,26 @@ void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights,
 
 //-------------------------------------------------------------------------------
 // TG_Texture
-typedef struct _TG_Texture
+struct _TG_Texture
 {
 	char				textureName[256];
 	DWORD				mcTextureNodeIndex;
 	DWORD				gosTextureHandle;
 	bool				textureAlpha;
-} TG_Texture;
+}; using TG_Texture = _TG_Texture;
 
-typedef TG_Texture* TG_TexturePtr;
+using TG_TexturePtr = TG_Texture*;
 
 //-------------------------------------------------------------------------------
 // TG_TinyTexture
-typedef struct _TG_TinyTexture
+struct _TG_TinyTexture
 {
 	DWORD				mcTextureNodeIndex;
 	DWORD				gosTextureHandle;
 	bool				textureAlpha;
-} TG_TinyTexture;
+}; using TG_TinyTexture = _TG_TinyTexture;
 
-typedef TG_TinyTexture* TG_TinyTexturePtr;
+using TG_TinyTexturePtr = TG_TinyTexture*;
 
 class TG_Shape;
 
@@ -408,7 +408,7 @@ inline constexpr DWORD kMaxShapeTextures = 4096;
 inline constexpr int kMaxMultiShapeNodes = 4096;
 //-------------------------------------------------------------------------------
 // TG_Animation
-typedef struct _TG_Animation
+struct _TG_Animation
 {
 	char 						nodeId[TG_NODE_ID];		//Node ID
 	DWORD						shapeId;				//DON'T SCAN EVERY FRAME.  WOW IS IT SLOW!!!!!  Set this first time through and its simple.
@@ -431,13 +431,13 @@ typedef struct _TG_Animation
 	// False when the file claims a frame count or track size the animation cannot hold; the animation is left empty.
 	bool LoadBinaryCopy (File *binFile);
 	
-} TG_Animation;
+}; using TG_Animation = _TG_Animation;
 
-typedef TG_Animation *TG_AnimationPtr;
+using TG_AnimationPtr = TG_Animation*;
 
 //-------------------------------------------------------------------------------
 // TG_ShapeRec
-typedef struct _TG_ShapeRec
+struct _TG_ShapeRec
 {
 	std::unique_ptr<TG_Shape>	node;					//OWNS the TG_Shape for this piece (B7o.6b); moved only by transferFrom
 	glm::mat4		localShapeToWorld;		//Matrix to transform this TG_Shape.
@@ -459,9 +459,9 @@ typedef struct _TG_ShapeRec
 	// Defined after TG_Shape (the unique_ptr move needs the complete type).
 	inline void transferFrom (_TG_ShapeRec &rec);
 
-} TG_ShapeRec;
+}; using TG_ShapeRec = _TG_ShapeRec;
 
-typedef TG_ShapeRec *TG_ShapeRecPtr;
+using TG_ShapeRecPtr = TG_ShapeRec*;
 
 // B7o.6a: points each record's parent at the record of the SAME array whose node id equals its parent id (the first match);
 // a record whose parent id matches none keeps its parent pointer (the detached root was nulled by the caller).
@@ -627,7 +627,7 @@ class TG_TypeNode
 
 };
 
-typedef TG_TypeNode* TG_TypeNodePtr;
+using TG_TypeNodePtr = TG_TypeNode*;
 
 class TG_MultiShape;
 class TG_TypeMultiShape;
@@ -685,9 +685,9 @@ class TG_TypeShape : public TG_TypeNode
 		{
 			numTypeVertices = numTypeTriangles = numTextures = 0;
 
-			listOfTypeVertices = NULL;
-			listOfTypeTriangles = NULL;
-			listOfTextures = NULL;
+			listOfTypeVertices = nullptr;
+			listOfTypeTriangles = nullptr;
+			listOfTextures = nullptr;
 
 			alphaTestOn = false;
 
@@ -866,7 +866,7 @@ class TG_TypeShape : public TG_TypeNode
 		virtual void SaveBinaryCopy (File &binFile);
 };
 
-typedef TG_TypeShape* TG_TypeShapePtr;
+using TG_TypeShapePtr = TG_TypeShape*;
 
 //-------------------------------------------------------------------------------------
 // The OTHER meat and Potatoes part.  This is the actual instance the game draws with.
@@ -988,8 +988,8 @@ class TG_Shape
 		{
 			numVertices = numTriangles = numVisibleFaces = 0;
 
-			listOfVertices = NULL;
-			listOfTriangles = NULL;
+			listOfVertices = nullptr;
+			listOfTriangles = nullptr;
 			// Slice 2 (object-offload) — Stage 2.C: keep s_listOfLights and
 			// s_numLights consistent. Pre-Stage-2.C a latent bug here cleared
 			// s_listOfLights but not s_numLights — never fired in practice
@@ -1000,12 +1000,12 @@ class TG_Shape
 			// constructed TG_Shape between an earlier actor's SetLightList
 			// and this read — null-deref on s_listOfLights[i] in
 			// GatherLightsParameters. Reset both to keep the count truthful.
-			s_listOfLights = NULL;
+			s_listOfLights = nullptr;
 			s_numLights = 0;
-			listOfVisibleFaces = NULL;
+			listOfVisibleFaces = nullptr;
 
-			listOfShadowVertices = NULL;
-			listOfVisibleShadows = NULL;
+			listOfShadowVertices = nullptr;
+			listOfVisibleShadows = nullptr;
 
 			aRGBHighlight = 0x00000000;
 			
@@ -1025,10 +1025,10 @@ class TG_Shape
 
             // sebi: init to not contain garbage
             fogRGB = 0xFFFFFFFF;
-            myType = NULL;
+            myType = nullptr;
             numVisibleShadows = 0;
-            listOfColors = NULL;
-            listOfShadowTVertices = NULL;
+            listOfColors = nullptr;
+            listOfShadowTVertices = nullptr;
             lastTurnTransformed = 0;
             //
 			
@@ -1193,14 +1193,14 @@ class TG_Shape
 		}
 };
 
-typedef TG_Shape* TG_ShapePtr;
+using TG_ShapePtr = TG_Shape*;
 
 inline void _TG_ShapeRec::transferFrom (_TG_ShapeRec &rec)
 {
 	node 				= std::move(rec.node);
 	calcedThisFrame		= -1;
 	processMe			= true;
-	currentAnimation	= NULL;
+	currentAnimation	= nullptr;
 	parentNode			= rec.parentNode;
 	baseRotation		= rec.baseRotation;
 }
@@ -1291,7 +1291,7 @@ class TG_VertexPool
 
 		TG_VertexPool (void)
 		{
-			tgVertexPool = nextVertex = NULL;
+			tgVertexPool = nextVertex = nullptr;
 			totalVertices = numVertices = 0;
 		}
 		
@@ -1303,7 +1303,7 @@ class TG_VertexPool
 		void destroy (void)
 		{
 			tgVertexPoolStore.reset();
-			tgVertexPool = nextVertex = NULL;
+			tgVertexPool = nextVertex = nullptr;
 			totalVertices = numVertices = 0;
 		}
 		
@@ -1311,7 +1311,7 @@ class TG_VertexPool
 		{
 			tgVertexPoolStore = std::make_unique_for_overwrite<TG_Vertex[]>(maxVertices);
 			tgVertexPool = tgVertexPoolStore.get();
-			gosASSERT(tgVertexPool != NULL);
+			gosASSERT(tgVertexPool != nullptr);
 			
 			nextVertex = tgVertexPool;
 			
@@ -1327,7 +1327,7 @@ class TG_VertexPool
 		
 		TG_VertexPtr getColorsFromPool (DWORD numRequested, const char* caller = "?", const void* shape = nullptr)
 		{
-			TG_VertexPtr result = NULL;
+			TG_VertexPtr result = nullptr;
 			numVertices += numRequested;
 			if (numVertices < totalVertices)
 			{
@@ -1382,7 +1382,7 @@ class TG_GOSVertexPool
 
 		TG_GOSVertexPool (void)
 		{
-			gVertexPool = nextVertex = NULL;
+			gVertexPool = nextVertex = nullptr;
 			totalVertices = numVertices = 0;
 		}
 		
@@ -1394,7 +1394,7 @@ class TG_GOSVertexPool
 		void destroy (void)
 		{
 			gVertexPoolStore.reset();
-			gVertexPool = nextVertex = NULL;
+			gVertexPool = nextVertex = nullptr;
 			totalVertices = numVertices = 0;
 		}
 		
@@ -1402,7 +1402,7 @@ class TG_GOSVertexPool
 		{
 			gVertexPoolStore = std::make_unique_for_overwrite<gos_VERTEX[]>(maxVertices);
 			gVertexPool = gVertexPoolStore.get();
-			gosASSERT(gVertexPool != NULL);
+			gosASSERT(gVertexPool != nullptr);
 			
 			nextVertex = gVertexPool;
 			
@@ -1418,7 +1418,7 @@ class TG_GOSVertexPool
 		
 		gos_VERTEX * getVerticesFromPool (DWORD numRequested, const char* caller = "?", const void* shape = nullptr)
 		{
-			gos_VERTEX* result = NULL;
+			gos_VERTEX* result = nullptr;
 			numVertices += numRequested;
 			if (numVertices < totalVertices)
 			{
@@ -1473,7 +1473,7 @@ class TG_TrianglePool
 
 		TG_TrianglePool (void)
 		{
-			trianglePool = nextTriangle = NULL;
+			trianglePool = nextTriangle = nullptr;
 			totalTriangles = numTriangles = 0;
 		}
 		
@@ -1485,7 +1485,7 @@ class TG_TrianglePool
 		void destroy (void)
 		{
 			trianglePoolStore.reset();
-			trianglePool = nextTriangle = NULL;
+			trianglePool = nextTriangle = nullptr;
 			totalTriangles = numTriangles = 0;
 		}
 		
@@ -1493,7 +1493,7 @@ class TG_TrianglePool
 		{
 			trianglePoolStore = std::make_unique_for_overwrite<TG_Triangle[]>(maxTriangles);
 			trianglePool = trianglePoolStore.get();
-			gosASSERT(trianglePool != NULL);
+			gosASSERT(trianglePool != nullptr);
 			
 			nextTriangle = trianglePool;
 			
@@ -1509,7 +1509,7 @@ class TG_TrianglePool
 		
 		TG_Triangle * getTrianglesFromPool (DWORD numRequested, const char* caller = "?", const void* shape = nullptr)
 		{
-			TG_Triangle* result = NULL;
+			TG_Triangle* result = nullptr;
 			numTriangles += numRequested;
 			if (numTriangles < totalTriangles)
 			{
@@ -1564,7 +1564,7 @@ class TG_ShadowPool
 
 		TG_ShadowPool (void)
 		{
-			tVertexPool = nextVertex = NULL;
+			tVertexPool = nextVertex = nullptr;
 			totalVertices = numVertices = 0;
 		}
 		
@@ -1576,7 +1576,7 @@ class TG_ShadowPool
 		void destroy (void)
 		{
 			tVertexPoolStore.reset();
-			tVertexPool = nextVertex = NULL;
+			tVertexPool = nextVertex = nullptr;
 			totalVertices = numVertices = 0;
 		}
 		
@@ -1584,7 +1584,7 @@ class TG_ShadowPool
 		{
 			tVertexPoolStore = std::make_unique_for_overwrite<TG_ShadowVertexTemp[]>(maxVertices);
 			tVertexPool = tVertexPoolStore.get();
-			gosASSERT(tVertexPool != NULL);
+			gosASSERT(tVertexPool != nullptr);
 			
 			nextVertex = tVertexPool;
 			
@@ -1600,7 +1600,7 @@ class TG_ShadowPool
 		
 		TG_ShadowVertexTempPtr getShadowsFromPool (DWORD numRequested, const char* caller = "?", const void* shape = nullptr)
 		{
-			TG_ShadowVertexTempPtr result = NULL;
+			TG_ShadowVertexTempPtr result = nullptr;
 			numVertices += numRequested;
 			if (numVertices < totalVertices)
 			{
@@ -1655,7 +1655,7 @@ class TG_DWORDPool
 
 		TG_DWORDPool (void)
 		{
-			triPool = nextTri = NULL;
+			triPool = nextTri = nullptr;
 			totalTriangles = numTriangles = 0;
 		}
 		
@@ -1667,7 +1667,7 @@ class TG_DWORDPool
 		void destroy (void)
 		{
 			triPoolStore.reset();
-			triPool = nextTri = NULL;
+			triPool = nextTri = nullptr;
 			totalTriangles = numTriangles = 0;
 		}
 		
@@ -1675,7 +1675,7 @@ class TG_DWORDPool
 		{
 			triPoolStore = std::make_unique_for_overwrite<DWORD[]>(maxTriangles);
 			triPool = triPoolStore.get();
-			gosASSERT(triPool != NULL);
+			gosASSERT(triPool != nullptr);
 			
 			nextTri = triPool;
 			
@@ -1691,7 +1691,7 @@ class TG_DWORDPool
 		
 		DWORD * getFacesFromPool (DWORD numRequested, const char* caller = "?", const void* shape = nullptr)
 		{
-			DWORD* result = NULL;
+			DWORD* result = nullptr;
 			numTriangles += numRequested;
 			if (numTriangles < totalTriangles)
 			{

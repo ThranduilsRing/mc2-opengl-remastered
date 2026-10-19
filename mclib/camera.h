@@ -425,9 +425,9 @@ class Camera
 
 			cameraShift.x = cameraShift.y = 0.0;
 			
-			worldLights = NULL;
-			activeLights = NULL;
-			terrainLights = NULL;
+			worldLights = nullptr;
+			activeLights = nullptr;
+			terrainLights = nullptr;
 
 			// Class invariant: the light COUNTS must be 0 whenever the light
 			// arrays are NULL. The ctor zeroed the array pointers but left the
@@ -1332,7 +1332,7 @@ class Camera
 			if ((index >= 0) && (index < numActiveLights) && activeLights[index])
 				return activeLights[index];
 				
-			return NULL;
+			return nullptr;
 		}
 
 		TG_LightPtr *getWorldLights (void)
@@ -1362,7 +1362,7 @@ class Camera
 			if ((index >= 0) && (index < numTerrainLights) && terrainLights && terrainLights[index])
 				return terrainLights[index];
 				
-			return NULL;
+			return nullptr;
 		}
 
 		TG_LightPtr *getTerrainLights (void)
@@ -1396,7 +1396,7 @@ class Camera
 		{
 			if ((lightNum < MAX_LIGHTS_IN_WORLD) && (worldLights[lightNum] == light))
 			{
-				worldLights[lightNum] = NULL;			//Up to class that created light to free it!!!!!!
+				worldLights[lightNum] = nullptr;			//Up to class that created light to free it!!!!!!
 
                 // sebi: ORG BUG FIX because worldLights are copied to activeLights and terrainLights in eye->update() and then later this function can be called, this means that activeLights and terrainLights may point to freed memory, so call this to fox it
                 updateLights();
@@ -1409,7 +1409,7 @@ class Camera
 			for (long i=0;i<MAX_LIGHTS_IN_WORLD;i++)
 			{
 				if (worldLights[i] == light)
-					worldLights[i] = NULL;
+					worldLights[i] = nullptr;
 			}
 
             // sebi: ORG BUG FIX because worldLights are copied to activeLights and terrainLights in eye->update() and then later this function can be called, this means that activeLights and terrainLights may point to freed memory, so call this to fox it

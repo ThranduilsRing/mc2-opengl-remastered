@@ -36,7 +36,7 @@ namespace Stuff {
 	public:
 		void
 			TestInstance()
-				{Verify(blockMemory != NULL);}
+				{Verify(blockMemory != nullptr);}
 
 		static void
 			UsageReport();
@@ -162,7 +162,7 @@ namespace Stuff {
 			HGOSHEAP parent = ParentClientHeap
 		):
 			MemoryBlockBase(rec_size, start, delta, name, parent)
-				{topOfStack = NULL;}
+				{topOfStack = nullptr;}
 
 		void*
 			Push(const void *What);
