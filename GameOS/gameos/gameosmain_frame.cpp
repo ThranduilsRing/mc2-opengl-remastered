@@ -4,6 +4,7 @@
 #include "mc2fmt.h"
 #include "sim_substeps.h"
 #include "gos_host_vk.h"
+#include "vk_scene_readback.h"
 #include "terrain_field_store.h"
 #include "texture_decode.h"
 
@@ -499,24 +500,16 @@ void frameLoadRaceProbes() {
                     const char* pathStr = (g_loadRaceLastTerrainPath == 1) ? "gpu-indirect"
                                         : (g_loadRaceLastTerrainPath == 2) ? "cpu-thin" : "none";
 
-                    // (b) Fixed-texel scene oracle: read 3 deterministic terrain
-                    // points from the offscreen scene FBO (robust to a minimized
-                    // window). Points are normalized so they track resolution.
-                    gosPostProcess* ppLr = getGosPostProcess();
-                    GLuint lrFbo = ppLr ? ppLr->getSceneFBO() : 0;
-                    int lrW = ppLr ? ppLr->getWidth()  : 0;
-                    int lrH = ppLr ? ppLr->getHeight() : 0;
-                    unsigned char px[3][4] = {{0,0,0,0},{0,0,0,0},{0,0,0,0}};
+                    // Read all diagnostic points in one native copy/submit.
+                    int lrW=0,lrH=0;
+                    unsigned char px[3][4] = {};
                     const float ptsN[3][2] = {{0.5f,0.62f},{0.30f,0.72f},{0.70f,0.55f}};
-                    if (lrFbo && lrW > 0 && lrH > 0) {
-                        glBindFramebuffer(GL_READ_FRAMEBUFFER, lrFbo);
-                        glReadBuffer(GL_COLOR_ATTACHMENT0);
-                        for (int i = 0; i < 3; ++i) {
-                            int sx = (int)(ptsN[i][0] * lrW);
-                            int sy = (int)(ptsN[i][1] * lrH);
-                            glReadPixels(sx, sy, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px[i]);
-                        }
-                        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+                    if (mc2vk::sceneReadbackExtent(lrW,lrH,mc2vk::SceneColor)) {
+                        mc2vk::ScenePoint points[3];
+                        mc2vk::ScenePixel pixels[3];
+                        for (int i=0;i<3;++i) points[i]={int(ptsN[i][0]*lrW),int(ptsN[i][1]*lrH)};
+                        if (mc2vk::readSceneSamples(points,3,mc2vk::SceneColor,pixels))
+                            for (int i=0;i<3;++i) std::memcpy(px[i],pixels[i].rgba,4);
                     }
 
                     // Sample retained atlas bytes; compressed images need only one BC7 block decoded.

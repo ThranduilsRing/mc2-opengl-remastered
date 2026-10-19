@@ -6,6 +6,7 @@
 
 #include "gameos_graphics_material_internal.h"
 #include "mc2fmt.h"
+#include "vk_scene_readback.h"
 #include "texture_decode.h"
 #include "ui_texture.h"
 #ifdef MC2_VULKAN_ISLAND
@@ -276,6 +277,10 @@ void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWin
 
     gosPostProcess* pp = new gosPostProcess();
     pp->init(w, h);
+    if (!mc2vk::sceneReadbackSelfTest()) {
+        mc2::fmt::print_err("[VK_SCENE_READBACK] selftest result=FAIL\n");
+        std::abort();
+    }
 
     // Initialize diagnostic JSONL trace. Session id shared with debug_state_dump
     // so MCP can correlate JSONL events with render-state snapshots by session_id.

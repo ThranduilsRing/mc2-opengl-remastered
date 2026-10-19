@@ -1,67 +1,22 @@
-// GameOS/gameos/gos_renderer_input_probe.h
-//
-// RENDERER-INPUT-READBACK-1 -- engine-side half of the command-channel
-// readback verbs (`shadow_feed`, `pixel`).
-//
-// WHY A SEPARATE TU AT ALL: both probes need things code/missiongui.cpp is
-// forbidden to touch.
-//   * the pixel probe calls glReadPixels. scripts/check-no-raw-gl-from-game.sh
-//     forbids `gl[A-Z]*(` anywhere under code/ and mclib/ (allowlisted TUs
-//     only), so the read MUST live engine-side.
-//   * the shadow-feed probe needs gos_static_prop_registry.h +
-//     gos_static_prop_batcher.h, which drag <GL/glew.h> and Stuff/Stuff.hpp
-//     behind them.
-// So the game side gets these two POD structs and two free functions, and
-// nothing else crosses.
-//
-// Both entry points are READ-ONLY with respect to renderer state: no draw is
-// issued, no registry record is mutated, and every GL binding the pixel probe
-// changes is restored before it returns.
-
+// Native pixel probes and CPU shadow-feed membership for command-channel diagnostics.
 #pragma once
-
 #include <cstdint>
 #include <cstddef>
-
 namespace gos_render_probe {
-
-//---------------------------------------------------------------------------
-// Scene-FBO pixel readback.
-//
-// PROVENANCE, READ THIS BEFORE BELIEVING A RESULT: the command channel is
-// polled from MissionInterfaceManager::update(), which runs in the GAME-LOGIC
-// half of the frame, before this frame's render. The scene FBO therefore holds
-// the MOST RECENTLY COMPLETED render, i.e. frame (current - 1). `srcFrameHint`
-// carries that number so a driver never has to guess, and the ack prints it.
-// Do not compare a pixel sampled at frame N against a `screenshot` TGA
-// scheduled at frame N -- the TGA is an END-of-frame capture and is one frame
-// AHEAD of this probe. That off-by-one is the single most likely way this
-// instrument could lie, so it is surfaced rather than hidden.
-//---------------------------------------------------------------------------
+// The command channel runs before this frame's rendering, so the readback is
+// from the preceding render. Coordinates retain the scene's bottom-left origin;
+// the final native presentation flips Y after the scene has been composited.
 struct PixelProbe {
-    bool          fboAvailable = false;  // false => post-process/scene FBO not up
-    int           fboWidth     = 0;
-    int           fboHeight    = 0;
-    int           px           = 0;      // sampled texel, FBO space, origin BOTTOM-left
-    int           py           = 0;
-    bool          inBounds     = false;  // false => nothing was read, rgba is zero
-    unsigned char rgba[4]      = {0, 0, 0, 0};
-    unsigned long srcFrameHint = 0;      // frame whose render this pixel came from
+    bool sceneAvailable = false;
+    int sceneWidth = 0, sceneHeight = 0;
+    int px = 0, py = 0;
+    bool inBounds = false;
+    unsigned char rgba[4] = {};
+    unsigned long srcFrameHint = 0;
 };
-
-// Samples one texel of the scene colour attachment. `px`/`py` are in FBO
-// texel space with the origin at the BOTTOM-left (GL convention), which is
-// NOT the same origin as Camera::projectZ's screen coords -- the caller does
-// that flip and documents it.
-// Returns out.inBounds. Restores GL_READ_FRAMEBUFFER and GL_PACK_ALIGNMENT.
-bool readScenePixel(int px, int py, PixelProbe& out);
-
-// Scene-FBO dimensions without reading a texel. A caller that must map a
-// projected screen coordinate into FBO space needs the size BEFORE it can
-// choose a texel, and the FBO is not required to match the window (free
-// resize / render scale). Returns false and leaves *w/*h untouched when the
-// post-process chain is not up.
-bool sceneFboSize(int* w, int* h);
+// Explicit diagnostic read; restores native attachment layouts on return.
+bool readScenePixel(int px,int py,PixelProbe& out);
+bool sceneImageSize(int* w,int* h);
 
 //---------------------------------------------------------------------------
 // Static-prop shadow feed membership.

@@ -365,7 +365,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 		// TWO PROVENANCE FACTS, BOTH PRINTED, BOTH LOAD-BEARING:
 		//  1. srcFrame is CURRENT-1. This channel is polled from
 		//     MissionInterfaceManager::update(), which runs before this
-		//     frame renders, so the scene FBO still holds the previous
+		//     frame renders, so the native scene image still holds the previous
 		//     frame. A `screenshot` scheduled on the same line is an
 		//     END-of-frame capture and is one frame AHEAD of this sample.
 		//     Comparing the two without accounting for that is the most
@@ -422,7 +422,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 					// on-screen verdict above.
 					int fw = 0, fh = 0;
 					const glm::vec3 sres = eye->getScreenRes();
-					if (gos_render_probe::sceneFboSize(&fw, &fh) &&
+					if (gos_render_probe::sceneImageSize(&fw, &fh) &&
 						sres.x > 0.0f && sres.y > 0.0f) {
 						const float nx = screen.x / sres.x;
 						const float ny = screen.y / sres.y;
@@ -431,7 +431,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 						haveTarget = true;
 					} else {
 						result = "blocked";
-						note = "scene FBO unavailable (post-process not up?)";
+						note = "native scene image unavailable (post-process not up?)";
 					}
 				}
 			}
@@ -450,7 +450,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 		if (haveTarget) {
 			gos_render_probe::PixelProbe pp;
 			gos_render_probe::readScenePixel(wantPx, wantPy, pp);
-			mc2::fmt::to_buf(b, "  fbo={:d}x{:d} texelYUp=({:d},{:d}) inBounds={:d} rgba=({:d},{:d},{:d},{:d}) luma={:.3f} srcFrame={:d}\n", mc2::fmt::as_i32(pp.fboWidth), mc2::fmt::as_i32(pp.fboHeight), mc2::fmt::as_i32(pp.px), mc2::fmt::as_i32(pp.py), mc2::fmt::as_i32(pp.inBounds ? 1 : 0), mc2::fmt::as_u32((unsigned)pp.rgba[0]), mc2::fmt::as_u32((unsigned)pp.rgba[1]), mc2::fmt::as_u32((unsigned)pp.rgba[2]), mc2::fmt::as_u32((unsigned)pp.rgba[3]), (pp.rgba[0] + pp.rgba[1] + pp.rgba[2]) / 3.0, mc2::fmt::as_u32(pp.srcFrameHint));
+			mc2::fmt::to_buf(b, "  scene={:d}x{:d} texelYUp=({:d},{:d}) inBounds={:d} rgba=({:d},{:d},{:d},{:d}) luma={:.3f} srcFrame={:d}\n", mc2::fmt::as_i32(pp.sceneWidth), mc2::fmt::as_i32(pp.sceneHeight), mc2::fmt::as_i32(pp.px), mc2::fmt::as_i32(pp.py), mc2::fmt::as_i32(pp.inBounds ? 1 : 0), mc2::fmt::as_u32((unsigned)pp.rgba[0]), mc2::fmt::as_u32((unsigned)pp.rgba[1]), mc2::fmt::as_u32((unsigned)pp.rgba[2]), mc2::fmt::as_u32((unsigned)pp.rgba[3]), (pp.rgba[0] + pp.rgba[1] + pp.rgba[2]) / 3.0, mc2::fmt::as_u32(pp.srcFrameHint));
 			extra += b;
 			if (pp.inBounds) {
 				result = "ok";
@@ -458,8 +458,8 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 				note = b;
 			} else {
 				result = "blocked";
-				note = pp.fboAvailable ? "texel outside the scene FBO"
-									   : "scene FBO unavailable";
+				note = pp.sceneAvailable ? "texel outside the native scene image"
+									   : "native scene image unavailable";
 			}
 		} else if (worldForm && strcmp(result, "blocked") != 0 && note.empty()) {
 			result = "blocked";

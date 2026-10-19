@@ -8,7 +8,7 @@
 #include <cstring>
 #include <vector>
 
-#include <GL/glew.h>
+#include "vk_scene_readback.h"
 
 #include "gos_postprocess.h"
 #include "gos_static_prop_batcher.h"
@@ -20,17 +20,12 @@ extern uint32_t g_mc2FrameCounter;
 namespace gos_render_probe {
 
 //---------------------------------------------------------------------------
-bool sceneFboSize(int* w, int* h)
+bool sceneImageSize(int* w, int* h)
 {
-    gosPostProcess* pp = getGosPostProcess();
-    if (!pp || !pp->getSceneFBO())
-        return false;
-    const int fw = pp->getWidth();
-    const int fh = pp->getHeight();
-    if (fw <= 0 || fh <= 0)
-        return false;
-    if (w) *w = fw;
-    if (h) *h = fh;
+    int width=0, height=0;
+    if (!mc2vk::sceneReadbackExtent(width,height,mc2vk::SceneColor)) return false;
+    if (w) *w=width;
+    if (h) *h=height;
     return true;
 }
 
@@ -38,59 +33,15 @@ bool sceneFboSize(int* w, int* h)
 bool readScenePixel(int px, int py, PixelProbe& out)
 {
     out = PixelProbe();
-    // frame N is being BUILT; the scene FBO still holds frame N-1's render.
-    out.srcFrameHint = (g_mc2FrameCounter > 0)
-        ? (unsigned long)(g_mc2FrameCounter - 1u)
-        : 0UL;
-
-    gosPostProcess* pp = getGosPostProcess();
-    if (!pp)
-        return false;
-    const GLuint fbo = pp->getSceneFBO();
-    const int w = pp->getWidth();
-    const int h = pp->getHeight();
-    if (!fbo || w <= 0 || h <= 0)
-        return false;
-
-    out.fboAvailable = true;
-    out.fboWidth = w;
-    out.fboHeight = h;
-    out.px = px;
-    out.py = py;
-    if (px < 0 || py < 0 || px >= w || py >= h)
-        return false;   // inBounds stays false; rgba stays zero
-
-    // Same shape as the MC2_LOAD_RACE_TRACE scene oracle
-    // (gameosmain.cpp:2383-2392): bind the scene FBO for READ explicitly so
-    // the probe does not depend on whatever happened to be bound, then put
-    // the binding back. GL_PACK_ALIGNMENT is forced to 1 for the same reason
-    // gos_screenshot.cpp does it -- a 1x1 RGBA read is 4-byte aligned so it
-    // would survive the default, but the restore-pair is cheap and keeps this
-    // from becoming a latent shear bug if the format is ever widened.
-    GLint prevRead = 0;
-    GLint prevPack = 4;
-    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prevRead);
-    glGetIntegerv(GL_PACK_ALIGNMENT, &prevPack);
-
-    // RAW-GL-FBO-BIND-GATE-1 disposition. This TU owns no FBO -- it borrows
-    // gosPostProcess's scene FBO for one 1x1 glReadPixels. The bind below is
-    // GL_READ_FRAMEBUFFER, so no draw can be retargeted by it, and
-    // GL_READ_FRAMEBUFFER_BINDING is captured two lines above and restored
-    // three lines below (the restore half is auto-exempt under the checker's
-    // prev/saved rule; this acquire half is the one that needs the tag). Same
-    // class as the two brackets already on the gate's file allowlist --
-    // gameosmain.cpp "screenshot / video READ-blit" and RenderWorld.cpp
-    // "readback" -- but tagged per-CALL-SITE instead of allowlisting the whole
-    // file, so a GL_DRAW_FRAMEBUFFER bind added here later still fails the gate.
-    // FBO-OWNER: read-only readback bracket over the scene FBO, restored below.
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-    glReadBuffer(GL_COLOR_ATTACHMENT0);
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(px, py, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, out.rgba);
-    glPixelStorei(GL_PACK_ALIGNMENT, prevPack);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint)prevRead);
-
-    out.inBounds = true;
+    out.srcFrameHint = g_mc2FrameCounter > 0 ? (unsigned long)(g_mc2FrameCounter-1u) : 0UL;
+    int w=0,h=0;
+    if (!mc2vk::sceneReadbackExtent(w,h,mc2vk::SceneColor)) return false;
+    out.sceneAvailable=true; out.sceneWidth=w; out.sceneHeight=h; out.px=px; out.py=py;
+    if (px<0 || py<0 || px>=w || py>=h) return false;
+    mc2vk::ScenePixel pixel;
+    if (!mc2vk::readScenePixels(px,py,1,1,mc2vk::SceneColor,&pixel,1)) return false;
+    std::memcpy(out.rgba,pixel.rgba,4);
+    out.inBounds=true;
     return true;
 }
 
