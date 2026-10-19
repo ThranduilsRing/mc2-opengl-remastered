@@ -274,6 +274,7 @@ add_custom_target(rendercore_tests
 add_executable(test_render_contract_3
     test_render_contract_3.cpp
     ${MC2_WORKTREE_ROOT}/mclib/render_contract.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/native_render_state.cpp
     ${MC2_WORKTREE_ROOT}/RenderCore/RenderResourceRegistry.cpp
     # Both test targets use zero apply-state counters because neither links the renderer.
     gos_counter_stubs.cpp
@@ -348,6 +349,7 @@ target_sources(mc2_tests PRIVATE
     test_class_light_band_harness.cpp
     test_glstate_guard_harness.cpp
     ${MC2_WORKTREE_ROOT}/mclib/render_contract.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/native_render_state.cpp
     gos_counter_stubs.cpp
     ${MC2_WORKTREE_ROOT}/code/job_system.cpp
     ${MC2_WORKTREE_ROOT}/code/jobs_fatal.cpp
