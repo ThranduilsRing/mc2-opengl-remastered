@@ -6403,7 +6403,6 @@
   "GameOS/gameos/gos_font.cpp": 6,
   "GameOS/gameos/gos_lightgrid_build.cpp": 2,
   "GameOS/gameos/gos_postprocess_blur.cpp": 2,
-  "GameOS/gameos/gos_terrain_lighting.cpp": 5,
   "GameOS/gameos/gpu_cull_compute.cpp": 8,
   "GameOS/gameos/gpu_cull_readback.cpp": 1,
   "GameOS/gameos/gpu_cull_substrate.cpp": 1,
