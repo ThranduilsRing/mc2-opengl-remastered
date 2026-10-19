@@ -16,7 +16,7 @@
 #include <vector>
 
 #include "gameos.hpp"
-#include "KtxLoader.h"
+#include "../../RenderCore/KtxLoader.h"
 
 namespace mc2tex {
 

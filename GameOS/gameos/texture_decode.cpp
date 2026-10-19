@@ -110,7 +110,7 @@ std::optional<DecodedTexture> decodeFile(const char* path, gos_TextureFormat req
         return std::nullopt;
     }
     // A TGA file goes through the same header check as cached bytes: read it whole, decode from memory.
-    if (endsWithTga(path)) {
+    if (endsWithTga(path) || (std::strlen(path) >= 5 && _stricmp(path + std::strlen(path) - 5, ".ktx2") == 0)) {
         std::vector<uint8_t> bytes;
         if (FILE* f = std::fopen(path, "rb")) {
             std::fseek(f, 0, SEEK_END);

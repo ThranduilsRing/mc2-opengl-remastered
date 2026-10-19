@@ -222,3 +222,25 @@ TEST_CASE("TextureService: provider precedence and cooked cache versions") {
     key=keyOf("base", "skin.ktx2",5); CHECK_FALSE(bool(s.cooked(key)));
     key=keyOf("mod:Exodus", "skin.ktx2",6); CHECK_FALSE(bool(s.cooked(key)));
 }
+
+TEST_CASE("TextureService: last reference during flight and descriptor reuse") {
+    TextureService service;
+    TextureDescriptorTable table(2);
+    int destroyed=0;
+    auto make=[&]{return std::shared_ptr<void>(new int(1),[&](void* p){delete static_cast<int*>(p);++destroyed;});};
+    const auto old=service.acquire(keyOf("base","a",1));
+    auto owner=make(); CHECK_FALSE(table.full());
+    const auto slot=table.insert(old,owner); REQUIRE(slot==1); CHECK(table.full());
+    auto inFlight=table.snapshot(); owner.reset();
+    CHECK(table.insert(service.acquire(keyOf("base","b",2)),make())==0); // capacity exhaustion
+    CHECK(service.release(old)); CHECK(table.erase(old));
+    CHECK(destroyed==1); // only the rejected allocation, never the submitted image
+    auto next=service.acquire(keyOf("base","c",3));
+    CHECK(table.insert(next,make())==slot);
+    CHECK(table.index(old)==0); CHECK_FALSE(table.erase(old));
+    auto nextFlight=table.snapshot();
+    CHECK(inFlight[slot].handle==old); CHECK(nextFlight[slot].handle==next);
+    CHECK_FALSE(service.retain(old)); // stale generation cannot name the replacement
+    inFlight.clear(); CHECK(destroyed==2);
+    CHECK(table.erase(next)); nextFlight.clear(); CHECK(destroyed==3);
+}

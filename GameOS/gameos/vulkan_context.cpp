@@ -29,6 +29,7 @@
 #include "vk_validation_line.h"
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_image_resource.h"
+#include "vk_texture_residency.h"
 #endif
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
@@ -47,6 +48,9 @@
 #include <vector>
 
 namespace mc2vk {
+
+VulkanContext::VulkanContext() = default;
+VulkanContext::~VulkanContext() { destroy(); }
 
 namespace {
 
@@ -453,6 +457,14 @@ bool VulkanContext::init(bool wantPresent) {
         if (r != VK_SUCCESS) { allocator_ = nullptr; return fail("vmaCreateAllocator failed"); }
     }
 
+#ifdef MC2_VULKAN_ISLAND
+    if (!RenderCore::activeTextureService) {
+        textureServiceOwner_ = std::make_unique<RenderCore::TextureService>();
+        RenderCore::activeTextureService = textureServiceOwner_.get();
+    }
+    textures_ = std::make_unique<TextureResidency>(*this, RenderCore::textureService());
+    if (!textures_->init()) return fail("texture service initialization");
+#endif
     health_.created = true;
     health_.fallbackReason.clear();
     ctxlog("engine Vulkan device created: device_name=\"%s\" present=%d validation=%s.",
@@ -591,6 +603,7 @@ void VulkanContext::beginFrame() {
         }
     }
     frameRing_.beginFrame(f, slotFree);
+    if (textures_) textures_->descriptors();
 #endif
 }
 
@@ -605,6 +618,9 @@ void VulkanContext::drainDeferred(std::string_view why) {
 void VulkanContext::endFrame() {
 #ifdef MC2_VULKAN_ISLAND
     flushUploads();   // an upload queued this frame is submitted inside it, so the frame ticket covers its staging
+#endif
+#ifdef MC2_VULKAN_ISLAND
+    if (textures_) textures_->sealFrame();
 #endif
     tracker_.endFrame();
     deferred_.sealFrame(tracker_.frameTicket(tracker_.frameNo()));
@@ -638,6 +654,9 @@ void VulkanContext::destroy() {
 #ifdef MC2_VULKAN_ISLAND
     // The islands consume the light feed, so they go first; both go before the allocator and the device their objects were made on.
     for (size_t i = 0; i < islands_.size(); ++i) retireIsland(static_cast<IslandSlot>(i));
+    textures_.reset();
+    deferred_.drainAll();
+    if (textureServiceOwner_) { RenderCore::activeTextureService = nullptr; textureServiceOwner_.reset(); }
     lightFeed_.release();
     frameRing_.release();
     readbacks_.releaseAll();

@@ -96,6 +96,7 @@ public:
         if (auto it = byKey_.find(key); it != byKey_.end()) {
             const auto& [k, idx] = *it;
             Entry& e = entries_[idx];
+            if (e.users == UINT32_MAX) return TextureHandle::invalid();
             ++e.users;
             return TextureHandle::make(idx, e.generation);
         }
@@ -248,6 +249,39 @@ private:
     std::vector<uint32_t> free_;
     std::unordered_map<TextureKey, uint32_t, TextureKeyHash> byKey_;
     std::unordered_map<uint32_t, uint32_t> byNode_;
+};
+
+// Immutable descriptor snapshots retain image owners until that flight completes. Reusing a slot in a newer
+// snapshot cannot change the view or ownership in an older submitted snapshot.
+class TextureDescriptorTable {
+public:
+    struct Slot { TextureHandle handle; std::shared_ptr<void> owner; };
+    explicit TextureDescriptorTable(uint32_t capacity) : capacity_(capacity) { slots_.resize(1); }
+    void placeholder(std::shared_ptr<void> owner) { slots_[0].owner = std::move(owner); ++revision_; }
+    uint32_t insert(TextureHandle h, std::shared_ptr<void> owner) {
+        if (!h.isValid() || !owner) return 0;
+        if (auto it = indices_.find(h.raw()); it != indices_.end()) return it->second;
+        uint32_t slot;
+        if (!free_.empty()) { slot = free_.back(); free_.pop_back(); }
+        else { if (slots_.size() >= capacity_) return 0; slot = uint32_t(slots_.size()); slots_.push_back({}); }
+        slots_[slot] = {h, std::move(owner)}; indices_[h.raw()] = slot; ++revision_; return slot;
+    }
+    bool erase(TextureHandle h) {
+        auto it = indices_.find(h.raw()); if (it == indices_.end()) return false;
+        slots_[it->second] = {}; free_.push_back(it->second); indices_.erase(it); ++revision_; return true;
+    }
+    uint32_t index(TextureHandle h) const {
+        auto it = indices_.find(h.raw()); return it == indices_.end() ? 0 : it->second;
+    }
+    bool full() const { return free_.empty() && slots_.size() >= capacity_; }
+    std::vector<Slot> snapshot() const { return slots_; }
+    uint64_t revision() const { return revision_; }
+private:
+    uint32_t capacity_;
+    uint64_t revision_ = 0;
+    std::vector<Slot> slots_;
+    std::vector<uint32_t> free_;
+    std::unordered_map<uint32_t, uint32_t> indices_;
 };
 
 // GameOS main owns the session service on its stack, ahead of renderer init and through renderer shutdown.

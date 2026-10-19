@@ -28,6 +28,7 @@
 #include "vk_island_util.h"
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
+#include "vk_texture_residency.h"
 #include "vulkan_legacy_shape_island.h"
 #include "../../RenderCore/gpu_abi/GpuLegacyFrameUBO.h"  // single-source per-frame UBO
 #include "vk_shared_gbuffer_gate.h"
@@ -82,8 +83,7 @@ const uint32_t kMaxTextures  = 192;      // descriptor-set budget (x2 parity)
 
 // The view is declared after the image so it is released first.
 struct TexEntry {
-    mc2vk::OwnedImage img;
-    mc2vk::OwnedImageView view;
+    mc2vk::ResidentTextureRef texture;
     VkDescriptorSet set[2] = {};   // allocated from the island's pool, freed with it
 };
 
@@ -129,80 +129,12 @@ bool g_sessionDeclined = false;
 int  g_initReachedBuild = 0;
 std::vector<Mc2LegacyMlrDraw> g_pending;
 
-bool make_buffer(Island* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible,
-                 std::string_view name, int i0 = -1, int i1 = -1) {
-    VkBufferCreateInfo bci{};
-    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bci.size = size ? size : 16; bci.usage = usage;
-    VmaAllocationCreateInfo aci{};
-    aci.usage = VMA_MEMORY_USAGE_AUTO;
-    aci.flags = hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : 0;
-    if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
-        vlog("buffer creation failed (%.*s).", static_cast<int>(name.size()), name.data()); return false;
-    }
-    return true;
-}
-
-bool upload_host(const mc2vk::OwnedBuffer& buffer, const void* data, size_t bytes) {
-    void* p = buffer.map();
-    if (!p) return false;
-    std::memcpy(p, data, bytes);
-    buffer.unmap();
-    return true;
-}
-
-// --- one-shot command helpers (copy-once texture import) --------------------
-VkCommandBuffer cp_begin(Island* s) {
-    VkCommandBufferAllocateInfo cbi{};
-    cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
-    VkCommandBuffer cb = VK_NULL_HANDLE;
-    if (vkAllocateCommandBuffers(s->device, &cbi, &cb) != VK_SUCCESS) return VK_NULL_HANDLE;
-    VkCommandBufferBeginInfo bi{}; bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(cb, &bi);
-    return cb;
-}
-void cp_end(Island* s, VkCommandBuffer cb) {
-    vkEndCommandBuffer(cb);
-    VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    mc2vk::submitAndWait(mc2vk::getOrCreateEngineVulkanContext(), si, 5ull * 1000 * 1000 * 1000, "legacy shape copy-once");
-    vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
-}
-
 // One level of RGBA8 or BC7 texels, copied as they are into a sampled image of `fmt`.
 bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, VkFormat fmt, const void* bytes, VkDeviceSize byteCount) {
-    mc2vk::OwnedBuffer stg;   // released on return; cp_end has waited for the copy by then
-    if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "legacyshape.staging")) return false;
-    if (!upload_host(stg, bytes, (size_t)byteCount)) return false;
-
-    if (!e.img.createSampled2D(s->allocator, s->device, fmt, w, h, 1, 0, "legacyshape.texture")) return false;
-    VkCommandBuffer cb = cp_begin(s);
-    if (cb == VK_NULL_HANDLE) return false;
-    VkImageMemoryBarrier bar{};
-    bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = e.img.get();
-    bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &bar);
-    VkBufferImageCopy r{};
-    r.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    r.imageExtent = {w, h, 1};
-    vkCmdCopyBufferToImage(cb, stg.get(), e.img.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &r);
-    bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &bar);
-    cp_end(s, cb);
-
-    VkImageViewCreateInfo vci{};
-    vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = e.img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = fmt;
-    vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    return mc2vk::create(e.view, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
+    // Explicit legacy producer boundary: CPU/gos bytes stay legacy-owned; the service owns their Vulkan image.
+    auto& textures=mc2vk::getOrCreateEngineVulkanContext().textures();
+    e.texture=textures.acquireLegacy(w,h,fmt,bytes,size_t(byteCount));
+    return bool(e.texture);
 }
 
 // Per-parity descriptor set for one texture: 0 = frame UBO, 1 = albedo.
@@ -214,7 +146,7 @@ bool alloc_tex_sets(Island* s, TexEntry& t) {
     if (vkAllocateDescriptorSets(s->device, &dsai, t.set) != VK_SUCCESS) return false;
     for (uint32_t par = 0; par < 2; ++par) {
         VkDescriptorImageInfo ii{};
-        ii.sampler = s->samp.get(); ii.imageView = t.view.get(); ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        ii.sampler = s->samp.get(); ii.imageView = mc2vk::getOrCreateEngineVulkanContext().textures().view(t.texture.get()); ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkWriteDescriptorSet w[1]{};
         w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = t.set[par]; w[0].dstBinding = 1;
         w[0].descriptorCount = 1; w[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[0].pImageInfo = &ii;

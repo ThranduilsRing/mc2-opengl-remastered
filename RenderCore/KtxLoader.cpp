@@ -181,7 +181,7 @@ bool ktxDecodeBlocksToRgba8(const KtxImage& img, int level,
     const bool bc7 = img.vkFormat == 145 || img.vkFormat == 146;
     const uint32_t bs = bc1 ? 8u : 16u;
     if (!img.isCompressed || !(bc1 || bc3 || bc5 || bc7) || img.blockSizeBytes != bs ||
-        img.width <= 0 || img.height <= 0 || img.width > kKtxMaxEdge || img.height > kKtxMaxEdge ||
+        img.width <= 0 || img.height <= 0 || uint32_t(img.width) > kKtxMaxEdge || uint32_t(img.height) > kKtxMaxEdge ||
         level < 0 || level >= 32 || level >= img.mipCount || static_cast<size_t>(level) >= img.mipByteOffsets.size()) return false;
     const uint32_t w = std::max(1u, uint32_t(img.width) >> level);
     const uint32_t h = std::max(1u, uint32_t(img.height) >> level);

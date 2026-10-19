@@ -135,9 +135,10 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 		masterTextureNodes[i].lzCompSize = txmCompressSize;
 	}
 	
-	txmIdentityAcquire(masterTextureNodes[i], i);
-		return(i);
+	return(i);
 }
+
+static void txmIdentityAcquire(const MC_TextureNode& n, long node, uint32_t physicalWidth = 0, uint32_t physicalHeight = 0);
 
 DWORD MC_TextureManager::textureInstanceExists (const char *textureFullPathName, gos_TextureFormat key, DWORD hints, DWORD uniqueInstance, DWORD nFlush)
 {
@@ -153,7 +154,7 @@ DWORD MC_TextureManager::textureInstanceExists (const char *textureFullPathName,
 				{
 					masterTextureNodes[i].numUsers++;
 					txmIdentityAcquire(masterTextureNodes[i], i);
-		return(i);							//Return the texture Node Id Now.
+					return(i);							//Return the texture Node Id Now.
 				}
 				else
 				{
@@ -196,7 +197,7 @@ static bool txmLoadCooked(const char* source, const char* sidecar, bool prefer, 
 
 // P4a: the named node is reported to the texture service (key <-> handle <-> node). The key is built from the node's own fields, so a cache hit with
 // different caller hints still resolves to the first load's identity, exactly as the manager dedupes. No behavior change.
-static void txmIdentityAcquire (const MC_TextureNode& n, long node)
+static void txmIdentityAcquire (const MC_TextureNode& n, long node, uint32_t physicalWidth, uint32_t physicalHeight)
 {
 	RenderCore::TextureKey k;
 	auto& service = RenderCore::textureService();
@@ -209,7 +210,7 @@ static void txmIdentityAcquire (const MC_TextureNode& n, long node)
 	k.hints = (uint32_t)n.hints;
 	const uint32_t scale = n.uvScale ? n.uvScale : 1;
 	RenderCore::textureService().acquire(k, (uint32_t)node,
-		{n.logicalWidth * scale, n.logicalHeight * scale, n.logicalWidth, n.logicalHeight});
+		{physicalWidth ? physicalWidth : n.logicalWidth * scale, physicalHeight ? physicalHeight : n.logicalHeight * scale, n.logicalWidth, n.logicalHeight});
 }
 
 DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_TextureFormat key, DWORD hints, DWORD uniqueInstance, DWORD nFlush)
@@ -244,8 +245,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 					mc2::fmt::print_out("[MECHICON] loadTexture CACHE-HIT id={:d}: {}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(textureFullPathName));
 				masterTextureNodes[i].numUsers++;
 				txmIdentityAcquire(masterTextureNodes[i], i);
-				txmIdentityAcquire(masterTextureNodes[i], i);
-		return(i);							//Return the texture Node Id Now.
+				return(i);							//Return the texture Node Id Now.
 			}
 			else
 			{
@@ -354,7 +354,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 				else
 					masterTextureNodes[i].gosTextureHandle = 0;
 				mc2::fmt::print_out("[TEXMGR_KTX_PRIMARY] {} -> RGBA8 {:d}x{:d} (ktx2 CPU decode)\n", mc2::fmt::safe(sidecar), mc2::fmt::as_i32(kw), mc2::fmt::as_i32(kh)); fflush(stdout);
-				txmIdentityAcquire(masterTextureNodes[i], i);
+				txmIdentityAcquire(masterTextureNodes[i], i, (uint32_t)kw, (uint32_t)kh);
 		return(i);
 			}
 		}
@@ -496,7 +496,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	}
 
 	txmIdentityAcquire(masterTextureNodes[i], i);
-		return(i);
+	return(i);
 }
 
 // DEV-SHELL texture_refresh (see txmmgr.h). Mirrors the loadTexture disk
