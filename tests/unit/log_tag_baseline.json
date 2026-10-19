@@ -1858,18 +1858,6 @@
    "count": 1
   },
   {
-   "tag": "BTF_TIMING",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "calls",
-    "mean_total_us",
-    "mean_coalesce_write_us",
-    "mean_drawpath_us"
-   ],
-   "count": 1
-  },
-  {
    "tag": "BUCKET_CENSUS",
    "ver": 1,
    "stream": "stderr",
@@ -2769,180 +2757,6 @@
     "geom_mismatch",
     "type_mismatch",
     "alpha_mismatch"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "DRAW_PACKET_V5",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frame",
-    "err"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "DRAW_PACKET_V5",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "reason"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "DRAW_PACKET_V5",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "reason",
-    "loc"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "DRAW_PACKET_V5",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "slot",
-    "reason"
-   ],
-   "count": 4
-  },
-  {
-   "tag": "DRAW_PACKET_V5",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "slots",
-    "ext_supported",
-    "drawid_loc"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "DRAW_PACKET_V5",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "event",
-    "slots_considered",
-    "draws_issued",
-    "zero_instance_skips",
-    "sorted_oob",
-    "packet_oob",
-    "type_oob",
-    "base_instance_missing",
-    "gl_errors",
-    "ok"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "DRAW_PACKET_V5",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "slot",
-    "type",
-    "inst",
-    "base_inst",
-    "draw_id_base"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "DRAW_PACKET_V6",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frame",
-    "err"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "DRAW_PACKET_V6",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "reason"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "DRAW_PACKET_V6",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "slots",
-    "alpha_off",
-    "alpha_on",
-    "ext_supported",
-    "drawid_loc",
-    "default"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "DRAW_PACKET_V6",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "event",
-    "slot",
-    "field",
-    "expected",
-    "got"
-   ],
-   "count": 2
-  },
-  {
-   "tag": "DRAW_PACKET_V6",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "event",
-    "slots_considered",
-    "draws_issued",
-    "zero_instance_skips",
-    "sorted_oob",
-    "packet_oob",
-    "type_oob",
-    "lockstep_violations",
-    "gl_errors",
-    "ok"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "DRAW_PACKET_V6",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "slot",
-    "pkt",
-    "type",
-    "group",
-    "inst",
-    "base",
-    "drawID",
-    "first",
-    "count",
-    "baseV"
    ],
    "count": 1
   },
@@ -4179,16 +3993,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 7
-  },
-  {
-   "tag": "GPUPROPS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "MC2_VIEW_UNIFORMS"
-   ],
-   "count": 1
+   "count": 6
   },
   {
    "tag": "GPUPROPS",
@@ -4904,36 +4709,6 @@
    "count": 1
   },
   {
-   "tag": "INSTDIAG",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "coalesceEnabled",
-    "globalPoolLegacy",
-    "instanceCapacity",
-    "frameSlot",
-    "typeRanges"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "INSTDIAG",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "sample",
-    "typeID",
-    "slot",
-    "instByteOff",
-    "count",
-    "byteSize",
-    "drawData0_rawXYZ",
-    "zero0",
-    "midXYZ"
-   ],
-   "count": 1
-  },
-  {
    "tag": "INSTR",
    "ver": 1,
    "stream": "buffer",
@@ -5546,16 +5321,6 @@
    "count": 1
   },
   {
-   "tag": "LODBUG",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "mode"
-   ],
-   "count": 1
-  },
-  {
    "tag": "LOGISTICS",
    "ver": -1,
    "stream": "stdout",
@@ -5608,7 +5373,7 @@
    "ver": 4,
    "stream": "buffer",
    "keys": [],
-   "count": 3
+   "count": 1
   },
   {
    "tag": "MATERIAL_GPU",
@@ -5643,28 +5408,6 @@
     "mismatches"
    ],
    "count": 2
-  },
-  {
-   "tag": "MATERIAL_GPU",
-   "ver": 4,
-   "stream": "buffer",
-   "keys": [
-    "event",
-    "enabled",
-    "loc"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "MATERIAL_GPU",
-   "ver": 4,
-   "stream": "buffer",
-   "keys": [
-    "event",
-    "enabled",
-    "reason"
-   ],
-   "count": 1
   },
   {
    "tag": "MATERIAL_GPU",
@@ -6070,24 +5813,6 @@
     "grid",
     "onlyLegacy",
     "onlyGrid"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "MINE_STATIC",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "MC2_TERRAIN_INDIRECT_MINE"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "MINE_STATIC",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "prog"
    ],
    "count": 1
   },
@@ -7927,21 +7652,6 @@
    "count": 2
   },
   {
-   "tag": "RENDER_SNAPSHOT",
-   "ver": 3,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "attempted",
-    "count_mismatch",
-    "pkt_mismatch",
-    "meta_mismatch",
-    "fallback",
-    "using_snapshot"
-   ],
-   "count": 1
-  },
-  {
    "tag": "RENDER_STATES",
    "ver": 1,
    "stream": "stdout",
@@ -8410,20 +8120,6 @@
     "pkt",
     "layer",
     "group"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SEAMPROBE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "typeID",
-    "src",
-    "packetCount",
-    "vertexCount",
-    "hasRange",
-    "instanceCount"
    ],
    "count": 1
   },
@@ -9657,73 +9353,10 @@
    "stream": "stdout",
    "keys": [
     "event",
-    "cells",
-    "verts",
-    "vbo_gl"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_INDIRECT",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "mineSlot",
-    "blownSlot",
-    "gltex",
-    "dim"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_INDIRECT",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
     "path",
     "armed",
     "gate",
     "note"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_INDIRECT",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "reason",
-    "mine",
-    "blown"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_LIGHTING_PARITY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frame",
-    "vertex",
-    "field",
-    "legacy",
-    "gpu"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_LIGHTING_PARITY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frames",
-    "verts_checked",
-    "total_mismatches"
    ],
    "count": 1
   },

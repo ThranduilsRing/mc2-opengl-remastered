@@ -189,12 +189,14 @@
       "next": "none (GL model retired)"
     },
     "MineStatic": {
-      "status": "UNREGISTERED",
+      "status": "DO_NOT_MODEL",
       "renderPassId": null,
       "pipelineId": null,
-      "shaderBase": "mineProg",
-      "stateOwner": "legacy/ad-hoc",
-      "next": "needs_pass_reg_first: stable alpha-test state but NO RenderPassId \u2014 add an id or fold into TerrainOverlay before any PipelineDesc row"
+      "shaderBase": "terrain_overlay_tier1",
+      "stateOwner": "vulkan_native",
+      "next": "none (GL draw retired)",
+      "reason": "Native Vulkan overlay owner draws mine and blown-mine sprites with true terrain depth, nearest sampling, alpha cutout and depth writes; no GL draw remains.",
+      "evidence": "s67: both sprite states reached vkCmdDraw on day/night under sync; normal feeds unchanged and captures viewed."
     },
     "VfxBillboardVkNative": {
       "status": "DO_NOT_MODEL",
