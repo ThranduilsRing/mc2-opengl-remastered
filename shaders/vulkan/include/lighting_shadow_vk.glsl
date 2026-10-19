@@ -136,7 +136,8 @@ float computeBakedShadow(vec3 worldPos, vec3 normal, vec3 lightDir,
     float currentDepth = projCoords.z - bias;
 
     // Per-pixel rotation to break banding (stratified sampling).
-    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    // A fixed receiver kernel avoids unfiltered per-pixel noise on thin palm shadows.
+    float angle = 0.0;
     float ca = cos(angle), sa = sin(angle);
     mat2 rot = mat2(ca, sa, -sa, ca);
 
@@ -259,7 +260,8 @@ float lsvk_calcShadow(vec3 worldPos, vec3 normal, vec3 lightDir,
     if (NdotL < 0.05) return 1.0;
     float bias = max(0.005 * (1.0 - NdotL), 0.002);
     float currentDepth = projCoords.z - bias;
-    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    // A fixed receiver kernel avoids unfiltered per-pixel noise on thin palm shadows.
+    float angle = 0.0;
     float ca = cos(angle), sa = sin(angle);
     mat2 rot = mat2(ca, sa, -sa, ca);
     float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
@@ -293,7 +295,8 @@ float lsvk_calcDynamicShadowLegacy(vec3 worldPos, vec3 normal, vec3 lightDir,
     if (NdotL < 0.05) return 1.0;
     float bias = max(0.005 * (1.0 - NdotL), 0.002);
     float currentDepth = projCoords.z - bias;
-    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    // A fixed receiver kernel avoids unfiltered per-pixel noise on thin palm shadows.
+    float angle = 0.0;
     float ca = cos(angle), sa = sin(angle);
     mat2 rot = mat2(ca, sa, -sa, ca);
     float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
@@ -332,7 +335,8 @@ float lsvk_csmSampleLayer(vec3 projCoords, int layer, vec3 worldPos, float NdotL
     float texelBias = 1.5 * cascadeTexelWorld / max(depthSpan, 1.0);
     float bias = max(0.0012 * slope, 0.0004) + texelBias;
     float currentDepth = projCoords.z - bias;
-    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    // A fixed receiver kernel avoids unfiltered per-pixel noise on thin palm shadows.
+    float angle = 0.0;
     float ca = cos(angle), sa = sin(angle);
     mat2 rot = mat2(ca, sa, -sa, ca);
     float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
@@ -368,7 +372,8 @@ float lsvk_csmSampleFullMap(vec3 projCoords, vec3 worldPos, float NdotL, float s
     float texelBias = 1.5 * texelWorld / max(depthSpan, 1.0);
     float bias = max(0.0012 * slope, 0.0004) + texelBias;
     float currentDepth = projCoords.z - bias;
-    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    // A fixed receiver kernel avoids unfiltered per-pixel noise on thin palm shadows.
+    float angle = 0.0;
     float ca = cos(angle), sa = sin(angle);
     mat2 rot = mat2(ca, sa, -sa, ca);
     float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
