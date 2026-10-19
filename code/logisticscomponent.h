@@ -7,6 +7,8 @@ LogisticsComponent.h			: Interface for the LogisticsComponent component.
 //===========================================================================//
 \*************************************************************************************************/
 
+#include <memory>
+
 // forward declarations
 class File;
 
@@ -37,11 +39,11 @@ class LogisticsComponent
 		inline float getWeight() const { return weight; }
 		inline int getCost() const { return cost; }
 		inline float getHeat() const { return heat; }
-		inline const char* getName() const { return name; }
+		inline const char* getName() const { return name.get(); }
 		inline const char* getFlavorText() const { return flavorText; }
 		inline int	getHelpID() const { return helpStringID; }
-		inline const char* getIconFileName() const { return iconFileName; }
-		inline const char* getPictureFileName() const { return pictureFileName; }
+		inline const char* getIconFileName() const { return iconFileName.get(); }
+		inline const char* getPictureFileName() const { return pictureFileName.get(); }
 		inline int		getComponentWidth() const { return iconX; }
 		inline int		getComponentHeight() const { return iconY; }
 		// MC2_ENGINE_XL: XL engines get a weight-class-dependent footprint + heat,
@@ -89,8 +91,8 @@ class LogisticsComponent
 		int iconX;
 		int iconY;
 
-		char* iconFileName;
-		char* pictureFileName;
+		std::unique_ptr<char[]> iconFileName;
+		std::unique_ptr<char[]> pictureFileName;
 		int range;
 		WEAPON_RANGE rangeType;
 
@@ -100,7 +102,7 @@ class LogisticsComponent
 		float weight;
 		int cost;
 		float heat;
-		char* name;
+		std::unique_ptr<char[]> name;
 		char* flavorText;
 
 		bool	bHead;
