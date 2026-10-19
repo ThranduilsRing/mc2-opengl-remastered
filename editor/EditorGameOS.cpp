@@ -26,7 +26,8 @@
 // points, or provide safe no-op defaults where the old symbol was pure
 // Win32 boilerplate that has no SDL equivalent.
 #include "stdafx.h"
-#include "EditorGpuTimer.h"  // EditorFramePhase_* whole-frame timing (MC2_EDITOR_GPU_TIMERS)
+#include "EditorRenderTimer.h"
+#include "gos_render_pass_timer.h"  // EditorFramePhase_* whole-frame timing (MC2_EDITOR_GPU_TIMERS)
 #include "EditorWatchdog.h"  // EditorWatchdog_Heartbeat (MC2_EDITOR_WATCHDOG)
 #include <cstdarg>
 #include <vector>
@@ -735,6 +736,7 @@ DWORD __stdcall RunGameOSLogic()
     // is managed by the gosRenderer; forcibly unbinding it after EndFrame tears
     // down state the renderer expects to persist across the swap.  Let the
     // renderer own its own program lifecycle.
+    gos_render_pass_timer::FrameEnd();
     EditorViewportCaptureTick();
     // The game's present: VK composite+swapchain present when the Vulkan backend is up, else the GL swap.
     gos::host::advanceFrameCounter();   // the shared engine frame clock (props' light cache, readback tags); the game advances it at the same point

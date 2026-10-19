@@ -1,27 +1,16 @@
-//============================================================================
-// EditorGpuTimer — see EditorGpuTimer.h.
-//  * GPU per-pass timing via GL_TIMESTAMP (ping-pong, read a frame late).
-//  * CPU per-pass wall-clock via steady_clock (same marks, printed same frame).
-// A GPU timestamp only brackets *submitted GPU commands*; if a pass burns
-// hundreds of ms on the CPU then submits little GPU work, the GPU delta stays
-// small. The CPU line catches that case.
-//============================================================================
-#include <GL/glew.h>
-#include <GL/gl.h>
+// Editor CPU phase attribution; GPU samples come from the shared native pass timer.
 #include <cstdio>
 #include <cstdlib>
 #include <chrono>
 
-#include "EditorGpuTimer.h"
+#include "EditorRenderTimer.h"
+#include "gos_render_pass_timer.h"
 #include "Gates/gate.h"
 
 namespace {
 
 const int   kMaxMarks = 16;
-GLuint      s_q[2][kMaxMarks] = {{0}};   // ping-pong GPU query objects
 const char* s_name[kMaxMarks] = {0};     // segment label at mark i
-int         s_active = 0;
-int         s_count[2] = {0, 0};
 bool        s_inited = false;
 bool        s_on = false;
 unsigned long s_frame = 0;
@@ -53,54 +42,21 @@ void appendLog(const char* line)
 
 } // namespace
 
-void EditorGpuTimer_Begin()
+void EditorRenderTimer_Begin()
 {
     if (!enabled()) return;
-
-    // Read + print the previous frame's GPU buffer (guaranteed available).
-    const int prev = 1 - s_active;
-    const int n = s_count[prev];
-    if (n >= 2) {
-        GLint avail = 0;
-        glGetQueryObjectiv(s_q[prev][n - 1], GL_QUERY_RESULT_AVAILABLE, &avail);
-        if (avail) {
-            GLuint64 t0 = 0;
-            glGetQueryObjectui64v(s_q[prev][0], GL_QUERY_RESULT, &t0);
-            GLuint64 prevT = t0;
-
-            char line[640];
-            int off = 0;
-            off += std::snprintf(line + off, sizeof(line) - off, "[EDGPU f=%lu]", s_frame);
-            for (int i = 1; i < n; ++i) {
-                GLuint64 t = 0;
-                glGetQueryObjectui64v(s_q[prev][i], GL_QUERY_RESULT, &t);
-                off += std::snprintf(line + off, sizeof(line) - off, " %s=%.2f",
-                                     s_name[i] ? s_name[i] : "?", (double)(t - prevT) / 1.0e6);
-                prevT = t;
-            }
-            std::snprintf(line + off, sizeof(line) - off, " TOTAL=%.2f", (double)(prevT - t0) / 1.0e6);
-            appendLog(line);
-        }
-    }
-
+    gos_render_pass_timer::SetCollect(true);
     ++s_frame;
-    s_count[s_active] = 0;
     s_cpuCount = 0;
-    EditorGpuTimer_Mark("start");
+    EditorRenderTimer_Mark("start");
 }
 
-void EditorGpuTimer_Mark(const char* name)
+void EditorRenderTimer_Mark(const char* name)
 {
-    if (!enabled()) return;
-    const int idx = s_count[s_active];
-    if (idx >= kMaxMarks) return;
-    if (!s_q[s_active][idx]) glGenQueries(1, &s_q[s_active][idx]);
-    glQueryCounter(s_q[s_active][idx], GL_TIMESTAMP);
-    s_name[idx] = name;
-    s_count[s_active] = idx + 1;
-
-    // CPU wall-clock at this same boundary.
-    if (idx < kMaxMarks) { s_cpuMs[idx] = nowMs(); s_cpuCount = idx + 1; }
+    if (!enabled() || s_cpuCount >= kMaxMarks) return;
+    s_name[s_cpuCount] = name;
+    s_cpuMs[s_cpuCount] = nowMs();
+    ++s_cpuCount;
 }
 
 //----------------------------------------------------------------------------
@@ -150,7 +106,7 @@ void EditorCpuPhase_End()
     ++s_preFrame;
 }
 
-void EditorGpuTimer_End()
+void EditorRenderTimer_End()
 {
     if (!enabled()) return;
 
@@ -166,7 +122,6 @@ void EditorGpuTimer_End()
         appendLog(line);
     }
 
-    s_active = 1 - s_active;       // flip GPU ping-pong
 }
 
 //----------------------------------------------------------------------------
