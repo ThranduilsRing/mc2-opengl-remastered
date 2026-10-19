@@ -330,7 +330,7 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 	}
 	 
 	tBMP = tacMapBmp;
-	TGARecs *tRecs = (TGARecs *)systemHeap->Malloc(sizeof(TGARecs) * 255);
+	TGARecs *tRecs = (TGARecs *)std::malloc(sizeof(TGARecs) * 255);
 	memset(tRecs,0,sizeof(TGARecs) * 255);
 	
 	for( i = 0; i < land->realVerticesMapSide * MAPCELL_DIM; i++ )
@@ -441,7 +441,7 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 						tgaFile.read((MemoryPtr)&header,sizeof(TGAFileHeader));
 						tgaFile.seek(0);
 						
-						tgaRAM = (MemoryPtr)systemHeap->Malloc(header.width * header.height * sizeof(DWORD));
+						tgaRAM = (MemoryPtr)std::malloc(header.width * header.height * sizeof(DWORD));
 						
 						loadTGATexture (&tgaFile, tgaRAM, header.width, header.height);
 						
@@ -522,12 +522,12 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 	{
 		if (tRecs[it].tgaData)
 		{
-			systemHeap->Free(tRecs[it].tgaData);
+			std::free(tRecs[it].tgaData);
 			tRecs[it].tgaData = nullptr;	
 		}
 	}
 	
-	systemHeap->Free(tRecs);
+	std::free(tRecs);
 	tRecs = nullptr;
 	
 	double xRatio = 3. * (land->realVerticesMapSide)/tacMapSize;

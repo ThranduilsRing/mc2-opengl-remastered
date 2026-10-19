@@ -627,7 +627,7 @@ long MasterComponent::loadMasterList (const char* fileName, long listSize, float
 	freeMasterList();
 
 	numComponents = listSize;
-	masterList = static_cast<MasterComponentPtr>(systemHeap->Malloc(sizeof(MasterComponent) * numComponents));
+	masterList = static_cast<MasterComponentPtr>(std::malloc(sizeof(MasterComponent) * numComponents));
 	// The table loaders set only the fields the data names; the rest (disableLevel, which getInventoryDamage is compared with on every component hit,
 	// among them) must not be whatever the heap block held: the same hit disabled a component in one run and not in the next (mc2_24 frame 3193).
 	memset(masterList, 0, sizeof(MasterComponent) * numComponents);
@@ -742,7 +742,7 @@ long MasterComponent::freeMasterList (void) {
 	{
 		for (long i = 0; i < numComponents; ++i)
 			masterList[i].~MasterComponent();
-		systemHeap->Free(masterList);
+		std::free(masterList);
 		masterList = nullptr;
 		numComponents = 0;
 	}

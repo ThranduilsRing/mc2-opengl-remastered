@@ -51,7 +51,7 @@ void Mission::loadAblAndManagers(MissionLoadFrame& f) {
 	if (Mover::triggerAreaMgr == nullptr)
 		STOP(("Mission.Load: unable to init triggerAreaMgr "));
 
-	craterManager = (CraterManagerPtr)missionHeap->Malloc(sizeof(CraterManager));
+	craterManager = (CraterManagerPtr)std::malloc(sizeof(CraterManager));
 	gosASSERT(craterManager != nullptr);
 	::new (craterManager) CraterManager;
 		
@@ -257,7 +257,7 @@ void Mission::loadParts(MissionLoadFrame& f) {
 	{
 		//-----------------------------------------------------
 		// Since we leave part 0 unused, malloc numParts + 1...
-		parts = (PartPtr)missionHeap->Malloc(sizeof(Part) * (numParts + 1));
+		parts = (PartPtr)std::malloc(sizeof(Part) * (numParts + 1));
 		gosASSERT(parts != nullptr);
 		
 		memset(parts,0,sizeof(Part) * (numParts + 1));
@@ -539,7 +539,7 @@ void Mission::loadInterface(MissionLoadFrame& f) {
 
 	if (tempSpecialAreaFootPrints) 
 	{
-		systemHeap->Free(tempSpecialAreaFootPrints);
+		std::free(tempSpecialAreaFootPrints);
 		tempSpecialAreaFootPrints = nullptr;
 		tempNumSpecialAreas = 0;
 	}

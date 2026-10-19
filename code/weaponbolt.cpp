@@ -312,7 +312,7 @@ TG_LightPtr WeaponBoltType::getLight (void)
 
 	if (lightSource)
 	{
-		pointLight = (TG_LightPtr)systemHeap->Malloc(sizeof(TG_Light));
+		pointLight = (TG_LightPtr)std::malloc(sizeof(TG_Light));
 		pointLight->init(TG_LIGHT_POINT);
 
 		pointLight->SetaRGB(lightRGB);
@@ -415,7 +415,7 @@ void WeaponBolt::destroy (void)
 	{
 		if (eye)
 			eye->removeWorldLight(lightId,pointLight);
-		systemHeap->Free(pointLight);
+		std::free(pointLight);
 		pointLight = nullptr;
 	}
 
@@ -832,7 +832,7 @@ void WeaponBolt::finishNow (void)
 		{
 			if (eye)
 				eye->removeWorldLight(lightId,pointLight);
-			systemHeap->Free(pointLight);
+			std::free(pointLight);
 			pointLight = nullptr;
 		}
 

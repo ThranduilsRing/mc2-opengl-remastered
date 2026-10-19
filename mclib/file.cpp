@@ -1973,16 +1973,16 @@ long File::read (MemoryPtr buffer, long length)
 }
 
 //---------------------------------------------------------------------------
-long File::readRAW (DWORD* &buffer, UserHeapPtr heap)
+long File::readRAW (DWORD* &buffer)
 {
 	long result = 0;
 	
-	if (fastFile && heap && fastFile->isLZCompressed())
+	if (fastFile && fastFile->isLZCompressed())
 	{
 		long lzSizeNeeded = fastFile->lzSizeFast(fastFileHandle);
         // sebi
-		//buffer = (unsigned long *)heap->Malloc(lzSizeNeeded);
-		buffer = (DWORD*)heap->Malloc(lzSizeNeeded);
+		//buffer = (unsigned long *)std::malloc(lzSizeNeeded);
+		buffer = (DWORD*)std::malloc(lzSizeNeeded);
 
 		result = fastFile->readFastRAW(fastFileHandle,buffer,lzSizeNeeded);
 		logicalPosition += result;

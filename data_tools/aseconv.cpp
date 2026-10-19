@@ -35,7 +35,6 @@ float MaxMinUV = 8.0f;
 static LPCTSTR lpszAppName = "MechCmdr2";
 
 // NS3: systemHeap defined in mclib/heap.cpp (engine boundary).
-UserHeapPtr guiHeap = NULL;
 
 // NS3: gosFontScale defined in mclib/floathelp.cpp (engine boundary).
 
@@ -479,10 +478,7 @@ int main(int argc, char** argv)
 	globalHeapList = new HeapList;
 	assert(globalHeapList != NULL);
 
-	systemHeap = new UserHeap;
-	assert(systemHeap != NULL);
 
-	systemHeap->init(2048000);
 
 	//-------------------------------------------------------
 	// Check if we are running this from the command line

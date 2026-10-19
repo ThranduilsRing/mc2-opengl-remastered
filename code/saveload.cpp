@@ -499,10 +499,7 @@ void Mission::loadGameSystemRanges(MissionLoadFrame& f) {
 	auto& result = f.result; FitIniFile* const gameSystemFile = &f.gameSystemFile; auto& forestMoveCost = f.forestMoveCost;
 	//--------------------------------------------------------------
 	// Start the Mission Heap
-	missionHeap = new UserHeap;
-	gosASSERT(missionHeap != nullptr);
 	
-	missionHeap->init(missionHeapSize,"MISSION");
 	
 	//--------------------------
 	// Load Game System stuff...

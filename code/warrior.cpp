@@ -343,7 +343,7 @@ long GetMissionTurn (void) {
 
 void* MechWarrior::operator new (size_t mySize) {
 
-	void *result = missionHeap->Malloc(mySize);
+	void *result = ::operator new(mySize);
 	// Save files copy whole member arrays of a pilot, so bytes no constructor sets must be defined: zero.
 	if (result)
 		memset(result, 0, mySize);
@@ -352,7 +352,7 @@ void* MechWarrior::operator new (size_t mySize) {
 
 void MechWarrior::operator delete (void* us) {
 
-	missionHeap->Free(us);
+	::operator delete(us);
 }
 
 void MechWarrior::lobotomy (void) {

@@ -98,7 +98,7 @@ protected:
 		void *operator new (size_t mySize)
 		{
 			void *result = nullptr;
-			result = systemHeap->Malloc(mySize);
+			result = std::malloc(mySize);
 			
 			return(result);
 		
@@ -106,7 +106,7 @@ protected:
 
 		void operator delete (void *us)
 		{
-			systemHeap->Free(us);
+			std::free(us);
 		}
 
 		AppearanceInfo& operator=( const AppearanceInfo& src );

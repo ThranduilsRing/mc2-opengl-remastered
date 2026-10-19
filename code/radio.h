@@ -100,14 +100,11 @@ class Radio
 		static bool				messageInfoLoaded;
 		static bool				radioListGo;
 		static long				currentRadio;
-		static std::unique_ptr<UserHeap>	radioHeap;				//Only one Heap Per Game!!!
 	
 	//Member Functions
 	//-----------------
 	public:
 	
-		void * operator new (size_t mySize);
-		void operator delete (void * us);
 
 		void init (void)
 		{
@@ -120,10 +117,7 @@ class Radio
 		{
 		}
 
-		Radio (void)
-		{
-			init();
-		}
+		Radio();
 	
 		~Radio (void)
 		{

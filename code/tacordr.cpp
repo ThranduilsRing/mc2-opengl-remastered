@@ -127,7 +127,6 @@ constexpr int TACORDERCHUNK_TRAIN_MASK = 0x000000FF;
 constexpr int TACORDERCHUNK_TRAINCAR_MASK = 0x000000FF;
 
 extern TeamPtr homeTeam;
-extern UserHeapPtr systemHeap;
 extern float scenarioTime;
 extern float FireArc;
 extern long LastMoveCalcErr;

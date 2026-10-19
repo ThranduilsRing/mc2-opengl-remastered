@@ -43,7 +43,7 @@ FullPathFileName::~FullPathFileName (void)
 void FullPathFileName::destroy (void)
 {
 	if (fullName)
-		systemHeap->Free(fullName);
+		std::free(fullName);
 
 	fullName = nullptr;
 }
@@ -59,7 +59,7 @@ void FullPathFileName::init (const char * dir_path, const char * name, const cha
 	total_length++;
 
 
-	fullName = (char *)systemHeap->Malloc(total_length);
+	fullName = (char *)std::malloc(total_length);
 	gosASSERT(fullName != nullptr);
 	fullName[0] = 0;
 

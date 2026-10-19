@@ -18,7 +18,6 @@
 
 #include<string.h>
 
-extern UserHeapPtr systemHeap;
 
 HGOSFONT3D GameDebugWindow::font = nullptr;
 long GameDebugWindow::fontHeight = 0;

@@ -616,7 +616,7 @@ bool EditorData::reassignHeightsFromTGA( const char* fileName, int min, int max 
 
 	tgaFile.seek(0);
 
-	MemoryPtr tgaData = (MemoryPtr)systemHeap->Malloc(tgaFile.fileSize());
+	MemoryPtr tgaData = (MemoryPtr)std::malloc(tgaFile.fileSize());
 	gosASSERT(tgaData != nullptr);
 
 	result = tgaFile.read(tgaData,tgaFile.fileSize());
@@ -693,7 +693,7 @@ bool EditorData::reassignHeightsFromTGA( const char* fileName, int min, int max 
 		}
 	}
 
-	systemHeap->Free(tgaData);
+	std::free(tgaData);
 
 	// need to go through all of the buildings and put them at the right spots
 	EditorObjectMgr::instance()->adjustObjectsToNewTerrainHeights();

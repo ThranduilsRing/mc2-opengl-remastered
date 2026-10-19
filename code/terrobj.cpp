@@ -1084,7 +1084,7 @@ void TerrainObject::destroy (void)
 	if (cellsCovered) 
 	{
 		numCellsCovered = 0;
-		systemHeap->Free(cellsCovered);
+		std::free(cellsCovered);
 		cellsCovered = nullptr;
 	}
 
@@ -1450,7 +1450,7 @@ void TerrainObject::calcSubAreas (long numCells, short cells[MAX_GAME_OBJECT_CEL
 
 	numCellsCovered = numCells;
 	if (numCellsCovered) {
-		cellsCovered = (short*)systemHeap->Malloc(4 * numCellsCovered);
+		cellsCovered = (short*)std::malloc(4 * numCellsCovered);
 		if (cellsCovered) {
 			short* curCoord = cellsCovered;
 			for (long j = 0; j < numCellsCovered; j++) {
@@ -1713,7 +1713,7 @@ void TerrainObject::Load (TerrainObjectData *data)
 	numCellsCovered = data->numCellsCovered;
 	if (numCellsCovered)
 	{
-		cellsCovered = (short*)systemHeap->Malloc(sizeof(short) * numCellsCovered * 2);
+		cellsCovered = (short*)std::malloc(sizeof(short) * numCellsCovered * 2);
 		memcpy(cellsCovered, data->cellsCovered,sizeof(short) * numCellsCovered * 2);
 	}
 }

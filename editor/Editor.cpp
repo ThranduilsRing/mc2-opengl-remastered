@@ -33,7 +33,6 @@ gosRenderer* getGosRenderer();
 extern void InitWLib(void);
 
 
-UserHeapPtr guiHeap = nullptr;
 
 
 extern Stuff::MemoryStream *effectStream;	// NS3: def in mclib/txmmgr.cpp
@@ -276,10 +275,7 @@ void InitializeGameEngine()
 
 
 
-	systemHeap = new UserHeap;
-	gosASSERT(systemHeap != nullptr);
 
-	systemHeap->init(systemHeapSize,"SYSTEM");
 
 	Stuff::InitializeClasses();
 		MidLevelRenderer::InitializeClasses(1024);
@@ -322,7 +318,7 @@ void InitializeGameEngine()
 	}
 
 	// effectsData is a global so it outlives effectStream (freed at shutdown alongside it).
-	effectsData = (MemoryPtr)systemHeap->Malloc(effectsSize);
+	effectsData = (MemoryPtr)std::malloc(effectsSize);
 	effectFile.read(effectsData,effectsSize);
 	effectFile.close();
 
@@ -846,7 +842,7 @@ void TerminateGameEngine()
 	// Now safe to free the backing buffer -- effectStream no longer holds a pointer into it.
 	if (effectsData)
 	{
-		systemHeap->Free(effectsData);
+		std::free(effectsData);
 		effectsData = nullptr;
 	}
 	delete gosFX::LightManager::Instance;
@@ -864,13 +860,7 @@ void TerminateGameEngine()
 	MidLevelRenderer::TerminateClasses();
 	Stuff::TerminateClasses();
 
-	if (systemHeap)
-	{
-		systemHeap->destroy();
 
-		delete systemHeap;
-		systemHeap = nullptr;
-	}
 
 
 

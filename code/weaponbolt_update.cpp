@@ -874,7 +874,7 @@ long WeaponBolt::update (void)
 			{
 				//NO LIGHT ALLOWED!  TOO Many in World!
 				// LightId is now -1 which will cause this to NEVER make a light!
-				systemHeap->Free(pointLight);
+				std::free(pointLight);
 				pointLight = nullptr;
 			}
 		}
@@ -960,7 +960,7 @@ long WeaponBolt::update (void)
 			if (pointLight)
 			{
 				eye->removeWorldLight(lightId,pointLight);
-				systemHeap->Free(pointLight);
+				std::free(pointLight);
 				pointLight = nullptr;
 			}
  		}
@@ -1009,7 +1009,7 @@ long WeaponBolt::update (void)
 				if (pointLight)
 				{
 					eye->removeWorldLight(lightId,pointLight);
-					systemHeap->Free(pointLight);
+					std::free(pointLight);
 					pointLight = nullptr;
 				}
 				
@@ -1031,7 +1031,7 @@ long WeaponBolt::update (void)
 			if (pointLight)
 			{
 				eye->removeWorldLight(lightId,pointLight);
-				systemHeap->Free(pointLight);
+				std::free(pointLight);
 				pointLight = nullptr;
 			}
 		}
@@ -1086,7 +1086,7 @@ long WeaponBolt::update (void)
 				if (pointLight)
 				{
 					eye->removeWorldLight(lightId,pointLight);
-					systemHeap->Free(pointLight);
+					std::free(pointLight);
 					pointLight = nullptr;
 				}
 			}
@@ -1102,7 +1102,7 @@ long WeaponBolt::update (void)
 			if (pointLight)
 			{
 				eye->removeWorldLight(lightId,pointLight);
-				systemHeap->Free(pointLight);
+				std::free(pointLight);
 				pointLight = nullptr;
 			}
 		}
@@ -1159,7 +1159,7 @@ long WeaponBolt::update (void)
 				if (pointLight)
 				{
 					eye->removeWorldLight(lightId,pointLight);
-					systemHeap->Free(pointLight);
+					std::free(pointLight);
 					pointLight = nullptr;
 				}
 			}
@@ -1175,7 +1175,7 @@ long WeaponBolt::update (void)
 			if (pointLight)
 			{
 				eye->removeWorldLight(lightId,pointLight);
-				systemHeap->Free(pointLight);
+				std::free(pointLight);
 				pointLight = nullptr;
 			}
 		}

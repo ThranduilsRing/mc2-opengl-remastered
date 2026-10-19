@@ -39,7 +39,7 @@ Weather *weather = nullptr;
 // Class Weather
 void Weather::destroy (void)
 {
-	systemHeap->Free(rainDrops);
+	std::free(rainDrops);
 	rainDrops = nullptr;
 	
 	init();
@@ -182,7 +182,7 @@ void Weather::init (DWORD maxDrops, float startingRain, float brChance, float lt
 	
 	if (maxDrops)
 	{
-		rainDrops = (RainDrops *)systemHeap->Malloc(sizeof(RainDrops) * maxDrops);
+		rainDrops = (RainDrops *)std::malloc(sizeof(RainDrops) * maxDrops);
 		gosASSERT(rainDrops != nullptr);
 		
 		for (long i=0;i<totalRainDrops;i++)
