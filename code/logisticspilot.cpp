@@ -329,9 +329,9 @@ long LogisticsPilot::update( MechWarrior* pWarrior )
 			MechIcon* pIcon = new MechIcon();
 			pIcon->swapResolutions(0);
 			killedIcons.push_back( pIcon );
-			pIcon->init( (Mover*)pDead );
+			pIcon->init( static_cast<Mover*>(pDead) );
 			pIcon->update();
-			if (((MoverPtr)pDead)->getMoveType() != MOVETYPE_AIR)
+			if ((static_cast<MoverPtr>(pDead))->getMoveType() != MOVETYPE_AIR)
 				deadMechCount++;
 		}
 		else if ( pDead->getObjectClass() == GROUNDVEHICLE )
@@ -339,7 +339,7 @@ long LogisticsPilot::update( MechWarrior* pWarrior )
 			VehicleIcon* pIcon = new VehicleIcon();
 			pIcon->swapResolutions(0);
 			killedIcons.push_back( pIcon );
-			pIcon->init( (Mover*)pDead );
+			pIcon->init( static_cast<Mover*>(pDead) );
 			pIcon->update();
 		}
 	}

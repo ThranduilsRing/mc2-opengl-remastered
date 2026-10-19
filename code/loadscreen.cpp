@@ -180,7 +180,7 @@ void LoadScreenWrapper::changeRes()
 			mc2::fmt::to_buf(fbName, "mcl_loadingscreen{}", mc2::fmt::safe(str_resolutions[fi]));
 			FullPathFileName fbPath;
 			fbPath.init( artPath, fbName, ".fit" );
-			if ( NO_ERR == outFile.open( (const char*)fbPath ) )
+			if ( NO_ERR == outFile.open( static_cast<const char*>(fbPath) ) )
 			{
 				MC2_LOG(Render, Debug, "loadscreen: {} missing, fell back to {}.fit",
 				       mc2::fmt::safe(fileName), mc2::fmt::safe(fbName));
@@ -194,7 +194,7 @@ void LoadScreenWrapper::changeRes()
 		if ( !opened )
 		{
 			char error[256];
-			mc2::fmt::to_buf(error, "couldn't open file {} (no fallback found)", mc2::fmt::safe((const char*)path));
+			mc2::fmt::to_buf(error, "couldn't open file {} (no fallback found)", mc2::fmt::safe(static_cast<const char*>(path)));
 			Assert( 0, 0, error );
 			return;
 		}
@@ -252,15 +252,15 @@ void LoadScreen::changeRes( FitIniFile& outFile )
 		if ( NO_ERR != tgaFile.open( path ) )
 		{
 			char error[256];
-			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe((const char*)path));
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)));
 			Assert( 0, 0, error );
 			return;
 		}
 
 		long size = tgaFile.fileSize();
 	
-		progressBackground = (TGAFileHeader*)new char[size];
-		tgaFile.read( (unsigned char*)progressBackground, tgaFile.fileSize() );
+		progressBackground = reinterpret_cast<TGAFileHeader*>(new char[size]);
+		tgaFile.read( reinterpret_cast<unsigned char*>(progressBackground), tgaFile.fileSize() );
 
 		tgaFile.close();
 
@@ -268,17 +268,17 @@ void LoadScreen::changeRes( FitIniFile& outFile )
 		if ( NO_ERR != tgaFile.open( path ) )
 		{
 			char error[256];
-			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe((const char*)path));
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)));
 			Assert( 0, 0, error );
 			return;
 		}
 
 		size = tgaFile.fileSize();
 
-		progressTextureMemory = (TGAFileHeader*)new char[size];
-		tgaFile.read( (unsigned char*)progressTextureMemory, tgaFile.fileSize() );
+		progressTextureMemory = reinterpret_cast<TGAFileHeader*>(new char[size]);
+		tgaFile.read( reinterpret_cast<unsigned char*>(progressTextureMemory), tgaFile.fileSize() );
 
-		mergedTexture = (TGAFileHeader*)new char[size];
+		mergedTexture = reinterpret_cast<TGAFileHeader*>(new char[size]);
 		memcpy( mergedTexture, progressTextureMemory, size );
 
 		tgaFile.close();
@@ -293,17 +293,17 @@ void LoadScreen::changeRes( FitIniFile& outFile )
 		if ( NO_ERR != tgaFile.open( path ) )
 		{
 			char error[256];
-			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe((const char*)path));
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)));
 			Assert( 0, 0, error );
 			return;
 		}
 
 		size = tgaFile.fileSize();
 
-		waitingForPlayersMemory = (TGAFileHeader*)new char[size];
-		tgaFile.read( (unsigned char*)waitingForPlayersMemory, tgaFile.fileSize() );
+		waitingForPlayersMemory = reinterpret_cast<TGAFileHeader*>(new char[size]);
+		tgaFile.read( reinterpret_cast<unsigned char*>(waitingForPlayersMemory), tgaFile.fileSize() );
 
-		flipTopToBottom( (BYTE*)(waitingForPlayersMemory + 1), waitingForPlayersMemory->pixel_depth, 
+		flipTopToBottom( reinterpret_cast<BYTE*>((waitingForPlayersMemory + 1)), waitingForPlayersMemory->pixel_depth,
 			waitingForPlayersMemory->width, waitingForPlayersMemory->height );
 	}
 }
@@ -599,7 +599,7 @@ void ProgressTimer(	RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc )
 	long destX = 0;
 	long destY = 0;
 
-	BYTE* pMem = (BYTE*)(LoadScreen::mergedTexture + 1);
+	BYTE* pMem = reinterpret_cast<BYTE*>((LoadScreen::mergedTexture + 1));
 	long destRight = 0;
 	long destBottom = 0;
 
@@ -615,10 +615,10 @@ void ProgressTimer(	RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc )
 		long destWidth = LoadScreen::progressBackground->width;
 		long destHeight = LoadScreen::progressBackground->height;
 
-		float widthIncPerProgress = (float)destWidth * 0.01f;
+		float widthIncPerProgress = static_cast<float>(destWidth) * 0.01f;
 
-		long* pLSrc =  (long*)(LoadScreen::progressBackground+1);
-		long* pLDest = (long*)(LoadScreen::mergedTexture+1);
+		long* pLSrc =  reinterpret_cast<long*>((LoadScreen::progressBackground+1));
+		long* pLDest = reinterpret_cast<long*>((LoadScreen::mergedTexture+1));
 
 		// merge background and current progress together...
 		for ( int i = 0; i < 2; i++ )
@@ -637,8 +637,8 @@ void ProgressTimer(	RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc )
 					}
 				}
 			}
-			pLSrc = (long*)( LoadScreen::progressTextureMemory + 1 );
-			pLDest = (long*)(LoadScreen::mergedTexture+1);
+			pLSrc = reinterpret_cast<long*>(( LoadScreen::progressTextureMemory + 1 ));
+			pLDest = reinterpret_cast<long*>((LoadScreen::mergedTexture+1));
 
 			destWidth = loadProgress * widthIncPerProgress;
 		}
@@ -646,7 +646,7 @@ void ProgressTimer(	RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc )
 		destX = WinRect.left + (LoadScreen::xProgressLoc);
 		destY = WinRect.top + (LoadScreen::yProgressLoc);
 
-		pMem = (BYTE*)(LoadScreen::mergedTexture + 1);
+		pMem = reinterpret_cast<BYTE*>((LoadScreen::mergedTexture + 1));
 		destRight = destX + LoadScreen::progressBackground->width;
 		destBottom = (destY + LoadScreen::progressBackground->height);
 
@@ -658,7 +658,7 @@ void ProgressTimer(	RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc )
 		destX = WinRect.left + LoadScreen::xWaitLoc;
 		destY = WinRect.top + LoadScreen::yWaitLoc;
 
-		pMem = (BYTE*)(LoadScreen::waitingForPlayersMemory + 1);
+		pMem = reinterpret_cast<BYTE*>((LoadScreen::waitingForPlayersMemory + 1));
 		destRight = destX + LoadScreen::waitingForPlayersMemory->width;
 		destBottom = (destY + LoadScreen::waitingForPlayersMemory->height);
 		destRight = destRight > WinRect.right ? WinRect.right : destRight;
@@ -684,13 +684,13 @@ void ProgressTimer(	RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc )
     for ( int y = 0; y < destHeight; y++ )
     {
         BYTE* pSrc = pMem + y * srcWidth * srcDepth;
-        BYTE* pDest = (MemoryPtr)mouseSurfaceDesc.lpSurface + destX * mouseSurfaceDesc.ddpfPixelFormat.dwRGBBitCount/8 + 										
+        BYTE* pDest = reinterpret_cast<MemoryPtr>(mouseSurfaceDesc.lpSurface) + destX * mouseSurfaceDesc.ddpfPixelFormat.dwRGBBitCount/8 +
             ((destY + y) * mouseSurfaceDesc.lPitch);
 
         for ( long x = 0; x < destWidth; x++ )
         {
 
-            DWORD mColor = *(long*)pSrc;
+            DWORD mColor = *reinterpret_cast<long*>(pSrc);
             BYTE baseAlpha 		= 0;
             BYTE baseColorRed	= (mColor & 0x00ff0000)>>16;
             BYTE baseColorGreen	= (mColor & 0x0000ff00)>>8;
@@ -699,7 +699,7 @@ void ProgressTimer(	RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc )
 
             if ( mouseSurfaceDesc.ddpfPixelFormat.dwRGBBitCount == 32 )
             {
-                (*(long*)pDest) = mColor;
+                (*reinterpret_cast<long*>(pDest)) = mColor;
                 pDest += 4;
             }
             else if ( mouseSurfaceDesc.ddpfPixelFormat.dwRGBBitCount == 24 )

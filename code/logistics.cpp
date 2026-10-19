@@ -102,7 +102,7 @@ void Logistics::start (long startMode)
 	if ( mc2::gate::get<"MC2_LOG_CURSOR">() )
 	{
 		FILE* f = fopen("cursor_debug.log", "a");
-		if (f) { mc2::fmt::print(f, "[CURSOR] Logistics::start startMode={:d} drawMouse={:d}\n", mc2::fmt::as_i32(startMode), mc2::fmt::as_i32((int)UserInput::drawMouse)); fflush(f); fclose(f); }
+		if (f) { mc2::fmt::print(f, "[CURSOR] Logistics::start startMode={:d} drawMouse={:d}\n", mc2::fmt::as_i32(startMode), mc2::fmt::as_i32(static_cast<int>(UserInput::drawMouse))); fflush(f); fclose(f); }
 	}
 
 	// Campaigns without intro videos still need a cursor after the load screen hides it.

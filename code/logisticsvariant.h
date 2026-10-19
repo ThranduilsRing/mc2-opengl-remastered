@@ -36,8 +36,8 @@ public:
 	void			setFitID( int id ){ fitID = id; }
 	void			setNameID( long id ){ chassisNameID = id; }
 	// UI-PROFILE-1: prefer a resolved UIProfile string-id override, else legacy.
-	int				getNameID() const { return (int)( uiNameIDOverride != -1 ? uiNameIDOverride : chassisNameID ); }
-	int				getEncyclopediaID() const { return (int)( uiEncyclopediaIDOverride != -1 ? uiEncyclopediaIDOverride : encyclopediaID ); }
+	int				getNameID() const { return static_cast<int>(( uiNameIDOverride != -1 ? uiNameIDOverride : chassisNameID )); }
+	int				getEncyclopediaID() const { return static_cast<int>(( uiEncyclopediaIDOverride != -1 ? uiEncyclopediaIDOverride : encyclopediaID )); }
 	const std::string& getFileName() const { return fileName; }
 	int				getHouseID() const{ return houseID; }
 	float			getMaxWeight() const{ return maxWeight; }

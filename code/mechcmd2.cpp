@@ -7,6 +7,7 @@
 //===========================================================================//
 
 #include "mechcmd2_internal.h"
+#include "render_resource_owners.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
@@ -23,6 +24,16 @@
 // MechCmdr2 Global Instances of Things
 // NS3: systemHeap defined in mclib/heap.cpp (engine boundary).
 UserHeapPtr guiHeap = nullptr;
+
+std::unique_ptr<UserInput> ownedUserInput;
+std::unique_ptr<FloatHelp> ownedFloatHelp;
+std::unique_ptr<PANE> ownedPane;
+std::unique_ptr<WINDOW> ownedWindow;
+std::unique_ptr<HeapList> ownedHeapList;
+std::unique_ptr<UserHeap> ownedSystemHeap;
+std::unique_ptr<UserHeap> ownedGuiHeap;
+std::unique_ptr<TimerManager> ownedTimerManager;
+std::unique_ptr<GameSoundSystem> ownedSoundSystem;
 
 
 // NS3: fastFiles/numFastFiles/maxFastFiles defined in mclib/fastfile.cpp (engine boundary).
@@ -150,7 +161,9 @@ glm::vec3 pos[36] =
 long NumDisableAtStart = 0;
 long DisableAtStart[MAX_KILL_AT_START];
 
-OptionsScreenWrapper *optionsScreenWrapper = nullptr;
+std::unique_ptr<OptionsScreenWrapper> optionsScreenWrapper;
+std::unique_ptr<Mission> ownedMission;
+std::unique_ptr<Logistics> ownedLogistics;
 bool bInvokeOptionsScreenFlag = false;
 
 bool SnifferMode = false;
@@ -376,7 +389,7 @@ void __stdcall InitializeGameEngine()
 			uint32_t seed = 0xCAFEBABEu;  // fixed startup seed
 			const std::string seedText = mc2::gate::str<"MC2_RNG_SEED">();   // "" when unset or empty
 			if (!seedText.empty())
-				seed = (uint32_t)strtoul(seedText.c_str(), nullptr, 0);
+				seed = static_cast<uint32_t>(strtoul(seedText.c_str(), nullptr, 0));
 			gos_srand(seed);
 		} else {
 			gos_srand(timeGetTime());
@@ -416,13 +429,15 @@ void __stdcall InitializeGameEngine()
 		// Start the SystemHeap and globalHeapList
 		{
 			ZoneScopedN("InitializeGameEngine heaps");
-			globalHeapList = new HeapList;
+			ownedHeapList = std::make_unique_for_overwrite<HeapList>();
+			globalHeapList = ownedHeapList.get();
 			gosASSERT(globalHeapList != nullptr);
 		
 			globalHeapList->init();
 			globalHeapList->update();		//Run Instrumentation into GOS Debugger Screen
 		
-			systemHeap = new UserHeap;
+			ownedSystemHeap = std::make_unique_for_overwrite<UserHeap>();
+			systemHeap = ownedSystemHeap.get();
 			gosASSERT(systemHeap != nullptr);
 		
 			systemHeap->init(systemHeapSize,"SYSTEM");
@@ -566,7 +581,7 @@ void __stdcall InitializeGameEngine()
 	
 				if (maxFastFiles)
 				{
-					fastFiles = (FastFile **)malloc(maxFastFiles*sizeof(FastFile *));
+					fastFiles = static_cast<FastFile **>(malloc(maxFastFiles*sizeof(FastFile *)));
 					memset(fastFiles,0,maxFastFiles*sizeof(FastFile *));
 	
 					int fileNum = 0;
@@ -827,7 +842,7 @@ void __stdcall InitializeGameEngine()
 				if (result != NO_ERR)
 					TERRAIN_TXM_SIZE = 64;
                 else {
-                    TERRAIN_TXM_SIZE = (int)tmp;
+                    TERRAIN_TXM_SIZE = static_cast<int>(tmp);
                 }
 	
 				result = prefsFile.readIdLong("ObjectTextureRes", tmp);
@@ -963,7 +978,8 @@ void __stdcall InitializeGameEngine()
 		//--------------------------------------------------
 		// Setup Mouse Parameters from Prefs.CFG
 		{ ZoneScopedN("InitializeGameEngine input");
-		userInput = new UserInput;
+		ownedUserInput = std::make_unique_for_overwrite<UserInput>();
+		userInput = ownedUserInput.get();
 		userInput->init();
 		userInput->setMouseDoubleClickThreshold(doubleClickThreshold);
 		userInput->setMouseDragThreshold(dragThreshold);
@@ -986,7 +1002,8 @@ void __stdcall InitializeGameEngine()
 		gosFontHandle = gos_LoadFont(path);
 		FontHandle = gosFontHandle;
 	
-		globalFloatHelp = new FloatHelp(MAX_FLOAT_HELPS);
+		ownedFloatHelp = std::make_unique<FloatHelp>(MAX_FLOAT_HELPS);
+		globalFloatHelp = ownedFloatHelp.get();
 		}
 	
 		//
@@ -1036,7 +1053,7 @@ void __stdcall InitializeGameEngine()
 			STOP(("Could not find MC2.fx"));
 			
 		long effectsSize = effectFile.fileSize();
-		MemoryPtr effectsData = (MemoryPtr)systemHeap->Malloc(effectsSize);
+		MemoryPtr effectsData = static_cast<MemoryPtr>(systemHeap->Malloc(effectsSize));
 		effectFile.read(effectsData,effectsSize);
 		effectFile.close();
 		
@@ -1064,7 +1081,8 @@ void __stdcall InitializeGameEngine()
 		//--------------------------------------------------------------
 		// Start the GUI Heap.
 		{ ZoneScopedN("InitializeGameEngine guiHeap");
-		guiHeap = new UserHeap;
+		ownedGuiHeap = std::make_unique_for_overwrite<UserHeap>();
+		guiHeap = ownedGuiHeap.get();
 		gosASSERT(guiHeap != nullptr);
 		
 		guiHeap->init(guiHeapSize,"GUI");
@@ -1073,7 +1091,8 @@ void __stdcall InitializeGameEngine()
 		//------------------------------------------------
 		// Fire up the MC Texture Manager.
 		{ ZoneScopedN("InitializeGameEngine textureManager");
-		mcTextureManager = new MC_TextureManager;
+		ownedTextureManager = std::make_unique_for_overwrite<MC_TextureManager>();
+		mcTextureManager = ownedTextureManager.get();
 		mcTextureManager->start();
 		}
 	
@@ -1088,17 +1107,20 @@ void __stdcall InitializeGameEngine()
 		//------------------------------------------------
 		// Give the Sound System a Whirl!
 		{ ZoneScopedN("InitializeGameEngine sound");
-		soundSystem = new GameSoundSystem;
+		ownedSoundSystem = std::make_unique_for_overwrite<GameSoundSystem>();
+		soundSystem = ownedSoundSystem.get();
 		soundSystem->init();
-		((SoundSystem *)soundSystem)->init("sound");
+		(static_cast<SoundSystem *>(soundSystem))->init("sound");
 		sndSystem = soundSystem; // for things in the lib that use sound
 		}
 		
 		//-----------------------------------------------
 		// Only used by camera to retrieve screen coords.
 		{ ZoneScopedN("InitializeGameEngine paneWindow");
-		globalPane = new PANE;
-		globalWindow = new WINDOW;
+		ownedPane = std::make_unique_for_overwrite<PANE>();
+		globalPane = ownedPane.get();
+		ownedWindow = std::make_unique_for_overwrite<WINDOW>();
+		globalWindow = ownedWindow.get();
 	
 		globalPane->window = globalWindow;
 		globalPane->x0 = 0;
@@ -1116,7 +1138,8 @@ void __stdcall InitializeGameEngine()
 		//---------------------------------------------------------
 		// Start the Timers
 		{ ZoneScopedN("InitializeGameEngine timers");
-		timerManager = new TimerManager;
+		ownedTimerManager = std::make_unique_for_overwrite<TimerManager>();
+		timerManager = ownedTimerManager.get();
 		timerManager->init();
 		}
 	
@@ -1129,9 +1152,11 @@ void __stdcall InitializeGameEngine()
 		//---------------------------------------------------------
 		// Start the Mission, Scenario and Logistics classes here
 		{ ZoneScopedN("InitializeGameEngine missionLogistics");
-		mission = new Mission;
+		ownedMission = std::make_unique_for_overwrite<Mission>();
+		mission = ownedMission.get();
 		
-		logistics = new Logistics;
+		ownedLogistics = std::make_unique_for_overwrite<Logistics>();
+		logistics = ownedLogistics.get();
 		}
 	
 		{ ZoneScopedN("InitializeGameEngine debugWindow");
@@ -1274,16 +1299,16 @@ void __stdcall InitializeGameEngine()
 			                  Environment.fullScreen ? 1 : 0, 0, Environment.fullScreen ? 0 : 1, 0, 0);
 
 		//Create about a thousand textured random triangles.
-		testVertex = (gos_VERTEX *)malloc(sizeof(gos_VERTEX) * 3000);
-		indexArray = (WORD *)malloc(sizeof(WORD) * 3000);
+		testVertex = static_cast<gos_VERTEX *>(malloc(sizeof(gos_VERTEX) * 3000));
+		indexArray = static_cast<WORD *>(malloc(sizeof(WORD) * 3000));
 		for (long i=0;i<3000;i++)
 		{
 			testVertex[i].x = RandomNumber(1000) - 100;
 			testVertex[i].y = RandomNumber(800) - 100;
-			testVertex[i].z = ((float)RandomNumber(150) / 100.0f) - 0.25f;
+			testVertex[i].z = (static_cast<float>(RandomNumber(150)) / 100.0f) - 0.25f;
 			testVertex[i].rhw = 0.5f;
-			testVertex[i].u = (float)RandomNumber(100) / 100.0f;
-			testVertex[i].v = (float)RandomNumber(100) / 100.0f; 
+			testVertex[i].u = static_cast<float>(RandomNumber(100)) / 100.0f;
+			testVertex[i].v = static_cast<float>(RandomNumber(100)) / 100.0f;
 			testVertex[i].argb = 0x3fffffff;
 			testVertex[i].frgb = 0x3f1f2f3f;
 			indexArray[i] = i;

@@ -44,15 +44,15 @@ void WeaponBolt::render (void)
 		const bool useImmediate = true;
 		const bool vfxTrace = vkVfxTraceOn();
 
-		if (!gosEffect && !hitTarget && !((WeaponBoltTypePtr)getObjectType())->isBeam)
+		if (!gosEffect && !hitTarget && !(static_cast<WeaponBoltTypePtr>(getObjectType()))->isBeam)
 		{
 			gos_VERTEX	lq1Vertices[3], lq2Vertices[3], lq3Vertices[3], lq4Vertices[3];
 			Stuff::Vector4D screenPos;
 			
-			DWORD alphaMode = ((WeaponBoltTypePtr)getObjectType())->boltAlpha;
+			DWORD alphaMode = (static_cast<WeaponBoltTypePtr>(getObjectType()))->boltAlpha;
 			alphaMode <<= 24;
 			
-			DWORD edgeMode = ((WeaponBoltTypePtr)getObjectType())->edgeAlpha;
+			DWORD edgeMode = (static_cast<WeaponBoltTypePtr>(getObjectType()))->edgeAlpha;
 			edgeMode <<= 24;
 			
 			// [PROJECTZ:ScreenXYOracle id=weaponbolt_laser_tip]
@@ -63,7 +63,7 @@ void WeaponBolt::render (void)
 			lq1Vertices[0].rhw		= screenPos.w;
 			lq1Vertices[0].u		= 0.0f;
 			lq1Vertices[0].v		= 0.0f;
-			lq1Vertices[0].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->frontRGB;
+			lq1Vertices[0].argb		= edgeMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->frontRGB;
 	
 			lq2Vertices[0].x		= screenPos.x;
 			lq2Vertices[0].y		= screenPos.y;
@@ -71,7 +71,7 @@ void WeaponBolt::render (void)
 			lq2Vertices[0].rhw		= screenPos.w;
 			lq2Vertices[0].u		= 0.0f;
 			lq2Vertices[0].v		= 0.0f;
-			lq2Vertices[0].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->frontRGB;
+			lq2Vertices[0].argb		= edgeMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->frontRGB;
 	
 			// [PROJECTZ:ScreenXYOracle id=weaponbolt_laser_v0]
 			eye->projectForScreenXY(laserVertices[0],screenPos);
@@ -81,7 +81,7 @@ void WeaponBolt::render (void)
 			lq1Vertices[1].rhw		= screenPos.w;
 			lq1Vertices[1].u		= 0.0f;
 			lq1Vertices[1].v		= 0.0f;
-			lq1Vertices[1].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
+			lq1Vertices[1].argb		= edgeMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->midEdgeRGB;
 			
 			lq3Vertices[1].x		= screenPos.x;
 			lq3Vertices[1].y		= screenPos.y;
@@ -89,7 +89,7 @@ void WeaponBolt::render (void)
 			lq3Vertices[1].rhw		= screenPos.w;
 			lq3Vertices[1].u		= 0.0f;
 			lq3Vertices[1].v		= 0.0f;
-			lq3Vertices[1].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
+			lq3Vertices[1].argb		= edgeMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->midEdgeRGB;
 			
 			// [PROJECTZ:ScreenXYOracle id=weaponbolt_laser_v3]
 			eye->projectForScreenXY(laserVertices[3],screenPos);
@@ -99,7 +99,7 @@ void WeaponBolt::render (void)
 			lq1Vertices[2].rhw		= screenPos.w;
 			lq1Vertices[2].u		= 0.0f;
 			lq1Vertices[2].v		= 0.0f;
-			lq1Vertices[2].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
+			lq1Vertices[2].argb		= alphaMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->middleRGB;
 			
 			lq2Vertices[2].x		= screenPos.x;
 			lq2Vertices[2].y		= screenPos.y;
@@ -107,7 +107,7 @@ void WeaponBolt::render (void)
 			lq2Vertices[2].rhw		= screenPos.w;
 			lq2Vertices[2].u		= 0.0f;
 			lq2Vertices[2].v		= 0.0f;
-			lq2Vertices[2].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
+			lq2Vertices[2].argb		= alphaMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->middleRGB;
 			
 			lq3Vertices[0].x		= screenPos.x;
 			lq3Vertices[0].y		= screenPos.y;
@@ -115,7 +115,7 @@ void WeaponBolt::render (void)
 			lq3Vertices[0].rhw		= screenPos.w;
 			lq3Vertices[0].u		= 0.0f;
 			lq3Vertices[0].v		= 0.0f;
-			lq3Vertices[0].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
+			lq3Vertices[0].argb		= alphaMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->middleRGB;
 			
 			lq4Vertices[0].x		= screenPos.x;
 			lq4Vertices[0].y		= screenPos.y;
@@ -123,7 +123,7 @@ void WeaponBolt::render (void)
 			lq4Vertices[0].rhw		= screenPos.w;
 			lq4Vertices[0].u		= 0.0f;
 			lq4Vertices[0].v		= 0.0f;
-			lq4Vertices[0].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
+			lq4Vertices[0].argb		= alphaMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->middleRGB;
 			
 			// [PROJECTZ:ScreenXYOracle id=weaponbolt_laser_v2]
 			eye->projectForScreenXY(laserVertices[2],screenPos);
@@ -133,7 +133,7 @@ void WeaponBolt::render (void)
 			lq3Vertices[2].rhw		= screenPos.w;
 			lq3Vertices[2].u		= 0.0f;
 			lq3Vertices[2].v		= 0.0f;
-			lq3Vertices[2].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->backRGB;
+			lq3Vertices[2].argb		= edgeMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->backRGB;
 			
 			lq4Vertices[2].x		= screenPos.x;
 			lq4Vertices[2].y		= screenPos.y;
@@ -141,7 +141,7 @@ void WeaponBolt::render (void)
 			lq4Vertices[2].rhw		= screenPos.w;
 			lq4Vertices[2].u		= 0.0f;
 			lq4Vertices[2].v		= 0.0f;
-			lq4Vertices[2].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->backRGB;
+			lq4Vertices[2].argb		= edgeMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->backRGB;
 			
 			// [PROJECTZ:ScreenXYOracle id=weaponbolt_laser_v1]
 			eye->projectForScreenXY(laserVertices[1],screenPos);
@@ -151,7 +151,7 @@ void WeaponBolt::render (void)
 			lq2Vertices[1].rhw		= screenPos.w;
 			lq2Vertices[1].u		= 0.0f;
 			lq2Vertices[1].v		= 0.0f;
-			lq2Vertices[1].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
+			lq2Vertices[1].argb		= edgeMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->midEdgeRGB;
 		
 			lq4Vertices[1].x		= screenPos.x;
 			lq4Vertices[1].y		= screenPos.y;
@@ -159,7 +159,7 @@ void WeaponBolt::render (void)
 			lq4Vertices[1].rhw		= screenPos.w;
 			lq4Vertices[1].u		= 0.0f;
 			lq4Vertices[1].v		= 0.0f;
-			lq4Vertices[1].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
+			lq4Vertices[1].argb		= edgeMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->midEdgeRGB;
 
 			if (vfxTrace) {
 				const bool culled =
@@ -169,7 +169,7 @@ void WeaponBolt::render (void)
 					(lq1Vertices[1].x < eye->viewAddX) || (lq1Vertices[1].y < eye->viewAddY) ||
 					(lq1Vertices[2].x > eye->viewMulX) || (lq1Vertices[2].y > eye->viewMulY) ||
 					(lq1Vertices[2].x < eye->viewAddX) || (lq1Vertices[2].y < eye->viewAddY);
-				mc2::fmt::print_out("[VK_VFX_TRACE] bolt(laser) path={} culled={:d} view=[{:.0f}..{:.0f},{:.0f}..{:.0f}] v0=({:.0f},{:.0f}) v1=({:.0f},{:.0f}) v2=({:.0f},{:.0f}) argb0={:08X}\n", mc2::fmt::safe(useImmediate ? "IMMEDIATE" : "addVertices"), mc2::fmt::as_i32((int)culled), eye->viewAddX, eye->viewMulX, eye->viewAddY, eye->viewMulY, lq1Vertices[0].x, lq1Vertices[0].y, lq1Vertices[1].x, lq1Vertices[1].y, lq1Vertices[2].x, lq1Vertices[2].y, mc2::fmt::as_u32((unsigned)lq1Vertices[0].argb));
+				mc2::fmt::print_out("[VK_VFX_TRACE] bolt(laser) path={} culled={:d} view=[{:.0f}..{:.0f},{:.0f}..{:.0f}] v0=({:.0f},{:.0f}) v1=({:.0f},{:.0f}) v2=({:.0f},{:.0f}) argb0={:08X}\n", mc2::fmt::safe(useImmediate ? "IMMEDIATE" : "addVertices"), mc2::fmt::as_i32(static_cast<int>(culled)), eye->viewAddX, eye->viewMulX, eye->viewAddY, eye->viewMulY, lq1Vertices[0].x, lq1Vertices[0].y, lq1Vertices[1].x, lq1Vertices[1].y, lq1Vertices[2].x, lq1Vertices[2].y, mc2::fmt::as_u32(static_cast<unsigned>(lq1Vertices[0].argb)));
 				fflush(stdout);
 			}
 
@@ -310,15 +310,15 @@ void WeaponBolt::render (void)
 				}
 			}
 		}
-		else if (!hitTarget && ((WeaponBoltTypePtr)getObjectType())->isBeam)
+		else if (!hitTarget && (static_cast<WeaponBoltTypePtr>(getObjectType()))->isBeam)
 		{
 			gos_VERTEX	lq1Vertices[3], lq2Vertices[3], lq3Vertices[3], lq4Vertices[3];
 			Stuff::Vector4D screenPos;
 			
-			DWORD alphaMode = ((WeaponBoltTypePtr)getObjectType())->boltAlpha;
+			DWORD alphaMode = (static_cast<WeaponBoltTypePtr>(getObjectType()))->boltAlpha;
 			alphaMode <<= 24;
 			
-			DWORD edgeMode = ((WeaponBoltTypePtr)getObjectType())->edgeAlpha;
+			DWORD edgeMode = (static_cast<WeaponBoltTypePtr>(getObjectType()))->edgeAlpha;
 			edgeMode <<= 24;
 			
 			glm::vec3 actualPosition;
@@ -343,7 +343,7 @@ void WeaponBolt::render (void)
 			length = hotSpot - position;
 			float dist = glm::length(length);
 			
- 			float realUVRepeat = ((WeaponBoltTypePtr)getObjectType())->uvRepeat * dist / ((WeaponBoltTypePtr)getObjectType())->unitLength;
+			float realUVRepeat = (static_cast<WeaponBoltTypePtr>(getObjectType()))->uvRepeat * dist / (static_cast<WeaponBoltTypePtr>(getObjectType()))->unitLength;
 			
 			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_v0]
 			eye->projectForScreenXY(laserVertices[0],screenPos);
@@ -353,7 +353,7 @@ void WeaponBolt::render (void)
 			lq1Vertices[0].rhw		= screenPos.w;
 			lq1Vertices[0].u		= startUV;
 			lq1Vertices[0].v		= 0.0f;
-			lq1Vertices[0].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
+			lq1Vertices[0].argb		= edgeMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->midEdgeRGB;
 	
 			lq2Vertices[0].x		= screenPos.x;
 			lq2Vertices[0].y		= screenPos.y;
@@ -361,7 +361,7 @@ void WeaponBolt::render (void)
 			lq2Vertices[0].rhw		= screenPos.w;
 			lq2Vertices[0].u		= startUV;
 			lq2Vertices[0].v		= 0.0f;
-			lq2Vertices[0].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
+			lq2Vertices[0].argb		= edgeMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->midEdgeRGB;
 			
 			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_v1]
  			eye->projectForScreenXY(laserVertices[1],screenPos);
@@ -371,7 +371,7 @@ void WeaponBolt::render (void)
 			lq2Vertices[1].rhw		= screenPos.w;
 			lq2Vertices[1].u		= startUV;
 			lq2Vertices[1].v		= 0.999999f;
-			lq2Vertices[1].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
+			lq2Vertices[1].argb		= alphaMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->midEdgeRGB;
 	
 			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_v2]
 			eye->projectForScreenXY(laserVertices[2],screenPos);
@@ -381,7 +381,7 @@ void WeaponBolt::render (void)
 			lq1Vertices[1].rhw		= screenPos.w;
 			lq1Vertices[1].u		= startUV + realUVRepeat;
 			lq1Vertices[1].v		= 0.0f;
-			lq1Vertices[1].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
+			lq1Vertices[1].argb		= edgeMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->middleRGB;
 			
 			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_v3]
 			eye->projectForScreenXY(laserVertices[3],screenPos);
@@ -391,7 +391,7 @@ void WeaponBolt::render (void)
 			lq1Vertices[2].rhw		= screenPos.w;
 			lq1Vertices[2].u		= startUV + realUVRepeat; 
 			lq1Vertices[2].v		= 0.999999f;
-			lq1Vertices[2].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
+			lq1Vertices[2].argb		= alphaMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->middleRGB;
 			
 			lq2Vertices[2].x		= screenPos.x;
 			lq2Vertices[2].y		= screenPos.y;
@@ -399,7 +399,7 @@ void WeaponBolt::render (void)
 			lq2Vertices[2].rhw		= screenPos.w;
 			lq2Vertices[2].u		= startUV + realUVRepeat; 
 			lq2Vertices[2].v		= 0.999999f;
-			lq2Vertices[2].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
+			lq2Vertices[2].argb		= alphaMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->middleRGB;
 			
 			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_side0]
 			eye->projectForScreenXY(laserSide[0],screenPos);
@@ -409,7 +409,7 @@ void WeaponBolt::render (void)
 			lq3Vertices[0].rhw		= screenPos.w;
 			lq3Vertices[0].u		= startUV;
 			lq3Vertices[0].v		= 0.0f;
-			lq3Vertices[0].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
+			lq3Vertices[0].argb		= edgeMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->midEdgeRGB;
 	
 			lq4Vertices[0].x		= screenPos.x;
 			lq4Vertices[0].y		= screenPos.y;
@@ -417,7 +417,7 @@ void WeaponBolt::render (void)
 			lq4Vertices[0].rhw		= screenPos.w;
 			lq4Vertices[0].u		= startUV;
 			lq4Vertices[0].v		= 0.0f;
-			lq4Vertices[0].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
+			lq4Vertices[0].argb		= edgeMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->midEdgeRGB;
 			
 			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_side1]
  			eye->projectForScreenXY(laserSide[1],screenPos);
@@ -427,7 +427,7 @@ void WeaponBolt::render (void)
 			lq4Vertices[1].rhw		= screenPos.w;
 			lq4Vertices[1].u		= startUV;
 			lq4Vertices[1].v		= 0.999999f;
-			lq4Vertices[1].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
+			lq4Vertices[1].argb		= alphaMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->midEdgeRGB;
 	
 			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_side2]
 			eye->projectForScreenXY(laserSide[2],screenPos);
@@ -437,7 +437,7 @@ void WeaponBolt::render (void)
 			lq3Vertices[1].rhw		= screenPos.w;
 			lq3Vertices[1].u		= startUV + realUVRepeat;
 			lq3Vertices[1].v		= 0.0f;
-			lq3Vertices[1].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
+			lq3Vertices[1].argb		= edgeMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->middleRGB;
 			
 			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_side3]
 			eye->projectForScreenXY(laserSide[3],screenPos);
@@ -447,7 +447,7 @@ void WeaponBolt::render (void)
 			lq3Vertices[2].rhw		= screenPos.w;
 			lq3Vertices[2].u		= startUV + realUVRepeat; 
 			lq3Vertices[2].v		= 0.999999f;
-			lq3Vertices[2].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
+			lq3Vertices[2].argb		= alphaMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->middleRGB;
 			
 			lq4Vertices[2].x		= screenPos.x;
 			lq4Vertices[2].y		= screenPos.y;
@@ -455,10 +455,10 @@ void WeaponBolt::render (void)
 			lq4Vertices[2].rhw		= screenPos.w;
 			lq4Vertices[2].u		= startUV + realUVRepeat; 
 			lq4Vertices[2].v		= 0.999999f;
-			lq4Vertices[2].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
+			lq4Vertices[2].argb		= alphaMode + (static_cast<WeaponBoltTypePtr>(getObjectType()))->middleRGB;
 
 			if (vfxTrace) {
-				mc2::fmt::print_out("[VK_VFX_TRACE] beam path={} view=[{:.0f}..{:.0f},{:.0f}..{:.0f}] v0=({:.0f},{:.0f},z{:.3f}) v1=({:.0f},{:.0f},z{:.3f}) v2=({:.0f},{:.0f},z{:.3f}) argb0={:08X} tex={:d}\n", mc2::fmt::safe(useImmediate ? "IMMEDIATE" : "addVertices"), eye->viewAddX, eye->viewMulX, eye->viewAddY, eye->viewMulY, lq1Vertices[0].x, lq1Vertices[0].y, lq1Vertices[0].z, lq1Vertices[1].x, lq1Vertices[1].y, lq1Vertices[1].z, lq1Vertices[2].x, lq1Vertices[2].y, lq1Vertices[2].z, mc2::fmt::as_u32((unsigned)lq1Vertices[0].argb), mc2::fmt::as_u32((unsigned)gosTextureHandle));
+				mc2::fmt::print_out("[VK_VFX_TRACE] beam path={} view=[{:.0f}..{:.0f},{:.0f}..{:.0f}] v0=({:.0f},{:.0f},z{:.3f}) v1=({:.0f},{:.0f},z{:.3f}) v2=({:.0f},{:.0f},z{:.3f}) argb0={:08X} tex={:d}\n", mc2::fmt::safe(useImmediate ? "IMMEDIATE" : "addVertices"), eye->viewAddX, eye->viewMulX, eye->viewAddY, eye->viewMulY, lq1Vertices[0].x, lq1Vertices[0].y, lq1Vertices[0].z, lq1Vertices[1].x, lq1Vertices[1].y, lq1Vertices[1].z, lq1Vertices[2].x, lq1Vertices[2].y, lq1Vertices[2].z, mc2::fmt::as_u32(static_cast<unsigned>(lq1Vertices[0].argb)), mc2::fmt::as_u32(static_cast<unsigned>(gosTextureHandle)));
 				fflush(stdout);
 			}
 

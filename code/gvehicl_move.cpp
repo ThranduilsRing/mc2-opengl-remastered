@@ -331,7 +331,7 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 
 	bool aheadOfPointVehicle = false;
 	bool stopForPointVehicle = false;
-	MoverPtr pointVehicle = (MoverPtr)pilot->getPoint();
+	MoverPtr pointVehicle = static_cast<MoverPtr>(pilot->getPoint());
 	bool hasGroupMoveOrder = (curOrder->isGroupOrder() && curOrder->isMoveOrder());
 	if (!allowedToRun && !hustle && pointVehicle && !pointVehicle->isDisabled() && (pointVehicle != this) && hasGroupMoveOrder) 
 	{
@@ -626,7 +626,7 @@ void GroundVehicle::updateTurret (float newRotatePerSec) {
 	float fireArc = getFireArc();
 	if ((turretRelFacing < -fireArc) || (turretRelFacing > fireArc)) {
 		float newRotateTurret = -turretRelFacing;
-		float maxRate = (float)dynamics.max.groundVehicle.turretYawRate * frameLength;
+		float maxRate = static_cast<float>(dynamics.max.groundVehicle.turretYawRate) * frameLength;
 		if (fabs(newRotateTurret) > maxRate) {
 			if (newRotateTurret < 0.0)
 				newRotateTurret = -maxRate;

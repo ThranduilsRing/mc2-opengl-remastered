@@ -599,25 +599,25 @@ void ControlButton::makeUVs( gos_VERTEX* vertices, int State, ButtonData& data )
 
 			if ( data.textureRotated )
 			{
-				vertices[0].u = right/(float)data.fileWidth + (.1f / (float)data.fileWidth);;
-				vertices[1].u = left/(float)data.fileWidth + (.1f / (float)data.fileWidth);;
-				vertices[2].u = left/(float)data.fileWidth + (.1f / (float)data.fileWidth);
-				vertices[3].u = right/(float)data.fileWidth + (.1f / (float)data.fileWidth);
+				vertices[0].u = right/static_cast<float>(data.fileWidth) + (.1f / static_cast<float>(data.fileWidth));;
+				vertices[1].u = left/static_cast<float>(data.fileWidth) + (.1f / static_cast<float>(data.fileWidth));;
+				vertices[2].u = left/static_cast<float>(data.fileWidth) + (.1f / static_cast<float>(data.fileWidth));
+				vertices[3].u = right/static_cast<float>(data.fileWidth) + (.1f / static_cast<float>(data.fileWidth));
 
-				vertices[0].v = top/(float)data.fileHeight + (.1f / (float)data.fileWidth);;
-				vertices[1].v = top/(float)data.fileHeight + (.1f / (float)data.fileWidth);;
-				vertices[2].v = bottom/(float)data.fileHeight + (.1f / (float)data.fileHeight);;
-				vertices[3].v = bottom/(float)data.fileHeight + (.1f / (float)data.fileHeight);;
+				vertices[0].v = top/static_cast<float>(data.fileHeight) + (.1f / static_cast<float>(data.fileWidth));;
+				vertices[1].v = top/static_cast<float>(data.fileHeight) + (.1f / static_cast<float>(data.fileWidth));;
+				vertices[2].v = bottom/static_cast<float>(data.fileHeight) + (.1f / static_cast<float>(data.fileHeight));;
+				vertices[3].v = bottom/static_cast<float>(data.fileHeight) + (.1f / static_cast<float>(data.fileHeight));;
 			}
 			else
 
 			{
 				{
-					vertices[0].u = vertices[1].u =  left/(float)data.fileWidth + (.1f / (float)data.fileWidth);;
-					vertices[2].u = vertices[3].u = right/(float)data.fileWidth + (.1f / (float)data.fileWidth);
+					vertices[0].u = vertices[1].u =  left/static_cast<float>(data.fileWidth) + (.1f / static_cast<float>(data.fileWidth));;
+					vertices[2].u = vertices[3].u = right/static_cast<float>(data.fileWidth) + (.1f / static_cast<float>(data.fileWidth));
 
-					vertices[0].v = vertices[3].v = top/(float)data.fileHeight + (.1f / (float)data.fileWidth);;
-					vertices[1].v = vertices[2].v = bottom/(float)data.fileHeight + (.1f / (float)data.fileHeight);
+					vertices[0].v = vertices[3].v = top/static_cast<float>(data.fileHeight) + (.1f / static_cast<float>(data.fileWidth));;
+					vertices[1].v = vertices[2].v = bottom/static_cast<float>(data.fileHeight) + (.1f / static_cast<float>(data.fileHeight));
 				}
 			}
 		}

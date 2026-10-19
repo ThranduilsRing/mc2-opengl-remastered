@@ -253,15 +253,15 @@ bool GroundVehicleType::handleCollision (GameObjectPtr collidee, GameObjectPtr c
 			if (sameTeam)
 				collide = false;
 			else {
-				GameObjectPtr collideeRamTarget = ((MoverPtr)collidee)->getPilot()->getCurTacOrder()->getRamTarget();
-				GameObjectPtr colliderRamTarget = ((MoverPtr)collider)->getPilot()->getCurTacOrder()->getRamTarget();
+				GameObjectPtr collideeRamTarget = (static_cast<MoverPtr>(collidee))->getPilot()->getCurTacOrder()->getRamTarget();
+				GameObjectPtr colliderRamTarget = (static_cast<MoverPtr>(collider))->getPilot()->getCurTacOrder()->getRamTarget();
 				if ((collideeRamTarget == collider) || (colliderRamTarget == collidee))
 					collide = true;
 				else
 					collide = false; //(((MoverPtr)collidee)->getPilot()->checkSkill(MWS_PILOTING) >= 0);
 			}
 					
-			if (!((MoverPtr)collidee)->pathLocks && !sameTeam)
+			if (!(static_cast<MoverPtr>(collidee))->pathLocks && !sameTeam)
 			{
 				collide = true;			//Something steppable
 				
@@ -284,7 +284,7 @@ bool GroundVehicleType::handleCollision (GameObjectPtr collidee, GameObjectPtr c
 					//------------------------------------
 					// Adjust my velocity and direction...
 					collidee->rotate(90.0);
-					((MoverPtr)collidee)->bounceToAdjCell();
+					(static_cast<MoverPtr>(collidee))->bounceToAdjCell();
 
 				}
 
@@ -297,9 +297,9 @@ bool GroundVehicleType::handleCollision (GameObjectPtr collidee, GameObjectPtr c
 					shotInfo.init(collider->getWatchID(), -1, 0 /*(long)(collider->getTonnage() / 100.0 + 0.5)*/, hitLocation, collidee->relFacingTo(collider->getPosition()));
 //
 				else
-					shotInfo.init(collider->getWatchID(), -1, (long)(collider->getTonnage() / 10.0 + 0.5), hitLocation, collidee->relFacingTo(collider->getPosition()));
+					shotInfo.init(collider->getWatchID(), -1, static_cast<long>((collider->getTonnage() / 10.0 + 0.5)), hitLocation, collidee->relFacingTo(collider->getPosition()));
 				collidee->handleWeaponHit(&shotInfo, (MPlayer != nullptr));
-				((GroundVehiclePtr)collidee)->deadByCrushed = true;
+				(static_cast<GroundVehiclePtr>(collidee))->deadByCrushed = true;
 
 				//---------------------------------------------
 				if (!sameTeam && (collidee->getWindowsVisible() == turn))
@@ -354,7 +354,7 @@ bool GroundVehicleType::handleDestruction (GameObjectPtr collidee, GameObjectPtr
 	//-------------------------------------------------------
 	// For now, a BattleMech will play a default explosion
 	// and disappear after the explosion is half way through
-	MoverPtr vehicle = (MoverPtr)collidee;
+	MoverPtr vehicle = static_cast<MoverPtr>(collidee);
 
 	if (!vehicle->getPilot())
 		Fatal(0, " No Pilot in this vehicle! ");
@@ -629,7 +629,7 @@ void GroundVehicle::init (bool create, ObjectTypePtr objType) {
 
 	//----------------------------------------------------
 	// Set some mech traits based upon the vehicle Type...
-	GroundVehicleTypePtr vehicleT = (GroundVehicleTypePtr)objType;
+	GroundVehicleTypePtr vehicleT = static_cast<GroundVehicleTypePtr>(objType);
 	for (long curLocation = 0; curLocation < NUM_GROUNDVEHICLE_LOCATIONS; curLocation++) {
 		body[curLocation].maxInternalStructure = vehicleT->maxInternalStructure[curLocation];
 		body[curLocation].CASE = false;
@@ -667,7 +667,7 @@ void GroundVehicle::init (bool create, ObjectTypePtr objType) {
 
 	//-------------------------------------------------------------
 	// The dynamics class starts up here.
-	dynamics = ((GroundVehicleTypePtr)objType)->dynamics;
+	dynamics = (static_cast<GroundVehicleTypePtr>(objType))->dynamics;
 	accel = dynamics.max.groundVehicle.accel;
 
 	//-------------------------------------------------------------
@@ -699,14 +699,14 @@ void GroundVehicle::init (bool create, ObjectTypePtr objType) {
 		//-----------------------------------------------------------------
 		// The only kind of appearanceType the vehicless currently know how
 		// to work with is a spriteTree.  Anything else is wrong.
-	   	appearance->init((GVAppearanceType*)vehicleAppearanceType, (GameObjectPtr)this);
+		appearance->init(static_cast<GVAppearanceType*>(vehicleAppearanceType), static_cast<GameObjectPtr>(this));
 		appearance->setAlphaValue(alphaValue);
 	}
 
 	objectClass = GROUNDVEHICLE;
 	markDistanceMoved = 1000.0;
 
-	pathLocks = ((GroundVehicleTypePtr)objType)->pathLocks;
+	pathLocks = (static_cast<GroundVehicleTypePtr>(objType))->pathLocks;
 	
 	setObscured(true);
 }
@@ -870,8 +870,8 @@ long GroundVehicle::init (FitIniFile* vehicleFile)
 		inventory[curItem].ammoIndex = -1;
 		inventory[curItem].readyTime = 0.0;
 		inventory[curItem].bodyLocation = 255;
-		inventory[curItem].effectiveness = (short)(MasterComponent::masterList[inventory[curItem].masterID].getWeaponDamage() * 10.0 /	// damage over 10 seconds
-										   MasterComponent::masterList[inventory[curItem].masterID].getWeaponRecycleTime());
+		inventory[curItem].effectiveness = static_cast<short>((MasterComponent::masterList[inventory[curItem].masterID].getWeaponDamage() * 10.0 /	// damage over 10 seconds
+										   MasterComponent::masterList[inventory[curItem].masterID].getWeaponRecycleTime()));
 		inventory[curItem].effectiveness *= WeaponRanges[MasterComponent::masterList[inventory[curItem].masterID].getWeaponRange()][1] / 24;
 
 		curItem++;
@@ -957,7 +957,7 @@ long GroundVehicle::init (FitIniFile* vehicleFile)
 		// the ammo type total list...
 		for (long ammoIndex = 0; ammoIndex < numAmmoTypes; ammoIndex++)
 		{
-			if ((long)MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId() == ammoTypeTotal[ammoIndex].masterId) 
+			if (static_cast<long>(MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId()) == ammoTypeTotal[ammoIndex].masterId)
 			{
 				inventory[item].ammoIndex = ammoIndex;
 				break;
@@ -978,19 +978,19 @@ long GroundVehicle::init (FitIniFile* vehicleFile)
 
 	if (canRefit) 
 	{
-		GroundVehicleTypePtr objType = (GroundVehicleTypePtr)ObjectManager->getObjectType(typeHandle);
+		GroundVehicleTypePtr objType = static_cast<GroundVehicleTypePtr>(ObjectManager->getObjectType(typeHandle));
 		armor[GROUNDVEHICLE_LOCATION_TURRET].curArmor = armor[GROUNDVEHICLE_LOCATION_TURRET].maxArmor =
 		(objType)->refitPoints;
 	}
 	if (canRecover) 
 	{
-		GroundVehicleTypePtr objType = (GroundVehicleTypePtr)ObjectManager->getObjectType(typeHandle);
+		GroundVehicleTypePtr objType = static_cast<GroundVehicleTypePtr>(ObjectManager->getObjectType(typeHandle));
 		armor[GROUNDVEHICLE_LOCATION_TURRET].curArmor = armor[GROUNDVEHICLE_LOCATION_TURRET].maxArmor =
 		(objType)->recoverPoints;
 	}
 	if ( mineLayer )
 	{
-		GroundVehicleTypePtr objType = (GroundVehicleTypePtr)ObjectManager->getObjectType(typeHandle);
+		GroundVehicleTypePtr objType = static_cast<GroundVehicleTypePtr>(ObjectManager->getObjectType(typeHandle));
 		armor[GROUNDVEHICLE_LOCATION_TURRET].curArmor = armor[GROUNDVEHICLE_LOCATION_TURRET].maxArmor =
 		(objType)->mineLayer;
 	}
@@ -1061,7 +1061,7 @@ long GroundVehicle::calcCV (bool calcMax) {
 		if (calcMax || !inventory[itemIndex].disabled)
 			defensiveBR += MasterComponent::masterList[inventory[itemIndex].masterID].getCV();
 
-	return((long)(weaponBR + defensiveBR));
+	return(static_cast<long>((weaponBR + defensiveBR)));
 }
 
 //-------------------------------------------------------------------------------------------
@@ -1175,9 +1175,9 @@ long GroundVehicle::setTeamId (long _teamId, bool setup)
 	long result = Mover::setTeamId(_teamId,setup);
 
 	//If we are a resource truck, add resources to our side.
-	if ((turn > 10) && ((GroundVehicleTypePtr)getObjectType())->resourcePoints && (_teamId == Team::home->getId()))
+	if ((turn > 10) && (static_cast<GroundVehicleTypePtr>(getObjectType()))->resourcePoints && (_teamId == Team::home->getId()))
 	{
-		LogisticsData::instance->addResourcePoints(((GroundVehicleTypePtr)getObjectType())->resourcePoints);
+		LogisticsData::instance->addResourcePoints((static_cast<GroundVehicleTypePtr>(getObjectType()))->resourcePoints);
 		soundSystem->playBettySample(BETTY_RESOURCES);
 	}
 

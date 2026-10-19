@@ -56,7 +56,7 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 
 		long mechWID = 0;
 		file->readIdLong("SalvageMechWID", mechWID);
-		mechToRecover[vtolNum] = (MoverPtr)ObjectManager->getByWatchID(mechWID);
+		mechToRecover[vtolNum] = static_cast<MoverPtr>(ObjectManager->getByWatchID(mechWID));
 
 		file->readIdFloat("VTOLFrame",vTol[vtolNum]->currentFrame);
 
@@ -395,9 +395,9 @@ void MissionInterfaceManager::tryStaticPropPick(bool moverSelectedThisFrame,
             "recipe=%d screen=(%d,%d) gl=(%d,%d) fbo=(%d,%d) "
             "vMul=(%.0f,%.0f) vAdd=(%.0f,%.0f) draw=(%d,%d)\n",
             r.lookup.handle.bits,
-            (unsigned)r.lookup.handle.index(),
-            (unsigned)r.lookup.handle.generation(),
-            (int)picked.recipeIndex,
+            static_cast<unsigned>(r.lookup.handle.index()),
+            static_cast<unsigned>(r.lookup.handle.generation()),
+            static_cast<int>(picked.recipeIndex),
             r.ctx.mouseX, r.ctx.mouseY,
             r.ctx.glX,    r.ctx.glY,
             r.ctx.fboX,   r.ctx.fboY,
@@ -475,8 +475,8 @@ void MissionInterfaceManager::tryMechPick(bool moverSelectedThisFrame,
                     "[GAMEPLAY_PICK v1] miss kind=Mech reason=stale_handle "
                     "handle=%u idx=%u gen=%u screen=(%d,%d) gl=(%d,%d)\n",
                     r.lookup.handle.bits,
-                    (unsigned)r.lookup.handle.index(),
-                    (unsigned)r.lookup.handle.generation(),
+                    static_cast<unsigned>(r.lookup.handle.index()),
+                    static_cast<unsigned>(r.lookup.handle.generation()),
                     r.ctx.mouseX, r.ctx.mouseY,
                     r.ctx.glX,    r.ctx.glY);
             }
@@ -506,7 +506,7 @@ void MissionInterfaceManager::tryMechPick(bool moverSelectedThisFrame,
             const bool mpDefeat   = (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]);
             const bool hostile    = (bm->getTeamId() != Team::home->getId());
             const bool disabled   = bm->isDisabled();
-            const bool sub_q1     = (((Mover*)bm)->conStat < CONTACT_SENSOR_QUALITY_1);
+            const bool sub_q1     = ((static_cast<Mover*>(bm))->conStat < CONTACT_SENSOR_QUALITY_1);
             const bool fogSuppresses =
                 !showMovers && !mpDefeat && hostile && !disabled && sub_q1;
             visible = !fogSuppresses;
@@ -537,9 +537,9 @@ void MissionInterfaceManager::tryMechPick(bool moverSelectedThisFrame,
             "mech=%p screen=(%d,%d) gl=(%d,%d) "
             "fbo=(%d,%d) vMul=(%.0f,%.0f) vAdd=(%.0f,%.0f) draw=(%d,%d)%s\n",
             r.lookup.handle.bits,
-            (unsigned)r.lookup.handle.index(),
-            (unsigned)r.lookup.handle.generation(),
-            (void*)bm,
+            static_cast<unsigned>(r.lookup.handle.index()),
+            static_cast<unsigned>(r.lookup.handle.generation()),
+            static_cast<void*>(bm),
             r.ctx.mouseX, r.ctx.mouseY,
             r.ctx.glX,    r.ctx.glY,
             r.ctx.fboX,   r.ctx.fboY,

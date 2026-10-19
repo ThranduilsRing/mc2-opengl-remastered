@@ -7,7 +7,12 @@ mission2.cpp			: The parts of mission.cpp that we need for the mech viewer
 \*************************************************************************************************/
 
 #include"mission.h"
+#include "render_resource_owners.h"
+
 #include"gos_profiler.h"
+
+std::unique_ptr<MC_TextureManager> ownedTextureManager;
+std::unique_ptr<WeaponEffects> ownedWeaponEffects;
 
 bool Mission::statisticsInitialized = 0;
 
@@ -102,7 +107,8 @@ void Mission::initBareMinimum()
 
 	if ( !mcTextureManager )
 	{
-		mcTextureManager = new MC_TextureManager;
+		ownedTextureManager = std::make_unique_for_overwrite<MC_TextureManager>();
+		mcTextureManager = ownedTextureManager.get();
 		mcTextureManager->start();
 
 	}
@@ -124,7 +130,8 @@ void Mission::initBareMinimum()
 
 	if ( !weaponEffects )
 	{
-		weaponEffects = new WeaponEffects;
+		ownedWeaponEffects = std::make_unique_for_overwrite<WeaponEffects>();
+		weaponEffects = ownedWeaponEffects.get();
 		weaponEffects->init("Effects");
 	}
 
@@ -158,23 +165,23 @@ void Mission::initializeStatistics()
 	StatisticFormat( "=========================" );
 	StatisticFormat( "" );
 
-	AddStatistic( "Terrain Update",					"%", gos_timedata, (void*)&MCTimeTerrainUpdate		,		0 );
-	AddStatistic( "Camera Update",					"%", gos_timedata, (void*)&MCTimeCameraUpdate       ,       0 );
-	AddStatistic( "Weather Update",					"%", gos_timedata, (void*)&MCTimeWeatherUpdate      ,       0 );
-	AddStatistic( "PathManager Update",				"%", gos_timedata, (void*)&MCTimePathManagerUpdate  ,       0 ); 
-	AddStatistic( "Terrain Geometry",				"%", gos_timedata, (void*)&MCTimeTerrainGeometry    ,       0 ); 
-	AddStatistic( "Interface Update",				"%", gos_timedata, (void*)&MCTimeInterfaceUpdate    ,       0 ); 
-	AddStatistic( "Crater Update",					"%", gos_timedata, (void*)&MCTimeCraterUpdate       ,       0 ); 
-	AddStatistic( "TXM Mgr Update",					"%", gos_timedata, (void*)&MCTimeTXMManagerUpdate   ,       0 ); 
-	AddStatistic( "Sensor Update",					"%", gos_timedata, (void*)&MCTimeSensorUpdate       ,       0 ); 
-	AddStatistic( "LOS Update",						"%", gos_timedata, (void*)&MCTimeLOSUpdate			,       0 );
-	AddStatistic( "Collision Update",				"%", gos_timedata, (void*)&MCTimeCollisionUpdate    ,       0 ); 
-	AddStatistic( "Mission Script",					"%", gos_timedata, (void*)&MCTimeMissionScript      ,       0 ); 
-	AddStatistic( "Multiplayer Update",				"%", gos_timedata, (void*)&MCTimeMultiplayerUpdate  ,       0 );
+	AddStatistic( "Terrain Update",					"%", gos_timedata, static_cast<void*>(&MCTimeTerrainUpdate)		,		0 );
+	AddStatistic( "Camera Update",					"%", gos_timedata, static_cast<void*>(&MCTimeCameraUpdate)       ,       0 );
+	AddStatistic( "Weather Update",					"%", gos_timedata, static_cast<void*>(&MCTimeWeatherUpdate)      ,       0 );
+	AddStatistic( "PathManager Update",				"%", gos_timedata, static_cast<void*>(&MCTimePathManagerUpdate)  ,       0 );
+	AddStatistic( "Terrain Geometry",				"%", gos_timedata, static_cast<void*>(&MCTimeTerrainGeometry)    ,       0 );
+	AddStatistic( "Interface Update",				"%", gos_timedata, static_cast<void*>(&MCTimeInterfaceUpdate)    ,       0 );
+	AddStatistic( "Crater Update",					"%", gos_timedata, static_cast<void*>(&MCTimeCraterUpdate)       ,       0 );
+	AddStatistic( "TXM Mgr Update",					"%", gos_timedata, static_cast<void*>(&MCTimeTXMManagerUpdate)   ,       0 );
+	AddStatistic( "Sensor Update",					"%", gos_timedata, static_cast<void*>(&MCTimeSensorUpdate)       ,       0 );
+	AddStatistic( "LOS Update",						"%", gos_timedata, static_cast<void*>(&MCTimeLOSUpdate)			,       0 );
+	AddStatistic( "Collision Update",				"%", gos_timedata, static_cast<void*>(&MCTimeCollisionUpdate)    ,       0 );
+	AddStatistic( "Mission Script",					"%", gos_timedata, static_cast<void*>(&MCTimeMissionScript)      ,       0 );
+	AddStatistic( "Multiplayer Update",				"%", gos_timedata, static_cast<void*>(&MCTimeMultiplayerUpdate)  ,       0 );
 	StatisticFormat( "=========================" );
-	AddStatistic( "Total Mission Time", 			"%", gos_timedata, (void*)&MCTimeMissionTotal		,       0 );
+	AddStatistic( "Total Mission Time", 			"%", gos_timedata, static_cast<void*>(&MCTimeMissionTotal)		,       0 );
 	StatisticFormat( "=========================" );
-	AddStatistic( "Total LOS Calc Time", 			"%", gos_timedata, (void*)&MCTimeLOSCalc    		,       0 ); 
+	AddStatistic( "Total LOS Calc Time", 			"%", gos_timedata, static_cast<void*>(&MCTimeLOSCalc)    		,       0 );
 
 	statisticsInitialized = true;
 

@@ -164,7 +164,7 @@ void OptionsXScreen::init(FitIniFile* file)
 		if ( NO_ERR != tmpFile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", (const char*)path );
+			sprintf( error, "couldn't open file %s", static_cast<const char*>(path) );
 			Assert( 0, 0, error );
 			return;	
 		}
@@ -405,7 +405,7 @@ void OptionsGraphics::init(long xOffset, long yOffset)
 	if ( NO_ERR !=file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", (const char*)path );
+		sprintf( error, "couldn't open file %s", static_cast<const char*>(path) );
 		Assert( 0, 0, error );
 		return;	
 	}
@@ -473,7 +473,7 @@ void OptionsGraphics::init(long xOffset, long yOffset)
 	if ( NO_ERR !=file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", (const char*)path );
+		sprintf( error, "couldn't open file %s", static_cast<const char*>(path) );
 		Assert( 0, 0, error );
 		return;	
 	}
@@ -507,7 +507,7 @@ void OptionsGraphics::init(long xOffset, long yOffset)
 
 		if (gos_GetMachineInformation(gos_Info_GetDeviceLocalMemory, i) >= minTextureRam)
 		{
-			const char *deviceName = (const char*)gos_GetMachineInformation( gos_Info_GetDeviceName, i);
+			const char *deviceName = reinterpret_cast<const char*>(gos_GetMachineInformation( gos_Info_GetDeviceName, i));
 		
 			//Save name to other string here.
 			cardList.AddItem( deviceName, 0xffffffff );
@@ -1057,17 +1057,17 @@ void OptionsGamePlay::render()
 			 Environment.screenWidth > 0 && Environment.screenHeight > 0 )
 		{
 			int bx = 0, by = 0, bw = 0, bh = 0;
-			if ( gos_ComputeUiCanvasBox( (int)dw, (int)dh, &bx, &by, &bw, &bh ) )
+			if ( gos_ComputeUiCanvasBox( static_cast<int>(dw), static_cast<int>(dh), &bx, &by, &bw, &bh ) )
 			{
-				sx = (float)bw / (float)Environment.screenWidth;
-				sy = (float)bh / (float)Environment.screenHeight;
-				ox = (float)bx;
-				oy = (float)by;
+				sx = static_cast<float>(bw) / static_cast<float>(Environment.screenWidth);
+				sy = static_cast<float>(bh) / static_cast<float>(Environment.screenHeight);
+				ox = static_cast<float>(bx);
+				oy = static_cast<float>(by);
 			}
 			else
 			{
-				sx = dw / (float)Environment.screenWidth;
-				sy = dh / (float)Environment.screenHeight;
+				sx = dw / static_cast<float>(Environment.screenWidth);
+				sy = dh / static_cast<float>(Environment.screenHeight);
 			}
 		}
 		camera.setPreviewOffscreen( true );
@@ -1255,14 +1255,14 @@ void OptionsHotKeys::update()
 	if ( bShowDlg )
 	{
 		LogisticsOKDialog* dlg = LogisticsOKDialog::instance();
-		HK_TRACE("event=dlg_tick dlg=%p", (void*)dlg);
+		HK_TRACE("event=dlg_tick dlg=%p", static_cast<void*>(dlg));
 		dlg->update();
 		if ( dlg->isDone() )
 		{
 			int status = dlg->getStatus();
 			HK_TRACE("event=dlg_done status=%d curHotKey=0x%08lx items=%ld sel=%ld",
-				status, (unsigned long)curHotKey,
-				(long)hotKeyList.GetItemCount(), (long)hotKeyList.GetSelectedItem());
+				status, static_cast<unsigned long>(curHotKey),
+				static_cast<long>(hotKeyList.GetItemCount()), static_cast<long>(hotKeyList.GetSelectedItem()));
 			bShowDlg = 0;
 			if ( LogisticsDialog::YES == status )
 			{
@@ -1278,16 +1278,16 @@ void OptionsHotKeys::update()
 
 				if ( index > -1 )
 				{
-					HotKeyListItem* pItemToSet = (HotKeyListItem*)hotKeyList.GetItem( index );
-					HK_TRACE("event=swap_target index=%ld pItemToSet=%p", index, (void*)pItemToSet);
+					HotKeyListItem* pItemToSet = static_cast<HotKeyListItem*>(hotKeyList.GetItem( index ));
+					HK_TRACE("event=swap_target index=%ld pItemToSet=%p", index, static_cast<void*>(pItemToSet));
 					// now I've got to find the other one with th new key and set it to the old key
 					for ( int i = 0; i < hotKeyList.GetItemCount(); i++ )
 					{
-						HotKeyListItem* pTmpItem = (HotKeyListItem*)hotKeyList.GetItem( i );
+						HotKeyListItem* pTmpItem = static_cast<HotKeyListItem*>(hotKeyList.GetItem( i ));
 						HK_TRACE("event=swap_iter i=%d pTmpItem=%p hotKey=0x%08lx cmd=%ld",
-							i, (void*)pTmpItem,
-							pTmpItem ? (unsigned long)pTmpItem->getHotKey() : 0UL,
-							pTmpItem ? (long)pTmpItem->getCommand() : -1L);
+							i, static_cast<void*>(pTmpItem),
+							pTmpItem ? static_cast<unsigned long>(pTmpItem->getHotKey()) : 0UL,
+							pTmpItem ? static_cast<long>(pTmpItem->getCommand()) : -1L);
 						if ( pTmpItem->getHotKey() == curHotKey  && pTmpItem != pItemToSet )
 						{
 
@@ -1295,10 +1295,10 @@ void OptionsHotKeys::update()
 							long*	defaultKeys = MissionInterfaceManager::getOldKeys();
 							int defaultKey = defaultKeys[pTmpItem->getCommand()];
 							HK_TRACE("event=swap_conflict_match i=%d defaultKey=0x%08x defaultKeys=%p",
-								i, (unsigned)defaultKey, (void*)defaultKeys);
+								i, static_cast<unsigned>(defaultKey), static_cast<void*>(defaultKeys));
 							for ( int j = 0; j < hotKeyList.GetItemCount(); j++ )
 							{
-								HotKeyListItem* pCheckItem = (HotKeyListItem*)hotKeyList.GetItem( j );
+								HotKeyListItem* pCheckItem = static_cast<HotKeyListItem*>(hotKeyList.GetItem( j ));
 								if ( pCheckItem->getHotKey() == defaultKey )
 								{
 									defaultKey = -1;
@@ -1313,13 +1313,13 @@ void OptionsHotKeys::update()
 
 							char tmpKeyStr[256];
 							tmpKeyStr[0] = 0;
-							HK_TRACE("event=swap_assign oldKey=0x%08lx tgt=%p", (unsigned long)oldKey, (void*)pTmpItem);
+							HK_TRACE("event=swap_assign oldKey=0x%08lx tgt=%p", static_cast<unsigned long>(oldKey), static_cast<void*>(pTmpItem));
 							makeKeyString( oldKey, tmpKeyStr );
 							pTmpItem->setHotKey( oldKey );
 							pTmpItem->setKey( tmpKeyStr );
 						}
 					}
-					HK_TRACE("event=swap_finalize pItemToSet=%p curHotKey=0x%08lx", (void*)pItemToSet, (unsigned long)curHotKey);
+					HK_TRACE("event=swap_finalize pItemToSet=%p curHotKey=0x%08lx", static_cast<void*>(pItemToSet), static_cast<unsigned long>(curHotKey));
 					pItemToSet->setKey( keysString );
 					pItemToSet->setHotKey( curHotKey );
 					hotKeyList.SelectItem( -1 );
@@ -1351,7 +1351,7 @@ void OptionsHotKeys::update()
 
 		if ( index > -1 )
 		{
-			HotKeyListItem* pItem = (HotKeyListItem*)hotKeyList.GetItem( index );
+			HotKeyListItem* pItem = static_cast<HotKeyListItem*>(hotKeyList.GetItem( index ));
 			tmpKey = gos_GetKey();
 
 			if ( tmpKey )
@@ -1364,15 +1364,15 @@ void OptionsHotKeys::update()
 
 				curHotKey = tmpKey;
 				HK_TRACE("event=poll_input curHotKey=0x%08lx pItem=%p index=%d",
-					(unsigned long)curHotKey, (void*)pItem, index);
+					static_cast<unsigned long>(curHotKey), static_cast<void*>(pItem), index);
 				// check and see if anyone else is using this one...
 				for ( int i = 0; i < hotKeyList.GetItemCount(); i++ )
 				{
-					HotKeyListItem* pTmpItem = (HotKeyListItem*)hotKeyList.GetItem( i );
+					HotKeyListItem* pTmpItem = static_cast<HotKeyListItem*>(hotKeyList.GetItem( i ));
 					if ( pTmpItem->getHotKey() == curHotKey  && pTmpItem != pItem )
 					{
 						HK_TRACE("event=conflict_found i=%d pTmpItem=%p hotKey=0x%08lx bShowDlg_was=%d",
-							i, (void*)pTmpItem, (unsigned long)pTmpItem->getHotKey(), bShowDlg ? 1 : 0);
+							i, static_cast<void*>(pTmpItem), static_cast<unsigned long>(pTmpItem->getHotKey()), bShowDlg ? 1 : 0);
 						LogisticsOKDialog::instance()->setText( IDS_OPTIONS_HOTKEY_ERROR, IDS_DIALOG_NO, IDS_DIALOG_YES  );
 						LogisticsOKDialog::instance()->begin();
 						bShowDlg = true;
@@ -1492,22 +1492,22 @@ int OptionsHotKeys::makeInputKeyString( long& tmpKey, char* hotKeyString )
 
 void OptionsHotKeys::begin()
 {
-	HK_TRACE("event=screen_begin items=%ld", (long)hotKeyList.GetItemCount());
+	HK_TRACE("event=screen_begin items=%ld", static_cast<long>(hotKeyList.GetItemCount()));
 	helpTextArrayID = 2;
 	reset(0);
 	refreshHotKeyList();
 }
 void OptionsHotKeys::end()
 {
-	HK_TRACE("event=screen_end_begin items=%ld bShowDlg=%d", (long)hotKeyList.GetItemCount(), bShowDlg ? 1 : 0);
+	HK_TRACE("event=screen_end_begin items=%ld bShowDlg=%d", static_cast<long>(hotKeyList.GetItemCount()), bShowDlg ? 1 : 0);
 	for ( int i= 0; i < hotKeyList.GetItemCount(); i++ )
 	{
-		HotKeyListItem* pItem = (HotKeyListItem*)hotKeyList.GetItem( i );
+		HotKeyListItem* pItem = static_cast<HotKeyListItem*>(hotKeyList.GetItem( i ));
 		if ( pItem )
 		{
 			int Command = pItem->getCommand();
 			int Key = pItem->getHotKey();
-			HK_TRACE("event=screen_end_setkey i=%d cmd=%d key=0x%08x", i, Command, (unsigned)Key);
+			HK_TRACE("event=screen_end_setkey i=%d cmd=%d key=0x%08x", i, Command, static_cast<unsigned>(Key));
 
 			MissionInterfaceManager::setHotKey( Command, (gosEnum_KeyIndex)(Key & 0x000ffff),
 				Key & SHIFT,Key & CTRL, Key & ALT );
@@ -1642,7 +1642,7 @@ void ScrollX::update()
 
 		if ( userInput->isLeftDrag() && lastX ) // dragging the little tab
 		{
-			float delta = (float)mouseX - (buttons[0]->globalX() + buttons[0]->width() );
+			float delta = static_cast<float>(mouseX) - (buttons[0]->globalX() + buttons[0]->width() );
 			// figure out what this translates to
 			float physicalRange = width() - buttons[0]->width() - buttons[1]->width() - buttons[2]->width();
 			float RealRange = scrollMax;
@@ -1677,7 +1677,7 @@ void ScrollX::update()
 					{
 						float physicalRange = width() - buttons[0]->width() - buttons[1]->width() - buttons[2]->width();
 						float RealRange = scrollMax;
-						float delta = (float)mouseX - (buttons[0]->globalX() + buttons[0]->width());
+						float delta = static_cast<float>(mouseX) - (buttons[0]->globalX() + buttons[0]->width());
 				
 						// if above the thumb, page up, otherwise page down
 						if ( mouseY < buttons[2]->top() )
@@ -1768,7 +1768,7 @@ void HotKeyListItem::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", (const char*)path );
+		sprintf( error, "couldn't open file %s", static_cast<const char*>(path) );
 		Assert( 0, 0, error );
 		return;	
 	}

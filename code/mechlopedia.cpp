@@ -68,7 +68,7 @@ int Mechlopedia::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", (const char*)path );
+		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(path) );
 		Assert( 0, 0, errorStr );
 		return 0;
 	}
@@ -194,7 +194,7 @@ void Mechlopedia::update()
 		if ( newSel >= 0 && newSel != listBox.GetSelectedItem() )
 		{
 			listBox.SelectItem( newSel );
-			aTextListItem* pItem = (aTextListItem*)listBox.GetItem( newSel );
+			aTextListItem* pItem = static_cast<aTextListItem*>(listBox.GetItem( newSel ));
 			if ( pItem && subScreens[currentScreen] )
 				static_cast<SubScreen*>(subScreens[currentScreen])->select( pItem );
 		}
@@ -258,7 +258,7 @@ void Mechlopedia::SubScreen::update()
 			//		groupListBox->GetItem( i )->setColor( 0xff43311C );
 			//	}
 
-				aTextListItem* pItem = (aTextListItem*)groupListBox->GetItem( index );
+				aTextListItem* pItem = static_cast<aTextListItem*>(groupListBox->GetItem( index ));
 			//	pItem->setColor( 0xff866234 );
 				select( pItem );
 
@@ -280,7 +280,7 @@ void Mechlopedia::syncEntityList()
 	items.reserve( listBox.GetItemCount() );
 	for ( int i = 0; i < listBox.GetItemCount(); i++ )
 	{
-		aTextListItem* pItem = (aTextListItem*)listBox.GetItem( i );
+		aTextListItem* pItem = static_cast<aTextListItem*>(listBox.GetItem( i ));
 		if ( pItem ) items.push_back( pItem->getText() );
 	}
 	const bool ok = setDefsListItems( "game.mcl_en.list.entity_selection", items );
@@ -291,7 +291,7 @@ void Mechlopedia::syncEntityList()
 	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
 		printf("[ENCYCLO] syncEntityList screen=%ld legacyItems=%d mirrorOk=%d\n",
-			currentScreen, (int)items.size(), (int)ok);
+			currentScreen, static_cast<int>(items.size()), static_cast<int>(ok));
 		fflush(stdout);
 	}
 
@@ -352,8 +352,8 @@ void Mechlopedia::MechScreen::init()
 	{
 		// Camera bounds from mcl_en_mechs.fit Gui3DView:
 		//   rect = "12,43,154,191"  mountOffset = "285,58"
-		float sx = (Environment.screenWidth > 0) ? (float)Environment.screenWidth / 800.f : 1.f;
-		float sy = (Environment.screenHeight > 0) ? (float)Environment.screenHeight / 600.f : 1.f;
+		float sx = (Environment.screenWidth > 0) ? static_cast<float>(Environment.screenWidth) / 800.f : 1.f;
+		float sy = (Environment.screenHeight > 0) ? static_cast<float>(Environment.screenHeight) / 600.f : 1.f;
 		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
 			FILE* f = fopen("preview_debug.log","a");
@@ -370,7 +370,7 @@ void Mechlopedia::MechScreen::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", (const char*)path );
+		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(path) );
 		Assert( 0, 0, errorStr );
 		return;
 	}
@@ -395,8 +395,8 @@ void Mechlopedia::MechScreen::init()
 	// in MechScreen::setMech() below (that fix operates on camera.setScale(), a
 	// different call than camera.init()'s pixel-rect bounds here).
 	{
-		float sx = (Environment.screenWidth > 0) ? (float)Environment.screenWidth / 800.f : 1.f;
-		float sy = (Environment.screenHeight > 0) ? (float)Environment.screenHeight / 600.f : 1.f;
+		float sx = (Environment.screenWidth > 0) ? static_cast<float>(Environment.screenWidth) / 800.f : 1.f;
+		float sy = (Environment.screenHeight > 0) ? static_cast<float>(Environment.screenHeight) / 600.f : 1.f;
 		camera.init( (statics[4].left() + 285) * sx, (statics[4].top() + 58) * sy,
 		             (statics[4].right() + 285) * sx, (statics[4].bottom() + 58) * sy );
 	}
@@ -451,7 +451,7 @@ void Mechlopedia::MechScreen::begin()
 
 			for ( int j = 0; j < groupListBox->GetItemCount(); j++ )
 			{
-				aTextListItem* pItem = (aTextListItem*)groupListBox->GetItem( j );
+				aTextListItem* pItem = static_cast<aTextListItem*>(groupListBox->GetItem( j ));
 				if ( S_stricmp( name, pItem->getText() ) < 0 )
 				{
 					groupListBox->InsertItem( pEntry, j );
@@ -474,7 +474,7 @@ void Mechlopedia::MechScreen::begin()
 			bool bFound = 0;
 			for ( int j = 0; j < groupListBox->GetItemCount(); j++ )
 			{
-				aTextListItem* pItem = (aTextListItem*)groupListBox->GetItem( j );
+				aTextListItem* pItem = static_cast<aTextListItem*>(groupListBox->GetItem( j ));
 				if ( S_stricmp( pCopters[i]->getName().c_str(), pItem->getText() ) < 0 )
 				{
 					groupListBox->InsertItem( pEntry, j );
@@ -530,7 +530,7 @@ void Mechlopedia::MechScreen::begin()
 		}
 	}
 
-	aTextListItem* pEntry = (aTextListItem*)groupListBox->GetItem( 0 );
+	aTextListItem* pEntry = static_cast<aTextListItem*>(groupListBox->GetItem( 0 ));
 	if ( pEntry )
 	{
 		select( pEntry );
@@ -568,7 +568,7 @@ void Mechlopedia::MechScreen::select( aTextListItem* pItem )
 			if ( FILE* f = fopen("preview_debug.log","a") )
 			{
 				fprintf(f,"[ENCYCLO] select mech text='%s' lookup='%s' variant=%p\n",
-					pText, name.c_str(), (void*)pChassis);
+					pText, name.c_str(), static_cast<void*>(pChassis));
 				fclose(f);
 			}
 		}
@@ -651,11 +651,11 @@ void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, const ch
 	std::vector<unsigned int> colors;
 	for ( int i = 0; i < box.GetItemCount(); i++ )
 	{
-		aTextListItem* pItem = (aTextListItem*)box.GetItem( i );
+		aTextListItem* pItem = static_cast<aTextListItem*>(box.GetItem( i ));
 		if ( pItem )
 		{
 			items.push_back( pItem->getText() );
-			colors.push_back( (unsigned int)pItem->getColor() );
+			colors.push_back( static_cast<unsigned int>(pItem->getColor()) );
 		}
 	}
 	screen->setDefsListItems( listKey, items );
@@ -746,7 +746,7 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 	pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
 
 	cLoadString( IDS_EN_SPEED, text, 255 );
-	sprintf( formatText, text, (long)pVehicle->getDisplaySpeed());
+	sprintf( formatText, text, static_cast<long>(pVehicle->getDisplaySpeed()));
 
 	pItem->setText( formatText );
 	pItem->setColor( color );
@@ -761,7 +761,7 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 		std::vector<std::string> statsItems;
 		for ( int i = 0; i < statsListBox.GetItemCount(); i++ )
 		{
-			aTextListItem* pStat = (aTextListItem*)statsListBox.GetItem( i );
+			aTextListItem* pStat = static_cast<aTextListItem*>(statsListBox.GetItem( i ));
 			if ( pStat ) statsItems.push_back( pStat->getText() );
 		}
 		setDefsListItems( "game.mcl_en_mechs.list.stats", statsItems );
@@ -886,7 +886,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 	pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
 
 	cLoadString( IDS_EN_SPEED, text, 255 );
-	sprintf( formatText, text, (long)pChassis->getDisplaySpeed());	
+	sprintf( formatText, text, static_cast<long>(pChassis->getDisplaySpeed()));
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
@@ -898,7 +898,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 		pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
 
 		cLoadString( IDS_EN_JUMP, text, 255 );
-		sprintf( formatText, text, (long)pChassis->getJumpRange() * 25 );	
+		sprintf( formatText, text, static_cast<long>(pChassis->getJumpRange()) * 25 );
 		
 		pItem->setText( formatText );
 		pItem->setColor( color );
@@ -914,7 +914,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 		std::vector<std::string> statsItems;
 		for ( int i = 0; i < statsListBox.GetItemCount(); i++ )
 		{
-			aTextListItem* pStat = (aTextListItem*)statsListBox.GetItem( i );
+			aTextListItem* pStat = static_cast<aTextListItem*>(statsListBox.GetItem( i ));
 			if ( pStat ) statsItems.push_back( pStat->getText() );
 		}
 		setDefsListItems( "game.mcl_en_mechs.list.stats", statsItems );
@@ -936,8 +936,8 @@ void Mechlopedia::WeaponScreen::init()
 	{
 		// Camera bounds from mcl_en_wep.fit Static4 (GuiImage):
 		//   rect = "12,43,260,191"  mountOffset = "285,58"
-		float sx = (Environment.screenWidth > 0) ? (float)Environment.screenWidth / 800.f : 1.f;
-		float sy = (Environment.screenHeight > 0) ? (float)Environment.screenHeight / 600.f : 1.f;
+		float sx = (Environment.screenWidth > 0) ? static_cast<float>(Environment.screenWidth) / 800.f : 1.f;
+		float sy = (Environment.screenHeight > 0) ? static_cast<float>(Environment.screenHeight) / 600.f : 1.f;
 		camera.init( (12 + 285) * sx, (43 + 58) * sy,
 		             (12 + 260 + 285) * sx, (43 + 191 + 58) * sy );
 		return;
@@ -947,7 +947,7 @@ void Mechlopedia::WeaponScreen::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", (const char*)path );
+		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(path) );
 		Assert( 0, 0, errorStr );
 	}
 
@@ -957,8 +957,8 @@ void Mechlopedia::WeaponScreen::init()
 	statsListBox.move( 285, 58 );
 
 	{
-		float sx = (Environment.screenWidth > 0) ? (float)Environment.screenWidth / 800.f : 1.f;
-		float sy = (Environment.screenHeight > 0) ? (float)Environment.screenHeight / 600.f : 1.f;
+		float sx = (Environment.screenWidth > 0) ? static_cast<float>(Environment.screenWidth) / 800.f : 1.f;
+		float sy = (Environment.screenHeight > 0) ? static_cast<float>(Environment.screenHeight) / 600.f : 1.f;
 		camera.init( (statics[4].left() + 285) * sx, (statics[4].top() + 58) * sy,
 		             (statics[4].right() + 285) * sx, (statics[4].bottom() + 58) * sy );
 	}
@@ -1011,8 +1011,8 @@ void Mechlopedia::WeaponScreen::select( aTextListItem* pEntry )
 
 int __cdecl sortWeapon( const void* pW1, const void* pW2 )
 {
-	LogisticsComponent* p1 = *(LogisticsComponent**)pW1;
-	LogisticsComponent* p2 = *(LogisticsComponent**)pW2;
+	LogisticsComponent* p1 = *static_cast<LogisticsComponent**>(const_cast<void*>(pW1));
+	LogisticsComponent* p2 = *static_cast<LogisticsComponent**>(const_cast<void*>(pW2));
 
 	return S_stricmp( p1->getName(), p2->getName() );
 
@@ -1039,7 +1039,7 @@ void Mechlopedia::WeaponScreen::begin()
 		groupListBox->AddItem( pItem );
 	}
 
-	aTextListItem* pEntry = (aTextListItem*)groupListBox->GetItem( 0 );
+	aTextListItem* pEntry = static_cast<aTextListItem*>(groupListBox->GetItem( 0 ));
 	if ( pEntry )
 	{
 		select( pEntry );
@@ -1117,7 +1117,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 		pEntry = new aTextListItem( IDS_EN_WEAPON_FONT );
 
 		cLoadString( IDS_EN_WEAPON_DAMAGE, buffer, 255 );
-		sprintf( final, buffer, (long)pComponent->getDamage() );
+		sprintf( final, buffer, static_cast<long>(pComponent->getDamage()) );
 		pEntry->setText( final );
 		pEntry->setColor( color );
 		statsListBox.AddItem( pEntry );
@@ -1155,7 +1155,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 	pEntry = new aTextListItem( IDS_EN_WEAPON_FONT );
 
 	cLoadString( IDS_EN_WEAPON_HEAT, buffer, 255 );
-	sprintf( final, buffer, (long)pComponent->getHeat() );
+	sprintf( final, buffer, static_cast<long>(pComponent->getHeat()) );
 	pEntry->setText( final );
 	pEntry->setColor( color );
 	statsListBox.AddItem( pEntry );
@@ -1166,7 +1166,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 		pEntry = new aTextListItem( IDS_EN_WEAPON_FONT );
 
 		cLoadString( IDS_EN_WEAPON_AMMO, buffer, 255 );
-		sprintf( final, buffer, (long)pComponent->getAmmo() );
+		sprintf( final, buffer, static_cast<long>(pComponent->getAmmo()) );
 		pEntry->setText( final );
 		pEntry->setColor( color );
 		statsListBox.AddItem( pEntry );
@@ -1176,7 +1176,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 	pEntry = new aTextListItem( IDS_EN_WEAPON_FONT );
 
 	cLoadString( IDS_EN_WEAPON_COST, buffer, 255 );
-	sprintf( final, buffer, (long)pComponent->getCost() );
+	sprintf( final, buffer, static_cast<long>(pComponent->getCost()) );
 	pEntry->setText( final );
 	pEntry->setColor( color );
 	statsListBox.AddItem( pEntry );
@@ -1212,7 +1212,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 		std::vector<std::string> statsItems;
 		for ( int i = 0; i < statsListBox.GetItemCount(); i++ )
 		{
-			aTextListItem* pStat = (aTextListItem*)statsListBox.GetItem( i );
+			aTextListItem* pStat = static_cast<aTextListItem*>(statsListBox.GetItem( i ));
 			if ( pStat ) statsItems.push_back( pStat->getText() );
 		}
 		setDefsListItems( "game.mcl_en_wep.list.stats", statsItems );
@@ -1230,7 +1230,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 		const int boxX = 10, boxY = 272, boxW = 117, boxH = 180;
 		setDefsElementImageRegion(
 			"game.mcl_en_wep.image.static_icon_of_weapon_gets_centered_here",
-			(const char*)iconPath,
+			static_cast<const char*>(iconPath),
 			0, 0, cellX * 48, cellY * 32,
 			boxX + ( boxW - iconW ) / 2, boxY + ( boxH - iconH ) / 2, iconW, iconH );
 	}
@@ -1251,7 +1251,7 @@ void Mechlopedia::PersonalityScreen::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", (const char*)path );
+		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(path) );
 		Assert( 0, 0, errorStr );
 		return;
 	}
@@ -1297,7 +1297,7 @@ void Mechlopedia::PersonalityScreen::begin()
 		{
 			for ( int j = 0; j < groupListBox->GetItemCount(); j++ )
 			{
-				MechlopediaListItem* pTmpItem = (MechlopediaListItem*)groupListBox->GetItem( j );
+				MechlopediaListItem* pTmpItem = static_cast<MechlopediaListItem*>(groupListBox->GetItem( j ));
 				// The list is ordered by name, ignoring ASCII case; the stock personality names keep the order of the former locale collation.
 				if ( mc2::str::icompare( upper, mc2::str::from_c( pTmpItem->getText() ) ) < 0 )
 				{
@@ -1315,7 +1315,7 @@ void Mechlopedia::PersonalityScreen::begin()
 
 	}
 
-	aTextListItem* pItem = (aTextListItem*)groupListBox->GetItem( 0 );
+	aTextListItem* pItem = static_cast<aTextListItem*>(groupListBox->GetItem( 0 ));
 	if ( pItem )
 	{
 		select( pItem );
@@ -1366,7 +1366,7 @@ void Mechlopedia::PersonalityScreen::select( aTextListItem* pEntry )
 	}
 
 	if ( hasDefsUiPage() )
-		setDefsElementTexture( "game.mcl_en_person.image.personality_picture_is_placed_here", std::string((const char*)path) );
+		setDefsElementTexture( "game.mcl_en_person.image.personality_picture_is_placed_here", std::string(static_cast<const char*>(path)) );
 }
 
 ////////////////////////////////////////////////////////
@@ -1390,7 +1390,7 @@ void MechlopediaListItem::init( )
 	if ( NO_ERR != file.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn' open file %s", (const char*)path );
+		sprintf( errorStr, "couldn' open file %s", static_cast<const char*>(path) );
 		Assert( 0, 0, errorStr );
 		return;
 	}
@@ -1400,7 +1400,7 @@ void MechlopediaListItem::init( )
 		s_templateItem = new MechlopediaListItem();
 		s_templateItem->bmp.init( &file, "Static0" );
 		s_templateItem->bmpAnim.init( &file, "Animation1" );
-		((aAnimTextListItem*)s_templateItem)->init( file );
+		(static_cast<aAnimTextListItem*>(s_templateItem))->init( file );
 
 	}
 	
@@ -1435,8 +1435,8 @@ void Mechlopedia::BuildingScreen::init()
 	{
 		// Camera bounds from mcl_en_bldg.fit Gui3DView:
 		//   rect = "12,43,230,232"  mountOffset = "285,58"
-		float sx = (Environment.screenWidth > 0) ? (float)Environment.screenWidth / 800.f : 1.f;
-		float sy = (Environment.screenHeight > 0) ? (float)Environment.screenHeight / 600.f : 1.f;
+		float sx = (Environment.screenWidth > 0) ? static_cast<float>(Environment.screenWidth) / 800.f : 1.f;
+		float sy = (Environment.screenHeight > 0) ? static_cast<float>(Environment.screenHeight) / 600.f : 1.f;
 		camera.init( (12 + 285) * sx, (43 + 58) * sy,
 		             (12 + 230 + 285) * sx, (43 + 232 + 58) * sy );
 		return;
@@ -1446,7 +1446,7 @@ void Mechlopedia::BuildingScreen::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", (const char*)path );
+		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(path) );
 		Assert( 0, 0, errorStr );
 		return;
 	}
@@ -1457,8 +1457,8 @@ void Mechlopedia::BuildingScreen::init()
 	compListBox.move( 285, 58 );
 
 	{
-		float sx = (Environment.screenWidth > 0) ? (float)Environment.screenWidth / 800.f : 1.f;
-		float sy = (Environment.screenHeight > 0) ? (float)Environment.screenHeight / 600.f : 1.f;
+		float sx = (Environment.screenWidth > 0) ? static_cast<float>(Environment.screenWidth) / 800.f : 1.f;
+		float sy = (Environment.screenHeight > 0) ? static_cast<float>(Environment.screenHeight) / 600.f : 1.f;
 		camera.init( (statics[4].left() + 285) * sx, (statics[4].top() + 58) * sy,
 		             (statics[4].right() + 285) * sx, (statics[4].bottom() + 58) * sy );
 	}
@@ -1512,7 +1512,7 @@ void Mechlopedia::BuildingScreen::begin()
 		bool bFound = 0;
 		for ( int j = 0; j < groupListBox->GetItemCount(); j++ )
 		{
-			if ( S_stricmp(  str.c_str(), ((aTextListItem*)groupListBox->GetItem( j ))->getText() ) < 0 )
+			if ( S_stricmp(  str.c_str(), (static_cast<aTextListItem*>(groupListBox->GetItem( j )))->getText() ) < 0 )
 			{
 				MechlopediaListItem* pItem = new MechlopediaListItem();
 				pItem->setText( str );
@@ -1537,7 +1537,7 @@ void Mechlopedia::BuildingScreen::begin()
 		
 	}
 
-	aTextListItem* pItem = (aTextListItem*)groupListBox->GetItem( 0 );
+	aTextListItem* pItem = static_cast<aTextListItem*>(groupListBox->GetItem( 0 ));
 	select( pItem );
 }
 void Mechlopedia::BuildingScreen::select( aTextListItem* pEntry )

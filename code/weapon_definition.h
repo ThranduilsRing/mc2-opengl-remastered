@@ -78,7 +78,7 @@ inline unsigned int weaponIdHash(const char* name) {
     if (!name || name[0] == '\0') return 0u;
     unsigned int h = 2166136261u;   // FNV offset basis
     for (const char* p = name; *p; ++p) {
-        h ^= (unsigned char)*p;
+        h ^= static_cast<unsigned char>(*p);
         h *= 16777619u;             // FNV prime
     }
     return h;
@@ -265,7 +265,7 @@ enum class WeaponEvent {
 // Keep this in lockstep with the enum above; a static_assert in the test locks it.
 enum { NUM_WEAPON_EVENTS = 10 };
 
-inline int weaponEventIndex(WeaponEvent e) { return (int)e; }
+inline int weaponEventIndex(WeaponEvent e) { return static_cast<int>(e); }
 
 // -------------------------------------------------------------------------
 // WeaponAssetKind -- which KIND of asset an event maps to. An event may resolve to
@@ -282,7 +282,7 @@ enum class WeaponAssetKind {
 
 enum { NUM_WEAPON_ASSET_KINDS = 4 };
 
-inline int weaponAssetKindIndex(WeaponAssetKind k) { return (int)k; }
+inline int weaponAssetKindIndex(WeaponAssetKind k) { return static_cast<int>(k); }
 
 // -------------------------------------------------------------------------
 // WeaponPresentationProfile -- VFX/SFX as a FIRST-CLASS facet (the user's

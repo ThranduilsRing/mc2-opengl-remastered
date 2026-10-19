@@ -26,10 +26,10 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 		switch (targetObjectClass) 
 		{
 			case BATTLEMECH:
-				mech = (BattleMechPtr)target;
+				mech = static_cast<BattleMechPtr>(target);
 				break;
 			case GROUNDVEHICLE:
-				vehicle = (GroundVehiclePtr)target;
+				vehicle = static_cast<GroundVehiclePtr>(target);
 				break;
 		}
 		targetPosition = target->getPosition();
@@ -291,9 +291,9 @@ void Mover::disable (unsigned long cause)
 			pilot->handleAlarm(PILOT_ALARM_VEHICLE_INCAPACITATED, cause);
 
 		if (getObjectClass() == BATTLEMECH)
-			if (MPlayer && MPlayer->isServer() && !((BattleMech*)this)->lost) {
+			if (MPlayer && MPlayer->isServer() && !(static_cast<BattleMech*>(this))->lost) {
 				MPlayer->addKillLossChunk(MAX_MC_PLAYERS, getCommanderId());
-				((BattleMech*)this)->lost = true;
+				(static_cast<BattleMech*>(this))->lost = true;
 			}
 
 		setStatus(OBJECT_STATUS_DISABLED);
@@ -438,9 +438,9 @@ bool Mover::refit (float pointsAvailable, float& pointsUsed, bool ammoOnly) {
 
 				if ((getObjectClass() == BATTLEMECH) /*&& (newDamageState != body[i].damageState)*/) {
 					if ((i == MECH_BODY_LOCATION_LLEG) || (i == MECH_BODY_LOCATION_RLEG))
-						((BattleMechPtr)this)->calcLegStatus();
+						(static_cast<BattleMechPtr>(this))->calcLegStatus();
 					if (i == MECH_BODY_LOCATION_CTORSO)
-						((BattleMechPtr)this)->calcTorsoStatus();
+						(static_cast<BattleMechPtr>(this))->calcTorsoStatus();
 				}
 				body[i].damageState = newDamageState;
 				refitPoints -= pointsToUse;
@@ -514,7 +514,7 @@ bool Mover::refit (float pointsAvailable, float& pointsUsed, bool ammoOnly) {
 	// MultiPlayer)...
 	if ((pointsUsed > 0.0) && (pointsUsed < 0.25))
 		pointsUsed = 0.25;
-	pointsUsed = (float)((long)((pointsUsed + 0.125) / 0.25)) / 4.0;
+	pointsUsed = static_cast<float>((static_cast<long>(((pointsUsed + 0.125) / 0.25)))) / 4.0;
 
 	return(result);
 }
@@ -534,7 +534,7 @@ float Mover::calcRecoverPrice (void) {
 	// MultiPlayer)...
 	if ((pointsToUse > 0.0) && (pointsToUse < 0.25))
 		pointsToUse = 0.25;
-	pointsToUse = (float)((long)((pointsToUse + 0.125) / 0.25)) / 4.0;
+	pointsToUse = static_cast<float>((static_cast<long>(((pointsToUse + 0.125) / 0.25)))) / 4.0;
 	return(pointsToUse);
 }
 
@@ -584,9 +584,9 @@ bool Mover::recover (void) {
 				if ((getObjectClass() == BATTLEMECH) /*&& (newDamageState != body[i].damageState)*/) 
 				{
 					if ((i == MECH_BODY_LOCATION_LLEG) || (i == MECH_BODY_LOCATION_RLEG))
-						((BattleMechPtr)this)->calcLegStatus();
+						(static_cast<BattleMechPtr>(this))->calcLegStatus();
 					if (i == MECH_BODY_LOCATION_CTORSO)
-						((BattleMechPtr)this)->calcTorsoStatus();
+						(static_cast<BattleMechPtr>(this))->calcTorsoStatus();
 				}
 
 				body[i].damageState = newDamageState;

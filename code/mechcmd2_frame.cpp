@@ -1,6 +1,7 @@
 // Game main: the per-frame renderer update, engine termination and DoGameLogic.
 // Declared in the class headers; shared names in mechcmd2_internal.h.
 #include "mechcmd2_internal.h"
+#include "render_resource_owners.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #ifdef MC2_ALLOC_STATS
@@ -189,14 +190,14 @@ void __stdcall TerminateGameEngine()
 		if (mission)
 		{
 			mission->destroy(false);
-			delete mission;
+			ownedMission.reset();
 			mission = nullptr;
 		}
 
 		if (logistics)
 		{
 			logistics->destroy();
-			delete logistics;
+			ownedLogistics.reset();
 			logistics = nullptr;
 		}
 
@@ -205,7 +206,7 @@ void __stdcall TerminateGameEngine()
 		if (optionsScreenWrapper)
 		{
 			optionsScreenWrapper->destroy();
-			delete optionsScreenWrapper;
+			optionsScreenWrapper.reset();
 			optionsScreenWrapper = nullptr;
 		}
 
@@ -213,18 +214,18 @@ void __stdcall TerminateGameEngine()
 
 		GameLog::cleanup();
 
-		delete timerManager;
+		ownedTimerManager.reset();
 		timerManager = nullptr;
 
 		if (globalPane)
 		{
-			delete globalPane;
+			ownedPane.reset();
 			globalPane = nullptr;
 		}
 
 		if (globalWindow)
 		{
-			delete globalWindow;
+			ownedWindow.reset();
 			globalWindow = nullptr;
 		}
 
@@ -232,7 +233,7 @@ void __stdcall TerminateGameEngine()
 		{
 			soundSystem->destroy();
 
-			delete soundSystem;
+			ownedSoundSystem.reset();
 			soundSystem = nullptr;
 		}
 
@@ -244,18 +245,18 @@ void __stdcall TerminateGameEngine()
             // textureCacheHeap will be NULL
 			//mcTextureManager->destroy();
 
-			delete mcTextureManager;
+			ownedTextureManager.reset();
 			mcTextureManager = nullptr;
 		}
 
-		delete globalFloatHelp;
+		ownedFloatHelp.reset();
 		globalFloatHelp = nullptr;
 
 		if (systemHeap)
 		{
 			systemHeap->destroy();
 
-			delete systemHeap;
+			ownedSystemHeap.reset();
 			systemHeap = nullptr;
 		}
 
@@ -263,7 +264,7 @@ void __stdcall TerminateGameEngine()
 		{
 			guiHeap->destroy();
 
-			delete guiHeap;
+			ownedGuiHeap.reset();
 			guiHeap = nullptr;
 		}
 
@@ -271,7 +272,7 @@ void __stdcall TerminateGameEngine()
 		{
 			globalHeapList->destroy();
 
-			delete globalHeapList;
+			ownedHeapList.reset();
 			globalHeapList = nullptr;
 		}
 
@@ -288,7 +289,7 @@ void __stdcall TerminateGameEngine()
 		MidLevelRenderer::TerminateClasses();
 		Stuff::TerminateClasses();
 
-		delete userInput;
+		ownedUserInput.reset();
 		userInput = nullptr;
 
 		//Redundant.  Something else is shutting this down.
@@ -306,7 +307,7 @@ void __stdcall TerminateGameEngine()
 		//
 		if (ForceGroupIcon::jumpJetIcon)
 		{
-			delete ForceGroupIcon::jumpJetIcon;
+			ForceGroupIcon::jumpJetIcon.reset();
 			ForceGroupIcon::jumpJetIcon = nullptr;
 		}
 
@@ -507,7 +508,7 @@ void __stdcall DoGameLogic()
 				{
 					if (!optionsScreenWrapper)
 					{
-						optionsScreenWrapper = new OptionsScreenWrapper;
+						optionsScreenWrapper = std::make_unique_for_overwrite<OptionsScreenWrapper>();
 						optionsScreenWrapper->init();
 					}
 					if (mission && mission->missionInterface && !mission->missionInterface->isPaused())
@@ -746,10 +747,10 @@ void __stdcall DoGameLogic()
 			{
 				testVertex[i].x = RandomNumber(1000) - 100;
 				testVertex[i].y = RandomNumber(800) - 100;
-				testVertex[i].z = ((float)RandomNumber(150) / 100.0f) - 0.25f;
+				testVertex[i].z = (static_cast<float>(RandomNumber(150)) / 100.0f) - 0.25f;
 				testVertex[i].rhw = 0.5f;
-				testVertex[i].u = (float)RandomNumber(100) / 100.0f;
-				testVertex[i].v = (float)RandomNumber(100) / 100.0f; 
+				testVertex[i].u = static_cast<float>(RandomNumber(100)) / 100.0f;
+				testVertex[i].v = static_cast<float>(RandomNumber(100)) / 100.0f;
 				testVertex[i].argb = 0x3fffffff;
 				testVertex[i].frgb = 0x3f1f2f3f;
 				indexArray[i] = i;

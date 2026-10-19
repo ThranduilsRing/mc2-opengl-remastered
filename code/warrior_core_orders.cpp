@@ -458,16 +458,16 @@ long MechWarrior::coreAttack (GameObjectPtr target, unsigned long params) {
 		return(1);
 
 	TacticalOrder tacOrder;
-	tacOrder.init((OrderOriginType)ORDER_ORIGIN_COMMANDER, TACTICAL_ORDER_ATTACK_OBJECT, false);
+	tacOrder.init(static_cast<OrderOriginType>(ORDER_ORIGIN_COMMANDER), TACTICAL_ORDER_ATTACK_OBJECT, false);
 	tacOrder.targetWID = target->getWatchID();
-	tacOrder.attackParams.method = (AttackMethod)attackMethod;
+	tacOrder.attackParams.method = static_cast<AttackMethod>(attackMethod);
 	tacOrder.attackParams.aimLocation = aimLocation;
 	if (attackMethod == ATTACKMETHOD_RAMMING)
 		attackRange = FIRERANGE_RAMMING;
-	tacOrder.attackParams.range = (FireRangeType)attackRange;
+	tacOrder.attackParams.range = static_cast<FireRangeType>(attackRange);
 	tacOrder.attackParams.pursue = pursue;
 	tacOrder.attackParams.obliterate = obliterate;
-	tacOrder.attackParams.tactic = (TacticType)tactic;
+	tacOrder.attackParams.tactic = static_cast<TacticType>(tactic);
 	tacOrder.moveParams.keepMoving = keepMoving;
 	tacOrder.moveParams.jump = jump;
 
@@ -563,7 +563,7 @@ long MechWarrior::coreScan (GameObjectPtr object, unsigned long params) {
 
 	if (object && object->getTeam()) {
 		if (object->isMover()) {
-			if (getTeam()->isContact(getVehicle(), (MoverPtr)object, (long)params)) {
+			if (getTeam()->isContact(getVehicle(), static_cast<MoverPtr>(object), static_cast<long>(params))) {
 				coreScanTargetWID = object->getWatchID();
 				return(coreScanTargetWID);
 			}

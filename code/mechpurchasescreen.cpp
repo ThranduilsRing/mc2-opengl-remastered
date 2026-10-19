@@ -75,12 +75,12 @@ int MechPurchaseScreen::init( FitIniFile& file )
 
 	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button" );
 
-	((aObject*)&inventoryListBox)->init( rects[0].left(), rects[0].top(),
+	(static_cast<aObject*>(&inventoryListBox))->init( rects[0].left(), rects[0].top(),
 		rects[0].width(), rects[0].height() );
 
 	inventoryListBox.setScrollBarOrange();
 
-	((aObject*)&variantListBox)->init( rects[1].left(), rects[1].top(),
+	(static_cast<aObject*>(&variantListBox))->init( rects[1].left(), rects[1].top(),
 		rects[1].width(), rects[1].height() );
 
 	variantListBox.setScrollBarOrange();
@@ -309,7 +309,7 @@ void MechPurchaseScreen::begin()
 
 			for ( int i = 0; i < inventoryListBox.GetItemCount(); i++ )
 			{
-				if ( ((MechListBoxItem*)inventoryListBox.GetItem(i))->getMech()->getVariant()
+				if ( (static_cast<MechListBoxItem*>(inventoryListBox.GetItem(i)))->getMech()->getVariant()
 					== (*iter)->getVariant() )
 					bFound = true;
 			}
@@ -323,7 +323,7 @@ void MechPurchaseScreen::begin()
 
 		}
 
-	MechListBoxItem* item = (MechListBoxItem*)inventoryListBox.GetItem( 0 );
+	MechListBoxItem* item = static_cast<MechListBoxItem*>(inventoryListBox.GetItem( 0 ));
 	if ( item )
 	{
 		inventoryListBox.SelectItem( 0 );
@@ -348,7 +348,7 @@ void MechPurchaseScreen::begin()
 
 	if ( !pSelMech )
 	{
-		MechListBoxItem* item = (MechListBoxItem*)variantListBox.GetItem( 0 );
+		MechListBoxItem* item = static_cast<MechListBoxItem*>(variantListBox.GetItem( 0 ));
 		if ( item )
 		{
 			variantListBox.SelectItem( 0 );
@@ -494,10 +494,10 @@ int	MechPurchaseScreen::handleMessage( unsigned long what, unsigned long who )
 						aListItem* pItem = inventoryListBox.GetItem( index );
 						if ( pItem )
 						{
-							LogisticsMech* pMech = ((MechListBoxItem*)pItem)->getMech();
+							LogisticsMech* pMech = (static_cast<MechListBoxItem*>(pItem))->getMech();
 							int oldCount = LogisticsData::instance->getVariantsInInventory( pMech->getVariant(), true );
 							if ( NO_ERR == LogisticsData::instance->sellMech( pMech ) && ( oldCount < 2 ) )
-								((MechListBoxItem*)pItem)->resetMech( );
+								(static_cast<MechListBoxItem*>(pItem))->resetMech( );
 							soundSystem->playDigitalSample( LOG_SELECT );		
 						}                                    
 					}
@@ -553,7 +553,7 @@ void MechPurchaseScreen::addMech( LogisticsMech* pMech )
 
 		for ( int i = 0; i < inventoryListBox.GetItemCount(); i++ )
 		{
-			if ( ((MechListBoxItem*)inventoryListBox.GetItem(i))->getMech()->getVariant()
+			if ( (static_cast<MechListBoxItem*>(inventoryListBox.GetItem(i)))->getMech()->getVariant()
 				== pMech->getVariant() )
 			{
 				return;
@@ -600,7 +600,7 @@ bool MechPurchaseScreen::selectFirstBuyableMech()
 	for ( int i = 0; i < variantListBox.GetItemCount(); i++ )
 	{
 		if ( NO_ERR == LogisticsData::instance->canPurchaseMech( 
-			((MechListBoxItem*)variantListBox.GetItem(i))->getMech()->getVariant() ) )
+			(static_cast<MechListBoxItem*>(variantListBox.GetItem(i)))->getMech()->getVariant() ) )
 		{
 			variantListBox.SelectItem( i );
 			return true;

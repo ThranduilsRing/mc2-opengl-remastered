@@ -147,8 +147,8 @@ void LogisticsMechIcon::setMech( LogisticsMech* pNewMech )
 		if ( mcTextureManager &&
 		     mcTextureManager->tryGetTextureLogicalSize( icon.getTextureHandle(), atlasW, atlasH ) )
 		{
-			if ( atlasW > 0 ) fileW = (float)atlasW;
-			if ( atlasH > 0 ) fileH = (float)atlasH;
+			if ( atlasW > 0 ) fileW = static_cast<float>(atlasW);
+			if ( atlasH > 0 ) fileH = static_cast<float>(atlasH);
 		}
 		// Cell/UV math shared with mechlistbox.cpp via code/icon_atlas_cell.h
 		// (ICON-ATLAS-CELL-EXTRACT-1). FLOOR column count + epsilon + 10-col
@@ -157,7 +157,7 @@ void LogisticsMechIcon::setMech( LogisticsMech* pNewMech )
 		// UNCHANGED on OOB (wrap is load-bearing), one icon_oob line emitted.
 		bool iconOob = false;
 		const icon_atlas::Cell cell = icon_atlas::cellForIndexChecked( index, width, height, fileW, fileH, &iconOob );
-		if ( iconOob && mc2AuditOnce( "ICON_OOB", 0x1000000ull + (unsigned long long)(unsigned long)index ) )
+		if ( iconOob && mc2AuditOnce( "ICON_OOB", 0x1000000ull + static_cast<unsigned long long>(static_cast<unsigned long>(index)) ) )
 			mc2AuditLinef( "[ASSET_LOAD v1] event=icon_oob site=logisticsmechicon index=%ld cell=%.0fx%.0f atlas=%.0fx%.0f",
 				index, width, height, fileW, fileH );
 		const long cols = cell.cols;
@@ -205,8 +205,8 @@ void LogisticsMechIcon::render(long xOffset, long yOffset )
 
 	if ( bDisabled )
 	{
-		GUI_RECT tmprect = { (long)(outline.left() + xOffset), (long)(outline.top() + yOffset),
-			(long)(outline.right() + xOffset), (long)(outline.bottom() + yOffset) };
+		GUI_RECT tmprect = { static_cast<long>((outline.left() + xOffset)), static_cast<long>((outline.top() + yOffset)),
+			static_cast<long>((outline.right() + xOffset)), static_cast<long>((outline.bottom() + yOffset)) };
 
 		drawRect( tmprect, 0xff000000 );
 

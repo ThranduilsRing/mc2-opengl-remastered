@@ -147,7 +147,7 @@ float startLocal = 40.0f;
 				continue;
 
 			land->getCellPos(startCellR,startCellC,currentPos);
-			float localElev = (worldUnitsPerMeter * (float)GameMap->getLocalHeight(startCellR,startCellC));
+			float localElev = (worldUnitsPerMeter * static_cast<float>(GameMap->getLocalHeight(startCellR,startCellC)));
 			currentPos.z += localElev;
 				
 			if (startHeight+startLocal < currentPos.z)
@@ -218,7 +218,7 @@ long Mover::calcGlobalPath (GlobalPathStep* globalPath, GameObjectPtr obj, glm::
 		if (goalArea == -1) {
 			glm::vec3 goalPos = obj->getPosition();
 			if (obj->isBuilding()) {
-				BuildingPtr building = (BuildingPtr)obj;
+				BuildingPtr building = static_cast<BuildingPtr>(obj);
 				long goalRow = 0, goalCol = 0;
 				bool foundGoal = building->calcAdjacentAreaCell(moveLevel, -1, goalRow, goalCol);
 				if (foundGoal)
@@ -372,7 +372,7 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 		float fireRangeInMeters = pilot->getSituationFireRange();
 		long fireCellRange = 0;
 		if (fireRangeInMeters > 0.0) {
-			fireCellRange = (long)(pilot->getSituationFireRange() / metersPerCell);
+			fireCellRange = static_cast<long>((pilot->getSituationFireRange() / metersPerCell));
 			if (fireCellRange < 1)
 				fireCellRange = 1;
 			if (fireCellRange > (MAX_ATTACK_CELLRANGE - 1)/*(GOALMAP_CELL_DIM / 2)*/)
@@ -380,14 +380,14 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 			}
 		else if (fireRangeInMeters == -1.0)
 			fireCellRange = 2;
-		long minCellRange = (long)(getMinFireRange() / metersPerCell);
+		long minCellRange = static_cast<long>((getMinFireRange() / metersPerCell));
 		if (minCellRange > (MAX_ATTACK_CELLRANGE - 1)/*(GOALMAP_CELL_DIM / 2)*/)
 			minCellRange = (MAX_ATTACK_CELLRANGE - 1)/*(GOALMAP_CELL_DIM / 2)*/;
-		long maxCellRange = (long)(getMaxFireRange() / metersPerCell);
+		long maxCellRange = static_cast<long>((getMaxFireRange() / metersPerCell));
 		if (maxCellRange > (MAX_ATTACK_CELLRANGE - 1)/*(GOALMAP_CELL_DIM / 2)*/)
 			maxCellRange = (MAX_ATTACK_CELLRANGE - 1)/*(GOALMAP_CELL_DIM / 2)*/;
 
-		long fireRange = (long)pilot->getCurTacOrder()->attackParams.range;
+		long fireRange = static_cast<long>(pilot->getCurTacOrder()->attackParams.range);
 		if (/*!playerMove && */(fireRange != FIRERANGE_SHORT) && (fireRange != FIRERANGE_MEDIUM) && (fireRange != FIRERANGE_LONG)) {
 			long firstIndex = rangedCellsIndices[maxCellRange + 1][0];
 			long lastIndex = rangedCellsIndices[MAX_ATTACK_CELLRANGE - 1][1];
@@ -876,7 +876,7 @@ int Mover::calcMovePath (MovePathPtr path,
 		float cellLength = (Terrain::worldUnitsPerCell * metersPerWorldUnit);
 		long clearCost = 0;
 		if (maxMoveSpeed != 0.0)
-			clearCost = (long)(cellLength / maxMoveSpeed * 50.0);
+			clearCost = static_cast<long>((cellLength / maxMoveSpeed * 50.0));
 		if (clearCost > 0) {
 			long jumpCost = 0;
 			long numOffsets = 8;
@@ -1105,7 +1105,7 @@ void Mover::updatePathLock (bool set)
 	MoveReconScope _recon_pl(&g_moveRecon_pathlock_ns, &g_moveRecon_frame_pathlock_ns);
 
 	if (getObjectClass() == BATTLEMECH)
-		if (((BattleMechPtr)this)->inJump)
+		if ((static_cast<BattleMechPtr>(this))->inJump)
 			return;
 
 	if (!pathLocks)
@@ -1192,7 +1192,7 @@ int Mover::calcMovePath (MovePathPtr path,
 	float cellLength = (Terrain::worldUnitsPerCell * metersPerWorldUnit);
 	long clearCost = 0;
 	if (maxMoveSpeed != 0)
-		clearCost = (long)(cellLength / maxMoveSpeed * 50.0);
+		clearCost = static_cast<long>((cellLength / maxMoveSpeed * 50.0));
 	if (clearCost > 0) {
 		long jumpCost = 0;
 		long numOffsets = 8;

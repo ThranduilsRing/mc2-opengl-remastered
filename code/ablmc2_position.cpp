@@ -69,7 +69,7 @@ void execGetRelativePositionToObject (void) {
 	GameObjectPtr object = getObject(objectId);
 	if (object && object->isMover()) {
 		glm::vec3 newPos;
-		newPos = ((MoverPtr)object)->relativePosition(angle, distance, flags);
+		newPos = (static_cast<MoverPtr>(object))->relativePosition(angle, distance, flags);
 		relPos[0] = newPos.x;
 		relPos[1] = newPos.y;
 		relPos[2] = newPos.z;

@@ -250,7 +250,7 @@ long BattleMech::calcCV (bool calcMax) {
 
 	// Due to quality communication, the components have float BR ratings, but
 	// the mechs have integer BR ratings. Ahhhh, love those casts...
-	float totalCV = (float)chassisBR;
+	float totalCV = static_cast<float>(chassisBR);
 
 	// Total Component BRs...
 	long numComponents = numWeapons + numAmmos + numOther;
@@ -258,7 +258,7 @@ long BattleMech::calcCV (bool calcMax) {
 		if (calcMax || !inventory[itemIndex].disabled)
 			totalCV += MasterComponent::masterList[inventory[itemIndex].masterID].getCV();
 
-	return((long)totalCV);
+	return(static_cast<long>(totalCV));
 }
 
 long BattleMech::calcLegStatus (void)
@@ -366,7 +366,7 @@ void BattleMech::pilotingCheck (unsigned long situation, float modifier) {
 bool BattleMech::canPowerUp (void)
 {
 #ifdef USEHEAT
-	long heatIndex = (long)heat;
+	long heatIndex = static_cast<long>(heat);
 
 	if (heatIndex > 0)
 	{
@@ -387,7 +387,7 @@ void BattleMech::updateHeat (void)
 	float heatChange = 0.0;
 
 	if (!isDisabled()) {
-		if (((MechActor*)appearance)->currentGestureId == GestureGetUp)
+		if ((reinterpret_cast<MechActor*>(appearance))->currentGestureId == GestureGetUp)
 			heatChange += (StandUpHeat * frameLength);
 		else
 			heatChange += (BodyStateHeat[getBodyState()] * frameLength);
@@ -428,7 +428,7 @@ void BattleMech::updateHeat (void)
 	if (heat < 0.0)
 		heat = 0.0;
 
-	long heatIndex = (long)heat;
+	long heatIndex = static_cast<long>(heat);
 
 	if (!isDisabled()) {
 		if (inventory[lifeSupport].disabled) {
@@ -489,7 +489,7 @@ void BattleMech::updateHeat (void)
 
 					if (numExplodables > 0)
 					{
-						MechControlDataPtr mechCtrlData = (MechControlDataPtr)(control->controlData);
+						MechControlDataPtr mechCtrlData = static_cast<MechControlDataPtr>((control->controlData));
 						mechCtrlData->blowAmmo = true;
 						mechCtrlData->ammoLocation = ammoList[RandomNumber(numExplodables)];
 					}
@@ -643,12 +643,12 @@ long BattleMech::calcSpriteSpeed (float speed, unsigned long flags, long& state,
 		}
 	else if (speed <= maxWalkSpeed) {
 		state = MECH_STATE_WALKING;
-		throttle = (long)(speed / maxWalkSpeed * 100.0);
+		throttle = static_cast<long>((speed / maxWalkSpeed * 100.0));
 		}
 	else if (speed < runSpeed) {
 		if (flags & MECH_SPRITESPEED_FLAG_GO_SLOW) {
 			state = MECH_STATE_WALKING;
-			throttle = (long)(speed / maxWalkSpeed * 100.0);
+			throttle = static_cast<long>((speed / maxWalkSpeed * 100.0));
 			}
 		else
 			state = MECH_STATE_RUNNING;
@@ -825,7 +825,7 @@ void BattleMech::Save (PacketFilePtr file, long packetNum)
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	file->writePacket(packetNum,(MemoryPtr)&data,sizeof(MechData),STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(MechData),STORAGE_TYPE_ZLIB);
 }
 
 void BattleMech::CopyTo (MechData *data)

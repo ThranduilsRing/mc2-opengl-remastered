@@ -157,7 +157,7 @@ void ForceGroupBar::renderOverviewIcons( Camera* eye, float alpha )
 				}
 			}
 
-	unsigned long aByte = (unsigned long)(alpha * 255.0f);
+	unsigned long aByte = static_cast<unsigned long>((alpha * 255.0f));
 	if ( aByte > 255 ) aByte = 255;
 	const unsigned long aBits = aByte << 24;
 
@@ -193,12 +193,12 @@ void ForceGroupBar::renderOverviewIcons( Camera* eye, float alpha )
 	}
 
 	// Icon chips (back frame + unit icon) replicated into local verts.
-	const float texW = (float)ForceGroupIcon::s_textureMemory->width;
-	const float texH = (float)ForceGroupIcon::s_textureMemory->height;
+	const float texW = static_cast<float>(ForceGroupIcon::s_textureMemory->width);
+	const float texH = static_cast<float>(ForceGroupIcon::s_textureMemory->height);
 	const float uIX  = ForceGroupIcon::unitIconX;
 	const float uIY  = ForceGroupIcon::unitIconY;
-	const int perLine     = (int)( texW / uIX );
-	const int iconsPerPage = (int)( texH / uIY );  // rows per page: texture HEIGHT / cell height
+	const int perLine     = static_cast<int>(( texW / uIX ));
+	const int iconsPerPage = static_cast<int>(( texH / uIY ));  // rows per page: texture HEIGHT / cell height
 	// Additive: RGB scales the texel, so encode the cross-fade in RGB (not alpha).
 	const unsigned long iconArgb = 0xff000000 | (aByte << 16) | (aByte << 8) | aByte;
 
@@ -224,8 +224,8 @@ void ForceGroupBar::renderOverviewIcons( Camera* eye, float alpha )
 		const char* nm = chip[i].ic->unit->getName();
 		if ( font && nm && nm[0] )
 		{
-			const int lx = (int)( chip[i].cx - chipW * 0.5f );
-			const int ly = (int)( b + 1.0f );
+			const int lx = static_cast<int>(( chip[i].cx - chipW * 0.5f ));
+			const int ly = static_cast<int>(( b + 1.0f ));
 			gos_TextSetAttributes( font, aBits | 0x00000000, 1.0f, false, true, false, false );
 			gos_TextSetPosition( lx + 1, ly + 1 );
 			gos_TextDraw( nm );
@@ -333,12 +333,12 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 				}
 			}
 
-	unsigned long aB = (unsigned long)( alpha * 255.0f ); if ( aB > 255 ) aB = 255;
+	unsigned long aB = static_cast<unsigned long>(( alpha * 255.0f )); if ( aB > 255 ) aB = 255;
 	const unsigned long aBits = aB << 24;
-	const float texW = (float)ForceGroupIcon::s_textureMemory->width;
-	const float texH = (float)ForceGroupIcon::s_textureMemory->height;
+	const float texW = static_cast<float>(ForceGroupIcon::s_textureMemory->width);
+	const float texH = static_cast<float>(ForceGroupIcon::s_textureMemory->height);
 	const float uIX = ForceGroupIcon::unitIconX, uIY = ForceGroupIcon::unitIconY;
-	const int perLine = (int)( texW / uIX ), iconsPerPage = (int)( texH / uIY );  // rows: texH/cellH
+	const int perLine = static_cast<int>(( texW / uIX )), iconsPerPage = static_cast<int>(( texH / uIY ));  // rows: texH/cellH
 	HGOSFONT3D font = ForceGroupIcon::gosFontHandle ? ForceGroupIcon::gosFontHandle->getTempHandle() : nullptr;
 	const unsigned long iconArgb = 0xff000000 | ( aB << 16 ) | ( aB << 8 ) | aB;
 
@@ -362,7 +362,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 		gos_SetRenderState( gos_State_AlphaTest, 0 );
 		gos_SetRenderState( gos_State_ZCompare, 0 );
 		gos_SetRenderState( gos_State_ZWrite, 0 );
-		unsigned long panel = ( (unsigned long)( alpha * 0.70f * 255.0f ) << 24 ) | 0x000c2230;
+		unsigned long panel = ( static_cast<unsigned long>(( alpha * 0.70f * 255.0f )) << 24 ) | 0x000c2230;
 		gos_VERTEX q[4];
 		for ( int v = 0; v < 4; ++v ) { q[v].z = 0; q[v].rhw = .5f; q[v].argb = panel; q[v].frgb = 0; q[v].u = q[v].v = 0; }
 		q[0].x = l; q[0].y = t; q[1].x = l; q[1].y = b; q[2].x = r; q[2].y = b; q[3].x = r; q[3].y = t;
@@ -387,7 +387,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 			if ( cards[i].fg >= 0 ) mc2::fmt::to_buf(title, "SQUAD {:d}", mc2::fmt::as_i32(cards[i].fg));
 			else { const char* nm = icons[cards[i].mem[0]]->unit->getName(); strncpy( title, nm ? nm : "UNIT", 20 ); title[20] = 0; }
 			gos_TextSetAttributes( font, aBits | 0x00eaf6ff, 1.0f, false, true, false, false );
-			gos_TextSetPosition( (int)( l + pad ), (int)( t + 2 ) );
+			gos_TextSetPosition( static_cast<int>(( l + pad )), static_cast<int>(( t + 2 )) );
 			gos_TextDraw( title );
 
 			// Squad status (highest-priority member activity), bottom row.
@@ -399,7 +399,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 				if ( rk > bestRank ) { bestRank = rk; best = s; }
 			}
 			gos_TextSetAttributes( font, aBits | statusColor( best ), 1.0f, false, true, false, false );
-			gos_TextSetPosition( (int)( l + pad ), (int)( b - titleH - 1 ) );
+			gos_TextSetPosition( static_cast<int>(( l + pad )), static_cast<int>(( b - titleH - 1 )) );
 			gos_TextDraw( best );
 		}
 
@@ -418,7 +418,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 		if ( hitsOut && nHits < maxHits )
 		{
 			hitsOut[nHits].forceGroup = cards[i].fg;
-			hitsOut[nHits].unit = ( cards[i].fg < 0 ) ? (void*)icons[cards[i].mem[0]]->unit : nullptr;
+			hitsOut[nHits].unit = ( cards[i].fg < 0 ) ? static_cast<void*>(icons[cards[i].mem[0]]->unit) : nullptr;
 			hitsOut[nHits].l = l; hitsOut[nHits].t = t; hitsOut[nHits].r = r; hitsOut[nHits].b = b;
 			nHits++;
 		}
@@ -467,7 +467,7 @@ ForceGroupBar::~ForceGroupBar()
 	removeAll();
 	
 	if ( ForceGroupIcon::gosFontHandle )
-		delete ForceGroupIcon::gosFontHandle;
+		ForceGroupIcon::gosFontHandle.reset();
 
 	ForceGroupIcon::gosFontHandle  = nullptr;
 }
@@ -587,7 +587,7 @@ void ForceGroupBar::update( )
 		Team* pTeam = Team::home;
 		for ( int i = 0; i < pTeam->rosterSize; ++i )
 		{
-			Mover* pMover = (Mover*)pTeam->getMover( i );
+			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 			if (pMover->getCommander()->getId() == Commander::home->getId())
 			{
 				pMover->setSelected( false );
@@ -640,7 +640,7 @@ void ForceGroupBar::update( )
 							Team* pTeam = Team::home;
 							for ( int j = 0; j < pTeam->rosterSize; ++j )
 							{
-								Mover* pMover = (Mover*)pTeam->getMover( j );
+								Mover* pMover = static_cast<Mover*>(pTeam->getMover( j ));
 								if (pMover->getCommander()->getId() == Commander::home->getId())
 								{
 									pMover->setSelected( false );
@@ -812,7 +812,7 @@ void ForceGroupBar::init( FitIniFile& file, StaticInfo* pCoverIcon )
 		Assert( 0, 0, "couldn't find the font block" );
 
 	if ( !ForceGroupIcon::gosFontHandle )
-		ForceGroupIcon::gosFontHandle = new aFont;
+		ForceGroupIcon::gosFontHandle = std::make_unique_for_overwrite<aFont>();
 
 	long fontID;
 	file.readIdLong( "IconFont", fontID );
@@ -843,7 +843,7 @@ bool ForceGroupBar::setPilotVideo( const char* pVideo, MechWarrior* pPilot )
 	{
 		if ( ForceGroupIcon::bMovie )
 		{
-			delete ForceGroupIcon::bMovie;
+			ForceGroupIcon::bMovie.reset();
 			ForceGroupIcon::bMovie = nullptr;
 			
 		}
@@ -881,7 +881,7 @@ bool ForceGroupBar::setPilotVideo( const char* pVideo, MechWarrior* pPilot )
 					vRect.top 		= icons[i]->bmpLocation[icons[i]->locationIndex][3].y;
 					vRect.bottom 	= icons[i]->bmpLocation[icons[i]->locationIndex][1].y;
 
-					ForceGroupIcon::bMovie = new MC2Movie;
+					ForceGroupIcon::bMovie = std::make_unique_for_overwrite<MC2Movie>();
 					ForceGroupIcon::bMovie->init(aviPath,vRect,true);
 				}
 				else // make a still texture
@@ -930,7 +930,7 @@ bool ForceGroupBar::setPilotVideo( const char* pVideo, MechWarrior* pPilot )
 							cLoadString(IDS_MC2_movieMISSING,msg1,511);
 							cLoadString(IDS_MC2_CDMISSING,msg,1023);
 							cLoadString(IDS_MC2_MISSING_TITLE,title,255);
-							sprintf(data,msg1,(const char*)path,msg);
+							sprintf(data,msg1,static_cast<const char*>(path),msg);
 							DWORD result = mc2MessageBox(data,title,MB_OKCANCEL | MB_ICONWARNING,IDCANCEL);
 							if (result == IDCANCEL)
 							{

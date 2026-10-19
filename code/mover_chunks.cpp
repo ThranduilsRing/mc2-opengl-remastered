@@ -205,7 +205,7 @@ void MoveChunk::build (MoverPtr mover, MovePathPtr path1, MovePathPtr path2) {
 
 	run = mover->getPilot()->getMoveRun();
 	if (run && (mover->getObjectClass() == BATTLEMECH))
-		run = ((BattleMechPtr)mover)->canRun();
+		run = (static_cast<BattleMechPtr>(mover))->canRun();
 
 	data = 0;
 }
@@ -471,7 +471,7 @@ void StatusChunk::pack (MoverPtr mover) {
 					StatusChunkUnpackErr = 1;
 				#endif
 			}
-			GameObjectPtr target = (GameObjectPtr)MPlayer->moverRoster[targetId];
+			GameObjectPtr target = static_cast<GameObjectPtr>(MPlayer->moverRoster[targetId]);
 			}
 			break;
 		case STATUSCHUNK_TARGET_TERRAIN: {
@@ -592,7 +592,7 @@ void StatusChunk::unpack (MoverPtr mover) {
 					StatusChunkUnpackErr = 1;
 				#endif
 			}
-			GameObjectPtr target = (GameObjectPtr)MPlayer->moverRoster[targetId];
+			GameObjectPtr target = static_cast<GameObjectPtr>(MPlayer->moverRoster[targetId]);
 			}
 			break;
 		case STATUSCHUNK_TARGET_TERRAIN: {
@@ -779,7 +779,7 @@ void MoverDynamics::init (FitIniFilePtr dynamicsFile)
 		result = dynamicsFile->readIdLong("maxVehiclePivotRate", tmp);
         max.groundVehicle.pivotRate = tmp;
 		if (result != NO_ERR)
-			max.groundVehicle.pivotRate = (long)((float)max.groundVehicle.yawRate * GroundVehiclePivotYawMultiplier);
+			max.groundVehicle.pivotRate = static_cast<long>((static_cast<float>(max.groundVehicle.yawRate) * GroundVehiclePivotYawMultiplier));
 
 		result = dynamicsFile->readIdFloat("maxAccel",max.groundVehicle.accel);
 		Assert(result == NO_ERR, result, " MoverDynamics.init: vehicle error 4 ");

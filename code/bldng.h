@@ -198,7 +198,7 @@ class Building : public TerrainObject
 			return(teamId);
 		}
 
-		virtual long getDescription(){ return ((BuildingType*)getObjectType())->buildingDescriptionID; }
+		virtual long getDescription(){ return (static_cast<BuildingType*>(getObjectType()))->buildingDescriptionID; }
 
 		virtual TeamPtr getTeam (void);
 
@@ -253,7 +253,7 @@ class Building : public TerrainObject
 			if (appearance)
 				hsPos.z += appearance->getTopZ() * 0.5f;
 
-			BuildingTypePtr bldgType = ((BuildingTypePtr)getObjectType());
+			BuildingTypePtr bldgType = (static_cast<BuildingTypePtr>(getObjectType()));
 			if ((bldgType->lookoutTowerRange > 0.0f) ||
 				(bldgType->sensorRange > 0.0f))
 			{
@@ -318,7 +318,7 @@ class Building : public TerrainObject
 
 		virtual bool canBeCaptured (void)
 		{
-			return ((BuildingTypePtr)getObjectType())->capturable;
+			return (static_cast<BuildingTypePtr>(getObjectType()))->capturable;
 		}
 
 		virtual bool isSelectable()
@@ -328,7 +328,7 @@ class Building : public TerrainObject
 
 		virtual bool isPowerSource(void)
 		{
-			return ((BuildingTypePtr)getObjectType())->powerSource;
+			return (static_cast<BuildingTypePtr>(getObjectType()))->powerSource;
 		}
 		
 		virtual bool isLit (void)
@@ -341,7 +341,7 @@ class Building : public TerrainObject
 		
 		virtual bool isSpecialBuilding(void)
 		{
-			BuildingTypePtr bldgType = ((BuildingTypePtr)getObjectType());
+			BuildingTypePtr bldgType = (static_cast<BuildingTypePtr>(getObjectType()));
 //			if ((bldgType->getObjTypeNum() == GENERIC_HQ_BUILDING_OBJNUM) ||
 //				(bldgType->getObjTypeNum() == GENERIC_DESTRUCTIBLE_RESOURCE_BUILDING_OBJNUM) ||
 //				(bldgType->getObjTypeNum() == GENERIC_INDESTRUCTIBLE_RESOURCE_BUILDING_OBJNUM))
@@ -360,7 +360,7 @@ class Building : public TerrainObject
  
 		virtual bool isLookoutTower (void)
 		{
-			BuildingTypePtr bldgType = ((BuildingTypePtr)getObjectType());
+			BuildingTypePtr bldgType = (static_cast<BuildingTypePtr>(getObjectType()));
 			if (bldgType->lookoutTowerRange > 0.0f)
 			{
 				return true;

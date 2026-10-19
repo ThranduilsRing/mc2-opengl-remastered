@@ -220,7 +220,7 @@ class TerrainObject : public GameObject {
 
 		virtual float getDamageLevel (void) 
 		{
-			return ((TerrainObjectTypePtr)getObjectType())->getDamageLevel();
+			return (static_cast<TerrainObjectTypePtr>(getObjectType()))->getDamageLevel();
 		}
 
 		virtual float getDestructLevel (void)
@@ -231,7 +231,7 @@ class TerrainObject : public GameObject {
 		virtual float getStatusRating (void);
 
 		long getSubType (void) {
-			return(((TerrainObjectTypePtr)getObjectType())->subType);
+			return((static_cast<TerrainObjectTypePtr>(getObjectType()))->subType);
 		}
 
 		virtual long kill (void) {

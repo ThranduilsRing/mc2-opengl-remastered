@@ -25,11 +25,11 @@ void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, const ch
 	std::vector<unsigned int> colors;
 	for ( int i = 0; i < box.GetItemCount(); i++ )
 	{
-		aTextListItem* pItem = (aTextListItem*)box.GetItem( i );
+		aTextListItem* pItem = static_cast<aTextListItem*>(box.GetItem( i ));
 		if ( pItem )
 		{
 			items.push_back( pItem->getText() );
-			colors.push_back( (unsigned int)pItem->getColor() );
+			colors.push_back( static_cast<unsigned int>(pItem->getColor()) );
 		}
 	}
 	screen->setDefsListItems( listKey, items );

@@ -40,13 +40,13 @@ void GameObjectManager::countTerrainObjects (PacketFile* terrainFile, long first
 	gosASSERT( bytesRead == size );
 	
 	File terrainObjectFile;
-	terrainObjectFile.open( (char*)pBuffer.get(), size );
+	terrainObjectFile.open( reinterpret_cast<char*>(pBuffer.get()), size );
 	
 	totalObjCount = terrainObjectFile.readInt();
 
 	if (totalObjCount)
 	{
-		objData = (ObjDataLoader *)systemHeap->Malloc(sizeof(ObjDataLoader) * totalObjCount);
+		objData = static_cast<ObjDataLoader *>(systemHeap->Malloc(sizeof(ObjDataLoader) * totalObjCount));
 		memset(objData,0,sizeof(ObjDataLoader) * totalObjCount);
 	}
 	else
@@ -135,10 +135,10 @@ void GameObjectManager::countObject( ObjDataLoader *data)
 				break;
 			case BUILDING:
 			case TREEBUILDING:
-			if (((((BuildingTypePtr)objType)->perimeterAlarmRange > 0.0f) &&
-				(((BuildingTypePtr)objType)->perimeterAlarmTimer > 0.0f)) ||
-				(((BuildingTypePtr)objType)->lookoutTowerRange > 0.0f) ||
-				(((BuildingTypePtr)objType)->sensorRange > 0.0f))
+			if ((((static_cast<BuildingTypePtr>(objType))->perimeterAlarmRange > 0.0f) &&
+				((static_cast<BuildingTypePtr>(objType))->perimeterAlarmTimer > 0.0f)) ||
+				((static_cast<BuildingTypePtr>(objType))->lookoutTowerRange > 0.0f) ||
+				((static_cast<BuildingTypePtr>(objType))->sensorRange > 0.0f))
 				{
 					Terrain::objBlockInfo[data->blockNumber].numCollidableObjects++;
 				}
@@ -222,7 +222,7 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 	{
 		if ((turrets[i]->parentId != 0xffffffff) && (turrets[i]->parentId != 0)) 
 		{
-			BuildingPtr controlBuilding = (BuildingPtr)ObjectManager->findByCellPosition((turrets[i]->parentId>>16),(turrets[i]->parentId & 0x0000ffff));
+			BuildingPtr controlBuilding = static_cast<BuildingPtr>(ObjectManager->findByCellPosition((turrets[i]->parentId>>16),(turrets[i]->parentId & 0x0000ffff)));
 			if (controlBuilding && !controlBuilding->getFlag(OBJECT_FLAG_CONTROLBUILDING)) 
 			{
 				controlBuilding->setFlag(OBJECT_FLAG_CAPTURABLE, true);
@@ -247,7 +247,7 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 	{
 		if ((gates[i]->parentId != 0xffffffff) && (gates[i]->parentId != 0))
 		{
-			BuildingPtr controlBuilding = (BuildingPtr)ObjectManager->findByCellPosition((gates[i]->parentId>>16),(gates[i]->parentId & 0x0000ffff));
+			BuildingPtr controlBuilding = static_cast<BuildingPtr>(ObjectManager->findByCellPosition((gates[i]->parentId>>16),(gates[i]->parentId & 0x0000ffff)));
 			if (controlBuilding && !controlBuilding->getFlag(OBJECT_FLAG_CONTROLBUILDING)) 
 			{
 				controlBuilding->setFlag(OBJECT_FLAG_CONTROLBUILDING, true);
@@ -454,7 +454,7 @@ void GameObjectManager::prewarmStaticPropLightBakes(Camera* cam)
 		if (s_trace) {
 			fprintf(stderr,
 				"STATIC_REG_PREWARM_TRACE: obj=%p recipeIdx=%d\n",
-				(void*)obj, app->getStaticRecipeIndex());
+				static_cast<void*>(obj), app->getStaticRecipeIndex());
 		}
 		if (app->prewarmStaticLightBake(cam)) {
 			++baked;
@@ -560,8 +560,8 @@ void GameObjectManager::CopyFrom (ObjectManagerData *data)
 	// value blindly (mirrors the Save-side clamp in OBJMGR-WATCHID-BOUNDS-1).
 	const long _cap = getMaxObjects() + 1;
 	const unsigned long _clampedNext = mc2watch::clampSavedNextWatchId(data->nextWatchId, getMaxObjects());
-	if ((long)_clampedNext != data->nextWatchId)
-		mc2_watchidLoadDiag("nextWatchId", (long)data->nextWatchId, _cap);
+	if (static_cast<long>(_clampedNext) != data->nextWatchId)
+		mc2_watchidLoadDiag("nextWatchId", static_cast<long>(data->nextWatchId), _cap);
 	nextWatchID = _clampedNext;
 }
 
@@ -569,13 +569,13 @@ void GameObjectManager::CopyFrom (ObjectManagerData *data)
 #include "save_struct_zero.h"
 long GameObjectManager::Save (PacketFilePtr file, long packetNum)
 {
-	int32_t *watchSave = (int32_t*)malloc(sizeof(int32_t) * (getMaxObjects() + 1));
+	int32_t *watchSave = static_cast<int32_t*>(malloc(sizeof(int32_t) * (getMaxObjects() + 1)));
 	memset(watchSave,0,sizeof(int32_t) * (getMaxObjects() + 1));
 
 	MC2_SAVE_STRUCT(ObjectManagerData, data);
 	CopyTo(&data);
 
-	file->writePacket(packetNum,(MemoryPtr)&data,sizeof(ObjectManagerData),STORAGE_TYPE_RAW);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(ObjectManagerData),STORAGE_TYPE_RAW);
 	packetNum++;
 
 	for (long i=0;i<=getMaxObjects();i++)
@@ -609,7 +609,7 @@ long GameObjectManager::Save (PacketFilePtr file, long packetNum)
 		}
 	}
 
-	file->writePacket(packetNum,(MemoryPtr)watchSave, sizeof(int32_t) * (getMaxObjects() + 1), STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(watchSave), sizeof(int32_t) * (getMaxObjects() + 1), STORAGE_TYPE_ZLIB);
 	packetNum++;
 
 	free(watchSave);
@@ -706,7 +706,7 @@ std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFile
 long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 {
 	ObjectManagerData data{};
-	file->readPacket(packetNum,(MemoryPtr)&data);
+	file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(&data));
 	packetNum++;
 
 	CopyFrom(&data);
@@ -811,7 +811,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	}
 
 	useMoverLineOfSightTable = true;
-	moverLineOfSightTable = (char*)systemHeap->Malloc(maxMovers * maxMovers);
+	moverLineOfSightTable = static_cast<char*>(systemHeap->Malloc(maxMovers * maxMovers));
 	if (!moverLineOfSightTable)
 		Fatal(numGates, " GameObjectManager.setNumObjects: cannot malloc moverLineOfSightTable ");
 
@@ -855,7 +855,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			//We have a TerrainObject.
 			// Get its data.
 			TerrainObjectData data{};
-			file->readPacket(packetNum,(MemoryPtr)(&data));
+			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
 			packetNum++;
 
 			TerrainObjectPtr obj = new TerrainObject; 
@@ -892,7 +892,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		{
 			//We have a Building.
 			BuildingData data{};
-			file->readPacket(packetNum,(MemoryPtr)(&data));
+			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
 			packetNum++;
 
 			BuildingPtr obj = new Building; 
@@ -915,10 +915,10 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 					Terrain::objBlockInfo[data.blockNumber].firstHandle = i;
 				}
 
-				if (((((BuildingTypePtr)objType)->perimeterAlarmRange > 0.0f) &&
-					(((BuildingTypePtr)objType)->perimeterAlarmTimer > 0.0f)) ||
-					(((BuildingTypePtr)objType)->lookoutTowerRange > 0.0f) ||
-					(((BuildingTypePtr)objType)->sensorRange > 0.0f))
+				if ((((static_cast<BuildingTypePtr>(objType))->perimeterAlarmRange > 0.0f) &&
+					((static_cast<BuildingTypePtr>(objType))->perimeterAlarmTimer > 0.0f)) ||
+					((static_cast<BuildingTypePtr>(objType))->lookoutTowerRange > 0.0f) ||
+					((static_cast<BuildingTypePtr>(objType))->sensorRange > 0.0f))
 				{
 					Terrain::objBlockInfo[data.blockNumber].numCollidableObjects++;
 				}
@@ -935,7 +935,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		{
 			//We have a Turret.
 			TurretData data{};
-			file->readPacket(packetNum,(MemoryPtr)(&data));
+			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
 			packetNum++;
 
 			TurretPtr obj = new Turret; 
@@ -971,7 +971,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		{
 			//We have a Gate.
 			GateData data{};
-			file->readPacket(packetNum,(MemoryPtr)(&data));
+			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
 			packetNum++;
 
 			GatePtr obj = new Gate; 
@@ -1007,7 +1007,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		{
 			//We have an Artillery.
 			ArtilleryData data{};
-			file->readPacket(packetNum,(MemoryPtr)(&data));
+			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
 			packetNum++;
 
 			ArtilleryPtr obj = new Artillery; 
@@ -1032,7 +1032,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		{
 			//We have a Carnage.
 			CarnageData data{};
-			file->readPacket(packetNum,(MemoryPtr)(&data));
+			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
 			packetNum++;
 
 			CarnagePtr obj = new Carnage; 
@@ -1057,7 +1057,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		{
 			//We have a BattleMech.
 			MechData data{};
-			file->readPacket(packetNum,(MemoryPtr)(&data));
+			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
 			packetNum++;
 
 			BattleMechPtr obj = new BattleMech; 
@@ -1082,7 +1082,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		{
 			//We have a groundVehicle.
 			GroundVehicleData data{};
-			file->readPacket(packetNum,(MemoryPtr)(&data));
+			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
 			packetNum++;
 
 			GroundVehiclePtr obj = new GroundVehicle; 
@@ -1107,7 +1107,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		{
 			//We have a WeaponBolt.
 			WeaponBoltData data{};
-			file->readPacket(packetNum,(MemoryPtr)(&data));
+			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
 			packetNum++;
 
 			WeaponBoltPtr obj = new WeaponBolt; 
@@ -1172,7 +1172,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	{
 		if ((turrets[i]->parentId != 0xffffffff) && (turrets[i]->parentId != 0)) 
 		{
-			BuildingPtr controlBuilding = (BuildingPtr)ObjectManager->findByCellPosition((turrets[i]->parentId>>16),(turrets[i]->parentId & 0x0000ffff));
+			BuildingPtr controlBuilding = static_cast<BuildingPtr>(ObjectManager->findByCellPosition((turrets[i]->parentId>>16),(turrets[i]->parentId & 0x0000ffff)));
 			if (controlBuilding && !controlBuilding->getFlag(OBJECT_FLAG_CONTROLBUILDING)) 
 			{
 				controlBuilding->setFlag(OBJECT_FLAG_CAPTURABLE, true);
@@ -1195,7 +1195,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	{
 		if ((gates[i]->parentId != 0xffffffff) && (gates[i]->parentId != 0))
 		{
-			BuildingPtr controlBuilding = (BuildingPtr)ObjectManager->findByCellPosition((gates[i]->parentId>>16),(gates[i]->parentId & 0x0000ffff));
+			BuildingPtr controlBuilding = static_cast<BuildingPtr>(ObjectManager->findByCellPosition((gates[i]->parentId>>16),(gates[i]->parentId & 0x0000ffff)));
 			if (controlBuilding && !controlBuilding->getFlag(OBJECT_FLAG_CONTROLBUILDING)) 
 			{
 				controlBuilding->setFlag(OBJECT_FLAG_CONTROLBUILDING, true);
@@ -1283,10 +1283,10 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	GameObject::setInitialize(false);
 
 	//Reload the Object Watchers
-	int32_t *watchSave = (int32_t*)malloc(sizeof(int32_t) * (getMaxObjects() + 1));
+	int32_t *watchSave = static_cast<int32_t*>(malloc(sizeof(int32_t) * (getMaxObjects() + 1)));
 	memset(watchSave,0,sizeof(int32_t) * (getMaxObjects() + 1));
 
-	file->readPacket(packetNum,(MemoryPtr)watchSave);
+	file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(watchSave));
 	packetNum++;
 
 	//Find the watchID from the watchlist for this object.
@@ -1307,7 +1307,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		if (!mc2watch::isValidWatchSaveIndex(_idx, _maxObj))
 		{
 			watchList[j] = nullptr;
-			mc2_watchidLoadDiag("watchSave", (long)_idx, _maxObj);
+			mc2_watchidLoadDiag("watchSave", static_cast<long>(_idx), _maxObj);
 			continue;
 		}
 		watchList[j] = objList[_idx];

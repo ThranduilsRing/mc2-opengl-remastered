@@ -21,7 +21,7 @@ namespace
 int glyphAdvance( HGOSFONT3D font, const gos_FontAtlasDesc& ad, char c )
 {
 	gos_FontGlyphDesc gd;
-	if ( gos_FontGetGlyphDesc( font, (unsigned char)c, &gd ) )
+	if ( gos_FontGetGlyphDesc( font, static_cast<unsigned char>(c), &gd ) )
 		return gd.advance;
 	return ad.maxAdvance;   // legacy getCharAdvance fallback
 }
@@ -79,14 +79,14 @@ void drawLine( ImDrawList* dl, HGOSFONT3D font, const gos_FontAtlasDesc& ad,
 	float x, float y, ImU32 col, const char* text, int count,
 	float sx, float sy )
 {
-	const float ooW = 1.0f / (float)ad.texWidth;
-	const float ooH = 1.0f / (float)ad.texHeight;
-	const ImTextureID tex = (ImTextureID)(intptr_t)ad.glTexId;
+	const float ooW = 1.0f / static_cast<float>(ad.texWidth);
+	const float ooH = 1.0f / static_cast<float>(ad.texHeight);
+	const ImTextureID tex = static_cast<ImTextureID>(static_cast<intptr_t>(ad.glTexId));
 
 	float penX = x;
 	for ( int i = 0; i < count && text[i] && text[i] != '\n'; ++i )
 	{
-		const unsigned char c = (unsigned char)text[i];
+		const unsigned char c = static_cast<unsigned char>(text[i]);
 		if ( c < 0x20 )
 			continue;   // control chars draw nothing (legacy drawText rule)
 
@@ -102,9 +102,9 @@ void drawLine( ImDrawList* dl, HGOSFONT3D font, const gos_FontAtlasDesc& ad,
 			const float y0 = y    + gd.offY * sy;
 			const float x1 = x0 + gd.width  * sx;
 			const float y1 = y0 + gd.height * sy;
-			const ImVec2 uv0( (float)gd.u * ooW, (float)gd.v * ooH );
-			const ImVec2 uv1( (float)( gd.u + gd.width )  * ooW,
-							  (float)( gd.v + gd.height ) * ooH );
+			const ImVec2 uv0( static_cast<float>(gd.u) * ooW, static_cast<float>(gd.v) * ooH );
+			const ImVec2 uv1( static_cast<float>(( gd.u + gd.width ))  * ooW,
+							  static_cast<float>(( gd.v + gd.height )) * ooH );
 			dl->AddImage( tex, ImVec2( x0, y0 ), ImVec2( x1, y1 ), uv0, uv1, col );
 		}
 		penX += gd.advance * sx;
@@ -131,7 +131,7 @@ ImVec2 Measure( HGOSFONT3D font, const char* text, float sx, float sy )
 	gos_FontAtlasDesc ad;
 	if ( !gos_FontGetAtlasDesc( font, &ad ) )
 		return ImGui::CalcTextSize( text );
-	const int w = lineWidthPx( font, ad, text, (int)strlen( text ) );
+	const int w = lineWidthPx( font, ad, text, static_cast<int>(strlen( text )) );
 	return ImVec2( w * sx, ad.lineSkip * sy );
 }
 
@@ -146,7 +146,7 @@ void Draw( ImDrawList* dl, HGOSFONT3D font, float x, float y,
 		dl->AddText( ImVec2( x, y ), col, text );   // fallback: default font
 		return;
 	}
-	drawLine( dl, font, ad, x, y, col, text, (int)strlen( text ), sx, sy );
+	drawLine( dl, font, ad, x, y, col, text, static_cast<int>(strlen( text )), sx, sy );
 }
 
 float DrawWrapped( ImDrawList* dl, HGOSFONT3D font, float x, float y,
@@ -162,8 +162,8 @@ float DrawWrapped( ImDrawList* dl, HGOSFONT3D font, float x, float y,
 		return ImGui::CalcTextSize( text, nullptr, false, wrapWidth ).y;
 	}
 
-	const int regionPx = sx > 0.0f ? (int)( wrapWidth / sx ) : 0x7fffffff;
-	const int count = (int)strlen( text );
+	const int regionPx = sx > 0.0f ? static_cast<int>(( wrapWidth / sx )) : 0x7fffffff;
+	const int count = static_cast<int>(strlen( text ));
 	int pos = 0;
 	float curY = y;
 	while ( pos < count )
@@ -187,8 +187,8 @@ float MeasureWrappedHeight( HGOSFONT3D font, const char* text,
 	if ( !gos_FontGetAtlasDesc( font, &ad ) )
 		return ImGui::CalcTextSize( text, nullptr, false, wrapWidth ).y;
 
-	const int regionPx = sx > 0.0f ? (int)( wrapWidth / sx ) : 0x7fffffff;
-	const int count = (int)strlen( text );
+	const int regionPx = sx > 0.0f ? static_cast<int>(( wrapWidth / sx )) : 0x7fffffff;
+	const int count = static_cast<int>(strlen( text ));
 	int pos = 0;
 	int lines = 0;
 	while ( pos < count )
@@ -218,8 +218,8 @@ void DrawWrappedCentered( ImDrawList* dl, HGOSFONT3D font,
 	}
 
 	const float wrapWidth = x1 - x0;
-	const int regionPx = sx > 0.0f ? (int)( wrapWidth / sx ) : 0x7fffffff;
-	const int count = (int)strlen( text );
+	const int regionPx = sx > 0.0f ? static_cast<int>(( wrapWidth / sx )) : 0x7fffffff;
+	const int count = static_cast<int>(strlen( text ));
 
 	// first pass: line count (legacy calcTextHeight)
 	int lines = 0;

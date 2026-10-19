@@ -270,7 +270,7 @@ void PilotReadyScreen::begin()
 		}
 		else
 		{
-			LogisticsPilotListBoxItem* pItem = ( LogisticsPilotListBoxItem*)pilotListBox.GetItem( 0 );
+			LogisticsPilotListBoxItem* pItem = static_cast<LogisticsPilotListBoxItem*>(pilotListBox.GetItem( 0 ));
 			if ( pItem )
 			{
 				pilotListBox.SelectItem( 0 );
@@ -617,7 +617,7 @@ void PilotReadyScreen::addSelectedPilot()
 		pItem = pilotListBox.GetItem( index );
 	if ( pItem )
 	{
-		LogisticsPilot* pPilot = ((LogisticsPilotListBoxItem*)pItem)->getPilot();
+		LogisticsPilot* pPilot = (static_cast<LogisticsPilotListBoxItem*>(pItem))->getPilot();
 		if ( pPilot )
 		{
 			for ( int i = 0; i < ICON_COUNT; i++ )
@@ -663,7 +663,7 @@ void PilotReadyScreen::addSelectedPilot()
 		pItem = pilotListBox.GetItem( index+1 );
 	if ( pItem && bFound )
 	{
-		LogisticsPilot* pPilot = ((LogisticsPilotListBoxItem*)pItem)->getPilot();
+		LogisticsPilot* pPilot = (static_cast<LogisticsPilotListBoxItem*>(pItem))->getPilot();
 		if ( pPilot )
 		{
 			setPilot( pPilot );
@@ -706,7 +706,7 @@ void PilotReadyScreen::removeSelectedPilot()
 					int index = pilotListBox.GetSelectedItem();
 					if ( index != -1 )
 					{
-						LogisticsPilotListBoxItem* pItem = (LogisticsPilotListBoxItem*)pilotListBox.GetItem( index );
+						LogisticsPilotListBoxItem* pItem = static_cast<LogisticsPilotListBoxItem*>(pilotListBox.GetItem( index ));
 						if ( pItem )
 						{
 							LogisticsPilot* pPilot = (pItem)->getPilot();
@@ -817,13 +817,13 @@ void PilotReadyScreen::setPilot( LogisticsPilot* pPilot )
 		cLoadString( rankID, rankBuf, sizeof( rankBuf ) - 1 );
 		setDefsElementText( "game.mcl_pr_layout.text.pilot_info_rank", rankBuf );
 
-		sprintf( str, "%ld", (long)pCurPilot->getGunnery() );
+		sprintf( str, "%ld", static_cast<long>(pCurPilot->getGunnery()) );
 		textObjects[5].setText( str );
 		setDefsElementText( "game.mcl_pr_layout.text.pilot_info_targeting_number", str );
 		attributeMeters[0].setValue( (pCurPilot->getGunnery())/80.f );
 
 		char number[64];
-		sprintf( number, "%ld", (long)pCurPilot->getPiloting() );
+		sprintf( number, "%ld", static_cast<long>(pCurPilot->getPiloting()) );
 		textObjects[6].setText( number );
 		setDefsElementText( "game.mcl_pr_layout.text.pilot_info_piloting_number", number );
 		attributeMeters[1].setValue( pCurPilot->getPiloting()/80.f );

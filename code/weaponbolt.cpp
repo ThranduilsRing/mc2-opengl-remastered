@@ -312,7 +312,7 @@ TG_LightPtr WeaponBoltType::getLight (void)
 
 	if (lightSource)
 	{
-		pointLight = (TG_LightPtr)systemHeap->Malloc(sizeof(TG_Light));
+		pointLight = static_cast<TG_LightPtr>(systemHeap->Malloc(sizeof(TG_Light)));
 		pointLight->init(TG_LIGHT_POINT);
 
 		pointLight->SetaRGB(lightRGB);
@@ -608,15 +608,15 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 	
 	//----------------------------------------------
 	// Effect textures require alpha.
-	if (((WeaponBoltTypePtr)_type)->textureName && S_stricmp(((WeaponBoltTypePtr)_type)->textureName.get(),"NONE") != 0)
+	if ((static_cast<WeaponBoltTypePtr>(_type))->textureName && S_stricmp((static_cast<WeaponBoltTypePtr>(_type))->textureName.get(),"NONE") != 0)
 	{
 		char tPath[1024];
 		mc2::fmt::to_buf(tPath, "{}128" PATH_SEPARATOR "", mc2::fmt::safe(tglPath));
 
 		FullPathFileName textureName;
-		textureName.init(tPath,((WeaponBoltTypePtr)_type)->textureName.get(),".tga");
+		textureName.init(tPath,(static_cast<WeaponBoltTypePtr>(_type))->textureName.get(),".tga");
 	
-		if (((WeaponBoltTypePtr)_type)->mipTexture)
+		if ((static_cast<WeaponBoltTypePtr>(_type))->mipTexture)
 			mcTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,0);
 		else
 			mcTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap);
@@ -666,7 +666,7 @@ void WeaponBolt::Save (PacketFilePtr file, long packetNum)
 	MC2_SAVE_STRUCT(WeaponBoltData, data);
 	CopyTo(&data);
 
-	file->writePacket(packetNum,(MemoryPtr)&data,sizeof(WeaponBoltData),STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(WeaponBoltData),STORAGE_TYPE_ZLIB);
 }
 
 //***************************************************************************
@@ -842,21 +842,21 @@ void WeaponBolt::finishNow (void)
 			submitDamage(target);
 		}
 
-		if (((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum &&
-			(((WeaponBoltTypePtr)getObjectType())->areaEffectDmg > 0.0f) &&
-			(((WeaponBoltTypePtr)getObjectType())->areaEffectRad > 0.0f))
+		if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum &&
+			((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg > 0.0f) &&
+			((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad > 0.0f))
 		{
 			// Aimed-hit explosions stay cosmetic to avoid duplicate damage.
-			float areaDmg = ((WeaponBoltTypePtr)getObjectType())->areaEffectDmg;
+			float areaDmg = (static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg;
 			if (deliverAimedAreaHit())
 				areaDmg = 0.0f;
 
 			//Create the explosion here.  HIT or MISS, its the same one!!
 			// Damage is done by explosion NOT by hit!
-			ObjectManager->createExplosion(((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum,
+			ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
 											nullptr,*targetPosition,
 											areaDmg,
-											((WeaponBoltTypePtr)getObjectType())->areaEffectRad);
+											(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad);
 		}
 
 		traceCombatRetire("forced_finish");

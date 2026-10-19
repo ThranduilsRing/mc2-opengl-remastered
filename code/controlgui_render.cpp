@@ -22,7 +22,7 @@ static void drawSensorRing( Camera* eye, const glm::vec3& center, float radius,
 	int firstOk = -1;
 	for ( int i = 0; i <= N; i++ )
 	{
-		float a = ( 2.0f * 3.14159265f ) * (float)( i % N ) / (float)N;
+		float a = ( 2.0f * 3.14159265f ) * static_cast<float>(( i % N )) / static_cast<float>(N);
 		glm::vec3 p;
 		p.x = center.x + cosf( a ) * radius;
 		p.y = center.y + sinf( a ) * radius;
@@ -64,10 +64,10 @@ static void drawSensorRing( Camera* eye, const glm::vec3& center, float radius,
 		char buf[16];
 		mc2::fmt::to_buf(buf, "{:.0f}m", radius / worldUnitsPerMeter);	// world units -> meters
 		gos_TextSetAttributes( gosFontHandle, aBits | 0x00000000, 1.0f, false, true, false, false );
-		gos_TextSetPosition( (int)px[li] + 1, (int)py[li] + 1 );
+		gos_TextSetPosition( static_cast<int>(px[li]) + 1, static_cast<int>(py[li]) + 1 );
 		gos_TextDraw( buf );
 		gos_TextSetAttributes( gosFontHandle, aBits | rgb, 1.0f, false, true, false, false );
-		gos_TextSetPosition( (int)px[li], (int)py[li] );
+		gos_TextSetPosition( static_cast<int>(px[li]), static_cast<int>(py[li]) );
 		gos_TextDraw( buf );
 	}
 }
@@ -209,11 +209,11 @@ static void renderOverviewCoverageTint( Camera* eye, float alpha )
 
 			float a = D * ( 1.0f - coverage );
 			if ( a <= 0.003f ) continue;	// fully sighted: full brightness
-			unsigned long aB = (unsigned long)( a * 255.0f ); if ( aB > 255 ) aB = 255;
+			unsigned long aB = static_cast<unsigned long>(( a * 255.0f )); if ( aB > 255 ) aB = 255;
 			unsigned long col = ( aB << 24 );	// black veil
 
 			gos_VERTEX q[4];
-			float l = (float)gx, r = (float)( gx + cell ), t = (float)gy, b = (float)( gy + cell );
+			float l = static_cast<float>(gx), r = static_cast<float>(( gx + cell )), t = static_cast<float>(gy), b = static_cast<float>(( gy + cell ));
 			for ( int v = 0; v < 4; ++v ) { q[v].z = 0; q[v].rhw = .5f; q[v].argb = col; q[v].frgb = 0; q[v].u = q[v].v = 0; }
 			q[0].x = l; q[0].y = t; q[1].x = l; q[1].y = b; q[2].x = r; q[2].y = b; q[3].x = r; q[3].y = t;
 			gos_DrawQuads( q, 4 );
@@ -230,7 +230,7 @@ static void renderOverviewEnemyMarkers( Camera* eye, float alpha )
 	if ( !eye || alpha <= 0.0f || !Team::home )
 		return;
 
-	unsigned long aB = (unsigned long)( alpha * 255.0f );
+	unsigned long aB = static_cast<unsigned long>(( alpha * 255.0f ));
 	if ( aB > 255 ) aB = 255;
 	const unsigned long aBits = aB << 24;
 	const float w = 8.0f, h = 12.0f;
@@ -328,7 +328,7 @@ static void drawWeaponBandUnion( Camera* eye, const glm::vec3* centers,
 		const unsigned long arcCol = sel[i] ? ( col | 0x003f3f3f ) : col;
 		for ( int k = 0; k <= N; k++ )
 		{
-			float a = ( 2.0f * 3.14159265f ) * (float)( k % N ) / (float)N;
+			float a = ( 2.0f * 3.14159265f ) * static_cast<float>(( k % N )) / static_cast<float>(N);
 			glm::vec3 p;
 			p.x = centers[i].x + cosf( a ) * R;
 			p.y = centers[i].y + sinf( a ) * R;
@@ -382,9 +382,9 @@ static void drawWeaponBandUnion( Camera* eye, const glm::vec3* centers,
 			char buf[16];
 			mc2::fmt::to_buf(buf, "{:.0f}m", R / worldUnitsPerMeter);
 			gos_TextSetAttributes( gosFontHandle, aBits | 0x00000000, 1.0f, false, true, false, false );
-			gos_TextSetPosition( (int)sx + 1, (int)sy + 1 ); gos_TextDraw( buf );
+			gos_TextSetPosition( static_cast<int>(sx) + 1, static_cast<int>(sy) + 1 ); gos_TextDraw( buf );
 			gos_TextSetAttributes( gosFontHandle, aBits | rgb, 1.0f, false, true, false, false );
-			gos_TextSetPosition( (int)sx, (int)sy ); gos_TextDraw( buf );
+			gos_TextSetPosition( static_cast<int>(sx), static_cast<int>(sy) ); gos_TextDraw( buf );
 			break;	// one label per band is plenty
 		}
 	}
@@ -469,7 +469,7 @@ static void updateAndRenderFormationLine( Camera* eye )
 		if ( gosFontHandle )
 		{
 			gos_TextSetAttributes( gosFontHandle, aBits | kGreen, 1.0f, false, true, false, false );
-			gos_TextSetPosition( (int)mx + 14, (int)my + 14 );
+			gos_TextSetPosition( static_cast<int>(mx) + 14, static_cast<int>(my) + 14 );
 			gos_TextDraw( "DRAW FORMATION LINE" );
 		}
 	}
@@ -523,7 +523,7 @@ static void updateAndRenderFormationLine( Camera* eye )
 			char buf[32];
 			mc2::fmt::to_buf(buf, "{:d}  {:.0f}%", mc2::fmt::as_i32(g_tacticalOverview.flMoverCount()), g_tacticalOverview.flSpacing() * 100.0f);
 			gos_TextSetAttributes( gosFontHandle, aBits | kGreen, 1.0f, false, true, false, false );
-			gos_TextSetPosition( (int)mx + 14, (int)my + 14 );
+			gos_TextSetPosition( static_cast<int>(mx) + 14, static_cast<int>(my) + 14 );
 			gos_TextDraw( buf );
 		}
 	}
@@ -586,10 +586,10 @@ void ControlGui::render( bool bPaused )
 				// Per-mech arrows fade with the icon stage.
 				if ( iconW > 0.01f )
 				{
-					unsigned long pa = (unsigned long)( iconW * 255.0f ) << 24;
+					unsigned long pa = static_cast<unsigned long>(( iconW * 255.0f )) << 24;
 					for ( long i = 0; i < Team::home->getRosterSize(); i++ )
 					{
-						Mover* m = (Mover*)Team::home->getMover( i );
+						Mover* m = static_cast<Mover*>(Team::home->getMover( i ));
 						if ( !m || !m->isOnGUI() || m->isDestroyed() || m->isDisabled() ) continue;
 						if ( m->getCommander()->getId() != Commander::home->getId() ) continue;
 						int g = -1;
@@ -602,12 +602,12 @@ void ControlGui::render( bool bPaused )
 				// curved routes gets mushy, so pick one representative.
 				if ( cardViz > 0.01f )
 				{
-					unsigned long pa = (unsigned long)( cardViz * 255.0f ) << 24;
+					unsigned long pa = static_cast<unsigned long>(( cardViz * 255.0f )) << 24;
 					for ( int g = 0; g < 10; ++g )
 					{
 						for ( long i = 0; i < Team::home->getRosterSize(); i++ )
 						{
-							Mover* m = (Mover*)Team::home->getMover( i );
+							Mover* m = static_cast<Mover*>(Team::home->getMover( i ));
 							if ( !m || !m->isOnGUI() || m->isDestroyed() || m->isDisabled() ) continue;
 							if ( m->getCommander()->getId() != Commander::home->getId() ) continue;
 							if ( !m->isInUnitGroup( g ) ) continue;
@@ -722,8 +722,8 @@ void ControlGui::render( bool bPaused )
 		if ( mission->m_timeLimit > 0 )
 		{
 	
-			float fTime = (float)mission->m_timeLimit - scenarioTime;	
-			int time = (int)fTime;
+			float fTime = static_cast<float>(mission->m_timeLimit) - scenarioTime;
+			int time = static_cast<int>(fTime);
 	
 			if ( time <= 120  && !twoMinWarningPlayed )
 			{
@@ -810,8 +810,8 @@ void ControlGui::render( bool bPaused )
 			{
 				float scaleX = Environment.screenWidth <= 1024 ? Environment.screenWidth : 1024;
 				float scaleY = Environment.screenHeight <= 768 ? Environment.screenHeight : 768;
-				GUI_RECT rect = { (long)(51 * scaleX/640.f + ControlGui::hiResOffsetX), (long)(317 * scaleY/480.f + ControlGui::hiResOffsetY),
-								(long)(74 *scaleX/640.f + ControlGui::hiResOffsetX), (long)(337 * scaleY/480.f  + ControlGui::hiResOffsetY)};
+				GUI_RECT rect = { static_cast<long>((51 * scaleX/640.f + ControlGui::hiResOffsetX)), static_cast<long>((317 * scaleY/480.f + ControlGui::hiResOffsetY)),
+								static_cast<long>((74 *scaleX/640.f + ControlGui::hiResOffsetX)), static_cast<long>((337 * scaleY/480.f  + ControlGui::hiResOffsetY))};
 				drawRect( rect, 0xff000000 );
 			}
 		}

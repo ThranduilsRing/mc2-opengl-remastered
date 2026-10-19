@@ -15,7 +15,7 @@ bool MissionInterfaceManager::moveCameraAround( bool lineOfSight, bool passable,
 	if ( useLeftRightMouseProfile && ((userInput->isLeftClick() && userInput->getKeyDown(KEY_T)) || userInput->isLeftDoubleClick()) && target )
 	{
 		if (eye)
-			((GameCamera *)eye)->setTarget(target);
+			(static_cast<GameCamera *>(eye))->setTarget(target);
 	}
 
 	// Stage 2.E: when MC2_VISUAL_DIFF_CAPTURE=1, skip edge-scroll entirely.
@@ -188,7 +188,7 @@ bool MissionInterfaceManager::canJump()
 	
 	while ((i<pTeam->getRosterSize()))
 	{
-		Mover* pMover = (Mover*)pTeam->getMover( i );
+		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
 		{
 			if ( !pMover->canJump() )
@@ -223,7 +223,7 @@ bool MissionInterfaceManager::canJumpToWPos()
 		
 		while ((i<pTeam->getRosterSize()))
 		{
-			Mover* pMover = (Mover*)pTeam->getMover( i );
+			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 			if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
 			{
 				if ( pMover->canJump() )
@@ -343,7 +343,7 @@ void MissionInterfaceManager::doDrag(bool bGui)
 				}
 
 				if ( count == 1 )
-					(controlGui).setInfoWndMover( (Mover*)objsInRect[0] );
+					(controlGui).setInfoWndMover( static_cast<Mover*>(objsInRect[0]) );
 			}
 			
 			dragStart = glm::vec3(0.0f);

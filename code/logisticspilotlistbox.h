@@ -1,5 +1,6 @@
 #ifndef LOGISTICSPILOTLISTBOX_H
 #define LOGISTICSPILOTLISTBOX_H
+#include <memory>
 /*************************************************************************************************\
 LogisticsPilotListBox.h			: Interface for the LogisticsPilotListBox component.
 //---------------------------------------------------------------------------//
@@ -49,7 +50,7 @@ private:
 	int32_t	pChildAnimations[PILOT_LIST_BOX_CHILD_COUNT];
 
 	LogisticsPilot* pPilot;
-	static LogisticsPilotListBoxItem* s_templateItem;
+	static std::unique_ptr<LogisticsPilotListBoxItem> s_templateItem;
 
 	static void setAnimation( FitIniFile& file, int whichOne );
 

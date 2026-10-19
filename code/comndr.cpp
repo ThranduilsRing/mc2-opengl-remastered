@@ -181,7 +181,7 @@ long Commander::Save (PacketFilePtr file, long packetNum)
 	staticData.numCommanders = numCommanders;
 	staticData.homeCommanderId = home->getId();
 
-	file->writePacket(packetNum,(MemoryPtr)&staticData,sizeof(StaticCommanderData),STORAGE_TYPE_RAW);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&staticData),sizeof(StaticCommanderData),STORAGE_TYPE_RAW);
 	packetNum++;
 
 	for (long i=0;i<numCommanders;i++)
@@ -199,7 +199,7 @@ long Commander::Save (PacketFilePtr file, long packetNum)
 		for (long j=0;j<MAX_MOVERGROUPS;j++)
 			commanders[i]->groups[j]->copyTo(data.groups[j]);
 
-		file->writePacket(packetNum,(MemoryPtr)&data,sizeof(CommanderData),STORAGE_TYPE_RAW);
+		file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(CommanderData),STORAGE_TYPE_RAW);
 		packetNum++;
 	}
 
@@ -210,7 +210,7 @@ long Commander::Save (PacketFilePtr file, long packetNum)
 long Commander::Load (PacketFilePtr file, long packetNum)
 {
 	StaticCommanderData staticData{};
-	file->readPacket(packetNum,(MemoryPtr)&staticData);
+	file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(&staticData));
 	packetNum++;
 
 	numCommanders = staticData.numCommanders;
@@ -218,7 +218,7 @@ long Commander::Load (PacketFilePtr file, long packetNum)
 	for (long i=0;i<numCommanders;i++)
 	{
 		CommanderData data{};
-		file->readPacket(packetNum,(MemoryPtr)&data);
+		file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(&data));
 		packetNum++;
 
 		commanders[i] = new Commander;

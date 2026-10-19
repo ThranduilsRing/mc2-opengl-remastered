@@ -23,7 +23,7 @@ MoverPtr BringInReinforcement (long vehicleID, long rosterIndex, long commanderI
 
 	MoverInitData data;
 	memset( &data, 0, sizeof( data ) );
-	char* vehicleFile = (char*)MissionInterfaceManager::instance()->getSupportVehicleNameFromID(vehicleID);
+	char* vehicleFile = const_cast<char*>(MissionInterfaceManager::instance()->getSupportVehicleNameFromID(vehicleID));
 	if (!vehicleFile) {
 		char s[1024];
 		mc2::fmt::to_buf(s, "BringInReinforcement: null behicleFile ({:d})", mc2::fmt::as_i32(vehicleID));
@@ -62,7 +62,7 @@ MoverPtr BringInReinforcement (long vehicleID, long rosterIndex, long commanderI
 	if ((moverId != -1) && (moverId != 0))
 	{
 		//Start the helicopters landed!!
-		MoverPtr newMover = (MoverPtr)ObjectManager->get(moverId);
+		MoverPtr newMover = static_cast<MoverPtr>(ObjectManager->get(moverId));
 		if (!newMover)
 			return nullptr;
 
@@ -173,7 +173,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::
 					vPos[commanderID] = vtolPos;
 					if (!salvageTarget)
 						STOP(("MissionGUI.beginvtol: null target PASSED IN."));
-					char* newPilotName = (char*)LogisticsData::instance->getBestPilot( salvageTarget->tonnage );
+					char* newPilotName = const_cast<char*>(LogisticsData::instance->getBestPilot( salvageTarget->tonnage ));
 					if (vehicleID[commanderID] != 147)
 						STOP(("missiongui.beginvtol: bad vehicleID"));
 					MPlayer->sendReinforcement(vehicleID[commanderID], salvageTarget->netRosterIndex, newPilotName, commanderID, vPos[commanderID], 3);
@@ -360,7 +360,7 @@ bool MissionInterfaceManager::canRepair( GameObject* pMover )
 	Team* pTeam = Team::home;
 	for (long i = 0; i < pTeam->getRosterSize(); i++)
 	{
-		Mover* pTmpMover = (Mover*)pTeam->getMover( i );
+		Mover* pTmpMover = static_cast<Mover*>(pTeam->getMover( i ));
 		if ( pTmpMover->isSelected() && pTmpMover->getCommander()->getId() == Commander::home->getId() )
 		{
 			if ( !watchID )
@@ -370,7 +370,7 @@ bool MissionInterfaceManager::canRepair( GameObject* pMover )
 		}
 	}
 	
-	if  ( ((Mover*)pMover)->needsRefit() || ( ((Mover*)pMover)->refitBuddyWID == watchID && watchID) )
+	if  ( (static_cast<Mover*>(pMover))->needsRefit() || ( (static_cast<Mover*>(pMover))->refitBuddyWID == watchID && watchID) )
 		return true;
 
 	return 0;
@@ -400,7 +400,7 @@ bool MissionInterfaceManager::canRepairBay( GameObject* bay)
 		Team* pTeam = Team::home;
 		for (long i = 0; i < pTeam->getRosterSize(); i++)
 		{
-			Mover* pMover = (Mover*)pTeam->getMover( i );
+			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 			if ( pMover->isSelected() && pMover->needsRefit() && pMover->getCommander()->getId() == Commander::home->getId() )
 			{
 				return true;

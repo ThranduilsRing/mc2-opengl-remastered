@@ -273,7 +273,7 @@ class Turret : public TerrainObject {
 		
 		float getLittleExtent (void) 
 		{
-			return (((TurretTypePtr)getObjectType())->littleExtent);
+			return ((static_cast<TurretTypePtr>(getObjectType()))->littleExtent);
 		}
 
 		virtual bool isLinked (void);
@@ -282,7 +282,7 @@ class Turret : public TerrainObject {
 
 		virtual void setParentId (DWORD pId);
 
-		virtual long getDescription(){ return ((TurretType*)getObjectType())->buildingDescriptionID; }
+		virtual long getDescription(){ return (static_cast<TurretType*>(getObjectType()))->buildingDescriptionID; }
 
 		long updateAnimations (void);
 		
@@ -290,7 +290,7 @@ class Turret : public TerrainObject {
 		
 		virtual float getDestructLevel (void)
 		{
-			return ((TurretTypePtr)getObjectType())->getDamageLevel() - damage;
+			return (static_cast<TurretTypePtr>(getObjectType()))->getDamageLevel() - damage;
 		}
 
 		virtual void setDamage (float newDamage);

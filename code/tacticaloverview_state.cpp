@@ -14,7 +14,7 @@ void TacticalOverviewState::setSetpoint(float v) { setpoint_ = clamp01(v); }
 void TacticalOverviewState::applyWheel(long delta, bool atCeiling, float /*dt*/,
                                        bool worldOwnsWheel) {
     if (!worldOwnsWheel) return;
-    float notches = (float)delta / 120.0f;        // GameOS wheel granularity
+    float notches = static_cast<float>(delta) / 120.0f;        // GameOS wheel granularity
     if (delta < 0) {                              // zoom out
         if (atCeiling) setSetpoint(setpoint_ + (-notches) * kWheelGain);
     } else if (delta > 0) {                       // zoom in

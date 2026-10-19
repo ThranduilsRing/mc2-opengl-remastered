@@ -327,7 +327,7 @@ long BattleMech::buildStatusChunk (void) {
 			if (curTarget) {
 				if (curTarget->isMover()) {
 					statusChunk.targetType = STATUSCHUNK_TARGET_MOVER;
-					statusChunk.targetId = ((MoverPtr)curTarget)->getNetRosterIndex();
+					statusChunk.targetId = (static_cast<MoverPtr>(curTarget))->getNetRosterIndex();
 					}
 				else if (curTarget->isTerrainObject()) {
 					statusChunk.targetType = STATUSCHUNK_TARGET_TERRAIN;
@@ -523,7 +523,7 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 		char _cbf[192];
 		// ISSUE-9 S3: "loc" = resolved hit location (mech body index; 0 = head)
 		// so called-shot location distribution is measurable headlessly.
-		mc2::fmt::to_buf(_cbf, "{{\"ev\":\"hit\",\"a_wid\":{:d},\"a_team\":{:d},\"t_wid\":{:d},\"t_team\":{:d},\"dmg\":{:.1f},\"loc\":{:d}}}", mc2::fmt::as_u32((unsigned)shotInfo->attackerWID), mc2::fmt::as_i32(_cbAtk ? _cbAtk->getTeamId() : -1L), mc2::fmt::as_u32(getWatchID(false)), mc2::fmt::as_i32(getTeamId()), (double)shotInfo->damage, mc2::fmt::as_i32((int)shotInfo->hitLocation));
+		mc2::fmt::to_buf(_cbf, "{{\"ev\":\"hit\",\"a_wid\":{:d},\"a_team\":{:d},\"t_wid\":{:d},\"t_team\":{:d},\"dmg\":{:.1f},\"loc\":{:d}}}", mc2::fmt::as_u32(static_cast<unsigned>(shotInfo->attackerWID)), mc2::fmt::as_i32(_cbAtk ? _cbAtk->getTeamId() : -1L), mc2::fmt::as_u32(getWatchID(false)), mc2::fmt::as_i32(getTeamId()), static_cast<double>(shotInfo->damage), mc2::fmt::as_i32(static_cast<int>(shotInfo->hitLocation)));
 		mc2_diag::writeEvent("COMBAT", 1, 0, _cbf);
 	}
 
@@ -554,7 +554,7 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 		if (getMoveType() == MOVETYPE_GROUND)
 		{
 			damageAfterDisabled += shotInfo->damage;
-			if (damageAfterDisabled > ((BattleMechTypePtr)getObjectType())->destructDamage)
+			if (damageAfterDisabled > (static_cast<BattleMechTypePtr>(getObjectType()))->destructDamage)
 			{
 				//Once the server does this, the status chunk will update the clients!!
 				if (!MPlayer || (MPlayer && MPlayer->isServer()))
@@ -902,7 +902,7 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 	if (!alreadyDisabled && isDisabled()) {
 		if (attacker && attacker->isMover()) 
 		{
-			((MoverPtr)attacker)->getPilot()->triggerAlarm(PILOT_ALARM_KILLED_TARGET, getWatchID());
+			(static_cast<MoverPtr>(attacker))->getPilot()->triggerAlarm(PILOT_ALARM_KILLED_TARGET, getWatchID());
 			if (!killed && MPlayer && MPlayer->isServer()) 
 			{
 				if (moveType != MOVETYPE_AIR) {
@@ -917,7 +917,7 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 				}
 				long attackerCID = attacker->getCommanderId();
 				if (attackerCID == -1)
-					attackerCID = ((MoverPtr)attacker)->prevCommanderId;
+					attackerCID = (static_cast<MoverPtr>(attacker))->prevCommanderId;
 				if ((attackerCID == -1) || (attackerCID == getCommanderId()))
 					attackerCID = MAX_MC_PLAYERS;
 				MPlayer->addKillLossChunk(attackerCID, !lost ? getCommanderId() : MAX_MC_PLAYERS);
@@ -942,7 +942,7 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 
 				long attackerCID = attacker->getCommanderId();
 				if (attackerCID == -1)
-					attackerCID = ((MoverPtr)attacker)->prevCommanderId;
+					attackerCID = (static_cast<MoverPtr>(attacker))->prevCommanderId;
 				if ((attackerCID == -1) || (attackerCID == getCommanderId()))
 					attackerCID = MAX_MC_PLAYERS;
 				MPlayer->addKillLossChunk(attackerCID, !lost ? getCommanderId() : MAX_MC_PLAYERS);

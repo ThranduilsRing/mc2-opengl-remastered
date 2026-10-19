@@ -92,7 +92,7 @@ int LogisticsVariant::getArmor( ) const
 			// Armor points per BULK unit come from the component's value
 			// (compbas Damage column), not a hardcoded 32 — so ferro-fibrous
 			// (value 64) gives double the armor of basic Armor Plating (value 32).
-			int pts = (int)components[i].component->getDamage();
+			int pts = static_cast<int>(components[i].component->getDamage());
 			retArmor += pts > 0 ? pts : 32;
 		}
 	}
@@ -113,7 +113,7 @@ bool LogisticsVariant::hasXLEngine() const
 
 long LogisticsVariant::effectiveSpeed() const
 {
-	long s = (long)chassis->speed;
+	long s = static_cast<long>(chassis->speed);
 	if ( hasXLEngine() )
 		s = bumpSpeedClass( s );
 	return s;
@@ -245,7 +245,7 @@ int LogisticsVariant::canAddComponent( LogisticsComponent* pComponent, long& x, 
 
 	if ( pComponent->getType() == COMPONENT_FORM_BULK )
 	{
-		int pts = (int)pComponent->getDamage();
+		int pts = static_cast<int>(pComponent->getDamage());
 		if ( getArmor() + ( pts > 0 ? pts : 32 ) > getMaxArmor() )
 			return NO_MORE_ARMOR;
 	}

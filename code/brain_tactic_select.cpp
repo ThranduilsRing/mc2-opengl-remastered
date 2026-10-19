@@ -12,7 +12,7 @@
 // Input mix: wid XOR tick*2654435761u XOR missionSeed*1013904223u then Wang-mix.
 uint32_t tacticWang(int wid, uint32_t tick, uint32_t missionSeed)
 {
-    uint32_t h = (uint32_t)wid
+    uint32_t h = static_cast<uint32_t>(wid)
                ^ (tick        * 2654435761u)
                ^ (missionSeed * 1013904223u);
     // Wang finaliser (avalanche)
@@ -63,8 +63,8 @@ void applyPilotModulation(const float wBase[], float wEff[], int numTactics,
         wEff[i] = (wBase[i] < 0.0f) ? 0.0f : wBase[i];
 
     // Normalised stat values [0..1]
-    float aggNorm  = (float)aggressiveness / 10.0f;
-    float gunNorm  = (float)gunnery        / 10.0f;
+    float aggNorm  = static_cast<float>(aggressiveness) / 10.0f;
+    float gunNorm  = static_cast<float>(gunnery)        / 10.0f;
 
     // High aggressiveness (>0.6) lifts aggressive tactics, depresses defensive.
     // lerp(lo=0.7, hi=1.5, aggNorm) for aggressive; lerp(1.3, 0.5, aggNorm) for defensive.
@@ -111,7 +111,7 @@ void applyPilotModulation(const float wBase[], float wEff[], int numTactics,
 int selectTactic(const float wEff[], int numTactics, uint32_t hash)
 {
     // Map hash to [0, 1)
-    float r = (float)(hash & 0xFFFFFFu) / 16777216.0f;
+    float r = static_cast<float>((hash & 0xFFFFFFu)) / 16777216.0f;
 
     float cumulative = 0.0f;
     for (int i = 0; i < numTactics; i++) {

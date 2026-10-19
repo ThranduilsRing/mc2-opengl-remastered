@@ -79,7 +79,7 @@ long getMoversWithinRadius (MoverPtr* moverList, glm::vec3 center, float radius,
 	if (numValidMovers > 0) {
 		mc2::sort_scored(std::span<mc2::Scored>(candidates, numValidMovers), sortDescending ? mc2::SortOrder::Descending : mc2::SortOrder::Ascending);
 		for (long i = 0; i < numValidMovers; i++)
-			moverList[i] = (MoverPtr)ObjectManager->get(candidates[i].id);
+			moverList[i] = static_cast<MoverPtr>(ObjectManager->get(candidates[i].id));
 	}
 	return(numValidMovers);
 }
@@ -113,7 +113,7 @@ void calcAttackPlan (long numAttackers, GameObjectPtr* attackers, long numDefend
 		}
 		attackTotal[toughest] += attackers[a]->getThreatRating();
 		long defThreat = defenders[toughest]->getThreatRating();
-		attackRatio[toughest] = (defThreat != 0) ? (float)attackTotal[toughest] / (float)defThreat : 0.0f;
+		attackRatio[toughest] = (defThreat != 0) ? static_cast<float>(attackTotal[toughest]) / static_cast<float>(defThreat) : 0.0f;
 		target[a] = defenders[toughest];
 	}
 
@@ -779,7 +779,7 @@ void execRequestHelp (void) {
 			enemyPos.z = 0.0;
 			MoverPtr enemies[MAX_MOVERS];
 			long numEnemies = getMoversWithinRadius(enemies, enemyPos, enemyRadius, enemy->getTeamId(), -1, false, true, true);
-			calcAttackPlan(numFriendlies, (GameObjectPtr*)friendlies, numEnemies, (GameObjectPtr*)enemies);
+			calcAttackPlan(numFriendlies, reinterpret_cast<GameObjectPtr*>(friendlies), numEnemies, reinterpret_cast<GameObjectPtr*>(enemies));
 		}
 	}
 	

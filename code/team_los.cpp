@@ -16,7 +16,7 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 	// For each member of the team, check LOS to point provided.
 	for (long i = 0; i < rosterSize; i++) 
 	{
-		MoverPtr obj = (MoverPtr)ObjectManager->getByWatchID(roster[i]);
+		MoverPtr obj = static_cast<MoverPtr>(ObjectManager->getByWatchID(roster[i]));
 		if (!obj->isDisabled() && !obj->isDestroyed() && (obj->getStatus() != OBJECT_STATUS_SHUTDOWN))
 		{
 			glm::vec3 distance;
@@ -98,7 +98,7 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 				//Scouting specialty skill.
 				if (obj->isMover())
 				{
-					MoverPtr mover = (MoverPtr)obj;
+					MoverPtr mover = static_cast<MoverPtr>(obj);
 					if (mover->pilot && mover->pilot->isScout())
 						radius += (radius * 0.2f);
 						
@@ -196,7 +196,7 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 				int curCellRow, curCellCol;
 				land->worldToCell(currentPos,curCellRow, curCellCol);
 
-				float localElev = (worldUnitsPerMeter * 4.0f * (float)GameMap->getLocalHeight(curCellRow,curCellCol)); 
+				float localElev = (worldUnitsPerMeter * 4.0f * static_cast<float>(GameMap->getLocalHeight(curCellRow,curCellCol)));
 				float thisHeight = currentPos.z + localElev;
 
 				//First, check if we are now inside the extent radius of the thing we are calcing LOS to.

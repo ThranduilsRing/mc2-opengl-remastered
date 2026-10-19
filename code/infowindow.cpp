@@ -396,13 +396,13 @@ void InfoWindow::renderImGui()
 	if ( !gos_ComputeHudCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
 			&bx, &by, &bw, &bh ) )
 	{ bx = 0; by = 0; bw = Environment.drawableWidth; bh = Environment.drawableHeight; }
-	const float lw = ( Environment.screenWidth  > 0 ) ? (float)Environment.screenWidth  : 800.0f;
-	const float lh = ( Environment.screenHeight > 0 ) ? (float)Environment.screenHeight : 600.0f;
+	const float lw = ( Environment.screenWidth  > 0 ) ? static_cast<float>(Environment.screenWidth)  : 800.0f;
+	const float lh = ( Environment.screenHeight > 0 ) ? static_cast<float>(Environment.screenHeight) : 600.0f;
 	// same activation condition as flushHUDBatch (scale < 0.999 gate included)
 	const float hud = ( gos_GetHudScaleActive() && gos_GetHudScale() < 0.999f )
 		? gos_GetHudScale() : 1.0f;
-	const float cx = (float)bw / lw;   // canvas remap scale (transform 2)
-	const float cy = (float)bh / lh;
+	const float cx = static_cast<float>(bw) / lw;   // canvas remap scale (transform 2)
+	const float cy = static_cast<float>(bh) / lh;
 	const float sx = cx * hud;         // effective authored-px -> device-px scale
 	const float sy = cy * hud;
 	const float px = bx + ( lw * 0.5f + (   3.0f - lw * 0.5f ) * hud ) * cx;
@@ -427,7 +427,7 @@ void InfoWindow::renderImGui()
 	auto ARGB = []( unsigned long a ){
 		return IM_COL32( (a >> 16) & 0xff, (a >> 8) & 0xff, a & 0xff, (a >> 24) & 0xff );
 	};
-	const ImU32 chromeBlue = ARGB( (unsigned long)SCROLLCOLOR );   // fit ScrollBarColor 0xff002f55
+	const ImU32 chromeBlue = ARGB( static_cast<unsigned long>(SCROLLCOLOR) );   // fit ScrollBarColor 0xff002f55
 
 	// full-panel black backing (legacy fills the info area black)
 	dl->AddRectFilled( ImVec2( px, py ), ImVec2( px + pw, py + ph ), IM_COL32( 0, 0, 0, 255 ) );
@@ -437,8 +437,8 @@ void InfoWindow::renderImGui()
 	// rect (drawEmptyRect = 1px outline, interior stays the black backing) —
 	// slices 1-2 filled it, which is not what legacy shows.
 	dl->AddRect(
-		ImVec2( AX( (float)NameRect.left ),  AY( (float)NameRect.top ) ),
-		ImVec2( AX( (float)NameRect.right ), AY( (float)NameRect.bottom ) ),
+		ImVec2( AX( static_cast<float>(NameRect.left) ),  AY( static_cast<float>(NameRect.top) ) ),
+		ImVec2( AX( static_cast<float>(NameRect.right) ), AY( static_cast<float>(NameRect.bottom) ) ),
 		IM_COL32( 0x00, 0x2F, 0x55, 255 ) );
 
 	// FONT-IMGUI-SLICE-1: text draws with the SAME legacy bitmap fonts
@@ -464,8 +464,8 @@ void InfoWindow::renderImGui()
 	if ( name )
 	{
 		HudFont::DrawWrappedCentered( dl, hdrFont,
-			AX( (float)NAMELEFT ), AY( (float)NAMETOP ),
-			AX( (float)NAMERIGHT ), AY( (float)NAMEBOTTOM ),
+			AX( static_cast<float>(NAMELEFT) ), AY( static_cast<float>(NAMETOP) ),
+			AX( static_cast<float>(NAMERIGHT) ), AY( static_cast<float>(NAMEBOTTOM) ),
 			IM_COL32( 0x5C, 0x96, 0xC2, 255 ), name, sx, sy );
 	}
 
@@ -474,10 +474,10 @@ void InfoWindow::renderImGui()
 	// the two-line name, like the legacy panel. Color by barStatus:
 	// >=0.5 green, >0.2 yellow, else red. Dim bg (argb & 0xff7f7f7f) full width,
 	// then filled fg to width*barStatus.
-	const float hbL = AX( (float)HEALTHLEFT );
-	const float hbR = AX( (float)HEALTHRIGHT );
-	const float hbT = AY( (float)HEALTHTOP );
-	const float hbB = AY( (float)HEALTHBOTTOM );
+	const float hbL = AX( static_cast<float>(HEALTHLEFT) );
+	const float hbR = AX( static_cast<float>(HEALTHRIGHT) );
+	const float hbT = AY( static_cast<float>(HEALTHTOP) );
+	const float hbB = AY( static_cast<float>(HEALTHBOTTOM) );
 	if ( pUnit )
 	{
 		float barStatus = pUnit->getAppearance()->barStatus;
@@ -494,8 +494,8 @@ void InfoWindow::renderImGui()
 		auto argb2im = []( uint32_t argb ){
 			return IM_COL32( (argb >> 16) & 0xff, (argb >> 8) & 0xff, argb & 0xff, (argb >> 24) & 0xff );
 		};
-		const uint32_t dim  = ( (uint32_t)color & 0xff7f7f7f ) | 0xff000000u;
-		const uint32_t full = ( (uint32_t)color )              | 0xff000000u;
+		const uint32_t dim  = ( static_cast<uint32_t>(color) & 0xff7f7f7f ) | 0xff000000u;
+		const uint32_t full = ( static_cast<uint32_t>(color) )              | 0xff000000u;
 
 		dl->AddRectFilled( ImVec2( hbL, hbT ), ImVec2( hbR, hbB ), argb2im( dim ) );
 		dl->AddRectFilled( ImVec2( hbL, hbT ),
@@ -507,12 +507,12 @@ void InfoWindow::renderImGui()
 	// scrollbar track (fit ScrollBar, authored (142,475)..(157,590)), both in
 	// SCROLLCOLOR (0xff002f55), interiors staying the black backing.
 	dl->AddRect(
-		ImVec2( AX( (float)SCROLLBOXLEFT ),  AY( (float)SCROLLBOXTOP ) ),
-		ImVec2( AX( (float)SCROLLBOXRIGHT ), AY( (float)SCROLLBOXBOTTOM ) ),
+		ImVec2( AX( static_cast<float>(SCROLLBOXLEFT) ),  AY( static_cast<float>(SCROLLBOXTOP) ) ),
+		ImVec2( AX( static_cast<float>(SCROLLBOXRIGHT) ), AY( static_cast<float>(SCROLLBOXBOTTOM) ) ),
 		chromeBlue );
 	dl->AddRect(
-		ImVec2( AX( (float)SCROLLLEFT ),  AY( (float)SCROLLTOP ) ),
-		ImVec2( AX( (float)SCROLLRIGHT ), AY( (float)SCROLLBOTTOM ) ),
+		ImVec2( AX( static_cast<float>(SCROLLLEFT) ),  AY( static_cast<float>(SCROLLTOP) ) ),
+		ImVec2( AX( static_cast<float>(SCROLLRIGHT) ), AY( static_cast<float>(SCROLLBOTTOM) ) ),
 		chromeBlue );
 
 	// Scrolling content child covering the legacy content-box interior. The
@@ -523,15 +523,15 @@ void InfoWindow::renderImGui()
 	// SLICE-1: the up/down arrow-cap sprites (fit InfoButton0/1, MCUI_Med1
 	// atlas) are drawn at the track ends below (static art — wheel + thumb
 	// drag cover the interaction; click-to-scroll not wired this slice).
-	const float childL = AX( (float)SCROLLBOXLEFT + 1.0f );
-	const float childT = AY( (float)SCROLLTOP );
-	const float childR = AX( (float)( SCROLLBUTTONX + SCROLLBUTTONWIDTH ) );
-	const float childB = AY( (float)SCROLLBOTTOM );
+	const float childL = AX( static_cast<float>(SCROLLBOXLEFT) + 1.0f );
+	const float childT = AY( static_cast<float>(SCROLLTOP) );
+	const float childR = AX( static_cast<float>(( SCROLLBUTTONX + SCROLLBUTTONWIDTH )) );
+	const float childB = AY( static_cast<float>(SCROLLBOTTOM) );
 	ImGui::PushStyleColor( ImGuiCol_ScrollbarBg, IM_COL32( 0, 0, 0, 0 ) );
 	ImGui::PushStyleColor( ImGuiCol_ScrollbarGrab,        IM_COL32( 0x5C, 0x96, 0xC2, 255 ) );
 	ImGui::PushStyleColor( ImGuiCol_ScrollbarGrabHovered, IM_COL32( 0x7C, 0xB2, 0xDA, 255 ) );
 	ImGui::PushStyleColor( ImGuiCol_ScrollbarGrabActive,  IM_COL32( 0x9C, 0xC8, 0xE8, 255 ) );
-	ImGui::PushStyleVar( ImGuiStyleVar_ScrollbarSize, (float)SCROLLBUTTONWIDTH * sx );
+	ImGui::PushStyleVar( ImGuiStyleVar_ScrollbarSize, static_cast<float>(SCROLLBUTTONWIDTH) * sx );
 	ImGui::PushStyleVar( ImGuiStyleVar_ScrollbarRounding, 0.0f );
 	// legacy drawScrollingStuff advances curY by exact row heights/SECTIONSKIPs;
 	// ImGui's default ItemSpacing between the Dummies would add ~4px per row and
@@ -561,7 +561,7 @@ void InfoWindow::renderImGui()
 			// sync with what was drawn.
 			ImDrawList* cdl = ImGui::GetWindowDrawList();
 			// legacy row wrap width: COMPONENTLEFT .. SCROLLLEFT
-			const float wrapW = (float)( SCROLLLEFT - COMPONENTLEFT ) * sx;
+			const float wrapW = static_cast<float>(( SCROLLLEFT - COMPONENTLEFT )) * sx;
 			auto BitmapRow = [&]( const char* text, ImU32 col ){
 				const ImVec2 cur = ImGui::GetCursorScreenPos();
 				const float h = HudFont::DrawWrapped( cdl, rowFont,
@@ -571,24 +571,24 @@ void InfoWindow::renderImGui()
 			// legacy drawScrollingStuff row x position (COMPONENTLEFT, authored 15)
 			auto RowX = [&](){
 				ImGui::SetCursorScreenPos(
-					ImVec2( AX( (float)COMPONENTLEFT ), ImGui::GetCursorScreenPos().y ) );
+					ImVec2( AX( static_cast<float>(COMPONENTLEFT) ), ImGui::GetCursorScreenPos().y ) );
 			};
 			// legacy drawDivider: 1px line DIVIDERLEFT..DIVIDERRIGHT in
 			// DIVIDERCOLOR, bracketed by SECTIONSKIP gaps (drawScrollingStuff
 			// inserts curY += SECTIONSKIP around each divider).
 			auto Divider = [&](){
-				ImGui::Dummy( ImVec2( 1.0f, (float)SECTIONSKIP * sy ) );
+				ImGui::Dummy( ImVec2( 1.0f, static_cast<float>(SECTIONSKIP) * sy ) );
 				const float dy = ImGui::GetCursorScreenPos().y;
-				cdl->AddLine( ImVec2( AX( (float)DIVIDERLEFT ),  dy ),
-				              ImVec2( AX( (float)DIVIDERRIGHT ), dy ),
-				              ARGB( (unsigned long)DIVIDERCOLOR ) );
-				ImGui::Dummy( ImVec2( 1.0f, (float)SECTIONSKIP * sy ) );
+				cdl->AddLine( ImVec2( AX( static_cast<float>(DIVIDERLEFT) ),  dy ),
+				              ImVec2( AX( static_cast<float>(DIVIDERRIGHT) ), dy ),
+				              ARGB( static_cast<unsigned long>(DIVIDERCOLOR) ) );
+				ImGui::Dummy( ImVec2( 1.0f, static_cast<float>(SECTIONSKIP) * sy ) );
 			};
 
 			// top pad: legacy content starts at SCROLLBOXTOP + SECTIONSKIP
 			// (authored 478); the child top sits at SCROLLTOP (475).
 			ImGui::Dummy( ImVec2( 1.0f,
-				AY( (float)( SCROLLBOXTOP + SECTIONSKIP ) ) - childT ) );
+				AY( static_cast<float>(( SCROLLBOXTOP + SECTIONSKIP )) ) - childT ) );
 
 			// INFO-IMGUI-SLICE-2 paperdoll (front + back schematic), SLICE-3:
 			// moved INSIDE the scrolling child at the fit-loaded MechIcon rects
@@ -599,22 +599,22 @@ void InfoWindow::renderImGui()
 				uint64_t iconTex = 0;
 				float u0, v0, u1, v1;
 				const float dollTop = ImGui::GetCursorScreenPos().y;
-				const float dollBot = dollTop + (float)MECHHEIGHT * sy;
+				const float dollBot = dollTop + static_cast<float>(MECHHEIGHT) * sy;
 				if ( icon->getUnitIconTexUV( iconTex, u0, v0, u1, v1 ) )
 				{
-					cdl->AddImage( (ImTextureID)(intptr_t)iconTex,
-						ImVec2( AX( (float)MECHLEFT ),  dollTop ),
-						ImVec2( AX( (float)MECHRIGHT ), dollBot ),
+					cdl->AddImage( static_cast<ImTextureID>(static_cast<intptr_t>(iconTex)),
+						ImVec2( AX( static_cast<float>(MECHLEFT) ),  dollTop ),
+						ImVec2( AX( static_cast<float>(MECHRIGHT) ), dollBot ),
 						ImVec2( u0, v0 ), ImVec2( u1, v1 ) );
 				}
 				if ( icon->getUnitIconBackTexUV( iconTex, u0, v0, u1, v1 ) )
 				{
-					cdl->AddImage( (ImTextureID)(intptr_t)iconTex,
-						ImVec2( AX( (float)MECHBACKLEFT ),  dollTop ),
-						ImVec2( AX( (float)MECHBACKRIGHT ), dollBot ),
+					cdl->AddImage( static_cast<ImTextureID>(static_cast<intptr_t>(iconTex)),
+						ImVec2( AX( static_cast<float>(MECHBACKLEFT) ),  dollTop ),
+						ImVec2( AX( static_cast<float>(MECHBACKRIGHT) ), dollBot ),
 						ImVec2( u0, v0 ), ImVec2( u1, v1 ) );
 				}
-				ImGui::Dummy( ImVec2( 1.0f, (float)MECHHEIGHT * sy ) );
+				ImGui::Dummy( ImVec2( 1.0f, static_cast<float>(MECHHEIGHT) * sy ) );
 				Divider();
 			}
 
@@ -633,7 +633,7 @@ void InfoWindow::renderImGui()
 				RowX();
 				BitmapRow( r.text.c_str(), ARGB( r.argb ) );
 				if ( r.argb == 0xffc29b00u )
-					ImGui::Dummy( ImVec2( 1.0f, (float)SECTIONSKIP * sy ) );
+					ImGui::Dummy( ImVec2( 1.0f, static_cast<float>(SECTIONSKIP) * sy ) );
 				prevArgb = r.argb;
 				firstRow = false;
 			}
@@ -670,22 +670,22 @@ void InfoWindow::renderImGui()
 					float pu0, pv0, pu1, pv1;
 					if ( pilot.active && icon->getPilotIconTexUV( pTex, pu0, pv0, pu1, pv1 ) )
 					{
-						cdl->AddImage( (ImTextureID)(intptr_t)pTex,
-							ImVec2( AX( (float)PILOTLEFT ), rowTop ),
-							ImVec2( AX( (float)PILOTRIGHT ), rowTop + (float)PILOTHEIGHT * sy ),
+						cdl->AddImage( static_cast<ImTextureID>(static_cast<intptr_t>(pTex)),
+							ImVec2( AX( static_cast<float>(PILOTLEFT) ), rowTop ),
+							ImVec2( AX( static_cast<float>(PILOTRIGHT) ), rowTop + static_cast<float>(PILOTHEIGHT) * sy ),
 							ImVec2( pu0, pv0 ), ImVec2( pu1, pv1 ) );
 					}
 					cdl->AddRect(
-						ImVec2( AX( (float)PILOTLEFT ), rowTop ),
-						ImVec2( AX( (float)( PILOTRIGHT + 1 ) ), rowTop + (float)( PILOTHEIGHT + 1 ) * sy ),
+						ImVec2( AX( static_cast<float>(PILOTLEFT) ), rowTop ),
+						ImVec2( AX( static_cast<float>(( PILOTRIGHT + 1 )) ), rowTop + static_cast<float>(( PILOTHEIGHT + 1 )) * sy ),
 						chromeBlue );
 					// FONT-IMGUI-SLICE-1: legacy componentFont via HudFont
 					const float nameH = HudFont::Measure( rowFont, pilot.name.c_str(), sx, sy ).y;
-					HudFont::Draw( cdl, rowFont, AX( (float)PILOTNAMELEFT ),
-						rowTop + (float)PILOTHEIGHT * sy * 0.5f - nameH * 0.5f,
+					HudFont::Draw( cdl, rowFont, AX( static_cast<float>(PILOTNAMELEFT) ),
+						rowTop + static_cast<float>(PILOTHEIGHT) * sy * 0.5f - nameH * 0.5f,
 						pilotBlue, pilot.name.c_str(), sx, sy );
-					ImGui::Dummy( ImVec2( 1.0f, (float)PILOTHEIGHT * sy ) );
-					ImGui::Dummy( ImVec2( 1.0f, (float)SECTIONSKIP * sy ) );
+					ImGui::Dummy( ImVec2( 1.0f, static_cast<float>(PILOTHEIGHT) * sy ) );
+					ImGui::Dummy( ImVec2( 1.0f, static_cast<float>(SECTIONSKIP) * sy ) );
 				}
 				else
 				{
@@ -693,7 +693,7 @@ void InfoWindow::renderImGui()
 					BitmapRow( pilot.name.c_str(), pilotBlue );
 				}
 				// legacy adds a second SECTIONSKIP before the rank row
-				ImGui::Dummy( ImVec2( 1.0f, (float)SECTIONSKIP * sy ) );
+				ImGui::Dummy( ImVec2( 1.0f, static_cast<float>(SECTIONSKIP) * sy ) );
 
 				// --- rank + skill rows (legacy drawScrollingStuff j=0..2 loop):
 				// j=0 rank medallion (skillInfos[rank]) + rank text at SKILLLEFT;
@@ -715,7 +715,7 @@ void InfoWindow::renderImGui()
 						uint64_t glTex = ( gosID && gosID != 0xffffffff )
 							? gos_GetUiTextureId( gosID ) : 0;
 						if ( glTex )
-							cdl->AddImage( (ImTextureID)(intptr_t)glTex,
+							cdl->AddImage( static_cast<ImTextureID>(static_cast<intptr_t>(glTex)),
 								ImVec2( AX( loc[0].x ), rowTop ),
 								ImVec2( AX( loc[2].x ), rowTop + rowH * sy ),
 								ImVec2( loc[0].u, loc[0].v ),
@@ -728,7 +728,7 @@ void InfoWindow::renderImGui()
 					if ( j == 0 )
 					{
 						// rank text beside the medallion (legacy x = SKILLLEFT)
-						HudFont::Draw( cdl, rowFont, AX( (float)SKILLLEFT ), rowTop,
+						HudFont::Draw( cdl, rowFont, AX( static_cast<float>(SKILLLEFT) ), rowTop,
 							pilotBlue, pilot.rankText.c_str(), sx, sy );
 					}
 					else
@@ -741,49 +741,49 @@ void InfoWindow::renderImGui()
 						// stepped by the legacy packed-channel increments;
 						// numeric value at SKILLRIGHT+2.
 						const int skill = ( j == 1 ) ? pilot.gunnery : pilot.piloting;
-						const int barCount = skill / (int)NUMBERSKILLBARS;
+						const int barCount = skill / static_cast<int>(NUMBERSKILLBARS);
 						unsigned long color = 0xff005392;
 						unsigned long redInc = 0, greenInc = 0, blueInc = 0;
 						if ( barCount )
 						{
-							redInc   = (unsigned long)( 205 / barCount ) << 16;
-							greenInc = (unsigned long)( ( 234 - 83 ) / barCount ) << 8;
-							blueInc  = (unsigned long)( ( 255 - 146 ) / barCount );
+							redInc   = static_cast<unsigned long>(( 205 / barCount )) << 16;
+							greenInc = static_cast<unsigned long>(( ( 234 - 83 ) / barCount )) << 8;
+							blueInc  = static_cast<unsigned long>(( ( 255 - 146 ) / barCount ));
 						}
-						const ImVec2 osMin( AX( (float)( SKILLLEFT - SKILLSKIP ) + 0.5f ),
+						const ImVec2 osMin( AX( static_cast<float>(( SKILLLEFT - SKILLSKIP )) + 0.5f ),
 							rowTop - 0.5f * sy );
-						const ImVec2 osMax( AX( (float)( SKILLRIGHT + SKILLSKIP ) + 0.5f ),
+						const ImVec2 osMax( AX( static_cast<float>(( SKILLRIGHT + SKILLSKIP )) + 0.5f ),
 							rowTop + ( rowH + 1.5f ) * sy );
 						cdl->AddRectFilled( osMin, osMax, IM_COL32( 0, 0, 0, 255 ) );
 						cdl->AddRect( osMin, osMax, IM_COL32( 0x00, 0x2F, 0x55, 255 ) );
-						float uLeft = (float)( SKILLLEFT + SKILLSKIP );
-						const float uTop = rowTop + ( (float)SKILLSKIP + 0.5f ) * sy;
-						const float uBot = rowTop + ( rowH - (float)SKILLSKIP + 0.5f ) * sy;
+						float uLeft = static_cast<float>(( SKILLLEFT + SKILLSKIP ));
+						const float uTop = rowTop + ( static_cast<float>(SKILLSKIP) + 0.5f ) * sy;
+						const float uBot = rowTop + ( rowH - static_cast<float>(SKILLSKIP) + 0.5f ) * sy;
 						for ( int b = 0; b < barCount; b++ )
 						{
 							cdl->AddRectFilled(
 								ImVec2( AX( uLeft ), uTop ),
-								ImVec2( AX( uLeft + (float)SKILLUNITWIDTH ), uBot ),
+								ImVec2( AX( uLeft + static_cast<float>(SKILLUNITWIDTH) ), uBot ),
 								ARGB( color ) );
 							color += redInc;
 							color += greenInc;
 							color += blueInc;
-							uLeft += (float)( SKILLUNITWIDTH + 1 );
+							uLeft += static_cast<float>(( SKILLUNITWIDTH + 1 ));
 						}
 						char numBuf[16];
 						mc2::fmt::to_buf(numBuf, "{:d}", mc2::fmt::as_i32(skill));
-						HudFont::Draw( cdl, rowFont, AX( (float)SKILLRIGHT + 2.0f ), rowTop,
+						HudFont::Draw( cdl, rowFont, AX( static_cast<float>(SKILLRIGHT) + 2.0f ), rowTop,
 							pilotBlue, numBuf, sx, sy );
 					}
 					ImGui::Dummy( ImVec2( 1.0f, rowH * sy ) );
-					ImGui::Dummy( ImVec2( 1.0f, (float)SECTIONSKIP * sy ) );
+					ImGui::Dummy( ImVec2( 1.0f, static_cast<float>(SECTIONSKIP) * sy ) );
 					currentSkill = j + 5;
 				}
 
 				// specialty skills (legacy x = NAMELEFT, font-height advance)
 				for ( const std::string& s : pilot.specialties )
 				{
-					ImGui::SetCursorScreenPos( ImVec2( AX( (float)NAMELEFT ),
+					ImGui::SetCursorScreenPos( ImVec2( AX( static_cast<float>(NAMELEFT) ),
 						ImGui::GetCursorScreenPos().y ) );
 					BitmapRow( s.c_str(), pilotBlue );
 				}
@@ -805,7 +805,7 @@ void InfoWindow::renderImGui()
 				if ( s_bootInfoScroll > 0 && s_scrollPin )
 				{
 					extern uint32_t g_mc2FrameCounter;
-					if ( (long)g_mc2FrameCounter >= s_bootInfoScroll + 3000 )
+					if ( static_cast<long>(g_mc2FrameCounter) >= s_bootInfoScroll + 3000 )
 						ImGui::SetScrollY( ImGui::GetScrollMaxY() );
 				}
 			}
@@ -845,10 +845,10 @@ void InfoWindow::renderImGui()
 		const float physRange = buttons[1].location[0].y - buttons[0].location[2].y;
 		const float infoLen = ( sy > 0.0f ) ? loadoutScrollMax / sy : 0.0f;
 		float thumbH = physRange * physRange / ( physRange + infoLen );
-		if ( thumbH < (float)SCROLLBUTTONHEIGHT )
-			thumbH = (float)SCROLLBUTTONHEIGHT;
+		if ( thumbH < static_cast<float>(SCROLLBUTTONHEIGHT) )
+			thumbH = static_cast<float>(SCROLLBUTTONHEIGHT);
 		const float scrollMaxDyn = buttons[1].location[0].y - thumbH - 2.0f;
-		const float trackRange = scrollMaxDyn - (float)SCROLLMIN;
+		const float trackRange = scrollMaxDyn - static_cast<float>(SCROLLMIN);
 		const float stepDev = ( trackRange > 0.0f )
 			? SCROLLAMOUNT * loadoutScrollMax / trackRange : 0.0f;
 
@@ -867,7 +867,7 @@ void InfoWindow::renderImGui()
 			const gos_VERTEX* loc = buttons[i].location;
 			const ImVec2 capMin( AX( loc[0].x ), AY( loc[0].y ) );
 			const ImVec2 capMax( AX( loc[2].x ), AY( loc[2].y ) );
-			dl->AddImage( (ImTextureID)(intptr_t)glTex,
+			dl->AddImage( static_cast<ImTextureID>(static_cast<intptr_t>(glTex)),
 				capMin, capMax,
 				ImVec2( loc[0].u, loc[0].v ),
 				ImVec2( loc[2].u, loc[2].v ) );
@@ -920,7 +920,7 @@ void InfoWindow::render()
 		if ( s_bootInfoScroll > 0 && s_scrollPin )
 		{
 			extern uint32_t g_mc2FrameCounter;
-			if ( (long)g_mc2FrameCounter >= s_bootInfoScroll + 3000 )
+			if ( static_cast<long>(g_mc2FrameCounter) >= s_bootInfoScroll + 3000 )
 				setScrollPos( 1000000 );
 		}
 	}
@@ -1547,7 +1547,7 @@ void InfoWindow::drawScrollingStuff()
 			{
 				if ( pilotRows.active )
 					icon->renderPilotIcon( PILOTLEFT, curY, PILOTRIGHT, curY + PILOTHEIGHT );
-				GUI_RECT tmpRect = { PILOTLEFT, (long)curY, (PILOTRIGHT + 1), (long)(curY + PILOTHEIGHT + 1) };
+				GUI_RECT tmpRect = { PILOTLEFT, static_cast<long>(curY), (PILOTRIGHT + 1), static_cast<long>((curY + PILOTHEIGHT + 1)) };
 				drawEmptyRect( tmpRect, SCROLLCOLOR, SCROLLCOLOR  );
 
 				float right = SCROLLLEFT;
@@ -1587,7 +1587,7 @@ void InfoWindow::drawScrollingStuff()
 
 			if ( curY > NAMETOP )
 			{
-				GUI_RECT tmpRect = { (long)(v[0].x - .5), (long)(v[0].y - .5), (long)(v[2].x + 1.5), (long)(v[2].y + 1.5) };
+				GUI_RECT tmpRect = { static_cast<long>((v[0].x - .5)), static_cast<long>((v[0].y - .5)), static_cast<long>((v[2].x + 1.5)), static_cast<long>((v[2].y + 1.5)) };
 				drawEmptyRect( tmpRect, 0xff002f55, 0xff002f55  );
 
 
@@ -1689,10 +1689,10 @@ void InfoWindow::drawSkillBar( int skill, float yVal, float height )
 
 	unsigned long color = 0xff005392;
 
-	GUI_RECT outSideRect = { (long)(left - SKILLSKIP + .5f), (long)(yVal - .5f), (long)(right + SKILLSKIP + .5f), (long)(yVal + height + 1.5f)};
+	GUI_RECT outSideRect = { static_cast<long>((left - SKILLSKIP + .5f)), static_cast<long>((yVal - .5f)), static_cast<long>((right + SKILLSKIP + .5f)), static_cast<long>((yVal + height + 1.5f))};
 	drawRect( outSideRect, 0xff000000 );
-	GUI_RECT rect = { (long)(left  + InfoWindow::SKILLSKIP), (long)(yVal + InfoWindow::SKILLSKIP + .5f),
-		(long)(left  + InfoWindow::SKILLSKIP + SKILLUNITWIDTH), (long)(yVal + height - InfoWindow::SKILLSKIP + .5f) };
+	GUI_RECT rect = { static_cast<long>((left  + InfoWindow::SKILLSKIP)), static_cast<long>((yVal + InfoWindow::SKILLSKIP + .5f)),
+		static_cast<long>((left  + InfoWindow::SKILLSKIP + SKILLUNITWIDTH)), static_cast<long>((yVal + height - InfoWindow::SKILLSKIP + .5f)) };
 
 	drawEmptyRect( outSideRect, 0xff002f55, 0xff002f55 );
 

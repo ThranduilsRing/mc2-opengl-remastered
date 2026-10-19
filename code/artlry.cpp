@@ -142,7 +142,7 @@ void CallArtillery (long commanderID, long strikeType, glm::vec3 strikeLoc, long
 		//-----------------------------------------------------------
 		// Set Time to Impact here.  Only if timeToImpact is != -1.0
 		if (secondsToImpact != -1)
-			artilleryStrike->info.strike.timeToImpact = (float)secondsToImpact;
+			artilleryStrike->info.strike.timeToImpact = static_cast<float>(secondsToImpact);
 	
 		// Of course, then our friends the designers set
 		// secondsToImpact to 0.  Well Done.  No warning.  Looks like
@@ -217,7 +217,7 @@ void IfaceCallStrike (long strikeID,
 			break;
 	}
 
-	long secondsToImpact = (long)timeToImpact;
+	long secondsToImpact = static_cast<long>(timeToImpact);
 
 	if (strikeID == ARTILLERY_SMALL)
 		strikeID = ARTILLERY_LARGE;
@@ -483,13 +483,13 @@ long ArtilleryType::init (FilePtr objFile, unsigned long fileSize) {
 		if (result != NO_ERR)
 			return(result);
 			
-		explosionOffsetX = (float *)systemHeap->Malloc(sizeof(float)*numExplosions);
+		explosionOffsetX = static_cast<float *>(systemHeap->Malloc(sizeof(float)*numExplosions));
 		gosASSERT(explosionOffsetX != NULL);
 
-		explosionOffsetY = (float *)systemHeap->Malloc(sizeof(float)*numExplosions);
+		explosionOffsetY = static_cast<float *>(systemHeap->Malloc(sizeof(float)*numExplosions));
 		gosASSERT(explosionOffsetY != NULL);
 
-		explosionDelay   = (float *)systemHeap->Malloc(sizeof(float)*numExplosions);
+		explosionDelay   = static_cast<float *>(systemHeap->Malloc(sizeof(float)*numExplosions));
 		gosASSERT(explosionDelay != NULL);
 
 		for (long i=0;i<numExplosions;i++)
@@ -550,8 +550,8 @@ bool ArtilleryType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 	// Artillery counts as damage IF AND ONLY IF the artillery 
 	// strike arrives during the collision time.  At all other
 	// times, the artillery doesn't matter.
-	ArtilleryPtr artillery = (ArtilleryPtr)collidee;
-	ArtilleryTypePtr artilleryType = (ArtilleryTypePtr)artillery->getObjectType();
+	ArtilleryPtr artillery = static_cast<ArtilleryPtr>(collidee);
+	ArtilleryTypePtr artilleryType = static_cast<ArtilleryTypePtr>(artillery->getObjectType());
 	if (artillery->getFlag(OBJECT_FLAG_BOOM)) 
 	{
 		//---------------------
@@ -569,11 +569,11 @@ bool ArtilleryType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 					//---------------------------------------------------
 					// An explosion may NOT damage a gate or turret unless
 					// is is within the "little" extent radius.
-					float littleExtent = ((GatePtr)collider)->getLittleExtent() * metersPerWorldUnit;
+					float littleExtent = (static_cast<GatePtr>(collider))->getLittleExtent() * metersPerWorldUnit;
 					if (littleExtent < range)
 					{
 						float realRange = range - littleExtent;
-						if (realRange > ((ArtilleryTypePtr)artillery->getObjectType())->nominalMajorRange)
+						if (realRange > (static_cast<ArtilleryTypePtr>(artillery->getObjectType()))->nominalMajorRange)
 							return FALSE;
 					}
 				}
@@ -584,7 +584,7 @@ bool ArtilleryType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 					//---------------------------------------------------
 					// An explosion may NOT damage a gate or turret unless
 					// is is within the "little" extent radius.
-					float littleExtent = ((TurretPtr)collider)->getLittleExtent() * metersPerWorldUnit;
+					float littleExtent = (static_cast<TurretPtr>(collider))->getLittleExtent() * metersPerWorldUnit;
 					if (littleExtent < range) 
 					{
 						float realRange = range - littleExtent;
@@ -596,7 +596,7 @@ bool ArtilleryType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 			}
 		}
 		else if ((collider->getObjectClass() == BATTLEMECH) && 
-				(((MoverPtr)collider)->getMoveType() == MOVETYPE_AIR) &&
+				((static_cast<MoverPtr>(collider))->getMoveType() == MOVETYPE_AIR) &&
 				(collider->getStatus() != OBJECT_STATUS_SHUTDOWN))
 		{
 			//DO Nothing.  Helicopters are immune.
@@ -788,7 +788,7 @@ void Artillery::setJustCreated (void)
 {
 	if (getFlag(OBJECT_FLAG_JUSTCREATED)) 
 	{
-		ArtilleryTypePtr type = (ArtilleryTypePtr)getObjectType();
+		ArtilleryTypePtr type = static_cast<ArtilleryTypePtr>(getObjectType());
 		setFlag(OBJECT_FLAG_JUSTCREATED, false);
 		if (info.strike.timeToImpact == -1.0)
 			info.strike.timeToImpact = type->nominalTimeToImpact;
@@ -886,7 +886,7 @@ long Artillery::update (void)
 		info.strike.timeToLaunch -= frameLength;	
 	}
 
-	ArtilleryTypePtr type = (ArtilleryTypePtr)getObjectType();
+	ArtilleryTypePtr type = static_cast<ArtilleryTypePtr>(getObjectType());
 
 	
 	recalcBounds(eye);		//Are we even visible?
@@ -952,7 +952,7 @@ long Artillery::update (void)
 	{
 		bool oldShadows = useShadows;
 		useShadows = false;
-		appearance->setObjectParameters(iFacePosition,((ObjectAppearance*)appearance)->rotation,false,getTeamId(),Team::getRelation(getTeamId(), Team::home->getId()));
+		appearance->setObjectParameters(iFacePosition,(static_cast<ObjectAppearance*>(appearance))->rotation,false,getTeamId(),Team::getRelation(getTeamId(), Team::home->getId()));
 		appearance->recalcBounds();
 		appearance->update();
 		useShadows = oldShadows;
@@ -1580,7 +1580,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 			// The only appearance type for buildings is MLR_APPEARANCE.
 			gosASSERT(buildingAppearanceType->getAppearanceClass() == BLDG_TYPE);
 			
-			appearance->init((BldgAppearanceType*)buildingAppearanceType, (GameObjectPtr)this);
+			appearance->init(static_cast<BldgAppearanceType*>(buildingAppearanceType), static_cast<GameObjectPtr>(this));
 			
 			//--------------------------------------------------------------
 			appearanceType = (GV_TYPE << 24);
@@ -1598,7 +1598,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 					STOP((" Artillery.init: unable to create appearance for Shilone"));
 		
 				//-----------------------------------------------------------------
-				bomber->init((GVAppearanceType*)bomberAppearanceType, (GameObjectPtr)this);
+				bomber->init(static_cast<GVAppearanceType*>(bomberAppearanceType), static_cast<GameObjectPtr>(this));
 			}
 			
 			bombRunStarted = false;
@@ -1648,7 +1648,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 			// The only appearance type for buildings is MLR_APPEARANCE.
 			gosASSERT(buildingAppearanceType->getAppearanceClass() == BLDG_TYPE);
 			
-			appearance->init((BldgAppearanceType*)buildingAppearanceType, (GameObjectPtr)this);
+			appearance->init(static_cast<BldgAppearanceType*>(buildingAppearanceType), static_cast<GameObjectPtr>(this));
 			//--------------------------------------------------------------
 			appearanceType = (GV_TYPE << 24);
 		
@@ -1665,7 +1665,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 					STOP((" Artillery.init: unable to create appearance for Shilone"));
 		
 				//-----------------------------------------------------------------
-				bomber->init((GVAppearanceType*)bomberAppearanceType, (GameObjectPtr)this);
+				bomber->init(static_cast<GVAppearanceType*>(bomberAppearanceType), static_cast<GameObjectPtr>(this));
 			}
 			
 			bombRunStarted = false;
@@ -1716,7 +1716,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 			// The only appearance type for buildings is MLR_APPEARANCE.
 			gosASSERT(buildingAppearanceType->getAppearanceClass() == BLDG_TYPE);
 			
-			appearance->init((BldgAppearanceType*)buildingAppearanceType, (GameObjectPtr)this);
+			appearance->init(static_cast<BldgAppearanceType*>(buildingAppearanceType), static_cast<GameObjectPtr>(this));
 		}
 		break;
 	}
@@ -1730,7 +1730,7 @@ void Artillery::Save (PacketFilePtr file, long packetNum)
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	file->writePacket(packetNum,(MemoryPtr)&data,sizeof(ArtilleryData),STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(ArtilleryData),STORAGE_TYPE_ZLIB);
 }
 
 //---------------------------------------------------------------------------

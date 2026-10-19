@@ -15,7 +15,7 @@ std::unique_ptr<BldgAppearance> MechWarrior::getWayPointMarker( const glm::vec3&
 	// The only appearance type for buildings is MLR_APPEARANCE.
 	gosASSERT(buildingAppearanceType->getAppearanceClass() == BLDG_TYPE);
 	
-	appearance->init((BldgAppearanceType*)buildingAppearanceType, (GameObjectPtr)this);
+	appearance->init(static_cast<BldgAppearanceType*>(buildingAppearanceType), reinterpret_cast<GameObjectPtr>(this));
 
 	appearance->setObjectParameters( (const_cast<glm::vec3&>(pos)), 0, 1, 0, 0);
 	appearance->recalcBounds();
@@ -165,7 +165,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 		for (long i = 0; i < numSteps; i++) {
 			GlobalMapAreaPtr area = &GlobalMoveMap[getVehicle()->moveLevel]->areas[globalPath[i].thruArea];
 			if (area->type == AREA_TYPE_GATE) {
-				GatePtr gate = (GatePtr)ObjectManager->getByWatchID(area->ownerWID);
+				GatePtr gate = static_cast<GatePtr>(ObjectManager->getByWatchID(area->ownerWID));
 				if (gate && !gate->isDestroyed() && (gate->getTeam() != getTeam())) {
 					GameObjectPtr controlBuilding = ObjectManager->getByWatchID(gate->parent);
 					if (canCapture && controlBuilding && (searchDepth > 0)) {
@@ -191,7 +191,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 				}
 			}
 			else if (area->type == AREA_TYPE_WALL) {
-				BuildingPtr wall = (BuildingPtr)ObjectManager->getByWatchID(area->ownerWID);
+				BuildingPtr wall = static_cast<BuildingPtr>(ObjectManager->getByWatchID(area->ownerWID));
 				if (wall && (!wall->isDestroyed())) {
 					newTacOrder.init(orderOrigin, TACTICAL_ORDER_ATTACK_OBJECT);
 					newTacOrder.subOrder = true;
@@ -219,7 +219,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 				// to it. If it happens to be adjacent to blocked
 				// cells, this could be off...
 				if (currentTarget->isBuilding()) {
-					BuildingPtr building = (BuildingPtr)currentTarget;
+					BuildingPtr building = static_cast<BuildingPtr>(currentTarget);
 					long goalRow = 0, goalCol = 0;
 					bool foundGoal = building->calcAdjacentAreaCell(getVehicle()->moveLevel, fromArea, goalRow, goalCol);
 					if (foundGoal)
@@ -271,7 +271,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 		for (long i = 0; i < numSteps; i++) {
 			GlobalMapAreaPtr area = &GlobalMoveMap[getVehicle()->moveLevel]->areas[globalPath[i].thruArea];
 			if (area->type == AREA_TYPE_GATE) {
-				GatePtr gate = (GatePtr)ObjectManager->getByWatchID(area->ownerWID);
+				GatePtr gate = static_cast<GatePtr>(ObjectManager->getByWatchID(area->ownerWID));
 				if (gate && !gate->isDestroyed() && (gate->getTeam() != getTeam())) {
 					GameObjectPtr controlBuilding = ObjectManager->getByWatchID(gate->parent);
 					if (canCapture && controlBuilding && (searchDepth > 0)) {
@@ -297,7 +297,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 				}
 			}
 			else if (area->type == AREA_TYPE_WALL) {
-				BuildingPtr wall = (BuildingPtr)ObjectManager->getByWatchID(area->ownerWID);
+				BuildingPtr wall = static_cast<BuildingPtr>(ObjectManager->getByWatchID(area->ownerWID));
 				if (wall && (!wall->isDestroyed())) {
 					newTacOrder.init(orderOrigin, TACTICAL_ORDER_ATTACK_OBJECT);
 					newTacOrder.subOrder = true;
@@ -378,7 +378,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 			for (long i = 0; i < numSteps; i++) {
 				GlobalMapAreaPtr area = &GlobalMoveMap[getVehicle()->moveLevel]->areas[globalPath[i].thruArea];
 				if (area->type == AREA_TYPE_GATE) {
-					GatePtr gate = (GatePtr)ObjectManager->getByWatchID(area->ownerWID);
+					GatePtr gate = static_cast<GatePtr>(ObjectManager->getByWatchID(area->ownerWID));
 					if (gate && !gate->isDestroyed() && (gate->getTeam() != getTeam())) {
 						GameObjectPtr controlBuilding = ObjectManager->getByWatchID(gate->parent);
 						if (controlBuilding && (searchDepth > 0)) {
@@ -404,7 +404,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 					}
 				}
 				else if (area->type == AREA_TYPE_WALL) {
-					BuildingPtr wall = (BuildingPtr)ObjectManager->getByWatchID(area->ownerWID);
+					BuildingPtr wall = static_cast<BuildingPtr>(ObjectManager->getByWatchID(area->ownerWID));
 					if (wall && (!wall->isDestroyed())) {
 						newTacOrder.init(orderOrigin, TACTICAL_ORDER_ATTACK_OBJECT);
 						newTacOrder.subOrder = true;
@@ -438,7 +438,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 			if (nextTarget)
 				if (nextTarget->getObjectClass() == TURRET)
 					if (getVehicle()->isEnemy(nextTarget->getTeam()))
-						if (mainTarget/*getVehicle()*/->distanceFrom(nextTarget->getPosition()) <= ((Turret*)nextTarget)->maxRange)
+						if (mainTarget/*getVehicle()*/->distanceFrom(nextTarget->getPosition()) <= (static_cast<Turret*>(nextTarget))->maxRange)
 							noTargetSelected = false;
 			if (noTargetSelected) {
 				long numTurrets = ObjectManager->getNumTurrets();
@@ -477,7 +477,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 			}
 			if (nextTarget) {
 				if (nextTarget->getObjectClass() == TURRET) {
-					GameObjectPtr turretControl = ObjectManager->getByWatchID(((TurretPtr)nextTarget)->parent);
+					GameObjectPtr turretControl = ObjectManager->getByWatchID((static_cast<TurretPtr>(nextTarget))->parent);
 					if (turretControl && (mainTarget/*getVehicle()*/->distanceFrom(turretControl->getPosition()) < controlRadius))
 						if (!turretControl->isDisabled()) {
 							glm::vec3 tempLocation;
@@ -819,7 +819,7 @@ void MechWarrior::save (PacketFilePtr file, long packetNum)
 {
 	MC2_SAVE_STRUCT(MechWarriorData, warriorData);
 	copyToData(warriorData);
-	file->writePacket(packetNum,(MemoryPtr)&warriorData,sizeof(warriorData),STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&warriorData),sizeof(warriorData),STORAGE_TYPE_ZLIB);
 }
 
 long MechWarrior::Save (PacketFilePtr file, long packetNum)
@@ -835,7 +835,7 @@ long MechWarrior::Save (PacketFilePtr file, long packetNum)
 	staticData.curEventID					= curEventID;
 	staticData.curEventTrigger				= curEventTrigger;
 
-	file->writePacket(packetNum,(MemoryPtr)&staticData,sizeof(StaticMechWarriorData),STORAGE_TYPE_RAW);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&staticData),sizeof(StaticMechWarriorData),STORAGE_TYPE_RAW);
 	packetNum++;
 
 	for (long i = 0; i < numWarriors; i++)
@@ -850,14 +850,14 @@ long MechWarrior::Save (PacketFilePtr file, long packetNum)
 void MechWarrior::load (PacketFilePtr file, long packetNum)
 {
 	MechWarriorData warriorData{};
-	file->readPacket(packetNum,(MemoryPtr)&warriorData);
+	file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(&warriorData));
 	init(warriorData);
 }
 
 long MechWarrior::Load (PacketFilePtr file, long packetNum)
 {
 	StaticMechWarriorData staticData{};
-	file->readPacket(packetNum,(MemoryPtr)&staticData);
+	file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(&staticData));
 	packetNum++;
 
 	numWarriors 			= staticData.numWarriors;

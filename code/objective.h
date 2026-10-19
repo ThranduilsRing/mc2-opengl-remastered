@@ -166,7 +166,7 @@ public:
 	
 	virtual glm::vec3 GetObjectivePosition()		//Used to draw on tacmap
 	{
-		Building *m_pBuilding = (Building *)ObjectManager->getByWatchID(m_pBuildingWID);
+		Building *m_pBuilding = static_cast<Building *>(ObjectManager->getByWatchID(m_pBuildingWID));
 		if (m_pBuilding)
 			return m_pBuilding->getPosition();
 			
@@ -543,7 +543,7 @@ private:
 	static float s_blinkLength;
 	static float s_lastBlinkTime;
 	static unsigned long s_blinkColor;
-	static aFont*	s_markerFont;
+	static std::unique_ptr<aFont>	s_markerFont;
 public: /* we could make this protected if only the editdialog is to access these functions */
 	static std::unique_ptr<CObjectiveCondition> new_CObjectiveCondition(condition_species_type conditionSpecies, int alignment);
 	static std::unique_ptr<CObjectiveAction> new_CObjectiveAction(action_species_type actionSpecies, int alignment);

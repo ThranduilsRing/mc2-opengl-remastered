@@ -66,7 +66,7 @@ void SplashIntro::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", (const char*)path );
+		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(path) );
 		Assert(0,0,errorStr );
 	}
 
@@ -111,7 +111,7 @@ int MainMenu::init( FitIniFile& file )
 	if ( NO_ERR != file2.open( name ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", (const char*)name );
+		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(name) );
 		Assert(0,0,errorStr );
 	}
 
@@ -138,7 +138,7 @@ int MainMenu::init( FitIniFile& file )
 	if ( NO_ERR != mpFile.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", (const char*)path );
+		sprintf( error, "couldn't open file %s", static_cast<const char*>(path) );
 		Assert( 0, 0, error );
 		return -1;		
 	}
@@ -501,7 +501,7 @@ void MainMenu::update()
 			gosEnum_KeyStatus spcSt  = gos_GetKeyStatus(KEY_SPACE);
 			gosEnum_KeyStatus lmsSt  = gos_GetKeyStatus(KEY_LMOUSE);
 			if (escSt != KEY_FREE || spcSt != KEY_FREE || lmsSt != KEY_FREE || s_introDbgFrame % 60 == 0)
-				printf("[INTRO_MOVIE] frame=%d esc=%d spc=%d lmouse=%d\n", s_introDbgFrame, (int)escSt, (int)spcSt, (int)lmsSt);
+				printf("[INTRO_MOVIE] frame=%d esc=%d spc=%d lmouse=%d\n", s_introDbgFrame, static_cast<int>(escSt), static_cast<int>(spcSt), static_cast<int>(lmsSt));
 			++s_introDbgFrame;
 		}
 

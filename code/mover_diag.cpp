@@ -22,9 +22,9 @@ void DebugMoveChunk (MoverPtr mover, MoveChunkPtr chunk1, MoveChunkPtr chunk2) {
 		strcat(ChunkDebugMsg, outString);
 		if (mover->getPilot() == nullptr)
 			strcat(ChunkDebugMsg, "NULL pilot!\n");
-		if ((mover->getObjectClass() == BATTLEMECH) && ((BattleMechPtr)mover)->inJump) {
+		if ((mover->getObjectClass() == BATTLEMECH) && (static_cast<BattleMechPtr>(mover))->inJump) {
 			int jumpDest[2];
-			land->worldToCell(((BattleMechPtr)mover)->jumpGoal, jumpDest[0], jumpDest[1]);
+			land->worldToCell((static_cast<BattleMechPtr>(mover))->jumpGoal, jumpDest[0], jumpDest[1]);
 			mc2::fmt::to_buf(outString, "Jumping to [{:d}, {:d}]\n", mc2::fmt::as_i32(jumpDest[0]), mc2::fmt::as_i32(jumpDest[1]));
 			strcat(ChunkDebugMsg, outString);
 		}
@@ -103,21 +103,21 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 		targetPoint = glm::vec3(0.0f);
 		bool isTargetPoint = false;
 		if (chunk1->targetType == STATUSCHUNK_TARGET_MOVER)
-			target = (GameObjectPtr)MPlayer->moverRoster[chunk1->targetId];
+			target = static_cast<GameObjectPtr>(MPlayer->moverRoster[chunk1->targetId]);
 		else if (chunk1->targetType == STATUSCHUNK_TARGET_TERRAIN)
 			target = ObjectManager->findByPartId(chunk1->targetId);
 		else if (chunk1->targetType == STATUSCHUNK_TARGET_SPECIAL)
 			target = ObjectManager->findByPartId(chunk1->targetId);
 		else if (chunk1->targetType == STATUSCHUNK_TARGET_LOCATION) {
-			targetPoint.x = (float)chunk1->targetCellRC[1] * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
-			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - ((float)chunk1->targetCellRC[0] * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
+			targetPoint.x = static_cast<float>(chunk1->targetCellRC[1]) * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
+			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - (static_cast<float>(chunk1->targetCellRC[0]) * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
 			targetPoint.z = land->getTerrainElevation(targetPoint);
 			isTargetPoint = true;
 		}
 
 		if (target) {
 			if (target->isMover()) {
-				mc2::fmt::to_buf(outString, "target = {} ({:d})\n", mc2::fmt::safe(((MoverPtr)target)->name), mc2::fmt::as_i32(target->getPartId()));
+				mc2::fmt::to_buf(outString, "target = {} ({:d})\n", mc2::fmt::safe((static_cast<MoverPtr>(target))->name), mc2::fmt::as_i32(target->getPartId()));
 				strcat(ChunkDebugMsg, outString);
 				}
 			else {
@@ -192,21 +192,21 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 		targetPoint = glm::vec3(0.0f);
 		bool isTargetPoint = false;
 		if (chunk1->targetType == STATUSCHUNK_TARGET_MOVER)
-			target = (GameObjectPtr)MPlayer->moverRoster[chunk2->targetId];
+			target = static_cast<GameObjectPtr>(MPlayer->moverRoster[chunk2->targetId]);
 		else if (chunk1->targetType == STATUSCHUNK_TARGET_TERRAIN)
 			target = ObjectManager->findByPartId(chunk2->targetId);
 		else if (chunk1->targetType == STATUSCHUNK_TARGET_SPECIAL)
 			target = ObjectManager->findByPartId(chunk2->targetId);
 		else if (chunk1->targetType == STATUSCHUNK_TARGET_LOCATION) {
-			targetPoint.x = (float)chunk2->targetCellRC[1] * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
-			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - ((float)chunk2->targetCellRC[0] * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
+			targetPoint.x = static_cast<float>(chunk2->targetCellRC[1]) * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
+			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - (static_cast<float>(chunk2->targetCellRC[0]) * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
 			targetPoint.z = land->getTerrainElevation(targetPoint);
 			isTargetPoint = true;
 		}
 
 		if (target) {
 			if (target->isMover()) {
-				mc2::fmt::to_buf(outString, "target = {} ({:d})\n", mc2::fmt::safe(((MoverPtr)target)->name), mc2::fmt::as_i32(target->getPartId()));
+				mc2::fmt::to_buf(outString, "target = {} ({:d})\n", mc2::fmt::safe((static_cast<MoverPtr>(target))->name), mc2::fmt::as_i32(target->getPartId()));
 				strcat(ChunkDebugMsg, outString);
 				}
 			else {
@@ -292,10 +292,10 @@ void Mover::updateDebugWindow (GameDebugWindow* debugWindow) {
 	MovePathPtr path = getPilot()->getMovePath();
 	long distToObj1 = -1;
 	if (DebugGameObject[2])
-		distToObj1 = (long)distanceFrom(DebugGameObject[2]->getPosition());
+		distToObj1 = static_cast<long>(distanceFrom(DebugGameObject[2]->getPosition()));
 	long sensorRange = 0;
 	if (sensorSystem)
-	sensorRange = (long)sensorSystem->getEffectiveRange();
+	sensorRange = static_cast<long>(sensorSystem->getEffectiveRange());
 	long contStat = contactInfo->getContactStatus(0, true);
 	static const char* contactStr[NUM_CONTACT_STATUSES] = {
 		"        ",
@@ -311,7 +311,7 @@ void Mover::updateDebugWindow (GameDebugWindow* debugWindow) {
 		debugWindow->print(s);
 		long gestID = -1;
 		if (getObjectClass() == BATTLEMECH)
-			gestID = ((Mech3DAppearance*)appearance)->getCurrentGestureId();
+			gestID = (static_cast<Mech3DAppearance*>(appearance))->getCurrentGestureId();
 		mc2::fmt::to_buf(s, "cmdr: {:d}, team: {:d}, gestID: {:d}, partID: {:d}", mc2::fmt::as_i32(getCommanderId()), mc2::fmt::as_i32(getTeamId()), mc2::fmt::as_i32(gestID), mc2::fmt::as_i32(getPartId()));
 		debugWindow->print(s);
 		if (path->curStep < path->numStepsWhenNotPaused) {
@@ -360,7 +360,7 @@ void Mover::updateDebugWindow (GameDebugWindow* debugWindow) {
 			if (sensorSystem->numContacts < 4)
 				numConts = sensorSystem->numContacts;
 			for (long i = 0; i < numConts; i++) {
-				MoverPtr contact = (MoverPtr)ObjectManager->get(sensorSystem->contacts[i] & 0x7FFF);
+				MoverPtr contact = static_cast<MoverPtr>(ObjectManager->get(sensorSystem->contacts[i] & 0x7FFF));
 				Assert(contact != nullptr, sensorSystem->contacts[i] & 0x7FFF, " null contact ");
 				char s2[10];
 				mc2::fmt::to_buf(s2, " {:d}.{:d}", mc2::fmt::as_i32(sensorSystem->contacts[i] & 0x7FFF), mc2::fmt::as_i32(contact->getContactStatus(teamId, true)));
@@ -432,26 +432,26 @@ void Mover::updateDebugWindow (GameDebugWindow* debugWindow) {
 		GameObjectPtr target = pilot->getCurrentTarget();
 		float torsoRelFacing = -1.0;
 		if (objectClass == BATTLEMECH) {
-			mc2::fmt::to_buf(s, "torsoRotation = {:.2f}", ((BattleMechPtr)this)->torsoRotation);
+			mc2::fmt::to_buf(s, "torsoRotation = {:.2f}", (static_cast<BattleMechPtr>(this))->torsoRotation);
 			debugWindow->print(s);
 			if (target)
-				torsoRelFacing = relFacingTo(target->getPosition()) + ((BattleMechPtr)this)->torsoRotation;
+				torsoRelFacing = relFacingTo(target->getPosition()) + (static_cast<BattleMechPtr>(this))->torsoRotation;
 			else if (pilot->getCurTacOrder()->code == TACTICAL_ORDER_ATTACK_POINT)
-				torsoRelFacing = relFacingTo(pilot->getAttackTargetPoint()) + ((BattleMechPtr)this)->torsoRotation;
+				torsoRelFacing = relFacingTo(pilot->getAttackTargetPoint()) + (static_cast<BattleMechPtr>(this))->torsoRotation;
 			else
-				torsoRelFacing = ((BattleMechPtr)this)->torsoRotation;
-			mc2::fmt::to_buf(s, "C-Bills = {:d}", mc2::fmt::as_i32(((BattleMechPtr)this)->cBills));
+				torsoRelFacing = (static_cast<BattleMechPtr>(this))->torsoRotation;
+			mc2::fmt::to_buf(s, "C-Bills = {:d}", mc2::fmt::as_i32((static_cast<BattleMechPtr>(this))->cBills));
 			debugWindow->print(s);
 			}
 		else if (objectClass == GROUNDVEHICLE) {
-			mc2::fmt::to_buf(s, "turretRotation = {:.2f}", ((GroundVehiclePtr)this)->turretRotation);
+			mc2::fmt::to_buf(s, "turretRotation = {:.2f}", (static_cast<GroundVehiclePtr>(this))->turretRotation);
 			debugWindow->print(s);
 			if (target)
-				torsoRelFacing = relFacingTo(target->getPosition()) + ((GroundVehiclePtr)this)->turretRotation;
+				torsoRelFacing = relFacingTo(target->getPosition()) + (static_cast<GroundVehiclePtr>(this))->turretRotation;
 			else if (pilot->getCurTacOrder()->code == TACTICAL_ORDER_ATTACK_POINT)
-				torsoRelFacing = relFacingTo(pilot->getAttackTargetPoint()) + ((GroundVehiclePtr)this)->turretRotation;
+				torsoRelFacing = relFacingTo(pilot->getAttackTargetPoint()) + (static_cast<GroundVehiclePtr>(this))->turretRotation;
 			else
-				torsoRelFacing = ((GroundVehiclePtr)this)->turretRotation;
+				torsoRelFacing = (static_cast<GroundVehiclePtr>(this))->turretRotation;
 		}
 		mc2::fmt::to_buf(s, "torsoRelFacing = {:.2f}", torsoRelFacing);
 		debugWindow->print(s);

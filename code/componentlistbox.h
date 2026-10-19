@@ -1,5 +1,6 @@
 #ifndef COMPONENTLISTBOX_H
 #define COMPONENTLISTBOX_H
+#include <memory>
 /*************************************************************************************************\
 ComponentListBox.h			: Interface for the ComponentListBox component.
 //---------------------------------------------------------------------------//
@@ -50,7 +51,7 @@ class ComponentListItem : public aListItem
 
 		friend class ComponentIconListBox;
 
-		static ComponentListItem* s_templateItem;
+		static std::unique_ptr<ComponentListItem> s_templateItem;
 
 		aText		name;
 		aText		costText;

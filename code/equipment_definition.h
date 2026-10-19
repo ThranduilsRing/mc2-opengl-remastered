@@ -73,7 +73,7 @@ using enum EquipmentTag;
 using EquipmentTagMask = unsigned int;
 
 inline EquipmentTagMask equipmentTagBit(EquipmentTag t) {
-    return (EquipmentTagMask)1u << (unsigned)t;
+    return static_cast<EquipmentTagMask>(1u) << static_cast<unsigned>(t);
 }
 
 // -------------------------------------------------------------------------

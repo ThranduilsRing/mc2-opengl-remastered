@@ -33,8 +33,8 @@ void hudShrinkPoint( float& hx, float& hy, float centroidHudY )
 	if ( scale >= 0.999f )
 		return;
 
-	const float sw = ( Environment.screenWidth  > 0 ) ? (float)Environment.screenWidth  : 1.f;
-	const float sh = ( Environment.screenHeight > 0 ) ? (float)Environment.screenHeight : 1.f;
+	const float sw = ( Environment.screenWidth  > 0 ) ? static_cast<float>(Environment.screenWidth)  : 1.f;
+	const float sh = ( Environment.screenHeight > 0 ) ? static_cast<float>(Environment.screenHeight) : 1.f;
 	if ( centroidHudY < sh * 0.60f )
 		return;   // above the band: flushHUDBatch leaves these draws alone
 
@@ -49,21 +49,21 @@ void hudShrinkPoint( float& hx, float& hy, float centroidHudY )
 // drawable size on HiDPI).
 static void hudToDrawable( float hx, float hy, float& dx, float& dy )
 {
-	const float sw = ( Environment.screenWidth  > 0 ) ? (float)Environment.screenWidth  : 1.f;
-	const float sh = ( Environment.screenHeight > 0 ) ? (float)Environment.screenHeight : 1.f;
-	const float drawW = ( Environment.drawableWidth  > 0 ) ? (float)Environment.drawableWidth  : sw;
-	const float drawH = ( Environment.drawableHeight > 0 ) ? (float)Environment.drawableHeight : sh;
+	const float sw = ( Environment.screenWidth  > 0 ) ? static_cast<float>(Environment.screenWidth)  : 1.f;
+	const float sh = ( Environment.screenHeight > 0 ) ? static_cast<float>(Environment.screenHeight) : 1.f;
+	const float drawW = ( Environment.drawableWidth  > 0 ) ? static_cast<float>(Environment.drawableWidth)  : sw;
+	const float drawH = ( Environment.drawableHeight > 0 ) ? static_cast<float>(Environment.drawableHeight) : sh;
 
 	int bx = 0, by = 0, bw = 0, bh = 0;
-	if ( !gos_ComputeHudCanvasBox( (int)drawW, (int)drawH, &bx, &by, &bw, &bh ) )
+	if ( !gos_ComputeHudCanvasBox( static_cast<int>(drawW), static_cast<int>(drawH), &bx, &by, &bw, &bh ) )
 	{
-		bx = 0; by = 0; bw = (int)drawW; bh = (int)drawH;
+		bx = 0; by = 0; bw = static_cast<int>(drawW); bh = static_cast<int>(drawH);
 	}
 
 	// same transform flushHUDBatch applies to non-exempt HUD chrome,
 	// composed with the logical->drawable stretch:
-	dx = (float)bx + hx * (float)bw / sw;
-	dy = (float)by + hy * (float)bh / sh;
+	dx = static_cast<float>(bx) + hx * static_cast<float>(bw) / sw;
+	dy = static_cast<float>(by) + hy * static_cast<float>(bh) / sh;
 }
 
 void hudToDisplay( float hx, float hy, float& outX, float& outY )
@@ -72,8 +72,8 @@ void hudToDisplay( float hx, float hy, float& outX, float& outY )
 	hudToDrawable( hx, hy, dx, dy );
 
 	float ioW = 0.f, ioH = 0.f;
-	const float drawW = ( Environment.drawableWidth  > 0 ) ? (float)Environment.drawableWidth  : 1.f;
-	const float drawH = ( Environment.drawableHeight > 0 ) ? (float)Environment.drawableHeight : 1.f;
+	const float drawW = ( Environment.drawableWidth  > 0 ) ? static_cast<float>(Environment.drawableWidth)  : 1.f;
+	const float drawH = ( Environment.drawableHeight > 0 ) ? static_cast<float>(Environment.drawableHeight) : 1.f;
 	if ( GuiRuntime::GetDisplaySize( ioW, ioH ) && ioW > 0.f && ioH > 0.f )
 	{
 		outX = dx * ioW / drawW;
@@ -150,7 +150,7 @@ unsigned int gosTextureGLName( unsigned long gosHandle )
 {
 	if ( !gosHandle )
 		return 0;
-	return gos_GetGLTextureName( (DWORD)gosHandle );
+	return gos_GetGLTextureName( static_cast<DWORD>(gosHandle) );
 }
 
 } // namespace HudImGui

@@ -60,7 +60,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 			char dropZoneList[8];
 			char hqs[MAX_TEAMS];
 			if (MPlayer->missionSettings.missionType == MISSION_TYPE_OTHER) {
-				bool goodToLoad = mission->calcComplexDropZones((char*)LogisticsData::instance->getCurrentMission().c_str(), dropZoneList);
+				bool goodToLoad = mission->calcComplexDropZones(const_cast<char*>(LogisticsData::instance->getCurrentMission().c_str()), dropZoneList);
 				if (!goodToLoad)
 					STOP(("Logisitics.beginMission: teams do not match up for complex mission"));
 				for (long i = 0; i < MAX_TEAMS; i++)
@@ -70,8 +70,8 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 				MPlayer->calcDropZones(dropZoneList, hqs);
 			if (MPlayer->missionSettings.quickStart)
 				for (long i = 0; i < MAX_MC_PLAYERS; i++) {
-					MPlayer->commandersToLoad[i][0] = (long)dropZoneList[i]; //MPlayer->playerInfo[i].commanderID;
-					MPlayer->commandersToLoad[i][1] = (long)(dropZoneList[i] > -1) ? MPlayer->playerInfo[dropZoneList[i]].team : 0;
+					MPlayer->commandersToLoad[i][0] = static_cast<long>(dropZoneList[i]); //MPlayer->playerInfo[i].commanderID;
+					MPlayer->commandersToLoad[i][1] = static_cast<long>((dropZoneList[i] > -1)) ? MPlayer->playerInfo[dropZoneList[i]].team : 0;
 					MPlayer->commandersToLoad[i][2] = hqs[i];
 				}
 			else
@@ -145,7 +145,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 		useUnlimitedAmmo = MPlayer->missionSettings.unlimitedAmmo;
 	}
 
-	mission->init((char*)LogisticsData::instance->getCurrentMission().c_str(), missionLoadType, dropZoneID, dropZoneList, commandersToLoad, numMoversPerCommander[numPlayers - 1]);
+	mission->init(const_cast<char*>(LogisticsData::instance->getCurrentMission().c_str()), missionLoadType, dropZoneID, dropZoneList, commandersToLoad, numMoversPerCommander[numPlayers - 1]);
 	extern int g_lightProbeSetupPath; g_lightProbeSetupPath = 3; // [GPUPROPS v1] post mission->init
 
 	LogisticsData::instance->rpJustAdded = 0;
@@ -177,13 +177,13 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 				mechData.designerMech = (*iter)->getVariant()->isDesignerMech();
 				mechData.numComponents = (*iter)->getComponentCount();
 				if (mechData.numComponents)	{
-					long* componentList = (long*)systemHeap->Malloc(sizeof(long) * mechData.numComponents);
+					long* componentList = static_cast<long*>(systemHeap->Malloc(sizeof(long) * mechData.numComponents));
 					long otherCount = mechData.numComponents;
 					(*iter)->getComponents(otherCount, componentList);
 					if (otherCount != mechData.numComponents)
 						STOP(("Heidi's getComponentCount does not agree with count returned from getComponents"));
 					for (long i = 0; i < mechData.numComponents; i++)
-						mechData.components[i] = (unsigned char)componentList[i];
+						mechData.components[i] = static_cast<unsigned char>(componentList[i]);
 				}
 				MPlayer->sendMissionSetup(nullptr, 1, &mechData);
 			}
@@ -230,13 +230,13 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 							long moverHandle = mission->addMover(&data);
 							if (moverHandle < 1)
 								STOP(("Logistics.beginMission: unable to addMover"));
-							MoverPtr mover = (MoverPtr)ObjectManager->get(moverHandle);
+							MoverPtr mover = static_cast<MoverPtr>(ObjectManager->get(moverHandle));
 							if (!mover)
 								STOP(("Logistics.beginMission: NULL mover"));
 							if (mover->getObjectClass() != BATTLEMECH)
 								STOP(("Logistics.beginMission: not a mech"));
-							((BattleMech*)mover)->cBills = MPlayer->mechData[i][j].cBills;
-							strcpy(((BattleMech*)mover)->variantName, MPlayer->mechData[i][j].variantName);
+							(static_cast<BattleMech*>(mover))->cBills = MPlayer->mechData[i][j].cBills;
+							strcpy((static_cast<BattleMech*>(mover))->variantName, MPlayer->mechData[i][j].variantName);
 							data.variant = MPlayer->mechData[i][j].variantNum;
 						}
 					}
@@ -260,7 +260,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 			{
 				for (int i = pTeam->getRosterSize() - 1; i > -1; i-- )
 				{
-					Mover* pMover = (Mover*)pTeam->getMover( i );
+					Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 					if ( pMover && pMover->getCommander()->getId() == Commander::home->getId() )
 					{
 						LogisticsPilot* pPilot = LogisticsData::instance->getPilot( pMover->getPilot()->getName() );
@@ -430,17 +430,17 @@ void Logistics::initializeLogData()
 	{
 		for ( int i = pTeam->getRosterSize() - 1; i > -1; i-- )
 		{
-			Mover* pMover = (Mover*)pTeam->getMover( i );
+			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 			LogisticsPilot* pPilot = LogisticsData::instance->getPilot(pMover->getPilot()->getName());
 
 			DWORD base, highlight1, highlight2;
-			((Mech3DAppearance*)pMover->getAppearance())->getPaintScheme( highlight1, 
+			(static_cast<Mech3DAppearance*>(pMover->getAppearance()))->getPaintScheme( highlight1,
 				highlight2, base );
 			
 			
 			if ( pMover->getObjectType()->getObjectTypeClass() == BATTLEMECH_TYPE )
 			{
-				LogisticsVariant* pVar = LogisticsData::instance->getVariant( ((BattleMech*)pMover)->variantName );
+				LogisticsVariant* pVar = LogisticsData::instance->getVariant( (static_cast<BattleMech*>(pMover))->variantName );
 				LogisticsData::instance->addMechToInventory( 
 					pVar, 1, pPilot,
 					base, highlight1, highlight2 );

@@ -143,8 +143,8 @@ void g_staticUpdateEmitSummary(uint32_t frame) {
         if (g_routeTouchByClass[c] || g_routeUpdateByClass[c]) {
             MC2_DIAGF("[APPEAR_ROUTE v1] frame=%u class=0x%02x touch=%llu update=%llu\n",
                 frame, c,
-                (unsigned long long)g_routeTouchByClass[c],
-                (unsigned long long)g_routeUpdateByClass[c]);
+                static_cast<unsigned long long>(g_routeTouchByClass[c]),
+                static_cast<unsigned long long>(g_routeUpdateByClass[c]));
         }
     }
     fflush(stdout);
@@ -217,9 +217,9 @@ void g_tobjSplitRollAndMaybeEmit() {
         const double f = 120.0;
         fprintf(stderr, "[TOBJSPLIT v1] event=summary frames=120 "
                "angular_cyc_per_frame=%.0f proj_cyc_per_frame=%.0f update_cyc_per_frame=%.0f\n",
-               (double)g_tobjAngularCyc / f,
-               (double)g_tobjProjCyc / f,
-               (double)g_tobjUpdateCyc / f);
+               static_cast<double>(g_tobjAngularCyc) / f,
+               static_cast<double>(g_tobjProjCyc) / f,
+               static_cast<double>(g_tobjUpdateCyc) / f);
         fflush(stderr);
         g_tobjAngularCyc.store(0ULL, std::memory_order_relaxed);
         g_tobjProjCyc.store(0ULL, std::memory_order_relaxed);
@@ -407,7 +407,7 @@ long TerrainObjectType::init (FilePtr objFile, unsigned long fileSize) {
 	result = bldgFile.readIdULong("DmgLevel",dmgLevel);
 	if (result != NO_ERR)
 		return(result);
-	damageLevel = (float)dmgLevel;
+	damageLevel = static_cast<float>(dmgLevel);
 		
 	result = bldgFile.readIdLong("CollisionOffsetX",collisionOffsetX);
 	if (result != NO_ERR)
@@ -472,7 +472,7 @@ bool TerrainObjectType::handleCollision (GameObjectPtr collidee, GameObjectPtr c
 				case EXPLOSION:
 				case BATTLEMECH:
 				case GROUNDVEHICLE:
-				if (!collider->isMover() || (collider->isMover() && ((MoverPtr)collider)->pathLocks))
+				if (!collider->isMover() || (collider->isMover() && (static_cast<MoverPtr>(collider))->pathLocks))
 				{
 					WeaponShotInfo shot;
 					shot.init(0, -1, collidee->getDamageLevel(), 0, 0);
@@ -494,9 +494,9 @@ bool TerrainObjectType::handleCollision (GameObjectPtr collidee, GameObjectPtr c
 				case EXPLOSION:
 				case BATTLEMECH:
 				case GROUNDVEHICLE:
-				if (!collider->isMover() || (collider->isMover() && ((MoverPtr)collider)->pathLocks))
+				if (!collider->isMover() || (collider->isMover() && (static_cast<MoverPtr>(collider))->pathLocks))
 				{
-					TerrainObjectPtr tree = (TerrainObjectPtr)collidee;
+					TerrainObjectPtr tree = static_cast<TerrainObjectPtr>(collidee);
 					if (!tree->getFlag(OBJECT_FLAG_FALLEN) && !tree->getFlag(OBJECT_FLAG_FALLING)) {
 						tree->setFlag(OBJECT_FLAG_FALLING, true);
 						
@@ -542,7 +542,7 @@ bool TerrainObjectType::handleCollision (GameObjectPtr collidee, GameObjectPtr c
 
 bool TerrainObjectType::handleDestruction (GameObjectPtr collidee, GameObjectPtr collider) {
 
-	TerrainObjectPtr me = (TerrainObjectPtr)collidee;
+	TerrainObjectPtr me = static_cast<TerrainObjectPtr>(collidee);
 	if (me->getObjectType()->getSubType() == TERROBJ_FOREST) {
 		me->openSubAreas();
 	}
@@ -564,9 +564,9 @@ void TerrainObject::updateDebugWindow (GameDebugWindow* debugWindow) {
 	char s[128];
 	//-------------------------------------------------------
 	// For now, show the floating help text if we have one...
-	if (((ObjectAppearance*)appearance)->objectNameId != -1) {
+	if ((static_cast<ObjectAppearance*>(appearance))->objectNameId != -1) {
 		char myName[255];
-		cLoadString(((ObjectAppearance*)appearance)->objectNameId, myName, 254);
+		cLoadString((static_cast<ObjectAppearance*>(appearance))->objectNameId, myName, 254);
 		debugWindow->print(myName);
 		}
 	else
@@ -639,8 +639,8 @@ char* TerrainObject::getName (void) {
 	return(terrainObjectNames[type->subType]);
 	*/
 
-	if (((ObjectAppearance*)appearance)->objectNameId != -1) {
-		cLoadString(((ObjectAppearance*)appearance)->objectNameId, lastName, 254);
+	if ((static_cast<ObjectAppearance*>(appearance))->objectNameId != -1) {
+		cLoadString((static_cast<ObjectAppearance*>(appearance))->objectNameId, lastName, 254);
 		return(lastName);
 	}
 	return(nullptr);
@@ -680,7 +680,7 @@ void TerrainObject::primeAppearanceForMissionLoad (void)
 		setFlag(OBJECT_FLAG_JUSTCREATED, false);
 		setFlag(OBJECT_FLAG_TILECHANGED, false);
 
-		TerrainObjectTypePtr type = (TerrainObjectTypePtr)ObjectManager->getObjectType(typeHandle);
+		TerrainObjectTypePtr type = static_cast<TerrainObjectTypePtr>(ObjectManager->getObjectType(typeHandle));
 
 		switch (type->subType) {
 			case TERROBJ_NONE:
@@ -740,7 +740,7 @@ long TerrainObject::update (void) {
 		setFlag(OBJECT_FLAG_JUSTCREATED, false);
 		setFlag(OBJECT_FLAG_TILECHANGED, false);
 
-		TerrainObjectTypePtr type = (TerrainObjectTypePtr)ObjectManager->getObjectType(typeHandle);
+		TerrainObjectTypePtr type = static_cast<TerrainObjectTypePtr>(ObjectManager->getObjectType(typeHandle));
 
 		switch (type->subType) {
 			case TERROBJ_NONE:
@@ -908,7 +908,7 @@ long TerrainObject::update (void) {
 					++g_routeTouchByClass[_apprClass];
 					if (s_staticUpdateTrace) {
 						MC2_DIAGF("[STATIC_UPDATE v1] event=skip frame=%u obj=%p class=0x%02lx\n",
-							g_mc2FrameCounter, (void*)this, _apprClass);
+							g_mc2FrameCounter, static_cast<void*>(this), _apprClass);
 						fflush(stdout);
 					}
 					appearance->touch();  // Stage 3.C: advance lastTurnTransformed
@@ -1001,7 +1001,7 @@ void TerrainObject::render (void) {
 	{
 		if (getSelected())
 		{
-			TerrainObjectTypePtr type = (TerrainObjectTypePtr)getObjectType();
+			TerrainObjectTypePtr type = static_cast<TerrainObjectTypePtr>(getObjectType());
 			float barStatus = 1.0;
 			float totalDmgLvl = type->getDamageLevel();
 			if (totalDmgLvl > 0.0)
@@ -1103,9 +1103,9 @@ void TerrainObject::destroy (void)
 
 void TerrainObject::setDamage (long newDamage) {
 
-	damage = (float)newDamage;
+	damage = static_cast<float>(newDamage);
 
-	TerrainObjectTypePtr type = (TerrainObjectTypePtr)getObjectType();
+	TerrainObjectTypePtr type = static_cast<TerrainObjectTypePtr>(getObjectType());
 
 	switch (type->subType) 
 	{
@@ -1133,7 +1133,7 @@ void TerrainObject::init (bool create, ObjectTypePtr objType) {
 
 	setFlag(OBJECT_FLAG_JUSTCREATED, true);
 
-	if (((TerrainObjectTypePtr)objType)->subType == TERROBJ_TREE)
+	if ((static_cast<TerrainObjectTypePtr>(objType))->subType == TERROBJ_TREE)
 	{
 		//-------------------------------------------------------------
 		// The appearance is initialized here using data from the type
@@ -1160,7 +1160,7 @@ void TerrainObject::init (bool create, ObjectTypePtr objType) {
 		adoptAppearance(std::make_unique_for_overwrite<TreeAppearance>());
 		gosASSERT(appearance != NULL);
 
-		appearance->init((TreeAppearanceType*)terrainObjectAppearanceType, (GameObjectPtr)this);
+		appearance->init(static_cast<TreeAppearanceType*>(terrainObjectAppearanceType), static_cast<GameObjectPtr>(this));
 	}
 	else
 	{
@@ -1192,16 +1192,16 @@ void TerrainObject::init (bool create, ObjectTypePtr objType) {
 		// The only appearance type for buildings is MLR_APPEARANCE.
 		gosASSERT(terrainObjectAppearanceType->getAppearanceClass() == BLDG_TYPE);
 		
-		appearance->init((BldgAppearanceType*)terrainObjectAppearanceType, (GameObjectPtr)this);
+		appearance->init(static_cast<BldgAppearanceType*>(terrainObjectAppearanceType), static_cast<GameObjectPtr>(this));
 	}
 
 	if (objType->getExtentRadius() > 0.0)
 		setTangible(true);
 
 	objectClass = TERRAINOBJECT;
-	switch (((TerrainObjectTypePtr)objType)->subType) {
+	switch ((static_cast<TerrainObjectTypePtr>(objType))->subType) {
 		case TERROBJ_NONE:
-			if (((TerrainObjectTypePtr)objType)->getDamageLevel() == 0.0) {
+			if ((static_cast<TerrainObjectTypePtr>(objType))->getDamageLevel() == 0.0) {
 				//--------------------------------------------------------
 				// We are already destroyed.  Used for extraction Markers
 				setTangible(false);
@@ -1248,7 +1248,7 @@ long TerrainObject::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 	if (!getFlag(OBJECT_FLAG_DAMAGED)) 
 	{
 		float curDamage = getDamage();
-		TerrainObjectTypePtr type = (TerrainObjectTypePtr)getObjectType();
+		TerrainObjectTypePtr type = static_cast<TerrainObjectTypePtr>(getObjectType());
 		switch (type->subType) 
 		{
 			case TERROBJ_NONE:
@@ -1372,7 +1372,7 @@ void TerrainObject::setTerrainPosition (const glm::vec3& position, const Stuff::
 void TerrainObject::setRotation( float rot )
 {
 	rotation = rot;
-	((ObjectAppearance*)appearance)->rotation = rot;
+	(static_cast<ObjectAppearance*>(appearance))->rotation = rot;
 }
 
 //---------------------------------------------------------------------------
@@ -1450,7 +1450,7 @@ void TerrainObject::calcSubAreas (long numCells, short cells[MAX_GAME_OBJECT_CEL
 
 	numCellsCovered = numCells;
 	if (numCellsCovered) {
-		cellsCovered = (short*)systemHeap->Malloc(4 * numCellsCovered);
+		cellsCovered = static_cast<short*>(systemHeap->Malloc(4 * numCellsCovered));
 		if (cellsCovered) {
 			short* curCoord = cellsCovered;
 			for (long j = 0; j < numCellsCovered; j++) {
@@ -1642,7 +1642,7 @@ void TerrainObject::Save (PacketFilePtr file, long packetNum)
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	file->writePacket(packetNum,(MemoryPtr)&data,sizeof(TerrainObjectData),STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(TerrainObjectData),STORAGE_TYPE_ZLIB);
 }
 
 //***************************************************************************
@@ -1713,7 +1713,7 @@ void TerrainObject::Load (TerrainObjectData *data)
 	numCellsCovered = data->numCellsCovered;
 	if (numCellsCovered)
 	{
-		cellsCovered = (short*)systemHeap->Malloc(sizeof(short) * numCellsCovered * 2);
+		cellsCovered = static_cast<short*>(systemHeap->Malloc(sizeof(short) * numCellsCovered * 2));
 		memcpy(cellsCovered, data->cellsCovered,sizeof(short) * numCellsCovered * 2);
 	}
 }

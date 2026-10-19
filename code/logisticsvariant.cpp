@@ -184,7 +184,7 @@ int LogisticsChassis::init( CSVFile* file, int chassisID )
 		// file that does not exist would silently fall back to the legacy slot.
 		for (int s = 0; s < 3; ++s) {
 			if (!uiIconOverride[s].empty() && !fileExists(uiIconOverride[s].c_str()))
-				mc2::fmt::print_out("[UIProfile:VALIDATE] {}: declared UI asset '{}' not found (reason={:d})\n", fileName, uiIconOverride[s], mc2::fmt::as_i32((int)UPV_UI_ASSET_MISSING));
+				mc2::fmt::print_out("[UIProfile:VALIDATE] {}: declared UI asset '{}' not found (reason={:d})\n", fileName, uiIconOverride[s], mc2::fmt::as_i32(static_cast<int>(UPV_UI_ASSET_MISSING)));
 		}
 	}
 
@@ -210,7 +210,7 @@ int LogisticsChassis::getArmorClass() const
 
 int LogisticsChassis::getDisplaySpeed() const
 {
-	return getDisplaySpeedForSpeed( (long)speed );
+	return getDisplaySpeedForSpeed( static_cast<long>(speed) );
 }
 
 int LogisticsChassis::getDisplaySpeedForSpeed( long speed ) const

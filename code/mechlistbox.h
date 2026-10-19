@@ -1,5 +1,6 @@
 #ifndef MECHLISTBOX_H
 #define MECHLISTBOX_H
+#include <memory>
 /*************************************************************************************************\
 MechListBox.h			: Interface for the MechListBox component.
 //---------------------------------------------------------------------------//
@@ -51,7 +52,7 @@ public:
 	
 private:
 
-	static MechListBoxItem* s_templateItem;
+	static std::unique_ptr<MechListBoxItem> s_templateItem;
 	
 	aAnimGroup		animations[2][ANIMATION_COUNT];
 	

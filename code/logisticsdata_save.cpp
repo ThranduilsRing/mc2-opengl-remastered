@@ -46,7 +46,7 @@ const char*	LogisticsData::getBestPilot( long mechWeight )
 {
 	ensureMechBayDataLoaded("getBestPilot");
 
-	LogisticsPilot** pPilots = (LogisticsPilot**)_alloca( pilots.size() * sizeof( LogisticsPilot*) );
+	LogisticsPilot** pPilots = static_cast<LogisticsPilot**>(_alloca( pilots.size() * sizeof( LogisticsPilot*) ));
 	memset( pPilots, 0, pilots.size() * sizeof( LogisticsPilot*) );
 
 	int counter = 0;
@@ -54,7 +54,7 @@ const char*	LogisticsData::getBestPilot( long mechWeight )
 	for ( auto iter = pilots.begin(); iter != pilots.end(); ++iter )
 		{
 			const char *nameCheck = (*iter).getName().c_str();
-			if ( (*iter).isAvailable() && (MPlayer || !MechWarrior::warriorInUse((char *)nameCheck)) )
+			if ( (*iter).isAvailable() && (MPlayer || !MechWarrior::warriorInUse(const_cast<char *>(nameCheck))) )
 				pPilots[counter++] = &(*iter);
 		}
 #endif
@@ -96,7 +96,7 @@ bool		LogisticsData::gotPilotsLeft()
 {
 	ensureMechBayDataLoaded("gotPilotsLeft");
 
-	LogisticsPilot** pPilots = (LogisticsPilot**)_alloca( pilots.size() * sizeof( LogisticsPilot*) );
+	LogisticsPilot** pPilots = static_cast<LogisticsPilot**>(_alloca( pilots.size() * sizeof( LogisticsPilot*) ));
 	memset( pPilots, 0, pilots.size() * sizeof( LogisticsPilot*) );
 
 	int counter = 0;
@@ -106,7 +106,7 @@ bool		LogisticsData::gotPilotsLeft()
 	for ( auto iter = pilots.begin(); iter != pilots.end(); ++iter )
 		{
 			const char *nameCheck = (*iter).getName().c_str();
-			if ( (*iter).isAvailable() && ( MPlayer || !MechWarrior::warriorInUse((char *)nameCheck)) )
+			if ( (*iter).isAvailable() && ( MPlayer || !MechWarrior::warriorInUse(const_cast<char *>(nameCheck))) )
 				pPilots[counter++] = &(*iter);
 		}
 
@@ -491,16 +491,16 @@ void	LogisticsData::setMissionCompleted( )
 	{
 		for ( int i = pTeam->getRosterSize() - 1; i > -1; i-- )
 		{
-			Mover* pMover = (Mover*)pTeam->getMover( i );
+			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 
 			// Carry-over diagnostics distinguish filtering from inventory recovery failure.
 			{
 				static const bool s_logiFlowTrace = mc2::gate::get<"MC2_LOG_LOGISTICS_FLOW">();
 				if ( s_logiFlowTrace && pMover && mc2_diag::tagEnabled("LOGISTICS") )
 				{
-					int  _lg_otc  = pMover->getObjectType() ? (int)pMover->getObjectType()->getObjectTypeClass() : -1;
+					int  _lg_otc  = pMover->getObjectType() ? static_cast<int>(pMover->getObjectType()->getObjectTypeClass()) : -1;
 					bool _lg_gui  = pMover->isOnGUI();
-					int  _lg_mt   = (int)pMover->getMoveType();
+					int  _lg_mt   = static_cast<int>(pMover->getMoveType());
 					bool _lg_cmd  = (pMover->getCommanderId() == Commander::home->getId());
 					bool _lg_pass = _lg_gui && (_lg_otc == BATTLEMECH_TYPE) && _lg_cmd && (_lg_mt != MOVETYPE_AIR);
 					char _lg_nm[64]; const char* _lg_src = pMover->getName() ? pMover->getName() : "";
@@ -522,7 +522,7 @@ void	LogisticsData::setMissionCompleted( )
 				LogisticsMech* pMech = getMech( pMover->getName(), pMover->getPilot()->getName() );
 
 				DWORD base, highlight1, highlight2;
-				((Mech3DAppearance*)pMover->getAppearance())->getPaintScheme( base, highlight1, highlight2 );
+				(static_cast<Mech3DAppearance*>(pMover->getAppearance()))->getPaintScheme( base, highlight1, highlight2 );
 				LogisticsPilot* pPilot = getPilot( pMover->getPilot()->getName() );
 
 				{
@@ -530,7 +530,7 @@ void	LogisticsData::setMissionCompleted( )
 					if ( s_lfResolve && mc2_diag::tagEnabled("LOGISTICS") )
 					{
 						const char* _r_pn = (pMover->getPilot() && pMover->getPilot()->getName()) ? pMover->getPilot()->getName() : "";
-						const char* _r_vn = ((BattleMech*)pMover)->variantName ? ((BattleMech*)pMover)->variantName : "";
+						const char* _r_vn = (static_cast<BattleMech*>(pMover))->variantName ? (static_cast<BattleMech*>(pMover))->variantName : "";
 						char _r_nm[64], _r_pnm[64], _r_vnm[64];
 						const char* _r_srcs[3] = { pMover->getName() ? pMover->getName() : "", _r_pn, _r_vn };
 						char* _r_dsts[3] = { _r_nm, _r_pnm, _r_vnm };
@@ -549,7 +549,7 @@ void	LogisticsData::setMissionCompleted( )
 					else
 					{
 						removeMechFromInventory( pMech->getName().c_str(), pMover->getPilot()->getName() );
-						LogisticsVariant* pVar = getVariant( ((BattleMech*)pMover)->variantName );
+						LogisticsVariant* pVar = getVariant( (static_cast<BattleMech*>(pMover))->variantName );
 						addMechToInventory( pVar, ForceGroupCount++, pPilot, base, highlight1, highlight2 );
 						if ( pPilot )
 							pPilot->setUsed( true );
@@ -560,7 +560,7 @@ void	LogisticsData::setMissionCompleted( )
 				{
 					if ( !pMover->isDestroyed() && !pMover->isDisabled() )
 					{
-						const char* vname = ((BattleMech*)pMover)->variantName;
+						const char* vname = (static_cast<BattleMech*>(pMover))->variantName;
 						LogisticsVariant* pVariant = getVariant( vname );
 						if ( !pVariant )
 						{

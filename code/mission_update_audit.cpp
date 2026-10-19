@@ -202,8 +202,8 @@ namespace {
 	static void cohEmit(bool violation, const char* rule, long partId,
 	                    const char* name, CohRule ruleId, const char* detail) {
 		unsigned long long key =
-			(((unsigned long long)(unsigned long)partId) << 8) |
-			(unsigned long long)ruleId;
+			((static_cast<unsigned long long>(static_cast<unsigned long>(partId))) << 8) |
+			static_cast<unsigned long long>(ruleId);
 		if (violation) s_cohViolations++; else s_cohAdvisories++;
 		if (!mc2AuditOnce("MOVER_COHERENCE", key))
 			return;
@@ -263,7 +263,7 @@ namespace {
 					TacticalOrderPtr order = pilot->getCurTacOrder();
 					if (order && order->code != TACTICAL_ORDER_NONE) {
 						char det[96];
-						mc2::fmt::to_buf(det, "detail=tac_order code={:d} origin={:d}", mc2::fmt::as_i32((int)order->code), mc2::fmt::as_i32((int)order->origin));
+						mc2::fmt::to_buf(det, "detail=tac_order code={:d} origin={:d}", mc2::fmt::as_i32(static_cast<int>(order->code)), mc2::fmt::as_i32(static_cast<int>(order->origin)));
 						if (order->origin == ORDER_ORIGIN_PLAYER)
 							cohEmit(true, "I2", partId, name,
 								COH_I2_ORDER, det);

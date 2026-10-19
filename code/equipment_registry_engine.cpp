@@ -79,7 +79,7 @@ size_t buildEquipmentRegistryFromMasterList() {
         // with a full string table (2026-07-05 live-witness divergence).
         long   ord     = mc.getMasterID();
         const char* nm = mc.getName();
-        bool   enabled = mc2ComponentRowPopulated(ord, (int)mc.getForm());
+        bool   enabled = mc2ComponentRowPopulated(ord, static_cast<int>(mc.getForm()));
 
         // legacyMasterId is the ROW ORDINAL (the 8-bit addressable id), which is
         // the loop index i for populated rows. For placeholder rows getMasterID()
@@ -87,7 +87,7 @@ size_t buildEquipmentRegistryFromMasterList() {
         // addressable, and mark it disabled.
         long legacyMasterId = i;
 
-        EquipmentKind kind = componentFormToKind((int)mc.getForm());
+        EquipmentKind kind = componentFormToKind(static_cast<int>(mc.getForm()));
         std::string qid;
         // EQUIP-ADD-FILL-1: an ADD-filled row keeps its namespaced mod id.
         auto addIt = g_addFillQualifiedIds.find(legacyMasterId);
@@ -190,10 +190,10 @@ size_t overlayGeneratedEquipmentStatsIfEnabled() {
 
         long        ord = mc.getMasterID();
         const char* nm  = mc.getName();
-        if (!mc2ComponentRowPopulated(ord, (int)mc.getForm()))   // placeholder row
+        if (!mc2ComponentRowPopulated(ord, static_cast<int>(mc.getForm())))   // placeholder row
             continue;
         // Only weapon rows carry the green weapon stats we overlay.
-        if (componentFormToKind((int)mc.getForm()) != EQ_WEAPON)
+        if (componentFormToKind(static_cast<int>(mc.getForm())) != EQ_WEAPON)
             continue;
 
         // core:<slug>; sidecar dir is core/<slug>/equipmentdef.fit (slug == id
@@ -266,7 +266,7 @@ size_t overlayGeneratedEquipmentStatsIfEnabled() {
         const float legRecycle = mc.getWeaponRecycleTime();
         const long  legRange   = mc.getWeaponRange();
         const float legCV      = mc.getCV();
-        const long  legAmmo    = (long)mc.getWeaponAmmoMasterId();
+        const long  legAmmo    = static_cast<long>(mc.getWeaponAmmoMasterId());
 
         if (gs.hasDamage)       mc.setWeaponDamage(gs.damage);
         if (gs.hasHeat)         mc.setWeaponHeat(gs.heat);
@@ -288,7 +288,7 @@ size_t overlayGeneratedEquipmentStatsIfEnabled() {
             (!gs.hasAmmoMasterId|| gs.ammoMasterId == legAmmo);
 
         if (logged < 12) {
-            mc2::fmt::print_out("[EQUIP-SOURCE=generated] core:{} masterID={:d} damage={:.1f} heat={:.1f} recycle={:.2f} range={:d} cv={:.1f} ammo={:d} from generated (match-legacy={})\n", slug.c_str(), mc2::fmt::as_i32(ord), mc.getWeaponDamage(), mc.getWeaponHeat(), mc.getWeaponRecycleTime(), mc2::fmt::as_i32(mc.getWeaponRange()), mc.getCV(), mc2::fmt::as_i32((long)mc.getWeaponAmmoMasterId()), mc2::fmt::safe(match ? "YES" : "NO"));
+            mc2::fmt::print_out("[EQUIP-SOURCE=generated] core:{} masterID={:d} damage={:.1f} heat={:.1f} recycle={:.2f} range={:d} cv={:.1f} ammo={:d} from generated (match-legacy={})\n", slug.c_str(), mc2::fmt::as_i32(ord), mc.getWeaponDamage(), mc.getWeaponHeat(), mc.getWeaponRecycleTime(), mc2::fmt::as_i32(mc.getWeaponRange()), mc.getCV(), mc2::fmt::as_i32(static_cast<long>(mc.getWeaponAmmoMasterId())), mc2::fmt::safe(match ? "YES" : "NO"));
             ++logged;
         }
     }
@@ -345,11 +345,11 @@ size_t applyEquipmentEnableWireIfEnabled(bool* available, long availableCount) {
         // data/defs/equipment/<ns>/<slug>/ -- core rows resolve as before).
         std::string pathStr = equipmentDefPathForQualifiedId(e.qualifiedId);
         const char* path = pathStr.c_str();
-        if (!fileExists((char*)path))     // no def -> purchase.fit verdict stands
+        if (!fileExists(const_cast<char*>(path)))     // no def -> purchase.fit verdict stands
             continue;
 
         FitIniFile gen;
-        if (gen.open((char*)path) != NO_ERR)
+        if (gen.open(const_cast<char*>(path)) != NO_ERR)
             continue;                     // unreadable def: overlay pass reports it
         if (gen.seekBlock("Equipment") != NO_ERR)
             continue;
@@ -451,7 +451,7 @@ size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
     size_t filled = 0;
     for (const std::string& defPath : defPaths) {
         FitIniFile gen;
-        if (gen.open((char*)defPath.c_str()) != NO_ERR) {
+        if (gen.open(const_cast<char*>(defPath.c_str())) != NO_ERR) {
             ModderFinding f;
             f.message  = "equipment def could not be opened/parsed";
             f.source   = "add-fill"; f.file = defPath;
@@ -483,7 +483,7 @@ size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
             MasterComponent& row = MasterComponent::masterList[ord];
             const char* rn = row.getName();
             rowPopulated = mc2ComponentRowPopulated(row.getMasterID(),
-                                                    (int)row.getForm());
+                                                    static_cast<int>(row.getForm()));
             if (rowPopulated)
                 selfOverride = (qid == coreQualifiedIdFor(rn, ord));
             alreadyClaimed = (g_addFillQualifiedIds.find(ord)
@@ -541,7 +541,7 @@ size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
         float fv; long lv;
         if (gen.seekBlock("Equipment") == NO_ERR &&
             gen.readIdFloat("Cost", fv) == NO_ERR)
-            rf.cost = (long)fv;
+            rf.cost = static_cast<long>(fv);
 
         if (gen.seekBlock("WeaponCombatStats") == NO_ERR) {
             if (gen.readIdFloat("Damage", fv) == NO_ERR)       rf.damage = fv;
@@ -556,7 +556,7 @@ size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
             gen.readIdLong("AmmoMasterId", lv) == NO_ERR)
             rf.ammoMasterId = lv;
         if (gen.seekBlock("WeaponFit") == NO_ERR) {
-            if (gen.readIdLong("CritSlots", lv) == NO_ERR)  rf.critSlots = (int)lv;
+            if (gen.readIdLong("CritSlots", lv) == NO_ERR)  rf.critSlots = static_cast<int>(lv);
             if (gen.readIdFloat("Tonnage", fv) == NO_ERR)   rf.tonnage = fv;
             char locs[256] = {0};
             if (gen.readIdString("AllowedLocations", locs, sizeof(locs) - 1) == NO_ERR)
@@ -569,9 +569,9 @@ size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
             if (gen.readIdString("Picture", pic, sizeof(pic) - 1) == NO_ERR)
                 rf.pictureFile = pic;
             if (gen.readIdLong("UINameStringId", lv) == NO_ERR) rf.stringId = lv;
-            if (gen.readIdLong("SpecialEffect", lv) == NO_ERR)  rf.specialEffect = (int)lv;
-            if (gen.readIdLong("IconX", lv) == NO_ERR)          rf.iconX = (int)lv;
-            if (gen.readIdLong("IconY", lv) == NO_ERR)          rf.iconY = (int)lv;
+            if (gen.readIdLong("SpecialEffect", lv) == NO_ERR)  rf.specialEffect = static_cast<int>(lv);
+            if (gen.readIdLong("IconX", lv) == NO_ERR)          rf.iconX = static_cast<int>(lv);
+            if (gen.readIdLong("IconY", lv) == NO_ERR)          rf.iconY = static_cast<int>(lv);
         }
         rf.helpStringId = 34000 + ord;      // legacy help-string slot for the ordinal
 

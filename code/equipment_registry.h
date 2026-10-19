@@ -54,7 +54,7 @@ inline std::string slugifyComponentName(const char* name, long masterId) {
         for (const char* p = name; *p; ++p) {
             char c = *p;
             if (c == '\'') continue;                 // .replace("'", "")
-            cleaned.push_back((char)std::tolower((unsigned char)c));
+            cleaned.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
         }
     }
     // re.sub(r"[^a-z0-9]+", "_", cleaned): collapse non-alnum runs to a single '_'
@@ -211,7 +211,7 @@ inline int mc2GeneratedRangeBucketToOrdinal(const char* bucket, int legacyFallba
     char b[16] = {0};
     unsigned n = 0;
     for (const char* p = bucket; *p && n + 1 < sizeof(b); ++p)
-        b[n++] = (char)std::tolower((unsigned char)*p);
+        b[n++] = static_cast<char>(std::tolower(static_cast<unsigned char>(*p)));
     if (std::strcmp(b, "short")  == 0) return 0;   // WEAPON_RANGE_SHORT
     if (std::strcmp(b, "medium") == 0) return 1;   // WEAPON_RANGE_MEDIUM
     if (std::strcmp(b, "long")   == 0) return 2;   // WEAPON_RANGE_LONG
@@ -387,7 +387,7 @@ inline int resolveLoadoutEquipmentRef(const EquipmentRegistry& reg,
         return kEquipmentRefNotFound;
     if (ord >= 255)
         return kEquipmentRefNeedsWiden;
-    return (int)ord;
+    return static_cast<int>(ord);
 }
 
 // -------------------------------------------------------------------------
@@ -477,8 +477,8 @@ inline int equipmentAddKindToFormOrdinal(const char* kind, const char* category)
     auto ieq = [](const char* a, const char* b) {
         if (!a || !b) return false;
         for (;; ++a, ++b) {
-            char ca = (char)std::tolower((unsigned char)*a);
-            char cb = (char)std::tolower((unsigned char)*b);
+            char ca = static_cast<char>(std::tolower(static_cast<unsigned char>(*a)));
+            char cb = static_cast<char>(std::tolower(static_cast<unsigned char>(*b)));
             if (ca != cb) return false;
             if (ca == '\0') return true;
         }
@@ -527,8 +527,8 @@ inline void equipmentAddAllowedLocationsToCrit(const char* list, bool out[8]) {
                     const char* n = kNames[i];
                     size_t j = 0;
                     for (; j < tok.size() && n[j]; ++j)
-                        if (std::tolower((unsigned char)tok[j]) !=
-                            std::tolower((unsigned char)n[j])) break;
+                        if (std::tolower(static_cast<unsigned char>(tok[j])) !=
+                            std::tolower(static_cast<unsigned char>(n[j]))) break;
                     if (j == tok.size() && n[j] == '\0') { out[i] = true; break; }
                 }
                 tok.clear();
@@ -588,7 +588,7 @@ inline std::string buildEquipmentAddCsvLine(const EquipmentAddRowFields& f) {
     char num[64];
     std::string line;
     auto addF = [&](float v) {
-        std::snprintf(num, sizeof(num), "%.2f", (double)v);
+        std::snprintf(num, sizeof(num), "%.2f", static_cast<double>(v));
         line += num; line += ",";
     };
     auto addI = [&](long v) {

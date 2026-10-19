@@ -34,8 +34,8 @@ void MissionInterfaceManager::doAttack()
 			Stuff::Vector4D _tg_sp;
 			eye->projectForScreenXY( _tg_pos, _tg_sp );
 			const bool  _tg_behind = (_tg_sp.w <= 1e-4f);
-			const float _tg_dx = _tg_sp.x - (float)mouseX;
-			const float _tg_dy = _tg_sp.y - (float)mouseY;
+			const float _tg_dx = _tg_sp.x - static_cast<float>(mouseX);
+			const float _tg_dy = _tg_sp.y - static_cast<float>(mouseY);
 			const float _tg_distSq = _tg_dx*_tg_dx + _tg_dy*_tg_dy;
 			const bool  _tg_far = (_tg_distSq > 90000.0f);   // >300px from cursor
 			if (_tg_staleWID) ++s_tg_staleWID;
@@ -44,7 +44,7 @@ void MissionInterfaceManager::doAttack()
 			if (_tg_staleWID || _tg_behind || _tg_far)
 			{
 				char _tg_buf[384];
-				mc2::fmt::to_buf(_tg_buf, "{{\"site\":\"doAttack\",\"stale_wid\":{:d},\"behind\":{:d},\"far_cursor\":{:d},\"target_screen\":[{:.1f},{:.1f}],\"w\":{:.4f},\"mouse\":[{:d},{:d}],\"dist_sq\":{:.0f},\"is_mover\":{:d},\"watch_id\":{:d},\"totals\":{{\"orders\":{:d},\"stale_wid\":{:d},\"behind\":{:d},\"far\":{:d}}}}}", mc2::fmt::as_i32(_tg_staleWID?1:0), mc2::fmt::as_i32(_tg_behind?1:0), mc2::fmt::as_i32(_tg_far?1:0), _tg_sp.x, _tg_sp.y, _tg_sp.w, mc2::fmt::as_i32((long)mouseX), mc2::fmt::as_i32((long)mouseY), _tg_distSq, mc2::fmt::as_i32(target->isMover()?1:0), mc2::fmt::as_i32((int)target->getWatchID()), mc2::fmt::as_u64((unsigned long long)s_tg_orders), mc2::fmt::as_u64((unsigned long long)s_tg_staleWID), mc2::fmt::as_u64((unsigned long long)s_tg_behind), mc2::fmt::as_u64((unsigned long long)s_tg_far));
+				mc2::fmt::to_buf(_tg_buf, "{{\"site\":\"doAttack\",\"stale_wid\":{:d},\"behind\":{:d},\"far_cursor\":{:d},\"target_screen\":[{:.1f},{:.1f}],\"w\":{:.4f},\"mouse\":[{:d},{:d}],\"dist_sq\":{:.0f},\"is_mover\":{:d},\"watch_id\":{:d},\"totals\":{{\"orders\":{:d},\"stale_wid\":{:d},\"behind\":{:d},\"far\":{:d}}}}}", mc2::fmt::as_i32(_tg_staleWID?1:0), mc2::fmt::as_i32(_tg_behind?1:0), mc2::fmt::as_i32(_tg_far?1:0), _tg_sp.x, _tg_sp.y, _tg_sp.w, mc2::fmt::as_i32(static_cast<long>(mouseX)), mc2::fmt::as_i32(static_cast<long>(mouseY)), _tg_distSq, mc2::fmt::as_i32(target->isMover()?1:0), mc2::fmt::as_i32(static_cast<int>(target->getWatchID())), mc2::fmt::as_u64(static_cast<unsigned long long>(s_tg_orders)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_tg_staleWID)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_tg_behind)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_tg_far)));
 				mc2_diag::writeEvent("TARGETING", 1, 0, _tg_buf);
 			}
 		}
@@ -81,7 +81,7 @@ void MissionInterfaceManager::doAttack()
 	{
 		for (long i = 0; i < Team::home->getRosterSize(); i++)
 		{
-			Mover* pMover = (Mover*)Team::home->getMover( i );
+			Mover* pMover = static_cast<Mover*>(Team::home->getMover( i ));
 			if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
 			{
 				if ((pMover->getObjectClass() == BATTLEMECH) && 
@@ -118,10 +118,10 @@ void MissionInterfaceManager::doAttack()
 	
 	for (long i = 0; i < pTeam->getRosterSize(); i++)
 	{
-		Mover* pMover = (Mover*)pTeam->getMover( i );
+		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId())
 		{
-			tacOrder.attackParams.range = (FireRangeType)pMover->attackRange;
+			tacOrder.attackParams.range = static_cast<FireRangeType>(pMover->attackRange);
 			if (pMover->attackRange == FIRERANGE_CURRENT)
 				tacOrder.attackParams.pursue = false;
 			else if (controlGui.getFireFromCurrentPos())
@@ -318,7 +318,7 @@ int MissionInterfaceManager::selectVisible()
 	Team* pTeam = Team::home;
 	for (long i=0;i<pTeam->getRosterSize();i++)
 	{
-		Mover* pMover = (Mover*)pTeam->getMover( i );
+		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 		if (pMover->getCommander()->getId() == Commander::home->getId())
 		{
 			pMover->setSelected( false );
@@ -694,7 +694,7 @@ bool MissionInterfaceManager::anySelectedWithoutAreaEffect (void)
 	Team* pTeam = Team::home;
 	for (long i = 0; i < pTeam->getRosterSize(); i++)
 	{
-		Mover* pMover = (Mover*)pTeam->getMover( i );
+		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 		if ( pMover->isSelected() && pMover->hasNonAreaWeapon() && pMover->getCommander()->getId() == Commander::home->getId())
 		   	return true;
 	}
@@ -731,7 +731,7 @@ int MissionInterfaceManager::handleOrders( TacticalOrder& order)
 	numMovers = 0;
 	for (long i = 0; i < pTeam->getRosterSize(); i++)
 	{
-		Mover* pMover = (Mover*)pTeam->getMover( i );
+		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
 		{
 			if (isMoveOrder ) {
@@ -743,7 +743,7 @@ int MissionInterfaceManager::handleOrders( TacticalOrder& order)
 				}
 			else
 			{
-				order.attackParams.range = (FireRangeType)pMover->attackRange;
+				order.attackParams.range = static_cast<FireRangeType>(pMover->attackRange);
 				order.pack( nullptr, nullptr );
 				if ( userInput->getKeyDown( WAYPOINT_KEY ) ) // way point one
 				{
@@ -1098,7 +1098,7 @@ bool MissionInterfaceManager::makePatrolPath()
 	Team* pTeam = Team::home;
 	for (long i=0;i<pTeam->getRosterSize();i++)
 	{
-		Mover* pMover = (Mover*)pTeam->getMover( i );
+		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 		if ( pMover->isSelected() && pMover->getPilot()->getNumTacOrdersQueued() && pMover->getCommander()->getId() == Commander::home->getId() )
 		{
 			if ( pMover->isCloseToFirstTacOrder( wPos ) )
@@ -1147,7 +1147,7 @@ int MissionInterfaceManager::forceShot()
 				tacOrder.attackParams.targetPoint = wPos;
 			tacOrder.attackParams.type = bEnergyWeapons ? ATTACK_CONSERVING_AMMO : ATTACK_TO_DESTROY;
 			tacOrder.attackParams.method = ATTACKMETHOD_RANGED;
-			tacOrder.attackParams.range = (FireRangeType)FIRERANGE_OPTIMAL;
+			tacOrder.attackParams.range = static_cast<FireRangeType>(FIRERANGE_OPTIMAL);
 			tacOrder.attackParams.pursue = controlGui.getFireFromCurrentPos() ? false : true;
 			tacOrder.moveParams.wayPath.mode[0] = controlGui.getWalk() ?  TRAVEL_MODE_SLOW : TRAVEL_MODE_FAST;
 			
@@ -1175,7 +1175,7 @@ void MissionInterfaceManager::selectForceGroup( int forceGroup, bool deselect )
 
 		for (long i=0;i<pTeam->getRosterSize();i++)
 		{
-			Mover* pMover = (Mover*)pTeam->getMover( i );
+			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 			if (pMover && pMover->isOnGUI() && (pMover->getCommander()->getId() == Commander::home->getId()))
 			{
 				pMover->setSelected( 0 );
@@ -1186,7 +1186,7 @@ void MissionInterfaceManager::selectForceGroup( int forceGroup, bool deselect )
 	{
 		for (long i=0;i<pTeam->getRosterSize();i++)
 		{
-			Mover* pMover = (Mover*)pTeam->getMover( i );
+			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 			if (pMover && pMover->isInUnitGroup( forceGroup ) && !pMover->isDisabled() && !pMover->isSelected() && pMover->isOnGUI() && (pMover->getCommander()->getId() == Commander::home->getId()))
 			{
 				bAllSelected = false;
@@ -1196,7 +1196,7 @@ void MissionInterfaceManager::selectForceGroup( int forceGroup, bool deselect )
 
 	for (long i=0;i<pTeam->getRosterSize();i++)
 	{
-		Mover* pMover = (Mover*)pTeam->getMover( i );
+		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 		if (pMover && pMover->isInUnitGroup( forceGroup ) && !pMover->isDisabled() && pMover->isOnGUI() && (pMover->getCommander()->getId() == Commander::home->getId()))
 			pMover->setSelected( !bAllSelected );
 	}
@@ -1207,7 +1207,7 @@ void MissionInterfaceManager::makeForceGroup( int forceGroup )
 
 	for (int i=0;i<pTeam->getRosterSize();i++)
 	{
-		Mover* pMover = (Mover*)pTeam->getMover( i );
+		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 		if (pMover && (pMover->getCommander()->getId() == Commander::home->getId()))
 		{
 			if ( pMover->isInUnitGroup( forceGroup ) )
@@ -1217,7 +1217,7 @@ void MissionInterfaceManager::makeForceGroup( int forceGroup )
 
 	for (int i=0;i<pTeam->getRosterSize();i++)
 	{
-		Mover* pMover = (Mover*)pTeam->getMover( i );
+		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 		if (pMover && (pMover->getCommander()->getId() == Commander::home->getId()))
 		{
 			if (pMover->isSelected() )

@@ -271,10 +271,10 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 	// (long)(float screen coord) truncates toward zero, and the pick
 	// comparison below is integer mouseX/mouseY against the rect, so the
 	// hit set is byte-equivalent for all on-screen rects.
-	outMinX = (long)minX;
-	outMinY = (long)minY;
-	outMaxX = (long)maxX;
-	outMaxY = (long)maxY;
+	outMinX = static_cast<long>(minX);
+	outMinY = static_cast<long>(minY);
+	outMaxX = static_cast<long>(maxX);
+	outMaxY = static_cast<long>(maxY);
 
 	// CURSOR_TARGET mechanism emit: only when a corner was behind the camera (rare,
 	// exactly the bug). Gate MC2_CURSOR_TARGET_TRACE + MC2_DIAG_TAGS=CURSOR_TARGET.
@@ -487,13 +487,13 @@ namespace {
 	static bool s_pkAtexit=false;
 	static void pkEmit() {
 		if (!s_pickRecon) return;
-		mc2::fmt::print_out("[PICK_RECON v1] event=shutdown calls={:d} candidates={:d} inRect={:d} rectProj={:d} total_ms={:.1f} avg_us={:.1f} max_us={:.1f} max_candidates_call={:d}\n", mc2::fmt::as_u64(s_pkCalls), mc2::fmt::as_u64(s_pkCandidates), mc2::fmt::as_u64(s_pkInRect), mc2::fmt::as_u64(s_pkRectProj), (double)s_pkNs/1e6, s_pkCalls?(double)s_pkNs/s_pkCalls/1000.0:0.0, (double)s_pkMaxNs/1000.0, mc2::fmt::as_u64(s_pkMaxCand));
+		mc2::fmt::print_out("[PICK_RECON v1] event=shutdown calls={:d} candidates={:d} inRect={:d} rectProj={:d} total_ms={:.1f} avg_us={:.1f} max_us={:.1f} max_candidates_call={:d}\n", mc2::fmt::as_u64(s_pkCalls), mc2::fmt::as_u64(s_pkCandidates), mc2::fmt::as_u64(s_pkInRect), mc2::fmt::as_u64(s_pkRectProj), static_cast<double>(s_pkNs)/1e6, s_pkCalls?static_cast<double>(s_pkNs)/s_pkCalls/1000.0:0.0, static_cast<double>(s_pkMaxNs)/1000.0, mc2::fmt::as_u64(s_pkMaxCand));
 		std::fflush(stdout);
 	}
 	struct PkTimer {
 		std::chrono::steady_clock::time_point t0; bool on;
 		PkTimer():on(s_pickRecon){ if(on){ if(!s_pkAtexit){s_pkAtexit=true;std::atexit(pkEmit);} t0=std::chrono::steady_clock::now(); ++s_pkCalls; } }
-		~PkTimer(){ if(!on)return; unsigned long long ns=(unsigned long long)std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-t0).count(); s_pkNs+=ns; if(ns>s_pkMaxNs)s_pkMaxNs=ns; }
+		~PkTimer(){ if(!on)return; unsigned long long ns=static_cast<unsigned long long>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-t0).count()); s_pkNs+=ns; if(ns>s_pkMaxNs)s_pkMaxNs=ns; }
 	};
 }
 
@@ -547,7 +547,7 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse (long mouseX,
 			long numObjs = Terrain::objBlockInfo[terrainBlock].numObjects;
 			long objIndex = Terrain::objBlockInfo[terrainBlock].firstHandle;
 			pickCandidates += numObjs;
-				if (s_pickRecon) { s_pkCandidates += (unsigned long long)numObjs; if ((unsigned long long)numObjs > s_pkMaxCand) s_pkMaxCand = (unsigned long long)numObjs; }
+				if (s_pickRecon) { s_pkCandidates += static_cast<unsigned long long>(numObjs); if (static_cast<unsigned long long>(numObjs) > s_pkMaxCand) s_pkMaxCand = static_cast<unsigned long long>(numObjs); }
 
 			// CRIT-1 re-home (Task 4): the per-object test below is
 			// DUPLICATED from the shared 5-param findObjectByMouse loop
@@ -631,7 +631,7 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse (long mouseX,
 							long oc = obj->getObjectClass();
 							BldgAppearance* ba =
 								((oc == BUILDING) || (oc == TREEBUILDING) || (oc == TERRAINOBJECT) || (oc == BRIDGE) || (oc == TURRET) || (oc == GATE))
-									? (BldgAppearance*)obj->getAppearance()
+									? static_cast<BldgAppearance*>(obj->getAppearance())
 									: nullptr;
 							if (ba) {
 								// v2: per-instance screen-rect cache keyed on cameraRevision.

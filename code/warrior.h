@@ -1898,7 +1898,7 @@ class MechWarrior {
 		}
 
 		void setRole (long role) {
-			roleOrders.role = (MechWarriorRole)role;
+			roleOrders.role = static_cast<MechWarriorRole>(role);
 		}
 #endif
 

@@ -123,7 +123,7 @@ long GroundVehicle::buildStatusChunk (void) {
 		if (curTarget) {
 			if (curTarget->isMover()) {
 				statusChunk.targetType = STATUSCHUNK_TARGET_MOVER;
-				statusChunk.targetId = ((MoverPtr)curTarget)->getNetRosterIndex();
+				statusChunk.targetId = (static_cast<MoverPtr>(curTarget))->getNetRosterIndex();
 				}
 			else if (curTarget->isTerrainObject()) {
 				statusChunk.targetType = STATUSCHUNK_TARGET_TERRAIN;
@@ -261,7 +261,7 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 		char _cbf[192];
 		// ISSUE-9 S3: "loc" = resolved hit location (vehicle location index) —
 		// keeps the hit-event schema uniform with BattleMech::handleWeaponHit.
-		mc2::fmt::to_buf(_cbf, "{{\"ev\":\"hit\",\"a_wid\":{:d},\"a_team\":{:d},\"t_wid\":{:d},\"t_team\":{:d},\"dmg\":{:.1f},\"loc\":{:d}}}", mc2::fmt::as_u32((unsigned)shotInfo->attackerWID), mc2::fmt::as_i32(_cbAtk ? _cbAtk->getTeamId() : -1L), mc2::fmt::as_u32(getWatchID(false)), mc2::fmt::as_i32(getTeamId()), (double)shotInfo->damage, mc2::fmt::as_i32((int)shotInfo->hitLocation));
+		mc2::fmt::to_buf(_cbf, "{{\"ev\":\"hit\",\"a_wid\":{:d},\"a_team\":{:d},\"t_wid\":{:d},\"t_team\":{:d},\"dmg\":{:.1f},\"loc\":{:d}}}", mc2::fmt::as_u32(static_cast<unsigned>(shotInfo->attackerWID)), mc2::fmt::as_i32(_cbAtk ? _cbAtk->getTeamId() : -1L), mc2::fmt::as_u32(getWatchID(false)), mc2::fmt::as_i32(getTeamId()), static_cast<double>(shotInfo->damage), mc2::fmt::as_i32(static_cast<int>(shotInfo->hitLocation)));
 		mc2_diag::writeEvent("COMBAT", 1, 0, _cbf);
 	}
 
@@ -343,7 +343,7 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 			{
 				long attackerCID = attacker->getCommanderId();
 				if (attackerCID == -1)
-					attackerCID = ((MoverPtr)attacker)->prevCommanderId;
+					attackerCID = (static_cast<MoverPtr>(attacker))->prevCommanderId;
 				if ((attackerCID == -1) || (attackerCID == getCommanderId()))
 					attackerCID = MAX_MC_PLAYERS;
 				MPlayer->addKillLossChunk(attackerCID, !lost ? getCommanderId() : MAX_MC_PLAYERS);
@@ -357,7 +357,7 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 			{
 				long attackerCID = attacker->getCommanderId();
 				if (attackerCID == -1)
-					attackerCID = ((MoverPtr)attacker)->prevCommanderId;
+					attackerCID = (static_cast<MoverPtr>(attacker))->prevCommanderId;
 				if ((attackerCID == -1) || (attackerCID == getCommanderId()))
 					attackerCID = MAX_MC_PLAYERS;
 				MPlayer->addKillLossChunk(attackerCID, !lost ? getCommanderId() : MAX_MC_PLAYERS);
@@ -489,7 +489,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 
 	MechWarriorPtr targetPilot = nullptr;
 	if (target && target->isMover()) {
-		targetPilot = ((MoverPtr)target)->getPilot();
+		targetPilot = (static_cast<MoverPtr>(target))->getPilot();
 		targetPilot->updateAttackerStatus(getWatchID(), scenarioTime);
 	}
 
@@ -500,7 +500,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 	bool isStreakMissile = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponStreak(); 
 
 	long range;
-	long attackChance = (long)calcAttackChance(target, aimLocation, targetTime, weaponIndex, 0.0, &range, targetPoint);
+	long attackChance = static_cast<long>(calcAttackChance(target, aimLocation, targetTime, weaponIndex, 0.0, &range, targetPoint));
 	long hitRoll = RandomNumber(100);
 	if (target && (target->getTeamId() == TEAM2))
 		pilot->incNumSkillUses(COMBAT_STAT_MISSION, MWS_GUNNERY);
@@ -765,7 +765,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 			if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE)
 			{
 				long missileAmount = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponAmmoAmount();
-				long numMissiles = ((float)missileAmount / 2.0) + 0.5;
+				long numMissiles = (static_cast<float>(missileAmount) / 2.0) + 0.5;
 				if (numMissiles < 1)
 					numMissiles = 1;
 				if (numMissiles > missileAmount)
@@ -1145,7 +1145,7 @@ long GroundVehicle::handleWeaponFire (long weaponIndex,
 
 	MechWarriorPtr targetPilot = nullptr;
 	if (target && target->isMover()) {
-		targetPilot = ((MoverPtr)target)->getPilot();
+		targetPilot = (static_cast<MoverPtr>(target))->getPilot();
 		targetPilot->updateAttackerStatus(getWatchID(), scenarioTime);
 		targetPilot->triggerAlarm(PILOT_ALARM_TARGET_OF_WEAPONFIRE, getWatchID());
 	}

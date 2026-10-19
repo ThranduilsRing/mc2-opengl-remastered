@@ -245,7 +245,7 @@ void MechWarrior::updateDrawWaypointPath()
 			if ( queueMarkers[i] )
 			{
 				BldgAppearance* waypoint = queueMarkers[i].get();
-				waypoint->setObjectParameters(tacOrderQueue[i].point,((ObjectAppearance*)waypoint)->rotation,false,0,0);
+				waypoint->setObjectParameters(tacOrderQueue[i].point,(static_cast<ObjectAppearance*>(waypoint))->rotation,false,0,0);
 				waypoint->recalcBounds();
 				waypoint->update();
 			}

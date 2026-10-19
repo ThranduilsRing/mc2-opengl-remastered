@@ -198,9 +198,9 @@ void encryptFile (const char *inputFile, const char* outputFile)
 	File dataFile;
 	dataFile.open(inputFile);
 	DWORD fileSize = dataFile.fileSize();
-	rawData = (MemoryPtr)malloc(fileSize);
-	zlibData = (MemoryPtr)malloc(fileSize*2);
-	LZData = (MemoryPtr)malloc(fileSize*2);
+	rawData = static_cast<MemoryPtr>(malloc(fileSize));
+	zlibData = static_cast<MemoryPtr>(malloc(fileSize*2));
+	LZData = static_cast<MemoryPtr>(malloc(fileSize*2));
 
 	dataFile.read(rawData,fileSize);
 
@@ -242,9 +242,9 @@ void decryptFile (char *inputFile, char *outputFile)
 		long zlibSize = dataFile.readInt();
 		long fileSize = dataFile.readInt();
 	
-		rawData = (MemoryPtr)malloc(fileSize);
-		zlibData = (MemoryPtr)malloc(zlibSize);
-		LZData = (MemoryPtr)malloc(lzSize);
+		rawData = static_cast<MemoryPtr>(malloc(fileSize));
+		zlibData = static_cast<MemoryPtr>(malloc(zlibSize));
+		LZData = static_cast<MemoryPtr>(malloc(lzSize));
 	
 		dataFile.read(LZData,lzSize);
 	
@@ -353,7 +353,7 @@ int LogisticsData::acceptMechModifications( const char* name )
 				(*vIter)->save( file, 0 );
 				file.close();
 
-                const char* filename = (const char*)mechFile;
+                const char* filename = static_cast<const char*>(mechFile);
 				encryptFile(filename, filename);
 			}
 		}

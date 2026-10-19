@@ -118,8 +118,8 @@ static const char* resolveVerbAliasToken(const char* verb, char out[256]);
 // ASCII case-insensitive full-string compare (leaf TU — no engine str helpers).
 static bool ciEquals(const char* a, const char* b) {
     while (*a && *b) {
-        char ca = (*a >= 'A' && *a <= 'Z') ? (char)(*a + 32) : *a;
-        char cb = (*b >= 'A' && *b <= 'Z') ? (char)(*b + 32) : *b;
+        char ca = (*a >= 'A' && *a <= 'Z') ? static_cast<char>((*a + 32)) : *a;
+        char cb = (*b >= 'A' && *b <= 'Z') ? static_cast<char>((*b + 32)) : *b;
         if (ca != cb) return false;
         ++a; ++b;
     }
@@ -296,7 +296,7 @@ static bool parseCallVerbKey(const char* verbStr, char outKey[128]) {
     const char* keyStart = p;
     const char* keyEnd   = std::strchr(p, closeDelim);
     if (!keyEnd) return false;
-    size_t keyLen = (size_t)(keyEnd - keyStart);
+    size_t keyLen = static_cast<size_t>((keyEnd - keyStart));
     if (keyLen == 0) return false;
     if (keyLen > 127) keyLen = 127;
     std::strncpy(outKey, keyStart, keyLen);
@@ -604,7 +604,7 @@ static const char* resolveVerbAliasToken(const char* verb, char out[256]) {
     if (!s_brainAliasGate()) return verb;
     const char* te = verb;
     while (*te && *te != ' ' && *te != '\t') ++te;
-    size_t tl = (size_t)(te - verb);
+    size_t tl = static_cast<size_t>((te - verb));
     if (tl == 0 || tl >= 96) return verb;
     char tok[96];
     std::memcpy(tok, verb, tl);
@@ -813,7 +813,7 @@ static void flowMarkFired(MechBrainRuntime* rt, uint16_t verbIdx) {
     if (flowVerbFired(rt, verbIdx)) return;
     if (rt->flowFiredCount >= MechBrainRuntime::kBrainFlowFiredCap) {
         std::fprintf(stderr, "[BRAIN_FLOW_FIRED_OVERFLOW] idx=%u cap=%d\n",
-                     (unsigned)verbIdx, MechBrainRuntime::kBrainFlowFiredCap);
+                     static_cast<unsigned>(verbIdx), MechBrainRuntime::kBrainFlowFiredCap);
         std::fflush(stderr);
         return;
     }
@@ -838,7 +838,7 @@ static bool parseWaitUntilCondition(const char* verbStr, char outKey[32], char o
     ++p;
     const char* ke = std::strchr(p, close);
     if (!ke || ke == p) return false;
-    size_t kl = (size_t)(ke - p);
+    size_t kl = static_cast<size_t>((ke - p));
     if (kl > 31) kl = 31;
     std::memcpy(outKey, p, kl); outKey[kl] = '\0';
     p = ke + 1;
@@ -899,7 +899,7 @@ bool emitBrainIntent(MechBrainRuntime* runtime, int warriorId,
     if (!runtime) return false;
     if (runtime->pendingIntentCount >= kBrainIntentCap) {
         std::fprintf(stderr, "[BRAIN_INTENT_EMIT_OVERFLOW] wid=%d order=%d cap=%d\n",
-                     warriorId, (int)orderType, kBrainIntentCap);
+                     warriorId, static_cast<int>(orderType), kBrainIntentCap);
         std::fflush(stderr);
         return false;
     }
@@ -963,11 +963,11 @@ bool emitBrainTargetPolicyIntent(MechBrainRuntime* runtime, int warriorId,
     out.waypoint[0] = 0.0f; out.waypoint[1] = 0.0f; out.waypoint[2] = 0.0f;
     out.sourceBodyId = 0;
     out.brainTick   = getBrainTickIndex();
-    out.policyArgs[0] = (int32_t)slot;
-    out.policyArgs[1] = (int32_t)type;
-    out.policyArgs[2] = (int32_t)p1;
-    out.policyArgs[3] = (int32_t)p2;
-    out.policyArgs[4] = (int32_t)p3;
+    out.policyArgs[0] = static_cast<int32_t>(slot);
+    out.policyArgs[1] = static_cast<int32_t>(type);
+    out.policyArgs[2] = static_cast<int32_t>(p1);
+    out.policyArgs[3] = static_cast<int32_t>(p2);
+    out.policyArgs[4] = static_cast<int32_t>(p3);
     return true;
 }
 
@@ -1056,7 +1056,7 @@ bool executeSpecialBody_Apply(const BrainSpecialBody& body, MechWarrior* warrior
         // BRAINSPECIAL-FLOW-WAIT-1: per-verb-index refire guard — an effect verb that
         // already fired under flow gating is skipped on subsequent re-dispatches
         // (only effect indexes are ever marked).
-        if (flowActive && flowVerbFired(flowRt, (uint16_t)verbIdx)) continue;
+        if (flowActive && flowVerbFired(flowRt, static_cast<uint16_t>(verbIdx))) continue;
 
         // CALL-CHAIN-1A: TechSpecial.Call handling (trace only — no chained effects in 1A).
         if (callGate && std::strncmp(vp, "TechSpecial.Call", 16) == 0 &&
@@ -1133,7 +1133,7 @@ bool executeSpecialBody_Apply(const BrainSpecialBody& body, MechWarrior* warrior
         if (flowActive) {
             if (std::strncmp(vpCanon, "WAIT_UNTIL", 10) == 0 &&
                 (vpCanon[10] == ' ' || vpCanon[10] == '\t' || vpCanon[10] == '\0')) {
-                BrainWaitState* ws = flowFindOrCreateWaitState(flowRt, (uint16_t)verbIdx);
+                BrainWaitState* ws = flowFindOrCreateWaitState(flowRt, static_cast<uint16_t>(verbIdx));
                 if (!ws) {
                     std::fprintf(stderr, "[BRAIN_FLOW_WAIT_OVERFLOW] idx=%d cap=%d wid=%d (WAIT_UNTIL skipped)\n",
                                  verbIdx, MechBrainRuntime::kBrainWaitCap, wid);
@@ -1171,7 +1171,7 @@ bool executeSpecialBody_Apply(const BrainSpecialBody& body, MechWarrior* warrior
             }
             if (std::strncmp(vpCanon, "WAIT", 4) == 0 &&
                 (vpCanon[4] == ' ' || vpCanon[4] == '\t' || vpCanon[4] == '\0')) {
-                BrainWaitState* ws = flowFindOrCreateWaitState(flowRt, (uint16_t)verbIdx);
+                BrainWaitState* ws = flowFindOrCreateWaitState(flowRt, static_cast<uint16_t>(verbIdx));
                 if (!ws) {
                     std::fprintf(stderr, "[BRAIN_FLOW_WAIT_OVERFLOW] idx=%d cap=%d wid=%d (WAIT skipped)\n",
                                  verbIdx, MechBrainRuntime::kBrainWaitCap, wid);
@@ -1192,7 +1192,7 @@ bool executeSpecialBody_Apply(const BrainSpecialBody& body, MechWarrior* warrior
                         continue;
                     }
                     ws->armed      = 1;
-                    ws->deadlineMs = getBrainTimeMs() + (uint32_t)(sec * 1000.0f);
+                    ws->deadlineMs = getBrainTimeMs() + static_cast<uint32_t>((sec * 1000.0f));
                     std::fprintf(stderr, "[BRAIN_FLOW_WAIT_ARM] idx=%d sec=%g deadline=%u now=%u wid=%d\n",
                                  verbIdx, sec, ws->deadlineMs, getBrainTimeMs(), wid);
                     std::fflush(stderr);
@@ -1273,7 +1273,7 @@ bool executeSpecialBody_Apply(const BrainSpecialBody& body, MechWarrior* warrior
         // (warrior.cpp pre-sets its flags before Apply on the non-flow path too).
         // Verbs that `continue` above (Call/Var/flow) never reach here — none are effects.
         if (flowActive && isGeneralEffectVerbToken(vpCanon))
-            flowMarkFired(flowRt, (uint16_t)verbIdx);
+            flowMarkFired(flowRt, static_cast<uint16_t>(verbIdx));
     }
 
     return appliedEffect;
@@ -1381,14 +1381,14 @@ void commitBrainIntents(MechWarrior* warrior, MechBrainRuntime* runtime) {
             case TACTICAL_ORDER_ATTACK_OBJECT: {
                 TacticalOrder o;
                 o.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_ATTACK_OBJECT, false);
-                o.targetWID = (long)intent.targetWID;
+                o.targetWID = static_cast<long>(intent.targetWID);
                 o.attackParams.type   = ATTACK_TO_DESTROY;
                 o.attackParams.method = ATTACKMETHOD_RANGED;
                 o.attackParams.range  = FIRERANGE_OPTIMAL;
                 o.attackParams.pursue = true;
                 // TACTIC-WEIGHTS-B: wire selected tactic (runtime non-null per caller guard).
                 if (s_tacticWeightsBEnabled()) {
-                    o.attackParams.tactic = (TacticType)runtime->selectedTactic;
+                    o.attackParams.tactic = static_cast<TacticType>(runtime->selectedTactic);
                     std::fprintf(stderr, "[BRAIN_TACTIC_B] applied tactic=%d wid=%d\n", runtime->selectedTactic, intent.warriorId);
                     std::fflush(stderr);
                 }
@@ -1410,7 +1410,7 @@ void commitBrainIntents(MechWarrior* warrior, MechBrainRuntime* runtime) {
             }
             default:
                 std::fprintf(stderr, "[BRAIN_INTENT_COMMIT_UNKNOWN] order=%d tick=%u wid=%d\n",
-                             (int)intent.orderType, intent.brainTick, intent.warriorId);
+                             static_cast<int>(intent.orderType), intent.brainTick, intent.warriorId);
                 std::fflush(stderr);
                 break;
         }
@@ -1499,7 +1499,7 @@ bool tickEngageNearest(MechWarrior* warrior, MechBrainRuntime* runtime, int wid)
     if (tgtWID != runtime->engageTargetWID) {
         runtime->engageTargetWID = tgtWID;
         if (s_intentQueueEnabled()) {
-            emitBrainIntent(runtime, wid, TACTICAL_ORDER_ATTACK_OBJECT, (int)tgtWID, 0, 0, 0, 0);
+            emitBrainIntent(runtime, wid, TACTICAL_ORDER_ATTACK_OBJECT, static_cast<int>(tgtWID), 0, 0, 0, 0);
             std::fprintf(stderr, "[BRAIN_ENGAGE] target=%lu tick=%u wid=%d\n",
                          tgtWID, getBrainTickIndex(), wid);
             std::fflush(stderr);
@@ -1610,7 +1610,7 @@ static bool advanceOpordSlot(MechBrainRuntime* runtime, int wid) {
     if (next == 7) { runtime->guardHold = true; runtime->engageRadius = 0.0f; }  // Attack: aggressive
     else           { runtime->guardHold = true; }                                // Guard/Sentry/...: hold+engage
     std::fprintf(stderr, "[BRAIN_OPORD_PROGRESS] wid=%d -> slot=%u type=%u\n",
-                 wid, (unsigned)runtime->opordCursor, (unsigned)next);
+                 wid, static_cast<unsigned>(runtime->opordCursor), static_cast<unsigned>(next));
     std::fflush(stderr);
     return true;
 }
@@ -1653,14 +1653,14 @@ bool tickPatrolAdvance(MechWarrior* warrior, MechBrainRuntime* runtime, int wid)
         if (s_intentQueueEnabled()) {
             emitBrainIntent(runtime, wid, TACTICAL_ORDER_MOVETO_POINT, -1, kx, ky, kz, 0);
             std::fprintf(stderr, "[BRAIN_PATROL_KICK] index=%u pos=(%g %g %g) tick=%u wid=%d\n",
-                         (unsigned)idx, kx, ky, kz, getBrainTickIndex(), wid);
+                         static_cast<unsigned>(idx), kx, ky, kz, getBrainTickIndex(), wid);
             std::fflush(stderr);
             if (!s_brainCommitPhaseEnabled()) {
                 commitBrainIntents(warrior, runtime);
             }
         } else {
             std::fprintf(stderr, "[BRAIN_PATROL_NO_QUEUE] kick index=%u wid=%d: requires MC2_BRAIN_INTENT_QUEUE=1\n",
-                         (unsigned)idx, wid);
+                         static_cast<unsigned>(idx), wid);
             std::fflush(stderr);
         }
         return true;
@@ -1685,9 +1685,9 @@ bool tickPatrolAdvance(MechWarrior* warrior, MechBrainRuntime* runtime, int wid)
     // Advance cursor.
     uint8_t newIndex;
     if (runtime->patrolLoop) {
-        newIndex = (uint8_t)((oldIndex + 1) % count);
+        newIndex = static_cast<uint8_t>(((oldIndex + 1) % count));
     } else {
-        newIndex = (uint8_t)(oldIndex + 1);
+        newIndex = static_cast<uint8_t>((oldIndex + 1));
         if (newIndex >= count) {
             newIndex = count - 1;
             runtime->patrolActive = false;
@@ -1696,7 +1696,7 @@ bool tickPatrolAdvance(MechWarrior* warrior, MechBrainRuntime* runtime, int wid)
     runtime->patrolWaypointIndex = newIndex;
 
     std::fprintf(stderr, "[BRAIN_PATROL_ADVANCE] from=%u to=%u wid=%d\n",
-                 (unsigned)oldIndex, (unsigned)newIndex, wid);
+                 static_cast<unsigned>(oldIndex), static_cast<unsigned>(newIndex), wid);
     std::fflush(stderr);
 
     if (!runtime->patrolActive) {
@@ -1718,7 +1718,7 @@ bool tickPatrolAdvance(MechWarrior* warrior, MechBrainRuntime* runtime, int wid)
     if (s_intentQueueEnabled()) {
         emitBrainIntent(runtime, wid, TACTICAL_ORDER_MOVETO_POINT, -1, wx, wy, wz, 0);
         std::fprintf(stderr, "[BRAIN_PATROL_EMIT] index=%u pos=(%g %g %g) tick=%u wid=%d\n",
-                     (unsigned)newIndex, wx, wy, wz, getBrainTickIndex(), wid);
+                     static_cast<unsigned>(newIndex), wx, wy, wz, getBrainTickIndex(), wid);
         std::fflush(stderr);
         // GAP B: tickPatrolAdvance runs outside the normal apply+commit block, so with
         // commit-phase OFF it must self-commit inline. With commit-phase ON, leave the
@@ -1730,7 +1730,7 @@ bool tickPatrolAdvance(MechWarrior* warrior, MechBrainRuntime* runtime, int wid)
         }
     } else {
         std::fprintf(stderr, "[BRAIN_PATROL_NO_QUEUE] advance index=%u wid=%d: requires MC2_BRAIN_INTENT_QUEUE=1\n",
-                     (unsigned)newIndex, wid);
+                     static_cast<unsigned>(newIndex), wid);
         std::fflush(stderr);
     }
     return true;
@@ -1846,9 +1846,9 @@ static bool parseBrainSpecialBody_RawScan(const char* fitPath, BrainSpecialBody&
 
     while (std::getline(inFile, line)) {
         // Guard line length.
-        if ((int)line.size() > kMaxLineLen) {
+        if (static_cast<int>(line.size()) > kMaxLineLen) {
             std::fprintf(stderr, "[BRAIN_DISPATCH_RAW] WARN: line too long (%d bytes) in %s — skipped\n",
-                         (int)line.size(), fitPath);
+                         static_cast<int>(line.size()), fitPath);
             std::fflush(stderr);
             continue;
         }
@@ -1873,7 +1873,7 @@ static bool parseBrainSpecialBody_RawScan(const char* fitPath, BrainSpecialBody&
                 const char* q = p + 11;
                 while (*q == ' ' || *q == '\t') ++q;
                 if (*q == '{') {
-                    if ((int)rawBlocks.size() >= kMaxBodies) {
+                    if (static_cast<int>(rawBlocks.size()) >= kMaxBodies) {
                         std::fprintf(stderr, "[BRAIN_DISPATCH_RAW] WARN: TechSpecial block cap (%d) reached in %s — skipping rest\n",
                                      kMaxBodies, fitPath);
                         std::fflush(stderr);
@@ -1905,7 +1905,7 @@ static bool parseBrainSpecialBody_RawScan(const char* fitPath, BrainSpecialBody&
             } else {
                 const char* eq = std::strchr(p, '=');
                 if (eq) {
-                    size_t nl = (size_t)(eq - p);
+                    size_t nl = static_cast<size_t>((eq - p));
                     while (nl > 0 && (p[nl - 1] == ' ' || p[nl - 1] == '\t')) --nl;
                     char aname[64];
                     if (nl > 0 && nl < sizeof(aname)) {
@@ -2133,7 +2133,7 @@ static bool parseBrainSpecialBody_FitIni(const char* fitPath, BrainSpecialBody& 
     for (int i = 0; i < 64; ++i) {
         std::snprintf(keyBuf, sizeof(keyBuf), "DO%d", i);
         verbBuf[0] = '\0';
-        long result = fit.readIdString(keyBuf, verbBuf, (unsigned long)(sizeof(verbBuf) - 1));
+        long result = fit.readIdString(keyBuf, verbBuf, static_cast<unsigned long>((sizeof(verbBuf) - 1)));
         if (result != NO_ERR)
             break;
         if (verbBuf[0] != '\0')
@@ -2173,7 +2173,7 @@ static bool parseGlobalSpecials(const char* missionFitPath, SpecialIndex& gIndex
     for (const char* c = missionFitPath; *c; ++c)
         if (*c == '/' || *c == '\\') lastSlash = c;
     if (lastSlash) {
-        size_t dirLen = (size_t)(lastSlash - missionFitPath) + 1;
+        size_t dirLen = static_cast<size_t>((lastSlash - missionFitPath)) + 1;
         if (dirLen >= sizeof(gpath) - 24) return false;
         std::memcpy(gpath, missionFitPath, dirLen);
         std::snprintf(gpath + dirLen, sizeof(gpath) - dirLen, "global_specials.fit");
@@ -2184,7 +2184,7 @@ static bool parseGlobalSpecials(const char* missionFitPath, SpecialIndex& gIndex
     if (!parseBrainSpecialBody_RawScan(gpath, gBody, &gIndex))
         return false;
     std::fprintf(stderr, "[BRAIN_SCOPE_GLOBAL] parsed %d global special block(s) from %s\n",
-                 (int)gIndex.size(), gpath);
+                 static_cast<int>(gIndex.size()), gpath);
     std::fflush(stderr);
     return !gIndex.empty();
 }
@@ -2255,7 +2255,7 @@ static void resolveVariantInheritance(SpecialIndex* index) {
             e.body.verbs  = src->body.verbs;   // same-vector element copy: no push, no realloc
             e.body.loaded = true;
             std::fprintf(stderr, "[BRAIN_VARIANTOF] child=%s parent=%s inherited=%d verb(s)\n",
-                         e.key.c_str(), src->key.c_str(), (int)src->body.verbs.size());
+                         e.key.c_str(), src->key.c_str(), static_cast<int>(src->body.verbs.size()));
             std::fflush(stderr);
         } else {
             std::fprintf(stderr, "[BRAIN_VARIANTOF_EMPTY] child=%s parent=%s (parent chain has no body)\n",
@@ -2276,7 +2276,7 @@ static void resyncEntryBodyAfterVariants(BrainSpecialBody& outBody, const Specia
     if (ce && !ce->body.verbs.empty()) {
         outBody.verbs = ce->body.verbs;
         std::fprintf(stderr, "[BRAIN_VARIANTOF] entry body %s resolved to %d verb(s)\n",
-                     chosenKey.c_str(), (int)outBody.verbs.size());
+                     chosenKey.c_str(), static_cast<int>(outBody.verbs.size()));
         std::fflush(stderr);
     }
 }
@@ -2298,7 +2298,7 @@ static void appendGlobalSpecials(SpecialIndex* outIndex, SpecialIndex& gIndex) {
         ++merged;
     }
     std::fprintf(stderr, "[BRAIN_SCOPE_GLOBAL] merged=%d shadowed=%d (index=%d blocks)\n",
-                 merged, shadowed, (int)outIndex->size());
+                 merged, shadowed, static_cast<int>(outIndex->size()));
     std::fflush(stderr);
 }
 
@@ -2346,7 +2346,7 @@ bool parseBrainSpecialBody(const char* missionName, BrainSpecialBody& outBody,
         ok = parseBrainSpecialBody_FitIni(fitPath, outBody);
         if (ok) {
             std::fprintf(stderr, "[BRAIN_DISPATCH_RAW] FitIni fallback loaded %s: %d verbs\n",
-                         fitPath, (int)outBody.verbs.size());
+                         fitPath, static_cast<int>(outBody.verbs.size()));
             std::fflush(stderr);
         }
     }
@@ -2366,8 +2366,8 @@ bool parseBrainSpecialBody(const char* missionName, BrainSpecialBody& outBody,
     if (ok) {
         outBody.loaded = true;
         std::fprintf(stderr, "[BRAIN_DISPATCH] parsed %s_specials.fit: %d verbs (index=%d blocks)\n",
-                     missionName, (int)outBody.verbs.size(),
-                     outIndex ? (int)outIndex->size() : 0);
+                     missionName, static_cast<int>(outBody.verbs.size()),
+                     outIndex ? static_cast<int>(outIndex->size()) : 0);
         std::fflush(stderr);
     }
     return outBody.loaded;
@@ -2440,7 +2440,7 @@ bool parseBrainSpecialBodyFromPath(const char* fitPath, BrainSpecialBody& outBod
         ok = parseBrainSpecialBody_FitIni(fitPath, outBody);
         if (ok) {
             std::fprintf(stderr, "[BRAIN_DISPATCH_RAW] FitIni fallback loaded %s: %d verbs\n",
-                         fitPath, (int)outBody.verbs.size());
+                         fitPath, static_cast<int>(outBody.verbs.size()));
             std::fflush(stderr);
         }
     }
@@ -2454,8 +2454,8 @@ bool parseBrainSpecialBodyFromPath(const char* fitPath, BrainSpecialBody& outBod
     if (ok) {
         outBody.loaded = true;
         std::fprintf(stderr, "[BRAIN_DISPATCH] parsed %s: %d verbs (index=%d blocks)\n",
-                     fitPath, (int)outBody.verbs.size(),
-                     outIndex ? (int)outIndex->size() : 0);
+                     fitPath, static_cast<int>(outBody.verbs.size()),
+                     outIndex ? static_cast<int>(outIndex->size()) : 0);
         std::fflush(stderr);
     }
     return outBody.loaded;
@@ -2503,7 +2503,7 @@ bool parseVarVerb(const char* verbStr, char outKey[32], char outValue[32], uint8
     const char* keyEnd = std::strchr(p, closeDelim);
     if (!keyEnd)
         return false;
-    size_t keyLen = (size_t)(keyEnd - keyStart);
+    size_t keyLen = static_cast<size_t>((keyEnd - keyStart));
     if (keyLen == 0)
         return false;
     if (keyLen > 31) keyLen = 31;
@@ -2526,7 +2526,7 @@ bool parseVarVerb(const char* verbStr, char outKey[32], char outValue[32], uint8
             const char* vStart = p;
             const char* vEnd = std::strchr(p, '"');
             if (!vEnd) return false;
-            size_t vLen = (size_t)(vEnd - vStart);
+            size_t vLen = static_cast<size_t>((vEnd - vStart));
             if (vLen > 31) vLen = 31;
             std::strncpy(outValue, vStart, vLen);
             outValue[vLen] = '\0';
@@ -2535,7 +2535,7 @@ bool parseVarVerb(const char* verbStr, char outKey[32], char outValue[32], uint8
             // Unquoted value — read until whitespace.
             const char* vStart = p;
             while (*p && *p != ' ' && *p != '\t') ++p;
-            size_t vLen = (size_t)(p - vStart);
+            size_t vLen = static_cast<size_t>((p - vStart));
             if (vLen > 31) vLen = 31;
             std::strncpy(outValue, vStart, vLen);
             outValue[vLen] = '\0';

@@ -57,7 +57,7 @@ int ChatWindow::initInstance()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char buffer2[512];
-		sprintf( buffer2, "couldn't open file %s", (const char*)path );
+		sprintf( buffer2, "couldn't open file %s", static_cast<const char*>(path) );
 		Assert( 0, 0, buffer2 );
 		return false;	
 
@@ -269,14 +269,14 @@ void ChatWindow::refillListBox( aListBox& listBox, char** chatTexts, long* playe
 	int curLinesInListBox = 0;
 	for (int i = 0; i < listBox.GetItemCount(); i++ )
 	{
-		ChatMessageItem* pItem = (ChatMessageItem*)listBox.GetItem( i );
+		ChatMessageItem* pItem = static_cast<ChatMessageItem*>(listBox.GetItem( i ));
 		curLinesInListBox += pItem->getLineCount();
 	}
 	if ( curLinesInListBox + linesToAdd > maxCount )
 	{
 		for ( int i = 0; i < maxCount; i++ )
 		{
-			ChatMessageItem* pItem = (ChatMessageItem*)listBox.GetItem( 0 );
+			ChatMessageItem* pItem = static_cast<ChatMessageItem*>(listBox.GetItem( 0 ));
 			if ( pItem )
 			{
 				curLinesInListBox -= pItem->getLineCount();
@@ -318,7 +318,7 @@ void ChatWidget::init( )
 	if ( NO_ERR != file.open( path ) )
 	{
 		char buffer2[512];
-		sprintf( buffer2, "couldn't open file %s", (const char*)path );
+		sprintf( buffer2, "couldn't open file %s", static_cast<const char*>(path) );
 		Assert( 0, 0, buffer2 );
 		return;
 

@@ -752,7 +752,7 @@ class BattleMech : public Mover {
 		
 		virtual float getLOSFactor (void)
 		{
-			return (((BattleMechType *)getObjectType())->LOSFactor);
+			return ((static_cast<BattleMechType *>(getObjectType()))->LOSFactor);
 		}
 		
 		virtual void startShutDown (void);

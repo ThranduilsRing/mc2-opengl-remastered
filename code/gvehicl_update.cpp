@@ -24,13 +24,13 @@ long GroundVehicle::update (void)
 		recoverBuddyWID = 0;
 
 	if ( Team::home == getTeam() )
-		((ObjectAppearance*)appearance)->pilotNameID = getPilot()->descID;
+		(static_cast<ObjectAppearance*>(appearance))->pilotNameID = getPilot()->descID;
 	else if ( MPlayer )
 	{
-		strcpy( ((ObjectAppearance*)appearance)->pilotName, (commanderId > -1) ? MPlayer->playerInfo[commanderId].name : " " );
+		strcpy( (static_cast<ObjectAppearance*>(appearance))->pilotName, (commanderId > -1) ? MPlayer->playerInfo[commanderId].name : " " );
 	}
 	else
-		((ObjectAppearance*)appearance)->pilotNameID = getPilot()->descID;
+		(static_cast<ObjectAppearance*>(appearance))->pilotNameID = getPilot()->descID;
 
 	positionNormal = land->getTerrainNormal(position);
 
@@ -184,8 +184,8 @@ long GroundVehicle::update (void)
  
 			if (!appearance->playDestruction())
 			{
-				if (((GroundVehicleTypePtr)getObjectType())->explDmg > 0.0f)
-					ObjectManager->createExplosion(SPLASH_VEHICLE_EXPLOSION_ID,nullptr,position, ((GroundVehicleTypePtr)getObjectType())->explDmg,((GroundVehicleTypePtr)getObjectType())->explRad);
+				if ((static_cast<GroundVehicleTypePtr>(getObjectType()))->explDmg > 0.0f)
+					ObjectManager->createExplosion(SPLASH_VEHICLE_EXPLOSION_ID,nullptr,position, (static_cast<GroundVehicleTypePtr>(getObjectType()))->explDmg,(static_cast<GroundVehicleTypePtr>(getObjectType()))->explRad);
 				else if (pathLocks)
 				{
 					ObjectManager->createExplosion(VEHICLE_EXPLOSION_ID,nullptr,position, 0.0f,0.0f);
@@ -255,7 +255,7 @@ long GroundVehicle::update (void)
 		}
 	}
 	
-	((ObjectAppearance*)appearance)->pilotNameID = IDS_NOPILOT;
+	(static_cast<ObjectAppearance*>(appearance))->pilotNameID = IDS_NOPILOT;
 	{
 		ZoneScopedN("GameLogic.Units.Vehicles AI");
 		control.update(this);
@@ -808,7 +808,7 @@ void GroundVehicle::Save (PacketFilePtr file, long packetNum)
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	file->writePacket(packetNum,(MemoryPtr)&data,sizeof(GroundVehicleData),STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(GroundVehicleData),STORAGE_TYPE_ZLIB);
 }
 
 void GroundVehicle::CopyTo (GroundVehicleData *data)

@@ -113,8 +113,8 @@ SalvageMechScreen::~SalvageMechScreen()
 	
 int __cdecl sortMechs( const void* pW1, const void* pW2 )
 {
-	BattleMech* p1 = *(BattleMech**)pW1;
-	BattleMech* p2 = *(BattleMech**)pW2;
+	BattleMech* p1 = *static_cast<BattleMech**>(const_cast<void*>(pW1));
+	BattleMech* p2 = *static_cast<BattleMech**>(const_cast<void*>(pW2));
 
 	LogisticsVariant* pV1 = LogisticsData::instance->getVariant(p1->variantName);
 	LogisticsVariant* pV2 = LogisticsData::instance->getVariant(p2->variantName);
@@ -157,7 +157,7 @@ void SalvageMechScreen::init(FitIniFile* file)
 
 	salvageListBox.init( left, top, right - left, bottom - top );
 
-	BattleMech** pSortedMechs = (BattleMech**)_alloca( ObjectManager->numMechs * sizeof( BattleMech* ) );
+	BattleMech** pSortedMechs = static_cast<BattleMech**>(_alloca( ObjectManager->numMechs * sizeof( BattleMech* ) ));
 	int count = 0;
 	for (int i = 0; i < ObjectManager->numMechs; i++ )
 	{
@@ -317,10 +317,10 @@ void SalvageMechScreen::updateSalvage()
 {
 	for ( int i = 0; i < salvageListBox.GetItemCount(); i++ )
 	{
-		SalvageListItem* item = (SalvageListItem*)salvageListBox.GetItem( i );
+		SalvageListItem* item = static_cast<SalvageListItem*>(salvageListBox.GetItem( i ));
 		if ( item && item->isChecked() )
 		{
-			LogisticsData::instance->addMechToInventory( item->getMech(), (LogisticsPilot*)nullptr, 0 );
+			LogisticsData::instance->addMechToInventory( item->getMech(), static_cast<LogisticsPilot*>(nullptr), 0 );
 		}
 	}
 }
@@ -405,7 +405,7 @@ SalvageListItem::SalvageListItem( BattleMech* pMech )
 	// Guard before deref so the salvage list survives it instead of crashing
 	// (SalvageMechScreen::init, salvagemecharea.cpp).
 	psRed = psGreen = psBlue = 0;
-	Mech3DAppearance* salvAppr = (Mech3DAppearance*)pMech->getAppearance();
+	Mech3DAppearance* salvAppr = static_cast<Mech3DAppearance*>(pMech->getAppearance());
 	if ( salvAppr )
 		salvAppr->getPaintScheme( psRed, psGreen, psBlue );
 
@@ -418,7 +418,7 @@ SalvageListItem::SalvageListItem( BattleMech* pMech )
 	if ( !pVariant )
 		return;
 
-	costToSalvage = .8f * (float)pVariant->getCost();
+	costToSalvage = .8f * static_cast<float>(pVariant->getCost());
 
 
 	// add the chassis
@@ -701,9 +701,9 @@ void SalvageMechArea::setMech( LogisticsVariant* pMech, long red, long green, lo
 		textObjects[RANGE_TEXTID].setText( pMech->getOptimalRangeString( tmpColor ) );
 		textObjects[RANGE_TEXTID].setColor( ( tmpColor ) );
 
-		attributeMeters[0].setValue( ((float)pMech->getArmor())/MAX_ARMOR_RANGE );
-		attributeMeters[1].setValue( ((float)pMech->getSpeed())/MAX_SPEED_RANGE );
-		attributeMeters[2].setValue( ((float)pMech->getJumpRange() * 25.0f)/MAX_JUMP_RANGE );
+		attributeMeters[0].setValue( (static_cast<float>(pMech->getArmor()))/MAX_ARMOR_RANGE );
+		attributeMeters[1].setValue( (static_cast<float>(pMech->getSpeed()))/MAX_SPEED_RANGE );
+		attributeMeters[2].setValue( (static_cast<float>(pMech->getJumpRange()) * 25.0f)/MAX_JUMP_RANGE );
 
 	}
 	else

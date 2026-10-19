@@ -109,7 +109,7 @@ long i;
 			messagesInQueue--;
 
 #ifdef _DEBUG
-		for (long test=0;test<(long)messagesInQueue;test++)
+		for (long test=0;test<static_cast<long>(messagesInQueue);test++)
 		{
 			if (queue[test])
 				continue;
@@ -123,7 +123,7 @@ long i;
 		queue[MAX_QUEUED_MESSAGES-1] = nullptr;
 
 #ifdef _DEBUG
-		for (long test=0;test<(long)messagesInQueue;test++)
+		for (long test=0;test<static_cast<long>(messagesInQueue);test++)
 		{
 			if (queue[test])
 				continue;
@@ -246,7 +246,7 @@ long i;
 	queue[i] = std::move(msgData);
 
 #ifdef _DEBUG
-		for (long test=0;test<(long)messagesInQueue;test++)
+		for (long test=0;test<static_cast<long>(messagesInQueue);test++)
 		{
 			if (queue[test])
 				continue;
@@ -256,7 +256,7 @@ long i;
 #endif
 	messagesInQueue++;
 #ifdef _DEBUG
-		for (long test=0;test<(long)messagesInQueue;test++)
+		for (long test=0;test<static_cast<long>(messagesInQueue);test++)
 		{
 			if (queue[test])
 				continue;

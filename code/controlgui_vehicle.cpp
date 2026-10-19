@@ -155,8 +155,8 @@ void ControlGui::renderVehicleTab()
 		{
 			ControlButton::makeUVs( vehicleButtons[i].location, ControlButton::ENABLED, *vehicleButtons[i].data );	
 			cost = vehicleCosts[i];
-			GUI_RECT rect = { (long)vehicleButtons[i].location[0].x, (long)vehicleButtons[i].location[0].y,
-				(long)vehicleButtons[i].location[2].x, (long)vehicleButtons[i].location[2].y };
+			GUI_RECT rect = { static_cast<long>(vehicleButtons[i].location[0].x), static_cast<long>(vehicleButtons[i].location[0].y),
+				static_cast<long>(vehicleButtons[i].location[2].x), static_cast<long>(vehicleButtons[i].location[2].y) };
 			vehicleButtons[i].render();
 			drawEmptyRect( rect, 0xffffffff, 0xffffffff );
 			color = 0xffffffff;
@@ -182,7 +182,7 @@ void ControlGui::renderVehicleTab()
 	char originalStr[256];
 
 	cLoadString( IDS_RP, originalStr, 256 );
-	sprintf( buffer, originalStr, (long)LogisticsData::instance->getResourcePoints() );
+	sprintf( buffer, originalStr, static_cast<long>(LogisticsData::instance->getResourcePoints()) );
 
 	//We are there.  Start flashing.
 	/// TUTORIAL!!!
@@ -484,7 +484,7 @@ void ControlGui::setVehicleCommand( bool bSet )
 		{
 			for ( int i = 0; i < pTeam->getRosterSize(); ++i )
 			{
-				Mover* pMover = (Mover*)pTeam->getMover( i );
+				Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 				if ( pMover->getCommander()->getId() != Commander::home->getId() )
 					continue;
 				bool bGuardTower = ( pMover->maxMoveSpeed ? 0 : 1 );

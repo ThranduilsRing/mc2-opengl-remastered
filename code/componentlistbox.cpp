@@ -18,7 +18,7 @@ ComponentListBox.cpp			: Implementation of the ComponentListBox component.
 #include"logisticserrors.h"
 #include "mc2fmt.h"
 
-ComponentListItem* ComponentListItem::s_templateItem = nullptr;
+std::unique_ptr<ComponentListItem> ComponentListItem::s_templateItem = nullptr;
 
 ComponentIconListBox* ComponentIconListBox::s_instance = nullptr;
 
@@ -107,7 +107,7 @@ int ComponentListItem::init( FitIniFile& file )
 {
 	if ( !s_templateItem )
 	{
-		s_templateItem = new ComponentListItem( nullptr );
+		s_templateItem = std::make_unique<ComponentListItem>( nullptr );
 		char animName[COMP_ANIMATION_COUNT][32];
 		for ( int i = 0; i < COMP_ANIMATION_COUNT; i++ )
 		{
@@ -418,7 +418,7 @@ void ComponentIconListBox::update()
 	{
 		if ( items[itemSelected]->getState() == aListItem::DISABLED
 			|| MechLabScreen::instance()->canAddComponent( 
-			((ComponentListItem*)items[itemSelected])->getComponent() ) )
+			(static_cast<ComponentListItem*>(items[itemSelected]))->getComponent() ) )
 		{
 			selectFirstAvailableComponent();
 		}
@@ -432,10 +432,10 @@ int ComponentIconListBox::selectFirstAvailableComponent()
 	{
 		if ( items[i]->getState() != aListItem::DISABLED
 			&& !MechLabScreen::instance()->canAddComponent( 
-			((ComponentListItem*)items[i])->getComponent() ))
+			(static_cast<ComponentListItem*>(items[i]))->getComponent() ))
 		{
 			SelectItem( i );
-			((ComponentListItem*)items[i])->setComponent();
+			(static_cast<ComponentListItem*>(items[i]))->setComponent();
 			bFound = true;
 			return i;
 		}
@@ -461,7 +461,7 @@ ComponentIconListBox::~ComponentIconListBox()
 
 	s_instance = nullptr;
 
-	delete ComponentListItem::s_templateItem;
+	ComponentListItem::s_templateItem.reset();
 	ComponentListItem::s_templateItem = nullptr;
 }
 
@@ -469,7 +469,7 @@ LogisticsComponent* ComponentIconListBox::getComponent()
 {
 	if ( itemSelected != -1 )
 	{
-		return ((ComponentListItem*)items[itemSelected])->pComponent;
+		return (static_cast<ComponentListItem*>(items[itemSelected]))->pComponent;
 	}
 
 	return nullptr;
@@ -482,7 +482,7 @@ void ComponentIconListBox::addSortedItem( ComponentListItem* pItem )
 
 	for ( int i = 0; i < itemCount; i++ )
 	{
-		LogisticsComponent* pTmp = ((ComponentListItem*)items[i])->getComponent();
+		LogisticsComponent* pTmp = (static_cast<ComponentListItem*>(items[i]))->getComponent();
 		long tmpSize = pTmp->getComponentHeight() * pTmp->getComponentWidth();
 		if ( size > tmpSize )
 		{

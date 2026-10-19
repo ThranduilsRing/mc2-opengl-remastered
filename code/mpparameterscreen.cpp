@@ -175,7 +175,7 @@ void MPParameterScreen::init(FitIniFile* file)
 	if ( NO_ERR != mpFile.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", (const char*)path );
+		sprintf( error, "couldn't open file %s", static_cast<const char*>(path) );
 		Assert( 0, 0, error );
 		return;		
 	}
@@ -247,7 +247,7 @@ void MPParameterScreen::end()
 	}
 
 	bLoading = 0;
-	statics[15].setTexture( ( unsigned long)0 );
+	statics[15].setTexture( static_cast<unsigned long>(0) );
 
 	delayTime = 0.f;
 	bHostLeftDlg = 0; 
@@ -601,7 +601,7 @@ void MPParameterScreen::setMission( const char* fileName, bool resetData )
 	path.init( missionPath, fileName, ".fit" );
 	FitIniFile missionFile;
 	
-	if ( NO_ERR != missionFile.open( (char*)(const char*)path ) )
+	if ( NO_ERR != missionFile.open( const_cast<char*>(static_cast<const char*>(path)) ) )
 	{
 		char errorStr[256];
 		sprintf( errorStr, "couldn't open file %s", fileName );
@@ -702,8 +702,8 @@ void MPParameterScreen::setMission( const char* fileName, bool resetData )
 
 int __cdecl sortPlayers( const void* p1, const void* p2 )
 {
-	MC2Player* player1 = *(MC2Player**)p1;
-	MC2Player* player2 = *(MC2Player**)p2;
+	MC2Player* player1 = *static_cast<MC2Player**>(const_cast<void*>(p1));
+	MC2Player* player2 = *static_cast<MC2Player**>(const_cast<void*>(p2));
 
 	if ( player1->team < player2->team )
 		return -1;
@@ -1384,7 +1384,7 @@ GUID			MPParameterScreen::getGUIDFromFile( const char* pNewMapName)
 	FullPathFileName path;
 	path.init( missionPath, pNewMapName, ".pak" );
 	PacketFile pakFile;
-	if ( NO_ERR != pakFile.open( (char*)(const char*)path ) )
+	if ( NO_ERR != pakFile.open( const_cast<char*>(static_cast<const char*>(path)) ) )
 	{
 		return retVal;
 	}
@@ -1393,7 +1393,7 @@ GUID			MPParameterScreen::getGUIDFromFile( const char* pNewMapName)
 	pakFile.seekPacket( packetCount - 1 );
 	if ( sizeof( GUID ) == pakFile.getPacketSize( ) ) 
 	{
-		pakFile.readPacket( packetCount - 1, (unsigned char*)&retVal );
+		pakFile.readPacket( packetCount - 1, reinterpret_cast<unsigned char*>(&retVal) );
 
 		return retVal;
 	}
@@ -1411,7 +1411,7 @@ void MPParameterScreen::setMissionClientOnly( const char* pNewMapName )
 	path.init( missionPath, pNewMapName, ".fit" );
 	FitIniFile missionFile;
 	
-	if ( NO_ERR != missionFile.open( (char*)(const char*)path ) )
+	if ( NO_ERR != missionFile.open( const_cast<char*>(static_cast<const char*>(path)) ) )
 	{
 		char tmp[256];
 		char final[1024];
@@ -2293,7 +2293,7 @@ void aStyle2TextListItem::render()
 	{
 		color = normalColor;
 	}*/
-	aTextListItem::setColor((unsigned long)color);
+	aTextListItem::setColor(static_cast<unsigned long>(color));
 
 	aTextListItem::render();
 }
@@ -2315,7 +2315,7 @@ void CFocusManager::clear()
 void *CFocusManager::registerDropList(aDropList &DropList)
 {
 	listOfDropListPointers.push_back(&DropList);
-	return ((void *)&DropList);
+	return (static_cast<void *>(&DropList));
 }
 
 void CFocusManager::unregisterDropList(aDropList &DropList)

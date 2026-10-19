@@ -585,7 +585,7 @@ void aTcpipPanel::init(FitIniFile* pFile)
 	if ( NO_ERR != tmpFile.open( path ) )
 	{
 		char errorStr[256];
-		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe((const char*)path));
+		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)));
 		Assert( 0, 0, errorStr );
 	}
 	

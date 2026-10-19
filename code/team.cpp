@@ -131,7 +131,7 @@ void Team::buildRoster (void) {
 MoverPtr Team::getMover (long index) {
 
 	if (roster[index] > 0)
-		return((MoverPtr)ObjectManager->getByWatchID(roster[index]));
+		return(static_cast<MoverPtr>(ObjectManager->getByWatchID(roster[index])));
 	return(nullptr);
 }
 
@@ -208,9 +208,9 @@ void Team::disableTargets (void) {
 		if (object) {
 			GameObjectPtr target = nullptr;
 			if (object->isMover())
-				target = ((MoverPtr)object)->getPilot()->getCurrentTarget();
+				target = (static_cast<MoverPtr>(object))->getPilot()->getCurrentTarget();
 			if (target && target->isMover())
-				((MoverPtr)target)->disable(66);
+				(static_cast<MoverPtr>(target))->disable(66);
 		}
 	}
 }
@@ -220,7 +220,7 @@ void Team::disableTargets (void) {
 void Team::eject (void) {
 
 	for (long i = 0; i < rosterSize; i++) {
-		MoverPtr mover = (MoverPtr)ObjectManager->getByWatchID(roster[i]);
+		MoverPtr mover = static_cast<MoverPtr>(ObjectManager->getByWatchID(roster[i]));
 		if (mover) {
 			if (mover->getObjectClass() == BATTLEMECH)
 				mover->getPilot()->orderEject(false, true, ORDER_ORIGIN_COMMANDER);
@@ -242,7 +242,7 @@ void Team::destroyTargets (void) {
 		if (object) {
 			GameObjectPtr target = nullptr;
 			if (object->isMover())
-				target = ((MoverPtr)object)->getPilot()->getCurrentTarget();
+				target = (static_cast<MoverPtr>(object))->getPilot()->getCurrentTarget();
 			if (target && target->isMover()) 
 			{
 				//-----------------------------------------
@@ -391,7 +391,7 @@ void Team::statusCount (int* statusTally) {
 	// each of the statuses...
 	for (long i = 0; i < rosterSize; i++) 
 	{
-		MoverPtr obj = (MoverPtr)ObjectManager->getByWatchID(roster[i]);
+		MoverPtr obj = static_cast<MoverPtr>(ObjectManager->getByWatchID(roster[i]));
 		Assert(obj != nullptr, i, " Team.statusCount: NULL roster object ");
 		MechWarriorPtr pilot = obj->getPilot();
 		if (!obj->getExists())
@@ -441,7 +441,7 @@ long Team::Save (PacketFilePtr file, long packetNum)
 	memcpy(staticData.relations,relations,sizeof(char) * MAX_TEAMS * MAX_TEAMS);
 	memcpy(staticData.noPain,noPain,sizeof(bool) * MAX_TEAMS);
 
-	file->writePacket(packetNum,(MemoryPtr)&staticData,sizeof(TeamStaticData),STORAGE_TYPE_RAW);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&staticData),sizeof(TeamStaticData),STORAGE_TYPE_RAW);
 	packetNum++;
 
 	for (long i=0;i<numTeams;i++)
@@ -454,7 +454,7 @@ long Team::Save (PacketFilePtr file, long packetNum)
 		data.rosterSize = liveRoster;
 		memcpy(data.roster,teams[i]->roster,sizeof(GameObjectWatchID) * liveRoster);
 
-		file->writePacket(packetNum,(MemoryPtr)&data,sizeof(TeamData),STORAGE_TYPE_RAW);
+		file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(TeamData),STORAGE_TYPE_RAW);
 		packetNum++;
 	}
 
@@ -466,7 +466,7 @@ long Team::Load (PacketFilePtr file, long packetNum)
 {
 	TeamStaticData staticData{};
 
-	file->readPacket(packetNum,(MemoryPtr)&staticData);
+	file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(&staticData));
 	packetNum++;
 
 	numTeams = staticData.numTeams;
@@ -476,7 +476,7 @@ long Team::Load (PacketFilePtr file, long packetNum)
 	for (long i=0;i<numTeams;i++)
 	{
 		TeamData data{};
-		file->readPacket(packetNum,(MemoryPtr)&data);
+		file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(&data));
 		packetNum++;
 
 		teams[i] = new Team;

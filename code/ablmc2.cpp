@@ -62,7 +62,7 @@ long ablFileCloseCB (void** file) {
 
 bool ablFileEofCB (void* file) {
 
-	return(((FilePtr)file)->eof());
+	return((static_cast<FilePtr>(file))->eof());
 
 }
 
@@ -75,52 +75,52 @@ long ablFileRemainingCB (void* file) {
 
 long ablFileReadCB (void* file, unsigned char* buffer, long length) {
 
-	return(((FilePtr)file)->read(buffer, length));
+	return((static_cast<FilePtr>(file))->read(buffer, length));
 }
 
 int32_t ablFileReadIntCB (void* file) {
 
-	return(((FilePtr)file)->readInt());
+	return((static_cast<FilePtr>(file))->readInt());
 }
 
 long ablFileReadLongCB (void* file) {
 
-	return(((FilePtr)file)->readLong());
+	return((static_cast<FilePtr>(file))->readLong());
 }
 
 long ablFileReadStringCB (void* file, unsigned char* buffer) {
 
-	return(((FilePtr)file)->readString(buffer));
+	return((static_cast<FilePtr>(file))->readString(buffer));
 }
 
 long ablFileReadLineExCB (void* file, unsigned char* buffer, long maxLength) {
 
-	return(((FilePtr)file)->readLineEx(buffer, maxLength));
+	return((static_cast<FilePtr>(file))->readLineEx(buffer, maxLength));
 }
 
 long ablFileWriteCB (void* file, unsigned char* buffer, long length) {
 
-	return(((FilePtr)file)->write(buffer, length));
+	return((static_cast<FilePtr>(file))->write(buffer, length));
 }
 
 long ablFileWriteByteCB (void* file, unsigned char byte) {
 
-	return(((FilePtr)file)->writeByte(byte));
+	return((static_cast<FilePtr>(file))->writeByte(byte));
 }
 
 long ablFileWriteIntCB (void* file, int32_t value) {
 
-	return(((FilePtr)file)->writeInt(value));
+	return((static_cast<FilePtr>(file))->writeInt(value));
 }
 
 long ablFileWriteLongCB (void* file, long value) {
 
-	return(((FilePtr)file)->writeLong(value));
+	return((static_cast<FilePtr>(file))->writeLong(value));
 }
 
 long ablFileWriteStringCB (void* file, const char* buffer) {
 
-	return(((FilePtr)file)->writeString(buffer));
+	return((static_cast<FilePtr>(file))->writeString(buffer));
 }
 
 void ablDebuggerPrintCallback (const char* s) {
@@ -154,7 +154,7 @@ void ablFatalCallback (long code, const char* s) {
 	unsigned int h = 5381u;
 	const char* p = s ? s : "";
 	for (int i = 0; *p && i < 64; ++p, ++i)
-		h = h * 33u ^ (unsigned char)*p;
+		h = h * 33u ^ static_cast<unsigned char>(*p);
 
 	for (int i = 0; i < slotCount; ++i) {
 		if (slots[i].hash == h) {
@@ -202,7 +202,7 @@ void ablEndlessStateCallback (UserFile* log) {
 		mc2::fmt::to_buf(s, "     Status = {:d}", mc2::fmt::as_i32(LastCoreAttackTarget->getStatus()));
 		log->write(s);
 		if (LastCoreAttackTarget->isMover()) {
-			MoverPtr mover = (MoverPtr)LastCoreAttackTarget;
+			MoverPtr mover = static_cast<MoverPtr>(LastCoreAttackTarget);
 			mc2::fmt::to_buf(s, "     NumWeapons = {:d}", mc2::fmt::as_i32(mover->numWeapons));
 			log->write(s);
 			mc2::fmt::to_buf(s, "     NumFunctionalWeapons = {:d}", mc2::fmt::as_i32(mover->numFunctionalWeapons));

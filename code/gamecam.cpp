@@ -133,7 +133,7 @@ static bool captureSceneLighting(SceneLighting& s)
     s.shadow_sun_dir[2] = -tz;
 
     s.world_light_count  = -1;                       // slot capacity (Camera::numLights) is protected; ~MAX, not exposed
-    s.active_light_count = (int)eye->getNumLights();  // public accessor returns numActiveLights (frustum-filtered)
+    s.active_light_count = static_cast<int>(eye->getNumLights());  // public accessor returns numActiveLights (frustum-filtered)
     s.sky_number   = gos_GetSkyNumber();
     s.ibl_sh_present = (g_iblShStrength > 0.0f);
     return true;
@@ -534,7 +534,7 @@ void GameCamera::renderLetterbox() {
 		// fade-to-black quad below is a real fade and is left untouched.)
 		static const bool s_letterboxOpaque = mc2::gate::get<"MC2_LETTERBOX_OPAQUE">();
 		const DWORD barARGB =
-			(s_letterboxOpaque ? (DWORD)0xff : (DWORD)letterBoxAlpha) << 24;
+			(s_letterboxOpaque ? static_cast<DWORD>(0xff) : static_cast<DWORD>(letterBoxAlpha)) << 24;
 
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
@@ -812,8 +812,8 @@ void GameCamera::render (void)
 				const glm::mat4& view = eye->worldToCameraGL();
 				const glm::mat4& proj = eye->cameraToClipGL_const();
 				GameAdapters::Sky::renderHdri(
-					reinterpret_cast<const float*>(&glm::value_ptr(view)[0]),
-					reinterpret_cast<const float*>(&glm::value_ptr(proj)[0])
+					static_cast<const float*>(&glm::value_ptr(view)[0]),
+					static_cast<const float*>(&glm::value_ptr(proj)[0])
 				);
 			}
 			// else: black sky baseline (no fallback to theSky per SPEC).
@@ -1136,7 +1136,7 @@ long GameCamera::activate (void)
 
 	//--------------------------------------------------------------
 	gosASSERT(genericAppearanceType->getAppearanceClass() == GENERIC_APPR_TYPE);
-	theSky->init((GenericAppearanceType*)genericAppearanceType, NULL);
+	theSky->init(static_cast<GenericAppearanceType*>(genericAppearanceType), NULL);
 	
 	theSky->setSkyNumber(mission->theSkyNumber);
 
@@ -1199,7 +1199,7 @@ long GameCamera::update (void)
 		targetObject->getExists() && 
 		((targetObject->getCommanderId() == Commander::home->getId()) || 
 		!targetObject->isMover() ||
-		(targetObject->isMover() && ((Mover *)targetObject)->conStat >= CONTACT_SENSOR_QUALITY_1) ))
+		(targetObject->isMover() && (static_cast<Mover *>(targetObject))->conStat >= CONTACT_SENSOR_QUALITY_1) ))
 	{
 		setPosition(targetObject->getPosition(),false);
 	}
@@ -1604,7 +1604,7 @@ extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen)
 	        path, stem, pos.x, pos.y, pos.z, rot, proj, alt);
 	fflush(stderr);
 	if (outPath && outPathLen > 0) {
-		strncpy(outPath, path, (size_t)outPathLen - 1);
+		strncpy(outPath, path, static_cast<size_t>(outPathLen) - 1);
 		outPath[outPathLen - 1] = 0;
 	}
 }

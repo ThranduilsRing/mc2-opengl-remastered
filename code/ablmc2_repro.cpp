@@ -25,7 +25,7 @@ void runAblArgGuardRepro(void) {
     //   (float*)(&((StackItemPtr)NULL)->real) == (float*)NULL == nullptr.
     float* relPos = nullptr;
 
-    mc2::fmt::print_out("[ABL_REPRO] relPos from simulated null tos->address = {:016X}\n", mc2::fmt::as_ptr((void*)relPos));
+    mc2::fmt::print_out("[ABL_REPRO] relPos from simulated null tos->address = {:016X}\n", mc2::fmt::as_ptr(static_cast<void*>(relPos)));
     fflush(stdout);
 
     // ---- GUARD PATH (MC2_ABL_ARG_GUARD=1) ----
@@ -63,9 +63,9 @@ static void runAblArgGuardRepro2A(void) {
     // --- Case 1: null pos (the READ input) ---
     {
         float* pos = nullptr;
-        float* relPos_valid = (float*)0x1; // irrelevant — pos guard fires first
+        float* relPos_valid = reinterpret_cast<float*>(0x1); // irrelevant — pos guard fires first
         (void)relPos_valid;
-        mc2::fmt::print_out("[ABL_REPRO_2A] case1: pos=NULL relPos_valid={:016X}\n", mc2::fmt::as_ptr((void*)relPos_valid));
+        mc2::fmt::print_out("[ABL_REPRO_2A] case1: pos=NULL relPos_valid={:016X}\n", mc2::fmt::as_ptr(static_cast<void*>(relPos_valid)));
         fflush(stdout);
         if (s_ablArgGuard && !pos) {
             abl_arg_guard_log("execGetRelativePositionToPoint[REPRO2A-pos]", "pos");
@@ -86,7 +86,7 @@ static void runAblArgGuardRepro2A(void) {
         float dummy[3] = {1.0f, 2.0f, 0.0f};
         float* pos_valid = dummy;
         float* relPos = nullptr;
-        mc2::fmt::print_out("[ABL_REPRO_2A] case2: pos_valid={:016X} relPos=NULL\n", mc2::fmt::as_ptr((void*)pos_valid));
+        mc2::fmt::print_out("[ABL_REPRO_2A] case2: pos_valid={:016X} relPos=NULL\n", mc2::fmt::as_ptr(static_cast<void*>(pos_valid)));
         fflush(stdout);
         if (s_ablArgGuard && !relPos) {
             abl_arg_guard_log("execGetRelativePositionToPoint[REPRO2A-relPos]", "relPos");

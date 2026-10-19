@@ -3,6 +3,7 @@
 // orchestrator are in saveload.cpp.
 #include "saveload_internal.h"
 #include "mission_load_frame.h"
+#include "render_resource_owners.h"
 #include "mc2fmt.h"
 #include "tex_resolve_table.h"
 #include "frame_jobs.h"
@@ -51,7 +52,7 @@ void Mission::loadAblAndManagers(MissionLoadFrame& f) {
 	if (Mover::triggerAreaMgr == nullptr)
 		STOP(("Mission.Load: unable to init triggerAreaMgr "));
 
-	craterManager = (CraterManagerPtr)missionHeap->Malloc(sizeof(CraterManager));
+	craterManager = static_cast<CraterManagerPtr>(missionHeap->Malloc(sizeof(CraterManager)));
 	gosASSERT(craterManager != nullptr);
 	::new (craterManager) CraterManager;
 		
@@ -177,7 +178,7 @@ void Mission::loadMissionScript(MissionLoadFrame& f) {
 		File dmyFile;
 		result = dmyFile.create(dmpName);
 		DWORD fileSz = loadFile.getPacketSize();
-		MemoryPtr tmpRAM = (MemoryPtr)malloc(fileSz);
+		MemoryPtr tmpRAM = static_cast<MemoryPtr>(malloc(fileSz));
 		loadFile.readPacket(currentPacket,tmpRAM);
 		dmyFile.write(tmpRAM,fileSz);
 	
@@ -257,7 +258,7 @@ void Mission::loadParts(MissionLoadFrame& f) {
 	{
 		//-----------------------------------------------------
 		// Since we leave part 0 unused, malloc numParts + 1...
-		parts = (PartPtr)missionHeap->Malloc(sizeof(Part) * (numParts + 1));
+		parts = static_cast<PartPtr>(missionHeap->Malloc(sizeof(Part) * (numParts + 1)));
 		gosASSERT(parts != nullptr);
 		
 		memset(parts,0,sizeof(Part) * (numParts + 1));
@@ -419,7 +420,7 @@ void Mission::loadTeamsAndObjects(MissionLoadFrame& f) {
 	{
 		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
 		if (s_mechRestoreTrace)
-			mc2::fmt::print_err("[MECHRESTORE v1] event=saveload_phase phase=post_init_mirror maxActors={:d}\n", mc2::fmt::as_u32((uint32_t)ObjectManager->getMaxObjects()));
+			mc2::fmt::print_err("[MECHRESTORE v1] event=saveload_phase phase=post_init_mirror maxActors={:d}\n", mc2::fmt::as_u32(static_cast<uint32_t>(ObjectManager->getMaxObjects())));
 	}
 
 	ObjectManager->registerStaticPropsForMissionLoad();
@@ -486,13 +487,15 @@ void Mission::loadWeatherCamera(MissionLoadFrame& f) {
 	//----------------------------
 	// Create and load the Weather
 	loadProgress = 92.f;
-	weather = new Weather;
+	missionWeather = std::make_unique_for_overwrite<Weather>();
+	weather = missionWeather.get();
 	weather->init(&missionFile);
 	
 	loadProgress = 95.0;
  	//---------------------------------------------------------------
 	// Start the Camera and Lists
-	eye = new GameCamera;
+	missionCamera = std::make_unique_for_overwrite<GameCamera>();
+	eye = missionCamera.get();
 	eye->init();
 	gosASSERT(eye != nullptr);
 
@@ -565,7 +568,7 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 		File dmyFile;
 		result = dmyFile.create(tmpName);
 		DWORD fileSz = loadFile.getPacketSize();
-		MemoryPtr tmpRAM = (MemoryPtr)malloc(fileSz);
+		MemoryPtr tmpRAM = static_cast<MemoryPtr>(malloc(fileSz));
 		loadFile.readPacket(currentPacket,tmpRAM);
 		dmyFile.write(tmpRAM,fileSz);
 	
@@ -591,7 +594,7 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 	//-------------------------------------------------------------------------------------------
 	// Load the CurrentMission number in logistics cause Heidi don't save it with logisticsData.
 	long currentMissionNum = 0;
-	loadFile.readPacket(currentPacket,(MemoryPtr)&currentMissionNum);
+	loadFile.readPacket(currentPacket,reinterpret_cast<MemoryPtr>(&currentMissionNum));
 
 	LogisticsData::instance->setCurrentMissionNum(currentMissionNum);
 	currentPacket++;

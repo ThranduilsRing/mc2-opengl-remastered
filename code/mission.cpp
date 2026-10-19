@@ -11,6 +11,7 @@
 //----------------------------------------------------------------------------------
 
 #include "mission_internal.h"
+#include "render_resource_owners.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/gos_dev_shell.h"
 #include <algorithm>
@@ -435,7 +436,7 @@ void simSpeedSetMultiplier(float v)
 {
 	const float prev = simSpeedGetMultiplier();
 	s_simSpeedRuntime = simSpeedClamp(v);
-	mc2::fmt::print_err("[SIM-SPEED v1] multiplier={:.2f} (was {:.2f})\n", (double)s_simSpeedRuntime, (double)prev);
+	mc2::fmt::print_err("[SIM-SPEED v1] multiplier={:.2f} (was {:.2f})\n", static_cast<double>(s_simSpeedRuntime), static_cast<double>(prev));
 	fflush(stderr);
 }
 
@@ -461,6 +462,8 @@ float minFrameLength = 1.0/4.0;
 long MissionStartTime =	0;			//No Idea
 
 Mission *mission = nullptr;
+std::unique_ptr<Weather> missionWeather;
+std::unique_ptr<Camera> missionCamera;
 unsigned long scenarioResult = mis_PLAYING;
 long scenarioEndTurn = -1;
 long MechSalvageChance = 100;
@@ -716,9 +719,9 @@ float applyDifficultyWeapon (float dmg, bool isPlayer)
 	//------------------------------------------------------------------
 	// Must keep damage an integral part of .25 or bad things happen
 	// In theory only needed for Multiplayer but better safe then...
-	if (((float)((long)(dmg / 0.25)) * 0.25) != dmg)
+	if ((static_cast<float>((static_cast<long>((dmg / 0.25)))) * 0.25) != dmg)
 	{
-		dmg = ((float)((long)(dmg / 0.25)) * 0.25);
+		dmg = (static_cast<float>((static_cast<long>((dmg / 0.25)))) * 0.25);
 	}
 
 	if (dmg < 0.0)
@@ -807,7 +810,7 @@ void Mission::start (void)
 					if (missing <= 32)   // bounded output; summary carries totals
 						mc2AuditLinef("[APPEAR_AUDIT v1] event=missing reason=%s "
 							"handle=%ld class=%d part=%ld",
-							why, h, (int)obj->getObjectClass(),
+							why, h, static_cast<int>(obj->getObjectClass()),
 							obj->getPartId());
 				}
 			}
@@ -1006,7 +1009,7 @@ void Mission::destroy (bool initLogistics)
 	{
 		eye->destroy();
 
-		delete eye;
+		missionCamera.reset();
 		eye = nullptr;
 		// Camera aliases outlive the camera and must not expose freed matrices during load.
 		TG_Shape::s_cameraOrigin = nullptr;
@@ -1022,7 +1025,7 @@ void Mission::destroy (bool initLogistics)
 
 	MechWarrior::shutdown();
 
-	delete weather;
+	missionWeather.reset();
 	weather = nullptr;
 
 	if (land)
@@ -1049,7 +1052,7 @@ void Mission::destroy (bool initLogistics)
 	if (weaponEffects)
 		weaponEffects->destroy();
 
-	delete weaponEffects;
+	ownedWeaponEffects.reset();
 	weaponEffects = nullptr;
 
 	if ( craterManager )
@@ -1155,7 +1158,7 @@ void Mission::destroy (bool initLogistics)
 
 	if (CObjective::s_markerFont)
 	{
-		delete CObjective::s_markerFont;
+		CObjective::s_markerFont.reset();
 		CObjective::s_markerFont = nullptr;
 	}
 
@@ -1179,7 +1182,7 @@ void Mission::handleMultiplayMessage (long code, long param1) {
 
 void Mission::startObjectiveTimers (void) {
 
-	for (long i=0;i<(long)numObjectives;i++)
+	for (long i=0;i<static_cast<long>(numObjectives);i++)
 	{
 		if (objectives[i].timeLeft > 0.0)
 		{
@@ -1191,7 +1194,7 @@ void Mission::startObjectiveTimers (void) {
 //----------------------------------------------------------------------------------
 long Mission::setObjectiveTimer (long objectiveNum, float timeLeft)
 {
-	gosASSERT((objectiveNum >= 0) && objectiveNum < (long)numObjectives);
+	gosASSERT((objectiveNum >= 0) && objectiveNum < static_cast<long>(numObjectives));
 		
 	long timerNumber = OBJECTIVE_1_TIMER + objectiveNum;
 	
@@ -1207,7 +1210,7 @@ long Mission::setObjectiveTimer (long objectiveNum, float timeLeft)
 //----------------------------------------------------------------------------------
 float Mission::checkObjectiveTimer (long objectiveNum)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < (long)numObjectives);
+	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
 
 	long timerNumber = OBJECTIVE_1_TIMER + objectiveNum;
 	unsigned long timeLeft = 0;
@@ -1223,7 +1226,7 @@ float Mission::checkObjectiveTimer (long objectiveNum)
 //----------------------------------------------------------------------------------
 long Mission::setObjectiveStatus (long objectiveNum, ObjectiveStatus status)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < (long)numObjectives);
+	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
 	
 	if (objectives)
 		objectives[objectiveNum].status = status;
@@ -1292,7 +1295,7 @@ ObjectiveStatus Mission::checkObjectiveStatus (long objectiveNum)
 //----------------------------------------------------------------------------------
 long Mission::setObjectiveType (long objectiveNum, ObjectiveType type)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < (long)numObjectives);
+	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
 
 	if (objectives)
 		objectives[objectiveNum].type = type;
@@ -1303,7 +1306,7 @@ long Mission::setObjectiveType (long objectiveNum, ObjectiveType type)
 //----------------------------------------------------------------------------------
 ObjectiveType Mission::checkObjectiveType (long objectiveNum)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < (long)numObjectives);
+	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
 		
 	ObjectiveType result = PrimaryGoal;
 	
@@ -1316,7 +1319,7 @@ ObjectiveType Mission::checkObjectiveType (long objectiveNum)
 //----------------------------------------------------------------------------------
 void Mission::setObjectivePos (long objectiveNum, float realX, float realY, float realZ)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < (long)numObjectives);
+	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
 		
 	if (objectives)
 	{

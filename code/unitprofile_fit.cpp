@@ -107,7 +107,7 @@ const char* kGeneratedUnitsRoot = "data/defs/units/core/";
 void lowerCopy(char* dst, unsigned long cap, const char* src) {
     unsigned long n = 0;
     if (src) for (const char* p = src; *p && n + 1 < cap; ++p)
-        dst[n++] = (char)tolower((unsigned char)*p);
+        dst[n++] = static_cast<char>(tolower(static_cast<unsigned char>(*p)));
     dst[n] = '\0';
 }
 

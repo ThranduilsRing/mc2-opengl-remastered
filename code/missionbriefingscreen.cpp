@@ -175,7 +175,7 @@ void MissionBriefingScreen::render(int xOffset, int yOffset )
 		{
 			// Marker size proportional to the map (~7% of its width) so it matches the
 			// OG at any resolution; resize() only changes the quad extent (keeps the UV).
-			const long ms = (long)( mw * 0.07f );
+			const long ms = static_cast<long>(( mw * 0.07f ));
 			for ( int i = 0; i < MAX_OBJECTIVES; i++ )
 			{
 				if ( !objectiveButtons[i] || objMarkerFx[i] < 0.f )
@@ -183,14 +183,14 @@ void MissionBriefingScreen::render(int xOffset, int yOffset )
 				const float px = mx + objMarkerFx[i] * mw;
 				const float py = my + objMarkerFy[i] * mh;
 				// Position (display space, centred) = also the click hit-box.
-				objectiveButtons[i]->moveTo( (long)( px - ms / 2.f ), (long)( py - ms / 2.f ) );
+				objectiveButtons[i]->moveTo( static_cast<long>(( px - ms / 2.f )), static_cast<long>(( py - ms / 2.f )) );
 				objectiveButtons[i]->resize( ms, ms );
 			}
 			if ( !MPlayer && dropZoneFx >= 0.f )
 			{
 				const float dpx = mx + dropZoneFx * mw;
 				const float dpy = my + dropZoneFy * mh;
-				dropZoneButton.moveTo( (long)( dpx - ms / 2.f ), (long)( dpy - ms / 2.f ) );
+				dropZoneButton.moveTo( static_cast<long>(( dpx - ms / 2.f )), static_cast<long>(( dpy - ms / 2.f )) );
 				dropZoneButton.resize( ms, ms );
 			}
 			// Draw all markers with their REAL gos art (the mcl_mn_4 per-objective /
@@ -412,7 +412,7 @@ long	MissionBriefingScreen::getMissionTGA( const char* missionName, bool swizzle
 			// against too-small packets before treating the buffer as a header
 			// — previously the width/height read overran and we invoked
 			// textureFromMemory with width=0, crashing at the next get_gosTextureHandle.
-			if (size < (long)sizeof(TGAFileHeader))
+			if (size < static_cast<long>(sizeof(TGAFileHeader)))
 			{
 				{
 					char _cbbuf[256];
@@ -428,7 +428,7 @@ long	MissionBriefingScreen::getMissionTGA( const char* missionName, bool swizzle
 
 			file.readPacket( 3, mem.get() );
 
-			TGAFileHeader* pHeader = (TGAFileHeader*)mem.get();
+			TGAFileHeader* pHeader = reinterpret_cast<TGAFileHeader*>(mem.get());
 			long bmpWidth = pHeader->width;
 			long bmpHeight = pHeader->height;
 
@@ -445,7 +445,7 @@ long	MissionBriefingScreen::getMissionTGA( const char* missionName, bool swizzle
 				return 0;
 			}
 
-			flipTopToBottom( (BYTE*)(pHeader + 1), pHeader->pixel_depth, bmpWidth, bmpHeight );
+			flipTopToBottom( reinterpret_cast<BYTE*>((pHeader + 1)), pHeader->pixel_depth, bmpWidth, bmpHeight );
 
 			// MERGE-CONFLICT-UI-PHASE1: both sides independently added alpha-opaque
 			// stamping for the same root cause (baked tacmap water/cement cells carry
@@ -465,14 +465,14 @@ long	MissionBriefingScreen::getMissionTGA( const char* missionName, bool swizzle
 			// which theirs' version does not cover.
 			if ( pHeader->pixel_depth == 32 )
 			{
-				DWORD* px = (DWORD*)(pHeader + 1);
+				DWORD* px = reinterpret_cast<DWORD*>((pHeader + 1));
 				const long pxCount = bmpWidth * bmpHeight;
 				for ( long p = 0; p < pxCount; ++p )
 					px[p] |= 0xff000000;
 			}
 
 			// set up the texture
-			long tmpMapTextureHandle = mcTextureManager->textureFromMemory( (DWORD*)(pHeader+1), gos_Texture_Solid, 0, bmpWidth );
+			long tmpMapTextureHandle = mcTextureManager->textureFromMemory( reinterpret_cast<DWORD*>((pHeader+1)), gos_Texture_Solid, 0, bmpWidth );
 
 			mem.reset();
 
@@ -715,10 +715,10 @@ void MissionBriefingScreen::syncObjectivesToDefs( bool setItems )
 	std::vector<unsigned int> objColors;
 	for ( long i = 0; i < missionListBox.GetItemCount(); ++i )
 	{
-		aTextListItem* pItem = (aTextListItem*)missionListBox.GetItem( i );
+		aTextListItem* pItem = static_cast<aTextListItem*>(missionListBox.GetItem( i ));
 		if ( !pItem ) continue;
 		const std::string  clean = cleanBriefingText( pItem->getText() );
-		const unsigned int color = (unsigned int)pItem->getColor();
+		const unsigned int color = static_cast<unsigned int>(pItem->getColor());
 		// BRIEFING-WRAP-1: wrap with the defs GuiList's OWN pixel metrics (same
 		// font/size/row width the renderer uses) so each pushed line is exactly
 		// one visual line. The old fixed 88-char wrap produced lines wider than

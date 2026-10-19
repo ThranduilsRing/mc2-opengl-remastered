@@ -344,7 +344,7 @@ int CPrefs::save() {
 	//MoveFileEx(originalPath, backupPath, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
 
 	FitIniFile prefsFile;
-	int result = prefsFile.create( (char*)originalPath );
+	int result = prefsFile.create( static_cast<char*>(originalPath) );
 	if (result != NO_ERR)
 	{
 		gosASSERT( false );

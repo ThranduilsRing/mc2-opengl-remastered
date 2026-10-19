@@ -622,11 +622,11 @@ class Mission
 
 		GameObjectPtr getPartObject (long partNumber)
 		{
-			if ((partNumber <= 0) || ((unsigned long)partNumber > numParts))
+			if ((partNumber <= 0) || (static_cast<unsigned long>(partNumber) > numParts))
 				return nullptr;
 			if (!ObjectManager)
 				return(nullptr);
-			return ((GameObjectPtr) ObjectManager->getByWatchID(parts[partNumber].objectWID));
+			return (static_cast<GameObjectPtr>(ObjectManager->getByWatchID(parts[partNumber].objectWID)));
 		}
 
 		long addMover (MoverInitData* moveSpec);

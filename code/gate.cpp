@@ -175,7 +175,7 @@ bool GateType::handleCollision (GameObjectPtr collidee, GameObjectPtr collider)
 	// Mech or Vehicle is of the correct alignment and close enough.
 	float closestRange = 119999999.99f;
 
-	GatePtr gate = (GatePtr)collidee;
+	GatePtr gate = static_cast<GatePtr>(collidee);
 	//----------------------------------------------
 	// On my side.  Close Enough to Open?
 	switch (collider->getObjectClass())
@@ -205,9 +205,9 @@ bool GateType::handleCollision (GameObjectPtr collidee, GameObjectPtr collider)
 			//------------------------------------------------
 			// Regardless of alignment, if I'm closest, mark me
 			// So if gate closes and Im too close.  BOOM
-			if ((colliderRange < closestRange) && (!collider->isDisabled() && !collider->isDestroyed()) && !((MoverPtr)collider)->isJumping())
+			if ((colliderRange < closestRange) && (!collider->isDisabled() && !collider->isDestroyed()) && !(static_cast<MoverPtr>(collider))->isJumping())
 			{
-				gate->closestObject = (MoverPtr)collider;
+				gate->closestObject = static_cast<MoverPtr>(collider);
 				closestRange = colliderRange * colliderRange;
 			}
 		}
@@ -345,7 +345,7 @@ long Gate::update (void)
 				setTargeted( true );
 			}
 			
-			appearance->setObjectParameters(position,((ObjectAppearance*)appearance)->rotation,drawFlags,getTeamId(),Team::getRelation(getTeamId(), Team::home->getId()));
+			appearance->setObjectParameters(position,(static_cast<ObjectAppearance*>(appearance))->rotation,drawFlags,getTeamId(),Team::getRelation(getTeamId(), Team::home->getId()));
 	
 			//------------------------------------------------
 			// MUST update appearance every frame or animation goes HINKY!
@@ -398,7 +398,7 @@ void Gate::blowAnyOffendingObject (void)
 
 			//--------------------
 			// Gate must die too.
-			shot.init(0, -3, ((GateTypePtr)(ObjectManager->getObjectType(typeHandle)))->getDamageLvl()+5, 0, 0);
+			shot.init(0, -3, (static_cast<GateTypePtr>((ObjectManager->getObjectType(typeHandle))))->getDamageLvl()+5, 0, 0);
 
 			handleWeaponHit(&shot, (MPlayer != nullptr));
 		}
@@ -604,7 +604,7 @@ void Gate::render (void)
 		//--------------------------------------
 		if (getDrawBars())
 		{
-			GateTypePtr type = (GateTypePtr)getObjectType();
+			GateTypePtr type = static_cast<GateTypePtr>(getObjectType());
 			float barStatus = 1.0;
 			float totalDmgLvl = type->getDamageLvl();
 			if (totalDmgLvl > 0.0)
@@ -627,13 +627,13 @@ void Gate::render (void)
 			appearance->setBarStatus(barStatus);
 		}
 
-		if (((GateTypePtr)getObjectType())->gateTypeName < IDS_MC2_STRING_START)
+		if ((static_cast<GateTypePtr>(getObjectType()))->gateTypeName < IDS_MC2_STRING_START)
 		{
-			appearance->setObjectNameId(((GateTypePtr)getObjectType())->gateTypeName + IDS_MC2_STRING_START);
+			appearance->setObjectNameId((static_cast<GateTypePtr>(getObjectType()))->gateTypeName + IDS_MC2_STRING_START);
 		}
 		else
 		{
-			appearance->setObjectNameId(((GateTypePtr)getObjectType())->gateTypeName);
+			appearance->setObjectNameId((static_cast<GateTypePtr>(getObjectType()))->gateTypeName);
 		}
 
 
@@ -705,20 +705,20 @@ void Gate::init (bool create, ObjectTypePtr _type)
 	// The only appearance type for buildings is MLR_APPEARANCE.
 	gosASSERT(buildingAppearanceType->getAppearanceClass() == BLDG_TYPE);
 	
-	appearance->init((BldgAppearanceType*)buildingAppearanceType, (GameObjectPtr)this);
+	appearance->init(static_cast<BldgAppearanceType*>(buildingAppearanceType), static_cast<GameObjectPtr>(this));
 
 	objectClass = GATE;
 	reasonToOpen = false;		//Always reset the electric eye
 	lastMarkedOpen = false;
 	
-	if (((GateTypePtr)_type)->openRadius != 0.0)
-		_type->setExtentRadius(((GateTypePtr)_type)->openRadius);
+	if ((static_cast<GateTypePtr>(_type))->openRadius != 0.0)
+		_type->setExtentRadius((static_cast<GateTypePtr>(_type))->openRadius);
 
 	if (_type->getExtentRadius() > 0.0)
 		setFlag(OBJECT_FLAG_TANGIBLE, true);
 	
-	explDamage = ((GateTypePtr)_type)->explDmg;
-	explRadius = ((GateTypePtr)_type)->explRad;
+	explDamage = (static_cast<GateTypePtr>(_type))->explDmg;
+	explRadius = (static_cast<GateTypePtr>(_type))->explRad;
 }	
 
 //---------------------------------------------------------------------------
@@ -726,7 +726,7 @@ void Gate::setDamage (float newDamage)
 {
 	damage = newDamage;
 
-	GateTypePtr type = (GateTypePtr)getObjectType();
+	GateTypePtr type = static_cast<GateTypePtr>(getObjectType());
 	if (damage >= type->getDamageLvl())
 	{
 		setStatus(OBJECT_STATUS_DESTROYED);
@@ -745,7 +745,7 @@ long Gate::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChunk)
 
 	damage = getDamage() + shotInfo->damage;
 			
-	GateTypePtr type = (GateTypePtr)getObjectType();
+	GateTypePtr type = static_cast<GateTypePtr>(getObjectType());
 	if (damage >= type->getDamageLvl() && !isDestroyed())	
 	{
 		destroyGate();
@@ -816,7 +816,7 @@ void Gate::destroyGate(void)
 //---------------------------------------------------------------------------
 float Gate::getLittleExtent (void)
 {
-	return (((GateTypePtr)(ObjectManager->getObjectType(typeHandle)))->littleExtent);
+	return ((static_cast<GateTypePtr>((ObjectManager->getObjectType(typeHandle))))->littleExtent);
 }
 
 //---------------------------------------------------------------------------
@@ -853,7 +853,7 @@ void Gate::Save (PacketFilePtr file, long packetNum)
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	file->writePacket(packetNum,(MemoryPtr)&data,sizeof(GateData),STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(GateData),STORAGE_TYPE_ZLIB);
 }
 
 //***************************************************************************

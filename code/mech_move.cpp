@@ -670,7 +670,7 @@ void BattleMech::updateTorso (float newRotatePerSec)
 	{
 		float turnRate = -torsoRelFacing;
 		rotateValues[5] = turnRate;
-		float maxRate = (float)dynamics.max.mech.torsoYawRate * frameLength;
+		float maxRate = static_cast<float>(dynamics.max.mech.torsoYawRate) * frameLength;
 		if (fabs(turnRate) > maxRate) {
 			if (turnRate < 0.0)
 				turnRate = -maxRate;
@@ -922,10 +922,10 @@ void BattleMech::createJumpFX (void) {
 #ifdef USE_JETS
 	if (!jumpJets[0] && !jumpJets[1])
 	{
-		jumpJets[0] = (JetPtr)createObject(JUMP_FX);
+		jumpJets[0] = reinterpret_cast<JetPtr>(createObject(JUMP_FX));
 		jumpJets[0]->setOwner(this);
 		
-		jumpJets[1] = (JetPtr)createObject(JUMP_FX);
+		jumpJets[1] = reinterpret_cast<JetPtr>(createObject(JUMP_FX));
 		jumpJets[1]->setOwner(this);
 		
 		craterManager->addCrater(SCORCHMARKS,position,0);

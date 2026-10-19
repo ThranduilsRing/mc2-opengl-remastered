@@ -38,7 +38,7 @@ namespace missiongui_detail {
 		if (!s_mfOn) return;
 		mc2::fmt::print_out("[MIF_SPLIT v1] event=shutdown frames={:d} invProj_walks={:d} invProj_cacheHits={:d}", mc2::fmt::as_u64(s_mfFrames), mc2::fmt::as_u64(s_mfInvWalks), mc2::fmt::as_u64(s_mfInvHits));
 		for (int i=0;i<MF_COUNT;i++)
-			mc2::fmt::print_out(" {}={{avg_us:{:.1f},max_us:{:.1f}}}", mc2::fmt::safe(s_mfNames[i]), s_mfFrames?(double)s_mfSum[i]/s_mfFrames/1000.0:0.0, (double)s_mfMax[i]/1000.0);
+			mc2::fmt::print_out(" {}={{avg_us:{:.1f},max_us:{:.1f}}}", mc2::fmt::safe(s_mfNames[i]), s_mfFrames?static_cast<double>(s_mfSum[i])/s_mfFrames/1000.0:0.0, static_cast<double>(s_mfMax[i])/1000.0);
 		mc2::fmt::print_out("\n"); std::fflush(stdout);
 	}
 	// One [IFACE_PERF v1] line per window (or partial window at mission end).
@@ -47,7 +47,7 @@ namespace missiongui_detail {
 		std::printf("[IFACE_PERF v1] event=%.*s frames=%llu invProj_walks=%llu invProj_cacheHits=%llu",
 			static_cast<int>(event.size()), event.data(), s_mfWinFrames, s_mfWinWalks, s_mfWinHits);
 		for (int i=0;i<MF_COUNT;i++)
-			mc2::fmt::print_out(" {}={{avg_us:{:.1f},max_us:{:.1f}}}", mc2::fmt::safe(s_mfNames[i]), (double)s_mfWinSum[i]/s_mfWinFrames/1000.0, (double)s_mfWinMax[i]/1000.0);
+			mc2::fmt::print_out(" {}={{avg_us:{:.1f},max_us:{:.1f}}}", mc2::fmt::safe(s_mfNames[i]), static_cast<double>(s_mfWinSum[i])/s_mfWinFrames/1000.0, static_cast<double>(s_mfWinMax[i])/1000.0);
 		mc2::fmt::print_out("\n"); std::fflush(stdout);
 		for (int i=0;i<MF_COUNT;i++) { s_mfWinSum[i]=0; s_mfWinMax[i]=0; }
 		s_mfWinFrames=0; s_mfWinWalks=0; s_mfWinHits=0;
@@ -122,17 +122,17 @@ namespace missiongui_detail {
 	static bool s_gpAtexit=false;
 	static void gpEmit() {
 		if (!s_gpParityOn) return;
-		const double cpuAvg = s_gpCpuSamples ? (double)s_gpCpuNs/s_gpCpuSamples/1000.0 : 0.0;
-		const double gpuAvg = s_gpGpuSamples ? (double)s_gpGpuNs/s_gpGpuSamples/1000.0 : 0.0;
-		const double dAvg   = s_gpCompared ? s_gpDeltaSum/(double)s_gpCompared : 0.0;
-		const double dzAvg  = s_gpCompared ? s_gpDeltaZSum/(double)s_gpCompared : 0.0;
+		const double cpuAvg = s_gpCpuSamples ? static_cast<double>(s_gpCpuNs)/s_gpCpuSamples/1000.0 : 0.0;
+		const double gpuAvg = s_gpGpuSamples ? static_cast<double>(s_gpGpuNs)/s_gpGpuSamples/1000.0 : 0.0;
+		const double dAvg   = s_gpCompared ? s_gpDeltaSum/static_cast<double>(s_gpCompared) : 0.0;
+		const double dzAvg  = s_gpCompared ? s_gpDeltaZSum/static_cast<double>(s_gpCompared) : 0.0;
 		mc2::fmt::print_err("[GPU_PICK_PARITY] event=shutdown mission={} sites={:d} compared={:d} gpu_invalid={:d} buffer_unavailable={:d} background_px={:d} over_2wu={:d}\n", mc2::fmt::safe(s_gpMissionTag), mc2::fmt::as_u64(s_gpSites), mc2::fmt::as_u64(s_gpCompared), mc2::fmt::as_u64(s_gpGpuInvalid), mc2::fmt::as_u64(s_gpFbUnavail), mc2::fmt::as_u64(s_gpBg), mc2::fmt::as_u64(s_gpOver2wu));
 		mc2::fmt::print_err("[GPU_PICK_PARITY] invalid_reasons={{stale_gen:{:d},slot_dead:{:d},no_depth:{:d}}}\n", mc2::fmt::as_u64(s_gpStaleGen), mc2::fmt::as_u64(s_gpSlotDead), mc2::fmt::as_u64(s_gpNoDepth));
 		mc2::fmt::print_err("[GPU_PICK_PARITY] delta_wu={{xy_avg:{:.3f},xy_max:{:.3f},z_avg:{:.3f},z_max:{:.3f}}} hist_xy_wu=[<=0.5:{:d},<=1:{:d},<=2:{:d},<=5:{:d},<=20:{:d},>20:{:d}]\n", dAvg, s_gpDeltaMax, dzAvg, s_gpDeltaZMax, mc2::fmt::as_u64(s_gpHist[0]), mc2::fmt::as_u64(s_gpHist[1]), mc2::fmt::as_u64(s_gpHist[2]), mc2::fmt::as_u64(s_gpHist[3]), mc2::fmt::as_u64(s_gpHist[4]), mc2::fmt::as_u64(s_gpHist[5]));
-		mc2::fmt::print_err("[GPU_PICK_PARITY] timing_us={{cpu_invproj_avg:{:.1f},cpu_invproj_max:{:.1f},gpu_readback_avg:{:.1f},gpu_readback_max:{:.1f}}} cpu_samples={:d} gpu_samples={:d}\n", cpuAvg, (double)s_gpCpuMaxNs/1000.0, gpuAvg, (double)s_gpGpuMaxNs/1000.0, mc2::fmt::as_u64(s_gpCpuSamples), mc2::fmt::as_u64(s_gpGpuSamples));
+		mc2::fmt::print_err("[GPU_PICK_PARITY] timing_us={{cpu_invproj_avg:{:.1f},cpu_invproj_max:{:.1f},gpu_readback_avg:{:.1f},gpu_readback_max:{:.1f}}} cpu_samples={:d} gpu_samples={:d}\n", cpuAvg, static_cast<double>(s_gpCpuMaxNs)/1000.0, gpuAvg, static_cast<double>(s_gpGpuMaxNs)/1000.0, mc2::fmt::as_u64(s_gpCpuSamples), mc2::fmt::as_u64(s_gpGpuSamples));
 		if (s_gpCenter) {
-			const double cdAvg  = s_gpcCompared ? s_gpcDeltaSum/(double)s_gpcCompared : 0.0;
-			const double cdzAvg = s_gpcCompared ? s_gpcDeltaZSum/(double)s_gpcCompared : 0.0;
+			const double cdAvg  = s_gpcCompared ? s_gpcDeltaSum/static_cast<double>(s_gpcCompared) : 0.0;
+			const double cdzAvg = s_gpcCompared ? s_gpcDeltaZSum/static_cast<double>(s_gpcCompared) : 0.0;
 			mc2::fmt::print_err("[GPU_PICK_PARITY] center_probe mission={} compared={:d} invalid={:d} background_px={:d} delta_wu={{xy_avg:{:.3f},xy_max:{:.3f},z_avg:{:.3f},z_max:{:.3f}}} hist_xy_wu=[<=0.5:{:d},<=1:{:d},<=2:{:d},<=5:{:d},<=20:{:d},>20:{:d}]\n", mc2::fmt::safe(s_gpMissionTag), mc2::fmt::as_u64(s_gpcCompared), mc2::fmt::as_u64(s_gpcInvalid), mc2::fmt::as_u64(s_gpcBg), cdAvg, s_gpcDeltaMax, cdzAvg, s_gpcDeltaZMax, mc2::fmt::as_u64(s_gpcHist[0]), mc2::fmt::as_u64(s_gpcHist[1]), mc2::fmt::as_u64(s_gpcHist[2]), mc2::fmt::as_u64(s_gpcHist[3]), mc2::fmt::as_u64(s_gpcHist[4]), mc2::fmt::as_u64(s_gpcHist[5]));
 		}
 		std::fflush(stderr);
@@ -143,7 +143,7 @@ namespace missiongui_detail {
 	// the delta. Throttled by the same sample counter. Result never consumed.
 	void gpCenterProbe(int cxPix, int cyPix, float ccx, float ccy, float ccz) {
 		if (!s_gpParityOn || !s_gpCenter) return;
-		if ((s_gpSites % (unsigned long long)s_gpSampleN) != 0) return;
+		if ((s_gpSites % static_cast<unsigned long long>(s_gpSampleN)) != 0) return;
 		if (!RenderWorld::IsObjectIdBufferEnabled()) return;
 		float vMulX, vMulY, vAddX, vAddY;
 		gos_GetViewport(&vMulX, &vMulY, &vAddX, &vAddY);
@@ -164,8 +164,8 @@ namespace missiongui_detail {
 		const float dx = res.worldX - ccx;
 		const float dy = res.worldY - ccy;
 		const float dz = res.worldZ - ccz;
-		const double dHoriz = std::sqrt((double)dx*dx + (double)dy*dy);
-		const double dVert  = std::fabs((double)dz);
+		const double dHoriz = std::sqrt(static_cast<double>(dx)*dx + static_cast<double>(dy)*dy);
+		const double dVert  = std::fabs(static_cast<double>(dz));
 		++s_gpcCompared;
 		s_gpcDeltaSum += dHoriz; if (dHoriz > s_gpcDeltaMax) s_gpcDeltaMax = dHoriz;
 		s_gpcDeltaZSum += dVert; if (dVert  > s_gpcDeltaZMax) s_gpcDeltaZMax = dVert;
@@ -186,13 +186,13 @@ namespace missiongui_detail {
 		++s_gpSites;
 		s_gpCpuNs += cpuNs; ++s_gpCpuSamples;
 		if (cpuNs > s_gpCpuMaxNs) s_gpCpuMaxNs = cpuNs;
-		if ((s_gpSites % (unsigned long long)s_gpSampleN) != 0) return;
+		if ((s_gpSites % static_cast<unsigned long long>(s_gpSampleN)) != 0) return;
 		if (!RenderWorld::IsObjectIdBufferEnabled()) { ++s_gpFbUnavail; return; }
 		float vMulX, vMulY, vAddX, vAddY;
 		gos_GetViewport(&vMulX, &vMulY, &vAddX, &vAddY);
 		if (!(vMulX > 0.0f && vMulY > 0.0f &&
 		      mouseX >= 0 && mouseY >= 0 &&
-		      mouseX < (int)vMulX && mouseY < (int)vMulY)) {
+		      mouseX < static_cast<int>(vMulX) && mouseY < static_cast<int>(vMulY))) {
 			++s_gpFbUnavail; return;   // offscreen / no viewport -> R3 fallback
 		}
 		RenderWorld::ScreenPickContext ctx;
@@ -240,8 +240,8 @@ namespace missiongui_detail {
 		const float dx = res.worldX - cx;
 		const float dy = res.worldY - cy;
 		const float dz = res.worldZ - cz;
-		const double dHoriz = std::sqrt((double)dx*dx + (double)dy*dy);
-		const double dVert  = std::fabs((double)dz);
+		const double dHoriz = std::sqrt(static_cast<double>(dx)*dx + static_cast<double>(dy)*dy);
+		const double dVert  = std::fabs(static_cast<double>(dz));
 		++s_gpCompared;
 		s_gpDeltaSum += dHoriz; if (dHoriz > s_gpDeltaMax) s_gpDeltaMax = dHoriz;
 		s_gpDeltaZSum += dVert; if (dVert  > s_gpDeltaZMax) s_gpDeltaZMax = dVert;

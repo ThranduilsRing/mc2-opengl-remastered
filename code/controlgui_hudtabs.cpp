@@ -14,13 +14,13 @@ bool ControlGui::hudTabsGateOn() const
 // Registry thunks. Registration order == hotkey cycle order, which the legacy
 // switchTabs table defines as TACMAP -> VEHICLE -> INFO (direction > 0) — NOT
 // the Commands enum order.
-void ControlGui::hudTabRenderTacMap( void* user )	{ ((ControlGui*)user)->tacMap.render(); }
-void ControlGui::hudTabRenderInfo( void* user )		{ ((ControlGui*)user)->renderInfoTab(); }
-void ControlGui::hudTabRenderVehicle( void* user )	{ ((ControlGui*)user)->renderVehicleTab(); }
-void ControlGui::hudTabUpdateTacMap( void* user )	{ ((ControlGui*)user)->tacMap.update(); }
+void ControlGui::hudTabRenderTacMap( void* user )	{ (static_cast<ControlGui*>(user))->tacMap.render(); }
+void ControlGui::hudTabRenderInfo( void* user )		{ (static_cast<ControlGui*>(user))->renderInfoTab(); }
+void ControlGui::hudTabRenderVehicle( void* user )	{ (static_cast<ControlGui*>(user))->renderVehicleTab(); }
+void ControlGui::hudTabUpdateTacMap( void* user )	{ (static_cast<ControlGui*>(user))->tacMap.update(); }
 void ControlGui::hudTabUpdateInfo( void* user )
 {
-	ControlGui* self = (ControlGui*)user;
+	ControlGui* self = static_cast<ControlGui*>(user);
 	if ( self->infoWnd )
 		self->infoWnd->update();
 }
@@ -115,12 +115,12 @@ void ControlGui::setActiveHudTab( int index, const char* via )
 // ControlGui::update).
 void ControlGui::hudTabRenderTest( void* user )
 {
-	ControlGui* self = (ControlGui*)user;
+	ControlGui* self = static_cast<ControlGui*>(user);
 	if ( !self->rectInfos )
 		return;
 	const GUI_RECT& r = self->rectInfos[0].rect;
-	float l = (float)r.left,  tY = (float)r.top;
-	float rt = (float)r.right, b = (float)r.bottom;
+	float l = static_cast<float>(r.left),  tY = static_cast<float>(r.top);
+	float rt = static_cast<float>(r.right), b = static_cast<float>(r.bottom);
 	const float cy = 0.5f * ( tY + b );
 	HudImGui::hudShrinkPoint( l, tY, cy );
 	HudImGui::hudShrinkPoint( rt, b, cy );
@@ -146,12 +146,12 @@ void ControlGui::hudTabRenderTest( void* user )
 // pause already freezes scenarioTime regardless of the multiplier.
 void ControlGui::hudTabRenderSimSpeed( void* user )
 {
-	ControlGui* self = (ControlGui*)user;
+	ControlGui* self = static_cast<ControlGui*>(user);
 	if ( !self->rectInfos )
 		return;
 	const GUI_RECT& r = self->rectInfos[0].rect;
-	float l = (float)r.left,  tY = (float)r.top;
-	float rt = (float)r.right, b = (float)r.bottom;
+	float l = static_cast<float>(r.left),  tY = static_cast<float>(r.top);
+	float rt = static_cast<float>(r.right), b = static_cast<float>(r.bottom);
 	const float cy = 0.5f * ( tY + b );
 	HudImGui::hudShrinkPoint( l, tY, cy );
 	HudImGui::hudShrinkPoint( rt, b, cy );
@@ -182,7 +182,7 @@ void ControlGui::hudTabRenderSimSpeed( void* user )
 			ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.1f, 0.45f, 0.1f, 1.f ) );
 		if ( ImGui::Button( kLabels[i], ImVec2( 48.f, 0.f ) ) )
 		{
-			mc2::fmt::print_err("[SIM-SPEED-BUTTON v1] click {:.0f}x (was {:.2f}x)\n", (double)kSpeeds[i], (double)current);
+			mc2::fmt::print_err("[SIM-SPEED-BUTTON v1] click {:.0f}x (was {:.2f}x)\n", static_cast<double>(kSpeeds[i]), static_cast<double>(current));
 			fflush( stderr );
 			simSpeedSetMultiplier( kSpeeds[i] );
 		}
@@ -226,7 +226,7 @@ void ControlGui::renderHudTabChromeImGui()
 			aL = 0.f; aT = 0.f; aR = 64.f; aB = 24.f;
 		}
 		const float w = aR - aL;
-		float l = aR + (float)slot * w, tY = aT, r = aR + (float)( slot + 1 ) * w, b = aB;
+		float l = aR + static_cast<float>(slot) * w, tY = aT, r = aR + static_cast<float>(( slot + 1 )) * w, b = aB;
 		const float cy = 0.5f * ( tY + b );
 		HudImGui::hudShrinkPoint( l, tY, cy );
 		HudImGui::hudShrinkPoint( r, b, cy );
