@@ -1,14 +1,14 @@
 {
  "counts": {
   "GameAdapters": 0,
-  "GameOS": 4444,
+  "GameOS": 4238,
   "GuiRuntime": 48,
   "HostServices": 0,
   "RenderCore": 593,
   "RenderWorld": 0,
-  "code": 14561,
-  "mclib": 30687,
-  "shaders": 3056
+  "code": 14514,
+  "mclib": 29456,
+  "shaders": 2901
  },
  "dirs": [
   "code",
@@ -27,13 +27,13 @@
   "GameOS/gameos/engine_present_vk.cpp": 159,
   "GameOS/gameos/engine_present_vk.h": 10,
   "GameOS/gameos/gameos.cpp": 16,
-  "GameOS/gameos/gameos_graphics_bridge.cpp": 247,
+  "GameOS/gameos/gameos_graphics_bridge.cpp": 68,
   "GameOS/gameos/gameos_graphics_draw.cpp": 88,
   "GameOS/gameos/gameos_graphics_light_ssbo.cpp": 16,
   "GameOS/gameos/gameos_graphics_params.cpp": 20,
   "GameOS/gameos/gameos_graphics_renderer_internal.h": 59,
   "GameOS/gameos/gameos_graphics_tparams.cpp": 88,
-  "GameOS/gameos/gameos_graphics_water.cpp": 68,
+  "GameOS/gameos/gameos_graphics_water.cpp": 41,
   "GameOS/gameos/gos_cluster_depth_pyramid.cpp": 43,
   "GameOS/gameos/gos_font.cpp": 22,
   "GameOS/gameos/gos_frame_pass_stats.cpp": 25,
@@ -544,12 +544,10 @@
   "shaders/decal.frag": 11,
   "shaders/edge_fog.frag": 30,
   "shaders/fog_oob.frag": 40,
-  "shaders/gos_terrain.tesc": 28,
+  "shaders/gos_terrain.tesc": 20,
   "shaders/gos_terrain.tese": 8,
-  "shaders/gos_terrain_mask_solid.vert": 45,
-  "shaders/gos_terrain_mask_water.vert": 31,
-  "shaders/gos_terrain_surface.vert": 9,
-  "shaders/gos_terrain_thin.vert": 29,
+  "shaders/gos_terrain_surface.vert": 8,
+  "shaders/gos_terrain_thin.vert": 17,
   "shaders/gos_terrain_water_fast.vert": 174,
   "shaders/gos_terrain_water_fast_mdi.vert": 179,
   "shaders/gos_terrain_water_mdi.frag": 105,
@@ -615,8 +613,8 @@
   "shaders/vulkan/water_geom.frag": 77,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "faef0c7e6",
+ "head": "5ac1a6ceb",
  "n": 8,
- "total": 53389,
+ "total": 51750,
  "version": 1
 }

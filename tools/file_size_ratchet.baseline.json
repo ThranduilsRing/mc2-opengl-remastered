@@ -15,10 +15,9 @@
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2900,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1749,
-  "GameOS/gameos/gos_terrain_water_stream.cpp": 2366,
   "GameOS/gameos/utils/shader_builder.cpp": 1550,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1717,
-  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1565,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1750,
+  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1544,
   "GameOS/include/gameos.hpp": 3732,
   "RenderCore/RendererFeatureRegistry.h": 1664,
   "code/artlry.cpp": 1841,
@@ -42,7 +41,7 @@
   "code/terrobj.cpp": 1722,
   "code/turret.cpp": 2337,
   "code/warrior.cpp": 2691,
-  "code/warrior.h": 2176,
+  "code/warrior.h": 2179,
   "editor/tests/test_objectives.cpp": 1996,
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1601,
@@ -55,13 +54,13 @@
   "mclib/mlr/mlrlightmap.cpp": 1648,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
-  "mclib/move.h": 1863,
+  "mclib/move.h": 1896,
   "mclib/render_contract.cpp": 1530,
   "mclib/terrtxm.cpp": 1823,
   "mclib/tgl.h": 1787,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "2d523287b",
+ "head": "5ac1a6ceb",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -70,8 +69,8 @@
    "max_lines": 485
   },
   "GameOS": {
-   "files": 364,
-   "files_over_1500": 7,
+   "files": 362,
+   "files_over_1500": 6,
    "files_over_3000": 1,
    "max_lines": 3732
   },
@@ -79,7 +78,7 @@
    "files": 14,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1154
+   "max_lines": 1153
   },
   "RenderCore": {
    "files": 58,
@@ -118,7 +117,7 @@
    "max_lines": 2599
   },
   "shaders": {
-   "files": 174,
+   "files": 169,
    "files_over_1500": 1,
    "files_over_3000": 0,
    "max_lines": 2096
@@ -162,10 +161,6 @@
    "lines": 2408
   },
   {
-   "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-   "lines": 2366
-  },
-  {
    "file": "code/turret.cpp",
    "lines": 2337
   },
@@ -175,7 +170,7 @@
   },
   {
    "file": "code/warrior.h",
-   "lines": 2176
+   "lines": 2179
   },
   {
    "file": "code/missionbegin.cpp",
@@ -219,7 +214,7 @@
   },
   {
    "file": "mclib/move.h",
-   "lines": 1863
+   "lines": 1896
   },
   {
    "file": "code/multplyr.h",
@@ -248,11 +243,15 @@
   {
    "file": "mclib/ablrtn.cpp",
    "lines": 1798
+  },
+  {
+   "file": "mclib/tgl.h",
+   "lines": 1787
   }
  ],
  "total": {
-  "files": 1906,
-  "files_over_1500": 47,
+  "files": 1899,
+  "files_over_1500": 46,
   "files_over_3000": 1,
   "max_lines": 3732
  },
