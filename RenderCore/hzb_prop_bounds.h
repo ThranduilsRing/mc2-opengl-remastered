@@ -34,13 +34,13 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
         // entire object. They must never turn into a clipped, undersized footprint.
         if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) || z < 0 || z >= 1 ||
             x <= -1 || x >= 1 || y <= -1 || y >= 1) return out;
-        x0 = std::min(x0, (x+1)*0.5f*w); x1 = std::max(x1, (x+1)*0.5f*w);
-        y0 = std::min(y0, (y+1)*0.5f*h); y1 = std::max(y1, (y+1)*0.5f*h);
-        nearest = std::max(nearest, z);
+        x0 = (std::min)(x0, (x+1)*0.5f*w); x1 = (std::max)(x1, (x+1)*0.5f*w);
+        y0 = (std::min)(y0, (y+1)*0.5f*h); y1 = (std::max)(y1, (y+1)*0.5f*h);
+        nearest = (std::max)(nearest, z);
     }
-    out.pixels[0] = std::max(0.0f, std::floor(x0)-1); out.pixels[1] = std::max(0.0f, std::floor(y0)-1);
-    out.pixels[2] = std::min(float(w-1), std::ceil(x1)+1); out.pixels[3] = std::min(float(h-1), std::ceil(y1)+1);
-    const float extent = std::max(out.pixels[2]-out.pixels[0], out.pixels[3]-out.pixels[1]);
+    out.pixels[0] = (std::max)(0.0f, std::floor(x0)-1); out.pixels[1] = (std::max)(0.0f, std::floor(y0)-1);
+    out.pixels[2] = (std::min)(float(w-1), std::ceil(x1)+1); out.pixels[3] = (std::min)(float(h-1), std::ceil(y1)+1);
+    const float extent = (std::max)(out.pixels[2]-out.pixels[0], out.pixels[3]-out.pixels[1]);
     while (out.lod+1 < uint32_t(levels) && float(1u << out.lod) < extent) ++out.lod;
     out.nearest = nearest;
     out.keep = 0;

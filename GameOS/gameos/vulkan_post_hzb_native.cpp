@@ -206,7 +206,7 @@ bool cache_prop_bounds(gosPostProcess::VkPostHzbNative* s, uint32_t generation) 
                 std::memcpy(pos, vx + vi * geom.vertexStride, sizeof(pos));
                 for (int a = 0; a < 3; ++a) {
                     if (!std::isfinite(pos[a])) invalid = true;
-                    b.lo[a] = std::min(b.lo[a], pos[a]); b.hi[a] = std::max(b.hi[a], pos[a]);
+                    b.lo[a] = (std::min)(b.lo[a], pos[a]); b.hi[a] = (std::max)(b.hi[a], pos[a]);
                 }
                 b.valid = true;
             }
@@ -225,7 +225,7 @@ bool build_prop_cull(gosPostProcess::VkPostHzbNative* s, uint32_t count) {
     // Only capacity growth replaces its storage/descriptors; retire every reader.
     vkDeviceWaitIdle(s->device);
     s->previousCount = 0; // the retired mask no longer supplies telemetry
-    s->cullCapacity = std::max(1024u, std::bit_ceil(count));
+    s->cullCapacity = (std::max)(1024u, std::bit_ceil(count));
     s->cullPool.reset(); s->projected.reset(); s->visibility.reset();
     if (!make_buffer(s, uint64_t(s->cullCapacity)*sizeof(ProjectedProp), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->projected, "hzb.projected") ||
         !make_buffer(s, uint64_t(s->cullCapacity+1)*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, s->visibility, "hzb.visibility")) return false;
@@ -671,7 +671,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     if (maskBuffer) *maskBuffer = nullptr;
     if (!hzbEnabled_ || !vkPostHzbNativeEnabled() || !maskBuffer || !feed.instances112 || !feed.count || feed.count > 131072) return false;
     int levels = 1;
-    for (int size = std::max(width_, height_); size > 1; size = (size+1)/2) ++levels;
+    for (int size = (std::max)(width_, height_); size > 1; size = (size+1)/2) ++levels;
     hzbW_ = width_; hzbH_ = height_; hzbMipCount_ = levels;
     if (!vkPostHzbNative_) vkPostHzbNative_.reset(new (std::nothrow) VkPostHzbNative());
     VkPostHzbNative* s = vkPostHzbNative_.get();
