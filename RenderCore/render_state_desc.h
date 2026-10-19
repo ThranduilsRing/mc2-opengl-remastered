@@ -96,7 +96,7 @@ static constexpr RenderStateDesc kPassRenderState[] = {
     // fbo: kPassFboTarget declares MainColor.
     {
         RenderPassId::StaticPropOpaque,
-        RenderCore::PipelineId::StaticPropOpaque,
+        RenderCore::PipelineId::Invalid,
         ColorMaskState::Inherit,
         DepthWriteState::On,
         DepthFuncState::SceneGEqual,

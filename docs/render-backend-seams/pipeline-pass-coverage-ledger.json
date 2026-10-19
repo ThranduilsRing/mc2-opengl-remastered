@@ -19,31 +19,31 @@
   ],
   "passes": {
     "StaticPropOpaque": {
-      "status": "ROUTED_BY_APPLYPIPELINE",
+      "status": "DESCRIPTIVE_REGISTERED",
       "renderPassId": "StaticPropOpaque",
       "pipelineId": "StaticPropOpaque",
       "shaderBase": "static_prop",
-      "stateOwner": "applyPipeline",
-      "evidence": "gos_static_prop_batcher.cpp applyPipeline(StaticPropOpaque) color pass",
-      "next": "visual_proven (static-prop SPIR-V was DIVERTED pending depth-parity gate)"
+      "stateOwner": "native Vulkan",
+      "evidence": "s67: native prop color owns the shared scene; GL fallback and depth-prepass draws removed after caller audit and unchanged native feeds.",
+      "next": "GL descriptor retained only as model metadata"
     },
     "StaticPropAlphaTest": {
       "status": "DESCRIPTIVE_REGISTERED",
       "renderPassId": "StaticPropOpaque",
       "pipelineId": "StaticPropAlphaTest",
       "shaderBase": "static_prop",
-      "stateOwner": "legacy/ad-hoc",
-      "evidence": "row exists; live color pass fetches the StaticPropOpaque desc (alpha = texture-array + shader discard, not GL state)",
-      "next": "route_applyPipeline (or keep descriptive \u2014 alpha split is not GL state)"
+      "stateOwner": "native Vulkan",
+      "evidence": "s67: native prop color owns the shared scene; GL fallback and depth-prepass draws removed after caller audit and unchanged native feeds.",
+      "next": "GL descriptor retained only as model metadata"
     },
     "StaticPropDepth": {
-      "status": "ROUTED_BY_APPLYPIPELINE",
+      "status": "DESCRIPTIVE_REGISTERED",
       "renderPassId": "StaticPropOpaque",
       "pipelineId": "StaticPropDepth",
       "shaderBase": "static_prop_depth",
-      "stateOwner": "applyPipeline",
-      "evidence": "gos_static_prop_batcher.cpp applyPipeline(StaticPropDepth) prepass (color masked by caller glColorMask)",
-      "next": "visual_proven"
+      "stateOwner": "native Vulkan",
+      "evidence": "s67: native prop color owns the shared scene; GL fallback and depth-prepass draws removed after caller audit and unchanged native feeds.",
+      "next": "GL descriptor retained only as model metadata"
     },
     "MechOpaque": {
       "status": "DESCRIPTIVE_REGISTERED",

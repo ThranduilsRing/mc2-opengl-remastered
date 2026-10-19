@@ -340,7 +340,8 @@ extern "C" void mc2_vk_overlay_submit(uint32_t kind, const void* verts, uint32_t
                                       const Mc2VkOverlayDraw* draws, uint32_t drawCount, uint64_t staticVersion) {
     if (!verts || vertCount == 0 || !draws || drawCount == 0) return;
     OvlPending p;
-    p.kind = (kind != 0) ? 1u : 0u;
+    if (kind > 2u) return;
+    p.kind = kind;
     p.vertCount = vertCount;
     p.draws.assign(draws, draws + drawCount);
     if (staticVersion != 0) {
@@ -378,7 +379,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     if (!mc2_terrain_tier1_get_frame_feed(&feed) || !feed.patches || feed.patchCount == 0) return 0;
 
     // ---- resolve textures (GL calls) and size the vertex streams BEFORE recording ----
-    struct Item { uint32_t first; uint32_t count; uint32_t kind; OvlTex* tex; };   // kind: bit0 decal, bit1 static stream
+    struct Item { uint32_t first; uint32_t count; uint32_t kind; OvlTex* tex; };   // kind: low two bits select overlay/decal/mine, bit2 static stream
     std::vector<Item> items;
     VkDeviceSize dynBytes = 0;
     for (const OvlPending& p : pending) if (!p.isStatic) dynBytes += (VkDeviceSize)p.vertCount * kOvlVertStride;
@@ -410,7 +411,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
             if (d.vertCount == 0 || d.firstVert + d.vertCount > p.vertCount) continue;
             OvlTex* t = ovl_get_tex(s, o, d.texHandle);
             if (!t) continue;                               // texture not resident yet: skip this frame
-            items.push_back({ base + d.firstVert, d.vertCount, p.kind | (p.isStatic ? 2u : 0u), t });
+            items.push_back({ base + d.firstVert, d.vertCount, p.kind | (p.isStatic ? 4u : 0u), t });
         }
     }
     if (items.empty()) return 0;
@@ -471,9 +472,13 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
 
     int boundKind = -1; int boundStatic = -1; VkDescriptorSet boundTex = VK_NULL_HANDLE;
     unsigned long drawn[2] = {0, 0}, verts = 0;
+    uint32_t mineDraws = 0;
     for (const Item& it : items) {
-        const int kind = (int)(it.kind & 1u);
-        const int isStat = (it.kind & 2u) ? 1 : 0;
+        const int sourceKind = static_cast<int>(it.kind & 3u);
+        const int kind = sourceKind == 1 ? 1 : 0;
+        pc._pad[0] = sourceKind == 2 ? 2 : 0;
+        vkCmdPushConstants(cb, o->playout.get(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
+        const int isStat = (it.kind & 4u) ? 1 : 0;
         if (kind != boundKind) { vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->pipe[kind].get()); boundKind = kind; }
         if (isStat != boundStatic) {
             VkBuffer vb = isStat ? o->stat.get() : vtxSpan.buffer;
@@ -487,6 +492,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
         }
         vkCmdDraw(cb, it.count, 1, it.first, 0);
         ++drawn[kind]; verts += it.count;
+        if (sourceKind == 2) ++mineDraws;
     }
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { o->disabled = true; return 0; }
@@ -499,6 +505,11 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     static bool s_firstOk = false;
     static unsigned long s_frames = 0;
     ++s_frames;
+    static bool mineWitness = false;
+    if (mineDraws && !mineWitness) {
+        vlog("[VK_TERRAIN_OVERLAY] native_mines draws=%u", mineDraws);
+        mineWitness = true;
+    }
     if (!s_firstOk) {
         vlog("[VK_TERRAIN_OVERLAY] first overlay co-write: overlay_draws=%lu decal_draws=%lu verts=%lu textures=%zu.",
              drawn[0], drawn[1], verts, o->texs.size());

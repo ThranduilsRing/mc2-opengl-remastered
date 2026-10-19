@@ -83,33 +83,6 @@ unsigned int gos_terrain_bridge_getThinShaderProgram();
 //   cloudOffsetX/Y     — base UV offset
 //   sprayOffsetX/Y     — detail UV offset
 //   maxMinUV           — UV wrap floor
-// [TERRAIN_SURFACE] PR-2 — continuous indexed-surface VALIDATION draw bridge.
-//
-// Plan: docs/superpowers/plans/.../terrain-continuous-surface-producer-plan.md
-// PR-2 (Wave 1, ADDITIVE / DEFAULT-OFF / DELETES NOTHING). Behind the
-// MC2_TERRAIN_SURFACE path-select kill-switch (gos_terrain_surface::IsEnabled);
-// a no-op when OFF (behaviour-neutral, no legacy path touched). When ON it
-// draws the V-ssbo continuous surface ON TOP of the still-running legacy/
-// indirect path for visual validation of the indexed VS + Fork D clip-space
-// pre-divide reverse-Z bias. Screen-agnostic: NO IsFrameSolidArmed() test for
-// existence (design Convergence C-1). Full GL state save/restore. PR-2 lands
-// NO deletion and NO legacy kill site -- that is PR-4.
-void gos_terrain_surface_bridge_draw();
-
-// PR2c Stage 2c — mine static-bake draw bridge.
-//
-// Called by gos_terrain_indirect::DrawMineStatic from the Render.TerrainMines
-// zone in txmmgr.cpp. Issues ONE glDrawArrays against the mission-static
-// MineStaticVBO, with the 2-layer mine sprite array bound at unit 5.
-// Per-frame work: zero CPU iteration, single draw call dispatch.
-//
-// Returns false if the mine_static program is not loaded or input is empty.
-// vertCount = total vertices to draw (6 per mine cell). vboGL = the
-// GL_ARRAY_BUFFER name. textureArrayGL = GL_TEXTURE_2D_ARRAY name (2 layers).
-bool gos_terrain_bridge_drawMineStatic(int          vertCount,
-                                       unsigned int vboGL,
-                                       unsigned int textureArrayGL);
-
 // Slice A — cement-overlay (decal) static-bake draw bridge.
 //
 // Called by gos_terrain_indirect::DrawDecalStatic from the

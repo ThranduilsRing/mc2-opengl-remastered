@@ -303,54 +303,6 @@ void gosRenderer::init() {
         fflush(stdout);
     }
 
-    // [TERRAIN_SURFACE] PR-2 — load the continuous indexed-surface program
-    // (gos_terrain_surface.vert + gos_terrain.frag, V-ssbo vertex-pull, no
-    // tess). #version provided by the prefix here; NEVER a #version line in
-    // the shader file (worktree CLAUDE.md). Shader hot-reload fails SILENTLY
-    // (bad compile -> old shader stays active) -- a failed compile here is a
-    // hard WARNING so the smoke log shows it; PR-2's automated gate greps the
-    // run log for shader compile errors.
-    {
-        ZoneScopedN("gosRenderer::init terrainSurfaceProg");
-        std::string kSurfacePrefix = "#version 430\n";
-        if (terrainNormalArrayEnabled())
-            kSurfacePrefix += "#define TERRAIN_NORMAL_ARRAY\n";
-        if (mc2ShadowStaticBandFixEnabled())
-            kSurfacePrefix += "#define MC2_SHADOW_STATIC_BANDFIX 1\n";
-        if (mc2ShadowStaticBandFixV2Enabled())
-            kSurfacePrefix += "#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n";
-        kSurfacePrefix += mc2TerrainShadowSunDefine();   // TERRAIN-SHADOW-GUARD-1
-        terrain_surface_prog_ = glsl_program::makeProgram(
-            "gos_terrain_surface",
-            "shaders/gos_terrain_surface.vert",
-            "shaders/gos_terrain.frag",
-            kSurfacePrefix.c_str());
-        if (!terrain_surface_prog_ || !terrain_surface_prog_->shp_)
-            MC2_DIAGFE(stderr, "[TERRAIN_SURFACE v1] event=shader_compile_fail "
-                            "vs=gos_terrain_surface.vert fs=gos_terrain.frag "
-                            "-- MC2_TERRAIN_SURFACE draw disabled\n");
-        else
-            MC2_DIAGF("[TERRAIN_SURFACE v1] event=shader_loaded prog=%u\n",
-                   (unsigned)terrain_surface_prog_->shp_);
-        fflush(stdout);
-    }
-
-    // PR2c Stage 2c — load mine static-bake program.
-    {
-        ZoneScopedN("gosRenderer::init mineStaticProg");
-        static const char* kMinePrefix = "#version 430\n";
-        mine_static_prog_ = glsl_program::makeProgram(
-            "gos_terrain_mine_static",
-            "shaders/gos_terrain_mine_static.vert",
-            "shaders/gos_terrain_mine_static.frag",
-            kMinePrefix);
-        if (!mine_static_prog_ || !mine_static_prog_->shp_)
-            mc2::fmt::print_err("[MINE_STATIC] WARNING: failed to compile mine static-bake shader — MC2_TERRAIN_INDIRECT_MINE=1 will be a no-op\n");
-        else
-            mc2::fmt::print_out("[MINE_STATIC] Mine static-bake shader loaded: prog={:d}\n", mc2::fmt::as_u32((unsigned)mine_static_prog_->shp_));
-        fflush(stdout);
-    }
-
     if (!TerrainPatchStream::init()) {
         // init_fail path lives in Task 2; for now this is dead code.
         MC2_DIAGFE(stderr, "[PATCH_STREAM v1] event=init_fail reason=task1_skeleton_returned_false\n");
