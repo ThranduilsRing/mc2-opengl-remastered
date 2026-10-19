@@ -186,7 +186,7 @@ extern TG_MultiShape testShape[36];
 extern TG_AnimateShape testAnim[36];
 extern long NumDisableAtStart;
 extern long DisableAtStart[MAX_KILL_AT_START];
-extern OptionsScreenWrapper *optionsScreenWrapper;
+extern std::unique_ptr<OptionsScreenWrapper> optionsScreenWrapper;
 extern bool bInvokeOptionsScreenFlag;
 extern bool SnifferMode;
 extern gos_VERTEX *testVertex;
@@ -252,5 +252,8 @@ extern std::unique_ptr<UserHeap> ownedSystemHeap;
 extern std::unique_ptr<UserHeap> ownedGuiHeap;
 extern std::unique_ptr<TimerManager> ownedTimerManager;
 extern std::unique_ptr<GameSoundSystem> ownedSoundSystem;
+
+extern std::unique_ptr<Mission> ownedMission;
+extern std::unique_ptr<Logistics> ownedLogistics;
 
 #endif // MECHCMD2_INTERNAL_H

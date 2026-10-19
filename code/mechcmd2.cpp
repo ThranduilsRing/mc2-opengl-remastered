@@ -160,7 +160,9 @@ glm::vec3 pos[36] =
 long NumDisableAtStart = 0;
 long DisableAtStart[MAX_KILL_AT_START];
 
-OptionsScreenWrapper *optionsScreenWrapper = nullptr;
+std::unique_ptr<OptionsScreenWrapper> optionsScreenWrapper;
+std::unique_ptr<Mission> ownedMission;
+std::unique_ptr<Logistics> ownedLogistics;
 bool bInvokeOptionsScreenFlag = false;
 
 bool SnifferMode = false;
@@ -1148,9 +1150,11 @@ void __stdcall InitializeGameEngine()
 		//---------------------------------------------------------
 		// Start the Mission, Scenario and Logistics classes here
 		{ ZoneScopedN("InitializeGameEngine missionLogistics");
-		mission = new Mission;
+		ownedMission = std::make_unique_for_overwrite<Mission>();
+		mission = ownedMission.get();
 		
-		logistics = new Logistics;
+		ownedLogistics = std::make_unique_for_overwrite<Logistics>();
+		logistics = ownedLogistics.get();
 		}
 	
 		{ ZoneScopedN("InitializeGameEngine debugWindow");

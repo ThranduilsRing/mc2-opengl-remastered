@@ -189,14 +189,14 @@ void __stdcall TerminateGameEngine()
 		if (mission)
 		{
 			mission->destroy(false);
-			delete mission;
+			ownedMission.reset();
 			mission = nullptr;
 		}
 
 		if (logistics)
 		{
 			logistics->destroy();
-			delete logistics;
+			ownedLogistics.reset();
 			logistics = nullptr;
 		}
 
@@ -205,7 +205,7 @@ void __stdcall TerminateGameEngine()
 		if (optionsScreenWrapper)
 		{
 			optionsScreenWrapper->destroy();
-			delete optionsScreenWrapper;
+			optionsScreenWrapper.reset();
 			optionsScreenWrapper = nullptr;
 		}
 
@@ -507,7 +507,7 @@ void __stdcall DoGameLogic()
 				{
 					if (!optionsScreenWrapper)
 					{
-						optionsScreenWrapper = new OptionsScreenWrapper;
+						optionsScreenWrapper = std::make_unique_for_overwrite<OptionsScreenWrapper>();
 						optionsScreenWrapper->init();
 					}
 					if (mission && mission->missionInterface && !mission->missionInterface->isPaused())
