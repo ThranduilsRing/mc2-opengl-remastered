@@ -46,10 +46,10 @@ Split commit: `f0521b300`.
 |---|---|
 | `gos_postprocess.cpp` | keeps the singleton, setters, init, scene begin/end and the viewmode/sky accessors |
 | `gos_postprocess_executor.cpp` | gosPostProcess: frame-graph executor ownership accessors, apply-state wrappers and counters. |
-| `gos_postprocess_fbo.cpp` | gosPostProcess: gosPostProcess teardown, resize, scene/post FBO creation and destruction, and the particle/VFX scene copies. |
 | `gos_postprocess_gates.cpp` | gosPostProcess: gate readers for the shared-scene, Vulkan tier-1 and shadow knobs, scene placeholder textures, and the skybox-fog and screen-shadow canary gates. |
 | `gos_postprocess_shadow.cpp` | gosPostProcess: shadow debug overlay, static and cascaded shadow maps and their light matrices. |
 | `gos_postprocess_skybox.cpp` | Native HDRI sky submission; the terrain pass draws it behind its depth. |
+| `gos_postprocess_targets.cpp` | Native scene-target ownership. Islands, presentation and explicit readbacks share these images; no parallel texture or framebuffer allocations exist. |
 | `gos_postprocess_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `GameOS/gameos/gos_static_prop_batcher.cpp`

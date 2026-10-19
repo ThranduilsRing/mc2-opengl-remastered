@@ -66,7 +66,7 @@ def parse_registry(text: str):
 
 def main() -> int:
     quiet = "--quiet" in sys.argv
-    for f in (REGISTRY, CONTRACTS, POSTPROC):
+    for f in (REGISTRY, CONTRACTS):
         if not f.exists():
             print(f"[drawbuf] ERROR missing: {f}", file=sys.stderr)
             return 2
