@@ -22,6 +22,7 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_image_resource.h"
+#include "vk_texture_residency.h"
 #include "vk_island_util.h"
 #include "vk_hdri_source.h"
 #include "vk_native_producers.h"   // STEP 3.4P: native compute producers
