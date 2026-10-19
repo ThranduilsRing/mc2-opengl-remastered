@@ -20,7 +20,7 @@ import configure_ninja as cn
 sys.path.insert(0, str(REPO_ROOT / "cmake"))
 import build_driver as bd
 
-# This migration index preserves named selection and coverage of all sixteen contracts.
+# This migration index preserves named selection and coverage of the active contracts.
 REGISTERED_HARNESSES = [
     "contract_smoke_harness",
     "shader_contract_harness",
@@ -37,7 +37,6 @@ REGISTERED_HARNESSES = [
     "terrain_daylight_harness",
     "object_light_row_harness",
     "class_light_band_harness",
-    "glstate_guard_harness",
 ]
 PY_HARNESSES = [
     "tools/deploy_asset_contract_harness/deploy_asset_contract_harness.py",

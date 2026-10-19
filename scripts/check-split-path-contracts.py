@@ -81,44 +81,18 @@ STAMPS_PATH = "scripts/split-path-stamps.json"
 #   fs-raw:     active reads are raw (the paired VS pre-swizzles)
 #   fs-dead:    declares Color but has no active read
 FS_CONVENTIONS = {
-    "shaders/gos_vertex.frag":            "fs-swizzle",
-    "shaders/gos_tex_vertex.frag":        "fs-swizzle",
-    "shaders/gos_vertex_lighted.frag":    "fs-swizzle",
-    "shaders/gos_terrain.frag":           "fs-swizzle",
-    # VK native water FS (rung 6.5 port of the MDI water reflection block):
-    # vertex light read is Color.bgra — same swizzle convention as its GL source.
-    "shaders/vulkan/water_geom.frag":     "fs-swizzle",
-    # decal program = terrain_overlay.vert + decal.frag (gameos_graphics.cpp
-    # makeProgram): the VS pre-swizzles (Color = colorIn.bgra), FS reads raw.
-    "shaders/decal.frag":                 "fs-raw",
-    # terrain_overlay.frag declares Color but no active read remains.
-    "shaders/terrain_overlay.frag":       "fs-dead",
-    # VK ports of terrain_overlay.frag / decal.frag. The shared VK VS
-    # (include/terrain_overlay_vs.glsl) pre-swizzles (Color = a_color.bgra); decal FS reads raw,
-    # overlay FS declares Color but (like its GL source) has no active read.
-    "shaders/vulkan/terrain_decal_tier1.frag":   "fs-raw",
+    "shaders/vulkan/water_geom.frag": "fs-swizzle",
+    "shaders/vulkan/terrain_decal_tier1.frag": "fs-raw",
     "shaders/vulkan/terrain_overlay_tier1.frag": "fs-dead",
-    # gos_text.frag: active read is Foreground; the Color read is commented out.
-    "shaders/gos_text.frag":              "fs-dead",
 }
 
 # Sibling families that must share ONE convention (the parity check: the
 # untextured member losing .bgra while the textured member keeps it).
-FS_FAMILIES = {
-    "gos_quad_fs": ["shaders/gos_vertex.frag",
-                    "shaders/gos_tex_vertex.frag",
-                    "shaders/gos_vertex_lighted.frag"],
-}
+FS_FAMILIES = {}  # The old quad shader family was retired by P9.
 
 # Known computed VS writes of `Color` WITHOUT .bgra that are certified
 # correct/neutral in current state: (file, normalized RHS, reason).
-KNOWN_VS_WRITES = [
-    ("shaders/gos_terrain_thin.vert", "unpackARGB(lrgb)",
-     "FROZEN current state: raw ARGB decode feeds gos_terrain.frag's .bgra "
-     "read; near-greyscale vertex light + terrainTextures2 alphaOverride "
-     "(0xffffffff) make the net R/B swap sub-visible. Flagged as follow-up "
-     "in split-path-pairs.md — do not certify for NEW writes."),
-]
+KNOWN_VS_WRITES = []  # Active native computed writes use the explicit swizzle.
 
 # Splat constants vec4(K) are swizzle-invariant (all lanes equal) — auto-pass.
 _NEUTRAL_SPLAT_RE = re.compile(r"vec4\(\s*-?[\d.]+\s*\)")
@@ -135,21 +109,17 @@ HGLSL_HEADER = "shaders/include/terrain_depth_bias.hglsl"
 CPP_HEADER = "mclib/terrain_depth_bias.h"
 
 # Identical-normalized-line symmetry set (RULE 2d).
-TESS_SYMMETRY_LINE = "clip.z += TERRAIN_DEPTH_FUDGE * clip.w;"
-TESS_SYMMETRY_FILES = ["shaders/gos_terrain.tese",
-                       "shaders/gos_terrain_surface.vert",
-                       "shaders/gos_terrain_thin.vert"]
+TESS_SYMMETRY_LINE = "clip.z += 2.0 * TERRAIN_DEPTH_FUDGE * clip.w;"
+TESS_SYMMETRY_FILES = ["shaders/vulkan/terrain_tier1.vert",
+                       "shaders/vulkan/terrain_tier1_skirt.vert"]
 
 # Enumerated pre-divide application sites (symbol pins, never line numbers).
 BIAS_APPLICATION_PINS = [
-    ("shaders/gos_terrain_surface.vert",       r"clip\.z \+= TERRAIN_DEPTH_FUDGE \* clip\.w"),
-    ("shaders/gos_terrain_thin.vert",          r"clip\.z \+= TERRAIN_DEPTH_FUDGE \* clip\.w"),
-    ("shaders/gos_terrain.tese",               r"clip\.z \+= TERRAIN_DEPTH_FUDGE \* clip\.w"),
-
-
-    ("shaders/mech.vert",                      r"clip\.z \+= OBJECT_DEPTH_BIAS \* clip\.w"),
-    ("shaders/static_prop.vert",               r"clip\.z \+= OBJECT_DEPTH_BIAS \* clip\.w"),
-    ("shaders/terrain_overlay.vert",           r"clip4\.z \+= OVERLAY_DEPTH_BIAS \* clip4\.w"),
+    ("shaders/vulkan/terrain_tier1.vert", r"clip\.z \+= 2\.0 \* TERRAIN_DEPTH_FUDGE \* clip\.w"),
+    ("shaders/vulkan/terrain_tier1_skirt.vert", r"clip\.z \+= 2\.0 \* TERRAIN_DEPTH_FUDGE \* clip\.w"),
+    ("shaders/vulkan/mech_tier1.vert", r"clip\.z \+= uFrame\.objectDepthBias \* clip\.w"),
+    ("shaders/vulkan/color_prop_tier1.vert", r"clip\.z \+= uFrame\.objectDepthBias \* clip\.w"),
+    ("shaders/vulkan/include/terrain_overlay_vs.glsl", r"clip4\.z \+= OVERLAY_DEPTH_BIAS \* clip4\.w"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -544,7 +514,7 @@ def rule2_depth(ctx: Ctx) -> list[str]:
                 "the same commit" % (rel, pat))
 
     # (d) tess/non-tess symmetry: byte-identical normalized line in all three.
-        want = normalize_ws(TESS_SYMMETRY_LINE)
+    want = normalize_ws(TESS_SYMMETRY_LINE)
     for rel in TESS_SYMMETRY_FILES:
         norm = _normalized(rel, ctx)
         if want not in norm:
@@ -725,24 +695,24 @@ def self_test() -> int:
         return EXIT_VIOLATION
 
     # RULE1: strip the .bgra off the untextured quad FS — the exact regression.
-    t = checklib.read_text("shaders/gos_vertex.frag").replace(
+    t = checklib.read_text("shaders/vulkan/water_geom.frag").replace(
         "Color.bgra", "Color")
     failures.append(("RULE1 #24 swizzle-drop",
-                     run_all(Ctx({"shaders/gos_vertex.frag": t}), True)))
+                     run_all(Ctx({"shaders/vulkan/water_geom.frag": t}), True)))
 
     # RULE2: local mirror drifts from the canonical header value.
-    t = checklib.read_text("shaders/terrain_lod_chunk.vert").replace(
+    t = checklib.read_text("shaders/vulkan/terrain_tier1.vert").replace(
         "const float TERRAIN_DEPTH_FUDGE = 0.0;",
         "const float TERRAIN_DEPTH_FUDGE = 0.5;")
     failures.append(("RULE2 mirror-value drift",
-                     run_all(Ctx({"shaders/terrain_lod_chunk.vert": t}), True)))
+                     run_all(Ctx({"shaders/vulkan/terrain_tier1.vert": t}), True)))
 
     # RULE2c: banned post-divide form reappears in a shader.
-    t = checklib.read_text("shaders/gos_terrain_surface.vert") + \
+    t = checklib.read_text("shaders/vulkan/terrain_tier1.vert") + \
         "\n// injected\nvoid bad(){ float rhw=1.0; float z; " \
         "z = 0.0; screen.z = clip.z*rhw + TERRAIN_DEPTH_FUDGE; }\n"
     failures.append(("RULE2c post-divide form",
-                     run_all(Ctx({"shaders/gos_terrain_surface.vert": t}), True)))
+                     run_all(Ctx({"shaders/vulkan/terrain_tier1.vert": t}), True)))
 
     # RULE3: a game TU consumes the raw tess token.
     failures.append(("RULE3 raw token", run_all(Ctx({

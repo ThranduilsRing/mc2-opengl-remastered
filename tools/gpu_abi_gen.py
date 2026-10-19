@@ -64,12 +64,9 @@ STRUCTS = [
 ]
 
 
-# Shaders that cannot #include the generated struct (the engine loads them as raw text)
-# and so carry a private, differently named mirror: (shader, mirror struct, GLSL struct
-# it mirrors). --check parses the mirror and compares it with the generated member list.
-MIRRORS = [
-    ("shaders/lightgrid_build.comp", "LG_ObjectLights", "ObjectLights"),
-]
+# Active native shaders include the generated ABI declarations directly.
+# Keep the mirror validator for offline fixtures; the last raw GL consumer retired.
+MIRRORS = []
 
 
 class AbiError(Exception):
