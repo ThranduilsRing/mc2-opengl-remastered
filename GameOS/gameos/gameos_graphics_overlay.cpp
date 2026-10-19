@@ -1,4 +1,4 @@
-// gameos_graphics: overlay texture trace, overlay and decal batches, uniform upload and the executor apply-state hooks.
+// Native overlay/decal batch queues and frame inputs; shared top-level GL axes adapter.
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
 #include "mc2fmt.h"

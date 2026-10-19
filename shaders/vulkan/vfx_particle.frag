@@ -71,7 +71,13 @@ void main() {
     o_normal = vec4(0.5,0.5,1.0,1.0);
         return;
     }
-    vec4 tex = (v_flags & 32u) != 0u ? vec4(1.0) : textureLod(uAtlas, v_uv, 0.0);
+    // The billboard sampler repeats; mesh/ribbon UVs retain their CLAMP_TO_EDGE policy.
+    vec2 uv = v_uv;
+    if ((v_flags & 12u) != 0u) {
+        vec2 edge = 0.5 / vec2(textureSize(uAtlas, 0));
+        uv = clamp(uv, edge, 1.0 - edge);
+    }
+    vec4 tex = (v_flags & 32u) != 0u ? vec4(1.0) : textureLod(uAtlas, uv, 0.0);
     if ((v_flags & 12u) != 0u) {
         vec4 c = tex * v_color;
         if ((v_flags & 8u) != 0u) {

@@ -3,6 +3,7 @@
 // record per vertex rather than the billboard's six procedural vertices.
 #pragma once
 #include <cstdint>
+#include <cstddef>
 #include "vulkan_vfx_island.h"
 
 inline constexpr uint32_t kVfxGeometryAtlas = 0xffffffffu;
@@ -29,3 +30,5 @@ struct VfxGeometryVertex {
     float extra[4]{};
 };
 static_assert(sizeof(VfxGeometryVertex) == 64);
+static_assert(offsetof(VfxGeometryVertex, color) == 16 && offsetof(VfxGeometryVertex, uv) == 32);
+static_assert(offsetof(VfxGeometryVertex, flags) == 44 && offsetof(VfxGeometryVertex, extra) == 48);

@@ -134,3 +134,19 @@ def test_fresh_exe_passes_in_ninja_tree(tmp_path):
     os.utime(b / "CMakeFiles" / "mc2.dir" / "code" / "a.cpp.obj", (now - 100, now - 100))
     os.utime(b / "mc2.exe", (now, now))
     dp.check_exe_fresh(str(b / "mc2.exe"), str(b), False)
+
+
+def test_missing_vegetation_card_refuses_deploy(tmp_path, monkeypatch, capsys):
+    # A clean deploy must carry the native atlas inputs rather than silently
+    # enabling vegetation against the old absent private atlas PNG.
+    b = _ninja_tree(tmp_path)
+    missing = os.path.normcase(os.path.abspath(ROOT / "data/vegetation/cards/fern_04.png"))
+    isfile = os.path.isfile
+    monkeypatch.setattr(dp.os.path, "isfile", lambda p:
+        False if os.path.normcase(os.path.abspath(p)) == missing else isfile(p))
+    try:
+        dp.enumerate_payload(str(ROOT), str(b), "mc2.exe", "mc2.pdb")
+    except SystemExit:
+        assert "game data payload missing" in capsys.readouterr().err
+        return
+    raise AssertionError("deploy accepted missing vegetation atlas input")

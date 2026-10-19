@@ -254,6 +254,7 @@ class gosRenderer {
         glsl_program* getThinTerrainProgram()      const { return thin_terrain_prog_;        }
         glsl_program* getTerrainSurfaceProgram()   const { return terrain_surface_prog_;     }
         glsl_program* getMineStaticProgram()       const { return mine_static_prog_;          }  // PR2c Stage 2c
+        glsl_program* getTerrainOverlayProgram()   const { return nullptr; } // Native Vulkan overlay has no GL program.
 
         // Water fast path (Stage 2 of renderWater architectural slice).
         // Issues 1-2 instanced draws against the WaterRecipe + WaterFrame SSBOs.

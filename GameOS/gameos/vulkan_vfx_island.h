@@ -4,7 +4,7 @@
 // scene GBuffer color0 as translucent, depth-tested (GEQUAL, no-write), colored
 // billboards textured with the group's sprite page (imported once from the texels
 // the GL path uploads) — the "weapon fire survives the VK umbrella" slice. The
-// tube-ribbon beams and the gosFX MESH shapes are the documented deferred remainder.
+// same owner also renders native mesh/ribbon geometry and alpha-tested vegetation.
 //
 // Consumed under #ifdef MC2_VULKAN_ISLAND from gos_particle_bridge.cpp.
 
@@ -15,7 +15,8 @@
 
 // One contiguous same-blend sub-range of the particle array (mirrors the fields
 // of mc2::particles::GroupInfo). start/count are in PARTICLES (the island
-// multiplies by 6 for the vertex draw range).
+// multiplies by 6 for billboards). Geometry mode sentinels and the 64-byte input
+// record are declared in vulkan_vfx_geometry.h; vegetation expands 36 vertices per instance.
 struct VfxParticleDraw {
     uint32_t start;      // index of first particle in the flat array
     uint32_t count;      // number of particles in this group
