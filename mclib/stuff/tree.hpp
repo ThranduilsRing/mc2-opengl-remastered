@@ -10,7 +10,7 @@
 #include"stuff.hpp"
 #include"node.hpp"
 #include"sortedsocket.hpp"
-#include"memoryblock.hpp"
+
 
 namespace Stuff {
 
@@ -64,10 +64,7 @@ namespace Stuff {
 		);
 		~TreeNodeOf();
 
-		void*
-			operator new(size_t);
-		void
-			operator delete(void *where);
+
 
 		V
 			GetValue()
@@ -77,20 +74,14 @@ namespace Stuff {
 				{return &value;}
 
 	private:
-		static MemoryBlock
-			*allocatedMemory;
-		static CollectionSize
-			allocationCount;
+
 
 		V value;
 	};
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~ TreeNodeOf templates ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	template <class V> MemoryBlock*
-		TreeNodeOf<V>::allocatedMemory = nullptr;
-	template <class V> CollectionSize
-		TreeNodeOf<V>::allocationCount = 0;
+
 
 	template <class V>
 		TreeNodeOf<V>::TreeNodeOf(
@@ -108,40 +99,9 @@ namespace Stuff {
 	{
 	}
 
-	template <class V> void*
-		TreeNodeOf<V>::operator new(size_t)
-	{
-		Verify(allocationCount >= 0);
-		if (allocationCount++ == 0)
-		{
-			allocatedMemory =
-				new MemoryBlock(
-					sizeof(TreeNodeOf<V>),
-					TreeNode_MemoryBlock_Allocation,
-					TreeNode_MemoryBlock_Allocation,
-					"Stuff::TreeNodeOf",
-					Stuff::ConnectionEngineHeap
-				);
-			Register_Object(allocatedMemory);
-		}
-		Verify(allocationCount < INT_MAX);
-		Check_Object(allocatedMemory);
-		return allocatedMemory->New();
-	}
 
-	template <class V> void
-		TreeNodeOf<V>::operator delete(void *where)
-	{
-		Check_Object(allocatedMemory);
-		allocatedMemory->Delete(where);
-		if (--allocationCount == 0)
-		{
-			Unregister_Object(allocatedMemory);
-			delete allocatedMemory;
-			allocatedMemory = nullptr;
-		}
-		Verify(allocationCount >= 0);
-	}
+
+
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Tree ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

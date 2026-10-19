@@ -33,21 +33,11 @@ bool isSetup = false;
 
 GameLogPtr GameLog::files[MAX_GAMELOGS] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
 
-void* GameLog::operator new (size_t mySize) {
 
-	void* result = nullptr;
-	
-	result = gos_Malloc(mySize);
-	
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void GameLog::operator delete (void* us) {
 
-	gos_Free(us);
-}
 
 //---------------------------------------------------------------------------
 

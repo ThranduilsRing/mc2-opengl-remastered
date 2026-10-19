@@ -4,16 +4,9 @@
 
 
 
-void* MoveMap::operator new (size_t ourSize) {
 
-	void* result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
-void MoveMap::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}	
 
 void MoveMap::init (long maxW, long maxH) {
 

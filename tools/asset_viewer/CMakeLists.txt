@@ -81,7 +81,6 @@ add_library(mc2_tglloader STATIC
     "${CMAKE_SOURCE_DIR}/mclib/stuff/random.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/scalar.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/vector4d.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/stuff/memoryblock.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/mstring.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/chain.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/hash.cpp"

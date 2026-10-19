@@ -702,16 +702,9 @@ void MOVE_cleanup (void) {
 	}
 }
 
-void* MissionMap::operator new (size_t ourSize) {
 
-	void* result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
-void MissionMap::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}	
 
 void MissionMap::init (long h, long w) {
 
@@ -1029,17 +1022,9 @@ void MissionMap::destroy (void) {
 
 // MOVE PATH class
 
-void* MovePath::operator new (size_t ourSize) {
 
-	void* result;
-	result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
-void MovePath::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}	
 
 long MovePath::init (long numberOfSteps) {
 

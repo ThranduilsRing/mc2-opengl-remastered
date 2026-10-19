@@ -9,7 +9,7 @@
 
 #include"stuff.hpp"
 #include"node.hpp"
-#include"memoryblock.hpp"
+
 
 namespace Stuff {
 
@@ -18,9 +18,7 @@ namespace Stuff {
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ChainLink ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	enum {
-		ChainLink_MemoryBlock_Allocation = 1000
-	};
+
 
 	class ChainLink : public Link
 	{
@@ -28,13 +26,7 @@ namespace Stuff {
 		friend class Chain;
 		friend class ChainIterator;
 
-		static void
-			InitializeClass(
-				size_t block_count = ChainLink_MemoryBlock_Allocation,
-				size_t block_delta = ChainLink_MemoryBlock_Allocation
-			);
-		static void
-			TerminateClass();
+
 
 	public:
 		~ChainLink();
@@ -54,16 +46,7 @@ namespace Stuff {
 			*nextChainLink,
 			*prevChainLink;
 
-	private:
-		static MemoryBlock
-	    	*AllocatedMemory;
 
-		void*
-			operator new(size_t)
-				{return AllocatedMemory->New();}
-		void
-			operator delete(void *where)
-				{AllocatedMemory->Delete(where);}
 	};
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Chain ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

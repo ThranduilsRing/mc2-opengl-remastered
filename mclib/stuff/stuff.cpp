@@ -83,7 +83,6 @@ void
 	Plug::InitializeClass();
 	Node::InitializeClass();
 
-	ChainLink::InitializeClass();
 
 	Random::InitializeClass();
 
@@ -143,7 +142,6 @@ void
 	//
 	Random::TerminateClass();
 
-	ChainLink::TerminateClass();
 
 	Node::TerminateClass();
 	Plug::TerminateClass();

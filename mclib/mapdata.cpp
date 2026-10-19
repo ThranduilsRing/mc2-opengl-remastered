@@ -135,22 +135,16 @@ static void fillWorldCacheVertex (Vertex& vertex, PostcompVertexPtr pVertex, lon
 	vertex.posTile = (tileR << 16) + (tileC & 0x0000ffff);
 }
 
-void *MapData::operator new (size_t mySize)
-{
-	void *result = Terrain::terrainHeap->Malloc(mySize);
-	return(result);
-}
+
 
 //---------------------------------------------------------------------------
-void MapData::operator delete (void *us)
-{
-	Terrain::terrainHeap->Free(us);
-}
+
 		
 //---------------------------------------------------------------------------
 void MapData::destroy (void)
 {
-	HeapManager::destroy();
+	std::free(blocks);
+	blocks = nullptr;
 
 	invalidateTerrainFaceCache();
 	// Stage 2 indirect-terrain: whole-map recipe invalidation on teardown.
@@ -167,21 +161,11 @@ void MapData::destroy (void)
 //---------------------------------------------------------------------------
 void MapData::newInit (long numVertices)
 {
-	if (heap)
+	if (blocks)
 		destroy();
-
-	long result = createHeap((numVertices+1) * sizeof(PostcompVertex));
-	gosASSERT(result == NO_ERR);
-
-	result = commitHeap();
-	gosASSERT(result == NO_ERR);
-
-	//-----------------------------------------------------------
-	// There is one (1) block of memory for the ENTIRE terrain now.
-	// Since we no longer cache any aspect of the terrain, this is
-	// FAR more efficient and easier to understand.
-	MemoryPtr start = getHeapPtr();
-	blocks = (PostcompVertexPtr)start;
+	// VirtualAlloc used to supply zero-filled storage, including the sentinel vertex.
+	blocks = static_cast<PostcompVertexPtr>(std::calloc(numVertices + 1, sizeof(PostcompVertex)));
+	gosASSERT(blocks != nullptr);
 
 	PostcompVertex* pTmp = blocks;
 

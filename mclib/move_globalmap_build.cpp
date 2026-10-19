@@ -53,16 +53,9 @@ static int readDoorLinksMCO(PacketFilePtr packetFile, int packetNum,
 }
 
 
-void* GlobalMap::operator new (size_t ourSize) {
 
-	void* result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
-void GlobalMap::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}
 
 // doors_links[d][side] is the pointer pair at index d; each pointer views a run of the door-link pool.
 DoorInfoLinksPtr* GlobalMap::ownDoorLinkViews (size_t count) {
