@@ -49,25 +49,25 @@
   "GameOS": {
    "LG01": 6,
    "LG02": 172,
-   "LG03": 259,
+   "LG03": 257,
    "LG04": 5,
    "LG05": 137,
-   "LG06": 496,
+   "LG06": 494,
    "LG07": 0,
    "LG08": 235,
-   "LG09": 1729,
-   "LG10": 40,
+   "LG09": 1662,
+   "LG10": 39,
    "LG11": 89,
    "LG12a": 88,
    "LG12b": 30,
-   "LG13": 318,
+   "LG13": 316,
    "LG14": 61,
    "LG15": 0,
    "LG16": 6,
    "LG17": 80,
    "LG18": 9,
    "LG19": 1,
-   "LG20": 12
+   "LG20": 8
   },
   "GuiRuntime": {
    "LG01": 0,
@@ -78,7 +78,7 @@
    "LG06": 12,
    "LG07": 2,
    "LG08": 1,
-   "LG09": 42,
+   "LG09": 41,
    "LG10": 2,
    "LG11": 1,
    "LG12a": 0,
@@ -228,7 +228,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 22
+   "LG20": 21
   },
   "tools": {
    "LG01": 0,
@@ -620,7 +620,7 @@
   "GameOS/gameos/gos_postprocess.cpp": {
    "LG06": 1,
    "LG09": 7,
-   "LG20": 8
+   "LG20": 4
   },
   "GameOS/gameos/gos_postprocess.h": {
    "LG06": 1
@@ -632,19 +632,12 @@
    "LG09": 20,
    "LG11": 2
   },
-  "GameOS/gameos/gos_postprocess_diag.cpp": {
-   "LG09": 23,
-   "LG10": 1
-  },
-  "GameOS/gameos/gos_postprocess_effects.cpp": {
-   "LG09": 9
-  },
   "GameOS/gameos/gos_postprocess_executor.cpp": {
    "LG09": 4
   },
   "GameOS/gameos/gos_postprocess_fbo.cpp": {
    "LG06": 1,
-   "LG09": 22
+   "LG09": 17
   },
   "GameOS/gameos/gos_postprocess_shadow.cpp": {
    "LG09": 2,
@@ -1195,19 +1188,13 @@
   "GameOS/gameos/vulkan_post_hzb_native.cpp": {
    "LG03": 1,
    "LG06": 2,
-   "LG09": 17,
+   "LG09": 18,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_post_screenfx_native.cpp": {
    "LG03": 3,
    "LG06": 3,
    "LG09": 34,
-   "LG13": 2
-  },
-  "GameOS/gameos/vulkan_post_ssao_native.cpp": {
-   "LG03": 2,
-   "LG06": 2,
-   "LG09": 31,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_shadow_island_live.cpp": {
@@ -1414,7 +1401,7 @@
    "LG20": 14
   },
   "GuiRuntime/GraphicsOptionsWindow_passes.cpp": {
-   "LG09": 13
+   "LG09": 12
   },
   "GuiRuntime/GraphicsOptionsWindow_terrain.cpp": {
    "LG09": 4
@@ -4704,7 +4691,7 @@
    "LG20": 1
   },
   "tests/unit/test_rendercore.cpp": {
-   "LG20": 3
+   "LG20": 2
   },
   "tests/unit/test_vfx_frozen_driver.cpp": {
    "LG20": 7
@@ -4726,7 +4713,7 @@
    "LG20": 3
   }
  },
- "head": "d0c00f0d5",
+ "head": "7ffe6c175",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

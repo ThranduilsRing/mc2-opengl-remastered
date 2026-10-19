@@ -15,11 +15,11 @@
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2900,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1749,
-  "GameOS/gameos/utils/shader_builder.cpp": 1542,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1750,
+  "GameOS/gameos/utils/shader_builder.cpp": 1538,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1763,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1544,
   "GameOS/include/gameos.hpp": 3730,
-  "RenderCore/RendererFeatureRegistry.h": 1641,
+  "RenderCore/RendererFeatureRegistry.h": 1610,
   "code/artlry.cpp": 1841,
   "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2770,
@@ -60,7 +60,7 @@
   "mclib/tgl.h": 1775,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "fc789e241",
+ "head": "7ffe6c175",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -69,7 +69,7 @@
    "max_lines": 485
   },
   "GameOS": {
-   "files": 362,
+   "files": 359,
    "files_over_1500": 6,
    "files_over_3000": 1,
    "max_lines": 3730
@@ -81,10 +81,10 @@
    "max_lines": 1153
   },
   "RenderCore": {
-   "files": 58,
+   "files": 59,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 1641
+   "max_lines": 1610
   },
   "RenderWorld": {
    "files": 8,
@@ -117,7 +117,7 @@
    "max_lines": 2599
   },
   "shaders": {
-   "files": 147,
+   "files": 138,
    "files_over_1500": 1,
    "files_over_3000": 0,
    "max_lines": 2096
@@ -250,7 +250,7 @@
   }
  ],
  "total": {
-  "files": 1877,
+  "files": 1866,
   "files_over_1500": 46,
   "files_over_3000": 1,
   "max_lines": 3730
