@@ -683,6 +683,7 @@ namespace gos_terrain_indirect {
 }  // namespace gos_terrain_indirect
 
 // Bridge accessors — declared extern in gameos_graphics.cpp.
+unsigned int gos_terrain_indirect_getAtlasSide() { return static_cast<unsigned int>(g_atlasSize); }
 float  gos_terrain_indirect_getNumTexturesAcross()     { return g_atlasNumTexturesAcross; }
 float  gos_terrain_indirect_getAtlasMapTopLeftX()      { return g_atlasMapTopLeftX; }
 float  gos_terrain_indirect_getAtlasMapTopLeftY()      { return g_atlasMapTopLeftY; }

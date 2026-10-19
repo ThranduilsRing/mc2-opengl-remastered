@@ -4,6 +4,8 @@
 #include "mc2fmt.h"
 #include "sim_substeps.h"
 #include "gos_host_vk.h"
+#include "terrain_field_store.h"
+#include "texture_decode.h"
 
 
 // Throttle while the window is invisible, then run the game logic and the event pumps.
@@ -476,7 +478,7 @@ void frameLoadRaceProbes() {
                 extern bool  g_loadRaceTerrainResidentNow;
                 extern long  g_loadRaceMechDegradeReal;
                 extern float scenarioTime;
-                extern GLuint gos_terrain_indirect_getAtlasGLTex();
+                extern GLuint gos_terrain_indirect_getAtlasSide();
                 // Frames to probe. Overridable via MC2_LOAD_RACE_PROBE_FRAMES
                 // (comma list) but defaults to the confirmed transient window.
                 static const std::vector<long> s_probeFrames = []{
@@ -494,7 +496,7 @@ void frameLoadRaceProbes() {
                     const long pf = s_probeFrames[s_nextProbe];
                     ++s_nextProbe;
 
-                    const GLuint atlasTex = gos_terrain_indirect_getAtlasGLTex();
+                    const GLuint atlasSide = gos_terrain_indirect_getAtlasSide();
                     const char* pathStr = (g_loadRaceLastTerrainPath == 1) ? "gpu-indirect"
                                         : (g_loadRaceLastTerrainPath == 2) ? "cpu-thin" : "none";
 
@@ -518,47 +520,42 @@ void frameLoadRaceProbes() {
                         glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
                     }
 
-                    // (b) Direct atlas-texel sample: attach the atlas to a scratch
-                    // FBO and read one texel. Skips (reports unreadable) when the
-                    // atlas is a compressed (BC7) format -- not color-renderable.
+                    // Sample retained atlas bytes; compressed images need only one BC7 block decoded.
                     unsigned char atlasTexel[4] = {0,0,0,0};
                     const char* atlasTexelStatus = "absent";
-                    if (atlasTex != 0) {
-                        GLint prevFbo = 0;
-                        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prevFbo);
-                        GLuint scratch = 0;
-                        glGenFramebuffers(1, &scratch);
-                        glBindFramebuffer(GL_READ_FRAMEBUFFER, scratch);
-                        glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                               GL_TEXTURE_2D, atlasTex, 0);
-                        if (glCheckFramebufferStatus(GL_READ_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) {
-                            glReadBuffer(GL_COLOR_ATTACHMENT0);
-                            // Read a mid-atlas texel (content-bearing, not an edge).
-                            GLint aw = 0, ah = 0;
-                            glBindTexture(GL_TEXTURE_2D, atlasTex);
-                            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &aw);
-                            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &ah);
-                            int ax = aw > 2 ? aw / 2 : 0;
-                            int ay = ah > 2 ? ah / 2 : 0;
-                            glReadPixels(ax, ay, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, atlasTexel);
-                            atlasTexelStatus = "ok";
-                        } else {
-                            atlasTexelStatus = "unreadable_compressed";
+                    if (const auto* fields = gos_TerrainFieldStore(); fields && atlasSide != 0) {
+                        const auto& cm = fields->colormapAtlas();
+                        const size_t ax = cm.width > 2 ? cm.width / 2 : 0;
+                        const size_t ay = cm.height > 2 ? cm.height / 2 : 0;
+                        if (cm.vkFormat == mc2tex::kVkFormatRgba8Unorm) {
+                            const size_t offset = (ay * cm.width + ax) * 4;
+                            if (offset + 4 <= cm.bytes.size()) {
+                                std::memcpy(atlasTexel, cm.bytes.data() + offset, 4);
+                                atlasTexelStatus = "ok";
+                            }
+                        } else if (cm.vkFormat == mc2tex::kVkFormatBc7Unorm || cm.vkFormat == mc2tex::kVkFormatBc7Srgb) {
+                            const size_t offset = ((ay / 4) * ((cm.width + 3) / 4) + ax / 4) * 16;
+                            if (offset + 16 <= cm.bytes.size()) {
+                                const std::vector<uint8_t> block(cm.bytes.begin() + offset, cm.bytes.begin() + offset + 16);
+                                const auto rgba = mc2tex::decodeBc7(block, 4, 4);
+                                if (rgba.size() == 64) {
+                                    std::memcpy(atlasTexel, rgba.data() + ((ay % 4) * 4 + ax % 4) * 4, 4);
+                                    atlasTexelStatus = "ok";
+                                }
+                            }
                         }
-                        glBindFramebuffer(GL_READ_FRAMEBUFFER, prevFbo);
-                        glDeleteFramebuffers(1, &scratch);
                     }
 
                     const char* fmt =
                         "LOADRACE probe: frame=%u probeFrame=%ld scenarioTime=%.2f "
-                        "terrain_path=%s atlasTex=%u atlas_first_frame=%ld "
+                        "terrain_path=%s atlasSide=%u atlas_first_frame=%ld "
                         "arm_first_frame=%ld terrain_first_resident_frame=%ld "
                         "terrain_resident=%s mech_degrade_real=%ld "
                         "scene_px0=%u,%u,%u scene_px1=%u,%u,%u scene_px2=%u,%u,%u "
                         "atlas_texel[%s]=%u,%u,%u,%u\n";
                     fprintf(stderr, fmt,
                         g_mc2FrameCounter, pf, scenarioTime,
-                        pathStr, (unsigned)atlasTex, g_loadRaceAtlasFirstFrame,
+                        pathStr, (unsigned)atlasSide, g_loadRaceAtlasFirstFrame,
                         g_loadRaceArmFirstFrame, g_loadRaceTerrainFirstResidentFrame,
                         g_loadRaceTerrainResidentNow ? "Y" : "N", g_loadRaceMechDegradeReal,
                         px[0][0],px[0][1],px[0][2], px[1][0],px[1][1],px[1][2], px[2][0],px[2][1],px[2][2],
@@ -566,7 +563,7 @@ void frameLoadRaceProbes() {
                     fflush(stderr);
                     printf(fmt,
                         g_mc2FrameCounter, pf, scenarioTime,
-                        pathStr, (unsigned)atlasTex, g_loadRaceAtlasFirstFrame,
+                        pathStr, (unsigned)atlasSide, g_loadRaceAtlasFirstFrame,
                         g_loadRaceArmFirstFrame, g_loadRaceTerrainFirstResidentFrame,
                         g_loadRaceTerrainResidentNow ? "Y" : "N", g_loadRaceMechDegradeReal,
                         px[0][0],px[0][1],px[0][2], px[1][0],px[1][1],px[1][2], px[2][0],px[2][1],px[2][2],
