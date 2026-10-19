@@ -299,7 +299,7 @@ MC_TextureManager::~MC_TextureManager (void)
 		if (lzBuffer1)
 		{
 			gosASSERT(lzBuffer2 != nullptr);
-			
+
 			{
 				std::free(lzBuffer1);
 				std::free(lzBuffer2);

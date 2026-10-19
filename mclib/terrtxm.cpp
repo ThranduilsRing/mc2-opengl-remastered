@@ -1794,7 +1794,7 @@ void TerrainTextures::destroy (void)
 
 	// tileHeap blocks (BUGS 53): the heap's destroy frees none of them. textures[] and details[] stay readable all mission
 	// (isCement, getTilingFactor), so they are released here and only here.
-	
+
 	{
 		if (textures)
 			std::free(textures);
