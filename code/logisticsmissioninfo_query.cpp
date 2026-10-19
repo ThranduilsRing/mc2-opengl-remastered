@@ -1,6 +1,7 @@
 // LogisticsMissionInfo: the per-mission accessors (purchase / operation files, videos, tune, flags) and the skip / multiplayer switches.
 // Declared in the class headers; shared names in logisticsmissioninfo_internal.h.
 #include "logisticsmissioninfo_internal.h"
+#include <utility>
 #include "mc2str.h"
 #include "objective.h"
 #include "team.h"
@@ -189,7 +190,7 @@ void		LogisticsMissionInfo::setMultiplayer()
 {
 	clear();
 	bMultiplayer = true;
-	groups = new MissionGroup[1];
+	groups = std::make_unique_for_overwrite<MissionGroup[]>(1);
 
 	currentStage = 0;
 
@@ -220,7 +221,7 @@ int			LogisticsMissionInfo::getAdditionalPurachaseFiles( const char** list, long
 		
 		for ( auto iter = additionalPurchaseFiles.begin(); iter != additionalPurchaseFiles.end(); ++iter )
 		{
-			list[i++] = *iter;	
+			list[i++] = iter->get();
 		}
 	}
 
@@ -233,10 +234,11 @@ void				LogisticsMissionInfo::addBonusPurchaseFile( const char* fileName )
 	if ( !fileName )
 		return;
 
-	char* pNewFile = new char[strlen( fileName )+1];
+	auto newFile = std::make_unique_for_overwrite<char[]>(strlen( fileName )+1);
+	char* pNewFile = newFile.get();
 	strcpy( pNewFile, fileName ); 
 
- 	additionalPurchaseFiles.push_back( pNewFile );
+	additionalPurchaseFiles.push_back( std::move(newFile) );
 	if (auto* observation = objectiveObservation(); observation && observation->dispatch) {
 		observation->technologies.push_back({pNewFile, observation->dispatch});
 		observation->SinkResult("technology", "queued", "accepted", objectiveObservationQuote(pNewFile));

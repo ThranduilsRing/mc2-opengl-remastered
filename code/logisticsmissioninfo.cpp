@@ -13,6 +13,7 @@ LogisticsMissionInfo.cpp			: Implementation of the LogisticsMissionInfo componen
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #include <memory>
+#include <utility>
 #include <optional>
 
 
@@ -63,12 +64,12 @@ void LogisticsMissionInfo::clear()
 			}
 		}
 
-		delete [] groups;
+		groups.reset();
 	}
 
 	for ( auto iter = additionalPurchaseFiles.begin(); iter != additionalPurchaseFiles.end(); ++iter )
 	{
-		delete[] *iter;
+		iter->reset();
 	}
 
 	additionalPurchaseFiles.clear();
@@ -126,7 +127,7 @@ long LogisticsMissionInfo::init( FitIniFile& file )
 
 
 	// create storage for 'em
-	groups = new MissionGroup[groupCount];
+	groups = std::make_unique_for_overwrite<MissionGroup[]>(groupCount);
 
 	currentStage = 0;
 
@@ -437,9 +438,9 @@ long LogisticsMissionInfo::load( FitIniFile& file )
 
 			if ( NO_ERR == file.readIdString( header, tmp, 255 ) )
 			{
-				char* pfName = new char[strlen( tmp )+1 ];
-				strcpy( pfName, tmp );
-				additionalPurchaseFiles.push_back( pfName );
+				auto pfName = std::make_unique_for_overwrite<char[]>(strlen( tmp )+1);
+				strcpy( pfName.get(), tmp );
+				additionalPurchaseFiles.push_back( std::move(pfName) );
 				i++;
 			}
 			else
@@ -503,7 +504,7 @@ void LogisticsMissionInfo::save( FitIniFile& file )
 	{
 		mc2::fmt::to_buf(header, "File{:d}", mc2::fmt::as_i32(i));
 
-		file.writeIdString( header, (*fIter) );
+		file.writeIdString( header, fIter->get() );
 		i++;
 	}
 
