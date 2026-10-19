@@ -86,7 +86,7 @@ int MPPrefs::init( FitIniFile& file )
 		if ( NO_ERR != tmpFile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", (const char*)path );
+			sprintf( error, "couldn't open file %s", static_cast<const char*>(path) );
 			Assert( 0, 0, error );
 			return -1;
 		}
@@ -292,7 +292,7 @@ void MPPrefs::update()
 
 	if ( newSel != oldSel && newSel != -1 )
 	{
-		aBmpListItem* pItem = (aBmpListItem*)(comboBox[2].ListBox().GetItem( newSel ));
+		aBmpListItem* pItem = static_cast<aBmpListItem*>((comboBox[2].ListBox().GetItem( newSel )));
 		const char* pName = pItem->getBmp();
 
 		MC2Player* pInfo = MPlayer->getPlayerInfo( MPlayer->commanderID );
@@ -316,7 +316,7 @@ void MPPrefs::update()
 		auto pData = std::make_unique_for_overwrite<unsigned char[]>(size);
 
 		file.read( pData.get(), size );
-		MPlayer->sendPlayerInsignia( (char*)pName, pData.get(), size );
+		MPlayer->sendPlayerInsignia( const_cast<char*>(pName), pData.get(), size );
 		MPlayer->insigniaList[MPlayer->commanderID] = 1;
 
 		pData.reset();
@@ -415,7 +415,7 @@ void MPPrefs::updateBaseColors( const MC2Player* players, long playerCount, bool
 					if ( MPlayer->colors[players[i].baseColor[BASECOLOR_PREFERENCE]] == rects[j].getColor() )
 					{
 						GUI_RECT rect = { (rects[j].globalX() - 1), (rects[j].globalY() - 1),
-							(long)rects[j].right(), (long)rects[j].bottom() };
+							static_cast<long>(rects[j].right()), static_cast<long>(rects[j].bottom()) };
 
 						if ( bDrawRect )
 							drawEmptyRect( rect, 0xffffffff, 0xffffffff );
@@ -459,7 +459,7 @@ void MPPrefs::updateStripeColors(const MC2Player* players, long playerCount, boo
 					if ( MPlayer->colors[players[i].stripeColor] == rects[j].getColor() )
 					{
 						GUI_RECT rect = { (rects[j].globalX() - 1), (rects[j].globalY() - 1),
-							(long)(rects[j].right()), (long)(rects[j].bottom()) };
+							static_cast<long>((rects[j].right())), static_cast<long>((rects[j].bottom())) };
 
 						if ( bDrawRect )
 							drawEmptyRect( rect, 0xffffffff, 0xffffffff );
@@ -603,7 +603,7 @@ void MPPrefs::saveSettings()
 	int index = comboBox[2].GetSelectedItem();
 	if ( index != -1 )
 	{
-		aBmpListItem* pItem = (aBmpListItem*)(comboBox[2].ListBox().GetItem( index ));
+		aBmpListItem* pItem = static_cast<aBmpListItem*>((comboBox[2].ListBox().GetItem( index )));
 		if ( pItem )
 		{
 			const char* pName = pItem->getBmp();
@@ -662,7 +662,7 @@ int aBmpListItem::setBmp( const char* pFileName )
 	File file;
 	if ( NO_ERR == file.open( path ) )
 	{
-		file.read( (BYTE*)&header, sizeof( header ) );
+		file.read( reinterpret_cast<BYTE*>(&header), sizeof( header ) );
 		if ( header.width != 32 || header.height != 32 || header.pixel_depth < 24 )
 			return 0;
 	}

@@ -266,11 +266,11 @@ char*				field;
 	if (result != NO_ERR)
 		return result;
 
-	messageInfoFile.readLine((MemoryPtr)dataLine, 511);	// skip title line
+	messageInfoFile.readLine(reinterpret_cast<MemoryPtr>(dataLine), 511);	// skip title line
 
 	for (long i=0; i<RADIO_MESSAGE_COUNT; i++)
 	{
-		result = messageInfoFile.readLine((MemoryPtr)dataLine, 511);
+		result = messageInfoFile.readLine(reinterpret_cast<MemoryPtr>(dataLine), 511);
 		if (!result)
 			Fatal(0, "Bad Message Info File");
 

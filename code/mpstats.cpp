@@ -39,7 +39,7 @@ int MPStats::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char buffer2[512];
-		sprintf( buffer2, "couldn't open file %s", (const char*)path );
+		sprintf( buffer2, "couldn't open file %s", static_cast<const char*>(path) );
 		Assert( 0, 0, buffer2 );
 		return false;	
 
@@ -69,8 +69,8 @@ int MPStats::init()
 
 int __cdecl sortStats( const void* pPlayer1, const void* pPlayer2 )
 {
-	MC2Player* player1 = *(MC2Player**)pPlayer1;
-	MC2Player* player2 = *(MC2Player**)pPlayer2;
+	MC2Player* player1 = *static_cast<MC2Player**>(const_cast<void*>(pPlayer1));
+	MC2Player* player2 = *static_cast<MC2Player**>(const_cast<void*>(pPlayer2));
 
 	
 	if ( player1->rank > player2->rank )
@@ -152,7 +152,7 @@ int MPStats::handleMessage( unsigned long what, unsigned long who )
 		status = NEXT;
 		end();
 		beginFadeOut(.5f);
-		statics[15].setTexture( (unsigned long)0 );
+		statics[15].setTexture( static_cast<unsigned long>(0) );
 		statics[15].setColor( 0 );
 	}
 
@@ -315,7 +315,7 @@ void MPStatsEntry::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char buffer2[512];
-		sprintf( buffer2, "couldn't open file %s", (const char*)path );
+		sprintf( buffer2, "couldn't open file %s", static_cast<const char*>(path) );
 		Assert( 0, 0, buffer2 );
 		return;	
 
@@ -440,7 +440,7 @@ void MPStatsResultsEntry::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char buffer2[512];
-		sprintf( buffer2, "couldn't open file %s", (const char*)path );
+		sprintf( buffer2, "couldn't open file %s", static_cast<const char*>(path) );
 		Assert( 0, 0, buffer2 );
 		return;	
 
@@ -521,11 +521,11 @@ void MPStatsResultsEntry::setData(const MC2Player* data, unsigned long laurelCol
 	}
 	else
 	{
-		TGAFileHeader*  pData = (TGAFileHeader*)MPlayer->insigniaList[data->commanderID];
+		TGAFileHeader*  pData = reinterpret_cast<TGAFileHeader*>(MPlayer->insigniaList[data->commanderID]);
 		if ( pData )
 		{
 			int size = pData->pixel_depth/8;
-			int ID = mcTextureManager->textureFromMemory( (DWORD*)(pData+1), gos_Texture_Solid, 0, pData->width, size  );
+			int ID = mcTextureManager->textureFromMemory( reinterpret_cast<DWORD*>((pData+1)), gos_Texture_Solid, 0, pData->width, size  );
 			statics[0].setTexture( ID );
 			statics[0].setUVs( 0, 32, 32, 0 );
 		}

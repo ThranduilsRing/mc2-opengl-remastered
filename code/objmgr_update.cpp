@@ -192,7 +192,7 @@ void g_invViewConflationRollAndMaybeEmit() {
     if (++g_invConfFrameCount % 120ULL == 0ULL) {
         // Avoid divide-by-zero in summary line.
         const unsigned long long denom = g_invConfActorFrames ? g_invConfActorFrames : 1ULL;
-        mc2::fmt::print_err("[INVIEW_CONFLATION v1] event=summary actor_frames={:d} render_vs_sim={:d} ({:.2f}%) render_vs_ai={:d} ({:.2f}%) sim_vs_ai={:d} ({:.2f}%) render_vs_life={:d} ({:.2f}%) sim_vs_life={:d} ({:.2f}%) life_vs_ai={:d} ({:.2f}%) movers={:d} statics={:d} mover_render_vs_ai={:d} hysteresis_N={:d}\n", mc2::fmt::as_u64(g_invConfActorFrames), mc2::fmt::as_u64(g_invConfRenderVsSim), 100.0 * (double)g_invConfRenderVsSim / (double)denom, mc2::fmt::as_u64(g_invConfRenderVsAi), 100.0 * (double)g_invConfRenderVsAi  / (double)denom, mc2::fmt::as_u64(g_invConfSimVsAi), 100.0 * (double)g_invConfSimVsAi     / (double)denom, mc2::fmt::as_u64(g_invConfRenderVsLife), 100.0 * (double)g_invConfRenderVsLife/ (double)denom, mc2::fmt::as_u64(g_invConfSimVsLife), 100.0 * (double)g_invConfSimVsLife   / (double)denom, mc2::fmt::as_u64(g_invConfLifeVsAi), 100.0 * (double)g_invConfLifeVsAi    / (double)denom, mc2::fmt::as_u64(g_invConfMovers), mc2::fmt::as_u64(g_invConfStatics), mc2::fmt::as_u64(g_invConfMoverRenderVsAi), mc2::fmt::as_u32((unsigned)s_inViewConflationHysteresisN));
+        mc2::fmt::print_err("[INVIEW_CONFLATION v1] event=summary actor_frames={:d} render_vs_sim={:d} ({:.2f}%) render_vs_ai={:d} ({:.2f}%) sim_vs_ai={:d} ({:.2f}%) render_vs_life={:d} ({:.2f}%) sim_vs_life={:d} ({:.2f}%) life_vs_ai={:d} ({:.2f}%) movers={:d} statics={:d} mover_render_vs_ai={:d} hysteresis_N={:d}\n", mc2::fmt::as_u64(g_invConfActorFrames), mc2::fmt::as_u64(g_invConfRenderVsSim), 100.0 * static_cast<double>(g_invConfRenderVsSim) / static_cast<double>(denom), mc2::fmt::as_u64(g_invConfRenderVsAi), 100.0 * static_cast<double>(g_invConfRenderVsAi)  / static_cast<double>(denom), mc2::fmt::as_u64(g_invConfSimVsAi), 100.0 * static_cast<double>(g_invConfSimVsAi)     / static_cast<double>(denom), mc2::fmt::as_u64(g_invConfRenderVsLife), 100.0 * static_cast<double>(g_invConfRenderVsLife)/ static_cast<double>(denom), mc2::fmt::as_u64(g_invConfSimVsLife), 100.0 * static_cast<double>(g_invConfSimVsLife)   / static_cast<double>(denom), mc2::fmt::as_u64(g_invConfLifeVsAi), 100.0 * static_cast<double>(g_invConfLifeVsAi)    / static_cast<double>(denom), mc2::fmt::as_u64(g_invConfMovers), mc2::fmt::as_u64(g_invConfStatics), mc2::fmt::as_u64(g_invConfMoverRenderVsAi), mc2::fmt::as_u32(static_cast<unsigned>(s_inViewConflationHysteresisN)));
         fflush(stderr);
         g_invConfActorFrames     = 0ULL;
         g_invConfRenderVsSim     = 0ULL;
@@ -408,7 +408,7 @@ void GameObjectManager::updateDestroyTestHook() {
 	// getenv + integer compare, no behavior change.
 	{
 		static const long s_destroyTestFrame = static_cast<long>(mc2::gate::get<"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME">());
-		if (s_destroyTestFrame >= 0 && (long)g_mc2FrameCounter == s_destroyTestFrame) {
+		if (s_destroyTestFrame >= 0 && static_cast<long>(g_mc2FrameCounter) == s_destroyTestFrame) {
 			for (long bi = 0; bi < numBuildings; ++bi) {
 				BuildingPtr b = buildings[bi];
 				if (!b || b->isDestroyed() || !b->getExists()) continue;
@@ -723,7 +723,7 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
 		if (specialBuildings[spBuilding] && specialBuildings[spBuilding]->getExists())
 		{
 			long updateRet_instr = specialBuildings[spBuilding]->update();
-			specialBuildings[spBuilding]->lastUpdateRet = (int32_t)updateRet_instr;
+			specialBuildings[spBuilding]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 			if (!updateRet_instr)
 			{
 				//-----------------------------------------
@@ -749,7 +749,7 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
 		if (gates[nGates] && gates[nGates]->getExists())
 		{
 			long updateRet_instr = gates[nGates]->update();
-			gates[nGates]->lastUpdateRet = (int32_t)updateRet_instr;
+			gates[nGates]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 			if (!updateRet_instr)
 			{
 				//-----------------------------------------
@@ -833,7 +833,7 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
 						}
 						else if (objectClass == TERRAINOBJECT)
 						{
-							TerrainObjectTypePtr terrainType = (TerrainObjectTypePtr)objType;
+							TerrainObjectTypePtr terrainType = static_cast<TerrainObjectTypePtr>(objType);
 							isTreeCandidate = (terrainType->subType == TERROBJ_TREE);
 						}
 						else if ((objectClass == BUILDING) && (isPineAppearance || skipStaticBuildings))
@@ -1079,7 +1079,7 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
 					{
 						ZoneScopedN("GOM.TerrainObjects.ObjUpdate");
 						long updateRet_instr = objList[objIndex]->update();
-						objList[objIndex]->lastUpdateRet = (int32_t)updateRet_instr;
+						objList[objIndex]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 						if (!updateRet_instr)
 						{
 							//-----------------------------------------
@@ -1198,7 +1198,7 @@ void GameObjectManager::updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long
 			if (mover && mover->getExists())
 			{
 				long updateRet_instr = mover->update();
-				mover->lastUpdateRet = (int32_t)updateRet_instr;
+				mover->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
 					MC2_DESTROY(mover, "update_false");
 				if (mover->getFlag(OBJECT_FLAG_REMOVED))
@@ -1221,7 +1221,7 @@ void GameObjectManager::updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long
 			if (mover && mover->getExists())
 			{
 				long updateRet_instr = mover->update();
-				mover->lastUpdateRet = (int32_t)updateRet_instr;
+				mover->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
 					MC2_DESTROY(mover, "update_false");
 				if (mover->getFlag(OBJECT_FLAG_REMOVED))
@@ -1298,7 +1298,7 @@ void GameObjectManager::updateOtherFx() {
 			if (turrets[i] && turrets[i]->getExists())
 			{
 				long updateRet_instr = turrets[i]->update();
-				turrets[i]->lastUpdateRet = (int32_t)updateRet_instr;
+				turrets[i]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
 					MC2_DESTROY(turrets[i], "update_false");
 				// C0-3: emit after update() so inView is fresh; gated on getExists()
@@ -1313,7 +1313,7 @@ void GameObjectManager::updateOtherFx() {
 		for (long i=0;i<numWeapons;i++) {
 			if (weapons[i] && weapons[i]->getExists()) {
 				long updateRet_instr = weapons[i]->update();
-				weapons[i]->lastUpdateRet = (int32_t)updateRet_instr;
+				weapons[i]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (combatTraceEnabled) {
 					weapons[i]->traceCombat("position", "post_update");
 					if (!updateRet_instr)
@@ -1330,7 +1330,7 @@ void GameObjectManager::updateOtherFx() {
 		for (long i = 0; i < numCarnage; i++) {
 			if (carnage[i] && carnage[i]->getExists()) {
 				long updateRet_instr = carnage[i]->update();
-				carnage[i]->lastUpdateRet = (int32_t)updateRet_instr;
+				carnage[i]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (combatTraceEnabled) {
 					carnage[i]->traceCombat("position", "post_update");
 					if (!updateRet_instr)
@@ -1347,7 +1347,7 @@ void GameObjectManager::updateOtherFx() {
 		for (long i = 0; i < numLights; i++) {
 			if (lights[i] && lights[i]->getExists()) {
 				long updateRet_instr = lights[i]->update();
-				lights[i]->lastUpdateRet = (int32_t)updateRet_instr;
+				lights[i]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
 					MC2_DESTROY(lights[i], "update_false");
 			}
@@ -1358,7 +1358,7 @@ void GameObjectManager::updateOtherFx() {
 		for (long i = 0; i < numArtillery; i++) {
 			if (artillery[i] && artillery[i]->getExists()) {
 				long updateRet_instr = artillery[i]->update();
-				artillery[i]->lastUpdateRet = (int32_t)updateRet_instr;
+				artillery[i]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
 					MC2_DESTROY(artillery[i], "update_false");
 			}

@@ -278,7 +278,7 @@ static bool MoverIsDeadOrDisabled(const long pMoverWID)
 {
 	bool retval = false;
 
-	Mover *pMover = (MoverPtr)ObjectManager->getByWatchID(pMoverWID);
+	Mover *pMover = static_cast<MoverPtr>(ObjectManager->getByWatchID(pMoverWID));
 	assert(pMover);
 
 	if (pMover->isDisabled() || pMover->isDestroyed()) {
@@ -345,7 +345,7 @@ static bool MoverIsCaptured(const MoverPtr pMover, const long teamID) {
 
 static bool MoverIsCaptured(const long pMoverWID, const long teamID) 
 {
-	Mover *pMover = (MoverPtr)ObjectManager->getByWatchID(pMoverWID);
+	Mover *pMover = static_cast<MoverPtr>(ObjectManager->getByWatchID(pMoverWID));
 	assert(pMover);
 
 	bool retval = false;
@@ -367,7 +367,7 @@ static bool MoverIsCaptured(const long pMoverWID, const long teamID)
 static long sReadIdFloat(FitIniFile* missionFile, const char *varName, float &value) {
 	long result = 0;
 	float tmpFloat;
-	result = missionFile->readIdFloat((char *)varName, tmpFloat);
+	result = missionFile->readIdFloat(const_cast<char *>(varName), tmpFloat);
 	if (NO_ERR != result) {
 		//assert(false);
 	} else {
@@ -379,7 +379,7 @@ static long sReadIdFloat(FitIniFile* missionFile, const char *varName, float &va
 static long sReadIdBoolean(FitIniFile* missionFile, const char *varName, bool &value) {
 	long result = 0;
 	bool tmpBool;
-	result = missionFile->readIdBoolean((char *)varName, tmpBool);
+	result = missionFile->readIdBoolean(const_cast<char *>(varName), tmpBool);
 	if (NO_ERR != result) {
 		//assert(false);
 	} else {
@@ -391,7 +391,7 @@ static long sReadIdBoolean(FitIniFile* missionFile, const char *varName, bool &v
 static long sReadIdWholeNum(FitIniFile* missionFile, const char *varName, int &value) {
 	long result = 0;
 	unsigned long tmpULong;
-	result = missionFile->readIdULong((char *)varName, tmpULong);
+	result = missionFile->readIdULong(const_cast<char *>(varName), tmpULong);
 	if (NO_ERR != result) {
 		//assert(false);
 	} else {
@@ -403,7 +403,7 @@ static long sReadIdWholeNum(FitIniFile* missionFile, const char *varName, int &v
 static long sReadIdLongInt(FitIniFile* missionFile, const char *varName, int &value) {
 	long result = 0;
 	long tmpLong;
-	result = missionFile->readIdLong((char *)varName, tmpLong);
+	result = missionFile->readIdLong(const_cast<char *>(varName), tmpLong);
 	if (NO_ERR != result) {
 		//assert(false);
 	} else {
@@ -554,7 +554,7 @@ bool CSpecificStructureObjectiveCondition::Read( FitIniFile* missionFile )
 
 objective_status_type CDestroySpecificStructure::Status() 
 {
-	Building *m_pBuilding = (Building *)ObjectManager->getByWatchID(m_pBuildingWID);
+	Building *m_pBuilding = static_cast<Building *>(ObjectManager->getByWatchID(m_pBuildingWID));
 	if (m_pBuilding->isDestroyed()) {
 		return OS_SUCCESSFUL;
 	} else {
@@ -634,7 +634,7 @@ bool CCaptureOrDestroySpecificEnemyUnit::Read( FitIniFile* missionFile )
 
 objective_status_type CCaptureOrDestroySpecificEnemyUnit::Status() 
 {
-	MoverPtr m_pUnit = (MoverPtr)ObjectManager->getByWatchID(m_pUnitWID);
+	MoverPtr m_pUnit = static_cast<MoverPtr>(ObjectManager->getByWatchID(m_pUnitWID));
 	assert(m_pUnit);
 	if (MoverIsDeadOrDisabled(m_pUnit)|| MoverIsCaptured(m_pUnit, Alignment())/*redundant?*/) {
 		return OS_SUCCESSFUL;
@@ -679,7 +679,7 @@ bool CCaptureOrDestroySpecificStructure::Read( FitIniFile* missionFile )
 
 objective_status_type CCaptureOrDestroySpecificStructure::Status() 
 {
-	Building* m_pBuilding = (Building *)ObjectManager->getByWatchID(m_pBuildingWID);
+	Building* m_pBuilding = static_cast<Building *>(ObjectManager->getByWatchID(m_pBuildingWID));
 	if (m_pBuilding->isDestroyed()) 
 	{
 		return OS_SUCCESSFUL;
@@ -728,7 +728,7 @@ objective_status_type CDeadOrFledNumberOfEnemyUnits::Status() {
 
 objective_status_type CDeadOrFledSpecificEnemyUnit::Status() 
 {
-	MoverPtr m_pUnit = (MoverPtr)ObjectManager->getByWatchID(m_pUnitWID);
+	MoverPtr m_pUnit = static_cast<MoverPtr>(ObjectManager->getByWatchID(m_pUnitWID));
 	assert(m_pUnit);
 	if (MoverIsDeadOrDisabledOrFled(m_pUnit)) {
 		return OS_SUCCESSFUL;
@@ -773,7 +773,7 @@ bool CCaptureUnit::Read( FitIniFile* missionFile )
 
 objective_status_type CCaptureUnit::Status() 
 {
-	MoverPtr m_pUnit = (MoverPtr)ObjectManager->getByWatchID(m_pUnitWID);
+	MoverPtr m_pUnit = static_cast<MoverPtr>(ObjectManager->getByWatchID(m_pUnitWID));
 
 	if (!m_pUnit || m_pUnit->isDestroyed()) 
 	{
@@ -827,7 +827,7 @@ bool CCaptureStructure::Read( FitIniFile* missionFile )
 
 objective_status_type CCaptureStructure::Status() 
 {
-	Building *m_pBuilding = (Building *)ObjectManager->getByWatchID(m_pBuildingWID);
+	Building *m_pBuilding = static_cast<Building *>(ObjectManager->getByWatchID(m_pBuildingWID));
 	if (m_pBuilding->isDestroyed()) 
 	{
 		return OS_FAILED;
@@ -877,7 +877,7 @@ bool CGuardSpecificUnit::Read( FitIniFile* missionFile )
 
 objective_status_type CGuardSpecificUnit::Status() 
 {
-	Mover *m_pUnit = (Mover *)ObjectManager->getByWatchID(m_pUnitWID);
+	Mover *m_pUnit = static_cast<Mover *>(ObjectManager->getByWatchID(m_pUnitWID));
 
 	if (m_pUnit->isDestroyed()) {
 		return OS_FAILED;
@@ -890,7 +890,7 @@ objective_status_type CGuardSpecificUnit::Status()
 
 objective_status_type CGuardSpecificStructure::Status() 
 {
-	Building *m_pBuilding = (Building *)ObjectManager->getByWatchID(m_pBuildingWID);
+	Building *m_pBuilding = static_cast<Building *>(ObjectManager->getByWatchID(m_pBuildingWID));
 	if (m_pBuilding->isDestroyed()) 
 	{
 		return OS_FAILED;
@@ -1363,7 +1363,7 @@ std::unique_ptr<CObjectiveCondition> CObjective::new_CObjectiveCondition(conditi
 		// species with no factory case (e.g. *_ENEMY_UNIT_GROUP). assert() is a
 		// no-op in RelWithDebInfo, so this silently returned null -> null-deref at
 		// the CastAndCopy consumers. Warn loudly; consumers now null-guard.
-		PAUSE(("CObjective: unimplemented condition species %d (skipping)", (int)conditionSpecies));
+		PAUSE(("CObjective: unimplemented condition species %d (skipping)", static_cast<int>(conditionSpecies)));
 		retval = nullptr;
 		break;
 	}
@@ -1539,26 +1539,26 @@ void CObjective::Alignment(int alignment) {
 static condition_species_type ConditionSpeciesMap(const char *speciesString) {
 	condition_species_type retval = DESTROY_ALL_ENEMY_UNITS;
 	int i;
-	for (i = 0; i < (int)NUM_CONDITION_SPECIES; i += 1) {
+	for (i = 0; i < static_cast<int>(NUM_CONDITION_SPECIES); i += 1) {
 		if (0 == strcmp(speciesString, g_conditionSpeciesStringArray[i])) {
 			retval = (condition_species_type)i;
 			break;
 		}
 	}
-	assert(i < (int)NUM_CONDITION_SPECIES);
+	assert(i < static_cast<int>(NUM_CONDITION_SPECIES));
 	return retval;
 }
 
 static action_species_type ActionSpeciesMap(const char *speciesString) {
 	action_species_type retval = PLAY_BIK;
 	int i;
-	for (i = 0; i < (int)NUM_ACTION_SPECIES; i += 1) {
+	for (i = 0; i < static_cast<int>(NUM_ACTION_SPECIES); i += 1) {
 		if (0 == strcmp(speciesString, g_actionSpeciesStringArray[i])) {
 			retval = (action_species_type)i;
 			break;
 		}
 	}
-	assert(i < (int)NUM_ACTION_SPECIES);
+	assert(i < static_cast<int>(NUM_ACTION_SPECIES));
 	return retval;
 }
 
@@ -2150,7 +2150,7 @@ void CObjective::RenderOverviewMarker( Camera* eye, float alpha )
 	float sx = vax + ( r.clip.x / r.clip.w * 0.5f + 0.5f ) * vmx;
 	float sy = vay + ( 1.0f - ( r.clip.y / r.clip.w * 0.5f + 0.5f ) ) * vmy;
 
-	unsigned long aByte = (unsigned long)( alpha * 255.0f );
+	unsigned long aByte = static_cast<unsigned long>(( alpha * 255.0f ));
 	if ( aByte > 255 ) aByte = 255;
 	const unsigned long fg = ( aByte << 24 ) | 0x00ffe600; // warm yellow, cross-faded
 	const unsigned long bg = ( aByte << 24 ) | 0x00000000; // black shadow
@@ -2162,7 +2162,7 @@ void CObjective::RenderOverviewMarker( Camera* eye, float alpha )
 	bool prevExempt = gos_GetHudScaleExempt();
 	gos_SetHudScaleExempt( true );
 	drawShadowText( fg, bg, s_markerFont->getTempHandle(),
-	                (long)( sx - width / 2 ), (long)( sy - height / 2 ),
+	                static_cast<long>(( sx - width / 2 )), static_cast<long>(( sy - height / 2 )),
 	                true, m_markerText, 0, s_markerFont->getSize(), -2, 2 );
 	gos_SetHudScaleExempt( prevExempt );
 }
@@ -2219,7 +2219,7 @@ int C_RemoveStructure::Execute()
 	ludicrousPos.y = 100000.f;
 	ludicrousPos.z = 100000.f;
 
-	Building * m_pBuilding = (Building *)ObjectManager->getByWatchID(m_pBuildingWID);
+	Building * m_pBuilding = static_cast<Building *>(ObjectManager->getByWatchID(m_pBuildingWID));
 	m_pBuilding->position = ludicrousPos;
 	m_pBuilding->update();
 	if (objectiveObservationEnabled()) {
@@ -2362,7 +2362,7 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 	file->writeIdBoolean( "IsActive", m_isActive );
 	file->writeIdFloat( "ActivationTime", m_activationTime );
 	file->writeIdBoolean( "IsResolved", m_resolved );
-	file->writeIdLong( "ResolvedStatus", (int)m_resolvedStatus );
+	file->writeIdLong( "ResolvedStatus", static_cast<int>(m_resolvedStatus) );
 	file->writeIdBoolean( "ChangedStatus", m_changedStatus );
 	/*end state data*/
 
@@ -2370,8 +2370,8 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 		int i = 0;
 		for (auto* const pItem : m_conditionList) {
 			file->writeBlock( std::format("Team{}Objective{}Condition{}", Alignment(), objectiveNum, i).c_str() );
-			file->writeIdULong( "ConditionSpecies", (unsigned long)pItem->Species());
-			file->writeIdString( "ConditionSpeciesString", g_conditionSpeciesStringArray[(int)pItem->Species()]);
+			file->writeIdULong( "ConditionSpecies", static_cast<unsigned long>(pItem->Species()));
+			file->writeIdString( "ConditionSpeciesString", g_conditionSpeciesStringArray[static_cast<int>(pItem->Species())]);
 			pItem->Save(file);
 			i += 1;
 		}
@@ -2381,8 +2381,8 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 		int i = 0;
 		for (auto* const pItem : m_actionList) {
 			file->writeBlock( std::format("Team{}Objective{}Action{}", Alignment(), objectiveNum, i).c_str() );
-			file->writeIdULong( "ActionSpecies", (unsigned long)pItem->Species());
-			file->writeIdString( "ActionSpeciesString", g_actionSpeciesStringArray[(int)pItem->Species()]);
+			file->writeIdULong( "ActionSpecies", static_cast<unsigned long>(pItem->Species()));
+			file->writeIdString( "ActionSpeciesString", g_actionSpeciesStringArray[static_cast<int>(pItem->Species())]);
 			pItem->Save(file);
 			i += 1;
 		}
@@ -2392,8 +2392,8 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 		int i = 0;
 		for (auto* const pItem : m_failureConditionList) {
 			file->writeBlock( std::format("Team{}Objective{}FailureCondition{}", Alignment(), objectiveNum, i).c_str() );
-			file->writeIdULong( "FailureConditionSpecies", (unsigned long)pItem->Species());
-			file->writeIdString( "FailureConditionSpeciesString", g_conditionSpeciesStringArray[(int)pItem->Species()]);
+			file->writeIdULong( "FailureConditionSpecies", static_cast<unsigned long>(pItem->Species()));
+			file->writeIdString( "FailureConditionSpeciesString", g_conditionSpeciesStringArray[static_cast<int>(pItem->Species())]);
 			pItem->Save(file);
 			i += 1;
 		}
@@ -2403,8 +2403,8 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 		int i = 0;
 		for (auto* const pItem : m_failureActionList) {
 			file->writeBlock( std::format("Team{}Objective{}FailureAction{}", Alignment(), objectiveNum, i).c_str() );
-			file->writeIdULong( "FailureActionSpecies", (unsigned long)pItem->Species());
-			file->writeIdString( "FailureActionSpeciesString", g_actionSpeciesStringArray[(int)pItem->Species()]);
+			file->writeIdULong( "FailureActionSpecies", static_cast<unsigned long>(pItem->Species()));
+			file->writeIdString( "FailureActionSpeciesString", g_actionSpeciesStringArray[static_cast<int>(pItem->Species())]);
 			pItem->Save(file);
 			i += 1;
 		}

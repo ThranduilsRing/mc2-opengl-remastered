@@ -93,7 +93,7 @@ void* ObjectType::operator new (size_t ourSize) {
 void ObjectType::operator delete (void* us) {
 
 	// G6: the guard is kept exactly as it was (read after the destructor ran); retirement of in-use types is the manager's.
-	if (!((ObjectTypePtr)us)->inUse()) {
+	if (!(static_cast<ObjectTypePtr>(us))->inUse()) {
 		::operator delete(us);
 	}
 }
@@ -305,7 +305,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 	dynamicFrameTiming = false;
 
 	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes)) {
-		PAUSE((" ObjectTypeManager.load: bad objTypeNum %d (max %d) — mod content; returning NULL ", (int)objTypeNum, (int)numObjectTypes));
+		PAUSE((" ObjectTypeManager.load: bad objTypeNum %d (max %d) — mod content; returning NULL ", static_cast<int>(objTypeNum), static_cast<int>(numObjectTypes)));
 		return nullptr;
 	}
 
@@ -398,7 +398,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			objType = new TerrainObjectType;
 			objType->setObjTypeNum(objTypeNum);
 			if (isMiscTerrObj)
-				((TerrainObjectTypePtr)objType)->initMiscTerrObj(objTypeNum);
+				(static_cast<TerrainObjectTypePtr>(objType))->initMiscTerrObj(objTypeNum);
 			else if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
 				Fatal(objectTypeNum, " ObjectTypeManager.load: unable to init TerrainObject type ");
 			}
@@ -479,7 +479,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 	if (!objType) {
 		objType = new BattleMechType;
 		objType->setObjTypeNum(objTypeNum);
-		PAUSE((" ObjectTypeManager.load: objType NULL post-switch for objTypeNum %d — substituting stub BattleMechType ", (int)objTypeNum));
+		PAUSE((" ObjectTypeManager.load: objType NULL post-switch for objTypeNum %d — substituting stub BattleMechType ", static_cast<int>(objTypeNum)));
 	}
 
 	if (noCacheOut)	{
@@ -529,7 +529,7 @@ void ObjectTypeManager::remove (ObjectTypePtr objTypePtr) {
 ObjectTypePtr ObjectTypeManager::get (ObjectTypeNumber objTypeNum, bool loadIt) {
 
 	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes)) {
-		PAUSE((" ObjectTypeManager.find: bad objTypeNum %d (max %d) — mod content; returning NULL ", (int)objTypeNum, (int)numObjectTypes));
+		PAUSE((" ObjectTypeManager.find: bad objTypeNum %d (max %d) — mod content; returning NULL ", static_cast<int>(objTypeNum), static_cast<int>(numObjectTypes)));
 		return nullptr;
 	}
 

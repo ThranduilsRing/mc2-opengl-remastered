@@ -15,7 +15,7 @@ TacticalOverview g_tacticalOverview;
 unsigned long TacticalOverview::maskWorldBars( unsigned long drawFlags )
 {
     if ( g_tacticalOverview.active() )
-        drawFlags &= ~(unsigned long)DRAW_BARS;
+        drawFlags &= ~static_cast<unsigned long>(DRAW_BARS);
     return drawFlags;
 }
 
@@ -215,7 +215,7 @@ int TacticalOverview::flComputeSlots( glm::vec3* outSlots, int maxSlots ) const
     }
     for ( int i = 0; i < n; i++ )
     {
-        float t = (float)i / (float)( n - 1 );
+        float t = static_cast<float>(i) / static_cast<float>(( n - 1 ));
         // Raw evenly spaced point, then stretch about the midpoint.
         float rx = flStart_.x + ( flEnd_.x - flStart_.x ) * t;
         float ry = flStart_.y + ( flEnd_.y - flStart_.y ) * t;

@@ -183,8 +183,8 @@ void PauseWindow::update()
 			{
 				t0 = moveInfo[j].time;
 				t1 = moveInfo[j + 1].time;
-				p0 = -(800.f - moveInfo[j].position)  + ((float)Environment.screenWidth);
-				p1 = -(800.f - moveInfo[j + 1].position) + ((float)Environment.screenWidth);
+				p0 = -(800.f - moveInfo[j].position)  + (static_cast<float>(Environment.screenWidth));
+				p1 = -(800.f - moveInfo[j + 1].position) + (static_cast<float>(Environment.screenWidth));
 				break;
 			}
 		}
@@ -264,7 +264,7 @@ void PauseWindow::update()
 	if ( currentTime == 0 )
 	{
 		currentTime = .0001f;
-		currentPos = -(800 - PauseWindow::moveInfo[0].position) + ((float)Environment.screenWidth);
+		currentPos = -(800 - PauseWindow::moveInfo[0].position) + (static_cast<float>(Environment.screenWidth));
 		float delta = backgrounds[0].left - currentPos;
 
 		for ( int i = 0; i < buttonCount; i++ )
@@ -367,8 +367,8 @@ bool PauseWindow::renderImGui()
 	if ( !gos_ComputeHudCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
 			&bx, &by, &bw, &bh ) )
 	{ bx = 0; by = 0; bw = Environment.drawableWidth; bh = Environment.drawableHeight; }
-	const float sx = (float)bw / 800.0f;
-	const float sy = (float)bh / 600.0f;
+	const float sx = static_cast<float>(bw) / 800.0f;
+	const float sy = static_cast<float>(bh) / 600.0f;
 	const float px = bx + 638.0f * sx;
 	const float py = by +  86.0f * sy;
 	const float pw = 162.0f * sx;
@@ -401,7 +401,7 @@ bool PauseWindow::renderImGui()
 	{
 		ImVec2 uv0( 638.0f / 800.0f, 86.0f / 600.0f );
 		ImVec2 uv1( 800.0f / 800.0f, 325.0f / 600.0f );
-		dl->AddImage( (ImTextureID)(intptr_t)s_frameGlTex,
+		dl->AddImage( static_cast<ImTextureID>(static_cast<intptr_t>(s_frameGlTex)),
 			ImVec2( px, py ), ImVec2( px + pw, py + ph ), uv0, uv1 );
 	}
 
@@ -478,8 +478,8 @@ bool PauseWindow::renderImGui()
 			const int state = !enabled ? ControlButton::DISABLED
 				: ( heldNow ? ControlButton::PRESSED
 				: ( hovered ? ControlButton::AMBIGUOUS : buttons[b.id].state ) );
-			const unsigned long argb = (unsigned long)bd->textColors[
-				( state >= 0 && state < 4 ) ? state : 0 ];
+			const unsigned long argb = static_cast<unsigned long>(bd->textColors[
+				( state >= 0 && state < 4 ) ? state : 0 ]);
 			col = IM_COL32( (argb >> 16) & 0xff, (argb >> 8) & 0xff,
 				argb & 0xff, 255 );
 		}
@@ -495,7 +495,7 @@ bool PauseWindow::renderImGui()
 			DWORD visW; int visTop, visBot;
 			gos_TextSetAttributes( bf, 0, 1.0f, true, true, false, false, 2 );
 			gos_TextVisualBounds( &visW, &visTop, &visBot, "%s", label );
-			lyA = slotYA + 11.0f - (float)( ( visTop + visBot + 1 ) / 2 );
+			lyA = slotYA + 11.0f - static_cast<float>(( ( visTop + visBot + 1 ) / 2 ));
 		}
 		HudFont::Draw( dl, bf,
 			AX( slotXA + ( 128.0f - tsA.x ) * 0.5f ), AY( lyA ),
@@ -570,8 +570,8 @@ void PauseWindow::renderImGuiConfirm()
 	if ( !gos_ComputeHudCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
 			&bx, &by, &bw, &bh ) )
 	{ bx = 0; by = 0; bw = Environment.drawableWidth; bh = Environment.drawableHeight; }
-	const float sx = (float)bw / 800.0f;
-	const float sy = (float)bh / 600.0f;
+	const float sx = static_cast<float>(bw) / 800.0f;
+	const float sy = static_cast<float>(bh) / 600.0f;
 
 	// Live legacy anims: slide offset + screen-dim fade (LogisticsDialog::render).
 	aAnimation& enterAnim = dlg->getEnterAnim();
@@ -606,8 +606,8 @@ void PauseWindow::renderImGuiConfirm()
 	auto ARGB = []( unsigned long c ){
 		return IM_COL32( (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff, (c >> 24) & 0xff ); };
 
-	const float dispW = (float)Environment.drawableWidth;
-	const float dispH = (float)Environment.drawableHeight;
+	const float dispW = static_cast<float>(Environment.drawableWidth);
+	const float dispH = static_cast<float>(Environment.drawableHeight);
 
 	// Fullscreen modal window: hosts the dim, the dialog, and the buttons; being
 	// fullscreen it also keeps clicks from reaching the pause-menu buttons under
@@ -637,7 +637,7 @@ void PauseWindow::renderImGuiConfirm()
 	{
 		ImVec2 uv0( 187.0f / 800.0f,   0.0f / 600.0f );
 		ImVec2 uv1( 613.0f / 800.0f, 467.0f / 600.0f );
-		dl->AddImage( (ImTextureID)(intptr_t)dlgTex,
+		dl->AddImage( static_cast<ImTextureID>(static_cast<intptr_t>(dlgTex)),
 			ImVec2( AX(187.f), AY(0.f) ), ImVec2( AX(613.f), AY(467.f) ), uv0, uv1 );
 	}
 
@@ -655,8 +655,8 @@ void PauseWindow::renderImGuiConfirm()
 	// textRect, legacy text-color ANIMS (POLISH-IMGUI-SLICE-1) below.
 	struct DB { float x; const char* imId; int strID; long status; };
 	static const DB kDlgButtons[2] = {
-		{ 237.f, "##dlgNO",  IDS_DIALOG_NO,  (long)LogisticsScreen::NO  },
-		{ 435.f, "##dlgYES", IDS_DIALOG_YES, (long)LogisticsScreen::YES },
+		{ 237.f, "##dlgNO",  IDS_DIALOG_NO,  static_cast<long>(LogisticsScreen::NO)  },
+		{ 435.f, "##dlgYES", IDS_DIALOG_YES, static_cast<long>(LogisticsScreen::YES) },
 	};
 	// POLISH-IMGUI-SLICE-1: legacy hover/pressed label-color animation.
 	// mcl_dialog.fit buttons carry AnimateText=1 / AnimateBmp=0 plus per-state
@@ -676,13 +676,13 @@ void PauseWindow::renderImGuiConfirm()
 		{
 			if ( !loops || tEnd <= 0.f )
 				return cMid;   // one-shot: hold the last keyframe color
-			t -= (float)(long)( t / tEnd ) * tEnd;   // aAnimation::getColor wrap
+			t -= static_cast<float>(static_cast<long>(( t / tEnd ))) * tEnd;   // aAnimation::getColor wrap
 		}
 		if ( t <= tMid || tEnd - tMid <= 0.f )
-			return (unsigned long)interpolateColor( (long)cEnds, (long)cMid,
-				tMid > 0.f ? t / tMid : 1.f );
-		return (unsigned long)interpolateColor( (long)cMid, (long)cEnds,
-			( t - tMid ) / ( tEnd - tMid ) );
+			return static_cast<unsigned long>(interpolateColor( static_cast<long>(cEnds), static_cast<long>(cMid),
+				tMid > 0.f ? t / tMid : 1.f ));
+		return static_cast<unsigned long>(interpolateColor( static_cast<long>(cMid), static_cast<long>(cEnds),
+			( t - tMid ) / ( tEnd - tMid ) ));
 	};
 
 	HGOSFONT3D bf = s_dlgBtnFont.getTempHandle();
@@ -694,7 +694,7 @@ void PauseWindow::renderImGuiConfirm()
 		const bool hovered = ImGui::IsItemHovered();
 		const bool held = ImGui::IsItemActive();   // mouse down on the button
 		if ( enterDone && running && clicked )
-			dlg->handleMessage( aMSG_LEFTMOUSEDOWN, (unsigned long)b.status );
+			dlg->handleMessage( aMSG_LEFTMOUSEDOWN, static_cast<unsigned long>(b.status) );
 
 		// advance/restart the state anims (mirrors aAnimButton::update():
 		// begin on entry, update by frameLength while active)
@@ -722,7 +722,7 @@ void PauseWindow::renderImGuiConfirm()
 			DWORD visW; int visTop, visBot;
 			gos_TextSetAttributes( bf, 0, 1.0f, true, true, false, false, 2 );
 			gos_TextVisualBounds( &visW, &visTop, &visBot, "%s", label );
-			lyA = ( trT + trB ) * 0.5f - (float)( ( visTop + visBot + 1 ) / 2 );
+			lyA = ( trT + trB ) * 0.5f - static_cast<float>(( ( visTop + visBot + 1 ) / 2 ));
 		}
 		const ImVec2 tsA = HudFont::Measure( bf, label, 1.0f, 1.0f );
 		HudFont::Draw( dl, bf, AX( trL + ( 100.f - tsA.x ) * 0.5f ), AY( lyA ),

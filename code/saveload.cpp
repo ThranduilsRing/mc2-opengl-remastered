@@ -20,7 +20,7 @@ extern float MaxExtractUnitDistance;
 void Part::Save (FitIniFilePtr file, long partNum)
 {
 	char partId[1024];
-	sprintf(partId,"Part%d", (int)partNum+1);
+	sprintf(partId,"Part%d", static_cast<int>(partNum)+1);
 
 	file->writeBlock(partId);
 
@@ -98,17 +98,17 @@ void Mission::save (const char *saveFileName)
 	const char *cmpName = campaignName.c_str();
 
 	PacketFile saveFile;
-	long result = saveFile.create((char *)saveFileName);
+	long result = saveFile.create(const_cast<char *>(saveFileName));
 
 	loadProgress = 1.0f;
 
 	saveFile.reserve(20000);
 	DWORD currentPacket = 0;
 
-	saveFile.writePacket(currentPacket,(MemoryPtr)versionStamp,strlen(versionStamp)+1,STORAGE_TYPE_RAW);
+	saveFile.writePacket(currentPacket,reinterpret_cast<MemoryPtr>(versionStamp),strlen(versionStamp)+1,STORAGE_TYPE_RAW);
 	currentPacket++;
 
-	saveFile.writePacket(currentPacket,(MemoryPtr)cmpName,strlen(cmpName)+1, STORAGE_TYPE_RAW);
+	saveFile.writePacket(currentPacket,reinterpret_cast<MemoryPtr>(const_cast<char*>(cmpName)),strlen(cmpName)+1, STORAGE_TYPE_RAW);
 	currentPacket++;
 
 	loadProgress = 3.0f;
@@ -181,7 +181,7 @@ void Mission::save (const char *saveFileName)
 	File dmyFile;
 	result = dmyFile.open(tmpName);
 	DWORD fileSz = dmyFile.fileSize();
-	MemoryPtr tmpRAM = (MemoryPtr)malloc(fileSz);
+	MemoryPtr tmpRAM = static_cast<MemoryPtr>(malloc(fileSz));
 	dmyFile.read(tmpRAM,fileSz);
 
 	saveFile.writePacket(currentPacket,tmpRAM,fileSz,STORAGE_TYPE_ZLIB);
@@ -211,7 +211,7 @@ void Mission::save (const char *saveFileName)
 
 	result = dmyFile.open(tmpName);
 	fileSz = dmyFile.fileSize();
-	tmpRAM = (MemoryPtr)malloc(fileSz);
+	tmpRAM = static_cast<MemoryPtr>(malloc(fileSz));
 	dmyFile.read(tmpRAM,fileSz);
 
 	saveFile.writePacket(currentPacket,tmpRAM,fileSz,STORAGE_TYPE_ZLIB);
@@ -246,7 +246,7 @@ void Mission::save (const char *saveFileName)
 
 	result = dmyFile.open(tmpName);
 	fileSz = dmyFile.fileSize();
-	tmpRAM = (MemoryPtr)malloc(fileSz);
+	tmpRAM = static_cast<MemoryPtr>(malloc(fileSz));
 	dmyFile.read(tmpRAM,fileSz);
 
 	saveFile.writePacket(currentPacket,tmpRAM,fileSz,STORAGE_TYPE_ZLIB);
@@ -258,10 +258,10 @@ void Mission::save (const char *saveFileName)
 	free(tmpRAM);
 
 	long currentMissionNum = LogisticsData::instance->getCurrentMissionNum();
-	saveFile.writePacket(currentPacket,(MemoryPtr)&currentMissionNum,4,STORAGE_TYPE_RAW);
+	saveFile.writePacket(currentPacket,reinterpret_cast<MemoryPtr>(&currentMissionNum),4,STORAGE_TYPE_RAW);
 	currentPacket++;
 
-	saveFile.writePacket(currentPacket,(MemoryPtr)"END",4,STORAGE_TYPE_RAW);
+	saveFile.writePacket(currentPacket,reinterpret_cast<MemoryPtr>(const_cast<char*>("END")),4,STORAGE_TYPE_RAW);
 	currentPacket++;
 
 	saveFile.close();
@@ -289,7 +289,7 @@ void Mission::save (const char *saveFileName)
 void Part::Load (FitIniFilePtr file, long partNum)
 {
 	char partId[1024];
-	sprintf(partId,"Part%d", (int)partNum);
+	sprintf(partId,"Part%d", static_cast<int>(partNum));
 
 	long result = file->seekBlock(partId);
 	if (result != NO_ERR)
@@ -427,7 +427,7 @@ void Mission::loadPrologue(MissionLoadFrame& f) {
 bool Mission::openSaveFile(MissionLoadFrame& f) {
 	auto& loadFileName = f.loadFileName; auto& loadFile = f.loadFile; auto& result = f.result;
 	auto& currentPacket = f.currentPacket;
-	result = loadFile.open((char *)loadFileName);
+	result = loadFile.open(const_cast<char *>(loadFileName));
 	if (result != NO_ERR)
 		return true;
 
@@ -713,7 +713,7 @@ void Mission::loadMissionSettings(MissionLoadFrame& f) {
 		File dmyFile;
 		result = dmyFile.create(tmpName);
 		DWORD fileSz = loadFile.getPacketSize();
-		MemoryPtr tmpRAM = (MemoryPtr)malloc(fileSz);
+		MemoryPtr tmpRAM = static_cast<MemoryPtr>(malloc(fileSz));
 		loadFile.readPacket(currentPacket,tmpRAM);
 		dmyFile.write(tmpRAM,fileSz);
 	

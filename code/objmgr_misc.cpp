@@ -251,7 +251,7 @@ long GameObjectManager::buildCollidableList (void)
 		collidableList[curIndex++] = vehicles[i];
 
 	for (int i = 0; i < numElementals; i++)
-		collidableList[curIndex++] = (GameObjectPtr)elementals[i];
+		collidableList[curIndex++] = reinterpret_cast<GameObjectPtr>(elementals[i]);
 
 	for (int i=0;i<numTurrets;i++)
 		collidableList[curIndex++] = turrets[i];

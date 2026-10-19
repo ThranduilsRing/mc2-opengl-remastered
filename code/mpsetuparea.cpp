@@ -687,7 +687,7 @@ int aColorPicker::handleMessage( unsigned long message, const void* who )
 				float dy = cy - colorPlaneCenterY;
 				int d2 = dx*dx + dy*dy;
 				if ((colorPlaneRadius * colorPlaneRadius) > d2) {
-					float saturation = sqrt((float)d2) / (float)colorPlaneRadius;
+					float saturation = sqrt(static_cast<float>(d2)) / static_cast<float>(colorPlaneRadius);
 					float hue = (atan2(-dy, dx) / two_pi) + 0.5;
 					float intensity = 0.99f;
 					float R, G, B;
@@ -698,8 +698,8 @@ int aColorPicker::handleMessage( unsigned long message, const void* who )
 					if (R < 0.0f) { R = 0.0f; }
 					if (G < 0.0f) { G = 0.0f; }
 					if (B < 0.0f) { B = 0.0f; }
-					int newColor = 0xff000000 | (((int)(R * 255.0)) << 16) | (((int)(G * 255.0)) << 8)
-						| (((int)(B * 255.0)) << 0);
+					int newColor = 0xff000000 | ((static_cast<int>((R * 255.0))) << 16) | ((static_cast<int>((G * 255.0))) << 8)
+						| ((static_cast<int>((B * 255.0))) << 0);
 					//if (tab0Button.isPressed()) {
 					if (0 == activeTab) {
 						setColor0(newColor);
@@ -774,17 +774,17 @@ void aStyle1TextListItem::render()
 	float color;
 	if (aListItem::SELECTED == getState())
 	{
-		color = 0.33 * ((unsigned long)normalColor) + 0.67 * ((unsigned long)0xffffffff);
+		color = 0.33 * (static_cast<unsigned long>(normalColor)) + 0.67 * (static_cast<unsigned long>(0xffffffff));
 	}
 	else if (aListItem::HIGHLITE == getState())
 	{
-		color = 0.67 * ((unsigned long)normalColor) + 0.33 * ((unsigned long)0xffffffff);
+		color = 0.67 * (static_cast<unsigned long>(normalColor)) + 0.33 * (static_cast<unsigned long>(0xffffffff));
 	}
 	else
 	{
 		color = normalColor;
 	}
-	aTextListItem::setColor((unsigned long)color);
+	aTextListItem::setColor(static_cast<unsigned long>(color));
 
 	aTextListItem::render();
 }

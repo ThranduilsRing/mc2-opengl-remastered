@@ -147,7 +147,7 @@
    "LG06": 472,
    "LG07": 2,
    "LG08": 17,
-   "LG09": 704,
+   "LG09": 367,
    "LG10": 20,
    "LG11": 103,
    "LG12a": 100,
@@ -157,7 +157,7 @@
    "LG15": 0,
    "LG16": 6,
    "LG17": 48,
-   "LG18": 10,
+   "LG18": 11,
    "LG19": 0,
    "LG20": 1
   },
@@ -2385,7 +2385,6 @@
    "LG03": 14,
    "LG05": 3,
    "LG06": 8,
-   "LG09": 10,
    "LG12b": 25,
    "LG13": 1
   },
@@ -2396,7 +2395,6 @@
    "LG03": 2,
    "LG05": 1,
    "LG06": 1,
-   "LG09": 7,
    "LG11": 2,
    "LG12b": 4,
    "LG17": 2
@@ -2409,7 +2407,6 @@
    "LG03": 3,
    "LG05": 1,
    "LG06": 3,
-   "LG09": 6,
    "LG10": 3,
    "LG13": 1
   },
@@ -2419,9 +2416,9 @@
   "code/mpstats.cpp": {
    "LG05": 1,
    "LG06": 1,
-   "LG09": 8,
    "LG11": 1,
-   "LG12b": 17
+   "LG12b": 17,
+   "LG18": 1
   },
   "code/mpstats.h": {
    "LG06": 1
@@ -2453,7 +2450,6 @@
   "code/objective.cpp": {
    "LG05": 1,
    "LG06": 13,
-   "LG09": 31,
    "LG11": 1
   },
   "code/objective.h": {
@@ -2472,7 +2468,6 @@
    "LG03": 21,
    "LG05": 4,
    "LG06": 1,
-   "LG09": 30,
    "LG12a": 2,
    "LG12b": 2
   },
@@ -2482,21 +2477,15 @@
   "code/objmgr_io.cpp": {
    "LG03": 9,
    "LG06": 1,
-   "LG09": 34,
    "LG12a": 3,
    "LG12b": 1
   },
   "code/objmgr_misc.cpp": {
-   "LG03": 1,
-   "LG09": 1
-  },
-  "code/objmgr_pick.cpp": {
-   "LG09": 8
+   "LG03": 1
   },
   "code/objmgr_update.cpp": {
    "LG06": 1,
    "LG08": 6,
-   "LG09": 13,
    "LG12a": 1,
    "LG14": 1
   },
@@ -2506,8 +2495,7 @@
   "code/objtype.cpp": {
    "LG03": 14,
    "LG05": 3,
-   "LG06": 2,
-   "LG09": 5
+   "LG06": 2
   },
   "code/objtype.h": {
    "LG06": 2
@@ -2516,7 +2504,6 @@
    "LG03": 2,
    "LG05": 2,
    "LG06": 2,
-   "LG09": 34,
    "LG12a": 1,
    "LG12b": 5,
    "LG13": 4
@@ -2528,7 +2515,6 @@
    "LG03": 2
   },
   "code/pausewindow.cpp": {
-   "LG09": 20,
    "LG11": 1
   },
   "code/pausewindow.h": {
@@ -2536,19 +2522,16 @@
   },
   "code/pilotreadyscreen.cpp": {
    "LG03": 3,
-   "LG09": 6,
    "LG12b": 10
   },
   "code/pilotreviewarea.cpp": {
    "LG03": 83,
-   "LG09": 7,
    "LG12b": 20,
    "LG13": 7
   },
   "code/prefs.cpp": {
    "LG05": 1,
-   "LG06": 4,
-   "LG09": 1
+   "LG06": 4
   },
   "code/prefs.h": {
    "LG06": 4
@@ -2557,13 +2540,9 @@
    "LG06": 7,
    "LG17": 1
   },
-  "code/radio.cpp": {
-   "LG09": 2
-  },
   "code/salvagemecharea.cpp": {
    "LG03": 9,
    "LG05": 1,
-   "LG09": 10,
    "LG12a": 1,
    "LG12b": 8,
    "LG13": 7
@@ -2578,7 +2557,6 @@
    "LG01": 1,
    "LG03": 1,
    "LG06": 3,
-   "LG09": 12,
    "LG11": 3,
    "LG12a": 2,
    "LG12b": 5
@@ -2588,20 +2566,17 @@
   },
   "code/saveload_load.cpp": {
    "LG03": 8,
-   "LG09": 6,
    "LG11": 3
   },
   "code/sensor_trace.h": {
    "LG12b": 1
   },
   "code/sim_identity.cpp": {
-   "LG09": 15,
    "LG10": 1
   },
   "code/simplecamera.cpp": {
    "LG03": 1,
    "LG06": 5,
-   "LG09": 12,
    "LG11": 2
   },
   "code/simplecamera.h": {
@@ -2611,7 +2586,6 @@
    "LG03": 3
   },
   "code/tacordr.cpp": {
-   "LG09": 57,
    "LG12b": 10
   },
   "code/tacordr.h": {
@@ -2625,7 +2599,6 @@
    "LG05": 2
   },
   "code/tacticaloverview.cpp": {
-   "LG09": 2,
    "LG10": 3,
    "LG12b": 1,
    "LG17": 2
@@ -4537,7 +4510,7 @@
    "LG20": 3
   }
  },
- "head": "a23d3430a",
+ "head": "60c1a1c58",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

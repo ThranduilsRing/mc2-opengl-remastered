@@ -107,7 +107,7 @@ PilotReviewScreen::~PilotReviewScreen()
 	pilotListBox.removeAllItems( true );
 
 	long count = LogisticsData::instance->getPilotCount();
-	LogisticsPilot** pPilots = (LogisticsPilot**)_alloca( count * sizeof(LogisticsPilot*) );
+	LogisticsPilot** pPilots = static_cast<LogisticsPilot**>(_alloca( count * sizeof(LogisticsPilot*) ));
 	LogisticsData::instance->getPilots( pPilots, count );
 
 
@@ -147,7 +147,7 @@ void PilotReviewScreen::init(FitIniFile* file)
 	ActivePilotListItem::s_totalWidth = pilotListBox.width() - 70;
 
 	long count = LogisticsData::instance->getPilotCount();
-	LogisticsPilot** pPilots = (LogisticsPilot**)_alloca( count * sizeof(LogisticsPilot*) );
+	LogisticsPilot** pPilots = static_cast<LogisticsPilot**>(_alloca( count * sizeof(LogisticsPilot*) ));
 	LogisticsData::instance->getPilots( pPilots, count );
 
 
@@ -922,7 +922,7 @@ void		ActivePilotListItem::update()
 
 float ActivePilotListItem::flashTime()
 {
-	float flashTime = 1.5f * (float)pilot->promotePilot();
+	float flashTime = 1.5f * static_cast<float>(pilot->promotePilot());
 	flashTime += medalCount ? 2.0f : 0.f;
 	flashTime += .5 * medalCount;
 	flashTime += 1.5 + .5 * std::ssize(pilot->killedIcons);
@@ -1266,10 +1266,10 @@ ActivePilotListItem::ActivePilotListItem( LogisticsPilot* pPilot )
 	rankText.setText( rankStr);
 
 	char buffer[32];
-	sprintf( buffer, "%ld", (long)pPilot->getGunnery() );
+	sprintf( buffer, "%ld", static_cast<long>(pPilot->getGunnery()) );
 	gunneryText.setText( buffer );
 
-	sprintf( buffer, "%ld", (long)pPilot->getPiloting() );
+	sprintf( buffer, "%ld", static_cast<long>(pPilot->getPiloting()) );
 	pilotingText.setText( buffer );
 
 	for (int i = 0; i < 2; i++ )
@@ -1511,10 +1511,10 @@ void PilotPromotionArea::setPilot( LogisticsPilot* pPilot, PilotIcon* pIcon )
 	areaLeft.textObjects[3].setText( rankStr );
 	
 	char buffer[32];
-	sprintf( buffer, "%ld", (long)pPilot->getGunnery() );
+	sprintf( buffer, "%ld", static_cast<long>(pPilot->getGunnery()) );
 	areaLeft.textObjects[4].setText( buffer );
 
-	sprintf( buffer, "%ld", (long)pPilot->getPiloting() );
+	sprintf( buffer, "%ld", static_cast<long>(pPilot->getPiloting()) );
 	areaLeft.textObjects[5].setText( buffer );
 
 	int specSkills = pPilot->getSpecialtySkillCount();

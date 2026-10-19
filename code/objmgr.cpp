@@ -391,7 +391,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 	}
 
 	useMoverLineOfSightTable = true;
-	moverLineOfSightTable = (char*)systemHeap->Malloc(maxMovers * maxMovers);
+	moverLineOfSightTable = static_cast<char*>(systemHeap->Malloc(maxMovers * maxMovers));
 	if (!moverLineOfSightTable)
 		Fatal(numGates, " GameObjectManager.setNumObjects: cannot malloc moverLineOfSightTable ");
 
@@ -546,8 +546,8 @@ GameObjectPtr GameObjectManager::getByWatchIDGenerational (unsigned long watchID
 			char _ws_buf[160];
 			snprintf(_ws_buf, sizeof(_ws_buf),
 				"{\"watchID\":%lu,\"expected\":%u,\"stored\":%u,\"drops\":%lu}",
-				watchID, (unsigned)expectedGen,
-				(unsigned)watchGeneration[watchID], s_watchStaleDrops);
+				watchID, static_cast<unsigned>(expectedGen),
+				static_cast<unsigned>(watchGeneration[watchID]), s_watchStaleDrops);
 			mc2_diag::writeEvent("WATCHID_STALE", 1, 0, _ws_buf);
 		}
 		return nullptr;
@@ -582,8 +582,8 @@ void GameObjectManager::tradeMover (MoverPtr mover, long newTeamID, long newComm
 		if (mover->teamId != newTeamID)
 			mover->salvaged = true;
 		if (mover->getObjectClass() == BATTLEMECH) {
-			((BattleMech*)mover)->killed = false;
-			((BattleMech*)mover)->lost = false;
+			(static_cast<BattleMech*>(mover))->killed = false;
+			(static_cast<BattleMech*>(mover))->lost = false;
 		}
 		mover->tradeRefresh();
 	}
@@ -774,9 +774,9 @@ void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjec
 				obj = getTerrainObject(curTerrainObjectIndex++);
 				if (obj)
 				{
-					((TerrainObjectPtr)obj)->init(true, objType);
+					(static_cast<TerrainObjectPtr>(obj))->init(true, objType);
 					if (realDmg)
-						((TerrainObjectPtr)obj)->setDamage(((TerrainObjectTypePtr)objType)->getDamageLevel());
+						(static_cast<TerrainObjectPtr>(obj))->setDamage((static_cast<TerrainObjectTypePtr>(objType))->getDamageLevel());
 						
 					objList[curCollidableHandle] = obj;
 					obj->setHandle(curCollidableHandle++);
@@ -792,9 +792,9 @@ void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjec
 				obj = getTurret(curTurretIndex++);
 				if (obj)
 				{
-					((TurretPtr)obj)->init(true, objType);
+					(static_cast<TurretPtr>(obj))->init(true, objType);
 					if (realDmg)
-						obj->setDamage(((TurretTypePtr)objType)->getDamageLevel());
+						obj->setDamage((static_cast<TurretTypePtr>(objType))->getDamageLevel());
 
 					objList[curCollidableHandle] = obj;
 					obj->setHandle(curCollidableHandle++);
@@ -812,9 +812,9 @@ void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjec
 				obj = getGate(curGateIndex++);
 				if (obj)
 				{
-					((GatePtr)obj)->init(true, objType);
+					(static_cast<GatePtr>(obj))->init(true, objType);
 					if (realDmg)
-						obj->setDamage(((GateTypePtr)objType)->getDamageLvl());
+						obj->setDamage((static_cast<GateTypePtr>(objType))->getDamageLvl());
 
 					objList[curCollidableHandle] = obj;
 					obj->setHandle(curCollidableHandle++);
@@ -833,10 +833,10 @@ void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjec
 				obj = getBuilding(curBuildingIndex++);
 				if (obj)
 				{
-					((BuildingPtr)obj)->init(true, objType);
+					(static_cast<BuildingPtr>(obj))->init(true, objType);
 					if (realDmg)
-						obj->setDamage(((BuildingTypePtr)objType)->getDamageLevel());
-					((BuildingPtr)obj)->baseTileId = (objData->damage >> 4);
+						obj->setDamage((static_cast<BuildingTypePtr>(objType))->getDamageLevel());
+					(static_cast<BuildingPtr>(obj))->baseTileId = (objData->damage >> 4);
 					if (obj->isSpecialBuilding())
 					{
 						objList[curCollidableHandle] = obj;
@@ -875,51 +875,51 @@ void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjec
 
 			if (obj->isTerrainObject()) {
 				glm::vec3 pos = objData->vector;
-				((TerrainObjectPtr)obj)->calcCellFootprint(pos);
+				(static_cast<TerrainObjectPtr>(obj))->calcCellFootprint(pos);
 				if (obj->getObjectClass() == BUILDING) {
 					if (objType->getSubType() == BUILDING_SUBTYPE_WALL) {
 						for (long i = 0; i < tempNumSpecialAreas; i++)
 							if (tempSpecialAreaFootPrints[i].cellPositionRow == cellRow)
 								if (tempSpecialAreaFootPrints[i].cellPositionCol == cellCol) {
-									((BuildingPtr)obj)->calcSubAreas(tempSpecialAreaFootPrints[i].numCells, tempSpecialAreaFootPrints[i].cells);
+									(static_cast<BuildingPtr>(obj))->calcSubAreas(tempSpecialAreaFootPrints[i].numCells, tempSpecialAreaFootPrints[i].cells);
 									break;
 								}
-						((BuildingPtr)obj)->closeSubAreas();
+						(static_cast<BuildingPtr>(obj))->closeSubAreas();
 						}
 					else if (objType->getSubType() == BUILDING_SUBTYPE_LANDBRIDGE) {
 						for (long i = 0; i < tempNumSpecialAreas; i++)
 							if (tempSpecialAreaFootPrints[i].cellPositionRow == cellRow)
 								if (tempSpecialAreaFootPrints[i].cellPositionCol == cellCol) {
-									((BuildingPtr)obj)->calcSubAreas(tempSpecialAreaFootPrints[i].numCells, tempSpecialAreaFootPrints[i].cells);
+									(static_cast<BuildingPtr>(obj))->calcSubAreas(tempSpecialAreaFootPrints[i].numCells, tempSpecialAreaFootPrints[i].cells);
 									break;
 								}
-						((BuildingPtr)obj)->openSubAreas();
+						(static_cast<BuildingPtr>(obj))->openSubAreas();
 					}
 					}
 				else if (obj->getObjectClass() == GATE) {
 					for (long i = 0; i < tempNumSpecialAreas; i++)
 						if (tempSpecialAreaFootPrints[i].cellPositionRow == cellRow)
 							if (tempSpecialAreaFootPrints[i].cellPositionCol == cellCol) {
-								((BuildingPtr)obj)->calcSubAreas(tempSpecialAreaFootPrints[i].numCells, tempSpecialAreaFootPrints[i].cells);
+								(static_cast<BuildingPtr>(obj))->calcSubAreas(tempSpecialAreaFootPrints[i].numCells, tempSpecialAreaFootPrints[i].cells);
 								break;
 							}
-					((GatePtr)obj)->openSubAreas();
+					(static_cast<GatePtr>(obj))->openSubAreas();
 					// NULL guards — GlobalMoveMap[1] NULL on bail'd mod content.
-					for (int i = 0; i < ((GatePtr)obj)->numSubAreas0; i++) {
-						if (GlobalMoveMap[0]) GlobalMoveMap[0]->setAreaOwnerWID(((GatePtr)obj)->subAreas0[i], ((GatePtr)obj)->getWatchID());
-						if (GlobalMoveMap[1]) GlobalMoveMap[1]->setAreaOwnerWID(((GatePtr)obj)->subAreas1[i], ((GatePtr)obj)->getWatchID());
-						if (((GatePtr)obj)->status == OBJECT_STATUS_DESTROYED) {
-							if (GlobalMoveMap[0]) GlobalMoveMap[0]->setAreaTeamID(((GatePtr)obj)->subAreas0[i], -1);
-							if (GlobalMoveMap[1]) GlobalMoveMap[1]->setAreaTeamID(((GatePtr)obj)->subAreas1[i], -1);
+					for (int i = 0; i < (static_cast<GatePtr>(obj))->numSubAreas0; i++) {
+						if (GlobalMoveMap[0]) GlobalMoveMap[0]->setAreaOwnerWID((static_cast<GatePtr>(obj))->subAreas0[i], (static_cast<GatePtr>(obj))->getWatchID());
+						if (GlobalMoveMap[1]) GlobalMoveMap[1]->setAreaOwnerWID((static_cast<GatePtr>(obj))->subAreas1[i], (static_cast<GatePtr>(obj))->getWatchID());
+						if ((static_cast<GatePtr>(obj))->status == OBJECT_STATUS_DESTROYED) {
+							if (GlobalMoveMap[0]) GlobalMoveMap[0]->setAreaTeamID((static_cast<GatePtr>(obj))->subAreas0[i], -1);
+							if (GlobalMoveMap[1]) GlobalMoveMap[1]->setAreaTeamID((static_cast<GatePtr>(obj))->subAreas1[i], -1);
 							}
 						else {
-							if (GlobalMoveMap[0]) GlobalMoveMap[0]->setAreaTeamID(((GatePtr)obj)->subAreas0[i], ((GatePtr)obj)->teamId);
-							if (GlobalMoveMap[1]) GlobalMoveMap[1]->setAreaTeamID(((GatePtr)obj)->subAreas1[i], -1);
+							if (GlobalMoveMap[0]) GlobalMoveMap[0]->setAreaTeamID((static_cast<GatePtr>(obj))->subAreas0[i], (static_cast<GatePtr>(obj))->teamId);
+							if (GlobalMoveMap[1]) GlobalMoveMap[1]->setAreaTeamID((static_cast<GatePtr>(obj))->subAreas1[i], -1);
 						}
 					}
-					((GatePtr)obj)->setTeamId(obj->getTeamId(), true);
-					short* curCoord = ((GatePtr)obj)->cellsCovered;
-					for (int i = 0; i < ((GatePtr)obj)->numCellsCovered; i++) {
+					(static_cast<GatePtr>(obj))->setTeamId(obj->getTeamId(), true);
+					short* curCoord = (static_cast<GatePtr>(obj))->cellsCovered;
+					for (int i = 0; i < (static_cast<GatePtr>(obj))->numCellsCovered; i++) {
 						long r = *curCoord++;
 						long c = *curCoord++;
 						GameMap->setGate(r, c, true);

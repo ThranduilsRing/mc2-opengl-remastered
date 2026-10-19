@@ -133,7 +133,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
 		FILE* f = fopen("preview_debug.log","a");
-		if (f) { mc2::fmt::print(f, "[PREVIEW] SimpleCamera::render pObject={:016X} bIsComponent={:d}\n", mc2::fmt::as_ptr((void*)pObject.get()), mc2::fmt::as_i32((int)bIsComponent)); fflush(f); fclose(f); }
+		if (f) { mc2::fmt::print(f, "[PREVIEW] SimpleCamera::render pObject={:016X} bIsComponent={:d}\n", mc2::fmt::as_ptr(static_cast<void*>(pObject.get())), mc2::fmt::as_i32(static_cast<int>(bIsComponent))); fflush(f); fclose(f); }
 	}
 
 	if ( pObject )
@@ -310,7 +310,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				GLint fbo = 0; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
 				FILE* f = fopen("preview_debug.log","a");
 				if (f) {
-					mc2::fmt::print(f, "[PREVIEW] pre-draw fbo={:d} depthTest={:d} depthMask={:d} cullFace={:d} frontFace=0x{:X} cullMode=0x{:X} vp=[{:d},{:d},{:d},{:d}] globalScaleFactor={:.4f} bounds=[{:.0f},{:.0f},{:.0f},{:.0f}]\n", mc2::fmt::as_i32(fbo), mc2::fmt::as_i32((int)depthTest), mc2::fmt::as_i32((int)depthMask), mc2::fmt::as_i32((int)cullFace), mc2::fmt::as_u32((unsigned)frontFace), mc2::fmt::as_u32((unsigned)cullMode), mc2::fmt::as_i32(vp[0]), mc2::fmt::as_i32(vp[1]), mc2::fmt::as_i32(vp[2]), mc2::fmt::as_i32(vp[3]), globalScaleFactor, bounds[0], bounds[1], bounds[2], bounds[3]);
+					mc2::fmt::print(f, "[PREVIEW] pre-draw fbo={:d} depthTest={:d} depthMask={:d} cullFace={:d} frontFace=0x{:X} cullMode=0x{:X} vp=[{:d},{:d},{:d},{:d}] globalScaleFactor={:.4f} bounds=[{:.0f},{:.0f},{:.0f},{:.0f}]\n", mc2::fmt::as_i32(fbo), mc2::fmt::as_i32(static_cast<int>(depthTest)), mc2::fmt::as_i32(static_cast<int>(depthMask)), mc2::fmt::as_i32(static_cast<int>(cullFace)), mc2::fmt::as_u32(static_cast<unsigned>(frontFace)), mc2::fmt::as_u32(static_cast<unsigned>(cullMode)), mc2::fmt::as_i32(vp[0]), mc2::fmt::as_i32(vp[1]), mc2::fmt::as_i32(vp[2]), mc2::fmt::as_i32(vp[3]), globalScaleFactor, bounds[0], bounds[1], bounds[2], bounds[3]);
 					fflush(f); fclose(f);
 				}
 			}
@@ -345,8 +345,8 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				GLint svp[4] = {}; glGetIntegerv(GL_VIEWPORT, svp);
 				const int pw = svp[2] > 0 ? svp[2] : 800;
 				const int ph = svp[3] > 0 ? svp[3] : 600;
-				int cx = (int)((bounds[0] + bounds[2]) * 0.5f * pw / 800.0f);
-				int cy = ph - (int)((bounds[1] + bounds[3]) * 0.5f * ph / 600.0f);   // GL bottom-up
+				int cx = static_cast<int>(((bounds[0] + bounds[2]) * 0.5f * pw / 800.0f));
+				int cy = ph - static_cast<int>(((bounds[1] + bounds[3]) * 0.5f * ph / 600.0f));   // GL bottom-up
 				GLubyte centerPx[4] = {}, cornerPx[4] = {};
 				glReadPixels(cx, cy, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, centerPx);
 				glReadPixels(10, 10, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, cornerPx);
@@ -368,7 +368,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				}
 				FILE* f = fopen("preview_debug.log","a");
 				if (f) {
-					mc2::fmt::print(f, "[PREVIEW] post-draw glErr=0x{:X} centerPx({:d},{:d})=RGBA({:d},{:d},{:d},{:d}) cornerPx(10,10)=RGBA({:d},{:d},{:d},{:d}) nonBgCount={:d} bbox=[{:d},{:d},{:d},{:d}]\n", mc2::fmt::as_u32((unsigned)err), mc2::fmt::as_i32(cx), mc2::fmt::as_i32(cy), mc2::fmt::as_i32(centerPx[0]), mc2::fmt::as_i32(centerPx[1]), mc2::fmt::as_i32(centerPx[2]), mc2::fmt::as_i32(centerPx[3]), mc2::fmt::as_i32(cornerPx[0]), mc2::fmt::as_i32(cornerPx[1]), mc2::fmt::as_i32(cornerPx[2]), mc2::fmt::as_i32(cornerPx[3]), mc2::fmt::as_i32(nonBgCount), mc2::fmt::as_i32(minX), mc2::fmt::as_i32(minY), mc2::fmt::as_i32(maxX), mc2::fmt::as_i32(maxY));
+					mc2::fmt::print(f, "[PREVIEW] post-draw glErr=0x{:X} centerPx({:d},{:d})=RGBA({:d},{:d},{:d},{:d}) cornerPx(10,10)=RGBA({:d},{:d},{:d},{:d}) nonBgCount={:d} bbox=[{:d},{:d},{:d},{:d}]\n", mc2::fmt::as_u32(static_cast<unsigned>(err)), mc2::fmt::as_i32(cx), mc2::fmt::as_i32(cy), mc2::fmt::as_i32(centerPx[0]), mc2::fmt::as_i32(centerPx[1]), mc2::fmt::as_i32(centerPx[2]), mc2::fmt::as_i32(centerPx[3]), mc2::fmt::as_i32(cornerPx[0]), mc2::fmt::as_i32(cornerPx[1]), mc2::fmt::as_i32(cornerPx[2]), mc2::fmt::as_i32(cornerPx[3]), mc2::fmt::as_i32(nonBgCount), mc2::fmt::as_i32(minX), mc2::fmt::as_i32(minY), mc2::fmt::as_i32(maxX), mc2::fmt::as_i32(maxY));
 					fflush(f); fclose(f);
 				}
 			}
@@ -448,7 +448,7 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 	{
 		FILE* f = fopen("preview_debug.log","a");
 		if (f) {
-			mc2::fmt::print(f, "[PREVIEW] drawPreviewToPanel tex={:d} panel=[{:.1f},{:.1f},{:.1f},{:.1f}] uv=[{:.3f},{:.3f},{:.3f},{:.3f}] readyForUi={:d}\n", mc2::fmt::as_u32(tex), panelX, panelY, panelW, panelH, u1, v1, u2, v2, mc2::fmt::as_i32((int)GuiRuntime::IsReadyForUiText()));
+			mc2::fmt::print(f, "[PREVIEW] drawPreviewToPanel tex={:d} panel=[{:.1f},{:.1f},{:.1f},{:.1f}] uv=[{:.3f},{:.3f},{:.3f},{:.3f}] readyForUi={:d}\n", mc2::fmt::as_u32(tex), panelX, panelY, panelW, panelH, u1, v1, u2, v2, mc2::fmt::as_i32(static_cast<int>(GuiRuntime::IsReadyForUiText())));
 			fflush(f); fclose(f);
 		}
 	}
@@ -459,7 +459,7 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
 		FILE* f = fopen("preview_debug.log","a");
-		if (f) { mc2::fmt::print(f, "[PREVIEW] DrawUiImage returned {:d}\n", mc2::fmt::as_i32((int)ok)); fflush(f); fclose(f); }
+		if (f) { mc2::fmt::print(f, "[PREVIEW] DrawUiImage returned {:d}\n", mc2::fmt::as_i32(static_cast<int>(ok))); fflush(f); fclose(f); }
 	}
 #else
 	(void)panelX; (void)panelY; (void)panelW; (void)panelH;
@@ -607,9 +607,9 @@ void SimpleCamera::setMech(const char* fileName, long baseColor, long highlight1
 	Mech3DAppearanceType* appearanceType = nullptr;
 	
 	if ( fileExists( path ) )
-		appearanceType = (Mech3DAppearanceType*)appearanceTypeList->getAppearance( MECH_TYPE << 24, (char*)testName );
+		appearanceType = static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance( MECH_TYPE << 24, static_cast<char*>(testName) ));
 	else
-		appearanceType = (Mech3DAppearanceType*)appearanceTypeList->getAppearance( MECH_TYPE << 24, (char*)NoPathFileName );
+		appearanceType = static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance( MECH_TYPE << 24, static_cast<char*>(NoPathFileName) ));
 
 	pObject = std::make_unique<Mech3DAppearance>();	
 	pObject->init( appearanceType );
@@ -669,9 +669,9 @@ void SimpleCamera::setVehicle(const char* fileName,long base, long highlight, lo
 	GVAppearanceType* appearanceType = nullptr;
 	
 	if ( fileExists( path ) )
-		appearanceType = (GVAppearanceType*)appearanceTypeList->getAppearance( GV_TYPE << 24, (char*)testName );
+		appearanceType = static_cast<GVAppearanceType*>(appearanceTypeList->getAppearance( GV_TYPE << 24, static_cast<char*>(testName) ));
 	else
-		appearanceType= (GVAppearanceType*)appearanceTypeList->getAppearance( GV_TYPE << 24, (char*)NoPathFileName );
+		appearanceType= static_cast<GVAppearanceType*>(appearanceTypeList->getAppearance( GV_TYPE << 24, static_cast<char*>(NoPathFileName) ));
 
 	pObject = std::make_unique<GVAppearance>();	
 	pObject->init( appearanceType );
@@ -728,10 +728,10 @@ void SimpleCamera::setComponent(const char* fileName )
 	BldgAppearanceType* appearanceType = nullptr;
 	if ( fileExists( path ) )
 	{
-		appearanceType = (BldgAppearanceType*)appearanceTypeList->getAppearance( BLDG_TYPE << 24, (char*)testName );
+		appearanceType = static_cast<BldgAppearanceType*>(appearanceTypeList->getAppearance( BLDG_TYPE << 24, static_cast<char*>(testName) ));
 	}
 	else
-		appearanceType = (BldgAppearanceType*)appearanceTypeList->getAppearance( BLDG_TYPE << 24, (char*)fileName );
+		appearanceType = static_cast<BldgAppearanceType*>(appearanceTypeList->getAppearance( BLDG_TYPE << 24, const_cast<char*>(fileName) ));
 
 	//MUST ALWAYS CALL GET, EVEN IF WE HAVE AN APPEARANCE TYPE OR REFERENCE COUNT DOES NOT INCREASE!
 	 

@@ -92,7 +92,7 @@ void collectMovers(std::vector<MoverRecord>& out) {
 	const long total = ObjectManager->getNumMovers();
 	if (total <= 0)
 		return;
-	out.reserve((size_t)total);
+	out.reserve(static_cast<size_t>(total));
 
 	for (long i = 0; i < total; ++i) {
 		MoverPtr mover = ObjectManager->getMover(i);
@@ -100,8 +100,8 @@ void collectMovers(std::vector<MoverRecord>& out) {
 			continue;
 
 		MoverRecord r;
-		r.id   = (int32_t)mover->getPartId();
-		r.team = (int32_t)mover->getTeamId();
+		r.id   = static_cast<int32_t>(mover->getPartId());
+		r.team = static_cast<int32_t>(mover->getTeamId());
 
 		glm::vec3 pos = mover->getPosition();
 		r.px  = pos.x;
@@ -121,27 +121,27 @@ void collectMovers(std::vector<MoverRecord>& out) {
 		// a different subclass still yields a defined value rather than a branch.
 		AppearancePtr app = mover->getAppearance();
 		if (app) {
-			r.gesture   = (int32_t)app->getCurrentGestureId();
-			r.animFrame = (int32_t)app->getFrameNumber();
+			r.gesture   = static_cast<int32_t>(app->getCurrentGestureId());
+			r.animFrame = static_cast<int32_t>(app->getFrameNumber());
 		}
 
 		MechWarriorPtr pilot = mover->getPilot();
 		if (pilot) {
-			r.status     = (int32_t)pilot->getStatus();
-			r.brainState = (int32_t)pilot->getBrainState();
-			r.moveState  = (int32_t)pilot->getMoveState();
+			r.status     = static_cast<int32_t>(pilot->getStatus());
+			r.brainState = static_cast<int32_t>(pilot->getBrainState());
+			r.moveState  = static_cast<int32_t>(pilot->getMoveState());
 			// getMovePath(long) is a PURE accessor; the zero-arg getMovePath()
 			// MUTATES (swaps path slots) and must never be called from a
 			// read-only observer -- calling it here would make the act of
 			// hashing the world change the world.
 			MovePathPtr mp = pilot->getMovePath(0);
 			if (mp) {
-				r.pathStep  = (int32_t)mp->curStep;
-				r.pathSteps = (int32_t)mp->numStepsWhenNotPaused;
+				r.pathStep  = static_cast<int32_t>(mp->curStep);
+				r.pathSteps = static_cast<int32_t>(mp->numStepsWhenNotPaused);
 			}
 			GameObjectPtr tgt = pilot->getCurrentTarget();
 			if (tgt)
-				r.target = (int32_t)tgt->getPartId();
+				r.target = static_cast<int32_t>(tgt->getPartId());
 		}
 
 		out.push_back(r);
@@ -274,7 +274,7 @@ extern "C" int mc2SimIdentityWriteJson(char* buf, int cap,
 	mc2_sim_identity::toHex16(strict, hs);
 
 	int n = 0;
-	int w = mc2::fmt::to_buf_n(buf + n, (size_t)(cap - n), "  \"sim_identity\": {{\n    \"schema\": \"SIM_IDENTITY_V{:d}\",\n    \"digest\": \"{}\",\n    \"digest_visual\": \"{}\",\n    \"digest_strict\": \"{}\",\n    \"mover_count\": {:d},\n    \"truncated\": false,\n    \"scenario_time\": {:.3f},\n    \"sim_frame\": {:d},\n    \"quantum\": {{ \"pos\": {:.9g}, \"ang\": {:.9g}, \"frac\": {:.9g} }},\n    \"movers\": [", mc2::fmt::as_u32(mc2_sim_identity::kSchemaVersion), mc2::fmt::safe(hg), mc2::fmt::safe(hv), mc2::fmt::safe(hs), mc2::fmt::as_i32((int)recs.size()), scenarioTimeNow, mc2::fmt::as_i32(simFrame), (double)mc2_sim_identity::kPosQuantum, (double)mc2_sim_identity::kAngQuantum, (double)mc2_sim_identity::kFracQuantum);
+	int w = mc2::fmt::to_buf_n(buf + n, static_cast<size_t>((cap - n)), "  \"sim_identity\": {{\n    \"schema\": \"SIM_IDENTITY_V{:d}\",\n    \"digest\": \"{}\",\n    \"digest_visual\": \"{}\",\n    \"digest_strict\": \"{}\",\n    \"mover_count\": {:d},\n    \"truncated\": false,\n    \"scenario_time\": {:.3f},\n    \"sim_frame\": {:d},\n    \"quantum\": {{ \"pos\": {:.9g}, \"ang\": {:.9g}, \"frac\": {:.9g} }},\n    \"movers\": [", mc2::fmt::as_u32(mc2_sim_identity::kSchemaVersion), mc2::fmt::safe(hg), mc2::fmt::safe(hv), mc2::fmt::safe(hs), mc2::fmt::as_i32(static_cast<int>(recs.size())), scenarioTimeNow, mc2::fmt::as_i32(simFrame), static_cast<double>(mc2_sim_identity::kPosQuantum), static_cast<double>(mc2_sim_identity::kAngQuantum), static_cast<double>(mc2_sim_identity::kFracQuantum));
 	if (w < 0 || w >= cap - n) { buf[0] = '\0'; return 0; }
 	n += w;
 
@@ -286,7 +286,7 @@ extern "C" int mc2SimIdentityWriteJson(char* buf, int cap,
 		// TRUE delta beside the quantum. Without them a quantum-boundary
 		// straddle and a real divergence are indistinguishable -- both would
 		// arrive as nothing but "the digests differ".
-		w = mc2::fmt::to_buf_n(buf + n, (size_t)(cap - n), "{}\n      {{\"id\":{:d},\"team\":{:d},\"vd\":\"{}\",\"pos\":[{:.4f},{:.4f},{:.4f}],\"rot\":{:.4f},\"hp\":{:.5f},\"gesture\":{:d},\"anim\":{:d},\"status\":{:d},\"target\":{:d},\"brain\":{:d},\"mstate\":{:d},\"pstep\":{:d},\"psteps\":{:d}}}", mc2::fmt::safe(i ? "," : ""), mc2::fmt::as_i32(r.id), mc2::fmt::as_i32(r.team), mc2::fmt::safe(hm), r.px, r.py, r.pz, r.rot, r.hp, mc2::fmt::as_i32(r.gesture), mc2::fmt::as_i32(r.animFrame), mc2::fmt::as_i32(r.status), mc2::fmt::as_i32(r.target), mc2::fmt::as_i32(r.brainState), mc2::fmt::as_i32(r.moveState), mc2::fmt::as_i32(r.pathStep), mc2::fmt::as_i32(r.pathSteps));
+		w = mc2::fmt::to_buf_n(buf + n, static_cast<size_t>((cap - n)), "{}\n      {{\"id\":{:d},\"team\":{:d},\"vd\":\"{}\",\"pos\":[{:.4f},{:.4f},{:.4f}],\"rot\":{:.4f},\"hp\":{:.5f},\"gesture\":{:d},\"anim\":{:d},\"status\":{:d},\"target\":{:d},\"brain\":{:d},\"mstate\":{:d},\"pstep\":{:d},\"psteps\":{:d}}}", mc2::fmt::safe(i ? "," : ""), mc2::fmt::as_i32(r.id), mc2::fmt::as_i32(r.team), mc2::fmt::safe(hm), r.px, r.py, r.pz, r.rot, r.hp, mc2::fmt::as_i32(r.gesture), mc2::fmt::as_i32(r.animFrame), mc2::fmt::as_i32(r.status), mc2::fmt::as_i32(r.target), mc2::fmt::as_i32(r.brainState), mc2::fmt::as_i32(r.moveState), mc2::fmt::as_i32(r.pathStep), mc2::fmt::as_i32(r.pathSteps));
 		if (w < 0 || w >= cap - n) {
 			// Ran out of room mid-array. Emitting a half-written array would
 			// hand the comparator a truncated population that hashes fine --
@@ -297,7 +297,7 @@ extern "C" int mc2SimIdentityWriteJson(char* buf, int cap,
 		n += w;
 	}
 
-	w = mc2::fmt::to_buf_n(buf + n, (size_t)(cap - n), "\n    ]\n  }}");
+	w = mc2::fmt::to_buf_n(buf + n, static_cast<size_t>((cap - n)), "\n    ]\n  }}");
 	if (w < 0 || w >= cap - n) { buf[0] = '\0'; return 0; }
 	n += w;
 	return n;
@@ -340,7 +340,7 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 	// Fixed-arity, fixed-width: two runs' logs diff cleanly and the first
 	// differing line IS the first divergent sim frame.
 	mc2::fmt::print_out("[SIMID v1] simframe={:d} t={:.3f} n={:d} graded={} visual={} strict={} nobj={:d} objects={} nabl={:d} abl={} rng={:d}/{:d}/{:d}\n",
-	       mc2::fmt::as_i32(simFrame), scenarioTimeNow, mc2::fmt::as_i32((int)recs.size()), mc2::fmt::safe(hg), mc2::fmt::safe(hv), mc2::fmt::safe(hs),
+	       mc2::fmt::as_i32(simFrame), scenarioTimeNow, mc2::fmt::as_i32(static_cast<int>(recs.size())), mc2::fmt::safe(hg), mc2::fmt::safe(hv), mc2::fmt::safe(hs),
 	       mc2::fmt::as_i32(static_cast<int>(objs.size())), mc2::fmt::safe(ho), mc2::fmt::as_i32(static_cast<int>(abl.size())), mc2::fmt::safe(ha),
 	       mc2::fmt::as_u32(static_cast<uint32_t>(SimRandomDraws())), mc2::fmt::as_u32(mc2_appearance_rng::drawCount()), mc2::fmt::as_u32(weather ? weather->drawCount() : 0u));
 
