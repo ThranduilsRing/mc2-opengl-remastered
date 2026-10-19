@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 //-------------------------------------------------------------------------------
 //
 // Multiple TG Shape Layer
@@ -46,7 +47,6 @@ void GetNextLine (char *rawData, char *result)
 	
 //-------------------------------------------------------------------------------
 bool useSlerping = false;
-bool useShadows = true;
 
 //-------------------------------------------------------------------------------
 // TG_TypeMultiShape

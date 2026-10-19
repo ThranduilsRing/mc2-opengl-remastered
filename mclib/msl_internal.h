@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Shared surface of the msl.cpp translation units (msl.cpp, msl_{load,shape,transform,anim}.cpp).
 //
 // msl.cpp keeps the include bundle's globals, the line parser, TG_TypeMultiShape::CreateFrom and the allocators; the rest of the
@@ -79,7 +80,6 @@ extern int ObjectTextureSize;
 extern bool useSlerping;
 extern bool useVertexLighting;
 extern bool useFaceLighting;
-extern bool useShadows;
 extern bool silentMode;
 
 extern std::atomic<int> g_workerResubmitCalls;   // defined in msl.cpp; counts worker-thread resubmits

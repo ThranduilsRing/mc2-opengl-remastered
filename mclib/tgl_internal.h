@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Shared surface of the TG shape translation units (tgl*.cpp).
 //
 // tgl.cpp keeps the globals, pools and pool-statistics code; shape types, ASE parsing, transform, render and shadows
@@ -71,8 +72,6 @@ extern bool useFog;
 extern DWORD BaseVertexColor;
 extern bool drawOldWay;
 extern int g_mechPreviewRenderDepth;
-extern bool useShadows;
-extern bool useLocalShadows;
 extern bool renderTGLShapes;
 extern bool silentMode;
 extern bool bShadersDrawPathEnabled;

@@ -458,3 +458,12 @@ if(TARGET glm::glm)
 else()
     message(WARNING "Stuff/GLM bit-identity corpus NOT BUILT: vendor GLM 1.0.1; sim migration NOT PROVEN")
 endif()
+
+# Preferences use real disk IO; keyboard application remains an engine adapter.
+target_sources(mc2_tests PRIVATE
+    test_preferences.cpp
+    ${MC2_WORKTREE_ROOT}/code/prefs_io.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/gamelog.cpp
+)
+set_source_files_properties(${MC2_WORKTREE_ROOT}/code/prefs_io.cpp test_preferences.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/gui;${MC2_WORKTREE_ROOT}/netlib;${MC2_WORKTREE_ROOT}/3rdparty/tracy")

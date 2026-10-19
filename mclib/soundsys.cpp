@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 //---------------------------------------------------------------------------
 // soundsys.cpp - This file is the sound system code
 //
@@ -37,11 +38,6 @@ void objectiveObservationWav(const char*, const char*, int, const char*, bool);
 bool useSound = TRUE;
 bool useMusic = TRUE;
 
-long DigitalMasterVolume = 0;
-long MusicVolume = 0;
-long sfxVolume = 0;
-long RadioVolume = 0;
-long BettyVolume = 0;
 
 constexpr float MAX_SENSOR_UPDATE_TIME = 5.0f;	//Seconds
 

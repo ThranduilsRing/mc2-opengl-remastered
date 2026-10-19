@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 //===========================================================================//
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
@@ -61,7 +62,6 @@ extern volatile bool mc2IsInMouseTimer;
 extern volatile bool mc2DisplayHasFlipped;
 extern volatile bool mc2HasLostFocus;
 volatile bool mc2MouseThreadStarted = false;
-volatile bool mc2UseAsyncMouse = true;
 
 MemoryPtr mouseBuffer = nullptr;
 #ifndef LINUX_BUILD

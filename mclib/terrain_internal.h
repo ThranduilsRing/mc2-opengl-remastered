@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Shared surface of the terrain.cpp translation units (terrain.cpp, terrain_{init,raycast,update,render,geometry}.cpp).
 //
 // terrain.cpp keeps the map globals, the init entry points, the setters / getters and the save / load / selection code; the rest
@@ -64,7 +65,6 @@ extern "C" unsigned char* ControlMapPng_DecodeRGBA(const unsigned char* data, in
 extern "C" void ControlMapPng_FreePixels(unsigned char* px);
 extern float cloudScrollY;
 extern long  sprayFrame;
-extern bool  useWaterInterestTexture;
 
 #ifndef CIDENT_H
 #include"cident.h"

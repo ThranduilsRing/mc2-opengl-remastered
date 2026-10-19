@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Shared surface of the quad.cpp translation units (quad.cpp, quad_{setup,draw,water,lines}.cpp).
 //
 // quad.cpp keeps the mine-grid enqueue, init and the mine texture handles; the rest of TerrainQuad is split by responsibility
@@ -235,10 +236,8 @@ extern bool drawLOSGrid;
 extern float twoFiveFive;
 extern float cosineEyeHalfFOV;
 extern DWORD BaseVertexColor;
-extern bool useShadows;
 extern bool useFog;
 extern long sprayFrame;
-extern bool useWaterInterestTexture;
 extern bool useOverlayTexture;
 extern long numTerrainFaces;
 extern float MaxMinUV;

@@ -44,7 +44,7 @@ def main():
                     help="stock campaign .fit basename passed to MC2_BOOT_TO_BAY (default: 'campaign')")
     ap.add_argument("--deploy", default=DEFAULT_DEPLOY)
     ap.add_argument("--preview-log", action="store_true",
-                    help="set MC2_LOG_PREVIEW=1 (engine appends to preview_debug.log in the deploy folder; grows without bound, so off by default)")
+                    help="set MC2_LOG_PREVIEW=1 (diagnostics go to the run log)")
     ap.add_argument("--frame", type=int, default=200,
                     help="capture frame number (frames since boot settle)")
     ap.add_argument("--timeout", type=int, default=25,

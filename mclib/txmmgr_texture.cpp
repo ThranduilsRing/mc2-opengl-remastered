@@ -1,3 +1,4 @@
+#include "utils/mc2log.h"
 // MC_TextureManager: texture load/save/copy and MC_TextureNode (KTX route-2 and compressed upload).
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
@@ -409,7 +410,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	// from "loaded real pixels but never uploaded".
 	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() && strstr(textureFullPathName, "tgl") )
 	{
-		if ( FILE* f = fopen("preview_debug.log","a") )
+		if ( bool f = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info) )
 		{
 			unsigned char hdr[18] = {0};
 			long fsz = (textureFileOpenResult == NO_ERR) ? textureFile.fileSize() : -1;
@@ -418,8 +419,8 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 				textureFile.read(hdr, sizeof(hdr));
 				textureFile.seek(0);
 			}
-			mc2::fmt::print(f, "[PREVIEW-LOAD] open={:d} size={:d} disk={:d} name={} tgaType={:d} dims={:d}x{:d} bpp={:d}\n", mc2::fmt::as_i32(textureFileOpenResult), mc2::fmt::as_i32(fsz), mc2::fmt::as_i32(((textureFileOpenResult == NO_ERR) ? textureFile.isLoadedFromDisk() : -1)), mc2::fmt::safe(textureFullPathName), mc2::fmt::as_u32(hdr[2]), mc2::fmt::as_u32(hdr[12] | (hdr[13]<<8)), mc2::fmt::as_u32(hdr[14] | (hdr[15]<<8)), mc2::fmt::as_u32(hdr[16]));
-			fclose(f);
+			MC2_LOG(Render, Info, "[PREVIEW-LOAD] open={:d} size={:d} disk={:d} name={} tgaType={:d} dims={:d}x{:d} bpp={:d}", mc2::fmt::as_i32(textureFileOpenResult), mc2::fmt::as_i32(fsz), mc2::fmt::as_i32(((textureFileOpenResult == NO_ERR) ? textureFile.isLoadedFromDisk() : -1)), mc2::fmt::safe(textureFullPathName), mc2::fmt::as_u32(hdr[2]), mc2::fmt::as_u32(hdr[12] | (hdr[13]<<8)), mc2::fmt::as_u32(hdr[14] | (hdr[15]<<8)), mc2::fmt::as_u32(hdr[16]));
+
 		}
 	}
 

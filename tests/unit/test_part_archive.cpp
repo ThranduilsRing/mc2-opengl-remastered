@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 #include "doctest.h"
 #include "mission_init_frame.h"
 #include "save_archive.h"
@@ -9,7 +10,6 @@
 
 // The FIT/heap spine is real; these are the surrounding session services used by the init phase.
 MultiPlayer* MPlayer = nullptr;
-long GameDifficulty = 0;
 float loadProgress = 0;
 CPrefs::CPrefs() {}
 CPrefs prefs;
