@@ -1186,7 +1186,7 @@ run_check "delivery_manifest"      "py -3 scripts/check-delivery.py --contract -
 # A missing deploy is the most repairable finding there is.
 run_check "delivery_installs"      "py -3 scripts/check-delivery.py --quiet"
 run_check "pass_coverage"          "py -3 scripts/check-pass-coverage.py --quiet"
-run_check "native_render_hosts"    "py -3 scripts/check-native-render-hosts.py --quiet && py -3 -B -m pytest scripts/tests/test_native_render_hosts.py -q -p no:cacheprovider"
+run_check "native_render_hosts"    "py -3 scripts/check-native-render-hosts.py --quiet && py -3 -B -m pytest scripts/tests/test_native_render_hosts.py scripts/tests/test_bootstrap_worktree_build.py -q -p no:cacheprovider"
 run_check "editor_pass_parity"     "py -3 scripts/check-editor-pass-contract-parity.py --quiet"
 run_check "gated_layout_macros"    "py -3 scripts/check-gated-layout-macros.py --quiet"
 # TERRAIN-AMBIENT-FLOOR-2: terrain_daylight.h duplicates camera.cpp's night-band
