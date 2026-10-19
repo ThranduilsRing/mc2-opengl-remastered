@@ -983,7 +983,7 @@ run_check "vulkan_bindings"        "py -3 scripts/check-vulkan-bindings.py --qui
 # GL-VARIANT-MATRIX-1: every GL program variant the C++ can build (manifest re-extracted
 # from GameOS/gameos and diffed) is assembled like shader_builder and glslang compile+LINKED;
 # also proves a malformed directive in a live fragment fails compilation. ~6s, offline.
-run_check "gl_shader_variants"     "py -3 scripts/check-gl-shader-variants.py --quiet && py -3 -B -m pytest scripts/tests/test_extract_gl_shader_variants.py scripts/tests/test_check_gl_shader_variants.py -q -p no:cacheprovider"
+run_check "no_gl_compiler"         "py -3 scripts/check-no-gl-compiler.py --quiet && py -3 -B -m pytest scripts/tests/test_no_gl_compiler.py -q -p no:cacheprovider"
 run_check "spirv_artifacts"        "py -3 scripts/check-spirv-artifacts.py --quiet"
 # SLANG-TOOLCHAIN-1: .slang -> SPIR-V through build_variants.py (fixtures only; no shipped Slang yet).
 run_check "slang_build"            "py -3 -B -m pytest scripts/tests/test_slang_build.py -q -p no:cacheprovider"
