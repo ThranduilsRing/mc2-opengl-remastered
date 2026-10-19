@@ -130,7 +130,7 @@
       "commit": "96ffc35d",
       "gate": "MC2_TERRAIN_AMBIENT_FLOOR",
       "expect_default": "0.35",
-      "exe_needle": "u_terrainAmbientFloor",
+      "exe_needle": "MC2_TERRAIN_AMBIENT_FLOOR",
       "code_evidence": [
         {
           "path": "GameOS/gameos/gos_terrain_lod_chunk.cpp",
@@ -140,11 +140,11 @@
       "data": [
         {
           "kind": "file",
-          "path": "shaders/terrain_lod_chunk.frag",
-          "needle": "u_terrainAmbientFloor"
+          "path": "shaders/vulkan/terrain_tier1.frag",
+          "needle": "baseColor * ambCol * uT.ambientFloor * ambShadow"
         }
       ],
-      "note": "Albedo-scaled daylight terrain ambient floor. Commit is 96ffc35d, the INTRODUCER (12:43), not ea7ef347, the merge onto canonical (13:35) -- same correction as OVERLAY-CEMENT-ADOPT-1, applied before it could overstate anything. It does not change this entry's answer (both are after the newest binary on this disk, so it is 0/18 either way), which is exactly why it was worth fixing while the answer was not in dispute. A FLOAT gate: the reader is `if (!e || !e[0]) return 0.35f;`, which every numeric rule in check-delivery.py missed until DELIVERY-CLOSE-1 -- the rules hard-coded the pointer name `v` and matched integers only, so this gate classified UNKNOWN and could not grade as delivered on any install no matter what it contained. expect_default is the literal 0.35, not 'ON', so a rewrite that changed the shipped strength while keeping it nonzero is caught."
+      "note": "Albedo-scaled daylight terrain ambient floor. Commit is 96ffc35d, the INTRODUCER (12:43), not ea7ef347, the merge onto canonical (13:35) -- same correction as OVERLAY-CEMENT-ADOPT-1, applied before it could overstate anything. It does not change this entry's answer (both are after the newest binary on this disk, so it is 0/18 either way), which is exactly why it was worth fixing while the answer was not in dispute. A FLOAT gate: the reader is `if (!e || !e[0]) return 0.35f;`, which every numeric rule in check-delivery.py missed until DELIVERY-CLOSE-1 -- the rules hard-coded the pointer name `v` and matched integers only, so this gate classified UNKNOWN and could not grade as delivered on any install no matter what it contained. expect_default is the literal 0.35, not 'ON', so a rewrite that changed the shipped strength while keeping it nonzero is caught. Native Vulkan retains this live requirement: the executable must carry the typed MC2_TERRAIN_AMBIENT_FLOOR gate marker and the deployed Vulkan fragment must consume uT.ambientFloor in its albedo-scaled ambient term. The retired GL uniform name is no longer a binary marker."
     },
     {
       "id": "CONCRETE-DELIVER-2-RETRACTION",
