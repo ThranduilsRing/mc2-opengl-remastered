@@ -155,7 +155,7 @@ class TerrainColorMap
 		}
 
 		DWORD getNormalMapHandle (long resultTexture) {
-			if (hasNormalMap && normalMapTextures && resultTexture >= 0 && resultTexture < (long)numNormalMapTextures) {
+			if (hasNormalMap && normalMapTextures && resultTexture >= 0 && resultTexture < static_cast<long>(numNormalMapTextures)) {
 				tex_resolve(normalMapTextures[resultTexture].mcTextureNodeIndex.get());
 				return normalMapTextures[resultTexture].mcTextureNodeIndex.get();
 			}
@@ -186,7 +186,7 @@ class TerrainColorMap
 
 		DWORD getWaterDetailHandle (long frameNum)
 		{
-			if ((frameNum >= 0) && (frameNum < (long)numWaterDetailFrames))
+			if ((frameNum >= 0) && (frameNum < static_cast<long>(numWaterDetailFrames)))
 			{
 				tex_resolve(waterDetailNodeIndex[frameNum].get());
 				return waterDetailNodeIndex[frameNum].get();

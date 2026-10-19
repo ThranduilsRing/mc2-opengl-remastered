@@ -312,7 +312,7 @@ class TerrainTextures
 
 		DWORD getTexture (DWORD texture)
 		{
-			if ((long)texture >= nextAvailable) 
+			if (static_cast<long>(texture) >= nextAvailable)
 				return 0;
 
 			if ( textures[texture].mcTextureNodeIndex == 0xffffffff )
@@ -323,7 +323,7 @@ class TerrainTextures
 
 		DWORD getTextureHandle (DWORD texture)
 		{
-			if ((long)texture >= nextAvailable)
+			if (static_cast<long>(texture) >= nextAvailable)
 				return 0xffffffff;
 
 			tex_resolve(textures[texture].mcTextureNodeIndex);
@@ -332,7 +332,7 @@ class TerrainTextures
 
 		DWORD peekTextureHandle (DWORD texture) const
 		{
-			if ((long)texture >= nextAvailable)
+			if (static_cast<long>(texture) >= nextAvailable)
 				return 0xffffffff;
 
 			return textures[texture].mcTextureNodeIndex;
@@ -340,7 +340,7 @@ class TerrainTextures
 
 		DWORD getDetail (DWORD dTexture)
 		{
-			if ((long)dTexture >= nextAvailable) 
+			if (static_cast<long>(dTexture) >= nextAvailable)
 				return 0;
 
 			if ( textures[dTexture].mcTextureNodeIndex == 0xffffffff )
@@ -351,7 +351,7 @@ class TerrainTextures
 
 		DWORD getDetailHandle (DWORD dTexture)
 		{
-			if ((long)dTexture >= nextAvailable)
+			if (static_cast<long>(dTexture) >= nextAvailable)
 				return 0;
 
 			tex_resolve(textures[dTexture].mcTextureNodeIndex);
@@ -360,7 +360,7 @@ class TerrainTextures
 
 		DWORD peekDetailHandle (DWORD dTexture) const
 		{
-			if ((long)dTexture >= nextAvailable)
+			if (static_cast<long>(dTexture) >= nextAvailable)
 				return 0xffffffff;
 
 			return textures[dTexture].mcTextureNodeIndex;
@@ -379,14 +379,14 @@ class TerrainTextures
 		
 		bool isCement (DWORD typeInfo)
 		{
-			if ((long)typeInfo >= nextAvailable)
+			if (static_cast<long>(typeInfo) >= nextAvailable)
 				return false;
 			return (textures[typeInfo].flags & MC2_TERRAIN_CEMENT_FLAG) == MC2_TERRAIN_CEMENT_FLAG;
 		}
 
 		bool isAlpha (DWORD typeInfo)
 		{
-			if ((long)typeInfo >= nextAvailable)
+			if (static_cast<long>(typeInfo) >= nextAvailable)
 				return false;
 			return (textures[typeInfo].flags & MC2_TERRAIN_ALPHA_FLAG) == MC2_TERRAIN_ALPHA_FLAG;
 		}

@@ -313,7 +313,7 @@ namespace Stuff {
 					SnapshotOf<T> *sample =
 						Cast_Pointer(SnapshotOf<T>*, log->GetPointer());
 					sample->sampleLength = sizeof(*sample);
-					sample->sampleType = (BYTE)sampleType;
+					sample->sampleType = static_cast<BYTE>(sampleType);
 					sample->traceNumber = traceNumber;
 					sample->sampleTime = now;
 					sample->snapShot = currentValue;

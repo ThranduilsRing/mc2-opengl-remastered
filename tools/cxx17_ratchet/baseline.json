@@ -193,7 +193,7 @@
    "LG06": 666,
    "LG07": 0,
    "LG08": 70,
-   "LG09": 150,
+   "LG09": 1,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 169,
@@ -203,7 +203,7 @@
    "LG15": 0,
    "LG16": 156,
    "LG17": 95,
-   "LG18": 37,
+   "LG18": 36,
    "LG19": 0,
    "LG20": 10
   },
@@ -2832,8 +2832,7 @@
    "LG11": 4
   },
   "mclib/anim_override_registry.h": {
-   "LG06": 3,
-   "LG09": 1
+   "LG06": 3
   },
   "mclib/appear.h": {
    "LG05": 4,
@@ -2914,8 +2913,7 @@
    "LG10": 6
   },
   "mclib/camera_frustum_math.h": {
-   "LG05": 1,
-   "LG09": 3
+   "LG05": 1
   },
   "mclib/camera_input.cpp": {
    "LG10": 4,
@@ -2949,7 +2947,6 @@
    "LG04": 1,
    "LG05": 1,
    "LG06": 4,
-   "LG09": 1,
    "LG14": 4,
    "LG17": 2
   },
@@ -3069,11 +3066,7 @@
    "LG17": 1
   },
   "mclib/fit_number.h": {
-   "LG06": 3,
-   "LG09": 2
-  },
-  "mclib/floathelp.h": {
-   "LG09": 1
+   "LG06": 3
   },
   "mclib/fst_hash.cpp": {
    "LG06": 3,
@@ -3089,8 +3082,7 @@
    "LG11": 1
   },
   "mclib/fx_def_registry.h": {
-   "LG06": 3,
-   "LG09": 1
+   "LG06": 3
   },
   "mclib/fx_trace/fx_cost_split.h": {
    "LG14": 1
@@ -3101,8 +3093,7 @@
    "LG08": 5
   },
   "mclib/fx_trace/fx_trace.h": {
-   "LG06": 5,
-   "LG09": 1
+   "LG06": 5
   },
   "mclib/gamelog.cpp": {
    "LG03": 2,
@@ -3154,14 +3145,12 @@
   },
   "mclib/gosfx/effectlibrary.hpp": {
    "LG06": 1,
-   "LG09": 1,
    "LG14": 1
   },
   "mclib/gosfx/fcurve.cpp": {
    "LG05": 3
   },
   "mclib/gosfx/fcurve.hpp": {
-   "LG09": 2,
    "LG14": 1
   },
   "mclib/gosfx/gosfx.hpp": {
@@ -3344,7 +3333,6 @@
   },
   "mclib/mech_texname_derive.h": {
    "LG06": 3,
-   "LG09": 2,
    "LG11": 1
   },
   "mclib/memfunc.h": {
@@ -3363,18 +3351,8 @@
   "mclib/mlr/gosimagepool.hpp": {
    "LG06": 3
   },
-  "mclib/mlr/gosvertex.hpp": {
-   "LG09": 2
-  },
-  "mclib/mlr/gosvertex2uv.hpp": {
-   "LG09": 2
-  },
   "mclib/mlr/gosvertexmanipulation.hpp": {
-   "LG09": 8,
    "LG13": 5
-  },
-  "mclib/mlr/gosvertexpool.hpp": {
-   "LG09": 8
   },
   "mclib/mlr/mlr.hpp": {
    "LG13": 3,
@@ -3494,7 +3472,6 @@
    "LG03": 21
   },
   "mclib/mlr/mlrlightmap.hpp": {
-   "LG09": 2,
    "LG14": 1
   },
   "mclib/mlr/mlrlinecloud.cpp": {
@@ -3522,12 +3499,10 @@
    "LG04": 1
   },
   "mclib/mlr/mlrprimitivebase.hpp": {
-   "LG03": 1,
-   "LG09": 2
+   "LG03": 1
   },
   "mclib/mlr/mlrprimitiveclipping.hpp": {
    "LG03": 1,
-   "LG09": 17,
    "LG12a": 1,
    "LG13": 1,
    "LG16": 10
@@ -3569,7 +3544,6 @@
    "LG06": 4
   },
   "mclib/mlr/mlrtriangleclipping.hpp": {
-   "LG09": 8,
    "LG13": 1,
    "LG16": 10
   },
@@ -3578,7 +3552,6 @@
   },
   "mclib/mlr/owntrace.hpp": {
    "LG06": 1,
-   "LG09": 1,
    "LG13": 1
   },
   "mclib/mod_cache_sig.h": {
@@ -3595,8 +3568,7 @@
    "LG11": 3
   },
   "mclib/model_override_registry.h": {
-   "LG06": 3,
-   "LG09": 1
+   "LG06": 3
   },
   "mclib/mouse.cpp": {
    "LG18": 3
@@ -3610,7 +3582,6 @@
   },
   "mclib/move.h": {
    "LG05": 1,
-   "LG09": 1,
    "LG13": 33,
    "LG14": 4,
    "LG16": 50,
@@ -3687,7 +3658,6 @@
    "LG06": 1
   },
   "mclib/object_light_row.h": {
-   "LG09": 7,
    "LG14": 3,
    "LG17": 1
   },
@@ -3706,7 +3676,6 @@
   },
   "mclib/packet.h": {
    "LG06": 3,
-   "LG09": 3,
    "LG13": 11
   },
   "mclib/particles/batcher.cpp": {
@@ -3742,7 +3711,6 @@
   },
   "mclib/path_trace.h": {
    "LG06": 1,
-   "LG09": 1,
    "LG12b": 3
   },
   "mclib/paths.cpp": {
@@ -3777,9 +3745,6 @@
   "mclib/render_contract.h": {
    "LG06": 6
   },
-  "mclib/resizeimage.h": {
-   "LG09": 20
-  },
   "mclib/resource_strings.cpp": {
    "LG06": 1
   },
@@ -3787,7 +3752,6 @@
    "LG14": 1
   },
   "mclib/sim_identity.h": {
-   "LG09": 13,
    "LG17": 5
   },
   "mclib/sim_trace.cpp": {
@@ -3856,7 +3820,6 @@
   },
   "mclib/stuff/marray.hpp": {
    "LG03": 8,
-   "LG09": 2,
    "LG17": 6
   },
   "mclib/stuff/memoryblock.cpp": {
@@ -3864,9 +3827,6 @@
   },
   "mclib/stuff/memorystream.cpp": {
    "LG12a": 1
-  },
-  "mclib/stuff/memorystream.hpp": {
-   "LG09": 2
   },
   "mclib/stuff/mstring.cpp": {
    "LG03": 19,
@@ -3877,7 +3837,6 @@
   "mclib/stuff/mstring.hpp": {
    "LG03": 3,
    "LG06": 9,
-   "LG09": 1,
    "LG12a": 1
   },
   "mclib/stuff/node.cpp": {
@@ -3930,9 +3889,7 @@
   },
   "mclib/stuff/scalar.hpp": {
    "LG06": 1,
-   "LG09": 3,
-   "LG13": 1,
-   "LG18": 1
+   "LG13": 1
   },
   "mclib/stuff/socket.cpp": {
    "LG03": 1
@@ -3963,7 +3920,6 @@
   },
   "mclib/stuff/trace.hpp": {
    "LG06": 2,
-   "LG09": 1,
    "LG14": 2
   },
   "mclib/stuff/tree.cpp": {
@@ -4023,7 +3979,6 @@
   "mclib/terrtxm.h": {
    "LG05": 1,
    "LG06": 4,
-   "LG09": 8,
    "LG13": 5
   },
   "mclib/terrtxm2.cpp": {
@@ -4035,7 +3990,6 @@
   "mclib/terrtxm2.h": {
    "LG05": 1,
    "LG06": 10,
-   "LG09": 2,
    "LG13": 1
   },
   "mclib/terrtxm2_bake.cpp": {
@@ -4044,7 +3998,6 @@
   },
   "mclib/terrtxm2_internal.h": {
    "LG06": 3,
-   "LG09": 9,
    "LG12a": 6,
    "LG12b": 2,
    "LG13": 2,
@@ -4054,9 +4007,6 @@
    "LG05": 2,
    "LG06": 1,
    "LG18": 6
-  },
-  "mclib/tex_resolve_table.h": {
-   "LG09": 1
   },
   "mclib/tga_scratch.cpp": {
    "LG06": 2
@@ -4078,7 +4028,7 @@
   "mclib/tgl.h": {
    "LG05": 3,
    "LG06": 18,
-   "LG09": 2,
+   "LG09": 1,
    "LG13": 53,
    "LG17": 7
   },
@@ -4161,7 +4111,6 @@
    "LG13": 3
   },
   "mclib/vfx.h": {
-   "LG09": 7,
    "LG13": 3
   },
   "mclib/vis_semantics.cpp": {
@@ -4169,7 +4118,6 @@
   },
   "mclib/vis_semantics.h": {
    "LG06": 1,
-   "LG09": 1,
    "LG14": 1
   },
   "mclib/weaponfx.cpp": {
@@ -4217,7 +4165,7 @@
    "LG20": 3
   }
  },
- "head": "2d745a5c2",
+ "head": "81c4c4244",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

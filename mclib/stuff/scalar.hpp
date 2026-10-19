@@ -9,7 +9,7 @@
 
 #include"stuff.hpp"
 #include"memorystream.hpp"
-
+#include <bit>
 namespace Stuff {
 
 	#if !defined(M_PI)
@@ -58,7 +58,7 @@ namespace Stuff {
 		Positive_Float_To_Byte(float in)
 	{
 		Verify(in >= 0.0f && in < 256.0f);
-		return (BYTE)in;
+		return static_cast<BYTE>(in);
 	}
 
 	inline WORD
@@ -125,8 +125,8 @@ namespace Stuff {
 #if USE_ASSEMBLER_CODE
 				float temp;
 
-				int _i = 2 * FP_ONE_BITS - *(int *)&(f);
-				temp = *(float *)&_i;
+				int _i = 2 * FP_ONE_BITS - std::bit_cast<int>(f);
+				temp = std::bit_cast<float>(_i);
 				temp = temp * (2.0f - (f) * temp);
 
 				return temp;

@@ -772,7 +772,7 @@ class TG_TypeShape : public TG_TypeNode
 		}
 		long GetNumTypeTriangles (void) const
 		{
-			return (long)numTypeTriangles;
+			return static_cast<long>(numTypeTriangles);
 		}
 
 		// MODEL-OVERRIDE auto-ground: shift all type-vertices along the up axis
