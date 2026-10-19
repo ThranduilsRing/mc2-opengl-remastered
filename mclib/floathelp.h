@@ -163,7 +163,7 @@ class FloatHelp
 
 				//gos_TextDrawBackground ((int)screenPos.x, (int)screenPos.y, (int)(screenPos.x+screenPos.z), (int)(screenPos.y+screenPos.w), SD_BLACK);
 
-				gos_TextSetPosition((int)screenPos.x,(int)screenPos.y);
+				gos_TextSetPosition(static_cast<int>(screenPos.x),static_cast<int>(screenPos.y));
 
 				gos_TextDraw(text);
 			}

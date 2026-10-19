@@ -38,7 +38,7 @@ inline std::string stripPath(const std::string& p) {
 inline bool isDroppedMeshName(const char* n) {
     if (!n) return false;
     std::string s = n;
-    for (char& c : s) c = (char)((c >= 'A' && c <= 'Z') ? c - 'A' + 'a' : c);
+    for (char& c : s) c = static_cast<char>(((c >= 'A' && c <= 'Z') ? c - 'A' + 'a' : c));
     return s.find("_explode") != std::string::npos || s.find("_dmg") != std::string::npos
         || s.find("blip") != std::string::npos || s.find("indc") != std::string::npos
         || s.find("uix") != std::string::npos;
@@ -56,7 +56,7 @@ inline std::string deriveName(const std::string& src, bool wantAlpha) {
 
     for (size_t i = 0; i < stem.size(); ++i) {
         char c = stem[i];
-        if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
+        if (c >= 'A' && c <= 'Z') c = static_cast<char>((c - 'A' + 'a'));
         const bool ok = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
                       || c == '_' || c == '-';
         stem[i] = ok ? c : '_';

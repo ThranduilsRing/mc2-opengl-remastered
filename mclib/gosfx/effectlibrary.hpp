@@ -47,7 +47,7 @@ namespace gosFX
 		void
 			Merge(
 				EffectLibrary &source,
-				MergeMode merge_mode=(MergeMode)OnlyAddNewEffects
+				MergeMode merge_mode=static_cast<MergeMode>(OnlyAddNewEffects)
 			);
 
 		static EffectLibrary*

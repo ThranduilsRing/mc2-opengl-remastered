@@ -55,7 +55,7 @@ inline bool GOSCopyData (
 		gos_vertices[0].x = coords[_offset].x * gos_vertices[0].rhw;
 		gos_vertices[0].y = coords[_offset].y * gos_vertices[0].rhw;
 		gos_vertices[0].z = coords[_offset].z * gos_vertices[0].rhw; 
-		gos_vertices[0].rhw = (float)fabs(gos_vertices[0].rhw);
+		gos_vertices[0].rhw = static_cast<float>(fabs(gos_vertices[0].rhw));
 	
 		gos_vertices[0].x = gos_vertices[0].x*ViewportScalars::MulX + ViewportScalars::AddX;
 		gos_vertices[0].y = gos_vertices[0].y*ViewportScalars::MulY + ViewportScalars::AddY;
@@ -82,7 +82,7 @@ inline bool GOSCopyData (
 			gos_vertices[0].argb = 0xffffffff;
 #endif	//	I_SAY_YES_TO_COLOR
 
-	*((BYTE *)&gos_vertices[0].frgb + 3) = 0xff;
+	*(reinterpret_cast<BYTE *>(&gos_vertices[0].frgb) + 3) = 0xff;
 
 #ifdef I_SAY_YES_TO_TEXTURE
 	#ifdef I_SAY_YES_TO_MULTI_TEXTURE
@@ -149,7 +149,7 @@ inline bool GOSCopyTriangleData (
 		gos_vertices[0].x = coords[offset0].x * gos_vertices[0].rhw;
 		gos_vertices[0].y = coords[offset0].y * gos_vertices[0].rhw;
 		gos_vertices[0].z = coords[offset0].z * gos_vertices[0].rhw; 
-		gos_vertices[0].rhw = (float)fabs(gos_vertices[0].rhw);
+		gos_vertices[0].rhw = static_cast<float>(fabs(gos_vertices[0].rhw));
 	
 		gos_vertices[1].rhw = 1.0f;
 		if (fabs(coords[offset1].w) > Stuff::SMALL)
@@ -158,7 +158,7 @@ inline bool GOSCopyTriangleData (
 		gos_vertices[1].x = coords[offset1].x * gos_vertices[1].rhw;
 		gos_vertices[1].y = coords[offset1].y * gos_vertices[1].rhw;
 		gos_vertices[1].z = coords[offset1].z * gos_vertices[1].rhw; 
-		gos_vertices[1].rhw = (float)fabs(gos_vertices[1].rhw);
+		gos_vertices[1].rhw = static_cast<float>(fabs(gos_vertices[1].rhw));
 	
 		gos_vertices[2].rhw = 1.0f;
 		if (fabs(coords[offset2].w) > Stuff::SMALL)
@@ -167,7 +167,7 @@ inline bool GOSCopyTriangleData (
 		gos_vertices[2].x = coords[offset2].x * gos_vertices[2].rhw;
 		gos_vertices[2].y = coords[offset2].y * gos_vertices[2].rhw;
 		gos_vertices[2].z = coords[offset2].z * gos_vertices[2].rhw; 
-		gos_vertices[2].rhw = (float)fabs(gos_vertices[2].rhw);
+		gos_vertices[2].rhw = static_cast<float>(fabs(gos_vertices[2].rhw));
 	
 		gos_vertices[0].x = gos_vertices[0].x*ViewportScalars::MulX + ViewportScalars::AddX;
 		gos_vertices[0].y = gos_vertices[0].y*ViewportScalars::MulY + ViewportScalars::AddY;
@@ -220,9 +220,9 @@ inline bool GOSCopyTriangleData (
 		gos_vertices[2].argb = 0xffffffff;
 #endif	//	I_SAY_YES_TO_COLOR
 
-		*((BYTE *)&gos_vertices[0].frgb + 3) = 0xff;
-		*((BYTE *)&gos_vertices[1].frgb + 3) = 0xff;
-		*((BYTE *)&gos_vertices[2].frgb + 3) = 0xff;
+		*(reinterpret_cast<BYTE *>(&gos_vertices[0].frgb) + 3) = 0xff;
+		*(reinterpret_cast<BYTE *>(&gos_vertices[1].frgb) + 3) = 0xff;
+		*(reinterpret_cast<BYTE *>(&gos_vertices[2].frgb) + 3) = 0xff;
 
 #ifdef I_SAY_YES_TO_TEXTURE
 	#ifdef I_SAY_YES_TO_MULTI_TEXTURE

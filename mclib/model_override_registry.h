@@ -44,7 +44,7 @@ public:
                       const std::string& manifestDir);
     const ModelOverrideRecord* resolve(const char* overrideClass,
                                        const char* appearanceName) const;
-    int count() const { return (int)records_.size(); }
+    int count() const { return static_cast<int>(records_.size()); }
     // Manifest dir the records were loaded from; override source paths are
     // resolved relative to it (avoids hardcoding the literal at call sites).
     const std::string& manifestDir() const { return manifestDir_; }

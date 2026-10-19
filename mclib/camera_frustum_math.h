@@ -91,9 +91,9 @@ inline bool compute43BoxRect(int w, int h, int* ox, int* oy, int* obw, int* obh)
     bool active = (w > 0 && h > 0);
     if (active) {
         const double kTarget = 4.0 / 3.0;
-        const double aspect = (double)w / (double)h;
-        if (aspect > kTarget) { rh = h; rw = (int)((double)h * kTarget + 0.5); }
-        else if (aspect < kTarget) { rw = w; rh = (int)((double)w / kTarget + 0.5); }
+        const double aspect = static_cast<double>(w) / static_cast<double>(h);
+        if (aspect > kTarget) { rh = h; rw = static_cast<int>((static_cast<double>(h) * kTarget + 0.5)); }
+        else if (aspect < kTarget) { rw = w; rh = static_cast<int>((static_cast<double>(w) / kTarget + 0.5)); }
         rx = (w - rw) / 2; ry = (h - rh) / 2;
         if (rw == w && rh == h) active = false;
     }

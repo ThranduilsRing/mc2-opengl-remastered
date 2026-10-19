@@ -224,10 +224,10 @@ inline CLIST *contrib;
 
 inline Image *newImage(long xSize, long ySize)
 {
-	Image *image = (Image *)malloc(sizeof(Image));
+	Image *image = static_cast<Image *>(malloc(sizeof(Image)));
 	if (image)
 	{
-		image->data = (float *)malloc(sizeof(float) * xSize * ySize);
+		image->data = static_cast<float *>(malloc(sizeof(float) * xSize * ySize));
 		memset(image->data,0,sizeof(float) * xSize * ySize);
 		
 		image->xSize = xSize;
@@ -255,11 +255,11 @@ inline void zoom (Image *dst, Image *src, double (*filter)(double t), double fwi
 	
 	//Create Intermediate image to hold horizontal zoom
 	tmp = newImage(dst->xSize,src->ySize);
-	xscale = (double)dst->xSize / (double)src->xSize;
-	yscale = (double)dst->ySize / (double)src->ySize;
+	xscale = static_cast<double>(dst->xSize) / static_cast<double>(src->xSize);
+	yscale = static_cast<double>(dst->ySize) / static_cast<double>(src->ySize);
 	
 	//pre-calculate filter contributions for a row
-	contrib = (CLIST *)malloc(dst->xSize * sizeof(CLIST));
+	contrib = static_cast<CLIST *>(malloc(dst->xSize * sizeof(CLIST)));
 	memset(contrib,0,dst->xSize * sizeof(CLIST));
 	
 	if (xscale < 1.0)
@@ -269,15 +269,15 @@ inline void zoom (Image *dst, Image *src, double (*filter)(double t), double fwi
 		for (i=0;i<dst->xSize;++i)
 		{
 			contrib[i].n = 0;
-			contrib[i].p = (CONTRIB *)malloc((width * 2 + 1) * sizeof(CONTRIB));
+			contrib[i].p = static_cast<CONTRIB *>(malloc((width * 2 + 1) * sizeof(CONTRIB)));
 			
-			center = (double)i / xscale;
+			center = static_cast<double>(i) / xscale;
 			left = ceil(center - width);
 			right = floor(center + width);
 			
 			for (j=left;j<=right;++j)
 			{
-				weight = center - (double)j;
+				weight = center - static_cast<double>(j);
 				weight = (*filter)(weight / fscale) / fscale;
 				if (j < 0)
 				{
@@ -303,15 +303,15 @@ inline void zoom (Image *dst, Image *src, double (*filter)(double t), double fwi
 		for (i=0;i<dst->xSize;++i)
 		{
 			contrib[i].n = 0;
-			contrib[i].p = (CONTRIB *)malloc((fwidth * 2 + 1) * sizeof(CONTRIB));
+			contrib[i].p = static_cast<CONTRIB *>(malloc((fwidth * 2 + 1) * sizeof(CONTRIB)));
 			
-			center = (double)i / xscale;
+			center = static_cast<double>(i) / xscale;
 			left = ceil(center - fwidth);
 			right = floor(center + fwidth);
 			
 			for (j=left;j<=right;++j)
 			{
-				weight = center - (double)j;
+				weight = center - static_cast<double>(j);
 				weight = (*filter)(weight);
 				if (j < 0)
 				{
@@ -334,7 +334,7 @@ inline void zoom (Image *dst, Image *src, double (*filter)(double t), double fwi
 	}
 	
 	//Apply filter to zoom horizontally from src to tmp
-	raster = (float *)malloc(src->xSize * sizeof(float));
+	raster = static_cast<float *>(malloc(src->xSize * sizeof(float)));
 	memset(raster,0,src->xSize * sizeof(float));
 	
 	for (k=0;k<tmp->ySize; ++k)
@@ -365,7 +365,7 @@ inline void zoom (Image *dst, Image *src, double (*filter)(double t), double fwi
 	contrib = nullptr;
 	
 	//pre-calculate filter contributions for horizontal filter weights
-	contrib = (CLIST *)malloc(dst->ySize * sizeof(CLIST));
+	contrib = static_cast<CLIST *>(malloc(dst->ySize * sizeof(CLIST)));
 	memset(contrib,0,dst->ySize * sizeof(CLIST));
 	
 	if (yscale < 1.0)
@@ -375,15 +375,15 @@ inline void zoom (Image *dst, Image *src, double (*filter)(double t), double fwi
 		for (i=0;i<dst->ySize;++i)
 		{
 			contrib[i].n = 0;
-			contrib[i].p = (CONTRIB *)malloc((width * 2 + 1) * sizeof(CONTRIB));
+			contrib[i].p = static_cast<CONTRIB *>(malloc((width * 2 + 1) * sizeof(CONTRIB)));
 			
-			center = (double)i / yscale;
+			center = static_cast<double>(i) / yscale;
 			left = ceil(center - width);
 			right = floor(center + width);
 			
 			for (j=left;j<=right;++j)
 			{
-				weight = center - (double)j;
+				weight = center - static_cast<double>(j);
 				weight = (*filter)(weight / fscale) / fscale;
 				if (j < 0)
 				{
@@ -409,15 +409,15 @@ inline void zoom (Image *dst, Image *src, double (*filter)(double t), double fwi
 		for (i=0;i<dst->ySize;++i)
 		{
 			contrib[i].n = 0;
-			contrib[i].p = (CONTRIB *)malloc((fwidth * 2 + 1) * sizeof(CONTRIB));
+			contrib[i].p = static_cast<CONTRIB *>(malloc((fwidth * 2 + 1) * sizeof(CONTRIB)));
 			
-			center = (double)i / yscale;
+			center = static_cast<double>(i) / yscale;
 			left = ceil(center - fwidth);
 			right = floor(center + fwidth);
 			
 			for (j=left;j<=right;++j)
 			{
-				weight = center - (double)j;
+				weight = center - static_cast<double>(j);
 				weight = (*filter)(weight);
 				if (j < 0)
 				{
@@ -440,7 +440,7 @@ inline void zoom (Image *dst, Image *src, double (*filter)(double t), double fwi
 	}
 	
 	//Apply filter to zoom vertically from tmp to dst
-	raster = (float *)malloc(sizeof(float) * tmp->ySize);
+	raster = static_cast<float *>(malloc(sizeof(float) * tmp->ySize));
 	memset(raster,0,sizeof(float) * tmp->ySize); 
 	
 	for (k=0;k<dst->xSize;++k)

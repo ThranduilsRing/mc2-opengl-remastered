@@ -1797,7 +1797,7 @@ class MoveMap {
 			// Off-map: return a high (avoid) cost rather than indexing map[] OOB.
 			// Real paths are inBounds-gated elsewhere, so this only guards stray
 			// off-grid queries on oversized maps (MOVE grid < terrain grid).
-			if (!inBounds(row, col)) return((char)127);
+			if (!inBounds(row, col)) return(static_cast<char>(127));
 			return(map[row * width + col].cost);
 		}
 

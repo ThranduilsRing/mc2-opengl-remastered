@@ -110,7 +110,7 @@ void
 			}
 #endif	//	LAB_ONLY
 
-			*(int *)(&indexOffset[j]) = (j - stride);
+			*reinterpret_cast<int *>((&indexOffset[j])) = (j - stride);
 
 #ifdef I_SAY_YES_TO_TERRAIN
 			terrainUV[0] = borderPixelFun + (coords[j].x - minX)*xUVFac;
@@ -447,7 +447,7 @@ void
 		Verify(indexOffset[index[j+1]] < numGOSVertices);
 		gos_indices[ngi++] = indexOffset[index[j+1]];
 	}
-	numGOSIndices = (unsigned short)ngi;
+	numGOSIndices = static_cast<unsigned short>(ngi);
 
 	Check_Object(vt);
 	if(db==false)
@@ -455,7 +455,7 @@ void
 		vt->IncreaseIndex(numGOSIndices);
 	}
 
-	visible = numGOSVertices ? (unsigned char)1 : (unsigned char)0;
+	visible = numGOSVertices ? static_cast<unsigned char>(1) : static_cast<unsigned char>(0);
 
 	Stop_Timer(Transform_Time);
 }
@@ -505,7 +505,7 @@ int
 
 	Stuff::Vector4D *v4d = transformedCoords->GetData();
 	glm::vec3 *p3d = coords.GetData();
-	int *cs = (int *)clipPerVertex->GetData();
+	int *cs = reinterpret_cast<int *>(clipPerVertex->GetData());
 	unsigned char *viv = visibleIndexedVertices.GetData();
 
 	for(i=0;i<len;i++,p3d++,v4d++,cs++,viv++)
@@ -632,7 +632,7 @@ int
 	// backfaced polygons
 	//-----------------------------------------------------------------
 	//
-	cs = (int *)clipPerVertex->GetData();
+	cs = reinterpret_cast<int *>(clipPerVertex->GetData());
 	int index0, index1, index2;
 
 	for(i=0,j=0;i<numOfTriangles;j+=3,++i)
@@ -1884,8 +1884,8 @@ int
 				Verify(numGOSIndices%3 == 0);
 
 				gos_indices[numGOSIndices] = numGOSVertices;
-				gos_indices[numGOSIndices+1] = (unsigned short)(numGOSVertices + 1);
-				gos_indices[numGOSIndices+2] = (unsigned short)(numGOSVertices + 2);
+				gos_indices[numGOSIndices+1] = static_cast<unsigned short>((numGOSVertices + 1));
+				gos_indices[numGOSIndices+2] = static_cast<unsigned short>((numGOSVertices + 2));
 
 				numGOSVertices += 3;
 				numGOSIndices += 3;
@@ -2084,7 +2084,7 @@ int
 		vt->IncreaseIndex(numGOSIndices);
 	}
 
-	visible = numGOSVertices ? (unsigned char)1 : (unsigned char)0;
+	visible = numGOSVertices ? static_cast<unsigned char>(1) : static_cast<unsigned char>(0);
 
 	if(visible)
 	{

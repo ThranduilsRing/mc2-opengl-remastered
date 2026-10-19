@@ -43,9 +43,9 @@
 #define ANY_PACKET_TYPE				0x07
 #define OFFSET_MASK         		((1L << TYPE_SHIFT) - 1L)
 
-#define GetPacketType(offset) 		(((unsigned int)offset)>>TYPE_SHIFT)
+#define GetPacketType(offset) 		((static_cast<unsigned int>(offset))>>TYPE_SHIFT)
 #define GetPacketOffset(offset)		(offset&OFFSET_MASK)
-#define SetPacketType(offset,type)	((offset)+((int)(type)<<TYPE_SHIFT))
+#define SetPacketType(offset,type)	((offset)+(static_cast<int>((type))<<TYPE_SHIFT))
 
 #define TABLE_ENTRY(p) ((2+p)<<2)	// ((1+p)*sizeof(long))
 
@@ -133,7 +133,7 @@ class PacketFile : public File
 
         template<typename T>
 		int writePacket (int packet, T basic_type, unsigned char p_type = ANY_PACKET_TYPE) {
-		    return writePacket (packet, (unsigned char*)&basic_type, sizeof(basic_type), p_type);
+		    return writePacket (packet, reinterpret_cast<unsigned char*>(&basic_type), sizeof(basic_type), p_type);
         }
 };
 
