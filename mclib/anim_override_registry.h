@@ -10,6 +10,7 @@
 // See docs/modding-animations.md + docs/ppc-flight-and-fx-anim-moddability-recon.md.
 #pragma once
 #include <string>
+#include <string_view>
 #include <vector>
 
 struct AnimOverrideRecord {
@@ -26,11 +27,11 @@ class AnimOverrideRegistry {
 public:
     // Clears registry then loads from manifestPath. Returns count.
     int loadFromFile(const std::string& manifestPath,
-                     const std::string& manifestDir);
+                     std::string_view manifestDir);
     // Additive: loads manifestPath without clearing. Mod entries WIN on dup key.
     // Returns count merged in (not total).
     int mergeFromFile(const std::string& manifestPath,
-                      const std::string& manifestDir);
+                      std::string_view manifestDir);
     // Returns the override clip for (mechName, gesture), or nullptr for none.
     const AnimOverrideRecord* resolve(const char* mechName,
                                       const char* gesture) const;

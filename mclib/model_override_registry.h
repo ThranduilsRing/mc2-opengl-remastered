@@ -5,6 +5,7 @@
 // and dropped, never fatal. See docs/model-override-mvp-plan.md.
 #pragma once
 #include <string>
+#include <string_view>
 #include <vector>
 
 // TREE-OVERRIDE-LOD-MVP-1 Task 3/4: one lower-detail LOD source for an override.
@@ -37,17 +38,17 @@ class ModelOverrideRegistry {
 public:
     // Clears registry then loads from manifestPath. Returns count.
     int loadFromFile(const std::string& manifestPath,
-                     const std::string& manifestDir);
+                     std::string_view manifestDir);
     // Additive: loads manifestPath without clearing. Mod entries WIN on dup key.
     // Returns count of entries merged in (not total).
     int mergeFromFile(const std::string& manifestPath,
-                      const std::string& manifestDir);
+                      std::string_view manifestDir);
     const ModelOverrideRecord* resolve(const char* overrideClass,
                                        const char* appearanceName) const;
     int count() const { return static_cast<int>(records_.size()); }
     // Manifest dir the records were loaded from; override source paths are
     // resolved relative to it (avoids hardcoding the literal at call sites).
-    const std::string& manifestDir() const { return manifestDir_; }
+    std::string_view manifestDir() const { return manifestDir_; }
     static ModelOverrideRegistry& instance();
 private:
     std::vector<ModelOverrideRecord> records_;

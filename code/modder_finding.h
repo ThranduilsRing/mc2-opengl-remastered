@@ -17,6 +17,7 @@
 // consistent part: `(source=.. file=.. id=.. field=.. expected=.. actual=..
 // fallback=..)` with empty fields omitted.
 #include <string>
+#include <string_view>
 
 struct ModderFinding {
     std::string reason;    // stable machine token (UPV_/EQV_/MODMAN_/MODCONFLICT_) or empty
@@ -34,7 +35,7 @@ struct ModderFinding {
 // empty string (no dangling "()").
 inline std::string modderFindingContext(const ModderFinding& f) {
     std::string ctx;
-    auto add = [&ctx](const char* key, const std::string& val) {
+    auto add = [&ctx](std::string_view key, std::string_view val) {
         if (val.empty()) return;
         if (!ctx.empty()) ctx += " ";
         ctx += key;

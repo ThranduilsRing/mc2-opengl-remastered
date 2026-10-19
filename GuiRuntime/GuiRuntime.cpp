@@ -49,7 +49,7 @@ static bool traceEnabled()
     return mc2::gate::get<"MC2_UI_DEFS_TRACE">();
 }
 
-static const char* fileForFamily(const std::string& family)
+static const char* fileForFamily(std::string_view family)
 {
     if (family == "agency")        return "Agency-Regular.ttf";
     if (family == "agency_bold")   return "Agency-Bold.ttf";

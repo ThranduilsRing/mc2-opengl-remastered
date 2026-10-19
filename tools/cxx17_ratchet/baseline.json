@@ -75,7 +75,7 @@
    "LG03": 0,
    "LG04": 0,
    "LG05": 4,
-   "LG06": 12,
+   "LG06": 9,
    "LG07": 2,
    "LG08": 1,
    "LG09": 41,
@@ -144,7 +144,7 @@
    "LG03": 458,
    "LG04": 20,
    "LG05": 198,
-   "LG06": 448,
+   "LG06": 447,
    "LG07": 2,
    "LG08": 17,
    "LG09": 0,
@@ -190,7 +190,7 @@
    "LG03": 999,
    "LG04": 15,
    "LG05": 135,
-   "LG06": 661,
+   "LG06": 655,
    "LG07": 0,
    "LG08": 70,
    "LG09": 0,
@@ -1226,7 +1226,7 @@
   },
   "GuiRuntime/GuiRuntime.cpp": {
    "LG05": 1,
-   "LG06": 3,
+   "LG06": 2,
    "LG09": 23,
    "LG10": 1,
    "LG11": 1
@@ -1241,7 +1241,7 @@
   },
   "GuiRuntime/GuiRuntime_internal.h": {
    "LG05": 1,
-   "LG06": 3,
+   "LG06": 1,
    "LG07": 2,
    "LG08": 1
   },
@@ -2108,9 +2108,6 @@
   "code/missionselectionscreen.cpp": {
    "LG12b": 2
   },
-  "code/modder_finding.h": {
-   "LG06": 1
-  },
   "code/mover.cpp": {
    "LG03": 1,
    "LG05": 1,
@@ -2645,7 +2642,7 @@
   },
   "mclib/anim_override_registry.cpp": {
    "LG05": 3,
-   "LG06": 6,
+   "LG06": 3,
    "LG11": 4
   },
   "mclib/anim_override_registry.h": {
@@ -3380,7 +3377,7 @@
   },
   "mclib/model_override_registry.cpp": {
    "LG05": 2,
-   "LG06": 6,
+   "LG06": 3,
    "LG11": 3
   },
   "mclib/model_override_registry.h": {
@@ -3980,7 +3977,7 @@
    "LG20": 3
   }
  },
- "head": "1d3d0d157",
+ "head": "21050d5db",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
