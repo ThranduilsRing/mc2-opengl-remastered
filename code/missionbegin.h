@@ -107,7 +107,7 @@ class MissionBegin
 		long						curScreenX;
 		long						curScreenY;
 
-		MainMenu*					mainMenu;
+		std::unique_ptr<MainMenu>					mainMenu;
 		bool						bSplash;
 		// The campaign's pre-video handed out by this frame's updateSplash(); empty when there is none.
 		std::string					pendingPreVideo;

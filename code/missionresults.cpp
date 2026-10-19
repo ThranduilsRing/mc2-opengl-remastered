@@ -36,11 +36,11 @@ MissionResults::MissionResults()
 MissionResults::~MissionResults()
 {
 	if (pSalvageScreen)
-		delete pSalvageScreen;
+		pSalvageScreen.reset();
 	pSalvageScreen = nullptr;
 
 	if (pPilotScreen)
-		delete pPilotScreen;
+		pPilotScreen.reset();
 	pPilotScreen = nullptr;
 }
 
@@ -58,7 +58,7 @@ void MissionResults::begin()
 
 		if ( !LogisticsData::instance->skipSalvageScreen() )
 		{
-			pSalvageScreen = new SalvageMechScreen();
+			pSalvageScreen = std::make_unique<SalvageMechScreen>();
 			strcpy( path, artPath );
 			strcat( path, "mcui_mr_layout.fit" );
 			
@@ -80,7 +80,7 @@ void MissionResults::begin()
 			strcpy( path, artPath );
 			strcat( path, "mcui_mr_layout.fit" );
 
-			pPilotScreen = new PilotReviewScreen();
+			pPilotScreen = std::make_unique<PilotReviewScreen>();
 			if ( NO_ERR != file.open( path ) )
 			{
 				char error[256];
@@ -197,7 +197,7 @@ void MissionResults::update()
 		if ( pSalvageScreen->isDone() )
 		{
 			pSalvageScreen->updateSalvage();
-			delete pSalvageScreen;
+			pSalvageScreen.reset();
 			pSalvageScreen = nullptr;
 
 			if ( !pPilotScreen )
@@ -213,7 +213,7 @@ void MissionResults::update()
 		if ( pPilotScreen->isDone() )
 		{
 			pPilotScreen->updatePilots();
-			delete pPilotScreen;
+			pPilotScreen.reset();
 			pPilotScreen = nullptr;
 			// take this out!
 		 

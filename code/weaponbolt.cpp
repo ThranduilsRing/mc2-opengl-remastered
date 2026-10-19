@@ -406,7 +406,7 @@ void WeaponBolt::destroy (void)
 	traceCombatRetire("teardown");
 	if (targetPosition)
 	{
-		delete targetPosition;
+		targetPosition.reset();
 		targetPosition = nullptr;
 	}
 
@@ -654,7 +654,7 @@ void WeaponBolt::setTarget (GameObjectPtr who)
 void WeaponBolt::setTargetPosition (glm::vec3 pos)
 {
 	if (!targetPosition)
-		targetPosition = new glm::vec3;
+		targetPosition = std::make_unique_for_overwrite<glm::vec3>();
 		
 	*targetPosition = pos;
 }
@@ -733,7 +733,7 @@ void WeaponBolt::Load (WeaponBoltData *data)
 		targetPosition = nullptr;
 	else
 	{
-		targetPosition = new glm::vec3;
+		targetPosition = std::make_unique_for_overwrite<glm::vec3>();
 		*targetPosition = data->targetPosition;
 	}
 

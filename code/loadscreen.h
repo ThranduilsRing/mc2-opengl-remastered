@@ -1,5 +1,6 @@
 #ifndef LOADSCREEN_H
 #define LOADSCREEN_H
+#include <memory>
 /*************************************************************************************************\
 LoadScreen.h			: Interface for the LoadScreen component.
 //---------------------------------------------------------------------------//
@@ -44,8 +45,8 @@ public:
 
 	virtual void begin();
 
-	static LoadScreen*	enterScreen;
-	static LoadScreen*	exitScreen;
+	static std::unique_ptr<LoadScreen>	enterScreen;
+	static std::unique_ptr<LoadScreen>	exitScreen;
 	static void			changeRes();
 	bool				waitForResChange;
 	bool				bFirstTime;

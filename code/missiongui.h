@@ -24,6 +24,7 @@
 
 #ifndef MISSIONGUI_H
 #define MISSIONGUI_H
+#include <memory>
 //--------------------------------------------------------------------------------------
 // Include Files
 #ifndef MCLIB_H
@@ -198,15 +199,9 @@ public:
 				
 	public:
 	
-		MissionInterfaceManager (void)
-		{
-			init();
-		}
+		MissionInterfaceManager (void);
 		
-		~MissionInterfaceManager (void)
-		{
-			destroy();
-		}
+		~MissionInterfaceManager (void);
 
 		static MissionInterfaceManager* instance(){ return s_instance; }
 		
@@ -555,7 +550,7 @@ public:
 
 		float			swapTime;
 
-		KeyboardRef*	keyboardRef;
+		std::unique_ptr<KeyboardRef>	keyboardRef;
 
 		MoverPtr		reinforcement;
 };

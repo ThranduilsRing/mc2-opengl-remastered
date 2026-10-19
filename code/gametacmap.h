@@ -9,6 +9,7 @@ gameTacMap.h			: Interface for the gameTacMap component.
 
 #ifndef TACMAP_H
 #include"tacmap.h"
+#include <memory>
 #endif
 
 class Camera;
@@ -28,7 +29,7 @@ class GameTacMap: public TacMap
 	{
 		if (buildingPoints)
 		{
-			delete [] buildingPoints;
+			buildingPoints.reset();
 			buildingPoints = nullptr;
 		}
 	}
@@ -65,7 +66,7 @@ class GameTacMap: public TacMap
 	int		bmpWidth;
 	int		bmpHeight;
 	int		buildingCount;
-	gos_VERTEX* buildingPoints;
+	std::unique_ptr<gos_VERTEX[]> buildingPoints;
 
 	unsigned long textureHandle;
 	unsigned long viewRectHandle;

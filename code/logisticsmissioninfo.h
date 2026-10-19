@@ -12,6 +12,7 @@ LogisticsMissionInfo.h			: Interface for the LogisticsMissionInfo component.
 
 #include <string>
 #include <vector>
+#include <memory>
 
 inline constexpr int MAX_PLAYER_NAME_LENGTH = 64;
 
@@ -164,7 +165,7 @@ class LogisticsMissionInfo
 		// Both lists are filled while a campaign loads (and additionalPurchaseFiles when a purchase file is added) and never erased from; the pointees are
 		// owned by the destructor path (clear()). Order is load order.
 		using MISSION_LIST = std::vector<MissionInfo*>;
-		using FILE_LIST = std::vector<char*>;
+		using FILE_LIST = std::vector<std::unique_ptr<char[]>>;
 
 
 		class MissionGroup
@@ -211,7 +212,7 @@ class LogisticsMissionInfo
 		long					lastMission;
 		std::string				lastMissionName;
 
-		MissionGroup*			groups;
+		std::unique_ptr<MissionGroup[]>			groups;
 		long					groupCount;
 
 		long					CBills;

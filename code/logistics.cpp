@@ -24,15 +24,34 @@ void DEBUGWINS_print (const char* s, long window = 0);
 //class Logistics
 Logistics *logistics = nullptr;
 
+Logistics::Logistics (void)
+{
+	init();
+}
+
+Logistics::~Logistics (void)
+{
+	destroy();
+}
+
+void Logistics::init (void)
+{
+	active = FALSE;
+	missionResults = nullptr;
+	missionBegin = nullptr;
+	logisticsState = log_SPLASH;
+	bMovie = nullptr;
+}
+
 
 		
 //----------------------------------------------------------------------------------
 void Logistics::destroy (void)
 {
-	delete missionBegin;
+	missionBegin.reset();
 	missionBegin = nullptr;
 
-	delete missionResults;
+	missionResults.reset();
 	missionResults = nullptr;
 }	
 		
@@ -111,7 +130,7 @@ void Logistics::start (long startMode)
 			if ( !missionResults )
 			{
 				LogisticsData::instance->init();
-				missionResults = new MissionResults;
+				missionResults = std::make_unique_for_overwrite<MissionResults>();
 				missionResults->init();
 			}
 
@@ -208,7 +227,7 @@ void Logistics::start (long startMode)
 			if ( !missionBegin )
 			{
 				ZoneScopedN("Logistics::start missionBeginInit");
-				missionBegin = new MissionBegin;
+				missionBegin = std::make_unique_for_overwrite<MissionBegin>();
 				missionBegin->beginSplash();
 				missionBegin->init();
 			}
@@ -224,7 +243,7 @@ void Logistics::start (long startMode)
 			if ( !missionBegin )
 			{
 				ZoneScopedN("Logistics::start missionBeginInit");
-				missionBegin = new MissionBegin;
+				missionBegin = std::make_unique_for_overwrite<MissionBegin>();
 				missionBegin->init();
 			}
 
@@ -330,7 +349,7 @@ long Logistics::update (void)
 					logisticsState = log_SPLASH;
 					if ( !missionBegin )
 					{
-						missionBegin = new MissionBegin();
+						missionBegin = std::make_unique<MissionBegin>();
 						missionBegin->init( );
 					}
 					
@@ -366,7 +385,7 @@ long Logistics::update (void)
 				logisticsState = log_SPLASH;
 				if ( !missionBegin )
 				{
-					missionBegin = new MissionBegin();
+					missionBegin = std::make_unique<MissionBegin>();
 					missionBegin->init( );
 				}
 

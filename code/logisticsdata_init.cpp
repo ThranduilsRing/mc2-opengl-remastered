@@ -158,7 +158,6 @@ void LogisticsData::initComponents()
 	memset( Ammo, 0, sizeof ( int ) * 512 );
 
 
-	LogisticsComponent tmpComp;
 	int counter = 0;
 	while(true)
 	{
@@ -167,7 +166,7 @@ void LogisticsData::initComponents()
 		if ( result < 2 || result == 0xBADF0008 || result > 1024  )
 			break;
 
-		components.push_back( tmpComp );
+		components.emplace_back();
 
 		LogisticsComponent& tmp = components.back();
 
@@ -227,8 +226,7 @@ void LogisticsData::appendEquipmentAddFillComponents()
 		strncpy( lineBuf, r.csvLine.c_str(), 1023 );
 		lineBuf[1023] = 0;
 
-		LogisticsComponent blank;
-		components.push_back( blank );
+		components.emplace_back();
 		LogisticsComponent& tmp = components.back();
 		if ( -1 == tmp.init( lineBuf ) )
 		{

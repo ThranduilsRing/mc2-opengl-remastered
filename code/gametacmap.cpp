@@ -711,8 +711,8 @@ void GameTacMap::initBuildings( unsigned char* data, int size )
 
 		if (buildingCount)
 		{
-			buildingPoints = new gos_VERTEX[buildingCount];
-			gos_VERTEX* pTmp = buildingPoints;
+			buildingPoints = std::make_unique_for_overwrite<gos_VERTEX[]>(buildingCount);
+			gos_VERTEX* pTmp = buildingPoints.get();
 
 			for ( int i = 0; i < buildingCount; ++i, pTmp++)
 			{

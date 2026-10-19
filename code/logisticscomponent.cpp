@@ -68,13 +68,13 @@ LogisticsComponent::LogisticsComponent()
 LogisticsComponent::~LogisticsComponent()
 {
 	if ( name )
-		delete[] name;
+		name.reset();
 
 	if ( iconFileName )
-		delete[] iconFileName;
+		iconFileName.reset();
 
 	if ( pictureFileName )
-		delete[] pictureFileName;
+		pictureFileName.reset();
 }
 
 int LogisticsComponent::init( char* dataLine )
@@ -153,8 +153,8 @@ int LogisticsComponent::init( char* dataLine )
 	extractString( pLine, pBuffer, 1024 );
 	if ( *pBuffer && (pBuffer[0] != '0') )
 	{
-		iconFileName = new char[strlen( pBuffer ) + 1];
-		strcpy( iconFileName, pBuffer );
+		iconFileName = std::make_unique_for_overwrite<char[]>(strlen( pBuffer ) + 1);
+		strcpy( iconFileName.get(), pBuffer );
 	}
 	else
 		return -1; // fail if no picture
@@ -162,8 +162,8 @@ int LogisticsComponent::init( char* dataLine )
 	extractString( pLine, pBuffer, 1024 );
 	if ( *pBuffer )
 	{
-		pictureFileName = new char[strlen( pBuffer ) + 1];	//Forgot the NULL all over the place did we?
-		strcpy( pictureFileName, pBuffer );
+		pictureFileName = std::make_unique_for_overwrite<char[]>(strlen( pBuffer ) + 1);	//Forgot the NULL all over the place did we?
+		strcpy( pictureFileName.get(), pBuffer );
 	}
 
 	stringID = extractInt( pLine );
@@ -174,8 +174,9 @@ int LogisticsComponent::init( char* dataLine )
 	char nameBuffer[256];
 	cLoadString( stringID, nameBuffer, 256 );
 
-	name = flavorText = new char[strlen( nameBuffer ) + 1];		//Lets not forget the NULL!!!
-	strcpy( name, nameBuffer );
+	name = std::make_unique_for_overwrite<char[]>(strlen( nameBuffer ) + 1);
+	flavorText = name.get();		//Lets not forget the NULL!!!
+	strcpy( name.get(), nameBuffer );
 
 	return ID;
 }
@@ -208,9 +209,10 @@ void LogisticsComponent::setDisplayName( const char* n )
 	if ( !n )
 		n = "";
 	if ( name )
-		delete[] name;
-	name = flavorText = new char[strlen( n ) + 1];
-	strcpy( name, n );
+		name.reset();
+	name = std::make_unique_for_overwrite<char[]>(strlen( n ) + 1);
+	flavorText = name.get();
+	strcpy( name.get(), n );
 }
 
 bool LogisticsComponent::compare( LogisticsComponent* second, int type )
@@ -227,7 +229,7 @@ bool LogisticsComponent::compare( LogisticsComponent* second, int type )
 			return second->heat > heat;
 			break;
 		case NAME:
-			return S_stricmp( name, second->name ) > 0;
+			return S_stricmp( name.get(), second->name.get() ) > 0;
 			break;
 		case RANGE:
 			return second->damage > damage;

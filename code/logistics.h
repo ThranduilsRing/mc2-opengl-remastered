@@ -20,6 +20,7 @@
 #endif
 
 #include"logisticsdata.h"
+#include <memory>
 
 //----------------------------------------------------------------------------------
 // Macro Definitions
@@ -47,29 +48,16 @@ class Logistics
 		LogisticsData					logisticsData;
 
 		
-		MissionResults*					missionResults;
-		MissionBegin*					missionBegin;
+		std::unique_ptr<MissionResults>					missionResults;
+		std::unique_ptr<MissionBegin>					missionBegin;
 	
 	public:
 	
-		Logistics (void)
-		{
-			init();
-		}
+		Logistics (void);
 		
-		~Logistics (void)
-		{
-			destroy();
-		}
+		~Logistics (void);
 		
-		void init (void)
-		{
-			active = FALSE;
-			missionResults = nullptr;
-			missionBegin = nullptr;
-			logisticsState = log_SPLASH;
-			bMovie = nullptr;
-		}
+		void init (void);
 		
 		void destroy (void);
 		// Frees the ABL modules the front end holds; the shutdown calls it before Mission::destroy closes ABL (BUGS row 76).
@@ -96,7 +84,7 @@ class Logistics
 
 		MissionBegin *getMissionBegin (void)
 		{
-			return missionBegin;
+			return missionBegin.get();
 		}
 
 		static int _stdcall beginMission( void*, int, void*[] );

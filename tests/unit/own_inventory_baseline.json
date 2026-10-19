@@ -501,23 +501,6 @@
    "new_array": 0,
    "owners": []
   },
-  "ButtonData": {
-   "delete": 0,
-   "delete_array": 2,
-   "files": {
-    "code/controlgui.cpp": {
-     "delete_array": 2
-    },
-    "code/controlgui_init.cpp": {
-     "new_array": 2
-    }
-   },
-   "new": 0,
-   "new_array": 2,
-   "owners": [
-    "ControlGui"
-   ]
-  },
   "CBooleanFlagIsSet": {
    "delete": 0,
    "delete_array": 0,
@@ -2363,21 +2346,6 @@
     "EnginePresentVk"
    ]
   },
-  "KeyboardRef": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/missiongui.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "MissionInterfaceManager"
-   ]
-  },
   "Light": {
    "delete": 0,
    "delete_array": 0,
@@ -2429,21 +2397,6 @@
    "new_array": 0,
    "owners": []
   },
-  "LoadScreen": {
-   "delete": 4,
-   "delete_array": 0,
-   "files": {
-    "code/loadscreen.cpp": {
-     "delete": 4,
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": [
-    "LoadScreenWrapper"
-   ]
-  },
   "LoadScreenWrapper": {
    "delete": 0,
    "delete_array": 0,
@@ -2471,21 +2424,6 @@
    "new_array": 0,
    "owners": [
     ""
-   ]
-  },
-  "LogisticsAcceptVariantDialog": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/mechlabscreen.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "MechLabScreen"
    ]
   },
   "LogisticsChassis": {
@@ -2535,26 +2473,15 @@
   },
   "LogisticsMechIcon": {
    "delete": 0,
-   "delete_array": 2,
+   "delete_array": 0,
    "files": {
     "code/logisticsmechicon.cpp": {
      "new": 1
-    },
-    "code/mechbayscreen.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "code/pilotreadyscreen.cpp": {
-     "delete_array": 1,
-     "new_array": 1
     }
    },
    "new": 1,
-   "new_array": 2,
-   "owners": [
-    "MechBayScreen",
-    "PilotReadyScreen"
-   ]
+   "new_array": 0,
+   "owners": []
   },
   "LogisticsMissionInfo": {
    "delete": 1,
@@ -2666,21 +2593,6 @@
     "LogisticsData"
    ]
   },
-  "LogisticsVariantDialog": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/mechlabscreen.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "MechLabScreen"
-   ]
-  },
   "LogisticsVehicle": {
    "delete": 0,
    "delete_array": 0,
@@ -2694,19 +2606,9 @@
    "owners": []
   },
   "MC2Movie": {
-   "delete": 7,
+   "delete": 4,
    "delete_array": 0,
    "files": {
-    "code/controlgui.cpp": {
-     "delete": 1
-    },
-    "code/controlgui_chat.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "code/controlgui_update.cpp": {
-     "delete": 1
-    },
     "code/forcegroupbar.cpp": {
      "new": 1
     },
@@ -2722,10 +2624,9 @@
      "new": 1
     }
    },
-   "new": 5,
+   "new": 4,
    "new_array": 0,
    "owners": [
-    "ControlGui",
     "Logistics",
     "MainMenu"
    ]
@@ -3334,21 +3235,6 @@
     "EditorMFCApp"
    ]
   },
-  "MainMenu": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/missionbegin.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "MissionBegin"
-   ]
-  },
   "MapData": {
    "delete": 1,
    "delete_array": 0,
@@ -3751,21 +3637,6 @@
     ""
    ]
   },
-  "MissionBegin": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/logistics.cpp": {
-     "delete": 1,
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": [
-    "Logistics"
-   ]
-  },
   "MissionBriefingScreen": {
    "delete": 0,
    "delete_array": 0,
@@ -3777,27 +3648,6 @@
    "new": 1,
    "new_array": 0,
    "owners": []
-  },
-  "MissionGroup": {
-   "delete": 0,
-   "delete_array": 1,
-   "files": {
-    "code/logisticsmissioninfo.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "code/logisticsmissioninfo_progress.cpp": {
-     "new_array": 1
-    },
-    "code/logisticsmissioninfo_query.cpp": {
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 3,
-   "owners": [
-    "LogisticsMissionInfo"
-   ]
   },
   "MissionInfo": {
    "delete": 0,
@@ -3847,21 +3697,6 @@
    "new_array": 0,
    "owners": [
     ""
-   ]
-  },
-  "MissionResults": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/logistics.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "Logistics"
    ]
   },
   "MissionSelectionScreen": {
@@ -4108,72 +3943,19 @@
    "new_array": 0,
    "owners": []
   },
-  "OptionsAudio": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/optionsarea.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "OptionsGamePlay": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/optionsarea.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "OptionsGraphics": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/optionsarea.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "OptionsHotKeys": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/optionsarea.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "OptionsScreenWrapper": {
-   "delete": 2,
+   "delete": 1,
    "delete_array": 0,
    "files": {
-    "code/mainmenu.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "code/mechcmd2_frame.cpp": {
      "delete": 1,
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": [
-    "",
-    "MainMenu"
+    ""
    ]
   },
   "OptionsXScreen": {
@@ -4276,21 +4058,6 @@
    "new": 1,
    "new_array": 0,
    "owners": []
-  },
-  "PilotReviewScreen": {
-   "delete": 2,
-   "delete_array": 0,
-   "files": {
-    "code/missionresults.cpp": {
-     "delete": 2,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "MissionResults"
-   ]
   },
   "PlugIteratorOf<T>": {
    "delete": 0,
@@ -4473,21 +4240,6 @@
     ""
    ]
   },
-  "ResModes": {
-   "delete": 0,
-   "delete_array": 1,
-   "files": {
-    "code/optionsarea.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 1,
-   "owners": [
-    "OptionsGraphics"
-   ]
-  },
   "SalvageItem": {
    "delete": 0,
    "delete_array": 0,
@@ -4511,21 +4263,6 @@
    "new": 1,
    "new_array": 0,
    "owners": []
-  },
-  "SalvageMechScreen": {
-   "delete": 2,
-   "delete_array": 0,
-   "files": {
-    "code/missionresults.cpp": {
-     "delete": 2,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "MissionResults"
-   ]
   },
   "ScatterBrush": {
    "delete": 0,
@@ -4748,12 +4485,8 @@
   },
   "StaticInfo": {
    "delete": 0,
-   "delete_array": 2,
+   "delete_array": 1,
    "files": {
-    "code/infowindow.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
     "code/mechicon.cpp": {
      "new": 1
     },
@@ -4763,9 +4496,8 @@
     }
    },
    "new": 1,
-   "new_array": 2,
+   "new_array": 1,
    "owners": [
-    "InfoWindow",
     "MouseCursorData"
    ]
   },
@@ -5360,23 +5092,18 @@
    "owners": []
   },
   "UiDefs::GameOSPage": {
-   "delete": 5,
+   "delete": 3,
    "delete_array": 0,
    "files": {
-    "code/mploadmap.cpp": {
-     "delete": 2,
-     "new": 1
-    },
     "gui/logisticsscreen.cpp": {
      "delete": 3,
      "new": 2
     }
    },
-   "new": 3,
+   "new": 2,
    "new_array": 0,
    "owners": [
-    "LogisticsScreen",
-    "MPLoadMap"
+    "LogisticsScreen"
    ]
   },
   "Unit": {
@@ -5781,14 +5508,14 @@
    "delete_array": 1,
    "files": {
     "code/salvagemecharea.cpp": {
-     "new": 2
+     "new": 1
     },
     "gui/logisticsscreen.cpp": {
      "delete_array": 1,
      "new_array": 2
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 2,
    "owners": [
     "LogisticsScreen"
@@ -5831,12 +5558,9 @@
     "code/pilotreviewarea.cpp": {
      "delete": 6,
      "new": 6
-    },
-    "code/salvagemecharea.cpp": {
-     "new": 3
     }
    },
-   "new": 9,
+   "new": 6,
    "new_array": 0,
    "owners": [
     "ActivePilotListItem",
@@ -5953,7 +5677,7 @@
      "new": 4
     },
     "code/salvagemecharea.cpp": {
-     "new": 4
+     "new": 2
     },
     "gui/abutton.cpp": {
      "new": 1
@@ -5963,7 +5687,7 @@
      "new_array": 2
     }
    },
-   "new": 10,
+   "new": 8,
    "new_array": 4,
    "owners": [
     "ActivePilotListItem",
@@ -6043,14 +5767,14 @@
      "new": 15
     },
     "code/salvagemecharea.cpp": {
-     "new": 8
+     "new": 4
     },
     "gui/logisticsscreen.cpp": {
      "delete_array": 1,
      "new_array": 2
     }
    },
-   "new": 23,
+   "new": 19,
    "new_array": 4,
    "owners": [
     "ActivePilotListItem",
@@ -6139,13 +5863,9 @@
    "owners": []
   },
   "glm::vec3": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 51,
    "files": {
-    "code/weaponbolt.cpp": {
-     "delete": 1,
-     "new": 2
-    },
     "editor/LinkBrush.cpp": {
      "new_array": 1
     },
@@ -6226,7 +5946,7 @@
      "new_array": 2
     }
    },
-   "new": 2,
+   "new": 0,
    "new_array": 52,
    "owners": [
     "",
@@ -6247,8 +5967,7 @@
     "MLR_I_L_PMesh",
     "MLR_I_L_TMesh",
     "MLR_I_MT_PMesh",
-    "MLR_I_PMesh",
-    "WeaponBolt"
+    "MLR_I_PMesh"
    ]
   },
   "glsl_program": {
@@ -6875,13 +6594,10 @@
    "files": {
     "GameOS/gameos/gameos_graphics_material_internal.h": {
      "new_array": 1
-    },
-    "code/gametacmap.cpp": {
-     "new_array": 1
     }
    },
    "new": 0,
-   "new_array": 2,
+   "new_array": 1,
    "owners": []
   },
   "gos_VERTEXManager": {
@@ -6972,16 +6688,13 @@
   "code/componentlistbox.cpp": 1,
   "code/forcegroupbar.cpp": 5,
   "code/gamesound.cpp": 1,
-  "code/gametacmap.h": 1,
   "code/infowindow.cpp": 1,
   "code/loadscreen.cpp": 7,
   "code/logistics.cpp": 1,
-  "code/logisticscomponent.cpp": 4,
   "code/logisticsdata_modify.cpp": 3,
   "code/logisticspilotlistbox.cpp": 2,
   "code/logisticsvariant.cpp": 2,
   "code/mainmenu.cpp": 2,
-  "code/mc2movie.cpp": 2,
   "code/mech_move.cpp": 2,
   "code/mechcmd2_debugwins.cpp": 5,
   "code/mechcmd2_frame.cpp": 4,
@@ -6993,8 +6706,6 @@
   "code/missionbriefingscreen.cpp": 1,
   "code/mpparameterscreen.cpp": 1,
   "code/objmgr.cpp": 1,
-  "code/optionsarea.cpp": 3,
-  "code/salvagemecharea.cpp": 10,
   "editor/Action.cpp": 5,
   "editor/BuildingBrush.cpp": 2,
   "editor/BuildingSettingsDlg.cpp": 1,

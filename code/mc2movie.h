@@ -21,6 +21,7 @@
 #endif
 
 #include"platform_windows.h"
+#include <memory>
 
 struct VideoSession;  // forward decl from mc2video.h
 
@@ -74,7 +75,7 @@ class MC2Movie
 
 		char *getMovieName (void)
 		{
-			return m_MC2Name;
+			return m_MC2Name.get();
 		}
 
 		// gos texture handle (0 == none) of the current decoded frame, for callers
@@ -94,8 +95,8 @@ class MC2Movie
 		bool		forceStop;			//Should MC2 movie end now?
 		bool		stillPlaying;		//Is MC2 movie over?
 		bool		separateWAVE;		//Tells us if this MC2 movie has a separate soundtrack.
-		char		*waveName;			//Name of the wavefile.
-		char		*m_MC2Name;			//Name of the Movie.
+		std::unique_ptr<char[]>		waveName;			//Name of the wavefile.
+		std::unique_ptr<char[]>		m_MC2Name;			//Name of the Movie.
 		VideoSession*	m_session;
 		bool		m_sessionDone;
 };

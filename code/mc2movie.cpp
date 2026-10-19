@@ -70,8 +70,8 @@ MC2Movie::~MC2Movie (void)
         video_close(m_session);
         m_session = nullptr;
     }
-    if (waveName)  { delete[] waveName;  waveName  = nullptr; }
-    if (m_MC2Name) { delete[] m_MC2Name; m_MC2Name = nullptr; }
+    if (waveName)  { waveName.reset();  waveName  = nullptr; }
+    if (m_MC2Name) { m_MC2Name.reset(); m_MC2Name = nullptr; }
 }
 
 //-----------------------------------------------------------------------
@@ -81,8 +81,8 @@ void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
     char shortName[1024];
     _splitpath(MC2Name, nullptr, nullptr, shortName, nullptr);
 
-    m_MC2Name = new char[strlen(shortName) + 1];
-    strcpy(m_MC2Name, shortName);
+    m_MC2Name = std::make_unique_for_overwrite<char[]>(strlen(shortName) + 1);
+    strcpy(m_MC2Name.get(), shortName);
 
     MC2Rect       = mRect;
     forceStop     = false;
@@ -92,8 +92,8 @@ void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
 
     separateWAVE = useWaveFile && (prefs.DigitalMasterVolume != 0.0f);
     if (separateWAVE) {
-        waveName = new char[strlen(shortName) + 1];
-        strcpy(waveName, shortName);
+        waveName = std::make_unique_for_overwrite<char[]>(strlen(shortName) + 1);
+        strcpy(waveName.get(), shortName);
     } else {
         waveName = nullptr;
     }
@@ -136,7 +136,7 @@ void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
         p.destRectW         = MC2Rect.right  - MC2Rect.left;
         p.destRectH         = MC2Rect.bottom - MC2Rect.top;
         p.useWaveFile       = separateWAVE;
-        p.waveFileShortName = waveName;
+        p.waveFileShortName = waveName.get();
 
         VideoOpenResult r = {};
         m_session = video_open(p, &r);

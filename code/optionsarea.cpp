@@ -111,7 +111,7 @@ OptionsXScreen::OptionsXScreen()
 OptionsXScreen::~OptionsXScreen()
 {
 	for ( int i = 0; i < 4; i++ )
-		delete tabAreas[i];
+		tabAreas[i].reset();
 }
 
 int OptionsXScreen::indexOfButtonWithID(int id)
@@ -147,14 +147,14 @@ void OptionsXScreen::init(FitIniFile* file)
 		"mcl_optionshotkeys"
 	};
 
-	OptionsGraphics* pGraphics = new OptionsGraphics;
-	tabAreas[0] = pGraphics;
-	OptionsAudio* pAudio = new OptionsAudio;
-	tabAreas[1] = pAudio;
-	OptionsGamePlay* pPlay = new OptionsGamePlay;
-	tabAreas[2] = pPlay;
-	OptionsHotKeys* pKeys = new OptionsHotKeys;
-	tabAreas[3] = pKeys;
+	tabAreas[0] = std::make_unique_for_overwrite<OptionsGraphics>();
+	auto* pGraphics = static_cast<OptionsGraphics*>(tabAreas[0].get());
+	tabAreas[1] = std::make_unique_for_overwrite<OptionsAudio>();
+	auto* pAudio = static_cast<OptionsAudio*>(tabAreas[1].get());
+	tabAreas[2] = std::make_unique_for_overwrite<OptionsGamePlay>();
+	auto* pPlay = static_cast<OptionsGamePlay*>(tabAreas[2].get());
+	tabAreas[3] = std::make_unique_for_overwrite<OptionsHotKeys>();
+	auto* pKeys = static_cast<OptionsHotKeys*>(tabAreas[3].get());
 
 	FullPathFileName path;
 	for ( int i = 0; i < 4;i++ )
@@ -320,7 +320,7 @@ int	OptionsXScreen::handleMessage( unsigned long message, unsigned long who)
 			break;
 		case NO:
 			{
-				(dynamic_cast<OptionsGamePlay *>(tabAreas[2]))->resetCamera();
+				(dynamic_cast<OptionsGamePlay *>(tabAreas[2].get()))->resetCamera();
 				prefs.load();
 				prefs.applyPrefs(0);
 				bDone = true;
@@ -419,8 +419,8 @@ void OptionsGraphics::init(long xOffset, long yOffset)
 
     const int num_modes = gos_GetNumDisplayModes(0);
     gosASSERT(!resolutionModes && !resolutionModesStr);
-    resolutionModes = new ResModes[num_modes];
-    resolutionModesStr = new char*[num_modes];
+    resolutionModes = std::make_unique_for_overwrite<ResModes[]>(num_modes);
+    resolutionModesStr = std::make_unique_for_overwrite<std::unique_ptr<char[]>[]>(num_modes);
 
     const int displayIndex = gos_GetWindowDisplayIndex();
 
@@ -440,9 +440,9 @@ void OptionsGraphics::init(long xOffset, long yOffset)
         }
         if ( dup ) continue;
         resolutionModes[unique] = m;
-        resolutionModesStr[unique] = new char[256];
-        S_snprintf(resolutionModesStr[unique], 256, "%dx%dx%d", m.xRes, m.yRes, m.bitDepth);
-        resolutionList.AddItem( resolutionModesStr[unique], 0xffffffff );
+        resolutionModesStr[unique] = std::make_unique_for_overwrite<char[]>(256);
+        S_snprintf(resolutionModesStr[unique].get(), 256, "%dx%dx%d", m.xRes, m.yRes, m.bitDepth);
+        resolutionList.AddItem( resolutionModesStr[unique].get(), 0xffffffff );
         ++unique;
     }
     numResolutionModes = unique;
@@ -597,7 +597,7 @@ void OptionsGraphics::update()
 			std::vector<std::string> resItems;
 			resItems.reserve(numResolutionModes);
 			for (int i = 0; i < numResolutionModes; ++i)
-				resItems.push_back(resolutionModesStr[i]);
+				resItems.push_back(resolutionModesStr[i].get());
 			setDefsListItems(kResKey, resItems);
 			setDefsListSelection(kResKey, resolutionList.GetSelectedItem());
 		}
@@ -675,7 +675,7 @@ void OptionsGraphics::begin()
 
 		std::vector<std::string> resItems;
 		for (int i = 0; i < numResolutionModes; ++i)
-			resItems.push_back(resolutionModesStr[i]);
+			resItems.push_back(resolutionModesStr[i].get());
 		setDefsListItems(kResKey, resItems);
 		setDefsListSelection(kResKey, resolutionList.GetSelectedItem());
 
@@ -758,12 +758,12 @@ void OptionsGraphics::end()
         */
 	}
 
-    delete[] resolutionModes;
+    resolutionModes.reset();
     for(int i=0;i<numResolutionModes;++i) {
-        delete[] resolutionModesStr[i];
+        resolutionModesStr[i].reset();
         resolutionModesStr[i] = nullptr;
     }
-    delete[] resolutionModesStr;
+    resolutionModesStr.reset();
 
     resolutionModes = nullptr;
     resolutionModesStr = nullptr;

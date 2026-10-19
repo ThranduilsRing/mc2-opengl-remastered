@@ -46,7 +46,7 @@ PilotReadyScreen::PilotReadyScreen()
 PilotReadyScreen::~PilotReadyScreen()
 {
 	if ( pIcons )
-		delete [] pIcons;
+		pIcons.reset();
 
 	pIcons = nullptr;
 
@@ -72,7 +72,7 @@ void PilotReadyScreen::init(FitIniFile* file)
 		return;
 	}
 	LogisticsMechIcon::init(iconFile);
-	pIcons = new LogisticsMechIcon[ICON_COUNT];
+	pIcons = std::make_unique_for_overwrite<LogisticsMechIcon[]>(ICON_COUNT);
 
 	int count = 0;
 

@@ -32,8 +32,8 @@ extern bool useUnlimitedAmmo;
 #include "mc2str.h"
 
 MechLabScreen* MechLabScreen::s_instance = nullptr;
-LogisticsVariantDialog* MechLabScreen::saveDlg = nullptr;
-LogisticsAcceptVariantDialog* MechLabScreen::acceptDlg = nullptr;
+std::unique_ptr<LogisticsVariantDialog> MechLabScreen::saveDlg = nullptr;
+std::unique_ptr<LogisticsAcceptVariantDialog> MechLabScreen::acceptDlg = nullptr;
 
 GUI_RECT MechLabScreen::sensorRects[4] = { 35, 126, 35 + 64, 126 + 64,
 											35, 126, 35 + 79, 126 + 64,
@@ -82,13 +82,13 @@ MechLabScreen::~MechLabScreen()
 
 	if (saveDlg)
 	{
-		delete saveDlg;
+		saveDlg.reset();
 		saveDlg = nullptr;
 	}
 
 	if (acceptDlg)
 	{
-		delete acceptDlg;
+		acceptDlg.reset();
 		acceptDlg = nullptr;
 	}
 
@@ -112,8 +112,8 @@ int MechLabScreen::init( FitIniFile& file )
 
 	componentListBox.setHighlightFX( -1 ); // want to do this by hand.
 	
-	saveDlg = new LogisticsVariantDialog;
-	acceptDlg = new LogisticsAcceptVariantDialog;
+	saveDlg = std::make_unique_for_overwrite<LogisticsVariantDialog>();
+	acceptDlg = std::make_unique_for_overwrite<LogisticsAcceptVariantDialog>();
 
 	FitIniFile saveFile;
 	FullPathFileName path;
@@ -1199,11 +1199,11 @@ int	MechLabScreen::handleMessage( unsigned long msg, unsigned long who)
 					else
 					{	
 						if ( pCurVar && !pCurVar->allComponentsAvailable() )
-							pCurDialog = acceptDlg;
+							pCurDialog = acceptDlg.get();
 						else if ( pVariant && !pVariant->allComponentsAvailable() )
-							pCurDialog = acceptDlg;
+							pCurDialog = acceptDlg.get();
 						else
-							pCurDialog = saveDlg; 
+							pCurDialog = saveDlg.get();
 						
 						pCurDialog->begin();
 						bSaveDlg = true;

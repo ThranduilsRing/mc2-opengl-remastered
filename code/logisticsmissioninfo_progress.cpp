@@ -206,7 +206,7 @@ void LogisticsMissionInfo::setSingleMission( const char* missionFileName )
 {
 	clear();
 	bMultiplayer = true;
-	groups = new MissionGroup[1];
+	groups = std::make_unique_for_overwrite<MissionGroup[]>(1);
 
 	currentStage = 0;
 

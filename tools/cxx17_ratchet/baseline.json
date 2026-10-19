@@ -51,16 +51,16 @@
    "LG02": 172,
    "LG03": 257,
    "LG04": 5,
-   "LG05": 134,
-   "LG06": 492,
+   "LG05": 137,
+   "LG06": 494,
    "LG07": 0,
-   "LG08": 254,
-   "LG09": 1529,
-   "LG10": 41,
+   "LG08": 235,
+   "LG09": 1660,
+   "LG10": 39,
    "LG11": 89,
-   "LG12a": 81,
+   "LG12a": 88,
    "LG12b": 30,
-   "LG13": 318,
+   "LG13": 316,
    "LG14": 61,
    "LG15": 0,
    "LG16": 6,
@@ -100,7 +100,7 @@
    "LG05": 27,
    "LG06": 15,
    "LG07": 0,
-   "LG08": 10,
+   "LG08": 1,
    "LG09": 35,
    "LG10": 0,
    "LG11": 0,
@@ -110,7 +110,7 @@
    "LG14": 2,
    "LG15": 0,
    "LG16": 0,
-   "LG17": 12,
+   "LG17": 11,
    "LG18": 1,
    "LG19": 0,
    "LG20": 2
@@ -139,9 +139,9 @@
    "LG20": 0
   },
   "code": {
-   "LG01": 77,
+   "LG01": 76,
    "LG02": 8,
-   "LG03": 620,
+   "LG03": 519,
    "LG04": 21,
    "LG05": 198,
    "LG06": 472,
@@ -155,7 +155,7 @@
    "LG13": 244,
    "LG14": 123,
    "LG15": 0,
-   "LG16": 7,
+   "LG16": 6,
    "LG17": 48,
    "LG18": 4,
    "LG19": 0,
@@ -189,11 +189,11 @@
    "LG02": 1,
    "LG03": 999,
    "LG04": 15,
-   "LG05": 138,
-   "LG06": 672,
+   "LG05": 135,
+   "LG06": 666,
    "LG07": 0,
-   "LG08": 71,
-   "LG09": 1921,
+   "LG08": 70,
+   "LG09": 1918,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 169,
@@ -203,7 +203,7 @@
    "LG15": 0,
    "LG16": 156,
    "LG17": 95,
-   "LG18": 10,
+   "LG18": 9,
    "LG19": 0,
    "LG20": 10
   },
@@ -335,8 +335,8 @@
   "GameOS/gameos/engine_present_vk.cpp": {
    "LG03": 2,
    "LG06": 4,
-   "LG08": 18,
-   "LG09": 65,
+   "LG08": 15,
+   "LG09": 63,
    "LG10": 2
   },
   "GameOS/gameos/gameos.cpp": {
@@ -367,7 +367,7 @@
    "LG17": 1
   },
   "GameOS/gameos/gameos_graphics_bridge.cpp": {
-   "LG09": 11
+   "LG09": 15
   },
   "GameOS/gameos/gameos_graphics_capi.cpp": {
    "LG03": 8,
@@ -599,7 +599,7 @@
   "GameOS/gameos/gos_mech_batcher_flush.cpp": {
    "LG05": 1,
    "LG08": 7,
-   "LG09": 23
+   "LG09": 27
   },
   "GameOS/gameos/gos_mech_batcher_geometry.cpp": {
    "LG08": 2,
@@ -619,7 +619,7 @@
   },
   "GameOS/gameos/gos_postprocess.cpp": {
    "LG06": 1,
-   "LG09": 3,
+   "LG09": 7,
    "LG20": 4
   },
   "GameOS/gameos/gos_postprocess.h": {
@@ -780,7 +780,7 @@
    "LG06": 1
   },
   "GameOS/gameos/gos_terrain_indirect_atlas.cpp": {
-   "LG09": 41
+   "LG09": 44
   },
   "GameOS/gameos/gos_terrain_indirect_cement.cpp": {
    "LG05": 3,
@@ -788,22 +788,31 @@
    "LG10": 2,
    "LG16": 1
   },
+  "GameOS/gameos/gos_terrain_indirect_compute.cpp": {
+   "LG06": 1,
+   "LG09": 27
+  },
   "GameOS/gameos/gos_terrain_indirect_diag.cpp": {
    "LG06": 1,
    "LG09": 3
   },
   "GameOS/gameos/gos_terrain_indirect_dispatch.cpp": {
-   "LG09": 5
+   "LG09": 14,
+   "LG12a": 5
   },
   "GameOS/gameos/gos_terrain_indirect_internal.h": {
    "LG09": 1,
-   "LG10": 1
+   "LG10": 1,
+   "LG12a": 2
   },
   "GameOS/gameos/gos_terrain_indirect_mine_decal.cpp": {
    "LG08": 3,
-   "LG09": 24,
-   "LG10": 1,
+   "LG09": 26,
    "LG12a": 1
+  },
+  "GameOS/gameos/gos_terrain_indirect_pack.cpp": {
+   "LG08": 2,
+   "LG09": 23
   },
   "GameOS/gameos/gos_terrain_lighting.cpp": {
    "LG03": 8,
@@ -819,8 +828,15 @@
    "LG05": 4,
    "LG13": 8
   },
+  "GameOS/gameos/gos_terrain_lod_chunk.cpp": {
+   "LG09": 4
+  },
   "GameOS/gameos/gos_terrain_lod_chunk.h": {
    "LG17": 2
+  },
+  "GameOS/gameos/gos_terrain_lod_chunk_draw.cpp": {
+   "LG09": 5,
+   "LG10": 1
   },
   "GameOS/gameos/gos_terrain_lod_chunk_feed.cpp": {
    "LG09": 7
@@ -829,6 +845,10 @@
    "LG05": 2,
    "LG06": 3,
    "LG11": 1
+  },
+  "GameOS/gameos/gos_terrain_lod_chunk_patch.cpp": {
+   "LG08": 1,
+   "LG09": 29
   },
   "GameOS/gameos/gos_terrain_lod_chunk_upload.cpp": {
    "LG09": 14,
@@ -943,7 +963,7 @@
    "LG09": 1
   },
   "GameOS/gameos/pipeline_binder.cpp": {
-   "LG06": 1
+   "LG06": 2
   },
   "GameOS/gameos/pipeline_binder.h": {
    "LG06": 1
@@ -1127,17 +1147,12 @@
   "GameOS/gameos/vk_shared_light_feed.cpp": {
    "LG09": 6
   },
-  "GameOS/gameos/vk_texture_residency.cpp": {
-   "LG08": 14,
-   "LG10": 2,
-   "LG13": 2
-  },
   "GameOS/gameos/vma_impl.cpp": {
    "LG13": 2
   },
   "GameOS/gameos/vulkan_color_prop_island.cpp": {
    "LG06": 2,
-   "LG09": 26,
+   "LG09": 29,
    "LG10": 1,
    "LG13": 4,
    "LG17": 2
@@ -1152,8 +1167,8 @@
   },
   "GameOS/gameos/vulkan_legacy_shape_island.cpp": {
    "LG06": 2,
-   "LG08": 6,
-   "LG09": 8,
+   "LG08": 3,
+   "LG09": 10,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_legacy_shape_island.h": {
@@ -1161,7 +1176,7 @@
   },
   "GameOS/gameos/vulkan_mech_island.cpp": {
    "LG06": 2,
-   "LG09": 15,
+   "LG09": 17,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_post_fog_native.cpp": {
@@ -1215,7 +1230,7 @@
    "LG06": 1
   },
   "GameOS/gameos/vulkan_terrain_island_images.cpp": {
-   "LG09": 17
+   "LG09": 19
   },
   "GameOS/gameos/vulkan_terrain_island_internal.h": {
    "LG06": 1,
@@ -1227,8 +1242,8 @@
    "LG09": 30
   },
   "GameOS/gameos/vulkan_terrain_island_overlay.cpp": {
-   "LG08": 7,
-   "LG09": 13
+   "LG08": 6,
+   "LG09": 15
   },
   "GameOS/gameos/vulkan_terrain_island_run.cpp": {
    "LG06": 1,
@@ -1236,10 +1251,10 @@
    "LG17": 1
   },
   "GameOS/gameos/vulkan_vfx_island.cpp": {
-   "LG05": 3,
+   "LG05": 6,
    "LG06": 2,
-   "LG08": 5,
-   "LG09": 8,
+   "LG08": 3,
+   "LG09": 7,
    "LG13": 2,
    "LG14": 1
   },
@@ -1247,8 +1262,8 @@
    "LG06": 1
   },
   "GameOS/gameos/vulkan_water_island_images.cpp": {
-   "LG08": 1,
-   "LG09": 1
+   "LG08": 2,
+   "LG09": 10
   },
   "GameOS/gameos/vulkan_water_island_init.cpp": {
    "LG09": 4
@@ -1462,10 +1477,6 @@
   "RenderCore/ResolutionContract.h": {
    "LG06": 3,
    "LG14": 1
-  },
-  "RenderCore/TextureService.h": {
-   "LG08": 9,
-   "LG17": 1
   },
   "RenderCore/ambient_contract.h": {
    "LG05": 1
@@ -1710,7 +1721,6 @@
    "LG12b": 2
   },
   "code/controlgui.cpp": {
-   "LG03": 3,
    "LG09": 12
   },
   "code/controlgui.h": {
@@ -1720,7 +1730,6 @@
    "LG17": 2
   },
   "code/controlgui_chat.cpp": {
-   "LG03": 2,
    "LG06": 2,
    "LG09": 1,
    "LG11": 1
@@ -1730,7 +1739,6 @@
    "LG09": 13
   },
   "code/controlgui_init.cpp": {
-   "LG03": 2,
    "LG06": 1,
    "LG09": 4
   },
@@ -1747,7 +1755,6 @@
    "LG10": 1
   },
   "code/controlgui_update.cpp": {
-   "LG03": 1,
    "LG09": 8,
    "LG14": 1
   },
@@ -1874,14 +1881,12 @@
    "LG01": 1
   },
   "code/gametacmap.cpp": {
-   "LG03": 1,
    "LG09": 33,
    "LG10": 2,
    "LG12a": 2,
    "LG17": 1
   },
   "code/gametacmap.h": {
-   "LG03": 1,
    "LG17": 1
   },
   "code/gate.cpp": {
@@ -1964,7 +1969,7 @@
    "LG09": 6
   },
   "code/infowindow.cpp": {
-   "LG03": 5,
+   "LG03": 3,
    "LG05": 1,
    "LG06": 2,
    "LG09": 78,
@@ -2000,14 +2005,14 @@
    "LG09": 3
   },
   "code/loadscreen.cpp": {
-   "LG03": 18,
+   "LG03": 12,
    "LG09": 24
   },
   "code/locomotion_facet.h": {
    "LG06": 3
   },
   "code/logistics.cpp": {
-   "LG03": 11,
+   "LG03": 4,
    "LG06": 2,
    "LG09": 1
   },
@@ -2023,7 +2028,6 @@
    "LG09": 2
   },
   "code/logisticscomponent.cpp": {
-   "LG03": 8,
    "LG05": 2,
    "LG06": 1,
    "LG17": 1
@@ -2099,19 +2103,19 @@
    "LG09": 5
   },
   "code/logisticsmissioninfo.cpp": {
-   "LG03": 5,
+   "LG03": 1,
    "LG05": 4
   },
   "code/logisticsmissioninfo.h": {
    "LG06": 8
   },
   "code/logisticsmissioninfo_progress.cpp": {
-   "LG03": 2,
+   "LG03": 1,
    "LG05": 5,
    "LG06": 3
   },
   "code/logisticsmissioninfo_query.cpp": {
-   "LG03": 3,
+   "LG03": 1,
    "LG05": 5,
    "LG06": 4
   },
@@ -2142,7 +2146,7 @@
    "LG09": 3
   },
   "code/mainmenu.cpp": {
-   "LG03": 9,
+   "LG03": 7,
    "LG05": 1,
    "LG06": 1,
    "LG09": 4,
@@ -2154,7 +2158,6 @@
    "LG06": 1
   },
   "code/mc2movie.cpp": {
-   "LG03": 4,
    "LG06": 2,
    "LG09": 1,
    "LG11": 1
@@ -2220,7 +2223,7 @@
    "LG09": 11
   },
   "code/mechbayscreen.cpp": {
-   "LG03": 3,
+   "LG03": 1,
    "LG09": 3
   },
   "code/mechbayscreen_mechs.cpp": {
@@ -2276,7 +2279,6 @@
    "LG05": 7
   },
   "code/mechlabscreen.cpp": {
-   "LG03": 4,
    "LG05": 7,
    "LG09": 7,
    "LG11": 1
@@ -2361,7 +2363,7 @@
    "LG10": 1
   },
   "code/missionbegin.cpp": {
-   "LG03": 20,
+   "LG03": 18,
    "LG06": 2,
    "LG09": 12,
    "LG11": 1,
@@ -2386,7 +2388,6 @@
    "LG13": 3
   },
   "code/missiongui.cpp": {
-   "LG03": 2,
    "LG06": 1,
    "LG09": 1,
    "LG12a": 2,
@@ -2445,7 +2446,6 @@
    "LG20": 1
   },
   "code/missionresults.cpp": {
-   "LG03": 6,
    "LG06": 1,
    "LG12b": 1
   },
@@ -2527,7 +2527,7 @@
    "LG06": 1
   },
   "code/mploadmap.cpp": {
-   "LG03": 6,
+   "LG03": 3,
    "LG05": 1,
    "LG06": 3,
    "LG09": 9,
@@ -2673,14 +2673,13 @@
    "LG06": 2
   },
   "code/optionsarea.cpp": {
-   "LG03": 13,
+   "LG03": 2,
    "LG05": 2,
    "LG06": 2,
    "LG09": 34,
    "LG12a": 1,
    "LG12b": 5,
-   "LG13": 4,
-   "LG16": 1
+   "LG13": 4
   },
   "code/optionsarea.h": {
    "LG06": 2
@@ -2696,7 +2695,7 @@
    "LG14": 1
   },
   "code/pilotreadyscreen.cpp": {
-   "LG03": 5,
+   "LG03": 3,
    "LG09": 6,
    "LG12b": 10
   },
@@ -2722,7 +2721,7 @@
    "LG09": 2
   },
   "code/salvagemecharea.cpp": {
-   "LG03": 29,
+   "LG03": 9,
    "LG05": 1,
    "LG09": 10,
    "LG12a": 1,
@@ -2930,11 +2929,11 @@
    "LG09": 1
   },
   "code/weaponbolt.cpp": {
-   "LG03": 4,
+   "LG03": 1,
    "LG09": 11
   },
   "code/weaponbolt.h": {
-   "LG01": 9,
+   "LG01": 8,
    "LG02": 1,
    "LG09": 7
   },
@@ -3371,8 +3370,8 @@
   },
   "mclib/file.cpp": {
    "LG05": 15,
-   "LG06": 26,
-   "LG08": 25,
+   "LG06": 24,
+   "LG08": 24,
    "LG09": 34,
    "LG11": 17,
    "LG12a": 31,
@@ -3381,7 +3380,7 @@
    "LG17": 1
   },
   "mclib/file.h": {
-   "LG06": 17,
+   "LG06": 15,
    "LG13": 25,
    "LG14": 2,
    "LG17": 1
@@ -4066,7 +4065,7 @@
   },
   "mclib/msl_shape.cpp": {
    "LG03": 1,
-   "LG05": 3,
+   "LG05": 1,
    "LG06": 5,
    "LG09": 3,
    "LG11": 1,
@@ -4614,9 +4613,9 @@
    "LG09": 7
   },
   "mclib/txmmgr_texture.cpp": {
-   "LG05": 3,
-   "LG06": 8,
-   "LG09": 41,
+   "LG05": 2,
+   "LG06": 6,
+   "LG09": 37,
    "LG11": 1,
    "LG12a": 1
   },
@@ -4631,8 +4630,7 @@
   },
   "mclib/utilities.cpp": {
    "LG06": 1,
-   "LG09": 36,
-   "LG18": 1
+   "LG09": 37
   },
   "mclib/utilities.h": {
    "LG06": 1
@@ -4699,7 +4697,7 @@
    "LG20": 3
   }
  },
- "head": "a98c4262b",
+ "head": "8c68fa809",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

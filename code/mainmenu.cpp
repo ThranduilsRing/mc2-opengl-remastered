@@ -95,7 +95,7 @@ MainMenu::MainMenu(  )
 MainMenu::~MainMenu()
 {
 	if ( optionsScreenWrapper )
-		delete optionsScreenWrapper;
+		optionsScreenWrapper.reset();
 }
 
 int MainMenu::init( FitIniFile& file )
@@ -335,7 +335,7 @@ int	MainMenu::handleMessage( unsigned long what, unsigned long who )
 			// need to throw up the options screen here...
 			if (!optionsScreenWrapper)
 			{
-				optionsScreenWrapper = new OptionsScreenWrapper;
+				optionsScreenWrapper = std::make_unique_for_overwrite<OptionsScreenWrapper>();
 				optionsScreenWrapper->init();
 			}
 			optionsScreenWrapper->begin();

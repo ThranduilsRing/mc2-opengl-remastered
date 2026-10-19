@@ -26,22 +26,22 @@ SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
 static bool cheatSalvageAll() { static const bool on = mc2::gate::get<"MC2_CHEAT_SALVAGE_ALL">(); return on; }
 
-aAnimButton* SalvageListItem::templateCheckButton = nullptr;
+std::unique_ptr<aAnimButton> SalvageListItem::templateCheckButton = nullptr;
 
 SalvageMechArea* SalvageMechArea::instance = nullptr;
 
-aText*		SalvageListItem::variantNameText = nullptr;
-aText*		SalvageListItem::mechNameText = nullptr;
-aText*		SalvageListItem::weightText = nullptr;
-aText*		SalvageListItem::costText = nullptr;
-aObject*	SalvageListItem::cBillsIcon = nullptr;
-aObject*	SalvageListItem::weightIcon = nullptr;
+std::unique_ptr<aText>		SalvageListItem::variantNameText = nullptr;
+std::unique_ptr<aText>		SalvageListItem::mechNameText = nullptr;
+std::unique_ptr<aText>		SalvageListItem::weightText = nullptr;
+std::unique_ptr<aText>		SalvageListItem::costText = nullptr;
+std::unique_ptr<aObject>	SalvageListItem::cBillsIcon = nullptr;
+std::unique_ptr<aObject>	SalvageListItem::weightIcon = nullptr;
 GUI_RECT	SalvageListItem::iconRect;
 GUI_RECT	SalvageListItem::rect;
 
-aAnimation*	SalvageListItem::s_pressedAnim = nullptr;
-aAnimation*	SalvageListItem::s_highlightAnim = nullptr;
-aAnimation*	SalvageListItem::s_normalAnim = nullptr;
+std::unique_ptr<aAnimation>	SalvageListItem::s_pressedAnim = nullptr;
+std::unique_ptr<aAnimation>	SalvageListItem::s_highlightAnim = nullptr;
+std::unique_ptr<aAnimation>	SalvageListItem::s_normalAnim = nullptr;
 
 
 #define RP_TEXTID	3
@@ -79,32 +79,32 @@ SalvageMechScreen::SalvageMechScreen()
 
 SalvageMechScreen::~SalvageMechScreen()
 {
-	delete SalvageListItem::s_pressedAnim;
+	SalvageListItem::s_pressedAnim.reset();
 	SalvageListItem::s_pressedAnim = nullptr;
-	delete SalvageListItem::s_highlightAnim;
+	SalvageListItem::s_highlightAnim.reset();
 	SalvageListItem::s_highlightAnim = nullptr;
-	delete SalvageListItem::s_normalAnim;
+	SalvageListItem::s_normalAnim.reset();
 	SalvageListItem::s_normalAnim = nullptr;
 
-	delete SalvageListItem::templateCheckButton;
+	SalvageListItem::templateCheckButton.reset();
 	SalvageListItem::templateCheckButton = nullptr;
 
-	delete SalvageListItem::weightText;
+	SalvageListItem::weightText.reset();
 	SalvageListItem::weightText = nullptr;
 
-	delete SalvageListItem::costText;
+	SalvageListItem::costText.reset();
 	SalvageListItem::costText = nullptr;
 
-	delete SalvageListItem::variantNameText;
+	SalvageListItem::variantNameText.reset();
 	SalvageListItem::variantNameText = nullptr;
 
-	delete SalvageListItem::mechNameText;
+	SalvageListItem::mechNameText.reset();
 	SalvageListItem::mechNameText = nullptr;
 
-	delete SalvageListItem::weightIcon;
+	SalvageListItem::weightIcon.reset();
 	SalvageListItem::weightIcon = nullptr;
 
-	delete SalvageListItem::cBillsIcon;
+	SalvageListItem::cBillsIcon.reset();
 	SalvageListItem::cBillsIcon = nullptr;
 
 
@@ -339,13 +339,13 @@ void	SalvageListItem::init( FitIniFile* file )
 	if ( templateCheckButton )
 		return;  // already initialized
 
-	templateCheckButton = new aAnimButton;
-	mechNameText = new aText;
-	variantNameText = new aText;
-	weightText = new aText;
-	costText = new aText;
-	cBillsIcon = new aObject;
-	weightIcon = new aObject;
+	templateCheckButton = std::make_unique_for_overwrite<aAnimButton>();
+	mechNameText = std::make_unique_for_overwrite<aText>();
+	variantNameText = std::make_unique_for_overwrite<aText>();
+	weightText = std::make_unique_for_overwrite<aText>();
+	costText = std::make_unique_for_overwrite<aText>();
+	cBillsIcon = std::make_unique_for_overwrite<aObject>();
+	weightIcon = std::make_unique_for_overwrite<aObject>();
 
 	templateCheckButton->init( *file, "SalvageAreaCheckBoxButton" );
 	cBillsIcon->init( file, "CBillsIcon" );
@@ -365,9 +365,9 @@ void	SalvageListItem::init( FitIniFile* file )
 	rect.right = rect.left + width;
 	rect.bottom = rect.top + height;
 
-	s_normalAnim = new aAnimation;
-	s_pressedAnim = new aAnimation;
-	s_highlightAnim = new aAnimation;
+	s_normalAnim = std::make_unique_for_overwrite<aAnimation>();
+	s_pressedAnim = std::make_unique_for_overwrite<aAnimation>();
+	s_highlightAnim = std::make_unique_for_overwrite<aAnimation>();
 
 
 	

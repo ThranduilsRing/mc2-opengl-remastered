@@ -17,6 +17,7 @@ MissionResults:
 #include"asystem.h"
 #include"alistbox.h"
 #include"mpstats.h"
+#include <memory>
 
 
 class SalvageMechScreen;
@@ -49,8 +50,8 @@ class MissionResults
 
 	private:
 
-		SalvageMechScreen*		pSalvageScreen;
-		PilotReviewScreen*		pPilotScreen;
+		std::unique_ptr<SalvageMechScreen>		pSalvageScreen;
+		std::unique_ptr<PilotReviewScreen>		pPilotScreen;
 		MPStats					mpStats;
 		bool					bDone;
 		bool					bPilotStarted;
