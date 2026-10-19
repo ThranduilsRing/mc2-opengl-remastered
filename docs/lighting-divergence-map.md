@@ -9,7 +9,7 @@ describing another file. Cells that could not be determined say **UNKNOWN**.
 Pinned by `scripts/check-lighting-divergence.py` (contract row
 `lighting_divergence`). If a row here changes, that check fails.
 
-The GL-only rows below are historical snapshots after s63. Current water rendering uses `shaders/vulkan/water_geom.frag`; the deleted GL shader is named without a live-path claim.
+The GL-only rows below are historical snapshots after s68. All GL stage entry points are deleted. The current pin covers native scalar/fill floors, actual native light-kernel calls and the explicit zero-light return; retired GL rows were removed from the live baseline. Current water rendering uses `shaders/vulkan/water_geom.frag`; the deleted GL shader is named without a live-path claim.
 
 ---
 

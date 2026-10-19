@@ -11,7 +11,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 ROOTS = ('GameOS', 'RenderCore', 'RenderWorld', 'GameAdapters', 'mclib',
-         'code', 'gui', 'GuiRuntime', 'EditorBridge', 'editor', 'text_tool', 'ui_editor', 'tools', 'data_tools')
+         'code', 'gui', 'GuiRuntime', 'EditorBridge', 'editor', 'text_tool', 'ui_editor', 'tools', 'data_tools', 'shaders')
 CALL = re.compile(r'\b(?:gl[A-Z]\w*|glew\w*|wgl\w*|SDL_GL_\w*|ImGui_ImplOpenGL\w*)\s*\(')
 TYPE = re.compile(r'\b(?:SDL_GLContext|SDL_WINDOW_OPENGL|HGLRC|GLuint|GLenum|GLsizei|GLint|GLboolean|GLsync)\b')
 HEADER = re.compile(r'^\s*#\s*include\s*[<"](?:GL/|SDL_opengl|imgui_impl_opengl|tracy/TracyOpenGL)', re.M)
@@ -29,6 +29,9 @@ def code(source):
 def audit(files):
     failures = []
     for path, source in files.items():
+        if Path(path).parent.as_posix() == 'shaders' and Path(path).suffix in ('.vert', '.frag', '.comp', '.geom', '.tesc', '.tese'):
+            failures.append(path + ': retired GL stage entry point')
+            continue
         if path.endswith(('CMakeLists.txt', '.cmake')):
             matches = list(LINK.finditer(re.sub(r'#[^\n]*', '', source)))
         else:
@@ -45,7 +48,7 @@ def snapshot(root=ROOT):
     names = subprocess.check_output(['git', 'ls-files', '--', *ROOTS, 'CMakeLists.txt', '3rdparty/imgui/CMakeLists.txt'], cwd=root,
                                     text=True).splitlines()
     return {name: (root / name).read_text(encoding='utf-8') for name in names
-            if (Path(name).suffix in ('.cpp', '.c', '.h', '.hpp', '.cmake') or Path(name).name == 'CMakeLists.txt') and (root / name).is_file()}
+            if (Path(name).suffix in ('.cpp', '.c', '.h', '.hpp', '.cmake', '.vert', '.frag', '.comp', '.geom', '.tesc', '.tese') or Path(name).name == 'CMakeLists.txt') and (root / name).is_file()}
 
 
 def main():

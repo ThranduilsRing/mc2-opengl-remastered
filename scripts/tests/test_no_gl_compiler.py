@@ -46,3 +46,8 @@ def test_module_observation_and_native_sdk_are_allowed():
     assert not checker.audit({'host.cpp': '#include <volk.h>\n'
         'GetModuleHandleW(L"opengl32.dll"); vkCreateDevice(device);',
         'CMakeLists.txt': '# OpenGL::GL was retired\ntarget_link_libraries(app Vulkan::Headers)'})
+
+
+def test_retired_stage_cannot_be_reintroduced_but_native_stages_are_allowed():
+    assert checker.audit({'shaders/mech.vert': '#version 430\nvoid main() {}'})
+    assert not checker.audit({'shaders/vulkan/mech_tier1.vert': '#version 450\nvoid main() {}'})

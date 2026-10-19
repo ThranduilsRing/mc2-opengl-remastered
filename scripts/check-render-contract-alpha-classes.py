@@ -94,7 +94,6 @@ CONTRACT_FILES = [
     HEADER,
     "shaders/vulkan/screen_shadow_static.frag",
     "shaders/vulkan/screen_shadow_csm.frag",
-    "shaders/static_prop.frag",
     VK_PROP,
     "shaders/vulkan/shoreline.frag",
 ]
@@ -122,9 +121,7 @@ PROSE_ALLOWLIST = [
     (HEADER, "0.375", "Picking 0.375 would have moved",
      "same rationale, continued: the counterfactual consequence of the value "
      "that was NOT chosen."),
-    ("shaders/static_prop.frag", "0.1375", "effective strength is",
-     "intermediate arithmetic in the IBL night-scale worked example "
-     "(0.55*0.25), not a mask class."),
+
 ]
 
 # A decimal literal. Guarded on the left so 1.0.25 / v0.4 style text and
