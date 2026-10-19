@@ -4,6 +4,8 @@
 #include "doctest.h"
 #include "MaterialRegistry.h"
 #include "TextureService.h"
+#include "TextureStream.h"
+#include "../../GameOS/gameos/vk_completion_tracker.h"
 
 using namespace RenderCore;
 
@@ -243,4 +245,27 @@ TEST_CASE("TextureService: last reference during flight and descriptor reuse") {
     CHECK_FALSE(service.retain(old)); // stale generation cannot name the replacement
     inFlight.clear(); CHECK(destroyed==2);
     CHECK(table.erase(next)); nextFlight.clear(); CHECK(destroyed==3);
+}
+
+TEST_CASE("TextureService: delayed streaming staging cancellation and reload") {
+    TextureService service;
+    TextureDescriptorTable table(3);
+    TextureStagingBudget budget{16};
+    mc2vk::CompletionTracker tracker;
+    const auto old=service.acquire(keyOf("base","stream",1));
+    const mc2vk::GpuTicket ticket{tracker.noteSubmit(mc2vk::QueueKind::Graphics),0};
+    REQUIRE(budget.reserve(16));
+    CHECK_FALSE(budget.reserve(1)); // exhausted staging defers work, never waits
+    CHECK(table.index(old)==0); // delayed uploads stay visibly pending
+    REQUIRE(service.release(old));
+    const auto fresh=service.acquire(keyOf("base","stream",1));
+    CHECK(old!=fresh);
+    CHECK_FALSE(tracker.isComplete(ticket));
+    tracker.setCompleted(mc2vk::QueueKind::Graphics,ticket.gfx);
+    REQUIRE(tracker.isComplete(ticket)); budget.complete(16);
+    CHECK_FALSE(service.isLive(old)); // cancelled result cannot attach to the reused slot
+    REQUIRE(budget.reserve(16));
+    CHECK(table.insert(fresh,std::make_shared<int>(1))==1); // eventual art after completion
+    CHECK(table.index(old)==0);
+    budget.complete(16); CHECK(budget.used==0);
 }

@@ -3,6 +3,8 @@
 #include "vk_owned.h"
 #include "vk_completion_tracker.h"
 #include "../../RenderCore/TextureService.h"
+#include "../../RenderCore/TextureStream.h"
+#include <deque>
 #include <array>
 #include <span>
 
@@ -34,6 +36,11 @@ public:
     bool init();
     ResidentTextureRef acquire(const RenderCore::TextureKey& key, const RenderCore::KtxImage& image,
                                RenderCore::TextureDimensions dimensions);
+    // VFS resolution/extraction happens before this call. The worker never touches shared archives.
+    ResidentTextureRef requestKtx(const RenderCore::TextureKey& key, std::vector<uint8_t> bytes,
+                                  RenderCore::TextureDimensions dimensions);
+    void pump();
+    bool ready(RenderCore::TextureHandle handle) const;
     ResidentTextureRef acquireLegacy(uint32_t width, uint32_t height, VkFormat format, const void* bytes, size_t count);
     ResidentTextureRef retain(RenderCore::TextureHandle handle);
     void release(RenderCore::TextureHandle handle);
@@ -46,7 +53,16 @@ public:
     void sealFrame();
 private:
     struct Image { OwnedImage image; OwnedImageView view; };
-    struct Resident { std::shared_ptr<Image> image; uint32_t descriptor = 0; };
+    struct Resident { std::shared_ptr<Image> image; uint32_t descriptor = 0; bool useMips = true; };
+    struct Pending { RenderCore::TextureHandle handle; std::shared_ptr<const RenderCore::KtxImage> image; };
+    struct Upload {
+        RenderCore::TextureHandle handle;
+        std::shared_ptr<Image> image;
+        OwnedBuffer staging;
+        OwnedCommandPool pool;
+        GpuTicket ticket;
+        size_t bytes = 0;
+    };
     struct Flight {
         VkDescriptorSet set = VK_NULL_HANDLE;
         GpuTicket ticket;
@@ -54,7 +70,7 @@ private:
         uint64_t revision = ~uint64_t(0);
         std::vector<RenderCore::TextureDescriptorTable::Slot> snapshot;
     };
-    std::shared_ptr<Image> upload(const RenderCore::KtxImage& image, bool useMips = true);
+    std::shared_ptr<Image> upload(const RenderCore::KtxImage& image, bool useMips = true, Upload* async = nullptr);
     VulkanContext& ctx_;
     RenderCore::TextureService& service_;
     uint32_t capacity_ = 0;
@@ -65,6 +81,11 @@ private:
     std::shared_ptr<Image> placeholder_;
     std::unordered_map<uint32_t, Resident> residents_;
     std::array<Flight, 2> flights_;
+    RenderCore::TextureStagingBudget budget_;
+    std::deque<Pending> pending_;
+    std::deque<Upload> uploading_;
+    RenderCore::TextureDecodeWorker worker_;
+
 };
 } // namespace mc2vk
 #endif

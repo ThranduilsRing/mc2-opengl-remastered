@@ -603,7 +603,7 @@ void VulkanContext::beginFrame() {
         }
     }
     frameRing_.beginFrame(f, slotFree);
-    if (textures_) textures_->descriptors();
+    if (textures_) { textures_->pump(); textures_->descriptors(); }
 #endif
 }
 

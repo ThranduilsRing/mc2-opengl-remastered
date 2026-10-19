@@ -50,7 +50,7 @@ bool TextureResidency::init() {
     return true;
 }
 
-std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCore::KtxImage& image, bool useMips) {
+std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCore::KtxImage& image, bool useMips, Upload* async) {
     const bool rgba=image.vkFormat==37 || image.vkFormat==43;
     const bool bc1=image.vkFormat>=131 && image.vkFormat<=134;
     const bool blocks=bc1 || image.vkFormat==137 || image.vkFormat==138 || image.vkFormat==141 || (image.vkFormat>=143 && image.vkFormat<=146);
@@ -78,7 +78,7 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
     if (!staging.createFilled(ctx_.allocator(),ctx_.device(),image.pixels.data(),image.pixels.size(),VK_BUFFER_USAGE_TRANSFER_SRC_BIT,"texture.service.staging")) return {};
     auto resource=std::make_shared<Image>();
     if (!resource->image.createSampled2D(ctx_.allocator(),ctx_.device(),VkFormat(image.vkFormat),w,h,image.mipCount,0,"texture.service.image")) return {};
-    const bool uploaded=submitOneShot(ctx_,[&](VkCommandBuffer cb){
+    const auto record=[&](VkCommandBuffer cb){
         VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER}; b.oldLayout=VK_IMAGE_LAYOUT_UNDEFINED; b.newLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         b.srcQueueFamilyIndex=b.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; b.image=resource->image.get(); b.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,uint32_t(image.mipCount),0,1};
         b.dstAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -86,11 +86,22 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
         vkCmdCopyBufferToImage(cb,staging.get(),resource->image.get(),VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,uint32_t(copies.size()),copies.data());
         b.oldLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;b.newLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;b.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;b.dstAccessMask=VK_ACCESS_SHADER_READ_BIT;
         vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,0,0,nullptr,0,nullptr,1,&b);
-    },"texture service copy-once");
-    if (!uploaded) return {};
+    };
     VkImageViewCreateInfo vi{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO}; vi.image=resource->image.get();vi.viewType=VK_IMAGE_VIEW_TYPE_2D;vi.format=VkFormat(image.vkFormat);
     vi.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,useMips ? uint32_t(image.mipCount) : 1u,0,1};
     if (!mc2vk::create(resource->view,ctx_.device(),[&](VkImageView* v){return vkCreateImageView(ctx_.device(),&vi,nullptr,v);})) return {};
+    // This context creates only the graphics family. Copy and shader barriers therefore stay on the same queue;
+    // no unsupported transfer family or ownership handoff is assumed.
+    if (async) {
+        VkCommandBuffer cb=VK_NULL_HANDLE;
+        if (!beginTransientCommandBuffer(ctx_,async->pool,cb)) return {};
+        record(cb);
+        if (vkEndCommandBuffer(cb)!=VK_SUCCESS) return {};
+        VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO}; si.commandBufferCount=1; si.pCommandBuffers=&cb;
+        uint64_t value=0;
+        if (ctx_.submit(si,VK_NULL_HANDLE,&value)!=VK_SUCCESS) return {};
+        async->ticket={value,0}; async->staging=std::move(staging); async->image=resource;
+    } else if (!submitOneShot(ctx_,record,"texture placeholder initialization")) return {};
     return resource;
 }
 
@@ -98,12 +109,52 @@ ResidentTextureRef TextureResidency::acquire(const RenderCore::TextureKey& key, 
     auto handle=service_.acquire(key,RenderCore::kNoTextureNode,dimensions);
     if (!handle.isValid()) return {};
     if (residents_.contains(handle.raw())) return ResidentTextureRef(*this,handle);
-    auto resource=table_->full() ? std::shared_ptr<Image>{} : upload(image,mc2tex::wantsMipmaps(key.hints));
-    const uint32_t slot=resource ? table_->insert(handle,resource) : 0;
-    // A failed or capacity-limited image keeps its logical reference and dimensions, sampling descriptor zero.
-    if (!slot) resource.reset();
-    residents_.emplace(handle.raw(),Resident{std::move(resource),slot});
+    residents_.emplace(handle.raw(),Resident{{},0,mc2tex::wantsMipmaps(key.hints)});
+    pending_.push_back({handle,std::make_shared<RenderCore::KtxImage>(image)});
     return ResidentTextureRef(*this,handle);
+}
+ResidentTextureRef TextureResidency::requestKtx(const RenderCore::TextureKey& key, std::vector<uint8_t> bytes,
+                                               RenderCore::TextureDimensions dimensions) {
+    auto handle=service_.acquire(key,RenderCore::kNoTextureNode,dimensions);
+    if (!handle.isValid()) return {};
+    if (!residents_.contains(handle.raw())) {
+        residents_.emplace(handle.raw(),Resident{{},0,mc2tex::wantsMipmaps(key.hints)});
+        worker_.request(handle,std::move(bytes));
+    }
+    return ResidentTextureRef(*this,handle);
+}
+void TextureResidency::pump() {
+    for (auto& result : worker_.take())
+        if (result.image && service_.isLive(result.handle)) pending_.push_back({result.handle,std::move(result.image)});
+    // Queue order makes completion a prefix: idle resident images are never scanned.
+    while (!uploading_.empty() && ctx_.isComplete(uploading_.front().ticket)) {
+        auto& upload=uploading_.front();
+        auto it=residents_.find(upload.handle.raw());
+        if (it!=residents_.end() && service_.isLive(upload.handle)) {
+            const auto slot=table_->insert(upload.handle,upload.image);
+            if (slot) { it->second.image=std::move(upload.image); it->second.descriptor=slot; }
+        }
+        budget_.complete(upload.bytes); uploading_.pop_front();
+    }
+    while (!pending_.empty()) {
+        auto& p=pending_.front();
+        auto it=residents_.find(p.handle.raw());
+        if (it==residents_.end() || !service_.isLive(p.handle)) { pending_.pop_front(); continue; }
+        const size_t bytes=p.image->pixels.size();
+        if (bytes>budget_.limit) {
+            MC2_LOG(Vk, Warn, "[VK_TEXTURE_SERVICE] staging request exceeds budget: {} bytes",bytes);
+            pending_.pop_front(); continue;
+        }
+        if (table_->full() || !budget_.reserve(bytes)) break;
+        Upload upload; upload.handle=p.handle; upload.bytes=bytes;
+        if (this->upload(*p.image,it->second.useMips,&upload)) uploading_.push_back(std::move(upload));
+        else budget_.complete(bytes);
+        pending_.pop_front();
+    }
+}
+bool TextureResidency::ready(RenderCore::TextureHandle handle) const {
+    auto it=residents_.find(handle.raw());
+    return it!=residents_.end() && it->second.image && service_.isLive(handle);
 }
 ResidentTextureRef TextureResidency::acquireLegacy(uint32_t width,uint32_t height,VkFormat format,const void* bytes,size_t count) {
     if (!bytes || !width || !height || width>RenderCore::kKtxMaxEdge || height>RenderCore::kKtxMaxEdge) return {};

@@ -84,6 +84,7 @@ const uint32_t kMaxTextures  = 192;      // descriptor-set budget (x2 parity)
 // The view is declared after the image so it is released first.
 struct TexEntry {
     mc2vk::ResidentTextureRef texture;
+    VkImageView bound[2] = {};
     VkDescriptorSet set[2] = {};   // allocated from the island's pool, freed with it
 };
 
@@ -151,6 +152,7 @@ bool alloc_tex_sets(Island* s, TexEntry& t) {
         w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = t.set[par]; w[0].dstBinding = 1;
         w[0].descriptorCount = 1; w[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[0].pImageInfo = &ii;
         vkUpdateDescriptorSets(s->device, 1, w, 0, nullptr);
+        t.bound[par]=ii.imageView;
         // Binding 0 (the frame UBO) at the ring's current buffer; the parity is re-pointed at its next frame.
         if (const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer())
             mc2vk::writeDynamicBinding(s->device, t.set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, sizeof(LegacyFrameUBO));
@@ -488,6 +490,15 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
         if (proj) std::memcpy(u.proj, proj, sizeof(u.proj));
         for (int k = 0; k < 4; ++k) u.fogColor[k] = frame->fogColor[k];
         std::memcpy(base, &u, sizeof(u));
+    }
+    for (const auto& r : list) {
+        const auto view=rctx.textures().view(r.t->texture.get());
+        if (r.t->bound[par]==view) continue;
+        VkDescriptorImageInfo ii{s->samp.get(),view,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+        VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        w.dstSet=r.t->set[par]; w.dstBinding=1; w.descriptorCount=1;
+        w.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo=&ii;
+        vkUpdateDescriptorSets(s->device,1,&w,0,nullptr); r.t->bound[par]=view;
     }
     // Every texture set of this parity follows the ring buffer the span came from; the draw passes the UBO offset.
     if (s->ringBound[par] != span.buffer) {
