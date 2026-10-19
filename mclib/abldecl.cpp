@@ -280,7 +280,7 @@ void doConst (SymTableNodePtr constantIdPtr) {
 				constantIdPtr->defn.info.constant.value.real = -(idPtr->defn.info.constant.value.real);
 			constantIdPtr->typePtr = setType(RealTypePtr);
 			}
-		else if (((Type*)(idPtr->typePtr))->form == FRM_ENUM) {
+		else if ((static_cast<Type*>((idPtr->typePtr)))->form == FRM_ENUM) {
 			if (sawSign)
 				syntaxError(ABL_ERR_SYNTAX_INVALID_CONSTANT);
 			constantIdPtr->defn.info.constant.value.integer = idPtr->defn.info.constant.value.integer;
@@ -302,7 +302,7 @@ void doConst (SymTableNodePtr constantIdPtr) {
 			}
 		else {
 			long length = static_cast<long>(strlen(curLiteral.value.string));
-			constantIdPtr->defn.info.constant.value.stringPtr = (char*)ABL_alloc(ABLPool::Symbol, length + 1);
+			constantIdPtr->defn.info.constant.value.stringPtr = static_cast<char*>(ABL_alloc(ABLPool::Symbol, length + 1));
 			if (!constantIdPtr->defn.info.constant.value.stringPtr)
 				ABL_Fatal(0, " ABL: Unable to AblSymbolHeap->malloc array string constant ");
 			strcpy(constantIdPtr->defn.info.constant.value.stringPtr, curLiteral.value.string);
@@ -657,9 +657,9 @@ void varOrFieldDeclarations (SymTableNodePtr routineIdPtr, long offset) {
 						idPtr->defn.info.data.offset = eternalOffset;
 						//-----------------------------------
 						// Initialize the variable to zero...
-						StackItemPtr dataPtr = (StackItemPtr)stack + eternalOffset;
+						StackItemPtr dataPtr = reinterpret_cast<StackItemPtr>(stack) + eternalOffset;
 						if (typePtr->form == FRM_ARRAY) {
-							dataPtr->address = (Address)ABL_alloc(ABLPool::Stack, (size_t)size);
+							dataPtr->address = static_cast<Address>(ABL_alloc(ABLPool::Stack, static_cast<size_t>(size)));
 							if (!dataPtr->address)
 								ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc eternal array ");
 							memset(dataPtr->address, 0, size);
@@ -723,7 +723,7 @@ void varOrFieldDeclarations (SymTableNodePtr routineIdPtr, long offset) {
 		// increase the totalSize limit here...
 		if (totalSize > 32000)
 			syntaxError(ABL_ERR_SYNTAX_TOO_MANY_LOCAL_VARIABLES);
-		routineIdPtr->defn.info.routine.totalLocalSize = (unsigned short)totalSize;
+		routineIdPtr->defn.info.routine.totalLocalSize = static_cast<unsigned short>(totalSize);
 	}
 }
 

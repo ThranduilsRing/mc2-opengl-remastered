@@ -15,7 +15,7 @@ void Debugger::sprintStatement (char* dest) {
 	char* cp = statementStartPtr;
 	
 	do {
-		TokenCodeType token = (TokenCodeType)*cp;
+		TokenCodeType token = static_cast<TokenCodeType>(*cp);
 		cp++;
 		switch (token) {
 			case TKN_STATEMENT_MARKER:
@@ -47,7 +47,7 @@ void Debugger::sprintStatement (char* dest) {
 					case TKN_IDENTIFIER:
 					case TKN_NUMBER:
 					case TKN_STRING: {
-						SymTableNodePtr symbol = *((SymTableNodePtr*)cp);
+						SymTableNodePtr symbol = *(reinterpret_cast<SymTableNodePtr*>(cp));
 						strcat(dest, " ");
 						strcat(dest, symbol->name);
 						cp += sizeof(SymTableNodePtr);
@@ -124,15 +124,15 @@ long Debugger::sprintSimpleValue (char* dest, SymTableNodePtr symbol) {
 		StackItemPtr dataPtr = nullptr;
 		switch (symbol->defn.info.data.varType) {
 			case VAR_TYPE_NORMAL: {
-				StackFrameHeaderPtr headerPtr = (StackFrameHeaderPtr)stackFrameBasePtr;
+				StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(stackFrameBasePtr);
 				long delta = level - symbol->level;
 				while (delta-- > 0)
-					headerPtr = (StackFrameHeaderPtr)headerPtr->staticLink.address;
-				dataPtr = (StackItemPtr)headerPtr + symbol->defn.info.data.offset;
+					headerPtr = reinterpret_cast<StackFrameHeaderPtr>(headerPtr->staticLink.address);
+				dataPtr = reinterpret_cast<StackItemPtr>(headerPtr) + symbol->defn.info.data.offset;
 				}
 				break;
 			case VAR_TYPE_ETERNAL:
-				dataPtr = (StackItemPtr)stack + symbol->defn.info.data.offset;
+				dataPtr = reinterpret_cast<StackItemPtr>(stack) + symbol->defn.info.data.offset;
 				break;
 			case VAR_TYPE_STATIC:
 				dataPtr = StaticDataPtr + symbol->defn.info.data.offset;
@@ -144,16 +144,16 @@ long Debugger::sprintSimpleValue (char* dest, SymTableNodePtr symbol) {
 		// If it's a scalar or enumeration reference parameter, that item
 		// points to the actual item...
 		if ((symbol->defn.key == DFN_REFPARAM) && (typePtr->form != FRM_ARRAY)/* && (typePtr->form != FRM_RECORD)*/)
-			dataPtr = (StackItemPtr)dataPtr->address;
+			dataPtr = reinterpret_cast<StackItemPtr>(dataPtr->address);
 
 		if ((typePtr->form != FRM_ARRAY) /*&& (typePtr->form != FRM_RECORD)*/) {
 			ABL_Assert(dataPtr != nullptr, 0, " Debugger.sprintSimpleValue(): dataPtr is NULL ");
 			if ((typePtr == IntegerTypePtr) || (typePtr->form == FRM_ENUM))
-				sprintf(dest, "%d", *((int*)dataPtr));
+				sprintf(dest, "%d", *(reinterpret_cast<int*>(dataPtr)));
 			else if (typePtr == CharTypePtr)
-				sprintf(dest, "\"%c\"", *((char*)dataPtr));
+				sprintf(dest, "\"%c\"", *(reinterpret_cast<char*>(dataPtr)));
 			else
-				sprintf(dest, "%.4f", *((float*)dataPtr));
+				sprintf(dest, "%.4f", *(reinterpret_cast<float*>(dataPtr)));
 			}
 		else
 			sprintf(dest, "ARRAY");
@@ -180,15 +180,15 @@ long Debugger::sprintArrayValue (char* dest, SymTableNodePtr symbol, char* subsc
 		StackItemPtr dataPtr = nullptr;
 		switch (symbol->defn.info.data.varType) {
 			case VAR_TYPE_NORMAL: {
-				StackFrameHeaderPtr headerPtr = (StackFrameHeaderPtr)stackFrameBasePtr;
+				StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(stackFrameBasePtr);
 				long delta = level - symbol->level;
 				while (delta-- > 0)
-					headerPtr = (StackFrameHeaderPtr)headerPtr->staticLink.address;
-				dataPtr = (StackItemPtr)headerPtr + symbol->defn.info.data.offset;
+					headerPtr = reinterpret_cast<StackFrameHeaderPtr>(headerPtr->staticLink.address);
+				dataPtr = reinterpret_cast<StackItemPtr>(headerPtr) + symbol->defn.info.data.offset;
 				}
 				break;
 			case VAR_TYPE_ETERNAL:
-				dataPtr = (StackItemPtr)stack + symbol->defn.info.data.offset;
+				dataPtr = reinterpret_cast<StackItemPtr>(stack) + symbol->defn.info.data.offset;
 				break;
 			case VAR_TYPE_STATIC:
 				dataPtr = StaticDataPtr + symbol->defn.info.data.offset;
@@ -227,14 +227,14 @@ long Debugger::sprintArrayValue (char* dest, SymTableNodePtr symbol, char* subsc
 
 		if ((typePtr->form != FRM_ARRAY)) {
 			if ((typePtr == IntegerTypePtr) || (typePtr->form == FRM_ENUM))
-				sprintf(dest, "%d", *((int*)elementAddress));
+				sprintf(dest, "%d", *(reinterpret_cast<int*>(elementAddress)));
 			else if (typePtr == CharTypePtr)
-				sprintf(dest, "\"%c\"", *((char*)elementAddress));
+				sprintf(dest, "\"%c\"", *(reinterpret_cast<char*>(elementAddress)));
 			else
-				sprintf(dest, "%.4f", *((float*)elementAddress));
+				sprintf(dest, "%.4f", *(reinterpret_cast<float*>(elementAddress)));
 			}
 		else if (typePtr->info.array.elementTypePtr == CharTypePtr)
-			sprintf(dest, "\"%s\"", (char*)elementAddress);
+			sprintf(dest, "\"%s\"", reinterpret_cast<char*>(elementAddress));
 		else
 			sprintf(dest, "Could you be more specific?");
 	}
@@ -356,7 +356,7 @@ long Debugger::traceDataStore (SymTableNodePtr id, TypePtr idType, StackItemPtr 
 	//		print(message);
 	//		}
 
-	if (id->info && ((WatchPtr)id->info)->store) {
+	if (id->info && (reinterpret_cast<WatchPtr>(id->info))->store) {
 		char valString[255];
 		sprintDataValue(valString, target, targetType);
 		if (idType->form == FRM_ARRAY)
@@ -366,7 +366,7 @@ long Debugger::traceDataStore (SymTableNodePtr id, TypePtr idType, StackItemPtr 
 		else
 			mc2::fmt::to_buf(message, "STORE: ({:d}) {} [{:d}] -> {} = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
 		print(message);
-		if (((WatchPtr)id->info)->breakOnStore)
+		if ((reinterpret_cast<WatchPtr>(id->info))->breakOnStore)
 			debugMode();
 	}
 
@@ -378,7 +378,7 @@ long Debugger::traceDataStore (SymTableNodePtr id, TypePtr idType, StackItemPtr 
 long Debugger::traceDataFetch (SymTableNodePtr id, TypePtr idType, StackItemPtr data) {
 
 	TypePtr idTypePtr = id->typePtr;
-	if (id->info && ((WatchPtr)id->info)->fetch) {
+	if (id->info && (reinterpret_cast<WatchPtr>(id->info))->fetch) {
 		char valString[255];
 		sprintDataValue(valString, data, idType);
 		if (idTypePtr->form == FRM_ARRAY)
@@ -388,7 +388,7 @@ long Debugger::traceDataFetch (SymTableNodePtr id, TypePtr idType, StackItemPtr 
 		else
 			mc2::fmt::to_buf(message, "FETCH: ({:d}) {} [{:d}] - {} = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
 		print(message);
-		if (((WatchPtr)id->info)->breakOnFetch)
+		if ((reinterpret_cast<WatchPtr>(id->info))->breakOnFetch)
 			debugMode();
 	}
 

@@ -72,7 +72,7 @@ void execStdGetFunctionHandle (void) {
 
 	SymTableNodePtr function = CurModule->findFunction(name, false);
 	if (function)
-		ABLi_pushInteger((unsigned int)reinterpret_cast<size_t>(function));
+		ABLi_pushInteger(static_cast<unsigned int>(reinterpret_cast<size_t>(function)));
 	else
 		ABLi_pushInteger(0);
 }
@@ -81,8 +81,8 @@ void execStdGetFunctionHandle (void) {
 
 void execStdSetFlag (void) {
 
-	unsigned int bits = (unsigned int)ABLi_popInteger();
-	unsigned int flag = (unsigned int)ABLi_popInteger();
+	unsigned int bits = static_cast<unsigned int>(ABLi_popInteger());
+	unsigned int flag = static_cast<unsigned int>(ABLi_popInteger());
 	bool set = ABLi_popBoolean();
 
 	bits &= (flag ^ 0xFFFFFFFF);
@@ -96,8 +96,8 @@ void execStdSetFlag (void) {
 
 void execStdGetFlag (void) {
 
-	unsigned int bits = (unsigned int)ABLi_popInteger();
-	unsigned int flag = (unsigned int)ABLi_popInteger();
+	unsigned int bits = static_cast<unsigned int>(ABLi_popInteger());
+	unsigned int flag = static_cast<unsigned int>(ABLi_popInteger());
 
 	bool set = ((bits & flag) != 0);
 
@@ -196,13 +196,13 @@ TypePtr execStandardRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 			// return so ABL stack stays balanced and FSM execution continues.
 			{
 				void (*cb)(void) = FunctionCallbackTable[key];
-				uintptr_t cbVal = (uintptr_t)cb;
+				uintptr_t cbVal = reinterpret_cast<uintptr_t>(cb);
 				// Belt-and-suspenders: root cause was MAX_STANDARD_FUNCTIONS=256
 				// overflow (fixed in 2cfad76). This guard stays in place to catch
 				// any future bogus-pointer case rather than dispatching into
 				// garbage. Log is unconditional because it fires rarely; when it
 				// does, we want the data in o.log automatically.
-				if (cbVal != 0 && cbVal < (uintptr_t)0x00007F0000000000ULL) {
+				if (cbVal != 0 && cbVal < static_cast<uintptr_t>(0x00007F0000000000ULL)) {
 					char err[255];
 					mc2::fmt::to_buf(err, "[ABL_BAD_CB] key={:d} val={:016X} module={} line={:d}", mc2::fmt::as_i32(key), mc2::fmt::as_ptr(cb), mc2::fmt::safe(CurModule->getName()), mc2::fmt::as_i32(execLineNumber));
 					mc2::fmt::print_out("{}\n", mc2::fmt::safe(err)); fflush(stdout);

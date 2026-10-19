@@ -55,7 +55,7 @@ long WatchManager::init (long max) {
 	maxWatches = max;
 	numWatches = 0;
 
-	watches = (WatchPtr)ABL_alloc(ABLPool::Stack, max * sizeof(Watch));
+	watches = static_cast<WatchPtr>(ABL_alloc(ABLPool::Stack, max * sizeof(Watch)));
 	if (!watches)
 		return(-1);
 
@@ -88,9 +88,9 @@ WatchPtr WatchManager::add (SymTableNodePtr idPtr) {
 		case DFN_REFPARAM:
 		//case DFN_FIELD:
 			if (idPtr->info)
-				return((WatchPtr)idPtr->info);
+				return(reinterpret_cast<WatchPtr>(idPtr->info));
 			else if (numWatches < maxWatches) {
-				idPtr->info = (char*)&watches[numWatches];
+				idPtr->info = reinterpret_cast<char*>(&watches[numWatches]);
 				watches[numWatches].idPtr = idPtr;
 				watches[numWatches].store = false;
 				watches[numWatches].breakOnStore = false;
@@ -119,7 +119,7 @@ long WatchManager::remove (SymTableNodePtr idPtr) {
 	// Find this id's watch in the watch list...
 	long removeIndex;
 	for (removeIndex = 0; removeIndex < numWatches; removeIndex++)
-		if (&watches[removeIndex] == (WatchPtr)idPtr->info)
+		if (&watches[removeIndex] == reinterpret_cast<WatchPtr>(idPtr->info))
 			break;
 
 	//--------------------------------------------------------
@@ -135,7 +135,7 @@ long WatchManager::remove (SymTableNodePtr idPtr) {
 		watches[i].breakOnStore = watches[i + 1].breakOnStore;
 		watches[i].fetch = watches[i + 1].fetch;
 		watches[i].breakOnFetch = watches[i + 1].breakOnFetch;
-		watches[i].idPtr->info = (char*)&watches[i];
+		watches[i].idPtr->info = reinterpret_cast<char*>(&watches[i]);
 	}
 
 	return(ABL_NO_ERR);
@@ -166,7 +166,7 @@ long WatchManager::setStore (SymTableNodePtr idPtr, bool state, bool breakToDebu
 	if (!idPtr)
 		return(1);
 
-	WatchPtr watch = (WatchPtr)idPtr->info;
+	WatchPtr watch = reinterpret_cast<WatchPtr>(idPtr->info);
 	if (state) {
 		if (!watch)
 			watch = add(idPtr);
@@ -195,7 +195,7 @@ long WatchManager::setFetch (SymTableNodePtr idPtr, bool state, bool breakToDebu
 	if (!idPtr)
 		return(1);
 
-	WatchPtr watch = (WatchPtr)idPtr->info;
+	WatchPtr watch = reinterpret_cast<WatchPtr>(idPtr->info);
 	if (state) {
 		if (!watch)
 			watch = add(idPtr);
@@ -224,7 +224,7 @@ bool WatchManager::getStore (SymTableNodePtr idPtr) {
 
 	if (!idPtr->info)
 		return(false);
-	return(((WatchPtr)idPtr->info)->store);
+	return((reinterpret_cast<WatchPtr>(idPtr->info))->store);
 }
 
 //---------------------------------------------------------------------------
@@ -233,7 +233,7 @@ bool WatchManager::getFetch (SymTableNodePtr idPtr) {
 
 	if (!idPtr->info)
 		return(false);
-	return(((WatchPtr)idPtr->info)->fetch);
+	return((reinterpret_cast<WatchPtr>(idPtr->info))->fetch);
 }
 
 //---------------------------------------------------------------------------
@@ -270,7 +270,7 @@ long BreakPointManager::init (long max) {
 	maxBreakPoints = max;
 	numBreakPoints = 0;
 
-	breakPoints = (long*)ABL_alloc(ABLPool::Stack, max * sizeof(long));
+	breakPoints = static_cast<long*>(ABL_alloc(ABLPool::Stack, max * sizeof(long)));
 	if (!breakPoints)
 		return(-1);
 
@@ -688,7 +688,7 @@ void Debugger::debugMode (void) {
 		//----------------------------------------------------------
 		// Since MSWindows is locked out, we must Unlock the screen,
 		// peek for MSWindows messages, then relock it.
-		QueryPerformanceCounter((LARGE_INTEGER*)&startTime);
+		QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&startTime));
 		bool result;
 		do {
 			MSG	msg;
@@ -714,7 +714,7 @@ void Debugger::debugMode (void) {
 		if (applicationActive) {
 			UpdateDisplay(takeScreenShot);
 			takeScreenShot = false;
-			QueryPerformanceCounter((LARGE_INTEGER*)&stopTime);	
+			QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&stopTime));
 
 			if (MPlayer) {
 				//WaitForSingleObject(ReceiveMutex, INFINITE);
@@ -738,7 +738,7 @@ void Debugger::debugMode (void) {
 
 		prevStart = startTime;
 		L_INTEGER totalTime = stopTime - startTime;
-		frameRate =  (float)countsPerSecond / (float)totalTime ;
+		frameRate =  static_cast<float>(countsPerSecond) / static_cast<float>(totalTime) ;
 	}
 #endif
 }

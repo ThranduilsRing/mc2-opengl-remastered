@@ -90,7 +90,7 @@ void AppearanceType::init (const char *fileName)
 		// and the appearance just gets default selection bounds. (Game ships all
 		// assets, so it never reaches this; game behavior unchanged.)
 		designerTypeBounds = false;
-		PAUSE(("AppearanceType: missing appearance INI %s -- using default bounds", (const char*)iniName));
+		PAUSE(("AppearanceType: missing appearance INI %s -- using default bounds", static_cast<const char*>(iniName)));
 		return;
 	}
 		
@@ -158,7 +158,7 @@ void AppearanceType::reinit (void)
 		// and the appearance just gets default selection bounds. (Game ships all
 		// assets, so it never reaches this; game behavior unchanged.)
 		designerTypeBounds = false;
-		PAUSE(("AppearanceType: missing appearance INI %s -- using default bounds", (const char*)iniName));
+		PAUSE(("AppearanceType: missing appearance INI %s -- using default bounds", static_cast<const char*>(iniName)));
 		return;
 	}
 		
@@ -234,7 +234,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 		if (g_loadRaceTrace && g_loadRaceApprNull < 50)
 		{
 			g_loadRaceApprNull++;
-			mc2::fmt::print_out("[LOADRACE] getAppearance NULL: reason=class0 apprNum=0x{:08x} appearFile={:016X}({})\n", mc2::fmt::as_u32(apprNum), mc2::fmt::as_ptr((const void*)appearFile), mc2::fmt::safe(appearFile ? appearFile : "<null>"));
+			mc2::fmt::print_out("[LOADRACE] getAppearance NULL: reason=class0 apprNum=0x{:08x} appearFile={:016X}({})\n", mc2::fmt::as_u32(apprNum), mc2::fmt::as_ptr(static_cast<const void*>(appearFile)), mc2::fmt::safe(appearFile ? appearFile : "<null>"));
 			std::fflush(stdout);
 		}
 		return(nullptr);
@@ -305,7 +305,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 	{
 		unsigned long long key = 5381;
 		for (const char* p = appearFile; p && *p; ++p)
-			key = key * 33 + (unsigned char)*p;
+			key = key * 33 + static_cast<unsigned char>(*p);
 		if (mc2AuditOnce("APPR_TYPE_FAIL", key))
 			mc2AuditLinef("[ASSET_LOAD v1] event=appr_type_fail name=%s apprNum=0x%08lx",
 				appearFile, apprNum);

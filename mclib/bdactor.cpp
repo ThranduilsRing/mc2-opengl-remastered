@@ -182,7 +182,7 @@ float BldgAppearance::getWeaponNodeRecycle (long node)
 void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
 	Appearance::init(tree,obj);
-	appearType = (BldgAppearanceType *)tree;
+	appearType = static_cast<BldgAppearanceType *>(tree);
 
 	shapeMin.x = shapeMin.y = -25;
 	shapeMax.x = shapeMax.y = 50;

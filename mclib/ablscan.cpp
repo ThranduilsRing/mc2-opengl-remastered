@@ -648,7 +648,7 @@ void downShiftWord (void) {
 		ABL_Fatal(-1," Boy did Glenn screw the pooch here!! ");
 
 	do {
-		*wp = ((*tp >= 'A') && (*tp <= 'Z')) ? (*tp + (char)offset) : *tp;
+		*wp = ((*tp >= 'A') && (*tp <= 'Z')) ? (*tp + static_cast<char>(offset)) : *tp;
 		wp++;
 		tp++;
 	} while (*tp != '\0');
@@ -760,8 +760,8 @@ void getNumber (void) {
 	long decimalOffset = 0;
 	char exponentSign = '+';
 	long exponent = 0;
-	float numberValue = (float)0.0;
-	float exponentValue = (float)0.0;
+	float numberValue = static_cast<float>(0.0);
+	float exponentValue = static_cast<float>(0.0);
 	digitCount = 0;
 	countError = false;
 	curToken = TKN_NONE;
@@ -825,7 +825,7 @@ void getNumber (void) {
 	}
 
 	if (exponent != 0)
-		numberValue *= (float)pow(10.0, (double)exponent);
+		numberValue *= static_cast<float>(pow(10.0, static_cast<double>(exponent)));
 
 	//---------------------------
 	// Set the literal's value...
@@ -839,7 +839,7 @@ void getNumber (void) {
 //			curToken = TKN_ERROR;
 //			return;
 //		}
-		curLiteral.value.integer = (int)numberValue;
+		curLiteral.value.integer = static_cast<int>(numberValue);
 		}
 	else
 		curLiteral.value.real = numberValue;
@@ -1050,7 +1050,7 @@ bool getSourceLine (void) {
 
 	if (!sourceFile->eof())
 	{
-		long numChars = sourceFile->readLineEx((unsigned char*)sourceBuffer, MAXLEN_SOURCELINE);
+		long numChars = sourceFile->readLineEx(reinterpret_cast<unsigned char*>(sourceBuffer), MAXLEN_SOURCELINE);
 		if (numChars == 0)
 			return(false);
 		lineNumber++;
@@ -1097,7 +1097,7 @@ long openSourceFile (const char* sourceFileName) {
 	strcpy(openFiles[NumOpenFiles].fileName, sourceFileName);
 	openFiles[NumOpenFiles].filePtr = sFile;
 	sourceFilesOwner->files[NumOpenFiles] = std::move(owned);
-	openFiles[NumOpenFiles].fileNumber = (unsigned char)FileNumber;
+	openFiles[NumOpenFiles].fileNumber = static_cast<unsigned char>(FileNumber);
 	openFiles[NumOpenFiles].lineNumber = 0;
 	if (NumOpenFiles > 0)
 		openFiles[NumOpenFiles - 1].lineNumber = lineNumber;

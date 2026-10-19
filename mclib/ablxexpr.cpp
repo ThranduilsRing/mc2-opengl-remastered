@@ -66,9 +66,9 @@ inline void promoteOperandsToReal (StackItemPtr operand1Ptr, TypePtr type1Ptr,
 								   StackItemPtr operand2Ptr, TypePtr type2Ptr) {
 
 	if (type1Ptr == IntegerTypePtr)
-		operand1Ptr->real = (float)(operand1Ptr->integer);
+		operand1Ptr->real = static_cast<float>((operand1Ptr->integer));
 	if (type2Ptr == IntegerTypePtr)
-		operand2Ptr->real = (float)(operand2Ptr->integer);
+		operand2Ptr->real = static_cast<float>((operand2Ptr->integer));
 }
 
 //***************************************************************************
@@ -139,15 +139,15 @@ TypePtr execVariable (SymTableNodePtr idPtr, UseType use) {
 	StackItem tempStackItem;
 	switch (idPtr->defn.info.data.varType) {
 		case VAR_TYPE_NORMAL: {
-			StackFrameHeaderPtr headerPtr = (StackFrameHeaderPtr)stackFrameBasePtr;
+			StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(stackFrameBasePtr);
 			long delta = level - idPtr->level;
 			while (delta-- > 0)
-				headerPtr = (StackFrameHeaderPtr)headerPtr->staticLink.address;
-			dataPtr = (StackItemPtr)headerPtr + idPtr->defn.info.data.offset;
+				headerPtr = reinterpret_cast<StackFrameHeaderPtr>(headerPtr->staticLink.address);
+			dataPtr = reinterpret_cast<StackItemPtr>(headerPtr) + idPtr->defn.info.data.offset;
 			}
 			break;
 		case VAR_TYPE_ETERNAL:
-			dataPtr = (StackItemPtr)stack + idPtr->defn.info.data.offset;
+			dataPtr = reinterpret_cast<StackItemPtr>(stack) + idPtr->defn.info.data.offset;
 			break;
 		case VAR_TYPE_STATIC:
 			//---------------------------------------------------------
@@ -160,7 +160,7 @@ TypePtr execVariable (SymTableNodePtr idPtr, UseType use) {
 				StaticDataPtr = CurModule->getStaticData();
 			break;
 		case VAR_TYPE_REGISTERED:
-			tempStackItem.address = (char*)idPtr->defn.info.data.registeredData;
+			tempStackItem.address = reinterpret_cast<char*>(idPtr->defn.info.data.registeredData);
 			dataPtr = &tempStackItem;
 			break;
 	}
@@ -170,7 +170,7 @@ TypePtr execVariable (SymTableNodePtr idPtr, UseType use) {
 	// points to the actual item...
 	if (idPtr->defn.key == DFN_REFPARAM)
 		if (typePtr->form != FRM_ARRAY)/* && (typePtr->form != FRM_RECORD)*/
-			dataPtr = (StackItemPtr)dataPtr->address;
+			dataPtr = reinterpret_cast<StackItemPtr>(dataPtr->address);
 
 	ABL_Assert(dataPtr != nullptr, 0, " ABL.execVariable(): dataPtr is NULL ");
 
@@ -183,7 +183,7 @@ TypePtr execVariable (SymTableNodePtr idPtr, UseType use) {
 	else if (idPtr->defn.info.data.varType == VAR_TYPE_REGISTERED)
 		pushAddress(dataPtr->address);
 	else
-		pushAddress((Address)dataPtr);
+		pushAddress(reinterpret_cast<Address>(dataPtr));
 
 	//-----------------------------------------------------------------------------------
 	// If there is a subscript (or field identifier, if records are being used in ABL)
@@ -204,18 +204,18 @@ TypePtr execVariable (SymTableNodePtr idPtr, UseType use) {
 	// Otherwise, replace the address with the value it points to.
 	if ((use != USE_TARGET) && (use != USE_REFPARAM) &&	(typePtr->form != FRM_ARRAY)) {
 		if ((typePtr == IntegerTypePtr) || (typePtr->form == FRM_ENUM)) {
-			tos->integer = *((int*)tos->address);
+			tos->integer = *(reinterpret_cast<int*>(tos->address));
 			}
 		else if (typePtr == CharTypePtr)
-			tos->byte = *((char*)tos->address);
+			tos->byte = *(reinterpret_cast<char*>(tos->address));
 		else
-			tos->real = *((float*)tos->address);
+			tos->real = *(reinterpret_cast<float*>(tos->address));
 	}
 
 	if (debugger) {
 		if ((use != USE_TARGET) && (use != USE_REFPARAM)) {
 			if (typePtr->form == FRM_ARRAY)
-				debugger->traceDataFetch(idPtr, typePtr, (StackItemPtr)tos->address);
+				debugger->traceDataFetch(idPtr, typePtr, reinterpret_cast<StackItemPtr>(tos->address));
 			else
 				debugger->traceDataFetch(idPtr, typePtr, tos);
 		}

@@ -116,7 +116,7 @@ long BldgAppearance::render (long depthFixup)
 				if (s_seamRender && appearType && appearType->bldgRenderShape
 				        && s_seamRenderLogged < 12) {
 					++s_seamRenderLogged;
-					mc2::fmt::print_err("[SEAMPROBE] sample=first12 bldg render name={} isnow={:d} reg={:d} shapeMatch={:d} needBake={:d} elig={:d} recipeIdx={:d} | spin={:d} drawFlash={:d} destructFX={:d} activity={:d} activity1={:d} animState={:d}\n", mc2::fmt::safe(appearType->name), mc2::fmt::as_i32((int)isnow), mc2::fmt::as_i32((int)staticReg.registered), mc2::fmt::as_i32((int)(staticReg.shape == bldgShape)), mc2::fmt::as_i32((int)needsFullBakeNextFrame), mc2::fmt::as_i32((int)isStaticEligible()), mc2::fmt::as_i32(staticReg.recipeIndex), mc2::fmt::as_i32((appearType?appearType->spinMe:-1)), mc2::fmt::as_i32((int)(drawFlash!=0)), mc2::fmt::as_i32((int)(destructFX!=nullptr)), mc2::fmt::as_i32((int)(activity!=nullptr)), mc2::fmt::as_i32((int)(activity1!=nullptr)), mc2::fmt::as_i32((int)bdAnimationState));
+					mc2::fmt::print_err("[SEAMPROBE] sample=first12 bldg render name={} isnow={:d} reg={:d} shapeMatch={:d} needBake={:d} elig={:d} recipeIdx={:d} | spin={:d} drawFlash={:d} destructFX={:d} activity={:d} activity1={:d} animState={:d}\n", mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(static_cast<int>(isnow)), mc2::fmt::as_i32(static_cast<int>(staticReg.registered)), mc2::fmt::as_i32(static_cast<int>((staticReg.shape == bldgShape))), mc2::fmt::as_i32(static_cast<int>(needsFullBakeNextFrame)), mc2::fmt::as_i32(static_cast<int>(isStaticEligible())), mc2::fmt::as_i32(staticReg.recipeIndex), mc2::fmt::as_i32((appearType?appearType->spinMe:-1)), mc2::fmt::as_i32(static_cast<int>((drawFlash!=0))), mc2::fmt::as_i32(static_cast<int>((destructFX!=nullptr))), mc2::fmt::as_i32(static_cast<int>((activity!=nullptr))), mc2::fmt::as_i32(static_cast<int>((activity1!=nullptr))), mc2::fmt::as_i32(static_cast<int>(bdAnimationState)));
 					fflush(stderr);
 				}
 			}
@@ -164,13 +164,13 @@ long BldgAppearance::render (long depthFixup)
 					if (gfFirstMixed || ((s_gf_total % 200000ull) == 0ull && s_gf_agree != s_gf_total)) {  // 2026-10-05: census only when a divergence exists
 						mc2::fmt::print_err("[GUARD_FORWARD v1] event={} class=bldg total={:d} agree={:d} differ_both_valid={:d} forwarded_sentinel_only={:d} validated_sentinel_only={:d} both_sentinel={:d} would_change={:d}\n",
 							mc2::fmt::safe(gfFirstMixed ? "first_divergence" : "census"),
-							mc2::fmt::as_u64((unsigned long long)s_gf_total),
-							mc2::fmt::as_u64((unsigned long long)s_gf_agree),
-							mc2::fmt::as_u64((unsigned long long)s_gf_differ),
-							mc2::fmt::as_u64((unsigned long long)s_gf_fwdSentinel),
-							mc2::fmt::as_u64((unsigned long long)s_gf_valSentinel),
-							mc2::fmt::as_u64((unsigned long long)s_gf_bothSentinel),
-							mc2::fmt::as_u64((unsigned long long)(s_gf_fwdSentinel + s_gf_valSentinel)));
+							mc2::fmt::as_u64(static_cast<unsigned long long>(s_gf_total)),
+							mc2::fmt::as_u64(static_cast<unsigned long long>(s_gf_agree)),
+							mc2::fmt::as_u64(static_cast<unsigned long long>(s_gf_differ)),
+							mc2::fmt::as_u64(static_cast<unsigned long long>(s_gf_fwdSentinel)),
+							mc2::fmt::as_u64(static_cast<unsigned long long>(s_gf_valSentinel)),
+							mc2::fmt::as_u64(static_cast<unsigned long long>(s_gf_bothSentinel)),
+							mc2::fmt::as_u64(static_cast<unsigned long long>((s_gf_fwdSentinel + s_gf_valSentinel))));
 						fflush(stderr);
 					}
 				}
@@ -205,7 +205,7 @@ long BldgAppearance::render (long depthFixup)
 						++s_diag_markVisible;
 						submittedToGpu = true;
 					} else {
-						bdLogStaticRegInvalid("bldg", (int)bldgRes, staticReg.recipeIndex,
+						bdLogStaticRegInvalid("bldg", static_cast<int>(bldgRes), staticReg.recipeIndex,
 							appearType ? appearType->name : nullptr);
 						invalidateStaticRegistration();  // dead handle -> full-bake re-registers below
 					}
@@ -213,7 +213,7 @@ long BldgAppearance::render (long depthFixup)
 			}
 			static const bool s_bldgDiagTrace = mc2::gate::get<"MC2_BLDG_DIAG_TRACE">();
 			if (s_bldgDiagTrace && (s_diag_render_calls % 600) == 0) {
-				mc2::fmt::print_err("[BLDG_DIAG v1] event=summary calls={:d} staticNow={:d} notreg={:d} notelig={:d} other={:d} lightidxUM={:d} markVis={:d} dynSubmit={:d}\n", mc2::fmt::as_u64((unsigned long long)s_diag_render_calls), mc2::fmt::as_u64((unsigned long long)s_diag_static_now_true), mc2::fmt::as_u64((unsigned long long)s_diag_static_now_false_reg), mc2::fmt::as_u64((unsigned long long)s_diag_static_now_false_eligible), mc2::fmt::as_u64((unsigned long long)s_diag_static_now_false_other), mc2::fmt::as_u64((unsigned long long)s_diag_lightidx_uintmax), mc2::fmt::as_u64((unsigned long long)s_diag_markVisible), mc2::fmt::as_u64((unsigned long long)s_diag_dyn_submit));
+				mc2::fmt::print_err("[BLDG_DIAG v1] event=summary calls={:d} staticNow={:d} notreg={:d} notelig={:d} other={:d} lightidxUM={:d} markVis={:d} dynSubmit={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_render_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_static_now_true)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_static_now_false_reg)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_static_now_false_eligible)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_static_now_false_other)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_lightidx_uintmax)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_markVisible)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_dyn_submit)));
 				fflush(stderr);
 			}
 			(void)s_diag_dyn_submit;  // updated below if we go to the dyn path
@@ -519,13 +519,13 @@ long TreeAppearance::render (long depthFixup)
 					if (gfFirstMixed || ((s_gf_total % 200000ull) == 0ull && s_gf_agree != s_gf_total)) {  // 2026-10-05: census only when a divergence exists
 						mc2::fmt::print_err("[GUARD_FORWARD v1] event={} class=tree total={:d} agree={:d} differ_both_valid={:d} forwarded_sentinel_only={:d} validated_sentinel_only={:d} both_sentinel={:d} would_change={:d}\n",
 							mc2::fmt::safe(gfFirstMixed ? "first_divergence" : "census"),
-							mc2::fmt::as_u64((unsigned long long)s_gf_total),
-							mc2::fmt::as_u64((unsigned long long)s_gf_agree),
-							mc2::fmt::as_u64((unsigned long long)s_gf_differ),
-							mc2::fmt::as_u64((unsigned long long)s_gf_fwdSentinel),
-							mc2::fmt::as_u64((unsigned long long)s_gf_valSentinel),
-							mc2::fmt::as_u64((unsigned long long)s_gf_bothSentinel),
-							mc2::fmt::as_u64((unsigned long long)(s_gf_fwdSentinel + s_gf_valSentinel)));
+							mc2::fmt::as_u64(static_cast<unsigned long long>(s_gf_total)),
+							mc2::fmt::as_u64(static_cast<unsigned long long>(s_gf_agree)),
+							mc2::fmt::as_u64(static_cast<unsigned long long>(s_gf_differ)),
+							mc2::fmt::as_u64(static_cast<unsigned long long>(s_gf_fwdSentinel)),
+							mc2::fmt::as_u64(static_cast<unsigned long long>(s_gf_valSentinel)),
+							mc2::fmt::as_u64(static_cast<unsigned long long>(s_gf_bothSentinel)),
+							mc2::fmt::as_u64(static_cast<unsigned long long>((s_gf_fwdSentinel + s_gf_valSentinel))));
 						fflush(stderr);
 					}
 				}
@@ -563,7 +563,7 @@ long TreeAppearance::render (long depthFixup)
 							staticReg[activeLOD].lightDataIndex);
 						submittedToGpu = true;
 					} else {
-						bdLogStaticRegInvalid("tree", (int)treeRes,
+						bdLogStaticRegInvalid("tree", static_cast<int>(treeRes),
 							staticReg[activeLOD].recipeIndex,
 							appearType ? appearType->name : nullptr);
 						invalidateStaticRegistration();  // drop dead handle -> full-bake re-registers below

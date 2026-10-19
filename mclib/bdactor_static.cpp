@@ -101,9 +101,9 @@ void BldgAppearance::registerStatic() {
 		&& appearType && appearType->bldgRenderShape;
 	if (seamProbe)
 		mc2::fmt::print_err("[SEAMPROBE] bldg registerStatic ENTER name={} registered={:d} hasShape={:d} eligible={:d} renderShape={:016X}\n",
-			mc2::fmt::safe(appearType->name), mc2::fmt::as_i32((int)staticReg.registered), mc2::fmt::as_i32((int)(bldgShape!=nullptr)),
-			mc2::fmt::as_i32((int)isStaticEligible()),
-			mc2::fmt::as_ptr((void*)appearType->bldgRenderShape)), fflush(stderr);
+			mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(static_cast<int>(staticReg.registered)), mc2::fmt::as_i32(static_cast<int>((bldgShape!=nullptr))),
+			mc2::fmt::as_i32(static_cast<int>(isStaticEligible())),
+			mc2::fmt::as_ptr(static_cast<void*>(appearType->bldgRenderShape))), fflush(stderr);
 	if (staticReg.registered) {
 		return;
 	}
@@ -138,7 +138,7 @@ void BldgAppearance::registerStatic() {
 
 	if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && appearType->bldgRenderShape) {
 		TG_TypeMultiShape* rs = appearType->bldgRenderShape;
-		mc2::fmt::print_err("[MODOVERRIDE_TRACE] bldg registerStatic name={} renderShape={:016X} numShapes={:d} leaf0={:016X} leaf1={:016X} finalized_guess(typeNodes_above)\n", mc2::fmt::safe(appearType->name), mc2::fmt::as_ptr((void*)rs), mc2::fmt::as_i32(rs->GetNumShapes()), mc2::fmt::as_ptr(rs->GetNumShapes() > 0 ? (void*)rs->GetTypeNode(0) : nullptr), mc2::fmt::as_ptr(rs->GetNumShapes() > 1 ? (void*)rs->GetTypeNode(1) : nullptr));
+		mc2::fmt::print_err("[MODOVERRIDE_TRACE] bldg registerStatic name={} renderShape={:016X} numShapes={:d} leaf0={:016X} leaf1={:016X} finalized_guess(typeNodes_above)\n", mc2::fmt::safe(appearType->name), mc2::fmt::as_ptr(static_cast<void*>(rs)), mc2::fmt::as_i32(rs->GetNumShapes()), mc2::fmt::as_ptr(rs->GetNumShapes() > 0 ? static_cast<void*>(rs->GetTypeNode(0)) : nullptr), mc2::fmt::as_ptr(rs->GetNumShapes() > 1 ? static_cast<void*>(rs->GetTypeNode(1)) : nullptr));
 		fflush(stderr);
 	}
 
@@ -234,7 +234,7 @@ void BldgAppearance::registerStatic() {
 		// 'Spotlight_TurretCon') DO get isSpot=1 and ARE skipped below — the intended
 		// GHOST-CONE-RECIPE-SKIP-1 target. See .claude/DEFERRED-BATCH-8C-STATUS.md.
 		if (mc2::gate::get<"MC2_CONE_LEAF_DUMP">()) {
-			mc2::fmt::print_err("[CONE_LEAF] type={} leaf={:d} node='{}' isSpot={:d} isWin={:d} lightsOut={:d}\n", mc2::fmt::safe(appearType ? appearType->name : "?"), mc2::fmt::as_i32(i), mc2::fmt::safe(child->getNodeName() ? child->getNodeName() : "(null)"), mc2::fmt::as_i32((int)child->GetIsSpotlight()), mc2::fmt::as_i32((int)child->GetIsWindow()), mc2::fmt::as_i32((int)child->GetLightsOut()));
+			mc2::fmt::print_err("[CONE_LEAF] type={} leaf={:d} node='{}' isSpot={:d} isWin={:d} lightsOut={:d}\n", mc2::fmt::safe(appearType ? appearType->name : "?"), mc2::fmt::as_i32(i), mc2::fmt::safe(child->getNodeName() ? child->getNodeName() : "(null)"), mc2::fmt::as_i32(static_cast<int>(child->GetIsSpotlight())), mc2::fmt::as_i32(static_cast<int>(child->GetIsWindow())), mc2::fmt::as_i32(static_cast<int>(child->GetLightsOut())));
 			fflush(stderr);
 		}
 		// GHOST-CONE-RECIPE-SKIP-1 (batch-7 items 4+5): SpotLight_ cone leaves
@@ -308,12 +308,12 @@ void BldgAppearance::registerStatic() {
 			++diag_skip_unreg;
 			if (seamProbe)
 				mc2::fmt::print_err("[SEAMPROBE] bldg buildRecipe MISS name={} leaf={:d} child={:016X} node={} (override type not in s_typeIndex) -> ABORT\n",
-					mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(i), mc2::fmt::as_ptr((void*)child), mc2::fmt::safe(child->getNodeName())), fflush(stderr);
+					mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(i), mc2::fmt::as_ptr(static_cast<void*>(child)), mc2::fmt::safe(child->getNodeName())), fflush(stderr);
 			return;  // unregistered type — abort; first-render fallback covers it
 		}
 		if (seamProbe)
 			mc2::fmt::print_err("[SEAMPROBE] bldg buildRecipe HIT name={} leaf={:d} child={:016X} node={} typeID={:d}\n",
-				mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(i), mc2::fmt::as_ptr((void*)child), mc2::fmt::safe(child->getNodeName()), mc2::fmt::as_u32(inst.typeID)), fflush(stderr);
+				mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(i), mc2::fmt::as_ptr(static_cast<void*>(child)), mc2::fmt::safe(child->getNodeName()), mc2::fmt::as_u32(inst.typeID)), fflush(stderr);
 		// EDITOR-STATIC-RECIPE-FROM-TYPE-1: the recipe is built from the INSTANCE
 		// bldgShape (a CreateFrom copy, bdactor.cpp). For a building placed at
 		// runtime in the editor, that copy's leaf child->myType registers AFTER the
@@ -334,7 +334,7 @@ void BldgAppearance::registerStatic() {
 				if (typeRS && i < typeRS->GetNumShapes()) {
 					TG_TypeNodePtr typeLeaf = typeRS->GetTypeNode(i);
 					uint32_t canonId = 0, idxc = 0, fi = 0, ic = 0; int32_t bv = 0;
-					const bool gotId = typeLeaf && batcher_typeIdForTypeShape((const void*)typeLeaf, &canonId);
+					const bool gotId = typeLeaf && batcher_typeIdForTypeShape(static_cast<const void*>(typeLeaf), &canonId);
 					const bool gotGeo = gotId && batcher_getTypeDrawInfo(canonId, &idxc, &fi, &bv, &ic);
 					if (gotGeo && idxc > 0) {
 						inst.typeID = canonId;
@@ -366,7 +366,7 @@ void BldgAppearance::registerStatic() {
 		bldgShape, batch.data(), batch.size(), &regIdx);
 	if (seamProbe)
 		mc2::fmt::print_err("[SEAMPROBE] bldg syncStaticProp name={} batchSize={:d} regIdx={:d} firstTypeID={:d}\n",
-			mc2::fmt::safe(appearType->name), mc2::fmt::as_size(batch.size()), mc2::fmt::as_i32((int)regIdx),
+			mc2::fmt::safe(appearType->name), mc2::fmt::as_size(batch.size()), mc2::fmt::as_i32(static_cast<int>(regIdx)),
 			mc2::fmt::as_u32(batch.empty()?0xFFFFFFFFu:batch[0].typeID)), fflush(stderr);
 	if (regIdx >= 0) {
 		staticReg.registered  = true;
