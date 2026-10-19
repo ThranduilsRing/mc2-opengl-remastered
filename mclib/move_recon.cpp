@@ -106,7 +106,7 @@ void moveReconPathCacheSample(int startR, int startC, int goalR, int goalC,
                              unsigned long long pathHash, unsigned long long moverHereHash,
                              unsigned long long frame)
 {
-    if (!g_moveReconEnabled || nodes < (unsigned long long)CHUNK_SHADOW_MIN_NODES || pathLen <= 0)
+    if (!g_moveReconEnabled || nodes < static_cast<unsigned long long>(CHUNK_SHADOW_MIN_NODES) || pathLen <= 0)
         return;
 
     g_pcache_calls++;
@@ -140,12 +140,12 @@ void moveReconPathCacheSample(int startR, int startC, int goalR, int goalC,
         }
         if (s_pcBurstPrints < 30) {
             s_pcBurstPrints++;
-            mc2::fmt::print_out("[MOVE_PATH_CACHE_BURST v1] frame={:d} key=({:d},{:d})->({:d},{:d}) nodes_repeated={:d} would_saved={:d} path_match={:d} mover_diverged={:d} frame_gap={:d}\n", mc2::fmt::as_u64(frame), mc2::fmt::as_i32(startR), mc2::fmt::as_i32(startC), mc2::fmt::as_i32(goalR), mc2::fmt::as_i32(goalC), mc2::fmt::as_u64(nodes), mc2::fmt::as_u64((unsigned long long)s_pcBurstSaved), mc2::fmt::as_i32((pathHash == s_pcache[slot].pathHash) ? 1 : 0), mc2::fmt::as_i32((moverHereHash != s_pcache[slot].moverHereHash) ? 1 : 0), mc2::fmt::as_u64((unsigned long long)gap));
+            mc2::fmt::print_out("[MOVE_PATH_CACHE_BURST v1] frame={:d} key=({:d},{:d})->({:d},{:d}) nodes_repeated={:d} would_saved={:d} path_match={:d} mover_diverged={:d} frame_gap={:d}\n", mc2::fmt::as_u64(frame), mc2::fmt::as_i32(startR), mc2::fmt::as_i32(startC), mc2::fmt::as_i32(goalR), mc2::fmt::as_i32(goalC), mc2::fmt::as_u64(nodes), mc2::fmt::as_u64(static_cast<unsigned long long>(s_pcBurstSaved)), mc2::fmt::as_i32((pathHash == s_pcache[slot].pathHash) ? 1 : 0), mc2::fmt::as_i32((moverHereHash != s_pcache[slot].moverHereHash) ? 1 : 0), mc2::fmt::as_u64(static_cast<unsigned long long>(gap)));
             std::fflush(stdout);
         }
     } else {
         s_pcBurstSaved = 0;  // miss resets the burst
-        if (slot < 0 && freeSlot < 0) freeSlot = (int)(g_pcache_calls % PCACHE_SIZE);  // evict
+        if (slot < 0 && freeSlot < 0) freeSlot = static_cast<int>((g_pcache_calls % PCACHE_SIZE));  // evict
         slot = freeSlot;
     }
 
@@ -167,16 +167,16 @@ void moveReconChunkSample(int startR, int startC, int goalR, int goalC,
                           unsigned long long inRect0, unsigned long long inRect1,
                           unsigned long long inRect2)
 {
-    if (!g_moveReconEnabled || nodes < (unsigned long long)CHUNK_SHADOW_MIN_NODES)
+    if (!g_moveReconEnabled || nodes < static_cast<unsigned long long>(CHUNK_SHADOW_MIN_NODES))
         return;
 
     const int cs = CHUNK_SHADOW_CHUNK_SIZE;
-    uint64_t poppedBox = (uint64_t)(poppedMaxR - poppedMinR + 1) * (uint64_t)(poppedMaxC - poppedMinC + 1);
+    uint64_t poppedBox = static_cast<uint64_t>((poppedMaxR - poppedMinR + 1)) * static_cast<uint64_t>((poppedMaxC - poppedMinC + 1));
 
     int overflow = -1;          // -1 = goal missed (no path)
     uint64_t pathBox = 0;
     if (pathLen > 0) {
-        pathBox = (uint64_t)(pathMaxR - pathMinR + 1) * (uint64_t)(pathMaxC - pathMinC + 1);
+        pathBox = static_cast<uint64_t>((pathMaxR - pathMinR + 1)) * static_cast<uint64_t>((pathMaxC - pathMinC + 1));
         int sgMinR = (startR < goalR ? startR : goalR) / cs;
         int sgMaxR = (startR > goalR ? startR : goalR) / cs;
         int sgMinC = (startC < goalC ? startC : goalC) / cs;
@@ -197,16 +197,16 @@ void moveReconChunkSample(int startR, int startC, int goalR, int goalC,
     g_chunkShadow_sum_poppedBox += poppedBox;
     g_chunkShadow_sum_pathBox   += pathBox;
     g_chunkShadow_sum_nodes     += nodes;
-    g_chunkShadow_sum_pathLen   += (pathLen > 0 ? (uint64_t)pathLen : 0);
+    g_chunkShadow_sum_pathLen   += (pathLen > 0 ? static_cast<uint64_t>(pathLen) : 0);
     if (overflow >= 0) {
         if (overflow == 0) g_chunkShadow_inside0++;
         if (overflow <= 1) g_chunkShadow_inside1++;
         if (overflow <= 2) g_chunkShadow_inside2++;
-        if ((uint64_t)overflow > g_chunkShadow_maxOverflow) g_chunkShadow_maxOverflow = (uint64_t)overflow;
+        if (static_cast<uint64_t>(overflow) > g_chunkShadow_maxOverflow) g_chunkShadow_maxOverflow = static_cast<uint64_t>(overflow);
     }
     if (nodes > g_chunkShadow_worstNodes) {
         g_chunkShadow_worstNodes = nodes;
-        g_chunkShadow_worstOverflow = (overflow >= 0 ? (uint64_t)overflow : 0);
+        g_chunkShadow_worstOverflow = (overflow >= 0 ? static_cast<uint64_t>(overflow) : 0);
     }
 
     // RECT_CORRIDOR_SHADOW projection: constrained nodes <= popped-in-corridor.
@@ -224,12 +224,12 @@ void moveReconChunkSample(int startR, int startC, int goalR, int goalC,
         // found/same at pad N is GUARANTEED iff overflow<=N (A* optimality on a
         // domain containing the optimal path). nodes_padN = popped-in-corridor.
         mc2::fmt::print_out("[MOVE_CHUNK_SHADOW v1] call={:d} start=({:d},{:d}) goal=({:d},{:d}) cell_nodes={:d} cell_path_len={:d} popped_box={:d} path_box={:d} chunk_size={:d} overflow_chunks={:d} rect0_same={:d} rect0_nodes={:d} rect1_same={:d} rect1_nodes={:d} rect2_same={:d} rect2_nodes={:d}\n",
-            mc2::fmt::as_u64((unsigned long long)g_chunkShadow_calls), mc2::fmt::as_i32(startR), mc2::fmt::as_i32(startC), mc2::fmt::as_i32(goalR), mc2::fmt::as_i32(goalC),
-            mc2::fmt::as_u64(nodes), mc2::fmt::as_i32(pathLen), mc2::fmt::as_u64((unsigned long long)poppedBox), mc2::fmt::as_u64((unsigned long long)pathBox),
+            mc2::fmt::as_u64(static_cast<unsigned long long>(g_chunkShadow_calls)), mc2::fmt::as_i32(startR), mc2::fmt::as_i32(startC), mc2::fmt::as_i32(goalR), mc2::fmt::as_i32(goalC),
+            mc2::fmt::as_u64(nodes), mc2::fmt::as_i32(pathLen), mc2::fmt::as_u64(static_cast<unsigned long long>(poppedBox)), mc2::fmt::as_u64(static_cast<unsigned long long>(pathBox)),
             mc2::fmt::as_i32(cs), mc2::fmt::as_i32(overflow),
-            mc2::fmt::as_i32((overflow >= 0 && overflow <= 0) ? 1 : 0), mc2::fmt::as_u64((unsigned long long)inRect0),
-            mc2::fmt::as_i32((overflow >= 0 && overflow <= 1) ? 1 : 0), mc2::fmt::as_u64((unsigned long long)inRect1),
-            mc2::fmt::as_i32((overflow >= 0 && overflow <= 2) ? 1 : 0), mc2::fmt::as_u64((unsigned long long)inRect2));
+            mc2::fmt::as_i32((overflow >= 0 && overflow <= 0) ? 1 : 0), mc2::fmt::as_u64(static_cast<unsigned long long>(inRect0)),
+            mc2::fmt::as_i32((overflow >= 0 && overflow <= 1) ? 1 : 0), mc2::fmt::as_u64(static_cast<unsigned long long>(inRect1)),
+            mc2::fmt::as_i32((overflow >= 0 && overflow <= 2) ? 1 : 0), mc2::fmt::as_u64(static_cast<unsigned long long>(inRect2)));
         std::fflush(stdout);
     }
 }
@@ -250,10 +250,10 @@ void moveReconEmit()
     if (!g_moveReconEnabled)
         return;
 
-    mc2::fmt::print_out("[MOVE_RECON v1] event=shutdown frames={:d} movers_total={:d} ctrl_ns={:d} pathlock_ns={:d} astar_local_ns={:d} astar_global_ns={:d} calcMovePath_calls={:d} astar_local_calls={:d} astar_global_calls={:d} setPathlock_calls={:d} getPathlock_calls={:d} offmap_noops={:d} max_ctrl_ns={:d} max_pathlock_ns={:d} max_astar_local_ns={:d} max_astar_global_ns={:d} ag_prologue_ns={:d} ag_search_ns={:d} ag_nodesPopped={:d} ag_gatesScanned={:d} ag_numDoors={:d} ag_numAreas={:d} ag_max_prologue_ns={:d} ag_max_search_ns={:d} al_nodesPopped={:d} al_maxNodes={:d} al_goalFound={:d} al_goalMissed={:d}\n", mc2::fmt::as_u64((unsigned long long)g_moveRecon_frames), mc2::fmt::as_u64((unsigned long long)g_moveRecon_movers_total), mc2::fmt::as_u64((unsigned long long)g_moveRecon_ctrl_ns), mc2::fmt::as_u64((unsigned long long)g_moveRecon_pathlock_ns), mc2::fmt::as_u64((unsigned long long)g_moveRecon_astar_local_ns), mc2::fmt::as_u64((unsigned long long)g_moveRecon_astar_global_ns), mc2::fmt::as_u64((unsigned long long)g_moveRecon_calcMovePath_calls), mc2::fmt::as_u64((unsigned long long)g_moveRecon_astar_local_calls), mc2::fmt::as_u64((unsigned long long)g_moveRecon_astar_global_calls), mc2::fmt::as_u64((unsigned long long)g_moveRecon_setPathlock_calls), mc2::fmt::as_u64((unsigned long long)g_moveRecon_getPathlock_calls), mc2::fmt::as_u64((unsigned long long)g_moveRecon_offmap_noops), mc2::fmt::as_u64((unsigned long long)g_moveRecon_max_ctrl_ns), mc2::fmt::as_u64((unsigned long long)g_moveRecon_max_pathlock_ns), mc2::fmt::as_u64((unsigned long long)g_moveRecon_max_astar_local_ns), mc2::fmt::as_u64((unsigned long long)g_moveRecon_max_astar_global_ns), mc2::fmt::as_u64((unsigned long long)g_moveRecon_ag_prologue_ns), mc2::fmt::as_u64((unsigned long long)g_moveRecon_ag_search_ns), mc2::fmt::as_u64((unsigned long long)g_moveRecon_ag_nodesPopped), mc2::fmt::as_u64((unsigned long long)g_moveRecon_ag_gatesScanned), mc2::fmt::as_u64((unsigned long long)g_moveRecon_ag_maxNumDoors), mc2::fmt::as_u64((unsigned long long)g_moveRecon_ag_maxNumAreas), mc2::fmt::as_u64((unsigned long long)g_moveRecon_ag_max_prologue_ns), mc2::fmt::as_u64((unsigned long long)g_moveRecon_ag_max_search_ns), mc2::fmt::as_u64((unsigned long long)g_moveRecon_al_nodesPopped), mc2::fmt::as_u64((unsigned long long)g_moveRecon_al_maxNodes), mc2::fmt::as_u64((unsigned long long)g_moveRecon_al_goalFound), mc2::fmt::as_u64((unsigned long long)g_moveRecon_al_goalMissed));
+    mc2::fmt::print_out("[MOVE_RECON v1] event=shutdown frames={:d} movers_total={:d} ctrl_ns={:d} pathlock_ns={:d} astar_local_ns={:d} astar_global_ns={:d} calcMovePath_calls={:d} astar_local_calls={:d} astar_global_calls={:d} setPathlock_calls={:d} getPathlock_calls={:d} offmap_noops={:d} max_ctrl_ns={:d} max_pathlock_ns={:d} max_astar_local_ns={:d} max_astar_global_ns={:d} ag_prologue_ns={:d} ag_search_ns={:d} ag_nodesPopped={:d} ag_gatesScanned={:d} ag_numDoors={:d} ag_numAreas={:d} ag_max_prologue_ns={:d} ag_max_search_ns={:d} al_nodesPopped={:d} al_maxNodes={:d} al_goalFound={:d} al_goalMissed={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_frames)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_movers_total)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_ctrl_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_pathlock_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_astar_local_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_astar_global_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_calcMovePath_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_astar_local_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_astar_global_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_setPathlock_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_getPathlock_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_offmap_noops)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_max_ctrl_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_max_pathlock_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_max_astar_local_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_max_astar_global_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_ag_prologue_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_ag_search_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_ag_nodesPopped)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_ag_gatesScanned)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_ag_maxNumDoors)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_ag_maxNumAreas)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_ag_max_prologue_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_ag_max_search_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_al_nodesPopped)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_al_maxNodes)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_al_goalFound)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_al_goalMissed)));
     std::fflush(stdout);
 
-    mc2::fmt::print_out("[MOVE_CHUNK_SHADOW v1] event=shutdown sampled_calls={:d} inside0={:d} inside1={:d} inside2={:d} max_overflow_chunks={:d} sum_popped_box={:d} sum_path_box={:d} sum_nodes={:d} sum_path_len={:d} worst_call_nodes={:d} worst_call_overflow={:d} (chunk_size={:d} node_threshold={:d})\n", mc2::fmt::as_u64((unsigned long long)g_chunkShadow_calls), mc2::fmt::as_u64((unsigned long long)g_chunkShadow_inside0), mc2::fmt::as_u64((unsigned long long)g_chunkShadow_inside1), mc2::fmt::as_u64((unsigned long long)g_chunkShadow_inside2), mc2::fmt::as_u64((unsigned long long)g_chunkShadow_maxOverflow), mc2::fmt::as_u64((unsigned long long)g_chunkShadow_sum_poppedBox), mc2::fmt::as_u64((unsigned long long)g_chunkShadow_sum_pathBox), mc2::fmt::as_u64((unsigned long long)g_chunkShadow_sum_nodes), mc2::fmt::as_u64((unsigned long long)g_chunkShadow_sum_pathLen), mc2::fmt::as_u64((unsigned long long)g_chunkShadow_worstNodes), mc2::fmt::as_u64((unsigned long long)g_chunkShadow_worstOverflow), mc2::fmt::as_i32(CHUNK_SHADOW_CHUNK_SIZE), mc2::fmt::as_i32(CHUNK_SHADOW_MIN_NODES));
+    mc2::fmt::print_out("[MOVE_CHUNK_SHADOW v1] event=shutdown sampled_calls={:d} inside0={:d} inside1={:d} inside2={:d} max_overflow_chunks={:d} sum_popped_box={:d} sum_path_box={:d} sum_nodes={:d} sum_path_len={:d} worst_call_nodes={:d} worst_call_overflow={:d} (chunk_size={:d} node_threshold={:d})\n", mc2::fmt::as_u64(static_cast<unsigned long long>(g_chunkShadow_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_chunkShadow_inside0)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_chunkShadow_inside1)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_chunkShadow_inside2)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_chunkShadow_maxOverflow)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_chunkShadow_sum_poppedBox)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_chunkShadow_sum_pathBox)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_chunkShadow_sum_nodes)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_chunkShadow_sum_pathLen)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_chunkShadow_worstNodes)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_chunkShadow_worstOverflow)), mc2::fmt::as_i32(CHUNK_SHADOW_CHUNK_SIZE), mc2::fmt::as_i32(CHUNK_SHADOW_MIN_NODES));
     std::fflush(stdout);
 
     // RECT_CORRIDOR_SHADOW: provable constrained-A* projection (no re-run).
@@ -265,11 +265,11 @@ void moveReconEmit()
     uint64_t red0 = (g_rect_full_nodes > g_rect0_nodes) ? ((g_rect_full_nodes - g_rect0_nodes) * 100 / g_rect_full_nodes) : 0;
     uint64_t red1 = (g_rect_full_nodes > g_rect1_nodes) ? ((g_rect_full_nodes - g_rect1_nodes) * 100 / g_rect_full_nodes) : 0;
     uint64_t red2 = (g_rect_full_nodes > g_rect2_nodes) ? ((g_rect_full_nodes - g_rect2_nodes) * 100 / g_rect_full_nodes) : 0;
-    mc2::fmt::print_out("[RECT_CORRIDOR_SHADOW v1] event=shutdown calls={:d} full_nodes={:d} rect0_same={:d} rect0_nodes={:d} rect0_reduct_pct={:d} fallback0={:d} rect1_same={:d} rect1_nodes={:d} rect1_reduct_pct={:d} fallback1={:d} rect2_same={:d} rect2_nodes={:d} rect2_reduct_pct={:d} fallback2={:d} max_node_reduction_pct_pad1={:d} (nodes are UPPER-BOUND; same is PROVEN)\n", mc2::fmt::as_u64((unsigned long long)g_chunkShadow_calls), mc2::fmt::as_u64((unsigned long long)g_rect_full_nodes), mc2::fmt::as_u64((unsigned long long)g_chunkShadow_inside0), mc2::fmt::as_u64((unsigned long long)g_rect0_nodes), mc2::fmt::as_u64((unsigned long long)red0), mc2::fmt::as_u64((unsigned long long)fb0), mc2::fmt::as_u64((unsigned long long)g_chunkShadow_inside1), mc2::fmt::as_u64((unsigned long long)g_rect1_nodes), mc2::fmt::as_u64((unsigned long long)red1), mc2::fmt::as_u64((unsigned long long)fb1), mc2::fmt::as_u64((unsigned long long)g_chunkShadow_inside2), mc2::fmt::as_u64((unsigned long long)g_rect2_nodes), mc2::fmt::as_u64((unsigned long long)red2), mc2::fmt::as_u64((unsigned long long)fb2), mc2::fmt::as_u64((unsigned long long)g_rect_maxReductPct1));
+    mc2::fmt::print_out("[RECT_CORRIDOR_SHADOW v1] event=shutdown calls={:d} full_nodes={:d} rect0_same={:d} rect0_nodes={:d} rect0_reduct_pct={:d} fallback0={:d} rect1_same={:d} rect1_nodes={:d} rect1_reduct_pct={:d} fallback1={:d} rect2_same={:d} rect2_nodes={:d} rect2_reduct_pct={:d} fallback2={:d} max_node_reduction_pct_pad1={:d} (nodes are UPPER-BOUND; same is PROVEN)\n", mc2::fmt::as_u64(static_cast<unsigned long long>(g_chunkShadow_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_rect_full_nodes)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_chunkShadow_inside0)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_rect0_nodes)), mc2::fmt::as_u64(static_cast<unsigned long long>(red0)), mc2::fmt::as_u64(static_cast<unsigned long long>(fb0)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_chunkShadow_inside1)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_rect1_nodes)), mc2::fmt::as_u64(static_cast<unsigned long long>(red1)), mc2::fmt::as_u64(static_cast<unsigned long long>(fb1)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_chunkShadow_inside2)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_rect2_nodes)), mc2::fmt::as_u64(static_cast<unsigned long long>(red2)), mc2::fmt::as_u64(static_cast<unsigned long long>(fb2)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_rect_maxReductPct1)));
     std::fflush(stdout);
 
     uint64_t hitRate = (g_pcache_calls ? g_pcache_would_hits * 100 / g_pcache_calls : 0);
-    mc2::fmt::print_out("[MOVE_PATH_CACHE_SHADOW v1] event=shutdown calls={:d} would_hits={:d} would_hit_rate_pct={:d} nodes_total={:d} nodes_saved={:d} max_burst_saved={:d} same_path_hits={:d} path_mismatch={:d} mover_here_touched={:d} mover_here_diverged={:d} max_frame_gap={:d} (node_threshold={:d} cache_size={:d})\n", mc2::fmt::as_u64((unsigned long long)g_pcache_calls), mc2::fmt::as_u64((unsigned long long)g_pcache_would_hits), mc2::fmt::as_u64((unsigned long long)hitRate), mc2::fmt::as_u64((unsigned long long)g_pcache_nodes_total), mc2::fmt::as_u64((unsigned long long)g_pcache_nodes_saved), mc2::fmt::as_u64((unsigned long long)g_pcache_max_burst_saved), mc2::fmt::as_u64((unsigned long long)g_pcache_same_path_hits), mc2::fmt::as_u64((unsigned long long)g_pcache_path_mismatch), mc2::fmt::as_u64((unsigned long long)g_pcache_mover_here_touched), mc2::fmt::as_u64((unsigned long long)g_pcache_mover_here_diverged), mc2::fmt::as_u64((unsigned long long)g_pcache_max_frame_gap), mc2::fmt::as_i32(CHUNK_SHADOW_MIN_NODES), mc2::fmt::as_i32(PCACHE_SIZE));
+    mc2::fmt::print_out("[MOVE_PATH_CACHE_SHADOW v1] event=shutdown calls={:d} would_hits={:d} would_hit_rate_pct={:d} nodes_total={:d} nodes_saved={:d} max_burst_saved={:d} same_path_hits={:d} path_mismatch={:d} mover_here_touched={:d} mover_here_diverged={:d} max_frame_gap={:d} (node_threshold={:d} cache_size={:d})\n", mc2::fmt::as_u64(static_cast<unsigned long long>(g_pcache_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_pcache_would_hits)), mc2::fmt::as_u64(static_cast<unsigned long long>(hitRate)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_pcache_nodes_total)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_pcache_nodes_saved)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_pcache_max_burst_saved)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_pcache_same_path_hits)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_pcache_path_mismatch)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_pcache_mover_here_touched)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_pcache_mover_here_diverged)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_pcache_max_frame_gap)), mc2::fmt::as_i32(CHUNK_SHADOW_MIN_NODES), mc2::fmt::as_i32(PCACHE_SIZE));
     std::fflush(stdout);
 }
 
@@ -308,7 +308,7 @@ void moveReconFrameTick()
         g_moveRecon_max_astar_global_ns = g_moveRecon_frame_astar_global_ns;
 
     if (g_moveRecon_frames % 30 == 0) {
-        mc2::fmt::print_out("[MOVE_RECON v1] frame={:d} movers={:d} ctrl_ns={:d} pathlock_ns={:d} astar_local_ns={:d} astar_global_ns={:d} calcMovePath_calls={:d} offmap_noops={:d}\n", mc2::fmt::as_u64((unsigned long long)g_moveRecon_frames), mc2::fmt::as_u64((unsigned long long)g_moveRecon_frame_movers), mc2::fmt::as_u64((unsigned long long)g_moveRecon_frame_ctrl_ns), mc2::fmt::as_u64((unsigned long long)g_moveRecon_frame_pathlock_ns), mc2::fmt::as_u64((unsigned long long)g_moveRecon_frame_astar_local_ns), mc2::fmt::as_u64((unsigned long long)g_moveRecon_frame_astar_global_ns), mc2::fmt::as_u64((unsigned long long)g_moveRecon_calcMovePath_calls), mc2::fmt::as_u64((unsigned long long)g_moveRecon_offmap_noops));
+        mc2::fmt::print_out("[MOVE_RECON v1] frame={:d} movers={:d} ctrl_ns={:d} pathlock_ns={:d} astar_local_ns={:d} astar_global_ns={:d} calcMovePath_calls={:d} offmap_noops={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_frames)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_frame_movers)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_frame_ctrl_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_frame_pathlock_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_frame_astar_local_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_frame_astar_global_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_calcMovePath_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_offmap_noops)));
         std::fflush(stdout);
     }
 

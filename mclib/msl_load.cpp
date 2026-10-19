@@ -28,8 +28,8 @@ static unsigned long long mslAssetKey(const char* event, const char* path)
 {
 	// djb2 over event+path — dedup key for mc2AuditOnce.
 	unsigned long long h = 5381;
-	for (const char* p = event; p && *p; ++p) h = h * 33 + (unsigned char)*p;
-	for (const char* p = path;  p && *p; ++p) h = h * 33 + (unsigned char)*p;
+	for (const char* p = event; p && *p; ++p) h = h * 33 + static_cast<unsigned char>(*p);
+	for (const char* p = path;  p && *p; ++p) h = h * 33 + static_cast<unsigned char>(*p);
 	return h;
 }
 
@@ -72,7 +72,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 			textureStore.resize(numTextures);
 			listOfTextures = textureStore.data();
 
-			binFile.read((MemoryPtr)listOfTextures,sizeof(TG_Texture) * numTextures);
+			binFile.read(reinterpret_cast<MemoryPtr>(listOfTextures),sizeof(TG_Texture) * numTextures);
 		}
 		else
 		{
@@ -126,7 +126,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 				// the mech without an appearance rather than crashing the
 				// mechbay.
 				mc2::fmt::print_out("[MSL] unknown nodeType={:d} at index {:d}/{:d} — aborting load of this shape\n",
-					mc2::fmt::as_i32(nodeType), mc2::fmt::as_i32(i), mc2::fmt::as_i32((long)numTG_TypeShapes)); fflush(stdout);
+					mc2::fmt::as_i32(nodeType), mc2::fmt::as_i32(i), mc2::fmt::as_i32(static_cast<long>(numTG_TypeShapes))); fflush(stdout);
 				aborted = true;
 				break;
 			}
@@ -169,7 +169,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 					glm::vec3 relNodeCenter;
 					relNodeCenter = listOfTypeShapes[i]->GetRelativeNodeCenter();
 					
-					TG_TypeShapePtr typeShape = (TG_TypeShapePtr)listOfTypeShapes[i];
+					TG_TypeShapePtr typeShape = static_cast<TG_TypeShapePtr>(listOfTypeShapes[i]);
 					
 					if (minBox.x > typeShape->listOfTypeVertices[j].position.x + relNodeCenter.x)
 						minBox.x = typeShape->listOfTypeVertices[j].position.x + relNodeCenter.x;
@@ -324,7 +324,7 @@ long TG_TypeMultiShape::LoadFromFile(const char* baseName)
 					// META-FIX design B PART 0: probed file EXISTED but the
 					// importer rejected it — content bad, always-on.
 					mslAssetLoadEvent("parse_fail", "import", "import_fail",
-						(const char*)probePath);
+						static_cast<const char*>(probePath));
 					// Importer logged the reason via STOP/PAUSE; fall through.
 					break;
 				}
@@ -354,7 +354,7 @@ void TG_TypeMultiShape::SaveBinaryCopy (const char *fileName)
 	//ListOfTextures
 	if (numTextures)
 	{
-		binFile.write((MemoryPtr)listOfTextures,sizeof(TG_Texture) * numTextures);
+		binFile.write(reinterpret_cast<MemoryPtr>(listOfTextures),sizeof(TG_Texture) * numTextures);
 	}
 	
 	//listOfShapes
@@ -428,7 +428,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 	_splitpath(fileName,drive,dir,name,ext);
 
 #ifdef _DEBUG
-	shapeName = (char *)malloc(strlen(name) + 1);
+	shapeName = static_cast<char *>(malloc(strlen(name) + 1));
 	strcpy(shapeName,name);
 #endif
 	
@@ -510,7 +510,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 	
 		//---------------------------------------
 		// Create Buffer to read entire file into
-		BYTE *aseContents = (BYTE *)malloc(aseFileSize+1);
+		BYTE *aseContents = static_cast<BYTE *>(malloc(aseFileSize+1));
 		gosASSERT(aseContents != nullptr);
 	
 		//---------------------------------------
@@ -530,7 +530,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 	
 		//----------------------------------------
 		// Check for valid ASE Header data.
-		if (S_strnicmp(ASE_HEADER,(char *)aseContents,strlen(ASE_HEADER)) != 0)
+		if (S_strnicmp(ASE_HEADER,reinterpret_cast<char *>(aseContents),strlen(ASE_HEADER)) != 0)
 		{
 			// META-FIX design B PART 0: file existed, content bad -> always-on.
 			mslAssetLoadEvent("parse_fail", "ase", "bad_header", fileName);
@@ -546,7 +546,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 
 		char numberData[256];
 		sprintf(textureId,ASE_MATERIAL_COUNT);
-		textureData = strstr((char *)aseContents,textureId);
+		textureData = strstr(reinterpret_cast<char *>(aseContents),textureId);
 		if (!textureData)
 		{
 			// META-FIX design B PART 0: parse_fail (missing material block).
@@ -563,7 +563,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 		for (long nmt=0;nmt<numMaterials;nmt++)
 		{
 			sprintf(textureId,ASE_MATERIAL_CLASS);
-			textureData = strstr((char *)aseBuffer,textureId);
+			textureData = strstr(reinterpret_cast<char *>(aseBuffer),textureId);
 			if (!textureData)
 			{
 				// META-FIX design B PART 0: parse_fail (missing material class).
@@ -592,7 +592,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 				numTextures += atol(numberData);
 			}
 	
-			aseBuffer = (unsigned char *)textureData;
+			aseBuffer = reinterpret_cast<unsigned char *>(textureData);
 		}
 
 		IProviderAssetPtr armAssetPtr = nullptr;
@@ -609,7 +609,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 			textureStore.assign(numTextures, TG_Texture{});
 			listOfTextures = textureStore.data();
 
-			char *txmData = (char *)aseContents;
+			char *txmData = reinterpret_cast<char *>(aseContents);
 			for (int i=0;i<(numTextures/2);i++)
 			{
 				//-------------------------------------------------------------------------------
@@ -704,7 +704,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 		//------------------------------------------------------------
 		// FIRST PASS.  Count number of GEOMObjects & HelperObjects
 		numTG_TypeShapes = 0;
-		char *aseScan = (char *)aseContents;
+		char *aseScan = reinterpret_cast<char *>(aseContents);
 		aseScan = strstr(aseScan,ASE_OBJECT);
 		while (aseScan != nullptr)
 		{
@@ -713,7 +713,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 			aseScan = strstr(aseScan,ASE_OBJECT);
 		}
 	
-		aseScan = (char *)aseContents;
+		aseScan = reinterpret_cast<char *>(aseContents);
 		aseScan = strstr(aseScan,ASE_HELP_OBJECT);
 		while (aseScan != nullptr)
 		{
@@ -742,7 +742,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 		// SECOND PASS.  Load HelperObjects.
 		long startIndex = 0;
 	
-		aseScan = (char *)aseContents;
+		aseScan = reinterpret_cast<char *>(aseContents);
 		aseScan = strstr(aseScan,ASE_HELP_OBJECT);
 		while (aseScan != nullptr)
 		{
@@ -759,7 +759,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 	
 			if (aseEnd)
 			{
-				char *aseData = (char *)malloc(aseFileSize+1);
+				char *aseData = static_cast<char *>(malloc(aseFileSize+1));
 				ZeroMemory(aseData, aseFileSize+1);
 				memcpy(aseData,aseScan,aseEnd - aseScan);
 	
@@ -777,7 +777,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 				// Is this a forbidden helper object?
 				if ((strstr(chkWord,"handle") == nullptr) && (strstr(chkWord,"World") == nullptr))
 				{
-					long parseResult = listOfTypeShapes[startIndex]->MakeFromHelper((unsigned char *)aseData,fileName);
+					long parseResult = listOfTypeShapes[startIndex]->MakeFromHelper(reinterpret_cast<unsigned char *>(aseData),fileName);
 					if (parseResult != 0)
 					{
 						mslAssetLoadEvent("parse_fail", "ase", "node_parse_fail", fileName);
@@ -807,7 +807,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 				if ((strstr(chkWord,"handle") == nullptr) && (strstr(chkWord,"World") == nullptr))
 				{
 					//-------------------------------------------------------------------
-					long parseResult = listOfTypeShapes[startIndex]->MakeFromHelper((unsigned char *)aseScan,fileName);
+					long parseResult = listOfTypeShapes[startIndex]->MakeFromHelper(reinterpret_cast<unsigned char *>(aseScan),fileName);
 					if (parseResult != 0)
 					{
 						mslAssetLoadEvent("parse_fail", "ase", "node_parse_fail", fileName);
@@ -824,7 +824,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 	
 		//------------------------------------------------------------
 		// THIRD PASS.  Load GeomObjects.
-		aseScan = (char *)aseContents;
+		aseScan = reinterpret_cast<char *>(aseContents);
 		aseScan = strstr(aseScan,ASE_OBJECT);
 		while (aseScan != nullptr)
 		{
@@ -840,11 +840,11 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 	
 			if (aseEnd)
 			{
-				char *aseData = (char *)malloc(aseFileSize+1);
+				char *aseData = static_cast<char *>(malloc(aseFileSize+1));
 				ZeroMemory(aseData, aseFileSize+1);
 				memcpy(aseData,aseScan,aseEnd - aseScan);
 				
-				long parseResult = listOfTypeShapes[startIndex]->ParseASEFile((unsigned char *)aseData,fileName);
+				long parseResult = listOfTypeShapes[startIndex]->ParseASEFile(reinterpret_cast<unsigned char *>(aseData),fileName);
 				if (parseResult != 0)
 				{
 					mslAssetLoadEvent("parse_fail", "ase", "node_parse_fail", fileName);
@@ -855,7 +855,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 			}
 			else
 			{
-				long parseResult = listOfTypeShapes[startIndex]->ParseASEFile((unsigned char *)aseScan,fileName);
+				long parseResult = listOfTypeShapes[startIndex]->ParseASEFile(reinterpret_cast<unsigned char *>(aseScan),fileName);
 				if (parseResult != 0)
 				{
 					mslAssetLoadEvent("parse_fail", "ase", "node_parse_fail", fileName);
@@ -871,7 +871,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
  		//------------------------------------------------------------------
 		// FOURTH PASS.  Setup Heirarchy ALWAYS or NO Shape BOUNDS!!!
 		{
-			aseScan = (char *)aseContents;
+			aseScan = reinterpret_cast<char *>(aseContents);
 			for (long i=0;i<numTG_TypeShapes;i++)
 			{
 				//----------------------------------------------------------------------------------
@@ -905,7 +905,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 						glm::vec3 relNodeCenter;
 						relNodeCenter = listOfTypeShapes[i]->GetRelativeNodeCenter();
 						
-						TG_TypeShapePtr typeShape = (TG_TypeShapePtr)listOfTypeShapes[i];
+						TG_TypeShapePtr typeShape = static_cast<TG_TypeShapePtr>(listOfTypeShapes[i]);
 						if (minBox.x > typeShape->listOfTypeVertices[j].position.x + relNodeCenter.x)
 							minBox.x = typeShape->listOfTypeVertices[j].position.x + relNodeCenter.x;
 													 

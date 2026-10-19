@@ -193,7 +193,7 @@
    "LG06": 666,
    "LG07": 0,
    "LG08": 70,
-   "LG09": 1139,
+   "LG09": 817,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 169,
@@ -203,7 +203,7 @@
    "LG15": 0,
    "LG16": 156,
    "LG17": 95,
-   "LG18": 15,
+   "LG18": 19,
    "LG19": 0,
    "LG20": 10
   },
@@ -3420,24 +3420,19 @@
    "LG03": 21
   },
   "mclib/mlr/mlr_i_l_dt_tmesh.cpp": {
-   "LG03": 19,
-   "LG09": 1
+   "LG03": 19
   },
   "mclib/mlr/mlr_i_l_pmesh.cpp": {
-   "LG03": 21,
-   "LG09": 1
+   "LG03": 21
   },
   "mclib/mlr/mlr_i_l_tmesh.cpp": {
-   "LG03": 19,
-   "LG09": 1
+   "LG03": 19
   },
   "mclib/mlr/mlr_i_mt_pmesh.cpp": {
-   "LG03": 24,
-   "LG09": 3
+   "LG03": 24
   },
   "mclib/mlr/mlr_i_pmesh.cpp": {
    "LG03": 30,
-   "LG09": 4,
    "LG13": 1,
    "LG17": 1
   },
@@ -3446,15 +3441,14 @@
   },
   "mclib/mlr/mlr_i_tmesh.cpp": {
    "LG03": 5,
-   "LG09": 3,
-   "LG13": 1
+   "LG13": 1,
+   "LG18": 1
   },
   "mclib/mlr/mlr_i_tmesh.hpp": {
    "LG13": 2
   },
   "mclib/mlr/mlr_i_tmesh_cast.cpp": {
-   "LG03": 10,
-   "LG09": 1
+   "LG03": 10
   },
   "mclib/mlr/mlr_i_tmesh_internal.h": {
    "LG13": 1
@@ -3469,8 +3463,7 @@
    "LG03": 12
   },
   "mclib/mlr/mlrclipper.cpp": {
-   "LG03": 4,
-   "LG09": 1
+   "LG03": 4
   },
   "mclib/mlr/mlrclippingstate.hpp": {
    "LG14": 2
@@ -3482,8 +3475,7 @@
    "LG03": 6
   },
   "mclib/mlr/mlrindexedtrianglecloud.cpp": {
-   "LG03": 8,
-   "LG09": 4
+   "LG03": 8
   },
   "mclib/mlr/mlrinfinitelight.cpp": {
    "LG03": 2
@@ -3499,16 +3491,14 @@
    "LG14": 1
   },
   "mclib/mlr/mlrlightmap.cpp": {
-   "LG03": 21,
-   "LG09": 14
+   "LG03": 21
   },
   "mclib/mlr/mlrlightmap.hpp": {
    "LG09": 2,
    "LG14": 1
   },
   "mclib/mlr/mlrlinecloud.cpp": {
-   "LG03": 2,
-   "LG09": 3
+   "LG03": 2
   },
   "mclib/mlr/mlrlookuplight.cpp": {
    "LG03": 12,
@@ -3529,8 +3519,7 @@
   },
   "mclib/mlr/mlrprimitivebase.cpp": {
    "LG03": 16,
-   "LG04": 1,
-   "LG09": 1
+   "LG04": 1
   },
   "mclib/mlr/mlrprimitivebase.hpp": {
    "LG03": 1,
@@ -3551,24 +3540,20 @@
    "LG03": 1
   },
   "mclib/mlr/mlrsortbyorder.cpp": {
-   "LG03": 4,
-   "LG09": 2
+   "LG03": 4
   },
   "mclib/mlr/mlrsorter.cpp": {
    "LG03": 2,
-   "LG09": 23,
    "LG12a": 2
   },
   "mclib/mlr/mlrsorter.hpp": {
    "LG14": 1
   },
   "mclib/mlr/mlrspotlight.cpp": {
-   "LG03": 6,
-   "LG09": 2
+   "LG03": 6
   },
   "mclib/mlr/mlrstate.cpp": {
    "LG03": 1,
-   "LG09": 1,
    "LG12a": 2
   },
   "mclib/mlr/mlrstate.hpp": {
@@ -3607,7 +3592,6 @@
   "mclib/model_override_registry.cpp": {
    "LG05": 2,
    "LG06": 6,
-   "LG09": 7,
    "LG11": 3
   },
   "mclib/model_override_registry.h": {
@@ -3615,11 +3599,10 @@
    "LG09": 1
   },
   "mclib/mouse.cpp": {
-   "LG09": 14
+   "LG18": 3
   },
   "mclib/move.cpp": {
    "LG03": 24,
-   "LG09": 16,
    "LG11": 1,
    "LG12a": 9,
    "LG16": 15,
@@ -3636,18 +3619,15 @@
   "mclib/move_globalmap_build.cpp": {
    "LG05": 1,
    "LG06": 1,
-   "LG09": 87,
    "LG12b": 7,
    "LG16": 14
   },
   "mclib/move_globalmap_doors.cpp": {
    "LG03": 2,
    "LG05": 1,
-   "LG09": 5,
    "LG16": 6
   },
   "mclib/move_globalmap_path.cpp": {
-   "LG09": 4,
    "LG11": 1,
    "LG12b": 14,
    "LG13": 1,
@@ -3659,20 +3639,14 @@
    "LG16": 4
   },
   "mclib/move_movemap_escape.cpp": {
-   "LG09": 10,
    "LG11": 3,
    "LG16": 19
   },
   "mclib/move_movemap_goals.cpp": {
-   "LG09": 1,
    "LG16": 6
   },
   "mclib/move_movemap_path.cpp": {
-   "LG09": 20,
    "LG16": 9
-  },
-  "mclib/move_recon.cpp": {
-   "LG09": 19
   },
   "mclib/msl.cpp": {
    "LG03": 1
@@ -3685,7 +3659,6 @@
   "mclib/msl_anim.cpp": {
    "LG05": 4,
    "LG06": 3,
-   "LG09": 25,
    "LG11": 1
   },
   "mclib/msl_internal.h": {
@@ -3694,7 +3667,6 @@
   "mclib/msl_load.cpp": {
    "LG05": 5,
    "LG06": 8,
-   "LG09": 26,
    "LG11": 1,
    "LG12b": 2
   },
@@ -3702,7 +3674,6 @@
    "LG03": 1,
    "LG05": 1,
    "LG06": 5,
-   "LG09": 3,
    "LG11": 1,
    "LG17": 2
   },
@@ -3731,7 +3702,6 @@
   },
   "mclib/packet.cpp": {
    "LG06": 3,
-   "LG09": 20,
    "LG12a": 1
   },
   "mclib/packet.h": {
@@ -4332,7 +4302,7 @@
    "LG20": 3
   }
  },
- "head": "188efc9b5",
+ "head": "24209c08b",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
