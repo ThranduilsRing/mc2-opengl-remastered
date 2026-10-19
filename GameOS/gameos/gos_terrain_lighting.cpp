@@ -591,8 +591,7 @@ void PackAndDispatch() {
     // For each vertex, slot it at inputs[vertexNum] (dense map-stable index).
     // Zero-initialize the pack buffer each frame so unreached slots are clean.
     //
-    // packMinVN/packMaxVN hoisted to function scope: the dispatch section below uses
-    // them to limit glDispatchCompute to only the visible window range.
+    // Keep the packed visible range for the native input snapshot below.
     uint32_t packMinVN = s_numVertices;   // sentinel: will be lowered to min written vn
     uint32_t packMaxVN = 0;               // sentinel: will be raised to max written vn
 

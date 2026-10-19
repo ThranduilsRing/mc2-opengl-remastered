@@ -41,3 +41,33 @@ def test_color_mask_attachment_checker_rejects_native_composite_regression(tmp_p
     source = composite.read_text(encoding="utf-8")
     composite.write_text(source.replace("VK_COLOR_COMPONENT_B_BIT |", "", 1), encoding="utf-8")
     assert checker.main() == 1
+
+
+def test_mdi_requires_scan_witness_and_rejects_unregistered_gl(tmp_path, monkeypatch):
+    import sys
+    checker = load("check-mdi-submission-ownership")
+    monkeypatch.setattr(checker, "ROOT", tmp_path)
+    ledger = tmp_path / "ledger.md"
+    ledger.write_text("Submission owners", encoding="utf-8")
+    monkeypatch.setattr(checker, "LEDGER", ledger)
+    monkeypatch.setattr(sys, "argv", ["check", "--quiet"])
+    assert checker.main() == 1  # Missing renderer roots cannot silently pass.
+    native = tmp_path / "GameOS/gameos"
+    native.mkdir(parents=True)
+    assert checker.main() == 1  # An empty renderer scan also fails.
+    water = native / "water.cpp"
+    water.write_text("// vkCmdDrawIndirect(cb, args, 0, 1, 16);\n", encoding="utf-8")
+    assert checker.main() == 1  # A comment cannot stand in for a live native call.
+    water.write_text("    vkCmdDrawIndirect(cb, args, 0, 1, 16);\n", encoding="utf-8")
+    assert checker.main() == 0  # Native-only indirect submission is legitimate.
+    gl = native / "legacy.cpp"
+    gl.write_text("    glDrawArraysIndirect(GL_TRIANGLES, nullptr);\n", encoding="utf-8")
+    assert checker.main() == 1  # Native presence never exempts a new GL submitter.
+    gl.write_text('#include "mdi_submit.h"\n'
+                  '    glDrawArraysIndirect(GL_TRIANGLES, nullptr);\n', encoding="utf-8")
+    assert checker.main() == 1  # The trace is required as well as the include.
+    with gl.open("a", encoding="utf-8") as stream:
+        stream.write('    mdi_submit::trace("legacy");\n')
+    assert checker.main() == 0
+    ledger.unlink()
+    assert checker.main() == 1

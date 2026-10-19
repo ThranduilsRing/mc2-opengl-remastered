@@ -1154,7 +1154,7 @@
           "line": 977,
           "evidence": "command",
           "reference": "scripts/check-mdi-submission-ownership.py",
-          "text": "run_check \"mdi_submission\"         \"py -3 scripts/check-mdi-submission-ownership.py --quiet\""
+          "text": "run_check \"mdi_submission\"         \"py -3 scripts/check-mdi-submission-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k mdi -q -p no:cacheprovider\""
         }
       ],
       "callers_by_stem": []

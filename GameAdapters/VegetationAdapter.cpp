@@ -80,28 +80,7 @@ struct FramePalette { uint8_t f[8]; int dominant; int n; };
 // This is the authoritative classification — it uses what the engine actually
 // assigned to each tile, not what color the colormap happens to render.
 //
-// TerrainType codes (dmapdata.h):
-//   0  MC_BLUEWATER_TYPE   → kHard (water)
-//   1  MC_GREEN_WATER_TYPE → kHard (water)
-//   2  MC_MUD_TYPE         → kFull (moist ground, vegetation OK)
-//   3  MC_MOSS_TYPE        → kFull
-//   4  MC_DIRT_TYPE        → kSparse
-//   5  MC_ASH_TYPE         → kSparse (barren but not paved)
-//   6  MC_MOUNTAIN_TYPE    → kSparse (rocky slopes, sparse)
-//   7  MC_TUNDRA_TYPE      → kFull (tundra grass)
-//   8  MC_FORESTFLOOR_TYPE → kFull
-//   9  MC_GRASS_TYPE       → kFull
-//  10  MC_CONCRETE_TYPE    → kHard (paved surface, no vegetation)
-//  11  MC_CLIFF_TYPE       → kHard (sheer rock face)
-//  12  MC_SLIMY_TYPE       → kSparse (damp, sparse growth OK)
-//  13  MC_CEMENT2_TYPE     → kHard
-//  14  MC_CEMENT3_TYPE     → kHard
-//  15  MC_CEMENT4_TYPE     → kHard
-//  16  MC_CEMENT5_TYPE     → kHard
-//  17  MC_CEMENT6_TYPE     → kHard
-//  18  MC_CEMENT7_TYPE     → kHard
-//  19  MC_CEMENT8_TYPE     → kHard
-//  20  MC_NONE_TYPE        → kHard (unassigned)
+// Material groups are explicit below; numeric terrain IDs belong to dmapdata.h.
 [[nodiscard]] VegDensity classifyTerrainType(int terrainCode) noexcept {
     switch (terrainCode) {
         // Water — handled by elevation gate too, belt-and-suspenders.

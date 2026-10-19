@@ -255,46 +255,11 @@ bool IsOverlayParityCheckEnabled();
 bool IsFrameOverlayArmed();
 
 // ---------------------------------------------------------------------------
-// PR2c Stage 1c — mine static-bake infrastructure.
-//
-// Lifecycle (matches spec at docs/superpowers/specs/2026-05-08-pr2c-mine-static-bake-design.md):
-//   ResetMineStaticVBO()          — called from Terrain::primeMissionTerrainCache
-//                                    + Terrain::destroy. CPU-clears state, keeps
-//                                    GL buffer allocation.
-//   ResetMineTextureArray()       — same chokepoints. Keeps GL_TEXTURE_2D_ARRAY
-//                                    allocation across missions (texture content
-//                                    is process-stable: defaults/mine_00.tga +
-//                                    defaults/minescorch_00.tga).
-//   MarkMineDirty()               — single chokepoint hook. Called from
-//                                    MissionMap::setMine (move.h:634-646) +
-//                                    MissionMap::rebuildTileMineCounts
-//                                    (move.cpp:875). Idempotent — multiple
-//                                    setMine events between frames produce
-//                                    one rebuild.
-//   RebuildMineStaticVBOIfDirty() — Stage 2c wires this to fire from the
-//                                    Render.TerrainMines bridge before draw.
-//                                    On first call (FirstBuildPending), invokes
-//                                    BuildMineTextureArray (defensive lazy-load
-//                                    of mineTextureHandle/blownTextureHandle if
-//                                    still 0xffffffff — see Spec R7).
-//   BuildMineStaticVBO()          — walks MissionMap; for each cell with
-//                                    mine != 0, emits 6 verts (2 tris) per cell.
-//                                    Uploads via glBufferData into g_mineStaticVBO_GL.
-//   BuildMineTextureArray()       — 2-layer GL_TEXTURE_2D_ARRAY at sampler unit
-//                                    5 (Stage 2c bridge binds). Layer 0 = mine,
-//                                    layer 1 = blown. NEAREST filter, no mips
-//                                    (matches gosHint_DisableMipmap | DontShrink
-//                                    flags at quad.cpp:524, :531).
-//
-// Accessors (Stage 2c bridge consumes):
-//   GetMineStaticVBO_GL()         — GLuint name; 0 if unallocated.
-//   GetMineVertCount()            — int; 0 if mission has no mines.
-//   GetMineTextureArrayGL()       — GLuint name; 0 if unallocated.
-//   IsMineTextureArrayReady()     — true iff BuildMineTextureArray succeeded.
-//
-// Stage 1c verification: smoke clean, no behavior change. Stage 2c wires
-// the rebuild + draw + legacy gate-off (single-PR per N2 partial-landing
-// hazard rule).
+// Native mine bake; legacy VBO/array names remain for source compatibility.
+// Terrain mission setup/destruction resets the CPU vertices and texture readiness.
+// MissionMap mine mutations mark the bake dirty; the next terrain-mine pass rebuilds
+// six vertices per occupied cell. Shared GOS handles supply the two sprite textures.
+// The GL object accessors return zero; no mine GL buffer or array is allocated.
 void  ResetMineStaticVBO();
 void  ResetMineTextureArray();
 void  MarkMineDirty();
@@ -306,12 +271,9 @@ int          GetMineVertCount();
 unsigned int GetMineTextureArrayGL();
 bool         IsMineTextureArrayReady();
 
-// Stage 2c — Render.TerrainMines hook calls this. Internally:
-//   1. RebuildMineStaticVBOIfDirty (lazy first-build of texture-array + VBO).
-//   2. If vert count > 0, calls gos_terrain_bridge_drawMineStatic.
-//   3. Bumps Counters_AddIndirectMineDrawnCells(vertCount/6).
-// Returns false on bridge failure (program not loaded etc.); does NOT return
-// false when mission has no mines (that's a successful zero-emit frame).
+// Rebuild dirty CPU geometry and submit through the native overlay owner.
+// Counts submitted cells; no mines is a successful zero-emit frame. Returns false
+// when the native owner or texture handles are unavailable.
 bool DrawMineStatic();
 
 // ---------------------------------------------------------------------------
