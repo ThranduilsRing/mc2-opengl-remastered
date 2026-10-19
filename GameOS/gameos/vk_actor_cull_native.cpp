@@ -16,6 +16,15 @@ namespace gpu_cull {
 namespace {
 struct alignas(16) CullParams { float mvp[16]; uint32_t counts[4]; float options[4]; };
 static_assert(sizeof(CullParams)==96);
+void bufferBarrier(VkCommandBuffer cb,VkBuffer buffer,VkPipelineStageFlags srcStage,VkAccessFlags srcAccess,
+                   VkPipelineStageFlags dstStage,VkAccessFlags dstAccess,VkDeviceSize bytes=VK_WHOLE_SIZE) {
+    VkBufferMemoryBarrier barrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
+    barrier.srcAccessMask=srcAccess; barrier.dstAccessMask=dstAccess;
+    barrier.srcQueueFamilyIndex=barrier.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+    barrier.buffer=buffer; barrier.offset=0; barrier.size=bytes;
+    vkCmdPipelineBarrier(cb,srcStage,dstStage,0,0,nullptr,1,&barrier,0,nullptr);
+}
+
 struct NativeCull final : mc2vk::IslandState {
     struct Slot {
         mc2vk::OwnedBuffer records, params, output, staging;
@@ -35,6 +44,7 @@ struct NativeCull final : mc2vk::IslandState {
     double timestampPeriod=0;
     uint64_t timestampMask=UINT64_MAX;
     std::optional<uint64_t> lastDispatchNs;
+    uint32_t readySamples=0;
     VkDeviceSize bytes=0;
     bool init(mc2vk::VulkanContext& ctx, uint32_t cap) {
         if (!cap || cap>1048576) return false;
@@ -95,7 +105,7 @@ bool nativeCullInit(uint32_t capacity) {
     if (!owner->init(ctx,capacity)) return false;
     ctx.islandSlot(mc2vk::IslandSlot::ActorCull)=std::move(owner);
     if (!selftestNative()) { nativeCullShutdown(); return false; }
-    state()->lastDispatchNs.reset();
+    state()->lastDispatchNs.reset(); state()->readySamples=0;
     for (auto& slot:state()->slots) slot.submitted=false;
     return true;
 }
@@ -115,26 +125,34 @@ NativeCullSubmit nativeCullSubmit(uint32_t i, std::span<const GpuActorRecord> re
         vkResetCommandPool(ctx.device(),slot.pool.get(),0)!=VK_SUCCESS) return NativeCullSubmit::Failed;
     VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO}; begin.flags=VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(slot.cb,&begin)!=VK_SUCCESS) return NativeCullSubmit::Failed;
-    mc2vk::cmdBarrier(slot.cb,VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_HOST_WRITE_BIT,
-                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_UNIFORM_READ_BIT);
-    // Order a reused slot's earlier compute/copy accesses before its new writes.
-    mc2vk::cmdBarrier(slot.cb,VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,VK_ACCESS_MEMORY_READ_BIT|VK_ACCESS_MEMORY_WRITE_BIT,
-                     VK_PIPELINE_STAGE_TRANSFER_BIT|VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                     VK_ACCESS_TRANSFER_WRITE_BIT|VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT);
+    bufferBarrier(slot.cb,slot.records.get(),VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_HOST_WRITE_BIT,
+                  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT);
+    bufferBarrier(slot.cb,slot.params.get(),VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_HOST_WRITE_BIT,
+                  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_UNIFORM_READ_BIT);
+    // Only this slot is reused. A device-wide ALL_COMMANDS memory barrier also
+    // joins every unrelated image and descriptor history under sync validation.
+    bufferBarrier(slot.cb,slot.output.get(),VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT|VK_PIPELINE_STAGE_TRANSFER_BIT,
+                  VK_ACCESS_SHADER_WRITE_BIT|VK_ACCESS_TRANSFER_READ_BIT,
+                  VK_PIPELINE_STAGE_TRANSFER_BIT|VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                  VK_ACCESS_TRANSFER_WRITE_BIT|VK_ACCESS_SHADER_WRITE_BIT);
     vkCmdFillBuffer(slot.cb,slot.output.get(),0,16,0);
-    mc2vk::cmdBarrier(slot.cb,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_WRITE_BIT,
-                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT);
+    bufferBarrier(slot.cb,slot.output.get(),VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_WRITE_BIT,
+                  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT,16);
     if (s->timed) {
         vkCmdResetQueryPool(slot.cb,slot.queries.get(),0,2);
         vkCmdWriteTimestamp(slot.cb,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,slot.queries.get(),0);
     }
     s->pipeline.bind(slot.cb,s->sets.set(i)); s->pipeline.dispatch(slot.cb,(params.counts[0]+63)/64);
     if (s->timed) vkCmdWriteTimestamp(slot.cb,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,slot.queries.get(),1);
-    mc2vk::cmdBarrier(slot.cb,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_WRITE_BIT,
-                     VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_READ_BIT);
-    VkBufferCopy copy{0,0,s->bytes}; vkCmdCopyBuffer(slot.cb,slot.output.get(),slot.staging.get(),1,&copy);
-    mc2vk::cmdBarrier(slot.cb,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_WRITE_BIT,
-                     VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_HOST_READ_BIT);
+    bufferBarrier(slot.cb,slot.output.get(),VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_WRITE_BIT,
+                  VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_READ_BIT);
+    bufferBarrier(slot.cb,slot.staging.get(),VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_WRITE_BIT,
+                  VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_WRITE_BIT);
+    // The tail beyond the submitted records has no reader this frame.
+    const VkDeviceSize usedBytes=VkDeviceSize(4+params.counts[0])*sizeof(uint32_t);
+    VkBufferCopy copy{0,0,usedBytes}; vkCmdCopyBuffer(slot.cb,slot.output.get(),slot.staging.get(),1,&copy);
+    bufferBarrier(slot.cb,slot.staging.get(),VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_WRITE_BIT,
+                  VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_HOST_READ_BIT);
     if (vkEndCommandBuffer(slot.cb)!=VK_SUCCESS) return NativeCullSubmit::Failed;
     VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO}; submit.commandBufferCount=1; submit.pCommandBuffers=&slot.cb;
     uint64_t ticket=0;
@@ -161,6 +179,13 @@ bool nativeCullPoll(uint32_t i, NativeCullHeader& header, uint32_t& count,
         uint64_t ticks[2]{};
         if (vkGetQueryPoolResults(ctx.device(),slot.queries.get(),0,2,sizeof(ticks),ticks,sizeof(uint64_t),VK_QUERY_RESULT_64_BIT)==VK_SUCCESS)
             s->lastDispatchNs=static_cast<uint64_t>(double((ticks[1]-ticks[0])&s->timestampMask)*s->timestampPeriod);
+    }
+    if (++s->readySamples==1 || s->readySamples%256==0) {
+        if (s->lastDispatchNs) std::printf("[GPU_CULL v2] event=native_result frame=%u records=%u visible=%u gpu_ns=%llu readback_bytes=%llu\n",
+            header.frame,count,header.visible,static_cast<unsigned long long>(*s->lastDispatchNs),
+            static_cast<unsigned long long>(VkDeviceSize(count+4)*sizeof(uint32_t)));
+        else std::printf("[GPU_CULL v2] event=native_result frame=%u records=%u visible=%u gpu_ns=unavailable\n",header.frame,count,header.visible);
+        std::fflush(stdout);
     }
     return true;
 }
