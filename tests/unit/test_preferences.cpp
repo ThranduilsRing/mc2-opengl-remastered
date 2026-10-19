@@ -99,7 +99,6 @@ TEST_CASE("GameLog/long lines are untruncated and unused channels do not leak") 
 }
 
 // The keyboard adapter is the only UI dependency of the real preferences IO TU.
-CPrefs prefs;
 int loadPreferenceHotKeys(FitIniFile&) { return 0; }
 int savePreferenceHotKeys(std::string&) { return 0; }
 unsigned long long preferenceHotKeysFingerprint() { return 0; }

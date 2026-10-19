@@ -11,7 +11,6 @@
 // The FIT/heap spine is real; these are the surrounding session services used by the init phase.
 MultiPlayer* MPlayer = nullptr;
 float loadProgress = 0;
-CPrefs::CPrefs() {}
 CPrefs prefs;
 long RandomNumber(long) { return 0; }
 MechWarrior* MechWarrior::warriorList[MAX_WARRIORS] = {};
