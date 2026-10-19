@@ -66,6 +66,15 @@ vec3 overlayCementAlbedo(uint cw, vec2 wp) {
 }
 
 void main() {
+    if (pc._pad0 == 2) {
+        ivec2 size = textureSize(tex1, 0);
+        ivec2 at = clamp(ivec2(floor(Texcoord * vec2(size))), ivec2(0), size - 1);
+        vec4 mine = texelFetch(tex1, at, 0);
+        if (mine.a < 0.5) discard;
+        FragColor = mine;
+        GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0); // Unlit mine sprites handle their own lighting.
+        return;
+    }
     vec4 tex_color = texture(tex1, Texcoord);
     vec3 missionFlat = vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
 

@@ -425,13 +425,12 @@ TEST_CASE("RenderPassContract pipelineDescRegistered matches current shipped tru
     int trueCount = 0;
     for (int i = 0; i < kRenderPassContractCount; ++i) {
         const RenderPassContract& c = kRenderPassContracts[i];
-        const bool expected = (c.id == RenderPassId::StaticPropOpaque ||
-                               c.id == RenderPassId::MechOpaque);
+        const bool expected = (c.id == RenderPassId::MechOpaque);
         CHECK(c.pipelineDescRegistered == expected);
         if (c.pipelineDescRegistered) ++trueCount;
     }
     // Static props and mechs retain GL registrations.
-    CHECK(trueCount == 2);
+    CHECK(trueCount == 1);
 }
 
 TEST_CASE("RenderPassContract: PipelineId-family passes back their flag with a real enumerator") {
@@ -458,8 +457,7 @@ TEST_CASE("RenderPassContract: PipelineId-family passes back their flag with a r
 
     for (int i = 0; i < kRenderPassContractCount; ++i) {
         const RenderPassContract& c = kRenderPassContracts[i];
-        const bool hasFamily = (c.id == RenderPassId::StaticPropOpaque ||
-                                c.id == RenderPassId::MechOpaque);
+        const bool hasFamily = (c.id == RenderPassId::MechOpaque);
         if (!hasFamily) continue;
 
         // A lane that owns a PipelineId family must be flagged registered.
