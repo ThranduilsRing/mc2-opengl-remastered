@@ -381,6 +381,12 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     VkFrameSync fsC{};
     { ZoneScopedN("VKIsl.Overlay.FenceWait"); fsC = vkImageResourceBeginFrame(colorRes); }
     const uint32_t par = fsC.parity & 1u;
+    // Overlays can be the first terrain consumer of this parity (including load warmup).
+    // Initialize the shared set after its fence even when the terrain draw was skipped.
+    const std::array<VkImageView,4> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view()};
+    if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
+        write_descriptors(s,int(par)); s->boundTextures[par]=views;
+    }
     for (const auto& item : items) {
         auto& t=*item.tex; const auto view=t.texture.view();
         if (t.bound[par]==view) continue;
