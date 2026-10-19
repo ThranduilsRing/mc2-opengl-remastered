@@ -97,7 +97,7 @@ bool readImages(const Images& images, int x, int y, int w, int h, uint32_t chann
             std::vector<VkBufferImageCopy> copies(points ? sampleCount : 1);
             for(size_t p=0;p<copies.size();++p) {
                 auto& copy=copies[p]; copy.bufferOffset = offsets[i] + (points ? p*strides[i] : 0);
-                copy.imageSubresource = {i == 1 ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+                copy.imageSubresource = {VkImageAspectFlags(i == 1 ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT), 0, 0, 1};
                 copy.imageOffset = points ? VkOffset3D{points[p].x,points[p].y,0} : VkOffset3D{x,y,0};
                 copy.imageExtent = points ? VkExtent3D{1,1,1} : VkExtent3D{uint32_t(w),uint32_t(h),1};
             }
@@ -164,7 +164,7 @@ bool sceneReadbackSelfTest() {
             barrier.image = images[i]->image.get(); barrier.subresourceRange = {aspects(i),0,1,0,1};
             vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,0,nullptr,0,nullptr,1,&barrier);
             VkBufferImageCopy copy{}; copy.bufferOffset=offsets[i];
-            copy.imageSubresource={i==1 ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT,0,0,1}; copy.imageExtent={2,3,1};
+            copy.imageSubresource={VkImageAspectFlags(i==1 ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT),0,0,1}; copy.imageExtent={2,3,1};
             vkCmdCopyBufferToImage(cb,upload.get(),images[i]->image.get(),VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1,&copy);
             barrier.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT; barrier.dstAccessMask=accesses(i);
             barrier.oldLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; barrier.newLayout=attachment(i);
