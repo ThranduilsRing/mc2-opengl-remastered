@@ -218,7 +218,7 @@ inline long getMovers (long partId, MoverPtr* list, bool existsOnly) {
 	else if ((partId >= OBJ_ID_FIRST_TEAM) && (partId <= OBJ_ID_LAST_TEAM)) {
 		TeamPtr team = Team::teams[partId - OBJ_ID_FIRST_TEAM];
 		if (team)
-			numObjects = Team::teams[partId - OBJ_ID_FIRST_TEAM]->getRoster((GameObjectPtr*)list, existsOnly);
+			numObjects = Team::teams[partId - OBJ_ID_FIRST_TEAM]->getRoster(reinterpret_cast<GameObjectPtr*>(list), existsOnly);
 		}
 	else {
 		for (long i = 0; i < ObjectManager->getNumMovers(); i++) {

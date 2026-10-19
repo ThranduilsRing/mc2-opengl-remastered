@@ -359,9 +359,9 @@ class WeaponBolt : public GameObject
 				weaponShot = *shotInfo;
 
 			//If this is an AreaEffect weapon, NO target WID, hit the target's CURRENT LOCATION!!!
-			if (((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum &&
-				(((WeaponBoltTypePtr)getObjectType())->areaEffectDmg > 0.0f) &&
-				(((WeaponBoltTypePtr)getObjectType())->areaEffectRad > 0.0f))
+			if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum &&
+				((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg > 0.0f) &&
+				((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad > 0.0f))
 			{
 				glm::vec3 targetLoc;
 				targetLoc = ObjectManager->getByWatchID(targetWID)->getPosition();
@@ -371,8 +371,8 @@ class WeaponBolt : public GameObject
 
 			//Reset Node recycle time to either BASE or beam duration.
 			GameObjectPtr myOwner = ObjectManager->getByWatchID(ownerWID);
-			if (((WeaponBoltTypePtr)getObjectType())->isBeam)
-				myOwner->appearance->setWeaponNodeRecycle(sourceHS,((WeaponBoltTypePtr)getObjectType())->beamDuration);
+			if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->isBeam)
+				myOwner->appearance->setWeaponNodeRecycle(sourceHS,(static_cast<WeaponBoltTypePtr>(getObjectType()))->beamDuration);
 			else
 				myOwner->appearance->setWeaponNodeRecycle(sourceHS,BASE_NODE_RECYCLE_TIME);
 		}
@@ -391,8 +391,8 @@ class WeaponBolt : public GameObject
 				
 			//Reset Node recycle time to either BASE or beam duration.
 			GameObjectPtr myOwner = ObjectManager->getByWatchID(ownerWID);
-			if (((WeaponBoltTypePtr)getObjectType())->isBeam)
-				myOwner->appearance->setWeaponNodeRecycle(sourceHS,((WeaponBoltTypePtr)getObjectType())->beamDuration);
+			if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->isBeam)
+				myOwner->appearance->setWeaponNodeRecycle(sourceHS,(static_cast<WeaponBoltTypePtr>(getObjectType()))->beamDuration);
 			else
 				myOwner->appearance->setWeaponNodeRecycle(sourceHS,BASE_NODE_RECYCLE_TIME);
 		}

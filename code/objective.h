@@ -166,7 +166,7 @@ public:
 	
 	virtual glm::vec3 GetObjectivePosition()		//Used to draw on tacmap
 	{
-		Building *m_pBuilding = (Building *)ObjectManager->getByWatchID(m_pBuildingWID);
+		Building *m_pBuilding = static_cast<Building *>(ObjectManager->getByWatchID(m_pBuildingWID));
 		if (m_pBuilding)
 			return m_pBuilding->getPosition();
 			

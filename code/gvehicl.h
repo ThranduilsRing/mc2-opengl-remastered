@@ -526,7 +526,7 @@ class GroundVehicle : public Mover {
 		
 		virtual float getLOSFactor (void)
 		{
-			return (((GroundVehicleType *)getObjectType())->LOSFactor);
+			return ((static_cast<GroundVehicleType *>(getObjectType()))->LOSFactor);
 		}
 
 		virtual void Save (PacketFilePtr file, long packetNum);

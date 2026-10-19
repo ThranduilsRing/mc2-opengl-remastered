@@ -216,7 +216,7 @@ class Gate : public TerrainObject
 			
 		virtual float getDestructLevel (void)
 		{
-			return ((GateTypePtr)getObjectType())->getDamageLvl() - damage;
+			return (static_cast<GateTypePtr>(getObjectType()))->getDamageLvl() - damage;
 		}
 
 		virtual long kill (void)
@@ -270,7 +270,7 @@ class Gate : public TerrainObject
 
 		virtual void setParentId (DWORD pId);
 
-		virtual long getDescription(){ return ((GateType*)getObjectType())->buildingDescriptionID; }
+		virtual long getDescription(){ return (static_cast<GateType*>(getObjectType()))->buildingDescriptionID; }
 		
 		virtual void setDamage (float newDamage);
 

@@ -48,7 +48,7 @@ inline int extractField(char*& cursor, char* out, int outCap) {
     if (i == kMaxFieldScan) return 0;          // field too long -> legacy false(0)
     int copy = i;
     if (outCap > 0 && copy > outCap - 1) copy = outCap - 1;  // real bound (no overrun)
-    if (copy > 0) memcpy(out, cursor, (size_t)copy);
+    if (copy > 0) memcpy(out, cursor, static_cast<size_t>(copy));
     out[copy] = '\0';
     if (cursor[i] == '\0') cursor += i;        // park ON the NUL (never past it)
     else                   cursor += i + 1;    // step past the ','/'\n' delimiter
@@ -64,7 +64,7 @@ inline int extractInt(char*& cursor) {
 inline float extractFloat(char*& cursor) {
     char buf[1024];
     const int n = extractField(cursor, buf, 1024);
-    return n > 0 ? (float)atof(buf) : -1.0f;
+    return n > 0 ? static_cast<float>(atof(buf)) : -1.0f;
 }
 
 }  // namespace logistics_csv

@@ -147,7 +147,7 @@
    "LG06": 472,
    "LG07": 2,
    "LG08": 17,
-   "LG09": 60,
+   "LG09": 0,
    "LG10": 20,
    "LG11": 103,
    "LG12a": 100,
@@ -1547,7 +1547,6 @@
   },
   "code/ablmc2_internal.h": {
    "LG06": 2,
-   "LG09": 1,
    "LG12a": 1
   },
   "code/ablmc2_repro.cpp": {
@@ -1595,7 +1594,6 @@
    "LG13": 2
   },
   "code/bldng.h": {
-   "LG09": 6,
    "LG13": 4,
    "LG14": 1
   },
@@ -1754,14 +1752,12 @@
   },
   "code/equipment_definition.h": {
    "LG06": 1,
-   "LG09": 1,
    "LG14": 1
   },
   "code/equipment_registry.h": {
    "LG05": 1,
    "LG06": 13,
    "LG08": 3,
-   "LG09": 8,
    "LG11": 1,
    "LG14": 3
   },
@@ -1786,8 +1782,7 @@
    "LG11": 1
   },
   "code/fitblockwriter.h": {
-   "LG06": 11,
-   "LG09": 1
+   "LG06": 11
   },
   "code/forcegroupbar.cpp": {
    "LG03": 5,
@@ -1841,9 +1836,6 @@
   "code/gate.cpp": {
    "LG03": 1
   },
-  "code/gate.h": {
-   "LG09": 2
-  },
   "code/goal.h": {
    "LG04": 1
   },
@@ -1861,7 +1853,6 @@
    "LG13": 1
   },
   "code/gvehicl.h": {
-   "LG09": 1,
    "LG14": 3
   },
   "code/gvehicl_weapons.cpp": {
@@ -1869,7 +1860,6 @@
   },
   "code/hardpoint.h": {
    "LG06": 5,
-   "LG09": 2,
    "LG14": 3
   },
   "code/hud_imgui_font.cpp": {
@@ -1894,9 +1884,6 @@
    "LG05": 4,
    "LG06": 1,
    "LG14": 1
-  },
-  "code/icon_atlas_cell.h": {
-   "LG09": 6
   },
   "code/infowindow.cpp": {
    "LG03": 3,
@@ -1947,9 +1934,6 @@
   "code/logistics_begin.cpp": {
    "LG03": 1,
    "LG06": 2
-  },
-  "code/logistics_csv.h": {
-   "LG09": 2
   },
   "code/logisticscomponent.cpp": {
    "LG05": 2,
@@ -2052,7 +2036,6 @@
    "LG05": 4
   },
   "code/logisticsvariant.h": {
-   "LG09": 2,
    "LG14": 1
   },
   "code/logisticsvariant_stats.cpp": {
@@ -2088,7 +2071,6 @@
   },
   "code/mech.h": {
    "LG02": 1,
-   "LG09": 1,
    "LG13": 16,
    "LG14": 6
   },
@@ -2204,7 +2186,6 @@
   },
   "code/mission.h": {
    "LG06": 4,
-   "LG09": 2,
    "LG13": 21,
    "LG14": 1
   },
@@ -2455,7 +2436,6 @@
   "code/objective.h": {
    "LG05": 1,
    "LG06": 6,
-   "LG09": 1,
    "LG14": 4
   },
   "code/objective_text.cpp": {
@@ -2488,9 +2468,6 @@
    "LG08": 6,
    "LG12a": 1,
    "LG14": 1
-  },
-  "code/objmgr_watch_policy.h": {
-   "LG09": 7
   },
   "code/objtype.cpp": {
    "LG03": 14,
@@ -2623,7 +2600,6 @@
   "code/terrobj.h": {
    "LG01": 5,
    "LG02": 2,
-   "LG09": 2,
    "LG14": 1
   },
   "code/trigger.cpp": {
@@ -2638,7 +2614,6 @@
    "LG17": 1
   },
   "code/turret.h": {
-   "LG09": 3,
    "LG13": 4,
    "LG17": 1
   },
@@ -2681,7 +2656,6 @@
    "LG04": 1,
    "LG05": 3,
    "LG06": 2,
-   "LG09": 1,
    "LG13": 3,
    "LG14": 19,
    "LG18": 1
@@ -2702,20 +2676,17 @@
   },
   "code/weapon_definition.h": {
    "LG06": 8,
-   "LG09": 3,
    "LG14": 5
   },
   "code/weapon_presentation_resolve.h": {
-   "LG05": 3,
-   "LG09": 1
+   "LG05": 3
   },
   "code/weaponbolt.cpp": {
    "LG03": 1
   },
   "code/weaponbolt.h": {
    "LG01": 8,
-   "LG02": 1,
-   "LG09": 7
+   "LG02": 1
   },
   "editor/EditorGosRender.cpp": {
    "LG20": 2
@@ -4468,7 +4439,7 @@
    "LG20": 3
   }
  },
- "head": "4990c3273",
+ "head": "f3065d4e8",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

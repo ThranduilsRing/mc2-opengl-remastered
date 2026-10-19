@@ -48,7 +48,7 @@ using WeaponTagMask = unsigned int;
 
 // Turn a WeaponTag into its single-bit mask.
 inline WeaponTagMask weaponTagBit(WeaponTag t) {
-    return (WeaponTagMask)1u << (unsigned)t;
+    return static_cast<WeaponTagMask>(1u) << static_cast<unsigned>(t);
 }
 
 // -------------------------------------------------------------------------
@@ -74,7 +74,7 @@ inline unsigned int hardpointHash(const char* name) {
     if (!name || name[0] == '\0') return 0u;
     unsigned int h = 2166136261u;   // FNV offset basis
     for (const char* p = name; *p; ++p) {
-        h ^= (unsigned char)*p;
+        h ^= static_cast<unsigned char>(*p);
         h *= 16777619u;             // FNV prime
     }
     return h;

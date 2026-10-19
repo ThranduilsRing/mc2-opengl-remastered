@@ -26,7 +26,7 @@ namespace mc2watch {
 // the object un-watchable (no OOB write). [OBJMGR-WATCHID-BOUNDS-1]
 inline bool canAssignWatchId(unsigned long nextWatchID, long maxObjects)
 {
-    return nextWatchID <= (unsigned long)maxObjects;
+    return nextWatchID <= static_cast<unsigned long>(maxObjects);
 }
 
 // getByWatchID: a watch id resolves iff it is a live, in-range slot. Id 0 is the
@@ -43,7 +43,7 @@ inline bool isResolvableWatchId(unsigned long watchID, unsigned long nextWatchID
 // [OBJMGR-WATCHID-BOUNDS-1]
 inline long clampSaveLoopLimit(unsigned long nextWatchID, long maxObjects)
 {
-    return ((long)nextWatchID < maxObjects) ? (long)nextWatchID : maxObjects;
+    return (static_cast<long>(nextWatchID) < maxObjects) ? static_cast<long>(nextWatchID) : maxObjects;
 }
 
 // CopyFrom (load): nextWatchId is untrusted on-disk data. getByWatchID reads
@@ -55,8 +55,8 @@ inline unsigned long clampSavedNextWatchId(long savedNext, long maxObjects)
 {
     const long cap = maxObjects + 1;
     if (savedNext < 0)   return 1ul;
-    if (savedNext > cap) return (unsigned long)cap;
-    return (unsigned long)savedNext;
+    if (savedNext > cap) return static_cast<unsigned long>(cap);
+    return static_cast<unsigned long>(savedNext);
 }
 
 // Load: each watchSave[j] is untrusted on-disk data used to index objList (sized
@@ -65,7 +65,7 @@ inline unsigned long clampSavedNextWatchId(long savedNext, long maxObjects)
 // [WATCHID-LOAD-GUARD-1]
 inline bool isValidWatchSaveIndex(int32_t saveIdx, long maxObjects)
 {
-    return (saveIdx >= 0) && ((long)saveIdx <= maxObjects);
+    return (saveIdx >= 0) && (static_cast<long>(saveIdx) <= maxObjects);
 }
 
 // --- MF3-GENERATIONAL-HANDLE-1: generation parallel-array policy ------------
@@ -79,12 +79,12 @@ inline bool isValidWatchSaveIndex(int32_t saveIdx, long maxObjects)
 // documented). A stored generation matches an expected one iff bit-equal.
 inline uint16_t nextGenerationOnAssign(uint16_t cur)
 {
-    return cur ? cur : (uint16_t)1;   // 0 -> 1; an already-assigned slot keeps its gen
+    return cur ? cur : static_cast<uint16_t>(1);   // 0 -> 1; an already-assigned slot keeps its gen
 }
 
 inline uint16_t bumpGenerationOnFree(uint16_t cur)
 {
-    return (uint16_t)(cur + 1u);      // wraps at 65535; staleness-only, acceptable
+    return static_cast<uint16_t>((cur + 1u));      // wraps at 65535; staleness-only, acceptable
 }
 
 inline bool generationMatches(uint16_t stored, uint16_t expected)

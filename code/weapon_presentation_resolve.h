@@ -44,7 +44,7 @@ inline int weaponPresentationAssetToEffectId(const WeaponStringId& asset) {
         return -1;                 // not a clean number
     if (v < 0)
         return -1;
-    return (int)v;
+    return static_cast<int>(v);
 }
 
 // THE E8 resolution rule. Returns the effect id to use for the weapon's

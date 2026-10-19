@@ -387,7 +387,7 @@ void BattleMech::updateHeat (void)
 	float heatChange = 0.0;
 
 	if (!isDisabled()) {
-		if ((static_cast<MechActor*>(appearance))->currentGestureId == GestureGetUp)
+		if ((reinterpret_cast<MechActor*>(appearance))->currentGestureId == GestureGetUp)
 			heatChange += (StandUpHeat * frameLength);
 		else
 			heatChange += (BodyStateHeat[getBodyState()] * frameLength);

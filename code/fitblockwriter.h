@@ -64,7 +64,7 @@ public:
     void blankLine();
 
     // Open-block depth (0 = balanced).
-    int depth() const { return (int)m_stack.size(); }
+    int depth() const { return static_cast<int>(m_stack.size()); }
 
     // Accumulated text (valid at any time; callers own balance checking via depth()).
     const std::string& str() const { return m_out; }

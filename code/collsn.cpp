@@ -496,7 +496,7 @@ void CollisionSystem::checkObjects (void)
 		// mess up if we are just a baseObject!
 		if (objNode && objNode->getObjectType() != nullptr)
 		{
-			result = collisionGrid->add(static_cast<GameObjectPtr>(objNode));
+			result = collisionGrid->add(reinterpret_cast<GameObjectPtr>(objNode));
 			objectsPerList[currentList]++;
 			
 			//----------------------------------------------------------

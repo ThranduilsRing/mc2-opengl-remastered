@@ -37,7 +37,7 @@ struct Cell {
 
 // Column count from atlas width and cell width — floor with epsilon, fallback 10.
 inline long columnsForAtlas(float atlasW, float cellW) {
-    long cols = (cellW > 0.f) ? (long)(atlasW / cellW + 0.01f) : kFallbackCols;
+    long cols = (cellW > 0.f) ? static_cast<long>((atlasW / cellW + 0.01f)) : kFallbackCols;
     if (cols < 1) cols = kFallbackCols;
     return cols;
 }
@@ -50,10 +50,10 @@ inline Cell cellForIndex(long index, float cellW, float cellH, float atlasW) {
     c.cols = columnsForAtlas(atlasW, cellW);
     c.col  = index % c.cols;
     c.row  = index / c.cols;
-    c.u  = (float)c.col * cellW;
-    c.v  = (float)c.row * cellH;
-    c.u2 = (float)(c.col + 1) * cellW;
-    c.v2 = (float)(c.row + 1) * cellH;
+    c.u  = static_cast<float>(c.col) * cellW;
+    c.v  = static_cast<float>(c.row) * cellH;
+    c.u2 = static_cast<float>((c.col + 1)) * cellW;
+    c.v2 = static_cast<float>((c.row + 1)) * cellH;
     return c;
 }
 
@@ -61,7 +61,7 @@ inline Cell cellForIndex(long index, float cellW, float cellH, float atlasW) {
 // columnsForAtlas, but NO fallback: <=0 inputs return 0 = "row bound
 // unknowable" (the checked variant then never flags).
 inline long rowsForAtlas(float atlasH, float cellH) {
-    return (cellH > 0.f && atlasH > 0.f) ? (long)(atlasH / cellH + 0.01f) : 0;
+    return (cellH > 0.f && atlasH > 0.f) ? static_cast<long>((atlasH / cellH + 0.01f)) : 0;
 }
 
 // META-FIX design B PART 3a — checked variant. IDENTICAL cell math: on OOB
