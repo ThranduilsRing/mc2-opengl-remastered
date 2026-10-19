@@ -52,9 +52,9 @@
    "LG03": 257,
    "LG04": 5,
    "LG05": 137,
-   "LG06": 494,
+   "LG06": 466,
    "LG07": 0,
-   "LG08": 235,
+   "LG08": 234,
    "LG09": 0,
    "LG10": 39,
    "LG11": 89,
@@ -144,7 +144,7 @@
    "LG03": 458,
    "LG04": 20,
    "LG05": 198,
-   "LG06": 447,
+   "LG06": 445,
    "LG07": 2,
    "LG08": 17,
    "LG09": 0,
@@ -397,7 +397,8 @@
   },
   "GameOS/gameos/gameos_graphics_material_internal.h": {
    "LG03": 18,
-   "LG06": 4,
+   "LG06": 2,
+   "LG08": 2,
    "LG12a": 2,
    "LG12b": 2,
    "LG13": 3,
@@ -918,8 +919,8 @@
   "GameOS/gameos/utils/shader_builder.cpp": {
    "LG03": 34,
    "LG05": 8,
-   "LG06": 35,
-   "LG08": 40,
+   "LG06": 22,
+   "LG08": 37,
    "LG11": 2,
    "LG13": 1,
    "LG17": 1,
@@ -927,7 +928,7 @@
   },
   "GameOS/gameos/utils/shader_builder.h": {
    "LG05": 1,
-   "LG06": 21,
+   "LG06": 8,
    "LG14": 3
   },
   "GameOS/gameos/utils/stream.cpp": {
@@ -2245,12 +2246,12 @@
   },
   "code/objective.cpp": {
    "LG05": 1,
-   "LG06": 13,
+   "LG06": 12,
    "LG11": 1
   },
   "code/objective.h": {
    "LG05": 1,
-   "LG06": 6,
+   "LG06": 5,
    "LG14": 4
   },
   "code/objective_text.cpp": {
@@ -3977,7 +3978,7 @@
    "LG20": 3
   }
  },
- "head": "21050d5db",
+ "head": "da08a800f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

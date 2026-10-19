@@ -15,6 +15,7 @@ Objective.h			: Interface for the Objective component.
 #include <iterator>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <utility>
 #include"mover.h"
@@ -661,9 +662,9 @@ public:
 		int finalResult = -1;
 		bool completed = false, rejected = false, settled = false;
 		void Begin(FitIniFile& file);
-		unsigned long long Emit(const char* kind, unsigned long long cause, const std::string& data,
+		unsigned long long Emit(std::string_view kind, unsigned long long cause, std::string_view data,
 		                        unsigned long long id = 0);
-		void SinkResult(const char* sink, const char* stage, const char* result, const std::string& payload,
+		void SinkResult(const char* sink, const char* stage, const char* result, std::string_view payload,
 		                unsigned long long cause = 0);
 		void Finish();
 	} observation;
