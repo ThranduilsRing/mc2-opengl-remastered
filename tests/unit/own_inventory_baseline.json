@@ -1998,21 +1998,6 @@
    "new_array": 0,
    "owners": []
   },
-  "GameLog": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/gamelog.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "GameLog"
-   ]
-  },
   "GameObject": {
    "delete": 0,
    "delete_array": 0,
@@ -2206,36 +2191,6 @@
    "new": 1,
    "new_array": 0,
    "owners": []
-  },
-  "HeapList": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "editor/Editor.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
-  "HeapManager": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/crater.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "CraterManager"
-   ]
   },
   "HeightBrush": {
    "delete": 0,
@@ -3345,24 +3300,6 @@
    "new_array": 0,
    "owners": []
   },
-  "MemoryBlock": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/chain.cpp": {
-     "new": 1
-    },
-    "mclib/stuff/sortedchain.hpp": {
-     "new": 2
-    },
-    "mclib/stuff/tree.hpp": {
-     "new": 1
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
   "MemoryStream": {
    "delete": 1,
    "delete_array": 0,
@@ -3917,76 +3854,6 @@
     "MapData"
    ]
   },
-  "RGBAColor": {
-   "delete": 0,
-   "delete_array": 13,
-   "files": {
-    "mclib/mlr/mlr_i_c_det_pmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_c_det_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_c_dt_pmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_c_dt_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_c_pmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_c_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_det_pmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_det_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_dt_pmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_dt_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_pmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 13,
-   "owners": [
-    "MLR_I_C_DT_PMesh",
-    "MLR_I_C_DT_TMesh",
-    "MLR_I_C_DeT_PMesh",
-    "MLR_I_C_DeT_TMesh",
-    "MLR_I_C_PMesh",
-    "MLR_I_C_TMesh",
-    "MLR_I_L_DT_PMesh",
-    "MLR_I_L_DT_TMesh",
-    "MLR_I_L_DeT_PMesh",
-    "MLR_I_L_DeT_TMesh",
-    "MLR_I_L_PMesh",
-    "MLR_I_L_TMesh"
-   ]
-  },
   "Radio": {
    "delete": 2,
    "delete_array": 0,
@@ -4451,21 +4318,6 @@
    "owners": [
     "",
     "Mission"
-   ]
-  },
-  "TG_HWTypeVertex": {
-   "delete": 0,
-   "delete_array": 1,
-   "files": {
-    "mclib/tgl_types.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 1,
-   "owners": [
-    "TG_TypeShape"
    ]
   },
   "TG_MultiShape": {
@@ -4943,53 +4795,6 @@
     "UserFile"
    ]
   },
-  "UserHeap": {
-   "delete": 8,
-   "delete_array": 0,
-   "files": {
-    "code/collsn.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "code/mission.cpp": {
-     "delete": 1
-    },
-    "code/mission_init.cpp": {
-     "new": 1
-    },
-    "code/saveload.cpp": {
-     "new": 1
-    },
-    "editor/Editor.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/terrain.cpp": {
-     "delete": 1
-    },
-    "mclib/terrain_init.cpp": {
-     "new": 1
-    },
-    "mclib/terrtxm.cpp": {
-     "delete": 2,
-     "new": 2
-    },
-    "mclib/txmmgr.cpp": {
-     "delete": 2,
-     "new": 2
-    }
-   },
-   "new": 9,
-   "new_array": 0,
-   "owners": [
-    "",
-    "CollisionSystem",
-    "MC_TextureManager",
-    "Mission",
-    "Terrain",
-    "TerrainTextures"
-   ]
-  },
   "UserInput": {
    "delete": 1,
    "delete_array": 0,
@@ -5028,111 +4833,6 @@
    "new": 1,
    "new_array": 0,
    "owners": []
-  },
-  "Vector2DScalar": {
-   "delete": 0,
-   "delete_array": 26,
-   "files": {
-    "mclib/mlr/mlr_i_c_det_pmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_c_det_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_c_dt_pmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_c_dt_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_c_pmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_c_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_det_pmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_det_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_dt_pmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_dt_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_det_pmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_det_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_dt_pmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_dt_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_pmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_l_tmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_mt_pmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_pmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_tmesh_cast.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 26,
-   "owners": [
-    "",
-    "MLR_I_C_DT_PMesh",
-    "MLR_I_C_DT_TMesh",
-    "MLR_I_C_DeT_PMesh",
-    "MLR_I_C_DeT_TMesh",
-    "MLR_I_C_PMesh",
-    "MLR_I_C_TMesh",
-    "MLR_I_DT_PMesh",
-    "MLR_I_DT_TMesh",
-    "MLR_I_DeT_PMesh",
-    "MLR_I_DeT_TMesh",
-    "MLR_I_L_DT_PMesh",
-    "MLR_I_L_DT_TMesh",
-    "MLR_I_L_DeT_PMesh",
-    "MLR_I_L_DeT_TMesh",
-    "MLR_I_L_PMesh",
-    "MLR_I_L_TMesh",
-    "MLR_I_MT_PMesh",
-    "MLR_I_PMesh"
-   ]
   },
   "VehicleIcon": {
    "delete": 0,
@@ -5594,111 +5294,15 @@
   },
   "glm::vec3": {
    "delete": 0,
-   "delete_array": 51,
+   "delete_array": 0,
    "files": {
     "editor/LinkBrush.cpp": {
      "new_array": 1
-    },
-    "mclib/mlr/mlr_i_c_det_pmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_c_det_tmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_c_dt_pmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_c_dt_tmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_c_pmesh.cpp": {
-     "delete_array": 4,
-     "new_array": 4
-    },
-    "mclib/mlr/mlr_i_c_tmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_det_pmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_det_tmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_dt_pmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_dt_tmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_l_det_pmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_l_det_tmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_l_dt_pmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_l_dt_tmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_l_pmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_l_tmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_mt_pmesh.cpp": {
-     "delete_array": 2,
-     "new_array": 2
-    },
-    "mclib/mlr/mlr_i_pmesh.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    },
-    "mclib/mlr/mlr_i_tmesh_cast.cpp": {
-     "delete_array": 2,
-     "new_array": 2
     }
    },
    "new": 0,
-   "new_array": 52,
-   "owners": [
-    "",
-    "MLR_I_C_DT_PMesh",
-    "MLR_I_C_DT_TMesh",
-    "MLR_I_C_DeT_PMesh",
-    "MLR_I_C_DeT_TMesh",
-    "MLR_I_C_PMesh",
-    "MLR_I_C_TMesh",
-    "MLR_I_DT_PMesh",
-    "MLR_I_DT_TMesh",
-    "MLR_I_DeT_PMesh",
-    "MLR_I_DeT_TMesh",
-    "MLR_I_L_DT_PMesh",
-    "MLR_I_L_DT_TMesh",
-    "MLR_I_L_DeT_PMesh",
-    "MLR_I_L_DeT_TMesh",
-    "MLR_I_L_PMesh",
-    "MLR_I_L_TMesh",
-    "MLR_I_MT_PMesh",
-    "MLR_I_PMesh"
-   ]
+   "new_array": 1,
+   "owners": []
   },
   "glsl_program": {
    "delete": 1,
@@ -6360,18 +5964,6 @@
     "aListBox"
    ]
   },
-  "memRecord": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/heap.cpp": {
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 1,
-   "owners": []
-  },
   "unit_ptr_type": {
    "delete": 2,
    "delete_array": 0,
@@ -6389,27 +5981,20 @@
   }
  },
  "untyped_frees": {
-  "GameOS/gameos/gameos.cpp": 4,
+  "GameOS/gameos/gameos.cpp": 2,
   "GameOS/gameos/gameos_fileio.cpp": 1,
   "GameOS/gameos/gameos_graphics.cpp": 1,
-  "GameOS/gameos/gameos_graphics_font.cpp": 18,
+  "GameOS/gameos/gameos_graphics_font.cpp": 14,
   "GameOS/gameos/gameos_graphics_internal.h": 4,
   "GameOS/gameos/gameos_graphics_material_internal.h": 6,
   "GameOS/gameos/gameos_graphics_renderer_internal.h": 1,
-  "GameOS/gameos/gameos_sound.cpp": 6,
-  "GameOS/gameos/gameosmain.cpp": 1,
-  "GameOS/gameos/gos_cardcloud_sim.cpp": 3,
-  "GameOS/gameos/gos_cluster_depth_pyramid.cpp": 2,
+  "GameOS/gameos/gameos_sound.cpp": 1,
   "GameOS/gameos/gos_font.cpp": 6,
-  "GameOS/gameos/gos_lightgrid_build.cpp": 2,
-  "GameOS/gameos/gos_postprocess_blur.cpp": 2,
-  "GameOS/gameos/gpu_cull_compute.cpp": 8,
   "GameOS/gameos/gpu_cull_readback.cpp": 1,
   "GameOS/gameos/gpu_cull_substrate.cpp": 1,
-  "GameOS/gameos/gpu_driven_common.cpp": 2,
-  "GameOS/gameos/utils/Image.cpp": 13,
+  "GameOS/gameos/utils/Image.cpp": 5,
   "GameOS/gameos/utils/gl_utils.h": 4,
-  "GameOS/gameos/utils/shader_builder.cpp": 12,
+  "GameOS/gameos/utils/shader_builder.cpp": 2,
   "GameOS/gameos/utils/stream.cpp": 1,
   "GameOS/gameos/vulkan_post_fog_native.cpp": 1,
   "GameOS/gameos/vulkan_post_hzb_native.cpp": 1,
@@ -6461,7 +6046,7 @@
   "mclib/bdactor_tree.cpp": 5,
   "mclib/bdactor_tree_static.cpp": 1,
   "mclib/bdactor_type.cpp": 1,
-  "mclib/crater.cpp": 2,
+  "mclib/crater.cpp": 1,
   "mclib/fastfile.cpp": 1,
   "mclib/ffile.cpp": 3,
   "mclib/genactor.cpp": 1,
@@ -6487,26 +6072,25 @@
   "mclib/mech3d.cpp": 6,
   "mclib/mech3d_geometry.cpp": 2,
   "mclib/mech3d_render.cpp": 2,
-  "mclib/mlr/mlr_i_c_det_pmesh.cpp": 6,
-  "mclib/mlr/mlr_i_c_det_tmesh.cpp": 2,
-  "mclib/mlr/mlr_i_c_dt_pmesh.cpp": 6,
-  "mclib/mlr/mlr_i_c_dt_tmesh.cpp": 2,
-  "mclib/mlr/mlr_i_c_pmesh.cpp": 8,
-  "mclib/mlr/mlr_i_c_tmesh.cpp": 2,
-  "mclib/mlr/mlr_i_det_pmesh.cpp": 5,
-  "mclib/mlr/mlr_i_det_tmesh.cpp": 2,
-  "mclib/mlr/mlr_i_dt_pmesh.cpp": 5,
-  "mclib/mlr/mlr_i_dt_tmesh.cpp": 2,
-  "mclib/mlr/mlr_i_l_det_pmesh.cpp": 3,
-  "mclib/mlr/mlr_i_l_det_tmesh.cpp": 2,
-  "mclib/mlr/mlr_i_l_dt_pmesh.cpp": 3,
-  "mclib/mlr/mlr_i_l_dt_tmesh.cpp": 2,
-  "mclib/mlr/mlr_i_l_pmesh.cpp": 3,
-  "mclib/mlr/mlr_i_l_tmesh.cpp": 2,
-  "mclib/mlr/mlr_i_mt_pmesh.cpp": 3,
-  "mclib/mlr/mlr_i_pmesh.cpp": 5,
+  "mclib/mlr/mlr_i_c_det_pmesh.cpp": 1,
+  "mclib/mlr/mlr_i_c_det_tmesh.cpp": 1,
+  "mclib/mlr/mlr_i_c_dt_pmesh.cpp": 1,
+  "mclib/mlr/mlr_i_c_dt_tmesh.cpp": 1,
+  "mclib/mlr/mlr_i_c_pmesh.cpp": 1,
+  "mclib/mlr/mlr_i_c_tmesh.cpp": 1,
+  "mclib/mlr/mlr_i_det_pmesh.cpp": 1,
+  "mclib/mlr/mlr_i_det_tmesh.cpp": 1,
+  "mclib/mlr/mlr_i_dt_pmesh.cpp": 1,
+  "mclib/mlr/mlr_i_dt_tmesh.cpp": 1,
+  "mclib/mlr/mlr_i_l_det_pmesh.cpp": 1,
+  "mclib/mlr/mlr_i_l_det_tmesh.cpp": 1,
+  "mclib/mlr/mlr_i_l_dt_pmesh.cpp": 1,
+  "mclib/mlr/mlr_i_l_dt_tmesh.cpp": 1,
+  "mclib/mlr/mlr_i_l_pmesh.cpp": 1,
+  "mclib/mlr/mlr_i_l_tmesh.cpp": 1,
+  "mclib/mlr/mlr_i_mt_pmesh.cpp": 1,
+  "mclib/mlr/mlr_i_pmesh.cpp": 1,
   "mclib/mlr/mlr_i_tmesh.cpp": 1,
-  "mclib/mlr/mlr_i_tmesh_cast.cpp": 1,
   "mclib/mlr/mlrambientlight.cpp": 1,
   "mclib/mlr/mlrcardcloud.cpp": 1,
   "mclib/mlr/mlrclipper.cpp": 2,
@@ -6518,7 +6102,7 @@
   "mclib/mlr/mlrlight.cpp": 1,
   "mclib/mlr/mlrlightmap.cpp": 2,
   "mclib/mlr/mlrlinecloud.cpp": 1,
-  "mclib/mlr/mlrlookuplight.cpp": 6,
+  "mclib/mlr/mlrlookuplight.cpp": 5,
   "mclib/mlr/mlrngoncloud.cpp": 1,
   "mclib/mlr/mlrpointcloud.cpp": 1,
   "mclib/mlr/mlrpointlight.cpp": 1,
@@ -6534,12 +6118,10 @@
   "mclib/mlr/mlrtrianglecloud.cpp": 1,
   "mclib/particles/batcher.cpp": 1,
   "mclib/particles/spec_library.cpp": 1,
-  "mclib/stuff/chain.cpp": 3,
-  "mclib/stuff/filestream.cpp": 2,
+  "mclib/stuff/chain.cpp": 2,
+  "mclib/stuff/filestream.cpp": 1,
   "mclib/stuff/hash.cpp": 1,
-  "mclib/stuff/memoryblock.cpp": 5,
   "mclib/stuff/memorystream.cpp": 5,
-  "mclib/stuff/mstring.cpp": 5,
   "mclib/stuff/mstring.hpp": 1,
   "mclib/stuff/node.cpp": 1,
   "mclib/stuff/plug.cpp": 4,
@@ -6547,13 +6129,10 @@
   "mclib/stuff/registeredclass.cpp": 1,
   "mclib/stuff/socket.cpp": 1,
   "mclib/stuff/sortedchain.cpp": 2,
-  "mclib/stuff/sortedchain.hpp": 2,
   "mclib/stuff/stuff.cpp": 1,
   "mclib/stuff/trace.cpp": 3,
   "mclib/stuff/tree.cpp": 2,
-  "mclib/stuff/tree.hpp": 1,
   "mclib/terrain.cpp": 4,
-  "mclib/tgl_types.cpp": 1,
   "mclib/txmmgr.cpp": 6,
   "mclib/userinput.h": 1
  }

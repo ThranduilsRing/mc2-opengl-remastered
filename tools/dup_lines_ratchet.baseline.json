@@ -7,7 +7,7 @@
   "RenderCore": 425,
   "RenderWorld": 0,
   "code": 14470,
-  "mclib": 29240,
+  "mclib": 29245,
   "shaders": 1685
  },
  "dirs": [
@@ -357,8 +357,8 @@
   "mclib/mathfunc.cpp": 18,
   "mclib/mech3d.cpp": 68,
   "mclib/mech3d.h": 58,
-  "mclib/mech3d_geometry.cpp": 301,
-  "mclib/mech3d_init.cpp": 216,
+  "mclib/mech3d_geometry.cpp": 302,
+  "mclib/mech3d_init.cpp": 220,
   "mclib/mech3d_render.cpp": 272,
   "mclib/mech3d_type.cpp": 99,
   "mclib/mech3d_update.cpp": 166,
@@ -580,8 +580,8 @@
   "shaders/vulkan/terrain_tier1.vert": 78,
   "shaders/vulkan/terrain_tier1_skirt.vert": 78
  },
- "head": "c57c5420d",
+ "head": "42136b666",
  "n": 8,
- "total": 48984,
+ "total": 48989,
  "version": 1
 }
