@@ -39,15 +39,9 @@ SKIP_SHADERS: dict[str, str] = {
     ),
 }
 
-SHADER_PREFIX_OVERRIDE: dict[str, str] = {
-    "gos_terrain_water_fast_mdi.vert": "#version 460\n",
-}
+SHADER_PREFIX_OVERRIDE: dict[str, str] = {}
 
-SHADER_TOKEN_REWRITES: dict[str, list[tuple[str, str]]] = {
-    "gos_terrain_water_fast_mdi.vert": [
-        ("gl_DrawIDARB", "gl_DrawID"),
-    ],
-}
+SHADER_TOKEN_REWRITES: dict[str, list[tuple[str, str]]] = {}
 
 
 def _engine_get_path(fname: str) -> str:
