@@ -317,10 +317,10 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const gate::Row* rows = gate::tableData();
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
-    // The table is exactly 947 rows (gate_table.json `count`). REQUIRE(n == kGateCount) only ties the table to the
+    // The table has 935 rows after retiring 10 SSAO/box-decal/GL-HZB gates. REQUIRE(n == kGateCount) only ties the table to the
     // generated header, so a bad regeneration that shrinks both passes it; this floor catches that loss. It sits a
     // few rows under the real count and moves down with an amnesty wave that deletes rows on purpose.
-    REQUIRE(n >= 940);
+    REQUIRE(n >= 930);
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);
@@ -896,8 +896,7 @@ TEST_CASE("the VK opt-in and kill-switch rows read like the envTriState expressi
         return v[0] == '1' ? 1 : v[0] == '0' ? 0 : -1;
     };
     constexpr const char* kProbe[] = {nullptr, "", "0", "false", "1", "yes", "10", "2.5", "00", "0x", "01"};
-    const char* exact1[] = {"MC2_VK_POST_HZB", "MC2_VK_POST_SSAO",
-                            "MC2_VK_TERRAIN_LODFADE",
+    const char* exact1[] = {"MC2_VK_TERRAIN_LODFADE",
                             "MC2_VK_TERRAIN_VISUALDISPLACE_FAR"};
     const char* killSwitch[] = {"MC2_VK_LIGHTFEED_DEDUP", "MC2_VK_MECH_FENCE_DEFER", "MC2_VK_POST_SCREENFX", "MC2_VK_POST_SCREENFX_CLOUD",
                                 "MC2_VK_POST_SCREENFX_SHADOW", "MC2_VK_POST_SCREENFX_SHORELINE",
@@ -1079,16 +1078,16 @@ TEST_CASE("G6 string and presence rows") {
 }
 
 TEST_CASE("raw<> echoes the environment text, nullptr when unset, without caching") {
-    EnvVar env("MC2_BOX_DECAL");
+    EnvVar env("MC2_FXAA");
     env.set(nullptr);
-    CHECK(gate::raw<"MC2_BOX_DECAL">() == nullptr);
+    CHECK(gate::raw<"MC2_FXAA">() == nullptr);
     env.set("");
-    gate::invalidate("MC2_BOX_DECAL");
-    CHECK(gate::get<"MC2_BOX_DECAL">() == false);
+    gate::invalidate("MC2_FXAA");
+    CHECK(gate::get<"MC2_FXAA">() == false);
     env.set("yes");
-    CHECK(std::string(gate::raw<"MC2_BOX_DECAL">()) == "yes");   // fresh even though get<> cached
+    CHECK(std::string(gate::raw<"MC2_FXAA">()) == "yes");   // fresh even though get<> cached
     env.set(nullptr);
-    gate::invalidate("MC2_BOX_DECAL");
+    gate::invalidate("MC2_FXAA");
 }
 
 // ---------------------------------------------------------------------------
@@ -1187,11 +1186,11 @@ TEST_CASE("G5 gameosmain rows and the runtime-name reader") {
     CHECK(g1b::rowNamed("MC2_SCREENSHOT_PATH").kind == Kind::String);
     CHECK(g1b::rowNamed("MC2_LOAD_RACE_PROBE_FRAMES").kind == Kind::String);
 
-    EnvVar env("MC2_BOX_DECAL");   // envText reads any name at run time, uncached
+    EnvVar env("MC2_FXAA");   // envText reads any name at run time, uncached
     env.set(nullptr);
-    CHECK(gate::envText("MC2_BOX_DECAL") == nullptr);
+    CHECK(gate::envText("MC2_FXAA") == nullptr);
     env.set("1");
-    CHECK(std::string(gate::envText("MC2_BOX_DECAL")) == "1");
+    CHECK(std::string(gate::envText("MC2_FXAA")) == "1");
     env.set(nullptr);
 }
 

@@ -2,20 +2,20 @@
 """MULTIPLEX-ANCHOR-1 self-test (VERIFY-DEBT-1).
 
 check-sampler-bindings.py's MULTIPLEX_ANCHORS table replaced DEMOTED_ANCHORS, a
-bare tuple that nothing read. Demoting `ssaoTex` out of HARD_ANCHORS had dropped
+bare tuple that nothing read. Demoting `fixtureTex` out of HARD_ANCHORS had dropped
 enforced anchors 3 -> 2 with no compensating check; the replacement re-arms the
 name PER PASS. This proves the replacement actually fires, by building a synthetic
-repo root that reproduces the real ssaoTex multiplex and then breaking it one way
+repo root that reproduces the real fixtureTex multiplex and then breaking it one way
 at a time.
 
   M0  clean synthetic root                      -> no multiplex-anchor FAIL
-  M1  ssao_blur.frag unit comments INVERTED     -> FAIL (the real CONTRACT-REPAIR-2
+  M1  fixture_blur.frag unit comments INVERTED     -> FAIL (the real CONTRACT-REPAIR-2
                                                    bug; the whole-name unit SET is
                                                    {0,1} either way, so ONLY the
                                                    per-pass comment pin sees it)
-  M2  ssaoBlurProg_ binds ssaoTex to unit 2     -> FAIL (per-pass unit + unit set)
+  M2  fixtureBlurProg_ binds fixtureTex to unit 2     -> FAIL (per-pass unit + unit set)
   M3  the blur pass is deleted (de-multiplexed) -> FAIL (promote back to HARD_ANCHORS)
-  M4  a THIRD pass declares ssaoTex             -> FAIL (unexpected decl file)
+  M4  a THIRD pass declares fixtureTex             -> FAIL (unexpected decl file)
 
 Run:  py -3 scripts/check-sampler-bindings-selftest.py
 Exit 0 = every clause fired where it should and nowhere else.
@@ -36,24 +36,24 @@ HERE = Path(__file__).resolve().parent
 CHECKER = HERE / "check-sampler-bindings.py"
 
 APPLY_FRAG = """#version 430
-// synthetic mirror of shaders/ssao_apply.frag
-uniform sampler2D ssaoTex;       // unit 0: half-res AO
-uniform vec2 ssaoTexel;
+// synthetic mirror of shaders/fixture_apply.frag
+uniform sampler2D fixtureTex;       // unit 0: shared texture
+uniform vec2 fixtureTexel;
 void main() {}
 """
 
 BLUR_FRAG = """#version 430
-// synthetic mirror of shaders/ssao_blur.frag
-uniform sampler2D ssaoTex;        // unit 1: half-res AO (the buffer being blurred)
+// synthetic mirror of shaders/fixture_blur.frag
+uniform sampler2D fixtureTex;        // unit 1: shared texture (the buffer being blurred)
 uniform sampler2D sceneDepthTex;  // unit 0: full-res scene depth (edge-stopping)
 void main() {}
 """
 
 CPP = """// synthetic mirror of the gos_postprocess.cpp bind sites
-void gosPostProcess::runSSAO() {
-    ssaoBlurProg_->setInt("ssaoTex", 1);
-    ssaoBlurProg_->setInt("sceneDepthTex", 0);
-    ssaoApplyProg_->setInt("ssaoTex", 0);
+void gosPostProcess::runFixture() {
+    fixtureBlurProg_->setInt("fixtureTex", 1);
+    fixtureBlurProg_->setInt("sceneDepthTex", 0);
+    fixtureApplyProg_->setInt("fixtureTex", 0);
 }
 """
 
@@ -64,15 +64,17 @@ def build_root(tmp: Path) -> Path:
     root = tmp / "root"
     (root / "shaders").mkdir(parents=True)
     (root / "GameOS").mkdir(parents=True)
-    (root / "shaders" / "ssao_apply.frag").write_text(APPLY_FRAG, encoding="utf-8")
-    (root / "shaders" / "ssao_blur.frag").write_text(BLUR_FRAG, encoding="utf-8")
+    (root / "shaders" / "fixture_apply.frag").write_text(APPLY_FRAG, encoding="utf-8")
+    (root / "shaders" / "fixture_blur.frag").write_text(BLUR_FRAG, encoding="utf-8")
     (root / "GameOS" / "gos_postprocess.cpp").write_text(CPP, encoding="utf-8")
+    checker = CHECKER.read_text(encoding="utf-8").replace("MULTIPLEX_ANCHORS = {}", "MULTIPLEX_ANCHORS = {\"fixtureTex\": ((\"shaders/fixture_apply.frag\", \"fixtureApplyProg_\", 0), (\"shaders/fixture_blur.frag\", \"fixtureBlurProg_\", 1))}")
+    (root / "checker.py").write_text(checker, encoding="utf-8")
     return root
 
 
 def run(root: Path, tmp: Path, tag: str) -> dict:
     out = tmp / f"report_{tag}.json"
-    subprocess.run([sys.executable, str(CHECKER), "--root", str(root),
+    subprocess.run([sys.executable, str(root / "checker.py"), "--root", str(root),
                     "--json", str(out), "--quiet"],
                    capture_output=True, text=True, timeout=180, **console_child.child_kwargs(redirected=True))
     return json.loads(out.read_text(encoding="utf-8"))
@@ -116,46 +118,46 @@ def main() -> int:
 
         # M1 -- the real historical bug: inverted unit comments in the blur pass.
         def m1(root: Path) -> None:
-            p = root / "shaders" / "ssao_blur.frag"
+            p = root / "shaders" / "fixture_blur.frag"
             p.write_text(BLUR_FRAG
-                         .replace("ssaoTex;        // unit 1",
-                                  "ssaoTex;        // unit 0")
+                         .replace("fixtureTex;        // unit 1",
+                                  "fixtureTex;        // unit 0")
                          .replace("sceneDepthTex;  // unit 0",
                                   "sceneDepthTex;  // unit 1"),
                          encoding="utf-8")
         expect_fail(tmp, "m1",
-                    "M1 inverted unit comments in ssao_blur.frag are caught",
+                    "M1 inverted unit comments in fixture_blur.frag are caught",
                     m1, "per-pass comment drift")
 
         # M2 -- per-pass unit drift.
         def m2(root: Path) -> None:
             p = root / "GameOS" / "gos_postprocess.cpp"
-            p.write_text(CPP.replace('setInt("ssaoTex", 1)',
-                                     'setInt("ssaoTex", 2)'), encoding="utf-8")
+            p.write_text(CPP.replace('setInt("fixtureTex", 1)',
+                                     'setInt("fixtureTex", 2)'), encoding="utf-8")
         expect_fail(tmp, "m2",
-                    "M2 ssaoBlurProg_ rebound to unit 2 is caught",
+                    "M2 fixtureBlurProg_ rebound to unit 2 is caught",
                     m2, "expected unit 1")
 
         # M3 -- de-multiplexed: the blur pass disappears entirely.
         def m3(root: Path) -> None:
-            (root / "shaders" / "ssao_blur.frag").unlink()
+            (root / "shaders" / "fixture_blur.frag").unlink()
             p = root / "GameOS" / "gos_postprocess.cpp"
             p.write_text("\n".join(l for l in CPP.splitlines()
-                                   if "ssaoBlurProg_" not in l), encoding="utf-8")
+                                   if "fixtureBlurProg_" not in l), encoding="utf-8")
         expect_fail(tmp, "m3",
                     "M3 de-multiplexed name demands promotion back to HARD_ANCHORS",
                     m3, "NO LONGER MULTIPLEXED")
 
         # M4 -- an unrecorded third pass appears.
         def m4(root: Path) -> None:
-            (root / "shaders" / "ssao_third.frag").write_text(
-                "#version 430\nuniform sampler2D ssaoTex; // unit 4\nvoid main(){}\n",
+            (root / "shaders" / "fixture_third.frag").write_text(
+                "#version 430\nuniform sampler2D fixtureTex; // unit 4\nvoid main(){}\n",
                 encoding="utf-8")
             p = root / "GameOS" / "gos_postprocess.cpp"
-            p.write_text(CPP.replace('}', '    ssaoThirdProg_->setInt("ssaoTex", 4);\n}'),
+            p.write_text(CPP.replace('}', '    fixtureThirdProg_->setInt("fixtureTex", 4);\n}'),
                          encoding="utf-8")
         expect_fail(tmp, "m4",
-                    "M4 an unrecorded THIRD pass declaring ssaoTex is caught",
+                    "M4 an unrecorded THIRD pass declaring fixtureTex is caught",
                     m4, "unexpected GLSL decl file")
 
         print()

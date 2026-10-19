@@ -30,9 +30,7 @@ set(SOURCES ${SOURCES}
     gos_hdri.cpp
     gos_postprocess.cpp
     gos_postprocess_gates.cpp
-    gos_postprocess_diag.cpp
     gos_postprocess_fbo.cpp
-    gos_postprocess_effects.cpp
     gos_postprocess_skybox.cpp
     gos_postprocess_shadow.cpp
     gos_postprocess_executor.cpp
@@ -171,13 +169,6 @@ if(MC2_VULKAN)
         # byte-identical. Layout-affecting header members under MC2_VULKAN_ISLAND
         # (same ODR discipline as the subgraph's).
         list(APPEND SOURCES vulkan_post_fog_native.cpp)
-        # VK-POST-SSAO-NATIVE-1 (rung 8.2): SSAO gen+apply natively on the shared
-        # engine context — samples the SHARED scene depth+normal into a VK-owned
-        # half-res R16F occlusion image, multiplies into the SHARED scene color0 in
-        # place (zero copies, zero CPU readbacks, no private device; retires the
-        # SSAO island's readback pattern when gated on). Gate MC2_VK_POST_SSAO
-        # default-OFF -> GL SSAO chain byte-identical.
-        list(APPEND SOURCES vulkan_post_ssao_native.cpp)
         # VK-POST-SCREENFX-NATIVE-1 (rung 8.3): cloud-shadow + shoreline-foam
         # natively on the shared engine context -- samples the SHARED scene
         # depth (cloud) + normal (shoreline), multiplies into the SHARED scene
@@ -400,7 +391,7 @@ if(MC2_VULKAN)
     # VK-FIELD-VFX-1: bake vfx_particle.{vert,frag} (procedural billboard VS reading the
     # GpuParticle SSBO + untextured colored soft-blob FS). SPIR-V loaded at runtime by
     # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
-    set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob ssao ssao_apply hzb_reduce shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
+    set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
     # Output stages that bake from another basename's source: the skirt pipeline needs its
     # own .frag.spv name but runs the main-patch fragment program, so one source feeds both.
@@ -414,7 +405,7 @@ if(MC2_VULKAN)
         "${CMAKE_SOURCE_DIR}/shaders/include/*.hglsl")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})
-        foreach(_stage vert frag)
+        foreach(_stage vert frag comp)
             set(_src_base "${_base}")
             if(DEFINED MC2_VK_SHADER_SRC_ALIAS_${_base}_${_stage})
                 set(_src_base "${MC2_VK_SHADER_SRC_ALIAS_${_base}_${_stage}}")

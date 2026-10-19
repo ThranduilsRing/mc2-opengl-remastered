@@ -22,7 +22,6 @@
 #include "../../RenderCore/fbo_ledger.h"   // FRAME-GRAPH-FBO-LEDGER-1: GLuint->logical target
 #include "../../RenderCore/EngineView.h"
 #include "view_uniforms_gl.h"
-#include "gos_static_prop_registry.h"   // HZB-STATICPROP-CULL-RECON-1: real bounds for the probe
 #include "gl_state_guard.h"  // GLSTATE-GUARD-ADOPTION-1: GlScopedTextureUnit (composite tex-unit leak)
 #include "../../RenderCore/PipelineRegistry.h"  // POSTPROCESS-COMPOSITE-REGISTRATION-1
 #include "pipeline_binder.h"                     // applyPipeline — composite FF state
@@ -30,7 +29,6 @@
 #include "gos_cluster_depth_pyramid.h"  // CLUSTER-DEPTH-PYRAMID-NATIVE-1 (gated substrate)
 #include "gos_lightgrid_build.h"         // MC2-LIGHTGRID-BUILD-NATIVE-1 (gated, inert)
 #include "gos_postprocess_blur.h"        // POSTPROCESS-COMPUTE-BLUR-1 (gated substrate)
-#include "../../mclib/dynamic_decal_ring.h"  // DECAL-INTEGRATE-1: ring-fed projected decals
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_shared_gbuffer_gate.h"     // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vulkan_shared_scene_depth.h"  // VK-TIER1 SHARED SCENE DEPTH substrate (gated)

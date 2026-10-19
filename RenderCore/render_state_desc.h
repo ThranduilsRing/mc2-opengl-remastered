@@ -199,7 +199,7 @@ static constexpr RenderStateDesc kPassRenderState[] = {
         RenderResourceId::Unknown
     },
     // PostProcess: multiple sub-pipelines (PostProcessComposite/ScreenShadow/CloudShadow/
-    // Shoreline/SsaoApply/EdgeFog/FogOob) all route applyPipeline in gos_postprocess.cpp.
+    // Shoreline/EdgeFog/FogOob) all route applyPipeline in gos_postprocess.cpp.
     // pipelineDescRegistered = true (FRAMEGRAPH-STATEPACK-SKELETON-1; multiple sub-pipelines, so
     // the representative PipelineId is Invalid, but the lane does route applyPipeline).
     // No single representative -> Invalid (the executor-island model in frame_executor.h

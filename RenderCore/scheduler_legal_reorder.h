@@ -168,9 +168,6 @@ static constexpr PassEdge kContentConditionalEdges[] = {
       RenderResourceId::SceneObjectId, /*forbidden*/ false, /*contentGated*/ true,
       "objectId-when-IsObjectIdBufferEnabled: SceneObjectId MRT only on the 3-entry draw-buffer set" },
     // Box decals (post-process) only under MC2_DYNAMIC_DECALS.
-    { RenderPassId::VFX, RenderPassId::PostProcess, EdgeClass::ContentConditional,
-      RenderResourceId::SceneDepthCopy, /*forbidden*/ false, /*contentGated*/ true,
-      "BoxDecals-when-DYNAMIC_DECALS: SceneDepthCopy consumed by PostProcess BoxDecals (gated)" },
     // Scene-color copy for the compute blur substrate only under MC2_VFX_SCENECOLOR_GRAB.
     { RenderPassId::VFX, RenderPassId::PostProcess, EdgeClass::ContentConditional,
       RenderResourceId::SceneColorCopy, /*forbidden*/ false, /*contentGated*/ true,

@@ -1,27 +1,29 @@
 {
   "matrix_id": "hzb",
-  "description": "TRACKRV-HZB-VISIBILITY-OPUS-1 Hi-Z depth pyramid build + diagnostic occlusion probe. MC2_HZB_BUILD is the pyramid-build gate (default-OFF); MC2_HZB_PROBE is the diagnostic readback probe gate (default-OFF, requires MC2_HZB_BUILD). Neither gate suppresses draws — both are diagnostic substrate only. The depth/reduction contract is locked in docs/hzb-depth-convention.md + tests/unit/test_depth_hzb.cpp (reverse-Z, ZERO_TO_ONE, near=1/far=0, MIN-reduce pyramid).",
-  "default_missions": ["mc2_17"],
+  "description": "Native Vulkan same-frame reverse-Z MIN pyramid and render-only static-prop occlusion. Default ON; MC2_HZB_BUILD=0 keeps all instances.",
+  "default_missions": [
+    "mc2_10",
+    "mc2_24"
+  ],
   "default_duration": 20,
   "entries": [
     {
       "id": "default",
-      "description": "Baseline — both HZB gates OFF. No pyramid built, no probe runs. Byte-identical to pre-HZB output.",
+      "description": "Shipping default: native HZB and render-only prop culling enabled.",
       "env": {}
     },
     {
-      "id": "hzb_build_on",
-      "description": "HZB pyramid build enabled (MC2_HZB_BUILD=1). Reverse-Z MIN-reduction pyramid is built each frame from MainDepth; diagnostic substrate only — no culling, no draw suppression.",
+      "id": "hzb_on",
+      "description": "Explicitly enable native HZB culling.",
       "env": {
         "MC2_HZB_BUILD": "1"
       }
     },
     {
-      "id": "hzb_build_and_probe",
-      "description": "HZB pyramid build + diagnostic occlusion probe (MC2_HZB_BUILD=1 + MC2_HZB_PROBE=1). Probe reads back a parent/child HZB level pair, verifies MIN-reduction integrity, and logs would-cull/would-keep/mismatch counters. NEVER suppresses a draw.",
+      "id": "hzb_off",
+      "description": "Kill switch: keep every color instance and skip the pyramid.",
       "env": {
-        "MC2_HZB_BUILD": "1",
-        "MC2_HZB_PROBE": "1"
+        "MC2_HZB_BUILD": "0"
       }
     }
   ]

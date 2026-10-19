@@ -34,7 +34,7 @@
       "shaderBase": "static_prop",
       "stateOwner": "legacy/ad-hoc",
       "evidence": "row exists; live color pass fetches the StaticPropOpaque desc (alpha = texture-array + shader discard, not GL state)",
-      "next": "route_applyPipeline (or keep descriptive — alpha split is not GL state)"
+      "next": "route_applyPipeline (or keep descriptive \u2014 alpha split is not GL state)"
     },
     "StaticPropDepth": {
       "status": "ROUTED_BY_APPLYPIPELINE",
@@ -93,9 +93,9 @@
       "routingStatus": "ROUTED_BY_APPLYPIPELINE",
       "proofStatus": "byte_identical",
       "proofPath": "TerrainSolidLODChunk",
-      "scope_note": "ONLY the LIVE terrain-SOLID path is routed: TerrainSolidLODChunk (gos_terrain_lod_chunk.cpp, the default-ON lod-chunk draw) now asserts applyPipeline(TerrainSolid). NOT routed / still separate: terrain overlays/decals, terrain mask/water/mine/surface indirect, the legacy MLR fallback, and the water fast path. The old indirect bridge route (routing-1, PARTIAL) is superseded as the live target by lod-chunk — bridge only runs under the vestigial MC2_TERRAIN_LOD_CHUNK=0.",
+      "scope_note": "ONLY the LIVE terrain-SOLID path is routed: TerrainSolidLODChunk (gos_terrain_lod_chunk.cpp, the default-ON lod-chunk draw) now asserts applyPipeline(TerrainSolid). NOT routed / still separate: terrain overlays/decals, terrain mask/water/mine/surface indirect, the legacy MLR fallback, and the water fast path. The old indirect bridge route (routing-1, PARTIAL) is superseded as the live target by lod-chunk \u2014 bridge only runs under the vestigial MC2_TERRAIN_LOD_CHUNK=0.",
       "routedEntryPoints": [
-        "TerrainSolidLODChunk (gos_terrain_lod_chunk.cpp) — LIVE default, applyPipeline(TerrainSolid), proven binds=2843"
+        "TerrainSolidLODChunk (gos_terrain_lod_chunk.cpp) \u2014 LIVE default, applyPipeline(TerrainSolid), proven binds=2843"
       ]
     },
     "TerrainOverlay": {
@@ -106,7 +106,7 @@
       "shaderBase": "terrain_overlay",
       "stateOwner": "applyPipeline",
       "evidence": "TERRAIN-OVERLAY-DECAL-APPLYPIPELINE-ROUTING-1: routed at gosRenderer::drawTerrainOverlays + drawDecalStaticBatch (gameos_graphics.cpp:9732/9850) via applyPipeline(TerrainOverlay). State byte-identical to old hand-set (opaque, depth test+write, GEQUAL, cull none; +no-op frontFace/blendFunc/offset). program(0)=skip keeps overlayProg_. Build green; tier1 5/5 PASS; no GL errors; mc2_24 capture == historical baseline (b11ff22a/e0fb9cc8/c6df715e).",
-      "proofNote": "VISUAL_PROVEN not claimed: the overlay pass is content-dependent (cement-perimeter tiles) and drew in ZERO tier1 missions (0 [PIPELINE_BIND] TerrainOverlay lines across all 5; the trace mechanism is proven live by Shadow* rows firing). Deterministic, so byte-hashable once exercised — upgrade on a cement-overlay mission A/B.",
+      "proofNote": "VISUAL_PROVEN not claimed: the overlay pass is content-dependent (cement-perimeter tiles) and drew in ZERO tier1 missions (0 [PIPELINE_BIND] TerrainOverlay lines across all 5; the trace mechanism is proven live by Shadow* rows firing). Deterministic, so byte-hashable once exercised \u2014 upgrade on a cement-overlay mission A/B.",
       "next": "TERRAIN-OVERLAY-VISUAL-GATE: capture on a cement-overlay mission, byte-hash A/B + [PIPELINE_BIND] TerrainOverlay trace -> VISUAL_PROVEN."
     },
     "TerrainDecal": {
@@ -126,9 +126,9 @@
       "renderPassId": "Water",
       "shaderBase": "gos_terrain_water_fast",
       "stateOwner": "vulkan_island",
-      "evidence": "the GL water draw (renderWaterFastPath applyPipeline(WaterArmed)) was deleted in s62; the descriptor stays registered for the frame-graph model and the water is drawn by the Vulkan water island. Earlier proof: WATER-ARMED-APPLYPIPELINE-ROUTING-1: routed at gosRenderer::renderWaterFastPath (gameos_graphics.cpp:3275) via applyPipeline(WaterArmed). VISUAL_PROVEN via oracle_coverage (HARNESS-ISOLATION-1 session, 2026-06-23): hardened pipeline_visual_gate water profile on the routed build (v0.4c / 051946c3) captured bookmark mc2_01 water_overview_high (an entirely-water frame) 3-run BYTE-STABLE post-warmup sha cb5a700ebd00 (deterministic clock; both poses stable), and the [PIPELINE_BIND] draw-oracle recorded WaterArmed bound 19184x with the exact row state depth=GreaterEqual cull=None frontFace=Ccw polygonOffset=false. State byte-identical to the old hand-set (cull off, depth-test on, GEQUAL, blend SRC_ALPHA/1-SRC_ALPHA; no-op frontFace/offset) — confirmed by trace, not a pixel A/B. depthMask kept manual (debug-gated MC2_WATER_NO_DEPTH_WRITE). Build green; smoke PASS.",
+      "evidence": "the GL water draw (renderWaterFastPath applyPipeline(WaterArmed)) was deleted in s62; the descriptor stays registered for the frame-graph model and the water is drawn by the Vulkan water island. Earlier proof: WATER-ARMED-APPLYPIPELINE-ROUTING-1: routed at gosRenderer::renderWaterFastPath (gameos_graphics.cpp:3275) via applyPipeline(WaterArmed). VISUAL_PROVEN via oracle_coverage (HARNESS-ISOLATION-1 session, 2026-06-23): hardened pipeline_visual_gate water profile on the routed build (v0.4c / 051946c3) captured bookmark mc2_01 water_overview_high (an entirely-water frame) 3-run BYTE-STABLE post-warmup sha cb5a700ebd00 (deterministic clock; both poses stable), and the [PIPELINE_BIND] draw-oracle recorded WaterArmed bound 19184x with the exact row state depth=GreaterEqual cull=None frontFace=Ccw polygonOffset=false. State byte-identical to the old hand-set (cull off, depth-test on, GEQUAL, blend SRC_ALPHA/1-SRC_ALPHA; no-op frontFace/offset) \u2014 confirmed by trace, not a pixel A/B. depthMask kept manual (debug-gated MC2_WATER_NO_DEPTH_WRITE). Build green; smoke PASS.",
       "scope_note": "ONLY the armed fast-path base. The armed fast path is the DEFAULT render path (real latch terrain.cpp:2779, called unconditionally gamecam.cpp:530; gameosmain.cpp:852 MC2_RENDER_WATER_FASTPATH is only a diagnostic flag, NOT the gate). Legacy quad fallback + GPU-driven MDI sub-variant NOT modeled.",
-      "proofNote": "PROOF = oracle_coverage (LANDED), not byte_identical: a pixel before/after was deliberately NOT required. The pass is DETERMINISTIC (3-run byte-stable cb5a700ebd00), DRAWS (19184 [PIPELINE_BIND] WaterArmed binds = SAMPLES rasterized), and its bound state is trace-confirmed identical to the legacy hand-set GL state. Together (determinism + draw-oracle + state-identity) these establish the applyPipeline routing is a visual no-op without a separate BEFORE build. Harness made concurrent-safe by HARNESS-ISOLATION-1 (own-only child reap; never kills foreign mc2.exe) — the original blocker (taskkill-all) is removed.",
+      "proofNote": "PROOF = oracle_coverage (LANDED), not byte_identical: a pixel before/after was deliberately NOT required. The pass is DETERMINISTIC (3-run byte-stable cb5a700ebd00), DRAWS (19184 [PIPELINE_BIND] WaterArmed binds = SAMPLES rasterized), and its bound state is trace-confirmed identical to the legacy hand-set GL state. Together (determinism + draw-oracle + state-identity) these establish the applyPipeline routing is a visual no-op without a separate BEFORE build. Harness made concurrent-safe by HARNESS-ISOLATION-1 (own-only child reap; never kills foreign mc2.exe) \u2014 the original blocker (taskkill-all) is removed.",
       "next": "none (GL model retired)",
       "reason": "Native Vulkan pass; its GL draw and PipelineDesc were deleted. Vulkan owns the images and pipeline state."
     },
@@ -144,7 +144,7 @@
       ],
       "shaderBase": "tube_ribbon/vfx_mesh",
       "stateOwner": "applyPipeline (per-item blend)",
-      "evidence": "VFX-VISUAL-GATE-1 (2026-06-23) built the full gate + proved TWO of three facts, but the pass is CONFIRMED pixel-nondeterministic so VISUAL_PROVEN is withheld (honest). PROVEN: (1) tube coverage — MC2_VFX_ORACLE_TUBE occlusion oracle samples=3325 into the scene FBO (fbo=1), the tube VFX pass rasterizes; (2) additive NOT collapsed — runtime [PIPELINE_BIND] blend= trace (new this slice) shows VfxTubeAdditive=AdditiveOneOne (ONE/ONE) vs VfxBillboardAdditive=AdditiveSrcAlphaOne (SRC_ALPHA/ONE); the static check-vfx-blend-distinction.py catches a collapse at check-time (proven: FAILs on a planted tube->billboard collapse). NOT PROVEN: 3-run pixel stability — captures DRIFT (max_abs_delta=241), particle output is not seeded by MC2_SMOKE_SEED (sim-freeze froze the clock but not the particle RNG). Per scope (no weakening the test for nondeterminism), the byte/perceptual gate honestly FAILS.",
+      "evidence": "VFX-VISUAL-GATE-1 (2026-06-23) built the full gate + proved TWO of three facts, but the pass is CONFIRMED pixel-nondeterministic so VISUAL_PROVEN is withheld (honest). PROVEN: (1) tube coverage \u2014 MC2_VFX_ORACLE_TUBE occlusion oracle samples=3325 into the scene FBO (fbo=1), the tube VFX pass rasterizes; (2) additive NOT collapsed \u2014 runtime [PIPELINE_BIND] blend= trace (new this slice) shows VfxTubeAdditive=AdditiveOneOne (ONE/ONE) vs VfxBillboardAdditive=AdditiveSrcAlphaOne (SRC_ALPHA/ONE); the static check-vfx-blend-distinction.py catches a collapse at check-time (proven: FAILs on a planted tube->billboard collapse). NOT PROVEN: 3-run pixel stability \u2014 captures DRIFT (max_abs_delta=241), particle output is not seeded by MC2_SMOKE_SEED (sim-freeze froze the clock but not the particle RNG). Per scope (no weakening the test for nondeterminism), the byte/perceptual gate honestly FAILS.",
       "proofNote": "Routing + blend-distinction are GOVERNANCE-COMPLETE (checker + runtime trace catch the tube ONE/ONE vs billboard/mesh SRC_ALPHA/ONE collapse). VISUAL_PROVEN requires either (a) a deterministic particle seed so 3-run capture is stable (engine work, out of this slice's scope), or (b) operator acceptance that oracle_coverage + blend-non-collapse is sufficient proof for a deliberately-nondeterministic pass. Held at ROUTED/pending until that decision.",
       "next": "Decide: seed particle RNG for pixel-determinism (engine slice) OR accept oracle_coverage+blend-non-collapse as the VFX proof."
     },
@@ -160,15 +160,14 @@
       "status": "ROUTED_BY_APPLYPIPELINE",
       "renderPassId": "PostProcess",
       "pipelineId": "PostProcessComposite",
-      "shaderBase": "postprocess/ssao/fog/composite",
+      "shaderBase": "postprocess/fog/composite",
       "stateOwner": "applyPipeline (composite); legacy/ad-hoc (rest of chain)",
-      "next": "Next post-fx slices (recon order): POSTPROCESS-FOG-REGISTRATION-1 (edgeFog+fogOob, AlphaBlend, SPIR-V pilots); then BLENDMODE-MULTIPLY-1 -> screenShadow/cloud/shoreline/ssaoApply. DEFER HDRI (restore contract) + ssao1/hzb (own FBO/viewport). DO_NOT_MODEL shadowDebug + dead skybox.",
+      "next": "SSAO and box decals retired in lane 2 s64. Native screen/cloud/shoreline passes remain; composite uses PostProcessComposite.",
       "proofStatus": "byte_identical",
-      "scope_note": "Routed post-fx sub-passes: composite (PostProcessComposite, Opaque) BYTE-PROVEN; edgeFog+fogOob (AlphaBlend) byte-identical-by-construction; BLENDMODE-MULTIPLY-1 screenShadow+cloudShadow+shoreline (PostProcess{ScreenShadow,CloudShadow,Shoreline}, Multiply=DST_COLOR/ZERO) BYTE-PROVEN — fired ~3098x with runtime [PIPELINE_BIND] blend=Multiply, sha cb5a700e held (no regression); ssaoApply (PostProcessSsaoApply, Multiply) routed byte-identical-by-construction (ssao off in the gate frame, same routing as the proven 3). The remaining chain (HDRI skybox, ssao-pass1, hzbReduce) is DEFERRED; shadowDebug + dead skybox = DO_NOT_MODEL. New BlendMode::Multiply vocabulary + binder case + check-multiply-blend.py (planted-negative proven) shipped.",
-      "evidence": "Composite routing proven BYTE-IDENTICAL: with composite routed via applyPipeline, mc2_01 water_overview_high captured sha cb5a700ebd00dd0b — identical to the banked pre-routing baseline (the composite is the final pass writing the backbuffer, so an identical whole-frame sha proves the routing is a perfect no-op, incl. no downstream state leak from the binder's inert frontFace/depthFunc/blendFunc sets). [PIPELINE_BIND] PostProcessComposite fired 3304x (once/frame).",
+      "scope_note": "SSAO and box decals retired in lane 2 s64. Native screen/cloud/shoreline passes remain; composite uses PostProcessComposite.",
+      "evidence": "Composite routing proven BYTE-IDENTICAL: with composite routed via applyPipeline, mc2_01 water_overview_high captured sha cb5a700ebd00dd0b \u2014 identical to the banked pre-routing baseline (the composite is the final pass writing the backbuffer, so an identical whole-frame sha proves the routing is a perfect no-op, incl. no downstream state leak from the binder's inert frontFace/depthFunc/blendFunc sets). [PIPELINE_BIND] PostProcessComposite fired 3304x (once/frame).",
       "pipelineIds": [
-        "PostProcessComposite",
-        "PostProcessSsaoApply"
+        "PostProcessComposite"
       ]
     },
     "PostProcessVkNativeFx": {
@@ -208,7 +207,7 @@
       "pipelineId": null,
       "shaderBase": "mineProg",
       "stateOwner": "legacy/ad-hoc",
-      "next": "needs_pass_reg_first: stable alpha-test state but NO RenderPassId — add an id or fold into TerrainOverlay before any PipelineDesc row"
+      "next": "needs_pass_reg_first: stable alpha-test state but NO RenderPassId \u2014 add an id or fold into TerrainOverlay before any PipelineDesc row"
     },
     "VfxBillboardVkNative": {
       "status": "DO_NOT_MODEL",

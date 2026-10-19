@@ -37,7 +37,8 @@
 #include "gos_visual_capture.h"      // mc2CaptureGaitFreezeActive() (extern "C")
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
-#include "vulkan_shadow_island_live.h"   // Mc2ShadowGeomFeed + Mc2ColorPropFeed contracts
+#include "vulkan_shadow_island_live.h"   // geometry and color feed contracts
+#include "gos_postprocess.h"
 #include "vulkan_color_prop_island.h"
 #include "texture_decode.h"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
@@ -874,7 +875,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // Base bindings 0(UBO),1(inst SSBO); optional +4(LightsData SSBO, VS). Material
         // (tier1 + MC2_VK_PROP_MATERIAL): +2(alpha-OFF layer SSBO VS), 3(alpha-OFF albedo
         // FS), 5(alpha-ON layer SSBO VS), 6(alpha-ON albedo FS).
-        VkDescriptorSetLayoutBinding b[9]{};
+        VkDescriptorSetLayoutBinding b[10]{};
         uint32_t nb = 0;
         b[nb].binding = 0; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
@@ -902,6 +903,8 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             b[nb].binding = 8; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;   // night light pools
             b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
         }
+        b[nb].binding = 9; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = nb; lci.pBindings = b;
@@ -914,7 +917,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         uint32_t nsz = 0;
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2u * (1u + (lightBinding ? 1u : 0u) + (s->tier1 ? 1u : 0u))};
-        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2u * ((materialBindings ? 2u : 0u) + (s->tier1 ? 1u : 0u))};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2u * ((materialBindings ? 2u : 0u) + (s->tier1 ? 1u : 0u) + 1u)};
         if (materialBindings) sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4u};
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -959,7 +962,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // pack into half floats or move to the per-instance SSBO path.
         VkPushConstantRange pcr{};
         pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        pcr.offset = 0; pcr.size = 24; // int32 packetLayerOff, int32 packetLayerOn, float uvScaleX, float uvScaleY, int32 packetAlphaTest,
+        pcr.offset = 0; pcr.size = 28; // int32 packetLayerOff, int32 packetLayerOn, float uvScaleX, float uvScaleY, int32 packetAlphaTest,
                                        // int32 coverageFringePass (PROP-COVERAGE-1)
 
         VkPipelineLayoutCreateInfo plci{};
@@ -1369,6 +1372,15 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
       fsC = vkImageResourceBeginFrame(colorRes); }
     us_fence_wait = usSince(tFence0);
     const uint32_t par = fsC.parity & 1u;
+    void* hzbMask = nullptr;
+    gosPostProcess* pp = getGosPostProcess();
+    const bool hzbCulled = pp && pp->runVkPostHzbNative(feed, s->mapGeneration, &hzbMask);
+    VkDescriptorBufferInfo maskInfo{hzbCulled ? reinterpret_cast<VkBuffer>(hzbMask) : s->hotBuf.get(),0,VK_WHOLE_SIZE};
+    VkWriteDescriptorSet maskWrite{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    maskWrite.dstSet = s->set[par]; maskWrite.dstBinding = 9; maskWrite.descriptorCount = 1;
+    maskWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; maskWrite.pBufferInfo = &maskInfo;
+    vkUpdateDescriptorSets(s->device,1,&maskWrite,0,nullptr);
+
 
     // VK-PROP-AMBIENT-IBL-1 / VK-PROP-LIGHTFEED-NATIVE-1: per-frame copy of the game's
     // CPU LightsData array (mcTextureManager lightData_, the byte source of the GL SSBO
@@ -1601,13 +1613,14 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                     // FENCE-UVSCALE-1: push this packet's own uvScaleX/Y alongside
                     // its layer -- default 1.0 (no crop) matches pre-fix behavior
                     // for any packet the feed didn't cover.
-                    struct { int32_t layerOff, layerOn; float uvScaleX, uvScaleY; int32_t alphaTest, fringe; } pc = {
+                    struct { int32_t layerOff, layerOn; float uvScaleX, uvScaleY; int32_t alphaTest, fringe, hzb; } pc = {
                         (pk < s->packetLayerOff.size())  ? s->packetLayerOff[pk]  : -1,
                         (pk < s->packetLayerOn.size())   ? s->packetLayerOn[pk]   : -1,
                         (pk < s->packetUvScaleX.size())  ? s->packetUvScaleX[pk]  : 1.0f,
                         (pk < s->packetUvScaleY.size())  ? s->packetUvScaleY[pk]  : 1.0f,
                         mc2_static_prop_packet_alpha_test(pk),
                         fringePass,
+                        hzbCulled ? 1 : 0,
                     };
                     // Only packets the FS can alpha-test have a fringe (the alpha-ON layer or the per-packet bit).
                     if (fringePass == 1 && pc.layerOn < 0 && pc.alphaTest == 0) continue;

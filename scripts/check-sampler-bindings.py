@@ -99,7 +99,6 @@ MODE_ALTERNATE_PAIRS = [frozenset({"dynamicShadowArray", "dynamicShadowMap"})]
 # to remove it from this table rather than silently passing a now-unsafe anchor.
 HARD_ANCHORS = {
     # name: (expected_unit, glsl_file_substr, cpp_receiver)
-    "uSrc":     (0, "shaders/hzb_reduce.frag",  "hzbReduceProg_"),
     "sceneTex": (0, "shaders/postprocess.frag", "compositeProg_"),
 }
 
@@ -135,13 +134,7 @@ HARD_ANCHORS = {
 #     ssaoTex a SECOND time and binds it via a SECOND receiver (ssaoBlurProg_)
 #     to a DIFFERENT unit (1 — the blur pass puts sceneDepthTex on 0). That is
 #     legitimate multiplexing, not drift: two passes, two unit assignments.
-MULTIPLEX_ANCHORS = {
-    # name: ((glsl_file_substr, cpp_receiver, unit), ...)
-    "ssaoTex": (
-        ("shaders/ssao_apply.frag", "ssaoApplyProg_", 0),
-        ("shaders/ssao_blur.frag",  "ssaoBlurProg_",  1),
-    ),
-}
+MULTIPLEX_ANCHORS = {}
 
 # Back-compat alias: the names that are no longer HARD_ANCHORS. Derived, so it
 # can never drift from the table that is actually enforced.

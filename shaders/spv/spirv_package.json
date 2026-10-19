@@ -16,9 +16,7 @@
   },
   "pilot_families": [
     "postprocess",
-    "mech",
-    "ssao",
-    "hzb_reduce"
+    "mech"
   ],
   "excluded_families": [
     "shadow_mech (shadow_mech.vert + shadow_instanced.frag) \u2014 separate program, stays GLSL",
@@ -86,37 +84,11 @@
           }
         }
       ]
-    },
-    {
-      "base": "ssao",
-      "variants": [
-        {
-          "name": "default",
-          "defines": [],
-          "variantId": "cb20e1310521",
-          "stages": {
-            "frag": "ssao.frag.default.cb20e131.spv"
-          }
-        }
-      ]
-    },
-    {
-      "base": "hzb_reduce",
-      "variants": [
-        {
-          "name": "default",
-          "defines": [],
-          "variantId": "ae9dd0144f82",
-          "stages": {
-            "frag": "hzb_reduce.frag.default.ae9dd014.spv"
-          }
-        }
-      ]
     }
   ],
   "hashes": {
-    "spirv_index_sha256": "c1e592e19007a0588070dd3d14106ae1f982d818194d3d81a95e83dc4b0f9c10",
-    "sidecars_sha256": "fd392e2a67a018e5cf2a3ef0cc3dd2002489205dcd0b122771952f26f25d7b33",
-    "source_set_sha256": "6944724b323d2b2c0f30be14386ad1a464adca9a396cb15d49b6fabfe1abb5af"
+    "spirv_index_sha256": "ba285fbaabcb18419fd6ea9c882808d3a7f17f2928829df86c4eef00a04f3c6c",
+    "sidecars_sha256": "32d8045d086c8d6918c561893fc87b798eae0e2b426a170718a2e1762529c95d",
+    "source_set_sha256": "9ed93baf42e9efd8409e603715f1730c8ea32a82724d1b57e5236b6feee6963a"
   }
 }

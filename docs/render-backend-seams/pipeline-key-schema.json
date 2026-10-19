@@ -542,39 +542,6 @@
         "color2": false
       },
       "key_producible": "descriptive"
-    },
-    {
-      "id": "PostProcessSsaoApply",
-      "pipelineDescRegistered": true,
-      "descriptive": "BLENDMODE-MULTIPLY-1: runSSAO apply (scene *= ao). routed via applyPipeline (gos_postprocess.cpp). Multiply (DST_COLOR/ZERO, scene*=mask), depth test+write OFF, cull None, color0.",
-      "shaderVariantId": {
-        "base": "ssao_apply",
-        "macros": []
-      },
-      "specializationParams": [],
-      "renderPassCompat": "PostProcess (RenderPassId::PostProcess)",
-      "depthState": {
-        "test": false,
-        "write": false,
-        "func": "Always"
-      },
-      "blendState": {
-        "factor": "Multiply",
-        "srcFactor": "DST_COLOR",
-        "dstFactor": "ZERO",
-        "equation": "FUNC_ADD"
-      },
-      "cullState": {
-        "mode": "None"
-      },
-      "frontFace": "Ccw",
-      "polygonOffsetEnable": false,
-      "colorMaskAttachmentMask": {
-        "color0": true,
-        "color1": false,
-        "color2": false
-      },
-      "key_producible": "descriptive"
     }
   ],
   "excluded_draw_families": {

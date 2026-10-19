@@ -7,10 +7,10 @@ verify the VALUE, so it would not catch a multiply row being silently swapped to
 additive/alpha/opaque blend. This asserts the exact BlendMode per registered
 multiply row, so the gate FAILS the moment any of them is conflated:
 
-    screenShadow / cloudShadow / shoreline / ssaoApply = DST_COLOR / ZERO
+    screenShadow / cloudShadow / shoreline = DST_COLOR / ZERO
         -> BlendMode::Multiply
 
-Checks the surviving GL SSAO row and the native screen/cloud/shoreline builder.
+Checks the native screen/cloud/shoreline builder.
 Parses RenderCore/PipelineRegistry.cpp s_descs rows by their `// [N] <Name>` header
 + the row's `/* blend */ BlendMode::<X>` initializer. Exit 0 = PASS.
 """
@@ -25,7 +25,6 @@ REGISTRY = ROOT / "RenderCore" / "PipelineRegistry.cpp"
 
 # The contract. Any of these as non-Multiply (additive/alpha/opaque) FAILS.
 EXPECTED = {
-    "PostProcessSsaoApply":    "Multiply",
 }
 
 ROW_HEADER = re.compile(r"//\s*\[(\d+)\]\s*(PostProcess\w+)\b")
@@ -82,7 +81,7 @@ def main() -> int:
             print(f"  - {f}", file=sys.stderr)
         return 1
     if not quiet:
-        print("[mul-blend] PASS — GL SSAO and native screen/cloud/shoreline multiply "
+        print("[mul-blend] PASS — native screen/cloud/shoreline multiply "
               "(DST_COLOR/ZERO).")
     return 0
 

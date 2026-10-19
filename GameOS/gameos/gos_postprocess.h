@@ -10,6 +10,8 @@ struct HdriCpuImage;   // gos_hdri.h
 
 struct glsl_program;
 
+struct Mc2ColorPropFeed;
+
 class gosPostProcess {
 public:
     gosPostProcess();
@@ -262,35 +264,6 @@ public:
     bool shorelineSuppressedByTerrainMask_ = false;
     void setShorelineSuppressedByTerrainMask(bool b) { shorelineSuppressedByTerrainMask_ = b; }
 
-    // SSAO-GTAO-LITE-MVP-1 (Track V, MC2_SSAO). Half-res world-space AO.
-    // Default OFF -> runSSAO() is skipped entirely (byte-identical). Resolved
-    // from env at init; tunables ImGui- and profile-adjustable.
-    bool  ssaoEnabled_;
-    int   ssaoDebug_;       // 0 = multiplicative apply, 1 = show AO grayscale
-    float aoRadius_;        // world-unit sample radius
-    float aoStrength_;      // 0..2 occlusion strength
-    float aoBias_;          // window-depth compare bias
-    float aoPower_;         // contrast curve
-
-    // SSAO-BLUR-1: depth-aware (joint bilateral) blur between the AO gen pass
-    // and the apply pass. Before this, runSSAO() issued exactly two draws and
-    // the chain had NO denoise -- the 4-tap +/-0.5-texel box in ssao_apply.frag
-    // cannot resolve a 16-sample stochastic kernel with per-pixel hash rotation.
-    // That is why SSAO-RETUNE-1 found that any aoRadius large enough to produce
-    // visible occlusion also produced visible speckle on flat, unoccluded faces.
-    // Default ON whenever SSAO itself is on; the options window checkbox restores
-    // the old no-denoise chain so the two can be A/B'd against one exe.
-    bool  ssaoBlurEnabled_;
-    float aoBlurDepthSigma_;   // relative depth tolerance for edge-stopping
-    void runSSAO();
-
-
-    // BT2018-BOX-DECAL-1: screen-space AABB decal volume. Reconstructs scene world
-    // pos from the depth COPY (reversed-Z), box-clips, normal-rejects, and composites
-    // a procedural decal into COLOR0 only. Default-OFF (MC2_BOX_DECAL). v1 = single
-    // camera-anchored debug box + procedural pattern (no texture/producers yet).
-    void drawBoxDecals();
-
     // EDGE-FOG-1: world-space map-edge fog on geometry pixels.
     // Fades terrain/props/mechs near the map boundary into the cloud color.
     // Default ON (MC2_EDGE_FOG=0 to disable).
@@ -349,27 +322,6 @@ public:
     struct VkPostFogNativeDeleter { void operator()(VkPostFogNative*) const; };
     std::unique_ptr<VkPostFogNative, VkPostFogNativeDeleter> vkPostFogNative_;
 
-    // VK-POST-SSAO-NATIVE-1 (rung 8.2, .claude/VK-RUNG8-LADDER-1.md): SSAO
-    // (gen + apply) rendered NATIVELY on the shared engine VulkanContext, sampling
-    // the SHARED scene depth + normal into a VK-OWNED half-res R16F occlusion image
-    // and MULTIPLYING into the SHARED scene color0 IN PLACE — zero copies, zero CPU
-    // readbacks, no private device (retires the old SSAO island's readback pattern
-    // when its gate is on; highest precedence at the SSAO site). Gate MC2_VK_POST_SSAO
-    // (an explicit opt-in: an Exact1 row, only "1" arms it; the rung-8 ladder's prescribed name).
-    // runVkPostSsaoNative() returns true only when both passes rendered via VK
-    // (caller skips the GL SSAO site); any not-ready condition (incl. ssaoDebug_!=0,
-    // an unported diagnostic mode) returns false -> unchanged region-iface/GL chain.
-    // destroyVkPostSsaoNative(): torn down from destroyFBOs() (resize; the shared
-    // GBuffer + GL half-res sizing it mirrors are rebuilt) and destroy(). Defined in
-    // vulkan_post_ssao_native.cpp (same #ifdef MC2_VULKAN_ISLAND discipline).
-    bool  vkPostSsaoNativeEnabled();
-    bool  runVkPostSsaoNative();
-    void  destroyVkPostSsaoNative();
-    struct VkPostSsaoNative;            // defined in vulkan_post_ssao_native.cpp
-    // Owner of the state: releases through destroy_state (idles the GPU first), defined next to the state.
-    struct VkPostSsaoNativeDeleter { void operator()(VkPostSsaoNative*) const; };
-    std::unique_ptr<VkPostSsaoNative, VkPostSsaoNativeDeleter> vkPostSsaoNative_;
-
     // VK-POST-SCREENFX-NATIVE-1 (rung 8.3, .claude/VK-RUNG8-LADDER-1.md):
     // cloud-shadow + shoreline-foam rendered NATIVELY on the shared engine
     // VulkanContext (one render pass / one submit, adjacent GL passes), sampling
@@ -394,16 +346,7 @@ public:
     struct VkPostScreenFxDeleter { void operator()(VkPostScreenFx*) const; };
     std::unique_ptr<VkPostScreenFx, VkPostScreenFxDeleter> vkPostScreenFx_;
 
-    // VK-POST-HZB-NATIVE-1 (rung 8.4, .claude/VK-RUNG8-LADDER-1.md): the HZB
-    // pyramid rendered NATIVELY on the shared engine VulkanContext, sampling the
-    // shared scene depth directly and writing one separate R32F image per ceil
-    // ladder level -- zero glGetTexImage depth ingress, zero readback/glTexSubImage2D
-    // egress on the normal path. Highest precedence at the HZB site: when the gate
-    // is on, it runs before the old region-iface path; if not ready, the caller
-    // falls back to the unchanged GL runHzbReduce() body. MC2_HZB_PROBE forces
-    // the native path to decline so the GL pyramid stays coherent for the probe.
-    bool  vkPostHzbNativeEnabled();
-    bool  runVkPostHzbNative();
+    bool  runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t generation, void** maskBuffer);
     void  destroyVkPostHzbNative();
     struct VkPostHzbNative;             // defined in vulkan_post_hzb_native.cpp
     // Owner of the state: releases through destroy_state (idles the GPU first), defined next to the state.
@@ -441,24 +384,8 @@ public:
     float fogHorizonFadeStartSin_ = 0.0f;    // sin(0deg)
     float fogHorizonFadeEndSin_   = 0.08716f;// sin(5deg); recomputed from env in ctor
 
-    // HZB-DEPTH-PYRAMID-MVP-1 (TRACKRV-HZB-VISIBILITY-OPUS-1). Gated reverse-Z
-    // Hi-Z depth pyramid built from sceneDepthTex_ via a custom fragment MIN
-    // reduction (shaders/hzb_reduce.frag). Default-OFF (MC2_HZB_BUILD): when OFF
-    // the texture/FBO are never allocated and runHzbReduce() is a no-op, so
-    // output is byte-identical. Diagnostic substrate ONLY -- no consumers, no
-    // culling, no draw suppression.
-    bool   hzbEnabled_ = false;     // resolved once from env at init()
-    bool   hzbProbeEnabled_ = false; // MC2_HZB_PROBE (requires hzbEnabled_)
-    void   runHzbReduce();          // build the pyramid each frame (gated)
-    void   runHzbProbe();           // HZB-OCCLUSION-PROBE-1: diagnostic only
-    // Pyramid is stored as one ceil-sized R32F texture PER level (not a mip
-    // chain): AMD rejects attaching mip level >0 of a mipmap-incomplete texture,
-    // and the ceil ladder is deliberately mipmap-incomplete. Separate textures
-    // sidestep that and remove any read/write feedback (distinct objects).
-    GLuint getHzbLevelTexture(int level) const {
-        return (level >= 0 && level < hzbMipCount_) ? hzbLevelTex_[level] : 0;
-    }
-    GLuint getHzbTexture()  const { return hzbLevelTex_[0]; } // level 0 (full-res)
+    // Vulkan render-only culling; MC2_HZB_BUILD=0 keeps every color instance.
+    bool   hzbEnabled_ = true;
     int    getHzbMipCount() const { return hzbMipCount_; }
     int    getHzbWidth()    const { return hzbW_; }
     int    getHzbHeight()   const { return hzbH_; }
@@ -484,8 +411,6 @@ private:
     void destroyFBOs();
     void createFullscreenQuad();
     void destroyFullscreenQuad();
-    void createBoxDecalCube();   // BT2018-BOX-DECAL-1: unit cube [-0.5,0.5], 8 verts / 36 idx
-    void destroyBoxDecalCube();
 
     // Scene FBO (full resolution, HDR)
     GLuint sceneFBO_;
@@ -513,17 +438,6 @@ private:
     // Fullscreen quad
     GLuint quadVAO_;
     GLuint quadVBO_;
-
-    // BT2018-BOX-DECAL-1: unit-cube geometry for the decal volume.
-    GLuint        boxCubeVAO_ = 0;
-    GLuint        boxCubeVBO_ = 0;
-    GLuint        boxCubeIBO_ = 0;
-    glsl_program* boxDecalProg_ = nullptr;
-    bool          boxDecalEnabled_ = false;
-    // DECAL-INTEGRATE-1: MC2_PROJECTED_DECALS (default OFF). When ON, drawBoxDecals()
-    // consumes the dynamic_decal_ring live slots (one projected decal per impact) instead
-    // of the v1 hardcoded screen-center test box. OFF = projection pass does not run.
-    bool          projectedDecalsEnabled_ = false;
 
     // Composite shader
     glsl_program* compositeProg_;
@@ -596,42 +510,10 @@ private:
     float inverseViewProj_[16];
     float viewProj_[16];
 
-    // SSAO (half resolution)
-    GLuint        ssaoFBO_      = 0;
-    GLuint        ssaoColorTex_ = 0;   // GL_R16F half-res AO
-    int           ssaoW_        = 0;
-    int           ssaoH_        = 0;
-    glsl_program* ssaoProg_      = nullptr;
-    glsl_program* ssaoApplyProg_ = nullptr;
-
-    // SSAO-BLUR-1: ping-pong target for the separable bilateral blur. Same
-    // half-res R16F format as ssaoColorTex_. The blur runs H into this texture
-    // then V back into ssaoColorTex_, so ssaoColorTex_ (and therefore the
-    // SsaoOcclusion resource id and the unchanged apply pass) always holds the
-    // FINAL AO -- no downstream reader needs to know the blur exists.
-    GLuint        ssaoBlurFBO_   = 0;
-    GLuint        ssaoBlurTex_   = 0;
-    glsl_program* ssaoBlurProg_  = nullptr;
-
-    // HZB depth pyramid (HZB-DEPTH-PYRAMID-MVP-1). Allocated lazily in
-    // createFBOs only when hzbEnabled_. One ceil-sized R32F texture per level.
-    static const int kHzbMaxLevels = 24;     // covers >16M px on the long axis
-    GLuint        hzbLevelTex_[kHzbMaxLevels] = {0};
-    GLuint        hzbFBO_        = 0;         // shared; re-attaches the dst level
     int           hzbW_          = 0;
     int           hzbH_          = 0;
     int           hzbMipCount_   = 0;
     unsigned long long hzbBuildCount_ = 0;  // frames the pyramid has been built
-    glsl_program* hzbReduceProg_ = nullptr;
-
-    // HZB-CAMERA-DISCONTINUITY-GUARD-1: previous-frame camera pose (derived in
-    // the probe by unprojecting NDC near/far centers via inverseViewProj_) to
-    // detect near-instant camera snaps (e.g. mc2_17 intro 180deg). Diagnostic
-    // only -- flags frames as unsafe-for-cull; affects no rendering.
-    bool   hzbPrevCamValid_ = false;
-    float  hzbPrevCamPos_[3] = { 0.0f, 0.0f, 0.0f };
-    float  hzbPrevCamFwd_[3] = { 0.0f, 0.0f, 0.0f };
-    unsigned long long hzbCamDiscontinuityFrames_ = 0;
 };
 
 gosPostProcess* getGosPostProcess();
@@ -652,14 +534,6 @@ void  gos_SetLowLightGain(float v);
 float gos_GetLowLightGain();
 void  gos_SetLowLightTintG(float v); // green channel — the most impactful axis
 
-// SSAO-GTAO-LITE-MVP-1 tunables (profile + ImGui).
-bool  gos_IsSsaoEnabled();
-void  gos_SetSsaoRadius(float v);
-void  gos_SetSsaoStrength(float v);
-void  gos_SetSsaoBias(float v);
-float gos_GetSsaoRadius();
-float gos_GetSsaoStrength();
-float gos_GetSsaoBias();
 
 // HDRI-SKY-NUMBER-1: notify the postprocessor of the mission sky number so it
 // can swap to the appropriate HDRI asset (IblHdriRegistry).

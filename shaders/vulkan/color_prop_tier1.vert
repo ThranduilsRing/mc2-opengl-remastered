@@ -79,6 +79,7 @@ layout(push_constant) uniform PacketLayerPC {
     float packetUvScaleY;
     int   packetAlphaTest;   // GL's live per-packet ALPHA_TEST bit (the FS reads it)
     int   coverageFringePass;   // PROP-COVERAGE-1 (FS only)
+    int   hzbEnabled;
 } uPacket;
 
 #include "../include/gpu_abi_static_prop_instance.gen.hglsl"
@@ -148,7 +149,17 @@ vec3 hotColorBaseLight(uint startV, vec3 colouredSeed, bool lightsOut, vec3 pink
     return clamp(outLight, vec3(0.0), vec3(1.0));
 }
 
+layout(set = 0, binding = 9, std430) readonly buffer HzbVisibility {
+    uint culled;
+    uint visible[];
+} uHzb;
+
 void main() {
+    // Render-only: the instance feed and game/AI visibility are never modified.
+    if (uPacket.hzbEnabled != 0 && uHzb.visible[gl_InstanceIndex] == 0u) {
+        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+        return;
+    }
     GpuStaticPropInstance inst = uInstances.i[uFrame.instBase + gl_InstanceIndex];
     // Row-vector * M — identical to the GL VS (Stuff std430 column-major convention).
     vec4 world_stuff = vec4(a_position, 1.0) * inst.modelMatrix;

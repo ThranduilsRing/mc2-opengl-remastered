@@ -1,0 +1,28 @@
+// Render-only static-prop occlusion. Bounds were projected with this draw's matrix.
+#version 450
+layout(local_size_x = 64) in;
+struct Bounds { vec4 pixels; float nearest; uint lod; uint keep; uint pad; };
+layout(set = 0, binding = 0) uniform sampler2D levelDepth;
+layout(std430, set = 0, binding = 1) readonly buffer ProjectedBounds { Bounds bounds[]; };
+layout(std430, set = 0, binding = 2) buffer Visibility { uint culled; uint visible[]; };
+layout(push_constant) uniform Params { uint count; uint level; } params;
+void main() {
+    uint id = gl_GlobalInvocationID.x;
+    if (id >= params.count || bounds[id].lod != params.level) return;
+    Bounds b = bounds[id];
+    bool hidden = false;
+    if (b.keep == 0u) {
+        // Ceil ladder uses exact integer 2x2 footprints, including odd extents.
+        float scale = float(1u << params.level);
+        ivec2 hi = textureSize(levelDepth, 0) - 1;
+        ivec2 p0 = clamp(ivec2(floor(b.pixels.xy / scale)), ivec2(0), hi);
+        ivec2 p1 = clamp(ivec2(floor(b.pixels.zw / scale)), ivec2(0), hi);
+        float farthest = 1.0;
+        for (int y = p0.y; y <= p1.y; ++y)
+            for (int x = p0.x; x <= p1.x; ++x)
+                farthest = min(farthest, texelFetch(levelDepth, ivec2(x,y), 0).r);
+        hidden = b.nearest < farthest - 0.00002;
+    }
+    visible[id] = hidden ? 0u : 1u;
+    if (hidden) atomicAdd(culled, 1u);
+}

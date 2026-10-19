@@ -39,12 +39,6 @@ REGISTRY = [
      "shaders/vulkan/edge_fog.frag", "EdgeFogParams"),
     ("postfog_oob", "GameOS/gameos/vulkan_post_fog_native.cpp", "FogOobParams",
      "shaders/vulkan/fog_oob.frag", "FogOobParams"),
-    # The native SSAO pair reuses the island's
-    # shaders verbatim; its UBO PODs must stay byte-identical to those blocks.
-    ("ssaonat_occ", "GameOS/gameos/vulkan_post_ssao_native.cpp", "SsaoNativeOcclusionParams",
-     "shaders/vulkan/ssao.frag", "SSAOParams"),
-    ("ssaonat_apply", "GameOS/gameos/vulkan_post_ssao_native.cpp", "SsaoNativeApplyParams",
-     "shaders/vulkan/ssao_apply.frag", "SSAOApplyParams"),
     # Native cloud-shadow + shoreline UBOs.
     ("screenfx_cloud", "GameOS/gameos/vulkan_post_screenfx_native.cpp", "ScreenFxCloudParams",
      "shaders/vulkan/cloud_shadow.frag", "CloudFxParams"),

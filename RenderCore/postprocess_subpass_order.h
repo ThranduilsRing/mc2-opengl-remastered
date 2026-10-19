@@ -10,7 +10,7 @@
 //
 // WHY: the shipped Vulkan postprocess subgraph (VULKAN-POSTPROCESS-SUBGRAPH-1, 9f049ce8)
 // fuses EdgeFog+OobFog, which ARE adjacent in endScene(). The tempting next step — folding
-// CloudShadow into that same subgraph — is NOT contiguous: Shoreline, SSAO and BoxDecals
+// CloudShadow into that same subgraph — is NOT contiguous: Shoreline
 // all execute between CloudShadow and EdgeFog. Fusing across them silently reorders the
 // scene-color writes of those passes relative to the fog blend. The StaticProp<->Mech
 // reorder-parity FAIL (mc2_24 pixel diff on a depth-EQUAL tie; candidate rejected, gate
@@ -23,12 +23,7 @@
 //   Header-only, no GL includes, no Vulkan includes, no game-side includes — mirrors
 //   vulkan_layout_chain.h discipline exactly.
 //
-// Canonical order confirmed from GameOS/gameos/gos_postprocess.cpp endScene():
-//   ScreenShadow (runScreenShadow, ~L2676) -> CloudShadow (runCloudShadow, ~L2684) ->
-//   Shoreline (runShoreline, ~L2690) -> SSAO (runSSAO, ~L2694) -> BoxDecals
-//   (drawBoxDecals, ~L2698) -> EdgeFog (runEdgeFog / fused subgraph, ~L2720) ->
-//   OobFog (runFogOob, ~L2739; executor island name FogOob) -> Composite (backbuffer
-//   bind + pillarbox, ~L2755).
+// Canonical order: ScreenShadow -> CloudShadow -> Shoreline -> EdgeFog -> OobFog -> Composite.
 
 #include <cstdint>
 
@@ -43,8 +38,6 @@ enum class PostprocessSubPassId : uint8_t {
     ScreenShadow = 0,   // runScreenShadow  — post-process shadow over terrain/objects/overlays
     CloudShadow,        // runCloudShadow   — procedural multiplicative cloud darkening
     Shoreline,          // runShoreline     — shoreline foam brighten on water-adjacent terrain
-    SSAO,               // runSSAO          — multiplicative AO darkening (gated)
-    BoxDecals,          // drawBoxDecals    — screen-space box decals (gated)
     EdgeFog,            // runEdgeFog       — map-boundary fog fade (fused w/ OobFog when subgraph on)
     OobFog,             // runFogOob        — out-of-bounds far-plane fog (executor island "FogOob")
     Composite,          // backbuffer bind + pillarbox composite output
@@ -55,8 +48,6 @@ static constexpr PostprocessSubPassId kPostprocessSubPassOrder[] = {
     PostprocessSubPassId::ScreenShadow,
     PostprocessSubPassId::CloudShadow,
     PostprocessSubPassId::Shoreline,
-    PostprocessSubPassId::SSAO,
-    PostprocessSubPassId::BoxDecals,
     PostprocessSubPassId::EdgeFog,
     PostprocessSubPassId::OobFog,
     PostprocessSubPassId::Composite,
@@ -70,8 +61,6 @@ inline const char* postprocessSubPassName(PostprocessSubPassId id) {
         case PostprocessSubPassId::ScreenShadow: return "ScreenShadow";
         case PostprocessSubPassId::CloudShadow:  return "CloudShadow";
         case PostprocessSubPassId::Shoreline:    return "Shoreline";
-        case PostprocessSubPassId::SSAO:         return "SSAO";
-        case PostprocessSubPassId::BoxDecals:    return "BoxDecals";
         case PostprocessSubPassId::EdgeFog:      return "EdgeFog";
         case PostprocessSubPassId::OobFog:       return "OobFog";
         case PostprocessSubPassId::Composite:    return "Composite";
@@ -94,7 +83,7 @@ constexpr int postprocessSubPassCanonicalIndex(PostprocessSubPassId id) {
 // Equivalently max-min == n-1 AND every index is distinct AND every index is valid.
 //
 // A fused set that skips over an intervening canonical pass (e.g. {CloudShadow, EdgeFog}
-// skipping Shoreline/SSAO/BoxDecals) is NOT contiguous -> the fusion is a REORDER, not a
+// skipping Shoreline) is NOT contiguous -> the fusion is a REORDER, not a
 // subgraph expansion.
 // ---------------------------------------------------------------------------
 constexpr bool vkSubgraphIsContiguous(const PostprocessSubPassId* fusedSet, int n) {
@@ -135,7 +124,7 @@ static_assert(vkSubgraphIsContiguous(kShippedPostprocessSubgraph,
               "experiment (scheduler/oracle + parity proof), not a subgraph expansion.");
 
 // Order-array well-formedness (pure constexpr data -> static_assert).
-static_assert(kPostprocessSubPassOrderCount == 8,
+static_assert(kPostprocessSubPassOrderCount == 6,
               "kPostprocessSubPassOrder row count changed; re-confirm against endScene() "
               "before adjusting (ScreenShadow..Composite).");
 

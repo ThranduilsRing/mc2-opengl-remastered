@@ -148,7 +148,7 @@ static constexpr VkResourceContract kVkResourceContracts[] = {
       "scene depth; sampled by VFX/Water/Veg/PostProcess" },
     { RenderResourceId::MainNormal, RenderResourceKind::Texture2D,
       VkDescriptorClass::CombinedImageSampler, VkResourceFreq::PerFrame,
-      "GBuffer1 normal (attach1); sampled by SSAO/Shoreline/ScreenShadow/BoxDecals" },
+      "GBuffer1 normal (attach1); sampled by Shoreline/ScreenShadow" },
 
     // --- POSTPROCESS-VK-IMAGE-OWNERSHIP-1: Layer-4 subgraph owned intermediate images ---
     // The subgraph owns a COLOR and a DEPTH intermediate. Only the DEPTH image is a

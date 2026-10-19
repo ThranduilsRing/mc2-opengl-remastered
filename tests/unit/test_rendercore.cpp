@@ -215,7 +215,7 @@ TEST_CASE("validateRenderResourceLifetimes ignores invalid (gated-absent) slots"
     // A registered-but-invalid slot with Unset lifetime is NOT an error:
     // gated-absent is separate from lifetime.
     RenderResourceDesc inv{};
-    inv.id = RenderResourceId::SsaoOcclusion; inv.valid = false;
+    inv.id = RenderResourceId::HzbPyramid; inv.valid = false;
     registerOrUpdateRenderResource(inv);
     CHECK(validateRenderResourceLifetimes(nullptr));
     CHECK(getRenderResourceCount() == 0);
@@ -362,25 +362,6 @@ TEST_CASE("RendererFeatureRegistry TerrainTessellation is a default-ON killswitc
     CHECK(std::strcmp(e.envVar, "MC2_TERRAIN_TESS") == 0);
 }
 
-TEST_CASE("RendererFeatureRegistry Track V post/grounding gates are registered default-OFF") {
-    // Every experimental Track V visual gate
-    // MUST be a Feature-kind entry that defaults OFF, so a fresh checkout or a
-    // CI run never silently enables a visual feature. Promoting one to
-    // default-ON is a deliberate edit in RendererFeatureRegistry.h AND here --
-    // this guardrail trips on accidental flips and forces explicit review.
-    struct Row { RendererFeature f; const char* env; };
-    const Row trackV[] = {
-        { RendererFeature::Ssao,        "MC2_SSAO" },
-    };
-    for (const Row& r : trackV) {
-        const EnvVarDesc& e = kFeatureTable[static_cast<int>(r.f)];
-        CHECK((e.kind == EnvVarKind::Feature));
-        CHECK(e.defaultOn == false);
-        REQUIRE(e.envVar != nullptr);
-        CHECK(std::strcmp(e.envVar, r.env) == 0);
-    }
-}
-
 TEST_CASE("RendererFeatureRegistry Retired entries have Retired kind") {
     CHECK((kFeatureTable[static_cast<int>(RendererFeature::GpuMechs)].kind              == EnvVarKind::Retired));
     CHECK((kFeatureTable[static_cast<int>(RendererFeature::StaticPropIndirect)].kind   == EnvVarKind::Retired));
@@ -465,9 +446,9 @@ TEST_CASE("RenderPassContract: PipelineId-family passes back their flag with a r
     // PipelineRegistry registers the static-prop family + MechOpaque
     // plus a set of DESCRIPTIVE-ONLY rows (shadow casters,
     // terrain overlay/decal, water, VFX, post-process) that are NOT routed through
-    // applyPipeline. The enum has Count_=14:
+    // applyPipeline. The enum has Count_=13:
     //   0 Invalid, 1 StaticPropOpaque, 2 StaticPropAlphaTest, 3 MechOpaque,
-    //   4 StaticPropDepth, 5..13 surviving GL families, 14 Count_.
+    //   4 StaticPropDepth, 5..12 surviving GL families, 13 Count_.
     //
     // pipelineDescRegistered means "routes through applyPipeline()", which is
     // BROADER than "owns a dedicated PipelineId enumerator":
@@ -480,7 +461,7 @@ TEST_CASE("RenderPassContract: PipelineId-family passes back their flag with a r
     //
     // Count_ is hardcoded as a tripwire: bump it (and re-examine the family set
     // below) every time a PipelineId enumerator is added.
-    CHECK(static_cast<uint32_t>(PipelineId::Count_) == 14u);
+    CHECK(static_cast<uint32_t>(PipelineId::Count_) == 13u);
     CHECK(static_cast<uint32_t>(PipelineId::Invalid) == 0u);
 
     for (int i = 0; i < kRenderPassContractCount; ++i) {

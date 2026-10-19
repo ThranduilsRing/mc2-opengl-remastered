@@ -1,15 +1,15 @@
-// VK-POST-HZB-NATIVE-1 (rung 8.4) -- the HZB pyramid rendered natively on the
-// shared engine VulkanContext, sampling the shared scene depth directly and
-// writing one separate R32F image per ceil-ladder level.
-//
-// GATE: MC2_VK_POST_HZB - explicit OPT-IN (an Exact1 row: only "1" arms it), default-OFF. Highest precedence
-// at the HZB site when MC2_HZB_BUILD=1. The native path is fail-soft: on any
-// not-ready condition it declines and the caller falls back to the unchanged
-// GL runHzbReduce() body. MC2_HZB_PROBE=1 intentionally forces the native path
-// to decline so the probe keeps reading the fresh GL pyramid instead of stale
-// GL textures.
-
+// Same-frame Vulkan depth pyramid and render-only static-prop occlusion.
 #include "gos_postprocess.h"
+#include "vulkan_shadow_island_live.h"
+#include "vulkan_color_prop_island.h"
+#include "../../RenderCore/hzb_prop_bounds.h"
+#include <bit>
+#include <algorithm>
+#include <cmath>
+#include <cfloat>
+
+using mc2hzb::PropBounds;
+using mc2hzb::ProjectedProp;
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 
@@ -136,6 +136,17 @@ struct gosPostProcess::VkPostHzbNative {
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipe;
     mc2vk::OwnedCommandPool cpool;
+    std::vector<PropBounds> propBounds;
+    uint32_t boundsGeneration = UINT32_MAX;
+    uint32_t cullCapacity = 0, previousCount = 0;
+    uint64_t measuredFrames = 0, totalCulled = 0, totalTested = 0;
+    mc2vk::OwnedBuffer projected, visibility;
+    mc2vk::OwnedDescriptorSetLayout cullDsl;
+    mc2vk::OwnedDescriptorPool cullPool;
+    mc2vk::OwnedShaderModule cullShader;
+    mc2vk::OwnedPipelineLayout cullLayout;
+    mc2vk::OwnedPipeline cullPipe;
+    std::vector<VkDescriptorSet> cullSets;
     uint64_t ticket = 0;   // timeline value of this pass's last submit (0 = never): waited at the NEXT run, not inline after the submit
 };
 
@@ -165,6 +176,103 @@ void destroy_state(gosPostProcess::VkPostHzbNative* s) {
     const bool disabled = s->disabled;
     *s = gosPostProcess::VkPostHzbNative{};
     s->disabled = disabled;
+}
+
+// Geometry is cached per map; all eight corners of the actual local mesh AABB
+// enclose every packet, including off-centre building meshes and rotated props.
+bool cache_prop_bounds(gosPostProcess::VkPostHzbNative* s, uint32_t generation) {
+    if (s->boundsGeneration == generation) return true;
+    Mc2ShadowGeomFeed geom{};
+    const void *vertices = nullptr, *indices = nullptr;
+    uint64_t vb = 0, ib = 0;
+    if (!mc2_shadow_island_get_geometry_feed(&geom) ||
+        !mc2_static_prop_geometry_cpu(&vertices, &vb, &indices, &ib) ||
+        !vertices || !indices || geom.vertexStride < 12 || vb != geom.vboBytes || ib != geom.iboBytes) return false;
+    s->propBounds.assign(geom.typeCount, {});
+    const auto* ix = static_cast<const uint32_t*>(indices);
+    const auto* vx = static_cast<const uint8_t*>(vertices);
+    for (uint32_t t = 0; t < geom.typeCount; ++t) {
+        PropBounds b{{FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX}, false};
+        bool invalid = false;
+        for (uint32_t p = 0; p < geom.typePacketCount[t]; ++p) {
+            const uint64_t pk = uint64_t(geom.typeFirstPacket[t]) + p;
+            if (pk >= geom.packetCount) { invalid = true; break; }
+            const auto& packet = geom.packets[pk];
+            if (uint64_t(packet.firstIndex) + packet.indexCount > ib / sizeof(uint32_t)) { invalid = true; break; }
+            for (uint32_t k = 0; k < packet.indexCount; ++k) {
+                const uint64_t vi = uint64_t(packet.baseVertex) + ix[packet.firstIndex + k];
+                if (vi >= vb / geom.vertexStride) { invalid = true; break; }
+                float pos[3];
+                std::memcpy(pos, vx + vi * geom.vertexStride, sizeof(pos));
+                for (int a = 0; a < 3; ++a) {
+                    if (!std::isfinite(pos[a])) invalid = true;
+                    b.lo[a] = (std::min)(b.lo[a], pos[a]); b.hi[a] = (std::max)(b.hi[a], pos[a]);
+                }
+                b.valid = true;
+            }
+        }
+        b.valid = b.valid && !invalid;
+        s->propBounds[t] = b;
+    }
+    s->boundsGeneration = generation;
+    return true;
+}
+
+
+bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
+    auto* s = &state;
+    if (s->cullCapacity >= count) return true;
+    // The color pass can still be reading the old mask after the HZB ticket.
+    // Only capacity growth replaces its storage/descriptors; retire every reader.
+    vkDeviceWaitIdle(s->device);
+    s->previousCount = 0; // the retired mask no longer supplies telemetry
+    s->cullCapacity = (std::max)(1024u, std::bit_ceil(count));
+    s->cullPool.reset(); s->projected.reset(); s->visibility.reset();
+    if (!make_buffer(s, uint64_t(s->cullCapacity)*sizeof(ProjectedProp), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->projected, "hzb.projected") ||
+        !make_buffer(s, uint64_t(s->cullCapacity+1)*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, s->visibility, "hzb.visibility")) return false;
+    if (!s->cullDsl) {
+        VkDescriptorSetLayoutBinding bindings[3] = {};
+        for (uint32_t i = 0; i < 3; ++i) {
+            bindings[i].binding = i; bindings[i].descriptorCount = 1; bindings[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+            bindings[i].descriptorType = i == 0 ? VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        }
+        VkDescriptorSetLayoutCreateInfo di{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
+        di.bindingCount = 3; di.pBindings = bindings;
+        if (!mc2vk::create(s->cullDsl, s->device, [&](VkDescriptorSetLayout* p){return vkCreateDescriptorSetLayout(s->device,&di,nullptr,p);})) return false;
+        VkPushConstantRange push{VK_SHADER_STAGE_COMPUTE_BIT, 0, 8};
+        const VkDescriptorSetLayout layout = s->cullDsl.get();
+        VkPipelineLayoutCreateInfo li{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+        li.setLayoutCount = 1; li.pSetLayouts = &layout; li.pushConstantRangeCount = 1; li.pPushConstantRanges = &push;
+        if (!mc2vk::create(s->cullLayout,s->device,[&](VkPipelineLayout* p){return vkCreatePipelineLayout(s->device,&li,nullptr,p);})) return false;
+        s->cullShader = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir()+"hzb_cull.comp.spv"));
+        if (!s->cullShader) return false;
+        VkComputePipelineCreateInfo pi{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
+        pi.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        pi.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT; pi.stage.module = s->cullShader.get(); pi.stage.pName = "main"; pi.layout = s->cullLayout.get();
+        if (!mc2vk::create(s->cullPipe,s->device,[&](VkPipeline* p){return vkCreateComputePipelines(s->device,VK_NULL_HANDLE,1,&pi,nullptr,p);})) return false;
+    }
+    const uint32_t levels = uint32_t(s->mipCount);
+    VkDescriptorPoolSize sizes[] = {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, levels}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, levels*2}};
+    VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+    pci.maxSets = levels; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+    if (!mc2vk::create(s->cullPool,s->device,[&](VkDescriptorPool* p){return vkCreateDescriptorPool(s->device,&pci,nullptr,p);})) return false;
+    s->cullSets.resize(levels);
+    for (uint32_t i = 0; i < levels; ++i) {
+        const VkDescriptorSetLayout layout = s->cullDsl.get();
+        VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+        ai.descriptorPool = s->cullPool.get(); ai.descriptorSetCount = 1; ai.pSetLayouts = &layout;
+        if (vkAllocateDescriptorSets(s->device,&ai,&s->cullSets[i]) != VK_SUCCESS) return false;
+        VkDescriptorImageInfo image{s->depthSampler.get(),s->levels[i].view.get(),VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+        VkDescriptorBufferInfo buffers[] = {{s->projected.get(),0,VK_WHOLE_SIZE},{s->visibility.get(),0,VK_WHOLE_SIZE}};
+        VkWriteDescriptorSet writes[3] = {};
+        for (uint32_t j = 0; j < 3; ++j) {
+            writes[j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[j].dstSet = s->cullSets[i]; writes[j].dstBinding = j; writes[j].descriptorCount = 1;
+            writes[j].descriptorType = j==0 ? VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            if (j==0) writes[j].pImageInfo = &image; else writes[j].pBufferInfo = &buffers[j-1];
+        }
+        vkUpdateDescriptorSets(s->device,3,writes,0,nullptr);
+    }
+    return true;
 }
 
 bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount) {
@@ -258,7 +366,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         dep.dstSubpass = VK_SUBPASS_EXTERNAL;
         dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dep.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        dep.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
         dep.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         VkRenderPassCreateInfo rpci{};
         rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -342,10 +450,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
                 params.srcTexel[1] = 1.0f / static_cast<float>(prev.h);
                 params.reduce = 1;
             }
-            if (void* p = lv.ubo.map()) {
-                std::memcpy(p, &params, sizeof(params));
-                lv.ubo.unmap();
-            } else {
+            if (!lv.ubo.upload(&params, sizeof(params))) {
                 vlog("vmaMapMemory(ubo level %d) failed.", level);
                 return false;
             }
@@ -545,42 +650,14 @@ void gosPostProcess::VkPostHzbNativeDeleter::operator()(VkPostHzbNative* s) cons
     delete s;
 }
 
-bool gosPostProcess::vkPostHzbNativeEnabled()
+bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t generation, void** maskBuffer)
 {
-    static int state = -1;
-    if (state == -1) {
-        state = mc2::gate::get<"MC2_VK_POST_HZB">() ? 1 : 0;
-        g_health.runtimeGate = state;
-        if (state == 1) {
-            vlog("MC2_VK_POST_HZB=1 -- rung-8.4 native HZB gate ON "
-                 "(lazy init at the HZB site; fail-soft to GL runHzbReduce).");
-        }
-    }
-    return state == 1;
-}
-
-bool gosPostProcess::runVkPostHzbNative()
-{
-    if (!hzbEnabled_) return false;
-    if (!hzbReduceProg_ || !hzbReduceProg_->is_valid()) return false;
-    if (!hzbLevelTex_[0] || !hzbFBO_ || hzbMipCount_ < 1) return false;
-    if (sceneDepthTex_ == 0) return false;
-    if (hzbProbeEnabled_) {
-        setFallback("probe_enabled");
-        return false;
-    }
-    {
-        static int seenW = -1;
-        static int seenH = -1;
-        static int seenMips = -1;
-        if (seenW != width_ || seenH != height_ || seenMips != hzbMipCount_) {
-            seenW = width_;
-            seenH = height_;
-            seenMips = hzbMipCount_;
-            return false;
-        }
-    }
-
+    g_health.runtimeGate = hzbEnabled_ ? 1 : 0;
+    if (maskBuffer) *maskBuffer = nullptr;
+    if (!hzbEnabled_ || !maskBuffer || !feed.instances112 || !feed.count || feed.count > 131072) return false;
+    int levels = 1;
+    for (int size = (std::max)(width_, height_); size > 1; size = (size+1)/2) ++levels;
+    hzbW_ = width_; hzbH_ = height_; hzbMipCount_ = levels;
     if (!vkPostHzbNative_) vkPostHzbNative_.reset(new (std::nothrow) VkPostHzbNative());
     VkPostHzbNative* s = vkPostHzbNative_.get();
     if (!s) {
@@ -607,12 +684,35 @@ bool gosPostProcess::runVkPostHzbNative()
     if (!s->inited || s->width != width_ || s->height != height_ || s->mipCount != hzbMipCount_) {
         if (s->inited) destroy_state(s);
         if (!build_state(s, width_, height_, hzbMipCount_)) {
-            vlog("init FAILED (reason=%s) -- disabling for this process, GL HZB runs.",
+            vlog("init FAILED (reason=%s) -- disabling for this process, culling keeps every prop.",
                  g_health.fallbackReason[0] ? g_health.fallbackReason : "unknown");
             destroy_state(s);
             s->disabled = true;
             return false;
         }
+    }
+
+    if (!cache_prop_bounds(s, generation) || !build_prop_cull(*s, feed.count)) {
+        setFallback("cull_resources_failed"); s->disabled = true; return false;
+    }
+    if (s->previousCount) {
+        vmaInvalidateAllocation(s->allocator, s->visibility.allocation(), 0, sizeof(uint32_t));
+        if (const void* p = s->visibility.map()) {
+            const uint32_t culled = *static_cast<const uint32_t*>(p);
+            s->visibility.unmap();
+            ++s->measuredFrames; s->totalCulled += culled; s->totalTested += s->previousCount;
+            if (s->measuredFrames <= 3 || s->measuredFrames % 120 == 0)
+                vlog("[CULL] tested=%u culled=%u kept=%u total_tested=%llu total_culled=%llu frames=%llu same_frame=1 render_only=1",
+                    s->previousCount, culled, s->previousCount-culled,
+                    (unsigned long long)s->totalTested, (unsigned long long)s->totalCulled, (unsigned long long)s->measuredFrames);
+        }
+    }
+    std::vector<ProjectedProp> projected(feed.count);
+    const auto* instances = static_cast<const GpuStaticPropInstance*>(feed.instances112);
+    for (uint32_t i = 0; i < feed.count; ++i)
+        projected[i] = mc2hzb::project_prop(instances[i], feed.worldToClipGL, feed.objectDepthBias, s->propBounds, width_, height_, s->mipCount);
+    if (!s->projected.upload(projected.data(), projected.size()*sizeof(ProjectedProp))) {
+        setFallback("bounds_upload_failed"); s->disabled = true; return false;
     }
 
     ++g_health.attempted;
@@ -653,7 +753,7 @@ bool gosPostProcess::runVkPostHzbNative()
             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-            VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
     for (int level = 0; level < s->mipCount; ++level) {
         auto& lv = s->levels[static_cast<size_t>(level)];
@@ -673,6 +773,28 @@ bool gosPostProcess::runVkPostHzbNative()
         vkCmdDraw(cb, 3, 1, 0, 0);
         vkCmdEndRenderPass(cb);
     }
+
+    // Order the prior color pass's mask reads before this frame's reset.
+    auto memoryBarrier = [&](VkPipelineStageFlags src, VkPipelineStageFlags dst, VkAccessFlags from, VkAccessFlags to) {
+        VkMemoryBarrier m{VK_STRUCTURE_TYPE_MEMORY_BARRIER}; m.srcAccessMask = from; m.dstAccessMask = to;
+        vkCmdPipelineBarrier(cb,src,dst,0,1,&m,0,nullptr,0,nullptr);
+    };
+    memoryBarrier(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                  VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
+    vkCmdFillBuffer(cb,s->visibility.get(),0,sizeof(uint32_t),0);
+    memoryBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                  VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+    vkCmdBindPipeline(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->cullPipe.get());
+    for (uint32_t level = 0; level < uint32_t(s->mipCount); ++level) {
+        const uint32_t push[] = {feed.count,level};
+        vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->cullLayout.get(),0,1,&s->cullSets[level],0,nullptr);
+        vkCmdPushConstants(cb,s->cullLayout.get(),VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(push),push);
+        vkCmdDispatch(cb,(feed.count+63)/64,1,1);
+        memoryBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                      VK_ACCESS_SHADER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+    }
+    memoryBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_HOST_BIT,
+                  VK_ACCESS_SHADER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_HOST_READ_BIT);
 
     barrier(s->depthRes->image.get(), VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -698,6 +820,9 @@ bool gosPostProcess::runVkPostHzbNative()
         return false;
     }
 
+    s->previousCount = feed.count;
+    *maskBuffer = reinterpret_cast<void*>(s->visibility.get());
+    ++hzbBuildCount_;
     g_health.copyDepthOps = 0;
     g_health.readbackOps = 0;
     g_health.vkDraws = static_cast<unsigned long>(s->mipCount);

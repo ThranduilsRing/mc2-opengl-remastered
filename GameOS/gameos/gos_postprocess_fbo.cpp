@@ -34,7 +34,6 @@ void gosPostProcess::destroy()
 
     destroyFBOs();
     destroyFullscreenQuad();
-    destroyBoxDecalCube();   // BT2018-BOX-DECAL-1
 
 #ifdef MC2_VULKAN_ISLAND
     // VK-POST-FOG-NATIVE-1 (rung 8.1): same teardown for the native fog pass.
@@ -42,8 +41,6 @@ void gosPostProcess::destroy()
     // destroy() runs after destroyFBOs, so this is usually a no-op that also
     // prints the health line.)
     destroyVkPostFogNative();
-    // VK-POST-SSAO-NATIVE-1 (rung 8.2): same teardown for the native SSAO pass.
-    destroyVkPostSsaoNative();
     // VK-POST-SCREENFX-NATIVE-1 (rung 8.3): same teardown for the native
     destroyVkPostScreenFxNative();
     destroyVkPostHzbNative();
@@ -90,19 +87,6 @@ void gosPostProcess::destroy()
     }
     hdriReady_ = false;
     hdriEnabled_ = false;
-
-    if (ssaoProg_) {
-        glsl_program::deleteProgram("ssao");
-        ssaoProg_ = nullptr;
-    }
-    if (ssaoBlurProg_) {                       // SSAO-BLUR-1
-        glsl_program::deleteProgram("ssao_blur");
-        ssaoBlurProg_ = nullptr;
-    }
-    if (ssaoApplyProg_) {
-        glsl_program::deleteProgram("ssao_apply");
-        ssaoApplyProg_ = nullptr;
-    }
 
     destroyShadows();
     destroyDynamicShadows();
@@ -421,63 +405,6 @@ void gosPostProcess::createFBOs(int w, int h)
         RenderCore::registerOrUpdateRenderResource(d);
     }
 
-    {
-        ssaoW_ = w / 2; if (ssaoW_ < 1) ssaoW_ = 1;
-        ssaoH_ = h / 2; if (ssaoH_ < 1) ssaoH_ = 1;
-
-        // TEX-CLASS: render-target -- SSAO occlusion (FBO attach)
-        glGenTextures(1, &ssaoColorTex_);
-        glBindTexture(GL_TEXTURE_2D, ssaoColorTex_);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, ssaoW_, ssaoH_, 0, GL_RED, GL_FLOAT, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        glGenFramebuffers(1, &ssaoFBO_);
-        RenderCore::framegraph::fboLedger().registerFbo(ssaoFBO_, RenderCore::RenderResourceId::SsaoOcclusion);  // FBO-LEDGER-EXTEND-1
-        glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO_);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoColorTex_, 0);
-
-        GLenum aoStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-        if (aoStatus != GL_FRAMEBUFFER_COMPLETE)
-            mc2::fmt::print_err("gosPostProcess: SSAO FBO incomplete (0x{:x})\n", mc2::fmt::as_u32(aoStatus));
-
-        // REGISTRY-POSTPROCESS-FBO-1: publish the half-res AO target (observe-only).
-        RenderCore::RenderResourceDesc d;
-        d.id        = RenderCore::RenderResourceId::SsaoOcclusion;
-        d.kind      = RenderCore::RenderResourceKind::Texture2D;
-        d.lifetime  = RenderCore::RenderResourceLifetime::FrameLocal;  // transient AO, produced+consumed within endScene
-        d.format    = RenderCore::RenderResourceFormat::R32F;  // GL_R16F storage; closest enum
-        d.debugName = "SsaoOcclusion";
-        d.width     = (uint32_t)ssaoW_;
-        d.height    = (uint32_t)ssaoH_;
-        d.glName    = ssaoColorTex_;
-        d.valid     = (aoStatus == GL_FRAMEBUFFER_COMPLETE);
-        RenderCore::registerOrUpdateRenderResource(d);
-
-        // SSAO-BLUR-1: ping-pong half-res target for the separable bilateral
-        // blur. Identical format/filtering to ssaoColorTex_. Deliberately NOT
-        // published as a RenderResource -- it is a scratch buffer that never
-        // holds the final AO (the V pass writes back into ssaoColorTex_), so
-        // publishing it would give downstream readers a second, wrong handle
-        // for "the AO buffer".
-        glGenTextures(1, &ssaoBlurTex_);
-        glBindTexture(GL_TEXTURE_2D, ssaoBlurTex_);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, ssaoW_, ssaoH_, 0, GL_RED, GL_FLOAT, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        glGenFramebuffers(1, &ssaoBlurFBO_);
-        glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO_);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoBlurTex_, 0);
-        GLenum aoBlurStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-        if (aoBlurStatus != GL_FRAMEBUFFER_COMPLETE)
-            mc2::fmt::print_err("gosPostProcess: SSAO blur FBO incomplete (0x{:x})\n", mc2::fmt::as_u32(aoBlurStatus));
-    }
-
     // --- WATER-REFLECTION-RESOURCE-1: quarter-res reflection target ---
     // Substrate only: allocated + registered, but NO producer renders into it
     // until Phase C, so the texture reads black. Color (RGBA16F) + depth (D24).
@@ -540,68 +467,6 @@ void gosPostProcess::createFBOs(int w, int h)
         ddesc.glName    = waterReflDepthTex_;
         ddesc.valid     = (wrStatus == GL_FRAMEBUFFER_COMPLETE);
         RenderCore::registerOrUpdateRenderResource(ddesc);
-    }
-
-    // --- HZB-DEPTH-PYRAMID-MVP-1: full-res reverse-Z Hi-Z pyramid (R32F) ---
-    // Allocated ONLY when MC2_HZB_BUILD is on -> zero cost / byte-identical when
-    // off. Immutable mip chain (glTexStorage2D) sized by the ceil ladder down to
-    // 1x1; NEAREST + CLAMP_TO_EDGE (explicit-LOD sampling, clamped 2x2 taps).
-    if (hzbEnabled_) {
-        hzbW_ = w;
-        hzbH_ = h;
-        int maxDim = (w > h) ? w : h;
-        int mips = 1;
-        while (maxDim > 1) { maxDim = (maxDim + 1) / 2; ++mips; }
-        if (mips > kHzbMaxLevels) mips = kHzbMaxLevels;
-        hzbMipCount_ = mips;
-
-        // One ceil-sized R32F texture PER level (NOT a mip chain). A single
-        // mipped texture cannot be used here: AMD rejects attaching mip level >0
-        // unless the texture is mipmap-complete, but the ceil ladder is
-        // deliberately mipmap-incomplete (preserves odd-extent texels per
-        // docs/hzb-depth-convention.md). Separate textures also remove any
-        // read/write feedback (source and dest are distinct objects).
-        int lw = w, lh = h;
-        for (int level = 0; level < hzbMipCount_; ++level) {
-            // TEX-CLASS: render-target -- Hi-Z pyramid per-level (FBO attach)
-            glGenTextures(1, &hzbLevelTex_[level]);
-            glBindTexture(GL_TEXTURE_2D, hzbLevelTex_[level]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, lw, lh, 0,
-                         GL_RED, GL_FLOAT, nullptr);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            lw = (lw + 1) / 2; if (lw < 1) lw = 1;
-            lh = (lh + 1) / 2; if (lh < 1) lh = 1;
-        }
-
-        glGenFramebuffers(1, &hzbFBO_);
-        RenderCore::framegraph::fboLedger().registerFbo(hzbFBO_, RenderCore::RenderResourceId::HzbPyramid);  // FBO-LEDGER-EXTEND-1
-        // The destination level texture is bound to COLOR_ATTACHMENT0 per pass
-        // in runHzbReduce(). No dedicated registry slot yet -- surfaced via the
-        // getHzb* accessors.
-
-        MC2_DIAGFE(stderr, "[HZB_BUILD v1] allocated %dx%d mips=%d (R32F, per-level textures)\n",
-                     hzbW_, hzbH_, hzbMipCount_);
-
-        // REGISTRY-POSTPROCESS-FBO-1: publish the Hi-Z pyramid base level (observe-only).
-        // Gated: only allocated/registered when hzbEnabled_; the per-level chain is
-        // surfaced via getHzb* accessors, the registry tracks the level-0 handle.
-        if (hzbLevelTex_[0]) {
-            RenderCore::RenderResourceDesc d;
-            d.id        = RenderCore::RenderResourceId::HzbPyramid;
-            d.kind      = RenderCore::RenderResourceKind::Texture2D;
-            d.lifetime  = RenderCore::RenderResourceLifetime::Persistent;  // frame-persistent, survives mission reload; recreated on resize
-            d.format    = RenderCore::RenderResourceFormat::R32F;
-            d.debugName = "HzbPyramid";
-            d.width     = (uint32_t)hzbW_;
-            d.height    = (uint32_t)hzbH_;
-            d.layers    = (uint32_t)hzbMipCount_;
-            d.glName    = hzbLevelTex_[0];
-            d.valid     = true;
-            RenderCore::registerOrUpdateRenderResource(d);
-        }
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -705,13 +570,12 @@ void gosPostProcess::copySceneColorForVfx()
 void gosPostProcess::destroyFBOs()
 {
 #ifdef MC2_VULKAN_ISLAND
+    // Retire depth sampling views before the shared depth image.
+    destroyVkPostHzbNative();
     // VK-POST-FOG-NATIVE-1: torn down FIRST — it borrows the shared scene
     // color0/depth resources destroyed below (framebuffer/view over their
     // VkImages must not outlive them). Rebuilt lazily at the next fog site.
     destroyVkPostFogNative();
-    // VK-POST-SSAO-NATIVE-1: same discipline — it borrows shared color0/normal/
-    // depth AND mirrors the GL half-res AO sizing rebuilt below.
-    destroyVkPostSsaoNative();
     // VK-POST-SCREENFX-NATIVE-1: same discipline — borrows shared color0/
     // normal/depth (framebuffer/views over their VkImages must not outlive
     // them). Rebuilt lazily at the next cloud/shoreline site.
@@ -828,38 +692,6 @@ void gosPostProcess::destroyFBOs()
         inv.id = RenderCore::RenderResourceId::SceneColorCopy; inv.valid = false;
         RenderCore::registerOrUpdateRenderResource(inv);
     }
-    if (ssaoColorTex_) {
-        glDeleteTextures(1, &ssaoColorTex_); ssaoColorTex_ = 0;
-        // REGISTRY-POSTPROCESS-FBO-1: mark SsaoOcclusion unavailable on teardown.
-        RenderCore::RenderResourceDesc inv;
-        inv.id = RenderCore::RenderResourceId::SsaoOcclusion; inv.valid = false;
-        RenderCore::registerOrUpdateRenderResource(inv);
-    }
-    if (ssaoFBO_)      { glDeleteFramebuffers(1, &ssaoFBO_);   ssaoFBO_ = 0; }
-    // SSAO-BLUR-1: scratch ping-pong target. Not a published RenderResource,
-    // so there is no registry invalidation to mirror here.
-    if (ssaoBlurTex_)  { glDeleteTextures(1, &ssaoBlurTex_);    ssaoBlurTex_ = 0; }
-    if (ssaoBlurFBO_)  { glDeleteFramebuffers(1, &ssaoBlurFBO_); ssaoBlurFBO_ = 0; }
-    ssaoW_ = ssaoH_ = 0;
-
-    // HZB-DEPTH-PYRAMID-MVP-1: free the per-level pyramid textures + FBO
-    // (resize re-allocates if the gate is on).
-#ifdef MC2_VULKAN_ISLAND
-    destroyVkPostHzbNative();
-#endif
-    bool hzbHadBase = (hzbLevelTex_[0] != 0);
-    for (int i = 0; i < kHzbMaxLevels; ++i) {
-        if (hzbLevelTex_[i]) { glDeleteTextures(1, &hzbLevelTex_[i]); hzbLevelTex_[i] = 0; }
-    }
-    if (hzbHadBase) {
-        // REGISTRY-POSTPROCESS-FBO-1: mark HzbPyramid unavailable on teardown.
-        RenderCore::RenderResourceDesc inv;
-        inv.id = RenderCore::RenderResourceId::HzbPyramid; inv.valid = false;
-        RenderCore::registerOrUpdateRenderResource(inv);
-    }
-    if (hzbFBO_) { glDeleteFramebuffers(1, &hzbFBO_); hzbFBO_ = 0; }
-    hzbW_ = hzbH_ = hzbMipCount_ = 0;
-
     // WATER-REFLECTION-RESOURCE-1: free reflection target + mark slots invalid.
     if (waterReflColorTex_) { glDeleteTextures(1, &waterReflColorTex_); waterReflColorTex_ = 0; }
     if (waterReflDepthTex_) { glDeleteTextures(1, &waterReflDepthTex_); waterReflDepthTex_ = 0; }

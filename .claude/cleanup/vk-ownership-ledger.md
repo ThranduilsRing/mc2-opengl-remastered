@@ -20,7 +20,7 @@ code and the proof of a finished conversion, not a leak detector.
 | post_fog | 1 | 0 | 0 | +0 | 0 | - |
 | post_hzb | 1 | 0 | 0 | +0 | 0 | - |
 | post_screenfx | 1 | 0 | 0 | +0 | 0 | - |
-| post_ssao | 1 | 0 | 0 | +0 | 0 | - |
+| post_ssao | 0 | 0 | 0 | +0 | 0 | - |
 | shadow | 2 | 0 | 0 | +0 | 0 | - |
 | sky | 2 | 0 | 0 | +0 | 0 | - |
 | terrain | 6 | 0 | 0 | +0 | 0 | - |
@@ -83,11 +83,9 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 | post_fog | CommandBuffers | 1 | 0 |
 | post_fog | DescriptorSets | 1 | 0 |
 | post_hzb | CommandBuffers | 1 | 0 |
-| post_hzb | DescriptorSets | 1 | 0 |
+| post_hzb | DescriptorSets | 2 | 0 |
 | post_screenfx | CommandBuffers | 1 | 0 |
 | post_screenfx | DescriptorSets | 3 | 0 |
-| post_ssao | CommandBuffers | 1 | 0 |
-| post_ssao | DescriptorSets | 2 | 0 |
 | shadow | CommandBuffers | 2 | 1 |
 | shadow | DescriptorSets | 2 | 0 |
 | sky | CommandBuffers | 2 | 1 |
