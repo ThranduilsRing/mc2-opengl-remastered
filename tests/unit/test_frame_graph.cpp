@@ -1034,7 +1034,6 @@ TEST_CASE("statepack (f): routed passes have non-Invalid pipelineId; non-routed 
     using namespace RenderCore::framegraph;
     // Passes confirmed routed via applyPipeline with a single PipelineId:
     const RenderPassId routed[] = {
-        RenderPassId::StaticPropOpaque,
         RenderPassId::MechOpaque,
     };
     for (RenderPassId id : routed) {
@@ -1045,6 +1044,7 @@ TEST_CASE("statepack (f): routed passes have non-Invalid pipelineId; non-routed 
     }
     // Passes with no single PipelineId (multi-pipeline, descriptive-only, or no routing):
     const RenderPassId invalid[] = {
+        RenderPassId::StaticPropOpaque,
         RenderPassId::TerrainOverlay,
         RenderPassId::TerrainDecal,
         RenderPassId::Terrain,
@@ -1274,9 +1274,9 @@ TEST_CASE("top-level executor (h): kTopLevelDeferredPassCount == 0 (UI-SAME-ORDE
 // (GL context required); only the descriptor table shape is asserted.
 // ---------------------------------------------------------------------------
 
-TEST_CASE("top-level apply-state (a): kTopLevelStateDesc has exactly 6 rows (TerrainDecal, TerrainOverlay, StaticPropOpaque, MechOpaque, Water, Shadow)") {
+TEST_CASE("top-level apply-state (a): only MechOpaque retains a GL state descriptor") {
     using namespace RenderCore::framegraph;
-    CHECK(kTopLevelStateDescCount == 2u);  // native decal/overlay/shadow/water have no GL apply
+    CHECK(kTopLevelStateDescCount == 1u);  // native decal/overlay/shadow/water have no GL apply
 }
 
 TEST_CASE("top-level apply-state (i): findTopLevelStateDesc(MechOpaque) = MechOpaque pipeline, FBO/viewport inherit (not applied)") {
