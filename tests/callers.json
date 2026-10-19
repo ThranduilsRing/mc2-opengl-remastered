@@ -1895,7 +1895,7 @@
           "path": "scripts/tests/test_check_vfx_blend_distinction.py",
           "line": 6,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-lane2/scripts/check-vfx-blend-distinction.py",
+          "reference": "A:\\Games\\mc2-main/scripts/check-vfx-blend-distinction.py",
           "text": "spec = importlib.util.spec_from_file_location(\"vfx_blend\", ROOT / \"scripts/check-vfx-blend-distinction.py\")"
         }
       ],
@@ -3581,7 +3581,7 @@
           "path": "scripts/tests/test_extract_gl_shader_variants.py",
           "line": 8,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-lane2/scripts/extract_gl_shader_variants.py",
+          "reference": "A:\\Games\\mc2-main/scripts/extract_gl_shader_variants.py",
           "text": "spec = importlib.util.spec_from_file_location(\"extract_gl_variants\", ROOT / \"scripts/extract_gl_shader_variants.py\")"
         }
       ],
@@ -6020,6 +6020,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_check_glm_convention.py",
+      "basename": "test_check_glm_convention.py",
+      "stem": "test_check_glm_convention",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_check_native_post_contracts.py",
       "basename": "test_check_native_post_contracts.py",
       "stem": "test_check_native_post_contracts",
@@ -8030,6 +8037,13 @@
         {
           "path": "tools/terrain_beautify/cook_markings.py",
           "line": 94,
+          "evidence": "import",
+          "reference": "stock_missions",
+          "text": "from stock_missions import (  # noqa: E402"
+        },
+        {
+          "path": "tools/terrain_beautify/cook_shore_field.py",
+          "line": 64,
           "evidence": "import",
           "reference": "stock_missions",
           "text": "from stock_missions import (  # noqa: E402"

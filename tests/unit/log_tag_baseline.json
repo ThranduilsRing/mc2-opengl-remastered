@@ -407,23 +407,6 @@
    "count": 1
   },
   {
-   "tag": "B2",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "B2",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "right",
-    "up"
-   ],
-   "count": 1
-  },
-  {
    "tag": "BEACON_DIAG",
    "ver": 1,
    "stream": "stderr",
@@ -2039,21 +2022,6 @@
     "visible",
     "last",
     "turn"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BUILDING_PBR_TRACE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "vb",
-    "ib",
-    "tex",
-    "normal",
-    "orm",
-    "ssbo",
-    "light"
    ],
    "count": 1
   },
@@ -4103,47 +4071,6 @@
    "count": 1
   },
   {
-   "tag": "GOSFX_GPU",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "GOSFX_GPU",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "enabled",
-    "sprites",
-    "draws",
-    "textures",
-    "blendMode"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GOSFX_GPU",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "handle"
-   ],
-   "count": 3
-  },
-  {
-   "tag": "GOSFX_GPU",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "tex",
-    "uv",
-    "count",
-    "blend"
-   ],
-   "count": 1
-  },
-  {
    "tag": "GOSFX_HEAP",
    "ver": 1,
    "stream": "stderr",
@@ -4477,15 +4404,6 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "event"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPU_PARTICLES",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
     "event",
     "budget"
    ],
@@ -4504,16 +4422,6 @@
     "records_per_flush_max",
     "trail_spawn",
     "trail_head"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPU_PARTICLES",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "prog"
    ],
    "count": 1
   },
@@ -6776,16 +6684,6 @@
    "count": 1
   },
   {
-   "tag": "NIGHT_FOG_DIM",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "enabled",
-    "scale"
-   ],
-   "count": 1
-  },
-  {
    "tag": "OBJECTIVES",
    "ver": -1,
    "stream": "stderr",
@@ -8953,22 +8851,6 @@
    "count": 1
   },
   {
-   "tag": "SHADOW_MECH",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "SHADOW_MECH",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "prog"
-   ],
-   "count": 1
-  },
-  {
    "tag": "SHADOW_STATIC_BLDG_REBAKE_TEST",
    "ver": 1,
    "stream": "stderr",
@@ -8978,22 +8860,6 @@
     "buildingIndex"
    ],
    "count": 1
-  },
-  {
-   "tag": "SHADOW_STATIC_PROP",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 3
-  },
-  {
-   "tag": "SHADOW_STATIC_PROP",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "prog"
-   ],
-   "count": 3
   },
   {
    "tag": "SHAPE_C",
@@ -12834,6 +12700,7 @@
   "ORDER_LIVENESS_SUMMARY",
   "PERF",
   "RESOLUTION",
+  "RGBA",
   "SHADER",
   "SHADER ERROR",
   "SHADER_SCHEMA",
