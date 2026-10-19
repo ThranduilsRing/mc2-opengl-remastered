@@ -6,8 +6,7 @@
 #include <algorithm>
 #include "../GameOS/gameos/texture_decode.h"
 #ifdef MC2_VULKAN_ISLAND
-#include "../GameOS/gameos/vulkan_context.h"
-#include "../GameOS/gameos/vk_texture_residency.h"
+#include "../GameOS/gameos/ui_texture.h"
 #endif
 
 DWORD actualTextureSize = 0;

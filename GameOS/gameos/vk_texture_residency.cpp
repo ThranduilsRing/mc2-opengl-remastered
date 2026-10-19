@@ -9,6 +9,11 @@
 #include <utility>
 
 namespace mc2vk {
+bool hasUiImage(RenderCore::TextureHandle handle) { return getOrCreateEngineVulkanContext().textures().contains(handle); }
+void attachUiImage(RenderCore::TextureHandle handle, std::shared_ptr<const RenderCore::KtxImage> image) {
+    getOrCreateEngineVulkanContext().textures().attach(handle,std::move(image));
+}
+
 ResidentTextureRef::~ResidentTextureRef() { if (owner_) owner_->release(handle_); }
 ResidentTextureRef::ResidentTextureRef(ResidentTextureRef&& o) noexcept
     : owner_(std::exchange(o.owner_, nullptr)), handle_(o.handle_) {}
