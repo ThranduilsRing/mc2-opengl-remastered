@@ -79,7 +79,7 @@ void GameTacMap::init( unsigned char* bitmapData, int dataSize )
 {
 
 	EllipseElement::init();
-	TGAFileHeader* pHeader = (TGAFileHeader*)bitmapData;
+	TGAFileHeader* pHeader = reinterpret_cast<TGAFileHeader*>(bitmapData);
 
 	bmpWidth = pHeader->width;
 	bmpHeight = pHeader->height;
@@ -143,7 +143,7 @@ void GameTacMap::update()
 		else
 		{
 			eye->setPosition( world, false );
-			((GameCamera*)(eye))->setTarget( nullptr );
+			(static_cast<GameCamera*>((eye)))->setTarget( nullptr );
 		}
 	}
 	else if ( userInput->isRightClick() && useLeftRightMouseProfile )
@@ -227,14 +227,14 @@ void GameTacMap::render()
 	corners[3].y = corners[2].y = bottom;
 	corners[0].y = corners[1].y = top;
 
-	corners[0].u = 2.f/(float)bmpWidth;
-	corners[3].u = 128.f/(float)bmpWidth;
-	corners[2].u = 2.f/(float)bmpWidth;
-	corners[1].u = 128.f/(float)bmpWidth;
-	corners[0].v = 2.f/(float)bmpWidth;
-	corners[3].v = 128.f/(float)bmpHeight;
-	corners[2].v = 128.f/(float)bmpHeight;
-	corners[1].v = 2.f/(float)bmpWidth;
+	corners[0].u = 2.f/static_cast<float>(bmpWidth);
+	corners[3].u = 128.f/static_cast<float>(bmpWidth);
+	corners[2].u = 2.f/static_cast<float>(bmpWidth);
+	corners[1].u = 128.f/static_cast<float>(bmpWidth);
+	corners[0].v = 2.f/static_cast<float>(bmpWidth);
+	corners[3].v = 128.f/static_cast<float>(bmpHeight);
+	corners[2].v = 128.f/static_cast<float>(bmpHeight);
+	corners[1].v = 2.f/static_cast<float>(bmpWidth);
 	
 	gos_DrawTriangles( corners, 3 );
 	gos_DrawTriangles( &corners[1], 3 );
@@ -477,8 +477,8 @@ int GameTacMap::collectBlips( unsigned long* colors, unsigned long* ringColors,
 // legacy ARGB (gos) -> ImGui packed color
 static ImU32 argbToImU32( unsigned long argb )
 {
-	return IM_COL32( (int)( ( argb >> 16 ) & 0xff ), (int)( ( argb >> 8 ) & 0xff ),
-					 (int)( argb & 0xff ), (int)( ( argb >> 24 ) & 0xff ) );
+	return IM_COL32( static_cast<int>(( ( argb >> 16 ) & 0xff )), static_cast<int>(( ( argb >> 8 ) & 0xff )),
+					 static_cast<int>(( argb & 0xff )), static_cast<int>(( ( argb >> 24 ) & 0xff )) );
 }
 
 bool GameTacMap::renderImGui()
@@ -486,8 +486,8 @@ bool GameTacMap::renderImGui()
 	// panel over the authored HUD rect, through the bottom-band shrink (the
 	// tac area is drawn shrunk by s_hud_scale — see the update() hazard
 	// comment) then the canvas remap inside beginPanel.
-	float pl = (float)left, pt = (float)top;
-	float pr = (float)right, pb = (float)bottom;
+	float pl = static_cast<float>(left), pt = static_cast<float>(top);
+	float pr = static_cast<float>(right), pb = static_cast<float>(bottom);
 	const float cyBand = 0.5f * ( pt + pb );
 	HudImGui::hudShrinkPoint( pl, pt, cyBand );
 	HudImGui::hudShrinkPoint( pr, pb, cyBand );
@@ -499,8 +499,8 @@ bool GameTacMap::renderImGui()
 	const ImVec2 p0 = ImGui::GetWindowPos();
 	const ImVec2 sz = ImGui::GetWindowSize();
 	const ImVec2 p1( p0.x + sz.x, p0.y + sz.y );
-	const float hudW = (float)( right - left );
-	const float hudH = (float)( bottom - top );
+	const float hudW = static_cast<float>(( right - left ));
+	const float hudH = static_cast<float>(( bottom - top ));
 	if ( hudW <= 0.f || hudH <= 0.f )
 	{
 		HudImGui::endPanel();
@@ -515,7 +515,7 @@ bool GameTacMap::renderImGui()
 		ImVec2 operator()( float hx, float hy ) const
 		{ return ImVec2( o.x + ( hx - l ) * kx, o.y + ( hy - t ) * ky ); }
 	};
-	const HudToPanel toPanel = { p0, kx, ky, (float)left, (float)top };
+	const HudToPanel toPanel = { p0, kx, ky, static_cast<float>(left), static_cast<float>(top) };
 
 	// keep every overlay inside the map (legacy rings clip to the map rect)
 	dl->PushClipRect( p0, p1, true );
@@ -525,9 +525,9 @@ bool GameTacMap::renderImGui()
 	const unsigned int mapTex = HudImGui::gosTextureGLName( textureHandle );
 	if ( mapTex )
 	{
-		const ImVec2 uv0( 2.f / (float)bmpWidth, 2.f / (float)bmpWidth );
-		const ImVec2 uv1( 128.f / (float)bmpWidth, 128.f / (float)bmpHeight );
-		dl->AddImage( (ImTextureID)(intptr_t)mapTex, p0, p1, uv0, uv1 );
+		const ImVec2 uv0( 2.f / static_cast<float>(bmpWidth), 2.f / static_cast<float>(bmpWidth) );
+		const ImVec2 uv1( 128.f / static_cast<float>(bmpWidth), 128.f / static_cast<float>(bmpHeight) );
+		dl->AddImage( static_cast<ImTextureID>(static_cast<intptr_t>(mapTex)), p0, p1, uv0, uv1 );
 	}
 
 	// ---- 2) objective markers: parity with the legacy loop (RenderMarkers)
@@ -587,7 +587,7 @@ bool GameTacMap::renderImGui()
 	{
 		if ( ringColors[i] == 0 )
 			continue;
-		float radius = (float)ranges[i];
+		float radius = static_cast<float>(ranges[i]);
 		if ( radius > 1 )
 			radius += land->metersPerCell * 6.f;   // same fudge as drawSensor
 		radius *= hudW / ( land->metersPerCell * land->realVerticesMapSide * 3.f );
@@ -612,7 +612,7 @@ bool GameTacMap::renderImGui()
 			const ImVec2 a = toPanel( v.x - 2.f, v.y - 2.f );
 			const ImVec2 b = toPanel( v.x + 2.1f, v.y + 2.1f );
 			if ( blipTex )
-				dl->AddImage( (ImTextureID)(intptr_t)blipTex, a, b,
+				dl->AddImage( static_cast<ImTextureID>(static_cast<intptr_t>(blipTex)), a, b,
 							  ImVec2( 0.f, 0.f ), ImVec2( .250001f, .250001f ),
 							  argbToImU32( colors[i] ) );
 			else
@@ -641,15 +641,15 @@ bool GameTacMap::renderImGui()
 		// clamped to the map, then the SAME tacMapToWorld the legacy path uses
 		const ImVec2 m = ImGui::GetMousePos();
 		Stuff::Vector2DOf<long> screen;
-		screen.x = (long)( ( m.x - p0.x ) / kx );
-		screen.y = (long)( ( m.y - p0.y ) / ky );
+		screen.x = static_cast<long>(( ( m.x - p0.x ) / kx ));
+		screen.y = static_cast<long>(( ( m.y - p0.y ) / ky ));
 		if ( screen.x < 0 ) screen.x = 0;
 		if ( screen.y < 0 ) screen.y = 0;
-		if ( screen.x > (long)hudW ) screen.x = (long)hudW;
-		if ( screen.y > (long)hudH ) screen.y = (long)hudH;
+		if ( screen.x > (long)hudW ) screen.x = static_cast<long>(hudW);
+		if ( screen.y > (long)hudH ) screen.y = static_cast<long>(hudH);
 
 		glm::vec3 world;
-		tacMapToWorld( screen, (int)hudW, (int)hudH, world );
+		tacMapToWorld( screen, static_cast<int>(hudW), static_cast<int>(hudH), world );
 
 		if ( leftClick || rightClick )
 		{
@@ -674,7 +674,7 @@ bool GameTacMap::renderImGui()
 			// click OR drag: continuous camera pan while held (click-to-move
 			// parity on the initial press)
 			eye->setPosition( world, false );
-			((GameCamera*)(eye))->setTarget( nullptr );
+			(static_cast<GameCamera*>((eye)))->setTarget( nullptr );
 		}
 		else if ( rightClick && useLeftRightMouseProfile )
 		{
@@ -692,19 +692,19 @@ void GameTacMap::worldToTacMap( glm::vec3& world, gos_VERTEX& tac )
 }	
 void GameTacMap::initBuildings( unsigned char* data, int size )
 {
-	if ( data && size >= (int)sizeof(int32_t) )
+	if ( data && size >= static_cast<int>(sizeof(int32_t)) )
 	{
-		int32_t* pData = (int32_t*)data;
+		int32_t* pData = reinterpret_cast<int32_t*>(data);
 		buildingCount = *pData++;
 
 		// Bound the count by what the packet actually holds (2 int32s per
 		// building); a corrupt/short-read packet must not drive the walk
 		// below off the end of the buffer.
-		const int32_t maxCount = (size - (int)sizeof(int32_t)) / (2 * (int)sizeof(int32_t));
+		const int32_t maxCount = (size - static_cast<int>(sizeof(int32_t))) / (2 * static_cast<int>(sizeof(int32_t)));
 		if ( buildingCount < 0 || buildingCount > maxCount )
 		{
 			printf("[TACMAP] initBuildings: buildingCount=%d exceeds packet capacity %d (size=%d) -- clamping to 0\n",
-				buildingCount, (int)maxCount, size);
+				buildingCount, static_cast<int>(maxCount), size);
 			buildingCount = 0;
 		}
 
@@ -737,7 +737,7 @@ void GameTacMap::drawSensor( const glm::vec3& pos, float radius, long color )
 	if ( radius > 1 )
 		radius += land->metersPerCell * 6.f; // a little fudge
 
-	radius *= ((float)(right - left))/(land->metersPerCell * land->realVerticesMapSide * 3.f);
+	radius *= (static_cast<float>((right - left)))/(land->metersPerCell * land->realVerticesMapSide * 3.f);
 
 	for ( int i = 0; i < 4; ++i )
 	{

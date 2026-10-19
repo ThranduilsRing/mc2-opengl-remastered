@@ -165,7 +165,7 @@ void GameObject::destroy_instr (const char* reason, const char* file, int line) 
 	const int         snap_in_view         = inView_instr()      ? 1 : 0;
 	const int         snap_can_be_seen     = canBeSeen_instr()   ? 1 : 0;
 	const int         snap_block_active    = blockActive_instr() ? 1 : 0;
-	const int         snap_frames_inactive = (int)framesSinceActive;
+	const int         snap_frames_inactive = static_cast<int>(framesSinceActive);
 	const int32_t     snap_last_update_ret = lastUpdateRet;
 
 	// 2. Double-destroy: log-and-return without re-calling setExists.
@@ -174,9 +174,9 @@ void GameObject::destroy_instr (const char* reason, const char* file, int line) 
 			char _cbbuf[512];
 			snprintf(_cbbuf, sizeof(_cbbuf),
 				"[DESTROY v1] frame=%u obj=%p kind=%s reason=%s file=%s line=%d exists_was=0 in_view=%d can_be_seen=%d block_active=%d frames_since_active=%d last_update_ret=%d",
-				g_mc2FrameCounter, (void*)this, getObjectClassName(snap_kind), reason,
+				g_mc2FrameCounter, static_cast<void*>(this), getObjectClassName(snap_kind), reason,
 				file, line, snap_in_view, snap_can_be_seen, snap_block_active,
-				snap_frames_inactive, (int)snap_last_update_ret);
+				snap_frames_inactive, static_cast<int>(snap_last_update_ret));
 			puts(_cbbuf);
 			crashbundle_append(_cbbuf);
 			fflush(stdout);
@@ -192,9 +192,9 @@ void GameObject::destroy_instr (const char* reason, const char* file, int line) 
 		char _cbbuf[512];
 		snprintf(_cbbuf, sizeof(_cbbuf),
 			"[DESTROY v1] frame=%u obj=%p kind=%s reason=%s file=%s line=%d exists_was=1 in_view=%d can_be_seen=%d block_active=%d frames_since_active=%d last_update_ret=%d",
-			g_mc2FrameCounter, (void*)this, getObjectClassName(snap_kind), reason,
+			g_mc2FrameCounter, static_cast<void*>(this), getObjectClassName(snap_kind), reason,
 			file, line, snap_in_view, snap_can_be_seen, snap_block_active,
-			snap_frames_inactive, (int)snap_last_update_ret);
+			snap_frames_inactive, static_cast<int>(snap_last_update_ret));
 		puts(_cbbuf);
 		crashbundle_append(_cbbuf);
 		fflush(stdout);
@@ -282,9 +282,9 @@ void WeaponShotInfo::init (GameObjectWatchID _attackerWID, long _masterId, float
 		}
 	}
 
-	Assert((damage >= 0.0) && (damage <= 255.0), (long)damage, " WeaponShotInfo.init: damage out of range ");
+	Assert((damage >= 0.0) && (damage <= 255.0), static_cast<long>(damage), " WeaponShotInfo.init: damage out of range ");
 	if (MPlayer && MPlayer->isServer()) {
-		damage = (float)((unsigned long)(damage * 4.0)) * 0.25;
+		damage = static_cast<float>((static_cast<unsigned long>((damage * 4.0)))) * 0.25;
 		if ((entryAngle >= -45.0) && (entryAngle <= 45.0))
 			entryAngle = 0.0; //MECH_HIT_ARC_FRONT;
 		else if ((entryAngle  > -135.0) && (entryAngle < -45.0))
@@ -302,7 +302,7 @@ void WeaponShotInfo::setDamage (float _damage) {
 
 	damage = _damage;
 	if (MPlayer && MPlayer->isServer())
-		damage = (float)((unsigned long)(damage * 4.0)) * 0.25;
+		damage = static_cast<float>((static_cast<unsigned long>((damage * 4.0)))) * 0.25;
 }
 
 //---------------------------------------------------------------------------
@@ -368,14 +368,14 @@ void DebugWeaponFireChunk (WeaponFireChunkPtr chunk1, WeaponFireChunkPtr chunk2,
 		targetPoint = glm::vec3(0.0f);
 		bool isTargetPoint = false;
 		if (chunk1->targetType == WEAPONFIRECHUNK_TARGET_MOVER)
-			target = (GameObjectPtr)MPlayer->moverRoster[chunk1->targetId];
+			target = static_cast<GameObjectPtr>(MPlayer->moverRoster[chunk1->targetId]);
 		else if (chunk1->targetType == WEAPONFIRECHUNK_TARGET_TERRAIN)
 			target = ObjectManager->findByPartId(chunk1->targetId);
 		else if (chunk1->targetType == WEAPONFIRECHUNK_TARGET_SPECIAL)
 			target = ObjectManager->findByPartId(chunk1->targetId);
 		else if (chunk1->targetType == WEAPONFIRECHUNK_TARGET_LOCATION) {
-			targetPoint.x = (float)chunk1->targetCell[1] * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
-			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - ((float)chunk1->targetCell[0] * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
+			targetPoint.x = static_cast<float>(chunk1->targetCell[1]) * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
+			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - (static_cast<float>(chunk1->targetCell[0]) * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
 			targetPoint.z = TerrainRuntime::groundElevation(targetPoint);
 			isTargetPoint = true;
 		}
@@ -440,14 +440,14 @@ void DebugWeaponFireChunk (WeaponFireChunkPtr chunk1, WeaponFireChunkPtr chunk2,
 		targetPoint = glm::vec3(0.0f);
 		bool isTargetPoint = false;
 		if (chunk2->targetType == WEAPONFIRECHUNK_TARGET_MOVER)
-			target = (GameObjectPtr)MPlayer->moverRoster[chunk2->targetId];
+			target = static_cast<GameObjectPtr>(MPlayer->moverRoster[chunk2->targetId]);
 		else if (chunk2->targetType == WEAPONFIRECHUNK_TARGET_TERRAIN)
 			target = ObjectManager->findByPartId(chunk2->targetId);
 		else if (chunk2->targetType == WEAPONFIRECHUNK_TARGET_SPECIAL)
 			target = ObjectManager->findByPartId(chunk2->targetId);
 		else if (chunk2->targetType == WEAPONFIRECHUNK_TARGET_LOCATION) {
-			targetPoint.x = (float)chunk2->targetCell[1] * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
-			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - ((float)chunk2->targetCell[0] * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
+			targetPoint.x = static_cast<float>(chunk2->targetCell[1]) * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
+			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - (static_cast<float>(chunk2->targetCell[0]) * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
 			targetPoint.z = TerrainRuntime::groundElevation(targetPoint);
 			isTargetPoint = true;
 		}
@@ -545,7 +545,7 @@ void GameObject::emitCombatDeathTrace (long newStatus)
 	snprintf(_cbf, sizeof(_cbf),
 		"{\"ev\":\"%s\",\"wid\":%lu,\"team\":%ld,\"class\":%d}",
 		(newStatus == OBJECT_STATUS_DESTROYED) ? "destroyed" : "disabled",
-		getWatchID(false), getTeamId(), (int)getObjectClass());
+		getWatchID(false), getTeamId(), static_cast<int>(getObjectClass()));
 	mc2_diag::writeEvent("COMBAT", 1, 0, _cbf);
 }
 
@@ -559,7 +559,7 @@ void WeaponFireChunk::buildMoverTarget (GameObjectPtr target,
 										long _hitLocation) {
 
 	targetType = WEAPONFIRECHUNK_TARGET_MOVER;
-	targetId = ((MoverPtr)target)->getNetRosterIndex();
+	targetId = (static_cast<MoverPtr>(target))->getNetRosterIndex();
 	weaponIndex = _weaponIndex;
 	hit = _hit;
 	if ((_entryAngle >= -45.0) && (_entryAngle <= 45.0))
@@ -777,13 +777,13 @@ void WeaponFireChunk::unpack (GameObjectPtr attacker) {
 
 	bool isMissileWeapon = false;
 	if (attacker->isMover()) {
-		long itemIndex = ((MoverPtr)attacker)->numOther + weaponIndex;
-		isMissileWeapon = ((MoverPtr)attacker)->isWeaponMissile(itemIndex);
+		long itemIndex = (static_cast<MoverPtr>(attacker))->numOther + weaponIndex;
+		isMissileWeapon = (static_cast<MoverPtr>(attacker))->isWeaponMissile(itemIndex);
 		}
 	else if (attacker->getObjectClass() == TURRET) {
 		//----------------------
 		// Attacker is turret...
-		isMissileWeapon = ((Turret*)attacker)->isWeaponMissile(weaponIndex);
+		isMissileWeapon = (static_cast<Turret*>(attacker))->isWeaponMissile(weaponIndex);
 	}
 
 	switch (targetType) {
@@ -890,13 +890,13 @@ void WeaponFireChunk::unpack (GameObjectPtr attacker) {
 	if (!hit) {
 		bool isStreakMissile = false;
 		if (attacker->isMover()) {
-			long itemIndex = ((MoverPtr)attacker)->numOther + weaponIndex;
-			isStreakMissile = MasterComponent::masterList[((MoverPtr)attacker)->inventory[itemIndex].masterID].getWeaponStreak();
+			long itemIndex = (static_cast<MoverPtr>(attacker))->numOther + weaponIndex;
+			isStreakMissile = MasterComponent::masterList[(static_cast<MoverPtr>(attacker))->inventory[itemIndex].masterID].getWeaponStreak();
 			}
 		else if (attacker->getObjectClass() == TURRET) {
 			//----------------------
 			// Attacker is turret...
-			isStreakMissile = ((TurretPtr)attacker)->isWeaponStreak(weaponIndex);
+			isStreakMissile = (static_cast<TurretPtr>(attacker))->isWeaponStreak(weaponIndex);
 		}
 		if (isStreakMissile) {
 			DebugWeaponFireChunk(this, NULL, attacker);
@@ -905,7 +905,7 @@ void WeaponFireChunk::unpack (GameObjectPtr attacker) {
 	}
 	GameObjectPtr target = NULL;
 	if (targetType == 0 /*WEAPONFIRECHUNK_TARGET_MOVER*/) {
-		target = (GameObjectPtr)MPlayer->moverRoster[targetId];
+		target = static_cast<GameObjectPtr>(MPlayer->moverRoster[targetId]);
 		//----------------------------------------------------------------------------
 		// Mover targets could be NULL now, since we free them when they're destroyed.
 		//if (target == NULL) {
@@ -1011,7 +1011,7 @@ void DebugWeaponHitChunk (WeaponHitChunkPtr chunk1, WeaponHitChunkPtr chunk2) {
 		GameObjectPtr target = nullptr;
 		bool isTargetPoint = false;
 		if (chunk1->targetType == WEAPONHITCHUNK_TARGET_MOVER)
-			target = (GameObjectPtr)MPlayer->moverRoster[chunk1->targetId];
+			target = static_cast<GameObjectPtr>(MPlayer->moverRoster[chunk1->targetId]);
 		else if (chunk1->targetType == WEAPONHITCHUNK_TARGET_TERRAIN)
 			target = ObjectManager->findByPartId(chunk1->targetId);
 		else if (chunk1->targetType == WEAPONHITCHUNK_TARGET_SPECIAL)
@@ -1068,7 +1068,7 @@ void DebugWeaponHitChunk (WeaponHitChunkPtr chunk1, WeaponHitChunkPtr chunk2) {
 		GameObjectPtr target = nullptr;
 		bool isTargetPoint = false;
 		if (chunk2->targetType == WEAPONHITCHUNK_TARGET_MOVER)
-			target = (GameObjectPtr)MPlayer->moverRoster[chunk2->targetId];
+			target = static_cast<GameObjectPtr>(MPlayer->moverRoster[chunk2->targetId]);
 		else if (chunk2->targetType == WEAPONHITCHUNK_TARGET_TERRAIN)
 			target = ObjectManager->findByPartId(chunk2->targetId);
 		else if (chunk2->targetType == WEAPONHITCHUNK_TARGET_SPECIAL)
@@ -1152,7 +1152,7 @@ void WeaponHitChunk::buildMoverTarget (GameObjectPtr target,
 									   bool isRefit) {
 
 	targetType = WEAPONHITCHUNK_TARGET_MOVER;
-	targetId = ((MoverPtr)target)->getNetRosterIndex();
+	targetId = (static_cast<MoverPtr>(target))->getNetRosterIndex();
 	//Assert((targetId > -1) && (targetId < MPlayer->numMovers), targetId, " WeaponHitChunk.buildMoverTarget: bad targetId ");
 	cause = _cause;
 	//Assert((cause
@@ -1219,7 +1219,7 @@ void WeaponHitChunk::build (GameObjectPtr target, WeaponShotInfoPtr shotInfo, bo
 
 	if (!target)
 		Fatal(0, " WeaponHitChunk.build: NULL target ");
-	Assert(((float)((unsigned long)(shotInfo->damage * 4.0)) * 0.25) == shotInfo->damage, 0, " WeaponHitChunk.build: damage round error ");
+	Assert((static_cast<float>((static_cast<unsigned long>((shotInfo->damage * 4.0)))) * 0.25) == shotInfo->damage, 0, " WeaponHitChunk.build: damage round error ");
 	if (target->isMover()) {
 		//---------------------------------------------------------------
 		// HACK fix for ammoExplosions without needing to save the weapon
@@ -1303,7 +1303,7 @@ void WeaponHitChunk::pack (void) {
 			Fatal(0, " Bad WeaponHitChunk Target Type ");
 	}
 
-	data |= (unsigned long)(damage * 4.0);
+	data |= static_cast<unsigned long>((damage * 4.0));
 	data <<= WEAPONHITCHUNK_TARGETTYPE_BITS;
 
 	data |= targetType;
@@ -1318,7 +1318,7 @@ void WeaponHitChunk::unpack (void) {
 	targetType = (tempData & WEAPONHITCHUNK_TARGETTYPE_MASK);
 	tempData >>= WEAPONHITCHUNK_TARGETTYPE_BITS;
 
-	damage = (float)(tempData & WEAPONHITCHUNK_DAMAGE_MASK) * 0.25;
+	damage = static_cast<float>((tempData & WEAPONHITCHUNK_DAMAGE_MASK)) * 0.25;
 	tempData >>= WEAPONHITCHUNK_DAMAGE_BITS;
 	Assert((damage >= 0.0) && (damage <= 255.0), 0, " WeaponHitChunk.unpack: bad damage ");
 
@@ -1710,7 +1710,7 @@ glm::vec3 GameObject::relativePosition (float angle, float distance, unsigned lo
 	// First, we need to calc the delta vector--how much we extend
 	// the ray everytime we check the map cell for clear placement.
 	deltaVector.normalize();
-	float cellLength = Terrain::metersPerVertex / (float)MAPCELL_DIM;
+	float cellLength = Terrain::metersPerVertex / static_cast<float>(MAPCELL_DIM);
 	cellLength *= 0.5;
 	deltaVector *= cellLength;
 	if (deltaVector.magnitude() == 0.0)
@@ -1918,7 +1918,7 @@ bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad)
 	//Scouting specialty skill.
 	if (isMover())
 	{
-		MoverPtr mover = (MoverPtr)this;
+		MoverPtr mover = static_cast<MoverPtr>(this);
 		if (mover->pilot && mover->pilot->isScout())
 			radius += (radius * 0.2f);
 			

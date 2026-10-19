@@ -65,8 +65,8 @@ void ControlGui::renderResults()
 			{
 				t0 = missionResultsMoveInfo[j].time;
 				t1 = missionResultsMoveInfo[j + 1].time;
-				p0 = (missionResultsMoveInfo[j].position)	* ((float)Environment.screenWidth)/640.f;
-				p1 = (missionResultsMoveInfo[j + 1].position) * ((float)Environment.screenWidth)/640.f;
+				p0 = (missionResultsMoveInfo[j].position)	* (static_cast<float>(Environment.screenWidth))/640.f;
+				p1 = (missionResultsMoveInfo[j + 1].position) * (static_cast<float>(Environment.screenWidth))/640.f;
 				break;
 			}
 		}
@@ -180,7 +180,7 @@ int ControlGui::gatherObjectiveRows( ObjectiveUiRow* rows, int maxRows )
 			if ( pObjective->ActivateOnFlag() &&
 				(20.0/*seconds*//*arbitrary*/ > (mission->actualTime - pObjective->ActivationTime())) )
 			{
-				int tempI = (int)(2.0/*Hz*//*flash frequency*/ * (mission->actualTime - pObjective->ActivationTime()));
+				int tempI = static_cast<int>((2.0/*Hz*//*flash frequency*/ * (mission->actualTime - pObjective->ActivationTime())));
 				if ( 0 == (tempI % 2) )
 					color = 0xffffffff;
 			}
@@ -228,10 +228,10 @@ void ControlGui::renderObjectivesImGui()
 	if ( !gos_ComputeHudCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
 			&bx, &by, &bw, &bh ) )
 	{ bx = 0; by = 0; bw = Environment.drawableWidth; bh = Environment.drawableHeight; }
-	const float lw = Environment.screenWidth  > 0 ? (float)Environment.screenWidth  : 800.0f;
-	const float lh = Environment.screenHeight > 0 ? (float)Environment.screenHeight : 600.0f;
-	const float sx = (float)bw / lw;
-	const float sy = (float)bh / lh;
+	const float lw = Environment.screenWidth  > 0 ? static_cast<float>(Environment.screenWidth)  : 800.0f;
+	const float lh = Environment.screenHeight > 0 ? static_cast<float>(Environment.screenHeight) : 600.0f;
+	const float sx = static_cast<float>(bw) / lw;
+	const float sy = static_cast<float>(bh) / lh;
 	auto AX = [&]( float ax ){ return bx + ax * sx; };
 	auto AY = [&]( float ay ){ return by + ay * sy; };
 
@@ -264,8 +264,8 @@ void ControlGui::renderObjectivesImGui()
 			s_frameGlTex = gos_GetGLTextureName( gosID );
 	}
 
-	ImGui::SetNextWindowPos( ImVec2( (float)bx, (float)by ) );
-	ImGui::SetNextWindowSize( ImVec2( (float)bw, (float)bh ) );
+	ImGui::SetNextWindowPos( ImVec2( static_cast<float>(bx), static_cast<float>(by) ) );
+	ImGui::SetNextWindowSize( ImVec2( static_cast<float>(bw), static_cast<float>(bh) ) );
 	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 0.0f, 0.0f ) );
 	ImGui::Begin( "##mc2_obj", nullptr,
 		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
@@ -302,7 +302,7 @@ void ControlGui::renderObjectivesImGui()
 		unsigned glTex = gos_GetGLTextureName( gosID );
 		if ( !glTex )
 			return;
-		dl->AddImage( (ImTextureID)(intptr_t)glTex,
+		dl->AddImage( static_cast<ImTextureID>(static_cast<intptr_t>(glTex)),
 			ImVec2( AX( axPos ), AY( ayPos ) ),
 			ImVec2( AX( axPos + st.width() ), AY( ayPos + st.height() ) ),
 			ImVec2( st.location[0].u, st.location[0].v ),
@@ -314,7 +314,7 @@ void ControlGui::renderObjectivesImGui()
 	// the pause frame) — a cropped 14x236 PNG gets pow2-padded by the texture
 	// manager, so UV 0..1 sampled the padding and squished the bar.
 	if ( s_frameGlTex )
-		dl->AddImage( (ImTextureID)(intptr_t)s_frameGlTex,
+		dl->AddImage( static_cast<ImTextureID>(static_cast<intptr_t>(s_frameGlTex)),
 			ImVec2( AX( 0.0f + shiftX ), AY( 76.0f ) ),
 			ImVec2( AX( 14.0f + shiftX ), AY( 76.0f + 236.0f ) ),
 			ImVec2( 0.0f / 800.0f, 76.0f / 600.0f ),
@@ -347,7 +347,7 @@ void ControlGui::renderObjectivesImGui()
 		strncpy( desc, row.obj->LocalizedDescription().c_str(), 255 );
 		desc[255] = 0;
 
-		ShadowText( AX( OBJECTIVESLEFT + shiftX ), AY( (float)yPos ), (unsigned long)row.color, desc );
+		ShadowText( AX( OBJECTIVESLEFT + shiftX ), AY( static_cast<float>(yPos) ), static_cast<unsigned long>(row.color), desc );
 
 		if ( bTotal )
 		{
@@ -355,33 +355,33 @@ void ControlGui::renderObjectivesImGui()
 			int amount = row.succeeded ? row.points : 0;
 			mc2::fmt::to_buf(total, "{:d}", mc2::fmt::as_i32(amount));
 			const float totalW = TextWidth( total );
-			ShadowText( AX( (float)OBJECTIVESTOTALRIGHT ) - totalW, AY( (float)yPos ), 0xffffffff, total );
+			ShadowText( AX( static_cast<float>(OBJECTIVESTOTALRIGHT) ) - totalW, AY( static_cast<float>(yPos) ), 0xffffffff, total );
 
 			// leader dots between the description and the right-aligned total
 			const float descW = TextWidth( desc );
 			const float dotW = TextWidth( "...................." ) / 20.f;
-			const float totalLength = ( AX( (float)OBJECTIVESTOTALRIGHT ) - totalW )
+			const float totalLength = ( AX( static_cast<float>(OBJECTIVESTOTALRIGHT) ) - totalW )
 				- ( AX( OBJECTIVESLEFT + shiftX ) + descW );
-			long numberOfDots = (long)( totalLength / dotW );
+			long numberOfDots = static_cast<long>(( totalLength / dotW ));
 			if ( 3 > numberOfDots )
 				numberOfDots = 3;
 			char dots[256];
 			long nd = numberOfDots - 2;
 			if ( nd > 255 ) nd = 255;
 			{ int i = 0; for ( ; i < nd; i++ ) dots[i] = '.'; dots[i] = 0; }
-			const float dotFinalLength = dotW * (float)nd;
-			ShadowText( AX( (float)OBJECTIVESTOTALRIGHT ) - totalW - dotFinalLength,
-				AY( (float)yPos ), (unsigned long)row.color, dots );
+			const float dotFinalLength = dotW * static_cast<float>(nd);
+			ShadowText( AX( static_cast<float>(OBJECTIVESTOTALRIGHT) ) - totalW - dotFinalLength,
+				AY( static_cast<float>(yPos) ), static_cast<unsigned long>(row.color), dots );
 		}
 
 		// little box + check/X marks (authored x from the fit statics; y
 		// follows the row like the legacy setLocation calls)
 		if ( boxTile )
-			StaticTile( *boxTile, boxTile->location[0].x, (float)( yPos + OBJECTIVEBOXSKIP ) );
+			StaticTile( *boxTile, boxTile->location[0].x, static_cast<float>(( yPos + OBJECTIVEBOXSKIP )) );
 		if ( row.failed && xTile )
-			StaticTile( *xTile, xTile->location[0].x, (float)( yPos + OBJECTIVECHECKSKIP ) );
+			StaticTile( *xTile, xTile->location[0].x, static_cast<float>(( yPos + OBJECTIVECHECKSKIP )) );
 		else if ( row.succeeded && checkTile )
-			StaticTile( *checkTile, checkTile->location[0].x, (float)( yPos + OBJECTIVECHECKSKIP ) );
+			StaticTile( *checkTile, checkTile->location[0].x, static_cast<float>(( yPos + OBJECTIVECHECKSKIP )) );
 	};
 
 	// primary objectives
@@ -410,7 +410,7 @@ void ControlGui::renderObjectivesImGui()
 	// "Secondary Objectives" header
 	cLoadString( IDS_SECONDARY, buffer, 245 );
 	pos += OBJEECTIVESHEADERSKIP;
-	ShadowText( AX( OBJECTIVEHEADERLEFT + shiftX ), AY( (float)pos ), 0xffffffff, buffer );
+	ShadowText( AX( OBJECTIVEHEADERLEFT + shiftX ), AY( static_cast<float>(pos) ), 0xffffffff, buffer );
 
 	// secondary objectives
 	for ( int r = 0; r < nRows; r++ )
@@ -441,7 +441,7 @@ void ControlGui::renderObjectivesImGui()
 		cLoadString( IDS_TOTAL, total2, 255 );
 		sprintf( total, total2, sum );
 		const float width = TextWidth( total );
-		ShadowText( AX( (float)OBJECTIVESTOTALRIGHT ) - width, AY( (float)pos ), 0xffffffff, total );
+		ShadowText( AX( static_cast<float>(OBJECTIVESTOTALRIGHT) ) - width, AY( static_cast<float>(pos) ), 0xffffffff, total );
 	}
 
 	ImGui::End();
@@ -475,20 +475,20 @@ void ControlGui::renderTimerImGui( const char* buffer, unsigned long color )
 	if ( !gos_ComputeHudCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
 			&bx, &by, &bw, &bh ) )
 	{ bx = 0; by = 0; bw = Environment.drawableWidth; bh = Environment.drawableHeight; }
-	const float lw = Environment.screenWidth  > 0 ? (float)Environment.screenWidth  : 800.0f;
-	const float lh = Environment.screenHeight > 0 ? (float)Environment.screenHeight : 600.0f;
+	const float lw = Environment.screenWidth  > 0 ? static_cast<float>(Environment.screenWidth)  : 800.0f;
+	const float lh = Environment.screenHeight > 0 ? static_cast<float>(Environment.screenHeight) : 600.0f;
 	// same activation condition as flushHUDBatch (scale < 0.999 gate included)
 	const float hud = ( gos_GetHudScaleActive() && gos_GetHudScale() < 0.999f )
 		? gos_GetHudScale() : 1.0f;
-	const float cx = (float)bw / lw;
-	const float cy = (float)bh / lh;
+	const float cx = static_cast<float>(bw) / lw;
+	const float cy = static_cast<float>(bh) / lh;
 	const float sx = cx * hud;
 	const float sy = cy * hud;
 	auto AX = [&]( float ax ){ return bx + ( lw * 0.5f + ( ax - lw * 0.5f ) * hud ) * cx; };
 	auto AY = [&]( float ay ){ return by + ( lh        + ( ay - lh        ) * hud ) * cy; };
 
-	ImGui::SetNextWindowPos( ImVec2( (float)bx, (float)by ) );
-	ImGui::SetNextWindowSize( ImVec2( (float)bw, (float)bh ) );
+	ImGui::SetNextWindowPos( ImVec2( static_cast<float>(bx), static_cast<float>(by) ) );
+	ImGui::SetNextWindowSize( ImVec2( static_cast<float>(bw), static_cast<float>(bh) ) );
 	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 0.0f, 0.0f ) );
 	ImGui::PushStyleVar( ImGuiStyleVar_WindowBorderSize, 0.0f );   // see video panel note
 	ImGui::Begin( "##mc2_timer", nullptr,
@@ -505,8 +505,8 @@ void ControlGui::renderTimerImGui( const char* buffer, unsigned long color )
 	// state (color==0) renders opaque black exactly like the legacy path.
 	HGOSFONT3D tf = timerFont.getTempHandle();
 	const float wA = HudFont::Measure( tf, buffer, 1.0f, 1.0f ).x;
-	const float xA = (float)timerRect.rect.left - wA;
-	const float yA = (float)timerRect.rect.top;
+	const float xA = static_cast<float>(timerRect.rect.left) - wA;
+	const float yA = static_cast<float>(timerRect.rect.top);
 	HudFont::Draw( dl, tf, AX( xA - 1.0f ), AY( yA + 1.0f ),
 		IM_COL32( 0, 0, 0, 255 ), buffer, sx, sy );
 	HudFont::Draw( dl, tf, AX( xA ), AY( yA ),
@@ -524,7 +524,7 @@ void ControlGui::renderTimerImGui( const char* buffer, unsigned long color )
 		unsigned glTex = gos_GetGLTextureName( gosID );
 		if ( !glTex )
 			continue;
-		dl->AddImage( (ImTextureID)(intptr_t)glTex,
+		dl->AddImage( static_cast<ImTextureID>(static_cast<intptr_t>(glTex)),
 			ImVec2( AX( st.location[0].x ), AY( st.location[0].y ) ),
 			ImVec2( AX( st.location[2].x ), AY( st.location[2].y ) ),
 			ImVec2( st.location[0].u, st.location[0].v ),
@@ -550,15 +550,15 @@ void ControlGui::renderVideoImGui()
 	if ( !gos_ComputeHudCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
 			&bx, &by, &bw, &bh ) )
 	{ bx = 0; by = 0; bw = Environment.drawableWidth; bh = Environment.drawableHeight; }
-	const float lw = Environment.screenWidth  > 0 ? (float)Environment.screenWidth  : 800.0f;
-	const float lh = Environment.screenHeight > 0 ? (float)Environment.screenHeight : 600.0f;
-	const float sx = (float)bw / lw;
-	const float sy = (float)bh / lh;
+	const float lw = Environment.screenWidth  > 0 ? static_cast<float>(Environment.screenWidth)  : 800.0f;
+	const float lh = Environment.screenHeight > 0 ? static_cast<float>(Environment.screenHeight) : 600.0f;
+	const float sx = static_cast<float>(bw) / lw;
+	const float sy = static_cast<float>(bh) / lh;
 	auto AX = [&]( float ax ){ return bx + ax * sx; };
 	auto AY = [&]( float ay ){ return by + ay * sy; };
 
-	ImGui::SetNextWindowPos( ImVec2( (float)bx, (float)by ) );
-	ImGui::SetNextWindowSize( ImVec2( (float)bw, (float)bh ) );
+	ImGui::SetNextWindowPos( ImVec2( static_cast<float>(bx), static_cast<float>(by) ) );
+	ImGui::SetNextWindowSize( ImVec2( static_cast<float>(bw), static_cast<float>(bh) ) );
 	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 0.0f, 0.0f ) );
 	// WindowBorderSize=0: the default 1px border insets the window inner clip
 	// rect, clipping chrome texels that touch the canvas boundary (the top
@@ -583,7 +583,7 @@ void ControlGui::renderVideoImGui()
 		unsigned glTex = gos_GetGLTextureName( gosID );
 		if ( !glTex )
 			continue;
-		dl->AddImage( (ImTextureID)(intptr_t)glTex,
+		dl->AddImage( static_cast<ImTextureID>(static_cast<intptr_t>(glTex)),
 			ImVec2( AX( st.location[0].x ), AY( st.location[0].y ) ),
 			ImVec2( AX( st.location[2].x ), AY( st.location[2].y ) ),
 			ImVec2( st.location[0].u, st.location[0].v ),
@@ -602,14 +602,14 @@ void ControlGui::renderVideoImGui()
 			// letterbox fill (opaque black) when the aspect-fit quad does not
 			// cover the dest rect — same condition as video_render.
 			if ( qx0 > (float)rx || qy0 > (float)ry ||
-				 qx1 < (float)( rx + rw ) || qy1 < (float)( ry + rh ) )
+				 qx1 < static_cast<float>(( rx + rw )) || qy1 < static_cast<float>(( ry + rh )) )
 				dl->AddRectFilled(
-					ImVec2( AX( (float)rx ), AY( (float)ry ) ),
-					ImVec2( AX( (float)( rx + rw ) ), AY( (float)( ry + rh ) ) ),
+					ImVec2( AX( static_cast<float>(rx) ), AY( static_cast<float>(ry) ) ),
+					ImVec2( AX( static_cast<float>(( rx + rw )) ), AY( static_cast<float>(( ry + rh )) ) ),
 					IM_COL32( 0, 0, 0, 255 ) );
 			unsigned glTex = gos_GetGLTextureName( gosTex );
 			if ( glTex )
-				dl->AddImage( (ImTextureID)(intptr_t)glTex,
+				dl->AddImage( static_cast<ImTextureID>(static_cast<intptr_t>(glTex)),
 					ImVec2( AX( qx0 ), AY( qy0 ) ),
 					ImVec2( AX( qx1 ), AY( qy1 ) ),
 					ImVec2( 0.0f, 0.0f ), ImVec2( 1.0f, 1.0f ) );
@@ -657,8 +657,8 @@ void ControlGui::RenderObjectives()
 			{
 				t0 = objectiveMoveInfo[j].time;
 				t1 = objectiveMoveInfo[j + 1].time;
-				p0 = (objectiveMoveInfo[j].position)	* ((float)Environment.screenWidth)/640.f;
-				p1 = (objectiveMoveInfo[j + 1].position) * ((float)Environment.screenWidth)/640.f;
+				p0 = (objectiveMoveInfo[j].position)	* (static_cast<float>(Environment.screenWidth))/640.f;
+				p1 = (objectiveMoveInfo[j + 1].position) * (static_cast<float>(Environment.screenWidth))/640.f;
 				break;
 			}
 		}
@@ -816,8 +816,8 @@ void ControlGui::renderPlayerStatus(float xDelta)
 			mpStats[i].showGUIWindow( 0 );
 	}
 
-	GUI_RECT rect = { (long)(mpStats[0].left()-5+xDelta), (long)(mpStats[0].top()-5), 
-		(long)(mpStats[0].right()+5+xDelta), (long)(mpStats[0].bottom()+5)};
+	GUI_RECT rect = { static_cast<long>((mpStats[0].left()-5+xDelta)), static_cast<long>((mpStats[0].top()-5)),
+		static_cast<long>((mpStats[0].right()+5+xDelta)), static_cast<long>((mpStats[0].bottom()+5))};
 	
 	for (int i = 1; i < 9; i++ )
 	{
@@ -887,13 +887,13 @@ void ControlGui::renderObjective( const ObjectiveUiRow& row, long xPos, long yPo
 		// draw .............
 		DWORD tmpULong1, tmpULong2;
 		gos_TextStringLength( &tmpULong1, &tmpULong2, pObjective->LocalizedDescription().c_str() );
-		descWidth = (int)tmpULong1;
-		height = (int)tmpULong2;
+		descWidth = static_cast<int>(tmpULong1);
+		height = static_cast<int>(tmpULong2);
 		gos_TextStringLength( &tmpULong1, &tmpULong2, "...................." );
-		dotWidth = (int)tmpULong1;
-		height = (int)tmpULong2;
+		dotWidth = static_cast<int>(tmpULong1);
+		height = static_cast<int>(tmpULong2);
 		gosASSERT(0 < dotWidth);
-		float dotRealWidth = (((float)dotWidth)/20.f);
+		float dotRealWidth = ((static_cast<float>(dotWidth))/20.f);
 
 		float totalLength = (OBJECTIVESTOTALRIGHT - width - xPos - descWidth);
 		long numberOfDots = (totalLength)/dotRealWidth;
@@ -903,14 +903,14 @@ void ControlGui::renderObjective( const ObjectiveUiRow& row, long xPos, long yPo
 			numberOfDots = 3;
 		}
 		
-		char* dots = (char*)_alloca( sizeof( char ) * (numberOfDots+1) );
+		char* dots = static_cast<char*>(_alloca( sizeof( char ) * (numberOfDots+1) ));
         int i;
 		for (i = 0; i < numberOfDots - 2; i++ )
 			dots[i] = '.';
 		
 		dots[i] = 0;
 
-		float dotFinalLength = dotRealWidth * (float)(numberOfDots - 2);
+		float dotFinalLength = dotRealWidth * static_cast<float>((numberOfDots - 2));
 
 		drawShadowText( color, 0xff000000, guiFont.getTempHandle(), OBJECTIVESTOTALRIGHT - width - dotFinalLength, yPos, 0, dots, 
 			0, guiFont.getSize() );

@@ -159,7 +159,7 @@ void	ControlGui::toggleHoldPosition()
 			if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
 			{
 				if (pMover->getPilot()->getCurTacOrder()->code != TACTICAL_ORDER_NONE) {
-					pMover->getPilot()->getCurTacOrder()->attackParams.range = (FireRangeType)pMover->attackRange;
+					pMover->getPilot()->getCurTacOrder()->attackParams.range = static_cast<FireRangeType>(pMover->attackRange);
 					if (pMover->attackRange == FIRERANGE_CURRENT)
 						pMover->getPilot()->getCurTacOrder()->attackParams.pursue = false;
 					else if (getFireFromCurrentPos())

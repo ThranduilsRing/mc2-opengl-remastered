@@ -99,7 +99,7 @@ void GoalObject::destroy (void) {
 
 void GoalObject::addLink (GoalObjectPtr gobject, GoalLinkType type) {
 
-	GoalLinkPtr newLink = (GoalLink*)missionHeap->Malloc(sizeof(GoalLink));
+	GoalLinkPtr newLink = static_cast<GoalLink*>(missionHeap->Malloc(sizeof(GoalLink)));
 	
 }
 
@@ -371,7 +371,7 @@ void GoalManager::calcRegions (void) {
 void GoalManager::build (void) {
 	
 	//For temps, pull 'em off the windows heap.  IT can resize.  OURS cannot!!!!
-	fillStack = (short*)malloc(FILL_STACK_SIZE * sizeof(short));
+	fillStack = static_cast<short*>(malloc(FILL_STACK_SIZE * sizeof(short)));
 	gosASSERT(fillStack != nullptr);
 	fillStackIndex = 0;
 

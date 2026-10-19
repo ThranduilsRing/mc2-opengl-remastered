@@ -35,7 +35,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 		{
 			extern uint32_t g_mc2FrameCounter;
 			static bool s_infoDone = false;
-			if ( !s_infoDone && (long)g_mc2FrameCounter >= s_bootInfo )
+			if ( !s_infoDone && static_cast<long>(g_mc2FrameCounter) >= s_bootInfo )
 			{
 				for ( int i = 0; i < ObjectManager->numMovers; i++ )
 				{
@@ -50,7 +50,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 						getButton( TACMAP_TAB )->press( false );
 						getButton( VEHICLE_TAB )->press( false );
 						getButton( INFO_TAB )->press( true );
-						mc2::fmt::print_out("[BOOT_INFO] selected mover teamId={:d} -> INFO tab (frame {:d})\n", mc2::fmt::as_i32(m->getTeamId()), mc2::fmt::as_u32((unsigned)g_mc2FrameCounter));
+						mc2::fmt::print_out("[BOOT_INFO] selected mover teamId={:d} -> INFO tab (frame {:d})\n", mc2::fmt::as_i32(m->getTeamId()), mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter)));
 						fflush(stdout);
 						break;
 					}
@@ -70,11 +70,11 @@ void ControlGui::update( bool bPaused, bool bLOS )
 		{
 			extern uint32_t g_mc2FrameCounter;
 			static bool s_objDone = false;
-			if ( !s_objDone && (long)g_mc2FrameCounter >= s_bootObj )
+			if ( !s_objDone && static_cast<long>(g_mc2FrameCounter) >= s_bootObj )
 			{
 				s_objDone = true;
 				startObjectives( 1 );
-				mc2::fmt::print_out("[BOOT_OBJ] startObjectives(1) (frame {:d})\n", mc2::fmt::as_u32((unsigned)g_mc2FrameCounter));
+				mc2::fmt::print_out("[BOOT_OBJ] startObjectives(1) (frame {:d})\n", mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter)));
 				fflush(stdout);
 			}
 		}
@@ -98,7 +98,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 		{
 			extern uint32_t g_mc2FrameCounter;
 			static bool s_objCompleteDone = false;
-			if ( !s_objCompleteDone && (long)g_mc2FrameCounter >= s_bootObjComplete )
+			if ( !s_objCompleteDone && static_cast<long>(g_mc2FrameCounter) >= s_bootObjComplete )
 			{
 				s_objCompleteDone = true;
 				for ( CObjective* pObjective : Team::home->objectives )
@@ -106,7 +106,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 					if ( !pObjective->IsActive() || pObjective->IsHiddenTrigger() )
 						continue;
 					pObjective->Status( OS_SUCCESSFUL );
-					mc2::fmt::print_out("[BOOT_OBJ_COMPLETE] objective '{}' -> OS_SUCCESSFUL (frame {:d})\n", pObjective->LocalizedDescription(), mc2::fmt::as_u32((unsigned)g_mc2FrameCounter));
+					mc2::fmt::print_out("[BOOT_OBJ_COMPLETE] objective '{}' -> OS_SUCCESSFUL (frame {:d})\n", pObjective->LocalizedDescription(), mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter)));
 					fflush(stdout);
 					break;
 				}
@@ -137,11 +137,11 @@ void ControlGui::update( bool bPaused, bool bLOS )
 		{
 			extern uint32_t g_mc2FrameCounter;
 			static bool s_timerDone = false;
-			if ( !s_timerDone && (long)g_mc2FrameCounter >= s_bootTimer )
+			if ( !s_timerDone && static_cast<long>(g_mc2FrameCounter) >= s_bootTimer )
 			{
 				s_timerDone = true;
 				mission->m_timeLimit = scenarioTime + s_bootTimerSecs;
-				mc2::fmt::print_out("[BOOT_TIMER] m_timeLimit={:f} secs={:f} (frame {:d})\n", mission->m_timeLimit, s_bootTimerSecs, mc2::fmt::as_u32((unsigned)g_mc2FrameCounter));
+				mc2::fmt::print_out("[BOOT_TIMER] m_timeLimit={:f} secs={:f} (frame {:d})\n", mission->m_timeLimit, s_bootTimerSecs, mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter)));
 				fflush(stdout);
 			}
 		}
@@ -238,7 +238,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 	{ ZoneScopedN("CGui.RosterScan"); CgScope _c(CG_ROSTER);
 	for (int i = 0; i < pTeam->getRosterSize(); ++i )
 	{
-		Mover* pMover = (Mover*)pTeam->getMover( i );
+		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 		
 		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
 		{
@@ -584,7 +584,7 @@ void ControlGui::handleClick( int ID )
 		bool bPress = getButton( ID )->state == ControlButton::PRESSED ? 1 : 0;
 		for (long i = 0; i < Team::home->getRosterSize(); i++)
 		{
-			Mover* pMover = (Mover*)Team::home->getMover( i );
+			Mover* pMover = static_cast<Mover*>(Team::home->getMover( i ));
 			if ( pMover->isSelected() && pMover->isGuardTower() && pMover->getCommander()->getId() == Commander::home->getId())
 			{
 				pMover->suppressionFire = bPress;
@@ -628,10 +628,10 @@ void ControlGui::doStop()
 	
 	for (long i = 0; i < pTeam->getRosterSize(); i++)
 	{
-		Mover* pMover = (Mover*)pTeam->getMover( i );
+		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
 		{
-			tacOrder.attackParams.range = (FireRangeType)pMover->attackRange;
+			tacOrder.attackParams.range = static_cast<FireRangeType>(pMover->attackRange);
 			tacOrder.pack(nullptr, nullptr);
 
 			//---------------------------------------------------------------------

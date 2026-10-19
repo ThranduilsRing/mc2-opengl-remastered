@@ -48,7 +48,7 @@ float GroundVehicle::getStatusRating (void) {
 	float armorEffect = armorFront * armorRear * armorLeft * armorRight;
 				
 	float pilotWoundTable[7] = {1.00f,0.95f,0.85f,0.75f,0.50f,0.30f,0.00f};
-	float pilotEffect = pilotWoundTable[(long)getPilot()->getWounds()];
+	float pilotEffect = pilotWoundTable[static_cast<long>(getPilot()->getWounds())];
 	if (isDestroyed() || isDisabled())
 		pilotEffect = 0.0;
 					

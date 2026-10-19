@@ -389,7 +389,7 @@ void ControlGui::initStatics( FitIniFile& file )
 		file.readIdLong( "Width", width );
 		file.readIdLong( "Height", height );
 
-		((aObject*)&playerNameEdit)->init( left+2, top, width, height );
+		(static_cast<aObject*>(&playerNameEdit))->init( left+2, top, width, height );
 		playerNameEdit.setFont( IDS_CHAT_PLAYERNAME_FONT );
 		timerFont.init( IDS_OUTLINE_CHAT_FONT );
 		int fontHeight = playerNameEdit.getFontObject()->height();
@@ -402,12 +402,12 @@ void ControlGui::initStatics( FitIniFile& file )
 		file.readIdLong( "Width", width );
 		file.readIdLong( "Height", height );
 
-		((aObject*)&chatEdit)->init( left, top, width, height ); 
+		(static_cast<aObject*>(&chatEdit))->init( left, top, width, height );
 		chatEdit.font.init( IDS_OUTLINE_CHAT_FONT );
 		chatEdit.setColor( 0xffffffff );
 		chatEdit.resize( chatEdit.width(), fontHeight );
 
-		((aObject*)&personalEdit)->init( left, top, width, height );
+		(static_cast<aObject*>(&personalEdit))->init( left, top, width, height );
 		personalEdit.setFont( IDS_OUTLINE_CHAT_FONT );
 		personalEdit.setTextColor( 0xffffffff );
 		personalEdit.resize( personalEdit.width(), fontHeight );
@@ -498,7 +498,7 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 		// Walk DOWN the resolution ladder and use the best fit that exists.
 		static const int fallbackWidths[] = { 1920, 1680, 1600, 1440, 1366, 1280, 1024, 800, 640 };
 		bool opened = false;
-		for ( int fi = 0; fi < (int)(sizeof(fallbackWidths)/sizeof(fallbackWidths[0])); fi++ )
+		for ( int fi = 0; fi < static_cast<int>((sizeof(fallbackWidths)/sizeof(fallbackWidths[0]))); fi++ )
 		{
 			if ( fallbackWidths[fi] >= resolutionX )
 				continue; // only try LOWER (or equal-lower) candidates

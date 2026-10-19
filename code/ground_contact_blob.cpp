@@ -70,10 +70,10 @@ constexpr float kAlphaMax = 0.38f;
 // bits [31:24]=A [23:16]=R [15:8]=G [7:0]=B, little-endian BGRA).
 unsigned int packBGRA(float r, float g, float b, float a)
 {
-    unsigned int ib = (unsigned int)(b * 255.0f + 0.5f);
-    unsigned int ig = (unsigned int)(g * 255.0f + 0.5f);
-    unsigned int ir = (unsigned int)(r * 255.0f + 0.5f);
-    unsigned int ia = (unsigned int)(a * 255.0f + 0.5f);
+    unsigned int ib = static_cast<unsigned int>((b * 255.0f + 0.5f));
+    unsigned int ig = static_cast<unsigned int>((g * 255.0f + 0.5f));
+    unsigned int ir = static_cast<unsigned int>((r * 255.0f + 0.5f));
+    unsigned int ia = static_cast<unsigned int>((a * 255.0f + 0.5f));
     return (ia << 24) | (ir << 16) | (ig << 8) | ib;
 }
 

@@ -108,8 +108,8 @@ GameplayPickResult tryGameplayPick(const GameplayPickRequest& req)
 
     // Off-screen guard (viewport-space bounds).
     if (req.mouseX < 0 || req.mouseY < 0
-        || req.mouseX >= (int)r.ctx.vMulX
-        || req.mouseY >= (int)r.ctx.vMulY)
+        || req.mouseX >= static_cast<int>(r.ctx.vMulX)
+        || req.mouseY >= static_cast<int>(r.ctx.vMulY))
         return r;
 
     // Coord translation: viewport-space -> FBO pixel -> GL pixel.

@@ -147,7 +147,7 @@
    "LG06": 472,
    "LG07": 2,
    "LG08": 17,
-   "LG09": 1937,
+   "LG09": 1641,
    "LG10": 20,
    "LG11": 103,
    "LG12a": 100,
@@ -157,7 +157,7 @@
    "LG15": 0,
    "LG16": 6,
    "LG17": 48,
-   "LG18": 3,
+   "LG18": 4,
    "LG19": 0,
    "LG20": 1
   },
@@ -1688,9 +1688,6 @@
    "LG12a": 1,
    "LG12b": 2
   },
-  "code/controlgui.cpp": {
-   "LG09": 12
-  },
   "code/controlgui.h": {
    "LG06": 4,
    "LG13": 1,
@@ -1699,36 +1696,29 @@
   },
   "code/controlgui_chat.cpp": {
    "LG06": 2,
-   "LG09": 1,
    "LG11": 1
   },
   "code/controlgui_hudtabs.cpp": {
-   "LG06": 1,
-   "LG09": 13
+   "LG06": 1
   },
   "code/controlgui_init.cpp": {
-   "LG06": 1,
-   "LG09": 4
+   "LG06": 1
   },
   "code/controlgui_internal.h": {
    "LG13": 1
   },
   "code/controlgui_objectives.cpp": {
    "LG06": 3,
-   "LG09": 54,
    "LG12b": 2
   },
   "code/controlgui_render.cpp": {
-   "LG09": 19,
    "LG10": 1
   },
   "code/controlgui_update.cpp": {
-   "LG09": 8,
    "LG14": 1
   },
   "code/controlgui_vehicle.cpp": {
    "LG05": 1,
-   "LG09": 4,
    "LG12b": 1
   },
   "code/damage_schema.h": {
@@ -1779,7 +1769,6 @@
    "LG05": 1,
    "LG06": 2,
    "LG08": 1,
-   "LG09": 15,
    "LG11": 1,
    "LG17": 1
   },
@@ -1804,7 +1793,6 @@
    "LG03": 5,
    "LG05": 4,
    "LG06": 3,
-   "LG09": 18,
    "LG11": 1,
    "LG12b": 1,
    "LG13": 3
@@ -1825,7 +1813,6 @@
   "code/gameobj.cpp": {
    "LG01": 16,
    "LG06": 2,
-   "LG09": 31,
    "LG11": 4,
    "LG12a": 2,
    "LG12b": 67
@@ -1836,51 +1823,40 @@
    "LG13": 3,
    "LG14": 1
   },
-  "code/gameplay_pick.cpp": {
-   "LG09": 2
-  },
   "code/gamesound.cpp": {
-   "LG03": 1,
-   "LG09": 4
+   "LG03": 1
   },
   "code/gamesound.h": {
    "LG01": 1
   },
   "code/gametacmap.cpp": {
-   "LG09": 33,
    "LG10": 2,
    "LG12a": 2,
-   "LG17": 1
+   "LG17": 1,
+   "LG18": 1
   },
   "code/gametacmap.h": {
    "LG17": 1
   },
   "code/gate.cpp": {
-   "LG03": 1,
-   "LG09": 18
+   "LG03": 1
   },
   "code/gate.h": {
-   "LG09": 2
-  },
-  "code/goal.cpp": {
    "LG09": 2
   },
   "code/goal.h": {
    "LG04": 1
   },
   "code/ground_contact_blob.cpp": {
-   "LG09": 4,
    "LG10": 2
   },
   "code/group_goals.cpp": {
-   "LG09": 1,
    "LG12b": 2,
    "LG13": 2,
    "LG16": 4
   },
   "code/gvehicl.cpp": {
    "LG03": 1,
-   "LG09": 19,
    "LG12b": 5,
    "LG13": 1
   },
@@ -1888,18 +1864,8 @@
    "LG09": 1,
    "LG14": 3
   },
-  "code/gvehicl_control.cpp": {
-   "LG09": 1
-  },
-  "code/gvehicl_move.cpp": {
-   "LG09": 2
-  },
-  "code/gvehicl_update.cpp": {
-   "LG09": 7
-  },
   "code/gvehicl_weapons.cpp": {
-   "LG04": 1,
-   "LG09": 8
+   "LG04": 1
   },
   "code/hardpoint.h": {
    "LG06": 5,
@@ -1907,8 +1873,7 @@
    "LG14": 3
   },
   "code/hud_imgui_font.cpp": {
-   "LG06": 2,
-   "LG09": 16
+   "LG06": 2
   },
   "code/hud_imgui_font.h": {
    "LG06": 2
@@ -4661,7 +4626,7 @@
    "LG20": 3
   }
  },
- "head": "053d89bf0",
+ "head": "e5d4d3127",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
