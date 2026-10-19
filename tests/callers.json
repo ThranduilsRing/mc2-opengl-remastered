@@ -30,14 +30,14 @@
         },
         {
           "path": "tools/build_all_targets.py",
-          "line": 33,
+          "line": 39,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import cache_args, find_cmake  # noqa: E402"
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 115,
+          "line": 131,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import cache_args"
@@ -133,6 +133,21 @@
       ]
     },
     {
+      "path": "scripts/cc_launcher.py",
+      "basename": "cc_launcher.py",
+      "stem": "cc_launcher",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_build_compiler_presets.py",
+          "line": 309,
+          "evidence": "import",
+          "reference": "cc_launcher",
+          "text": "import cc_launcher as cl"
+        }
+      ]
+    },
+    {
       "path": "scripts/check-ab-kit.py",
       "basename": "check-ab-kit.py",
       "stem": "check-ab-kit",
@@ -154,7 +169,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1444,
+          "line": 1449,
           "evidence": "command",
           "reference": "scripts/check-agents-md.sh",
           "text": "run_check \"agents_md\"                  \"sh scripts/check-agents-md.sh\""
@@ -169,7 +184,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 970,
+          "line": 975,
           "evidence": "command",
           "reference": "scripts/check-apply-pass-bumped.py",
           "text": "run_check \"apply_pass_bumped\"      \"py -3 scripts/check-apply-pass-bumped.py --quiet\""
@@ -184,7 +199,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1445,
+          "line": 1450,
           "evidence": "command",
           "reference": "scripts/check-asset-manifest-fixtures.py",
           "text": "run_check \"asset_manifest_fixtures\"    \"py -3 scripts/check-asset-manifest-fixtures.py\""
@@ -199,7 +214,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1478,
+          "line": 1483,
           "evidence": "command",
           "reference": "scripts/check-asset-manifests.py",
           "text": "run_check \"asset_manifests\"            \"py -3 scripts/check-asset-manifests.py --quiet\""
@@ -214,7 +229,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1446,
+          "line": 1451,
           "evidence": "command",
           "reference": "scripts/check-asset-pipeline-doc.sh",
           "text": "run_check \"asset_pipeline_doc\"         \"sh scripts/check-asset-pipeline-doc.sh\""
@@ -229,7 +244,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1479,
+          "line": 1484,
           "evidence": "command",
           "reference": "scripts/check-asset-scale-callers.sh",
           "text": "run_check \"asset_scale_callers\"        \"sh scripts/check-asset-scale-callers.sh\""
@@ -244,7 +259,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1026,
+          "line": 1031,
           "evidence": "command",
           "reference": "scripts/check-background-launch.py",
           "text": "run_check \"background_launch\"      \"py -3 scripts/check-background-launch.py --quiet\""
@@ -266,7 +281,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1303,
+          "line": 1308,
           "evidence": "command",
           "reference": "scripts/check-beauty-sidecars.py",
           "text": "run_check \"beauty_sidecars\"          \"py -3 scripts/check-beauty-sidecars.py --no-lanes --quiet\""
@@ -288,7 +303,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 893,
+          "line": 898,
           "evidence": "command",
           "reference": "scripts/check-binding-slots.py",
           "text": "run_check \"binding_slots\"          \"py -3 scripts/check-binding-slots.py --quiet\""
@@ -303,7 +318,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1111,
+          "line": 1116,
           "evidence": "command",
           "reference": "scripts/check-brain-fit-schema.py",
           "text": "run_check \"brain_fit_schema\"       \"py -3 scripts/check-brain-fit-schema.py --quiet\""
@@ -318,7 +333,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 973,
+          "line": 978,
           "evidence": "command",
           "reference": "scripts/check-buffer-lifetime-ownership.py",
           "text": "run_check \"buffer_lifetime\"        \"py -3 scripts/check-buffer-lifetime-ownership.py --quiet\""
@@ -333,7 +348,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1056,
+          "line": 1061,
           "evidence": "command",
           "reference": "scripts/check-capture-determinism.py",
           "text": "run_check \"capture_determinism\"    \"py -3 scripts/check-capture-determinism.py --quiet\""
@@ -355,7 +370,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1085,
+          "line": 1090,
           "evidence": "command",
           "reference": "scripts/check-capture-env-declared.py",
           "text": "run_check \"capture_env_declared\"   \"py -3 scripts/check-capture-env-declared.py\""
@@ -377,7 +392,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1390,
+          "line": 1395,
           "evidence": "command",
           "reference": "scripts/check-capture-provenance.py",
           "text": "run_check_tri \"capture_provenance\"      \"py -3 scripts/check-capture-provenance.py --quiet\""
@@ -421,7 +436,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1447,
+          "line": 1452,
           "evidence": "command",
           "reference": "scripts/check-claude-md-pointer.sh",
           "text": "run_check \"claude_md_pointer\"          \"sh scripts/check-claude-md-pointer.sh\""
@@ -436,7 +451,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 966,
+          "line": 971,
           "evidence": "command",
           "reference": "scripts/check-colormask-ownership.py",
           "text": "run_check \"colormask_ownership\"    \"py -3 scripts/check-colormask-ownership.py --quiet\""
@@ -458,7 +473,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1242,
+          "line": 1247,
           "evidence": "command",
           "reference": "scripts/check-counter-honesty.py",
           "text": "run_check \"counter_honesty\"          \"py -3 scripts/check-counter-honesty.py --quiet\""
@@ -480,7 +495,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 873,
+          "line": 878,
           "evidence": "command",
           "reference": "scripts/check-cpu-gpu-cogating.py",
           "text": "run_check \"cpu_gpu_cogating\"          \"py -3 scripts/check-cpu-gpu-cogating.py --quiet\""
@@ -502,7 +517,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 862,
+          "line": 867,
           "evidence": "command",
           "reference": "scripts/check-cxx-standard-floor.py",
           "text": "run_check \"cxx_standard_floor\"              \"py -3 scripts/check-cxx-standard-floor.py && py -3 -B -m pytest scripts/tests/test_check_cxx_standard_floor.py -q -p no:cacheprovider\""
@@ -517,7 +532,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1046,
+          "line": 1051,
           "evidence": "command",
           "reference": "scripts/check-default-build-quiet.py",
           "text": "run_check \"default_build_quiet\"    \"py -3 scripts/check-default-build-quiet.py\""
@@ -532,14 +547,14 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1140,
+          "line": 1145,
           "evidence": "command",
           "reference": "scripts/check-delivery.py",
           "text": "run_check \"delivery_manifest\"      \"py -3 scripts/check-delivery.py --contract --quiet\""
         },
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1184,
+          "line": 1189,
           "evidence": "command",
           "reference": "scripts/check-delivery.py",
           "text": "run_check \"delivery_installs\"      \"py -3 scripts/check-delivery.py --quiet\""
@@ -625,7 +640,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1115,
+          "line": 1120,
           "evidence": "command",
           "reference": "scripts/check-deploy-data-parity.py",
           "text": "run_check \"deploy_data_parity\"     \"py -3 scripts/check-deploy-data-parity.py --quiet\""
@@ -655,7 +670,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1109,
+          "line": 1114,
           "evidence": "command",
           "reference": "scripts/check-deploy-lane-parity.py",
           "text": "run_check \"deploy_lane_parity\"     \"py -3 scripts/check-deploy-lane-parity.py --allow-unresolved\""
@@ -692,7 +707,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 891,
+          "line": 896,
           "evidence": "command",
           "reference": "scripts/check-destroy-invariant.sh",
           "text": "run_check \"destroy_invariant\"      \"sh scripts/check-destroy-invariant.sh\""
@@ -736,7 +751,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1193,
+          "line": 1198,
           "evidence": "command",
           "reference": "scripts/check-doc-links.py",
           "text": "run_check \"doc_links\"             \"py -3 scripts/check-doc-links.py --quiet\""
@@ -751,7 +766,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 969,
+          "line": 974,
           "evidence": "command",
           "reference": "scripts/check-drawbuffer-ownership.py",
           "text": "run_check \"drawbuffer_ownership\"   \"py -3 scripts/check-drawbuffer-ownership.py --quiet\""
@@ -766,7 +781,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1186,
+          "line": 1191,
           "evidence": "command",
           "reference": "scripts/check-editor-game-render-context-parity.py",
           "text": "run_check \"render_ctx_parity\"      \"py -3 scripts/check-editor-game-render-context-parity.py --quiet\""
@@ -781,7 +796,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1187,
+          "line": 1192,
           "evidence": "command",
           "reference": "scripts/check-editor-pass-contract-parity.py",
           "text": "run_check \"editor_pass_parity\"     \"py -3 scripts/check-editor-pass-contract-parity.py --quiet\""
@@ -796,7 +811,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1101,
+          "line": 1106,
           "evidence": "command",
           "reference": "scripts/check-env-drive-guard.py",
           "text": "run_check \"env_drive_guard\"        \"py -3 scripts/check-env-drive-guard.py --quiet\""
@@ -818,7 +833,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 968,
+          "line": 973,
           "evidence": "command",
           "reference": "scripts/check-frame-resource-feedback.py",
           "text": "run_check \"frame_feedback\"         \"py -3 scripts/check-frame-resource-feedback.py --quiet\""
@@ -833,7 +848,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 849,
+          "line": 854,
           "evidence": "command",
           "reference": "scripts/check-gate-echo-reads.py",
           "text": "run_check \"gate_echo_reads\"                 \"py -3 scripts/check-gate-echo-reads.py --quiet\""
@@ -855,7 +870,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1188,
+          "line": 1193,
           "evidence": "command",
           "reference": "scripts/check-gated-layout-macros.py",
           "text": "run_check \"gated_layout_macros\"    \"py -3 scripts/check-gated-layout-macros.py --quiet\""
@@ -870,7 +885,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 982,
+          "line": 987,
           "evidence": "command",
           "reference": "scripts/check-gl-shader-variants.py",
           "text": "run_check \"gl_shader_variants\"     \"py -3 scripts/check-gl-shader-variants.py --quiet\""
@@ -892,7 +907,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 861,
+          "line": 866,
           "evidence": "command",
           "reference": "scripts/check-glm-convention.py",
           "text": "run_check \"glm_convention\"                  \"py -3 scripts/check-glm-convention.py && py -3 -B -m pytest scripts/tests/test_check_glm_convention.py -q -p no:cacheprovider\"   # engine matrices keep the row-vector convention (no glm column he"
@@ -907,7 +922,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 918,
+          "line": 923,
           "evidence": "command",
           "reference": "scripts/check-golden-coverage.py",
           "text": "run_check \"golden_coverage\"          \"py -3 scripts/check-golden-coverage.py --quiet\""
@@ -929,7 +944,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 974,
+          "line": 979,
           "evidence": "command",
           "reference": "scripts/check-gpu-buffer-owners.py",
           "text": "run_check \"gpu_buffer_owners\"      \"py -3 scripts/check-gpu-buffer-owners.py --quiet\""
@@ -966,7 +981,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 886,
+          "line": 891,
           "evidence": "command",
           "reference": "scripts/check-include-firewall.sh",
           "text": "run_check \"include_firewall\"       \"sh scripts/check-include-firewall.sh\""
@@ -981,7 +996,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1037,
+          "line": 1042,
           "evidence": "command",
           "reference": "scripts/check-input-capture-visibility.py",
           "text": "run_check \"input_capture_visibility\"          \"py -3 scripts/check-input-capture-visibility.py --quiet\""
@@ -1003,7 +1018,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1448,
+          "line": 1453,
           "evidence": "command",
           "reference": "scripts/check-json-isolation.sh",
           "text": "run_check \"json_isolation\"             \"sh scripts/check-json-isolation.sh\""
@@ -1018,7 +1033,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1211,
+          "line": 1216,
           "evidence": "command",
           "reference": "scripts/check-launcher-ascii.py",
           "text": "run_check \"launcher_ascii\"         \"py -3 scripts/check-launcher-ascii.py --quiet\""
@@ -1040,7 +1055,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 896,
+          "line": 901,
           "evidence": "command",
           "reference": "scripts/check-light-loop-numlights-bound.py",
           "text": "run_check \"light_loop_numlights\"   \"py -3 scripts/check-light-loop-numlights-bound.py --quiet\""
@@ -1055,7 +1070,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 902,
+          "line": 907,
           "evidence": "command",
           "reference": "scripts/check-light-row-freshness.py",
           "text": "run_check \"light_row_freshness\"          \"py -3 scripts/check-light-row-freshness.py --quiet\""
@@ -1077,7 +1092,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 911,
+          "line": 916,
           "evidence": "command",
           "reference": "scripts/check-lighting-divergence.py",
           "text": "run_check \"lighting_divergence\"    \"py -3 scripts/check-lighting-divergence.py\""
@@ -1092,7 +1107,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1486,
+          "line": 1491,
           "evidence": "command",
           "reference": "scripts/check-manifest-schema.py",
           "text": "run_check \"manifest_schema\"            \"py -3 scripts/check-manifest-schema.py --strict\""
@@ -1114,7 +1129,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 884,
+          "line": 889,
           "evidence": "command",
           "reference": "scripts/check-material-gpu-mirror.sh",
           "text": "run_check \"material_gpu_mirror\"    \"sh scripts/check-material-gpu-mirror.sh\""
@@ -1129,7 +1144,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 972,
+          "line": 977,
           "evidence": "command",
           "reference": "scripts/check-mdi-submission-ownership.py",
           "text": "run_check \"mdi_submission\"         \"py -3 scripts/check-mdi-submission-ownership.py --quiet\""
@@ -1144,7 +1159,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1449,
+          "line": 1454,
           "evidence": "command",
           "reference": "scripts/check-memory-size.py",
           "text": "run_check \"memory_size\"                \"py -3 scripts/check-memory-size.py\""
@@ -1159,7 +1174,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1450,
+          "line": 1455,
           "evidence": "command",
           "reference": "scripts/check-mlr-leaves-gated.sh",
           "text": "run_check \"mlr_leaves_gated\"           \"sh scripts/check-mlr-leaves-gated.sh\""
@@ -1174,7 +1189,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1223,
+          "line": 1228,
           "evidence": "command",
           "reference": "scripts/check-mover-registry-coherence.sh",
           "text": "run_check \"mover_registry_coherence\" \"sh scripts/check-mover-registry-coherence.sh\""
@@ -1196,7 +1211,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 965,
+          "line": 970,
           "evidence": "command",
           "reference": "scripts/check-multiply-blend.py",
           "text": "run_check \"multiply_blend\"         \"py -3 scripts/check-multiply-blend.py --quiet\""
@@ -1211,7 +1226,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 887,
+          "line": 892,
           "evidence": "command",
           "reference": "scripts/check-no-raw-gl-from-game.sh",
           "text": "run_check \"no_raw_gl_from_game\"    \"sh scripts/check-no-raw-gl-from-game.sh\""
@@ -1226,7 +1241,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1451,
+          "line": 1456,
           "evidence": "command",
           "reference": "scripts/check-object-mvp-currency.py",
           "text": "run_check \"object_mvp_currency\"        \"py -3 scripts/check-object-mvp-currency.py\""
@@ -1248,7 +1263,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1462,
+          "line": 1467,
           "evidence": "command",
           "reference": "scripts/check-oracle-registry.py",
           "text": "run_check \"oracle_registry\"            \"py -3 scripts/check-oracle-registry.py --allow-missing-artifacts\""
@@ -1263,7 +1278,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1216,
+          "line": 1221,
           "evidence": "command",
           "reference": "scripts/check-order-gate-coverage.py",
           "text": "run_check \"order_gate_coverage\"    \"py -3 scripts/check-order-gate-coverage.py --quiet\""
@@ -1285,7 +1300,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1452,
+          "line": 1457,
           "evidence": "command",
           "reference": "scripts/check-particles-no-cpu-projection.sh",
           "text": "run_check \"particles_no_cpu_projection\" \"sh scripts/check-particles-no-cpu-projection.sh\""
@@ -1300,7 +1315,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 967,
+          "line": 972,
           "evidence": "command",
           "reference": "scripts/check-pass-attachment-contract.py",
           "text": "run_check \"pass_attachment\"        \"py -3 scripts/check-pass-attachment-contract.py --quiet\""
@@ -1315,7 +1330,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1185,
+          "line": 1190,
           "evidence": "command",
           "reference": "scripts/check-pass-coverage.py",
           "text": "run_check \"pass_coverage\"          \"py -3 scripts/check-pass-coverage.py --quiet\""
@@ -1330,7 +1345,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1201,
+          "line": 1206,
           "evidence": "command",
           "reference": "scripts/check-path-normalization.sh",
           "text": "run_check \"path_normalization\"     \"sh scripts/check-path-normalization.sh\""
@@ -1352,7 +1367,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 947,
+          "line": 952,
           "evidence": "command",
           "reference": "scripts/check-pipeline-desc.py",
           "text": "run_check \"pipeline_desc\"          \"py -3 scripts/check-pipeline-desc.py --quiet\""
@@ -1367,7 +1382,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 963,
+          "line": 968,
           "evidence": "command",
           "reference": "scripts/check-pipeline-key.py",
           "text": "run_check \"pipeline_key\"           \"py -3 scripts/check-pipeline-key.py --quiet\""
@@ -1382,7 +1397,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1009,
+          "line": 1014,
           "evidence": "command",
           "reference": "scripts/check-render-contract-alpha-classes.py",
           "text": "run_check \"render_contract_alpha_classes\"          \"py -3 scripts/check-render-contract-alpha-classes.py\""
@@ -1404,7 +1419,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 892,
+          "line": 897,
           "evidence": "command",
           "reference": "scripts/check-render-contract-gbuffer1.sh",
           "text": "run_check \"render_contract_gbuf1\"  \"sh scripts/check-render-contract-gbuffer1.sh\""
@@ -1419,7 +1434,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 976,
+          "line": 981,
           "evidence": "command",
           "reference": "scripts/check-render-resource-ids.py",
           "text": "run_check \"render_resource_ids\"    \"py -3 scripts/check-render-resource-ids.py\""
@@ -1434,7 +1449,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1206,
+          "line": 1211,
           "evidence": "command",
           "reference": "scripts/check-res-aspect-contract.py",
           "text": "run_check \"res_aspect_contract\"    \"py -3 scripts/check-res-aspect-contract.py --quiet\""
@@ -1456,7 +1471,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1411,
+          "line": 1416,
           "evidence": "command",
           "reference": "scripts/check-review-anchor-stability.py",
           "text": "run_check \"review_anchor_stability\"          \"py -3 scripts/check-review-anchor-stability.py --quiet\""
@@ -1493,7 +1508,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 912,
+          "line": 917,
           "evidence": "command",
           "reference": "scripts/check-sampler-bindings.py",
           "text": "run_check \"sampler_bindings\"       \"py -3 scripts/check-sampler-bindings.py --quiet\""
@@ -1515,7 +1530,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 962,
+          "line": 967,
           "evidence": "command",
           "reference": "scripts/check-shader-injectors.py",
           "text": "run_check \"shader_injectors\"       \"py -3 scripts/check-shader-injectors.py --quiet\""
@@ -1530,7 +1545,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 989,
+          "line": 994,
           "evidence": "command",
           "reference": "scripts/check-shader-package.py",
           "text": "run_check \"shader_package\"         \"py -3 scripts/check-shader-package.py --quiet\""
@@ -1552,7 +1567,7 @@
         },
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1018,
+          "line": 1023,
           "evidence": "command",
           "reference": "scripts/check-shader-schema.sh",
           "text": "run_check \"shader_schema\"          \"bash scripts/check-shader-schema.sh --quiet\""
@@ -1567,7 +1582,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 978,
+          "line": 983,
           "evidence": "command",
           "reference": "scripts/check-shader-variant.py",
           "text": "run_check \"shader_variant\"         \"py -3 scripts/check-shader-variant.py --quiet\""
@@ -1582,7 +1597,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 860,
+          "line": 865,
           "evidence": "command",
           "reference": "scripts/check-sim-fp-contract.py",
           "text": "run_check \"sim_fp_contract\"                 \"py -3 scripts/check-sim-fp-contract.py && py -3 -B -m pytest scripts/tests/test_check_sim_fp_contract.py -q -p no:cacheprovider\"   # every sim TU /fp:precise, no contraction (MSVC + clang-cl); re"
@@ -1597,7 +1612,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 889,
+          "line": 894,
           "evidence": "command",
           "reference": "scripts/check-sim-no-audio-reads.sh",
           "text": "run_check \"sim_no_audio_reads\"     \"sh scripts/check-sim-no-audio-reads.sh\""
@@ -1612,7 +1627,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 880,
+          "line": 885,
           "evidence": "command",
           "reference": "scripts/check-smoke-env-inheritance.py",
           "text": "run_check \"smoke_env_inheritance\"  \"py -3 scripts/check-smoke-env-inheritance.py\""
@@ -1627,7 +1642,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1072,
+          "line": 1077,
           "evidence": "command",
           "reference": "scripts/check-smoke-fingerprint-honesty.py",
           "text": "run_check \"smoke_fingerprint_honesty\" \"py -3 scripts/check-smoke-fingerprint-honesty.py --quiet\""
@@ -1649,7 +1664,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1480,
+          "line": 1485,
           "evidence": "command",
           "reference": "scripts/check-smoke-matrices.py",
           "text": "run_check \"smoke_matrices\"             \"py -3 scripts/check-smoke-matrices.py --quiet\""
@@ -1664,7 +1679,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 983,
+          "line": 988,
           "evidence": "command",
           "reference": "scripts/check-spirv-artifacts.py",
           "text": "run_check \"spirv_artifacts\"        \"py -3 scripts/check-spirv-artifacts.py --quiet\""
@@ -1679,7 +1694,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 987,
+          "line": 992,
           "evidence": "command",
           "reference": "scripts/check-spirv-reflection-contract.py",
           "text": "run_check \"spirv_reflection\"       \"py -3 scripts/check-spirv-reflection-contract.py --quiet\""
@@ -1694,7 +1709,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1198,
+          "line": 1203,
           "evidence": "command",
           "reference": "scripts/check-split-path-contracts.py",
           "text": "run_check \"split_path_contracts\"   \"py -3 scripts/check-split-path-contracts.py --quiet\""
@@ -1716,7 +1731,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1028,
+          "line": 1033,
           "evidence": "command",
           "reference": "scripts/check-staged-hygiene.py",
           "text": "run_check \"staged_hygiene\"         \"py -3 scripts/check-staged-hygiene.py --range --quiet\""
@@ -1745,7 +1760,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 971,
+          "line": 976,
           "evidence": "command",
           "reference": "scripts/check-static-prop-family.py",
           "text": "run_check \"static_prop_family\"     \"py -3 scripts/check-static-prop-family.py --quiet\""
@@ -1760,7 +1775,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1326,
+          "line": 1331,
           "evidence": "command",
           "reference": "scripts/check-stock-mission-data.py",
           "text": "run_check \"stock_mission_data\"          \"py -3 scripts/check-stock-mission-data.py --no-data --quiet\""
@@ -1782,7 +1797,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1192,
+          "line": 1197,
           "evidence": "command",
           "reference": "scripts/check-terrain-daylight-constants.py",
           "text": "run_check \"terrain_daylight_consts\"  \"py -3 scripts/check-terrain-daylight-constants.py --quiet\""
@@ -1804,7 +1819,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 975,
+          "line": 980,
           "evidence": "command",
           "reference": "scripts/check-texture-owners.py",
           "text": "run_check \"texture_owners\"         \"py -3 scripts/check-texture-owners.py --quiet\""
@@ -1819,7 +1834,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1228,
+          "line": 1233,
           "evidence": "command",
           "reference": "scripts/check-tgl-load-callers.sh",
           "text": "run_check \"tgl_load_callers\"   \"sh scripts/check-tgl-load-callers.sh\""
@@ -1841,7 +1856,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1453,
+          "line": 1458,
           "evidence": "command",
           "reference": "scripts/check-toolchain-bom.py",
           "text": "run_check \"toolchain_bom\"              \"py -3 scripts/check-toolchain-bom.py\""
@@ -1856,7 +1871,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1454,
+          "line": 1459,
           "evidence": "command",
           "reference": "scripts/check-unified-projection-retirement.sh",
           "text": "run_check \"unified_projection_retirement\" \"sh scripts/check-unified-projection-retirement.sh\""
@@ -1871,7 +1886,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 964,
+          "line": 969,
           "evidence": "command",
           "reference": "scripts/check-vfx-blend-distinction.py",
           "text": "run_check \"vfx_blend_distinction\"  \"py -3 scripts/check-vfx-blend-distinction.py --quiet\""
@@ -1886,7 +1901,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 890,
+          "line": 895,
           "evidence": "command",
           "reference": "scripts/check-vfx-no-objectid.sh",
           "text": "run_check \"vfx_no_objectid\"        \"sh scripts/check-vfx-no-objectid.sh\""
@@ -1901,7 +1916,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 885,
+          "line": 890,
           "evidence": "command",
           "reference": "scripts/check-visibility-log-schema.sh",
           "text": "run_check \"visibility_log_schema\"  \"sh scripts/check-visibility-log-schema.sh\""
@@ -1916,7 +1931,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1038,
+          "line": 1043,
           "evidence": "command",
           "reference": "scripts/check-visual-bookmark-honesty.py",
           "text": "run_check \"bookmark_honesty\"       \"py -3 scripts/check-visual-bookmark-honesty.py\""
@@ -1931,7 +1946,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 988,
+          "line": 993,
           "evidence": "command",
           "reference": "scripts/check-vk-pipeline-layout.py",
           "text": "run_check \"vk_pipeline_layout\"    \"py -3 scripts/check-vk-pipeline-layout.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vk_pipeline_layout.py -q -p no:cacheprovider\""
@@ -1946,7 +1961,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 888,
+          "line": 893,
           "evidence": "command",
           "reference": "scripts/check-vk-submit-funnel.sh",
           "text": "run_check \"vk_submit_funnel\"       \"sh scripts/check-vk-submit-funnel.sh\""
@@ -1961,7 +1976,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 977,
+          "line": 982,
           "evidence": "command",
           "reference": "scripts/check-vulkan-bindings.py",
           "text": "run_check \"vulkan_bindings\"        \"py -3 scripts/check-vulkan-bindings.py --quiet\""
@@ -1990,7 +2005,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1113,
+          "line": 1118,
           "evidence": "command",
           "reference": "scripts/check_brain_fixture_deploy_sync.py",
           "text": "run_check \"brain_fixture_deploy\"   \"py -3 scripts/check_brain_fixture_deploy_sync.py --quiet\""
@@ -2005,7 +2020,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1112,
+          "line": 1117,
           "evidence": "command",
           "reference": "scripts/check_brain_fixture_manifest.py",
           "text": "run_check \"brain_fixture_manifest\" \"py -3 scripts/check_brain_fixture_manifest.py --quiet\""
@@ -2020,7 +2035,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1114,
+          "line": 1119,
           "evidence": "command",
           "reference": "scripts/check_brain_relaxed_guard_doc.py",
           "text": "run_check \"brain_relaxed_guard\"    \"py -3 scripts/check_brain_relaxed_guard_doc.py --quiet\""
@@ -2050,7 +2065,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1545,
+          "line": 1550,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -2145,7 +2160,7 @@
         },
         {
           "path": "cmake/build_driver.py",
-          "line": 9,
+          "line": 10,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -2180,10 +2195,17 @@
         },
         {
           "path": "tools/build_all_targets.py",
-          "line": 31,
+          "line": 37,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn  # noqa: E402"
+        },
+        {
+          "path": "tools/build_contract_harnesses.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "configure_ninja",
+          "text": "import configure_ninja as cn"
         },
         {
           "path": "tools/phase/asm_dead_strip.py",
@@ -2237,7 +2259,7 @@
         },
         {
           "path": "cmake/build_driver.py",
-          "line": 10,
+          "line": 11,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -2283,6 +2305,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
+        },
+        {
+          "path": "scripts/cc_launcher.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # same directory: python puts the script dir on sys.path even under -S -E"
         },
         {
           "path": "scripts/check-asset-manifest-fixtures.py",
@@ -2411,6 +2440,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "scripts/module_test_cache.py",
+          "line": 37,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "scripts/new_lane.py",
           "line": 49,
           "evidence": "import",
@@ -2430,6 +2466,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "from console_child import child_kwargs  # noqa: E402"
+        },
+        {
+          "path": "scripts/run_scripts_tests.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
         },
         {
           "path": "scripts/run_tools_tests.py",
@@ -2595,6 +2638,13 @@
         {
           "path": "scripts/tests/test_include_guards_unique.py",
           "line": 13,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_module_test_cache.py",
+          "line": 8,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
@@ -2811,14 +2861,14 @@
         },
         {
           "path": "tools/build_all_targets.py",
-          "line": 32,
+          "line": 38,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 16,
+          "line": 18,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -3315,6 +3365,13 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
+          "path": "scripts/module_test_cache.py",
+          "line": 38,
+          "evidence": "import",
+          "reference": "contracts_cache",
+          "text": "import contracts_cache as cc  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_contracts_cache.py",
           "line": 8,
           "evidence": "import",
@@ -3785,6 +3842,28 @@
       ]
     },
     {
+      "path": "scripts/module_test_cache.py",
+      "basename": "module_test_cache.py",
+      "stem": "module_test_cache",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/run_tools_tests.py",
+          "line": 153,
+          "evidence": "import",
+          "reference": "module_test_cache",
+          "text": "import module_test_cache as mtc"
+        },
+        {
+          "path": "scripts/tests/test_module_test_cache.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "module_test_cache",
+          "text": "import module_test_cache as mtc  # noqa: E402"
+        }
+      ]
+    },
+    {
       "path": "scripts/new_lane.py",
       "basename": "new_lane.py",
       "stem": "new_lane",
@@ -4058,6 +4137,21 @@
       ]
     },
     {
+      "path": "scripts/run_scripts_tests.py",
+      "basename": "run_scripts_tests.py",
+      "stem": "run_scripts_tests",
+      "callers_by_basename": [
+        {
+          "path": "scripts/check-contracts.sh",
+          "line": 1528,
+          "evidence": "command",
+          "reference": "scripts/run_scripts_tests.py",
+          "text": "run_check \"scripts_tests\"              \"py -3 scripts/run_scripts_tests.py\""
+        }
+      ],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/run_smoke.py",
       "basename": "run_smoke.py",
       "stem": "run_smoke",
@@ -4164,13 +4258,21 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1544,
+          "line": 1549,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"tools_tests\"             \"py -3 scripts/run_tools_tests.py\""
         }
       ],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/run_scripts_tests.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "run_tools_tests",
+          "text": "import run_tools_tests as rtt  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "scripts/run_visual_capture.py",
@@ -5819,6 +5921,13 @@
       ]
     },
     {
+      "path": "scripts/test_audit_site/sitecustomize.py",
+      "basename": "sitecustomize.py",
+      "stem": "sitecustomize",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/test_gl_shader_variants.py",
       "basename": "test_gl_shader_variants.py",
       "stem": "test_gl_shader_variants",
@@ -6134,6 +6243,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_module_test_cache.py",
+      "basename": "test_module_test_cache.py",
+      "stem": "test_module_test_cache",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_nofocus_env.py",
       "basename": "test_nofocus_env.py",
       "stem": "test_nofocus_env",
@@ -6182,7 +6298,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1545,
+          "line": 1550,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -6305,7 +6421,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 844,
+          "line": 849,
           "evidence": "command",
           "reference": "tools/abl_writer_census.py",
           "text": "run_check \"abl_writer_census\"              \"py -3 tools/abl_writer_census.py --check\""
@@ -6531,7 +6647,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 931,
+          "line": 936,
           "evidence": "command",
           "reference": "tools/axis_swizzle_ratchet.py",
           "text": "run_check \"axis_swizzle_ratchet\"     \"py -3 tools/axis_swizzle_ratchet.py --check\""
@@ -7048,7 +7164,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1338,
+          "line": 1343,
           "evidence": "command",
           "reference": "tools/callers.py",
           "text": "run_check \"script_callers\"              \"py -3 tools/callers.py --check\""
@@ -7100,7 +7216,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 995,
+          "line": 1000,
           "evidence": "command",
           "reference": "tools/check_ubo_layout.py",
           "text": "run_check \"vk_ubo_layout\"          \"py -3 tools/check_ubo_layout.py\""
@@ -7115,7 +7231,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 997,
+          "line": 1002,
           "evidence": "command",
           "reference": "tools/check_vk_shaders.py",
           "text": "run_check \"vk_shaders_compile\"     \"py -3 tools/check_vk_shaders.py\""
@@ -7225,7 +7341,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 921,
+          "line": 926,
           "evidence": "command",
           "reference": "tools/cxx17_ratchet/cxx17_ratchet.py",
           "text": "run_check \"cxx17_ratchet\"            \"py -3 tools/cxx17_ratchet/cxx17_ratchet.py --check\""
@@ -7378,7 +7494,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 926,
+          "line": 931,
           "evidence": "command",
           "reference": "tools/dup_lines_ratchet.py",
           "text": "run_check \"dup_lines_ratchet\"        \"py -3 tools/dup_lines_ratchet.py --check\""
@@ -7436,7 +7552,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 940,
+          "line": 945,
           "evidence": "command",
           "reference": "tools/file_size_ratchet.py",
           "text": "run_check \"file_size_ratchet\"        \"py -3 tools/file_size_ratchet.py --check\""
@@ -7496,7 +7612,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 856,
+          "line": 861,
           "evidence": "command",
           "reference": "tools/gate_gen.py",
           "text": "run_check \"gate_gen_check\"                  \"py -3 tools/gate_gen.py --check --rebuild && py -3 -B -m pytest scripts/tests/test_gate_table_gen.py -q -p no:cacheprovider\""
@@ -7562,7 +7678,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 996,
+          "line": 1001,
           "evidence": "command",
           "reference": "tools/glsl_port_diff.py",
           "text": "run_check \"glsl_port_diff\"         \"py -3 tools/glsl_port_diff.py --all\""
@@ -7577,7 +7693,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 986,
+          "line": 991,
           "evidence": "command",
           "reference": "tools/gpu_abi_gen.py",
           "text": "run_check \"gpu_abi\"                \"py -3 tools/gpu_abi_gen.py --check && py -3 -B -m pytest scripts/tests/test_gpu_abi_gen.py -q -p no:cacheprovider\""
@@ -7636,7 +7752,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 935,
+          "line": 940,
           "evidence": "command",
           "reference": "tools/journal_comment_ratchet.py",
           "text": "run_check \"journal_comment_ratchet\"  \"py -3 tools/journal_comment_ratchet.py --check\""
@@ -7733,7 +7849,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 843,
+          "line": 848,
           "evidence": "command",
           "reference": "tools/log_tag_census.py",
           "text": "run_check \"log_tag_census\"                 \"py -3 tools/log_tag_census.py --check\""
@@ -8574,7 +8690,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1335,
+          "line": 1340,
           "evidence": "command",
           "reference": "tools/own_inventory.py",
           "text": "run_check \"own_inventory\"               \"py -3 tools/own_inventory.py --check\""
@@ -8755,7 +8871,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1336,
+          "line": 1341,
           "evidence": "command",
           "reference": "tools/pointer_order_scan.py",
           "text": "run_check \"pointer_order_scan\"          \"py -3 tools/pointer_order_scan.py --check\""
@@ -9241,7 +9357,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1332,
+          "line": 1337,
           "evidence": "command",
           "reference": "tools/save_inspect.py",
           "text": "run_check \"save_inspect\"                \"py -3 tools/save_inspect.py selftest\""
@@ -9278,7 +9394,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1339,
+          "line": 1344,
           "evidence": "command",
           "reference": "tools/savegame_backup.py",
           "text": "run_check \"savegame_backup\"             \"py -3 tools/savegame_backup.py selftest\""
@@ -9322,7 +9438,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1331,
+          "line": 1336,
           "evidence": "command",
           "reference": "tools/saveload_roundtrip.py",
           "text": "run_check \"saveload_roundtrip\"          \"py -3 tools/saveload_roundtrip.py selftest\""
@@ -9462,7 +9578,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1329,
+          "line": 1334,
           "evidence": "command",
           "reference": "tools/sim_determinism.py",
           "text": "run_check \"sim_determinism\"             \"py -3 tools/sim_determinism.py selftest\""
@@ -9572,7 +9688,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 942,
+          "line": 947,
           "evidence": "command",
           "reference": "tools/split/split_map.py",
           "text": "run_check \"split_map\"                 \"py -3 tools/split/split_map.py --check\""
@@ -11758,7 +11874,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1337,
+          "line": 1342,
           "evidence": "command",
           "reference": "tools/verified.py",
           "text": "run_check \"verified_ledger\"             \"py -3 tools/verified.py check\""
@@ -12232,7 +12348,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1049,
+          "line": 1054,
           "evidence": "command",
           "reference": "tools/vk_ownership_ledger.py",
           "text": "run_check \"vk_ownership_ledger\"    \"py -3 tools/vk_ownership_ledger.py --check\""
