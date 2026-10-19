@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
 #include "mc2fmt.h"
+#include "fastfile.h"
 #include "../RenderCore/TextureService.h"
 #include <algorithm>
 #include "../GameOS/gameos/texture_decode.h"
@@ -19,7 +20,7 @@ static const DWORD MC_TEXCACHE_MEM_RAW = 0xD0000000;
 static const DWORD MC_TEXCACHE_SIZE_MASK = 0x0FFFFFFF;
 static const long MC_TEXCACHE_RAW_THRESHOLD = 256 * 1024;
 
-static bool tryReadTgaLogicalSize(File& textureFile, DWORD uvScale, DWORD& logicalWidth, DWORD& logicalHeight)
+static bool tryReadTgaLogicalSize(File& textureFile, const char* name, DWORD& uvScale, DWORD& logicalWidth, DWORD& logicalHeight)
 {
 	logicalWidth = 0;
 	logicalHeight = 0;
@@ -65,6 +66,25 @@ static bool tryReadTgaLogicalSize(File& textureFile, DWORD uvScale, DWORD& logic
 	if (header.width <= 0 || header.height <= 0)
 		return false;
 
+    // A loose stock atlas is not necessarily upscaled. Use the archive's authored
+    // extent when available; this only reads metadata and never changes VFS precedence.
+    if (textureFile.isLoadedFromDisk() && name && (strstr(name,"/art/") || strstr(name,"\\art\\"))) {
+        long member=-1;
+        if (auto* archive=FastFileFind(name,member)) {
+            const long count=archive->sizeFast(member);
+            if (count>=sizeof(TGAFileHeader) && count<MAX_LZ_BUFFER_SIZE) {
+                std::vector<uint8_t> bytes(static_cast<size_t>(count));
+                if (archive->readFast(member,bytes.data(),count)==count) {
+                    TGAFileHeader authored{}; memcpy(&authored,bytes.data(),sizeof(authored));
+                    if (authored.width>0 && authored.height>0) {
+                        const DWORD sx=header.width/authored.width, sy=header.height/authored.height;
+                        uvScale=(sx && sx==sy && header.width%authored.width==0 && header.height%authored.height==0) ? sx : 1;
+                    }
+                }
+            }
+            archive->closeFast(member);
+        }
+    }
 	const DWORD scale = uvScale ? uvScale : 1;
 	logicalWidth = static_cast<DWORD>(header.width) / scale;
 	logicalHeight = static_cast<DWORD>(header.height) / scale;
@@ -434,7 +454,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		masterTextureNodes[i].uvScale = isNativeResUiAtlas ? 1 : 4;
 	}
 
-	tryReadTgaLogicalSize(textureFile, masterTextureNodes[i].uvScale,
+	tryReadTgaLogicalSize(textureFile, textureFullPathName, masterTextureNodes[i].uvScale,
 		masterTextureNodes[i].logicalWidth, masterTextureNodes[i].logicalHeight);
 
 	long txmSize = textureFile.fileSize();

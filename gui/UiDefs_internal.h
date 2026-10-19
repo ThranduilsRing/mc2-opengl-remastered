@@ -104,6 +104,7 @@ struct UiElement {
     int legacyButtonIndex = -1;
     std::string legacySection;   // e.g. "Static4" / "Rect0" / "Text2" / "Button3"
     std::string texturePath;
+    std::string legacyTexture;
     int textureNode = 0;
     bool textureNodeAssigned = false;
     bool flipV = false;

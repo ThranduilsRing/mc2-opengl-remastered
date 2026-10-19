@@ -139,7 +139,16 @@ static void ensureTexture(UiElement& e)
 
     // Try loading even when not on disk — texture may be pak-packed (FST archive)
     // and findable by the texture manager's own search, which fileExistsPath() misses.
-    const std::string loadName = onDisk ? p.string() : e.texturePath;
+    std::string loadName = onDisk ? p.string() : e.texturePath;
+    // Generated pages name optional PNG exports and retain their original atlas key.
+    // Resolve that key through File/VFS when the export is absent, including FST mods.
+    if (!onDisk && !fileExists(loadName.c_str()) && !e.legacyTexture.empty()) {
+        const std::string legacyName=std::string(artPath)+e.legacyTexture+".tga";
+        if (fileExists(legacyName.c_str())) {
+            loadName=legacyName;
+            e.textureWidth=e.textureHeight=0;
+        }
+    }
     const char* loadPath = loadName.c_str();
     e.textureNode = mcTextureManager->loadTexture(loadPath, gos_Texture_Alpha, 0, 0, 0x2);
     e.textureNodeAssigned = true;
