@@ -61,10 +61,10 @@ def cached_configure(src, bdir, extra=()):
 
 
 def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
-                             keep_going=False, log_dir=None, jobs=None, cache=False):
+                             keep_going=False, log_dir=None, jobs=None, cache=False, build_root=None):
     started = time.monotonic()
     tree = "build64-tests-asan" if asan else "build64-tests"
-    bdir = REPO_ROOT / (("build-cc-" + tree.removeprefix("build64-")) if cache else bd.tree_name(tree, preset))
+    bdir = Path(build_root or REPO_ROOT) / (("build-cc-" + tree.removeprefix("build64-")) if cache else bd.tree_name(tree, preset))
     cm = cmake_exe()
     cache_env = None
     if cache:
@@ -226,6 +226,7 @@ def main(argv=None):
                                         "(relative to the repo) instead of its own build-cc-order-seam")
     ap.add_argument("--seam-prebuilt", action="store_true",
                     help="with --seam-tree: do not build the seam, require its exe there (built by the caller's own build)")
+    ap.add_argument("--build-root", help="parent directory for the doctest build tree")
     ap.add_argument("--log-dir", help="complete mc2_tests configure/build logs")
     ap.add_argument("-j", dest="jobs", help="parallel jobs")
     args = ap.parse_args(argv)
@@ -244,11 +245,13 @@ def main(argv=None):
             ap.error("unregistered harness: " + ", ".join(sorted(unknown)))
     ok, info = build_and_run_unit_tests(args.config, args.run, args.asan, args.only,
                                        preset=args.preset, keep_going=args.keep_going,
-                                       log_dir=args.log_dir, jobs=args.jobs, cache=args.compile_cache)
+                                       log_dir=args.log_dir, jobs=args.jobs, cache=args.compile_cache, build_root=args.build_root)
     print(f"  [{'PASS' if ok else 'FAIL'}] mc2_tests: {info}")
     if not ok:
         return 1
     if not (args.asan or args.only):
+        if args.build_root and not args.seam_tree:
+            args.seam_tree = str(Path(args.build_root) / ("build-cc-order-seam" if args.compile_cache else "build64-order-seam"))
         try:
             ok = build_and_run_order_seam(args.run, args.compile_cache, args.jobs, args.seam_tree, args.seam_prebuilt)
         except subprocess.TimeoutExpired as error:

@@ -58,15 +58,18 @@ STANDALONE = [
 ]
 
 
-def configure(root: str, preset=None, log_dir=None, cache=False) -> int:
+def configure(root: str, preset=None, log_dir=None, cache=False, build_root=None) -> int:
     root = root.replace("\\", "/")
+    tree_path = os.path.join(build_root or root, bd.tree_name(TREE, preset)).replace("\\", "/")
     cache_env = None
     if preset:
         args = [find_cmake(), "--preset", preset]
+        if build_root:
+            args += ["-B", tree_path]
         if preset != "clang-cl-nmake":
             args += [f"-DCMAKE_MAKE_PROGRAM={cn.NINJA}"]
     else:
-        args = [find_cmake(), "-S", root, "-B", f"{root}/{TREE}", "-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={cn.NINJA}",
+        args = [find_cmake(), "-S", root, "-B", tree_path, "-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={cn.NINJA}",
                 "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
                 # cl.exe reads its own .pch (only the clang-cl presets cannot): same precompiled std header as the dev tree.
                 "-DMC2_PCH=ON"] + EXTRA + cache_args(root)
@@ -84,24 +87,26 @@ def configure(root: str, preset=None, log_dir=None, cache=False) -> int:
 def build_root(args) -> int:
     root = ROOT.replace("\\", "/")
     tree = bd.tree_name(TREE, args.preset)
+    output_root = getattr(args, "build_root", None) or root
+    tree_path = os.path.join(output_root, tree).replace("\\", "/")
     marker = "Makefile" if args.preset == "clang-cl-nmake" else "build.ninja"
     cache = use_cache(args)
     # A tree configured in the other mode is reconfigured, not silently reused (the -D vars would not change on their own).
-    built = os.path.exists(os.path.join(ROOT, tree, marker))
-    stale_mode = (not args.preset) and built and (cn.tree_uses_cache(root, tree) != cache or (cache and not cn.tree_cache_current(root, tree)))
+    built = os.path.exists(os.path.join(tree_path, marker))
+    stale_mode = (not args.preset) and built and (cn.tree_uses_cache(output_root, tree) != cache or (cache and not cn.tree_cache_current(output_root, tree)))
     if args.reconfigure or stale_mode or not built:
-        if configure(root, args.preset, args.log_dir, cache):
+        if configure(root, args.preset, args.log_dir, cache, getattr(args, "build_root", None)):
             return 1
     try:
-        bd.verify_compiler(os.path.join(ROOT, tree), args.preset)
+        bd.verify_compiler(tree_path, args.preset)
     except RuntimeError as exc:
         print(f"[build_all_targets] FAIL: {exc}", file=sys.stderr)
         return 1
     if args.preset == "clang-cl-nmake":
-        cmd = bd.build_args(find_cmake(), f"{root}/{tree}", "RelWithDebInfo", args.targets or ROOT_TARGETS,
+        cmd = bd.build_args(find_cmake(), tree_path, "RelWithDebInfo", args.targets or ROOT_TARGETS,
                             preset=args.preset, keep_going=args.keep_going)
     else:
-        cmd = [cn.NINJA, "-C", f"{root}/{tree}", f"-j{str(args.jobs).lstrip('j')}"]
+        cmd = [cn.NINJA, "-C", tree_path, f"-j{str(args.jobs).lstrip('j')}"]
         if args.keep_going:
             cmd += ["-k", "0"]
         # Cached mode builds the order seam here too: it links this tree's mc2 objects, so it costs four test TUs and a link.
@@ -115,10 +120,10 @@ def use_cache(args) -> bool:
 
 
 def build_standalone(src: str, tree: str, target: str, jobs: str, preset=None, keep_going=False, log_dir=None,
-                     cache=False) -> int:
+                     cache=False, build_root=None) -> int:
     cmake = find_cmake()
     tree = cc_tree(tree) if cache else bd.tree_name(tree, preset)
-    src_abs, tree_abs = os.path.join(ROOT, src), os.path.join(ROOT, tree)
+    src_abs, tree_abs = os.path.join(ROOT, src), os.path.join(build_root or ROOT, tree)
     print(f"[build_all_targets] standalone {src} -> {tree}" + (" (compile cache)" if cache else ""), flush=True)
     env = None
     if cache:
@@ -153,10 +158,13 @@ def main(argv=None) -> int:
     ap.add_argument("--preset", choices=bd.PRESETS, help="compiler preset for EVERY stage; omitted preserves the MSVC trees")
     ap.add_argument("--no-compile-cache", action="store_true",
                     help="opt out of the shared sccache: the original trees (PCH on, VS-generator standalone projects)")
+    ap.add_argument("--build-root", help="parent directory for every build tree; sources and shared cache stay in place")
     ap.add_argument("--log-dir", help="complete configure/build logs, one pair per project")
     ap.add_argument("-j", dest="jobs", default="6", help="parallel jobs (default 6)")
     ap.add_argument("targets", nargs="*", help="root-tree targets (default: all ui_editor); implies --root-only")
     args = ap.parse_args(argv)
+    if args.build_root:
+        args.build_root = os.path.abspath(args.build_root).replace("\\", "/")
 
     failed = []
     t0 = time.monotonic()
@@ -175,7 +183,7 @@ def main(argv=None) -> int:
     if args.root_only or args.targets:
         return 1 if failed else 0
     for src, tree, target in STANDALONE:
-        if build_standalone(src, tree, target, args.jobs, args.preset, args.keep_going, args.log_dir, use_cache(args)):
+        if build_standalone(src, tree, target, args.jobs, args.preset, args.keep_going, args.log_dir, use_cache(args), args.build_root):
             failed.append(src)
         lap(src)
     cmd = [sys.executable, os.path.join(HERE, "build_contract_harnesses.py"), "--unit"]
@@ -184,7 +192,9 @@ def main(argv=None) -> int:
     if args.keep_going:
         cmd += ["--keep-going"]
     if use_cache(args):
-        cmd += ["--compile-cache", "-j", args.jobs, "--seam-tree", TREE, "--seam-prebuilt"]
+        cmd += ["--compile-cache", "-j", args.jobs, "--seam-tree", os.path.join(args.build_root, TREE) if args.build_root else TREE, "--seam-prebuilt"]
+    if args.build_root:
+        cmd += ["--build-root", args.build_root]
     if args.log_dir:
         cmd += ["--log-dir", os.path.abspath(args.log_dir)]
     rc = subprocess.run(cmd,
