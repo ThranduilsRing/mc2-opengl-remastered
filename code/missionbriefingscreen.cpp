@@ -3,6 +3,7 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
+#include <memory>
 #include"missionbriefingscreen.h"
 #include "../GuiRuntime/GuiRuntime.h"
 #include "gos_crashbundle.h"
@@ -423,11 +424,11 @@ long	MissionBriefingScreen::getMissionTGA( const char* missionName, bool swizzle
 				return 0;
 			}
 
-			BYTE* mem = new BYTE[size];
+			auto mem = std::make_unique_for_overwrite<BYTE[]>(size);
 
-			file.readPacket( 3, mem );
+			file.readPacket( 3, mem.get() );
 
-			TGAFileHeader* pHeader = (TGAFileHeader*)mem;
+			TGAFileHeader* pHeader = (TGAFileHeader*)mem.get();
 			long bmpWidth = pHeader->width;
 			long bmpHeight = pHeader->height;
 
@@ -440,7 +441,7 @@ long	MissionBriefingScreen::getMissionTGA( const char* missionName, bool swizzle
 						missionName, bmpWidth, bmpHeight);
 					puts(_cbbuf); fflush(stdout); crashbundle_append(_cbbuf);
 				}
-				delete[] mem;
+				mem.reset();
 				return 0;
 			}
 
@@ -473,7 +474,7 @@ long	MissionBriefingScreen::getMissionTGA( const char* missionName, bool swizzle
 			// set up the texture
 			long tmpMapTextureHandle = mcTextureManager->textureFromMemory( (DWORD*)(pHeader+1), gos_Texture_Solid, 0, bmpWidth );
 
-			delete[] mem;
+			mem.reset();
 
 			return tmpMapTextureHandle;
 		}

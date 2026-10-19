@@ -1,6 +1,7 @@
 // GameObjectManager: terrain-object counting, loading and geometry finalise, and the object CopyTo / CopyFrom / Save / Load.
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include <memory>
 #include "objmgr_internal.h"
 #include "saved_objects_check.h"
 #include "mc2fmt.h"
@@ -30,16 +31,16 @@ void GameObjectManager::countTerrainObjects (PacketFile* terrainFile, long first
 {
 	int packet = terrainFile->getCurrentPacket();
 	int size = terrainFile->getPacketSize();
-	MemoryPtr pBuffer = new unsigned char[size];
+	auto pBuffer = std::make_unique_for_overwrite<unsigned char[]>(size);
 
 #ifdef _DEBUG	
 	int bytesRead = 
 #endif
-		terrainFile->readPacket( packet, pBuffer );
+		terrainFile->readPacket( packet, pBuffer.get() );
 	gosASSERT( bytesRead == size );
 	
 	File terrainObjectFile;
-	terrainObjectFile.open( (char*)pBuffer, size );
+	terrainObjectFile.open( (char*)pBuffer.get(), size );
 	
 	totalObjCount = terrainObjectFile.readInt();
 
@@ -99,7 +100,7 @@ void GameObjectManager::countTerrainObjects (PacketFile* terrainFile, long first
 	}
 
 	terrainObjectFile.close();
-	delete[] pBuffer;
+	pBuffer.reset();
 
 }
 
@@ -180,7 +181,7 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 	long curGateIndex = 0;
 
 	//------------------------------------------------------------------
-	long* handles = new long[2 * Terrain::numObjBlocks];
+	auto handles = std::make_unique_for_overwrite<long[]>(2 * Terrain::numObjBlocks);
 
 	for ( int i = 0; i < Terrain::numObjBlocks; ++i )
 	{
@@ -208,8 +209,7 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 		}
 	}
 
-	delete[] handles;
-	handles = nullptr;
+	handles.reset();
 	
 	//Done loading the objects, free the memory holding them!!
 	systemHeap->Free(objData);

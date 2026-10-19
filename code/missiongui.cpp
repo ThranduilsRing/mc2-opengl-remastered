@@ -25,6 +25,7 @@
 //--------------------------------------------------------------------------------------
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include <memory>
 #include "missiongui_shared_internal.h"
 
 
@@ -683,32 +684,32 @@ void MissionInterfaceManager::initTacMap( PacketFile* file, int packet )
 {
 	file->seekPacket(packet);
 	int size = file->getPacketSize( );
-	BYTE* mem = new BYTE[size];
+	auto mem = std::make_unique_for_overwrite<BYTE[]>(size);
 
 	// readPacket can return short on a transient _read failure; consuming the
 	// uninitialized buffer then walks a garbage buildingCount off the heap
 	// (one-off crash 2026-06-11, GameTacMap::initBuildings READ AV).
-	if ( file->readPacket( packet, mem ) != size )
+	if ( file->readPacket( packet, mem.get() ) != size )
 	{
 		printf("[TACMAP] readPacket(%d) short read (expected %d) -- zeroing buffer\n", packet, size);
-		memset( mem, 0, size );
+		memset( mem.get(), 0, size );
 	}
 
-	controlGui.initTacMapBuildings( mem, size );
-	delete[] mem;
+	controlGui.initTacMapBuildings( mem.get(), size );
+	mem.reset();
 
 	file->seekPacket(packet + 1);
 	size = file->getPacketSize( );
-	mem = new BYTE[size];
+	mem = std::make_unique_for_overwrite<BYTE[]>(size);
 
-	if ( file->readPacket( packet + 1, mem ) != size )
+	if ( file->readPacket( packet + 1, mem.get() ) != size )
 	{
 		printf("[TACMAP] readPacket(%d) short read (expected %d) -- zeroing buffer\n", packet + 1, size);
-		memset( mem, 0, size );
+		memset( mem.get(), 0, size );
 	}
 
-	controlGui.initTacMap( mem, size );
-	delete[] mem;
+	controlGui.initTacMap( mem.get(), size );
+	mem.reset();
 
 	swapTime = 0.f;
 
