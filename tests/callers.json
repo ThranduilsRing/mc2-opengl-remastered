@@ -156,7 +156,7 @@
           "path": "scripts/tests/test_check_ab_kit.py",
           "line": 30,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/check-ab-kit.py",
+          "reference": "A:/Games/mc2-main/scripts/check-ab-kit.py",
           "text": "return subprocess.run([sys.executable, str(SCRIPT), str(tmp_path)], capture_output=True, text=True, **console_child.child_kwargs())"
         }
       ],
@@ -268,7 +268,7 @@
           "path": "scripts/tests/test_check_background_launch.py",
           "line": 20,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/check-background-launch.py",
+          "reference": "A:/Games/mc2-main/scripts/check-background-launch.py",
           "text": "return subprocess.run([sys.executable, str(SCRIPT), *args],"
         }
       ],
@@ -423,7 +423,7 @@
           "path": "tools/visual_verify/verify.py",
           "line": 306,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-codex/scripts/check-capture-resolution.py",
+          "reference": "A:\\Games\\mc2-main/scripts/check-capture-resolution.py",
           "text": "_spec = _ilu.spec_from_file_location("
         }
       ],
@@ -460,7 +460,7 @@
           "path": "scripts/check-pass-attachment-contract.py",
           "line": 89,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-codex/scripts/check-colormask-ownership.py",
+          "reference": "A:\\Games\\mc2-main/scripts/check-colormask-ownership.py",
           "text": "spec = importlib.util.spec_from_file_location(\"native_masks\", ROOT / \"scripts/check-colormask-ownership.py\")"
         }
       ],
@@ -577,14 +577,14 @@
           "path": "scripts/tests/test_delivery_code_evidence.py",
           "line": 6,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-codex\\scripts/check-delivery.py",
+          "reference": "A:\\Games\\mc2-main\\scripts/check-delivery.py",
           "text": "spec = importlib.util.spec_from_file_location("
         },
         {
           "path": "scripts/tests/test_delivery_gate_defaults.py",
           "line": 11,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-codex/scripts/check-delivery.py",
+          "reference": "A:\\Games\\mc2-main/scripts/check-delivery.py",
           "text": "spec = importlib.util.spec_from_file_location(\"delivery_gate_defaults\", ROOT / \"scripts/check-delivery.py\")"
         }
       ],
@@ -599,42 +599,42 @@
           "path": "scripts/run_smoke.py",
           "line": 1027,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
           "text": "_coh = subprocess.run("
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 114,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
           "text": "r = subprocess.run("
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 124,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
           "text": "r = subprocess.run("
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 352,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
           "text": "assert subprocess.run(argv, capture_output=True, **console_child.child_kwargs(redirected=True)).returncode == 0"
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 353,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
           "text": "r = subprocess.run(argv + [\"--strict\"], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))"
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 359,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/check-deploy-coherence.py",
+          "reference": "A:/Games/mc2-main/scripts/check-deploy-coherence.py",
           "text": "r = subprocess.run("
         }
       ],
@@ -664,7 +664,7 @@
           "path": "scripts/deploy_payload.py",
           "line": 1628,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/check-deploy-hygiene.py",
+          "reference": "A:/Games/mc2-main/scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
         }
       ],
@@ -701,7 +701,7 @@
           "path": "scripts/run_smoke.py",
           "line": 961,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/check-deploy-target.py",
+          "reference": "A:/Games/mc2-main/scripts/check-deploy-target.py",
           "text": "_g = subprocess.run(_gcmd, capture_output=True, text=True, timeout=60, **nofocus.hidden_kwargs())"
         }
       ],
@@ -731,21 +731,21 @@
           "path": "scripts/make-isolated-deploy.py",
           "line": 277,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/check-disk-space.py",
+          "reference": "A:/Games/mc2-main/scripts/check-disk-space.py",
           "text": "rc = subprocess.run("
         },
         {
           "path": "scripts/renderdoc_capture.py",
           "line": 155,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/check-disk-space.py",
+          "reference": "A:/Games/mc2-main/scripts/check-disk-space.py",
           "text": "subprocess.run([sys.executable, str(guard), \"--path\", str(path),"
         },
         {
           "path": "scripts/run_visual_capture.py",
           "line": 158,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/check-disk-space.py",
+          "reference": "A:/Games/mc2-main/scripts/check-disk-space.py",
           "text": "subprocess.run([sys.executable, str(guard), \"--path\", str(path),"
         }
       ],
@@ -901,7 +901,7 @@
           "path": "scripts/test_gl_shader_variants.py",
           "line": 23,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-codex\\scripts/check-gl-shader-variants.py",
+          "reference": "A:\\Games\\mc2-main\\scripts/check-gl-shader-variants.py",
           "text": "_spec = importlib.util.spec_from_file_location(\"check_glsv\", HERE / \"check-gl-shader-variants.py\")"
         }
       ],
@@ -968,7 +968,7 @@
           "path": "scripts/make-isolated-deploy.py",
           "line": 122,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-codex\\scripts/check-hardlink-isolation.py",
+          "reference": "A:\\Games\\mc2-main\\scripts/check-hardlink-isolation.py",
           "text": "spec = importlib.util.spec_from_file_location(\"check_hardlink_isolation\","
         },
         {
@@ -1123,7 +1123,7 @@
           "path": "scripts/tests/test_manifest_schema_check.py",
           "line": 9,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-codex/scripts/check-manifest-schema.py",
+          "reference": "A:\\Games\\mc2-main/scripts/check-manifest-schema.py",
           "text": "spec = importlib.util.spec_from_file_location(\"manifest_schema_check\", ROOT / \"scripts/check-manifest-schema.py\")"
         }
       ],
@@ -1740,14 +1740,14 @@
           "path": "scripts/tests/test_check_staged_hygiene.py",
           "line": 23,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-codex\\scripts/check-staged-hygiene.py",
+          "reference": "A:\\Games\\mc2-main\\scripts/check-staged-hygiene.py",
           "text": "SPEC = importlib.util.spec_from_file_location(\"check_staged_hygiene\", SCRIPTS / \"check-staged-hygiene.py\")"
         },
         {
           "path": "scripts/tests/test_check_staged_hygiene.py",
           "line": 387,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/check-staged-hygiene.py",
+          "reference": "A:/Games/mc2-main/scripts/check-staged-hygiene.py",
           "text": "result = subprocess.run("
         }
       ],
@@ -1895,7 +1895,7 @@
           "path": "scripts/tests/test_check_vfx_blend_distinction.py",
           "line": 6,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-codex/scripts/check-vfx-blend-distinction.py",
+          "reference": "A:\\Games\\mc2-main/scripts/check-vfx-blend-distinction.py",
           "text": "spec = importlib.util.spec_from_file_location(\"vfx_blend\", ROOT / \"scripts/check-vfx-blend-distinction.py\")"
         }
       ],
@@ -2059,7 +2059,7 @@
           "path": "scripts/run_smoke.py",
           "line": 1045,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/check_shader_bom.py",
+          "reference": "A:/Games/mc2-main/scripts/check_shader_bom.py",
           "text": "_bom = subprocess.run("
         }
       ],
@@ -3410,7 +3410,7 @@
           "path": "scripts/run_smoke.py",
           "line": 903,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/deploy_payload.py",
+          "reference": "A:/Games/mc2-main/scripts/deploy_payload.py",
           "text": "_v = subprocess.run(cmd, capture_output=True, text=True, timeout=300, **nofocus.hidden_kwargs())"
         }
       ],
@@ -3581,7 +3581,7 @@
           "path": "scripts/tests/test_extract_gl_shader_variants.py",
           "line": 8,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-codex/scripts/extract_gl_shader_variants.py",
+          "reference": "A:\\Games\\mc2-main/scripts/extract_gl_shader_variants.py",
           "text": "spec = importlib.util.spec_from_file_location(\"extract_gl_variants\", ROOT / \"scripts/extract_gl_shader_variants.py\")"
         }
       ],
@@ -3611,7 +3611,7 @@
           "path": "scripts/run_smoke.py",
           "line": 393,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/game_auto.py",
+          "reference": "A:/Games/mc2-main/scripts/game_auto.py",
           "text": "auto = subprocess.run("
         }
       ],
@@ -4003,14 +4003,14 @@
           "path": "scripts/sweep_campaign.py",
           "line": 24,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/resolve_campaign_config.py",
+          "reference": "A:/Games/mc2-main/scripts/resolve_campaign_config.py",
           "text": "out = subprocess.run([sys.executable, str(HERE / \"resolve_campaign_config.py\"), deploy, name],"
         },
         {
           "path": "scripts/verify_campaign_assets.py",
           "line": 43,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/resolve_campaign_config.py",
+          "reference": "A:/Games/mc2-main/scripts/resolve_campaign_config.py",
           "text": "out = subprocess.run([sys.executable, str(HERE / \"resolve_campaign_config.py\"), deploy, name],"
         }
       ],
@@ -4053,7 +4053,7 @@
           "path": "scripts/tests/test_editor_smoke.py",
           "line": 17,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-codex\\scripts/run_editor_smoke.py",
+          "reference": "A:\\Games\\mc2-main\\scripts/run_editor_smoke.py",
           "text": "spec = importlib.util.spec_from_file_location(\"editor_smoke\", SCRIPT)"
         }
       ],
@@ -4175,42 +4175,42 @@
           "path": "scripts/mcp/mc2_render_state_server.py",
           "line": 737,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/run_smoke.py",
+          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
           "text": "result = subprocess.run("
         },
         {
           "path": "scripts/test_release_zip_install.py",
           "line": 238,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/run_smoke.py",
+          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
           "text": "result = subprocess.run(cmd, **console_child.child_kwargs())"
         },
         {
           "path": "scripts/tests/test_harness_desktop_safety.py",
           "line": 187,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/run_smoke.py",
+          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
           "text": "return subprocess.run([sys.executable, str(ROOT / \"scripts\" / \"run_smoke.py\"), *args],"
         },
         {
           "path": "scripts/verify_background_launch.py",
           "line": 152,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/run_smoke.py",
+          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
           "text": "proc = subprocess.Popen([sys.executable, str(ROOT / \"scripts\" / \"run_smoke.py\"), *smoke_args],"
         },
         {
           "path": "tools/mission_order_ingress_witness.py",
           "line": 177,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/run_smoke.py",
+          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
           "text": "with subprocess.Popen(command, cwd=ROOT, env=env, **console_child.child_kwargs()) as smoke:"
         },
         {
           "path": "tools/mission_order_ingress_witness.py",
           "line": 274,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/run_smoke.py",
+          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
           "text": "with subprocess.Popen(command, cwd=ROOT, env=env, **console_child.child_kwargs()) as smoke:"
         }
       ],
@@ -4298,7 +4298,7 @@
           "path": "scripts/check-capture-determinism.py",
           "line": 217,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/run_visual_capture.py",
+          "reference": "A:/Games/mc2-main/scripts/run_visual_capture.py",
           "text": "subprocess.run(cmd, check=False, **console_child.child_kwargs())"
         }
       ],
@@ -6401,14 +6401,14 @@
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 137,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/write-deploy-manifest.py",
+          "reference": "A:/Games/mc2-main/scripts/write-deploy-manifest.py",
           "text": "r = subprocess.run("
         },
         {
           "path": "scripts/tests/test_deploy_coherence.py",
           "line": 153,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/scripts/write-deploy-manifest.py",
+          "reference": "A:/Games/mc2-main/scripts/write-deploy-manifest.py",
           "text": "r = subprocess.run("
         }
       ],
@@ -6482,7 +6482,7 @@
           "path": "tools/blender_pipeline/asset_edit.py",
           "line": 348,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/tools/ase_to_glb.py",
+          "reference": "A:/Games/mc2-main/tools/ase_to_glb.py",
           "text": "proc = subprocess.run(cmd, capture_output=True, text=True,"
         }
       ],
@@ -6619,14 +6619,14 @@
           "path": "tools/asset_cook/tests/test_g1_stage.py",
           "line": 50,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/tools/asset_cook/trackg_cook.py",
+          "reference": "A:/Games/mc2-main/tools/asset_cook/trackg_cook.py",
           "text": "proc = subprocess.run("
         },
         {
           "path": "tools/asset_cook/tests/test_g2_textures.py",
           "line": 65,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/tools/asset_cook/trackg_cook.py",
+          "reference": "A:/Games/mc2-main/tools/asset_cook/trackg_cook.py",
           "text": "proc = subprocess.run("
         }
       ],
@@ -6656,21 +6656,21 @@
           "path": "scripts/check-asset-manifest-fixtures.py",
           "line": 40,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/tools/asset_cook/validate_asset_manifest.py",
+          "reference": "A:/Games/mc2-main/tools/asset_cook/validate_asset_manifest.py",
           "text": "proc = subprocess.run("
         },
         {
           "path": "scripts/check-asset-manifests.py",
           "line": 33,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/tools/asset_cook/validate_asset_manifest.py",
+          "reference": "A:/Games/mc2-main/tools/asset_cook/validate_asset_manifest.py",
           "text": "return subprocess.run(cmd, **console_child.child_kwargs()).returncode == 0"
         },
         {
           "path": "tools/asset_cook/tests/run_tests.py",
           "line": 53,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/tools/asset_cook/validate_asset_manifest.py",
+          "reference": "A:/Games/mc2-main/tools/asset_cook/validate_asset_manifest.py",
           "text": "proc = subprocess.run("
         }
       ],
@@ -8344,7 +8344,7 @@
           "path": "scripts/verify_campaign_assets.py",
           "line": 32,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-codex/tools/mc2x_import/fst.py",
+          "reference": "A:\\Games\\mc2-main/tools/mc2x_import/fst.py",
           "text": "spec = importlib.util.spec_from_file_location(\"fst\", str(p))"
         }
       ],
@@ -8830,7 +8830,7 @@
           "path": "tests/smoke/test_perf_baseline_vram.py",
           "line": 6,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-codex/tools/perf_baseline_report.py",
+          "reference": "A:\\Games\\mc2-main/tools/perf_baseline_report.py",
           "text": "spec = importlib.util.spec_from_file_location(\"perf_baseline_report_under_test\", ROOT / \"tools\" / \"perf_baseline_report.py\")"
         }
       ],
@@ -9848,7 +9848,7 @@
           "path": "tools/terrain_beautify/test_control_map_tool.py",
           "line": 45,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/tools/terrain_beautify/control_map_tool.py",
+          "reference": "A:/Games/mc2-main/tools/terrain_beautify/control_map_tool.py",
           "text": "return subprocess.run("
         }
       ],
@@ -9878,7 +9878,7 @@
           "path": "tools/terrain_beautify/test_cook_markings.py",
           "line": 67,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/tools/terrain_beautify/cook_markings.py",
+          "reference": "A:/Games/mc2-main/tools/terrain_beautify/cook_markings.py",
           "text": "return subprocess.run("
         }
       ],
@@ -9916,7 +9916,7 @@
           "path": "tools/terrain_beautify/test_cook_shoreline.py",
           "line": 51,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/tools/terrain_beautify/cook_shoreline.py",
+          "reference": "A:/Games/mc2-main/tools/terrain_beautify/cook_shoreline.py",
           "text": "return subprocess.run("
         }
       ],
@@ -10125,7 +10125,7 @@
           "path": "tools/terrain_beautify/test_overlay_extract.py",
           "line": 40,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/tools/terrain_beautify/overlay_extract.py",
+          "reference": "A:/Games/mc2-main/tools/terrain_beautify/overlay_extract.py",
           "text": "return subprocess.run("
         }
       ],
@@ -10155,7 +10155,7 @@
           "path": "tools/terrain_beautify/test_scatter_tool.py",
           "line": 56,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/tools/terrain_beautify/scatter_tool.py",
+          "reference": "A:/Games/mc2-main/tools/terrain_beautify/scatter_tool.py",
           "text": "return subprocess.run("
         }
       ],
@@ -11497,7 +11497,7 @@
           "path": "tests/smoke/test_render_options_pin.py",
           "line": 121,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-codex/tools/tracy_capture_compare.py",
+          "reference": "A:\\Games\\mc2-main/tools/tracy_capture_compare.py",
           "text": "spec = importlib.util.spec_from_file_location(\"tracy_capture_compare_under_test\", ROOT / \"tools\" / \"tracy_capture_compare.py\")"
         }
       ],
@@ -12211,14 +12211,14 @@
           "path": "scripts/tests/test_harness_desktop_safety.py",
           "line": 225,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/tools/visual_verify/capture.py",
+          "reference": "A:/Games/mc2-main/tools/visual_verify/capture.py",
           "text": "r = subprocess.run([sys.executable, str(ROOT / \"tools\" / \"visual_verify\" / \"capture.py\"),"
         },
         {
           "path": "tools/visual_verify/ab.py",
           "line": 38,
           "evidence": "command",
-          "reference": "A:/Games/mc2-codex/tools/visual_verify/capture.py",
+          "reference": "A:/Games/mc2-main/tools/visual_verify/capture.py",
           "text": "rc = subprocess.call(cmd, env=dict(os.environ, MC2_CURSOR_NO_PARK=\"1\"))"
         }
       ],
