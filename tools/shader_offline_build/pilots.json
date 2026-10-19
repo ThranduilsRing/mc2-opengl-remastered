@@ -1,13 +1,13 @@
 {
-  "_comment": "OFFLINE-SHADER-VARIANT-BUILD-1 pilot manifest. Each pilot is a shader PROGRAM (a set of stages compiled together at runtime) and its enumerated variants (define-sets from shader-permutation-inventory.json). build_variants.py compiles each (pilot, variant, stage) to a deployable .spv + sidecar; check-spirv-artifacts.py verifies them. Start tiny: the postprocess composite pass (no variant macros, no UBO/SSBO blocks, location-based samplers, last-pass isolation).",
+  "_comment": "Native Vulkan verification subset. Runtime shader modules are baked by CMake; this subset exercises portable artifact hashes, reflection and package metadata for the active mech/postprocess sources.",
   "spv_dir": "shaders/spv",
   "pilots": [
     {
       "program": "postprocess",
-      "note": "composite/present pass: shaders/postprocess.{vert,frag} bound with kShaderPrefix (#version 430, no macros). gos_postprocess.cpp:457-461.",
+      "note": "Active native Vulkan stages; explicit descriptor bindings and no GL specialization path.",
       "stages": {
-        "vert": "shaders/postprocess.vert",
-        "frag": "shaders/postprocess.frag"
+        "vert": "shaders/vulkan/postprocess.vert",
+        "frag": "shaders/vulkan/postprocess.frag"
       },
       "variants": [
         {
@@ -18,34 +18,15 @@
     },
     {
       "program": "mech",
-      "note": "MechOpaque (PipelineId::MechOpaque): shaders/mech.{vert,frag} bound in gos_mech_batcher.cpp:552. Both variant macros are DEFAULT-ON, so stock runtime selects the both-on variant. shadow_mech is a SEPARATE program and stays GLSL. All 4 combos baked to cover kill-switch states.",
+      "note": "Active native Vulkan stages; explicit descriptor bindings and no GL specialization path.",
       "stages": {
-        "vert": "shaders/mech.vert",
-        "frag": "shaders/mech.frag"
+        "vert": "shaders/vulkan/mech_tier1.vert",
+        "frag": "shaders/vulkan/mech_tier1.frag"
       },
       "variants": [
         {
           "name": "default",
           "defines": []
-        },
-        {
-          "name": "objectid",
-          "defines": [
-            "MC2_OBJECT_ID_BUFFER=1"
-          ]
-        },
-        {
-          "name": "viewuniforms",
-          "defines": [
-            "MC2_USE_VIEW_UNIFORMS=1"
-          ]
-        },
-        {
-          "name": "objectid_viewuniforms",
-          "defines": [
-            "MC2_OBJECT_ID_BUFFER=1",
-            "MC2_USE_VIEW_UNIFORMS=1"
-          ]
         }
       ]
     }

@@ -9,7 +9,7 @@ identified in spirv-consumer-pilot-recon-1.md; the runtime consumer
 Per (pilot, variant, stage):
   - build the exact source the engine compiles (shader_common.build_shader_source
     = #version prefix + flattened #includes + inventory define-set);
-  - compile to OpenGL SPIR-V with `glslangValidator -G --auto-map-locations`
+  - compile to Vulkan SPIR-V with `glslangValidator -V --target-env vulkan1.3`
     and DELIBERATELY NOT `--auto-map-bindings` (so explicit layout(binding=)
     decorations are preserved for runtime correctness — reflect.py's auto-mapped
     .spv is reflection-only and must NOT be used at runtime);
@@ -187,9 +187,9 @@ def build_package(cfg, spv_dir, index_records, glslang, spirv_cross, slangc=None
     tools = {
         "glslangValidator": _tool_version(glslang),
         "spirv_cross": _tool_version(spirv_cross),
-        "compile_flags": "-G --auto-map-locations (NOT --auto-map-bindings)",
+        "compile_flags": "-V --target-env vulkan1.3 --auto-map-locations (explicit descriptor bindings)",
     }
-    if slangc:  # only when a .slang pilot exists: GLSL-only output stays byte-identical
+    if slangc:  # Slang also emits native Vulkan SPIR-V.
         tools["slangc"] = slang_compile.slangc_version(slangc)
         tools["slang_compile_flags"] = (
             f"-target spirv -profile {slang_compile.DEFAULT_PROFILE} "
@@ -199,18 +199,17 @@ def build_package(cfg, spv_dir, index_records, glslang, spirv_cross, slangc=None
         "slice": "SHADER-ARTIFACT-PACKAGE-METADATA-1",
         "generator": "tools/shader_offline_build/build_variants.py",
         "source_hash_canonicalization":
-            "canon_source: strip '#line N // <path>' labels + normalize CRLF->LF",
+            "portable transitive source bundle with normalized newlines",
         "tools": tools,
         "runtime": {
-            "env_gate": "MC2_SHADER_SPIRV=1 (default OFF)",
-            "required_extension": "GL_ARB_gl_spirv || GL 4.6",
-            "fallback_policy": "program-atomic GLSL fallback (any stage miss -> whole program GLSL)",
-            "fatal_gate": "MC2_SHADER_SPIRV_FATAL=1 (assert instead of fallback; default OFF)",
+            "env_gate": "none; offline verification subset of the native Vulkan shaders",
+            "required_extension": "Vulkan 1.3",
+            "fallback_policy": "native pipeline initialization failure; no GL fallback",
+            "fatal_gate": "shader and pipeline initialization must succeed",
         },
         "pilot_families": [p["program"] for p in cfg["pilots"]],
         "excluded_families": [
-            "shadow_mech (shadow_mech.vert + shadow_instanced.frag) — separate program, stays GLSL",
-            "all non-pilot shader programs — stay GLSL",
+            "other native Vulkan pipelines are baked by CMake",
         ],
         "variant_matrix": package_variant_matrix(cfg),
         "hashes": package_hashes(spv_dir, index_records),
@@ -219,7 +218,7 @@ def build_package(cfg, spv_dir, index_records, glslang, spirv_cross, slangc=None
 
 def _emit_record(args, fails, built, index, cfg, spv_dir, base, stage, vname,
                  defines, vid, art, src_hash, spirv_hash, refl, index_key, extra):
-    """Sidecar + index record for a validated Slang stage."""
+    """Sidecar + index record for a validated native stage."""
     sidecar = {
         "base": base, "stage": stage, "variant": vname,
         "defines": defines, "specializationParams": [],
@@ -282,7 +281,7 @@ def main():
         spv_dir.mkdir(parents=True, exist_ok=True)
 
     def index_key(base, stage, defines):
-        # MUST match the runtime consumer's spirvDefineKey canonicalization:
+        # Stable package identity:
         # base|stage|";".join(sorted(defines)).
         return f"{base}|{stage}|" + ";".join(sorted(defines))
 
@@ -324,16 +323,15 @@ def main():
                                                    "spirvProfile": prof})
                     continue
                 src_path = root / rel
-                src = shader_common.build_shader_source(src_path, defines)
-                src_hash = sha256(canon_source(src))
-                # compile to a temp source, then to the artifact path
+                src_hash = sha256(slang_compile.source_bundle(src_path))
+                # Compile the actual native source; includes retain their source directories.
                 with tempfile.TemporaryDirectory() as td:
-                    tmp = Path(td) / src_path.name
-                    tmp.write_text(src, encoding="utf-8")
                     out = spv_path if not args.check else Path(td) / art
                     r = subprocess.run(
-                        [glslang, "-G", "--auto-map-locations", "-S", stage,
-                         str(tmp), "-o", str(out)],
+                        [glslang, "-V", "--target-env", "vulkan1.3", "--auto-map-locations",
+                         "-S", stage, f"-I{src_path.parent}", f"-I{root / 'shaders'}",
+                         f"-I{root / '3rdparty/include'}", *["-D" + d for d in defines],
+                         str(src_path), "-o", str(out)],
                         capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
                     if r.returncode != 0 or not out.exists():
                         fails.append(f"{art}: glslang failed: "
@@ -354,37 +352,11 @@ def main():
                             f"{art}: reflected {ns} '{blk['name']}' binding={b} "
                             f"not present in binding-slot-occupancy.json (drift)")
 
-                sidecar = {
-                    "base": base, "stage": stage, "variant": vname,
-                    "defines": defines, "specializationParams": [],
-                    "artifact": art, "spv_dir": cfg.get("spv_dir", "shaders/spv"),
-                    "source_sha256": src_hash, "spirv_sha256": spirv_hash,
-                    "bindings": {"ubos": refl["ubos"], "ssbos": refl["ssbos"],
-                                 "samplers": refl["samplers"]},
-                    "interface": {"inputs": refl["inputs"],
-                                  "outputs": refl["outputs"]},
-                    "shaderVariantId": vid,
-                }
-                sc_path = spv_dir / sidecar_name(base, stage, vname)
-                if args.check:
-                    if not sc_path.exists():
-                        fails.append(f"{art}: sidecar missing {sc_path.name}")
-                    else:
-                        old = json.load(open(sc_path, encoding="utf-8"))
-                        if old.get("source_sha256") != src_hash:
-                            fails.append(f"{art}: source hash drift vs sidecar")
-                else:
-                    sc_path.write_text(json.dumps(sidecar, indent=2), encoding="utf-8")
-                # index record ("key" before "artifact" — the consumer pairs by
-                # order). Keep this canonicalization in lockstep with the C++
-                # spirvDefineKey() in shader_builder.cpp.
-                index.append({"key": index_key(base, stage, defines),
-                              "artifact": art, "variantId": vid,
-                              "base": base, "stage": stage,
-                              "defines": sorted(defines)})
-                built.append(art)
+                _emit_record(args, fails, built, index, cfg, spv_dir, base, stage,
+                             vname, defines, vid, art, src_hash, spirv_hash, refl,
+                             index_key, extra={"language": "glsl", "targetEnv": "vulkan1.3"})
 
-    # Deployed variant index (one file the runtime consumer reads).
+    # Offline subset index; runtime shader modules are baked by CMake.
     idx_path = spv_dir / "spirv_index.json"
     idx_doc = {"slice": "SPIRV-KEYED-VARIANT-CONSUMER-1", "records": index}
     if args.check:
