@@ -439,7 +439,7 @@
           "line": 965,
           "evidence": "command",
           "reference": "scripts/check-colormask-ownership.py",
-          "text": "run_check \"colormask_ownership\"    \"py -3 scripts/check-colormask-ownership.py --quiet\""
+          "text": "run_check \"colormask_ownership\"    \"py -3 scripts/check-colormask-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k color_mask -q -p no:cacheprovider\""
         }
       ],
       "callers_by_stem": []
@@ -873,7 +873,7 @@
           "line": 981,
           "evidence": "command",
           "reference": "scripts/check-gl-shader-variants.py",
-          "text": "run_check \"gl_shader_variants\"     \"py -3 scripts/check-gl-shader-variants.py --quiet\""
+          "text": "run_check \"gl_shader_variants\"     \"py -3 scripts/check-gl-shader-variants.py --quiet && py -3 -B -m pytest scripts/tests/test_extract_gl_shader_variants.py -q -p no:cacheprovider\""
         },
         {
           "path": "scripts/test_gl_shader_variants.py",
@@ -1184,7 +1184,7 @@
           "line": 964,
           "evidence": "command",
           "reference": "scripts/check-multiply-blend.py",
-          "text": "run_check \"multiply_blend\"         \"py -3 scripts/check-multiply-blend.py --quiet\""
+          "text": "run_check \"multiply_blend\"         \"py -3 scripts/check-multiply-blend.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k multiply -q -p no:cacheprovider\""
         }
       ],
       "callers_by_stem": []
@@ -1859,7 +1859,14 @@
           "line": 963,
           "evidence": "command",
           "reference": "scripts/check-vfx-blend-distinction.py",
-          "text": "run_check \"vfx_blend_distinction\"  \"py -3 scripts/check-vfx-blend-distinction.py --quiet\""
+          "text": "run_check \"vfx_blend_distinction\"  \"py -3 scripts/check-vfx-blend-distinction.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vfx_blend_distinction.py -q -p no:cacheprovider\""
+        },
+        {
+          "path": "scripts/tests/test_check_vfx_blend_distinction.py",
+          "line": 6,
+          "evidence": "load module",
+          "reference": "A:\\Games\\mc2-lane2/scripts/check-vfx-blend-distinction.py",
+          "text": "spec = importlib.util.spec_from_file_location(\"vfx_blend\", ROOT / \"scripts/check-vfx-blend-distinction.py\")"
         }
       ],
       "callers_by_stem": []
@@ -3497,7 +3504,15 @@
       "path": "scripts/extract_gl_shader_variants.py",
       "basename": "extract_gl_shader_variants.py",
       "stem": "extract_gl_shader_variants",
-      "callers_by_basename": [],
+      "callers_by_basename": [
+        {
+          "path": "scripts/tests/test_extract_gl_shader_variants.py",
+          "line": 8,
+          "evidence": "load module",
+          "reference": "A:\\Games\\mc2-lane2/scripts/extract_gl_shader_variants.py",
+          "text": "spec = importlib.util.spec_from_file_location(\"extract_gl_variants\", ROOT / \"scripts/extract_gl_shader_variants.py\")"
+        }
+      ],
       "callers_by_stem": [
         {
           "path": "scripts/check-gl-shader-variants.py",
@@ -3574,7 +3589,7 @@
         },
         {
           "path": "scripts/tests/test_gate_table_gen.py",
-          "line": 15,
+          "line": 16,
           "evidence": "import",
           "reference": "gate_table_reader",
           "text": "import gate_table_reader as gtr  # noqa: E402"
@@ -5881,6 +5896,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_check_native_post_contracts.py",
+      "basename": "test_check_native_post_contracts.py",
+      "stem": "test_check_native_post_contracts",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_check_sim_fp_contract.py",
       "basename": "test_check_sim_fp_contract.py",
       "stem": "test_check_sim_fp_contract",
@@ -5891,6 +5913,13 @@
       "path": "scripts/tests/test_check_staged_hygiene.py",
       "basename": "test_check_staged_hygiene.py",
       "stem": "test_check_staged_hygiene",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_check_vfx_blend_distinction.py",
+      "basename": "test_check_vfx_blend_distinction.py",
+      "stem": "test_check_vfx_blend_distinction",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -6003,6 +6032,13 @@
       "path": "scripts/tests/test_exe_fingerprint_layout.py",
       "basename": "test_exe_fingerprint_layout.py",
       "stem": "test_exe_fingerprint_layout",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_extract_gl_shader_variants.py",
+      "basename": "test_extract_gl_shader_variants.py",
+      "stem": "test_extract_gl_shader_variants",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -7490,7 +7526,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_gate_table_gen.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "gate_registry_gen",
           "text": "import gate_registry_gen as grg  # noqa: E402"
@@ -7504,7 +7540,7 @@
         },
         {
           "path": "tools/gate_table_gen.py",
-          "line": 350,
+          "line": 347,
           "evidence": "import",
           "reference": "gate_registry_gen",
           "text": "import gate_registry_gen as grg"
@@ -7519,7 +7555,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_gate_table_gen.py",
-          "line": 14,
+          "line": 15,
           "evidence": "import",
           "reference": "gate_table_gen",
           "text": "import gate_table_gen as tg  # noqa: E402"

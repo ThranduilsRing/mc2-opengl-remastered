@@ -9,6 +9,8 @@ describing another file. Cells that could not be determined say **UNKNOWN**.
 Pinned by `scripts/check-lighting-divergence.py` (contract row
 `lighting_divergence`). If a row here changes, that check fails.
 
+The GL-only rows below are historical snapshots after s63. Current water rendering uses `shaders/vulkan/water_geom.frag`; the deleted GL shader is named without a live-path claim.
+
 ---
 
 ## 1. The shape of the problem
@@ -60,7 +62,7 @@ screen-space shadow pass applies it later); **SH** = `rc_gbuffer1_shadowHandled*
 | **Terrain (VK tier1)** — INTENTIONAL parity port (VK-PARITY-TERRAIN-1/-2) | `shaders/vulkan/terrain_tier1.frag` (+ byte-copy `terrain_tier1_skirt.frag`) | same albedo-scaled TERRAIN-AMBIENT-FLOOR-2 term as the GL row above (`ambGnd`/`ambSky`, `mix(0.55,1.0,shadow)`), floor and day gate read from the same C++ producer (`gos_TerrainAmbientFloor/DayGate`); flat-lit share = `pureConcrete` (stock `u_cementLit`=0) | none | night light pools + light grid + mover contact + pad-area glow via the SHARED include `shaders/include/terrain_light_pool.hglsl` (same body as GL), pool/grid arrays = CPU copies of GL bindings 28/29/30 (VK set0 11/12/13) (VK-PARITY-TERRAIN-2) | as GL | baked colormap | sun/static+dynamic shadow; VK-PARITY-SHADOW-1: GL-parity dist-fade/penumbra/ALT-SCALE/clamped-sun/BANDFIX_V2 via shared `shaders/include/shadow_fade_model.hglsl` + `lsvk_*` ports in `lighting_shadow_vk.glsl` (INTENTIONAL: parity; mech/prop screen-shadow pass has no fade in GL either) | feed -> `TerrainFrameUBO.ambientFloor/ambientDayGate`, `shadow*` knobs from `mc2ShadowFadeKnobs()` |
 | **Terrain (legacy)** — `MC2_TERRAIN_LOD_CHUNK=0`, vestigial | `shaders/gos_terrain.frag` | **no ambient term** | none | as above | UNKNOWN | as above | **in-shader** `calcShadow` (`:958`) | as above |
 | **Terrain overlay / decals** | `terrain_overlay.frag`, `decal.frag` | none (overlay and decal) | none | terrain sun dir only | UNKNOWN | UNKNOWN | **in-shader** `calcShadow` (`terrain_overlay.frag:388`, `decal.frag:82`) + **SH** | `terrainLightDir` uniform |
-| **Water** | `shaders/gos_terrain_water_mdi.frag` | `SKY_AMBIENT = 0.18`, applied **twice**: as a floor `max(vertexLight, 0.18)` and again additively `+ waterCol*0.18*0.5` (`:101,274-275`) | none | none — consumes the terrain vertex light | UNKNOWN | `mix(fog_color.rgb, col, FogValue)` (`:395`) | **SSE** | terrain vertex light packed in `Color.bgra` (`:273`) |
+| **Water** | `gos_terrain_water_mdi.frag` (former GL source, removed in s63) | `SKY_AMBIENT = 0.18`, applied **twice**: as a floor `max(vertexLight, 0.18)` and again additively `+ waterCol*0.18*0.5` (`:101,274-275`) | none | none — consumes the terrain vertex light | UNKNOWN | `mix(fog_color.rgb, col, FogValue)` (`:395`) | **SSE** | terrain vertex light packed in `Color.bgra` (`:273`) |
 | **Vegetation cards** | `gos_vegetation_card.vert` / `.frag` | inline `(0.60 + 0.38 * NdotL)` (`.frag:70`) — a 0.60 diffuse floor | `min(vec3(1.0), col)` (`.frag:75`) | one hardcoded up-normal `dot(vec3(0,0,1), u_terrainLightDir)` (`.frag:68`) | none | none | **SH** — opts out (`.frag:79`) | `u_terrainLightDir` uniform only |
 
 ### 2c. Unlit classes (verified genuinely unlit, not "lighting UNKNOWN")

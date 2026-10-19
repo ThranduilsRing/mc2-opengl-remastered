@@ -1,3 +1,7 @@
+<!-- doc-status: archived | reviewed:2026-10-18 -->
+
+Historical GL experiment: its billboard bridge and shaders were removed in s63. Native Vulkan billboards do not implement this distortion experiment.
+
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # VFX-DISTORTION-1 — heat-haze refraction (procedural, clean-room)
 
@@ -46,7 +50,7 @@ are technique reference only.
 
 ## Files changed
 
-- `shaders/particle_billboard.frag` — `u_sceneColor` / `u_vfxDistort` / `u_time` /
+- `particle_billboard.frag` (retired GL source) — `u_sceneColor` / `u_vfxDistort` / `u_time` /
   `u_distortAmp` uniforms; in-house value-noise fbm; the distortion branch (early
   return, guarded `u_vfxDistort==1 && u_debugMode==0`).
 - `GameOS/gameos/gos_particle_bridge.cpp` — gate + fixture init helper; uniform

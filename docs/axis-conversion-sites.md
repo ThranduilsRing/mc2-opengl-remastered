@@ -9,8 +9,8 @@ The conversion is `(x, y, z) -> (-x, z, y)`; it is its own inverse, so the same 
 | Metric | Count |
 |---|---:|
 | Hand-written sites (ratcheted) | 5 |
-| Waived (`axis-swizzle: allow`) | 1 |
-| Helper-call sites (centralized) | 205 |
+| Waived (`axis-swizzle: allow`) | 2 |
+| Helper-call sites (centralized) | 210 |
 | Helper definitions | 7 |
 | Matrix-form references (`kAxisSwapMC2toGL`, `makeAxisSwapMC2toGL`) | 9 |
 
@@ -45,17 +45,17 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 ### `mclib/assimp_importer.cpp` (2)
 
-- `mclib/assimp_importer.cpp:93` assign-scalars: `X=-v.x; Y= v.z; Z= v.y;`
-- `mclib/assimp_importer.cpp:819` assign-scalars: `X=-v.x; Y= v.z; Z= v.y;`
+- `mclib/assimp_importer.cpp:85` assign-scalars: `X=-v.x; Y= v.z; Z= v.y;`
+- `mclib/assimp_importer.cpp:792` assign-scalars: `X=-v.x; Y= v.z; Z= v.y;`
 
 ### `tools/asset_viewer/TglMeshLoader.cpp` (2)
 
-- `tools/asset_viewer/TglMeshLoader.cpp:271` assign-scalars: `float px = -tv.position.x; float py = tv.position.z; float pz = tv.position.y;`
-- `tools/asset_viewer/TglMeshLoader.cpp:275` assign-scalars: `float nx = -tv.normal.x; float ny = tv.normal.z; float nz = tv.normal.y;`
+- `tools/asset_viewer/TglMeshLoader.cpp:270` assign-scalars: `float px = -tv.position.x; float py = tv.position.z; float pz = tv.position.y;`
+- `tools/asset_viewer/TglMeshLoader.cpp:274` assign-scalars: `float nx = -tv.normal.x; float ny = tv.normal.z; float nz = tv.normal.y;`
 
-### `mclib/terrain.cpp` (1)
+### `mclib/terrain_update.cpp` (1)
 
-- `mclib/terrain.cpp:3004` decl-chain: `-lookDir.x, ly = lookDir.z, lz = lookDir.y`
+- `mclib/terrain_update.cpp:776` decl-chain: `-lookDir.x, ly = lookDir.z, lz = lookDir.y`
 
 ## Helper-call sites
 
@@ -64,8 +64,11 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `code/artlry.cpp`: 14
 - `code/carnage.cpp`: 4
 - `code/gamecam.cpp`: 2
-- `code/missiongui.cpp`: 8
-- `code/objmgr.cpp`: 2
+- `code/missiongui.cpp`: 3
+- `code/missiongui_input.cpp`: 1
+- `code/missiongui_style.cpp`: 3
+- `code/missiongui_support.cpp`: 1
+- `code/objmgr_pick.cpp`: 2
 - `code/terrobj.cpp`: 3
 - `code/turret.cpp`: 2
 - `code/weaponbolt_render.cpp`: 5
@@ -79,39 +82,40 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `mclib/bdactor_tree.cpp`: 1
 - `mclib/bdactor_tree_static.cpp`: 1
 - `mclib/bdactor_update.cpp`: 8
-- `mclib/camera.cpp`: 4
 - `mclib/camera.h`: 1
+- `mclib/camera_matrix.cpp`: 1
+- `mclib/camera_project.cpp`: 3
 - `mclib/cone_glow.cpp`: 1
 - `mclib/crater.cpp`: 1
-- `mclib/genactor.cpp`: 2
+- `mclib/genactor.cpp`: 1
+- `mclib/genactor_frame.cpp`: 1
 - `mclib/gvactor.cpp`: 3
 - `mclib/gvactor_geometry.cpp`: 7
 - `mclib/gvactor_render.cpp`: 3
 - `mclib/gvactor_update.cpp`: 6
 - `mclib/mech3d.cpp`: 3
-- `mclib/mech3d_geometry.cpp`: 15
+- `mclib/mech3d_geometry.cpp`: 16
 - `mclib/mech3d_render.cpp`: 9
 - `mclib/mech3d_type.cpp`: 4
 - `mclib/mech3d_update.cpp`: 10
-- `mclib/msl.cpp`: 1
+- `mclib/msl_shape.cpp`: 1
 - `shaders/building_pbr.vert`: 1
 - `shaders/gos_tex_vertex_lighted.vert`: 2
 - `shaders/include/lighting.hglsl`: 2
 - `shaders/mech.vert`: 4
-- `shaders/particle_billboard.vert`: 1
-- `shaders/shadow_mech.vert`: 1
-- `shaders/shadow_object.vert`: 1
-- `shaders/shadow_screen.frag`: 2
-- `shaders/shadow_static_prop.vert`: 1
 - `shaders/static_prop.frag`: 2
 - `shaders/static_prop.vert`: 3
 - `shaders/terrain_lod_chunk.frag`: 4
 - `shaders/tube_ribbon.vert`: 1
 - `shaders/vfx_mesh.vert`: 1
+- `shaders/vulkan/color_prop_tier1.frag`: 2
 - `shaders/vulkan/color_prop_tier1.vert`: 2
-- `shaders/vulkan/mech_tier1.vert`: 4
+- `shaders/vulkan/mech_tier1.vert`: 6
 - `shaders/vulkan/screen_shadow_csm.frag`: 1
+- `shaders/vulkan/shadow_mech.vert`: 1
 - `shaders/vulkan/shadow_prop.vert`: 1
+- `shaders/vulkan/terrain_tier1.frag`: 2
 - `shaders/vulkan/vfx_particle.vert`: 1
-- `tests/unit/test_xform_convention.cpp`: 10
 - `tests/unit/test_class_light_band_harness.cpp`: 13
+- `tests/unit/test_stuff_glm_identity.cpp`: 3
+- `tests/unit/test_xform_convention.cpp`: 10
