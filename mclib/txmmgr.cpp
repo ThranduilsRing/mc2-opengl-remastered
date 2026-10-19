@@ -12,6 +12,7 @@
 #include "texture_ref.h"
 #include "../RenderCore/TextureService.h"
 #include "../GameOS/gameos/utils/mc2log.h"
+#include <format>
 
 // NS3 boundary: effectStream belongs to the texture/effect subsystem, not
 // to whatever game/tool main links it. Previously redefined in every main.
@@ -318,9 +319,10 @@ void MC_TextureManager::flush (bool justTextures)
 	{
 		{
 			char _cbbuf[128];
-			snprintf(_cbbuf, sizeof(_cbbuf),
-				"[TXM v1] event=mission_unload peak_textures=%ld/%d",
-				peakUsedTextures, MAX_MC2_GOS_TEXTURES);
+			auto _cbbufEnd = std::format_to_n(_cbbuf, sizeof(_cbbuf) - 1,
+				"[TXM v1] event=mission_unload peak_textures={}/{}",
+				peakUsedTextures, MAX_MC2_GOS_TEXTURES).out;
+			*_cbbufEnd = '\0';
 			MC2_DIAG_PUTS(_cbbuf);
 			crashbundle_append(_cbbuf);
 			fflush(stdout);

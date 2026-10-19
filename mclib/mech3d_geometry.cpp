@@ -3,6 +3,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mech3d_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include <format>
 
 // T1.15 SpotLight_ illumination diagnostic — registration probe (mech class).
 // First-hit always-on; per-summary every 600 updateGeometry calls when env=1.
@@ -55,7 +56,8 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 				mechShape->GetTextureName(i,txmName,256);
 	
 				char texturePath[1024];
-				sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+				auto texturePathEnd = std::format_to_n(texturePath, sizeof(texturePath) - 1, "{}{}" PATH_SEPARATOR, static_cast<const char*>(tglPath), ObjectTextureSize).out;
+				*texturePathEnd = '\0';
 		
 				FullPathFileName textureName;
 				textureName.init(texturePath,txmName,"");

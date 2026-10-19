@@ -42,6 +42,7 @@
 
 #include "dynamic_decal_ring.h"  // MC2_DYNAMIC_DECALS runtime impact decals
 #include "../RenderCore/axis_convert.h"
+#include <format>
 
 //---------------------------------------------------------------------
 // Static Globals
@@ -144,7 +145,8 @@ long CraterManager::init (long numCraters, unsigned long craterTypeSize, const c
 	for (int i=0;i<numCraterTextures;i++)
 	{
 		char craterName[1024];
-		sprintf(craterName,"defaults" PATH_SEPARATOR "feet%04d",i);
+		auto craterNameEnd = std::format_to_n(craterName, sizeof(craterName) - 1, "defaults" PATH_SEPARATOR "feet{:04d}", i).out;
+		*craterNameEnd = '\0';
 		
 		FullPathFileName craterPath;
 		craterPath.init(texturePath,craterName,".tga");

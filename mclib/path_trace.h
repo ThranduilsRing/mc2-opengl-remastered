@@ -16,6 +16,7 @@
 #include "../GameOS/gameos/diagnostic_trace.h"
 #include <cstdio>
 #include <chrono>
+#include <format>
 
 namespace mc2_path_trace {
 
@@ -52,10 +53,11 @@ struct SolveScope {
 		auto t1 = std::chrono::steady_clock::now();
 		double us = std::chrono::duration<double, std::micro>(t1 - t0).count();
 		char buf[256];
-		snprintf(buf, sizeof(buf),
-			"{\"ev\":\"solve\",\"variant\":\"%s\",\"us\":%.2f,\"nodes\":%ld,"
-			"\"open_peak\":%ld,\"len\":%d,\"trunc\":%d,\"fail\":%d}",
+		auto bufEnd = std::format_to_n(buf, sizeof(buf) - 1,
+			"{{\"ev\":\"solve\",\"variant\":\"{}\",\"us\":{:.2f},\"nodes\":{},"
+			"\"open_peak\":{},\"len\":{},\"trunc\":{},\"fail\":{}}}",
 			variant, us, nodes, openPeak, len, trunc, fail);
+		*bufEnd.out = '\0';
 		mc2_diag::writeEvent("PATH", 1, 0, buf);
 	}
 };
@@ -66,10 +68,11 @@ inline void emitMap(int areas, int doors, int special, int cellW, int cellH) {
 		return;
 	char buf[256];
 	long area = static_cast<long>(cellW) * static_cast<long>(cellH);
-	snprintf(buf, sizeof(buf),
-		"{\"ev\":\"map\",\"areas\":%d,\"doors\":%d,\"special\":%d,"
-		"\"cellW\":%d,\"cellH\":%d,\"cellArea\":%ld}",
+	auto bufEnd = std::format_to_n(buf, sizeof(buf) - 1,
+		"{{\"ev\":\"map\",\"areas\":{},\"doors\":{},\"special\":{},"
+		"\"cellW\":{},\"cellH\":{},\"cellArea\":{}}}",
 		areas, doors, special, cellW, cellH, area);
+	*bufEnd.out = '\0';
 	mc2_diag::writeEvent("PATH", 1, 0, buf);
 }
 
@@ -87,10 +90,11 @@ inline void emitFrame(long queued, long processed, long backlog, long peak,
 	if (queued == 0 && processed == 0 && backlog == 0)
 		return;  // skip idle frames to avoid spam
 	char buf[224];
-	snprintf(buf, sizeof(buf),
-		"{\"ev\":\"frame\",\"queued\":%ld,\"processed\":%ld,\"backlog\":%ld,\"peak\":%ld,"
-		"\"oldest_age\":%ld,\"cap_hit\":%d}",
+	auto bufEnd = std::format_to_n(buf, sizeof(buf) - 1,
+		"{{\"ev\":\"frame\",\"queued\":{},\"processed\":{},\"backlog\":{},\"peak\":{},"
+		"\"oldest_age\":{},\"cap_hit\":{}}}",
 		queued, processed, backlog, peak, oldestAge, capHit);
+	*bufEnd.out = '\0';
 	mc2_diag::writeEvent("PATH", 1, 0, buf);
 }
 

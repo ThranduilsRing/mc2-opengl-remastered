@@ -5,6 +5,7 @@
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "mech3d_internal.h"
 #include "appearance_rng.h"
+#include <format>
 
 // Returns true if the texture file or its .ktx2 BC7 sidecar exists.
 // Used to gate TGL texture loading so sensor shapes work when .tga is absent
@@ -182,7 +183,8 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			sensorTriangleShape->GetTextureName(i,txmName,256);
 
 			char texturePath[1024];
-			sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+			auto texturePathEnd = std::format_to_n(texturePath, sizeof(texturePath) - 1, "{}{}" PATH_SEPARATOR, static_cast<const char*>(tglPath), ObjectTextureSize).out;
+			*texturePathEnd = '\0';
 	
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
@@ -217,7 +219,8 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				sensorSquareShape->GetTextureName(i,txmName,256);
 	
 				char texturePath[1024];
-				sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+				auto texturePathEnd = std::format_to_n(texturePath, sizeof(texturePath) - 1, "{}{}" PATH_SEPARATOR, static_cast<const char*>(tglPath), ObjectTextureSize).out;
+				*texturePathEnd = '\0';
 		
 				FullPathFileName textureName;
 				textureName.init(texturePath,txmName,"");
@@ -252,7 +255,8 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				sensorSquareShape->GetTextureName(i,txmName,256);
 
 				char texturePath[1024];
-				sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+				auto texturePathEnd = std::format_to_n(texturePath, sizeof(texturePath) - 1, "{}{}" PATH_SEPARATOR, static_cast<const char*>(tglPath), ObjectTextureSize).out;
+				*texturePathEnd = '\0';
 
 				FullPathFileName textureName;
 				textureName.init(texturePath,txmName,"");
@@ -461,7 +465,8 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			mechShadowShape->GetTextureName(i,txmName,256);
 
 			char texturePath[1024];
-			sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+			auto texturePathEnd = std::format_to_n(texturePath, sizeof(texturePath) - 1, "{}{}" PATH_SEPARATOR, static_cast<const char*>(tglPath), ObjectTextureSize).out;
+			*texturePathEnd = '\0';
 
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
@@ -864,7 +869,8 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 		const char* aoName = mc2mechanim::ImportedMechAoTexName(aoTypeKey);
 		if (aoName && aoName[0]) {
 			char aoPath[1024];
-			sprintf(aoPath, "%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+			auto aoPathEnd = std::format_to_n(aoPath, sizeof(aoPath) - 1, "{}{}" PATH_SEPARATOR, static_cast<const char*>(tglPath), ObjectTextureSize).out;
+			*aoPathEnd = '\0';
 			FullPathFileName aoFull;
 			aoFull.init(aoPath, const_cast<char*>(aoName), "");
 			if (textureOrKtxSidecarExists(aoFull)) {
@@ -885,7 +891,8 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 		const char* nrmName = mc2mechanim::ImportedMechNormalTexName(nrmTypeKey);
 		if (nrmName && nrmName[0]) {
 			char nrmPath[1024];
-			sprintf(nrmPath, "%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+			auto nrmPathEnd = std::format_to_n(nrmPath, sizeof(nrmPath) - 1, "{}{}" PATH_SEPARATOR, static_cast<const char*>(tglPath), ObjectTextureSize).out;
+			*nrmPathEnd = '\0';
 			FullPathFileName nrmFull;
 			nrmFull.init(nrmPath, const_cast<char*>(nrmName), "");
 			if (textureOrKtxSidecarExists(nrmFull)) {
@@ -905,7 +912,8 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	mechShape->GetTextureName(0,txmName,256);
 
    	char texturePath[1024];
-   	sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+	auto texturePathEnd = std::format_to_n(texturePath, sizeof(texturePath) - 1, "{}{}" PATH_SEPARATOR, static_cast<const char*>(tglPath), ObjectTextureSize).out;
+	*texturePathEnd = '\0';
 
    	FullPathFileName textureName;
    	textureName.init(texturePath,txmName,"");

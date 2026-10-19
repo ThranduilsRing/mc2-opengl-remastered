@@ -28,6 +28,7 @@
 #endif
 
 #include<gameos.hpp>
+#include<format>
 //----------------------------------------------------------------------------------
 DWORD **colorRGBLookup = nullptr;
 long numColorRGBTables = 0;
@@ -57,7 +58,8 @@ void initColorTables (void)
 	for (long i=0;i<numColorRGBTables;i++)
 	{
 		char tableBlock[256];
-		sprintf(tableBlock,"Table%d",i);
+		auto tableBlockEnd = std::format_to_n(tableBlock, sizeof(tableBlock) - 1, "Table{}", i).out;
+		*tableBlockEnd = '\0';
 
 		result = colorFile.seekBlock(tableBlock);
 		gosASSERT(result == NO_ERR);
@@ -70,7 +72,8 @@ void initColorTables (void)
 		for (long j=0;j<MAX_COLOR_ENTRIES;j++)
 		{
 			char colorBlock[256];
-			sprintf(colorBlock,"Color%d",j);
+			auto colorBlockEnd = std::format_to_n(colorBlock, sizeof(colorBlock) - 1, "Color{}", j).out;
+			*colorBlockEnd = '\0';
 
             // sebi
             long unsigned int tmp;
