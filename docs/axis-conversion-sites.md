@@ -117,5 +117,5 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `shaders/vulkan/terrain_tier1.frag`: 2
 - `shaders/vulkan/vfx_particle.vert`: 1
 - `tests/unit/test_class_light_band_harness.cpp`: 13
-- `tests/unit/test_stuff_glm_identity.cpp`: 3
+- `tests/unit/test_glm_math_identity.cpp`: 3
 - `tests/unit/test_xform_convention.cpp`: 10
