@@ -11,16 +11,10 @@
 // class. Each returns the raw GL program object id, or 0 if not linked.
 uint32_t gos_getTerrainSurfaceProgramId() { return 0u; }
 uint32_t gos_getThinTerrainProgramId() {
-    gosRenderer* r = getGosRenderer();
-    if (!r) return 0u;
-    glsl_program* p = r->getThinTerrainProgram();
-    return (p && p->shp_) ? (uint32_t)p->shp_ : 0u;
+    return 0u; // Retired GL program; native pipelines have their own identity.
 }
 uint32_t gos_getTerrainOverlayProgramId() {
-    gosRenderer* r = getGosRenderer();
-    if (!r) return 0u;
-    glsl_program* p = r->getTerrainOverlayProgram();
-    return (p && p->shp_) ? (uint32_t)p->shp_ : 0u;
+    return 0u; // Retired GL program; native pipelines have their own identity.
 }
 
 // SHADOW-SPINE-0: read-only program-id accessor for the static-prop shadow
@@ -62,19 +56,12 @@ uint32_t gos_GetTerrainMaterialNormalHandle(int slot) {
 // DEAD-BRIDGE-DELETE-1: zero external callers tree-wide (whole-repo grep incl. editor/
 // tools/shaders/scripts). Provably-dead public wrappers around live gosRenderer members.
 
-void gos_terrain_bridge_bindUniforms(gosRenderMaterial* material) {
-    if (g_gos_renderer && material)
-        g_gos_renderer->terrainBindUniformsForPatchStream(material);
-}
+
 
 // gos_terrain_bridge_applyVertexDeclaration deleted by TERRAIN-BRIDGE-BODY-DELETE-2:
 // callerless after TerrainPatchStream::flush() retired (TERRAIN-BRIDGE-BODY-DELETE-1).
 
-unsigned int gos_terrain_bridge_getThinShaderProgram() {
-    if (!g_gos_renderer) return 0u;
-    glsl_program* p = g_gos_renderer->getThinTerrainProgram();
-    return (p && p->shp_) ? (unsigned int)p->shp_ : 0u;
-}
+
 // gos_terrain_indirect_getDispatchMvp16 and gos_GetTerrainMVPMat4 are declared
 // TU-wide near the top of this file (after g_terrainMaterialProfile) so that
 // renderWaterFastPath (which precedes this block) can see them.

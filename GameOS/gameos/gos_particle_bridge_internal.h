@@ -36,7 +36,6 @@
 // Globals defined in gos_particle_bridge.cpp (or elsewhere in the engine) that the split pieces share.
 extern const float* gos_GetTerrainMVPMat4();
 extern const float* gos_GetProj2ScreenMat4();
-extern void gos_RendererRebindVAO();
 
 // Group-log gate: defined in gos_particle_bridge.cpp, read by both pieces.
 bool groupLogEnabled();

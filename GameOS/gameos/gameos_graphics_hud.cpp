@@ -513,7 +513,6 @@ void gosRenderer::flushHUDBatch()
 
     // pp->endScene() binds FB 0 and sets the full-screen viewport for us,
     // but leaves VAO 0 bound — rebind our VAO so glVertexAttribPointer works.
-    glBindVertexArray(gVAO);
 
     // UI-PASS-DRAWCOUNT-AMBIENT-MEASURE-1: observe-only telemetry inside the existing
     // PassIdentity::UI RAII scope. Gate MC2_UI_PASS_MEASURE (default-OFF) — when unset

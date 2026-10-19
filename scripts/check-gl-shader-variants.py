@@ -289,6 +289,9 @@ def main(argv=None) -> int:
               "  (diff: py -3 scripts/extract_gl_shader_variants.py --check)", file=sys.stderr)
         return 1
     variants = json.loads(cur)["variants"]
+    if not variants:
+        print("check-gl-shader-variants: GL program census zero; no compilation matrix remains")
+        return 0
     if a.list:
         for v in variants:
             print(v["key"], "|", " ".join(v["stages"].values()))

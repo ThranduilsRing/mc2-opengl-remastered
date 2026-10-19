@@ -10,13 +10,8 @@ checker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(checker)
 
 
-def test_negative_probe_follows_a_live_fragment_and_covers_all_its_variants():
-    records = checker.extractor.extract()["variants"]
-    fragment, targets = checker.regression_target(records)
-    assert "static_prop" not in fragment
-    assert targets
-    assert targets == [v for v in records if fragment in v["stages"].values()]
-    assert (ROOT / fragment).is_file()
+def test_native_renderer_has_no_gl_program_variants():
+    assert checker.extractor.extract()["variants"] == []
 
 
 def test_negative_probe_does_not_mistake_compute_for_a_fragment():

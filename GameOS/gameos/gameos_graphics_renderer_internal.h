@@ -139,16 +139,6 @@ class gosRenderer {
             textureList_[texture_id] = 0;
         }
 
-        uint32_t getFlagsFromStates()
-        {
-            return curStates_[gos_State_AlphaTest] ? SHADER_FLAG_INDEX_TO_MASK(gosGLOBAL_SHADER_FLAGS::ALPHA_TEST) : 0;
-        }
-
-        gosRenderMaterial* getRenderMaterial(const char* name) {
-            // Generic GL materials have no native consumer.
-            return nullptr;
-        }
-
         gosTextAttribs& getTextAttributes() { return curTextAttribs_; }
         void setTextPos(int x, int y) { curTextPosX_ = x; curTextPosY_ = y; }
         void getTextPos(int& x, int& y) { x = curTextPosX_; y = curTextPosY_; }
@@ -229,24 +219,6 @@ class gosRenderer {
         void drawTris(gos_VERTEX* vertices, int count);
         void drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* indices, int num_indices);
         void drawText(const char* text);
-        void terrainBindUniformsForPatchStream(gosRenderMaterial* material);
-        // Returns ssboRecordBase uniform location in the thin program, or -1.
-        // If overrideProg is non-null, binds uniforms to that program instead
-        // (B4 Stage 1b: mask-SOLID shader shares all uniform names with thin
-        // shader so this is safe).
-        int terrainBindThinUniformsForPatchStream(glsl_program* overrideProg = nullptr);
-        // Fix A (2026-05-14): re-upload an externally-provided terrainMVP over
-        // the one just bound by terrainBindThinUniformsForPatchStream.  Used by
-        // the indirect bridge to align the VS projection MVP with the MVP that
-        // compute used when writing the thin records being drawn this frame.
-        // Uses the already-cached thinTerrainLocs_.terrainMVP — no extra
-        // glGetUniformLocation.  Must be called AFTER terrainBindThinUniformsForPatchStream
-        // (which caches the location) and while the thin program is bound.
-        void terrainOverrideThinMVP(const float* mvp4x4);
-        glsl_program* getThinTerrainProgram()      const { return thin_terrain_prog_;        }
-        glsl_program* getTerrainSurfaceProgram()   const { return nullptr;     }
-        glsl_program* getTerrainOverlayProgram()   const { return nullptr; } // Native Vulkan overlay has no GL program.
-
         // Water fast path (Stage 2 of renderWater architectural slice).
         // Issues 1-2 instanced draws against the WaterRecipe + WaterFrame SSBOs.
         // Spec: docs/superpowers/specs/2026-04-29-renderwater-fastpath-design.md.
@@ -322,18 +294,6 @@ class gosRenderer {
         void setTerrainViewport(float vmx, float vmy, float vax, float vay) {
             terrain_viewport_ = vec4(vmx, vmy, vax, vay);
         }
-        void terrainExtraReset() { terrain_extra_count_ = 0; terrain_extra_draw_offset_ = 0; terrain_batch_extras_ = nullptr; terrain_batch_extras_count_ = 0; }
-        void terrainExtraAdd(const gos_TERRAIN_EXTRA* data, int count) {
-            if (terrain_extra_count_ + count <= terrain_extra_capacity_) {
-                memcpy(terrain_extra_data_ + terrain_extra_count_, data, sizeof(gos_TERRAIN_EXTRA) * count);
-                terrain_extra_count_ += count;
-            }
-        }
-        void setTerrainBatchExtras(const gos_TERRAIN_EXTRA* extras, int count) {
-            terrain_batch_extras_ = extras;
-            terrain_batch_extras_count_ = count;
-        }
-        int getTerrainExtraCount() const { return terrain_extra_count_; }
         float getTerrainTessLevel() const { return terrain_tess_level_; }
         float getTerrainTessDistNear() const { return terrain_tess_dist_near_; }
         float getTerrainTessDistFar() const { return terrain_tess_dist_far_; }
@@ -343,7 +303,6 @@ class gosRenderer {
         float getTerrainDetailStrength() const { return terrain_detail_strength_; }
         float getTerrainPOMScale() const { return terrain_pom_scale_; }
         bool getTerrainWireframe() const { return terrain_wireframe_; }
-        gos_TERRAIN_EXTRA* getTerrainExtraData() const { return terrain_extra_data_; }
         bool isTerrainMVPValid() const { return terrain_mvp_valid_; }
         const mat4& getTerrainMVP() const { return terrain_mvp_; }
         // TERRAIN-SHORELINE-MASK-1: shared render-shader clock accessor (same
@@ -356,7 +315,6 @@ class gosRenderer {
                        ? (float)SmokeMode::fixedClockSeconds()
                        : (float)((double)(timing::get_wall_time_ms() - timeStart_) / 1000.0);
         }
-        gosRenderMaterial* getTerrainMaterial() const { return terrain_material_; }
         const vec4& getTerrainCameraPos() const { return terrain_camera_pos_; }
         void setShadowMode(bool enabled) { shadow_mode_ = enabled; }
         bool getShadowMode() const { return shadow_mode_; }
@@ -572,7 +530,6 @@ class gosRenderer {
         std::vector<gosFont*> fontList_;
         std::vector<gosBuffer*> bufferList_;
         std::vector<gosVertexDeclaration*> vertexDeclarationList_;
-        std::vector<gosRenderMaterial*> materialList_;
 
         DWORD reqWidth;
         DWORD reqPhysWidth = 0;   // WINDOWED-8006-1: physical window size (logical may be clamped)
@@ -650,30 +607,11 @@ class gosRenderer {
         bool terrain_wireframe_ = false;            // wireframe overlay toggle
         float terrain_debug_mode_ = 0.0f;          // 0=off, 1..9 fragment debug modes (see GraphicsOptionsWindow kTerrainModes), -1 tess-alive probe. Env MC2_TERRAIN_DEBUG_MODE overrides at upload.
 
-        // Terrain extra VBO for world pos + normal
-        GLuint terrain_extra_vb_ = 0;
-        gos_TERRAIN_EXTRA* terrain_extra_data_ = nullptr;
-        int terrain_extra_count_ = 0;
-        int terrain_extra_capacity_ = 0;
-        int terrain_extra_draw_offset_ = 0;  // consumed offset for per-batch alignment (legacy)
-
-        // Per-batch extras from texture manager (replaces global offset)
-        const gos_TERRAIN_EXTRA* terrain_batch_extras_ = nullptr;
-        int terrain_batch_extras_count_ = 0;
-
         // Terrain tessellation MVP (world-to-NDC)
         mat4 terrain_mvp_;
         bool terrain_mvp_valid_ = false;
         vec4 terrain_camera_pos_;  // MC2 world space camera position for TCS LOD
         vec4 terrain_viewport_;    // (vmx, vmy, vax, vay) for EditorCamera shim
-
-        // F1 Stage A-pre Task 7b: probe-only worldToClipGL cache. Written by the
-        // now-retired probe setter; retained for diagnostic retirement batch.
-        float probeWorldToClipGL_[16] = {};
-        bool probeWorldToClipGLValid_ = false;
-
-        gosRenderMaterial* terrain_material_ = nullptr;
-        glsl_program* thin_terrain_prog_ = nullptr;  // gos_terrain_thin.vert + gos_terrain.frag
 
         // GPU-driven dynamic sun shadow -- depth-only instanced programs (Phase 1).
         // Registered at init; called by Tasks 3+ to draw GPU-batched mechs/buildings
@@ -747,261 +685,6 @@ class gosRenderer {
         // Slider 0..0.6; default 0.0 = byte-identical (no-op). Effective only when
         // env gate MC2_TERRAIN_CLIFF_SHADOW_FLOOR is set to a non-zero float.
         float terrain_cliff_shadow_floor_ = 0.0f;
-
-        // Cached uniform locations for terrain shader (avoid per-draw glGetUniformLocation)
-        struct TerrainUniformLocs {
-            GLint tessLevel = -1, tessDistanceRange = -1, tessDisplace = -1;
-            GLint cameraPos = -1, tessDebug = -1, terrainMVP = -1;
-            GLint pathTint = -1;  // MC2_SHADER_PATH_TINT debug
-            GLint terrainLightDir = -1, detailNormalTiling = -1, detailNormalStrength = -1;
-            GLint pomParams = -1, terrainWorldScale = -1, cellBombParams = -1;
-            GLint matNormal[5] = {-1, -1, -1, -1, -1};
-            GLint matNormalArray = -1;   // sampler2DArray (TERRAIN_NORMAL_ARRAY path)
-            GLint lightSpaceMatrix = -1, enableShadows = -1, shadowSoftness = -1, shadowMap = -1;
-            GLint dynamicLightSpaceMatrix = -1, enableDynamicShadows = -1, dynamicShadowMap = -1;
-            // Item 1 CSM: array-variant dynamic shadow uniforms (only valid when ON)
-            GLint dynamicShadowArray = -1, dynamicCascadeMatrices = -1, dynamicCsmCount = -1;
-            GLint dynamicCascadeTexelWorld = -1, csmDepthSpan = -1;  // Stage 3 texel bias
-            // Per-cascade shadow resolution: separate full-map (last) cascade.
-            GLint dynamicFullMapShadow = -1, dynamicFullMapTexelWorld = -1;
-            GLint time = -1;
-            GLint mapHalfExtent = -1;
-            GLint terrainMaterialProfile = -1;  // C1 tactical (mclib/terrain.h)
-            GLint worldToClipGL = -1;            // F1 Task 7b probe uniform
-            GLint matNormalBoost = -1;           // per-material normal strength (vec4)
-            GLint matTiling = -1;                // per-material UV tiling (vec4: rock,grass,dirt,concrete)
-            GLint matTilingSnow = -1;            // snow UV tiling (float)
-            GLint tintStrengthScale = -1;        // global tint blend scalar
-            GLint snowBrightnessDampen = -1;     // <1 darkens detected snow
-            // TERRAIN-TINT-UI-1
-            GLint tintRock  = -1;                // material base tint (vec3)
-            GLint tintGrass = -1;
-            GLint tintDirt  = -1;
-            // TERRAIN-CLASSIFY-TUNING-1
-            GLint terrainClassGrass = -1;        // colormap RGB grass thresholds (vec4)
-            GLint terrainClassDirt  = -1;        // colormap RGB dirt thresholds (vec4)
-            // TERRAIN-NORMALS-FROM-HEIGHT-1
-            GLint terrainHeightTex = -1;             // sampler2D, unit 11 (R32F)
-            GLint terrainHeightParams = -1;          // vec4 (gridSide, 1/wuPerVertex, topLeftX, topLeftY)
-            // CLIFF SHADOW FLOOR: lifts steep faces off near-black; 0=byte-identical
-            GLint terrainCliffShadowFloor = -1;
-            // TERRAIN-MATERIAL-LIB-1
-            GLint tintConcrete = -1;              // promoted frag-literal (vec3)
-            GLint tintSnow     = -1;               // promoted frag-literal (vec3)
-            GLint matRoughness = -1;               // per-layer roughness scalar (vec4)
-            GLint matAO        = -1;               // per-layer AO scalar (vec4)
-            GLint useMaterialLib = -1;             // 0=off (byte-identical); 1=roughness/AO term applied
-            // TERRAIN-CONTROLMAP-ALBEDO-1
-            GLint controlAlbedoStrength = -1;      // 0=byte-identical, 1=full weight-composed albedo
-            GLuint program = 0;
-        } terrainLocs_;
-
-        struct ThinTerrainUniformLocs {
-            GLint terrainMVP = -1, mvp = -1;
-            GLint cameraPos = -1, terrainLightDir = -1;
-            GLint detailNormalTiling = -1, detailNormalStrength = -1;
-            GLint pomParams = -1, terrainWorldScale = -1, cellBombParams = -1;
-            GLint matNormal[5] = {-1,-1,-1,-1,-1};
-            GLint matNormalArray = -1;
-            GLint tex1 = -1;
-            GLint lightSpaceMatrix = -1, enableShadows = -1, shadowSoftness = -1, shadowMap = -1;
-            GLint dynamicLightSpaceMatrix = -1, enableDynamicShadows = -1, dynamicShadowMap = -1;
-            // Item 1 CSM: array-variant dynamic shadow uniforms (only valid when ON)
-            GLint dynamicShadowArray = -1, dynamicCascadeMatrices = -1, dynamicCsmCount = -1;
-            GLint dynamicCascadeTexelWorld = -1, csmDepthSpan = -1;  // Stage 3 texel bias
-            // Per-cascade shadow resolution: separate full-map (last) cascade.
-            GLint dynamicFullMapShadow = -1, dynamicFullMapTexelWorld = -1;
-            GLint time = -1, mapHalfExtent = -1;
-            GLint ssboRecordBase = -1;
-            GLint terrainMaterialProfile = -1;  // C1 tactical (mclib/terrain.h)
-            GLint tessDebug = -1;               // shader debug-viz mode (frag mode 1..8)
-            GLint pathTint = -1;                // MC2_SHADER_PATH_TINT debug
-            GLint matNormalBoost = -1;          // per-material normal strength (vec4)
-            GLint matTiling = -1;               // per-material UV tiling (vec4: rock,grass,dirt,concrete)
-            GLint matTilingSnow = -1;           // snow UV tiling (float)
-            GLint tintStrengthScale = -1;       // global tint blend scalar
-            GLint snowBrightnessDampen = -1;    // <1 darkens detected snow
-            // TERRAIN-TINT-UI-1
-            GLint tintRock  = -1;               // material base tint (vec3)
-            GLint tintGrass = -1;
-            GLint tintDirt  = -1;
-            // TERRAIN-CLASSIFY-TUNING-1
-            GLint terrainClassGrass = -1;       // colormap RGB grass thresholds (vec4)
-            GLint terrainClassDirt  = -1;       // colormap RGB dirt thresholds (vec4)
-            // TERRAIN-NORMALS-FROM-HEIGHT-1
-            GLint terrainHeightTex = -1;
-            GLint terrainHeightParams = -1;
-            GLint terrainCliffShadowFloor = -1;
-            // TERRAIN-MATERIAL-LIB-1: shares gosRenderer members with the chunk
-            // path (see file header); these locs stay -1 on gos_terrain.frag
-            // until the uniforms are declared there too, so the upload calls
-            // below are no-ops (>= 0 guarded) and this path is unaffected.
-            GLint tintConcrete = -1;
-            GLint tintSnow     = -1;
-            GLint matRoughness = -1;
-            GLint matAO        = -1;
-            GLint useMaterialLib = -1;
-            // TERRAIN-CONTROLMAP-ALBEDO-1: shares the same identity contract as
-            // the chunk path above (default 0.0 -> byte-identical when unbound
-            // too, since loc stays -1 until the uniform is declared here).
-            GLint controlAlbedoStrength = -1;
-            GLuint program = 0;
-        } thinTerrainLocs_;
-
-        struct ShadowUniformLocs {
-            GLint lightSpaceMatrix = -1, tessLevel = -1, tessDistanceRange = -1;
-            GLint tessDisplace = -1, cameraPos = -1, mvp = -1;
-            GLint matNormal2 = -1, detailNormalTiling = -1, tex1 = -1;
-            GLint matNormalArray = -1;
-            GLint terrainMaterialProfile = -1;  // C1 tactical (mclib/terrain.h)
-            GLuint program = 0;
-        } shadowLocs_;
-
-        void cacheTerrainUniformLocations(GLuint shp) {
-            if (terrainLocs_.program == shp) return;  // already cached
-            terrainLocs_.program = shp;
-            // TERRAIN-TEX-UNIT-MAP-1: verify the highest unit we use fits on this GPU.
-            {
-                GLint maxUnits = 0;
-                glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &maxUnits);
-                if (kTerrainMatNormalUnits[4] >= maxUnits || kTerrainTexUnitHeight >= maxUnits)
-                    STOP(("GL_MAX_TEXTURE_IMAGE_UNITS=%d too small; terrain needs unit %d (height) and %d (snow normal)",
-                          maxUnits, kTerrainTexUnitHeight, kTerrainMatNormalUnits[4]));
-            }
-            terrainLocs_.tessLevel = glGetUniformLocation(shp, "tessLevel");
-            terrainLocs_.tessDistanceRange = glGetUniformLocation(shp, "tessDistanceRange");
-            terrainLocs_.tessDisplace = glGetUniformLocation(shp, "tessDisplace");
-            terrainLocs_.cameraPos = glGetUniformLocation(shp, "cameraPos");
-            terrainLocs_.tessDebug = glGetUniformLocation(shp, "tessDebug");
-            terrainLocs_.pathTint = glGetUniformLocation(shp, "u_pathTint");
-            terrainLocs_.terrainMVP = glGetUniformLocation(shp, "u_worldToClipGL");
-            terrainLocs_.terrainLightDir = glGetUniformLocation(shp, "terrainLightDir");
-            terrainLocs_.detailNormalTiling = glGetUniformLocation(shp, "detailNormalTiling");
-            terrainLocs_.detailNormalStrength = glGetUniformLocation(shp, "detailNormalStrength");
-            terrainLocs_.pomParams = glGetUniformLocation(shp, "pomParams");
-            terrainLocs_.terrainWorldScale = glGetUniformLocation(shp, "terrainWorldScale");
-            terrainLocs_.cellBombParams = glGetUniformLocation(shp, "cellBombParams");
-            terrainLocs_.matNormal[0] = glGetUniformLocation(shp, "matNormal0");
-            terrainLocs_.matNormal[1] = glGetUniformLocation(shp, "matNormal1");
-            terrainLocs_.matNormal[2] = glGetUniformLocation(shp, "matNormal2");
-            terrainLocs_.matNormal[3] = glGetUniformLocation(shp, "matNormal3");
-            terrainLocs_.matNormal[4] = glGetUniformLocation(shp, "matNormal4");
-            terrainLocs_.matNormalArray = glGetUniformLocation(shp, "matNormalArray");
-            terrainLocs_.lightSpaceMatrix = glGetUniformLocation(shp, "lightSpaceMatrix");
-            terrainLocs_.enableShadows = glGetUniformLocation(shp, "enableShadows");
-            terrainLocs_.shadowSoftness = glGetUniformLocation(shp, "shadowSoftness");
-            terrainLocs_.shadowMap = glGetUniformLocation(shp, "shadowMap");
-            terrainLocs_.dynamicLightSpaceMatrix = glGetUniformLocation(shp, "dynamicLightSpaceMatrix");
-            terrainLocs_.enableDynamicShadows = glGetUniformLocation(shp, "enableDynamicShadows");
-            terrainLocs_.dynamicShadowMap = glGetUniformLocation(shp, "dynamicShadowMap");
-            terrainLocs_.dynamicShadowArray = glGetUniformLocation(shp, "dynamicShadowArray");
-            terrainLocs_.dynamicCascadeMatrices = glGetUniformLocation(shp, "dynamicCascadeMatrices");
-            terrainLocs_.dynamicCsmCount = glGetUniformLocation(shp, "dynamicCsmCount");
-            terrainLocs_.dynamicCascadeTexelWorld = glGetUniformLocation(shp, "dynamicCascadeTexelWorld");
-            terrainLocs_.dynamicFullMapShadow = glGetUniformLocation(shp, "dynamicFullMapShadow");
-            terrainLocs_.dynamicFullMapTexelWorld = glGetUniformLocation(shp, "dynamicFullMapTexelWorld");
-            terrainLocs_.csmDepthSpan = glGetUniformLocation(shp, "csmDepthSpan");
-            terrainLocs_.time = glGetUniformLocation(shp, "time");
-            terrainLocs_.mapHalfExtent = glGetUniformLocation(shp, "mapHalfExtent");
-            terrainLocs_.terrainMaterialProfile = glGetUniformLocation(shp, "g_terrainMaterialProfile");
-            // F1 Task 7b: probe uniform location (flat uniform, not UBO member).
-            terrainLocs_.worldToClipGL    = glGetUniformLocation(shp, "u_worldToClipGL");
-            terrainLocs_.matNormalBoost   = glGetUniformLocation(shp, "matNormalBoost");
-            terrainLocs_.matTiling        = glGetUniformLocation(shp, "matTiling");
-            terrainLocs_.matTilingSnow    = glGetUniformLocation(shp, "matTilingSnow");
-            terrainLocs_.tintStrengthScale = glGetUniformLocation(shp, "tintStrengthScale");
-            terrainLocs_.snowBrightnessDampen = glGetUniformLocation(shp, "snowBrightnessDampen");
-            terrainLocs_.tintRock  = glGetUniformLocation(shp, "tintRock");
-            terrainLocs_.tintGrass = glGetUniformLocation(shp, "tintGrass");
-            terrainLocs_.tintDirt  = glGetUniformLocation(shp, "tintDirt");
-            terrainLocs_.terrainClassGrass = glGetUniformLocation(shp, "terrainClassGrass");
-            terrainLocs_.terrainClassDirt  = glGetUniformLocation(shp, "terrainClassDirt");
-            terrainLocs_.terrainHeightTex             = glGetUniformLocation(shp, "terrainHeightTex");
-            terrainLocs_.terrainHeightParams          = glGetUniformLocation(shp, "terrainHeightParams");
-            terrainLocs_.terrainCliffShadowFloor =
-                glGetUniformLocation(shp, "u_terrainCliffShadowFloor");
-            terrainLocs_.tintConcrete   = glGetUniformLocation(shp, "tintConcrete");
-            terrainLocs_.tintSnow       = glGetUniformLocation(shp, "tintSnow");
-            terrainLocs_.matRoughness   = glGetUniformLocation(shp, "matRoughness");
-            terrainLocs_.matAO          = glGetUniformLocation(shp, "matAO");
-            terrainLocs_.useMaterialLib = glGetUniformLocation(shp, "u_useMaterialLib");
-            terrainLocs_.controlAlbedoStrength = glGetUniformLocation(shp, "u_controlAlbedoStrength");
-        }
-
-        void cacheThinTerrainUniformLocations(GLuint shp) {
-            if (thinTerrainLocs_.program == shp) return;
-            thinTerrainLocs_.program            = shp;
-            thinTerrainLocs_.terrainMVP         = glGetUniformLocation(shp, "u_worldToClipGL");
-            thinTerrainLocs_.cameraPos          = glGetUniformLocation(shp, "cameraPos");
-            thinTerrainLocs_.terrainLightDir    = glGetUniformLocation(shp, "terrainLightDir");
-            thinTerrainLocs_.detailNormalTiling   = glGetUniformLocation(shp, "detailNormalTiling");
-            thinTerrainLocs_.detailNormalStrength = glGetUniformLocation(shp, "detailNormalStrength");
-            thinTerrainLocs_.pomParams          = glGetUniformLocation(shp, "pomParams");
-            thinTerrainLocs_.terrainWorldScale  = glGetUniformLocation(shp, "terrainWorldScale");
-            thinTerrainLocs_.cellBombParams     = glGetUniformLocation(shp, "cellBombParams");
-            thinTerrainLocs_.matNormal[0]       = glGetUniformLocation(shp, "matNormal0");
-            thinTerrainLocs_.matNormal[1]       = glGetUniformLocation(shp, "matNormal1");
-            thinTerrainLocs_.matNormal[2]       = glGetUniformLocation(shp, "matNormal2");
-            thinTerrainLocs_.matNormal[3]       = glGetUniformLocation(shp, "matNormal3");
-            thinTerrainLocs_.matNormal[4]       = glGetUniformLocation(shp, "matNormal4");
-            thinTerrainLocs_.matNormalArray     = glGetUniformLocation(shp, "matNormalArray");
-            thinTerrainLocs_.tex1               = glGetUniformLocation(shp, "tex1");
-            thinTerrainLocs_.lightSpaceMatrix   = glGetUniformLocation(shp, "lightSpaceMatrix");
-            thinTerrainLocs_.enableShadows      = glGetUniformLocation(shp, "enableShadows");
-            thinTerrainLocs_.shadowSoftness     = glGetUniformLocation(shp, "shadowSoftness");
-            thinTerrainLocs_.shadowMap          = glGetUniformLocation(shp, "shadowMap");
-            thinTerrainLocs_.dynamicLightSpaceMatrix = glGetUniformLocation(shp, "dynamicLightSpaceMatrix");
-            thinTerrainLocs_.enableDynamicShadows    = glGetUniformLocation(shp, "enableDynamicShadows");
-            thinTerrainLocs_.dynamicShadowMap        = glGetUniformLocation(shp, "dynamicShadowMap");
-            thinTerrainLocs_.dynamicShadowArray      = glGetUniformLocation(shp, "dynamicShadowArray");
-            thinTerrainLocs_.dynamicCascadeMatrices  = glGetUniformLocation(shp, "dynamicCascadeMatrices");
-            thinTerrainLocs_.dynamicCsmCount         = glGetUniformLocation(shp, "dynamicCsmCount");
-            thinTerrainLocs_.dynamicCascadeTexelWorld = glGetUniformLocation(shp, "dynamicCascadeTexelWorld");
-            thinTerrainLocs_.dynamicFullMapShadow = glGetUniformLocation(shp, "dynamicFullMapShadow");
-            thinTerrainLocs_.dynamicFullMapTexelWorld = glGetUniformLocation(shp, "dynamicFullMapTexelWorld");
-            thinTerrainLocs_.csmDepthSpan            = glGetUniformLocation(shp, "csmDepthSpan");
-            thinTerrainLocs_.time               = glGetUniformLocation(shp, "time");
-            thinTerrainLocs_.mapHalfExtent      = glGetUniformLocation(shp, "mapHalfExtent");
-            thinTerrainLocs_.ssboRecordBase     = glGetUniformLocation(shp, "ssboRecordBase");
-            thinTerrainLocs_.terrainMaterialProfile = glGetUniformLocation(shp, "g_terrainMaterialProfile");
-            thinTerrainLocs_.tessDebug          = glGetUniformLocation(shp, "tessDebug");
-            thinTerrainLocs_.pathTint           = glGetUniformLocation(shp, "u_pathTint");
-            thinTerrainLocs_.matNormalBoost     = glGetUniformLocation(shp, "matNormalBoost");
-            thinTerrainLocs_.matTiling          = glGetUniformLocation(shp, "matTiling");
-            thinTerrainLocs_.matTilingSnow      = glGetUniformLocation(shp, "matTilingSnow");
-            thinTerrainLocs_.tintStrengthScale  = glGetUniformLocation(shp, "tintStrengthScale");
-            thinTerrainLocs_.snowBrightnessDampen = glGetUniformLocation(shp, "snowBrightnessDampen");
-            thinTerrainLocs_.tintRock  = glGetUniformLocation(shp, "tintRock");
-            thinTerrainLocs_.tintGrass = glGetUniformLocation(shp, "tintGrass");
-            thinTerrainLocs_.tintDirt  = glGetUniformLocation(shp, "tintDirt");
-            thinTerrainLocs_.terrainClassGrass = glGetUniformLocation(shp, "terrainClassGrass");
-            thinTerrainLocs_.terrainClassDirt  = glGetUniformLocation(shp, "terrainClassDirt");
-            thinTerrainLocs_.terrainHeightTex             = glGetUniformLocation(shp, "terrainHeightTex");
-            thinTerrainLocs_.terrainHeightParams          = glGetUniformLocation(shp, "terrainHeightParams");
-            thinTerrainLocs_.terrainCliffShadowFloor =
-                glGetUniformLocation(shp, "u_terrainCliffShadowFloor");
-            // TERRAIN-CONTROLMAP-ALBEDO-1: stays -1 until gos_terrain_thin's frag
-            // declares the uniform too (thin path is the dead/legacy indirect
-            // shader per recon) -- upload call below is >=0 guarded, no-op.
-            thinTerrainLocs_.controlAlbedoStrength =
-                glGetUniformLocation(shp, "u_controlAlbedoStrength");
-        }
-
-        void cacheShadowUniformLocations(GLuint shp) {
-            if (shadowLocs_.program == shp) return;
-            shadowLocs_.program = shp;
-            shadowLocs_.lightSpaceMatrix = glGetUniformLocation(shp, "lightSpaceMatrix");
-            shadowLocs_.tessLevel = glGetUniformLocation(shp, "tessLevel");
-            shadowLocs_.tessDistanceRange = glGetUniformLocation(shp, "tessDistanceRange");
-            shadowLocs_.tessDisplace = glGetUniformLocation(shp, "tessDisplace");
-            shadowLocs_.cameraPos = glGetUniformLocation(shp, "cameraPos");
-            shadowLocs_.mvp = glGetUniformLocation(shp, "mvp");
-            shadowLocs_.matNormal2 = glGetUniformLocation(shp, "matNormal2");
-            shadowLocs_.matNormalArray = glGetUniformLocation(shp, "matNormalArray");
-            shadowLocs_.detailNormalTiling = glGetUniformLocation(shp, "detailNormalTiling");
-            shadowLocs_.tex1 = glGetUniformLocation(shp, "tex1");
-            shadowLocs_.terrainMaterialProfile = glGetUniformLocation(shp, "g_terrainMaterialProfile");
-        }
 
         // ── World-space overlay batches ────────────────────────────────────────
         // Both terrain overlays (cement perimeter) and decals (craters, footprints)

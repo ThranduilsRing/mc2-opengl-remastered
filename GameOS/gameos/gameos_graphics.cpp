@@ -167,39 +167,13 @@ gosRenderer* getGosRenderer() {
     return g_gos_renderer;
 }
 
-GLenum getGLVertexAttribType(gosVERTEX_ATTRIB_TYPE type) {
-	GLenum t = -1;
-	switch (type)
-	{
-	case gosVERTEX_ATTRIB_TYPE::BYTE: return GL_BYTE;
-	case gosVERTEX_ATTRIB_TYPE::UNSIGNED_BYTE: return GL_UNSIGNED_BYTE;
-	case gosVERTEX_ATTRIB_TYPE::SHORT: return GL_SHORT;
-	case gosVERTEX_ATTRIB_TYPE::UNSIGNED_SHORT: return GL_UNSIGNED_SHORT;
-	case gosVERTEX_ATTRIB_TYPE::INT: return GL_INT;
-	case gosVERTEX_ATTRIB_TYPE::UNSIGNED_INT: return GL_UNSIGNED_INT;
-	case gosVERTEX_ATTRIB_TYPE::FLOAT: return GL_FLOAT;
-	default:
-		gosASSERT(0 && "unknows vertex attrib type");
-	}
-
-	return t;
-};
-
-static const char* const g_shader_flags[] = {
-    "ALPHA_TEST",
-    "IS_OVERLAY"
-};
-
-const std::string gosRenderMaterial::s_mvp = std::string("mvp");
-const std::string gosRenderMaterial::s_fog_color = std::string("fog_color");
-
-const std::string gosMesh::s_tex1 = std::string("tex1");
+;
 
 const std::string gosRenderer::s_Foreground = std::string("Foreground");
 
 // ──────────────────────────────────────────────────────────────────────────
 
-GLuint gVAO = 0;
+
 // GAMEOS-GRAPHICS-SPLIT-1 slice 5: the HUD-scale / UI-canvas state globals
 // moved to gameos_graphics_params.cpp (extern-declared in
 // gameos_graphics_internal.h; flushHUDBatch et al. still reference them
@@ -231,7 +205,7 @@ void gosRenderer::init() {
     }
 
 
-    { ZoneScopedN("gosRenderer::init vao"); glGenVertexArrays(1, &gVAO); }
+
 
     pendingRequest = false;
 
@@ -248,68 +222,6 @@ void gosRenderer::init() {
 
 	fog_color_ = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-    // Terrain tessellation extra VBO
-    terrain_extra_capacity_ = 1024 * 120;  // large buffer for extended view distance
-    {
-        ZoneScopedN("gosRenderer::init terrainExtra");
-        terrain_extra_data_ = new gos_TERRAIN_EXTRA[terrain_extra_capacity_];
-        terrain_extra_vb_ = makeBuffer(GL_ARRAY_BUFFER, nullptr,
-            sizeof(gos_TERRAIN_EXTRA) * terrain_extra_capacity_, GL_DYNAMIC_DRAW);
-    }
-    mc2::fmt::print_out("[TESS] Extra VBO created: capacity={:d} vb={:d}\n", mc2::fmt::as_i32(terrain_extra_capacity_), mc2::fmt::as_u32(terrain_extra_vb_));
-
-    // Load terrain tessellation material (TCS/TES shaders)
-    // ISSUE-34: MC2_TERRAIN_TESS=0 (default ON) skips the load — same engine
-    // state as a TCS/TES compile failure — so the no-tess config is testable
-    // headlessly. Shadow/GPU-transform behavior is keyed on
-    // gos_IsModernShadowPathActive(), not on this material.
-    {
-        ZoneScopedN("gosRenderer::init terrainMaterial");
-        if (!mc2::gate::get<"MC2_TERRAIN_TESS">()) {
-            terrain_material_ = nullptr;
-            mc2::fmt::print_out("[TESS] MC2_TERRAIN_TESS=0 — terrain tessellation material load skipped (kill-switch)\n");
-        } else {
-            mc2::fmt::print_out("[TESS] About to load terrain shader...\n"); fflush(stdout);
-            gosMaterialVariationHelper terrainHelper;
-            gosMaterialVariation mvar;
-            terrainHelper.getMaterialVariation(mvar);
-            terrain_material_ = gosRenderMaterial::load("gos_terrain", mvar);
-            if (terrain_material_) {
-                materialList_.push_back(terrain_material_);
-                mc2::fmt::print_out("[TESS] Terrain material loaded successfully\n");
-            } else {
-                mc2::fmt::print_out("[TESS] WARNING: Terrain material failed to load — tessellation disabled\n");
-            }
-        }
-        fflush(stdout);
-    }
-
-    // Load thin-record terrain program (gos_terrain_thin.vert + gos_terrain.frag, no tess).
-    // Used by PatchStream M1g to draw thin records via GL_TRIANGLES, avoiding tessellation overhead.
-    {
-        ZoneScopedN("gosRenderer::init thinTerrainProg");
-        std::string kThinPrefix = "#version 430\n";
-        if (terrainNormalArrayEnabled())
-            kThinPrefix += "#define TERRAIN_NORMAL_ARRAY\n";
-        if (mc2ShadowStaticBandFixEnabled())
-            kThinPrefix += "#define MC2_SHADOW_STATIC_BANDFIX 1\n";
-        if (mc2ShadowStaticBandFixV2Enabled())
-            kThinPrefix += "#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n";
-        kThinPrefix += mc2TerrainShadowSunDefine();   // TERRAIN-SHADOW-GUARD-1
-        thin_terrain_prog_ = glsl_program::makeProgram(
-            "gos_terrain_thin",
-            "shaders/gos_terrain_thin.vert",
-            "shaders/gos_terrain.frag",
-            kThinPrefix.c_str());
-        if (!thin_terrain_prog_ || !thin_terrain_prog_->shp_)
-            mc2::fmt::print_err("[THIN_TERRAIN] WARNING: failed to compile thin terrain shader — thin draw path disabled\n");
-        else
-            mc2::fmt::print_out("[THIN_TERRAIN] Thin terrain shader loaded: prog={:d}\n", mc2::fmt::as_u32((unsigned)thin_terrain_prog_->shp_));
-        fflush(stdout);
-    }
-
-
-
     gos_TerrainLodChunk_Init();
 }
 
@@ -317,11 +229,6 @@ void gosRenderer::destroy() {
     gos_TerrainLodChunk_Destroy();
 
     gosMesh::destroy(text_);
-
-    for(size_t i=0; i<materialList_.size(); i++) {
-        gosRenderMaterial::destroy(materialList_[i]);
-    }
-    materialList_.clear();
 
     // delete fonts before textures, because they refer them
     for(size_t i=0; i<fontList_.size(); i++) {
@@ -334,12 +241,6 @@ void gosRenderer::destroy() {
     }
     textureList_.clear();
 
-    // Terrain tessellation cleanup
-    delete[] terrain_extra_data_;
-    terrain_extra_data_ = nullptr;
-    if (terrain_extra_vb_) { glDeleteBuffers(1, &terrain_extra_vb_); terrain_extra_vb_ = 0; }
-    if (terrain_material_) { gosRenderMaterial::destroy(terrain_material_); terrain_material_ = nullptr; }
-    glDeleteVertexArrays(1, &gVAO);
 
 }
 
@@ -450,9 +351,7 @@ void gos_RendererFlushHUDBatch() {
 // pp->endScene() leaves VAO 0 bound. Any caller that needs to issue
 // gos_Draw* calls after endScene (e.g. projectz_overlay_render) must
 // rebind gVAO first, same as flushHUDBatch() does internally.
-void gos_RendererRebindVAO() {
-    glBindVertexArray(gVAO);
-}
+
 
 // GAMEOS-GRAPHICS-SPLIT-1 slice 5: logical-canvas size shims for extraction
 // TUs (gameos_graphics_params.cpp) that must not see the gosRenderer class.

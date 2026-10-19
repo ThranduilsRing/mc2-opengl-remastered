@@ -252,7 +252,6 @@ void MC_TextureManager::renderListsOverlaysVfxHudSubmit (void)
 	gos_SetRenderState( gos_State_ZCompare, 1 );
 
 	// Reset terrain extra buffer after rendering — will be re-filled during next frame's TerrainQuad::draw() calls
-	gos_TerrainExtraReset();
 	} // end RenderLists.VfxHudSubmit
 }
 

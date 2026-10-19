@@ -750,7 +750,12 @@ def material_tess_shaders(text):
 
 def collect_materials(world: World, out: list):
     p = GAMEOS / "gameos_graphics.cpp"
-    s = _merged_material_src(world.src(p), world.src(GAMEOS / "gameos_graphics_material_internal.h"))
+    core = world.src(p)
+    header = world.src(GAMEOS / "gameos_graphics_material_internal.h")
+    # No material loader remains after the native terrain migration.
+    if not re.search(r"\bgosRenderMaterial\b", core.t + header.t):
+        return
+    s = _merged_material_src(core, header)
     # flag names
     m = re.search(r"g_shader_flags\s*\[\s*\]\s*=\s*\{(.*?)\};", s.t, re.S)
     flags = [parse_string_literals(x.strip()) for x in split_top(m.group(1), ",") if x.strip()]
