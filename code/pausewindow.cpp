@@ -75,11 +75,11 @@ PauseWindow::PauseWindow()
 PauseWindow::~PauseWindow()
 {
 	if ( buttons )
-		delete [] buttons;
+		buttons.reset();
 	if  ( buttonData )
-		delete [] buttonData;
+		buttonData.reset();
 	if ( statics )
-		delete [] statics;
+		statics.reset();
 }
 
 void PauseWindow::update()
@@ -805,13 +805,13 @@ void PauseWindow::init( FitIniFile& file )
 	file.readIdLong( "staticCount", staticCount );
 
 	if ( buttons )
-		delete [] buttons;
+		buttons.reset();
 
 	if ( buttonData )
-		delete [] buttonData;
+		buttonData.reset();
 
 	if ( statics )
-		delete [] statics;
+		statics.reset();
 
 	buttonData = nullptr;
 	buttons = nullptr;
@@ -820,12 +820,12 @@ void PauseWindow::init( FitIniFile& file )
 
 	if ( buttonCount )
 	{
-		buttons = new ControlButton[buttonCount];
-		buttonData = new ButtonData[buttonCount];
+		buttons = std::make_unique_for_overwrite<ControlButton[]>(buttonCount);
+		buttonData = std::make_unique_for_overwrite<ButtonData[]>(buttonCount);
 		font.init( IDS_PAUSEBUTTON800 );
 		headerFont.init( IDS_PAUSEDFONT_800 );
 		
-		ControlButton::initButtons( file, buttonCount, buttons, buttonData, "PauseButton", &font );
+		ControlButton::initButtons( file, buttonCount, buttons.get(), buttonData.get(), "PauseButton", &font );
 
 		for ( int i = 0; i < buttonCount; i++ )
 		{
@@ -835,7 +835,7 @@ void PauseWindow::init( FitIniFile& file )
 
 	if ( staticCount )
 	{
-		statics = new StaticInfo[staticCount];
+		statics = std::make_unique_for_overwrite<StaticInfo[]>(staticCount);
 		char buffer[256];
 		for ( int i = 0; i < staticCount; i++ )
 		{

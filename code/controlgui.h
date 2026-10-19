@@ -9,6 +9,7 @@ ControlGui.h			: Interface for the ControlGui component.  This thing holds the t
 \*************************************************************************************************/
 
 #ifndef GAMETACMAP_H
+#include <memory>
 #include"gametacmap.h"
 #endif
 
@@ -346,7 +347,7 @@ class ControlGui
 
 		ChatInfo		chatInfos[MAX_CHAT_COUNT]; // max five lines -- could change
 
-		RectInfo*		rectInfos;
+		std::unique_ptr<RectInfo[]>		rectInfos;
 		long			rectCount;
 		
 		//static	ButtonFile		vehicleFileData[LAST_VEHICLE];
@@ -355,8 +356,8 @@ class ControlGui
 		static unsigned long GUARD;
 		static unsigned long JUMP;
 
-		ControlButton*		buttons;
-		ControlButton*		vehicleButtons;
+		std::unique_ptr<ControlButton[]>		buttons;
+		std::unique_ptr<ControlButton[]>		vehicleButtons;
 		static ButtonData*	buttonData;
 		static ButtonData*	vehicleData;
 		static const char*	vehicleNames[5];
@@ -366,16 +367,16 @@ class ControlGui
 
 		static long			vehicleCosts[LAST_VEHICLE];
 
-		InfoWindow*			infoWnd;
-		PauseWindow*		pauseWnd;
+		std::unique_ptr<InfoWindow>			infoWnd;
+		std::unique_ptr<PauseWindow>		pauseWnd;
 
-		StaticInfo*			staticInfos;
+		std::unique_ptr<StaticInfo[]>			staticInfos;
 		long				staticCount;
 
-		StaticInfo*			objectiveInfos; //2nd to last one is check, last is x
+		std::unique_ptr<StaticInfo[]>			objectiveInfos; //2nd to last one is check, last is x
 		long				objectiveInfoCount;
 
-		StaticInfo*			missionStatusInfos;
+		std::unique_ptr<StaticInfo[]>			missionStatusInfos;
 		long				missionStatusInfoCount;
 		RectInfo			missionStatusRect;
 
@@ -403,13 +404,13 @@ class ControlGui
 		static MoveInfo objectiveMoveInfo[OBJECTVE_MOVE_COUNT];
 		static MoveInfo missionResultsMoveInfo[RESULTS_MOVE_COUNT];
 
-		StaticInfo*			videoInfos;
+		std::unique_ptr<StaticInfo[]>			videoInfos;
 		long				videoInfoCount;
 		GUI_RECT			videoRect;
 		GUI_RECT			videoTextRect;
 		MC2MoviePtr			bMovie;
 
-		StaticInfo*			timerInfos;
+		std::unique_ptr<StaticInfo[]>			timerInfos;
 		long				timerInfoCount;
 		RectInfo			timerRect;
 
@@ -479,7 +480,7 @@ class ControlGui
 		// UI-COMMAND-CHANNEL-1: pause-window access for the file command
 		// channel (missiongui.cpp) — routes `press pause.*` through the same
 		// PauseWindow::handleClick the ImGui/legacy buttons use.
-		PauseWindow* getPauseWnd() { return pauseWnd; }
+		PauseWindow* getPauseWnd() { return pauseWnd.get(); }
 
 		RectInfo *getRect (long id)
 		{
