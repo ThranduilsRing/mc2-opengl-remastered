@@ -58,7 +58,7 @@ private:
 
 	LogisticsMech*		pCurMech;
 	LogisticsMech*		pDragMech;
-	LogisticsMechIcon*	pIcons;
+	std::unique_ptr<LogisticsMechIcon[]>	pIcons;
 	aObject				dragIcon;
 	bool				dragLeft;
 	long				forceGroupCount;

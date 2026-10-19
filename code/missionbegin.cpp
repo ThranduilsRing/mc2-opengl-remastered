@@ -109,7 +109,7 @@ MissionBegin::~MissionBegin()
 
 	if (mainMenu)
 	{
-		delete mainMenu;
+		mainMenu.reset();
 		mainMenu = nullptr;
 	}
 }
@@ -465,7 +465,7 @@ void MissionBegin::begin()
 
 	// initialize the main menu
 	{ ZoneScopedN("MissionBegin::begin mainMenu");
-	mainMenu = new MainMenu;
+	mainMenu = std::make_unique_for_overwrite<MainMenu>();
 
 	strcpy( path, artPath );
 	strcat( path, "mcl_mm.fit" );

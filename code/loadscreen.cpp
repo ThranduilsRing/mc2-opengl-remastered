@@ -38,8 +38,8 @@ TGAFileHeader* LoadScreen::progressBackground = nullptr;
 TGAFileHeader* LoadScreen::mergedTexture = nullptr;
 TGAFileHeader* LoadScreen::waitingForPlayersMemory = nullptr;
 
-LoadScreen* LoadScreenWrapper::enterScreen = nullptr;
-LoadScreen* LoadScreenWrapper::exitScreen = nullptr;
+std::unique_ptr<LoadScreen> LoadScreenWrapper::enterScreen = nullptr;
+std::unique_ptr<LoadScreen> LoadScreenWrapper::exitScreen = nullptr;
 
 
 extern volatile bool mc2IsInMouseTimer;
@@ -61,24 +61,26 @@ LoadScreenWrapper::LoadScreenWrapper()
 	//How about, for shits and giggles we toss the static members we created for single player when this inits for multiplayer
 	// or any other player!!!!
 	if ( enterScreen )
-		delete enterScreen;
+		enterScreen.reset();
 	if ( exitScreen )
-		delete exitScreen;
+		exitScreen.reset();
 
-	enterScreen = exitScreen = nullptr;
-	enterScreen = new LoadScreen;
-	exitScreen = new LoadScreen;
+	enterScreen = nullptr;
+	exitScreen = nullptr;
+	enterScreen = std::make_unique_for_overwrite<LoadScreen>();
+	exitScreen = std::make_unique_for_overwrite<LoadScreen>();
 	bFirstTime = 0;
 }
 
 LoadScreenWrapper::~LoadScreenWrapper()
 {
 	if ( enterScreen )
-		delete enterScreen;
+		enterScreen.reset();
 	if ( exitScreen )
-		delete exitScreen;
+		exitScreen.reset();
 
-	enterScreen = exitScreen = nullptr;
+	enterScreen = nullptr;
+	exitScreen = nullptr;
 }
 
 void LoadScreenWrapper::init( FitIniFile& file )

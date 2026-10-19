@@ -1,5 +1,6 @@
 #ifndef PILOTREADYSCREEN_H
 #define PILOTREADYSCREEN_H
+#include <memory>
 
 /*************************************************************************************************\
 PilotReadyScreen.h : Header file for pilot selection
@@ -45,7 +46,7 @@ private:
 
 	LogisticsPilot*		pCurPilot;
 	LogisticsPilot*		pDragPilot;
-	LogisticsMechIcon*	pIcons;
+	std::unique_ptr<LogisticsMechIcon[]>	pIcons;
 	aObject				dragIcon;
 	bool				dragLeft;
 	long				forceGroupCount;

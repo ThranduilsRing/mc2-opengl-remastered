@@ -1,5 +1,6 @@
 #ifndef MECHLABSCREEN_H
 #define MECHLABSCREEN_H
+#include <memory>
 /*************************************************************************************************\
 MechLabScreen.h			: Interface for the MechLabScreen component.
 //---------------------------------------------------------------------------//
@@ -69,8 +70,8 @@ class MechLabScreen: public LogisticsScreen
 		MechLabScreen& operator=( const MechLabScreen& echLabScreen );
 		static MechLabScreen*	s_instance;
 		
-		static LogisticsVariantDialog* saveDlg;
-		static LogisticsAcceptVariantDialog* acceptDlg;
+		static std::unique_ptr<LogisticsVariantDialog> saveDlg;
+		static std::unique_ptr<LogisticsAcceptVariantDialog> acceptDlg;
 
 		LogisticsVariantDialog*			pCurDialog;
 
