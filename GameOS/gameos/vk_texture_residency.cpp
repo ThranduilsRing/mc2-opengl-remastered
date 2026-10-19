@@ -300,6 +300,10 @@ void TextureResidency::release(RenderCore::TextureHandle handle) {
 VkImageView TextureResidency::view(RenderCore::TextureHandle handle, bool arrayView) const {
     auto it=residents_.find(handle.raw()); return it!=residents_.end() && it->second.image && service_.isLive(handle) ? it->second.image->view.get() : (arrayView || (it!=residents_.end() && it->second.arrayView) ? arrayPlaceholder_->view.get() : placeholder_->view.get());
 }
+std::shared_ptr<const void> TextureResidency::imageOwner(RenderCore::TextureHandle handle) const {
+    auto it=residents_.find(handle.raw());
+    return it!=residents_.end() && it->second.image && service_.isLive(handle) ? it->second.image : placeholder_;
+}
 VkDescriptorSet TextureResidency::descriptors() {
     auto& flight=flights_[ctx_.frameContext().slot];
     if (!ctx_.tracker().frameOpen()) return VK_NULL_HANDLE;

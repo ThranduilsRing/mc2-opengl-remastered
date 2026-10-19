@@ -827,6 +827,18 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         s->lightingReady = static_cast<bool>(lightSpan);
     }
 
+    // Resolve every run before uploading materialReady or synchronizing dynamic buffers.
+    // No descriptor allocation or cache eviction may happen inside the recorded pass.
+    const VkDescriptorSet dummySet = get_scheme_set(s,0,0,0,par);
+    std::vector<VkDescriptorSet> runSets(feed.runCount, dummySet);
+    s->materialReady = false;
+    for (uint32_t r=0; s->wantMaterial && r<feed.runCount; ++r) {
+        const auto& run=feed.runs[r];
+        if (!run.indexCount || !run.instanceCount) continue;
+        const auto set=get_scheme_set(s,run.slot0Tex,run.aoTex,run.normalTex,par);
+        if (set) runSets[r]=set;
+    }
+
     // Upload UBO.
     { MechFrameUBO u{};
       std::memcpy(u.worldToClipGL, feed.worldToClipGL, sizeof(u.worldToClipGL));
@@ -906,15 +918,12 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     // gl_InstanceIndex indexes the instance SSBO snapshot exactly as the GL VS's
     // u_instanceBase + gl_InstanceID did. Per run: bind the descriptor set for this run's
     // paint scheme (per-actor cache) so the right albedo (binding 3) is sampled.
-    VkDescriptorSet dummySet = get_scheme_set(s,0,0,0,par);
     VkDescriptorSet boundSet = VK_NULL_HANDLE;
     unsigned long runs = 0;
     for (uint32_t r = 0; r < feed.runCount; ++r) {
         const Mc2MechDrawRun& run = feed.runs[r];
         if (run.indexCount == 0 || run.instanceCount == 0) continue;
-        VkDescriptorSet set = s->wantMaterial
-            ? get_scheme_set(s, run.slot0Tex, run.aoTex, run.normalTex, par) : dummySet;
-        if (set == VK_NULL_HANDLE) set = dummySet;
+        const VkDescriptorSet set = runSets[r];
         if (set != boundSet) {
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 5, dynOffsets);
             boundSet = set;

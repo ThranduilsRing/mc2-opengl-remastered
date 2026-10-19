@@ -430,7 +430,7 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 	
 	for (i=0;i<curShape;i++)
 	{
-		resultShape->listOfShapes[i].transferFrom(*detachables[i]);
+		resultShape->listOfShapes[i].transferFrom(*detachables[i],resultShape->instanceTextures_.data());
 		
 		if (S_stricmp(resultShape->listOfShapes[i].node->getNodeName(),nodeName) == 0)
 			resultShape->listOfShapes[i].parentNode = nullptr;		//Set new top O heirarchy.

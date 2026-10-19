@@ -458,6 +458,7 @@ typedef struct _TG_ShapeRec
 	// reset exactly as the old copy assignment reset them; the parent pointer is copied and must be rebuilt for the new array.
 	// Defined after TG_Shape (the unique_ptr move needs the complete type).
 	inline void transferFrom (_TG_ShapeRec &rec);
+	inline void transferFrom (_TG_ShapeRec &rec, const TG_TinyTexture* textures);
 
 } TG_ShapeRec;
 
@@ -1221,6 +1222,12 @@ inline void _TG_ShapeRec::transferFrom (_TG_ShapeRec &rec)
 	baseRotation		= rec.baseRotation;
 }
 
+
+inline void _TG_ShapeRec::transferFrom (_TG_ShapeRec &rec, const TG_TinyTexture* textures)
+{
+    transferFrom(rec);
+    if (node) node->instanceTextures_=textures;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 class TG_RenderShape {

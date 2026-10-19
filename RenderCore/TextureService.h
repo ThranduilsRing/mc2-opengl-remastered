@@ -102,7 +102,7 @@ public:
     // Render-thread material identity shares the texture service session lifetime.
     MaterialRegistry& materials() { return materials_; }
     std::function<void(TextureHandle)> onRetired; // context residency borrows the session; callback only queues invalidations
-    // The handle of `key`: a new one bound to `node`, or the existing one (its user count rises; `node` is ignored, the first residency stays).
+    // The handle of `key`: a new one bound to `node`, or the existing one (its user count rises; every alias node is indexed, the first residency stays).
     TextureHandle acquire(const TextureKey& key, uint32_t node = kNoTextureNode, TextureDimensions dimensions = {}) {
         std::lock_guard<std::mutex> lk(mu_);
         if (auto it = byKey_.find(key); it != byKey_.end()) {
@@ -110,6 +110,10 @@ public:
             Entry& e = entries_[idx];
             if (e.users == UINT32_MAX) return TextureHandle::invalid();
             ++e.users;
+            if (node != kNoTextureNode) {
+                auto& binding=byNode_[node]; binding.index=idx; ++binding.users;
+                if (e.node==kNoTextureNode) e.node=node;
+            }
             return TextureHandle::make(idx, e.generation);
         }
         uint32_t idx;
@@ -126,7 +130,7 @@ public:
         e.contentVersion = 0;
         e.dimensions = dimensions;
         byKey_.emplace(key, idx);
-        if (node != kNoTextureNode) byNode_[node] = idx;
+        if (node != kNoTextureNode) byNode_[node] = {idx,1};
         return TextureHandle::make(idx, e.generation);
     }
 
@@ -158,23 +162,38 @@ public:
     void cacheCooked(const TextureKey& key, std::shared_ptr<const KtxImage> image) {
         std::lock_guard<std::mutex> lk(mu_); cooked_[key] = std::move(image);
     }
+    bool retainNode(uint32_t node) {
+        std::lock_guard<std::mutex> lk(mu_);
+        auto it=byNode_.find(node);
+        if (it==byNode_.end()) return false;
+        auto& binding=it->second; auto& e=entries_[binding.index];
+        if (e.users==UINT32_MAX) return false;
+        ++e.users; ++binding.users; return true;
+    }
     // One user of the node's texture let go (mirrors the manager's reference count). The entry stays until the node dies.
     void dropRef(uint32_t node) {
         std::lock_guard<std::mutex> lk(mu_);
         if (auto it = byNode_.find(node); it != byNode_.end()) {
-            const auto& [n, idx] = *it;
-            if (entries_[idx].users > 0) --entries_[idx].users;
+            auto& binding=it->second;
+            if (binding.users) { --binding.users; if (entries_[binding.index].users) --entries_[binding.index].users; }
         }
     }
 
-    // The node died: the entry goes, its generation bumps (a held handle is stale), its index is reusable.
+    // Only the last alias dying retires the identity and bumps its generation.
     void onNodeDestroyed(uint32_t node) {
         std::lock_guard<std::mutex> lk(mu_);
         auto it = byNode_.find(node);
         if (it == byNode_.end()) return;
-        const auto& [n, idx] = *it;
-        retire(idx);
+        const auto binding=it->second;
+        Entry& e=entries_[binding.index];
+        e.users=e.users>binding.users ? e.users-binding.users : 0;
         byNode_.erase(it);
+        for (const auto& [alias, other] : byNode_) {
+            if (other.index != binding.index) continue;
+            if (e.node==node) e.node=alias;
+            return; // another manager node still owns this identity
+        }
+        retire(binding.index);
     }
 
     // The same texture now lives in `newNode` (new pixels): the handle stays, the content version rises.
@@ -182,10 +201,12 @@ public:
         std::lock_guard<std::mutex> lk(mu_);
         Entry* e = resolve(h);
         if (!e) return false;
-        if (e->node != kNoTextureNode) byNode_.erase(e->node);
+        uint32_t nodeUsers=0;
+        if (auto it=byNode_.find(e->node); it!=byNode_.end()) { nodeUsers=it->second.users; byNode_.erase(it); }
         e->node = newNode;
         ++e->contentVersion;
-        if (newNode != kNoTextureNode) byNode_[newNode] = h.index();
+        if (newNode != kNoTextureNode) { auto& binding=byNode_[newNode]; binding.index=h.index(); binding.users+=nodeUsers; }
+        else for (const auto& [alias,binding] : byNode_) if (binding.index==h.index()) { e->node=alias; break; }
         return true;
     }
 
@@ -199,7 +220,7 @@ public:
         std::lock_guard<std::mutex> lk(mu_);
         auto it = byNode_.find(node);
         if (it == byNode_.end()) return TextureHandle::invalid();
-        const auto& [n, idx] = *it;
+        const uint32_t idx=it->second.index;
         return TextureHandle::make(idx, entries_[idx].generation);
     }
     uint32_t contentVersion(TextureHandle h) const {
@@ -262,7 +283,8 @@ private:
     std::vector<Entry> entries_;
     std::vector<uint32_t> free_;
     std::unordered_map<TextureKey, uint32_t, TextureKeyHash> byKey_;
-    std::unordered_map<uint32_t, uint32_t> byNode_;
+    struct NodeBinding { uint32_t index=0, users=0; };
+    std::unordered_map<uint32_t, NodeBinding> byNode_;
 };
 
 // Immutable descriptor snapshots retain image owners until that flight completes. Reusing a slot in a newer

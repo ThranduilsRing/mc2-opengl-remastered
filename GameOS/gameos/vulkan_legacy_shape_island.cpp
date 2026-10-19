@@ -628,18 +628,26 @@ extern "C" uint64_t mc2_vk_preview_texture() {
 }
 
 extern "C" void mc2_vk_legacy_shape_island_reset() {
-    g_pending.clear();
-    Island* s = parkedIsland();
-    if (!s || !s->inited) return;
-    // Texture node indices are reused by the next mission: drop the copy-once cache.
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("legacy_shape_reset");
-    s->texs.clear();
-    // The pool has no FREE_DESCRIPTOR_SET bit: reset it and re-create the dummy sets.
-    if (s->pool) vkResetDescriptorPool(s->device, s->pool.get(), 0);
-    s->dummyTex.set[0] = s->dummyTex.set[1] = VK_NULL_HANDLE;
-    s->ringBound[0] = s->ringBound[1] = VK_NULL_HANDLE;
-    if (!alloc_tex_sets(s, s->dummyTex)) { s->disabled = true; vlog("reset: dummy sets failed -- island disabled."); }
-    vlog("texture cache reset on mission unload.");
+    g_pending.clear(); g_previewPending.clear(); g_previewVertices.clear();
+    auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
+    const auto legacy=mc2vk::IslandSlot::LegacyShape, preview=mc2vk::IslandSlot::Preview;
+    auto* world=static_cast<Island*>(ctx.islandSlot(legacy).get());
+    auto* bay=static_cast<Island*>(ctx.islandSlot(preview).get());
+    if ((!world || !world->inited) && (!bay || !bay->inited)) return;
+    ctx.waitIdle("legacy_shape_reset");
+    for (const auto slot : {mc2vk::IslandSlot::LegacyShape, mc2vk::IslandSlot::Preview}) {
+        auto* s=static_cast<Island*>(ctx.islandSlot(slot).get());
+        if (!s || !s->inited) continue;
+        const auto before=s->texs.size();
+        s->texs.clear();
+        // Neither pool frees individual sets: reset it and restore its dummy pair.
+        if (s->pool) vkResetDescriptorPool(s->device,s->pool.get(),0);
+        s->dummyTex.set[0]=s->dummyTex.set[1]=VK_NULL_HANDLE;
+        s->ringBound[0]=s->ringBound[1]=VK_NULL_HANDLE;
+        s->previewPublished=false;
+        if (!alloc_tex_sets(s,s->dummyTex)) { s->disabled=true; vlog("reset: dummy sets failed -- island disabled."); }
+        vlog("texture cache reset slot=%s entries_before=%zu entries_after=%zu",s->preview ? "preview" : "legacy",before,s->texs.size());
+    }
 }
 
 extern "C" void mc2_vk_legacy_shape_island_destroy() {

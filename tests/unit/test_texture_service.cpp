@@ -33,6 +33,36 @@ TEST_CASE("the same key is one handle; a second acquire raises the user count an
     CHECK(s.liveCount() == 1);
 }
 
+TEST_CASE("shared-key node aliases survive canonical destruction without leaking users") {
+    TextureService s;
+    const auto key=keyOf("base","data/art/foo.tga",17);
+    const auto first=s.acquire(key,7);
+    REQUIRE(s.acquire(key,9)==first);
+    CHECK(s.handleOfNode(7)==first); CHECK(s.handleOfNode(9)==first);
+    REQUIRE(s.retainNode(9)); CHECK(s.users(first)==3);
+    s.dropRef(9); CHECK(s.users(first)==2);
+    s.onNodeDestroyed(7);
+    CHECK(s.isLive(first)); CHECK(s.nodeOf(first)==9); CHECK(s.users(first)==1);
+    CHECK_FALSE(s.handleOfNode(7).isValid());
+    const auto replacement=s.acquire(keyOf("base","other",19),7);
+    CHECK(replacement!=first); CHECK(s.handleOfNode(9)==first);
+    s.dropRef(9); CHECK(s.users(first)==0); CHECK(s.isLive(first));
+    s.onNodeDestroyed(9); CHECK_FALSE(s.isLive(first));
+    CHECK(s.isLive(replacement));
+}
+
+TEST_CASE("shared-key aliases remain indexed across rebind and clear") {
+    TextureService s;
+    const auto key=keyOf("base","a",1);
+    const auto h=s.acquire(key,1); REQUIRE(s.acquire(key,2)==h);
+    REQUIRE(s.rebind(h,3));
+    CHECK_FALSE(s.handleOfNode(1).isValid());
+    CHECK(s.handleOfNode(2)==h); CHECK(s.handleOfNode(3)==h);
+    s.onNodeDestroyed(2); CHECK(s.isLive(h)); CHECK(s.users(h)==1);
+    s.clear();
+    CHECK_FALSE(s.handleOfNode(3).isValid()); CHECK_FALSE(s.isLive(h));
+}
+
 TEST_CASE("path spelling is folded: case and separators do not make a new key") {
     TextureKey a = keyOf("base", "Data\\TGL\\Mech.TGA", 0xAB);
     TextureKey b = keyOf("base", "data/tgl/mech.tga", 0xAB);

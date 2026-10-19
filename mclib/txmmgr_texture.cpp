@@ -225,7 +225,7 @@ static void txmIdentityAcquire (const MC_TextureNode& n, long node, uint32_t phy
 {
 	RenderCore::TextureKey k;
 	auto& service = RenderCore::textureService();
-    if (auto existing = service.handleOfNode((uint32_t)node); existing.isValid()) { service.retain(existing); return; }
+    if (service.retainNode((uint32_t)node)) return;
     const char* mod = n.nodeName ? LookupModOwner(n.nodeName) : nullptr;
     k.source = RenderCore::makeTextureSourceId(mod ? mod : "legacy-vfs", n.nodeName ? n.nodeName : "",
         n.textureData ? RenderCore::textureContentHash((const uint8_t*)n.textureData, n.lzCompSize) : 0);

@@ -59,6 +59,7 @@ public:
     ResidentTextureRef retain(RenderCore::TextureHandle handle);
     void release(RenderCore::TextureHandle handle);
     VkImageView view(RenderCore::TextureHandle handle, bool arrayView = false) const;
+    std::shared_ptr<const void> imageOwner(RenderCore::TextureHandle handle) const;
     // Call only in the open engine frame. An immutable per-flight table is written after its previous ticket completes.
     VkDescriptorSet descriptors();
     uint32_t descriptorIndex(RenderCore::TextureHandle handle) const;
