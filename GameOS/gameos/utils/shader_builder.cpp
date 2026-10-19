@@ -1,3 +1,4 @@
+#include <string_view>
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>
 #endif
@@ -75,7 +76,7 @@ void init_func_ptrs(UNIFORM_FUNC (&uniformFuncs)[15])
 
 namespace {
 
-std::string diag_json_escape(const std::string& s) {
+std::string diag_json_escape(std::string_view s) {
     std::string out;
     out.reserve(s.size());
     for (char c : s) {
@@ -517,7 +518,7 @@ std::string spirvDefineKey(const char* prefix)
 }
 
 // Extract the quoted string value of `field` at/after `from`; advance `endpos`.
-static bool spirvJsonField(const std::string& t, size_t from, const char* field,
+static bool spirvJsonField(std::string_view t, size_t from, std::string_view field,
                            std::string& out, size_t& endpos)
 {
     size_t k = t.find(field, from);
