@@ -30,7 +30,7 @@ static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CH
 #include "mc2fmt.h"
 #include "mc2str.h"
 
-MechListBoxItem* MechListBoxItem::s_templateItem = nullptr;
+std::unique_ptr<MechListBoxItem> MechListBoxItem::s_templateItem = nullptr;
 
 bool MechListBox::s_DrawCBills = true;
 bool MechListBoxItem::bAddCalledThisFrame = 0;
@@ -51,7 +51,7 @@ MechListBox::~MechListBox()
 {
 	removeAllItems( true );
 
-	delete MechListBoxItem::s_templateItem;
+	MechListBoxItem::s_templateItem.reset();
 	MechListBoxItem::s_templateItem = nullptr;
 }
 
@@ -237,7 +237,7 @@ void MechListBoxItem::init( FitIniFile& file )
 {
 	if ( !s_templateItem )
 	{
-		s_templateItem = new MechListBoxItem( nullptr, 0 );
+		s_templateItem = std::make_unique<MechListBoxItem>( nullptr, 0 );
 		file.seekBlock( "MainBox" );
 
 		long width, height;
@@ -245,7 +245,7 @@ void MechListBoxItem::init( FitIniFile& file )
 		file.readIdLong( "Width", width );
 		file.readIdLong( "Height", height );
 
-		((aObject*)s_templateItem)->init( 0, 0, width, height );
+		((aObject*)s_templateItem.get())->init( 0, 0, width, height );
 
 		memset( s_templateItem->animationIDs, 0, sizeof(long) * 9  );
 

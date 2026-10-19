@@ -1,5 +1,6 @@
 #ifndef LOGISTICSDIALOG_H
 #define LOGISTICSDIALOG_H
+#include <memory>
 /*************************************************************************************************\
 LogisticsDialog.h			: Interface for the LogisticsDialog component.
 //---------------------------------------------------------------------------//
@@ -68,7 +69,7 @@ class LogisticsOKDialog : public LogisticsDialog
 {
 	public:
 
-		static LogisticsOKDialog* instance(){ return s_instance; }
+		static LogisticsOKDialog* instance(){ return s_instance.get(); }
 
 
 		LogisticsOKDialog();
@@ -90,7 +91,8 @@ class LogisticsOKDialog : public LogisticsDialog
 		LogisticsOKDialog& operator=( const LogisticsOKDialog& ogisticsDialog );
 
 
-		static LogisticsOKDialog*		s_instance;
+		friend struct std::default_delete<LogisticsOKDialog>;
+		static std::unique_ptr<LogisticsOKDialog>		s_instance;
 
 	 friend void endDialogs();
 };
@@ -99,7 +101,7 @@ class LogisticsOneButtonDialog : public LogisticsDialog
 {
 	public:
 
-		static LogisticsOneButtonDialog* instance(){ return s_instance; }
+		static LogisticsOneButtonDialog* instance(){ return s_instance.get(); }
 
 
 		LogisticsOneButtonDialog();
@@ -121,7 +123,8 @@ class LogisticsOneButtonDialog : public LogisticsDialog
 		LogisticsOneButtonDialog& operator=( const LogisticsOneButtonDialog& ogisticsDialog );
 
 
-		static LogisticsOneButtonDialog*		s_instance;
+		friend struct std::default_delete<LogisticsOneButtonDialog>;
+		static std::unique_ptr<LogisticsOneButtonDialog>		s_instance;
 
 	 friend void endDialogs();
 };
@@ -130,7 +133,7 @@ class LogisticsLegalDialog : public LogisticsOneButtonDialog
 {
 public:
 	 
-	static LogisticsLegalDialog* instance(){ return s_instance; }
+	static LogisticsLegalDialog* instance(){ return s_instance.get(); }
 	static int init( FitIniFile& file );
 
 	LogisticsLegalDialog(){}
@@ -141,7 +144,8 @@ private:
 	virtual ~LogisticsLegalDialog(){}
 	LogisticsLegalDialog& operator=( const LogisticsLegalDialog& ogisticsDialog );
 
-	static LogisticsLegalDialog*		s_instance;
+	friend struct std::default_delete<LogisticsLegalDialog>;
+		static std::unique_ptr<LogisticsLegalDialog>		s_instance;
 
 	 friend void endDialogs();
 
@@ -153,7 +157,7 @@ class LogisticsSaveDialog : public LogisticsDialog
 {
 	public:
 
-		static LogisticsSaveDialog* instance(){ return s_instance; }
+		static LogisticsSaveDialog* instance(){ return s_instance.get(); }
 
 
 		LogisticsSaveDialog();
@@ -179,7 +183,8 @@ class LogisticsSaveDialog : public LogisticsDialog
 		virtual ~LogisticsSaveDialog();
 		LogisticsSaveDialog& operator=( const LogisticsSaveDialog& ogisticsDialog );
 
-		static LogisticsSaveDialog*		s_instance;
+		friend struct std::default_delete<LogisticsSaveDialog>;
+		static std::unique_ptr<LogisticsSaveDialog>		s_instance;
 
 		aListBox	gameListBox;
 

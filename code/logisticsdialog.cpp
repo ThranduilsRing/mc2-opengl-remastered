@@ -21,11 +21,11 @@ LogisticsDialog.cpp			: Implementation of the LogisticsDialog component.
 #include"gamesound.h"
 #include"UiDefs.h"
 
-LogisticsOKDialog* LogisticsOKDialog::s_instance = nullptr;
-LogisticsSaveDialog* LogisticsSaveDialog::s_instance = nullptr;
+std::unique_ptr<LogisticsOKDialog> LogisticsOKDialog::s_instance = nullptr;
+std::unique_ptr<LogisticsSaveDialog> LogisticsSaveDialog::s_instance = nullptr;
 LogisticsVariantDialog* LogisticsVariantDialog::s_instance = nullptr;
-LogisticsOneButtonDialog* LogisticsOneButtonDialog::s_instance = nullptr;
-LogisticsLegalDialog* LogisticsLegalDialog::s_instance = nullptr;
+std::unique_ptr<LogisticsOneButtonDialog> LogisticsOneButtonDialog::s_instance = nullptr;
+std::unique_ptr<LogisticsLegalDialog> LogisticsLegalDialog::s_instance = nullptr;
 
 extern long SaveGameVersionNumber;
 
@@ -252,8 +252,8 @@ int LogisticsOKDialog::init( FitIniFile& file )
 {
 	if ( !s_instance )
 	{
-		s_instance = new LogisticsOKDialog;
-		((LogisticsScreen*)s_instance)->init( file, "Static", "Text", "Rect", "Button", "Edit" );		
+		s_instance = std::make_unique_for_overwrite<LogisticsOKDialog>();
+		((LogisticsScreen*)s_instance.get())->init( file, "Static", "Text", "Rect", "Button", "Edit" );
 
 		file.seekBlock( "EnterAnim" );
 		s_instance->enterAnim.init( &file, "" );
@@ -319,8 +319,8 @@ int LogisticsOneButtonDialog::init( FitIniFile& file )
 {
 	if ( !s_instance )
 	{
-		s_instance = new LogisticsOneButtonDialog;
-		((LogisticsScreen*)s_instance)->init( file, "Static", "Text", "Rect", "Button", "Edit" );		
+		s_instance = std::make_unique_for_overwrite<LogisticsOneButtonDialog>();
+		((LogisticsScreen*)s_instance.get())->init( file, "Static", "Text", "Rect", "Button", "Edit" );
 
 		file.seekBlock( "EnterAnim" );
 		s_instance->enterAnim.init( &file, "" );
@@ -344,8 +344,8 @@ int LogisticsLegalDialog::init( FitIniFile& file )
 {
 	if ( !s_instance )
 	{
-		s_instance = new LogisticsLegalDialog;
-		((LogisticsScreen*)s_instance)->init( file, "Static", "Text", "Rect", "Button", "Edit" );		
+		s_instance = std::make_unique_for_overwrite<LogisticsLegalDialog>();
+		((LogisticsScreen*)s_instance.get())->init( file, "Static", "Text", "Rect", "Button", "Edit" );
 
 		file.seekBlock( "EnterAnim" );
 		s_instance->enterAnim.init( &file, "" );
@@ -409,8 +409,8 @@ int LogisticsSaveDialog::init( FitIniFile& file )
 {
 	if ( !s_instance  )
 	{
-		s_instance = new LogisticsSaveDialog();
-		((LogisticsScreen*)s_instance)->init( file, "Static", "Text", "Rect", "Button" );
+		s_instance = std::make_unique<LogisticsSaveDialog>();
+		((LogisticsScreen*)s_instance.get())->init( file, "Static", "Text", "Rect", "Button" );
 
 		file.seekBlock( "InAnim" );
 		s_instance->enterAnim.init( &file, "" );

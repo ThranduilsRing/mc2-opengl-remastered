@@ -117,25 +117,25 @@ void endDialogs()
 {
 	if (LogisticsOKDialog::s_instance)
 	{
-		delete LogisticsOKDialog::s_instance;
+		LogisticsOKDialog::s_instance.reset();
 		LogisticsOKDialog::s_instance = nullptr;
 	}
 
 	if (LogisticsSaveDialog::s_instance)
 	{
-		delete LogisticsSaveDialog::s_instance;
+		LogisticsSaveDialog::s_instance.reset();
 		LogisticsSaveDialog::s_instance = nullptr;
 	}
 
 	if (LogisticsOneButtonDialog::s_instance)
 	{
-		delete LogisticsOneButtonDialog::s_instance;
+		LogisticsOneButtonDialog::s_instance.reset();
 		LogisticsOneButtonDialog::s_instance = nullptr;
 	}
 
 	if (LogisticsLegalDialog::s_instance)
 	{
-		delete LogisticsLegalDialog::s_instance;
+		LogisticsLegalDialog::s_instance.reset();
 		LogisticsLegalDialog::s_instance = nullptr;
 	}
 }

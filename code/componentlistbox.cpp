@@ -18,7 +18,7 @@ ComponentListBox.cpp			: Implementation of the ComponentListBox component.
 #include"logisticserrors.h"
 #include "mc2fmt.h"
 
-ComponentListItem* ComponentListItem::s_templateItem = nullptr;
+std::unique_ptr<ComponentListItem> ComponentListItem::s_templateItem = nullptr;
 
 ComponentIconListBox* ComponentIconListBox::s_instance = nullptr;
 
@@ -107,7 +107,7 @@ int ComponentListItem::init( FitIniFile& file )
 {
 	if ( !s_templateItem )
 	{
-		s_templateItem = new ComponentListItem( nullptr );
+		s_templateItem = std::make_unique<ComponentListItem>( nullptr );
 		char animName[COMP_ANIMATION_COUNT][32];
 		for ( int i = 0; i < COMP_ANIMATION_COUNT; i++ )
 		{
@@ -461,7 +461,7 @@ ComponentIconListBox::~ComponentIconListBox()
 
 	s_instance = nullptr;
 
-	delete ComponentListItem::s_templateItem;
+	ComponentListItem::s_templateItem.reset();
 	ComponentListItem::s_templateItem = nullptr;
 }
 

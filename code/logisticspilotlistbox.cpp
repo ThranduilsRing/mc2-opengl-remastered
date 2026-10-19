@@ -12,7 +12,7 @@ LogisticsPilotListBox.cpp			: Implementation of the LogisticsPilotListBox compon
 #include"pilotreadyscreen.h"
 #include"mc2str.h"
 
-LogisticsPilotListBoxItem* LogisticsPilotListBoxItem::s_templateItem = nullptr;
+std::unique_ptr<LogisticsPilotListBoxItem> LogisticsPilotListBoxItem::s_templateItem = nullptr;
 
 LogisticsPilotListBox::LogisticsPilotListBox( )
 {
@@ -21,7 +21,7 @@ LogisticsPilotListBox::LogisticsPilotListBox( )
 
 LogisticsPilotListBox::~LogisticsPilotListBox()
 {
-	delete LogisticsPilotListBoxItem::s_templateItem;
+	LogisticsPilotListBoxItem::s_templateItem.reset();
 	LogisticsPilotListBoxItem::s_templateItem = nullptr;
 
 	aListBox::destroy();
@@ -119,7 +119,7 @@ LogisticsPilotListBoxItem::LogisticsPilotListBoxItem( LogisticsPilot* pNewPilot 
 int LogisticsPilotListBoxItem::init( FitIniFile* file )
 {
 	if ( !s_templateItem )
-		s_templateItem = new LogisticsPilotListBoxItem( nullptr );
+		s_templateItem = std::make_unique<LogisticsPilotListBoxItem>( nullptr );
 
 	MemSet(s_templateItem->pChildAnimations, 0);
 
