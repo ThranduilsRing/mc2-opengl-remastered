@@ -176,10 +176,11 @@ void main() {
         // kept the lattice bars opaque and dark where GL reads see-through.
         // FENCE-UVSCALE-1: the crop to this packet's sub-region of the group's max-dims layer mirrors GL's
         // `fract(v_uv) * vec2(uvScaleX, uvScaleY)`.
-        vec2  uvSampledOn = fract(vUv) * vUvScale;
+        vec2  uvContinuousOn = vUv * vUvScale;
+        vec2  uvSampledOn = fract(uvContinuousOn);
         vec2  tsOn = vec2(textureSize(uAlbedoOn, 0).xy);
-        vec2  duv1 = dFdx(uvSampledOn) * tsOn;
-        vec2  duv2 = dFdy(uvSampledOn) * tsOn;
+        vec2  duv1 = dFdx(uvContinuousOn) * tsOn;
+        vec2  duv2 = dFdy(uvContinuousOn) * tsOn;
         float lodOn = 0.5 * log2(max(max(dot(duv1, duv1), dot(duv2, duv2)), 1e-12));
         lodOn = max(lodOn, 0.0);
         vec4 texc = textureLod(uAlbedoOn, vec3(uvSampledOn, float(vLayerOn)), lodOn);
@@ -199,7 +200,8 @@ void main() {
         // static_prop.frag:206 `fract(v_uv) * vec2(uvScaleX, uvScaleY)` verbatim;
         // uvScale defaults to 1.0 for the common single-texture types so this is a
         // no-op there).
-        vec4 texOff = texture(uAlbedo, vec3(fract(vUv) * vUvScale, float(vLayer)));
+        vec2 uvContinuous = vUv * vUvScale;
+        vec4 texOff = texture(uAlbedo, vec3(fract(uvContinuous), float(vLayer)));
         vec3 albedo = texOff.rgb;
 
         // GL DEFAULT PROP MODEL (static_prop.frag:346): tex_color * v_argb, where v_argb
@@ -208,7 +210,7 @@ void main() {
         // A packet GL alpha-tests although its type sits in the alpha-OFF group (its texture's alpha flag is set after the arrays
         // were built, e.g. the hex lattice props): GL's dither discard, its alpha-test light floor and its alpha-test shadow class.
         if (uPacket.packetAlphaTest != 0) {
-            cover = propCoverage(texOff.a, textureQueryLod(uAlbedo, fract(vUv) * vUvScale).y);   // PROP-COVERAGE-1
+            cover = propCoverage(texOff.a, textureQueryLod(uAlbedo, uvContinuous).y);   // PROP-COVERAGE-1
             rgb = albedo * max(vArgb, vec3(0.5));
             alphaTestClass = true;
         }

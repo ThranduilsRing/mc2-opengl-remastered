@@ -225,6 +225,7 @@ struct Mc2TerrainTier1Feed {
     const float*                shoreFieldTexels;
     int32_t                     shoreFieldW, shoreFieldH;
     uint64_t                    shoreFieldVersion;
+    int32_t                     shoreFieldIsSdf;
     float                       shoreFieldBounds[4];   // topLeftX, topLeftY (= max Y), spanX, spanY (world units)
 };
 

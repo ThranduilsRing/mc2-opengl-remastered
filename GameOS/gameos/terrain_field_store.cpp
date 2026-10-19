@@ -105,7 +105,27 @@ bool TerrainFieldStore::setShorelineMask(const uint8_t* rgba, int width, int hei
 }
 
 bool TerrainFieldStore::setWaterShoreHeight(const float* heights, int width, int height) {
-    return setImage(waterShoreHeight_, heights, width, height, 1);
+    return setWaterShoreHeight(heights, width, height, WaterShoreHeightKind::RawHeight);
+}
+
+bool TerrainFieldStore::setWaterShoreHeight(const float* heights, int width, int height,
+                                             WaterShoreHeightKind kind) {
+    if (!setImage(waterShoreHeight_, heights, width, height, 1))
+        return false;
+    waterShoreHeightKind_ = kind;
+    return true;
+}
+
+void TerrainFieldStore::clearShoreFields() {
+    shorelineMask_.texels.clear();
+    shorelineMask_.width = 0;
+    shorelineMask_.height = 0;
+    shorelineMask_.version = nextVersion();
+    waterShoreHeight_.texels.clear();
+    waterShoreHeight_.width = 0;
+    waterShoreHeight_.height = 0;
+    waterShoreHeight_.version = nextVersion();
+    waterShoreHeightKind_ = WaterShoreHeightKind::RawHeight;
 }
 
 bool TerrainFieldStore::setCementAtlas(const uint8_t* rgba, int width, int height) {

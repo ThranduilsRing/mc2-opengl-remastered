@@ -303,6 +303,9 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->shoreFieldW       = haveSf ? sf.width : 0;
         out->shoreFieldH       = haveSf ? sf.height : 0;
         out->shoreFieldVersion = haveSf ? sf.version : 0;
+        const bool isSdf = haveSf &&
+                           fields->waterShoreHeightKind() == mc2terrain::WaterShoreHeightKind::ShoreSdf;
+        out->shoreFieldIsSdf = isSdf ? 1 : 0;
         const float* sb = gos_TerrainLodChunk_WaterShoreHeightBounds();
         for (int i = 0; i < 4; ++i) out->shoreFieldBounds[i] = sb ? sb[i] : 0.0f;
     }

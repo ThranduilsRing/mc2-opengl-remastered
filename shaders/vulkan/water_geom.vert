@@ -226,8 +226,13 @@ void main() {
     // so the water won over every low plateau and beach near the waterline.
     if (shoreFlat && U.p3.z > 0.0) {
         vec3 toCam   = F.f0.yzw - worldPos;
-        vec4 clipL   = U.worldToClipGL * vec4(worldPos + toCam * (U.p3.z / max(length(toCam), 1.0)), 1.0);
-        clip.z = (clipL.z / clipL.w + fudge) * clip.w;
+        float camRun = length(toCam);
+        if (camRun > 1.0 && abs(worldPos.z - F.f0.z) < camRun) {
+            vec3 lifted  = worldPos + toCam * (U.p3.z / camRun);
+            vec4 clipL   = U.worldToClipGL * vec4(lifted, 1.0);
+            if (abs(clipL.w) > 1e-5)
+                clip.z = (clipL.z / clipL.w + fudge) * clip.w;
+        }
     }
     gl_Position = clip;
 }

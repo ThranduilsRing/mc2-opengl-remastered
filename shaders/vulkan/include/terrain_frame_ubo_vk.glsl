@@ -113,9 +113,10 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     float shorelineBoundsW;  // off 824
     float shorelineBoundsH;  // off 828
     int   shoreFieldOn;  // off 832
-    float shoreFieldBoundsX;  // off 836
-    float shoreFieldBoundsY;  // off 840
-    float shoreFieldBoundsW;  // off 844
-    float shoreFieldBoundsH;  // off 848
+    int   shoreFieldIsSdf;  // off 836
+    float shoreFieldBoundsX;  // off 840
+    float shoreFieldBoundsY;  // off 844
+    float shoreFieldBoundsW;  // off 848
+    float shoreFieldBoundsH;  // off 852
 } uT;
 #endif
