@@ -13,8 +13,8 @@
 
 using nlohmann::json;
 
-static void logDrop(const char* why, const std::string& key) {
-    mc2::fmt::print_err("[MODOVERRIDE] dropped '{}': {}\n", key.c_str(), mc2::fmt::safe(why));
+static void logDrop(std::string_view why, std::string_view key) {
+    mc2::fmt::print_err("[MODOVERRIDE] dropped '{}': {}\n", key.substr(0, key.find('\0')), why.substr(0, why.find('\0')));
     fflush(stderr);
 }
 

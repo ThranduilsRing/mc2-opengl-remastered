@@ -190,7 +190,7 @@
    "LG03": 999,
    "LG04": 15,
    "LG05": 135,
-   "LG06": 655,
+   "LG06": 650,
    "LG07": 0,
    "LG08": 70,
    "LG09": 0,
@@ -2643,7 +2643,7 @@
   },
   "mclib/anim_override_registry.cpp": {
    "LG05": 3,
-   "LG06": 3,
+   "LG06": 2,
    "LG11": 4
   },
   "mclib/anim_override_registry.h": {
@@ -2693,7 +2693,7 @@
   },
   "mclib/bdactor_sidecar.cpp": {
    "LG05": 5,
-   "LG06": 12,
+   "LG06": 9,
    "LG10": 2,
    "LG11": 2,
    "LG20": 8
@@ -3378,7 +3378,7 @@
   },
   "mclib/model_override_registry.cpp": {
    "LG05": 2,
-   "LG06": 3,
+   "LG06": 2,
    "LG11": 3
   },
   "mclib/model_override_registry.h": {
@@ -3978,7 +3978,7 @@
    "LG20": 3
   }
  },
- "head": "f8a6dd33b",
+ "head": "91d6c732b",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

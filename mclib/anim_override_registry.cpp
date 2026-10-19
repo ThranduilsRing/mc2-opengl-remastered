@@ -15,8 +15,8 @@
 
 using nlohmann::json;
 
-static void animLogDrop(const char* why, const std::string& key) {
-    mc2::fmt::print_err("[ANIMOVERRIDE] dropped '{}': {}\n", key.c_str(), mc2::fmt::safe(why));
+static void animLogDrop(std::string_view why, std::string_view key) {
+    mc2::fmt::print_err("[ANIMOVERRIDE] dropped '{}': {}\n", key.substr(0, key.find('\0')), why.substr(0, why.find('\0')));
     fflush(stderr);
 }
 
