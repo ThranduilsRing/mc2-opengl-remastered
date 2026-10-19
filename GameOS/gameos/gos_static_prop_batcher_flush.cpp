@@ -85,7 +85,7 @@ void GpuStaticPropBatcher::drawStaticPopulation() {
             size_t staticTotal = 0;
             for (auto& kv : s_persistentStaticStore) staticTotal += kv.second.size();
             gpuBindSsboRange(0, s_staticInstanceSsbo, 0LL,
-                (long long)((staticTotal ? staticTotal : 1) * sizeof(GpuStaticPropInstance)),
+                static_cast<long long>(((staticTotal ? staticTotal : 1) * sizeof(GpuStaticPropInstance))),
                 "sp.staticInstance");
             glBindBuffer(GL_DRAW_INDIRECT_BUFFER, s_staticIndirectCmdBuf);
             const uintptr_t cmdSize =
@@ -139,8 +139,8 @@ void GpuStaticPropBatcher::dispatchBc7Buckets(StaticPropFlushFrame& f) {
             if (!s_globalPoolLegacy) {
                 const size_t totalUsed = s_totalUsedBytesThisFrame;
                 gpuBindSsboRange(0, s_coalesceInstanceSsbo,
-                                 (long long)fr_off_bytes_d,
-                                 (long long)(totalUsed > 0 ? totalUsed : sizeof(GpuStaticPropInstance)),
+                                 static_cast<long long>(fr_off_bytes_d),
+                                 static_cast<long long>((totalUsed > 0 ? totalUsed : sizeof(GpuStaticPropInstance))),
                                  "sp.coalesce.bucket");
             }
             uint32_t cmdBase = 0u;
@@ -160,8 +160,8 @@ void GpuStaticPropBatcher::dispatchBc7Buckets(StaticPropFlushFrame& f) {
                 if (s_globalPoolLegacy) {
                     const bool isOnGroup = (b < s_bucketInfo.size() && s_bucketInfo[b].group == 1u);
                     gpuBindSsboRange(0, s_coalesceInstanceSsbo,
-                                     (long long)(fr_off_bytes_d + (isOnGroup ? off_total_bytes : 0u)),
-                                     (long long)(isOnGroup ? on_total_bytes : off_total_bytes),
+                                     static_cast<long long>((fr_off_bytes_d + (isOnGroup ? off_total_bytes : 0u))),
+                                     static_cast<long long>((isOnGroup ? on_total_bytes : off_total_bytes)),
                                      "sp.coalesce.bucket.legacy");
                 }
                 if (s_locsCoalesce.drawIDBase >= 0)
@@ -195,14 +195,14 @@ void GpuStaticPropBatcher::dispatchMultiDraw(StaticPropFlushFrame& f) {
                     glUniform1i(s_locsCoalesce.drawIDBase, 0);
                 if (s_globalPoolLegacy) {
                     gpuBindSsboRange(0, s_coalesceInstanceSsbo,
-                                     (long long)(fr_off_bytes_d + 0u),
-                                     (long long)off_total_bytes,
+                                     static_cast<long long>((fr_off_bytes_d + 0u)),
+                                     static_cast<long long>(off_total_bytes),
                                      "sp.coalesce.alphaOff.legacy");
                 } else {
                     const size_t totalUsed = s_totalUsedBytesThisFrame;
                     gpuBindSsboRange(0, s_coalesceInstanceSsbo,
-                                     (long long)fr_off_bytes_d,
-                                     (long long)(totalUsed > 0 ? totalUsed : sizeof(GpuStaticPropInstance)),
+                                     static_cast<long long>(fr_off_bytes_d),
+                                     static_cast<long long>((totalUsed > 0 ? totalUsed : sizeof(GpuStaticPropInstance))),
                                      "sp.coalesce.alphaOff");
                 }
                 glActiveTexture(GL_TEXTURE0);
@@ -219,8 +219,8 @@ void GpuStaticPropBatcher::dispatchMultiDraw(StaticPropFlushFrame& f) {
                     glUniform1i(s_locsCoalesce.drawIDBase, static_cast<GLint>(s_alphaOffCmdCount));
                 if (s_globalPoolLegacy) {
                     gpuBindSsboRange(0, s_coalesceInstanceSsbo,
-                                     (long long)(fr_off_bytes_d + off_total_bytes),
-                                     (long long)on_total_bytes,
+                                     static_cast<long long>((fr_off_bytes_d + off_total_bytes)),
+                                     static_cast<long long>(on_total_bytes),
                                      "sp.coalesce.alphaOn.legacy");
                 }
                 // else: single bind from alpha-OFF draw still covers alpha-ON (same range).
@@ -276,20 +276,20 @@ void GpuStaticPropBatcher::legacyDrawLoop(StaticPropFlushFrame& f) {
                                     * sizeof(GpuStaticPropInstance);
                 const float* mm = reinterpret_cast<const float*>(base + midOff);
                 const bool z0 = (m0[0]==0.0f && m0[3]==0.0f && m0[7]==0.0f && m0[11]==0.0f);
-                mc2::fmt::print_err("[INSTDIAG] sample=first40 typeID={:d} slot={:d} instByteOff={:d} count={:d} byteSize={:d} drawData0_rawXYZ=({:.1f},{:.1f},{:.1f}) zero0={:d} midXYZ=({:.1f},{:.1f},{:.1f})\n", mc2::fmt::as_u32(typeID), mc2::fmt::as_u32((unsigned)s_frameSlot), mc2::fmt::as_size((size_t)r.instanceByteOffset), mc2::fmt::as_u32(r.instanceCount), mc2::fmt::as_size((size_t)r.instanceByteSize), -m0[3], m0[11], m0[7], mc2::fmt::as_i32((int)z0), -mm[3], mm[11], mm[7]);
+                mc2::fmt::print_err("[INSTDIAG] sample=first40 typeID={:d} slot={:d} instByteOff={:d} count={:d} byteSize={:d} drawData0_rawXYZ=({:.1f},{:.1f},{:.1f}) zero0={:d} midXYZ=({:.1f},{:.1f},{:.1f})\n", mc2::fmt::as_u32(typeID), mc2::fmt::as_u32(static_cast<unsigned>(s_frameSlot)), mc2::fmt::as_size(static_cast<size_t>(r.instanceByteOffset)), mc2::fmt::as_u32(r.instanceCount), mc2::fmt::as_size(static_cast<size_t>(r.instanceByteSize)), -m0[3], m0[11], m0[7], mc2::fmt::as_i32(static_cast<int>(z0)), -mm[3], mm[11], mm[7]);
                 fflush(stderr);
             }
         }
 
         gpuBindSsboRange(0, s_instanceSsbo,
-                         (long long)r.instanceByteOffset, (long long)r.instanceByteSize,
+                         static_cast<long long>(r.instanceByteOffset), static_cast<long long>(r.instanceByteSize),
                          "sp.instance");
         // STATICPROP-COLORS-FILL-DEBUGONLY-1: colorByteSize is 0 for static types
         // when the colors fill is skipped (the default). A 0-size bind is GL_INVALID_VALUE
         // — and no shader reads binding 1 — so skip it (gpuBindSsboRange would catch it too).
         if (r.colorByteSize)
             gpuBindSsboRange(1, s_colorSsbo,
-                             (long long)r.colorByteOffset, (long long)r.colorByteSize,
+                             static_cast<long long>(r.colorByteOffset), static_cast<long long>(r.colorByteSize),
                              "sp.color");
 
         // SEMANTIC: max VALID local vertex index, not count. Lets the
@@ -297,7 +297,7 @@ void GpuStaticPropBatcher::legacyDrawLoop(StaticPropFlushFrame& f) {
         // NOTE: shader declares u_* ints (uniform uint crashes this engine's
         // shader compile); values are always positive and < 2^31, so
         // signed int is lossless here. Upload via glUniform1i.
-        const int maxID = (type.vertexCount > 0u) ? (int)(type.vertexCount - 1u) : 0;
+        const int maxID = (type.vertexCount > 0u) ? static_cast<int>((type.vertexCount - 1u)) : 0;
         glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_maxLocalVertexID"), maxID);
 
         for (uint32_t p = 0; p < type.packetCount; ++p) {
@@ -327,11 +327,11 @@ void GpuStaticPropBatcher::legacyDrawLoop(StaticPropFlushFrame& f) {
             ALPHA_TRACE("draw type=%u pkt=%u slot=%u pktFlags=0x%x effective=0x%x texAlpha=%d",
                         typeID, p, pkt.textureSlot, pkt.materialFlags, effectiveMaterialFlags,
                         (src && src->listOfTextures && pkt.textureSlot < src->numTextures)
-                            ? (int)src->listOfTextures[pkt.textureSlot].textureAlpha : -1);
+                            ? static_cast<int>(src->listOfTextures[pkt.textureSlot].textureAlpha) : -1);
             glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_materialFlags"),
-                        (int)effectiveMaterialFlags);
+                        static_cast<int>(effectiveMaterialFlags));
             glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_packetID"),
-                        (int)(type.firstPacket + p));
+                        static_cast<int>((type.firstPacket + p)));
             // Drain any stale GL error first so our check is clean.
             while (glGetError() != GL_NO_ERROR) {}
             if (useC1bIndirect) {
@@ -524,7 +524,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 static_cast<double>(s_btf_ns_coalesce_write) / s_btf_calls / 1000.0;
             const double mean_draw_us =
                 static_cast<double>(s_btf_ns_coalesce_draw) / s_btf_calls / 1000.0;
-            mc2::fmt::print_err("[BTF_TIMING v1] calls={:d} mean_total_us={:.2f} mean_coalesce_write_us={:.2f} mean_drawpath_us={:.2f}\n", mc2::fmt::as_u64((unsigned long long)s_btf_calls), mean_total_us, mean_write_us, mean_draw_us);
+            mc2::fmt::print_err("[BTF_TIMING v1] calls={:d} mean_total_us={:.2f} mean_coalesce_write_us={:.2f} mean_drawpath_us={:.2f}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(s_btf_calls)), mean_total_us, mean_write_us, mean_draw_us);
             std::fflush(stderr);
         }
     }

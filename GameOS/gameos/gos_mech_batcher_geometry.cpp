@@ -75,7 +75,7 @@ void recomputeMechNodeNormals(std::vector<uint8_t>& vbo,
     // whose face is within smoothDeg of this corner's face (hard-edge preserving).
     const float cosT = std::cos(smoothDeg * 3.14159265358979f / 180.0f);
     std::map<std::array<uint32_t,3>, std::vector<uint32_t>> groups;
-    for (uint32_t i = 0; i < (uint32_t)n; ++i) {
+    for (uint32_t i = 0; i < static_cast<uint32_t>(n); ++i) {
         std::array<uint32_t,3> kkey{};
         std::memcpy(kkey.data(), V[i].position, 12);
         groups[kkey].push_back(i);
@@ -99,7 +99,7 @@ void recomputeMechNodeNormals(std::vector<uint8_t>& vbo,
             else            { out[i] = faceUnit[ti]; }  // degenerate fallback
         }
     }
-    for (uint32_t i = 0; i < (uint32_t)n; ++i) {
+    for (uint32_t i = 0; i < static_cast<uint32_t>(n); ++i) {
         V[i].normal[0] = out[i][0];
         V[i].normal[1] = out[i][1];
         V[i].normal[2] = out[i][2];
@@ -123,9 +123,9 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
         // late registers and the finalizePending() call on that path.
         MC2_DIAGFE(stderr,
             "[MECHBATCHER v1] event=late_register type=%p lod=%d (staged_pending)\n",
-            (void*)mechType, lod);
+            const_cast<void*>(static_cast<const void*>(mechType)), lod);
         if (s_mechRestoreTrace)
-            mc2::fmt::print_err("[MECHRESTORE v1] event=register type={:016X} lod={:d} result=staged_pending finalized=1\n", mc2::fmt::as_ptr((void*)mechType), mc2::fmt::as_i32(lod));
+            mc2::fmt::print_err("[MECHRESTORE v1] event=register type={:016X} lod={:d} result=staged_pending finalized=1\n", mc2::fmt::as_ptr(const_cast<void*>(static_cast<const void*>(mechType))), mc2::fmt::as_i32(lod));
         s_pendingLateTypes = true;
         ++s_lateStagedCount;
         // fall through -- stage like a normal pre-finalize registration
@@ -139,7 +139,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
         if (numNodes > 255) {
             MC2_DIAGFE(stderr,
                 "[MECHBATCHER v1] event=u8_bone_overflow type=%p lod=%d numNodes=%d\n",
-                (void*)mechType, lod, numNodes);
+                const_cast<void*>(static_cast<const void*>(mechType)), lod, numNodes);
         }
         return;
     }
@@ -151,26 +151,26 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
     const unsigned char* importBoneIdx = nullptr;
     int importNumVerts = 0;
     const int importJointCount =
-        mc2mechanim::ImportedGpuTypeInfo((const void*)typeMulti, &importBoneIdx, &importNumVerts);
+        mc2mechanim::ImportedGpuTypeInfo(static_cast<const void*>(typeMulti), &importBoneIdx, &importNumVerts);
     const bool importGpu = (importJointCount > 0 && importJointCount <= 255);
 
     static const bool s_nodeTrace = mc2::gate::get<"MC2_MECH_NODE_TRACE">();
     if (s_nodeTrace) {
-        mc2::fmt::print_err("[MECHREG v1] event=register type={:016X} lod={:d} numBones={:d}\n", mc2::fmt::as_ptr((void*)mechType), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(numNodes));
+        mc2::fmt::print_err("[MECHREG v1] event=register type={:016X} lod={:d} numBones={:d}\n", mc2::fmt::as_ptr(const_cast<void*>(static_cast<const void*>(mechType))), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(numNodes));
     }
 
-    const uint32_t typeLodIdx = (uint32_t)s_typeLodRecords.size();
+    const uint32_t typeLodIdx = static_cast<uint32_t>(s_typeLodRecords.size());
     s_typeLodIndex[key] = typeLodIdx;
     if (s_mechRestoreTrace)
-        mc2::fmt::print_err("[MECHRESTORE v1] event=register type={:016X} lod={:d} result=registered finalized=0 numBones={:d}\n", mc2::fmt::as_ptr((void*)mechType), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(numNodes));
+        mc2::fmt::print_err("[MECHRESTORE v1] event=register type={:016X} lod={:d} result=registered finalized=0 numBones={:d}\n", mc2::fmt::as_ptr(const_cast<void*>(static_cast<const void*>(mechType))), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(numNodes));
 
     GpuMechTypeLodRecord rec{};
     rec.firstBoneIndex = 0;
-    rec.numBones       = importGpu ? (uint32_t)importJointCount : (uint32_t)numNodes;
-    rec.importedGpuType = importGpu ? (const void*)typeMulti : nullptr;
+    rec.numBones       = importGpu ? static_cast<uint32_t>(importJointCount) : static_cast<uint32_t>(numNodes);
+    rec.importedGpuType = importGpu ? static_cast<const void*>(typeMulti) : nullptr;
     if (importGpu)
         mc2::fmt::print_err("[MECH_IMPORT_GPU] registerTypeLod lod={:d} numBones {:d}->{:d} verts={:d}\n", mc2::fmt::as_i32(lod), mc2::fmt::as_i32(numNodes), mc2::fmt::as_i32(importJointCount), mc2::fmt::as_i32(importNumVerts));
-    rec.firstPacket    = (uint32_t)s_packets.size();
+    rec.firstPacket    = static_cast<uint32_t>(s_packets.size());
     rec.packetCount    = 0;
     rec.vertexCount    = 0;
     rec.sourceNode0    = nullptr;
@@ -192,7 +192,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
         const char* nodeName = tnode->getNodeId();
         if (nodeName && S_strnicmp(nodeName, "SpotLight_", 10) == 0) {
             if (s_nodeTrace) {
-                mc2::fmt::print_err("[MECHREG v1] event=skip_spotlight type={:016X} lod={:d} nodeIdx={:d} name={}\n", mc2::fmt::as_ptr((void*)mechType), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(nodeIdx), mc2::fmt::safe(nodeName));
+                mc2::fmt::print_err("[MECHREG v1] event=skip_spotlight type={:016X} lod={:d} nodeIdx={:d} name={}\n", mc2::fmt::as_ptr(const_cast<void*>(static_cast<const void*>(mechType))), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(nodeIdx), mc2::fmt::safe(nodeName));
             }
             // [SPOTLIGHT_REAL_TRACE v1] T0.2 (a) — record SpotLight_ TypeNode
             // observed at recipe build. Tracks max across LODs since each
@@ -208,14 +208,14 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
                 MC2_DIAGFE(stderr,
                     "[SPOTLIGHT_REAL_TRACE v1] event=first_hit site=mech_recipe_build "
                     "type=%p lod=%d nodeIdx=%d name=%s\n",
-                    (const void*)mechType, lod, nodeIdx, nodeName);
+                    static_cast<const void*>(mechType), lod, nodeIdx, nodeName);
                 std::fflush(stderr);
             }
             if (s_mechSpotlightRealTrace) {
                 MC2_DIAGFE(stderr,
                     "[SPOTLIGHT_REAL_TRACE v1] event=type_spotlight_node "
                     "type=%p lod=%d nodeIdx=%d name=%s type_node_count=%u\n",
-                    (const void*)mechType, lod, nodeIdx, nodeName, newCount);
+                    static_cast<const void*>(mechType), lod, nodeIdx, nodeName, newCount);
             }
             continue;
         }
@@ -223,7 +223,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
         if (!typeShape->numTypeTriangles || !typeShape->listOfTypeTriangles ||
             !typeShape->listOfTypeVertices) continue;
 
-        const int32_t baseVertex = (int32_t)(s_stagingVbo.size() / sizeof(GpuMechVertex));
+        const int32_t baseVertex = static_cast<int32_t>((s_stagingVbo.size() / sizeof(GpuMechVertex)));
 
         // Group triangles by localTextureHandle (same as static prop batcher).
         const uint32_t numTris = typeShape->numTypeTriangles;
@@ -236,7 +236,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
                    typeShape->listOfTypeTriangles[runEnd].localTextureHandle == runTexSlot)
                 ++runEnd;
 
-            const uint32_t packetFirstIndex = (uint32_t)s_stagingIbo.size();
+            const uint32_t packetFirstIndex = static_cast<uint32_t>(s_stagingIbo.size());
 
             for (uint32_t t = runStart; t < runEnd; ++t) {
                 const TG_TypeTriangle& tri = typeShape->listOfTypeTriangles[t];
@@ -286,7 +286,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
                                 float s = v * 32767.0f;
                                 if (s >  32767.0f) s =  32767.0f;
                                 if (s < -32767.0f) s = -32767.0f;
-                                return (int16_t)std::lrintf(s);
+                                return static_cast<int16_t>(std::lrintf(s));
                             };
                             faceTanOct[0] = packS(ox);
                             faceTanOct[1] = packS(oy);
@@ -306,10 +306,10 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
                     // boneIndices: .x = nodeIdx (rigid, Slice A), .yzw = 0.
                     // 1B-GPU: imported mech uses its per-vertex BT bone index (one bone
                     // per vertex) into the imported joint palette instead of nodeIdx.
-                    uint8_t boneSel = (uint8_t)(nodeIdx & 0xFF);
+                    uint8_t boneSel = static_cast<uint8_t>((nodeIdx & 0xFF));
                     if (importGpu && importBoneIdx) {
                         const uint32_t gv = tri.Vertices[c];
-                        if ((int)gv < importNumVerts) boneSel = importBoneIdx[gv];
+                        if (static_cast<int>(gv) < importNumVerts) boneSel = importBoneIdx[gv];
                     }
                     vert.boneIndices[0] = boneSel;
                     vert.boneIndices[1] = 0;
@@ -334,8 +334,8 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
                     // glDrawElementsInstancedBaseVertex adds pkt.baseVertex at draw time,
                     // so IBO must contain (globalVertex - baseVertex), not globalVertex.
                     const uint32_t localIdx =
-                        (uint32_t)(s_stagingVbo.size() / sizeof(GpuMechVertex) - 1u)
-                        - (uint32_t)baseVertex;
+                        static_cast<uint32_t>((s_stagingVbo.size() / sizeof(GpuMechVertex) - 1u))
+                        - static_cast<uint32_t>(baseVertex);
                     s_stagingIbo.push_back(localIdx);
                     ++rec.vertexCount;
                 }
@@ -343,7 +343,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
 
             // Derive ALPHA_TEST_BIT from the texture slot's textureAlpha flag.
             uint32_t matFlags = 0;
-            if (runTexSlot < (DWORD)typeShape->numTextures &&
+            if (runTexSlot < static_cast<DWORD>(typeShape->numTextures) &&
                 typeShape->listOfTextures[runTexSlot].textureAlpha) {
                 matFlags = 1u;  // ALPHA_TEST_BIT (matches mech.frag ALPHA_TEST_BIT constant)
             }
@@ -352,10 +352,10 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
             pkt.firstIndex          = packetFirstIndex;
             pkt.indexCount          = (runEnd - runStart) * 3;
             pkt.baseVertex          = baseVertex;
-            pkt.textureSlot         = (uint32_t)runTexSlot;
+            pkt.textureSlot         = static_cast<uint32_t>(runTexSlot);
             pkt.materialFlags       = matFlags;
             pkt.owningTypeLodRecord = typeLodIdx;
-            pkt.nodeLocalIndex      = (uint32_t)nodeIdx;
+            pkt.nodeLocalIndex      = static_cast<uint32_t>(nodeIdx);
             pkt.owningTypeShape     = typeShape;
             s_packets.push_back(pkt);
             ++rec.packetCount;
@@ -368,7 +368,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
         // on a transient copy (preserving s_stagingVbo as pristine cooked data).
         // Registration no longer mutates normals; the recompute runs at upload time.
         {
-            const size_t nodeStart = (size_t)baseVertex * sizeof(GpuMechVertex);
+            const size_t nodeStart = static_cast<size_t>(baseVertex) * sizeof(GpuMechVertex);
             const size_t nodeEnd   = s_stagingVbo.size();
             s_nodeVboRanges.push_back({nodeStart, nodeEnd});
         }

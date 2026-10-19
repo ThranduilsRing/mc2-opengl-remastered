@@ -127,11 +127,11 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                 glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
                 outIsBc7 = true;
-                mc2::fmt::print_err("[STATICPROP_BC7] bucket group={:d} dims={:d}x{:d} layers={:d} format=BC7 levels={:d} srcVkFormat={:d} bytes={:d}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh), mc2::fmt::as_size(bUniques.size()), mc2::fmt::as_i32(levels), mc2::fmt::as_u32(bc7VkFormat), mc2::fmt::as_size(outBytes));
+                mc2::fmt::print_err("[STATICPROP_BC7] bucket group={:d} dims={:d}x{:d} layers={:d} format=BC7 levels={:d} srcVkFormat={:d} bytes={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(group)), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh), mc2::fmt::as_size(bUniques.size()), mc2::fmt::as_i32(levels), mc2::fmt::as_u32(bc7VkFormat), mc2::fmt::as_size(outBytes));
                 std::fflush(stderr);
                 return arr;
             } else {
-                mc2::fmt::print_err("[STATICPROP_BC7] bucket fallback group={:d} dims={:d}x{:d} reason={}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh), mc2::fmt::safe(failReason ? failReason : "unknown"));
+                mc2::fmt::print_err("[STATICPROP_BC7] bucket fallback group={:d} dims={:d}x{:d} reason={}\n", mc2::fmt::as_u32(static_cast<unsigned>(group)), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh), mc2::fmt::safe(failReason ? failReason : "unknown"));
                 std::fflush(stderr);
             }
         }
@@ -204,7 +204,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
         glBindTexture(GL_TEXTURE_2D, 0);
-        mc2::fmt::print_err("[STATICPROP_BC7] bucket group={:d} dims={:d}x{:d} layers={:d} format=RGBA8 bytes={:d}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh), mc2::fmt::as_size(bUniques.size()), mc2::fmt::as_size(outBytes));
+        mc2::fmt::print_err("[STATICPROP_BC7] bucket group={:d} dims={:d}x{:d} layers={:d} format=RGBA8 bytes={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(group)), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh), mc2::fmt::as_size(bUniques.size()), mc2::fmt::as_size(outBytes));
         std::fflush(stderr);
         return arr;
     };
@@ -273,7 +273,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                 glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-                mc2::fmt::print_err("[STATICPROP_ORM] bucket group={:d} dims={:d}x{:d} layers={:d} format=BC7-linear levels={:d} realMaps={:d}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh), mc2::fmt::as_size(layerCount), mc2::fmt::as_i32(levels), mc2::fmt::as_size(layerCount));
+                mc2::fmt::print_err("[STATICPROP_ORM] bucket group={:d} dims={:d}x{:d} layers={:d} format=BC7-linear levels={:d} realMaps={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(group)), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh), mc2::fmt::as_size(layerCount), mc2::fmt::as_i32(levels), mc2::fmt::as_size(layerCount));
                 std::fflush(stderr);
                 return arr;
             }
@@ -303,7 +303,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                     const bool dimOk = loadOk && !img.isCompressed &&
                                        img.width == bw && img.height == bh;
                     if (loadOk && !dimOk) {
-                        mc2::fmt::print_err("[STATICPROP_ORM] reject layer={:d} group={:d} sidecar={} reason={} got={:d}x{:d} want={:d}x{:d}\n", mc2::fmt::as_size(k), mc2::fmt::as_u32((unsigned)group), ormPath.c_str(), mc2::fmt::safe(img.isCompressed ? "compressed_in_rgba8_path" : "dim_mismatch"), mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh));
+                        mc2::fmt::print_err("[STATICPROP_ORM] reject layer={:d} group={:d} sidecar={} reason={} got={:d}x{:d} want={:d}x{:d}\n", mc2::fmt::as_size(k), mc2::fmt::as_u32(static_cast<unsigned>(group)), ormPath.c_str(), mc2::fmt::safe(img.isCompressed ? "compressed_in_rgba8_path" : "dim_mismatch"), mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh));
                         std::fflush(stderr);
                     }
                     if (dimOk) {
@@ -344,7 +344,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-        mc2::fmt::print_err("[STATICPROP_ORM] bucket group={:d} dims={:d}x{:d} layers={:d} format=RGBA8 realMaps={:d}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh), mc2::fmt::as_size(layerCount), mc2::fmt::as_size(realMaps));
+        mc2::fmt::print_err("[STATICPROP_ORM] bucket group={:d} dims={:d}x{:d} layers={:d} format=RGBA8 realMaps={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(group)), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh), mc2::fmt::as_size(layerCount), mc2::fmt::as_size(realMaps));
         std::fflush(stderr);
         return arr;
     };
@@ -447,8 +447,8 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                 COALESCE_TRACE("skip_packet type=%u pkt=%u group=%s reason=no_dims "
                                "nodeIdx=%lu gosHandle=%lu glTexId=%u",
                                typeID, pIdx, group == 0u ? "off" : "on",
-                               (unsigned long)nodeIdx,
-                               (unsigned long)gosHandle, glTexId);
+                               static_cast<unsigned long>(nodeIdx),
+                               static_cast<unsigned long>(gosHandle), glTexId);
                 // [SEAMPROBE] stage 10: layer-assignment census. When the
                 // override prop/tree packets land here, they get layer=-1 and
                 // are dropped from the multidraw (the bdactor.cpp:262 skip
@@ -457,7 +457,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                     static int s_seamLayerSkip = 0;
                     if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && s_seamLayerSkip < 200) {
                         ++s_seamLayerSkip;
-                        mc2::fmt::print_err("[SEAMPROBE] sample=first200 layer=-1 SKIP type={:d} pkt={:d} nodeIdx={:d} gosHandle={:d} glTexId={:d} W={:d} H={:d} override={:d} uniques={:d}\n", mc2::fmt::as_u32(typeID), mc2::fmt::as_u32(pIdx), mc2::fmt::as_u32((unsigned long)nodeIdx), mc2::fmt::as_u32((unsigned long)gosHandle), mc2::fmt::as_u32(glTexId), mc2::fmt::as_i32((int)W), mc2::fmt::as_i32((int)H), mc2::fmt::as_i32((int)type.isOverride), mc2::fmt::as_size(uniques.size()));
+                        mc2::fmt::print_err("[SEAMPROBE] sample=first200 layer=-1 SKIP type={:d} pkt={:d} nodeIdx={:d} gosHandle={:d} glTexId={:d} W={:d} H={:d} override={:d} uniques={:d}\n", mc2::fmt::as_u32(typeID), mc2::fmt::as_u32(pIdx), mc2::fmt::as_u32(static_cast<unsigned long>(nodeIdx)), mc2::fmt::as_u32(static_cast<unsigned long>(gosHandle)), mc2::fmt::as_u32(glTexId), mc2::fmt::as_i32(static_cast<int>(W)), mc2::fmt::as_i32(static_cast<int>(H)), mc2::fmt::as_i32(static_cast<int>(type.isOverride)), mc2::fmt::as_size(uniques.size()));
                         std::fflush(stderr);
                     }
                 }
@@ -604,7 +604,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                 uvScaleYByPacket[globalPktIdx]    = 1.0f;
             }
 
-            mc2::fmt::print_err("[STATICPROP_BC7] group={:d} buckets={:d} total_bytes={:d}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_size(dimKeys.size()), mc2::fmt::as_size(groupTotalBytes));
+            mc2::fmt::print_err("[STATICPROP_BC7] group={:d} buckets={:d} total_bytes={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(group)), mc2::fmt::as_size(dimKeys.size()), mc2::fmt::as_size(groupTotalBytes));
             std::fflush(stderr);
 
             s_coalescePinnedNodes.insert(s_coalescePinnedNodes.end(),
@@ -737,8 +737,8 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                     uvScaleYByPacket[globalPktIdx] = 1.0f;
                 }
 
-                mc2::fmt::print_err("[STATICPROP_BC7] group={:d} layers={:d} dims={:d}x{:d} levels={:d} internalformat=0x{:x} bytes={:d}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_size(uniques.size()), mc2::fmt::as_i32(maxW), mc2::fmt::as_i32(maxH), mc2::fmt::as_i32(levels), mc2::fmt::as_u32((unsigned)internalformat), mc2::fmt::as_size(bc7TotalBytes));
-                mc2::fmt::print_err("[STATICPROP_BC7] summary group={:d} built BC7 array (srcVkFormat={:d}, {:d} layers)\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_u32(bc7VkFormat), mc2::fmt::as_size(uniques.size()));
+                mc2::fmt::print_err("[STATICPROP_BC7] group={:d} layers={:d} dims={:d}x{:d} levels={:d} internalformat=0x{:x} bytes={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(group)), mc2::fmt::as_size(uniques.size()), mc2::fmt::as_i32(maxW), mc2::fmt::as_i32(maxH), mc2::fmt::as_i32(levels), mc2::fmt::as_u32(static_cast<unsigned>(internalformat)), mc2::fmt::as_size(bc7TotalBytes));
+                mc2::fmt::print_err("[STATICPROP_BC7] summary group={:d} built BC7 array (srcVkFormat={:d}, {:d} layers)\n", mc2::fmt::as_u32(static_cast<unsigned>(group)), mc2::fmt::as_u32(bc7VkFormat), mc2::fmt::as_size(uniques.size()));
                 std::fflush(stderr);
 
                 COALESCE_TRACE("group_built_bc7 group=%s uniques=%zu maxDims=%dx%d levels=%d",
@@ -750,7 +750,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                                               newlyPinnedThisBuild.end());
                 continue;
             } else {
-                mc2::fmt::print_err("[STATICPROP_BC7] fallback group={:d} reason={}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::safe(failReason ? failReason : "unknown"));
+                mc2::fmt::print_err("[STATICPROP_BC7] fallback group={:d} reason={}\n", mc2::fmt::as_u32(static_cast<unsigned>(group)), mc2::fmt::safe(failReason ? failReason : "unknown"));
                 std::fflush(stderr);
             }
         }
@@ -789,17 +789,17 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                                        ktxImg.width == u.w && ktxImg.height == u.h &&
                                        ktxImg.pixels.size() >= static_cast<size_t>(u.w) * static_cast<size_t>(u.h) * 4u;
                     mc2::fmt::print_err("[KTX_SIDECAR] node={:d} srcName={} path={} load={:d} ktxDims={:d}x{:d} glDims={:d}x{:d} match={:d}\n",
-                        mc2::fmt::as_u32((unsigned long)u.nodeIdx), mc2::fmt::safe(srcName), ktxPath.c_str(),
-                        mc2::fmt::as_i32((int)ktxOk),
+                        mc2::fmt::as_u32(static_cast<unsigned long>(u.nodeIdx)), mc2::fmt::safe(srcName), ktxPath.c_str(),
+                        mc2::fmt::as_i32(static_cast<int>(ktxOk)),
                         mc2::fmt::as_i32(ktxOk ? ktxImg.width : 0), mc2::fmt::as_i32(ktxOk ? ktxImg.height : 0),
-                        mc2::fmt::as_i32(u.w), mc2::fmt::as_i32(u.h), mc2::fmt::as_i32((int)dimOk));
+                        mc2::fmt::as_i32(u.w), mc2::fmt::as_i32(u.h), mc2::fmt::as_i32(static_cast<int>(dimOk)));
                     std::fflush(stderr);
                     if (dimOk) {
                         blitRows(layerTexels[k], cpuArray.width, ktxImg.pixels.data(), static_cast<uint32_t>(u.w), static_cast<uint32_t>(u.h));
                         ktxUsed = true;
                         if (ktxImg.mipCount > 1) ktxMipLayers.emplace_back(k, std::move(ktxImg));
                         COALESCE_TRACE("ktx_sidecar_hit type=? node=%lu path=%s",
-                                       (unsigned long)u.nodeIdx, ktxPath.c_str());
+                                       static_cast<unsigned long>(u.nodeIdx), ktxPath.c_str());
                     }
                 }
             }

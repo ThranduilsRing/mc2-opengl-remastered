@@ -304,8 +304,8 @@ void gosPostProcess::init(int w, int h)
                 MC2_DIAGFE(stderr,
                     "[HDRI_SKY v1] enabled=0 reason=init_failed "
                     "tex=%u prog=%p valid=%d\n",
-                    hdriTex_, (void*)hdriSkyboxProg_,
-                    hdriSkyboxProg_ ? (int)hdriSkyboxProg_->is_valid() : 0);
+                    hdriTex_, static_cast<void*>(hdriSkyboxProg_),
+                    hdriSkyboxProg_ ? static_cast<int>(hdriSkyboxProg_->is_valid()) : 0);
             }
         } else {
             MC2_DIAGFE(stderr,
@@ -465,11 +465,11 @@ void gosPostProcess::createFullscreenQuad()
 
     // layout(location = 0) in vec2 pos
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), reinterpret_cast<void*>(0));
 
     // layout(location = 1) in vec2 uv
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), reinterpret_cast<void*>((2 * sizeof(float))));
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -703,7 +703,7 @@ void gosPostProcess::endScene()
         nativeCompositeDone = mc2vk::getOrCreateEnginePresentVk().renderNativeCompositeVisual(
             exposure_, fxaaEnabled_, fxaaSubpix_, fxaaEdgeThreshold_, fxaaEdgeThresholdMin_,
             effectiveModeForComposite,
-            sceneObjectIdTex_ != 0 ? (int)RenderWorld::MechHandleIndexBase() : 0,
+            sceneObjectIdTex_ != 0 ? static_cast<int>(RenderWorld::MechHandleIndexBase()) : 0,
             lowLightGain_, lowLightTint_,
             casEnabled_, casSharpness_, tonemapMode_,
             compositeVpX, compositeVpY, compositeVpW, compositeVpH);
@@ -718,7 +718,7 @@ void gosPostProcess::endScene()
         // pre-existing default look and are untouched.
         compositeProg_->setFloat("exposure", exposure_);
 
-        float invSize[2] = { 1.0f / (float)width_, 1.0f / (float)height_ };
+        float invSize[2] = { 1.0f / static_cast<float>(width_), 1.0f / static_cast<float>(height_) };
         compositeProg_->setFloat2("inverseScreenSize", invSize);
 
         // POST-FX-FXAA-1: gate + tunables. enabled=0 -> shader single-taps the
@@ -775,7 +775,7 @@ void gosPostProcess::endScene()
         // The numeric threshold must reach the GPU as a uniform; there is no
         // per-pixel C++ classifier path. Reviewed clean (render-spine advisor M2).
         compositeProg_->setInt("u_engineIdxBase",
-            sceneObjectIdTex_ != 0 ? (int)RenderWorld::MechHandleIndexBase() : 0);
+            sceneObjectIdTex_ != 0 ? static_cast<int>(RenderWorld::MechHandleIndexBase()) : 0);
 
         // LOWLIGHT-NIGHTVISION-MVP-1: night-vision tunables (read only by the
         // shader when effectiveMode == 5; harmless no-op uniforms otherwise).

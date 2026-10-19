@@ -37,7 +37,7 @@ uint32_t            g_fixedSimFrame = 0;     // S9D: sim-frames where fixed step
 double elapsedMsSince(uint64_t t0) {
     if (!t0 || !g_freq) return 0.0;
     uint64_t now = SDL_GetPerformanceCounter();
-    return 1000.0 * (double)(now - t0) / (double)g_freq;
+    return 1000.0 * static_cast<double>((now - t0)) / static_cast<double>(g_freq);
 }
 } // namespace
 
@@ -148,7 +148,7 @@ void samplePerf(double frameMs) {
         emitTiming("first_frame");
         {
             const int v = mc2::gate::get<"MC2_SMOKE_PERF_SAMPLES">();   // row default 0 = keep the built-in cap
-            if (v > 0 && v < 1000000) g_frameMsCap = (size_t)v;
+            if (v > 0 && v < 1000000) g_frameMsCap = static_cast<size_t>(v);
         }
         g_frameMs.assign(g_frameMsCap, 0.0);
     }
@@ -179,7 +179,7 @@ void emitCleanSummary() {
 
     auto pct = [&](double p) -> double {
         if (samples.empty()) return 0.0;
-        size_t idx = (size_t)((p / 100.0) * (samples.size() - 1));
+        size_t idx = static_cast<size_t>(((p / 100.0) * (samples.size() - 1)));
         return samples[idx];
     };
     double p50 = pct(50.0);
@@ -187,7 +187,7 @@ void emitCleanSummary() {
     double peak = samples.empty() ? 0.0 : samples.back();
     double sum = 0.0;
     for (double v : samples) sum += v;
-    double avgMs = samples.empty() ? 0.0 : sum / (double)samples.size();
+    double avgMs = samples.empty() ? 0.0 : sum / static_cast<double>(samples.size());
     double avgFps = (avgMs > 0.0) ? 1000.0 / avgMs : 0.0;
     double p1LowFps = (pct(99.0) > 0.0) ? 1000.0 / pct(99.0) : 0.0;
 
@@ -240,7 +240,7 @@ bool shouldQuit() {
     if (!g_state.enabled) return false;
     if (!g_missionReadyT) return false;
     double ms = elapsedMsSince(g_missionReadyT);
-    return ms >= (double)g_state.durationSec * 1000.0;
+    return ms >= static_cast<double>(g_state.durationSec) * 1000.0;
 }
 
 void markMissionReady() {
@@ -267,7 +267,7 @@ double fixedClockSeconds() {
     // fixedTimestepOnSimFrame on each fixed-step sim frame). Frame N maps to a
     // deterministic time across runs. 1/30 s per frame == 30Hz, the same basis
     // scenarioTime advances on, so sim and render-shader clocks stay locked.
-    return (double)g_fixedSimFrame / 30.0;
+    return static_cast<double>(g_fixedSimFrame) / 30.0;
 }
 
 void fixedTimestepOnSimFrame(double scenarioTimeSeconds) {
@@ -278,7 +278,7 @@ void fixedTimestepOnSimFrame(double scenarioTimeSeconds) {
     ++g_fixedSimFrame;
     if (g_fixedSimFrame == 60 || g_fixedSimFrame == 120 ||
         g_fixedSimFrame == 180) {
-        mc2::fmt::print_err("[SMOKE_CLOCK_PROBE v1] frame={:d} scenarioTime={:.6f}\n", mc2::fmt::as_u32((unsigned)g_fixedSimFrame), scenarioTimeSeconds);
+        mc2::fmt::print_err("[SMOKE_CLOCK_PROBE v1] frame={:d} scenarioTime={:.6f}\n", mc2::fmt::as_u32(static_cast<unsigned>(g_fixedSimFrame)), scenarioTimeSeconds);
         std::fflush(stderr);
     }
 }

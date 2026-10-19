@@ -372,7 +372,7 @@ void GpuMechBatcher::onMapUnload() {
     const uint64_t mlrDraws = consumeAndResetMlrMechDraws();
     MC2_DIAGFE(stderr,
         "[MECHBATCHER v1] event=mlr_mech_summary mlr_mech_draws=%llu\n",
-        (unsigned long long)mlrDraws);
+        static_cast<unsigned long long>(mlrDraws));
 
     // M2.5 (Q4 + Q6 amendment 2): always-on per-mission writer summary.
     // Surfaces gpu_mech_id_writes to the M2.6 readiness decision rule.
@@ -380,7 +380,7 @@ void GpuMechBatcher::onMapUnload() {
     // MC2_OBJECT_ID_BUFFER state to size the MLR-vs-GPU split.
     MC2_DIAGFE(stderr,
         "[MECHBATCHER v1] event=mech_id_summary gpu_mech_id_writes=%llu\n",
-        (unsigned long long)s_gpuMechIdWritesThisMission);
+        static_cast<unsigned long long>(s_gpuMechIdWritesThisMission));
     s_gpuMechIdWritesThisMission = 0;
 
     // MECH-DECLINE-FIX-1: always-on per-mission light-row freshness summary.
@@ -399,7 +399,7 @@ void GpuMechBatcher::onMapUnload() {
         consumeAndResetMechLightRowCounters(&staleRows, &oobRows);
         MC2_DIAGFE(stderr,
             "[MECHBATCHER v1] event=stale_light_row_summary stale=%llu oob=%llu\n",
-            (unsigned long long)staleRows, (unsigned long long)oobRows);
+            static_cast<unsigned long long>(staleRows), static_cast<unsigned long long>(oobRows));
     }
     s_geometryFinalized = false;
     s_pendingSubmits.clear();
@@ -426,4 +426,4 @@ uint64_t GpuMechBatcher::getDisallowedLateRegEventCount()  { return s_disallowed
 bool GpuMechBatcher::isFinalized() const                    { return s_geometryFinalized; }
 
 void GpuMechBatcher::recordEligibleActor()                         { ++s_eligibleActorsThisFrame; }
-void GpuMechBatcher::recordCpuFallback(GpuMechFallbackReason r)   { ++s_fallbacksThisFrame[(int)r]; }
+void GpuMechBatcher::recordCpuFallback(GpuMechFallbackReason r)   { ++s_fallbacksThisFrame[static_cast<int>(r)]; }

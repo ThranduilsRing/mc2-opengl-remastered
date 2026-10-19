@@ -79,7 +79,7 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
             vkSkyYaw += hdriBakedSunAz_ - atan2f(ly, -lx);
         }
         skyYaw_ = vkSkyYaw;  // WATER-HDRI-REFL-1: cache for the water shader uniform (same as GL path)
-        mc2_vk_sky_submit(invProjArray, invViewRot, vkSkyYaw, (unsigned int)hdriTex_);
+        mc2_vk_sky_submit(invProjArray, invViewRot, vkSkyYaw, static_cast<unsigned int>(hdriTex_));
         return;
     }
 #endif

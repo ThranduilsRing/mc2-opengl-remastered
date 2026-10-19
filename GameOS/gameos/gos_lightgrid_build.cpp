@@ -33,7 +33,7 @@ namespace {
 // LIGHTGRID_MAX_LIGHTS, which sizes the work group; the shader refuses to compile if
 // it disagrees with the generated ObjectLights array length. It also bounds the
 // per-tile index-pool stride.
-constexpr int kMaxLights = (int)object_light_row::kMaxLights;
+constexpr int kMaxLights = static_cast<int>(object_light_row::kMaxLights);
 
 // ObjectLights SSBO binding (LIGHT_DATA_SSBO_BINDING in lighting.hglsl). The
 // sphere-build stage reads it read-only.
@@ -103,7 +103,7 @@ char* loadTextFile(const char* fname) {
     fseek(f, 0, SEEK_SET);
     if (sz <= 0) { fclose(f); return nullptr; }
     char* buf = new char[sz + 1];
-    if ((long)fread(buf, 1, sz, f) != sz) { fclose(f); delete[] buf; return nullptr; }
+    if (static_cast<long>(fread(buf, 1, sz, f)) != sz) { fclose(f); delete[] buf; return nullptr; }
     buf[sz] = '\0';
     fclose(f);
     return buf;
@@ -286,7 +286,7 @@ void runParityCheck(const float* invVP, int sceneW, int sceneH,
     const int nTiles = tileW * tileH;
 
     // --- Read back the GPU sphere buffer (what the grid stage consumed). -----
-    std::vector<unsigned char> sphereBytes((size_t)kSphereStride * kMaxLights);
+    std::vector<unsigned char> sphereBytes(static_cast<size_t>(kSphereStride) * kMaxLights);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_sphereSsbo);
     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
                        (GLsizeiptr)sphereBytes.size(), sphereBytes.data());
@@ -295,14 +295,14 @@ void runParityCheck(const float* invVP, int sceneW, int sceneH,
     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLuint), &gpuSphereCount);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-    int nLights = (int)gpuSphereCount;
+    int nLights = static_cast<int>(gpuSphereCount);
     if (nLights > kMaxLights) nLights = kMaxLights;
 
     // Decode spheres (parity ref reads the SAME GPU-built records).
     struct Sphere { float c[3]; float r; unsigned idx; };
     std::vector<Sphere> spheres(nLights);
     for (int i = 0; i < nLights; ++i) {
-        const unsigned char* p = sphereBytes.data() + (size_t)i * kSphereStride;
+        const unsigned char* p = sphereBytes.data() + static_cast<size_t>(i) * kSphereStride;
         float cr[4]; memcpy(cr, p, 16);
         unsigned idx; memcpy(&idx, p + 16, 4);
         spheres[i].c[0] = cr[0]; spheres[i].c[1] = cr[1]; spheres[i].c[2] = cr[2];
@@ -310,19 +310,19 @@ void runParityCheck(const float* invVP, int sceneW, int sceneH,
     }
 
     // --- Read back the depth pyramid tile (min,max). -------------------------
-    std::vector<float> tileMM((size_t)nTiles * 2);
+    std::vector<float> tileMM(static_cast<size_t>(nTiles) * 2);
     glBindTexture(GL_TEXTURE_2D, tileMinMaxTex);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RG, GL_FLOAT, tileMM.data());
     glBindTexture(GL_TEXTURE_2D, 0);
 
     // --- Read back GPU grid header + index pool. -----------------------------
-    std::vector<GLuint> gpuHeader((size_t)nTiles * 2);
+    std::vector<GLuint> gpuHeader(static_cast<size_t>(nTiles) * 2);
     glBindTexture(GL_TEXTURE_2D, s_headerTex);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RG_INTEGER, GL_UNSIGNED_INT, gpuHeader.data());
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    std::vector<GLuint> gpuPool((size_t)nTiles * kMaxLights);
+    std::vector<GLuint> gpuPool(static_cast<size_t>(nTiles) * kMaxLights);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_indexPool);
     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
                        (GLsizeiptr)(gpuPool.size() * sizeof(GLuint)), gpuPool.data());
@@ -334,22 +334,22 @@ void runParityCheck(const float* invVP, int sceneW, int sceneH,
     // are not a stable parity surface. The light SET binned to each tile IS
     // deterministic and is what a shading consumer would read. PLANT corrupts a
     // CPU tile's set so the comparison must FAIL.
-    std::vector<unsigned char> cpuMask((size_t)nTiles * kMaxLights, 0);
+    std::vector<unsigned char> cpuMask(static_cast<size_t>(nTiles) * kMaxLights, 0);
     std::vector<int> cpuCount(nTiles, 0);
 
     for (int ty = 0; ty < tileH; ++ty) {
         for (int tx = 0; tx < tileW; ++tx) {
             const int ti = ty * tileW + tx;
-            float p0x = (float)tx * tileSize;
-            float p0y = (float)ty * tileSize;
-            float p1x = p0x + tileSize; if (p1x > sceneW) p1x = (float)sceneW;
-            float p1y = p0y + tileSize; if (p1y > sceneH) p1y = (float)sceneH;
+            float p0x = static_cast<float>(tx) * tileSize;
+            float p0y = static_cast<float>(ty) * tileSize;
+            float p1x = p0x + tileSize; if (p1x > sceneW) p1x = static_cast<float>(sceneW);
+            float p1y = p0y + tileSize; if (p1y > sceneH) p1y = static_cast<float>(sceneH);
             float nMinX = (p0x / sceneW) * 2.0f - 1.0f;
             float nMinY = (p0y / sceneH) * 2.0f - 1.0f;
             float nMaxX = (p1x / sceneW) * 2.0f - 1.0f;
             float nMaxY = (p1y / sceneH) * 2.0f - 1.0f;
-            float near = tileMM[(size_t)ti * 2 + 1];  // G = MAX = nearest (reversed-Z)
-            float far  = tileMM[(size_t)ti * 2 + 0];  // R = MIN = farthest
+            float near = tileMM[static_cast<size_t>(ti) * 2 + 1];  // G = MAX = nearest (reversed-Z)
+            float far  = tileMM[static_cast<size_t>(ti) * 2 + 0];  // R = MIN = farthest
             float corners[8][3];
             unproject(invVP, nMinX, nMaxY, near, corners[0]);
             unproject(invVP, nMaxX, nMaxY, near, corners[1]);
@@ -362,7 +362,7 @@ void runParityCheck(const float* invVP, int sceneW, int sceneH,
             for (int s = 0; s < nLights; ++s) {
                 if (spheres[s].r > 0.0f &&
                     sphereInTile(spheres[s].c, spheres[s].r, corners)) {
-                    cpuMask[(size_t)ti * kMaxLights + spheres[s].idx] = 1;
+                    cpuMask[static_cast<size_t>(ti) * kMaxLights + spheres[s].idx] = 1;
                     cpuCount[ti]++;
                 }
             }
@@ -374,8 +374,8 @@ void runParityCheck(const float* invVP, int sceneW, int sceneH,
         int pt = 0;
         // flip one light's membership bit + bump the count so both count and set
         // disagree with the GPU.
-        cpuMask[(size_t)pt * kMaxLights + 0] ^= 1;
-        cpuCount[pt] += (cpuMask[(size_t)pt * kMaxLights + 0] ? 1 : -1);
+        cpuMask[static_cast<size_t>(pt) * kMaxLights + 0] ^= 1;
+        cpuCount[pt] += (cpuMask[static_cast<size_t>(pt) * kMaxLights + 0] ? 1 : -1);
         mc2::fmt::print_err("[LIGHTGRID_BUILD v1] PLANT: corrupted CPU tile {:d} membership set (expecting a mismatch below)\n", mc2::fmt::as_i32(pt));
     }
 
@@ -383,11 +383,11 @@ void runParityCheck(const float* invVP, int sceneW, int sceneH,
     size_t mismatches = 0;
     int worstCountDelta = 0;
     for (int ti = 0; ti < nTiles; ++ti) {
-        GLuint gOff = gpuHeader[(size_t)ti * 2 + 0];
-        GLuint gCnt = gpuHeader[(size_t)ti * 2 + 1];
+        GLuint gOff = gpuHeader[static_cast<size_t>(ti) * 2 + 0];
+        GLuint gCnt = gpuHeader[static_cast<size_t>(ti) * 2 + 1];
 
-        if ((int)gCnt != cpuCount[ti]) {
-            int d = std::abs((int)gCnt - cpuCount[ti]);
+        if (static_cast<int>(gCnt) != cpuCount[ti]) {
+            int d = std::abs(static_cast<int>(gCnt) - cpuCount[ti]);
             if (d > worstCountDelta) worstCountDelta = d;
             ++mismatches;
             continue;
@@ -396,7 +396,7 @@ void runParityCheck(const float* invVP, int sceneW, int sceneH,
         unsigned char gpuSet[kMaxLights]; memset(gpuSet, 0, sizeof(gpuSet));
         bool spanOk = true;
         for (GLuint k = 0; k < gCnt; ++k) {
-            size_t pi = (size_t)gOff + k;
+            size_t pi = static_cast<size_t>(gOff) + k;
             if (pi >= gpuPool.size()) { spanOk = false; break; }
             GLuint lidx = gpuPool[pi];
             if (lidx < (GLuint)kMaxLights) gpuSet[lidx] = 1;
@@ -404,7 +404,7 @@ void runParityCheck(const float* invVP, int sceneW, int sceneH,
         if (!spanOk) { ++mismatches; continue; }
         bool setEq = true;
         for (int l = 0; l < kMaxLights; ++l) {
-            if (gpuSet[l] != cpuMask[(size_t)ti * kMaxLights + l]) { setEq = false; break; }
+            if (gpuSet[l] != cpuMask[static_cast<size_t>(ti) * kMaxLights + l]) { setEq = false; break; }
         }
         if (!setEq) ++mismatches;
     }

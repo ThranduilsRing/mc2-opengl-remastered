@@ -55,19 +55,19 @@ void GpuStaticPropBatcher::createSharedBuffers() {
 
     // Vertex attribute layout -- position MUST be location 0 (AMD invariant 1).
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT,    GL_FALSE, kVertexStride, (void*) 0);
+    glVertexAttribPointer(0, 3, GL_FLOAT,    GL_FALSE, kVertexStride, reinterpret_cast<void*>(0));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT,    GL_FALSE, kVertexStride, (void*)12);
+    glVertexAttribPointer(1, 3, GL_FLOAT,    GL_FALSE, kVertexStride, reinterpret_cast<void*>(12));
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 2, GL_FLOAT,    GL_FALSE, kVertexStride, (void*)24);
+    glVertexAttribPointer(2, 2, GL_FLOAT,    GL_FALSE, kVertexStride, reinterpret_cast<void*>(24));
     glEnableVertexAttribArray(3);
-    glVertexAttribIPointer(3, 1, GL_UNSIGNED_INT,      kVertexStride, (void*)32);
+    glVertexAttribIPointer(3, 1, GL_UNSIGNED_INT,      kVertexStride, reinterpret_cast<void*>(32));
     // Slice 2 (object-offload) — Stage 2.C.2: per-vertex aRGBLight tag at
     // offset 36, written by registerType from TG_TypeVertex::aRGBLight.
     // Consumed by static_prop.vert -> get_base_light() to decode the
     // hot-color magic and emit per-vertex base lighting before calc_light.
     glEnableVertexAttribArray(4);
-    glVertexAttribIPointer(4, 1, GL_UNSIGNED_INT,      kVertexStride, (void*)36);
+    glVertexAttribIPointer(4, 1, GL_UNSIGNED_INT,      kVertexStride, reinterpret_cast<void*>(36));
 
     glBindVertexArray(0);
 }
@@ -125,8 +125,8 @@ void GpuStaticPropBatcher::uploadPerTypeAndPublish() {
     // The staging bytes stay for the map's lifetime: they are the CPU copy of the shared VBO / IBO the Vulkan islands build
     // their own buffers from (mc2_static_prop_geometry_cpu); onMapLoad clears them. GL-only runs keep them too: an accepted
     // cost (the size is in the finalize line below) because GL is deleted once the Vulkan port reaches parity.
-    s_sharedVboBytes = (uint64_t)s_stagingVbo.size();
-    s_sharedIboBytes = (uint64_t)s_stagingIbo.size() * sizeof(uint32_t);
+    s_sharedVboBytes = static_cast<uint64_t>(s_stagingVbo.size());
+    s_sharedIboBytes = static_cast<uint64_t>(s_stagingIbo.size()) * sizeof(uint32_t);
     s_stagingVbo.shrink_to_fit();
     s_stagingIbo.shrink_to_fit();
 
@@ -386,9 +386,9 @@ bool GpuStaticPropBatcher::layoutCoalesce(StaticPropFinalizeFrame& f) {
         // alignment IDENTICALLY to batcher_getCoalescePerFrameInstanceBytes() (which
         // drives the per-slot bind offset fr_off_bytes_d), so slot offsets are
         // aligned AND never overrun this allocation.
-        const size_t alignedPerFrame = (size_t)gpuAlignUp(
-            (unsigned long long)s_coalescePerFrameInstanceBytes,
-            (unsigned long long)gpuSsboOffsetAlignment());
+        const size_t alignedPerFrame = static_cast<size_t>(gpuAlignUp(
+            static_cast<unsigned long long>(s_coalescePerFrameInstanceBytes),
+            static_cast<unsigned long long>(gpuSsboOffsetAlignment())));
         const size_t totalBytes =
             static_cast<size_t>(RING_FRAMES) * alignedPerFrame;
         // TIER2-EXCLUDED: ring
@@ -1077,8 +1077,8 @@ extern "C" int mc2_static_prop_geometry_cpu(const void** vbo, uint64_t* vboBytes
     if (!vbo || !vboBytes || !ibo || !iboBytes) return 0;
     if (!s_geometryFinalized || s_fatalRegistrationFailure || s_stagingVbo.empty() || s_stagingIbo.empty()) return 0;
     *vbo = s_stagingVbo.data();
-    *vboBytes = (uint64_t)s_stagingVbo.size();
+    *vboBytes = static_cast<uint64_t>(s_stagingVbo.size());
     *ibo = s_stagingIbo.data();
-    *iboBytes = (uint64_t)s_stagingIbo.size() * sizeof(uint32_t);
+    *iboBytes = static_cast<uint64_t>(s_stagingIbo.size()) * sizeof(uint32_t);
     return 1;
 }

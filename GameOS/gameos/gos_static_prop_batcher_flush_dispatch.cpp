@@ -152,8 +152,8 @@ void GpuStaticPropBatcher::dispatchV6(const RenderSnapshot* snap, std::vector<Re
             {
                 const size_t totalUsed = s_totalUsedBytesThisFrame;
                 gpuBindSsboRange(0, s_coalesceInstanceSsbo,
-                                 (long long)fr_off_bytes_d,
-                                 (long long)(totalUsed > 0 ? totalUsed : sizeof(GpuStaticPropInstance)),
+                                 static_cast<long long>(fr_off_bytes_d),
+                                 static_cast<long long>((totalUsed > 0 ? totalUsed : sizeof(GpuStaticPropInstance))),
                                  "sp.coalesce.v6a");
             }
 
@@ -456,8 +456,8 @@ void GpuStaticPropBatcher::dispatchV5(StaticPropFlushFrame& f) {
             {
                 const size_t totalUsed = s_totalUsedBytesThisFrame;
                 gpuBindSsboRange(0, s_coalesceInstanceSsbo,
-                                 (long long)fr_off_bytes_d,
-                                 (long long)(totalUsed > 0 ? totalUsed : sizeof(GpuStaticPropInstance)),
+                                 static_cast<long long>(fr_off_bytes_d),
+                                 static_cast<long long>((totalUsed > 0 ? totalUsed : sizeof(GpuStaticPropInstance))),
                                  "sp.coalesce.v5");
             }
 
@@ -771,7 +771,7 @@ void GpuStaticPropBatcher::legacyCensus() {
                 uint32_t ic = hasRange ? rit2->second.instanceCount : 0;
                 const GpuStaticPropType& ty = s_types[tid];
                 if (ty.packetCount > 0 && (!hasRange || ic == 0)) {
-                    mc2::fmt::print_err("[SEAMPROBE] draw-census typeID={:d} src={:016X} packetCount={:d} vertexCount={:d} hasRange={:d} instanceCount={:d} (NOT DRAWN)\n", mc2::fmt::as_u32(tid), mc2::fmt::as_ptr((void*)ty.source), mc2::fmt::as_u32(ty.packetCount), mc2::fmt::as_u32(ty.vertexCount), mc2::fmt::as_i32((int)hasRange), mc2::fmt::as_u32(ic));
+                    mc2::fmt::print_err("[SEAMPROBE] draw-census typeID={:d} src={:016X} packetCount={:d} vertexCount={:d} hasRange={:d} instanceCount={:d} (NOT DRAWN)\n", mc2::fmt::as_u32(tid), mc2::fmt::as_ptr(const_cast<void*>(static_cast<const void*>(ty.source))), mc2::fmt::as_u32(ty.packetCount), mc2::fmt::as_u32(ty.vertexCount), mc2::fmt::as_i32(static_cast<int>(hasRange)), mc2::fmt::as_u32(ic));
                 }
             }
             fflush(stderr);

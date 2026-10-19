@@ -13,20 +13,20 @@
 // ---------------------------------------------------------------------------
 extern "C" void mc2GetSceneFogColorRGB(float out[3]);
 
-extern "C" uint32_t mc2_mech_vertex_stride(void) { return (uint32_t)sizeof(GpuMechVertex); }
+extern "C" uint32_t mc2_mech_vertex_stride(void) { return static_cast<uint32_t>(sizeof(GpuMechVertex)); }
 
 extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
     if (!out) return 0;
     if (!s_geometryFinalized) return 0;
     // The CPU bytes the GL buffers are uploaded from: the normals-recomputed vertex blob and the staged indices.
-    const uint64_t vboBytes = (uint64_t)s_stagingVbo.size();
-    const uint64_t iboBytes = (uint64_t)s_stagingIbo.size() * sizeof(uint32_t);
+    const uint64_t vboBytes = static_cast<uint64_t>(s_stagingVbo.size());
+    const uint64_t iboBytes = static_cast<uint64_t>(s_stagingIbo.size()) * sizeof(uint32_t);
     if (vboBytes == 0 || iboBytes == 0) return 0;
     out->vboBytes     = vboBytes;
     out->iboBytes     = iboBytes;
-    out->vertexStride = (uint32_t)sizeof(GpuMechVertex);   // 48
+    out->vertexStride = static_cast<uint32_t>(sizeof(GpuMechVertex));   // 48
     // A size mismatch means a normals rebuild is in flight: no vertex bytes this frame, the island retries.
-    out->vboCpu = (uint64_t)s_vkVboNativeCopy.size() == vboBytes ? s_vkVboNativeCopy.data() : nullptr;
+    out->vboCpu = static_cast<uint64_t>(s_vkVboNativeCopy.size()) == vboBytes ? s_vkVboNativeCopy.data() : nullptr;
     out->iboCpu = s_stagingIbo.data();
     out->geomGen = s_vkMechGeomGen;
     return 1;
@@ -59,11 +59,11 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     // read past the new buffer). The next flush() rebuilds it against the new set.
     if (s_vkMechSnapshotGeomGen != s_vkMechGeomGen) return 0;
     out->instances64   = s_vkMechInstSnapshot.data();
-    out->instanceCount = (uint32_t)s_vkMechInstSnapshot.size();
+    out->instanceCount = static_cast<uint32_t>(s_vkMechInstSnapshot.size());
     out->bones64       = s_vkMechBoneSnapshot.data();
-    out->boneCount     = (uint32_t)s_vkMechBoneSnapshot.size();
+    out->boneCount     = static_cast<uint32_t>(s_vkMechBoneSnapshot.size());
     out->runs          = s_vkMechRunSnapshot.data();
-    out->runCount      = (uint32_t)s_vkMechRunSnapshot.size();
+    out->runCount      = static_cast<uint32_t>(s_vkMechRunSnapshot.size());
     // VK-FLIP-FIELD-BUG4-1: use the LIVE camera MVP, not the flush-time snapshot.
     // s_vkMechWorldToClipGL is captured only inside GpuMechBatcher::flush() (batcher
     // submit path). On frames where the batcher skips its flush (mech instance data
@@ -179,14 +179,14 @@ void batcher_compareMechSnapshot(RenderSnapshot* snap) {
 // SHADOW-SPINE-0: read-only accessors for mech shadow caster counts written
 // at the end of flushShadow(). Returns last-frame values; not reset.
 extern "C" uint32_t gos_getMechShadowTypesDrawn() {
-    return (uint32_t)s_shadowTypesDrawn;
+    return static_cast<uint32_t>(s_shadowTypesDrawn);
 }
 extern "C" uint32_t gos_getMechShadowInstDrawn() {
-    return (uint32_t)s_shadowInstDrawn;
+    return static_cast<uint32_t>(s_shadowInstDrawn);
 }
 extern "C" const char* gos_getMechTextureNameByNodeIdx(uint32_t nodeIdx) {
     if (nodeIdx == 0xFFFFFFFFu || !mcTextureManager) return nullptr;
-    return mcTextureManager->getTextureName((DWORD)nodeIdx);
+    return mcTextureManager->getTextureName(static_cast<DWORD>(nodeIdx));
 }
 
 // MECH-NORMALS-FIX-1: runtime getter/setter API for the normals mode and

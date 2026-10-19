@@ -89,7 +89,7 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
             mc2vk::EnginePresentVk& vkpres = mc2vk::getOrCreateEnginePresentVk();
             // P13b: present onto the EXISTING visible GL game window (g_sdl_window)
             // via raw vkCreateWin32SurfaceKHR on its HWND -- no hidden VK window.
-            const bool presok = vkpres.init(vkctx, g_sdl_window, (uint32_t)dw, (uint32_t)dh);
+            const bool presok = vkpres.init(vkctx, g_sdl_window, static_cast<uint32_t>(dw), static_cast<uint32_t>(dh));
             vkpres.logHealth();
             if (!presok || !vkpres.valid()) {
                 // VK-FAILSOFT-DISARM-2: present-level init failures are
@@ -182,7 +182,7 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
             if (rdw > 0 && rdh > 0) {
                 mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
                 if (rctx.valid() &&
-                    vkpres.init(rctx, g_sdl_window, (uint32_t)rdw, (uint32_t)rdh) &&
+                    vkpres.init(rctx, g_sdl_window, static_cast<uint32_t>(rdw), static_cast<uint32_t>(rdh)) &&
                     vkpres.valid()) {
                     g_vkPresentInitDeferred = false;
                     g_vkPresentRetryFails = 0;
@@ -223,7 +223,7 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
             // frame, not memoized.
             static const bool s_dumpOnFire = mc2::gate::get<"MC2_VK_PRESENT_DUMP_ON_FIRE">();
             const unsigned long firePin =
-                s_dumpOnFire ? (unsigned long)g_mc2FxFireCaptureFrame : 0ul;
+                s_dumpOnFire ? static_cast<unsigned long>(g_mc2FxFireCaptureFrame) : 0ul;
             const bool inVerifyWindow =
                 (frameCounter < 600) ||
                 (s_ppmPinFrame > 0 &&
@@ -238,7 +238,7 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
                 gos::visual_capture::vkCapturePending() ||   // VK-VISUAL-CAPTURE-1
                 gos::screenshot::pending();
             vkPresentAttempted = true;
-            if (vkpres.presentGLFrame((uint32_t)pdw, (uint32_t)pdh, verify)) {
+            if (vkpres.presentGLFrame(static_cast<uint32_t>(pdw), static_cast<uint32_t>(pdh), verify)) {
                 vkPresented = true;
                 static unsigned long s_vkHealthCadence = 0;
                 if ((s_vkHealthCadence++ % 300) == 0) vkpres.logHealth();

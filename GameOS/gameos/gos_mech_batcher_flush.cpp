@@ -40,17 +40,17 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
     if (rec.importedGpuType) {
         const float* md = nullptr;
         // Per-actor palette + lift, keyed by this actor's instance shape (mechShape).
-        const int mdCount = mc2mechanim::ImportedGpuModelDelta((const void*)desc.mechShape, &md);
-        const float lift = mc2mechanim::ImportedGpuLift((const void*)desc.mechShape);
+        const int mdCount = mc2mechanim::ImportedGpuModelDelta(static_cast<const void*>(desc.mechShape), &md);
+        const float lift = mc2mechanim::ImportedGpuLift(static_cast<const void*>(desc.mechShape));
         const int   liftAxis = mc2mechanim::ImportedGpuLiftAxis();   // 0/1/2 = Stuff.x/y/z
         const int   liftIdx = 3 + 4 * (liftAxis & 3);                // F[3]/F[7]/F[11]
         float Msw[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
         if (desc.mechShape->GetNumShapes() > 0) {
-            const float* e = (const float*)glm::value_ptr(desc.mechShape->listOfShapes[0].shapeToWorld);
+            const float* e = static_cast<const float*>(glm::value_ptr(desc.mechShape->listOfShapes[0].shapeToWorld));
             for (int k = 0; k < 12; ++k) Msw[k] = e[k];
         }
-        for (int b = 0; b < mdCount && b < (int)rec.numBones && md; ++b) {
-            const float* D = md + (size_t)b * 16;
+        for (int b = 0; b < mdCount && b < static_cast<int>(rec.numBones) && md; ++b) {
+            const float* D = md + static_cast<size_t>(b) * 16;
             float F[16];                                   // F = Msw * D (row-major)
             for (int r = 0; r < 4; ++r)
                 for (int c = 0; c < 4; ++c)
@@ -66,9 +66,9 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
         }
     } else {
         const int numShapes = desc.mechShape->GetNumShapes();
-        for (int i = 0; i < numShapes && i < (int)rec.numBones; ++i) {
+        for (int i = 0; i < numShapes && i < static_cast<int>(rec.numBones); ++i) {
             const TG_ShapeRec& sr = desc.mechShape->listOfShapes[i];
-            const float* e = (const float*)glm::value_ptr(sr.shapeToWorld);
+            const float* e = static_cast<const float*>(glm::value_ptr(sr.shapeToWorld));
             GpuMechBone bone;
             bone.row0[0]=e[0]; bone.row0[1]=e[4]; bone.row0[2]=e[ 8]; bone.row0[3]=0.0f;
             bone.row1[0]=e[1]; bone.row1[1]=e[5]; bone.row1[2]=e[ 9]; bone.row1[3]=0.0f;
@@ -77,7 +77,7 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
             ps.bones.push_back(bone);
         }
     }
-    while ((int)ps.bones.size() < (int)rec.numBones) {
+    while (static_cast<int>(ps.bones.size()) < static_cast<int>(rec.numBones)) {
         GpuMechBone id{};
         id.row0[0]=1.f; id.row1[1]=1.f; id.row2[2]=1.f; id.row3[3]=1.f;
         ps.bones.push_back(id);
@@ -97,7 +97,7 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
         if (pkt.textureSlot == 0) {
             ps.packetTexHandles[p] = desc.slot0TexHandle;
         } else if (pkt.owningTypeShape && pkt.owningTypeShape->listOfTextures &&
-                   pkt.textureSlot < (uint32_t)pkt.owningTypeShape->numTextures) {
+                   pkt.textureSlot < static_cast<uint32_t>(pkt.owningTypeShape->numTextures)) {
             ps.packetTexHandles[p] =
                 pkt.owningTypeShape->listOfTextures[pkt.textureSlot].gosTextureHandle;
         }
@@ -118,7 +118,7 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
             MC2_DIAGFE(stderr,
                 "[SPOTLIGHT_REAL_TRACE v1] event=first_hit site=mech_submit "
                 "type=%p lod=%d\n",
-                (const void*)desc.mechType, desc.currentLOD);
+                static_cast<const void*>(desc.mechType), desc.currentLOD);
             std::fflush(stderr);
         }
     }
@@ -191,10 +191,10 @@ static void traceLatch() {
             "[SPOTLIGHT_REAL_TRACE v1] event=summary site=mech_submit "
             "frames=%llu window_mech_spotlight_draws=%llu mono_mech_spotlight_draws=%llu "
             "type_node_events_total=%llu distinct_types_with_spotlights=%zu\n",
-            (unsigned long long)s_spotlightReal_drawFrameCount,
-            (unsigned long long)s_spotlightReal_drawWindow,
-            (unsigned long long)s_spotlightReal_drawMono,
-            (unsigned long long)s_spotlightReal_typeNodeEvents,
+            static_cast<unsigned long long>(s_spotlightReal_drawFrameCount),
+            static_cast<unsigned long long>(s_spotlightReal_drawWindow),
+            static_cast<unsigned long long>(s_spotlightReal_drawMono),
+            static_cast<unsigned long long>(s_spotlightReal_typeNodeEvents),
             s_spotlightRealTypeNodeCount.size());
         std::fflush(stderr);
     }
@@ -251,7 +251,7 @@ void MechFlushFrame::buildBuckets() {
     // Different per-actor paint schemes for the same packet -> different buckets.
 
 
-    for (uint32_t si = 0; si < (uint32_t)s_pendingSubmits.size(); ++si) {
+    for (uint32_t si = 0; si < static_cast<uint32_t>(s_pendingSubmits.size()); ++si) {
         const PendingSubmit& ps = s_pendingSubmits[si];
         const GpuMechTypeLodRecord& rec = s_typeLodRecords[ps.typeLodIdx];
         for (uint32_t p = 0; p < rec.packetCount; ++p) {
@@ -275,8 +275,8 @@ void MechFlushFrame::writeBones() {
     actorBoneBase.assign(s_pendingSubmits.size(), 0u);
     s_vkMechBoneSnapshot.clear();
     s_vkMechBoneSnapshot.reserve(totalBones);
-    for (uint32_t si = 0; si < (uint32_t)s_pendingSubmits.size(); ++si) {
-        actorBoneBase[si] = (uint32_t)s_vkMechBoneSnapshot.size();
+    for (uint32_t si = 0; si < static_cast<uint32_t>(s_pendingSubmits.size()); ++si) {
+        actorBoneBase[si] = static_cast<uint32_t>(s_vkMechBoneSnapshot.size());
         for (const auto& b : s_pendingSubmits[si].bones)
             s_vkMechBoneSnapshot.push_back(b);
     }
@@ -340,8 +340,8 @@ void MechFlushFrame::writeInstances() {
         dc.globalPacketIdx = key.globalPacketIdx;
         dc.texHandle       = key.texHandle;
         dc.materialFlags   = key.materialFlags;
-        dc.instanceBase    = (uint32_t)s_vkMechInstSnapshot.size();
-        dc.instanceCount   = (uint32_t)subs.size();
+        dc.instanceBase    = static_cast<uint32_t>(s_vkMechInstSnapshot.size());
+        dc.instanceCount   = static_cast<uint32_t>(subs.size());
         // AO-1: AO is per-type, so all submits in this bucket share it; read from the first.
         dc.aoTexHandle     = subs.empty() ? 0u : s_pendingSubmits[subs[0]].desc.slot6TexHandle;
         // NORMALS-1: normal map is per-type too; same bucket-share rule.
@@ -398,9 +398,9 @@ void MechFlushFrame::validateMaterialTable() {
     // Task 5: Compare validation — verify albedoTex == texHandle per draw call
     if (s_mechMaterialGpuEnabled) {
         int mismatches = 0;
-        for (uint32_t i = 0; i < (uint32_t)drawCalls.size(); ++i) {
-            const uint32_t mIdx = (i < (uint32_t)s_mechDrawMaterialIdx.size()) ? s_mechDrawMaterialIdx[i] : 0u;
-            if (mIdx == 0u || mIdx >= (uint32_t)s_mechMaterialTable.size()) continue;
+        for (uint32_t i = 0; i < static_cast<uint32_t>(drawCalls.size()); ++i) {
+            const uint32_t mIdx = (i < static_cast<uint32_t>(s_mechDrawMaterialIdx.size())) ? s_mechDrawMaterialIdx[i] : 0u;
+            if (mIdx == 0u || mIdx >= static_cast<uint32_t>(s_mechMaterialTable.size())) continue;
             const uint32_t albedo   = s_mechMaterialTable[mIdx].albedoTex;
             const uint32_t expected = drawCalls[i].texHandle;
             if (albedo != expected) {
@@ -440,12 +440,12 @@ void MechFlushFrame::collectRuns() {
         run.instanceBase  = dc.instanceBase;
         run.instanceCount = dc.instanceCount;
         run.materialFlags = dc.materialFlags;
-        run.slot0Tex      = (uint32_t)liveGosHandle;   // LIVE per-actor paint scheme this frame
+        run.slot0Tex      = static_cast<uint32_t>(liveGosHandle);   // LIVE per-actor paint scheme this frame
         // VK-PARITY-MECH-1: per-type AO / normal maps.
         run.aoTex = (dc.aoTexHandle != 0u && dc.aoTexHandle != 0xFFFFFFFFu && mcTextureManager)
-            ? (uint32_t)mcTextureManager->get_gosTextureHandle(dc.aoTexHandle) : 0u;
+            ? static_cast<uint32_t>(mcTextureManager->get_gosTextureHandle(dc.aoTexHandle)) : 0u;
         run.normalTex = (dc.normalTexHandle != 0u && dc.normalTexHandle != 0xFFFFFFFFu && mcTextureManager)
-            ? (uint32_t)mcTextureManager->get_gosTextureHandle(dc.normalTexHandle) : 0u;
+            ? static_cast<uint32_t>(mcTextureManager->get_gosTextureHandle(dc.normalTexHandle)) : 0u;
         s_vkMechRunSnapshot.push_back(run);
         ++drawnCalls;
     }
@@ -462,8 +462,8 @@ void MechFlushFrame::snapshotFrame() {
     s_vkMechFrameReady = (totalInstances > 0 && !s_vkMechRunSnapshot.empty());
     static const bool s_shadowEnabled = mc2::gate::get<"MC2_SHADOW_ENABLE">();
     if (s_shadowEnabled) {
-        s_shadowTypesDrawn = (int)drawCalls.size();
-        s_shadowInstDrawn  = (int)totalInstances;
+        s_shadowTypesDrawn = static_cast<int>(drawCalls.size());
+        s_shadowInstDrawn  = static_cast<int>(totalInstances);
     }
 }
 
@@ -537,7 +537,7 @@ static void persistExtraction() {
 
 // The frame-graph executor's record of the MechOpaque pass: bumps the apply-state ledger (the Vulkan mech island owns the pipeline).
 void GpuMechBatcher::executorApplyMechOpaqueState() {
-    mc2_framegraph_executor_bump_apply_state((unsigned)RenderCore::framegraph::ApplyPassId::MechOpaque);
+    mc2_framegraph_executor_bump_apply_state(static_cast<unsigned>(RenderCore::framegraph::ApplyPassId::MechOpaque));
 }
 
 // Per-frame mech flush: bucket the pending submits and build the instance, bone and run feeds the Vulkan mech island

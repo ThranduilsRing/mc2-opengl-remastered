@@ -74,7 +74,7 @@ void tubeEnsureInitialized() {
         }
         MC2_DIAGFE(stderr,
             "[VFX_ORACLE_TUBE v1] event=prog_compiled prog=%u\n",
-            (unsigned)s_tubeProg->shp_);
+            static_cast<unsigned>(s_tubeProg->shp_));
         std::fflush(stderr);
         s_tloc_worldToClipGL = glGetUniformLocation(s_tubeProg->shp_, "u_worldToClipGL");
         s_tloc_uAtlas        = glGetUniformLocation(s_tubeProg->shp_, "uAtlas");
@@ -128,7 +128,7 @@ void tubeOrphanUpload(GLuint buf, GLsizei cap, GLenum target,
     glBindBuffer(target, buf);
     glBufferData(target, (GLsizeiptr)cap, nullptr, GL_DYNAMIC_DRAW);  // orphan
     glBufferSubData(target, 0, bytes, data);
-    if (tubeUploadStatsEnabled()) s_tubeStats.uploadBytes += (unsigned long long)bytes;
+    if (tubeUploadStatsEnabled()) s_tubeStats.uploadBytes += static_cast<unsigned long long>(bytes);
 }
 
 }  // namespace (tube ribbon)
@@ -259,7 +259,7 @@ extern "C" void gos_tube_ribbon_flush(const float*          positions,
     // from both sides regardless of profile winding.
     glDisable(GL_CULL_FACE);
 
-    glDrawElements(GL_TRIANGLES, (GLsizei)numIndices, GL_UNSIGNED_SHORT, (const void*)0);
+    glDrawElements(GL_TRIANGLES, (GLsizei)numIndices, GL_UNSIGNED_SHORT, reinterpret_cast<const void*>(0));
 
     // ── Unbind SSBO slots (mirror billboard flush hygiene) ─────────────
     // (bind-then-zero HYGIENE, not save/restore — deliberately NOT converted
@@ -312,10 +312,10 @@ extern "C" void gos_tube_ribbon_enqueue(const float*          positions,
     RibbonRecord rec;
     rec.gosHandle  = gosHandle;
     rec.blendMode  = blendMode;
-    rec.positions.assign(positions, positions + (size_t)numVerts * 3u);
-    rec.colors.assign   (colors,    colors    + (size_t)numVerts * 4u);
-    rec.uvs.assign      (uvs,       uvs       + (size_t)numVerts * 2u);
-    rec.indices.assign  (indices,   indices   + (size_t)numIndices);
+    rec.positions.assign(positions, positions + static_cast<size_t>(numVerts) * 3u);
+    rec.colors.assign   (colors,    colors    + static_cast<size_t>(numVerts) * 4u);
+    rec.uvs.assign      (uvs,       uvs       + static_cast<size_t>(numVerts) * 2u);
+    rec.indices.assign  (indices,   indices   + static_cast<size_t>(numIndices));
     s_ribbonQueue.push_back(std::move(rec));
 }
 
@@ -403,7 +403,7 @@ extern "C" void gos_tube_ribbon_flush_deferred(void) {
         static bool s_banner = false;
         if (!s_banner) {
             s_banner = true;
-            mc2::fmt::print_err("[VFX_ORACLE_TUBE deferred] enabled=1 queue={:d}\n", mc2::fmt::as_u32((unsigned)s_ribbonQueue.size()));
+            mc2::fmt::print_err("[VFX_ORACLE_TUBE deferred] enabled=1 queue={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(s_ribbonQueue.size())));
             std::fflush(stderr);
         }
     }
@@ -422,8 +422,8 @@ extern "C" void gos_tube_ribbon_flush_deferred(void) {
 
     // ── Per-record draw loop ───────────────────────────────────────────
     for (const RibbonRecord& rec : s_ribbonQueue) {
-        const unsigned numVerts   = (unsigned)(rec.positions.size() / 3u);
-        const unsigned numIndices = (unsigned)(rec.indices.size());
+        const unsigned numVerts   = static_cast<unsigned>((rec.positions.size() / 3u));
+        const unsigned numIndices = static_cast<unsigned>((rec.indices.size()));
         if (numVerts == 0 || numIndices == 0) continue;
 
         // Resolve texture; skip records whose handle won't resolve at draw time
@@ -485,7 +485,7 @@ extern "C" void gos_tube_ribbon_flush_deferred(void) {
             rec.blendMode == 1 ? "VfxTubeAdditive" : "VfxTubeAlpha");
 
         glBindTexture(GL_TEXTURE_2D, glTex);
-        glDrawElements(GL_TRIANGLES, (GLsizei)numIndices, GL_UNSIGNED_SHORT, (const void*)0);
+        glDrawElements(GL_TRIANGLES, (GLsizei)numIndices, GL_UNSIGNED_SHORT, reinterpret_cast<const void*>(0));
     }
 
     // MC2_VFX_ORACLE_TUBE_COVERAGE: end the query, read the sample count (this
@@ -497,7 +497,7 @@ extern "C" void gos_tube_ribbon_flush_deferred(void) {
         glEndQuery(GL_SAMPLES_PASSED);
         GLuint covSamples = 0;
         glGetQueryObjectuiv(s_tubeCoverageQuery, GL_QUERY_RESULT, &covSamples);
-        mc2::fmt::print_err("[VFX_ORACLE_TUBE coverage] ribbons={:d} samples={:d} fbo={:d} sceneDrawBufs={:d}\n", mc2::fmt::as_u32((unsigned)s_ribbonQueue.size()), mc2::fmt::as_u32(covSamples), mc2::fmt::as_i32((int)covFbo), mc2::fmt::as_i32(guardDrawBufs.savedCount()));
+        mc2::fmt::print_err("[VFX_ORACLE_TUBE coverage] ribbons={:d} samples={:d} fbo={:d} sceneDrawBufs={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(s_ribbonQueue.size())), mc2::fmt::as_u32(covSamples), mc2::fmt::as_i32(static_cast<int>(covFbo)), mc2::fmt::as_i32(guardDrawBufs.savedCount()));
         std::fflush(stderr);
     }
 
@@ -523,7 +523,7 @@ extern "C" void gos_tube_ribbon_flush_deferred(void) {
         // old vec4-format uploaded (16B/vert) but the tight float[] (12B/vert)
         // does not. saved = baselineBytes - uploadBytes.
         s_tubeStats.baselineBytes =
-            s_tubeStats.uploadBytes + (unsigned long long)s_tubeStats.posVerts * 4ull;
+            s_tubeStats.uploadBytes + static_cast<unsigned long long>(s_tubeStats.posVerts) * 4ull;
         const unsigned long long saved =
             s_tubeStats.baselineBytes - s_tubeStats.uploadBytes;
         mc2::fmt::print_err("[VFX_TUBE_UPLOAD_STATS] records={:d} posVerts={:d} uploadBytes={:d} baselineBytes={:d} savedBytes={:d} heapAllocs={:d}\n", mc2::fmt::as_u32(s_tubeStats.records), mc2::fmt::as_u32(s_tubeStats.posVerts), mc2::fmt::as_u64(s_tubeStats.uploadBytes), mc2::fmt::as_u64(s_tubeStats.baselineBytes), mc2::fmt::as_u64(saved), mc2::fmt::as_u64(s_tubeStats.heapAllocs));

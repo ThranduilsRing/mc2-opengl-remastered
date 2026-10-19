@@ -77,7 +77,7 @@ char* loadTextFile(const char* fname) {
     fseek(f, 0, SEEK_SET);
     if (sz <= 0) { fclose(f); return nullptr; }
     char* buf = new char[sz + 1];
-    if ((long)fread(buf, 1, sz, f) != sz) { fclose(f); delete[] buf; return nullptr; }
+    if (static_cast<long>(fread(buf, 1, sz, f)) != sz) { fclose(f); delete[] buf; return nullptr; }
     buf[sz] = '\0';
     fclose(f);
     return buf;
@@ -198,12 +198,12 @@ void ensurePingPong(int halfW, int halfH) {
 // features so the blur has high-frequency content to attenuate. Uploaded once.
 void ensureTestPattern() {
     if (s_testTex != 0) return;
-    std::vector<float> px((size_t)kTestSrcW * kTestSrcH * 4);
+    std::vector<float> px(static_cast<size_t>(kTestSrcW) * kTestSrcH * 4);
     for (int y = 0; y < kTestSrcH; ++y) {
         for (int x = 0; x < kTestSrcW; ++x) {
-            size_t i = ((size_t)y * kTestSrcW + x) * 4;
-            float gx = (float)x / (float)(kTestSrcW - 1);
-            float gy = (float)y / (float)(kTestSrcH - 1);
+            size_t i = (static_cast<size_t>(y) * kTestSrcW + x) * 4;
+            float gx = static_cast<float>(x) / static_cast<float>((kTestSrcW - 1));
+            float gy = static_cast<float>(y) / static_cast<float>((kTestSrcH - 1));
             // R: horizontal gradient. G: vertical gradient. B: checker spikes.
             // A: a single bright dot region (high frequency).
             float checker = (((x >> 2) ^ (y >> 2)) & 1) ? 1.0f : 0.0f;
@@ -241,7 +241,7 @@ inline int clampi(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v
 
 void cpuBlurSeparable(const std::vector<float>& in, std::vector<float>& out,
                       int w, int h) {
-    std::vector<float> tmp((size_t)w * h * 4);
+    std::vector<float> tmp(static_cast<size_t>(w) * h * 4);
     const float wt[5] = { kW0, kW1, kW2, kW1, kW0 };
     const int   off[5] = { -2, -1, 0, 1, 2 };
     // Horizontal.
@@ -251,9 +251,9 @@ void cpuBlurSeparable(const std::vector<float>& in, std::vector<float>& out,
                 float acc = 0.0f;
                 for (int k = 0; k < 5; ++k) {
                     int sx = clampi(x + off[k], 0, w - 1);
-                    acc += wt[k] * in[((size_t)y * w + sx) * 4 + c];
+                    acc += wt[k] * in[(static_cast<size_t>(y) * w + sx) * 4 + c];
                 }
-                tmp[((size_t)y * w + x) * 4 + c] = acc;
+                tmp[(static_cast<size_t>(y) * w + x) * 4 + c] = acc;
             }
     // Vertical.
     for (int y = 0; y < h; ++y)
@@ -262,9 +262,9 @@ void cpuBlurSeparable(const std::vector<float>& in, std::vector<float>& out,
                 float acc = 0.0f;
                 for (int k = 0; k < 5; ++k) {
                     int sy = clampi(y + off[k], 0, h - 1);
-                    acc += wt[k] * tmp[((size_t)sy * w + x) * 4 + c];
+                    acc += wt[k] * tmp[(static_cast<size_t>(sy) * w + x) * 4 + c];
                 }
-                out[((size_t)y * w + x) * 4 + c] = acc;
+                out[(static_cast<size_t>(y) * w + x) * 4 + c] = acc;
             }
 }
 
@@ -274,27 +274,27 @@ void runParityCheck() {
     const int hw = sw / 2, hh = sh / 2;
 
     // CPU readback of the SAME test pattern the GPU sampled.
-    std::vector<float> src((size_t)sw * sh * 4);
+    std::vector<float> src(static_cast<size_t>(sw) * sh * 4);
     glBindTexture(GL_TEXTURE_2D, s_testTex);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, src.data());
     glBindTexture(GL_TEXTURE_2D, 0);
 
     // CPU 2x2 box downsample -> half-res.
-    std::vector<float> half((size_t)hw * hh * 4);
+    std::vector<float> half(static_cast<size_t>(hw) * hh * 4);
     for (int y = 0; y < hh; ++y)
         for (int x = 0; x < hw; ++x)
             for (int c = 0; c < 4; ++c) {
                 int bx = x * 2, by = y * 2;
-                float s = src[((size_t)(by + 0) * sw + (bx + 0)) * 4 + c]
-                        + src[((size_t)(by + 0) * sw + (bx + 1)) * 4 + c]
-                        + src[((size_t)(by + 1) * sw + (bx + 0)) * 4 + c]
-                        + src[((size_t)(by + 1) * sw + (bx + 1)) * 4 + c];
-                half[((size_t)y * hw + x) * 4 + c] = s * 0.25f;
+                float s = src[(static_cast<size_t>((by + 0)) * sw + (bx + 0)) * 4 + c]
+                        + src[(static_cast<size_t>((by + 0)) * sw + (bx + 1)) * 4 + c]
+                        + src[(static_cast<size_t>((by + 1)) * sw + (bx + 0)) * 4 + c]
+                        + src[(static_cast<size_t>((by + 1)) * sw + (bx + 1)) * 4 + c];
+                half[(static_cast<size_t>(y) * hw + x) * 4 + c] = s * 0.25f;
             }
 
     // CPU separable Gaussian on the half-res.
-    std::vector<float> cpuOut((size_t)hw * hh * 4);
+    std::vector<float> cpuOut(static_cast<size_t>(hw) * hh * 4);
     cpuBlurSeparable(half, cpuOut, hw, hh);
 
     if (s_plant && !cpuOut.empty()) {
@@ -304,7 +304,7 @@ void runParityCheck() {
 
     // GPU output lives in ping A (downsample -> blurH -> blurV ends in A). The
     // dispatch already issued the ComputeImageWrite->TextureReadback barrier.
-    std::vector<float> gpuOut((size_t)hw * hh * 4);
+    std::vector<float> gpuOut(static_cast<size_t>(hw) * hh * 4);
     glBindTexture(GL_TEXTURE_2D, s_pingA);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, gpuOut.data());
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -316,7 +316,7 @@ void runParityCheck() {
     // are well under 1e-3 for values in [0,4]. A mismatch beyond 1e-3 is a real
     // failure, not numerical noise.
     const float kTol = 1e-3f;
-    size_t n = (size_t)hw * hh * 4;
+    size_t n = static_cast<size_t>(hw) * hh * 4;
     size_t mismatches = 0;
     float  worst = 0.0f;
     for (size_t i = 0; i < n; ++i) {
