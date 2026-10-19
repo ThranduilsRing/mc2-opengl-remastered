@@ -369,21 +369,6 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 		// filter mirrors the legacy DRAWSOLID|ISTERRAIN draw-emission
 		// predicate so it is apples-to-apples with PatchStream's modern
 		// scope.
-		static const bool s_bucketCensusOn = mc2::gate::get<"MC2_BUCKET_CENSUS">();
-		uint32_t legacyEligible = 0;
-		if (s_bucketCensusOn) {
-			for (long ci = 0; ci < nextAvailableVertexNode; ++ci) {
-				const DWORD cf = masterVertexNodes[ci].flags;
-				if ((cf & MC2_DRAWSOLID) && (cf & MC2_ISTERRAIN) &&
-				    masterVertexNodes[ci].vertices &&
-				    masterVertexNodes[ci].currentVertex !=
-				        masterVertexNodes[ci].vertices)
-				{
-					++legacyEligible;
-				}
-			}
-		}
-
 		bool modernHandled = false;
 
 		// TERRAIN-CULL-STATE-PROBE-1 (MC2_TERRAIN_CULL_PROBE, default OFF): the
@@ -431,20 +416,6 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 				RenderCore::framegraph::noteTerrainPath(RenderCore::framegraph::TerrainPath::IndirectBridge);
 				modernHandled = true;
 			}
-		} else if (TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
-			// PATCHSTREAM-THIN-RETIRE-1: patch-stream-thin terrain draw retired (deprecated branch,
-			// terrain_path.patch_stream proven 0 in default/smoke/capture/editor). LOD-chunk owns
-			// terrain. Do NOT flush()-draw; fire the telemetry counter as a regression tripwire so
-			// patch_stream>0 surfaces if a reachable config ever needed it. modernHandled stays false
-			// (no gate-off fired for un-armed frames) — matching the prior flush()-returns semantics
-			// when it drew nothing.
-			// NOTE: flush() side-effects audit — flush() does: (a) draw calls, (b) glFenceSync on
-			// current slot, (c) markTerrainDrawn() on post-process, (d) noteTerrainPath(PatchStreamThin).
-			// The ring slot advance is in beginFrame() NOT flush(), so skipping flush() does not break
-			// the ring. The getLastFlush* snapshot getters read statics reset by beginFrame() each frame
-			// — they will correctly read 0 when this branch is not flushing. markTerrainDrawn() is NOT
-			// called here because no terrain was drawn. NO load-bearing non-draw side effects are lost.
-			RenderCore::framegraph::noteTerrainPath(RenderCore::framegraph::TerrainPath::PatchStreamThin);
 		}
 
 		// RENDER-FRAME-PLAN-SCAFFOLD-1: tattle WHICH terrain-solid branch drew this
@@ -501,9 +472,7 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 		// either branch has reset the legacy ring; legacy_eligible was
 		// captured pre-flush above. emitCensus() is a no-op when the
 		// env var is unset.
-		if (s_bucketCensusOn) {
-			TerrainPatchStream::emitCensus(legacyEligible);
-		}
+
 	}   // end Render.TerrainSolid zone
 }
 

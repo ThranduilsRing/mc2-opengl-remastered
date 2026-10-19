@@ -308,18 +308,13 @@ void gosRenderer::init() {
         fflush(stdout);
     }
 
-    if (!TerrainPatchStream::init()) {
-        // init_fail path lives in Task 2; for now this is dead code.
-        MC2_DIAGFE(stderr, "[PATCH_STREAM v1] event=init_fail reason=task1_skeleton_returned_false\n");
-        fflush(stderr);
-    }
+
 
     gos_TerrainLodChunk_Init();
 }
 
 void gosRenderer::destroy() {
     gos_TerrainLodChunk_Destroy();
-    TerrainPatchStream::destroy();
 
     gosMesh::destroy(text_);
 

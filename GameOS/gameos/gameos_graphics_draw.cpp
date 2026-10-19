@@ -280,7 +280,6 @@ void gosRenderer::beginFrame()
     glBindVertexArray(gVAO);
     num_draw_calls_ = 0;
 
-    TerrainPatchStream::beginFrame();
     // gos_terrain_indirect::BeginFrame() moved to endFrame() — see comment there.
 }
 

@@ -57,7 +57,6 @@ set(SOURCES ${SOURCES}
     gos_mech_batcher_flush.cpp
     gos_mech_batcher_api.cpp
     gos_object_recon_tracy.cpp
-    gos_terrain_patch_stream.cpp
     gos_terrain_water_stream.cpp
     gos_terrain_indirect.cpp
     gos_terrain_indirect_diag.cpp

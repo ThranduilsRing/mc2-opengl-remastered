@@ -256,14 +256,13 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
                 const RenderCore::EngineView& view = RenderCore::getCurrentView();
                 snap.terrainPass.viewId          = view.id;
                 snap.terrainPass.legacyProgramId = gos_getTerrainSurfaceProgramId();
-                snap.terrainPass.drawCallCount   = TerrainPatchStream::getLastFlushBucketCount();
+                // The retired GL patch stream has no draws; native terrain publishes its own feed.
+                snap.terrainPass.drawCallCount   = 0u;
                 uint32_t flags = 0u;
                 // tessellationOn: hard-coded true (matches inspector field semantics).
                 flags |= TerrainPassFacts::kFlagTessellationOn;
                 // viewUniformsBound: terrain shaders don't consume ViewUniforms (binding=3) yet.
                 // (Leave kFlagViewUniformsBound clear.)
-                if (TerrainPatchStream::wasLastFlushOverflowed())
-                    flags |= TerrainPassFacts::kFlagOverflow;
                 snap.terrainPass.flags = flags;
             }
 
@@ -279,9 +278,9 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
                 ts.thinProgramId      = gos_getThinTerrainProgramId();
                 ts.overlayProgramId   = gos_getTerrainOverlayProgramId();
                 ts.bucketCount  = snap.terrainPass.drawCallCount;
-                ts.vertCount    = TerrainPatchStream::getLastFlushVertCount();
-                ts.thinRecCount = TerrainPatchStream::getLastFlushThinRecCount();
-                ts.recipeCount  = TerrainPatchStream::getLastFlushRecipeCount();
+                ts.vertCount    = 0u;
+                ts.thinRecCount = 0u;
+                ts.recipeCount  = 0u;
                 ts.overflow     = (snap.terrainPass.flags & TerrainPassFacts::kFlagOverflow) != 0u;
                 ts.viewUniformsBoundForTerrain =
                     (snap.terrainPass.flags & TerrainPassFacts::kFlagViewUniformsBound) != 0u;
