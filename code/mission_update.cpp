@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
 #include "../GameOS/gameos/utils/mc2log.h"
+#include "mc2fmt.h"
 
 
 // FREEZE-MOVERS-1: ONE predicate for "the simulation tick is suspended".
@@ -686,7 +687,7 @@ void Mission::updateCheatsAndFrameRate() {
 	if (showFrameRate)
 	{
 		char text[1024];
-		sprintf(text,"FrameRate: %f",1.0f/frameLength);
+		(*std::format_to_n(text,sizeof(text) - 1,"FrameRate: {:f}",1.0f/frameLength).out = '\0');
 	
 		DWORD width, height;
 		Stuff::Vector4D moveHere;

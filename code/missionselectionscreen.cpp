@@ -15,6 +15,7 @@ MissionSelectionScreen.cpp			: Implementation of the MissionSelectionScreen comp
 #include"sounds.h"
 #include"mc2movie.h"
 #include"gamesound.h"
+#include "mc2fmt.h"
 
 constexpr int VIDEO_RECT = 7;
 constexpr int MAP_RECT = 3;
@@ -238,7 +239,7 @@ void MissionSelectionScreen::begin()
 	if ( NO_ERR != file.open( fileName ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(fileName) );
+		(*std::format_to_n( errorStr, sizeof(errorStr) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(fileName)) ).out = '\0');
 		Assert( 0, 0, errorStr );
 	}
 	
@@ -424,7 +425,7 @@ void MissionSelectionScreen::setMission( int whichOne )
 	LogisticsData::instance->setCurrentMission( missionNames[whichOne] );
 
 	char text[64];
-	sprintf( text, "%ld ", LogisticsData::instance->getCBills() );
+	(*std::format_to_n( text, sizeof(text) - 1, "{:d} ", mc2::fmt::as_i32(LogisticsData::instance->getCBills()) ).out = '\0');
 	textObjects[RP_TEXT].setText( text );
 	setDefsElementText( "game.mission_selection.text.cbills_readout", text );
 

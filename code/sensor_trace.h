@@ -23,6 +23,7 @@
 #include "Gates/gate.h"
 #include <cstdlib>
 #include <chrono>
+#include "mc2fmt.h"
 
 namespace mc2_sensor_trace {
 
@@ -88,13 +89,11 @@ struct ScanScope {
 		auto t1 = std::chrono::steady_clock::now();
 		double us = std::chrono::duration<double, std::micro>(t1 - t0).count();
 		char buf[288];
-		snprintf(buf, sizeof(buf),
-			"{\"ev\":\"frame\",\"team\":%d,\"num_sensors\":%ld,\"num_movers\":%ld,"
-			"\"pairs_tested\":%ld,\"adds\":%ld,\"removes\":%ld,\"modifies\":%ld,"
-			"\"scan_us\":%.2f}",
-			team, g_counters.numSensors, g_counters.numMovers,
-			g_counters.pairsTested, g_counters.adds, g_counters.removes,
-			g_counters.modifies, us);
+		(*std::format_to_n(buf, (sizeof(buf)) - 1,
+			"{{\"ev\":\"frame\",\"team\":{:d},\"num_sensors\":{:d},\"num_movers\":{:d},\"pairs_tested\":{:d},\"adds\":{:d},\"removes\":{:d},\"modifies\":{:d},\"scan_us\":{:.2f}}}",
+			mc2::fmt::as_i32(team), mc2::fmt::as_i32(g_counters.numSensors), mc2::fmt::as_i32(g_counters.numMovers),
+			mc2::fmt::as_i32(g_counters.pairsTested), mc2::fmt::as_i32(g_counters.adds), mc2::fmt::as_i32(g_counters.removes),
+			mc2::fmt::as_i32(g_counters.modifies), us).out = '\0');
 		mc2_diag::writeEvent("SENSOR", 1, 0, buf);
 		g_counters.active = false;
 	}

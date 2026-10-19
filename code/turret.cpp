@@ -72,6 +72,7 @@
 
 #include "../resource.h"
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
 //***************************************************************************
 
 //extern float worldUnitsPerMeter;
@@ -1260,15 +1261,15 @@ void Turret::printFireWeaponDebugInfo (GameObjectPtr target, glm::vec3* targetPo
 		if (target) {
 			char* targetName = target->getName();
 			char s[1024];
-			sprintf(s, "[%.2f] turret.fireWeapon HIT: (%05d)%s @ (%05d)%s", scenarioTime, getPartId(), getName(), target->getPartId(), targetName ? targetName : "unknown");
+			(*std::format_to_n(s, sizeof(s) - 1, "[{:.2f}] turret.fireWeapon HIT: ({:05d}){} @ ({:05d}){}", scenarioTime, mc2::fmt::as_i32(getPartId()), mc2::fmt::safe(getName()), mc2::fmt::as_i32(target->getPartId()), mc2::fmt::safe(targetName ? targetName : "unknown")).out = '\0');
 			CombatLog->write(s);
-			sprintf(s, "     chance = %03d, roll = %03d", chance, roll);
+			(*std::format_to_n(s, sizeof(s) - 1, "     chance = {:03d}, roll = {:03d}", mc2::fmt::as_i32(chance), mc2::fmt::as_i32(roll)).out = '\0');
 			CombatLog->write(s);
-			sprintf(s, "     weapon = (%03d)%s, hitLocation = (%d)%s, damage = %.2f, angle = %.2f",
-				shotInfo->masterId, MasterComponent::masterList[shotInfo->masterId].getName(),
-				shotInfo->hitLocation, (shotInfo->hitLocation > -1) ? locationStrings[shotInfo->hitLocation] : "none",
+			(*std::format_to_n(s, sizeof(s) - 1, "     weapon = ({:03d}){}, hitLocation = ({:d}){}, damage = {:.2f}, angle = {:.2f}",
+				mc2::fmt::as_i32(shotInfo->masterId), mc2::fmt::safe(MasterComponent::masterList[shotInfo->masterId].getName()),
+				mc2::fmt::as_i32(shotInfo->hitLocation), mc2::fmt::safe((shotInfo->hitLocation > -1) ? locationStrings[shotInfo->hitLocation] : "none"),
 				shotInfo->damage,
-				shotInfo->entryAngle);
+				shotInfo->entryAngle).out = '\0');
 			CombatLog->write(s);
 			CombatLog->write(" ");
 			}
@@ -1279,15 +1280,15 @@ void Turret::printFireWeaponDebugInfo (GameObjectPtr target, glm::vec3* targetPo
 		if (target) {
 			char* targetName = target->getName();
 			char s[1024];
-			sprintf(s, "[%.2f] turret.fireWeapon MISS: (%05d)%s @ (%05d)%s", scenarioTime, getPartId(), getName(), target->getPartId(), targetName ? targetName : "unknown");
+			(*std::format_to_n(s, sizeof(s) - 1, "[{:.2f}] turret.fireWeapon MISS: ({:05d}){} @ ({:05d}){}", scenarioTime, mc2::fmt::as_i32(getPartId()), mc2::fmt::safe(getName()), mc2::fmt::as_i32(target->getPartId()), mc2::fmt::safe(targetName ? targetName : "unknown")).out = '\0');
 			CombatLog->write(s);
-			sprintf(s, "     chance = %03d, roll = %03d", chance, roll);
+			(*std::format_to_n(s, sizeof(s) - 1, "     chance = {:03d}, roll = {:03d}", mc2::fmt::as_i32(chance), mc2::fmt::as_i32(roll)).out = '\0');
 			CombatLog->write(s);
-			sprintf(s, "     weapon = (%03d)%s, hitLocation = (%d)%s, damage = %.2f, angle = %.2f",
-				shotInfo->masterId, MasterComponent::masterList[shotInfo->masterId].getName(),
-				shotInfo->hitLocation, (shotInfo->hitLocation > -1) ? locationStrings[shotInfo->hitLocation] : "none",
+			(*std::format_to_n(s, sizeof(s) - 1, "     weapon = ({:03d}){}, hitLocation = ({:d}){}, damage = {:.2f}, angle = {:.2f}",
+				mc2::fmt::as_i32(shotInfo->masterId), mc2::fmt::safe(MasterComponent::masterList[shotInfo->masterId].getName()),
+				mc2::fmt::as_i32(shotInfo->hitLocation), mc2::fmt::safe((shotInfo->hitLocation > -1) ? locationStrings[shotInfo->hitLocation] : "none"),
 				shotInfo->damage,
-				shotInfo->entryAngle);
+				shotInfo->entryAngle).out = '\0');
 			CombatLog->write(s);
 			CombatLog->write(" ");
 			}
@@ -1320,24 +1321,24 @@ void Turret::printHandleWeaponHitDebugInfo (WeaponShotInfo* shotInfo) {
 	char s[1024];
 	char statusStr[50];
 	if (isDestroyed())
-		sprintf(statusStr, " DESTROYED:");
+		(*std::format_to_n(statusStr, sizeof(statusStr) - 1, " DESTROYED:").out = '\0');
 	//else if (Team::noPain[getTeamId()])
 	//	sprintf(statusStr, " NO PAIN:");
 	else
-		sprintf(statusStr, ":");
-	sprintf(s, "[%.2f] turret.handleWeaponHit%s (%05d)%s ", scenarioTime, statusStr, getPartId(), getName());
+		(*std::format_to_n(statusStr, sizeof(statusStr) - 1, ":").out = '\0');
+	(*std::format_to_n(s, sizeof(s) - 1, "[{:.2f}] turret.handleWeaponHit{} ({:05d}){} ", scenarioTime, mc2::fmt::safe(statusStr), mc2::fmt::as_i32(getPartId()), mc2::fmt::safe(getName())).out = '\0');
 	CombatLog->write(s);
 	GameObjectPtr attacker = ObjectManager->getByWatchID(shotInfo->attackerWID);
 	if (attacker)
-		sprintf(s, "     attacker = (%05d)%s", attacker->getPartId(), attacker->getName());
+		(*std::format_to_n(s, sizeof(s) - 1, "     attacker = ({:05d}){}", mc2::fmt::as_i32(attacker->getPartId()), mc2::fmt::safe(attacker->getName())).out = '\0');
 	else
-		sprintf(s, "     attacker = (%05d)<unknown WID>", shotInfo->attackerWID);
+		(*std::format_to_n(s, sizeof(s) - 1, "     attacker = ({:05d})<unknown WID>", mc2::fmt::as_i32(shotInfo->attackerWID)).out = '\0');
 	CombatLog->write(s);
-	sprintf(s, "     weapon = (%03d)%s, hitLocation = (%d)%s, damage = %.2f, angle = %.2f",
-		shotInfo->masterId, MasterComponent::masterList[shotInfo->masterId].getName(),
-		shotInfo->hitLocation, (shotInfo->hitLocation > -1) ? locationStrings[shotInfo->hitLocation] : "none",
+	(*std::format_to_n(s, sizeof(s) - 1, "     weapon = ({:03d}){}, hitLocation = ({:d}){}, damage = {:.2f}, angle = {:.2f}",
+		mc2::fmt::as_i32(shotInfo->masterId), mc2::fmt::safe(MasterComponent::masterList[shotInfo->masterId].getName()),
+		mc2::fmt::as_i32(shotInfo->hitLocation), mc2::fmt::safe((shotInfo->hitLocation > -1) ? locationStrings[shotInfo->hitLocation] : "none"),
 		shotInfo->damage,
-		shotInfo->entryAngle);
+		shotInfo->entryAngle).out = '\0');
 	CombatLog->write(s);
 	CombatLog->write(" ");
 }
@@ -2128,7 +2129,7 @@ void Turret::init (bool create, ObjectTypePtr _type) {
 		if (!buildingAppearanceType)
 		{
 			char msg[1024];
-			sprintf(msg,"No Building Appearance Named %s",appearName);
+			(*std::format_to_n(msg,sizeof(msg) - 1,"No Building Appearance Named {}",mc2::fmt::safe(appearName)).out = '\0');
 			Fatal(0,msg);
 		}
 	}
@@ -2195,7 +2196,7 @@ long Turret::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChunk
 		ObjectManager->createExplosion(TURRET_EXPLOSION_ID,nullptr,position,explDamage,explRadius);
 		if (CombatLog) {
 			char s[1024];
-			sprintf(s, "[%.2f] turret.destroyed: (%05d)%s", scenarioTime, getPartId(), getName());
+			(*std::format_to_n(s, sizeof(s) - 1, "[{:.2f}] turret.destroyed: ({:05d}){}", scenarioTime, mc2::fmt::as_i32(getPartId()), mc2::fmt::safe(getName())).out = '\0');
 			CombatLog->write(s);
 			CombatLog->write(" ");
 		}
@@ -2264,12 +2265,12 @@ void Turret::updateDebugWindow (GameDebugWindow* debugWindow) {
 		}
 	else
 		debugWindow->print("<no name>");
-	sprintf(s, "team: %d, partID: %d, objT: %d", getTeamId(), getPartId(), getObjectType()->whatAmI());
+	(*std::format_to_n(s, sizeof(s) - 1, "team: {:d}, partID: {:d}, objT: {:d}", mc2::fmt::as_i32(getTeamId()), mc2::fmt::as_i32(getPartId()), mc2::fmt::as_i32(getObjectType()->whatAmI())).out = '\0');
 	debugWindow->print(s);
 	GameObjectPtr target = ObjectManager->getByWatchID(targetWID);
-	sprintf(s, "target: %d", target ? target->getPartId() : 0);
+	(*std::format_to_n(s, sizeof(s) - 1, "target: {:d}", mc2::fmt::as_i32(target ? target->getPartId() : 0)).out = '\0');
 	debugWindow->print(s);
-	sprintf(s, "damage: %.2f/%.2f", getDamage(), getDamageLevel());
+	(*std::format_to_n(s, sizeof(s) - 1, "damage: {:.2f}/{:.2f}", getDamage(), getDamageLevel()).out = '\0');
 	debugWindow->print(s);
 }
 

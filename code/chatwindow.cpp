@@ -9,6 +9,7 @@
 #include"mclib.h"
 #include"multplyr.h"
 #include "../resource.h"
+#include "mc2fmt.h"
 
 ChatWindow* ChatWindow::s_instance = nullptr;
 
@@ -57,7 +58,7 @@ int ChatWindow::initInstance()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char buffer2[512];
-		sprintf( buffer2, "couldn't open file %s", static_cast<const char*>(path) );
+		(*std::format_to_n( buffer2, sizeof(buffer2) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 		Assert( 0, 0, buffer2 );
 		return false;	
 
@@ -318,7 +319,7 @@ void ChatWidget::init( )
 	if ( NO_ERR != file.open( path ) )
 	{
 		char buffer2[512];
-		sprintf( buffer2, "couldn't open file %s", static_cast<const char*>(path) );
+		(*std::format_to_n( buffer2, sizeof(buffer2) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 		Assert( 0, 0, buffer2 );
 		return;
 

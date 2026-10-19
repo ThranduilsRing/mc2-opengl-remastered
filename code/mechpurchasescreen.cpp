@@ -18,6 +18,7 @@ MechPurchaseScreen.cpp			: Implementation of the MechPurchaseScreen component.
 #include"chatwindow.h"
 #include"multplyr.h"
 #include"../GuiRuntime/GuiRuntime.h"
+#include "mc2fmt.h"
 
 MechPurchaseScreen* MechPurchaseScreen::s_instance = nullptr;
 
@@ -147,7 +148,7 @@ void MechPurchaseScreen::update()
 	
 
 	char tmp[64];
-	sprintf( tmp, "%ld ", amount);
+	(*std::format_to_n( tmp, sizeof(tmp) - 1, "{:d} ", mc2::fmt::as_i32(amount)).out = '\0');
 	textObjects[1].setText( tmp );
 	textObjects[1].setColor( color );
 	// CBILLS-MIRROR-1: the defs page suppresses the legacy readout — mirror the

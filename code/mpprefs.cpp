@@ -16,6 +16,7 @@ mpprefs.cpp			: Implementation of the mpprefs component.ef
 #include"multplyr.h"
 #include"gamesound.h"
 #include"chatwindow.h"
+#include "mc2fmt.h"
 
 constexpr int MP_PREFS_BASE = 200;
 constexpr int MP_PREFS_STRIPE = 201;
@@ -70,7 +71,7 @@ int MPPrefs::init( FitIniFile& file )
 	const char* headers[3] = {"PlayerNameComboBox", "UnitNameComboBox", "UnitInsigniaComboBox" };
 	for (int i = 0; i< count; i++ )
 	{
-		sprintf( blockName, "ComboBox%ld",  i );
+		(*std::format_to_n( blockName, sizeof(blockName) - 1, "ComboBox{:d}",  mc2::fmt::as_i32(i) ).out = '\0');
 		file.seekBlock( blockName );
 		file.readIdString( "FileName", blockName, 255);
 
@@ -86,7 +87,7 @@ int MPPrefs::init( FitIniFile& file )
 		if ( NO_ERR != tmpFile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", static_cast<const char*>(path) );
+			(*std::format_to_n( error, sizeof(error) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 			Assert( 0, 0, error );
 			return -1;
 		}
@@ -162,7 +163,7 @@ void MPPrefs::begin()
     // need to add items to the save game list
 	char findString[512];
     char path[256];
-	sprintf(findString,"%s*.tga",path2insignia);
+	(*std::format_to_n(findString,sizeof(findString) - 1,"{}*.tga",mc2::fmt::safe(path2insignia)).out = '\0');
 
 	WIN32_FIND_DATA	findResult;
 	HANDLE searchHandle = FindFirstFile(findString,&findResult); 
@@ -172,7 +173,7 @@ void MPPrefs::begin()
 		if ((findResult.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 )
 		{
 			aBmpListItem* pItem = new aBmpListItem;
-			sprintf(path, "%s%s", path2insignia, findResult.cFileName  );
+			(*std::format_to_n(path, sizeof(path) - 1, "{}{}", mc2::fmt::safe(path2insignia), mc2::fmt::safe(findResult.cFileName)  ).out = '\0');
 			if ( !pItem->setBmp( findResult.cFileName ) )
 			{
 				delete pItem;

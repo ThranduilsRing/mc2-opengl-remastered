@@ -70,7 +70,7 @@ int Mechlopedia::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(path) );
+		(*std::format_to_n( errorStr, sizeof(errorStr) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 		Assert( 0, 0, errorStr );
 		return 0;
 	}
@@ -370,7 +370,7 @@ void Mechlopedia::MechScreen::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(path) );
+		(*std::format_to_n( errorStr, sizeof(errorStr) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 		Assert( 0, 0, errorStr );
 		return;
 	}
@@ -944,7 +944,7 @@ void Mechlopedia::WeaponScreen::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(path) );
+		(*std::format_to_n( errorStr, sizeof(errorStr) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 		Assert( 0, 0, errorStr );
 	}
 
@@ -1248,7 +1248,7 @@ void Mechlopedia::PersonalityScreen::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(path) );
+		(*std::format_to_n( errorStr, sizeof(errorStr) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 		Assert( 0, 0, errorStr );
 		return;
 	}
@@ -1387,7 +1387,7 @@ void MechlopediaListItem::init( )
 	if ( NO_ERR != file.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn' open file %s", static_cast<const char*>(path) );
+		(*std::format_to_n( errorStr, sizeof(errorStr) - 1, "couldn' open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 		Assert( 0, 0, errorStr );
 		return;
 	}
@@ -1443,7 +1443,7 @@ void Mechlopedia::BuildingScreen::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(path) );
+		(*std::format_to_n( errorStr, sizeof(errorStr) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 		Assert( 0, 0, errorStr );
 		return;
 	}

@@ -21,7 +21,7 @@ extern float MaxExtractUnitDistance;
 void Part::Save (FitIniFilePtr file, long partNum)
 {
 	char partId[1024];
-	sprintf(partId,"Part%d", static_cast<int>(partNum)+1);
+	(*std::format_to_n(partId,sizeof(partId) - 1,"Part{:d}", mc2::fmt::as_i32(static_cast<int>(partNum)+1)).out = '\0');
 
 	file->writeBlock(partId);
 
@@ -109,7 +109,7 @@ void Mission::save (const char *saveFileName)
 	loadProgress = 3.0f;
 
 	char tmpString[2048];
-	sprintf(tmpString,"%d",timeGetTime());
+	(*std::format_to_n(tmpString,sizeof(tmpString) - 1,"{:d}",mc2::fmt::as_i32(timeGetTime())).out = '\0');
 
 	FullPathFileName tmpName;
 	tmpName.init(savePath,tmpString,".fti");
@@ -193,7 +193,7 @@ void Mission::save (const char *saveFileName)
 
 	loadProgress = 75.0f;
 
-	sprintf(tmpString,"%d",timeGetTime());
+	(*std::format_to_n(tmpString,sizeof(tmpString) - 1,"{:d}",mc2::fmt::as_i32(timeGetTime())).out = '\0');
 
 	tmpName.init(savePath,tmpString,".abl");
 
@@ -284,7 +284,7 @@ void Mission::save (const char *saveFileName)
 void Part::Load (FitIniFilePtr file, long partNum)
 {
 	char partId[1024];
-	sprintf(partId,"Part%d", static_cast<int>(partNum));
+	(*std::format_to_n(partId,sizeof(partId) - 1,"Part{:d}", mc2::fmt::as_i32(static_cast<int>(partNum))).out = '\0');
 
 	long result = file->seekBlock(partId);
 	if (result != NO_ERR)
@@ -473,7 +473,7 @@ void Mission::loadDestroyAndRestore() {
 // Reset the turn counters and bring up ABL, the TGL and the mission heap.
 void Mission::loadResetSimState(MissionLoadFrame& f) {
 	auto& tmpString = f.tmpString;
-	sprintf(tmpString,"%d",timeGetTime());
+	(*std::format_to_n(tmpString,sizeof(tmpString) - 1,"{:d}",mc2::fmt::as_i32(timeGetTime())).out = '\0');
 
 				
 	turn = 0;

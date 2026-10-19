@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string_view>
+#include "mc2fmt.h"
 
 #ifdef MC2_VULKAN
 #include "vulkan_context.h"
@@ -148,25 +149,23 @@ Snapshot take() {
 
 std::string format(std::string_view phase, const Snapshot& s) {
     char buf[640];
-    std::snprintf(buf, sizeof(buf),
-                  "[VRAM v1] phase=%s backend=%s vk_budget_mb=%lld vk_usage_mb=%lld vk_allocated_mb=%lld adapter_dedicated_mb=%lld "
-                  "proc_dedicated_mb=%lld proc_budget_mb=%lld",
-                  std::string(phase).c_str(), s.backend ? s.backend : "gl",
-                  static_cast<long long>(bytesToMib(s.vkBudgetBytes)), static_cast<long long>(bytesToMib(s.vkUsageBytes)), static_cast<long long>(bytesToMib(s.vkAllocatedBytes)),
-                  static_cast<long long>(bytesToMib(s.dxgiAdapterDedicatedBytes)), static_cast<long long>(bytesToMib(s.dxgiProcessUsageBytes)),
-                  static_cast<long long>(bytesToMib(s.dxgiProcessBudgetBytes)));
+    (*std::format_to_n(buf, (sizeof(buf)) - 1,
+                  "[VRAM v1] phase={} backend={} vk_budget_mb={:d} vk_usage_mb={:d} vk_allocated_mb={:d} adapter_dedicated_mb={:d} proc_dedicated_mb={:d} proc_budget_mb={:d}",
+                  std::string(phase).c_str(), mc2::fmt::safe(s.backend ? s.backend : "gl"),
+                  mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.vkBudgetBytes))), mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.vkUsageBytes))), mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.vkAllocatedBytes))),
+                  mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.dxgiAdapterDedicatedBytes))), mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.dxgiProcessUsageBytes))),
+                  mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.dxgiProcessBudgetBytes)))).out = '\0');
     return buf;
 }
 
 std::string toJson(const Snapshot& s) {
     char buf[640];
-    std::snprintf(buf, sizeof(buf),
-                  "{\"backend\": \"%s\", \"vk_budget_mb\": %lld, \"vk_usage_mb\": %lld, \"vk_allocated_mb\": %lld, "
-                  "\"adapter_dedicated_mb\": %lld, \"proc_dedicated_mb\": %lld, \"proc_budget_mb\": %lld}",
-                  s.backend ? s.backend : "gl",
-                  static_cast<long long>(bytesToMib(s.vkBudgetBytes)), static_cast<long long>(bytesToMib(s.vkUsageBytes)), static_cast<long long>(bytesToMib(s.vkAllocatedBytes)),
-                  static_cast<long long>(bytesToMib(s.dxgiAdapterDedicatedBytes)), static_cast<long long>(bytesToMib(s.dxgiProcessUsageBytes)),
-                  static_cast<long long>(bytesToMib(s.dxgiProcessBudgetBytes)));
+    (*std::format_to_n(buf, (sizeof(buf)) - 1,
+                  "{{\"backend\": \"{}\", \"vk_budget_mb\": {:d}, \"vk_usage_mb\": {:d}, \"vk_allocated_mb\": {:d}, \"adapter_dedicated_mb\": {:d}, \"proc_dedicated_mb\": {:d}, \"proc_budget_mb\": {:d}}}",
+                  mc2::fmt::safe(s.backend ? s.backend : "gl"),
+                  mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.vkBudgetBytes))), mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.vkUsageBytes))), mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.vkAllocatedBytes))),
+                  mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.dxgiAdapterDedicatedBytes))), mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.dxgiProcessUsageBytes))),
+                  mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.dxgiProcessBudgetBytes)))).out = '\0');
     return buf;
 }
 

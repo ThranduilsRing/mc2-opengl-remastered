@@ -20,6 +20,7 @@ LogisticsDialog.cpp			: Implementation of the LogisticsDialog component.
 #include"sounds.h"
 #include"gamesound.h"
 #include"UiDefs.h"
+#include "mc2fmt.h"
 
 std::unique_ptr<LogisticsOKDialog> LogisticsOKDialog::s_instance = nullptr;
 std::unique_ptr<LogisticsSaveDialog> LogisticsSaveDialog::s_instance = nullptr;
@@ -589,7 +590,7 @@ void LogisticsSaveDialog::initDialog( const char* path, bool bCampaign )
 	gameListBox.removeAllItems( true );
 	// need to add items to the save game list
 	char findString[512];
-	sprintf(findString,"%s*.fit",path);
+	(*std::format_to_n(findString,sizeof(findString) - 1,"{}*.fit",mc2::fmt::safe(path)).out = '\0');
 
 	WIN32_FIND_DATA	findResult;
 	HANDLE searchHandle = FindFirstFile(findString,&findResult); 
@@ -728,7 +729,7 @@ bool LogisticsSaveDialog::isCorrectVersionSaveGame( char* fileName )
 	if ( NO_ERR != file.open( const_cast<char*>(static_cast<const char*>(path)), READ, 50, do_not_make_lower))
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(path) );
+		(*std::format_to_n( errorStr, sizeof(errorStr) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 		STOP((errorStr));
 	}
 
@@ -755,7 +756,7 @@ void LogisticsSaveDialog::readCampaignNameFromFile( const char* fileName, char* 
 	if ( NO_ERR != file.open( const_cast<char*>(static_cast<const char*>(path)) ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(path) );
+		(*std::format_to_n( errorStr, sizeof(errorStr) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 		Assert( 0, 0, errorStr );
 	}
 
@@ -1487,7 +1488,7 @@ void LogisticsVariantDialog::beginTranscript()
 void LogisticsVariantDialog::initTranscript()
 {
 	char findString[512];
-	sprintf(findString,"%s*.txt","data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR "transcripts" PATH_SEPARATOR);
+	(*std::format_to_n(findString,sizeof(findString) - 1,"{}*.txt",mc2::fmt::safe("data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR "transcripts" PATH_SEPARATOR)).out = '\0');
 
 	gameListBox.removeAllItems( true );
 
@@ -2117,7 +2118,7 @@ int LogisticsMapInfoDialog::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char buffer2[512];
-		sprintf( buffer2, "couldn't open file %s", static_cast<const char*>(path) );
+		(*std::format_to_n( buffer2, sizeof(buffer2) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 		Assert( 0, 0, buffer2 );
 		return false;	
 

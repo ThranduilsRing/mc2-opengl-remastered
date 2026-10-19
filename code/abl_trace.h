@@ -31,6 +31,7 @@
 #include <cstdlib>
 #include <chrono>
 #include <algorithm>
+#include "mc2fmt.h"
 
 namespace mc2_abl_trace {
 
@@ -113,10 +114,9 @@ struct FireScope {
 			g_frame.maxDepth = depth;
 
 		char buf[256];
-		snprintf(buf, sizeof(buf),
-			"{\"ev\":\"fire\",\"who\":\"%s\",\"wid\":%d,\"stmts\":%ld,"
-			"\"us\":%.2f,\"depth\":%d,\"states\":%ld}",
-			who, wid, stmts, us, depth, states);
+		(*std::format_to_n(buf, (sizeof(buf)) - 1,
+			"{{\"ev\":\"fire\",\"who\":\"{}\",\"wid\":{:d},\"stmts\":{:d},\"us\":{:.2f},\"depth\":{:d},\"states\":{:d}}}",
+			mc2::fmt::safe(who), mc2::fmt::as_i32(wid), mc2::fmt::as_i32(stmts), us, mc2::fmt::as_i32(depth), mc2::fmt::as_i32(states)).out = '\0');
 		mc2_diag::writeEvent("ABL", 1, 0, buf);
 	}
 };
@@ -132,11 +132,10 @@ inline void flushFrame(unsigned long frame, unsigned long tick) {
 	}
 	if (g_frame.fires > 0) {
 		char buf[224];
-		snprintf(buf, sizeof(buf),
-			"{\"ev\":\"frame\",\"tick\":%lu,\"fires\":%ld,\"stmts\":%ld,"
-			"\"us\":%.2f,\"maxDepth\":%d,\"states\":%ld}",
-			tick, g_frame.fires, g_frame.stmts, g_frame.us,
-			g_frame.maxDepth, g_frame.states);
+		(*std::format_to_n(buf, (sizeof(buf)) - 1,
+			"{{\"ev\":\"frame\",\"tick\":{:d},\"fires\":{:d},\"stmts\":{:d},\"us\":{:.2f},\"maxDepth\":{:d},\"states\":{:d}}}",
+			mc2::fmt::as_u32(tick), mc2::fmt::as_i32(g_frame.fires), mc2::fmt::as_i32(g_frame.stmts), g_frame.us,
+			mc2::fmt::as_i32(g_frame.maxDepth), mc2::fmt::as_i32(g_frame.states)).out = '\0');
 		mc2_diag::writeEvent("ABL", 1, frame, buf);
 	}
 	g_frame.reset();

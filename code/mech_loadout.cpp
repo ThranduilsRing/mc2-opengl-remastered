@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech_internal.h.
 #include "mech_internal.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 
 constexpr float ARMOR_POINTS_PER_NEWARMOR = 32.0f;
@@ -54,8 +55,8 @@ static int resolveOptionalEquipmentIdColumn(CSVFile* mechFile, long row)
 	// modder's file).
 	auto idAliasContext = [&](const char* msg, const char* expected) -> std::string {
 		char fieldBuf[48];
-		std::snprintf(fieldBuf, sizeof(fieldBuf), "EquipmentId (csv col %d, row %ld)",
-		              static_cast<int>(kEquipmentIdCsvColumn), row);
+		(*std::format_to_n(fieldBuf, (sizeof(fieldBuf)) - 1, "EquipmentId (csv col {:d}, row {:d})",
+		              mc2::fmt::as_i32(static_cast<int>(kEquipmentIdCsvColumn)), mc2::fmt::as_i32(row)).out = '\0');
 		ModderFinding f;
 		f.message  = msg;
 		f.file     = mechFile->getFilename() ? mechFile->getFilename() : "";

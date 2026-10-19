@@ -86,6 +86,7 @@ static_assert(sizeof(std::unique_ptr<Appearance>) == sizeof(Appearance*), "appea
 #include <stdint.h>
 #include "../GameOS/gameos/diagnostic_trace.h"   // COMBAT-TRACE-1: weapon-fire JSONL events
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 //---------------------------------------------------------------------------
 extern GameLog* CombatLog;
@@ -341,11 +342,11 @@ void DebugWeaponFireChunk (WeaponFireChunkPtr chunk1, WeaponFireChunkPtr chunk2,
 
 	if (attacker) {
 		if (attacker->isMover()) {
-			sprintf(outString, "attacker = %s (%d)\n", attacker->getName(), attacker->getPartId());
+			(*std::format_to_n(outString, sizeof(outString) - 1, "attacker = {} ({:d})\n", mc2::fmt::safe(attacker->getName()), mc2::fmt::as_i32(attacker->getPartId())).out = '\0');
 			strcat(ChunkDebugMsg, outString);
 			}
 		else {
-			sprintf(outString, "attacker = objClass %d (%d)\n", attacker->getObjectClass(), attacker->getPartId());
+			(*std::format_to_n(outString, sizeof(outString) - 1, "attacker = objClass {:d} ({:d})\n", mc2::fmt::as_i32(attacker->getObjectClass()), mc2::fmt::as_i32(attacker->getPartId())).out = '\0');
 			strcat(ChunkDebugMsg, outString);
 		}
 		}
@@ -374,53 +375,53 @@ void DebugWeaponFireChunk (WeaponFireChunkPtr chunk1, WeaponFireChunkPtr chunk2,
 
 		if (target) {
 			if (target->isMover()) {
-				sprintf(outString, "target = %s (%d)\n", target->getName(), target->getPartId());
+				(*std::format_to_n(outString, sizeof(outString) - 1, "target = {} ({:d})\n", mc2::fmt::safe(target->getName()), mc2::fmt::as_i32(target->getPartId())).out = '\0');
 				strcat(ChunkDebugMsg, outString);
 				}
 			else {
-				sprintf(outString, "target = objClass %d (%d)\n", target->getObjectClass(), target->getPartId());
+				(*std::format_to_n(outString, sizeof(outString) - 1, "target = objClass {:d} ({:d})\n", mc2::fmt::as_i32(target->getObjectClass()), mc2::fmt::as_i32(target->getPartId())).out = '\0');
 				strcat(ChunkDebugMsg, outString);
 			}
 			}
 		else if (isTargetPoint) {
-			sprintf(outString, "target point = (%f, %f, %f)\n", targetPoint.x, targetPoint.y, targetPoint.z);
+			(*std::format_to_n(outString, sizeof(outString) - 1, "target point = ({:f}, {:f}, {:f})\n", targetPoint.x, targetPoint.y, targetPoint.z).out = '\0');
 			strcat(ChunkDebugMsg, outString);
 			}
 		else {
 			strcat(ChunkDebugMsg, "target = ???\n");
 		}
 
-		sprintf(outString, "targetType = %d\n", chunk1->targetType);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "targetType = {:d}\n", mc2::fmt::as_i32(chunk1->targetType)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "targetId = %d\n", chunk1->targetId);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "targetId = {:d}\n", mc2::fmt::as_i32(chunk1->targetId)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "specialType = %d\n", chunk1->specialType);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "specialType = {:d}\n", mc2::fmt::as_i32(chunk1->specialType)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "specialId = %d\n", chunk1->specialId);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "specialId = {:d}\n", mc2::fmt::as_i32(chunk1->specialId)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "targetCell = [%d, %d]\n", chunk1->targetCell[0], chunk1->targetCell[1]);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "targetCell = [{:d}, {:d}]\n", mc2::fmt::as_i32(chunk1->targetCell[0]), mc2::fmt::as_i32(chunk1->targetCell[1])).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "weaponIndex = %d\n", chunk1->weaponIndex);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "weaponIndex = {:d}\n", mc2::fmt::as_i32(chunk1->weaponIndex)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "hit = %c\n", chunk1->hit ? 'T' : 'N');
+		(*std::format_to_n(outString, sizeof(outString) - 1, "hit = {:c}\n", mc2::fmt::as_char(chunk1->hit ? 'T' : 'N')).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "entryAngle = %d\n", chunk1->entryAngle);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "entryAngle = {:d}\n", mc2::fmt::as_i32(chunk1->entryAngle)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "numMissiles = %d\n", chunk1->numMissiles);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "numMissiles = {:d}\n", mc2::fmt::as_i32(chunk1->numMissiles)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "hitLocation = %d\n", chunk1->hitLocation);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "hitLocation = {:d}\n", mc2::fmt::as_i32(chunk1->hitLocation)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "data = %x\n", chunk1->data);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "data = {:x}\n", mc2::fmt::as_u32(chunk1->data)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 	}
 
@@ -446,53 +447,53 @@ void DebugWeaponFireChunk (WeaponFireChunkPtr chunk1, WeaponFireChunkPtr chunk2,
 
 		if (target) {
 			if (target->isMover()) {
-				sprintf(outString, "target = %s (%d)\n", target->getName(), target->getPartId());
+				(*std::format_to_n(outString, sizeof(outString) - 1, "target = {} ({:d})\n", mc2::fmt::safe(target->getName()), mc2::fmt::as_i32(target->getPartId())).out = '\0');
 				strcat(ChunkDebugMsg, outString);
 				}
 			else {
-				sprintf(outString, "target = objClass %d (%d)\n", target->getObjectClass(), target->getPartId());
+				(*std::format_to_n(outString, sizeof(outString) - 1, "target = objClass {:d} ({:d})\n", mc2::fmt::as_i32(target->getObjectClass()), mc2::fmt::as_i32(target->getPartId())).out = '\0');
 				strcat(ChunkDebugMsg, outString);
 			}
 			}
 		else if (isTargetPoint) {
-			sprintf(outString, "target point = (%f, %f, %f)\n", targetPoint.x, targetPoint.y, targetPoint.z);
+			(*std::format_to_n(outString, sizeof(outString) - 1, "target point = ({:f}, {:f}, {:f})\n", targetPoint.x, targetPoint.y, targetPoint.z).out = '\0');
 			strcat(ChunkDebugMsg, outString);
 			}
 		else {
 			strcat(ChunkDebugMsg, "target = ???\n");
 		}
 
-		sprintf(outString, "targetType = %d\n", chunk2->targetType);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "targetType = {:d}\n", mc2::fmt::as_i32(chunk2->targetType)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "targetId = %d\n", chunk2->targetId);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "targetId = {:d}\n", mc2::fmt::as_i32(chunk2->targetId)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "specialType = %d\n", chunk2->specialType);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "specialType = {:d}\n", mc2::fmt::as_i32(chunk2->specialType)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "specialId = %d\n", chunk2->specialId);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "specialId = {:d}\n", mc2::fmt::as_i32(chunk2->specialId)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "targetCell = [%d, %d]\n", chunk2->targetCell[0], chunk1->targetCell[1]);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "targetCell = [{:d}, {:d}]\n", mc2::fmt::as_i32(chunk2->targetCell[0]), mc2::fmt::as_i32(chunk1->targetCell[1])).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "weaponIndex = %d\n", chunk2->weaponIndex);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "weaponIndex = {:d}\n", mc2::fmt::as_i32(chunk2->weaponIndex)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "hit = %c\n", chunk2->hit ? 'T' : 'N');
+		(*std::format_to_n(outString, sizeof(outString) - 1, "hit = {:c}\n", mc2::fmt::as_char(chunk2->hit ? 'T' : 'N')).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "entryAngle = %d\n", chunk2->entryAngle);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "entryAngle = {:d}\n", mc2::fmt::as_i32(chunk2->entryAngle)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "numMissiles = %d\n", chunk2->numMissiles);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "numMissiles = {:d}\n", mc2::fmt::as_i32(chunk2->numMissiles)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "hitLocation = %d\n", chunk2->hitLocation);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "hitLocation = {:d}\n", mc2::fmt::as_i32(chunk2->hitLocation)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "data = %x\n", chunk2->data);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "data = {:x}\n", mc2::fmt::as_u32(chunk2->data)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 	}
 
@@ -514,10 +515,10 @@ void LogWeaponFireChunk (WeaponFireChunkPtr chunk, GameObjectPtr attacker, GameO
 	// the assign side-effect in this trace path (live combatants already have a WID).
 	if (mc2_diag::tagEnabled("COMBAT") && attacker && target) {
 		char _cbf[160];
-		snprintf(_cbf, sizeof(_cbf),
-			"{\"ev\":\"fire\",\"a_wid\":%lu,\"a_team\":%ld,\"t_wid\":%lu,\"t_team\":%ld}",
-			attacker->getWatchID(false), attacker->getTeamId(),
-			target->getWatchID(false), target->getTeamId());
+		(*std::format_to_n(_cbf, (sizeof(_cbf)) - 1,
+			"{{\"ev\":\"fire\",\"a_wid\":{:d},\"a_team\":{:d},\"t_wid\":{:d},\"t_team\":{:d}}}",
+			mc2::fmt::as_u32(attacker->getWatchID(false)), mc2::fmt::as_i32(attacker->getTeamId()),
+			mc2::fmt::as_u32(target->getWatchID(false)), mc2::fmt::as_i32(target->getTeamId())).out = '\0');
 		mc2_diag::writeEvent("COMBAT", 1, g_mc2FrameCounter, _cbf);
 	}
 }
@@ -534,10 +535,10 @@ void GameObject::emitCombatDeathTrace (long newStatus)
 	if (!mc2_diag::tagEnabled("COMBAT"))
 		return;
 	char _cbf[160];
-	snprintf(_cbf, sizeof(_cbf),
-		"{\"ev\":\"%s\",\"wid\":%lu,\"team\":%ld,\"class\":%d}",
-		(newStatus == OBJECT_STATUS_DESTROYED) ? "destroyed" : "disabled",
-		getWatchID(false), getTeamId(), static_cast<int>(getObjectClass()));
+	(*std::format_to_n(_cbf, (sizeof(_cbf)) - 1,
+		"{{\"ev\":\"{}\",\"wid\":{:d},\"team\":{:d},\"class\":{:d}}}",
+		mc2::fmt::safe((newStatus == OBJECT_STATUS_DESTROYED) ? "destroyed" : "disabled"),
+		mc2::fmt::as_u32(getWatchID(false)), mc2::fmt::as_i32(getTeamId()), mc2::fmt::as_i32(static_cast<int>(getObjectClass()))).out = '\0');
 	mc2_diag::writeEvent("COMBAT", 1, 0, _cbf);
 }
 
@@ -721,31 +722,31 @@ void WeaponFireChunk::pack (GameObjectPtr attacker) {
 	if ((targetType < 0) || (targetType > 3)) {
 		DebugWeaponFireChunk(this, NULL, attacker);
 		char errMsg[1024];
-		sprintf(errMsg, " WeaponFireChunk.pack: bad targetType %d (save wfchunk.dbg file) ", targetType);
+		(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " WeaponFireChunk.pack: bad targetType {:d} (save wfchunk.dbg file) ", mc2::fmt::as_i32(targetType)).out = '\0');
 		Assert(false, targetType, errMsg);
 	}
 	if ((weaponIndex < 0) || (weaponIndex > 31)) {
 		DebugWeaponFireChunk(this, NULL, attacker);
 		char errMsg[1024];
-		sprintf(errMsg, " WeaponFireChunk.pack: bad weaponIndex %d (save wfchunk.dbg file) ", weaponIndex);
+		(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " WeaponFireChunk.pack: bad weaponIndex {:d} (save wfchunk.dbg file) ", mc2::fmt::as_i32(weaponIndex)).out = '\0');
 		Assert(false, weaponIndex, errMsg);
 	}
 	if ((hitLocation < -1) || (hitLocation >= 12)) {
 		DebugWeaponFireChunk(this, NULL, attacker);
 		char errMsg[1024];
-		sprintf(errMsg, " WeaponFireChunk.pack: bad hitLocation %d (save wfchunk.dbg file) ", hitLocation);
+		(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " WeaponFireChunk.pack: bad hitLocation {:d} (save wfchunk.dbg file) ", mc2::fmt::as_i32(hitLocation)).out = '\0');
 		Assert(false, hitLocation, errMsg);
 	}
 	if ((entryAngle < 0) || (entryAngle > 3)) {
 		DebugWeaponFireChunk(this, NULL, attacker);
 		char errMsg[1024];
-		sprintf(errMsg, " WeaponFireChunk.pack: bad entryAngle %d (save wfchunk.dbg file) ", entryAngle);
+		(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " WeaponFireChunk.pack: bad entryAngle {:d} (save wfchunk.dbg file) ", mc2::fmt::as_i32(entryAngle)).out = '\0');
 		Assert(false, entryAngle, errMsg);
 	}
 	if ((numMissiles < 0) || (numMissiles > 15)) {
 		DebugWeaponFireChunk(this, NULL, attacker);
 		char errMsg[1024];
-		sprintf(errMsg, " WeaponFireChunk.pack: bad numMissiles %d (save wfchunk.dbg file) ", numMissiles);
+		(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " WeaponFireChunk.pack: bad numMissiles {:d} (save wfchunk.dbg file) ", mc2::fmt::as_i32(numMissiles)).out = '\0');
 		Assert(false, numMissiles, errMsg);
 	}
 #endif
@@ -852,31 +853,31 @@ void WeaponFireChunk::unpack (GameObjectPtr attacker) {
 	if ((targetType < 0) || (targetType > 3)) {
 		DebugWeaponFireChunk(this, NULL, attacker);
 		char errMsg[1024];
-		sprintf(errMsg, " WeaponFireChunk.unpack: bad targetType %d (save wfchunk.dbg file) ", targetType);
+		(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " WeaponFireChunk.unpack: bad targetType {:d} (save wfchunk.dbg file) ", mc2::fmt::as_i32(targetType)).out = '\0');
 		Assert(false, targetType, errMsg);
 	}
 	if ((weaponIndex < 0) || (weaponIndex > 31)) {
 		DebugWeaponFireChunk(this, NULL, attacker);
 		char errMsg[1024];
-		sprintf(errMsg, " WeaponFireChunk.unpack: bad weaponIndex %d (save wfchunk.dbg file) ", weaponIndex);
+		(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " WeaponFireChunk.unpack: bad weaponIndex {:d} (save wfchunk.dbg file) ", mc2::fmt::as_i32(weaponIndex)).out = '\0');
 		Assert(false, weaponIndex, errMsg);
 	}
 	if ((hitLocation < -1) || (hitLocation >= 12)) {
 		DebugWeaponFireChunk(this, NULL, attacker);
 		char errMsg[1024];
-		sprintf(errMsg, " WeaponFireChunk.unpack: bad hitLocation %d (save wfchunk.dbg file) ", hitLocation);
+		(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " WeaponFireChunk.unpack: bad hitLocation {:d} (save wfchunk.dbg file) ", mc2::fmt::as_i32(hitLocation)).out = '\0');
 		Assert(false, hitLocation, errMsg);
 	}
 	if ((entryAngle < 0) || (entryAngle > 3)) {
 		DebugWeaponFireChunk(this, NULL, attacker);
 		char errMsg[1024];
-		sprintf(errMsg, " WeaponFireChunk.unpack: bad entryAngle %d (save wfchunk.dbg file) ", entryAngle);
+		(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " WeaponFireChunk.unpack: bad entryAngle {:d} (save wfchunk.dbg file) ", mc2::fmt::as_i32(entryAngle)).out = '\0');
 		Assert(false, entryAngle, errMsg);
 	}
 	if ((numMissiles < 0) || (numMissiles > 15)) {
 		DebugWeaponFireChunk(this, NULL, attacker);
 		char errMsg[1024];
-		sprintf(errMsg, " WeaponFireChunk.unpack: bad numMissiles %d (save wfchunk.dbg file) ", numMissiles);
+		(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " WeaponFireChunk.unpack: bad numMissiles {:d} (save wfchunk.dbg file) ", mc2::fmt::as_i32(numMissiles)).out = '\0');
 		Assert(false, numMissiles, errMsg);
 	}
 	if (!hit) {
@@ -1013,11 +1014,11 @@ void DebugWeaponHitChunk (WeaponHitChunkPtr chunk1, WeaponHitChunkPtr chunk2) {
 
 		if (target) {
 			if (target->isMover()) {
-				sprintf(outString, "target = %s (%d)\n", target->getName(), target->getPartId());
+				(*std::format_to_n(outString, sizeof(outString) - 1, "target = {} ({:d})\n", mc2::fmt::safe(target->getName()), mc2::fmt::as_i32(target->getPartId())).out = '\0');
 				strcat(ChunkDebugMsg, outString);
 				}
 			else {
-				sprintf(outString, "target = objClass %d (%d)\n", target->getObjectClass(), target->getPartId());
+				(*std::format_to_n(outString, sizeof(outString) - 1, "target = objClass {:d} ({:d})\n", mc2::fmt::as_i32(target->getObjectClass()), mc2::fmt::as_i32(target->getPartId())).out = '\0');
 				strcat(ChunkDebugMsg, outString);
 			}
 			}
@@ -1026,31 +1027,31 @@ void DebugWeaponHitChunk (WeaponHitChunkPtr chunk1, WeaponHitChunkPtr chunk2) {
 		else
 			strcat(ChunkDebugMsg, "target = ???\n");
 
-		sprintf(outString, "targetType = %d\n", chunk1->targetType);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "targetType = {:d}\n", mc2::fmt::as_i32(chunk1->targetType)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "targetId = %d\n", chunk1->targetId);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "targetId = {:d}\n", mc2::fmt::as_i32(chunk1->targetId)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "specialType = %d\n", chunk1->specialType);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "specialType = {:d}\n", mc2::fmt::as_i32(chunk1->specialType)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "specialId = %d\n", chunk1->specialId);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "specialId = {:d}\n", mc2::fmt::as_i32(chunk1->specialId)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "cause = %d\n", chunk1->cause);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "cause = {:d}\n", mc2::fmt::as_i32(chunk1->cause)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "damage = %f\n", chunk1->damage);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "damage = {:f}\n", chunk1->damage).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "hitLocation = %d\n", chunk1->hitLocation);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "hitLocation = {:d}\n", mc2::fmt::as_i32(chunk1->hitLocation)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "entryAngle = %d\n", chunk1->entryAngle);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "entryAngle = {:d}\n", mc2::fmt::as_i32(chunk1->entryAngle)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "refit = %s\n", chunk1->refit ? "true" : "false");
+		(*std::format_to_n(outString, sizeof(outString) - 1, "refit = {}\n", mc2::fmt::safe(chunk1->refit ? "true" : "false")).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 	}
 
@@ -1070,11 +1071,11 @@ void DebugWeaponHitChunk (WeaponHitChunkPtr chunk1, WeaponHitChunkPtr chunk2) {
 
 		if (target) {
 			if (target->isMover()) {
-				sprintf(outString, "target = %s (%d)\n", target->getName(), target->getPartId());
+				(*std::format_to_n(outString, sizeof(outString) - 1, "target = {} ({:d})\n", mc2::fmt::safe(target->getName()), mc2::fmt::as_i32(target->getPartId())).out = '\0');
 				strcat(ChunkDebugMsg, outString);
 				}
 			else {
-				sprintf(outString, "target = objClass %d (%d)\n", target->getObjectClass(), target->getPartId());
+				(*std::format_to_n(outString, sizeof(outString) - 1, "target = objClass {:d} ({:d})\n", mc2::fmt::as_i32(target->getObjectClass()), mc2::fmt::as_i32(target->getPartId())).out = '\0');
 				strcat(ChunkDebugMsg, outString);
 			}
 			}
@@ -1083,31 +1084,31 @@ void DebugWeaponHitChunk (WeaponHitChunkPtr chunk1, WeaponHitChunkPtr chunk2) {
 		else
 			strcat(ChunkDebugMsg, "target = ???\n");
 
-		sprintf(outString, "targetType = %d\n", chunk2->targetType);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "targetType = {:d}\n", mc2::fmt::as_i32(chunk2->targetType)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "targetId = %d\n", chunk2->targetId);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "targetId = {:d}\n", mc2::fmt::as_i32(chunk2->targetId)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "specialType = %d\n", chunk2->specialType);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "specialType = {:d}\n", mc2::fmt::as_i32(chunk2->specialType)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "specialId = %d\n", chunk2->specialId);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "specialId = {:d}\n", mc2::fmt::as_i32(chunk2->specialId)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "cause = %d\n", chunk2->cause);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "cause = {:d}\n", mc2::fmt::as_i32(chunk2->cause)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "damage = %f\n", chunk2->damage);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "damage = {:f}\n", chunk2->damage).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "hitLocation = %d\n", chunk2->hitLocation);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "hitLocation = {:d}\n", mc2::fmt::as_i32(chunk2->hitLocation)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "entryAngle = %d\n", chunk2->entryAngle);
+		(*std::format_to_n(outString, sizeof(outString) - 1, "entryAngle = {:d}\n", mc2::fmt::as_i32(chunk2->entryAngle)).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "refit = %s\n", chunk2->refit ? "true" : "false");
+		(*std::format_to_n(outString, sizeof(outString) - 1, "refit = {}\n", mc2::fmt::safe(chunk2->refit ? "true" : "false")).out = '\0');
 		strcat(ChunkDebugMsg, outString);
 	}
 
@@ -1451,7 +1452,7 @@ bool WeaponHitChunk::valid (long from) {
 					char s[512];
 					long r = (targetId - MIN_TERRAIN_PART_ID) / MAX_MAP_CELL_WIDTH;
 					long c = targetId - MIN_TERRAIN_PART_ID - (MAX_MAP_CELL_WIDTH * r);
-					sprintf(s, "WeaponHitChunk INVALID: NULL terrain target (%d), rc = %d,%d, type = %d, damage = %.2f, data=%d", targetId, r, c, targetType, damage, data);
+					(*std::format_to_n(s, sizeof(s) - 1, "WeaponHitChunk INVALID: NULL terrain target ({:d}), rc = {:d},{:d}, type = {:d}, damage = {:.2f}, data={:d}", mc2::fmt::as_i32(targetId), mc2::fmt::as_i32(r), mc2::fmt::as_i32(c), mc2::fmt::as_i32(targetType), damage, mc2::fmt::as_i32(data)).out = '\0');
 					if (CombatLog) {
 						CombatLog->write(s);
 						CombatLog->dump();

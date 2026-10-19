@@ -508,8 +508,8 @@ static void mc2_watchidLoadDiag(const char* what, long a, long b)
 	if (mc2_diag::tagEnabled("WATCHID_LOAD") &&
 		(s_loadDrops == 1 || (s_loadDrops & 0xFF) == 0)) {
 		char _wl_buf[160];
-		snprintf(_wl_buf, sizeof(_wl_buf),
-			"{\"what\":\"%s\",\"a\":%ld,\"b\":%ld,\"drops\":%lu}", what, a, b, s_loadDrops);
+		(*std::format_to_n(_wl_buf, (sizeof(_wl_buf)) - 1,
+			"{{\"what\":\"{}\",\"a\":{:d},\"b\":{:d},\"drops\":{:d}}}", mc2::fmt::safe(what), mc2::fmt::as_i32(a), mc2::fmt::as_i32(b), mc2::fmt::as_u32(s_loadDrops)).out = '\0');
 		mc2_diag::writeEvent("WATCHID_LOAD", 1, 0, _wl_buf);
 	}
 }

@@ -23,6 +23,7 @@
 #include "Gates/gate.h"
 #include <cstdlib>
 #include <chrono>
+#include "mc2fmt.h"
 
 namespace mc2_object_walk_trace {
 
@@ -86,12 +87,11 @@ struct SweepScope {
 		auto t1 = std::chrono::steady_clock::now();
 		double us = std::chrono::duration<double, std::micro>(t1 - t0).count();
 		char buf[288];
-		snprintf(buf, sizeof(buf),
-			"{\"ev\":\"frame\",\"walked\":%ld,\"live\":%ld,\"movers\":%ld,"
-			"\"statics\":%ld,\"active\":%ld,\"aged\":%ld,\"sweep_us\":%.2f}",
-			g_counters.objectsWalked, g_counters.liveObjects,
-			g_counters.moversWalked, g_counters.staticsWalked,
-			g_counters.activeThisFrame, g_counters.agedThisFrame, us);
+		(*std::format_to_n(buf, (sizeof(buf)) - 1,
+			"{{\"ev\":\"frame\",\"walked\":{:d},\"live\":{:d},\"movers\":{:d},\"statics\":{:d},\"active\":{:d},\"aged\":{:d},\"sweep_us\":{:.2f}}}",
+			mc2::fmt::as_i32(g_counters.objectsWalked), mc2::fmt::as_i32(g_counters.liveObjects),
+			mc2::fmt::as_i32(g_counters.moversWalked), mc2::fmt::as_i32(g_counters.staticsWalked),
+			mc2::fmt::as_i32(g_counters.activeThisFrame), mc2::fmt::as_i32(g_counters.agedThisFrame), us).out = '\0');
 		mc2_diag::writeEvent("OBJWALK", 1, 0, buf);
 		g_counters.active = false;
 	}

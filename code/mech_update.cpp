@@ -4,6 +4,7 @@
 #include "mech_internal.h"
 #include "appearance_rng.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // MC2_GPU_CULL_LIFECYCLE=1 routes AI canBeSeen() combat gates to GPU-lagged visibility (same env var as objmgr.cpp).
 // Read at static-init like the other readers, before any in-main env application.
@@ -997,7 +998,7 @@ bool BattleMech::handleEjection (void) {
    		if (CombatLog) 
    		{
    			char s[1024];
-   			sprintf(s, "[%.2f] mech.Ejected HE: [%05d]%s", scenarioTime, getPartId(), getName());
+			(*std::format_to_n(s, sizeof(s) - 1, "[{:.2f}] mech.Ejected HE: [{:05d}]{}", scenarioTime, mc2::fmt::as_i32(getPartId()), mc2::fmt::safe(getName())).out = '\0');
    			CombatLog->write(s);
    			CombatLog->write(" ");
    		}

@@ -30,6 +30,7 @@ struct DDSURFACEDESC2 {
 #include"prefs.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 extern CPrefs prefs;
 
 
@@ -66,7 +67,7 @@ void SplashIntro::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(path) );
+		(*std::format_to_n( errorStr, sizeof(errorStr) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 		Assert(0,0,errorStr );
 	}
 
@@ -111,7 +112,7 @@ int MainMenu::init( FitIniFile& file )
 	if ( NO_ERR != file2.open( name ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", static_cast<const char*>(name) );
+		(*std::format_to_n( errorStr, sizeof(errorStr) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(name)) ).out = '\0');
 		Assert(0,0,errorStr );
 	}
 
@@ -138,7 +139,7 @@ int MainMenu::init( FitIniFile& file )
 	if ( NO_ERR != mpFile.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", static_cast<const char*>(path) );
+		(*std::format_to_n( error, sizeof(error) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 		Assert( 0, 0, error );
 		return -1;		
 	}
@@ -403,7 +404,7 @@ int	MainMenu::handleMessage( unsigned long what, unsigned long who )
 				char lawyerBabble[2048];
 				DWORD pIDLen = 64;
 				char pID[64];
-				sprintf( pID, "INVALID ID" );
+				(*std::format_to_n( pID, sizeof(pID) - 1, "INVALID ID" ).out = '\0');
 				gos_LoadDataFromRegistry("PID", pID, &pIDLen);
 				sprintf( lawyerBabble, realText, pID );
 				LogisticsLegalDialog::instance()->setText( lawyerBabble );
@@ -585,7 +586,7 @@ void MainMenu::update()
 				if ( NO_ERR != file.createWithCase( name ) )
 				{
 					char errorStr[1024];
-					sprintf( errorStr, "couldn't open the file %s", name );
+					(*std::format_to_n( errorStr, sizeof(errorStr) - 1, "couldn't open the file {}", mc2::fmt::safe(name) ).out = '\0');
 					Assert( 0, 0, errorStr );
 				}
 				else
@@ -613,7 +614,7 @@ void MainMenu::update()
 				if ( NO_ERR != file.open( name, READ, 50, do_not_make_lower ) )
 				{
 					char errorStr[1024];
-					sprintf( errorStr, "couldn't open the file %s", name );
+					(*std::format_to_n( errorStr, sizeof(errorStr) - 1, "couldn't open the file {}", mc2::fmt::safe(name) ).out = '\0');
 					Assert( 0, 0, errorStr );
 				}
 				else

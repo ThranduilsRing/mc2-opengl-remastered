@@ -44,6 +44,7 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include"prefs.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 extern CPrefs prefs;
 
 class MechLabScreen;
@@ -473,7 +474,7 @@ void MissionBegin::begin()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", path );
+		(*std::format_to_n( error, sizeof(error) - 1, "couldn't open file {}", mc2::fmt::safe(path) ).out = '\0');
 		Assert( 0, 0, error );
 		return;
 	}
@@ -498,7 +499,7 @@ void MissionBegin::begin()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", path );
+		(*std::format_to_n( error, sizeof(error) - 1, "couldn't open file {}", mc2::fmt::safe(path) ).out = '\0');
 		Assert( 0, 0, error );
 		return;
 	}
@@ -517,7 +518,7 @@ void MissionBegin::begin()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", path );
+		(*std::format_to_n( error, sizeof(error) - 1, "couldn't open file {}", mc2::fmt::safe(path) ).out = '\0');
 		Assert( 0, 0, error );
 		return;
 	}
@@ -534,7 +535,7 @@ void MissionBegin::begin()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", path );
+		(*std::format_to_n( error, sizeof(error) - 1, "couldn't open file {}", mc2::fmt::safe(path) ).out = '\0');
 		Assert( 0, 0, error );
 		return;
 	}
@@ -560,7 +561,7 @@ void MissionBegin::begin()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", path );
+		(*std::format_to_n( error, sizeof(error) - 1, "couldn't open file {}", mc2::fmt::safe(path) ).out = '\0');
 		Assert( 0, 0, error );
 		return;	
 	}
@@ -585,7 +586,7 @@ void MissionBegin::begin()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", path );
+		(*std::format_to_n( error, sizeof(error) - 1, "couldn't open file {}", mc2::fmt::safe(path) ).out = '\0');
 		Assert( 0, 0, error );
 		return;		
 	}
@@ -603,7 +604,7 @@ void MissionBegin::begin()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", path );
+		(*std::format_to_n( error, sizeof(error) - 1, "couldn't open file {}", mc2::fmt::safe(path) ).out = '\0');
 		Assert( 0, 0, error );
 		return;		
 	}
@@ -621,7 +622,7 @@ void MissionBegin::begin()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", path );
+		(*std::format_to_n( error, sizeof(error) - 1, "couldn't open file {}", mc2::fmt::safe(path) ).out = '\0');
 		Assert( 0, 0, error );
 		return;		
 	}
@@ -1943,7 +1944,7 @@ void MissionBegin::beginMPlayer()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", path );
+		(*std::format_to_n( error, sizeof(error) - 1, "couldn't open file {}", mc2::fmt::safe(path) ).out = '\0');
 		Assert( 0, 0, error );
 		return;		
 	}
@@ -1963,7 +1964,7 @@ void MissionBegin::beginMPlayer()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", path );
+		(*std::format_to_n( error, sizeof(error) - 1, "couldn't open file {}", mc2::fmt::safe(path) ).out = '\0');
 		Assert( 0, 0, error );
 		return;		
 	}
@@ -1980,7 +1981,7 @@ void MissionBegin::beginMPlayer()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", path );
+		(*std::format_to_n( error, sizeof(error) - 1, "couldn't open file {}", mc2::fmt::safe(path) ).out = '\0');
 		Assert( 0, 0, error );
 		return;		
 	}
@@ -1998,7 +1999,7 @@ void MissionBegin::beginMPlayer()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", path );
+		(*std::format_to_n( error, sizeof(error) - 1, "couldn't open file {}", mc2::fmt::safe(path) ).out = '\0');
 		Assert( 0, 0, error );
 		return;		
 	}
@@ -2013,7 +2014,7 @@ void MissionBegin::beginMPlayer()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", path );
+		(*std::format_to_n( error, sizeof(error) - 1, "couldn't open file {}", mc2::fmt::safe(path) ).out = '\0');
 		Assert( 0, 0, error );
 		return;		
 	}
