@@ -16,6 +16,7 @@ Objective.h			: Interface for the Objective component.
 #include <memory>
 #include <string>
 #include <vector>
+#include <utility>
 #include"mover.h"
 
 #ifndef BLDNG_H
@@ -489,8 +490,9 @@ public:
 	CObjectiveOwnedList(const CObjectiveOwnedList &) = delete;
 	CObjectiveOwnedList &operator=(const CObjectiveOwnedList &) = delete;
 
-	void Append(T *element) {
-		if (element) { m_items.emplace_back(element); }
+	void Append(T *element) { Append(std::unique_ptr<T>(element)); }
+	void Append(std::unique_ptr<T> element) {
+		if (element) { m_items.push_back(std::move(element)); }
 		else { logDroppedObjectivePart(); }
 	}
 	unsigned long Count() const { return static_cast<unsigned long>(m_items.size()); }
@@ -543,8 +545,8 @@ private:
 	static unsigned long s_blinkColor;
 	static aFont*	s_markerFont;
 public: /* we could make this protected if only the editdialog is to access these functions */
-	static CObjectiveCondition *new_CObjectiveCondition(condition_species_type conditionSpecies, int alignment);
-	static CObjectiveAction *new_CObjectiveAction(action_species_type actionSpecies, int alignment);
+	static std::unique_ptr<CObjectiveCondition> new_CObjectiveCondition(condition_species_type conditionSpecies, int alignment);
+	static std::unique_ptr<CObjectiveAction> new_CObjectiveAction(action_species_type actionSpecies, int alignment);
 public:
 	using condition_list_type = CObjectiveConditionList;
 	using action_list_type = CObjectiveActionList;
@@ -670,6 +672,7 @@ public:
 	const_iterator end() const { return m_list.end(); }
 	unsigned long Count() const { return m_list.Count(); }
 	void Append(CObjective *objective) { m_list.Append(objective); }
+	void Append(std::unique_ptr<CObjective> objective) { m_list.Append(std::move(objective)); }
 	CObjectives(int alignment = 0) { m_alignment = alignment; }
 	CObjectives(const CObjectives &master) { (*this) = master; }
 	~CObjectives() { Clear(); }
