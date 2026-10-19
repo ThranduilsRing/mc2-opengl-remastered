@@ -563,6 +563,7 @@ bool TG_MultiShape::usesTypeMaterials() const {
 }
 void TG_MultiShape::BindMaterials() {
     initMaterialSlots();
+    if (instanceTextures_.empty()) return;
     auto& service=RenderCore::textureService(); auto& registry=service.materials();
     bool changed=instanceMaterials_.size()!=instanceTextures_.size();
     instanceMaterials_.resize(instanceTextures_.size());
