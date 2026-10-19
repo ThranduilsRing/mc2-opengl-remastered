@@ -361,7 +361,7 @@ enum class gosGLOBAL_SHADER_FLAGS : unsigned int
 };
 
 
-#define SHADER_FLAG_INDEX_TO_MASK(x) (1 << ((uint32_t)x))
+#define SHADER_FLAG_INDEX_TO_MASK(x) (1 << (static_cast<uint32_t>(x)))
 
 #define SHADER_FLAG_MASK_TO_INDEX(x) (ffs(x)-1) // use __popcnt etc for windows, and move to platform_*.h
 
@@ -449,7 +449,7 @@ class gosRenderMaterial {
 
             gosASSERT(pos_loc >= 0);
             glEnableVertexAttribArray(pos_loc);
-            glVertexAttribPointer(pos_loc, 4, GL_FLOAT, GL_FALSE, stride, (void*)nullptr);
+            glVertexAttribPointer(pos_loc, 4, GL_FLOAT, GL_FALSE, stride, static_cast<void*>(nullptr));
 
             if(color_loc != -1) {
                 glEnableVertexAttribArray(color_loc);

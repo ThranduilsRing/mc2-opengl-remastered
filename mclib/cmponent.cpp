@@ -115,7 +115,7 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 		return(NO_ERR);
 	}
 
-	form = (ComponentFormType)formIndex;
+	form = static_cast<ComponentFormType>(formIndex);
 	
 	field = strtok(nullptr, ","); // name, ignore
 
@@ -126,7 +126,7 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 	float recycleTime = atof(field);
 	
 	field = strtok(nullptr, ",");
-	float heat = (unsigned long)atof(field);
+	float heat = static_cast<unsigned long>(atof(field));
 
 	field = strtok(nullptr, ","); 
 	tonnage = atof( field );
@@ -191,12 +191,12 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 	field = strtok(nullptr, ",");
 	int specialEffect = 0;
 	if ( field )
-		specialEffect = (char)atoi(field);
+		specialEffect = static_cast<char>(atoi(field));
 	
 	field = strtok(nullptr, ",");
 	int ammoMasterId = 0;
 	if ( field )
-		ammoMasterId = (char)atoi(field);
+		ammoMasterId = static_cast<char>(atoi(field));
 	
 	switch (form) {
 		case COMPONENT_FORM_SIMPLE:
@@ -661,12 +661,12 @@ long MasterComponent::loadMasterList (const char* fileName, long listSize, float
 	long lineLength;
 	
 
-	lineLength = componentFile.readLine((MemoryPtr)dataLine, 511);
+	lineLength = componentFile.readLine(reinterpret_cast<MemoryPtr>(dataLine), 511);
 
 	for (long componentNum = 0; componentNum < numComponents; componentNum++) {
 		//----------------------------------------
 		// Read in the line from the table file...
-		lineLength = componentFile.readLine((MemoryPtr)dataLine, 511);
+		lineLength = componentFile.readLine(reinterpret_cast<MemoryPtr>(dataLine), 511);
 		if (!lineLength)
 			return(-1);
 

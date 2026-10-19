@@ -264,7 +264,7 @@ void SpawnShard(const gosFX::ShardCloud__Specification* spec,
         p.velocity[0] = world_velocity.x;
         p.velocity[1] = world_velocity.y;
         p.velocity[2] = world_velocity.z;
-        p.lifetime    = (float)lifetime;
+        p.lifetime    = static_cast<float>(lifetime);
         p.age         = 0.0f;
         // Note: m_angularity (per-vertex triangle-shape factor) and
         // m_localRotation (per-particle orientation) from shardcloud.cpp
@@ -273,7 +273,7 @@ void SpawnShard(const gosFX::ShardCloud__Specification* spec,
         // triangle-shape + rotation fidelity is filed as B2 polish debt
         // (requires a 64-byte -> larger schema extension + matching
         // shader path that emits 3 verts and applies per-particle yaw).
-        p.size        = (float)size;
+        p.size        = static_cast<float>(size);
         // atlasIndex carries the raw MLR pool index; Batcher::ResolveTextures()
         // converts it to a gos_TextureHandle after renderLists() / LoadImages().
         p.atlasIndex  = mlrTexHandle;

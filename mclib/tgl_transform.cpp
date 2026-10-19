@@ -119,7 +119,7 @@ void TG_Shape::xformGpuOnlyShape(glm::mat4* shapeToClip, bool isHudElement, BYTE
 		// Guard: only TG_TypeShape (SHAPE_NODE) carries ib_/vb_/listOfTextures — casting
 		// a bare TG_TypeNode (root/helper) reads garbage at those offsets and crashes.
 		TG_TypeShapePtr hwShape = (myType && myType->GetNodeType() == SHAPE_NODE)
-			? (TG_TypeShapePtr)myType : nullptr;
+			? static_cast<TG_TypeShapePtr>(myType) : nullptr;
 		if (bShadersDrawPathEnabled && hwShape && hwShape->ib_ && hwShape->vb_
 			&& hwShape->listOfTypeTriangles && materialTextures()
 			&& shapeToClip
@@ -287,7 +287,7 @@ long TG_Shape::MultiTransformShape (glm::mat4 *shapeToClip, glm::vec3 *backFaceP
 		return(1);
 	}
 		
-	TG_TypeShapePtr theShape = (TG_TypeShapePtr)myType;
+	TG_TypeShapePtr theShape = static_cast<TG_TypeShapePtr>(myType);
 
 	{
 		// [OBJECT_RECON v1] alloc sub-stage.
@@ -445,7 +445,7 @@ long TG_Shape::MultiTransformShape_PositionsOnly (glm::mat4 *shapeToClip, glm::v
 		return(1);
 	}
 
-	TG_TypeShapePtr theShape = (TG_TypeShapePtr)myType;
+	TG_TypeShapePtr theShape = static_cast<TG_TypeShapePtr>(myType);
 
 	{
 		// [OBJECT_RECON v1] alloc sub-stage.

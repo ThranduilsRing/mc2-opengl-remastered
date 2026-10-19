@@ -20,8 +20,8 @@ namespace {
 unsigned long long guardKey(const char* ctx, const char* path)
 {
 	unsigned long long h = 5381;
-	for (const char* p = ctx;  p && *p; ++p) h = h * 33 + (unsigned char)*p;
-	for (const char* p = path; p && *p; ++p) h = h * 33 + (unsigned char)*p;
+	for (const char* p = ctx;  p && *p; ++p) h = h * 33 + static_cast<unsigned char>(*p);
+	for (const char* p = path; p && *p; ++p) h = h * 33 + static_cast<unsigned char>(*p);
 	return h;
 }
 

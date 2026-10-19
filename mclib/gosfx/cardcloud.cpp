@@ -186,7 +186,7 @@ bool
 		if(fix_data)
 		{
 			m_VOffset.SetCurve(0.0f);
-			PAUSE(("Warning: Curve \"VOffset\" in Effect \"%s\" Is Out of Range and has been Reset",(char *)m_name));
+			PAUSE(("Warning: Curve \"VOffset\" in Effect \"%s\" Is Out of Range and has been Reset",static_cast<char *>(m_name)));
 
 		}
 			else
@@ -214,7 +214,7 @@ bool
 		if(fix_data)
 		{
 			m_UOffset.SetCurve(0.0f);
-			PAUSE(("Warning: Curve \"UOffset\" in Effect \"%s\" Is Out of Range and has been Reset",(char *)m_name));
+			PAUSE(("Warning: Curve \"UOffset\" in Effect \"%s\" Is Out of Range and has been Reset",static_cast<char *>(m_name)));
 
 		}
 		else

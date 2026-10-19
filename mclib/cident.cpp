@@ -59,7 +59,7 @@ void FullPathFileName::init (const char * dir_path, const char * name, const cha
 	total_length++;
 
 
-	fullName = (char *)systemHeap->Malloc(total_length);
+	fullName = static_cast<char *>(systemHeap->Malloc(total_length));
 	gosASSERT(fullName != nullptr);
 	fullName[0] = 0;
 

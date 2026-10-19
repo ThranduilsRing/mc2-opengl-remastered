@@ -93,7 +93,7 @@ void drawRingWorld(Vec3 center, float radius, int segments, uint32_t rgba) {
     if (!q) return;
     if (segments < 3)   segments = 3;
     if (segments > 256) segments = 256;
-    const float step = 6.2831853f / (float)segments;  // 2*PI
+    const float step = 6.2831853f / static_cast<float>(segments);  // 2*PI
     for (int i = 0; i < segments; ++i) {
         float a0 = step * i;
         float a1 = step * (i + 1);
@@ -142,7 +142,7 @@ void drawRingWorld(Vec3 center, Vec3 normal, float radius, int segments, uint32_
     const float by = nz*tx - nx*tz;
     const float bz = nx*ty - ny*tx;
 
-    const float step = 6.2831853f / (float)segments;
+    const float step = 6.2831853f / static_cast<float>(segments);
     for (int i = 0; i < segments; ++i) {
         const float c0 = cosf(step *  i)      * radius;
         const float s0 = sinf(step *  i)      * radius;
@@ -180,7 +180,7 @@ void drawSphereApproxWorld(Vec3 center, float radius, int rings, int segments, u
     // Extra latitude rings between poles (rings=1 = great circles only)
     const float pi = 3.14159265f;
     for (int i = 1; i < rings; ++i) {
-        const float lat = pi * (float)i / (float)rings;
+        const float lat = pi * static_cast<float>(i) / static_cast<float>(rings);
         const float yr  = center.y + radius * cosf(lat);
         const float r   = radius * sinf(lat);
         drawRingWorld({center.x, yr, center.z}, r, segments, rgba);
@@ -216,7 +216,7 @@ void flushWorldPrims() {
 
     if (q->verts.size() > kVertCapacity) {
         if (!q->capWarned) {
-            mc2::fmt::print_err("[DEBUGDRAW v1] event=vert_cap_exceeded cap={:d} requested={:d}\n", mc2::fmt::as_i32((int)kVertCapacity), mc2::fmt::as_i32((int)q->verts.size()));
+            mc2::fmt::print_err("[DEBUGDRAW v1] event=vert_cap_exceeded cap={:d} requested={:d}\n", mc2::fmt::as_i32(static_cast<int>(kVertCapacity)), mc2::fmt::as_i32(static_cast<int>(q->verts.size())));
             q->capWarned = true;
         }
         q->verts.resize(kVertCapacity);
@@ -250,13 +250,13 @@ void drawFrozenPrimsToOverlay() {
         ++drawn;
         if (!s_firstDrawLogged) {
             s_firstDrawLogged = true;
-            mc2::fmt::print_err("[DEBUGDRAW v1] event=first_draw queued={:d} display={:.0f}x{:.0f} seg0=({:.1f},{:.1f})-({:.1f},{:.1f})\n", mc2::fmt::as_i32((int)(q->frozen.size() / 2)), size.x, size.y, seg.x0, seg.y0, seg.x1, seg.y1);
+            mc2::fmt::print_err("[DEBUGDRAW v1] event=first_draw queued={:d} display={:.0f}x{:.0f} seg0=({:.1f},{:.1f})-({:.1f},{:.1f})\n", mc2::fmt::as_i32(static_cast<int>((q->frozen.size() / 2))), size.x, size.y, seg.x0, seg.y0, seg.x1, seg.y1);
         }
     }
     static bool s_cullLogged = false;
     if (drawn == 0 && !s_cullLogged) {
         s_cullLogged = true;
-        mc2::fmt::print_err("[DEBUGDRAW v1] event=all_culled queued={:d}\n", mc2::fmt::as_i32((int)(q->frozen.size() / 2)));
+        mc2::fmt::print_err("[DEBUGDRAW v1] event=all_culled queued={:d}\n", mc2::fmt::as_i32(static_cast<int>((q->frozen.size() / 2))));
     }
     q->frozen.clear();
 }

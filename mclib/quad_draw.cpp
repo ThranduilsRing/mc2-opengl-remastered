@@ -123,8 +123,8 @@ void TerrainQuad::drawSetup(QuadDrawFrame& f) {
 			const DWORD ovEdge = ovLogicalW * mcTextureManager->getUVScale(overlayHandle);
 			if (ovEdge > 0)
 			{
-				oldminU = oldminV = 0.5f / (float)ovEdge;
-				oldmaxU = oldmaxV = 1.0f - 0.5f / (float)ovEdge;
+				oldminU = oldminV = 0.5f / static_cast<float>(ovEdge);
+				oldmaxU = oldmaxV = 1.0f - 0.5f / static_cast<float>(ovEdge);
 			}
 		}
 	}
@@ -272,7 +272,7 @@ void TerrainQuad::fastPzGate(QuadFastFrame& fp) {
 	    {
 	        if (!s_m2dPzParityArmLogged) {
 	            s_m2dPzParityArmLogged = true;
-	            mc2::fmt::print_err("[M2D_PZ_PARITY v1] event=armed mechanism=reproject+clipInfo_guard scope_assert=Renderer!=3 Environment.Renderer={:d} emit_cap={:d} note=probe_only_cv_pz_read_pre_step8b\n", mc2::fmt::as_i32((int)Environment.Renderer), mc2::fmt::as_i32(s_m2dPzParityEmitCap));
+	            mc2::fmt::print_err("[M2D_PZ_PARITY v1] event=armed mechanism=reproject+clipInfo_guard scope_assert=Renderer!=3 Environment.Renderer={:d} emit_cap={:d} note=probe_only_cv_pz_read_pre_step8b\n", mc2::fmt::as_i32(static_cast<int>(Environment.Renderer)), mc2::fmt::as_i32(s_m2dPzParityEmitCap));
 	            fflush(stderr);
 	        }
 	        bool pzc_old[4];
@@ -297,7 +297,7 @@ void TerrainQuad::fastPzGate(QuadFastFrame& fp) {
 	            ++s_m2dPzParityMismatch;
 	            if (s_m2dPzParityEmitted < s_m2dPzParityEmitCap) {
 	                ++s_m2dPzParityEmitted;
-	                mc2::fmt::print_err("[M2D_PZ_PARITY v1] event=mismatch n={:d} pzc_new={:d}{:d}{:d}{:d} pzc_old={:d}{:d}{:d}{:d} pzTri_new={:d}{:d} pzTri_old={:d}{:d} pzNeeded={:d} uvMode={:d}\n", mc2::fmt::as_i32(s_m2dPzParityEmitted), mc2::fmt::as_i32(pzc[0]), mc2::fmt::as_i32(pzc[1]), mc2::fmt::as_i32(pzc[2]), mc2::fmt::as_i32(pzc[3]), mc2::fmt::as_i32(pzc_old[0]), mc2::fmt::as_i32(pzc_old[1]), mc2::fmt::as_i32(pzc_old[2]), mc2::fmt::as_i32(pzc_old[3]), mc2::fmt::as_i32(pzTri1), mc2::fmt::as_i32(pzTri2), mc2::fmt::as_i32(pzTri1_old), mc2::fmt::as_i32(pzTri2_old), mc2::fmt::as_i32(pzNeeded ? 1 : 0), mc2::fmt::as_i32((int)uvMode));
+	                mc2::fmt::print_err("[M2D_PZ_PARITY v1] event=mismatch n={:d} pzc_new={:d}{:d}{:d}{:d} pzc_old={:d}{:d}{:d}{:d} pzTri_new={:d}{:d} pzTri_old={:d}{:d} pzNeeded={:d} uvMode={:d}\n", mc2::fmt::as_i32(s_m2dPzParityEmitted), mc2::fmt::as_i32(pzc[0]), mc2::fmt::as_i32(pzc[1]), mc2::fmt::as_i32(pzc[2]), mc2::fmt::as_i32(pzc[3]), mc2::fmt::as_i32(pzc_old[0]), mc2::fmt::as_i32(pzc_old[1]), mc2::fmt::as_i32(pzc_old[2]), mc2::fmt::as_i32(pzc_old[3]), mc2::fmt::as_i32(pzTri1), mc2::fmt::as_i32(pzTri2), mc2::fmt::as_i32(pzTri1_old), mc2::fmt::as_i32(pzTri2_old), mc2::fmt::as_i32(pzNeeded ? 1 : 0), mc2::fmt::as_i32(static_cast<int>(uvMode)));
 	                fflush(stderr);
 	            }
 	        }
@@ -480,8 +480,8 @@ void TerrainQuad::fastOverlayEmit(QuadDrawFrame& f, QuadFastFrame& fp) {
 	                wov_corner[c].wx   = vertices[c]->vx;
 	                wov_corner[c].wy   = vertices[c]->vy;
 	                wov_corner[c].wz   = vertices[c]->pVertex->elevation + OVERLAY_ELEV_OFFSET;
-	                wov_corner[c].fog  = (float)((vertices[c]->fogRGB >> 24) & 0xFF) / 255.0f;
-	                wov_corner[c].argb = (unsigned int)vertices[c]->lightRGB;
+	                wov_corner[c].fog  = static_cast<float>(((vertices[c]->fogRGB >> 24) & 0xFF)) / 255.0f;
+	                wov_corner[c].argb = static_cast<unsigned int>(vertices[c]->lightRGB);
 	                // u/v assigned per-tri below.
 	            }
 
@@ -581,7 +581,7 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 						mc2::fmt::print_err("[DEPTHBIAS_CALIB v2] event=sample pz={:.6f} clipw={:.3f}\n", pz, cw);
 					}
 					if ((++s_w % 4000) == 0) {
-						mc2::fmt::print_err("[DEPTHBIAS_CALIB v2] event=window validN={:d} clipwMin={:.2f} clipwAvg={:.2f} clipwMax={:.2f}\n", mc2::fmt::as_i32(s_w), s_cwMin, s_cwSum / (float)s_w, s_cwMax);
+						mc2::fmt::print_err("[DEPTHBIAS_CALIB v2] event=window validN={:d} clipwMin={:.2f} clipwAvg={:.2f} clipwMax={:.2f}\n", mc2::fmt::as_i32(s_w), s_cwMin, s_cwSum / static_cast<float>(s_w), s_cwMax);
 						s_cwMin = 1e30f; s_cwMax = -1e30f; s_cwSum = 0.0f; s_w = 0;
 					}
 				}
@@ -661,7 +661,7 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 							wov[_k].wz   = oVertex[_k].z;
 							wov[_k].u    = oVertex[_k].u;
 							wov[_k].v    = oVertex[_k].v;
-							wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
+							wov[_k].fog  = static_cast<float>(((oVertex[_k].frgb >> 24) & 0xFF)) / 255.0f;
 							wov[_k].argb = oVertex[_k].argb;
 						}
 						const DWORD overlayTexId = tex_resolve(overlayHandle);
@@ -807,7 +807,7 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 							wov[_k].wz   = oVertex[_k].z;
 							wov[_k].u    = oVertex[_k].u;
 							wov[_k].v    = oVertex[_k].v;
-							wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
+							wov[_k].fog  = static_cast<float>(((oVertex[_k].frgb >> 24) & 0xFF)) / 255.0f;
 							wov[_k].argb = oVertex[_k].argb;
 						}
 						const DWORD overlayTexId = tex_resolve(overlayHandle);
@@ -901,7 +901,7 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 			rec.minU=minU; rec.minV=minV; rec.maxU=maxU; rec.maxV=maxV;
 			rec.lightRGB0=gvTri1[0].argb; rec.lightRGB1=gvTri1[1].argb; rec.lightRGB2=gvTri1[2].argb; rec.lightRGB3=gVertex[2].argb;
 			rec.fogRGB0  =gvTri1[0].frgb; rec.fogRGB1  =gvTri1[1].frgb; rec.fogRGB2  =gvTri1[2].frgb; rec.fogRGB3  =gVertex[2].frgb;
-			rec.terrainHandle = (uint32_t)terrainHandle;
+			rec.terrainHandle = static_cast<uint32_t>(terrainHandle);
 			rec.flags = 0u | (pzTri1 ? 2u : 0u) | (pzTri2 ? 4u : 0u); // bit0=0 → TOPRIGHT
 			rec._ctrl2 = 0u; rec._ctrl3 = 0u;
 			TerrainPatchStream::appendQuadRecord(rec);
@@ -1088,7 +1088,7 @@ void TerrainQuad::drawLegacyBottomLeft(QuadDrawFrame& f) {
 							wov[_k].wz   = oVertex[_k].z;
 							wov[_k].u    = oVertex[_k].u;
 							wov[_k].v    = oVertex[_k].v;
-							wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
+							wov[_k].fog  = static_cast<float>(((oVertex[_k].frgb >> 24) & 0xFF)) / 255.0f;
 							wov[_k].argb = oVertex[_k].argb;
 						}
 						const DWORD overlayTexId = tex_resolve(overlayHandle);
@@ -1232,7 +1232,7 @@ void TerrainQuad::drawLegacyBottomLeft(QuadDrawFrame& f) {
 							wov[_k].wz   = oVertex[_k].z;
 							wov[_k].u    = oVertex[_k].u;
 							wov[_k].v    = oVertex[_k].v;
-							wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
+							wov[_k].fog  = static_cast<float>(((oVertex[_k].frgb >> 24) & 0xFF)) / 255.0f;
 							wov[_k].argb = oVertex[_k].argb;
 						}
 						const DWORD overlayTexId = tex_resolve(overlayHandle);
@@ -1269,7 +1269,7 @@ void TerrainQuad::drawLegacyBottomLeft(QuadDrawFrame& f) {
 			//             gVertex[1] after shuffle = corner2
 			rec.lightRGB0=gvTri1[0].argb; rec.lightRGB1=gvTri1[1].argb; rec.lightRGB2=gVertex[1].argb; rec.lightRGB3=gvTri1[2].argb;
 			rec.fogRGB0  =gvTri1[0].frgb; rec.fogRGB1  =gvTri1[1].frgb; rec.fogRGB2  =gVertex[1].frgb; rec.fogRGB3  =gvTri1[2].frgb;
-			rec.terrainHandle = (uint32_t)terrainHandle;
+			rec.terrainHandle = static_cast<uint32_t>(terrainHandle);
 			rec.flags = 1u | (pzTri1 ? 2u : 0u) | (pzTri2 ? 4u : 0u); // bit0=1 → BOTTOMLEFT
 			rec._ctrl2 = 0u; rec._ctrl3 = 0u;
 			TerrainPatchStream::appendQuadRecord(rec);

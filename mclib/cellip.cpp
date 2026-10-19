@@ -79,13 +79,13 @@ void EllipseElement::draw (void)
 			return;
 		if ( location[0].x < clip.left )
 		{
-			newLocation[0].u = newLocation[1].u = ((float)clip.left-location[0].x)/(location[2].x - location[0].x);
-			newLocation[0].x = newLocation[1].x = (float)clip.left;
+			newLocation[0].u = newLocation[1].u = (static_cast<float>(clip.left)-location[0].x)/(location[2].x - location[0].x);
+			newLocation[0].x = newLocation[1].x = static_cast<float>(clip.left);
 		}
 		if ( location[2].x > clip.right )
 		{
-			newLocation[2].u = newLocation[3].u = ((float)clip.right-location[0].x)/(location[2].x-location[0].x);
-			newLocation[2].x = newLocation[3].x = (float)clip.right;
+			newLocation[2].u = newLocation[3].u = (static_cast<float>(clip.right)-location[0].x)/(location[2].x-location[0].x);
+			newLocation[2].x = newLocation[3].x = static_cast<float>(clip.right);
 		}
 
 		if ( location[2].y < clip.top )
@@ -96,14 +96,14 @@ void EllipseElement::draw (void)
 
 		if ( location[0].y < clip.top )
 		{
-			newLocation[0].v = newLocation[3].v = ((float)clip.top - location[0].y )/(location[1].y - location[0].y);
-			newLocation[0].y = newLocation[3].y = (float)clip.top;
+			newLocation[0].v = newLocation[3].v = (static_cast<float>(clip.top) - location[0].y )/(location[1].y - location[0].y);
+			newLocation[0].y = newLocation[3].y = static_cast<float>(clip.top);
 		}
 
 		if ( location[2].y > clip.bottom )
 		{
-			newLocation[1].v = newLocation[2].v = ((float)clip.bottom - location[0].y)/(location[2].y-location[0].y);
-			newLocation[1].y = newLocation[2].y = (float)clip.bottom;
+			newLocation[1].v = newLocation[2].v = (static_cast<float>(clip.bottom) - location[0].y)/(location[2].y-location[0].y);
+			newLocation[1].y = newLocation[2].y = static_cast<float>(clip.bottom);
 		}
 
 		gos_DrawQuads( newLocation, 4 );

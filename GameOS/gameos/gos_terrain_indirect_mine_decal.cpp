@@ -31,8 +31,8 @@ void BuildMineStaticVBO() {
     std::vector<MineVert> verts;
     verts.reserve(64 * 6);
 
-    const int W = (int)GameMap->width;
-    const int H = (int)GameMap->height;
+    const int W = static_cast<int>(GameMap->width);
+    const int H = static_cast<int>(GameMap->height);
     const int TW = W / MAPCELL_DIM;
     const int TH = H / MAPCELL_DIM;
     const float halfCell = Terrain::worldUnitsPerCell * 0.5f;
@@ -85,7 +85,7 @@ void BuildMineStaticVBO() {
         }
     }
 
-    g_mineVertCount = (int)verts.size();
+    g_mineVertCount = static_cast<int>(verts.size());
     g_mineVerts = std::move(verts);
 
 
@@ -265,7 +265,7 @@ void ResetDecalStaticVBO() {
     g_decalVertsCpu.clear();
 #endif
     if (IsTraceEnabled()) {
-        mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=decal_vbo_reset vbo_gl={:d} kept=1\n", mc2::fmt::as_u32((unsigned)g_decalStaticVBO_GL));
+        mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=decal_vbo_reset vbo_gl={:d} kept=1\n", mc2::fmt::as_u32(static_cast<unsigned>(g_decalStaticVBO_GL)));
         fflush(stdout);
     }
 }
@@ -311,10 +311,10 @@ void BuildDecalStaticVBO() {
                     const int cem = (ce && ce->isCement()) ? 1 : 0;
                     const int alp = (ce && ce->isAlpha())  ? 1 : 0;
                     unsigned long long key =
-                        ((unsigned long long)(unsigned)terrType << 40) |
-                        ((unsigned long long)(texData & 0xffffu) << 8) |
-                        ((unsigned long long)((int)ovT + 1) << 2) |
-                        ((unsigned)cem << 1) | (unsigned)alp;
+                        (static_cast<unsigned long long>(static_cast<unsigned>(terrType)) << 40) |
+                        (static_cast<unsigned long long>((texData & 0xffffu)) << 8) |
+                        (static_cast<unsigned long long>((static_cast<int>(ovT) + 1)) << 2) |
+                        (static_cast<unsigned>(cem) << 1) | static_cast<unsigned>(alp);
                     const float wx = float(tC - half) * wupv;
                     const float wy = float(half - tR) * wupv;
                     auto it = agg.find(key);
@@ -329,7 +329,7 @@ void BuildDecalStaticVBO() {
             }
             for (auto& kv : agg) {
                 const unsigned long long k = kv.first;
-                mc2::fmt::print_out("[TILE_CENSUS v1] terr={:d} tex={:d} ov={:d} cement={:d} alpha={:d} n={:d} bbox=({:.0f},{:.0f})-({:.0f},{:.0f})\n", mc2::fmt::as_i32((long)(k >> 40)), mc2::fmt::as_u32((unsigned long)((k >> 8) & 0xffffu)), mc2::fmt::as_i32((int)((k >> 2) & 0x3f) - 1), mc2::fmt::as_u64((k >> 1) & 1ull), mc2::fmt::as_u64(k & 1ull), mc2::fmt::as_i32(kv.second.n), kv.second.minX, kv.second.minY, kv.second.maxX, kv.second.maxY);
+                mc2::fmt::print_out("[TILE_CENSUS v1] terr={:d} tex={:d} ov={:d} cement={:d} alpha={:d} n={:d} bbox=({:.0f},{:.0f})-({:.0f},{:.0f})\n", mc2::fmt::as_i32(static_cast<long>((k >> 40))), mc2::fmt::as_u32(static_cast<unsigned long>(((k >> 8) & 0xffffu))), mc2::fmt::as_i32(static_cast<int>(((k >> 2) & 0x3f)) - 1), mc2::fmt::as_u64((k >> 1) & 1ull), mc2::fmt::as_u64(k & 1ull), mc2::fmt::as_i32(kv.second.n), kv.second.minX, kv.second.minY, kv.second.maxX, kv.second.maxY);
             }
             fflush(stdout);
         }
@@ -363,7 +363,7 @@ void BuildDecalStaticVBO() {
                 Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
                 Terrain::mapData->getOverlay(tileR, tileC, ovT, ovO);
                 if (ovT != INVALID_OVERLAY) {
-                    mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=overlay_census tile=({:d},{:d}) world=({:.0f},{:.0f}) type={:d} off={:d} cement={:d} alpha={:d} ovHandle=0x{:08x} terrHandle=0x{:08x}\n", mc2::fmt::as_i32(tileR), mc2::fmt::as_i32(tileC), (double)((tileC - half) * wupv), (double)((half - tileR) * wupv), mc2::fmt::as_i32((int)ovT), mc2::fmt::as_u32((unsigned long)ovO), mc2::fmt::as_i32(e->isCement() ? 1 : 0), mc2::fmt::as_i32(e->isAlpha() ? 1 : 0), mc2::fmt::as_u32((unsigned long)overlayHandle), mc2::fmt::as_u32((unsigned long)e->terrainHandle));
+                    mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=overlay_census tile=({:d},{:d}) world=({:.0f},{:.0f}) type={:d} off={:d} cement={:d} alpha={:d} ovHandle=0x{:08x} terrHandle=0x{:08x}\n", mc2::fmt::as_i32(tileR), mc2::fmt::as_i32(tileC), static_cast<double>(((tileC - half) * wupv)), static_cast<double>(((half - tileR) * wupv)), mc2::fmt::as_i32(static_cast<int>(ovT)), mc2::fmt::as_u32(static_cast<unsigned long>(ovO)), mc2::fmt::as_i32(e->isCement() ? 1 : 0), mc2::fmt::as_i32(e->isAlpha() ? 1 : 0), mc2::fmt::as_u32(static_cast<unsigned long>(overlayHandle)), mc2::fmt::as_u32(static_cast<unsigned long>(e->terrainHandle)));
                     fflush(stdout);
                 }
             }
@@ -411,9 +411,9 @@ void BuildDecalStaticVBO() {
                 bool fragOwnsTile = true;
                 if (s_runwayFix && g_cementLayerMapReady && blocks) {
                     auto cemCorner = [&](long r, long c2) -> bool {
-                        const size_t vi = (size_t)r * (size_t)mapSide + (size_t)c2;
+                        const size_t vi = static_cast<size_t>(r) * static_cast<size_t>(mapSide) + static_cast<size_t>(c2);
                         const DWORD  vt = blocks[vi].terrainType;
-                        return vt < (DWORD)MC_MAX_TERRAIN_TXMS
+                        return vt < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS)
                                && g_cementLayerIndexBySlot[vt] != 0xFFFFu;
                     };
                     const bool c0 = cemCorner(tileR,     tileC);
@@ -450,8 +450,8 @@ void BuildDecalStaticVBO() {
                     const DWORD ovEdge = ovLogicalW * mcTextureManager->getUVScale(overlayHandle);
                     if (ovEdge > 0)
                     {
-                        tileMinU = tileMinV = 0.5f / (float)ovEdge;
-                        tileMaxU = tileMaxV = 1.0f - 0.5f / (float)ovEdge;
+                        tileMinU = tileMinV = 0.5f / static_cast<float>(ovEdge);
+                        tileMaxU = tileMaxV = 1.0f - 0.5f / static_cast<float>(ovEdge);
                     }
                 }
             }
@@ -531,7 +531,7 @@ void BuildDecalStaticVBO() {
                         (p0->elevation == p1->elevation) &&
                         (p1->elevation == p2->elevation) &&
                         (p2->elevation == p3->elevation);
-                    mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=decal_corner_probe tileR={:d} tileC={:d} mapSide={:d} half={:d} wupv={:.6f} elev_identical={:d} c0=({:.3f},{:.3f},{:.5f}) c1=({:.3f},{:.3f},{:.5f}) c2=({:.3f},{:.3f},{:.5f}) c3=({:.3f},{:.3f},{:.5f}) elev_raw=({:.5f},{:.5f},{:.5f},{:.5f})\n", mc2::fmt::as_i32(tileR), mc2::fmt::as_i32(tileC), mc2::fmt::as_i32((long)mapSide), mc2::fmt::as_i32((long)half), (double)wupv, mc2::fmt::as_i32(elevIdentical ? 1 : 0), c[0].wx, c[0].wy, c[0].wz, c[1].wx, c[1].wy, c[1].wz, c[2].wx, c[2].wy, c[2].wz, c[3].wx, c[3].wy, c[3].wz, (double)p0->elevation, (double)p1->elevation, (double)p2->elevation, (double)p3->elevation);
+                    mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=decal_corner_probe tileR={:d} tileC={:d} mapSide={:d} half={:d} wupv={:.6f} elev_identical={:d} c0=({:.3f},{:.3f},{:.5f}) c1=({:.3f},{:.3f},{:.5f}) c2=({:.3f},{:.3f},{:.5f}) c3=({:.3f},{:.3f},{:.5f}) elev_raw=({:.5f},{:.5f},{:.5f},{:.5f})\n", mc2::fmt::as_i32(tileR), mc2::fmt::as_i32(tileC), mc2::fmt::as_i32(static_cast<long>(mapSide)), mc2::fmt::as_i32(static_cast<long>(half)), static_cast<double>(wupv), mc2::fmt::as_i32(elevIdentical ? 1 : 0), c[0].wx, c[0].wy, c[0].wz, c[1].wx, c[1].wy, c[1].wz, c[2].wx, c[2].wy, c[2].wz, c[3].wx, c[3].wy, c[3].wz, static_cast<double>(p0->elevation), static_cast<double>(p1->elevation), static_cast<double>(p2->elevation), static_cast<double>(p3->elevation));
                     fflush(stdout);
                 }
             }
@@ -554,7 +554,7 @@ void BuildDecalStaticVBO() {
                             const DecalVert& b, float bu, float bv,
                             const DecalVert& d, float du, float dv) {
                 PendingTri t;
-                t.texId = (uint32_t)overlayTexId;
+                t.texId = static_cast<uint32_t>(overlayTexId);
                 t.v[0] = a; t.v[0].u = au; t.v[0].v = av;
                 t.v[1] = b; t.v[1].u = bu; t.v[1].v = bv;
                 t.v[2] = d; t.v[2].u = du; t.v[2].v = dv;
@@ -592,7 +592,7 @@ void BuildDecalStaticVBO() {
         } else {
             DecalDrawRange r;
             r.texHandle = t.texId;
-            r.firstVert = (uint32_t)verts.size();
+            r.firstVert = static_cast<uint32_t>(verts.size());
             r.vertCount = 3;
             g_decalDrawRanges.push_back(r);
         }
@@ -601,7 +601,7 @@ void BuildDecalStaticVBO() {
         verts.push_back(t.v[2]);
     }
 
-    g_decalVertCount = (int)verts.size();
+    g_decalVertCount = static_cast<int>(verts.size());
 #ifdef MC2_VULKAN_ISLAND
     if (mc2_vk_overlay_enabled()) {
         g_decalVertsCpu = verts;
@@ -639,14 +639,14 @@ bool DrawDecalStatic() {
     // static bake to the VK overlay owner (drawn by mc2_vk_overlay_run after Render.Decals)
     // INSTEAD of the GL draw. Gate off => falls through to the unchanged GL bridge call.
     if (mc2_vk_overlay_enabled() && !g_decalVertsCpu.empty() &&
-        g_decalVertsCpu.size() == (size_t)g_decalVertCount) {
+        g_decalVertsCpu.size() == static_cast<size_t>(g_decalVertCount)) {
         static_assert(sizeof(DecalDrawRange) == sizeof(Mc2VkOverlayDraw),
                       "DecalDrawRange must layout-match Mc2VkOverlayDraw");
         static_assert(sizeof(DecalVert) == 28, "DecalVert must be the 28B WorldOverlayVert");
-        mc2_vk_overlay_submit(0u, g_decalVertsCpu.data(), (uint32_t)g_decalVertsCpu.size(),
+        mc2_vk_overlay_submit(0u, g_decalVertsCpu.data(), static_cast<uint32_t>(g_decalVertsCpu.size()),
                               reinterpret_cast<const Mc2VkOverlayDraw*>(g_decalDrawRanges.data()),
-                              (uint32_t)g_decalDrawRanges.size(), g_decalBakeVersion);
-        Counters_AddDecalStaticTrisDrawn((long long)(g_decalVertCount / 3));
+                              static_cast<uint32_t>(g_decalDrawRanges.size()), g_decalBakeVersion);
+        Counters_AddDecalStaticTrisDrawn(static_cast<long long>((g_decalVertCount / 3)));
         return true;
     }
 #endif

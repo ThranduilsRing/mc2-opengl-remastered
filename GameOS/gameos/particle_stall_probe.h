@@ -43,7 +43,7 @@ inline void particleStallRecord(int idx, const char* path, double us) {
     // Periodic summary so logs aren't per-flush noisy. One early one-shot at 10 (so
     // low-activity FX paths still report at least once), then every 50 timed flushes.
     if (a.calls == 10ull || (a.calls % 50ull) == 0ull) {
-        const double avg = a.total_us / (double)a.calls;
+        const double avg = a.total_us / static_cast<double>(a.calls);
         std::fprintf(stderr,
             "[PARTICLE_FLUSH_STALL] path=%s calls=%llu avg_us=%.1f max_us=%.1f%s\n",
             path, a.calls, avg, a.max_us,

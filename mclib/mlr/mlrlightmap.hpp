@@ -58,7 +58,7 @@ namespace MidLevelRenderer {
 
 		inline void
 			SetPolygonMarker (int type)
-				{ Check_Object(this); Check_Object(stream); *stream << (type ? ((int)((MemoryStreamData)PolygonWithColor)) : ((int)((MemoryStreamData)Polygon)) ); }
+				{ Check_Object(this); Check_Object(stream); *stream << (type ? (static_cast<int>((static_cast<MemoryStreamData>(PolygonWithColor)))) : (static_cast<int>((static_cast<MemoryStreamData>(Polygon)))) ); }
 
 		inline void
 			AddColor(Stuff::RGBAColor color)
@@ -89,7 +89,7 @@ namespace MidLevelRenderer {
 				{
 					Check_Object(this);
 					Check_Object(stream);  
-					*stream << (int)LightMapRenderState;
+					*stream << static_cast<int>(LightMapRenderState);
 					state.SetPriority(priority);
 					state.Save(stream);
 				}

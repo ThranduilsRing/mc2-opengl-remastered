@@ -358,10 +358,10 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"executor_apply_state_passes\": " << mc2_framegraph_executor_apply_state_passes() << ",\n";
         // PER-PASS-APPLY-COUNTERS-1: per-pass breakdown (aggregate above == sum of these).
         s << "    \"executor_apply_state_by_pass\": {";
-        for (int i = 0; i < (int)RenderCore::framegraph::ApplyPassId::Count; ++i) {
+        for (int i = 0; i < static_cast<int>(RenderCore::framegraph::ApplyPassId::Count); ++i) {
             s << (i == 0 ? "" : ",")
               << " \"" << RenderCore::framegraph::applyPassName((RenderCore::framegraph::ApplyPassId)i) << "\": "
-              << mc2_framegraph_executor_apply_state_by_pass((unsigned)i);
+              << mc2_framegraph_executor_apply_state_by_pass(static_cast<unsigned>(i));
         }
         s << " },\n";
         s << "    \"executor_scheduled_passes\": " << mc2_framegraph_executor_scheduled_passes() << ",\n";

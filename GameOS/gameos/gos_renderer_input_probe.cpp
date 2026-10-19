@@ -40,7 +40,7 @@ bool readScenePixel(int px, int py, PixelProbe& out)
     out = PixelProbe();
     // frame N is being BUILT; the scene FBO still holds frame N-1's render.
     out.srcFrameHint = (g_mc2FrameCounter > 0)
-        ? (unsigned long)(g_mc2FrameCounter - 1u)
+        ? static_cast<unsigned long>((g_mc2FrameCounter - 1u))
         : 0UL;
 
     gosPostProcess* pp = getGosPostProcess();
@@ -169,7 +169,7 @@ void queryShadowFeed(int32_t recipeIndex, ShadowFeedReport& out)
     // reimplementation of the filter.
     std::vector<GpuStaticPropInstance> bldg;
     GpuStaticPropRegistry::getBuildingShadowInstances(bldg);
-    out.buildingFeedTotal = (int)bldg.size();
+    out.buildingFeedTotal = static_cast<int>(bldg.size());
     scanFeed(bldg, out.recipeResolved, recipeTypeId, out.recipePos,
              out.inBuildingFeed);
 
@@ -178,7 +178,7 @@ void queryShadowFeed(int32_t recipeIndex, ShadowFeedReport& out)
     // alongside to tell a drawn feed from an undrawn one.
     std::vector<GpuStaticPropInstance> dyn;
     GpuStaticPropRegistry::getDynamicPropShadowInstances(dyn);
-    out.dynamicFeedTotal = (int)dyn.size();
+    out.dynamicFeedTotal = static_cast<int>(dyn.size());
     scanFeed(dyn, out.recipeResolved, recipeTypeId, out.recipePos,
              out.inDynamicFeed);
 }

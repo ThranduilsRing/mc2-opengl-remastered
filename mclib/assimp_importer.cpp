@@ -286,7 +286,7 @@ bool DeriveMC2TextureName(const aiScene* scene, const aiMaterial* mat,
 	// Resolve embedded "*N" to the source image filename when available.
 	std::string resolved;
 	if (raw[0] == '*' && scene != nullptr) {
-		const unsigned idx = (unsigned)atoi(raw + 1);
+		const unsigned idx = static_cast<unsigned>(atoi(raw + 1));
 		if (idx < scene->mNumTextures && scene->mTextures[idx] != nullptr
 		    && scene->mTextures[idx]->mFilename.length > 0) {
 			resolved = scene->mTextures[idx]->mFilename.C_Str();
@@ -314,7 +314,7 @@ bool DeriveMC2TextureName(const aiScene* scene, const aiMaterial* mat,
 		if (mat->Get(AI_MATKEY_NAME, matName) == AI_SUCCESS) {
 			std::string mn = matName.C_Str();
 			for (size_t i = 0; i < mn.size(); ++i)
-				if (mn[i] >= 'A' && mn[i] <= 'Z') mn[i] = (char)(mn[i] - 'A' + 'a');
+				if (mn[i] >= 'A' && mn[i] <= 'Z') mn[i] = static_cast<char>((mn[i] - 'A' + 'a'));
 			if (mn.find("leaf") != std::string::npos ||
 			    mn.find("leaves") != std::string::npos ||
 			    mn.find("foliage") != std::string::npos)
@@ -831,7 +831,7 @@ float clipDurationSec(const aiScene* scene, const std::string& clip) {
         const aiAnimation* an = scene->mAnimations[a];
         if (clip == an->mName.C_Str()) {
             double tps = an->mTicksPerSecond != 0.0 ? an->mTicksPerSecond : 1000.0;
-            return (float)(an->mDuration / tps);
+            return static_cast<float>((an->mDuration / tps));
         }
     }
     return -1.0f;
@@ -998,8 +998,8 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
         e.perVertexBone.assign(nv > 0 ? nv : 0, 0);
         for (const ImportPartRec& pr : parts) {
             const int bi = (pr.boneIndex >= 0) ? pr.boneIndex : 0;
-            for (unsigned v = 0; v < pr.vCount && (int)(pr.vOff + v) < nv; ++v)
-                e.perVertexBone[pr.vOff + v] = (unsigned char)(bi & 0xFF);
+            for (unsigned v = 0; v < pr.vCount && static_cast<int>((pr.vOff + v)) < nv; ++v)
+                e.perVertexBone[pr.vOff + v] = static_cast<unsigned char>((bi & 0xFF));
         }
         // Per-frame foot grounding: cache each bone's lowest rest VBO vertex (model
         // space, world-up = Stuff.y). Each frame the tick transforms these by the bone
@@ -1009,9 +1009,9 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
             e.boneLowest.assign(bake.rest.size(), aiVector3D(0, 1e30f, 0));
             const TG_TypeVertex* tv = e.shape->GetTypeVertices();
             const int ntv = e.shape->GetNumTypeVertices();
-            for (int vi = 0; vi < ntv && vi < (int)e.perVertexBone.size(); ++vi) {
+            for (int vi = 0; vi < ntv && vi < static_cast<int>(e.perVertexBone.size()); ++vi) {
                 const int b = e.perVertexBone[vi];
-                if (b >= 0 && b < (int)e.boneLowest.size() && tv[vi].position.y < e.boneLowest[b].y)
+                if (b >= 0 && b < static_cast<int>(e.boneLowest.size()) && tv[vi].position.y < e.boneLowest[b].y)
                     e.boneLowest[b] = aiVector3D(tv[vi].position.x, tv[vi].position.y, tv[vi].position.z);
             }
             // Static ground lift from the REST pose. Using the rest lift every frame
@@ -1035,7 +1035,7 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
 
     MECH_SKEL_TRACE("file='%s' 1B-RUNTIME registered pinned='%s' active='%s' dur=%.3fs parts=%zu gpu=%d",
                     path, bake.forcedClip.c_str(), e.initialClip.c_str(), e.initialDuration, parts.size(),
-                    (int)mechImportGpuEnabled());
+                    static_cast<int>(mechImportGpuEnabled()));
     g_importedAnims.push_back(std::move(e));
 }
 
@@ -1056,10 +1056,10 @@ bool mc2mechanim::ImportedGpuEnabled() { return mechImportGpuEnabled(); }
 int mc2mechanim::ImportedGpuTypeInfo(const void* typeMulti,
                                      const unsigned char** perVertexBone, int* numVerts) {
     for (const ImportedAnimEntry& e : g_importedAnims) {
-        if (e.gpuMode && (const void*)e.multi == typeMulti) {
+        if (e.gpuMode && static_cast<const void*>(e.multi) == typeMulti) {
             if (perVertexBone) *perVertexBone = e.perVertexBone.empty() ? nullptr : e.perVertexBone.data();
-            if (numVerts) *numVerts = (int)e.perVertexBone.size();
-            return (int)e.invMWrest.size();   // joint count
+            if (numVerts) *numVerts = static_cast<int>(e.perVertexBone.size());
+            return static_cast<int>(e.invMWrest.size());   // joint count
         }
     }
     return 0;
@@ -1071,7 +1071,7 @@ int mc2mechanim::ImportedGpuModelDelta(const void* actorKey, const float** mats1
         auto it = e.actors.find(actorKey);
         if (it != e.actors.end()) {
             if (mats16) *mats16 = it->second.modelDelta.empty() ? nullptr : it->second.modelDelta.data();
-            return (int)(it->second.modelDelta.size() / 16);
+            return static_cast<int>((it->second.modelDelta.size() / 16));
         }
     }
     return 0;
@@ -1096,7 +1096,7 @@ int mc2mechanim::ImportedGpuLiftAxis() { return mechImportGpuLiftAxis(); }
 // resetPaintScheme) loads it via mcTextureManager and binds it on unit 6.
 const char* mc2mechanim::ImportedMechAoTexName(const void* typeKey) {
     for (const ImportedAnimEntry& e : g_importedAnims)
-        if ((const void*)e.multi == typeKey)
+        if (static_cast<const void*>(e.multi) == typeKey)
             return e.aoTexName.empty() ? nullptr : e.aoTexName.c_str();
     return nullptr;
 }
@@ -1106,7 +1106,7 @@ const char* mc2mechanim::ImportedMechAoTexName(const void* typeKey) {
 // (mech3d resetPaintScheme) loads it via mcTextureManager and binds it on unit 7.
 const char* mc2mechanim::ImportedMechNormalTexName(const void* typeKey) {
     for (const ImportedAnimEntry& e : g_importedAnims)
-        if ((const void*)e.multi == typeKey)
+        if (static_cast<const void*>(e.multi) == typeKey)
             return e.normalTexName.empty() ? nullptr : e.normalTexName.c_str();
     return nullptr;
 }
@@ -1124,7 +1124,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
     if (!mc2Name || !rootToWorld12 || !outXYZ) return false;
     const bool diag = mc2::gate::get<"MC2_MECH_NODE_DIAG">();
     for (ImportedAnimEntry& e : g_importedAnims) {
-        if ((const void*)e.multi != typeKey) continue;
+        if (static_cast<const void*>(e.multi) != typeKey) continue;
         if (e.nodeManifest.empty()) {
             if (diag) { static int w=0; if (w++<8) mc2::fmt::print_err("[NODE-DIAG] '{}': manifest EMPTY\n", mc2::fmt::safe(mc2Name)); }
             return false;
@@ -1145,7 +1145,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         }
         int idx = -1;
         for (size_t i = 0; i < e.names.size(); ++i)
-            if (e.names[i] == mit->second) { idx = (int)i; break; }
+            if (e.names[i] == mit->second) { idx = static_cast<int>(i); break; }
         if (idx < 0) {
             static int s_warnJoint = 0;
             if (s_warnJoint++ < 8)
@@ -1156,7 +1156,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         auto ait = e.actors.find(actorKey);
         if (ait != e.actors.end()) s = &ait->second;
         else if (!e.cpuState.lastGlobals.empty()) s = &e.cpuState;  // CPU lockstep fallback
-        if (!s || idx >= (int)s->lastGlobals.size()) {
+        if (!s || idx >= static_cast<int>(s->lastGlobals.size())) {
             if (diag) { static int w=0; if (w++<8) mc2::fmt::print_err("[NODE-DIAG] '{}' joint '{}' idx={:d}: no actor state / lastGlobals empty (actors={:d})\n", mc2::fmt::safe(mc2Name), mit->second.c_str(), mc2::fmt::as_i32(idx), mc2::fmt::as_size(e.actors.size())); }
             return false;
         }
@@ -1265,7 +1265,7 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
     // Find the type entry for this actor's chassis (keyed by its TG_TypeMultiShape).
     ImportedAnimEntry* te = nullptr;
     for (ImportedAnimEntry& en : g_importedAnims)
-        if ((const void*)en.multi == typeKey) { te = &en; break; }
+        if (static_cast<const void*>(en.multi) == typeKey) { te = &en; break; }
     if (!te) return;
     ImportedAnimEntry& e = *te;
 
@@ -1309,7 +1309,7 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
     ResetBoundingBox(e.multi);
     for (const ImportPartRec& pr : e.parts) {
         const aiMesh* me = e.scene->mMeshes[pr.meshIndex];
-        const float* rm = (pr.boneIndex >= 0 && pr.boneIndex < (int)globals.size())
+        const float* rm = (pr.boneIndex >= 0 && pr.boneIndex < static_cast<int>(globals.size()))
                               ? globals[pr.boneIndex].m : nullptr;
         for (unsigned v = 0; v < pr.vCount && v < me->mNumVertices; ++v) {
             aiVector3D p, n;
@@ -1394,7 +1394,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 			int ff = 0;
 			ff = mc2::gate::get<"MC2_MECH_IMPORT_FORCE_FRAME">();
 			double bt = 0, bd = 0;
-			if (mc2skel::EvaluateClipGpuBones(scene, fc, (float)ff, bake.names, bake.rest, &bt, &bd)) {
+			if (mc2skel::EvaluateClipGpuBones(scene, fc, static_cast<float>(ff), bake.names, bake.rest, &bt, &bd)) {
 				bake.forcedClip = fc;
 				bake.forcedFrame = ff;
 				MECH_SKEL_TRACE("file='%s' FORCE_CLIP='%s' frame=%d (t=%.1f/%.1f) -> posed bake", path, fc, ff, bt, bd);
@@ -1405,7 +1405,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		} else {
 			mc2skel::EvaluateRestGpuBones(scene, bake.names, bake.rest);
 		}
-		for (size_t i = 0; i < bake.names.size(); ++i) bake.nameIdx[bake.names[i]] = (int)i;
+		for (size_t i = 0; i < bake.names.size(); ++i) bake.nameIdx[bake.names[i]] = static_cast<int>(i);
 		bake.active = !bake.names.empty();
 		// 1B-RUNTIME / 1C: opt-in gate enables per-frame animation. With a forced
 		// clip it loops that one clip (1B); without, the clip is chosen each frame
@@ -1481,7 +1481,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		// keeps going and upgrades to a variant if one shows up.
 		auto isVariantMat = [](const char* mn){
 			if (!mn) return false;
-			std::string s(mn); for (char& c : s) c = (char)tolower(c);
+			std::string s(mn); for (char& c : s) c = static_cast<char>(tolower(c));
 			return s.find("widow") != std::string::npos
 			    || s.find("bha")   != std::string::npos
 			    || s.find("sldf")  != std::string::npos;
@@ -1510,7 +1510,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 	} else {
 	// Allocate the multi-shape's listOfTypeShapes[] and per-slot TG_TypeShape
 	// instances. One Assimp mesh → one TG_TypeShape (MVP; LODs not embedded).
-	out->AllocateImportedShapes((int)scene->mNumMeshes);
+	out->AllocateImportedShapes(static_cast<int>(scene->mNumMeshes));
 
 	// Build the multi-shape's TG_Texture[] before populating shapes — the
 	// per-shape TG_TinyTexture wiring (CreateListOfTextures) reads from the
@@ -1523,7 +1523,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 
 	// Populate each shape from its mesh.
 	for (unsigned i = 0; i < scene->mNumMeshes; i++) {
-		TG_TypeNodePtr slot = out->GetTypeNode((long)i);
+		TG_TypeNodePtr slot = out->GetTypeNode(static_cast<long>(i));
 		if (!slot || slot->GetNodeType() != SHAPE_NODE)
 			continue;
 		long r = ImportShapeFromMesh(scene, i, static_cast<TG_TypeShape*>(slot), out,
@@ -1553,7 +1553,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		if (s_ground && autoGround) {
 			const float dy = (s_ground==2) ? -out->minBox.y : -out->maxBox.y;
 			for (unsigned si=0; si<scene->mNumMeshes; ++si) {
-				TG_TypeNodePtr nd = out->GetTypeNode((long)si);
+				TG_TypeNodePtr nd = out->GetTypeNode(static_cast<long>(si));
 				if (nd && nd->GetNodeType()==SHAPE_NODE)
 					static_cast<TG_TypeShape*>(nd)->TranslateTypeVerticesY(dy);
 			}

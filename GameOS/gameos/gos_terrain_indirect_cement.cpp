@@ -79,7 +79,7 @@ bool   g_transitionMaskReady   = false;
 int deriveMaskIdFromCorners(bool c0, bool c1, bool c2, bool c3) {
     const uint32_t bn = (c0 ? 8u : 0u) | (c1 ? 4u : 0u) | (c2 ? 2u : 0u) | (c3 ? 1u : 0u);
     if (bn == 0u || bn == 15u) return -1;
-    return (int)(bn - 1u);
+    return static_cast<int>((bn - 1u));
 }
 
 // ---------------------------------------------------------------------------
@@ -308,9 +308,9 @@ static bool CementCellBandMean(const std::vector<uint32_t>& atlasBuf,
     const int dstX = (k % gridSide) * txmSize;
     const int dstY = (k / gridSide) * txmSize;
     std::vector<float> lum;
-    lum.reserve((size_t)txmSize * (size_t)txmSize);
+    lum.reserve(static_cast<size_t>(txmSize) * static_cast<size_t>(txmSize));
     for (int py = 0; py < txmSize; ++py) {
-        const uint32_t* row = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
+        const uint32_t* row = &atlasBuf[static_cast<size_t>((dstY + py)) * atlasPixelSide + dstX];
         for (int px = 0; px < txmSize; ++px) {
             const uint32_t c = row[px];
             lum.push_back(0.299f * float((c >> 16) & 0xFFu)
@@ -325,7 +325,7 @@ static bool CementCellBandMean(const std::vector<uint32_t>& atlasBuf,
     const float p90 = sorted[n * 90 / 100];
     double sr = 0.0, sg = 0.0, sb = 0.0; long cnt = 0;
     for (int py = 0; py < txmSize; ++py) {
-        const uint32_t* row = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
+        const uint32_t* row = &atlasBuf[static_cast<size_t>((dstY + py)) * atlasPixelSide + dstX];
         for (int px = 0; px < txmSize; ++px) {
             const uint32_t c = row[px];
             const float b = float( c        & 0xFFu);
@@ -337,9 +337,9 @@ static bool CementCellBandMean(const std::vector<uint32_t>& atlasBuf,
         }
     }
     if (cnt < 16) return false;
-    outR = (float)(sr / (double)cnt);
-    outG = (float)(sg / (double)cnt);
-    outB = (float)(sb / (double)cnt);
+    outR = static_cast<float>((sr / static_cast<double>(cnt)));
+    outG = static_cast<float>((sg / static_cast<double>(cnt)));
+    outB = static_cast<float>((sb / static_cast<double>(cnt)));
     return outR >= 4.f && outG >= 4.f && outB >= 4.f;
 }
 
@@ -411,9 +411,9 @@ void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
     const int dstY = (k / gridSide) * txmSize;
     long offBand = 0, tot = 0;   // NB: not `far` -- that is a Windows keyword macro.
     std::vector<float> lums;
-    lums.reserve((size_t)txmSize * (size_t)txmSize);
+    lums.reserve(static_cast<size_t>(txmSize) * static_cast<size_t>(txmSize));
     for (int py = 0; py < txmSize; ++py) {
-        const uint32_t* row = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
+        const uint32_t* row = &atlasBuf[static_cast<size_t>((dstY + py)) * atlasPixelSide + dstX];
         for (int px = 0; px < txmSize; ++px) {
             const uint32_t c = row[px];
             if ((c & 0xFF000000u) == 0u) continue;   // transparent surround
@@ -425,7 +425,7 @@ void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
             if (L - s.lum > kConcreteMarkDelta) ++offBand;   // BRIGHT side only
         }
     }
-    s.markFrac = (tot > 0) ? (float)offBand / (float)tot : 0.f;
+    s.markFrac = (tot > 0) ? static_cast<float>(offBand) / static_cast<float>(tot) : 0.f;
     s.marks    = s.markFrac > kConcreteMarkFrac;
 
     // CEMENT-INTRACELL-1 (ARM C): split the cell into concrete BACKGROUND and
@@ -435,11 +435,11 @@ void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
     // unnoticed in CEMENT-ATLAS-CELL-2).
     if (!lums.empty()) {
         std::sort(lums.begin(), lums.end());
-        const size_t lo = (size_t)((float)lums.size() * 0.60f);
-        const size_t hi = std::min(lums.size() - 1, (size_t)((float)lums.size() * 0.95f));
+        const size_t lo = static_cast<size_t>((static_cast<float>(lums.size()) * 0.60f));
+        const size_t hi = std::min(lums.size() - 1, static_cast<size_t>((static_cast<float>(lums.size()) * 0.95f)));
         double acc = 0.0; long n = 0;
         for (size_t i = lo; i <= hi; ++i) { acc += lums[i]; ++n; }
-        s.bgLum = (n > 0) ? (float)(acc / (double)n) : s.lum;
+        s.bgLum = (n > 0) ? static_cast<float>((acc / static_cast<double>(n))) : s.lum;
         // SECOND PASS. On a cell where the road covers >40% of the tile (the
         // crossroads and highway pieces do), the [P60,P95] window still straddles
         // the asphalt and drags the reference down -- measured, that reports a
@@ -449,11 +449,11 @@ void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
         {
             double acc2 = 0.0; long n2 = 0;
             for (float L : lums) if (s.bgLum - L <= kRoadArtDarkDelta) { acc2 += L; ++n2; }
-            if (n2 >= 16) s.bgLum = (float)(acc2 / (double)n2);
+            if (n2 >= 16) s.bgLum = static_cast<float>((acc2 / static_cast<double>(n2)));
         }
         long dark = 0;
         for (float L : lums) if (s.bgLum - L > kRoadArtDarkDelta) ++dark;
-        s.roadFrac = (float)dark / (float)lums.size();
+        s.roadFrac = static_cast<float>(dark) / static_cast<float>(lums.size());
         s.road     = s.roadFrac > kRoadArtFrac;
     }
 }
@@ -466,7 +466,7 @@ void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
 int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT,
                                   float& refR, float& refG, float& refB) {
     std::vector<float> okL;
-    for (int k = 0; k < NT; ++k) if (st[(size_t)k].ok) okL.push_back(st[(size_t)k].lum);
+    for (int k = 0; k < NT; ++k) if (st[static_cast<size_t>(k)].ok) okL.push_back(st[static_cast<size_t>(k)].lum);
     if (okL.empty()) return -1;
     std::sort(okL.begin(), okL.end());
     const float medL = okL[okL.size() / 2];
@@ -477,7 +477,7 @@ int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT,
 
     auto admit = [&](float centreL) {
         for (int k = 0; k < NT; ++k) {
-            CementCellStats& c = st[(size_t)k];
+            CementCellStats& c = st[static_cast<size_t>(k)];
             c.family = c.ok
                     && c.chroma <= kConcreteChromaMax
                     && c.lum >= centreL * kConcreteLumLo
@@ -487,7 +487,7 @@ int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT,
     admit(seedL);
 
     std::vector<float> famL;
-    for (int k = 0; k < NT; ++k) if (st[(size_t)k].family) famL.push_back(st[(size_t)k].lum);
+    for (int k = 0; k < NT; ++k) if (st[static_cast<size_t>(k)].family) famL.push_back(st[static_cast<size_t>(k)].lum);
     if (!famL.empty()) {
         std::sort(famL.begin(), famL.end());
         seedL = famL[famL.size() / 2];
@@ -496,7 +496,7 @@ int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT,
 
     auto medOf = [&](float CementCellStats::* m) -> float {
         std::vector<float> t;
-        for (int k = 0; k < NT; ++k) if (st[(size_t)k].family) t.push_back(st[(size_t)k].*m);
+        for (int k = 0; k < NT; ++k) if (st[static_cast<size_t>(k)].family) t.push_back(st[static_cast<size_t>(k)].*m);
         if (t.empty()) return 0.f;
         std::sort(t.begin(), t.end());
         return t[t.size() / 2];
@@ -511,7 +511,7 @@ int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT,
     // the whole apron). Lowest index wins ties -> deterministic across runs.
     int canon = -1; float bestD = 1e30f;
     for (int k = 0; k < NT; ++k) {
-        const CementCellStats& c = st[(size_t)k];
+        const CementCellStats& c = st[static_cast<size_t>(k)];
         if (!c.family || c.marks) continue;
         const float d = (c.r - refR) * (c.r - refR)
                       + (c.g - refG) * (c.g - refG)
@@ -534,12 +534,12 @@ static bool TileIsRoadArt(long r, long c, long mapSide, PostcompVertexPtr blocks
     auto* tt = Terrain::terrainTextures;
     if (!tt || !blocks) return false;
     const DWORD slot = Terrain::mapData->getTexture(r, c) & 0xFFFFu;
-    if (slot >= (DWORD)MC_MAX_TERRAIN_TXMS) return false;
+    if (slot >= static_cast<DWORD>(MC_MAX_TERRAIN_TXMS)) return false;
     if (g_cementLayerIndexBySlot[slot] != 0xFFFFu) return false;  // solid cement, not road
     if (!(tt->isCement(slot) && tt->isAlpha(slot))) return false;
     auto cemCorner = [&](long rr, long cc) -> bool {
-        const DWORD vt = blocks[(size_t)rr * (size_t)mapSide + (size_t)cc].terrainType;
-        return vt < (DWORD)MC_MAX_TERRAIN_TXMS
+        const DWORD vt = blocks[static_cast<size_t>(rr) * static_cast<size_t>(mapSide) + static_cast<size_t>(cc)].terrainType;
+        return vt < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS)
                && g_cementLayerIndexBySlot[vt] != 0xFFFFu;
     };
     return !(cemCorner(r, c) || cemCorner(r, c + 1)
@@ -560,14 +560,14 @@ bool TileRoadAdjacent8(long r, long c, long mapSide, PostcompVertexPtr blocks) {
 void BuildTransitionMaskArray() {
     const int N = kTransitionMaskLayers;
     const int S = kTransitionMaskSize;
-    std::vector<uint8_t> buf((size_t)N * S * S, 0u);
+    std::vector<uint8_t> buf(static_cast<size_t>(N) * S * S, 0u);
     for (int k = 0; k < N; ++k) {
-        const uint32_t bn = (uint32_t)(k + 1);
+        const uint32_t bn = static_cast<uint32_t>((k + 1));
         const bool c0 = (bn & 8u) != 0u;
         const bool c1 = (bn & 4u) != 0u;
         const bool c2 = (bn & 2u) != 0u;
         const bool c3 = (bn & 1u) != 0u;
-        uint8_t* layer = &buf[(size_t)k * S * S];
+        uint8_t* layer = &buf[static_cast<size_t>(k) * S * S];
         for (int py = 0; py < S; ++py) {
             for (int px = 0; px < S; ++px) {
                 const float u  = (float(px) + 0.5f) / float(S);
@@ -579,7 +579,7 @@ void BuildTransitionMaskArray() {
                 float cov = (c0 ? w0 : 0.f) + (c1 ? w1 : 0.f)
                           + (c2 ? w2 : 0.f) + (c3 ? w3 : 0.f);
                 cov = cov * cov * (3.f - 2.f * cov);  // smoothstep sharpening
-                layer[py * S + px] = (uint8_t)(std::min(cov, 1.f) * 255.f + 0.5f);
+                layer[py * S + px] = static_cast<uint8_t>((std::min(cov, 1.f) * 255.f + 0.5f));
             }
         }
     }
@@ -676,31 +676,31 @@ void PopulateRecipeCementWords() {
     auto IsPavedOverlay = [](Overlays t) -> bool { return IsPavedOverlayType(t); };
     // Step 5c: also collect a full per-vn cement-word array for the terrain LOD
     // chunk path (indexed vn = mx + my*mapSide, matching its heightfield SSBO).
-    std::vector<uint32_t> chunkCementWords((size_t)mapSide * (size_t)mapSide, 0u);
+    std::vector<uint32_t> chunkCementWords(static_cast<size_t>(mapSide) * static_cast<size_t>(mapSide), 0u);
     for (size_t vn = 0; vn < N; ++vn) {
-        const long mx = (long)vn % mapSide;
-        const long my = (long)vn / mapSide;
+        const long mx = static_cast<long>(vn) % mapSide;
+        const long my = static_cast<long>(vn) / mapSide;
         if (mx >= mapSide - 1 || my >= mapSide - 1) continue;
 
         uint32_t cementWord = 0u;
         if (g_cementLayerMapReady) {
             const DWORD texData = Terrain::mapData->getTexture(my, mx);
             const DWORD slot    = texData & 0xFFFFu;
-            if (slot < (DWORD)MC_MAX_TERRAIN_TXMS) {
+            if (slot < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS)) {
                 const uint16_t idx = g_cementLayerIndexBySlot[slot];
                 if (idx != 0xFFFFu) {
-                    cementWord = kCementLayerValidBit | ((uint32_t)idx & 0xFFFFu);
+                    cementWord = kCementLayerValidBit | (static_cast<uint32_t>(idx) & 0xFFFFu);
                     ++cementQuadCount;
                 } else if (blocks && tt
-                           && tt->isCement((DWORD)slot)
-                           && tt->isAlpha((DWORD)slot)) {
+                           && tt->isCement(static_cast<DWORD>(slot))
+                           && tt->isAlpha(static_cast<DWORD>(slot))) {
                     // Transition quad: read per-vertex terrain types from PostcompVertex.
                     // v0=(my,mx) v1=(my,mx+1) v2=(my+1,mx+1) v3=(my+1,mx) — matches
                     // mapdata.cpp setTexture() corner ordering and createTransition() packing.
                     auto cemLayerForVertex = [&](long row, long col) -> uint16_t {
-                        const size_t vi = (size_t)row * (size_t)mapSide + (size_t)col;
+                        const size_t vi = static_cast<size_t>(row) * static_cast<size_t>(mapSide) + static_cast<size_t>(col);
                         const DWORD  vt = blocks[vi].terrainType;
-                        return (vt < (DWORD)MC_MAX_TERRAIN_TXMS)
+                        return (vt < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS))
                                ? g_cementLayerIndexBySlot[vt] : 0xFFFFu;
                     };
                     const uint16_t l0 = cemLayerForVertex(my,     mx);
@@ -732,8 +732,8 @@ void PopulateRecipeCementWords() {
                     } else if (maskId >= 0 && cementLayerIdx != 0xFFFFu) {
                         cementWord = kCementLayerValidBit
                                    | kCementTransitionBit
-                                   | ((uint32_t)(maskId & (int)kCementMaskIdMask) << kCementMaskIdShift)
-                                   | ((uint32_t)cementLayerIdx & 0xFFFFu);
+                                   | (static_cast<uint32_t>((maskId & static_cast<int>(kCementMaskIdMask))) << kCementMaskIdShift)
+                                   | (static_cast<uint32_t>(cementLayerIdx) & 0xFFFFu);
                         ++transitionQuadCount;
                     } else if (g_cementAlphaLayerMapReady
                                && g_cementAlphaLayerIndexBySlot[slot] != 0xFFFFu) {
@@ -751,8 +751,8 @@ void PopulateRecipeCementWords() {
                         cementWord = kCementLayerValidBit
                                    | kCementTransitionBit
                                    | kCementOwnAlphaBit
-                                   | ((uint32_t)((int)kCementMaskIdMask) << kCementMaskIdShift)
-                                   | ((uint32_t)g_cementAlphaLayerIndexBySlot[slot] & 0xFFFFu);
+                                   | (static_cast<uint32_t>((static_cast<int>(kCementMaskIdMask))) << kCementMaskIdShift)
+                                   | (static_cast<uint32_t>(g_cementAlphaLayerIndexBySlot[slot]) & 0xFFFFu);
                         ++transitionAlphaRescued;
                         if (cementLayerIdx == 0xFFFFu) ++transitionDroppedNoLayer;
                         else                           ++transitionDroppedNoMask;
@@ -841,8 +841,8 @@ void PopulateRecipeCementWords() {
         long pavedSubset     = 0;
         long overlayIdSubset = 0;
         for (size_t vn = 0; vn < N; ++vn) {
-            const long mx = (long)vn % mapSide;
-            const long my = (long)vn / mapSide;
+            const long mx = static_cast<long>(vn) % mapSide;
+            const long my = static_cast<long>(vn) / mapSide;
             if (mx >= mapSide - 1 || my >= mapSide - 1) continue;
             if (vn >= chunkCementWords.size()) continue;
             // Only genuine cement tiles are candidates -- bit 24 is meaningless
@@ -918,8 +918,8 @@ void PopulateRecipeCementWords() {
         }
         long pavedFlatBaked = 0, pavedAlbedoBaked = 0;
         for (size_t vn = 0; vn < N; ++vn) {
-            const long mx = (long)vn % mapSide;
-            const long my = (long)vn / mapSide;
+            const long mx = static_cast<long>(vn) % mapSide;
+            const long my = static_cast<long>(vn) / mapSide;
             if (mx >= mapSide - 1 || my >= mapSide - 1) continue;
             if (vn >= chunkCementWords.size()) continue;
             // Already cement-classified: the legacy path owns this tile, and its
@@ -934,7 +934,7 @@ void PopulateRecipeCementWords() {
             if (mode == 2 && globalCementLayer != 0xFFFFu) {
                 // Full cement classification: solid word (no transition bit) so
                 // the tile samples the same atlas cell the apron does.
-                word = kCementLayerValidBit | ((uint32_t)globalCementLayer & 0xFFFFu);
+                word = kCementLayerValidBit | (static_cast<uint32_t>(globalCementLayer) & 0xFFFFu);
                 ++pavedAlbedoBaked;
             } else {
                 // Lighting-exemption only: keep the tile's own baked colormap
@@ -946,13 +946,13 @@ void PopulateRecipeCementWords() {
             chunkCementWords[vn] = word;
             memcpy(&g_denseRecipes[vn]._wp3, &word, 4);
         }
-        mc2::fmt::print_out("[PAVED_OVERLAY_CLASS v1] event=applied mission={} mode={:d} flat_baked={:d} albedo_baked={:d} global_layer={:d}\n", mc2::fmt::safe((::missionName[0] ? ::missionName : "unknown")), mc2::fmt::as_i32(mode), mc2::fmt::as_i32(pavedFlatBaked), mc2::fmt::as_i32(pavedAlbedoBaked), mc2::fmt::as_i32((globalCementLayer == 0xFFFFu) ? -1 : (int)globalCementLayer));
+        mc2::fmt::print_out("[PAVED_OVERLAY_CLASS v1] event=applied mission={} mode={:d} flat_baked={:d} albedo_baked={:d} global_layer={:d}\n", mc2::fmt::safe((::missionName[0] ? ::missionName : "unknown")), mc2::fmt::as_i32(mode), mc2::fmt::as_i32(pavedFlatBaked), mc2::fmt::as_i32(pavedAlbedoBaked), mc2::fmt::as_i32((globalCementLayer == 0xFFFFu) ? -1 : static_cast<int>(globalCementLayer)));
         fflush(stdout);
     }
 
     // Push to the chunk renderer (no-op if its SSBO/Init has not run yet).
     gos_TerrainLodChunk_UploadCementWordsFull(
-        chunkCementWords.data(), (int)chunkCementWords.size(), (int)mapSide);
+        chunkCementWords.data(), static_cast<int>(chunkCementWords.size()), static_cast<int>(mapSide));
     MC2_DIAGF("[CEMENT_ATLAS v1] event=cement_words_baked cement_solid=%ld cement_transition=%ld total_vn=%zu\n",
            cementQuadCount, transitionQuadCount, N);
     fflush(stdout);
@@ -973,7 +973,7 @@ void CollectUniqueNodeIds() {
     for (const TerrainQuadRecipe& rec : g_denseRecipes) {
         uint32_t nodeId;
         memcpy(&nodeId, &rec._wp2, 4);
-        if (!gos_terrain_arm::IsTileHandle(nodeId, (uint32_t)MC_MAXTEXTURES)) continue;
+        if (!gos_terrain_arm::IsTileHandle(nodeId, static_cast<uint32_t>(MC_MAXTEXTURES))) continue;
         if (!seen[nodeId]) {
             seen[nodeId] = true;
             g_uniqueTerrainNodeIds.push_back(nodeId);

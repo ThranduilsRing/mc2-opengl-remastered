@@ -508,7 +508,7 @@ class MasterComponent {
 		
 		void setSensorRange (float range) 
 		{
-			stats.sensor.range = (short)range;
+			stats.sensor.range = static_cast<short>(range);
 		}
 
 		float getEcmRange (void) {

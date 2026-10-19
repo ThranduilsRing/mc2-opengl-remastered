@@ -425,11 +425,11 @@ void gosPostProcess::createFullscreenQuad()
 
     // layout(location = 0) in vec2 pos
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), reinterpret_cast<void*>(0));
 
     // layout(location = 1) in vec2 uv
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), reinterpret_cast<void*>((2 * sizeof(float))));
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -644,7 +644,7 @@ void gosPostProcess::endScene()
         (void)mc2vk::getOrCreateEnginePresentVk().renderNativeCompositeVisual(
             exposure_, fxaaEnabled_, fxaaSubpix_, fxaaEdgeThreshold_, fxaaEdgeThresholdMin_,
             effectiveModeForComposite,
-            sceneObjectIdTex_ != 0 ? (int)RenderWorld::MechHandleIndexBase() : 0,
+            sceneObjectIdTex_ != 0 ? static_cast<int>(RenderWorld::MechHandleIndexBase()) : 0,
             lowLightGain_, lowLightTint_,
             casEnabled_, casSharpness_, tonemapMode_,
             compositeVpX, compositeVpY, compositeVpW, compositeVpH);

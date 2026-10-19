@@ -10,8 +10,8 @@ namespace gos_static_prop_batcher_detail {
 void loadProgramsIfNeeded() {
     if (s_programLoadTried) return;
     mc2::fmt::print_err("[GPUPROPS-DIAG] loadProgramsIfNeeded ENTER\n");
-    const char* glv   = (const char*)glGetString(GL_VERSION);
-    const char* glslv = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
+    const char* glv   = reinterpret_cast<const char*>(glGetString(GL_VERSION));
+    const char* glslv = reinterpret_cast<const char*>(glGetString(GL_SHADING_LANGUAGE_VERSION));
     mc2::fmt::print_err("[GPUPROPS-DIAG] GL_VERSION={}\n", mc2::fmt::safe(glv ? glv : "(null)"));
     mc2::fmt::print_err("[GPUPROPS-DIAG] GL_SHADING_LANGUAGE_VERSION={}\n", mc2::fmt::safe(glslv ? glslv : "(null)"));
     s_programLoadTried = true;
@@ -31,7 +31,7 @@ void loadProgramsIfNeeded() {
     if (s_coalesceForceDisarm == CoalesceForceDisarm::NoExtension) {
         s_hasShaderDrawParams = false;
     }
-    mc2::fmt::print_err("[GPUPROPS-DIAG] coalesceEnvDisabled={:d} hasShaderDrawParams={:d} forceDisarm={:d}\n", mc2::fmt::as_i32((int)s_coalesceEnvDisabled), mc2::fmt::as_i32((int)s_hasShaderDrawParams), mc2::fmt::as_i32((int)s_coalesceForceDisarm));
+    mc2::fmt::print_err("[GPUPROPS-DIAG] coalesceEnvDisabled={:d} hasShaderDrawParams={:d} forceDisarm={:d}\n", mc2::fmt::as_i32(static_cast<int>(s_coalesceEnvDisabled)), mc2::fmt::as_i32(static_cast<int>(s_hasShaderDrawParams)), mc2::fmt::as_i32(static_cast<int>(s_coalesceForceDisarm)));
 
     // makeProgram() is the project's shader loader (see gos_postprocess.cpp
     // for existing usage). Pass the "#version 430\n" prefix explicitly — the
@@ -420,9 +420,9 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
     // (elements) so cap*sizeof is aligned; the alloc and the slot base both derive
     // from capacity, so this aligns every slot consistently.
     {
-        const unsigned long long a = (unsigned long long)gpuSsboOffsetAlignment();
-        s_instanceCapacity = (size_t)gpuAlignUp((unsigned long long)s_instanceCapacity, a);
-        s_colorCapacity    = (size_t)gpuAlignUp((unsigned long long)s_colorCapacity,    a);
+        const unsigned long long a = static_cast<unsigned long long>(gpuSsboOffsetAlignment());
+        s_instanceCapacity = static_cast<size_t>(gpuAlignUp(static_cast<unsigned long long>(s_instanceCapacity), a));
+        s_colorCapacity    = static_cast<size_t>(gpuAlignUp(static_cast<unsigned long long>(s_colorCapacity),    a));
     }
 
     const GLbitfield storageFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
@@ -565,7 +565,7 @@ void emitSubmitTypeHistDump(std::string_view trigger) {
     // Build a typeID → name lookup by walking s_typeIndex once. n is ≤ a few
     // hundred types; quadratic walk is trivial for a 3-dump cadence.
     mc2::fmt::print_err("[SUBMIT_TYPEHIST v1] trigger={} calls={:d} non-zero buckets:\n",
-        std::string(trigger).c_str(), mc2::fmt::as_u64((unsigned long long)s_submitTypeHistCalls));
+        std::string(trigger).c_str(), mc2::fmt::as_u64(static_cast<unsigned long long>(s_submitTypeHistCalls)));
     for (size_t t = 0; t < s_submitTypeHist.size(); ++t) {
         if (s_submitTypeHist[t] > 0) {
             const char* name = "<unknown>";
@@ -591,7 +591,7 @@ void emitSubmitTypeHistDump(std::string_view trigger) {
                     indices += s_packets[ty.firstPacket + p].indexCount;
                 }
             }
-            mc2::fmt::print_err("[SUBMIT_TYPEHIST v1] typeID={:d} name={} count={:d} alphaClass={:d} packets={:d} verts={:d} indices={:d}\n", mc2::fmt::as_size(t), mc2::fmt::safe((name && *name) ? name : "<empty>"), mc2::fmt::as_u64((unsigned long long)s_submitTypeHist[t]), mc2::fmt::as_u32(aClass), mc2::fmt::as_u32(packets), mc2::fmt::as_u32(vertCount), mc2::fmt::as_u32(indices));
+            mc2::fmt::print_err("[SUBMIT_TYPEHIST v1] typeID={:d} name={} count={:d} alphaClass={:d} packets={:d} verts={:d} indices={:d}\n", mc2::fmt::as_size(t), mc2::fmt::safe((name && *name) ? name : "<empty>"), mc2::fmt::as_u64(static_cast<unsigned long long>(s_submitTypeHist[t])), mc2::fmt::as_u32(aClass), mc2::fmt::as_u32(packets), mc2::fmt::as_u32(vertCount), mc2::fmt::as_u32(indices));
         }
     }
     std::fflush(stderr);
@@ -625,7 +625,7 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
             slice1_fallback += s_counters.mono_cpu_fallback_by_pop[p];
         }
         const double fb_rate = (slice1_eligible > 0)
-            ? (double)slice1_fallback / (double)slice1_eligible
+            ? static_cast<double>(slice1_fallback) / static_cast<double>(slice1_eligible)
             : 0.0;
 
         uint64_t total_submitted = 0;
@@ -697,27 +697,27 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
                "stale_light_rows_regathered=%llu "
                "stale_light_rows_unresolvable=%llu "
                "light_rows_out_of_range=%llu\n",
-               (unsigned long long)s_counters.frame_count,
-               (unsigned long long)slice1_eligible,
-               (unsigned long long)total_submitted,
-               (unsigned long long)s_counters.mono_submitted_children,
-               (unsigned long long)s_counters.mono_skipped_children,
-               (unsigned long long)slice1_fallback,
-               (unsigned long long)s_counters.mono_gpu_drawn_instances,
+               static_cast<unsigned long long>(s_counters.frame_count),
+               static_cast<unsigned long long>(slice1_eligible),
+               static_cast<unsigned long long>(total_submitted),
+               static_cast<unsigned long long>(s_counters.mono_submitted_children),
+               static_cast<unsigned long long>(s_counters.mono_skipped_children),
+               static_cast<unsigned long long>(slice1_fallback),
+               static_cast<unsigned long long>(s_counters.mono_gpu_drawn_instances),
                fb_rate,
-               (unsigned long long)s_counters.mono_submitted_instances_by_pop[0],
-               (unsigned long long)s_counters.mono_submitted_instances_by_pop[1],
-               (unsigned long long)s_counters.mono_submitted_instances_by_pop[2],
-               (unsigned long long)s_counters.mono_submitted_instances_by_pop[3],
+               static_cast<unsigned long long>(s_counters.mono_submitted_instances_by_pop[0]),
+               static_cast<unsigned long long>(s_counters.mono_submitted_instances_by_pop[1]),
+               static_cast<unsigned long long>(s_counters.mono_submitted_instances_by_pop[2]),
+               static_cast<unsigned long long>(s_counters.mono_submitted_instances_by_pop[3]),
                popCensus[0], popCensus[1], popCensus[2], popCensus[3],
                popCensus[4], popTagged,
                // "no" the moment any live recipe carries the 0xFF unset default:
                // the breakdown is then incomplete and must not be read as a census.
                (popCensus[4] == 0u) ? "yes" : "no_untagged_recipes_present",
-               (unsigned long long)s_late_register_recovery_skips,
-               (unsigned long long)s_counters.mono_stale_light_row_regathered,
-               (unsigned long long)s_counters.mono_stale_light_row_unresolvable,
-               (unsigned long long)s_counters.mono_light_row_out_of_range);
+               static_cast<unsigned long long>(s_late_register_recovery_skips),
+               static_cast<unsigned long long>(s_counters.mono_stale_light_row_regathered),
+               static_cast<unsigned long long>(s_counters.mono_stale_light_row_unresolvable),
+               static_cast<unsigned long long>(s_counters.mono_light_row_out_of_range));
         std::fflush(stderr);
     }
 
@@ -728,7 +728,7 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
     // zero static-prop draws contain spotlight-tagged packets). Demoted, not
     // deleted, per the Debug Instrumentation Rule.
     if (s_spotlightRealTrace && periodic) {
-        mc2::fmt::print_err("[SPOTLIGHT_REAL_TRACE v1] event=summary site=static_prop_batcher frames={:d} window_spotlight_submits={:d} mono_spotlight_submits={:d}\n", mc2::fmt::as_u64((unsigned long long)s_counters.frame_count), mc2::fmt::as_u64((unsigned long long)s_spotlightReal_window), mc2::fmt::as_u64((unsigned long long)s_spotlightReal_mono));
+        mc2::fmt::print_err("[SPOTLIGHT_REAL_TRACE v1] event=summary site=static_prop_batcher frames={:d} window_spotlight_submits={:d} mono_spotlight_submits={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(s_counters.frame_count)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_spotlightReal_window)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_spotlightReal_mono)));
         std::fflush(stderr);
     }
     if (periodic) {

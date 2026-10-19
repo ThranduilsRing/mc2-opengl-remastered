@@ -65,7 +65,7 @@
 		DEBUG_STREAM << name << " - count: " << count << " sum: " << sum;
 		if (count>0)
 		{
-			DEBUG_STREAM << " per call: " << sum/(double)(count) << '\n';
+			DEBUG_STREAM << " per call: " << sum/static_cast<double>((count)) << '\n';
 		}
 		else
 		{

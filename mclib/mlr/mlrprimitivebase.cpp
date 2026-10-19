@@ -330,7 +330,7 @@ void
 
 	Verify(coords.GetLength() == 0 || dataSize == coords.GetLength());
 
-	texCoords.AssignData((Vector2DScalar *)data, dataSize);
+	texCoords.AssignData(const_cast<Vector2DScalar *>(data), dataSize);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

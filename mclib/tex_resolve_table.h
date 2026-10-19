@@ -28,7 +28,7 @@ extern TexResolveTable g_texResolveTable;
 extern uint64_t        g_currentFrameId;
 
 // Bounds-checked at compile time.
-static_assert(sizeof(((TexResolveTable*)0)->handles) / sizeof(DWORD) >= MC_MAXTEXTURES,
+static_assert(sizeof((reinterpret_cast<TexResolveTable*>(0))->handles) / sizeof(DWORD) >= MC_MAXTEXTURES,
               "g_texResolveTable.handles too small for MC_MAXTEXTURES");
 
 // Reset table to all-sentinel + bump generation + set frameActive=true.

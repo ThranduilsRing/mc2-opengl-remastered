@@ -121,7 +121,7 @@ inline bool forceVisibleOverride(AppearanceT* app, AlphaT& alphaValue)
 {
     if (!force_all_visible()) return false;
     if (!app) return false;
-    alphaValue = (AlphaT)0xff;
+    alphaValue = static_cast<AlphaT>(0xff);
     app->setAlphaValue(0xff);
     app->setSensorLevel(5);
     app->setVisibility(true, true);

@@ -546,7 +546,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
     float xyRadius = 64.0f;
     while (xyRadius < fitRadius) xyRadius *= 2.0f;
     if (xyRadius > r) xyRadius = r;
-    float worldUnitsPerTexel = (2.0f * xyRadius) / (float)dynShadowMapSize_;
+    float worldUnitsPerTexel = (2.0f * xyRadius) / static_cast<float>(dynShadowMapSize_);
     cxL = floorf(cxL / worldUnitsPerTexel) * worldUnitsPerTexel;
     cyL = floorf(cyL / worldUnitsPerTexel) * worldUnitsPerTexel;
     // Back-project snapped light-space center to world (replaces camZ=0 hardcode).
@@ -680,7 +680,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
             const bool isFullMapCascade = (ci == N - 1);
             const int  cascadeMapSize = isFullMapCascade ? dynamicFullMapSize_
                                                          : dynShadowMapSize_;
-            float cTexel = (2.0f * cRad) / (float)cascadeMapSize;
+            float cTexel = (2.0f * cRad) / static_cast<float>(cascadeMapSize);
             dynamicCascadeTexelWorld_[ci] = cTexel;
             if (isFullMapCascade) dynamicFullMapTexelWorld_ = cTexel;
             cCx = floorf(cCx / cTexel) * cTexel;

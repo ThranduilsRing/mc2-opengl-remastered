@@ -278,15 +278,15 @@ int
 	{
 		for(i=0;i<numPrimitives;i++,p++,iPtr++)
 		{
-			*iPtr = (p->distanceTo(u) >= 0.0f) ? (unsigned char)0xff : (unsigned char)0;
+			*iPtr = (p->distanceTo(u) >= 0.0f) ? static_cast<unsigned char>(0xff) : static_cast<unsigned char>(0);
 			
 			ret += *iPtr;
 		}
 
-		visible = ret ? (unsigned char)1 : (unsigned char)0;
+		visible = ret ? static_cast<unsigned char>(1) : static_cast<unsigned char>(0);
 	}
 
-	visible = ret ? (unsigned char)1 : (unsigned char)0;
+	visible = ret ? static_cast<unsigned char>(1) : static_cast<unsigned char>(0);
 
 	FindVisibleVertices();
 
@@ -1042,7 +1042,7 @@ MLRShape*
 	Register_Object(ret);
 
 	int i, j, k;
-	long    nrTri = (long) ceil (icoInfo.all * pow (4.0f, icoInfo.depth));
+	long    nrTri = static_cast<long>(ceil (icoInfo.all * pow (4.0f, icoInfo.depth)));
 	glm::vec3 v[3];
 
 	if(3*nrTri >= Limits::Max_Number_Vertices_Per_Mesh)

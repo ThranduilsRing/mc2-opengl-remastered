@@ -195,7 +195,7 @@ WINBASEAPI PVOID WINAPI VirtualAlloc(PVOID lpAddress, DWORD dwSize, DWORD flAllo
         else if(flProtect == PAGE_READWRITE)
             flags = PROT_READ | PROT_WRITE;
 
-        int result = mprotect((void*)lpAddress, dwSize, flags);
+        int result = mprotect(static_cast<void*>(lpAddress), dwSize, flags);
         if(result == -1)
         {
             gGetLastError = errno;
@@ -235,7 +235,7 @@ WINBASEAPI BOOL WINAPI VirtualFree(PVOID lpAddress, DWORD dwSize, DWORD dwFreeTy
     }*/
     else if(dwFreeType == MEM_DECOMMIT) {
 
-        int result = mprotect((void*)lpAddress, dwSize, PROT_NONE);
+        int result = mprotect(static_cast<void*>(lpAddress), dwSize, PROT_NONE);
         if(result == -1) {
             gGetLastError = errno;
             return FALSE;
@@ -286,18 +286,18 @@ static void FillFindData(const char* dir_name, const char* entry_name, LPWIN32_F
         // all date setting is incorrect
         uint64_t sec = s.st_atim.tv_sec - sec_since;
         uint64_t nsec = sec*1e9 + s.st_atim.tv_sec;
-	    lpFindFileData->ftLastAccessTime.dwLowDateTime = (DWORD)nsec&0xffffffff;
-	    lpFindFileData->ftLastAccessTime.dwHighDateTime = (DWORD)(nsec>>32)&0xffffffff;
+	    lpFindFileData->ftLastAccessTime.dwLowDateTime = static_cast<DWORD>(nsec)&0xffffffff;
+	    lpFindFileData->ftLastAccessTime.dwHighDateTime = static_cast<DWORD>((nsec>>32))&0xffffffff;
 
         sec = s.st_ctim.tv_sec - sec_since;
         nsec = sec*1e9 + s.st_ctim.tv_sec;
-	    lpFindFileData->ftCreationTime.dwLowDateTime = (DWORD)nsec&0xffffffff;
-	    lpFindFileData->ftCreationTime.dwHighDateTime = (DWORD)(nsec>>32)&0xffffffff;
+	    lpFindFileData->ftCreationTime.dwLowDateTime = static_cast<DWORD>(nsec)&0xffffffff;
+	    lpFindFileData->ftCreationTime.dwHighDateTime = static_cast<DWORD>((nsec>>32))&0xffffffff;
 
         sec = s.st_ctim.tv_sec - sec_since;
         nsec = sec*1e9 + s.st_ctim.tv_sec;
-	    lpFindFileData->ftLastWriteTime.dwLowDateTime = (DWORD)nsec&0xffffffff;
-	    lpFindFileData->ftLastWriteTime.dwHighDateTime = (DWORD)(nsec>>32)&0xffffffff;
+	    lpFindFileData->ftLastWriteTime.dwLowDateTime = static_cast<DWORD>(nsec)&0xffffffff;
+	    lpFindFileData->ftLastWriteTime.dwHighDateTime = static_cast<DWORD>((nsec>>32))&0xffffffff;
 
         
 	    lpFindFileData->nFileSizeHigh = s.st_size&0xffffffff;
@@ -361,7 +361,7 @@ BOOL WINAPI FindNextFileA(HANDLE hFindFile, LPWIN32_FIND_DATAA lpFindFileData)
 {
     assert(hFindFile!=0);
 
-    FindFileData* ffd = (FindFileData*)hFindFile;
+    FindFileData* ffd = static_cast<FindFileData*>(hFindFile);
     assert(ffd->initialized);
 
     assert(ffd->last_retrieved_entry < ffd->num_entries);
@@ -383,7 +383,7 @@ BOOL WINAPI FindClose(HANDLE hFindFile)
     if(hFindFile == INVALID_HANDLE_VALUE)
         return TRUE;
 
-    FindFileData* ffd = (FindFileData*)hFindFile;
+    FindFileData* ffd = static_cast<FindFileData*>(hFindFile);
     assert(ffd->initialized);
 
     free(ffd->dir_name);

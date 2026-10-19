@@ -20,7 +20,7 @@ bool s_basePrinted = false;
 
 void prefix()
 {
-	std::printf("[DT] f=%u t=%.4f ", (unsigned)g_mc2FrameCounter, s_time);
+	std::printf("[DT] f=%u t=%.4f ", static_cast<unsigned>(g_mc2FrameCounter), s_time);
 }
 }
 
@@ -45,14 +45,14 @@ void stack(const char* tag)
 	if (!s_basePrinted) {
 		s_basePrinted = true;
 		prefix();
-		std::printf("TRACEBASE line=%p\n", (void*)&line);
+		std::printf("TRACEBASE line=%p\n", reinterpret_cast<void*>(&line));
 	}
 	prefix();
 	std::printf("%s stack=", tag);
 #if defined(__cpp_lib_stacktrace)
 	const auto st = std::stacktrace::current(1, 12);
 	for (const auto& e : st)
-		std::printf("%llx ", (unsigned long long)e.native_handle());
+		std::printf("%llx ", reinterpret_cast<unsigned long long>(e.native_handle()));
 #else
 	std::printf("(no <stacktrace> in this toolchain)");
 #endif

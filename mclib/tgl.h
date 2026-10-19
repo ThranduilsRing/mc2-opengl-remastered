@@ -279,7 +279,7 @@ struct _TG_Light
 		DWORD r,g,b;
 		r = intensity * ((OEMaRGB >> 16) & 0x000000ff);
 		g = intensity * ((OEMaRGB >> 8) & 0x000000ff);
-		b = intensity * ((OEMaRGB) & 0x000000ff);
+		b = intensity * (OEMaRGB & 0x000000ff);
 
 		aRGB = (0xff << 24) + (r << 16) + (g << 8) + (b);
 	}
@@ -773,7 +773,7 @@ class TG_TypeShape : public TG_TypeNode
 		}
 		long GetNumTypeTriangles (void) const
 		{
-			return (long)numTypeTriangles;
+			return static_cast<long>(numTypeTriangles);
 		}
 
 		// MODEL-OVERRIDE auto-ground: shift all type-vertices along the up axis

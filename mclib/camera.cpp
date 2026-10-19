@@ -360,26 +360,26 @@ long Camera::init (FitIniFilePtr cameraFile )
 	//Replace with TGL
 	if ( !worldLights ) // only do the alloc once
 	{
-		worldLights = (TG_LightPtr *)systemHeap->Malloc(sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD);
+		worldLights = static_cast<TG_LightPtr *>(systemHeap->Malloc(sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD));
 		memset(worldLights,0,sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD);
 		numLights = 2;
 
 		//---------------------------------------------------------
 		// First light is sun.
-		worldLights[0] = (TG_LightPtr)systemHeap->Malloc(sizeof(TG_Light));
+		worldLights[0] = static_cast<TG_LightPtr>(systemHeap->Malloc(sizeof(TG_Light)));
 		worldLights[0]->init(TG_LIGHT_INFINITE);
 	}
 	
 	if ( !activeLights ) // only do the alloc once
 	{
-		activeLights = (TG_LightPtr *)systemHeap->Malloc(sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD);
+		activeLights = static_cast<TG_LightPtr *>(systemHeap->Malloc(sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD));
 		memset(activeLights,0,sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD);
 		numActiveLights = 0;
 	}
 	
 	if ( !terrainLights ) // only do the alloc once
 	{
-		terrainLights = (TG_LightPtr *)systemHeap->Malloc(sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD);
+		terrainLights = static_cast<TG_LightPtr *>(systemHeap->Malloc(sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD));
 		memset(terrainLights,0,sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD);
 		numTerrainLights = 0;
 	}
@@ -393,7 +393,7 @@ long Camera::init (FitIniFilePtr cameraFile )
 
 	//---------------------------------------------------------
 	// Second light is ambient.
-	worldLights[1] = (TG_LightPtr)systemHeap->Malloc(sizeof(TG_Light));
+	worldLights[1] = static_cast<TG_LightPtr>(systemHeap->Malloc(sizeof(TG_Light)));
 	worldLights[1]->init(TG_LIGHT_AMBIENT);
 
 	//---------------------
@@ -407,7 +407,7 @@ long Camera::init (FitIniFilePtr cameraFile )
     // sebi
     unsigned long tmp;
 	result = cameraFile->readIdULong("FogColor", tmp);
-    fogColor = (DWORD)tmp;
+    fogColor = static_cast<DWORD>(tmp);
 	dayFogColor = fogColor;
 	gosASSERT(result == NO_ERR);
 
@@ -422,9 +422,9 @@ long Camera::init (FitIniFilePtr cameraFile )
 		static const float fDaySkyGreen = 162.0f;
 		static const float fDaySkyBlue = 255.0f;
 
-		const float fDayFogRed = (float)((dayFogColor >> 16) & 0xff);
-		const float fDayFogGreen = (float)((dayFogColor >> 8) & 0xff);
-		const float fDayFogBlue = (float)((dayFogColor) & 0xff);
+		const float fDayFogRed = static_cast<float>(((dayFogColor >> 16) & 0xff));
+		const float fDayFogGreen = static_cast<float>(((dayFogColor >> 8) & 0xff));
+		const float fDayFogBlue = static_cast<float>(((dayFogColor) & 0xff));
 
 		/* We assume that the fog color specified by the user is a combination of the diffuse
 		light scattered by the fog and the light from the sky showing through the fog. There's
@@ -550,8 +550,8 @@ void Camera::getClosestVertex (Stuff::Vector2DOf<long>& screenPos,
 	else if (tileC >= Terrain::realVerticesMapSide)
 		tileC = Terrain::realVerticesMapSide - 1;
 
-	row = (long)tileR;
-	col = (long)tileC;
+	row = static_cast<long>(tileR);
+	col = static_cast<long>(tileC);
 }
 
 //---------------------------------------------------------------------------
@@ -696,7 +696,7 @@ unsigned char Camera::getLightRed (float intensity)
 			return 0xff;
 	}
 
-	return (ambientRed < floorV) ? (unsigned char)floorV : ambientRed;
+	return (ambientRed < floorV) ? static_cast<unsigned char>(floorV) : ambientRed;
 }
 
 //---------------------------------------------------------------------------
@@ -715,7 +715,7 @@ unsigned char Camera::getLightGreen (float intensity)
 			return 0xff;
 	}
 
-	return (ambientGreen < floorV) ? (unsigned char)floorV : ambientGreen;
+	return (ambientGreen < floorV) ? static_cast<unsigned char>(floorV) : ambientGreen;
 }
 
 //---------------------------------------------------------------------------
@@ -734,7 +734,7 @@ unsigned char Camera::getLightBlue (float intensity)
 			return 0xff;
 	}
 
-	return (ambientBlue < floorV) ? (unsigned char)floorV : ambientBlue;
+	return (ambientBlue < floorV) ? static_cast<unsigned char>(floorV) : ambientBlue;
 }
 
 bool Camera::save( FitIniFile* file )

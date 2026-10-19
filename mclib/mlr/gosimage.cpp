@@ -138,5 +138,5 @@ void
 unsigned char*
 	GOSImage::GetImagePtr()
 {
-	return (unsigned char *)ptr.pTexture;
+	return reinterpret_cast<unsigned char *>(ptr.pTexture);
 }

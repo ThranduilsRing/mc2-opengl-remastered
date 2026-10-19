@@ -60,17 +60,17 @@ void drawRect( const GUI_RECT& area, DWORD color )
 
 		v[0].argb =  v[1].argb = v[2].argb = v[3].argb = color;
 
-		v[0].x = (float)clientArea.left;
-		v[0].y = (float)clientArea.top;
+		v[0].x = static_cast<float>(clientArea.left);
+		v[0].y = static_cast<float>(clientArea.top);
 
-		v[1].x = (float)clientArea.left;
-		v[1].y = (float)clientArea.bottom;
+		v[1].x = static_cast<float>(clientArea.left);
+		v[1].y = static_cast<float>(clientArea.bottom);
 
-		v[2].x = (float)clientArea.right;
-		v[2].y = (float)clientArea.bottom;
+		v[2].x = static_cast<float>(clientArea.right);
+		v[2].y = static_cast<float>(clientArea.bottom);
 
-		v[3].x = (float)clientArea.right;
-		v[3].y = (float)clientArea.top;
+		v[3].x = static_cast<float>(clientArea.right);
+		v[3].y = static_cast<float>(clientArea.top);
 
 		gos_SetRenderState( gos_State_Texture, 0 );
 		gos_SetRenderState( gos_State_ZWrite, 0 );
@@ -130,36 +130,36 @@ void drawEmptyRect( const GUI_RECT& area, unsigned long leftTopBorderColor,
 	gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha );
 
 
-	v[0].x		= (float)(clientArea.left);
-	v[0].y		= (float)(clientArea.top);
+	v[0].x		= static_cast<float>((clientArea.left));
+	v[0].y		= static_cast<float>((clientArea.top));
 	v[0].argb	= leftTopBorderColor;
 
-	v[1].x		= (float)(clientArea.right);
-	v[1].y		= (float)(clientArea.top);
+	v[1].x		= static_cast<float>((clientArea.right));
+	v[1].y		= static_cast<float>((clientArea.top));
 	v[1].argb	= leftTopBorderColor;
 
 	v[2] = v[0];
 
-	v[3].x		= (float)(clientArea.left);
-	v[3].y		= (float)(clientArea.bottom);
+	v[3].x		= static_cast<float>((clientArea.left));
+	v[3].y		= static_cast<float>((clientArea.bottom));
 	v[3].argb	= leftTopBorderColor;
 
 	gos_DrawLines( v, 4 );
 	
-	v[0].x		= (float)(clientArea.right);
-	v[0].y		= (float)(clientArea.top);
+	v[0].x		= static_cast<float>((clientArea.right));
+	v[0].y		= static_cast<float>((clientArea.top));
 	v[0].argb	= rightBottomBorderColor;
 
-	v[1].x		= (float)(clientArea.right);
-	v[1].y		= (float)(clientArea.bottom);
+	v[1].x		= static_cast<float>((clientArea.right));
+	v[1].y		= static_cast<float>((clientArea.bottom));
 	v[1].argb	= rightBottomBorderColor;
 
 	v[3] = v[1];
 
 	v[3].x += 1;
 
-	v[2].x		= (float)(clientArea.left);
-	v[2].y		= (float)(clientArea.bottom) + .1/256.f;
+	v[2].x		= static_cast<float>((clientArea.left));
+	v[2].y		= static_cast<float>((clientArea.bottom)) + .1/256.f;
 	v[2].argb	= rightBottomBorderColor;
 
 
@@ -310,28 +310,28 @@ void StaticInfo::init( FitIniFile& file, const char* blockName, long hiResOffset
 		location[k].y = y;
 		location[k].z = 0.f;
 		location[k].rhw = .5;
-		location[k].u = (float)u/(float)textureWidth + (.1f / (float)textureWidth);
-		location[k].v = (float)v/(float)textureWidth + (.1f / (float)textureWidth);
+		location[k].u = static_cast<float>(u)/static_cast<float>(textureWidth) + (.1f / static_cast<float>(textureWidth));
+		location[k].v = static_cast<float>(v)/static_cast<float>(textureWidth) + (.1f / static_cast<float>(textureWidth));
 	}
 
 	location[3].x = location[2].x = x + width;
 	location[2].y = location[1].y = y + height;
 
-	location[2].u = location[3].u = ((float)(u + uWidth))/((float)textureWidth) + (.1f / (float)textureWidth);
-	location[1].v = location[2].v = ((float)(v + vHeight))/((float)textureWidth) + (.1f / (float)textureWidth);
+	location[2].u = location[3].u = (static_cast<float>((u + uWidth)))/(static_cast<float>(textureWidth)) + (.1f / static_cast<float>(textureWidth));
+	location[1].v = location[2].v = (static_cast<float>((v + vHeight)))/(static_cast<float>(textureWidth)) + (.1f / static_cast<float>(textureWidth));
 
 	if ( bRotated )
 	{
 
-		location[0].u = (u + uWidth)/(float)textureWidth + (.1f / (float)textureWidth);;
-		location[1].u = u/(float)textureWidth + (.1f / (float)textureWidth);;
-		location[2].u = u/(float)textureWidth + (.1f / (float)textureWidth);
-		location[3].u = (u + uWidth)/(float)textureWidth + (.1f / (float)textureWidth);
+		location[0].u = (u + uWidth)/static_cast<float>(textureWidth) + (.1f / static_cast<float>(textureWidth));;
+		location[1].u = u/static_cast<float>(textureWidth) + (.1f / static_cast<float>(textureWidth));;
+		location[2].u = u/static_cast<float>(textureWidth) + (.1f / static_cast<float>(textureWidth));
+		location[3].u = (u + uWidth)/static_cast<float>(textureWidth) + (.1f / static_cast<float>(textureWidth));
 
-		location[0].v = v/(float)textureWidth + (.1f / (float)textureWidth);;
-		location[1].v = v/(float)textureWidth + (.1f / (float)textureWidth);;
-		location[2].v = (v + vHeight)/(float)textureWidth + (.1f / (float)textureWidth);;
-		location[3].v = (v + vHeight)/(float)textureWidth + (.1f / (float)textureWidth);;
+		location[0].v = v/static_cast<float>(textureWidth) + (.1f / static_cast<float>(textureWidth));;
+		location[1].v = v/static_cast<float>(textureWidth) + (.1f / static_cast<float>(textureWidth));;
+		location[2].v = (v + vHeight)/static_cast<float>(textureWidth) + (.1f / static_cast<float>(textureWidth));;
+		location[3].v = (v + vHeight)/static_cast<float>(textureWidth) + (.1f / static_cast<float>(textureWidth));;
 	}
 	}
 
@@ -419,19 +419,19 @@ long interpolateColor( long color1, long color2, float percent )
 		long alphaMin = (color1 >> 24) & 0xff;
 		long alphaMax = (color2 >> 24)& 0xff;
 
-		long newAlpha = (float)alphaMin + ((float)(alphaMax - alphaMin))*percent;
+		long newAlpha = static_cast<float>(alphaMin) + (static_cast<float>((alphaMax - alphaMin)))*percent;
 		
 		long redMin = (color1 & 0x00ff0000)>>16;
 		long redMax = (color2 & 0x00ff0000)>>16;
-		long newRed = (float)redMin + ((float)(redMax - redMin))*percent;
+		long newRed = static_cast<float>(redMin) + (static_cast<float>((redMax - redMin)))*percent;
 		
 		long greenMin = (color1 & 0x0000ff00)>>8;
 		long greenMax = (color2 & 0x0000ff00)>>8;
-		long newGreen = (float)greenMin + ((float)(greenMax - greenMin))*percent;
+		long newGreen = static_cast<float>(greenMin) + (static_cast<float>((greenMax - greenMin)))*percent;
 		
 		long blueMin = color1 & 0x000000ff;
 		long blueMax = color2 & 0x000000ff;
-		long newBlue = (float)blueMin + ((float)(blueMax - blueMin))*percent;
+		long newBlue = static_cast<float>(blueMin) + (static_cast<float>((blueMax - blueMin)))*percent;
 
 		color = newBlue + (newGreen << 8) + (newRed << 16) + (newAlpha <<24);
 	}

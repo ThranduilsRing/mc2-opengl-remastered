@@ -143,7 +143,7 @@ static char* load_text_file(const char* fname) {
     fseek(f, 0, SEEK_SET);
     if (sz <= 0) { fclose(f); return nullptr; }
     char* buf = new char[sz + 1];
-    if ((long)fread(buf, 1, sz, f) != sz) {
+    if (static_cast<long>(fread(buf, 1, sz, f)) != sz) {
         fclose(f); delete[] buf; return nullptr;
     }
     buf[sz] = '\0';
@@ -223,7 +223,7 @@ static GLuint build_compute_program_from_file(
         srcStrs.push_back(preambles[j].c_str());
     srcStrs.push_back(fileSrc);
 
-    GLuint sh = compile_compute_shader(srcStrs.data(), (int)srcStrs.size());
+    GLuint sh = compile_compute_shader(srcStrs.data(), static_cast<int>(srcStrs.size()));
     delete[] fileSrc;
     if (!sh) {
         MC2_DIAGF("[GPU_CULL v1] %s compile failed\n", debugName);
@@ -290,7 +290,7 @@ static GLuint build_cull_program(const std::string* preambles, int nPreambles,
         srcStrs.push_back(preambles[j].c_str());
     srcStrs.push_back(fullSrc.c_str());
 
-    GLuint sh = compile_compute_shader(srcStrs.data(), (int)srcStrs.size());
+    GLuint sh = compile_compute_shader(srcStrs.data(), static_cast<int>(srcStrs.size()));
     if (!sh) { return 0; }
 
     // Debug: dump concatenated source to file for inspection.
@@ -298,7 +298,7 @@ static GLuint build_cull_program(const std::string* preambles, int nPreambles,
         char fname[64];
         mc2::fmt::to_buf(fname, "shader_dump_{}.glsl", mc2::fmt::safe(debugName ? debugName : "unknown"));
         if (FILE* dumpf = fopen(fname, "w")) {
-            for (int k = 0; k < (int)srcStrs.size(); ++k)
+            for (int k = 0; k < static_cast<int>(srcStrs.size()); ++k)
                 fputs(srcStrs[k], dumpf);
             fclose(dumpf);
             MC2_DIAGF("[GPU_CULL v1] shader dumped to %s\n", fname);
@@ -330,7 +330,7 @@ bool compute_init() {
     }
 
     // --- GL version probe ---
-    const char* glVer = (const char*)glGetString(GL_VERSION);
+    const char* glVer = reinterpret_cast<const char*>(glGetString(GL_VERSION));
     int glMaj = 0, glMin = 0;
     if (glVer) sscanf(glVer, "%d.%d", &glMaj, &glMin);
     const bool computeOk = (glMaj > 4) || (glMaj == 4 && glMin >= 3);
@@ -386,11 +386,11 @@ bool compute_init() {
             // Non-fatal: fall back to C1a shadow mode.
         } else {
             MC2_DIAGF("[GPU_CULL v1] event=c1b_cull_ok c2_readback=%d\n",
-                   (int)(nPreambles >= 2));
+                   static_cast<int>((nPreambles >= 2)));
             fflush(stdout);
             if (mc2_diag::tagEnabled("GPU_CULL")) {
                 char diag_buf[64];
-                mc2::fmt::to_buf(diag_buf, "{{\"event\":\"c1b_cull_ok\",\"c2_readback\":{:d}}}", mc2::fmt::as_i32((int)(nPreambles >= 2)));
+                mc2::fmt::to_buf(diag_buf, "{{\"event\":\"c1b_cull_ok\",\"c2_readback\":{:d}}}", mc2::fmt::as_i32(static_cast<int>((nPreambles >= 2))));
                 mc2_diag::writeEvent("GPU_CULL", 1, 0, diag_buf);
             }
         }
@@ -472,11 +472,11 @@ bool compute_init() {
     s_dispatchFrames   = 0;
 
     MC2_DIAGF("[GPU_CULL v1] event=compute_selftest result=ok maxActors=%u debugSsboBytes=%lld\n",
-           s_maxActors, (long long)debugSsboBytes);
+           s_maxActors, static_cast<long long>(debugSsboBytes));
     fflush(stdout);
     if (mc2_diag::tagEnabled("GPU_CULL")) {
         char diag_buf[128];
-        mc2::fmt::to_buf(diag_buf, "{{\"event\":\"compute_selftest\",\"result\":\"ok\",\"maxActors\":{:d},\"debugSsboBytes\":{:d}}}", mc2::fmt::as_u32(s_maxActors), mc2::fmt::as_i64((long long)debugSsboBytes));
+        mc2::fmt::to_buf(diag_buf, "{{\"event\":\"compute_selftest\",\"result\":\"ok\",\"maxActors\":{:d},\"debugSsboBytes\":{:d}}}", mc2::fmt::as_u32(s_maxActors), mc2::fmt::as_i64(static_cast<long long>(debugSsboBytes)));
         mc2_diag::writeEvent("GPU_CULL", 1, 0, diag_buf);
     }
     return true;
@@ -806,7 +806,7 @@ bool compute_buildIndirectBuffer(uint32_t typeCount) {
            " typeCount=%u totalVisSlots=%u"
            " indirectBytes=%lld visIdsBytes=%lld\n",
            typeCount, totalVisibleSlots,
-           0LL, (long long)visIdsBytes);
+           0LL, static_cast<long long>(visIdsBytes));
     fflush(stdout);
     return true;
 }
@@ -945,18 +945,18 @@ void compute_dispatch() {
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
             // Drain any prior GL errors so the check below is clean.
             while (glGetError() != GL_NO_ERROR) {}
-            gpuBindSsboRange(gpu_cull::READBACK_SSBO_BINDING, (unsigned int)rbBuf,
-                             (long long)rbOff, (long long)rbSz,
+            gpuBindSsboRange(gpu_cull::READBACK_SSBO_BINDING, static_cast<unsigned int>(rbBuf),
+                             static_cast<long long>(rbOff), static_cast<long long>(rbSz),
                              "gpu_cull.readback");
             // Check for GL_INVALID_VALUE (misalignment, out-of-range, etc).
             const GLenum bindErr = glGetError();
             if (bindErr != GL_NO_ERROR) {
                 MC2_DIAGF("[GPU_CULL v1] WARN: glBindBufferRange binding=14 error=0x%X rbOff=%lld rbSz=%lld\n",
-                       bindErr, (long long)rbOff, (long long)rbSz);
+                       bindErr, static_cast<long long>(rbOff), static_cast<long long>(rbSz));
                 fflush(stdout);
             }
             COMPUTE_TRACE("event=c2_bind rbBuf=%u rbOff=%lld rbSz=%lld binding=%u bindErr=0x%X",
-                           rbBuf, (long long)rbOff, (long long)rbSz, gpu_cull::READBACK_SSBO_BINDING, bindErr);
+                           rbBuf, static_cast<long long>(rbOff), static_cast<long long>(rbSz), gpu_cull::READBACK_SSBO_BINDING, bindErr);
         }
     }
 
@@ -1031,7 +1031,7 @@ void compute_dispatch() {
         {
             const GLint locNB = glGetUniformLocation(s_c1bCullProgram, "u_nBuckets");
             if (locNB >= 0)
-                glUniform1i(locNB, (int)s_bucketCount);
+                glUniform1i(locNB, static_cast<int>(s_bucketCount));
             // C1b sticky-bit temporal-superset M3 fail-OPEN clamp: uBlockCount
             // is s_blockCount only when the buffer is allocated, else 0 — the
             // shader-side short-circuit && on rec.blockIdx < uint(uBlockCount)
@@ -1042,7 +1042,7 @@ void compute_dispatch() {
             // needs no per-dispatch stamp.
             const GLint locBC = glGetUniformLocation(s_c1bCullProgram, "uBlockCount");
             if (locBC >= 0)
-                glUniform1i(locBC, s_blockVisBuf ? (int)s_blockCount : 0);
+                glUniform1i(locBC, s_blockVisBuf ? static_cast<int>(s_blockCount) : 0);
         }
         { TracyGpuZone("Cull.CullShader"); glDispatchCompute(cullGroups, 1, 1); }
         glUseProgram(0);
@@ -1094,7 +1094,7 @@ void compute_dispatch() {
                         static_cast<size_t>(typeCount) + 1u, 0u);
                     glGetNamedBufferSubData(s_bucketCountsBuf,
                                            0,
-                                           static_cast<GLsizeiptr>((typeCount + 1) * (int)sizeof(uint32_t)),
+                                           static_cast<GLsizeiptr>((typeCount + 1) * static_cast<int>(sizeof(uint32_t))),
                                            countsAndOverflow.data());
                     const uint32_t overflow = countsAndOverflow[static_cast<size_t>(typeCount)];
 
@@ -1151,7 +1151,7 @@ void compute_dispatch() {
                     glGetNamedBufferSubData(s_bucketCountsBuf, 0, sizeof(uint32_t), &bucket0Count);
 
                 MC2_DIAGF("[GPU_CULL v1] C2_DIAG(c1b) gpuBuf=%u rbOff=%lld bound14=%d rb_vis=%u rb_marker=0x%X bucket0=%u recordCount=%u\n",
-                       rbGpu, (long long)rbOff, bound14, rbVisGpu, rbMarker,
+                       rbGpu, static_cast<long long>(rbOff), bound14, rbVisGpu, rbMarker,
                        bucket0Count, recordCount);
                 fflush(stdout);
             }
@@ -1166,7 +1166,7 @@ void compute_dispatch() {
             glUseProgram(s_rollupProgram);
             const GLint locRC = glGetUniformLocation(s_rollupProgram, "u_recordCount");
             if (locRC >= 0)
-                glUniform1i(locRC, (int)recordCount);
+                glUniform1i(locRC, static_cast<int>(recordCount));
             // Sticky-bit rollup (v3 §2.5): rollup is uniform-free for the
             // temporal-superset path — it issues atomicOr(...,1u) on each
             // visible actor's block bit. The K-window uFrameStamp upload
@@ -1238,7 +1238,7 @@ void compute_dispatch() {
                 GLint bound14 = 0;
                 glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 14, &bound14);
                 MC2_DIAGF("[GPU_CULL v1] C2_DIAG(c1a) gpuBuf=%u rbOff=%lld bound14=%d rbVisGpu=%u recordCount=%u\n",
-                       rbGpu, (long long)rbOff, bound14, rbVisGpu, recordCount);
+                       rbGpu, static_cast<long long>(rbOff), bound14, rbVisGpu, recordCount);
                 fflush(stdout);
             }
         }
@@ -1277,7 +1277,7 @@ void compute_emitParitySummary() {
             s_timerPending = false;
         }
     }
-    const uint32_t dispatchUs = (uint32_t)(dispatchNs / 1000u);
+    const uint32_t dispatchUs = static_cast<uint32_t>((dispatchNs / 1000u));
 
     if (s_c1bInitialized) {
         // C1b mode: emit indirect draw summary + check overflow.

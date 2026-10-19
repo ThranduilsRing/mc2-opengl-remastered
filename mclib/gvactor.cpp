@@ -664,11 +664,11 @@ float GVAppearance::getWeaponNodeRecycle (long node)
 void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
 	Appearance::init(tree,obj);
-	appearType = (GVAppearanceType *)tree;
+	appearType = static_cast<GVAppearanceType *>(tree);
 
 	// C3: cache owner handle for GPU-cull node-position early-outs.
 	actorHandle_ = (obj != nullptr) ? obj->getHandle() : -1;
-	LCGV_TRACE("event=init actorHandle=%ld lifecycle=%d", actorHandle_, (int)s_gpuCullLifecycle);
+	LCGV_TRACE("event=init actorHandle=%ld lifecycle=%d", actorHandle_, static_cast<int>(s_gpuCullLifecycle));
 
 	shapeMin.x = shapeMin.y = -25;
 	shapeMax.x = shapeMax.y = 50;

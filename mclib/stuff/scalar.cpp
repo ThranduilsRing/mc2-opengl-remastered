@@ -87,10 +87,10 @@ DWORD
 	float range = (max-min);
 
 	
-	DWORD return_value = (DWORD)((local_in/range) * (float)biggest_number);
+	DWORD return_value = static_cast<DWORD>(((local_in/range) * static_cast<float>(biggest_number)));
 	
-	Verify((DWORD)return_value >= 0x00000000);
-	Verify((DWORD)return_value <= (DWORD)biggest_number);
+	Verify(static_cast<DWORD>(return_value) >= 0x00000000);
+	Verify(static_cast<DWORD>(return_value) <= static_cast<DWORD>(biggest_number));
 
 
 	return return_value;
@@ -110,7 +110,7 @@ float
 
 	unsigned int biggest_number = (0xffffffff>>(32-bits));
 
-	float ratio = in/(float)biggest_number;
+	float ratio = in/static_cast<float>(biggest_number);
 	float range = (max-min);
 	float return_value = (ratio * range)+min;
 
@@ -134,10 +134,10 @@ DWORD
 	int range = (max-min);
 
 	
-	DWORD return_value = (DWORD)(((float)local_in/(float)range) * (float)biggest_number);
+	DWORD return_value = static_cast<DWORD>(((static_cast<float>(local_in)/static_cast<float>(range)) * static_cast<float>(biggest_number)));
 	
-	Verify((DWORD)return_value >= 0x00000000);
-	Verify((DWORD)return_value < (DWORD)biggest_number);
+	Verify(static_cast<DWORD>(return_value) >= 0x00000000);
+	Verify(static_cast<DWORD>(return_value) < static_cast<DWORD>(biggest_number));
 
 	return return_value;
 
@@ -154,9 +154,9 @@ int
 
 	unsigned int biggest_number = (0xffffffff>>(32-bits));
 
-	float ratio = (float)in/(float)biggest_number;
+	float ratio = static_cast<float>(in)/static_cast<float>(biggest_number);
 	int range = (max-min);
-	int return_value = ((int)(ratio * (float)range))+min;
+	int return_value = (static_cast<int>((ratio * static_cast<float>(range))))+min;
 
 	return return_value;
 }

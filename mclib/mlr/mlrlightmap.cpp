@@ -91,7 +91,7 @@ void
 	delete clippingStates;
 
 	stream->Rewind();
-	unsigned char *ptr = (unsigned char *)stream->GetPointer();
+	unsigned char *ptr = static_cast<unsigned char *>(stream->GetPointer());
 
 	Unregister_Object(stream);
 	delete stream;
@@ -154,15 +154,15 @@ void
 
 	stream->Rewind();
 
-	*stream << (int)Matrix4D;
+	*stream << static_cast<int>(Matrix4D);
     // sebi !NB
 	//*stream << reinterpret_cast<int>(mat);
 	*stream << reinterpret_cast<size_t>(mat);
 
-	*stream << (int)ClippingState;
+	*stream << static_cast<int>(ClippingState);
 	clippingState.Save(stream);
 
-	*stream << (int)MasterRenderState;
+	*stream << static_cast<int>(MasterRenderState);
 	_state.Save(stream);
 }
 
@@ -1270,9 +1270,9 @@ void MLRLightMap::DrawLightMaps(MLRSorter *sorter)
 
 				argb = GOSCopyColor(&color);
 
-				coords = (glm::vec3 *)stream->GetPointer();
+				coords = static_cast<glm::vec3 *>(stream->GetPointer());
 				stream->AdvancePointer(stride*sizeof(glm::vec3));
-				texCoords = (Vector2DScalar *)stream->GetPointer();
+				texCoords = static_cast<Vector2DScalar *>(stream->GetPointer());
 				stream->AdvancePointer(stride*sizeof(Vector2DScalar));
 
 				MLRClippingState theAnd(0x3f), theOr(0);
@@ -1355,13 +1355,13 @@ void MLRLightMap::DrawLightMaps(MLRSorter *sorter)
 				*stream >> stride;
 				Verify(stride<=Limits::Max_Number_Vertices_Per_Polygon);
 
-				coords = (glm::vec3 *)stream->GetPointer();
+				coords = static_cast<glm::vec3 *>(stream->GetPointer());
 				stream->AdvancePointer(stride*sizeof(glm::vec3));
 				
-				colors = (Stuff::RGBAColor *)stream->GetPointer();
+				colors = static_cast<Stuff::RGBAColor *>(stream->GetPointer());
 				stream->AdvancePointer(stride*sizeof(Stuff::RGBAColor));
 
-				texCoords = (Vector2DScalar *)stream->GetPointer();
+				texCoords = static_cast<Vector2DScalar *>(stream->GetPointer());
 				stream->AdvancePointer(stride*sizeof(Vector2DScalar));
 
 				MLRClippingState theAnd(0x3f), theOr(0);
@@ -1571,9 +1571,9 @@ MLRShape*
 				argb = GOSCopyColor(&color);
 #endif
 
-				coords = (glm::vec3 *)stream->GetPointer();
+				coords = static_cast<glm::vec3 *>(stream->GetPointer());
 				stream->AdvancePointer(stride*sizeof(glm::vec3));
-				texCoords = (Vector2DScalar *)stream->GetPointer();
+				texCoords = static_cast<Vector2DScalar *>(stream->GetPointer());
 				stream->AdvancePointer(stride*sizeof(Vector2DScalar));
 
 				for(i=0;i<stride;i++,numGOSVertices++)
@@ -1599,13 +1599,13 @@ MLRShape*
 				*stream >> stride;
 				Verify(stride<=Limits::Max_Number_Vertices_Per_Polygon);
 
-				coords = (glm::vec3 *)stream->GetPointer();
+				coords = static_cast<glm::vec3 *>(stream->GetPointer());
 				stream->AdvancePointer(stride*sizeof(glm::vec3));
 				
-				colors = (Stuff::RGBAColor *)stream->GetPointer();
+				colors = static_cast<Stuff::RGBAColor *>(stream->GetPointer());
 				stream->AdvancePointer(stride*sizeof(Stuff::RGBAColor));
 
-				texCoords = (Vector2DScalar *)stream->GetPointer();
+				texCoords = static_cast<Vector2DScalar *>(stream->GetPointer());
 				stream->AdvancePointer(stride*sizeof(Vector2DScalar));
 
 

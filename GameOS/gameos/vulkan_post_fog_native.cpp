@@ -236,8 +236,8 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
     if (!s->sColorRes || !s->sDepthRes) {
         setFallback("shared_gbuffer_not_ready"); return false;
     }
-    if ((int)s->sColorRes->w != w || (int)s->sColorRes->h != h ||
-        (int)s->sDepthRes->w != w || (int)s->sDepthRes->h != h) {
+    if (static_cast<int>(s->sColorRes->w) != w || static_cast<int>(s->sColorRes->h) != h ||
+        static_cast<int>(s->sDepthRes->w) != w || static_cast<int>(s->sDepthRes->h) != h) {
         setFallback("shared_gbuffer_size_mismatch"); return false;
     }
     g_pf.substrateLive = 1;
@@ -255,7 +255,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         vci.format = s->sDepthRes->format;
         vci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
         if (!mc2vk::create(s->depthSampleView, s->device, [&](VkImageView* h) { r = vkCreateImageView(s->device, &vci, nullptr, h); return r; })) {
-            vlog("depth sample view create failed (%d).", (int)r); return false;
+            vlog("depth sample view create failed (%d).", static_cast<int>(r)); return false;
         }
     }
     {
@@ -267,7 +267,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         sci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         if (!mc2vk::create(s->depthSampler, s->device, [&](VkSampler* h) { r = vkCreateSampler(s->device, &sci, nullptr, h); return r; })) {
-            vlog("vkCreateSampler failed (%d).", (int)r); return false;
+            vlog("vkCreateSampler failed (%d).", static_cast<int>(r)); return false;
         }
     }
 
@@ -310,7 +310,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
         if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* h) { r = vkCreateRenderPass(s->device, &rpci, nullptr, h); return r; })) {
-            vlog("vkCreateRenderPass failed (%d).", (int)r); return false;
+            vlog("vkCreateRenderPass failed (%d).", static_cast<int>(r)); return false;
         }
 
         VkFramebufferCreateInfo fci{};
@@ -318,9 +318,9 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         fci.renderPass = s->rpass.get();
         const VkImageView colorAttachment = s->sColorRes->view.get();
         fci.attachmentCount = 1; fci.pAttachments = &colorAttachment;
-        fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
+        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* h) { r = vkCreateFramebuffer(s->device, &fci, nullptr, h); return r; })) {
-            vlog("vkCreateFramebuffer failed (%d).", (int)r); return false;
+            vlog("vkCreateFramebuffer failed (%d).", static_cast<int>(r)); return false;
         }
     }
 
@@ -335,7 +335,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = 2; lci.pBindings = binds;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { r = vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); return r; })) {
-            vlog("vkCreateDescriptorSetLayout failed (%d).", (int)r); return false;
+            vlog("vkCreateDescriptorSetLayout failed (%d).", static_cast<int>(r)); return false;
         }
         VkDescriptorPoolSize sizes[2]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 2;
@@ -344,7 +344,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 2; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { r = vkCreateDescriptorPool(s->device, &pci, nullptr, h); return r; })) {
-            vlog("vkCreateDescriptorPool failed (%d).", (int)r); return false;
+            vlog("vkCreateDescriptorPool failed (%d).", static_cast<int>(r)); return false;
         }
         VkDescriptorSetLayout layouts[2] = { s->dsl.get(), s->dsl.get() };
         VkDescriptorSet setsOut[2] = { VK_NULL_HANDLE, VK_NULL_HANDLE };
@@ -352,7 +352,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
         r = vkAllocateDescriptorSets(s->device, &dsai, setsOut);
-        if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets failed (%d).", (int)r); return false; }
+        if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets failed (%d).", static_cast<int>(r)); return false; }
         s->edgeSet = setsOut[0]; s->oobSet = setsOut[1];
 
         VkDescriptorImageInfo imgInfo{};
@@ -397,7 +397,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         const VkDescriptorSetLayout dslHandle = s->dsl.get();
         plci.setLayoutCount = 1; plci.pSetLayouts = &dslHandle;
         if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* h) { r = vkCreatePipelineLayout(s->device, &plci, nullptr, h); return r; })) {
-            vlog("vkCreatePipelineLayout failed (%d).", (int)r); return false;
+            vlog("vkCreatePipelineLayout failed (%d).", static_cast<int>(r)); return false;
         }
 
         VkPipelineVertexInputStateCreateInfo vin{};
@@ -405,8 +405,8 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         VkPipelineInputAssemblyStateCreateInfo ia{};
         ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
-        VkRect2D sc{{0, 0}, {(uint32_t)w, (uint32_t)h}};
+        VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+        VkRect2D sc{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
         VkPipelineViewportStateCreateInfo vps{};
         vps.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
         vps.viewportCount = 1; vps.pViewports = &vp; vps.scissorCount = 1; vps.pScissors = &sc;
@@ -467,7 +467,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         pci.queueFamilyIndex = s->gfxFamily;
         if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { r = vkCreateCommandPool(s->device, &pci, nullptr, h); return r; })) {
-            vlog("vkCreateCommandPool failed (%d).", (int)r); return false;
+            vlog("vkCreateCommandPool failed (%d).", static_cast<int>(r)); return false;
         }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -475,7 +475,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         cai.commandBufferCount = 2;
         r = vkAllocateCommandBuffers(s->device, &cai, s->cbuf);
-        if (r != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed (%d).", (int)r); return false; }
+        if (r != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed (%d).", static_cast<int>(r)); return false; }
     }
 
     s->inited = true;
@@ -529,7 +529,7 @@ bool gosPostProcess::runVkPostFogNative()
         if ((g_pf.waitSamples % 600) == 1)
             vlog("[QWI-WAIT] wait_us_last=%.1f wait_us_avg=%.1f samples=%lu",
                  g_pf.waitUsLast,
-                 g_pf.waitUsAccum / (double)g_pf.waitSamples, g_pf.waitSamples);
+                 g_pf.waitUsAccum / static_cast<double>(g_pf.waitSamples), g_pf.waitSamples);
     }
     if (!s->inited || s->width != width_ || s->height != height_) {
         if (s->inited) destroy_state(s);
@@ -582,8 +582,8 @@ bool gosPostProcess::runVkPostFogNative()
         p.u_horizonFadeStartSin = fogHorizonFadeStartSin_;
         p.u_horizonFadeEndSin   = fogHorizonFadeEndSin_;
         p.u_time = SmokeMode::fixedTimestepEnabled()
-                     ? (float)SmokeMode::fixedClockSeconds()
-                     : (float)SDL_GetTicks() / 1000.0f;
+                     ? static_cast<float>(SmokeMode::fixedClockSeconds())
+                     : static_cast<float>(SDL_GetTicks()) / 1000.0f;
         if (void* m = s->oobUbo.map()) {
             std::memcpy(m, &p, sizeof(p));
             s->oobUbo.unmap();
@@ -630,7 +630,7 @@ bool gosPostProcess::runVkPostFogNative()
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {(uint32_t)s->width, (uint32_t)s->height}};
+    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height)}};
     rbi.clearValueCount = 0; // LOAD, no clear
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->edgePipe.get());
@@ -679,7 +679,7 @@ void gosPostProcess::destroyVkPostFogNative()
              g_pf.runtimeGate, g_pf.substrateLive, g_pf.attempted, g_pf.usedVulkan,
              g_pf.directChain, g_pf.usedInterop, g_pf.glSkipped, g_pf.fallbackReason,
              g_pf.renderUs, g_pf.waitUsLast,
-             g_pf.waitSamples ? g_pf.waitUsAccum / (double)g_pf.waitSamples : 0.0,
+             g_pf.waitSamples ? g_pf.waitUsAccum / static_cast<double>(g_pf.waitSamples) : 0.0,
              g_pf.waitSamples);
     }
     if (!vkPostFogNative_) return;

@@ -241,7 +241,7 @@ bool gosFX::Tube__Specification::IsDataValid(bool fix_data)
         if(fix_data)
         {
             m_maxProfileCount=2;
-            PAUSE(("Warning: Value \"maxProfileCount\" in Effect \"%s\" Is Out of Range and has been Reset",(char *)m_name));
+            PAUSE(("Warning: Value \"maxProfileCount\" in Effect \"%s\" Is Out of Range and has been Reset",static_cast<char *>(m_name)));
 
         }
         else
@@ -256,7 +256,7 @@ bool gosFX::Tube__Specification::IsDataValid(bool fix_data)
             m_pScale.m_ageCurve.SetCurve(1.0f);
             m_pScale.m_seeded = false;
             m_pScale.m_seedCurve.SetCurve(1.0f);
-            PAUSE(("Warning: Curve \"pScale\" in Effect \"%s\" Is Out of Range and has been Reset",(char *)m_name));
+            PAUSE(("Warning: Curve \"pScale\" in Effect \"%s\" Is Out of Range and has been Reset",static_cast<char *>(m_name)));
 
         }
         else
@@ -287,7 +287,7 @@ bool gosFX::Tube__Specification::IsDataValid(bool fix_data)
             m_pVOffset.m_ageCurve.SetCurve(0.0f);
             m_pVOffset.m_seeded = false;
             m_pVOffset.m_seedCurve.SetCurve(1.0f);
-            PAUSE(("Warning: Curve \"VOffset\" in Effect \"%s\" Is Out of Range and has been Reset",(char *)m_name));
+            PAUSE(("Warning: Curve \"VOffset\" in Effect \"%s\" Is Out of Range and has been Reset",static_cast<char *>(m_name)));
 
         }
         else
@@ -317,7 +317,7 @@ bool gosFX::Tube__Specification::IsDataValid(bool fix_data)
             m_pUOffset.m_ageCurve.SetCurve(0.0f);
             m_pUOffset.m_seeded = false;
             m_pUOffset.m_seedCurve.SetCurve(1.0f);
-            PAUSE(("Warning: Curve \"UOffset\" in Effect \"%s\" Is Out of Range and has been Reset",(char *)m_name));
+            PAUSE(("Warning: Curve \"UOffset\" in Effect \"%s\" Is Out of Range and has been Reset",static_cast<char *>(m_name)));
 
         }
         else
@@ -1220,12 +1220,12 @@ void gosFX::Tube::Draw(DrawInfo *info)
 			static const bool s_tpOn = mc2::gate::get<"MC2_TUBE_PROFILE_LOG">();
 			if (s_tpOn) {
 				static std::map<std::string,int> s_maxBySpec;
-				const char* nm = (const char*)spec->m_name;
+				const char* nm = static_cast<const char*>(spec->m_name);
 				std::string key = nm ? nm : "?";
 				int& mx = s_maxBySpec[key];
 				if (m_activeProfileCount > mx) {
 					mx = m_activeProfileCount;
-					mc2::fmt::print_err("[TUBE_PROFILE] spec={} type={:d} activeMax={:d} maxProf={:d}\n", key.c_str(), mc2::fmt::as_i32((int)spec->m_profileType), mc2::fmt::as_i32(m_activeProfileCount), mc2::fmt::as_i32(spec->m_maxProfileCount));
+					mc2::fmt::print_err("[TUBE_PROFILE] spec={} type={:d} activeMax={:d} maxProf={:d}\n", key.c_str(), mc2::fmt::as_i32(static_cast<int>(spec->m_profileType)), mc2::fmt::as_i32(m_activeProfileCount), mc2::fmt::as_i32(spec->m_maxProfileCount));
 					std::fflush(stderr);
 				}
 			}

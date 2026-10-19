@@ -94,8 +94,8 @@ bool Terrain::raycastTerrain(
         // Ray is nearly vertical — test the single cell under origin.
         float vfx, vfy;
         worldToVF(ox, oy, vfx, vfy);
-        int cx = (int)floorf(vfx);
-        int cy = (int)floorf(vfy);
+        int cx = static_cast<int>(floorf(vfx));
+        int cy = static_cast<int>(floorf(vfy));
         cx = (cx < 0) ? 0 : (cx >= Nq ? Nq - 1 : cx);
         cy = (cy < 0) ? 0 : (cy >= Nq ? Nq - 1 : cy);
         // TL, TR, BR, BL world positions
@@ -127,8 +127,8 @@ bool Terrain::raycastTerrain(
     // Compute start cell from ray origin. Clamp to map.
     float vfx0, vfy0;
     worldToVF(ox, oy, vfx0, vfy0);
-    int cx = (int)floorf(vfx0);
-    int cy = (int)floorf(vfy0);
+    int cx = static_cast<int>(floorf(vfx0));
+    int cy = static_cast<int>(floorf(vfy0));
 
     // DDA setup: step direction and per-axis tDelta.
     // stepX/Y: +1 or -1 depending on ray direction in vertex-grid space.

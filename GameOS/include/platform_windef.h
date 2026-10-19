@@ -1,6 +1,13 @@
 #ifndef _WINDEF_H
 #define _WINDEF_H
 
+// Keep the platform macros usable from C while naming C++ conversions.
+#ifdef __cplusplus
+#define MC2_PLATFORM_STATIC_CAST(type, value) static_cast<type>(value)
+#else
+#define MC2_PLATFORM_STATIC_CAST(type, value) ((type)(value))
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -22,7 +29,7 @@ extern "C" {
 #ifdef __cplusplus
 #define NULL 0
 #else
-#define NULL ((void*)0)
+#define NULL (MC2_PLATFORM_STATIC_CAST(void*, 0))
 #endif
 
 #endif
@@ -49,12 +56,12 @@ extern "C" {
 #define DECLSPEC_NORETURN __declspec(noreturn)
 #define DECLARE_STDCALL_P( type ) __stdcall type
 
-#define MAKEWORD(a,b)	((WORD)(((BYTE)(((DWORD_PTR)(a))&0xFF))|(((WORD)((BYTE)(((DWORD_PTR)(b))&0xFF)))<<8)))
-#define MAKELONG(a,b)	((LONG)(((WORD)(((DWORD_PTR)(a))&0xFFFF))|(((DWORD)((WORD)(((DWORD_PTR)(b))&0xFFFF)))<<16)))
-#define LOWORD(l)	((WORD)(((DWORD_PTR)(l))&0xFFFF))
-#define HIWORD(l)	((WORD)(((DWORD_PTR)(l)>>16)&0xFFFF))
-#define LOBYTE(w)	((BYTE)(((DWORD_PTR)(w))&0xFF))
-#define HIBYTE(w)	((BYTE)((((DWORD_PTR)(w))>>8)&0xFF))
+#define MAKEWORD(a,b)	(MC2_PLATFORM_STATIC_CAST(WORD, ((MC2_PLATFORM_STATIC_CAST(BYTE, (((DWORD_PTR)(a))&0xFF)))|((MC2_PLATFORM_STATIC_CAST(WORD, (MC2_PLATFORM_STATIC_CAST(BYTE, (((DWORD_PTR)(b))&0xFF)))))<<8))))
+#define MAKELONG(a,b)	(MC2_PLATFORM_STATIC_CAST(LONG, ((MC2_PLATFORM_STATIC_CAST(WORD, (((DWORD_PTR)(a))&0xFFFF)))|((MC2_PLATFORM_STATIC_CAST(DWORD, (MC2_PLATFORM_STATIC_CAST(WORD, (((DWORD_PTR)(b))&0xFFFF)))))<<16))))
+#define LOWORD(l)	(MC2_PLATFORM_STATIC_CAST(WORD, (((DWORD_PTR)(l))&0xFFFF)))
+#define HIWORD(l)	(MC2_PLATFORM_STATIC_CAST(WORD, (((DWORD_PTR)(l)>>16)&0xFFFF)))
+#define LOBYTE(w)	(MC2_PLATFORM_STATIC_CAST(BYTE, (((DWORD_PTR)(w))&0xFF)))
+#define HIBYTE(w)	(MC2_PLATFORM_STATIC_CAST(BYTE, ((((DWORD_PTR)(w))>>8)&0xFF)))
 
 // !NB sebi, DWORD on Windows is always 32bit!!!    
 //typedef unsigned long DWORD;

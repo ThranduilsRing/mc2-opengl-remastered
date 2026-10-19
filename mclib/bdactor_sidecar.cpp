@@ -54,7 +54,7 @@ static bool extractJsonNumber(const std::string& text, const char* key, float fa
 		return false;
 	char* end = nullptr;
 	const char* start = text.c_str() + p + 1;
-	out = (float)strtod(start, &end);
+	out = static_cast<float>(strtod(start, &end));
 	return end != start;
 }
 
@@ -131,7 +131,7 @@ static bool extractBuildingPbrAxis(const char* sidecarPath, int& axis)
 
 	float numericAxis = -1.0f;
 	if (extractJsonNumber(text, "gltf_axis", -1.0f, numericAxis)) {
-		const int asInt = (int)numericAxis;
+		const int asInt = static_cast<int>(numericAxis);
 		if (asInt >= 0 && asInt <= 3) {
 			axis = asInt;
 			return true;
@@ -300,8 +300,8 @@ static bool buildingFootprintShadowRuntimeEnabled()
 
 static DWORD footprintShadowColor(float strength)
 {
-	const unsigned int a = (unsigned int)(std::max(0.0f, std::min(strength, 0.85f)) * 255.0f + 0.5f);
-	return (DWORD)(a << 24);
+	const unsigned int a = static_cast<unsigned int>((std::max(0.0f, std::min(strength, 0.85f)) * 255.0f + 0.5f));
+	return static_cast<DWORD>((a << 24));
 }
 
 static glm::vec3 buildingFootprintCorner(const glm::vec3& origin,
@@ -426,7 +426,7 @@ void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* rs)
 			rs->SetTextureAlpha(i, alpha);
 			if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 			{
-				mc2::fmt::print_err("[MODOVERRIDE_TEX] slot={:d} name='{}' -> gosHandle={:d} alpha={:d}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(txmName), mc2::fmt::as_u32((unsigned long)gosTextureHandle), mc2::fmt::as_i32((int)alpha));
+				mc2::fmt::print_err("[MODOVERRIDE_TEX] slot={:d} name='{}' -> gosHandle={:d} alpha={:d}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(txmName), mc2::fmt::as_u32(static_cast<unsigned long>(gosTextureHandle)), mc2::fmt::as_i32(static_cast<int>(alpha)));
 				fflush(stderr);
 			}
 		}
@@ -435,7 +435,7 @@ void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* rs)
 			rs->SetTextureHandle(i, 0xffffffff);
 			if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 			{
-				mc2::fmt::print_err("[MODOVERRIDE_TEX] slot={:d} name='{}' NOT FOUND (path={})\n", mc2::fmt::as_i32(i), mc2::fmt::safe(txmName), mc2::fmt::safe((const char*)textureName));
+				mc2::fmt::print_err("[MODOVERRIDE_TEX] slot={:d} name='{}' NOT FOUND (path={})\n", mc2::fmt::as_i32(i), mc2::fmt::safe(txmName), mc2::fmt::safe(static_cast<const char*>(textureName)));
 				fflush(stderr);
 			}
 		}

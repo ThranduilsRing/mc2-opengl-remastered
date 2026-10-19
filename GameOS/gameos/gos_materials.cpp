@@ -159,7 +159,7 @@ static GLuint loadLinearPng(const char* path, int& w_out, int& h_out) {
         glType     = GL_UNSIGNED_BYTE;
         break;
     default:
-        mc2::fmt::print_err("[GOS_MATERIALS] WARN: unsupported PNG format {:d} for: {}\n", mc2::fmt::as_i32((int)fmt), mc2::fmt::safe(path));
+        mc2::fmt::print_err("[GOS_MATERIALS] WARN: unsupported PNG format {:d} for: {}\n", mc2::fmt::as_i32(static_cast<int>(fmt)), mc2::fmt::safe(path));
         return 0;
     }
 
@@ -177,7 +177,7 @@ static GLuint loadLinearPng(const char* path, int& w_out, int& h_out) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    mc2::fmt::print_err("[GOS_MATERIALS] loaded linear PNG {} -> tex={:d} ({:d}x{:d} fmt={:d})\n", mc2::fmt::safe(path), mc2::fmt::as_u32(tex), mc2::fmt::as_i32(w_out), mc2::fmt::as_i32(h_out), mc2::fmt::as_i32((int)fmt));
+    mc2::fmt::print_err("[GOS_MATERIALS] loaded linear PNG {} -> tex={:d} ({:d}x{:d} fmt={:d})\n", mc2::fmt::safe(path), mc2::fmt::as_u32(tex), mc2::fmt::as_i32(w_out), mc2::fmt::as_i32(h_out), mc2::fmt::as_i32(static_cast<int>(fmt)));
     return tex;
 }
 

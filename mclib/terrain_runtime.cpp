@@ -65,7 +65,7 @@ float sampleWaterLevel(const glm::vec3& /*worldPos*/)
 
 int sampleMaterialId(const glm::vec3& worldPos)
 {
-	return land ? (int)land->getTerrainType(worldPos) : 0;
+	return land ? static_cast<int>(land->getTerrainType(worldPos)) : 0;
 }
 
 long sampleWaterClass(const glm::vec3& worldPos)

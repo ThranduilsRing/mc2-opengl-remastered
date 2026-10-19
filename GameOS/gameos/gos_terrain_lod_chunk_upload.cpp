@@ -27,13 +27,13 @@ void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
     GLsizeiptr bytes = (GLsizeiptr)mapSide * mapSide * sizeof(float);
 
     s_heightSsbo.bind();
-    s_heightSsbo.bufferData((intptr_t)bytes, store->height().data(),
+    s_heightSsbo.bufferData(static_cast<intptr_t>(bytes), store->height().data(),
                             RenderCore::GpuBufferUsage::DynamicDraw);
     s_heightSsbo.bindBase(TERRAIN_HEIGHT_SSBO_BINDING);
     s_heightSsbo.unbind();
 
     s_mapSide = mapSide;
-    s_halfMap = (float)mapSide * 128.0f * 0.5f;
+    s_halfMap = static_cast<float>(mapSide) * 128.0f * 0.5f;
 
     // REGISTRY-TERRAIN-SSBO-1: register the live height SSBO (observe-only metadata;
     // never read by the draw path). Registered here (not at Init) because the byte
@@ -80,11 +80,11 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
     const std::vector<float>& field = store->visualHeight();   // fine bake then mip maxes
     GLsizeiptr bytes = (GLsizeiptr)field.size() * (GLsizeiptr)sizeof(float);
     s_visualHeightSsbo.bind();
-    s_visualHeightSsbo.bufferData((intptr_t)bytes, field.data(),
+    s_visualHeightSsbo.bufferData(static_cast<intptr_t>(bytes), field.data(),
                                   RenderCore::GpuBufferUsage::StaticDraw);
     s_visualHeightSsbo.unbind();
     s_visualSide      = V;   // remembered for the displaced draw (u_visualSide)
-    s_visualMipFloats = (int)mipFloats;
+    s_visualMipFloats = static_cast<int>(mipFloats);
 
     // TERRAIN-VISUAL-HEIGHT-SSBO-OWNER-1: register the live visual-height SSBO
     // (observe-only metadata; never read by the draw path). Reached here only when
@@ -92,8 +92,8 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
     s_visualHeightSsbo.registerNow(static_cast<uint64_t>(bytes));
     // Bound to base 26 in the draw only when displacement is active.
     mc2::fmt::print_err("[VISUAL_HEIGHT v1] SSBO uploaded binding={:d} V={:d} bytes={:d} first={:.3f} geomorphMips={}({:d} floats)\n",
-            mc2::fmt::as_u32(TERRAIN_VISUAL_HEIGHT_SSBO_BINDING), mc2::fmt::as_i32(V), mc2::fmt::as_i64((long long)bytes), visualHeights[0],
-            mc2::fmt::safe(mipFloats > 0 ? "YES" : "no"), mc2::fmt::as_i32((int)mipFloats));
+            mc2::fmt::as_u32(TERRAIN_VISUAL_HEIGHT_SSBO_BINDING), mc2::fmt::as_i32(V), mc2::fmt::as_i64(static_cast<long long>(bytes)), visualHeights[0],
+            mc2::fmt::safe(mipFloats > 0 ? "YES" : "no"), mc2::fmt::as_i32(static_cast<int>(mipFloats)));
     fflush(stderr);
 }
 
@@ -104,7 +104,7 @@ void gos_TerrainLodChunk_UploadVisualDampStatic(const float* damp01, int side)
 {
     if (!damp01 || side <= 0)
         return;
-    const size_t count = (size_t)side * (size_t)side;
+    const size_t count = static_cast<size_t>(side) * static_cast<size_t>(side);
     s_visualDampStatic.assign(damp01, damp01 + count);
     s_visualDampCombined = s_visualDampStatic;
     s_visualDampSide = side;
@@ -120,11 +120,11 @@ void gos_TerrainLodChunk_UploadVisualDampStatic(const float* damp01, int side)
     }
     const GLsizeiptr bytes = (GLsizeiptr)(count * sizeof(float));
     s_visualDampSsbo.bind();
-    s_visualDampSsbo.bufferData((intptr_t)bytes, s_visualDampCombined.data(),
+    s_visualDampSsbo.bufferData(static_cast<intptr_t>(bytes), s_visualDampCombined.data(),
                                 RenderCore::GpuBufferUsage::DynamicDraw);
     s_visualDampSsbo.unbind();
     s_visualDampSsbo.registerNow(static_cast<uint64_t>(bytes));
-    mc2::fmt::print_err("[VISUAL_DAMP v1] SSBO uploaded binding={:d} side={:d} bytes={:d}\n", mc2::fmt::as_u32(TERRAIN_VISUAL_DAMP_SSBO_BINDING), mc2::fmt::as_i32(side), mc2::fmt::as_i64((long long)bytes));
+    mc2::fmt::print_err("[VISUAL_DAMP v1] SSBO uploaded binding={:d} side={:d} bytes={:d}\n", mc2::fmt::as_u32(TERRAIN_VISUAL_DAMP_SSBO_BINDING), mc2::fmt::as_i32(side), mc2::fmt::as_i64(static_cast<long long>(bytes)));
     fflush(stderr);
 }
 
@@ -156,26 +156,26 @@ void gos_TerrainLodChunk_UpdateVisualDampMovers(const float* cellXY, int count,
     {
         const float cx = cellXY[m * 2 + 0];
         const float cy = cellXY[m * 2 + 1];
-        int x0 = (int)floorf(cx - reach), x1 = (int)ceilf(cx + reach);
-        int y0 = (int)floorf(cy - reach), y1 = (int)ceilf(cy + reach);
+        int x0 = static_cast<int>(floorf(cx - reach)), x1 = static_cast<int>(ceilf(cx + reach));
+        int y0 = static_cast<int>(floorf(cy - reach)), y1 = static_cast<int>(ceilf(cy + reach));
         if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0;
         if (x1 > N - 1) x1 = N - 1; if (y1 > N - 1) y1 = N - 1;
         for (int iy = y0; iy <= y1; ++iy)
             for (int ix = x0; ix <= x1; ++ix)
             {
-                const float dx = (float)ix - cx;
-                const float dy = (float)iy - cy;
+                const float dx = static_cast<float>(ix) - cx;
+                const float dy = static_cast<float>(iy) - cy;
                 float t = (sqrtf(dx * dx + dy * dy) - innerCells) / radiusCells;
                 if (t < 0.0f) t = 0.0f; else if (t > 1.0f) t = 1.0f;
                 const float s = t * t * (3.0f - 2.0f * t);
-                float& ref = s_visualDampCombined[(size_t)ix + (size_t)iy * N];
+                float& ref = s_visualDampCombined[static_cast<size_t>(ix) + static_cast<size_t>(iy) * N];
                 if (s < ref) ref = s;
             }
     }
     s_visualDampHadMovers = (count > 0);
     s_visualDampSsbo.bind();
     s_visualDampSsbo.bufferSubData(0,
-                    (intptr_t)(s_visualDampCombined.size() * sizeof(float)),
+                    static_cast<intptr_t>((s_visualDampCombined.size() * sizeof(float))),
                     s_visualDampCombined.data());
     s_visualDampSsbo.unbind();
 }
@@ -188,7 +188,7 @@ void gos_TerrainLodChunk_UploadTerrainTypeFull(const float* types, int mapSide)
         return;
     GLsizeiptr bytes = (GLsizeiptr)mapSide * mapSide * sizeof(float);
     s_typeSsbo.bind();
-    s_typeSsbo.bufferData((intptr_t)bytes, types,
+    s_typeSsbo.bufferData(static_cast<intptr_t>(bytes), types,
                           RenderCore::GpuBufferUsage::DynamicDraw);
     s_typeSsbo.bindBase(TERRAIN_TYPE_SSBO_BINDING);
     s_typeSsbo.unbind();
@@ -237,7 +237,7 @@ void gos_TerrainLodChunk_UploadControlMap(const unsigned char* rgba, int side)
 
     s_controlMapSide = side;
 
-    mc2::fmt::print_err("[TERRAIN_CONTROLMAP v1] uploaded handle={:d} side={:d} bytes={:d}\n", mc2::fmt::as_u32((unsigned)s_controlMapTex), mc2::fmt::as_i32(side), mc2::fmt::as_size((size_t)side * (size_t)side * 4u));
+    mc2::fmt::print_err("[TERRAIN_CONTROLMAP v1] uploaded handle={:d} side={:d} bytes={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(s_controlMapTex)), mc2::fmt::as_i32(side), mc2::fmt::as_size(static_cast<size_t>(side) * static_cast<size_t>(side) * 4u));
     fflush(stderr);
 }
 
@@ -285,7 +285,7 @@ void gos_TerrainLodChunk_UploadOverlaySidecar(const unsigned char* rgba, int w, 
     s_overlayBounds[2] = boundsSizeX;
     s_overlayBounds[3] = boundsSizeY;
 
-    mc2::fmt::print_err("[TERRAIN_OVERLAY_V2 v1] uploaded handle={:d} w={:d} h={:d} bytes={:d} bounds=({:.1f},{:.1f},{:.1f},{:.1f})\n", mc2::fmt::as_u32((unsigned)s_overlaySidecarTex), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h), mc2::fmt::as_size((size_t)w * (size_t)h * 4u), boundsTopLeftX, boundsTopLeftY, boundsSizeX, boundsSizeY);
+    mc2::fmt::print_err("[TERRAIN_OVERLAY_V2 v1] uploaded handle={:d} w={:d} h={:d} bytes={:d} bounds=({:.1f},{:.1f},{:.1f},{:.1f})\n", mc2::fmt::as_u32(static_cast<unsigned>(s_overlaySidecarTex)), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h), mc2::fmt::as_size(static_cast<size_t>(w) * static_cast<size_t>(h) * 4u), boundsTopLeftX, boundsTopLeftY, boundsSizeX, boundsSizeY);
     fflush(stderr);
 }
 
@@ -340,7 +340,7 @@ void gos_TerrainLodChunk_UploadShorelineMask(const unsigned char* rgba, int w, i
 
     MC2_DIAGFE(stderr, "[TERRAIN_SHORELINE v1] uploaded handle=%u w=%d h=%d bytes=%zu "
             "bounds=(%.1f,%.1f,%.1f,%.1f)\n",
-            (unsigned)s_shorelineMaskTex, w, h, (size_t)w * (size_t)h * 4u,
+            static_cast<unsigned>(s_shorelineMaskTex), w, h, static_cast<size_t>(w) * static_cast<size_t>(h) * 4u,
             boundsTopLeftX, boundsTopLeftY, boundsSizeX, boundsSizeY);
     fflush(stderr);
 }
@@ -397,7 +397,7 @@ void gos_TerrainLodChunk_UploadWaterShoreHeight(const float* heights, int w, int
 
     MC2_DIAGFE(stderr, "[WATER_SHORE_EDGE v1] uploaded handle=%u w=%d h=%d "
             "bounds=(%.1f,%.1f,%.1f,%.1f)\n",
-            (unsigned)s_waterShoreHeightTex, w, h,
+            static_cast<unsigned>(s_waterShoreHeightTex), w, h,
             boundsTopLeftX, boundsTopLeftY, boundsSizeX, boundsSizeY);
     fflush(stderr);
 }
@@ -561,7 +561,7 @@ void gos_TerrainLodChunk_UploadCementWordsFull(const unsigned int* words, int co
         return;
     GLsizeiptr bytes = (GLsizeiptr)count * sizeof(unsigned int);
     s_cementSsbo.bind();
-    s_cementSsbo.bufferData((intptr_t)bytes, store->cementWords().data(),
+    s_cementSsbo.bufferData(static_cast<intptr_t>(bytes), store->cementWords().data(),
                             RenderCore::GpuBufferUsage::DynamicDraw);
     s_cementSsbo.bindBase(TERRAIN_CEMENT_SSBO_BINDING);
     s_cementSsbo.unbind();
@@ -599,7 +599,7 @@ void gos_TerrainLodChunk_UploadHeightPatch(
         GLintptr   dstOffset = (GLintptr)dstIdx * sizeof(float);
         GLsizeiptr bytes     = (GLsizeiptr)(quadCountX + 1) * sizeof(float);
         const float* src     = rowData + row * (quadCountX + 1);
-        s_heightSsbo.bufferSubData((intptr_t)dstOffset, (intptr_t)bytes, src);
+        s_heightSsbo.bufferSubData(static_cast<intptr_t>(dstOffset), static_cast<intptr_t>(bytes), src);
     }
 
     s_heightSsbo.unbind();

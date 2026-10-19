@@ -121,7 +121,7 @@ void gosPostProcess::createFBOs(int w, int h)
             sceneColorShared = true;
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                    GL_TEXTURE_2D, sceneColorTex_, 0);
-            mc2::fmt::print_err("[VK_SHARED_SCENE_COLOR] color active placeholder_tex={:d} {:d}x{:d} (VK-only MRT0)\n", mc2::fmt::as_u32((unsigned)sceneColorTex_), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
+            mc2::fmt::print_err("[VK_SHARED_SCENE_COLOR] color active placeholder_tex={:d} {:d}x{:d} (VK-only MRT0)\n", mc2::fmt::as_u32(static_cast<unsigned>(sceneColorTex_)), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
         } else {
             sharedSceneColor_ = nullptr;
             mc2::fmt::print_err("[VK_SHARED_SCENE_COLOR] color declined reason={} (pure GL RGBA16F)\n", mc2::fmt::safe(reason ? reason : "unknown"));
@@ -152,7 +152,7 @@ void gosPostProcess::createFBOs(int w, int h)
             GLint sceneFmt = 0;  // sceneColorTex_ is still bound to GL_TEXTURE_2D here
             glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &sceneFmt);
             GLboolean fbSrgb = glIsEnabled(GL_FRAMEBUFFER_SRGB);
-            mc2::fmt::print_err("[LINEAR_AUDIT] event=color_pipeline_probe framebuffer_srgb={:d} scene_color_internalformat=0x{:04X} (0x881A=GL_RGBA16F) verdict={}\n", mc2::fmt::as_i32((int)fbSrgb), mc2::fmt::as_u32((unsigned)sceneFmt), mc2::fmt::safe((fbSrgb == GL_FALSE)
+            mc2::fmt::print_err("[LINEAR_AUDIT] event=color_pipeline_probe framebuffer_srgb={:d} scene_color_internalformat=0x{:04X} (0x881A=GL_RGBA16F) verdict={}\n", mc2::fmt::as_i32(static_cast<int>(fbSrgb)), mc2::fmt::as_u32(static_cast<unsigned>(sceneFmt)), mc2::fmt::safe((fbSrgb == GL_FALSE)
                   ? "GAMMA_SPACE_MATH:no_FRAMEBUFFER_SRGB->shader_lighting_in_sRGB_space->linear_correctness_required_before_PBR"
                   : "FRAMEBUFFER_SRGB_ON:GL_auto_encodes->verify_shader_inputs_decoded_to_linear"));
             fflush(stderr);
@@ -182,7 +182,7 @@ void gosPostProcess::createFBOs(int w, int h)
             sceneDepthShared = true;
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
                                    GL_TEXTURE_2D, sceneDepthTex_, 0);
-            mc2::fmt::print_err("[VK_SHARED_SCENE_DEPTH] active placeholder_tex={:d} {:d}x{:d} (VK-only depth)\n", mc2::fmt::as_u32((unsigned)sceneDepthTex_), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
+            mc2::fmt::print_err("[VK_SHARED_SCENE_DEPTH] active placeholder_tex={:d} {:d}x{:d} (VK-only depth)\n", mc2::fmt::as_u32(static_cast<unsigned>(sceneDepthTex_)), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
         } else {
             sharedSceneDepth_ = nullptr;
             mc2::fmt::print_err("[VK_SHARED_SCENE_DEPTH] declined reason={} (pure GL GL_DEPTH24_STENCIL8)\n", mc2::fmt::safe(reason ? reason : "unknown"));
@@ -243,7 +243,7 @@ void gosPostProcess::createFBOs(int w, int h)
             sceneNormalShared = true;
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
                                    GL_TEXTURE_2D, sceneNormalTex_, 0);
-            mc2::fmt::print_err("[VK_SHARED_SCENE_COLOR] normal active placeholder_tex={:d} {:d}x{:d} (VK-only MRT1)\n", mc2::fmt::as_u32((unsigned)sceneNormalTex_), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
+            mc2::fmt::print_err("[VK_SHARED_SCENE_COLOR] normal active placeholder_tex={:d} {:d}x{:d} (VK-only MRT1)\n", mc2::fmt::as_u32(static_cast<unsigned>(sceneNormalTex_)), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
         } else {
             sharedSceneNormal_ = nullptr;
             mc2::fmt::print_err("[VK_SHARED_SCENE_COLOR] normal declined reason={} (pure GL RGBA16F)\n", mc2::fmt::safe(reason ? reason : "unknown"));
@@ -283,7 +283,7 @@ void gosPostProcess::createFBOs(int w, int h)
                 sceneObjectIdShared = true;
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2,
                                        GL_TEXTURE_2D, sceneObjectIdTex_, 0);
-                mc2::fmt::print_err("[VK_SHARED_SCENE_COLOR] objectId active placeholder_tex={:d} {:d}x{:d} (VK-only MRT2)\n", mc2::fmt::as_u32((unsigned)sceneObjectIdTex_), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
+                mc2::fmt::print_err("[VK_SHARED_SCENE_COLOR] objectId active placeholder_tex={:d} {:d}x{:d} (VK-only MRT2)\n", mc2::fmt::as_u32(static_cast<unsigned>(sceneObjectIdTex_)), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
             } else {
                 sharedSceneObjectId_ = nullptr;
                 mc2::fmt::print_err("[VK_SHARED_SCENE_COLOR] objectId declined reason={} (pure GL_R32UI)\n", mc2::fmt::safe(reason ? reason : "unknown"));
@@ -329,8 +329,8 @@ void gosPostProcess::createFBOs(int w, int h)
         dd.lifetime  = RenderCore::RenderResourceLifetime::Persistent;  // screen-sized, recreated only on resize
         dd.format    = RenderCore::RenderResourceFormat::Depth24;
         dd.debugName = "MainDepth";
-        dd.width     = (uint32_t)w;
-        dd.height    = (uint32_t)h;
+        dd.width     = static_cast<uint32_t>(w);
+        dd.height    = static_cast<uint32_t>(h);
         dd.glName    = sceneDepthTex_;
         dd.valid     = (status == GL_FRAMEBUFFER_COMPLETE);
         RenderCore::registerOrUpdateRenderResource(dd);
@@ -347,8 +347,8 @@ void gosPostProcess::createFBOs(int w, int h)
         d.lifetime  = RenderCore::RenderResourceLifetime::Persistent;  // screen-sized, recreated only on resize
         d.format    = RenderCore::RenderResourceFormat::RGBA16F;
         d.debugName = "MainColor";
-        d.width     = (uint32_t)w;
-        d.height    = (uint32_t)h;
+        d.width     = static_cast<uint32_t>(w);
+        d.height    = static_cast<uint32_t>(h);
         d.glName    = sceneColorTex_;
         d.valid     = (status == GL_FRAMEBUFFER_COMPLETE);
         RenderCore::registerOrUpdateRenderResource(d);
@@ -360,8 +360,8 @@ void gosPostProcess::createFBOs(int w, int h)
         d.lifetime  = RenderCore::RenderResourceLifetime::Persistent;  // screen-sized GBuffer1, recreated only on resize
         d.format    = RenderCore::RenderResourceFormat::RGBA16F;
         d.debugName = "MainNormal";
-        d.width     = (uint32_t)w;
-        d.height    = (uint32_t)h;
+        d.width     = static_cast<uint32_t>(w);
+        d.height    = static_cast<uint32_t>(h);
         d.glName    = sceneNormalTex_;
         d.valid     = (status == GL_FRAMEBUFFER_COMPLETE);
         RenderCore::registerOrUpdateRenderResource(d);
@@ -376,8 +376,8 @@ void gosPostProcess::createFBOs(int w, int h)
         d.lifetime  = RenderCore::RenderResourceLifetime::Persistent;  // screen-sized GBuffer2, recreated only on resize
         d.format    = RenderCore::RenderResourceFormat::Unknown;  // GL_R32UI; no enum slot
         d.debugName = "SceneObjectId";
-        d.width     = (uint32_t)w;
-        d.height    = (uint32_t)h;
+        d.width     = static_cast<uint32_t>(w);
+        d.height    = static_cast<uint32_t>(h);
         d.glName    = sceneObjectIdTex_;
         d.valid     = (status == GL_FRAMEBUFFER_COMPLETE);
         RenderCore::registerOrUpdateRenderResource(d);
@@ -428,8 +428,8 @@ void gosPostProcess::createFBOs(int w, int h)
         cdesc.lifetime  = RenderCore::RenderResourceLifetime::External;  // temporal N-1 reflection target
         cdesc.format    = RenderCore::RenderResourceFormat::RGBA16F;
         cdesc.debugName = "WaterReflectionColor";
-        cdesc.width     = (uint32_t)waterReflW_;
-        cdesc.height    = (uint32_t)waterReflH_;
+        cdesc.width     = static_cast<uint32_t>(waterReflW_);
+        cdesc.height    = static_cast<uint32_t>(waterReflH_);
         cdesc.glName    = waterReflColorTex_;
         cdesc.valid     = (wrStatus == GL_FRAMEBUFFER_COMPLETE);
         RenderCore::registerOrUpdateRenderResource(cdesc);
@@ -440,8 +440,8 @@ void gosPostProcess::createFBOs(int w, int h)
         ddesc.lifetime  = RenderCore::RenderResourceLifetime::External;  // temporal N-1 reflection target
         ddesc.format    = RenderCore::RenderResourceFormat::Depth24;
         ddesc.debugName = "WaterReflectionDepth";
-        ddesc.width     = (uint32_t)waterReflW_;
-        ddesc.height    = (uint32_t)waterReflH_;
+        ddesc.width     = static_cast<uint32_t>(waterReflW_);
+        ddesc.height    = static_cast<uint32_t>(waterReflH_);
         ddesc.glName    = waterReflDepthTex_;
         ddesc.valid     = (wrStatus == GL_FRAMEBUFFER_COMPLETE);
         RenderCore::registerOrUpdateRenderResource(ddesc);
@@ -480,8 +480,8 @@ void gosPostProcess::copySceneDepthForParticles()
         d.lifetime  = RenderCore::RenderResourceLifetime::FrameLocal;  // per-frame depth snapshot for soft-depth sampling
         d.format    = RenderCore::RenderResourceFormat::Depth24;  // DEPTH24_STENCIL8; closest enum
         d.debugName = "SceneDepthCopy";
-        d.width     = (uint32_t)width_;
-        d.height    = (uint32_t)height_;
+        d.width     = static_cast<uint32_t>(width_);
+        d.height    = static_cast<uint32_t>(height_);
         d.glName    = sceneDepthCopyTex_;
         d.valid     = true;
         RenderCore::registerOrUpdateRenderResource(d);
@@ -529,8 +529,8 @@ void gosPostProcess::copySceneColorForVfx()
         d.lifetime  = RenderCore::RenderResourceLifetime::FrameLocal;  // per-frame scene-color snapshot for VFX feedback safety
         d.format    = RenderCore::RenderResourceFormat::RGBA16F;
         d.debugName = "SceneColorCopy";
-        d.width     = (uint32_t)width_;
-        d.height    = (uint32_t)height_;
+        d.width     = static_cast<uint32_t>(width_);
+        d.height    = static_cast<uint32_t>(height_);
         d.glName    = sceneColorCopyTex_;
         d.valid     = true;
         RenderCore::registerOrUpdateRenderResource(d);

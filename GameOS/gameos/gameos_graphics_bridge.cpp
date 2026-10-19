@@ -14,13 +14,13 @@ uint32_t gos_getThinTerrainProgramId() {
     gosRenderer* r = getGosRenderer();
     if (!r) return 0u;
     glsl_program* p = r->getThinTerrainProgram();
-    return (p && p->shp_) ? (uint32_t)p->shp_ : 0u;
+    return (p && p->shp_) ? static_cast<uint32_t>(p->shp_) : 0u;
 }
 uint32_t gos_getTerrainOverlayProgramId() {
     gosRenderer* r = getGosRenderer();
     if (!r) return 0u;
     glsl_program* p = r->getTerrainOverlayProgram();
-    return (p && p->shp_) ? (uint32_t)p->shp_ : 0u;
+    return (p && p->shp_) ? static_cast<uint32_t>(p->shp_) : 0u;
 }
 
 // SHADOW-SPINE-0: read-only program-id accessor for the static-prop shadow
@@ -51,7 +51,7 @@ unsigned int gos_GetTerrainNormalArrayTex() {
 }
 uint32_t gos_GetTerrainMaterialNormalHandle(int slot) {
     gosRenderer* r = getGosRenderer();
-    return r ? (uint32_t)r->getTerrainMaterialNormalHandle(slot) : (uint32_t)INVALID_TEXTURE_ID;
+    return r ? static_cast<uint32_t>(r->getTerrainMaterialNormalHandle(slot)) : static_cast<uint32_t>(INVALID_TEXTURE_ID);
 }
 
 // ─── gos_terrain_bridge implementation ────────────────────────────────────
@@ -75,14 +75,14 @@ unsigned int gos_terrain_bridge_glTextureForGosHandle(unsigned int gosHandle) {
     if (gosHandle == 0u || gosHandle == INVALID_TEXTURE_ID) return 0;
     gosTexture* tex = g_gos_renderer->getTexture(gosHandle);
     if (!tex) return 0;
-    return (unsigned int)tex->getTextureId();
+    return static_cast<unsigned int>(tex->getTextureId());
 }
 
 
 unsigned int gos_terrain_bridge_getThinShaderProgram() {
     if (!g_gos_renderer) return 0u;
     glsl_program* p = g_gos_renderer->getThinTerrainProgram();
-    return (p && p->shp_) ? (unsigned int)p->shp_ : 0u;
+    return (p && p->shp_) ? static_cast<unsigned int>(p->shp_) : 0u;
 }
 // gos_terrain_indirect_getDispatchMvp16 and gos_GetTerrainMVPMat4 are declared
 // TU-wide near the top of this file (after g_terrainMaterialProfile) so that

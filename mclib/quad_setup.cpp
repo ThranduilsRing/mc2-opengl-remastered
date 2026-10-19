@@ -124,7 +124,7 @@ static void shapeC_checkParity(
 		if (s_mismatches < 10) \
 			printf("[SHAPE_C] MISMATCH " #method " site=%s tileR=%ld tileC=%ld" \
 				   " inline=%d cached=%d\n", \
-				   siteTag, tileR, tileC, (int)inlineR.method, (int)e.method()); \
+				   siteTag, tileR, tileC, static_cast<int>(inlineR.method), static_cast<int>(e.method())); \
 		ok = false; ++s_mismatches; }
 
 	SHAPE_C_CHECK_DWORD(terrainHandle)

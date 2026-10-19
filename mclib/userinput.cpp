@@ -129,7 +129,7 @@ void MouseCursorData::initCursors (const char *cursorFileName)
 		FILE* f = fopen("cursor_debug.log", "a");
 		if (f)
 		{
-			mc2::fmt::print(f, "[CURSOR] initCursors name='{}' realHack='{}' fitPath='{}' fitOpen={:d} numCursors={:d} screenW={:d}\n", mc2::fmt::safe(cursorFileName), mc2::fmt::safe(realHackName), mc2::fmt::safe((const char*)cursorName), mc2::fmt::as_i32(openResult), mc2::fmt::as_i32(numCursors), mc2::fmt::as_i32((long)Environment.screenWidth));
+			mc2::fmt::print(f, "[CURSOR] initCursors name='{}' realHack='{}' fitPath='{}' fitOpen={:d} numCursors={:d} screenW={:d}\n", mc2::fmt::safe(cursorFileName), mc2::fmt::safe(realHackName), mc2::fmt::safe(static_cast<const char*>(cursorName)), mc2::fmt::as_i32(openResult), mc2::fmt::as_i32(numCursors), mc2::fmt::as_i32(static_cast<long>(Environment.screenWidth)));
 			for (long s = 0; s < numCursors; s++)
 				mc2::fmt::print(f, "[CURSOR]   cursor[{:d}] texHandle={:d} texWidth={:d}\n", mc2::fmt::as_i32(s), mc2::fmt::as_u32(cursorInfos[s].textureHandle), mc2::fmt::as_u32(cursorInfos[s].textureWidth));
 			fflush(f);
@@ -454,7 +454,7 @@ void UserInput::update (void)
 
 		if (!mc2MouseData)
 		{
-			mc2MouseData = (MemoryPtr)malloc(sizeof(DWORD) * MOUSE_WIDTH * MOUSE_WIDTH);
+			mc2MouseData = static_cast<MemoryPtr>(malloc(sizeof(DWORD) * MOUSE_WIDTH * MOUSE_WIDTH));
 			memset(mc2MouseData,0,sizeof(DWORD) * MOUSE_WIDTH * MOUSE_WIDTH);
 		}
 
@@ -476,8 +476,8 @@ void UserInput::update (void)
 			float oldU = cursors->cursorInfos[mouseState].u;
 			float oldV = cursors->cursorInfos[mouseState].v;
 
-			float newU = (.1f + oldU)/cursors->cursorInfos[mouseState].textureWidth + ((float)iIndex * cursors->cursorInfos[mouseState].width()/cursors->cursorInfos[mouseState].textureWidth);
-			float newV = (.1f + oldV)/cursors->cursorInfos[mouseState].textureWidth + (float)jIndex * cursors->cursorInfos[mouseState].height()/cursors->cursorInfos[mouseState].textureWidth;
+			float newU = (.1f + oldU)/cursors->cursorInfos[mouseState].textureWidth + (static_cast<float>(iIndex) * cursors->cursorInfos[mouseState].width()/cursors->cursorInfos[mouseState].textureWidth);
+			float newV = (.1f + oldV)/cursors->cursorInfos[mouseState].textureWidth + static_cast<float>(jIndex) * cursors->cursorInfos[mouseState].height()/cursors->cursorInfos[mouseState].textureWidth;
 
 			float newU2 = newU + (cursors->cursorInfos[mouseState].width() + .1)/cursors->cursorInfos[mouseState].textureWidth;
 			float newV2 = newV + (cursors->cursorInfos[mouseState].height() + .1)/cursors->cursorInfos[mouseState].textureWidth;
@@ -558,7 +558,7 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 			long nc = cursors ? cursors->numCursors : -1;
 			long th = (cursors && mouseState >= 0 && mouseState < nc)
 			          ? cursors->cursorInfos[mouseState].textureHandle : -999;
-			mc2::fmt::print(s_curLog, "[CURSOR] f={:d} drawMouse={:d} mouseState={:d} numCursors={:d} texHandle={:d} screenW={:d}\n", mc2::fmt::as_i32(s_frame), mc2::fmt::as_i32((int)drawMouse), mc2::fmt::as_i32(mouseState), mc2::fmt::as_i32(nc), mc2::fmt::as_i32(th), mc2::fmt::as_i32((long)Environment.screenWidth));
+			mc2::fmt::print(s_curLog, "[CURSOR] f={:d} drawMouse={:d} mouseState={:d} numCursors={:d} texHandle={:d} screenW={:d}\n", mc2::fmt::as_i32(s_frame), mc2::fmt::as_i32(static_cast<int>(drawMouse)), mc2::fmt::as_i32(mouseState), mc2::fmt::as_i32(nc), mc2::fmt::as_i32(th), mc2::fmt::as_i32(static_cast<long>(Environment.screenWidth)));
 			fflush(s_curLog);
 		}
 	}
@@ -592,10 +592,10 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 				if ( gos_ComputeUiCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
 				                             &bx, &by, &bw, &bh ) )
 				{
-					const float dw = (float)Environment.drawableWidth;
-					const float dh = (float)Environment.drawableHeight;
-					mouseX = (long)(mouseX * ((float)bw / dw) + Environment.screenWidth  * ((float)bx / dw));
-					mouseY = (long)(mouseY * ((float)bh / dh) + Environment.screenHeight * ((float)by / dh));
+					const float dw = static_cast<float>(Environment.drawableWidth);
+					const float dh = static_cast<float>(Environment.drawableHeight);
+					mouseX = static_cast<long>((mouseX * (static_cast<float>(bw) / dw) + Environment.screenWidth  * (static_cast<float>(bx) / dw)));
+					mouseY = static_cast<long>((mouseY * (static_cast<float>(bh) / dh) + Environment.screenHeight * (static_cast<float>(by) / dh)));
 				}
 			}
 
@@ -615,8 +615,8 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 				float oldU = cursors->cursorInfos[mouseState].u;
 				float oldV = cursors->cursorInfos[mouseState].v;
 	
-				float newU = (.1f + oldU)/cursors->cursorInfos[mouseState].textureWidth + ((float)iIndex * cursors->cursorInfos[mouseState].width()/cursors->cursorInfos[mouseState].textureWidth);
-				float newV = (.1f + oldV)/cursors->cursorInfos[mouseState].textureWidth + (float)jIndex * cursors->cursorInfos[mouseState].height()/cursors->cursorInfos[mouseState].textureWidth;
+				float newU = (.1f + oldU)/cursors->cursorInfos[mouseState].textureWidth + (static_cast<float>(iIndex) * cursors->cursorInfos[mouseState].width()/cursors->cursorInfos[mouseState].textureWidth);
+				float newV = (.1f + oldV)/cursors->cursorInfos[mouseState].textureWidth + static_cast<float>(jIndex) * cursors->cursorInfos[mouseState].height()/cursors->cursorInfos[mouseState].textureWidth;
 	
 				float newU2 = newU + (cursors->cursorInfos[mouseState].width() + .1)/cursors->cursorInfos[mouseState].textureWidth;
 				float newV2 = newV + (cursors->cursorInfos[mouseState].height() + .1)/cursors->cursorInfos[mouseState].textureWidth;

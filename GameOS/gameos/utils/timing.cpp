@@ -62,7 +62,7 @@ namespace timing {
 		assert(initialized);
 #endif
 #ifdef PLATFORM_WINDOWS
-		return timing_math::ticks_to_ms(ticks, (uint64_t)Frequency.QuadPart);
+		return timing_math::ticks_to_ms(ticks, static_cast<uint64_t>(Frequency.QuadPart));
 #else
 		return ticks;
 #endif

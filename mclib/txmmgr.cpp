@@ -77,7 +77,7 @@ static void txmLeakKeyForName(const char* name, char* out, size_t outSz)
     for (const char* p = name; *p; ++p)
         if (*p == '/' || *p == '\\') lastSep = p;
     if (lastSep) {
-        size_t n = (size_t)(lastSep - name) + 1;
+        size_t n = static_cast<size_t>((lastSep - name)) + 1;
         if (n >= outSz) n = outSz - 1;
         memcpy(out, name, n);
         out[n] = 0;
@@ -94,10 +94,10 @@ static void txmLeakKeyForName(const char* name, char* out, size_t outSz)
 
 #define EVICT_SKIPPED(nodeIdx, refcount, site)                                          \
     do {                                                                                \
-        if (s_evictSkipShouldEmit((long)(nodeIdx), turn)) {                             \
+        if (s_evictSkipShouldEmit(static_cast<long>((nodeIdx)), turn)) {                             \
             printf("[TEX_LIFECYCLE v1] event=evict_skipped reason=pinned "              \
                    "nodeIdx=%ld pinRefCount=%lu site=%s turn=%ld\n",                    \
-                   (long)(nodeIdx), (unsigned long)(refcount), (site), (long)turn);     \
+                   static_cast<long>((nodeIdx)), static_cast<unsigned long>((refcount)), (site), static_cast<long>(turn));     \
             fflush(stdout);                                                             \
         }                                                                               \
     } while (0)
@@ -234,7 +234,7 @@ void MC_TextureManager::start (void)
 	// props). Allocate-once/update-many is the correct lifetime model.
 	gos_LightDataSsbo_Upload(
 		lightData_.data(),
-		(size_t)lightDataStructuresCapacity * sizeof(TG_HWLightsData));
+		static_cast<size_t>(lightDataStructuresCapacity) * sizeof(TG_HWLightsData));
 
 
 	initTexResolveTable();
@@ -850,21 +850,21 @@ void MC_TextureManager::addRenderShape(DWORD nodeId, TG_RenderShape* render_shap
 // getPinCount is non-mutating; usable from logging paths.
 void MC_TextureManager::pinNode (DWORD nodeIdx)
 {
-	gosASSERT(nodeIdx < (DWORD)MC_MAXTEXTURES);
+	gosASSERT(nodeIdx < static_cast<DWORD>(MC_MAXTEXTURES));
 	gosASSERT(masterTextureNodes[nodeIdx].numUsers > 0);
 	masterTextureNodes[nodeIdx].pinRefCount++;
 }
 
 void MC_TextureManager::unpinNode (DWORD nodeIdx)
 {
-	gosASSERT(nodeIdx < (DWORD)MC_MAXTEXTURES);
+	gosASSERT(nodeIdx < static_cast<DWORD>(MC_MAXTEXTURES));
 	gosASSERT(masterTextureNodes[nodeIdx].pinRefCount > 0);
 	masterTextureNodes[nodeIdx].pinRefCount--;
 }
 
 DWORD MC_TextureManager::getPinCount (DWORD nodeIdx) const
 {
-	if (nodeIdx >= (DWORD)MC_MAXTEXTURES) return 0;
+	if (nodeIdx >= static_cast<DWORD>(MC_MAXTEXTURES)) return 0;
 	return masterTextureNodes[nodeIdx].pinRefCount;
 }
 
@@ -919,7 +919,7 @@ DWORD MC_TextureManager::update (void)
 
 	if (s_texLifecycleTrace) {
 		TEX_LC("event=update_summary turn=%ld evicted=%lu currentUsed=%ld",
-		       turn, (unsigned long)numTexturesFreed, (long)currentUsedTextures);
+		       turn, static_cast<unsigned long>(numTexturesFreed), static_cast<long>(currentUsedTextures));
 	}
 
 	return numTexturesFreed;

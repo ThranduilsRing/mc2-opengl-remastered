@@ -265,8 +265,8 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     VkPipelineColorBlendStateCreateInfo cb{};
     cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     cb.attachmentCount = 2; cb.pAttachments = cba;
-    VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
-    VkRect2D scissor{{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     VkPipelineViewportStateCreateInfo vps{};
     vps.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     vps.viewportCount = 1; vps.pViewports = &vp; vps.scissorCount = 1; vps.pScissors = &scissor;
@@ -374,7 +374,7 @@ bool init_island(VfxIsland* s, int w, int h) {
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
-        fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
+        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* o) { return vkCreateFramebuffer(s->device, &fci, nullptr, o); })) { vlog("vkCreateFramebuffer failed."); return false; }
     }
 
@@ -507,13 +507,13 @@ extern "C" int mc2_vk_vfx_island_run(
     const uint32_t par = s->nextSlot;
     s->nextSlot ^= 1u;
     if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return 0; }
-    const VkDeviceSize needBytes = (VkDeviceSize)particleCount * 64u;
+    const VkDeviceSize needBytes = static_cast<VkDeviceSize>(particleCount) * 64u;
     const VkDeviceSize partOff = mc2vk::alignUp(sizeof(VfxVsParams), slotCtx.frameAlignment());
     const mc2vk::FrameAlloc span = slotCtx.frameAlloc(partOff + needBytes);
     if (!span) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
     {
         ZoneScopedN("VKIsl.Vfx.Feed");   // VK-ISLAND-TRACY-1: particle staging
-        std::memcpy(static_cast<uint8_t*>(span.ptr) + partOff, particles, (size_t)needBytes);
+        std::memcpy(static_cast<uint8_t*>(span.ptr) + partOff, particles, static_cast<size_t>(needBytes));
     }
     {
         VfxVsParams up{};
@@ -552,7 +552,7 @@ extern "C" int mc2_vk_vfx_island_run(
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     rbi.clearValueCount = 3; rbi.pClearValues = clears;
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, dynOffsets);
@@ -561,7 +561,7 @@ extern "C" int mc2_vk_vfx_island_run(
     for (uint32_t gi = 0; gi < drawCount; ++gi) {
         const VfxParticleDraw& d = draws[gi];
         if (d.count == 0) continue;
-        if ((uint64_t)d.start + d.count > particleCount) continue;   // clamp bad ranges
+        if (static_cast<uint64_t>(d.start) + d.count > particleCount) continue;   // clamp bad ranges
         if (!groupPage[gi]) continue;   // no resident texture: skipped, as the GL path does
         VkPipeline want = d.atlasColumns == kVfxVegetationAtlas ? s->vegetationPipe.get() : d.additive == VFX_ADD_ONE_ONE ? s->oneOnePipe.get() : d.additive == VFX_ADD_SRC_ALPHA ? s->addPipe.get() : s->alphaPipe.get();
         if (want != bound) { vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }

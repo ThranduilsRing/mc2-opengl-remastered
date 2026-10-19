@@ -65,10 +65,10 @@ void handleMouseMotion(const SDL_Event* event) {
     assert(event);
 
     MouseInfo* mi = &g_mouse_info;
-    mi->x_ = (float)event->motion.x;
-    mi->y_ = (float)event->motion.y;
-    mi->rel_x_ = (float)event->motion.xrel;
-    mi->rel_y_ = (float)event->motion.yrel;
+    mi->x_ = static_cast<float>(event->motion.x);
+    mi->y_ = static_cast<float>(event->motion.y);
+    mi->rel_x_ = static_cast<float>(event->motion.xrel);
+    mi->rel_y_ = static_cast<float>(event->motion.yrel);
 }
 
 void handleMouseButton(const SDL_Event* event) {
@@ -99,8 +99,8 @@ void handleMouseWheel(const SDL_Event* event) {
         return;
 
     MouseInfo* mi = &g_mouse_info;
-    mi->wheel_vert_ = (float)event->wheel.y;
-    mi->wheel_hor_ = (float)event->wheel.x;
+    mi->wheel_vert_ = static_cast<float>(event->wheel.y);
+    mi->wheel_hor_ = static_cast<float>(event->wheel.x);
 
     /* not in my SDL, apparenty >= SDL 2.0.4
     if(event->wheel.direction == SDL_MOUSEWHEEL_FLIPPED) {
@@ -239,9 +239,9 @@ void updateKeyboardState() {
     // inspector shortcut (Ctrl, Shift, Alt); the rest remain SDL-sourced.
     {
         // Helper: apply one Win32 key state into last_state_[scancode].
-        const int kStateLen = (int)(sizeof(ki->last_state_)/sizeof(ki->last_state_[0]));
+        const int kStateLen = static_cast<int>((sizeof(ki->last_state_)/sizeof(ki->last_state_[0])));
         auto injectModifier = [&](SDL_Scancode sc, DWORD vk) {
-            int idx = (int)sc;
+            int idx = static_cast<int>(sc);
             if (idx < 0 || idx >= kStateLen) return;
             uint8_t ls = ki->last_state_[idx];
             bool down = (::GetAsyncKeyState(vk) & 0x8000) != 0;

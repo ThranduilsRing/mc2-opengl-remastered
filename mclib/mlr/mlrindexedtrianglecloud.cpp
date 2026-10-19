@@ -172,7 +172,7 @@ int
 	// backfaced polygons
 	//-----------------------------------------------------------------
 	//
-	int i, j, k, k0, k1, *cs = (int *)clipPerVertex->GetData();
+	int i, j, k, k0, k1, *cs = reinterpret_cast<int *>(clipPerVertex->GetData());
 	unsigned short l;
 	int index0, index1, index2, ret = 0;
 	int mask;
@@ -976,9 +976,9 @@ int
 				Verify((vt->GetLastIndex() + 3 + numGOSIndices) < vt->GetLength());
 				Verify(numGOSIndices%3 == 0);
 
-				gos_indices[numGOSIndices] = (unsigned short)numGOSVertices;
-				gos_indices[numGOSIndices+1] = (unsigned short)(numGOSVertices + 1);
-				gos_indices[numGOSIndices+2] = (unsigned short)(numGOSVertices + 2);
+				gos_indices[numGOSIndices] = static_cast<unsigned short>(numGOSVertices);
+				gos_indices[numGOSIndices+1] = static_cast<unsigned short>((numGOSVertices + 1));
+				gos_indices[numGOSIndices+2] = static_cast<unsigned short>((numGOSVertices + 2));
 
 				numGOSVertices += 3;
 				numGOSIndices += 3;

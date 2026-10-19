@@ -235,8 +235,8 @@ void Build() {
         return float(halfSide - my) * wupv;
     };
 
-    g_recipes.reserve((size_t)(mapSide * mapSide / 8));  // rough upper bound
-    g_vertexNumToRecipe.reserve((size_t)(mapSide * mapSide / 8));
+    g_recipes.reserve(static_cast<size_t>((mapSide * mapSide / 8)));  // rough upper bound
+    g_vertexNumToRecipe.reserve(static_cast<size_t>((mapSide * mapSide / 8)));
 
     long candidates = 0;
 
@@ -300,28 +300,28 @@ void Build() {
             r.v1e = p1.elevation;
             r.v2e = p2.elevation;
             r.v3e = p3.elevation;
-            r.quadIdx = (uint32_t)(mx + my * mapSide);  // top-left vertexNum
+            r.quadIdx = static_cast<uint32_t>((mx + my * mapSide));  // top-left vertexNum
 
             uint32_t flags = 0;
             if (isBottomLeft)         flags |= kFlagBitUvModeBottomLeft;
             if (has_terrainTextures2) flags |= kFlagBitHasDetail;
             r.flags = flags;
 
-            const uint32_t t0 = (uint32_t)(uint8_t)p0.terrainType;
-            const uint32_t t1 = (uint32_t)(uint8_t)p1.terrainType;
-            const uint32_t t2 = (uint32_t)(uint8_t)p2.terrainType;
-            const uint32_t t3 = (uint32_t)(uint8_t)p3.terrainType;
+            const uint32_t t0 = static_cast<uint32_t>(static_cast<uint8_t>(p0.terrainType));
+            const uint32_t t1 = static_cast<uint32_t>(static_cast<uint8_t>(p1.terrainType));
+            const uint32_t t2 = static_cast<uint32_t>(static_cast<uint8_t>(p2.terrainType));
+            const uint32_t t3 = static_cast<uint32_t>(static_cast<uint8_t>(p3.terrainType));
             r.terrainTypes = t0 | (t1 << 8) | (t2 << 16) | (t3 << 24);
 
-            const uint32_t w0 = (uint32_t)(p0.water & 0xFFu);
-            const uint32_t w1 = (uint32_t)(p1.water & 0xFFu);
-            const uint32_t w2 = (uint32_t)(p2.water & 0xFFu);
-            const uint32_t w3 = (uint32_t)(p3.water & 0xFFu);
+            const uint32_t w0 = static_cast<uint32_t>((p0.water & 0xFFu));
+            const uint32_t w1 = static_cast<uint32_t>((p1.water & 0xFFu));
+            const uint32_t w2 = static_cast<uint32_t>((p2.water & 0xFFu));
+            const uint32_t w3 = static_cast<uint32_t>((p3.water & 0xFFu));
             r.waterBits = w0 | (w1 << 8) | (w2 << 16) | (w3 << 24);
 
-            const uint32_t recipeIdx = (uint32_t)g_recipes.size();
+            const uint32_t recipeIdx = static_cast<uint32_t>(g_recipes.size());
             g_recipes.push_back(r);
-            g_vertexNumToRecipe.emplace((uint32_t)(mx + my * mapSide), recipeIdx);
+            g_vertexNumToRecipe.emplace(static_cast<uint32_t>((mx + my * mapSide)), recipeIdx);
         }
     }
 
@@ -340,18 +340,18 @@ void Build() {
                 floorMin = (r.v1e < floorMin) ? r.v1e : floorMin;
                 floorMin = (r.v2e < floorMin) ? r.v2e : floorMin;
                 floorMin = (r.v3e < floorMin) ? r.v3e : floorMin;
-                float thick = (float)Terrain::waterElevation - floorMin;
+                float thick = static_cast<float>(Terrain::waterElevation) - floorMin;
                 if (thick < 0.0f) thick = 0.0f;
                 if (thick < tmin) tmin = thick;
                 if (thick > tmax) tmax = thick;
             }
-            mc2::fmt::print_err("[WATER_MAT v1] event=summary recipes={:d} thickness_min={:.3f} thickness_max={:.3f} waterElevation={:.3f}\n", mc2::fmt::as_size(g_recipes.size()), (double)tmin, (double)tmax, (double)Terrain::waterElevation);
+            mc2::fmt::print_err("[WATER_MAT v1] event=summary recipes={:d} thickness_min={:.3f} thickness_max={:.3f} waterElevation={:.3f}\n", mc2::fmt::as_size(g_recipes.size()), static_cast<double>(tmin), static_cast<double>(tmax), static_cast<double>(Terrain::waterElevation));
             fflush(stderr);
         }
     }
 
     if (DebugOn()) {
-        mc2::fmt::print_err("[WATER_STREAM v1] event=build_done recipes={:d} candidates_walked={:d} waterElevation={:.3f} has_terrainTextures2={:d} mapSide={:d} halfSide={:d} wupv={:.3f}\n", mc2::fmt::as_size(g_recipes.size()), mc2::fmt::as_i32(candidates), (double)Terrain::waterElevation, mc2::fmt::as_i32(has_terrainTextures2 ? 1 : 0), mc2::fmt::as_i32(mapSide), mc2::fmt::as_i32(halfSide), (double)wupv);
+        mc2::fmt::print_err("[WATER_STREAM v1] event=build_done recipes={:d} candidates_walked={:d} waterElevation={:.3f} has_terrainTextures2={:d} mapSide={:d} halfSide={:d} wupv={:.3f}\n", mc2::fmt::as_size(g_recipes.size()), mc2::fmt::as_i32(candidates), static_cast<double>(Terrain::waterElevation), mc2::fmt::as_i32(has_terrainTextures2 ? 1 : 0), mc2::fmt::as_i32(mapSide), mc2::fmt::as_i32(halfSide), static_cast<double>(wupv));
         // Dump several recipes spread across the map to spot uniformity bugs.
         const size_t n = g_recipes.size();
         const size_t dumps[] = { 0, n/8, n/4, n/2, n*3/4, n-1 };
@@ -359,7 +359,7 @@ void Build() {
             if (dumps[di] >= n) continue;
             const WaterRecipe& r = g_recipes[dumps[di]];
             const bool uniform_elev = (r.v0e == r.v1e && r.v1e == r.v2e && r.v2e == r.v3e);
-            mc2::fmt::print_err("[WATER_STREAM v1] event=recipe[{:d}] elev=({:.1f},{:.1f},{:.1f},{:.1f}) {} v0=({:.0f},{:.0f}) v3=({:.0f},{:.0f}) quadIdx={:d}\n", mc2::fmt::as_size(dumps[di]), (double)r.v0e, (double)r.v1e, (double)r.v2e, (double)r.v3e, mc2::fmt::safe(uniform_elev ? "[UNIFORM]" : "[VARIED]"), (double)r.v0x, (double)r.v0y, (double)r.v3x, (double)r.v3y, mc2::fmt::as_u32(r.quadIdx));
+            mc2::fmt::print_err("[WATER_STREAM v1] event=recipe[{:d}] elev=({:.1f},{:.1f},{:.1f},{:.1f}) {} v0=({:.0f},{:.0f}) v3=({:.0f},{:.0f}) quadIdx={:d}\n", mc2::fmt::as_size(dumps[di]), static_cast<double>(r.v0e), static_cast<double>(r.v1e), static_cast<double>(r.v2e), static_cast<double>(r.v3e), mc2::fmt::safe(uniform_elev ? "[UNIFORM]" : "[VARIED]"), static_cast<double>(r.v0x), static_cast<double>(r.v0y), static_cast<double>(r.v3x), static_cast<double>(r.v3y), mc2::fmt::as_u32(r.quadIdx));
         }
         fflush(stderr);
     }
@@ -370,7 +370,7 @@ const WaterRecipe* GetRecipes() {
 }
 
 uint32_t GetRecipeCount() {
-    return (uint32_t)g_recipes.size();
+    return static_cast<uint32_t>(g_recipes.size());
 }
 
 bool IsReady() {
@@ -381,7 +381,7 @@ const WaterRecipe* RecipeForVertexNum(int32_t vn) {
     if (vn < 0) return nullptr;
     auto it = g_vertexNumToRecipe.find(static_cast<uint32_t>(vn));
     if (it == g_vertexNumToRecipe.end()) return nullptr;
-    assert(it->second < (uint32_t)g_recipes.size()); // invariant: Build populates both atomically
+    assert(it->second < static_cast<uint32_t>(g_recipes.size())); // invariant: Build populates both atomically
     return &g_recipes[it->second];
 }
 
@@ -407,9 +407,9 @@ bool CaptureVkNativeInputs(float frameCos) {
     g_vkNative.frameCos = frameCos;
     g_vkNative.waterElevation = Terrain::waterElevation;
     g_vkNative.shoreExt = EffShoreExt(MapData::alphaDepth);
-    g_vkNative.mapSide = (uint32_t)Terrain::realVerticesMapSide;
+    g_vkNative.mapSide = static_cast<uint32_t>(Terrain::realVerticesMapSide);
     g_vkNative.biasLegacy = mc2WaterBiasLegacy();
-    g_vkNative.recipeCount = (uint32_t)g_recipes.size();
+    g_vkNative.recipeCount = static_cast<uint32_t>(g_recipes.size());
     g_vkNativeValid = true;
     return true;
 #else

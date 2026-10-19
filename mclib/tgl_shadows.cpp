@@ -23,7 +23,7 @@ void TG_Shape::MultiTransformShadows (glm::vec3 *pos, glm::mat4 *s2w, float rota
 	glm::mat4 identityMatrix;
 	identityMatrix = glm::mat4(1.0f);
 	
-	TG_TypeShapePtr theShape = (TG_TypeShapePtr)myType;
+	TG_TypeShapePtr theShape = static_cast<TG_TypeShapePtr>(myType);
 	//
 	// 
 	//
@@ -372,7 +372,7 @@ long TG_Shape::RenderShadows (long startFace)
 		gos_SetRenderState( gos_State_Fog, 0);
 	}
 
-	TG_TypeShapePtr theShape = (TG_TypeShapePtr)myType;
+	TG_TypeShapePtr theShape = static_cast<TG_TypeShapePtr>(myType);
 	for (long i=0;i<MAX_SHADOWS;i++)
 	{
 		if (shadowsVisible[i])

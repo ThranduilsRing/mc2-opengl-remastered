@@ -233,11 +233,11 @@ DWORD TerrainColorMap::resolveTextureHandle (VertexPtr vMin, VertexPtr vMax, Ter
 		// Could also store in the new PostcompVertex Structure!!
 		
 		//Also need to adjust UVs by texturePixelAdjust to handle overlaping correctly.
-		float minX = (float)txmNumX * fractionPerTexture;
+		float minX = static_cast<float>(txmNumX) * fractionPerTexture;
 		uvData->maxU = (maxX - minX) * numTexturesAcross + 0.5f / COLOR_MAP_RES;
 		uvData->minU = (posX - minX) * numTexturesAcross + 0.5f / COLOR_MAP_RES;
 		
-		float minY = (float)txmNumY * fractionPerTexture;
+		float minY = static_cast<float>(txmNumY) * fractionPerTexture;
 		uvData->maxV = (maxY - minY) * numTexturesAcross + 0.5f / COLOR_MAP_RES;
 		uvData->minV = (posY - minY) * numTexturesAcross + 0.5f / COLOR_MAP_RES;
 		
@@ -279,7 +279,7 @@ DWORD TerrainColorMap::resolveTextureHandle (VertexPtr vMin, VertexPtr vMax, Ter
 #endif
 	
 		{
-			long maxTex = (long)(numTexturesAcross * numTexturesAcross);
+			long maxTex = static_cast<long>((numTexturesAcross * numTexturesAcross));
 			if (resultTexture < 0 || resultTexture >= maxTex)
 			{
 				mc2::fmt::print_err("[TERRAIN] OOB! resultTexture={:d} max={:d} posX={:f} posY={:f} txmX={:d} txmY={:d}\n", mc2::fmt::as_i32(resultTexture), mc2::fmt::as_i32(maxTex), posX, posY, mc2::fmt::as_i32(txmNumX), mc2::fmt::as_i32(txmNumY));

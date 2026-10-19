@@ -126,15 +126,15 @@ uint32_t crc32_buf(const unsigned char* p, size_t n, uint32_t crc) {
 }
 
 void put_u32_be(std::vector<unsigned char>& out, uint32_t v) {
-    out.push_back((unsigned char)(v >> 24));
-    out.push_back((unsigned char)(v >> 16));
-    out.push_back((unsigned char)(v >> 8));
-    out.push_back((unsigned char)(v));
+    out.push_back(static_cast<unsigned char>((v >> 24)));
+    out.push_back(static_cast<unsigned char>((v >> 16)));
+    out.push_back(static_cast<unsigned char>((v >> 8)));
+    out.push_back(static_cast<unsigned char>((v)));
 }
 
 void write_chunk(std::vector<unsigned char>& out, const char tag[4],
                  const unsigned char* data, size_t len) {
-    put_u32_be(out, (uint32_t)len);
+    put_u32_be(out, static_cast<uint32_t>(len));
     size_t start = out.size();
     out.insert(out.end(), tag, tag + 4);
     if (len) out.insert(out.end(), data, data + len);
@@ -154,10 +154,10 @@ void deflate_stored(const std::vector<unsigned char>& raw,
         size_t blk = std::min(MAXBLK, raw.size() - off);
         bool last = (off + blk) >= raw.size();
         z.push_back(last ? 1 : 0);              // BFINAL, BTYPE=00 (stored)
-        z.push_back((unsigned char)(blk & 0xFF));
-        z.push_back((unsigned char)((blk >> 8) & 0xFF));
-        z.push_back((unsigned char)((~blk) & 0xFF));
-        z.push_back((unsigned char)(((~blk) >> 8) & 0xFF));
+        z.push_back(static_cast<unsigned char>((blk & 0xFF)));
+        z.push_back(static_cast<unsigned char>(((blk >> 8) & 0xFF)));
+        z.push_back(static_cast<unsigned char>(((~blk) & 0xFF)));
+        z.push_back(static_cast<unsigned char>((((~blk) >> 8) & 0xFF)));
         z.insert(z.end(), raw.begin() + off, raw.begin() + off + blk);
         off += blk;
         if (last) break;
@@ -176,11 +176,11 @@ bool write_png_rgb(const char* path, int w, int h,
                    const std::vector<unsigned char>& rgb) {
     // Build the filtered scanline stream (filter byte 0 = None per row).
     std::vector<unsigned char> raw;
-    raw.reserve((size_t)h * (1 + (size_t)w * 3));
+    raw.reserve(static_cast<size_t>(h) * (1 + static_cast<size_t>(w) * 3));
     for (int y = 0; y < h; ++y) {
         raw.push_back(0);
-        const unsigned char* row = rgb.data() + (size_t)y * w * 3;
-        raw.insert(raw.end(), row, row + (size_t)w * 3);
+        const unsigned char* row = rgb.data() + static_cast<size_t>(y) * w * 3;
+        raw.insert(raw.end(), row, row + static_cast<size_t>(w) * 3);
     }
     std::vector<unsigned char> idat;
     deflate_stored(raw, idat);
@@ -190,10 +190,10 @@ bool write_png_rgb(const char* path, int w, int h,
     out.insert(out.end(), sig, sig + 8);
 
     unsigned char ihdr[13];
-    ihdr[0] = (unsigned char)(w >> 24); ihdr[1] = (unsigned char)(w >> 16);
-    ihdr[2] = (unsigned char)(w >> 8);  ihdr[3] = (unsigned char)(w);
-    ihdr[4] = (unsigned char)(h >> 24); ihdr[5] = (unsigned char)(h >> 16);
-    ihdr[6] = (unsigned char)(h >> 8);  ihdr[7] = (unsigned char)(h);
+    ihdr[0] = static_cast<unsigned char>((w >> 24)); ihdr[1] = static_cast<unsigned char>((w >> 16));
+    ihdr[2] = static_cast<unsigned char>((w >> 8));  ihdr[3] = static_cast<unsigned char>((w));
+    ihdr[4] = static_cast<unsigned char>((h >> 24)); ihdr[5] = static_cast<unsigned char>((h >> 16));
+    ihdr[6] = static_cast<unsigned char>((h >> 8));  ihdr[7] = static_cast<unsigned char>((h));
     ihdr[8] = 8;    // bit depth
     ihdr[9] = 2;    // color type RGB
     ihdr[10] = 0;   // compression
@@ -236,7 +236,7 @@ void collect_gate_env(std::vector<std::string>& names) {
     for (; e && *e; ++e) {
         const char* eq = strchr(*e, '=');
         if (!eq) continue;
-        size_t nlen = (size_t)(eq - *e);
+        size_t nlen = static_cast<size_t>((eq - *e));
         if (nlen >= 4 && strncmp(*e, "MC2_", 4) == 0)
             names.emplace_back(*e, nlen);
     }
@@ -290,9 +290,9 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
     // sim steps, i.e. genuinely different sim states, while every other field
     // here matches. Record it so that divergence is visible in the artifact
     // instead of being invisible behind a matching `frame` + `deterministic`.
-    mc2::fmt::to_buf(num, "  \"sim_frame\": {:d},\n", mc2::fmt::as_i32((long)(SmokeMode::fixedClockSeconds() * 30.0 + 0.5))); buf += num;
+    mc2::fmt::to_buf(num, "  \"sim_frame\": {:d},\n", mc2::fmt::as_i32(static_cast<long>((SmokeMode::fixedClockSeconds() * 30.0 + 0.5)))); buf += num;
     buf += "  \"deterministic\": "; buf += (deterministic ? "true" : "false"); buf += ",\n";
-    mc2::fmt::to_buf(num, "  \"seed\": {:d},\n", mc2::fmt::as_u32((unsigned)SmokeMode::state().seed)); buf += num;
+    mc2::fmt::to_buf(num, "  \"seed\": {:d},\n", mc2::fmt::as_u32(static_cast<unsigned>(SmokeMode::state().seed))); buf += num;
     buf += "  \"preset\": \""; esc.clear();
     json_escape(SmokeMode::state().profile, esc); buf += esc; buf += "\",\n";
     mc2::fmt::to_buf(num, "  \"width\": {:d},\n", mc2::fmt::as_i32(w)); buf += num;
@@ -340,8 +340,8 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
         std::vector<char> sib(512 * 1024);
         const double clockSec = SmokeMode::fixedClockSeconds();
         const int wrote = mc2SimIdentityWriteJson(
-            sib.data(), (int)sib.size(), clockSec,
-            (long)(clockSec * 30.0 + 0.5));
+            sib.data(), static_cast<int>(sib.size()), clockSec,
+            static_cast<long>((clockSec * 30.0 + 0.5)));
         if (wrote > 0) {
             buf += ",\n";
             buf += sib.data();
@@ -402,7 +402,7 @@ int read_num_array(const char* p, const char** pp, float* out, int maxN) {
         while (*p == ' ' || *p == ',' || *p == '\n' || *p == '\t' || *p == '\r') ++p;
         if (*p == ']') break;
         char* end = nullptr;
-        float v = (float)strtod(p, &end);
+        float v = static_cast<float>(strtod(p, &end));
         if (end == p) break;
         if (n < maxN) out[n] = v;
         ++n;
@@ -422,7 +422,7 @@ bool read_scalar(const char* obj, const char* key, float* out) {
     if (*k != ':') return false;
     ++k;
     char* end = nullptr;
-    float v = (float)strtod(k, &end);
+    float v = static_cast<float>(strtod(k, &end));
     if (end == k) return false;
     *out = v;
     return true;
@@ -435,8 +435,8 @@ bool load_bookmarks(const char* path, std::string& missionOut,
     fseek(f, 0, SEEK_END);
     long len = ftell(f);
     fseek(f, 0, SEEK_SET);
-    std::string txt((size_t)len, '\0');
-    size_t rd = fread(&txt[0], 1, (size_t)len, f);
+    std::string txt(static_cast<size_t>(len), '\0');
+    size_t rd = fread(&txt[0], 1, static_cast<size_t>(len), f);
     fclose(f);
     txt.resize(rd);
 
@@ -459,7 +459,7 @@ bool load_bookmarks(const char* path, std::string& missionOut,
                  if (e) b.name.assign(k, e); } }
         // Scope to this object: up to the next "name" or end.
         const char* next = strstr(p + 6, "\"name\"");
-        std::string obj(p, next ? (size_t)(next - p) : strlen(p));
+        std::string obj(p, next ? static_cast<size_t>((next - p)) : strlen(p));
         const char* pos = strstr(obj.c_str(), "\"pos\"");
         if (pos) {
             const char* after = nullptr;
@@ -521,7 +521,7 @@ ReplayState g_replay;
 // MC2_VISUAL_CAPTURE_FRAME as the old reader saw it: unset -> -1, set -> atol() (empty -> 0).
 static long captureFrameEnv() {
     if (!mc2::gate::isSet<"MC2_VISUAL_CAPTURE_FRAME">()) return -1L;
-    return mc2::gate::isNonEmpty<"MC2_VISUAL_CAPTURE_FRAME">() ? (long)mc2::gate::get<"MC2_VISUAL_CAPTURE_FRAME">() : 0L;
+    return mc2::gate::isNonEmpty<"MC2_VISUAL_CAPTURE_FRAME">() ? static_cast<long>(mc2::gate::get<"MC2_VISUAL_CAPTURE_FRAME">()) : 0L;
 }
 
 void parse_capture_cfg() {
@@ -544,7 +544,7 @@ void parse_replay_cfg() {
     static const std::string s_replayPath = mc2::gate::str<"MC2_VISUAL_BOOKMARK_CAPTURE">();   // "" when unset or empty
     g_replay.path = mc2::gate::isSet<"MC2_VISUAL_BOOKMARK_CAPTURE">() ? s_replayPath.c_str() : nullptr;
     if (!g_replay.path) return;
-    { long s = mc2::gate::get<"MC2_VISUAL_SETTLE">(); if (s > 0) g_replay.settleFrames = (int)s; }
+    { long s = mc2::gate::get<"MC2_VISUAL_SETTLE">(); if (s > 0) g_replay.settleFrames = static_cast<int>(s); }
     g_replay.dir = mc2::gate::isSet<"MC2_VISUAL_CAPTURE_DIR">() ? mc2::gate::str<"MC2_VISUAL_CAPTURE_DIR">() : std::string(".");
     // Reuse MC2_VISUAL_CAPTURE_FRAME as the deterministic sweep-trigger frame
     // (default 120). Both runs trigger the freeze+sweep at the same frame so
@@ -704,7 +704,7 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
                 ? 0x7fffffffL : (long)::g_mc2FxFireCaptureFrame;
         }
     }
-    if (capActive && (long)frame >= trigger) {
+    if (capActive && static_cast<long>(frame) >= trigger) {
         char base[256];
         mc2::fmt::to_buf(base, "{}_frame{:d}", mission.c_str(), mc2::fmt::as_u32(frame));
         capture_to(g_cap.dir, base, mission, "frame", frame, sceneW, sceneH,
@@ -735,7 +735,7 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
         // (and all shader clocks) for the whole sweep, so every animated source
         // is held at the same frozen phase across bookmarks AND across runs.
         if (!g_replay.triggered) {
-            if ((long)frame < g_replay.triggerFrame) return;
+            if (static_cast<long>(frame) < g_replay.triggerFrame) return;
             g_replay.triggered = true;
             // Save + freeze the sim BEFORE the first settle window. From here on
             // scenarioTime and all unit/sensor/collision updates are frozen, so
@@ -877,7 +877,7 @@ void cameraParkTick(unsigned int frame)
         int n = sscanf(buf, "%f,%f,%f,%f,%f", &pv[0], &pv[1], &pv[2], &pv[3], &pv[4]);
         if (n < 5) s_park = nullptr;  // malformed -> off
     }
-    if (s_park && !s_parked && (long)frame >= s_parkFrame) {
+    if (s_park && !s_parked && static_cast<long>(frame) >= s_parkFrame) {
         s_parked = true;
         glm::vec3 p; p.x = pv[0]; p.y = pv[1]; p.z = 0.0f;
         eye->setPosition(p, false);
@@ -904,20 +904,20 @@ void vkCaptureDeliver(unsigned int w, unsigned int h, const unsigned char* rgba)
     if (!g_vkReq.pending) return;
     g_vkReq.pending = false;
     if (!rgba || w == 0 || h == 0) return;
-    if ((int)w != g_vkReq.w || (int)h != g_vkReq.h)
+    if (static_cast<int>(w) != g_vkReq.w || static_cast<int>(h) != g_vkReq.h)
         mc2::fmt::print_err("[VISUAL_CAPTURE v1] WARN VK present {:d}x{:d} != requested {:d}x{:d} (PNG uses present size)\n", mc2::fmt::as_u32(w), mc2::fmt::as_u32(h), mc2::fmt::as_i32(g_vkReq.w), mc2::fmt::as_i32(g_vkReq.h));
     // sharedImg rows are bottom-up (GL orientation); PNG wants top-down.
-    std::vector<unsigned char> rgb((size_t)w * h * 3);
+    std::vector<unsigned char> rgb(static_cast<size_t>(w) * h * 3);
     for (unsigned y = 0; y < h; ++y) {
-        const unsigned char* src = rgba + (size_t)(h - 1 - y) * w * 4;
-        unsigned char* dst = rgb.data() + (size_t)y * w * 3;
+        const unsigned char* src = rgba + static_cast<size_t>((h - 1 - y)) * w * 4;
+        unsigned char* dst = rgb.data() + static_cast<size_t>(y) * w * 3;
         for (unsigned x = 0; x < w; ++x) {
             dst[x * 3 + 0] = src[x * 4 + 0];
             dst[x * 3 + 1] = src[x * 4 + 1];
             dst[x * 3 + 2] = src[x * 4 + 2];
         }
     }
-    if (write_png_rgb(g_vkReq.png.c_str(), (int)w, (int)h, rgb)) {
+    if (write_png_rgb(g_vkReq.png.c_str(), static_cast<int>(w), static_cast<int>(h), rgb)) {
         mc2::fmt::print_err("[VISUAL_CAPTURE v1] wrote {} ({:d}x{:d}) src=vk_present\n", g_vkReq.png.c_str(), mc2::fmt::as_u32(w), mc2::fmt::as_u32(h));
         fflush(stderr);
     }

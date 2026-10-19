@@ -27,7 +27,7 @@ void gosRenderer::pushToOverlayBatch_(OverlayBatch_& b,
     } else {
         OverlayBatchEntry_ entry;
         entry.texHandle = texHandle;
-        entry.firstVert = (unsigned int)b.verts.size();
+        entry.firstVert = static_cast<unsigned int>(b.verts.size());
         entry.vertCount = 3;
         b.draws.push_back(entry);
     }

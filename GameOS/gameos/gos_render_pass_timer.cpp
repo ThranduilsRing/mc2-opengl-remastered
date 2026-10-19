@@ -64,7 +64,7 @@ int emitEvery()
 // from emitWindow before the accumulators are reset, in both paths.
 void publishWindow()
 {
-    const double inv = s_frames ? (1.0 / (double)s_frames) : 0.0;
+    const double inv = s_frames ? (1.0 / static_cast<double>(s_frames)) : 0.0;
     for (int p = 0; p < Pass_Count; ++p) {
         if (s_samples[p]) {
             s_publishedMs[p]  = s_sumMs[p] * inv;
@@ -95,10 +95,10 @@ void emitWindow()
     if (s_envOn) {
         char line[1024];
         int off = 0;
-        off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, "[RENDER_PASS_TIME v1] frame={:d} n={:d} gpu_total={:.2f}", mc2::fmt::as_u32(s_frameNo), mc2::fmt::as_u32(s_frames), s_sumTotalMs / (double)s_frames);
+        off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, "[RENDER_PASS_TIME v1] frame={:d} n={:d} gpu_total={:.2f}", mc2::fmt::as_u32(s_frameNo), mc2::fmt::as_u32(s_frames), s_sumTotalMs / static_cast<double>(s_frames));
         for (int p = 0; p < Pass_Count; ++p) {
             if (!s_samples[p]) continue;   // pass never ran in window: key absent
-            off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " {}={:.2f}", mc2::fmt::safe(kPassKey[p]), s_sumMs[p] / (double)s_frames);
+            off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " {}={:.2f}", mc2::fmt::safe(kPassKey[p]), s_sumMs[p] / static_cast<double>(s_frames));
         }
         if (s_dropped)
             off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " dropped={:d}", mc2::fmt::as_u32(s_dropped));
@@ -173,7 +173,7 @@ void FrameEnd()
     if (!vk_render_pass_timer::Active()) return;   // the Vulkan islands are the only time source
     ++s_frameNo;
     vk_render_pass_timer::FrameEnd();
-    if (s_frameNo % (unsigned long)emitEvery() == 0)
+    if (s_frameNo % static_cast<unsigned long>(emitEvery()) == 0)
         emitWindow();
 }
 

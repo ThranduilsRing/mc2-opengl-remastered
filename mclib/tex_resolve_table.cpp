@@ -28,8 +28,8 @@ void texResolveLogMismatch(DWORD nodeId, DWORD table_h, DWORD legacy_h)
 {
     if (s_mismatchCount++ < kMaxMismatchPrints) {
         MC2_DIAGF("[TEX_RESOLVE v1] event=mismatch frame=%llu nodeId=%u table=0x%08x legacy=0x%08x\n",
-               (unsigned long long)g_texResolveTable.buildGeneration,
-               (unsigned)nodeId, (unsigned)table_h, (unsigned)legacy_h);
+               static_cast<unsigned long long>(g_texResolveTable.buildGeneration),
+               static_cast<unsigned>(nodeId), static_cast<unsigned>(table_h), static_cast<unsigned>(legacy_h));
         fflush(stdout);
     }
 }
@@ -38,8 +38,8 @@ void texResolveLogOOB(DWORD nodeId)
 {
     if (s_oobCount++ < kMaxOobPrints) {
         MC2_DIAGF("[TEX_RESOLVE v1] event=oob_node frame=%llu nodeId=%u max=%d\n",
-               (unsigned long long)g_texResolveTable.buildGeneration,
-               (unsigned)nodeId, (int)MC_MAXTEXTURES);
+               static_cast<unsigned long long>(g_texResolveTable.buildGeneration),
+               static_cast<unsigned>(nodeId), static_cast<int>(MC_MAXTEXTURES));
         fflush(stdout);
     }
 }
@@ -66,7 +66,7 @@ void initTexResolveTable(void)
     else if (g_texResolveTable.enabled)  mode = "on (default)";
 
     MC2_DIAGF("[TEX_RESOLVE v1] event=startup mode=%s max_textures=%d\n",
-           mode, (int)MC_MAXTEXTURES);
+           mode, static_cast<int>(MC_MAXTEXTURES));
     fflush(stdout);
 
     atexit(&shutdownTexResolveTable);
@@ -94,7 +94,7 @@ void beginFrameTexResolve(uint64_t frameId)
 
     if (g_texResolveTable.trace) {
         MC2_DIAGF("[TEX_RESOLVE v1] event=begin_frame frame=%llu\n",
-               (unsigned long long)frameId);
+               static_cast<unsigned long long>(frameId));
         fflush(stdout);
     }
 }
@@ -128,12 +128,12 @@ void endFrameTexResolve(void)
     g_texResolveTable.frameActive = false;
 
     if ((s_totalFrames % kSummaryEveryNFrames) == 0) {
-        const double avg_resolved = (double)s_totalResolves / (double)s_totalFrames;
+        const double avg_resolved = static_cast<double>(s_totalResolves) / static_cast<double>(s_totalFrames);
         MC2_DIAGF("[TEX_RESOLVE v1] event=summary frames=%llu resolved_per_frame_avg=%.1f mismatches=%llu oob=%llu\n",
-               (unsigned long long)s_totalFrames,
+               static_cast<unsigned long long>(s_totalFrames),
                avg_resolved,
-               (unsigned long long)s_mismatchCount,
-               (unsigned long long)s_oobCount);
+               static_cast<unsigned long long>(s_mismatchCount),
+               static_cast<unsigned long long>(s_oobCount));
         fflush(stdout);
     }
 }
@@ -141,9 +141,9 @@ void endFrameTexResolve(void)
 void shutdownTexResolveTable(void)
 {
     MC2_DIAGF("[TEX_RESOLVE v1] event=shutdown total_frames=%llu total_resolves=%llu mismatches=%llu oob=%llu\n",
-           (unsigned long long)s_totalFrames,
-           (unsigned long long)s_totalResolves,
-           (unsigned long long)s_mismatchCount,
-           (unsigned long long)s_oobCount);
+           static_cast<unsigned long long>(s_totalFrames),
+           static_cast<unsigned long long>(s_totalResolves),
+           static_cast<unsigned long long>(s_mismatchCount),
+           static_cast<unsigned long long>(s_oobCount));
     fflush(stdout);
 }

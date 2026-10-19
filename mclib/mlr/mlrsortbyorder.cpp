@@ -365,7 +365,7 @@ void
 							primitive->GetCoordData(&coords, &nr);
 							Set_Statistic(NumAllVertices, NumAllVertices + nr);
 
-							Set_Statistic(Index_Over_Vertex_Ratio, (Scalar)NumAllIndices/(Scalar)NumAllVertices);
+							Set_Statistic(Index_Over_Vertex_Ratio, static_cast<Scalar>(NumAllIndices)/static_cast<Scalar>(NumAllVertices));
 						}
 #endif
 
@@ -427,7 +427,7 @@ void
 							primitive->GetCoordData(&coords, &nr);
 							Set_Statistic(NumAllVertices, NumAllVertices+nr);
 
-							Set_Statistic(Index_Over_Vertex_Ratio, (Scalar)NumAllIndices/(Scalar)NumAllVertices);
+							Set_Statistic(Index_Over_Vertex_Ratio, static_cast<Scalar>(NumAllIndices)/static_cast<Scalar>(NumAllVertices));
 						}
 #endif
 					}

@@ -282,14 +282,14 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
         // WAV spec: 8-bit PCM is UNSIGNED (silence=128), 16-bit PCM is signed.
         src_fmt = ga_wf->wBitsPerSample==8 ? AUDIO_U8 : AUDIO_S16LSB;
         src_channels = ga_wf->nChannels;
-        databuf = (uint8_t*)data;
+        databuf = static_cast<uint8_t*>(data);
         src_datasize = size;
     }
 
     uint32_t num_datapoints = src_datasize /(src_channels * ((SDL_AUDIO_MASK_BITSIZE & src_fmt) / 8));
     uint32_t audio_data_size = num_datapoints * dst_channels * ((SDL_AUDIO_MASK_BITSIZE & dst_fmt) / 8);
-    double mul_k = (double)dst_freq / (double)src_freq;
-    audio_data_size =(uint32_t)(audio_data_size * mul_k);
+    double mul_k = static_cast<double>(dst_freq) / static_cast<double>(src_freq);
+    audio_data_size =static_cast<uint32_t>((audio_data_size * mul_k));
 
     uint8_t* audio_data = new uint8_t[audio_data_size];
     memset(audio_data, 0, audio_data_size);
@@ -337,10 +337,10 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
         }
 
 		// for some reason len_cvt may be less than required :-/
-        gosASSERT(cvt.len_cvt <= (int)audio_data_size);
-		if(cvt.len_cvt < (int)audio_data_size)
+        gosASSERT(cvt.len_cvt <= static_cast<int>(audio_data_size));
+		if(cvt.len_cvt < static_cast<int>(audio_data_size))
             MC2_LOG(Audio, Debug, "cvt.len_cvt != audio_data_len {:d} != {:d}", mc2::fmt::as_i32(cvt.len_cvt), mc2::fmt::as_i32(audio_data_size));
-		if (cvt.len_cvt < (int)audio_data_size)
+		if (cvt.len_cvt < static_cast<int>(audio_data_size))
 			audio_data_size = cvt.len_cvt;
 
         // if conversion took place in original buffer
@@ -380,7 +380,7 @@ void __stdcall gosAudio_DestroyResource( HGOSAUDIO* hgosaudio )
 {
     gosASSERT(g_sound_engine && hgosaudio);
 
-    gosAudio* audio = (gosAudio*)*hgosaudio;
+    gosAudio* audio = static_cast<gosAudio*>(*hgosaudio);
     gosAudio_ChannelInfo* pci = g_sound_engine->getChannelsInfo();
     if(!audio)
         return;
@@ -428,7 +428,7 @@ void __stdcall gosAudio_AssignResourceToChannel( int Channel, HGOSAUDIO hgosaudi
         return;
 
     // this should only assign resource to channel but not play it
-    gosAudio* audio = (gosAudio*)hgosaudio;
+    gosAudio* audio = static_cast<gosAudio*>(hgosaudio);
     ci->hAudio = audio;
 }
 
@@ -449,7 +449,7 @@ void __stdcall gosAudio_SetChannelSlider( int Channel, enum gosAudio_Properties 
         case gosAudio_Volume:
         {
             ci->fVolume = saturate(value1);
-            Mix_Volume(Channel, (DWORD)(ci->fVolume*MAX_VOLUME));
+            Mix_Volume(Channel, static_cast<DWORD>((ci->fVolume*MAX_VOLUME)));
             //printf("Mix_Volume(%d, %d)\n", Channel, (DWORD)(ci->fVolume*MAX_VOLUME));
             break;
         }
@@ -522,7 +522,7 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
         case gosAudio_PlayOnce:
         case gosAudio_Loop:
         {
-            gosAudio* audio = (gosAudio*)ci->hAudio;
+            gosAudio* audio = static_cast<gosAudio*>(ci->hAudio);
             if(audio) {
                 int loops = ci->ePlayMode == gosAudio_Loop  ? -1 : 0;
                 Mix_PlayChannel(Channel, &audio->mix_chunk_, loops);

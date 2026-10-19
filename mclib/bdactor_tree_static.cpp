@@ -148,8 +148,8 @@ void TreeAppearance::registerStatic() {
 		&& appearType && appearType->treeRenderShape[0];
 	if (seamProbe)
 		mc2::fmt::print_err("[SEAMPROBE] tree registerStatic ENTER name={} registered={:d} hasShape={:d} renderShape={:016X}\n",
-			mc2::fmt::safe(appearType->name), mc2::fmt::as_i32((int)staticReg[0].registered), mc2::fmt::as_i32((int)(treeShape!=nullptr)),
-			mc2::fmt::as_ptr((void*)appearType->treeRenderShape[0])), fflush(stderr);
+			mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(static_cast<int>(staticReg[0].registered)), mc2::fmt::as_i32(static_cast<int>((treeShape!=nullptr))),
+			mc2::fmt::as_ptr(static_cast<void*>(appearType->treeRenderShape[0]))), fflush(stderr);
 	// TREE-OVERRIDE-LOD-MVP Task 2: registered-state is now per-LOD. LOD0 is
 	// the canonical "already done" gate (it always exists — override or stock).
 	if (staticReg[0].registered) return;
@@ -163,13 +163,13 @@ void TreeAppearance::registerStatic() {
 	// full MAX_LODS loop (distinct stock treeShape[i] per LOD).
 	const bool _treeRegIsOverride = (appearType->treeRenderShapeLodCount > 0);
 	const int  _treeRegLods = _treeRegIsOverride
-		? (int)appearType->treeRenderShapeLodCount : MAX_LODS;
+		? static_cast<int>(appearType->treeRenderShapeLodCount) : MAX_LODS;
 	for (int i = 0; i < _treeRegLods; ++i)
 		GpuStaticPropBatcher::instance().registerMultiShape(appearType->getTreeRenderShape(i), _treeRegIsOverride);
 
 	if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && appearType->treeRenderShape[0]) {
 		TG_TypeMultiShape* rs = appearType->treeRenderShape[0];
-		mc2::fmt::print_err("[MODOVERRIDE_TRACE] tree registerStatic name={} renderShape={:016X} numShapes={:d} leaf0={:016X} leaf1={:016X} lodCount={:d}\n", mc2::fmt::safe(appearType->name), mc2::fmt::as_ptr((void*)rs), mc2::fmt::as_i32(rs->GetNumShapes()), mc2::fmt::as_ptr(rs->GetNumShapes() > 0 ? (void*)rs->GetTypeNode(0) : nullptr), mc2::fmt::as_ptr(rs->GetNumShapes() > 1 ? (void*)rs->GetTypeNode(1) : nullptr), mc2::fmt::as_i32(appearType->treeRenderShapeLodCount));
+		mc2::fmt::print_err("[MODOVERRIDE_TRACE] tree registerStatic name={} renderShape={:016X} numShapes={:d} leaf0={:016X} leaf1={:016X} lodCount={:d}\n", mc2::fmt::safe(appearType->name), mc2::fmt::as_ptr(static_cast<void*>(rs)), mc2::fmt::as_i32(rs->GetNumShapes()), mc2::fmt::as_ptr(rs->GetNumShapes() > 0 ? static_cast<void*>(rs->GetTypeNode(0)) : nullptr), mc2::fmt::as_ptr(rs->GetNumShapes() > 1 ? static_cast<void*>(rs->GetTypeNode(1)) : nullptr), mc2::fmt::as_i32(appearType->treeRenderShapeLodCount));
 		fflush(stderr);
 	}
 
@@ -205,7 +205,7 @@ void TreeAppearance::registerStatic() {
 	// still leaves staticReg[0].registered=false (first-render fallback covers
 	// it, exactly as the single-LOD abort did before).
 	bool anyRegistered = false;
-	const int lodCount = _treeRegIsOverride ? (int)appearType->treeRenderShapeLodCount : 1;
+	const int lodCount = _treeRegIsOverride ? static_cast<int>(appearType->treeRenderShapeLodCount) : 1;
 	for (int lod = 0; lod < lodCount && lod < MAX_LODS; ++lod) {
 		// Render-instance for THIS LOD: reuse treeShape for LOD0; temp for >0.
 		TG_MultiShape* lodShape = (lod == 0)
@@ -248,7 +248,7 @@ void TreeAppearance::registerStatic() {
 				++t_diag_skip_unreg;
 				if (seamProbe)
 					mc2::fmt::print_err("[SEAMPROBE] tree buildRecipe MISS name={} lod={:d} leaf={:d} child={:016X} node={} -> LOD unavailable\n",
-						mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(i), mc2::fmt::as_ptr((void*)child), mc2::fmt::safe(child->getNodeName())), fflush(stderr);
+						mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(i), mc2::fmt::as_ptr(static_cast<void*>(child)), mc2::fmt::safe(child->getNodeName())), fflush(stderr);
 				// M4: mark THIS LOD unavailable and stop building it; do NOT
 				// abort the whole instance — other LODs still register.
 				lodMiss = true;
@@ -256,7 +256,7 @@ void TreeAppearance::registerStatic() {
 			}
 			if (seamProbe)
 				mc2::fmt::print_err("[SEAMPROBE] tree buildRecipe HIT name={} lod={:d} leaf={:d} child={:016X} node={} typeID={:d}\n",
-					mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(i), mc2::fmt::as_ptr((void*)child), mc2::fmt::safe(child->getNodeName()), mc2::fmt::as_u32(inst.typeID)), fflush(stderr);
+					mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(i), mc2::fmt::as_ptr(static_cast<void*>(child)), mc2::fmt::safe(child->getNodeName()), mc2::fmt::as_u32(inst.typeID)), fflush(stderr);
 			// EDITOR-STATIC-RECIPE-FROM-TYPE-1 (mirror of BldgAppearance::registerStatic):
 			// re-point the recipe at the canonical primed TYPE leaf
 			// (getTreeRenderShape(lod), which carries finalized VBO geometry) instead of
@@ -271,7 +271,7 @@ void TreeAppearance::registerStatic() {
 						TG_TypeNodePtr typeLeaf = typeRS->GetTypeNode(i);
 						uint32_t canonId = 0, idxc = 0, fi = 0, ic = 0; int32_t bv = 0;
 						if (typeLeaf
-						    && batcher_typeIdForTypeShape((const void*)typeLeaf, &canonId)
+						    && batcher_typeIdForTypeShape(static_cast<const void*>(typeLeaf), &canonId)
 						    && batcher_getTypeDrawInfo(canonId, &idxc, &fi, &bv, &ic)
 						    && idxc > 0) {
 							inst.typeID = canonId;
@@ -313,7 +313,7 @@ void TreeAppearance::registerStatic() {
 				treeShape, batch.data(), batch.size(), &regIdx);
 			if (seamProbe)
 				mc2::fmt::print_err("[SEAMPROBE] tree syncStaticProp name={} lod={:d} batchSize={:d} regIdx={:d} firstTypeID={:d}\n",
-					mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(lod), mc2::fmt::as_size(batch.size()), mc2::fmt::as_i32((int)regIdx),
+					mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(lod), mc2::fmt::as_size(batch.size()), mc2::fmt::as_i32(static_cast<int>(regIdx)),
 					mc2::fmt::as_u32(batch.empty()?0xFFFFFFFFu:batch[0].typeID)), fflush(stderr);
 		}
 		if (regIdx >= 0) {

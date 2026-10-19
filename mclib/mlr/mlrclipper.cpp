@@ -549,7 +549,7 @@ void
 					primitive->GetCoordData(&coords, &nr);
 					NumAllVertices += nr;
 
-					Set_Statistic(Index_Over_Vertex_Ratio, (Scalar)NumAllIndices/(Scalar)NumAllVertices);
+					Set_Statistic(Index_Over_Vertex_Ratio, static_cast<Scalar>(NumAllIndices)/static_cast<Scalar>(NumAllVertices));
 				}
 #endif
 				if(nrOfLightMaps)

@@ -27,7 +27,7 @@ bool flushRangeTombstoneGuard(uint64_t& s_diag_ranges_total, uint64_t& s_diag_ra
                 ++s_tdN;
                 const int tid = (rng.count > 0 && rng.first < s_recipes.size())
                                   ? static_cast<int>(s_recipes[rng.first].typeID) : -1;
-                mc2::fmt::print_err("[TOMBDIAG] sample=first90_per_frame frame={:d} regIdx={:d} count={:d} multi={:d} typeID={:d}{}\n", mc2::fmt::as_u32(fr), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(rng.count), mc2::fmt::as_i32((int)(rng.multi != nullptr)), mc2::fmt::as_i32(tid), mc2::fmt::safe((rng.count == 0) ? "  <<TOMBSTONED-BUT-VISIBLE" : ""));
+                mc2::fmt::print_err("[TOMBDIAG] sample=first90_per_frame frame={:d} regIdx={:d} count={:d} multi={:d} typeID={:d}{}\n", mc2::fmt::as_u32(fr), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(rng.count), mc2::fmt::as_i32(static_cast<int>((rng.multi != nullptr))), mc2::fmt::as_i32(tid), mc2::fmt::safe((rng.count == 0) ? "  <<TOMBSTONED-BUT-VISIBLE" : ""));
                 fflush(stderr);
             }
         }
@@ -60,7 +60,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
                     "sample=first16 skips_so_far_this_mission=%llu "
                     "(destroy() emits event=summary with the final total) regIdx=%u "
                     "registeredOnFrame=%u currentFrame=%u cachedFrame=%u\n",
-                    (unsigned long long)s_firstFrameSkipCount,
+                    static_cast<unsigned long long>(s_firstFrameSkipCount),
                     regIdx, rng.registeredOnFrame, currentFrame,
                     rng.multi->getCachedFrame());
                 fflush(stderr);
@@ -95,7 +95,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
                 if (++streak == kVanishFrames) {
                     ++s_diag_persistent_vanish;
                     persistentVanish = true;
-                    mc2::fmt::print_err("[REGFLUSH_GUARD2] event=persistent_vanish typeID={:d} regIdx={:d} streak={:d} currentFrame={:d} cachedFrame={:d} staleTotalForType={:d} (registered+drawn prop dropped every frame — producer stamp frozen)\n", mc2::fmt::as_i32(tid), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(streak), mc2::fmt::as_u32(currentFrame), mc2::fmt::as_u32(rng.multi->getCachedFrame()), mc2::fmt::as_u64((unsigned long long)s_staleByType[tid]));
+                    mc2::fmt::print_err("[REGFLUSH_GUARD2] event=persistent_vanish typeID={:d} regIdx={:d} streak={:d} currentFrame={:d} cachedFrame={:d} staleTotalForType={:d} (registered+drawn prop dropped every frame — producer stamp frozen)\n", mc2::fmt::as_i32(tid), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(streak), mc2::fmt::as_u32(currentFrame), mc2::fmt::as_u32(rng.multi->getCachedFrame()), mc2::fmt::as_u64(static_cast<unsigned long long>(s_staleByType[tid])));
                     fflush(stderr);
                 }
             }
@@ -126,7 +126,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
             s_seenMulti.find(regIdx) == s_seenMulti.end()) {
             s_seenMulti.insert(regIdx);
             uint32_t firstTid = s_recipes[rng.first].typeID;
-            mc2::fmt::print_err("[REGFLUSH_MULTI v1] sample=first100_distinct_regidx regIdx={:d} count={:d} firstTypeID={:d} multi={:016X}\n", mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(rng.count), mc2::fmt::as_u32(firstTid), mc2::fmt::as_ptr((void*)rng.multi));
+            mc2::fmt::print_err("[REGFLUSH_MULTI v1] sample=first100_distinct_regidx regIdx={:d} count={:d} firstTypeID={:d} multi={:016X}\n", mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(rng.count), mc2::fmt::as_u32(firstTid), mc2::fmt::as_ptr(static_cast<void*>(rng.multi)));
             fflush(stderr);
         }
     }
@@ -205,7 +205,7 @@ void flushLightRowDiag(uint64_t s_diag_flush_calls, uint32_t regIdx, RecipeRange
         // 2026-10-05: census only once something has been counted (default build stays quiet).
         if ((s_diag_flush_calls % 300) == 0 &&
             (s_zlr_sentinel | s_zlr_outOfRange | s_zlr_emptyRow | s_zlr_instances) != 0) {
-            mc2::fmt::print_err("[STATIC_LIGHT_ROW v1] event=census frame={:d} sentinel={:d} out_of_range={:d} empty_row={:d} bad_leaves={:d}\n", mc2::fmt::as_u64((unsigned long long)s_diag_flush_calls), mc2::fmt::as_u64((unsigned long long)s_zlr_sentinel), mc2::fmt::as_u64((unsigned long long)s_zlr_outOfRange), mc2::fmt::as_u64((unsigned long long)s_zlr_emptyRow), mc2::fmt::as_u64((unsigned long long)s_zlr_instances));
+            mc2::fmt::print_err("[STATIC_LIGHT_ROW v1] event=census frame={:d} sentinel={:d} out_of_range={:d} empty_row={:d} bad_leaves={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_flush_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_zlr_sentinel)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_zlr_outOfRange)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_zlr_emptyRow)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_zlr_instances)));
             fflush(stderr);
         }
     }
@@ -274,7 +274,7 @@ void flushLeafDiag(uint32_t regIdx, RecipeRange& rng, uint32_t freshLightIdx, bo
             const float* mm = s_recipes[rng.first + midI].modelMatrix;
             const bool leaf0Zero = (m0[0]==0.0f && m0[3]==0.0f && m0[7]==0.0f && m0[11]==0.0f);
             const bool midZero   = (mm[0]==0.0f && mm[3]==0.0f && mm[7]==0.0f && mm[11]==0.0f);
-            mc2::fmt::print_err("[LEAFDIAG] sample=first48 regIdx={:d} typeID={:d} count={:d} cachedBlob={:d} freshLight={:d} storedLight={:d} leaf0_rawXYZ=({:.1f},{:.1f},{:.1f}) leaf0Zero={:d} midZero={:d}\n", mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(s_recipes[rng.first].typeID), mc2::fmt::as_u32(rng.count), mc2::fmt::as_i32((int)useCachedBlob), mc2::fmt::as_u32(freshLightIdx), mc2::fmt::as_u32(s_recipes[rng.first].lightDataIndex), -m0[3], m0[11], m0[7], mc2::fmt::as_i32((int)leaf0Zero), mc2::fmt::as_i32((int)midZero));
+            mc2::fmt::print_err("[LEAFDIAG] sample=first48 regIdx={:d} typeID={:d} count={:d} cachedBlob={:d} freshLight={:d} storedLight={:d} leaf0_rawXYZ=({:.1f},{:.1f},{:.1f}) leaf0Zero={:d} midZero={:d}\n", mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(s_recipes[rng.first].typeID), mc2::fmt::as_u32(rng.count), mc2::fmt::as_i32(static_cast<int>(useCachedBlob)), mc2::fmt::as_u32(freshLightIdx), mc2::fmt::as_u32(s_recipes[rng.first].lightDataIndex), -m0[3], m0[11], m0[7], mc2::fmt::as_i32(static_cast<int>(leaf0Zero)), mc2::fmt::as_i32(static_cast<int>(midZero)));
             fflush(stderr);
         }
     }
@@ -392,11 +392,11 @@ void flushLegacyRange(GpuStaticPropBatcher& batcher, uint64_t s_diag_flush_calls
                 if (s_blkidxTrace) {
                     const float pwx = gpuRec.worldCenter[0];
                     const float pwy = gpuRec.worldCenter[1];
-                    long mx = ((long)pwx >> 7) + Terrain::halfVerticesMapSide;
-                    long bx = (long)(mx * Terrain::oneOverVerticesBlockSide);
+                    long mx = (static_cast<long>(pwx) >> 7) + Terrain::halfVerticesMapSide;
+                    long bx = static_cast<long>((mx * Terrain::oneOverVerticesBlockSide));
                     long my = Terrain::halfVerticesMapSide -
-                              (((long)pwy >> 7) + 1);
-                    long by = (long)(my * Terrain::oneOverVerticesBlockSide);
+                              ((static_cast<long>(pwy) >> 7) + 1);
+                    long by = static_cast<long>((my * Terrain::oneOverVerticesBlockSide));
                     long cpuBlk = bx + (by * Terrain::blocksMapSide);
                     long helperBlk = Terrain::worldToBlockIdx(pwx, pwy);
                     mc2::fmt::print_err("[BLKIDX v1] event=geom_check src=registry wx={:.1f} wy={:.1f} wz={:.1f} helper={:d} cpu={:d} match={:d}\n", pwx, pwy, gpuRec.worldCenter[2], mc2::fmt::as_i32(helperBlk), mc2::fmt::as_i32(cpuBlk), mc2::fmt::as_i32((helperBlk == cpuBlk) ? 1 : 0));
@@ -430,7 +430,7 @@ void flushLegacyRange(GpuStaticPropBatcher& batcher, uint64_t s_diag_flush_calls
                         mc2::fmt::print_err("[REGFLUSH_TYPEHIST v1] non-zero buckets:\n");
                         for (size_t t = 0; t < s_typeHist.size(); ++t) {
                             if (s_typeHist[t] > 0) {
-                                mc2::fmt::print_err("[REGFLUSH_TYPEHIST v1] typeID={:d} count={:d}\n", mc2::fmt::as_size(t), mc2::fmt::as_u64((unsigned long long)s_typeHist[t]));
+                                mc2::fmt::print_err("[REGFLUSH_TYPEHIST v1] typeID={:d} count={:d}\n", mc2::fmt::as_size(t), mc2::fmt::as_u64(static_cast<unsigned long long>(s_typeHist[t])));
                             }
                         }
                         fflush(stderr);

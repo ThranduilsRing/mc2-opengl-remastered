@@ -25,7 +25,7 @@ void bindTerrainHeightTexUniforms(GLint heightTexLoc, GLint paramsLoc,
         const float wuPerVert = gos_terrainHeightWorldUnitsPerVertex();
         const float invWu = (wuPerVert > 0.0f) ? (1.0f / wuPerVert) : 0.0f;
         const float p[4] = {
-            (float)gos_terrainHeightTexSide(),
+            static_cast<float>(gos_terrainHeightTexSide()),
             invWu,
             gos_terrainHeightMapTopLeftX(),
             gos_terrainHeightMapTopLeftY(),

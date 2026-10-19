@@ -178,7 +178,7 @@ bool
 		STOP((
 			"%s: [%s]%s is a required entry!",
 			m_notationFile->GetFileName(),
-            (const char*)m_name,
+            static_cast<const char*>(m_name),
             entryname
 		));
 	return false;
@@ -245,7 +245,7 @@ bool
 		STOP((
 			"%s: [%s]%s is a required entry!",
 			m_notationFile->GetFileName(),
-			(const char*)m_name,
+			static_cast<const char*>(m_name),
 			entryname
 		));
 	return false;
@@ -310,7 +310,7 @@ bool
 		STOP((
 			"%s: [%s]%s is a required entry!",
 			m_notationFile->GetFileName(),
-			(const char*)m_name,
+			static_cast<const char*>(m_name),
 			entryname
 		));
 	return false;
@@ -375,7 +375,7 @@ bool
 		STOP((
 			"%s: [%s]%s is a required entry!",
 			m_notationFile->GetFileName(),
-			(const char*)m_name,
+			static_cast<const char*>(m_name),
 			entryname
 		));
 	return false;
@@ -440,7 +440,7 @@ bool
 		STOP((
 			"%s: [%s]%s is a required entry!",
 			m_notationFile->GetFileName(),
-			(const char*)m_name,
+			static_cast<const char*>(m_name),
 			entryname
 		));
 	return false;
@@ -505,7 +505,7 @@ bool
 		STOP((
 			"%s: [%s]%s is a required entry!",
 			m_notationFile->GetFileName(),
-			(const char*)m_name,
+			static_cast<const char*>(m_name),
 			entryname
 		));
 	return false;
@@ -570,7 +570,7 @@ bool
 		STOP((
 			"%s: [%s]%s is a required entry!",
 			m_notationFile->GetFileName(),
-			(const char*)m_name,
+			static_cast<const char*>(m_name),
 			entryname
 		));
 	return false;
@@ -635,7 +635,7 @@ bool
 		STOP((
 			"%s: [%s]%s is a required entry!",
 			m_notationFile->GetFileName(),
-			(const char*)m_name,
+			static_cast<const char*>(m_name),
 			entryname
 		));
 	return false;

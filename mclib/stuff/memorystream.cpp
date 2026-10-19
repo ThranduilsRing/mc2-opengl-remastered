@@ -162,7 +162,7 @@ bool
 	{
 		Check_Pointer(p); 
 		Verify(i < max_number_of_bytes); 
-		p[i] = (char)c;
+		p[i] = static_cast<char>(c);
 
 		//
 		// If we have met the end of line condition, break
@@ -520,7 +520,7 @@ MemoryStream&
 	Verify(currentBit >= 0);
 	Verify(currentBit < 8);
 
-	int total_number_of_bytes = (int)(number_of_bits/8.0f);
+	int total_number_of_bytes = static_cast<int>((number_of_bits/8.0f));
 	int total_remainder_bits = number_of_bits - (total_number_of_bytes*8);
 
 	if ( total_remainder_bits != 0)
@@ -550,7 +550,7 @@ MemoryStream&
 		int bit_mask = 0xff >> (8-bits_in_first_source_byte);
 
 		// shift past the used bits in the buffer
-		*dest = (BYTE)(workingBitBuffer >> currentBit);
+		*dest = static_cast<BYTE>((workingBitBuffer >> currentBit));
 		
 		// remove any bits from the next set that tagged along
 		*dest &= bit_mask;
@@ -623,7 +623,7 @@ MemoryStream&
 
 	
 
-	int total_number_of_bytes = (int)(number_of_bits/8.0f);
+	int total_number_of_bytes = static_cast<int>((number_of_bits/8.0f));
 	int total_remainder_bits = number_of_bits  - (total_number_of_bytes*8);
 
 	if ( total_remainder_bits != 0)
@@ -655,7 +655,7 @@ MemoryStream&
 		// make sure our destination is empty
 		workingBitBuffer &= (0xff >> (8-currentBit));
 		// move the source data to the correct bit location
-		BYTE new_source = (BYTE)(*source << currentBit);
+		BYTE new_source = static_cast<BYTE>((*source << currentBit));
 		// put the adjusted source into the destination
 		workingBitBuffer |= new_source;
 
@@ -677,7 +677,7 @@ MemoryStream&
 			if (bits_in_second_destination_byte)
 			{
 				// remove bits we have already used
-				workingBitBuffer = (BYTE)(*source >> bits_in_first_destination_byte);
+				workingBitBuffer = static_cast<BYTE>((*source >> bits_in_first_destination_byte));
 				currentBit = bits_in_second_destination_byte;
 			}
 

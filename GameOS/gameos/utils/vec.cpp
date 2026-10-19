@@ -455,7 +455,7 @@ vec3 cross(const vec3 &u, const vec3 &v){
 
 vec3 rgbeToRGB(unsigned char *rgbe){
 	if (rgbe[3]){
-		return vec3(rgbe[0], rgbe[1], rgbe[2]) * ldexpf(1.0f, rgbe[3] - (int) (128 + 8));
+		return vec3(rgbe[0], rgbe[1], rgbe[2]) * ldexpf(1.0f, rgbe[3] - static_cast<int>((128 + 8)));
 	} else return vec3(0,0,0);
 }
 
@@ -594,7 +594,7 @@ void mat4::translate(const vec3 &v){
 mat4 operator + (const mat4 &m, const mat4 &n){
 	mat4 mat;
 	for (unsigned int i = 0; i < 16; i++){
-		((float *) &mat)[i] = ((float *) &m)[i] + ((float *) &n)[i];
+		(reinterpret_cast<float *>(&mat))[i] = (const_cast<float*>(reinterpret_cast<const float*>(&m)))[i] + (const_cast<float*>(reinterpret_cast<const float*>(&n)))[i];
 	}
 	return mat;
 }
@@ -602,7 +602,7 @@ mat4 operator + (const mat4 &m, const mat4 &n){
 mat4 operator - (const mat4 &m, const mat4 &n){
 	mat4 mat;
 	for (unsigned int i = 0; i < 16; i++){
-		((float *) &mat)[i] = ((float *) &m)[i] - ((float *) &n)[i];
+		(reinterpret_cast<float *>(&mat))[i] = (const_cast<float*>(reinterpret_cast<const float*>(&m)))[i] - (const_cast<float*>(reinterpret_cast<const float*>(&n)))[i];
 	}
 	return mat;
 }
@@ -610,7 +610,7 @@ mat4 operator - (const mat4 &m, const mat4 &n){
 mat4 operator - (const mat4 &m){
 	mat4 mat;
 	for (unsigned int i = 0; i < 16; i++){
-		((float *) &mat)[i] = -((float *) &m)[i];
+		(reinterpret_cast<float *>(&mat))[i] = -(const_cast<float*>(reinterpret_cast<const float*>(&m)))[i];
 	}
 	return mat;
 }
@@ -923,7 +923,7 @@ mat4 inverseMat4(const mat4& m)
     float invDet = 1.0f / det;
     mat4 result;
     for (int i = 0; i < 16; i++)
-        ((float*)&result.elem[0][0])[i] = inv[i] * invDet;
+        (static_cast<float*>(&result.elem[0][0]))[i] = inv[i] * invDet;
     return result;
 }
 

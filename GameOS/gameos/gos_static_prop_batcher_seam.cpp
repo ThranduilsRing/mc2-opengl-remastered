@@ -117,7 +117,7 @@ void GpuStaticPropBatcher::submitCachedInstance(const GpuStaticPropInstance& ins
         if (s_treeDiagTrace && s_staticPrinted < kTreeDiagSample) {
             ++s_staticPrinted;
             TREE_DIAG("path=stat sample=first%d n=%llu typeID=%u flags=0x%x lightIdx=%u colOff=%u tx=%.2f ty=%.2f tz=%.2f fog=%.3f,%.3f,%.3f,%.3f hi=%.3f,%.3f,%.3f,%.3f bucketInsts=%zu",
-                kTreeDiagSample, (unsigned long long)s_staticSeen,
+                kTreeDiagSample, static_cast<unsigned long long>(s_staticSeen),
                 updated.typeID, updated.flags, updated.lightDataIndex, updated.firstColorOffset,
                 // Same offset fix as submit() — translation at [3]/[7]/[11], not [12..14].
                 updated.modelMatrix[3], updated.modelMatrix[7], updated.modelMatrix[11],
@@ -137,7 +137,7 @@ void GpuStaticPropBatcher::setPersistentStaticGen(uint64_t g) { s_persistentStat
 // Free functions (no header coupling) so code/gamecam.cpp can extern-declare
 // them and project a real prop through worldToClipGL at the live camera angle.
 uint32_t gos_ProbeStaticInstanceCount() {
-    uint32_t n = 0; for (auto& kv : s_persistentStaticStore) n += (uint32_t)kv.second.size();
+    uint32_t n = 0; for (auto& kv : s_persistentStaticStore) n += static_cast<uint32_t>(kv.second.size());
     return n;
 }
 bool gos_ProbeStaticInstanceWorld(uint32_t idx, float outXYZ[3]) {
@@ -152,7 +152,7 @@ bool gos_ProbeStaticInstanceWorld(uint32_t idx, float outXYZ[3]) {
             outXYZ[0] = m[12]; outXYZ[1] = m[13]; outXYZ[2] = m[14];
             return true;
         }
-        idx -= (uint32_t)v.size();
+        idx -= static_cast<uint32_t>(v.size());
     }
     return false;
 }
@@ -203,8 +203,8 @@ void GpuStaticPropBatcher::reinjectPersistentStatic() {
         const auto& block = kv.second;
         if (block.empty()) continue;
         PerTypeBucket& bucket = s_bucketsByType[kv.first];
-        bucket.reinjPos   = (uint32_t)bucket.instances.size();
-        bucket.reinjCount = (uint32_t)block.size();
+        bucket.reinjPos   = static_cast<uint32_t>(bucket.instances.size());
+        bucket.reinjCount = static_cast<uint32_t>(block.size());
         bucket.instances.insert(bucket.instances.end(), block.begin(), block.end());  // bulk
     }
 }
@@ -554,7 +554,7 @@ static void rebuildStaticDrawCmdsIfDirty() {
         }
         uint64_t storeTotal = 0;
         for (auto& kv : s_persistentStaticStore) storeTotal += kv.second.size();
-        mc2::fmt::print_err("[STATIC_POP_SPLIT_CMD] pkts={:d} nonZeroCmds={:d} offCmds={:d} maxBaseInst+count={:d} storeTotal={:d} (maxEnd<=storeTotal expected)\n", mc2::fmt::as_u32(pktCount), mc2::fmt::as_u32(nonZero), mc2::fmt::as_u32(s_alphaOffCmdCount), mc2::fmt::as_u32(maxEnd), mc2::fmt::as_u64((unsigned long long)storeTotal));
+        mc2::fmt::print_err("[STATIC_POP_SPLIT_CMD] pkts={:d} nonZeroCmds={:d} offCmds={:d} maxBaseInst+count={:d} storeTotal={:d} (maxEnd<=storeTotal expected)\n", mc2::fmt::as_u32(pktCount), mc2::fmt::as_u32(nonZero), mc2::fmt::as_u32(s_alphaOffCmdCount), mc2::fmt::as_u32(maxEnd), mc2::fmt::as_u64(static_cast<unsigned long long>(storeTotal)));
         std::fflush(stderr);
     }
 }
@@ -610,8 +610,8 @@ size_t batcher_getCoalescePerFrameInstanceBytes() {
     size_t raw = s_globalPoolLegacy
         ? (s_offGroupTotalBytes + s_onGroupTotalBytes)
         : (static_cast<size_t>(s_globalInstanceCap) * sizeof(GpuStaticPropInstance));
-    return (size_t)gpuAlignUp((unsigned long long)raw,
-                              (unsigned long long)gpuSsboOffsetAlignment());
+    return static_cast<size_t>(gpuAlignUp(static_cast<unsigned long long>(raw),
+                              static_cast<unsigned long long>(gpuSsboOffsetAlignment())));
 }
 
 bool batcher_isCoalesceLayoutReady() { return s_coalesceLayoutReady; }
@@ -891,7 +891,7 @@ void batcher_bindBaseInstanceByCmdSsboForPatch() {
     const GLintptr off = static_cast<GLintptr>(
         s_coalesceFrameSlot * s_baseInstanceByCmdBytesPerFrame);
     gpuBindSsboRange(BASE_INSTANCE_SSBO_BINDING, s_baseInstanceByCmdSsbo,
-                     (long long)off, (long long)s_baseInstanceByCmdBytesPerFrame,
+                     static_cast<long long>(off), static_cast<long long>(s_baseInstanceByCmdBytesPerFrame),
                      "sp.baseInstanceByCmd");
 }
 void batcher_unbindBaseInstanceByCmdSsboForPatch() {
@@ -931,7 +931,7 @@ void batcher_prepareBaseInstanceTable() {
                 static_cast<GLsizeiptr>((s_types.size() + 1) * sizeof(uint32_t)),
                 bucketCountGpu.data());
             const size_t cmpN = std::min(s_priorFrameCpuCount.size(), bucketCountGpu.size() - 1);
-            for (uint32_t t = 0; t < (uint32_t)cmpN; ++t) {
+            for (uint32_t t = 0; t < static_cast<uint32_t>(cmpN); ++t) {
                 if (bucketCountGpu[t] > s_priorFrameCpuCount[t]) {
                     MC2_DIAGFE(stderr,
                         "[COALESCE v1] event=gpu_count_exceeds_cpu type=%u gpu=%u cpu=%u\n",

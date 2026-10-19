@@ -227,7 +227,7 @@ void SpawnPoint(const gosFX::PointCloud__Specification* spec,
         p.velocity[0] = world_velocity.x;
         p.velocity[1] = world_velocity.y;
         p.velocity[2] = world_velocity.z;
-        p.lifetime    = (float)lifetime;
+        p.lifetime    = static_cast<float>(lifetime);
         p.age         = 0.0f;
         // Point primitives have no aspect-ratio quad: a single small
         // world-space radius. The legacy MLRPointCloud rasterizes as a

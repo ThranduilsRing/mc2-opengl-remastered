@@ -28,7 +28,7 @@ bool TerrainFieldStore::setHeight(const float* elevations, int mapSide) {
         MC2_LOG(Core, Warn, "[TERRAIN_FIELDS v1] rejected a height field of side {:d}", mc2::fmt::as_i32(mapSide));
         return false;
     }
-    height_.assign(elevations, elevations + (size_t)mapSide * (size_t)mapSide);
+    height_.assign(elevations, elevations + static_cast<size_t>(mapSide) * static_cast<size_t>(mapSide));
     mapSide_ = mapSide;
     heightVersion_ = nextVersion();
     return true;
@@ -44,10 +44,10 @@ bool TerrainFieldStore::patchHeight(const float* rows, int originX, int originY,
                 mc2::fmt::as_i32(quadCountY + 1), mc2::fmt::as_i32(mapSide), mc2::fmt::as_i32(mapSide_));
         return false;
     }
-    const size_t w = (size_t)quadCountX + 1;
+    const size_t w = static_cast<size_t>(quadCountX) + 1;
     for (int row = 0; row <= quadCountY; ++row) {
-        const float* src = rows + (size_t)row * w;
-        float* dst = height_.data() + (size_t)(originY + row) * (size_t)mapSide_ + (size_t)originX;
+        const float* src = rows + static_cast<size_t>(row) * w;
+        float* dst = height_.data() + static_cast<size_t>((originY + row)) * static_cast<size_t>(mapSide_) + static_cast<size_t>(originX);
         std::copy(src, src + w, dst);
     }
     heightVersion_ = nextVersion();
@@ -70,8 +70,8 @@ bool TerrainFieldStore::setVisualHeight(const float* fine, int side, const float
                 mc2::fmt::as_i32(side), mc2::fmt::as_i32(mipFloats));
         return false;
     }
-    const size_t fineCount = (size_t)side * (size_t)side;
-    visual_.resize(fineCount + (size_t)mipFloats);
+    const size_t fineCount = static_cast<size_t>(side) * static_cast<size_t>(side);
+    visual_.resize(fineCount + static_cast<size_t>(mipFloats));
     std::copy(fine, fine + fineCount, visual_.begin());
     if (mipFloats > 0) std::copy(mipMaxes, mipMaxes + mipFloats, visual_.begin() + (std::ptrdiff_t)fineCount);
     visualSide_ = side;
@@ -91,7 +91,7 @@ bool setImage(FieldImage<Texel>& image, const Texel* texels, int width, int heig
                 mc2::fmt::as_i32(height));
         return false;
     }
-    image.texels.assign(texels, texels + (size_t)width * (size_t)height * texelsPerPixel);
+    image.texels.assign(texels, texels + static_cast<size_t>(width) * static_cast<size_t>(height) * texelsPerPixel);
     image.width = width;
     image.height = height;
     image.version = nextVersion();
@@ -136,8 +136,8 @@ bool TerrainFieldStore::setColormapAtlas(std::span<const uint8_t> bytes, int wid
     const bool bc7 = vkFormat == ColormapAtlas::kBc7Unorm || vkFormat == ColormapAtlas::kBc7Srgb;
     const bool sizeOk = width > 0 && height > 0 && width <= kMaxSide * 4 && height <= kMaxSide * 4;
     const size_t want = !sizeOk ? 0
-                      : bc7     ? (size_t)((width + 3) / 4) * (size_t)((height + 3) / 4) * 16u
-                      : vkFormat == ColormapAtlas::kRgba8 ? (size_t)width * (size_t)height * 4u : 0;
+                      : bc7     ? static_cast<size_t>(((width + 3) / 4)) * static_cast<size_t>(((height + 3) / 4)) * 16u
+                      : vkFormat == ColormapAtlas::kRgba8 ? static_cast<size_t>(width) * static_cast<size_t>(height) * 4u : 0;
     if (bytes.empty() || want == 0 || bytes.size() != want) {
         MC2_LOG(Core, Warn, "[TERRAIN_FIELDS v1] rejected a colormap atlas of {:d}x{:d}, format {:d}, {:d} bytes",
                 mc2::fmt::as_i32(width), mc2::fmt::as_i32(height), mc2::fmt::as_u32(vkFormat), mc2::fmt::as_size(bytes.size()));

@@ -481,7 +481,7 @@ profile = true;
 	//--------------------------------------------------------------------
 	// Allocate the code buffer used during pre-processing/interpreting...
 	MaxCodeBufferSize = maxCodeBufferSize;
-	codeBuffer = (char*)ABL_alloc(ABLPool::Code, maxCodeBufferSize);
+	codeBuffer = static_cast<char*>(ABL_alloc(ABLPool::Code, maxCodeBufferSize));
 	if (!codeBuffer)
 		ABL_Fatal(0, " ABL: Unable to AblCodeHeap->malloc preprocess code buffer ");
 	
@@ -496,7 +496,7 @@ profile = true;
 	StaticDataPtr = nullptr;
 	StaticVariablesSizes = nullptr;
 	if (MaxStaticVariables > 0) {
-		StaticVariablesSizes = (long*)ABL_alloc(ABLPool::Stack, sizeof(long) * MaxStaticVariables);
+		StaticVariablesSizes = static_cast<long*>(ABL_alloc(ABLPool::Stack, sizeof(long) * MaxStaticVariables));
 		if (!StaticVariablesSizes)
 			ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc StaticVariablesSizes ");
 	}
@@ -509,7 +509,7 @@ profile = true;
 	//-----------------------------------
 	// Allocate Eternal Vars Size List...
 	if (MaxEternalVariables > 0) {
-		EternalVariablesSizes = (long*)ABL_alloc(ABLPool::Stack, sizeof(long) * MaxEternalVariables);
+		EternalVariablesSizes = static_cast<long*>(ABL_alloc(ABLPool::Stack, sizeof(long) * MaxEternalVariables));
 		if (!EternalVariablesSizes)
 			ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc EternalVariablesSizes ");
 	}
@@ -847,24 +847,24 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 
 	closeSourceFile();
 
-	ModuleRegistry[NumModulesRegistered].fileName = (char*)ABL_alloc(ABLPool::Stack, static_cast<unsigned long>(strlen(source_fn) + 1));
+	ModuleRegistry[NumModulesRegistered].fileName = static_cast<char*>(ABL_alloc(ABLPool::Stack, static_cast<unsigned long>(strlen(source_fn) + 1)));
 	if (!ModuleRegistry[NumModulesRegistered].fileName)
 		ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc module filename ");
 	strcpy(ModuleRegistry[NumModulesRegistered].fileName, source_fn);
 	ModuleRegistry[NumModulesRegistered].moduleIdPtr = moduleIdPtr;
 
 	ModuleRegistry[NumModulesRegistered].numSourceFiles = NumSourceFiles;
-	ModuleRegistry[NumModulesRegistered].sourceFiles = (char**)ABL_alloc(ABLPool::Stack, NumSourceFiles * sizeof(char*));
+	ModuleRegistry[NumModulesRegistered].sourceFiles = static_cast<char**>(ABL_alloc(ABLPool::Stack, NumSourceFiles * sizeof(char*)));
 	if (!ModuleRegistry[NumModulesRegistered].sourceFiles)
 		ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc sourceFiles ");
 	for (int i = 0; i < NumSourceFiles; i++) {
-		ModuleRegistry[NumModulesRegistered].sourceFiles[i] = (char*)ABL_alloc(ABLPool::Stack, static_cast<unsigned long>(strlen(SourceFiles[i]) + 1));
+		ModuleRegistry[NumModulesRegistered].sourceFiles[i] = static_cast<char*>(ABL_alloc(ABLPool::Stack, static_cast<unsigned long>(strlen(SourceFiles[i]) + 1)));
 		strcpy(ModuleRegistry[NumModulesRegistered].sourceFiles[i], SourceFiles[i]);
 	}
 
 	if (NumLibrariesUsed > 0) {
 		ModuleRegistry[NumModulesRegistered].numLibrariesUsed = NumLibrariesUsed;
-		ModuleRegistry[NumModulesRegistered].librariesUsed = (ABLModulePtr*)ABL_alloc(ABLPool::Stack, NumLibrariesUsed * sizeof(SymTableNodePtr));
+		ModuleRegistry[NumModulesRegistered].librariesUsed = static_cast<ABLModulePtr*>(ABL_alloc(ABLPool::Stack, NumLibrariesUsed * sizeof(SymTableNodePtr)));
 		if (!ModuleRegistry[NumModulesRegistered].librariesUsed)
 			ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc librariesUsed ");
 		for (int i = 0; i < NumLibrariesUsed; i++)
@@ -875,7 +875,7 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 	ModuleRegistry[NumModulesRegistered].sizeStaticVars	= nullptr;
 	ModuleRegistry[NumModulesRegistered].totalSizeStaticVars = 0;
 	if (NumStaticVariables) {
-		ModuleRegistry[NumModulesRegistered].sizeStaticVars = (long*)ABL_alloc(ABLPool::Stack, sizeof(long) * NumStaticVariables);
+		ModuleRegistry[NumModulesRegistered].sizeStaticVars = static_cast<long*>(ABL_alloc(ABLPool::Stack, sizeof(long) * NumStaticVariables));
 		if (!ModuleRegistry[NumModulesRegistered].sizeStaticVars)
 			ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc module sizeStaticVars ");
 		memcpy(ModuleRegistry[NumModulesRegistered].sizeStaticVars, StaticVariablesSizes, sizeof(long) * NumStaticVariables);
@@ -890,7 +890,7 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 
 	ModuleRegistry[NumModulesRegistered].numStateHandles = NumStateHandles;
 	if (NumStateHandles > 1) {
-		ModuleRegistry[NumModulesRegistered].stateHandles = (StateHandleInfoPtr)ABL_alloc(ABLPool::Stack, sizeof(StateHandleInfo) * NumStateHandles);
+		ModuleRegistry[NumModulesRegistered].stateHandles = static_cast<StateHandleInfoPtr>(ABL_alloc(ABLPool::Stack, sizeof(StateHandleInfo) * NumStateHandles));
 		memcpy(ModuleRegistry[NumModulesRegistered].stateHandles, StateHandleList, sizeof(StateHandleInfo) * NumStateHandles);
 	}
 
@@ -938,7 +938,7 @@ void initializeEntryFrame () {
 bool pushEntryValueParameter (TypePtr formalTypePtr, const ABLParam& param) {
 	if (formalTypePtr == RealTypePtr) {
 		if (param.type == ABL_PARAM_INTEGER)
-			pushReal((float)param.integer);
+			pushReal(static_cast<float>(param.integer));
 		else if (param.type == ABL_PARAM_REAL)
 			pushReal(param.real);
 	} else if (formalTypePtr == IntegerTypePtr) {
@@ -971,7 +971,7 @@ long ABLi_execute (SymTableNodePtr moduleIdPtr, SymTableNodePtr functionIdPtr, A
 
 				if (formalTypePtr->form == FRM_ARRAY/* || (formalTypePtr->form == FRM_RECORD)*/) {
 					long size = formalTypePtr->size;
-					char* dest = (char*)ABL_alloc(ABLPool::Stack, (size_t)size);
+					char* dest = static_cast<char*>(ABL_alloc(ABLPool::Stack, static_cast<size_t>(size)));
 					if (!dest)
 						ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc module formal array param ");
 					// The entry parameter list holds only integers and reals, so there is no actual array to copy from (the stack top is another
@@ -983,9 +983,9 @@ long ABLi_execute (SymTableNodePtr moduleIdPtr, SymTableNodePtr functionIdPtr, A
 				}
 			else {
 				if (formalTypePtr == RealTypePtr)
-					pushAddress((Address)&(paramList[curParam].real));
+					pushAddress(reinterpret_cast<Address>(&(paramList[curParam].real)));
 				else if (formalTypePtr == IntegerTypePtr)
-					pushAddress((Address)&(paramList[curParam].integer));
+					pushAddress(reinterpret_cast<Address>(&(paramList[curParam].integer)));
 				else
 					return(0);
 			}
@@ -1288,8 +1288,8 @@ SymTableNodePtr moduleHeader (void) {
 		//if (forwardFlag)
 		//	syntaxError(ABL_ERR_SYNTAX_ALREADY_FORWARDED);
 		//else {
-			moduleIdPtr->defn.info.routine.paramCount = (unsigned char)paramCount;
-			moduleIdPtr->defn.info.routine.totalParamSize = (unsigned char)totalParamSize;
+			moduleIdPtr->defn.info.routine.paramCount = static_cast<unsigned char>(paramCount);
+			moduleIdPtr->defn.info.routine.totalParamSize = static_cast<unsigned char>(totalParamSize);
 			moduleIdPtr->defn.info.routine.params = paramListPtr;
 		//}
 	}
@@ -1381,7 +1381,7 @@ void routine (void) {
 		blockType = BLOCK_ROUTINE;
 		blockFlag = true;
 
-		routineIdPtr->defn.info.routine.orderCallIndex = (unsigned short)NumOrderCalls;
+		routineIdPtr->defn.info.routine.orderCallIndex = static_cast<unsigned short>(NumOrderCalls);
 
 		//compoundStatement();
 		getToken();
@@ -1407,7 +1407,7 @@ void routine (void) {
 		blockFlag = false;
 
 
-		routineIdPtr->defn.info.routine.numOrderCalls = (unsigned short)NumOrderCalls - routineIdPtr->defn.info.routine.orderCallIndex;
+		routineIdPtr->defn.info.routine.numOrderCalls = static_cast<unsigned short>(NumOrderCalls) - routineIdPtr->defn.info.routine.orderCallIndex;
 		routineIdPtr->defn.info.routine.codeSegment = createCodeSegment(routineIdPtr->defn.info.routine.codeSegmentSize);
 		analyzeBlock(routineIdPtr->defn.info.routine.codeSegment);
 		}
@@ -1524,8 +1524,8 @@ SymTableNodePtr functionHeader (void) {
 		if (forwardFlag)
 			syntaxError(ABL_ERR_SYNTAX_ALREADY_FORWARDED);
 		else {
-			functionIdPtr->defn.info.routine.paramCount = (unsigned char)paramCount;
-			functionIdPtr->defn.info.routine.totalParamSize = (unsigned char)totalParamSize;
+			functionIdPtr->defn.info.routine.paramCount = static_cast<unsigned char>(paramCount);
+			functionIdPtr->defn.info.routine.totalParamSize = static_cast<unsigned char>(totalParamSize);
 			functionIdPtr->defn.info.routine.params = paramListPtr;
 		}
 		}
@@ -1711,7 +1711,7 @@ TypePtr declaredRoutineCall (SymTableNodePtr routineIdPtr, long paramCheckFlag) 
 void actualParamList (SymTableNodePtr routineIdPtr, long paramCheckFlag) {
 
 	SymTableNodePtr formalParamIdPtr = nullptr;
-	DefinitionType formalParamDefn = (DefinitionType)0;
+	DefinitionType formalParamDefn = static_cast<DefinitionType>(0);
 	TypePtr formalParamTypePtr = nullptr;
 	TypePtr actualParamTypePtr = nullptr;
 

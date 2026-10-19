@@ -239,12 +239,12 @@ int
 		{
 			if(p->distanceTo(u)>= 0.0f)
 			{
-				iPtr[i] = (unsigned char)(ret = 1);
+				iPtr[i] = static_cast<unsigned char>((ret = 1));
 			}
 		}
 	}
 
-	visible = (unsigned char)ret;
+	visible = static_cast<unsigned char>(ret);
 
 	FindVisibleVertices();
 
@@ -275,7 +275,7 @@ int
 	Verify(index.GetLength() > 0);
 
 	int ret, i, j;
-	DWORD *indices = (DWORD *)index.GetData();
+	DWORD *indices = reinterpret_cast<DWORD *>(index.GetData());
 
 	for(i=0,j=0,ret=0;i<(numOfTriangles>>1);++i)
 	{

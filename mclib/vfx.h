@@ -230,16 +230,16 @@ struct VFX_RECT {
    LONG y1;
 };
 
-#define INT_TO_FIXED16(x)       (((long)(int)(x)) << 16)
-#define DOUBLE_TO_FIXED16(x)    ((long) ((x) * 65536.0 + 0.5))
-#define FIXED16_TO_DOUBLE(x)    (((double)(x)) / 65536.0)
-#define FIXED16_TO_INT(x)       ((int) ((x)<0 ? -(-(x) >> 16) : (x) >> 16))
-#define ROUND_FIXED16_TO_INT(x) ((int) ((x)<0 ? -((32768-(x)) >> 16) : ((x)+32768) >> 16))
+#define INT_TO_FIXED16(x)       ((static_cast<long>(static_cast<int>((x)))) << 16)
+#define DOUBLE_TO_FIXED16(x)    (static_cast<long>(((x) * 65536.0 + 0.5)))
+#define FIXED16_TO_DOUBLE(x)    ((static_cast<double>((x))) / 65536.0)
+#define FIXED16_TO_INT(x)       (static_cast<int>(((x)<0 ? -(-(x) >> 16) : (x) >> 16)))
+#define ROUND_FIXED16_TO_INT(x) (static_cast<int>(((x)<0 ? -((32768-(x)) >> 16) : ((x)+32768) >> 16)))
 
 #define FIXED16_TO_FIXED30(x)   ((x) << 14)
 #define FIXED30_TO_FIXED16(x)   ((x) >> 14)
-#define FIXED30_TO_DOUBLE(x)    (((double)x) / 1073741824.0)
-#define DOUBLE_TO_FIXED30(x)    ((long) (x * 1073741824.0 + 0.5))
+#define FIXED30_TO_DOUBLE(x)    ((static_cast<double>(x)) / 1073741824.0)
+#define DOUBLE_TO_FIXED30(x)    (static_cast<long>((x * 1073741824.0 + 0.5)))
 
 #define PIXELS_IN_PANE(pane)    (((pane).x1-(pane).x0+1)*((pane).y1-(pane).y0+1))
 #define PIXELS_IN_PANEP(pane)   (((pane)->x1-(pane)->x0+1)*((pane)->y1-(pane)0>y0+1))

@@ -73,7 +73,7 @@ long TG_TypeMultiShape::SetTextureHandle (DWORD textureNum, DWORD gosTextureHand
 		const bool firstWindow = (s_eventCount < 32);
 		const bool sample = ((s_eventCount & 0xFF) == 0);  // 1/256
 		if (s_verbose || firstWindow || sample) {
-			mc2::fmt::print_out("[TEX_LIFECYCLE v1] event=recache_multi multiType={:016X} texNum={:d} nodeIdx=0x{:08x} numTex={:d} total={:d}\n", mc2::fmt::as_ptr((void*)this), mc2::fmt::as_u32((unsigned long)textureNum), mc2::fmt::as_u32((unsigned long)gosTextureHandle), mc2::fmt::as_i32((long)numTextures), mc2::fmt::as_u32(s_eventCount));
+			mc2::fmt::print_out("[TEX_LIFECYCLE v1] event=recache_multi multiType={:016X} texNum={:d} nodeIdx=0x{:08x} numTex={:d} total={:d}\n", mc2::fmt::as_ptr(static_cast<void*>(this)), mc2::fmt::as_u32(static_cast<unsigned long>(textureNum)), mc2::fmt::as_u32(static_cast<unsigned long>(gosTextureHandle)), mc2::fmt::as_i32(static_cast<long>(numTextures)), mc2::fmt::as_u32(s_eventCount));
 			fflush(stdout);
 		}
 		++s_eventCount;
@@ -144,7 +144,7 @@ glm::vec3 TG_MultiShape::GetShapeVertexInEditor(long shapeNum, long vertexNum, f
 		//-------------------------------
 		// Get the vertex in question.
 		glm::vec3 vertexPos;
-		TG_TypeShapePtr typeShape = (TG_TypeShapePtr)myMultiType->listOfTypeShapes[shapeNum];
+		TG_TypeShapePtr typeShape = static_cast<TG_TypeShapePtr>(myMultiType->listOfTypeShapes[shapeNum]);
 		vertexPos.x = -(typeShape->listOfTypeVertices[vertexNum].position.x + typeShape->GetRelativeNodeCenter().x + GetRootNodeCenter().x);
 		vertexPos.z = typeShape->listOfTypeVertices[vertexNum].position.y + typeShape->GetRelativeNodeCenter().y + GetRootNodeCenter().y; 
 		vertexPos.y = typeShape->listOfTypeVertices[vertexNum].position.z + typeShape->GetRelativeNodeCenter().z + GetRootNodeCenter().z;
@@ -177,7 +177,7 @@ glm::vec3 TG_MultiShape::GetShapeVertexInWorld(long shapeNum, long vertexNum, fl
 		//-------------------------------
 		// Get the vertex in question.
 		glm::vec3 vertexPos;
-		TG_TypeShapePtr typeShape = (TG_TypeShapePtr)myMultiType->listOfTypeShapes[shapeNum];
+		TG_TypeShapePtr typeShape = static_cast<TG_TypeShapePtr>(myMultiType->listOfTypeShapes[shapeNum]);
 		
 		vertexPos = mc2::math::transformPoint(typeShape->listOfTypeVertices[vertexNum].position, listOfShapes[shapeNum].shapeToWorld);
 		

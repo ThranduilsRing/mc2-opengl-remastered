@@ -14,16 +14,16 @@ void execOrderReturn (long returnVal) {
 
 	//-----------------------------
 	// Assignment to function id...
-	StackFrameHeaderPtr headerPtr = (StackFrameHeaderPtr)stackFrameBasePtr;
+	StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(stackFrameBasePtr);
 	long delta = level - CurRoutineIdPtr->level - 1;
 	while (delta-- > 0)
-		headerPtr = (StackFrameHeaderPtr)headerPtr->staticLink.address;
+		headerPtr = reinterpret_cast<StackFrameHeaderPtr>(headerPtr->staticLink.address);
 
 	if (CurRoutineIdPtr->defn.info.routine.flags & ROUTINE_FLAG_STATE) {
 		//----------------------------------
 		// Return in a state function, so...
 		if (debugger)
-			debugger->traceDataStore(CurRoutineIdPtr, CurRoutineIdPtr->typePtr, (StackItemPtr)headerPtr, CurRoutineIdPtr->typePtr);
+			debugger->traceDataStore(CurRoutineIdPtr, CurRoutineIdPtr->typePtr, reinterpret_cast<StackItemPtr>(headerPtr), CurRoutineIdPtr->typePtr);
 	
 		ExitWithReturn = true;
 		ExitFromTacOrder = true;
@@ -31,7 +31,7 @@ void execOrderReturn (long returnVal) {
 		if (returnVal == 0) {
 			//----------------------------------------------------------
 			// Use the "eject" code only if called for a failed Order...
-			codeSegmentPtr = (char*)ExitStateCodeSegment;
+			codeSegmentPtr = reinterpret_cast<char*>(ExitStateCodeSegment);
 			getCodeToken();
 		}
 		
@@ -40,7 +40,7 @@ void execOrderReturn (long returnVal) {
 		//-------------------------------------------------------------------------
 		// All Order functions (TacticalOrder/GeneralOrder/ActionOrder) must return
 		// an integer error code, so we assume the return type is IntegerTypePtr...
-		StackItemPtr targetPtr = (StackItemPtr)headerPtr;
+		StackItemPtr targetPtr = reinterpret_cast<StackItemPtr>(headerPtr);
 		targetPtr->integer = returnVal;
 
 		//----------------------------------------------------------------------
@@ -48,7 +48,7 @@ void execOrderReturn (long returnVal) {
 		memcpy(&returnValue, targetPtr, sizeof(StackItem));
 
 		if (debugger)
-			debugger->traceDataStore(CurRoutineIdPtr, CurRoutineIdPtr->typePtr, (StackItemPtr)headerPtr, CurRoutineIdPtr->typePtr);
+			debugger->traceDataStore(CurRoutineIdPtr, CurRoutineIdPtr->typePtr, reinterpret_cast<StackItemPtr>(headerPtr), CurRoutineIdPtr->typePtr);
 	
 		ExitWithReturn = true;
 		ExitFromTacOrder = true;
@@ -56,7 +56,7 @@ void execOrderReturn (long returnVal) {
 		if (returnVal == 0) {
 			//----------------------------------------------------------
 			// Use the "eject" code only if called for a failed Order...
-			codeSegmentPtr = (char*)ExitOrderCodeSegment;
+			codeSegmentPtr = reinterpret_cast<char*>(ExitOrderCodeSegment);
 			getCodeToken();
 		}
 	}
@@ -70,12 +70,12 @@ void execStdReturn (void) {
 	if (CurRoutineIdPtr->typePtr) {
 		//-----------------------------
 		// Assignment to function id...
-		StackFrameHeaderPtr headerPtr = (StackFrameHeaderPtr)stackFrameBasePtr;
+		StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(stackFrameBasePtr);
 		long delta = level - CurRoutineIdPtr->level - 1;
 		while (delta-- > 0)
-			headerPtr = (StackFrameHeaderPtr)headerPtr->staticLink.address;
+			headerPtr = reinterpret_cast<StackFrameHeaderPtr>(headerPtr->staticLink.address);
 
-		StackItemPtr targetPtr = (StackItemPtr)headerPtr;
+		StackItemPtr targetPtr = reinterpret_cast<StackItemPtr>(headerPtr);
 		TypePtr targetTypePtr = CurRoutineIdPtr->typePtr;
 		getCodeToken();
 
@@ -90,12 +90,12 @@ void execStdReturn (void) {
 		if ((targetTypePtr == RealTypePtr) && (expressionTypePtr == IntegerTypePtr)) {
 			//-------------------------
 			// integer assigned to real
-			targetPtr->real = (float)(tos->integer);
+			targetPtr->real = static_cast<float>((tos->integer));
 			}
 		else if (targetTypePtr->form == FRM_ARRAY) {
 			//-------------------------
 			// Copy the array/record...
-			char* dest = (char*)targetPtr;
+			char* dest = reinterpret_cast<char*>(targetPtr);
 			char* src = tos->address;
 			const size_t capacity = std::min(static_cast<size_t>(std::max(0L, targetTypePtr->size)), sizeof(StackItem));
 			const size_t sourceSize = src && expressionTypePtr && expressionTypePtr->form == FRM_ARRAY
@@ -133,11 +133,11 @@ void execStdReturn (void) {
 	getCodeToken();
 
 	if (CurRoutineIdPtr->defn.info.routine.flags & ROUTINE_FLAG_ORDER)
-		codeSegmentPtr = (char*)ExitOrderCodeSegment;
+		codeSegmentPtr = reinterpret_cast<char*>(ExitOrderCodeSegment);
 	else if (CurRoutineIdPtr->defn.info.routine.flags & ROUTINE_FLAG_STATE)
-		codeSegmentPtr = (char*)ExitStateCodeSegment;
+		codeSegmentPtr = reinterpret_cast<char*>(ExitStateCodeSegment);
 	else
-		codeSegmentPtr = (char*)ExitRoutineCodeSegment;
+		codeSegmentPtr = reinterpret_cast<char*>(ExitRoutineCodeSegment);
 	ExitWithReturn = true;
 
 	getCodeToken();
@@ -167,7 +167,7 @@ void execStdPrint (void) {
 	else if (paramTypePtr == RealTypePtr)
 		mc2::fmt::to_buf(buffer, "{:.4f}", tos->real);
 	else if ((paramTypePtr->form == FRM_ARRAY) && (paramTypePtr->info.array.elementTypePtr == CharTypePtr))
-		s = (char*)tos->address;
+		s = reinterpret_cast<char*>(tos->address);
 	pop();
 
 	if (debugger) {
@@ -236,7 +236,7 @@ TypePtr execStdConcat (void) {
 		item = buffer;
 		}
 	else if ((paramTypePtr->form == FRM_ARRAY) && (paramTypePtr->info.array.elementTypePtr == CharTypePtr))
-		item = (char*)tos->address;
+		item = reinterpret_cast<char*>(tos->address);
 
 	if (item) {
 		if (const size_t dropped = abl::appendBounded(dest, item))
@@ -268,9 +268,9 @@ void execStdRound (void) {
 	float val = ABLi_popReal();
 
 	if (val > 0.0)
-		ABLi_pushInteger((int)(val + 0.5));
+		ABLi_pushInteger(static_cast<int>((val + 0.5)));
 	else
-		ABLi_pushInteger((int)(val - 0.5));
+		ABLi_pushInteger(static_cast<int>((val - 0.5)));
 }
 
 //***************************************************************************
@@ -282,7 +282,7 @@ void execStdSqrt (void) {
 	if (val < 0.0)
 		runtimeError(ABL_ERR_RUNTIME_INVALID_FUNCTION_ARGUMENT);
 	else
-		ABLi_pushReal((float)sqrt(val));
+		ABLi_pushReal(static_cast<float>(sqrt(val)));
 }
 
 //***************************************************************************
@@ -290,7 +290,7 @@ void execStdSqrt (void) {
 void execStdTrunc (void) {
 
 	float val = ABLi_popReal();
-	ABLi_pushInteger((int)val);
+	ABLi_pushInteger(static_cast<int>(val));
 }
 
 //***************************************************************************
@@ -481,9 +481,9 @@ void execStdSeedRandom (void) {
 	int seed  = ABLi_popInteger();
 
 	if (seed == -1)
-		ABLSeedRandomCallback((unsigned int)time(nullptr));
+		ABLSeedRandomCallback(static_cast<unsigned int>(time(nullptr)));
 	else
-		ABLSeedRandomCallback((unsigned int)seed);
+		ABLSeedRandomCallback(static_cast<unsigned int>(seed));
 }
 
 //-----------------------------------------------------------------------------
@@ -498,8 +498,8 @@ void execStdResetOrders (void) {
 		long startIndex = CurRoutineIdPtr->defn.info.routine.orderCallIndex;
 		long endIndex = startIndex + CurRoutineIdPtr->defn.info.routine.numOrderCalls;
 		for (long i = startIndex; i < endIndex; i++) {
-			unsigned char orderDWord = (unsigned char)(i / 32);
-			unsigned char orderBitMask = (unsigned char)(i % 32);
+			unsigned char orderDWord = static_cast<unsigned char>((i / 32));
+			unsigned char orderBitMask = static_cast<unsigned char>((i % 32));
 			CurModule->clearOrderCallFlag(orderDWord, orderBitMask);
 		}
 	}

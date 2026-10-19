@@ -74,7 +74,7 @@ DWORD gosFileStream::Seek( int where, gosEnum_FileSeekType seek_type)
             gosASSERT(0);
     }
 
-    return fseek((FILE*)m_hFile, where, whence);
+    return fseek(static_cast<FILE*>(m_hFile), where, whence);
 }
 
 DWORD gosFileStream::Read( void *buffer, DWORD length )
@@ -82,7 +82,7 @@ DWORD gosFileStream::Read( void *buffer, DWORD length )
     gosASSERT(m_hFile);
     size_t size = 1;
     size_t nmemb = length;
-    size_t num_items = fread(buffer, size, nmemb, (FILE*)m_hFile);
+    size_t num_items = fread(buffer, size, nmemb, static_cast<FILE*>(m_hFile));
     gosASSERT(num_items == nmemb); // .. can trigger if eof
     return num_items * size;
 }
@@ -92,7 +92,7 @@ DWORD gosFileStream::Write( const void *buffer, DWORD length )
     gosASSERT(m_hFile);
     size_t size = 1;
     size_t nmemb = length;
-    size_t num_items = fwrite(buffer, size, nmemb, (FILE*)m_hFile);
+    size_t num_items = fwrite(buffer, size, nmemb, static_cast<FILE*>(m_hFile));
     gosASSERT(num_items == nmemb); // .. can trigger if eof
     return num_items * size;
 }
@@ -100,7 +100,7 @@ DWORD gosFileStream::Write( const void *buffer, DWORD length )
 gosFileStream::~gosFileStream()
 {
     gosASSERT(m_hFile);
-    fclose((FILE*)m_hFile);
+    fclose(static_cast<FILE*>(m_hFile));
 }
 
 // toolos.hpp

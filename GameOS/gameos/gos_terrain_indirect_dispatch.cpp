@@ -22,7 +22,7 @@ void BeginFrameSolidWindow() {
     // vector::clear on a trivially-destructible uint32_t is a size reset; no
     // allocation occurs in the hot loop once the high-water mark is reached.
     const size_t reserve =
-        (size_t)(g_solidWindowMaxSeen + (g_solidWindowMaxSeen / 10) + 64);
+        static_cast<size_t>((g_solidWindowMaxSeen + (g_solidWindowMaxSeen / 10) + 64));
     if (g_solidWindowStaging.capacity() < reserve)
         g_solidWindowStaging.reserve(reserve);
     g_solidWindowStaging.clear();
@@ -35,14 +35,14 @@ void AppendSolidWindowCandidate(int32_t vn0) {
     // terrainHandle, NO _wp2 filter — the GPU shader still does all of those
     // per-thread.  Looseness == guaranteed superset == no terrain-vanish.
     if (vn0 < 0) return;
-    g_solidWindowStaging.push_back((uint32_t)vn0);
+    g_solidWindowStaging.push_back(static_cast<uint32_t>(vn0));
     if (g_solidWindowStaging.size() > g_solidWindowMaxSeen)
-        g_solidWindowMaxSeen = (uint32_t)g_solidWindowStaging.size();
+        g_solidWindowMaxSeen = static_cast<uint32_t>(g_solidWindowStaging.size());
 }
 
 // Phase 8b A/B: read-only view of the legacy staging window. No mutation.
 const uint32_t* SolidWindowStagingData(uint32_t* outCount) {
-    if (outCount) *outCount = (uint32_t)g_solidWindowStaging.size();
+    if (outCount) *outCount = static_cast<uint32_t>(g_solidWindowStaging.size());
     return g_solidWindowStaging.empty() ? nullptr : g_solidWindowStaging.data();
 }
 

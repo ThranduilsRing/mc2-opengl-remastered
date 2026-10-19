@@ -207,7 +207,7 @@ void GenericAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animatio
 void GenericAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
 	Appearance::init(tree,obj);
-	appearType = (GenericAppearanceType *)tree;
+	appearType = static_cast<GenericAppearanceType *>(tree);
 
 	shapeMin.x = shapeMin.y = -25;
 	shapeMax.x = shapeMax.y = 50;

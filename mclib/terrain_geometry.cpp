@@ -44,8 +44,8 @@ namespace {
 		std::printf("[GEOM_PHASE_SPLIT v1] event=shutdown frames=%llu", s_gpFrames);
 		for (int i = 0; i < GP_COUNT; i++)
 			std::printf(" %s={avg_us:%.1f,max_us:%.1f}", s_gpNames[i],
-				s_gpFrames ? (double)s_gpSum[i]/s_gpFrames/1000.0 : 0.0,
-				(double)s_gpMax[i]/1000.0);
+				s_gpFrames ? static_cast<double>(s_gpSum[i])/s_gpFrames/1000.0 : 0.0,
+				static_cast<double>(s_gpMax[i])/1000.0);
 		std::printf("\n"); std::fflush(stdout);
 	}
 	struct GeoScope {
@@ -75,8 +75,8 @@ namespace {
 		if (totalNs > 5000000ULL) {  // >5ms spike
 			std::printf("[GEOM_PHASE_SPIKE v1] frame=%llu total_us=%.1f culprit=%s "
 				"culprit_us=%.1f numberQuads=%ld numObjBlocks=%ld\n",
-				s_gpFrames, (double)totalNs/1000.0, s_gpNames[culprit],
-				(double)cmax/1000.0, numberQuads, numObjBlocks);
+				s_gpFrames, static_cast<double>(totalNs)/1000.0, s_gpNames[culprit],
+				static_cast<double>(cmax)/1000.0, numberQuads, numObjBlocks);
 			std::fflush(stdout);
 		}
 		for (int i = 0; i < GP_COUNT; i++) s_gpFrameNs[i] = 0;
@@ -368,9 +368,9 @@ void Terrain::geometry (void)
 				if (vn < 0 || vn >= nV) continue;
 				objVertexActive[vn] = true;
 				++pVerts;
-				if (solidOn && gos_terrain_indirect::RecipeForVertexNum((int32_t)vn))
+				if (solidOn && gos_terrain_indirect::RecipeForVertexNum(static_cast<int32_t>(vn)))
 				{
-					gos_terrain_indirect::AppendSolidWindowCandidate((int32_t)vn);
+					gos_terrain_indirect::AppendSolidWindowCandidate(static_cast<int32_t>(vn));
 					++pWin;
 				}
 			}
@@ -422,8 +422,8 @@ void Terrain::geometry (void)
 		if (s_s6CostOn)
 		{
 			if (s_s6QpcFreq == 0)
-				QueryPerformanceFrequency((LARGE_INTEGER*)&s_s6QpcFreq);
-			QueryPerformanceCounter((LARGE_INTEGER*)&s_s6QpcStart);
+				QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&s_s6QpcFreq));
+			QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&s_s6QpcStart));
 		}
 		// QUADSETUP-ARMED-SKIP-WALK-1: when the GPU terrain path fully owns the
 		// frame, the per-quad setupTextures() call is dead work — its consumers
@@ -501,11 +501,11 @@ void Terrain::geometry (void)
 						s_dropFrame,
 						nowArmed ? "FALLBACK_TO_ARMED" : "ARMED_TO_FALLBACK",
 						reason,
-						(int)mc2TerrainLodChunkEnabled(),
-						(int)gos_terrain_indirect::WaterFastPathOwnsArmedDraw(),
-						(int)gos_terrain_indirect::IsFrameSolidArmed(),
-						(int)gos_terrain_indirect::IsFrameOverlayArmed(),
-						(int)drawTerrainGrid);
+						static_cast<int>(mc2TerrainLodChunkEnabled()),
+						static_cast<int>(gos_terrain_indirect::WaterFastPathOwnsArmedDraw()),
+						static_cast<int>(gos_terrain_indirect::IsFrameSolidArmed()),
+						static_cast<int>(gos_terrain_indirect::IsFrameOverlayArmed()),
+						static_cast<int>(drawTerrainGrid));
 					fflush(stdout);
 					s_prevArmed = nowArmed;
 				}
@@ -555,8 +555,8 @@ void Terrain::geometry (void)
 		if (s_s6CostOn)
 		{
 			uint64_t s6End = 0;
-			QueryPerformanceCounter((LARGE_INTEGER*)&s6End);
-			double s6Ms = (double)(s6End - s_s6QpcStart) * 1000.0 / (double)s_s6QpcFreq;
+			QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&s6End));
+			double s6Ms = static_cast<double>((s6End - s_s6QpcStart)) * 1000.0 / static_cast<double>(s_s6QpcFreq);
 			static uint32_t s_s6Frames = 0;
 			static double   s_s6Sum = 0.0;
 			static double   s_s6Min = 1e30;

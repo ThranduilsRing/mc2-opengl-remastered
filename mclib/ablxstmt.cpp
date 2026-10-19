@@ -238,7 +238,7 @@ void execAssignmentStatement (SymTableNodePtr idPtr) {
 	//--------------------------
 	// Assignment to variable...
 	targetTypePtr = execVariable(idPtr, USE_TARGET);
-	targetPtr = (StackItemPtr)tos->address;
+	targetPtr = reinterpret_cast<StackItemPtr>(tos->address);
 
 	//------------------------------
 	// Pop off the target address...
@@ -265,12 +265,12 @@ void execAssignmentStatement (SymTableNodePtr idPtr) {
 	if ((targetTypePtr == RealTypePtr) && (expressionTypePtr == IntegerTypePtr)) {
 		//-------------------------
 		// integer assigned to real
-		targetPtr->real = (float)(tos->integer);
+		targetPtr->real = static_cast<float>((tos->integer));
 		}
 	else if (targetTypePtr->form == FRM_ARRAY) {
 		//-------------------------
 		// Copy the array/record...
-		char* dest = (char*)targetPtr;
+		char* dest = reinterpret_cast<char*>(targetPtr);
 		char* src = tos->address;
 		// Copy no more than the source holds: a literal shorter than the variable must not be read past its end.
 		const int srclen = static_cast<int>(strlen(src) + 1);
@@ -360,7 +360,7 @@ TypePtr execDeclaredRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 	// Set the return address in the new stack frame...
 	level = newLevel;
 	stackFrameBasePtr = newStackFrameBasePtr;
-	StackFrameHeaderPtr headerPtr = (StackFrameHeaderPtr)stackFrameBasePtr;
+	StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(stackFrameBasePtr);
 	headerPtr->returnAddress.address = codeSegmentPtr - 1;
 
 	//---------------------------------------------------------
@@ -453,7 +453,7 @@ void execActualParams (SymTableNodePtr routineIdPtr) {
 			if ((formalTypePtr == RealTypePtr) && (actualTypePtr == IntegerTypePtr)) {
 				//---------------------------------------------
 				// Real formal parameter, but integer actual...
-				tos->real = (float)(tos->integer);
+				tos->real = static_cast<float>((tos->integer));
 			}
 
 			//----------------------------------------------------------
@@ -461,7 +461,7 @@ void execActualParams (SymTableNodePtr routineIdPtr) {
 			if (formalTypePtr->form == FRM_ARRAY/* || (formalTypePtr->form == FRM_RECORD)*/) {
 				long size = formalTypePtr->size;
 				char* src = tos->address;
-				char* dest = (char*)ABL_alloc(ABLPool::Stack, (size_t)size);
+				char* dest = static_cast<char*>(ABL_alloc(ABLPool::Stack, static_cast<size_t>(size)));
 				if (!dest) {
 					char err[255];
 					mc2::fmt::to_buf(err, " ABL: Unable to AblStackHeap->malloc actual array param in module {})", mc2::fmt::safe(CurModule->getName()));
@@ -568,7 +568,7 @@ void execForStatement (void) {
 	getCodeToken();
 	SymTableNodePtr controlIdPtr = getCodeSymTableNodePtr();
 	TypePtr controlTypePtr = execVariable(controlIdPtr, USE_TARGET);
-	StackItemPtr targetPtr = (StackItemPtr)tos->address;
+	StackItemPtr targetPtr = reinterpret_cast<StackItemPtr>(tos->address);
 	
 	//------------------------------------
 	// Control variable address...
@@ -620,7 +620,7 @@ void execForStatement (void) {
 			if (controlTypePtr == IntegerTypePtr)
 				targetPtr->integer = controlValue;
 			else
-				targetPtr->byte = (unsigned char)controlValue;
+				targetPtr->byte = static_cast<unsigned char>(controlValue);
 
 			getCodeToken();
 
@@ -644,7 +644,7 @@ void execForStatement (void) {
 			if (controlTypePtr == IntegerTypePtr)
 				targetPtr->integer = controlValue;
 			else
-				targetPtr->byte = (unsigned char)controlValue;
+				targetPtr->byte = static_cast<unsigned char>(controlValue);
 
 			getCodeToken();
 

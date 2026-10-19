@@ -30,7 +30,7 @@ namespace MidLevelRenderer {
 			int GetLength () 
 				{ 
 					Check_Object(this); 
-					return (int)vertices.GetLength()-1; 
+					return static_cast<int>(vertices.GetLength())-1;
 				}
 
 			unsigned GetLast () 
@@ -59,7 +59,7 @@ namespace MidLevelRenderer {
 						}
 						else
 						{
-							return (GOSVertex*)((char*)(vertices.GetData() + lastUsed)+vertexAlignment); 
+							return reinterpret_cast<GOSVertex*>((reinterpret_cast<char*>((vertices.GetData() + lastUsed))+vertexAlignment));
 						}
 					}
 
@@ -69,7 +69,7 @@ namespace MidLevelRenderer {
 			int GetLength2UV () 
 				{ 
 					Check_Object(this); 
-					return (int)vertices2uv.GetLength()-1; 
+					return static_cast<int>(vertices2uv.GetLength())-1;
 				}
 
 			unsigned GetLast2UV () 
@@ -96,7 +96,7 @@ namespace MidLevelRenderer {
 						}
 						else
 						{
-							return (GOSVertex2UV*)((char*)(vertices2uv.GetData() + lastUsed2uv)+vertexAlignment2uv);
+							return reinterpret_cast<GOSVertex2UV*>((reinterpret_cast<char*>((vertices2uv.GetData() + lastUsed2uv))+vertexAlignment2uv));
 						}
 					}
 
@@ -127,7 +127,7 @@ namespace MidLevelRenderer {
 						}
 						else
 						{
-							return (unsigned short*)((char*)(indices.GetData() + lastUsedIndex)+indicesAlignment); 
+							return reinterpret_cast<unsigned short*>((reinterpret_cast<char*>((indices.GetData() + lastUsedIndex))+indicesAlignment));
 						}
 					}
 
@@ -185,9 +185,9 @@ namespace MidLevelRenderer {
 
         //sebi !NB
         // TODO: add alignment method to DynamicArray
-		vertexAlignment=32-( (size_t)((void*)vertices.GetData()) & 31 );
-		vertexAlignment2uv=32-( (size_t)((void*)vertices2uv.GetData()) & 31 );
-		indicesAlignment=32-( (size_t)((void*)indices.GetData()) & 31 );
+		vertexAlignment=32-( reinterpret_cast<size_t>((static_cast<void*>(vertices.GetData()))) & 31 );
+		vertexAlignment2uv=32-( reinterpret_cast<size_t>((static_cast<void*>(vertices2uv.GetData()))) & 31 );
+		indicesAlignment=32-( reinterpret_cast<size_t>((static_cast<void*>(indices.GetData()))) & 31 );
 	}
 
 

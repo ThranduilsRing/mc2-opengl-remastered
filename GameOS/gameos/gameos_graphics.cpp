@@ -121,7 +121,7 @@ std::string mc2TerrainShadowSunDefine() {
     const float deg = mc2ShadowMinSunAltDeg();
     if (deg <= 0.0f) return std::string();
     char buf[80];
-    mc2::fmt::to_buf(buf, "#define MC2_SHADOW_MIN_SUN_SIN {:.8f}\n", (double)sinf(deg * 0.01745329252f));
+    mc2::fmt::to_buf(buf, "#define MC2_SHADOW_MIN_SUN_SIN {:.8f}\n", static_cast<double>(sinf(deg * 0.01745329252f)));
     return std::string(buf);
 }
 
@@ -132,10 +132,10 @@ Mc2ShadowFadeKnobs mc2ShadowFadeKnobs() {
     Mc2ShadowFadeKnobs k{};
     char buf[64];
     if (mc2ShadowDistFadeWu() > 0.0f) {
-        mc2::fmt::to_buf(buf, "{:.1f}", (double)mc2ShadowDistFadeWu());
-        k.distFadeWu = (float)atof(buf);
-        mc2::fmt::to_buf(buf, "{:.2f}", (double)mc2ShadowDistFadeMax());
-        k.distFadeMax = (float)atof(buf);
+        mc2::fmt::to_buf(buf, "{:.1f}", static_cast<double>(mc2ShadowDistFadeWu()));
+        k.distFadeWu = static_cast<float>(atof(buf));
+        mc2::fmt::to_buf(buf, "{:.2f}", static_cast<double>(mc2ShadowDistFadeMax()));
+        k.distFadeMax = static_cast<float>(atof(buf));
         k.flags |= mc2ShadowFadeCont()  ? 1 : 0;
         k.flags |= mc2ShadowFadeRamp0() ? 2 : 0;
         k.flags |= mc2ShadowAltScale()  ? 4 : 0;
@@ -143,8 +143,8 @@ Mc2ShadowFadeKnobs mc2ShadowFadeKnobs() {
     if (mc2TerrainShadowGuardClampedSun()) {
         const float deg = mc2ShadowMinSunAltDeg();
         if (deg > 0.0f) {
-            mc2::fmt::to_buf(buf, "{:.8f}", (double)sinf(deg * 0.01745329252f));
-            k.minSunSin = (float)atof(buf);
+            mc2::fmt::to_buf(buf, "{:.8f}", static_cast<double>(sinf(deg * 0.01745329252f)));
+            k.minSunSin = static_cast<float>(atof(buf));
         }
     }
     if (mc2ShadowStaticBandFixV2Enabled()) k.flags |= 8;
@@ -214,8 +214,8 @@ void gosRenderer::init() {
     // y = 1/h; y= 1- y; y =2*y - 1;
     // z = z;
     projection_ = mat4(
-            2.0f / (float)width_, 0, 0.0f, -1.0f,
-            0, -2.0f / (float)height_, 0.0f, 1.0f,
+            2.0f / static_cast<float>(width_), 0, 0.0f, -1.0f,
+            0, -2.0f / static_cast<float>(height_), 0.0f, 1.0f,
             0, 0, 1.0f, 0.0f,
             0, 0, 0.0f, 1.0f);
 
@@ -304,7 +304,7 @@ void gosRenderer::init() {
         if (!thin_terrain_prog_ || !thin_terrain_prog_->shp_)
             mc2::fmt::print_err("[THIN_TERRAIN] WARNING: failed to compile thin terrain shader — thin draw path disabled\n");
         else
-            mc2::fmt::print_out("[THIN_TERRAIN] Thin terrain shader loaded: prog={:d}\n", mc2::fmt::as_u32((unsigned)thin_terrain_prog_->shp_));
+            mc2::fmt::print_out("[THIN_TERRAIN] Thin terrain shader loaded: prog={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(thin_terrain_prog_->shp_)));
         fflush(stdout);
     }
 
@@ -363,12 +363,12 @@ static void mc2AuditDiagSink(const char* line) {
     char esc[1024];
     size_t o = 0;
     for (const char* p = line; *p && o + 8 < sizeof(esc); ++p) {
-        unsigned char c = (unsigned char)*p;
-        if (c == '"' || c == '\\') { esc[o++] = '\\'; esc[o++] = (char)c; }
+        unsigned char c = static_cast<unsigned char>(*p);
+        if (c == '"' || c == '\\') { esc[o++] = '\\'; esc[o++] = static_cast<char>(c); }
         else if (c < 0x20) {
-            o += (size_t)mc2::fmt::to_buf_n(esc + o, sizeof(esc) - o, "\\u{:04x}", mc2::fmt::as_u32((unsigned)c));
+            o += static_cast<size_t>(mc2::fmt::to_buf_n(esc + o, sizeof(esc) - o, "\\u{:04x}", mc2::fmt::as_u32(static_cast<unsigned>(c))));
         } else {
-            esc[o++] = (char)c;
+            esc[o++] = static_cast<char>(c);
         }
     }
     esc[o] = '\0';
@@ -499,8 +499,8 @@ GosTexels gos_GetTextureTexels(uint32_t gosHandle) {
     if (!tex || tex->getTextureId() == 0) return out;   // not loaded yet: the caller retries next frame
     gosTextureInfo info;
     tex->getTextureInfo(&info);
-    out.width = (uint32_t)info.width_;
-    out.height = (uint32_t)info.height_;
+    out.width = static_cast<uint32_t>(info.width_);
+    out.height = static_cast<uint32_t>(info.height_);
     if (auto blocks = tex->getBlocks()) {
         out.vkFormat = tex->getBlockVkFormat();
         out.bytes = std::move(blocks);
@@ -560,13 +560,13 @@ unsigned int gos_GetGLTextureName(DWORD handle) {
 
 const float* gos_GetProj2ScreenMat4() {
     if (!g_gos_renderer) return nullptr;
-    return (const float*)&g_gos_renderer->getProj2Screen();
+    return reinterpret_cast<const float*>(&g_gos_renderer->getProj2Screen());
 }
 
 const float* gos_GetTerrainMVPMat4() {
     const bool rendererOk = (g_gos_renderer != nullptr);
     const bool valid      = rendererOk && g_gos_renderer->isTerrainMVPValid();
-    const float* p        = valid ? (const float*)&g_gos_renderer->getTerrainMVP() : nullptr;
+    const float* p        = valid ? reinterpret_cast<const float*>(&g_gos_renderer->getTerrainMVP()) : nullptr;
 
     // [MVP_DIAG v1] S2.7 — log get_mvp entry, throttled. If valid,
     // also dump row0 from the cache to compare against set_mvp row0.
@@ -577,7 +577,7 @@ const float* gos_GetTerrainMVPMat4() {
             s_lastLogged = g_mvpDiagFrame;
             MC2_DIAGFE(stderr,
                     "[MVP_DIAG v1] event=get_mvp frame=%ld renderer=%p valid=%d ptr=%p\n",
-                    g_mvpDiagFrame, (void*)g_gos_renderer, valid ? 1 : 0, (void*)p);
+                    g_mvpDiagFrame, static_cast<void*>(g_gos_renderer), valid ? 1 : 0, static_cast<void*>(const_cast<float*>(p)));
             if (p) {
                 MC2_DIAGFE(stderr,
                         "[MVP_DIAG v1] event=get_mvp_row0 frame=%ld row0=[%g %g %g %g]\n",

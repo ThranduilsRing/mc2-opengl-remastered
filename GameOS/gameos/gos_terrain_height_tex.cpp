@@ -55,32 +55,32 @@ void resample_bilinear(const float* src, int sourceSide,
                        std::vector<float>& dst, int& renderSide)
 {
     renderSide = (sourceSide - 1) * factor + 1;
-    dst.assign((size_t)renderSide * (size_t)renderSide, 0.0f);
-    const float invFactor = 1.0f / (float)factor;
+    dst.assign(static_cast<size_t>(renderSide) * static_cast<size_t>(renderSide), 0.0f);
+    const float invFactor = 1.0f / static_cast<float>(factor);
     const int   srcMax    = sourceSide - 1;
     for (int rrow = 0; rrow < renderSide; ++rrow) {
-        const float srcRowF = (float)rrow * invFactor;
-        int srcRow0 = (int)srcRowF;
+        const float srcRowF = static_cast<float>(rrow) * invFactor;
+        int srcRow0 = static_cast<int>(srcRowF);
         if (srcRow0 > srcMax) srcRow0 = srcMax;
         int srcRow1 = srcRow0 + 1;
         if (srcRow1 > srcMax) srcRow1 = srcMax;
-        const float fy = srcRowF - (float)srcRow0;
+        const float fy = srcRowF - static_cast<float>(srcRow0);
         for (int rcol = 0; rcol < renderSide; ++rcol) {
-            const float srcColF = (float)rcol * invFactor;
-            int srcCol0 = (int)srcColF;
+            const float srcColF = static_cast<float>(rcol) * invFactor;
+            int srcCol0 = static_cast<int>(srcColF);
             if (srcCol0 > srcMax) srcCol0 = srcMax;
             int srcCol1 = srcCol0 + 1;
             if (srcCol1 > srcMax) srcCol1 = srcMax;
-            const float fx = srcColF - (float)srcCol0;
+            const float fx = srcColF - static_cast<float>(srcCol0);
 
-            const float h00 = src[(size_t)srcRow0 * (size_t)sourceSide + (size_t)srcCol0];
-            const float h10 = src[(size_t)srcRow0 * (size_t)sourceSide + (size_t)srcCol1];
-            const float h01 = src[(size_t)srcRow1 * (size_t)sourceSide + (size_t)srcCol0];
-            const float h11 = src[(size_t)srcRow1 * (size_t)sourceSide + (size_t)srcCol1];
+            const float h00 = src[static_cast<size_t>(srcRow0) * static_cast<size_t>(sourceSide) + static_cast<size_t>(srcCol0)];
+            const float h10 = src[static_cast<size_t>(srcRow0) * static_cast<size_t>(sourceSide) + static_cast<size_t>(srcCol1)];
+            const float h01 = src[static_cast<size_t>(srcRow1) * static_cast<size_t>(sourceSide) + static_cast<size_t>(srcCol0)];
+            const float h11 = src[static_cast<size_t>(srcRow1) * static_cast<size_t>(sourceSide) + static_cast<size_t>(srcCol1)];
 
             const float h0 = h00 * (1.0f - fx) + h10 * fx;
             const float h1 = h01 * (1.0f - fx) + h11 * fx;
-            dst[(size_t)rrow * (size_t)renderSide + (size_t)rcol] = h0 * (1.0f - fy) + h1 * fy;
+            dst[static_cast<size_t>(rrow) * static_cast<size_t>(renderSide) + static_cast<size_t>(rcol)] = h0 * (1.0f - fy) + h1 * fy;
         }
     }
 }
@@ -98,19 +98,19 @@ void __stdcall gos_uploadTerrainHeightTex(
 {
     if (!blocks || side <= 0 || postcompVertexStride <= 0
         || elevationOffset < 0
-        || elevationOffset + (int)sizeof(float) > postcompVertexStride) {
+        || elevationOffset + static_cast<int>(sizeof(float)) > postcompVertexStride) {
         mc2::fmt::print_err("[TERRAIN_HEIGHT_TEX] skip upload side={:d} stride={:d} elevOff={:d} blocks={:016X}\n", mc2::fmt::as_i32(side), mc2::fmt::as_i32(postcompVertexStride), mc2::fmt::as_i32(elevationOffset), mc2::fmt::as_ptr(blocks));
         return;
     }
 
     // Extract the source elevation column into a packed float buffer.
-    const size_t srcCount = (size_t)side * (size_t)side;
+    const size_t srcCount = static_cast<size_t>(side) * static_cast<size_t>(side);
     std::vector<float> srcElev(srcCount);
     const uint8_t* base = static_cast<const uint8_t*>(blocks);
     for (size_t i = 0; i < srcCount; ++i) {
         std::memcpy(&srcElev[i],
-                    base + i * (size_t)postcompVertexStride
-                         + (size_t)elevationOffset,
+                    base + i * static_cast<size_t>(postcompVertexStride)
+                         + static_cast<size_t>(elevationOffset),
                     sizeof(float));
     }
 
@@ -136,7 +136,7 @@ void __stdcall gos_uploadTerrainHeightTex(
         resample_bilinear(srcElev.data(), side, factor, resampled, uploadSide);
         uploadPtr = resampled.data();
     }
-    const size_t uploadCount = (size_t)uploadSide * (size_t)uploadSide;
+    const size_t uploadCount = static_cast<size_t>(uploadSide) * static_cast<size_t>(uploadSide);
 
     if (g_handle == 0) {
         // TEX-CLASS: asset-pool -- terrain height authority R32F (content)
@@ -181,11 +181,11 @@ void __stdcall gos_uploadTerrainHeightTex(
     // Per-render-sample world spacing — sourceUnits / factor. Shader uses
     // (1 / g_worldUnitsPerVertex) for terrainHeightParams.y, so finer
     // resample → smaller span between samples → more sensitive normal.
-    g_worldUnitsPerVertex = wuPerSource / (float)factor;
+    g_worldUnitsPerVertex = wuPerSource / static_cast<float>(factor);
     g_mapTopLeftX         = mapTopLeftX;
     g_mapTopLeftY         = mapTopLeftY;
 
-    mc2::fmt::print_err("[TERRAIN_HEIGHT_TEX] uploaded handle={:d} sourceSide={:d} factor={:d}x renderSide={:d} wuPerSample={:.2f} topLeft=({:.1f},{:.1f}) bytes={:d}\n", mc2::fmt::as_u32((unsigned)g_handle), mc2::fmt::as_i32(g_sourceSide), mc2::fmt::as_i32(g_resampleFactor), mc2::fmt::as_i32(g_side), g_worldUnitsPerVertex, g_mapTopLeftX, g_mapTopLeftY, mc2::fmt::as_size(uploadCount * sizeof(float)));
+    mc2::fmt::print_err("[TERRAIN_HEIGHT_TEX] uploaded handle={:d} sourceSide={:d} factor={:d}x renderSide={:d} wuPerSample={:.2f} topLeft=({:.1f},{:.1f}) bytes={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(g_handle)), mc2::fmt::as_i32(g_sourceSide), mc2::fmt::as_i32(g_resampleFactor), mc2::fmt::as_i32(g_side), g_worldUnitsPerVertex, g_mapTopLeftX, g_mapTopLeftY, mc2::fmt::as_size(uploadCount * sizeof(float)));
 
     {
         RenderCore::RenderResourceDesc d;
@@ -251,14 +251,14 @@ void __stdcall gos_setTerrainHeightResampleFactor(int factor)
     gos_uploadTerrainHeightTex(
         g_cachedSourceSide,
         g_cachedSourceElev.data(),
-        (int)sizeof(float),
+        static_cast<int>(sizeof(float)),
         /*elevationOffset=*/0,
         g_cachedMapTopLeftX,
         g_cachedMapTopLeftY,
         g_cachedSourceWuPerVertex);
 }
 
-uint32_t __stdcall gos_terrainHeightTexHandle(void)         { return (uint32_t)g_handle; }
+uint32_t __stdcall gos_terrainHeightTexHandle(void)         { return static_cast<uint32_t>(g_handle); }
 int      __stdcall gos_terrainHeightTexSide(void)            { return g_side; }
 float    __stdcall gos_terrainHeightWorldUnitsPerVertex(void){ return g_worldUnitsPerVertex; }
 float    __stdcall gos_terrainHeightMapTopLeftX(void)        { return g_mapTopLeftX; }

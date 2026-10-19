@@ -65,7 +65,7 @@ inline void emitMap(int areas, int doors, int special, int cellW, int cellH) {
 	if (!mc2_diag::tagEnabled("PATH"))
 		return;
 	char buf[256];
-	long area = (long)cellW * (long)cellH;
+	long area = static_cast<long>(cellW) * static_cast<long>(cellH);
 	snprintf(buf, sizeof(buf),
 		"{\"ev\":\"map\",\"areas\":%d,\"doors\":%d,\"special\":%d,"
 		"\"cellW\":%d,\"cellH\":%d,\"cellArea\":%ld}",

@@ -308,9 +308,9 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         setFallback("shared_scene_depth_not_ready");
         return false;
     }
-    if ((int)s->colorRes->w != w || (int)s->colorRes->h != h ||
-        (int)s->normalRes->w != w || (int)s->normalRes->h != h ||
-        (int)s->depthRes->w != w || (int)s->depthRes->h != h) {
+    if (static_cast<int>(s->colorRes->w) != w || static_cast<int>(s->colorRes->h) != h ||
+        static_cast<int>(s->normalRes->w) != w || static_cast<int>(s->normalRes->h) != h ||
+        static_cast<int>(s->depthRes->w) != w || static_cast<int>(s->depthRes->h) != h) {
         setFallback("shared_scene_depth_size_mismatch");
         return false;
     }
@@ -326,7 +326,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         vci.format = s->depthRes->format;
         vci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
         if (!mc2vk::create(s->depthSampleView, s->device, [&](VkImageView* h) { r = vkCreateImageView(s->device, &vci, nullptr, h); return r; })) {
-            vlog("depth sample view create failed (%d).", (int)r);
+            vlog("depth sample view create failed (%d).", static_cast<int>(r));
             return false;
         }
     }
@@ -340,7 +340,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         sci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         if (!mc2vk::create(s->depthSampler, s->device, [&](VkSampler* h) { r = vkCreateSampler(s->device, &sci, nullptr, h); return r; })) {
-            vlog("vkCreateSampler failed (%d).", (int)r);
+            vlog("vkCreateSampler failed (%d).", static_cast<int>(r));
             return false;
         }
     }
@@ -377,7 +377,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         rpci.dependencyCount = 1;
         rpci.pDependencies = &dep;
         if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* h) { r = vkCreateRenderPass(s->device, &rpci, nullptr, h); return r; })) {
-            vlog("vkCreateRenderPass failed (%d).", (int)r);
+            vlog("vkCreateRenderPass failed (%d).", static_cast<int>(r));
             return false;
         }
     }
@@ -416,7 +416,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
             vci.format = kLevelFmt;
             vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
             if (!mc2vk::create(lv.view, s->device, [&](VkImageView* h) { r = vkCreateImageView(s->device, &vci, nullptr, h); return r; })) {
-                vlog("vkCreateImageView(level %d) failed (%d).", level, (int)r);
+                vlog("vkCreateImageView(level %d) failed (%d).", level, static_cast<int>(r));
                 return false;
             }
 
@@ -430,7 +430,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
             fci.height = static_cast<uint32_t>(lh);
             fci.layers = 1;
             if (!mc2vk::create(lv.fb, s->device, [&](VkFramebuffer* h) { r = vkCreateFramebuffer(s->device, &fci, nullptr, h); return r; })) {
-                vlog("vkCreateFramebuffer(level %d) failed (%d).", level, (int)r);
+                vlog("vkCreateFramebuffer(level %d) failed (%d).", level, static_cast<int>(r));
                 return false;
             }
 
@@ -477,7 +477,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         lci.bindingCount = 2;
         lci.pBindings = binds;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { r = vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); return r; })) {
-            vlog("vkCreateDescriptorSetLayout failed (%d).", (int)r);
+            vlog("vkCreateDescriptorSetLayout failed (%d).", static_cast<int>(r));
             return false;
         }
         VkDescriptorPoolSize sizes[2]{};
@@ -491,7 +491,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         pci.poolSizeCount = 2;
         pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { r = vkCreateDescriptorPool(s->device, &pci, nullptr, h); return r; })) {
-            vlog("vkCreateDescriptorPool failed (%d).", (int)r);
+            vlog("vkCreateDescriptorPool failed (%d).", static_cast<int>(r));
             return false;
         }
 
@@ -505,7 +505,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
             dsai.pSetLayouts = &dslHandle;
             r = vkAllocateDescriptorSets(s->device, &dsai, &lv.set);
             if (r != VK_SUCCESS) {
-                vlog("vkAllocateDescriptorSets(level %d) failed (%d).", level, (int)r);
+                vlog("vkAllocateDescriptorSets(level %d) failed (%d).", level, static_cast<int>(r));
                 return false;
             }
 
@@ -546,7 +546,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         plci.setLayoutCount = 1;
         plci.pSetLayouts = &dslHandle;
         if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* h) { r = vkCreatePipelineLayout(s->device, &plci, nullptr, h); return r; })) {
-            vlog("vkCreatePipelineLayout failed (%d).", (int)r);
+            vlog("vkCreatePipelineLayout failed (%d).", static_cast<int>(r));
             return false;
         }
 
@@ -608,7 +608,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         const bool pipeOk = mc2vk::create(s->pipe, s->device, [&](VkPipeline* h) { r = vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); return r; });
         mc2vk::nameObject(s->device, s->pipe.get(), "posthzb.pipe");
         if (!pipeOk) {
-            vlog("vkCreateGraphicsPipelines failed (%d).", (int)r);
+            vlog("vkCreateGraphicsPipelines failed (%d).", static_cast<int>(r));
             return false;
         }
     }
@@ -619,7 +619,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         pci.queueFamilyIndex = s->gfxFamily;
         if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { r = vkCreateCommandPool(s->device, &pci, nullptr, h); return r; })) {
-            vlog("vkCreateCommandPool failed (%d).", (int)r);
+            vlog("vkCreateCommandPool failed (%d).", static_cast<int>(r));
             return false;
         }
         VkCommandBufferAllocateInfo cai{};
@@ -629,7 +629,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         cai.commandBufferCount = 2;
         r = vkAllocateCommandBuffers(s->device, &cai, s->cbuf);
         if (r != VK_SUCCESS) {
-            vlog("vkAllocateCommandBuffers failed (%d).", (int)r);
+            vlog("vkAllocateCommandBuffers failed (%d).", static_cast<int>(r));
             return false;
         }
     }
@@ -685,7 +685,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
         if ((g_health.waitSamples % 600) == 1)
             vlog("[QWI-WAIT] wait_us_last=%.1f wait_us_avg=%.1f samples=%lu",
                  g_health.waitUsLast,
-                 g_health.waitUsAccum / (double)g_health.waitSamples, g_health.waitSamples);
+                 g_health.waitUsAccum / static_cast<double>(g_health.waitSamples), g_health.waitSamples);
     }
     if (!s->inited || s->width != width_ || s->height != height_ || s->mipCount != hzbMipCount_) {
         if (s->inited) destroy_state(s);
@@ -710,7 +710,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
             if (s->measuredFrames <= 3 || s->measuredFrames % 120 == 0)
                 vlog("[CULL] tested=%u culled=%u kept=%u total_tested=%llu total_culled=%llu frames=%llu same_frame=1 render_only=1",
                     s->previousCount, culled, s->previousCount-culled,
-                    (unsigned long long)s->totalTested, (unsigned long long)s->totalCulled, (unsigned long long)s->measuredFrames);
+                    static_cast<unsigned long long>(s->totalTested), static_cast<unsigned long long>(s->totalCulled), static_cast<unsigned long long>(s->measuredFrames));
         }
     }
     std::vector<ProjectedProp> projected(feed.count);
@@ -849,7 +849,7 @@ void gosPostProcess::destroyVkPostHzbNative()
              g_health.levels, g_health.vkDraws,
              g_health.copyDepthOps, g_health.readbackOps, g_health.fallbackReason,
              g_health.renderUs, g_health.waitUsLast,
-             g_health.waitSamples ? g_health.waitUsAccum / (double)g_health.waitSamples : 0.0,
+             g_health.waitSamples ? g_health.waitUsAccum / static_cast<double>(g_health.waitSamples) : 0.0,
              g_health.waitSamples);
     }
     if (!vkPostHzbNative_) return;

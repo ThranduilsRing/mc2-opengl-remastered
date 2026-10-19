@@ -64,11 +64,11 @@ long CSVFile::countRows (void)
 	seek(0);		//Start at the top.
 	char tmp[2048];
 	
-	readLine((MemoryPtr)tmp,2047);
+	readLine(reinterpret_cast<MemoryPtr>(tmp),2047);
 	while (!eof())
 	{
 		count++;
-		readLine((MemoryPtr)tmp,2047);
+		readLine(reinterpret_cast<MemoryPtr>(tmp),2047);
 	}
 	
 	//----------------------------------
@@ -88,7 +88,7 @@ long CSVFile::countCols (void)
 	char tmp[2048];
 	char *currentChk = tmp;
 	
-	readLine((MemoryPtr)tmp,2047);
+	readLine(reinterpret_cast<MemoryPtr>(tmp),2047);
 	currentChk = strstr(tmp,",");
 	while (currentChk && (*currentChk != '\n') && (*currentChk != '\r'))
 	{
@@ -100,7 +100,7 @@ long CSVFile::countCols (void)
 	if (count > maxCols)
 		maxCols = count;
 		
-	readLine((MemoryPtr)tmp,2047);
+	readLine(reinterpret_cast<MemoryPtr>(tmp),2047);
 	
 	//----------------------------------
 	// Move back to where we were.
@@ -698,7 +698,7 @@ long CSVFile::seekRowCol (DWORD row, DWORD col)
 	do
 	{
 		rowCount++;
-		readLine((MemoryPtr)tmp,2047);
+		readLine(reinterpret_cast<MemoryPtr>(tmp),2047);
 	} while (rowCount != row);  
 	
 	char *currentChk = tmp;

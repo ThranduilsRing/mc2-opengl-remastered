@@ -126,7 +126,7 @@ static void sbuff(char* dst, size_t cap, size_t* pos, const char* fmt, ...)
     // use _snprintf_s which is CRT but does not heap-alloc for small %d/%s.
     int n = _vsnprintf_s(dst + *pos, cap - *pos, _TRUNCATE, fmt, ap);
     va_end(ap);
-    if (n > 0) *pos += (size_t)n;
+    if (n > 0) *pos += static_cast<size_t>(n);
 }
 
 static BOOL write_file_all(const char* path, const void* data, DWORD len)
@@ -194,11 +194,11 @@ static void write_ring_snapshot(void)
     LONG64 cur = g_ring_cursor;
     DWORD wrote = 0;
     if (cur < (LONG64)kRingBytes) {
-        WriteFile(h, g_ring, (DWORD)cur, &wrote, nullptr);
+        WriteFile(h, g_ring, static_cast<DWORD>(cur), &wrote, nullptr);
     } else {
         // wrapped: oldest byte is at cur % kRingBytes
-        DWORD start = (DWORD)(cur % kRingBytes);
-        WriteFile(h, g_ring + start, (DWORD)(kRingBytes - start), &wrote, nullptr);
+        DWORD start = static_cast<DWORD>((cur % kRingBytes));
+        WriteFile(h, g_ring + start, static_cast<DWORD>((kRingBytes - start)), &wrote, nullptr);
         WriteFile(h, g_ring, start, &wrote, nullptr);
     }
     CloseHandle(h);
@@ -214,7 +214,7 @@ static void safe_copy_mission_name(char* dst, size_t cap)
             char c = src[i];
             // strip non-printable to keep JSON valid
             if (c == '"' || c == '\\') { dst[i] = '?'; }
-            else if ((unsigned char)c < 32) { dst[i] = ' '; }
+            else if (static_cast<unsigned char>(c) < 32) { dst[i] = ' '; }
             else { dst[i] = c; }
             ++i;
         }
@@ -271,7 +271,7 @@ static void write_profile_json(void)
     sbuff(buf, sizeof(buf), &pos, "  \"fps_recent\": \"unavailable\"\n");
     sbuff(buf, sizeof(buf), &pos, "}\n");
 
-    write_file_all(path, buf, (DWORD)pos);
+    write_file_all(path, buf, static_cast<DWORD>(pos));
 }
 
 // ---------------------------------------------------------------------------
@@ -296,7 +296,7 @@ static size_t format_crash_txt(EXCEPTION_POINTERS* ep, char* out, size_t cap)
             ep->ExceptionRecord->ExceptionInformation[0] == 0 ? "READ" :
             ep->ExceptionRecord->ExceptionInformation[0] == 1 ? "WRITE" : "EXEC";
         sbuff(out, cap, &pos, "%s violation at 0x%p\n", kind,
-              (void*)ep->ExceptionRecord->ExceptionInformation[1]);
+              reinterpret_cast<void*>(ep->ExceptionRecord->ExceptionInformation[1]));
     }
 
     uint32_t frame = 0;
@@ -338,10 +338,10 @@ static size_t format_crash_txt(EXCEPTION_POINTERS* ep, char* out, size_t cap)
     // bad CALL pushed is at [RSP] -> use it to recover the caller chain so the
     // crash is actually attributable. (Common with the soak's mission teardown.)
     if (frame_rec.AddrPC.Offset == 0 && frame_rec.AddrStack.Offset != 0 &&
-        !IsBadReadPtr((void*)(uintptr_t)frame_rec.AddrStack.Offset, sizeof(DWORD64)))
+        !IsBadReadPtr(reinterpret_cast<void*>(static_cast<uintptr_t>(frame_rec.AddrStack.Offset)), sizeof(DWORD64)))
     {
         sbuff(out, cap, &pos, "  #-- 0x0000000000000000  <null call (jmp/call to 0)>\n");
-        DWORD64 retAddr = *(DWORD64*)(uintptr_t)frame_rec.AddrStack.Offset;
+        DWORD64 retAddr = *reinterpret_cast<DWORD64*>(static_cast<uintptr_t>(frame_rec.AddrStack.Offset));
         ctx.Rip = retAddr;
         ctx.Rsp += sizeof(DWORD64);
         frame_rec.AddrPC.Offset = ctx.Rip;
@@ -356,7 +356,7 @@ static size_t format_crash_txt(EXCEPTION_POINTERS* ep, char* out, size_t cap)
         if (frame_rec.AddrPC.Offset == 0) break;
 
         char symBuf[sizeof(SYMBOL_INFO) + 512];
-        SYMBOL_INFO* sym = (SYMBOL_INFO*)symBuf;
+        SYMBOL_INFO* sym = reinterpret_cast<SYMBOL_INFO*>(symBuf);
         sym->SizeOfStruct = sizeof(SYMBOL_INFO);
         sym->MaxNameLen = 512;
         DWORD64 disp64 = 0;
@@ -374,7 +374,7 @@ static size_t format_crash_txt(EXCEPTION_POINTERS* ep, char* out, size_t cap)
             lineNum = line.LineNumber;
         }
         sbuff(out, cap, &pos, "  #%02d 0x%016llX  %s  (%s:%u)\n",
-              i, (unsigned long long)frame_rec.AddrPC.Offset,
+              i, static_cast<unsigned long long>(frame_rec.AddrPC.Offset),
               symName, fileName, lineNum);
     }
     // Intentionally do NOT SymCleanup; other code or the OS may still use it.
@@ -408,7 +408,7 @@ static void copy_file_to_clipboard(const char* path)
     // allocate via GlobalAlloc — clipboard owns it after SetClipboardData
     HGLOBAL hMemA = GlobalAlloc(GMEM_MOVEABLE, sz + 1);
     if (!hMemA) { CloseHandle(h); return; }
-    char* bufA = (char*)GlobalLock(hMemA);
+    char* bufA = static_cast<char*>(GlobalLock(hMemA));
     DWORD got = 0;
     ReadFile(h, bufA, sz, &got, nullptr);
     bufA[got] = '\0';
@@ -420,9 +420,9 @@ static void copy_file_to_clipboard(const char* path)
         // fallback: treat as ACP
         wlen = MultiByteToWideChar(CP_ACP, 0, bufA, -1, nullptr, 0);
     }
-    HGLOBAL hMemW = GlobalAlloc(GMEM_MOVEABLE, (size_t)wlen * sizeof(WCHAR));
+    HGLOBAL hMemW = GlobalAlloc(GMEM_MOVEABLE, static_cast<size_t>(wlen) * sizeof(WCHAR));
     if (hMemW) {
-        WCHAR* bufW = (WCHAR*)GlobalLock(hMemW);
+        WCHAR* bufW = static_cast<WCHAR*>(GlobalLock(hMemW));
         int ok = MultiByteToWideChar(CP_UTF8, 0, bufA, -1, bufW, wlen);
         if (ok <= 0) MultiByteToWideChar(CP_ACP, 0, bufA, -1, bufW, wlen);
         GlobalUnlock(hMemW);
@@ -487,15 +487,15 @@ static void align_dword(BYTE** p)
 {
     ULONG_PTR v = (ULONG_PTR)*p;
     v = (v + 3) & ~((ULONG_PTR)3);
-    *p = (BYTE*)v;
+    *p = reinterpret_cast<BYTE*>(v);
 }
-static BYTE* write_word(BYTE* p, WORD v) { *(WORD*)p = v; return p + 2; }
-static BYTE* write_dword(BYTE* p, DWORD v){ *(DWORD*)p = v; return p + 4; }
+static BYTE* write_word(BYTE* p, WORD v) { *reinterpret_cast<WORD*>(p) = v; return p + 2; }
+static BYTE* write_dword(BYTE* p, DWORD v){ *reinterpret_cast<DWORD*>(p) = v; return p + 4; }
 static BYTE* write_wstr(BYTE* p, const WCHAR* s)
 {
-    if (!s) { *(WORD*)p = 0; return p + 2; }
-    while (*s) { *(WORD*)p = (WORD)*s; p += 2; ++s; }
-    *(WORD*)p = 0;
+    if (!s) { *reinterpret_cast<WORD*>(p) = 0; return p + 2; }
+    while (*s) { *reinterpret_cast<WORD*>(p) = static_cast<WORD>(*s); p += 2; ++s; }
+    *reinterpret_cast<WORD*>(p) = 0;
     return p + 2;
 }
 
@@ -621,7 +621,7 @@ static LONG WINAPI crashbundle_filter(EXCEPTION_POINTERS* ep)
         fflush(stderr);
 
         // 2) Write crash.txt
-        write_file_all(g_crash_txtA, crashtxt, (DWORD)n);
+        write_file_all(g_crash_txtA, crashtxt, static_cast<DWORD>(n));
 
         // 3) Write last_trace.txt
         write_ring_snapshot();
@@ -641,7 +641,7 @@ static LONG WINAPI crashbundle_filter(EXCEPTION_POINTERS* ep)
             int mn = _snprintf(mk, sizeof(mk),
                                "\n[CRASH] FAST-EXIT code=0x%08lX bundle=%s\n",
                                ep->ExceptionRecord->ExceptionCode, g_crash_folderA);
-            if (mn > 0) { fwrite(mk, 1, (size_t)mn, stderr); fflush(stderr); }
+            if (mn > 0) { fwrite(mk, 1, static_cast<size_t>(mn), stderr); fflush(stderr); }
             TerminateProcess(GetCurrentProcess(),
                              ep->ExceptionRecord->ExceptionCode);
         }
@@ -707,7 +707,7 @@ extern "C" void crashbundle_init(void)
     DWORD got = GetModuleFileNameA(nullptr, exe_path, MAX_PATH);
     if (got > 0 && got < MAX_PATH) {
         // strip to directory
-        for (int i = (int)got - 1; i >= 0; --i) {
+        for (int i = static_cast<int>(got) - 1; i >= 0; --i) {
             if (exe_path[i] == '\\' || exe_path[i] == '/') {
                 exe_path[i] = '\0';
                 break;
@@ -727,7 +727,7 @@ extern "C" void crashbundle_trigger_test_crash(void)
     fprintf(stderr, "[CRASHBUNDLE] RAlt+Shift+C test crash triggered\n");
     fflush(stderr);
     crashbundle_append("[CRASHBUNDLE] test crash triggered via RAlt+Shift+C");
-    volatile int* p = (volatile int*)nullptr;
+    volatile int* p = static_cast<volatile int*>(nullptr);
     *p = 0xDEADC0DE; // null write → SEH
 }
 

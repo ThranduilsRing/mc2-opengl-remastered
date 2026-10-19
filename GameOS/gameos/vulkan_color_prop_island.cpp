@@ -407,10 +407,10 @@ void prop_light_vertex_probe(const uint8_t* base, VkDeviceSize lbytes,
     if (s_vtx_dumped) return;
     s_vtx_dumped = true;
     const size_t stride = sizeof(GpuObjectLights);
-    const size_t maxEntries = (size_t)lbytes / stride;
+    const size_t maxEntries = static_cast<size_t>(lbytes) / stride;
     auto scanEntry = [&](size_t idx) {
         if (idx >= maxEntries) return;
-        const GpuObjectLights* ld = (const GpuObjectLights*)(base + idx * stride);
+        const GpuObjectLights* ld = reinterpret_cast<const GpuObjectLights*>((base + idx * stride));
         float ambient[3] = {0, 0, 0};
         float sunColor[3] = {0, 0, 0};
         bool sunFound = false;
@@ -418,7 +418,7 @@ void prop_light_vertex_probe(const uint8_t* base, VkDeviceSize lbytes,
         if (n > 32) n = 32;
         if (n < 0) n = 0;
         for (int i = 0; i < n; ++i) {
-            int lt = (int)ld->lightDir[i][3];
+            int lt = static_cast<int>(ld->lightDir[i][3]);
             if (lt == 0) { // TG_LIGHT_AMBIENT
                 ambient[0] += ld->lightColor[i][0];
                 ambient[1] += ld->lightColor[i][1];
@@ -453,7 +453,7 @@ void prop_light_vertex_probe(const uint8_t* base, VkDeviceSize lbytes,
             uint32_t li = insts[ii].lightDataIndex;
             bool dup = false;
             for (int k = 0; k < seenCount; ++k) if (seen[k] == li) { dup = true; break; }
-            if (!dup && seenCount < 12) { seen[seenCount++] = li; scanEntry((size_t)li); }
+            if (!dup && seenCount < 12) { seen[seenCount++] = li; scanEntry(static_cast<size_t>(li)); }
         }
     }
     for (size_t idx = 0; idx < maxEntries && idx < 8; ++idx) scanEntry(idx);
@@ -593,7 +593,7 @@ bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_
     if (!cp_make_albedo_sampler(s, tgt.samp, mips)) return false;
 
     if (!cp_upload_albedo_array(s, tgt, vkFmt, a->width, a->height, a->layers,
-                                mips, bc7, blob.data(), (VkDeviceSize)blob.size(), regions)) {
+                                mips, bc7, blob.data(), static_cast<VkDeviceSize>(blob.size()), regions)) {
         return false;
     }
     *tgt.importedGlName = changeKey;
@@ -607,7 +607,7 @@ bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_
 // (alpha-OFF binding2, or alpha-ON binding5).
 bool cp_upload_layer_table_into(ColorPropIsland* s, mc2vk::OwnedBuffer& buf,
                                 VkDeviceSize* capBytes, const int32_t* layers, uint32_t count) {
-    const VkDeviceSize bytes = (VkDeviceSize)(count ? count : 1) * sizeof(int32_t);
+    const VkDeviceSize bytes = static_cast<VkDeviceSize>((count ? count : 1)) * sizeof(int32_t);
     if (buf && bytes > *capBytes) {
         mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_layer_grow");   // the old table may still be read by an in-flight submit
         buf.reset();
@@ -619,7 +619,7 @@ bool cp_upload_layer_table_into(ColorPropIsland* s, mc2vk::OwnedBuffer& buf,
     }
     void* p = buf.map();
     if (!p) return false;
-    if (count && layers) std::memcpy(p, layers, (size_t)count * sizeof(int32_t));
+    if (count && layers) std::memcpy(p, layers, static_cast<size_t>(count) * sizeof(int32_t));
     else { int32_t neg = -1; std::memcpy(p, &neg, sizeof(neg)); }
     buf.unmap();
     return true;
@@ -744,7 +744,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             // wrong region (or off the realized image). run() rebuilds on w/h change,
             // but a resource re-realized at a new size mid-session must also force a
             // fresh init -- decline here and let the next frame re-init cleanly.
-            if ((int)cR->w != w || (int)cR->h != h) {
+            if (static_cast<int>(cR->w) != w || static_cast<int>(cR->h) != h) {
                 setFallback("tier1_shared_gbuffer_size_mismatch");
                 return false;
             }
@@ -818,7 +818,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->t1_rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
-        fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
+        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         if (!mc2vk::create(s->t1_fb, s->device, [&](VkFramebuffer* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
             vlog("TIER-1 vkCreateFramebuffer failed."); setFallback("tier1_framebuffer_failed"); return false;
         }
@@ -1102,8 +1102,8 @@ bool upload_geometry_once(ColorPropIsland* s) {
     // The accessor never reports empty staging; a size that differs from the feed means the two describe different maps.
     if (vboBytes != feed.vboBytes || iboBytes != feed.iboBytes) {
         vlog("geometry declined: the CPU copy (%llu / %llu bytes) does not match the feed (%llu / %llu).",
-             (unsigned long long)vboBytes, (unsigned long long)iboBytes, (unsigned long long)feed.vboBytes,
-             (unsigned long long)feed.iboBytes);
+             static_cast<unsigned long long>(vboBytes), static_cast<unsigned long long>(iboBytes), static_cast<unsigned long long>(feed.vboBytes),
+             static_cast<unsigned long long>(feed.iboBytes));
         return false;
     }
     // A failed copy leaves both buffers empty, so the next frame's retry starts from nothing.
@@ -1122,7 +1122,7 @@ bool upload_geometry_once(ColorPropIsland* s) {
         s->typeRuns[t].firstPacket = feed.typeFirstPacket[t];
         s->typeRuns[t].packetCount = feed.typePacketCount[t];
     }
-    g_health.geomVerts = (unsigned long)(feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1));
+    g_health.geomVerts = static_cast<unsigned long>((feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1)));
     // VK-FIELD-ORACLE-1: the color pipeline hardcodes a 40-byte vertex binding
     // stride (init_island via[]/vib.stride). If the shared geometry feed ever
     // changes its packed stride, the pipeline's fetch would misalign and props
@@ -1134,7 +1134,7 @@ bool upload_geometry_once(ColorPropIsland* s) {
     }
     s->geomUploaded = true;
     vlog("prop geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u packets=%u types=%u.",
-         (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes,
+         static_cast<unsigned long long>(feed.vboBytes), static_cast<unsigned long long>(feed.iboBytes),
          feed.vertexStride, feed.packetCount, feed.typeCount);
     return true;
 }
@@ -1320,12 +1320,12 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
     const VkDeviceSize ringAlign = rctx.frameAlignment();
     const uint32_t instanceCount = feed.count;
-    const VkDeviceSize instBytes = (VkDeviceSize)instanceCount * sizeof(GpuStaticPropInstance);
+    const VkDeviceSize instBytes = static_cast<VkDeviceSize>(instanceCount) * sizeof(GpuStaticPropInstance);
     int poolN = (haveLightFeed && lightFeed.poolLights48 && lightFeed.numPoolLights > 0) ? lightFeed.numPoolLights : 0;
     if (poolN > kMaxPoolLights) poolN = kMaxPoolLights;
     const VkDeviceSize instOff = mc2vk::alignUp(sizeof(ColorFrameUBO), ringAlign);
     const VkDeviceSize poolOff = mc2vk::alignUp(instOff + (instBytes ? instBytes : sizeof(GpuStaticPropInstance)), ringAlign);
-    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + (VkDeviceSize)(poolN > 0 ? poolN : 1) * 48ull);
+    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + static_cast<VkDeviceSize>((poolN > 0 ? poolN : 1)) * 48ull);
     if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
     uint8_t* const mainPtr = static_cast<uint8_t*>(mainSpan.ptr);
 
@@ -1376,19 +1376,19 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // fail-soft (mid-frame light-count growth, ring alloc failure) runs
         // the pre-slice per-island copy below (zone VKIsl.Props.LightFeed)
         // unchanged.
-        const VkDeviceSize lbytes = (VkDeviceSize)lightFeed.lightDataCpuBytes;
+        const VkDeviceSize lbytes = static_cast<VkDeviceSize>(lightFeed.lightDataCpuBytes);
         lightSpan = mc2vkSharedLightFeedAcquire(lightFeed.lightDataCpu, lightFeed.lightDataCpuBytes);
         if (lightSpan) {
             // Probe reads the CPU source -- byte-identical to the ring copy
             // (single-threaded copy of the same array this same frame).
-            prop_light_vertex_probe((const uint8_t*)lightFeed.lightDataCpu, lbytes, feed);
+            prop_light_vertex_probe(static_cast<const uint8_t*>(lightFeed.lightDataCpu), lbytes, feed);
             s->lightingReady = true;
         } else {
             ZoneScopedN("VKIsl.Props.LightFeed");   // VK-ISLAND-TRACY-1: per-frame LightsData CPU->VK copy (own-span path)
             lightSpan = rctx.frameAlloc(lbytes);
             if (lightSpan) {
-                std::memcpy(lightSpan.ptr, lightFeed.lightDataCpu, (size_t)lbytes);
-                prop_light_vertex_probe((const uint8_t*)lightSpan.ptr, lbytes, feed);
+                std::memcpy(lightSpan.ptr, lightFeed.lightDataCpu, static_cast<size_t>(lbytes));
+                prop_light_vertex_probe(static_cast<const uint8_t*>(lightSpan.ptr), lbytes, feed);
                 s->lightingReady = true;
             }
         }
@@ -1402,7 +1402,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     // ---- 1) Upload the per-frame color instances into slot `par` (grouped by typeID). ----
     {
         ZoneScopedN("VK-props-instance-upload");   // VK-FLIP-FIELD-REPORT-1: per-frame instance SSBO staging
-        if (instBytes) std::memcpy(mainPtr + instOff, feed.instances112, (size_t)instBytes);
+        if (instBytes) std::memcpy(mainPtr + instOff, feed.instances112, static_cast<size_t>(instBytes));
     }
     g_health.instRecords = instanceCount;
 
@@ -1468,7 +1468,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                     u.lightingReady, haveLightFeed ? 1 : 0, s->tier1 ? 1 : 0,
                     s->wantLighting ? 1 : 0, s->wantMaterial ? 1 : 0, u.materialReady,
                     u.iblShStrength, u.iblSh[0][0], u.iblSh[0][1], u.iblSh[0][2],
-                    (unsigned long long)lightFeed.lightDataCpuBytes,
+                    static_cast<unsigned long long>(lightFeed.lightDataCpuBytes),
                     u.terrainSunMC2[0], u.terrainSunMC2[1], u.terrainSunMC2[2]);
                 std::fflush(stderr);
             }
@@ -1520,12 +1520,12 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         VkRenderPassBeginInfo rbi{};
         rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         rbi.renderPass = s->t1_rpass.get(); rbi.framebuffer = s->t1_fb.get();
-        rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+        rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
         rbi.clearValueCount = 0; rbi.pClearValues = nullptr;
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
-        VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
-        VkRect2D scissor{{0, 0}, {(uint32_t)w, (uint32_t)h}};
+        VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+        VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
         vkCmdSetViewport(cb, 0, 1, &vp);
         vkCmdSetScissor(cb, 0, 1, &scissor);
 
@@ -1596,11 +1596,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                         std::fprintf(s_pktDump, "%u,%u,%d,%d,%.4f,%.4f,%u,%u,%d,%u,%u\n",
                                      tid, pk, pc.layerOff, pc.layerOn, pc.uvScaleX, pc.uvScaleY,
                                      pkt.indexCount, pkt.firstIndex,
-                                     (int32_t)pkt.baseVertex, instCount, i);
+                                     static_cast<int32_t>(pkt.baseVertex), instCount, i);
                     vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                                         0, sizeof(pc), &pc);
                     vkCmdDrawIndexed(cb, pkt.indexCount, instCount,
-                                     pkt.firstIndex, (int32_t)pkt.baseVertex, i);
+                                     pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), i);
                 }
                 if (fringePass == 0) ++typeRuns;
             }

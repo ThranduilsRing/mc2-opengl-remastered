@@ -26,7 +26,7 @@
 		Plug(DefaultData)
 	{
 		traceNumber = NextTraceID++;
-		traceType = (BYTE)type;
+		traceType = static_cast<BYTE>(type);
 		traceName = name;
 		
 		lastActivity = 0.0;
@@ -315,7 +315,7 @@
 	{
 		Check_Object(this);
 
-		traceCount = (BYTE)(traceCount + 1);
+		traceCount = static_cast<BYTE>((traceCount + 1));
 		traceChain.Add(trace);
 	}
 

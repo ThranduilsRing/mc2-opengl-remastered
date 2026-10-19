@@ -227,11 +227,11 @@ inline void BuildObjectLightRow(const Query& q, Row* out)
 		bool     lightActive = L.active;
 		uint32_t lightARGB   = L.aRGB;
 
-		if (q.sunSlot.index == (int32_t)iLight) {
+		if (q.sunSlot.index == static_cast<int32_t>(iLight)) {
 			if (q.sunSlot.forceInactive) lightActive = false;
 			if (q.sunSlot.recolour)      lightARGB   = q.sunSlot.aRGB;
 		}
-		if (q.ambientSlot.index == (int32_t)iLight) {
+		if (q.ambientSlot.index == static_cast<int32_t>(iLight)) {
 			if (q.ambientSlot.forceInactive) lightActive = false;
 			if (q.ambientSlot.recolour)      lightARGB   = q.ambientSlot.aRGB;
 		}
@@ -259,7 +259,7 @@ inline void BuildObjectLightRow(const Query& q, Row* out)
 		out->lightDir[num_lights][0] = L.fwd[0];
 		out->lightDir[num_lights][1] = L.fwd[1];
 		out->lightDir[num_lights][2] = L.fwd[2];
-		out->lightDir[num_lights][3] = (float)L.type;
+		out->lightDir[num_lights][3] = static_cast<float>(L.type);
 
 		out->lightColor[num_lights][0] = ((lightARGB >> 16) & 0x000000ffu) / 255.0f;
 		out->lightColor[num_lights][1] = ((lightARGB >>  8) & 0x000000ffu) / 255.0f;
@@ -289,7 +289,7 @@ inline void BuildObjectLightRow(const Query& q, Row* out)
 			out->lightDir[s][0] = 0.0f;
 			out->lightDir[s][1] = -1.0f;
 			out->lightDir[s][2] = 0.0f;
-			out->lightDir[s][3] = (float)kTypePoint;
+			out->lightDir[s][3] = static_cast<float>(kTypePoint);
 
 			out->lightColor[s][0] = ((s & 1) ? 1.0f : 0.25f);
 			out->lightColor[s][1] = ((s & 2) ? 1.0f : 0.25f);
@@ -305,7 +305,7 @@ inline void BuildObjectLightRow(const Query& q, Row* out)
 		}
 	}
 
-	out->numLights_ = (int32_t)num_lights;
+	out->numLights_ = static_cast<int32_t>(num_lights);
 }
 
 //-----------------------------------------------------------------------------
@@ -326,11 +326,11 @@ inline void applyLegacyMutations(LightInput* lights, uint32_t numLights,
 {
 	if (!lights) return;
 	// Mirrors SetaRGB (aRGB = OEMaRGB = new) and `light->active = false`.
-	if (q.sunSlot.index >= 0 && (uint32_t)q.sunSlot.index < numLights) {
+	if (q.sunSlot.index >= 0 && static_cast<uint32_t>(q.sunSlot.index) < numLights) {
 		if (q.sunSlot.recolour)      lights[q.sunSlot.index].aRGB   = q.sunSlot.aRGB;
 		if (q.sunSlot.forceInactive) lights[q.sunSlot.index].active = false;
 	}
-	if (q.ambientSlot.index >= 0 && (uint32_t)q.ambientSlot.index < numLights) {
+	if (q.ambientSlot.index >= 0 && static_cast<uint32_t>(q.ambientSlot.index) < numLights) {
 		if (q.ambientSlot.recolour)      lights[q.ambientSlot.index].aRGB   = q.ambientSlot.aRGB;
 		if (q.ambientSlot.forceInactive) lights[q.ambientSlot.index].active = false;
 	}

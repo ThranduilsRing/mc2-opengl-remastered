@@ -33,7 +33,7 @@ inline long textToLong (const char *num)
 
 	//------------------------------------
 	// Check if Hex Number
-	char *hexOffset = (char *)strstr(num,"0x");
+	char *hexOffset = const_cast<char *>(strstr(num,"0x"));
 	if (hexOffset == nullptr)
 	{
 		result = atol(num);
@@ -84,7 +84,7 @@ inline unsigned long textToULong (const char *num)
 
 	//------------------------------------
 	// Check if Hex Number
-	char *hexOffset = (char *)strstr(num,"0x");
+	char *hexOffset = const_cast<char *>(strstr(num,"0x"));
 	if (hexOffset == nullptr)
 	{
 		result = atol(num);

@@ -53,12 +53,12 @@ long FitIniFile::findNextBlockStart (char *line, unsigned long lineLen)
 	{
 		if (line)
 		{
-			readLine((MemoryPtr)line,lineLen);
+			readLine(reinterpret_cast<MemoryPtr>(line),lineLen);
 			common = line;
 		}
 		else
 		{
-			readLine((MemoryPtr)thisLine,254);
+			readLine(reinterpret_cast<MemoryPtr>(thisLine),254);
 			common = thisLine;
 		}
 	}
@@ -150,7 +150,7 @@ long FitIniFile::afterOpen (void)
 	if (fileMode == CREATE && parent == nullptr)
 	{
 		mc2::fmt::to_buf(line, "{} \r\n", mc2::fmt::safe(fitIniHeader));
-		write((MemoryPtr)line,strlen(line));
+		write(reinterpret_cast<MemoryPtr>(line),strlen(line));
 
 		totalBlocks = 0;
 	}
@@ -160,7 +160,7 @@ long FitIniFile::afterOpen (void)
 		// Check if this is a FitIniFile by looking for header.
 		char chkHeader[12];
 	
-		readLine((MemoryPtr)chkHeader,11);
+		readLine(reinterpret_cast<MemoryPtr>(chkHeader),11);
 		if (strstr(chkHeader,fitIniHeader) == nullptr)
 			return(NOT_A_FITINIFILE);
 
@@ -231,7 +231,7 @@ void FitIniFile::atClose (void)
 	{
 		seek(0,SEEK_END);
 		mc2::fmt::to_buf(line, "{} \r\n", mc2::fmt::safe(fitIniFooter));
-		write((MemoryPtr)line,strlen(line));
+		write(reinterpret_cast<MemoryPtr>(line),strlen(line));
 	}
 
 	//-----------------------------
@@ -263,7 +263,7 @@ int FitIniFile::textToInt (const char *num)
 	
 	//------------------------------------
 	// Check if Hex Number
-	char *hexOffset = (char *)strstr(num,"0x");
+	char *hexOffset = const_cast<char *>(strstr(num,"0x"));
 	if (hexOffset == nullptr)
 	{
 		result = atoi(num);
@@ -314,7 +314,7 @@ long FitIniFile::textToLong (const char *num)
 	
 	//------------------------------------
 	// Check if Hex Number
-	char *hexOffset = (char *)strstr(num,"0x");
+	char *hexOffset = const_cast<char *>(strstr(num,"0x"));
 	if (hexOffset == nullptr)
 	{
 		result = atol(num);
@@ -367,7 +367,7 @@ short FitIniFile::textToShort (const char *num)
 	
 	//------------------------------------
 	// Check if Hex Number
-	char *hexOffset = (char *)strstr(num,"0x");
+	char *hexOffset = const_cast<char *>(strstr(num,"0x"));
 	if (hexOffset == nullptr)
 	{
 		result = atol(num);
@@ -419,7 +419,7 @@ char FitIniFile::textToChar (const char *num)
 	
 	//------------------------------------
 	// Check if Hex Number
-	char *hexOffset = (char *)strstr(num,"0x");
+	char *hexOffset = const_cast<char *>(strstr(num,"0x"));
 	if (hexOffset == nullptr)
 	{
 		result = atol(num);
@@ -470,7 +470,7 @@ unsigned long FitIniFile::textToULong (const char *num)
 	
 	//------------------------------------
 	// Check if Hex Number
-	char *hexOffset = (char *)strstr(num,"0x");
+	char *hexOffset = const_cast<char *>(strstr(num,"0x"));
 	if (hexOffset == nullptr)
 	{
 		result = atol(num);
@@ -522,7 +522,7 @@ unsigned short FitIniFile::textToUShort (const char *num)
 	
 	//------------------------------------
 	// Check if Hex Number
-	char *hexOffset = (char *)strstr(num,"0x");
+	char *hexOffset = const_cast<char *>(strstr(num,"0x"));
 	if (hexOffset == nullptr)
 	{
 		result = atol(num);
@@ -574,7 +574,7 @@ unsigned char FitIniFile::textToUChar (const char *num)
 	
 	//------------------------------------
 	// Check if Hex Number
-	char *hexOffset = (char *)strstr(num,"0x");
+	char *hexOffset = const_cast<char *>(strstr(num,"0x"));
 	if (hexOffset == nullptr)
 	{
 		result = atol(num);
@@ -819,7 +819,7 @@ long FitIniFile::writeBlock (const char *blockId)
 	char thisLine[255];
 	mc2::fmt::to_buf(thisLine, "\r\n[{}]\r\n", mc2::fmt::safe(blockId));
 	
-	long result = write((MemoryPtr)thisLine,strlen(thisLine));
+	long result = write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 	return(result);
 }
 
@@ -829,7 +829,7 @@ long FitIniFile::writeIdFloat (const char *varName, float value)
 	char thisLine[255];
 	mc2::fmt::to_buf(thisLine, "f {} = {:f}\r\n", mc2::fmt::safe(varName), value);
 	
-	long result = write((MemoryPtr)thisLine,strlen(thisLine));
+	long result = write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 	return(result);
 }
 
@@ -842,7 +842,7 @@ long FitIniFile::writeIdBoolean (const char *varName, bool value)
 	else
 		mc2::fmt::to_buf(thisLine, "b {} = {}\r\n", mc2::fmt::safe(varName), "FALSE");
 	
-	long result = write((MemoryPtr)thisLine,strlen(thisLine));
+	long result = write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 	return(result);
 }
 
@@ -852,7 +852,7 @@ long FitIniFile::writeIdLong (const char *varName, long value)
 	char thisLine[255];
 	mc2::fmt::to_buf(thisLine, "l {} = {:d}\r\n", mc2::fmt::safe(varName), mc2::fmt::as_i32(value));
 	
-	long result = write((MemoryPtr)thisLine,strlen(thisLine));
+	long result = write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 	return(result);
 }
 
@@ -862,7 +862,7 @@ long FitIniFile::writeIdShort (const char *varName, short value)
 	char thisLine[255];
 	mc2::fmt::to_buf(thisLine, "s {} = {:d}\r\n", mc2::fmt::safe(varName), mc2::fmt::as_i32(value));
 	
-	long result = write((MemoryPtr)thisLine,strlen(thisLine));
+	long result = write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 	return(result);
 }
 
@@ -872,7 +872,7 @@ long FitIniFile::writeIdChar (const char *varName, char value)
 	char thisLine[255];
 	mc2::fmt::to_buf(thisLine, "c {} = {:d}\r\n", mc2::fmt::safe(varName), mc2::fmt::as_i32(value));
 	
-	long result = write((MemoryPtr)thisLine,strlen(thisLine));
+	long result = write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 	return(result);
 }
 
@@ -882,7 +882,7 @@ long FitIniFile::writeIdULong (const char *varName, unsigned long value)
 	char thisLine[255];
 	mc2::fmt::to_buf(thisLine, "ul {} = {:d}\r\n", mc2::fmt::safe(varName), mc2::fmt::as_i32(value));
 	
-	long result = write((MemoryPtr)thisLine,strlen(thisLine));
+	long result = write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 	return(result);
 }
 
@@ -892,7 +892,7 @@ long FitIniFile::writeIdUShort (const char *varName, unsigned short value)
 	char thisLine[255];
 	mc2::fmt::to_buf(thisLine, "us {} = {:d}\r\n", mc2::fmt::safe(varName), mc2::fmt::as_i32(value));
 	
-	long result = write((MemoryPtr)thisLine,strlen(thisLine));
+	long result = write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 	return(result);
 }
 
@@ -902,7 +902,7 @@ long FitIniFile::writeIdUChar (const char *varName, unsigned char value)
 	char thisLine[255];
 	mc2::fmt::to_buf(thisLine, "uc {} = {:d}\r\n", mc2::fmt::safe(varName), mc2::fmt::as_i32(value));
 	
-	long result = write((MemoryPtr)thisLine,strlen(thisLine));
+	long result = write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 	return(result);
 }
 
@@ -919,7 +919,7 @@ long FitIniFile::writeIdString (const char *varName, const char *result)
 
 	mc2::fmt::to_buf(thisLine, "st {} = \"{}\"\r\n", mc2::fmt::safe(varName), mc2::fmt::safe(result));
 	
-	long bytesWritten = write((MemoryPtr)thisLine,strlen(thisLine));
+	long bytesWritten = write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 	return(bytesWritten);
 }
 
@@ -929,15 +929,15 @@ long FitIniFile::writeIdUShortArray (const char *varName, unsigned short *array,
 	char thisLine[255];
 	mc2::fmt::to_buf(thisLine, "us[{:d}] {} = {:d},", mc2::fmt::as_i32(numElements), mc2::fmt::safe(varName), mc2::fmt::as_i32(array[0]));
 	
-	long bytesWritten = write((MemoryPtr)thisLine,strlen(thisLine));
+	long bytesWritten = write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 
-	for (long i=1;i<(long)numElements;i++)
+	for (long i=1;i<static_cast<long>(numElements);i++)
 	{
 		mc2::fmt::to_buf(thisLine, "{:d},", mc2::fmt::as_i32(array[i]));
-		bytesWritten += write((MemoryPtr)thisLine,strlen(thisLine));
+		bytesWritten += write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 	}
 	mc2::fmt::to_buf(thisLine, "\r\n");
-	bytesWritten += write((MemoryPtr)thisLine,strlen(thisLine));
+	bytesWritten += write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 
 	return (bytesWritten);
 }
@@ -948,15 +948,15 @@ long FitIniFile::writeIdLongArray (const char *varName, long *array, unsigned lo
 	char thisLine[255];
 	mc2::fmt::to_buf(thisLine, "l[{:d}] {} = {:d},", mc2::fmt::as_i32(numElements), mc2::fmt::safe(varName), mc2::fmt::as_i32(array[0]));
 	
-	long bytesWritten = write((MemoryPtr)thisLine,strlen(thisLine));
+	long bytesWritten = write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 
-	for (long i=1;i<(long)numElements;i++)
+	for (long i=1;i<static_cast<long>(numElements);i++)
 	{
 		mc2::fmt::to_buf(thisLine, "{:d},", mc2::fmt::as_i32(array[i]));
-		bytesWritten += write((MemoryPtr)thisLine,strlen(thisLine));
+		bytesWritten += write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 	}
 	mc2::fmt::to_buf(thisLine, "\r\n");
-	bytesWritten += write((MemoryPtr)thisLine,strlen(thisLine));
+	bytesWritten += write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 
 	return (bytesWritten);
 }
@@ -967,15 +967,15 @@ long FitIniFile::writeIdFloatArray (const char *varName, float *array, unsigned 
 	char thisLine[255];
 	mc2::fmt::to_buf(thisLine, "f[{:d}] {} = {:.2f},", mc2::fmt::as_i32(numElements), mc2::fmt::safe(varName), array[0]);
 	
-	long bytesWritten = write((MemoryPtr)thisLine,strlen(thisLine));
+	long bytesWritten = write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 
-	for (long i=1;i<(long)numElements;i++)
+	for (long i=1;i<static_cast<long>(numElements);i++)
 	{
 		mc2::fmt::to_buf(thisLine, " {:.2f},", array[i]);
-		bytesWritten += write((MemoryPtr)thisLine,strlen(thisLine));
+		bytesWritten += write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 	}
 	mc2::fmt::to_buf(thisLine, "\r\n");
-	bytesWritten += write((MemoryPtr)thisLine,strlen(thisLine));
+	bytesWritten += write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 
 	return (bytesWritten);
 }
@@ -986,15 +986,15 @@ long FitIniFile::writeIdUCharArray (const char *varName, unsigned char *array, u
 	char thisLine[255];
 	mc2::fmt::to_buf(thisLine, "uc[{:d}] {} = {:d},", mc2::fmt::as_i32(numElements), mc2::fmt::safe(varName), mc2::fmt::as_i32(array[0]));
 	
-	long bytesWritten = write((MemoryPtr)thisLine,strlen(thisLine));
+	long bytesWritten = write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 
-	for (long i=1;i<(long)numElements;i++)
+	for (long i=1;i<static_cast<long>(numElements);i++)
 	{
 		mc2::fmt::to_buf(thisLine, " {:d},", mc2::fmt::as_i32(array[i]));
-		bytesWritten += write((MemoryPtr)thisLine,strlen(thisLine));
+		bytesWritten += write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 	}
 	mc2::fmt::to_buf(thisLine, "\r\n");
-	bytesWritten += write((MemoryPtr)thisLine,strlen(thisLine));
+	bytesWritten += write(reinterpret_cast<MemoryPtr>(thisLine),strlen(thisLine));
 
 	return (bytesWritten);
 }

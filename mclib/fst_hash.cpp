@@ -17,7 +17,7 @@ extern "C" unsigned long elfHash(const char* name)
     unsigned long h = 0, g;
     while (*name)
     {
-        h = (h << 4) + (unsigned char)(*name++);
+        h = (h << 4) + static_cast<unsigned char>((*name++));
         if ((g = h & 0xF0000000UL))
             h ^= g >> 24;
         h &= ~g;
@@ -49,7 +49,7 @@ extern "C" void fst_normalize_loose_key_inplace(char* s)
     // allocation-free.
     if (!s) return;
     for (; *s; ++s)
-        *s = (*s == '\\') ? '/' : (char)std::tolower((unsigned char)*s);
+        *s = (*s == '\\') ? '/' : static_cast<char>(std::tolower(static_cast<unsigned char>(*s)));
 }
 
 // Byte-for-byte the loop previously inlined in mclib/file.cpp::NormalizeKey:
@@ -60,6 +60,6 @@ std::string fst_normalize_loose_key(const char* src)
 {
     std::string s = src ? src : "";
     for (char& c : s)
-        c = (c == '\\') ? '/' : (char)std::tolower((unsigned char)c);
+        c = (c == '\\') ? '/' : static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return s;
 }

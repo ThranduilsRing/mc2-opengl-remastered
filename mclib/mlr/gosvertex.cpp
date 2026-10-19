@@ -57,11 +57,11 @@ void
 		{
 			if( fogDensity<1.0f )
 			{
-				Fog=(float)exp(-fogDensity*t1);											// 0.0->1.0 = FOG_EXP
+				Fog=static_cast<float>(exp(-fogDensity*t1));											// 0.0->1.0 = FOG_EXP
 			}
 			else
 			{
-				Fog=(float)exp(-((fogDensity-1.0f)*t1)*((fogDensity-1.0f)*t1));		// 1.0->2.0 = FOG_EXP2
+				Fog=static_cast<float>(exp(-((fogDensity-1.0f)*t1)*((fogDensity-1.0f)*t1)));		// 1.0->2.0 = FOG_EXP2
 			}
 		}
 		
@@ -70,7 +70,7 @@ void
 		if( Fog>1.0f )
 			Fog=1.0f;
 
-		GOSVertex::fogTable[entry][t1]=(BYTE)(255.9f*Fog);
+		GOSVertex::fogTable[entry][t1]=static_cast<BYTE>((255.9f*Fog));
 	}
 }
 

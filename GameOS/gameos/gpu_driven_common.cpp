@@ -147,7 +147,7 @@ GLuint gpu_driven::BuildComputeProgramFromFile(
         srcStrs.push_back(preambles[j].c_str());
     srcStrs.push_back(resolvedSource.c_str());
 
-    GLuint sh = gpu_driven_compile_compute_shader(srcStrs.data(), (int)srcStrs.size());
+    GLuint sh = gpu_driven_compile_compute_shader(srcStrs.data(), static_cast<int>(srcStrs.size()));
     if (!sh) {
         mc2::fmt::print_err("[GPU_DRIVEN v1] {} compile failed\n", mc2::fmt::safe(debugName));
         fflush(stderr);

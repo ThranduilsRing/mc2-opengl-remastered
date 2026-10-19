@@ -177,8 +177,8 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
     // Vulkan owns the visible scene; a declined island has no GL fallback.
     if (mc2_vk_vfx_island_enabled() && groups != nullptr && numGroups > 0) {
         gosPostProcess* ppVk = getGosPostProcess();
-        const int vkW = ppVk ? (int)ppVk->getWidth()  : 0;
-        const int vkH = ppVk ? (int)ppVk->getHeight() : 0;
+        const int vkW = ppVk ? static_cast<int>(ppVk->getWidth())  : 0;
+        const int vkH = ppVk ? static_cast<int>(ppVk->getHeight()) : 0;
         const float* mvp = gos_GetTerrainMVPMat4();
         if (vkW > 0 && vkH > 0 && mvp) {
             std::vector<VfxParticleDraw> vkDraws;
@@ -195,7 +195,7 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
                 vkDraws.push_back(d);
             }
             if (mc2_vk_vfx_island_run(records, count, vkDraws.data(),
-                                      (uint32_t)vkDraws.size(), mvp,
+                                      static_cast<uint32_t>(vkDraws.size()), mvp,
                                       g_cam_right, g_cam_up, vkW, vkH)) {
                 return;   // VK handled the frame; do NOT run the GL draw.
             }

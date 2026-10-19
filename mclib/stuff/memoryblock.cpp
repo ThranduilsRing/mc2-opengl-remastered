@@ -291,7 +291,7 @@ void
 			record_count,
 			deletion_count,
 			unused_count,
-			static_cast<int>((1.0f - (deletion_count+unused_count)/(float)record_count)*100.0f)
+			static_cast<int>((1.0f - (deletion_count+unused_count)/static_cast<float>(record_count))*100.0f)
 		));
 		}
 		if (block->blockName)

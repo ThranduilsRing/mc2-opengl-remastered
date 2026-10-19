@@ -59,7 +59,7 @@ static int MC2_IsMC2ResDLL(char const* fileName)
         size_t j = 0;
         for (; j < needleLen; ++j)
         {
-            if (tolower((unsigned char)fileName[i + j]) != needle[j])
+            if (tolower(static_cast<unsigned char>(fileName[i + j])) != needle[j])
                 break;
         }
 
@@ -140,7 +140,7 @@ HSTRRES __stdcall gos_OpenResourceDLL(char const* FileName, const char** strings
 }
 void __stdcall gos_CloseResourceDLL(HSTRRES handle)
 {
-    gos_StringRes* pstrres = (gos_StringRes*)handle;
+    gos_StringRes* pstrres = static_cast<gos_StringRes*>(handle);
     gosASSERT(pstrres);
 
     if (!pstrres)

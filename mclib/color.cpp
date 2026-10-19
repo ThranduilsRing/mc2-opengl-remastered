@@ -49,7 +49,7 @@ void initColorTables (void)
 	result = colorFile.readIdLong("NumTables",numColorRGBTables);
 	gosASSERT(result == NO_ERR);
 
-	colorRGBLookup = (DWORD **)systemHeap->Malloc(sizeof(DWORD *) * numColorRGBTables);
+	colorRGBLookup = static_cast<DWORD **>(systemHeap->Malloc(sizeof(DWORD *) * numColorRGBTables));
 	gosASSERT(colorRGBLookup != nullptr);
 
 	memset(colorRGBLookup,0,sizeof(DWORD *) * numColorRGBTables);
@@ -62,7 +62,7 @@ void initColorTables (void)
 		result = colorFile.seekBlock(tableBlock);
 		gosASSERT(result == NO_ERR);
 
-		colorRGBLookup[i] = (DWORD *)systemHeap->Malloc(sizeof(DWORD) * MAX_COLOR_ENTRIES);
+		colorRGBLookup[i] = static_cast<DWORD *>(systemHeap->Malloc(sizeof(DWORD) * MAX_COLOR_ENTRIES));
 		gosASSERT(colorRGBLookup[i] != nullptr);
 
 		DWORD *table = colorRGBLookup[i];
@@ -75,7 +75,7 @@ void initColorTables (void)
             // sebi
             long unsigned int tmp;
 			result = colorFile.readIdULong(colorBlock, tmp);
-            table[j] = (DWORD)tmp;
+            table[j] = static_cast<DWORD>(tmp);
 			gosASSERT(result == NO_ERR);
 		}
 	}

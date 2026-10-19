@@ -300,7 +300,7 @@ void enforce_window_offscreen(RenderWindowHandle rw_handle)
 {
     if (!window_offscreen_requested())
         return;
-    RenderWindow* rw = (RenderWindow*)rw_handle;
+    RenderWindow* rw = static_cast<RenderWindow*>(rw_handle);
     if (rw)
         apply_offscreen_position(rw->window_);
 }
@@ -529,7 +529,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
             // it covers the display by definition. Refuse it here so
             // MC2_WINDOW_OFFSCREEN is self-sufficient and does not depend on
             // the caller also remembering MC2_WINDOWED.
-            winFlags &= ~(Uint32)(SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+            winFlags &= ~static_cast<Uint32>((SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP));
         }
         window = SDL_CreateWindow(pwinname ? pwinname : "--",
                 winX, winY, width, height, winFlags);
@@ -610,7 +610,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
 //==============================================================================
 void swap_window(RenderWindowHandle h)
 {
-    RenderWindow* rw = (RenderWindow*)h;
+    RenderWindow* rw = static_cast<RenderWindow*>(h);
     assert(rw && rw->window_);
     SDL_GL_SwapWindow(rw->window_);
 }
@@ -618,7 +618,7 @@ void swap_window(RenderWindowHandle h)
 //==============================================================================
 RenderContextHandle init_render_context(RenderWindowHandle render_window)
 {
-    RenderWindow* rw = (RenderWindow*)render_window;
+    RenderWindow* rw = static_cast<RenderWindow*>(render_window);
     assert(rw && rw->window_);
 
     SDL_GLContext glcontext = SDL_GL_CreateContext(rw->window_);
@@ -656,7 +656,7 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
     // by mclib to default MC2_FORCE_DYNAMIC_{TREES,BUILDINGS} ON for NVIDIA as a
     // stopgap until the GPU path is fixed on that hardware (see bdactor.cpp).
     {
-        const char* vend = (const char*)glGetString(GL_VENDOR);
+        const char* vend = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
         g_gosGpuIsNvidia = 0;
         if (vend) {
             // Vendor string is e.g. "NVIDIA Corporation".
@@ -791,7 +791,7 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
 //==============================================================================
 static void destroy_render_context_impl(RenderContextHandle rc_handle, bool deleteGlContext)
 {
-    RenderContext* rc = (RenderContext*)rc_handle;
+    RenderContext* rc = static_cast<RenderContext*>(rc_handle);
     assert(rc);
 
     if (deleteGlContext) {
@@ -817,7 +817,7 @@ void release_render_context_at_exit(RenderContextHandle rc_handle)
 //==============================================================================
 void make_current_context(RenderContextHandle ctx_h)
 {
-    RenderContext* rc = (RenderContext*)ctx_h;
+    RenderContext* rc = static_cast<RenderContext*>(ctx_h);
     assert(rc && rc->render_window_ && rc->glcontext_);
 
     RenderWindow* rw = rc->render_window_;
@@ -829,7 +829,7 @@ void make_current_context(RenderContextHandle ctx_h)
 //==============================================================================
 bool resize_window(RenderWindowHandle rw_handle, int width, int height)
 {
-    RenderWindow* rw = (RenderWindow*)rw_handle;
+    RenderWindow* rw = static_cast<RenderWindow*>(rw_handle);
     assert(rw);
 
     SDL_SetWindowSize(rw->window_, width, height);
@@ -850,7 +850,7 @@ bool resize_window(RenderWindowHandle rw_handle, int width, int height)
 //==============================================================================
 bool set_window_fullscreen(RenderWindowHandle rw_handle, bool fullscreen)
 {
-    RenderWindow* rw = (RenderWindow*)rw_handle;
+    RenderWindow* rw = static_cast<RenderWindow*>(rw_handle);
     assert(rw);
 
     // NOFOCUS-HARDEN-1: a fullscreen window covers the display by definition --
@@ -910,7 +910,7 @@ bool is_mode_supported(int width, int height, int bpp) {
 //==============================================================================
 int get_window_display_index(RenderContextHandle ctx_h)
 {
-    RenderContext* rc = (RenderContext*)ctx_h;
+    RenderContext* rc = static_cast<RenderContext*>(ctx_h);
     assert(rc);
 
     RenderWindow* rw = rc->render_window_;
@@ -962,7 +962,7 @@ bool get_display_mode_by_index(int display_index, int mode_index, int* width, in
 //==============================================================================
 void get_window_size(RenderWindowHandle rw_handle, int* width, int* height)
 {
-    RenderWindow* rw = (RenderWindow*)rw_handle;
+    RenderWindow* rw = static_cast<RenderWindow*>(rw_handle);
     assert(rw && width && height);
     *width = rw->width_;
     *height = rw->height_;
@@ -971,7 +971,7 @@ void get_window_size(RenderWindowHandle rw_handle, int* width, int* height)
 //==============================================================================
 void get_drawable_size(RenderWindowHandle rw_handle, int* width, int* height)
 {
-    RenderWindow* rw = (RenderWindow*)rw_handle;
+    RenderWindow* rw = static_cast<RenderWindow*>(rw_handle);
     assert(rw && width && height);
 	// TOD: does it make sense to cahce this value? probably not
 	SDL_GL_GetDrawableSize(rw->window_, width, height);
@@ -980,7 +980,7 @@ void get_drawable_size(RenderWindowHandle rw_handle, int* width, int* height)
 //==============================================================================
 void destroy_window(RenderWindowHandle rw_handle)
 {
-    RenderWindow* rw = (RenderWindow*)rw_handle;
+    RenderWindow* rw = static_cast<RenderWindow*>(rw_handle);
     if (rw->window_ == g_sdl_window) {
         set_mouse_grab(false);
     }

@@ -73,8 +73,8 @@ namespace {
 
     void videoMixHook(void* /*udata*/, Uint8* stream, int len)
     {
-        int16_t* out = (int16_t*)stream;
-        int outSamples = len / (int)sizeof(int16_t);
+        int16_t* out = reinterpret_cast<int16_t*>(stream);
+        int outSamples = len / static_cast<int>(sizeof(int16_t));
         SDL_AtomicLock(&g_va.lock);
         for (int i = 0; i < outSamples; ++i) {
             if (g_va.tail == g_va.head) {
@@ -182,7 +182,7 @@ long SoundSystem::init (const char *soundFileName)
 		}
 		sounds.assign(numSoundBites,SoundBite());
 		
-		for (long i=0;i<(long)numSoundBites;i++)
+		for (long i=0;i<static_cast<long>(numSoundBites);i++)
 		{
 			char biteBlock[20];
 			sprintf(biteBlock,"SoundBite%d",i);
@@ -300,7 +300,7 @@ bool wave_ParseWaveMemory(MemoryPtr lpChunkOfMemory, MC2_WAVEFORMATEX** lplpWave
 
     // Set up DWORD pointers to the start of the chunk
     // of memory.
-    pdw = (DWORD *)lpChunkOfMemory;
+    pdw = reinterpret_cast<DWORD *>(lpChunkOfMemory);
 
     // Get the type and length of the chunk of memory
     dwRiff = *pdw++;
@@ -316,7 +316,7 @@ bool wave_ParseWaveMemory(MemoryPtr lpChunkOfMemory, MC2_WAVEFORMATEX** lplpWave
       return FALSE;      // not a WAV
 
     // Find the pointer to the end of the chunk of memory
-    pdwEnd = (DWORD *)((BYTE *)pdw + dwLength-4);
+    pdwEnd = reinterpret_cast<DWORD *>((reinterpret_cast<BYTE *>(pdw) + dwLength-4));
 
     // Run through the bytes looking for the tags
     while (pdw < pdwEnd)
@@ -336,7 +336,7 @@ bool wave_ParseWaveMemory(MemoryPtr lpChunkOfMemory, MC2_WAVEFORMATEX** lplpWave
 
             // Set the lplpWaveHeader to point to this part of
             // the memory chunk
-            *lplpWaveHeader = (MC2_WAVEFORMATEX*)pdw;
+            *lplpWaveHeader = reinterpret_cast<MC2_WAVEFORMATEX*>(pdw);
 
             // Check to see if the other two items have been
             // filled out yet (the bits and the size of the
@@ -359,7 +359,7 @@ bool wave_ParseWaveMemory(MemoryPtr lpChunkOfMemory, MC2_WAVEFORMATEX** lplpWave
             // Point the samples pointer to this part of the
             // chunk of memory.
             if (*lplpWaveSamples == nullptr)
-				*lplpWaveSamples = (MemoryPtr)pdw;
+				*lplpWaveSamples = reinterpret_cast<MemoryPtr>(pdw);
 
             // Set the size of the wave
             if (lpcbWaveSize)    *lpcbWaveSize = dwLength;
@@ -374,7 +374,7 @@ bool wave_ParseWaveMemory(MemoryPtr lpChunkOfMemory, MC2_WAVEFORMATEX** lplpWave
         } // End case
 
       // Move the pointer through the chunk of memory
-      pdw = (DWORD *)((BYTE *)pdw + ((dwLength+1)&~1));
+      pdw = reinterpret_cast<DWORD *>((reinterpret_cast<BYTE *>(pdw) + ((dwLength+1)&~1)));
       }
 
   // Failed! If we made it here, we did not get all the peices
@@ -751,7 +751,7 @@ long SoundSystem::playDigitalMusic (long musicId)
 							stream1Handle = nullptr;
 						}
 							
-						gosAudio_CreateResource(&stream1Handle, gosAudio_StreamedFile, (const char *) digitalStream);
+						gosAudio_CreateResource(&stream1Handle, gosAudio_StreamedFile, static_cast<const char *>(digitalStream));
 						
 						stream1Time = streamFadeDownTime;
 						
@@ -770,7 +770,7 @@ long SoundSystem::playDigitalMusic (long musicId)
 							stream2Handle = nullptr;
 						}
 							
-						gosAudio_CreateResource( &stream2Handle, gosAudio_StreamedFile, (const char *) digitalStream );
+						gosAudio_CreateResource( &stream2Handle, gosAudio_StreamedFile, static_cast<const char *>(digitalStream) );
 						
 						//Need to check if stream1 ever got all the way faded up!
 						if (stream1Time > 0.0f)
@@ -795,7 +795,7 @@ long SoundSystem::playDigitalMusic (long musicId)
 							stream1Handle = nullptr;
 						}
 							
-						gosAudio_CreateResource(&stream1Handle, gosAudio_StreamedFile, (const char *) digitalStream);
+						gosAudio_CreateResource(&stream1Handle, gosAudio_StreamedFile, static_cast<const char *>(digitalStream));
 						
 						stream1Time = streamFadeDownTime;
 
@@ -851,7 +851,7 @@ long SoundSystem::playDigitalStream (const char *streamName)
 					stream3Handle = nullptr;
 				}
 						
-				gosAudio_CreateResource(&stream3Handle, gosAudio_StreamedFile, (const char *) digitalStream);
+				gosAudio_CreateResource(&stream3Handle, gosAudio_StreamedFile, static_cast<const char *>(digitalStream));
 				
 				stream3Active = false;
 				
@@ -1356,7 +1356,7 @@ bool SoundSystem::beginVideoPCMStream(int rate, int channels)
     if (rate != mixRate || channels != mixCh) return false;
 
     g_va.rate = rate; g_va.channels = channels;
-    g_va.cap  = (size_t)rate * channels * 2;  // 2 s ring buffer
+    g_va.cap  = static_cast<size_t>(rate) * channels * 2;  // 2 s ring buffer
     g_va.ring.assign(g_va.cap, 0);
     g_va.head = g_va.tail = 0;
     SDL_AtomicSet(&g_va.consumedFrames, 0);

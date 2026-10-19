@@ -83,7 +83,7 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
 
     OvlTex t;
     if (!ovl_upload_tex(s, t, w, h, mc2vk::texelFormat(texels.vkFormat), texels.bytes->data(),
-                        (VkDeviceSize)texels.bytes->size()) ||
+                        static_cast<VkDeviceSize>(texels.bytes->size())) ||
         !ovl_alloc_tex_set(s, o, t)) {
         // The upload of this texture may already be queued: the image leaves with the frame, not now.
         mc2vk::getOrCreateEngineVulkanContext().retire(std::move(t));
@@ -144,7 +144,7 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = o->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
-        fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
+        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         if (!mc2vk::create(o->fb, s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) return false;
     }
 
@@ -288,7 +288,7 @@ extern "C" void mc2_vk_overlay_submit(uint32_t kind, const void* verts, uint32_t
         p.staticPtr = static_cast<const uint8_t*>(verts);
     } else {
         p.verts.assign(static_cast<const uint8_t*>(verts),
-                       static_cast<const uint8_t*>(verts) + (size_t)vertCount * kOvlVertStride);
+                       static_cast<const uint8_t*>(verts) + static_cast<size_t>(vertCount) * kOvlVertStride);
     }
     g_ovlPending.push_back(std::move(p));
 }
@@ -321,12 +321,12 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     struct Item { uint32_t first; uint32_t count; uint32_t kind; OvlTex* tex; };   // kind: low two bits select overlay/decal/mine, bit2 static stream
     std::vector<Item> items;
     VkDeviceSize dynBytes = 0;
-    for (const OvlPending& p : pending) if (!p.isStatic) dynBytes += (VkDeviceSize)p.vertCount * kOvlVertStride;
+    for (const OvlPending& p : pending) if (!p.isStatic) dynBytes += static_cast<VkDeviceSize>(p.vertCount) * kOvlVertStride;
 
     // Persistent static bake: (re)upload when its version changes (device-idle: rare, mission load).
     for (const OvlPending& p : pending) {
         if (!p.isStatic) continue;
-        const VkDeviceSize bytes = (VkDeviceSize)p.vertCount * kOvlVertStride;
+        const VkDeviceSize bytes = static_cast<VkDeviceSize>(p.vertCount) * kOvlVertStride;
         if (o->statVersion == p.version && o->stat && bytes <= o->statCap) continue;
         mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_overlay_static_grow");
         o->stat.reset();
@@ -336,7 +336,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
         }
         void* dst = nullptr;
         if (vmaMapMemory(s->allocator, o->stat.allocation(), &dst) != VK_SUCCESS) { o->disabled = true; return 0; }
-        std::memcpy(dst, p.staticPtr, (size_t)bytes);
+        std::memcpy(dst, p.staticPtr, static_cast<size_t>(bytes));
         vmaUnmapMemory(s->allocator, o->stat.allocation());
         o->statVersion = p.version;
     }
@@ -345,7 +345,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     std::vector<std::pair<const OvlPending*, uint32_t>> dynRuns;   // (pending, first vertex in the dyn stream)
     for (const OvlPending& p : pending) {
         uint32_t base = 0;
-        if (!p.isStatic) { base = (uint32_t)(dynOff / kOvlVertStride); dynRuns.push_back({&p, base}); dynOff += (VkDeviceSize)p.vertCount * kOvlVertStride; }
+        if (!p.isStatic) { base = static_cast<uint32_t>((dynOff / kOvlVertStride)); dynRuns.push_back({&p, base}); dynOff += static_cast<VkDeviceSize>(p.vertCount) * kOvlVertStride; }
         for (const Mc2VkOverlayDraw& d : p.draws) {
             if (d.vertCount == 0 || d.firstVert + d.vertCount > p.vertCount) continue;
             OvlTex* t = ovl_get_tex(s, o, d.texHandle);
@@ -375,7 +375,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
         std::memcpy(uboSpan.ptr, &u, sizeof(u));
     }
     for (const auto& r : dynRuns)
-        std::memcpy(static_cast<uint8_t*>(vtxSpan.ptr) + (size_t)r.second * kOvlVertStride, r.first->verts.data(), (size_t)r.first->vertCount * kOvlVertStride);
+        std::memcpy(static_cast<uint8_t*>(vtxSpan.ptr) + static_cast<size_t>(r.second) * kOvlVertStride, r.first->verts.data(), static_cast<size_t>(r.first->vertCount) * kOvlVertStride);
 
     // ---- sync: same shared parity-slot fence discipline as the other islands ----
     VkImageResource* colorRes = s->colorRes;
@@ -408,10 +408,10 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = o->rpass.get(); rbi.framebuffer = o->fb.get();
-    rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
-    VkRect2D scissor{{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
 
@@ -503,7 +503,7 @@ extern "C" void mc2_vk_terrain_island_destroy() {
     if (island && island->gpuTimer.supported && island->gpuTimer.samples > 0) {
         vlog("GPU_TIMESTAMPS samples=%llu gpu_pass_us=%.1f gpu_setup_us=%.1f gpu_draw_us=%.1f "
              "(cpu_draw_us=%.1f incl. record+submit+fence-wait)",
-             (unsigned long long)island->gpuTimer.samples,
+             static_cast<unsigned long long>(island->gpuTimer.samples),
              island->gpuTimer.avgTotalUs(),
              island->gpuTimer.avgGapUs(1),
              island->gpuTimer.avgGapUs(2),

@@ -274,12 +274,12 @@ void
 #if FOG_HACK
 	if(foggy)
 	{
-		*((BYTE *)&frgb + 3) =
+		*(reinterpret_cast<BYTE *>(&frgb) + 3) =
 			GOSVertex::fogTable[foggy-1][Stuff::Truncate_Float_To_Word(rhw)];
 	}
 	else
 	{
-		*((BYTE *)&frgb + 3) = 0xff;
+		*(reinterpret_cast<BYTE *>(&frgb) + 3) = 0xff;
 	}
 #endif
 

@@ -79,7 +79,7 @@ public:
     // Returns the def for effectName (case-insensitive), or nullptr.
     const EffectDef* resolve(const char* effectName) const;
 
-    int count() const { return (int)defs_.size(); }
+    int count() const { return static_cast<int>(defs_.size()); }
 
     // Apply every loaded def to the matching spec in lib (by name, via
     // SpecLibrary::Find semantics — case-insensitive). Effects with no def

@@ -119,7 +119,7 @@ void
 	// Verify that value has not been added
 	//-------------------------------------------------------------
 	//
-	Verify(HasUniqueEntries() ? (FindImplementation(value) == nullptr) : (bool)true);
+	Verify(HasUniqueEntries() ? (FindImplementation(value) == nullptr) : static_cast<bool>(true));
 
 	//
 	//-------------------------------------------------------------

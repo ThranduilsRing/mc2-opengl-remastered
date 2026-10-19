@@ -217,7 +217,7 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 				mc2InvalidateBakedStaticLightCache();
 				s_rebakeDone = true;
 				MC2_DIAGF("[LIGHTBAKE v1] event=rebake_on_ready frame=%u\n",
-				       (unsigned)g_mc2FrameCounter);
+				       static_cast<unsigned>(g_mc2FrameCounter));
 				fflush(stdout);
 			}
 		}
@@ -286,10 +286,10 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 					MC2_DIAGF("[BAKEORD v1] ri=%d ord=%llu frame=%u "
 					          "postInvalidate=%d sunActive=%d nl=%d "
 					          "amb=%.4f,%.4f,%.4f sun=%.4f,%.4f,%.4f\n",
-					          (int)recipeIndex, ord,
-					          (unsigned)g_mc2FrameCounter,
+					          static_cast<int>(recipeIndex), ord,
+					          static_cast<unsigned>(g_mc2FrameCounter),
 					          s_lightBakeRebakeDone ? 1 : 0,
-					          sunActive, (int)leaf->numLights_,
+					          sunActive, static_cast<int>(leaf->numLights_),
 					          amb[0], amb[1], amb[2],
 					          sun[0], sun[1], sun[2]);
 				}
@@ -333,7 +333,7 @@ bool mc2ConeGroundHit (const glm::vec3& apex,
 	// the stock cone lengths seen on tower lamps.
 	const int   kCoarseSteps = 24;
 	const int   kRefineIters = 10;
-	const float dt = beamLen / (float)kCoarseSteps;
+	const float dt = beamLen / static_cast<float>(kCoarseSteps);
 
 	glm::vec3 prev = apex;
 	// Height is only meaningful on-map; an apex already outside the playfield
@@ -343,7 +343,7 @@ bool mc2ConeGroundHit (const glm::vec3& apex,
 
 	for (int i = 1; i <= kCoarseSteps; ++i)
 	{
-		const float t = dt * (float)i;
+		const float t = dt * static_cast<float>(i);
 		glm::vec3 cur;
 		cur.x = apex.x + aim.x * t;
 		cur.y = apex.y + aim.y * t;

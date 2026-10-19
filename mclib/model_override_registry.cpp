@@ -20,10 +20,10 @@ static void logDrop(const char* why, const std::string& key) {
 
 static std::string normalizeKey(const std::string& s) {
     size_t b = 0, e = s.size();
-    while (b < e && std::isspace((unsigned char)s[b])) ++b;
-    while (e > b && std::isspace((unsigned char)s[e - 1])) --e;
+    while (b < e && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
+    while (e > b && std::isspace(static_cast<unsigned char>(s[e - 1]))) --e;
     std::string out = s.substr(b, e - b);
-    for (char& c : out) c = (char)std::tolower((unsigned char)c);
+    for (char& c : out) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return out;
 }
 
@@ -33,7 +33,7 @@ static bool isSafeSource(const std::string& s) {
     if (s.size() >= 2 && s[1] == ':') return false;
     // conservative: rejects any "..", including the rare literal "a..b.glb"; traversal safety > that edge case.
     if (s.find("..") != std::string::npos) return false;
-    std::string low = s; for (char& c : low) c = (char)std::tolower((unsigned char)c);
+    std::string low = s; for (char& c : low) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     const bool glb  = low.size() >= 4 && low.compare(low.size() - 4, 4, ".glb")  == 0;
     const bool gltf = low.size() >= 5 && low.compare(low.size() - 5, 5, ".gltf") == 0;
     return glb || gltf;
@@ -41,8 +41,8 @@ static bool isSafeSource(const std::string& s) {
 
 static std::string trimSource(const std::string& s) {
     size_t b = 0, en = s.size();
-    while (b < en && std::isspace((unsigned char)s[b])) ++b;
-    while (en > b && std::isspace((unsigned char)s[en - 1])) --en;
+    while (b < en && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
+    while (en > b && std::isspace(static_cast<unsigned char>(s[en - 1]))) --en;
     return s.substr(b, en - b);
 }
 
@@ -152,7 +152,7 @@ int ModelOverrideRegistry::loadFromFile(const std::string& manifestPath,
         if (dup) { logDrop("duplicate key (first entry wins)", rec.overrideClass + ":" + rec.appearanceName); continue; }
         records_.push_back(std::move(rec));
     }
-    return (int)records_.size();
+    return static_cast<int>(records_.size());
 }
 
 int ModelOverrideRegistry::mergeFromFile(const std::string& manifestPath,

@@ -173,11 +173,11 @@ static bool gos_LightDataSsbo_UploadGrowOnce(const void* data, size_t bytes,
                                              size_t prefixBytes = 0, bool prefixDirty = true)
 {
 	const GLsizeiptr want = (GLsizeiptr)bytes;
-	if ((GLsizeiptr)prefixBytes > want) prefixBytes = (size_t)want;  // clamp
+	if ((GLsizeiptr)prefixBytes > want) prefixBytes = static_cast<size_t>(want);  // clamp
 	const char* base = static_cast<const char*>(data);
 	const bool statsOn = lightUploadStatsEnabled();
 	if (statsOn) {
-		s_lightUploadStats.baselineBytes += (unsigned long long)want;  // pre-fix would ship full range
+		s_lightUploadStats.baselineBytes += static_cast<unsigned long long>(want);  // pre-fix would ship full range
 		s_lightUploadStats.frames        += 1;
 		// Periodic window dump (every 300 accounted calls ≈ 300 frames). savedBytes =
 		// prefixSkipped = the immutable-prefix bytes NOT re-shipped this window.
@@ -204,11 +204,11 @@ static bool gos_LightDataSsbo_UploadGrowOnce(const void* data, size_t bytes,
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 		registerLightDataSsbo(s_lightDataSsboBytes);  // LIGHTDATA-SSBO-OWNER-1: register at create
 		s_lightPrefixResidentBytes = (GLsizeiptr)prefixBytes;  // prefix now resident in the fresh store
-		if (statsOn) s_lightUploadStats.uploadBytes += (unsigned long long)want;
+		if (statsOn) s_lightUploadStats.uploadBytes += static_cast<unsigned long long>(want);
 		if (s_lightSsboTrace) {
 			std::fprintf(stderr,
 			    "[LIGHTSSBO v1] event=growonce_create binding=%d capBytes=%td liveBytes=%zu prefix=%zu\n",
-			    LIGHT_DATA_SSBO_BINDING, (ptrdiff_t)cap, bytes, prefixBytes);
+			    LIGHT_DATA_SSBO_BINDING, static_cast<ptrdiff_t>(cap), bytes, prefixBytes);
 			std::fflush(stderr);
 		}
 		return true;
@@ -240,11 +240,11 @@ static bool gos_LightDataSsbo_UploadGrowOnce(const void* data, size_t bytes,
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 		registerLightDataSsbo(s_lightDataSsboBytes);  // LIGHTDATA-SSBO-OWNER-1: handle recreated on grow -> re-register
 		s_lightPrefixResidentBytes = (GLsizeiptr)prefixBytes;  // store recreated -> prefix re-established
-		if (statsOn) s_lightUploadStats.uploadBytes += (unsigned long long)want;
+		if (statsOn) s_lightUploadStats.uploadBytes += static_cast<unsigned long long>(want);
 		if (s_lightSsboTrace) {
 			std::fprintf(stderr,
 			    "[LIGHTSSBO v1] event=growonce_grow oldCap=%td newCap=%td liveBytes=%zu prefix=%zu\n",
-			    (ptrdiff_t)oldCap, (ptrdiff_t)newCap, bytes, prefixBytes);
+			    static_cast<ptrdiff_t>(oldCap), static_cast<ptrdiff_t>(newCap), bytes, prefixBytes);
 			std::fflush(stderr);
 		}
 		return true;
@@ -270,8 +270,8 @@ static bool gos_LightDataSsbo_UploadGrowOnce(const void* data, size_t bytes,
 	}
 	s_lightPrefixResidentBytes = (GLsizeiptr)prefixBytes;  // prefix confirmed resident this frame
 	if (statsOn) {
-		s_lightUploadStats.uploadBytes   += (unsigned long long)(want - skipStart);
-		s_lightUploadStats.prefixSkipped += (unsigned long long)skipStart;
+		s_lightUploadStats.uploadBytes   += static_cast<unsigned long long>((want - skipStart));
+		s_lightUploadStats.prefixSkipped += static_cast<unsigned long long>(skipStart);
 	}
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, LIGHT_DATA_SSBO_BINDING, s_lightDataSsbo);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
@@ -314,7 +314,7 @@ void __stdcall gos_LightDataSsbo_Upload(const void* data, size_t bytes)
 		MC2_GL_BufferData_Owner(GL_SHADER_STORAGE_BUFFER, (GLsizeiptr)bytes, data, GL_DYNAMIC_DRAW, LightSsbo);
 		if (s_lightSsboTrace) {
 			std::fprintf(stderr, "[LIGHTSSBO v1] event=buffer_grow old=%td new=%zu\n",
-			             (ptrdiff_t)s_lightDataSsboBytes, bytes);
+			             static_cast<ptrdiff_t>(s_lightDataSsboBytes), bytes);
 			std::fflush(stderr);
 		}
 		s_lightDataSsboBytes = (GLsizeiptr)bytes;
@@ -406,7 +406,7 @@ void __stdcall gos_LightDataSsbo_UploadSplit(const void* data, size_t prefixByte
 			if (s_lightSsboTrace) {
 				std::fprintf(stderr,
 				    "[LIGHTSSBO v3] event=prefix_stash_refresh prefix=%zu cap=%td dirty=%d\n",
-				    prefixBytes, (ptrdiff_t)s_lightPrefixStashBytes, prefixDirty ? 1 : 0);
+				    prefixBytes, static_cast<ptrdiff_t>(s_lightPrefixStashBytes), prefixDirty ? 1 : 0);
 				std::fflush(stderr);
 			}
 		} else {

@@ -220,8 +220,8 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
     if (g_sdl_window) SDL_GetWindowSize(g_sdl_window, &winW, &winH);
     if (winW <= 0) winW = Environment.drawableWidth;
     if (winH <= 0) winH = Environment.drawableHeight;
-    const float w = (float)winW;
-    const float h = (float)winH;
+    const float w = static_cast<float>(winW);
+    const float h = static_cast<float>(winH);
 
     const input::MouseInfo* mi = input::getMouseInfo();
 
@@ -237,15 +237,15 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
     if (gos_ComputeUiCanvasBox(winW, winH,
                                &bx, &by, &bw, &bh)) {
         if(pXPosition)
-            *pXPosition = (mi->x_ - (float)bx) / (float)bw;
+            *pXPosition = (mi->x_ - static_cast<float>(bx)) / static_cast<float>(bw);
         if(pYPosition)
-            *pYPosition = (mi->y_ - (float)by) / (float)bh;
+            *pYPosition = (mi->y_ - static_cast<float>(by)) / static_cast<float>(bh);
     } else if (gos_Compute43Box(winW, winH,
                          &bx, &by, &bw, &bh)) {
         if(pXPosition)
-            *pXPosition = (mi->x_ - (float)bx) / (float)bw;
+            *pXPosition = (mi->x_ - static_cast<float>(bx)) / static_cast<float>(bw);
         if(pYPosition)
-            *pYPosition = (mi->y_ - (float)by) / (float)bh;
+            *pYPosition = (mi->y_ - static_cast<float>(by)) / static_cast<float>(bh);
     } else {
         if(pXPosition)
             *pXPosition = mi->x_ / w;
@@ -264,7 +264,7 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
         if (dx*dx + dy*dy > 64.0f)
         {
             s_lastX = mi->x_; s_lastY = mi->y_;
-            mc2::fmt::print_out("[MOUSE_RECON v1] raw=({:.0f},{:.0f}) logical=({:d}x{:d}) drawable=({:d}x{:d}) norm_logical=({:.3f},{:.3f}) norm_drawable=({:.3f},{:.3f})\n", mi->x_, mi->y_, mc2::fmt::as_i32(Environment.screenWidth), mc2::fmt::as_i32(Environment.screenHeight), mc2::fmt::as_i32(Environment.drawableWidth), mc2::fmt::as_i32(Environment.drawableHeight), mi->x_ / w, mi->y_ / h, mi->x_ / (float)Environment.drawableWidth, mi->y_ / (float)Environment.drawableHeight);
+            mc2::fmt::print_out("[MOUSE_RECON v1] raw=({:.0f},{:.0f}) logical=({:d}x{:d}) drawable=({:d}x{:d}) norm_logical=({:.3f},{:.3f}) norm_drawable=({:.3f},{:.3f})\n", mi->x_, mi->y_, mc2::fmt::as_i32(Environment.screenWidth), mc2::fmt::as_i32(Environment.screenHeight), mc2::fmt::as_i32(Environment.drawableWidth), mc2::fmt::as_i32(Environment.drawableHeight), mi->x_ / w, mi->y_ / h, mi->x_ / static_cast<float>(Environment.drawableWidth), mi->y_ / static_cast<float>(Environment.drawableHeight));
         }
     }
 
@@ -278,14 +278,14 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
         *pYDelta = (int)(100.0f * clamp(mi->rel_y_ / h, -1.0f, 1.0f));
         */
     if(pXDelta)
-        *pXDelta = (int)(clamp(mi->rel_x_, -w, w));
+        *pXDelta = static_cast<int>((clamp(mi->rel_x_, -w, w)));
     if(pYDelta)
-        *pYDelta = (int)(clamp(mi->rel_y_, -h, h));
+        *pYDelta = static_cast<int>((clamp(mi->rel_y_, -h, h)));
 
     //if(pWheelDelta)
     //  *pWheelDelta = (int)(100.0f * (mi->wheel_vert_ / h));
     if(pWheelDelta)
-        *pWheelDelta = (int)(mi->wheel_vert_);
+        *pWheelDelta = static_cast<int>((mi->wheel_vert_));
 
     if(pButtonsPressed) {
         DWORD bs = 0;
@@ -321,8 +321,8 @@ void __stdcall gos_SetMousePosition( float XPosition, float YPosition )
         SDL_GetWindowSize(g_sdl_window, &winW, &winH);
         if (winW <= 0) winW = Environment.drawableWidth;
         if (winH <= 0) winH = Environment.drawableHeight;
-        const float w = (float)winW;
-        const float h = (float)winH;
+        const float w = static_cast<float>(winW);
+        const float h = static_cast<float>(winH);
         // [FORCE-43 v1] Inverse of the box-relative normalize in gos_GetMouseInfo:
         // map the 0..1 box coordinate back into window-point pixels.
         int bx, by, bw, bh;
@@ -330,17 +330,17 @@ void __stdcall gos_SetMousePosition( float XPosition, float YPosition )
         if (gos_ComputeUiCanvasBox(winW, winH,
                                    &bx, &by, &bw, &bh)) {
             SDL_WarpMouseInWindow(g_sdl_window,
-                                  (int)((float)bx + XPosition * (float)bw),
-                                  (int)((float)by + YPosition * (float)bh));
+                                  static_cast<int>((static_cast<float>(bx) + XPosition * static_cast<float>(bw))),
+                                  static_cast<int>((static_cast<float>(by) + YPosition * static_cast<float>(bh))));
         } else if (gos_Compute43Box(winW, winH,
                              &bx, &by, &bw, &bh)) {
             SDL_WarpMouseInWindow(g_sdl_window,
-                                  (int)((float)bx + XPosition * (float)bw),
-                                  (int)((float)by + YPosition * (float)bh));
+                                  static_cast<int>((static_cast<float>(bx) + XPosition * static_cast<float>(bw))),
+                                  static_cast<int>((static_cast<float>(by) + YPosition * static_cast<float>(bh))));
         } else {
             SDL_WarpMouseInWindow(g_sdl_window,
-                                  (int)(XPosition * w),
-                                  (int)(YPosition * h));
+                                  static_cast<int>((XPosition * w)),
+                                  static_cast<int>((YPosition * h)));
         }
     }
 }
@@ -449,11 +449,11 @@ gosEnum_KeyIndex remap_sdl_to_gos(const SDL_Scancode scancode) {
 SDL_Scancode remap_gos_to_sdl(const gosEnum_KeyIndex key_index) {
 
     if(key_index >= KEY_1 && key_index <= KEY_9)
-        return (SDL_Scancode)(key_index - KEY_1 + SDL_SCANCODE_1);
+        return static_cast<SDL_Scancode>((key_index - KEY_1 + SDL_SCANCODE_1));
     if(key_index == KEY_0) return SDL_SCANCODE_0;
 
     if(key_index >= KEY_A && key_index <= KEY_Z)
-        return (SDL_Scancode)(key_index - KEY_A + SDL_SCANCODE_A);
+        return static_cast<SDL_Scancode>((key_index - KEY_A + SDL_SCANCODE_A));
 
     switch(key_index) {
         case KEY_ESCAPE: return SDL_SCANCODE_ESCAPE;
@@ -561,12 +561,12 @@ DWORD __stdcall gos_GetKey()
     const input::KeyboardInfo* ki = input::getKeyboardInfo();
 
     if(ki->first_pressed_!=-1) {
-        SDL_Scancode sc = (SDL_Scancode)ki->first_pressed_;
+        SDL_Scancode sc = static_cast<SDL_Scancode>(ki->first_pressed_);
         SDL_Keycode kc = SDL_GetKeyFromScancode(sc);
         unsigned char c = 0;
         // check if it represents a character:
         if(!(kc & SDLK_SCANCODE_MASK) && isascii(kc)) {
-            c = (unsigned char)kc;
+            c = static_cast<unsigned char>(kc);
 
             // this is all hardcodede crap, mayeb will fix it later
 

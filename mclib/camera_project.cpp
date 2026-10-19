@@ -8,7 +8,7 @@ inline void mapTileCellToWorldPos (long tileR, long tileC, long cellR, long cell
 
 	worldPos.x = Terrain::tileColToWorldCoord[tileC] + Terrain::cellToWorldCoord[cellC] + Terrain::halfWorldUnitsPerCell;
 	worldPos.y = Terrain::tileRowToWorldCoord[tileR] - Terrain::cellToWorldCoord[cellR] - Terrain::halfWorldUnitsPerCell;
-	worldPos.z = (float)0.0;
+	worldPos.z = static_cast<float>(0.0);
 }
 
 //---------------------------------------------------------------------------
@@ -17,7 +17,7 @@ inline void mapCellToWorldPos (long cellR, long cellC, glm::vec3& worldPos) {
 
 	worldPos.x = Terrain::cellColToWorldCoord[cellC] + Terrain::halfWorldUnitsPerCell;
 	worldPos.y = Terrain::cellRowToWorldCoord[cellR] - Terrain::halfWorldUnitsPerCell;
-	worldPos.z = (float)0.0;
+	worldPos.z = static_cast<float>(0.0);
 }
 
 //---------------------------------------------------------------------------
@@ -89,7 +89,7 @@ static unsigned long parityReport (Stuff::Vector2DOf<long> &screenPos,
 		dWorld = (d2 > 0.0f) ? sqrtf(d2) : 0.0f;
 	}
 
-	mc2::fmt::print_out("[PICK_PARITY] screen=({:d},{:d})  raycast=({:.3f},{:.3f},{:.3f}) cell=({:d},{:d})  legacy=({:.3f},{:.3f},{:.3f}) cell=({:d},{:d})  dWorld={:.4f}  raycastHit={:d}\n", mc2::fmt::as_i32((long)screenPos.x), mc2::fmt::as_i32((long)screenPos.y), raycastPt.x, raycastPt.y, raycastPt.z, mc2::fmt::as_i32(rcTileC), mc2::fmt::as_i32(rcTileR), point.x, point.y, point.z, mc2::fmt::as_i32(legacyTileC), mc2::fmt::as_i32(legacyTileR), dWorld, mc2::fmt::as_i32(raycastHit ? 1 : 0));
+	mc2::fmt::print_out("[PICK_PARITY] screen=({:d},{:d})  raycast=({:.3f},{:.3f},{:.3f}) cell=({:d},{:d})  legacy=({:.3f},{:.3f},{:.3f}) cell=({:d},{:d})  dWorld={:.4f}  raycastHit={:d}\n", mc2::fmt::as_i32(static_cast<long>(screenPos.x)), mc2::fmt::as_i32(static_cast<long>(screenPos.y)), raycastPt.x, raycastPt.y, raycastPt.z, mc2::fmt::as_i32(rcTileC), mc2::fmt::as_i32(rcTileR), point.x, point.y, point.z, mc2::fmt::as_i32(legacyTileC), mc2::fmt::as_i32(legacyTileR), dWorld, mc2::fmt::as_i32(raycastHit ? 1 : 0));
 	std::fflush(stdout);
 
 	// Preserve flag-on return behavior: raycast wins when it hit.
@@ -114,7 +114,7 @@ static bool lowCamInvert4x4 (const glm::mat4& M, glm::mat4& out)
 	double a[4][8];
 	for (int r = 0; r < 4; ++r)
 		for (int c = 0; c < 4; ++c)
-		{ a[r][c] = (double)M[c][r]; a[r][c+4] = (r==c)?1.0:0.0; }
+		{ a[r][c] = static_cast<double>(M[c][r]); a[r][c+4] = (r==c)?1.0:0.0; }
 	for (int col = 0; col < 4; ++col)
 	{
 		int piv = col; double best = fabs(a[col][col]);
@@ -129,7 +129,7 @@ static bool lowCamInvert4x4 (const glm::mat4& M, glm::mat4& out)
 	}
 	for (int r = 0; r < 4; ++r)
 		for (int c = 0; c < 4; ++c)
-			out[c][r] = (float)a[r][c+4];
+			out[c][r] = static_cast<float>(a[r][c+4]);
 	return true;
 }
 
@@ -413,10 +413,10 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 	// is strictly inside).
 	if (s_vplPickTrace && numTiles > 0)
 	{
-		const long sampleStride = (numTiles > 64) ? (long)(numTiles / 64) : 1;
+		const long sampleStride = (numTiles > 64) ? static_cast<long>((numTiles / 64)) : 1;
 		TerrainQuadPtr st = land->getQuadList();
 		long checked = 0;
-		for (long i = 0; i < (long)numTiles; i += sampleStride)
+		for (long i = 0; i < static_cast<long>(numTiles); i += sampleStride)
 		{
 			TerrainQuadPtr q = st + i;
 			glm::vec3 wp;
@@ -461,7 +461,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 		long admitted = 0, contained = 0;
 		double bestEyeDistSq = 1.0e30;
 		TerrainQuadPtr t = land->getQuadList();
-		for (long i = 0; i < (long)numTiles; i++, t++)
+		for (long i = 0; i < static_cast<long>(numTiles); i++, t++)
 		{
 			glm::vec3 mn, mx;
 			mn.x = mx.x = t->vertices[0]->vx;
@@ -506,9 +506,9 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 			// Frontmost = smallest eye distance among containing tiles. physicalPos
 			// is the true camera eye (MC2 world); getPosition() is the ground-focus.
 			cx *= 0.25f; cy *= 0.25f; cz *= 0.25f;
-			const double ex = (double)cx - (double)physicalPos.x;
-			const double ey = (double)cy - (double)physicalPos.y;
-			const double ez = (double)cz - (double)physicalPos.z;
+			const double ex = static_cast<double>(cx) - static_cast<double>(physicalPos.x);
+			const double ey = static_cast<double>(cy) - static_cast<double>(physicalPos.y);
+			const double ez = static_cast<double>(cz) - static_cast<double>(physicalPos.z);
 			const double eyeDistSq = ex*ex + ey*ey + ez*ez;
 			if (eyeDistSq < bestEyeDistSq)
 			{
@@ -517,7 +517,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 			}
 		}
 		if (s_capTrace)
-			mc2::fmt::print_err("[PICK_CAP] mode=lowcam numTiles={:d} admitted={:d} contained={:d} cursor=({:d},{:d}) hit={:d}\n", mc2::fmt::as_u32(numTiles), mc2::fmt::as_i32(admitted), mc2::fmt::as_i32(contained), mc2::fmt::as_i32((long)screenPos.x), mc2::fmt::as_i32((long)screenPos.y), mc2::fmt::as_i32(closestTile ? 1 : 0));
+			mc2::fmt::print_err("[PICK_CAP] mode=lowcam numTiles={:d} admitted={:d} contained={:d} cursor=({:d},{:d}) hit={:d}\n", mc2::fmt::as_u32(numTiles), mc2::fmt::as_i32(admitted), mc2::fmt::as_i32(contained), mc2::fmt::as_i32(static_cast<long>(screenPos.x)), mc2::fmt::as_i32(static_cast<long>(screenPos.y)), mc2::fmt::as_i32(closestTile ? 1 : 0));
 	}
 	else
 	{
@@ -525,7 +525,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 	// Stage 1: frustum-AABB admission over all quads. RAW world AABB built
 	// from vertices[0..3]->vx/.vy/->pVertex->elevation (unrotated world
 	// coords per vertex.h:75). Keep the existing cap-100 + guard.
-	for (long i=0;i<(long)numTiles;i++)
+	for (long i=0;i<static_cast<long>(numTiles);i++)
 	{
 		glm::vec3 mn, mx;
 		mn.x = mx.x = currentTile->vertices[0]->vx;
@@ -583,8 +583,8 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 				           (sc.y <= screenResolution.y) &&
 				           (sc.z >= 0.0f) && (sc.z < 1.0f);
 
-				const double dx = (double)sc.x - (double)screenPos.x;
-				const double dy = (double)sc.y - (double)screenPos.y;
+				const double dx = static_cast<double>(sc.x) - static_cast<double>(screenPos.x);
+				const double dy = static_cast<double>(sc.y) - static_cast<double>(screenPos.y);
 				const double dsq = dx * dx + dy * dy;
 				if (dsq < tileNearestSq)
 					tileNearestSq = dsq;
@@ -725,8 +725,8 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 			float tmpDis = (tmpScreen.x - screenPos.x) * (tmpScreen.x - screenPos.x ) + (tmpScreen.y - screenPos.y) * (tmpScreen.y - screenPos.y );
 			if ( tmpDis < bestDis )
 			{
-				bestRow = (int)row;
-				bestCol = (int)col;
+				bestRow = static_cast<int>(row);
+				bestCol = static_cast<int>(col);
 				bestDis = tmpDis;
 			}
 		};

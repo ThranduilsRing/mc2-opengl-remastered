@@ -229,7 +229,7 @@ void recomputeBlockAabb(TerrainBlockMeta& bm)
     // OOB vertices (past map edge) use blankVertex elevation (33.0f).
     float mn =  1e30f;
     float mx = -1e30f;
-    int mapSide = (int)Terrain::realVerticesMapSide;
+    int mapSide = static_cast<int>(Terrain::realVerticesMapSide);
     PostcompVertexPtr blks = Terrain::mapData->getBlocks();
     for (int dy = 0; dy <= bm.quadCountY; ++dy) {
         for (int dx = 0; dx <= bm.quadCountX; ++dx) {
@@ -300,31 +300,31 @@ void Terrain::initMapCellArrays (void)
 {
 	if (!tileRowToWorldCoord)
 	{
-		tileRowToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide);
+		tileRowToWorldCoord = static_cast<float *>(terrainHeap->Malloc(sizeof(float) * realVerticesMapSide));
 		gosASSERT(tileRowToWorldCoord != nullptr);
 	}
 
 	if (!tileColToWorldCoord)
 	{
-		tileColToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide); 
+		tileColToWorldCoord = static_cast<float *>(terrainHeap->Malloc(sizeof(float) * realVerticesMapSide));
 		gosASSERT(tileColToWorldCoord != nullptr);
 	}
 
 	if (!cellToWorldCoord)
 	{
-		cellToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * MAPCELL_DIM); 
+		cellToWorldCoord = static_cast<float *>(terrainHeap->Malloc(sizeof(float) * MAPCELL_DIM));
 		gosASSERT(cellToWorldCoord != nullptr);
 	}
 
 	if (!cellColToWorldCoord)
 	{
-		cellColToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide * MAPCELL_DIM); 
+		cellColToWorldCoord = static_cast<float *>(terrainHeap->Malloc(sizeof(float) * realVerticesMapSide * MAPCELL_DIM));
 		gosASSERT(cellColToWorldCoord != nullptr);
 	}
 
 	if (!cellRowToWorldCoord)
 	{
-		cellRowToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide * MAPCELL_DIM); 
+		cellRowToWorldCoord = static_cast<float *>(terrainHeap->Malloc(sizeof(float) * realVerticesMapSide * MAPCELL_DIM));
 		gosASSERT(cellRowToWorldCoord != nullptr);
 	}
 
@@ -338,7 +338,7 @@ void Terrain::initMapCellArrays (void)
 		tileColToWorldCoord[i] = (i * worldUnitsPerVertex) - (worldUnitsMapSide / 2.0);
 
 	for (i = 0; i < MAPCELL_DIM; i++)
-		cellToWorldCoord[i] = (worldUnitsPerVertex / (float)MAPCELL_DIM) * i;
+		cellToWorldCoord[i] = (worldUnitsPerVertex / static_cast<float>(MAPCELL_DIM)) * i;
 
 	long maxCell = height * MAPCELL_DIM;
 	for (i = 0; i < maxCell; i++)
@@ -441,14 +441,14 @@ void Terrain::resetVisibleVertices (long maxVisibleVertices)
 	//----------------------------------------------------------------------
 	// Create the VertexList
 	numberVertices = 0;
-	vertexList = (VertexPtr)terrainHeap->Malloc(sizeof(Vertex) * visibleVerticesPerSide * visibleVerticesPerSide);
+	vertexList = static_cast<VertexPtr>(terrainHeap->Malloc(sizeof(Vertex) * visibleVerticesPerSide * visibleVerticesPerSide));
 	gosASSERT(vertexList != nullptr);
 	memset(vertexList,0,sizeof(Vertex) * visibleVerticesPerSide * visibleVerticesPerSide);
 
 	//----------------------------------------------------------------------
 	// Create the QuadList
 	numberQuads = 0;
-	quadList = (TerrainQuadPtr)terrainHeap->Malloc(sizeof(TerrainQuad) * visibleVerticesPerSide * visibleVerticesPerSide);
+	quadList = static_cast<TerrainQuadPtr>(terrainHeap->Malloc(sizeof(TerrainQuad) * visibleVerticesPerSide * visibleVerticesPerSide));
 	gosASSERT(quadList != nullptr);
 	memset(quadList,0,sizeof(TerrainQuad) * visibleVerticesPerSide * visibleVerticesPerSide);
 
@@ -796,10 +796,10 @@ void Terrain::setVertexHeight( int VertexIndex, float Val )
 		// Terrain LOD chunk Phase 3 — dirty-patch upload after edit.
 		if (s_blockMeta && mc2TerrainLodChunkEnabled())
 		{
-			int vx = VertexIndex % (int)realVerticesMapSide;
-			int vy = VertexIndex / (int)realVerticesMapSide;
-			int bx = vx / (int)verticesBlockSide;
-			int by = vy / (int)verticesBlockSide;
+			int vx = VertexIndex % static_cast<int>(realVerticesMapSide);
+			int vy = VertexIndex / static_cast<int>(realVerticesMapSide);
+			int bx = vx / static_cast<int>(verticesBlockSide);
+			int by = vy / static_cast<int>(verticesBlockSide);
 			if (bx >= s_terrainChunkSide) bx = s_terrainChunkSide - 1;
 			if (by >= s_terrainChunkSide) by = s_terrainChunkSide - 1;
 			int blockIdx = bx + by * s_terrainChunkSide;
@@ -808,15 +808,15 @@ void Terrain::setVertexHeight( int VertexIndex, float Val )
 			const TerrainBlockMeta& bm = s_blockMeta[blockIdx];
 			int rows = bm.quadCountY + 1;
 			int cols = bm.quadCountX + 1;
-			std::vector<float> patch((size_t)rows * cols);
+			std::vector<float> patch(static_cast<size_t>(rows) * cols);
 			const PostcompVertex* blks = mapData->getBlocks();
 			for (int dy = 0; dy < rows; ++dy)
 				for (int dx = 0; dx < cols; ++dx)
 					patch[dx + dy * cols] = blks[
-						(bm.originX + dx) + (bm.originY + dy) * (int)realVerticesMapSide].elevation;
+						(bm.originX + dx) + (bm.originY + dy) * static_cast<int>(realVerticesMapSide)].elevation;
 			gos_TerrainLodChunk_UploadHeightPatch(
 				patch.data(), bm.originX, bm.originY,
-				bm.quadCountX, bm.quadCountY, (int)realVerticesMapSide);
+				bm.quadCountX, bm.quadCountY, static_cast<int>(realVerticesMapSide));
 		}
 	}
 }
@@ -1157,17 +1157,17 @@ void Terrain::refreshTerrainTypeSSBO()
 {
 	if (!mapData || !mapData->getBlocks())
 		return;
-	const int n = (int)realVerticesMapSide * (int)realVerticesMapSide;
+	const int n = static_cast<int>(realVerticesMapSide) * static_cast<int>(realVerticesMapSide);
 	if (n <= 0)
 		return;
-	std::vector<float> ttype((size_t)n);
+	std::vector<float> ttype(static_cast<size_t>(n));
 	const PostcompVertex* blks = mapData->getBlocks();
 	// MUST mirror the load-time mapping (terrain.cpp ttype[] loop) and the
 	// duplicated terrainTypeToMaterial in quad.cpp / gos_terrain_indirect.cpp.
 	auto terrainTypeToMaterial = [](DWORD t) -> float { return static_cast<float>(mc2terrain::terrainTypeToMaterial(static_cast<uint32_t>(t))); };
 	for (int i = 0; i < n; ++i)
 		ttype[i] = terrainTypeToMaterial(blks[i].terrainType);
-	gos_TerrainLodChunk_UploadTerrainTypeFull(ttype.data(), (int)realVerticesMapSide);
+	gos_TerrainLodChunk_UploadTerrainTypeFull(ttype.data(), static_cast<int>(realVerticesMapSide));
 }
 
 //---------------------------------------------------------------------------

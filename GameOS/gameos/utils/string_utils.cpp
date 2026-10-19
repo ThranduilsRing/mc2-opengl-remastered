@@ -24,8 +24,8 @@ char* StringDup(const char* s)
 	if( ! s )
 		return nullptr;
 
-	int size = (int)strlen(s) + 1;
-	char* ss = (char*)malloc(size);
+	int size = static_cast<int>(strlen(s)) + 1;
+	char* ss = static_cast<char*>(malloc(size));
 	memcpy(ss, s, size);
 	return ss;
 }
@@ -35,8 +35,8 @@ wchar_t* StringDup(const wchar_t* s)
 	if( ! s )
 		return nullptr;
 
-	int size = (int)wcslen(s) + 1;
-	wchar_t* ss = (wchar_t*)malloc(size * sizeof(wchar_t));
+	int size = static_cast<int>(wcslen(s)) + 1;
+	wchar_t* ss = static_cast<wchar_t*>(malloc(size * sizeof(wchar_t)));
 	memcpy(ss, s, size * sizeof(wchar_t));
 	return ss;
 }
@@ -60,7 +60,7 @@ inline wchar_t* StringDupSafe(const wchar_t* s)
 // this function assume that szPath and szLowerPath are valid pointers
 inline int StringToLower(const char* const szPath, char* szLowerPath, int nLen)
 {
-	int i, l = (int)strlen(szPath);
+	int i, l = static_cast<int>(strlen(szPath));
 	if(l > (nLen - 1))
 		l = nLen - 1;
 	for(i = 0; i < l; ++i)

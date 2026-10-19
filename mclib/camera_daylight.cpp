@@ -396,9 +396,9 @@ void Camera::updateDaylight (bool bInitialize)
 		game fog color more reflects "sky color near the horizon" */
 
 		float fFogTransparency = fogTransparency;
-		float fOpaqueDayFogRed = (float)((dayFogColor >> 16) & 0xff);
-		float fOpaqueDayFogGreen = (float)((dayFogColor >> 8) & 0xff);
-		float fOpaqueDayFogBlue = (float)((dayFogColor) & 0xff);
+		float fOpaqueDayFogRed = static_cast<float>(((dayFogColor >> 16) & 0xff));
+		float fOpaqueDayFogGreen = static_cast<float>(((dayFogColor >> 8) & 0xff));
+		float fOpaqueDayFogBlue = static_cast<float>(((dayFogColor) & 0xff));
 
 		static const float fBlackSkyLevel = 32.0f; /* If the light is below this level, the sky is effectively black. */
 
@@ -415,9 +415,9 @@ void Camera::updateDaylight (bool bInitialize)
 		//float fTmpRed = (float)(dayLightRed) - fBlackSkyLevel;
 		//float fTmpGreen = (float)(dayLightGreen) - fBlackSkyLevel;
 		//float fTmpBlue = (float)(dayLightBlue) - fBlackSkyLevel;
-		float fTmpRed = (float)(dayAmbientRed) - fBlackSkyLevel;
-		float fTmpGreen = (float)(dayAmbientGreen) - fBlackSkyLevel;
-		float fTmpBlue = (float)(dayAmbientBlue) - fBlackSkyLevel;
+		float fTmpRed = static_cast<float>((dayAmbientRed)) - fBlackSkyLevel;
+		float fTmpGreen = static_cast<float>((dayAmbientGreen)) - fBlackSkyLevel;
+		float fTmpBlue = static_cast<float>((dayAmbientBlue)) - fBlackSkyLevel;
 		float epsilon = 1.0;
 		if (epsilon > fTmpRed) { fTmpRed = epsilon; }
 		if (epsilon > fTmpGreen) { fTmpGreen = epsilon; }
@@ -622,7 +622,7 @@ void Camera::updateLights()
 				if (mc2_spotlight_diag::is_enabled()) {
 					mc2_spotlight_diag::SourceClass src;
 					if (mc2_spotlight_diag::is_e_slot(i, &src)) {
-						if (s_spotDiagT16LastActive.size() < (size_t)MAX_LIGHTS_IN_WORLD)
+						if (s_spotDiagT16LastActive.size() < static_cast<size_t>(MAX_LIGHTS_IN_WORLD))
 							s_spotDiagT16LastActive.assign(MAX_LIGHTS_IN_WORLD, 0xFFu);
 						const unsigned char curActive = light->active ? 1u : 0u;
 						const unsigned char prev = s_spotDiagT16LastActive[i];
@@ -634,8 +634,8 @@ void Camera::updateLights()
 								"[SPOT_DIAG v1] event=our_slot_transition slot=%ld src=%s "
 								"frame=%lu light_pos=(%.1f, %.1f, %.1f) active=%u prev=%u\n",
 								i, srcName, s_spotDiagCamFrames,
-								(float)light->position.x, (float)light->position.y, (float)light->position.z,
-								(unsigned)curActive, (unsigned)prev);
+								static_cast<float>(light->position.x), static_cast<float>(light->position.y), static_cast<float>(light->position.z),
+								static_cast<unsigned>(curActive), static_cast<unsigned>(prev));
 							std::fflush(stderr);
 						}
 						s_spotDiagT16LastActive[i] = curActive;
@@ -645,14 +645,14 @@ void Camera::updateLights()
 				// First-hit per slot index — always-on, one stderr line per
 				// distinct slot ever seen here. Window counters tally
 				// active_after true/false for periodic summary.
-				if ((size_t)i < s_spotDiagCamSeenSlot.size() && !s_spotDiagCamSeenSlot[i]) {
+				if (static_cast<size_t>(i) < s_spotDiagCamSeenSlot.size() && !s_spotDiagCamSeenSlot[i]) {
 					s_spotDiagCamSeenSlot[i] = true;
 					const char* tname = (light->lightType == TG_LIGHT_POINT) ? "POINT" : "SPOT";
 					MC2_DIAGFE(stderr,
 						"[SPOT_DIAG v1] event=overwrite_first_seen slot=%ld type=%s "
 						"pos=(%.2f,%.2f,%.2f) active_after=%d\n",
 						i, tname,
-						(float)light->position.x, (float)light->position.y, (float)light->position.z,
+						static_cast<float>(light->position.x), static_cast<float>(light->position.y), static_cast<float>(light->position.z),
 						light->active ? 1 : 0);
 					std::fflush(stderr);
 					++s_spotDiagCamPointSeen;
@@ -671,8 +671,8 @@ void Camera::updateLights()
 	// T1.15 [SPOT_DIAG v1] per-summary overwrite aggregate (env-gated).
 	if (s_spotDiagCamEnabled && (s_spotDiagCamFrames % 600) == 0) {
 		unsigned long total = s_spotDiagCamActiveTrue + s_spotDiagCamActiveFalse;
-		double truePct  = (total > 0) ? (100.0 * (double)s_spotDiagCamActiveTrue  / (double)total) : 0.0;
-		double falsePct = (total > 0) ? (100.0 * (double)s_spotDiagCamActiveFalse / (double)total) : 0.0;
+		double truePct  = (total > 0) ? (100.0 * static_cast<double>(s_spotDiagCamActiveTrue)  / static_cast<double>(total)) : 0.0;
+		double falsePct = (total > 0) ? (100.0 * static_cast<double>(s_spotDiagCamActiveFalse) / static_cast<double>(total)) : 0.0;
 		mc2::fmt::print_err("[SPOT_DIAG v1] event=overwrite_summary frames={:d} point_slots_seen={:d} active_true_pct={:.2f} active_false_pct={:.2f} samples={:d}\n", mc2::fmt::as_u32(s_spotDiagCamFrames), mc2::fmt::as_u32(s_spotDiagCamPointSeen), truePct, falsePct, mc2::fmt::as_u32(total));
 		std::fflush(stderr);
 		// Reset window counters (per-summary cadence per task spec)
@@ -689,7 +689,7 @@ void Camera::updateLights()
 				const char* srcName =
 					(src == mc2_spotlight_diag::Bldg ? "bldg" :
 					 src == mc2_spotlight_diag::Mech ? "mech" : "gv");
-				mc2::fmt::print_err("[SPOT_DIAG v1] event=our_slot_summary frame={:d} slot={:d} src={} active={:d} pos=({:.1f}, {:.1f}, {:.1f})\n", mc2::fmt::as_u32(s_spotDiagCamFrames), mc2::fmt::as_i32(si), mc2::fmt::safe(srcName), mc2::fmt::as_u32(l ? (unsigned)(l->active ? 1u : 0u) : 0xFFu), l ? (float)l->position.x : 0.0f, l ? (float)l->position.y : 0.0f, l ? (float)l->position.z : 0.0f);
+				mc2::fmt::print_err("[SPOT_DIAG v1] event=our_slot_summary frame={:d} slot={:d} src={} active={:d} pos=({:.1f}, {:.1f}, {:.1f})\n", mc2::fmt::as_u32(s_spotDiagCamFrames), mc2::fmt::as_i32(si), mc2::fmt::safe(srcName), mc2::fmt::as_u32(l ? static_cast<unsigned>((l->active ? 1u : 0u)) : 0xFFu), l ? static_cast<float>(l->position.x) : 0.0f, l ? static_cast<float>(l->position.y) : 0.0f, l ? static_cast<float>(l->position.z) : 0.0f);
 				std::fflush(stderr);
 			}
 		}

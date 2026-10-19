@@ -153,7 +153,7 @@ void GenerateForMission() {
         return;
     }
 
-    g_mapSide = (int32_t)mapSide;
+    g_mapSide = static_cast<int32_t>(mapSide);
     const long  cells    = mapSide - 1;          // quad cells per side
     const long  halfSide = Terrain::halfVerticesMapSide;
     const float wupv     = Terrain::worldUnitsPerVertex;
@@ -165,11 +165,11 @@ void GenerateForMission() {
     // World X/Y from map indices match buildRecipeSlot exactly
     // (gos_terrain_indirect.cpp:639-646); elevation + normal come from the
     // node's own PostcompVertex (the SAME stock source buildRecipeSlot reads).
-    const size_t nNodes = (size_t)mapSide * (size_t)mapSide;
+    const size_t nNodes = static_cast<size_t>(mapSide) * static_cast<size_t>(mapSide);
     g_vertices.resize(nNodes);
     for (long my = 0; my < mapSide; ++my) {
         for (long mx = 0; mx < mapSide; ++mx) {
-            const size_t vn = (size_t)mx + (size_t)my * (size_t)mapSide;
+            const size_t vn = static_cast<size_t>(mx) + static_cast<size_t>(my) * static_cast<size_t>(mapSide);
             const PostcompVertex& p = blocks[mx + my * mapSide];
             TerrainSurfaceVertex& v = g_vertices[vn];
             v.px = float(mx - halfSide) * wupv;
@@ -203,26 +203,26 @@ void GenerateForMission() {
     // total index set is byte-identical, only reordered. Partial edge blocks
     // (cells not divisible by kBlockCells) are clamped per block so boundary
     // cells are emitted exactly once -- no dupes, no drops.
-    const size_t nCells = (size_t)cells * (size_t)cells;
+    const size_t nCells = static_cast<size_t>(cells) * static_cast<size_t>(cells);
     g_indices.reserve(nCells * kSurfaceIndicesPerCell);
     g_tiles.resize(nCells);
     g_adjacency.resize(nCells);
 
-    const long bc = (long)mc2_terrain_surface_bands::kBlockCells;
+    const long bc = static_cast<long>(mc2_terrain_surface_bands::kBlockCells);
     for (long by = 0; by < cells; by += bc) {
       const long myEnd = (by + bc < cells) ? (by + bc) : cells;
       for (long bx = 0; bx < cells; bx += bc) {
         const long mxEnd = (bx + bc < cells) ? (bx + bc) : cells;
         for (long my = by; my < myEnd; ++my) {
           for (long mx = bx; mx < mxEnd; ++mx) {
-            const size_t cell = (size_t)mx + (size_t)my * (size_t)cells;
+            const size_t cell = static_cast<size_t>(mx) + static_cast<size_t>(my) * static_cast<size_t>(cells);
 
             // Corner node vertexNums (top-left = vn0; matches buildRecipeSlot
             // corner layout v0..v3).
-            const uint32_t c0 = (uint32_t)( mx       +  my       * mapSide); // (mx,  my)
-            const uint32_t c1 = (uint32_t)((mx + 1)  +  my       * mapSide); // (mx+1,my)
-            const uint32_t c2 = (uint32_t)((mx + 1)  + (my + 1)  * mapSide); // (mx+1,my+1)
-            const uint32_t c3 = (uint32_t)( mx       + (my + 1)  * mapSide); // (mx,  my+1)
+            const uint32_t c0 = static_cast<uint32_t>(( mx       +  my       * mapSide)); // (mx,  my)
+            const uint32_t c1 = static_cast<uint32_t>(((mx + 1)  +  my       * mapSide)); // (mx+1,my)
+            const uint32_t c2 = static_cast<uint32_t>(((mx + 1)  + (my + 1)  * mapSide)); // (mx+1,my+1)
+            const uint32_t c3 = static_cast<uint32_t>(( mx       + (my + 1)  * mapSide)); // (mx,  my+1)
 
             // Diagonal parity per worldQuadUVMode(my, mx):
             //   BOTTOMRIGHT (not bottomleft): (0,1,2)+(0,2,3)
@@ -239,7 +239,7 @@ void GenerateForMission() {
             // the cell's top-left vertexNum, exactly how the armed path
             // resolves per-fragment material). Byte-for-byte from the recipe
             // so PR-2's per-fragment model is identical (design Section 2).
-            const int32_t vn0 = (int32_t)c0;
+            const int32_t vn0 = static_cast<int32_t>(c0);
             const TerrainQuadRecipe* rec =
                 gos_terrain_indirect::RecipeForVertexNum(vn0);
             TerrainSurfaceTile& t = g_tiles[cell];
@@ -257,10 +257,10 @@ void GenerateForMission() {
             // Per-edge adjacency: neighbor cell index, kSurfaceNoNeighbor at
             // the map edge. Edge order matches the schema header.
             TerrainSurfaceAdjacency& a = g_adjacency[cell];
-            a.nbrTop    = (my > 0)         ? (uint32_t)((size_t)mx + (size_t)(my - 1) * (size_t)cells) : kSurfaceNoNeighbor;
-            a.nbrRight  = (mx < cells - 1) ? (uint32_t)((size_t)(mx + 1) + (size_t)my * (size_t)cells) : kSurfaceNoNeighbor;
-            a.nbrBottom = (my < cells - 1) ? (uint32_t)((size_t)mx + (size_t)(my + 1) * (size_t)cells) : kSurfaceNoNeighbor;
-            a.nbrLeft   = (mx > 0)         ? (uint32_t)((size_t)(mx - 1) + (size_t)my * (size_t)cells) : kSurfaceNoNeighbor;
+            a.nbrTop    = (my > 0)         ? static_cast<uint32_t>((static_cast<size_t>(mx) + static_cast<size_t>((my - 1)) * static_cast<size_t>(cells))) : kSurfaceNoNeighbor;
+            a.nbrRight  = (mx < cells - 1) ? static_cast<uint32_t>((static_cast<size_t>((mx + 1)) + static_cast<size_t>(my) * static_cast<size_t>(cells))) : kSurfaceNoNeighbor;
+            a.nbrBottom = (my < cells - 1) ? static_cast<uint32_t>((static_cast<size_t>(mx) + static_cast<size_t>((my + 1)) * static_cast<size_t>(cells))) : kSurfaceNoNeighbor;
+            a.nbrLeft   = (mx > 0)         ? static_cast<uint32_t>((static_cast<size_t>((mx - 1)) + static_cast<size_t>(my) * static_cast<size_t>(cells))) : kSurfaceNoNeighbor;
           }
         }
       }
@@ -312,16 +312,16 @@ void RegenerateForMission() {
 }
 
 bool     IsGenerated()       { return g_generated; }
-uint32_t GetVertexCount()    { return (uint32_t)g_vertices.size(); }
-uint32_t GetIndexCount()     { return (uint32_t)g_indices.size(); }
-uint32_t GetTileCount()      { return (uint32_t)g_tiles.size(); }
-uint32_t GetAdjacencyCount() { return (uint32_t)g_adjacency.size(); }
+uint32_t GetVertexCount()    { return static_cast<uint32_t>(g_vertices.size()); }
+uint32_t GetIndexCount()     { return static_cast<uint32_t>(g_indices.size()); }
+uint32_t GetTileCount()      { return static_cast<uint32_t>(g_tiles.size()); }
+uint32_t GetAdjacencyCount() { return static_cast<uint32_t>(g_adjacency.size()); }
 int32_t  GetMapSide()        { return g_mapSide; }
 
 // PR-2 GPU-upload accessors -- read-only views into the mission-static CPU
 // buffers. Empty/null when not generated (the bridge guards on IsGenerated()).
-const void* GetVertexData()  { return g_vertices.empty() ? nullptr : (const void*)g_vertices.data(); }
-const void* GetIndexData()   { return g_indices.empty()  ? nullptr : (const void*)g_indices.data();  }
+const void* GetVertexData()  { return g_vertices.empty() ? nullptr : static_cast<const void*>(g_vertices.data()); }
+const void* GetIndexData()   { return g_indices.empty()  ? nullptr : static_cast<const void*>(g_indices.data());  }
 // META-FIX 2026-05-19: surface VS forwards REAL per-tile varyings (Texcoord /
 // TerrainType) from this per-tile material table instead of PR-2 placeholders.
 // The table is keyed by ROW-MAJOR cell id (mx + my*cells), exactly how
@@ -330,7 +330,7 @@ const void* GetIndexData()   { return g_indices.empty()  ? nullptr : (const void
 // the VS recovers the row-major key from the cell's top-left vertexNum). 32 B /
 // TerrainSurfaceTile std430 lockstep with shaders/include/gos_terrain_surface_
 // schema.hglsl. Empty/null when not generated (bridge guards on IsGenerated()).
-const void* GetTileData()    { return g_tiles.empty()    ? nullptr : (const void*)g_tiles.data();    }
+const void* GetTileData()    { return g_tiles.empty()    ? nullptr : static_cast<const void*>(g_tiles.data());    }
 uint32_t    GetGenerationEpoch() { return g_genEpoch; }
 
 // ---------------------------------------------------------------------------
@@ -343,7 +343,7 @@ uint32_t GetBlocksPerSide() {
     if (!g_generated || g_mapSide <= 1) return 0u;
     const int32_t cells = g_mapSide - 1;
     const int32_t bc    = mc2_terrain_surface_bands::kBlockCells;
-    return (uint32_t)((cells + bc - 1) / bc);   // ceil
+    return static_cast<uint32_t>(((cells + bc - 1) / bc));   // ceil
 }
 
 uint32_t GetMaxOutputIndexCount() {
@@ -355,10 +355,10 @@ uint32_t GetMaxOutputIndexCount() {
     // carries an explicit outIndices.length() append guard).
     const uint32_t bps = GetBlocksPerSide();
     if (bps == 0u) return 0u;
-    const uint64_t bc      = (uint64_t)mc2_terrain_surface_bands::kBlockCells;
+    const uint64_t bc      = static_cast<uint64_t>(mc2_terrain_surface_bands::kBlockCells);
     const uint64_t perBlk  = bc * bc * 6ull;            // finest interior
-    const uint64_t total   = (uint64_t)bps * (uint64_t)bps * perBlk * 2ull;
-    return (uint32_t)total;
+    const uint64_t total   = static_cast<uint64_t>(bps) * static_cast<uint64_t>(bps) * perBlk * 2ull;
+    return static_cast<uint32_t>(total);
 }
 
 } // namespace gos_terrain_surface

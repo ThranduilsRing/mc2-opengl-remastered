@@ -163,9 +163,9 @@ void SpawnCard(const gosFX::Card__Specification* spec,
     p.color[3]    = a;
     // Card has no per-particle velocity (it's a billboard locked to the
     // parent transform in the legacy path). Leave velocity[] at zero.
-    p.lifetime    = (lifetime > 0.0f) ? (float)lifetime : 1.0f;
+    p.lifetime    = (lifetime > 0.0f) ? static_cast<float>(lifetime) : 1.0f;
     p.age         = 0.0f;
-    p.size        = (float)radius;
+    p.size        = static_cast<float>(radius);
     // atlasIndex carries the raw MLR pool index; Batcher::ResolveTextures()
     // converts it to a gos_TextureHandle after renderLists() / LoadImages().
     p.atlasIndex  = mlrTexHandle;

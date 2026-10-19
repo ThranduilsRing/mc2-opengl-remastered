@@ -34,7 +34,7 @@ public:
     // Returns the override clip for (mechName, gesture), or nullptr for none.
     const AnimOverrideRecord* resolve(const char* mechName,
                                       const char* gesture) const;
-    int count() const { return (int)records_.size(); }
+    int count() const { return static_cast<int>(records_.size()); }
     // Lazy singleton: loads base data/anim_overrides/anims.json then merges the
     // active mod's manifest (MC2_ACTIVE_MOD) on first use. Cheap no-op when
     // neither manifest exists.

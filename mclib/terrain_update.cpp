@@ -56,7 +56,7 @@ static uint8_t chooseLodLevel(float distSq, uint8_t prevLevel)
 {
     const int forceLod = lodForceLevel();
     if (forceLod >= 0)
-        return (uint8_t)(forceLod > 5 ? 5 : forceLod);
+        return static_cast<uint8_t>((forceLod > 5 ? 5 : forceLod));
 
     const float s_distScale = lodDistScale();
 
@@ -64,7 +64,7 @@ static uint8_t chooseLodLevel(float distSq, uint8_t prevLevel)
     for (int k = 0; k < 5; ++k) {
         float t = LOD_DIST_THRESH[k] * s_distScale;
         if (distSq < t * t) {
-            desired = (uint8_t)k;
+            desired = static_cast<uint8_t>(k);
             break;
         }
     }
@@ -134,7 +134,7 @@ long Terrain::update (void)
 				continue;
 			++samples;
 			const float legGame = getTerrainElevation(pos);
-			const int   legMat  = (int)getTerrainType(pos);
+			const int   legMat  = static_cast<int>(getTerrainType(pos));
 			if (TerrainRuntime::sampleGameplayHeight(pos) != legGame)  ++mismGame;
 			if (TerrainRuntime::sampleVisualHeight(pos)   != legGame)  ++mismVis;
 			if (TerrainRuntime::sampleMaterialId(pos)     != legMat)   ++mismMat;
@@ -205,7 +205,7 @@ long Terrain::update (void)
 		// Phase 10.2b: ensure the per-command skirt edge-mask array can hold one
 		// entry per block (Pass 3 writes s_skirtEdgeMaskVec[s_cmdCount]).
 		{
-			const size_t need = (size_t)s_terrainChunkSide * (size_t)s_terrainChunkSide;
+			const size_t need = static_cast<size_t>(s_terrainChunkSide) * static_cast<size_t>(s_terrainChunkSide);
 			if (s_skirtEdgeMaskVec.size() < need)
 				s_skirtEdgeMaskVec.resize(need, 0);
 			if (s_stitchStepVec.size() < need)
@@ -257,14 +257,14 @@ long Terrain::update (void)
 				float dot = a*px + b*py + c*pz + d;
 				mc2::fmt::print_out("[TerrainLOD v1] DIAG plane[{:d}]={} ({:.4f},{:.4f},{:.4f},{:.4f}) pv=({:.1f},{:.1f},{:.1f}) dot={:.4f} {}\n", mc2::fmt::as_i32(p), mc2::fmt::safe(planeNames[p]), a, b, c, d, px, py, pz, dot, mc2::fmt::safe(dot>=0.0f?"PASS":"FAIL"));
 			}
-			mc2::fmt::print_out("[TerrainLOD v1] DIAG noCull={:d} superchunks={:d} blocks={:d}\n", mc2::fmt::as_i32((int)s_noCull), mc2::fmt::as_i32(s_superchunkSide * s_superchunkSide), mc2::fmt::as_i32(s_terrainChunkSide * s_terrainChunkSide));
+			mc2::fmt::print_out("[TerrainLOD v1] DIAG noCull={:d} superchunks={:d} blocks={:d}\n", mc2::fmt::as_i32(static_cast<int>(s_noCull)), mc2::fmt::as_i32(s_superchunkSide * s_superchunkSide), mc2::fmt::as_i32(s_terrainChunkSide * s_terrainChunkSide));
 			fflush(stdout);
 
 			// --- 4-point vertex parity: legacy tileColToWorldCoord vs chunk formula ---
 			// Confirms the two formulas agree on world position for 4 corner samples.
 			// Points: (0,0), (side-1,0), (0,side-1), (side/2,side/2).
 			if (mapData && mapData->getBlocks() && tileColToWorldCoord && tileRowToWorldCoord) {
-				int side = (int)realVerticesMapSide;
+				int side = static_cast<int>(realVerticesMapSide);
 				int samples[4][2] = {
 					{0, 0},
 					{side - 1, 0},
@@ -419,7 +419,7 @@ long Terrain::update (void)
 			{
 				const int side = s_terrainChunkSide;
 				static std::vector<uint8_t> s_visSnap;
-				s_visSnap.assign((size_t)side * side, 0);
+				s_visSnap.assign(static_cast<size_t>(side) * side, 0);
 				for (int i = 0; i < side * side; ++i)
 					s_visSnap[i] = s_blockMeta[i].inFrustum ? 1 : 0;
 				for (int by = 0; by < side; ++by)
@@ -458,7 +458,7 @@ long Terrain::update (void)
 			{
 				TerrainBlockMeta& bm = s_blockMeta[i];
 				if (bm.inFrustum && bm.hasConcrete && bm.lodLevel > (unsigned char)s_cementMaxLod)
-					bm.lodLevel = (unsigned char)s_cementMaxLod;
+					bm.lodLevel = static_cast<unsigned char>(s_cementMaxLod);
 			}
 		}
 
@@ -495,7 +495,7 @@ long Terrain::update (void)
 							if (ny < 0 || ny >= s_terrainChunkSide) continue;
 							TerrainBlockMeta& nbm = s_blockMeta[nx + ny * s_terrainChunkSide];
 							if (!nbm.inFrustum) continue;
-							int delta = (int)bm.lodLevel - (int)nbm.lodLevel;
+							int delta = static_cast<int>(bm.lodLevel) - static_cast<int>(nbm.lodLevel);
 							if (delta > 1) {
 								bm.lodLevel = nbm.lodLevel + 1;
 								lodChanged = true;
@@ -583,7 +583,7 @@ long Terrain::update (void)
 				tierChunks[shadowTier]++;
 				// World-area of this chunk = quads * (128*128) world-units^2.
 				tierArea[shadowTier] +=
-					(double)bm.quadCountX * (double)bm.quadCountY * (128.0 * 128.0);
+					static_cast<double>(bm.quadCountX) * static_cast<double>(bm.quadCountY) * (128.0 * 128.0);
 				s_drawCmds[s_cmdCount].blockOriginX     = bm.originX;
 				s_drawCmds[s_cmdCount].blockOriginY     = bm.originY;
 				s_drawCmds[s_cmdCount].lodStep          = LOD_STEPS[bm.lodLevel];
@@ -628,10 +628,10 @@ long Terrain::update (void)
 								s_blockMeta[nx + ny * s_terrainChunkSide];
 							if (!s_noSkirts &&
 								(!nbm.inFrustum || nbm.lodLevel != bm.lodLevel))
-								edgeMask |= (uint8_t)(1u << e);  // skirt backstop
+								edgeMask |= static_cast<uint8_t>((1u << e));  // skirt backstop
 							if (!s_noStitch && nbm.inFrustum &&
 								nbm.lodLevel > bm.lodLevel)      // coarser visible neighbour
-								stitch |= ((uint32_t)(LOD_STEPS[nbm.lodLevel] & 0xFF))
+								stitch |= (static_cast<uint32_t>((LOD_STEPS[nbm.lodLevel] & 0xFF)))
 										  << (e * 8);            // edge order N,S,W,E -> byte 0..3
 						}
 					}
@@ -697,7 +697,7 @@ long Terrain::update (void)
 				buf[pos] = '\0';
 				// Camera east/north already computed above as eyeX/eyeY.
 				mc2::fmt::print_out("[BlockSet] frame={:d} cmds={:d} cam=({:.0f},{:.0f}) blocks={}\n",
-					mc2::fmt::as_u32((unsigned long)gCurrentFrame), mc2::fmt::as_i32(s_cmdCount), eyeX, eyeY, mc2::fmt::safe(buf));
+					mc2::fmt::as_u32(static_cast<unsigned long>(gCurrentFrame)), mc2::fmt::as_i32(s_cmdCount), eyeX, eyeY, mc2::fmt::safe(buf));
 				fflush(stdout);
 			}
 		}
@@ -716,7 +716,7 @@ long Terrain::update (void)
 				        : (step == 10) ? 4 : 5;
 				lodCounts[lvl]++;
 			}
-			mc2::fmt::print_out("[TerrainLOD v1] frame={:d} cmds={:d} LOD0={:d} LOD1={:d} LOD2={:d} LOD3={:d} LOD4={:d} LOD5={:d}\n", mc2::fmt::as_u32((unsigned long)gCurrentFrame), mc2::fmt::as_i32(s_cmdCount), mc2::fmt::as_i32(lodCounts[0]), mc2::fmt::as_i32(lodCounts[1]), mc2::fmt::as_i32(lodCounts[2]), mc2::fmt::as_i32(lodCounts[3]), mc2::fmt::as_i32(lodCounts[4]), mc2::fmt::as_i32(lodCounts[5]));
+			mc2::fmt::print_out("[TerrainLOD v1] frame={:d} cmds={:d} LOD0={:d} LOD1={:d} LOD2={:d} LOD3={:d} LOD4={:d} LOD5={:d}\n", mc2::fmt::as_u32(static_cast<unsigned long>(gCurrentFrame)), mc2::fmt::as_i32(s_cmdCount), mc2::fmt::as_i32(lodCounts[0]), mc2::fmt::as_i32(lodCounts[1]), mc2::fmt::as_i32(lodCounts[2]), mc2::fmt::as_i32(lodCounts[3]), mc2::fmt::as_i32(lodCounts[4]), mc2::fmt::as_i32(lodCounts[5]));
 			fflush(stdout);
 		}
 
@@ -728,7 +728,7 @@ long Terrain::update (void)
 			if (s_cmdCount > 0) s_wasNonZero = true;
 			if (s_cmdCount == 0 && s_wasNonZero && !s_firstZeroDone) {
 				s_firstZeroDone = true;
-				mc2::fmt::print_out("[TerrainLOD v1] FIRST_ZERO frame={:d} cam=({:.1f},{:.1f},{:.1f})\n", mc2::fmt::as_u32((unsigned long)gCurrentFrame), camOriginLod.x, camOriginLod.y, camOriginLod.z);
+				mc2::fmt::print_out("[TerrainLOD v1] FIRST_ZERO frame={:d} cam=({:.1f},{:.1f},{:.1f})\n", mc2::fmt::as_u32(static_cast<unsigned long>(gCurrentFrame)), camOriginLod.x, camOriginLod.y, camOriginLod.z);
 				static const char* pnz[6] = {"left","right","bottom","top","near","far"};
 				for (int p = 0; p < 6; p++) {
 					float a = planes[p][0], b = planes[p][1], c = planes[p][2], d = planes[p][3];
@@ -750,7 +750,7 @@ long Terrain::update (void)
 			if (s_cmdCount == 0 && gCurrentFrame > 10) {
 				++s_lodZeroCmdFrames;
 				if (s_lodZeroCmdFrames == 60 || s_lodZeroCmdFrames % 300 == 0)
-					mc2::fmt::print_out("[TerrainLOD v1] ERROR: enabled but zero draw commands (frame={:d} streak={:d})\n", mc2::fmt::as_u32((unsigned long)gCurrentFrame), mc2::fmt::as_i32(s_lodZeroCmdFrames));
+					mc2::fmt::print_out("[TerrainLOD v1] ERROR: enabled but zero draw commands (frame={:d} streak={:d})\n", mc2::fmt::as_u32(static_cast<unsigned long>(gCurrentFrame)), mc2::fmt::as_i32(s_lodZeroCmdFrames));
 			} else {
 				s_lodZeroCmdFrames = 0;
 			}

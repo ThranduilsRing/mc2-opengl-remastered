@@ -469,9 +469,9 @@ Parse:
 			ProcessLine(stream, macro_tree, page, p);
 	}
 	if (comment_mode)
-		PAUSE(("There is a missing */ in %s", (const char*)m_fileName));
+		PAUSE(("There is a missing */ in %s", static_cast<const char*>(m_fileName)));
 	if (nested)
-		PAUSE(("There is a missing } in %s", (const char*)m_fileName));
+		PAUSE(("There is a missing } in %s", static_cast<const char*>(m_fileName)));
 
 	//
 	//------------------------------------------------------------------------

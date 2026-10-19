@@ -158,10 +158,10 @@ void crunchStatementMarker (void) {
 		syntaxError(ABL_ERR_SYNTAX_CODE_SEGMENT_OVERFLOW);
 	else {
 		char saveCode = *(--codeBufferPtr);
-		*codeBufferPtr = (char)TKN_STATEMENT_MARKER;
+		*codeBufferPtr = static_cast<char>(TKN_STATEMENT_MARKER);
 		codeBufferPtr++;
 		if (IncludeDebugInfo) {
-			*((unsigned char*)codeBufferPtr) = (unsigned char)FileNumber;
+			*(reinterpret_cast<unsigned char*>(codeBufferPtr)) = static_cast<unsigned char>(FileNumber);
 			codeBufferPtr += sizeof(unsigned char);
 			putCode(codeBufferPtr, static_cast<int>(lineNumber));
 			codeBufferPtr += sizeof(int);
@@ -200,7 +200,7 @@ char* crunchAddressMarker (Address address) {
 		syntaxError(ABL_ERR_SYNTAX_CODE_SEGMENT_OVERFLOW);
 	else {
 		char saveCode = *(--codeBufferPtr);
-		*codeBufferPtr = (char)TKN_ADDRESS_MARKER;
+		*codeBufferPtr = static_cast<char>(TKN_ADDRESS_MARKER);
 		codeBufferPtr++;
 		saveCodeBufferPtr = codeBufferPtr;
 		putCode(codeBufferPtr, address);
@@ -250,7 +250,7 @@ void crunchByte (unsigned char value) {
 	if (codeBufferPtr >= (codeBuffer + MaxCodeBufferSize - 100))
 		syntaxError(ABL_ERR_SYNTAX_CODE_SEGMENT_OVERFLOW);
 	else {
-		*((unsigned char*)codeBufferPtr) = value;
+		*(reinterpret_cast<unsigned char*>(codeBufferPtr)) = value;
 		codeBufferPtr += sizeof(unsigned char);
 	}
 }
@@ -285,7 +285,7 @@ char* createCodeSegment (long& codeSegmentSize) {
 	// there. Caller-visible codeSegmentSize stays the actual bytecode
 	// length; no consumer needs updating.
 	// See docs/asan-follow-ups.md findings #5 / #6.
-	char* codeSegment = (char*)ABL_alloc(ABLPool::Code, codeSegmentSize + 1);
+	char* codeSegment = static_cast<char*>(ABL_alloc(ABLPool::Code, codeSegmentSize + 1));
 	if (!codeSegment)
 		ABL_Fatal(0, " ABL: Unable to AblCodeHeap->malloc code segment ");
 
@@ -316,7 +316,7 @@ int getCodeStatementMarker (void) {
 	int lineNum = -1;
 	if (codeToken == TKN_STATEMENT_MARKER) {
 		if (IncludeDebugInfo) {
-			FileNumber = *((unsigned char*)codeSegmentPtr);
+			FileNumber = *(reinterpret_cast<unsigned char*>(codeSegmentPtr));
 			codeSegmentPtr += sizeof(unsigned char);
 			lineNum = peekCode<int>(codeSegmentPtr);
 			codeSegmentPtr += sizeof(int);
@@ -351,7 +351,7 @@ int getCodeInteger (void) {
 
 unsigned char getCodeByte (void) {
 
-	unsigned char value = *((unsigned char*)codeSegmentPtr);
+	unsigned char value = *(reinterpret_cast<unsigned char*>(codeSegmentPtr));
 	codeSegmentPtr += sizeof(unsigned char);
 	return(value);
 }
@@ -378,7 +378,7 @@ void pop (void) {
 
 void getCodeToken (void) {
 
-	codeToken = (TokenCodeType)*codeSegmentPtr;
+	codeToken = static_cast<TokenCodeType>(*codeSegmentPtr);
 	codeSegmentPtr++;
 }
 
@@ -444,7 +444,7 @@ void pushStackFrameHeader (long oldLevel, long newLevel) {
 	// Make space for the return value...
 	pushInteger(0);
 
-	StackFrameHeaderPtr headerPtr = (StackFrameHeaderPtr)stackFrameBasePtr;
+	StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(stackFrameBasePtr);
 
 	//----------------------------------------------------------------------
 	// STATIC LINK
@@ -465,7 +465,7 @@ void pushStackFrameHeader (long oldLevel, long newLevel) {
 		// to the caller's stack frame. In ABL, as currently defined
 		// (2/22/96), this should only be when a module's code section is
 		// calling a function...
-		pushAddress((Address)headerPtr);
+		pushAddress(reinterpret_cast<Address>(headerPtr));
 		}
 	else if (newLevel == oldLevel) {
 		//---------------------------------------------------------------
@@ -478,7 +478,7 @@ void pushStackFrameHeader (long oldLevel, long newLevel) {
 		// Oops. We don't want nested functions, for now, in ABL.
 		runtimeError(ABL_ERR_RUNTIME_NESTED_FUNCTION_CALL);
 	}
-	pushAddress((Address)stackFrameBasePtr);
+	pushAddress(reinterpret_cast<Address>(stackFrameBasePtr));
 
 	//---------------------------
 	// Push the return address...
@@ -492,7 +492,7 @@ void allocLocal (TypePtr typePtr) {
 	if (typePtr == IntegerTypePtr)
 		pushInteger(0);
 	else if (typePtr == RealTypePtr)
-		pushReal((float)0.0);
+		pushReal(static_cast<float>(0.0));
 	else if (typePtr == BooleanTypePtr)
 		pushByte(0);
 	else if (typePtr == CharTypePtr)
@@ -508,10 +508,10 @@ void allocLocal (TypePtr typePtr) {
 //				allocLocal(typePtr->info.subrange.rangeTypePtr);
 //				break;
 			case FRM_ARRAY:
-				char* ptr = (char*)ABL_alloc(ABLPool::Stack, typePtr->size);
+				char* ptr = static_cast<char*>(ABL_alloc(ABLPool::Stack, typePtr->size));
 				if (!ptr)
 					ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc local array ");
-				pushAddress((Address)ptr);
+				pushAddress(reinterpret_cast<Address>(ptr));
 				break;
 		}
 }
@@ -549,7 +549,7 @@ void freeLocal (SymTableNodePtr idPtr) {
 			// free() faults in RtlFreeHeap (routineExit -> UserHeap::Free). Every real
 			// ABLStackMalloc pointer is heap-aligned and non-null, so skip the free for
 			// any null / unaligned / all-ones-low-word pointer instead of crashing.
-			unsigned long long a = (unsigned long long)itemPtr->address;
+			unsigned long long a = reinterpret_cast<unsigned long long>(itemPtr->address);
 			bool plausible = (a != 0ull)
 			              && ((a & 0x7ull) == 0ull)                 // 8-byte aligned
 			              && ((a & 0xFFFFFFFFull) != 0xFFFFFFFFull); // not the -1 sentinel
@@ -611,7 +611,7 @@ void routineExit (SymTableNodePtr routineIdPtr) {
 		if (idPtr->defn.info.data.varType == VAR_TYPE_NORMAL)
 			freeLocal(idPtr);
 
-	StackFrameHeaderPtr headerPtr = (StackFrameHeaderPtr)stackFrameBasePtr;
+	StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(stackFrameBasePtr);
 	codeSegmentPtr = headerPtr->returnAddress.address;
 
 	if (routineIdPtr->typePtr == nullptr)
@@ -619,7 +619,7 @@ void routineExit (SymTableNodePtr routineIdPtr) {
 	else
 		tos = stackFrameBasePtr;
 
-	stackFrameBasePtr = (StackItemPtr)headerPtr->dynamicLink.address;
+	stackFrameBasePtr = reinterpret_cast<StackItemPtr>(headerPtr->dynamicLink.address);
 }
 
 //***************************************************************************

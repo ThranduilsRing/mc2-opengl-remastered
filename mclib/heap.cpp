@@ -137,7 +137,7 @@ MemoryPtr HeapManager::getHeapPtr (void)
 //---------------------------------------------------------------------------
 long HeapManager::createHeap (unsigned long memSize)
 {
-	heap = (MemoryPtr)VirtualAlloc(nullptr,memSize,MEM_RESERVE,PAGE_READWRITE);
+	heap = static_cast<MemoryPtr>(VirtualAlloc(nullptr,memSize,MEM_RESERVE,PAGE_READWRITE));
 
 	if (heap)
 	{
@@ -173,7 +173,7 @@ long HeapManager::commitHeap (unsigned long commitSize)
 		commitSize = memLeft;
 	}
 
-	MemoryPtr result = (MemoryPtr)VirtualAlloc(heap,commitSize,MEM_COMMIT,PAGE_READWRITE);
+	MemoryPtr result = static_cast<MemoryPtr>(VirtualAlloc(heap,commitSize,MEM_COMMIT,PAGE_READWRITE));
 
 	if (result == heap)
 	{
@@ -479,13 +479,13 @@ void HeapList::update (void)
 	{
 		if (heapRecords[i].thisHeap && (heapRecords[i].thisHeap->heapType() == USER_HEAP))
 		{
-			heapRecords[i].heapSize = ((UserHeapPtr)heapRecords[i].thisHeap)->tSize();
+			heapRecords[i].heapSize = (static_cast<UserHeapPtr>(heapRecords[i].thisHeap))->tSize();
 			totalSize += heapRecords[i].heapSize;
 
-			heapRecords[i].coreLeft = ((UserHeapPtr)heapRecords[i].thisHeap)->coreLeft();
+			heapRecords[i].coreLeft = (static_cast<UserHeapPtr>(heapRecords[i].thisHeap))->coreLeft();
 			totalLeft += heapRecords[i].coreLeft;
 
-			heapRecords[i].totalCoreLeft = ((UserHeapPtr)heapRecords[i].thisHeap)->totalCoreLeft();
+			heapRecords[i].totalCoreLeft = (static_cast<UserHeapPtr>(heapRecords[i].thisHeap))->totalCoreLeft();
 			totalCoreLeft += heapRecords[i].totalCoreLeft;
 		}
 		else if (heapRecords[i].thisHeap)
@@ -572,14 +572,14 @@ long getStringFromMap (File &mapFile, unsigned long addr, char *result)
 	char mapFileLine[512];
 	
 	mapFile.seek(0);
-	mapFile.readLine((MemoryPtr)mapFileLine,511);
+	mapFile.readLine(reinterpret_cast<MemoryPtr>(mapFileLine),511);
 	while (strstr(mapFileLine,"  Address") == nullptr)
 	{
-		mapFile.readLine((MemoryPtr)mapFileLine,511);
+		mapFile.readLine(reinterpret_cast<MemoryPtr>(mapFileLine),511);
 	}
 	
-	mapFile.readLine((MemoryPtr)mapFileLine,511);
-	mapFile.readLine((MemoryPtr)mapFileLine,511);
+	mapFile.readLine(reinterpret_cast<MemoryPtr>(mapFileLine),511);
+	mapFile.readLine(reinterpret_cast<MemoryPtr>(mapFileLine),511);
 	//-------------------------------------------------------------
 	// We've found the first code entry.  Now, scan until
 	// the current address is greater than the address asked for.
@@ -599,7 +599,7 @@ long getStringFromMap (File &mapFile, unsigned long addr, char *result)
 		}
 		
 		strncpy(previousAddress,&(mapFileLine[6]),510);
-		mapFile.readLine((MemoryPtr)mapFileLine,511);
+		mapFile.readLine(reinterpret_cast<MemoryPtr>(mapFileLine),511);
 	}
 	
 	return(0);
@@ -660,7 +660,7 @@ void HeapList::dumpLog (void)
 			
 			if (currentHeap->heapType() == 1)
 			{
-				UserHeapPtr userHeap = (UserHeapPtr)currentHeap;
+				UserHeapPtr userHeap = static_cast<UserHeapPtr>(currentHeap);
 				mc2::fmt::to_buf(msg, "TotalCoreLeft: {:d}     CoreLeft: {:d}", mc2::fmt::as_i32(userHeap->totalCoreLeft()), mc2::fmt::as_i32(userHeap->coreLeft()));
 				logFile.writeLine(msg);
 				

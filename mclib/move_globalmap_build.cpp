@@ -15,10 +15,10 @@ static int safeReadPacket(PacketFilePtr packetFile, int packetNum,
 {
     if (packetFile->seekPacket(packetNum) != NO_ERR)
         return 0;
-    size_t unpacked = (size_t)packetFile->getPacketSize();
+    size_t unpacked = static_cast<size_t>(packetFile->getPacketSize());
     if (unpacked > maxBytes) {
         PAUSE(("GlobalMap.init: %s packet %d unpack-size %u > buffer %u — bailing pre-corruption",
-               label, packetNum, (unsigned)unpacked, (unsigned)maxBytes));
+               label, packetNum, static_cast<unsigned>(unpacked), static_cast<unsigned>(maxBytes)));
         return -1;
     }
     return packetFile->readPacket(packetNum, buffer);
@@ -39,11 +39,11 @@ static int readDoorLinksMCO(PacketFilePtr packetFile, int packetNum,
             const unsigned char* p = tempBuf.data() + k * mcoStride;
             int doorIndexVal, costVal, openCostVal;
             memcpy(&doorIndexVal, p + 0, sizeof(int)); // MCO doorIndex(int,0)
-            char doorSideVal = (char)p[4];             // MCO doorSide(char,4)
+            char doorSideVal = static_cast<char>(p[4]);             // MCO doorSide(char,4)
             memcpy(&costVal,      p + 5, sizeof(int));  // MCO cost(int,5)
             memcpy(&openCostVal,  p + 9, sizeof(int));  // MCO openCost(int,9)
             gosASSERT(doorIndexVal >= -32768 && doorIndexVal <= 32767);
-            dst[k].doorIndex = (short)doorIndexVal;
+            dst[k].doorIndex = static_cast<short>(doorIndexVal);
             dst[k].doorSide  = doorSideVal;
             dst[k].cost      = costVal;
             dst[k].openCost  = openCostVal;
@@ -74,7 +74,7 @@ void GlobalMap::init (long w, long h) {
 
 	width = w;
 	height = h;
-	areaMap = mc2::globalmap::ownZeroed(areaMapStore, (size_t)w * (size_t)h);
+	areaMap = mc2::globalmap::ownZeroed(areaMapStore, static_cast<size_t>(w) * static_cast<size_t>(h));
 	for (long r = 0; r < height; r++)
 		for (long c = 0; c < width; c++)
 			areaMap[r * width + c] = -1;
@@ -99,39 +99,39 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	long startPacket = whichPacket;
 
 	uint32_t version = 0;
-	long result = packetFile->readPacket(whichPacket++, (unsigned char*)&version);
+	long result = packetFile->readPacket(whichPacket++, reinterpret_cast<unsigned char*>(&version));
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read version packet ");
 	bool badVersion = false;
 	if (version != GLOBALMAP_VERSION_NUMBER)
 		badVersion = true;
 
-	result = packetFile->readPacket(whichPacket++, (unsigned char*)&height);
+	result = packetFile->readPacket(whichPacket++, reinterpret_cast<unsigned char*>(&height));
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read height packet ");
-	result = packetFile->readPacket(whichPacket++, (unsigned char*)&width);
+	result = packetFile->readPacket(whichPacket++, reinterpret_cast<unsigned char*>(&width));
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read width packet ");
 	int sectorDim; // this is no longer used...
-	result = packetFile->readPacket(whichPacket++, (unsigned char*)&sectorDim);
+	result = packetFile->readPacket(whichPacket++, reinterpret_cast<unsigned char*>(&sectorDim));
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read sectorDim packet ");
-	result = packetFile->readPacket(whichPacket++, (unsigned char*)&sectorHeight);
+	result = packetFile->readPacket(whichPacket++, reinterpret_cast<unsigned char*>(&sectorHeight));
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read sectorHeight packet ");
-	result = packetFile->readPacket(whichPacket++, (unsigned char*)&sectorWidth);
+	result = packetFile->readPacket(whichPacket++, reinterpret_cast<unsigned char*>(&sectorWidth));
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read sectorWidth packet ");
-	result = packetFile->readPacket(whichPacket++, (unsigned char*)&numAreas);
+	result = packetFile->readPacket(whichPacket++, reinterpret_cast<unsigned char*>(&numAreas));
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read numAreas packet ");
-	result = packetFile->readPacket(whichPacket++, (unsigned char*)&numDoors);
+	result = packetFile->readPacket(whichPacket++, reinterpret_cast<unsigned char*>(&numDoors));
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read numDoors packet ");
-	result = packetFile->readPacket(whichPacket++, (unsigned char*)&numDoorInfos);
+	result = packetFile->readPacket(whichPacket++, reinterpret_cast<unsigned char*>(&numDoorInfos));
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read numDoorInfos packet ");
-	result = packetFile->readPacket(whichPacket++, (unsigned char*)&numDoorLinks);
+	result = packetFile->readPacket(whichPacket++, reinterpret_cast<unsigned char*>(&numDoorLinks));
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read numDoorLinks packet ");
 
@@ -181,16 +181,16 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	bool mcoWideSchema = false;
 	{
 		packetFile->seekPacket(whichPacket);
-		size_t amSize = (size_t)packetFile->getPacketSize();
+		size_t amSize = static_cast<size_t>(packetFile->getPacketSize());
 		if (height > 0 && width > 0 &&
-		    amSize == MCO_AREAMAP_CELL_SIZE * (size_t)height * (size_t)width)
+		    amSize == MCO_AREAMAP_CELL_SIZE * static_cast<size_t>(height) * static_cast<size_t>(width))
 			mcoWideSchema = true;
 		// Confirming guard: the areas packet (whichPacket + 1) must unpack to
 		// exactly the MCO area stride * numAreas, else this is not MCO.
 		if (mcoWideSchema) {
 			packetFile->seekPacket(whichPacket + 1);
-			size_t areasSize = (size_t)packetFile->getPacketSize();
-			if (areasSize != MCO_AREA_SIZE * (size_t)numAreas)
+			size_t areasSize = static_cast<size_t>(packetFile->getPacketSize());
+			if (areasSize != MCO_AREA_SIZE * static_cast<size_t>(numAreas))
 				mcoWideSchema = false;
 		}
 		packetFile->seekPacket(whichPacket);
@@ -205,7 +205,7 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	if (mcoWideSchema) {
 		// MCO: areaMap is RAW int-per-cell. Allocate the real narrow array at
 		// the MC2 size; read the wide cells into a temp buffer and narrow.
-		size_t cellCount = (size_t)height * (size_t)width;
+		size_t cellCount = static_cast<size_t>(height) * static_cast<size_t>(width);
 		areaMap = mc2::globalmap::ownZeroed(areaMapStore, cellCount);
 		std::vector<unsigned char> tempBuf(MCO_AREAMAP_CELL_SIZE * cellCount);
 		result = safeReadPacket(packetFile, whichPacket++, tempBuf.data(), tempBuf.size(), "areaMap(MCO)");
@@ -214,13 +214,13 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 				int v;
 				memcpy(&v, tempBuf.data() + c * MCO_AREAMAP_CELL_SIZE, sizeof(int));
 				gosASSERT(v >= -32768 && v <= 32767);
-				areaMap[c] = (short)v;
+				areaMap[c] = static_cast<short>(v);
 			}
 		}
 	} else {
 		packetFile->seekPacket(whichPacket);
-		size_t packetSize = (size_t)packetFile->getPacketSize();
-		size_t expected = sizeof(short) * (size_t)height * (size_t)width;
+		size_t packetSize = static_cast<size_t>(packetFile->getPacketSize());
+		size_t expected = sizeof(short) * static_cast<size_t>(height) * static_cast<size_t>(width);
 		size_t allocSize = mc2::globalmap::tolerantBytes(packetSize, expected);
 		if (allocSize == 0) {
 			MC2_LOG(Io, Error, "move: global move map areaMap packet is {} bytes, expected {}; the map is not loaded", packetSize, expected);
@@ -228,7 +228,7 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 			return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
 		}
 		areaMap = mc2::globalmap::ownZeroed(areaMapStore, (allocSize + sizeof(short) - 1) / sizeof(short));
-		result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)areaMap,
+		result = safeReadPacket(packetFile, whichPacket++, reinterpret_cast<unsigned char*>(areaMap),
 		                        areaMapStore.size() * sizeof(short), "areaMap");
 	}
 	if (result < 0) {
@@ -244,14 +244,14 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		// MCO GlobalMapArea is 31 bytes (shorts widened to int). Read into a
 		// temp buffer at MCO stride and widen field-by-field into the real
 		// narrow MC2 areas[] array.
-		areas = mc2::globalmap::ownZeroed(areasStore, (size_t)numAreas);
-		areas_cellsCovered = mc2::globalmap::ownZeroed(areasCellsCoveredStore, (size_t)numAreas);
-		areas_doors = mc2::globalmap::ownZeroed(areasDoorsStore, (size_t)numAreas);
-		std::vector<unsigned char> tempBuf(MCO_AREA_SIZE * (size_t)numAreas);
+		areas = mc2::globalmap::ownZeroed(areasStore, static_cast<size_t>(numAreas));
+		areas_cellsCovered = mc2::globalmap::ownZeroed(areasCellsCoveredStore, static_cast<size_t>(numAreas));
+		areas_doors = mc2::globalmap::ownZeroed(areasDoorsStore, static_cast<size_t>(numAreas));
+		std::vector<unsigned char> tempBuf(MCO_AREA_SIZE * static_cast<size_t>(numAreas));
 		result = safeReadPacket(packetFile, whichPacket++, tempBuf.data(), tempBuf.size(), "areas(MCO)");
 		if (result > 0) {
 			for (long i = 0; i < numAreas; i++) {
-				const unsigned char* p = tempBuf.data() + (size_t)i * MCO_AREA_SIZE;
+				const unsigned char* p = tempBuf.data() + static_cast<size_t>(i) * MCO_AREA_SIZE;
 				int sectorR, sectorC, typeVal, numDoorsVal, ownerWIDVal;
 				memcpy(&sectorR,     p + 0,  sizeof(int));   // MCO sectorR(int,0)
 				memcpy(&sectorC,     p + 4,  sizeof(int));   // MCO sectorC(int,4)
@@ -259,17 +259,17 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 				memcpy(&typeVal,     p + 12, sizeof(int));   // MCO type(int,12)
 				memcpy(&numDoorsVal, p + 16, sizeof(int));   // MCO numDoors(int,16)
 				memcpy(&ownerWIDVal, p + 20, sizeof(int));   // MCO ownerWID(int,20)
-				char teamIDVal = (char)p[24];                // MCO teamID(char,24)
+				char teamIDVal = static_cast<char>(p[24]);                // MCO teamID(char,24)
 				bool offMapVal  = (p[25] != 0);              // MCO offMap(bool,25)
 				bool openVal    = (p[26] != 0);              // MCO open(bool,26)
 				// skip cellsCovered_ptr(int,27)
 				gosASSERT(sectorR     >= -32768 && sectorR     <= 32767);
 				gosASSERT(sectorC     >= -32768 && sectorC     <= 32767);
 				gosASSERT(numDoorsVal >= -32768 && numDoorsVal <= 32767);
-				areas[i].sectorR  = (short)sectorR;
-				areas[i].sectorC  = (short)sectorC;
-				areas[i].type     = (AreaType)typeVal;
-				areas[i].numDoors = (short)numDoorsVal;
+				areas[i].sectorR  = static_cast<short>(sectorR);
+				areas[i].sectorC  = static_cast<short>(sectorC);
+				areas[i].type     = static_cast<AreaType>(typeVal);
+				areas[i].numDoors = static_cast<short>(numDoorsVal);
 				areas[i].ownerWID = ownerWIDVal;
 				areas[i].teamID   = teamIDVal;
 				areas[i].offMap   = offMapVal;
@@ -280,8 +280,8 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		}
 	} else {
 		packetFile->seekPacket(whichPacket);
-		size_t packetSize = (size_t)packetFile->getPacketSize();
-		size_t expected = sizeof(GlobalMapArea) * (size_t)numAreas;
+		size_t packetSize = static_cast<size_t>(packetFile->getPacketSize());
+		size_t expected = sizeof(GlobalMapArea) * static_cast<size_t>(numAreas);
 		size_t allocSize = mc2::globalmap::tolerantBytes(packetSize, expected);
 		if (allocSize == 0) {
 			MC2_LOG(Io, Error, "move: global move map areas packet is {} bytes, expected {}; the map is not loaded", packetSize, expected);
@@ -289,9 +289,9 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 			return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
 		}
 		areas = mc2::globalmap::ownZeroed(areasStore, (allocSize + sizeof(GlobalMapArea) - 1) / sizeof(GlobalMapArea));
-		areas_cellsCovered = mc2::globalmap::ownZeroed(areasCellsCoveredStore, (size_t)numAreas);
-		areas_doors = mc2::globalmap::ownZeroed(areasDoorsStore, (size_t)numAreas);
-		result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)areas,
+		areas_cellsCovered = mc2::globalmap::ownZeroed(areasCellsCoveredStore, static_cast<size_t>(numAreas));
+		areas_doors = mc2::globalmap::ownZeroed(areasDoorsStore, static_cast<size_t>(numAreas));
+		result = safeReadPacket(packetFile, whichPacket++, reinterpret_cast<unsigned char*>(areas),
 		                        areasStore.size() * sizeof(GlobalMapArea), "areas");
 	}
 	if (result < 0) {
@@ -311,7 +311,7 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	long actualDoorInfoSum = 0;
 	for (long i = 0; i < numAreas; i++) {
 		if (!mc2::globalmap::areaDoorCountInRange(areas[i].numDoors)) {
-			MC2_LOG(Io, Error, "move: global move map area {} claims {} doors; the map is not loaded", (int)i, (int)areas[i].numDoors);
+			MC2_LOG(Io, Error, "move: global move map area {} claims {} doors; the map is not loaded", static_cast<int>(i), static_cast<int>(areas[i].numDoors));
 			badLoad = true;
 			return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
 		}
@@ -320,10 +320,10 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	long doorInfoAllocCount = (actualDoorInfoSum > numDoorInfos) ? actualDoorInfoSum : numDoorInfos;
 	if (actualDoorInfoSum > numDoorInfos) {
 		PAUSE(("GlobalMap.init: doorInfo sum %d exceeds header numDoorInfos %d — growing buffer to %d",
-			(int)actualDoorInfoSum, (int)numDoorInfos, (int)doorInfoAllocCount));
+			static_cast<int>(actualDoorInfoSum), static_cast<int>(numDoorInfos), static_cast<int>(doorInfoAllocCount)));
 		numDoorInfos = doorInfoAllocCount;
 	}
-	doorInfos = mc2::globalmap::ownZeroed(doorInfosStore, (size_t)doorInfoAllocCount);
+	doorInfos = mc2::globalmap::ownZeroed(doorInfosStore, static_cast<size_t>(doorInfoAllocCount));
 	long curDoorInfo = 0;
 	bool doorInfoOverflow = false;
 	for (long i = 0; i < numAreas; i++)
@@ -332,7 +332,7 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 			// walk past the grown allocation.
 			if (curDoorInfo + areas[i].numDoors > doorInfoAllocCount) {
 				PAUSE(("GlobalMap.init: doorInfo overflow at area %d (have %d alloc, would need %d) — bailing pre-corruption",
-					(int)i, (int)doorInfoAllocCount, (int)(curDoorInfo + areas[i].numDoors)));
+					static_cast<int>(i), static_cast<int>(doorInfoAllocCount), static_cast<int>((curDoorInfo + areas[i].numDoors))));
 				doorInfoOverflow = true;
 				break;
 			}
@@ -340,7 +340,7 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 				// MCO DoorInfo is 5 bytes (doorIndex widened to int). Read the
 				// area's door infos into a temp buffer and widen into the real
 				// narrow doorInfos[] slice.
-				size_t n = (size_t)areas[i].numDoors;
+				size_t n = static_cast<size_t>(areas[i].numDoors);
 				std::vector<unsigned char> tempBuf(MCO_DOORINFO_SIZE * n);
 				result = safeReadPacket(packetFile, whichPacket++, tempBuf.data(), tempBuf.size(), "doorInfos[i](MCO)");
 				if (result > 0) {
@@ -348,14 +348,14 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 						const unsigned char* p = tempBuf.data() + d * MCO_DOORINFO_SIZE;
 						int doorIndexVal;
 						memcpy(&doorIndexVal, p + 0, sizeof(int)); // MCO doorIndex(int,0)
-						char doorSideVal = (char)p[4];             // MCO doorSide(char,4)
+						char doorSideVal = static_cast<char>(p[4]);             // MCO doorSide(char,4)
 						gosASSERT(doorIndexVal >= -32768 && doorIndexVal <= 32767);
-						doorInfos[curDoorInfo + (long)d].doorIndex = (short)doorIndexVal;
-						doorInfos[curDoorInfo + (long)d].doorSide  = doorSideVal;
+						doorInfos[curDoorInfo + static_cast<long>(d)].doorIndex = static_cast<short>(doorIndexVal);
+						doorInfos[curDoorInfo + static_cast<long>(d)].doorSide  = doorSideVal;
 					}
 				}
 			} else {
-			result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)&doorInfos[curDoorInfo],
+			result = safeReadPacket(packetFile, whichPacket++, reinterpret_cast<unsigned char*>(&doorInfos[curDoorInfo]),
 			                        sizeof(DoorInfo) * areas[i].numDoors, "doorInfos[i]");
 			}
 			if (result < 0) {
@@ -390,26 +390,26 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		// ints + char/bool fields unchanged; two link pointers skipped). Read
 		// into a temp buffer and widen into the real narrow doors[] array.
 		long doorCount = numDoors + NUM_DOOR_OFFSETS;
-		doors = mc2::globalmap::ownZeroed(doorsStore, (size_t)doorCount);
-		doors_links = ownDoorLinkViews((size_t)doorCount);
-		std::vector<unsigned char> tempBuf(MCO_DOOR_SIZE * (size_t)doorCount);
+		doors = mc2::globalmap::ownZeroed(doorsStore, static_cast<size_t>(doorCount));
+		doors_links = ownDoorLinkViews(static_cast<size_t>(doorCount));
+		std::vector<unsigned char> tempBuf(MCO_DOOR_SIZE * static_cast<size_t>(doorCount));
 		result = safeReadPacket(packetFile, whichPacket++, tempBuf.data(), tempBuf.size(), "doors(MCO)");
 		if (result > 0) {
 			for (long i = 0; i < doorCount; i++) {
-				const unsigned char* p = tempBuf.data() + (size_t)i * MCO_DOOR_SIZE;
+				const unsigned char* p = tempBuf.data() + static_cast<size_t>(i) * MCO_DOOR_SIZE;
 				GlobalMapDoor& d = doors[i];
 				int rowV, colV, area0, area1, areaCost0, areaCost1, numLinks0, numLinks1;
 				memcpy(&rowV,      p + 0,  sizeof(int)); // MCO row(int,0)
 				memcpy(&colV,      p + 4,  sizeof(int)); // MCO col(int,4)
-				char lengthV  = (char)p[8];              // MCO length(char,8)
+				char lengthV  = static_cast<char>(p[8]);              // MCO length(char,8)
 				bool openV    = (p[9] != 0);             // MCO open(bool,9)
-				char teamIDV  = (char)p[10];             // MCO teamID(char,10)
+				char teamIDV  = static_cast<char>(p[10]);             // MCO teamID(char,10)
 				memcpy(&area0,     p + 11, sizeof(int)); // MCO area[0](int,11)
 				memcpy(&area1,     p + 15, sizeof(int)); // MCO area[1](int,15)
 				memcpy(&areaCost0, p + 19, sizeof(int)); // MCO areaCost[0](int,19)
 				memcpy(&areaCost1, p + 23, sizeof(int)); // MCO areaCost[1](int,23)
-				char dir0     = (char)p[27];             // MCO direction[0](char,27)
-				char dir1     = (char)p[28];             // MCO direction[1](char,28)
+				char dir0     = static_cast<char>(p[27]);             // MCO direction[0](char,27)
+				char dir1     = static_cast<char>(p[28]);             // MCO direction[1](char,28)
 				memcpy(&numLinks0, p + 29, sizeof(int)); // MCO numLinks[0](int,29)
 				memcpy(&numLinks1, p + 33, sizeof(int)); // MCO numLinks[1](int,33)
 				// skip links_ptr[2] at MCO 37 & 41 (DWORD each)
@@ -430,19 +430,19 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 				gosASSERT(areaCost1  >= -32768 && areaCost1  <= 32767);
 				gosASSERT(numLinks0  >= -32768 && numLinks0  <= 32767);
 				gosASSERT(numLinks1  >= -32768 && numLinks1  <= 32767);
-				d.row          = (short)rowV;
-				d.col          = (short)colV;
+				d.row          = static_cast<short>(rowV);
+				d.col          = static_cast<short>(colV);
 				d.length       = lengthV;
 				d.open         = openV;
 				d.teamID       = teamIDV;
-				d.area[0]      = (short)area0;
-				d.area[1]      = (short)area1;
-				d.areaCost[0]  = (short)areaCost0;
-				d.areaCost[1]  = (short)areaCost1;
+				d.area[0]      = static_cast<short>(area0);
+				d.area[1]      = static_cast<short>(area1);
+				d.areaCost[0]  = static_cast<short>(areaCost0);
+				d.areaCost[1]  = static_cast<short>(areaCost1);
 				d.direction[0] = dir0;
 				d.direction[1] = dir1;
-				d.numLinks[0]  = (short)numLinks0;
-				d.numLinks[1]  = (short)numLinks1;
+				d.numLinks[0]  = static_cast<short>(numLinks0);
+				d.numLinks[1]  = static_cast<short>(numLinks1);
 				d.links_Legacy32bitPtr[0] = 0;
 				d.links_Legacy32bitPtr[1] = 0;
 				d.cost          = costV;
@@ -461,8 +461,8 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		}
 	} else {
 		packetFile->seekPacket(whichPacket);
-		size_t packetSize = (size_t)packetFile->getPacketSize();
-		size_t expected = sizeof(GlobalMapDoor) * (size_t)(numDoors + NUM_DOOR_OFFSETS);
+		size_t packetSize = static_cast<size_t>(packetFile->getPacketSize());
+		size_t expected = sizeof(GlobalMapDoor) * static_cast<size_t>((numDoors + NUM_DOOR_OFFSETS));
 		size_t allocSize = mc2::globalmap::tolerantBytes(packetSize, expected);
 		if (allocSize == 0) {
 			MC2_LOG(Io, Error, "move: global move map doors packet is {} bytes, expected {}; the map is not loaded", packetSize, expected);
@@ -470,8 +470,8 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 			return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
 		}
 		doors = mc2::globalmap::ownZeroed(doorsStore, (allocSize + sizeof(GlobalMapDoor) - 1) / sizeof(GlobalMapDoor));
-		doors_links = ownDoorLinkViews((size_t)(numDoors + NUM_DOOR_OFFSETS));
-		result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)doors,
+		doors_links = ownDoorLinkViews(static_cast<size_t>((numDoors + NUM_DOOR_OFFSETS)));
+		result = safeReadPacket(packetFile, whichPacket++, reinterpret_cast<unsigned char*>(doors),
 		                        doorsStore.size() * sizeof(GlobalMapDoor), "doors");
 	}
 	if (result < 0) {
@@ -481,7 +481,7 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read doors packet ");
 
-	doorLinks = mc2::globalmap::ownZeroed(doorLinksStore, (size_t)numDoorLinks);
+	doorLinks = mc2::globalmap::ownZeroed(doorLinksStore, static_cast<size_t>(numDoorLinks));
 	long numLinksRead = 0;
 	bool doorLinkOverflow = false;
 	for (int i = 0; i < (numDoors + NUM_DOOR_OFFSETS); i++) {
@@ -490,15 +490,15 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		// numDoorLinks refuses the map.
 		if (!mc2::globalmap::doorLinkCountInRange(doors[i].numLinks[0]) || numLinksRead + numLinks > numDoorLinks) {
 			PAUSE(("GlobalMap.init: doorLinks overflow at door %d/0 (have %d, would need %d) — bailing pre-corruption",
-				i, (int)numDoorLinks, (int)(numLinksRead + numLinks)));
+				i, static_cast<int>(numDoorLinks), static_cast<int>((numLinksRead + numLinks))));
 			doorLinkOverflow = true;
 			break;
 		}
 		if (mcoWideSchema) {
 			result = readDoorLinksMCO(packetFile, whichPacket++, &doorLinks[numLinksRead],
-			                          (size_t)numLinks, MCO_DOORLINK_SIZE);
+			                          static_cast<size_t>(numLinks), MCO_DOORLINK_SIZE);
 		} else {
-		result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)&doorLinks[numLinksRead],
+		result = safeReadPacket(packetFile, whichPacket++, reinterpret_cast<unsigned char*>(&doorLinks[numLinksRead]),
 		                        sizeof(DoorLink) * numLinks, "doorLinks[i][0]");
 		}
 		if (result < 0) { doorLinkOverflow = true; break; }
@@ -510,15 +510,15 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		numLinks = doors[i].numLinks[1] + NUM_EXTRA_DOOR_LINKS;
 		if (!mc2::globalmap::doorLinkCountInRange(doors[i].numLinks[1]) || numLinksRead + numLinks > numDoorLinks) {
 			PAUSE(("GlobalMap.init: doorLinks overflow at door %d/1 (have %d, would need %d) — bailing pre-corruption",
-				i, (int)numDoorLinks, (int)(numLinksRead + numLinks)));
+				i, static_cast<int>(numDoorLinks), static_cast<int>((numLinksRead + numLinks))));
 			doorLinkOverflow = true;
 			break;
 		}
 		if (mcoWideSchema) {
 			result = readDoorLinksMCO(packetFile, whichPacket++, &doorLinks[numLinksRead],
-			                          (size_t)numLinks, MCO_DOORLINK_SIZE);
+			                          static_cast<size_t>(numLinks), MCO_DOORLINK_SIZE);
 		} else {
-		result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)&doorLinks[numLinksRead],
+		result = safeReadPacket(packetFile, whichPacket++, reinterpret_cast<unsigned char*>(&doorLinks[numLinksRead]),
 		                        sizeof(DoorLink) * numLinks, "doorLinks[i][1]");
 		}
 		if (result < 0) { doorLinkOverflow = true; break; }
@@ -547,7 +547,7 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		}
 		else
 			openArea(i);
-	pathExistsTable = mc2::globalmap::ownZeroed(pathExistsStore, (size_t)numAreas * ((size_t)numAreas / 4 + 1));
+	pathExistsTable = mc2::globalmap::ownZeroed(pathExistsStore, static_cast<size_t>(numAreas) * (static_cast<size_t>(numAreas) / 4 + 1));
 	clearPathExistsTable();
 
 	if (logEnabled && !blank) {
@@ -638,7 +638,7 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 	if (result <= 0)
 		Fatal(result, " GlobalMap.write: Unable to write numDoorLinks packet ");
 
-	result = packetFile->writePacket(whichPacket++, (unsigned char*)areaMap, sizeof(short) * height * width);
+	result = packetFile->writePacket(whichPacket++, reinterpret_cast<unsigned char*>(areaMap), sizeof(short) * height * width);
 	if (result <= 0)
 		Fatal(result, " GlobalMap.write: Unable to write areaMap packet ");
 
@@ -651,7 +651,7 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 		areas[i].teamID = -1;
 		areas[i].open = true;
 	}
-	result = packetFile->writePacket(whichPacket++, (unsigned char*)areas, sizeof(GlobalMapArea) * numAreas);
+	result = packetFile->writePacket(whichPacket++, reinterpret_cast<unsigned char*>(areas), sizeof(GlobalMapArea) * numAreas);
 	for (int i = 0; i < numAreas; i++) {
 		areas_doors[i] = doorInfoSave[i];
 	}
@@ -680,7 +680,7 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 			// buffers — zlib adds no benefit on buffers this small and the
 			// compress2()+uncompress() round-trip in writePacket costs ~1ms each.
 			// readPacket handles RAW transparently on load.
-			result = packetFile->writePacket(whichPacket++, (unsigned char*)areas_doors[i], packetSize, STORAGE_TYPE_RAW);
+			result = packetFile->writePacket(whichPacket++, reinterpret_cast<unsigned char*>(areas_doors[i]), packetSize, STORAGE_TYPE_RAW);
 			if (result <= 0)
 				Fatal(result, " GlobalMap.write: Unable to write doorInfos packet ");
 			numDoorInfosWritten += areas[i].numDoors;
@@ -700,7 +700,7 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 		doors[i].hPrime = 0;
 		doors[i].fPrime = 0;
 	}
-	result = packetFile->writePacket(whichPacket++, (unsigned char*)doors, sizeof(GlobalMapDoor) * (numDoors + NUM_DOOR_OFFSETS));
+	result = packetFile->writePacket(whichPacket++, reinterpret_cast<unsigned char*>(doors), sizeof(GlobalMapDoor) * (numDoors + NUM_DOOR_OFFSETS));
 	for (int i = 0; i < (numDoors + NUM_DOOR_OFFSETS); i++) {
 		doors_links[i][0] = doorLinkSave[i][0];
 		doors_links[i][1] = doorLinkSave[i][1];
@@ -716,14 +716,14 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 		// STORAGE_TYPE_RAW: skip compress+decompress per door-link buffer.
 		// Same rationale as doorInfos above — these are small buffers and the
 		// compress2()+uncompress() overhead dominates over any size savings.
-		result = packetFile->writePacket(whichPacket++, (unsigned char*)doors_links[i][0], sizeof(DoorLink) * numLinks, STORAGE_TYPE_RAW);
+		result = packetFile->writePacket(whichPacket++, reinterpret_cast<unsigned char*>(doors_links[i][0]), sizeof(DoorLink) * numLinks, STORAGE_TYPE_RAW);
 		if (result <= 0)
 			Fatal(result, " GlobalMap.write: Unable to write doorLinks packet ");
 		numberL += numLinks;
 
 		numLinks = doors[i].numLinks[1] + NUM_EXTRA_DOOR_LINKS;
 		gosASSERT(numLinks >= 2);
-		result = packetFile->writePacket(whichPacket++, (unsigned char*)doors_links[i][1], sizeof(DoorLink) * numLinks, STORAGE_TYPE_RAW);
+		result = packetFile->writePacket(whichPacket++, reinterpret_cast<unsigned char*>(doors_links[i][1]), sizeof(DoorLink) * numLinks, STORAGE_TYPE_RAW);
 		if (result <= 0)
 			Fatal(result, " GlobalMap.write: Unable to write doorLinks packet ");
 		numberL += numLinks;
@@ -924,12 +924,12 @@ void GlobalMap::calcAreas (void) {
 	// NOTE: We allocate one extra area--this is used by the calcPath routine
 	// as a "scratch" area in some cases...
 	gosASSERT(numAreas <= MAX_GLOBALMAP_AREAS);
-	areas = mc2::globalmap::ownZeroed(areasStore, (size_t)numAreas + 1);
+	areas = mc2::globalmap::ownZeroed(areasStore, static_cast<size_t>(numAreas) + 1);
 	// The build path owns both pointer tables too: the packet-load path sizes them before it calls anything else.
 	if (!areas_doors)
-		areas_doors = mc2::globalmap::ownZeroed(areasDoorsStore, (size_t)numAreas + 1);
+		areas_doors = mc2::globalmap::ownZeroed(areasDoorsStore, static_cast<size_t>(numAreas) + 1);
 	if (!areas_cellsCovered)
-		areas_cellsCovered = mc2::globalmap::ownZeroed(areasCellsCoveredStore, (size_t)numAreas + 1);
+		areas_cellsCovered = mc2::globalmap::ownZeroed(areasCellsCoveredStore, static_cast<size_t>(numAreas) + 1);
 	for (long i = 0; i < (numAreas + 1); i++) {
 		areas[i].sectorR = 0;
 		areas[i].sectorC = 0;
@@ -994,7 +994,7 @@ void GlobalMap::calcSpecialTypes (void) {
 
 void GlobalMap::beginDoorProcessing (void) {
 
-	doorBuildList = mc2::globalmap::ownZeroed(doorBuildStore, (size_t)MAX_GLOBALMAP_DOORS);
+	doorBuildList = mc2::globalmap::ownZeroed(doorBuildStore, static_cast<size_t>(MAX_GLOBALMAP_DOORS));
 	for (long i = 0; i < MAX_GLOBALMAP_DOORS; i++) {
 		doorBuildList[i].row = -1;
 		doorBuildList[i].col = -1;
@@ -1043,13 +1043,13 @@ void GlobalMap::endDoorProcessing (void) {
 	if (doorBuildList) {
 		// First, save the door list. Note that we make 2 extra doors, to be used
 		// by the pathfinder...
-		doors = mc2::globalmap::ownZeroed(doorsStore, (size_t)(numDoors + NUM_DOOR_OFFSETS));
+		doors = mc2::globalmap::ownZeroed(doorsStore, static_cast<size_t>((numDoors + NUM_DOOR_OFFSETS)));
 		memcpy(doors, doorBuildList, sizeof(GlobalMapDoor) * (numDoors + NUM_DOOR_OFFSETS));
 		doorBuildList = nullptr;
 		std::vector<GlobalMapDoor>().swap(doorBuildStore);
 		// The build path owns the link table too (the packet-load path sizes it with the doors).
 		if (!doors_links)
-			doors_links = ownDoorLinkViews((size_t)(numDoors + NUM_DOOR_OFFSETS));
+			doors_links = ownDoorLinkViews(static_cast<size_t>((numDoors + NUM_DOOR_OFFSETS)));
 	}
 }
 

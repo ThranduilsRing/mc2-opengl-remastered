@@ -434,7 +434,7 @@ GameObjectFootPrint* tempSpecialAreaFootPrints = nullptr;
 
 void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long numSpecialAreas, GameObjectFootPrint* specialAreaFootPrints) {
 
-	printf("[MOVE_BD] enter h=%ld w=%ld mapData=%p specials=%ld\n", height, width, (void*)mapData, numSpecialAreas); fflush(stdout);
+	printf("[MOVE_BD] enter h=%ld w=%ld mapData=%p specials=%ld\n", height, width, static_cast<void*>(mapData), numSpecialAreas); fflush(stdout);
 
 	EditorSave = true;
 
@@ -450,7 +450,7 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 		GameMap->init( height, width );
 
 	if (GameMap->map.empty()) { MC2_LOG(Io, Error, "move: the built mission map is {} x {} cells, so it is empty; no move data is built", height, width); return; }
-	printf("[MOVE_BD] GameMap->init OK map=%p\n", (void*)GameMap->map.data()); fflush(stdout);
+	printf("[MOVE_BD] GameMap->init OK map=%p\n", static_cast<void*>(GameMap->map.data())); fflush(stdout);
 
 	long numOffMap = 0;
 	for (long r = 0; r < height; r++)
@@ -471,7 +471,7 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 	}
 	tempNumSpecialAreas = numSpecialAreas;
 	if (tempNumSpecialAreas) {
-		tempSpecialAreaFootPrints = (GameObjectFootPrint*)systemHeap->Malloc(sizeof(GameObjectFootPrint) * tempNumSpecialAreas);
+		tempSpecialAreaFootPrints = static_cast<GameObjectFootPrint*>(systemHeap->Malloc(sizeof(GameObjectFootPrint) * tempNumSpecialAreas));
 		memcpy(tempSpecialAreaFootPrints, specialAreaFootPrints, sizeof(GameObjectFootPrint) * tempNumSpecialAreas);
 	}
 	if (!PathFindMap[SECTOR_PATHMAP])
@@ -554,14 +554,14 @@ long MOVE_saveData (PacketFile* packetFile, long whichPacket) {
 	long numGlobalMap1Packets = GlobalMoveMap[1]->write(packetFile, whichPacket + numMissionMapPackets + numGlobalMap0Packets);
 	long numGlobalMap2Packets = GlobalMoveMap[2]->write(packetFile, whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets);
 
-	long result = packetFile->writePacket(whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets, (unsigned char*)&tempNumSpecialAreas, sizeof(long));
+	long result = packetFile->writePacket(whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets, reinterpret_cast<unsigned char*>(&tempNumSpecialAreas), sizeof(long));
 	if (result <= 0)
 		Fatal(result, " MOVE_saveData: Unable to write num special area ");
 	// If there are no special areas, we just write the specialArea count as a filler for the packet...
 	if (tempNumSpecialAreas == 0)
-		result = packetFile->writePacket(whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets + 1, (unsigned char*)&tempNumSpecialAreas, sizeof(long));
+		result = packetFile->writePacket(whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets + 1, reinterpret_cast<unsigned char*>(&tempNumSpecialAreas), sizeof(long));
 	else
-		result = packetFile->writePacket(whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets + 1, (unsigned char*)tempSpecialAreaFootPrints, sizeof(GameObjectFootPrint) * tempNumSpecialAreas);
+		result = packetFile->writePacket(whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets + 1, reinterpret_cast<unsigned char*>(tempSpecialAreaFootPrints), sizeof(GameObjectFootPrint) * tempNumSpecialAreas);
 	if (result <= 0)
 		Fatal(result, " MOVE_saveData: Unable to write special area footprints ");
 
@@ -618,7 +618,7 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 		GlobalMoveMap[2]->releasePathExistsTable();
 
 		const long specialAreaPkt = mc2::globalmap::advanceCursor(map2Start, numGlobalMap2Packets);
-		long numBytes = packetFile->readPacket(specialAreaPkt, (unsigned char*)&tempNumSpecialAreas);
+		long numBytes = packetFile->readPacket(specialAreaPkt, reinterpret_cast<unsigned char*>(&tempNumSpecialAreas));
 		if (numBytes <= 0)
 			Fatal(numBytes, " MOVE_readData: Unable to read num special areas ");
 		if (tempSpecialAreaFootPrints) {
@@ -635,11 +635,11 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 			// mod-tolerance.
 			long footprintPkt = mc2::globalmap::advanceCursor(specialAreaPkt, 1);
 			packetFile->seekPacket(footprintPkt);
-			size_t packetSize = (size_t)packetFile->getPacketSize();
-			size_t expectedSize = sizeof(GameObjectFootPrint) * (size_t)tempNumSpecialAreas;
+			size_t packetSize = static_cast<size_t>(packetFile->getPacketSize());
+			size_t expectedSize = sizeof(GameObjectFootPrint) * static_cast<size_t>(tempNumSpecialAreas);
 			size_t allocSize = (packetSize > expectedSize) ? packetSize : expectedSize;
-			tempSpecialAreaFootPrints = (GameObjectFootPrint*)systemHeap->Malloc(allocSize);
-			numBytes = packetFile->readPacket(footprintPkt, (unsigned char*)tempSpecialAreaFootPrints);
+			tempSpecialAreaFootPrints = static_cast<GameObjectFootPrint*>(systemHeap->Malloc(allocSize));
+			numBytes = packetFile->readPacket(footprintPkt, reinterpret_cast<unsigned char*>(tempSpecialAreaFootPrints));
 			if (numBytes <= 0)
 				Fatal(numBytes, " MOVE_readData: Unable to read num special areas ");
 		}
@@ -657,9 +657,9 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 	{
 		int areas = (GlobalMoveMap[0]) ? GlobalMoveMap[0]->numAreas : 0;
 		int doors = (GlobalMoveMap[0]) ? GlobalMoveMap[0]->numDoors : 0;
-		int cellW = (GameMap) ? (int)GameMap->width : 0;
-		int cellH = (GameMap) ? (int)GameMap->height : 0;
-		mc2_path_trace::emitMap(areas, doors, (int)tempNumSpecialAreas, cellW, cellH);
+		int cellW = (GameMap) ? static_cast<int>(GameMap->width) : 0;
+		int cellH = (GameMap) ? static_cast<int>(GameMap->height) : 0;
+		mc2_path_trace::emitMap(areas, doors, static_cast<int>(tempNumSpecialAreas), cellW, cellH);
 	}
 
 	long packetsRead = mc2::globalmap::advanceCursor(numMissionMapPackets, numGlobalMap0Packets);
@@ -733,7 +733,7 @@ void MissionMap::init (long h, long w) {
 	for (int i = 0; i < tileWidth; i++)
 		Terrain::tileColToWorldCoord[i] = (i * Terrain::worldUnitsPerVertex) - (Terrain::worldUnitsMapSide / 2.0);
 	for (int i = 0; i < MAPCELL_DIM; i++)
-		Terrain::cellToWorldCoord[i] = (Terrain::worldUnitsPerVertex / (float)MAPCELL_DIM) * i;
+		Terrain::cellToWorldCoord[i] = (Terrain::worldUnitsPerVertex / static_cast<float>(MAPCELL_DIM)) * i;
 
 	for (int i = 0; i < height; i++)
 		Terrain::cellRowToWorldCoord[i] = (Terrain::worldUnitsMapSide / 2.0) - (i * Terrain::worldUnitsPerCell);
@@ -962,7 +962,7 @@ long MissionMap::placeObject (glm::vec3 position, float radius) {
 	float cellRadius = (radius / (Terrain::worldUnitsPerCell  * metersPerWorldUnit));
 	if ((cellRadius > 0.5) && (cellRadius < 1.0))
 		cellRadius = 1.0;
-	spreadState(cellRow, cellCol, (long)cellRadius);
+	spreadState(cellRow, cellCol, static_cast<long>(cellRadius));
 	return(NO_ERR);
 }
 

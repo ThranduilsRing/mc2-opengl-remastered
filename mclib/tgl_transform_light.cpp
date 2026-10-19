@@ -137,7 +137,7 @@ void TG_Shape::xformVertexBaseColor(bool isHudElement, bool isNight, float night
 	                        && (nightFactor <= Stuff::SMALL));
 	if (doHotGreenTrace) {
 		s_hotGreenLightTraceDone = true;
-		mc2::fmt::print_err("[PARITY_DIAG v2] CPU hot-green vertex={:d} normalShape=({:.4f},{:.4f},{:.4f}) s_numLights={:d}\n", mc2::fmt::as_i32(j), theShape->listOfTypeVertices[j].normal.x, theShape->listOfTypeVertices[j].normal.y, theShape->listOfTypeVertices[j].normal.z, mc2::fmt::as_i32((int)s_numLights));
+		mc2::fmt::print_err("[PARITY_DIAG v2] CPU hot-green vertex={:d} normalShape=({:.4f},{:.4f},{:.4f}) s_numLights={:d}\n", mc2::fmt::as_i32(j), theShape->listOfTypeVertices[j].normal.x, theShape->listOfTypeVertices[j].normal.y, theShape->listOfTypeVertices[j].normal.z, mc2::fmt::as_i32(static_cast<int>(s_numLights)));
 		std::fflush(stderr);
 	}
 }
@@ -165,7 +165,7 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 							greenAmb = ((startLight>>8) & 0x000000ff);
 							blueAmb = ((startLight) & 0x000000ff);
 							if (doHotGreenTrace) {
-								mc2::fmt::print_err("[PARITY_DIAG v2] CPU light[{:d}] AMBIENT aRGB=0x{:08X} ambR={:d} ambG={:d} ambB={:d}\n", mc2::fmt::as_i32(i), mc2::fmt::as_u32((unsigned)startLight), mc2::fmt::as_u32(redAmb), mc2::fmt::as_u32(greenAmb), mc2::fmt::as_u32(blueAmb));
+								mc2::fmt::print_err("[PARITY_DIAG v2] CPU light[{:d}] AMBIENT aRGB=0x{:08X} ambR={:d} ambG={:d} ambB={:d}\n", mc2::fmt::as_i32(i), mc2::fmt::as_u32(static_cast<unsigned>(startLight)), mc2::fmt::as_u32(redAmb), mc2::fmt::as_u32(greenAmb), mc2::fmt::as_u32(blueAmb));
 								std::fflush(stderr);
 							}
 						}
@@ -178,7 +178,7 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 							cosine += s_lightDir[i].z * theShape->listOfTypeVertices[j].normal.z;
 
 							if (doHotGreenTrace) {
-								mc2::fmt::print_err("[PARITY_DIAG v2] CPU light[{:d}] INFINITE aRGB=0x{:08X} lightDir=({:.4f},{:.4f},{:.4f}) cosine={:.4f}\n", mc2::fmt::as_i32(i), mc2::fmt::as_u32((unsigned)startLight), s_lightDir[i].x, s_lightDir[i].y, s_lightDir[i].z, cosine);
+								mc2::fmt::print_err("[PARITY_DIAG v2] CPU light[{:d}] INFINITE aRGB=0x{:08X} lightDir=({:.4f},{:.4f},{:.4f}) cosine={:.4f}\n", mc2::fmt::as_i32(i), mc2::fmt::as_u32(static_cast<unsigned>(startLight)), s_lightDir[i].x, s_lightDir[i].y, s_lightDir[i].z, cosine);
 								std::fflush(stderr);
 							}
 
@@ -262,9 +262,9 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 								green *= cosine;
 								blue *= cosine;
 
-								redFinal += (DWORD)red;
-								greenFinal += (DWORD)green;
-								blueFinal += (DWORD)blue;
+								redFinal += static_cast<DWORD>(red);
+								greenFinal += static_cast<DWORD>(green);
+								blueFinal += static_cast<DWORD>(blue);
 							}
 						}
 						break;
@@ -298,9 +298,9 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 										green *= cosine;
 										blue *= cosine;
 	
-										redSpec += (DWORD)red;
-										greenSpec += (DWORD)green;
-										blueSpec += (DWORD)blue;
+										redSpec += static_cast<DWORD>(red);
+										greenSpec += static_cast<DWORD>(green);
+										blueSpec += static_cast<DWORD>(blue);
 									}
 								}
 							}
@@ -322,9 +322,9 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 									green *= cosine;
 									blue *= cosine;
 
-									redSpec += (DWORD)red;
-									greenSpec += (DWORD)green;
-									blueSpec += (DWORD)blue;
+									redSpec += static_cast<DWORD>(red);
+									greenSpec += static_cast<DWORD>(green);
+									blueSpec += static_cast<DWORD>(blue);
 								}
 							}
 						}
@@ -351,9 +351,9 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 										green = float((startLight>>8) & 0x000000ff) * falloff;
 										blue = float((startLight) & 0x000000ff) * falloff;
 		
-										listOfColors[j].redSpec = (DWORD)red;
-										listOfColors[j].greenSpec = (DWORD)green;
-										listOfColors[j].blueSpec = (DWORD)blue;
+										listOfColors[j].redSpec = static_cast<DWORD>(red);
+										listOfColors[j].greenSpec = static_cast<DWORD>(green);
+										listOfColors[j].blueSpec = static_cast<DWORD>(blue);
 									}
 								}
 								else
@@ -401,9 +401,9 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 									green *= cosine;
 									blue *= cosine;
 
-									redSpec += (DWORD)red;
-									greenSpec += (DWORD)green;
-									blueSpec += (DWORD)blue;
+									redSpec += static_cast<DWORD>(red);
+									greenSpec += static_cast<DWORD>(green);
+									blueSpec += static_cast<DWORD>(blue);
 								}
 							}
 						}
@@ -427,7 +427,7 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 			blueFinal = 255;
 
 		if (doHotGreenTrace) {
-			mc2::fmt::print_err("[PARITY_DIAG v2] CPU hot-green final: redFinal={:d} greenFinal={:d} blueFinal={:d} (before argb write: 0x{:08X})\n", mc2::fmt::as_u32(redFinal), mc2::fmt::as_u32(greenFinal), mc2::fmt::as_u32(blueFinal), mc2::fmt::as_u32((unsigned)((0xff << 24) + (redFinal << 16) + (greenFinal << 8) + blueFinal)));
+			mc2::fmt::print_err("[PARITY_DIAG v2] CPU hot-green final: redFinal={:d} greenFinal={:d} blueFinal={:d} (before argb write: 0x{:08X})\n", mc2::fmt::as_u32(redFinal), mc2::fmt::as_u32(greenFinal), mc2::fmt::as_u32(blueFinal), mc2::fmt::as_u32(static_cast<unsigned>(((0xff << 24) + (redFinal << 16) + (greenFinal << 8) + blueFinal))));
 			std::fflush(stderr);
 		}
 
@@ -613,9 +613,9 @@ void TG_Shape::xformFaceLight(TG_TypeShapePtr theShape, long j, TgXformFrame& f)
 							green *= cosine;
 							blue *= cosine;
 
-							redFinal += (DWORD)red;
-							greenFinal += (DWORD)green;
-							blueFinal += (DWORD)blue;
+							redFinal += static_cast<DWORD>(red);
+							greenFinal += static_cast<DWORD>(green);
+							blueFinal += static_cast<DWORD>(blue);
 						}
 					}
 					break;
@@ -647,9 +647,9 @@ void TG_Shape::xformFaceLight(TG_TypeShapePtr theShape, long j, TgXformFrame& f)
 								green *= cosine;
 								blue *= cosine;
 
-								redSpec += (DWORD)red;
-								greenSpec += (DWORD)green;
-								blueSpec += (DWORD)blue;
+								redSpec += static_cast<DWORD>(red);
+								greenSpec += static_cast<DWORD>(green);
+								blueSpec += static_cast<DWORD>(blue);
 							}
 						}
 					}

@@ -64,15 +64,15 @@ void MC_TextureManager::vkLegacySubmitNode (long i, uint32_t pass, uint32_t alph
 {
 		DWORD totalVertices = masterVertexNodes[i].numVertices;
 		if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
-			totalVertices = (DWORD)(masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices);
+			totalVertices = static_cast<DWORD>((masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices));
 		if (totalVertices)
 		{
 			Mc2LegacyMlrDraw d{};
 			d.vertices = masterVertexNodes[i].vertices;
 			d.vertexCount = totalVertices;
-			d.texNode = (uint32_t)masterVertexNodes[i].textureIndex;
+			d.texNode = static_cast<uint32_t>(masterVertexNodes[i].textureIndex);
 			const DWORD gosTex = tex_resolve(masterVertexNodes[i].textureIndex);
-			d.gosTexHandle = (gosTex == 0xffffffffu) ? 0u : (uint32_t)gosTex;
+			d.gosTexHandle = (gosTex == 0xffffffffu) ? 0u : static_cast<uint32_t>(gosTex);
 			d.pass = pass;
 			d.alphaTest = alphaTest;
 			mc2_vk_legacy_shape_submit(&d);
@@ -86,7 +86,7 @@ void MC_TextureManager::vkLegacyRun (void)
 		// renderLists preamble: eye->fogColor when fog is on, else 0). The additive loops
 		// clear fog themselves (the island ADD pass ignores this).
 		Mc2LegacyMlrFrame ff{};
-		const vec4 fcv = uint32_to_vec4(useFog ? (uint32_t)eye->fogColor : 0u);
+		const vec4 fcv = uint32_to_vec4(useFog ? static_cast<uint32_t>(eye->fogColor) : 0u);
 		ff.fogColor[0] = fcv.x; ff.fogColor[1] = fcv.y; ff.fogColor[2] = fcv.z; ff.fogColor[3] = fcv.w;
 		if (gosPostProcess* ppVkLeg = getGosPostProcess())
 			(void)mc2_vk_legacy_shape_island_run(ppVkLeg->getWidth(), ppVkLeg->getHeight(), &ff);

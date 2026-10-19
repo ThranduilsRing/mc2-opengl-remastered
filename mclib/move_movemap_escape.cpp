@@ -198,7 +198,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 
 		// PATHFINDING-FACTS-1: record path length + MAX_STEPS truncation (release-silent today).
 		if (_pathTrace) {
-			_pt.len = (int)numCells;
+			_pt.len = static_cast<int>(numCells);
 			_pt.fail = 0;
 			_pt.nodes = _ptNodes;
 			_pt.openPeak = _ptOpenPeak;
@@ -243,9 +243,9 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 			long curCell = numCells;
 			if (doorDirection == -1) {
 				if (goalWorldPos) {
-					goalWorldPos->x = (float)(ULc + bestCol) * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
-					goalWorldPos->y = (Terrain::worldUnitsMapSide / 2) - ((float)(ULr + bestRow) * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
-					goalWorldPos->z = (float)0; // How do we get the elevation for this point? Do we care?
+					goalWorldPos->x = static_cast<float>((ULc + bestCol)) * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
+					goalWorldPos->y = (Terrain::worldUnitsMapSide / 2) - (static_cast<float>((ULr + bestRow)) * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
+					goalWorldPos->z = static_cast<float>(0); // How do we get the elevation for this point? Do we care?
 					path->goal = *goalWorldPos;
 					}
 				else
@@ -261,9 +261,9 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 				goalCell[0] = ULr + doorR;
 				goalCell[1] = ULc + doorC;
 				glm::vec3 stepDest;
-				stepDest.x = (float)(ULc + doorC) * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
-				stepDest.y = (Terrain::worldUnitsMapSide / 2) - ((float)(ULr + doorR) * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
-				stepDest.z = (float)0; // How do we get the elevation for this point? Do we care?
+				stepDest.x = static_cast<float>((ULc + doorC)) * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
+				stepDest.y = (Terrain::worldUnitsMapSide / 2) - (static_cast<float>((ULr + doorR)) * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
+				stepDest.z = static_cast<float>(0); // How do we get the elevation for this point? Do we care?
 				path->setDestination(curCell, stepDest);
 				path->setDistanceToGoal(curCell, 0.0);
 				path->setCell(curCell, goalCell[0], goalCell[1]);
@@ -302,9 +302,9 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 				long cell[2];
 				cell[0] = ULr + curRow;
 				cell[1] = ULc + curCol;
-				stepDest.x = (float)(cell[1]) * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
-				stepDest.y = (Terrain::worldUnitsMapSide / 2) - ((float)(cell[0]) * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
-				stepDest.z = (float)0; // How do we get the elevation for this point? Do we care?
+				stepDest.x = static_cast<float>((cell[1])) * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
+				stepDest.y = (Terrain::worldUnitsMapSide / 2) - (static_cast<float>((cell[0])) * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
+				stepDest.z = static_cast<float>(0); // How do we get the elevation for this point? Do we care?
 				if (curCell == (numCells - 1) && (parent <= 7))
 					path->setDistanceToGoal(curCell, 0.0);
 				else

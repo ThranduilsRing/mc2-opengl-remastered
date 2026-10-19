@@ -98,10 +98,10 @@ struct GpuTimer {
         ++samples;
         const double a = 0.05;   // EMA weight for the newest sample
         for (uint32_t i = 1; i < count; ++i) {
-            double us = (double)(ts[i] - ts[i - 1]) * (double)periodNs / 1000.0;
+            double us = static_cast<double>((ts[i] - ts[i - 1])) * static_cast<double>(periodNs) / 1000.0;
             gapAvgUs[i] = (samples == 1) ? us : (gapAvgUs[i] * (1.0 - a) + us * a);
         }
-        double tot = (double)(ts[count - 1] - ts[0]) * (double)periodNs / 1000.0;
+        double tot = static_cast<double>((ts[count - 1] - ts[0])) * static_cast<double>(periodNs) / 1000.0;
         totalAvgUs = (samples == 1) ? tot : (totalAvgUs * (1.0 - a) + tot * a);
     }
 

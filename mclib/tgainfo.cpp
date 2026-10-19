@@ -157,7 +157,7 @@ void flipTopToBottom (MemoryPtr buffer, BYTE depth, long width, long height)
 {
 	//-----------------------------------------------------------
 	// ScanLine by Scanline
-	MemoryPtr tmpBuffer = (MemoryPtr)malloc(width * height * (depth>>3));
+	MemoryPtr tmpBuffer = static_cast<MemoryPtr>(malloc(width * height * (depth>>3)));
 	MemoryPtr tmpPointer = tmpBuffer;
 
 	//----------------------------------
@@ -205,13 +205,13 @@ void tgaCopy (MemoryPtr dest, MemoryPtr src, long size)
 //---------------------------------------------------------------------------
 void loadTGATexture (FilePtr tgaFile, MemoryPtr ourRAM, long width, long height)
 {
-	MemoryPtr tgaBuffer = (MemoryPtr)malloc(tgaFile->fileSize());
+	MemoryPtr tgaBuffer = static_cast<MemoryPtr>(malloc(tgaFile->fileSize()));
 
 	tgaFile->read(tgaBuffer,tgaFile->fileSize());
 
 	//---------------------------------------
 	// Parse out TGAHeader.
-	TGAFileHeader *header = (TGAFileHeader *)tgaBuffer;
+	TGAFileHeader *header = reinterpret_cast<TGAFileHeader *>(tgaBuffer);
 
 	gosASSERT(header->width == width);
 	gosASSERT(header->height == height);
@@ -300,13 +300,13 @@ void loadTGATexture (FilePtr tgaFile, MemoryPtr ourRAM, long width, long height)
 
 void loadTGAMask (FilePtr tgaFile, MemoryPtr ourRAM, long width, long height)
 {
-	MemoryPtr tgaBuffer = (MemoryPtr)malloc(tgaFile->fileSize());
+	MemoryPtr tgaBuffer = static_cast<MemoryPtr>(malloc(tgaFile->fileSize()));
 
 	tgaFile->read(tgaBuffer,tgaFile->fileSize());
 
 	//---------------------------------------
 	// Parse out TGAHeader.
-	TGAFileHeader *header = (TGAFileHeader *)tgaBuffer;
+	TGAFileHeader *header = reinterpret_cast<TGAFileHeader *>(tgaBuffer);
 
 	gosASSERT(header->width == width);
 	gosASSERT(header->height == height);

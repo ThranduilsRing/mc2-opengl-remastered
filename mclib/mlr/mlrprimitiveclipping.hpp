@@ -90,7 +90,7 @@ void
 				Verify (numGOSVertices < 2*Limits::Max_Number_Vertices_Per_Mesh);
 			}
 
-			indexOffset[j] = (unsigned short)(j - stride);
+			indexOffset[j] = static_cast<unsigned short>((j - stride));
 
 			gos_vertices[numGOSVertices].GOSTransformNoClip(
 				coords[j],
@@ -283,7 +283,7 @@ void
 			gos_indices[ngi++] = indexOffset[index[j+k]];
 		}
 	}
-	numGOSIndices = (unsigned short)ngi;
+	numGOSIndices = static_cast<unsigned short>(ngi);
 
 	Check_Object(vt);
 	if(db==false)
@@ -293,7 +293,7 @@ void
 
 	Stop_Timer(Transform_Time);
 
-	visible = numGOSVertices ? (unsigned char)1 : (unsigned char)0;
+	visible = numGOSVertices ? static_cast<unsigned char>(1) : static_cast<unsigned char>(0);
 }
 
 static MLRClippingState theAnd, theOr, theTest;
@@ -1350,12 +1350,12 @@ int
 			int fogEntry = state.GetFogMode();
 			if(fogEntry)
 			{
-				*((BYTE *)&gos_vertices[numGOSVertices].frgb + 3) =
+				*(reinterpret_cast<BYTE *>(&gos_vertices[numGOSVertices].frgb) + 3) =
 					GOSVertex::fogTable[fogEntry-1][Truncate_Float_To_Word((*transformedCoords)[j].w)];
 			}
 			else
 			{
-				*((BYTE *)&gos_vertices[numGOSVertices].frgb + 3) = 0xff;
+				*(reinterpret_cast<BYTE *>(&gos_vertices[numGOSVertices].frgb) + 3) = 0xff;
 			}
 #endif
 
@@ -1424,9 +1424,9 @@ int
 				Verify(3 + numGOSIndices < 2*Limits::Max_Number_Vertices_Per_Mesh);
 			}
 
-			gos_indices[numGOSIndices] = (unsigned short)(index[j] - indexOffset[index[j]]);
-			gos_indices[numGOSIndices+1] = (unsigned short)(index[j+k+1] - indexOffset[index[j+k+1]]);
-			gos_indices[numGOSIndices+2] = (unsigned short)(index[j+k] - indexOffset[index[j+k]]);
+			gos_indices[numGOSIndices] = static_cast<unsigned short>((index[j] - indexOffset[index[j]]));
+			gos_indices[numGOSIndices+1] = static_cast<unsigned short>((index[j+k+1] - indexOffset[index[j+k+1]]));
+			gos_indices[numGOSIndices+2] = static_cast<unsigned short>((index[j+k] - indexOffset[index[j+k]]));
 
 			numGOSIndices += 3;
 		}
@@ -1496,18 +1496,18 @@ int
 			if(fogEntry)
 			{
 				fogEntry--;
-				*((BYTE *)&gos_vertices[numGOSVertices].frgb + 3) =
+				*(reinterpret_cast<BYTE *>(&gos_vertices[numGOSVertices].frgb) + 3) =
 					GOSVertex::fogTable[fogEntry][Truncate_Float_To_Word((*clipExtraCoords)[j].w)];
-				*((BYTE *)&gos_vertices[numGOSVertices+1].frgb + 3) =
+				*(reinterpret_cast<BYTE *>(&gos_vertices[numGOSVertices+1].frgb) + 3) =
 					GOSVertex::fogTable[fogEntry][Truncate_Float_To_Word((*clipExtraCoords)[j+k+1].w)];
-				*((BYTE *)&gos_vertices[numGOSVertices+2].frgb + 3) =
+				*(reinterpret_cast<BYTE *>(&gos_vertices[numGOSVertices+2].frgb) + 3) =
 					GOSVertex::fogTable[fogEntry][Truncate_Float_To_Word((*clipExtraCoords)[j+k].w)];
 			}
 			else
 			{
-				*((BYTE *)&gos_vertices[numGOSVertices].frgb + 3) = 0xff;
-				*((BYTE *)&gos_vertices[numGOSVertices+1].frgb + 3) = 0xff;
-				*((BYTE *)&gos_vertices[numGOSVertices+2].frgb + 3) = 0xff;
+				*(reinterpret_cast<BYTE *>(&gos_vertices[numGOSVertices].frgb) + 3) = 0xff;
+				*(reinterpret_cast<BYTE *>(&gos_vertices[numGOSVertices+1].frgb) + 3) = 0xff;
+				*(reinterpret_cast<BYTE *>(&gos_vertices[numGOSVertices+2].frgb) + 3) = 0xff;
 			}
 #endif
 
@@ -1592,8 +1592,8 @@ int
 				Verify(numGOSIndices%3 == 0);
 
 				gos_indices[numGOSIndices] = numGOSVertices;
-				gos_indices[numGOSIndices+1] = (unsigned short)(numGOSVertices + 1);
-				gos_indices[numGOSIndices+2] = (unsigned short)(numGOSVertices + 2);
+				gos_indices[numGOSIndices+1] = static_cast<unsigned short>((numGOSVertices + 1));
+				gos_indices[numGOSIndices+2] = static_cast<unsigned short>((numGOSVertices + 2));
 
 				numGOSVertices += 3;
 				numGOSIndices += 3;
@@ -1707,7 +1707,7 @@ int
 		vt->IncreaseIndex(numGOSIndices);
 	}
 
-	visible = numGOSVertices ? (unsigned char)1 : (unsigned char)0;
+	visible = numGOSVertices ? static_cast<unsigned char>(1) : static_cast<unsigned char>(0);
 
 	if(visible)
 	{

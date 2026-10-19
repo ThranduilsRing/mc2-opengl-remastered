@@ -121,20 +121,20 @@ void Terrain::initObjBlockLists(volatile float& percent, float percentRange) {
 	long numberBlocks = blocksMapSide * blocksMapSide;
 	
 	numObjBlocks = numberBlocks;
-	objBlockInfo = (ObjBlockInfo *)terrainHeap->Malloc(sizeof(ObjBlockInfo)*numObjBlocks);
+	objBlockInfo = static_cast<ObjBlockInfo *>(terrainHeap->Malloc(sizeof(ObjBlockInfo)*numObjBlocks));
 	gosASSERT(objBlockInfo != nullptr);
 	
 	memset(objBlockInfo,0,sizeof(ObjBlockInfo)*numObjBlocks);
 	
-	objVertexActive = (bool *)terrainHeap->Malloc(sizeof(bool) * realVerticesMapSide * realVerticesMapSide);
+	objVertexActive = static_cast<bool *>(terrainHeap->Malloc(sizeof(bool) * realVerticesMapSide * realVerticesMapSide));
 	gosASSERT(objVertexActive != nullptr);
 	
 	memset(objVertexActive,0,sizeof(bool)*numObjBlocks);
 	
-	moverBlockList = (long *)terrainHeap->Malloc(sizeof(long) * numberBlocks);
+	moverBlockList = static_cast<long *>(terrainHeap->Malloc(sizeof(long) * numberBlocks));
 	gosASSERT(moverBlockList != nullptr);
 	
-	usedBlockList = (long *)terrainHeap->Malloc(sizeof(long) * numberBlocks);
+	usedBlockList = static_cast<long *>(terrainHeap->Malloc(sizeof(long) * numberBlocks));
 	gosASSERT(usedBlockList != nullptr);
 	
 	clearList();
@@ -167,9 +167,9 @@ void Terrain::initMapData(PacketFile* pakFile, volatile float& percent, float pe
 		// float elevation at byte 12.
 		if (mapData->getBlocks()) {
 			gos_uploadTerrainHeightTex(
-				(int)realVerticesMapSide,
+				static_cast<int>(realVerticesMapSide),
 				mapData->getBlocks(),
-				(int)sizeof(PostcompVertex),
+				static_cast<int>(sizeof(PostcompVertex)),
 				/*elevationOffset=*/12,
 				mapTopLeft3d.x,
 				mapTopLeft3d.y,
@@ -189,9 +189,9 @@ void Terrain::lodAllocMeta() {
 	int nBlocks      = s_terrainChunkSide * s_terrainChunkSide;
 	int nSuperchunks = s_superchunkSide   * s_superchunkSide;
 
-	s_blockMeta      = (TerrainBlockMeta*)  terrainHeap->Malloc(sizeof(TerrainBlockMeta)   * nBlocks);
-	s_superchunkMeta = (SuperchunkMeta*)    terrainHeap->Malloc(sizeof(SuperchunkMeta)      * nSuperchunks);
-	s_drawCmds       = (TerrainDrawCommand*)terrainHeap->Malloc(sizeof(TerrainDrawCommand)  * nBlocks);
+	s_blockMeta      = static_cast<TerrainBlockMeta*>(terrainHeap->Malloc(sizeof(TerrainBlockMeta)   * nBlocks));
+	s_superchunkMeta = static_cast<SuperchunkMeta*>(terrainHeap->Malloc(sizeof(SuperchunkMeta)      * nSuperchunks));
+	s_drawCmds       = static_cast<TerrainDrawCommand*>(terrainHeap->Malloc(sizeof(TerrainDrawCommand)  * nBlocks));
 	s_skirtDepths    = new float[nBlocks];
 
 	gosASSERT(s_blockMeta      != nullptr);
@@ -217,12 +217,12 @@ void Terrain::lodAllocMeta() {
 	for (int by = 0; by < s_terrainChunkSide; ++by) {
 		for (int bx = 0; bx < s_terrainChunkSide; ++bx) {
 			TerrainBlockMeta& bm = s_blockMeta[bx + by * s_terrainChunkSide];
-			bm.originX    = bx * (int)verticesBlockSide;
-			bm.originY    = by * (int)verticesBlockSide;
-			int qx = (int)(realVerticesMapSide - 1) - bm.originX;
-			int qy = (int)(realVerticesMapSide - 1) - bm.originY;
-			bm.quadCountX = (qx < (int)verticesBlockSide) ? qx : (int)verticesBlockSide;
-			bm.quadCountY = (qy < (int)verticesBlockSide) ? qy : (int)verticesBlockSide;
+			bm.originX    = bx * static_cast<int>(verticesBlockSide);
+			bm.originY    = by * static_cast<int>(verticesBlockSide);
+			int qx = static_cast<int>((realVerticesMapSide - 1)) - bm.originX;
+			int qy = static_cast<int>((realVerticesMapSide - 1)) - bm.originY;
+			bm.quadCountX = (qx < static_cast<int>(verticesBlockSide)) ? qx : static_cast<int>(verticesBlockSide);
+			bm.quadCountY = (qy < static_cast<int>(verticesBlockSide)) ? qy : static_cast<int>(verticesBlockSide);
 			bm.dirtyAabb  = false;
 			bm.inFrustum  = false;
 			bm.lodLevel   = 0;
@@ -241,9 +241,9 @@ void Terrain::lodAllocMeta() {
 void Terrain::lodHeightUpload(TerrainLodInitFrame& lf) {
 	auto& elev = lf.elev;
 	auto& ttype = lf.ttype;
-	int n = (int)realVerticesMapSide * (int)realVerticesMapSide;
-	elev.assign((size_t)n, 0.0f);
-	ttype.assign((size_t)n, 0.0f);  // Step 5b: per-vertex MATERIAL index (0-3)
+	int n = static_cast<int>(realVerticesMapSide) * static_cast<int>(realVerticesMapSide);
+	elev.assign(static_cast<size_t>(n), 0.0f);
+	ttype.assign(static_cast<size_t>(n), 0.0f);  // Step 5b: per-vertex MATERIAL index (0-3)
 	const PostcompVertex* blks = mapData->getBlocks();
 	// Map the raw terrainType INDEX -> material (0=Rock,1=Grass,2=Dirt,
 	// 3=Concrete). MUST mirror gos_terrain_indirect.cpp
@@ -256,8 +256,8 @@ void Terrain::lodHeightUpload(TerrainLodInitFrame& lf) {
 		elev[i]  = blks[i].elevation;
 		ttype[i] = terrainTypeToMaterial(blks[i].terrainType);
 	}
-	gos_TerrainLodChunk_UploadHeightFull(elev.data(), (int)realVerticesMapSide);
-	gos_TerrainLodChunk_UploadTerrainTypeFull(ttype.data(), (int)realVerticesMapSide);
+	gos_TerrainLodChunk_UploadHeightFull(elev.data(), static_cast<int>(realVerticesMapSide));
+	gos_TerrainLodChunk_UploadTerrainTypeFull(ttype.data(), static_cast<int>(realVerticesMapSide));
 }
 
 // LOD chunk: load the control-map sidecar when its gate is on.
@@ -272,7 +272,7 @@ void Terrain::lodControlMap() {
 	// MC2_TERRAIN_VISUAL_HEIGHT_FILE above).
 	{
 		static const bool s_controlMapGate = mc2::gate::get<"MC2_TERRAIN_CONTROLMAP">();
-		const int mapSide = (int)realVerticesMapSide;
+		const int mapSide = static_cast<int>(realVerticesMapSide);
 		if (s_controlMapGate && mapSide > 1)
 		{
 			char cmPath[600];
@@ -313,10 +313,10 @@ void Terrain::lodControlMap() {
 				}
 				else
 				{
-					std::vector<unsigned char> pngBytes((size_t)cFileSize);
-					size_t rd = fread(pngBytes.data(), 1, (size_t)cFileSize, cf);
+					std::vector<unsigned char> pngBytes(static_cast<size_t>(cFileSize));
+					size_t rd = fread(pngBytes.data(), 1, static_cast<size_t>(cFileSize), cf);
 					fclose(cf);
-					if (rd != (size_t)cFileSize)
+					if (rd != static_cast<size_t>(cFileSize))
 					{
 						mc2::fmt::print_out("[TERRAIN_CONTROLMAP v1] READ FAIL path={} read={:d} want={:d}\n", mc2::fmt::safe(cmPath), mc2::fmt::as_size(rd), mc2::fmt::as_i32(cFileSize));
 						fflush(stdout);
@@ -325,7 +325,7 @@ void Terrain::lodControlMap() {
 					{
 						int pw = 0, ph = 0;
 						unsigned char* rgba = ControlMapPng_DecodeRGBA(
-							pngBytes.data(), (int)cFileSize, &pw, &ph);
+							pngBytes.data(), static_cast<int>(cFileSize), &pw, &ph);
 						if (!rgba)
 						{
 							mc2::fmt::print_out("[TERRAIN_CONTROLMAP v1] PNG DECODE FAILED path={}\n", mc2::fmt::safe(cmPath));
@@ -409,10 +409,10 @@ void Terrain::lodOverlayV2() {
 				}
 				else
 				{
-					std::vector<unsigned char> pngBytes((size_t)oFileSize);
-					size_t rd = fread(pngBytes.data(), 1, (size_t)oFileSize, of);
+					std::vector<unsigned char> pngBytes(static_cast<size_t>(oFileSize));
+					size_t rd = fread(pngBytes.data(), 1, static_cast<size_t>(oFileSize), of);
 					fclose(of);
-					if (rd != (size_t)oFileSize)
+					if (rd != static_cast<size_t>(oFileSize))
 					{
 						mc2::fmt::print_out("[TERRAIN_OVERLAY_V2 v1] READ FAIL path={} read={:d} want={:d}\n", mc2::fmt::safe(ovPath), mc2::fmt::as_size(rd), mc2::fmt::as_i32(oFileSize));
 						fflush(stdout);
@@ -421,7 +421,7 @@ void Terrain::lodOverlayV2() {
 					{
 						int ow = 0, oh = 0;
 						unsigned char* orgba = ControlMapPng_DecodeRGBA(
-							pngBytes.data(), (int)oFileSize, &ow, &oh);
+							pngBytes.data(), static_cast<int>(oFileSize), &ow, &oh);
 						if (!orgba)
 						{
 							mc2::fmt::print_out("[TERRAIN_OVERLAY_V2 v1] PNG DECODE FAILED path={}\n", mc2::fmt::safe(ovPath));
@@ -552,10 +552,10 @@ void Terrain::lodShorelineMask() {
 				}
 				else
 				{
-					std::vector<unsigned char> pngBytes((size_t)sFileSize);
-					size_t rd = fread(pngBytes.data(), 1, (size_t)sFileSize, sf);
+					std::vector<unsigned char> pngBytes(static_cast<size_t>(sFileSize));
+					size_t rd = fread(pngBytes.data(), 1, static_cast<size_t>(sFileSize), sf);
 					fclose(sf);
-					if (rd != (size_t)sFileSize)
+					if (rd != static_cast<size_t>(sFileSize))
 					{
 						mc2::fmt::print_out("[TERRAIN_SHORELINE v1] READ FAIL path={} read={:d} want={:d}\n", mc2::fmt::safe(slPath), mc2::fmt::as_size(rd), mc2::fmt::as_i32(sFileSize));
 						fflush(stdout);
@@ -564,7 +564,7 @@ void Terrain::lodShorelineMask() {
 					{
 						int sw = 0, sh = 0;
 						unsigned char* srgba = ControlMapPng_DecodeRGBA(
-							pngBytes.data(), (int)sFileSize, &sw, &sh);
+							pngBytes.data(), static_cast<int>(sFileSize), &sw, &sh);
 						if (!srgba)
 						{
 							mc2::fmt::print_out("[TERRAIN_SHORELINE v1] PNG DECODE FAILED path={}\n", mc2::fmt::safe(slPath));
@@ -614,7 +614,7 @@ void Terrain::lodShorelineMask() {
 namespace {
 // SHORE-FIELD-1: IEEE half -> float for the float16 shore field sidecar.
 float shoreFieldHalfToFloat(uint16_t h) {
-	const uint32_t sign = (uint32_t)(h & 0x8000u) << 16;
+	const uint32_t sign = static_cast<uint32_t>((h & 0x8000u)) << 16;
 	uint32_t exp = (h >> 10) & 0x1Fu;
 	uint32_t man = h & 0x3FFu;
 	uint32_t bits;
@@ -651,16 +651,16 @@ bool loadShoreField(const char* stem, int mapSide, std::vector<float>& out, int&
 	float hdrWater = 0.0f;
 	const bool hdrOk = fread(magic, 1, 4, f) == 4 && std::memcmp(magic, "SHF1", 4) == 0 &&
 	                   fread(&hdrSide, 4, 1, f) == 1 && fread(&hdrWater, 4, 1, f) == 1 && fread(&hdrPad, 4, 1, f) == 1;
-	const int s = (int)hdrSide;
-	const uint64_t expectedBytes = 16ull + 2ull * (uint64_t)hdrSide * (uint64_t)hdrSide;
-	if (!hdrOk || !std::isfinite(hdrWater) || s < 2 || expectedBytes != (uint64_t)bytes ||
+	const int s = static_cast<int>(hdrSide);
+	const uint64_t expectedBytes = 16ull + 2ull * static_cast<uint64_t>(hdrSide) * static_cast<uint64_t>(hdrSide);
+	if (!hdrOk || !std::isfinite(hdrWater) || s < 2 || expectedBytes != static_cast<uint64_t>(bytes) ||
 	    mapSide < 2 || (s - 1) % (mapSide - 1) != 0) {
 		mc2::fmt::print_out("[WATER_SHORE_EDGE v1] shore field {} does not fit the map (bytes={:d} mapSide={:d}) -- ignored\n",
 		                    mc2::fmt::safe(path), mc2::fmt::as_i32(bytes), mc2::fmt::as_i32(mapSide));
 		fclose(f);
 		return false;
 	}
-	std::vector<uint16_t> halves((size_t)s * (size_t)s);
+	std::vector<uint16_t> halves(static_cast<size_t>(s) * static_cast<size_t>(s));
 	const size_t rd = fread(halves.data(), sizeof(uint16_t), halves.size(), f);
 	fclose(f);
 	if (rd != halves.size()) return false;
@@ -693,13 +693,13 @@ void Terrain::lodWaterShore() {
 	// behaviour, unchanged pixels. Independent of both
 	// MC2_TERRAIN_SHORELINE and MC2_TERRAIN_VISUAL_HEIGHT.
 	{
-		const int wsMapSide = (int)realVerticesMapSide;
+		const int wsMapSide = static_cast<int>(realVerticesMapSide);
 		if (gos_WaterShoreMode() >= 2 && wsMapSide > 1)
 		{
 			const int WV = (wsMapSide - 1) * 4 + 1;
 			char wsPath[600];
 			const float wsHalfF = Terrain::worldUnitsMapSide * 0.5f;
-			const float wsSpanF = (float)(wsMapSide - 1) * Terrain::worldUnitsPerVertex;
+			const float wsSpanF = static_cast<float>((wsMapSide - 1)) * Terrain::worldUnitsPerVertex;
 			if (mc2::gate::isSet<"MC2_TERRAIN_VISUAL_HEIGHT_FILE">())   // set, even when empty (the old getenv test)
 			{
 				const std::string ovStr = mc2::gate::str<"MC2_TERRAIN_VISUAL_HEIGHT_FILE">();
@@ -737,8 +737,8 @@ void Terrain::lodWaterShore() {
 				fseek(wf, 0, SEEK_END);
 				long wsz = ftell(wf);
 				fseek(wf, 0, SEEK_SET);
-				const size_t wsWant = (size_t)WV * (size_t)WV * sizeof(float);
-				if ((size_t)wsz != wsWant)
+				const size_t wsWant = static_cast<size_t>(WV) * static_cast<size_t>(WV) * sizeof(float);
+				if (static_cast<size_t>(wsz) != wsWant)
 				{
 					mc2::fmt::print_out("[WATER_SHORE_EDGE v1] SIZE MISMATCH path={} got={:d} want={:d} (V={:d} mapSide={:d}) -- ignored\n", mc2::fmt::safe(wsPath), mc2::fmt::as_i32(wsz), mc2::fmt::as_size(wsWant), mc2::fmt::as_i32(WV), mc2::fmt::as_i32(wsMapSide));
 					fflush(stdout);
@@ -746,7 +746,7 @@ void Terrain::lodWaterShore() {
 				}
 				else
 				{
-					std::vector<float> wsh((size_t)WV * (size_t)WV);
+					std::vector<float> wsh(static_cast<size_t>(WV) * static_cast<size_t>(WV));
 					size_t rd = fread(wsh.data(), sizeof(float), wsh.size(), wf);
 					fclose(wf);
 					if (rd != wsh.size())
@@ -763,7 +763,7 @@ void Terrain::lodWaterShore() {
 						// = (mapSide-1) * worldUnitsPerVertex. Shader
 						// half-texel remap puts texel centres on verts.
 						const float wsHalf = Terrain::worldUnitsMapSide * 0.5f;
-						const float wsSpan = (float)(wsMapSide - 1) * Terrain::worldUnitsPerVertex;
+						const float wsSpan = static_cast<float>((wsMapSide - 1)) * Terrain::worldUnitsPerVertex;
 						gos_TerrainLodChunk_UploadWaterShoreHeight(
 							wsh.data(), WV, WV, -wsHalf, wsHalf, wsSpan, wsSpan);
 						MC2_DIAGF("[WATER_SHORE_EDGE v1] LOADED path=%s V=%d span=%.1fwu\n",
@@ -789,7 +789,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 		// displace implies load
 		static const bool s_visualHeightGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_HEIGHT">() ||
 		                                       mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE">();
-		const int mapSide = (int)realVerticesMapSide;
+		const int mapSide = static_cast<int>(realVerticesMapSide);
 		if (s_visualHeightGate && mapSide > 1)
 		{
 			const int V = (mapSide - 1) * 4 + 1;
@@ -823,8 +823,8 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 				fseek(vf, 0, SEEK_END);
 				long vsz = ftell(vf);
 				fseek(vf, 0, SEEK_SET);
-				const size_t want = (size_t)V * (size_t)V * sizeof(float);
-				if ((size_t)vsz != want)
+				const size_t want = static_cast<size_t>(V) * static_cast<size_t>(V) * sizeof(float);
+				if (static_cast<size_t>(vsz) != want)
 				{
 					mc2::fmt::print_out("[VISUAL_HEIGHT v1] SIZE MISMATCH path={} got={:d} want={:d} (V={:d} mapSide={:d})\n", mc2::fmt::safe(vhPath), mc2::fmt::as_i32(vsz), mc2::fmt::as_size(want), mc2::fmt::as_i32(V), mc2::fmt::as_i32(mapSide));
 					fflush(stdout);
@@ -832,7 +832,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 				}
 				else
 				{
-					std::vector<float> vh((size_t)V * (size_t)V);
+					std::vector<float> vh(static_cast<size_t>(V) * static_cast<size_t>(V));
 					size_t rd = fread(vh.data(), sizeof(float), vh.size(), vf);
 					fclose(vf);
 					if (rd != vh.size())
@@ -859,7 +859,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 							char* mSlash = (mfs > mbs) ? mfs : mbs;
 							if (mSlash)
 							{
-								size_t dirLen = (size_t)(mSlash + 1 - mipPath);
+								size_t dirLen = static_cast<size_t>((mSlash + 1 - mipPath));
 								mc2::fmt::to_buf_n(mipPath + dirLen, sizeof(mipPath) - dirLen, "visual_height_mips.r32");
 								FILE* mf = fopen(mipPath, "rb");
 								if (mf)
@@ -868,8 +868,8 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 									long msz = ftell(mf);
 									fseek(mf, 0, SEEK_SET);
 									const size_t mipWant =
-										5u * (size_t)mapSide * (size_t)mapSide * sizeof(float);
-									if ((size_t)msz == mipWant)
+										5u * static_cast<size_t>(mapSide) * static_cast<size_t>(mapSide) * sizeof(float);
+									if (static_cast<size_t>(msz) == mipWant)
 									{
 										vmips.resize(mipWant / sizeof(float));
 										if (fread(vmips.data(), sizeof(float), vmips.size(), mf)
@@ -905,7 +905,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 											? (V - 1) / (mapSide - 1) : 1;
 										const float kFloorTol = 0.05f; // wu; f32 max round headroom
 										const size_t plane =
-											(size_t)mapSide * (size_t)mapSide;
+											static_cast<size_t>(mapSide) * static_cast<size_t>(mapSide);
 										const size_t nLevels =
 											plane ? (vmips.size() / plane) : 0;
 										size_t viol = 0;
@@ -915,14 +915,14 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 											for (int c = 0; c < mapSide; ++c)
 											{
 												const float corner = vh[
-													(size_t)(r * mipFactor) * (size_t)V
-													+ (size_t)(c * mipFactor)];
+													static_cast<size_t>((r * mipFactor)) * static_cast<size_t>(V)
+													+ static_cast<size_t>((c * mipFactor))];
 												for (size_t L = 0; L < nLevels; ++L)
 												{
 													const float m = vmips[
 														L * plane
-														+ (size_t)r * (size_t)mapSide
-														+ (size_t)c];
+														+ static_cast<size_t>(r) * static_cast<size_t>(mapSide)
+														+ static_cast<size_t>(c)];
 													const float deficit = corner - m;
 													if (deficit > kFloorTol)
 													{
@@ -948,7 +948,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 						gos_TerrainLodChunk_UploadVisualHeightFull(
 							vh.data(), V,
 							vmips.empty() ? nullptr : vmips.data(),
-							(int)vmips.size());
+							static_cast<int>(vmips.size()));
 						// TERRAIN-DISPLACEMENT-TRUTH-1: report the REAL state, not
 						// the stale Stage-1 lie. Stage 2 shipped: when
 						// MC2_TERRAIN_VISUAL_DISPLACE is on the vert shader
@@ -972,16 +972,16 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 							{
 								int cx = fx / 4; if (cx > mapSide - 1) cx = mapSide - 1;
 								int cy = fy / 4; if (cy > mapSide - 1) cy = mapSide - 1;
-								double d = fabs((double)vh[(size_t)fx + (size_t)fy * V]
-								                - (double)elev[(size_t)cx + (size_t)cy * mapSide]);
+								double d = fabs(static_cast<double>(vh[static_cast<size_t>(fx) + static_cast<size_t>(fy) * V])
+								                - static_cast<double>(elev[static_cast<size_t>(cx) + static_cast<size_t>(cy) * mapSide]));
 								if (d > maxAbs) maxAbs = d;
 								sumAbs += d; ++cnt;
 								if (d > 5.0)  ++moved5;
 								if (d > 50.0) ++moved50;
 							}
-						const double meanAbs = cnt ? sumAbs / (double)cnt : 0.0;
-						const double frac5  = cnt ? (100.0 * (double)moved5  / (double)cnt) : 0.0;
-						const double frac50 = cnt ? (100.0 * (double)moved50 / (double)cnt) : 0.0;
+						const double meanAbs = cnt ? sumAbs / static_cast<double>(cnt) : 0.0;
+						const double frac5  = cnt ? (100.0 * static_cast<double>(moved5)  / static_cast<double>(cnt)) : 0.0;
+						const double frac50 = cnt ? (100.0 * static_cast<double>(moved50) / static_cast<double>(cnt)) : 0.0;
 						mc2::fmt::print_out("[VISUAL_HEIGHT v1] LOADED path={} V={:d} mapSide={:d} bytes={:d} (Stage 2: geometry {} when MC2_TERRAIN_VISUAL_DISPLACE on)\n", mc2::fmt::safe(vhPath), mc2::fmt::as_i32(V), mc2::fmt::as_i32(mapSide), mc2::fmt::as_size(want), mc2::fmt::safe(displaceOn ? "DISPLACED" : "will displace"));
 						mc2::fmt::print_out("[VISUAL_HEIGHT v1] displacement-amplitude vs coarse grid: max={:.1f}wu mean={:.2f}wu moved>5wu={:.1f}% moved>50wu={:.2f}% (vertex spacing=128wu; if mean<~5wu the reshape is near-invisible -- re-bake with visual_heightfield.py --reshape)\n", maxAbs, meanAbs, frac5, frac50);
 						fflush(stdout);
@@ -1007,15 +1007,15 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 								char* fs2 = strrchr(dampPath, '/');
 								char* slash2 = (fs2 > bs2) ? fs2 : bs2;
 								if (slash2)
-									mc2::fmt::to_buf_n(slash2 + 1, sizeof(dampPath) - (size_t)(slash2 + 1 - dampPath), "visual_damp.r32");
-								std::vector<float> damp((size_t)mapSide * (size_t)mapSide, 1.0f);
+									mc2::fmt::to_buf_n(slash2 + 1, sizeof(dampPath) - static_cast<size_t>((slash2 + 1 - dampPath)), "visual_damp.r32");
+								std::vector<float> damp(static_cast<size_t>(mapSide) * static_cast<size_t>(mapSide), 1.0f);
 								bool haveSidecar = false;
 								if (FILE* df = fopen(dampPath, "rb"))
 								{
 									fseek(df, 0, SEEK_END);
 									long dsz = ftell(df);
 									fseek(df, 0, SEEK_SET);
-									if ((size_t)dsz == damp.size() * sizeof(float))
+									if (static_cast<size_t>(dsz) == damp.size() * sizeof(float))
 									{
 										haveSidecar =
 											(fread(damp.data(), sizeof(float), damp.size(), df)
@@ -1040,11 +1040,11 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 								for (int cy = 0; cy < mapSide; ++cy)
 									for (int cx = 0; cx < mapSide; ++cx)
 									{
-										const size_t ci = (size_t)cx + (size_t)cy * mapSide;
-										const size_t fi = (size_t)(cx * 4)
-											+ (size_t)(cy * 4) * (size_t)V;
-										const double full = fabs((double)vh[fi] - (double)elev[ci]);
-										const double d = (double)damp[ci];
+										const size_t ci = static_cast<size_t>(cx) + static_cast<size_t>(cy) * mapSide;
+										const size_t fi = static_cast<size_t>((cx * 4))
+											+ static_cast<size_t>((cy * 4)) * static_cast<size_t>(V);
+										const double full = fabs(static_cast<double>(vh[fi]) - static_cast<double>(elev[ci]));
+										const double d = static_cast<double>(damp[ci]);
 										const double eff = full * d;
 										if (d <= 0.0)
 										{
@@ -1057,7 +1057,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 								auto p99 = [](std::vector<double>& v2) -> double {
 									if (v2.empty()) return 0.0;
 									std::sort(v2.begin(), v2.end());
-									return v2[(size_t)((double)(v2.size() - 1) * 0.99)];
+									return v2[static_cast<size_t>((static_cast<double>((v2.size() - 1)) * 0.99))];
 								};
 								const double innerP99 = p99(inner);
 								const double annP99 = p99(annulus);
@@ -1078,7 +1078,7 @@ void Terrain::lodFlagConcrete(TerrainLodInitFrame& lf) {
 	// Step 5c: flag blocks containing concrete (material 3). The cement
 	// word is per-tile; a coarse-LOD triangle spans several tiles and gets
 	// one tile's word -> torn runways. The LOD pass clamps these blocks fine.
-	const int side = (int)realVerticesMapSide;
+	const int side = static_cast<int>(realVerticesMapSide);
 	for (int by = 0; by < s_terrainChunkSide; ++by)
 		for (int bx = 0; bx < s_terrainChunkSide; ++bx)
 		{
@@ -1090,7 +1090,7 @@ void Terrain::lodFlagConcrete(TerrainLodInitFrame& lf) {
 				{
 					const int mx = ox + lx, my = oy + ly;
 					if (mx >= side || my >= side) continue;
-					if (ttype[(size_t)mx + (size_t)my * side] >= 2.5f) { bm.hasConcrete = true; break; }
+					if (ttype[static_cast<size_t>(mx) + static_cast<size_t>(my) * side] >= 2.5f) { bm.hasConcrete = true; break; }
 				}
 		}
 }
@@ -1100,14 +1100,14 @@ void Terrain::initVertexQuadLists(unsigned long visibleVertices) {
 	//----------------------------------------------------------------------
 	// Create the VertexList
 	numberVertices = 0;
-	vertexList = (VertexPtr)terrainHeap->Malloc(sizeof(Vertex) * visibleVertices * visibleVertices);
+	vertexList = static_cast<VertexPtr>(terrainHeap->Malloc(sizeof(Vertex) * visibleVertices * visibleVertices));
 	gosASSERT(vertexList != nullptr);
 	memset(vertexList,0,sizeof(Vertex) * visibleVertices * visibleVertices);
 
 	//----------------------------------------------------------------------
 	// Create the QuadList
 	numberQuads = 0;
-	quadList = (TerrainQuadPtr)terrainHeap->Malloc(sizeof(TerrainQuad) * visibleVertices * visibleVertices);
+	quadList = static_cast<TerrainQuadPtr>(terrainHeap->Malloc(sizeof(TerrainQuad) * visibleVertices * visibleVertices));
 	gosASSERT(quadList != nullptr);
 	memset(quadList,0,sizeof(TerrainQuad) * visibleVertices * visibleVertices);
 

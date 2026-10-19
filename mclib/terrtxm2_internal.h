@@ -77,7 +77,7 @@ inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, cons
 
 	// Use File::open so the mod overlay (TryModOpen) is consulted — std::fopen bypasses it.
 	File jpgFile;
-	if (NO_ERR != jpgFile.open((const char*)burnInJpg))
+	if (NO_ERR != jpgFile.open(static_cast<const char*>(burnInJpg)))
 		return {}; // sidecar absent -> caller uses .tga
 
 	long jFileSize = jpgFile.fileSize();
@@ -97,7 +97,7 @@ inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, cons
 		return {};
 	}
 
-	std::vector<unsigned char> jpgBytes((size_t)jFileSize);
+	std::vector<unsigned char> jpgBytes(static_cast<size_t>(jFileSize));
 	if (jpgFile.read(jpgBytes.data(), jFileSize) != jFileSize)
 	{
 		jpgFile.close();
@@ -107,7 +107,7 @@ inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, cons
 	jpgFile.close();
 
 	int w = 0, h = 0;
-	unsigned char* rgb = BurninJpeg_DecodeRGB(jpgBytes.data(), (int)jFileSize, &w, &h);
+	unsigned char* rgb = BurninJpeg_DecodeRGB(jpgBytes.data(), static_cast<int>(jFileSize), &w, &h);
 	if (!rgb)
 	{
 		printf("[BURNIN_JPG] fallback name=%s reason=jpeg-decode-failed\n", fileName);
@@ -120,11 +120,11 @@ inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, cons
 		return {};
 	}
 
-	long cmapBytes = (long)w * (long)h * (long)sizeof(DWORD);
-	std::vector<unsigned char> colorMap((size_t)cmapBytes);
+	long cmapBytes = static_cast<long>(w) * static_cast<long>(h) * static_cast<long>(sizeof(DWORD));
+	std::vector<unsigned char> colorMap(static_cast<size_t>(cmapBytes));
 
 	// Pack stb RGB -> ColorMap B,G,R,A (matches the 24-bit .burnin.tga path).
-	const long pixels = (long)w * (long)h;
+	const long pixels = static_cast<long>(w) * static_cast<long>(h);
 	const unsigned char* src = rgb;
 	unsigned char* dst = colorMap.data();
 	for (long i = 0; i < pixels; ++i)
@@ -140,9 +140,9 @@ inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, cons
 	BurninJpeg_FreePixels(rgb);
 
 	printf("[BURNIN_JPG] loaded name=%s %dx%d (from %zu jpg bytes)\n",
-		fileName, w, h, (size_t)jFileSize);
+		fileName, w, h, static_cast<size_t>(jFileSize));
 
-	if (outWidth) *outWidth = (long)w;
+	if (outWidth) *outWidth = static_cast<long>(w);
 	return colorMap;
 }
 
@@ -190,7 +190,7 @@ inline void saveTGAFile(MemoryPtr ColorMap, const char * fileName, long pixelWid
 	File outputFile;
 	outputFile.create(outputName);
 	
-	outputFile.write((MemoryPtr)(&colorMapInfo),sizeof(TGAFileHeader));
+	outputFile.write(reinterpret_cast<MemoryPtr>((&colorMapInfo)),sizeof(TGAFileHeader));
 	outputFile.write(ColorMap,pixelWidth*pixelWidth*sizeof(DWORD));
 	outputFile.close();
 }

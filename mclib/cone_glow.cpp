@@ -59,7 +59,7 @@ const TG_ShapeRec* resolveSpotNode(TG_MultiShape* shape, long nodeId,
 {
     *outType = nullptr;
     if (!shape) return nullptr;
-    const TG_ShapeRec* rec = shape->GetShapeRec((int)nodeId);
+    const TG_ShapeRec* rec = shape->GetShapeRec(static_cast<int>(nodeId));
     if (!rec || !rec->node || !rec->processMe) return nullptr;
     TG_TypeNodePtr tn = rec->node->GetMyType();
     if (!tn || tn->GetNodeType() != SHAPE_NODE) return nullptr;
@@ -86,7 +86,7 @@ bool localConeAxis(const TG_TypeShape* ts, glm::vec3& axisOut, float& lenOut)
         cy += verts[i].position.y;
         cz += verts[i].position.z;
     }
-    const float inv = 1.0f / (float)n;
+    const float inv = 1.0f / static_cast<float>(n);
     cx *= inv; cy *= inv; cz *= inv;
 
     const float clen = std::sqrt(cx * cx + cy * cy + cz * cz);
@@ -442,7 +442,7 @@ bool GetNodeAim(TG_MultiShape* shape, long nodeId,
             // Apex (node origin) in MC2 frame — same swizzle as the aim.
             glm::vec3 apexMc2;
             mc2ToRender(apexMc2, oMax);
-            mc2::fmt::print_err("[CONE_AIM_DIAG v1] shape={:016X} node={:d} apexMC2=({:.1f},{:.1f},{:.1f}) aimMC2=({:.3f},{:.3f},{:.3f}) lenLocal={:.1f} coneLen={:.1f} axisLocal=({:.3f},{:.3f},{:.3f}) flip={:d}\n", mc2::fmt::as_ptr((void*)shape), mc2::fmt::as_i32(nodeId), apexMc2.x, apexMc2.y, apexMc2.z, aimWorldOut.x, aimWorldOut.y, aimWorldOut.z, lenLocal, coneLenOut, axisLocal.x, axisLocal.y, axisLocal.z, mc2::fmt::as_i32(aim_flip_enabled() ? 1 : 0));
+            mc2::fmt::print_err("[CONE_AIM_DIAG v1] shape={:016X} node={:d} apexMC2=({:.1f},{:.1f},{:.1f}) aimMC2=({:.3f},{:.3f},{:.3f}) lenLocal={:.1f} coneLen={:.1f} axisLocal=({:.3f},{:.3f},{:.3f}) flip={:d}\n", mc2::fmt::as_ptr(static_cast<void*>(shape)), mc2::fmt::as_i32(nodeId), apexMc2.x, apexMc2.y, apexMc2.z, aimWorldOut.x, aimWorldOut.y, aimWorldOut.z, lenLocal, coneLenOut, axisLocal.x, axisLocal.y, axisLocal.z, mc2::fmt::as_i32(aim_flip_enabled() ? 1 : 0));
             std::fflush(stderr);
         }
     }
@@ -486,14 +486,14 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
     // (MC2_VIS_SEMANTICS default ON, legacy gate =1 still arms independently,
     // MC2_FORCE_ALL_VISIBLE=1 disarms for diagnostic captures).
     if (ownerIsMover && vis_job_a_armed() && rec->node
-        && rec->node->GetLastTurnTransformed() != (DWORD)turn)
+        && rec->node->GetLastTurnTransformed() != static_cast<DWORD>(turn))
     {
         if (aim_diag_enabled())
         {
             static unsigned long s_rejects = 0;
             if ((++s_rejects % 240) == 1)
             {
-                mc2::fmt::print_err("[CONE_VIS_GATE v1] event=reject_stale shape={:016X} node={:d} lastTurnTransformed={:d} turn={:d} rejects={:d}\n", mc2::fmt::as_ptr((void*)shape), mc2::fmt::as_i32(nodeId), mc2::fmt::as_u32((unsigned long)rec->node->GetLastTurnTransformed()), mc2::fmt::as_i32(turn), mc2::fmt::as_u32(s_rejects));
+                mc2::fmt::print_err("[CONE_VIS_GATE v1] event=reject_stale shape={:016X} node={:d} lastTurnTransformed={:d} turn={:d} rejects={:d}\n", mc2::fmt::as_ptr(static_cast<void*>(shape)), mc2::fmt::as_i32(nodeId), mc2::fmt::as_u32(static_cast<unsigned long>(rec->node->GetLastTurnTransformed())), mc2::fmt::as_i32(turn), mc2::fmt::as_u32(s_rejects));
                 std::fflush(stderr);
             }
         }
@@ -547,7 +547,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
     const float alphaPeak = glow_alpha() * nightFactor
                           * (realism ? realism_cone_opacity() : 1.0f);
     if (alphaPeak < 1.0f) return;
-    const DWORD rgb = (DWORD)(argb & 0x00fffffful);
+    const DWORD rgb = static_cast<DWORD>((argb & 0x00fffffful));
 
     // GHOST-LIGHT-DUMP-1 (batch-7 item 5): throttled per-queue dump so a
     // floating cone wedge with no visible caster can be attributed to the
@@ -558,7 +558,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
         ++s_qcalls;
         if (s_qcalls <= 48 || (s_qcalls % 600) == 0)
         {
-            mc2::fmt::print_err("[CONE_QUEUE_DIAG v1] shape={:016X} node={:d} apexMC2=({:.1f},{:.1f},{:.1f}) rgb={:06x} alphaPeak={:.1f} nightFactor={:.2f}\n", mc2::fmt::as_ptr((void*)shape), mc2::fmt::as_i32(nodeId), -glm::value_ptr(rec->shapeToWorld)[3], glm::value_ptr(rec->shapeToWorld)[11], glm::value_ptr(rec->shapeToWorld)[7], mc2::fmt::as_u32((unsigned long)rgb), alphaPeak, nightFactor);
+            mc2::fmt::print_err("[CONE_QUEUE_DIAG v1] shape={:016X} node={:d} apexMC2=({:.1f},{:.1f},{:.1f}) rgb={:06x} alphaPeak={:.1f} nightFactor={:.2f}\n", mc2::fmt::as_ptr(static_cast<void*>(shape)), mc2::fmt::as_i32(nodeId), -glm::value_ptr(rec->shapeToWorld)[3], glm::value_ptr(rec->shapeToWorld)[11], glm::value_ptr(rec->shapeToWorld)[7], mc2::fmt::as_u32(static_cast<unsigned long>(rgb)), alphaPeak, nightFactor);
             std::fflush(stderr);
         }
     }
@@ -584,7 +584,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
             sx = (xf.x * rhw) * viewMulX + viewAddX;
             sy = (xf.y * rhw) * viewMulY + viewAddY;
             sz = (xf.z * rhw);
-            rhw = (float)fabs(rhw);
+            rhw = static_cast<float>(fabs(rhw));
         }
         else
         {
@@ -693,7 +693,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
         const DWORD i0 = tris[f].Vertices[0];
         const DWORD i1 = tris[f].Vertices[1];
         const DWORD i2 = tris[f].Vertices[2];
-        if (i0 >= (DWORD)nVerts || i1 >= (DWORD)nVerts || i2 >= (DWORD)nVerts)
+        if (i0 >= static_cast<DWORD>(nVerts) || i1 >= static_cast<DWORD>(nVerts) || i2 >= static_cast<DWORD>(nVerts))
             continue;
         if (!xv[i0].ok || !xv[i1].ok || !xv[i2].ok)
             continue;   // z-range reject, mirrors Render (tgl.cpp:3303)
@@ -708,7 +708,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
             gos_VERTEX& gv = qt.v[c];
             gv.x = s.x; gv.y = s.y; gv.z = s.z; gv.rhw = s.rhw;
             gv.u = 0.0f; gv.v = 0.0f;
-            DWORD a = (DWORD)(alphaPeak * s.fade);
+            DWORD a = static_cast<DWORD>((alphaPeak * s.fade));
             if (a > 255) a = 255;
             gv.argb = (a << 24) | rgb;
             gv.frgb = 0x00000000;   // fog disabled in the ISSPOTLGT pass
@@ -750,8 +750,8 @@ bool nameHasCI(const char* hay, const char* needle)
         while (*a && *b)
         {
             char ca = *a, cb = *b;
-            if (ca >= 'A' && ca <= 'Z') ca = (char)(ca - 'A' + 'a');
-            if (cb >= 'A' && cb <= 'Z') cb = (char)(cb - 'A' + 'a');
+            if (ca >= 'A' && ca <= 'Z') ca = static_cast<char>((ca - 'A' + 'a'));
+            if (cb >= 'A' && cb <= 'Z') cb = static_cast<char>((cb - 'A' + 'a'));
             if (ca != cb) break;
             ++a; ++b;
         }
@@ -854,8 +854,8 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
             c.x = (xf.x * r) * viewMulX + viewAddX;
             c.y = (xf.y * r) * viewMulY + viewAddY;
             c.z = (xf.z * r);
-            c.rhw = (float)fabs(r);
-            pixPerWu = viewMulX * (float)fabs(r);
+            c.rhw = static_cast<float>(fabs(r));
+            pixPerWu = viewMulX * static_cast<float>(fabs(r));
         }
         else
         {
@@ -896,19 +896,19 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
         const int kRings = 5;
         const float zBias = c.z * 0.998f;
 
-        const float cr = (float)((rgb >> 16) & 0xFFu);
-        const float cg = (float)((rgb >>  8) & 0xFFu);
-        const float cb = (float)( rgb        & 0xFFu);
+        const float cr = static_cast<float>(((rgb >> 16) & 0xFFu));
+        const float cg = static_cast<float>(((rgb >>  8) & 0xFFu));
+        const float cb = static_cast<float>(( rgb        & 0xFFu));
         const float aScale = clampf(peak / 255.0f, 0.0f, 1.0f);
 
         auto mkVert = [&](float px, float py, float inten, gos_VERTEX& gv) {
             gv.x = px; gv.y = py; gv.z = zBias; gv.rhw = c.rhw;
             gv.u = 0.0f; gv.v = 0.0f;
-            DWORD R = (DWORD)(cr * inten * aScale);
-            DWORD G = (DWORD)(cg * inten * aScale);
-            DWORD B = (DWORD)(cb * inten * aScale);
+            DWORD R = static_cast<DWORD>((cr * inten * aScale));
+            DWORD G = static_cast<DWORD>((cg * inten * aScale));
+            DWORD B = static_cast<DWORD>((cb * inten * aScale));
             if (R > 255) R = 255; if (G > 255) G = 255; if (B > 255) B = 255;
-            DWORD A = (DWORD)(255.0f * inten * aScale);
+            DWORD A = static_cast<DWORD>((255.0f * inten * aScale));
             if (A > 255) A = 255;
             gv.argb = (A << 24) | (R << 16) | (G << 8) | B;
             gv.frgb = 0x00000000;
@@ -919,8 +919,8 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
         bool emittedAny = false;
         for (int rg = 0; rg < kRings; ++rg)
         {
-            const float t0 = (float)rg / (float)kRings;
-            const float t1 = (float)(rg + 1) / (float)kRings;
+            const float t0 = static_cast<float>(rg) / static_cast<float>(kRings);
+            const float t1 = static_cast<float>((rg + 1)) / static_cast<float>(kRings);
             const float r0 = t0 * radPx, r1 = t1 * radPx;
             // One flat colour per band (see the flat-shading note above).
             const float inten = ringInten((t0 + t1) * 0.5f);
@@ -929,8 +929,8 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
             for (int s = 0; s < kSeg; ++s)
             {
                 if (s_tris.size() + 2 > kMaxFrameTris) { ++dEmitted; return; }
-                const float a0 = (float)s * (6.28318530718f / (float)kSeg);
-                const float a1 = (float)(s + 1) * (6.28318530718f / (float)kSeg);
+                const float a0 = static_cast<float>(s) * (6.28318530718f / static_cast<float>(kSeg));
+                const float a1 = static_cast<float>((s + 1)) * (6.28318530718f / static_cast<float>(kSeg));
                 const float c0 = std::cos(a0), s0 = std::sin(a0);
                 const float c1 = std::cos(a1), s1 = std::sin(a1);
 
@@ -977,7 +977,7 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
         ++s_bcalls;
         if (s_bcalls <= 64 || (s_bcalls % 600) == 0)
         {
-            mc2::fmt::print_err("[BEACON_DIAG v1] shape={:016X} shapes={:d} walked={:d} billboards={:d} untransformed={:d} clipped={:d} emitted={:d} peak={:.1f} radius={:.1f}\n", mc2::fmt::as_ptr((void*)shape), mc2::fmt::as_i32(shape->GetNumShapes()), mc2::fmt::as_i32(dWalked), mc2::fmt::as_i32(dFound), mc2::fmt::as_i32(dUntransformed), mc2::fmt::as_i32(dClipped), mc2::fmt::as_i32(dEmitted), peak, radius);
+            mc2::fmt::print_err("[BEACON_DIAG v1] shape={:016X} shapes={:d} walked={:d} billboards={:d} untransformed={:d} clipped={:d} emitted={:d} peak={:.1f} radius={:.1f}\n", mc2::fmt::as_ptr(static_cast<void*>(shape)), mc2::fmt::as_i32(shape->GetNumShapes()), mc2::fmt::as_i32(dWalked), mc2::fmt::as_i32(dFound), mc2::fmt::as_i32(dUntransformed), mc2::fmt::as_i32(dClipped), mc2::fmt::as_i32(dEmitted), peak, radius);
             std::fflush(stderr);
         }
     }

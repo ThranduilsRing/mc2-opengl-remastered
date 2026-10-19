@@ -101,17 +101,17 @@ constexpr uint64_t kFnvOffset = 1469598103934665603ULL;
 constexpr uint64_t kFnvPrime  = 1099511628211ULL;
 
 inline uint64_t fnvByte(uint64_t h, uint8_t b) {
-    h ^= (uint64_t)b;
+    h ^= static_cast<uint64_t>(b);
     h *= kFnvPrime;
     return h;
 }
 
 inline uint64_t fnvI32(uint64_t h, int32_t v) {
-    const uint32_t u = (uint32_t)v;
-    h = fnvByte(h, (uint8_t)(u & 0xFFu));
-    h = fnvByte(h, (uint8_t)((u >> 8) & 0xFFu));
-    h = fnvByte(h, (uint8_t)((u >> 16) & 0xFFu));
-    h = fnvByte(h, (uint8_t)((u >> 24) & 0xFFu));
+    const uint32_t u = static_cast<uint32_t>(v);
+    h = fnvByte(h, static_cast<uint8_t>((u & 0xFFu)));
+    h = fnvByte(h, static_cast<uint8_t>(((u >> 8) & 0xFFu)));
+    h = fnvByte(h, static_cast<uint8_t>(((u >> 16) & 0xFFu)));
+    h = fnvByte(h, static_cast<uint8_t>(((u >> 24) & 0xFFu)));
     return h;
 }
 
@@ -122,7 +122,7 @@ inline uint64_t fnvF32Bits(uint64_t h, float f) {
     if (f == 0.0f) f = 0.0f;  // collapse -0.0 -> +0.0
     uint32_t bits = 0;
     std::memcpy(&bits, &f, sizeof(bits));
-    return fnvI32(h, (int32_t)bits);
+    return fnvI32(h, static_cast<int32_t>(bits));
 }
 
 // --- quantization ----------------------------------------------------------
@@ -138,13 +138,13 @@ inline int32_t quantize(float v, float q) {
     if (!(v == v))            return kQuantNaN;      // NaN
     if (v >  3.0e38f)         return kQuantPosInf;
     if (v < -3.0e38f)         return kQuantNegInf;
-    const double s = (double)v / (double)q;
+    const double s = static_cast<double>(v) / static_cast<double>(q);
     // Round half away from zero -- symmetric about 0, no banker's-rounding
     // asymmetry between a value and its negation.
     const double r = (s >= 0.0) ? (s + 0.5) : (s - 0.5);
     if (r >=  2147483000.0)   return kQuantPosInf;
     if (r <= -2147483000.0)   return kQuantNegInf;
-    return (int32_t)r;
+    return static_cast<int32_t>(r);
 }
 
 // Orders two float lists by quantized bucket then raw bits: total, NaN-safe,
@@ -268,8 +268,8 @@ inline uint64_t digestMoverStrict(const MoverRecord& r) {
 // change; folding the count means a vanished mover changes the digest even if
 // every survivor is identical.
 inline uint64_t foldHeader(uint64_t h, size_t n) {
-    h = fnvI32(h, (int32_t)kSchemaVersion);
-    h = fnvI32(h, (int32_t)n);
+    h = fnvI32(h, static_cast<int32_t>(kSchemaVersion));
+    h = fnvI32(h, static_cast<int32_t>(n));
     h = fnvI32(h, quantize(kPosQuantum,  1.0f / 1048576.0f));
     h = fnvI32(h, quantize(kAngQuantum,  1.0f / 1048576.0f));
     h = fnvI32(h, quantize(kFracQuantum, 1.0f / 1048576.0f));
@@ -284,13 +284,13 @@ using enum DigestKind;
 inline uint64_t digestWorld(MoverRecord* recs, size_t n, DigestKind kind) {
     sortRecords(recs, n);
     uint64_t h = foldHeader(kFnvOffset, n);
-    h = fnvI32(h, (int32_t)kind);
+    h = fnvI32(h, static_cast<int32_t>(kind));
     for (size_t i = 0; i < n; ++i) {
         uint64_t m = (kind == DIGEST_STRICT) ? digestMoverStrict(recs[i])
                    : (kind == DIGEST_VISUAL) ? digestMoverVisual(recs[i])
                                              : digestMoverGraded(recs[i]);
         for (int b = 0; b < 8; ++b)
-            h = fnvByte(h, (uint8_t)((m >> (b * 8)) & 0xFFu));
+            h = fnvByte(h, static_cast<uint8_t>(((m >> (b * 8)) & 0xFFu)));
     }
     return h;
 }

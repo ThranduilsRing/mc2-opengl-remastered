@@ -156,7 +156,7 @@ static ProjectZPredicates compute_predicates(
     p.rectNearFar = accepted && (rawClip.z >= 0.0f) && (rawClip.z <= rawClip.w);
 
     // rectGuard: expanded viewport
-    float gx = (float)guardPx, gy = (float)guardPx;
+    float gx = static_cast<float>(guardPx), gy = static_cast<float>(guardPx);
     p.rectGuard = (screen.x >= -gx) && (screen.y >= -gy) &&
                   (screen.x <= screenResX + gx) && (screen.y <= screenResY + gy);
 
@@ -212,7 +212,7 @@ static void emit_summary(uint32_t frames) {
         printf("  perspective_calls=%u\n", s_perspCalls);
         for (int p = 0; p < PRED_COUNT; p++) {
             uint32_t total_dis = s_predStat[p].disagree_perm + s_predStat[p].disagree_restr;
-            float pct = (s_perspCalls > 0) ? 100.0f * (float)total_dis / (float)s_perspCalls : 0.0f;
+            float pct = (s_perspCalls > 0) ? 100.0f * static_cast<float>(total_dis) / static_cast<float>(s_perspCalls) : 0.0f;
             printf("  predicate=%-18s agree=%u disagree_perm=%u disagree_restr=%u finite_viol=%u (%.2f%% of persp)\n",
                    s_predNames[p],
                    s_predStat[p].agree,
@@ -373,7 +373,7 @@ void projectz_emit_tri(
     // Triangle policy observers (not active — observe only)
     bool pol_any = v0.legacyAccepted || v1.legacyAccepted || v2.legacyAccepted;
     bool pol_all = v0.legacyAccepted && v1.legacyAccepted && v2.legacyAccepted;
-    int  accepted_count = (int)v0.legacyAccepted + (int)v1.legacyAccepted + (int)v2.legacyAccepted;
+    int  accepted_count = static_cast<int>(v0.legacyAccepted) + static_cast<int>(v1.legacyAccepted) + static_cast<int>(v2.legacyAccepted);
     bool pol_maj = (accepted_count >= 2);
 
     if (g_pzDoTrace && s_traceFile) {

@@ -51,7 +51,7 @@ static void writeScalarSlot (ABLFile* file, const StackItem* slot) {
 	StackItem image;
 	memset(&image, 0, sizeof(image));
 	memcpy(&image, slot, sizeof(image.integer));
-	file->write((unsigned char*)&image, sizeof(StackItem));
+	file->write(reinterpret_cast<unsigned char*>(&image), sizeof(StackItem));
 }
 
 // A saved slot whose upper bytes are not zero was written before the writer zero-extended, or holds a pointer arm; dropping those bytes keeps
@@ -60,7 +60,7 @@ static void clearScalarSlotPointerArm (StackItem* slot) {
 
 	if (sizeof(StackItem) <= sizeof(slot->integer))
 		return;
-	unsigned char* upper = (unsigned char*)slot + sizeof(slot->integer);
+	unsigned char* upper = reinterpret_cast<unsigned char*>(slot) + sizeof(slot->integer);
 	for (size_t i = 0; i < sizeof(StackItem) - sizeof(slot->integer); i++) {
 		if (upper[i]) {
 			MC2_LOG_ONCE(Sim, Warn, "[ABL_SAVE_SLOT_POINTER_ARM] a saved ABL scalar slot carries bytes past its 4-byte value; dropped");
@@ -393,14 +393,14 @@ void initModuleRegistry (long maxModules) {
 
 	//------------------------------
 	// Create the module registry...
-	ModuleRegistry = (ModuleEntryPtr)ABL_alloc(ABLPool::Stack, sizeof(ModuleEntry) * MaxModules);
+	ModuleRegistry = static_cast<ModuleEntryPtr>(ABL_alloc(ABLPool::Stack, sizeof(ModuleEntry) * MaxModules));
 	if (!ModuleRegistry)
 		ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc Module Registry ");
 	memset(ModuleRegistry, 0, sizeof(ModuleEntry) * MaxModules);
 
 	//-------------------------------------------------
 	// Create the active (ABLModule) module registry...
-	ModuleInstanceRegistry = (ABLModulePtr*)ABL_alloc(ABLPool::Stack, sizeof(ABLModulePtr) * MaxModules);
+	ModuleInstanceRegistry = static_cast<ABLModulePtr*>(ABL_alloc(ABLPool::Stack, sizeof(ABLModulePtr) * MaxModules));
 	if (!ModuleInstanceRegistry)
 		ABL_Fatal(0, " ABL: Unable to malloc AblStackHeap->Module Instance Registry ");
 	memset(ModuleInstanceRegistry, 0, sizeof(ABLModulePtr) * MaxModules);
@@ -443,7 +443,7 @@ void initLibraryRegistry (long maxLibraries) {
 
 	//--------------------------------------------------
 	// Create the active (ABLModule) library registry...
-	LibraryInstanceRegistry = (ABLModulePtr*)ABL_alloc(ABLPool::Stack, sizeof(ABLModulePtr) * MaxLibraries);
+	LibraryInstanceRegistry = static_cast<ABLModulePtr*>(ABL_alloc(ABLPool::Stack, sizeof(ABLModulePtr) * MaxLibraries));
 	if (!LibraryInstanceRegistry)
 		ABL_Fatal(0, " ABL: Unable to malloc AblStackHeap->Library Instance Registry ");
 	memset(LibraryInstanceRegistry, 0, sizeof(ABLModulePtr) * MaxLibraries);
@@ -561,7 +561,7 @@ long ABLModule::init (int moduleHandle) {
 	staticData = nullptr;
 	long numStatics = ModuleRegistry[handle].numStaticVars;
 	if (numStatics) {
-		staticData = (StackItemPtr)ABL_alloc(ABLPool::Stack, sizeof(StackItem) * numStatics);
+		staticData = static_cast<StackItemPtr>(ABL_alloc(ABLPool::Stack, sizeof(StackItem) * numStatics));
 		if (!staticData) {
 			char err[255];
 			sprintf(err, "ABL: Unable to AblStackHeap->malloc staticData [Module %d]", id);
@@ -570,7 +570,7 @@ long ABLModule::init (int moduleHandle) {
 		long* sizeList = ModuleRegistry[handle].sizeStaticVars;
 		for (long i = 0; i < numStatics; i++)
 			if (sizeList[i] > 0) {
-				staticData[i].address = (char*)ABL_alloc(ABLPool::Stack, sizeList[i]);
+				staticData[i].address = static_cast<char*>(ABL_alloc(ABLPool::Stack, sizeList[i]));
 				if (!staticData) {
 					char err[255];
 					sprintf(err, "ABL: Unable to AblStackHeap->malloc staticData address [Module %d]", id);
@@ -583,7 +583,7 @@ long ABLModule::init (int moduleHandle) {
 
 	if (ModuleRegistry[handle].numOrderCalls) {
 		long numLongs = 1 + ModuleRegistry[handle].numOrderCalls / 32;
-		orderCallFlags = (unsigned long*)ABL_alloc(ABLPool::Stack, sizeof(unsigned long) * numLongs);
+		orderCallFlags = static_cast<unsigned long*>(ABL_alloc(ABLPool::Stack, sizeof(unsigned long) * numLongs));
 		if (!orderCallFlags) {
 			char err[255];
 			sprintf(err, "ABL: Unable to AblStackHeap->malloc orderCallFlags [Module %d]", id);
@@ -654,7 +654,7 @@ void ABLModule::write (ABLFile* moduleFile) {
 	long* sizeList = ModuleRegistry[handle].sizeStaticVars;
 	for (long i = 0; i < numStatics; i++) {
 		if (sizeList[i] > 0)
-			moduleFile->write((unsigned char*)staticData[i].address, sizeList[i]);
+			moduleFile->write(reinterpret_cast<unsigned char*>(staticData[i].address), sizeList[i]);
 		else
 			writeScalarSlot(moduleFile, &staticData[i]);
 	}
@@ -668,14 +668,14 @@ void ABLModule::read (ABLFile* moduleFile) {
 	bool fresh = (id == -1);
 	if (fresh) {
 		id = NumModules++;
-		if (moduleFile->readString((unsigned char*)name, sizeof(name)) < 0)
+		if (moduleFile->readString(reinterpret_cast<unsigned char*>(name), sizeof(name)) < 0)
 			return;
 		handle = moduleFile->readInt();
 		staticData = nullptr;
 		}
 	else {
 		char tempName[1024];
-		if (moduleFile->readString((unsigned char*)tempName, sizeof(tempName)) < 0)
+		if (moduleFile->readString(reinterpret_cast<unsigned char*>(tempName), sizeof(tempName)) < 0)
 			return;
 		long ignore = moduleFile->readInt();
         (void)ignore;
@@ -683,14 +683,14 @@ void ABLModule::read (ABLFile* moduleFile) {
 
 	char stateName[256];
 	memset(stateName,0,256);
-	if (moduleFile->readString((unsigned char*)stateName, sizeof(stateName)) < 0)
+	if (moduleFile->readString(reinterpret_cast<unsigned char*>(stateName), sizeof(stateName)) < 0)
 		return;
 	prevState = nullptr;
 	if (strcmp(stateName, "NULLPrevState"))
 		prevState = findState(stateName);
 	
 	memset(stateName,0,256);
-	if (moduleFile->readString((unsigned char*)stateName, sizeof(stateName)) < 0)
+	if (moduleFile->readString(reinterpret_cast<unsigned char*>(stateName), sizeof(stateName)) < 0)
 		return;
 	state = nullptr;
 	if (strcmp(stateName, "NULLState"))
@@ -701,7 +701,7 @@ void ABLModule::read (ABLFile* moduleFile) {
 	long numStatics = ModuleRegistry[handle].numStaticVars;
 	if (numStatics) {
 		if (fresh) {		
-			staticData = (StackItemPtr)ABL_alloc(ABLPool::Stack, sizeof(StackItem) * numStatics);
+			staticData = static_cast<StackItemPtr>(ABL_alloc(ABLPool::Stack, sizeof(StackItem) * numStatics));
 			if (!staticData) {
 				char err[255];
 				sprintf(err, "ABL: Unable to AblStackHeap->malloc staticData [Module %d]", id);
@@ -712,14 +712,14 @@ void ABLModule::read (ABLFile* moduleFile) {
 		for (long i = 0; i < numStatics; i++)
 			if (sizeList[i] > 0) {
 				if (fresh) {
-					staticData[i].address = (char*)ABL_alloc(ABLPool::Stack, sizeList[i]);
+					staticData[i].address = static_cast<char*>(ABL_alloc(ABLPool::Stack, sizeList[i]));
 					if (!staticData) {
 						char err[255];
 						sprintf(err, "ABL: Unable to AblStackHeap->malloc staticData address [Module %d]", id);
 						ABL_Fatal(0, err);
 					}
 				}
-				long result = moduleFile->read((unsigned char*)staticData[i].address, sizeList[i]);
+				long result = moduleFile->read(reinterpret_cast<unsigned char*>(staticData[i].address), sizeList[i]);
 				if (!result) {
 					char err[255];
 					sprintf(err, "ABL: Unable to read staticData.address [Module %d]", id);
@@ -728,7 +728,7 @@ void ABLModule::read (ABLFile* moduleFile) {
 				}
 			else {
 				staticData[i].integer = 0;
-				long result = moduleFile->read((unsigned char*)&staticData[i], sizeof(StackItem));
+				long result = moduleFile->read(reinterpret_cast<unsigned char*>(&staticData[i]), sizeof(StackItem));
 				clearScalarSlotPointerArm(&staticData[i]);
 				if (!result) {
 					char err[255];
@@ -741,7 +741,7 @@ void ABLModule::read (ABLFile* moduleFile) {
 	if (ModuleRegistry[handle].numOrderCalls) {
 		long numLongs = 1 + ModuleRegistry[handle].numOrderCalls / 32;
 		if (!orderCallFlags) // an instance read in place keeps its block
-			orderCallFlags = (unsigned long*)ABL_alloc(ABLPool::Stack, sizeof(unsigned long) * numLongs);
+			orderCallFlags = static_cast<unsigned long*>(ABL_alloc(ABLPool::Stack, sizeof(unsigned long) * numLongs));
 		if (!orderCallFlags) {
 			char err[255];
 			sprintf(err, "ABLModule.read: Unable to AblStackHeap->malloc orderCallFlags [Module %d]", id);
@@ -918,7 +918,7 @@ long ABLModule::execute (ABLParamPtr paramList) {
 
 				if (formalTypePtr->form == FRM_ARRAY/* || (formalTypePtr->form == FRM_RECORD)*/) {
 					long size = formalTypePtr->size;
-					char* dest = (char*)ABL_alloc(ABLPool::Stack, (size_t)size);
+					char* dest = static_cast<char*>(ABL_alloc(ABLPool::Stack, static_cast<size_t>(size)));
 					if (!dest) {
 						char err[255];
 						sprintf(err, "ABL: Unable to AblStackHeap->malloc array parameter [Module %d]", id);
@@ -932,9 +932,9 @@ long ABLModule::execute (ABLParamPtr paramList) {
 				}
 			else {
 				if (formalTypePtr == RealTypePtr)
-					pushAddress((Address)&(paramList[curParam].real));
+					pushAddress(reinterpret_cast<Address>(&(paramList[curParam].real)));
 				else if (formalTypePtr == IntegerTypePtr)
-					pushAddress((Address)&(paramList[curParam].integer));
+					pushAddress(reinterpret_cast<Address>(&(paramList[curParam].integer)));
 				else
 					return(0);
 			}
@@ -1040,7 +1040,7 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 					if (moduleParamList[curParam].type == ABL_PARAM_INTEGER) {
 						//---------------------------------------------
 						// Real formal parameter, but integer actual...
-						pushReal((float)(moduleParamList[curParam].integer));
+						pushReal(static_cast<float>((moduleParamList[curParam].integer)));
 						}
 					else if (moduleParamList[curParam].type == ABL_PARAM_REAL)
 						pushReal(moduleParamList[curParam].real);
@@ -1059,7 +1059,7 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 					// The following is a little inefficient, but is kept this way to keep it clear.
 					// Once it's verified to work, optimize...
 					long size = formalTypePtr->size;
-					char* dest = (char*)ABL_alloc(ABLPool::Stack, (size_t)size);
+					char* dest = static_cast<char*>(ABL_alloc(ABLPool::Stack, static_cast<size_t>(size)));
 					if (!dest) {
 						char err[255];
 						sprintf(err, "ABL: Unable to AblStackHeap->malloc array parameter [Module %d]", id);
@@ -1075,9 +1075,9 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 				//-------------------------------
 				// pass by reference parameter...
 				if (formalTypePtr == RealTypePtr)
-					pushAddress((Address)&(moduleParamList[curParam].real));
+					pushAddress(reinterpret_cast<Address>(&(moduleParamList[curParam].real)));
 				else if (formalTypePtr == IntegerTypePtr)
-					pushAddress((Address)&(moduleParamList[curParam].integer));
+					pushAddress(reinterpret_cast<Address>(&(moduleParamList[curParam].integer)));
 				else
 					return(0);
 			}
@@ -1186,7 +1186,7 @@ int ABLModule::setStaticInteger (char* name, int value) {
 		return(3);
 
 	StackItemPtr dataPtr = staticData + symbol->defn.info.data.offset;
-	*((int*)dataPtr) = value;
+	*(reinterpret_cast<int*>(dataPtr)) = value;
 	return(0);
 }
 
@@ -1205,7 +1205,7 @@ int ABLModule::getStaticInteger (char* name) {
 		return(0xFFFFFFFF);
 
 	StackItemPtr dataPtr = staticData + symbol->defn.info.data.offset;
-	return(*((int*)dataPtr));
+	return(*(reinterpret_cast<int*>(dataPtr)));
 }
 
 //---------------------------------------------------------------------------
@@ -1223,7 +1223,7 @@ int ABLModule::setStaticReal (char* name, float value) {
 		return(3);
 
 	StackItemPtr dataPtr = staticData + symbol->defn.info.data.offset;
-	*((float*)dataPtr) = value;
+	*(reinterpret_cast<float*>(dataPtr)) = value;
 	return(0);
 }
 
@@ -1248,7 +1248,7 @@ float ABLModule::getStaticReal (char* name) {
     }
 
 	StackItemPtr dataPtr = staticData + symbol->defn.info.data.offset;
-	return(*((float*)dataPtr));
+	return(*(reinterpret_cast<float*>(dataPtr)));
 }
 
 //---------------------------------------------------------------------------
@@ -1468,9 +1468,9 @@ void ABLi_saveEnvironment (ABLFile* ablFile) {
 	}
 	ablFile->writeInt(ABL_ENV_MARK);
 	for (int i = 0; i < eternalOffset; i++) {
-		StackItemPtr dataPtr = (StackItemPtr)stack + i;
+		StackItemPtr dataPtr = reinterpret_cast<StackItemPtr>(stack) + i;
 		if (EternalVariablesSizes[i] > 0)
-			ablFile->write((unsigned char*)dataPtr->address, EternalVariablesSizes[i]);
+			ablFile->write(reinterpret_cast<unsigned char*>(dataPtr->address), EternalVariablesSizes[i]);
 		else
 			writeScalarSlot(ablFile, dataPtr);
 	}
@@ -1511,7 +1511,7 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 		}
 		if (malloc) {
 			long numErrors, numLinesProcessed;
-			ABLModulePtr library = ABLi_loadLibrary((const char*)fileName, &numErrors, &numLinesProcessed, nullptr, false, false);
+			ABLModulePtr library = ABLi_loadLibrary(reinterpret_cast<const char*>(fileName), &numErrors, &numLinesProcessed, nullptr, false, false);
 			if (!library) {
 				char err[255];
 				sprintf(err, "ABLi_loadEnvironment: Unable to load library [Module %d]", i);
@@ -1532,7 +1532,7 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 		}
 		long numErrors, numLinesProcessed;
 		if (malloc) {
-			int handle = ABLi_preProcess((const char*)fileName, &numErrors, &numLinesProcessed);
+			int handle = ABLi_preProcess(reinterpret_cast<const char*>(fileName), &numErrors, &numLinesProcessed);
 			if (handle < 0) {
 				char err[255];
 				sprintf(err, "ABLi_loadEnvironment: Unable to preprocess [Module %d]", i);
@@ -1549,12 +1549,12 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
     }
 
 	for (int i = 0; i < eternalOffset; i++) {
-		StackItemPtr dataPtr = (StackItemPtr)stack + i;
+		StackItemPtr dataPtr = reinterpret_cast<StackItemPtr>(stack) + i;
 		if (EternalVariablesSizes[i] > 0)
-			ablFile->read((unsigned char*)dataPtr->address, EternalVariablesSizes[i]);
+			ablFile->read(reinterpret_cast<unsigned char*>(dataPtr->address), EternalVariablesSizes[i]);
 		else
 		{
-			ablFile->read((unsigned char*)dataPtr, sizeof(StackItem));
+			ablFile->read(reinterpret_cast<unsigned char*>(dataPtr), sizeof(StackItem));
 			clearScalarSlotPointerArm(dataPtr);
 		}
 	}

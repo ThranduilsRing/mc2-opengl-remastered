@@ -122,7 +122,7 @@ gosFont* gosFont::load(const char* fontFile) {
                 // Expand 8-bit alpha to RGBA8: fan alpha into R for the
                 // gos_text shader's .xxxx sample. Other channels also
                 // populated so any future shader change still gets sane data.
-                const size_t pixel_count = (size_t)atlas.width * (size_t)atlas.height;
+                const size_t pixel_count = static_cast<size_t>(atlas.width) * static_cast<size_t>(atlas.height);
                 DWORD* rgba = new DWORD[pixel_count];
                 for(size_t i = 0; i < pixel_count; ++i) {
                     uint32_t a = atlas.pixels[i];
@@ -230,7 +230,7 @@ void gosFont::getCharUV(int c, uint32_t* u, uint32_t* v) const {
     gosASSERT(u && v);
 
     int32_t pos = c - gi_.start_glyph_;
-    if(pos < 0 || pos >= (int)gi_.num_glyphs_) {
+    if(pos < 0 || pos >= static_cast<int>(gi_.num_glyphs_)) {
         *u = *v = 0;
         return;
     }
@@ -242,7 +242,7 @@ void gosFont::getCharUV(int c, uint32_t* u, uint32_t* v) const {
 int gosFont::getCharAdvance(int c) const
 {
     int pos = c - gi_.start_glyph_;
-    if(pos < 0 || pos >= (int)gi_.num_glyphs_) {
+    if(pos < 0 || pos >= static_cast<int>(gi_.num_glyphs_)) {
         return getMaxCharWidth();
     }
 
@@ -251,7 +251,7 @@ int gosFont::getCharAdvance(int c) const
 
 const gosGlyphMetrics& gosFont::getGlyphMetrics(int c) const {
     int pos = c - gi_.start_glyph_;
-    if(pos < 0 || pos >= (int)gi_.num_glyphs_)
+    if(pos < 0 || pos >= static_cast<int>(gi_.num_glyphs_))
         pos = 0;
 
     return gi_.glyphs_[pos];

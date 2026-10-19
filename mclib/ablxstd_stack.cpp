@@ -14,7 +14,7 @@ char ABLi_popChar (void) {
 
 	getCodeToken();
 	execExpression();
-	char val = (char)tos->integer;
+	char val = static_cast<char>(tos->integer);
 	pop();
 	
 	return(val);
@@ -52,7 +52,7 @@ float ABLi_popIntegerReal (void) {
 	TypePtr paramTypePtr = execExpression();
 	float val = 0.0;
 	if (paramTypePtr == IntegerTypePtr)
-		val = (float)tos->integer;
+		val = static_cast<float>(tos->integer);
 	else
 		val = tos->real;
 	pop();
@@ -80,7 +80,7 @@ char* ABLi_popCharPtr (void) {
 	// Get destination string...
 	getCodeToken();
 	execExpression();
-	char* charPtr = (char*)tos->address;
+	char* charPtr = reinterpret_cast<char*>(tos->address);
 	pop();
 
 	return(charPtr);
@@ -107,7 +107,7 @@ int* ABLi_popIntegerPtr (void) {
 	getCodeToken();
 	SymTableNodePtr idPtr = getCodeSymTableNodePtr();
 	execVariable(idPtr, USE_REFPARAM);
-	int* integerPtr = (&((StackItemPtr)tos->address)->integer);
+	int* integerPtr = (&(reinterpret_cast<StackItemPtr>(tos->address))->integer);
 	pop();
 
 	return(integerPtr);
@@ -146,7 +146,7 @@ float* ABLi_popRealPtr (void) {
 	getCodeToken();
 	SymTableNodePtr idPtr = getCodeSymTableNodePtr();
 	execVariable(idPtr, USE_REFPARAM);
-	float* realPtr = (&((StackItemPtr)tos->address)->real);
+	float* realPtr = (&(reinterpret_cast<StackItemPtr>(tos->address))->real);
 	pop();
 
 	return(realPtr);
@@ -160,7 +160,7 @@ char* ABLi_popBooleanPtr (void) {
 	// Get destination string...
 	getCodeToken();
 	execExpression();
-	char* charPtr = (char*)tos->address;
+	char* charPtr = reinterpret_cast<char*>(tos->address);
 	pop();
 
 	return(charPtr);
@@ -193,19 +193,19 @@ long ABLi_popAnything (ABLStackItem* value) {
 	else if (paramTypePtr->form == FRM_ARRAY) {
 		if (paramTypePtr->info.array.elementTypePtr == CharTypePtr) {
 			value->type = type = ABL_STACKITEM_CHAR_PTR;
-			value->data.characterPtr = (char*)tos->address;
+			value->data.characterPtr = reinterpret_cast<char*>(tos->address);
 			}
 		else if (paramTypePtr->info.array.elementTypePtr == IntegerTypePtr) {
 			value->type = type = ABL_STACKITEM_INTEGER_PTR;
-			value->data.integerPtr = (int*)tos->address;
+			value->data.integerPtr = reinterpret_cast<int*>(tos->address);
 			}
 		else if (paramTypePtr->info.array.elementTypePtr == RealTypePtr) {
 			value->type = type = ABL_STACKITEM_REAL_PTR;
-			value->data.realPtr = (float*)tos->address;
+			value->data.realPtr = reinterpret_cast<float*>(tos->address);
 			}
 		else if (paramTypePtr->info.array.elementTypePtr == BooleanTypePtr) {
 			value->type = type = ABL_STACKITEM_BOOLEAN_PTR;
-			value->data.booleanPtr = (bool*)tos->address;
+			value->data.booleanPtr = reinterpret_cast<bool*>(tos->address);
 		}
 	}
 	pop();
@@ -289,7 +289,7 @@ char* ABLi_peekCharPtr (void) {
 
 	getCodeToken();
 	execExpression();
-	return((char*)tos->address);
+	return(reinterpret_cast<char*>(tos->address));
 }
 
 //---------------------------------------------------------------------------
@@ -299,7 +299,7 @@ int* ABLi_peekIntegerPtr (void) {
 	getCodeToken();
 	SymTableNodePtr idPtr = getCodeSymTableNodePtr();
 	execVariable(idPtr, USE_REFPARAM);
-	return((&((StackItemPtr)tos->address)->integer));
+	return((&(reinterpret_cast<StackItemPtr>(tos->address))->integer));
 }
 
 //---------------------------------------------------------------------------
@@ -309,7 +309,7 @@ float* ABLi_peekRealPtr (void) {
 	getCodeToken();
 	SymTableNodePtr idPtr = getCodeSymTableNodePtr();
 	execVariable(idPtr, USE_REFPARAM);
-	return((&((StackItemPtr)tos->address)->real));
+	return((&(reinterpret_cast<StackItemPtr>(tos->address))->real));
 }
 
 //---------------------------------------------------------------------------

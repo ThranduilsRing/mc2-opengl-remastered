@@ -328,12 +328,12 @@ mc2vk::OwnedShaderModule loadSpv(VkDevice device, const std::string& path) {
     long len = std::ftell(f);
     std::fseek(f, 0, SEEK_SET);
     if (len <= 0 || (len % 4) != 0) { std::fclose(f); return {}; }
-    std::vector<uint32_t> code((size_t)len / 4);
-    size_t got = std::fread(code.data(), 1, (size_t)len, f);
+    std::vector<uint32_t> code(static_cast<size_t>(len) / 4);
+    size_t got = std::fread(code.data(), 1, static_cast<size_t>(len), f);
     std::fclose(f);
-    if (got != (size_t)len) return {};
+    if (got != static_cast<size_t>(len)) return {};
     VkShaderModuleCreateInfo ci{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
-    ci.codeSize = (size_t)len;
+    ci.codeSize = static_cast<size_t>(len);
     ci.pCode = code.data();
     mc2vk::OwnedShaderModule mod;
     mc2vk::create(mod, device, [&](auto* h) { return vkCreateShaderModule(device, &ci, nullptr, h); });
@@ -454,7 +454,7 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
     sci.oldSwapchain     = oldSwapchain;
     const VkResult createResult = mc2vk::createChecked(s.swapchain, s.dev, [&](auto* h) { return vkCreateSwapchainKHR(s.dev, &sci, nullptr, h); });
     if (createResult != VK_SUCCESS) {
-        reason = "vkCreateSwapchainKHR failed (VkResult=" + std::to_string((int)createResult) + ")";
+        reason = "vkCreateSwapchainKHR failed (VkResult=" + std::to_string(static_cast<int>(createResult)) + ")";
         return false;
     }
     s.scFormat = chosen.format;
@@ -472,7 +472,7 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
         }
     }
     plog("swapchain OK images=%u extent=%ux%u format=%d mode=%s",
-         n, extent.width, extent.height, (int)chosen.format, presentModeName(s.presentMode));
+         n, extent.width, extent.height, static_cast<int>(chosen.format), presentModeName(s.presentMode));
     return true;
 }
 
@@ -1213,10 +1213,10 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     // VK-HUD-GLYPH-CORRUPTION FIX: key by (handle, serial) so a handle re-baked to a
     // new content serial within the frame gets a DISTINCT mirror instead of clobbering
     // the shared one that earlier draws already reference.
-    const uint64_t key = ((uint64_t)d.textureHandle << 32) | (uint64_t)d.textureSerial;
+    const uint64_t key = (static_cast<uint64_t>(d.textureHandle) << 32) | static_cast<uint64_t>(d.textureSerial);
     auto& m = s.hudTextureMirrors[key];
     m.lastFrame = s.hudMirrorFrameCounter;   // touched this frame -> not evictable yet
-    const VkDeviceSize bytes = (VkDeviceSize)d.textureWidth * (VkDeviceSize)d.textureHeight * 4u;
+    const VkDeviceSize bytes = static_cast<VkDeviceSize>(d.textureWidth) * static_cast<VkDeviceSize>(d.textureHeight) * 4u;
     const bool needsUpload = m.serial != d.textureSerial || m.width != d.textureWidth ||
                              m.height != d.textureHeight || m.bytes != bytes || !m.buffer;
     if (!needsUpload)
@@ -1224,23 +1224,23 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     // VK-HUD-MIRRORCOPY-1: the draw carries a shared immutable mirror (refcount
     // bump at queue time); bytes are only dereferenced HERE, on a (handle,serial)
     // change — the >99.9% no-upload case never touches them.
-    if (!d.textureRgba || d.textureRgba->size() < (size_t)bytes)
+    if (!d.textureRgba || d.textureRgba->size() < static_cast<size_t>(bytes))
         return nullptr;
     if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, m.buffer, m.memory, "present.hudTextureMirror"))
         return nullptr;
     const std::vector<uint8_t>& rgba = *d.textureRgba;
-    std::vector<uint32_t> packed((size_t)d.textureWidth * (size_t)d.textureHeight);
+    std::vector<uint32_t> packed(static_cast<size_t>(d.textureWidth) * static_cast<size_t>(d.textureHeight));
     for (size_t i = 0; i < packed.size(); ++i) {
         const size_t b = i * 4u;
-        packed[i] = (uint32_t)rgba[b] |
-                    ((uint32_t)rgba[b + 1] << 8) |
-                    ((uint32_t)rgba[b + 2] << 16) |
-                    ((uint32_t)rgba[b + 3] << 24);
+        packed[i] = static_cast<uint32_t>(rgba[b]) |
+                    (static_cast<uint32_t>(rgba[b + 1]) << 8) |
+                    (static_cast<uint32_t>(rgba[b + 2]) << 16) |
+                    (static_cast<uint32_t>(rgba[b + 3]) << 24);
     }
     void* mapped = nullptr;
     if (vkMapMemory(s.dev, m.memory.get(), 0, bytes, 0, &mapped) != VK_SUCCESS)
         return nullptr;
-    std::memcpy(mapped, packed.data(), (size_t)bytes);
+    std::memcpy(mapped, packed.data(), static_cast<size_t>(bytes));
     vkUnmapMemory(s.dev, m.memory.get());
     if (!m.set) {
         VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
@@ -1335,7 +1335,7 @@ bool ensureImguiVulkan(EnginePresentVk::Impl& s) {
     info.Queue = s.gfxQ;
     info.RenderPass = s.imguiRenderPass.get();
     info.MinImageCount = 2;
-    info.ImageCount = s.scImages.size() >= 2 ? (uint32_t)s.scImages.size() : 2;
+    info.ImageCount = s.scImages.size() >= 2 ? static_cast<uint32_t>(s.scImages.size()) : 2;
     info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
     info.DescriptorPoolSize = 16 + 2 * kImguiTexCap;   // font + live texture sets + retired sets awaiting their frame
     if (!ImGui_ImplVulkan_Init(&info)) {
@@ -1460,7 +1460,7 @@ ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint64
         auto& e = it->second;
         if (e.checkedFrame == s.imguiTexFrame) {
             e.lastUsedFrame = s.imguiTexFrame;
-            return (ImTextureID)e.set;
+            return reinterpret_cast<ImTextureID>(e.set);
         }
         // Once per frame: the cached image must still be the texture's CURRENT content. Pointer identity of the published texel
         // vector tracks content (a re-publish or a reused GL name gives a different vector), and an expired weak_ptr covers a
@@ -1469,7 +1469,7 @@ ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint64
         if (cur.status == GosTexels::Status::Ready && cur.bytes && cur.bytes.get() == e.srcPtr && !e.src.expired()) {
             e.checkedFrame = s.imguiTexFrame;
             e.lastUsedFrame = s.imguiTexFrame;
-            return (ImTextureID)e.set;
+            return reinterpret_cast<ImTextureID>(e.set);
         }
         imguiTexRetire(s, it);
     }
@@ -1488,10 +1488,10 @@ ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint64
     // images sample BC7 as UNORM, which equals what the RGBA8 mirrors give.
     if (fmt == VK_FORMAT_BC7_SRGB_BLOCK)
         fmt = VK_FORMAT_BC7_UNORM_BLOCK;
-    const VkDeviceSize bytes = (VkDeviceSize)texels.bytes->size();
+    const VkDeviceSize bytes = static_cast<VkDeviceSize>(texels.bytes->size());
     const bool bc7 = fmt == VK_FORMAT_BC7_UNORM_BLOCK;
-    const VkDeviceSize need = bc7 ? (VkDeviceSize)((texels.width + 3u) / 4u) * ((texels.height + 3u) / 4u) * 16u
-                                  : (VkDeviceSize)texels.width * texels.height * 4u;
+    const VkDeviceSize need = bc7 ? static_cast<VkDeviceSize>(((texels.width + 3u) / 4u)) * ((texels.height + 3u) / 4u) * 16u
+                                  : static_cast<VkDeviceSize>(texels.width) * texels.height * 4u;
     if (bytes < need)
         return fail();
 
@@ -1500,7 +1500,7 @@ ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint64
     const mc2vk::FrameAlloc stage = s.ctx->frameAlloc(need, 16);
     if (!stage)
         return fail();
-    std::memcpy(stage.ptr, texels.bytes->data(), (size_t)need);
+    std::memcpy(stage.ptr, texels.bytes->data(), static_cast<size_t>(need));
 
     VkImageCreateInfo ici{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     ici.imageType = VK_IMAGE_TYPE_2D;
@@ -1571,7 +1571,7 @@ ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint64
     e.uploadFrame = s.imguiTexFrame;
     e.checkedFrame = s.imguiTexFrame;
     e.lastUsedFrame = s.imguiTexFrame;
-    const ImTextureID id = (ImTextureID)e.set;
+    const ImTextureID id = reinterpret_cast<ImTextureID>(e.set);
     s.imguiTexRetryAt.erase(glName);
     s.imguiTex.emplace(glName, std::move(e));
     return id;
@@ -1592,7 +1592,7 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
             static uint32_t s_skipped = 0;
             if (s_skipped++ < 3)
                 std::fprintf(stderr, "[VK_IMGUI] draw data skipped: ctx=%d backend=%d viewport_renderer_data=%d owner=%p\n",
-                             (int)ctx, (int)bd, (int)vp, (void*)drawData->OwnerViewport);
+                             static_cast<int>(ctx), static_cast<int>(bd), static_cast<int>(vp), static_cast<void*>(drawData->OwnerViewport));
             return false;
         }
     }
@@ -1610,7 +1610,7 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
                 if (c.UserCallback || c.ElemCount == 0 || c.GetTexID() == fontTex)
                     continue;
                 saved.push_back({&c, c.TextureId, c.ClipRect});
-                const ImTextureID set = imguiTexResolve(s, cb, (uint64_t)c.GetTexID());
+                const ImTextureID set = imguiTexResolve(s, cb, static_cast<uint64_t>(c.GetTexID()));
                 if (set) {
                     c.TextureId = set;
                 } else {
@@ -1648,7 +1648,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                                     uint32_t* textureUploadsOut) {
     if (s.pendingHudDraws.empty())
         return 0;
-    const uint32_t draws = (uint32_t)s.pendingHudDraws.size();
+    const uint32_t draws = static_cast<uint32_t>(s.pendingHudDraws.size());
     if (nativeDraws) *nativeDraws = 0;
     if (texturedDraws) *texturedDraws = 0;
     if (textureUploadsOut) *textureUploadsOut = 0;
@@ -1709,7 +1709,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 continue;
             HudNativeCmd td;
             td.stream = 2;
-            td.first = (uint32_t)texVerts.size();
+            td.first = static_cast<uint32_t>(texVerts.size());
             td.set = mirror->set;
             td.width = mirror->width;
             td.height = mirror->height;
@@ -1740,7 +1740,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 for (const VkHudVertex& v : d.vertices)
                     addTex(v);
             }
-            td.count = (uint32_t)texVerts.size() - td.first;
+            td.count = static_cast<uint32_t>(texVerts.size()) - td.first;
             if (td.count != 0) {
                 commands.push_back(td);
                 ++texDraws;
@@ -1783,15 +1783,15 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                         xmn=v.x<xmn?v.x:xmn; xmx=v.x>xmx?v.x:xmx;
                         ymn=v.y<ymn?v.y:ymn; ymx=v.y>ymx?v.y:ymx;
                     }
-                    mc2::fmt::print_err("[VK_VFX_TAIL] kind={:d} nverts={:d} argb0={:08X} canvas={:d}x{:d} bbox=[{:.1f},{:.1f}]-[{:.1f},{:.1f}] w={:.2f} h={:.2f} alpha={:d}\n", mc2::fmt::as_u32((unsigned)d.kind), mc2::fmt::as_size(d.vertices.size()), mc2::fmt::as_u32((unsigned)d.vertices[0].argb), mc2::fmt::as_u32(s.hudCanvasW), mc2::fmt::as_u32(s.hudCanvasH), xmn, ymn, xmx, ymx, xmx-xmn, ymx-ymn, mc2::fmt::as_u32(d.alphaMode));
+                    mc2::fmt::print_err("[VK_VFX_TAIL] kind={:d} nverts={:d} argb0={:08X} canvas={:d}x{:d} bbox=[{:.1f},{:.1f}]-[{:.1f},{:.1f}] w={:.2f} h={:.2f} alpha={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(d.kind)), mc2::fmt::as_size(d.vertices.size()), mc2::fmt::as_u32(static_cast<unsigned>(d.vertices[0].argb)), mc2::fmt::as_u32(s.hudCanvasW), mc2::fmt::as_u32(s.hudCanvasH), xmn, ymn, xmx, ymx, xmx-xmn, ymx-ymn, mc2::fmt::as_u32(d.alphaMode));
                 }
             }
         }
         if (dst.size() != before) {
             HudNativeCmd cmd;
             cmd.stream = (d.kind == 1) ? 1u : 0u;
-            cmd.first = (uint32_t)before;
-            cmd.count = (uint32_t)(dst.size() - before);
+            cmd.first = static_cast<uint32_t>(before);
+            cmd.count = static_cast<uint32_t>((dst.size() - before));
             cmd.opaque = (d.alphaMode == 1);
             // VK-FIELD-VFX-3: untextured tri effect ribbon (AlphaMode 4) -> additive pipe.
             // Only the tri stream has an additive variant; lines keep standard alpha.
@@ -1805,7 +1805,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     const size_t triBytes = triVerts.size() * sizeof(HudColorGpuVertex);
     const size_t lineBytes = lineVerts.size() * sizeof(HudColorGpuVertex);
     const size_t texBytes = texVerts.size() * sizeof(HudTexGpuVertex);
-    const VkDeviceSize colorBytes = (VkDeviceSize)(triBytes + lineBytes);
+    const VkDeviceSize colorBytes = static_cast<VkDeviceSize>((triBytes + lineBytes));
     // Both vertex streams are this frame's transient memory (frame ring): rewritten every frame, never read after the frame completed.
     mc2vk::FrameAlloc colorVb, texVb;
     if (colorBytes != 0) {
@@ -1815,10 +1815,10 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             return draws;
         }
         if (triBytes) std::memcpy(colorVb.ptr, triVerts.data(), triBytes);
-        if (lineBytes) std::memcpy((uint8_t*)colorVb.ptr + triBytes, lineVerts.data(), lineBytes);
+        if (lineBytes) std::memcpy(static_cast<uint8_t*>(colorVb.ptr) + triBytes, lineVerts.data(), lineBytes);
     }
     if (texBytes != 0) {
-        texVb = s.ctx->frameAlloc((VkDeviceSize)texBytes, 16);
+        texVb = s.ctx->frameAlloc(static_cast<VkDeviceSize>(texBytes), 16);
         if (!texVb) {
             s.pendingHudDraws.clear();
             return draws;
@@ -1834,15 +1834,15 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     vkCmdBeginRenderPass(cb, &rp, VK_SUBPASS_CONTENTS_INLINE);
     VkViewport vp{};
     vp.x = 0.0f; vp.y = 0.0f;
-    vp.width = (float)s.imgW; vp.height = (float)s.imgH;
+    vp.width = static_cast<float>(s.imgW); vp.height = static_cast<float>(s.imgH);
     vp.minDepth = 0.0f; vp.maxDepth = 1.0f;
     VkRect2D sc{{0, 0}, {s.imgW, s.imgH}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &sc);
     // HUD-CANVAS-EXTENT-FIX: divide HUD vertices by the canvas they were authored in
     // (logical game res), not the present image size (physical drawable). See hudCanvasW.
-    const float hudExW = s.hudCanvasW ? (float)s.hudCanvasW : (float)s.imgW;
-    const float hudExH = s.hudCanvasH ? (float)s.hudCanvasH : (float)s.imgH;
+    const float hudExW = s.hudCanvasW ? static_cast<float>(s.hudCanvasW) : static_cast<float>(s.imgW);
+    const float hudExH = s.hudCanvasH ? static_cast<float>(s.hudCanvasH) : static_cast<float>(s.imgH);
     const float extent[2] = {hudExW, hudExH};
     vkCmdPushConstants(cb, s.hudColorLayout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(extent), extent);
     VkDeviceSize offset = 0;
@@ -1865,7 +1865,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 boundStream = 0;
             }
             const uint32_t first = (td.stream == 1)
-                ? (uint32_t)triVerts.size() + td.first
+                ? static_cast<uint32_t>(triVerts.size()) + td.first
                 : td.first;
             vkCmdDraw(cb, td.count, 1, first, 0);
         } else {
@@ -2015,16 +2015,16 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
     if (sr == VK_SUCCESS) s.surface = mc2vk::OwnedSurface(s.inst, rawSurface);
     if (sr != VK_SUCCESS) {
         return fail("P13b: vkCreateWin32SurfaceKHR on the GL window's HWND failed ("
-                    + std::to_string((int)sr) + ")");
+                    + std::to_string(static_cast<int>(sr)) + ")");
     }
     plog("P13b: VK surface created on the VISIBLE GL game window HWND=%p (no hidden "
-         "window; GL keeps input+focus).", (void*)hwnd);
+         "window; GL keeps input+focus).", static_cast<void*>(hwnd));
 
     // ---- queue confirm + present mode -------------------------------------
     {
         std::string r;
         if (!chooseQueuesAndPresentMode(s, r)) return fail(r);
-        health_.present_mode = (int)s.presentMode;
+        health_.present_mode = static_cast<int>(s.presentMode);
         health_.present_mode_name = presentModeName(s.presentMode);
     }
 
@@ -2189,7 +2189,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         if ((health_.composite_wait_samples % 600) == 1)
             plog("[QWI-WAIT] composite wait_us_last=%.1f wait_us_avg=%.1f samples=%u",
                  health_.composite_wait_us_last,
-                 health_.composite_wait_us_accum / (double)health_.composite_wait_samples,
+                 health_.composite_wait_us_accum / static_cast<double>(health_.composite_wait_samples),
                  health_.composite_wait_samples);
     }
 
@@ -2225,9 +2225,9 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     rp.clearValueCount = 1;
     rp.pClearValues = &clear;
     vkCmdBeginRenderPass(cc, &rp, VK_SUBPASS_CONTENTS_INLINE);
-    VkViewport vp{(float)viewportX, (float)viewportY,
-                  (float)viewportW, (float)viewportH, 0.0f, 1.0f};
-    VkRect2D sc{{viewportX, viewportY}, {(uint32_t)viewportW, (uint32_t)viewportH}};
+    VkViewport vp{static_cast<float>(viewportX), static_cast<float>(viewportY),
+                  static_cast<float>(viewportW), static_cast<float>(viewportH), 0.0f, 1.0f};
+    VkRect2D sc{{viewportX, viewportY}, {static_cast<uint32_t>(viewportW), static_cast<uint32_t>(viewportH)}};
     vkCmdSetViewport(cc, 0, 1, &vp);
     vkCmdSetScissor(cc, 0, 1, &sc);
     vkCmdBindPipeline(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositePipe.get());
@@ -2331,7 +2331,7 @@ bool EnginePresentVk::queueHudVulkanFrame(std::vector<VkHudDraw>&& draws,
     s.pendingHudDraws = std::move(draws);
     s.hudCanvasW = canvasW;   // HUD-CANVAS-EXTENT-FIX: authoring canvas (logical res)
     s.hudCanvasH = canvasH;
-    health_.hud_vk_draws_last = (uint32_t)s.pendingHudDraws.size();
+    health_.hud_vk_draws_last = static_cast<uint32_t>(s.pendingHudDraws.size());
     health_.hud_vk_textured_last = 0;
     health_.hud_vk_serialized_last = 0;
     for (const VkHudDraw& d : s.pendingHudDraws) {
@@ -2510,7 +2510,7 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
         int dw = 0, dh = 0; SDL_GL_GetDrawableSize(glWindow_, &dw, &dh);
         if (dw > 0 && dh > 0) {
             std::string rr;
-            if (!rebuildSwapchain(s, (uint32_t)dw, (uint32_t)dh, health_, rr)) {
+            if (!rebuildSwapchain(s, static_cast<uint32_t>(dw), static_cast<uint32_t>(dh), health_, rr)) {
                 health_.fallback_reason = rr; return false;
             }
         }
@@ -2518,7 +2518,7 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
     } else if (r == VK_ERROR_DEVICE_LOST) {
         health_.fallback_reason = "DEVICE_LOST at acquire"; return false;
     } else if (r != VK_SUCCESS && r != VK_SUBOPTIMAL_KHR) {
-        health_.fallback_reason = "vkAcquireNextImageKHR failed (" + std::to_string((int)r) + ")";
+        health_.fallback_reason = "vkAcquireNextImageKHR failed (" + std::to_string(static_cast<int>(r)) + ")";
         plog("%s. fail-soft.", health_.fallback_reason.c_str());
         return false;
     }
@@ -2556,9 +2556,9 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
         vkCmdBeginRenderPass(s.curCbuf(), &srp, VK_SUBPASS_CONTENTS_INLINE);
         const float quadSize = 256.0f;
         const float margin = 16.0f;
-        VkViewport svp{margin, (float)s.imgH - quadSize - margin, quadSize, quadSize, 0.0f, 1.0f};
-        VkRect2D ssc{{(int32_t)margin, (int32_t)((float)s.imgH - quadSize - margin)},
-                     {(uint32_t)quadSize, (uint32_t)quadSize}};
+        VkViewport svp{margin, static_cast<float>(s.imgH) - quadSize - margin, quadSize, quadSize, 0.0f, 1.0f};
+        VkRect2D ssc{{static_cast<int32_t>(margin), static_cast<int32_t>((static_cast<float>(s.imgH) - quadSize - margin))},
+                     {static_cast<uint32_t>(quadSize), static_cast<uint32_t>(quadSize)}};
         vkCmdSetViewport(s.curCbuf(), 0, 1, &svp);
         vkCmdSetScissor(s.curCbuf(), 0, 1, &ssc);
         vkCmdBindPipeline(s.curCbuf(), VK_PIPELINE_BIND_POINT_GRAPHICS, s.shadowDebugPipe.get());
@@ -2614,14 +2614,14 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
     VkImageBlit region{};
     region.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     region.srcOffsets[0] = {0, 0, 0};
-    region.srcOffsets[1] = {(int32_t)s.imgW, (int32_t)s.imgH, 1};
+    region.srcOffsets[1] = {static_cast<int32_t>(s.imgW), static_cast<int32_t>(s.imgH), 1};
     region.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     // VK-RUNG8-ITEM8 Y-flip: the present image is always VK-produced with GL
     // bottom-left origin (the composite renders it un-flipped), so copy-2 always
     // does the flip that copy-1 used to do: swap the dst Y offsets (0,H)->(H,0)
     // so the top-left-origin swapchain image is upright.
-    region.dstOffsets[0] = {0, (int32_t)s.scExtent.height, 0};
-    region.dstOffsets[1] = {(int32_t)s.scExtent.width, 0, 1};
+    region.dstOffsets[0] = {0, static_cast<int32_t>(s.scExtent.height), 0};
+    region.dstOffsets[1] = {static_cast<int32_t>(s.scExtent.width), 0, 1};
     vkCmdBlitImage(s.curCbuf(),
                    s.sharedImg.image.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                    scImg,             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -2673,7 +2673,7 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
         // The fence is now unsignaled with no submit to signal it; returning false
         // triggers the DISARM-2 present-failure path (vkpres.destroy() + deferred
         // retry), which destroys and re-creates the fence SIGNALED — no hang.
-        health_.fallback_reason = "vkQueueSubmit failed (" + std::to_string((int)r) + ")";
+        health_.fallback_reason = "vkQueueSubmit failed (" + std::to_string(static_cast<int>(r)) + ")";
         plog("%s. fail-soft.", health_.fallback_reason.c_str());
         return false;
     }
@@ -2694,14 +2694,14 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
         int dw = 0, dh = 0; SDL_GL_GetDrawableSize(glWindow_, &dw, &dh);
         if (dw > 0 && dh > 0) {
             std::string rr;
-            if (!rebuildSwapchain(s, (uint32_t)dw, (uint32_t)dh, health_, rr)) {
+            if (!rebuildSwapchain(s, static_cast<uint32_t>(dw), static_cast<uint32_t>(dh), health_, rr)) {
                 health_.fallback_reason = rr; return false;
             }
         }
     } else if (r == VK_ERROR_DEVICE_LOST) {
         health_.fallback_reason = "DEVICE_LOST at present"; return false;
     } else {
-        health_.fallback_reason = "vkQueuePresentKHR failed (" + std::to_string((int)r) + ")";
+        health_.fallback_reason = "vkQueuePresentKHR failed (" + std::to_string(static_cast<int>(r)) + ")";
         plog("%s. fail-soft.", health_.fallback_reason.c_str());
         return false;
     }
@@ -2726,7 +2726,7 @@ void EnginePresentVk::verifyReadbackContent() {
 
     // ---- consume the outstanding request, if its copy has finished ----
     auto consume = [&](const unsigned char* px, uint32_t rw, uint32_t rh, uint64_t readbackTag) {
-        const VkDeviceSize needed = (VkDeviceSize)rw * rh * 4u;
+        const VkDeviceSize needed = static_cast<VkDeviceSize>(rw) * rh * 4u;
     // FNV-1a over a strided sample (every 257th byte) -- cheap, sensitive to change.
     unsigned long long h = 1469598103934665603ull;
     for (VkDeviceSize i = 0; i < needed; i += 257) {
@@ -2755,7 +2755,7 @@ void EnginePresentVk::verifyReadbackContent() {
             extern uint32_t g_mc2FxFireCaptureFrame;
             if (mc2::gate::isNonEmpty<"MC2_VK_PRESENT_DUMP_FRAME">()) {
                 const unsigned long pin = static_cast<unsigned long>(mc2::gate::get<"MC2_VK_PRESENT_DUMP_FRAME">());
-                if (s_ppmDone || (unsigned long)g_mc2RenderFrame < pin)
+                if (s_ppmDone || static_cast<unsigned long>(g_mc2RenderFrame) < pin)
                     ppmPath = nullptr; // not yet at the pinned frame, or already captured
             } else if (mc2::gate::get<"MC2_VK_PRESENT_DUMP_ON_FIRE">()) {
                 // VK-FIELD-VFX-5: dynamic fire-event pin. The force-fire fixture
@@ -2773,8 +2773,8 @@ void EnginePresentVk::verifyReadbackContent() {
             FILE* pf = fopen(ppmPath, "wb");
             if (pf) {
                 mc2::fmt::print(pf, "P6\n{:d} {:d}\n255\n", mc2::fmt::as_u32(rw), mc2::fmt::as_u32(rh));
-                std::vector<unsigned char> rgb((size_t)rw * rh * 3u);
-                for (size_t i = 0, o = 0; i < (size_t)rw * rh; ++i) {
+                std::vector<unsigned char> rgb(static_cast<size_t>(rw) * rh * 3u);
+                for (size_t i = 0, o = 0; i < static_cast<size_t>(rw) * rh; ++i) {
                     rgb[o++] = px[i * 4 + 0];
                     rgb[o++] = px[i * 4 + 1];
                     rgb[o++] = px[i * 4 + 2];
@@ -2818,7 +2818,7 @@ void EnginePresentVk::verifyReadbackContent() {
 
     // ---- request the next one ----
     const uint32_t rw = s.imgW, rh = s.imgH;
-    const VkDeviceSize needed = (VkDeviceSize)rw * rh * 4u;
+    const VkDeviceSize needed = static_cast<VkDeviceSize>(rw) * rh * 4u;
     if (needed == 0) return;
     extern uint32_t g_mc2RenderFrame;
     const uint64_t tag = g_mc2RenderFrame;
@@ -2904,7 +2904,7 @@ void EnginePresentVk::logHealth() const {
         mc2::fmt::as_u32(health_.extent_w), mc2::fmt::as_u32(health_.extent_h),
         health_.present_mode_name.empty() ? "?" : health_.present_mode_name.c_str(),
         mc2::fmt::as_i32(health_.readback_changed ? 1 : 0),
-        mc2::fmt::as_u64((unsigned long long)health_.last_readback_checksum),
+        mc2::fmt::as_u64(static_cast<unsigned long long>(health_.last_readback_checksum)),
         mc2::fmt::as_u32(health_.direct_fbo_requests), mc2::fmt::as_u32(health_.direct_fbo_grants),
         mc2::fmt::as_u32(health_.copy1_blit_frames), mc2::fmt::as_u32(health_.copy1_skip_frames),
         mc2::fmt::as_u32(health_.gl_handoff_skip_frames),
@@ -2920,7 +2920,7 @@ void EnginePresentVk::logHealth() const {
         mc2::fmt::as_u32(health_.last_direct_fbo),
         health_.composite_wait_us_last,
         health_.composite_wait_samples
-            ? health_.composite_wait_us_accum / (double)health_.composite_wait_samples : 0.0,
+            ? health_.composite_wait_us_accum / static_cast<double>(health_.composite_wait_samples) : 0.0,
         mc2::fmt::as_u32(health_.composite_wait_samples),
         health_.fallback_reason.empty() ? "" : health_.fallback_reason.c_str());
     std::fflush(stderr);

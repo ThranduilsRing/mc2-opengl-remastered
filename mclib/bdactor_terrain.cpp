@@ -54,8 +54,8 @@ long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
 						if (numCoords > (maxCoords - 2))
 							Fatal(numCoords, "BldgAppearance.markMoveMap: too many coords for cellList ");
 							
-						cellList[numCoords++] = (short)cellR;
-						cellList[numCoords++] = (short)cellC;
+						cellList[numCoords++] = static_cast<short>(cellR);
+						cellList[numCoords++] = static_cast<short>(cellC);
 				}
 			}
 		}
@@ -375,8 +375,8 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 						
 					if (numCoords > (maxCoords - 2))
 						Fatal(numCoords, "BldgAppearance.markMoveMap: too many coords for cellList ");
-					cellList[numCoords++] = (short)cellR;
-					cellList[numCoords++] = (short)cellC;
+					cellList[numCoords++] = static_cast<short>(cellR);
+					cellList[numCoords++] = static_cast<short>(cellC);
 				}
 			}
 		}

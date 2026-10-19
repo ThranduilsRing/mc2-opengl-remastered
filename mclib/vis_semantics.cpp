@@ -127,7 +127,7 @@ void trace(const char* cls, const void* actor, const MoverVis& v)
     else if (firstActorOfFrame == actor) ++frameCounter;
     if ((frameCounter % trace_every()) != 0ul) return;
 
-    mc2::fmt::print_err("[VIS-SEM v1] cls={} actor={:016X} frame={:d} sensorLevel={:d} meshAlpha={:d} status={:d} relation={:d} legacyVisible={:d} | meshDrawn={:d} knownToPlayer={:d} emitsLight={:d} selfLit={:d} powered={:d} friendly={:d}\n", mc2::fmt::safe(cls ? cls : "?"), mc2::fmt::as_ptr(actor), mc2::fmt::as_u32(frameCounter), mc2::fmt::as_i32(v.sensorLevel), mc2::fmt::as_u32(v.meshAlpha), mc2::fmt::as_i32(v.status), mc2::fmt::as_i32(v.relation), mc2::fmt::as_i32((int)v.legacyVisible), mc2::fmt::as_i32((int)meshDrawn(v)), mc2::fmt::as_i32((int)knownToPlayer(v)), mc2::fmt::as_i32((int)emitsLight(v)), mc2::fmt::as_i32((int)selfLit(v)), mc2::fmt::as_i32((int)powered(v)), mc2::fmt::as_i32((int)friendly(v)));
+    mc2::fmt::print_err("[VIS-SEM v1] cls={} actor={:016X} frame={:d} sensorLevel={:d} meshAlpha={:d} status={:d} relation={:d} legacyVisible={:d} | meshDrawn={:d} knownToPlayer={:d} emitsLight={:d} selfLit={:d} powered={:d} friendly={:d}\n", mc2::fmt::safe(cls ? cls : "?"), mc2::fmt::as_ptr(actor), mc2::fmt::as_u32(frameCounter), mc2::fmt::as_i32(v.sensorLevel), mc2::fmt::as_u32(v.meshAlpha), mc2::fmt::as_i32(v.status), mc2::fmt::as_i32(v.relation), mc2::fmt::as_i32(static_cast<int>(v.legacyVisible)), mc2::fmt::as_i32(static_cast<int>(meshDrawn(v))), mc2::fmt::as_i32(static_cast<int>(knownToPlayer(v))), mc2::fmt::as_i32(static_cast<int>(emitsLight(v))), mc2::fmt::as_i32(static_cast<int>(selfLit(v))), mc2::fmt::as_i32(static_cast<int>(powered(v))), mc2::fmt::as_i32(static_cast<int>(friendly(v))));
     std::fflush(stderr);
 }
 

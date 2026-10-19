@@ -291,7 +291,7 @@ bool VulkanContext::init(bool wantPresent) {
                 g_debugNames = true;
                 validationLog("info", "layer_enabled", std::string("VK_LAYER_KHRONOS_validation messenger engaged, preset=") + valPreset);
             } else {
-                ctxlog("vkCreateDebugUtilsMessengerEXT failed (%d); no error capture.", (int)mr);
+                ctxlog("vkCreateDebugUtilsMessengerEXT failed (%d); no error capture.", static_cast<int>(mr));
                 validationLog("error", "messenger_unavailable", "vkCreateDebugUtilsMessengerEXT failed (" + std::to_string(static_cast<int>(mr)) + "); this run is NOT validated");
             }
         } else {

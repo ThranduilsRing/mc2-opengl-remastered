@@ -55,7 +55,7 @@ void PacketFile::atClose (void)
 {
 	if (isOpen() && fileMode != READ)								// update filesize
 	{
-		unsigned int endPtr = (unsigned int)getLength();
+		unsigned int endPtr = static_cast<unsigned int>(getLength());
 		
 		//seek(sizeof(long));								//Move Past Version Marker
 		//writeLong(endPtr);								//Write File length
@@ -68,7 +68,7 @@ void PacketFile::atClose (void)
 			while (--currentPacket >= 0)
 			{
 				seek(TABLE_ENTRY(currentPacket));
-				tableEntry = (unsigned int)readInt();
+				tableEntry = static_cast<unsigned int>(readInt());
 					
 				if (GetPacketType(tableEntry) == STORAGE_TYPE_NUL)
 				{
@@ -127,7 +127,7 @@ int PacketFile::checkSumFile (void)
 	uint32_t currentPosition  = logicalPosition;
 	seek(4);
 
-	MemoryPtr fileMap = (MemoryPtr)malloc(fileSize());
+	MemoryPtr fileMap = static_cast<MemoryPtr>(malloc(fileSize()));
 	read(fileMap,fileSize());
 
 	int sum = 0;
@@ -150,7 +150,7 @@ long PacketFile::afterOpen (void)
 	if (!numPackets && getLength() >= 12)
 	{
 		int firstPacketOffset;
-		unsigned int firstCheck = (unsigned int)readInt();
+		unsigned int firstCheck = static_cast<unsigned int>(readInt());
 
 		if (firstCheck == PACKET_FILE_VERSION && !usesCheckSum)
 		{
@@ -175,7 +175,7 @@ long PacketFile::afterOpen (void)
 		{
 			// One line per process: a mod with many bad packet files must not flood the log, and a malformed file never stops the game.
 			MC2_LOG_ONCE(Io, Error, "[PACKET_HEADER_BAD] file={} packets={} bytes={} (the header claims more packets than the file holds; rejected)",
-				m_fileName.c_str(), numPackets, (int)getLength());
+				m_fileName.c_str(), numPackets, static_cast<int>(getLength()));
 			numPackets = 0;
 			return PACKET_OUT_OF_RANGE;
 		}
@@ -277,7 +277,7 @@ int PacketFile::readPacketOffset (int packet, int* lastType)
 	// packet is a signed int: a negative index must not reach seekTable[]
 	if (packet >= 0 && packet < numPackets)
 	{
-		if ((size_t)packet < m_seekTable.size())
+		if (static_cast<size_t>(packet) < m_seekTable.size())
 			offset = m_seekTable[packet];
 
 		if (lastType)
@@ -311,16 +311,16 @@ int PacketFile::readPacket (int packet, unsigned char *buffer)
 
 					if (!LZPacketBuffer)
 					{
-						LZPacketBuffer = (MemoryPtr)malloc(LZPacketBufferSize);
+						LZPacketBuffer = static_cast<MemoryPtr>(malloc(LZPacketBufferSize));
 						gosASSERT(LZPacketBuffer);
 					}
 						
-					if ((int)LZPacketBufferSize < packetSize)
+					if (static_cast<int>(LZPacketBufferSize) < packetSize)
 					{
 						LZPacketBufferSize = packetSize;
 						
 						free(LZPacketBuffer);
-						LZPacketBuffer = (MemoryPtr)malloc(LZPacketBufferSize);
+						LZPacketBuffer = static_cast<MemoryPtr>(malloc(LZPacketBufferSize));
 						gosASSERT(LZPacketBuffer);
 					}
 					
@@ -344,16 +344,16 @@ int PacketFile::readPacket (int packet, unsigned char *buffer)
 
 					if (!LZPacketBuffer)
 					{
-						LZPacketBuffer = (MemoryPtr)malloc(LZPacketBufferSize);
+						LZPacketBuffer = static_cast<MemoryPtr>(malloc(LZPacketBufferSize));
 						gosASSERT(LZPacketBuffer);
 					}
 						
-					if ((int)LZPacketBufferSize < packetSize)
+					if (static_cast<int>(LZPacketBufferSize) < packetSize)
 					{
 						LZPacketBufferSize = packetSize;
 						
 						free(LZPacketBuffer);
-						LZPacketBuffer = (MemoryPtr)malloc(LZPacketBufferSize);
+						LZPacketBuffer = static_cast<MemoryPtr>(malloc(LZPacketBufferSize));
 						gosASSERT(LZPacketBuffer);
 					}
 					
@@ -455,12 +455,12 @@ int PacketFile::seekPacket (int packet)
 	{
 		case STORAGE_TYPE_LZD:
 			// the first DWORD of a compressed packet is the unpacked length
-			packetUnpackedSize = (unsigned int)readInt();
+			packetUnpackedSize = static_cast<unsigned int>(readInt());
 			break;
 
 		case STORAGE_TYPE_ZLIB:
 			// the first DWORD of a compressed packet is the unpacked length
-			packetUnpackedSize = (unsigned int)readInt();
+			packetUnpackedSize = static_cast<unsigned int>(readInt());
 			break;
 
 		case STORAGE_TYPE_RAW:
@@ -589,9 +589,9 @@ int PacketFile::writePacket (int packet, MemoryPtr buffer, unsigned int nbytes, 
 	if (pType == ANY_PACKET_TYPE || pType == STORAGE_TYPE_LZD || pType == STORAGE_TYPE_ZLIB)
 	{
 		if ((nbytes<<1) < 4096)
-			workBuffer = (MemoryPtr)malloc(4096);
+			workBuffer = static_cast<MemoryPtr>(malloc(4096));
 		else
-			workBuffer = (MemoryPtr)malloc(nbytes<<1);
+			workBuffer = static_cast<MemoryPtr>(malloc(nbytes<<1));
 		
 		gosASSERT(workBuffer != nullptr);
 	}
@@ -709,7 +709,7 @@ int PacketFile::insertPacket (int packet, MemoryPtr buffer, unsigned int nbytes,
 
 	//---------------------------------------------------------------
 	// Only used here, so OK if regular WINDOWS(tm) malloc!
-	MemoryPtr workBuffer = (MemoryPtr)malloc(DEFAULT_MAX_PACKET);
+	MemoryPtr workBuffer = static_cast<MemoryPtr>(malloc(DEFAULT_MAX_PACKET));
 	
 	//-------------------------------------------------------------
 	// All new code here.  Basically, open a new packet file,
@@ -734,7 +734,7 @@ int PacketFile::insertPacket (int packet, MemoryPtr buffer, unsigned int nbytes,
 				//----------------------------------------------------
 				// Not sure what to do here.  We'll try reallocating
 				::free(workBuffer);
-				workBuffer = (MemoryPtr)malloc(packetSize);
+				workBuffer = static_cast<MemoryPtr>(malloc(packetSize));
 			}
 			
 			tmpFile.writePacket(i,buffer,nbytes,pType);
@@ -749,7 +749,7 @@ int PacketFile::insertPacket (int packet, MemoryPtr buffer, unsigned int nbytes,
 				//----------------------------------------------------
 				// Not sure what to do here.  We'll try reallocating
 				::free(workBuffer);
-				workBuffer = (MemoryPtr)malloc(packetSize);
+				workBuffer = static_cast<MemoryPtr>(malloc(packetSize));
 			}
 			
 			readPacket(i,workBuffer);
@@ -773,7 +773,7 @@ int PacketFile::insertPacket (int packet, MemoryPtr buffer, unsigned int nbytes,
 	rename("AF3456AF.788",ourFileName);
 	remove("AF3456AF.788");
 	
-	open(ourFileName,(FileMode)ourFileMode);
+	open(ourFileName,static_cast<FileMode>(ourFileMode));
 	
 	seekPacket(packet);
 		

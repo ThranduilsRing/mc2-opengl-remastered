@@ -346,7 +346,7 @@ struct mat2 {
 		elem[1][0] = v1.x; elem[1][1] = v1.y;
 	}
 
-	operator const float *() const { return (const float *) elem; }
+	operator const float *() const { return reinterpret_cast<const float *>(elem); }
 
 };
 
@@ -377,9 +377,9 @@ struct mat3 {
 		elem[2][0] = v2.x; elem[2][1] = v2.y; elem[2][2] = v2.z;
 	}
 
-	vec3 &getRow(const unsigned int index){ return *((vec3 *) elem[index]); }
+	vec3 &getRow(const unsigned int index){ return *(reinterpret_cast<vec3 *>(elem[index])); }
 
-	operator const float *() const { return (const float *) elem; }
+	operator const float *() const { return reinterpret_cast<const float *>(elem); }
 };
 
 mat3 operator + (const mat3 &m, const mat3 &n);
@@ -417,7 +417,7 @@ struct mat4 {
 	vec3 getUpVec()      const { return vec3(elem[1][0], elem[1][1], elem[1][2]); }
 	vec3 getForwardVec() const { return vec3(elem[2][0], elem[2][1], elem[2][2]); }
 
-	operator const float *() const { return (const float *) elem; }
+	operator const float *() const { return reinterpret_cast<const float *>(elem); }
 	void translate(const vec3 &v);
 
 	// ps3 interface support

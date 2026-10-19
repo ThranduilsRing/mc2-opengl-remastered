@@ -117,18 +117,18 @@ bool stage_light_pool(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
             if (!src || bytes == 0) return true;
             lp[k] = ctx.frameAlloc(bytes);
             if (!lp[k]) return false;
-            std::memcpy(lp[k].ptr, src, (size_t)bytes);
+            std::memcpy(lp[k].ptr, src, static_cast<size_t>(bytes));
             return true;
         };
         if (vkPoolLights > 0 && feed.poolLights) {
-            if (!stage(0, feed.poolLights, (VkDeviceSize)vkPoolLights * 48u)) vkPoolLights = 0;
+            if (!stage(0, feed.poolLights, static_cast<VkDeviceSize>(vkPoolLights) * 48u)) vkPoolLights = 0;
         } else {
             vkPoolLights = 0;
         }
         if (vkPoolLights > 0 && vkGridDim > 0 && feed.lightGridHeader && feed.lightGridIndices &&
-            feed.lightGridHeaderWords >= (uint32_t)vkGridDim * (uint32_t)vkGridDim * 2u) {
-            if (!stage(1, feed.lightGridHeader,  (VkDeviceSize)feed.lightGridHeaderWords * 4u) ||
-                !stage(2, feed.lightGridIndices, (VkDeviceSize)feed.lightGridIndexWords  * 4u))
+            feed.lightGridHeaderWords >= static_cast<uint32_t>(vkGridDim) * static_cast<uint32_t>(vkGridDim) * 2u) {
+            if (!stage(1, feed.lightGridHeader,  static_cast<VkDeviceSize>(feed.lightGridHeaderWords) * 4u) ||
+                !stage(2, feed.lightGridIndices, static_cast<VkDeviceSize>(feed.lightGridIndexWords)  * 4u))
                 vkGridDim = 0;   // linear loop over the staged pool (exact, slower)
         } else {
             vkGridDim = 0;
@@ -229,7 +229,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
             for (int i = 0; i < n; ++i) mc2::fmt::print_err("{}{:.6g}", mc2::fmt::safe(i ? "," : ""), m[i]);
             mc2::fmt::print_err("]\n");
         };
-        mc2::fmt::print_err("[VK_SHADOW_MATRIX v1] TERRAIN UBO csmEnabled={:d} csmCount={:d} enableDynShadows={:d} csmDepthSpan={:.6g} csmFullMapTexelWorld={:.6g} csmCascadeTexelWorld={:.6g},{:.6g},{:.6g} feed.csmArraySize={:d} feed.csmFullMapSize={:d} feed.dynShadowSize={:d}\n", mc2::fmt::as_i32((int)u.csmEnabled), mc2::fmt::as_i32((int)u.csmCount), mc2::fmt::as_i32((int)u.enableDynShadows), u.csmDepthSpan, u.csmFullMapTexelWorld, u.csmCascadeTexelWorld[0], u.csmCascadeTexelWorld[1], u.csmCascadeTexelWorld[2], mc2::fmt::as_i32((int)feed.csmArraySize), mc2::fmt::as_i32((int)feed.csmFullMapSize), mc2::fmt::as_i32((int)feed.dynamicShadowSize));
+        mc2::fmt::print_err("[VK_SHADOW_MATRIX v1] TERRAIN UBO csmEnabled={:d} csmCount={:d} enableDynShadows={:d} csmDepthSpan={:.6g} csmFullMapTexelWorld={:.6g} csmCascadeTexelWorld={:.6g},{:.6g},{:.6g} feed.csmArraySize={:d} feed.csmFullMapSize={:d} feed.dynShadowSize={:d}\n", mc2::fmt::as_i32(static_cast<int>(u.csmEnabled)), mc2::fmt::as_i32(static_cast<int>(u.csmCount)), mc2::fmt::as_i32(static_cast<int>(u.enableDynShadows)), u.csmDepthSpan, u.csmFullMapTexelWorld, u.csmCascadeTexelWorld[0], u.csmCascadeTexelWorld[1], u.csmCascadeTexelWorld[2], mc2::fmt::as_i32(static_cast<int>(feed.csmArraySize)), mc2::fmt::as_i32(static_cast<int>(feed.csmFullMapSize)), mc2::fmt::as_i32(static_cast<int>(feed.dynamicShadowSize)));
         pm("TERRAIN UBO dynamicLightSpaceMatrix", u.dynamicLightSpaceMatrix, 16);
         for (int i = 0; i < 3; ++i) {
             char tg[64]; mc2::fmt::to_buf(tg, "TERRAIN UBO csmCascadeMatrices[{:d}]", mc2::fmt::as_i32(i));
@@ -245,7 +245,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.visualDisplaceFar = feed.visualDisplaceFar;
     u.visualMode        = (patch.visualMode == 2
                            && s->visualHeightReady && feed.visualSide > 1) ? 2 : 0;
-    u.edgeStitch        = (int32_t)patch.edgeStitch;
+    u.edgeStitch        = static_cast<int32_t>(patch.edgeStitch);
     u.quadCountX        = patch.quadCountX;
     u.quadCountY        = patch.quadCountY;
     // VK-PARITY-TERRAIN-1: values pulled from the shared GL-side producers.
@@ -421,7 +421,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     {
         if (s_copyStatsOn) {
             const double ms = usSince(tCopies0) / 1000.0;
-            mc2::fmt::print_err("[VK_TERRAIN_COPY_STATS] copies_ms={:.4f} static_us={:.1f} dyn_us={:.1f} csm_us={:.1f} staticGen={:d} shadowReady={:d} dynReady={:d} dynDirect={:d} csmArrayReady={:d} csmArrayDirect={:d} csmFullMapReady={:d} csmFullMapDirect={:d}\n", ms, subStaticUs, subDynUs, subCsmUs, mc2::fmt::as_u64((unsigned long long)feed.staticShadowGeneration), mc2::fmt::as_i32(s->shadowReady ? 1 : 0), mc2::fmt::as_i32(s->dynShadowReady ? 1 : 0), mc2::fmt::as_i32(s->dynShadowDirect ? 1 : 0), mc2::fmt::as_i32(s->csmArrayReady ? 1 : 0), mc2::fmt::as_i32(s->csmArrayDirect ? 1 : 0), mc2::fmt::as_i32(s->csmFullMapReady ? 1 : 0), mc2::fmt::as_i32(s->csmFullMapDirect ? 1 : 0));
+            mc2::fmt::print_err("[VK_TERRAIN_COPY_STATS] copies_ms={:.4f} static_us={:.1f} dyn_us={:.1f} csm_us={:.1f} staticGen={:d} shadowReady={:d} dynReady={:d} dynDirect={:d} csmArrayReady={:d} csmArrayDirect={:d} csmFullMapReady={:d} csmFullMapDirect={:d}\n", ms, subStaticUs, subDynUs, subCsmUs, mc2::fmt::as_u64(static_cast<unsigned long long>(feed.staticShadowGeneration)), mc2::fmt::as_i32(s->shadowReady ? 1 : 0), mc2::fmt::as_i32(s->dynShadowReady ? 1 : 0), mc2::fmt::as_i32(s->dynShadowDirect ? 1 : 0), mc2::fmt::as_i32(s->csmArrayReady ? 1 : 0), mc2::fmt::as_i32(s->csmArrayDirect ? 1 : 0), mc2::fmt::as_i32(s->csmFullMapReady ? 1 : 0), mc2::fmt::as_i32(s->csmFullMapDirect ? 1 : 0));
         }
     }
 
@@ -433,7 +433,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // frame, not to the parity, so staging here races nothing): the per-patch dynamic UBO and the light pool + grid spans.
     mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
     const uint32_t patchCount = feed.patchCount;
-    const mc2vk::FrameAlloc uboSpan = rctx.frameAlloc((VkDeviceSize)patchCount * sizeof(TerrainFrameUBO));
+    const mc2vk::FrameAlloc uboSpan = rctx.frameAlloc(static_cast<VkDeviceSize>(patchCount) * sizeof(TerrainFrameUBO));
     int32_t vkPoolLights = feed.numPoolLights;
     int32_t vkGridDim    = feed.lightGridDim;
     mc2vk::FrameAlloc lpSpans[3];
@@ -466,7 +466,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         for (uint32_t i = 0; i < patchCount; ++i) {
             TerrainFrameUBO u{};
             fill_frame_ubo(s, feed, feed.patches[i], vkPoolLights, vkGridDim, u);
-            std::memcpy(slots + (size_t)i * sizeof(TerrainFrameUBO), &u, sizeof(TerrainFrameUBO));
+            std::memcpy(slots + static_cast<size_t>(i) * sizeof(TerrainFrameUBO), &u, sizeof(TerrainFrameUBO));
         }
     }
     sync_ring_bindings(s, par, uboSpan, lpSpans);
@@ -513,12 +513,12 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     rbi.clearValueCount = 3; rbi.pClearValues = clears;
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
-    VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
-    VkRect2D scissor{{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
     vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
@@ -661,7 +661,7 @@ extern "C" int mc2_vk_scene_clear(int w, int h) {
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     rbi.clearValueCount = 3; rbi.pClearValues = clears;
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdEndRenderPass(cb);

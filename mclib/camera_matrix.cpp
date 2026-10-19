@@ -53,9 +53,9 @@ void Camera::setOrthogonal(void)
 		float left_clip, right_clip,top_clip,bottom_clip,far_clip,near_clip;
 		
 		left_clip = invCamScale * 300.0;
-		top_clip = left_clip * ((float)Environment.screenHeight / (float)Environment.screenWidth);
+		top_clip = left_clip * (static_cast<float>(Environment.screenHeight) / static_cast<float>(Environment.screenWidth));
 		right_clip = -invCamScale * 300.0;
-		bottom_clip = right_clip * ((float)Environment.screenHeight / (float)Environment.screenWidth);
+		bottom_clip = right_clip * (static_cast<float>(Environment.screenHeight) / static_cast<float>(Environment.screenWidth));
 		near_clip = -2000.0;
 		far_clip = 8000.0;
 		// EDITOR-FAR-CLIP-1 (parallel/ortho mirror): the editor zooms the eye far
@@ -136,7 +136,7 @@ void Camera::setOrthogonal(void)
 		// shares this matrix (project/inverse through the same constants), so
 		// screen<->world stays consistent. MC2_CAMERA_ASPECT_NATIVE=0 restores
 		// the legacy stretched look.
-		float height2width = ((float)Environment.screenHeight / (float)Environment.screenWidth);
+		float height2width = (static_cast<float>(Environment.screenHeight) / static_cast<float>(Environment.screenWidth));
 		{
 			static const bool s_nativeAspect = mc2::gate::get<"MC2_CAMERA_ASPECT_NATIVE">();
 			// Panel previews (SimpleCamera -> fixed 800x600 FBO) must keep the
@@ -145,7 +145,7 @@ void Camera::setOrthogonal(void)
 			const bool usingNative = s_nativeAspect && g_mechPreviewRenderDepth == 0
 				&& Environment.drawableWidth > 0 && Environment.drawableHeight > 0;
 			if (usingNative)
-				height2width = (float)Environment.drawableHeight / (float)Environment.drawableWidth;
+				height2width = static_cast<float>(Environment.drawableHeight) / static_cast<float>(Environment.drawableWidth);
 			// WATER-ASPECT-CORRECT-2: mirror this frame's choice so downstream
 			// consumers (the water MDI shader's dFdx(nz) aspect compensation,
 			// gameos_graphics.cpp) can tell whether the projection this frame
@@ -170,13 +170,13 @@ void Camera::setOrthogonal(void)
 				&& Environment.drawableWidth > 0 && Environment.drawableHeight > 0)
 			{
 				const float expectedH2W =
-					(float)Environment.drawableHeight / (float)Environment.drawableWidth;
+					static_cast<float>(Environment.drawableHeight) / static_cast<float>(Environment.drawableWidth);
 				if (fabsf(height2width - expectedH2W) >= 1e-3f)
 				{
 					char resDetail[192];
 					snprintf(resDetail, sizeof(resDetail),
 						"h2w=%.5f expected=%.5f drawable=%dx%d screen=%dx%d",
-						(double)height2width, (double)expectedH2W,
+						static_cast<double>(height2width), static_cast<double>(expectedH2W),
 						Environment.drawableWidth, Environment.drawableHeight,
 						Environment.screenWidth, Environment.screenHeight);
 					mc2res::violation("camera_aspect", resDetail);
@@ -189,7 +189,7 @@ void Camera::setOrthogonal(void)
 		// Calculate the horizontal, vertical, and forward ranges
 		//-------------------------------------------------------
 		//
-		float left_clip = -(float)(near_clip * tan(horizontal_fov*0.5f));
+		float left_clip = -static_cast<float>((near_clip * tan(horizontal_fov*0.5f)));
 		float top_clip = -left_clip * height2width;
 		float bottom_clip = -top_clip;
 		float right_clip = -left_clip;
@@ -242,8 +242,8 @@ void Camera::setOrthogonal(void)
 		if (s_rzTrace) {
 			static int s_rzBuild = 0;
 			++s_rzBuild;
-			const float FF = (float)cameraToClip[FORWARD_AXIS][FORWARD_AXIS];
-			const float B  = (float)cameraToClip[FORWARD_AXIS][3];
+			const float FF = static_cast<float>(cameraToClip[FORWARD_AXIS][FORWARD_AXIS]);
+			const float B  = static_cast<float>(cameraToClip[FORWARD_AXIS][3]);
 			const float ndcNear = (FF * near_clip + B) / near_clip;
 			const float ndcFar  = (FF * far_clip  + B) / far_clip;
 			fprintf(stderr,
@@ -265,10 +265,10 @@ void Camera::setOrthogonal(void)
 		// (dFdx/dFdy) go anisotropic. stretchX != 1.0 => mismatch present.
 		static const bool s_waAspect = mc2::gate::get<"MC2_WATER_ASPECT_DIAG">();
 		if (s_waAspect) {
-			const float projAspect = (float)Environment.screenWidth /
-			                         (float)(Environment.screenHeight ? Environment.screenHeight : 1);
-			const float vpAspect   = (float)Environment.drawableWidth /
-			                         (float)(Environment.drawableHeight ? Environment.drawableHeight : 1);
+			const float projAspect = static_cast<float>(Environment.screenWidth) /
+			                         static_cast<float>((Environment.screenHeight ? Environment.screenHeight : 1));
+			const float vpAspect   = static_cast<float>(Environment.drawableWidth) /
+			                         static_cast<float>((Environment.drawableHeight ? Environment.drawableHeight : 1));
 			const float stretchX   = projAspect != 0.0f ? (vpAspect / projAspect) : 0.0f;
 			fprintf(stderr,
 				"[WATER_ASPECT_DIAG v1] proj=%dx%d (aspect=%.4f, 4:3=1.333) "
@@ -437,7 +437,7 @@ void Camera::setCameraOrigin (void)
 			if (mc2::gate::get<"MC2_HZB_FORCE_HORIZON">())
 			{
 				static double s_hzbCamLastPrint = -999.0;
-				double nowSec = (double)clock() / CLOCKS_PER_SEC;
+				double nowSec = static_cast<double>(clock()) / CLOCKS_PER_SEC;
 				if (nowSec - s_hzbCamLastPrint >= 1.0)
 				{
 					s_hzbCamLastPrint = nowSec;
@@ -588,7 +588,7 @@ void Camera::calculateProjectionConstants (void)
 	// cause the revision to increment every frame even on a "stationary" camera.
 	{
 		auto snapI = [](float v, float step) -> uint32_t {
-			return (uint32_t)(int32_t)(v / step);
+			return static_cast<uint32_t>(static_cast<int32_t>((v / step)));
 		};
 		uint32_t h = snapI(position.x,      0.25f) * 2654435761u
 		           ^ snapI(position.y,      0.25f) * 2246822519u
@@ -596,8 +596,8 @@ void Camera::calculateProjectionConstants (void)
 		           ^ snapI(cameraRotation,  0.05f) * 374761393u
 		           ^ snapI(projectionAngle, 0.05f) * 668265263u
 		           ^ snapI(camera_fov,      0.1f)  * 2166136261u
-		           ^ (uint32_t)(int32_t)screenResolution.x
-		           ^ (uint32_t)(int32_t)screenResolution.y * 40503u;
+		           ^ static_cast<uint32_t>(static_cast<int32_t>(screenResolution.x))
+		           ^ static_cast<uint32_t>(static_cast<int32_t>(screenResolution.y)) * 40503u;
 		if (h != lastCameraInputHash_) {
 			lastCameraInputHash_ = h;
 			++viewProjectionRevision_;

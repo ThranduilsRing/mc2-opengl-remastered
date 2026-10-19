@@ -66,4 +66,4 @@ void dump_and_reset(const char* reason);
     do { if (::mc2::fx_trace::is_enabled()) { ::mc2::fx_trace::record_mlr_enqueue(leaf_name); } } while (0)
 
 #define FX_TRACE_CLASS(class_id, name) \
-    do { if (::mc2::fx_trace::is_enabled()) { ::mc2::fx_trace::record_class((unsigned int)(class_id), (name)); } } while (0)
+    do { if (::mc2::fx_trace::is_enabled()) { ::mc2::fx_trace::record_class(static_cast<unsigned int>((class_id)), (name)); } } while (0)

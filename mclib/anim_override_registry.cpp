@@ -22,17 +22,17 @@ static void animLogDrop(const char* why, const std::string& key) {
 
 static std::string animNormalizeKey(const std::string& s) {
     size_t b = 0, e = s.size();
-    while (b < e && std::isspace((unsigned char)s[b])) ++b;
-    while (e > b && std::isspace((unsigned char)s[e - 1])) --e;
+    while (b < e && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
+    while (e > b && std::isspace(static_cast<unsigned char>(s[e - 1]))) --e;
     std::string out = s.substr(b, e - b);
-    for (char& c : out) c = (char)std::tolower((unsigned char)c);
+    for (char& c : out) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return out;
 }
 
 static std::string animTrim(const std::string& s) {
     size_t b = 0, en = s.size();
-    while (b < en && std::isspace((unsigned char)s[b])) ++b;
-    while (en > b && std::isspace((unsigned char)s[en - 1])) --en;
+    while (b < en && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
+    while (en > b && std::isspace(static_cast<unsigned char>(s[en - 1]))) --en;
     return s.substr(b, en - b);
 }
 
@@ -43,7 +43,7 @@ static bool animSafeSource(const std::string& s, std::string& baseOut) {
     if (s[0] == '/' || s[0] == '\\') return false;
     if (s.size() >= 2 && s[1] == ':') return false;
     if (s.find("..") != std::string::npos) return false;
-    std::string low = s; for (char& c : low) c = (char)std::tolower((unsigned char)c);
+    std::string low = s; for (char& c : low) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     const bool ase = low.size() >= 4 && low.compare(low.size() - 4, 4, ".ase") == 0;
     const bool agl = low.size() >= 4 && low.compare(low.size() - 4, 4, ".agl") == 0;
     if (!ase && !agl) return false;
@@ -121,7 +121,7 @@ int AnimOverrideRegistry::loadFromFile(const std::string& manifestPath,
         if (dup) { animLogDrop("duplicate key (first entry wins)", rec.mechName + ":" + rec.gesture); continue; }
         records_.push_back(std::move(rec));
     }
-    return (int)records_.size();
+    return static_cast<int>(records_.size());
 }
 
 int AnimOverrideRegistry::mergeFromFile(const std::string& manifestPath,

@@ -32,8 +32,8 @@ void TacMap::worldToTacMap( glm::vec3& world, int xOffset, int yOffset, int xSiz
 	if ( tacY > land->realVerticesMapSide * MAPCELL_DIM )
 		tacY = land->realVerticesMapSide * MAPCELL_DIM;
 	
-	tac.x = (float)tacX * (float)xSize /((float)land->realVerticesMapSide * MAPCELL_DIM);
-	tac.y = (float)tacY * (float)ySize/((float)land->realVerticesMapSide * MAPCELL_DIM);
+	tac.x = static_cast<float>(tacX) * static_cast<float>(xSize) /(static_cast<float>(land->realVerticesMapSide) * MAPCELL_DIM);
+	tac.y = static_cast<float>(tacY) * static_cast<float>(ySize)/(static_cast<float>(land->realVerticesMapSide) * MAPCELL_DIM);
 
 	tac.x += xOffset;
 	tac.y += yOffset;
@@ -55,8 +55,8 @@ void TacMap::tacMapToWorld( const Stuff::Vector2DOf<long>& screen, int xSize, in
 	}
 
 	// turn screen into cells
-	long cellX = screen.x /(float)xSize * ((float)land->realVerticesMapSide * MAPCELL_DIM);
-	long cellY = screen.y /(float)ySize * ((float)land->realVerticesMapSide * MAPCELL_DIM);
+	long cellX = screen.x /static_cast<float>(xSize) * (static_cast<float>(land->realVerticesMapSide) * MAPCELL_DIM);
+	long cellY = screen.y /static_cast<float>(ySize) * (static_cast<float>(land->realVerticesMapSide) * MAPCELL_DIM);
 
 	if ((cellX < 0) || (cellX >= land->realVerticesMapSide * MAPCELL_DIM) ||
 		(cellY < 0) || (cellY >= land->realVerticesMapSide * MAPCELL_DIM))

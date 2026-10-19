@@ -43,9 +43,9 @@ static unsigned long g_applyStatePasses          = 0;
 // PostProcess sub-stage applies here plus the 3 top-level applies in other TUs
 // (routed through mc2_framegraph_executor_bump_apply_state(id)) — bump exactly
 // one slot.
-static unsigned long g_applyStateByPass[(int)RenderCore::framegraph::ApplyPassId::Count] = {0};
+static unsigned long g_applyStateByPass[static_cast<int>(RenderCore::framegraph::ApplyPassId::Count)] = {0};
 static void applyStateBump(RenderCore::framegraph::ApplyPassId id) {
-    ++g_applyStateByPass[(int)id];
+    ++g_applyStateByPass[static_cast<int>(id)];
 }
 
 // Max log lines for validation failures — prevent log flooding in pathological cases.
@@ -116,7 +116,7 @@ static void executorOwnEnd(gosPostProcess* /*pp*/)
         glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &bound);
         if (bound != 0) {
             if (g_executorValidationFailures < kMaxExecutorFailureLog)
-                mc2::fmt::print_err("[EXECUTOR v1] FAIL island=PostProcess postcond=defaultFbo bound={:d} (expected 0) owned={:d} failures={:d}\n", mc2::fmt::as_i32((int)bound), mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
+                mc2::fmt::print_err("[EXECUTOR v1] FAIL island=PostProcess postcond=defaultFbo bound={:d} (expected 0) owned={:d} failures={:d}\n", mc2::fmt::as_i32(static_cast<int>(bound)), mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
             ++g_executorValidationFailures;
             postOk = false;
         }
@@ -126,7 +126,7 @@ static void executorOwnEnd(gosPostProcess* /*pp*/)
         const GLenum err = glGetError();
         if (err != GL_NO_ERROR) {
             if (g_executorValidationFailures < kMaxExecutorFailureLog)
-                mc2::fmt::print_err("[EXECUTOR v1] FAIL island=PostProcess postcond=glNoError err=0x{:X} owned={:d} failures={:d}\n", mc2::fmt::as_u32((unsigned)err), mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
+                mc2::fmt::print_err("[EXECUTOR v1] FAIL island=PostProcess postcond=glNoError err=0x{:X} owned={:d} failures={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(err)), mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
             ++g_executorValidationFailures;
             postOk = false;
         }
@@ -166,7 +166,7 @@ extern "C" unsigned long mc2_framegraph_executor_validation_failures()
 extern "C" unsigned long mc2_framegraph_executor_apply_state_passes_impl()
 {
     unsigned long total = 0;
-    for (int i = 0; i < (int)RenderCore::framegraph::ApplyPassId::Count; ++i)
+    for (int i = 0; i < static_cast<int>(RenderCore::framegraph::ApplyPassId::Count); ++i)
         total += g_applyStateByPass[i];
     return total;
 }
@@ -175,7 +175,7 @@ extern "C" unsigned long mc2_framegraph_executor_apply_state_passes_impl()
 // ApplyPassId, or 0 for an out-of-range id.
 extern "C" unsigned long mc2_framegraph_executor_apply_state_by_pass_impl(unsigned id)
 {
-    return id < (unsigned)RenderCore::framegraph::ApplyPassId::Count ? g_applyStateByPass[id] : 0;
+    return id < static_cast<unsigned>(RenderCore::framegraph::ApplyPassId::Count) ? g_applyStateByPass[id] : 0;
 }
 
 // PER-PASS-APPLY-COUNTERS-1: cross-TU bump of the per-pass apply-state array so a

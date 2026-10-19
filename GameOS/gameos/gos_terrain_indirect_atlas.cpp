@@ -138,7 +138,7 @@ void buildRecipeSlot(int32_t vn, TerrainQuadRecipe& out) {
             // _wp3 (cementWord) is baked in PopulateRecipeCementWords() after
             // BuildCementCatalogAtlas() because g_cementLayerIndexBySlot isn't
             // ready yet at buildRecipeSlot() time.
-            const uint32_t nodeId = (uint32_t)entry->terrainHandle;
+            const uint32_t nodeId = static_cast<uint32_t>(entry->terrainHandle);
             memcpy(&out._wp2, &nodeId, 4);
         }
         // If entry is NULL or !isValid(): _wp2 remains 0 → GPU skips quad.
@@ -227,7 +227,7 @@ void BuildColormapAtlas() {
                                                  : GL_COMPRESSED_RGBA_BPTC_UNORM;
             // Mip 0 only: colormap is sampled at a fixed world-space scale, no LOD.
             size_t mip0Bytes = (img.mipCount > 1 && img.mipByteOffsets.size() > 1)
-                ? (size_t)img.mipByteOffsets[1]
+                ? static_cast<size_t>(img.mipByteOffsets[1])
                 : img.pixels.size();
 
             // TEX-CLASS: asset-pool -- terrain colormap atlas (content)
@@ -246,7 +246,7 @@ void BuildColormapAtlas() {
             atlasBuilt = true;
             keepColormapAtlas(std::span<const uint8_t>(img.pixels.data(), mip0Bytes), img.width, img.height, img.vkFormat);
 
-            mc2::fmt::print_out("[COLORMAP] COLORMAP-BC7-KTX2-1: uploaded {:d}x{:d} BC7 fmt=0x{:x} bytes={:d} gltex={:d}\n", mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_u32((unsigned)glIF), mc2::fmt::as_size(mip0Bytes), mc2::fmt::as_u32((unsigned)g_atlasGLTex));
+            mc2::fmt::print_out("[COLORMAP] COLORMAP-BC7-KTX2-1: uploaded {:d}x{:d} BC7 fmt=0x{:x} bytes={:d} gltex={:d}\n", mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_u32(static_cast<unsigned>(glIF)), mc2::fmt::as_size(mip0Bytes), mc2::fmt::as_u32(static_cast<unsigned>(g_atlasGLTex)));
 
             // KTX2 path succeeded — retire CPU copies (same as RETIRE-1, but
             // also clear the path so we don't attempt a second upload).
@@ -292,7 +292,7 @@ void BuildColormapAtlas() {
         atlasSizeCapture = tcm->cpuColorMapSize;
         {
             // RGBA order: the GL upload above swizzles the same BGRA bytes.
-            const size_t texels = (size_t)tcm->cpuColorMapSize * (size_t)tcm->cpuColorMapSize;
+            const size_t texels = static_cast<size_t>(tcm->cpuColorMapSize) * static_cast<size_t>(tcm->cpuColorMapSize);
             std::vector<uint8_t> rgba(texels * 4u);
             for (size_t i = 0; i < texels; ++i) {
                 rgba[i * 4 + 0] = tcm->cpuColorMap[i * 4 + 2];
@@ -317,8 +317,8 @@ void BuildColormapAtlas() {
 
     // MC2_LOAD_RACE_TRACE: latch the frame the colormap atlas first exists.
     if (g_loadRaceTrace && g_atlasGLTex != 0 && g_loadRaceAtlasFirstFrame < 0) {
-        g_loadRaceAtlasFirstFrame = (long)g_mc2FrameCounter;
-        mc2::fmt::print_err("[LOADRACE] atlas first-resident frame={:d} gltex={:d} scenarioTime={:.2f}\n", mc2::fmt::as_i32(g_loadRaceAtlasFirstFrame), mc2::fmt::as_u32((unsigned)g_atlasGLTex), scenarioTime);
+        g_loadRaceAtlasFirstFrame = static_cast<long>(g_mc2FrameCounter);
+        mc2::fmt::print_err("[LOADRACE] atlas first-resident frame={:d} gltex={:d} scenarioTime={:.2f}\n", mc2::fmt::as_i32(g_loadRaceAtlasFirstFrame), mc2::fmt::as_u32(static_cast<unsigned>(g_atlasGLTex)), scenarioTime);
         fflush(stderr);
     }
 
@@ -334,7 +334,7 @@ void BuildColormapAtlas() {
                "bc7=%s\n",
                g_atlasSize, g_atlasNumTexturesAcross,
                g_atlasMapTopLeftX, g_atlasMapTopLeftY, g_atlasOneOverWorldUnits,
-               (unsigned)g_atlasGLTex, atlasBuilt ? "yes" : "no");
+               static_cast<unsigned>(g_atlasGLTex), atlasBuilt ? "yes" : "no");
         fflush(stdout);
     }
 }
@@ -395,30 +395,30 @@ void BuildCementCatalogAtlas() {
     long diagTotal = 0, diagBase = 0, diagTransition = 0;
 
     for (long slot = 0; slot < lastSlot; ++slot) {
-        if (!tt->isCement((DWORD)slot)) continue;
-        if (tt->isAlpha((DWORD)slot)) continue;  // pure-cement only (brainstorm Q1)
-        const DWORD nodeIdx = tt->peekTextureHandle((DWORD)slot);
+        if (!tt->isCement(static_cast<DWORD>(slot))) continue;
+        if (tt->isAlpha(static_cast<DWORD>(slot))) continue;  // pure-cement only (brainstorm Q1)
+        const DWORD nodeIdx = tt->peekTextureHandle(static_cast<DWORD>(slot));
 
         const int isBase = (firstTransition < 0 || slot < firstTransition) ? 1 : 0;
         ++diagTotal;
         if (isBase) ++diagBase; else ++diagTransition;
         if (traceOn()) {
-            mc2::fmt::print_out("[CEMENT_DIAG] slot={:d} nodeIdx={:d} isBase={:d} (firstTransition={:d} nextAvailable={:d})\n", mc2::fmt::as_i32(slot), mc2::fmt::as_u32((unsigned)nodeIdx), mc2::fmt::as_i32(isBase), mc2::fmt::as_i32(firstTransition), mc2::fmt::as_i32(lastSlot));
+            mc2::fmt::print_out("[CEMENT_DIAG] slot={:d} nodeIdx={:d} isBase={:d} (firstTransition={:d} nextAvailable={:d})\n", mc2::fmt::as_i32(slot), mc2::fmt::as_u32(static_cast<unsigned>(nodeIdx)), mc2::fmt::as_i32(isBase), mc2::fmt::as_i32(firstTransition), mc2::fmt::as_i32(lastSlot));
         }
 
         if (nodeIdx == 0xffffffffu) continue;
-        if (nodeIdx >= (DWORD)MC_MAXTEXTURES) {
+        if (nodeIdx >= static_cast<DWORD>(MC_MAXTEXTURES)) {
             if (traceOn()) {
                 MC2_DIAGF("[TERRAIN_INDIRECT v1] event=cement_atlas_nodeidx_oob "
                        "slot=%ld nodeIdx=%u cap=%d\n",
-                       slot, (unsigned)nodeIdx, (int)MC_MAXTEXTURES);
+                       slot, static_cast<unsigned>(nodeIdx), static_cast<int>(MC_MAXTEXTURES));
                 fflush(stdout);
             }
             continue;
         }
         const DWORD gosHandle = tex_resolve(nodeIdx);
         if (gosHandle == 0u) continue;
-        const GLuint glTex = gos_terrain_bridge_glTextureForGosHandle((unsigned)gosHandle);
+        const GLuint glTex = gos_terrain_bridge_glTextureForGosHandle(static_cast<unsigned>(gosHandle));
         if (glTex == 0) continue;
         // Record-but-don't-break past atlas budget cap: we still want the
         // diag totals to reflect TRUE counts for tier1.  Atlas allocation
@@ -427,7 +427,7 @@ void BuildCementCatalogAtlas() {
         // NOT the _pad0 encoding cap (16-bit field, max 65535).  If anyone
         // ever exceeds 1024, the atlas budget needs revisiting.
         if (cementNodeIndices.size() < 1024) {
-            cementSlots.push_back((int)slot);
+            cementSlots.push_back(static_cast<int>(slot));
             cementSlotIsAlpha.push_back(0u);
             cementNodeIndices.push_back(nodeIdx);
             cementGLTextures.push_back(glTex);
@@ -440,30 +440,30 @@ void BuildCementCatalogAtlas() {
     // cement slots as their own atlas cells. Appended after every solid cell so
     // solid layer indices are byte-stable vs gate-OFF. Same resolve/validation
     // chain and the same 1024-cell budget cap as the solid pass above.
-    const int nSolidCells = (int)cementNodeIndices.size();
+    const int nSolidCells = static_cast<int>(cementNodeIndices.size());
     long alphaAdmitted = 0, alphaSkipped = 0;
     memset(g_cementAlphaLayerIndexBySlot, 0xFF, sizeof(g_cementAlphaLayerIndexBySlot));
     g_cementAlphaLayerMapReady = false;
     std::vector<int> alphaCementSlots;
     {
         for (long slot = 0; slot < lastSlot; ++slot) {
-            if (!tt->isCement((DWORD)slot)) continue;
-            if (!tt->isAlpha((DWORD)slot)) continue;   // alpha/transition slots only
-            const DWORD nodeIdx = tt->peekTextureHandle((DWORD)slot);
-            if (nodeIdx == 0xffffffffu || nodeIdx >= (DWORD)MC_MAXTEXTURES) { ++alphaSkipped; continue; }
+            if (!tt->isCement(static_cast<DWORD>(slot))) continue;
+            if (!tt->isAlpha(static_cast<DWORD>(slot))) continue;   // alpha/transition slots only
+            const DWORD nodeIdx = tt->peekTextureHandle(static_cast<DWORD>(slot));
+            if (nodeIdx == 0xffffffffu || nodeIdx >= static_cast<DWORD>(MC_MAXTEXTURES)) { ++alphaSkipped; continue; }
             const DWORD gosHandle = tex_resolve(nodeIdx);
             if (gosHandle == 0u) { ++alphaSkipped; continue; }
-            const GLuint glTex = gos_terrain_bridge_glTextureForGosHandle((unsigned)gosHandle);
+            const GLuint glTex = gos_terrain_bridge_glTextureForGosHandle(static_cast<unsigned>(gosHandle));
             if (glTex == 0) { ++alphaSkipped; continue; }
             if (cementNodeIndices.size() >= 1024) { truncated = true; ++alphaSkipped; continue; }
             if (slot >= 0 && slot < MC_MAX_TERRAIN_TXMS) {
-                g_cementAlphaLayerIndexBySlot[slot] = (uint16_t)cementNodeIndices.size();
+                g_cementAlphaLayerIndexBySlot[slot] = static_cast<uint16_t>(cementNodeIndices.size());
             }
-            cementSlots.push_back((int)slot);
+            cementSlots.push_back(static_cast<int>(slot));
             cementSlotIsAlpha.push_back(1u);   // CEMENT-UNIFORM-2: keep out of the SOLID map
             cementNodeIndices.push_back(nodeIdx);
             cementGLTextures.push_back(glTex);
-            alphaCementSlots.push_back((int)slot);
+            alphaCementSlots.push_back(static_cast<int>(slot));
             ++alphaAdmitted;
         }
         g_cementAlphaLayerMapReady = true;
@@ -479,7 +479,7 @@ void BuildCementCatalogAtlas() {
         fflush(stdout);
     }
 
-    const int N = (int)cementNodeIndices.size();
+    const int N = static_cast<int>(cementNodeIndices.size());
     // Always-on summary — not trace-gated so the count is visible without MC2_TERRAIN_INDIRECT_TRACE.
     MC2_DIAGF("[CEMENT_ATLAS v1] event=build_result N=%d diagTotal=%ld mission=%s\n",
            N, diagTotal, (::missionName[0] ? ::missionName : "unknown"));
@@ -491,7 +491,7 @@ void BuildCementCatalogAtlas() {
 
     memset(g_cementLayerIndexByNodeIdx, 0xFF, sizeof(g_cementLayerIndexByNodeIdx));
     for (int k = 0; k < N; ++k) {
-        g_cementLayerIndexByNodeIdx[cementNodeIndices[k]] = (uint16_t)k;
+        g_cementLayerIndexByNodeIdx[cementNodeIndices[k]] = static_cast<uint16_t>(k);
     }
 
     // Build slot → layer-index map.  Slot is the STABLE key (nodeIdx mutates
@@ -503,9 +503,9 @@ void BuildCementCatalogAtlas() {
         // register as SOLID cement, or every transition tile takes the solid
         // branch in PopulateRecipeCementWords and bakes an opaque slab (observed:
         // gate ON collapsed transition_baked/dropped/alpha_rescued all to 0).
-        if (k < (int)cementSlotIsAlpha.size() && cementSlotIsAlpha[k]) continue;
+        if (k < static_cast<int>(cementSlotIsAlpha.size()) && cementSlotIsAlpha[k]) continue;
         if (cementSlots[k] >= 0 && cementSlots[k] < MC_MAX_TERRAIN_TXMS) {
-            g_cementLayerIndexBySlot[cementSlots[k]] = (uint16_t)k;
+            g_cementLayerIndexBySlot[cementSlots[k]] = static_cast<uint16_t>(k);
         }
     }
 
@@ -514,8 +514,8 @@ void BuildCementCatalogAtlas() {
     while (gridSide * gridSide < N) gridSide <<= 1;
     const int atlasPixelSide = gridSide * txmSize;
 
-    std::vector<uint32_t> atlasBuf((size_t)atlasPixelSide * atlasPixelSide, 0u);
-    std::vector<uint32_t> tileBuf((size_t)txmSize * txmSize, 0u);
+    std::vector<uint32_t> atlasBuf(static_cast<size_t>(atlasPixelSide) * atlasPixelSide, 0u);
+    std::vector<uint32_t> tileBuf(static_cast<size_t>(txmSize) * txmSize, 0u);
 
     GLint savedActive = GL_TEXTURE0;
     glGetIntegerv(GL_ACTIVE_TEXTURE, &savedActive);
@@ -538,9 +538,9 @@ void BuildCementCatalogAtlas() {
         const int dstX = col * txmSize;
         const int dstY = row * txmSize;
         for (int py = 0; py < txmSize; ++py) {
-            const uint32_t* srcRow = &tileBuf[(size_t)py * txmSize];
-            uint32_t*       dstRow = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
-            memcpy(dstRow, srcRow, (size_t)txmSize * sizeof(uint32_t));
+            const uint32_t* srcRow = &tileBuf[static_cast<size_t>(py) * txmSize];
+            uint32_t*       dstRow = &atlasBuf[static_cast<size_t>((dstY + py)) * atlasPixelSide + dstX];
+            memcpy(dstRow, srcRow, static_cast<size_t>(txmSize) * sizeof(uint32_t));
         }
     }
 
@@ -553,12 +553,12 @@ void BuildCementCatalogAtlas() {
             const int dstY = (k / gridSide) * txmSize;
             long cellHits = 0;
             for (int py = 0; py < txmSize; ++py) {
-                uint32_t* row = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
+                uint32_t* row = &atlasBuf[static_cast<size_t>((dstY + py)) * atlasPixelSide + dstX];
                 for (int px = 0; px < txmSize; ++px) {
                     const uint32_t c = row[px];
-                    const int b = (int)( c        & 0xFFu);
-                    const int g = (int)((c >>  8) & 0xFFu);
-                    const int r = (int)((c >> 16) & 0xFFu);
+                    const int b = static_cast<int>(( c        & 0xFFu));
+                    const int g = static_cast<int>(((c >>  8) & 0xFFu));
+                    const int r = static_cast<int>(((c >> 16) & 0xFFu));
                     // Same chroma test as terrtxm.cpp textureFromMemoryAlpha: red AND
                     // blue both clearly dominate green. Grey/asphalt/cement never match.
                     if (r > 150 && b > 150 && r > g + 40 && b > g + 40) {
@@ -584,9 +584,9 @@ void BuildCementCatalogAtlas() {
     // and road MARKING art lives -- are appended past nSolidCells and are never
     // touched by either arm, by construction.
     if (NT > 0) {
-        std::vector<CementCellStats> st((size_t)NT);
+        std::vector<CementCellStats> st(static_cast<size_t>(NT));
         for (int k = 0; k < NT; ++k)
-            CementCellComputeStats(atlasBuf, atlasPixelSide, gridSide, txmSize, k, st[(size_t)k]);
+            CementCellComputeStats(atlasBuf, atlasPixelSide, gridSide, txmSize, k, st[static_cast<size_t>(k)]);
 
         float refR = 0.f, refG = 0.f, refB = 0.f;
         const int canon = ClassifyConcreteFamily(st, NT, refR, refG, refB);
@@ -602,7 +602,7 @@ void BuildCementCatalogAtlas() {
         // concrete cell is the baked road art (~65 luma below the background).
         float bgLmin = 1e30f, bgLmax = -1e30f;
         for (int k = 0; k < NT; ++k) {
-            const CementCellStats& c = st[(size_t)k];
+            const CementCellStats& c = st[static_cast<size_t>(k)];
             if (!c.family) continue;
             ++famCells;
             if (c.marks) ++markCells;
@@ -613,12 +613,12 @@ void BuildCementCatalogAtlas() {
             bgLmax  = std::max(bgLmax, c.bgLum);
         }
         for (int k = 0; k < NT; ++k) {
-            const CementCellStats& c = st[(size_t)k];
+            const CementCellStats& c = st[static_cast<size_t>(k)];
             if (!(c.marks || c.road || traceOn())) continue;
-            const int slot = (k < (int)cementSlots.size()) ? cementSlots[k] : -1;
+            const int slot = (k < static_cast<int>(cementSlots.size())) ? cementSlots[k] : -1;
             const long nTypes = Terrain::terrainTextures
                               ? Terrain::terrainTextures->getNumTypes() : 0;
-            const long nameId = (Terrain::terrainTextures && slot >= 0 && slot < (int)nTypes)
+            const long nameId = (Terrain::terrainTextures && slot >= 0 && slot < static_cast<int>(nTypes))
                               ? Terrain::terrainTextures->getTextureNameID(slot) : -1;
             MC2_DIAGF("[CEMENT_CONCRETE v1] mission=%s cell=%d slot=%d nameId=%ld "
                    "band_lum=%.1f bg_lum=%.1f chroma=%.3f mark_frac=%.4f "
@@ -660,7 +660,7 @@ void BuildCementCatalogAtlas() {
             if (FILE* f = fopen(pathBuf, "w")) {
                 mc2::fmt::print(f, "cell,slot,is_alpha,grid_side,tile_px,atlas_px\n");
                 for (int k = 0; k < N; ++k) {
-                    mc2::fmt::print(f, "{:d},{:d},{:d},{:d},{:d},{:d}\n", mc2::fmt::as_i32(k), mc2::fmt::as_i32((k < (int)cementSlots.size()) ? cementSlots[k] : -1), mc2::fmt::as_i32((k < (int)cementSlotIsAlpha.size()) ? (int)cementSlotIsAlpha[k] : -1), mc2::fmt::as_i32(gridSide), mc2::fmt::as_i32(txmSize), mc2::fmt::as_i32(atlasPixelSide));
+                    mc2::fmt::print(f, "{:d},{:d},{:d},{:d},{:d},{:d}\n", mc2::fmt::as_i32(k), mc2::fmt::as_i32((k < static_cast<int>(cementSlots.size())) ? cementSlots[k] : -1), mc2::fmt::as_i32((k < static_cast<int>(cementSlotIsAlpha.size())) ? static_cast<int>(cementSlotIsAlpha[k]) : -1), mc2::fmt::as_i32(gridSide), mc2::fmt::as_i32(txmSize), mc2::fmt::as_i32(atlasPixelSide));
                 }
                 fclose(f);
             }
@@ -727,7 +727,7 @@ void BuildCementCatalogAtlas() {
                "atlas_size=%dx%d grid_side=%d gltex=%u truncated=%d "
                "unmapped_pack_count=%u\n",
                N, atlasPixelSide, atlasPixelSide, gridSide,
-               (unsigned)g_cementAtlasGLTex,
+               static_cast<unsigned>(g_cementAtlasGLTex),
                g_cementCatalogTruncated,
                g_cementPackUnmappedCount);
         if (truncated) {
@@ -769,7 +769,7 @@ void BuildDenseRecipe() {
     if (!Terrain::mapData) return;
 
     g_recipeMapSide = Terrain::realVerticesMapSide;
-    const size_t N  = (size_t)g_recipeMapSide * (size_t)g_recipeMapSide;
+    const size_t N  = static_cast<size_t>(g_recipeMapSide) * static_cast<size_t>(g_recipeMapSide);
 
     g_denseRecipes.assign(N, TerrainQuadRecipe{});
     g_recipeReady                = false;
@@ -777,7 +777,7 @@ void BuildDenseRecipe() {
 
     // BuildDenseRecipe is called AFTER mapData->buildTerrainFaceCache (terrain.cpp:585),
     // so the Shape C cache is populated and getTerrainFaceCacheEntry returns valid entries.
-    for (int32_t vn = 0; vn < (int32_t)N; ++vn) {
+    for (int32_t vn = 0; vn < static_cast<int32_t>(N); ++vn) {
         buildRecipeSlot(vn, g_denseRecipes[vn]);
     }
 
@@ -880,7 +880,7 @@ void InvalidateAllRecipes() {
     if (g_denseRecipes.empty()) return;
     const size_t N = g_denseRecipes.size();
     for (size_t vn = 0; vn < N; ++vn) {
-        buildRecipeSlot((int32_t)vn, g_denseRecipes[vn]);
+        buildRecipeSlot(static_cast<int32_t>(vn), g_denseRecipes[vn]);
     }
     // Re-bake cement words: buildRecipeSlot zeroed _wp3 on every slot above.
     // Without this, FlushDirtyRecipeSlotsToGPU uploads zeroed _wp3 for all

@@ -170,7 +170,7 @@ inline SymTableNodePtr symTableSuccessor (SymTableNodePtr nodeX) {
 
 TypePtr createType (void) {
 
-	TypePtr newType = (TypePtr)ABL_alloc(ABLPool::Symbol, sizeof(Type));
+	TypePtr newType = static_cast<TypePtr>(ABL_alloc(ABLPool::Symbol, sizeof(Type)));
 	if (!newType)
 		ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc newType ");
 	newType->numInstances = 1;
@@ -407,11 +407,11 @@ SymTableNodePtr searchSymTableDisplay (const char* name) {
 
 SymTableNodePtr enterSymTable (const char* name, SymTableNodePtr* ptrToNodePtr) {
 
-	SymTableNodePtr newNode = (SymTableNodePtr)ABL_alloc(ABLPool::Symbol, sizeof(SymTableNode));
+	SymTableNodePtr newNode = static_cast<SymTableNodePtr>(ABL_alloc(ABLPool::Symbol, sizeof(SymTableNode)));
 	if (!newNode)
 		ABL_Fatal(0, " ABL: Unable to AblSymTableHeap->malloc symbol ");
 
-	newNode->name = (char*)ABL_alloc(ABLPool::Symbol, static_cast<unsigned long>(strlen(name) + 1));
+	newNode->name = static_cast<char*>(ABL_alloc(ABLPool::Symbol, static_cast<unsigned long>(strlen(name) + 1)));
 	if (!newNode->name)
 		ABL_Fatal(0, " ABL: Unable to AblSymTableHeap->malloc symbol name ");
 	strcpy(newNode->name, name);
@@ -424,7 +424,7 @@ SymTableNodePtr enterSymTable (const char* name, SymTableNodePtr* ptrToNodePtr) 
 	newNode->defn.info.data.varType = VAR_TYPE_NORMAL;
 	newNode->defn.info.data.offset = 0;
 	newNode->typePtr = nullptr;
-	newNode->level = (unsigned char)level;
+	newNode->level = static_cast<unsigned char>(level);
 	newNode->labelIndex = 0;
 
 	SymTableNodePtr curNode = *ptrToNodePtr;
@@ -550,14 +550,14 @@ void enterStandardRoutine (const char* name, long routineKey, bool isOrder, cons
 			tableIndex, name ? name : "(null)",
 			paramList ? paramList : "",
 			returnType ? returnType : "",
-			(void*)callback);
+			reinterpret_cast<void*>(callback));
 	}
 
 	SymTableNodePtr routineIdPtr;
 	enterNameLocalSymTable(routineIdPtr, name);
 	
 	routineIdPtr->defn.key = DFN_FUNCTION;
-	routineIdPtr->defn.info.routine.key = (RoutineKey)tableIndex;
+	routineIdPtr->defn.info.routine.key = static_cast<RoutineKey>(tableIndex);
 	routineIdPtr->defn.info.routine.flags = isOrder ? ROUTINE_FLAG_ORDER : 0;
 	routineIdPtr->defn.info.routine.params = nullptr;
 	routineIdPtr->defn.info.routine.localSymTable = nullptr;

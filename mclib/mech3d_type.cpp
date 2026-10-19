@@ -680,11 +680,11 @@ glm::vec3 Mech3DAppearance::getWeaponNodePosition (long nodeId)
 	// no named TG nodes, so the legacy lookup below returns origin. Resolve the
 	// firepoint from the package node manifest + live clip globals instead.
 	if (mechShape && mechShape->GetNumShapes() > 0) {
-		const void* tKey = mechType ? (const void*)mechType->mechShape[currentLOD] : nullptr;
+		const void* tKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr;
 		float wp[3];
-		if (mc2mechanim::GetImportedNodeWorld((const void*)mechShape, tKey,
+		if (mc2mechanim::GetImportedNodeWorld(static_cast<const void*>(mechShape), tKey,
 				mechType->nodeData[nodeId].nodeId,
-				(const float*)glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld), wp)) {
+				static_cast<const float*>(glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld)), wp)) {
 			static int s_diagN = 0;
 			if (mc2::gate::get<"MC2_MECH_NODE_DIAG">() && s_diagN++ < 24)
 				fprintf(stderr, "[NODE-DIAG-CALLER] mech pos=(%.1f,%.1f,%.1f) node='%s' world=(%.1f,%.1f,%.1f) delta=(%.1f,%.1f,%.1f)\n",

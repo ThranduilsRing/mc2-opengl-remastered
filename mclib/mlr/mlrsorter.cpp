@@ -44,7 +44,7 @@ void
 	{
 		if(texture2==0)
 		{
-			GOSVertex *v = (GOSVertex *)vertices;
+			GOSVertex *v = static_cast<GOSVertex *>(vertices);
 			if ((v[0].z >= 0.0f) &&
 				(v[0].z < 1.0f) &&
 				(v[1].z >= 0.0f) &&  
@@ -52,7 +52,7 @@ void
 				(v[2].z >= 0.0f) &&  
 				(v[2].z < 1.0f))
 			{
-				gos_DrawTriangles( (GOSVertex *)vertices, numVertices);
+				gos_DrawTriangles( static_cast<GOSVertex *>(vertices), numVertices);
 			}
 		}
 		else
@@ -77,7 +77,7 @@ void
 	{
 		WORD newIndicies[4096];
 		long startIndex = 0;
-		GOSVertex *v = (GOSVertex *)vertices;
+		GOSVertex *v = static_cast<GOSVertex *>(vertices);
 		for (long i=0;i<numIndices;i+=3)
 		{
 			if (((v[indices[i]].z >= 0.0f) &&   (v[indices[i]].z < 1.0f)) &&
@@ -96,11 +96,11 @@ void
 		{
 			if(texture2==0)
 			{
-				gos_RenderIndexedArray( (GOSVertex *)vertices, numVertices, newIndicies, startIndex);
+				gos_RenderIndexedArray( static_cast<GOSVertex *>(vertices), numVertices, newIndicies, startIndex);
 			}
 			else
 			{
-				gos_RenderIndexedArray( (GOSVertex2UV *)vertices, numVertices, indices, numIndices);
+				gos_RenderIndexedArray( static_cast<GOSVertex2UV *>(vertices), numVertices, indices, numIndices);
 			}
 		}
 	}
@@ -122,7 +122,7 @@ void
 
 		GOSVertex pArray[32*3];
 
-		float size = (float)numIndices;
+		float size = static_cast<float>(numIndices);
 		
 		if( size == 0 )
 		{
@@ -139,9 +139,9 @@ void
 	//
 		for( int i=numVertices; i; i-- )
 		{
-			pArray[Triangle+0] = *((GOSVertex *)vertices + Vertex);
-			pArray[Triangle+1] = *((GOSVertex *)vertices + Vertex);
-			pArray[Triangle+2] = *((GOSVertex *)vertices + Vertex);
+			pArray[Triangle+0] = *(static_cast<GOSVertex *>(vertices) + Vertex);
+			pArray[Triangle+1] = *(static_cast<GOSVertex *>(vertices) + Vertex);
+			pArray[Triangle+2] = *(static_cast<GOSVertex *>(vertices) + Vertex);
 
 			pArray[Triangle+1].x += size;
 			pArray[Triangle+2].y += size;
@@ -182,7 +182,7 @@ void
 		if(texture2==0)
 		{
 //			gos_DrawTriangles( (GOSVertex *)vertices, numVertices);
-			gos_DrawQuads( (GOSVertex *)vertices, numVertices);
+			gos_DrawQuads( static_cast<GOSVertex *>(vertices), numVertices);
 		}
 		else
 		{
@@ -204,13 +204,13 @@ void
 
 	for(int i=0;i<numVertices;i++)
 	{
-		if(((GOSVertex *)vertices)[i].x > Environment.screenWidth-1)
+		if((static_cast<GOSVertex *>(vertices))[i].x > Environment.screenWidth-1)
 		{
-			((GOSVertex *)vertices)[i].x = static_cast<Scalar>(Environment.screenWidth-1);
+			(static_cast<GOSVertex *>(vertices))[i].x = static_cast<Scalar>(Environment.screenWidth-1);
 		}
-		if(((GOSVertex *)vertices)[i].y > Environment.screenHeight-1)
+		if((static_cast<GOSVertex *>(vertices))[i].y > Environment.screenHeight-1)
 		{
-			((GOSVertex *)vertices)[i].y = static_cast<Scalar>(Environment.screenHeight-1);
+			(static_cast<GOSVertex *>(vertices))[i].y = static_cast<Scalar>(Environment.screenHeight-1);
 		}
 	}
 
@@ -218,7 +218,7 @@ void
 	if(dontSeeMe == true)
 #endif
 	{
-		gos_DrawLines( (GOSVertex *)vertices, numVertices);
+		gos_DrawLines( static_cast<GOSVertex *>(vertices), numVertices);
 	}
 	Stop_Timer(GOS_Draw_Time);
 }
@@ -229,16 +229,16 @@ int
 	SortData::LoadAlphaFromTriList(SortAlpha **alpha)
 {
 	Start_Timer(Alpha_Sorting_Time);
-	int i, index = 0, end = (int)(numVertices*0.333333333333333333333333);
+	int i, index = 0, end = static_cast<int>((numVertices*0.333333333333333333333333));
 	Verify(texture2==0);
 
 	for(i=0;i<end;i++)
 	{
 		alpha[i]->state = &state;
 
-		alpha[i]->triangle[0] = ((GOSVertex *)vertices)[index++];
-		alpha[i]->triangle[1] = ((GOSVertex *)vertices)[index++];
-		alpha[i]->triangle[2] = ((GOSVertex *)vertices)[index++];
+		alpha[i]->triangle[0] = (static_cast<GOSVertex *>(vertices))[index++];
+		alpha[i]->triangle[1] = (static_cast<GOSVertex *>(vertices))[index++];
+		alpha[i]->triangle[2] = (static_cast<GOSVertex *>(vertices))[index++];
 
 		alpha[i]->distance = alpha[i]->triangle[0].z;
 		alpha[i]->distance += alpha[i]->triangle[1].z;
@@ -262,9 +262,9 @@ int
 	{
 		alpha[i]->state = &state;
 
-		alpha[i]->triangle[0] = ((GOSVertex *)vertices)[indices[index++]];
-		alpha[i]->triangle[1] = ((GOSVertex *)vertices)[indices[index++]];
-		alpha[i]->triangle[2] = ((GOSVertex *)vertices)[indices[index++]];
+		alpha[i]->triangle[0] = (static_cast<GOSVertex *>(vertices))[indices[index++]];
+		alpha[i]->triangle[1] = (static_cast<GOSVertex *>(vertices))[indices[index++]];
+		alpha[i]->triangle[2] = (static_cast<GOSVertex *>(vertices))[indices[index++]];
 
 		alpha[i]->distance = alpha[i]->triangle[0].z;
 		alpha[i]->distance += alpha[i]->triangle[1].z;
@@ -702,7 +702,7 @@ bool
 			{
                 // sebi ????
 				//gos_SetRenderState(	gos_State_Fog, (int)&newer.fogColor);
-				gos_SetRenderState(	gos_State_Fog, (int)newer.fogColor);
+				gos_SetRenderState(	gos_State_Fog, static_cast<int>(newer.fogColor));
 			}
 			else
 			{

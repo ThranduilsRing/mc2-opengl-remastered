@@ -274,7 +274,7 @@ void
 
 	if(pass == 0)
 	{
-		texCoords.AssignData((Vector2DScalar *)data, dataSize);
+		texCoords.AssignData(const_cast<Vector2DScalar *>(data), dataSize);
 
 		multiTexCoordsPointers[0] = texCoords.GetData();
 	}
@@ -287,7 +287,7 @@ void
 			gos_PushCurrentHeap(Heap);
 			multiTexCoords[pass] = new DynamicArrayOf<Vector2DScalar>;
 			Register_Object(multiTexCoords[pass]);
-			multiTexCoords[pass]->AssignData((Vector2DScalar *)data, dataSize);
+			multiTexCoords[pass]->AssignData(const_cast<Vector2DScalar *>(data), dataSize);
 			gos_PopCurrentHeap();
 
 			multiTexCoordsPointers[pass] = multiTexCoords[pass]->GetData();
@@ -372,7 +372,7 @@ MLRShape*
 
 	int i, j, k;
 	int nrOfPasses = static_cast<int>(states->GetLength());
-	long    nrTri = (long) ceil (icoInfo.all * pow (4.0f, icoInfo.depth));
+	long    nrTri = static_cast<long>(ceil (icoInfo.all * pow (4.0f, icoInfo.depth)));
 	glm::vec3 v[3];
 
 	if(3*nrTri >= Limits::Max_Number_Vertices_Per_Mesh)

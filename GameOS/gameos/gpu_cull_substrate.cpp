@@ -175,11 +175,11 @@ void substrate_init(uint32_t maxActors) {
     s_initialized = true;
 
     MC2_DIAGF("[GPU_CULL v1] event=substrate_init maxActors=%u slotBytes=%zu totalBytes=%lld binding=%u\n",
-           maxActors, s_slotBytes, (long long)totalBytes, SUBSTRATE_SSBO_BINDING);
+           maxActors, s_slotBytes, static_cast<long long>(totalBytes), SUBSTRATE_SSBO_BINDING);
     fflush(stdout);
     if (mc2_diag::tagEnabled("GPU_CULL")) {
         char diag_buf[256];
-        mc2::fmt::to_buf(diag_buf, "{{\"event\":\"substrate_init\",\"maxActors\":{:d},\"slotBytes\":{:d},\"totalBytes\":{:d},\"binding\":{:d}}}", mc2::fmt::as_u32(maxActors), mc2::fmt::as_size(s_slotBytes), mc2::fmt::as_i64((long long)totalBytes), mc2::fmt::as_u32(SUBSTRATE_SSBO_BINDING));
+        mc2::fmt::to_buf(diag_buf, "{{\"event\":\"substrate_init\",\"maxActors\":{:d},\"slotBytes\":{:d},\"totalBytes\":{:d},\"binding\":{:d}}}", mc2::fmt::as_u32(maxActors), mc2::fmt::as_size(s_slotBytes), mc2::fmt::as_i64(static_cast<long long>(totalBytes)), mc2::fmt::as_u32(SUBSTRATE_SSBO_BINDING));
         mc2_diag::writeEvent("GPU_CULL", 1, 0, diag_buf);
     }
 }

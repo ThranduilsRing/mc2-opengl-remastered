@@ -131,7 +131,7 @@ void Terrain::render (void)
 							long actualCellCol = tileC * MAPCELL_DIM + cellC;
 							if (GameMap->inBounds(actualCellRow, actualCellCol)
 							    && GameMap->getMine(actualCellRow, actualCellCol) != 0)
-								setLegacy.push_back((long)actualCellRow * 100000 + actualCellCol);
+								setLegacy.push_back(static_cast<long>(actualCellRow) * 100000 + actualCellCol);
 						}
 					}
 				}
@@ -156,7 +156,7 @@ void Terrain::render (void)
 							long actualCellCol = tileC * MAPCELL_DIM + cellC;
 							if (GameMap->inBounds(actualCellRow, actualCellCol)
 							    && GameMap->getMine(actualCellRow, actualCellCol) != 0)
-								setGrid.push_back((long)actualCellRow * 100000 + actualCellCol);
+								setGrid.push_back(static_cast<long>(actualCellRow) * 100000 + actualCellCol);
 						}
 					}
 				}
@@ -178,7 +178,7 @@ void Terrain::render (void)
 
 			if (setLegacy.size() != setGrid.size() || (s_mineABFrame % 300 == 0))
 			{
-				mc2::fmt::print_out("[MINE_AB] frame={:d} legacy={:d} grid={:d} onlyLegacy={:d} onlyGrid={:d}\n", mc2::fmt::as_u32(s_mineABFrame), mc2::fmt::as_i32((int)setLegacy.size()), mc2::fmt::as_i32((int)setGrid.size()), mc2::fmt::as_i32((int)onlyLegacy.size()), mc2::fmt::as_i32((int)onlyGrid.size()));
+				mc2::fmt::print_out("[MINE_AB] frame={:d} legacy={:d} grid={:d} onlyLegacy={:d} onlyGrid={:d}\n", mc2::fmt::as_u32(s_mineABFrame), mc2::fmt::as_i32(static_cast<int>(setLegacy.size())), mc2::fmt::as_i32(static_cast<int>(setGrid.size())), mc2::fmt::as_i32(static_cast<int>(onlyLegacy.size())), mc2::fmt::as_i32(static_cast<int>(onlyGrid.size())));
 				fflush(stdout);
 			}
 		}
@@ -270,8 +270,8 @@ void Terrain::flushDrawCommands (void)
 		// (one cmd per visible block); pulled from the existing aggregate, no
 		// per-block counting. OFF=zero cost (Set* early-returns).
 		gos_frame_pass_stats::SetPassCounts(
-			gos_render_pass_timer::Pass_TerrainChunk, (uint32_t)s_cmdCount, 0u);
-		gos_frame_pass_stats::SetVisibleTerrainChunks((uint32_t)s_cmdCount);
+			gos_render_pass_timer::Pass_TerrainChunk, static_cast<uint32_t>(s_cmdCount), 0u);
+		gos_frame_pass_stats::SetVisibleTerrainChunks(static_cast<uint32_t>(s_cmdCount));
 		gos_TerrainLodChunk_SubmitDrawCommands(s_drawCmds, s_skirtDepths,
 			s_skirtEdgeMaskVec.empty() ? nullptr : s_skirtEdgeMaskVec.data(),
 			s_stitchStepVec.empty() ? nullptr : s_stitchStepVec.data(),
@@ -315,7 +315,7 @@ bool gos_terrain_indirect::WaterFastPathOwnsArmedDraw()
 		static uint32_t s_lastSig = 0xffffffff;
 		if (sig != s_lastSig)
 		{
-			mc2::fmt::print_out("[WATER_GATE] fastPath={:d} armed={:d} streamReady={:d} recipes={:d} tex2={:d} (sig=0x{:x})\n", mc2::fmt::as_i32(g1?1:0), mc2::fmt::as_i32(solidArmed?1:0), mc2::fmt::as_i32(g3?1:0), mc2::fmt::as_u32((unsigned)WaterStream::GetRecipeCount()), mc2::fmt::as_i32(g5?1:0), mc2::fmt::as_u32(sig));
+			mc2::fmt::print_out("[WATER_GATE] fastPath={:d} armed={:d} streamReady={:d} recipes={:d} tex2={:d} (sig=0x{:x})\n", mc2::fmt::as_i32(g1?1:0), mc2::fmt::as_i32(solidArmed?1:0), mc2::fmt::as_i32(g3?1:0), mc2::fmt::as_u32(static_cast<unsigned>(WaterStream::GetRecipeCount())), mc2::fmt::as_i32(g5?1:0), mc2::fmt::as_u32(sig));
 			fflush(stdout);
 			s_lastSig = sig;
 		}
@@ -343,9 +343,9 @@ void Terrain::renderWater (void)
 	static uint64_t s_qpcStart = 0;
 	constexpr uint32_t kWaterWarmupHoldoffFrames = 1200;
 	if (s_waterDebugOn && s_qpcFreq == 0)
-		QueryPerformanceFrequency((LARGE_INTEGER*)&s_qpcFreq);
+		QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&s_qpcFreq));
 	if (s_waterDebugOn)
-		QueryPerformanceCounter((LARGE_INTEGER*)&s_qpcStart);
+		QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&s_qpcStart));
 
 	// Predicate is now single-sourced in gos_terrain_indirect::WaterFastPathOwnsArmedDraw().
 	// renderWater() is once-per-frame, so this is the correct (non-hot) site
@@ -447,10 +447,10 @@ void Terrain::renderWater (void)
 	if (s_waterDebugOn)
 	{
 		uint64_t qpcEnd = 0;
-		QueryPerformanceCounter((LARGE_INTEGER*)&qpcEnd);
+		QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&qpcEnd));
 		const uint64_t elapsedTicks = qpcEnd - s_qpcStart;
 		const double elapsedUs = (s_qpcFreq > 0)
-		    ? (1000000.0 * (double)elapsedTicks / (double)s_qpcFreq)
+		    ? (1000000.0 * static_cast<double>(elapsedTicks) / static_cast<double>(s_qpcFreq))
 		    : 0.0;
 		if (s_framesPrinted < 5)
 		{
@@ -496,9 +496,9 @@ void Terrain::renderWaterFastPath (void)
 	static uint32_t s_frameCounter2  = 0;
 	constexpr uint32_t kFastWarmupHoldoffFrames = 1200;
 	if (s_waterDebugOn && s_qpcFreq2 == 0)
-		QueryPerformanceFrequency((LARGE_INTEGER*)&s_qpcFreq2);
+		QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&s_qpcFreq2));
 	if (s_waterDebugOn)
-		QueryPerformanceCounter((LARGE_INTEGER*)&s_qpcStart2);
+		QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&s_qpcStart2));
 
 	// getWater*Handle() returns mcTextureManager's textureIndex (master node
 	// id), NOT the engine's gosTextureHandle. tex_resolve() chases the lazy
@@ -530,19 +530,19 @@ void Terrain::renderWaterFastPath (void)
 		static bool s_dumped = false;
 		if (!s_dumped && mc2::gate::get<"MC2_WATER_STREAM_DEBUG">()) {
 			s_dumped = true;
-			mc2::fmt::print_err("[WATER_FAST v1] event=alpha_uniforms waterElevation={:.3f} alphaDepth={:.3f} alphaEdgeByte={:d} alphaMiddleByte={:d} alphaDeepByte={:d}\n", (double)Terrain::waterElevation, (double)MapData::alphaDepth, mc2::fmt::as_u32((unsigned)((Terrain::alphaEdge   >> 24) & 0xFFu)), mc2::fmt::as_u32((unsigned)((Terrain::alphaMiddle >> 24) & 0xFFu)), mc2::fmt::as_u32((unsigned)((Terrain::alphaDeep   >> 24) & 0xFFu)));
+			mc2::fmt::print_err("[WATER_FAST v1] event=alpha_uniforms waterElevation={:.3f} alphaDepth={:.3f} alphaEdgeByte={:d} alphaMiddleByte={:d} alphaDeepByte={:d}\n", static_cast<double>(Terrain::waterElevation), static_cast<double>(MapData::alphaDepth), mc2::fmt::as_u32(static_cast<unsigned>(((Terrain::alphaEdge   >> 24) & 0xFFu))), mc2::fmt::as_u32(static_cast<unsigned>(((Terrain::alphaMiddle >> 24) & 0xFFu))), mc2::fmt::as_u32(static_cast<unsigned>(((Terrain::alphaDeep   >> 24) & 0xFFu))));
 			fflush(stderr);
 		}
 	}
 	gos_terrain_bridge_renderWaterFast(
 	    WaterStream::GetRecipeCount(),
-	    (unsigned int)waterTexHandle,
-	    (unsigned int)waterDetailTexHandle,
+	    static_cast<unsigned int>(waterTexHandle),
+	    static_cast<unsigned int>(waterDetailTexHandle),
 	    Terrain::waterElevation,
 	    WaterStream::EffAlphaDepth(MapData::alphaDepth),   // SHORELINE-STAIRCASE-1: widened shore band (default OFF -> base)
-	    (unsigned int)((Terrain::alphaEdge   >> 24) & 0xFFu),
-	    (unsigned int)((Terrain::alphaMiddle >> 24) & 0xFFu),
-	    (unsigned int)((Terrain::alphaDeep   >> 24) & 0xFFu),
+	    static_cast<unsigned int>(((Terrain::alphaEdge   >> 24) & 0xFFu)),
+	    static_cast<unsigned int>(((Terrain::alphaMiddle >> 24) & 0xFFu)),
+	    static_cast<unsigned int>(((Terrain::alphaDeep   >> 24) & 0xFFu)),
 	    Terrain::mapTopLeft3d.x,
 	    Terrain::mapTopLeft3d.y,
 	    Terrain::frameCos,
@@ -558,14 +558,14 @@ void Terrain::renderWaterFastPath (void)
 	if (s_waterDebugOn)
 	{
 		uint64_t qpcEnd = 0;
-		QueryPerformanceCounter((LARGE_INTEGER*)&qpcEnd);
+		QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&qpcEnd));
 		const uint64_t elapsedTicks = qpcEnd - s_qpcStart2;
 		const double elapsedUs = (s_qpcFreq2 > 0)
-		    ? (1000000.0 * (double)elapsedTicks / (double)s_qpcFreq2) : 0.0;
+		    ? (1000000.0 * static_cast<double>(elapsedTicks) / static_cast<double>(s_qpcFreq2)) : 0.0;
 		++s_frameCounter2;
 		if (s_frameCounter2 >= kFastWarmupHoldoffFrames && s_framesPrinted2 < 5)
 		{
-			mc2::fmt::print_err("[WATER_FAST v1] event=elapsed frame={:d} (post-warmup) recipeCount={:d} elapsed_us={:.1f}\n", mc2::fmt::as_u32(s_framesPrinted2), mc2::fmt::as_u32((unsigned)WaterStream::GetRecipeCount()), elapsedUs);
+			mc2::fmt::print_err("[WATER_FAST v1] event=elapsed frame={:d} (post-warmup) recipeCount={:d} elapsed_us={:.1f}\n", mc2::fmt::as_u32(s_framesPrinted2), mc2::fmt::as_u32(static_cast<unsigned>(WaterStream::GetRecipeCount())), elapsedUs);
 			fflush(stderr);
 			++s_framesPrinted2;
 		}

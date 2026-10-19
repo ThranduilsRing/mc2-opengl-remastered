@@ -241,8 +241,8 @@ void LightCostSplit_RollFrameAndMaybeEmit() {
     if (!IsLightCostSplitEnabled()) return;
     ++g_lcsFrames;
     if (g_lcsFrames % 600ULL != 0ULL) return;
-    const double f = (double)600.0;
-    mc2::fmt::print_err("[LIGHT_COST_SPLIT v1] event=summary frames=600 c2_cyc_per_frame={:.0f} c2_calls_per_frame={:.1f} c6_cyc_per_frame={:.0f} c6_calls_per_frame={:.1f} c5_cyc_per_frame={:.0f} c5_calls_per_frame={:.1f}\n", (double)g_lcsC2Cyc/f, (double)g_lcsC2Call/f, (double)g_lcsC6Cyc/f, (double)g_lcsC6Call/f, (double)g_lcsC5Cyc/f, (double)g_lcsC5Call/f);
+    const double f = static_cast<double>(600.0);
+    mc2::fmt::print_err("[LIGHT_COST_SPLIT v1] event=summary frames=600 c2_cyc_per_frame={:.0f} c2_calls_per_frame={:.1f} c6_cyc_per_frame={:.0f} c6_calls_per_frame={:.1f} c5_cyc_per_frame={:.0f} c5_calls_per_frame={:.1f}\n", static_cast<double>(g_lcsC2Cyc)/f, static_cast<double>(g_lcsC2Call)/f, static_cast<double>(g_lcsC6Cyc)/f, static_cast<double>(g_lcsC6Call)/f, static_cast<double>(g_lcsC5Cyc)/f, static_cast<double>(g_lcsC5Call)/f);
     g_lcsC2Cyc=g_lcsC6Cyc=g_lcsC5Cyc=0;
     g_lcsC2Call=g_lcsC6Call=g_lcsC5Call=0;
 }

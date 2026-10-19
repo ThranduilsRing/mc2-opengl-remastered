@@ -134,17 +134,17 @@ static void JsonEscape(const char* src, char* buf, size_t bufSize) {
     size_t out = 0;
     buf[out++] = '"';
     for (const char* p = src; *p && out + 4 < bufSize; ++p) {
-        unsigned char c = (unsigned char)*p;
+        unsigned char c = static_cast<unsigned char>(*p);
         if (c == '\\') { buf[out++] = '\\'; buf[out++] = '\\'; }
         else if (c == '"') { buf[out++] = '\\'; buf[out++] = '"'; }
         else if (c < 0x20) {
             // write \uXXXX
             char esc[8];
-            _snprintf(esc, sizeof(esc), "\\u%04x", (unsigned)c);
+            _snprintf(esc, sizeof(esc), "\\u%04x", static_cast<unsigned>(c));
             for (int i = 0; esc[i] && out + 1 < bufSize; ++i)
                 buf[out++] = esc[i];
         } else {
-            buf[out++] = (char)c;
+            buf[out++] = static_cast<char>(c);
         }
     }
     if (out + 2 <= bufSize) { buf[out++] = '"'; buf[out] = '\0'; }
@@ -550,7 +550,7 @@ static std::string JsonGetString(const char* json, const char* key) {
     p++;
     const char* end = strchr(p, '"');
     if (!end) return {};
-    return std::string(p, (size_t)(end - p));
+    return std::string(p, static_cast<size_t>((end - p)));
 }
 
 // Extract string array from "key": ["a","b",...].
@@ -574,7 +574,7 @@ static std::vector<std::string> JsonGetStringArray(const char* json, const char*
             p++;
             const char* se = strchr(p, '"');
             if (!se || se > end) break;
-            result.push_back(std::string(p, (size_t)(se - p)));
+            result.push_back(std::string(p, static_cast<size_t>((se - p))));
             p = se + 1;
         } else { p++; }
     }
@@ -848,7 +848,7 @@ void InitModSearchPaths(const char* modsRoot) {
     {
         // Build display string: "base < dep[N-1] < ... < dep[0] < active"
         std::string order = "base";
-        for (int i = (int)deps.size()-1; i >= 0; i--) order += " < " + deps[i];
+        for (int i = static_cast<int>(deps.size())-1; i >= 0; i--) order += " < " + deps[i];
         order += " < "; order += modId;
         printf("[mod] load order (lowest to highest priority): %s\n", order.c_str());
         fflush(stdout);
@@ -1174,7 +1174,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 				while (*q >= '0' && *q <= '9') ++q;
 				if (q > digits && *q == '/') {
 					char stripped[2048];
-					const size_t prefixLen = (size_t)(digits - m_fileName.c_str());
+					const size_t prefixLen = static_cast<size_t>((digits - m_fileName.c_str()));
 					const char* suffix = q + 1;
 					if (prefixLen + strlen(suffix) < sizeof(stripped)) {
 						memcpy(stripped, m_fileName.c_str(), prefixLen);
@@ -1290,7 +1290,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 					// files to avoid the ten thousand file syndrome.
 					//
 					// There is now an open which takes a FilePtr and a size.
-					m_children.assign(numChild > 0 ? (size_t)numChild : 0, nullptr);
+					m_children.assign(numChild > 0 ? static_cast<size_t>(numChild) : 0, nullptr);
 
 					return (NO_ERR);
 				}
@@ -1307,7 +1307,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 			if (!imageSizePlausible(fileSize()))
 			{
 				MC2_LOG_ONCE(Io, Error, "[FILE_IMAGE_SIZE_BAD] file={} size={} (an archive entry claims more than {} bytes; not opened)",
-					m_fileName.c_str(), fileSize(), (long)kMaxInRamImage);
+					m_fileName.c_str(), fileSize(), static_cast<long>(kMaxInRamImage));
 				fastFile->closeFast(fastFileHandle);
 				fastFile = nullptr;
 				fastFileHandle = -1;
@@ -1352,7 +1352,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 			// files to avoid the ten thousand file syndrome.
 			//
 			// There is now an open which takes a FilePtr and a size.
-			m_children.assign(numChild > 0 ? (size_t)numChild : 0, nullptr);
+			m_children.assign(numChild > 0 ? static_cast<size_t>(numChild) : 0, nullptr);
 	
 			return (NO_ERR);
 		}
@@ -1371,7 +1371,7 @@ long File::open (FilePtr _parent, unsigned long fileSize, long numChild)
 			// A RAM child is a copy of a slice of its parent: a size past the parent's end is a corrupt packet header, and sizing the image
 			// from it would end the process in std::bad_alloc.
 			MC2_LOG_ONCE(Io, Error, "[FILE_IMAGE_SIZE_BAD] file={} size={} parent={} (a child claims more bytes than its parent holds; not opened)",
-				_parent->m_fileName.c_str(), (long)fileSize, (long)_parent->getLength());
+				_parent->m_fileName.c_str(), static_cast<long>(fileSize), static_cast<long>(_parent->getLength()));
 			return PACKET_WRONG_SIZE;
 		}
 
@@ -1415,7 +1415,7 @@ long File::open (FilePtr _parent, unsigned long fileSize, long numChild)
 		// This means NO CHILDREN!!!!!!!!!!!!!
 		if (numChild != -1)
 		{
-			m_children.assign(numChild > 0 ? (size_t)numChild : 0, nullptr);
+			m_children.assign(numChild > 0 ? static_cast<size_t>(numChild) : 0, nullptr);
 		}
 		else
 		{
@@ -1429,7 +1429,7 @@ long File::open (FilePtr _parent, unsigned long fileSize, long numChild)
 
 			if (_parent->getFileClass() == PACKETFILE)
 			{
-				result = ((PacketFilePtr)_parent)->readPacket(((PacketFilePtr)_parent)->getCurrentPacket(),fileImage);
+				result = (static_cast<PacketFilePtr>(_parent))->readPacket((static_cast<PacketFilePtr>(_parent))->getCurrentPacket(),fileImage);
 			}
 			else
 			{
@@ -1452,7 +1452,7 @@ long File::open(const char* buffer, int bufferLength )
 	if ( buffer && bufferLength > 0 )
 	{	
 		m_ownedImage.clear();
-		fileImage = (unsigned char*)buffer;
+		fileImage = reinterpret_cast<unsigned char*>(const_cast<char*>(buffer));
 		physicalLength = bufferLength;
 		logicalPosition = 0;
 		fileMode = RDWRITE;
@@ -1712,8 +1712,8 @@ long File::read (unsigned long pos, MemoryPtr buffer, long length)
 
 	if (inRAM && fileImage)
 	{
-		char *readAddress = ((char *)fileImage)+pos;
-		memcpy((char *)buffer,readAddress,length);
+		char *readAddress = (reinterpret_cast<char *>(fileImage))+pos;
+		memcpy(reinterpret_cast<char *>(buffer),readAddress,length);
 		return(length);
 	}
 	else if (fastFile)
@@ -1751,13 +1751,13 @@ unsigned char File::readByte (void)
 
 	if (inRAM && fileImage)
 	{
-		char *readAddress = (char*)fileImage+logicalPosition;
-		memcpy((char *)&value,readAddress,sizeof(value));
+		char *readAddress = reinterpret_cast<char*>(fileImage)+logicalPosition;
+		memcpy(reinterpret_cast<char *>(&value),readAddress,sizeof(value));
 		logicalPosition += sizeof(value);
 	}
 	else if (fastFile)
 	{
-		result = fastFile->readFast(fastFileHandle,(char *)&value,sizeof(value));
+		result = fastFile->readFast(fastFileHandle,reinterpret_cast<char *>(&value),sizeof(value));
 		logicalPosition += sizeof(value);
 	}
 	else
@@ -1787,13 +1787,13 @@ short File::readWord (void)
 
 	if (inRAM && fileImage)
 	{
-		char *readAddress = (char*)fileImage+logicalPosition;
-		memcpy((char *)(&value),readAddress,sizeof(value));
+		char *readAddress = reinterpret_cast<char*>(fileImage)+logicalPosition;
+		memcpy(reinterpret_cast<char *>((&value)),readAddress,sizeof(value));
 		logicalPosition += sizeof(value);
 	}
 	else if (fastFile)
 	{
-		result = fastFile->readFast(fastFileHandle,(char *)&value,sizeof(value));
+		result = fastFile->readFast(fastFileHandle,reinterpret_cast<char *>(&value),sizeof(value));
 		logicalPosition += sizeof(value);
 	}
 	else
@@ -1829,20 +1829,20 @@ int File::readInt(void)
 
 	if (inRAM && fileImage)	
 	{
-		char *readAddress = (char*)fileImage+logicalPosition;
-		memcpy((char *)(&value),readAddress,sizeof(value));
+		char *readAddress = reinterpret_cast<char*>(fileImage)+logicalPosition;
+		memcpy(reinterpret_cast<char *>((&value)),readAddress,sizeof(value));
 		logicalPosition += sizeof(value);
 	}
 	else if (fastFile)
 	{
-		result = fastFile->readFast(fastFileHandle,(char *)&value,sizeof(value));
+		result = fastFile->readFast(fastFileHandle,reinterpret_cast<char *>(&value),sizeof(value));
 		logicalPosition += sizeof(value);
 	}
 	else
 	{
 		if (isOpen())
 		{
-			result = _read(handle,(void*)(&value),sizeof(value));
+			result = _read(handle,static_cast<void*>((&value)),sizeof(value));
 			logicalPosition += sizeof(value);
 
 			if (result != sizeof(value))
@@ -1867,7 +1867,7 @@ long File::readLong (void)
 bool isNAN(float *pFloat)
 {
 	/* We're assuming ansi/ieee 754 floating point representation. See http://www.research.microsoft.com/~hollasch/cgindex/coding/ieeefloat.html. */
-	BYTE *byteArray = (BYTE *)pFloat;
+	BYTE *byteArray = reinterpret_cast<BYTE *>(pFloat);
 	if ((0x7f == (0x7f & byteArray[3])) && (0x80 == (0x80 & byteArray[2]))) {
 		if (0x80 == (0x80 & byteArray[3])) {
 			/* if the mantissa is a 1 followed by all zeros in this case then it is technically
@@ -1887,13 +1887,13 @@ float File::readFloat( void )
 
 	if (inRAM && fileImage)	
 	{
-		char *readAddress = (char*)fileImage+logicalPosition;
-		memcpy((char *)(&value),readAddress,sizeof(value));
+		char *readAddress = reinterpret_cast<char*>(fileImage)+logicalPosition;
+		memcpy(reinterpret_cast<char *>((&value)),readAddress,sizeof(value));
 		logicalPosition += sizeof(value);
 	}
 	else if (fastFile)
 	{
-		result = fastFile->readFast(fastFileHandle,(char *)&value,sizeof(value));
+		result = fastFile->readFast(fastFileHandle,reinterpret_cast<char *>(&value),sizeof(value));
 		logicalPosition += sizeof(value);
 	}
 	else
@@ -1953,8 +1953,8 @@ long File::read (MemoryPtr buffer, long length)
 	
 	if (inRAM && fileImage)
 	{
-		char *readAddress = (char *)fileImage+logicalPosition;
-		memcpy((char *)buffer,readAddress,length);
+		char *readAddress = reinterpret_cast<char *>(fileImage)+logicalPosition;
+		memcpy(reinterpret_cast<char *>(buffer),readAddress,length);
 		logicalPosition += length;
 		return(length);
 	}
@@ -1992,7 +1992,7 @@ long File::readRAW (DWORD* &buffer, UserHeapPtr heap)
 		long lzSizeNeeded = fastFile->lzSizeFast(fastFileHandle);
         // sebi
 		//buffer = (unsigned long *)heap->Malloc(lzSizeNeeded);
-		buffer = (DWORD*)heap->Malloc(lzSizeNeeded);
+		buffer = static_cast<DWORD*>(heap->Malloc(lzSizeNeeded));
 
 		result = fastFile->readFastRAW(fastFileHandle,buffer,lzSizeNeeded);
 		logicalPosition += result;
@@ -2010,7 +2010,7 @@ long File::readLine (MemoryPtr buffer, long maxLength)
 	{
 		if (isOpen())
 		{
-			unsigned char *readAddress = (unsigned char *)fileImage+logicalPosition;
+			unsigned char *readAddress = reinterpret_cast<unsigned char *>(fileImage)+logicalPosition;
 
             //sebi support linux created files
 			while ((i<maxLength) && ((i+logicalPosition) < fileSize()) && readAddress[i]!='\r' && readAddress[i]!='\n' )
@@ -2109,7 +2109,7 @@ long File::readLineEx (MemoryPtr buffer, long maxLength)
 	{
 		if (isOpen())
 		{
-			unsigned char *readAddress = (unsigned char *)fileImage+logicalPosition;
+			unsigned char *readAddress = reinterpret_cast<unsigned char *>(fileImage)+logicalPosition;
 
 			while( i<maxLength && readAddress[i]!='\n' )
 				i++;

@@ -360,7 +360,7 @@ namespace Stuff {
 	public:
 		void
 			Rewind()
-				{SetPointer((DWORD) 0U);currentBit = Empty_Bit_Buffer;}
+				{SetPointer(static_cast<DWORD>(0U));currentBit = Empty_Bit_Buffer;}
 
 		virtual bool
 			AllocateBytes(DWORD count)
@@ -619,7 +619,7 @@ namespace Stuff {
 		void
 			TestInstance() const
 				{
-					Verify((DWORD)(currentPosition - streamStart) <= streamSize);
+					Verify(static_cast<DWORD>((currentPosition - streamStart)) <= streamSize);
 					Verify(streamSize <= bufferSize);
 				}
 

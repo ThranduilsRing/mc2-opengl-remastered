@@ -316,7 +316,7 @@ bool TerrainPatchStream::init()
     if (s_censusOn) {
         MC2_EVENT(Terrain, "BUCKET_CENSUS", 1,
             "event=startup gated_on=MC2_BUCKET_CENSUS killswitch={}",
-            (int)s_killswitch);
+            static_cast<int>(s_killswitch));
         fflush(stderr);
     }
 
@@ -441,7 +441,7 @@ bool TerrainPatchStream::init()
         kPatchStreamRingFrames,
         kPatchStreamColorBytesPerSlot,
         kPatchStreamExtrasBytesPerSlot,
-        s_colorBuf, s_extrasBuf, (int)s_traceOn);
+        s_colorBuf, s_extrasBuf, static_cast<int>(s_traceOn));
     fflush(stderr);
     return true;
 }
@@ -461,7 +461,7 @@ void TerrainPatchStream::emitCensus(uint32_t legacyEligible)
 
     MC2_EVENT(Terrain, "BUCKET_CENSUS", 1,
         "frame={} raw={} unique={} sentinel={} canon_nosort={} legacy={}",
-        (unsigned long long)s_censusFrameId,
+        static_cast<unsigned long long>(s_censusFrameId),
         raw, unique, sentinel, canon, legacyEligible);
     fflush(stderr);
 
@@ -505,18 +505,18 @@ void TerrainPatchStream::emitCensus(uint32_t legacyEligible)
 
     // 600-frame rolling summary tick.
     if (s_summaryFramesAcc >= 600u) {
-        const double inv = 1.0 / (double)s_summaryFramesAcc;
+        const double inv = 1.0 / static_cast<double>(s_summaryFramesAcc);
         MC2_EVENT(Terrain, "BUCKET_CENSUS", 1,
             "event=summary kind=window frames={} raw_min={} raw_avg={:.1f} "
             "raw_max={} unique_min={} unique_avg={:.1f} unique_max={} canon_min={} "
             "canon_avg={:.1f} canon_max={} legacy_min={} legacy_avg={:.1f} "
             "legacy_max={} sentinel_avg={:.2f}",
-            (unsigned long long)s_summaryFramesAcc,
-            s_summaryRawMin,    (double)s_summaryRawSum    * inv, s_summaryRawMax,
-            s_summaryUniqueMin, (double)s_summaryUniqueSum * inv, s_summaryUniqueMax,
-            s_summaryCanonMin,  (double)s_summaryCanonSum  * inv, s_summaryCanonMax,
-            s_summaryLegacyMin, (double)s_summaryLegacySum * inv, s_summaryLegacyMax,
-            (double)s_summarySentSum * inv);
+            static_cast<unsigned long long>(s_summaryFramesAcc),
+            s_summaryRawMin,    static_cast<double>(s_summaryRawSum)    * inv, s_summaryRawMax,
+            s_summaryUniqueMin, static_cast<double>(s_summaryUniqueSum) * inv, s_summaryUniqueMax,
+            s_summaryCanonMin,  static_cast<double>(s_summaryCanonSum)  * inv, s_summaryCanonMax,
+            s_summaryLegacyMin, static_cast<double>(s_summaryLegacySum) * inv, s_summaryLegacyMax,
+            static_cast<double>(s_summarySentSum) * inv);
         fflush(stderr);
         // Reset window counters but KEEP run-cumulative.
         s_summaryHasSample = false;
@@ -533,17 +533,17 @@ void TerrainPatchStream::emitCensus(uint32_t legacyEligible)
 void TerrainPatchStream::destroy()
 {
     if (s_censusOn && s_runFramesAcc > 0) {
-        const double inv = 1.0 / (double)s_runFramesAcc;
+        const double inv = 1.0 / static_cast<double>(s_runFramesAcc);
         MC2_EVENT(Terrain, "BUCKET_CENSUS", 1,
             "event=summary kind=run frames={} raw_avg={:.1f} raw_max={} "
             "unique_avg={:.1f} unique_max={} canon_avg={:.1f} canon_max={} "
             "legacy_avg={:.1f} legacy_max={} sentinel_avg={:.2f}",
-            (unsigned long long)s_runFramesAcc,
-            (double)s_runRawSum    * inv, s_runRawMax,
-            (double)s_runUniqueSum * inv, s_runUniqueMax,
-            (double)s_runCanonSum  * inv, s_runCanonMax,
-            (double)s_runLegacySum * inv, s_runLegacyMax,
-            (double)s_runSentSum   * inv);
+            static_cast<unsigned long long>(s_runFramesAcc),
+            static_cast<double>(s_runRawSum)    * inv, s_runRawMax,
+            static_cast<double>(s_runUniqueSum) * inv, s_runUniqueMax,
+            static_cast<double>(s_runCanonSum)  * inv, s_runCanonMax,
+            static_cast<double>(s_runLegacySum) * inv, s_runLegacyMax,
+            static_cast<double>(s_runSentSum)   * inv);
         fflush(stderr);
     }
 
@@ -637,7 +637,7 @@ void TerrainPatchStream::beginFrame()
         if (waitedMs >= 1) {
             MC2_DIAGFE(stderr,
                 "[PATCH_STREAM v1] event=fence_stall slot=%u waited_ms=%llu\n",
-                s_slot, (unsigned long long)waitedMs);
+                s_slot, static_cast<unsigned long long>(waitedMs));
             fflush(stderr);
         }
     }
@@ -674,7 +674,7 @@ void TerrainPatchStream::appendTriangle(DWORD textureIndex,
 
     // Per-slot capacity in *vertices* — same as how flush() will copy out.
     const uint32_t maxVertsThisSlot =
-        kPatchStreamColorBytesPerSlot / (uint32_t)sizeof(gos_VERTEX);
+        kPatchStreamColorBytesPerSlot / static_cast<uint32_t>(sizeof(gos_VERTEX));
 
     if (s_totalVerts + vertsPerTri > maxVertsThisSlot) {
         MC2_DIAGFE(stderr,
@@ -717,7 +717,7 @@ void TerrainPatchStream::appendQuad(
 
     const uint32_t numVerts = (tri1Valid ? 3u : 0u) + (tri2Valid ? 3u : 0u);
     const uint32_t maxVertsThisSlot =
-        kPatchStreamColorBytesPerSlot / (uint32_t)sizeof(gos_VERTEX);
+        kPatchStreamColorBytesPerSlot / static_cast<uint32_t>(sizeof(gos_VERTEX));
     if (s_totalVerts + numVerts > maxVertsThisSlot) {
         MC2_DIAGFE(stderr,
             "[PATCH_STREAM v1] event=overflow slot=%u kind=byte_budget cursor=%u cap=%u\n",
@@ -779,14 +779,14 @@ uint32_t TerrainPatchStream::ensureRecipeForQuad(uint64_t key,
     if (it != s_recipeIndex.end()) {
         // Debug: if the cached recipe's positions differ, the key is non-unique.
         if (s_traceOn) {
-            const TerrainQuadRecipe* base = (const TerrainQuadRecipe*)s_recipeMap;
+            const TerrainQuadRecipe* base = static_cast<const TerrainQuadRecipe*>(s_recipeMap);
             const TerrainQuadRecipe& cached = base[it->second];
             if (cached.wx0 != recipe.wx0 || cached.wy0 != recipe.wy0 ||
                 cached.wz0 != recipe.wz0 || cached.wx1 != recipe.wx1) {
                 MC2_EVENT(Terrain, "PATCH_STREAM", 1,
                     "event=recipe_key_collision slot={} key=0x{:x} cached=({:.3f},{:.3f}) "
                     "incoming=({:.3f},{:.3f})",
-                    it->second, (unsigned long long)key,
+                    it->second, static_cast<unsigned long long>(key),
                     cached.wx0, cached.wy0, recipe.wx0, recipe.wy0);
                 fflush(stderr);
             }

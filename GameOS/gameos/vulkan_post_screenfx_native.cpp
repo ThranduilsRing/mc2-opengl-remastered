@@ -303,9 +303,9 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
     if (!s->sColorRes || !s->sNormalRes || !s->sDepthRes) {
         setFallback("shared_gbuffer_not_ready"); return false;
     }
-    if ((int)s->sColorRes->w  != w || (int)s->sColorRes->h  != h ||
-        (int)s->sNormalRes->w != w || (int)s->sNormalRes->h != h ||
-        (int)s->sDepthRes->w  != w || (int)s->sDepthRes->h  != h) {
+    if (static_cast<int>(s->sColorRes->w)  != w || static_cast<int>(s->sColorRes->h)  != h ||
+        static_cast<int>(s->sNormalRes->w) != w || static_cast<int>(s->sNormalRes->h) != h ||
+        static_cast<int>(s->sDepthRes->w)  != w || static_cast<int>(s->sDepthRes->h)  != h) {
         setFallback("shared_gbuffer_size_mismatch"); return false;
     }
     g_fx.substrateLive = 1;
@@ -321,7 +321,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         vci.format = s->sDepthRes->format;
         vci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
         r = mc2vk::createChecked(s->depthSampleView, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
-        if (r != VK_SUCCESS) { vlog("depth sample view create failed (%d).", (int)r); return false; }
+        if (r != VK_SUCCESS) { vlog("depth sample view create failed (%d).", static_cast<int>(r)); return false; }
     }
     // Sampler: NEAREST/CLAMP for depth + normal (GL parity — both GL textures
     // are sampled unfiltered at texel centers by these fullscreen passes).
@@ -391,16 +391,16 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
         r = mc2vk::createChecked(s->rpass, s->device, [&](auto* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); });
-        if (r != VK_SUCCESS) { vlog("vkCreateRenderPass failed (%d).", (int)r); return false; }
+        if (r != VK_SUCCESS) { vlog("vkCreateRenderPass failed (%d).", static_cast<int>(r)); return false; }
 
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->rpass.get();
         const VkImageView colorAttachment = s->sColorRes->view.get();
         fci.attachmentCount = 1; fci.pAttachments = &colorAttachment;
-        fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
+        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         r = mc2vk::createChecked(s->fb, s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); });
-        if (r != VK_SUCCESS) { vlog("vkCreateFramebuffer failed (%d).", (int)r); return false; }
+        if (r != VK_SUCCESS) { vlog("vkCreateFramebuffer failed (%d).", static_cast<int>(r)); return false; }
     }
 
     // Descriptor layouts / pool / sets.
@@ -417,7 +417,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = 2; lci.pBindings = cloudBinds;
         r = mc2vk::createChecked(s->cloudDsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); });
-        if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(cloud) failed (%d).", (int)r); return false; }
+        if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(cloud) failed (%d).", static_cast<int>(r)); return false; }
 
         VkDescriptorSetLayoutBinding shoreBinds[3]{};
         shoreBinds[0].binding = 0; shoreBinds[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -428,7 +428,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         shoreBinds[2].descriptorCount = 1; shoreBinds[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         lci.bindingCount = 3; lci.pBindings = shoreBinds;
         r = mc2vk::createChecked(s->shoreDsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); });
-        if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(shore) failed (%d).", (int)r); return false; }
+        if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(shore) failed (%d).", static_cast<int>(r)); return false; }
 
         VkDescriptorSetLayoutBinding shadowBinds[6]{};
         shadowBinds[0].binding = 0; shadowBinds[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -445,7 +445,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         shadowBinds[5].descriptorCount = 1; shadowBinds[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         lci.bindingCount = 6; lci.pBindings = shadowBinds;
         r = mc2vk::createChecked(s->shadowDsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); });
-        if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(shadow) failed (%d).", (int)r); return false; }
+        if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(shadow) failed (%d).", static_cast<int>(r)); return false; }
 
         VkDescriptorPoolSize sizes[2]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 8;
@@ -454,7 +454,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 3; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
         r = mc2vk::createChecked(s->pool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); });
-        if (r != VK_SUCCESS) { vlog("vkCreateDescriptorPool failed (%d).", (int)r); return false; }
+        if (r != VK_SUCCESS) { vlog("vkCreateDescriptorPool failed (%d).", static_cast<int>(r)); return false; }
 
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -464,13 +464,13 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         const VkDescriptorSetLayout shadowDslHandle = s->shadowDsl.get();
         dsai.pSetLayouts = &cloudDslHandle;
         r = vkAllocateDescriptorSets(s->device, &dsai, &s->cloudSet);
-        if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(cloud) failed (%d).", (int)r); return false; }
+        if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(cloud) failed (%d).", static_cast<int>(r)); return false; }
         dsai.pSetLayouts = &shoreDslHandle;
         r = vkAllocateDescriptorSets(s->device, &dsai, &s->shoreSet);
-        if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(shore) failed (%d).", (int)r); return false; }
+        if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(shore) failed (%d).", static_cast<int>(r)); return false; }
         dsai.pSetLayouts = &shadowDslHandle;
         r = vkAllocateDescriptorSets(s->device, &dsai, &s->shadowSet);
-        if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(shadow) failed (%d).", (int)r); return false; }
+        if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(shadow) failed (%d).", static_cast<int>(r)); return false; }
 
         VkDescriptorImageInfo depthInfo{};
         depthInfo.sampler = s->gbufSampler.get();
@@ -551,13 +551,13 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         const VkDescriptorSetLayout shadowDslForLayout = s->shadowDsl.get();
         plci.setLayoutCount = 1; plci.pSetLayouts = &cloudDslForLayout;
         r = mc2vk::createChecked(s->cloudPlayout, s->device, [&](auto* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); });
-        if (r != VK_SUCCESS) { vlog("vkCreatePipelineLayout(cloud) failed (%d).", (int)r); return false; }
+        if (r != VK_SUCCESS) { vlog("vkCreatePipelineLayout(cloud) failed (%d).", static_cast<int>(r)); return false; }
         plci.pSetLayouts = &shoreDslForLayout;
         r = mc2vk::createChecked(s->shorePlayout, s->device, [&](auto* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); });
-        if (r != VK_SUCCESS) { vlog("vkCreatePipelineLayout(shore) failed (%d).", (int)r); return false; }
+        if (r != VK_SUCCESS) { vlog("vkCreatePipelineLayout(shore) failed (%d).", static_cast<int>(r)); return false; }
         plci.pSetLayouts = &shadowDslForLayout;
         r = mc2vk::createChecked(s->shadowPlayout, s->device, [&](auto* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); });
-        if (r != VK_SUCCESS) { vlog("vkCreatePipelineLayout(shadow) failed (%d).", (int)r); return false; }
+        if (r != VK_SUCCESS) { vlog("vkCreatePipelineLayout(shadow) failed (%d).", static_cast<int>(r)); return false; }
 
         auto make_pipeline = [&](VkShaderModule vmod, VkShaderModule fmod,
                                  VkPipelineLayout layout, mc2vk::OwnedPipeline& out, std::string_view name) -> bool {
@@ -571,8 +571,8 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
             VkPipelineInputAssemblyStateCreateInfo ia{};
             ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
             ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-            VkViewport vp{0.0f, 0.0f, (float)s->width, (float)s->height, 0.0f, 1.0f};
-            VkRect2D sc{{0, 0}, {(uint32_t)s->width, (uint32_t)s->height}};
+            VkViewport vp{0.0f, 0.0f, static_cast<float>(s->width), static_cast<float>(s->height), 0.0f, 1.0f};
+            VkRect2D sc{{0, 0}, {static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height)}};
             VkPipelineViewportStateCreateInfo vps{};
             vps.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
             vps.viewportCount = 1; vps.pViewports = &vp; vps.scissorCount = 1; vps.pScissors = &sc;
@@ -628,14 +628,14 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         pci.queueFamilyIndex = s->gfxFamily;
         VkResult rr = mc2vk::createChecked(s->cpool, s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); });
-        if (rr != VK_SUCCESS) { vlog("vkCreateCommandPool failed (%d).", (int)rr); return false; }
+        if (rr != VK_SUCCESS) { vlog("vkCreateCommandPool failed (%d).", static_cast<int>(rr)); return false; }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         cai.commandPool = s->cpool.get();
         cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         cai.commandBufferCount = 2;
         rr = vkAllocateCommandBuffers(s->device, &cai, s->cbuf);
-        if (rr != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed (%d).", (int)rr); return false; }
+        if (rr != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed (%d).", static_cast<int>(rr)); return false; }
     }
 
     s->inited = true;
@@ -708,7 +708,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         if ((g_fx.waitSamples % 600) == 1)
             vlog("[QWI-WAIT] wait_us_last=%.1f wait_us_avg=%.1f samples=%lu",
                  g_fx.waitUsLast,
-                 g_fx.waitUsAccum / (double)g_fx.waitSamples, g_fx.waitSamples);
+                 g_fx.waitUsAccum / static_cast<double>(g_fx.waitSamples), g_fx.waitSamples);
     }
     if (!s->inited || s->width != width_ || s->height != height_) {
         if (s->inited) destroy_state(s);
@@ -759,8 +759,8 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         // (MC2_SHADOW_GUARD_CLAMPED_SUN): on a low-sun map the raw sun leaves the lit faces of props below the guard, so they never received.
         if (mc2ShadowGuardClampedSun()) mc2ClampShadowSunAltitude(p.lightDir[0], p.lightDir[1], p.lightDir[2]);
     }
-    p.screenSize[0] = (float)width_;
-    p.screenSize[1] = (float)height_;
+    p.screenSize[0] = static_cast<float>(width_);
+    p.screenSize[1] = static_cast<float>(height_);
     p.enableShadows = hasStaticShadow ? 1 : 0;
     p.debugMode = 0;
     p.shadowSoftness = shadow_softness_default();
@@ -852,7 +852,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {(uint32_t)s->width, (uint32_t)s->height}};
+    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height)}};
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, csmDirectReady ? s->shadowCsmPipe.get() : s->shadowPipe.get());
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPlayout.get(), 0, 1, &s->shadowSet, 0, nullptr);
@@ -932,7 +932,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
         if ((g_fx.waitSamples % 600) == 1)
             vlog("[QWI-WAIT] wait_us_last=%.1f wait_us_avg=%.1f samples=%lu",
                  g_fx.waitUsLast,
-                 g_fx.waitUsAccum / (double)g_fx.waitSamples, g_fx.waitSamples);
+                 g_fx.waitUsAccum / static_cast<double>(g_fx.waitSamples), g_fx.waitSamples);
     }
     if (!s->inited || s->width != width_ || s->height != height_) {
         if (s->inited) destroy_state(s);
@@ -958,8 +958,8 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
         p.cloudThreshold[0] = cloudThreshLo_;
         p.cloudThreshold[1] = cloudThreshHi_;
         p.timeSec = SmokeMode::fixedTimestepEnabled()
-                        ? (float)SmokeMode::fixedClockSeconds()
-                        : (float)SDL_GetTicks() * 0.001f;
+                        ? static_cast<float>(SmokeMode::fixedClockSeconds())
+                        : static_cast<float>(SDL_GetTicks()) * 0.001f;
         p.cloudScale    = cloudScale_;
         p.cloudStrength = cloudStrength_;
         p.cloudOctaves  = cloudOctaves_;
@@ -972,11 +972,11 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     }
     if (wantShore) {
         ScreenFxShoreParams p{};
-        p.screenSize[0] = (float)width_;
-        p.screenSize[1] = (float)height_;
+        p.screenSize[0] = static_cast<float>(width_);
+        p.screenSize[1] = static_cast<float>(height_);
         p.timeSec = SmokeMode::fixedTimestepEnabled()
-                        ? (float)SmokeMode::fixedClockSeconds()
-                        : (float)SDL_GetTicks() / 1000.0f;
+                        ? static_cast<float>(SmokeMode::fixedClockSeconds())
+                        : static_cast<float>(SDL_GetTicks()) / 1000.0f;
         void* m = nullptr;
         if ((m = s->shoreUbo.map()) != nullptr) {
             std::memcpy(m, &p, sizeof(p));
@@ -1040,7 +1040,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
         VkRenderPassBeginInfo rbi{};
         rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-        rbi.renderArea = {{0, 0}, {(uint32_t)s->width, (uint32_t)s->height}};
+        rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height)}};
         rbi.clearValueCount = 0; // LOAD, no clear
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         if (wantCloud) {
@@ -1104,7 +1104,7 @@ void gosPostProcess::destroyVkPostScreenFxNative()
              g_fx.attempted, g_fx.usedVulkan, g_fx.shadowFrames, g_fx.cloudFrames, g_fx.shoreFrames,
              g_fx.directChain, g_fx.usedInterop, g_fx.glSkipped, g_fx.fallbackReason, g_fx.renderUs,
              g_fx.waitUsLast,
-             g_fx.waitSamples ? g_fx.waitUsAccum / (double)g_fx.waitSamples : 0.0,
+             g_fx.waitSamples ? g_fx.waitUsAccum / static_cast<double>(g_fx.waitSamples) : 0.0,
              g_fx.waitSamples);
     }
     if (!vkPostScreenFx_) return;

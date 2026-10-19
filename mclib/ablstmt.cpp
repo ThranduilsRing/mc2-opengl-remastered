@@ -263,7 +263,7 @@ void forStatement (void) {
 
 TypePtr caseLabel (CaseItemPtr& caseItemHead, CaseItemPtr& caseItemTail, long& caseLabelCount) {
 
-	CaseItemPtr newCaseItem = (CaseItemPtr)ABL_alloc(ABLPool::Stack, sizeof(CaseItem));
+	CaseItemPtr newCaseItem = static_cast<CaseItemPtr>(ABL_alloc(ABLPool::Stack, sizeof(CaseItem)));
 	if (!newCaseItem)
 		ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc case item ");
 	if (caseItemHead) {

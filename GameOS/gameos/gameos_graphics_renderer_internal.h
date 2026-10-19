@@ -30,25 +30,25 @@ class gosRenderer {
         uint32_t addTexture(gosTexture* texture) {
             gosASSERT(texture);
             textureList_.push_back(texture);
-            return (uint32_t)(textureList_.size()-1);
+            return static_cast<uint32_t>((textureList_.size()-1));
         }
 
         uint32_t addFont(gosFont* font) {
             gosASSERT(font);
             fontList_.push_back(font);
-            return (uint32_t)(fontList_.size()-1);
+            return static_cast<uint32_t>((fontList_.size()-1));
         }
 
 		uint32_t addBuffer(gosBuffer* buffer) {
 			gosASSERT(buffer);
 			bufferList_.push_back(buffer);
-			return (uint32_t)(bufferList_.size() - 1);
+			return static_cast<uint32_t>((bufferList_.size() - 1));
 		}
 
 		uint32_t addVertexDeclaration(gosVertexDeclaration* vdecl) {
 			gosASSERT(vdecl);
 			vertexDeclarationList_.push_back(vdecl);
-			return (uint32_t)(vertexDeclarationList_.size() - 1);
+			return static_cast<uint32_t>((vertexDeclarationList_.size() - 1));
 		}
 
         // TODO: do same as with texture?
@@ -135,7 +135,7 @@ class gosRenderer {
         uint32_t findTextureHandleByGlName(uint32_t glName) const {
             for (size_t h = 0; h < textureList_.size(); ++h)
                 if (textureList_[h] && textureList_[h]->getTextureId() == glName)
-                    return (uint32_t)h;
+                    return static_cast<uint32_t>(h);
             return INVALID_TEXTURE_ID;
         }
 
@@ -317,7 +317,7 @@ class gosRenderer {
             mat4 invVP = inverseMat4(terrain_mvp_);
             gosPostProcess* pp = getGosPostProcess();
             if (pp) {
-                pp->setInverseViewProj((const float*)&invVP);
+                pp->setInverseViewProj(reinterpret_cast<const float*>(&invVP));
                 pp->setViewProj(m);
             }
         }
@@ -361,8 +361,8 @@ class gosRenderer {
         // (camera-INDEPENDENT by construction — no view matrix involved).
         float getShaderClockSeconds() const {
             return SmokeMode::fixedTimestepEnabled()
-                       ? (float)SmokeMode::fixedClockSeconds()
-                       : (float)((double)(timing::get_wall_time_ms() - timeStart_) / 1000.0);
+                       ? static_cast<float>(SmokeMode::fixedClockSeconds())
+                       : static_cast<float>((static_cast<double>((timing::get_wall_time_ms() - timeStart_)) / 1000.0));
         }
         gosRenderMaterial* getTerrainMaterial() const { return terrain_material_; }
         const vec4& getTerrainCameraPos() const { return terrain_camera_pos_; }
@@ -576,7 +576,7 @@ class gosRenderer {
                 glTexImage3D(GL_TEXTURE_2D_ARRAY, level, GL_RGBA8,
                              mipW, mipH, 9, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
-                const size_t mipBytes = (size_t)mipW * mipH * 4;
+                const size_t mipBytes = static_cast<size_t>(mipW) * mipH * 4;
                 pixels.resize(mipBytes);
 
                 for (int layer = 0; layer < 9; ++layer) {
