@@ -630,7 +630,6 @@ static void draw_screen( void )
     }
 
     // Skybox disabled — terrain fog provides atmosphere, bright sky looked jarring
-    // if (pp) pp->renderSkybox(0.3f, 0.7f, 0.2f);
 
     {
         ZoneScopedN("Camera.UpdateRenderers");

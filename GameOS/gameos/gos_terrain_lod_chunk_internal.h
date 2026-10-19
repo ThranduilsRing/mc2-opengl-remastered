@@ -173,26 +173,6 @@ extern void   gos_GetNightState(bool* isNight, float* nightFactor);
 // (no RenderResourceId): VBO/IBO are out of registry scope by design (per-draw
 // rebind vertex/index data, not owned frame-graph resources) -- the RAII win
 // here is create/delete pairing (cache clear frees GL, no hand-rolled loop).
-struct PatchShape {
-    RenderCore::GpuBuffer vbo =      // main patch: int16_t[2] (lx, ly) per vertex
-        RenderCore::GpuBuffer(RenderCore::GpuBufferKind::Vertex, "TerrainLodChunkPatchVbo");
-    RenderCore::GpuBuffer ibo =      // main patch: uint16_t triangle indices
-        RenderCore::GpuBuffer(RenderCore::GpuBufferKind::Index, "TerrainLodChunkPatchIbo");
-    int    vertexCount = 0;
-    int    indexCount = 0;
-    RenderCore::GpuBuffer skirtVbo = // Phase 6: int16_t[4] (lx, ly, isSkirt, _pad) per skirt vertex
-        RenderCore::GpuBuffer(RenderCore::GpuBufferKind::Vertex, "TerrainLodChunkPatchSkirtVbo");
-    RenderCore::GpuBuffer skirtIbo = // Phase 6: uint16_t triangle indices for skirts
-        RenderCore::GpuBuffer(RenderCore::GpuBufferKind::Index, "TerrainLodChunkPatchSkirtIbo");
-    int    skirtVertexCount = 0;
-    int    skirtIndexCount = 0;
-    // Phase 10.2b: per-edge index ranges into skirtIbo (build order N,S,W,E) so
-    // the driver can draw ONLY the edges whose neighbour LOD differs (per-block
-    // edge mask) instead of all four. Offsets/counts are in INDEX units.
-    int    skirtEdgeOffset[4];   // 0=N, 1=S, 2=W, 3=E
-    int    skirtEdgeCount[4];
-};
-
 namespace gos_terrain_indirect { bool IsFrameSolidArmed(); }
 
 
@@ -224,11 +204,6 @@ extern const float kTglcMacroVariation;
 extern const bool kTglcEdgeFeather;
 extern const float kTglcEdgeFeatherStr;
 extern const bool  kTglcMatAlbedo;
-extern const bool s_cliffTessGate;
-extern glsl_program* s_terrainTessProgram;
-extern bool  s_tessMirroredThisFrame;
-void mirrorTerrainUniforms(GLuint src, GLuint dst);
-void resolveTessPatchLocs(GLuint tessProg);
 extern RenderCore::GpuBuffer s_heightSsbo;
 extern RenderCore::GpuBuffer s_visualHeightSsbo;
 extern int    s_visualSide;
@@ -255,126 +230,7 @@ extern GLuint s_matAlbedoArrayTex;
 extern bool   s_matAlbedoLoadTried;
 extern float s_matAlbedoStrengthJson;
 void tglc_EnsureMatAlbedoArrayLoaded();
-extern GLuint   s_terrainProgram;
-extern GLint    s_locBlockOriginX;
-extern GLint    s_locBlockOriginY;
-extern GLint    s_locMapSide;
-extern GLint    s_locHalfMap;
-extern GLint    s_locMvp;
-extern GLint    s_locLodStep;
-extern GLint    s_locSkirtDepth;
-extern GLint    s_locForceColor;
-extern GLint    s_locColormap;
-extern GLint    s_locAtlasTLX;
-extern GLint    s_locAtlasTLY;
-extern GLint    s_locAtlasOOW;
-extern GLint    s_locLightDir;
-extern GLint    s_locMissionFlatLight;
-extern GLint    s_locNumPoolLights;
-extern GLint    s_locLightGridDim;
-extern GLint    s_locLightGridMin;
-extern GLint    s_locLightGridInvCell;
-extern GLint    s_locLightPoolSoft;
-extern GLint    s_locLightPoolMoverDim;
-extern GLint    s_locLightPoolCompress;
-extern GLint    s_locLightPoolMoverScale;
-extern GLint    s_locLightPoolMoverMax;
-extern GLint    s_locMoverContactShadow;
-extern GLint    s_locPadGlow;
-extern GLint    s_locPadGlowSpill;
-extern GLint    s_locCementLit;
-extern GLint    s_locCementRampWord;
-extern GLint    s_locDiag;
-extern GLint    s_locLightDebugView;
-extern GLint    s_locPathTint;
-extern GLint    s_locQuadCountX;
-extern GLint    s_locQuadCountY;
-extern GLint    s_locEdgeStitch;
-extern GLint    s_locShadowTier;
-extern GLint    s_locShadowMap;
-extern GLint    s_locLightSpaceMatrix;
-extern GLint    s_locEnableShadows;
-extern GLint    s_locShadowSoftness;
-extern GLint    s_locDynShadowMap;
-extern GLint    s_locDynLightSpaceMat;
-extern GLint    s_locEnableDynShadows;
-extern GLint    s_locDynShadowArray;
-extern GLint    s_locDynCascadeMats;
-extern GLint    s_locDynCsmCount;
-extern GLint    s_locDynCascadeTexel;
-extern GLint    s_locCsmDepthSpan;
-extern GLint    s_locDynFullMapShadow;
-extern GLint    s_locDynFullMapTexel;
-extern GLint    s_locMatNormalArray;
-extern GLint    s_locClassGrass;
-extern GLint    s_locClassDirt;
-extern GLint    s_locMatTiling;
-extern GLint    s_locMatNormalBoost;
-extern GLint    s_locMatTilingSnow;
-extern GLint    s_locDetailTiling;
-extern GLint    s_locDetailStrength;
-extern GLint    s_locTintRock;
-extern GLint    s_locTintGrass;
-extern GLint    s_locTintDirt;
-extern GLint    s_locTintStrengthScale;
-extern GLint    s_locSnowBrightnessDampen;
-extern GLint    s_locControlAlbedoStrength;
-extern GLint    s_locTintConcrete;
-extern GLint    s_locTintSnow;
-extern GLint    s_locMatRoughness;
-extern GLint    s_locMatAO;
-extern GLint    s_locMatHeight;
-extern GLint    s_locUseMaterialLib;
-extern GLint s_locCliffShadowFloor;
-extern GLint s_locAmbientFloor;
-extern GLint s_locAmbientDayGate;
-extern GLint s_locNfhStrength;
-extern GLint s_locUseRockSlopeBias;
-extern GLint s_locRockSlopeBiasStr;
-extern GLint s_locMacroVariation;
-extern GLint s_locEdgeFeather;
-extern GLint s_locEdgeFeatherStr;
-extern GLint s_locVisualDisplace;
-extern GLint s_locVisualSide;
-extern GLint s_locVisualDisplaceFar;
-extern GLint s_locVisualDampOn;
-extern GLint s_locGeomorphMips;
-extern GLint s_locMorphFactor;
-extern GLint s_locPomScale;
-extern GLint s_locCameraPos;
-extern GLint s_locMatProfile;
-extern GLint s_locControlMap;
-extern GLint s_locUseControlMap;
-extern GLint s_locMatAlbedoArray;
-extern GLint s_locUseMatAlbedo;
-extern GLint s_locMatAlbedoStrength;
-extern GLint s_locOverlaySidecar;
-extern GLint s_locUseOverlaySidecar;
-extern GLint s_locOverlayBounds;
-extern GLint s_locShorelineMask;
-extern GLint s_locUseShorelineMask;
-extern GLint s_locHasShorelineMask;
-extern GLint s_locShorelineBounds;
-extern GLint s_locWaterElevation;
-extern GLint s_locShorelineWetHeight;
-extern GLint s_locShorelineFoamHeight;
-extern GLint s_locShorelineEdgeJitter;
-extern GLint s_locShaderTime;
-extern GLint s_locShorelineStrength;
-extern GLint s_locShorelineFoamStrength;
-extern GLint    s_locCementAtlas;
-extern GLint    s_locUseCement;
-extern GLint    s_locCementGridSide;
-extern GLint    s_locCementWUPT;
-extern GLint    s_locCementDiagConnect;
-extern GLint    s_locCementAtlasSeamFix;
-extern GLint s_locTransitionMaskArray;
-extern GLint s_locUseTransitionMask;
 const float* mc2_chunkDetailAntiTileYZW();
-extern std::map<uint32_t, PatchShape> s_patchCache;
-const PatchShape& getOrBuildPatch(int qcX, int qcY, int lodStep, bool checkerDiag, int parityX, int parityY);
-extern GLuint s_patchVao;
-void mirrorTerrainPatchUniforms(GLuint src, GLuint dst);
 #ifdef MC2_VULKAN_ISLAND
 bool terrainVisualDisplaceGateOn();
 #endif

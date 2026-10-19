@@ -6,8 +6,8 @@ docs/render-backend-seams/buffer-lifetime-ledger.md so a buffer can't silently l
 mechanism that avoids a CPU-overwrite-while-GPU-reads hazard (the Vulkan-critical seam):
 
   1. Every ledger row declares a class in {A,B,C,D,E}.
-  2. CLASS-B COMMAND BARRIER PRESENCE — the GPU-produced indirect families
-     (gpu_cull_compute.cpp, gos_terrain_indirect.cpp) each still emit a
+  2. CLASS-B COMMAND BARRIER PRESENCE — the GPU-produced indirect family
+     (gpu_cull_compute.cpp) still emits a
      GL_COMMAND_BARRIER_BIT glMemoryBarrier between the producer compute and the indirect
      draw. Removing that barrier (stale-command-buffer hazard) FAILs.
   3. CLASS-D VULKAN-DEBT DECLARED — the known implicit-sync buffers stay listed so the
@@ -29,10 +29,9 @@ OBJB = ROOT / "docs" / "render-backend-seams" / "objbatcher-zero-gpu-drawn-recon
 # parse rows: | `symbol...` | CLASS | ... |
 ROW = re.compile(r"^\|\s*`([^`]+)`[^|]*\|\s*([A-E])\s*\|", re.M)
 
-# class-B indirect families that MUST keep a COMMAND barrier
+# Live class-B GL indirect family; terrain now captures CPU inputs only.
 BARRIER_TUS = [
     ROOT / "GameOS" / "gameos" / "gpu_cull_compute.cpp",
-    ROOT / "GameOS" / "gameos" / "gos_terrain_indirect_dispatch.cpp",
 ]
 # class-D members that must stay declared (Vulkan-debt visibility)
 REQUIRED_CLASS_D = {"lightData_", "s_ssbo"}

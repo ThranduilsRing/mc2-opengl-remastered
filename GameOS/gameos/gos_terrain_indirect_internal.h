@@ -131,9 +131,7 @@ struct CementCellStats {
 // Forward-declare the bridge (defined in gameos_graphics.cpp).
 // Signature uses unsigned int (not GLuint) to match gos_terrain_bridge.h
 // without pulling in GL headers there.
-bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
-                                     unsigned int thinRecordSSBO,
-                                     unsigned int indirectCmdBuffer);
+
 
 // Include pVertex via PostcompVertex — already available through mapdata.h.
 // (terrain.h already included above, which pulls mapdata.h.)
@@ -151,39 +149,15 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
 #endif
 using mc2depth::TERRAIN_DEPTH_FUDGE;
 
-static constexpr int    kThinRingFrames    = 3;
-static constexpr size_t kMaxThinRecords    = 65536u;  // ≥ max visible quads
-static constexpr size_t kThinRecordBytes   = kMaxThinRecords * sizeof(TerrainQuadThinRecord);
-
-// Indirect command buffer — driver-only, GL_DRAW_INDIRECT_BUFFER.
-// Sized for 16 commands (256 B); PR1 emits exactly 1.
-struct DrawArraysIndirectCommand {
-    GLuint count;
-    GLuint instanceCount;
-    GLuint first;
-    GLuint baseInstance;
-};
-static_assert(sizeof(DrawArraysIndirectCommand) == 16,
-    "DrawArraysIndirectCommand is 4 GLuints = 16 B per GL spec");
-
-static constexpr size_t kIndirectCmdBufferBytes = 16 * sizeof(DrawArraysIndirectCommand);
-
 static inline bool InMissionTransition() { return false; }
 
 
 extern const bool s_loadRaceDelayAtlas;
-namespace gos_terrain_indirect { extern const bool s_thinCanaryEnabled; }
 
 namespace gos_terrain_indirect_detail {
-extern const bool g_envRingTrace;
 extern std::vector<TerrainQuadRecipe> g_denseRecipes;
-extern std::vector<bool>              g_denseRecipeDirty;
 extern std::vector<uint32_t> g_solidWindowStaging;
-extern GLuint   g_solidQuadWindowSsbo;
-extern uint32_t g_solidQuadWindowCapacity;
 extern uint32_t g_solidWindowMaxSeen;
-extern bool                           g_denseRecipeAnyDirty;
-extern GLuint                         g_recipeSSBO;
 extern int32_t                        g_recipeMapSide;
 extern bool                           g_recipeReady;
 extern bool s_firstDrawPrintedThisMission;
@@ -220,64 +194,7 @@ extern uint32_t g_cementMappedThisFrame;
 extern uint32_t g_concreteAllCornersThisFrame;
 void BuildColormapAtlas();
 void BuildCementCatalogAtlas();
-extern GLuint g_thinRecordSSBO;
-extern int    g_thinRingSlot;
-extern GLsync g_thinRingFences[kThinRingFrames];
-extern GLuint g_indirectCmdBuffer;
-extern bool  s_frameSolidArmed;
-extern int   s_frameSolidPackedThinCount;
-extern int   s_frameSolidCmdCount;
-extern bool  s_processArmingDisabled;
-extern bool  s_everFrameSolidArmed;
-extern GLuint  g_solidComputeProgram;
-extern GLuint  g_solidBucketHeaderSsbo;
-extern GLuint  g_terrainHandleLutSSBO;
-extern GLuint  g_thinCanarySSBO;
-extern uint32_t g_dispatchMvpFp;
-extern uint64_t g_dispatchMvpFrameIdx;
-extern long     g_dispatchMvpViewEpoch;
-extern float    g_dispatchMvpFloats[4];
-extern float    g_dispatchMvp16[16];
-extern float    g_thinSlotMVP[kThinRingFrames][16];
-extern bool     g_thinSlotMVPValid[kThinRingFrames];
-extern GLint g_locSolidWC;
-extern GLint g_locSolidAO;
-extern GLint g_locSolidMVP;
-extern GLint g_locSolidBHT;
-extern GLint g_locSolidUW;
-extern GLint g_locSolidMS;
-extern GLint g_locSolidReflPass;
-extern bool  s_solidReflectionPassActive;
-extern bool s_solidGpuDispatchRanThisFrame;
-bool ResourcesReady();
-int PackThinRecordsForFrame();
-int BuildIndirectCommands(int thinCount);
-uint32_t UploadTerrainHandleLUT();
-uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow);
 }  // namespace gos_terrain_indirect_detail
 using namespace gos_terrain_indirect_detail;
-
-namespace gos_terrain_indirect {
-// ComputeDispatch phases (gos_terrain_indirect_compute.cpp).
-bool computeBuildProgram();
-void computeAllocDebugBuffers(bool s_bucketHeaderTrace);
-void computeFingerprintMvp(bool s_ringTrace, uint32_t& mvpFp);
-void computeRingFenceWait(int probedSlot, GLenum& waitResult, uint64_t& waitUs);
-void computeTripwireMiss(FILE* s_probeSink, uint64_t ringFrameIdx, int probedSlot, bool fencePresent, uint32_t& mvpFp, GLenum& waitResult, uint64_t& waitUs);
-void computeBucketHeaderReadback(FILE* s_probeSink, bool s_ringTrace, uint64_t ringFrameIdx, int probedSlot, bool fencePresent, uint32_t& mvpFp, GLenum& waitResult, uint64_t& waitUs);
-bool computeRingSkipGuard(FILE* s_probeSink, uint64_t ringFrameIdx, int probedSlot, GLenum& waitResult);
-void computeClearCounters();
-bool computeBindAndUniforms(GLuint lightSsbo, bool s_bucketHeaderTrace, uint32_t windowCount, int s_solidUseWindow, GLintptr thinSlotOffset);
-void computeDepthTransitionProbe();
-void computePostDispatchProbes(FILE* s_probeSink, bool s_ringTrace, uint64_t ringFrameIdx);
-}  // namespace gos_terrain_indirect
-
-// Ring-hazard probe line: stderr plus the ring_trace.log sink. Names the sink handle (s_probeSink) the caller has in
-// scope, so it is only valid where ComputeDispatch or one of its phases holds that handle.
-#define PROBE_LOG(fmt, ...) do { \
-        fprintf(stderr, fmt, ##__VA_ARGS__); \
-        fflush(stderr); \
-        if (s_probeSink) { fprintf(s_probeSink, fmt, ##__VA_ARGS__); fflush(s_probeSink); } \
-    } while (0)
 
 #endif // GOS_TERRAIN_INDIRECT_INTERNAL_H

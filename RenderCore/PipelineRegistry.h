@@ -34,9 +34,7 @@ enum class PipelineId : uint32_t {
     VfxTubeAdditive = 8, // tube_ribbon, ONE/ONE  (differs from billboard/mesh)
     VfxMeshAlpha = 9, // vfx_mesh, SRC_ALPHA/ONE_MINUS_SRC_ALPHA
     VfxMeshAdditive = 10, // vfx_mesh, SRC_ALPHA/ONE
-    PostProcessComposite = 11, // endScene composite (postprocess.frag, opaque, no depth)
-    TerrainSolid = 12, // main solid terrain (Opaque, GEQUAL reverse-Z, cull None)
-    Count_ = 13,
+    Count_ = 11,
 };
 
 // VERTEXLAYOUT-AUTHORITY-1: stable repo-owned vertex-input layout identities —

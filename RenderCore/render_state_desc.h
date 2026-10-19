@@ -103,14 +103,10 @@ static constexpr RenderStateDesc kPassRenderState[] = {
         ViewportKind::MainScene,
         RenderResourceId::MainColor
     },
-    // Terrain: routed via applyPipeline(TerrainSolid) in LODChunk (gos_terrain_lod_chunk.cpp:717)
-    // and PatchStreamThin (gameos_graphics.cpp:4041). pipelineDescRegistered = true
-    // (FRAMEGRAPH-STATEPACK-SKELETON-1, see RenderPassContract.h notes).
-    // ambient_contract: colorMask=AllOn (re-asserts after shadow), depthWrite=On, depthFunc=SceneGEqual, viewport=MainScene.
-    // fbo: kPassFboTarget declares MainColor.
+    // Native terrain owns its pipeline; keep the render-state vocabulary for ordering checks.
     {
         RenderPassId::Terrain,
-        RenderCore::PipelineId::TerrainSolid,
+        RenderCore::PipelineId::Invalid,
         ColorMaskState::AllOn,
         DepthWriteState::On,
         DepthFuncState::SceneGEqual,

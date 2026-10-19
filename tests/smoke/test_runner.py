@@ -1,9 +1,17 @@
 # tests/smoke/test_runner.py
 import sys
+import pytest
 from pathlib import Path
 from scripts.smoke_lib.runner import run_one, RunConfig
 
 FIX = Path(__file__).parent / "fixtures"
+
+@pytest.fixture(autouse=True)
+def isolate_fake_diagnostics(monkeypatch):
+    # Fake children do not emit Vulkan validation or diagnostic-state artifacts.
+    # Keep developer runtime settings from adding unrelated verdict buckets.
+    for name in ("MC2_VULKAN_VALIDATION", "MC2_DEBUG_STATE_DUMP", "MC2_DIAG_TAGS"):
+        monkeypatch.delenv(name, raising=False)
 
 def test_run_fake_pass(tmp_path):
     cfg = RunConfig(

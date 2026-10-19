@@ -82,21 +82,14 @@
       "reason": "Native Vulkan pass; its GL draw and PipelineDesc were deleted. Vulkan owns the images and pipeline state."
     },
     "Terrain": {
-      "status": "ROUTED_BY_APPLYPIPELINE",
+      "status": "DO_NOT_MODEL",
       "renderPassId": "Terrain",
-      "pipelineId": "TerrainSolid",
-      "shaderBase": "gos_terrain",
-      "stateOwner": "applyPipeline(TerrainSolid) at the LOD-chunk draw; colorMask via beginScene keystone",
-      "next": "Terrain SOLID is routed+proven. Remaining terrain-family routing (separate slices): overlays/decals, mask/water/mine/surface, water fast path. The bridge PARTIAL route can be cleaned up later (it is dead under default lod-chunk).",
-      "proofBasis": "frame_trace_bind_positive + byte_visual_gate",
-      "evidence": "TERRAIN-LODCHUNK-APPLYPIPELINE-ROUTING-1 (proven): routed the live default terrain-solid (lod-chunk) draw via applyPipeline(TerrainSolid). Byte-gate v0.4c water: sha cb5a700e HELD (no regression; GBuffer1 + markTerrainDrawn/sceneHasTerrain preserved; colorMask via the COLORMASK-ROLLOUT-1 beginScene keystone), [PIPELINE_BIND] TerrainSolid binds=2843 (>0), [FRAME_PLAN] pass=TerrainSolidLODChunk path=ApplyPipeline pipeline=TerrainSolid x2843. State matches the row exactly (cull probed None/Ccw). The bridge 0-bind confusion is fully explained + resolved.",
-      "routingStatus": "ROUTED_BY_APPLYPIPELINE",
-      "proofStatus": "byte_identical",
-      "proofPath": "TerrainSolidLODChunk",
-      "scope_note": "ONLY the LIVE terrain-SOLID path is routed: TerrainSolidLODChunk (gos_terrain_lod_chunk.cpp, the default-ON lod-chunk draw) now asserts applyPipeline(TerrainSolid). NOT routed / still separate: terrain overlays/decals, terrain mask/water/mine/surface indirect, the legacy MLR fallback, and the water fast path. The old indirect bridge route (routing-1, PARTIAL) is superseded as the live target by lod-chunk \u2014 bridge only runs under the vestigial MC2_TERRAIN_LOD_CHUNK=0.",
-      "routedEntryPoints": [
-        "TerrainSolidLODChunk (gos_terrain_lod_chunk.cpp) \u2014 LIVE default, applyPipeline(TerrainSolid), proven binds=2843"
-      ]
+      "shaderBase": "terrain_tier1",
+      "stateOwner": "vulkan_native",
+      "pipelineIds": [],
+      "reason": "Terrain bands render through the native Vulkan island; GL LOD-chunk and indirect draws and their PipelineDesc are retired.",
+      "evidence": "s65: sync smoke-lite and viewed pixel-identical day/night captures; native feed bytes unchanged.",
+      "next": "none (GL model retired)"
     },
     "TerrainOverlay": {
       "status": "ROUTED_BY_APPLYPIPELINE",
@@ -157,18 +150,14 @@
       "next": "recon later (instanced cards; alpha-test)"
     },
     "PostProcess": {
-      "status": "ROUTED_BY_APPLYPIPELINE",
+      "status": "DO_NOT_MODEL",
       "renderPassId": "PostProcess",
-      "pipelineId": "PostProcessComposite",
-      "shaderBase": "postprocess/fog/composite",
-      "stateOwner": "applyPipeline (composite); legacy/ad-hoc (rest of chain)",
-      "next": "SSAO and box decals retired in lane 2 s64. Native screen/cloud/shoreline passes remain; composite uses PostProcessComposite.",
-      "proofStatus": "byte_identical",
-      "scope_note": "SSAO and box decals retired in lane 2 s64. Native screen/cloud/shoreline passes remain; composite uses PostProcessComposite.",
-      "evidence": "Composite routing proven BYTE-IDENTICAL: with composite routed via applyPipeline, mc2_01 water_overview_high captured sha cb5a700ebd00dd0b \u2014 identical to the banked pre-routing baseline (the composite is the final pass writing the backbuffer, so an identical whole-frame sha proves the routing is a perfect no-op, incl. no downstream state leak from the binder's inert frontFace/depthFunc/blendFunc sets). [PIPELINE_BIND] PostProcessComposite fired 3304x (once/frame).",
-      "pipelineIds": [
-        "PostProcessComposite"
-      ]
+      "shaderBase": "postprocess_visual",
+      "stateOwner": "vulkan_native",
+      "pipelineIds": [],
+      "reason": "Native Vulkan composite owns presentation for every view mode; the GL composite and descriptor are retired.",
+      "evidence": "s65: sync smoke-lite, byte-identical day/night feeds and viewed native captures, including view modes 2 and 4.",
+      "next": "none (GL model retired)"
     },
     "PostProcessVkNativeFx": {
       "status": "DO_NOT_MODEL",

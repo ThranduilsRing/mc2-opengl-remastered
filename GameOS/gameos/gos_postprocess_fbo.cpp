@@ -58,33 +58,11 @@ void gosPostProcess::destroy()
     // resources. No-op when the gate was never enabled.
     postprocess_blur::Shutdown();
 
-    if (compositeProg_) {
-        glsl_program::deleteProgram("postprocess");
-        compositeProg_ = nullptr;
-    }
-
-    if (skyboxProg_) {
-        glsl_program::deleteProgram("skybox");
-        skyboxProg_ = nullptr;
-    }
-
-    if (hdriSkyboxProg_) {
-        glsl_program::deleteProgram("hdri_skybox");
-        hdriSkyboxProg_ = nullptr;
-    }
-    if (hdriSkyboxStencilTagProg_) {
-        glsl_program::deleteProgram("hdri_skybox_stencil_tag");
-        hdriSkyboxStencilTagProg_ = nullptr;
-    }
     if (hdriTex_) {
         glDeleteTextures(1, &hdriTex_);
         hdriTex_ = 0;
     }
     hdriCpu_.reset();
-    if (hdriDummyVao_) {
-        glDeleteVertexArrays(1, &hdriDummyVao_);
-        hdriDummyVao_ = 0;
-    }
     hdriReady_ = false;
     hdriEnabled_ = false;
 

@@ -17,11 +17,6 @@
 // ============================================================================
 
 
-bool gosPostProcess::executorCompositeProgramValid() const
-{
-    return compositeProg_ && compositeProg_->is_valid();
-}
-
 bool gosPostProcess::executorSceneColorTexValid() const
 {
     return sceneColorTex_ != 0;
@@ -71,14 +66,6 @@ static void executorOwnBegin(gosPostProcess* pp)
     if (!c) return;   // not an owned island (defensive; kExecutorIslands has the row)
 
     bool ok = true;
-
-    // 1. Program must be compiled and valid.
-    if (c->requiresProgramValid && !pp->executorCompositeProgramValid()) {
-        if (g_executorValidationFailures < kMaxExecutorFailureLog)
-            mc2::fmt::print_err("[EXECUTOR v1] FAIL island=PostProcess check=compositeProg_valid owned={:d} failures={:d}\n", mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
-        ++g_executorValidationFailures;
-        ok = false;
-    }
 
     // 2. Scene color texture must be populated.
     if (c->requiresSceneColorTex && !pp->executorSceneColorTexValid()) {

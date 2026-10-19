@@ -63,7 +63,7 @@ struct IslandContract {
 static constexpr IslandContract kExecutorIslands[] = {
     {
         /*id*/                      ExecutorIslandId::PostProcess,
-        /*requiresProgramValid*/    true,
+        /*requiresProgramValid*/    false, // native pipelines are created on demand
         /*requiresSceneColorTex*/   true,
         /*requiresSceneDepthTex*/   false,
         /*warnIfNoTerrainLatch*/    true,   // sub-stages bail gracefully; WARN not FATAL

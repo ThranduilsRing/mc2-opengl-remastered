@@ -27,49 +27,6 @@ static bool pipelineBindTraceEnabled() {
     return s_on != 0;
 }
 
-// COLORMASK-OWNERSHIP-1: MC2_PIPELINE_COLORMASK (default OFF). When ON, applyPipeline
-// emits per-attachment glColorMaski from desc.colorAttachments — but ONLY for rows that
-// have OPTED IN (rowOwnsColorMask). This is deliberately opt-in/gated: making colorMask
-// globally owned at once is how you get a beautiful black frame (old paths depend on raw
-// colorMask side effects; HUD/post helpers have their own rules). Non-opt-in rows keep
-// the legacy behavior (colorMask untouched here).
-static bool pipelineColorMaskEnabled() {
-    static int s_on = -1;
-    if (s_on < 0) {
-        s_on = mc2::gate::get<"MC2_PIPELINE_COLORMASK">();
-    }
-    return s_on != 0;
-}
-
-// Opt-in set (row metadata, keyed by the applyPipeline dbgName).
-//
-// History: COLORMASK-OWNERSHIP-1 proved a single set-only opt-in LEAKS — composite
-// ({t,f,f}) emits glColorMaski(1,FALSE)(2,FALSE) and, being the LAST world pass, those
-// masks leaked into the NEXT frame's MRT scene draw (GBuffer1/objectId dropped; sha
-// cb5a700e -> 8d40ce4a). COLORMASK-ROLLOUT-1 adds the KEYSTONE: gosPostProcess::beginScene
-// asserts glColorMask(all TRUE) before the first MRT draw, so any prior-frame set-only leak
-// is healed at frame begin. With the keystone in place composite opt-in is SAFE again
-// (its 1/2=FALSE mask is reset next beginScene before any MRT consumer) and gate-ON is
-// byte-identical. TerrainSolidLODChunk opts in during its own routing slice, NOT here.
-//
-// COLORMASK-ROLLOUT-POSTFX-1: extend opt-in to the rest of the PostProcess phase
-// family. All of these run AFTER the MRT scene/GBuffer is consumed and only modulate
-// the scene color attachment (color0); their registry rows are {true,false,false}, so
-// masking color1(GBuffer1/normals)/color2(objectId) OFF here PREVENTS a post-fx pass
-// from scribbling into the GBuffer, while color0=true keeps the frame non-black. Same
-// safety profile as composite (proven byte-identical gate-ON): the beginScene all-TRUE
-// keystone heals the set-only 1/2=FALSE leak before the next frame's MRT draw. Each name
-// MUST stay in sync with check-colormask-ownership.py OPTED_IN (drift guard enforces it).
-static bool rowOwnsColorMask(const char* dbgName) {
-    if (!dbgName) return false;
-    return std::strcmp(dbgName, "PostProcessComposite")    == 0
-        || std::strcmp(dbgName, "PostProcessScreenShadow") == 0
-        || std::strcmp(dbgName, "PostProcessCloudShadow")  == 0
-        || std::strcmp(dbgName, "PostProcessShoreline")    == 0
-        || std::strcmp(dbgName, "PostProcessEdgeFog")      == 0
-        || std::strcmp(dbgName, "PostProcessFogOob")       == 0;
-}
-
 void applyPipeline(const RenderCore::PipelineDesc& desc, const char* dbgName) {
     // --- Program ---
     // 0 means not yet registered (bindProgram not called). Skip rather than
@@ -165,19 +122,6 @@ void applyPipeline(const RenderCore::PipelineDesc& desc, const char* dbgName) {
     // already off — e.g. the shadow brackets and scene passes).
     if (desc.polygonOffsetEnable) glEnable(GL_POLYGON_OFFSET_FILL);
     else                          glDisable(GL_POLYGON_OFFSET_FILL);
-
-    // COLORMASK-OWNERSHIP-1: opt-in, gated. Emit whole-attachment colorMask from the
-    // row's colorAttachments so the pass asserts its own write-mask instead of relying
-    // on an ambient raw-GL repair (e.g. the terrain shadow-leak glColorMask(TRUE)).
-    // Default OFF + opt-in -> legacy behavior preserved everywhere else.
-    if (pipelineColorMaskEnabled() && rowOwnsColorMask(dbgName)) {
-        const GLboolean c0 = desc.colorAttachments.color0 ? GL_TRUE : GL_FALSE;
-        const GLboolean c1 = desc.colorAttachments.color1 ? GL_TRUE : GL_FALSE;
-        const GLboolean c2 = desc.colorAttachments.color2 ? GL_TRUE : GL_FALSE;
-        glColorMaski(0, c0, c0, c0, c0);
-        glColorMaski(1, c1, c1, c1, c1);
-        glColorMaski(2, c2, c2, c2, c2);
-    }
 
     if (dbgName && pipelineBindTraceEnabled()) {
         const char* df =

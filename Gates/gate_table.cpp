@@ -123,7 +123,7 @@ L(AtoiNZ, "MC2_BRAIN_VAR_MISSION", Bool, false, "code", "", "", verified),
 P("MC2_BRIDGE_MOVER_PERIOD_SEC", Float, 2.0, "code", "", "Seconds between bridge-mover state bursts; below 0.25 clamps to 0.25.", passthrough | clampRange(0.25, 3.4e38) | verified),
 L(Presence, "MC2_BRIDGE_MOVER_STATE", Bool, false, "unclassified", "", "", passthrough | verified),
 L(Presence, "MC2_BUCKET_CENSUS", Bool, false, "terrain", "", "", verified),
-L(Presence, "MC2_BUCKET_HEADER_TRACE", Bool, false, "terrain", "", "Step 2b: bucket-header SSBO demoted behind MC2_BUCKET_HEADER_TRACE.", verified),
+L(Presence, "MC2_BUCKET_HEADER_TRACE", Bool, false, "terrain", "", "Step 2b: bucket-header SSBO demoted behind MC2_BUCKET_HEADER_TRACE."),
 L(Lead0Kill, "MC2_BUILDING_FOOTPRINT_SHADOW", Bool, true, "props", "", "", verified),
 L(Exact1, "MC2_BUILDING_PBR", Bool, false, "props", "", "", verified),
 L(Presence, "MC2_BUILDING_PBR_TRACE", Bool, false, "code", "", "", verified),
@@ -391,8 +391,8 @@ L(Presence, "MC2_HAZE_PARITY", Bool, false, "terrain", "", "Step 7 (VPL retireme
 L(Lead0Kill, "MC2_HDRI_BC6H", Bool, true, "gameos", "", "", verified),
 L(Lead0Kill, "MC2_HDRI_SKY", Bool, true, "post", "", "", verified),
 P("MC2_HDRI_SKY_AZ_OFFSET", Float, 0.0, "post", "", "", verified),
-L(Lead0P, "MC2_HDRI_SKY_FRAME_FIX", Bool, false, "post", "", "", verified),
-L(Lead0P, "MC2_HDRI_SKY_UV_DEBUG", Bool, false, "post", "", "", verified),
+L(Lead0P, "MC2_HDRI_SKY_FRAME_FIX", Bool, false, "post", "", ""),
+L(Lead0P, "MC2_HDRI_SKY_UV_DEBUG", Bool, false, "post", "", ""),
 L(Presence, "MC2_HEARTBEAT", Bool, false, "gameos", "", "", passthrough | verified),
 P("MC2_HEIGHT", Int, 0, "gameos", "", "", passthrough | verified),
 P("MC2_HITCH_MS", Float, 0.0, "gameos", "", "", passthrough | verified),  // default not derivable from the tree
@@ -688,7 +688,7 @@ L(Presence, "MC2_PICK_BEHIND_LEGACY", Bool, false, "code", "", "INPUT-CURSOR-OFF
 L(Presence, "MC2_PICK_CAP_TRACE", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_PICK_RECON", Bool, false, "code", "", "", passthrough | verified),
 L(Lead0, "MC2_PIPELINE_BIND_TRACE", Bool, false, "gameos", "", "", passthrough | verified),
-L(Lead0, "MC2_PIPELINE_COLORMASK", Bool, false, "gameos", "", "", verified),
+L(Lead0, "MC2_PIPELINE_COLORMASK", Bool, false, "gameos", "", ""),
 G("MC2_PLAYTEST_EXE", String, "", "editor", "", "", verified),
 L(Lead0Kill, "MC2_PNG_MAGENTA_KEY", Bool, true, "gameos", "", "", verified),
 L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR", Bool, false, "post", "", "", verified),
@@ -754,8 +754,8 @@ G("MC2_RESOLVE_TRACE_FILE", String, "", "code", "", "META-FIX design E tier 3 (m
 G("MC2_RES_ASSERT", String, "", "code", "", "META-FIX design D runtime tier (RenderCore/ResolutionContract.h): audit mode, unset/0 = off, fatal = abort, anything else = log.", passthrough | registry(Trace, "MC2_TRACE_RES_ASSERT", -1, false) | verified),
 L(Presence, "MC2_RES_DIAG", Bool, false, "post", "", "[RES_DIAG v1] One-shot dump of the resolution split: scene FBO size (this object's width_/height_) vs the HUD canvas (Environment.screenWidth) vs the native...", passthrough | verified),
 L(Presence, "MC2_REVERSE_Z_TRACE", Bool, false, "unclassified", "", "", passthrough | verified),
-L(Presence, "MC2_RING_FORCE_FINISH", Bool, false, "terrain", "", "?? Probe 7 (MC2_RING_FORCE_FINISH) - directed barrier-hypothesis test ?? Forces full GPU pipeline drain after the compute dispatches.", passthrough | verified),
-L(Presence, "MC2_RING_TRACE", Bool, false, "terrain", "", "?? Probe 8: compare draw-time MVP fingerprint vs compute-time fingerprint.", passthrough | verified),
+L(Presence, "MC2_RING_FORCE_FINISH", Bool, false, "terrain", "", "?? Probe 7 (MC2_RING_FORCE_FINISH) - directed barrier-hypothesis test ?? Forces full GPU pipeline drain after the compute dispatches.", passthrough),
+L(Presence, "MC2_RING_TRACE", Bool, false, "terrain", "", "?? Probe 8: compare draw-time MVP fingerprint vs compute-time fingerprint.", passthrough),
 G("MC2_RNG_SEED", String, "", "mech", "", "DETERMINISTIC-RNG-1: seed text (decimal, 0x hex, leading-0 octal; strtoul base 0 at the reader); empty = the fixed or mission-hash seed.", passthrough | verified),
 // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): feather solid cement pad/runway edges
 // that abut bare terrain on the indirect terrain path (gos_terrain.frag).
@@ -968,12 +968,12 @@ P("MC2_TERRAIN_AMBIENT_FLOOR", Float, 0.35, "terrain", "", "TERRAIN-AMBIENT-FLOO
 // history: docs/gate-history.md#MC2_TERRAIN_AMBIENT_FLOOR_NIGHT
 P("MC2_TERRAIN_AMBIENT_FLOOR_NIGHT", Float, 0.0, "terrain", "", "TERRAIN-AMBIENT-FLOOR-NIGHT-1: 0..1 FLOOR under TERRAIN-AMBIENT-FLOOR-2's daylight gate; the uploaded gate becomes max(dayGate, floor).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_AMBIENT_FLOOR_NIGHT", -1, false) | clampRange(0.0, 1.0) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_AMBIENT_FLOOR_TRACE
-L(Presence, "MC2_TERRAIN_AMBIENT_FLOOR_TRACE", Bool, false, "terrain", "", "TERRAIN-AMBIENT-FLOOR-2 trace: prints ONE line at the first terrain-chunk uniform upload giving the resolved floor strength, the daylight gate ACTUALLY...", passthrough | registry(Trace, "MC2_TRACE_TERRAIN_AMBIENT_FLOOR", -1, false) | verified),
+L(Presence, "MC2_TERRAIN_AMBIENT_FLOOR_TRACE", Bool, false, "terrain", "", "TERRAIN-AMBIENT-FLOOR-2 trace: prints ONE line at the first terrain-chunk uniform upload giving the resolved floor strength, the daylight gate ACTUALLY...", passthrough | registry(Trace, "MC2_TRACE_TERRAIN_AMBIENT_FLOOR", -1, false)),
 L(Lead0, "MC2_TERRAIN_CEMENT_DIAG_CONNECT", Bool, false, "terrain", "", "", verified),
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_DISPLACE
-L(Lead0, "MC2_TERRAIN_CLIFF_DISPLACE", Bool, false, "terrain", "", "SLICE 3: near-field cliff tessellation on the LOD-chunk terrain path.", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_CLIFF_DISPLACE", -1, false) | verified),
+L(Lead0, "MC2_TERRAIN_CLIFF_DISPLACE", Bool, false, "terrain", "", "SLICE 3: near-field cliff tessellation on the LOD-chunk terrain path.", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_CLIFF_DISPLACE", -1, false)),
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS
-P("MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS", Float, 4.0, "terrain", "", "SLICE 3 knob: max tessellation factor (float; C++ default 4.0, clamped to GL_MAX_TESS_GEN_LEVEL at program build).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_MAXTESS", -1, false) | verified),
+P("MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS", Float, 4.0, "terrain", "", "SLICE 3 knob: max tessellation factor (float; C++ default 4.0, clamped to GL_MAX_TESS_GEN_LEVEL at program build).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_MAXTESS", -1, false)),
 L(Lead0, "MC2_TERRAIN_CLIFF_SHADOW_FLOOR", Bool, false, "terrain", "", "", verified),
 // TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: world-axis triplanar ROCK NORMAL + relief
 // on steep terrain cells (terrain_lod_chunk.frag useTriplanarCliff branch,
@@ -1008,7 +1008,7 @@ P("MC2_TERRAIN_DETAIL_MACRO_STRENGTH", Float, 0.0, "terrain", "", "", divergent 
 L(Lead0Kill, "MC2_TERRAIN_EDGE_FEATHER", Bool, true, "terrain", "", "", verified),
 P("MC2_TERRAIN_EDGE_FEATHER_STRENGTH", Float, 1.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
 L(Lead0Kill, "MC2_TERRAIN_INDIRECT", Bool, true, "terrain", "", "", passthrough | verified),
-L(Presence, "MC2_TERRAIN_INDIRECT_CPU_FALLBACK", Bool, false, "terrain", "", "VPL retirement step 1 (2026-05-14): CPU thin-record pack demoted behind MC2_TERRAIN_INDIRECT_CPU_FALLBACK.", verified),
+L(Presence, "MC2_TERRAIN_INDIRECT_CPU_FALLBACK", Bool, false, "terrain", "", "VPL retirement step 1 (2026-05-14): CPU thin-record pack demoted behind MC2_TERRAIN_INDIRECT_CPU_FALLBACK."),
 L(Lead0Kill, "MC2_TERRAIN_INDIRECT_MINE", Bool, true, "terrain", "", "", passthrough | verified),
 L(Lead0Kill, "MC2_TERRAIN_INDIRECT_OVERLAY", Bool, true, "terrain", "", "", passthrough | verified),
 L(Exact1, "MC2_TERRAIN_INDIRECT_OVERLAY_PARITY_CHECK", Bool, false, "terrain", "", "", passthrough | verified),
@@ -1033,8 +1033,8 @@ L(Presence, "MC2_TERRAIN_LOD_CHUNK_NO_CULL", Bool, false, "terrain", "", "Diagno
 L(Presence, "MC2_TERRAIN_LOD_CHUNK_NO_SKIRTS", Bool, false, "terrain", "", "", verified),
 L(Presence, "MC2_TERRAIN_LOD_CHUNK_NO_STITCH", Bool, false, "terrain", "", "Phase 10.2b: PER-EDGE mask.", verified),
 P("MC2_TERRAIN_LOD_CHUNK_SKIRT_MAX", Float, 256.0, "terrain", "", "", verified),
-L(Presence, "MC2_TERRAIN_LOD_DEPTH_ALWAYS", Bool, false, "terrain", "", "Phase 10.3: chunk terrain is OPAQUE and must EXPLICITLY own depth/blend/ cull state.", verified),
-L(Lead0Kill, "MC2_TERRAIN_LOD_GEOMORPH", Bool, true, "terrain", "", "", verified),
+L(Presence, "MC2_TERRAIN_LOD_DEPTH_ALWAYS", Bool, false, "terrain", "", "Phase 10.3: chunk terrain is OPAQUE and must EXPLICITLY own depth/blend/ cull state."),
+L(Lead0Kill, "MC2_TERRAIN_LOD_GEOMORPH", Bool, true, "terrain", "", ""),
 P("MC2_TERRAIN_LOD_MORPH_START", Float, 0.6, "terrain", "", "", clampRange(0.0, 0.95) | verified),
 L(Lead0, "MC2_TERRAIN_MACRO_VARIATION", Bool, false, "terrain", "", "", verified),
 P("MC2_TERRAIN_MACRO_VARIATION_STRENGTH", Float, 1.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
@@ -1051,7 +1051,7 @@ G("MC2_TERRAIN_MATERIAL_LIB_FILE", String, "", "terrain", "", "", passthrough | 
 // history: docs/gate-history.md#MC2_TERRAIN_MATERIAL_TEXTURES
 L(Lead0, "MC2_TERRAIN_MATERIAL_TEXTURES", Bool, false, "terrain", "", "TERRAIN-MATERIAL-TEXTURES-1: 6-layer BC7 sRGB GL_TEXTURE_2D_ARRAY albedo (rock/grass/dirt/concrete/snow/cliff from...", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_MATERIAL_TEXTURES", -1, false) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH
-P("MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH", Float, -1.0, "terrain", "", "TERRAIN-MATERIAL-TEXTURES-1 knob: albedo mix strength override (float, clamped 0..1).", passthrough | clampRange(0.0, 1.0) | registry(Trace, "MC2_TUNE_TERRAIN_MATERIAL_TEXTURES_STRENGTH", -1, false) | verified),
+P("MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH", Float, -1.0, "terrain", "", "TERRAIN-MATERIAL-TEXTURES-1 knob: albedo mix strength override (float, clamped 0..1).", passthrough | clampRange(0.0, 1.0) | registry(Trace, "MC2_TUNE_TERRAIN_MATERIAL_TEXTURES_STRENGTH", -1, false)),
 L(Presence, "MC2_TERRAIN_MINE_AB", Bool, false, "terrain", "", "", verified),
 L(Lead0Kill, "MC2_TERRAIN_NORMAL_ARRAY", Bool, true, "gameos", "", "", verified),
 // TERRAIN-OVERLAY-V2-PARITY-1: authored cement/pad/runway overlay sidecar.
@@ -1112,7 +1112,7 @@ L(Presence, "MC2_TEX_LIFECYCLE_TRACE_VERBOSE", Bool, false, "code", "", "", veri
 L(Presence, "MC2_TGL_POOL_TRACE", Bool, false, "gameos", "", "", verified),
 // TRACKV quick-win: Probe-6 thin-record canary gate
 // history: docs/gate-history.md#MC2_THIN_CANARY
-L(Lead1, "MC2_THIN_CANARY", Bool, false, "terrain", "", "TRACKV: gates Probe-6 thin-record canary readback (per-frame ~80KB glGetBufferSubData x2 + CPU recipeIdx/flags compare, diagnostic for the corrupt-recipeIdx...", registry(Trace, "MC2_TRACE_THIN_CANARY", -1, false) | verified),
+L(Lead1, "MC2_THIN_CANARY", Bool, false, "terrain", "", "TRACKV: gates Probe-6 thin-record canary readback (per-frame ~80KB glGetBufferSubData x2 + CPU recipeIdx/flags compare, diagnostic for the corrupt-recipeIdx...", registry(Trace, "MC2_TRACE_THIN_CANARY", -1, false)),
 L(Presence, "MC2_THIN_DEBUG", Bool, false, "terrain", "", "", passthrough | verified),
 L(Presence, "MC2_TOBJ_COST_SPLIT", Bool, false, "unclassified", "", "[TOBJSPLIT v1] env-gated RDTSC cost split for the recalcBounds slice.", passthrough | verified),
 L(Presence, "MC2_TOBJ_PARITY", Bool, false, "terrain", "", "[TOBJPARITY v1] env-gated STANDALONE readback-vs-coarse superset-parity instrument.", passthrough | verified),
@@ -1304,7 +1304,7 @@ L(Presence, "MC2_WATER_MATERIAL_PROBE", Bool, false, "terrain", "", "", verified
 L(Presence, "MC2_WATER_NO_DEPTH_WRITE", Bool, false, "gameos", "", ""),
 L(Lead0Kill, "MC2_WATER_REFLECTION", Bool, true, "gameos", "", "", verified),
 L(Lead0, "MC2_WATER_REFLECTION_RT", Bool, false, "terrain", "", "", passthrough | verified),
-L(Lead0, "MC2_WATER_REFL_RT_PIXELPROOF", Bool, false, "terrain", "", "", passthrough | verified),
+L(Lead0, "MC2_WATER_REFL_RT_PIXELPROOF", Bool, false, "terrain", "", "", passthrough),
 L(Presence, "MC2_WATER_RENDERPROBE", Bool, false, "terrain", "", "[WATER_RENDERPROBE v1] Fix B matrix-share release gate.", passthrough),
 L(Presence, "MC2_WATER_S6_COST", Bool, false, "terrain", "", "S6 coarse cost A/B instrument: ONE QPC pair around the WHOLE per-frame setupTextures loop (NOT per-quad - the per-quad std::chrono COST_SPLIT scopes are...", passthrough | verified),
 L(Presence, "MC2_WATER_S6_TRACE", Bool, false, "terrain", "", "", verified),

@@ -226,47 +226,6 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
         /* drawBuffers         */ DrawBufferSet::MainSceneMRT,
         /* ssboBindingsMask    */ 0u,
     },
-    // [11] PostProcessComposite — endScene final composite (postprocess.frag).
-    // Opaque (force no blend; fully overwrites the backbuffer), depth test+write
-    // OFF, cull None, color0 only. glProgramName=0 -> the call site keeps binding
-    // compositeProg_; applyPipeline only sets the fixed-function state.
-    {
-        /* glProgramName       */ 0u,
-        /* blend               */ BlendMode::Opaque,
-        /* depthTestEnable     */ false,
-        /* depthWriteEnable    */ false,
-        /* depthFunc           */ DepthFunc::Always,
-        /* cullMode            */ CullMode::None,
-        /* colorAttachments    */ { true, false, false },
-        /* objectIdWriteEnabled*/ false,
-        /* frontFace           */ FrontFace::Ccw,
-        /* polygonOffsetEnable */ false,
-        /* drawBuffers         */ DrawBufferSet::SingleColor0,
-        /* ssboBindingsMask    */ 0u,
-    },
-    // [12] TerrainSolid — main solid terrain (live = GPU-indirect thin MDI,
-    // gos_terrain_thin.vert + gos_terrain.frag). DESCRIPTIVE ONLY (glProgramName=0,
-    // NOT routed — state still hand-set in gos_terrain_bridge_drawIndirect). Opaque,
-    // depthTest+write ON, GEQUAL reverse-Z. cullMode=None / frontFace=Ccw are
-    // EMPIRICALLY PROBED (TERRAIN-CULL-STATE-PROBE-1: cull DISABLED, CCW, 8 frames
-    // unanimous at the dispatch chokepoint) — not guessed from water/prose. The frag
-    // writes color0 (FragColor) + color1 (GBuffer1) -> {true,true,false}; objectId
-    // (color2) NOT written.
-    {
-        /* glProgramName       */ 0u,
-        /* blend               */ BlendMode::Opaque,
-        /* depthTestEnable     */ true,
-        /* depthWriteEnable    */ true,
-        /* depthFunc           */ DepthFunc::GreaterEqual,
-        /* cullMode            */ CullMode::None,
-        /* colorAttachments    */ { true, true, false },
-        /* objectIdWriteEnabled*/ false,
-        /* frontFace           */ FrontFace::Ccw,
-        /* polygonOffsetEnable */ false,
-        /* drawBuffers         */ DrawBufferSet::MainSceneMRT,
-        /* ssboBindingsMask    */ 0u,
-    },
-
 }};
 
 static_assert(

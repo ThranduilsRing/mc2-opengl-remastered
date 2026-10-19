@@ -12,21 +12,24 @@ GameOS/gameos/render_pass_attachment.h and enforces:
      This is the seed the later FRAME-RESOURCE-FEEDBACK-CHECKER-1 generalizes.
   3. SELF-CONSISTENT feedbackSafe — the asserted `feedbackSafe` flag must equal the
      value recomputed from (target, writes, reads). Catches a stale/false assertion.
-  4. COLORMASK DRIFT — every pass with ownsColorMask=true must have its
-     PostProcess<Name> row referenced in pipeline_binder.cpp::rowOwnsColorMask
-     (keeps this table in sync with the live colorMask opt-in set).
+  4. COLORMASK DRIFT: native post passes must write RGBA to color0 only;
+     surviving GL passes with ownsColorMask=true must keep a binder row.
 
 Exit 0 = PASS.
 """
 from __future__ import annotations
 
 import re
+import importlib.util
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HEADER = ROOT / "GameOS" / "gameos" / "render_pass_attachment.h"
 BINDER = ROOT / "GameOS" / "gameos" / "pipeline_binder.cpp"
+
+# These attachment rows describe native passes; no GL binder rows remain.
+NATIVE_MASK_PASSES = {"ScreenShadow", "CloudShadow", "Shoreline", "EdgeFog", "FogOob", "Composite"}
 
 LIVE = {"SceneColor", "SceneNormal", "SceneObjectId", "SceneDepth"}
 # write-bit index -> the live attachment that bit renders into
@@ -83,6 +86,16 @@ def main() -> int:
 
     btext = BINDER.read_text(encoding="utf-8", errors="replace") if BINDER.exists() else ""
     fails = []
+    spec = importlib.util.spec_from_file_location("native_masks", ROOT / "scripts/check-colormask-ownership.py")
+    masks = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(masks)
+    for filename in ("vulkan_post_screenfx_native.cpp", "vulkan_post_fog_native.cpp", "engine_present_vk.cpp"):
+        source = (ROOT / "GameOS/gameos" / filename).read_text(encoding="utf-8")
+        if filename == "engine_present_vk.cpp":
+            start = source.find("bool ensureCompositeObjects(")
+            end = source.find("bool ensureShadowDebugOverlayObjects(", start)
+            source = source[start:end] if start >= 0 and end > start else ""
+        fails.extend(filename + ": " + f for f in masks.validate_native_color_mask(source))
 
     for c in contracts:
         p = c["pass"]
@@ -101,7 +114,10 @@ def main() -> int:
         if computed != c["safe"]:
             fails.append(f"{p}: feedbackSafe={c['safe']} but recomputed={computed}")
         # 4. colorMask drift
-        if c["mask"]:
+        if p in NATIVE_MASK_PASSES:
+            if c["w"] != [True, False, False]:
+                fails.append(f"{p}: native post must write only scene color0")
+        elif c["mask"]:
             row = "PostProcess" + p
             if row not in btext:
                 fails.append(f"{p}: ownsColorMask=true but '{row}' not in "

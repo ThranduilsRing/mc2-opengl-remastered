@@ -545,7 +545,7 @@ TEST_CASE("executor island (b): findIslandContract(PostProcess) returns non-null
     const IslandContract* c = findIslandContract(ExecutorIslandId::PostProcess);
     CHECK(c != nullptr);
     if (c) {
-        CHECK(c->requiresProgramValid    == true);
+        CHECK(c->requiresProgramValid    == false);
         CHECK(c->requiresSceneColorTex   == true);
         CHECK(c->requiresSceneDepthTex   == false);
         CHECK(c->warnIfNoTerrainLatch    == true);
@@ -1036,18 +1036,18 @@ TEST_CASE("statepack (f): routed passes have non-Invalid pipelineId; non-routed 
     const RenderPassId routed[] = {
         RenderPassId::StaticPropOpaque,
         RenderPassId::MechOpaque,
-        RenderPassId::Terrain,
         RenderPassId::TerrainOverlay,
         RenderPassId::TerrainDecal,
     };
-    for (int i = 0; i < 5; ++i) {
-        const RenderStateDesc* r = findPassRenderState(routed[i]);
+    for (RenderPassId id : routed) {
+        const RenderStateDesc* r = findPassRenderState(id);
         REQUIRE(r != nullptr);
         CHECK(static_cast<unsigned>(r->pipelineId) != static_cast<unsigned>(RenderCore::PipelineId::Invalid));
-        CHECK(passHasStaticPipeline(routed[i]) == true);
+        CHECK(passHasStaticPipeline(id) == true);
     }
     // Passes with no single PipelineId (multi-pipeline, descriptive-only, or no routing):
     const RenderPassId invalid[] = {
+        RenderPassId::Terrain,
         RenderPassId::Water,
         RenderPassId::Shadow,
         RenderPassId::VegetationCards,
@@ -1055,8 +1055,8 @@ TEST_CASE("statepack (f): routed passes have non-Invalid pipelineId; non-routed 
         RenderPassId::UI,
         RenderPassId::PostProcess,
     };
-    for (int i = 0; i < 6; ++i) {
-        CHECK(passHasStaticPipeline(invalid[i]) == false);
+    for (RenderPassId id : invalid) {
+        CHECK(passHasStaticPipeline(id) == false);
     }
 }
 
@@ -1077,7 +1077,7 @@ TEST_CASE("statepack (g): consistency validator catches a deliberately-wrong Ren
     // and verify the validator (reimplementing its inner loop for the synthetic case).
     RenderStateDesc synthetic;
     synthetic.id        = RenderPassId::Terrain;
-    synthetic.pipelineId = RenderCore::PipelineId::TerrainSolid;
+    synthetic.pipelineId = RenderCore::PipelineId::Invalid;
     synthetic.colorMask = ColorMaskState::AllOff;   // WRONG (ambient says AllOn)
     synthetic.depthWrite = DepthWriteState::On;
     synthetic.depthFunc  = DepthFuncState::SceneGEqual;
