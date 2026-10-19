@@ -412,14 +412,6 @@ class gosRenderer {
         bool getTerrainDrawEnabled() const { return terrain_draw_enabled_; }
         float getTerrainDebugMode() const { return terrain_debug_mode_; }
 
-        // F1 Stage A-pre Task 7b: store probe-only worldToClipGL for upload at
-        // draw time inside terrainBindUniformsForPatchStream (terrainDrawIndexedPatches retired).
-        void setWorldToClipGLProbeMatrix(const float* M16) {
-            memcpy(probeWorldToClipGL_, M16, 16 * sizeof(float));
-            probeWorldToClipGLValid_ = true;
-        }
-
-
         void setTerrainLightDir(float x, float y, float z) { terrain_light_dir_ = vec4(x, y, z, 0.0f); }
         const vec4& getTerrainLightDir() const { return terrain_light_dir_; }
         // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (killswitch handled at
