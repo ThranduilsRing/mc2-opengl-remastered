@@ -995,7 +995,6 @@ int main(int argc, char** argv)
     // probing; clear it so the first real frame's error checks start clean.
     (void)glGetError();
 
-    render_contract::initRenderContractAssert();
     render_contract::initRenderPassTelemetry();   // [RENDER_PASS v1] (MC2_RENDER_PASS_TELEMETRY=1)
     render_contract::initRenderPassOrder();       // CONTRACT-3 (MC2_RENDER_PASS_ORDER=1)
     render_contract::initRenderPassScope();        // ENFORCEMENT-1 (MC2_RENDER_PASS_CONTRACT_TRACE/ASSERT=1)
