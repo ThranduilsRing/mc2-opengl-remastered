@@ -1,5 +1,6 @@
 #ifndef MECHICON_H
 #define MECHICON_H
+#include <memory>
 /*************************************************************************************************\
 MechIcon.h			: Interface for the MechIcon component.
 //---------------------------------------------------------------------------//
@@ -128,9 +129,9 @@ protected:
 		static float		 	unitIconY;
 		static int				curScreenWidth;
 
-		static StaticInfo*		jumpJetIcon;
+		static std::unique_ptr<StaticInfo>		jumpJetIcon;
 
-		static aFont*			gosFontHandle;
+		static std::unique_ptr<aFont>			gosFontHandle;
 		
 		static gos_VERTEX	bmpLocation[17][5]; // in screen coords
 		
@@ -174,7 +175,7 @@ protected:
 
 		float		msgPlayTime;
 
-		static		MC2MoviePtr 	bMovie;
+		static		std::unique_ptr<MC2Movie> 	bMovie;
 		static		DWORD			pilotVideoTexture;
 		static		MechWarrior*	pilotVideoPilot;
 		

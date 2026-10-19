@@ -467,7 +467,7 @@ ForceGroupBar::~ForceGroupBar()
 	removeAll();
 	
 	if ( ForceGroupIcon::gosFontHandle )
-		delete ForceGroupIcon::gosFontHandle;
+		ForceGroupIcon::gosFontHandle.reset();
 
 	ForceGroupIcon::gosFontHandle  = nullptr;
 }
@@ -812,7 +812,7 @@ void ForceGroupBar::init( FitIniFile& file, StaticInfo* pCoverIcon )
 		Assert( 0, 0, "couldn't find the font block" );
 
 	if ( !ForceGroupIcon::gosFontHandle )
-		ForceGroupIcon::gosFontHandle = new aFont;
+		ForceGroupIcon::gosFontHandle = std::make_unique_for_overwrite<aFont>();
 
 	long fontID;
 	file.readIdLong( "IconFont", fontID );
@@ -843,7 +843,7 @@ bool ForceGroupBar::setPilotVideo( const char* pVideo, MechWarrior* pPilot )
 	{
 		if ( ForceGroupIcon::bMovie )
 		{
-			delete ForceGroupIcon::bMovie;
+			ForceGroupIcon::bMovie.reset();
 			ForceGroupIcon::bMovie = nullptr;
 			
 		}
@@ -881,7 +881,7 @@ bool ForceGroupBar::setPilotVideo( const char* pVideo, MechWarrior* pPilot )
 					vRect.top 		= icons[i]->bmpLocation[icons[i]->locationIndex][3].y;
 					vRect.bottom 	= icons[i]->bmpLocation[icons[i]->locationIndex][1].y;
 
-					ForceGroupIcon::bMovie = new MC2Movie;
+					ForceGroupIcon::bMovie = std::make_unique_for_overwrite<MC2Movie>();
 					ForceGroupIcon::bMovie->init(aviPath,vRect,true);
 				}
 				else // make a still texture

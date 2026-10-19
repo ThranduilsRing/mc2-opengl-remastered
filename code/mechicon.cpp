@@ -92,9 +92,9 @@ static TEXTUREPTR lockIconPage( long handle )
 	return page;
 }
 
-StaticInfo*		ForceGroupIcon::jumpJetIcon = nullptr;
+std::unique_ptr<StaticInfo>		ForceGroupIcon::jumpJetIcon = nullptr;
 
-MC2MoviePtr	ForceGroupIcon::bMovie = nullptr;
+std::unique_ptr<MC2Movie>	ForceGroupIcon::bMovie = nullptr;
 DWORD ForceGroupIcon::pilotVideoTexture = 0;
 MechWarrior*	ForceGroupIcon::pilotVideoPilot = nullptr;
 
@@ -161,7 +161,7 @@ GUI_RECT ForceGroupIcon:: healthBar[17]  = {0};
 
 float ForceGroupIcon::	pilotLocation[17][4]  = {0};
 
-aFont* ForceGroupIcon::gosFontHandle = nullptr;
+std::unique_ptr<aFont> ForceGroupIcon::gosFontHandle = nullptr;
 
 int ForceGroupIcon::curScreenWidth = 800;
 
@@ -247,7 +247,7 @@ ForceGroupIcon::~ForceGroupIcon()
 	{
 		if ( bMovie )
 		{
-			delete bMovie;
+			bMovie.reset();
 			bMovie = nullptr;
 			pilotVideoTexture = 0;
 		}
@@ -267,7 +267,7 @@ void ForceGroupIcon::init( FitIniFile& file, int which )
 		Assert( 0, 0, "couldn't find the icon" );
 
 	if ( !gosFontHandle )
-		gosFontHandle = new aFont();
+		gosFontHandle = std::make_unique<aFont>();
 
 	file.readIdLong( "TextAReaLeft", 	textArea[which].left );
 	file.readIdLong( "TextAreaRight", 	textArea[which].right );
@@ -354,7 +354,7 @@ void ForceGroupIcon::init( FitIniFile& file, int which )
 	healthBar[which].bottom     += ControlGui::hiResOffsetY;
 
 	if ( !jumpJetIcon )
-		jumpJetIcon = new StaticInfo;
+		jumpJetIcon = std::make_unique_for_overwrite<StaticInfo>();
 
 	jumpJetIcon->init( file, "JumpJetIcon", 0, 0 );
 
@@ -806,7 +806,7 @@ void MechIcon::update()
 		bool result = bMovie->update();
 		if (result)
 		{
-			delete bMovie;
+			bMovie.reset();
 			bMovie = nullptr;
 		}
 	}
@@ -1157,7 +1157,7 @@ void ForceGroupIcon::render()
 			if ( unit && (unit->getStatus () == OBJECT_STATUS_SHUTDOWN) )
 			{
 				bMovie->stop();
-				delete bMovie;
+				bMovie.reset();
 				bMovie = nullptr;
 				pilotVideoPilot = nullptr;
 			}

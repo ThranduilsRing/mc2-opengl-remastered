@@ -306,7 +306,7 @@ void __stdcall TerminateGameEngine()
 		//
 		if (ForceGroupIcon::jumpJetIcon)
 		{
-			delete ForceGroupIcon::jumpJetIcon;
+			ForceGroupIcon::jumpJetIcon.reset();
 			ForceGroupIcon::jumpJetIcon = nullptr;
 		}
 
