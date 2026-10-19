@@ -24,6 +24,16 @@
 // NS3: systemHeap defined in mclib/heap.cpp (engine boundary).
 UserHeapPtr guiHeap = nullptr;
 
+std::unique_ptr<UserInput> ownedUserInput;
+std::unique_ptr<FloatHelp> ownedFloatHelp;
+std::unique_ptr<PANE> ownedPane;
+std::unique_ptr<WINDOW> ownedWindow;
+std::unique_ptr<HeapList> ownedHeapList;
+std::unique_ptr<UserHeap> ownedSystemHeap;
+std::unique_ptr<UserHeap> ownedGuiHeap;
+std::unique_ptr<TimerManager> ownedTimerManager;
+std::unique_ptr<GameSoundSystem> ownedSoundSystem;
+
 
 // NS3: fastFiles/numFastFiles/maxFastFiles defined in mclib/fastfile.cpp (engine boundary).
 
@@ -416,13 +426,15 @@ void __stdcall InitializeGameEngine()
 		// Start the SystemHeap and globalHeapList
 		{
 			ZoneScopedN("InitializeGameEngine heaps");
-			globalHeapList = new HeapList;
+			ownedHeapList = std::make_unique_for_overwrite<HeapList>();
+			globalHeapList = ownedHeapList.get();
 			gosASSERT(globalHeapList != nullptr);
 		
 			globalHeapList->init();
 			globalHeapList->update();		//Run Instrumentation into GOS Debugger Screen
 		
-			systemHeap = new UserHeap;
+			ownedSystemHeap = std::make_unique_for_overwrite<UserHeap>();
+			systemHeap = ownedSystemHeap.get();
 			gosASSERT(systemHeap != nullptr);
 		
 			systemHeap->init(systemHeapSize,"SYSTEM");
@@ -963,7 +975,8 @@ void __stdcall InitializeGameEngine()
 		//--------------------------------------------------
 		// Setup Mouse Parameters from Prefs.CFG
 		{ ZoneScopedN("InitializeGameEngine input");
-		userInput = new UserInput;
+		ownedUserInput = std::make_unique_for_overwrite<UserInput>();
+		userInput = ownedUserInput.get();
 		userInput->init();
 		userInput->setMouseDoubleClickThreshold(doubleClickThreshold);
 		userInput->setMouseDragThreshold(dragThreshold);
@@ -986,7 +999,8 @@ void __stdcall InitializeGameEngine()
 		gosFontHandle = gos_LoadFont(path);
 		FontHandle = gosFontHandle;
 	
-		globalFloatHelp = new FloatHelp(MAX_FLOAT_HELPS);
+		ownedFloatHelp = std::make_unique<FloatHelp>(MAX_FLOAT_HELPS);
+		globalFloatHelp = ownedFloatHelp.get();
 		}
 	
 		//
@@ -1064,7 +1078,8 @@ void __stdcall InitializeGameEngine()
 		//--------------------------------------------------------------
 		// Start the GUI Heap.
 		{ ZoneScopedN("InitializeGameEngine guiHeap");
-		guiHeap = new UserHeap;
+		ownedGuiHeap = std::make_unique_for_overwrite<UserHeap>();
+		guiHeap = ownedGuiHeap.get();
 		gosASSERT(guiHeap != nullptr);
 		
 		guiHeap->init(guiHeapSize,"GUI");
@@ -1088,7 +1103,8 @@ void __stdcall InitializeGameEngine()
 		//------------------------------------------------
 		// Give the Sound System a Whirl!
 		{ ZoneScopedN("InitializeGameEngine sound");
-		soundSystem = new GameSoundSystem;
+		ownedSoundSystem = std::make_unique_for_overwrite<GameSoundSystem>();
+		soundSystem = ownedSoundSystem.get();
 		soundSystem->init();
 		((SoundSystem *)soundSystem)->init("sound");
 		sndSystem = soundSystem; // for things in the lib that use sound
@@ -1097,8 +1113,10 @@ void __stdcall InitializeGameEngine()
 		//-----------------------------------------------
 		// Only used by camera to retrieve screen coords.
 		{ ZoneScopedN("InitializeGameEngine paneWindow");
-		globalPane = new PANE;
-		globalWindow = new WINDOW;
+		ownedPane = std::make_unique_for_overwrite<PANE>();
+		globalPane = ownedPane.get();
+		ownedWindow = std::make_unique_for_overwrite<WINDOW>();
+		globalWindow = ownedWindow.get();
 	
 		globalPane->window = globalWindow;
 		globalPane->x0 = 0;
@@ -1116,7 +1134,8 @@ void __stdcall InitializeGameEngine()
 		//---------------------------------------------------------
 		// Start the Timers
 		{ ZoneScopedN("InitializeGameEngine timers");
-		timerManager = new TimerManager;
+		ownedTimerManager = std::make_unique_for_overwrite<TimerManager>();
+		timerManager = ownedTimerManager.get();
 		timerManager->init();
 		}
 	

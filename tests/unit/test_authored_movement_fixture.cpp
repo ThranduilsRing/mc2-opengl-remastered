@@ -38,10 +38,9 @@
 extern long LastMoveCalcErr;
 
 struct ObjectiveObservationFixture {
-    aFont font;
-    aFont* previous = CObjective::s_markerFont;
-    ObjectiveObservationFixture() { CObjective::s_markerFont = &font; }
-    ~ObjectiveObservationFixture() { CObjective::s_markerFont = previous; }
+    std::unique_ptr<aFont> previous = std::move(CObjective::s_markerFont);
+    ObjectiveObservationFixture() { CObjective::s_markerFont = std::make_unique<aFont>(); }
+    ~ObjectiveObservationFixture() { CObjective::s_markerFont = std::move(previous); }
 };
 
 TEST_CASE("ObjectiveObservation/replay preserves causes; decoded frames emit once; stale movies and completed availability emit nothing") {

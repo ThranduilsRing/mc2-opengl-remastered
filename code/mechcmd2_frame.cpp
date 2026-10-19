@@ -213,18 +213,18 @@ void __stdcall TerminateGameEngine()
 
 		GameLog::cleanup();
 
-		delete timerManager;
+		ownedTimerManager.reset();
 		timerManager = nullptr;
 
 		if (globalPane)
 		{
-			delete globalPane;
+			ownedPane.reset();
 			globalPane = nullptr;
 		}
 
 		if (globalWindow)
 		{
-			delete globalWindow;
+			ownedWindow.reset();
 			globalWindow = nullptr;
 		}
 
@@ -232,7 +232,7 @@ void __stdcall TerminateGameEngine()
 		{
 			soundSystem->destroy();
 
-			delete soundSystem;
+			ownedSoundSystem.reset();
 			soundSystem = nullptr;
 		}
 
@@ -248,14 +248,14 @@ void __stdcall TerminateGameEngine()
 			mcTextureManager = nullptr;
 		}
 
-		delete globalFloatHelp;
+		ownedFloatHelp.reset();
 		globalFloatHelp = nullptr;
 
 		if (systemHeap)
 		{
 			systemHeap->destroy();
 
-			delete systemHeap;
+			ownedSystemHeap.reset();
 			systemHeap = nullptr;
 		}
 
@@ -263,7 +263,7 @@ void __stdcall TerminateGameEngine()
 		{
 			guiHeap->destroy();
 
-			delete guiHeap;
+			ownedGuiHeap.reset();
 			guiHeap = nullptr;
 		}
 
@@ -271,7 +271,7 @@ void __stdcall TerminateGameEngine()
 		{
 			globalHeapList->destroy();
 
-			delete globalHeapList;
+			ownedHeapList.reset();
 			globalHeapList = nullptr;
 		}
 
@@ -288,7 +288,7 @@ void __stdcall TerminateGameEngine()
 		MidLevelRenderer::TerminateClasses();
 		Stuff::TerminateClasses();
 
-		delete userInput;
+		ownedUserInput.reset();
 		userInput = nullptr;
 
 		//Redundant.  Something else is shutting this down.

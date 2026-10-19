@@ -242,4 +242,15 @@ void __stdcall UpdateRenderers();
 void __stdcall TerminateGameEngine();
 void __stdcall DoGameLogic();
 
+// Startup owns these handles; the legacy engine globals borrow them.
+extern std::unique_ptr<UserInput> ownedUserInput;
+extern std::unique_ptr<FloatHelp> ownedFloatHelp;
+extern std::unique_ptr<PANE> ownedPane;
+extern std::unique_ptr<WINDOW> ownedWindow;
+extern std::unique_ptr<HeapList> ownedHeapList;
+extern std::unique_ptr<UserHeap> ownedSystemHeap;
+extern std::unique_ptr<UserHeap> ownedGuiHeap;
+extern std::unique_ptr<TimerManager> ownedTimerManager;
+extern std::unique_ptr<GameSoundSystem> ownedSoundSystem;
+
 #endif // MECHCMD2_INTERNAL_H
