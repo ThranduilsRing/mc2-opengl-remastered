@@ -139,9 +139,9 @@
    "LG20": 0
   },
   "code": {
-   "LG01": 77,
+   "LG01": 76,
    "LG02": 8,
-   "LG03": 745,
+   "LG03": 519,
    "LG04": 21,
    "LG05": 198,
    "LG06": 472,
@@ -155,7 +155,7 @@
    "LG13": 244,
    "LG14": 123,
    "LG15": 0,
-   "LG16": 7,
+   "LG16": 6,
    "LG17": 48,
    "LG18": 4,
    "LG19": 0,
@@ -1591,7 +1591,7 @@
   },
   "code/artlry.cpp": {
    "LG01": 10,
-   "LG03": 4,
+   "LG03": 1,
    "LG09": 20,
    "LG12b": 8,
    "LG13": 12
@@ -1609,7 +1609,7 @@
    "LG06": 1
   },
   "code/bldng.cpp": {
-   "LG03": 2,
+   "LG03": 1,
    "LG09": 36,
    "LG13": 2
   },
@@ -1721,7 +1721,6 @@
    "LG12b": 2
   },
   "code/controlgui.cpp": {
-   "LG03": 15,
    "LG09": 12
   },
   "code/controlgui.h": {
@@ -1731,7 +1730,6 @@
    "LG17": 2
   },
   "code/controlgui_chat.cpp": {
-   "LG03": 2,
    "LG06": 2,
    "LG09": 1,
    "LG11": 1
@@ -1741,7 +1739,6 @@
    "LG09": 13
   },
   "code/controlgui_init.cpp": {
-   "LG03": 16,
    "LG06": 1,
    "LG09": 4
   },
@@ -1758,7 +1755,6 @@
    "LG10": 1
   },
   "code/controlgui_update.cpp": {
-   "LG03": 1,
    "LG09": 8,
    "LG14": 1
   },
@@ -1885,18 +1881,16 @@
    "LG01": 1
   },
   "code/gametacmap.cpp": {
-   "LG03": 1,
    "LG09": 33,
    "LG10": 2,
    "LG12a": 2,
    "LG17": 1
   },
   "code/gametacmap.h": {
-   "LG03": 1,
    "LG17": 1
   },
   "code/gate.cpp": {
-   "LG03": 2,
+   "LG03": 1,
    "LG09": 18
   },
   "code/gate.h": {
@@ -1919,7 +1913,7 @@
    "LG16": 4
   },
   "code/gvehicl.cpp": {
-   "LG03": 2,
+   "LG03": 1,
    "LG09": 19,
    "LG12b": 5,
    "LG13": 1
@@ -1975,7 +1969,7 @@
    "LG09": 6
   },
   "code/infowindow.cpp": {
-   "LG03": 5,
+   "LG03": 3,
    "LG05": 1,
    "LG06": 2,
    "LG09": 78,
@@ -2011,14 +2005,14 @@
    "LG09": 3
   },
   "code/loadscreen.cpp": {
-   "LG03": 18,
+   "LG03": 12,
    "LG09": 24
   },
   "code/locomotion_facet.h": {
    "LG06": 3
   },
   "code/logistics.cpp": {
-   "LG03": 11,
+   "LG03": 4,
    "LG06": 2,
    "LG09": 1
   },
@@ -2034,7 +2028,6 @@
    "LG09": 2
   },
   "code/logisticscomponent.cpp": {
-   "LG03": 8,
    "LG05": 2,
    "LG06": 1,
    "LG17": 1
@@ -2061,7 +2054,7 @@
    "LG12a": 2
   },
   "code/logisticsdata_init.cpp": {
-   "LG03": 8,
+   "LG03": 6,
    "LG06": 4,
    "LG09": 8,
    "LG12a": 4
@@ -2110,19 +2103,19 @@
    "LG09": 5
   },
   "code/logisticsmissioninfo.cpp": {
-   "LG03": 5,
+   "LG03": 1,
    "LG05": 4
   },
   "code/logisticsmissioninfo.h": {
    "LG06": 8
   },
   "code/logisticsmissioninfo_progress.cpp": {
-   "LG03": 2,
+   "LG03": 1,
    "LG05": 5,
    "LG06": 3
   },
   "code/logisticsmissioninfo_query.cpp": {
-   "LG03": 3,
+   "LG03": 1,
    "LG05": 5,
    "LG06": 4
   },
@@ -2153,7 +2146,7 @@
    "LG09": 3
   },
   "code/mainmenu.cpp": {
-   "LG03": 9,
+   "LG03": 7,
    "LG05": 1,
    "LG06": 1,
    "LG09": 4,
@@ -2165,7 +2158,6 @@
    "LG06": 1
   },
   "code/mc2movie.cpp": {
-   "LG03": 4,
    "LG06": 2,
    "LG09": 1,
    "LG11": 1
@@ -2174,7 +2166,6 @@
    "LG06": 1
   },
   "code/mc2video.cpp": {
-   "LG03": 2,
    "LG05": 2,
    "LG06": 5,
    "LG09": 26,
@@ -2201,7 +2192,6 @@
    "LG09": 6
   },
   "code/mech_init.cpp": {
-   "LG03": 1,
    "LG09": 9
   },
   "code/mech_loadout.cpp": {
@@ -2233,7 +2223,7 @@
    "LG09": 11
   },
   "code/mechbayscreen.cpp": {
-   "LG03": 5,
+   "LG03": 1,
    "LG09": 3
   },
   "code/mechbayscreen_mechs.cpp": {
@@ -2289,7 +2279,6 @@
    "LG05": 7
   },
   "code/mechlabscreen.cpp": {
-   "LG03": 4,
    "LG05": 7,
    "LG09": 7,
    "LG11": 1
@@ -2374,7 +2363,7 @@
    "LG10": 1
   },
   "code/missionbegin.cpp": {
-   "LG03": 20,
+   "LG03": 18,
    "LG06": 2,
    "LG09": 12,
    "LG11": 1,
@@ -2386,7 +2375,7 @@
    "LG14": 1
   },
   "code/missionbriefingscreen.cpp": {
-   "LG03": 8,
+   "LG03": 5,
    "LG06": 4,
    "LG09": 10,
    "LG11": 1,
@@ -2399,7 +2388,6 @@
    "LG13": 3
   },
   "code/missiongui.cpp": {
-   "LG03": 6,
    "LG06": 1,
    "LG09": 1,
    "LG12a": 2,
@@ -2458,7 +2446,6 @@
    "LG20": 1
   },
   "code/missionresults.cpp": {
-   "LG03": 6,
    "LG06": 1,
    "LG12b": 1
   },
@@ -2466,7 +2453,6 @@
    "LG06": 1
   },
   "code/missionselectionscreen.cpp": {
-   "LG03": 4,
    "LG09": 1,
    "LG12b": 2
   },
@@ -2541,7 +2527,7 @@
    "LG06": 1
   },
   "code/mploadmap.cpp": {
-   "LG03": 6,
+   "LG03": 3,
    "LG05": 1,
    "LG06": 3,
    "LG09": 9,
@@ -2566,7 +2552,7 @@
    "LG06": 8
   },
   "code/mpprefs.cpp": {
-   "LG03": 4,
+   "LG03": 2,
    "LG05": 1,
    "LG06": 1,
    "LG09": 7,
@@ -2624,7 +2610,7 @@
    "LG12b": 1
   },
   "code/objective.cpp": {
-   "LG03": 47,
+   "LG03": 1,
    "LG05": 1,
    "LG06": 13,
    "LG09": 31,
@@ -2654,7 +2640,7 @@
    "LG06": 1
   },
   "code/objmgr_io.cpp": {
-   "LG03": 13,
+   "LG03": 9,
    "LG06": 1,
    "LG09": 34,
    "LG12a": 3,
@@ -2687,14 +2673,13 @@
    "LG06": 2
   },
   "code/optionsarea.cpp": {
-   "LG03": 13,
+   "LG03": 2,
    "LG05": 2,
    "LG06": 2,
    "LG09": 34,
    "LG12a": 1,
    "LG12b": 5,
-   "LG13": 4,
-   "LG16": 1
+   "LG13": 4
   },
   "code/optionsarea.h": {
    "LG06": 2
@@ -2703,7 +2688,6 @@
    "LG03": 2
   },
   "code/pausewindow.cpp": {
-   "LG03": 9,
    "LG09": 20,
    "LG11": 1
   },
@@ -2711,12 +2695,12 @@
    "LG14": 1
   },
   "code/pilotreadyscreen.cpp": {
-   "LG03": 5,
+   "LG03": 3,
    "LG09": 6,
    "LG12b": 10
   },
   "code/pilotreviewarea.cpp": {
-   "LG03": 93,
+   "LG03": 83,
    "LG09": 7,
    "LG12b": 20,
    "LG13": 7
@@ -2737,7 +2721,7 @@
    "LG09": 2
   },
   "code/salvagemecharea.cpp": {
-   "LG03": 29,
+   "LG03": 9,
    "LG05": 1,
    "LG09": 10,
    "LG12a": 1,
@@ -2822,7 +2806,7 @@
   },
   "code/terrobj.cpp": {
    "LG01": 4,
-   "LG03": 3,
+   "LG03": 1,
    "LG04": 5,
    "LG09": 30,
    "LG12a": 2,
@@ -2842,7 +2826,7 @@
    "LG14": 1
   },
   "code/turret.cpp": {
-   "LG03": 2,
+   "LG03": 1,
    "LG09": 46,
    "LG12b": 17,
    "LG17": 1
@@ -2923,7 +2907,7 @@
    "LG09": 3
   },
   "code/warrior_state.cpp": {
-   "LG03": 4,
+   "LG03": 3,
    "LG06": 1,
    "LG09": 14
   },
@@ -2945,11 +2929,11 @@
    "LG09": 1
   },
   "code/weaponbolt.cpp": {
-   "LG03": 4,
+   "LG03": 1,
    "LG09": 11
   },
   "code/weaponbolt.h": {
-   "LG01": 9,
+   "LG01": 8,
    "LG02": 1,
    "LG09": 7
   },
@@ -4713,7 +4697,7 @@
    "LG20": 3
   }
  },
- "head": "8e4168d40",
+ "head": "8c68fa809",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

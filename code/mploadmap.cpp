@@ -48,7 +48,7 @@ MPLoadMap::MPLoadMap()
 MPLoadMap::~MPLoadMap()
 {
 	mapList.destroy();
-	delete mapListPage;
+	mapListPage.reset();
 }
 
 int MPLoadMap::indexOfButtonWithID(int id)
@@ -115,10 +115,10 @@ void MPLoadMap::init(FitIniFile* file)
 		const std::string replacementPath = UiDefs::replacementPathForLegacyFit( "mcl_mp_loadmap_list0.fit" );
 		if ( !replacementPath.empty() )
 		{
-			mapListPage = new UiDefs::GameOSPage();
+			mapListPage = std::make_unique<UiDefs::GameOSPage>();
 			if ( !mapListPage->load( replacementPath.c_str() ) )
 			{
-				delete mapListPage;
+				mapListPage.reset();
 				mapListPage = nullptr;
 			}
 		}

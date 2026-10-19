@@ -35,6 +35,7 @@
 #include<stuff/stuff.hpp>
 #include<gosfx/gosfxheaders.hpp>
 #include <cstdint>
+#include <memory>
 #include "particles/gpu_trail.h"
 //---------------------------------------------------------------------------
 // Macro Definitions
@@ -203,7 +204,7 @@ class WeaponBolt : public GameObject
 			// preserving the target lost by connect()'s position-bolt conversion.
 			// Transient: WeaponBoltData omits it; loaded bolts use stock splash.
 			GameObjectWatchID	aimedTargetWID;
-			glm::vec3		*targetPosition;
+			std::unique_ptr<glm::vec3>		targetPosition;
 			float				distanceToTarget;
 			float				halfDistanceToTarget;
 			
@@ -259,7 +260,7 @@ class WeaponBolt : public GameObject
 			init(true);
 			hotSpotNumber = 0;
 			targetHotSpot = 0;
-			targetPosition = NULL;
+			targetPosition = nullptr;
 			
 			distanceToTarget = 0.0;
 

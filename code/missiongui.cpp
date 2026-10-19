@@ -46,6 +46,16 @@
 			"None"	//MC_NONE_TYPE
 		};
 
+MissionInterfaceManager::MissionInterfaceManager (void)
+{
+	init();
+}
+
+MissionInterfaceManager::~MissionInterfaceManager (void)
+{
+	destroy();
+}
+
 float MissionInterfaceManager::pauseWndVelocity = -50.f;
 
 int MissionInterfaceManager::mouseX = 0;
@@ -242,7 +252,7 @@ void MissionInterfaceManager::init (void)
 	hotKeyHeaderFont.init( IDS_HOT_KEY_HEADER_FONT );
 	lastUpdateDoubleClick = 0;
 
-	keyboardRef = new KeyboardRef;
+	keyboardRef = std::make_unique_for_overwrite<KeyboardRef>();
 	
 	animationRunning = false;
 	timeLeftToScroll = 0.0f;
@@ -412,7 +422,7 @@ void MissionInterfaceManager::destroy (void)
 		vTol[i].reset();
 	}
 
-	delete keyboardRef;
+	keyboardRef.reset();
 	keyboardRef = nullptr;
 }	
 

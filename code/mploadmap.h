@@ -1,4 +1,5 @@
 #include <string>
+#include <memory>
 #ifndef MPLOADMAP_H
 #define MPLOADMAP_H
 /*************************************************************************************************\
@@ -67,7 +68,7 @@ private:
 	// UiDefs::GameOSPage::setListItems). Read-only mirror for now: mapList
 	// remains the source of truth for selection/clicks; this just makes
 	// the same items+selection visible through the new List element.
-	UiDefs::GameOSPage*	mapListPage;
+	std::unique_ptr<UiDefs::GameOSPage>	mapListPage;
 	void					syncMapListPage();
 
 	std::string					selMapName;
