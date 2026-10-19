@@ -2,6 +2,7 @@
 // terrain objects, commanders, the HUD and the geometry finalize. The first half and the orchestrator are in mission_init.cpp.
 #include "mission_internal.h"
 #include "mission_init_frame.h"
+#include "render_resource_owners.h"
 #include "mc2fmt.h"
 
 
@@ -885,7 +886,8 @@ void Mission::initWeatherCamera(MissionInitFrame& f) {
 	weather = new Weather;
 	weather->init(missionFile);
 	
-	eye = new GameCamera;
+	missionCamera = std::make_unique_for_overwrite<GameCamera>();
+	eye = missionCamera.get();
 	eye->init();
 	gosASSERT(eye != nullptr);
 

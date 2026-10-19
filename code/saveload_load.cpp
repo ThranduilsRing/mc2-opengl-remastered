@@ -3,6 +3,7 @@
 // orchestrator are in saveload.cpp.
 #include "saveload_internal.h"
 #include "mission_load_frame.h"
+#include "render_resource_owners.h"
 #include "mc2fmt.h"
 #include "tex_resolve_table.h"
 #include "frame_jobs.h"
@@ -492,7 +493,8 @@ void Mission::loadWeatherCamera(MissionLoadFrame& f) {
 	loadProgress = 95.0;
  	//---------------------------------------------------------------
 	// Start the Camera and Lists
-	eye = new GameCamera;
+	missionCamera = std::make_unique_for_overwrite<GameCamera>();
+	eye = missionCamera.get();
 	eye->init();
 	gosASSERT(eye != nullptr);
 

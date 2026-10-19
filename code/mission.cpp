@@ -462,6 +462,7 @@ float minFrameLength = 1.0/4.0;
 long MissionStartTime =	0;			//No Idea
 
 Mission *mission = nullptr;
+std::unique_ptr<Camera> missionCamera;
 unsigned long scenarioResult = mis_PLAYING;
 long scenarioEndTurn = -1;
 long MechSalvageChance = 100;
@@ -1007,7 +1008,7 @@ void Mission::destroy (bool initLogistics)
 	{
 		eye->destroy();
 
-		delete eye;
+		missionCamera.reset();
 		eye = nullptr;
 		// Camera aliases outlive the camera and must not expose freed matrices during load.
 		TG_Shape::s_cameraOrigin = nullptr;
