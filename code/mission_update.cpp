@@ -38,7 +38,7 @@ static void simClockTraceTick(float scenarioTimeNow)
 	static uint64_t s_frameCount = 0;
 	static uint64_t s_lastEmitWallMs = 0;
 
-	uint64_t nowMs = (uint64_t)timeGetTime();
+	uint64_t nowMs = static_cast<uint64_t>(timeGetTime());
 	if (!s_seeded)
 	{
 		s_wallStartMs = nowMs;
@@ -50,13 +50,13 @@ static void simClockTraceTick(float scenarioTimeNow)
 
 	if (nowMs - s_lastEmitWallMs >= 1000)
 	{
-		double wallElapsedSec = (double)(nowMs - s_wallStartMs) / 1000.0;
-		double simElapsedSec = (double)(scenarioTimeNow - s_scenarioStart);
+		double wallElapsedSec = static_cast<double>((nowMs - s_wallStartMs)) / 1000.0;
+		double simElapsedSec = static_cast<double>((scenarioTimeNow - s_scenarioStart));
 		double ratio = (wallElapsedSec > 0.0) ? (simElapsedSec / wallElapsedSec) : 0.0;
 		fprintf(stderr,
 			"[SIM-CLOCK-TRACE] wall=%.3fs sim=%.3fs ratio(sim/wall)=%.3f frames=%llu frameLength=%.5f\n",
 			wallElapsedSec, simElapsedSec, ratio,
-			(unsigned long long)s_frameCount, (double)frameLength);
+			static_cast<unsigned long long>(s_frameCount), static_cast<double>(frameLength));
 		fflush(stderr);
 		s_lastEmitWallMs = nowMs;
 	}
@@ -79,8 +79,8 @@ namespace {
 		std::printf("[MISSION_SPLIT v1] event=shutdown frames=%llu", s_misFrames);
 		for (int i = 0; i < MS_COUNT; i++)
 			std::printf(" %s={avg_us:%.1f,max_us:%.1f}", s_misNames[i],
-				s_misFrames ? (double)s_misNs[i]/s_misFrames/1000.0 : 0.0,
-				(double)s_misMax[i]/1000.0);
+				s_misFrames ? static_cast<double>(s_misNs[i])/s_misFrames/1000.0 : 0.0,
+				static_cast<double>(s_misMax[i])/1000.0);
 		std::printf("\n"); std::fflush(stdout);
 	}
 	struct MisScope {
@@ -307,14 +307,14 @@ void Mission::updateFrameClock() {
 			// advance it by exactly one fixed step.
 			DWORD currentTimeGetTime =
 				firstFrame ? timeGetTime()
-				           : (DWORD)(LastTimeGetTime + (DWORD)milliseconds);
+				           : static_cast<DWORD>((LastTimeGetTime + static_cast<DWORD>(milliseconds)));
 			if (!firstFrame)
 				scenarioTime += (milliseconds / 1000.0f);
 			LastTimeGetTime = currentTimeGetTime;
 			// Deterministic clock probe (frames 60/120/180). Counts only
 			// frames where the fixed step advanced scenarioTime.
 			if (!firstFrame)
-				SmokeMode::fixedTimestepOnSimFrame((double)scenarioTime);
+				SmokeMode::fixedTimestepOnSimFrame(static_cast<double>(scenarioTime));
 		}
 		else
 		{
@@ -477,7 +477,7 @@ void Mission::updateCratersAndDamp() {
 		}
 		static const float s_objfadeRadiusWu = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE_RADIUS">();   // the row clamps to [32, 1024]
 		gos_TerrainLodChunk_UpdateVisualDampMovers(
-			s_moverCells.data(), (int)(s_moverCells.size() / 2),
+			s_moverCells.data(), static_cast<int>((s_moverCells.size() / 2)),
 			s_objfadeRadiusWu / wupv, 48.0f / wupv);
 	}
 }
@@ -518,8 +518,8 @@ void Mission::updateTraceHooks() {
 	// clock off it pins to 0 and the `t=` field is the usable diff axis --
 	// which is correct, because determinism is not claimed at all then.
 	mc2SimIdentityTraceFrame(
-		(double)scenarioTime,
-		(long)(SmokeMode::fixedClockSeconds() * 30.0 + 0.5));
+		static_cast<double>(scenarioTime),
+		static_cast<long>((SmokeMode::fixedClockSeconds() * 30.0 + 0.5)));
 
 	// META-FIX design A: mover-registry coherence audit (~1 Hz walk over
 	// home-commander movers + force-bar icons; read-only). No-op unless
@@ -723,7 +723,7 @@ void Mission::updateSoakAutoWin() {
 			scenarioResult = mis_PLAYER_WIN_BIG;
 			s_soakWinEmitted = true;
 			printf("[SOAK] autowin mission=%s t=%.1f\n",
-				missionFileName, (float)scenarioTime);
+				missionFileName, static_cast<float>(scenarioTime));
 			fflush(stdout);
 		}
 	}
@@ -842,20 +842,20 @@ void Mission::updateSoakKillEnemy() {
 					pTrade = pM;
 			}
 			char* newPilotName = (pTrade && LogisticsData::instance)
-				? (char*)LogisticsData::instance->getBestPilot(pTrade->tonnage)
+				? const_cast<char*>(LogisticsData::instance->getBestPilot(pTrade->tonnage))
 				: nullptr;
 			if (pTrade && newPilotName && Team::home && Commander::home)
 			{
 				// Mirror missiongui.cpp salvage-craft recovery verbatim.
-				while (((MoverPtr)pTrade)->recover() == false)
+				while ((static_cast<MoverPtr>(pTrade))->recover() == false)
 					;
 				if (pTrade->isDisabled())
 				{
 					pTrade->setStatus(OBJECT_STATUS_SHUTDOWN, true);
 					if (pTrade->getSensorSystem())
 						pTrade->getSensorSystem()->broken = false;
-					((MoverPtr)pTrade)->timeLeft = 1.0f;
-					((MoverPtr)pTrade)->exploding = false;
+					(static_cast<MoverPtr>(pTrade))->timeLeft = 1.0f;
+					(static_cast<MoverPtr>(pTrade))->exploding = false;
 				}
 				tradeMover(pTrade, Team::home->getId(),
 					Commander::home->getId(), newPilotName, "pbrain");
@@ -894,7 +894,7 @@ void Mission::updateSoakKillEnemy() {
 						LogisticsData::instance->getVariant(pM->variantName);
 					if (!pVar) continue;
 					LogisticsData::instance->addMechToInventory(
-						pVar, (LogisticsPilot*)nullptr, 0, /*bSubtractPts=*/false);
+						pVar, static_cast<LogisticsPilot*>(nullptr), 0, /*bSubtractPts=*/false);
 					++salvCount;
 				}
 			}
@@ -954,9 +954,9 @@ void Mission::updateOrderLiveness() {
 					olEnemy, ATTACK_TO_DESTROY, ATTACKMETHOD_RANGED,
 					FIRERANGE_OPTIMAL, -1, -1, TACORDER_PARAM_PURSUE);
 				printf("[ORDER_FIXTURE] kind=attack wid=%lu tgt=%lu t=%.1f\n",
-					(unsigned long)pM->getWatchID(),
-					(unsigned long)olEnemy->getWatchID(),
-					(float)scenarioTime);
+					static_cast<unsigned long>(pM->getWatchID()),
+					static_cast<unsigned long>(olEnemy->getWatchID()),
+					static_cast<float>(scenarioTime));
 			}
 			fflush(stdout);
 			s_olAttackIssued = true;
@@ -996,7 +996,7 @@ void Mission::updateOrderLiveness() {
 				s_olEntries[s_olIssuedMove].startPos = olPos;
 				++s_olIssuedMove;
 				printf("[ORDER_FIXTURE] kind=move wid=%lu tgt=0 t=%.1f\n",
-					(unsigned long)pM->getWatchID(), (float)scenarioTime);
+					static_cast<unsigned long>(pM->getWatchID()), static_cast<float>(scenarioTime));
 			}
 			fflush(stdout);
 			s_olMoveIssued = true;

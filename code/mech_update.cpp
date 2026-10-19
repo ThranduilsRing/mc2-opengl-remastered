@@ -22,16 +22,16 @@ long BattleMech::update (void)
 
 	if ( getTeam() == Team::home )
 	{
-		((ObjectAppearance*)appearance)->pilotNameID = getPilot()->descID;
-		((ObjectAppearance*)appearance)->pilotName[0] = 0;
+		(static_cast<ObjectAppearance*>(appearance))->pilotNameID = getPilot()->descID;
+		(static_cast<ObjectAppearance*>(appearance))->pilotName[0] = 0;
 		appearance->setMechName( variantName );
 	}
 	else if ( MPlayer )
 	{
-		strcpy( ((ObjectAppearance*)appearance)->pilotName, (commanderId > -1) ? MPlayer->playerInfo[commanderId].name : " " );
+		strcpy( (static_cast<ObjectAppearance*>(appearance))->pilotName, (commanderId > -1) ? MPlayer->playerInfo[commanderId].name : " " );
 	}
 	else
-		((ObjectAppearance*)appearance)->pilotNameID = -1;
+		(static_cast<ObjectAppearance*>(appearance))->pilotNameID = -1;
 
 	if (isDestroyed() || isDisabled())
 		setTangible(false);
@@ -104,8 +104,8 @@ long BattleMech::update (void)
 			if (s_linkupTrace && ((turn & 31) == 0))
 			{
 				printf("[LINKUP] part=%d name=%s status=%d onGUI=0 los=%d pos=(%.0f,%.0f)\n",
-					(int)getPartId(), getName() ? getName() : "(null)",
-					(int)status, linkupLos ? 1 : 0,
+					static_cast<int>(getPartId()), getName() ? getName() : "(null)",
+					static_cast<int>(status), linkupLos ? 1 : 0,
 					position.x, position.y);
 				fflush(stdout);
 			}
@@ -114,7 +114,7 @@ long BattleMech::update (void)
 				if (s_linkupTrace)
 				{
 					printf("[LINKUP] linkup-complete part=%d name=%s\n",
-						(int)getPartId(), getName() ? getName() : "(null)");
+						static_cast<int>(getPartId()), getName() ? getName() : "(null)");
 					fflush(stdout);
 				}
 				mission->missionInterface->addMover(this);
@@ -176,7 +176,7 @@ long BattleMech::update (void)
 		if (!isDisabled()) {
 			MoverPtr ramTarget = nullptr;
 			if ((getPilot()->getCurTacOrder()->code == TACTICAL_ORDER_ATTACK_OBJECT) && (getPilot()->getCurTacOrder()->attackParams.method == ATTACKMETHOD_RAMMING))
-				ramTarget = (MoverPtr)getPilot()->getCurTacOrder()->getRamTarget();
+				ramTarget = static_cast<MoverPtr>(getPilot()->getCurTacOrder()->getRamTarget());
 			if (ramTarget)
 				ramTarget->updatePathLock(false);
 
@@ -343,7 +343,7 @@ long BattleMech::update (void)
 	{
 		updatePathLock(false);
 	
-		((ObjectAppearance*)appearance)->pilotNameID = IDS_NOPILOT;
+		(static_cast<ObjectAppearance*>(appearance))->pilotNameID = IDS_NOPILOT;
 		control.settings.mech.gestureGoal = -1;
 		updateDynamics();
 
@@ -450,7 +450,7 @@ long BattleMech::update (void)
 			{
 				glm::vec3 cockpitPos = appearance->getNodeNamePosition("cockpit");
 				if (getMoveType() != MOVETYPE_AIR)
-					ObjectManager->createExplosion(MECH_EXPLOSION_ID,nullptr,cockpitPos,((BattleMechTypePtr)getObjectType())->explDmg,((BattleMechTypePtr)getObjectType())->explRad);
+					ObjectManager->createExplosion(MECH_EXPLOSION_ID,nullptr,cockpitPos,(static_cast<BattleMechTypePtr>(getObjectType()))->explDmg,(static_cast<BattleMechTypePtr>(getObjectType()))->explRad);
 				else
 					ObjectManager->createExplosion(VEHICLE_EXPLOSION_ID,nullptr,cockpitPos,0.0f,0.0f);
 
@@ -525,7 +525,7 @@ long BattleMech::update (void)
 		if (st == OBJECT_STATUS_SHUTDOWN)  flags |= RenderCore::kMechVisualFlag_Shutdown;
 		if (st == OBJECT_STATUS_DISABLED)  flags |= RenderCore::kMechVisualFlag_Disabled;
 		if (st == OBJECT_STATUS_DESTROYED) flags |= RenderCore::kMechVisualFlag_Destroyed;
-		flags = RenderCore::packMechRelation(flags, (uint32_t)homeRelations);
+		flags = RenderCore::packMechRelation(flags, static_cast<uint32_t>(homeRelations));
 		vs.flags = flags;
 		// static_cast safe: BattleMech::appearance is always Mech3DAppearance*
 		// (created in BattleMech::init). setVisualState is
@@ -968,7 +968,7 @@ float BattleMech::getJumpRange (long* numOffsets, long* jumpCost) {
 		else
 			*jumpCost = 0;
 	}
-	return((float)numJets * Terrain::worldUnitsPerVertex);
+	return(static_cast<float>(numJets) * Terrain::worldUnitsPerVertex);
 }
 
 bool BattleMech::handleFall (bool forward) {

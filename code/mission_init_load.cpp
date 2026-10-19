@@ -26,7 +26,7 @@ void Mission::initWarriorsHeader(MissionInitFrame& f) {
 	// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1): the
 	// 1-based warrior loops below index warriorList[numWarriors] -- a
 	// file-supplied count >= MAX_WARRIORS reads past the static array.
-	if (!MC2_VERIFY((long)numWarriors < MAX_WARRIORS,
+	if (!MC2_VERIFY(static_cast<long>(numWarriors) < MAX_WARRIORS,
 			"Mission::init: NumWarriors %lu exceeds MAX_WARRIORS-1 (%d) -- bounding",
 			numWarriors, MAX_WARRIORS - 1))
 		numWarriors = MAX_WARRIORS - 1;
@@ -76,11 +76,11 @@ void Mission::loadWarriors(MissionInitFrame& f) {
 			long result = pilotFile.open(pilotFullFileName);
 			// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
 			MC2_VERIFY(result == NO_ERR, "Mission::init: warrior profile open failed: %s",
-				(const char*)pilotFullFileName);
+				static_cast<const char*>(pilotFullFileName));
 			result = pilot->init(&pilotFile);
 			// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
 			MC2_VERIFY(result == NO_ERR, "Mission::init: warrior init failed: %s",
-				(const char*)pilotFullFileName);
+				static_cast<const char*>(pilotFullFileName));
 			
 			pilotFile.close();
 			
@@ -193,11 +193,11 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 		File mfFile;
 		if (mfFile.open(missionFileName) == NO_ERR) {
 			unsigned long mfSz = mfFile.getLength();
-			char* mfBuf = (char*)malloc(mfSz + 1);
+			char* mfBuf = static_cast<char*>(malloc(mfSz + 1));
 			if (mfBuf) {
-				mfFile.read((MemoryPtr)mfBuf, (long)mfSz);
+				mfFile.read(reinterpret_cast<MemoryPtr>(mfBuf), static_cast<long>(mfSz));
 				mfBuf[mfSz] = '\0';
-				MissionFitBrain* mfBrains = (MissionFitBrain*)malloc(sizeof(MissionFitBrain) * 128);
+				MissionFitBrain* mfBrains = static_cast<MissionFitBrain*>(malloc(sizeof(MissionFitBrain) * 128));
 				int mfN = mfBrains ? parseMissionFitBrains(mfBuf, mfBrains, 128) : 0;
 				int mfPatrol = 0, mfGuard = 0, mfSentry = 0, mfEscort = 0, mfOther = 0;
 				for (int r = 0; r < mfN; ++r) {
@@ -215,10 +215,10 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 					rt->engageRadius         = (b.engageRadius >= 0) ? b.engageRadius : ad.engageRadius;
 					rt->swAttackerHelpRadius = (b.attackerHelpRadius >= 0) ? b.attackerHelpRadius : ad.attackerHelpRadius;
 					rt->swDefenderHelpRadius = (b.defenderHelpRadius >= 0) ? b.defenderHelpRadius : ad.defenderHelpRadius;
-					rt->swRequestHelp        = (b.requestHelp  >= 0) ? (int8_t)b.requestHelp  : (int8_t)ad.requestHelp;
-					rt->swReturnToPost       = (b.returnToPost >= 0) ? (int8_t)b.returnToPost : (int8_t)ad.returnToPost;
-					rt->swWakeOnAttack       = (int8_t)b.wakeOnAttack;
-					rt->swPoweredDown        = (int8_t)b.poweredDown;
+					rt->swRequestHelp        = (b.requestHelp  >= 0) ? static_cast<int8_t>(b.requestHelp)  : static_cast<int8_t>(ad.requestHelp);
+					rt->swReturnToPost       = (b.returnToPost >= 0) ? static_cast<int8_t>(b.returnToPost) : static_cast<int8_t>(ad.returnToPost);
+					rt->swWakeOnAttack       = static_cast<int8_t>(b.wakeOnAttack);
+					rt->swPoweredDown        = static_cast<int8_t>(b.poweredDown);
 					rt->opordType[0] = pType;
 					rt->opordType[1] = brainOpordTypeId(b.secondary.type);
 					rt->opordType[2] = brainOpordTypeId(b.tertiary.type);
@@ -243,7 +243,7 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 								rt->patrolWaypoints[wi][1] = b.primary.waypoints[wi].y;
 								rt->patrolWaypoints[wi][2] = z;
 							}
-							rt->patrolWaypointCount = (uint8_t)wc;
+							rt->patrolWaypointCount = static_cast<uint8_t>(wc);
 							rt->patrolWaypointIndex = 0;
 							rt->patrolLoop   = b.primary.loop;
 							rt->patrolActive = true;
@@ -255,7 +255,7 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 							rt->guardHold = true; rt->sentryAsleep = (rt->swPoweredDown == 1); ++mfSentry; break;
 						case 4: {   // Escort
 							int ei = b.primary.escortTargetIndex;
-							if (ei >= 1 && (unsigned long)ei <= numWarriors && MechWarrior::warriorList[ei] &&
+							if (ei >= 1 && static_cast<unsigned long>(ei) <= numWarriors && MechWarrior::warriorList[ei] &&
 							    MechWarrior::warriorList[ei]->getVehicle())
 								rt->escortTargetWID = MechWarrior::warriorList[ei]->getVehicle()->getWatchID();
 							rt->escortMoving = true; rt->guardHold = true; ++mfEscort; break;
@@ -270,7 +270,7 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 									rt->patrolWaypoints[wi][1] = b.primary.waypoints[wi].y;
 									rt->patrolWaypoints[wi][2] = z;
 								}
-								rt->patrolWaypointCount = (uint8_t)wc;
+								rt->patrolWaypointCount = static_cast<uint8_t>(wc);
 								rt->patrolWaypointIndex = 0;
 								rt->patrolLoop = false;   // move once to destination, do not loop
 								rt->patrolActive = true;
@@ -289,7 +289,7 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 									rt->patrolWaypoints[wi][1] = b.primary.waypoints[wi].y;
 									rt->patrolWaypoints[wi][2] = z;
 								}
-								rt->patrolWaypointCount = (uint8_t)wc;
+								rt->patrolWaypointCount = static_cast<uint8_t>(wc);
 								rt->patrolWaypointIndex = 0;
 								rt->patrolLoop = false;   // move once to destination, do not loop
 								rt->patrolActive = true;
@@ -308,7 +308,7 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 									rt->patrolWaypoints[wi][1] = b.primary.waypoints[wi].y;
 									rt->patrolWaypoints[wi][2] = z;
 								}
-								rt->patrolWaypointCount = (uint8_t)wc;
+								rt->patrolWaypointCount = static_cast<uint8_t>(wc);
 								rt->patrolWaypointIndex = 0;
 								rt->patrolLoop = b.primary.loop;
 								rt->patrolActive = true;
@@ -355,7 +355,7 @@ void Mission::loadBrainRuntime(MissionInitFrame& f) {
 					// Parse "Warrior%d" -> 1-based index.
 					int warriorIdx = -1;
 					std::sscanf(unitRefBuf, "Warrior%d", &warriorIdx);
-					if (warriorIdx >= 1 && warriorIdx <= (int)numWarriors) {
+					if (warriorIdx >= 1 && warriorIdx <= static_cast<int>(numWarriors)) {
 						MechWarriorPtr w = MechWarrior::warriorList[warriorIdx];
 						if (w) {
 							BrainRuntimeMode fitMode = BrainRuntimeMode::Legacy;
@@ -370,7 +370,7 @@ void Mission::loadBrainRuntime(MissionInitFrame& f) {
 							std::fflush(stderr);
 						}
 					} else {
-						mc2::fmt::print_err("[BRAIN_RT] WARNING: _ai.fit Brain block unitRef={} idx={:d} out of range [1..{:d}]\n", mc2::fmt::safe(unitRefBuf), mc2::fmt::as_i32(warriorIdx), mc2::fmt::as_u32((unsigned long)numWarriors));
+						mc2::fmt::print_err("[BRAIN_RT] WARNING: _ai.fit Brain block unitRef={} idx={:d} out of range [1..{:d}]\n", mc2::fmt::safe(unitRefBuf), mc2::fmt::as_i32(warriorIdx), mc2::fmt::as_u32(static_cast<unsigned long>(numWarriors)));
 					}
 				}
 			}
@@ -841,7 +841,7 @@ void Mission::initCommanders(char (*commandersToLoad)[3], MissionInitFrame& f) {
 			for (long curMate = 0; curMate < MAX_MOVERGROUP_COUNT_START; curMate++) {
 				if ((groupMates[curMate] > 0) && parts[groupMates[curMate]].objectWID) {
 					ObjectManager->setPartId(ObjectManager->getByWatchID(parts[groupMates[curMate]].objectWID), ctlCommander, numGroups, curMate);
-					Commander::commanders[ctlCommander]->getGroup(numGroups)->add((MoverPtr)ObjectManager->getByWatchID(parts[groupMates[curMate]].objectWID));
+					Commander::commanders[ctlCommander]->getGroup(numGroups)->add(static_cast<MoverPtr>(ObjectManager->getByWatchID(parts[groupMates[curMate]].objectWID)));
 					if (!pointSet) {
 						Commander::commanders[ctlCommander]->getGroup(numGroups)->selectPoint(true);
 						pointSet = true;

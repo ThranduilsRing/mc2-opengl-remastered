@@ -78,7 +78,7 @@ void MechListBox::update()
 	{
 		for ( int i = 0; i < itemCount; i++ )
 		{
-			if ( ((MechListBoxItem*)items[i])->mechCount == 0 )
+			if ( (static_cast<MechListBoxItem*>(items[i]))->mechCount == 0 )
 			{
 				RemoveItem( items[i], true );
 				i--;
@@ -114,7 +114,7 @@ LogisticsMech* MechListBox::getCurrentMech()
 {
 	if ( itemSelected != -1 )
 	{
-		return ((MechListBoxItem*)items[itemSelected])->pMech;
+		return (static_cast<MechListBoxItem*>(items[itemSelected]))->pMech;
 	}
 
 	return nullptr;
@@ -245,7 +245,7 @@ void MechListBoxItem::init( FitIniFile& file )
 		file.readIdLong( "Width", width );
 		file.readIdLong( "Height", height );
 
-		((aObject*)s_templateItem.get())->init( 0, 0, width, height );
+		(static_cast<aObject*>(s_templateItem.get()))->init( 0, 0, width, height );
 
 		memset( s_templateItem->animationIDs, 0, sizeof(long) * 9  );
 
@@ -521,8 +521,8 @@ void MechListBox::initIcon( LogisticsMech* pMech, aObject& mechIcon )
 	if ( mcTextureManager &&
 	     mcTextureManager->tryGetTextureLogicalSize( mechIcon.getTextureHandle(), atlasW, atlasH ) )
 	{
-		if ( atlasW > 0 ) fileW = (float)atlasW;
-		if ( atlasH > 0 ) fileH = (float)atlasH;
+		if ( atlasW > 0 ) fileW = static_cast<float>(atlasW);
+		if ( atlasH > 0 ) fileH = static_cast<float>(atlasH);
 	}
 	// Cell/UV math shared with logisticsmechicon.cpp via code/icon_atlas_cell.h
 	// (ICON-ATLAS-CELL-EXTRACT-1). FLOOR column count + epsilon + 10-col fallback;
@@ -531,7 +531,7 @@ void MechListBox::initIcon( LogisticsMech* pMech, aObject& mechIcon )
 	// UNCHANGED on OOB (wrap is load-bearing), one icon_oob line emitted.
 	bool iconOob = false;
 	const icon_atlas::Cell cell = icon_atlas::cellForIndexChecked( index, width, height, fileW, fileH, &iconOob );
-	if ( iconOob && mc2AuditOnce( "ICON_OOB", 0x2000000ull + (unsigned long long)(unsigned long)index ) )
+	if ( iconOob && mc2AuditOnce( "ICON_OOB", 0x2000000ull + static_cast<unsigned long long>(static_cast<unsigned long>(index)) ) )
 		mc2AuditLinef( "[ASSET_LOAD v1] event=icon_oob site=mechlistbox index=%ld cell=%.0fx%.0f atlas=%.0fx%.0f",
 			index, width, height, fileW, fileH );
 	const long cols = cell.cols;
@@ -584,31 +584,31 @@ long MechListBox::AddItem(aListItem* itemString)
 		for ( int i = 0; i < itemCount; i++ )
 		{
 
-			long ID = ((MechListBoxItem*)items[i])->pMech->getChassisName();
+			long ID = (static_cast<MechListBoxItem*>(items[i]))->pMech->getChassisName();
 			char tmpChassisName[256];
 			cLoadString( ID, tmpChassisName, 255 );
 			const std::string chassisName = tmpChassisName;
-			if ( ((MechListBoxItem*)items[i])->pMech->getMaxWeight() < pItem->pMech->getMaxWeight() )
+			if ( (static_cast<MechListBoxItem*>(items[i]))->pMech->getMaxWeight() < pItem->pMech->getMaxWeight() )
 			{
 				return InsertItem( itemString, i );
 				break;
 			}
-			else if ( ((MechListBoxItem*)items[i])->pMech->getMaxWeight() == pItem->pMech->getMaxWeight()
+			else if ( (static_cast<MechListBoxItem*>(items[i]))->pMech->getMaxWeight() == pItem->pMech->getMaxWeight()
 				&& mc2::str::icompare( chassisName, addedName ) > 0 )
 			{
 				return InsertItem( itemString, i );
 			}
-			else if ( ((MechListBoxItem*)items[i])->pMech->getMaxWeight() == pItem->pMech->getMaxWeight()
+			else if ( (static_cast<MechListBoxItem*>(items[i]))->pMech->getMaxWeight() == pItem->pMech->getMaxWeight()
 				&& mc2::str::iequals( chassisName, addedName )
-				&& ((MechListBoxItem*)itemString)->pMech->getName().find("Prime") != std::string::npos )
+				&& (static_cast<MechListBoxItem*>(itemString))->pMech->getName().find("Prime") != std::string::npos )
 			{
 				return InsertItem( itemString, i );
 			}
-			else if ( ((MechListBoxItem*)items[i])->pMech->getMaxWeight() == pItem->pMech->getMaxWeight()
+			else if ( (static_cast<MechListBoxItem*>(items[i]))->pMech->getMaxWeight() == pItem->pMech->getMaxWeight()
 				&& mc2::str::iequals( chassisName, addedName )
-				&& ( ((MechListBoxItem*)items[i])->pMech->getName().find("Prime") == std::string::npos ) 
+				&& ( (static_cast<MechListBoxItem*>(items[i]))->pMech->getName().find("Prime") == std::string::npos )
 				// variants of one chassis sort by name, ignoring ASCII case, then by raw bytes
-				&& mc2::str::ci_total_less{}( pItem->pMech->getName(), ((MechListBoxItem*)items[i])->pMech->getName() ) )
+				&& mc2::str::ci_total_less{}( pItem->pMech->getName(), (static_cast<MechListBoxItem*>(items[i]))->pMech->getName() ) )
 			{
 				return InsertItem( itemString, i );
 			}
@@ -624,10 +624,10 @@ void	MechListBox::dimItem( LogisticsMech* pMech, bool bDim )
 {
 		for ( int i = 0; i < itemCount; i++ )
 		{
-			if ( ((MechListBoxItem*)items[i])->pMech == pMech )
+			if ( (static_cast<MechListBoxItem*>(items[i]))->pMech == pMech )
 			{
 				
-				((MechListBoxItem*)items[i])->bDim = bDim;	
+				(static_cast<MechListBoxItem*>(items[i]))->bDim = bDim;
 			}
 		}
 		
@@ -638,7 +638,7 @@ void MechListBox::undimAll()
 	for ( int i = 0; i < itemCount; i++ )
 	{
 			
-			((MechListBoxItem*)items[i])->bDim = 0;	
+			(static_cast<MechListBoxItem*>(items[i]))->bDim = 0;
 		
 	}
 }
@@ -648,7 +648,7 @@ void MechListBox::disableItemsThatCostMoreThanRP()
 	bool bDisabledSel = 0;
 	for ( int i = 0; i < itemCount; i++ )
 	{
-		if ( !cheatInfiniteMoney() && ((MechListBoxItem*)items[i])->pMech->getCost() > LogisticsData::instance->getCBills() )
+		if ( !cheatInfiniteMoney() && (static_cast<MechListBoxItem*>(items[i]))->pMech->getCost() > LogisticsData::instance->getCBills() )
 		{
 			items[i]->setState( aListItem::DISABLED );
 			if ( itemSelected == i )
@@ -683,7 +683,7 @@ void MechListBox::disableItemsThatCanNotGoInFG()
 	bool bDisabledSel = 0;
 	for ( int i = 0; i < itemCount; i++ )
 	{
-		if ( !LogisticsData::instance->canAddMechToForceGroup( ((MechListBoxItem*)items[i])->pMech ) )
+		if ( !LogisticsData::instance->canAddMechToForceGroup( (static_cast<MechListBoxItem*>(items[i]))->pMech ) )
 		{
 			if ( itemSelected == i )
 				bDisabledSel = true;
@@ -719,7 +719,7 @@ void MechListBox::setOrange( bool bNewOrange )
 
 	for ( int i= 0; i < itemCount; i++ )
 	{
-		((MechListBoxItem*)items[i])->bOrange = bOrange;
+		(static_cast<MechListBoxItem*>(items[i]))->bOrange = bOrange;
 	}
 
 	if ( bNewOrange )

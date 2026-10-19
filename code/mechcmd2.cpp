@@ -389,7 +389,7 @@ void __stdcall InitializeGameEngine()
 			uint32_t seed = 0xCAFEBABEu;  // fixed startup seed
 			const std::string seedText = mc2::gate::str<"MC2_RNG_SEED">();   // "" when unset or empty
 			if (!seedText.empty())
-				seed = (uint32_t)strtoul(seedText.c_str(), nullptr, 0);
+				seed = static_cast<uint32_t>(strtoul(seedText.c_str(), nullptr, 0));
 			gos_srand(seed);
 		} else {
 			gos_srand(timeGetTime());
@@ -581,7 +581,7 @@ void __stdcall InitializeGameEngine()
 	
 				if (maxFastFiles)
 				{
-					fastFiles = (FastFile **)malloc(maxFastFiles*sizeof(FastFile *));
+					fastFiles = static_cast<FastFile **>(malloc(maxFastFiles*sizeof(FastFile *)));
 					memset(fastFiles,0,maxFastFiles*sizeof(FastFile *));
 	
 					int fileNum = 0;
@@ -842,7 +842,7 @@ void __stdcall InitializeGameEngine()
 				if (result != NO_ERR)
 					TERRAIN_TXM_SIZE = 64;
                 else {
-                    TERRAIN_TXM_SIZE = (int)tmp;
+                    TERRAIN_TXM_SIZE = static_cast<int>(tmp);
                 }
 	
 				result = prefsFile.readIdLong("ObjectTextureRes", tmp);
@@ -1053,7 +1053,7 @@ void __stdcall InitializeGameEngine()
 			STOP(("Could not find MC2.fx"));
 			
 		long effectsSize = effectFile.fileSize();
-		MemoryPtr effectsData = (MemoryPtr)systemHeap->Malloc(effectsSize);
+		MemoryPtr effectsData = static_cast<MemoryPtr>(systemHeap->Malloc(effectsSize));
 		effectFile.read(effectsData,effectsSize);
 		effectFile.close();
 		
@@ -1110,7 +1110,7 @@ void __stdcall InitializeGameEngine()
 		ownedSoundSystem = std::make_unique_for_overwrite<GameSoundSystem>();
 		soundSystem = ownedSoundSystem.get();
 		soundSystem->init();
-		((SoundSystem *)soundSystem)->init("sound");
+		(static_cast<SoundSystem *>(soundSystem))->init("sound");
 		sndSystem = soundSystem; // for things in the lib that use sound
 		}
 		
@@ -1299,16 +1299,16 @@ void __stdcall InitializeGameEngine()
 			                  Environment.fullScreen ? 1 : 0, 0, Environment.fullScreen ? 0 : 1, 0, 0);
 
 		//Create about a thousand textured random triangles.
-		testVertex = (gos_VERTEX *)malloc(sizeof(gos_VERTEX) * 3000);
-		indexArray = (WORD *)malloc(sizeof(WORD) * 3000);
+		testVertex = static_cast<gos_VERTEX *>(malloc(sizeof(gos_VERTEX) * 3000));
+		indexArray = static_cast<WORD *>(malloc(sizeof(WORD) * 3000));
 		for (long i=0;i<3000;i++)
 		{
 			testVertex[i].x = RandomNumber(1000) - 100;
 			testVertex[i].y = RandomNumber(800) - 100;
-			testVertex[i].z = ((float)RandomNumber(150) / 100.0f) - 0.25f;
+			testVertex[i].z = (static_cast<float>(RandomNumber(150)) / 100.0f) - 0.25f;
 			testVertex[i].rhw = 0.5f;
-			testVertex[i].u = (float)RandomNumber(100) / 100.0f;
-			testVertex[i].v = (float)RandomNumber(100) / 100.0f; 
+			testVertex[i].u = static_cast<float>(RandomNumber(100)) / 100.0f;
+			testVertex[i].v = static_cast<float>(RandomNumber(100)) / 100.0f;
 			testVertex[i].argb = 0x3fffffff;
 			testVertex[i].frgb = 0x3f1f2f3f;
 			indexArray[i] = i;

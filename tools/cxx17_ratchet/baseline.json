@@ -147,7 +147,7 @@
    "LG06": 472,
    "LG07": 2,
    "LG08": 17,
-   "LG09": 1358,
+   "LG09": 977,
    "LG10": 20,
    "LG11": 103,
    "LG12a": 100,
@@ -157,7 +157,7 @@
    "LG15": 0,
    "LG16": 6,
    "LG17": 48,
-   "LG18": 5,
+   "LG18": 8,
    "LG19": 0,
    "LG20": 1
   },
@@ -2101,40 +2101,33 @@
   "code/mech_loadout.cpp": {
    "LG05": 5,
    "LG06": 1,
-   "LG09": 17,
    "LG12a": 2,
    "LG12b": 1,
    "LG14": 1
   },
   "code/mech_move.cpp": {
    "LG03": 2,
-   "LG09": 3,
    "LG12b": 1,
    "LG13": 1
   },
   "code/mech_type.cpp": {
-   "LG03": 1,
-   "LG09": 16
+   "LG03": 1
   },
   "code/mech_update.cpp": {
    "LG01": 1,
-   "LG09": 12,
    "LG12a": 2,
    "LG12b": 1
   },
   "code/mech_weapons.cpp": {
-   "LG06": 1,
-   "LG09": 11
+   "LG06": 1
   },
   "code/mechbayscreen.cpp": {
-   "LG03": 1,
-   "LG09": 3
+   "LG03": 1
   },
   "code/mechbayscreen_mechs.cpp": {
    "LG03": 1,
    "LG05": 1,
    "LG06": 1,
-   "LG09": 3,
    "LG12b": 1
   },
   "code/mechbayscreen_update.cpp": {
@@ -2146,7 +2139,6 @@
   },
   "code/mechcmd2.cpp": {
    "LG03": 7,
-   "LG09": 10,
    "LG11": 8,
    "LG12a": 2,
    "LG12b": 1,
@@ -2157,12 +2149,10 @@
   },
   "code/mechcmd2_debugwins.cpp": {
    "LG03": 5,
-   "LG06": 1,
-   "LG09": 3
+   "LG06": 1
   },
   "code/mechcmd2_frame.cpp": {
    "LG03": 5,
-   "LG09": 3,
    "LG11": 16,
    "LG12a": 1
   },
@@ -2174,17 +2164,16 @@
    "LG03": 5,
    "LG05": 9,
    "LG06": 3,
-   "LG09": 105,
    "LG12a": 2,
    "LG12b": 1,
-   "LG13": 4
+   "LG13": 4,
+   "LG18": 3
   },
   "code/mechicon.h": {
    "LG05": 7
   },
   "code/mechlabscreen.cpp": {
    "LG05": 7,
-   "LG09": 7,
    "LG11": 1
   },
   "code/mechlabscreen.h": {
@@ -2192,7 +2181,6 @@
   },
   "code/mechlistbox.cpp": {
    "LG05": 2,
-   "LG09": 20,
    "LG17": 1
   },
   "code/mechlistbox.h": {
@@ -2201,20 +2189,17 @@
   "code/mechlopedia.cpp": {
    "LG03": 36,
    "LG06": 2,
-   "LG09": 48,
    "LG11": 1,
    "LG12a": 4,
    "LG12b": 25
   },
   "code/mechpurchasescreen.cpp": {
    "LG03": 4,
-   "LG09": 9,
    "LG12b": 1
   },
   "code/mission.cpp": {
    "LG03": 25,
    "LG05": 3,
-   "LG09": 11,
    "LG10": 1
   },
   "code/mission.h": {
@@ -2224,23 +2209,19 @@
    "LG14": 1
   },
   "code/mission2.cpp": {
-   "LG03": 10,
-   "LG09": 15
+   "LG03": 10
   },
   "code/mission_init.cpp": {
    "LG01": 6,
    "LG03": 12,
-   "LG06": 2,
-   "LG09": 14
+   "LG06": 2
   },
   "code/mission_init_load.cpp": {
    "LG01": 3,
    "LG03": 1,
-   "LG04": 2,
-   "LG09": 18
+   "LG04": 2
   },
   "code/mission_init_parts.cpp": {
-   "LG09": 1,
    "LG13": 2
   },
   "code/mission_internal.h": {
@@ -2251,24 +2232,20 @@
   },
   "code/mission_movers.cpp": {
    "LG05": 1,
-   "LG06": 1,
-   "LG09": 16
+   "LG06": 1
   },
   "code/mission_update.cpp": {
-   "LG09": 21,
    "LG12a": 13,
    "LG12b": 1,
    "LG14": 1
   },
   "code/mission_update_audit.cpp": {
    "LG06": 2,
-   "LG09": 3,
    "LG10": 1
   },
   "code/missionbegin.cpp": {
    "LG03": 18,
    "LG06": 2,
-   "LG09": 12,
    "LG11": 1,
    "LG12a": 17,
    "LG12b": 13
@@ -4599,7 +4576,7 @@
    "LG20": 3
   }
  },
- "head": "9d88a13bf",
+ "head": "1c43a4531",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

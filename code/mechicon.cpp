@@ -55,18 +55,18 @@ static bool iconTileChecked(const char* site, long index,
 	if (actualW == 0 || actualH == 0 || tileW <= 0 || tileH <= 0)
 		return false;   // atlas geometry unknown — bound unknowable
 	// Last source pixel the blit would touch (same expression as the loops).
-	const int srcXlast = (int)(nominalOffX * fx) + (int)((tileW - 1) * fx);
-	const int srcYlast = (int)(nominalOffY * fy) + (int)((tileH - 1) * fy);
-	const int srcX0    = (int)(nominalOffX * fx);
-	const int srcY0    = (int)(nominalOffY * fy);
+	const int srcXlast = static_cast<int>((nominalOffX * fx)) + static_cast<int>(((tileW - 1) * fx));
+	const int srcYlast = static_cast<int>((nominalOffY * fy)) + static_cast<int>(((tileH - 1) * fy));
+	const int srcX0    = static_cast<int>((nominalOffX * fx));
+	const int srcY0    = static_cast<int>((nominalOffY * fy));
 	const bool oob = (srcX0 < 0) || (srcY0 < 0) ||
-	                 ((uint32_t)srcXlast >= actualW) ||
-	                 ((uint32_t)srcYlast >= actualH);
+	                 (static_cast<uint32_t>(srcXlast) >= actualW) ||
+	                 (static_cast<uint32_t>(srcYlast) >= actualH);
 	if (oob)
 	{
 		unsigned long long key = 5381;
-		for (const char* p = site; p && *p; ++p) key = key * 33 + (unsigned char)*p;
-		key = key * 33 + (unsigned long long)(unsigned long)index;
+		for (const char* p = site; p && *p; ++p) key = key * 33 + static_cast<unsigned char>(*p);
+		key = key * 33 + static_cast<unsigned long long>(static_cast<unsigned long>(index));
 		if (mc2AuditOnce("ICON_OOB", key))
 			mc2AuditLinef("[ASSET_LOAD v1] event=icon_oob site=%s index=%ld "
 				"off=(%ld,%ld) tile=(%ld,%ld) atlas=(%u,%u)",
@@ -180,7 +180,7 @@ ForceGroupIcon::ForceGroupIcon(  )
 	{
 		// this is the textures that all icons are using
 		long size = ( 256 * 256 * sizeof(DWORD) + sizeof( TGAFileHeader ) );
-		s_textureMemory = (TGAFileHeader*)new char[size];
+		s_textureMemory = reinterpret_cast<TGAFileHeader*>(new char[size]);
 		memset( s_textureMemory, 0, size );
 		s_textureMemory->height = 256;
 		s_textureMemory->width = 256;
@@ -190,7 +190,7 @@ ForceGroupIcon::ForceGroupIcon(  )
 		//s_textureMemory->image_type = UNC_PAL;
 
 		if ( s_textureHandle[0] == -1 )
-			s_textureHandle[0] = gos_NewTextureFromMemory( gos_Texture_Alpha, ".tga", (unsigned char*)s_textureMemory, size, 0 );
+			s_textureHandle[0] = gos_NewTextureFromMemory( gos_Texture_Alpha, ".tga", reinterpret_cast<unsigned char*>(s_textureMemory), size, 0 );
 
 		memset( s_slotUsed, 0, 240 * sizeof( bool ) );
 	}
@@ -380,8 +380,8 @@ void MechIcon::setDrawBack( bool bSet)
 	}
 
 	
-	int iconsPerLine = ((int)s_textureMemory->width/(int)unitIconX);
-	int iconsPerPage = ((int)s_textureMemory->height/(int)unitIconY);
+	int iconsPerLine = (static_cast<int>(s_textureMemory->width)/static_cast<int>(unitIconX));
+	int iconsPerPage = (static_cast<int>(s_textureMemory->height)/static_cast<int>(unitIconY));
 	long textureIndex = 0;
 	long row = (backDamageIndex/iconsPerLine);
 	if ( row >= iconsPerPage )
@@ -399,7 +399,7 @@ void MechIcon::setDrawBack( bool bSet)
 	if ( s_textureHandle[textureIndex] == -1 )
 	{
 		long size = ( 256 * 256 * sizeof(DWORD) + sizeof( TGAFileHeader ) );
-		s_textureHandle[textureIndex] = gos_NewTextureFromMemory( gos_Texture_Alpha, ".tga", (unsigned char*)s_textureMemory, size, 0 );
+		s_textureHandle[textureIndex] = gos_NewTextureFromMemory( gos_Texture_Alpha, ".tga", reinterpret_cast<unsigned char*>(s_textureMemory), size, 0 );
 	}
 
 	
@@ -410,7 +410,7 @@ void MechIcon::setDrawBack( bool bSet)
 
 
 	DWORD* pDestData, *pDestRow = textureData.pTexture + offsetY * textureData.Width + offsetX;
-	char* pTmp = (char*)s_MechTextures + sizeof ( TGAFileHeader );
+	char* pTmp = reinterpret_cast<char*>(s_MechTextures) + sizeof ( TGAFileHeader );
 
 	long whichMech = unit->getIconPictureIndex();
 
@@ -418,8 +418,8 @@ void MechIcon::setDrawBack( bool bSet)
 	offsetX = whichMech  * unitIconX;
 
 	{
-		const uint32_t actualW = (uint32_t)s_MechTextures->width;
-		const uint32_t actualH = (uint32_t)s_MechTextures->height;
+		const uint32_t actualW = static_cast<uint32_t>(s_MechTextures->width);
+		const uint32_t actualH = static_cast<uint32_t>(s_MechTextures->height);
 		// ISSUE-43: blitFactorFor — column-extended atlases (MCO/MC2X added
 		// icon columns) direct-index instead of mis-sampling as an upscale.
 		const AssetScale::Vec2 f = AssetScale::blitFactorFor(
@@ -430,7 +430,7 @@ void MechIcon::setDrawBack( bool bSet)
 		// for high whichMech indices (e.g. MC2X mod mechs beyond slot 33).
 		(void)AssetScale::nominalToActualRect(
 			MechIcon::s_MechTexturesKey, actualW, actualH,
-			(float)offsetX, (float)offsetY,
+			static_cast<float>(offsetX), static_cast<float>(offsetY),
 			unitIconX, unitIconY,
 			"mechicon.blit");
 
@@ -438,12 +438,12 @@ void MechIcon::setDrawBack( bool bSet)
 		// magenta substitution only under MC2_ICON_FAILLOUD).
 		const bool iconOobFill =
 			iconTileChecked("mechicon.damage_blit", whichMech,
-				offsetX, offsetY, (long)unitIconX, (long)unitIconY,
+				offsetX, offsetY, static_cast<long>(unitIconX), static_cast<long>(unitIconY),
 				f.x, f.y, actualW, actualH) && iconFailLoudEnabled();
 
 		for( int j = 0; j < unitIconY; ++j )
 		{
-			int srcY = (int)(offsetY * f.y) + (int)(j * f.y);
+			int srcY = static_cast<int>((offsetY * f.y)) + static_cast<int>((j * f.y));
 			pDestData = pDestRow;
 			if ( iconOobFill )
 			{
@@ -457,7 +457,7 @@ void MechIcon::setDrawBack( bool bSet)
 			// out-of-atlas whichMech (bad/MC2X-mod mech beyond stock slots) caused
 			// an OOB read off s_MechTextures. Mirror the guarded pattern: blank row
 			// for OOB srcY, blank pixel for OOB srcX.
-			if ( srcY < 0 || (uint32_t)srcY >= actualH )
+			if ( srcY < 0 || static_cast<uint32_t>(srcY) >= actualH )
 			{
 				// srcY out of source texture bounds -- leave dest row blank
 				for ( int i = 0; i < unitIconX; ++i )
@@ -465,11 +465,11 @@ void MechIcon::setDrawBack( bool bSet)
 				pDestRow += textureData.Width;
 				continue;
 			}
-			DWORD* pSrcRow = (DWORD*)pTmp + (long)srcY * (long)actualW;
+			DWORD* pSrcRow = reinterpret_cast<DWORD*>(pTmp) + static_cast<long>(srcY) * static_cast<long>(actualW);
 			for ( int i = 0; i < unitIconX; ++i ) // do four icons per row
 			{
-				int srcX = (int)(offsetX * f.x) + (int)(i * f.x);
-				if ( srcX < 0 || (uint32_t)srcX >= actualW )
+				int srcX = static_cast<int>((offsetX * f.x)) + static_cast<int>((i * f.x));
+				if ( srcX < 0 || static_cast<uint32_t>(srcX) >= actualW )
 				{
 					*pDestData++ = 0; // srcX OOB -- blank pixel
 					continue;
@@ -516,7 +516,7 @@ bool ForceGroupIcon::inRegion( int x, int y )
 
 void ForceGroupIcon::rightClick()
 {
-	((GameCamera*)eye)->setTarget( unit );
+	(static_cast<GameCamera*>(eye))->setTarget( unit );
 }
 
 void ForceGroupIcon::click( bool shiftDn )
@@ -569,16 +569,16 @@ bool MechIcon::initTextures()
 
 		int size = file.getLength();
 
-		s_MechTextures = (TGAFileHeader*)new char[size];
-		file.read( (BYTE*)s_MechTextures, size );
-		BYTE* pTmp = (BYTE*)(s_MechTextures + 1);
+		s_MechTextures = reinterpret_cast<TGAFileHeader*>(new char[size]);
+		file.read( reinterpret_cast<BYTE*>(s_MechTextures), size );
+		BYTE* pTmp = reinterpret_cast<BYTE*>((s_MechTextures + 1));
 
 		if ( mc2::gate::get<"MC2_LOG_MECHICON">() )
 		{
 			printf("[mechicon] atlas='%s' w=%u h=%u unitIconX=%.0f unitIconY=%.0f maxIndex=%d\n",
-				path, (unsigned)s_MechTextures->width, (unsigned)s_MechTextures->height,
+				path, static_cast<unsigned>(s_MechTextures->width), static_cast<unsigned>(s_MechTextures->height),
 				unitIconX, unitIconY,
-				(int)(s_MechTextures->width / unitIconX) - 1);
+				static_cast<int>((s_MechTextures->width / unitIconX)) - 1);
 			fflush(stdout);
 		}
 
@@ -618,8 +618,8 @@ bool MechIcon::init( long whichIndex )
 		PAUSE(("Texture for MechIcon not 32-bit"));
 
 
-	int iconsPerLine = ((int)s_textureMemory->width/(int)unitIconX);
-	int iconsPerPage = ((int)s_textureMemory->height/(int)unitIconY);
+	int iconsPerLine = (static_cast<int>(s_textureMemory->width)/static_cast<int>(unitIconX));
+	int iconsPerPage = (static_cast<int>(s_textureMemory->height)/static_cast<int>(unitIconY));
 	long textureIndex = 0;
 	long row = (damageIconIndex/iconsPerLine);
 	if ( row >= iconsPerPage )
@@ -634,7 +634,7 @@ bool MechIcon::init( long whichIndex )
 	if ( s_textureHandle[textureIndex] == -1 )
 	{
 		long size = ( 256 * 256 * sizeof(DWORD) + sizeof( TGAFileHeader ) );
-		s_textureHandle[textureIndex] = gos_NewTextureFromMemory( gos_Texture_Alpha, ".tga", (unsigned char*)s_textureMemory, size, 0 );
+		s_textureHandle[textureIndex] = gos_NewTextureFromMemory( gos_Texture_Alpha, ".tga", reinterpret_cast<unsigned char*>(s_textureMemory), size, 0 );
 	}
 
 	// now need to make a copy of the data
@@ -643,20 +643,20 @@ bool MechIcon::init( long whichIndex )
 		return false;
 
 	DWORD* pDestData, *pDestRow = textureData.pTexture + offsetY * textureData.Width + offsetX;
-	char* pTmp = (char*)s_MechTextures + sizeof ( TGAFileHeader );
+	char* pTmp = reinterpret_cast<char*>(s_MechTextures) + sizeof ( TGAFileHeader );
 
 	offsetY = 0;
 	offsetX = whichIndex * unitIconX;
 
 	{
-		const uint32_t actualW = (uint32_t)s_MechTextures->width;
-		const uint32_t actualH = (uint32_t)s_MechTextures->height;
+		const uint32_t actualW = static_cast<uint32_t>(s_MechTextures->width);
+		const uint32_t actualH = static_cast<uint32_t>(s_MechTextures->height);
 
 		if ( mc2::gate::get<"MC2_LOG_MECHICON">() )
 		{
 			printf("[mechicon] init whichIndex=%ld srcOffsetX=%ld atlasW=%u atlasH=%u unitIconX=%.0f %s\n",
 				whichIndex, offsetX, actualW, actualH, unitIconX,
-				((long)actualW > 0 && offsetX + (long)unitIconX > (long)actualW) ? "OOB!" : "ok");
+				(static_cast<long>(actualW) > 0 && offsetX + static_cast<long>(unitIconX) > (long)actualW) ? "OOB!" : "ok");
 			fflush(stdout);
 		}
 
@@ -666,7 +666,7 @@ bool MechIcon::init( long whichIndex )
 		// Direct-index path (see note in blit 1 above). No OOB clamp.
 		(void)AssetScale::nominalToActualRect(
 			MechIcon::s_MechTexturesKey, actualW, actualH,
-			(float)offsetX, (float)offsetY,
+			static_cast<float>(offsetX), static_cast<float>(offsetY),
 			unitIconX, unitIconY,
 			"mechicon.blit");
 
@@ -674,12 +674,12 @@ bool MechIcon::init( long whichIndex )
 		// magenta substitution only under MC2_ICON_FAILLOUD).
 		const bool iconOobFill =
 			iconTileChecked("mechicon.init_blit", whichIndex,
-				offsetX, offsetY, (long)unitIconX, (long)unitIconY,
+				offsetX, offsetY, static_cast<long>(unitIconX), static_cast<long>(unitIconY),
 				f.x, f.y, actualW, actualH) && iconFailLoudEnabled();
 
 		for( int j = 0; j < unitIconY; ++j )
 		{
-			int srcY = (int)(offsetY * f.y) + (int)(j * f.y);
+			int srcY = static_cast<int>((offsetY * f.y)) + static_cast<int>((j * f.y));
 			pDestData = pDestRow;
 			if ( iconOobFill )
 			{
@@ -688,7 +688,7 @@ bool MechIcon::init( long whichIndex )
 				pDestRow += textureData.Width;
 				continue;
 			}
-			if ( srcY < 0 || (uint32_t)srcY >= actualH )
+			if ( srcY < 0 || static_cast<uint32_t>(srcY) >= actualH )
 			{
 				// srcY out of source texture bounds (atlas/dimension mismatch) -- leave dest row blank
 				for ( int i = 0; i < unitIconX; ++i )
@@ -696,11 +696,11 @@ bool MechIcon::init( long whichIndex )
 				pDestRow += textureData.Width;
 				continue;
 			}
-			DWORD* pSrcRow = (DWORD*)pTmp + (long)srcY * (long)actualW;
+			DWORD* pSrcRow = reinterpret_cast<DWORD*>(pTmp) + static_cast<long>(srcY) * static_cast<long>(actualW);
 			for ( int i = 0; i < unitIconX; ++i ) // do four icons per row
 			{
-				int srcX = (int)(offsetX * f.x) + (int)(i * f.x);
-				if ( srcX < 0 || (uint32_t)srcX >= actualW )
+				int srcX = static_cast<int>((offsetX * f.x)) + static_cast<int>((i * f.x));
+				if ( srcX < 0 || static_cast<uint32_t>(srcX) >= actualW )
 					*pDestData++ = 0x00000000; // srcX OOB -- blank pixel
 				else
 					*pDestData++ = pSrcRow[srcX];
@@ -742,7 +742,7 @@ void MechIcon::update()
 
 	// do check against armor location
 	ArmorLocation armor = unit->armor[MECH_ARMOR_LOCATION_HEAD];
-	float tmp = armor.curArmor/(float)armor.maxArmor;
+	float tmp = armor.curArmor/static_cast<float>(armor.maxArmor);
 	if (unit->body[MECH_BODY_LOCATION_HEAD].damageState == IS_DAMAGE_DESTROYED)
 		tmp = -1.0f;
 
@@ -755,16 +755,16 @@ void MechIcon::update()
 	else if ( tmp < .6 )
 		newDamage[7] = 1;
 
-	tmp = unit->armor[MECH_ARMOR_LOCATION_CTORSO].curArmor/(float)unit->armor[MECH_ARMOR_LOCATION_CTORSO].maxArmor;
+	tmp = unit->armor[MECH_ARMOR_LOCATION_CTORSO].curArmor/static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_CTORSO].maxArmor);
 	if ( !bDrawBack )
 	{
-		if ( (float)unit->armor[MECH_ARMOR_LOCATION_RCTORSO].maxArmor )
-			tmp += unit->armor[MECH_ARMOR_LOCATION_RCTORSO].curArmor/(float)unit->armor[MECH_ARMOR_LOCATION_RCTORSO].maxArmor;
+		if ( static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_RCTORSO].maxArmor) )
+			tmp += unit->armor[MECH_ARMOR_LOCATION_RCTORSO].curArmor/static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_RCTORSO].maxArmor);
 		tmp/= 2.f;
 	}
 	else
 	{
-		backTmp = unit->armor[MECH_ARMOR_LOCATION_RCTORSO].curArmor/(float)unit->armor[MECH_ARMOR_LOCATION_RCTORSO].maxArmor;
+		backTmp = unit->armor[MECH_ARMOR_LOCATION_RCTORSO].curArmor/static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_RCTORSO].maxArmor);
 	}
 	
 	if (unit->body[MECH_BODY_LOCATION_CTORSO].damageState == IS_DAMAGE_DESTROYED)
@@ -788,16 +788,16 @@ void MechIcon::update()
 		rearDamage[6] = 1;
 
 
-	tmp = unit->armor[MECH_ARMOR_LOCATION_LTORSO].curArmor/(float)unit->armor[MECH_ARMOR_LOCATION_LTORSO].maxArmor;
+	tmp = unit->armor[MECH_ARMOR_LOCATION_LTORSO].curArmor/static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_LTORSO].maxArmor);
 	if ( !bDrawBack )
 	{
-		if ( (float)unit->armor[MECH_ARMOR_LOCATION_RLTORSO].maxArmor )
-			tmp += unit->armor[MECH_ARMOR_LOCATION_RLTORSO].curArmor/(float)unit->armor[MECH_ARMOR_LOCATION_RLTORSO].maxArmor;
+		if ( static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_RLTORSO].maxArmor) )
+			tmp += unit->armor[MECH_ARMOR_LOCATION_RLTORSO].curArmor/static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_RLTORSO].maxArmor);
 		tmp/= 2.f;
 	}
 	else
 	{
-		backTmp = unit->armor[MECH_ARMOR_LOCATION_RLTORSO].curArmor/(float)unit->armor[MECH_ARMOR_LOCATION_RLTORSO].maxArmor;
+		backTmp = unit->armor[MECH_ARMOR_LOCATION_RLTORSO].curArmor/static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_RLTORSO].maxArmor);
 
 	}
 
@@ -832,16 +832,16 @@ void MechIcon::update()
 		rearDamage[5] = 1;
 
 
-	tmp = unit->armor[MECH_ARMOR_LOCATION_RTORSO].curArmor/(float)unit->armor[MECH_ARMOR_LOCATION_RTORSO].maxArmor;
+	tmp = unit->armor[MECH_ARMOR_LOCATION_RTORSO].curArmor/static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_RTORSO].maxArmor);
 	if ( !bDrawBack )
 	{
-		if ( (float)unit->armor[MECH_ARMOR_LOCATION_RRTORSO].maxArmor )
-			tmp += unit->armor[MECH_ARMOR_LOCATION_RRTORSO].curArmor/(float)unit->armor[MECH_ARMOR_LOCATION_RRTORSO].maxArmor;
+		if ( static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_RRTORSO].maxArmor) )
+			tmp += unit->armor[MECH_ARMOR_LOCATION_RRTORSO].curArmor/static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_RRTORSO].maxArmor);
 		tmp/= 2.f;
 	}
 	else
 	{
-		backTmp = unit->armor[MECH_ARMOR_LOCATION_RRTORSO].curArmor/(float)unit->armor[MECH_ARMOR_LOCATION_RRTORSO].maxArmor;
+		backTmp = unit->armor[MECH_ARMOR_LOCATION_RRTORSO].curArmor/static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_RRTORSO].maxArmor);
 	}
 	
 	if (unit->body[MECH_BODY_LOCATION_RTORSO].damageState == IS_DAMAGE_DESTROYED)
@@ -866,7 +866,7 @@ void MechIcon::update()
 
 
 	armor = unit->armor[MECH_ARMOR_LOCATION_LLEG];
-	tmp = armor.curArmor/(float)armor.maxArmor;
+	tmp = armor.curArmor/static_cast<float>(armor.maxArmor);
 	if (unit->body[MECH_BODY_LOCATION_LLEG].damageState == IS_DAMAGE_DESTROYED)
 	{
 		tmp = -1.0f;
@@ -880,7 +880,7 @@ void MechIcon::update()
 		newDamage[0] = 1;
 
 	armor = unit->armor[MECH_ARMOR_LOCATION_RLEG];
-	tmp = armor.curArmor/(float)armor.maxArmor;
+	tmp = armor.curArmor/static_cast<float>(armor.maxArmor);
 	if (unit->body[MECH_BODY_LOCATION_RLEG].damageState == IS_DAMAGE_DESTROYED)
 	{
 		tmp = -1.0f;
@@ -894,7 +894,7 @@ void MechIcon::update()
 		newDamage[1] = 1;
 
 	armor = unit->armor[MECH_ARMOR_LOCATION_LARM];
-	tmp = armor.curArmor/(float)armor.maxArmor;
+	tmp = armor.curArmor/static_cast<float>(armor.maxArmor);
 	if (unit->body[MECH_BODY_LOCATION_LARM].damageState == IS_DAMAGE_DESTROYED)
 	{
 		tmp = -1.0f;
@@ -908,7 +908,7 @@ void MechIcon::update()
 		newDamage[2] = 1;
 
 	armor = unit->armor[MECH_ARMOR_LOCATION_RARM];
-	tmp = armor.curArmor/(float)armor.maxArmor;
+	tmp = armor.curArmor/static_cast<float>(armor.maxArmor);
 	if (unit->body[MECH_BODY_LOCATION_RARM].damageState == IS_DAMAGE_DESTROYED)
 	{
 		tmp = -1.0f;
@@ -927,10 +927,10 @@ void MechIcon::update()
 	{
 		float lratio = 1.f;
 		float rratio = 1.f;
-		if ( (float)unit->armor[MECH_ARMOR_LOCATION_RCTORSO].maxArmor )
+		if ( static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_RCTORSO].maxArmor) )
 		{
-			lratio = (float)unit->armor[MECH_ARMOR_LOCATION_RLTORSO].maxArmor/(float)unit->armor[MECH_ARMOR_LOCATION_RCTORSO].maxArmor;
-			rratio = (float)unit->armor[MECH_ARMOR_LOCATION_RRTORSO].maxArmor/(float)unit->armor[MECH_ARMOR_LOCATION_RCTORSO].maxArmor;
+			lratio = static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_RLTORSO].maxArmor)/static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_RCTORSO].maxArmor);
+			rratio = static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_RRTORSO].maxArmor)/static_cast<float>(unit->armor[MECH_ARMOR_LOCATION_RCTORSO].maxArmor);
 		}
 		rearDamage[7] = .5 + (rratio * rearDamage[4] + lratio * rearDamage[5] + rearDamage[6])/(lratio + rratio + 1.f);
 		backDamage[7] = .5 + (rratio * backDamage[4] + lratio * backDamage[5] + backDamage[6])/(lratio + rratio + 1.f);
@@ -954,8 +954,8 @@ void MechIcon::doDraw( char* newDamage, char* oldDamage, unsigned long handle, u
 		{			
 			// find the icon
 			long texIndex = 0;
-			int iconsPerLine = ((int)s_textureMemory->width/(int)unitIconX);
-			int iconsPerPage = ((int)s_textureMemory->height/(int)unitIconY);
+			int iconsPerLine = (static_cast<int>(s_textureMemory->width)/static_cast<int>(unitIconX));
+			int iconsPerPage = (static_cast<int>(s_textureMemory->height)/static_cast<int>(unitIconY));
 			int yIndex = index / iconsPerLine;
 			if ( yIndex >= iconsPerPage )
 			{
@@ -967,7 +967,7 @@ void MechIcon::doDraw( char* newDamage, char* oldDamage, unsigned long handle, u
 			if ( s_textureHandle[texIndex] == -1 )
 			{
 				long size = ( 256 * 256 * sizeof(DWORD) + sizeof( TGAFileHeader ) );
-				s_textureHandle[texIndex] = gos_NewTextureFromMemory( gos_Texture_Alpha, ".tga", (unsigned char*)s_textureMemory, size, 0 );
+				s_textureHandle[texIndex] = gos_NewTextureFromMemory( gos_Texture_Alpha, ".tga", reinterpret_cast<unsigned char*>(s_textureMemory), size, 0 );
 			}
 
 			TEXTUREPTR textureData = lockIconPage( s_textureHandle[texIndex] );
@@ -1037,7 +1037,7 @@ bool IsDbcsString(const char* pszString)
 {
 	if (pszString) {
 		while (*pszString) {
-			if (IsDBCSLeadByte((BYTE)*pszString))
+			if (IsDBCSLeadByte(static_cast<BYTE>(*pszString)))
 				return true;
 			pszString++;
 		}
@@ -1082,7 +1082,7 @@ void ForceGroupIcon::render()
 	// smaller size. MC2 uses NEGATIVE sizes to mean "pixel height", so we
 	// scale by shrinking magnitude toward zero; clamp to a legible floor.
 	const int slotW = textArea[locationIndex].right - textArea[locationIndex].left - 2;
-	const float origSize = (float)gosFontHandle->getSize();
+	const float origSize = static_cast<float>(gosFontHandle->getSize());
 	float useSize = origSize;
 	{
 		gos_TextSetAttributes( gosFontHandle->getTempHandle(), 0xffffffff, useSize,
@@ -1090,7 +1090,7 @@ void ForceGroupIcon::render()
 		DWORD tw = 0, th = 0;
 		gos_TextStringLength( &tw, &th, buffer );
 		const float minMagnitude = 8.0f;
-		while ( (int)tw > slotW && fabsf(useSize) > minMagnitude ) {
+		while ( static_cast<int>(tw) > slotW && fabsf(useSize) > minMagnitude ) {
 			useSize *= 0.9f;
 			gos_TextSetAttributes( gosFontHandle->getTempHandle(), 0xffffffff, useSize,
 			                       true, true, false, false, 0 );
@@ -1217,8 +1217,8 @@ void ForceGroupIcon::render()
 void ForceGroupIcon::renderUnitIcon( float left, float top, float right, float bottom )
 {
 	int texIndex = 0;
-	int iconsPerLine = ((int)s_textureMemory->width/(int)unitIconX);
-	int iconsPerPage= ((int)s_textureMemory->height/(int)unitIconY);
+	int iconsPerLine = (static_cast<int>(s_textureMemory->width)/static_cast<int>(unitIconX));
+	int iconsPerPage= (static_cast<int>(s_textureMemory->height)/static_cast<int>(unitIconY));
 	int yIndex = damageIconIndex / iconsPerLine;
 	if ( yIndex >= iconsPerPage )
 	{
@@ -1258,7 +1258,7 @@ void ForceGroupIcon::renderUnitIcon( float left, float top, float right, float b
 
 void ForceGroupIcon::renderUnitIconBack( float left, float top, float right, float bottom )
 {
-	int iconsPerLine = ((int)s_textureMemory->width/(int)unitIconX);
+	int iconsPerLine = (static_cast<int>(s_textureMemory->width)/static_cast<int>(unitIconX));
 	int yIndex = backDamageIndex / iconsPerLine;
 	int xIndex = backDamageIndex % iconsPerLine;
 	
@@ -1313,8 +1313,8 @@ bool ForceGroupIcon::getUnitIconTexUV( unsigned int& glTex, float& u0, float& v0
 		return false;
 
 	int texIndex = 0;
-	int iconsPerLine = ((int)s_textureMemory->width/(int)unitIconX);
-	int iconsPerPage = ((int)s_textureMemory->height/(int)unitIconY);
+	int iconsPerLine = (static_cast<int>(s_textureMemory->width)/static_cast<int>(unitIconX));
+	int iconsPerPage = (static_cast<int>(s_textureMemory->height)/static_cast<int>(unitIconY));
 	if ( iconsPerLine <= 0 || iconsPerPage <= 0 )
 		return false;
 	int yIndex = damageIconIndex / iconsPerLine;
@@ -1342,7 +1342,7 @@ bool ForceGroupIcon::getUnitIconBackTexUV( unsigned int& glTex, float& u0, float
 	if ( !s_textureMemory || s_textureHandle[0] == 0xffffffff )
 		return false;
 
-	int iconsPerLine = ((int)s_textureMemory->width/(int)unitIconX);
+	int iconsPerLine = (static_cast<int>(s_textureMemory->width)/static_cast<int>(unitIconX));
 	if ( iconsPerLine <= 0 )
 		return false;
 	int yIndex = backDamageIndex / iconsPerLine;
@@ -1386,7 +1386,7 @@ bool PilotIcon::getTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, 
 	long gosID = mcTextureManager->get_gosTextureHandle( s_pilotTextureHandle );
 	if ( gosID <= 0 )   // 0 = none, -1 (0xffffffff) = invalid
 		return false;
-	glTex = gos_GetGLTextureName( (DWORD)gosID );
+	glTex = gos_GetGLTextureName( static_cast<DWORD>(gosID) );
 	return glTex != 0;
 }
 
@@ -1417,9 +1417,9 @@ bool VehicleIcon::init( Mover* pMover )
 		int size = file.getLength();
 
 		s_VehicleTexturesKey = AssetScale::key(path);
-		s_VehicleTextures = (TGAFileHeader*)new char[size];
-		file.read( (BYTE*)s_VehicleTextures, size );
-		BYTE* pTmp = (BYTE*)(s_VehicleTextures + 1);
+		s_VehicleTextures = reinterpret_cast<TGAFileHeader*>(new char[size]);
+		file.read( reinterpret_cast<BYTE*>(s_VehicleTextures), size );
+		BYTE* pTmp = reinterpret_cast<BYTE*>((s_VehicleTextures + 1));
 
 		flipTopToBottom (pTmp, s_VehicleTextures->pixel_depth, s_VehicleTextures->width, s_VehicleTextures->height );
 
@@ -1439,8 +1439,8 @@ bool VehicleIcon::init( Mover* pMover )
 	// now need to make a copy of the data
 	
 	long texIndex = 0;
-	int iconsPerLine = ((int)s_textureMemory->width/(int)unitIconX);
-	int iconsPerPage = ((int)s_textureMemory->height/(int)unitIconY);
+	int iconsPerLine = (static_cast<int>(s_textureMemory->width)/static_cast<int>(unitIconX));
+	int iconsPerPage = (static_cast<int>(s_textureMemory->height)/static_cast<int>(unitIconY));
 	long row = damageIconIndex/iconsPerLine;
 	long column = (damageIconIndex % iconsPerLine);
 	if ( row >= iconsPerPage )
@@ -1456,7 +1456,7 @@ bool VehicleIcon::init( Mover* pMover )
 	if ( s_textureHandle[texIndex] == -1 )
 	{
 		long size = ( 256 * 256 * sizeof(DWORD) + sizeof( TGAFileHeader ) );
-		s_textureHandle[texIndex] = gos_NewTextureFromMemory( gos_Texture_Alpha, ".tga", (unsigned char*)s_textureMemory, size, 0 );
+		s_textureHandle[texIndex] = gos_NewTextureFromMemory( gos_Texture_Alpha, ".tga", reinterpret_cast<unsigned char*>(s_textureMemory), size, 0 );
 	}
 
 
@@ -1466,7 +1466,7 @@ bool VehicleIcon::init( Mover* pMover )
 
 	
 	DWORD* pDestData, *pDestRow = textureData.pTexture + offsetY * textureData.Width + offsetX;
-	char* pTmp = (char*)s_VehicleTextures + sizeof ( TGAFileHeader );
+	char* pTmp = reinterpret_cast<char*>(s_VehicleTextures) + sizeof ( TGAFileHeader );
 
 	long whichMech = pMover->getIconPictureIndex();
 
@@ -1474,8 +1474,8 @@ bool VehicleIcon::init( Mover* pMover )
 	offsetX = whichMech * unitIconX;
 
 	{
-		const uint32_t actualW = (uint32_t)s_VehicleTextures->width;
-		const uint32_t actualH = (uint32_t)s_VehicleTextures->height;
+		const uint32_t actualW = static_cast<uint32_t>(s_VehicleTextures->width);
+		const uint32_t actualH = static_cast<uint32_t>(s_VehicleTextures->height);
 		// ISSUE-43: blitFactorFor — the vehicle kill-icon strip is the surface
 		// the issue reports (destroyed vehicles palette-remap to the gray
 		// damage row; any mis-sampled cell turns into a literal gray block).
@@ -1484,7 +1484,7 @@ bool VehicleIcon::init( Mover* pMover )
 		// Direct-index path (see note in mechicon.blit above). No OOB clamp.
 		(void)AssetScale::nominalToActualRect(
 			VehicleIcon::s_VehicleTexturesKey, actualW, actualH,
-			(float)offsetX, (float)offsetY,
+			static_cast<float>(offsetX), static_cast<float>(offsetY),
 			unitIconX, unitIconY,
 			"mechicon.blit");
 
@@ -1492,12 +1492,12 @@ bool VehicleIcon::init( Mover* pMover )
 		// magenta substitution only under MC2_ICON_FAILLOUD).
 		const bool iconOobFill =
 			iconTileChecked("mechicon.vehicle_blit", whichMech,
-				offsetX, offsetY, (long)unitIconX, (long)unitIconY,
+				offsetX, offsetY, static_cast<long>(unitIconX), static_cast<long>(unitIconY),
 				f.x, f.y, actualW, actualH) && iconFailLoudEnabled();
 
 		for( int j = 0; j < unitIconY; ++j )
 		{
-			int srcY = (int)(offsetY * f.y) + (int)(j * f.y);
+			int srcY = static_cast<int>((offsetY * f.y)) + static_cast<int>((j * f.y));
 			pDestData = pDestRow;
 			if ( iconOobFill )
 			{
@@ -1506,7 +1506,7 @@ bool VehicleIcon::init( Mover* pMover )
 				pDestRow += textureData.Width;
 				continue;
 			}
-			if ( srcY < 0 || (uint32_t)srcY >= actualH )
+			if ( srcY < 0 || static_cast<uint32_t>(srcY) >= actualH )
 			{
 				// srcY out of source texture bounds (atlas/dimension mismatch) -- leave dest row blank
 				for ( int i = 0; i < unitIconX; ++i )
@@ -1514,11 +1514,11 @@ bool VehicleIcon::init( Mover* pMover )
 				pDestRow += textureData.Width;
 				continue;
 			}
-			DWORD* pSrcRow = (DWORD*)pTmp + (long)srcY * (long)actualW;
+			DWORD* pSrcRow = reinterpret_cast<DWORD*>(pTmp) + static_cast<long>(srcY) * static_cast<long>(actualW);
 			for ( int i = 0; i < unitIconX; ++i ) // do four icons per row
 			{
-				int srcX = (int)(offsetX * f.x) + (int)(i * f.x);
-				if ( srcX < 0 || (uint32_t)srcX >= actualW )
+				int srcX = static_cast<int>((offsetX * f.x)) + static_cast<int>((i * f.x));
+				if ( srcX < 0 || static_cast<uint32_t>(srcX) >= actualW )
 					*pDestData++ = 0x00000000; // srcX OOB -- blank pixel
 				else
 					*pDestData++ = pSrcRow[srcX];
@@ -1557,7 +1557,7 @@ void VehicleIcon::update()
 
 	// do check against armor location
 	ArmorLocation armor = unit->armor[GROUNDVEHICLE_LOCATION_FRONT];
-	float tmp = armor.curArmor/(float)armor.maxArmor;
+	float tmp = armor.curArmor/static_cast<float>(armor.maxArmor);
 	
 	if ( tmp < .1 )
 		newDamage[0] = 3;
@@ -1566,7 +1566,7 @@ void VehicleIcon::update()
 	else if ( tmp < .6 )
 		newDamage[0] = 1;
 
-	tmp = unit->armor[GROUNDVEHICLE_LOCATION_REAR].curArmor/(float)unit->armor[GROUNDVEHICLE_LOCATION_REAR].maxArmor;
+	tmp = unit->armor[GROUNDVEHICLE_LOCATION_REAR].curArmor/static_cast<float>(unit->armor[GROUNDVEHICLE_LOCATION_REAR].maxArmor);
 	if ( tmp < .1 )
 		newDamage[1] = 3;
 	else if ( tmp < .3 )
@@ -1574,7 +1574,7 @@ void VehicleIcon::update()
 	else if ( tmp < .6 )
 		newDamage[1] = 1;
 
-	tmp = unit->armor[GROUNDVEHICLE_LOCATION_LEFT].curArmor/(float)unit->armor[GROUNDVEHICLE_LOCATION_LEFT].maxArmor;
+	tmp = unit->armor[GROUNDVEHICLE_LOCATION_LEFT].curArmor/static_cast<float>(unit->armor[GROUNDVEHICLE_LOCATION_LEFT].maxArmor);
 		
 	if ( tmp < .1 )
 		newDamage[2] = 3;
@@ -1584,7 +1584,7 @@ void VehicleIcon::update()
 		newDamage[2] = 1;
 
 
-	tmp = unit->armor[GROUNDVEHICLE_LOCATION_RIGHT].curArmor/(float)unit->armor[GROUNDVEHICLE_LOCATION_RIGHT].maxArmor;
+	tmp = unit->armor[GROUNDVEHICLE_LOCATION_RIGHT].curArmor/static_cast<float>(unit->armor[GROUNDVEHICLE_LOCATION_RIGHT].maxArmor);
 
 	if ( tmp < .1 )
 		newDamage[3] = 3;
@@ -1594,7 +1594,7 @@ void VehicleIcon::update()
 		newDamage[3] = 1;
 
 	armor = unit->armor[GROUNDVEHICLE_LOCATION_TURRET];
-	tmp = armor.curArmor/(float)armor.maxArmor;
+	tmp = armor.curArmor/static_cast<float>(armor.maxArmor);
 	if ( tmp < .1 )
 		newDamage[4] = 3;
 	else if ( tmp < .3 )
@@ -1608,8 +1608,8 @@ void VehicleIcon::update()
 		if ( newDamage[i] != damage[i] )
 		{	
 			long texIndex = 0;
-			int iconsPerLine = ((int)s_textureMemory->width/(int)unitIconX);
-			int iconsPerPage = ((int)s_textureMemory->height/(int)unitIconY);
+			int iconsPerLine = (static_cast<int>(s_textureMemory->width)/static_cast<int>(unitIconX));
+			int iconsPerPage = (static_cast<int>(s_textureMemory->height)/static_cast<int>(unitIconY));
 			int yIndex = damageIconIndex / iconsPerLine;
 			int xIndex = damageIconIndex % iconsPerLine;
 			if ( yIndex >= iconsPerPage )
@@ -1693,15 +1693,15 @@ void ForceGroupIcon::drawBar( float barStatus )
 		color = SB_RED;*/
 		
 	
-	GUI_RECT rect = { healthBar[locationIndex].left, healthBar[locationIndex].top,healthBar[locationIndex].left + (int)barLength, healthBar[locationIndex].bottom };
+	GUI_RECT rect = { healthBar[locationIndex].left, healthBar[locationIndex].top,healthBar[locationIndex].left + static_cast<int>(barLength), healthBar[locationIndex].bottom };
 	drawRect( rect, color );
 	drawEmptyRect( healthBar[locationIndex],  color, color & 0x7f7f7f );
 }
 
 int ForceGroupIcon::sort( const void* p1, const void* p2 )
 {
-	ForceGroupIcon* m1 = *(ForceGroupIcon**)p1;
-	ForceGroupIcon* m2 = *(ForceGroupIcon**)p2;
+	ForceGroupIcon* m1 = *static_cast<ForceGroupIcon**>(const_cast<void*>(p1));
+	ForceGroupIcon* m2 = *static_cast<ForceGroupIcon**>(const_cast<void*>(p2));
 
 	bool bv1 = dynamic_cast<VehicleIcon*>(m1) ? 1 : 0;
 	bool bv2 = dynamic_cast<VehicleIcon*>(m2) ? 1 : 0;
@@ -1775,19 +1775,19 @@ void ForceGroupIcon::drawDeathEffect()
 			uint32_t alphaMin = (animationInfos[i].color >> 24) & 0xff;
 			uint32_t alphaMax = (animationInfos[i+1].color >> 24)& 0xff;
 
-			uint32_t newAlpha = (float)alphaMin + ((float)(alphaMax - alphaMin))*percent;
+			uint32_t newAlpha = static_cast<float>(alphaMin) + (static_cast<float>((alphaMax - alphaMin)))*percent;
 			
 			uint32_t redMin = (animationInfos[i].color & 0x00ff0000)>>16;
 			uint32_t redMax = (animationInfos[i+1].color & 0x00ff0000)>>16;
-			uint32_t newRed = (float)redMin + ((float)(redMax - redMin))*percent;
+			uint32_t newRed = static_cast<float>(redMin) + (static_cast<float>((redMax - redMin)))*percent;
 			
 			uint32_t greenMin = (animationInfos[i].color & 0x0000ff00)>>8;
 			uint32_t greenMax = (animationInfos[i+1].color & 0x0000ff00)>>8;
-			uint32_t newGreen = (float)greenMin + ((float)(greenMax - greenMin))*percent;
+			uint32_t newGreen = static_cast<float>(greenMin) + (static_cast<float>((greenMax - greenMin)))*percent;
 			
 			uint32_t blueMin = animationInfos[i].color & 0x000000ff;
 			uint32_t blueMax = animationInfos[i+1].color & 0x000000ff;
-			uint32_t newBlue = (float)blueMin + ((float)(blueMax - blueMin))*percent;
+			uint32_t newBlue = static_cast<float>(blueMin) + (static_cast<float>((blueMax - blueMin)))*percent;
 
 			uint32_t newColor = newBlue + (newGreen << 8) + (newRed << 16) + (newAlpha <<24);
 							

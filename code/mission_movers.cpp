@@ -88,7 +88,7 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 
 		switch (mover->getObjectClass()) {
 			case BATTLEMECH: {
-				((BattleMechPtr)mover)->captureable = parts[partIndex].captureable;
+				(static_cast<BattleMechPtr>(mover))->captureable = parts[partIndex].captureable;
 
 				AppearancePtr myActor = mover->getAppearance();
 
@@ -130,10 +130,10 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 
 
 		if (MPlayer) {
-			MPlayer->addToMoverRoster((MoverPtr)ObjectManager->getByWatchID(parts[partIndex].objectWID));
-			MPlayer->addToPlayerMoverRoster(parts[partIndex].commanderID, (MoverPtr)ObjectManager->getByWatchID(parts[partIndex].objectWID));
+			MPlayer->addToMoverRoster(static_cast<MoverPtr>(ObjectManager->getByWatchID(parts[partIndex].objectWID)));
+			MPlayer->addToPlayerMoverRoster(parts[partIndex].commanderID, static_cast<MoverPtr>(ObjectManager->getByWatchID(parts[partIndex].objectWID)));
 			if (parts[partIndex].commanderID == MPlayer->commanderID)
-				MPlayer->addToLocalMovers((MoverPtr)ObjectManager->getByWatchID(parts[partIndex].objectWID));
+				MPlayer->addToLocalMovers(static_cast<MoverPtr>(ObjectManager->getByWatchID(parts[partIndex].objectWID)));
 		}
 
 		if (parts[partIndex].exists)
@@ -246,10 +246,10 @@ typedef struct _MoverInitData {
 		MoverPtr mover = nullptr;
 		switch (objType->getObjectTypeClass()) {
 			case BATTLEMECH_TYPE:
-				mover = (MoverPtr)ObjectManager->newMech();
+				mover = static_cast<MoverPtr>(ObjectManager->newMech());
 				break;
 			case VEHICLE_TYPE:
-				mover = (MoverPtr)ObjectManager->newVehicle();
+				mover = static_cast<MoverPtr>(ObjectManager->newVehicle());
 				break;
 		}
 
@@ -309,7 +309,7 @@ typedef struct _MoverInitData {
 
 			switch (mover->getObjectClass()) {
 				case BATTLEMECH: {
-					((BattleMechPtr)mover)->captureable = moverSpec->capturable;
+					(static_cast<BattleMechPtr>(mover))->captureable = moverSpec->capturable;
 					AppearancePtr myActor = mover->getAppearance();
 					myActor->resetPaintScheme(moverSpec->highlightColor1,
 											moverSpec->highlightColor2,
@@ -375,7 +375,7 @@ typedef struct _MoverInitData {
 			if (moverSpec->numComponents > 0) {
 				if (mover->getObjectClass() != BATTLEMECH)
 					STOP(("LogisticsMech was not a MECH!!"));
-				((BattleMechPtr)mover)->resetComponents(moverSpec->numComponents, moverSpec->components);
+				(static_cast<BattleMechPtr>(mover))->resetComponents(moverSpec->numComponents, moverSpec->components);
 			}	
 
             // sebi: !NB
@@ -433,7 +433,7 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 
 	long moverHandle = addMover(&mData);
 
-	MoverPtr mMech = (MoverPtr)ObjectManager->get(moverHandle);
+	MoverPtr mMech = static_cast<MoverPtr>(ObjectManager->get(moverHandle));
 	// BATTLEMECH-RESET-KIND-GUARD-1: the customization below (variantName strcpy +
 	// resetComponents) is BattleMech-ONLY. A non-BattleMech deployable
 	// (GroundVehicle / Elemental — valid MC2X content, e.g. a salvaged Repair Truck
@@ -448,7 +448,7 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 		return moverHandle;
 	}
 
-	strcpy( ((BattleMech*)mMech)->variantName, mechData->getName().c_str() );
+	strcpy( (static_cast<BattleMech*>(mMech))->variantName, mechData->getName().c_str() );
 		
 	long totalComponents = mechData->getComponentCount();
 
@@ -456,7 +456,7 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 	
 	if ( totalComponents )
 	{
-		componentList = (long *)systemHeap->Malloc(sizeof(long) * totalComponents);
+		componentList = static_cast<long *>(systemHeap->Malloc(sizeof(long) * totalComponents));
 	
 		long otherCount = totalComponents;
 		mechData->getComponents(otherCount, componentList);
@@ -467,7 +467,7 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 	}
 	
 	
-	((BattleMechPtr)mMech)->resetComponents(totalComponents,componentList);
+	(static_cast<BattleMechPtr>(mMech))->resetComponents(totalComponents,componentList);
 	
 	return moverHandle;
 }
@@ -477,7 +477,7 @@ void DEBUGWINS_removeGameObject (GameObjectPtr obj);
 
 long Mission::removeMover (MoverPtr mover) {
 
-	DEBUGWINS_removeGameObject((GameObjectPtr)mover);
+	DEBUGWINS_removeGameObject(static_cast<GameObjectPtr>(mover));
 	missionInterface->removeMover(mover);
 	if (MPlayer) {
 		MPlayer->removeFromLocalMovers(mover);
@@ -566,7 +566,7 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 				long cID;
 				result = missionFile.readIdLong("CommanderId", cID);
 				gosASSERT(result == NO_ERR);
-				commanderID = (char)cID;
+				commanderID = static_cast<char>(cID);
 			}
 
 			if ((commanderID < 0) || (commanderID >= MAX_MC_PLAYERS))
@@ -618,7 +618,7 @@ bool IsGateDisabled (int objectWID) {
 	if (obj && obj->isDisabled())
 		return(true);
 	if (obj->isBuilding()) {
-		GameObjectPtr parent = ((BuildingPtr)obj)->getParent();
+		GameObjectPtr parent = (static_cast<BuildingPtr>(obj))->getParent();
 		if (parent)
 			return(parent->isDisabled());
 	}
@@ -634,6 +634,6 @@ bool IsGateOpen (int objectWID) {
 	if (!obj)
 		return(false);
 	if (obj->getObjectClass() == GATE)
-		return(((Gate*)obj)->opened);
+		return((static_cast<Gate*>(obj))->opened);
 	return(false);
 }

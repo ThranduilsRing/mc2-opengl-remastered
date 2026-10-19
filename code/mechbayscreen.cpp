@@ -53,7 +53,7 @@ void MechBayScreen::init(FitIniFile* file)
 	loadoutListBox.init( rects[3].left(), rects[3].top(), rects[3].width(), rects[3].height() );
 
 	// fill the mech list box
-	((aObject*)&mechListBox)->init( rects[0].left(), rects[0].top(), rects[0].width(), rects[0].height() );
+	(static_cast<aObject*>(&mechListBox))->init( rects[0].left(), rects[0].top(), rects[0].width(), rects[0].height() );
 
 	// initialize little icons
 	FitIniFile iconFile;
@@ -168,7 +168,7 @@ void MechBayScreen::begin()
 
 				for ( int i = 0; i < mechListBox.GetItemCount(); i++ )
 				{
-					if ( ((MechListBoxItem*)mechListBox.GetItem(i))->getMech()->getVariant()
+					if ( (static_cast<MechListBoxItem*>(mechListBox.GetItem(i)))->getMech()->getVariant()
 						== (*iter)->getVariant() )
 						bFound = true;
 				}
@@ -206,7 +206,7 @@ void MechBayScreen::begin()
 		bool bFound = 0;
 		for ( int i = 0; i < mechListBox.GetItemCount(); i++ )
 		{
-			MechListBoxItem* pItem = (MechListBoxItem*)mechListBox.GetItem( i );
+			MechListBoxItem* pItem = static_cast<MechListBoxItem*>(mechListBox.GetItem( i ));
 			if ( pItem && pItem->getMech() == pCurMech )
 			{
 				mechListBox.SelectItem( i );

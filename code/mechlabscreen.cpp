@@ -182,7 +182,7 @@ int MechLabScreen::init( FitIniFile& file )
 	if ( NO_ERR != comboFile.open( path ) )
 	{
 		char errorStr[255];
-		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe((const char*)path));
+		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)));
 		Assert( 0, 0, errorStr );
 	}
 
@@ -268,7 +268,7 @@ void MechLabScreen::begin()
 		if ( maxCount )
 		{
 			maxCount ++;
-			pVar = (LogisticsVariant**)_alloca( maxCount* sizeof (LogisticsVariant*) );
+			pVar = static_cast<LogisticsVariant**>(_alloca( maxCount* sizeof (LogisticsVariant*) ));
 			LogisticsData::instance->getChassisVariants( pVariant->getChassis(),pVar, maxCount );
 
 			for ( int i = 0; i < maxCount; i++ )
@@ -577,7 +577,7 @@ void MechLabScreen::update()
 			for ( int i = 0; i < componentListBox.GetItemCount(); i++ )
 			{
 				if ( componentListBox.GetItem( i )->getState() != aListItem::DISABLED
-					&& !canAddComponent( ((ComponentListItem*)componentListBox.GetItem( i ))->getComponent() ) )
+					&& !canAddComponent( (static_cast<ComponentListItem*>(componentListBox.GetItem( i )))->getComponent() ) )
 				{
 					bFound = 1;
 					break;
@@ -1091,7 +1091,7 @@ void MechLabScreen::updateHeatMeter()
 		mc2::fmt::to_buf(text, "{:d}/", mc2::fmt::as_i32(curHeat));
 
 	textObjects[12].setText( text );
-	attributeMeters[MECH_LAB_ATTRIBUTE_METER_COUNT-4].setValue( fCurHeat/(float)maxHeat );
+	attributeMeters[MECH_LAB_ATTRIBUTE_METER_COUNT-4].setValue( fCurHeat/static_cast<float>(maxHeat) );
 
 }
 
@@ -1142,7 +1142,7 @@ void MechLabScreen::updateArmorMeter()
 	char text[64];
 	mc2::fmt::to_buf(text, "{:d}/{:d}", mc2::fmt::as_i32(curarmor), mc2::fmt::as_i32(maxarmor));
 	textObjects[11].setText( text );
-	attributeMeters[MECH_LAB_ATTRIBUTE_METER_COUNT-3].setValue( fCurarmor/(float)maxarmor );
+	attributeMeters[MECH_LAB_ATTRIBUTE_METER_COUNT-3].setValue( fCurarmor/static_cast<float>(maxarmor) );
 
 }
 
@@ -1318,7 +1318,7 @@ void	MechLabScreen::setComponent( LogisticsComponent* pComponent, bool bMessageF
 
 
 			// set up jump range
-			attributeMeters[4].setValue(((float)pVariant->getMaxJumpRange() * 25.0f) / MAX_JUMP_RANGE );
+			attributeMeters[4].setValue((static_cast<float>(pVariant->getMaxJumpRange()) * 25.0f) / MAX_JUMP_RANGE );
 			mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(pVariant->getMaxJumpRange() * 25));
 			textObjects[7].setText( text );
 			textObjects[7].setColor( 0xff005392 );
@@ -1488,7 +1488,7 @@ void	MechLabScreen::setComponent( LogisticsComponent* pComponent, bool bMessageF
 			{
 				mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(pCurComponent->getAmmo()));
 				textObjects[13].setText( text );
-				attributeMeters[3].setValue( ((float)pCurComponent->getAmmo())/164.f );
+				attributeMeters[3].setValue( (static_cast<float>(pCurComponent->getAmmo()))/164.f );
 			}
 			else
 				textObjects[13].setText( "" );

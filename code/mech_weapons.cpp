@@ -166,7 +166,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 	bool isStreakMissile = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponStreak(); 
 
 	long range;
-	long attackChance = (long)calcAttackChance(target, aimLocation, targetTime, weaponIndex, 0.0, &range, targetPoint);
+	long attackChance = static_cast<long>(calcAttackChance(target, aimLocation, targetTime, weaponIndex, 0.0, &range, targetPoint));
 	long hitRoll = RandomNumber(100);
 	if (target)
 	{
@@ -198,7 +198,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 
 	MechWarriorPtr targetPilot = nullptr;
 	if (target && target->isMover()) {
-		targetPilot = ((MoverPtr)target)->getPilot();
+		targetPilot = (static_cast<MoverPtr>(target))->getPilot();
 		targetPilot->updateAttackerStatus(getWatchID(), scenarioTime);
 	}
 
@@ -218,7 +218,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 			if (isStreakMissile)
 				numMissiles = missileAmount;
 			else {
-				numMissiles = (long)(missileAmount / 2.0 + 0.5);
+				numMissiles = static_cast<long>((missileAmount / 2.0 + 0.5));
 				if (numMissiles < 1)
 					numMissiles = 1;
 				if (numMissiles > missileAmount)
@@ -243,7 +243,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 							 numMissiles * MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponDamage(),
 							 hitLocation,
 							 entryAngle);
-			Assert(((float)((long)(curShotInfo.damage / 0.25)) * 0.25) == curShotInfo.damage, 0, " WeaponHitChunk.build: damage round error ");
+			Assert((static_cast<float>((static_cast<long>((curShotInfo.damage / 0.25)))) * 0.25) == curShotInfo.damage, 0, " WeaponHitChunk.build: damage round error ");
 			dmgDone = curShotInfo.damage;
 
 			if (MPlayer && MPlayer->isServer()) {
@@ -410,7 +410,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 			if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE)
 			{
 				long missileAmount = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponAmmoAmount();
-				long numMissiles = ((float)missileAmount / 2.0) + 0.5;
+				long numMissiles = (static_cast<float>(missileAmount) / 2.0) + 0.5;
 				if (numMissiles < 1)
 					numMissiles = 1;
 				if (numMissiles > missileAmount)
@@ -423,7 +423,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 										 numMissiles * MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponDamage(),
 										 -1,
 										 entryAngle);
-						Assert(((float)((long)(curShotInfo.damage / 0.25)) * 0.25) == curShotInfo.damage, 0, " WeaponHitChunk.build: damage round error ");
+						Assert((static_cast<float>((static_cast<long>((curShotInfo.damage / 0.25)))) * 0.25) == curShotInfo.damage, 0, " WeaponHitChunk.build: damage round error ");
 
 						// If we missed, pick sights away from the target and check LOS to each one.  If all are
 						// invisible, just hit the target with zero points of damage.
@@ -700,7 +700,7 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 									 numMissiles * MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponDamage(),
 									 hitLocation,
 									 entryAngle);
-					Assert(((float)((long)(curShotInfo.damage / 0.25)) * 0.25) == curShotInfo.damage, 0, " WeaponHitChunk.build: damage round error ");
+					Assert((static_cast<float>((static_cast<long>((curShotInfo.damage / 0.25)))) * 0.25) == curShotInfo.damage, 0, " WeaponHitChunk.build: damage round error ");
 		
 					if (target) 
 						weaponFX->connect(this, target, &curShotInfo, sourceHotSpot, targetHotSpot);
@@ -730,8 +730,8 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 			// only -- the fire decision, damage, heat, ammo, recycle, and the
 			// createWeaponBolt/connect behavior below are the legacy path, untouched.
 			long legacyEffectType = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponSpecialEffect();
-			unsigned char effectType = (unsigned char)resolveTargetWeaponFireEffectType(
-				inventory[weaponIndex].masterID, (int)legacyEffectType);
+			unsigned char effectType = static_cast<unsigned char>(resolveTargetWeaponFireEffectType(
+				inventory[weaponIndex].masterID, static_cast<int>(legacyEffectType)));
 			weaponFX = ObjectManager->createWeaponBolt(effectType);
 
 			if (!weaponFX)
@@ -796,7 +796,7 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 									 numMissiles * MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponDamage(),
 									 -1,
 									 entryAngle);
-					Assert(((float)((long)(curShotInfo.damage / 0.25)) * 0.25) == curShotInfo.damage, 0, " WeaponHitChunk.build: damage round error ");
+					Assert((static_cast<float>((static_cast<long>((curShotInfo.damage / 0.25)))) * 0.25) == curShotInfo.damage, 0, " WeaponHitChunk.build: damage round error ");
 					weaponFX->connect(this, *targetPoint, &curShotInfo, sourceHotSpot);
 				}
 			}
@@ -833,7 +833,7 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 
 	MechWarriorPtr targetPilot = nullptr;
 	if (target && target->isMover()) {
-		targetPilot = ((MoverPtr)target)->getPilot();
+		targetPilot = (static_cast<MoverPtr>(target))->getPilot();
 		targetPilot->updateAttackerStatus(getWatchID(), scenarioTime);
 		targetPilot->triggerAlarm(PILOT_ALARM_TARGET_OF_WEAPONFIRE, getWatchID());
 	}

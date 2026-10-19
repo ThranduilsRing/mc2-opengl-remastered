@@ -1043,7 +1043,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 					int mechCount = 0;
 					for ( int i = 0; i < n; ++i )
 					{
-						if ( pool[i] && (int)pool[i]->getMaxWeight() >= MECH_MIN_TONS )
+						if ( pool[i] && static_cast<int>(pool[i]->getMaxWeight()) >= MECH_MIN_TONS )
 							mechIdx[mechCount++] = i;
 					}
 
@@ -1124,7 +1124,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 						for ( int i = nCands - 1; i > 0; --i )
 						{
 							seed = seed * 1664525u + 1013904223u;
-							int j = (int)( seed % (unsigned int)( i + 1 ) );
+							int j = static_cast<int>(( seed % static_cast<unsigned int>(( i + 1 )) ));
 							Candidate tmp = cands[i]; cands[i] = cands[j]; cands[j] = tmp;
 						}
 
@@ -1190,7 +1190,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 
 							printf("[SOAK] lance-add slot=%d mech=%s tons=%d src=%s\n",
 							    slot, variant->getName().c_str(),
-							    (int)variant->getMaxWeight(), src);
+							    static_cast<int>(variant->getMaxWeight()), src);
 							++deployed;
 							if ( src[0] == 's' ) ++fromSalvage; else ++fromBuy;
 						}
@@ -1225,7 +1225,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 						for ( int i = 0; i < mechCount; ++i )
 						{
 							LogisticsVariant* v = pool[ mechIdx[i] ];
-							int w = (int)v->getMaxWeight();
+							int w = static_cast<int>(v->getMaxWeight());
 							if ( w < lightestW ) { lightestW = w; lightest = v; }
 							if ( w <= cap && w > pickW ) { pickW = w; pick = v; }
 						}
@@ -1249,7 +1249,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 									bought->setPilot( pilot );
 								ld->setMechToModify( bought );
 								printf("[SOAK] auto-purchase mech=%s tons=%d pilot=%d deployed=slot1 maxDrop=%d pool=%d\n",
-									pick->getName().c_str(), (int)pick->getMaxWeight(),
+									pick->getName().c_str(), static_cast<int>(pick->getMaxWeight()),
 									pilot ? 1 : 0, maxDrop, n);
 							}
 							else
@@ -1383,7 +1383,7 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 					if ( LogisticsData::instance )
 					{
 						auto inv = LogisticsData::instance->getInventory();
-						items = (int)std::ssize(inv);
+						items = static_cast<int>(std::ssize(inv));
 					}
 					printf("[SOAK] screen-check screen=purchase ok=%d items=%d\n",
 						(items > 0) ? 1 : 0, items);
@@ -1451,7 +1451,7 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 					if ( LogisticsData::instance )
 					{
 						auto fg = LogisticsData::instance->getForceGroup();
-						items = (int)std::ssize(fg);
+						items = static_cast<int>(std::ssize(fg));
 					}
 					printf("[SOAK] screen-check screen=loadout ok=%d items=%d\n",
 						(items > 0) ? 1 : 0, items);
@@ -1509,7 +1509,7 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 					s_soakLastAdvY = curScreenY;
 					s_soakSettleTimer = 0.0f;
 					printf("[SOAK] parked screen=%d,%d (MC2_SOAK_STOP_AT_BAY)\n",
-						(int)curScreenX, (int)curScreenY);
+						static_cast<int>(curScreenX), static_cast<int>(curScreenY));
 					fflush(stdout);
 				}
 				else
@@ -1519,11 +1519,11 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 					s_soakLastAdvX = curScreenX;
 					s_soakLastAdvY = curScreenY;
 					s_soakSettleTimer = 0.0f;
-					printf("[SOAK] advance screen=%d,%d\n", (int)curScreenX, (int)curScreenY);
+					printf("[SOAK] advance screen=%d,%d\n", static_cast<int>(curScreenX), static_cast<int>(curScreenY));
 					if ( LogisticsData::instance )
 						printf("[SOAK] launch mission=%s stage=%d\n",
 							LogisticsData::instance->getCurrentMission().c_str(),
-							(int)LogisticsData::instance->getCurrentMissionNum());
+							static_cast<int>(LogisticsData::instance->getCurrentMissionNum()));
 					fflush(stdout);
 				}
 			}
@@ -2023,7 +2023,7 @@ void MissionBegin::beginMPlayer()
 
 
 	
-	pMPConnectionType->ppConnectionScreen = (void **)(&(screens[1][1]));
+	pMPConnectionType->ppConnectionScreen = reinterpret_cast<void **>((&(screens[1][1])));
 	pMPConnectionType->pLocalBrowserScreen = pMPGameBrowser;
 	pMPConnectionType->pDirectTcpipScreen = pMPGameBrowser;
 	pMPConnectionType->pMPPlaceHolderScreen = placeHolderScreen;
@@ -2116,7 +2116,7 @@ void MissionBegin::restartMPlayer( const char* playerName )
 
 			if ( playerName )
 			{
-				((MPParameterScreen*)screens[curScreenX][curScreenY])->setHostLeftDlg(playerName);
+				(static_cast<MPParameterScreen*>(screens[curScreenX][curScreenY]))->setHostLeftDlg(playerName);
 			}
 		}
 

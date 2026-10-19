@@ -25,12 +25,12 @@ static bool devShellSimSpeed(const char* paramsJson,
 			{
 				++p;
 				while (*p == ' ' || *p == '\t' || *p == '"') ++p;
-				simSpeedSetMultiplier((float)atof(p));
+				simSpeedSetMultiplier(static_cast<float>(atof(p)));
 			}
 		}
 	}
 	char buf[64];
-	mc2::fmt::to_buf(buf, "{{\"multiplier\":{:.2f}}}", (double)simSpeedGetMultiplier());
+	mc2::fmt::to_buf(buf, "{{\"multiplier\":{:.2f}}}", static_cast<double>(simSpeedGetMultiplier()));
 	dataJsonOut = buf;
 	(void)errorOut;
 	return true;
@@ -75,7 +75,7 @@ void Mission::initPrologue(MissionInitFrame& f) {
 		uint32_t seed = mc2_det_rng::hashMissionName(missionName);
 		const std::string seedText = mc2::gate::str<"MC2_RNG_SEED">();   // "" when unset or empty
 		if (!seedText.empty())
-			seed = (uint32_t)strtoul(seedText.c_str(), nullptr, 0);
+			seed = static_cast<uint32_t>(strtoul(seedText.c_str(), nullptr, 0));
 		mc2_appearance_rng::reseed(seed);
 		ResetSimRandomDraws();
 		if (mc2::gate::get<"MC2_DETERMINISTIC_RNG">()) {
@@ -173,7 +173,7 @@ void Mission::initGameSystemRanges(MissionInitFrame& f) {
 		
 	result = gameSystemFile->open(fullGameSystemName);
 	MC2_VERIFY(result == NO_ERR, "Mission::init: gamesys.fit open failed (%ld): %s",
-		result, (const char*)fullGameSystemName);
+		result, static_cast<const char*>(fullGameSystemName));
 
 	result = gameSystemFile->seekBlock("WeaponRanges");
 	MC2_VERIFY(result == NO_ERR, "Mission::init: gamesys.fit missing [WeaponRanges] block");
@@ -486,8 +486,8 @@ void Mission::initSkyAndTeamReset(MissionInitFrame& f) {
 				"MC2_MISSION_CYCLE_TEST: reset not idempotent / home not nulled "
 				"(teams=%ld commanders=%ld home=%p/%p slot0=%p/%p)",
 				Team::numTeams, Commander::numCommanders,
-				(void*)Team::home, (void*)Commander::home,
-				(void*)Team::teams[0], (void*)Commander::commanders[0]);
+				static_cast<void*>(Team::home), static_cast<void*>(Commander::home),
+				static_cast<void*>(Team::teams[0]), static_cast<void*>(Commander::commanders[0]));
 		}
 	}
 }
@@ -537,7 +537,7 @@ void Mission::initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, cha
 					result = missionFile->readIdLong("CommanderId", cID);
 					// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
 					MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing CommanderId", partName);
-					commanderID = (char)cID;
+					commanderID = static_cast<char>(cID);
 				}
 
 				if (MPlayer && dropZoneList) {
@@ -555,13 +555,13 @@ void Mission::initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, cha
 				// static Team::teams[MAX_TEAMS]/Commander::commanders[
 				// MAX_COMMANDERS] init-loop WRITES below (adversarial A5, the
 				// SP-reachable landmine). Verify at the read site + bound.
-				if (!MC2_VERIFY((long)teamID < MAX_TEAMS,
+				if (!MC2_VERIFY(static_cast<long>(teamID) < MAX_TEAMS,
 						"Mission::init: [%s] TeamId %d exceeds MAX_TEAMS-1 (%d) -- bounding",
-						partName, (int)teamID, MAX_TEAMS - 1))
+						partName, static_cast<int>(teamID), MAX_TEAMS - 1))
 					teamID = MAX_TEAMS - 1;
-				if (!MC2_VERIFY((long)commanderID < MAX_COMMANDERS,
+				if (!MC2_VERIFY(static_cast<long>(commanderID) < MAX_COMMANDERS,
 						"Mission::init: [%s] CommanderId %d exceeds MAX_COMMANDERS-1 (%d) -- bounding",
-						partName, (int)commanderID, MAX_COMMANDERS - 1))
+						partName, static_cast<int>(commanderID), MAX_COMMANDERS - 1))
 					commanderID = MAX_COMMANDERS - 1;
 
 				if (commanderID > maxCommanderID)
@@ -705,7 +705,7 @@ void Mission::initMissionSettings(MissionInitFrame& f) {
 		result = missionFile->readIdULong("NumRandomRPbuildings", MPlayer->numRandomResourceBuildings);
 	}
 
-	craterManager = (CraterManagerPtr)missionHeap->Malloc(sizeof(CraterManager));
+	craterManager = static_cast<CraterManagerPtr>(missionHeap->Malloc(sizeof(CraterManager)));
 	gosASSERT(craterManager != NULL);
 	::new (craterManager) CraterManager;
 		
@@ -733,7 +733,7 @@ void Mission::initTerrain(MissionInitFrame& f) {
 	// the terrain .pak is a required per-mission data file; a failed open feeds a
 	// closed PacketFile into terrain load below (garbage/empty terrain).
 	MC2_VERIFY( result == NO_ERR, "Mission::init: terrain .pak open failed (%ld): %s",
-		result, (const char*)terrainFileName );
+		result, static_cast<const char*>(terrainFileName) );
 
 	land = new Terrain;
 
@@ -822,7 +822,7 @@ void Mission::initPathfinding(MissionInitFrame& f) {
 		if (moveSide > MAX_MAP_CELL_WIDTH)
 			moveSide = MAX_MAP_CELL_WIDTH;
 		if (moveSide > 0) {
-			mc2::fmt::print_out("[MISSION] synthesizing blank MOVE: moveSide={:d} (terrainVtx={:d})\n", mc2::fmt::as_i32(moveSide), mc2::fmt::as_i32((int)Terrain::realVerticesMapSide));
+			mc2::fmt::print_out("[MISSION] synthesizing blank MOVE: moveSide={:d} (terrainVtx={:d})\n", mc2::fmt::as_i32(moveSide), mc2::fmt::as_i32(static_cast<int>(Terrain::realVerticesMapSide)));
 			fflush(stdout);
 			MOVE_buildData(moveSide, moveSide, nullptr /*all-passable blank*/, 0, nullptr);
 			if (GameMap)

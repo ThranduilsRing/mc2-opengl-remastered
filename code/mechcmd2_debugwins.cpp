@@ -65,7 +65,7 @@ void initDialogs()
 		if ( NO_ERR != file.open( path ) )
 		{
 			char error[256];
-			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe((const char*)path));
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)));
 			Assert( 0, 0, error );
 			return;
 		}
@@ -83,7 +83,7 @@ void initDialogs()
 		if ( NO_ERR != file.open( path ) )
 		{
 			char error[256];
-			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe((const char*)path));
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)));
 			Assert( 0, 0, error );
 			return;
 		}
@@ -101,7 +101,7 @@ void initDialogs()
 		if ( NO_ERR != file.open( path ) )
 		{
 			char error[256];
-			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe((const char*)path));
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)));
 			Assert( 0, 0, error );
 			return;
 		}

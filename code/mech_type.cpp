@@ -307,9 +307,9 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 
 	bool sameTeam = false;
 	bool collide = true;
-	bool collideeJumping = ((BattleMechPtr)collidee)->isJumping();
+	bool collideeJumping = (static_cast<BattleMechPtr>(collidee))->isJumping();
 	bool colliderJumping = false;
-	BattleMechPtr mech = (BattleMechPtr)collidee;
+	BattleMechPtr mech = static_cast<BattleMechPtr>(collidee);
 	switch (collider->getObjectClass())
 	{
 		case TRAINCAR:
@@ -352,7 +352,7 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 					collidee->setPosition(cPosition);
 				}
 */
-				((MoverPtr)collidee)->bounceToAdjCell();
+				(static_cast<MoverPtr>(collidee))->bounceToAdjCell();
 
 				// Train will take care of administering damage from this collision...
 				soundSystem->playDigitalSample(MECH_COLLIDE,collidee->getPosition());
@@ -364,25 +364,25 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 	case BATTLEMECH:
 			if (collidee->getTeam() != collider->getTeam())
 			{
-				if (((MoverPtr)collider)->getPilot()->getCurTacOrder()->code == TACTICAL_ORDER_ATTACK_OBJECT)
-					((MoverPtr)collider)->getPilot()->numPhysicalAttacks[PHYSICAL_ATTACK_RAM][COMBAT_STAT_MISSION]++;
-				else if (((MoverPtr)collider)->getPilot()->getCurTacOrder()->code == TACTICAL_ORDER_JUMPTO_POINT)
+				if ((static_cast<MoverPtr>(collider))->getPilot()->getCurTacOrder()->code == TACTICAL_ORDER_ATTACK_OBJECT)
+					(static_cast<MoverPtr>(collider))->getPilot()->numPhysicalAttacks[PHYSICAL_ATTACK_RAM][COMBAT_STAT_MISSION]++;
+				else if ((static_cast<MoverPtr>(collider))->getPilot()->getCurTacOrder()->code == TACTICAL_ORDER_JUMPTO_POINT)
 				{
 					if (mech->getPilot()->getCurTacOrder()->getJumpTarget() == collidee)
 						mech->getPilot()->numPhysicalAttacks[PHYSICAL_ATTACK_DFA][COMBAT_STAT_MISSION]++;
 				}
 			}
 
-			colliderJumping = ((BattleMechPtr)collider)->isJumping();
-			if (!colliderJumping && (((BattleMechPtr)collider)->lastJumpTime >= 0.0)) {
-				float timeSinceLanding = scenarioTime - ((BattleMechPtr)collider)->lastJumpTime;
+			colliderJumping = (static_cast<BattleMechPtr>(collider))->isJumping();
+			if (!colliderJumping && ((static_cast<BattleMechPtr>(collider))->lastJumpTime >= 0.0)) {
+				float timeSinceLanding = scenarioTime - (static_cast<BattleMechPtr>(collider))->lastJumpTime;
 				colliderJumping = (timeSinceLanding < 0.5);
 			}
 		case GROUNDVEHICLE:
 		{
-			if (!collideeJumping && (((BattleMechPtr)collidee)->lastJumpTime >= 0.0)) {
-				float timeSinceLanding = scenarioTime - ((BattleMechPtr)collidee)->lastJumpTime;
-				((BattleMechPtr)collidee)->lastJumpTime = -1.0;
+			if (!collideeJumping && ((static_cast<BattleMechPtr>(collidee))->lastJumpTime >= 0.0)) {
+				float timeSinceLanding = scenarioTime - (static_cast<BattleMechPtr>(collidee))->lastJumpTime;
+				(static_cast<BattleMechPtr>(collidee))->lastJumpTime = -1.0;
 				collideeJumping = (timeSinceLanding < 0.5);
 			}
 			bool jumpCollision = (collideeJumping || colliderJumping);
@@ -396,8 +396,8 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 			else if (jumpCollision)
 				collide = true;
 			else {
-				GameObjectPtr collideeRamTarget = ((MoverPtr)collidee)->getPilot()->getCurTacOrder()->getRamTarget();
-				GameObjectPtr colliderRamTarget = ((MoverPtr)collider)->getPilot()->getCurTacOrder()->getRamTarget();
+				GameObjectPtr collideeRamTarget = (static_cast<MoverPtr>(collidee))->getPilot()->getCurTacOrder()->getRamTarget();
+				GameObjectPtr colliderRamTarget = (static_cast<MoverPtr>(collider))->getPilot()->getCurTacOrder()->getRamTarget();
 				collide = ((collideeRamTarget == collider) || (colliderRamTarget == collidee));
 			}
 			if (collide)
@@ -465,7 +465,7 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 					}
 				}
 
-				long bounceDir = ((MoverPtr)collidee)->bounceToAdjCell();
+				long bounceDir = (static_cast<MoverPtr>(collidee))->bounceToAdjCell();
 				if (jumpCollision && (bounceDir == -1)) {
 				}
 
@@ -524,7 +524,7 @@ bool BattleMechType::handleDestruction (GameObjectPtr collidee, GameObjectPtr co
 	// anything!!!!!!!!!!! Should also be fixed for other objects'
 	// handleDestruction().
 
-	BattleMechPtr mech = (BattleMechPtr)collidee;
+	BattleMechPtr mech = static_cast<BattleMechPtr>(collidee);
 
 	if (!mech->getPilot())
 		Fatal(0, " No Pilot in this mech! ");

@@ -55,7 +55,7 @@ static int resolveOptionalEquipmentIdColumn(CSVFile* mechFile, long row)
 	auto idAliasContext = [&](const char* msg, const char* expected) -> std::string {
 		char fieldBuf[48];
 		std::snprintf(fieldBuf, sizeof(fieldBuf), "EquipmentId (csv col %d, row %ld)",
-		              (int)kEquipmentIdCsvColumn, row);
+		              static_cast<int>(kEquipmentIdCsvColumn), row);
 		ModderFinding f;
 		f.message  = msg;
 		f.file     = mechFile->getFilename() ? mechFile->getFilename() : "";
@@ -121,12 +121,12 @@ long BattleMech::init (DWORD variantNum)
 
 	unsigned char speed;	
 	mechFile.readUChar(7,5,speed);
-	maxMoveSpeed = (float)speed;
+	maxMoveSpeed = static_cast<float>(speed);
 
 	result = mechFile.readString( 23 + ( 97 * variantNum ), 2, variantName, 63 );
 	if (result == 1)
 	{
-		PAUSE(("Variant Number %d does not exist for mech %s.  Please set variant in editor!",variantNum,(const char*)csvName));
+		PAUSE(("Variant Number %d does not exist for mech %s.  Please set variant in editor!",variantNum,static_cast<const char*>(csvName)));
 		variantNum = 0;
 		variantID = 0;
 		result = mechFile.readString( 23 + ( 97 * variantNum ), 2, variantName, 63 );
@@ -223,7 +223,7 @@ long BattleMech::init (DWORD variantNum)
 		{
 			int aliasId = resolveOptionalEquipmentIdColumn(&mechFile, (26 + (97 * variantNum)) + curItem);
 			if (aliasId >= 0)
-				inventory[realItemNum].masterID = (unsigned char)aliasId;
+				inventory[realItemNum].masterID = static_cast<unsigned char>(aliasId);
 		}
 
 		// MECH-INV-IDX-GUARD-1: masterID is read from an untrusted .mdf and used to
@@ -233,7 +233,7 @@ long BattleMech::init (DWORD variantNum)
 		// indexing masterList out of bounds (the existing 255 check below then skips
 		// it). No-op for valid files, where every id is < numComponents.
 		if (inventory[realItemNum].masterID != 0xff &&
-			(long)inventory[realItemNum].masterID >= MasterComponent::numComponents)
+			static_cast<long>(inventory[realItemNum].masterID) >= MasterComponent::numComponents)
 			inventory[realItemNum].masterID = 0xff;
 
 		if (inventory[realItemNum].masterID && (inventory[realItemNum].masterID != 255))
@@ -296,7 +296,7 @@ long BattleMech::init (DWORD variantNum)
 		{
 			int aliasId = resolveOptionalEquipmentIdColumn(&mechFile, (26 + (97 * variantNum)) + curItem);
 			if (aliasId >= 0)
-				inventory[realItemNum].masterID = (unsigned char)aliasId;
+				inventory[realItemNum].masterID = static_cast<unsigned char>(aliasId);
 		}
 
 		// MECH-INV-IDX-GUARD-1: masterID is read from an untrusted .mdf and used to
@@ -306,7 +306,7 @@ long BattleMech::init (DWORD variantNum)
 		// indexing masterList out of bounds (the existing 255 check below then skips
 		// it). No-op for valid files, where every id is < numComponents.
 		if (inventory[realItemNum].masterID != 0xff &&
-			(long)inventory[realItemNum].masterID >= MasterComponent::numComponents)
+			static_cast<long>(inventory[realItemNum].masterID) >= MasterComponent::numComponents)
 			inventory[realItemNum].masterID = 0xff;
 
 		if (inventory[realItemNum].masterID && (inventory[realItemNum].masterID != 255))
@@ -354,11 +354,11 @@ long BattleMech::init (DWORD variantNum)
 					// resolves to a real model socket; else the legacy least-used
 					// round-robin. Stock items carry hardpointId==0 -> always fallback ->
 					// byte-identical mount (parity). Returns the same node-index domain.
-					inventory[realItemNum].facing = (unsigned char)resolveWeaponMountNode(inventory[realItemNum], sourceWeaponType);
+					inventory[realItemNum].facing = static_cast<unsigned char>(resolveWeaponMountNode(inventory[realItemNum], sourceWeaponType));
 					inventory[realItemNum].readyTime = 0.0;
 					inventory[realItemNum].bodyLocation = 255;
-					inventory[realItemNum].effectiveness = (short)(MasterComponent::masterList[inventory[realItemNum].masterID].getWeaponDamage() * 10.0 /	// damage over 10 seconds
-													 MasterComponent::masterList[inventory[realItemNum].masterID].getWeaponRecycleTime());
+					inventory[realItemNum].effectiveness = static_cast<short>((MasterComponent::masterList[inventory[realItemNum].masterID].getWeaponDamage() * 10.0 /	// damage over 10 seconds
+													 MasterComponent::masterList[inventory[realItemNum].masterID].getWeaponRecycleTime()));
 					inventory[realItemNum].effectiveness *= WeaponRanges[MasterComponent::masterList[inventory[realItemNum].masterID].getWeaponRange()][1] / 24;
 					ItemLocationToInvLocation[curItem] = realItemNum;
 					realItemNum++;
@@ -382,7 +382,7 @@ long BattleMech::init (DWORD variantNum)
 		// indexing masterList out of bounds (the existing 255 check below then skips
 		// it). No-op for valid files, where every id is < numComponents.
 		if (inventory[realItemNum].masterID != 0xff &&
-			(long)inventory[realItemNum].masterID >= MasterComponent::numComponents)
+			static_cast<long>(inventory[realItemNum].masterID) >= MasterComponent::numComponents)
 			inventory[realItemNum].masterID = 0xff;
 
 		if (inventory[realItemNum].masterID && (inventory[realItemNum].masterID != 255))
@@ -448,7 +448,7 @@ long BattleMech::init (DWORD variantNum)
 		mechFile.readUChar(114 + (97 * variantNum), stupidNewSageColumns[curLocation], internalStructure);
 		body[curLocation].curInternalStructure = internalStructure;
 
-		float damageLevel = (float)body[curLocation].curInternalStructure / body[curLocation].maxInternalStructure;
+		float damageLevel = static_cast<float>(body[curLocation].curInternalStructure) / body[curLocation].maxInternalStructure;
 
 		if (damageLevel <= 0.0)
 			body[curLocation].damageState = IS_DAMAGE_DESTROYED;
@@ -587,7 +587,7 @@ long BattleMech::init (DWORD variantNum)
 	{
 		for (long ammoIndex = 0; ammoIndex < numAmmoTypes; ammoIndex++) 
 		{
-			if ((long)MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId() == ammoTypeTotal[ammoIndex].masterId) 
+			if (static_cast<long>(MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId()) == ammoTypeTotal[ammoIndex].masterId)
 			{
 				inventory[item].ammoIndex = ammoIndex;
 				break;
@@ -612,7 +612,7 @@ long BattleMech::init (DWORD variantNum)
 		if ((inventory[item].masterID == MasterComponent::clanAntiMissileSystemID) || (inventory[item].masterID == MasterComponent::innerSphereAntiMissileSystemID)) 
 		{
 			for (long ammoIndex = 0; ammoIndex < numAmmoTypes; ammoIndex++) {
-				if ((long)MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId() == ammoTypeTotal[ammoIndex].masterId) 
+				if (static_cast<long>(MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId()) == ammoTypeTotal[ammoIndex].masterId)
 				{
 					inventory[item].ammoIndex = ammoIndex;
 					break;
@@ -1069,11 +1069,11 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 					// resolves to a real model socket; else the legacy least-used
 					// round-robin. Stock items carry hardpointId==0 -> always fallback ->
 					// byte-identical mount (parity). Returns the same node-index domain.
-					inventory[realItemNum].facing = (unsigned char)resolveWeaponMountNode(inventory[realItemNum], sourceWeaponType);
+					inventory[realItemNum].facing = static_cast<unsigned char>(resolveWeaponMountNode(inventory[realItemNum], sourceWeaponType));
 					inventory[realItemNum].readyTime = 0.0;
 					inventory[realItemNum].bodyLocation = 255;
-					inventory[realItemNum].effectiveness = (short)(MasterComponent::masterList[inventory[realItemNum].masterID].getWeaponDamage() * 10.0 /	// damage over 10 seconds
-													 MasterComponent::masterList[inventory[realItemNum].masterID].getWeaponRecycleTime());
+					inventory[realItemNum].effectiveness = static_cast<short>((MasterComponent::masterList[inventory[realItemNum].masterID].getWeaponDamage() * 10.0 /	// damage over 10 seconds
+													 MasterComponent::masterList[inventory[realItemNum].masterID].getWeaponRecycleTime()));
 					inventory[realItemNum].effectiveness *= WeaponRanges[MasterComponent::masterList[inventory[realItemNum].masterID].getWeaponRange()][1] / 24;
 					ItemLocationToInvLocation[curItem] = realItemNum;
 					realItemNum++;
@@ -1342,7 +1342,7 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 	{
 		for (long ammoIndex = 0; ammoIndex < numAmmoTypes; ammoIndex++) 
 		{
-			if ((long)MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId() == ammoTypeTotal[ammoIndex].masterId) 
+			if (static_cast<long>(MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId()) == ammoTypeTotal[ammoIndex].masterId)
 			{
 				inventory[item].ammoIndex = ammoIndex;
 				break;
@@ -1367,7 +1367,7 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 		if ((inventory[item].masterID == MasterComponent::clanAntiMissileSystemID) || (inventory[item].masterID == MasterComponent::innerSphereAntiMissileSystemID)) 
 		{
 			for (long ammoIndex = 0; ammoIndex < numAmmoTypes; ammoIndex++) {
-				if ((long)MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId() == ammoTypeTotal[ammoIndex].masterId) 
+				if (static_cast<long>(MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId()) == ammoTypeTotal[ammoIndex].masterId)
 				{
 					inventory[item].ammoIndex = ammoIndex;
 					break;

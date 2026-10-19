@@ -55,7 +55,7 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, glm::vec3* dropZoneL
 	{
 		//-----------------------------------------------------
 		// Since we leave part 0 unused, malloc numParts + 1...
-		parts = (PartPtr)missionHeap->Malloc(sizeof(Part) * (numParts + 1));
+		parts = static_cast<PartPtr>(missionHeap->Malloc(sizeof(Part) * (numParts + 1)));
 		gosASSERT(parts != nullptr);
 
 		memset(parts,0,sizeof(Part) * (numParts + 1));

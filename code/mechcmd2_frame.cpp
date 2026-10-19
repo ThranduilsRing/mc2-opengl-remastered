@@ -747,10 +747,10 @@ void __stdcall DoGameLogic()
 			{
 				testVertex[i].x = RandomNumber(1000) - 100;
 				testVertex[i].y = RandomNumber(800) - 100;
-				testVertex[i].z = ((float)RandomNumber(150) / 100.0f) - 0.25f;
+				testVertex[i].z = (static_cast<float>(RandomNumber(150)) / 100.0f) - 0.25f;
 				testVertex[i].rhw = 0.5f;
-				testVertex[i].u = (float)RandomNumber(100) / 100.0f;
-				testVertex[i].v = (float)RandomNumber(100) / 100.0f; 
+				testVertex[i].u = static_cast<float>(RandomNumber(100)) / 100.0f;
+				testVertex[i].v = static_cast<float>(RandomNumber(100)) / 100.0f;
 				testVertex[i].argb = 0x3fffffff;
 				testVertex[i].frgb = 0x3f1f2f3f;
 				indexArray[i] = i;
