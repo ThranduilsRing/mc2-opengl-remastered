@@ -21,8 +21,8 @@ unsigned long long g_ifaceCgFrameNs[8] = {0};
 
 ControlGui* ControlGui::instance = nullptr;
 
-ButtonData*	ControlGui::buttonData = nullptr;
-ButtonData* ControlGui::vehicleData = nullptr;
+std::unique_ptr<ButtonData[]>	ControlGui::buttonData = nullptr;
+std::unique_ptr<ButtonData[]> ControlGui::vehicleData = nullptr;
 
 long ControlGui::hiResOffsetX = 0;
 long ControlGui::hiResOffsetY = 0;
@@ -200,7 +200,7 @@ ControlGui::~ControlGui()
 	rectInfos = nullptr;
 
 	if ( buttonData )
-		delete [] buttonData;
+		buttonData.reset();
 	buttonData = nullptr;
 
 	if ( buttons )
@@ -220,7 +220,7 @@ ControlGui::~ControlGui()
 	vehicleButtons = nullptr;
 
 	if ( vehicleData )
-		delete [] vehicleData;
+		vehicleData.reset();
 	vehicleData = nullptr;
 
 	if ( missionStatusInfos )
@@ -231,7 +231,7 @@ ControlGui::~ControlGui()
 
 	if (bMovie)
 	{
-		delete bMovie;
+		bMovie.reset();
 		bMovie = nullptr;
 	}
 }

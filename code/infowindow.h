@@ -110,7 +110,7 @@ class InfoWindow
 		Mover*		pUnit;
 
 		static ButtonData	buttonData[2];
-		static StaticInfo*	skillInfos;
+		static std::unique_ptr<StaticInfo[]>	skillInfos;
 
 		unsigned long		backgroundTexture;
 		aFont				nameFont;

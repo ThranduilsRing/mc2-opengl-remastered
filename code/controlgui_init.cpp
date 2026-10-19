@@ -617,11 +617,11 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 	if ( !buttons )
 		buttons = std::make_unique_for_overwrite<ControlButton[]>(buttonCount);
 	if ( !buttonData )
-		buttonData = new ButtonData[buttonCount];
+		buttonData = std::make_unique_for_overwrite<ButtonData[]>(buttonCount);
 	
-	memset( buttonData, 0, buttonCount * sizeof( ButtonData ) );
+	memset( buttonData.get(), 0, buttonCount * sizeof( ButtonData ) );
 
-	ControlButton::initButtons( buttonFile, buttonCount, buttons.get(), buttonData, "Button" );
+	ControlButton::initButtons( buttonFile, buttonCount, buttons.get(), buttonData.get(), "Button" );
 
 	//getButton( REPAIR )->setColor( 0 );
 	getButton( SALVAGE )->setColor( 0 );
@@ -638,10 +638,10 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 	 if ( !vehicleButtons )
 		vehicleButtons = std::make_unique_for_overwrite<ControlButton[]>(buttonCount);
 	 if ( !vehicleData )
-		vehicleData = new ButtonData[buttonCount];
-	 memset( vehicleData, 0, buttonCount * sizeof( ButtonData ) );
+		vehicleData = std::make_unique_for_overwrite<ButtonData[]>(buttonCount);
+	 memset( vehicleData.get(), 0, buttonCount * sizeof( ButtonData ) );
 
-	ControlButton::initButtons( buttonFile, buttonCount, vehicleButtons.get(), vehicleData, "Vehicle" );
+	ControlButton::initButtons( buttonFile, buttonCount, vehicleButtons.get(), vehicleData.get(), "Vehicle" );
 	
 	getButton( TACMAP_TAB )->press( true );
 

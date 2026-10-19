@@ -154,7 +154,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 		if (result)
 		{
 			moviePlaying = false;
-			delete bMovie;
+			bMovie.reset();
 			bMovie = nullptr;
 		}
 	}

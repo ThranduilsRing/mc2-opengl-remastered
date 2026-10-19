@@ -53,7 +53,7 @@ long InfoWindow::MECHBACKLEFT = 0;
 long InfoWindow::MECHBACKRIGHT = 0;
 long InfoWindow::MECHBACKHEIGHT = 0;
 long InfoWindow::SCROLLBUTTONV = 0;
-StaticInfo* InfoWindow::skillInfos = nullptr;
+std::unique_ptr<StaticInfo[]> InfoWindow::skillInfos = nullptr;
 long InfoWindow::SCROLLBUTTONU = 0;
 long InfoWindow::SCROLLBUTTONHEIGHT = 0;
 long InfoWindow::SCROLLBUTTONWIDTH = 0;
@@ -103,8 +103,8 @@ InfoWindow::InfoWindow()
 	icon = nullptr;
 	infoLength = 0;
 
-	skillInfos = new StaticInfo[7];
-	memset( skillInfos, 0, sizeof( StaticInfo ) *  7);
+	skillInfos = std::make_unique_for_overwrite<StaticInfo[]>(7);
+	memset( skillInfos.get(), 0, sizeof( StaticInfo ) *  7);
 	memset( buttonData, 0, sizeof( buttonData ) );
 
 	lastYClick = -1.f;
@@ -126,8 +126,8 @@ void InfoWindow::init( FitIniFile& file )
 	}
 
     // sebi: WTF??? thank you clang
-	//memset( skillInfos, 0, sizeof( skillInfos ));
-	memset( skillInfos, 0, sizeof( skillInfos ) * 7);
+	//memset( skillInfos.get(), 0, sizeof( skillInfos ));
+	memset( skillInfos.get(), 0, sizeof( skillInfos ) * 7);
 
 	//sebi: ORIG BUG FIX what a reason to clear this and then iterate over it?
 	// obviously clear shoul dbe done after!
@@ -305,7 +305,7 @@ void InfoWindow::init( FitIniFile& file )
 
 InfoWindow::~InfoWindow()
 {
-	delete [] skillInfos;
+	skillInfos.reset();
 }
 
 void InfoWindow::setUnit(Mover* pNewMover)

@@ -93,7 +93,7 @@ void ControlGui::playMovie( const char* fileName )
 
 	FullPathFileName movieName;
 	movieName.init(moviePath,realName,".bik");
-	bMovie = new MC2Movie;
+	bMovie = std::make_unique_for_overwrite<MC2Movie>();
 	bMovie->init(movieName,vRect,true);
 	// Requests remain distinct from decoder and GUI acceptance.
 	MC2_EVENT(Core, "VIDEO", 1, "event=play_requested name={}", std::string_view( realName ));
@@ -108,7 +108,7 @@ void ControlGui::playMovie( const char* fileName )
 	else
 	{
 		moviePlaying = false;
-		delete bMovie;
+		bMovie.reset();
 		bMovie = nullptr;
 		objectiveObservationSink("movie", "gui", "rejected", movieName);
 	}

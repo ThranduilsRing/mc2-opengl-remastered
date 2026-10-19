@@ -358,8 +358,8 @@ class ControlGui
 
 		std::unique_ptr<ControlButton[]>		buttons;
 		std::unique_ptr<ControlButton[]>		vehicleButtons;
-		static ButtonData*	buttonData;
-		static ButtonData*	vehicleData;
+		static std::unique_ptr<ButtonData[]>	buttonData;
+		static std::unique_ptr<ButtonData[]>	vehicleData;
 		static const char*	vehicleNames[5];
 		static long			vehicleIDs[5];
 		static const char*	vehiclePilots[5];
@@ -408,7 +408,7 @@ class ControlGui
 		long				videoInfoCount;
 		GUI_RECT			videoRect;
 		GUI_RECT			videoTextRect;
-		MC2MoviePtr			bMovie;
+		std::unique_ptr<MC2Movie>			bMovie;
 
 		std::unique_ptr<StaticInfo[]>			timerInfos;
 		long				timerInfoCount;
