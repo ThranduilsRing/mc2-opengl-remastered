@@ -98,6 +98,9 @@ constexpr long MAX_SOUND_PACKET_BYTES = 64l * 1024l * 1024l;
 //---------------------------------------------------------------------------
 void SoundSystem::destroy (void)
 {
+    for (auto& sound : sounds) gosAudio_DestroyResource(&sound.resourceHandle);
+    for (HGOSAUDIO* handle : {&stream1Handle, &stream2Handle, &stream3Handle, &bettyHandle, &supportHandle})
+        gosAudio_DestroyResource(handle);
 	sounds.clear();
 	digitalMusic.clear();
 	bettySoundBite.clear();
@@ -424,7 +427,7 @@ void SoundSystem::preloadSoundBite (long soundId)
 	if (packetSize > 0)
 	{
 		SoundBite *thisSoundBite = (&(sounds[soundId]));
-		thisSoundBite->resourceHandle = nullptr;
+		gosAudio_DestroyResource(&thisSoundBite->resourceHandle);
 			
 		if (packetSize > MAX_SOUND_PACKET_BYTES)
 		{

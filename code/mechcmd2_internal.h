@@ -166,7 +166,6 @@ extern bool	useRealLOS;
 extern long DrawDebugCells;
 extern long GameVisibleVertices;
 extern bool EULAShown;
-extern SoundSystem* sndSystem;
 extern bool gNoDialogs;
 extern TG_MultiShape testShape[36];
 extern TG_AnimateShape testAnim[36];

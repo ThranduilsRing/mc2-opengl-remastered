@@ -50,7 +50,6 @@ CPrefs originalSettings;
 
 #include"mission.h"
 
-extern SoundSystem *sndSystem;
 
 constexpr int MSB_TAB0 = 200;
 constexpr int MSB_TAB1 = 201;
@@ -888,13 +887,13 @@ void OptionsAudio::update()
 		prefs.BettyVolume = scrollBars[4].GetScrollPos();
 	}
 
-	if (sndSystem)
+	if (soundSystem)
 	{
-		sndSystem->setDigitalMasterVolume(prefs.DigitalMasterVolume);
-		sndSystem->setSFXVolume(prefs.sfxVolume);
-		sndSystem->setRadioVolume(prefs.RadioVolume);
-		sndSystem->setMusicVolume(prefs.MusicVolume);
-		sndSystem->setBettyVolume(prefs.BettyVolume);
+		soundSystem->setDigitalMasterVolume(prefs.DigitalMasterVolume);
+		soundSystem->setSFXVolume(prefs.sfxVolume);
+		soundSystem->setRadioVolume(prefs.RadioVolume);
+		soundSystem->setMusicVolume(prefs.MusicVolume);
+		soundSystem->setBettyVolume(prefs.BettyVolume);
 	}
 }
 

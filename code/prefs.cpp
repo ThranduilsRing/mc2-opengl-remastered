@@ -17,7 +17,6 @@
 #include "Gates/gate_cold.h"
 #include "Gates/render_options_publish.h"
 
-extern SoundSystem *sndSystem;
 extern void gos_SetPostFxOptions(int casEnabled, float casSharpness, int tonemapMode);   // GameOS/gameos/gos_postprocess.cpp
 
 #include "Gates/preferences_legacy.h"
@@ -27,21 +26,12 @@ int CPrefs::applyPrefs(bool applyRes) {
 	ZoneScopedN("CPrefs::applyPrefs");
 	if (soundSystem) {
 		ZoneScopedN("CPrefs::applyPrefs soundSystem");
-		/*soundSystem doesn't seem to do anything*/
+
 		soundSystem->setDigitalMasterVolume(this->DigitalMasterVolume);
 		soundSystem->setSFXVolume(this->sfxVolume);
 		soundSystem->setRadioVolume(this->RadioVolume);
 		soundSystem->setMusicVolume(this->MusicVolume);
 		soundSystem->setBettyVolume(this->BettyVolume);
-	}
-
-	if (sndSystem) {
-		ZoneScopedN("CPrefs::applyPrefs sndSystem");
-		sndSystem->setDigitalMasterVolume(this->DigitalMasterVolume);
-		sndSystem->setSFXVolume(this->sfxVolume);
-		sndSystem->setRadioVolume(this->RadioVolume);
-		sndSystem->setMusicVolume(this->MusicVolume);
-		sndSystem->setBettyVolume(this->BettyVolume);
 	}
 
 	mc2::options::runtimePreferences() = static_cast<const mc2::options::Preferences&>(*this);

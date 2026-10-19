@@ -89,7 +89,6 @@ char* ExceptionGameMsg = nullptr;
 char buildNumber[80];
 
 bool EULAShown = false;
-SoundSystem* sndSystem;
 
 // sebi: donot know where it used, probably in some closed source linked lib
 //extern bool gNoDialogs;
@@ -1074,7 +1073,6 @@ void __stdcall InitializeGameEngine()
 		soundSystem = new GameSoundSystem;
 		soundSystem->init();
 		((SoundSystem *)soundSystem)->init("sound");
-		sndSystem = soundSystem; // for things in the lib that use sound
 		}
 		
 		//-----------------------------------------------
