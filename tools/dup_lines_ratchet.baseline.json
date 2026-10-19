@@ -1,7 +1,7 @@
 {
  "counts": {
   "GameAdapters": 0,
-  "GameOS": 3107,
+  "GameOS": 3099,
   "GuiRuntime": 48,
   "HostServices": 0,
   "RenderCore": 425,
@@ -64,7 +64,7 @@
   "GameOS/gameos/gpu_driven_common.cpp": 24,
   "GameOS/gameos/terrain_material_lib.cpp": 42,
   "GameOS/gameos/utils/Image.cpp": 100,
-  "GameOS/gameos/utils/shader_builder.cpp": 96,
+  "GameOS/gameos/utils/shader_builder.cpp": 88,
   "GameOS/gameos/utils/vec.cpp": 22,
   "GameOS/gameos/visual_tuning_profile.cpp": 42,
   "GameOS/gameos/vk_depth_caster_pipeline.cpp": 20,
@@ -580,8 +580,8 @@
   "shaders/vulkan/terrain_tier1.vert": 78,
   "shaders/vulkan/terrain_tier1_skirt.vert": 78
  },
- "head": "4fb668731",
+ "head": "3d7fddc7b",
  "n": 8,
- "total": 48848,
+ "total": 48840,
  "version": 1
 }
