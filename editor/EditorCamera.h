@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 #include "Gates/gate.h"
 #ifndef EDITORCAMERA_H
 #define EDITORCAMERA_H
@@ -55,7 +56,6 @@ static void EditorCameraTrace(const char* fmt, ...)
 CLASS DESCRIPTION
 EditorCamera:  draws the terrain and objects and stuff
 **************************************************************************************************/
-extern bool useShadows;
 extern bool s_bSensorMapEnabled;
 extern bool drawOldWay;
 extern bool useFog;

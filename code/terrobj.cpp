@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 //---------------------------------------------------------------------------
 //
 //	terrobj.cpp -- File contains the misc terrain object code
@@ -295,7 +296,6 @@ constexpr float TREE_FALL_RATE = 15.0f;
 char lastName[256];
 
 extern MidLevelRenderer::MLRClipper * theClipper;
-extern bool useNonWeaponEffects;
 //---------------------------------------------------------------------------
 // class TerrainObjectType
 //---------------------------------------------------------------------------

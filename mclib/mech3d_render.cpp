@@ -1,3 +1,4 @@
+#include "utils/mc2log.h"
 // Mech3DAppearance: bounds recalculation, render and renderShadows, with the MLR draw / light-row / FX-count counters they feed.
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
@@ -422,8 +423,8 @@ long Mech3DAppearance::render (long depthFixup)
 	{
 		if (g_mechPreviewRenderDepth > 0 && mc2::gate::get<"MC2_LOG_PREVIEW">())
 		{
-			FILE* f = fopen("preview_debug.log","a");
-			if (f) { mc2::fmt::print(f, "[PREVIEW] Mech3D::render EARLY-OUT mechShape=NULL (partial-import guard)\n"); fflush(f); fclose(f); }
+			bool f = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info);
+			if (f) { MC2_LOG(Render, Info, "[PREVIEW] Mech3D::render EARLY-OUT mechShape=NULL (partial-import guard)");   }
 		}
 		// DIAG (GPU-MECH-EQUIV recon): capture the null-shape invisible cohort
 		// (Cohort B — broken appearance type with mechShape==NULL early-outs here,
@@ -462,8 +463,8 @@ long Mech3DAppearance::render (long depthFixup)
 	{
 		if (g_mechPreviewRenderDepth > 0 && mc2::gate::get<"MC2_LOG_PREVIEW">())
 		{
-			FILE* f = fopen("preview_debug.log","a");
-			if (f) { mc2::fmt::print(f, "[PREVIEW] Mech3D::render preview shouldRender=1 visible={:d} mechShape={:016X} currentLOD={:d}\n", mc2::fmt::as_i32((int)visible), mc2::fmt::as_ptr((void*)mechShape), mc2::fmt::as_i32((int)currentLOD)); fflush(f); fclose(f); }
+			bool f = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info);
+			if (f) { MC2_LOG(Render, Info, "[PREVIEW] Mech3D::render preview shouldRender=1 visible={:d} mechShape={:016X} currentLOD={:d}", mc2::fmt::as_i32((int)visible), mc2::fmt::as_ptr((void*)mechShape), mc2::fmt::as_i32((int)currentLOD));   }
 		}
 		if (visible)
 		{

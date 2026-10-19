@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Shared surface of the Mover translation units (mover*.cpp).
 //
 // mover.cpp keeps the tuning globals and tables below plus the small Mover accessors; the rest of the
@@ -163,7 +164,6 @@ extern float				MapCellDiagonal;
 extern long NumLocationCriticalSpaces[NUM_BODY_LOCATIONS];
 extern GlobalMapPtr			GlobalMoveMap[3];
 extern long adjCellTable[MAPCELL_DIM * MAPCELL_DIM][8][4];
-extern bool useUnlimitedAmmo;
 extern bool CantBlowSalvage;
 extern long TargetRolo;
 extern WeaponFireChunk CurMoverWeaponFireChunk;

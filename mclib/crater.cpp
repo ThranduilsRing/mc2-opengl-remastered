@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 //---------------------------------------------------------------------
 //
 // crater.cpp -- Crater/footprint manager for MechCommander 2
@@ -47,7 +48,6 @@
 CraterManagerPtr craterManager = nullptr;
 extern bool useFog;
 extern bool drawOldWay;
-extern bool useNonWeaponEffects;
 
 constexpr int MAX_CRATER_TEXTURES = 2;
 constexpr int MAX_FOOTPRINTS = 64;

@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Shared surface of the bdactor translation units (bdactor*.cpp).
 // bdactor.cpp keeps the shared globals and the Bldg accessors/init/status/bounds code; the rest of the
 // BldgAppearance / TreeAppearance implementation is split by responsibility (see DOC in each piece).
@@ -116,9 +117,6 @@ extern bool		useFog;
 extern int ObjectTextureSize;
 extern bool reloadBounds;
 extern float	metersPerWorldUnit;
-extern bool		useShadows;
-extern bool useNonWeaponEffects;
-extern bool useHighObjectDetail;
 extern bool MLRVertexLimitReached;
 
 extern uint32_t g_mc2FrameCounter;  // mclib/tgl.cpp

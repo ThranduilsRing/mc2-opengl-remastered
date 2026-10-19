@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Shared surface of the missiongui.cpp translation units (missiongui.cpp, missiongui_{diag,update,style,orders,cursor,support,debugkeys,input}.cpp).
 //
 // missiongui.cpp keeps the manager lifecycle, the hotkey table and render; the rest of MissionInterfaceManager is split by
@@ -71,12 +72,9 @@ extern bool renderObjects;
 extern bool drawTerrainGrid;
 extern bool drawLOSGrid;
 extern bool useFog;
-extern bool useWaterInterestTexture;
-extern bool useShadows;
 extern bool useFaceLighting;
 extern bool useVertexLighting;
 extern bool renderTGLShapes;
-extern bool useLeftRightMouseProfile;
 extern bool drawGUIOn;
 extern bool toggledGUI;
 extern long lightState;

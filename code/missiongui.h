@@ -301,7 +301,8 @@ public:
 		                 int  mouseX,
 		                 int  mouseY);
 
-		static int saveHotKeys( FitIniFile& file );
+		static int saveHotKeys(std::string& text);
+		static unsigned long long hotKeysFingerprint();
 		static int loadHotKeys( FitIniFile& file );
 
 		static int setHotKey( int whichCommand, gosEnum_KeyIndex key, bool bShift, bool bControl, bool bAlt );

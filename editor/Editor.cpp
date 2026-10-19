@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 /***************************************************************
 * FILENAME: Editor.cpp
 * DESCRIPTION: Implements core Editor startup, update, and subsystem coordination.
@@ -45,7 +46,6 @@ unsigned long systemHeapSize = 128 * 1024 * 1024;
 unsigned long guiHeapSize = 1023999;
 
 
-long gammaLevel = 0;
 bool hasGuardBand = false;
 extern long terrainLineChanged; // the terrain uses this
 extern float frameRate; // tiny geometry needs this

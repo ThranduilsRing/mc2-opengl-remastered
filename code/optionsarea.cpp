@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 #define OPTIONSAREA_CPP
 /*************************************************************************************************\
 OptionsArea.cpp			: Implementation of the OptionsArea component.
@@ -44,11 +45,6 @@ static bool bDetailTexture = true;
 static int objectDetail = 0;
 static int difficulty = 0;
 static bool bUnLimitedAmmo = false;
-static long DigitalMasterVolume = 255;
-static long MusicVolume = 64;
-static long sfxVolume = 64;
-static long RadioVolume = 64;
-static long BettyVolume = 64;
 CPrefs prefs;
 CPrefs originalSettings;
 

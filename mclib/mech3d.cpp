@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Mech 3D layer.  Controls how the mech moves through animations
 // For MechCommander 2
 // Replace Mactor for better looking mechs!
@@ -21,8 +22,6 @@
 // MC2_GPU_CULL_LIFECYCLE_TRACE=1: verbose per-actor lifecycle boundary prints.
 // Default off (too noisy for production). Fires at: init, first GPU-cull skip per actor.
 const bool s_lcTrace = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE_TRACE">();
-bool useNonWeaponEffects = true;
-bool useHighObjectDetail = true;
 bool InEditor = false;
 
 constexpr int BODYSTATE_NORMAL = 0;
