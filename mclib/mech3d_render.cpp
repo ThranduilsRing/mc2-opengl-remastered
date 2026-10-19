@@ -1,4 +1,5 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include <utility>
 #include "utils/mc2log.h"
 // Mech3DAppearance: bounds recalculation, render and renderShadows, with the MLR draw / light-row / FX-count counters they feed.
 // Declared in the class headers; shared names in mech3d_internal.h.
@@ -57,25 +58,27 @@ extern "C" void consumeAndResetMechLightRowCounters(uint64_t* staleOut,
 // summary line every 9000 ticks. Agent-checkable oracle for effect counts.
 static const bool s_fxCountLog = mc2::gate::get<"MC2_FX_COUNT_LOG">();
 namespace {
-	enum FxSite {
+	enum class FxSite {
 		FX_RDUST=0, FX_LDUST, FX_JUMP, FX_LBOOM, FX_RBOOM,
 		FX_CSMOKE, FX_SMOKE, FX_WAKE, FX_HELIDUST, FX_RARMSMOKE, FX_LARMSMOKE,
 		FX_SITE_COUNT
 	};
-	static unsigned long long s_fxDrawCounts[FX_SITE_COUNT] = {0};
+	using enum FxSite;
+	static constexpr int FX_SITE_COUNT_I = std::to_underlying(FxSite::FX_SITE_COUNT);
+	static unsigned long long s_fxDrawCounts[FX_SITE_COUNT_I] = {0};
 	static unsigned long long s_fxTotalDraws = 0;
-	static void fxCountTick(int site) {
-		++s_fxDrawCounts[site];
+	static void fxCountTick(FxSite site) {
+		++s_fxDrawCounts[std::to_underlying(site)];
 		if ((++s_fxTotalDraws % 9000ULL) == 0ULL) {
 			MC2_DIAGF(
 				"[FX_COUNT v1] event=summary total=%llu rDust=%llu lDust=%llu jump=%llu "
 				"lBoom=%llu rBoom=%llu critSmoke=%llu smoke=%llu wake=%llu heliDust=%llu "
 				"rArmSmoke=%llu lArmSmoke=%llu\n",
 				s_fxTotalDraws,
-				s_fxDrawCounts[FX_RDUST], s_fxDrawCounts[FX_LDUST], s_fxDrawCounts[FX_JUMP],
-				s_fxDrawCounts[FX_LBOOM], s_fxDrawCounts[FX_RBOOM], s_fxDrawCounts[FX_CSMOKE],
-				s_fxDrawCounts[FX_SMOKE], s_fxDrawCounts[FX_WAKE], s_fxDrawCounts[FX_HELIDUST],
-				s_fxDrawCounts[FX_RARMSMOKE], s_fxDrawCounts[FX_LARMSMOKE]);
+				s_fxDrawCounts[std::to_underlying(FX_RDUST)], s_fxDrawCounts[std::to_underlying(FX_LDUST)], s_fxDrawCounts[std::to_underlying(FX_JUMP)],
+				s_fxDrawCounts[std::to_underlying(FX_LBOOM)], s_fxDrawCounts[std::to_underlying(FX_RBOOM)], s_fxDrawCounts[std::to_underlying(FX_CSMOKE)],
+				s_fxDrawCounts[std::to_underlying(FX_SMOKE)], s_fxDrawCounts[std::to_underlying(FX_WAKE)], s_fxDrawCounts[std::to_underlying(FX_HELIDUST)],
+				s_fxDrawCounts[std::to_underlying(FX_RARMSMOKE)], s_fxDrawCounts[std::to_underlying(FX_LARMSMOKE)]);
 		}
 	}
 	// Shutdown emit via atexit() — mirrors the proven shutdownTexResolveTable
@@ -90,10 +93,10 @@ namespace {
 			"lBoom=%llu rBoom=%llu critSmoke=%llu smoke=%llu wake=%llu heliDust=%llu "
 			"rArmSmoke=%llu lArmSmoke=%llu\n",
 			s_fxTotalDraws,
-			s_fxDrawCounts[FX_RDUST], s_fxDrawCounts[FX_LDUST], s_fxDrawCounts[FX_JUMP],
-			s_fxDrawCounts[FX_LBOOM], s_fxDrawCounts[FX_RBOOM], s_fxDrawCounts[FX_CSMOKE],
-			s_fxDrawCounts[FX_SMOKE], s_fxDrawCounts[FX_WAKE], s_fxDrawCounts[FX_HELIDUST],
-			s_fxDrawCounts[FX_RARMSMOKE], s_fxDrawCounts[FX_LARMSMOKE]);
+			s_fxDrawCounts[std::to_underlying(FX_RDUST)], s_fxDrawCounts[std::to_underlying(FX_LDUST)], s_fxDrawCounts[std::to_underlying(FX_JUMP)],
+			s_fxDrawCounts[std::to_underlying(FX_LBOOM)], s_fxDrawCounts[std::to_underlying(FX_RBOOM)], s_fxDrawCounts[std::to_underlying(FX_CSMOKE)],
+			s_fxDrawCounts[std::to_underlying(FX_SMOKE)], s_fxDrawCounts[std::to_underlying(FX_WAKE)], s_fxDrawCounts[std::to_underlying(FX_HELIDUST)],
+			s_fxDrawCounts[std::to_underlying(FX_RARMSMOKE)], s_fxDrawCounts[std::to_underlying(FX_LARMSMOKE)]);
 		std::fflush(stdout);
 	}
 	// atexit registration happens once from Mech3DAppearance::render() (a code

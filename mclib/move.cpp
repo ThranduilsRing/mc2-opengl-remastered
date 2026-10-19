@@ -4,6 +4,7 @@
 //===========================================================================//
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include <utility>
 #include "move_internal.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include "packet_exact.h"
@@ -859,9 +860,9 @@ long MissionMap::init (long cellHeight, long cellWidth, long curPlanet, MissionM
 				glm::vec3 worldPos;
 				land->cellToWorld(row, col, worldPos);
 				long cellWaterType = TerrainRuntime::sampleWaterClass(worldPos);
-				if (cellWaterType == WATER_TYPE_SHALLOW)
+				if (cellWaterType == std::to_underlying(WATER_TYPE_SHALLOW))
 					setShallowWater(row, col, true);
-				if (cellWaterType == WATER_TYPE_DEEP)
+				if (cellWaterType == std::to_underlying(WATER_TYPE_DEEP))
 					setDeepWater(row, col, true);
 				for (long i = 0; i < NUM_MOVE_LEVELS; i++)
 					GameMap->setPathlock(i, row, col, false);

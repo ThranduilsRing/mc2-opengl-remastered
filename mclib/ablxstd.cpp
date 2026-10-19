@@ -8,6 +8,7 @@
 //***************************************************************************
 
 #include "ablxstd_internal.h"
+#include <utility>
 #include "mc2fmt.h"
 #include "sim_trace.h"
 
@@ -125,9 +126,9 @@ void initStandardRoutines (void) {
 	// Fatal and Assert will have hardcoded keys so we can look for
 	// 'em in the rest of the ABL code (example: ignore asserts if
 	// the assert_off option has been set).
-	enterStandardRoutine("fatal", RTN_FATAL, false, "iC", nullptr, execStdFatal);
-	enterStandardRoutine("assert", RTN_ASSERT, false, "biC", nullptr, execStdAssert);
-	enterStandardRoutine("getstatehandle", RTN_GET_STATE_HANDLE, false, "C", "i", execStdGetStateHandle);
+	enterStandardRoutine("fatal", std::to_underlying(RTN_FATAL), false, "iC", nullptr, execStdFatal);
+	enterStandardRoutine("assert", std::to_underlying(RTN_ASSERT), false, "biC", nullptr, execStdAssert);
+	enterStandardRoutine("getstatehandle", std::to_underlying(RTN_GET_STATE_HANDLE), false, "C", "i", execStdGetStateHandle);
 
 	enterStandardRoutine("getcurrentstatehandle", -1, false, nullptr, "i", execStdGetCurrentStateHandle);
 	enterStandardRoutine("abs", -1, false, "*", "r", execStdAbs);
@@ -154,8 +155,9 @@ void initStandardRoutines (void) {
 
 TypePtr execStandardRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 
-	int key = routineIdPtr->defn.info.routine.key;
-	switch (key) {
+	RoutineKey routineKey = routineIdPtr->defn.info.routine.key;
+	int key = std::to_underlying(routineKey);
+	switch (routineKey) {
 		case RTN_RETURN:
 			execStdReturn();
 			return(nullptr);

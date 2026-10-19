@@ -21,7 +21,7 @@
 
 //***************************************************************************
 
-enum DebugCommandCode {
+enum class DebugCommandCode : int {
 	DEBUG_COMMAND_SET_MODULE,
 	DEBUG_COMMAND_TRACE,
 	DEBUG_COMMAND_STEP,
@@ -35,6 +35,7 @@ enum DebugCommandCode {
 	DEBUG_COMMAND_INFO,
 	NUM_DEBUG_COMMANDS
 };
+using enum DebugCommandCode;
 
 //***************************************************************************
 

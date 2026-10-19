@@ -14,7 +14,8 @@
 
 namespace mc2_spotlight_diag {
 
-enum SourceClass : uint8_t { Bldg = 0, Mech = 1, Gv = 2 };
+enum class SourceClass : uint8_t { Bldg = 0, Mech = 1, Gv = 2 };
+using enum SourceClass;
 
 // Tag a slot when (E) lazy-init registers a light. Idempotent; safe
 // across duplicate calls (per-mission lifecycle should not re-register,

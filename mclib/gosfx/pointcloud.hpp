@@ -72,9 +72,8 @@ namespace gosFX
 		using Specification = PointCloud__Specification;
 		using Particle = PointCloud__Particle;
 
-		enum {
-			ParticleSize = sizeof(Particle) + sizeof(glm::vec3) + sizeof(Stuff::RGBAColor)
-		};
+		static constexpr int ParticleSize
+			= sizeof(Particle) + sizeof(glm::vec3) + sizeof(Stuff::RGBAColor);
 
 	protected:
 		std::unique_ptr<MidLevelRenderer::MLRPointCloud>

@@ -97,7 +97,7 @@ inline std::string coreQualifiedIdFor(const char* name, long masterId) {
 // ComponentFormType enum values, which are contractually stable (they index the
 // on-disk ComponentFormString table).
 // -------------------------------------------------------------------------
-enum ComponentFormOrdinal {
+enum class ComponentFormOrdinal : int {
     CFORM_SIMPLE = 0,
     CFORM_COCKPIT,
     CFORM_SENSOR,
@@ -119,6 +119,7 @@ enum ComponentFormOrdinal {
     CFORM_JAMMER,
     CFORM_BULK
 };
+using enum ComponentFormOrdinal;
 
 // -------------------------------------------------------------------------
 // EQUIP-ADD-FILL-1 divergence fix: THE populated-row test, shared by the
@@ -139,7 +140,7 @@ enum ComponentFormOrdinal {
 // name check would let a populated row with a MISSING string-table entry be
 // misread as free (clobberable). Pure -> doctest target.
 // -------------------------------------------------------------------------
-enum { kComponentFormOrdinalCount = 20 };   // == NUM_COMPONENT_FORMS (cmponent.h)
+inline constexpr int kComponentFormOrdinalCount = 20;   // == NUM_COMPONENT_FORMS (cmponent.h)
 
 inline bool mc2ComponentRowPopulated(long masterId, int formOrdinal) {
     if (masterId < 0) return false;
@@ -147,7 +148,7 @@ inline bool mc2ComponentRowPopulated(long masterId, int formOrdinal) {
 }
 
 inline EquipmentKind componentFormToKind(int form) {
-    switch (form) {
+    switch (static_cast<ComponentFormOrdinal>(form)) {
         case CFORM_WEAPON:
         case CFORM_WEAPON_ENERGY:
         case CFORM_WEAPON_BALLISTIC:
@@ -350,10 +351,8 @@ private:
 // This helper NEVER widens and NEVER touches gameplay -- it is a pure lookup
 // over the registry, offline-doctest-testable in mc2_tests.
 // -------------------------------------------------------------------------
-enum {
-    kEquipmentRefNotFound   = -1,  // not a resolvable ref (miss / malformed)
-    kEquipmentRefNeedsWiden = -2   // resolves to an id that needs the E4 widen
-};
+inline constexpr int kEquipmentRefNotFound   = -1;  // not a resolvable ref (miss / malformed)
+inline constexpr int kEquipmentRefNeedsWiden = -2;  // resolves to an id that needs the E4 widen
 
 // True if `ref` is the qualified-id form (contains ':'), else the legacy
 // numeric-ordinal form. Pure.
@@ -485,21 +484,21 @@ inline int equipmentAddKindToFormOrdinal(const char* kind, const char* category)
         }
     };
     if (ieq(kind, "Weapon")) {
-        if (ieq(category, "Energy"))    return CFORM_WEAPON_ENERGY;
-        if (ieq(category, "Ballistic")) return CFORM_WEAPON_BALLISTIC;
-        if (ieq(category, "Missile"))   return CFORM_WEAPON_MISSILE;
-        return CFORM_WEAPON_ENERGY;    // category-less weapon: energy is the schema default
+        if (ieq(category, "Energy"))    return std::to_underlying(CFORM_WEAPON_ENERGY);
+        if (ieq(category, "Ballistic")) return std::to_underlying(CFORM_WEAPON_BALLISTIC);
+        if (ieq(category, "Missile"))   return std::to_underlying(CFORM_WEAPON_MISSILE);
+        return std::to_underlying(CFORM_WEAPON_ENERGY);    // category-less weapon: energy is the schema default
     }
-    if (ieq(kind, "Ammo"))      return CFORM_AMMO;
-    if (ieq(kind, "Sensor"))    return CFORM_SENSOR;
-    if (ieq(kind, "ECM"))       return CFORM_ECM;
-    if (ieq(kind, "JumpJet"))   return CFORM_JUMPJET;
-    if (ieq(kind, "Heatsink"))  return CFORM_HEATSINK;
-    if (ieq(kind, "Structure")) return CFORM_BULK;
-    if (ieq(kind, "Cockpit"))   return CFORM_COCKPIT;
-    if (ieq(kind, "Actuator"))  return CFORM_ACTUATOR;
-    if (ieq(kind, "Engine"))    return CFORM_ENGINE;
-    return CFORM_SIMPLE;
+    if (ieq(kind, "Ammo"))      return std::to_underlying(CFORM_AMMO);
+    if (ieq(kind, "Sensor"))    return std::to_underlying(CFORM_SENSOR);
+    if (ieq(kind, "ECM"))       return std::to_underlying(CFORM_ECM);
+    if (ieq(kind, "JumpJet"))   return std::to_underlying(CFORM_JUMPJET);
+    if (ieq(kind, "Heatsink"))  return std::to_underlying(CFORM_HEATSINK);
+    if (ieq(kind, "Structure")) return std::to_underlying(CFORM_BULK);
+    if (ieq(kind, "Cockpit"))   return std::to_underlying(CFORM_COCKPIT);
+    if (ieq(kind, "Actuator"))  return std::to_underlying(CFORM_ACTUATOR);
+    if (ieq(kind, "Engine"))    return std::to_underlying(CFORM_ENGINE);
+    return std::to_underlying(CFORM_SIMPLE);
 }
 
 // AllowedLocations token list ("CenterTorso,LeftArm,...") -> the 8 legacy crit
@@ -546,7 +545,7 @@ inline void equipmentAddAllowedLocationsToCrit(const char* list, bool out[8]) {
 // logistics-consumer columns (icon/picture/stringID/iconXY).
 struct EquipmentAddRowFields {
     long        ordinal        = -1;
-    int         formOrdinal    = CFORM_SIMPLE; // CFORM_* (ComponentFormString index)
+    int         formOrdinal    = std::to_underlying(CFORM_SIMPLE); // CFORM_* (ComponentFormString index)
     std::string displayName;                   // def DisplayName (both consumers' UI name)
     int         critSlots      = 1;            // size / crit spaces
     float       recycle        = 0.f;

@@ -42,7 +42,7 @@
 
 //---------------------------------------------------------------------------
 // Enums
-enum FileMode
+enum class FileMode
 {
 	NOMODE = 0,
 	READ,
@@ -51,14 +51,16 @@ enum FileMode
 	WRITE,
 	RDWRITE
 };
+using enum FileMode;
 
-enum FileClass
+enum class FileClass
 {
 	BASEFILE = 0,
 	INIFILE,
 	PACKETFILE,
 	CSVFILE
 };
+using enum FileClass;
 
 //---------------------------------------------------------------------------
 //Returns 1 if file is on HardDrive and 2 if file is in FastFile

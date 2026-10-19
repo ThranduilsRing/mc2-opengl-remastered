@@ -8,6 +8,7 @@
 //***************************************************************************
 
 #include<stdio.h>
+#include<utility>
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -153,9 +154,10 @@ TypePtr stdGetStateHandle (void) {
 
 TypePtr standardRoutineCall (SymTableNodePtr routineIdPtr) {
 
-	long key = routineIdPtr->defn.info.routine.key;
+	RoutineKey routineKey = routineIdPtr->defn.info.routine.key;
+	long key = std::to_underlying(routineKey);
 	long numParams = FunctionInfoTable[key].numParams;
-	switch (key) {
+	switch (routineKey) {
 		case RTN_RETURN:
 			stdReturn();
 			return(nullptr);

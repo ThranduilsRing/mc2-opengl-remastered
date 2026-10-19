@@ -179,7 +179,7 @@ TokenCodeType declarationStartList[] = {
 	TKN_NONE
 };
 
-const char* TokenStrings[NUM_TOKENS] = {
+const char* TokenStrings[std::to_underlying(TokenCodeType::NUM_TOKENS)] = {
 	"{BAD TOKEN}",
 	"{IDENTIFIER}",
 	"{NUMBER}",
@@ -698,7 +698,7 @@ void getWord (void) {
 			endToken = TKN_END_FSM;
 		//-------------------------------------------------------------------
 		// If we have an "endmodule" string, stop. Otherwise, keep reading...
-		if (strcmp(wordString, TokenStrings[endToken])) {
+		if (strcmp(wordString, TokenStrings[static_cast<int>(endToken)])) {
 			*tokenp = curChar;
 			tokenp++;
 			getChar();
@@ -1008,7 +1008,7 @@ bool tokenIn (TokenCodeType* tokenList) {
 	if (!tokenList)
 		return(false);
 
-	for (TokenCodeType* tp = &tokenList[0]; *tp; tp++)
+	for (TokenCodeType* tp = &tokenList[0]; *tp != TKN_NONE; tp++)
 		if (curToken == *tp)
 			return(true);
 	return(false);

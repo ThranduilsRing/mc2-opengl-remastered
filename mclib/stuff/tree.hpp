@@ -51,7 +51,7 @@ namespace Stuff {
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TreeNodeOf ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	enum {TreeNode_MemoryBlock_Allocation=100};
+	inline constexpr int TreeNode_MemoryBlock_Allocation = 100;
 
 	template <class V> class TreeNodeOf:
 		public TreeNode

@@ -41,7 +41,7 @@
 
 
 class KeyboardRef;
-enum COMMAND_KEY_INDEX
+enum class COMMAND_KEY_INDEX : int
 {
 	ENERGY_WEAPON_INDEX = 3,
 	GUARD_COMMAND_INDEX = 8,
@@ -52,6 +52,7 @@ enum COMMAND_KEY_INDEX
 	
 	
 };
+using enum COMMAND_KEY_INDEX;
 //--------------------------------------------------------------------------------------
 // Externs
 void *gMalloc (long size);

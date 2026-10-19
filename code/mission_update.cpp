@@ -1,6 +1,7 @@
 // Mission: the per-frame Mission::update with its MC2_MISSION_SPLIT timing, mover bridge, soak hooks and coherence audit.
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
+#include <utility>
 #include "../GameOS/gameos/utils/mc2log.h"
 
 
@@ -63,21 +64,23 @@ static void simClockTraceTick(float scenarioTimeNow)
 }
 namespace {
 	static const bool s_misSplit = mc2::gate::get<"MC2_MISSION_SPLIT">();
-	enum { MS_LAND_UPDATE=0, MS_PATHMGR, MS_CLEAR_BLOCKS, MS_CLEAR_VERTS,
+	enum class MisPhase : int { MS_LAND_UPDATE=0, MS_PATHMGR, MS_CLEAR_BLOCKS, MS_CLEAR_VERTS,
 	       MS_TERRAIN_TEX, MS_GEOMETRY, MS_OBJMGR,
 	       MS_TOTAL, MS_CLEARARRAYS, MS_INTERFACE, MS_CAMERA, MS_VTOL, MS_WEATHER, MS_WAYPOINTS,
 	       MS_COUNT };
-	static const char* s_misNames[MS_COUNT] = {
+	using enum MisPhase;
+	static constexpr int MS_COUNT_I = std::to_underlying(MisPhase::MS_COUNT);
+	static const char* s_misNames[MS_COUNT_I] = {
 		"land_update","pathmgr","clearBlocks","clearVerts","terrainTex","geometry","objmgr",
 		"TOTAL","clearArrays","interface","camera","vtol","weather","waypoints" };
-	static unsigned long long s_misNs[MS_COUNT]  = {0};
-	static unsigned long long s_misMax[MS_COUNT] = {0};
+	static unsigned long long s_misNs[MS_COUNT_I]  = {0};
+	static unsigned long long s_misMax[MS_COUNT_I] = {0};
 	static unsigned long long s_misFrames = 0;
 	static bool s_misAtexit = false;
 	static void misEmit() {
 		if (!s_misSplit) return;
 		std::printf("[MISSION_SPLIT v1] event=shutdown frames=%llu", s_misFrames);
-		for (int i = 0; i < MS_COUNT; i++)
+		for (int i = 0; i < MS_COUNT_I; i++)
 			std::printf(" %s={avg_us:%.1f,max_us:%.1f}", s_misNames[i],
 				s_misFrames ? static_cast<double>(s_misNs[i])/s_misFrames/1000.0 : 0.0,
 				static_cast<double>(s_misMax[i])/1000.0);
@@ -85,7 +88,7 @@ namespace {
 	}
 	struct MisScope {
 		int idx; std::chrono::steady_clock::time_point t0;
-		explicit MisScope(int i) : idx(i) {
+		explicit MisScope(MisPhase i) : idx(std::to_underlying(i)) {
 			if (s_misSplit) t0 = std::chrono::steady_clock::now();
 		}
 		~MisScope() {

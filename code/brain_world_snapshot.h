@@ -42,7 +42,7 @@ struct BrainWorldSnapshot {
 };
 
 // effectApplied[] index constants — use these instead of bare integers.
-enum BrainSnapshotEffectIdx {
+enum class BrainSnapshotEffectIdx {
     BSNAPFX_POWERDOWN = 0,
     BSNAPFX_EJECT     = 1,
     BSNAPFX_GUARD     = 2,
@@ -51,3 +51,4 @@ enum BrainSnapshotEffectIdx {
     BSNAPFX_RETREAT   = 5,
     BSNAPFX_COUNT     = 6
 };
+using enum BrainSnapshotEffectIdx;

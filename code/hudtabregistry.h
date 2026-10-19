@@ -41,7 +41,7 @@ namespace HudTabs
 	class Registry
 	{
 	public:
-		enum { MAX_TABS = 8 };
+		static constexpr int MAX_TABS = 8;
 
 		Registry() : count_( 0 ), active_( 0 ) {}
 

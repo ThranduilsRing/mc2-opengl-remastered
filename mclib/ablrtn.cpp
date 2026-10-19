@@ -16,6 +16,7 @@
 #include <memory>
 #include <memory_resource>
 #include <unordered_map>
+#include <utility>
 #include"platform_str.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
@@ -368,7 +369,7 @@ profile = true;
 	//-------------------------------------------------------------------
 	// Let's make sure we have not created too many built-in ABL routines
 	// for the lovely user...
-	if (NUM_ABL_ROUTINES > 254)
+	if (std::to_underlying(RoutineKey::NUM_ABL_ROUTINES) > 254)
 		ABL_Fatal(0, " MAJOR ABL ERROR: Too Many ABL Routines ");
 
 	ABL_openArena();
@@ -393,7 +394,7 @@ profile = true;
 	ABLFile::writeLongCB = fileWriteLongCB;
 	ABLFile::writeStringCB = fileWriteStringCB;
 
-	NumStandardFunctions = NUM_ABL_ROUTINES;
+	NumStandardFunctions = std::to_underlying(RoutineKey::NUM_ABL_ROUTINES);
 
 	ABLenabled = true;
 	MaxBreaks = 50;
@@ -1581,7 +1582,7 @@ SymTableNodePtr formalParamList (long* count, long* totalSize) {
 	SymTableNodePtr paramListPtr = nullptr;
 	SymTableNodePtr typeIdPtr;
 	TypePtr paramTypePtr;
-	DefinitionType paramDefn;
+	DefinitionType paramDefn = DFN_UNDEFINED;
 	long paramCount = 0;
 	long paramOffset = STACK_FRAME_HEADER_SIZE;
 
@@ -1711,7 +1712,7 @@ TypePtr declaredRoutineCall (SymTableNodePtr routineIdPtr, long paramCheckFlag) 
 void actualParamList (SymTableNodePtr routineIdPtr, long paramCheckFlag) {
 
 	SymTableNodePtr formalParamIdPtr = nullptr;
-	DefinitionType formalParamDefn = static_cast<DefinitionType>(0);
+	DefinitionType formalParamDefn = DFN_UNDEFINED;
 	TypePtr formalParamTypePtr = nullptr;
 	TypePtr actualParamTypePtr = nullptr;
 

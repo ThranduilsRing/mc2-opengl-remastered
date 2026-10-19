@@ -91,7 +91,7 @@ namespace object_light_row {
 
 // ABI cap, derived from the single-source GPU record (RenderCore/gpu_abi/
 // GpuObjectLights.h), which also generates the ObjectLights struct in the shaders.
-enum : uint32_t { kMaxLights = kGpuObjectLightsMax };
+inline constexpr uint32_t kMaxLights = kGpuObjectLightsMax;
 
 // Light type ids, lockstep with the TG_LIGHT_* enum (mclib/tgl.h). Mirrored
 // rather than included so this header stays engine-free; txmmgr.cpp
@@ -100,15 +100,13 @@ enum : uint32_t { kMaxLights = kGpuObjectLightsMax };
 // every consumer switches on (shaders/include/lighting.hglsl). txmmgr.cpp
 // static_asserts each against the real #define -- and did catch these being
 // wrong once, which is why the asserts are there rather than a comment.
-enum : uint32_t {
-	kTypeNone      = 0xffffffffu,
-	kTypeAmbient   = 0,
-	kTypeInfinite  = 1,
-	kTypeInfiniteWithFalloff = 2,
-	kTypePoint     = 3,
-	kTypeSpot      = 4,
-	kTypeTerrain   = 5
-};
+inline constexpr uint32_t kTypeNone      = 0xffffffffu;
+inline constexpr uint32_t kTypeAmbient   = 0;
+inline constexpr uint32_t kTypeInfinite  = 1;
+inline constexpr uint32_t kTypeInfiniteWithFalloff = 2;
+inline constexpr uint32_t kTypePoint     = 3;
+inline constexpr uint32_t kTypeSpot      = 4;
+inline constexpr uint32_t kTypeTerrain   = 5;
 
 //-----------------------------------------------------------------------------
 // One source light, flattened from TG_Light by the engine-side adapter.

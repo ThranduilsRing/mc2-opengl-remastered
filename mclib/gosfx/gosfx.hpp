@@ -35,7 +35,7 @@ namespace gosFX
 		FirstFreegosFXClassID,
 	};
 
-	enum {CurrentGFXVersion = 17};
+	inline constexpr int CurrentGFXVersion = 17;
 
 	int
 		ReadGFXVersion(Stuff::MemoryStream *erf_stream);

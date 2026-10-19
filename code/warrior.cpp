@@ -8,6 +8,7 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
+#include <utility>
 #include "sim_trace.h"
 
 
@@ -732,7 +733,7 @@ void MoveOrders::init (void) {
 
 	time = scenarioTime;
 	origin = ORDER_ORIGIN_COMMANDER;
-	speedType = MOVE_SPEED_MODERATE;
+    speedType = std::to_underlying(MOVE_SPEED_MODERATE);
 	speedVelocity = 0.0;
 	speedState = MECH_STATE_WALKING;
 	speedThrottle = 100;
@@ -1490,12 +1491,12 @@ long MechWarrior::runBrain (void) {
 			out.attackOrderTargetWID = static_cast<int32_t>(attackOrders.targetWID);
 
 			// Once-guard flags — the primary snapshot surface for rung 6
-			out.effectApplied[BSNAPFX_POWERDOWN] = brainRuntime->dispatchEffectApplied;
-			out.effectApplied[BSNAPFX_EJECT]     = brainRuntime->ejectEffectApplied;
-			out.effectApplied[BSNAPFX_GUARD]     = brainRuntime->guardEffectApplied;
-			out.effectApplied[BSNAPFX_MOVETO]    = brainRuntime->moveToEffectApplied;
-			out.effectApplied[BSNAPFX_ATTACK]    = brainRuntime->attackEffectApplied;
-			out.effectApplied[BSNAPFX_RETREAT]   = brainRuntime->retreatEffectApplied;
+			out.effectApplied[std::to_underlying(BSNAPFX_POWERDOWN)] = brainRuntime->dispatchEffectApplied;
+			out.effectApplied[std::to_underlying(BSNAPFX_EJECT)]     = brainRuntime->ejectEffectApplied;
+			out.effectApplied[std::to_underlying(BSNAPFX_GUARD)]     = brainRuntime->guardEffectApplied;
+			out.effectApplied[std::to_underlying(BSNAPFX_MOVETO)]    = brainRuntime->moveToEffectApplied;
+			out.effectApplied[std::to_underlying(BSNAPFX_ATTACK)]    = brainRuntime->attackEffectApplied;
+			out.effectApplied[std::to_underlying(BSNAPFX_RETREAT)]   = brainRuntime->retreatEffectApplied;
 
 			// Debug tick stamp
 			out.brainTick = getBrainTickIndex();
@@ -1548,22 +1549,22 @@ long MechWarrior::runBrain (void) {
 			// Gate ON:  read from snapshot.effectApplied[N] (the seam for future off-thread emit).
 			// Gate OFF: read live from runtime (byte-identical to pre-snapshot behavior).
 			const bool powerdownDone = hasPowerdown && (snapshotGate
-			    ? snap.effectApplied[BSNAPFX_POWERDOWN]
+			    ? snap.effectApplied[std::to_underlying(BSNAPFX_POWERDOWN)]
 			    : brainRuntime->dispatchEffectApplied);
 			const bool ejectDone     = hasEject     && (snapshotGate
-			    ? snap.effectApplied[BSNAPFX_EJECT]
+			    ? snap.effectApplied[std::to_underlying(BSNAPFX_EJECT)]
 			    : brainRuntime->ejectEffectApplied);
 			const bool guardDone     = hasGuard     && (snapshotGate
-			    ? snap.effectApplied[BSNAPFX_GUARD]
+			    ? snap.effectApplied[std::to_underlying(BSNAPFX_GUARD)]
 			    : brainRuntime->guardEffectApplied);
 			const bool moveToDone    = hasMoveTo    && (snapshotGate
-			    ? snap.effectApplied[BSNAPFX_MOVETO]
+			    ? snap.effectApplied[std::to_underlying(BSNAPFX_MOVETO)]
 			    : brainRuntime->moveToEffectApplied);
 			const bool attackDone    = hasAttack    && (snapshotGate
-			    ? snap.effectApplied[BSNAPFX_ATTACK]
+			    ? snap.effectApplied[std::to_underlying(BSNAPFX_ATTACK)]
 			    : brainRuntime->attackEffectApplied);
 			const bool retreatDone   = hasRetreat   && (snapshotGate
-			    ? snap.effectApplied[BSNAPFX_RETREAT]
+			    ? snap.effectApplied[std::to_underlying(BSNAPFX_RETREAT)]
 			    : brainRuntime->retreatEffectApplied);
 			const bool alreadyDone   = hasEffect && ((!hasPowerdown || powerdownDone) && (!hasEject || ejectDone) && (!hasGuard || guardDone) && (!hasMoveTo || moveToDone) && (!hasAttack || attackDone) && (!hasRetreat || retreatDone));
 

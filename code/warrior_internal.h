@@ -166,7 +166,7 @@ extern long CurAlarm;
 extern float MapCellDiagonal;
 extern float WeaponRanges[NUM_WEAPON_RANGE_TYPES][2];
 extern DebuggerPtr debugger;
-extern float MechClassWeights[NUM_MECH_CLASSES];
+extern float MechClassWeights[std::to_underlying(NUM_MECH_CLASSES)];
 extern char OverlayIsBridge[NUM_OVERLAY_TYPES];
 extern float SkillTry[4];
 extern float SkillSuccess[4];

@@ -95,7 +95,7 @@ extern float metersPerWorldUnit;
 extern float worldUnitsPerMeter;
 
 extern TeamPtr homeTeam;
-extern float MechClassWeights[NUM_MECH_CLASSES];
+extern float MechClassWeights[std::to_underlying(NUM_MECH_CLASSES)];
 
 extern char* ExceptionGameMsg;
 char ChunkDebugMsg[5120];
@@ -2055,11 +2055,11 @@ MechClass GameObject::getMechClass(void) {
 
 	if (getObjectClass() != BATTLEMECH)
 		return(MECH_CLASS_NONE);
-	if (tonnage < MechClassWeights[MECH_CLASS_LIGHT])
+	if (tonnage < MechClassWeights[std::to_underlying(MECH_CLASS_LIGHT)])
 		return(MECH_CLASS_LIGHT);
-	if (tonnage < MechClassWeights[MECH_CLASS_MEDIUM])
+	if (tonnage < MechClassWeights[std::to_underlying(MECH_CLASS_MEDIUM)])
 		return(MECH_CLASS_MEDIUM);
-	if (tonnage < MechClassWeights[MECH_CLASS_HEAVY])
+	if (tonnage < MechClassWeights[std::to_underlying(MECH_CLASS_HEAVY)])
 		return(MECH_CLASS_HEAVY);
 	return(MECH_CLASS_ASSAULT);
 }

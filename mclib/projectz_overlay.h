@@ -24,7 +24,7 @@
 
 #include "projectz_trace.h"
 
-enum ProjectZOverlayMode {
+enum class ProjectZOverlayMode {
     PZ_OVERLAY_OFF = 0,
     PZ_OVERLAY_LEGACY_RECT_FINITE,
     PZ_OVERLAY_HOMOG_CLIP,
@@ -33,6 +33,7 @@ enum ProjectZOverlayMode {
     PZ_OVERLAY_RECT_GUARD,
     PZ_OVERLAY_MODE_COUNT
 };
+using enum ProjectZOverlayMode;
 
 // Read-only state.
 extern ProjectZOverlayMode g_pzOverlayMode;

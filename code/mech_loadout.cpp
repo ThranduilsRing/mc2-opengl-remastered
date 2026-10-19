@@ -31,7 +31,7 @@ constexpr float ARMOR_RRTORSO_PERCENT = 0.02f;
 // -> byte-identical. No widen (rejects ids >=255), no firing change.
 // The optional token lives in a high, stock-unused column so a stock loadout row
 // never accidentally supplies one.
-enum { kEquipmentIdCsvColumn = 40 };
+inline constexpr int kEquipmentIdCsvColumn = 40;
 
 // If gate-ON and the row carries an optional EquipmentId string token that
 // resolves to a legacy ordinal in the existing 8-bit space, return that ordinal
@@ -684,7 +684,7 @@ long BattleMech::init (DWORD variantNum)
 	if (type->getExplosionObject() > 0)
 		ObjectManager->objTypeManager->load(type->getExplosionObject(), true);
 		
-	chassisClass = getMechClass();
+	chassisClass = std::to_underlying(getMechClass());
 
 	// logistics data needs to be initialized if you're going to get values
 	LogisticsData::instance->init();

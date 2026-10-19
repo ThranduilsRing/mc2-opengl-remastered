@@ -4,6 +4,7 @@
 
 #ifndef TRIGGER_H
 #include"trigger.h"
+#include <utility>
 #endif
 
 #ifndef MOVER_H
@@ -34,14 +35,14 @@ long TriggerAreaManager::add (long ULrow, long ULcol, long LRrow, long LRcol, lo
 
     int i;
 	for (i = 1; i < MAX_TRIGGER_AREAS; i++)
-		if (triggerAreas[i].type == TRIGGER_AREA_NONE)
+		if (triggerAreas[i].type == static_cast<char>(std::to_underlying(TRIGGER_AREA_NONE)))
 			break;
 	if (i < MAX_TRIGGER_AREAS) {
 		triggerAreas[i].dim[0] = ULrow;
 		triggerAreas[i].dim[1] = ULcol;
 		triggerAreas[i].dim[2] = LRrow;
 		triggerAreas[i].dim[3] = LRcol;
-		triggerAreas[i].type = type;
+		triggerAreas[i].type = static_cast<char>(type);
 		triggerAreas[i].param = param;
 		triggerAreas[i].hit = false;
 
@@ -64,7 +65,7 @@ long TriggerAreaManager::add (long ULrow, long ULcol, long LRrow, long LRcol, lo
 
 void TriggerAreaManager::remove (long areaHandle) {
 
-	if (triggerAreas[areaHandle].param == TRIGGER_AREA_NONE)
+	if (triggerAreas[areaHandle].param == std::to_underlying(TRIGGER_AREA_NONE))
 		return;
 
 	long tileDims[4];
@@ -76,7 +77,7 @@ void TriggerAreaManager::remove (long areaHandle) {
 		for (long c = tileDims[1]; c < tileDims[3]; c++)
 			if (map[r][c] == areaHandle)
 				map[r][c] = 0;
-	triggerAreas[areaHandle].type = TRIGGER_AREA_NONE;
+	triggerAreas[areaHandle].type = static_cast<char>(std::to_underlying(TRIGGER_AREA_NONE));
 	triggerAreas[areaHandle].hit = false;
 }
 
@@ -91,7 +92,7 @@ void TriggerAreaManager::reset (long areaHandle) {
 
 bool TriggerAreaManager::isHit (long areaHandle) {
 
-	if (triggerAreas[areaHandle].type == TRIGGER_AREA_NONE)
+	if (triggerAreas[areaHandle].type == static_cast<char>(std::to_underlying(TRIGGER_AREA_NONE)))
 		return(false);
 	return(triggerAreas[areaHandle].hit);
 }
@@ -103,13 +104,13 @@ void TriggerAreaManager::setHit (MoverPtr mover) {
 
 #if 1
 	for (long i = 0; i < MAX_TRIGGER_AREAS; i++) {
-		if (triggerAreas[i].type == TRIGGER_AREA_NONE)
+		if (triggerAreas[i].type == static_cast<char>(std::to_underlying(TRIGGER_AREA_NONE)))
 			continue;
 		if (mover->cellPositionRow >= triggerAreas[i].dim[0])
 			if (mover->cellPositionRow < triggerAreas[i].dim[2])
 				if (mover->cellPositionCol >= triggerAreas[i].dim[1])
 					if (mover->cellPositionCol < triggerAreas[i].dim[3])
-						switch (triggerAreas[i].type) {
+						switch (static_cast<TriggerAreaType>(triggerAreas[i].type)) {
 							case TRIGGER_AREA_MOVER:
 								if (triggerAreas[i].param > 0) {
 									if (mover->getWatchID() == triggerAreas[i].param)
@@ -138,7 +139,7 @@ void TriggerAreaManager::setHit (MoverPtr mover) {
 #else
 	long areaHandle = map[mover->cellPositionRow / 3][mover->cellPositionCol / 3];
 	if (areaHandle > 0) {
-		switch (triggerAreas[areaHandle].type) {
+		switch (static_cast<TriggerAreaType>(triggerAreas[areaHandle].type)) {
 			case TRIGGER_AREA_MOVER:
 				if (triggerAreas[areaHandle].param > 0) {
 					if (mover->getWatchID() == triggerAreas[areaHandle].param)

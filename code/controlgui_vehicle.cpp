@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
 #include "mc2fmt.h"
+#include <utility>
 
 
 void ControlGui::updateVehicleTab(int mouseX, int mouseY, bool bLOS )
@@ -462,7 +463,7 @@ void ControlGui::setInfoWndMover( Mover* pMover )
 		// unpress the info button
 		gosEnum_KeyIndex key;
 		bool bC, bA, bS;
-		MissionInterfaceManager::instance()->getHotKey( INFO_COMMAND_INDEX, key, bS, bC, bA );
+		MissionInterfaceManager::instance()->getHotKey( std::to_underlying(INFO_COMMAND_INDEX), key, bS, bC, bA );
 		if ( gos_GetKeyStatus( key )!= KEY_HELD )
 			getButton( INFO_COMMAND )->press( 0 );
 	}

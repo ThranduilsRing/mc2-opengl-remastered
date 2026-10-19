@@ -11,6 +11,8 @@
 #ifndef TACORDR_H
 #define TACORDR_H
 
+#include <utility>
+
 //--------------
 // Include Files
 
@@ -41,16 +43,17 @@ inline constexpr int NUM_MOVE_SPEEDS = 4;
 inline constexpr int TACORDER_FAILURE = 0;
 inline constexpr int TACORDER_SUCCESS = 1;
 
-enum MoveSpeedType {
+enum class MoveSpeedType : int {
 	MOVE_SPEED_BEST,
 	MOVE_SPEED_MAXIMUM,
 	MOVE_SPEED_SLOW,
 	MOVE_SPEED_MODERATE
 };
+using enum MoveSpeedType;
 
 inline constexpr int NUM_MOVE_PATTERNS = 7;
 
-enum MovePatternType {
+enum class MovePatternType : int {
 	MOVE_PATTERN_DIRECT,
 	MOVE_PATTERN_ZIGZAG_NARROW,
 	MOVE_PATTERN_ZIGZAG_MEDIUM,
@@ -59,10 +62,11 @@ enum MovePatternType {
 	MOVE_PATTERN_RANDOM_MEDIUM,
 	MOVE_PATTERN_RANDOM_WIDE
 };
+using enum MovePatternType;
 
 inline constexpr int NUM_ATTITUDES = 6;
 
-enum AttitudeType {
+enum class AttitudeType : int {
 	ATTITUDE_CAUTIOUS,
 	ATTITUDE_CONSERVATIVE,
 	ATTITUDE_NORMAL,
@@ -70,6 +74,7 @@ enum AttitudeType {
 	ATTITUDE_BERSERKER,
 	ATTITUDE_SUICIDAL
 };
+using enum AttitudeType;
 
 //#define	FIRERANGE_OPTIMUM	-1
 
@@ -100,7 +105,7 @@ enum AttackMethod {
 	NUM_ATTACKMETHODS
 };
 
-enum FireOddsType {
+enum class FireOddsType : int {
 	FIREODDS_LUCKY,
 	FIREODDS_BAD,
 	FIREODDS_MEDIUM,
@@ -108,6 +113,7 @@ enum FireOddsType {
 	FIREODDS_GREAT,
 	NUM_FIREODDS
 };
+inline constexpr int NUM_FIREODDS = std::to_underlying(FireOddsType::NUM_FIREODDS);
 
 enum TacticType {
 	TACTIC_NONE,

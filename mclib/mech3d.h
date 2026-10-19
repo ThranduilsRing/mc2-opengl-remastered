@@ -139,7 +139,8 @@ class Mech3DAppearanceType: public AppearanceType
 		// MC2_UNIT_PROFILE_DATA) against the loaded model shape's node list. This is
 		// NOT authoritative for rendering — getWeaponNode / nodeData are untouched.
 		// Fixed inline storage (declared sockets are few; no heap, no layout drag).
-		enum { MAX_PRESENTATION_SOCKETS = 32, PRESENTATION_SOCKET_NAME_CAP = 48 };
+		static constexpr int MAX_PRESENTATION_SOCKETS = 32;
+		static constexpr int PRESENTATION_SOCKET_NAME_CAP = 48;
 		long						numPresentationSockets;
 		char						presentationSocketName[MAX_PRESENTATION_SOCKETS][PRESENTATION_SOCKET_NAME_CAP];
 

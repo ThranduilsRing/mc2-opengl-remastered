@@ -5,6 +5,8 @@
 #pragma once
 #define MLR_MLRSTATE_HPP
 
+#include <utility>
+
 #if !defined(MLR_MLR_HPP)
 #include<mlr/mlr.hpp>
 #endif
@@ -155,20 +157,23 @@ namespace MidLevelRenderer {
 			WireFrameAddMode = 2 << WireFrameBit
 		};
 
-		enum ZBufferWriteMode {
+		enum class ZBufferWriteMode {
 			ZBufferWriteOffMode = 0,
 			ZBufferWriteOnMode = 1 << ZBufferWriteBit
 		};
+		using enum ZBufferWriteMode;
 
-		enum ZBufferCompareMode {
+		enum class ZBufferCompareMode {
 			ZBufferCompareOffMode = 0,
 			ZBufferCompareOnMode = 1 << ZBufferCompareBit
 		};
+		using enum ZBufferCompareMode;
 
-		enum FlatColoringMode {
+		enum class FlatColoringMode {
 			FlatColoringOffMode = 0,
 			FlatColoringOnMode = 1 << FlatColoringBit
 		};
+		using enum FlatColoringMode;
 
 // manipulate render state
 		void
@@ -261,30 +266,30 @@ namespace MidLevelRenderer {
 
 		void
 			SetZBufferWriteOn()
-				{Check_Object(this); renderState |= ZBufferWriteOnMode; renderDeltaMask |= ZBufferWriteMask;}
+				{Check_Object(this); renderState |= std::to_underlying(ZBufferWriteOnMode); renderDeltaMask |= ZBufferWriteMask;}
 		void
 			SetZBufferWriteOff()
-				{Check_Object(this); renderState &= ~ZBufferWriteOnMode; renderDeltaMask |= ZBufferWriteMask;}
+				{Check_Object(this); renderState &= ~std::to_underlying(ZBufferWriteOnMode); renderDeltaMask |= ZBufferWriteMask;}
 		ZBufferWriteMode
 			GetZBufferWriteMode() const
 				{Check_Object(this); return static_cast<ZBufferWriteMode>(renderState & ZBufferWriteMask);}
 
 		void
 			SetZBufferCompareOn()
-				{Check_Object(this); renderState |= ZBufferCompareOnMode; renderDeltaMask |= ZBufferCompareMask;}
+				{Check_Object(this); renderState |= std::to_underlying(ZBufferCompareOnMode); renderDeltaMask |= ZBufferCompareMask;}
 		void
 			SetZBufferCompareOff()
-				{Check_Object(this); renderState &= ~ZBufferCompareOnMode; renderDeltaMask |= ZBufferCompareMask;}
+				{Check_Object(this); renderState &= ~std::to_underlying(ZBufferCompareOnMode); renderDeltaMask |= ZBufferCompareMask;}
 		ZBufferCompareMode
 			GetZBufferCompareMode() const
 				{Check_Object(this); return static_cast<ZBufferCompareMode>(renderState & ZBufferCompareMask);}
 
 		void
 			SetFlatColoringOn()
-				{Check_Object(this); renderState |= FlatColoringOnMode; renderDeltaMask |= FlatColoringMask;}
+				{Check_Object(this); renderState |= std::to_underlying(FlatColoringOnMode); renderDeltaMask |= FlatColoringMask;}
 		void
 			SetFlatColoringOff()
-				{Check_Object(this); renderState &= ~FlatColoringOnMode; renderDeltaMask |= FlatColoringMask;}
+				{Check_Object(this); renderState &= ~std::to_underlying(FlatColoringOnMode); renderDeltaMask |= FlatColoringMask;}
 		FlatColoringMode
 			GetFlatColoringMode() const
 				{Check_Object(this); return static_cast<FlatColoringMode>(renderState & FlatColoringMask);}

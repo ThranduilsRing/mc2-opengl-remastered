@@ -28,21 +28,24 @@ extern bool InEditor;
 // (>5ms) line naming the top contributor. Coarse per-phase scopes only (NOT
 // per-quad/vertex — respects the 100ns hot-loop rule).
 #include <chrono>
+#include <utility>
 namespace {
-	enum GeoPhase { GP_TOTAL=0, GP_SLIM, GP_CHUNKPROD, GP_QUADSETUP,
+	enum class GeoPhase { GP_TOTAL=0, GP_SLIM, GP_CHUNKPROD, GP_QUADSETUP,
 	                GP_LIGHTPACK, GP_LIGHTCOPY, GP_INDIRECT, GP_COUNT };
-	static const char* s_gpNames[GP_COUNT] = {
+	using enum GeoPhase;
+	static constexpr int GP_COUNT_I = std::to_underlying(GeoPhase::GP_COUNT);
+	static const char* s_gpNames[GP_COUNT_I] = {
 		"total","slim","chunkProd","quadSetup","lightingPack","lightingCopy","indirectCompute" };
 	static const bool s_gpOn = mc2::gate::get<"MC2_GEOM_PHASE_SPLIT">();
-	static unsigned long long s_gpSum[GP_COUNT]     = {0};
-	static unsigned long long s_gpMax[GP_COUNT]     = {0};
-	static unsigned long long s_gpFrameNs[GP_COUNT] = {0};
+	static unsigned long long s_gpSum[GP_COUNT_I]     = {0};
+	static unsigned long long s_gpMax[GP_COUNT_I]     = {0};
+	static unsigned long long s_gpFrameNs[GP_COUNT_I] = {0};
 	static unsigned long long s_gpFrames = 0;
 	static bool s_gpAtexit = false;
 	static void gpEmit() {
 		if (!s_gpOn) return;
 		std::printf("[GEOM_PHASE_SPLIT v1] event=shutdown frames=%llu", s_gpFrames);
-		for (int i = 0; i < GP_COUNT; i++)
+		for (int i = 0; i < GP_COUNT_I; i++)
 			std::printf(" %s={avg_us:%.1f,max_us:%.1f}", s_gpNames[i],
 				s_gpFrames ? static_cast<double>(s_gpSum[i])/s_gpFrames/1000.0 : 0.0,
 				static_cast<double>(s_gpMax[i])/1000.0);
@@ -50,7 +53,7 @@ namespace {
 	}
 	struct GeoScope {
 		int idx; std::chrono::steady_clock::time_point t0;
-		explicit GeoScope(int i) : idx(i) {
+		explicit GeoScope(GeoPhase i) : idx(std::to_underlying(i)) {
 			if (s_gpOn) t0 = std::chrono::steady_clock::now();
 		}
 		~GeoScope() {
@@ -65,12 +68,12 @@ namespace {
 		if (!s_gpOn) return;
 		if (!s_gpAtexit) { s_gpAtexit = true; std::atexit(gpEmit); }
 		++s_gpFrames;
-		s_gpFrameNs[GP_TOTAL] = totalNs;
-		int culprit = GP_SLIM; unsigned long long cmax = 0;
-		for (int i = 0; i < GP_COUNT; i++) {
+		s_gpFrameNs[std::to_underlying(GP_TOTAL)] = totalNs;
+		int culprit = std::to_underlying(GP_SLIM); unsigned long long cmax = 0;
+		for (int i = 0; i < GP_COUNT_I; i++) {
 			s_gpSum[i] += s_gpFrameNs[i];
 			if (s_gpFrameNs[i] > s_gpMax[i]) s_gpMax[i] = s_gpFrameNs[i];
-			if (i != GP_TOTAL && s_gpFrameNs[i] > cmax) { cmax = s_gpFrameNs[i]; culprit = i; }
+			if (i != std::to_underlying(GP_TOTAL) && s_gpFrameNs[i] > cmax) { cmax = s_gpFrameNs[i]; culprit = i; }
 		}
 		if (totalNs > 5000000ULL) {  // >5ms spike
 			std::printf("[GEOM_PHASE_SPIKE v1] frame=%llu total_us=%.1f culprit=%s "
@@ -79,7 +82,7 @@ namespace {
 				static_cast<double>(cmax)/1000.0, numberQuads, numObjBlocks);
 			std::fflush(stdout);
 		}
-		for (int i = 0; i < GP_COUNT; i++) s_gpFrameNs[i] = 0;
+		for (int i = 0; i < GP_COUNT_I; i++) s_gpFrameNs[i] = 0;
 	}
 }
 

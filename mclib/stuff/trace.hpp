@@ -63,12 +63,13 @@ namespace Stuff {
 			friend class TraceManager;
 
 		public:
-			enum Type {
+			enum class Type {
 				BitType,
 				IntegerType,
 				ScalarType,
 				EventType
 			};
+			using enum Type;
 
 		protected:
 			static BYTE NextTraceID;

@@ -30,6 +30,7 @@ PauseWindow.cpp			: Implementation of the PauseWindow component.
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
+#include <utility>
 
 extern float frameLength;
 
@@ -159,7 +160,7 @@ void PauseWindow::update()
 
 	gosEnum_KeyIndex key;
 	bool bShift, bCtrl, bAlt;
-	MissionInterfaceManager::instance()->getHotKey( OBJECTVIES_COMMAND_KEY, key, bShift, bCtrl, bAlt );
+	MissionInterfaceManager::instance()->getHotKey( std::to_underlying(OBJECTVIES_COMMAND_KEY), key, bShift, bCtrl, bAlt );
 
 	
 	// hack, mission gui message isn't getting here...

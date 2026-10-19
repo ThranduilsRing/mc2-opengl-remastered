@@ -327,7 +327,7 @@ long GlobalMap::calcPath (long startArea,
 		STOP(("Globalmap.calcPath: NULL gate callback"));
 
 	for (long i = 0; i < numAreas; i++)
-		if (areas[i].type == AREA_TYPE_GATE) {
+		if (areas[i].type == _AreaType::AREA_TYPE_GATE) {
 			if (g_moveReconEnabled) g_moveRecon_ag_gatesScanned++;
 			if ((areas[i].teamID == moverTeamID) || (areas[i].teamID == -1)) {
 				if (areas[i].ownerWID > 0) {
@@ -710,7 +710,7 @@ bool GlobalMap::toggleLog (void) {
 					sprintf(s, "     ownerWID is %d", map->areas[i].ownerWID);
 					log->write(s);
 				}
-				sprintf(s, "     %s", typeString[map->areas[i].type]);
+				sprintf(s, "     %s", typeString[std::to_underlying(map->areas[i].type)]);
 				log->write(s);
 				for (long d = 0; d < map->areas[i].numDoors; d++) {
                     const DoorInfo& di = map->areas_doors[i][d];

@@ -10,6 +10,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include<utility>
 #include "mc2fmt.h"
 
 #ifndef ABLGEN_H
@@ -127,7 +128,7 @@ void crunchToken (void) {
 	if (codeBufferPtr >= (codeBuffer + MaxCodeBufferSize - 100))
 		syntaxError(ABL_ERR_SYNTAX_CODE_SEGMENT_OVERFLOW);
 	else {
-		*codeBufferPtr = static_cast<char>(curToken);
+		*codeBufferPtr = static_cast<char>(std::to_underlying(curToken));
 		codeBufferPtr++;
 	}
 }
@@ -158,7 +159,7 @@ void crunchStatementMarker (void) {
 		syntaxError(ABL_ERR_SYNTAX_CODE_SEGMENT_OVERFLOW);
 	else {
 		char saveCode = *(--codeBufferPtr);
-		*codeBufferPtr = static_cast<char>(TKN_STATEMENT_MARKER);
+		*codeBufferPtr = static_cast<char>(std::to_underlying(TKN_STATEMENT_MARKER));
 		codeBufferPtr++;
 		if (IncludeDebugInfo) {
 			*(reinterpret_cast<unsigned char*>(codeBufferPtr)) = static_cast<unsigned char>(FileNumber);
@@ -200,7 +201,7 @@ char* crunchAddressMarker (Address address) {
 		syntaxError(ABL_ERR_SYNTAX_CODE_SEGMENT_OVERFLOW);
 	else {
 		char saveCode = *(--codeBufferPtr);
-		*codeBufferPtr = static_cast<char>(TKN_ADDRESS_MARKER);
+		*codeBufferPtr = static_cast<char>(std::to_underlying(TKN_ADDRESS_MARKER));
 		codeBufferPtr++;
 		saveCodeBufferPtr = codeBufferPtr;
 		putCode(codeBufferPtr, address);
@@ -540,7 +541,7 @@ void freeLocal (SymTableNodePtr idPtr) {
 //				break;
 		}
 		if (!itemPtr)
-			runtimeError(0);
+			runtimeError(static_cast<RuntimeErrorType>(0));
 		else {
 			// Mod-tolerance: some old MC2X-compiled .abx (e.g. campaign area46) carry
 			// stack-frame layouts whose array-local offset lands on the wrong slot at

@@ -64,7 +64,7 @@ extern int32_t				NumModulesRegistered;
 extern int32_t				NumModuleInstances;
 extern int32_t				MaxWatchesPerModule;
 extern int32_t				MaxBreakPointsPerModule;
-extern const char*			TokenStrings[NUM_TOKENS];
+extern const char*			TokenStrings[std::to_underlying(TokenCodeType::NUM_TOKENS)];
 extern StackItemPtr		StaticDataPtr;
 extern void CheckMouse(void);
 extern long MaxBreaks;

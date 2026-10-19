@@ -115,7 +115,7 @@ inline constexpr int SCENARIOMAP_MAX_OVERLAYTYPE = 127;
 //#define	SCENARIOMAP_LAST_BASETYPE_INDEX		63
 
 //TileType and OverlayType now in terrain.h!
-enum OverlayWeightClass {
+enum class OverlayWeightClass {
 	OVERLAY_WEIGHT_VEHICLE,
 	OVERLAY_WEIGHT_MECH,
 	OVERLAY_WEIGHT_OTHER1,
@@ -123,6 +123,7 @@ enum OverlayWeightClass {
 	OVERLAY_WEIGHT_OTHER3,
 	NUM_OVERLAY_WEIGHT_CLASSES
 };
+using enum OverlayWeightClass;
 
 //------------------
 // class Definitions
@@ -1167,7 +1168,7 @@ struct _DoorInfo {
 
 using DoorInfoPtr = DoorInfo*;
 
-enum _AreaType {
+enum class _AreaType : int {
 	AREA_TYPE_NORMAL,
 	AREA_TYPE_WALL,
 	AREA_TYPE_GATE,
@@ -1175,13 +1176,15 @@ enum _AreaType {
 	AREA_TYPE_FOREST,
 	NUM_AREA_TYPES
 }; using AreaType = _AreaType;
+using enum _AreaType;
 
-enum _WaterType {
+enum class _WaterType : int {
 	WATER_TYPE_NONE,
 	WATER_TYPE_SHALLOW,
 	WATER_TYPE_DEEP,
 	NUM_WATER_TYPES
 }; using WaterType = _WaterType;
+using enum _WaterType;
 
 struct _GlobalMapArea {
 	//----------------

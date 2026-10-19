@@ -274,11 +274,9 @@ extern "C" int mc2_component_collect_witness(ComponentWitnessRow* out, int maxRo
 // plumbing as UnitProfileWitnessRow and loads NO new assets. One row per unique
 // ObjectType (de-duplicated across movers). Present in the dump ONLY under
 // MC2_UNIT_PROFILE_DATA (schema byte-for-byte unchanged when the gate is OFF).
-enum {
-    UNIT_PREVIEW_MAX_SOCKETS   = 32,   // mirrors MAX_PRESENTATION_SOCKETS
-    UNIT_PREVIEW_SOCKET_CAP    = 48,   // mirrors PRESENTATION_SOCKET_NAME_CAP
-    UNIT_PREVIEW_ANIM_TAG_COUNT = 11,  // count of ActionAnimTag enumerators
-};
+inline constexpr int UNIT_PREVIEW_MAX_SOCKETS   = 32;   // mirrors MAX_PRESENTATION_SOCKETS
+inline constexpr int UNIT_PREVIEW_SOCKET_CAP    = 48;   // mirrors PRESENTATION_SOCKET_NAME_CAP
+inline constexpr int UNIT_PREVIEW_ANIM_TAG_COUNT = 11;  // count of ActionAnimTag enumerators
 struct UnitPreviewSocket {
     char name[UNIT_PREVIEW_SOCKET_CAP];
     int  present;   // 0/1: a model node of this exact name exists on the LOD0 shape

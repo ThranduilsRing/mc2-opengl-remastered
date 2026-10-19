@@ -37,7 +37,7 @@ inline constexpr int MAX_EXPONENT = 20;
 //------------
 // TOKEN CODES
 
-enum TokenCodeType {
+enum class TokenCodeType {
 	TKN_NONE,
 	TKN_IDENTIFIER,
 	TKN_NUMBER,
@@ -116,14 +116,16 @@ enum TokenCodeType {
 	TKN_ADDRESS_MARKER,
 	NUM_TOKENS
 };
+using enum TokenCodeType;
 
-enum CharCodeType {
+enum class CharCodeType {
 	CHR_LETTER,
 	CHR_DIGIT,
 	CHR_DQUOTE,
 	CHR_SPECIAL,
 	CHR_EOF
 };
+using enum CharCodeType;
 
 struct ReservedWord {
 	const char*			string;
@@ -135,11 +137,12 @@ struct ReservedWord {
 //------------------
 // LITERAL structure
 
-enum LiteralType {
+enum class LiteralType {
 	LIT_INTEGER,
 	LIT_REAL,
 	LIT_STRING
 };
+using enum LiteralType;
 
 struct Literal {
 	LiteralType		type;

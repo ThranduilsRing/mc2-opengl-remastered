@@ -24,6 +24,7 @@ ForceGroupBar.cpp			: Implementation of the ForceGroupBar component.
 #include"tacordr.h"
 #include "mc2_dialog.h"
 #include "mc2fmt.h"
+#include <utility>
 
 // Squad status: one short word for a mech's current activity, and a rank so a
 // squad card can show the highest-priority member status.
@@ -566,7 +567,7 @@ void ForceGroupBar::update( )
 			userInput->setMouseCursor( mState_INFO );
 		 else if ( ControlGui::instance->getRepair() )
 			 userInput->setMouseCursor( mState_XREPAIR );
-		 else if ( MissionInterfaceManager::instance()->hotKeyIsPressed( EJECT_COMMAND_INDEX ) )
+		else if ( MissionInterfaceManager::instance()->hotKeyIsPressed( std::to_underlying(EJECT_COMMAND_INDEX) ) )
 			 userInput->setMouseCursor( mState_EJECT );
 		 else
 			userInput->setMouseCursor( mState_NORMAL );
@@ -580,7 +581,7 @@ void ForceGroupBar::update( )
 	// unselect all if appropriate
 	if ( bSelect && !shiftDn && inRegion(screen.x, screen.y) 
 		&& !ControlGui::instance->isSelectingInfoObject() && (!ControlGui::instance->getRepair()
-		&& !MissionInterfaceManager::instance()->hotKeyIsPressed( EJECT_COMMAND_INDEX )
+		&& !MissionInterfaceManager::instance()->hotKeyIsPressed( std::to_underlying(EJECT_COMMAND_INDEX) )
 		&& !ControlGui::instance->getGuard()
 		|| useLeftRightMouseProfile) )
 	{
@@ -673,7 +674,7 @@ void ForceGroupBar::update( )
 
 			if ( bCommand )
 			{
-				 if ( MissionInterfaceManager::instance()->hotKeyIsPressed( EJECT_COMMAND_INDEX ) )
+				 if ( MissionInterfaceManager::instance()->hotKeyIsPressed( std::to_underlying(EJECT_COMMAND_INDEX) ) )
 				 {
 					 MissionInterfaceManager::instance()->doEject( icons[i]->unit );
 				 }

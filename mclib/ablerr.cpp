@@ -9,6 +9,7 @@
 
 #include<stdio.h>
 #include<stdlib.h>
+#include<utility>
 #include "mc2fmt.h"
 
 #ifndef ABLGEN_H
@@ -165,24 +166,26 @@ void ABL_Assert (bool test, long errCode, const char* s) {
 
 //***************************************************************************
 
-[[noreturn]] void syntaxError (int errCode) {
-	if (errCode < 0 || errCode >= NUM_ABL_SYNTAX_ERRORS)
-		errCode = ABL_ERR_SYNTAX_UNEXPECTED_TOKEN;
+[[noreturn]] void syntaxError (SyntaxErrorType errCode) {
+	int code = std::to_underlying(errCode);
+	if (code < 0 || code >= std::to_underlying(SyntaxErrorType::NUM_ABL_SYNTAX_ERRORS))
+		code = std::to_underlying(SyntaxErrorType::ABL_ERR_SYNTAX_UNEXPECTED_TOKEN);
 	mc2::fmt::print_err("SYNTAX ERROR {} [line {:d}] - (type {:d}) {}\n",
 		mc2::fmt::safe(SourceFiles[FileNumber]), mc2::fmt::as_i32(lineNumber),
-		mc2::fmt::as_i32(errCode), mc2::fmt::safe(syntaxErrorMessages[errCode]));
+		mc2::fmt::as_i32(code), mc2::fmt::safe(syntaxErrorMessages[code]));
 	errorCount = 1;
 	throw ABLSyntaxFailure{};
 }
 
 //---------------------------------------------------------------------------
 
-void runtimeError (int errCode) {
+void runtimeError (RuntimeErrorType errCode) {
 
 	char message[512];
+	int code = std::to_underlying(errCode);
 
 	if (debugger) {
-		mc2::fmt::to_buf(message, "RUNTIME ERROR:  [{:d}] {}", mc2::fmt::as_i32(errCode), mc2::fmt::safe(runtimeErrorMessages[errCode]));
+		mc2::fmt::to_buf(message, "RUNTIME ERROR:  [{:d}] {}", mc2::fmt::as_i32(code), mc2::fmt::safe(runtimeErrorMessages[code]));
 		debugger->print(message);
 		mc2::fmt::to_buf(message, "MODULE {}", mc2::fmt::safe(CurModule->getName()));
 		debugger->print(message);
@@ -196,16 +199,16 @@ void runtimeError (int errCode) {
 		debugger->debugMode();
 	}
 
-	mc2::fmt::to_buf(message, "ABL RUNTIME ERROR {} [line {:d}] - (type {:d}) {}\n", mc2::fmt::safe((FileNumber > -1) ? CurModule->getSourceFile(FileNumber) : "unavailable"), mc2::fmt::as_i32(execLineNumber), mc2::fmt::as_i32(errCode), mc2::fmt::safe(runtimeErrorMessages[errCode]));
+	mc2::fmt::to_buf(message, "ABL RUNTIME ERROR {} [line {:d}] - (type {:d}) {}\n", mc2::fmt::safe((FileNumber > -1) ? CurModule->getSourceFile(FileNumber) : "unavailable"), mc2::fmt::as_i32(execLineNumber), mc2::fmt::as_i32(code), mc2::fmt::safe(runtimeErrorMessages[code]));
 	if (s_ablArgGuard && s_ablRuntimeSoftfail) {
 		// H3: log-and-continue instead of aborting the process.
 		char softMsg[512];
 		const char* srcFile = (FileNumber > -1) ? CurModule->getSourceFile(FileNumber) : "unavailable";
-		mc2::fmt::to_buf(softMsg, "[ABL_SOFTFAIL] func=(runtime) module={} file={} line={:d} errCode={:d} — {}", mc2::fmt::safe(CurModule ? CurModule->getName() : "(unknown)"), mc2::fmt::safe(srcFile), mc2::fmt::as_i32(execLineNumber), mc2::fmt::as_i32(errCode), mc2::fmt::safe(runtimeErrorMessages[errCode]));
+		mc2::fmt::to_buf(softMsg, "[ABL_SOFTFAIL] func=(runtime) module={} file={} line={:d} errCode={:d} — {}", mc2::fmt::safe(CurModule ? CurModule->getName() : "(unknown)"), mc2::fmt::safe(srcFile), mc2::fmt::as_i32(execLineNumber), mc2::fmt::as_i32(code), mc2::fmt::safe(runtimeErrorMessages[code]));
 		mc2::fmt::print_out("{}\n", mc2::fmt::safe(softMsg)); fflush(stdout);
 		return;
 	}
-	ABL_Fatal(-ABL_ERR_RUNTIME_ABORT, message);
+	ABL_Fatal(-std::to_underlying(RuntimeErrorType::ABL_ERR_RUNTIME_ABORT), message);
 }
 
 //***************************************************************************

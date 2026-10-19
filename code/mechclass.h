@@ -5,7 +5,9 @@
 #ifndef MECHCLASS_H
 #define MECHCLASS_H
 
-enum MechClass {
+#include <utility>
+
+enum class MechClass {
 	MECH_CLASS_NONE,
 	MECH_CLASS_LIGHT,
 	MECH_CLASS_MEDIUM,
@@ -13,6 +15,7 @@ enum MechClass {
 	MECH_CLASS_ASSAULT,
 	NUM_MECH_CLASSES
 };
+using enum MechClass;
 
 enum VehicleClass {
 	VEHICLE_CLASS_NONE,

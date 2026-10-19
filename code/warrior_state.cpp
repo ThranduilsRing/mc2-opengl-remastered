@@ -164,7 +164,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 		}
 		for (long i = 0; i < numSteps; i++) {
 			GlobalMapAreaPtr area = &GlobalMoveMap[getVehicle()->moveLevel]->areas[globalPath[i].thruArea];
-			if (area->type == AREA_TYPE_GATE) {
+			if (area->type == _AreaType::AREA_TYPE_GATE) {
 				GatePtr gate = static_cast<GatePtr>(ObjectManager->getByWatchID(area->ownerWID));
 				if (gate && !gate->isDestroyed() && (gate->getTeam() != getTeam())) {
 					GameObjectPtr controlBuilding = ObjectManager->getByWatchID(gate->parent);
@@ -190,7 +190,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 					}
 				}
 			}
-			else if (area->type == AREA_TYPE_WALL) {
+			else if (area->type == _AreaType::AREA_TYPE_WALL) {
 				BuildingPtr wall = static_cast<BuildingPtr>(ObjectManager->getByWatchID(area->ownerWID));
 				if (wall && (!wall->isDestroyed())) {
 					newTacOrder.init(orderOrigin, TACTICAL_ORDER_ATTACK_OBJECT);
@@ -270,7 +270,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 		}
 		for (long i = 0; i < numSteps; i++) {
 			GlobalMapAreaPtr area = &GlobalMoveMap[getVehicle()->moveLevel]->areas[globalPath[i].thruArea];
-			if (area->type == AREA_TYPE_GATE) {
+			if (area->type == _AreaType::AREA_TYPE_GATE) {
 				GatePtr gate = static_cast<GatePtr>(ObjectManager->getByWatchID(area->ownerWID));
 				if (gate && !gate->isDestroyed() && (gate->getTeam() != getTeam())) {
 					GameObjectPtr controlBuilding = ObjectManager->getByWatchID(gate->parent);
@@ -296,7 +296,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 					}
 				}
 			}
-			else if (area->type == AREA_TYPE_WALL) {
+			else if (area->type == _AreaType::AREA_TYPE_WALL) {
 				BuildingPtr wall = static_cast<BuildingPtr>(ObjectManager->getByWatchID(area->ownerWID));
 				if (wall && (!wall->isDestroyed())) {
 					newTacOrder.init(orderOrigin, TACTICAL_ORDER_ATTACK_OBJECT);
@@ -377,7 +377,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 			}
 			for (long i = 0; i < numSteps; i++) {
 				GlobalMapAreaPtr area = &GlobalMoveMap[getVehicle()->moveLevel]->areas[globalPath[i].thruArea];
-				if (area->type == AREA_TYPE_GATE) {
+				if (area->type == _AreaType::AREA_TYPE_GATE) {
 					GatePtr gate = static_cast<GatePtr>(ObjectManager->getByWatchID(area->ownerWID));
 					if (gate && !gate->isDestroyed() && (gate->getTeam() != getTeam())) {
 						GameObjectPtr controlBuilding = ObjectManager->getByWatchID(gate->parent);
@@ -403,7 +403,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 						}
 					}
 				}
-				else if (area->type == AREA_TYPE_WALL) {
+				else if (area->type == _AreaType::AREA_TYPE_WALL) {
 					BuildingPtr wall = static_cast<BuildingPtr>(ObjectManager->getByWatchID(area->ownerWID));
 					if (wall && (!wall->isDestroyed())) {
 						newTacOrder.init(orderOrigin, TACTICAL_ORDER_ATTACK_OBJECT);
