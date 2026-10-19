@@ -100,6 +100,7 @@ set(SOURCES ${SOURCES}
     gpu_cull_substrate.cpp
     gpu_cull_parity.cpp
     gpu_cull_compute.cpp
+    vk_actor_cull_native.cpp
     gpu_cull_readback.cpp
     render_snapshot.cpp
     gos_render_pass_timer.cpp

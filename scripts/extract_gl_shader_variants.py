@@ -913,42 +913,6 @@ def collect_gpu_driven(world: World, out: list):
                          stages={"comp": f}, value=[[("#version 430\n", None)]], assemble="engine")
 
 
-def collect_gpu_cull(world: World, out: list):
-    s = world.src(GAMEOS / "gpu_cull_compute.cpp")
-    if 'kPrefix = "#version 430\\n"' not in s.raw or "kIncludeLine" not in s.raw:
-        raise ExtractError("gpu_cull build_cull_program shape changed; update extractor")
-    ln = line_of(s.t, s.t.index("build_cull_program"))
-    binding = WORLD.const_int("READBACK_SSBO_BINDING")
-    inc = re.search(r'kIncludeLine\s*=\s*"([^"]*)"', s.raw).group(1)
-    base = f"#version 430\n#define READBACK_SSBO_BINDING {binding}\n"
-    # preamble defines (each guarded by readback_isEnabled except the C1b marker)
-    c1b = re.search(r'preambles\[nPreambles\+\+\]\s*=\s*"(#define \w+ 1\\n)"\s*;\s*if\s*\(\s*readback', s.raw)
-    c1b_def = parse_string_literals('"' + c1b.group(1) + '"')
-    rb = re.search(r'c1aPreamble\s*=\s*"(#define \w+ 1\\n)"', s.raw)
-    rb_def = parse_string_literals('"' + rb.group(1) + '"')
-    variants = {
-        "gpu_cull#C1a": base,
-        "gpu_cull#C1a#READBACK": base + rb_def,
-        "gpu_cull#C1b": base + c1b_def,
-        "gpu_cull#C1b#READBACK": base + c1b_def + rb_def,
-    }
-    for pid, pre in variants.items():
-        out.append({
-            "id": pid, "source": f"{s.rel}:{ln}",
-            "stages": {"comp": "shaders/gpu_cull.comp"},
-            "assemble": "raw", "optional_groups_on": [], "defines": _def_label(pre),
-            "prefix": pre,
-            "splice": {"include_line": inc, "file": "shaders/gpu_cull_predicate.glsl"},
-        })
-    for m in re.finditer(r'build_compute_program_from_file\s*\(\s*"(shaders/[\w./]+)"', s.t):
-        f = m.group(1)
-        out.append({
-            "id": Path(f).stem, "source": f"{s.rel}:{line_of(s.t, m.start())}",
-            "stages": {"comp": f}, "assemble": "raw", "optional_groups_on": [],
-            "defines": [], "prefix": "#version 430\n",
-        })
-
-
 def collect_terrain_lighting(world: World, out: list):
     s = world.src(GAMEOS / "gos_terrain_lighting.cpp")
     m = re.search(r'tl_build_terrain_lighting_program\(\s*"([^"]+)",\s*"([^"]+)"', s.t)
@@ -977,7 +941,6 @@ def extract() -> dict:
     collect_materials(WORLD, variants)
     collect_strs_compute(WORLD, variants)
     collect_gpu_driven(WORLD, variants)
-    collect_gpu_cull(WORLD, variants)
     collect_terrain_lighting(WORLD, variants)
     # Each variant gets a unique, human-readable key: program id + its define set.
     keyed, seen = [], {}

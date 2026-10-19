@@ -920,33 +920,7 @@ void batcher_prepareBaseInstanceTable() {
         s_coalesceFence[s_coalesceFrameSlot] = nullptr;
     }
 
-    // Step 4.11 — GPU-vs-CPU count diagnostic (env-gated). Must be after fence
-    // wait (prior frame's compute is now complete — fence covered patch dispatch).
-    if (s_coalesceGpuVsCpuTrace) {
-        static std::vector<uint32_t> s_priorFrameCpuCount;
-        const GLuint bucketsBuf = gpu_cull::compute_getBucketCountsBuf();
-        if (bucketsBuf && !s_types.empty()) {
-            std::vector<uint32_t> bucketCountGpu(s_types.size() + 1, 0u);
-            glGetNamedBufferSubData(bucketsBuf, 0,
-                static_cast<GLsizeiptr>((s_types.size() + 1) * sizeof(uint32_t)),
-                bucketCountGpu.data());
-            const size_t cmpN = std::min(s_priorFrameCpuCount.size(), bucketCountGpu.size() - 1);
-            for (uint32_t t = 0; t < (uint32_t)cmpN; ++t) {
-                if (bucketCountGpu[t] > s_priorFrameCpuCount[t]) {
-                    MC2_DIAGFE(stderr,
-                        "[COALESCE v1] event=gpu_count_exceeds_cpu type=%u gpu=%u cpu=%u\n",
-                        t, bucketCountGpu[t], s_priorFrameCpuCount[t]);
-                    std::fflush(stderr);
-                }
-            }
-        }
-        // Stash this frame's CPU bucket sizes for comparison RING_FRAMES frames from now.
-        s_priorFrameCpuCount.assign(s_types.size(), 0u);
-        for (auto& kv : s_bucketsByType) {
-            if (kv.first < s_priorFrameCpuCount.size())
-                s_priorFrameCpuCount[kv.first] = static_cast<uint32_t>(kv.second.instances.size());
-        }
-    }
+
 
     if (!s_baseInstanceByCmdMap) return;
     if (!batcher_isCoalesceArmed()) return;

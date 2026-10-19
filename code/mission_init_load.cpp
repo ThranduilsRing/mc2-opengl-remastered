@@ -984,12 +984,7 @@ void Mission::initFinalizeGeometry() {
 	GameAdapters::StaticProp::finalizeGeometry();
 	GpuMechBatcher::instance().finalizeGeometry();
 
-	// C1b: build the DrawElementsIndirectCommand buffer now that all static prop
-	// types are registered and geometry is finalized. No-op if MC2_GPU_CULL is
-	// not set or if there are no static prop types in this mission.
-	if (gpu_cull::compute_isEnabled()) {
-		gpu_cull::compute_buildIndirectBuffer(GameAdapters::StaticProp::typeCount());
-	}
+
 
 	// STATIC-REG-PREWARM-QUEUE-1: bake light slots for registered static props
 	// that are off-screen (never reach render() → never cleared their
