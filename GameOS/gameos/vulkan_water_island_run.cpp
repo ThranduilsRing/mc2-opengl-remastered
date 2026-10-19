@@ -219,7 +219,7 @@ extern "C" int mc2_vk_water_island_run(
         VkRenderPassBeginInfo rbi{};
         rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-        rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+        rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
         rbi.clearValueCount = 3; rbi.pClearValues = clears;
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());

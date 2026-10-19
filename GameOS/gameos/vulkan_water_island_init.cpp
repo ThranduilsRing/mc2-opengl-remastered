@@ -67,7 +67,7 @@ bool init_island(WaterIsland* s, int w, int h) {
     {
         const uint32_t rc = WaterStream::GetRecipeCount();
         // 64B/recipe (WaterRecipe). Allocate at least 1 to keep the descriptor valid.
-        s->recipeBytes = (VkDeviceSize)(rc ? rc : 1) * 64;
+        s->recipeBytes = static_cast<VkDeviceSize>((rc ? rc : 1)) * 64;
         if (!make_buffer(s, s->recipeBuf, s->recipeBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "water.recipeBuf")) return false;
     }
     // Thin SSBOs (per parity slot) — start with a small ring; grows in run().
@@ -145,7 +145,7 @@ bool init_island(WaterIsland* s, int w, int h) {
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
-        fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
+        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
             vlog("vkCreateFramebuffer failed."); return false;
         }
@@ -255,8 +255,8 @@ bool init_island(WaterIsland* s, int w, int h) {
         cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         cb.attachmentCount = 2; cb.pAttachments = cba;
 
-        VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
-        VkRect2D scissor{{0, 0}, {(uint32_t)w, (uint32_t)h}};
+        VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+        VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
         VkPipelineViewportStateCreateInfo vps{};
         vps.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
         vps.viewportCount = 1; vps.pViewports = &vp; vps.scissorCount = 1; vps.pScissors = &scissor;

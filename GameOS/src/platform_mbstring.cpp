@@ -8,7 +8,7 @@ unsigned char *_mbslwr(
         )
 {
     // only ok for C locale and single byte character set
-	return (unsigned char*)S_strlwr((char*)str);
+	return reinterpret_cast<unsigned char*>(S_strlwr(reinterpret_cast<char*>(str)));
 }
 
 // what a stupid signature

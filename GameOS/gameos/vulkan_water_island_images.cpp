@@ -71,7 +71,7 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
         VkImageCreateInfo ii{};
         ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         ii.imageType = VK_IMAGE_TYPE_2D; ii.format = fmt;
-        ii.extent = {(uint32_t)w, (uint32_t)h, 1};
+        ii.extent = {static_cast<uint32_t>(w), static_cast<uint32_t>(h), 1};
         ii.mipLevels = mips; ii.arrayLayers = 1;
         ii.samples = VK_SAMPLE_COUNT_1_BIT; ii.tiling = VK_IMAGE_TILING_OPTIMAL;
         ii.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -94,7 +94,7 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
     VkDeviceSize total = 0;
     for (size_t i = 0; i < levels.size(); ++i) {
         offs[i] = total;
-        total += (VkDeviceSize)((levels[i].size() + 15) & ~size_t(15));
+        total += static_cast<VkDeviceSize>(((levels[i].size() + 15) & ~size_t(15)));
     }
     mc2vk::OwnedBuffer staging;   // released on return; submit_once has waited for the copy by then
     if (!make_buffer(s, staging, total, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "water.staging")) return false;
@@ -102,7 +102,7 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
         void* p = staging.map();
         if (!p) return false;
         for (size_t i = 0; i < levels.size(); ++i)
-            std::memcpy((unsigned char*)p + offs[i], levels[i].data(), levels[i].size());
+            std::memcpy(static_cast<unsigned char*>(p) + offs[i], levels[i].data(), levels[i].size());
         staging.unmap();
     }
 
@@ -122,7 +122,7 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
             VkBufferImageCopy c{};
             c.bufferOffset = offs[i];
             c.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, i, 0, 1};
-            c.imageExtent = {(uint32_t)levelDims[i].first, (uint32_t)levelDims[i].second, 1};
+            c.imageExtent = {static_cast<uint32_t>(levelDims[i].first), static_cast<uint32_t>(levelDims[i].second), 1};
             vkCmdCopyBufferToImage(cb, staging.get(), s->hdriImage.get(),
                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &c);
         }
@@ -141,7 +141,7 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("water_image_import");
     write_descriptors(s);   // binding 2 now valid
     vlog("hdri %s import: %dx%d fmt=%d mips=%u glTex=%u (copy-once, zero per-frame cost).",
-         haveReal ? "REAL" : "DUMMY", w, h, (int)fmt, mips, hdriGlTex);
+         haveReal ? "REAL" : "DUMMY", w, h, static_cast<int>(fmt), mips, hdriGlTex);
     return true;
 }
 
@@ -156,14 +156,14 @@ bool import_shore_tex(WaterIsland* s, const void* texels, int texelsW, int texel
     const int w = *real ? texelsW : 1;
     const int h = *real ? texelsH : 1;
     const void* src = *real ? texels : &kZeroTexel;
-    const size_t byteCount = (size_t)w * (size_t)h * 4u;
+    const size_t byteCount = static_cast<size_t>(w) * static_cast<size_t>(h) * 4u;
 
     view.reset();
     img.reset();
     VkImageCreateInfo ii{};
     ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     ii.imageType = VK_IMAGE_TYPE_2D; ii.format = fmt;
-    ii.extent = {(uint32_t)w, (uint32_t)h, 1};
+    ii.extent = {static_cast<uint32_t>(w), static_cast<uint32_t>(h), 1};
     ii.mipLevels = 1; ii.arrayLayers = 1;
     ii.samples = VK_SAMPLE_COUNT_1_BIT; ii.tiling = VK_IMAGE_TILING_OPTIMAL;
     ii.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -180,8 +180,8 @@ bool import_shore_tex(WaterIsland* s, const void* texels, int texelsW, int texel
         vlog("shore: vkCreateImageView failed."); return false;
     }
     mc2vk::OwnedBuffer staging;   // released on return; submit_once has waited for the copy by then
-    if (!make_buffer(s, staging, (VkDeviceSize)byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "water.staging")) return false;
-    if (!staging.upload(src, (VkDeviceSize)byteCount)) return false;
+    if (!make_buffer(s, staging, static_cast<VkDeviceSize>(byteCount), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "water.staging")) return false;
+    if (!staging.upload(src, static_cast<VkDeviceSize>(byteCount))) return false;
     const VkImage dst = img.get();
     const bool ok = submit_once(s, [&](VkCommandBuffer cb) {
         VkImageMemoryBarrier bar{};
@@ -197,7 +197,7 @@ bool import_shore_tex(WaterIsland* s, const void* texels, int texelsW, int texel
                              VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
         VkBufferImageCopy c{};
         c.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-        c.imageExtent = {(uint32_t)w, (uint32_t)h, 1};
+        c.imageExtent = {static_cast<uint32_t>(w), static_cast<uint32_t>(h), 1};
         vkCmdCopyBufferToImage(cb, staging.get(), dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &c);
         bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
