@@ -2,6 +2,7 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
+#include <memory>
 #include"stuffheaders.hpp"
 
 #if !defined(TOOLOS_HPP)
@@ -454,13 +455,15 @@ bool
 		const char *next_slash;
 		next_slash = strchr( current_position + 1, '\\' );
 
+		std::unique_ptr<char[]> newStringOwner;
 		char *new_string = nullptr;
 
 		if (next_slash == nullptr)
 		{
 			//copy the whole string
 			size_t length = strlen(start_position)+1;
-			new_string = new char[length];
+			newStringOwner = std::make_unique_for_overwrite<char[]>(length);
+			new_string = newStringOwner.get();
 			Check_Pointer(new_string);
 
 			Str_Copy(new_string, start_position, length);
@@ -479,7 +482,8 @@ bool
 
 			//copy the sub string
 			size_t length = next_slash - start_position;
-			new_string = new char[length+1];
+			newStringOwner = std::make_unique_for_overwrite<char[]>(length+1);
+			new_string = newStringOwner.get();
 			Check_Pointer(new_string);
 
 			strncpy(new_string, start_position, length);
@@ -499,7 +503,7 @@ bool
 
 
 		Check_Pointer(new_string);
-		delete[] new_string;
+		newStringOwner.reset();
 
 		current_position = next_slash;
 	}
