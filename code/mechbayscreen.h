@@ -8,6 +8,7 @@ MechBayScreen.h : Header file for mech selection
 //===========================================================================//
 \*************************************************************************************************/
 
+#include <memory>
 #include"logisticsscreen.h"
 #include"attributemeter.h"
 #include"mechlistbox.h"
@@ -78,7 +79,7 @@ private:
 
 	static	MechBayScreen*	s_instance;
 
-	SimpleCamera*		mechCamera;
+	std::unique_ptr<SimpleCamera>		mechCamera;
 	ComponentListBox	loadoutListBox;
 
 	void removeSelectedMech();

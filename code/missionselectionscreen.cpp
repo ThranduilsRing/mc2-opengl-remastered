@@ -48,7 +48,7 @@ MissionSelectionScreen::~MissionSelectionScreen()
 {
 	if (bMovie)
 	{
-		delete bMovie;
+		bMovie.reset();
 		bMovie = nullptr;
 	}
 
@@ -276,11 +276,11 @@ void MissionSelectionScreen::begin()
 			if (bMovie)
 			{
 				bMovie->stop();
-				delete bMovie;
+				bMovie.reset();
 				bMovie = nullptr;
 			}
 
-			bMovie = new MC2Movie;
+			bMovie = std::make_unique_for_overwrite<MC2Movie>();
 			bMovie->init(videoName,movieRect,true);
 
 			if (Environment.Renderer == 3)
@@ -357,7 +357,7 @@ void MissionSelectionScreen::end()
 	{
 		bMovie->stop();
 
-		delete bMovie;
+		bMovie.reset();
 		bMovie = nullptr;
 	}
 

@@ -8,6 +8,7 @@ PilotReviewARea.h			: Interface for the PilotReviewARea component.
 \*************************************************************************************************/
 
 //*************************************************************************************************
+#include <memory>
 #include"logisticsscreen.h"
 #include"alistbox.h"
 #include"attributemeter.h"
@@ -131,8 +132,8 @@ private:
 	aText				missionText;
 	aText				killsText;
 
-	PilotIcon*			liveIcon;
-	PilotIcon*			deadIcon;
+	std::unique_ptr<PilotIcon>			liveIcon;
+	std::unique_ptr<PilotIcon>			deadIcon;
 
 
 	
@@ -194,13 +195,13 @@ protected:
 	aText		pilotingText;
 	aRect		area;
 
-	aObject*	medalIcons[MAX_MEDAL];
-	aText*	medalTexts[MAX_MEDAL];
+	std::unique_ptr<aObject>	medalIcons[MAX_MEDAL];
+	std::unique_ptr<aText>	medalTexts[MAX_MEDAL];
 	aText		promotionText;
 	aText		medalAwardedText;
 
 	
-	PilotIcon*	pilotIcon;
+	std::unique_ptr<PilotIcon>	pilotIcon;
 	LogisticsPilot* pilot;
 
 	bool		showingPromotion;

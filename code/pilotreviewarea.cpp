@@ -380,11 +380,12 @@ DeadPilotListItem::~DeadPilotListItem()
 {
 	removeAllChildren( false ); // don't delete
 	if ( liveIcon )
-		delete liveIcon;
+		liveIcon.reset();
 	if ( deadIcon )
-		delete deadIcon;
+		deadIcon.reset();
 
-	deadIcon = liveIcon = nullptr;
+	deadIcon = nullptr;
+	liveIcon = nullptr;
 
 	s_itemCount--;
 	if ( s_itemCount < 1 )
@@ -491,9 +492,9 @@ DeadPilotListItem::DeadPilotListItem( LogisticsPilot* pPilot )
 	addChild( &rankText );
 	addChild( &missionText );
 
-	liveIcon = new PilotIcon( );
+	liveIcon = std::make_unique<PilotIcon>();
 	liveIcon->setTextureIndex( pPilot->getPhotoIndex() );
-	deadIcon = new PilotIcon( );
+	deadIcon = std::make_unique<PilotIcon>();
 	deadIcon->setTextureIndex( PilotIcon::DEAD_PILOT_INDEX );
 
 	showWindow = 0;
@@ -904,7 +905,7 @@ void		ActivePilotListItem::update()
 	{
 		if ( currentTime > flashTime() + .5f  ) // wait five seconds before bringing in the doors
 		{
-				s_pilotPromotionArea->setPilot( pilot, pilotIcon );
+				s_pilotPromotionArea->setPilot( pilot, pilotIcon.get() );
 				showingPromotion = true;
 				promotionShown = false;
 				showGUIWindow( true );
@@ -930,19 +931,19 @@ float ActivePilotListItem::flashTime()
 }
 ActivePilotListItem::~ActivePilotListItem()
 {
-	delete pilotIcon;
+	pilotIcon.reset();
 	pilotIcon = nullptr;
 
 	for ( int i = 0; i < MAX_MEDAL; i++ )
 	{
 		if ( medalIcons[i] )
 		{
-			delete medalIcons[i];
+			medalIcons[i].reset();
 			medalIcons[i] = nullptr;
 		}
 		if ( medalTexts[i] )
 		{
-			delete medalTexts[i];
+			medalTexts[i].reset();
 			medalTexts[i] = nullptr;
 		}
 	}
@@ -1157,8 +1158,6 @@ ActivePilotListItem::ActivePilotListItem( LogisticsPilot* pPilot )
 	char tmpText[256];	
 	char realText[256];
 
-	memset( medalIcons, 0, MAX_MEDAL * sizeof (aObject*) );
-	memset( medalTexts, 0, MAX_MEDAL * sizeof(aText*) );
 
 	promotionShown = 0;
 	showingPromotion = 0;
@@ -1178,8 +1177,8 @@ ActivePilotListItem::ActivePilotListItem( LogisticsPilot* pPilot )
 	{
 		if ( pMedals[i] )
 		{
-			medalIcons[medalCount] = new aObject;
-			medalTexts[medalCount] = new aText;
+			medalIcons[medalCount] = std::make_unique_for_overwrite<aObject>();
+			medalTexts[medalCount] = std::make_unique_for_overwrite<aText>();
 			*medalIcons[medalCount] = *s_medals[i];
 			*medalTexts[medalCount] = *s_medalText;
 			medalIcons[medalCount]->move( 0, medalCount* medalIcons[medalCount]->height() + offset );
@@ -1300,8 +1299,8 @@ ActivePilotListItem::ActivePilotListItem( LogisticsPilot* pPilot )
 		addChild( &medalAwardedText );
 		for ( int i = 0; i < medalCount; i++ )
 		{
-			addChild( medalIcons[i] );
-			addChild( medalTexts[i] );
+			addChild( medalIcons[i].get() );
+			addChild( medalTexts[i].get() );
 		}
 	}
 
@@ -1310,7 +1309,7 @@ ActivePilotListItem::ActivePilotListItem( LogisticsPilot* pPilot )
 		addChild( &promotionText );
 	}
 
-	pilotIcon = new PilotIcon( );
+	pilotIcon = std::make_unique<PilotIcon>();
 	pilotIcon->setTextureIndex( pPilot->getPhotoIndex() );
 
 	s_itemCount++;

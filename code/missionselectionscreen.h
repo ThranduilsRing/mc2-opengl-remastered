@@ -9,6 +9,7 @@ MissionSelectionScreen.h : Header file for mission selection
 \*************************************************************************************************/
 
 #ifndef LOGISTICSSCREEN_H
+#include <memory>
 #include"logisticsscreen.h"
 #endif
 
@@ -43,7 +44,7 @@ private:
 
 	LogisticsScreen	operationScreen;
 
-	MC2MoviePtr		bMovie;
+	std::unique_ptr<MC2Movie>		bMovie;
 	bool				playedLogisticsTune;
 
 	//HGOSVIDEO			video;
