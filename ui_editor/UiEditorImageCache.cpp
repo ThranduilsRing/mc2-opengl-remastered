@@ -18,7 +18,7 @@
 #include "UiEditorImageCache.h"
 
 #include <SDL.h>
-#include <SDL_opengl.h>
+#include "../tools/common/tool_vk_gpu.h"
 
 #include "utils/Image.h"
 
@@ -39,7 +39,7 @@ namespace
 		bool unavailable;
 		int width;
 		int height;
-		GLuint glTexture;
+		uint32_t nativeTexture;
 		std::string resolvedPath;
 
 		CachedImage()
@@ -48,12 +48,13 @@ namespace
 			, unavailable(false)
 			, width(0)
 			, height(0)
-			, glTexture(0)
+			, nativeTexture(0)
 		{
 		}
 	};
 
 	std::map<std::string, CachedImage> g_cache;
+    std::vector<uint32_t> g_retiredTextures;
 	std::string g_status = "Image cache ready.";
 
 	std::string NormalizeSlashes(std::string value)
@@ -262,33 +263,17 @@ namespace
 			return false;
 		}
 
-		GLuint glTexture = 0;
-		glGenTextures(1, &glTexture);
-		glBindTexture(GL_TEXTURE_2D, glTexture);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-		glTexImage2D(
-			GL_TEXTURE_2D,
-			0,
-			GL_RGBA,
-			width,
-			height,
-			0,
-			GL_RGBA,
-			GL_UNSIGNED_BYTE,
-			rgbaPixels.data());
+        const uint32_t nativeTexture = toolvk::createTexture(width, height, toolvk::TexFormat::Rgba8Unorm,
+            rgbaPixels.data(), {}, false, false);
 
-		if (glTexture == 0)
+		if (nativeTexture == 0)
 		{
 			image.unavailable = true;
 			g_status = std::string("Image upload failed: ") + resolvedPath;
 			return false;
 		}
 
-		image.glTexture = glTexture;
+		image.nativeTexture = nativeTexture;
 		image.width = width;
 		image.height = height;
 		image.loaded = true;
@@ -312,21 +297,27 @@ UiEditorImageTexture::UiEditorImageTexture()
 
 bool UiEditorImageCache_Initialize()
 {
-	g_status = "GameOS Image decoder ready.";
-	return true;
+	g_status = toolvk::gpuReady() ? "GameOS Image decoder ready." : "Native image device unavailable.";
+	return toolvk::gpuReady();
 }
 
 void UiEditorImageCache_Shutdown()
 {
 	UiEditorImageCache_Clear();
+    UiEditorImageCache_BeginFrame();
+}
+
+void UiEditorImageCache_BeginFrame() {
+    for (const uint32_t id : g_retiredTextures) toolvk::destroyTexture(id);
+    g_retiredTextures.clear();
 }
 
 void UiEditorImageCache_Clear()
 {
 	for (std::map<std::string, CachedImage>::iterator it = g_cache.begin(); it != g_cache.end(); ++it)
 	{
-		if (it->second.glTexture != 0)
-			glDeleteTextures(1, &it->second.glTexture);
+		if (it->second.nativeTexture != 0)
+			g_retiredTextures.push_back(it->second.nativeTexture);
 	}
 
 	g_cache.clear();
@@ -352,7 +343,7 @@ const UiEditorImageTexture* UiEditorImageCache_Get(const char* path)
 	result.width = image.width;
 	result.height = image.height;
 	result.resolvedPath = image.resolvedPath.c_str();
-	result.textureId = (ImTextureID)(intptr_t)image.glTexture;
+	result.textureId = (ImTextureID)(intptr_t)toolvk::imguiTex(image.nativeTexture);
 	return &result;
 }
 

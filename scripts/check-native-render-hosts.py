@@ -12,7 +12,9 @@ FILES = [PREFIX + name for name in (
     'gos_host_vk.cpp', 'gos_host_vk.h', 'engine_present_vk.cpp', 'engine_present_vk.h',
     'gos_profiler.h', 'gameos_graphics_water.cpp', 'render_host_kind.h', 'CMakeLists.txt')]
 FILES += ['editor/EditorGosRender.cpp', 'editor/EditorGameOS.cpp',
-          'editor/EditorInterface_internal.h', 'editor/EditorInterface_mouse.cpp']
+          'editor/EditorInterface_internal.h', 'editor/EditorInterface_mouse.cpp',
+          'editor/shell/main.cpp', 'editor/shell/PanelProof.cpp',
+          'ui_editor/UiEditorMain.cpp', 'ui_editor/UiEditorImageCache.cpp']
 
 
 def code(source):
@@ -31,9 +33,10 @@ def audit(files):
         if re.search(r'\b(?:gl[A-Z]\w*|glew\w*|wgl\w*|SDL_GL_\w*)\s*\(|'
                      r'\b(?:RenderContextHandle|SDL_GLContext|HGLRC|TracyGpu\w*|SDL_WINDOW_OPENGL)\b', tokens):
             failures.append(path + ': retired GL context/loader/state dependency')
-        if re.search(r'^\s*#\s*include\s*[<"](?:GL/|tracy/TracyOpenGL)', source, re.M):
+        if re.search(r'^\s*#\s*include\s*[<"](?:GL/|SDL_opengl|imgui_impl_opengl|tracy/TracyOpenGL)', source, re.M):
             failures.append(path + ': retired GL header dependency')
-    for path in (PREFIX + 'gos_render.cpp', 'editor/EditorGosRender.cpp'):
+    for path in (PREFIX + 'gos_render.cpp', 'editor/EditorGosRender.cpp',
+                 'editor/shell/main.cpp', 'ui_editor/UiEditorMain.cpp'):
         if 'SDL_WINDOW_VULKAN' not in code(files[path]):
             failures.append(path + ': native SDL window flag missing')
     for path in (PREFIX + 'gos_render.cpp', 'editor/EditorGosRender.cpp', PREFIX + 'engine_present_vk.cpp'):

@@ -22,6 +22,10 @@ target_include_directories(editor_document PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty
 target_include_directories(editor_document PRIVATE "${CMAKE_SOURCE_DIR}/mclib")
 target_link_libraries(editor_document PRIVATE ZLIB::ZLIB)
 
+if(NOT TARGET mc2_tool_vk)
+    add_subdirectory("${CMAKE_SOURCE_DIR}/tools/common" "${CMAKE_BINARY_DIR}/tools_common")
+endif()
+
 function(add_editor_shell target)
     add_executable(${target} WIN32 shell/main.cpp shell/EntityPanels.cpp shell/ObjectivePanel.cpp shell/ObjectivePresentation.cpp shell/FileWorkflow.cpp
         "${CMAKE_SOURCE_DIR}/3rdparty/imgui/misc/cpp/imgui_stdlib.cpp")
@@ -29,7 +33,7 @@ function(add_editor_shell target)
     target_compile_features(${target} PRIVATE cxx_std_23)
     target_compile_definitions(${target} PRIVATE SDL_MAIN_HANDLED)
     target_include_directories(${target} PRIVATE "${CMAKE_BINARY_DIR}/generated")
-    target_link_libraries(${target} PRIVATE editor_document mc2_gate imgui SDL2::SDL2 OpenGL::GL)
+    target_link_libraries(${target} PRIVATE editor_document mc2_gate imgui SDL2::SDL2 mc2_tool_vk)
     if(MSVC)
         target_link_options(${target} PRIVATE /ENTRY:mainCRTStartup)
     endif()
@@ -76,7 +80,7 @@ add_executable(editor_panel_tests tests/test_main.cpp tests/test_panels.cpp test
 target_compile_features(editor_panel_tests PRIVATE cxx_std_23)
 target_compile_definitions(editor_panel_tests PRIVATE MC2_EDITOR_SMOKE_HOST=1)
 target_include_directories(editor_panel_tests PRIVATE shell)
-target_link_libraries(editor_panel_tests PRIVATE editor_document imgui SDL2::SDL2 OpenGL::GL)
+target_link_libraries(editor_panel_tests PRIVATE editor_document imgui SDL2::SDL2)
 
 # Reader compatibility belongs to offline tests; the owned document stays engine-free.
 include(tests/ObjectiveReader.cmake)

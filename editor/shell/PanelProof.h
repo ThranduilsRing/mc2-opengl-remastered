@@ -8,9 +8,10 @@ namespace editor::shell {
 // Harness input uses rendered widget rectangles, with ordinary ImGui input events.
 class PanelProof {
 public:
+    using Capture = std::function<bool(const std::filesystem::path&)>;
     PanelProof(document::MissionDocument& document, document::CommandHistory& history,
         EntityPanels& panels, std::filesystem::path output, std::string kind, document::Diagnostic log,
-        bool captureRendered = true);
+        bool captureRendered = true, Capture captureFrame = {});
     bool tick();
     bool passed() const { return passed_; }
     void drawFiles() { if (files_) files_->draw(); }
@@ -29,6 +30,7 @@ private:
     unsigned phase_{}, frames_{}, priorActivations_{};
     bool passed_{};
     bool captureRendered_{};
+    Capture capture_;
     std::unique_ptr<FileWorkflow> files_;
     void click(std::string key, std::function<void()> verify = {});
     void input(std::string key, std::string value);

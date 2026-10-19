@@ -10,9 +10,9 @@
 #include "build_fingerprint.h"
 
 #include <SDL.h>
-#include <SDL_opengl.h>
+#include "../../tools/common/tool_vk_shell.h"
 #include <imgui.h>
-#include <imgui_impl_opengl3.h>
+#include <imgui_impl_vulkan.h>
 #include <imgui_impl_sdl2.h>
 #include <misc/cpp/imgui_stdlib.h>
 
@@ -65,10 +65,9 @@ class Shell {
 public:
     explicit Shell(Options options) : options_(std::move(options)), logFile_(options_.log, std::ios::trunc) {}
     ~Shell() {
-        if (rendererReady_) ImGui_ImplOpenGL3_Shutdown();
+        toolvk::shutdown(native_);
         if (platformReady_) ImGui_ImplSDL2_Shutdown();
         if (imgui_) ImGui::DestroyContext(imgui_);
-        if (context_) SDL_GL_DeleteContext(context_);
         if (window_) SDL_DestroyWindow(window_);
         if (sdlReady_) SDL_Quit();
     }
@@ -106,7 +105,7 @@ public:
         }, options_.recent.empty() ? std::filesystem::current_path() / "editor-recent.txt" : options_.recent);
 #ifdef MC2_EDITOR_SMOKE_HOST
         if (!options_.panelSmoke.empty()) {
-            panelProof_ = std::make_unique<editor::shell::PanelProof>(*document_, *history_, *panels_, options_.output, options_.panelSmoke, logger());
+            panelProof_ = std::make_unique<editor::shell::PanelProof>(*document_, *history_, *panels_, options_.output, options_.panelSmoke, logger(), true, [this](const std::filesystem::path& path) { return capturePanel(path); });
         }
 #endif
         auto* title = document_->find("MissionSettings", "MissionName");
@@ -121,26 +120,22 @@ public:
         SDL_SetMainReady();
         SDL_SetHint(SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN, "1");
         // Harness runs never occupy the desktop or request pointer capture.
-        const bool hidden = mc2::gate::get<"MC2_WINDOW_OFFSCREEN">()
+        const bool hidden = mc2::gate::get<"MC2_WINDOW_OFFSCREEN">() || toolvk::captureRequested()
 #ifdef MC2_EDITOR_SMOKE_HOST
             || options_.smoke || !options_.panelSmoke.empty() || !options_.fileSmoke.empty()
 #endif
             ;
         if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) return error("sdl_init_failed");
         sdlReady_ = true;
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
         window_ = SDL_CreateWindow("Mission document", hidden ? -16000 : SDL_WINDOWPOS_CENTERED,
-            hidden ? -16000 : SDL_WINDOWPOS_CENTERED, 1440, 960, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | (hidden ? SDL_WINDOW_HIDDEN : 0));
+            hidden ? -16000 : SDL_WINDOWPOS_CENTERED, 1440, 960, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | (hidden ? SDL_WINDOW_HIDDEN : 0));
         if (!window_) return error("sdl_window_failed");
-        context_ = SDL_GL_CreateContext(window_);
-        if (!context_) return error("sdl_context_failed");
         imgui_ = ImGui::CreateContext();
         ImGui::GetIO().IniFilename = nullptr;
         ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
-        platformReady_ = ImGui_ImplSDL2_InitForOpenGL(window_, context_);
-        rendererReady_ = ImGui_ImplOpenGL3_Init("#version 330");
+        platformReady_ = ImGui_ImplSDL2_InitForVulkan(window_);
+        rendererReady_ = platformReady_ && toolvk::init(native_, window_, "Mission Editor Shell");
+        native_.clear[0] = 0.06f; native_.clear[1] = 0.07f; native_.clear[2] = 0.09f; native_.clear[3] = 1.0f;
         if (!platformReady_ || !rendererReady_) return error("imgui_backend_failed");
 #ifdef MC2_EDITOR_SMOKE_HOST
         if (!options_.fileSmoke.empty()) {
@@ -164,28 +159,33 @@ public:
                     event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window_)))
                     files_->request(editor::shell::FileWorkflow::Action::Close);
             }
-            ImGui_ImplOpenGL3_NewFrame();
+            if (!toolvk::begin(native_)) { SDL_Delay(10); continue; }
+            ImGui_ImplVulkan_NewFrame();
             if (!hidden) ImGui_ImplSDL2_NewFrame();
             else { ImGui::GetIO().DisplaySize = ImVec2(1440, 960); ImGui::GetIO().DeltaTime = 1.0f / 60.0f; }
             ImGui::NewFrame();
             running = editor::shell::drawWhileOpen(*files_, [this] { showDocument(); }, [this] { panels_->draw(); });
             ImGui::Render();
-            int width{}, height{}; SDL_GL_GetDrawableSize(window_, &width, &height);
-            glViewport(0, 0, width, height);
-            glClearColor(0.06f, 0.07f, 0.09f, 1);
-            glClear(GL_COLOR_BUFFER_BIT);
-            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 #ifdef MC2_EDITOR_SMOKE_HOST
             if (panelProof_) { const bool more = panelProof_->tick(); running = running && more; }
             if (fileProof_) { const bool more = fileProof_->tick(); running = running && more; }
 #endif
-            SDL_GL_SwapWindow(window_);
+            const bool captured = toolvk::end(native_);
+            if (native_.submitFailed) return error("native_submit_failed");
+#ifdef MC2_EDITOR_SMOKE_HOST
+            if (panelCaptureQueued_ && captured) {
+                if (!native_.captureSucceeded) return error("native_panel_capture_failed");
+                panelCaptureDone_ = true;
+            } else
+#endif
+            if (captured) running = false;
 #ifdef MC2_EDITOR_SMOKE_HOST
             if (options_.smoke && ++frames == 3) running = false;
             if (!options_.smoke)
 #endif
                 SDL_Delay(10);
         }
+        if (toolvk::validationErrors() != 0) return error("native_validation_failed");
 #ifdef MC2_EDITOR_SMOKE_HOST
         if (options_.smoke) return smoke(frames);
         if (panelProof_) return panelProof_->passed() ? 0 : error("panel_proof_interrupted");
@@ -194,6 +194,17 @@ public:
         return 0;
     }
 private:
+#ifdef MC2_EDITOR_SMOKE_HOST
+    bool capturePanel(const std::filesystem::path& path) {
+        if (panelCaptureDone_) return true;
+        if (!panelCaptureQueued_) {
+            native_.capturePath = path.string();
+            native_.captureFrame = native_.frameNo + 1;
+            panelCaptureQueued_ = true;
+        }
+        return false;
+    }
+#endif
     Diagnostic logger() { return [this](const std::string& line) { log(line); }; }
     void log(const std::string& line) { if (logFile_) { logFile_ << line << '\n'; logFile_.flush(); } else std::cerr << line << '\n'; }
     int error(const char* reason) { log(std::string("[EDITOR_SHELL v1] result=FAIL reason=") + reason); return 2; }
@@ -279,7 +290,10 @@ private:
     std::string draft_;
     std::string status_;
     SDL_Window* window_{};
-    SDL_GLContext context_{};
+    toolvk::Shell native_{};
+#ifdef MC2_EDITOR_SMOKE_HOST
+    bool panelCaptureQueued_{}, panelCaptureDone_{};
+#endif
     ImGuiContext* imgui_{};
     bool sdlReady_{}, platformReady_{}, rendererReady_{};
 };

@@ -1,5 +1,4 @@
 #include "PanelProof.h"
-#include <SDL_opengl.h>
 #include <fstream>
 #include <stdexcept>
 #include <algorithm>
@@ -10,21 +9,7 @@ using namespace document;
 namespace {
 void require(bool condition, const char* reason) { if (!condition) throw std::runtime_error(reason); }
 std::vector<std::byte> pak(const MissionDocument& doc) { return {doc.pakBytes().begin(), doc.pakBytes().end()}; }
-void capture(const std::filesystem::path& path)
-{
-    constexpr unsigned width = 1440, height = 960, size = width * height * 3;
-    std::vector<unsigned char> bmp(54 + size);
-    const auto put = [&](unsigned offset, unsigned value) {
-        for (unsigned i = 0; i < 4; ++i) bmp[offset + i] = static_cast<unsigned char>(value >> (8 * i));
-    };
-    bmp[0] = 'B'; bmp[1] = 'M'; put(2, static_cast<unsigned>(bmp.size())); put(10, 54); put(14, 40);
-    put(18, width); put(22, height); bmp[26] = 1; bmp[28] = 24; put(34, size);
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, bmp.data() + 54);
-    for (std::size_t i = 54; i < bmp.size(); i += 3) std::swap(bmp[i], bmp[i + 2]);
-    std::ofstream file(path, std::ios::binary); file.write(reinterpret_cast<const char*>(bmp.data()), bmp.size());
-    require(static_cast<bool>(file), "panel_capture_failed");
-}
+
 }
 void PanelProof::click(std::string key, std::function<void()> verify) { steps_.push_back({std::move(key), {}, std::move(verify)}); }
 void PanelProof::input(std::string key, std::string value) { steps_.push_back({std::move(key), std::move(value), {}}); }
@@ -55,8 +40,8 @@ void PanelProof::operation(const std::string& name, const std::string& widget, s
     });
 }
 PanelProof::PanelProof(MissionDocument& doc, CommandHistory& history, EntityPanels& panels,
-    std::filesystem::path output, std::string kind, Diagnostic log, bool captureRendered)
-    : document_(doc), history_(history), panels_(panels), output_(std::move(output)), kind_(std::move(kind)), log_(std::move(log)), captureRendered_(captureRendered)
+    std::filesystem::path output, std::string kind, Diagnostic log, bool captureRendered, PanelProof::Capture captureFrame)
+    : document_(doc), history_(history), panels_(panels), output_(std::move(output)), kind_(std::move(kind)), log_(std::move(log)), captureRendered_(captureRendered), capture_(std::move(captureFrame))
 {
     if (kind_ == "objectives_panel") { objectivesProof(); return; }
     if (kind_ == "objectives_crud_panel") { objectiveCrudProof(); return; }
@@ -284,7 +269,10 @@ bool PanelProof::tick()
     require(++frames_ < (kind_ == "objectives_panel" ? 4000U : 1500U), "panel_widget_timeout");
     if (step_ == steps_.size()) {
         require(ImGui::GetDrawData()->TotalVtxCount > 0, "panel_render_empty");
-        if (captureRendered_) capture(output_ / "panels.bmp");
+        if (captureRendered_) {
+            require(static_cast<bool>(capture_), "native_panel_capture_callback_missing");
+            if (!capture_(output_ / "panels.bmp")) return true;
+        }
         log_("[EDITOR_PANEL v1] name=" + kind_ + " result=PASS widgets=1 saved_widget=1 reopened_widget=1 rendered=" + (captureRendered_ ? "1" : "0")); passed_ = true; return false;
     }
     auto& step = steps_[step_];

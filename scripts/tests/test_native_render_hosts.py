@@ -30,3 +30,10 @@ def test_rejects_driver_call_even_when_no_context_type_is_declared():
     files = checker.snapshot()
     files['GameOS/gameos/gos_host_vk.cpp'] += '\nvoid bad() { glClear(0); }\n'
     assert any('retired GL' in error for error in checker.audit(files))
+
+@pytest.mark.parametrize('path', ['editor/shell/main.cpp', 'editor/shell/PanelProof.cpp',
+                                 'ui_editor/UiEditorMain.cpp', 'ui_editor/UiEditorImageCache.cpp'])
+def test_tool_driver_calls_are_also_rejected(path):
+    files = checker.snapshot()
+    files[path] += '\nvoid bad() { glReadPixels(0); }\n'
+    assert any('retired GL' in error for error in checker.audit(files))

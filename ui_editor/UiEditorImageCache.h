@@ -29,6 +29,8 @@ struct UiEditorImageTexture
 };
 
 bool UiEditorImageCache_Initialize();
+// After the native frame fence completes, before building this frame's UI commands.
+void UiEditorImageCache_BeginFrame();
 void UiEditorImageCache_Shutdown();
 void UiEditorImageCache_Clear();
 // The returned pointer is valid only until the next call to UiEditorImageCache_Get()

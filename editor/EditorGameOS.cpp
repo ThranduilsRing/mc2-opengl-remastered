@@ -68,7 +68,6 @@ extern uint32_t g_mc2RenderFrame;    // render-frame clock (mclib/tgl.cpp), once
 #include "render_backend_select.h"
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
-#include "imgui_impl_opengl3.h"
 #endif
 
 namespace graphics {
