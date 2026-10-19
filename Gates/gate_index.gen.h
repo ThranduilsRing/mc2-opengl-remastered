@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 937;
+inline constexpr std::size_t kGateCount = 935;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -304,7 +304,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_HUD_SCALE", Kind::Float, Rule::Prefix, {}},
     {"MC2_HUD_SIM_SPEED", Kind::Bool, Rule::Lead0, {}},
     {"MC2_HUD_TABS_TEST", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_HZB_BUILD", Kind::Bool, Rule::Lead0, {}},
+    {"MC2_HZB_BUILD", Kind::Bool, Rule::Std, {}},
     {"MC2_HZB_FORCE_HORIZON", Kind::Bool, Rule::Presence, {}},
     {"MC2_HZB_FORCE_HORIZON_ALT", Kind::Float, Rule::Prefix, {}},
     {"MC2_HZB_FORCE_HORIZON_ANGLE", Kind::Float, Rule::Prefix, {}},
@@ -312,7 +312,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_HZB_FORCE_HORIZON_ROT", Kind::Float, Rule::Prefix, {}},
     {"MC2_HZB_FORCE_HORIZON_X", Kind::Float, Rule::Prefix, {}},
     {"MC2_HZB_FORCE_HORIZON_Y", Kind::Float, Rule::Prefix, {}},
-    {"MC2_HZB_PROBE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_HZB_VIEW_FILE", Kind::String, Rule::Std, {}},
     {"MC2_IBL_ASSET_STRICT", Kind::Bool, Rule::Lead1, {}},
     {"MC2_ICON_FAILLOUD", Kind::Bool, Rule::Lead0, {}},
@@ -876,7 +875,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT", Kind::Bool, Rule::Std, {}},
     {"MC2_VK_OBJECTID_DIRECT_CHAIN", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VK_PICK_PROBE", Kind::Bool, Rule::Presence, {}},
-    {"MC2_VK_POST_HZB", Kind::Bool, Rule::Exact1, {}},
     {"MC2_VK_POST_SCREENFX", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_POST_SCREENFX_CLOUD", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_POST_SCREENFX_SHADOW", Kind::Bool, Rule::Lead0Kill, {}},

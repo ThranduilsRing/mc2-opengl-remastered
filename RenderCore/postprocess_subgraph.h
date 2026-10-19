@@ -4,9 +4,7 @@
 // Mirrors the kRenderPassContracts static-array + sentinel + static_assert pattern
 // (RenderPassContract.h). GL-free; no game-side includes. Offline-testable.
 //
-// Declares all 14 sub-stages IN CALL ORDER from endScene() (gos_postprocess.cpp):
-//   HzbReduce          (:2421) — SUBGRAPH-2: Hi-Z pyramid draw (hzbFBO_), default-OFF
-//   HzbProbe           (:2422) — SUBGRAPH-2: CPU diagnostic readback, no draw, default-OFF
+// Declares all 10 sub-stages IN CALL ORDER from endScene() (gos_postprocess.cpp):
 //   ClusterDepthPyramid(:2429) — SUBGRAPH-2: compute dispatch, default-OFF, isCompute=true
 //   LightgridBuild     (:2437) — SUBGRAPH-2: compute dispatch, default-OFF, isCompute=true
 //   PostprocessComputeBlur(:2447) — SUBGRAPH-2: compute dispatch, default-OFF, isCompute=true
@@ -18,8 +16,8 @@
 //   Composite          (:2489) — SUBGRAPH-1: SUBGRAPH OUTPUT EDGE (binds FBO 0)
 //   ShadowDebugOverlay (:2653) — SUBGRAPH-1: debug overlay on FBO 0 (post-composite)
 //
-// POSTPROCESS-SUBGRAPH-2 (Slice 2): HzbReduce, HzbProbe, ClusterDepthPyramid, LightgridBuild,
-//   PostprocessComputeBlur, ScreenShadow — all 8 remaining rows added here.
+// POSTPROCESS-SUBGRAPH-2 (Slice 2): ClusterDepthPyramid, LightgridBuild,
+//   PostprocessComputeBlur, ScreenShadow — all 4 remaining rows added here.
 // DEFERRED (HIGH-3): top-level kRenderPassContracts PostProcess row MainNormal producer.
 //
 // INVARIANTS:
@@ -76,49 +74,6 @@ struct PostProcessSubpass {
 // ---------------------------------------------------------------------------
 
 static constexpr PostProcessSubpass kPostProcessSubpasses[] = {
-    // -----------------------------------------------------------------------
-    // 1. HzbReduce (call-site :2421) — POSTPROCESS-SUBGRAPH-2
-    //    Gate: hzbEnabled_ (MC2_HZB_BUILD, default OFF)
-    //    Draw pass (NOT compute): reads sceneDepthTex_ (unit 0) as seed; subsequent
-    //    reductions read hzbLevelTex_[level-1]. Writes hzbLevelTex_ chain via hzbFBO_.
-    //    CORRECTION vs recon table which listed this as compute: it is a draw pass
-    //    using hzbFBO_ (glFramebufferTexture2D + glDrawArrays per mip level).
-    // -----------------------------------------------------------------------
-    {
-        /*id*/             ExecutorIslandId::HzbReduce,
-        /*name*/           "HzbReduce",
-        /*reads*/          { RenderResourceId::MainDepth,
-                             RenderResourceId::Unknown },
-        /*writes*/         { RenderResourceId::HzbPyramid,
-                             RenderResourceId::Unknown },
-        /*fboTarget*/      RenderResourceId::HzbPyramid,
-        /*conditional*/    true,
-        /*ownedByExecutor*/false,
-        /*isCompute*/      false,
-        /*note*/           "SUBGRAPH-2. Hi-Z pyramid draw pass (hzbFBO_, glDrawArrays per mip). "
-                           "Reads MainDepth (unit0) as seed for level 0; reads hzbLevelTex_[level-1] "
-                           "for subsequent reductions. Writes HzbPyramid (hzbLevelTex_ chain). "
-                           "MC2_HZB_BUILD default-OFF. NOT executor-owned. "
-                           "CORRECTION: draw pass not compute (glDrawArrays+hzbFBO_).",
-    },
-    // -----------------------------------------------------------------------
-    // 2. HzbProbe (call-site :2422) — POSTPROCESS-SUBGRAPH-2
-    //    Gate: hzbProbeEnabled_ (MC2_HZB_PROBE, requires MC2_HZB_BUILD, default OFF)
-    //    CPU diagnostic readback only. No draw, no FBO bind. Reads HzbPyramid.
-    // -----------------------------------------------------------------------
-    {
-        /*id*/             ExecutorIslandId::HzbProbe,
-        /*name*/           "HzbProbe",
-        /*reads*/          { RenderResourceId::HzbPyramid,
-                             RenderResourceId::Unknown },
-        /*writes*/         { RenderResourceId::Unknown },
-        /*fboTarget*/      RenderResourceId::Unknown,
-        /*conditional*/    true,
-        /*ownedByExecutor*/false,
-        /*isCompute*/      false,
-        /*note*/           "SUBGRAPH-2. CPU diagnostic readback; reads HzbPyramid (hzbLevelTex_), "
-                           "no draw, no FBO bind. MC2_HZB_PROBE default-OFF. NOT executor-owned.",
-    },
     // -----------------------------------------------------------------------
     // 3. ClusterDepthPyramid (call-site :2429) — POSTPROCESS-SUBGRAPH-2
     //    Gate: MC2_CLUSTER_DEPTH_PYRAMID, default OFF. Compute dispatch; no FBO.
@@ -359,7 +314,7 @@ static constexpr unsigned kPostProcessSubpassCount =
 
 // Verify count at compile time.
 // POSTPROCESS-SUBGRAPH-2: 14 total rows (6 Slice-1 + 8 Slice-2).
-static_assert(kPostProcessSubpassCount == 12,
+static_assert(kPostProcessSubpassCount == 10,
     "POSTPROCESS-SUBGRAPH-2: expected 14 rows (6 Slice-1 + 8 Slice-2)");
 
 // ---------------------------------------------------------------------------
@@ -467,7 +422,6 @@ inline PostProcessValidationResult validatePostProcessSubgraph(
 //   MainNormal       — produced by Terrain (GBuffer1 / sceneNormalTex_)
 //   SceneDepthCopy   — POSTPROCESS-SCENEDEPTHCOPY-RESOURCE-1: produced by VFX pass
 //                      (copySceneDepthForParticles, gos_particle_bridge.cpp:1068), cross-boundary.
-//                      BoxDecals (SUBGRAPH-2) consumes it for soft-depth reject.
 //   SceneObjectId    — POSTPROCESS-SCENEOBJECTID-RESOURCE-1: GBuffer2 (sceneObjectIdTex_,
 //                      COLOR_ATTACHMENT2); produced externally by MechOpaque+StaticPropOpaque
 //                      geometry passes (conditional on IsObjectIdBufferEnabled); read by

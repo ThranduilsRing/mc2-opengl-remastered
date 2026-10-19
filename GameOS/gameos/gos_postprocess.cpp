@@ -396,20 +396,6 @@ void gosPostProcess::init(int w, int h)
             fogHorizonFadeEndDeg_,   fogHorizonFadeEndSin_);
     }
 
-    // HZB-DEPTH-PYRAMID-MVP-1: reduction shader. Gate (hzbEnabled_) is resolved
-    // earlier (before createFBOs); default OFF -> no allocation, no-op build.
-    hzbReduceProg_ = glsl_program::makeProgram("hzb_reduce",
-        "shaders/postprocess.vert", "shaders/hzb_reduce.frag", kShaderPrefix);
-    if (!hzbReduceProg_ || !hzbReduceProg_->is_valid())
-        mc2::fmt::print_err("gosPostProcess: failed to compile hzb_reduce shader\n");
-    {
-        // HZB-OCCLUSION-PROBE-1 gate (diagnostic only; requires the build gate).
-        const char* probeEnv = mc2::gate::raw<"MC2_HZB_PROBE">();   // echoed as typed
-        hzbProbeEnabled_ = hzbEnabled_ && mc2::gate::get<"MC2_HZB_PROBE">();
-        MC2_DIAGFE(stderr, "[HZB_PROBE v1] enabled=%d (MC2_HZB_PROBE=%s, requires MC2_HZB_BUILD)\n",
-                     hzbProbeEnabled_ ? 1 : 0, probeEnv ? probeEnv : "(unset)");
-    }
-
     // SHADOW-ENV-DEBUG-MODE-1: select the shadow debug overlay (the Vulkan CSM near-cascade view)
     // from env var so automated capture can request it without ImGui interaction.
     // Default unset/0/off -> showShadowDebug_ stays false. RAlt+F2 hotkey and ImGui checkbox still override at runtime.

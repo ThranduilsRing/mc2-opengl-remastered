@@ -649,24 +649,11 @@ void gosPostProcess::VkPostHzbNativeDeleter::operator()(VkPostHzbNative* s) cons
     delete s;
 }
 
-bool gosPostProcess::vkPostHzbNativeEnabled()
-{
-    static int state = -1;
-    if (state == -1) {
-        state = mc2::gate::get<"MC2_VK_POST_HZB">() ? 1 : 0;
-        g_health.runtimeGate = state;
-        if (state == 1) {
-            vlog("MC2_VK_POST_HZB=1 -- rung-8.4 native HZB gate ON "
-                 "(same-frame static-prop color cull; failure keeps every prop).");
-        }
-    }
-    return state == 1;
-}
-
 bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t generation, void** maskBuffer)
 {
+    g_health.runtimeGate = hzbEnabled_ ? 1 : 0;
     if (maskBuffer) *maskBuffer = nullptr;
-    if (!hzbEnabled_ || !vkPostHzbNativeEnabled() || !maskBuffer || !feed.instances112 || !feed.count || feed.count > 131072) return false;
+    if (!hzbEnabled_ || !maskBuffer || !feed.instances112 || !feed.count || feed.count > 131072) return false;
     int levels = 1;
     for (int size = (std::max)(width_, height_); size > 1; size = (size+1)/2) ++levels;
     hzbW_ = width_; hzbH_ = height_; hzbMipCount_ = levels;

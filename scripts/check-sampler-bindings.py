@@ -99,7 +99,6 @@ MODE_ALTERNATE_PAIRS = [frozenset({"dynamicShadowArray", "dynamicShadowMap"})]
 # to remove it from this table rather than silently passing a now-unsafe anchor.
 HARD_ANCHORS = {
     # name: (expected_unit, glsl_file_substr, cpp_receiver)
-    "uSrc":     (0, "shaders/hzb_reduce.frag",  "hzbReduceProg_"),
     "sceneTex": (0, "shaders/postprocess.frag", "compositeProg_"),
 }
 

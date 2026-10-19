@@ -454,7 +454,6 @@ kSpirvPilotStages[] = {
     {"/mech.vert",        "mech",        "vert"},
     {"/mech.frag",        "mech",        "frag"},
     // SPIRV-POSTPROCESS-FAMILY-1: frag-only family members (vert = postprocess.vert).
-    {"/hzb_reduce.frag",  "hzb_reduce",  "frag"},
 };
 
 // Pilot PROGRAM table: exact (vert-suffix, frag-suffix) pairs that are pilots.
@@ -464,7 +463,6 @@ kSpirvPilotStages[] = {
 static const struct { const char* vsuf; const char* fsuf; } kSpirvPilotPrograms[] = {
     {"/postprocess.vert", "/postprocess.frag"},
     {"/mech.vert",        "/mech.frag"},
-    {"/postprocess.vert", "/hzb_reduce.frag"},
 };
 
 // Pilot allowlist: fname -> (base, short stage). Returns false if not a pilot.

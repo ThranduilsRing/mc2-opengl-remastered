@@ -346,15 +346,6 @@ public:
     struct VkPostScreenFxDeleter { void operator()(VkPostScreenFx*) const; };
     std::unique_ptr<VkPostScreenFx, VkPostScreenFxDeleter> vkPostScreenFx_;
 
-    // VK-POST-HZB-NATIVE-1 (rung 8.4, .claude/VK-RUNG8-LADDER-1.md): the HZB
-    // pyramid rendered NATIVELY on the shared engine VulkanContext, sampling the
-    // shared scene depth directly and writing one separate R32F image per ceil
-    // ladder level -- zero glGetTexImage depth ingress, zero readback/glTexSubImage2D
-    // egress on the normal path. Highest precedence at the HZB site: when the gate
-    // is on, it runs before the old region-iface path; if not ready, the caller
-    // falls back to the unchanged GL runHzbReduce() body. MC2_HZB_PROBE forces
-    // the native path to decline so the GL pyramid stays coherent for the probe.
-    bool  vkPostHzbNativeEnabled();
     bool  runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t generation, void** maskBuffer);
     void  destroyVkPostHzbNative();
     struct VkPostHzbNative;             // defined in vulkan_post_hzb_native.cpp
@@ -393,24 +384,8 @@ public:
     float fogHorizonFadeStartSin_ = 0.0f;    // sin(0deg)
     float fogHorizonFadeEndSin_   = 0.08716f;// sin(5deg); recomputed from env in ctor
 
-    // HZB-DEPTH-PYRAMID-MVP-1 (TRACKRV-HZB-VISIBILITY-OPUS-1). Gated reverse-Z
-    // Hi-Z depth pyramid built from sceneDepthTex_ via a custom fragment MIN
-    // reduction (shaders/hzb_reduce.frag). Default-OFF (MC2_HZB_BUILD): when OFF
-    // the texture/FBO are never allocated and runHzbReduce() is a no-op, so
-    // output is byte-identical. Diagnostic substrate ONLY -- no consumers, no
-    // culling, no draw suppression.
-    bool   hzbEnabled_ = false;     // resolved once from env at init()
-    bool   hzbProbeEnabled_ = false; // MC2_HZB_PROBE (requires hzbEnabled_)
-    void   runHzbReduce();          // build the pyramid each frame (gated)
-    void   runHzbProbe();           // HZB-OCCLUSION-PROBE-1: diagnostic only
-    // Pyramid is stored as one ceil-sized R32F texture PER level (not a mip
-    // chain): AMD rejects attaching mip level >0 of a mipmap-incomplete texture,
-    // and the ceil ladder is deliberately mipmap-incomplete. Separate textures
-    // sidestep that and remove any read/write feedback (distinct objects).
-    GLuint getHzbLevelTexture(int level) const {
-        return (level >= 0 && level < hzbMipCount_) ? hzbLevelTex_[level] : 0;
-    }
-    GLuint getHzbTexture()  const { return hzbLevelTex_[0]; } // level 0 (full-res)
+    // Vulkan render-only culling; MC2_HZB_BUILD=0 keeps every color instance.
+    bool   hzbEnabled_ = true;
     int    getHzbMipCount() const { return hzbMipCount_; }
     int    getHzbWidth()    const { return hzbW_; }
     int    getHzbHeight()   const { return hzbH_; }
@@ -535,25 +510,10 @@ private:
     float inverseViewProj_[16];
     float viewProj_[16];
 
-    // HZB depth pyramid (HZB-DEPTH-PYRAMID-MVP-1). Allocated lazily in
-    // createFBOs only when hzbEnabled_. One ceil-sized R32F texture per level.
-    static const int kHzbMaxLevels = 24;     // covers >16M px on the long axis
-    GLuint        hzbLevelTex_[kHzbMaxLevels] = {0};
-    GLuint        hzbFBO_        = 0;         // shared; re-attaches the dst level
     int           hzbW_          = 0;
     int           hzbH_          = 0;
     int           hzbMipCount_   = 0;
     unsigned long long hzbBuildCount_ = 0;  // frames the pyramid has been built
-    glsl_program* hzbReduceProg_ = nullptr;
-
-    // HZB-CAMERA-DISCONTINUITY-GUARD-1: previous-frame camera pose (derived in
-    // the probe by unprojecting NDC near/far centers via inverseViewProj_) to
-    // detect near-instant camera snaps (e.g. mc2_17 intro 180deg). Diagnostic
-    // only -- flags frames as unsafe-for-cull; affects no rendering.
-    bool   hzbPrevCamValid_ = false;
-    float  hzbPrevCamPos_[3] = { 0.0f, 0.0f, 0.0f };
-    float  hzbPrevCamFwd_[3] = { 0.0f, 0.0f, 0.0f };
-    unsigned long long hzbCamDiscontinuityFrames_ = 0;
 };
 
 gosPostProcess* getGosPostProcess();

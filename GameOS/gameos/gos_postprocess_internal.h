@@ -22,7 +22,6 @@
 #include "../../RenderCore/fbo_ledger.h"   // FRAME-GRAPH-FBO-LEDGER-1: GLuint->logical target
 #include "../../RenderCore/EngineView.h"
 #include "view_uniforms_gl.h"
-#include "gos_static_prop_registry.h"   // HZB-STATICPROP-CULL-RECON-1: real bounds for the probe
 #include "gl_state_guard.h"  // GLSTATE-GUARD-ADOPTION-1: GlScopedTextureUnit (composite tex-unit leak)
 #include "../../RenderCore/PipelineRegistry.h"  // POSTPROCESS-COMPOSITE-REGISTRATION-1
 #include "pipeline_binder.h"                     // applyPipeline — composite FF state

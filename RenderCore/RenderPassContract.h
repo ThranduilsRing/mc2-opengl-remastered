@@ -292,7 +292,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         /*snapshotRowAuthoritative*/ false,
         "PostProcess##pp",
         nullptr,
-        "Composite chain after gos_RendererEndFrame: HZB/screen-shadow/shoreline/godrays/composite. "
+        "Composite chain after gos_RendererEndFrame: screen-shadow/shoreline/godrays/composite. "
         "Samples GBuffer normal (sceneNormalTex_ / MainNormal) for Shoreline, ScreenShadow sub-stages.",
         /* reads[4]    */ { RenderResourceId::MainColor, RenderResourceId::MainDepth, RenderResourceId::MainNormal },
         /* writes[4]   */ { RenderResourceId::MainColor },

@@ -39,8 +39,6 @@ enum class ExecutorIslandId : uint8_t {
     Composite,        // POSTPROCESS-SUBGRAPH-1: outer fullscreen blit sceneFBO_->FBO0 (owned, always runs)
     ShadowDebugOverlay, // POSTPROCESS-SUBGRAPH-1: debug shadow-map overlay on FBO0 (not owned, default-OFF)
     // POSTPROCESS-SUBGRAPH-2: remaining 8 sub-stage ids (append-only, modeling-only, no GL touched)
-    HzbReduce,        // sub-stage: Hi-Z pyramid build (draw, hzbFBO_); NOT executor-owned; gated MC2_HZB_BUILD default-OFF
-    HzbProbe,         // sub-stage: HZB CPU diagnostic readback (no draw); NOT executor-owned; gated MC2_HZB_PROBE default-OFF
     ClusterDepthPyramid, // sub-stage: per-tile (min,max) depth image compute dispatch; NOT executor-owned; gated MC2_CLUSTER_DEPTH_PYRAMID default-OFF; isCompute=true
     LightgridBuild,   // sub-stage: per-tile light-bin grid compute dispatch; NOT executor-owned; gated MC2_LIGHTGRID_BUILD default-OFF; isCompute=true
     PostprocessComputeBlur, // sub-stage: GPU compute downsample+Gaussian blur substrate; NOT executor-owned; gated MC2_POSTPROCESS_COMPUTE_BLUR default-OFF; isCompute=true

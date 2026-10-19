@@ -2592,7 +2592,7 @@
    "key": "hdri_skybox",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:293",
+   "source": "GameOS/gameos/gos_postprocess.cpp:292",
    "stages": {
     "frag": "shaders/hdri_skybox.frag",
     "vert": "shaders/hdri_skybox.vert"
@@ -2609,19 +2609,6 @@
    "stages": {
     "frag": "shaders/hdri_skybox_stencil_tag.frag",
     "vert": "shaders/hdri_skybox.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [],
-   "id": "hzb_reduce",
-   "key": "hzb_reduce",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:402",
-   "stages": {
-    "frag": "shaders/hzb_reduce.frag",
-    "vert": "shaders/postprocess.vert"
    }
   },
   {
@@ -2663,7 +2650,7 @@
    "key": "postprocess",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:262",
+   "source": "GameOS/gameos/gos_postprocess.cpp:261",
    "stages": {
     "frag": "shaders/postprocess.frag",
     "vert": "shaders/postprocess.vert"
@@ -2727,7 +2714,7 @@
    "key": "skybox",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:273",
+   "source": "GameOS/gameos/gos_postprocess.cpp:272",
    "stages": {
     "frag": "shaders/skybox.frag",
     "vert": "shaders/skybox.vert"

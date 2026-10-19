@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 937
-registry_entry_count: 189
-verified_count: 904
+gate_count: 935
+registry_entry_count: 188
+verified_count: 902
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -799,7 +799,7 @@ flags:
     owner: terrain
     doc: "COLORMAP-CPU-RETIRE-1: free cpuColorMap + cpuDispAlpha in BuildColormapAtlas immediately after GPU atlas upload."
     verified: true
-    registry: {feature_id: MC2_FEATURE_COLORMAP_CPU_RETIRE, kind: Feature, order: 22, default_on: true}
+    registry: {feature_id: MC2_FEATURE_COLORMAP_CPU_RETIRE, kind: Feature, order: 21, default_on: true}
   - name: MC2_COLORMAP_DISPLACE_PROBE
     kind: Bool
     default: false
@@ -815,7 +815,7 @@ flags:
     owner: terrain
     doc: "COLORMAP-BC7-KTX2-1: prefer .burnin.ktx2 BC7 sidecar in BuildColormapAtlas (gos_terrain_indirect.cpp)."
     verified: true
-    registry: {feature_id: MC2_FEATURE_COLORMAP_KTX2, kind: Feature, order: 23, default_on: true}
+    registry: {feature_id: MC2_FEATURE_COLORMAP_KTX2, kind: Feature, order: 22, default_on: true}
   - name: MC2_CONE_LEAF_DUMP
     kind: Bool
     default: false
@@ -1351,7 +1351,7 @@ flags:
     doc: "FAR-BACKDROP-LIT-IMPL-1: night-shade substitution for far/impostor static-prop LODs (static_prop.vert)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FAR_BACKDROP_LIT, kind: Feature, order: 25, default_on: false}
+    registry: {feature_id: MC2_FAR_BACKDROP_LIT, kind: Feature, order: 24, default_on: false}
   - name: MC2_FAR_BACKDROP_LIT_FAR
     kind: Float
     default: 960
@@ -2248,13 +2248,13 @@ flags:
     registry: {feature_id: MC2_FEATURE_HUD_TABS_TEST, kind: Feature, order: -1, default_on: false}
   - name: MC2_HZB_BUILD
     kind: Bool
-    default: false
-    rule: Lead0
+    default: true
+    rule: Std
     owner: post
-    doc: "TRACKRV-HZB-VISIBILITY-OPUS-1: build a reverse-Z Hi-Z depth pyramid from MainDepth each frame via a custom fragment MIN-reduction pass (hzb_reduce.frag)..."
+    doc: "Render-only static-prop culling from same-frame Vulkan depth; exact ceil-ladder MIN footprints and per-object LOD. MC2_HZB_BUILD=0 keeps every instance."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_HZB_BUILD, kind: Feature, order: 19, default_on: false}
+    registry: {feature_id: MC2_FEATURE_HZB_BUILD, kind: Feature, order: 19, default_on: true}
   - name: MC2_HZB_FORCE_HORIZON
     kind: Bool
     default: false
@@ -2304,15 +2304,6 @@ flags:
     owner: code
     doc: ""
     verified: true
-  - name: MC2_HZB_PROBE
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: post
-    doc: "TRACKRV-HZB-VISIBILITY-OPUS-1: diagnostic-only HZB occlusion probe."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_HZB_PROBE, kind: Feature, order: 20, default_on: false}
   - name: MC2_HZB_VIEW_FILE
     kind: String
     default: ""
@@ -2416,7 +2407,7 @@ flags:
     owner: code
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts."
     smoke_passthrough: true
-    registry: {feature_id: MC2_LEGACY_LIT_MC2_FRAME, kind: Feature, order: 26, default_on: true}
+    registry: {feature_id: MC2_LEGACY_LIT_MC2_FRAME, kind: Feature, order: 25, default_on: true}
   - name: MC2_LEGACY_LOAD_BANNER
     kind: Bool
     default: false
@@ -2763,7 +2754,7 @@ flags:
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LIGHT_POS_COLUMN_FIX=0 reverts."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 27, default_on: true}
+    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 26, default_on: true}
   - name: MC2_LIGHT_PREFIX_GPU_COPY
     kind: Bool
     default: false
@@ -2852,7 +2843,7 @@ flags:
     doc: "[DEFAULT-OFF, KILLSWITCH INVERTED: MC2_LIGHT_ROW_PURE=1 opts IN to the pure producer; unset/0 is the legacy in-place packing loop in GatherLightsParameters..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LIGHT_ROW_PURE, kind: Feature, order: 31, default_on: false}
+    registry: {feature_id: MC2_LIGHT_ROW_PURE, kind: Feature, order: 30, default_on: false}
   - name: MC2_LIGHT_ROW_PURE_VERIFY
     kind: Bool
     default: false
@@ -3679,7 +3670,7 @@ flags:
     doc: "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 29, default_on: true}
+    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 28, default_on: true}
   - name: MC2_OVERLAY_MAGENTA_TRACE
     kind: Bool
     default: false
@@ -4358,7 +4349,7 @@ flags:
     owner: terrain
     doc: "TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch."
     verified: true
-    registry: {feature_id: MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE, kind: Feature, order: 24, default_on: false}
+    registry: {feature_id: MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE, kind: Feature, order: 23, default_on: false}
   - name: MC2_SHADER_HOT_RELOAD
     kind: Bool
     default: false
@@ -4946,7 +4937,7 @@ flags:
     owner: props
     doc: "COMPRESSION-BC7-STATICPROP-1: upload BC7-compressed KTX2 static-prop texture arrays through the existing static-prop KTX path (gos_static_prop_batcher.cpp)..."
     verified: true
-    registry: {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Feature, order: 21, default_on: false}
+    registry: {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Feature, order: 20, default_on: false}
   - name: MC2_STATICPROP_MATERIAL_PBR_SLOTS
     kind: Bool
     default: false
@@ -6266,7 +6257,7 @@ flags:
     owner: code
     doc: "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
     smoke_passthrough: true
-    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 30, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 29, default_on: true}
   - name: MC2_VEHICLE_LIT_PATH
     kind: Bool
     default: true
@@ -6275,7 +6266,7 @@ flags:
     doc: "VEHICLE-LIGHTING-PATH-1: put GROUND VEHICLES on the same lighting path as every other object class."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 28, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 27, default_on: true}
   - name: MC2_VERIFY_MODE
     kind: String
     default: ""
@@ -6660,14 +6651,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_VK_PICK_PROBE, kind: Trace, order: -1, default_on: false}
-  - name: MC2_VK_POST_HZB
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: vk
-    doc: ""
-    smoke_passthrough: true
-    verified: true
   - name: MC2_VK_POST_SCREENFX
     kind: Bool
     default: true

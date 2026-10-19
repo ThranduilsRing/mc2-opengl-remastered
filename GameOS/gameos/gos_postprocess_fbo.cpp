@@ -469,68 +469,6 @@ void gosPostProcess::createFBOs(int w, int h)
         RenderCore::registerOrUpdateRenderResource(ddesc);
     }
 
-    // --- HZB-DEPTH-PYRAMID-MVP-1: full-res reverse-Z Hi-Z pyramid (R32F) ---
-    // Allocated ONLY when MC2_HZB_BUILD is on -> zero cost / byte-identical when
-    // off. Immutable mip chain (glTexStorage2D) sized by the ceil ladder down to
-    // 1x1; NEAREST + CLAMP_TO_EDGE (explicit-LOD sampling, clamped 2x2 taps).
-    if (hzbEnabled_) {
-        hzbW_ = w;
-        hzbH_ = h;
-        int maxDim = (w > h) ? w : h;
-        int mips = 1;
-        while (maxDim > 1) { maxDim = (maxDim + 1) / 2; ++mips; }
-        if (mips > kHzbMaxLevels) mips = kHzbMaxLevels;
-        hzbMipCount_ = mips;
-
-        // One ceil-sized R32F texture PER level (NOT a mip chain). A single
-        // mipped texture cannot be used here: AMD rejects attaching mip level >0
-        // unless the texture is mipmap-complete, but the ceil ladder is
-        // deliberately mipmap-incomplete (preserves odd-extent texels per
-        // docs/hzb-depth-convention.md). Separate textures also remove any
-        // read/write feedback (source and dest are distinct objects).
-        int lw = w, lh = h;
-        for (int level = 0; level < hzbMipCount_; ++level) {
-            // TEX-CLASS: render-target -- Hi-Z pyramid per-level (FBO attach)
-            glGenTextures(1, &hzbLevelTex_[level]);
-            glBindTexture(GL_TEXTURE_2D, hzbLevelTex_[level]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, lw, lh, 0,
-                         GL_RED, GL_FLOAT, nullptr);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            lw = (lw + 1) / 2; if (lw < 1) lw = 1;
-            lh = (lh + 1) / 2; if (lh < 1) lh = 1;
-        }
-
-        glGenFramebuffers(1, &hzbFBO_);
-        RenderCore::framegraph::fboLedger().registerFbo(hzbFBO_, RenderCore::RenderResourceId::HzbPyramid);  // FBO-LEDGER-EXTEND-1
-        // The destination level texture is bound to COLOR_ATTACHMENT0 per pass
-        // in runHzbReduce(). No dedicated registry slot yet -- surfaced via the
-        // getHzb* accessors.
-
-        MC2_DIAGFE(stderr, "[HZB_BUILD v1] allocated %dx%d mips=%d (R32F, per-level textures)\n",
-                     hzbW_, hzbH_, hzbMipCount_);
-
-        // REGISTRY-POSTPROCESS-FBO-1: publish the Hi-Z pyramid base level (observe-only).
-        // Gated: only allocated/registered when hzbEnabled_; the per-level chain is
-        // surfaced via getHzb* accessors, the registry tracks the level-0 handle.
-        if (hzbLevelTex_[0]) {
-            RenderCore::RenderResourceDesc d;
-            d.id        = RenderCore::RenderResourceId::HzbPyramid;
-            d.kind      = RenderCore::RenderResourceKind::Texture2D;
-            d.lifetime  = RenderCore::RenderResourceLifetime::Persistent;  // frame-persistent, survives mission reload; recreated on resize
-            d.format    = RenderCore::RenderResourceFormat::R32F;
-            d.debugName = "HzbPyramid";
-            d.width     = (uint32_t)hzbW_;
-            d.height    = (uint32_t)hzbH_;
-            d.layers    = (uint32_t)hzbMipCount_;
-            d.glName    = hzbLevelTex_[0];
-            d.valid     = true;
-            RenderCore::registerOrUpdateRenderResource(d);
-        }
-    }
-
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -754,21 +692,6 @@ void gosPostProcess::destroyFBOs()
         inv.id = RenderCore::RenderResourceId::SceneColorCopy; inv.valid = false;
         RenderCore::registerOrUpdateRenderResource(inv);
     }
-    // HZB-DEPTH-PYRAMID-MVP-1: free the per-level pyramid textures + FBO
-    // (resize re-allocates if the gate is on).
-    bool hzbHadBase = (hzbLevelTex_[0] != 0);
-    for (int i = 0; i < kHzbMaxLevels; ++i) {
-        if (hzbLevelTex_[i]) { glDeleteTextures(1, &hzbLevelTex_[i]); hzbLevelTex_[i] = 0; }
-    }
-    if (hzbHadBase) {
-        // REGISTRY-POSTPROCESS-FBO-1: mark HzbPyramid unavailable on teardown.
-        RenderCore::RenderResourceDesc inv;
-        inv.id = RenderCore::RenderResourceId::HzbPyramid; inv.valid = false;
-        RenderCore::registerOrUpdateRenderResource(inv);
-    }
-    if (hzbFBO_) { glDeleteFramebuffers(1, &hzbFBO_); hzbFBO_ = 0; }
-    hzbW_ = hzbH_ = hzbMipCount_ = 0;
-
     // WATER-REFLECTION-RESOURCE-1: free reflection target + mark slots invalid.
     if (waterReflColorTex_) { glDeleteTextures(1, &waterReflColorTex_); waterReflColorTex_ = 0; }
     if (waterReflDepthTex_) { glDeleteTextures(1, &waterReflDepthTex_); waterReflDepthTex_ = 0; }

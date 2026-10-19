@@ -1,10 +1,10 @@
 {
   "summary": {
-    "glsl_samplers": 43,
-    "cpp_name_resolvable_binds": 6,
+    "glsl_samplers": 42,
+    "cpp_name_resolvable_binds": 4,
     "glUniform1i_sites": 174,
-    "glActiveTexture_sites": 106,
-    "hard_anchors": 2,
+    "glActiveTexture_sites": 105,
+    "hard_anchors": 1,
     "anchors_drift": 0,
     "multiplex_anchors": 0,
     "multiplex_anchor_passes": 0,
@@ -75,7 +75,7 @@
     "UNKNOWN binder: sampler 'u_texArr' declared in ['shaders/static_prop.frag', 'shaders/static_prop_depth.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'u_tileMinMax' declared in ['shaders/lightgrid_build.comp'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'u_transitionMaskArray' declared in ['shaders/gos_terrain.frag', 'shaders/terrain_lod_chunk.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
-    "cross-pass reuse: unit 0 carries ['sceneTex', 'uSrc', 'u_hdri'] (expected \u2014 multiplexed)",
+    "cross-pass reuse: unit 0 carries ['sceneTex', 'u_hdri'] (expected \u2014 multiplexed)",
     "cross-pass reuse: unit 5 carries ['matNormal0', 'mineSpriteArray'] (expected \u2014 multiplexed)",
     "cross-pass reuse: unit 6 carries ['matNormal1', 'u_mechAoTex'] (expected \u2014 multiplexed)",
     "cross-pass reuse: unit 7 carries ['matNormal2', 'u_mechNormalTex'] (expected \u2014 multiplexed)",
@@ -84,12 +84,6 @@
   "anchors": [
     {
       "name": "sceneTex",
-      "expected_unit": 0,
-      "status": "clean",
-      "problems": []
-    },
-    {
-      "name": "uSrc",
       "expected_unit": 0,
       "status": "clean",
       "problems": []
@@ -416,18 +410,6 @@
           "line": 14,
           "target": "sampler2D",
           "comment_unit": null
-        }
-      ],
-      "descriptorClass": "CombinedImageSampler?",
-      "resourceId": null
-    },
-    "uSrc": {
-      "decls": [
-        {
-          "file": "shaders/hzb_reduce.frag",
-          "line": 28,
-          "target": "sampler2D",
-          "comment_unit": 0
         }
       ],
       "descriptorClass": "CombinedImageSampler?",
@@ -770,23 +752,7 @@
       "unit": 0,
       "receiver": "compositeProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 750,
-      "via": "setInt"
-    },
-    {
-      "name": "uSrc",
-      "unit": 0,
-      "receiver": "hzbReduceProg_",
-      "file": "GameOS/gameos/gos_postprocess_effects.cpp",
-      "line": 54,
-      "via": "setInt"
-    },
-    {
-      "name": "uSrc",
-      "unit": 0,
-      "receiver": "hzbReduceProg_",
-      "file": "GameOS/gameos/gos_postprocess_effects.cpp",
-      "line": 68,
+      "line": 716,
       "via": "setInt"
     },
     {
@@ -822,29 +788,9 @@
         "via": "setInt",
         "receiver": "compositeProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 750,
+        "line": 716,
         "descriptorClass": "CombinedImageSampler",
         "resourceId": "MainColor"
-      },
-      {
-        "name": "uSrc",
-        "side": "cpp",
-        "via": "setInt",
-        "receiver": "hzbReduceProg_",
-        "file": "GameOS/gameos/gos_postprocess_effects.cpp",
-        "line": 54,
-        "descriptorClass": "CombinedImageSampler?",
-        "resourceId": null
-      },
-      {
-        "name": "uSrc",
-        "side": "cpp",
-        "via": "setInt",
-        "receiver": "hzbReduceProg_",
-        "file": "GameOS/gameos/gos_postprocess_effects.cpp",
-        "line": 68,
-        "descriptorClass": "CombinedImageSampler?",
-        "resourceId": null
       },
       {
         "name": "u_hdri",
@@ -873,15 +819,6 @@
         "receiver": "hdriSkyboxProg_",
         "file": "GameOS/gameos/gos_postprocess_skybox.cpp",
         "line": 560,
-        "descriptorClass": "CombinedImageSampler?",
-        "resourceId": null
-      },
-      {
-        "name": "uSrc",
-        "side": "glsl",
-        "target": "sampler2D",
-        "file": "shaders/hzb_reduce.frag",
-        "line": 28,
         "descriptorClass": "CombinedImageSampler?",
         "resourceId": null
       },

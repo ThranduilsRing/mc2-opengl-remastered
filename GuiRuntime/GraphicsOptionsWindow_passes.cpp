@@ -533,42 +533,17 @@ void drawGBufferPreview() {
     }
 
     // ── HZB depth pyramid  ───────────────────────────────
-    // Diagnostic preview of the reverse-Z Hi-Z pyramid. Each level is its own
-    // R32F texture, so ImGui::Image previews a chosen level directly. R32F shows
-    // in the red channel: reverse-Z near=1.0 = bright red, far/sky=0.0 = black.
+    // Native Vulkan pyramid dimensions and render-only culling status.
     {
         ImGui::Spacing();
         ImGui::Separator();
         if (!pp->isHzbEnabled()) {
-            ImGui::TextDisabled("HZB pyramid: off (set MC2_HZB_BUILD=1 to build + preview)");
+            ImGui::TextDisabled("HZB culling: off (MC2_HZB_BUILD=0)");
         } else {
             const int mips = pp->getHzbMipCount();
-            ImGui::Text("HZB Pyramid  (R32F per-level, %dx%d, %d mips, builds=%llu)",
+            ImGui::Text("VK HZB Pyramid (R32F per-level, %dx%d, %d mips, builds=%llu)",
                         pp->getHzbWidth(), pp->getHzbHeight(), mips,
                         (unsigned long long)pp->getHzbBuildCount());
-            static int s_hzbMip = 0;
-            if (s_hzbMip >= mips) s_hzbMip = mips > 0 ? mips - 1 : 0;
-            if (mips > 1)
-                ImGui::SliderInt("HZB mip##hzb", &s_hzbMip, 0, mips - 1);
-
-            // Level dimensions via the same ceil ladder the runtime uses.
-            int lw = pp->getHzbWidth(), lh = pp->getHzbHeight();
-            for (int k = 0; k < s_hzbMip; ++k) {
-                lw = (lw + 1) / 2; if (lw < 1) lw = 1;
-                lh = (lh + 1) / 2; if (lh < 1) lh = 1;
-            }
-            unsigned int tex = pp->getHzbLevelTexture(s_hzbMip);
-            if (tex) {
-                ImGui::Text("  level %d = %dx%d", s_hzbMip, lw, lh);
-                ImGui::Image((ImTextureID)(intptr_t)tex, sz, uv0, uv1);
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("HZB level %d (%dx%d). R32F reverse-Z depth in red:\n"
-                                      "near (closer) = bright, far/sky = black.\n"
-                                      "Coarser levels store the MIN (farthest occluder).",
-                                      s_hzbMip, lw, lh);
-            } else {
-                ImGui::TextDisabled("  HZB level texture not allocated");
-            }
         }
     }
 }
