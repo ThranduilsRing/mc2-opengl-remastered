@@ -313,3 +313,43 @@ TEST_CASE("HZB probe: an object strictly farther than the tile min is culled") {
 }
 
 } // TEST_SUITE("DepthHZB")
+
+#include "RenderCore/hzb_prop_bounds.h"
+#include <limits>
+
+TEST_CASE("HZB prop bounds enclose off-centre geometry and preserve render axes") {
+    GpuStaticPropInstance instance{};
+    for (int i = 0; i < 4; ++i) instance.modelMatrix[i*5] = 1;
+    instance.modelMatrix[3] = .2f; instance.modelMatrix[7] = .1f; instance.modelMatrix[11] = .3f;
+    float clip[16] = {};
+    for (int i = 0; i < 4; ++i) clip[i*5] = 1;
+    clip[14] = .5f;
+    const mc2hzb::PropBounds box[] = {{{-.1f,-.1f,-.1f},{.1f,.1f,.1f},true}};
+    const auto projected = mc2hzb::project_prop(instance,clip,.001f,box,101,79,8);
+    CHECK(projected.keep == 0);
+    CHECK(projected.nearest == doctest::Approx(.701f));
+    // Stuff translation (.2,.1,.3) becomes render (-.2,.3,.1).
+    CHECK(projected.pixels[0] <= .35f*101);
+    CHECK(projected.pixels[2] >= .45f*101);
+    CHECK(projected.pixels[1] <= .60f*79);
+    CHECK(projected.pixels[3] >= .70f*79);
+    CHECK(projected.lod > 0);
+    CHECK((1u << projected.lod) >= projected.pixels[2]-projected.pixels[0]);
+    CHECK((1u << projected.lod) >= projected.pixels[3]-projected.pixels[1]);
+}
+
+TEST_CASE("HZB prop bounds keep near-clipped, offscreen, missing and invalid geometry") {
+    GpuStaticPropInstance instance{};
+    for (int i = 0; i < 4; ++i) instance.modelMatrix[i*5] = 1;
+    float clip[16] = {};
+    for (int i = 0; i < 4; ++i) clip[i*5] = 1;
+    clip[14] = .5f;
+    const mc2hzb::PropBounds box[] = {{{-.1f,-.1f,-.1f},{.1f,.1f,.1f},true}};
+    SUBCASE("near plane") { instance.modelMatrix[7] = .5f; }
+    SUBCASE("screen edge") { instance.modelMatrix[3] = 1.f; }
+    SUBCASE("missing type") { instance.typeID = 1; }
+    SUBCASE("not finite") { clip[0] = std::numeric_limits<float>::quiet_NaN(); }
+    SUBCASE("behind eye") { clip[15] = -1; }
+    const auto projected = mc2hzb::project_prop(instance,clip,0,box,101,79,8);
+    CHECK(projected.keep == 1);
+}

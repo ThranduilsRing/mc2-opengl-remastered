@@ -10,6 +10,8 @@ struct HdriCpuImage;   // gos_hdri.h
 
 struct glsl_program;
 
+struct Mc2ColorPropFeed;
+
 class gosPostProcess {
 public:
     gosPostProcess();
@@ -353,7 +355,7 @@ public:
     // falls back to the unchanged GL runHzbReduce() body. MC2_HZB_PROBE forces
     // the native path to decline so the GL pyramid stays coherent for the probe.
     bool  vkPostHzbNativeEnabled();
-    bool  runVkPostHzbNative();
+    bool  runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t generation, void** maskBuffer);
     void  destroyVkPostHzbNative();
     struct VkPostHzbNative;             // defined in vulkan_post_hzb_native.cpp
     // Owner of the state: releases through destroy_state (idles the GPU first), defined next to the state.

@@ -85,6 +85,7 @@ layout(push_constant) uniform PacketLayerPC {
     float packetUvScaleY;
     int   packetAlphaTest;
     int   coverageFringePass;   // PROP-COVERAGE-1: 0 = core (cutout) pass, 1 = blended fringe pass
+    int   hzbEnabled;
 } uPacket;
 
 layout(location = 0) out vec4 oColor;     // MRT0 lit color

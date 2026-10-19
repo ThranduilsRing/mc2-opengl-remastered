@@ -579,26 +579,6 @@ void gosPostProcess::endScene()
     GLint prevVAO = 0;
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVAO);
 
-    // HZB-DEPTH-PYRAMID-MVP-1: build the reverse-Z Hi-Z pyramid from the
-    // resolved scene depth before any post pass. Gated (MC2_HZB_BUILD), no
-    // consumers, no draw suppression -> no-op + byte-identical when OFF.
-    // VK-POST-HZB-NATIVE-1 (rung 8.4): highest precedence at the HZB site.
-    // When MC2_VK_POST_HZB=1, the shared-engine Vulkan path tries first; on any
-    // decline/failure it falls straight back to the unchanged GL runHzbReduce()
-    // body so the HZB probe stays coherent. Only when the native gate is OFF do
-    // we consider the older region-iface route (VK-REGION-HZB-1) or direct GL.
-    // Precedence: native > region-iface > GL.
-#ifdef MC2_VULKAN_ISLAND
-    if (vkPostHzbNativeEnabled()) {
-        if (!runVkPostHzbNative())
-            runHzbReduce();
-    } else
-#endif
-    {
-        runHzbReduce();
-    }
-    runHzbProbe();   // diagnostic-only; reads the pyramid, suppresses no draws
-
     // CLUSTER-DEPTH-PYRAMID-NATIVE-1: build a per-tile (min,max) depth image
     // from the resolved scene depth, here where depth is fully populated and
     // before any post pass. Gated (MC2_CLUSTER_DEPTH_PYRAMID, default OFF) ->

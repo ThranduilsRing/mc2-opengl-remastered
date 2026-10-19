@@ -204,6 +204,8 @@ ISLANDS = {
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
     "shaders/vulkan/hud_tex.frag":
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
+    "shaders/vulkan/hzb_cull.comp":
+        "Native Vulkan render-only static-prop culling from same-frame depth; no GL shader pair. Required proof: on/off captures including a horizon pose, plus a frame-time pair.",
     "shaders/vulkan/hzb_reduce.vert":
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
     "shaders/vulkan/hzb_reduce.frag":

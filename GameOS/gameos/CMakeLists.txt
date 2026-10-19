@@ -393,7 +393,7 @@ if(MC2_VULKAN)
     # VK-FIELD-VFX-1: bake vfx_particle.{vert,frag} (procedural billboard VS reading the
     # GpuParticle SSBO + untextured colored soft-blob FS). SPIR-V loaded at runtime by
     # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
-    set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
+    set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
     # Output stages that bake from another basename's source: the skirt pipeline needs its
     # own .frag.spv name but runs the main-patch fragment program, so one source feeds both.
@@ -407,7 +407,7 @@ if(MC2_VULKAN)
         "${CMAKE_SOURCE_DIR}/shaders/include/*.hglsl")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})
-        foreach(_stage vert frag)
+        foreach(_stage vert frag comp)
             set(_src_base "${_base}")
             if(DEFINED MC2_VK_SHADER_SRC_ALIAS_${_base}_${_stage})
                 set(_src_base "${MC2_VK_SHADER_SRC_ALIAS_${_base}_${_stage}}")
