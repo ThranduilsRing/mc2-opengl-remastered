@@ -81,15 +81,6 @@ unsigned long			NextIdNumber = 0x30000001;		//Big number to indicate
 //* OBJECTTYPE class
 //***************************************************************************
 
-void* ObjectType::operator new (size_t ourSize) {
-
-	// B7o.9: the CRT heap (objectTypeCache is gone).
-	void* result = ::operator new(ourSize);
-	return(result);
-}
-
-//---------------------------------------------------------------------------
-
 void ObjectType::operator delete (void* us) {
 
 	// G6: the guard is kept exactly as it was (read after the destructor ran); retirement of in-use types is the manager's.
