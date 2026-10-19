@@ -34,11 +34,11 @@ void WeaponEffects::init (const char *effectCSVFileName)
 	CSVFile effectFile;
 	long result = effectFile.open(effectsName);
 	if (result != NO_ERR)
-		STOP(("Unable to open Effects File %s", (const char*)effectsName));
+		STOP(("Unable to open Effects File %s", static_cast<const char*>(effectsName)));
 		
 	numEffects = effectFile.getNumLines() - 1;	//Always subtract one for the column headers
 
-	effects = (EffectData *)systemHeap->Malloc(sizeof(EffectData) * numEffects);
+	effects = static_cast<EffectData *>(systemHeap->Malloc(sizeof(EffectData) * numEffects));
 	gosASSERT(effects != nullptr);
 	
 	for (long i=0;i<numEffects;i++)

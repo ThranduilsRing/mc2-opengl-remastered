@@ -28,7 +28,7 @@ static bool tryReadTgaLogicalSize(File& textureFile, DWORD uvScale, DWORD& logic
 	// PNG signature bytes as a TGA header yields garbage width/height.
 	// PNG IHDR stores big-endian width/height at offsets 16 and 20.
 	unsigned char sniff[24] = {0};
-	if (textureFile.read((MemoryPtr)sniff, sizeof(sniff)) == sizeof(sniff) &&
+	if (textureFile.read(reinterpret_cast<MemoryPtr>(sniff), sizeof(sniff)) == sizeof(sniff) &&
 		sniff[0] == 0x89 && sniff[1] == 'P' && sniff[2] == 'N' && sniff[3] == 'G')
 	{
 		textureFile.seek(0);
@@ -50,7 +50,7 @@ static bool tryReadTgaLogicalSize(File& textureFile, DWORD uvScale, DWORD& logic
 	textureFile.seek(0);
 
 	TGAFileHeader header;
-	if (textureFile.read((MemoryPtr)&header, sizeof(header)) != sizeof(header))
+	if (textureFile.read(reinterpret_cast<MemoryPtr>(&header), sizeof(header)) != sizeof(header))
 	{
 		textureFile.seek(0);
 		return false;
@@ -104,10 +104,10 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 	if (!lzBuffer1)
 	{
 		ZoneScopedN("MC_TextureManager::textureFromMemory lzBuffers");
-		lzBuffer1 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
+		lzBuffer1 = static_cast<MemoryPtr>(textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE));
 		gosASSERT(lzBuffer1 != nullptr);
 		
-		lzBuffer2 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
+		lzBuffer2 = static_cast<MemoryPtr>(textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE));
 		gosASSERT(lzBuffer2 != nullptr);
 	}
 	
@@ -115,14 +115,14 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 	DWORD txmCompressSize;
 	{
 		ZoneScopedN("MC_TextureManager::textureFromMemory LZCompress");
-		txmCompressSize = static_cast<DWORD>(LZCompress(lzBuffer2,(MemoryPtr)data,txmSize));
+		txmCompressSize = static_cast<DWORD>(LZCompress(lzBuffer2,reinterpret_cast<MemoryPtr>(data),txmSize));
 	}
 	compressedTextureSize += txmCompressSize;
 	
 	if (!masterTextureNodes[i].textureData )
 	{
 		ZoneScopedN("MC_TextureManager::textureFromMemory cacheAlloc");
-		masterTextureNodes[i].textureData = (DWORD *)textureCacheHeap->Malloc(txmCompressSize);
+		masterTextureNodes[i].textureData = static_cast<DWORD *>(textureCacheHeap->Malloc(txmCompressSize));
 	}
 	
 	//No More RAM.  Do not display this texture anymore.
@@ -171,10 +171,10 @@ static void txmIdentityAcquire (const MC_TextureNode& n, long node)
 {
 	RenderCore::TextureKey k;
 	k.source = RenderCore::makeTextureSourceId("txmmgr", n.nodeName ? n.nodeName : "", 0);
-	k.variant = (uint32_t)n.uniqueInstance;
-	k.format = (uint32_t)n.key;
-	k.hints = (uint32_t)n.hints;
-	RenderCore::textureService().acquire(k, (uint32_t)node);
+	k.variant = static_cast<uint32_t>(n.uniqueInstance);
+	k.format = static_cast<uint32_t>(n.key);
+	k.hints = static_cast<uint32_t>(n.hints);
+	RenderCore::textureService().acquire(k, static_cast<uint32_t>(node));
 }
 
 DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_TextureFormat key, DWORD hints, DWORD uniqueInstance, DWORD nFlush)
@@ -194,7 +194,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		if (s_loadTrace)
 		{
 			mc2::fmt::print_err("[TEXLOAD] uniq={:d} name={}\n",
-				mc2::fmt::as_u32((unsigned long)uniqueInstance), mc2::fmt::safe(textureFullPathName ? textureFullPathName : "<null>"));
+				mc2::fmt::as_u32(static_cast<unsigned long>(uniqueInstance)), mc2::fmt::safe(textureFullPathName ? textureFullPathName : "<null>"));
 			fflush(stderr);
 		}
 	}
@@ -242,7 +242,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	// DO NOT create GOS handle until we need it.
  	masterTextureNodes[i].gosTextureHandle = CACHED_OUT_HANDLE;
 	txmLeakNoteAlloc();  // [TXMMGR_TEXTURE_AUDIT v1] named loadTexture path
-	masterTextureNodes[i].nodeName = (char *)textureStringHeap->Malloc(strlen(textureFullPathName) + 1);
+	masterTextureNodes[i].nodeName = static_cast<char *>(textureStringHeap->Malloc(strlen(textureFullPathName) + 1));
 	gosASSERT(masterTextureNodes[i].nodeName != nullptr);
 
 	strcpy(masterTextureNodes[i].nodeName,textureFullPathName);
@@ -292,23 +292,23 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 				(img.vkFormat == 145 || img.vkFormat == 146) && img.width == img.height &&
 				RenderCore::ktxDecodeBc7ToRgba8(img, 0, rgba, &kw, &kh) && kw == kh && kw > 0)
 			{
-				const DWORD txmSize = (DWORD)(kw * kh * 4);
+				const DWORD txmSize = static_cast<DWORD>((kw * kh * 4));
 				masterTextureNodes[i].uvScale = 4;
-				masterTextureNodes[i].logicalWidth = (DWORD)kw;
-				masterTextureNodes[i].logicalHeight = (DWORD)kh;
+				masterTextureNodes[i].logicalWidth = static_cast<DWORD>(kw);
+				masterTextureNodes[i].logicalHeight = static_cast<DWORD>(kh);
 				masterTextureNodes[i].hints = hints | gosHint_Try32bpp;
 				masterTextureNodes[i].width = MC_TEXCACHE_MEM_RAW + txmSize;
 				masterTextureNodes[i].lzCompSize = txmSize;
 				actualTextureSize += txmSize;
 				compressedTextureSize += txmSize;
-				masterTextureNodes[i].textureData = (DWORD *)textureCacheHeap->Malloc(txmSize);
+				masterTextureNodes[i].textureData = static_cast<DWORD *>(textureCacheHeap->Malloc(txmSize));
 				if (masterTextureNodes[i].textureData)
 				{
 					// ktxDecodeBc7ToRgba8 emits RGBA8; the gos MEM_RAW upload expects
 					// BGRA8 (matching the .tga decode path), so swap R<->B per pixel.
 					// Without this, red content renders blue (blue-tinted scene).
 					const uint8_t* src = rgba.data();
-					uint8_t* dst = (uint8_t*)masterTextureNodes[i].textureData;
+					uint8_t* dst = reinterpret_cast<uint8_t*>(masterTextureNodes[i].textureData);
 					for (DWORD px = 0; px + 4 <= txmSize; px += 4)
 					{
 						dst[px + 0] = src[px + 2]; // B
@@ -361,7 +361,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		{
 			unsigned char hdr[18] = {0};
 			long fsz = (textureFileOpenResult == NO_ERR) ? textureFile.fileSize() : -1;
-			if ( textureFileOpenResult == NO_ERR && fsz >= (long)sizeof(hdr) )
+			if ( textureFileOpenResult == NO_ERR && fsz >= static_cast<long>(sizeof(hdr)) )
 			{
 				textureFile.read(hdr, sizeof(hdr));
 				textureFile.seek(0);
@@ -402,10 +402,10 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	if (!lzBuffer1)
 	{
 		ZoneScopedN("MC_TextureManager::loadTexture lzBuffers");
-		lzBuffer1 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
+		lzBuffer1 = static_cast<MemoryPtr>(textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE));
 		gosASSERT(lzBuffer1 != nullptr);
 		
-		lzBuffer2 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
+		lzBuffer2 = static_cast<MemoryPtr>(textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE));
 		gosASSERT(lzBuffer2 != nullptr);
 	}
 
@@ -440,7 +440,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 
 		{
 			ZoneScopedN("MC_TextureManager::loadTexture cacheAlloc");
-			masterTextureNodes[i].textureData = (DWORD *)textureCacheHeap->Malloc(cacheBytes);
+			masterTextureNodes[i].textureData = static_cast<DWORD *>(textureCacheHeap->Malloc(cacheBytes));
 		}
 		if (masterTextureNodes[i].textureData == nullptr)
 			masterTextureNodes[i].gosTextureHandle = 0;
@@ -481,7 +481,7 @@ long MC_TextureManager::refreshTexturesByName (const char *substring, long &skip
 		for (const char *p = hay; *p; ++p)
 		{
 			size_t k = 0;
-			while (k < nlen && p[k] && tolower((unsigned char)p[k]) == tolower((unsigned char)needle[k]))
+			while (k < nlen && p[k] && tolower(static_cast<unsigned char>(p[k])) == tolower(static_cast<unsigned char>(needle[k])))
 				++k;
 			if (k == nlen) return true;
 		}
@@ -515,9 +515,9 @@ long MC_TextureManager::refreshTexturesByName (const char *substring, long &skip
 
 		if (!lzBuffer1)
 		{
-			lzBuffer1 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
+			lzBuffer1 = static_cast<MemoryPtr>(textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE));
 			gosASSERT(lzBuffer1 != nullptr);
-			lzBuffer2 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
+			lzBuffer2 = static_cast<MemoryPtr>(textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE));
 			gosASSERT(lzBuffer2 != nullptr);
 		}
 
@@ -526,10 +526,10 @@ long MC_TextureManager::refreshTexturesByName (const char *substring, long &skip
 
 		const bool storeRawFileData = (txmSize >= MC_TEXCACHE_RAW_THRESHOLD);
 		const DWORD cacheBytes = storeRawFileData
-			? (DWORD)txmSize
+			? static_cast<DWORD>(txmSize)
 			: static_cast<DWORD>(LZCompress(lzBuffer2, lzBuffer1, txmSize));
 
-		DWORD *fresh = (DWORD *)textureCacheHeap->Malloc(cacheBytes);
+		DWORD *fresh = static_cast<DWORD *>(textureCacheHeap->Malloc(cacheBytes));
 		if (!fresh)
 		{
 			skippedNoFile++;
@@ -594,7 +594,7 @@ DWORD MC_TextureManager::textureFromMemoryRaw (DWORD *data, gos_TextureFormat ke
 
 	{
 		ZoneScopedN("MC_TextureManager::textureFromMemoryRaw cacheAlloc");
-		masterTextureNodes[i].textureData = (DWORD *)textureCacheHeap->Malloc(txmSize);
+		masterTextureNodes[i].textureData = static_cast<DWORD *>(textureCacheHeap->Malloc(txmSize));
 	}
 
 	if (masterTextureNodes[i].textureData == nullptr)
@@ -634,12 +634,12 @@ long MC_TextureManager::saveTexture (DWORD textureIndex, const char *textureFull
 			const DWORD originalSize = masterTextureNodes[textureIndex].width & MC_TEXCACHE_SIZE_MASK;
 			if (cacheFormat == MC_TEXCACHE_FILE_RAW || cacheFormat == MC_TEXCACHE_MEM_RAW)
 			{
-				textureFile.write((MemoryPtr)masterTextureNodes[textureIndex].textureData, originalSize);
+				textureFile.write(reinterpret_cast<MemoryPtr>(masterTextureNodes[textureIndex].textureData), originalSize);
 			}
 			else
 			{
 				// Badboys are now LZ Compressed in texture cache.
-				long origSize = static_cast<long>(LZDecomp(MC_TextureManager::lzBuffer2,(MemoryPtr)masterTextureNodes[textureIndex].textureData,masterTextureNodes[textureIndex].lzCompSize,MAX_LZ_BUFFER_SIZE));
+				long origSize = static_cast<long>(LZDecomp(MC_TextureManager::lzBuffer2,reinterpret_cast<MemoryPtr>(masterTextureNodes[textureIndex].textureData),masterTextureNodes[textureIndex].lzCompSize,MAX_LZ_BUFFER_SIZE));
 				if (origSize != originalSize)
 					STOP(("Decompressed to different size from original!  Txm:%s  Width:%d  DecompSize:%d",masterTextureNodes[textureIndex].nodeName,originalSize,origSize));
 
@@ -700,7 +700,7 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 		{
 			{
 				char _cbbuf[256];
-				mc2::fmt::to_buf(_cbbuf, "[TXM] zero-width texture node: nodeName={} handle={:d} lzCompSize={:d}", mc2::fmt::safe(nodeName ? nodeName : "<null>"), mc2::fmt::as_u32((unsigned)gosTextureHandle), mc2::fmt::as_u32((unsigned)lzCompSize));
+				mc2::fmt::to_buf(_cbbuf, "[TXM] zero-width texture node: nodeName={} handle={:d} lzCompSize={:d}", mc2::fmt::safe(nodeName ? nodeName : "<null>"), mc2::fmt::as_u32(static_cast<unsigned>(gosTextureHandle)), mc2::fmt::as_u32(static_cast<unsigned>(lzCompSize)));
 				puts(_cbbuf); fflush(stdout); crashbundle_append(_cbbuf);
 			}
 			PAUSE(("txmmgr: Textur has zero width!"));
@@ -717,7 +717,7 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 		if ((cacheFormat == MC_TEXCACHE_FILE_LZ) || (cacheFormat == MC_TEXCACHE_FILE_RAW) || (cacheFormat == MC_TEXCACHE_MEM_RAW))
 		{
 			const DWORD originalSize = width & MC_TEXCACHE_SIZE_MASK;
-			BYTE* textureBytes = (BYTE*)textureData;
+			BYTE* textureBytes = reinterpret_cast<BYTE*>(textureData);
 			{
 				if (cacheFormat == MC_TEXCACHE_FILE_LZ)
 				{
@@ -725,18 +725,18 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 					// Badboys are now LZ Compressed in texture cache.
 					long origSize;
 					{
-						origSize = static_cast<long>(LZDecomp(MC_TextureManager::lzBuffer2,(MemoryPtr)textureData,lzCompSize,MAX_LZ_BUFFER_SIZE));
+						origSize = static_cast<long>(LZDecomp(MC_TextureManager::lzBuffer2,reinterpret_cast<MemoryPtr>(textureData),lzCompSize,MAX_LZ_BUFFER_SIZE));
 					}
 					if (origSize != originalSize)
 						STOP(("Decompressed to different size from original!  Txm:%s  Width:%d  DecompSize:%d",nodeName,originalSize,origSize));
 
 					if (origSize >= MAX_LZ_BUFFER_SIZE)
 						STOP(("Texture TOO large: %s",nodeName));
-					textureBytes = (BYTE*)MC_TextureManager::lzBuffer2;
+					textureBytes = reinterpret_cast<BYTE*>(MC_TextureManager::lzBuffer2);
 				}
 				else if (cacheFormat == MC_TEXCACHE_MEM_RAW)
 				{
-					textureBytes = (BYTE*)textureData;
+					textureBytes = reinterpret_cast<BYTE*>(textureData);
 				}
 			}
 
@@ -802,7 +802,7 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 						bool haveRoom = false;
 						if (dot && dot > lastSep)
 						{
-							size_t base = (size_t)(dot - sidecar);
+							size_t base = static_cast<size_t>((dot - sidecar));
 							if (base + 6 < sizeof(sidecar)) { strcpy(sidecar + base, ".ktx2"); haveRoom = true; }
 						}
 						else
@@ -830,16 +830,16 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 										? GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM
 										: GL_COMPRESSED_RGBA_BPTC_UNORM;
 									size_t mip0Bytes = (img.mipCount > 1 && img.mipByteOffsets.size() > 1)
-										? (size_t)img.mipByteOffsets[1]
+										? static_cast<size_t>(img.mipByteOffsets[1])
 										: img.pixels.size();
 									DWORD h = gos_NewCompressedTexture2D(
-										(uint32_t)glIF, img.width, img.height,
+										static_cast<uint32_t>(glIF), img.width, img.height,
 										img.pixels.data(), mip0Bytes, nodeName);
 									if (h != 0 /*INVALID_TEXTURE_ID*/ && h != 0xffffffff)
 									{
 										gosTextureHandle = h;
 										uploadedCompressed = true;
-										mc2::fmt::print_out("[TEXMGR_BC7] loaded name={} {:d}x{:d} fmt=0x{:x} bytes={:d}\n", mc2::fmt::safe(nodeName), mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_u32((unsigned)glIF), mc2::fmt::as_size(mip0Bytes));
+										mc2::fmt::print_out("[TEXMGR_BC7] loaded name={} {:d}x{:d} fmt=0x{:x} bytes={:d}\n", mc2::fmt::safe(nodeName), mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_u32(static_cast<unsigned>(glIF)), mc2::fmt::as_size(mip0Bytes));
 									}
 									else
 									{
@@ -887,7 +887,7 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 			gosASSERT(textureData);
 
 			{
-				LZDecomp(MC_TextureManager::lzBuffer2,(MemoryPtr)textureData,lzCompSize,MAX_LZ_BUFFER_SIZE);
+				LZDecomp(MC_TextureManager::lzBuffer2,reinterpret_cast<MemoryPtr>(textureData),lzCompSize,MAX_LZ_BUFFER_SIZE);
 			}
 			{
 				// WHY: an empty lock (texture build failed) has no pixels to fill.

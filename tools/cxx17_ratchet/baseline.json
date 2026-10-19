@@ -193,7 +193,7 @@
    "LG06": 666,
    "LG07": 0,
    "LG08": 70,
-   "LG09": 599,
+   "LG09": 150,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 169,
@@ -203,7 +203,7 @@
    "LG15": 0,
    "LG16": 156,
    "LG17": 95,
-   "LG18": 23,
+   "LG18": 37,
    "LG19": 0,
    "LG20": 10
   },
@@ -4000,14 +4000,7 @@
   "mclib/terrain_internal.h": {
    "LG17": 1
   },
-  "mclib/terrain_raycast.cpp": {
-   "LG09": 4
-  },
-  "mclib/terrain_render.cpp": {
-   "LG09": 19
-  },
   "mclib/terrain_runtime.cpp": {
-   "LG09": 1,
    "LG10": 2
   },
   "mclib/terrain_surface_bands.h": {
@@ -4017,16 +4010,15 @@
    "LG12a": 1
   },
   "mclib/terrain_update.cpp": {
-   "LG09": 16,
    "LG10": 2
   },
   "mclib/terrtxm.cpp": {
    "LG03": 4,
    "LG06": 4,
-   "LG09": 43,
    "LG11": 1,
    "LG12a": 3,
-   "LG12b": 29
+   "LG12b": 29,
+   "LG18": 4
   },
   "mclib/terrtxm.h": {
    "LG05": 1,
@@ -4037,7 +4029,6 @@
   "mclib/terrtxm2.cpp": {
    "LG05": 1,
    "LG06": 3,
-   "LG09": 3,
    "LG11": 1,
    "LG13": 1
   },
@@ -4049,7 +4040,7 @@
   },
   "mclib/terrtxm2_bake.cpp": {
    "LG06": 8,
-   "LG09": 28
+   "LG18": 3
   },
   "mclib/terrtxm2_internal.h": {
    "LG06": 3,
@@ -4062,10 +4053,7 @@
   "mclib/terrtxm2_load.cpp": {
    "LG05": 2,
    "LG06": 1,
-   "LG09": 43
-  },
-  "mclib/tex_resolve_table.cpp": {
-   "LG09": 13
+   "LG18": 6
   },
   "mclib/tex_resolve_table.h": {
    "LG09": 1
@@ -4078,15 +4066,13 @@
    "LG06": 2
   },
   "mclib/tgainfo.cpp": {
-   "LG04": 2,
-   "LG09": 5
+   "LG04": 2
   },
   "mclib/tgainfo.h": {
    "LG14": 1
   },
   "mclib/tgl.cpp": {
    "LG06": 2,
-   "LG09": 3,
    "LG12a": 4
   },
   "mclib/tgl.h": {
@@ -4100,47 +4086,36 @@
    "LG14": 1
   },
   "mclib/tgl_load_guard.cpp": {
-   "LG06": 5,
-   "LG09": 2
+   "LG06": 5
   },
   "mclib/tgl_load_guard.h": {
    "LG06": 2
   },
   "mclib/tgl_parse.cpp": {
    "LG06": 3,
-   "LG09": 64,
    "LG12b": 2
   },
   "mclib/tgl_render.cpp": {
-   "LG09": 12,
    "LG12a": 8
   },
   "mclib/tgl_shadows.cpp": {
-   "LG04": 1,
-   "LG09": 2
+   "LG04": 1
   },
   "mclib/tgl_transform.cpp": {
-   "LG09": 3,
    "LG17": 1
   },
   "mclib/tgl_transform_light.cpp": {
-   "LG04": 2,
-   "LG09": 22
+   "LG04": 2
   },
   "mclib/tgl_types.cpp": {
    "LG03": 4,
    "LG05": 2,
-   "LG06": 4,
-   "LG09": 26
-  },
-  "mclib/timing.cpp": {
-   "LG09": 3
+   "LG06": 4
   },
   "mclib/txmmgr.cpp": {
    "LG03": 25,
    "LG06": 2,
    "LG08": 1,
-   "LG09": 8,
    "LG11": 1,
    "LG12a": 7,
    "LG12b": 3
@@ -4155,34 +4130,21 @@
   "mclib/txmmgr_lightrow.cpp": {
    "LG05": 1,
    "LG06": 1,
-   "LG09": 23,
    "LG17": 1
   },
   "mclib/txmmgr_lights.cpp": {
    "LG05": 5,
-   "LG08": 7,
-   "LG09": 6
-  },
-  "mclib/txmmgr_render.cpp": {
-   "LG09": 4
-  },
-  "mclib/txmmgr_render_overlays.cpp": {
-   "LG09": 1
-  },
-  "mclib/txmmgr_render_passes.cpp": {
-   "LG09": 7
+   "LG08": 7
   },
   "mclib/txmmgr_texture.cpp": {
    "LG05": 2,
    "LG06": 6,
-   "LG09": 37,
    "LG11": 1,
    "LG12a": 1
   },
   "mclib/userinput.cpp": {
    "LG03": 4,
-   "LG06": 2,
-   "LG09": 11
+   "LG06": 2
   },
   "mclib/userinput.h": {
    "LG03": 1,
@@ -4190,7 +4152,7 @@
   },
   "mclib/utilities.cpp": {
    "LG06": 1,
-   "LG09": 37
+   "LG18": 1
   },
   "mclib/utilities.h": {
    "LG06": 1
@@ -4203,8 +4165,7 @@
    "LG13": 3
   },
   "mclib/vis_semantics.cpp": {
-   "LG06": 1,
-   "LG09": 1
+   "LG06": 1
   },
   "mclib/vis_semantics.h": {
    "LG06": 1,
@@ -4212,8 +4173,7 @@
    "LG14": 1
   },
   "mclib/weaponfx.cpp": {
-   "LG06": 1,
-   "LG09": 2
+   "LG06": 1
   },
   "mclib/weaponfx.h": {
    "LG05": 1,
@@ -4257,7 +4217,7 @@
    "LG20": 3
   }
  },
- "head": "ba78b9343",
+ "head": "2d745a5c2",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
