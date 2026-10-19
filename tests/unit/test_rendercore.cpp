@@ -421,34 +421,29 @@ TEST_CASE("IblShRegistry kIblShSetCount is at least 1") {
 // ---------------------------------------------------------------------------
 
 TEST_CASE("RenderPassContract pipelineDescRegistered matches current shipped truth") {
-    // Per-row expected state from kRenderPassContracts:
-    //   true:  StaticPropOpaque, MechOpaque, Terrain, TerrainDecal,
-    //          TerrainOverlay, Water, VFX, PostProcess
-    //   false: Shadow (descriptive-only PipelineIds), VegetationCards, UI.
+    // Native terrain, water and postprocess have no GL pipeline registration.
     int trueCount = 0;
     for (int i = 0; i < kRenderPassContractCount; ++i) {
         const RenderPassContract& c = kRenderPassContracts[i];
         const bool expected = (c.id == RenderPassId::StaticPropOpaque ||
                                c.id == RenderPassId::MechOpaque ||
-                               c.id == RenderPassId::Terrain ||
                                c.id == RenderPassId::TerrainDecal ||
                                c.id == RenderPassId::TerrainOverlay ||
-                               c.id == RenderPassId::VFX ||
-                               c.id == RenderPassId::PostProcess);
+                               c.id == RenderPassId::VFX);
         CHECK(c.pipelineDescRegistered == expected);
         if (c.pipelineDescRegistered) ++trueCount;
     }
-    // Eight passes route through applyPipeline() (see list above).
-    CHECK(trueCount == 7);
+    // Five surviving GL pass families retain their registrations.
+    CHECK(trueCount == 5);
 }
 
 TEST_CASE("RenderPassContract: PipelineId-family passes back their flag with a real enumerator") {
     // PipelineRegistry registers the static-prop family + MechOpaque
     // plus a set of DESCRIPTIVE-ONLY rows (shadow casters,
     // terrain overlay/decal, water, VFX, post-process) that are NOT routed through
-    // applyPipeline. The enum has Count_=13:
+    // applyPipeline. The enum has Count_=11:
     //   0 Invalid, 1 StaticPropOpaque, 2 StaticPropAlphaTest, 3 MechOpaque,
-    //   4 StaticPropDepth, 5..12 surviving GL families, 13 Count_.
+    //   4 StaticPropDepth, 5..10 surviving GL families, 11 Count_.
     //
     // pipelineDescRegistered means "routes through applyPipeline()", which is
     // BROADER than "owns a dedicated PipelineId enumerator":
@@ -461,7 +456,7 @@ TEST_CASE("RenderPassContract: PipelineId-family passes back their flag with a r
     //
     // Count_ is hardcoded as a tripwire: bump it (and re-examine the family set
     // below) every time a PipelineId enumerator is added.
-    CHECK(static_cast<uint32_t>(PipelineId::Count_) == 13u);
+    CHECK(static_cast<uint32_t>(PipelineId::Count_) == 11u);
     CHECK(static_cast<uint32_t>(PipelineId::Invalid) == 0u);
 
     for (int i = 0; i < kRenderPassContractCount; ++i) {
@@ -510,13 +505,11 @@ TEST_CASE("RenderPassContract: enum/table/order counts are all 11") {
 }
 
 TEST_CASE("RenderPassContract: 6 new lanes resolve to contract rows with current registration") {
-    // Of the six lanes, four route through applyPipeline():
-    //   registered=true:  Water, PostProcess, TerrainDecal, TerrainOverlay
-    //   registered=false: VegetationCards, UI
+    // Only terrain overlays/decals retain GL registrations; water and postprocess are native.
     struct LaneExpect { RenderPassId id; bool registered; };
     const LaneExpect newIds[] = {
         { RenderPassId::Water,           false },
-        { RenderPassId::PostProcess,     true  },
+        { RenderPassId::PostProcess,     false },
         { RenderPassId::VegetationCards, false },
         { RenderPassId::TerrainDecal,    true  },
         { RenderPassId::TerrainOverlay,  true  },
