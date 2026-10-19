@@ -140,7 +140,7 @@ void
 	Check_Object(this);
 	Check_Object(dependencies);
 
-	AddDependencies((MemoryStream*)&dependencies->m_fileNameStream);
+	AddDependencies(static_cast<MemoryStream*>(const_cast<DynamicMemoryStream*>(&dependencies->m_fileNameStream)));
 }
 
 //#############################################################################
@@ -244,7 +244,7 @@ MString*
 	if (p)
 	{
 		*p = '\0';
-		file_name->SetLength(p - (char *)*file_name);
+		file_name->SetLength(p - static_cast<char *>(*file_name));
 	}
 
 	Check_Object(file_name);
@@ -275,7 +275,7 @@ MString*
 		p = *file_name;
 		*p = '\0';
 	}
-	file_name->SetLength(p - (char *)*file_name);
+	file_name->SetLength(p - static_cast<char *>(*file_name));
 	Check_Object(file_name);
 	return file_name;
 }

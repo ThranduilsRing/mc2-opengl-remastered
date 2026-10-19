@@ -197,9 +197,9 @@ void SpawnTube(const gosFX::Tube__Specification* spec,
     // Tube head is anchored to the parent transform; the legacy Execute
     // path advects new profiles by moving the parent, not by per-particle
     // velocity. Leave velocity[] at zero for the marker.
-    p.lifetime    = (float)lifetime;
+    p.lifetime    = static_cast<float>(lifetime);
     p.age         = 0.0f;
-    p.size        = (float)size;
+    p.size        = static_cast<float>(size);
     // atlasIndex carries the raw MLR pool index; Batcher::ResolveTextures()
     // converts it to a gos_TextureHandle after renderLists() / LoadImages().
     p.atlasIndex  = mlrTexHandle;

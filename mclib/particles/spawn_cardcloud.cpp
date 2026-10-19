@@ -270,7 +270,7 @@ void SpawnCardCloud(const gosFX::CardCloud__Specification* spec,
         p.velocity[0] = world_velocity.x;
         p.velocity[1] = world_velocity.y;
         p.velocity[2] = world_velocity.z;
-        p.lifetime    = (float)lifetime;
+        p.lifetime    = static_cast<float>(lifetime);
         p.age         = 0.0f;
         // P2-1/P2-2: UV sub-rect and animated frame handled above via
         // BeginGroup(mlrTexHandle, u0, v0, us, vs). The GpuParticle schema
@@ -279,7 +279,7 @@ void SpawnCardCloud(const gosFX::CardCloud__Specification* spec,
         // Remaining B2 polish debt: per-particle rotation (m_localRotation
         // from SpinningCloud) is not in the 64-byte schema; quads are
         // camera-facing axis-aligned.
-        p.size        = (float)size;
+        p.size        = static_cast<float>(size);
         // atlasIndex carries the raw MLR pool index; Batcher::ResolveTextures()
         // converts it to a gos_TextureHandle after renderLists() / LoadImages().
         p.atlasIndex  = mlrTexHandle;

@@ -79,7 +79,7 @@ void initialize_env() {
     g_enabled_initialized = true;
     if (g_enabled_value) {
         mc2::fmt::print_err("[INSTR v1] enabled: gpu_particles log={:d}\n",
-                     mc2::fmt::as_i32((int)g_log_value));
+                     mc2::fmt::as_i32(static_cast<int>(g_log_value)));
         std::fflush(stderr);
         if (!g_atexit_registered) {
             std::atexit(dump_summary);
@@ -213,7 +213,7 @@ void Batcher::BeginGroup(uint32_t handle, float u0, float v0, float us, float vs
     // Close the previous open group by recording its count.
     if (impl_->hasOpenGroup && !impl_->groups.empty()) {
         GroupInfo& prev = impl_->groups.back();
-        prev.count = (unsigned)impl_->staging.size() - prev.start;
+        prev.count = static_cast<unsigned>(impl_->staging.size()) - prev.start;
     }
     GroupInfo gi;
     gi.handle       = handle;
@@ -221,7 +221,7 @@ void Batcher::BeginGroup(uint32_t handle, float u0, float v0, float us, float vs
     gi.v0           = v0;
     gi.us           = us;
     gi.vs           = vs;
-    gi.start        = (unsigned)impl_->staging.size();
+    gi.start        = static_cast<unsigned>(impl_->staging.size());
     gi.count        = 0;
     gi.blendMode    = blendMode;
     gi.atlasColumns = atlasColumns;
@@ -263,7 +263,7 @@ void Batcher::ResolveTextures()
         static bool s_reported = false;
         if (!s_reported && !impl_->groups.empty()) {
             s_reported = true;
-            mc2::fmt::print_err("[RESOLVE_PROBE] first_nonempty groups={:d} staging={:d}\n", mc2::fmt::as_u32((unsigned)impl_->groups.size()), mc2::fmt::as_u32((unsigned)impl_->staging.size()));
+            mc2::fmt::print_err("[RESOLVE_PROBE] first_nonempty groups={:d} staging={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(impl_->groups.size())), mc2::fmt::as_u32(static_cast<unsigned>(impl_->staging.size())));
             std::fflush(stderr);
         }
     }
@@ -291,7 +291,7 @@ void Batcher::ResolveTextures()
         }
         DWORD gosHandle = img->GetHandle();
         if (logEnabled && s_probed.insert(grp.handle).second)
-            mc2::fmt::print_err("[RESOLVE_PROBE] handle={:d} img={:016X} isLoaded={:d} gosHandle={:d}\n", mc2::fmt::as_u32(grp.handle), mc2::fmt::as_ptr((void*)img), mc2::fmt::as_i32((int)img->IsLoaded()), mc2::fmt::as_u32((unsigned)gosHandle));
+            mc2::fmt::print_err("[RESOLVE_PROBE] handle={:d} img={:016X} isLoaded={:d} gosHandle={:d}\n", mc2::fmt::as_u32(grp.handle), mc2::fmt::as_ptr(static_cast<void*>(img)), mc2::fmt::as_i32(static_cast<int>(img->IsLoaded())), mc2::fmt::as_u32(static_cast<unsigned>(gosHandle)));
         grp.handle = static_cast<uint32_t>(gosHandle);
     }
 }
@@ -318,20 +318,20 @@ void Batcher::Flush() {
     // Close the last open group.
     if (impl_->hasOpenGroup && !impl_->groups.empty()) {
         GroupInfo& last = impl_->groups.back();
-        last.count = (unsigned)impl_->staging.size() - last.start;
+        last.count = static_cast<unsigned>(impl_->staging.size()) - last.start;
     }
-    const unsigned int n = (unsigned int)impl_->staging.size();
+    const unsigned int n = static_cast<unsigned int>(impl_->staging.size());
     ++g_nonempty_flush_total;
     g_records_flushed_total += n;
     if (n > g_records_per_flush_max) g_records_per_flush_max = n;
     if (!g_first_flush_reported) {
         g_first_flush_reported = true;
-        mc2::fmt::print_err("[GPU_PARTICLES v1] event=first_flush records={:d} groups={:d}\n", mc2::fmt::as_u32(n), mc2::fmt::as_u32((unsigned)impl_->groups.size()));
+        mc2::fmt::print_err("[GPU_PARTICLES v1] event=first_flush records={:d} groups={:d}\n", mc2::fmt::as_u32(n), mc2::fmt::as_u32(static_cast<unsigned>(impl_->groups.size())));
         std::fflush(stderr);
     }
     gos_particle_bridge_flush(impl_->staging.data(), n,
                               impl_->groups.empty() ? nullptr : impl_->groups.data(),
-                              (unsigned)impl_->groups.size());
+                              static_cast<unsigned>(impl_->groups.size()));
     impl_->staging.clear();
     impl_->groups.clear();
     impl_->overflowReported = false;

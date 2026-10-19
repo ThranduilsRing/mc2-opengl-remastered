@@ -260,7 +260,7 @@ MStringRepresentation
    }
 
 	temp.stringLength = 0;
-	temp.stringSize = MStringRepresentation::CalculateSize((size_t)totalLen);
+	temp.stringSize = MStringRepresentation::CalculateSize(static_cast<size_t>(totalLen));
 	temp.stringText = new char[temp.stringSize];
 	Register_Pointer(temp.stringText);
 
@@ -428,7 +428,7 @@ void
 	{
 		for (int i = 0; i < stringLength; i++)
 		{
-			stringText[i] = (char)toupper(stringText[i]);
+			stringText[i] = static_cast<char>(toupper(stringText[i]));
 		}
 	}
 }

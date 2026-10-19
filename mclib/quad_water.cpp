@@ -58,7 +58,7 @@ void TerrainQuad::drawWater (void)
 			{
 				const float dx = vertices[k]->vx - px;
 				const float dy = vertices[k]->vy - py;
-				const double d2 = (double)dx * dx + (double)dy * dy;
+				const double d2 = static_cast<double>(dx) * dx + static_cast<double>(dy) * dy;
 				if (!g_cpuWaterProbeAny || d2 < g_cpuWaterProbeBestD2)
 				{
 					g_cpuWaterProbeBestD2 = d2;

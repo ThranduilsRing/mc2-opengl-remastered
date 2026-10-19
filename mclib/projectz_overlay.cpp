@@ -92,8 +92,8 @@ static inline bool pz_finite(float v) {
 
 //--------------------------------------------------------------------
 void projectz_overlay_advance() {
-    int next = ((int)g_pzOverlayMode + 1) % (int)PZ_OVERLAY_MODE_COUNT;
-    g_pzOverlayMode = (ProjectZOverlayMode)next;
+    int next = (static_cast<int>(g_pzOverlayMode) + 1) % static_cast<int>(PZ_OVERLAY_MODE_COUNT);
+    g_pzOverlayMode = static_cast<ProjectZOverlayMode>(next);
 
     // When overlay is on, force g_pzTrace so projectz_trace_dispatch runs
     // and populates g_pzLastPredicates. Disabling the overlay does NOT
@@ -269,7 +269,7 @@ void projectz_overlay_render(int viewportW, int viewportH) {
             float cursor = barX;
             for (int i = 0; i < 5; i++) {
                 if (s_bucketCount[i] == 0) continue;
-                float w = barW * (float)s_bucketCount[i] / (float)total;
+                float w = barW * static_cast<float>(s_bucketCount[i]) / static_cast<float>(total);
                 draw_quad_as_tris(cursor, barY, cursor + w, barY + barH, colors[i]);
                 cursor += w;
             }

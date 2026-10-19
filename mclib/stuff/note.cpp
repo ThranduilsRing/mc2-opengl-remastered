@@ -21,9 +21,9 @@ void
 	Check_Object(stream);
 
 	if (m_name)
-		*stream << (const char*)m_name;
+		*stream << static_cast<const char*>(m_name);
 	if (m_text)
-		*stream << '=' << (const char*)m_text;
+		*stream << '=' << static_cast<const char*>(m_text);
 	*stream << "\r\n";
 }
 
@@ -135,8 +135,8 @@ void
 		STOP((
 			"%s: {[%s]%s=%s} is not a Vector!",
 			file->GetFileName(),
-			(const char*)page->m_name,
-			(const char*)m_name,
+			static_cast<const char*>(page->m_name),
+			static_cast<const char*>(m_name),
 			contents
 		));
 	}
@@ -184,8 +184,8 @@ void
 		STOP((
 			"%s: {[%s]%s=%s} is not an RGBColor!",
 			file->GetFileName(),
-			(const char*)page->m_name,
-			(const char*)m_name,
+			static_cast<const char*>(page->m_name),
+			static_cast<const char*>(m_name),
 			contents
 		));
 	}
@@ -236,8 +236,8 @@ void
 		STOP((
 			"%s: {[%s]%s=%s} is not an RGBAColor!",
 			file->GetFileName(),
-			(const char*)page->m_name,
-			(const char*)m_name,
+			static_cast<const char*>(page->m_name),
+			static_cast<const char*>(m_name),
 			contents
 		));
 	}

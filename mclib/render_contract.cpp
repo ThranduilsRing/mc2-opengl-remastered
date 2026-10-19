@@ -652,7 +652,7 @@ bool          s_telemetryEverEmitted[16]   = {};
 void initRenderPassTelemetry() {
     s_telemetryEnabled = mc2::gate::get<"MC2_RENDER_PASS_TELEMETRY">();
     if (s_telemetryEnabled) {
-        mc2::fmt::print_out("[RENDER_PASS v1] telemetry ACTIVE (sample every {:d} frames)\n", mc2::fmt::as_u32((unsigned)kTelemetryFrameInterval));
+        mc2::fmt::print_out("[RENDER_PASS v1] telemetry ACTIVE (sample every {:d} frames)\n", mc2::fmt::as_u32(static_cast<unsigned>(kTelemetryFrameInterval)));
         fflush(stdout);
     }
 }
@@ -771,7 +771,7 @@ void dryrunFrameBoundary() {
         static unsigned s_logged = 0;
         if (s_logged < 32u) {
             ++s_logged;
-            mc2::fmt::print_err("[FRAMEGRAPH_DRYRUN] frame={:d} fired={:d} unobserved={:d} outOfOrder={:d} firstOOO={:d} terrainMutex={:d} latchMiss={:d}\n", mc2::fmt::as_u32(g_dryrunFrames), mc2::fmt::as_i32(rep.firedCount), mc2::fmt::as_i32(rep.unobservedCount), mc2::fmt::as_i32(rep.outOfOrderCount), mc2::fmt::as_u32((unsigned)rep.firstOutOfOrderPass), mc2::fmt::as_i32((int)rep.terrainMutexViolation), mc2::fmt::as_i32((int)rep.terrainLatchMissActive));
+            mc2::fmt::print_err("[FRAMEGRAPH_DRYRUN] frame={:d} fired={:d} unobserved={:d} outOfOrder={:d} firstOOO={:d} terrainMutex={:d} latchMiss={:d}\n", mc2::fmt::as_u32(g_dryrunFrames), mc2::fmt::as_i32(rep.firedCount), mc2::fmt::as_i32(rep.unobservedCount), mc2::fmt::as_i32(rep.outOfOrderCount), mc2::fmt::as_u32(static_cast<unsigned>(rep.firstOutOfOrderPass)), mc2::fmt::as_i32(static_cast<int>(rep.terrainMutexViolation)), mc2::fmt::as_i32(static_cast<int>(rep.terrainLatchMissActive)));
             fflush(stderr);
         }
     }
@@ -816,7 +816,7 @@ void noteRenderPass(PassIdentity id, const char* callerHint) {
         if (buf != GL_NONE) ++drawBuffers;
     }
 
-    mc2::fmt::print_out("[RENDER_PASS v1] frame={:d} pass={} fbo={:d} viewport={:d},{:d},{:d},{:d} drawbuffers={:d} phase=begin hint={}\n", mc2::fmt::as_u64((unsigned long long)s_telemetryFrame), mc2::fmt::safe(passIdentityName(id)), mc2::fmt::as_i32((int)fbo), mc2::fmt::as_i32((int)vp[0]), mc2::fmt::as_i32((int)vp[1]), mc2::fmt::as_i32((int)vp[2]), mc2::fmt::as_i32((int)vp[3]), mc2::fmt::as_i32(drawBuffers), mc2::fmt::safe(callerHint ? callerHint : "?"));
+    mc2::fmt::print_out("[RENDER_PASS v1] frame={:d} pass={} fbo={:d} viewport={:d},{:d},{:d},{:d} drawbuffers={:d} phase=begin hint={}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(s_telemetryFrame)), mc2::fmt::safe(passIdentityName(id)), mc2::fmt::as_i32(static_cast<int>(fbo)), mc2::fmt::as_i32(static_cast<int>(vp[0])), mc2::fmt::as_i32(static_cast<int>(vp[1])), mc2::fmt::as_i32(static_cast<int>(vp[2])), mc2::fmt::as_i32(static_cast<int>(vp[3])), mc2::fmt::as_i32(drawBuffers), mc2::fmt::safe(callerHint ? callerHint : "?"));
     fflush(stdout);
 }
 
@@ -1018,7 +1018,7 @@ void ambientProbeAtPassBegin(RenderCore::RenderPassId id) {
                 static unsigned s_vpLogged = 0;
                 if (s_vpLogged < 32u) {
                     ++s_vpLogged;
-                    mc2::fmt::print_err("[VIEWPORT_PROBE] phase=begin pass=\"{}\" vpMiss=1 (decl vp={:d} | live vp={:d}) [observe-only]\n", mc2::fmt::safe(decl->note ? decl->note : "?"), mc2::fmt::as_i32((int)decl->viewport), mc2::fmt::as_i32((int)vpLive.viewport));
+                    mc2::fmt::print_err("[VIEWPORT_PROBE] phase=begin pass=\"{}\" vpMiss=1 (decl vp={:d} | live vp={:d}) [observe-only]\n", mc2::fmt::safe(decl->note ? decl->note : "?"), mc2::fmt::as_i32(static_cast<int>(decl->viewport)), mc2::fmt::as_i32(static_cast<int>(vpLive.viewport)));
                     fflush(stderr);
                 }
                 // Intentionally NO abort() — observe-only.
@@ -1030,7 +1030,7 @@ void ambientProbeAtPassBegin(RenderCore::RenderPassId id) {
             static unsigned s_logged = 0;
             if (s_logged < 32u) {
                 ++s_logged;
-                mc2::fmt::print_err("[AMBIENT_GUARD] phase=begin pass=\"{}\" cmMiss={:d} dfMiss={:d} dwMiss={:d} (decl cm={:d} df={:d} dw={:d} | live cm={:d} df={:d} dw={:d})\n", mc2::fmt::safe(decl->note ? decl->note : "?"), mc2::fmt::as_i32((int)mm.colorMask), mc2::fmt::as_i32((int)mm.depthFunc), mc2::fmt::as_i32((int)mm.depthWrite), mc2::fmt::as_i32((int)decl->colorMaskOnEntry), mc2::fmt::as_i32((int)decl->depthFunc), mc2::fmt::as_i32((int)decl->depthWrite), mc2::fmt::as_i32((int)live.colorMask), mc2::fmt::as_i32((int)live.depthFunc), mc2::fmt::as_i32((int)live.depthWrite));
+                mc2::fmt::print_err("[AMBIENT_GUARD] phase=begin pass=\"{}\" cmMiss={:d} dfMiss={:d} dwMiss={:d} (decl cm={:d} df={:d} dw={:d} | live cm={:d} df={:d} dw={:d})\n", mc2::fmt::safe(decl->note ? decl->note : "?"), mc2::fmt::as_i32(static_cast<int>(mm.colorMask)), mc2::fmt::as_i32(static_cast<int>(mm.depthFunc)), mc2::fmt::as_i32(static_cast<int>(mm.depthWrite)), mc2::fmt::as_i32(static_cast<int>(decl->colorMaskOnEntry)), mc2::fmt::as_i32(static_cast<int>(decl->depthFunc)), mc2::fmt::as_i32(static_cast<int>(decl->depthWrite)), mc2::fmt::as_i32(static_cast<int>(live.colorMask)), mc2::fmt::as_i32(static_cast<int>(live.depthFunc)), mc2::fmt::as_i32(static_cast<int>(live.depthWrite)));
                 fflush(stderr);
             }
             if (s_fatal) abort();
@@ -1054,7 +1054,7 @@ void ambientProbeAtPassBegin(RenderCore::RenderPassId id) {
             static unsigned s_fboLogged = 0;
             if (s_fboLogged < 32u) {
                 ++s_fboLogged;
-                mc2::fmt::print_err("[FBO_GUARD] phase=begin passId={:d} declTarget={:d} actualTarget={:d} boundFbo={:d}\n", mc2::fmt::as_u32((unsigned)id), mc2::fmt::as_u32((unsigned)fboDecl), mc2::fmt::as_u32((unsigned)actual), mc2::fmt::as_i32((int)bound));
+                mc2::fmt::print_err("[FBO_GUARD] phase=begin passId={:d} declTarget={:d} actualTarget={:d} boundFbo={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(id)), mc2::fmt::as_u32(static_cast<unsigned>(fboDecl)), mc2::fmt::as_u32(static_cast<unsigned>(actual)), mc2::fmt::as_i32(static_cast<int>(bound)));
                 fflush(stderr);
             }
             if (s_fatal) abort();
@@ -1127,10 +1127,10 @@ extern "C" void mc2_ui_pass_sample_entry_ambient() {
     g_uiDrawText  = g_uiDrawTextCur;  g_uiDrawTextCur  = 0;
 
     ++g_uiEntrySamples;
-    const unsigned long cm = (unsigned long)sampleColorMask();
-    const unsigned long df = (unsigned long)sampleDepthFunc();
-    const unsigned long bl = (unsigned long)sampleBlend();
-    const unsigned long dw = (unsigned long)sampleDepthWrite();
+    const unsigned long cm = static_cast<unsigned long>(sampleColorMask());
+    const unsigned long df = static_cast<unsigned long>(sampleDepthFunc());
+    const unsigned long bl = static_cast<unsigned long>(sampleBlend());
+    const unsigned long dw = static_cast<unsigned long>(sampleDepthWrite());
     g_uiEntryColorMask = cm; g_uiEntryDepthFunc = df;
     g_uiEntryBlend = bl;     g_uiEntryDepthWrite = dw;
     if (!g_uiEntryLatched) {
@@ -1194,7 +1194,7 @@ extern "C" void mc2_ui_pass_check_ambient() {
         static unsigned s_uiLogged = 0;
         if (s_uiLogged < 32u) {
             ++s_uiLogged;
-            mc2::fmt::print_err("[UI_AMBIENT_GUARD] phase=begin pass=\"UI\" cmMiss={:d} dfMiss={:d} blMiss={:d} dwMiss={:d} vpMiss={:d} (decl cm={:d} df={:d} bl={:d} dw={:d} vp={:d} | live cm={:d} df={:d} bl={:d} dw={:d} vp={:d}) [observe-only]\n", mc2::fmt::as_i32((int)mm.colorMask), mc2::fmt::as_i32((int)mm.depthFunc), mc2::fmt::as_i32((int)mm.blend), mc2::fmt::as_i32((int)mm.depthWrite), mc2::fmt::as_i32((int)mm.viewport), mc2::fmt::as_i32((int)decl->colorMaskOnEntry), mc2::fmt::as_i32((int)decl->depthFunc), mc2::fmt::as_i32((int)decl->blend), mc2::fmt::as_i32((int)decl->depthWrite), mc2::fmt::as_i32((int)decl->viewport), mc2::fmt::as_i32((int)live.colorMask), mc2::fmt::as_i32((int)live.depthFunc), mc2::fmt::as_i32((int)live.blend), mc2::fmt::as_i32((int)live.depthWrite), mc2::fmt::as_i32((int)live.viewport));
+            mc2::fmt::print_err("[UI_AMBIENT_GUARD] phase=begin pass=\"UI\" cmMiss={:d} dfMiss={:d} blMiss={:d} dwMiss={:d} vpMiss={:d} (decl cm={:d} df={:d} bl={:d} dw={:d} vp={:d} | live cm={:d} df={:d} bl={:d} dw={:d} vp={:d}) [observe-only]\n", mc2::fmt::as_i32(static_cast<int>(mm.colorMask)), mc2::fmt::as_i32(static_cast<int>(mm.depthFunc)), mc2::fmt::as_i32(static_cast<int>(mm.blend)), mc2::fmt::as_i32(static_cast<int>(mm.depthWrite)), mc2::fmt::as_i32(static_cast<int>(mm.viewport)), mc2::fmt::as_i32(static_cast<int>(decl->colorMaskOnEntry)), mc2::fmt::as_i32(static_cast<int>(decl->depthFunc)), mc2::fmt::as_i32(static_cast<int>(decl->blend)), mc2::fmt::as_i32(static_cast<int>(decl->depthWrite)), mc2::fmt::as_i32(static_cast<int>(decl->viewport)), mc2::fmt::as_i32(static_cast<int>(live.colorMask)), mc2::fmt::as_i32(static_cast<int>(live.depthFunc)), mc2::fmt::as_i32(static_cast<int>(live.blend)), mc2::fmt::as_i32(static_cast<int>(live.depthWrite)), mc2::fmt::as_i32(static_cast<int>(live.viewport)));
             fflush(stderr);
         }
         // Intentionally NO abort() — observe-only until verified 0 across all tier1.
@@ -1434,7 +1434,7 @@ void executorOwnBeginTopLevel(PassIdentity passId, const char* callerHint) {
             if (mm.any()) {
                 ++g_topLevelFailures;
                 if (g_topLevelFailures <= kMaxTopLevelFailureLog)
-                    mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL ambient pass={} hint={} cmMiss={:d} dfMiss={:d} dwMiss={:d} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_i32((int)mm.colorMask), mc2::fmt::as_i32((int)mm.depthFunc), mc2::fmt::as_i32((int)mm.depthWrite), mc2::fmt::as_u32(g_topLevelFailures));
+                    mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL ambient pass={} hint={} cmMiss={:d} dfMiss={:d} dwMiss={:d} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_i32(static_cast<int>(mm.colorMask)), mc2::fmt::as_i32(static_cast<int>(mm.depthFunc)), mc2::fmt::as_i32(static_cast<int>(mm.depthWrite)), mc2::fmt::as_u32(g_topLevelFailures));
             }
         }
     }
@@ -1451,7 +1451,7 @@ void executorOwnBeginTopLevel(PassIdentity passId, const char* callerHint) {
             if (RenderCore::framegraph::fboMismatch(fboDecl, actual)) {
                 ++g_topLevelFailures;
                 if (g_topLevelFailures <= kMaxTopLevelFailureLog)
-                    mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL fbo pass={} hint={} declFbo={:d} actualFbo={:d} boundFbo={:d} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_u32((unsigned)fboDecl), mc2::fmt::as_u32((unsigned)actual), mc2::fmt::as_i32((int)bound), mc2::fmt::as_u32(g_topLevelFailures));
+                    mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL fbo pass={} hint={} declFbo={:d} actualFbo={:d} boundFbo={:d} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_u32(static_cast<unsigned>(fboDecl)), mc2::fmt::as_u32(static_cast<unsigned>(actual)), mc2::fmt::as_i32(static_cast<int>(bound)), mc2::fmt::as_u32(g_topLevelFailures));
             }
         }
     }
@@ -1474,7 +1474,7 @@ void executorOwnEndTopLevel(PassIdentity passId, const char* callerHint) {
         if (err != GL_NO_ERROR) {
             ++g_topLevelFailures;
             if (g_topLevelFailures <= kMaxTopLevelFailureLog)
-                mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL glGetError pass={} hint={} err=0x{:x} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_u32((unsigned)err), mc2::fmt::as_u32(g_topLevelFailures));
+                mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL glGetError pass={} hint={} err=0x{:x} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_u32(static_cast<unsigned>(err)), mc2::fmt::as_u32(g_topLevelFailures));
             // Clear the error state so downstream code doesn't trip on our sample.
             while (glGetError() != GL_NO_ERROR) {}
         }
@@ -1492,7 +1492,7 @@ void executorOwnEndTopLevel(PassIdentity passId, const char* callerHint) {
             if (RenderCore::framegraph::fboMismatch(fboDecl, actual)) {
                 ++g_topLevelFailures;
                 if (g_topLevelFailures <= kMaxTopLevelFailureLog)
-                    mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL fbo pass={} hint={} declFbo={:d} actualFbo={:d} boundFbo={:d} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_u32((unsigned)fboDecl), mc2::fmt::as_u32((unsigned)actual), mc2::fmt::as_i32((int)bound), mc2::fmt::as_u32(g_topLevelFailures));
+                    mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL fbo pass={} hint={} declFbo={:d} actualFbo={:d} boundFbo={:d} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_u32(static_cast<unsigned>(fboDecl)), mc2::fmt::as_u32(static_cast<unsigned>(actual)), mc2::fmt::as_i32(static_cast<int>(bound)), mc2::fmt::as_u32(g_topLevelFailures));
             }
         }
     }
