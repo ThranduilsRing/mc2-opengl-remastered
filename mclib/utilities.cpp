@@ -229,7 +229,7 @@ void StaticInfo::getData(unsigned char * buffer)
     auto* out=reinterpret_cast<DWORD*>(buffer);
     for (long y=0;y<vHeight;++y) for (long x=0;x<uWidth;++x) {
         const auto* pixel=image->pixels.data()+4*(x0+x+(y0+y)*image->width);
-        *out++=(DWORD(pixel[3])<<24)|(DWORD(pixel[0])<<16)|(DWORD(pixel[1])<<8)|pixel[2];
+        *out++=(static_cast<DWORD>(pixel[3])<<24)|(static_cast<DWORD>(pixel[0])<<16)|(static_cast<DWORD>(pixel[1])<<8)|pixel[2];
     }
 
 }

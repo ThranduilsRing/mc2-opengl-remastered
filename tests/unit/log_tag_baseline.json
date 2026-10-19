@@ -11836,6 +11836,18 @@
    "count": 1
   },
   {
+   "tag": "VK_TEXTURE_SERVICE",
+   "ver": 1,
+   "stream": "log",
+   "keys": [
+    "capacity",
+    "flights",
+    "placeholder",
+    "legacy_boundary"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_TIMELINE",
    "ver": 1,
    "stream": "stderr",
