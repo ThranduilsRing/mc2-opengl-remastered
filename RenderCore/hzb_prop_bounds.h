@@ -1,6 +1,7 @@
 // Conservative static-prop bounds for the Vulkan HZB color-pass consumer.
 #pragma once
 #include "gpu_abi/GpuStaticPropInstance.h"
+#include "axis_convert.h"
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
@@ -24,7 +25,9 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
         float stuff[3] = {};
         for (int a = 0; a < 3; ++a)
             for (int k = 0; k < 4; ++k) stuff[a] += p[k] * inst.modelMatrix[a*4+k];
-        const float world[4] = {-stuff[0], stuff[2], stuff[1], 1};
+        struct AxisPoint { float x, y, z; };
+        const auto render = mc2ToRender(AxisPoint{stuff[0], stuff[1], stuff[2]});
+        const float world[4] = {render.x, render.y, render.z, 1};
         float clip[4] = {};
         for (int a = 0; a < 4; ++a)
             for (int k = 0; k < 4; ++k) clip[a] += worldToClip[k*4+a] * world[k];

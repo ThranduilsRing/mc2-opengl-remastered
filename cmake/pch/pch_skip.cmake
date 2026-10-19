@@ -12,8 +12,6 @@ set(MC2_PCH_SKIP_gameos
     "GameOS/gameos/gos_materials.cpp"
     "GameOS/gameos/gos_mech_batcher.cpp"
     "GameOS/gameos/gos_postprocess.cpp"
-    "GameOS/gameos/gos_postprocess_diag.cpp"
-    "GameOS/gameos/gos_postprocess_effects.cpp"
     "GameOS/gameos/gos_postprocess_executor.cpp"
     "GameOS/gameos/gos_postprocess_fbo.cpp"
     "GameOS/gameos/gos_postprocess_gates.cpp"

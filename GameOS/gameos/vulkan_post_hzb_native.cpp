@@ -219,7 +219,8 @@ bool cache_prop_bounds(gosPostProcess::VkPostHzbNative* s, uint32_t generation) 
 }
 
 
-bool build_prop_cull(gosPostProcess::VkPostHzbNative* s, uint32_t count) {
+bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
+    auto* s = &state;
     if (s->cullCapacity >= count) return true;
     // The color pass can still be reading the old mask after the HZB ticket.
     // Only capacity growth replaces its storage/descriptors; retire every reader.
@@ -691,7 +692,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
         }
     }
 
-    if (!cache_prop_bounds(s, generation) || !build_prop_cull(s, feed.count)) {
+    if (!cache_prop_bounds(s, generation) || !build_prop_cull(*s, feed.count)) {
         setFallback("cull_resources_failed"); s->disabled = true; return false;
     }
     if (s->previousCount) {
