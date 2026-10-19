@@ -160,21 +160,7 @@ void Terrain::initMapData(PacketFile* pakFile, volatile float& percent, float pe
 
 		mapTopLeft3d.z = mapData->getTopLeftElevation();
 
-		// Upload an R32F height texture from the now-resident heightfield so the legacy
-		// terrain fragment shader can derive macroscopic surface normals (debug mode 10
-		// and the shadow-normal path). Visual-only; gameplay height
-		// (getTerrainElevation) remains authoritative. sizeof(PostcompVertex) = 32 with
-		// float elevation at byte 12.
-		if (mapData->getBlocks()) {
-			gos_uploadTerrainHeightTex(
-				(int)realVerticesMapSide,
-				mapData->getBlocks(),
-				(int)sizeof(PostcompVertex),
-				/*elevationOffset=*/12,
-				mapTopLeft3d.x,
-				mapTopLeft3d.y,
-				worldUnitsPerVertex);
-		}
+
 	}
 
 	percent += percentRange/5.f;

@@ -88,7 +88,6 @@ namespace gosFX { void DiagFrameTick(); }
 #include "gos_terrain_patch_stream.h"
 #include "gos_terrain_indirect.h"
 #include "gos_terrain_surface.h"                 // [TERRAIN_SURFACE] PR-2 producer
-#include "gos_terrain_height_tex.h"              // TERRAIN-NORMALS-FROM-HEIGHT-1
 #include "../../mclib/terrain_surface_trace.h"   // [TERRAIN_SURFACE v1] channel
 #include "../../mclib/terrain_surface_bands.h"   // [TERRAIN_SURFACE] PR-3 band config (single source)
 #include "gos_terrain_water_stream.h"

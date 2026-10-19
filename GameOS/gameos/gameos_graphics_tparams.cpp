@@ -388,29 +388,10 @@ void gos_SetTerrainCellBombParams(float scale, float jitter, float rotation) {
 void gos_SetTerrainPOMParams(float scale, float minLayers, float maxLayers) {
     if (g_gos_renderer) g_gos_renderer->setTerrainPOMParams(scale, minLayers, maxLayers);
 }
-void gos_SetTerrainDetailNormalTexture(unsigned int glTexId) {
-    // Legacy single-texture path — not used with per-material splatting, but terrtxm2 still calls it
-}
-void gos_SetTerrainDisplacementTexture(unsigned int glTexId) {
-    // Legacy single displacement — not used with per-material splatting
-}
-void gos_SetTerrainViewDir(float x, float y, float z) {
-    // View direction for POM — stored but not critical for tessellation path
-}
-unsigned int gos_CreateTerrainNormalTexture(const unsigned char* rgbaData, int width) {
-    GLuint texId = 0;
-    // TEX-CLASS: asset-pool -- terrain normal content texture factory
-    glGenTextures(1, &texId);
-    glBindTexture(GL_TEXTURE_2D, texId);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, width, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgbaData);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    mc2::fmt::print_out("[TESS] Created terrain normal texture: id={:d} size={:d}\n", mc2::fmt::as_u32(texId), mc2::fmt::as_i32(width));
-    return texId;
-}
+
+
+
+
 
 void gos_SetTerrainShadowSoftness(float s) {
     if (g_gos_renderer) g_gos_renderer->setTerrainShadowSoftness(s);
