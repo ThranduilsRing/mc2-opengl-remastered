@@ -181,7 +181,8 @@ void write_descriptors(TerrainIsland* s, int parity) {
     w[n].dstBinding = 1; w[n].descriptorCount = 1;
     w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &hInfo; ++n;
     VkDescriptorImageInfo cmInfo{};
-    if (s->colormapReady && s->colormapTexture && s->colormapSamp) {
+    // The dummy is a valid binding even when the real atlas is absent on editor reopen.
+    if (s->colormapTexture && s->colormapSamp) {
         cmInfo.sampler = s->colormapSamp.get(); cmInfo.imageView = s->colormapTexture.view();
         cmInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
