@@ -166,7 +166,7 @@ long CraterManager::init (long numCraters, unsigned long craterTypeSize, const c
 
 	//-----------------------------------------------------
 	// Setup pointer and initial values
-	craterList = static_cast<CraterDataPtr>(craterPosHeap->getHeapPtr());
+	craterList = reinterpret_cast<CraterDataPtr>(craterPosHeap->getHeapPtr());
 	memset(craterPosHeap->getHeapPtr(),-1,craterPosHeapSize);
 
 	return(NO_ERR);
