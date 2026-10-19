@@ -127,7 +127,7 @@ Mc2SharedSceneColor* mc2SharedSceneColorCreate(Mc2SharedSceneColorSlot slot,
         VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
         VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     if (!vkImageResourceCreate(&c->res, device, phys,
-                               (uint32_t)w, (uint32_t)h,
+                               static_cast<uint32_t>(w), static_cast<uint32_t>(h),
                                vkFormatForSlot(slot),
                                usage)) {
         mc2SharedSceneColorDestroy(c);

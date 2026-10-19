@@ -36,8 +36,8 @@ bool tgaFits(const uint8_t* bytes, size_t size) {
     if (size <= kHeader) return false;
     const size_t descLen = bytes[0];
     const uint8_t imageType = bytes[2];
-    const size_t w = (size_t)bytes[12] | ((size_t)bytes[13] << 8);
-    const size_t h = (size_t)bytes[14] | ((size_t)bytes[15] << 8);
+    const size_t w = static_cast<size_t>(bytes[12]) | (static_cast<size_t>(bytes[13]) << 8);
+    const size_t h = static_cast<size_t>(bytes[14]) | (static_cast<size_t>(bytes[15]) << 8);
     const size_t bpp = bytes[16];
     if (w == 0 || h == 0 || w > kMaxTgaEdge || h > kMaxTgaEdge) return false;
     if (imageType == 2)
@@ -57,7 +57,7 @@ std::optional<DecodedTexture> finishDecode(const Image& img, const char* nameFor
     const FORMAT fmt = img.getFormat();
     if (fmt != FORMAT_RGB8 && fmt != FORMAT_RGBA8) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected {}: unsupported pixel format {:d} (need RGB8 or RGBA8)",
-                mc2::fmt::safe(nameForLog ? nameForLog : "NO NAME"), mc2::fmt::as_i32((int)fmt));
+                mc2::fmt::safe(nameForLog ? nameForLog : "NO NAME"), mc2::fmt::as_i32(static_cast<int>(fmt)));
         return std::nullopt;
     }
     if (img.getWidth() <= 0 || img.getHeight() <= 0 || img.getPixels() == nullptr) {
@@ -70,7 +70,7 @@ std::optional<DecodedTexture> finishDecode(const Image& img, const char* nameFor
     out.width = img.getWidth();
     out.height = img.getHeight();
     out.layout = fmt == FORMAT_RGB8 ? PixelLayout::RGB8 : PixelLayout::RGBA8;
-    const size_t bytes = (size_t)out.width * (size_t)out.height * (out.layout == PixelLayout::RGB8 ? 3u : 4u);
+    const size_t bytes = static_cast<size_t>(out.width) * static_cast<size_t>(out.height) * (out.layout == PixelLayout::RGB8 ? 3u : 4u);
     out.pixels.assign(img.getPixels(), img.getPixels() + bytes);
     out.wantMipmaps = wantsMipmaps(hints);
     applyFormatPolicy(out, requested, isPng && mc2::gate::get<"MC2_PNG_MAGENTA_KEY">());
@@ -85,7 +85,7 @@ bool wantsMipmaps(DWORD hints) {
 
 void applyFormatPolicy(DecodedTexture& t, gos_TextureFormat requested, bool keyMagenta) {
     const bool rgba = t.layout == PixelLayout::RGBA8;
-    const size_t n = (size_t)t.width * (size_t)t.height;
+    const size_t n = static_cast<size_t>(t.width) * static_cast<size_t>(t.height);
     uint8_t* p = t.pixels.data();
     if (rgba && keyMagenta) {
         // Transparent so the key cuts out, black so bilinear filtering halos dark instead of pink.
@@ -117,7 +117,7 @@ std::optional<DecodedTexture> decodeFile(const char* path, gos_TextureFormat req
             const long n = std::ftell(f);
             std::fseek(f, 0, SEEK_SET);
             if (n > 0) {
-                bytes.resize((size_t)n);
+                bytes.resize(static_cast<size_t>(n));
                 if (std::fread(bytes.data(), 1, bytes.size(), f) != bytes.size()) bytes.clear();
             }
             std::fclose(f);
@@ -171,7 +171,7 @@ std::optional<DecodedTexture> makePlaceholder(int width, int height, gos_Texture
     out.layout = PixelLayout::RGBA8;
     out.format = requested;
     out.wantMipmaps = wantsMipmaps(hints);
-    const size_t n = (size_t)out.width * (size_t)out.height;
+    const size_t n = static_cast<size_t>(out.width) * static_cast<size_t>(out.height);
     out.pixels.resize(n * 4u);
     for (size_t i = 0; i < n; ++i) {
         out.pixels[i * 4 + 0] = 0xFF;
@@ -183,7 +183,7 @@ std::optional<DecodedTexture> makePlaceholder(int width, int height, gos_Texture
 }
 
 size_t bc7LevelBytes(uint32_t width, uint32_t height) {
-    return ((size_t)(width + 3u) / 4u) * ((size_t)(height + 3u) / 4u) * 16u;
+    return (static_cast<size_t>((width + 3u)) / 4u) * (static_cast<size_t>((height + 3u)) / 4u) * 16u;
 }
 
 std::vector<uint8_t> decodeBc7(const std::vector<uint8_t>& blocks, uint32_t width, uint32_t height) {
@@ -192,8 +192,8 @@ std::vector<uint8_t> decodeBc7(const std::vector<uint8_t>& blocks, uint32_t widt
         return {};
     RenderCore::KtxImage img;
     img.pixels = blocks;
-    img.width = (int)width;
-    img.height = (int)height;
+    img.width = static_cast<int>(width);
+    img.height = static_cast<int>(height);
     img.mipCount = 1;
     img.mipByteOffsets = {0};
     img.vkFormat = kVkFormatBc7Unorm;   // the decoder ignores the colour space: the bytes come out as stored

@@ -96,7 +96,7 @@ Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, const char** outRea
         VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
         VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     if (!vkImageResourceCreate(&d->res, device, phys,
-                               (uint32_t)w, (uint32_t)h,
+                               static_cast<uint32_t>(w), static_cast<uint32_t>(h),
                                VK_FORMAT_D32_SFLOAT_S8_UINT, usage)) {
         mc2SharedSceneDepthDestroy(d);
         return bail("vk_image_resource_create_failed");

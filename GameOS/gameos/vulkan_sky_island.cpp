@@ -164,7 +164,7 @@ bool ensure_hdri(Island* s, unsigned int glTex) {
         VkImageCreateInfo ii{};
         ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         ii.imageType = VK_IMAGE_TYPE_2D; ii.format = fmt;
-        ii.extent = {(uint32_t)w, (uint32_t)h, 1};
+        ii.extent = {static_cast<uint32_t>(w), static_cast<uint32_t>(h), 1};
         ii.mipLevels = mips; ii.arrayLayers = 1;
         ii.samples = VK_SAMPLE_COUNT_1_BIT; ii.tiling = VK_IMAGE_TILING_OPTIMAL;
         ii.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -180,7 +180,7 @@ bool ensure_hdri(Island* s, unsigned int glTex) {
 
     std::vector<VkDeviceSize> offs(levels.size());
     VkDeviceSize total = 0;
-    for (size_t i = 0; i < levels.size(); ++i) { offs[i] = total; total += (VkDeviceSize)((levels[i].size() + 15) & ~size_t(15)); }
+    for (size_t i = 0; i < levels.size(); ++i) { offs[i] = total; total += static_cast<VkDeviceSize>(((levels[i].size() + 15) & ~size_t(15))); }
     mc2vk::OwnedBuffer staging;   // released on return; submit_once has waited for the copy by then
     {
         VkBufferCreateInfo bci{};
@@ -192,7 +192,7 @@ bool ensure_hdri(Island* s, unsigned int glTex) {
     {
         void* p = staging.map();
         if (!p) return false;
-        for (size_t i = 0; i < levels.size(); ++i) std::memcpy((unsigned char*)p + offs[i], levels[i].data(), levels[i].size());
+        for (size_t i = 0; i < levels.size(); ++i) std::memcpy(static_cast<unsigned char*>(p) + offs[i], levels[i].data(), levels[i].size());
         staging.unmap();
     }
     const bool ok = submit_once(s, [&](VkCommandBuffer cb) {
@@ -207,7 +207,7 @@ bool ensure_hdri(Island* s, unsigned int glTex) {
             VkBufferImageCopy c{};
             c.bufferOffset = offs[i];
             c.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, i, 0, 1};
-            c.imageExtent = {(uint32_t)dims[i].first, (uint32_t)dims[i].second, 1};
+            c.imageExtent = {static_cast<uint32_t>(dims[i].first), static_cast<uint32_t>(dims[i].second), 1};
             vkCmdCopyBufferToImage(cb, staging.get(), s->hdriImg.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &c);
         }
         bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -218,7 +218,7 @@ bool ensure_hdri(Island* s, unsigned int glTex) {
     s->hdriReal = haveReal;
     vkDeviceWaitIdle(s->device);   // rare (<=2x per session): descriptor rewrite safety
     update_set(s);
-    vlog("HDRI %s import: %dx%d fmt=%d mips=%u glTex=%u (copy-once).", haveReal ? "REAL" : "DUMMY", w, h, (int)fmt, mips, glTex);
+    vlog("HDRI %s import: %dx%d fmt=%d mips=%u glTex=%u (copy-once).", haveReal ? "REAL" : "DUMMY", w, h, static_cast<int>(fmt), mips, glTex);
     return true;
 }
 
@@ -293,7 +293,7 @@ bool init_island(Island* s, int w, int h) {
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->rpass.get(); fci.attachmentCount = 2; fci.pAttachments = fbViews;
-        fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
+        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) { setFallback("framebuffer_failed"); return false; }
     }
     {   // descriptor: binding 0 = HDRI sampler
@@ -413,10 +413,10 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO; rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
-    VkRect2D scissor{{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
     vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());

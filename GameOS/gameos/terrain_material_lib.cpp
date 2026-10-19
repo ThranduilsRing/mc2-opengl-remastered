@@ -46,7 +46,7 @@ struct TinyJson {
     const char* p;
     const char* e;
 
-    void ws() { while (p < e && (unsigned char)*p <= 32) p++; }
+    void ws() { while (p < e && static_cast<unsigned char>(*p) <= 32) p++; }
 
     bool eat(char c) { ws(); if (p < e && *p == c) { p++; return true; } return false; }
 
@@ -56,14 +56,14 @@ struct TinyJson {
         p++;
         const char* s = p;
         while (p < e && *p != '"' && *p != '\\') p++;
-        std::string r(s, (size_t)(p - s));
+        std::string r(s, static_cast<size_t>((p - s)));
         if (p < e) p++;  // skip closing "
         return r;
     }
 
     float num() {
         ws(); char* ep = nullptr;
-        float v = (float)strtod(p, &ep);
+        float v = static_cast<float>(strtod(p, &ep));
         if (ep != p) p = ep;
         return v;
     }
@@ -85,7 +85,7 @@ struct TinyJson {
         } else {
             char* ep = nullptr; strtod(p, &ep);
             if (ep != p) { p = ep; }
-            else while (p < e && *p != ',' && *p != '}' && *p != ']' && (unsigned char)*p > 32) p++;
+            else while (p < e && *p != ',' && *p != '}' && *p != ']' && static_cast<unsigned char>(*p) > 32) p++;
         }
     }
 
@@ -242,8 +242,8 @@ void terrainMaterials_apply(const char* /*missionName*/) {
         return;
     }
 
-    std::string buf((size_t)sz, '\0');
-    fread(&buf[0], 1, (size_t)sz, f);
+    std::string buf(static_cast<size_t>(sz), '\0');
+    fread(&buf[0], 1, static_cast<size_t>(sz), f);
     fclose(f);
 
     std::map<std::string,float> v;
@@ -347,5 +347,5 @@ void terrainMaterials_apply(const char* /*missionName*/) {
         getf(v, "classify_dirt_rBrightLo",  0.22f),
         getf(v, "classify_dirt_rBrightHi",  0.45f));
 
-    mc2::fmt::print_err("[TerrainMaterialLib] applied {:d} keys from '{}'\n", mc2::fmt::as_i32((int)v.size()), mc2::fmt::safe(path));
+    mc2::fmt::print_err("[TerrainMaterialLib] applied {:d} keys from '{}'\n", mc2::fmt::as_i32(static_cast<int>(v.size())), mc2::fmt::safe(path));
 }

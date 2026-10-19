@@ -362,7 +362,7 @@ bool upload_scheme_image(MechIsland* s, MechIsland::TexEntry& e,
     if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "mech.staging")) return false;
     { void* p = stg.map();
       if (!p) return false;
-      std::memcpy(p, bytes, (size_t)byteCount); stg.unmap(); }
+      std::memcpy(p, bytes, static_cast<size_t>(byteCount)); stg.unmap(); }
 
     if (!e.img.createSampled2D(s->allocator, s->device, fmt, w, h, 1, 0, "mech.texture")) return false;
     VkCommandBuffer cb = cp_begin(s);
@@ -442,7 +442,7 @@ VkImageView get_tex_view(MechIsland* s, uint32_t gosHandle, bool* pending) {
     if (w == 0 || h == 0 || w > 8192 || h > 8192) return dummy;
     MechIsland::TexEntry t; t.gosHandle = gosHandle;
     if (!upload_scheme_image(s, t, w, h, mc2vk::texelFormat(texels.vkFormat), texels.bytes->data(),
-                             (VkDeviceSize)texels.bytes->size()))
+                             static_cast<VkDeviceSize>(texels.bytes->size())))
         return dummy;
     const VkImageView cachedView = t.view.get();
     s->textures.push_back(std::move(t));
@@ -593,7 +593,7 @@ bool init_island(MechIsland* s, int w, int h) {
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
-        fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
+        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) { setFallback("framebuffer_failed"); return false; }
     }
 
@@ -771,10 +771,10 @@ bool upload_geometry_once(MechIsland* s) {
         return false;
     }
     s->geomGen = feed.geomGen;
-    g_health.geomVerts = (unsigned long)(feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1));
+    g_health.geomVerts = static_cast<unsigned long>((feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1)));
     s->geomUploaded = true;
     vlog("mech geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u source=cpu-native.",
-         (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes, feed.vertexStride);
+         static_cast<unsigned long long>(feed.vboBytes), static_cast<unsigned long long>(feed.iboBytes), feed.vertexStride);
     return true;
 }
 
@@ -872,15 +872,15 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     // strand it unsignalled. The ring slot belongs to the frame, not to the island's parity, so staging here races nothing.
     mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
     const VkDeviceSize ringAlign = rctx.frameAlignment();
-    const VkDeviceSize instBytes = (VkDeviceSize)feed.instanceCount * 64ull;
-    const VkDeviceSize boneBytes = (VkDeviceSize)(feed.boneCount ? feed.boneCount : 1) * 64ull;
+    const VkDeviceSize instBytes = static_cast<VkDeviceSize>(feed.instanceCount) * 64ull;
+    const VkDeviceSize boneBytes = static_cast<VkDeviceSize>((feed.boneCount ? feed.boneCount : 1)) * 64ull;
     const bool nativeLight = feed.lightDataCpu && feed.lightDataCpuBytes >= 3600ull;
     int poolN = (feed.poolLights48 && feed.numPoolLights > 0) ? feed.numPoolLights : 0;
-    if (poolN > (int)kMaxPoolLights) poolN = (int)kMaxPoolLights;
+    if (poolN > (int)kMaxPoolLights) poolN = static_cast<int>(kMaxPoolLights);
     const VkDeviceSize instOff = mc2vk::alignUp(sizeof(MechFrameUBO), ringAlign);
     const VkDeviceSize boneOff = mc2vk::alignUp(instOff + (instBytes ? instBytes : 64ull), ringAlign);
     const VkDeviceSize poolOff = mc2vk::alignUp(boneOff + boneBytes, ringAlign);
-    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + (VkDeviceSize)(poolN > 0 ? poolN : 1) * 48ull);
+    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + static_cast<VkDeviceSize>((poolN > 0 ? poolN : 1)) * 48ull);
     if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
     uint8_t* const mainPtr = static_cast<uint8_t*>(mainSpan.ptr);
 
@@ -897,8 +897,8 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     const clk::time_point tStage0 = clk::now();
     // Upload instance + bone snapshots into the frame span.
     { ZoneScopedN("VK-mech-instance-bone-upload");   // VK-FLIP-FIELD-REPORT-1: per-frame skinning feed staging
-      if (instBytes) std::memcpy(mainPtr + instOff, feed.instances64, (size_t)instBytes);
-      if (feed.boneCount) std::memcpy(mainPtr + boneOff, feed.bones64, (size_t)(feed.boneCount * 64ull)); }
+      if (instBytes) std::memcpy(mainPtr + instOff, feed.instances64, static_cast<size_t>(instBytes));
+      if (feed.boneCount) std::memcpy(mainPtr + boneOff, feed.bones64, static_cast<size_t>((feed.boneCount * 64ull))); }
     g_health.instRecords = feed.instanceCount;
     g_health.boneRecords = feed.boneCount;
 
@@ -914,8 +914,8 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         lightSpan = mc2vkSharedLightFeedAcquire(feed.lightDataCpu, feed.lightDataCpuBytes);
         if (!lightSpan) {
             ZoneScopedN("VKIsl.Mech.LightFeed");   // VK-ISLAND-TRACY-1: per-frame LightsData CPU->VK copy (own-span path)
-            lightSpan = rctx.frameAlloc((VkDeviceSize)feed.lightDataCpuBytes);
-            if (lightSpan) std::memcpy(lightSpan.ptr, feed.lightDataCpu, (size_t)feed.lightDataCpuBytes);
+            lightSpan = rctx.frameAlloc(static_cast<VkDeviceSize>(feed.lightDataCpuBytes));
+            if (lightSpan) std::memcpy(lightSpan.ptr, feed.lightDataCpu, static_cast<size_t>(feed.lightDataCpuBytes));
         }
         s->lightingReady = static_cast<bool>(lightSpan);
     }
@@ -977,12 +977,12 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     rbi.clearValueCount = 0; rbi.pClearValues = nullptr;   // all LOAD
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
-    VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
-    VkRect2D scissor{{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
 
@@ -1118,7 +1118,7 @@ extern "C" void mc2_vk_mech_island_destroy() {
     if (parked && parked->gpuTimer.supported && parked->gpuTimer.samples > 0) {
         vlog("GPU_TIMESTAMPS samples=%llu gpu_pass_us=%.1f gpu_setup_us=%.1f gpu_draw_us=%.1f "
              "(cpu_draw_us=%.1f incl. record+submit+fence-wait)",
-             (unsigned long long)parked->gpuTimer.samples,
+             static_cast<unsigned long long>(parked->gpuTimer.samples),
              parked->gpuTimer.avgTotalUs(),
              parked->gpuTimer.avgGapUs(1),
              parked->gpuTimer.avgGapUs(2),

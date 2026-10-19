@@ -56,21 +56,21 @@ const int constantSizes[] = {
 void init_func_ptrs(UNIFORM_FUNC (&uniformFuncs)[15])
 {
 	// changed fromARB variants, to work with CORE profile as well (because *ARB variants are not initialized in case of CORE profile)
-    uniformFuncs[CONSTANT_FLOAT] = (UNIFORM_FUNC) glUniform1fv;
-    uniformFuncs[CONSTANT_VEC2]  = (UNIFORM_FUNC) glUniform2fv;
-    uniformFuncs[CONSTANT_VEC3]  = (UNIFORM_FUNC) glUniform3fv;
-    uniformFuncs[CONSTANT_VEC4]  = (UNIFORM_FUNC) glUniform4fv;
-    uniformFuncs[CONSTANT_INT]   = (UNIFORM_FUNC) glUniform1iv;
-    uniformFuncs[CONSTANT_IVEC2] = (UNIFORM_FUNC) glUniform2iv;
-    uniformFuncs[CONSTANT_IVEC3] = (UNIFORM_FUNC) glUniform3iv;
-    uniformFuncs[CONSTANT_IVEC4] = (UNIFORM_FUNC) glUniform4iv;
-    uniformFuncs[CONSTANT_BOOL]  = (UNIFORM_FUNC) glUniform1iv;
-    uniformFuncs[CONSTANT_BVEC2] = (UNIFORM_FUNC) glUniform2iv;
-    uniformFuncs[CONSTANT_BVEC3] = (UNIFORM_FUNC) glUniform3iv;
-    uniformFuncs[CONSTANT_BVEC4] = (UNIFORM_FUNC) glUniform4iv;
-    uniformFuncs[CONSTANT_MAT2]  = (UNIFORM_FUNC) glUniformMatrix2fv;
-    uniformFuncs[CONSTANT_MAT3]  = (UNIFORM_FUNC) glUniformMatrix3fv;
-    uniformFuncs[CONSTANT_MAT4]  = (UNIFORM_FUNC) glUniformMatrix4fv;
+    uniformFuncs[CONSTANT_FLOAT] = reinterpret_cast<UNIFORM_FUNC>(glUniform1fv);
+    uniformFuncs[CONSTANT_VEC2]  = reinterpret_cast<UNIFORM_FUNC>(glUniform2fv);
+    uniformFuncs[CONSTANT_VEC3]  = reinterpret_cast<UNIFORM_FUNC>(glUniform3fv);
+    uniformFuncs[CONSTANT_VEC4]  = reinterpret_cast<UNIFORM_FUNC>(glUniform4fv);
+    uniformFuncs[CONSTANT_INT]   = reinterpret_cast<UNIFORM_FUNC>(glUniform1iv);
+    uniformFuncs[CONSTANT_IVEC2] = reinterpret_cast<UNIFORM_FUNC>(glUniform2iv);
+    uniformFuncs[CONSTANT_IVEC3] = reinterpret_cast<UNIFORM_FUNC>(glUniform3iv);
+    uniformFuncs[CONSTANT_IVEC4] = reinterpret_cast<UNIFORM_FUNC>(glUniform4iv);
+    uniformFuncs[CONSTANT_BOOL]  = reinterpret_cast<UNIFORM_FUNC>(glUniform1iv);
+    uniformFuncs[CONSTANT_BVEC2] = reinterpret_cast<UNIFORM_FUNC>(glUniform2iv);
+    uniformFuncs[CONSTANT_BVEC3] = reinterpret_cast<UNIFORM_FUNC>(glUniform3iv);
+    uniformFuncs[CONSTANT_BVEC4] = reinterpret_cast<UNIFORM_FUNC>(glUniform4iv);
+    uniformFuncs[CONSTANT_MAT2]  = reinterpret_cast<UNIFORM_FUNC>(glUniformMatrix2fv);
+    uniformFuncs[CONSTANT_MAT3]  = reinterpret_cast<UNIFORM_FUNC>(glUniformMatrix3fv);
+    uniformFuncs[CONSTANT_MAT4]  = reinterpret_cast<UNIFORM_FUNC>(glUniformMatrix4fv);
 }
 
 namespace {
@@ -584,7 +584,7 @@ bool trySpirvSpecialize(GLuint shader, const char* fname, const char* prefix)
     }
     std::streamsize sz = in.tellg();
     in.seekg(0);
-    std::vector<char> blob(sz > 0 ? (size_t)sz : 0);
+    std::vector<char> blob(sz > 0 ? static_cast<size_t>(sz) : 0);
     if (sz <= 0 || !in.read(blob.data(), sz)) {
         SHADER_LOG_ERROR("[SPIRV] failed to read {}; GLSL fallback", spvPath.c_str());
         return false;
@@ -824,7 +824,7 @@ void parse_uniforms(GLuint pprogram, glsl_program::UniArr_t* puniforms, glsl_pro
 			glsl_sampler* psampler = new glsl_sampler;
 			psampler->index_ =  glGetUniformLocation(pprogram, buf);
 			psampler->name_ = buf;
-			psampler->type_ = (SamplerType)(type - GL_SAMPLER_1D);
+			psampler->type_ = static_cast<SamplerType>((type - GL_SAMPLER_1D));
 
 			assert(psampler->type_ <= SAMPLER_2D_SHADOW);
 
@@ -893,12 +893,12 @@ void parse_uniforms(GLuint pprogram, glsl_program::UniArr_t* puniforms, glsl_pro
                 // Map float-vector and matrix GL types to ConstantType by offset from
                 // GL_FLOAT_VEC2. Validate bounds before indexing typeNames[].
                 const ConstantType ct =
-                    (ConstantType)(CONSTANT_VEC2 + (int)(type - GL_FLOAT_VEC2));
+                    static_cast<ConstantType>((CONSTANT_VEC2 + static_cast<int>((type - GL_FLOAT_VEC2))));
                 if (ct < CONSTANT_VEC2 || ct > CONSTANT_MAT4) {
                     // Unknown type (e.g. uint arrays, double, image units).
                     // Bridge sets these via direct glUniform calls; skip caching.
                     MC2_LOG_DBG(Shader, Info, "name: {} type: unknown (GL type=0x{:x}, skipped)",
-                             mc2::fmt::safe(buf), mc2::fmt::as_u32((unsigned)type));
+                             mc2::fmt::safe(buf), mc2::fmt::as_u32(static_cast<unsigned>(type)));
                     delete puni;
                     continue;
                 }
@@ -1191,9 +1191,9 @@ void glsl_program::apply()
         if(puni->is_dirty_)
         {
             if (puni->type_ >= CONSTANT_MAT2){
-                ((UNIFORM_MAT_FUNC) uniformFuncs[puni->type_])(puni->index_, puni->num_el_, GL_TRUE, (float *) puni->data_);
+                (reinterpret_cast<UNIFORM_MAT_FUNC>(uniformFuncs[puni->type_]))(puni->index_, puni->num_el_, GL_TRUE, reinterpret_cast<float *>(puni->data_));
             } else {
-                uniformFuncs[puni->type_](puni->index_, puni->num_el_, (float *) puni->data_);
+                uniformFuncs[puni->type_](puni->index_, puni->num_el_, reinterpret_cast<float *>(puni->data_));
                 if(GL_INVALID_OPERATION == glGetError())
                     SHADER_LOG_ERROR("Error setting variable");
             }

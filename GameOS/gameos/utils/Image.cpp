@@ -421,7 +421,7 @@ bool Image::loadTGA(FILE* file)
 	bool rv = false;
 	unsigned char *readPixels = nullptr;
 
-	if (header.imageType == (unsigned char)TGADataType::kUncompressedRGB) {
+	if (header.imageType == static_cast<unsigned char>(TGADataType::kUncompressedRGB)) {
 
 		int size = header.width * header.height * pixelSize;
 		readPixels = new unsigned char[size];
@@ -429,7 +429,7 @@ bool Image::loadTGA(FILE* file)
 
 		rv = loadTGA(&header, readPixels);
 	}
-	else if(header.imageType == (unsigned char)TGADataType::kRLERGB) {
+	else if(header.imageType == static_cast<unsigned char>(TGADataType::kRLERGB)) {
 
 		size_t fpos = ftell(file);
 		fseek(file, 0, SEEK_END);
@@ -472,14 +472,14 @@ bool Image::loadTGA(const unsigned char* mem, size_t len)
 	bool rv = false;
 
 
-	if (header.imageType == (unsigned char)TGADataType::kUncompressedRGB) {
+	if (header.imageType == static_cast<unsigned char>(TGADataType::kUncompressedRGB)) {
 		assert(len >= header.width * header.height * pixelSize);
 		readPixels = new unsigned char[size];
 		memcpy(readPixels, mem, size);
 		rv = loadTGA(&header, readPixels);
 		delete[] readPixels;
 	}
-	else if(header.imageType == (unsigned char)TGADataType::kRLERGB) {
+	else if(header.imageType == static_cast<unsigned char>(TGADataType::kRLERGB)) {
 		rv = loadCompressedTGA(&header, mem, len);
 	}
 
@@ -511,7 +511,7 @@ bool Image::loadTGA(const TGAHeader* header, unsigned char* readPixels)
 			dest = pixels = new unsigned char[width * height * 4];
 			for (y = 0; y < height; y++){
 				for (x = 0; x < width; x++){
-					unsigned short tempPixel = *((unsigned short *) src);
+					unsigned short tempPixel = *(reinterpret_cast<unsigned short *>(src));
 
 					dest[0] = ((tempPixel >> 10) & 0x1F) << 3;
 					dest[1] = ((tempPixel >>  5) & 0x1F) << 3;
@@ -570,7 +570,7 @@ static void mergeBytes(unsigned char *dest, unsigned char *src, int pixelSize)
 		*dest++ = src[0];
 	}
 	else if (pixelSize == 2) {
-		unsigned short tempPixel = *((unsigned short *)src);
+		unsigned short tempPixel = *(reinterpret_cast<unsigned short *>(src));
 		dest[0] = ((tempPixel >> 10) & 0x1F) << 3;
 		dest[1] = ((tempPixel >> 5) & 0x1F) << 3;
 		dest[2] = ((tempPixel) & 0x1F) << 3;

@@ -49,7 +49,7 @@ struct TinyJson {
     const char* p;
     const char* e;
 
-    void ws() { while (p < e && (unsigned char)*p <= 32) p++; }
+    void ws() { while (p < e && static_cast<unsigned char>(*p) <= 32) p++; }
 
     bool eat(char c) { ws(); if (p < e && *p == c) { p++; return true; } return false; }
 
@@ -59,14 +59,14 @@ struct TinyJson {
         p++;
         const char* s = p;
         while (p < e && *p != '"' && *p != '\\') p++;
-        std::string r(s, (size_t)(p - s));
+        std::string r(s, static_cast<size_t>((p - s)));
         if (p < e) p++;  // skip closing "
         return r;
     }
 
     float num() {
         ws(); char* ep = nullptr;
-        float v = (float)strtod(p, &ep);
+        float v = static_cast<float>(strtod(p, &ep));
         if (ep != p) p = ep;
         return v;
     }
@@ -88,7 +88,7 @@ struct TinyJson {
         } else {
             char* ep = nullptr; strtod(p, &ep);
             if (ep != p) { p = ep; }
-            else while (p < e && *p != ',' && *p != '}' && *p != ']' && (unsigned char)*p > 32) p++;
+            else while (p < e && *p != ',' && *p != '}' && *p != ']' && static_cast<unsigned char>(*p) > 32) p++;
         }
     }
 
@@ -277,8 +277,8 @@ void visualTuning_applyProfile(const char* missionName) {
     rewind(f);
     if (sz <= 0 || sz > 512 * 1024) { fclose(f); return; }
 
-    std::string buf((size_t)sz, '\0');
-    fread(&buf[0], 1, (size_t)sz, f);
+    std::string buf(static_cast<size_t>(sz), '\0');
+    fread(&buf[0], 1, static_cast<size_t>(sz), f);
     fclose(f);
     s_hasFile = true;
 
@@ -349,8 +349,8 @@ bool visualTuning_saveCurrentToMission() {
         fseek(f, 0, SEEK_END);
         long sz = ftell(f); rewind(f);
         if (sz > 0 && sz <= 512 * 1024) {
-            std::string buf((size_t)sz, '\0');
-            fread(&buf[0], 1, (size_t)sz, f);
+            std::string buf(static_cast<size_t>(sz), '\0');
+            fread(&buf[0], 1, static_cast<size_t>(sz), f);
             TinyJson jp{ buf.c_str(), buf.c_str() + buf.size() };
             jp.root(defs, missions);
         }
@@ -369,7 +369,7 @@ bool visualTuning_saveCurrentToMission() {
 
     // Keep state consistent: next Reset to Profile will re-apply what we just saved.
     s_hasFile    = true;
-    s_appliedKeys = (int)current.size();
-    mc2::fmt::print_err("[VisualTuning] saved {:d} keys for mission '{}' to '{}'\n", mc2::fmt::as_i32((int)current.size()), mc2::fmt::safe(s_activeMission), mc2::fmt::safe(s_profilePath));
+    s_appliedKeys = static_cast<int>(current.size());
+    mc2::fmt::print_err("[VisualTuning] saved {:d} keys for mission '{}' to '{}'\n", mc2::fmt::as_i32(static_cast<int>(current.size())), mc2::fmt::safe(s_activeMission), mc2::fmt::safe(s_profilePath));
     return true;
 }

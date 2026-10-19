@@ -175,7 +175,7 @@ void cp_end(Island* s, VkCommandBuffer cb) {
 bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, VkFormat fmt, const void* bytes, VkDeviceSize byteCount) {
     mc2vk::OwnedBuffer stg;   // released on return; cp_end has waited for the copy by then
     if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "legacyshape.staging")) return false;
-    if (!upload_host(stg, bytes, (size_t)byteCount)) return false;
+    if (!upload_host(stg, bytes, static_cast<size_t>(byteCount))) return false;
 
     if (!e.img.createSampled2D(s->allocator, s->device, fmt, w, h, 1, 0, "legacyshape.texture")) return false;
     VkCommandBuffer cb = cp_begin(s);
@@ -246,7 +246,7 @@ TexEntry* get_tex(Island* s, uint32_t texNode, uint32_t gosHandle) {
 
     TexEntry t;
     if (!upload_image(s, t, w, h, mc2vk::texelFormat(texels.vkFormat), texels.bytes->data(),
-                      (VkDeviceSize)texels.bytes->size()) ||
+                      static_cast<VkDeviceSize>(texels.bytes->size())) ||
         !alloc_tex_sets(s, t)) {
         return &s->dummyTex;   // `t` releases whatever it created
     }
@@ -348,7 +348,7 @@ bool init_island(Island* s, int w, int h) {
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
-        fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
+        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) { setFallback("framebuffer_failed"); return false; }
     }
 
@@ -532,7 +532,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     for (const Mc2LegacyMlrDraw& d : draws) {
         TexEntry* t = get_tex(s, d.texNode, d.gosTexHandle);
         list.push_back({t ? t : &s->dummyTex, &d, totalBytes});
-        totalBytes += (VkDeviceSize)d.vertexCount * kVertexStride;
+        totalBytes += static_cast<VkDeviceSize>(d.vertexCount) * kVertexStride;
     }
 
     // The frame UBO and the vertex stream go into the engine frame ring BEFORE beginFrame (a ring failure after it could strand the fence). The ring slot
@@ -550,7 +550,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     {   // per-frame vertex stream + UBO
         uint8_t* const base = static_cast<uint8_t*>(span.ptr);
         for (const Resolved& r : list)
-            std::memcpy(base + vtxOff + r.byteOff, r.d->vertices, (size_t)r.d->vertexCount * kVertexStride);
+            std::memcpy(base + vtxOff + r.byteOff, r.d->vertices, static_cast<size_t>(r.d->vertexCount) * kVertexStride);
         LegacyFrameUBO u{};
         const float* proj = gos_GetProj2ScreenMat4();
         if (proj) std::memcpy(u.proj, proj, sizeof(u.proj));
@@ -576,10 +576,10 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
-    VkRect2D scissor{{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
     VkDeviceSize vertexOffset = span.offset + vtxOff;
@@ -594,7 +594,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 1, &uboOffset);
             boundSet = set;
         }
-        const uint32_t pass = (r.d->pass < MC2_LEGACY_PASS_COUNT) ? r.d->pass : (uint32_t)MC2_LEGACY_PASS_SOLID;
+        const uint32_t pass = (r.d->pass < MC2_LEGACY_PASS_COUNT) ? r.d->pass : static_cast<uint32_t>(MC2_LEGACY_PASS_SOLID);
         if (pass != boundPass) {
             vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipes[pass].get());
             boundPass = pass;
@@ -604,7 +604,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
                                 (pass == MC2_LEGACY_PASS_ADD ? 2u : 0u) |
                                 (pass == MC2_LEGACY_PASS_SOLID ? 4u : 0u);
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4, &pflags);
-        vkCmdDraw(cb, r.d->vertexCount, 1, (uint32_t)(r.byteOff / kVertexStride), 0);
+        vkCmdDraw(cb, r.d->vertexCount, 1, static_cast<uint32_t>((r.byteOff / kVertexStride)), 0);
         ++drawn; verts += r.d->vertexCount;
     }
     vkCmdEndRenderPass(cb);

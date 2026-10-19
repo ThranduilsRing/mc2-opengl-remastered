@@ -434,7 +434,7 @@ bool init_island(ShadowIsland* s, int size) {
     // + DEPTH_STENCIL_ATTACHMENT (VK renders into it). Non-exportable (VK-RUNG8-ITEM6). ----
     const bool directChain = kShadowDirectChain;
     bool ok = vkImageResourceCreate(&s->depthResource, s->device, s->phys,
-                                    (uint32_t)size, (uint32_t)size, kDepthFmt,
+                                    static_cast<uint32_t>(size), static_cast<uint32_t>(size), kDepthFmt,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                                     VK_IMAGE_USAGE_SAMPLED_BIT);
     if (ok) mc2vk::nameObject(s->device, s->depthResource.image.get(), "shadow.depthResource");
@@ -516,7 +516,7 @@ bool init_island(ShadowIsland* s, int size) {
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         const VkImageView attView = s->depthAttView.get();
         fci.renderPass = s->rpass.get(); fci.attachmentCount = 1; fci.pAttachments = &attView;
-        fci.width = (uint32_t)size; fci.height = (uint32_t)size; fci.layers = 1;
+        fci.width = static_cast<uint32_t>(size); fci.height = static_cast<uint32_t>(size); fci.layers = 1;
         if (!mc2vk::create(s->fb, s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
             vlog("vkCreateFramebuffer failed."); return false;
         }
@@ -652,7 +652,7 @@ bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
 
     // VK-RUNG8-ITEM6: non-exportable; consumed via VkImageView (csmFullMapDepthAttView).
     bool ok = vkImageResourceCreate(&s->csmFullMapResource, s->device, s->phys,
-                                    (uint32_t)size, (uint32_t)size, kDepthFmt,
+                                    static_cast<uint32_t>(size), static_cast<uint32_t>(size), kDepthFmt,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                                     VK_IMAGE_USAGE_SAMPLED_BIT);
     if (ok) mc2vk::nameObject(s->device, s->csmFullMapResource.image.get(), "shadow.csmFullMap");
@@ -679,8 +679,8 @@ bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
     fci.renderPass = s->rpass.get();
     fci.attachmentCount = 1;
     fci.pAttachments = &fullMapView;
-    fci.width = (uint32_t)size;
-    fci.height = (uint32_t)size;
+    fci.width = static_cast<uint32_t>(size);
+    fci.height = static_cast<uint32_t>(size);
     fci.layers = 1;
     if (!mc2vk::create(s->csmFullMapFb, s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
         setFallback("csm_fullmap_framebuffer_failed");
@@ -710,7 +710,7 @@ bool ensure_csm_array_target(ShadowIsland* s, int size, uint32_t layers) {
     ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     ici.imageType = VK_IMAGE_TYPE_2D;
     ici.format = kDepthFmt;
-    ici.extent = {(uint32_t)size, (uint32_t)size, 1};
+    ici.extent = {static_cast<uint32_t>(size), static_cast<uint32_t>(size), 1};
     ici.mipLevels = 1;
     ici.arrayLayers = layers;
     ici.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -754,8 +754,8 @@ bool ensure_csm_array_target(ShadowIsland* s, int size, uint32_t layers) {
         fci.renderPass = s->rpass.get();
         fci.attachmentCount = 1;
         fci.pAttachments = &layerView;
-        fci.width = (uint32_t)size;
-        fci.height = (uint32_t)size;
+        fci.width = static_cast<uint32_t>(size);
+        fci.height = static_cast<uint32_t>(size);
         fci.layers = 1;
         if (!mc2vk::create(s->csmArrayFbs[layer], s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
             setFallback("csm_array_framebuffer_failed");
@@ -793,8 +793,8 @@ bool upload_geometry_once(ShadowIsland* s) {
     uint64_t vboBytes = 0, iboBytes = 0;
     if (!mc2_static_prop_geometry_cpu(&vboCpu, &vboBytes, &iboCpu, &iboBytes)) return false;
     if (vboBytes == 0 || iboBytes == 0 || vboBytes != feed.vboBytes || iboBytes != feed.iboBytes) {
-        vlog("geometry declined: CPU copy %llu/%llu bytes != feed %llu/%llu.", (unsigned long long)vboBytes,
-             (unsigned long long)iboBytes, (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes);
+        vlog("geometry declined: CPU copy %llu/%llu bytes != feed %llu/%llu.", static_cast<unsigned long long>(vboBytes),
+             static_cast<unsigned long long>(iboBytes), static_cast<unsigned long long>(feed.vboBytes), static_cast<unsigned long long>(feed.iboBytes));
         return false;
     }
 
@@ -806,11 +806,11 @@ bool upload_geometry_once(ShadowIsland* s) {
     if (!make_buffer(s, s->ibo, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, true, "shadow.ibo")) return false;
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, s->vbo.allocation(), &p) != VK_SUCCESS) return false;
-      std::memcpy(p, vboCpu, (size_t)vboBytes);
+      std::memcpy(p, vboCpu, static_cast<size_t>(vboBytes));
       vmaFlushAllocation(s->allocator, s->vbo.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->vbo.allocation()); }
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, s->ibo.allocation(), &p) != VK_SUCCESS) return false;
-      std::memcpy(p, iboCpu, (size_t)iboBytes);
+      std::memcpy(p, iboCpu, static_cast<size_t>(iboBytes));
       vmaFlushAllocation(s->allocator, s->ibo.allocation(), 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->ibo.allocation()); }
 
     s->packets.assign(feed.packets, feed.packets + feed.packetCount);
@@ -821,10 +821,10 @@ bool upload_geometry_once(ShadowIsland* s) {
         s->typeRuns[t].firstPacket = feed.typeFirstPacket[t];
         s->typeRuns[t].packetCount = feed.typePacketCount[t];
     }
-    g_health.geomVerts = (unsigned long)(feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1));
+    g_health.geomVerts = static_cast<unsigned long>((feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1)));
     s->geomUploaded = true;
     vlog("caster geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u packets=%u types=%u.",
-         (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes,
+         static_cast<unsigned long long>(feed.vboBytes), static_cast<unsigned long long>(feed.iboBytes),
          feed.vertexStride, feed.packetCount, feed.typeCount);
     return true;
 }
@@ -868,17 +868,17 @@ uint32_t diagCrc(const unsigned char* p, size_t n, uint32_t crc) {
     return crc ^ 0xFFFFFFFFu;
 }
 void diagBe32(std::vector<unsigned char>& o, uint32_t v) {
-    o.push_back((unsigned char)(v >> 24)); o.push_back((unsigned char)(v >> 16));
-    o.push_back((unsigned char)(v >> 8));  o.push_back((unsigned char)v);
+    o.push_back(static_cast<unsigned char>((v >> 24))); o.push_back(static_cast<unsigned char>((v >> 16)));
+    o.push_back(static_cast<unsigned char>((v >> 8)));  o.push_back(static_cast<unsigned char>(v));
 }
 void diagChunk(std::vector<unsigned char>& o, const char tag[4], const unsigned char* d, size_t n) {
-    diagBe32(o, (uint32_t)n); size_t st = o.size(); o.insert(o.end(), tag, tag + 4);
+    diagBe32(o, static_cast<uint32_t>(n)); size_t st = o.size(); o.insert(o.end(), tag, tag + 4);
     if (n) o.insert(o.end(), d, d + n);
     diagBe32(o, diagCrc(o.data() + st, 4 + n, 0));
 }
 bool diagWriteGrayPng(const char* path, int w, int h, const std::vector<unsigned char>& g) {
     std::vector<unsigned char> z; z.push_back(0x78); z.push_back(0x01);
-    const size_t rowB = 1 + (size_t)w, total = rowB * (size_t)h;
+    const size_t rowB = 1 + static_cast<size_t>(w), total = rowB * static_cast<size_t>(h);
     uint32_t a = 1, b = 0; size_t off = 0;
     std::vector<unsigned char> blk;
     while (off < total) {
@@ -886,13 +886,13 @@ bool diagWriteGrayPng(const char* path, int w, int h, const std::vector<unsigned
         blk.resize(n);
         for (size_t i = 0; i < n; ++i) {
             size_t pos = off + i, y = pos / rowB, x = pos % rowB;
-            blk[i] = x == 0 ? 0 : g[y * (size_t)w + (x - 1)];
+            blk[i] = x == 0 ? 0 : g[y * static_cast<size_t>(w) + (x - 1)];
             a = (a + blk[i]) % 65521; b = (b + a) % 65521;
         }
         bool last = off + n >= total;
         z.push_back(last ? 1 : 0);
-        z.push_back((unsigned char)(n & 0xFF)); z.push_back((unsigned char)(n >> 8));
-        z.push_back((unsigned char)(~n & 0xFF)); z.push_back((unsigned char)((~n >> 8) & 0xFF));
+        z.push_back(static_cast<unsigned char>((n & 0xFF))); z.push_back(static_cast<unsigned char>((n >> 8)));
+        z.push_back(static_cast<unsigned char>((~n & 0xFF))); z.push_back(static_cast<unsigned char>(((~n >> 8) & 0xFF)));
         z.insert(z.end(), blk.begin(), blk.end());
         off += n;
     }
@@ -900,8 +900,8 @@ bool diagWriteGrayPng(const char* path, int w, int h, const std::vector<unsigned
     std::vector<unsigned char> out; const unsigned char sig[8] = {137,80,78,71,13,10,26,10};
     out.insert(out.end(), sig, sig + 8);
     unsigned char ih[13] = {0};
-    ih[0]=(unsigned char)(w>>24); ih[1]=(unsigned char)(w>>16); ih[2]=(unsigned char)(w>>8); ih[3]=(unsigned char)w;
-    ih[4]=(unsigned char)(h>>24); ih[5]=(unsigned char)(h>>16); ih[6]=(unsigned char)(h>>8); ih[7]=(unsigned char)h;
+    ih[0]=static_cast<unsigned char>((w>>24)); ih[1]=static_cast<unsigned char>((w>>16)); ih[2]=static_cast<unsigned char>((w>>8)); ih[3]=static_cast<unsigned char>(w);
+    ih[4]=static_cast<unsigned char>((h>>24)); ih[5]=static_cast<unsigned char>((h>>16)); ih[6]=static_cast<unsigned char>((h>>8)); ih[7]=static_cast<unsigned char>(h);
     ih[8] = 8; ih[9] = 0;
     diagChunk(out, "IHDR", ih, 13); diagChunk(out, "IDAT", z.data(), z.size()); diagChunk(out, "IEND", nullptr, 0);
     FILE* f = std::fopen(path, "wb"); if (!f) return false;
@@ -914,14 +914,14 @@ void diagDumpDepth(const char* mapName, const char* side, const std::vector<floa
     float mn = 1e30f, mx = -1e30f; size_t covered = 0; int x0 = dim, y0 = dim, x1 = -1, y1 = -1;
     for (size_t i = 0; i < d.size(); ++i) {
         float v = d[i]; if (v < mn) mn = v; if (v > mx) mx = v;
-        if (v < 0.9999f) { ++covered; int x = (int)(i % dim), y = (int)(i / dim);
+        if (v < 0.9999f) { ++covered; int x = static_cast<int>((i % dim)), y = static_cast<int>((i / dim));
             if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
     }
     std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] dump map=%s side=%s dim=%d min=%.6f max=%.6f covered(<0.9999)=%zu (%.4f%%) bbox=[%d,%d]-[%d,%d]\n",
-                 mapName, side, dim, mn, mx, covered, 100.0 * (double)covered / (double)d.size(), x0, y0, x1, y1);
+                 mapName, side, dim, mn, mx, covered, 100.0 * static_cast<double>(covered) / static_cast<double>(d.size()), x0, y0, x1, y1);
     std::vector<unsigned char> g(d.size());
     const float span = (mx > mn) ? (mx - mn) : 1.0f;
-    for (size_t i = 0; i < d.size(); ++i) g[i] = (unsigned char)std::lround(255.0f * (d[i] - mn) / span);
+    for (size_t i = 0; i < d.size(); ++i) g[i] = static_cast<unsigned char>(std::lround(255.0f * (d[i] - mn) / span));
     char path[128]; std::snprintf(path, sizeof(path), "vk_shadowdiag_%s_%s.png", mapName, side);
     std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] wrote %s ok=%d\n", path, diagWriteGrayPng(path, dim, dim, g) ? 1 : 0);
     // The raw depths too: the PNG is normalized per map, so two runs' PNGs do not compare texel for texel.
@@ -934,7 +934,7 @@ void diagDumpDepth(const char* mapName, const char* side, const std::vector<floa
 // One-shot VK readback of a D32 image layer (layout READ_ONLY_OPTIMAL in/out).
 void diagVkRead(ShadowIsland* s, VkImage img, uint32_t layer, int dim, std::vector<float>& out) {
     out.clear(); if (!s || !img || dim <= 0 || !s->cpool) return;
-    const VkDeviceSize bytes = (VkDeviceSize)dim * dim * 4;
+    const VkDeviceSize bytes = static_cast<VkDeviceSize>(dim) * dim * 4;
     mc2vk::OwnedBuffer staging;
     if (!make_buffer(s, staging, bytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT, true, "shadow.diagReadback")) return;
     const VkBuffer buf = staging.get(); const VmaAllocation al = staging.allocation();
@@ -952,7 +952,7 @@ void diagVkRead(ShadowIsland* s, VkImage img, uint32_t layer, int dim, std::vect
     br.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT; br.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &br);
     VkBufferImageCopy rg{}; rg.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, layer, 1};
-    rg.imageExtent = {(uint32_t)dim, (uint32_t)dim, 1};
+    rg.imageExtent = {static_cast<uint32_t>(dim), static_cast<uint32_t>(dim), 1};
     vkCmdCopyImageToBuffer(cb, img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buf, 1, &rg);
     br.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; br.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
     br.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT; br.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -963,7 +963,7 @@ void diagVkRead(ShadowIsland* s, VkImage img, uint32_t layer, int dim, std::vect
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, al, &p) == VK_SUCCESS) {
             vmaInvalidateAllocation(s->allocator, al, 0, VK_WHOLE_SIZE);
-            out.resize((size_t)dim * dim); std::memcpy(out.data(), p, (size_t)bytes);
+            out.resize(static_cast<size_t>(dim) * dim); std::memcpy(out.data(), p, static_cast<size_t>(bytes));
             vmaUnmapMemory(s->allocator, al);
         }
     }
@@ -1300,7 +1300,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     static bool s_firstOk = false;
     if (!s_firstOk) {
         vlog("first VK CSM full-map recorded: instCount=%u typeRuns=%lu view=%p (direct VK consumers only).",
-             instanceCount, g_health.typeRuns, (void*)s->csmFullMapResource.view.get());
+             instanceCount, g_health.typeRuns, static_cast<void*>(s->csmFullMapResource.view.get()));
         s_firstOk = true;
     }
     g_csmFullMapReadyThisFrame = true;
@@ -1361,7 +1361,7 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
             g_dynShadowReadyThisFrame = true;
             static bool s_firstOk = false;
             if (!s_firstOk) {
-                vlog("first VK dynamic shadow map recorded (no cascades this frame): instCount=%u view=%p.", s->stagedInstanceCount, (void*)s->depthResource.view.get());
+                vlog("first VK dynamic shadow map recorded (no cascades this frame): instCount=%u view=%p.", s->stagedInstanceCount, static_cast<void*>(s->depthResource.view.get()));
                 s_firstOk = true;
             }
         }

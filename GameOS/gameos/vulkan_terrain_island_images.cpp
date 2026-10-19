@@ -19,7 +19,7 @@ namespace vk_terrain_detail {
 bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (feed.heightVersion == s->heightVersionCopied) return true; // unchanged
     if (!feed.heightCpu || feed.heightBytes == 0) return false;
-    if (!ensure_height_capacity(s, (VkDeviceSize)feed.heightBytes)) return false;
+    if (!ensure_height_capacity(s, static_cast<VkDeviceSize>(feed.heightBytes))) return false;
     // VK-TERRAIN-FENCE-DEFER-1: the height SSBO stays single-instance (version-gated
     // rare rewrite: mission load / crater deform). Under the deferred retire a prior
     // terrain submit may still be reading it — device-idle before rewriting in place.
@@ -27,7 +27,7 @@ bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_height_snapshot");
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->heightBuf.allocation(), &p) != VK_SUCCESS) return false;
-    std::memcpy(p, feed.heightCpu, (size_t)feed.heightBytes);
+    std::memcpy(p, feed.heightCpu, static_cast<size_t>(feed.heightBytes));
     vmaUnmapMemory(s->allocator, s->heightBuf.allocation());
     s->heightVersionCopied = feed.heightVersion;
     ++g_health.heightSnapshots;
@@ -91,7 +91,7 @@ bool upload_sampled_image(TerrainIsland* s, mc2vk::OwnedImage& outImg, mc2vk::Ow
     if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "terrain.staging")) return false;
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, stg.allocation(), &p) != VK_SUCCESS) return false;
-      std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stg.allocation()); }
+      std::memcpy(p, bytes, static_cast<size_t>(byteCount)); vmaUnmapMemory(s->allocator, stg.allocation()); }
 
     // Device-local sampled image.
     VkImageCreateInfo ici{};
@@ -170,13 +170,13 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
             return;
         }
     }
-    if (upload_colormap_image(s, fmt, (uint32_t)feed.colormapWidth, (uint32_t)feed.colormapHeight, feed.colormapBytes,
-                              (VkDeviceSize)feed.colormapByteCount)) {
+    if (upload_colormap_image(s, fmt, static_cast<uint32_t>(feed.colormapWidth), static_cast<uint32_t>(feed.colormapHeight), feed.colormapBytes,
+                              static_cast<VkDeviceSize>(feed.colormapByteCount))) {
         s->colormapVersionImported = feed.colormapVersion;
         s->colormapReady = true;
         write_descriptors(s);
         vlog("COLORMAP-BASE: imported the colormap atlas %dx%d format %u from the terrain field store (version %llu).",
-             feed.colormapWidth, feed.colormapHeight, feed.colormapVkFormat, (unsigned long long)feed.colormapVersion);
+             feed.colormapWidth, feed.colormapHeight, feed.colormapVkFormat, static_cast<unsigned long long>(feed.colormapVersion));
     }
     // On failure the dummy stays bound (colormapReady=false) -> FS uses olive.
 }
@@ -321,7 +321,7 @@ bool upload_sampled_image_array(TerrainIsland* s, mc2vk::OwnedImage& outImg, mc2
     if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "terrain.staging")) return false;
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, stg.allocation(), &p) != VK_SUCCESS) return false;
-      std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stg.allocation()); }
+      std::memcpy(p, bytes, static_cast<size_t>(byteCount)); vmaUnmapMemory(s->allocator, stg.allocation()); }
 
     VkImageCreateInfo ici{};
     ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -403,7 +403,7 @@ void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         if (slots[i].status == GosTexels::Status::Pending) return;   // retried next frame
     }
     const uint32_t w = slots[0].width, h = slots[0].height;
-    const size_t layerBytes = (size_t)w * h * 4u;
+    const size_t layerBytes = static_cast<size_t>(w) * h * 4u;
     for (uint32_t i = 0; i < kSlots; ++i) {
         const bool absent = feed.matNormalHandles[i] == 0;
         if (absent && i >= 5) continue;            // GL requires slots 0-4 only
@@ -418,7 +418,7 @@ void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     }
     std::vector<uint8_t> px(layerBytes * kSlots);
     for (uint32_t i = 0; i < kSlots; ++i) {
-        uint8_t* dst = px.data() + (size_t)i * layerBytes;
+        uint8_t* dst = px.data() + static_cast<size_t>(i) * layerBytes;
         if (slots[i].bytes) {
             std::memcpy(dst, slots[i].bytes->data(), layerBytes);
         } else {
@@ -426,7 +426,7 @@ void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         }
     }
     if (upload_sampled_image_array(s, s->matNormalImg, s->matNormalView, VK_FORMAT_R8G8B8A8_UNORM, w, h, kSlots, px.data(),
-                                   (VkDeviceSize)px.size())) {
+                                   static_cast<VkDeviceSize>(px.size()))) {
         s->matNormalTexImported = glTex;
         s->matNormalLayers = kSlots;
         s->matNormalReady = true;
@@ -442,12 +442,12 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (feed.cementBytes == 0) return false;  // no map yet
     if (feed.cementVersion == s->cementVersionCopied && s->cementWordsReady) return true;
     // Ensure capacity (grow-only, like the height buffer).
-    if (!s->cementBuf || (VkDeviceSize)feed.cementBytes > s->cementCapBytes) {
+    if (!s->cementBuf || static_cast<VkDeviceSize>(feed.cementBytes) > s->cementCapBytes) {
         if (s->cementBuf) {
             mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_cement_grow");
             s->cementBuf.reset();
         }
-        VkDeviceSize cap = (VkDeviceSize)feed.cementBytes + feed.cementBytes / 4 + 4096;
+        VkDeviceSize cap = static_cast<VkDeviceSize>(feed.cementBytes) + feed.cementBytes / 4 + 4096;
         if (!make_buffer(s, s->cementBuf, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "terrain.cementBuf"))
             return false;
         s->cementCapBytes = cap;
@@ -459,8 +459,8 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_cement_snapshot");
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->cementBuf.allocation(), &p) != VK_SUCCESS) return false;
-    if (feed.cementCpu) std::memcpy(p, feed.cementCpu, (size_t)feed.cementBytes);
-    else std::memset(p, 0, (size_t)feed.cementBytes);
+    if (feed.cementCpu) std::memcpy(p, feed.cementCpu, static_cast<size_t>(feed.cementBytes));
+    else std::memset(p, 0, static_cast<size_t>(feed.cementBytes));
     vmaUnmapMemory(s->allocator, s->cementBuf.allocation());
     s->cementVersionCopied = feed.cementVersion;
     s->cementWordsReady = true;
@@ -477,12 +477,12 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (!feed.visualHeightCpu || feed.visualHeightBytes == 0) return false;  // bake not live
     if (feed.visualHeightVersion == s->visualHeightVersionCopied && s->visualHeightReady) return true;
     // Ensure capacity (grow-only, like the cement buffer).
-    if (!s->visualHeightBuf || (VkDeviceSize)feed.visualHeightBytes > s->visualHeightCapBytes) {
+    if (!s->visualHeightBuf || static_cast<VkDeviceSize>(feed.visualHeightBytes) > s->visualHeightCapBytes) {
         if (s->visualHeightBuf) {
             mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_visual_height_grow");
             s->visualHeightBuf.reset();
         }
-        VkDeviceSize cap = (VkDeviceSize)feed.visualHeightBytes + feed.visualHeightBytes / 4 + 4096;
+        VkDeviceSize cap = static_cast<VkDeviceSize>(feed.visualHeightBytes) + feed.visualHeightBytes / 4 + 4096;
         if (!make_buffer(s, s->visualHeightBuf, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "terrain.visualHeightBuf"))
             return false;
         s->visualHeightCapBytes = cap;
@@ -494,7 +494,7 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_visual_height_snapshot");
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->visualHeightBuf.allocation(), &p) != VK_SUCCESS) return false;
-    std::memcpy(p, feed.visualHeightCpu, (size_t)feed.visualHeightBytes);
+    std::memcpy(p, feed.visualHeightCpu, static_cast<size_t>(feed.visualHeightBytes));
     vmaUnmapMemory(s->allocator, s->visualHeightBuf.allocation());
     s->visualHeightVersionCopied = feed.visualHeightVersion;
     s->visualHeightReady = true;
@@ -502,8 +502,8 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (!s_first) {
         vlog("VK-TERRAIN-VISUALDISPLACE-FAR-1: snapshotted the visual-height bake "
              "(V=%d bytes=%llu ver=%llu); VK far bands now Z-swap like GL mode 2.",
-             feed.visualSide, (unsigned long long)feed.visualHeightBytes,
-             (unsigned long long)feed.visualHeightVersion);
+             feed.visualSide, static_cast<unsigned long long>(feed.visualHeightBytes),
+             static_cast<unsigned long long>(feed.visualHeightVersion));
         s_first = true;
     }
     return true;

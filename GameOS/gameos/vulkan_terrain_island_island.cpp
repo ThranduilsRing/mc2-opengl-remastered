@@ -32,8 +32,8 @@ bool make_buffer(TerrainIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, V
 // bottomRight default.
 const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep) {
     if (lodStep <= 0) lodStep = 1;
-    const uint32_t key = ((uint32_t)(qcX & 0xFFFF)) | (((uint32_t)(qcY & 0xFFFF)) << 16)
-                        ^ ((uint32_t)(lodStep & 0xFF) << 24);
+    const uint32_t key = (static_cast<uint32_t>((qcX & 0xFFFF))) | ((static_cast<uint32_t>((qcY & 0xFFFF))) << 16)
+                        ^ (static_cast<uint32_t>((lodStep & 0xFF)) << 24);
     auto it = s->patchCache.find(key);
     if (it != s->patchCache.end()) return &it->second;
     if (qcX <= 0 || qcY <= 0) return nullptr;
@@ -45,14 +45,14 @@ const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep
     if (xs.empty() || xs.back() != qcX) xs.push_back(qcX);
     for (int p = 0; p <= qcY; p += lodStep) ys.push_back(p);
     if (ys.empty() || ys.back() != qcY) ys.push_back(qcY);
-    const int nx = (int)xs.size(), ny = (int)ys.size();
+    const int nx = static_cast<int>(xs.size()), ny = static_cast<int>(ys.size());
 
     // Vertices: nx x ny grid of int16 local offsets (map-cell units, lodStep-strided).
     std::vector<LocalVertex> verts;
-    verts.reserve((size_t)nx * ny);
+    verts.reserve(static_cast<size_t>(nx) * ny);
     for (int yy = 0; yy < ny; ++yy)
         for (int xx = 0; xx < nx; ++xx)
-            verts.push_back({(int16_t)xs[xx], (int16_t)ys[yy]});
+            verts.push_back({static_cast<int16_t>(xs[xx]), static_cast<int16_t>(ys[yy])});
 
     // Indices: two CCW triangles per quad, FIXED TL-BR diagonal (== getOrBuildPatch
     // bottomRight default): {TL,BL,BR} + {TL,BR,TR}.
@@ -60,26 +60,26 @@ const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep
     const int W = nx;
     for (int j = 0; j < ny - 1; ++j) {
         for (int i = 0; i < nx - 1; ++i) {
-            uint16_t tl = (uint16_t)(j * W + i);
-            uint16_t tr = (uint16_t)(j * W + i + 1);
-            uint16_t bl = (uint16_t)((j + 1) * W + i);
-            uint16_t br = (uint16_t)((j + 1) * W + i + 1);
+            uint16_t tl = static_cast<uint16_t>((j * W + i));
+            uint16_t tr = static_cast<uint16_t>((j * W + i + 1));
+            uint16_t bl = static_cast<uint16_t>(((j + 1) * W + i));
+            uint16_t br = static_cast<uint16_t>(((j + 1) * W + i + 1));
             indices.insert(indices.end(), {tl, bl, br, tl, br, tr});
         }
     }
 
     PatchMesh pm;
-    pm.indexCount = (uint32_t)indices.size();
+    pm.indexCount = static_cast<uint32_t>(indices.size());
     const VkDeviceSize vboBytes = verts.size() * sizeof(LocalVertex);
     const VkDeviceSize iboBytes = indices.size() * sizeof(uint16_t);
     if (!make_buffer(s, pm.vbo, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "terrain.patchMesh.vbo")) return nullptr;
     if (!make_buffer(s, pm.ibo, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, true, "terrain.patchMesh.ibo")) return nullptr;
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, pm.vbo.allocation(), &p) == VK_SUCCESS) {
-          std::memcpy(p, verts.data(), (size_t)vboBytes); vmaUnmapMemory(s->allocator, pm.vbo.allocation()); } }
+          std::memcpy(p, verts.data(), static_cast<size_t>(vboBytes)); vmaUnmapMemory(s->allocator, pm.vbo.allocation()); } }
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, pm.ibo.allocation(), &p) == VK_SUCCESS) {
-          std::memcpy(p, indices.data(), (size_t)iboBytes); vmaUnmapMemory(s->allocator, pm.ibo.allocation()); } }
+          std::memcpy(p, indices.data(), static_cast<size_t>(iboBytes)); vmaUnmapMemory(s->allocator, pm.ibo.allocation()); } }
 
     auto res = s->patchCache.emplace(key, std::move(pm));
     return &res.first->second;
@@ -95,8 +95,8 @@ const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep
 // main-patch-edge).
 const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lodStep) {
     if (lodStep <= 0) lodStep = 1;
-    const uint32_t key = ((uint32_t)(qcX & 0xFFFF)) | (((uint32_t)(qcY & 0xFFFF)) << 16)
-                        ^ ((uint32_t)(lodStep & 0xFF) << 24);
+    const uint32_t key = (static_cast<uint32_t>((qcX & 0xFFFF))) | ((static_cast<uint32_t>((qcY & 0xFFFF))) << 16)
+                        ^ (static_cast<uint32_t>((lodStep & 0xFF)) << 24);
     auto it = s->skirtCache.find(key);
     if (it != s->skirtCache.end()) return &it->second;
     if (qcX <= 0 || qcY <= 0) return nullptr;
@@ -112,28 +112,28 @@ const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lod
 
     // Mirrors GL's buildEdge lambda exactly (gos_terrain_lod_chunk.cpp:477-494).
     auto buildEdge = [&](const std::vector<int>& uPos, int fixedCoord, bool fixedIsY) {
-        int base = (int)skirtVerts.size();
-        int n    = (int)uPos.size();
+        int base = static_cast<int>(skirtVerts.size());
+        int n    = static_cast<int>(uPos.size());
         for (int i = 0; i < n; ++i) {
-            int16_t lx = fixedIsY ? (int16_t)uPos[i] : (int16_t)fixedCoord;
-            int16_t ly = fixedIsY ? (int16_t)fixedCoord : (int16_t)uPos[i];
+            int16_t lx = fixedIsY ? static_cast<int16_t>(uPos[i]) : static_cast<int16_t>(fixedCoord);
+            int16_t ly = fixedIsY ? static_cast<int16_t>(fixedCoord) : static_cast<int16_t>(uPos[i]);
             skirtVerts.push_back({lx, ly, 0, 0});  // surface
             skirtVerts.push_back({lx, ly, 1, 0});  // below
         }
         for (int i = 0; i < n - 1; ++i) {
-            uint16_t t0 = (uint16_t)(base + 2*i);
-            uint16_t b0 = (uint16_t)(base + 2*i + 1);
-            uint16_t t1 = (uint16_t)(base + 2*(i+1));
-            uint16_t b1 = (uint16_t)(base + 2*(i+1) + 1);
+            uint16_t t0 = static_cast<uint16_t>((base + 2*i));
+            uint16_t b0 = static_cast<uint16_t>((base + 2*i + 1));
+            uint16_t t1 = static_cast<uint16_t>((base + 2*(i+1)));
+            uint16_t b1 = static_cast<uint16_t>((base + 2*(i+1) + 1));
             skirtIdx.insert(skirtIdx.end(), {t0, b0, b1, t0, b1, t1});
         }
     };
 
     SkirtMesh sm;
-    sm.edgeOffset[0] = (uint32_t)skirtIdx.size(); buildEdge(xs, (int)ys.front(), false); sm.edgeCount[0] = (uint32_t)skirtIdx.size() - sm.edgeOffset[0]; // North
-    sm.edgeOffset[1] = (uint32_t)skirtIdx.size(); buildEdge(xs, (int)ys.back(),  false); sm.edgeCount[1] = (uint32_t)skirtIdx.size() - sm.edgeOffset[1]; // South
-    sm.edgeOffset[2] = (uint32_t)skirtIdx.size(); buildEdge(ys, (int)xs.front(), true ); sm.edgeCount[2] = (uint32_t)skirtIdx.size() - sm.edgeOffset[2]; // West
-    sm.edgeOffset[3] = (uint32_t)skirtIdx.size(); buildEdge(ys, (int)xs.back(),  true ); sm.edgeCount[3] = (uint32_t)skirtIdx.size() - sm.edgeOffset[3]; // East
+    sm.edgeOffset[0] = static_cast<uint32_t>(skirtIdx.size()); buildEdge(xs, static_cast<int>(ys.front()), false); sm.edgeCount[0] = static_cast<uint32_t>(skirtIdx.size()) - sm.edgeOffset[0]; // North
+    sm.edgeOffset[1] = static_cast<uint32_t>(skirtIdx.size()); buildEdge(xs, static_cast<int>(ys.back()),  false); sm.edgeCount[1] = static_cast<uint32_t>(skirtIdx.size()) - sm.edgeOffset[1]; // South
+    sm.edgeOffset[2] = static_cast<uint32_t>(skirtIdx.size()); buildEdge(ys, static_cast<int>(xs.front()), true ); sm.edgeCount[2] = static_cast<uint32_t>(skirtIdx.size()) - sm.edgeOffset[2]; // West
+    sm.edgeOffset[3] = static_cast<uint32_t>(skirtIdx.size()); buildEdge(ys, static_cast<int>(xs.back()),  true ); sm.edgeCount[3] = static_cast<uint32_t>(skirtIdx.size()) - sm.edgeOffset[3]; // East
 
     if (skirtVerts.empty() || skirtIdx.empty()) return nullptr;
 
@@ -143,10 +143,10 @@ const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lod
     if (!make_buffer(s, sm.ibo, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, true, "terrain.skirtMesh.ibo")) return nullptr;
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, sm.vbo.allocation(), &p) == VK_SUCCESS) {
-          std::memcpy(p, skirtVerts.data(), (size_t)vboBytes); vmaUnmapMemory(s->allocator, sm.vbo.allocation()); } }
+          std::memcpy(p, skirtVerts.data(), static_cast<size_t>(vboBytes)); vmaUnmapMemory(s->allocator, sm.vbo.allocation()); } }
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, sm.ibo.allocation(), &p) == VK_SUCCESS) {
-          std::memcpy(p, skirtIdx.data(), (size_t)iboBytes); vmaUnmapMemory(s->allocator, sm.ibo.allocation()); } }
+          std::memcpy(p, skirtIdx.data(), static_cast<size_t>(iboBytes)); vmaUnmapMemory(s->allocator, sm.ibo.allocation()); } }
 
     auto res = s->skirtCache.emplace(key, std::move(sm));
     return &res.first->second;
@@ -454,7 +454,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
-        fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
+        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         if (!mc2vk::create(s->fb, s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
             vlog("vkCreateFramebuffer failed."); setFallback("framebuffer_failed"); return false;
         }
@@ -567,7 +567,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         b[10].descriptorCount = 1; b[10].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         // VK-PARITY-TERRAIN-2: bindings 11/12/13 = light pool / grid header / grid index SSBOs (FS).
         for (int k = 11; k <= 13; ++k) {
-            b[k].binding = (uint32_t)k; b[k].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+            b[k].binding = static_cast<uint32_t>(k); b[k].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
             b[k].descriptorCount = 1; b[k].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         }
         // TERRAIN-SHORELINE-V3: binding 14 = shoreline mask sidecar sampler2D (FS).

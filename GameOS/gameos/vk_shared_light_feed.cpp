@@ -41,7 +41,7 @@ FrameAlloc SharedLightFeed::acquire(VulkanContext& ctx, const void* cpuData, uin
     if (frame == frame_) {
         // Second+ consumer this frame: reuse the already-copied span. If the CPU array GREW between two same-frame island flushes (mid-frame dynamic-light
         // append), fail soft: this caller does its own copy (rare, content-safe; next frame's copy picks up the full array).
-        if (!span_ || (VkDeviceSize)cpuBytes > bytes_) { ++fallbacks_; return {}; }
+        if (!span_ || static_cast<VkDeviceSize>(cpuBytes) > bytes_) { ++fallbacks_; return {}; }
         ++hits_;
         return span_;
     }
@@ -50,24 +50,24 @@ FrameAlloc SharedLightFeed::acquire(VulkanContext& ctx, const void* cpuData, uin
 
     {
         ZoneScopedN("VKIsl.Shared.LightFeed");   // VK-LIGHTFEED-DEDUP-1: the ONE per-frame LightsData CPU->VK copy
-        const FrameAlloc a = ctx.frameAlloc((VkDeviceSize)cpuBytes);
+        const FrameAlloc a = ctx.frameAlloc(static_cast<VkDeviceSize>(cpuBytes));
         if (!a) { ++fallbacks_; return {}; }   // fail-soft: caller runs its own copy path
-        std::memcpy(a.ptr, cpuData, (size_t)cpuBytes);
+        std::memcpy(a.ptr, cpuData, static_cast<size_t>(cpuBytes));
         span_ = a;
     }
-    bytes_ = (VkDeviceSize)cpuBytes;
+    bytes_ = static_cast<VkDeviceSize>(cpuBytes);
     ++copies_;
 
     if (copies_ == 1 && mc2DiagVerbose()) {
         std::fprintf(stderr,
             "[VK_LIGHTFEED_DEDUP v1] armed: shared per-frame LightsData span in the frame ring (%llu B) -- killswitch MC2_VK_LIGHTFEED_DEDUP=0\n",
-            (unsigned long long)cpuBytes);
+            static_cast<unsigned long long>(cpuBytes));
         std::fflush(stderr);
     }
     if (copies_ == 600 && mc2DiagVerbose()) {   // ~10 s receipt: hits ~= copies when both islands share
         std::fprintf(stderr,
             "[VK_LIGHTFEED_DEDUP v1] 600 copies: sharedHits=%lu fallbacks=%lu bytes/frame=%llu\n",
-            hits_, fallbacks_, (unsigned long long)bytes_);
+            hits_, fallbacks_, static_cast<unsigned long long>(bytes_));
         std::fflush(stderr);
     }
 
