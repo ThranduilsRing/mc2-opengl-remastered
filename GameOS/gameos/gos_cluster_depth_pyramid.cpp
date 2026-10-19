@@ -62,7 +62,7 @@ char* loadTextFile(const char* fname) {
     fseek(f, 0, SEEK_SET);
     if (sz <= 0) { fclose(f); return nullptr; }
     char* buf = new char[sz + 1];
-    if ((long)fread(buf, 1, sz, f) != sz) { fclose(f); delete[] buf; return nullptr; }
+    if (static_cast<long>(fread(buf, 1, sz, f)) != sz) { fclose(f); delete[] buf; return nullptr; }
     buf[sz] = '\0';
     fclose(f);
     return buf;
@@ -166,21 +166,21 @@ void runParityCheck(GLuint sceneDepthTex, int width, int height) {
     // glGetTexImage of a packed depth/stencil with GL_DEPTH_COMPONENT/GL_FLOAT
     // returns the normalized depth in [0,1] — exactly what the GLSL
     // texelFetch(...).r returns, so the CPU and GPU read the SAME source value.
-    std::vector<float> cpuDepth((size_t)width * height);
+    std::vector<float> cpuDepth(static_cast<size_t>(width) * height);
     glBindTexture(GL_TEXTURE_2D, sceneDepthTex);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, cpuDepth.data());
     glBindTexture(GL_TEXTURE_2D, 0);
 
     // --- CPU per-tile min/max. ----------------------------------------------
-    std::vector<float> cpuMin((size_t)s_tileW * s_tileH, 1.0f);
-    std::vector<float> cpuMax((size_t)s_tileW * s_tileH, 0.0f);
+    std::vector<float> cpuMin(static_cast<size_t>(s_tileW) * s_tileH, 1.0f);
+    std::vector<float> cpuMax(static_cast<size_t>(s_tileW) * s_tileH, 0.0f);
     for (int y = 0; y < height; ++y) {
         int ty = y / kTileSize;
         for (int x = 0; x < width; ++x) {
             int tx = x / kTileSize;
-            float d = cpuDepth[(size_t)y * width + x];
-            size_t ti = (size_t)ty * s_tileW + tx;
+            float d = cpuDepth[static_cast<size_t>(y) * width + x];
+            size_t ti = static_cast<size_t>(ty) * s_tileW + tx;
             if (d < cpuMin[ti]) cpuMin[ti] = d;
             if (d > cpuMax[ti]) cpuMax[ti] = d;
         }
@@ -196,7 +196,7 @@ void runParityCheck(GLuint sceneDepthTex, int width, int height) {
     // --- GPU image readback (RG32F: R=min, G=max). --------------------------
     // The dispatch already issued a ComputeImageWrite->TextureReadback barrier
     // before this call; glGetTexImage now sees the imageStore results.
-    std::vector<float> gpuRG((size_t)s_tileW * s_tileH * 2);
+    std::vector<float> gpuRG(static_cast<size_t>(s_tileW) * s_tileH * 2);
     glBindTexture(GL_TEXTURE_2D, s_tileTex);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RG, GL_FLOAT, gpuRG.data());
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -208,7 +208,7 @@ void runParityCheck(GLuint sceneDepthTex, int width, int height) {
     // fp normalization noise in the DEPTH24->float conversion; in practice the
     // observed delta is 0. A mismatch beyond epsilon is a real failure.
     const float kEps = 1e-6f;
-    size_t nTiles = (size_t)s_tileW * s_tileH;
+    size_t nTiles = static_cast<size_t>(s_tileW) * s_tileH;
     size_t mismatches = 0;
     float  worstDelta = 0.0f;
     for (size_t i = 0; i < nTiles; ++i) {
@@ -303,7 +303,7 @@ void Shutdown() {
 }
 
 // --- Accessors (MC2-LIGHTGRID-BUILD-NATIVE-1) -------------------------------
-unsigned int TileTexture() { return (unsigned int)s_tileTex; }
+unsigned int TileTexture() { return static_cast<unsigned int>(s_tileTex); }
 int TileGridW()            { return s_tileW; }
 int TileGridH()            { return s_tileH; }
 int TileSize()             { return kTileSize; }

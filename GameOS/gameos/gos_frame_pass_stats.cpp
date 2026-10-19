@@ -62,7 +62,7 @@ void emitLine(unsigned long frameNo)
         const PassRow& r = s_last[p];
         if (!r.ran) continue;   // pass never ran this frame: key absent
         off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " {}{{draws={:d} inst={:d}}}", mc2::fmt::safe(kPassKey[p]), mc2::fmt::as_u32(r.drawCount), mc2::fmt::as_u32(r.instanceCount));
-        if (off >= (int)sizeof(line) - 96) break;   // guard truncation
+        if (off >= static_cast<int>(sizeof(line)) - 96) break;   // guard truncation
     }
     mc2::fmt::print_out("{}\n", mc2::fmt::safe(line));
     std::fflush(stdout);
@@ -97,7 +97,7 @@ bool CollectFlag()       { return s_collect; }
 void MarkPassRan(gos_render_pass_timer::Pass p)
 {
     if (!Enabled()) return;
-    const int pi = (int)p;
+    const int pi = static_cast<int>(p);
     if (pi < 0 || pi >= Pass_Count) return;
     s_rows[pi].ran = true;
 }
@@ -123,7 +123,7 @@ void SetPassCounts(gos_render_pass_timer::Pass p,
                    uint32_t drawCount, uint32_t instanceCount)
 {
     if (!Enabled()) return;
-    const int pi = (int)p;
+    const int pi = static_cast<int>(p);
     if (pi < 0 || pi >= Pass_Count) return;
     s_rows[pi].drawCount     = drawCount;
     s_rows[pi].instanceCount = instanceCount;
@@ -141,7 +141,7 @@ void FrameEnd(unsigned long frameNo)
     // because the editor tab set the runtime flag (env unset), no [FRAME_PASS_
     // STATS v1] lines are produced -- the tab reads s_last directly. Keeps the
     // emit format and game-OFF "zero lines" guarantee intact.
-    if (s_envOn && emitEvery() > 0 && frameNo % (unsigned long)emitEvery() == 0)
+    if (s_envOn && emitEvery() > 0 && frameNo % static_cast<unsigned long>(emitEvery()) == 0)
         emitLine(frameNo);
 
     // Reset for the next frame.

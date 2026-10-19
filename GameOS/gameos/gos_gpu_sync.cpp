@@ -102,9 +102,9 @@ int gpuSsboOffsetAlignment() {
     if (s_align == 0) {
         glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &s_align);
         if (s_align < 16) s_align = 256;  // sane fallback (NVIDIA = 256, AMD ~32)
-        mc2::fmt::print_err("[GPU_ALIGN] SSBO_OFFSET_ALIGNMENT={:d}\n", mc2::fmt::as_i32((int)s_align));
+        mc2::fmt::print_err("[GPU_ALIGN] SSBO_OFFSET_ALIGNMENT={:d}\n", mc2::fmt::as_i32(static_cast<int>(s_align)));
     }
-    return (int)s_align;
+    return static_cast<int>(s_align);
 }
 
 void gpuBindSsboRange(unsigned int index, unsigned int buffer,
@@ -120,7 +120,7 @@ void gpuBindSsboRange(unsigned int index, unsigned int buffer,
         std::fflush(stderr);
         if (contractAssertEnabled()) std::abort();
     }
-    const long long a = (long long)gpuSsboOffsetAlignment();
+    const long long a = static_cast<long long>(gpuSsboOffsetAlignment());
     if (a > 0 && (offset % a) != 0) {
         static std::set<std::string> s_seen;
         const std::string key = t;
@@ -141,7 +141,7 @@ void gpuSyncBarrier(GpuProducer producer, GpuConsumer consumer, const char* tag)
         // silently skip a barrier -- that is exactly the bug class this helper
         // exists to kill).
         mc2::fmt::print_err("[GPU_SYNC] WARNING unmapped edge tag={} producer={:d} consumer={:d} -> GL_ALL_BARRIER_BITS (add the edge to gos_gpu_sync.cpp)\n",
-            mc2::fmt::safe(tag ? tag : "(none)"), mc2::fmt::as_i32((int)producer), mc2::fmt::as_i32((int)consumer));
+            mc2::fmt::safe(tag ? tag : "(none)"), mc2::fmt::as_i32(static_cast<int>(producer)), mc2::fmt::as_i32(static_cast<int>(consumer)));
         glMemoryBarrier(GL_ALL_BARRIER_BITS);
         return;
     }
@@ -150,7 +150,7 @@ void gpuSyncBarrier(GpuProducer producer, GpuConsumer consumer, const char* tag)
         static std::set<std::string> s_seen;  // once-per-tag, no per-frame spam
         const std::string key = tag ? tag : "(none)";
         if (s_seen.insert(key).second) {
-            mc2::fmt::print_err("[GPU_SYNC] tag={} producer={:d} consumer={:d} bits=0x{:x}\n", key.c_str(), mc2::fmt::as_i32((int)producer), mc2::fmt::as_i32((int)consumer), mc2::fmt::as_u32((unsigned)bits));
+            mc2::fmt::print_err("[GPU_SYNC] tag={} producer={:d} consumer={:d} bits=0x{:x}\n", key.c_str(), mc2::fmt::as_i32(static_cast<int>(producer)), mc2::fmt::as_i32(static_cast<int>(consumer)), mc2::fmt::as_u32(static_cast<unsigned>(bits)));
         }
     }
 }

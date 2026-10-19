@@ -47,9 +47,9 @@ static bool scanHdriSunAzGL(const float* px, int w, int h, float* outAzGL)
     // Pass 1: peak luminance in the upper half.
     float maxLum = 0.0f;
     for (int r = 0; r < halfRows; ++r) {
-        const float* row = px + (size_t)r * (size_t)w * 4u;
+        const float* row = px + static_cast<size_t>(r) * static_cast<size_t>(w) * 4u;
         for (int c = 0; c < w; ++c) {
-            const float* p = row + (size_t)c * 4u;
+            const float* p = row + static_cast<size_t>(c) * 4u;
             // Rec.709 luma; HDRI is linear so this is physical luminance.
             const float lum = 0.2126f * p[0] + 0.7152f * p[1] + 0.0722f * p[2];
             if (lum > maxLum) maxLum = lum;
@@ -65,20 +65,20 @@ static bool scanHdriSunAzGL(const float* px, int w, int h, float* outAzGL)
     double sx = 0.0, sy = 0.0;           // weighted unit-vector accumulators
     double wsum = 0.0;
     for (int r = 0; r < halfRows; ++r) {
-        const float* row = px + (size_t)r * (size_t)w * 4u;
+        const float* row = px + static_cast<size_t>(r) * static_cast<size_t>(w) * 4u;
         for (int c = 0; c < w; ++c) {
-            const float* p = row + (size_t)c * 4u;
+            const float* p = row + static_cast<size_t>(c) * 4u;
             const float lum = 0.2126f * p[0] + 0.7152f * p[1] + 0.0722f * p[2];
             if (lum < thresh) continue;
-            const float u   = ((float)c + 0.5f) / (float)w;
+            const float u   = (static_cast<float>(c) + 0.5f) / static_cast<float>(w);
             const float az  = (u - 0.5f) * TWO_PI;   // GL atan(z,x) azimuth
-            sx += (double)lum * (double)cosf(az);
-            sy += (double)lum * (double)sinf(az);
-            wsum += (double)lum;
+            sx += static_cast<double>(lum) * static_cast<double>(cosf(az));
+            sy += static_cast<double>(lum) * static_cast<double>(sinf(az));
+            wsum += static_cast<double>(lum);
         }
     }
     if (!(wsum > 0.0)) return false;
-    *outAzGL = (float)atan2(sy, sx);
+    *outAzGL = static_cast<float>(atan2(sy, sx));
     return true;
 }
 
@@ -253,7 +253,7 @@ GLuint loadHdriTexture(const char* path,
                         tex = 0;
                         // Fall through to tinyexr below.
                     } else {
-                        mc2::fmt::print_err("[HDRI_SKY] bc6h: ON (default) sidecar={} w={:d} h={:d} glIF=0x{:x} bytes={:d} tex={:d}\n", mc2::fmt::safe(sidecarPath), mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_u32((unsigned)glIF), mc2::fmt::as_size(mip0Bytes), mc2::fmt::as_u32((unsigned)tex));
+                        mc2::fmt::print_err("[HDRI_SKY] bc6h: ON (default) sidecar={} w={:d} h={:d} glIF=0x{:x} bytes={:d} tex={:d}\n", mc2::fmt::safe(sidecarPath), mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_u32(static_cast<unsigned>(glIF)), mc2::fmt::as_size(mip0Bytes), mc2::fmt::as_u32(static_cast<unsigned>(tex)));
                         if (outCpu) {
                             outCpu->format = (img.vkFormat == 144) ? HdriCpuImage::Format::Bc6hSfloat : HdriCpuImage::Format::Bc6hUfloat;
                             const size_t n = std::min(mip0Bytes, img.pixels.size());
