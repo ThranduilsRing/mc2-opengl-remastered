@@ -18,14 +18,10 @@
 // Defined in gos_mech_batcher.cpp; not declared in any header.
 extern "C" const char* gos_getMechTextureNameByNodeIdx(uint32_t nodeIdx);
 // FRAME-GRAPH-AMBIENT-RUNTIME-1: ambient-probe mismatch count (mclib/render_contract.cpp).
-extern "C" unsigned long mc2_ambient_mismatch_count();
-extern "C" unsigned long mc2_ambient_probe_samples();
 // FRAME-GRAPH-FBO-LEDGER-1: bound-FBO-vs-declared-target guard counters.
 extern "C" unsigned long mc2_fbo_mismatch_count();
 extern "C" unsigned long mc2_fbo_samples();
 // AMBIENT-VIEWPORT-PROBE-1: observe-only viewport-axis mismatch counters.
-extern "C" unsigned long mc2_viewport_mismatch_count();
-extern "C" unsigned long mc2_viewport_probe_samples();
 // FRAME-GRAPH-EXECUTOR-ISLAND-1: executor-owned pass counters (default-OFF gate).
 extern "C" unsigned long mc2_framegraph_executor_owned_passes();
 extern "C" unsigned long mc2_framegraph_executor_validation_failures();
@@ -49,19 +45,12 @@ extern "C" unsigned long mc2_framegraph_dryrun_known_early_suppressed();
 // UI-PASS-DRAWCOUNT-AMBIENT-MEASURE-1: per-frame UI draw count + read-only ambient
 // entry sample for the existing PassIdentity::UI scope (mclib/render_contract.cpp).
 // Populated only under gate MC2_UI_PASS_MEASURE; all zero/Inherit when the gate is unset.
+extern "C" unsigned long mc2_ui_pass_draw_frames();
 extern "C" unsigned long mc2_ui_pass_draw_count();
 extern "C" unsigned long mc2_ui_pass_draw_quads();
 extern "C" unsigned long mc2_ui_pass_draw_lines();
 extern "C" unsigned long mc2_ui_pass_draw_tris();
 extern "C" unsigned long mc2_ui_pass_draw_text();
-extern "C" unsigned long mc2_ui_pass_entry_samples();
-extern "C" unsigned long mc2_ui_pass_entry_colormask();
-extern "C" unsigned long mc2_ui_pass_entry_depthfunc();
-extern "C" unsigned long mc2_ui_pass_entry_blend();
-extern "C" unsigned long mc2_ui_pass_entry_depthwrite();
-extern "C" unsigned long mc2_ui_pass_entry_drift();
-extern "C" unsigned long mc2_ui_pass_ambient_samples();     // UI-PASS-MODEL-1
-extern "C" unsigned long mc2_ui_pass_ambient_mismatches();  // UI-PASS-MODEL-1
 
 #ifdef MC2_VULKAN_ISLAND
 // VK-POST-FOG-NATIVE-1 (rung 8.1): native fog pair health snapshot (defined in
@@ -327,22 +316,9 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"offending_pass\": " << static_cast<unsigned>(fg.offendingPass) << ",\n";
         s << "    \"missing_resource\": " << static_cast<unsigned>(fg.missingResource) << ",\n";
         s << "    \"unknown_pass\": "; b(s, fg.unknownPass); s << ",\n";
-        // Runtime ambient cross-check (MC2_AMBIENT_PROBE; no such gate). 0 when the
-        // probe is disabled or live GL ambient state matched the declared ledger.
-        s << "    \"ambient_probe_mismatches\": " << mc2_ambient_mismatch_count() << ",\n";
-        // Declared passes actually sampled by the probe. 0 = probe disabled OR never
-        // fired (distinguishes "ran clean" from "never ran"). >0 with mismatches 0 =
-        // live GL ambient state matched the declared ledger at the sampled seams.
-        s << "    \"ambient_probe_samples\": " << mc2_ambient_probe_samples() << ",\n";
-        // FRAME-GRAPH-FBO-LEDGER-1: passes rendering into the WRONG logical target.
+        // Legacy fbo_* keys report actual native destination availability.
         s << "    \"fbo_mismatches\": " << mc2_fbo_mismatch_count() << ",\n";
         s << "    \"fbo_samples\": " << mc2_fbo_samples() << ",\n";
-        // AMBIENT-VIEWPORT-PROBE-1: observe-only. viewport_probe_mismatches>0 =>
-        // a pass ran under a viewport kind other than its declared one (e.g. a leaked
-        // shadow-atlas viewport bleeding into a MainScene pass). samples=0 => guard off
-        // or never fired. Non-fatal by design (this axis measures first).
-        s << "    \"viewport_probe_mismatches\": " << mc2_viewport_mismatch_count() << ",\n";
-        s << "    \"viewport_probe_samples\": " << mc2_viewport_probe_samples() << ",\n";
         // FRAME-GRAPH-EXECUTOR-ISLAND-1: passes owned+validated by the executor
         // (gate MC2_FRAMEGRAPH_EXECUTOR, default-OFF). executor_owned_passes > 0
         // means at least one island validated clean this process lifetime.
@@ -414,19 +390,7 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"draw_lines\": " << mc2_ui_pass_draw_lines() << ",\n";
         s << "    \"draw_tris\": "  << mc2_ui_pass_draw_tris()  << ",\n";
         s << "    \"draw_text\": "  << mc2_ui_pass_draw_text()  << ",\n";
-        s << "    \"entry_samples\": "    << mc2_ui_pass_entry_samples()    << ",\n";
-        s << "    \"entry_colormask\": "  << mc2_ui_pass_entry_colormask()  << ",\n";
-        s << "    \"entry_depthfunc\": "  << mc2_ui_pass_entry_depthfunc()  << ",\n";
-        s << "    \"entry_blend\": "      << mc2_ui_pass_entry_blend()      << ",\n";
-        s << "    \"entry_depthwrite\": " << mc2_ui_pass_entry_depthwrite() << ",\n";
-        s << "    \"entry_drift\": "      << mc2_ui_pass_entry_drift()      << ",\n";
-        // UI-PASS-MODEL-1: OBSERVE-ONLY UI ambient guard. ambient_samples>0 proves the UI
-        // pass fired + was compared against its now-declared kPassAmbient[] row every frame;
-        // ambient_mismatches counts UI entry-vs-declared divergences (colorMask/depthFunc/
-        // blend/depthWrite/viewport). Must be 0 across tier1 for the UI contract to be
-        // universally declarable (else the UI row is NOT enforceable and must revert).
-        s << "    \"ambient_samples\": "    << mc2_ui_pass_ambient_samples()    << ",\n";
-        s << "    \"ambient_mismatches\": " << mc2_ui_pass_ambient_mismatches() << "\n";
+        s << "    \"draw_frames\": " << mc2_ui_pass_draw_frames() << "\n";
         s << "  },\n";
     }
     s << "  \"mission\": {\n";

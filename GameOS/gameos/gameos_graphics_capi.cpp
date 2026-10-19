@@ -484,8 +484,14 @@ size_t __stdcall gos_GetMachineInformation( MachineInfo mi, int Param1/*=0*/, in
         return true;
     if(mi == gos_Info_NumberDevices)
         return 1;
-    if(mi == gos_Info_GetDeviceName)
-        return (size_t)glGetString(GL_RENDERER);
+    if(mi == gos_Info_GetDeviceName) {
+#ifdef MC2_VULKAN_ISLAND
+        return mc2vk::engineVulkanContextValid()
+            ? reinterpret_cast<size_t>(mc2vk::getOrCreateEngineVulkanContext().health().deviceName) : 0;
+#else
+        return 0;
+#endif
+    }
     if(mi == gos_Info_ValidMode) {
         int xres = Param2;
         int yres = Param3;
@@ -517,35 +523,9 @@ bool gos_GetDisplayModeByIndex(int DisplayIndex, int ModeIndex, int* XRes, int* 
 
 
 
-GLenum getGLBufferType(gosBUFFER_TYPE type)
-{
-	GLenum t = -1;
-	switch (type)
-	{
-		case gosBUFFER_TYPE::VERTEX: t = GL_ARRAY_BUFFER; break;
-		case gosBUFFER_TYPE::INDEX: t = GL_ELEMENT_ARRAY_BUFFER; break;
-		case gosBUFFER_TYPE::UNIFORM: t = GL_UNIFORM_BUFFER; break;
 
-		default:
-			gosASSERT(0 && "unknows buffer type");
-	}
-	return t;
-}
 
-GLenum getGLBufferUsage(gosBUFFER_USAGE usage)
-{
-	GLenum u = -1;
-	switch (usage)
-	{
-		case gosBUFFER_USAGE::STREAM_DRAW: u = GL_STREAM_DRAW; break;
-		case gosBUFFER_USAGE::STATIC_DRAW: u = GL_STATIC_DRAW; break;
-		case gosBUFFER_USAGE::DYNAMIC_DRAW: u = GL_DYNAMIC_DRAW; break;
 
-		default:
-			gosASSERT(0 && "unknows buffer usage");
-	}
-	return u;
-}
 
 
 
@@ -604,17 +584,8 @@ void __stdcall gos_DestroyVertexDeclaration(HGOSVERTEXDECLARATION vdecl)
 }
 
 void __stdcall gos_ForceApplyRenderStates() {
-    // Force-apply by directly setting GL state to match the requested render states.
-    // applyRenderStates() short-circuits if curStates_ == renderStates_ (RENDER_STATES v1),
-    // so invalidate the cache first to force the full body to run.
     if (!g_gos_renderer) return;
     g_gos_renderer->invalidateRenderStateCache();
-    // Just set GL directly for the critical states that renderLists() dirties
-    glDepthFunc(GL_GEQUAL);   // reverse-Z (U2): was GL_LEQUAL (force-apply scene)
-    glDepthMask(GL_TRUE);
-    glEnable(GL_DEPTH_TEST);
-    glDisable(GL_BLEND);
-    glBlendFunc(GL_ONE, GL_ZERO);
     g_gos_renderer->applyRenderStates();
 }
 
@@ -630,34 +601,7 @@ void __stdcall gos_InvalidateRenderStateCache() {
 // Called from GuiRuntime::Render() just before post-ImGui 3D camera callbacks.
 // Restores GL state that shadow sub-passes leave dirty and that applyRenderStates()
 // has no tracking for (glColorMask, scissor test, FB binding).
-void __stdcall gos_PrepareForPostImGuiRender() {
-    // Shadow passes (gosPostProcess::beginShadowPass*) call
-    // glColorMask(GL_FALSE,...) and restore in endShadowPass(). If endScene()
-    // finishes with colorMask still FALSE (e.g. shadows disabled mid-frame or
-    // early-out path), all subsequent color writes are silently suppressed.
-    // applyRenderStates() has no gos_State_ColorMask and never fixes this.
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glDisable(GL_SCISSOR_TEST);
-
-    static const bool s_diag = mc2::gate::get<"MC2_3DVIEW_DIAG">();
-    if (s_diag) {
-        static bool s_diagDone = false;
-        if (!s_diagDone) {
-            s_diagDone = true;
-            GLint fbo = 0; glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &fbo);
-            GLboolean depthTest = glIsEnabled(GL_DEPTH_TEST);
-            GLboolean scissor   = glIsEnabled(GL_SCISSOR_TEST);
-            GLint depthFunc = 0; glGetIntegerv(GL_DEPTH_FUNC, &depthFunc);
-            GLboolean depthMask = GL_FALSE; glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask);
-            GLboolean cm[4] = {}; glGetBooleanv(GL_COLOR_WRITEMASK, cm);
-            GLint vp[4] = {}; glGetIntegerv(GL_VIEWPORT, vp);
-            mc2::fmt::print_err("[3DVIEW_DIAG v1] post-imgui: fbo={:d} depthTest={:d} depthFunc=0x{:x} depthMask={:d} scissor={:d} colorMask={:d}{:d}{:d}{:d} vp=[{:d},{:d},{:d},{:d}]\n", mc2::fmt::as_i32(fbo), mc2::fmt::as_i32((int)depthTest), mc2::fmt::as_u32(depthFunc), mc2::fmt::as_i32((int)depthMask), mc2::fmt::as_i32((int)scissor), mc2::fmt::as_i32((int)cm[0]), mc2::fmt::as_i32((int)cm[1]), mc2::fmt::as_i32((int)cm[2]), mc2::fmt::as_i32((int)cm[3]), mc2::fmt::as_i32(vp[0]), mc2::fmt::as_i32(vp[1]), mc2::fmt::as_i32(vp[2]), mc2::fmt::as_i32(vp[3]));
-            fflush(stderr);
-        }
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Camera preview FBO — used by SimpleCamera to render 3D panel views

@@ -52,7 +52,6 @@
 
 // Globals defined in GuiRuntime.cpp (or elsewhere in the engine) that the split pieces share.
 extern void __stdcall gos_InvalidateRenderStateCache();
-extern void __stdcall gos_PrepareForPostImGuiRender();
 extern bool __stdcall gos_ComputeUiCanvasBox(int w, int h, int* ox, int* oy, int* obw, int* obh);
 extern void __stdcall gos_GetEnvironmentDrawableSize(int* w, int* h);
 extern bool cliffDecal_hasDecal();

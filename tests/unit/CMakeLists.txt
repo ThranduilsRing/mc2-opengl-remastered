@@ -364,21 +364,17 @@ if(WIN32)
     list(PREPEND CMAKE_LIBRARY_PATH "${MC2_WORKTREE_ROOT}/3rdparty/lib/x64")
 endif()
 find_package(SDL2 CONFIG REQUIRED COMPONENTS SDL2)
-find_package(GLEW REQUIRED)
-find_package(OpenGL REQUIRED)
 target_link_libraries(mc2_tests PRIVATE
     Threads::Threads
     SDL2::SDL2
-    GLEW::GLEW
-    OpenGL::GL
 )
 if(WIN32)
-    # GLEW's imported location is its import library; runtime DLLs are beside SDL2, like the root build.
+    # The CPU surface tests use SDL2; no graphics context is created.
     add_custom_command(TARGET mc2_tests POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "$<TARGET_FILE:SDL2::SDL2>" "$<TARGET_FILE_DIR:SDL2::SDL2>/glew32.dll"
+            "$<TARGET_FILE:SDL2::SDL2>"
             "$<TARGET_FILE_DIR:mc2_tests>"
-        COMMENT "Copy runtime libraries for hidden GL guard tests"
+        COMMENT "Copy SDL2 for CPU surface tests"
         VERBATIM
     )
 endif()

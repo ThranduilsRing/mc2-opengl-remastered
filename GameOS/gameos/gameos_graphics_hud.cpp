@@ -514,16 +514,10 @@ void gosRenderer::flushHUDBatch()
     // pp->endScene() binds FB 0 and sets the full-screen viewport for us,
     // but leaves VAO 0 bound — rebind our VAO so glVertexAttribPointer works.
 
-    // UI-PASS-DRAWCOUNT-AMBIENT-MEASURE-1: observe-only telemetry inside the existing
-    // PassIdentity::UI RAII scope. Gate MC2_UI_PASS_MEASURE (default-OFF) — when unset
-    // neither the entry sample nor the per-draw note fires, so the HUD replay is
-    // byte-identical. Read-only glGet inside mc2_ui_pass_sample_entry_ambient() (samples
-    // the same ambient axes the ambient contract tracks: colorMask/depthFunc/blend/
-    // depthWrite); NO GL state change. Toward promoting UI DO_NOT_MODEL -> modeled.
     static const bool s_uiPassMeasure = mc2::gate::get<"MC2_UI_PASS_MEASURE">();
     if (s_uiPassMeasure) {
-        // ONE ambient entry sample, taken after the VAO rebind, before the replay loop.
-        mc2_ui_pass_sample_entry_ambient();
+        // Publish the prior frame's measured CPU draw counts.
+        mc2_ui_pass_begin_measure();
     }
 
     if (s_uiPassMeasure) {
@@ -644,12 +638,6 @@ void gosRenderer::flushHUDBatch()
     }
 #endif
 
-    // UI-PASS-MODEL-1: UI is now MODELED (declared ambient row in kPassAmbient[]). Verify
-    // the UI entry ambient against that row every frame — OBSERVE-ONLY (own counter,
-    // non-fatal), read-only glGet, NO GL state change, so the HUD replay stays byte-identical.
-    // This closes the last DO_NOT_MODEL hole: the ambient guard checks UI entry state instead
-    // of skipping it. Default-ON (not gated) — the check is cheap glGet + compare.
-    mc2_ui_pass_check_ambient();
 
 #ifdef MC2_VULKAN
     if (nativeHudQueued) {

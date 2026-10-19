@@ -970,7 +970,7 @@ run_check "vfx_blend_distinction"  "py -3 scripts/check-vfx-blend-distinction.py
 run_check "multiply_blend"         "py -3 scripts/check-multiply-blend.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k multiply -q -p no:cacheprovider"
 run_check "colormask_ownership"    "py -3 scripts/check-colormask-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k color_mask -q -p no:cacheprovider"
 run_check "pass_attachment"        "py -3 scripts/check-pass-attachment-contract.py --quiet"
-run_check "native_scene_targets"   "py -3 scripts/check-native-scene-targets.py --quiet && py -3 -B -m pytest scripts/tests/test_native_scene_targets.py -q -p no:cacheprovider"
+run_check "native_scene_targets"   "py -3 scripts/check-native-scene-targets.py --quiet && py -3 -B -m pytest scripts/tests/test_native_scene_targets.py scripts/tests/test_native_executor_health.py -q -p no:cacheprovider"
 run_check "drawbuffer_ownership"   "py -3 scripts/check-drawbuffer-ownership.py --quiet"
 run_check "apply_pass_bumped"      "py -3 scripts/check-apply-pass-bumped.py --quiet"
 run_check "static_prop_family"     "py -3 scripts/check-static-prop-family.py --quiet"

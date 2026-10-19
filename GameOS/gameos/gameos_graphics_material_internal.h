@@ -300,11 +300,10 @@ extern "C" void gos_vfx_setDebugMode(int mode);             // gos_particle_brid
 
 // UI-PASS-DRAWCOUNT-AMBIENT-MEASURE-1: observe-only telemetry entry points, defined in
 // mclib/render_contract.cpp (GL-aware TU; reuses the ambient-probe sample helpers).
-extern "C" void mc2_ui_pass_sample_entry_ambient();
+extern "C" void mc2_ui_pass_begin_measure();
 
 extern "C" void mc2_ui_pass_note_draw(unsigned kind);
 
-extern "C" void mc2_ui_pass_check_ambient();
 
 
 // APPLY-STATE-TERRAINDECAL-1: forward-decl of the cross-TU apply-state counter bump

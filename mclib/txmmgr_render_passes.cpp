@@ -371,26 +371,6 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 		// scope.
 		bool modernHandled = false;
 
-		// TERRAIN-CULL-STATE-PROBE-1 (MC2_TERRAIN_CULL_PROBE, default OFF): the
-		// terrain-solid dispatch CHOKEPOINT — runs every frame terrain renders,
-		// before the indirect/patch-stream/legacy branch. None of those paths set
-		// cull, so the ambient cull/frontFace read HERE is what terrain renders
-		// under. Read-only; first few frames then stops.
-		{
-			static const bool s_cullProbe = mc2::gate::get<"MC2_TERRAIN_CULL_PROBE">();
-			static int s_cullProbeFrames = 0;
-			if (s_cullProbe && s_cullProbeFrames < 8) {
-				++s_cullProbeFrames;
-				GLboolean cullOn = glIsEnabled(GL_CULL_FACE);
-				GLint cullMode = 0, frontFace = 0;
-				glGetIntegerv(GL_CULL_FACE_MODE, &cullMode);
-				glGetIntegerv(GL_FRONT_FACE, &frontFace);
-				mc2::fmt::print_err("[TERRAIN_CULL_PROBE] path=dispatch frame={:d} cull={} cullMode={} frontFace={}\n", mc2::fmt::as_i32(s_cullProbeFrames), mc2::fmt::safe(cullOn ? "ENABLED" : "disabled"), mc2::fmt::safe(cullMode == GL_BACK ? "BACK" : cullMode == GL_FRONT ? "FRONT" :
-						cullMode == GL_FRONT_AND_BACK ? "FRONT_AND_BACK" : "?"), mc2::fmt::safe(frontFace == GL_CCW ? "CCW" : frontFace == GL_CW ? "CW" : "?"));
-				std::fflush(stderr);
-			}
-		}
-
 		if (gos_terrain_indirect::IsFrameSolidArmed()) {
 			// Indirect SOLID owns this frame. The SOLID gate-off in setupTextures()
 			// already fired, so TerrainPatchStream has no SOLID records — do NOT fall

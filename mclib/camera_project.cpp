@@ -166,13 +166,13 @@ bool Camera::screenToGroundPlaneApprox (long screenX, long screenY, glm::vec3 &o
 		return v;
 	};
 	// GL-swapped (x'=-x, y'=z, z'=y) -> MC2 world (x=-glX, y=glZ, z=glY).
-	auto glToMC2 = [](const glm::vec3& g) -> glm::vec3 {
+	auto renderToMc2 = [](const glm::vec3& g) -> glm::vec3 {
 		glm::vec3 r; mc2ToRender(r, g); return r;
 	};
 
 	// REVERSE-Z, ZERO_TO_ONE: near plane is NDC z=1, far is z=0 (see inverseProject).
-	glm::vec3 ro = glToMC2(unprojectNDC(1.0f));    // near
-	glm::vec3 rf = glToMC2(unprojectNDC( 0.0f));   // far
+	glm::vec3 ro = renderToMc2(unprojectNDC(1.0f));    // near
+	glm::vec3 rf = renderToMc2(unprojectNDC( 0.0f));   // far
 
 	const float dz = rf.z - ro.z;
 	if (fabsf(dz) < 1e-6f) { outWorld = ro; outWorld.z = 0.0f; return false; }
@@ -212,13 +212,13 @@ bool Camera::screenToTerrainApprox (long screenX, long screenY, glm::vec3 &outWo
 		glm::vec3 v; v.x = wx*invW; v.y = wy*invW; v.z = wz*invW;
 		return v;
 	};
-	auto glToMC2 = [](const glm::vec3& g) -> glm::vec3 {
+	auto renderToMc2 = [](const glm::vec3& g) -> glm::vec3 {
 		glm::vec3 r; mc2ToRender(r, g); return r;
 	};
 
 	// REVERSE-Z, ZERO_TO_ONE: near plane is NDC z=1, far is z=0.
-	glm::vec3 ro = glToMC2(unprojectNDC(1.0f));    // near
-	glm::vec3 rf = glToMC2(unprojectNDC( 0.0f));   // far
+	glm::vec3 ro = renderToMc2(unprojectNDC(1.0f));    // near
+	glm::vec3 rf = renderToMc2(unprojectNDC( 0.0f));   // far
 
 	const float dz = rf.z - ro.z;
 	if (fabsf(dz) < 1e-6f) { outWorld = ro; return false; }
@@ -324,12 +324,12 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 
 		// worldToClipGL uses the GL axis swap (x'=-x, y'=z, z'=y); invert it:
 		//   mc2X = -glX,  mc2Y = glZ,  mc2Z = glY
-		auto glToMC2 = [](const glm::vec3& g) -> glm::vec3 {
+		auto renderToMc2 = [](const glm::vec3& g) -> glm::vec3 {
 			glm::vec3 r;
 			mc2ToRender(r, g);
 			return r;
 		};
-		glm::vec3 nearMc = glToMC2(nearPt);
+		glm::vec3 nearMc = renderToMc2(nearPt);
 
 		// Origin = camera eye (the matrix the GPU renders with is built from this);
 		// direction = eye -> near-plane point (on the pixel ray, in front of eye).

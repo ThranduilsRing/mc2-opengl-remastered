@@ -21,8 +21,6 @@ EditorCamera.h			: Interface for the EditorCamera component.
 #endif
 
 #include "../EditorBridge/EditorRenderBridge.h"  // GPU batcher/registry lifecycle (firewall)
-#include <GL/glew.h>                              // GLint/GL_VIEWPORT/glGetIntegerv for the
-                                                  // throttled [PICKW] viewport diagnostics.
 #include "../GameOS/gameos/view_registry.h"
 #include "../RenderCore/FramePackets.h"        // the frame packets the batchers read
 #include "EditorGpuTimer.h"                      // MC2_EDITOR_GPU_TIMERS per-pass GPU timing
@@ -435,11 +433,9 @@ public:
 
 			static int s_resDiag = 0;
 			if ((++s_resDiag % 600) == 1) {
-				GLint vp[4] = {0,0,0,0};
-				glGetIntegerv(GL_VIEWPORT, vp);
-				fprintf(stderr, "[PICKW v1] drawable=%dx%d screenRes=%.0fx%.0f glViewport=%d,%d,%d,%d\n",
+				fprintf(stderr, "[PICKW v1] drawable=%dx%d screenRes=%.0fx%.0f sceneViewport=%d,%d,%d,%d\n",
 					Environment.drawableWidth, Environment.drawableHeight,
-					screenResolution.x, screenResolution.y, vp[0], vp[1], vp[2], vp[3]);
+					screenResolution.x, screenResolution.y, 0, 0, (int)sceneRes.x, (int)sceneRes.y);
 				fflush(stderr);
 			}
 		}
