@@ -63,6 +63,8 @@ bool gosTexture::prepareSource() {
         adoptRgbaMirror(img.width, img.height, std::move(img.pixels));
     else
         setRgbaMirror(img.width, img.height, tf, img.pixels.data());
+    delete[] pcompdata_;
+    pcompdata_ = nullptr; size_ = 0;
     markContentMutated();
     return true;
 }

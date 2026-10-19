@@ -187,27 +187,27 @@ DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, const char* 
 // path). The internal format is passed in by the caller (sRGB BPTC for albedo).
 // Only BC7 is accepted, with exactly one level's worth of blocks; the blocks stay with the handle as its CPU texels, so other
 // backends import them as they are (gos_GetTextureTexels).
-DWORD __stdcall gos_NewCompressedTexture2D( uint32_t glInternalFormat, int w, int h,
+DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int w, int h,
                                             const uint8_t* blockData, size_t byteLen,
                                             const char* name )
 {
-    const bool bc7 = glInternalFormat == GL_COMPRESSED_RGBA_BPTC_UNORM || glInternalFormat == GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM;
+    const bool bc7 = vkFormat == mc2tex::kVkFormatBc7Unorm || vkFormat == mc2tex::kVkFormatBc7Srgb;
     if(!blockData || !bc7 || w <= 0 || h <= 0 || w > (int)RenderCore::kKtxMaxEdge || h > (int)RenderCore::kKtxMaxEdge ||
        byteLen != mc2tex::bc7LevelBytes((uint32_t)w, (uint32_t)h)) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected compressed texture {}: format 0x{:x}, {:d}x{:d}, {:d} bytes",
-                mc2::fmt::safe(name ? name : "<null>"), mc2::fmt::as_u32(glInternalFormat), mc2::fmt::as_i32(w),
+                mc2::fmt::safe(name ? name : "<null>"), mc2::fmt::as_u32(vkFormat), mc2::fmt::as_i32(w),
                 mc2::fmt::as_i32(h), mc2::fmt::as_size(byteLen));
         return INVALID_TEXTURE_ID;
     }
     const uint32_t blockVkFormat =
-        glInternalFormat == GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM ? mc2tex::kVkFormatBc7Srgb : mc2tex::kVkFormatBc7Unorm;
+        vkFormat;
 
     Texture tex;
     tex.w = w;
     tex.h = h;
     tex.fmt_ = TF_NONE;          // block-compressed; not one of the RGBA8 TexFormats
     tex.type_ = TT_2D;
-    tex.format = (GLenum)glInternalFormat;
+    tex.format = 0;
     tex.has_mipmaps = false;
 
     auto blocks = std::make_shared<const std::vector<uint8_t>>(blockData, blockData + byteLen);

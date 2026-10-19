@@ -614,10 +614,10 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
                                     } else {
                                         mc2::fmt::to_buf_n(inv.textureName, sizeof(inv.textureName), "(unnamed)");
                                     }
-                                    const DWORD w = mc2::textures::storageWidth(nodeIdx);
-                                    if (w != 0xFFFFFFFFu) {
-                                        inv.textureWidth  = static_cast<uint32_t>(w);
-                                        inv.textureHeight = static_cast<uint32_t>(w);
+                                    const auto pixels = gos_GetTextureTexels(mc2::textures::sourceId(nodeIdx));
+                                    if (pixels.status == GosTexels::Status::Ready) {
+                                        inv.textureWidth  = pixels.width;
+                                        inv.textureHeight = pixels.height;
                                     }
                                 }
                             }

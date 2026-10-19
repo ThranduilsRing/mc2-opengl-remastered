@@ -206,6 +206,7 @@ ResidentTextureRef TextureResidency::requestKtx(const RenderCore::TextureKey& ke
     return ResidentTextureRef(*this,handle);
 }
 void TextureResidency::pump() {
+    service_.collectSourceRetirements();
     std::vector<RenderCore::TextureHandle> retired;
     { std::lock_guard lock(retiredMutex_); retired.swap(retired_); }
     for (auto handle : retired) {

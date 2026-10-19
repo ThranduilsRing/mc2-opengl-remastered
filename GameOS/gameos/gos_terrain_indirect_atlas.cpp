@@ -375,11 +375,11 @@ void BuildCementCatalogAtlas() {
         }
 
         if (nodeIdx == 0xffffffffu) continue;
-        if (nodeIdx >= (DWORD)MC_MAXTEXTURES) {
+        if (nodeIdx >= (DWORD)mc2::textures::kTextureAssetLimit) {
             if (traceOn()) {
                 MC2_DIAGF("[TERRAIN_INDIRECT v1] event=cement_atlas_nodeidx_oob "
                        "slot=%ld nodeIdx=%u cap=%d\n",
-                       slot, (unsigned)nodeIdx, (int)MC_MAXTEXTURES);
+                       slot, (unsigned)nodeIdx, (int)mc2::textures::kTextureAssetLimit);
                 fflush(stdout);
             }
             continue;
@@ -417,7 +417,7 @@ void BuildCementCatalogAtlas() {
             if (!tt->isCement((DWORD)slot)) continue;
             if (!tt->isAlpha((DWORD)slot)) continue;   // alpha/transition slots only
             const DWORD nodeIdx = tt->peekTextureHandle((DWORD)slot);
-            if (nodeIdx == 0xffffffffu || nodeIdx >= (DWORD)MC_MAXTEXTURES) { ++alphaSkipped; continue; }
+            if (nodeIdx == 0xffffffffu || nodeIdx >= (DWORD)mc2::textures::kTextureAssetLimit) { ++alphaSkipped; continue; }
             auto image = mc2::textures::image(nodeIdx);
             if (!image || image->width != txmSize || image->height != txmSize ||
                 image->vkFormat != 37 || image->pixels.size() != size_t(txmSize) * txmSize * 4) { ++alphaSkipped; continue; }
@@ -455,14 +455,9 @@ void BuildCementCatalogAtlas() {
         return;
     }
 
-    memset(g_cementLayerIndexByNodeIdx, 0xFF, sizeof(g_cementLayerIndexByNodeIdx));
-    for (int k = 0; k < N; ++k) {
-        g_cementLayerIndexByNodeIdx[cementNodeIndices[k]] = (uint16_t)k;
-    }
-
     // Build slot → layer-index map.  Slot is the STABLE key (nodeIdx mutates
     // per-frame per memory/mc2_texture_handle_is_live.md).  This is the lookup
-    // the per-frame packer uses; the nodeIdx map is kept for one-commit dead-code.
+    // the per-frame packer uses.
     memset(g_cementLayerIndexBySlot, 0xFF, sizeof(g_cementLayerIndexBySlot));
     for (int k = 0; k < N; ++k) {
         // CEMENT-UNIFORM-2: alpha/transition cells own atlas storage but must NOT
@@ -762,7 +757,6 @@ void ResetDenseRecipe() {
     RenderCore::registerOrUpdateRenderResource(invalid);
     g_cementCatalogTruncated = 0;
     g_cementPackUnmappedCount = 0;
-    memset(g_cementLayerIndexByNodeIdx, 0xFF, sizeof(g_cementLayerIndexByNodeIdx));
     memset(g_cementLayerIndexBySlot,    0xFF, sizeof(g_cementLayerIndexBySlot));
 
     if (traceOn()) {

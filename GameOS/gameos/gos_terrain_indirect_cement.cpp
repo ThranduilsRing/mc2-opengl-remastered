@@ -1,6 +1,7 @@
 // gos_terrain_indirect: cement and concrete classification, transition masks and PopulateRecipeCementWords.
 // Declared in the class headers; shared names in gos_terrain_indirect_internal.h.
 #include "gos_terrain_indirect_internal.h"
+#include <unordered_set>
 #include "mc2fmt.h"
 
 
@@ -39,9 +40,7 @@ bool    g_cementLayerMapReady       = false;
 int     g_cementCatalogTruncated    = 0;   // 1 if N>=255 cap hit (Gate A FAIL)
 
 // Dense lookup: mcTextureNodeIndex → atlas layer-index (0..N-1).
-// Sized MC_MAXTEXTURES = 4096 (mclib/txmmgr.h:44) — node-index space.
 // 0xFFFF = "not cement / not in atlas".
-uint16_t g_cementLayerIndexByNodeIdx[MC_MAXTEXTURES];
 
 // Slot-keyed lookup: textures[] slot index → atlas layer-index (0..N-1).
 // SLOT IS THE STABLE KEY (persistent across frames).  nodeIdx (mcTextureManager
@@ -892,14 +891,12 @@ std::vector<uint32_t> g_uniqueTerrainNodeIds;
 
 void CollectUniqueNodeIds() {
     g_uniqueTerrainNodeIds.clear();
-    static bool seen[MC_MAXTEXTURES];
-    memset(seen, 0, sizeof(seen));
+    std::unordered_set<uint32_t> seen;
     for (const TerrainQuadRecipe& rec : g_denseRecipes) {
         uint32_t nodeId;
         memcpy(&nodeId, &rec._wp2, 4);
-        if (!gos_terrain_arm::IsTileHandle(nodeId, (uint32_t)MC_MAXTEXTURES)) continue;
-        if (!seen[nodeId]) {
-            seen[nodeId] = true;
+        if (!gos_terrain_arm::IsTileHandle(nodeId, (uint32_t)mc2::textures::kTextureAssetLimit)) continue;
+        if (seen.insert(nodeId).second) {
             g_uniqueTerrainNodeIds.push_back(nodeId);
         }
     }

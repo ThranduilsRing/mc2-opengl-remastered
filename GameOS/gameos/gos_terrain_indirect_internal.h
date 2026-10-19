@@ -57,7 +57,7 @@ extern long g_viewContentEpoch;   // VIEW-EPOCH-DEDUPE-1 semantic view-content e
 #include "../../mclib/mapdata.h"
 #include "../../mclib/move.h"       // PR2c Stage 1c — MissionMap, GameMap, MAPCELL_DIM
 #include "../../mclib/terrtxm.h"    // TERRAIN_TXM_SIZE (extern int)
-#include "../../mclib/txmmgr.h"     // MC_MAXTEXTURES (cement node-index space)
+#include "../../mclib/txmmgr.h"     // frame/render integration
 #include "gos_terrain_bridge.h"     // gos_terrain_bridge_glTextureForGosHandle (cement readback)
 #include "../../RenderCore/KtxLoader.h"  // COLORMAP-BC7-KTX2-1: ktxLoadRgba8 for BC7 atlas upload
 #include "gos_terrain_arm_logic.h"        // shared GPU-terrain arm predicate (editor↔game)
@@ -171,7 +171,6 @@ extern int     g_cementAtlasGridSide;
 extern int     g_cementAtlasTileCount;
 extern bool    g_cementLayerMapReady;
 extern int     g_cementCatalogTruncated;
-extern uint16_t g_cementLayerIndexByNodeIdx[MC_MAXTEXTURES];
 extern uint16_t g_cementLayerIndexBySlot[MC_MAX_TERRAIN_TXMS];
 int deriveMaskIdFromCorners(bool c0, bool c1, bool c2, bool c3);
 bool PadEdgeRoadFixEnabled();
