@@ -535,7 +535,8 @@ void gos_GetTerrainMatHeight(float* rock, float* grass, float* dirt, float* conc
 // separate TU and needs the same MC2_TERRAIN_MATERIAL_LIB gate value to drive its
 // own u_useMaterialLib upload. Same cached-static evaluation as the bridge path.
 bool gos_TerrainMaterialLibEnabled() {
-    return terrainMaterialLibEnabled();
+    static const bool enabled = mc2::gate::get<"MC2_TERRAIN_MATERIAL_LIB">();
+    return enabled;
 }
 void gos_SetTerrainNormalsFromHeightStrength(float s) {
     if (g_gos_renderer) g_gos_renderer->setTerrainNormalsFromHeightStrength(s);
