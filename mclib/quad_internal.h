@@ -265,7 +265,7 @@ inline BYTE terrainTypeToMaterial(DWORD terrainType)
 using mc2depth::TERRAIN_DEPTH_FUDGE;
 using mc2depth::WATER_DEPTH_FUDGE;
 inline constexpr float OVERLAY_ELEV_OFFSET = 0.15f;
-#define SKY_FUDGE			(1.0f / 60000.0f)
+inline constexpr float SKY_FUDGE = (1.0f / 60000.0f);
 inline constexpr int WATER_ALPHA = 0x1fffffff;
 extern float cloudScrollX;
 extern float cloudScrollY;

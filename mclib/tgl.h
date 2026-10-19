@@ -164,12 +164,12 @@ using TG_ShadowTrianglePtr = TG_ShadowTriangle*;
 //-------------------------------------------------------------------------------
 // TG_LightTypes
 inline constexpr unsigned int TG_LIGHT_NONE = 0xffffffff;
-#define 	TG_LIGHT_AMBIENT				0
-#define		TG_LIGHT_INFINITE				1
-#define		TG_LIGHT_INFINITEWITHFALLOFF	2
-#define 	TG_LIGHT_POINT					3
-#define		TG_LIGHT_SPOT					4
-#define		TG_LIGHT_TERRAIN				5
+inline constexpr int TG_LIGHT_AMBIENT = static_cast<int>(0);
+inline constexpr int TG_LIGHT_INFINITE = static_cast<int>(1);
+inline constexpr int TG_LIGHT_INFINITEWITHFALLOFF = static_cast<int>(2);
+inline constexpr int TG_LIGHT_POINT = static_cast<int>(3);
+inline constexpr int TG_LIGHT_SPOT = static_cast<int>(4);
+inline constexpr int TG_LIGHT_TERRAIN = static_cast<int>(5);
 
 // 2026-05-20: bumped 256 -> 1024 for (E) SpotLight_ -> real illumination.
 // Stage 1 / T1.1 (plan docs/superpowers/plans/2026-05-20-spotlight-real-illumination-plan.md).
@@ -188,7 +188,7 @@ inline constexpr unsigned int TG_LIGHT_NONE = 0xffffffff;
 // Shader-side MAX_LIGHTS_IN_WORLD in shaders/include/lighting.hglsl is a
 // DIFFERENT scope from MAX_LIGHTS_IN_WORLD here, but it is now 32 (equal to
 // MAX_HW_LIGHTS_IN_WORLD, the per-object SSBO record cap), not 16.
-#define 	MAX_LIGHTS_IN_WORLD				1024
+inline constexpr int MAX_LIGHTS_IN_WORLD = 1024;
 
 inline constexpr int TG_NODE_ID = 25;
 
@@ -311,7 +311,7 @@ using TG_LightPtr = TG_Light*;
 // inner-array size, NOT a runtime clamp -- runtime population stays 16 (txmmgr.cpp
 // GatherLightsParameters hardcodes 16). DIFFERENT from this header's
 // MAX_LIGHTS_IN_WORLD (=1024, the global scene light pool -- do not conflate).
-#define MAX_HW_LIGHTS_IN_WORLD	static_cast<int>(kGpuObjectLightsMax)
+inline constexpr int MAX_HW_LIGHTS_IN_WORLD = static_cast<int>(kGpuObjectLightsMax);
 
 // Slice 2 (object-offload) -- Stage 2.C: per-object GPU light record, including the
 // per-light falloff distances (lightFalloff[i] = closeDistance, farDistance,
@@ -483,7 +483,7 @@ inline void rebuildShapeRecParents (TG_ShapeRec *recs, long count, NodeIdOf node
 }
 
 inline constexpr int TYPE_NODE = 0;
-#define SHAPE_NODE			1
+inline constexpr int SHAPE_NODE = 1;
 
 class TG_TypeNode
 {

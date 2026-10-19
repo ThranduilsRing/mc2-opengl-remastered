@@ -215,7 +215,7 @@ DWORD TerrainColorMap::resolveTextureHandle (VertexPtr vMin, VertexPtr vMax, Ter
 	   
 		//We now have the position in x and y as fraction from 0.0 to 1.0
 		// The texture is easy.  Just mutiply by number of textures across.
-		#define EDGE_ADJUST_FACTOR		0.0005f
+		constexpr float EDGE_ADJUST_FACTOR = 0.0005f;
 
         long txmNumX = (posX + EDGE_ADJUST_FACTOR) * numTexturesAcross;
 		long txmNumY = (posY + EDGE_ADJUST_FACTOR) * numTexturesAcross;

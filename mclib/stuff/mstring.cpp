@@ -13,7 +13,7 @@
 //#######################    MStringRepresentation    #########################
 //#############################################################################
 
-#define DELETE_FILL_CHAR ('0')
+inline constexpr char DELETE_FILL_CHAR = ('0');
 
 size_t
 	MStringRepresentation::allocationIncrement = 8;

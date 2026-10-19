@@ -26,22 +26,22 @@
 //---------------------------------------------------------------------------
 // Macro Definitions
 
-#define PACKET_FILE_VERSION	0xFEEDFACE
-#define NEW_PACKET_FLAG			0xFEEDFACE
+inline constexpr unsigned int PACKET_FILE_VERSION = 0xFEEDFACE;
+inline constexpr unsigned int NEW_PACKET_FLAG = 0xFEEDFACE;
 
 // 3 bits of type info
 
-#define STORAGE_TYPE_RAW		0x00L
-#define STORAGE_TYPE_FWF		0x01L		// file within file
-#define STORAGE_TYPE_LZD		0x02L		// LZ Compressed Packet
-#define STORAGE_TYPE_HF			0x03L		// Huffman Compressed Packet
-#define STORAGE_TYPE_ZLIB		0x04L		// zLib Compressed Packet
-#define STORAGE_TYPE_NUL		0x07L		// NULL packet.
+inline constexpr long STORAGE_TYPE_RAW = 0x00L;
+inline constexpr long STORAGE_TYPE_FWF = 0x01L; // file within file
+inline constexpr long STORAGE_TYPE_LZD = 0x02L; // LZ Compressed Packet
+inline constexpr long STORAGE_TYPE_HF = 0x03L; // Huffman Compressed Packet
+inline constexpr long STORAGE_TYPE_ZLIB = 0x04L; // zLib Compressed Packet
+inline constexpr long STORAGE_TYPE_NUL = 0x07L; // NULL packet.
 
-#define TYPE_SHIFT					29	// Bit position of masked type
+inline constexpr int TYPE_SHIFT = 29; // Bit position of masked type
 #define DEFAULT_PACKET_TYPE			STORAGE_TYPE_RAW
-#define ANY_PACKET_TYPE				0x07
-#define OFFSET_MASK         		((1L << TYPE_SHIFT) - 1L)
+inline constexpr int ANY_PACKET_TYPE = 0x07;
+inline constexpr long OFFSET_MASK = ((1L << TYPE_SHIFT) - 1L);
 
 #define GetPacketType(offset) 		((static_cast<unsigned int>(offset))>>TYPE_SHIFT)
 #define GetPacketOffset(offset)		(offset&OFFSET_MASK)

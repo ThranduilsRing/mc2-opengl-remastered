@@ -47,9 +47,9 @@ struct _SourceFile {
 
 //---------------------------------------------------------------------------
 
-#define	MAX_USER_FILES			6
-#define MAX_USER_FILE_LINES		50
-#define	MAX_USER_FILE_LINELEN	200
+inline constexpr int MAX_USER_FILES = 6;
+inline constexpr int MAX_USER_FILE_LINES = 50;
+inline constexpr int MAX_USER_FILE_LINELEN = 200;
 
 class UserFile {
 
@@ -108,10 +108,10 @@ class UserFile {
 
 //---------------------------------------------------------------------------
 
-#define	MAX_ABLMODULE_NAME				5
-#define	MAX_SOURCE_FILES				256			// per module
-#define	MAX_LIBRARIES_USED				25			// per module
-#define	MAX_STATE_HANDLES_PER_MODULE	10
+inline constexpr int MAX_ABLMODULE_NAME = 5;
+inline constexpr int MAX_SOURCE_FILES = 256; // per module
+inline constexpr int MAX_LIBRARIES_USED = 25; // per module
+inline constexpr int MAX_STATE_HANDLES_PER_MODULE = 10;
 
 struct VariableInfo {
 	char					name[128];

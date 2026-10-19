@@ -10,7 +10,7 @@
 #include"stuffheaders.hpp"
 #include "mc2fmt.h"
 
-#define MAX_LINE_SIZE 512
+inline constexpr int MAX_LINE_SIZE = 512;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //

@@ -25,11 +25,11 @@
 #include<sys/types.h>
 #include<sys/stat.h>
 //---------------------------------------------------------------------------
-#define MAX_FILENAME_SIZE		250
+inline constexpr int MAX_FILENAME_SIZE = 250;
 
 inline constexpr int FASTFILE_VERSION_BYTESIZE = 4; //sebi
-#define FASTFILE_VERSION		0xCADDECAF
-#define FASTFILE_VERSION_LZ		0xFADDECAF
+inline constexpr unsigned int FASTFILE_VERSION = 0xCADDECAF;
+inline constexpr unsigned int FASTFILE_VERSION_LZ = 0xFADDECAF;
 
 inline constexpr int FASTFILE_ENTRY_TABLE_START = 8; //sebi
 

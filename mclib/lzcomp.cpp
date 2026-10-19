@@ -24,7 +24,7 @@
 #include "memfunc.h"
 
 // 128K and more cold be faster
-#define CHUNK 16384
+inline constexpr int CHUNK = 16384;
 
 //---------------------------------------------------------------------------
 // Static Globals

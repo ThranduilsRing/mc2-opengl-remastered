@@ -55,14 +55,14 @@
 // Channel 13 is Support Officer
 // Channel 14 is Betty
 // Channel 15 is Fire Burning SFX
-#define MAX_DIGITAL_SAMPLES			16
+inline constexpr int MAX_DIGITAL_SAMPLES = 16;
 
 inline constexpr int MAX_SAMPLE_VOLUME = 127;
 
 inline constexpr int RADIO_CHANNEL = 0;
-#define FIRE_CHANNEL				(MAX_DIGITAL_SAMPLES-1)
-#define BETTY_CHANNEL				(FIRE_CHANNEL-1)
-#define SUPPORT_CHANNEL				(BETTY_CHANNEL-1)
+inline constexpr int FIRE_CHANNEL = (MAX_DIGITAL_SAMPLES-1);
+inline constexpr int BETTY_CHANNEL = (FIRE_CHANNEL-1);
+inline constexpr int SUPPORT_CHANNEL = (BETTY_CHANNEL-1);
 
 inline constexpr int AMBIENT_CHANNEL_START = 11;
 

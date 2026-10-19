@@ -2,7 +2,7 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 
-#define HEIGHT_THRESHOLD 10.0f
+inline constexpr float HEIGHT_THRESHOLD = 10.0f;
 
 long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
 

@@ -14,43 +14,43 @@
 
 //---------------------------------------------------------------------
 // Set this, once we have the actual executor modules up and running...
-#define	USE_COMPOUND_STATEMENTS		0
+inline constexpr int USE_COMPOUND_STATEMENTS = 0;
 #define	ANALYZE_ON					0
-#define	ORDERS_ON					1
+inline constexpr int ORDERS_ON = 1;
 
-#define	CHAR_FORMFEED				'\f'
-#define	CHAR_EOF					'\x7f'
+inline constexpr char CHAR_FORMFEED = '\f';
+inline constexpr char CHAR_EOF = '\x7f';
 
-#define MAX_INCLUDE_DEPTH			6
-#define	MAXLEN_FILENAME				256
-#define	MAXLEN_SOURCELINE			2048
-#define	MAXLEN_PRINTLINE			80
+inline constexpr int MAX_INCLUDE_DEPTH = 6;
+inline constexpr int MAXLEN_FILENAME = 256;
+inline constexpr int MAXLEN_SOURCELINE = 2048;
+inline constexpr int MAXLEN_PRINTLINE = 80;
 #define	MAXLEN_TOKENSTRING			MAXLEN_SOURCELINE
-#define	MAX_LINES_PER_PAGE			50
-#define	MAXLEN_STRING_CONSTANT		1024
-#define	MAX_NESTING_LEVEL			3
+inline constexpr int MAX_LINES_PER_PAGE = 50;
+inline constexpr int MAXLEN_STRING_CONSTANT = 1024;
+inline constexpr int MAX_NESTING_LEVEL = 3;
 
-#define	LEN_DATESTRING				26
+inline constexpr int LEN_DATESTRING = 26;
 
-#define	MAXSIZE_CODE_BUFFER			20480
+inline constexpr int MAXSIZE_CODE_BUFFER = 20480;
 
-#define	MAXSIZE_STACK				10240
-#define	STACK_FRAME_HEADER_SIZE		4
+inline constexpr int MAXSIZE_STACK = 10240;
+inline constexpr int STACK_FRAME_HEADER_SIZE = 4;
 
-#define	SYSTEM_HEAP_SIZE			1024 * 1024		// General system memory...
+inline constexpr int SYSTEM_HEAP_SIZE = 1024 * 1024; // General system memory...
 
 // Masher Commands available...
-#define	COMMAND_HELP_SHORT			0
-#define	COMMAND_WAIT_LONG			1
-#define	COMMAND_WAIT_SHORT			2
-#define	COMMAND_RANDOM_LONG			3
-#define	COMMAND_RANDOM_SHORT		4
-#define	COMMAND_NUM_RUNS_LONG		5
-#define	COMMAND_NUM_RUNS_SHORT		6
+inline constexpr int COMMAND_HELP_SHORT = 0;
+inline constexpr int COMMAND_WAIT_LONG = 1;
+inline constexpr int COMMAND_WAIT_SHORT = 2;
+inline constexpr int COMMAND_RANDOM_LONG = 3;
+inline constexpr int COMMAND_RANDOM_SHORT = 4;
+inline constexpr int COMMAND_NUM_RUNS_LONG = 5;
+inline constexpr int COMMAND_NUM_RUNS_SHORT = 6;
 
-#define	ABL_NO_ERR					0
+inline constexpr int ABL_NO_ERR = 0;
 
-#define	MAX_ORDERS					65535
+inline constexpr int MAX_ORDERS = 65535;
 
 //***************************************************************************
 

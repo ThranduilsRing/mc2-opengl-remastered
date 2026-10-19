@@ -25,7 +25,7 @@ inline constexpr int ELM_TREE = 0x08;
 inline constexpr int PU_TYPE = 0x09;
 inline constexpr int SMOKE_TYPE = 0x0a;
 inline constexpr int POLY_APPEARANCE = 0x0b;
-#define MLR_APPEARANCE	0x0c
+inline constexpr int MLR_APPEARANCE = 0x0c;
 inline constexpr int MECH_TYPE = 0x0d;
 inline constexpr int BLDG_TYPE = 0x0e;
 inline constexpr int TREED_TYPE = 0x0f;

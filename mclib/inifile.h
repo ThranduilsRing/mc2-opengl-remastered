@@ -31,7 +31,7 @@
 #define	NO_ERR						0x00000000
 #endif
 
-#define BLOCK_NOT_FOUND						0xFADA0000
+inline constexpr unsigned int BLOCK_NOT_FOUND = 0xFADA0000;
 inline constexpr unsigned int ID_NOT_FOUND = 0xFADA0001;
 inline constexpr unsigned int DATA_NOT_CORRECT_TYPE = 0xFADA0002;
 inline constexpr unsigned int BUFFER_TOO_SMALL = 0xFADA0003;

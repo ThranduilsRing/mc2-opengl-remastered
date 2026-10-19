@@ -47,7 +47,7 @@
 #define NO_ERR		0
 #endif
 
-#define	MAPCELL_DIM				3
+inline constexpr int MAPCELL_DIM = 3;
 inline constexpr int MAX_MAP_CELL_WIDTH = 720;
 inline constexpr float TACMAP_SIZE = 128.f;
 
@@ -104,15 +104,15 @@ inline constexpr int TEAM8 = 7;
 
 //-------------------------------------------
 // 08/01/99 -- Must have generic alignments or Heidi goes WAY south!
-#define EDITOR_TEAMNONE			-1		//Allied
-#define EDITOR_TEAM1			0		//Player
-#define EDITOR_TEAM2			1		//Enemy
-#define EDITOR_TEAM3			2
-#define EDITOR_TEAM4			3
-#define EDITOR_TEAM5			4
-#define EDITOR_TEAM6			5
-#define EDITOR_TEAM7			6
-#define EDITOR_TEAM8			7
+inline constexpr int EDITOR_TEAMNONE = -1; //Allied
+inline constexpr int EDITOR_TEAM1 = 0; //Player
+inline constexpr int EDITOR_TEAM2 = 1; //Enemy
+inline constexpr int EDITOR_TEAM3 = 2;
+inline constexpr int EDITOR_TEAM4 = 3;
+inline constexpr int EDITOR_TEAM5 = 4;
+inline constexpr int EDITOR_TEAM6 = 5;
+inline constexpr int EDITOR_TEAM7 = 6;
+inline constexpr int EDITOR_TEAM8 = 7;
 
 //---------------------------------------------------------------------------
 // Used by the object system to load the objects on the terrain.
