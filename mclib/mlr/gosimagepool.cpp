@@ -3,6 +3,7 @@
 //===========================================================================//
 
 #include"mlrheaders.hpp"
+#include "../texture_assets.h"
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -140,7 +141,7 @@ bool
 		((fFileName[1] != 'X') && (fFileName[1] != 'x')))
 		hint |= gosHint_DisableMipmap;
 
-	DWORD nodeIndex = mcTextureManager->loadTexture(file_name,gos_Texture_Detect, hint);
+	DWORD nodeIndex = mc2::textures::load(file_name,gos_Texture_Detect, hint);
 
 	image->SetHandle(nodeIndex);
 	

@@ -1,6 +1,7 @@
 // GVAppearance: paint schemes, gestures, object/mover parameters, bounds, destruction and node positions.
 // Declared in the class headers; shared names in gvactor_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include "texture_assets.h"
 #include "gvactor_internal.h"
 #include "appearance_rng.h"
 #include "../RenderCore/axis_convert.h"
@@ -9,7 +10,7 @@
 
 void GVAppearance::setPaintScheme (void)
 {
-	DWORD gosHandle = mcTextureManager->get_gosTextureHandle(gvShape->GetTextureHandle(0));
+	DWORD gosHandle = mc2::textures::sourceId(gvShape->GetTextureHandle(0));
 
 	if (gosHandle && gosHandle != 0xffffffff)
 	{
@@ -136,7 +137,7 @@ void GVAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 {
 	
 	if (localTextureHandle)
-		mcTextureManager->releaseNode(localTextureHandle);
+		mc2::textures::release(localTextureHandle);
 	
 	char txmName[1024];
 	gvShape->GetTextureName(0,txmName,256);
@@ -166,9 +167,9 @@ void GVAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	{
 		if (S_strnicmp(txmName,"a_",2) == 0)
 		{
-			DWORD textureInstanceAlreadyExists = mcTextureManager->textureInstanceExists(textureName,gos_Texture_Solid,gosHint_MipmapFilter0 | gosHint_DontShrink,paintInstance);
+			DWORD textureInstanceAlreadyExists = mc2::textures::findAndRetain(textureName,gos_Texture_Solid,gosHint_MipmapFilter0 | gosHint_DontShrink,paintInstance);
 			if (!textureInstanceAlreadyExists)
-				localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_MipmapFilter0 | gosHint_DontShrink,paintInstance);
+				localTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_MipmapFilter0 | gosHint_DontShrink,paintInstance);
 			else
 				localTextureHandle = textureInstanceAlreadyExists;
 				
@@ -188,9 +189,9 @@ void GVAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 		}
 		else
 		{
-			DWORD textureInstanceAlreadyExists = mcTextureManager->textureInstanceExists(textureName,gos_Texture_Solid,gosHint_MipmapFilter0 | gosHint_DontShrink,paintInstance);
+			DWORD textureInstanceAlreadyExists = mc2::textures::findAndRetain(textureName,gos_Texture_Solid,gosHint_MipmapFilter0 | gosHint_DontShrink,paintInstance);
 			if (!textureInstanceAlreadyExists)
-				localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_MipmapFilter0 | gosHint_DontShrink,paintInstance);
+				localTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_MipmapFilter0 | gosHint_DontShrink,paintInstance);
 			else
 				localTextureHandle = textureInstanceAlreadyExists;
 				
@@ -619,14 +620,14 @@ bool GVAppearance::recalcBounds (void)
 								{
 									if (S_strnicmp(txmName,"a_",2) == 0)
 									{
-										DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
+										DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
 										gosASSERT(gosTextureHandle != 0xffffffff);
 										gvShape->SetTextureHandle(j,gosTextureHandle);
 										gvShape->SetTextureAlpha(j,true);
 									}
 									else
 									{
-										DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
+										DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
 										gosASSERT(gosTextureHandle != 0xffffffff);
 										gvShape->SetTextureHandle(j,gosTextureHandle);
 										gvShape->SetTextureAlpha(j,false);
@@ -669,14 +670,14 @@ bool GVAppearance::recalcBounds (void)
 								{
 									if (S_strnicmp(txmName,"a_",2) == 0)
 									{
-										localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink,true);
+										localTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink,true);
 										gosASSERT(localTextureHandle != 0xffffffff);
 										gvShape->SetTextureHandle(i,localTextureHandle);
 										gvShape->SetTextureAlpha(i,true);
 									}
 									else
 									{
-										localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,true);
+										localTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,true);
 										gosASSERT(localTextureHandle != 0xffffffff);
 										gvShape->SetTextureHandle(i,localTextureHandle);
 										gvShape->SetTextureAlpha(i,false);

@@ -9,6 +9,7 @@
 //===========================================================================//
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include "texture_assets.h"
 #include "genactor_internal.h"
 #include "appearance_rng.h"
 #include "mc2fmt.h"
@@ -265,13 +266,13 @@ void GenericAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			{
 				if (S_strnicmp(txmName,"a_",2) == 0)
 				{
-					DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
+					DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
 					genShape->SetTextureHandle(i,gosTextureHandle);
 					genShape->SetTextureAlpha(i,true);
 				}
 				else
 				{
-					DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
+					DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
 					genShape->SetTextureHandle(i,gosTextureHandle);
 					genShape->SetTextureAlpha(i,false);
 				}
@@ -375,7 +376,7 @@ void GenericAppearance::setObjStatus (long oStatus)
 					
 					if (fileExists(textureName))
 					{
-						DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
+						DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
 						genShape->SetTextureHandle(i,gosTextureHandle);
 					}
 					else
@@ -500,13 +501,13 @@ void GenericAppearance::setSkyNumber (long skyNum)
 		{
 			if (S_strnicmp(newName,"a_",2) == 0)
 			{
-				DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
+				DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
 				genShape->SetTextureHandle(i,gosTextureHandle);
 				genShape->SetTextureAlpha(i,true);
 			}
 			else
 			{
-				DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
+				DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
 				genShape->SetTextureHandle(i,gosTextureHandle);
 				genShape->SetTextureAlpha(i,false);
 			}

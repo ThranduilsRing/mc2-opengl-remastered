@@ -1,4 +1,5 @@
 #include "../GameOS/gameos/ui_texture.h"
+#include "../mclib/texture_assets.h"
 #define PAUSEWINDOW_CPP
 /*************************************************************************************************\
 PauseWindow.cpp			: Implementation of the PauseWindow component.
@@ -344,13 +345,13 @@ bool PauseWindow::renderImGui()
 	if ( !s_frameTried )
 	{
 		s_frameTried = true;
-		s_frameMcH = mcTextureManager->loadTexture(
+		s_frameMcH = mc2::textures::load(
 			"data\\art\\gui\\mc2_pause_frame.png", gos_Texture_Alpha, 0, 0, 0x1 );
 	}
 	uint64_t s_frameGlTex = 0;
 	if ( s_frameMcH )
 	{
-		DWORD gosID = mcTextureManager->get_gosTextureHandle( s_frameMcH );
+		DWORD gosID = mc2::textures::sourceId( s_frameMcH );
 		if ( gosID && gosID != 0xffffffff )
 			s_frameGlTex = gos_GetUiTextureId( gosID );
 	}
@@ -536,13 +537,13 @@ void PauseWindow::renderImGuiConfirm()
 	if ( !s_dlgTried )
 	{
 		s_dlgTried = true;
-		s_dlgFrameMcH = mcTextureManager->loadTexture(
+		s_dlgFrameMcH = mc2::textures::load(
 			"data\\art\\gui\\mc2_dialog_frame.png", gos_Texture_Alpha, 0, 0, 0x1 );
 	}
 	uint64_t dlgTex = 0;
 	if ( s_dlgFrameMcH )
 	{
-		DWORD gosID = mcTextureManager->get_gosTextureHandle( s_dlgFrameMcH );
+		DWORD gosID = mc2::textures::sourceId( s_dlgFrameMcH );
 		if ( gosID && gosID != 0xffffffff )
 			dlgTex = gos_GetUiTextureId( gosID );
 	}

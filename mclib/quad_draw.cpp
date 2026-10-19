@@ -1,6 +1,7 @@
 // TerrainQuad: TerrainQuad::draw: the SOLID / DRAWALPHA terrain and overlay submission, the M2d decal producer and its parity probe.
 // Declared in the class headers; shared names in quad_internal.h.
 #include "quad_internal.h"
+#include "texture_assets.h"
 #include "mc2fmt.h"
 
 
@@ -118,9 +119,9 @@ void TerrainQuad::drawSetup(QuadDrawFrame& f) {
 	if (MC2_OverlayTileHiresSize() > 0 && overlayHandle != 0xffffffff)
 	{
 		DWORD ovLogicalW = 0, ovLogicalH = 0;
-		if (mcTextureManager->tryGetTextureLogicalSize(overlayHandle, ovLogicalW, ovLogicalH))
+		if (mc2::textures::logicalSize(overlayHandle, ovLogicalW, ovLogicalH))
 		{
-			const DWORD ovEdge = ovLogicalW * mcTextureManager->getUVScale(overlayHandle);
+			const DWORD ovEdge = ovLogicalW * mc2::textures::uvScale(overlayHandle);
 			if (ovEdge > 0)
 			{
 				oldminU = oldminV = 0.5f / (float)ovEdge;

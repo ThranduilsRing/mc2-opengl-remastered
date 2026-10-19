@@ -7,6 +7,7 @@
 
 #if !defined(MLR_MLR_HPP)
 #include<mlr/mlr.hpp>
+#include "../texture_assets.h"
 #endif
 
 #if !defined(GAMEOS_HPP)
@@ -61,7 +62,7 @@ namespace MidLevelRenderer {
 		DWORD GetHandle()
 		{ 
 			Check_Object(this);
-			DWORD imageHandle = mcTextureManager->get_gosTextureHandle(mcTextureNodeIndex);
+			DWORD imageHandle = mc2::textures::sourceId(mcTextureNodeIndex);
 
 			if (imageHandle == 0xffffffff)
 				imageHandle = 0;

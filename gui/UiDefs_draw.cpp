@@ -1,4 +1,5 @@
 #include "../GameOS/gameos/ui_texture.h"
+#include "../mclib/texture_assets.h"
 // UiDefs: page scaling and per-element drawing.
 // Declared in UiDefs_internal.h.
 #include "UiDefs_internal.h"
@@ -153,7 +154,7 @@ static void ensureTexture(UiElement& e)
         }
     }
     const char* loadPath = loadName.c_str();
-    e.textureNode = mcTextureManager->loadTexture(loadPath, gos_Texture_Alpha, 0, 0, 0x2);
+    e.textureNode = mc2::textures::load(loadPath, gos_Texture_Alpha, 0, 0, 0x2);
     e.textureNodeAssigned = true;
     if (!e.textureNode) {
         traceMissingTextureOnce(e.texturePath, p);
@@ -164,7 +165,7 @@ static void ensureTexture(UiElement& e)
         if (e.textureWidth == 0 || e.textureHeight == 0) {
             DWORD logicalWidth = 0;
             DWORD logicalHeight = 0;
-            if (mcTextureManager->tryGetTextureLogicalSize(e.textureNode, logicalWidth, logicalHeight)) {
+            if (mc2::textures::logicalSize(e.textureNode, logicalWidth, logicalHeight)) {
                 e.textureWidth = static_cast<int>(logicalWidth);
                 e.textureHeight = static_cast<int>(logicalHeight);
             }
@@ -190,7 +191,7 @@ static void textureUVs(UiElement& e, float& u1, float& v1, float& u2, float& v2)
     if ((logicalWidth <= 0 || logicalHeight <= 0) && e.textureNode) {
         DWORD w = 0;
         DWORD h = 0;
-        if (mcTextureManager->tryGetTextureLogicalSize(e.textureNode, w, h)) {
+        if (mc2::textures::logicalSize(e.textureNode, w, h)) {
             logicalWidth = static_cast<int>(w);
             logicalHeight = static_cast<int>(h);
         }
@@ -206,7 +207,7 @@ static void textureUVs(UiElement& e, float& u1, float& v1, float& u2, float& v2)
     //     via e.uvLegacySpace (setElementImageRegion legacyUvSpace=true).
     DWORD uvScale = 1;
     if (e.uvLegacySpace && e.textureNode && mcTextureManager)
-        uvScale = mcTextureManager->getUVScale(e.textureNode);
+        uvScale = mc2::textures::uvScale(e.textureNode);
     if (uvScale < 1) uvScale = 1;
 
     if (logicalWidth > 0 && logicalHeight > 0) {
@@ -254,7 +255,7 @@ bool drawUiImageElement(UiElement& e, int xOffset, int yOffset, const PageScale&
 {
     uint64_t glTexture=0;
     if (e.gosTextureOverride) glTexture=gos_GetUiTextureId(e.gosTextureOverride);
-    else { ensureTexture(e); if (e.textureNodeAssigned) glTexture=mcTextureManager->getUiTextureId(e.textureNode); }
+    else { ensureTexture(e); if (e.textureNodeAssigned) glTexture=mc2::textures::uiId(e.textureNode); }
     if (!glTexture) return false;
 
     float u1 = 0.0f;

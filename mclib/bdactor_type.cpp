@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: BldgAppearanceType and TreeAppearanceType init/destroy.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include "texture_assets.h"
 #include "mc2fmt.h"
 
 void BldgAppearanceType::init (const char * fileName)
@@ -281,7 +282,7 @@ void BldgAppearanceType::init (const char * fileName)
 				{
 					if (S_strnicmp(txmName, "a_", 2) == 0)
 					{
-						DWORD gosHandle = mcTextureManager->loadTexture(
+						DWORD gosHandle = mc2::textures::load(
 							textureName, gos_Texture_Alpha,
 							gosHint_DisableMipmap | gosHint_DontShrink);
 						gosASSERT(gosHandle != 0xffffffff);
@@ -290,7 +291,7 @@ void BldgAppearanceType::init (const char * fileName)
 					}
 					else
 					{
-						DWORD gosHandle = mcTextureManager->loadTexture(
+						DWORD gosHandle = mc2::textures::load(
 							textureName, gos_Texture_Solid,
 							gosHint_DisableMipmap | gosHint_DontShrink);
 						gosASSERT(gosHandle != 0xffffffff);

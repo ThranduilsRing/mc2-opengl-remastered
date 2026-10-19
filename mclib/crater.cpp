@@ -10,6 +10,7 @@
 // Include Files
 #ifndef CRATER_H
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include "texture_assets.h"
 #include"crater.h"
 #endif
 
@@ -159,9 +160,9 @@ long CraterManager::init (long numCraters, unsigned long craterTypeSize, const c
 		craterPath.init(texturePath,craterName,".tga");
 
 		if (!i)
-			craterTextureIndices[i] = mcTextureManager->loadTexture(craterPath, gos_Texture_Keyed, gosHint_DisableMipmap);
+			craterTextureIndices[i] = mc2::textures::load(craterPath, gos_Texture_Keyed, gosHint_DisableMipmap);
 		else
-			craterTextureIndices[i] = mcTextureManager->loadTexture(craterPath, gos_Texture_Alpha, gosHint_DisableMipmap);
+			craterTextureIndices[i] = mc2::textures::load(craterPath, gos_Texture_Alpha, gosHint_DisableMipmap);
 	}
 
 	//-----------------------------------------------------
@@ -267,7 +268,7 @@ long CraterManager::addCrater (long craterType, glm::vec3 &position, float rotat
 			int texIdxSlot = isCrater ? 0 : 1;
 			DWORD gosHandle = 0;
 			if (!craterTextureIndices.empty())
-				gosHandle = mcTextureManager->get_gosTextureHandle(craterTextureIndices[texIdxSlot]);
+				gosHandle = mc2::textures::sourceId(craterTextureIndices[texIdxSlot]);
 			// cRotation is in degrees; spawn() stores radians for cosf/sinf.
 			const float kDegToRad = 3.14159265f / 180.0f;
 			DynDecal::spawn(position, ddRadius, cRotation * kDegToRad, gosHandle, 0 /*default lifetime*/);
@@ -298,12 +299,12 @@ long CraterManager::update (void)
 		{
 			if (currentCrater->craterShapeId > TURKINA_FOOTPRINT)	//We are standard crater.
 			{
-				craterTextureHandles[0] = mcTextureManager->get_gosTextureHandle(craterTextureIndices[0]);
+				craterTextureHandles[0] = mc2::textures::sourceId(craterTextureIndices[0]);
 				// addTriangle reservations removed — now using gos_PushDecal typed batch
 			}
 			else		//We are a footprint.
 			{
-				craterTextureHandles[1] = mcTextureManager->get_gosTextureHandle(craterTextureIndices[1]);
+				craterTextureHandles[1] = mc2::textures::sourceId(craterTextureIndices[1]);
 				// addTriangle reservations removed — now using gos_PushDecal typed batch
 			}
 		}
@@ -566,7 +567,7 @@ void CraterManager::render (void)
 					// position comes from currCrater->position[] (MC2 world space: x=east, y=north, z=elev).
 					{
 						float fogFloat = (float)((fogRGB >> 24) & 0xFF) / 255.0f;
-						DWORD texIdx = mcTextureManager->get_gosTextureHandle(craterTextureIndices[handleOffset]);
+						DWORD texIdx = mc2::textures::sourceId(craterTextureIndices[handleOffset]);
 
 						WorldOverlayVert gWov[3];
 						gWov[0] = { currCrater->position[0].x, currCrater->position[0].y, currCrater->position[0].z,

@@ -1,6 +1,7 @@
 // WeaponBolt: the per-frame bolt update (flight, impact, direct-fire modes) and its speed/straight-fire gates.
 // Declared in the class headers; shared names in weaponbolt_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include "../mclib/texture_assets.h"
 #include "weaponbolt_internal.h"
 #include "appearance_rng.h"
 #include "sim_trace.h"
@@ -183,7 +184,7 @@ long WeaponBolt::update (void)
 		timeLeft -= frameLength;
 		if (timeLeft >= 0.0f)
 		{
-			gosTextureHandle = mcTextureManager->get_gosTextureHandle(mcTextureHandle);
+			gosTextureHandle = mc2::textures::sourceId(mcTextureHandle);
    			mcTextureManager->addTriangle(mcTextureHandle,MC2_ISEFFECTS|MC2_DRAWONEIN);
    			mcTextureManager->addTriangle(mcTextureHandle,MC2_ISEFFECTS|MC2_DRAWONEIN); 
    			mcTextureManager->addTriangle(mcTextureHandle,MC2_ISEFFECTS|MC2_DRAWONEIN);
