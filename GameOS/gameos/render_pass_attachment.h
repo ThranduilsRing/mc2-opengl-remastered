@@ -30,7 +30,6 @@ enum class FrameResourceId {
     SceneDepthCopy,  // sceneDepthCopyTex_ — feedback-safe COPY of SceneDepth
     ShadowStatic,    // static shadow map (separate FBO)
     ShadowDynamic,   // dynamic/CSM shadow map (separate FBO)
-    SsaoColor,       // ssaoColorTex_ (separate half-res FBO)
     WaterReflRT,     // waterReflColorTex_ (separate quarter-res FBO)
     Hzb,             // Hi-Z pyramid (separate FBO)
 };
@@ -87,13 +86,8 @@ inline constexpr Contract kContracts[] = {
     { "VfxMesh",         TargetFbo::SceneFBO,    DrawBufferSetId::MainSceneMRT, true,  false, false,
       { FrameResourceId::SceneColorCopy, FrameResourceId::None, FrameResourceId::None, FrameResourceId::None }, false, true },
 
-    // Projected decals (post-opaque). Samples depth COPY + live normal (never written here).
-    { "ProjectedDecals", TargetFbo::SceneFBO,    DrawBufferSetId::SingleColor0, true,  false, false,
-      { FrameResourceId::SceneDepthCopy, FrameResourceId::SceneNormal, FrameResourceId::None, FrameResourceId::None }, false, true },
 
     // Post-process family (SingleColor {0}, colorMask-owned per COLORMASK-ROLLOUT-POSTFX-1).
-    { "SsaoApply",       TargetFbo::SceneFBO,    DrawBufferSetId::SingleColor0, true,  false, false,
-      { FrameResourceId::SsaoColor, FrameResourceId::SceneDepth, FrameResourceId::None, FrameResourceId::None }, true, true },
     { "ScreenShadow",    TargetFbo::SceneFBO,    DrawBufferSetId::SingleColor0, true,  false, false,
       { FrameResourceId::ShadowDynamic, FrameResourceId::SceneDepth, FrameResourceId::None, FrameResourceId::None }, true, true },
     { "CloudShadow",     TargetFbo::SceneFBO,    DrawBufferSetId::SingleColor0, true,  false, false,
@@ -127,7 +121,6 @@ inline const char* resourceName(FrameResourceId r) {
         case FrameResourceId::SceneDepthCopy:return "SceneDepthCopy";
         case FrameResourceId::ShadowStatic:  return "ShadowStatic";
         case FrameResourceId::ShadowDynamic: return "ShadowDynamic";
-        case FrameResourceId::SsaoColor:     return "SsaoColor";
         case FrameResourceId::WaterReflRT:   return "WaterReflRT";
         case FrameResourceId::Hzb:           return "Hzb";
     }

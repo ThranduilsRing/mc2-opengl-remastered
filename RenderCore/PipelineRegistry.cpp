@@ -266,21 +266,6 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
         /* drawBuffers         */ DrawBufferSet::MainSceneMRT,
         /* ssboBindingsMask    */ 0u,
     },
-    // [13] PostProcessSsaoApply
-    {
-        /* glProgramName       */ 0u,
-        /* blend               */ BlendMode::Multiply,
-        /* depthTestEnable     */ false,
-        /* depthWriteEnable    */ false,
-        /* depthFunc           */ DepthFunc::Always,
-        /* cullMode            */ CullMode::None,
-        /* colorAttachments    */ { true, false, false },
-        /* objectIdWriteEnabled*/ false,
-        /* frontFace           */ FrontFace::Ccw,
-        /* polygonOffsetEnable */ false,
-        /* drawBuffers         */ DrawBufferSet::SingleColor0,
-        /* ssboBindingsMask    */ 0u,
-    },
 
 }};
 

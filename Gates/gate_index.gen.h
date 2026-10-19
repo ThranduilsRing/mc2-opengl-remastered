@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 945;
+inline constexpr std::size_t kGateCount = 937;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -58,10 +58,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_BOOT_TO_MISSION", Kind::String, Rule::Std, {}},
     {"MC2_BOOT_TO_SCREEN", Kind::String, Rule::Std, {}},
     {"MC2_BOOT_VIDEO", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_BOX_DECAL", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_BOX_DECAL_NORMAL_REJECT", Kind::Float, Rule::Prefix, {}},
-    {"MC2_BOX_DECAL_STRENGTH", Kind::Float, Rule::Prefix, {}},
-    {"MC2_BOX_DECAL_YSPAN", Kind::Float, Rule::Prefix, {}},
     {"MC2_BRAIN_ALIAS", Kind::Bool, Rule::AtoiNZ, {}},
     {"MC2_BRAIN_COMMIT_PHASE", Kind::Bool, Rule::AtoiNZ, {}},
     {"MC2_BRAIN_DISPATCH", Kind::Bool, Rule::AtoiNZ, {}},
@@ -527,7 +523,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_PREVIEW_FBO_SCALE", Kind::Int, Rule::Prefix, {}},
     {"MC2_PREVIEW_NOCULL", Kind::Bool, Rule::Presence, {}},
     {"MC2_PREVIEW_SCENE_DRAIN", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_PROJECTED_DECALS", Kind::Bool, Rule::Lead0, {}},
     {"MC2_PROJECTILE_SPEED_MULT", Kind::Float, Rule::Prefix, {}},
     {"MC2_PROJECTZ_BYPASS_MODE", Kind::Enum, Rule::Std, "|Compare|Off|Bypass"},
     {"MC2_PROJECTZ_GUARD_PX", Kind::Int, Rule::Prefix, {}},
@@ -654,8 +649,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SPOTLIGHT_DIRECTION_FIX", Kind::Enum, Rule::Std, "0|1|2"},
     {"MC2_SPOTLIGHT_REAL_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_SPOT_DIAG", Kind::Bool, Rule::Presence, {}},
-    {"MC2_SSAO", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_SSAO_DEBUG", Kind::Bool, Rule::Lead0, {}},
     {"MC2_STABLE_LIGHT_SKIP", Kind::Bool, Rule::Std, {}},
     {"MC2_STABLE_LIGHT_SKIP_DIAG", Kind::Bool, Rule::Std, {}},
     {"MC2_STABLE_LIGHT_SKIP_TOUCH", Kind::Bool, Rule::Std, {}},
@@ -888,7 +881,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_POST_SCREENFX_CLOUD", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_POST_SCREENFX_SHADOW", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_POST_SCREENFX_SHORELINE", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_VK_POST_SSAO", Kind::Bool, Rule::Exact1, {}},
     {"MC2_VK_PRESENT_DUMP_FRAME", Kind::Int, Rule::Prefix, {}},
     {"MC2_VK_PRESENT_DUMP_ON_FIRE", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_PRESENT_DUMP_PPM", Kind::String, Rule::Std, {}},

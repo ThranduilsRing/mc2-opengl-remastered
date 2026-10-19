@@ -1,4 +1,4 @@
-// gosPostProcess core: the draw-buffer policy, the singleton and its exposure/SSAO/sky setters, construction, init,
+// gosPostProcess core: the draw-buffer policy, the singleton and its exposure/sky setters, construction, init,
 // the fullscreen quad, beginScene and endScene. The other passes live in gos_postprocess_{gates,diag,fbo,effects,region,
 // skybox,shadow,executor}.cpp; the names they share are declared in gos_postprocess_internal.h.
 
@@ -71,15 +71,6 @@ void  gos_SetExposure(float v) { if (s_postProcess) s_postProcess->exposure_ = (
 void  gos_SetLowLightGain(float v)   { if (s_postProcess) s_postProcess->lowLightGain_ = (v < 0.1f ? 0.1f : (v > 16.0f ? 16.0f : v)); }
 float gos_GetLowLightGain()          { return s_postProcess ? s_postProcess->lowLightGain_ : 2.5f; }
 void  gos_SetLowLightTintG(float v)  { if (s_postProcess) s_postProcess->lowLightTint_[1] = (v < 0.0f ? 0.0f : (v > 2.0f ? 2.0f : v)); }
-
-// SSAO-GTAO-LITE-MVP-1 tunables (clamped to conservative ranges).
-bool  gos_IsSsaoEnabled() { return s_postProcess && s_postProcess->ssaoEnabled_; }
-void  gos_SetSsaoRadius(float v)   { if (s_postProcess) s_postProcess->aoRadius_   = (v < 0.1f ? 0.1f : (v > 64.0f ? 64.0f : v)); }
-void  gos_SetSsaoStrength(float v) { if (s_postProcess) s_postProcess->aoStrength_ = (v < 0.0f ? 0.0f : (v > 2.0f  ? 2.0f  : v)); }
-void  gos_SetSsaoBias(float v)     { if (s_postProcess) s_postProcess->aoBias_     = (v < 0.0f ? 0.0f : (v > 0.1f  ? 0.1f  : v)); }
-float gos_GetSsaoRadius()   { return s_postProcess ? s_postProcess->aoRadius_   : 24.0f; }
-float gos_GetSsaoStrength() { return s_postProcess ? s_postProcess->aoStrength_ : 0.7f; }
-float gos_GetSsaoBias()     { return s_postProcess ? s_postProcess->aoBias_     : 0.0025f; }
 
 // HDRI-SKY-NUMBER-1: swap the loaded HDRI texture to match theSkyNumber.
 // Called at mission load (via GameAdapters::Sky::setSkyNumber -> gos_SetSkyNumber).
@@ -221,31 +212,6 @@ gosPostProcess::gosPostProcess()
     , sceneHasTerrain_(false)
     , prevFrameHadTerrain_(false)
     , shorelineEnabled_(true)
-    , ssaoEnabled_(false)
-    , ssaoDebug_(0)
-    // SSAO-BLUR-1: was 3.0, which is structurally dead. One map cell is 42.67 wu
-    // and the baked kernel's mean |v| is 0.289, so radius 3 put the mean tap
-    // 0.87 wu from the centre -- sub-pixel, every tap reading the same depth
-    // texel -- while rangeCheck = smoothstep(0,1, aoRadius/dist) independently
-    // drove any occluder past 3 wu to zero weight. Measured result: 0.0000% of
-    // AO-buffer pixels below 250/255. 24 follows SSAO-RETUNE-1's 12-24 band
-    // (40 measurably invents occlusion on flat faces) and matches the value the
-    // separate .claude/vk-post-ssao prior art independently landed on.
-    // MC2_SSAO is default-OFF, so this changes no default launch.
-    , aoRadius_(24.0f)
-    , aoStrength_(0.7f)
-    , aoBias_(0.0025f)
-    , aoPower_(1.5f)
-    // SSAO-BLUR-1: blur on by default whenever SSAO runs (the un-blurred chain
-    // is not a shippable configuration -- see shaders/ssao_blur.frag header).
-    , ssaoBlurEnabled_(true)
-    // SSAO-BLUR-1: 0.10 chosen by measured sweep (mc2_01, AO buffer, half-res
-    // HF-noise metric, vs blur OFF on cliff_wall_sideon -- the pose that
-    // actually carries noise): 0.02 -> -52.5%, 0.10 -> -68.6%, 0.40 -> -69.3%.
-    // 0.10 takes essentially all the available denoise while keeping a real
-    // edge-stop; 0.40 buys +0.7pp more and bleeds more occlusion outward
-    // (%<250 21.98 -> 22.04 vs 19.39 with blur off).
-    , aoBlurDepthSigma_(0.10f)
 {
     memset(staticLightSpaceMatrix_, 0, sizeof(staticLightSpaceMatrix_));
     memset(dynamicLightSpaceMatrix_, 0, sizeof(dynamicLightSpaceMatrix_));
@@ -346,53 +312,6 @@ void gosPostProcess::init(int w, int h)
             MC2_DIAGFE(stderr,
                 "[HDRI_SKY v1] enabled=0 reason=env_gate MC2_HDRI_SKY=0\n");
         }
-    }
-
-    // SSAO-GTAO-LITE-MVP-1 (Track V) shaders.
-    ssaoProg_ = glsl_program::makeProgram("ssao",
-        "shaders/postprocess.vert", "shaders/ssao.frag", kShaderPrefix);
-    if (!ssaoProg_ || !ssaoProg_->is_valid())
-        mc2::fmt::print_err("gosPostProcess: failed to compile ssao shader\n");
-    ssaoApplyProg_ = glsl_program::makeProgram("ssao_apply",
-        "shaders/postprocess.vert", "shaders/ssao_apply.frag", kShaderPrefix);
-    if (!ssaoApplyProg_ || !ssaoApplyProg_->is_valid())
-        mc2::fmt::print_err("gosPostProcess: failed to compile ssao_apply shader\n");
-    // SSAO-BLUR-1: depth-aware bilateral blur (run separably H then V).
-    ssaoBlurProg_ = glsl_program::makeProgram("ssao_blur",
-        "shaders/postprocess.vert", "shaders/ssao_blur.frag", kShaderPrefix);
-    if (!ssaoBlurProg_ || !ssaoBlurProg_->is_valid())
-        mc2::fmt::print_err("gosPostProcess: failed to compile ssao_blur shader\n");
-
-    // BT2018-BOX-DECAL-1: screen-space box-decal program. Its OWN vert (cube volume),
-    // not postprocess.vert. Default-OFF gate resolved once from env (SSAO style).
-    boxDecalProg_ = glsl_program::makeProgram("box_decal",
-        "shaders/box_decal.vert", "shaders/box_decal.frag", kShaderPrefix);
-    if (!boxDecalProg_ || !boxDecalProg_->is_valid())
-        mc2::fmt::print_err("gosPostProcess: failed to compile box_decal shader\n");
-    {
-        const char* e = mc2::gate::raw<"MC2_BOX_DECAL">();   // echoed as typed
-        boxDecalEnabled_ = mc2::gate::get<"MC2_BOX_DECAL">();
-        MC2_DIAGFE(stderr, "[BOX_DECAL v1] enabled=%d (MC2_BOX_DECAL=%s)\n",
-                     boxDecalEnabled_ ? 1 : 0, e ? e : "(unset)");
-        // DECAL-INTEGRATE-1: MC2_PROJECTED_DECALS (default OFF). When ON, the box-decal
-        // pass is fed by the dynamic_decal_ring impact slots instead of the v1 test box.
-        const char* pd = mc2::gate::raw<"MC2_PROJECTED_DECALS">();   // echoed as typed
-        projectedDecalsEnabled_ = mc2::gate::get<"MC2_PROJECTED_DECALS">();
-        mc2::fmt::print_err("[PROJECTED_DECALS] enabled={:d} (MC2_PROJECTED_DECALS={})\n", mc2::fmt::as_i32(projectedDecalsEnabled_ ? 1 : 0), mc2::fmt::safe(pd ? pd : "(unset)"));
-    }
-
-    // SSAO gate + debug, resolved once from env. Default OFF -> runSSAO()
-    // skipped entirely (byte-identical). The radius, blur and blur sigma keep
-    // their member defaults (ImGui + per-mission profile adjustable).
-    {
-        const char* ssaoEnv = mc2::gate::raw<"MC2_SSAO">();   // echoed as typed
-        ssaoEnabled_ = mc2::gate::get<"MC2_SSAO">();
-        ssaoDebug_ = mc2::gate::get<"MC2_SSAO_DEBUG">();
-        MC2_DIAGFE(stderr, "[SSAO v1] enabled=%d debug=%d (MC2_SSAO=%s) radius=%.2f strength=%.2f bias=%.4f blur=%d sigma=%.4f\n",
-                     ssaoEnabled_ ? 1 : 0, ssaoDebug_,
-                     ssaoEnv ? ssaoEnv : "(unset)", aoRadius_,
-                     aoStrength_, aoBias_,
-                     ssaoBlurEnabled_ ? 1 : 0, aoBlurDepthSigma_);
     }
 
     // POST-FX-FXAA-1: FXAA gate + tunables, resolved once from env. Default OFF
@@ -715,24 +634,6 @@ void gosPostProcess::endScene()
     }
 #endif
 
-    // VK-POST-SSAO-NATIVE-1 (rung 8.2): HIGHEST precedence at the SSAO site. When
-    // MC2_VK_POST_SSAO=1 and the shared-GBuffer substrate is live, SSAO gen+apply
-    // render natively on the shared engine context (zero copies, zero readbacks)
-    // and the GL SSAO site is skipped. runVkPostSsaoNative() returns false on ANY
-    // not-ready condition (incl. ssaoDebug_!=0) -> the unchanged region-iface/GL
-    // chain below runs (fail-soft). Precedence: native > region-iface > GL.
-#ifdef MC2_VULKAN_ISLAND
-    if (vkPostSsaoNativeEnabled() && runVkPostSsaoNative()) {
-        // native path did gen+apply; GL SSAO site skipped (no double-apply).
-    } else
-#endif
-    {
-        runSSAO();
-    }
-
-    // BT2018-BOX-DECAL-1: screen-space box decal composited into lit+shadowed+AO'd
-    // scene color, before fog/tonemap. Default-OFF (MC2_BOX_DECAL); no-op when gate off.
-    drawBoxDecals();
 
 #ifdef MC2_VULKAN_ISLAND
     // VK-POST-FOG-NATIVE-1: edge fog and OOB fog render natively on the shared engine context (the GL passes are gone; a decline leaves the

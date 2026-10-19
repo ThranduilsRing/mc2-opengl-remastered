@@ -252,7 +252,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         "Object-ID PROHIBITED. GpuTrailKind {None, MissileSmoke, PpcBolt}. "
         "POSTPROCESS-SCENEDEPTHCOPY-RESOURCE-1: produces SceneDepthCopy "
         "(copySceneDepthForParticles in gos_particle_bridge.cpp:1068, VFX flush path); "
-        "consumed downstream by PostProcess BoxDecals (SUBGRAPH-2) for soft-depth reject. "
+        "consumed downstream by VFX depth effects for soft-depth reject. "
         "REGISTRY-SCENECOLORCOPY-PRODUCER-1: also produces SceneColorCopy "
         "(copySceneColorForVfx in gos_particle_bridge.cpp:1097, same VFX flush window, "
         "gated MC2_VFX_SCENECOLOR_GRAB); consumed by PostprocessComputeBlur (SUBGRAPH-2, "
@@ -285,15 +285,15 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         /*pipelineDescRegistered*/   true,  // FRAMEGRAPH-STATEPACK-SKELETON-1: multiple sub-pipelines
                                             // all route applyPipeline (PostProcessComposite at :2542,
                                             // PostProcessScreenShadow :2050, PostProcessCloudShadow :2192,
-                                            // PostProcessShoreline :2248, PostProcessSsaoApply :1988,
+                                            // PostProcessShoreline :2248,
                                             // PostProcessEdgeFog :2302, PostProcessFogOob :2358 in
                                             // gos_postprocess.cpp). Was false — stale.
                                             // Note: no single PipelineId (StatePack uses Invalid).
         /*snapshotRowAuthoritative*/ false,
         "PostProcess##pp",
         nullptr,
-        "Composite chain after gos_RendererEndFrame: HZB/SSAO/screen-shadow/shoreline/godrays/composite. "
-        "Samples GBuffer normal (sceneNormalTex_ / MainNormal) for SSAO, Shoreline, ScreenShadow, BoxDecals sub-stages.",
+        "Composite chain after gos_RendererEndFrame: HZB/screen-shadow/shoreline/godrays/composite. "
+        "Samples GBuffer normal (sceneNormalTex_ / MainNormal) for Shoreline, ScreenShadow sub-stages.",
         /* reads[4]    */ { RenderResourceId::MainColor, RenderResourceId::MainDepth, RenderResourceId::MainNormal },
         /* writes[4]   */ { RenderResourceId::MainColor },
         /* barrierAfter */ BarrierKind::Framebuffer,

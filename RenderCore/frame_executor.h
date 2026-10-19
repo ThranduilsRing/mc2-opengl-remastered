@@ -45,8 +45,6 @@ enum class ExecutorIslandId : uint8_t {
     LightgridBuild,   // sub-stage: per-tile light-bin grid compute dispatch; NOT executor-owned; gated MC2_LIGHTGRID_BUILD default-OFF; isCompute=true
     PostprocessComputeBlur, // sub-stage: GPU compute downsample+Gaussian blur substrate; NOT executor-owned; gated MC2_POSTPROCESS_COMPUTE_BLUR default-OFF; isCompute=true
     ScreenShadow,     // sub-stage: screen-space shadow (draw, sceneFBO_); EXECUTOR-ISLAND-SCREENSHADOW-1 (validate-only); tex-unit leak fixed by a0b4189b; gated screenShadowEnabled_+shadowsEnabled_ default-ON in-mission
-    Ssao,             // sub-stage: GTAO-lite AO (two-pass: ssaoFBO_ then sceneFBO_); NOT executor-owned; gated MC2_SSAO default-OFF
-    BoxDecals,        // sub-stage: screen-space box decal (draw, sceneFBO_); NOT executor-owned; reads SceneDepthCopy cross-boundary; gated MC2_PROJECTED_DECALS default-OFF
     Count,
 };
 

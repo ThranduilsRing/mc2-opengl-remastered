@@ -36,8 +36,7 @@ enum class PipelineId : uint32_t {
     VfxMeshAdditive = 10, // vfx_mesh, SRC_ALPHA/ONE
     PostProcessComposite = 11, // endScene composite (postprocess.frag, opaque, no depth)
     TerrainSolid = 12, // main solid terrain (Opaque, GEQUAL reverse-Z, cull None)
-    PostProcessSsaoApply = 13, // runSSAO apply (ssao_apply, Multiply)
-    Count_ = 14,
+    Count_ = 13,
 };
 
 // VERTEXLAYOUT-AUTHORITY-1: stable repo-owned vertex-input layout identities —

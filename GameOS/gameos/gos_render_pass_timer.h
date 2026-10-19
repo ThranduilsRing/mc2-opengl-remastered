@@ -32,7 +32,7 @@ enum Pass {
     Pass_Blobs,             // RenderLists.ShadowBlobs
     Pass_AlphaVfx,          // RenderLists.NonTerrainAlphaLoops (incl. GPU particles)
     Pass_Hud,               // RenderLists.VfxHudSubmit
-    Pass_Post,              // gosPostProcess::endScene (HZB/SSAO/shadow/godrays/
+    Pass_Post,              // gosPostProcess::endScene (HZB/shadow/godrays/
                             // shoreline/bloom/composite chain)
     Pass_Count
 };

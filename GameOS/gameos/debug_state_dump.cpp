@@ -69,13 +69,6 @@ extern "C" void mc2_vk_post_fog_native_health(
     int* runtimeGate, int* substrateLive,
     unsigned long* attempted, unsigned long* usedVulkan, unsigned long* glSkipped,
     const char** fallbackReason, double* renderUs);
-// VK-POST-SSAO-NATIVE-1 (rung 8.2): native SSAO pair health snapshot (defined in
-// GameOS/gameos/vulkan_post_ssao_native.cpp, same #ifdef MC2_VULKAN_ISLAND).
-extern "C" void mc2_vk_post_ssao_native_health(
-    int* runtimeGate, int* substrateLive,
-    unsigned long* attempted, unsigned long* usedVulkan, unsigned long* glSkipped,
-    const char** fallbackReason, double* renderUs);
-
 // VK-POST-SCREENFX-NATIVE-1 (rung 8.3): native cloud-shadow + shoreline receipt.
 extern "C" void mc2_vk_post_screenfx_native_health(
     int* runtimeGate, int* cloudGate, int* shoreGate, int* substrateLive,
@@ -823,26 +816,6 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"postfog_used_vulkan\": " << used << ",\n";
         s << "    \"gl_fog_sites_skipped\": " << glSkip << ",\n";
         s << "    \"postfog_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
-        s << "    \"render_us\": " << rUs << "\n";
-        s << "  }\n";
-    }
-    // VK-POST-SSAO-NATIVE-1 (rung 8.2): additive "vk_post_ssao_native" section —
-    // the used_vulkan receipt for the native SSAO pair (zero-copy, shared engine
-    // context). Zeros when compiled but the gate is OFF.
-    {
-        int rg = 0, sub = 0;
-        unsigned long att = 0, used = 0, glSkip = 0;
-        const char* fbr = "";
-        double rUs = 0.0;
-        mc2_vk_post_ssao_native_health(&rg, &sub, &att, &used, &glSkip, &fbr, &rUs);
-        s << "  ,\n";
-        s << "  \"vk_post_ssao_native\": {\n";
-        s << "    \"runtime_gate_enabled\": " << rg << ",\n";
-        s << "    \"substrate_live\": " << sub << ",\n";
-        s << "    \"postssao_attempted\": " << att << ",\n";
-        s << "    \"postssao_used_vulkan\": " << used << ",\n";
-        s << "    \"gl_ssao_sites_skipped\": " << glSkip << ",\n";
-        s << "    \"postssao_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
         s << "    \"render_us\": " << rUs << "\n";
         s << "  }\n";
     }

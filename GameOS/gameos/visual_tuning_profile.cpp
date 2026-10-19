@@ -21,9 +21,6 @@ extern float gos_GetWaterSkyTintStrength();
 extern void  gos_SetWaterSkyTintStrength(float v);
 extern float gos_GetExposure();
 extern void  gos_SetExposure(float v);
-extern void  gos_SetSsaoRadius(float v);
-extern void  gos_SetSsaoStrength(float v);
-extern void  gos_SetSsaoBias(float v);
 extern "C" void  gos_vfx_setBrightness(float v);
 extern "C" void  gos_vfx_setAdditiveBrightness(float v);
 extern "C" float gos_vfx_getBrightness(void);
@@ -32,9 +29,6 @@ extern "C" void  gos_vfx_setLitStrength(float v);   // VFX-LIT-PARTICLES-MVP-1
 extern "C" float gos_vfx_getLitStrength(void);      // VFX-LIT-PARTICLES-MVP-1
 // Getters for the post-stack keys (reader already had the setters above) so the
 // writer can round-trip the full reader vocabulary (fixes the 8-vs-13 asymmetry).
-extern float gos_GetSsaoRadius();
-extern float gos_GetSsaoStrength();
-extern float gos_GetSsaoBias();
 // MISSION-LIGHTING-PROFILE-FIELDS-1: mech lane ambient + specular. Both gates
 // (MC2_MECH_AMBIENT_V1 / MC2_MECH_SPECULAR_V1) are default-ON, so these are live.
 extern "C" void  batcher_setMechAmbientStrength(float s);
@@ -177,17 +171,6 @@ static void applyKey(const char* key, float val, int& count) {
         // VFX-LIT-PARTICLES-MVP-1: per-mission lit-smoke strength (0..1). Gate
         // MC2_VFX_LIT_PARTICLES still controls whether lighting is applied.
         gos_vfx_setLitStrength(val);
-        count++;
-    } else if (strcmp(key, "aoRadius") == 0) {
-        // SSAO-GTAO-LITE-MVP-1: per-mission AO tunables. Only visible when
-        // MC2_SSAO is on; harmless otherwise (writes member).
-        gos_SetSsaoRadius(val);
-        count++;
-    } else if (strcmp(key, "aoStrength") == 0) {
-        gos_SetSsaoStrength(val);
-        count++;
-    } else if (strcmp(key, "aoBias") == 0) {
-        gos_SetSsaoBias(val);
         count++;
     } else if (strcmp(key, "mechAmbientStrength") == 0) {
         // MISSION-LIGHTING-PROFILE-FIELDS-1: env value-var wins over profile,
@@ -337,9 +320,6 @@ bool visualTuning_saveCurrentToMission() {
     // Post-stack keys the reader already accepts but the writer used to drop
     // (8-vs-13 asymmetry) -- round-trip them so "Set as Mission Defaults" keeps
     // any live bloom/AO tuning instead of silently losing it.
-    current["aoRadius"]                  = gos_GetSsaoRadius();
-    current["aoStrength"]                = gos_GetSsaoStrength();
-    current["aoBias"]                    = gos_GetSsaoBias();
     // MISSION-LIGHTING-PROFILE-FIELDS-1 mech lane.
     current["mechAmbientStrength"]       = batcher_getMechAmbientStrength();
     current["mechSpecularStrength"]      = batcher_getMechSpecularStrength();

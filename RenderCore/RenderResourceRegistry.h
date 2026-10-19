@@ -22,11 +22,10 @@ enum class RenderResourceId : uint16_t {
     CementAtlas          = 12,  // TERRAIN-SUBPASS-MODEL-1: Indirect: cement atlas (unit3)
     TransitionMaskArray  = 13,  // TERRAIN-SUBPASS-MODEL-1: Indirect: transition-mask 2D_ARRAY (unit4)
     TerrainHeightSsbo    = 14,  // TERRAIN-SUBPASS-MODEL-1: LOD-chunk: height SSBO (distinct from static TerrainHeightTexture)
-    MainNormal           = 15,  // POSTPROCESS-SUBGRAPH-1: GBuffer1 (sceneNormalTex_, COLOR_ATTACHMENT1 of sceneFBO_); read by Shoreline, ScreenShadow, SSAO, BoxDecals
+    MainNormal           = 15,  // POSTPROCESS-SUBGRAPH-1: GBuffer1 (sceneNormalTex_, COLOR_ATTACHMENT1 of sceneFBO_); read by Shoreline, ScreenShadow
     SceneDepthCopy       = 16,  // POSTPROCESS-SCENEDEPTHCOPY-RESOURCE-1: depth-copy RT (sceneDepthCopyTex_); produced by copySceneDepthForParticles() in the VFX/particle path (cross-boundary); read by projected/box decals + particles soft-depth
     SceneObjectId        = 17,  // POSTPROCESS-SCENEOBJECTID-RESOURCE-1: GBuffer2 object-id RT (sceneObjectIdTex_, GL_R32UI, COLOR_ATTACHMENT2 of sceneFBO_); gated RenderWorld::IsObjectIdBufferEnabled(); written by MechOpaque+StaticPropOpaque (layout location=2 when MRT+objectId enabled); read by Composite (unit2, effectiveMode==1 / objectId debug mode)
     HzbPyramid           = 18,  // POSTPROCESS-SUBGRAPH-2: Hi-Z pyramid mip chain (hzbLevelTex_[0..N], R32F); produced by HzbReduce (draw pass via hzbFBO_); read by HzbProbe (CPU diagnostic). Frame-persistent (survives mission reload).
-    SsaoOcclusion        = 19,  // POSTPROCESS-SUBGRAPH-2: half-res AO result (ssaoColorTex_, R8/RGBA8); produced by SSAO pass1 (ssaoFBO_); consumed by SSAO pass2/apply (sceneFBO_). Transient within endScene.
     SceneColorCopy       = 20,  // POSTPROCESS-SUBGRAPH-2: feedback-safe scene color copy (sceneColorCopyTex_, RGBA16F); producer = VFX pass (copySceneColorForVfx, REGISTRY-SCENECOLORCOPY-PRODUCER-1); consumed by PostprocessComputeBlur (substrate only, default-OFF).
     ClusterDepthPyramid  = 21,  // REGISTRY-COMPUTE-IDS-1: cluster_depth_pyramid tile min/max texture (s_tileTex, RG32F, tile-grid res); produced by cluster_depth_pyramid::Run (compute), default-OFF gated substrate. Consumed by Lightgrid build (tileMinMax).
     LightgridGrid        = 22,  // REGISTRY-COMPUTE-IDS-1: lightgrid sphere SSBO (s_sphereSsbo, kSphereStride*kMaxLights bytes); produced by lightgrid_build (compute), default-OFF gated substrate.

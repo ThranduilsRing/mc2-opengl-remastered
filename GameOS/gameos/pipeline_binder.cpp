@@ -63,7 +63,6 @@ static bool pipelineColorMaskEnabled() {
 static bool rowOwnsColorMask(const char* dbgName) {
     if (!dbgName) return false;
     return std::strcmp(dbgName, "PostProcessComposite")    == 0
-        || std::strcmp(dbgName, "PostProcessSsaoApply")    == 0
         || std::strcmp(dbgName, "PostProcessScreenShadow") == 0
         || std::strcmp(dbgName, "PostProcessCloudShadow")  == 0
         || std::strcmp(dbgName, "PostProcessShoreline")    == 0

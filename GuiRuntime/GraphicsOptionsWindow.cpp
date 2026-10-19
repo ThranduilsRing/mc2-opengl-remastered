@@ -26,55 +26,13 @@ void draw() {
             // ── HDR post + grounding (live tuners) ──────────────────
             // All gates are plain runtime bools read every frame, so toggling
             // here takes effect immediately (env var seeds the startup state).
-            ImGui::SeparatorText("Track V (Exposure / SSAO)");
+            ImGui::SeparatorText("Exposure");
             ImGui::Indent();
             ImGui::SliderFloat("Exposure##trackv", &pp->exposure_, 0.0f, 4.0f);
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("composite exposure multiplier (default 1.0)");
             ImGui::SameLine();
             if (ImGui::SmallButton("Reset##expo")) pp->exposure_ = 1.0f;
             ImGui::Unindent();
-
-            ImGui::Checkbox("SSAO##trackv", &pp->ssaoEnabled_);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("MC2_SSAO. Half-res grounding AO.\nIndependent of the HDR master gate.");
-            if (pp->ssaoEnabled_) {
-                ImGui::Indent();
-                // The radius range accounts for the MC2 world scale:
-                // one map cell is 42.67 wu
-                // (worldUnitsPerVertex 128 / MAPCELL_DIM 3), and the baked kernel
-                // is not unit-normalised (mean |v| 0.289), so this slider's value
-                // is ~3.5x the actual mean sample reach. The useful band is ~12-48.
-                // Both this slider and gos_SetSsaoRadius cap the radius at
-                // 64 wu (~1.5 map cells), past which
-                // AO stops being a contact term and competes with the shadow cascades.
-                ImGui::SliderFloat("Radius (wu)##ssao", &pp->aoRadius_,   0.1f, 64.0f);
-                ImGui::SliderFloat("Strength##ssao",    &pp->aoStrength_, 0.0f, 2.0f);
-                ImGui::SliderFloat("Bias##ssao",        &pp->aoBias_,     0.0f, 0.05f, "%.4f");
-                ImGui::SliderFloat("Power##ssao",       &pp->aoPower_,    0.1f, 4.0f);
-                ImGui::Checkbox("Bilateral blur##ssao", &pp->ssaoBlurEnabled_);
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("OFF reproduces the pre-SSAO-BLUR-1 chain,\n"
-                                      "which had NO denoise at all.");
-                ImGui::SliderFloat("Blur depth sigma##ssao", &pp->aoBlurDepthSigma_,
-                                   0.002f, 0.10f, "%.4f");
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Relative depth tolerance for edge-stopping.\n"
-                                      "Lower = blur respects silhouettes more strictly\n"
-                                      "but denoises less.");
-                bool ssaoDbg = (pp->ssaoDebug_ != 0);
-                if (ImGui::Checkbox("Debug: show AO buffer##ssao", &ssaoDbg))
-                    pp->ssaoDebug_ = ssaoDbg ? 1 : 0;
-                ImGui::SameLine();
-                if (ImGui::SmallButton("Reset##ssao")) {
-                    // Restore defaults with a nonzero AO sample footprint.
-                    // Radius 3.0 puts every tap in the centre depth texel
-                    // (mean reach 0.87 wu), producing zero occlusion.
-                    pp->aoRadius_ = 24.0f; pp->aoStrength_ = 0.7f;
-                    pp->aoBias_ = 0.0025f; pp->aoPower_ = 1.5f;
-                    pp->ssaoBlurEnabled_ = true; pp->aoBlurDepthSigma_ = 0.10f;
-                }
-                ImGui::Unindent();
-            }
 
             // post anti-aliasing tunables. pp->fxaa* members are
             // read every frame by endScene(), so edits take effect immediately.

@@ -262,35 +262,6 @@ public:
     bool shorelineSuppressedByTerrainMask_ = false;
     void setShorelineSuppressedByTerrainMask(bool b) { shorelineSuppressedByTerrainMask_ = b; }
 
-    // SSAO-GTAO-LITE-MVP-1 (Track V, MC2_SSAO). Half-res world-space AO.
-    // Default OFF -> runSSAO() is skipped entirely (byte-identical). Resolved
-    // from env at init; tunables ImGui- and profile-adjustable.
-    bool  ssaoEnabled_;
-    int   ssaoDebug_;       // 0 = multiplicative apply, 1 = show AO grayscale
-    float aoRadius_;        // world-unit sample radius
-    float aoStrength_;      // 0..2 occlusion strength
-    float aoBias_;          // window-depth compare bias
-    float aoPower_;         // contrast curve
-
-    // SSAO-BLUR-1: depth-aware (joint bilateral) blur between the AO gen pass
-    // and the apply pass. Before this, runSSAO() issued exactly two draws and
-    // the chain had NO denoise -- the 4-tap +/-0.5-texel box in ssao_apply.frag
-    // cannot resolve a 16-sample stochastic kernel with per-pixel hash rotation.
-    // That is why SSAO-RETUNE-1 found that any aoRadius large enough to produce
-    // visible occlusion also produced visible speckle on flat, unoccluded faces.
-    // Default ON whenever SSAO itself is on; the options window checkbox restores
-    // the old no-denoise chain so the two can be A/B'd against one exe.
-    bool  ssaoBlurEnabled_;
-    float aoBlurDepthSigma_;   // relative depth tolerance for edge-stopping
-    void runSSAO();
-
-
-    // BT2018-BOX-DECAL-1: screen-space AABB decal volume. Reconstructs scene world
-    // pos from the depth COPY (reversed-Z), box-clips, normal-rejects, and composites
-    // a procedural decal into COLOR0 only. Default-OFF (MC2_BOX_DECAL). v1 = single
-    // camera-anchored debug box + procedural pattern (no texture/producers yet).
-    void drawBoxDecals();
-
     // EDGE-FOG-1: world-space map-edge fog on geometry pixels.
     // Fades terrain/props/mechs near the map boundary into the cloud color.
     // Default ON (MC2_EDGE_FOG=0 to disable).
@@ -348,27 +319,6 @@ public:
     // Owner of the state: releases through destroy_state (idles the GPU first), defined next to the state.
     struct VkPostFogNativeDeleter { void operator()(VkPostFogNative*) const; };
     std::unique_ptr<VkPostFogNative, VkPostFogNativeDeleter> vkPostFogNative_;
-
-    // VK-POST-SSAO-NATIVE-1 (rung 8.2, .claude/VK-RUNG8-LADDER-1.md): SSAO
-    // (gen + apply) rendered NATIVELY on the shared engine VulkanContext, sampling
-    // the SHARED scene depth + normal into a VK-OWNED half-res R16F occlusion image
-    // and MULTIPLYING into the SHARED scene color0 IN PLACE — zero copies, zero CPU
-    // readbacks, no private device (retires the old SSAO island's readback pattern
-    // when its gate is on; highest precedence at the SSAO site). Gate MC2_VK_POST_SSAO
-    // (an explicit opt-in: an Exact1 row, only "1" arms it; the rung-8 ladder's prescribed name).
-    // runVkPostSsaoNative() returns true only when both passes rendered via VK
-    // (caller skips the GL SSAO site); any not-ready condition (incl. ssaoDebug_!=0,
-    // an unported diagnostic mode) returns false -> unchanged region-iface/GL chain.
-    // destroyVkPostSsaoNative(): torn down from destroyFBOs() (resize; the shared
-    // GBuffer + GL half-res sizing it mirrors are rebuilt) and destroy(). Defined in
-    // vulkan_post_ssao_native.cpp (same #ifdef MC2_VULKAN_ISLAND discipline).
-    bool  vkPostSsaoNativeEnabled();
-    bool  runVkPostSsaoNative();
-    void  destroyVkPostSsaoNative();
-    struct VkPostSsaoNative;            // defined in vulkan_post_ssao_native.cpp
-    // Owner of the state: releases through destroy_state (idles the GPU first), defined next to the state.
-    struct VkPostSsaoNativeDeleter { void operator()(VkPostSsaoNative*) const; };
-    std::unique_ptr<VkPostSsaoNative, VkPostSsaoNativeDeleter> vkPostSsaoNative_;
 
     // VK-POST-SCREENFX-NATIVE-1 (rung 8.3, .claude/VK-RUNG8-LADDER-1.md):
     // cloud-shadow + shoreline-foam rendered NATIVELY on the shared engine
@@ -484,8 +434,6 @@ private:
     void destroyFBOs();
     void createFullscreenQuad();
     void destroyFullscreenQuad();
-    void createBoxDecalCube();   // BT2018-BOX-DECAL-1: unit cube [-0.5,0.5], 8 verts / 36 idx
-    void destroyBoxDecalCube();
 
     // Scene FBO (full resolution, HDR)
     GLuint sceneFBO_;
@@ -513,17 +461,6 @@ private:
     // Fullscreen quad
     GLuint quadVAO_;
     GLuint quadVBO_;
-
-    // BT2018-BOX-DECAL-1: unit-cube geometry for the decal volume.
-    GLuint        boxCubeVAO_ = 0;
-    GLuint        boxCubeVBO_ = 0;
-    GLuint        boxCubeIBO_ = 0;
-    glsl_program* boxDecalProg_ = nullptr;
-    bool          boxDecalEnabled_ = false;
-    // DECAL-INTEGRATE-1: MC2_PROJECTED_DECALS (default OFF). When ON, drawBoxDecals()
-    // consumes the dynamic_decal_ring live slots (one projected decal per impact) instead
-    // of the v1 hardcoded screen-center test box. OFF = projection pass does not run.
-    bool          projectedDecalsEnabled_ = false;
 
     // Composite shader
     glsl_program* compositeProg_;
@@ -596,23 +533,6 @@ private:
     float inverseViewProj_[16];
     float viewProj_[16];
 
-    // SSAO (half resolution)
-    GLuint        ssaoFBO_      = 0;
-    GLuint        ssaoColorTex_ = 0;   // GL_R16F half-res AO
-    int           ssaoW_        = 0;
-    int           ssaoH_        = 0;
-    glsl_program* ssaoProg_      = nullptr;
-    glsl_program* ssaoApplyProg_ = nullptr;
-
-    // SSAO-BLUR-1: ping-pong target for the separable bilateral blur. Same
-    // half-res R16F format as ssaoColorTex_. The blur runs H into this texture
-    // then V back into ssaoColorTex_, so ssaoColorTex_ (and therefore the
-    // SsaoOcclusion resource id and the unchanged apply pass) always holds the
-    // FINAL AO -- no downstream reader needs to know the blur exists.
-    GLuint        ssaoBlurFBO_   = 0;
-    GLuint        ssaoBlurTex_   = 0;
-    glsl_program* ssaoBlurProg_  = nullptr;
-
     // HZB depth pyramid (HZB-DEPTH-PYRAMID-MVP-1). Allocated lazily in
     // createFBOs only when hzbEnabled_. One ceil-sized R32F texture per level.
     static const int kHzbMaxLevels = 24;     // covers >16M px on the long axis
@@ -652,14 +572,6 @@ void  gos_SetLowLightGain(float v);
 float gos_GetLowLightGain();
 void  gos_SetLowLightTintG(float v); // green channel — the most impactful axis
 
-// SSAO-GTAO-LITE-MVP-1 tunables (profile + ImGui).
-bool  gos_IsSsaoEnabled();
-void  gos_SetSsaoRadius(float v);
-void  gos_SetSsaoStrength(float v);
-void  gos_SetSsaoBias(float v);
-float gos_GetSsaoRadius();
-float gos_GetSsaoStrength();
-float gos_GetSsaoBias();
 
 // HDRI-SKY-NUMBER-1: notify the postprocessor of the mission sky number so it
 // can swap to the appropriate HDRI asset (IblHdriRegistry).
