@@ -1,9 +1,9 @@
-<!-- doc-status: current | reviewed:2026-10-11 -->
+<!-- doc-status: current | reviewed:2026-10-19 -->
 # HZB / Reverse-Z Depth Convention
 
-Status: **convention locked** (HZB-DEPTH-CONVENTION-TESTS-1). No runtime HZB
-exists yet. This doc + `tests/unit/test_depth_hzb.cpp` are the contract the
-future runtime HZB slice (`TRACKRV-HZB-VISIBILITY-OPUS-1`) must match.
+Status: **convention locked**. The native Vulkan static-prop color consumer
+implements this contract; see `docs/hzb-visibility-mvp.md`.
+`tests/unit/test_depth_hzb.cpp` covers the reduction and conservative bounds.
 
 ## Depth regime (recon-verified)
 
@@ -12,12 +12,10 @@ future runtime HZB slice (`TRACKRV-HZB-VISIBILITY-OPUS-1`) must match.
 | Depth direction     | **Reverse-Z**: near→1.0, far→0.0       | `gameosmain.cpp` `glClearDepth(0.0f)`; `gameos_graphics.cpp` `glDepthFunc(GL_GREATER)`; `appear.h` `HUD_DEPTH 0.9999f` |
 | Clip / NDC depth    | **ZERO_TO_ONE** (mandatory, fail-closed) | `gameosmain.cpp` `glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE)` |
 | Closer means        | **Larger** depth value                 | `terrain_depth_bias.h` "GEQUAL: the LARGER NDC z wins" |
-| Sky / far sentinel  | depth **== 0.0** (clear value)         | `ssao.frag`, `shadow_screen.frag`, `particle_billboard.frag` all guard `depth >= 1.0`==near, far==0 |
+| Sky / far sentinel  | depth **== 0.0** (clear value)         | `shaders/vulkan/hzb_reduce.frag` and native scene-depth clears all guard `depth >= 1.0`==near, far==0 |
 
-Depth-reconstruction shaders (`ssao.frag`, `shadow_screen.frag`,
-`particle_billboard.frag`) all consume window depth **raw** through
-`inverseViewProj * vec4(uv*2-1, depth, 1)` — no linearization helper exists,
-and all three agree on the reverse-Z ordering. No inconsistency found.
+The native HZB samples raw window depth with exact integer texel fetches.
+No depth linearization is needed for its reverse-Z comparisons.
 
 ## HZB reduction convention: **MIN pyramid** (store the FARTHEST occluder)
 
@@ -53,7 +51,7 @@ bugs. That inversion is the trap this convention guards against.
 
 1. Reverse-Z ordering (larger = closer); far/sky = 0.0.
 2. MIN reduction (farthest occluder), not MAX.
-3. Cull test `objClosestDepth < hzbTexel`.
+3. Cull test `objClosestDepth < hzbTexel - epsilon` (runtime epsilon 0.00002).
 4. Ceil mip sizing + clamped 2×2 fetch; terminal 1×1 stable.
 
 Any runtime deviation should update `tests/unit/test_depth_hzb.cpp` in the same

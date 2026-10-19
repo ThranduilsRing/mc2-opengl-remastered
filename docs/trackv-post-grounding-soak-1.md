@@ -1,5 +1,10 @@
-<!-- doc-status: current | reviewed:2026-10-11 -->
+<!-- doc-status: historical | reviewed:2026-10-19 -->
 # VISUAL-CAPTURE-MATRIX-SOAK-1: Track V Post + Grounding MVP
+
+> Retired in lane 2 s64: SSAO and box decals, their GL/VK passes, gates,
+> shaders and fixtures were deleted. Implementation deletion: `5fc80bf89`;
+> shader artifacts: `6deb6a93e`. Box decals may return for terrain displacement
+> and mech footprints, with a wired native consumer and a default-on path.
 
 **Branch:** `claude/trackv-post-grounding-mvp`
 **Date:** 2026-05-29
