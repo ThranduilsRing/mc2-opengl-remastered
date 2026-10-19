@@ -220,7 +220,16 @@ def function_body(code: str, name: str):
     to the function and a prototype ending in ";" are both skipped and only a
     DEFINITION matches.
     """
-    for m in re.finditer(r"\b" + re.escape(name) + r"\s*\(", code):
+    # search(), not finditer(): a chokepoint called N times used to re-scan the
+    # rest of the file after every call. Only the first DEFINITION is returned,
+    # exactly as before.
+    pattern = re.compile(r"\b" + re.escape(name) + r"\s*\(")
+    pos = 0
+    while True:
+        m = pattern.search(code, pos)
+        if m is None:
+            return None
+        pos = m.end()
         # walk to the matching close paren
         depth, j = 0, m.end() - 1
         while j < len(code):
@@ -283,6 +292,30 @@ def iter_sources():
 _PREFILTER = re.compile("|".join(
     re.escape(t) for t in (CAPTURE_APIS + CAPTURE_TOKENS + (OFFSCREEN_VAR,))))
 
+#: Pure-function memos keyed by the TEXT OBJECT's id. The selftest runs every
+#: arm against the same tree and mutates one file per arm, so without these a
+#: ten-arm suite re-scans and re-strips ~1,400 files per arm. Each memo keeps a
+#: strong reference to its text, so an id can never be reused for other content.
+_STRIP_MEMO: dict[tuple[int, bool], tuple[str, str]] = {}
+_PREFILTER_MEMO: dict[int, tuple[str, bool]] = {}
+
+
+def _prefilter_hit(src: str) -> bool:
+    hit = _PREFILTER_MEMO.get(id(src))
+    if hit is None or hit[0] is not src:
+        hit = (src, _PREFILTER.search(src) is not None)
+        _PREFILTER_MEMO[id(src)] = hit
+    return hit[1]
+
+
+def _strip_cached(src: str, keep_strings: bool = False) -> str:
+    key = (id(src), keep_strings)
+    hit = _STRIP_MEMO.get(key)
+    if hit is None or hit[0] is not src:
+        hit = (src, strip_cxx(src, keep_strings))
+        _STRIP_MEMO[key] = hit
+    return hit[1]
+
 
 def rel(p: Path) -> str:
     return p.relative_to(ROOT).as_posix()
@@ -324,19 +357,19 @@ def check(read=None):
 
     def interesting(r):
         src = get_raw(r)
-        return src is not None and _PREFILTER.search(src) is not None
+        return src is not None and _prefilter_hit(src)
 
     def get(r):
         if r not in stripped:
             src = get_raw(r)
-            stripped[r] = None if src is None else strip_cxx(src)
+            stripped[r] = None if src is None else _strip_cached(src)
         return stripped[r]
 
     def get_with_strings(r):
         """Comments removed, string literals INTACT. RULE 4 only."""
         if r not in nocomment:
             src = get_raw(r)
-            nocomment[r] = None if src is None else strip_cxx(src, keep_strings=True)
+            nocomment[r] = None if src is None else _strip_cached(src, keep_strings=True)
         return nocomment[r]
 
     # ---- RULE 2: no unlisted capture site ---------------------------------
@@ -462,15 +495,22 @@ def selftest() -> int:
     for r in set(list(POLICY_FILES) + [g[0] for g in GUARDED_SITES]):
         p = ROOT / r
         real[r] = p.read_text(encoding="utf-8", errors="replace") if p.is_file() else None
+    # One disk read per file for the whole selftest: every arm re-runs check()
+    # and the tree cannot change underneath us while it runs.
+    disk: dict[str, str | None] = {}
 
     def reader(overrides):
         def read(r):
             if r in overrides:
                 return overrides[r]
-            if r in real:
-                return real[r]
-            p = ROOT / r
-            return p.read_text(encoding="utf-8", errors="replace") if p.is_file() else None
+            if r not in disk:
+                if r in real:
+                    disk[r] = real[r]
+                else:
+                    p = ROOT / r
+                    disk[r] = (p.read_text(encoding="utf-8", errors="replace")
+                               if p.is_file() else None)
+            return disk[r]
         return read
 
     failures = []

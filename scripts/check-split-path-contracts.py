@@ -305,14 +305,22 @@ ISLANDS = {
 # mutation is ever needed to prove the checker can fail)
 # ---------------------------------------------------------------------------
 
+_DISK_CACHE: dict[str, str] = {}
+
+
 class Ctx:
     def __init__(self, vfs: dict | None = None):
         self.vfs = vfs or {}
+        # Shared read cache: a --self-test re-runs every rule per arm, and the
+        # tree cannot change under a single process (self_test() starts a new one).
+        self._disk: dict[str, str] = _DISK_CACHE
 
     def read(self, rel: str) -> str:
         if rel in self.vfs:
             return self.vfs[rel]
-        return checklib.read_text(rel)
+        if rel not in self._disk:
+            self._disk[rel] = checklib.read_text(rel)
+        return self._disk[rel]
 
     def exists(self, rel: str) -> bool:
         return rel in self.vfs or os.path.isfile(os.path.join(ROOT, rel))
@@ -343,10 +351,46 @@ _COLOR_TOKEN_RE = re.compile(r"(?<![A-Za-z0-9_])Color(?![A-Za-z0-9_])")
 _VS_WRITE_RE = re.compile(r"(?<![A-Za-z0-9_])Color\s*=\s*([^;]+);", re.S)
 
 
+_STRIP_MEMO: dict[int, tuple[str, str]] = {}
+_NORM_MEMO: dict[int, tuple[str, str]] = {}
+
+
+def _stripped(text: str) -> str:
+    """strip_comments(text), memoized on the text object. A shader is read by
+    several rules and the memo's value keeps it alive, so ids cannot be reused."""
+    hit = _STRIP_MEMO.get(id(text))
+    if hit is None or hit[0] is not text:
+        hit = (text, strip_comments(text))
+        _STRIP_MEMO[id(text)] = hit
+    return hit[1]
+
+
+_TESS_MEMO: dict[int, tuple[str, str]] = {}
+
+
+def _lexed(text: str) -> str:
+    """checklib.strip_comments_lexed(text), memoized like _stripped."""
+    hit = _TESS_MEMO.get(id(text))
+    if hit is None or hit[0] is not text:
+        hit = (text, checklib.strip_comments_lexed(text))
+        _TESS_MEMO[id(text)] = hit
+    return hit[1]
+
+
+def _normalized(rel: str, ctx: Ctx) -> str:
+    """normalize_ws(strip_comments(read(rel))), memoized on the text object."""
+    text = ctx.read(rel)
+    hit = _NORM_MEMO.get(id(text))
+    if hit is None or hit[0] is not text:
+        hit = (text, normalize_ws(_stripped(text)))
+        _NORM_MEMO[id(text)] = hit
+    return hit[1]
+
+
 def _classify_fs(text: str) -> tuple[str, list[str]]:
     """Observed FS convention for a Color-declaring frag: fs-swizzle /
     fs-raw / fs-dead / fs-mixed. Returns (convention, read descriptions)."""
-    stripped = strip_comments(text)
+    stripped = _stripped(text)
     reads = []
     for m in _COLOR_TOKEN_RE.finditer(stripped):
         tail = stripped[m.end():m.end() + 16]
@@ -375,7 +419,7 @@ def rule1_color(ctx: Ctx) -> list[str]:
         # a declaration absent from the raw text cannot appear after stripping.
         if not _COLOR_DECL_RE.search(text):
             continue
-        if not _COLOR_DECL_RE.search(strip_comments(text)):
+        if not _COLOR_DECL_RE.search(_stripped(text)):
             continue
         conv, reads = _classify_fs(text)
         observed[rel] = conv
@@ -405,7 +449,7 @@ def rule1_color(ctx: Ctx) -> list[str]:
     # (b) VS computed writes must be pre-swizzled / known / waivered.
     for rel in ctx.list_shader_files((".vert", ".tese")):
         raw = ctx.read(rel)
-        stripped = strip_comments(raw)
+        stripped = _stripped(raw)
         raw_lines = raw.splitlines()
         for m in _VS_WRITE_RE.finditer(stripped):
             rhs = normalize_ws(m.group(1))
@@ -449,7 +493,7 @@ _POST_DIVIDE_RE = re.compile(
 
 def _parse_const_map(text: str, pattern: re.Pattern) -> dict[str, float]:
     out = {}
-    for m in pattern.finditer(strip_comments(text)):
+    for m in pattern.finditer(_stripped(text)):
         try:
             out[m.group(1)] = float(m.group(2))
         except ValueError:
@@ -499,7 +543,7 @@ def rule2_depth(ctx: Ctx) -> list[str]:
                     "RULE2a: %s:%d local const %s=%r != canonical %r"
                     % (rel, lineno, name, val, canonical))
         # (c) banned post-divide form (shader scope only).
-        stripped = strip_comments(raw)
+        stripped = _stripped(raw)
         if _POST_DIVIDE_RE.search(stripped):
             problems.append(
                 "RULE2c: %s applies a depth FUDGE/BIAS in the banned "
@@ -509,7 +553,7 @@ def rule2_depth(ctx: Ctx) -> list[str]:
 
     # (c-positive) enumerated application sites keep the pre-divide shape.
     for rel, pat in BIAS_APPLICATION_PINS:
-        norm = normalize_ws(strip_comments(ctx.read(rel)))
+        norm = _normalized(rel, ctx)
         if not re.search(pat, norm):
             problems.append(
                 "RULE2c: %s no longer carries the pre-divide application "
@@ -517,9 +561,9 @@ def rule2_depth(ctx: Ctx) -> list[str]:
                 "the same commit" % (rel, pat))
 
     # (d) tess/non-tess symmetry: byte-identical normalized line in all three.
-    want = normalize_ws(TESS_SYMMETRY_LINE)
+        want = normalize_ws(TESS_SYMMETRY_LINE)
     for rel in TESS_SYMMETRY_FILES:
-        norm = normalize_ws(strip_comments(ctx.read(rel)))
+        norm = _normalized(rel, ctx)
         if want not in norm:
             problems.append(
                 "RULE2d: %s is missing the shared bias line `%s` — the "
@@ -569,7 +613,7 @@ def rule3_predicate(ctx: Ctx) -> list[str]:
         # before a commit is how checks go dark.
         if not TESS_TOKENS_RE.search(raw):
             continue
-        text = checklib.strip_comments_lexed(raw)
+        text = _lexed(raw)
         m = TESS_TOKENS_RE.search(text)
         if m:
             lineno = text[:m.start()].count("\n") + 1
@@ -687,6 +731,9 @@ def self_test() -> int:
     """Prove each rule can still fail (house pattern check-contracts.sh
     vulkan_bindings_selftest) — in-memory overlays, no disk mutation."""
     failures = []
+    # Every arm re-runs all four rules; the shared Ctx read cache keeps that to
+    # one disk read per file for the whole selftest.
+    _DISK_CACHE.clear()
 
     if run_all(Ctx(), quiet=True) != EXIT_OK:
         print("split-path-contracts --self-test: FAIL (not green on current "
