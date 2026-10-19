@@ -147,7 +147,7 @@
    "LG06": 472,
    "LG07": 2,
    "LG08": 17,
-   "LG09": 2236,
+   "LG09": 1937,
    "LG10": 20,
    "LG11": 103,
    "LG12a": 100,
@@ -157,7 +157,7 @@
    "LG15": 0,
    "LG16": 6,
    "LG17": 48,
-   "LG18": 4,
+   "LG18": 3,
    "LG19": 0,
    "LG20": 1
   },
@@ -1540,11 +1540,9 @@
   },
   "code/ablmc2.cpp": {
    "LG06": 6,
-   "LG09": 13,
    "LG17": 3
   },
   "code/ablmc2_camera.cpp": {
-   "LG09": 3,
    "LG17": 2
   },
   "code/ablmc2_internal.h": {
@@ -1552,29 +1550,15 @@
    "LG09": 1,
    "LG12a": 1
   },
-  "code/ablmc2_misc.cpp": {
-   "LG09": 8
-  },
-  "code/ablmc2_orders.cpp": {
-   "LG09": 6
-  },
-  "code/ablmc2_position.cpp": {
-   "LG09": 1
-  },
-  "code/ablmc2_queries.cpp": {
-   "LG09": 16
-  },
   "code/ablmc2_repro.cpp": {
-   "LG09": 4
+   "LG18": 1
   },
   "code/ablmc2_roster.cpp": {
    "LG04": 2,
-   "LG06": 1,
-   "LG09": 29
+   "LG06": 1
   },
   "code/ablmc2_state.cpp": {
-   "LG03": 1,
-   "LG09": 19
+   "LG03": 1
   },
   "code/action_anim_tag.h": {
    "LG05": 1,
@@ -1592,7 +1576,6 @@
   "code/artlry.cpp": {
    "LG01": 10,
    "LG03": 1,
-   "LG09": 20,
    "LG12b": 8,
    "LG13": 12
   },
@@ -1602,15 +1585,13 @@
    "LG13": 3
   },
   "code/attributemeter.cpp": {
-   "LG06": 1,
-   "LG09": 4
+   "LG06": 1
   },
   "code/attributemeter.h": {
    "LG06": 1
   },
   "code/bldng.cpp": {
    "LG03": 1,
-   "LG09": 36,
    "LG13": 2
   },
   "code/bldng.h": {
@@ -1629,21 +1610,16 @@
   "code/brain_missionfit_oporbd.cpp": {
    "LG05": 3,
    "LG06": 16,
-   "LG09": 13,
    "LG17": 1
   },
   "code/brain_missionfit_oporbd.h": {
    "LG06": 2,
    "LG17": 1
   },
-  "code/brain_special_apply.cpp": {
-   "LG09": 8
-  },
   "code/brain_special_dispatch.cpp": {
    "LG04": 1,
    "LG05": 5,
    "LG06": 23,
-   "LG09": 41,
    "LG11": 1,
    "LG14": 1
   },
@@ -1654,7 +1630,6 @@
   "code/brain_symbol_resolve.cpp": {
    "LG05": 3,
    "LG06": 4,
-   "LG09": 3,
    "LG17": 1
   },
   "code/brain_symbol_resolve.h": {
@@ -1662,7 +1637,6 @@
    "LG06": 2
   },
   "code/brain_tactic_select.cpp": {
-   "LG09": 4,
    "LG10": 1
   },
   "code/brain_task_queue.h": {
@@ -1677,7 +1651,6 @@
   "code/carnage.cpp": {
    "LG01": 1,
    "LG03": 2,
-   "LG09": 30,
    "LG13": 1
   },
   "code/carnage.h": {
@@ -1689,7 +1662,6 @@
   "code/chatwindow.cpp": {
    "LG03": 2,
    "LG06": 2,
-   "LG09": 4,
    "LG12b": 2
   },
   "code/chatwindow.h": {
@@ -1699,24 +1671,20 @@
    "LG12b": 1
   },
   "code/collsn.cpp": {
-   "LG03": 6,
-   "LG09": 6
+   "LG03": 6
   },
   "code/collsn.h": {
    "LG13": 1
   },
   "code/comndr.cpp": {
-   "LG03": 3,
-   "LG09": 4
+   "LG03": 3
   },
   "code/componentlistbox.cpp": {
    "LG03": 1,
-   "LG05": 2,
-   "LG09": 5
+   "LG05": 2
   },
   "code/contact.cpp": {
    "LG03": 4,
-   "LG09": 17,
    "LG12a": 1,
    "LG12b": 2
   },
@@ -1847,14 +1815,12 @@
   },
   "code/gamecam.cpp": {
    "LG01": 8,
-   "LG09": 5,
    "LG10": 1,
    "LG11": 2,
    "LG12a": 23,
    "LG12b": 5,
    "LG13": 1,
-   "LG17": 2,
-   "LG18": 2
+   "LG17": 2
   },
   "code/gameobj.cpp": {
    "LG01": 16,
@@ -4695,7 +4661,7 @@
    "LG20": 3
   }
  },
- "head": "2c09445ee",
+ "head": "053d89bf0",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

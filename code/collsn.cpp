@@ -98,7 +98,7 @@ CollisionAlertRecordPtr GlobalCollisionAlert::findAlert (GameObjectPtr object, C
 	if (startRecord)
 	{
         int i = startIndex;
-		for (;i<(long)nextRecord;i++)
+		for (;i<static_cast<long>(nextRecord);i++)
 		{
 			if (&(collisionAlerts[i]) == startRecord)
 			{
@@ -129,7 +129,7 @@ void GlobalCollisionAlert::purgeRecords (void)
 {
 	nextRecord = 0;
 	
-	for (long i=0;i<(long)maxAlerts;i++)
+	for (long i=0;i<static_cast<long>(maxAlerts);i++)
 	{
 		collisionAlerts[i].object1 = nullptr;
 		collisionAlerts[i].object2 = nullptr;
@@ -176,7 +176,7 @@ long CollisionGrid::init (glm::vec3 &newOrigin)
 		gridSize = sizeof(CollisionGridNodePtr) * xGridWidth * yGridWidth;
 		nodeSize = sizeof(CollisionGridNode) * maxObjects;
 		
-		gridStore.assign((size_t)xGridWidth * yGridWidth, nullptr);
+		gridStore.assign(static_cast<size_t>(xGridWidth) * yGridWidth, nullptr);
 		grid = gridStore.data();
 		nodeStore.assign(maxObjects ? maxObjects : 1, CollisionGridNode{});
 		nodes = nodeStore.data();
@@ -299,9 +299,9 @@ void CollisionGrid::createGrid (void)
 		g = g->next;
 	}
 	
-	for (long y=0;y<(long)yGridWidth;y++)
+	for (long y=0;y<static_cast<long>(yGridWidth);y++)
 	{
-		for (long x=0;x<(long)xGridWidth;x++)
+		for (long x=0;x<static_cast<long>(xGridWidth);x++)
 		{
 			unsigned long gridIndex = x + y*xGridWidth;
 			CollisionGridNodePtr g = grid[gridIndex];
@@ -496,7 +496,7 @@ void CollisionSystem::checkObjects (void)
 		// mess up if we are just a baseObject!
 		if (objNode && objNode->getObjectType() != nullptr)
 		{
-			result = collisionGrid->add((GameObjectPtr)objNode);
+			result = collisionGrid->add(static_cast<GameObjectPtr>(objNode));
 			objectsPerList[currentList]++;
 			
 			//----------------------------------------------------------

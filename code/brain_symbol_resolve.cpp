@@ -51,8 +51,8 @@ const SymEntry kSymbols[] = {
 // both ends. Returns false if the trimmed span is empty or does not fit.
 bool copyTrimmed(const char* s, size_t len, char* buf, size_t bufsz) {
     size_t b = 0, e = len;
-    while (b < e && std::isspace((unsigned char)s[b])) ++b;
-    while (e > b && std::isspace((unsigned char)s[e - 1])) --e;
+    while (b < e && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
+    while (e > b && std::isspace(static_cast<unsigned char>(s[e - 1]))) --e;
     if (e == b) return false;               // empty after trim
     if ((e - b) >= bufsz) return false;     // too long
     std::memcpy(buf, s + b, e - b);
@@ -90,7 +90,7 @@ bool brainResolveIntExpr(const char* expr, long* out) {
     char buf[64];
     for (;; ++p) {
         if (*p == '+' || *p == '\0') {
-            if (!copyTrimmed(termStart, (size_t)(p - termStart), buf, sizeof(buf)))
+            if (!copyTrimmed(termStart, static_cast<size_t>((p - termStart)), buf, sizeof(buf)))
                 return false;   // empty term (leading/trailing/double '+') or overflow
             long v = 0;
             if (!resolveTrimmed(buf, &v)) return false;

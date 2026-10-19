@@ -195,7 +195,7 @@ long BuildingType::init (FilePtr objFile, unsigned long fileSize) {
 	result = bldgFile.readIdULong("DmgLevel",dmgLevel);
 	if (result != NO_ERR)
 		return(result);
-	damageLevel = (float)dmgLevel;
+	damageLevel = static_cast<float>(dmgLevel);
 		
 	result = bldgFile.readIdBoolean("CanRefit", canRefit);
 	if (result != NO_ERR)
@@ -341,7 +341,7 @@ bool BuildingType::handleCollision (GameObjectPtr collidee, GameObjectPtr collid
 				(perimeterAlarmTimer > 0.0f) &&
 				(collider->getTeamId() != collidee->getTeamId()))
 			{
-				((BuildingPtr)collidee)->moverInProximity = true;
+				(static_cast<BuildingPtr>(collidee))->moverInProximity = true;
 				return true;		//Don't blow the perimeter alarm up!!
 			}
 		}
@@ -478,7 +478,7 @@ long Building::updateAnimations (void)
 		}
 	}
 	else*/
-	if (((BuildingTypePtr)getObjectType())->resourcePoints)
+	if ((static_cast<BuildingTypePtr>(getObjectType()))->resourcePoints)
 	{
 		if (!MPlayer)
 		{
@@ -553,7 +553,7 @@ long Building::updateAnimations (void)
 			}
 		}
 	}
-	else if (((BuildingTypePtr)getObjectType())->mechBay)
+	else if ((static_cast<BuildingTypePtr>(getObjectType()))->mechBay)
 	{
 		if (!MPlayer)
 		{
@@ -633,8 +633,8 @@ long Building::updateAnimations (void)
 							GameObjectPtr refitMech = ObjectManager->getByWatchID(refitBuddyWID);
 							if (refitMech && (refitMech->getStatus() == OBJECT_STATUS_SHUTDOWN))
 							{
-								if (((BuildingTypePtr)getObjectType())->activityEffectId != 0xffffffff)
-									appearance->startActivity(((BuildingTypePtr)getObjectType())->activityEffectId,true);
+								if ((static_cast<BuildingTypePtr>(getObjectType()))->activityEffectId != 0xffffffff)
+									appearance->startActivity((static_cast<BuildingTypePtr>(getObjectType()))->activityEffectId,true);
 							}
 							else
 							{
@@ -715,7 +715,7 @@ long Building::update (void)
 	if (getFlag(OBJECT_FLAG_JUSTCREATED)) 
 	{
 		setFlag(OBJECT_FLAG_JUSTCREATED, false);
-		BuildingTypePtr type = (BuildingTypePtr)ObjectManager->getObjectType(typeHandle);
+		BuildingTypePtr type = static_cast<BuildingTypePtr>(ObjectManager->getObjectType(typeHandle));
 				
 		//-------------------------------------------------------
 		// OK, now use the sprite Bounds to calculate the extent
@@ -773,7 +773,7 @@ long Building::update (void)
 		{
 			//Play something close by sound FX
 			soundSystem->playDigitalSample(PING_SFX);
-			if (proximityTimer > ((BuildingTypePtr)getObjectType())->perimeterAlarmTimer)
+			if (proximityTimer > (static_cast<BuildingTypePtr>(getObjectType()))->perimeterAlarmTimer)
 			{
 				//Set GeneralAlarm to TRUE.
 				// It can NEVER go false unless ABL sets it back!!
@@ -792,7 +792,7 @@ long Building::update (void)
 			}
 	
 			
-			appearance->setObjectParameters(position,((ObjectAppearance*)appearance)->rotation, drawFlags,getTeamId(),Team::getRelation(getTeamId(), Team::home->getId()));
+			appearance->setObjectParameters(position,(static_cast<ObjectAppearance*>(appearance))->rotation, drawFlags,getTeamId(),Team::getRelation(getTeamId(), Team::home->getId()));
 			bool inView = appearance->recalcBounds();
 	
 			//------------------------------------------------
@@ -832,10 +832,10 @@ long Building::update (void)
 				//Check if this object has a GOSFX associated with it for its "activity"
 				if ((getStatus() != OBJECT_STATUS_DESTROYED) && 
 					(getStatus() != OBJECT_STATUS_DISABLED) &&
-					!((BuildingTypePtr)getObjectType())->mechBay)
+					!(static_cast<BuildingTypePtr>(getObjectType()))->mechBay)
 				{
-					if (((BuildingTypePtr)getObjectType())->activityEffectId != 0xffffffff)
-						appearance->startActivity(((BuildingTypePtr)getObjectType())->activityEffectId,true);
+					if ((static_cast<BuildingTypePtr>(getObjectType()))->activityEffectId != 0xffffffff)
+						appearance->startActivity((static_cast<BuildingTypePtr>(getObjectType()))->activityEffectId,true);
 				}
 			}
 		}
@@ -874,7 +874,7 @@ long Building::update (void)
 				}
 			}
 
-   			if (!((BuildingTypePtr)getObjectType())->marksImpassableWhenDestroyed) 
+			if (!(static_cast<BuildingTypePtr>(getObjectType()))->marksImpassableWhenDestroyed)
    			{
    				if (getObjectType()->getSubType() == BUILDING_SUBTYPE_LANDBRIDGE)
    					closeSubAreas();
@@ -974,17 +974,17 @@ long Building::setTeamId (long _teamId, bool setup)
 	if (turn > 10)
 		appearance->flashBuilding(5.0,0.5,highLight[Team::relations[teamId][Team::home->getId()]]);
 		
-	if ((turn > 10) && ((BuildingTypePtr)getObjectType())->resourcePoints)
+	if ((turn > 10) && (static_cast<BuildingTypePtr>(getObjectType()))->resourcePoints)
 	{
 		if (MPlayer) {
 			if (MPlayer->isServer())
-				MPlayer->sendReinforcement(((BuildingTypePtr)getObjectType())->resourcePoints, 0, "noname", commanderId, getPosition(), 6);
+				MPlayer->sendReinforcement((static_cast<BuildingTypePtr>(getObjectType()))->resourcePoints, 0, "noname", commanderId, getPosition(), 6);
 				//MPlayer->playerInfo[commanderId].resourcePoints += ((BuildingTypePtr)getObjectType())->resourcePoints;
 			if (teamId == Team::home->getId())
 				soundSystem->playBettySample(BETTY_RESOURCES);
 		}
 		else {
-			LogisticsData::instance->addResourcePoints(((BuildingTypePtr)getObjectType())->resourcePoints);
+			LogisticsData::instance->addResourcePoints((static_cast<BuildingTypePtr>(getObjectType()))->resourcePoints);
 			soundSystem->playBettySample(BETTY_RESOURCES);
 		}
 	}
@@ -1090,7 +1090,7 @@ void Building::render (void) {
 		//--------------------------------------
 		if (getDrawBars())
 		{
-			BuildingTypePtr type = (BuildingTypePtr)getObjectType();
+			BuildingTypePtr type = static_cast<BuildingTypePtr>(getObjectType());
 			float barStatus = 1.0;
 			
 			if (getStatus() != OBJECT_STATUS_DESTROYED)
@@ -1120,13 +1120,13 @@ void Building::render (void) {
 			appearance->setBarStatus(barStatus);
 		}
 
-		if (((BuildingTypePtr)getObjectType())->buildingTypeName < IDS_MC2_STRING_START)
+		if ((static_cast<BuildingTypePtr>(getObjectType()))->buildingTypeName < IDS_MC2_STRING_START)
 		{
-			appearance->setObjectNameId(((BuildingTypePtr)getObjectType())->buildingTypeName + IDS_MC2_STRING_START);
+			appearance->setObjectNameId((static_cast<BuildingTypePtr>(getObjectType()))->buildingTypeName + IDS_MC2_STRING_START);
 		}
 		else
 		{
-			appearance->setObjectNameId(((BuildingTypePtr)getObjectType())->buildingTypeName);
+			appearance->setObjectNameId((static_cast<BuildingTypePtr>(getObjectType()))->buildingTypeName);
 		}
 
 
@@ -1142,9 +1142,9 @@ void Building::render (void) {
 //---------------------------------------------------------------------------
 char* Building::getName (void) 
 {
-	if (((BuildingTypePtr)getObjectType())->buildingTypeName != -1) 
+	if ((static_cast<BuildingTypePtr>(getObjectType()))->buildingTypeName != -1)
 	{
-		cLoadString(((BuildingTypePtr)getObjectType())->buildingTypeName, lastName, 254);
+		cLoadString((static_cast<BuildingTypePtr>(getObjectType()))->buildingTypeName, lastName, 254);
 		return(lastName);
 	}
 
@@ -1266,16 +1266,16 @@ void Building::init (bool create, ObjectTypePtr objType) {
 	// The only appearance type for buildings is MLR_APPEARANCE.
 	gosASSERT(buildingAppearanceType->getAppearanceClass() == BLDG_TYPE);
 		
-	appearance->init((BldgAppearanceType*)buildingAppearanceType, (GameObjectPtr)this);
+	appearance->init(static_cast<BldgAppearanceType*>(buildingAppearanceType), static_cast<GameObjectPtr>(this));
 #if USE_FORESTS
-	if (((BldgAppearance*)appearance)->isForestClump())
+	if ((static_cast<BldgAppearance*>(appearance))->isForestClump())
 		getObjectType()->setSubType(BUILDING_SUBTYPE_FOREST);
 #endif
 
 	objectClass = BUILDING;
 	setFlag(OBJECT_FLAG_DAMAGED, true);
 
-	BuildingTypePtr type = (BuildingTypePtr)getObjectType();
+	BuildingTypePtr type = static_cast<BuildingTypePtr>(getObjectType());
 	if (type->getExtentRadius() > 0.0)
 		setTangible(true);
 
@@ -1314,7 +1314,7 @@ void Building::init (bool create, ObjectTypePtr objType) {
 void Building::createBuildingMarines (void) {
 
 #ifdef USE_ELEMENTALS
-	long totalMarines = ((BuildingTypePtr)type)->numMarines;
+	long totalMarines = (static_cast<BuildingTypePtr>(type))->numMarines;
 	long numCreated = 0;
 	if (totalMarines) {
 		//-----------------------------------------------------
@@ -1336,7 +1336,7 @@ void Building::createBuildingMarines (void) {
 				{
 					//--------------------------------------------------------------------
 					// We must create the vehicle for the pilot and then lobotomize him!!
-					ElementalPtr vehiclePilot = (ElementalPtr)createObject(DefaultPilotId);
+					ElementalPtr vehiclePilot = static_cast<ElementalPtr>(createObject(DefaultPilotId));
 					if (!vehiclePilot)
 						Fatal(-1," Couldnt create Marine for Building ");
 
@@ -1389,9 +1389,9 @@ void Building::createBuildingMarines (void) {
 						objAppr->setGesture(0);
 						
 						if (getAlignment() == CLANS)
-							((ElementalActor *)objAppr)->setPaintScheme(28);
+							(static_cast<ElementalActor *>(objAppr))->setPaintScheme(28);
 						else
-							((ElementalActor *)objAppr)->setPaintScheme(18);
+							(static_cast<ElementalActor *>(objAppr))->setPaintScheme(18);
 					}
 											
 					//-----------------------------------------------------------------
@@ -1405,9 +1405,9 @@ void Building::createBuildingMarines (void) {
 					// Multiplayer stuff for vehicle Pilot.  What should I do Glenn?
 				#if 0
 					if (MPlayer) {
-						MPlayer->addToMoverRoster((MoverPtr)parts[i].object);
+						MPlayer->addToMoverRoster(static_cast<MoverPtr>(parts[i].object));
 						if (parts[i].commanderID == MPlayer->commanderID)
-							MPlayer->addToLocalMovers((MoverPtr)parts[i].object);
+							MPlayer->addToLocalMovers(static_cast<MoverPtr>(parts[i].object));
 					}
 				#endif
 
@@ -1464,7 +1464,7 @@ long Building::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChu
 	{
 		float dmg = getDamage() + shotInfo->damage;
 		setFlag(OBJECT_FLAG_DAMAGED, true);
-		BuildingTypePtr type = (BuildingTypePtr)getObjectType();
+		BuildingTypePtr type = static_cast<BuildingTypePtr>(getObjectType());
 		if (dmg >= type->getDamageLevel()) 
 		{
 			dmg = type->getDamageLevel();
@@ -1479,7 +1479,7 @@ long Building::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChu
 					appearance->stopActivity();
 					GameObjectPtr attacker = ObjectManager->getByWatchID(shotInfo->attackerWID);
 					if (attacker && attacker->isMover())
-						((MoverPtr)attacker)->getPilot()->triggerAlarm(PILOT_ALARM_KILLED_TARGET, getWatchID());
+						(static_cast<MoverPtr>(attacker))->getPilot()->triggerAlarm(PILOT_ALARM_KILLED_TARGET, getWatchID());
 
 					if (sensorSystem)
 						sensorSystem->disable();
@@ -1581,7 +1581,7 @@ long Building::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChu
 										shotInfo.init(0, 160, 50.0f, pMover->calcHitLocation(nullptr,-1,ATTACKSOURCE_WEAPONFIRE,0), 0);
 										pMover->handleWeaponHit(&shotInfo);
 										if (MPlayer && MPlayer->isServer())
-											MPlayer->addWeaponHitChunk((GameObjectPtr)this, &shotInfo);
+											MPlayer->addWeaponHitChunk(static_cast<GameObjectPtr>(this), &shotInfo);
 									}
 								}
 							}
@@ -1601,7 +1601,7 @@ long Building::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChu
 
 float Building::getDamageLevel (void) {
 
-	BuildingTypePtr type = (BuildingTypePtr)getObjectType();
+	BuildingTypePtr type = static_cast<BuildingTypePtr>(getObjectType());
 	if (type)
 		return(type->getDamageLevel());
 	return(0.0);
@@ -1633,7 +1633,7 @@ void Building::Save (PacketFilePtr file, long packetNum)
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	file->writePacket(packetNum,(MemoryPtr)&data,sizeof(BuildingData),STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(BuildingData),STORAGE_TYPE_ZLIB);
 }
 
 //***************************************************************************

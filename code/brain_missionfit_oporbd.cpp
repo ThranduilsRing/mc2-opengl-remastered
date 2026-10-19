@@ -30,7 +30,7 @@ bool lineKeyToken(const char* line, const char* key, char* out, size_t outsz) {
 // preceded by a letter is rejected (so "index=0" does NOT match 'x='). Returns true on success.
 bool axisFloat(const char* line, char axis, float* out) {
     for (const char* p = std::strchr(line, axis); p; p = std::strchr(p + 1, axis)) {
-        if (p > line && std::isalpha((unsigned char)p[-1])) continue;  // reject 'inde[x]='
+        if (p > line && std::isalpha(static_cast<unsigned char>(p[-1]))) continue;  // reject 'inde[x]='
         const char* q = p + 1;
         while (*q == ' ' || *q == '\t') ++q;
         if (*q != '=') continue;
@@ -61,7 +61,7 @@ bool lineKeyString(const char* line, const char* key, char* out, size_t outsz) {
     const char* p = std::strstr(line, key);
     if (!p) return false;
     // Ensure key boundary (preceding char not alnum) so "Help" != "AttackerHelp".
-    if (p > line && (std::isalnum((unsigned char)p[-1]) || p[-1] == '_')) return false;
+    if (p > line && (std::isalnum(static_cast<unsigned char>(p[-1])) || p[-1] == '_')) return false;
     p += std::strlen(key);
     while (*p == ' ' || *p == '\t') ++p;
     if (*p != '=') return false;
@@ -85,7 +85,7 @@ bool lineKeyString(const char* line, const char* key, char* out, size_t outsz) {
 bool lineKeyFloat(const char* line, const char* key, float* out) {
     const char* p = std::strstr(line, key);
     if (!p) return false;
-    if (p > line && (std::isalnum((unsigned char)p[-1]) || p[-1] == '_')) return false;
+    if (p > line && (std::isalnum(static_cast<unsigned char>(p[-1])) || p[-1] == '_')) return false;
     p += std::strlen(key);
     while (*p == ' ' || *p == '\t') ++p;
     if (*p != '=') return false;
@@ -103,7 +103,7 @@ bool lineKeyBool(const char* line, const char* key, int* out) {
     char tok[16];
     const char* p = std::strstr(line, key);
     if (!p) return false;
-    if (p > line && (std::isalnum((unsigned char)p[-1]) || p[-1] == '_')) return false;
+    if (p > line && (std::isalnum(static_cast<unsigned char>(p[-1])) || p[-1] == '_')) return false;
     if (!lineKeyToken(line, key, tok, sizeof(tok))) return false;
     *out = (std::strcmp(tok, "true") == 0) ? 1 : 0;
     return true;
@@ -136,7 +136,7 @@ void slotParseLine(MissionFitOpordSlot& s, const char* buf) {
             if (std::strncmp(d, "Warrior", 7) == 0) d += 7;
             char* end = nullptr;
             long v = std::strtol(d, &end, 10);
-            if (end != d) s.escortTargetIndex = (int)v;
+            if (end != d) s.escortTargetIndex = static_cast<int>(v);
         }
     } else if (std::strstr(buf, "target")) {
         if (lineKeyToken(buf, "target", tok, sizeof(tok))) {
@@ -144,7 +144,7 @@ void slotParseLine(MissionFitOpordSlot& s, const char* buf) {
             if (std::strncmp(d, "Warrior", 7) == 0) d += 7;
             char* end = nullptr;
             long v = std::strtol(d, &end, 10);
-            if (end != d) s.escortTargetIndex = (int)v;
+            if (end != d) s.escortTargetIndex = static_cast<int>(v);
         }
     }
 }
@@ -166,7 +166,7 @@ int parseMissionFitOpords(const char* text, MissionFitOpord* out, int maxOut) {
     while (*line) {
         const char* nl = line;
         while (*nl && *nl != '\n') ++nl;
-        size_t len = (size_t)(nl - line);
+        size_t len = static_cast<size_t>((nl - line));
         if (len >= sizeof(buf)) len = sizeof(buf) - 1;
         std::memcpy(buf, line, len);
         buf[len] = '\0';
@@ -180,7 +180,7 @@ int parseMissionFitOpords(const char* text, MissionFitOpord* out, int maxOut) {
             inPrimary = false;
             depth = 0;
             curWarrior = (std::strncmp(lb, "[Warrior", 8) == 0)
-                       ? (int)std::strtol(lb + 8, nullptr, 10) : -1;
+                       ? static_cast<int>(std::strtol(lb + 8, nullptr, 10)) : -1;
             continue;
         }
 
@@ -268,9 +268,9 @@ void tacticParseLine(MissionFitBrain& b, const char* buf) {
     // Grab the leading word.
     const char* p = buf;
     while (*p == ' ' || *p == '\t') ++p;
-    if (!(std::isalpha((unsigned char)*p))) return;
+    if (!(std::isalpha(static_cast<unsigned char>(*p)))) return;
     size_t i = 0;
-    while ((std::isalnum((unsigned char)*p) || *p == '_') && i + 1 < sizeof(name)) name[i++] = *p++;
+    while ((std::isalnum(static_cast<unsigned char>(*p)) || *p == '_') && i + 1 < sizeof(name)) name[i++] = *p++;
     name[i] = '\0';
     if (i == 0) return;
     if (std::strcmp(name, "type") == 0) return;            // never a tactic
@@ -318,7 +318,7 @@ int parseMissionFitBrains(const char* text, MissionFitBrain* out, int maxOut) {
     while (*line) {
         const char* nl = line;
         while (*nl && *nl != '\n') ++nl;
-        size_t len = (size_t)(nl - line);
+        size_t len = static_cast<size_t>((nl - line));
         if (len >= sizeof(buf)) len = sizeof(buf) - 1;
         std::memcpy(buf, line, len);
         buf[len] = '\0';
@@ -333,11 +333,11 @@ int parseMissionFitBrains(const char* text, MissionFitBrain* out, int maxOut) {
             inBrain = false; haveRecord = false; brainDepth = 0;
             sub = SubKind::None; subDepth = 0;
             curWarrior = (std::strncmp(lb, "[Warrior", 8) == 0)
-                       ? (int)std::strtol(lb + 8, nullptr, 10) : -1;
+                       ? static_cast<int>(std::strtol(lb + 8, nullptr, 10)) : -1;
             // [PartN] placement block (N is a digit immediately after "[Part"); carries the unit's
             // spawn position, which the editor matches against the selected unit to pick its brain.
             curPart = (std::strncmp(lb, "[Part", 5) == 0 && lb[5] >= '0' && lb[5] <= '9')
-                    ? (int)std::strtol(lb + 5, nullptr, 10) : -1;
+                    ? static_cast<int>(std::strtol(lb + 5, nullptr, 10)) : -1;
             continue;
         }
 

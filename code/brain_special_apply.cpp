@@ -153,11 +153,11 @@ void applyCoreAttack(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
         mc2::fmt::print_err("[BRAIN_DISPATCH_ATTACK_BAD_WID] wid={:d} wid={:d}\n", mc2::fmt::as_i32(parsedWID), mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     } else {
-        GameObjectPtr target = ObjectManager->getByWatchID((long)parsedWID);
+        GameObjectPtr target = ObjectManager->getByWatchID(static_cast<long>(parsedWID));
         if (!target) {
             mc2::fmt::print_err("[BRAIN_DISPATCH_ATTACK_BAD_WID] wid={:d} reason=not_found wid={:d}\n", mc2::fmt::as_i32(parsedWID), mc2::fmt::as_i32(wid));
             std::fflush(stderr);
-        } else if (target->getWatchID() == (long)wid) {
+        } else if (target->getWatchID() == static_cast<long>(wid)) {
             mc2::fmt::print_err("[BRAIN_DISPATCH_ATTACK_SELF] wid={:d} wid={:d}\n", mc2::fmt::as_i32(parsedWID), mc2::fmt::as_i32(wid));
             std::fflush(stderr);
         } else if (target->getTeam() == warrior->getTeam()) {
@@ -165,7 +165,7 @@ void applyCoreAttack(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
             std::fflush(stderr);
         } else if (runtime) {
             // Gate ON: emit intent; commitBrainIntents rebuilds the TacticalOrder.
-            emitBrainIntent(runtime, wid, TACTICAL_ORDER_ATTACK_OBJECT, (int)parsedWID, 0,0,0, 0);
+            emitBrainIntent(runtime, wid, TACTICAL_ORDER_ATTACK_OBJECT, static_cast<int>(parsedWID), 0,0,0, 0);
             mc2::fmt::print_err("[BRAIN_INTENT_EMIT] verb=OPORD.CoreAttack order=ATTACK_OBJECT targetWID={:d} tick={:d} wid={:d}\n", mc2::fmt::as_i32(parsedWID), mc2::fmt::as_u32(getBrainTickIndex()), mc2::fmt::as_i32(wid));
             std::fflush(stderr);
             appliedEffect = true;
@@ -174,7 +174,7 @@ void applyCoreAttack(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
             // FORBIDDEN: orderAttackObject, setAttackTarget, setSituationOpenFire.
             TacticalOrder attackOrder;
             attackOrder.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_ATTACK_OBJECT, false);
-            attackOrder.targetWID = (long)parsedWID;
+            attackOrder.targetWID = static_cast<long>(parsedWID);
             attackOrder.attackParams.type   = ATTACK_TO_DESTROY;
             attackOrder.attackParams.method = ATTACKMETHOD_RANGED;
             attackOrder.attackParams.range  = FIRERANGE_OPTIMAL;
@@ -184,7 +184,7 @@ void applyCoreAttack(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
             if (s_tacticWeightsBEnabled()) {
                 MechBrainRuntime* rtB = warrior->getBrainRuntime();
                 if (rtB) {
-                    attackOrder.attackParams.tactic = (TacticType)rtB->selectedTactic;
+                    attackOrder.attackParams.tactic = static_cast<TacticType>(rtB->selectedTactic);
                     mc2::fmt::print_err("[BRAIN_TACTIC_B] applied tactic={:d} wid={:d}\n", mc2::fmt::as_i32(rtB->selectedTactic), mc2::fmt::as_i32(wid));
                     std::fflush(stderr);
                 }
@@ -257,7 +257,7 @@ void applySetTargetPriority(int wid, MechBrainRuntime* runtime, BrainVerbFrame& 
         while (*a == ' ' || *a == '\t') ++a;
         const char* ts = a;
         while (*a && *a != ' ' && *a != '\t') ++a;
-        size_t tl = (size_t)(a - ts);
+        size_t tl = static_cast<size_t>((a - ts));
         char tok[64];
         if (tl == 0 || tl >= sizeof(tok)) { parsed = false; break; }
         std::memcpy(tok, ts, tl); tok[tl] = '\0';
@@ -316,7 +316,7 @@ void applyCorePatrol(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
             // The per-tick advance is handled by tickPatrolAdvance() in warrior.cpp.
             // Do NOT re-parse; do NOT re-emit waypoint[0].  Trace only.
             mc2::fmt::print_err("[BRAIN_PATROL_ACTIVE] already running index={:d} count={:d} wid={:d}\n",
-                         mc2::fmt::as_u32((unsigned)prt->patrolWaypointIndex), mc2::fmt::as_u32((unsigned)prt->patrolWaypointCount), mc2::fmt::as_i32(wid));
+                         mc2::fmt::as_u32(static_cast<unsigned>(prt->patrolWaypointIndex)), mc2::fmt::as_u32(static_cast<unsigned>(prt->patrolWaypointCount)), mc2::fmt::as_i32(wid));
             std::fflush(stderr);
             appliedEffect = true;
         } else {
@@ -341,7 +341,7 @@ void applyCorePatrol(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
                 if (ep2 == pargs) { parseOk = false; break; }
                 pargs = ep2; while (*pargs == ' ') ++pargs;
                 if (std::isnan(x) || std::isnan(y) || std::isnan(z)) {
-                    mc2::fmt::print_err("[BRAIN_PATROL_NAN] wp={:d} x={:g} y={:g} z={:g} wid={:d} (skipped)\n", mc2::fmt::as_u32((unsigned)wpCount), x, y, z, mc2::fmt::as_i32(wid));
+                    mc2::fmt::print_err("[BRAIN_PATROL_NAN] wp={:d} x={:g} y={:g} z={:g} wid={:d} (skipped)\n", mc2::fmt::as_u32(static_cast<unsigned>(wpCount)), x, y, z, mc2::fmt::as_i32(wid));
                     std::fflush(stderr);
                     continue;
                 }
@@ -358,7 +358,7 @@ void applyCorePatrol(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
                 // "loop" or any other trailing token → default loop=true.
             }
             if (!parseOk || wpCount < 2) {
-                mc2::fmt::print_err("[BRAIN_PATROL_PARSE_FAIL] count={:d} parseOk={:d} wid={:d} (need >=2 waypoints)\n", mc2::fmt::as_u32((unsigned)wpCount), mc2::fmt::as_i32((int)parseOk), mc2::fmt::as_i32(wid));
+                mc2::fmt::print_err("[BRAIN_PATROL_PARSE_FAIL] count={:d} parseOk={:d} wid={:d} (need >=2 waypoints)\n", mc2::fmt::as_u32(static_cast<unsigned>(wpCount)), mc2::fmt::as_i32(static_cast<int>(parseOk)), mc2::fmt::as_i32(wid));
                 std::fflush(stderr);
             } else {
                 // Commit parsed state to runtime.
@@ -373,7 +373,7 @@ void applyCorePatrol(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
                 prt->patrolActive = true;
                 prt->patrolStarted = true;  // PATROL-DRIVE-1: this path emits waypoint[0] below; skip the tickPatrolAdvance kick.
                 mc2::fmt::print_err("[BRAIN_PATROL_START] count={:d} loop={:d} wid={:d}\n",
-                             mc2::fmt::as_u32((unsigned)wpCount), mc2::fmt::as_i32((int)loopMode), mc2::fmt::as_i32(wid));
+                             mc2::fmt::as_u32(static_cast<unsigned>(wpCount)), mc2::fmt::as_i32(static_cast<int>(loopMode)), mc2::fmt::as_i32(wid));
                 std::fflush(stderr);
                 // Emit MOVETO_POINT to waypoints[0].
                 float wx = prt->patrolWaypoints[0][0];

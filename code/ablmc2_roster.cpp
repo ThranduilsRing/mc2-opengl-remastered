@@ -50,7 +50,7 @@ void execSetTextMsg (void) {
 	else if (value.type == ABL_STACKITEM_INTEGER)
 		mc2::fmt::to_buf(s, "[OMNI.TEXT] #{:d}", mc2::fmt::as_i32(value.data.integer));
 	else
-		mc2::fmt::to_buf(s, "[OMNI.TEXT] (type={:d})", mc2::fmt::as_i32((int)value.type));
+		mc2::fmt::to_buf(s, "[OMNI.TEXT] (type={:d})", mc2::fmt::as_i32(static_cast<int>(value.type)));
 	DEBUGWINS_print(s, 0);
 }
 
@@ -72,7 +72,7 @@ void execSetLargeMsg (void) {
 	else if (value.type == ABL_STACKITEM_INTEGER)
 		mc2::fmt::to_buf(s, "[OMNI.LARGE] #{:d}", mc2::fmt::as_i32(value.data.integer));
 	else
-		mc2::fmt::to_buf(s, "[OMNI.LARGE] (type={:d})", mc2::fmt::as_i32((int)value.type));
+		mc2::fmt::to_buf(s, "[OMNI.LARGE] (type={:d})", mc2::fmt::as_i32(static_cast<int>(value.type)));
 	DEBUGWINS_print(s, 0);
 }
 
@@ -95,7 +95,7 @@ void execAddResourcePoints (void) {
 
 	long amt = ABLi_popInteger();
 	if (LogisticsData::instance)
-		LogisticsData::instance->addResourcePoints((int)amt);
+		LogisticsData::instance->addResourcePoints(static_cast<int>(amt));
 }
 
 void execAddMoney (void) {
@@ -106,7 +106,7 @@ void execAddMoney (void) {
 
 	long amt = ABLi_popInteger();
 	if (LogisticsData::instance)
-		LogisticsData::instance->addResourcePoints((int)amt);
+		LogisticsData::instance->addResourcePoints(static_cast<int>(amt));
 }
 
 void execSetTxtBuildingName (void) {
@@ -120,7 +120,7 @@ void execSetTxtBuildingName (void) {
 
 	GameObjectPtr obj = getObject(objectId);
 	if (obj && obj->isMover() && name)
-		((MoverPtr)obj)->setName(name);
+		(static_cast<MoverPtr>(obj))->setName(name);
 }
 
 void execAblPrint (void) {
@@ -147,7 +147,7 @@ void execAblPrint (void) {
 		case ABL_STACKITEM_CHAR_PTR:
 			mc2::fmt::to_buf(s, "[ABL:{}] str={}", mc2::fmt::safe(fn), mc2::fmt::safe(value.data.characterPtr ? value.data.characterPtr : "")); break;
 		default:
-			mc2::fmt::to_buf(s, "[ABL:{}] (type={:d})", mc2::fmt::safe(fn), mc2::fmt::as_i32((int)value.type)); break;
+			mc2::fmt::to_buf(s, "[ABL:{}] (type={:d})", mc2::fmt::safe(fn), mc2::fmt::as_i32(static_cast<int>(value.type))); break;
 	}
 	DEBUGWINS_print(s, 0);
 }
@@ -213,7 +213,7 @@ void execAddMoverToPlayer (void) {
 		if (obj && obj->isMover()) {
 			obj->setTeam(team);
 			obj->setCommanderId(cmdrId);
-			team->addToRoster((MoverPtr)obj);
+			team->addToRoster(static_cast<MoverPtr>(obj));
 		}
 	}
 }
@@ -244,7 +244,7 @@ void execRemoveMoverFromPlayer (void) {
 	else {
 		GameObjectPtr obj = getObject(partId);
 		if (obj && obj->isMover())
-			team->removeFromRoster((MoverPtr)obj);
+			team->removeFromRoster(static_cast<MoverPtr>(obj));
 	}
 }
 
@@ -261,7 +261,7 @@ void execSetBrainFixed (void) {
 
 	GameObjectPtr obj = (partId == -1) ? CurObject : getObject(partId);
 	if (obj && obj->isMover()) {
-		MoverPtr m = (MoverPtr)obj;
+		MoverPtr m = static_cast<MoverPtr>(obj);
 		if (m->getPilot())
 			m->getPilot()->setBrainName(brainName);
 	}
@@ -280,7 +280,7 @@ void execSetBrainNew (void) {
 
 	GameObjectPtr obj = (partId == -1) ? CurObject : getObject(partId);
 	if (obj && obj->isMover()) {
-		MoverPtr m = (MoverPtr)obj;
+		MoverPtr m = static_cast<MoverPtr>(obj);
 		if (m->getPilot())
 			m->getPilot()->setBrainName(brainName);
 	}
@@ -320,7 +320,7 @@ void execSetMechGesture (void) {
 
 	GameObjectPtr obj = getObject(partId);
 	if (obj && obj->getObjectClass() == BATTLEMECH)
-		((BattleMech*)obj)->setGestureStateGoal(gesture);
+		(static_cast<BattleMech*>(obj))->setGestureStateGoal(gesture);
 }
 
 void execSetUnitForceGroup (void) {
@@ -537,7 +537,7 @@ void execNumFriendsWithinRadius (void) {
 	long partId = ABLi_popInteger();
 	float radius = ABLi_popReal();
 	(void)partId;
-	ABLi_pushInteger((int)countMoversWithinRadius(true, radius));
+	ABLi_pushInteger(static_cast<int>(countMoversWithinRadius(true, radius)));
 }
 
 void execNumEnemiesWithinRadius (void) {
@@ -549,7 +549,7 @@ void execNumEnemiesWithinRadius (void) {
 	long partId = ABLi_popInteger();
 	float radius = ABLi_popReal();
 	(void)partId;
-	ABLi_pushInteger((int)countMoversWithinRadius(false, radius));
+	ABLi_pushInteger(static_cast<int>(countMoversWithinRadius(false, radius)));
 }
 
 void execHasOrderFromPlayer (void) {
@@ -580,7 +580,7 @@ void execIsRefit (void) {
 
 	bool result = false;
 	if (CurObject && CurObject->isMover()) {
-		MoverPtr m = (MoverPtr)CurObject;
+		MoverPtr m = static_cast<MoverPtr>(CurObject);
 		result = m->isRefit();
 	}
 	ABLi_pushBoolean(result);
@@ -594,7 +594,7 @@ void execNeedsRefit (void) {
 
 	bool result = false;
 	if (CurObject && CurObject->isMover()) {
-		MoverPtr m = (MoverPtr)CurObject;
+		MoverPtr m = static_cast<MoverPtr>(CurObject);
 		result = m->needsRefit();
 	}
 	ABLi_pushBoolean(result);
@@ -626,7 +626,7 @@ void execAddNewPilot (void) {
 
 	GameObjectPtr obj = getObject(partId);
 	if (obj && obj->isMover() && brainName) {
-		MoverPtr m = (MoverPtr)obj;
+		MoverPtr m = static_cast<MoverPtr>(obj);
 		if (m->getPilot())
 			m->getPilot()->setBrainName(brainName);
 	}
@@ -646,7 +646,7 @@ void execAddNewPilotToPlayer (void) {
 
 	GameObjectPtr obj = getObject(partId);
 	if (obj && obj->isMover() && brainName) {
-		MoverPtr m = (MoverPtr)obj;
+		MoverPtr m = static_cast<MoverPtr>(obj);
 		if (m->getPilot())
 			m->getPilot()->setBrainName(brainName);
 	}
@@ -696,7 +696,7 @@ void execSetCampaignGlobalVar (void) {
 	long idx = ABLi_popInteger();
 	long val = ABLi_popInteger();
 	if (idx >= 0 && idx < 16)
-		gCampaignGlobalVars[idx] = (int)val;
+		gCampaignGlobalVars[idx] = static_cast<int>(val);
 }
 
 void execGetCampaignGlobalVar (void) {
@@ -901,7 +901,7 @@ void execGetWeapons (void) {
 
 	long numWpns = 0;
 	if (CurObject && CurObject->isMover()) {
-		MoverPtr mover = (MoverPtr)CurObject;
+		MoverPtr mover = static_cast<MoverPtr>(CurObject);
 		switch (infoType) {
 			case 0: {
 				for (long curWeapon = mover->numOther; curWeapon < (mover->numOther + mover->numWeapons); curWeapon++)
@@ -935,7 +935,7 @@ void execGetWeaponsStatus (void) {
 
 	long status = 0;
 	if (CurObject && CurObject->isMover()) {
-		MoverPtr mover = (MoverPtr)CurObject;
+		MoverPtr mover = static_cast<MoverPtr>(CurObject);
 		if (mover->getPilot()) {
 			status = mover->getPilot()->getWeaponsStatus(weaponList);
 			abl::copyIntArray(output, weaponList, "getweaponsstatus_truncated");
@@ -959,8 +959,8 @@ void execSetMoveArea (void) {
 		loc.x = center[0];
 		loc.y = center[1];
 		loc.z =  land->getTerrainElevation(loc);
-		((MoverPtr)CurObject)->moveCenter = loc;
-		((MoverPtr)CurObject)->moveRadius = radius;
+		(static_cast<MoverPtr>(CurObject))->moveCenter = loc;
+		(static_cast<MoverPtr>(CurObject))->moveRadius = radius;
 	}
 }
 
@@ -1042,10 +1042,10 @@ void execSetGoalPlanning (void) {
 
 	bool oldSetting = false;
 	if (CurObject) {
-		oldSetting = ((MoverPtr)CurObject)->getPilot()->getUseGoalPlan();
-		((MoverPtr)CurObject)->getPilot()->setUseGoalPlan(setting);
+		oldSetting = (static_cast<MoverPtr>(CurObject))->getPilot()->getUseGoalPlan();
+		(static_cast<MoverPtr>(CurObject))->getPilot()->setUseGoalPlan(setting);
 		if (oldSetting != setting)
-			((MoverPtr)CurObject)->getPilot()->setMainGoal(GOAL_ACTION_NONE, nullptr, nullptr, -1.0);
+			(static_cast<MoverPtr>(CurObject))->getPilot()->setMainGoal(GOAL_ACTION_NONE, nullptr, nullptr, -1.0);
 	}
 	ABLi_pushBoolean(oldSetting);
 }
@@ -1056,8 +1056,8 @@ void execSetEject (void) {
 
 	bool oldSetting = false;
 	if (CurObject) {
-		oldSetting = ((MoverPtr)CurObject)->getPilot()->getEscapesThruEjection();
-		((MoverPtr)CurObject)->getPilot()->setEscapesThruEjection(setting);
+		oldSetting = (static_cast<MoverPtr>(CurObject))->getPilot()->getEscapesThruEjection();
+		(static_cast<MoverPtr>(CurObject))->getPilot()->setEscapesThruEjection(setting);
 	}
 	ABLi_pushBoolean(oldSetting);
 }
@@ -1068,8 +1068,8 @@ void execSetKeepMoving (void) {
 
 	bool oldSetting = false;
 	if (CurObject) {
-		oldSetting = ((MoverPtr)CurObject)->getPilot()->getKeepMoving();
-		((MoverPtr)CurObject)->getPilot()->setKeepMoving(setting);
+		oldSetting = (static_cast<MoverPtr>(CurObject))->getPilot()->getKeepMoving();
+		(static_cast<MoverPtr>(CurObject))->getPilot()->setKeepMoving(setting);
 	}
 	ABLi_pushBoolean(oldSetting);
 }

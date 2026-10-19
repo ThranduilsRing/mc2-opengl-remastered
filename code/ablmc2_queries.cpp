@@ -182,8 +182,8 @@ void execSelectContact (void) {
 
 	long code = -1;
 	if (CurObject->isMover()) {
-		MoverPtr me = (MoverPtr)CurObject;
-		MoverPtr object = (MoverPtr)ObjectManager->findByPartId(id);
+		MoverPtr me = static_cast<MoverPtr>(CurObject);
+		MoverPtr object = static_cast<MoverPtr>(ObjectManager->findByPartId(id));
 		if (object && object->getTeam() && object->getContactStatus(me->getTeam()->getId(), true) != CONTACT_NONE) {
 			CurContact = object;
 			code = NO_ERR;
@@ -204,7 +204,7 @@ void execIsContact (void) {
 	long result = -1;
 	if (CurObject->isMover() && CurObject->getTeam()) {
 		GameObjectPtr object = getObject(objectId);
-		if (object->isMover() && (SensorManager->getTeamSensor(CurObject->getTeamId())->meetsCriteria(CurObject, (MoverPtr)object, criteria))) {
+		if (object->isMover() && (SensorManager->getTeamSensor(CurObject->getTeamId())->meetsCriteria(CurObject, static_cast<MoverPtr>(object), criteria))) {
 			result = objectId;
 			if (select)
 				CurContact = object;
@@ -248,7 +248,7 @@ void execGetContactStatus (void) {
 
 	long status = 0;
 	if (CurContact && CurObject->isMover())
-		status = ((MoverPtr)CurContact)->getContactStatus(CurObject->getTeamId(), true);
+		status = (static_cast<MoverPtr>(CurContact))->getContactStatus(CurObject->getTeamId(), true);
 	ABLi_pushInteger(status);
 }
 
@@ -306,7 +306,7 @@ void execSetTarget (void) {
 	else {
 		GameObjectPtr attacker = getObject(attackerId);
 		if (attacker) {
-			MechWarriorPtr pilot = ((MoverPtr)attacker)->getPilot();
+			MechWarriorPtr pilot = (static_cast<MoverPtr>(attacker))->getPilot();
 			if (pilot) {
 				pilot->setCurrentTarget(target);
 				pilot->getVehicle()->calcFireRanges();
@@ -325,7 +325,7 @@ void execGetTarget (void) {
 	else {
 		GameObjectPtr object = getObject(objectId);
 		if (object && object->isMover()) {
-			MechWarriorPtr pilot = ((MoverPtr)object)->getPilot();
+			MechWarriorPtr pilot = (static_cast<MoverPtr>(object))->getPilot();
 			Assert(pilot != nullptr, 0, " execHbGetTarget:No pilot in mover! ");
 			GameObjectPtr target = pilot->getCurrentTarget();
 			if (target)
@@ -439,7 +439,7 @@ void execGetWeaponShots (void) {
 
 	long numShots = 0;
 	if (CurObject->isMover())
-		numShots = ((MoverPtr)CurObject)->getWeaponShots(weaponIndex);
+		numShots = (static_cast<MoverPtr>(CurObject))->getWeaponShots(weaponIndex);
 
 	ABLi_pushInteger(numShots);
 }
@@ -459,9 +459,9 @@ void execGetWeaponRanges (void) {
 
 	GameObjectPtr object = getObject(objectId);
 	if (object && object->isMover()) {
-		rangeList[0] = ((MoverPtr)object)->getMinFireRange();
-		rangeList[1] = ((MoverPtr)object)->getOptimalFireRange();
-		rangeList[2] = ((MoverPtr)object)->getMaxFireRange();
+		rangeList[0] = (static_cast<MoverPtr>(object))->getMinFireRange();
+		rangeList[1] = (static_cast<MoverPtr>(object))->getOptimalFireRange();
+		rangeList[2] = (static_cast<MoverPtr>(object))->getMaxFireRange();
 		}
 	else
 		rangeList[0] = rangeList[1] = rangeList[2] = 0.0;
@@ -542,7 +542,7 @@ void execGetChallenger (void) {
 		GameObjectPtr object = getObject(objectId);
 		if (object) {
 			if (object->isMover()) {
-				GameObjectPtr challenger = ((MoverPtr)object)->getChallenger();
+				GameObjectPtr challenger = (static_cast<MoverPtr>(object))->getChallenger();
 				if (challenger)
 					challengerPartID = challenger->getPartId();
 			}
@@ -649,7 +649,7 @@ void execSetChallenger (void) {
 		GameObjectPtr challenger = getObject(challengerId);
 		GameObjectPtr victim = getObject(victimId);
 		if (victim && victim->isMover())
-			((MoverPtr)victim)->setChallenger(challenger);
+			(static_cast<MoverPtr>(victim))->setChallenger(challenger);
 		else
 			result = -2;
 	}
@@ -733,7 +733,7 @@ void execGetVisualRange (void) {
 	else {
 		object = getObject(objectId);
 		if (object && object->isMover())
-			range = ((MoverPtr)object)->getVisualRange();
+			range = (static_cast<MoverPtr>(object))->getVisualRange();
 	}
 	ABLi_pushReal(range);
 }
@@ -760,7 +760,7 @@ void execGetUnitMates (void) {
 	else {
 		GameObjectPtr object = getObject(objectId);
 		if (object && object->isMover()) {
-			MoverGroupPtr group = ((MoverPtr)object)->getGroup();
+			MoverGroupPtr group = (static_cast<MoverPtr>(object))->getGroup();
 			if (group) {
 				long numObjects = group->getMovers(moverList);
 				for (long i = 0; i < numObjects; i++)
@@ -796,7 +796,7 @@ void execGetTacOrder(void) {
 	else {
 		GameObjectPtr object = getObject(objectId);
 		if (object && object->isMover()) {
-			MechWarriorPtr pilot = ((MoverPtr)object)->getPilot();
+			MechWarriorPtr pilot = (static_cast<MoverPtr>(object))->getPilot();
 			if (pilot) {
 				code = pilot->getCurTacOrder()->getParamData(time, paramList);
 				GameObjectPtr goalObj = nullptr;
@@ -837,7 +837,7 @@ void execGetLastTacOrder(void) {
 	else {
 		GameObjectPtr object = getObject(objectId);
 		if (object && object->isMover()) {
-			MechWarriorPtr pilot = ((MoverPtr)object)->getPilot();
+			MechWarriorPtr pilot = (static_cast<MoverPtr>(object))->getPilot();
 			if (pilot) {
 				code = pilot->getLastTacOrder()->getParamData(time, paramList);
 				count = 7;

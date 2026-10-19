@@ -377,7 +377,7 @@ void execObjectInWithdrawal(void) {
 void execCoreMoveTo (void) {
 
 	float* location = ABLi_popRealPtr();
-	unsigned long params = (unsigned long)ABLi_popInteger();
+	unsigned long params = static_cast<unsigned long>(ABLi_popInteger());
 
 	if (s_ablArgGuard && !location) { abl_arg_guard_log("execCoreMoveTo", "location"); ABLi_pushInteger(0); return; }
 
@@ -404,7 +404,7 @@ void execCoreMoveTo (void) {
 void execCoreMoveToObject (void) {
 
 	long objectID = ABLi_popInteger();
-	unsigned long params = (unsigned long)ABLi_popInteger();
+	unsigned long params = static_cast<unsigned long>(ABLi_popInteger());
 
 	if (ABLi_getSkipOrder()) {
 		ABLi_pushInteger(1);
@@ -438,7 +438,7 @@ void execCorePower (void) {
 void execCoreAttack (void) {
 
 	long objectID = ABLi_popInteger();
-	unsigned long params = (unsigned long)ABLi_popInteger();
+	unsigned long params = static_cast<unsigned long>(ABLi_popInteger());
 
 	if (ABLi_getSkipOrder()) {
 		ABLi_pushInteger(1);
@@ -456,7 +456,7 @@ void execCoreAttack (void) {
 void execCoreCapture (void) {
 
 	long objectID = ABLi_popInteger();
-	unsigned long params = (unsigned long)ABLi_popInteger();
+	unsigned long params = static_cast<unsigned long>(ABLi_popInteger());
 
 	if (ABLi_getSkipOrder()) {
 		ABLi_pushInteger(1);
@@ -474,7 +474,7 @@ void execCoreCapture (void) {
 void execCoreScan (void) {
 
 	long objectID = ABLi_popInteger();
-	unsigned long params = (unsigned long)ABLi_popInteger();
+	unsigned long params = static_cast<unsigned long>(ABLi_popInteger());
 
 	if (ABLi_getSkipOrder()) {
 		ABLi_pushInteger(1);
@@ -492,7 +492,7 @@ void execCoreScan (void) {
 void execCoreControl (void) {
 
 	long objectID = ABLi_popInteger();
-	unsigned long params = (unsigned long)ABLi_popInteger();
+	unsigned long params = static_cast<unsigned long>(ABLi_popInteger());
 
 	if (ABLi_getSkipOrder()) {
 		ABLi_pushInteger(1);

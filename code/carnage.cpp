@@ -212,11 +212,11 @@ bool FireType::handleCollision (GameObjectPtr collidee, GameObjectPtr collider) 
 				// Not anymore.  Fires are undefined at present.
 				break;
 			case TERRAINOBJECT:
-				if (((TerrainObjectPtr)collider)->getSubType() == TERROBJ_TREE) 
+				if ((static_cast<TerrainObjectPtr>(collider))->getSubType() == TERROBJ_TREE)
 				{
 					if (RollDice(10)) 
 					{
-						((TerrainObjectPtr)collider)->lightOnFire(15.0);
+						(static_cast<TerrainObjectPtr>(collider))->lightOnFire(15.0);
 						if (MPlayer)
 							MPlayer->addLightOnFireChunk(collider, 15);
 					}
@@ -359,8 +359,8 @@ bool ExplosionType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 	if (damageLeft != 0.0) {
 		float damageAmount = 0.0;
 		WeaponShotInfo shot;
-		if (damageLeft > ((CarnagePtr)collidee)->info.explosion.chunkSize)
-			damageAmount = ((CarnagePtr)collidee)->info.explosion.chunkSize;
+		if (damageLeft > (static_cast<CarnagePtr>(collidee))->info.explosion.chunkSize)
+			damageAmount = (static_cast<CarnagePtr>(collidee))->info.explosion.chunkSize;
 		else
 			damageAmount = damageLeft;
 
@@ -368,9 +368,9 @@ bool ExplosionType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 			shot.init(0, -1, damageAmount, 0, 0);		 
 			while (damageLeft > 0.0) {
 				shot.hitLocation = collider->calcHitLocation(collidee,-1,ATTACKSOURCE_ARTILLERY,0);
-				((CarnagePtr)collidee)->traceCombat("damage", "collision", collider, &shot);
+				(static_cast<CarnagePtr>(collidee))->traceCombat("damage", "collision", collider, &shot);
 				collider->handleWeaponHit(&shot, (MPlayer != nullptr));
-				damageLeft -= ((CarnagePtr)collidee)->info.explosion.chunkSize;
+				damageLeft -= (static_cast<CarnagePtr>(collidee))->info.explosion.chunkSize;
 			}
 			}
 		else {
@@ -385,7 +385,7 @@ bool ExplosionType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 					distance -= collidee->getPosition();
 					float range = glm::length(distance);
 
-			 		float littleExtent = ((TurretPtr)collider)->getLittleExtent();
+					float littleExtent = (static_cast<TurretPtr>(collider))->getLittleExtent();
 					if (littleExtent < range) 
 					{
 						float realRange = range - littleExtent;
@@ -397,7 +397,7 @@ bool ExplosionType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 					while (damageLeft > 0.0) 
 					{
 						shot.hitLocation = 0;
-						((CarnagePtr)collidee)->traceCombat("damage", "collision", collider, &shot);
+						(static_cast<CarnagePtr>(collidee))->traceCombat("damage", "collision", collider, &shot);
 						collider->handleWeaponHit(&shot, (MPlayer != nullptr));
 						damageLeft -= chunkSize;
 					}
@@ -413,7 +413,7 @@ bool ExplosionType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 					distance -= collidee->getPosition();
 					float range = glm::length(distance);
 
-					float littleExtent = ((TurretPtr)collider)->getLittleExtent();
+					float littleExtent = (static_cast<TurretPtr>(collider))->getLittleExtent();
 					if (littleExtent < range) 
 					{
 						float realRange = range - littleExtent;
@@ -427,7 +427,7 @@ bool ExplosionType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 					while (damageLeft > 0.0) 
 					{
 						shot.hitLocation = 0;
-						((CarnagePtr)collidee)->traceCombat("damage", "collision", collider, &shot);
+						(static_cast<CarnagePtr>(collidee))->traceCombat("damage", "collision", collider, &shot);
 						collider->handleWeaponHit(&shot, (MPlayer != nullptr));
 						damageLeft -= chunkSize;
 
@@ -440,7 +440,7 @@ bool ExplosionType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 				{
 					WeaponShotInfo shot;
 					shot.init(0, -1, collidee->getExplDmg(), 0, 0);
-					((CarnagePtr)collidee)->traceCombat("damage", "collision", collider, &shot);
+					(static_cast<CarnagePtr>(collidee))->traceCombat("damage", "collision", collider, &shot);
 					collider->handleWeaponHit(&shot, (MPlayer != nullptr));
 				}
 			}
@@ -683,25 +683,25 @@ long Carnage::update (void)
 			
 			//------------------------------------------
 			// If just created, play our sound effect...
-			if (((ExplosionTypePtr)getObjectType())->soundEffectId != -1)
-				soundSystem->playDigitalSample(((ExplosionTypePtr)getObjectType())->soundEffectId,position,true);
+			if ((static_cast<ExplosionTypePtr>(getObjectType()))->soundEffectId != -1)
+				soundSystem->playDigitalSample((static_cast<ExplosionTypePtr>(getObjectType()))->soundEffectId,position,true);
 
-			if (((ExplosionTypePtr)getObjectType())->duration > 0.0f)
+			if ((static_cast<ExplosionTypePtr>(getObjectType()))->duration > 0.0f)
 			{
 				// Explosion Has Point Light Source
 				// Make and Init it here.
-				pointLight = (TG_LightPtr)systemHeap->Malloc(sizeof(TG_Light));
+				pointLight = static_cast<TG_LightPtr>(systemHeap->Malloc(sizeof(TG_Light)));
 				pointLight->init(TG_LIGHT_POINT);
 
-				pointLight->SetaRGB(((ExplosionTypePtr)getObjectType())->lightRGB);
-				intensity = ((ExplosionTypePtr)getObjectType())->maxIntensity;
-				outRadius = ((ExplosionTypePtr)getObjectType())->lightOutMaxRadius;
-				inRadius = ((ExplosionTypePtr)getObjectType())->lightMaxMaxRadius;
+				pointLight->SetaRGB((static_cast<ExplosionTypePtr>(getObjectType()))->lightRGB);
+				intensity = (static_cast<ExplosionTypePtr>(getObjectType()))->maxIntensity;
+				outRadius = (static_cast<ExplosionTypePtr>(getObjectType()))->lightOutMaxRadius;
+				inRadius = (static_cast<ExplosionTypePtr>(getObjectType()))->lightMaxMaxRadius;
 				pointLight->SetIntensity(intensity);
 				pointLight->SetFalloffDistances(inRadius,outRadius);
 
 				lightId = eye->addWorldLight(pointLight);
-				duration = ((ExplosionTypePtr)getObjectType())->duration;
+				duration = (static_cast<ExplosionTypePtr>(getObjectType()))->duration;
 
 				if (lightId == -1)
 				{
@@ -727,13 +727,13 @@ long Carnage::update (void)
 		{
 			if (duration > 0.0f)
 			{
-				float timeFactor = duration / ((ExplosionTypePtr)getObjectType())->duration;
-				intensity = ((ExplosionTypePtr)getObjectType())->minIntensity + 
-							(((ExplosionTypePtr)getObjectType())->maxIntensity - ((ExplosionTypePtr)getObjectType())->minIntensity) * timeFactor;
-				outRadius = ((ExplosionTypePtr)getObjectType())->lightOutMinRadius + 
-							(((ExplosionTypePtr)getObjectType())->lightOutMaxRadius - ((ExplosionTypePtr)getObjectType())->lightOutMinRadius) * timeFactor;
-				inRadius = ((ExplosionTypePtr)getObjectType())->lightMinMaxRadius + 
-							(((ExplosionTypePtr)getObjectType())->lightMaxMaxRadius - ((ExplosionTypePtr)getObjectType())->lightMinMaxRadius) * timeFactor;
+				float timeFactor = duration / (static_cast<ExplosionTypePtr>(getObjectType()))->duration;
+				intensity = (static_cast<ExplosionTypePtr>(getObjectType()))->minIntensity +
+							((static_cast<ExplosionTypePtr>(getObjectType()))->maxIntensity - (static_cast<ExplosionTypePtr>(getObjectType()))->minIntensity) * timeFactor;
+				outRadius = (static_cast<ExplosionTypePtr>(getObjectType()))->lightOutMinRadius +
+							((static_cast<ExplosionTypePtr>(getObjectType()))->lightOutMaxRadius - (static_cast<ExplosionTypePtr>(getObjectType()))->lightOutMinRadius) * timeFactor;
+				inRadius = (static_cast<ExplosionTypePtr>(getObjectType()))->lightMinMaxRadius +
+							((static_cast<ExplosionTypePtr>(getObjectType()))->lightMaxMaxRadius - (static_cast<ExplosionTypePtr>(getObjectType()))->lightMinMaxRadius) * timeFactor;
 
 				pointLight->SetIntensity(intensity);
 				pointLight->SetFalloffDistances(inRadius,outRadius);
@@ -917,8 +917,8 @@ void Carnage::init (bool create, ObjectTypePtr _type)
 	}
 	else if (carnageType == CARNAGE_EXPLOSION) 
 	{
-		info.explosion.chunkSize = ((ExplosionType *)_type)->chunkSize;
-		info.explosion.timer = ((ExplosionType *)_type)->delayUntilCollidable; 
+		info.explosion.chunkSize = (static_cast<ExplosionType *>(_type))->chunkSize;
+		info.explosion.timer = (static_cast<ExplosionType *>(_type))->delayUntilCollidable;
 			
 		if (S_stricmp(weaponEffects->GetEffectName(effectId),"NONE") != 0)
 		{
@@ -951,7 +951,7 @@ void Carnage::Save (PacketFilePtr file, long packetNum)
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	file->writePacket(packetNum,(MemoryPtr)&data,sizeof(CarnageData),STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(CarnageData),STORAGE_TYPE_ZLIB);
 }
 
 //---------------------------------------------------------------------------

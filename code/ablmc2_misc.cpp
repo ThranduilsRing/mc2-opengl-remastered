@@ -19,7 +19,7 @@ void execIsGateOpen (void) {
 #ifdef USE_GATES
 	GameObjectPtr obj = getObject(objectId);
 	if (obj && (obj->getObjectClass() == GATE))	{
-		ABLi_pokeBoolean(((GatePtr)object)->opened);
+		ABLi_pokeBoolean((static_cast<GatePtr>(object))->opened);
 #endif
 }
 
@@ -50,9 +50,9 @@ void execRepair (void) {
 
 	GameObjectPtr repairTarget = getObject(objectId);
 	if (repairTarget && (repairTarget->getObjectClass() == BATTLEMECH)) {
-		BattleMechPtr mech = (BattleMechPtr) repairTarget;
+		BattleMechPtr mech = static_cast<BattleMechPtr>(repairTarget);
 		for (long i = 0; i < mech->numBodyLocations; i++) {
-			float diff = (float)mech->body[i].maxInternalStructure - mech->body[i].curInternalStructure;
+			float diff = static_cast<float>(mech->body[i].maxInternalStructure) - mech->body[i].curInternalStructure;
 			if (mech->body[i].damageState == IS_DAMAGE_DESTROYED)	// can't repair it if it ain't there!
 				continue;
 			if (diff > 0) {
@@ -68,7 +68,7 @@ void execRepair (void) {
 			}
 		}
 		for (int i = 0; i < mech->numArmorLocations; i++) {
-			float diff = (float) mech->armor[i].maxArmor - mech->armor[i].curArmor;
+			float diff = static_cast<float>(mech->armor[i].maxArmor) - mech->armor[i].curArmor;
 			if (i < mech->numBodyLocations)	{
 				if (mech->body[i].damageState == IS_DAMAGE_DESTROYED)	// can't repair it if it ain't there!
 					continue;
@@ -120,7 +120,7 @@ void execGetFixed (void) {
 	BuildingPtr bay = nullptr;
 	GameObjectPtr obj = getObject(bayId);
 	if (obj && obj->isBuilding() && obj->getFlag(OBJECT_FLAG_CANREFIT))
-		bay = (BuildingPtr)obj;
+		bay = static_cast<BuildingPtr>(obj);
 
 	long result = 8;
 	if (bay) {
@@ -139,7 +139,7 @@ void execGetFixed (void) {
 							result = 4;
 						}
 					else if (obj->getObjectClass() == BATTLEMECH) {
-						BattleMechPtr mech = (BattleMechPtr)obj;
+						BattleMechPtr mech = static_cast<BattleMechPtr>(obj);
 						result = 2;
 						if (bay->getFlag(OBJECT_FLAG_MECHBAY)) {
 							result = 5;
@@ -156,7 +156,7 @@ void execGetFixed (void) {
 						}
 						}
 					else {
-						GroundVehiclePtr vehicle = (GroundVehiclePtr)obj;
+						GroundVehiclePtr vehicle = static_cast<GroundVehiclePtr>(obj);
 						result = 2;
 						if (bay->getFlag(OBJECT_FLAG_MECHBAY)) {
 							result = 5;
@@ -192,7 +192,7 @@ void execGetRepairState (void) {
 	long cur = 0.0;
 	GameObjectPtr object = getObject(objectId);
 	if (object && object->isMover()) {
-		MoverPtr mover = (MoverPtr) object;
+		MoverPtr mover = static_cast<MoverPtr>(object);
 		for (long i = 0; i < mover->numBodyLocations; i++) {
 			// can't repair it if it ain't there, so don't report it if destroyed...
 			if (mover->body[i].damageState == IS_DAMAGE_DESTROYED)

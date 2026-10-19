@@ -93,10 +93,10 @@ void AttributeMeter::render( long xOffset, long yOffset )
 	};
 
 	float barCount = percent * numBars;
-	int  nBarCount = (int)barCount;
+	int  nBarCount = static_cast<int>(barCount);
 
 	float remainder = addedPercent * numBars + (barCount - float(nBarCount));
-	int nAddedCount = (int)remainder;
+	int nAddedCount = static_cast<int>(remainder);
 
 	GUI_RECT tmpOutside = outsideRect;
 	tmpOutside.left += xOffset;
@@ -118,7 +118,7 @@ void AttributeMeter::render( long xOffset, long yOffset )
 	for ( int i = 0; i < nBarCount; i++ )
 	{
 		fillRect( tmpRect, color );
-		color = interpolateColor( colorMin, colorMax, ((float)i)/(float)numBars );
+		color = interpolateColor( colorMin, colorMax, (static_cast<float>(i))/static_cast<float>(numBars) );
 		
 		tmpRect.left += unitWidth + skipWidth;
 		tmpRect.right = tmpRect.left + unitWidth;
@@ -127,7 +127,7 @@ void AttributeMeter::render( long xOffset, long yOffset )
 	for (int i = 0; i < nAddedCount; i++ )
 	{
 		fillRect( tmpRect, color );
-		color = interpolateColor( addedColorMin, addedColorMax, ((float)i)/(float)numBars );
+		color = interpolateColor( addedColorMin, addedColorMax, (static_cast<float>(i))/static_cast<float>(numBars) );
 		
 		tmpRect.left += unitWidth + skipWidth;
 		tmpRect.right = tmpRect.left + unitWidth;

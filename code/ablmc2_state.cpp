@@ -84,7 +84,7 @@ void execGetWeaponAmmo (void) {
 	GameObjectPtr object1 = getObject(objectNum);
 	
 	if (object1 && object1->isMover())
-		ABLi_pushInteger(((MoverPtr)object1)->getWeaponShots(weaponNum));
+		ABLi_pushInteger((static_cast<MoverPtr>(object1))->getWeaponShots(weaponNum));
 	else
 		ABLi_pushInteger(-1);
 }	
@@ -181,7 +181,7 @@ void execObjectRemove (void) {
 			if (object == CurObject)
 				CurObject->setFlag(OBJECT_FLAG_REMOVED, true);
 			else
-				mission->removeMover((MoverPtr)object);
+				mission->removeMover(static_cast<MoverPtr>(object));
 			ABLi_pushInteger(0);
 			}	
 		else
@@ -219,7 +219,7 @@ void execCreateInfantry (void) {
 	moverData.capturable = false;
 	long infantryHandle = mission->addMover(&moverData);
 
-	MoverPtr infantry = (MoverPtr)ObjectManager->get(infantryHandle);
+	MoverPtr infantry = static_cast<MoverPtr>(ObjectManager->get(infantryHandle));
 	if (infantry)
 		infantry->getPilot()->setIntegerMemory(0, buildingPartID);
 
@@ -236,8 +236,8 @@ void execGetSensorsWorking (void) {
 
 	long result = -1;
 	GameObjectPtr object1 = getObject(objectNum);
-	if (object1 && object1->isMover() && ((MoverPtr)object1)->sensorSystem)
-		result = ((MoverPtr)object1)->sensorSystem->enabled();
+	if (object1 && object1->isMover() && (static_cast<MoverPtr>(object1))->sensorSystem)
+		result = (static_cast<MoverPtr>(object1))->sensorSystem->enabled();
 	
 	ABLi_pushInteger(result);
 }	
@@ -284,7 +284,7 @@ void execGetArmorPts (void) {
 	long armorPts = 0;
 	ABLi_pokeInteger(0);	
 	if (obj && obj->isMover()) {
-		MoverPtr mover = (MoverPtr)obj;
+		MoverPtr mover = static_cast<MoverPtr>(obj);
 		for (long i = 0; i < mover->numArmorLocations; i++)
 			armorPts += mover->armor[i].curArmor;
 		ABLi_pokeInteger(armorPts);
@@ -303,7 +303,7 @@ void execGetMaxArmor (void) {
 	GameObjectPtr obj = getObject(objectNum);
 	long armorPts = 0;
 	if (obj && obj->isMover()) {
-		MoverPtr mover = (MoverPtr)obj;
+		MoverPtr mover = static_cast<MoverPtr>(obj);
 		for (long i = 0; i < mover->numArmorLocations; i++)
 			armorPts += mover->armor[i].maxArmor;
 		ABLi_pokeInteger(armorPts);
@@ -407,7 +407,7 @@ void execGetObjectDamage (void) {
 		float dmgResult = 100.0;
 		if (dmgLevel > 0.0)
 			dmgResult = floor((obj->getDamage() / dmgLevel) * 100.0);
-		ABLi_pokeInteger((long)dmgResult);
+		ABLi_pokeInteger(static_cast<long>(dmgResult));
 	}
 }	
 
@@ -422,7 +422,7 @@ void execGetObjectDmgPts (void) {
 	ABLi_pokeInteger(0);
 	GameObjectPtr obj = getObject(objectNum);
 	if (obj && obj->isTerrainObject()) {
-		long dmgResult = (long)obj->getDamage();
+		long dmgResult = static_cast<long>(obj->getDamage());
 		ABLi_pokeInteger(dmgResult);
 	}
 }	
@@ -439,7 +439,7 @@ void execGetObjectMaxDmg (void) {
 	GameObjectPtr obj = getObject(objectNum);
 	if (obj) {
 		float damage = obj->getDamage();
-		ABLi_pokeInteger((long)damage);
+		ABLi_pokeInteger(static_cast<long>(damage));
 	}
 }	
 
@@ -459,7 +459,7 @@ void execSetObjectDamage (void) {
 	if (obj && (dmgPercentage > 0)) {
 		float maxDmg = obj->getDamageLevel();
 		float curDmg = obj->getDamage();
-		float dmgPoints = ((float)dmgPercentage / 100.0) * maxDmg - curDmg;
+		float dmgPoints = (static_cast<float>(dmgPercentage) / 100.0) * maxDmg - curDmg;
 		dmgPoints += 1.0f;	//One to be sure.
 		if (dmgPoints > 0.0) 
 		{
@@ -656,7 +656,7 @@ void execSetAnimation (void) {
 	GameObjectPtr obj = getObject(objectId);
 	if (obj && obj->isBuilding()) {
 #ifdef USE_BUILDING_APPR
-		((BuildingPtr)building)->setAnimState(newState, newSubState);
+		(static_cast<BuildingPtr>(building))->setAnimState(newState, newSubState);
 #endif
 	}
 }	
@@ -967,7 +967,7 @@ void execOrderLoadElementals (void) {
 	if (CurObject && CurObject->getObjectClass() == ELEMENTAL)
 		carrier = getObject(carrierID);
 
-	if (carrier && carrier->getObjectClass() == GROUNDVEHICLE && ((GroundVehiclePtr) carrier)->elementalCarrier)
+	if (carrier && carrier->getObjectClass() == GROUNDVEHICLE && (static_cast<GroundVehiclePtr>(carrier))->elementalCarrier)
 		CurObject->getPilot()->orderLoadIntoCarrier(ORDER_ORIGIN_COMMANDER, carrier);
 #endif
 }
@@ -982,7 +982,7 @@ void execOrderDeployElementals (void) {
 	ABLi_popInteger();
 
 #ifdef USE_ELEMENTALS
-	if (CurObject && CurObject->getObjectClass() == GROUNDVEHICLE && ((GroundVehiclePtr) CurObject)->elementalCarrier)
+	if (CurObject && CurObject->getObjectClass() == GROUNDVEHICLE && (static_cast<GroundVehiclePtr>(CurObject))->elementalCarrier)
 		CurObject->getPilot()->orderDeployElementals(ORDER_ORIGIN_COMMANDER, params);
 #endif
 }
@@ -1012,7 +1012,7 @@ void execAddPrisoner (void) {
 		{
 			if (prison->getObjectClass() == BUILDING)
 			{
-			BuildingPtr bPrison = (BuildingPtr) prison;
+			BuildingPtr bPrison = static_cast<BuildingPtr>(prison);
 				
 				for (i=0; i<MAX_PRISONERS; i++)
 					if (bPrison->prisoners[i] == nullptr)
@@ -1023,7 +1023,7 @@ void execAddPrisoner (void) {
 			}
 			if (prison->getObjectClass() == TREEBUILDING)
 			{
-			TreeBuildingPtr tPrison = (TreeBuildingPtr) prison;
+			TreeBuildingPtr tPrison = static_cast<TreeBuildingPtr>(prison);
 				
 				for (i=0; i<MAX_PRISONERS; i++)
 					if (tPrison->prisoners[i] == nullptr)
@@ -1048,7 +1048,7 @@ void execLockGateOpen (void) {
 #ifdef USE_GATES
 	GameObjectPtr obj = getObject(gateID);
 	if (obj && obj->getObjectClass() == GATE)
-		((GatePtr) obj)->setLockedOpen();
+		(static_cast<GatePtr>(obj))->setLockedOpen();
 #endif
 }
 
@@ -1063,7 +1063,7 @@ void execLockGateClosed (void) {
 #ifdef USE_GATES
 	GameObjectPtr obj = getObject(gateID);
 	if (obj && obj->getObjectClass() == GATE)
-		((GatePtr) obj)->setLockedClose();
+		(static_cast<GatePtr>(obj))->setLockedClose();
 #endif
 }
 
@@ -1078,6 +1078,6 @@ void execReleaseGateLock (void) {
 #ifdef USE_GATES
 	GameObjectPtr obj = getObject(gateID);
 	if (obj && obj->getObjectClass() == GATE)
-		((GatePtr) obj)->releaseLocks();
+		(static_cast<GatePtr>(obj))->releaseLocks();
 #endif
 }
