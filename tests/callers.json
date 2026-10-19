@@ -460,7 +460,7 @@
           "path": "scripts/check-pass-attachment-contract.py",
           "line": 89,
           "evidence": "load module",
-          "reference": "A:\\Games\\mc2-lane2/scripts/check-colormask-ownership.py",
+          "reference": "A:\\Games\\mc2-main/scripts/check-colormask-ownership.py",
           "text": "spec = importlib.util.spec_from_file_location(\"native_masks\", ROOT / \"scripts/check-colormask-ownership.py\")"
         }
       ],
