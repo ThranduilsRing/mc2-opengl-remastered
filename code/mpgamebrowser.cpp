@@ -215,7 +215,7 @@ int	MPGameBrowser::handleMessage( unsigned long message, unsigned long who)
 					{
 						if ( MPlayer )
 						{
-							long retVal = MPlayer->joinSession ( static_cast<MC2Session*>(pItem->getSession()), &prefs.playerName[0][0] );
+							long retVal = MPlayer->joinSession ( const_cast<MC2Session*>(pItem->getSession()), &prefs.playerName[0][0] );
 							if ( retVal == MPLAYER_NO_ERR ) {
 								MPlayer->setMode(MULTIPLAYER_MODE_PARAMETERS);
 								status = NEXT;
