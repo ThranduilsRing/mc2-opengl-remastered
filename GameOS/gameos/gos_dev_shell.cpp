@@ -4,7 +4,6 @@
 // request gets an error reply; an oversized request drops the connection.
 
 #include "gos_dev_shell.h"
-#include "../../mclib/texture_assets.h"
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -26,6 +25,7 @@
 #include "RenderCore/RenderPassContract.h"
 #include "Gates/gate_cold.h"  // invalidate(): a typed gate re-parses after _putenv_s
 #include "../../mclib/txmmgr.h"  // texture_refresh: mcTextureManager->refreshTexturesByName
+#include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
 
 namespace gos_dev_shell {
