@@ -21,6 +21,7 @@ public:
     ResidentTextureRef& operator=(ResidentTextureRef&& o) noexcept;
     RenderCore::TextureHandle get() const { return owner_ ? handle_ : RenderCore::TextureHandle::invalid(); }
     explicit operator bool() const { return owner_ != nullptr; }
+    VkImageView view() const;
 private:
     friend class TextureResidency;
     ResidentTextureRef(TextureResidency& owner, RenderCore::TextureHandle handle) : owner_(&owner), handle_(handle) {}
@@ -48,7 +49,10 @@ public:
     ResidentTextureRef requestKtx(const RenderCore::TextureKey& key, std::vector<uint8_t> bytes,
                                   RenderCore::TextureDimensions dimensions);
     void pump();
+    void requestDecoded(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode);
     bool ready(RenderCore::TextureHandle handle) const;
+    ResidentTextureRef acquirePixels(uint32_t width, uint32_t height, VkFormat format, const void* bytes, size_t count,
+                                     bool mipmaps, uint32_t layers = 1, bool arrayView = false);
     ResidentTextureRef acquireLegacy(uint32_t width, uint32_t height, VkFormat format, const void* bytes, size_t count);
     ResidentTextureRef retain(RenderCore::TextureHandle handle);
     void release(RenderCore::TextureHandle handle);
@@ -61,7 +65,7 @@ public:
     void sealFrame();
 private:
     struct Image { OwnedImage image; OwnedImageView view; };
-    struct Resident { std::shared_ptr<Image> image; uint32_t descriptor = 0; bool useMips = true; };
+    struct Resident { std::shared_ptr<Image> image; uint32_t descriptor = 0; bool useMips = true; uint32_t layers = 1; bool arrayView = false; bool highPriority = false; };
     struct Pending { RenderCore::TextureHandle handle; std::shared_ptr<const RenderCore::KtxImage> image; };
     struct Upload {
         RenderCore::TextureHandle handle;
@@ -78,7 +82,7 @@ private:
         uint64_t revision = ~uint64_t(0);
         std::vector<RenderCore::TextureDescriptorTable::Slot> snapshot;
     };
-    std::shared_ptr<Image> upload(const RenderCore::KtxImage& image, bool useMips = true, Upload* async = nullptr);
+    std::shared_ptr<Image> upload(const RenderCore::KtxImage& image, bool useMips = true, Upload* async = nullptr, uint32_t layers = 1, bool arrayView = false);
     VulkanContext& ctx_;
     RenderCore::TextureService& service_;
     uint32_t capacity_ = 0;
@@ -86,7 +90,7 @@ private:
     OwnedDescriptorSetLayout layout_;
     OwnedDescriptorPool pool_;
     std::unique_ptr<RenderCore::TextureDescriptorTable> table_;
-    std::shared_ptr<Image> placeholder_;
+    std::shared_ptr<Image> placeholder_, arrayPlaceholder_;
     std::unordered_map<uint32_t, Resident> residents_;
     std::array<Flight, 2> flights_;
     struct LegacyUi { std::weak_ptr<const std::vector<uint8_t>> source; ResidentTextureRef texture; };

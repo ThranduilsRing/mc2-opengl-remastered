@@ -21,6 +21,7 @@
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
 #include "vk_owned.h"
+#include "vk_texture_residency.h"
 #include "vk_gpu_timestamps.h"   // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
 #include "vulkan_context.h"
 #include "vulkan_terrain_island.h"
@@ -168,8 +169,9 @@ struct TerrainIsland : mc2vk::IslandState {
     // COLORMAP-BASE sub-slice: VK-owned copy-once import of the GL colormap atlas
     // (g_atlasGLTex). Sampled image + view + sampler; binding 2. Keyed by the GL tex
     // name so a re-built atlas (per-mission) re-imports.
-    mc2vk::OwnedImage       colormapImg;
-    mc2vk::OwnedImageView   colormapView;
+    bool descriptorsDirty[2] = {true,true};
+    std::array<VkImageView,4> boundTextures[2]{};
+    mc2vk::ResidentTextureRef colormapTexture;
     mc2vk::OwnedSampler     colormapSamp;
     uint64_t      colormapVersionImported = 0;   // field-store colormap version last imported (0 = none yet)
     bool          colormapReady = false;     // set once the sampled image is live
@@ -178,14 +180,12 @@ struct TerrainIsland : mc2vk::IslandState {
     // (g_cementAtlasGLTex, runtime RGBA8). Sampled image + view + REPEAT sampler; binding
     // 3. Keyed by the GL tex name so a per-mission rebuild re-imports. PLUS a VK-owned
     // snapshot of the GL per-vertex cement-word SSBO (binding 25 -> here binding 4).
-    mc2vk::OwnedImage       cementImg;
-    mc2vk::OwnedImageView   cementView;
+    mc2vk::ResidentTextureRef cementTexture;
     mc2vk::OwnedSampler     cementSamp;   // REPEAT/LINEAR (GL_REPEAT wrap)
     uint64_t      cementVersionImported = 0;      // field-store cement atlas version last imported (0 = none)
     bool          cementReady = false;            // set once the cement image is live
     // TERRAIN-SHORELINE-V3: binding 14, the shoreline mask sidecar (dummy 1x1 until a mission ships one).
-    mc2vk::OwnedImage       shoreMaskImg;
-    mc2vk::OwnedImageView   shoreMaskView;
+    mc2vk::ResidentTextureRef shoreMaskTexture;
     uint64_t      shoreMaskVersionImported = 0;   // field-store mask version last imported (0 = none)
     bool          shoreMaskReady = false;         // the bound mask is the mission's, not the dummy
     mc2vk::OwnedBuffer      cementBuf;
@@ -250,8 +250,7 @@ struct TerrainIsland : mc2vk::IslandState {
     // import of the GL terrain_normal_array_tex_ (9-layer RGBA8 GL_TEXTURE_2D_ARRAY,
     // GL_REPEAT wrap). Sampled at binding 6 (sampler2DArray, REPEAT/LINEAR). Dummy 1x1
     // 1-layer until the real array imports (matNormalReady gates the FS sample).
-    mc2vk::OwnedImage       matNormalImg;
-    mc2vk::OwnedImageView   matNormalView;
+    mc2vk::ResidentTextureRef matNormalTexture;
     mc2vk::OwnedSampler     matNormalSamp;   // REPEAT/LINEAR (GL_REPEAT wrap)
     uint32_t      matNormalTexImported = 0;          // GL array tex name last imported (0 = none)
     uint32_t      matNormalTexRejected = 0;          // GL array tex name whose slot texels were rejected (logged once)
@@ -308,9 +307,9 @@ struct OvlPC {                       // LOCKSTEP with OverlayPC in terrain_overl
 static_assert(sizeof(OvlPC) == 48, "OvlPC push-constant lockstep");
 
 struct OvlTex {
-    mc2vk::OwnedImage img;
-    mc2vk::OwnedImageView view;   // declared after the image: released first
-    VkDescriptorSet set = VK_NULL_HANDLE;   // freed with the pool
+    mc2vk::ResidentTextureRef texture;
+    VkDescriptorSet set[2] = {};
+    VkImageView bound[2] = {};   // freed with the pool
     // The texels this import came from; a reloaded texture publishes a new vector, so identity says when to re-import.
     std::shared_ptr<const std::vector<uint8_t>> source;
 };
@@ -393,7 +392,7 @@ bool make_buffer(TerrainIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, V
                  std::string_view name, int i0 = -1, int i1 = -1);
 const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep);
 const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lodStep);
-void write_descriptors(TerrainIsland* s);
+void write_descriptors(TerrainIsland* s, int parity = -1);
 bool ensure_height_capacity(TerrainIsland* s, VkDeviceSize bytes);
 // Re-points set[par]'s ring bindings (0 UBO, 11-13 light pool) at the buffers this frame's spans live in.
 void sync_ring_bindings(TerrainIsland* s, uint32_t par, const mc2vk::FrameAlloc& ubo, const mc2vk::FrameAlloc (&lp)[3]);
@@ -402,10 +401,10 @@ bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 VkCommandBuffer begin_oneshot(TerrainIsland* s);
 void end_oneshot(TerrainIsland* s, VkCommandBuffer cb);
 bool create_colormap_sampler(TerrainIsland* s);
-bool upload_sampled_image(TerrainIsland* s, mc2vk::OwnedImage& outImg, mc2vk::OwnedImageView& outView, VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount);
+bool upload_sampled_image(TerrainIsland* s, mc2vk::ResidentTextureRef& outTexture, VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount);
 bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount);
 bool create_cement_sampler(TerrainIsland* s);
-bool upload_sampled_image_array(TerrainIsland* s, mc2vk::OwnedImage& outImg, mc2vk::OwnedImageView& outView, VkFormat fmt, uint32_t width, uint32_t height, uint32_t layers, const void* bytes, VkDeviceSize byteCount);
+bool upload_sampled_image_array(TerrainIsland* s, mc2vk::ResidentTextureRef& outTexture, VkFormat fmt, uint32_t width, uint32_t height, uint32_t layers, const void* bytes, VkDeviceSize byteCount);
 bool create_matnormal_sampler(TerrainIsland* s);
 bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool ensure_shadow_image_slot(TerrainIsland* s, uint32_t dim, mc2vk::OwnedImage& img, mc2vk::OwnedImageView& view, uint32_t* curDim);

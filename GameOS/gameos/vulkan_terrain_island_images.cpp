@@ -79,64 +79,17 @@ bool create_colormap_sampler(TerrainIsland* s) {
 // Frees the previous image/view (passed by ref). Reused by BOTH the colormap and cement
 // copy-once imports. Match `fmt` to the GL upload's channel order (RGBA8 storage read
 // back as GL_RGBA -> R8G8B8A8_UNORM; do NOT double-encode sRGB).
-bool upload_sampled_image(TerrainIsland* s, mc2vk::OwnedImage& outImg, mc2vk::OwnedImageView& outView,
-                          VkFormat fmt, uint32_t width, uint32_t height,
-                          const void* bytes, VkDeviceSize byteCount) {
-    // Free any prior import (idempotent re-import on a per-mission atlas rebuild): the view goes before the image it covers.
-    outView.reset();
-    outImg.reset();
-
-    // Staging buffer (host-visible), released at the end of the import whatever the path.
-    mc2vk::OwnedBuffer stg;
-    if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "terrain.staging")) return false;
-    { void* p = nullptr;
-      if (vmaMapMemory(s->allocator, stg.allocation(), &p) != VK_SUCCESS) return false;
-      std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stg.allocation()); }
-
-    // Device-local sampled image.
-    VkImageCreateInfo ici{};
-    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    ici.imageType = VK_IMAGE_TYPE_2D; ici.format = fmt;
-    ici.extent = {width, height, 1}; ici.mipLevels = 1; ici.arrayLayers = 1;
-    ici.samples = VK_SAMPLE_COUNT_1_BIT; ici.tiling = VK_IMAGE_TILING_OPTIMAL;
-    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (!outImg.create(s->allocator, s->device, ici, aci, "terrain.texture")) return false;
-
-    // Copy staging -> image, transition UNDEFINED -> TRANSFER_DST -> SHADER_READ.
-    VkCommandBuffer cb = begin_oneshot(s);
-    if (cb == VK_NULL_HANDLE) return false;
-    VkImageMemoryBarrier bar{};
-    bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = outImg.get();
-    bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &bar);
-    VkBufferImageCopy rgn{};
-    rgn.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    rgn.imageExtent = {width, height, 1};
-    vkCmdCopyBufferToImage(cb, stg.get(), outImg.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
-    bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &bar);
-    end_oneshot(s, cb);
-
-    // Image view.
-    VkImageViewCreateInfo vci{};
-    vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = outImg.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = fmt;
-    vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    return mc2vk::create(outView, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
+bool upload_sampled_image(TerrainIsland* s, mc2vk::ResidentTextureRef& outTexture,
+                          VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount) {
+    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(width,height,fmt,bytes,size_t(byteCount),false);
+    if (!texture) return false;
+    outTexture=std::move(texture); return true;
 }
 
 // Colormap-atlas wrapper over the generic uploader.
 bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint32_t height,
                            const void* bytes, VkDeviceSize byteCount) {
-    return upload_sampled_image(s, s->colormapImg, s->colormapView,
+    return upload_sampled_image(s, s->colormapTexture,
                                 fmt, width, height, bytes, byteCount);
 }
 
@@ -144,7 +97,7 @@ bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint3
 // before/without the real atlas (colormapReady stays false -> FS uses olive).
 bool ensure_dummy_colormap(TerrainIsland* s) {
     if (!create_colormap_sampler(s)) return false;
-    if (s->colormapView) return true; // something already bound
+    if (s->colormapTexture) return true; // something already bound
     const uint8_t px[4] = {107, 102, 71, 255}; // ~olive, RGBA8; irrelevant (flag=0)
     if (!upload_colormap_image(s, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, px, sizeof(px))) return false;
     s->colormapReady = false;
@@ -206,9 +159,9 @@ bool create_cement_sampler(TerrainIsland* s) {
 // imports (cementReady stays false -> FS ignores the cement branch -> colormap base).
 bool ensure_dummy_cement(TerrainIsland* s) {
     if (!create_cement_sampler(s)) return false;
-    if (s->cementView) return true; // already bound
+    if (s->cementTexture) return true; // already bound
     const uint8_t px[4] = {128, 128, 128, 255}; // neutral grey; irrelevant (useCement=0)
-    if (!upload_sampled_image(s, s->cementImg, s->cementView,
+    if (!upload_sampled_image(s, s->cementTexture,
                               VK_FORMAT_R8G8B8A8_UNORM, 1, 1, px, sizeof(px))) return false;
     s->cementReady = false;
     return true;
@@ -220,7 +173,7 @@ void import_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (!feed.cementAtlasRgba || feed.cementAtlasSide <= 0 || feed.cementAtlasVersion == 0) return;   // atlas not built yet
     if (feed.cementAtlasVersion == s->cementVersionImported && s->cementReady) return;              // already imported
     const uint32_t side = static_cast<uint32_t>(feed.cementAtlasSide);
-    if (upload_sampled_image(s, s->cementImg, s->cementView, VK_FORMAT_R8G8B8A8_UNORM, side, side,
+    if (upload_sampled_image(s, s->cementTexture, VK_FORMAT_R8G8B8A8_UNORM, side, side,
                              feed.cementAtlasRgba, static_cast<VkDeviceSize>(side) * side * 4u)) {
         s->cementVersionImported = feed.cementAtlasVersion;
         s->cementReady = true;
@@ -235,9 +188,9 @@ void import_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 // anyway while uT.shorelineHasMask is 0. Shares the colormap's linear clamp sampler (GL samples the mask the same way).
 bool ensure_dummy_shore_mask(TerrainIsland* s) {
     if (!create_colormap_sampler(s)) return false;
-    if (s->shoreMaskView) return true;
+    if (s->shoreMaskTexture) return true;
     const uint8_t px[4] = {0, 255, 255, 0};
-    if (!upload_sampled_image(s, s->shoreMaskImg, s->shoreMaskView, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, px, sizeof(px))) return false;
+    if (!upload_sampled_image(s, s->shoreMaskTexture, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, px, sizeof(px))) return false;
     s->shoreMaskReady = false;
     return true;
 }
@@ -249,7 +202,7 @@ void import_shore_mask(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (feed.shorelineMaskVersion == s->shoreMaskVersionImported) return;
     s->shoreMaskVersionImported = feed.shorelineMaskVersion;   // a failed upload is not retried every frame
     const auto w = static_cast<uint32_t>(feed.shorelineMaskW), h = static_cast<uint32_t>(feed.shorelineMaskH);
-    if (upload_sampled_image(s, s->shoreMaskImg, s->shoreMaskView, VK_FORMAT_R8G8B8A8_UNORM, w, h,
+    if (upload_sampled_image(s, s->shoreMaskTexture, VK_FORMAT_R8G8B8A8_UNORM, w, h,
                              feed.shorelineMaskRgba, static_cast<VkDeviceSize>(w) * h * 4u)) {
         s->shoreMaskReady = true;
         vlog("SHORELINE: imported the shoreline mask %ux%u from the terrain field store (version %llu).", w, h,
@@ -267,55 +220,12 @@ void import_shore_mask(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 // Mirrors upload_sampled_image but with arrayLayers=layerCount and a 2D_ARRAY view.
 // `bytes` is tightly packed layer-major (layer0 WxH RGBA8, then layer1, ...), exactly
 // what glGetTexImage(GL_TEXTURE_2D_ARRAY, level0) returns.
-bool upload_sampled_image_array(TerrainIsland* s, mc2vk::OwnedImage& outImg, mc2vk::OwnedImageView& outView,
-                                VkFormat fmt, uint32_t width,
-                                uint32_t height, uint32_t layers,
+bool upload_sampled_image_array(TerrainIsland* s, mc2vk::ResidentTextureRef& outTexture,
+                                VkFormat fmt, uint32_t width, uint32_t height, uint32_t layers,
                                 const void* bytes, VkDeviceSize byteCount) {
-    outView.reset();
-    outImg.reset();
-
-    mc2vk::OwnedBuffer stg;
-    if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "terrain.staging")) return false;
-    { void* p = nullptr;
-      if (vmaMapMemory(s->allocator, stg.allocation(), &p) != VK_SUCCESS) return false;
-      std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stg.allocation()); }
-
-    VkImageCreateInfo ici{};
-    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    ici.imageType = VK_IMAGE_TYPE_2D; ici.format = fmt;
-    ici.extent = {width, height, 1}; ici.mipLevels = 1; ici.arrayLayers = layers;
-    ici.samples = VK_SAMPLE_COUNT_1_BIT; ici.tiling = VK_IMAGE_TILING_OPTIMAL;
-    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (!outImg.create(s->allocator, s->device, ici, aci, "terrain.texture")) return false;
-
-    VkCommandBuffer cb = begin_oneshot(s);
-    if (cb == VK_NULL_HANDLE) return false;
-    VkImageMemoryBarrier bar{};
-    bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = outImg.get();
-    bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, layers};
-    bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &bar);
-    // One copy region covering all layers (tightly packed layer-major, level 0).
-    VkBufferImageCopy rgn{};
-    rgn.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, layers};
-    rgn.imageExtent = {width, height, 1};
-    vkCmdCopyBufferToImage(cb, stg.get(), outImg.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
-    bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &bar);
-    end_oneshot(s, cb);
-
-    VkImageViewCreateInfo vci{};
-    vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = outImg.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY; vci.format = fmt;
-    vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, layers};
-    return mc2vk::create(outView, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
+    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(width,height,fmt,bytes,size_t(byteCount),false,layers,true);
+    if (!texture) return false;
+    outTexture=std::move(texture); return true;
 }
 
 bool create_matnormal_sampler(TerrainIsland* s) {
@@ -334,9 +244,9 @@ bool create_matnormal_sampler(TerrainIsland* s) {
 // real array imports (matNormalReady stays false -> FS uses macro-slope-only normal).
 bool ensure_dummy_matnormal(TerrainIsland* s) {
     if (!create_matnormal_sampler(s)) return false;
-    if (s->matNormalView) return true;
+    if (s->matNormalTexture) return true;
     const uint8_t px[4] = {128, 128, 255, 255}; // (0,0,1) tangent-space flat normal
-    if (!upload_sampled_image_array(s, s->matNormalImg, s->matNormalView,
+    if (!upload_sampled_image_array(s, s->matNormalTexture,
                                     VK_FORMAT_R8G8B8A8_UNORM, 1, 1, 1, px, sizeof(px))) return false;
     s->matNormalReady = false;
     s->matNormalLayers = 1;
@@ -382,7 +292,7 @@ void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
             for (size_t t = 0; t < layerBytes; t += 4) { dst[t] = 128; dst[t + 1] = 128; dst[t + 2] = 255; dst[t + 3] = 255; }
         }
     }
-    if (upload_sampled_image_array(s, s->matNormalImg, s->matNormalView, VK_FORMAT_R8G8B8A8_UNORM, w, h, kSlots, px.data(),
+    if (upload_sampled_image_array(s, s->matNormalTexture, VK_FORMAT_R8G8B8A8_UNORM, w, h, kSlots, px.data(),
                                    (VkDeviceSize)px.size())) {
         s->matNormalTexImported = glTex;
         s->matNormalLayers = kSlots;

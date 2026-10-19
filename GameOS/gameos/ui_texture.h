@@ -4,6 +4,8 @@
 #include "gameos.hpp"
 uint64_t gos_GetUiTextureId(DWORD handle);
 namespace mc2vk {
+bool uiTextureServiceReady();
 bool hasUiImage(RenderCore::TextureHandle handle);
+void requestUiImage(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode);
 void attachUiImage(RenderCore::TextureHandle handle, std::shared_ptr<const RenderCore::KtxImage> image);
 }

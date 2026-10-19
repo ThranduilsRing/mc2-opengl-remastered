@@ -93,6 +93,7 @@ struct TexEntry {
 // parked island ahead of the device).
 struct Island : mc2vk::IslandState {
     bool inited = false, disabled = false, preview = false, previewPublished = false;
+    mc2vk::GpuTicket previewTicket;
     mc2vk::ResidentTextureRef previewColor;
     mc2vk::OwnedImage previewNormal, previewDepth;
     mc2vk::OwnedImageView previewNormalView, previewDepthView;
@@ -523,7 +524,8 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     if (s->preview) {
         // The UI samples this target after the preview submit; wait the preceding sealed frame before overwriting it.
         const auto frameNo=rctx.tracker().frameNo();
-        if (frameNo>1 && !rctx.wait(rctx.tracker().frameTicket(frameNo-1),5000000000ull,"preview target reuse")) return 0;
+        const auto sampled=frameNo>1 ? rctx.tracker().frameTicket(frameNo-1) : mc2vk::GpuTicket{};
+        if (!rctx.wait(mc2vk::GpuTicket::both(sampled,s->previewTicket),5000000000ull,"preview target reuse")) return 0;
         fsC.parity=rctx.frameContext().slot;
     } else { ZoneScopedN("VKIsl.Legacy.FenceWait"); fsC=vkImageResourceBeginFrame(colorRes); }
     const uint32_t par = fsC.parity & 1u;
@@ -611,7 +613,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     { ZoneScopedN("VKIsl.Legacy.Submit");
       if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
 
-    if (s->preview) s->previewPublished=true;
+    if (s->preview) { s->previewPublished=true; s->previewTicket=rctx.tracker().now(); }
     g_health.nodesDrawn += drawn;
     g_health.vertsDrawn += verts;
     ++g_health.usedVulkan;

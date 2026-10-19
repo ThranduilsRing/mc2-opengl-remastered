@@ -1,3 +1,4 @@
+#include "../GameOS/gameos/ui_texture.h"
 #include "../GameOS/gameos/vulkan_legacy_shape_island.h"
 /*************************************************************************************************\
 SimpleCamera.cpp	: Implementation of the SimpleCamera component.
@@ -441,7 +442,7 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 {
 #ifdef MC2_IMGUI
 	#ifdef MC2_VULKAN_ISLAND
-    const uint64_t tex=mc2_vk_preview_texture();
+    const uint64_t tex=mc2vk::uiTextureServiceReady() ? mc2_vk_preview_texture() : gos_GetCameraPreviewTexture();
 #else
     const uint64_t tex=gos_GetCameraPreviewTexture();
 #endif

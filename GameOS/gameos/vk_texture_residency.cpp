@@ -1,19 +1,33 @@
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_texture_residency.h"
 #include "vulkan_context.h"
+#include "engine_present_vk.h"
 #include "vk_one_shot.h"
 #include "texture_decode.h"
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
+#include <vk_mem_alloc.h>
 #include "utils/mc2log.h"
 #include <algorithm>
 #include <cstring>
 #include <utility>
 
 namespace mc2vk {
-bool hasUiImage(RenderCore::TextureHandle handle) { return getOrCreateEngineVulkanContext().textures().contains(handle); }
+bool uiTextureServiceReady() { return engineVulkanContextValid() && getOrCreateEnginePresentVk().valid(); }
+bool hasUiImage(RenderCore::TextureHandle handle) { return engineVulkanContextValid() && getOrCreateEngineVulkanContext().textures().contains(handle); }
+void requestUiImage(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode) {
+    getOrCreateEngineVulkanContext().textures().requestDecoded(handle,std::move(decode));
+}
+void TextureResidency::requestDecoded(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode) {
+    if (!service_.isLive(handle) || residents_.contains(handle.raw())) return;
+    auto [it,inserted]=residents_.emplace(handle.raw(),Resident{{},0,false});
+    it->second.highPriority=true; worker_.request(handle,std::move(decode));
+}
 void attachUiImage(RenderCore::TextureHandle handle, std::shared_ptr<const RenderCore::KtxImage> image) {
     getOrCreateEngineVulkanContext().textures().attach(handle,std::move(image));
 }
 
+VkImageView ResidentTextureRef::view() const { return owner_ ? owner_->view(handle_) : VK_NULL_HANDLE; }
 ResidentTextureRef::~ResidentTextureRef() { if (owner_) owner_->release(handle_); }
 ResidentTextureRef::ResidentTextureRef(ResidentTextureRef&& o) noexcept
     : owner_(std::exchange(o.owner_, nullptr)), handle_(o.handle_) {}
@@ -83,17 +97,23 @@ bool TextureResidency::init() {
     RenderCore::KtxImage image; image.width=image.height=2; image.mipCount=1; image.vkFormat=37; image.mipByteOffsets={0};
     image.pixels={255,0,255,255, 0,0,0,255, 0,0,0,255, 255,0,255,255};
     placeholder_=upload(image); if (!placeholder_) return false;
+    RenderCore::KtxImage flat; flat.width=flat.height=1; flat.vkFormat=37; flat.mipCount=1; flat.mipByteOffsets={0};
+    flat.pixels={128,128,255,255}; arrayPlaceholder_=upload(flat,false,nullptr,1,true);
+    if (!arrayPlaceholder_) return false;
     table_->placeholder(placeholder_);
     MC2_LOG(Vk, Info, "[VK_TEXTURE_SERVICE v1] capacity={} flights=2 placeholder=0 legacy_boundary=P9", capacity_);
     return true;
 }
 
-std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCore::KtxImage& image, bool useMips, Upload* async) {
+std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCore::KtxImage& image, bool useMips, Upload* async, uint32_t layers, bool arrayView) {
     const bool rgba=image.vkFormat==37 || image.vkFormat==43;
+    const bool floating=image.vkFormat==97 || image.vkFormat==100;
+    const size_t stride=image.vkFormat==97 ? 8u : 4u;
     const bool bc1=image.vkFormat>=131 && image.vkFormat<=134;
     const bool blocks=bc1 || image.vkFormat==137 || image.vkFormat==138 || image.vkFormat==141 || (image.vkFormat>=143 && image.vkFormat<=146);
-    if ((!rgba && !blocks) || image.isCompressed!=blocks || (blocks && image.blockSizeBytes!=(bc1?8u:16u))) return {};
+    if ((!rgba && !floating && !blocks) || image.isCompressed!=blocks || (blocks && image.blockSizeBytes!=(bc1?8u:16u))) return {};
     const uint32_t w=image.width,h=image.height;
+    if (!layers || layers>256 || (!arrayView && layers!=1)) return {};
     if (!w || !h || w>RenderCore::kKtxMaxEdge || h>RenderCore::kKtxMaxEdge || image.mipCount<1 ||
         image.mipCount>15 || image.mipByteOffsets.size()!=size_t(image.mipCount)) return {};
     uint32_t fullChain=1;
@@ -106,27 +126,33 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
     size_t expected=0;
     for (int level=0;level<image.mipCount;++level) {
         const uint32_t mw=std::max(1u,w>>level),mh=std::max(1u,h>>level);
-        const size_t bytes=image.isCompressed ? size_t((mw+3)/4)*((mh+3)/4)*image.blockSizeBytes : size_t(mw)*mh*4;
+        const size_t bytes=(image.isCompressed ? size_t((mw+3)/4)*((mh+3)/4)*image.blockSizeBytes : size_t(mw)*mh*stride)*layers;
         if (image.mipByteOffsets[level]!=expected || !bytes || expected>image.pixels.size() || bytes>image.pixels.size()-expected) return {};
-        VkBufferImageCopy copy{}; copy.bufferOffset=expected; copy.imageSubresource={VK_IMAGE_ASPECT_COLOR_BIT,uint32_t(level),0,1}; copy.imageExtent={mw,mh,1};
+        VkBufferImageCopy copy{}; copy.bufferOffset=expected; copy.imageSubresource={VK_IMAGE_ASPECT_COLOR_BIT,uint32_t(level),0,layers}; copy.imageExtent={mw,mh,1};
         copies.push_back(copy); expected+=bytes;
     }
     if (expected!=image.pixels.size()) return {};
     OwnedBuffer staging;
     if (!staging.createFilled(ctx_.allocator(),ctx_.device(),image.pixels.data(),image.pixels.size(),VK_BUFFER_USAGE_TRANSFER_SRC_BIT,"texture.service.staging")) return {};
     auto resource=std::make_shared<Image>();
-    if (!resource->image.createSampled2D(ctx_.allocator(),ctx_.device(),VkFormat(image.vkFormat),w,h,image.mipCount,0,"texture.service.image")) return {};
+    if (arrayView) {
+        VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO}; ci.imageType=VK_IMAGE_TYPE_2D; ci.format=VkFormat(image.vkFormat);
+        ci.extent={w,h,1}; ci.mipLevels=uint32_t(image.mipCount); ci.arrayLayers=layers; ci.samples=VK_SAMPLE_COUNT_1_BIT;
+        ci.tiling=VK_IMAGE_TILING_OPTIMAL; ci.usage=VK_IMAGE_USAGE_SAMPLED_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        VmaAllocationCreateInfo aci{}; aci.usage=VMA_MEMORY_USAGE_AUTO;
+        if (!resource->image.create(ctx_.allocator(),ctx_.device(),ci,aci,"texture.service.array")) return {};
+    } else if (!resource->image.createSampled2D(ctx_.allocator(),ctx_.device(),VkFormat(image.vkFormat),w,h,image.mipCount,0,"texture.service.image")) return {};
     const auto record=[&](VkCommandBuffer cb){
         VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER}; b.oldLayout=VK_IMAGE_LAYOUT_UNDEFINED; b.newLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        b.srcQueueFamilyIndex=b.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; b.image=resource->image.get(); b.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,uint32_t(image.mipCount),0,1};
+        b.srcQueueFamilyIndex=b.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; b.image=resource->image.get(); b.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,uint32_t(image.mipCount),0,layers};
         b.dstAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;
         vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,0,nullptr,0,nullptr,1,&b);
         vkCmdCopyBufferToImage(cb,staging.get(),resource->image.get(),VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,uint32_t(copies.size()),copies.data());
         b.oldLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;b.newLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;b.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;b.dstAccessMask=VK_ACCESS_SHADER_READ_BIT;
         vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,0,0,nullptr,0,nullptr,1,&b);
     };
-    VkImageViewCreateInfo vi{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO}; vi.image=resource->image.get();vi.viewType=VK_IMAGE_VIEW_TYPE_2D;vi.format=VkFormat(image.vkFormat);
-    vi.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,useMips ? uint32_t(image.mipCount) : 1u,0,1};
+    VkImageViewCreateInfo vi{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO}; vi.image=resource->image.get();vi.viewType=arrayView ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;vi.format=VkFormat(image.vkFormat);
+    vi.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,useMips ? uint32_t(image.mipCount) : 1u,0,layers};
     if (!mc2vk::create(resource->view,ctx_.device(),[&](VkImageView* v){return vkCreateImageView(ctx_.device(),&vi,nullptr,v);})) return {};
     // This context creates only the graphics family. Copy and shader barriers therefore stay on the same queue;
     // no unsupported transfer family or ownership handoff is assumed.
@@ -169,8 +195,13 @@ void TextureResidency::pump() {
         auto it=residents_.find(handle.raw());
         if (it!=residents_.end()) { if (it->second.image) ctx_.retire(std::move(it->second.image)); residents_.erase(it); }
     }
-    for (auto& result : worker_.take())
-        if (result.image && service_.isLive(result.handle)) pending_.push_back({result.handle,std::move(result.image)});
+    for (auto& result : worker_.take()) {
+        auto it=residents_.find(result.handle.raw());
+        if (!result.image || !service_.isLive(result.handle) || it==residents_.end()) continue;
+        Pending pending{result.handle,std::move(result.image)};
+        if (it->second.highPriority) pending_.push_front(std::move(pending));
+        else pending_.push_back(std::move(pending));
+    }
     // Queue order makes completion a prefix: idle resident images are never scanned.
     while (!uploading_.empty() && ctx_.isComplete(uploading_.front().ticket)) {
         auto& upload=uploading_.front();
@@ -186,13 +217,9 @@ void TextureResidency::pump() {
         auto it=residents_.find(p.handle.raw());
         if (it==residents_.end() || !service_.isLive(p.handle)) { pending_.pop_front(); continue; }
         const size_t bytes=p.image->pixels.size();
-        if (bytes>budget_.limit) {
-            MC2_LOG(Vk, Warn, "[VK_TEXTURE_SERVICE] staging request exceeds budget: {} bytes",bytes);
-            pending_.pop_front(); continue;
-        }
         if (table_->full() || !budget_.reserve(bytes)) break;
         Upload upload; upload.handle=p.handle; upload.bytes=bytes;
-        if (this->upload(*p.image,it->second.useMips,&upload)) uploading_.push_back(std::move(upload));
+        if (this->upload(*p.image,it->second.useMips,&upload,it->second.layers,it->second.arrayView)) uploading_.push_back(std::move(upload));
         else budget_.complete(bytes);
         pending_.pop_front();
     }
@@ -202,17 +229,40 @@ bool TextureResidency::ready(RenderCore::TextureHandle handle) const {
     return it!=residents_.end() && it->second.image && service_.isLive(handle);
 }
 ResidentTextureRef TextureResidency::acquireLegacy(uint32_t width,uint32_t height,VkFormat format,const void* bytes,size_t count) {
-    if (!bytes || !width || !height || width>RenderCore::kKtxMaxEdge || height>RenderCore::kKtxMaxEdge) return {};
+    return acquirePixels(width,height,format,bytes,count,false);
+}
+ResidentTextureRef TextureResidency::acquirePixels(uint32_t width,uint32_t height,VkFormat format,const void* bytes,size_t count,
+                                                   bool mipmaps,uint32_t layers,bool arrayView) {
+    if (!bytes || !width || !height || width>RenderCore::kKtxMaxEdge || height>RenderCore::kKtxMaxEdge || !layers || layers>256) return {};
     const bool compressed=format>=131 && format<=146;
-    const size_t expected=compressed ? size_t((width+3)/4)*((height+3)/4)*(format<=134?8u:16u) : size_t(width)*height*4;
+    const size_t expected=(compressed ? size_t((width+3)/4)*((height+3)/4)*(format<=134?8u:16u) : size_t(width)*height*(format==VK_FORMAT_R16G16B16A16_SFLOAT ? 8u : 4u))*layers;
     if (count!=expected) return {};
     RenderCore::TextureKey key;
-    key.source=RenderCore::makeTextureSourceId("legacy-cpu:P9",std::to_string(width)+"x"+std::to_string(height),
-        RenderCore::textureContentHash(static_cast<const uint8_t*>(bytes),count)); key.format=uint32_t(format);
-    RenderCore::KtxImage image; image.width=width;image.height=height;image.vkFormat=format;image.mipCount=1;image.mipByteOffsets={0};
-    image.isCompressed=(format>=131 && format<=146);image.blockSizeBytes=(format>=131 && format<=134)?8:image.isCompressed?16:0;
+    key.source=RenderCore::makeTextureSourceId("legacy-cpu:P9",std::to_string(width)+"x"+std::to_string(height)+
+        ":"+std::to_string(layers)+(arrayView ? ":array" : ":2d"),RenderCore::textureContentHash(static_cast<const uint8_t*>(bytes),count));
+    key.format=uint32_t(format); key.hints=mipmaps ? gosHint_MipmapFilter0 : 0;
+    RenderCore::KtxImage image; image.width=int(width); image.height=int(height); image.vkFormat=format; image.mipCount=1; image.mipByteOffsets={0};
+    image.isCompressed=compressed; image.blockSizeBytes=(format>=131 && format<=134)?8:compressed?16:0;
     image.pixels.assign(static_cast<const uint8_t*>(bytes),static_cast<const uint8_t*>(bytes)+count);
-    return acquire(key,image,{width,height,width,height});
+    if (mipmaps && !compressed && (format==VK_FORMAT_R8G8B8A8_UNORM || format==VK_FORMAT_R8G8B8A8_SRGB)) {
+        std::vector<uint8_t> current=image.pixels;
+        uint32_t w=width,h=height;
+        while (w>1 || h>1) {
+            std::vector<uint8_t> next;
+            const size_t layerBytes=size_t(w)*h*4;
+            for (uint32_t layer=0;layer<layers;++layer) {
+                std::vector<uint8_t> level(current.begin()+layer*layerBytes,current.begin()+(layer+1)*layerBytes);
+                auto down=mc2tex::boxDownsampleRgba8(level,w,h);
+                if (down.empty()) return {};
+                next.insert(next.end(),down.begin(),down.end());
+            }
+            image.mipByteOffsets.push_back(image.pixels.size()); image.pixels.insert(image.pixels.end(),next.begin(),next.end()); ++image.mipCount;
+            current=std::move(next); w=std::max(1u,w/2);h=std::max(1u,h/2);
+        }
+    }
+    auto ref=acquire(key,image,{width,height,width,height});
+    if (ref) { auto& r=residents_.at(ref.get().raw()); r.layers=layers; r.arrayView=arrayView; }
+    return ref;
 }
 ResidentTextureRef TextureResidency::retain(RenderCore::TextureHandle handle) {
     return residents_.contains(handle.raw()) && service_.retain(handle) ? ResidentTextureRef(*this,handle) : ResidentTextureRef{};
@@ -230,7 +280,7 @@ void TextureResidency::release(RenderCore::TextureHandle handle) {
     }
 }
 VkImageView TextureResidency::view(RenderCore::TextureHandle handle) const {
-    auto it=residents_.find(handle.raw()); return it!=residents_.end() && it->second.image && service_.isLive(handle) ? it->second.image->view.get() : placeholder_->view.get();
+    auto it=residents_.find(handle.raw()); return it!=residents_.end() && it->second.image && service_.isLive(handle) ? it->second.image->view.get() : (it!=residents_.end() && it->second.arrayView ? arrayPlaceholder_->view.get() : placeholder_->view.get());
 }
 VkDescriptorSet TextureResidency::descriptors() {
     auto& flight=flights_[ctx_.frameContext().slot];

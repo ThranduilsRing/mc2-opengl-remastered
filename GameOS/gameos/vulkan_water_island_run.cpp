@@ -159,6 +159,10 @@ extern "C" int mc2_vk_water_island_run(
         g_health.thinRecords = thinCount;
     }
 
+    const std::array<VkImageView,3> views{s->hdriTexture.view(),s->shHTexture.view(),s->shMTexture.view()};
+    if (s->imageDescriptorsDirty[par] || s->boundTextures[par]!=views) {
+        write_descriptors(s,int(par)); s->boundTextures[par]=views;
+    }
     // ---- 3) Stage the parameter UBOs into the frame-ring span and point slot `par` at its buffer. ----
     {
         uint8_t* const base = static_cast<uint8_t*>(uboSpan.ptr);

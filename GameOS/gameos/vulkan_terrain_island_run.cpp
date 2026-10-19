@@ -445,6 +445,11 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
       fsC = vkImageResourceBeginFrame(s->colorRes); }
     us_fence_wait = usSince(tFence0);
     const uint32_t par = fsC.parity & 1u;
+    const std::array<VkImageView,4> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view()};
+    if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
+        write_descriptors(s,int(par)); s->boundTextures[par]=views;
+    }
+
     const clk::time_point tUboFill0 = clk::now();
 
     // Fill one dynamic-UBO slot per LOD0 patch (shared MVP/mapSide/halfMap + per-patch

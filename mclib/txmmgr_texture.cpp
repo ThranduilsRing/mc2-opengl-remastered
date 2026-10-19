@@ -368,7 +368,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		// A layout or object file can name a texture that is in no archive or
 		// loose tree (a stale mod or install). The node must still be a valid
 		// texture so every consumer (gos_LockTexture, UV math) stays safe: bind a
-		// transparent 1x1 to this node and say so once per node. Nodes are per
+		// visible magenta 1x1 to this node and say so once per node. Nodes are per
 		// (name, uniqueInstance), so there is no shared placeholder: each paint
 		// instance gets its own 1x1 and its own writable surface. gosASSERT is a no-op in this build, so
 		// the old assert let the unopened File reach fileSize() and a null texture.
@@ -384,7 +384,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		compressedTextureSize += txmSize;
 		masterTextureNodes[i].textureData = static_cast<DWORD *>(textureCacheHeap->Malloc(txmSize));
 		if (masterTextureNodes[i].textureData)
-			*masterTextureNodes[i].textureData = 0;
+			*masterTextureNodes[i].textureData = 0xffff00ffu;
 		else
 			masterTextureNodes[i].gosTextureHandle = 0;
 		txmIdentityAcquire(masterTextureNodes[i], i);
@@ -696,22 +696,32 @@ long MC_TextureManager::saveTexture (DWORD textureIndex, const char *textureFull
 	return NO_ERR;
 }
 
-std::shared_ptr<const RenderCore::KtxImage> MC_TextureManager::textureImage(DWORD nodeId)
-{
-    if (nodeId>=MC_MAXTEXTURES) return {};
-    auto& n=masterTextureNodes[nodeId];
+namespace {
+struct UiTextureSource {
+    std::vector<uint8_t> bytes;
+    std::string name;
+    uint32_t width=0,height=0;
+    gos_TextureFormat key=gos_Texture_Alpha;
+    DWORD hints=0;
+    bool file=false;
+};
+std::optional<UiTextureSource> snapshotUiTexture(const MC_TextureNode& n) {
     if (!n.numUsers || !n.textureData) return {};
     const DWORD kind=n.width & 0xf0000000u;
-    const bool file=kind==MC_TEXCACHE_FILE_LZ || kind==MC_TEXCACHE_FILE_RAW;
     const size_t count=(kind==MC_TEXCACHE_FILE_LZ || kind==MC_TEXCACHE_FILE_RAW || kind==MC_TEXCACHE_MEM_RAW)
         ? n.width & MC_TEXCACHE_SIZE_MASK : size_t(n.width)*n.width*4;
     if (!count || count>=MAX_LZ_BUFFER_SIZE) return {};
-    std::vector<uint8_t> source(count);
-    if (kind==MC_TEXCACHE_FILE_RAW || kind==MC_TEXCACHE_MEM_RAW) memcpy(source.data(),n.textureData,count);
-    else if (LZDecomp(source.data(),(MemoryPtr)n.textureData,n.lzCompSize,count)!=count) return {};
+    UiTextureSource source; source.bytes.resize(count); source.name=n.nodeName ? n.nodeName : "";
+    source.width=n.logicalWidth; source.height=n.logicalHeight; source.key=n.key; source.hints=n.hints;
+    source.file=kind==MC_TEXCACHE_FILE_LZ || kind==MC_TEXCACHE_FILE_RAW;
+    if (kind==MC_TEXCACHE_FILE_RAW || kind==MC_TEXCACHE_MEM_RAW) memcpy(source.bytes.data(),n.textureData,count);
+    else if (LZDecomp(source.bytes.data(),(MemoryPtr)n.textureData,n.lzCompSize,count)!=count) return {};
+    return source;
+}
+std::shared_ptr<const RenderCore::KtxImage> decodeUiTexture(UiTextureSource source) {
     auto image=std::make_shared<RenderCore::KtxImage>();
-    if (file) {
-        auto decoded=mc2tex::decodeMemory(source.data(),source.size(),n.nodeName,n.key,n.hints);
+    if (source.file) {
+        auto decoded=mc2tex::decodeMemory(source.bytes.data(),source.bytes.size(),source.name.c_str(),source.key,source.hints);
         if (!decoded) return {};
         image->width=decoded->width; image->height=decoded->height;
         if (decoded->layout==mc2tex::PixelLayout::RGB8) {
@@ -722,18 +732,28 @@ std::shared_ptr<const RenderCore::KtxImage> MC_TextureManager::textureImage(DWOR
             }
         } else image->pixels=std::move(decoded->pixels);
     } else {
-        image->width=n.logicalWidth; image->height=n.logicalHeight;
-        if (source.size()!=size_t(image->width)*image->height*4) return {};
-        image->pixels=std::move(source);
-        for (size_t i=0;i<image->pixels.size();i+=4) std::swap(image->pixels[i],image->pixels[i+2]); // packed ARGB -> RGBA
+        image->width=source.width; image->height=source.height;
+        if (source.bytes.size()!=size_t(image->width)*image->height*4) return {};
+        image->pixels=std::move(source.bytes);
+        for (size_t i=0;i<image->pixels.size();i+=4) {
+            std::swap(image->pixels[i],image->pixels[i+2]); // packed ARGB -> RGBA
+            if (source.key==gos_Texture_Solid) image->pixels[i+3]=255;
+        }
     }
     image->vkFormat=37; image->mipCount=1; image->mipByteOffsets={0};
     return image;
 }
+}
+std::shared_ptr<const RenderCore::KtxImage> MC_TextureManager::textureImage(DWORD nodeId) {
+    if (nodeId>=MC_MAXTEXTURES) return {};
+    auto source=snapshotUiTexture(masterTextureNodes[nodeId]);
+    return source ? decodeUiTexture(std::move(*source)) : nullptr;
+}
 uint64_t MC_TextureManager::getUiTextureId(DWORD nodeId)
 {
-#ifdef MC2_VULKAN_ISLAND
     if (nodeId>=MC_MAXTEXTURES || !masterTextureNodes[nodeId].numUsers) return 0;
+#ifdef MC2_VULKAN_ISLAND
+    if (!mc2vk::uiTextureServiceReady()) return gos_GetGLTextureName(get_gosTextureHandle(nodeId));
     auto& service=RenderCore::textureService();
     auto handle=service.handleOfNode(nodeId);
     if (!handle.isValid()) {
@@ -742,10 +762,14 @@ uint64_t MC_TextureManager::getUiTextureId(DWORD nodeId)
         handle=service.handleOfNode(nodeId);
     }
     // Device access stays behind the GameOS consumer boundary.
-    if (!mc2vk::hasUiImage(handle)) mc2vk::attachUiImage(handle,textureImage(nodeId));
+    if (!mc2vk::hasUiImage(handle)) {
+        auto source=snapshotUiTexture(masterTextureNodes[nodeId]);
+        if (source) mc2vk::requestUiImage(handle,[source=std::move(*source)]() mutable { return decodeUiTexture(std::move(source)); });
+        else mc2vk::attachUiImage(handle,{});
+    }
     return RenderCore::uiTextureId(handle);
 #else
-    return 0;
+    return gos_GetGLTextureName(get_gosTextureHandle(nodeId));
 #endif
 }
 

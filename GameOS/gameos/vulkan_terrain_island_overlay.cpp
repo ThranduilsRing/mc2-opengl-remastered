@@ -28,9 +28,8 @@ bool g_ovlDeclined = false;
 std::vector<OvlPending> g_ovlPending;
 
 void ovl_destroy_tex(OvlTex& t) {
-    t.view.reset();   // the view goes before the image it covers
-    t.img.reset();
-    t.set = VK_NULL_HANDLE;   // freed with the pool
+    t.texture={};
+    t.set[0]=t.set[1]=VK_NULL_HANDLE;   // freed with the pool
     t.source.reset();
 }
 
@@ -42,82 +41,25 @@ void ovl_destroy(TerrainIsland* s) {
 }
 
 bool ovl_alloc_tex_set(TerrainIsland* s, OvlState* o, OvlTex& t) {
-    VkDescriptorSetAllocateInfo dsai{};
-    dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    const VkDescriptorSetLayout texDslHandle = o->texDsl.get();
-    dsai.descriptorPool = o->texPool.get(); dsai.descriptorSetCount = 1; dsai.pSetLayouts = &texDslHandle;
-    if (vkAllocateDescriptorSets(s->device, &dsai, &t.set) != VK_SUCCESS) { t.set = VK_NULL_HANDLE; return false; }
-    VkDescriptorImageInfo ii{};
-    ii.sampler = o->samp.get(); ii.imageView = t.view.get(); ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    VkWriteDescriptorSet w{};
-    w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w.dstSet = t.set; w.dstBinding = 0;
-    w.descriptorCount = 1; w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo = &ii;
-    vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
+    VkDescriptorSetLayout layouts[2]={o->texDsl.get(),o->texDsl.get()};
+    VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO}; ai.descriptorPool=o->texPool.get();
+    ai.descriptorSetCount=2; ai.pSetLayouts=layouts;
+    if (vkAllocateDescriptorSets(s->device,&ai,t.set)!=VK_SUCCESS) return false;
+    for (uint32_t par=0;par<2;++par) {
+        VkDescriptorImageInfo info{o->samp.get(),t.texture.view(),VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+        VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET}; w.dstSet=t.set[par]; w.descriptorCount=1;
+        w.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo=&info;
+        vkUpdateDescriptorSets(s->device,1,&w,0,nullptr); t.bound[par]=info.imageView;
+    }
     return true;
 }
 
 // Sampled image (copy-once import): RGBA8 gets a full blit-generated mip chain; BC7 blocks are copied as they are into a single
 // level (a compressed image cannot be a blit target, and the GL texture is single-level too).
 bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, VkFormat fmt, const void* bytes, VkDeviceSize byteCount) {
-    uint32_t mips = 1;
-    if (fmt == VK_FORMAT_R8G8B8A8_UNORM) { uint32_t m = (w > h) ? w : h; while (m > 1) { m >>= 1; ++mips; } }
-    // Streaming import: staging in the frame ring, the copy (and the mip blits) queued in the context's upload batch, no CPU wait. The batch runs ahead
-    // of the next graphics submit, so the draw that samples this texture sees the finished image.
-    mc2vk::VulkanContext& uctx = mc2vk::getOrCreateEngineVulkanContext();
-    const mc2vk::UploadBatch::Span stg = uctx.uploads().stage(uctx, byteCount);
-    if (!stg) return false;
-    std::memcpy(stg.ptr, bytes, (size_t)byteCount);
-
-    if (!e.img.createSampled2D(s->allocator, s->device, fmt, w, h, mips, VK_IMAGE_USAGE_TRANSFER_SRC_BIT, "terrain.overlayTexture"))
-        return false;
-    const VkImage img = e.img.get();
-    uctx.uploads().record([img, stg, w, h, mips](VkCommandBuffer cb) {
-    auto barrier = [&](uint32_t baseMip, uint32_t count, VkImageLayout oldL, VkImageLayout newL,
-                       VkAccessFlags srcA, VkAccessFlags dstA, VkPipelineStageFlags srcS, VkPipelineStageFlags dstS) {
-        VkImageMemoryBarrier b{};
-        b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        b.oldLayout = oldL; b.newLayout = newL;
-        b.srcQueueFamilyIndex = b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; b.image = img;
-        b.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, baseMip, count, 0, 1};
-        b.srcAccessMask = srcA; b.dstAccessMask = dstA;
-        vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
-    };
-    barrier(0, mips, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-    VkBufferImageCopy rgn{};
-    rgn.bufferOffset = stg.offset;
-    rgn.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    rgn.imageExtent = {w, h, 1};
-    vkCmdCopyBufferToImage(cb, stg.buffer, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
-    int32_t mw = (int32_t)w, mh = (int32_t)h;
-    for (uint32_t i = 1; i < mips; ++i) {
-        barrier(i - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
-                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-        const int32_t nw = (mw > 1) ? mw / 2 : 1, nh = (mh > 1) ? mh / 2 : 1;
-        VkImageBlit blit{};
-        blit.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, i - 1, 0, 1};
-        blit.srcOffsets[1] = {mw, mh, 1};
-        blit.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, i, 0, 1};
-        blit.dstOffsets[1] = {nw, nh, 1};
-        vkCmdBlitImage(cb, img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, img,
-                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
-        mw = nw; mh = nh;
-    }
-    if (mips > 1)
-        barrier(0, mips - 1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT,
-                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    barrier(mips - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    });
-
-    VkImageViewCreateInfo vci{};
-    vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = e.img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = fmt;
-    vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
-    return mc2vk::create(e.view, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
+    auto ref=mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(w,h,fmt,bytes,size_t(byteCount),true);
+    if (!ref) return false;
+    e.texture=std::move(ref); return true;
 }
 
 // Resolve (importing copy-once on first sight) the texture for a gos handle. nullptr = texels still
@@ -132,11 +74,8 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
     auto it = o->texs.find(gosHandle);
     if (it != o->texs.end()) {
         if (it->second.source == texels.bytes) return &it->second;
-        // The texels behind this handle changed (reloaded): re-import.
-        // The old image may be sampled by a frame still in flight: it leaves through the deferred-destroy queue, not a device idle.
-        mc2vk::getOrCreateEngineVulkanContext().retire(std::move(it->second));
-        o->texs.erase(it);
-        // (the old descriptor set leaks in the pool until the next mission reset; rare)
+        if (!ovl_upload_tex(s,it->second,w,h,mc2vk::texelFormat(texels.vkFormat),texels.bytes->data(),texels.bytes->size())) return nullptr;
+        it->second.source=texels.bytes; return &it->second;
     }
     if (o->texs.size() >= kOvlMaxTex) return nullptr;
 
@@ -224,10 +163,10 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = 1; lci.pBindings = &b;
         if (!mc2vk::create(o->texDsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) return false;
-        VkDescriptorPoolSize ps{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, kOvlMaxTex + 2};
+        VkDescriptorPoolSize ps{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2*(kOvlMaxTex + 2)};
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = kOvlMaxTex + 2; pci.poolSizeCount = 1; pci.pPoolSizes = &ps;
+        pci.maxSets = 2*(kOvlMaxTex + 2); pci.poolSizeCount = 1; pci.pPoolSizes = &ps;
         if (!mc2vk::create(o->texPool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) return false;
         const uint8_t px[4] = {255, 255, 255, 255};
         if (!ovl_upload_tex(s, o->dummy, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, px, sizeof(px)) || !ovl_alloc_tex_set(s, o, o->dummy)) return false;
@@ -442,6 +381,15 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     VkFrameSync fsC{};
     { ZoneScopedN("VKIsl.Overlay.FenceWait"); fsC = vkImageResourceBeginFrame(colorRes); }
     const uint32_t par = fsC.parity & 1u;
+    for (const auto& item : items) {
+        auto& t=*item.tex; const auto view=t.texture.view();
+        if (t.bound[par]==view) continue;
+        VkDescriptorImageInfo info{o->samp.get(),view,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+        VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET}; w.dstSet=t.set[par]; w.descriptorCount=1;
+        w.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo=&info;
+        vkUpdateDescriptorSets(s->device,1,&w,0,nullptr); t.bound[par]=view;
+    }
+
     sync_ring_bindings(s, par, uboSpan, lpSpans);
 
     VkCommandBuffer cb = o->cbuf[par];
@@ -481,9 +429,9 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
             vkCmdBindVertexBuffers(cb, 0, 1, &vb, &vbOff);
             boundStatic = isStat;
         }
-        if (it.tex->set != boundTex) {
-            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->playout.get(), 1, 1, &it.tex->set, 0, nullptr);
-            boundTex = it.tex->set;
+        if (it.tex->set[par] != boundTex) {
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->playout.get(), 1, 1, &it.tex->set[par], 0, nullptr);
+            boundTex = it.tex->set[par];
         }
         vkCmdDraw(cb, it.count, 1, it.first, 0);
         ++drawn[kind]; verts += it.count;
@@ -519,7 +467,7 @@ extern "C" void mc2_vk_overlay_reset() {
     o->stat.reset();
     o->statCap = 0; o->statVersion = UINT64_MAX;
     if (o->texPool) vkResetDescriptorPool(s->device, o->texPool.get(), 0);
-    o->dummy.set = VK_NULL_HANDLE;
+    o->dummy.set[0]=o->dummy.set[1]=VK_NULL_HANDLE;
     if (!ovl_alloc_tex_set(s, o, o->dummy)) { o->disabled = true; vlog("[VK_TERRAIN_OVERLAY] reset: dummy set failed -- disabled."); }
     vlog("[VK_TERRAIN_OVERLAY] texture cache + static bake reset on mission unload.");
 }

@@ -17,18 +17,17 @@ namespace vk_water_detail {
 bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
     // Keyed on the CPU copy's load generation: a reloaded HDRI can come back under the same GL name.
     const uint64_t generation = hdriGlTex != 0 ? mc2vk::hdriCpuGeneration() : 0;
-    if (s->hdriAttempted && s->hdriGeneration == generation) return static_cast<bool>(s->hdriView);
+    if (s->hdriAttempted && s->hdriGeneration == generation) {
+        s->hdriRealImported=s->hdriSourceReal && mc2vk::getOrCreateEngineVulkanContext().textures().ready(s->hdriTexture.get());
+        return bool(s->hdriTexture);
+    }
     s->hdriAttempted = true;
     s->hdriGeneration = generation;
     s->hdriRealImported = false;
     // Re-import (tex id changed, e.g. dummy -> real after late HDRI load):
     // drop the old image first. Cheap + rare; idle the device so no pending
     // command buffer still references the outgoing view.
-    if (s->hdriView || s->hdriImage) {
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("water_hdri_reimport");
-        s->hdriView.reset();
-        s->hdriImage.reset();
-    }
+
 
     if (!s->hdriSampler) {
         VkSamplerCreateInfo sci{};
@@ -66,79 +65,18 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
         levelDims.assign(1, {1, 1});
     }
 
-    // Create image + view.
-    {
-        VkImageCreateInfo ii{};
-        ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        ii.imageType = VK_IMAGE_TYPE_2D; ii.format = fmt;
-        ii.extent = {(uint32_t)w, (uint32_t)h, 1};
-        ii.mipLevels = mips; ii.arrayLayers = 1;
-        ii.samples = VK_SAMPLE_COUNT_1_BIT; ii.tiling = VK_IMAGE_TILING_OPTIMAL;
-        ii.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-        ii.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-        if (!s->hdriImage.create(s->allocator, s->device, ii, aci, "water.hdri")) {
-            vlog("hdri: image creation failed."); return false;
-        }
-        VkImageViewCreateInfo vi{};
-        vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        vi.image = s->hdriImage.get(); vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = fmt;
-        vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
-        if (!mc2vk::create(s->hdriView, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vi, nullptr, h); })) {
-            vlog("hdri: vkCreateImageView failed."); return false;
-        }
-    }
-
-    // Staging buffer (one allocation, all mips at 16B-aligned offsets).
-    std::vector<VkDeviceSize> offs(levels.size());
-    VkDeviceSize total = 0;
-    for (size_t i = 0; i < levels.size(); ++i) {
-        offs[i] = total;
-        total += (VkDeviceSize)((levels[i].size() + 15) & ~size_t(15));
-    }
-    mc2vk::OwnedBuffer staging;   // released on return; submit_once has waited for the copy by then
-    if (!make_buffer(s, staging, total, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "water.staging")) return false;
-    {
-        void* p = staging.map();
-        if (!p) return false;
-        for (size_t i = 0; i < levels.size(); ++i)
-            std::memcpy((unsigned char*)p + offs[i], levels[i].data(), levels[i].size());
-        staging.unmap();
-    }
-
-    const bool ok = submit_once(s, [&](VkCommandBuffer cb) {
-        VkImageMemoryBarrier bar{};
-        bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        bar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        bar.image = s->hdriImage.get();
-        bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                             VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
-        for (uint32_t i = 0; i < mips; ++i) {
-            VkBufferImageCopy c{};
-            c.bufferOffset = offs[i];
-            c.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, i, 0, 1};
-            c.imageExtent = {(uint32_t)levelDims[i].first, (uint32_t)levelDims[i].second, 1};
-            vkCmdCopyBufferToImage(cb, staging.get(), s->hdriImage.get(),
-                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &c);
-        }
-        bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
-    });
-    if (!ok) { vlog("hdri: upload submit failed."); return false; }
-
-    s->hdriRealImported = haveReal;
+    RenderCore::KtxImage image; image.width=w; image.height=h; image.vkFormat=uint32_t(fmt); image.mipCount=int(mips);
+    image.isCompressed=fmt==VK_FORMAT_BC6H_UFLOAT_BLOCK || fmt==VK_FORMAT_BC6H_SFLOAT_BLOCK;
+    image.blockSizeBytes=image.isCompressed ? 16u : 0u;
+    for (auto& level : levels) { image.mipByteOffsets.push_back(image.pixels.size()); image.pixels.insert(image.pixels.end(),level.begin(),level.end()); }
+    RenderCore::TextureKey key; key.source=RenderCore::makeTextureSourceId("hdri-cpu","water",RenderCore::textureContentHash(image.pixels.data(),image.pixels.size()));
+    key.format=uint32_t(fmt); key.hints=gosHint_MipmapFilter0;
+    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key,image,{uint32_t(w),uint32_t(h),uint32_t(w),uint32_t(h)});
+    if (!texture) return false;
+    s->hdriTexture=std::move(texture); s->hdriSourceReal=haveReal;
+    s->hdriRealImported=false;
     // VK-WATER-FENCE-DEFER-1: with the deferred retire, a prior water submit may still be in
     // flight — device-idle first (rare: at most twice per island, dummy -> real).
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("water_image_import");
     write_descriptors(s);   // binding 2 now valid
     vlog("hdri %s import: %dx%d fmt=%d mips=%u glTex=%u (copy-once, zero per-frame cost).",
          haveReal ? "REAL" : "DUMMY", w, h, (int)fmt, mips, hdriGlTex);
@@ -149,75 +87,27 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
 // terrain field store's CPU copy into a sampled VK image. With no texels (no sidecar, or height disabled) a 1x1 zero dummy is
 // created instead and *real is false. Caller device-idles beforehand.
 bool import_shore_tex(WaterIsland* s, const void* texels, int texelsW, int texelsH, bool isFloat,
-                      mc2vk::OwnedImage& img, mc2vk::OwnedImageView& view, bool* real) {
-    const VkFormat fmt = isFloat ? VK_FORMAT_R32_SFLOAT : VK_FORMAT_R8G8B8A8_UNORM;
-    static const uint32_t kZeroTexel = 0;
-    *real = texels != nullptr && texelsW > 0 && texelsH > 0;
-    const int w = *real ? texelsW : 1;
-    const int h = *real ? texelsH : 1;
-    const void* src = *real ? texels : &kZeroTexel;
-    const size_t byteCount = (size_t)w * (size_t)h * 4u;
-
-    view.reset();
-    img.reset();
-    VkImageCreateInfo ii{};
-    ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    ii.imageType = VK_IMAGE_TYPE_2D; ii.format = fmt;
-    ii.extent = {(uint32_t)w, (uint32_t)h, 1};
-    ii.mipLevels = 1; ii.arrayLayers = 1;
-    ii.samples = VK_SAMPLE_COUNT_1_BIT; ii.tiling = VK_IMAGE_TILING_OPTIMAL;
-    ii.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    ii.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (!img.create(s->allocator, s->device, ii, aci, "water.shore")) {
-        vlog("shore: image creation failed."); return false;
-    }
-    VkImageViewCreateInfo vi{};
-    vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vi.image = img.get(); vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = fmt;
-    vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    if (!mc2vk::create(view, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vi, nullptr, h); })) {
-        vlog("shore: vkCreateImageView failed."); return false;
-    }
-    mc2vk::OwnedBuffer staging;   // released on return; submit_once has waited for the copy by then
-    if (!make_buffer(s, staging, (VkDeviceSize)byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "water.staging")) return false;
-    if (!staging.upload(src, (VkDeviceSize)byteCount)) return false;
-    const VkImage dst = img.get();
-    const bool ok = submit_once(s, [&](VkCommandBuffer cb) {
-        VkImageMemoryBarrier bar{};
-        bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        bar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        bar.image = dst;
-        bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                             VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
-        VkBufferImageCopy c{};
-        c.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-        c.imageExtent = {(uint32_t)w, (uint32_t)h, 1};
-        vkCmdCopyBufferToImage(cb, staging.get(), dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &c);
-        bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
-    });
-    if (!ok) { vlog("shore: upload submit failed."); return false; }
-    return true;
+                      mc2vk::ResidentTextureRef& texture, bool* real) {
+    const bool have=texels && texelsW>0 && texelsH>0;
+    static const uint32_t zero=0;
+    const auto w=have ? uint32_t(texelsW) : 1u,h=have ? uint32_t(texelsH) : 1u;
+    auto ref=mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(w,h,isFloat ? VK_FORMAT_R32_SFLOAT : VK_FORMAT_R8G8B8A8_UNORM,
+        have ? texels : &zero,size_t(w)*h*4,false);
+    if (!ref) return false;
+    texture=std::move(ref); *real=have; return true;
 }
 
 // (Re)import both shore textures when the GL-side data generation changes.
 // Requires hdriSampler (created by ensure_hdri) -- shared linear/clamp sampler.
 bool ensure_shore(WaterIsland* s) {
     const unsigned int gen = gos_TerrainLodChunk_WaterShoreDataGeneration();
-    if (s->shoreAttempted && s->shoreGen == gen) return true;
+    if (s->shoreAttempted && s->shoreGen == gen) {
+        auto& textures=mc2vk::getOrCreateEngineVulkanContext().textures();
+        s->shHReal=s->shHSourceReal && textures.ready(s->shHTexture.get());
+        s->shMReal=s->shMSourceReal && textures.ready(s->shMTexture.get()); return true;
+    }
     s->shoreAttempted = true;
     s->shoreGen = gen;
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("water_shore_reimport");
     // R32_SFLOAT linear filtering is an optional format feature; without it the
     // height sidecar is treated as absent (FS degrades 2 -> 1, same as a missing
     // sidecar on GL).
@@ -229,11 +119,12 @@ bool ensure_shore(WaterIsland* s) {
     const mc2terrain::FieldImage<float>* height = store && r32Linear ? &store->waterShoreHeight() : nullptr;
     const mc2terrain::FieldImage<uint8_t>* mask = store ? &store->shorelineMask() : nullptr;
     if (!import_shore_tex(s, height && !height->texels.empty() ? height->texels.data() : nullptr, height ? height->width : 0,
-                          height ? height->height : 0, true, s->shHImage, s->shHView, &s->shHReal))
+                          height ? height->height : 0, true, s->shHTexture, &s->shHSourceReal))
         return false;
     if (!import_shore_tex(s, mask && !mask->texels.empty() ? mask->texels.data() : nullptr, mask ? mask->width : 0,
-                          mask ? mask->height : 0, false, s->shMImage, s->shMView, &s->shMReal))
+                          mask ? mask->height : 0, false, s->shMTexture, &s->shMSourceReal))
         return false;
+    s->shHReal=s->shMReal=false;
     write_descriptors(s);
     vlog("shore import: height=%s mask=%s gen=%u (copy-once, zero per-frame cost).",
          s->shHReal ? "REAL" : "DUMMY", s->shMReal ? "REAL" : "DUMMY", gen);

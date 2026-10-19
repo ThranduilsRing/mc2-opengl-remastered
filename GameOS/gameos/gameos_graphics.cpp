@@ -7,6 +7,7 @@
 #include "gameos_graphics_material_internal.h"
 #include "mc2fmt.h"
 #include "texture_decode.h"
+#include "ui_texture.h"
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_context.h"
 #include "vk_texture_residency.h"
@@ -925,6 +926,7 @@ GosTexels gos_GetTextureTexelsByGlName(uint32_t glName) {
 // texture handle convention used by gosFX/MLR.
 uint64_t gos_GetUiTextureId(DWORD handle) {
 #ifdef MC2_VULKAN_ISLAND
+    if (!mc2vk::uiTextureServiceReady()) return gos_GetGLTextureId(handle);
     const auto source=gos_GetTextureTexels(handle);
     if (source.status!=GosTexels::Status::Ready) return 0;
     return mc2vk::getOrCreateEngineVulkanContext().textures().legacyUiId(handle,source.width,source.height,

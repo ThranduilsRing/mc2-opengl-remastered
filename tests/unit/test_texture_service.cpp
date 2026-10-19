@@ -5,6 +5,7 @@
 #include "MaterialRegistry.h"
 #include "TextureService.h"
 #include "TextureStream.h"
+#include <future>
 #include "../../GameOS/gameos/vk_completion_tracker.h"
 
 using namespace RenderCore;
@@ -190,6 +191,11 @@ TEST_CASE("handles and set refs the registry did not issue are refused") {
 
 }  // TEST_SUITE
 
+// Keep MSVC from expanding the generation-exhaustion loop into the test body.
+DOCTEST_NOINLINE bool recycleTexture(TextureService& service, const TextureKey& key) {
+    return service.release(service.acquire(key));
+}
+
 TEST_CASE("TextureService: adopt retain dimensions and generation exhaustion") {
     TextureService s;
     const auto h = s.acquire(keyOf("base", "ui.tga", 1), kNoTextureNode, {256, 128, 64, 32});
@@ -203,8 +209,7 @@ TEST_CASE("TextureService: adopt retain dimensions and generation exhaustion") {
     CHECK_FALSE(s.retain(h));
     CHECK(s.dimensions(h).logicalWidth == 16);
     for (int i = 0; i < 4095; ++i) {
-        auto t = s.acquire(keyOf("base", "ui.tga", 1));
-        REQUIRE(s.release(t));
+        REQUIRE(recycleTexture(s,keyOf("base", "ui.tga", 1)));
     }
     auto fresh = s.acquire(keyOf("base", "ui.tga", 1));
     CHECK_FALSE(s.isLive(h));
@@ -286,4 +291,22 @@ TEST_CASE("TextureService: UI ids retain every generation bit and signal node re
     service.onNodeDestroyed(7);
     CHECK(retired==original);
     CHECK_FALSE(service.isLive(uiTextureHandle(uiTextureId(original))));
+}
+
+TEST_CASE("TextureService: owned decode worker and oversized staging admission") {
+    TextureDecodeWorker worker;
+    std::promise<bool> decoded;
+    auto result=decoded.get_future();
+    std::vector<uint8_t> bytes={1,2,3,255};
+    worker.request(TextureHandle::make(1,1),[owned=std::move(bytes),&decoded] {
+        auto image=std::make_shared<KtxImage>(); image->pixels=owned;
+        decoded.set_value(owned==std::vector<uint8_t>{1,2,3,255});
+        return image;
+    });
+    REQUIRE(result.get());
+    TextureStagingBudget budget{16};
+    REQUIRE(budget.reserve(32)); // one large atlas can make progress
+    CHECK_FALSE(budget.reserve(1));
+    budget.complete(32); REQUIRE(budget.reserve(16)); budget.complete(16);
+    CHECK(budget.used==0);
 }

@@ -120,12 +120,14 @@ bool make_buffer(WaterIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkB
 // validation error + crash (dstSet == VK_NULL_HANDLE). The post-alloc write_descriptors
 // in init_island covers the initial bind; later reallocs re-write with a valid set.
 void write_descriptors(WaterIsland* s, int only) {
+    if (only<0) { s->imageDescriptorsDirty[0]=s->imageDescriptorsDirty[1]=true; return; }
     // VK-WATER-FENCE-DEFER-1: write BOTH parity sets (set[i] binds buffers[i]) unless `only` names one slot (the caller then owns
     // that slot's retirement: the per-frame feed rebind runs after the slot fence wait).
     // Callers (re)allocating any bound buffer are vkDeviceWaitIdle-guarded, so no
     // in-flight command buffer can be using either set during the update.
     for (int i = 0; i < 2; ++i) {
-        if (only >= 0 && i != only) continue;
+        if (i!=only) continue;
+        s->imageDescriptorsDirty[i]=false;
         if (s->set[i] == VK_NULL_HANDLE) continue;   // set not allocated yet (early init path)
         // Bindings 0 and 1 (the parameter UBOs) at the frame ring's current buffer; the slot re-points them at its next frame (ringBound cleared).
         if (const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer()) {
@@ -148,8 +150,8 @@ void write_descriptors(WaterIsland* s, int only) {
         // image exists — it may not yet at init time (write of a NULL view is invalid).
         VkDescriptorImageInfo hdriInfo{};
         VkWriteDescriptorSet w4{};
-        if (s->hdriView && s->hdriSampler) {
-            hdriInfo = { s->hdriSampler.get(), s->hdriView.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+        if (s->hdriTexture && s->hdriSampler) {
+            hdriInfo = { s->hdriSampler.get(), s->hdriTexture.view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
             w4.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w4.dstSet = s->set[i];
             w4.dstBinding = 2; w4.descriptorCount = 1;
             w4.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w4.pImageInfo = &hdriInfo;
@@ -157,10 +159,10 @@ void write_descriptors(WaterIsland* s, int only) {
         }
         vkUpdateDescriptorSets(s->device, 2, w, 0, nullptr);
         // VK-PARITY-WATER-SHORE-1: bindings 3/4 (shore height / mask), once imported.
-        if (s->shHView && s->shMView && s->hdriSampler) {
+        if (s->shHTexture && s->shMTexture && s->hdriSampler) {
             VkDescriptorImageInfo shInfo[2] = {
-                { s->hdriSampler.get(), s->shHView.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
-                { s->hdriSampler.get(), s->shMView.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
+                { s->hdriSampler.get(), s->shHTexture.view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+                { s->hdriSampler.get(), s->shMTexture.view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
             VkWriteDescriptorSet ws[2]{};
             for (int k = 0; k < 2; ++k) {
                 ws[k].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; ws[k].dstSet = s->set[i];

@@ -4,6 +4,7 @@
 #include "KtxLoader.h"          // kKtxMaxEdge: the edge bound every pre-compressed texture shares with the KTX2 parser
 #include "mc2fmt.h"
 #include "texture_decode.h"
+#include "ui_texture.h"
 #include "vulkan_legacy_shape_island.h"
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_context.h"
@@ -292,7 +293,7 @@ DWORD __stdcall gos_NewTextureFromFile( gos_TextureFormat Format, const char* Fi
 void __stdcall gos_DestroyTexture( DWORD Handle )
 {
 #ifdef MC2_VULKAN_ISLAND
-    mc2vk::getOrCreateEngineVulkanContext().textures().forgetLegacyUi(Handle);
+    if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().textures().forgetLegacyUi(Handle);
 #endif
     g_gos_renderer->deleteTexture(Handle);
 }
@@ -945,7 +946,7 @@ void __stdcall gos_BeginCameraPreviewRender()
     if (!g_gos_renderer) return;
     const int sc = camPreviewScale();
 #ifdef MC2_VULKAN_ISLAND
-    mc2_vk_preview_begin(800*sc,600*sc); return;
+    if (mc2vk::uiTextureServiceReady()) { mc2_vk_preview_begin(800*sc,600*sc); return; }
 #endif
     ensureCamPreviewFbo(800 * sc, 600 * sc);
 
@@ -1029,7 +1030,7 @@ GosTexels gos_GetCameraPreviewTexels(uint32_t glName)
 void __stdcall gos_EndCameraPreviewRender()
 {
 #ifdef MC2_VULKAN_ISLAND
-    mc2_vk_preview_end(); return;
+    if (mc2_vk_preview_active()) { mc2_vk_preview_end(); return; }
 #endif
     publishCamPreviewTexels();
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
