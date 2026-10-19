@@ -159,14 +159,14 @@ static_assert(olr::kMaxLights == MAX_HW_LIGHTS_IN_WORLD, "ABI light-count drift"
 
 // The mirrored type ids must equal the real enum, or the packed lightDir[3]
 // discriminator the shaders switch on would silently mean something else.
-static_assert((uint32_t)olr::kTypeNone     == (uint32_t)TG_LIGHT_NONE,     "type drift");
-static_assert((uint32_t)olr::kTypeAmbient  == (uint32_t)TG_LIGHT_AMBIENT,  "type drift");
-static_assert((uint32_t)olr::kTypeInfinite == (uint32_t)TG_LIGHT_INFINITE, "type drift");
-static_assert((uint32_t)olr::kTypeInfiniteWithFalloff ==
-              (uint32_t)TG_LIGHT_INFINITEWITHFALLOFF, "type drift");
-static_assert((uint32_t)olr::kTypePoint    == (uint32_t)TG_LIGHT_POINT,    "type drift");
-static_assert((uint32_t)olr::kTypeSpot     == (uint32_t)TG_LIGHT_SPOT,     "type drift");
-static_assert((uint32_t)olr::kTypeTerrain  == (uint32_t)TG_LIGHT_TERRAIN,  "type drift");
+static_assert(static_cast<uint32_t>(olr::kTypeNone)     == static_cast<uint32_t>(TG_LIGHT_NONE),     "type drift");
+static_assert(static_cast<uint32_t>(olr::kTypeAmbient)  == static_cast<uint32_t>(TG_LIGHT_AMBIENT),  "type drift");
+static_assert(static_cast<uint32_t>(olr::kTypeInfinite) == static_cast<uint32_t>(TG_LIGHT_INFINITE), "type drift");
+static_assert(static_cast<uint32_t>(olr::kTypeInfiniteWithFalloff) ==
+              static_cast<uint32_t>(TG_LIGHT_INFINITEWITHFALLOFF), "type drift");
+static_assert(static_cast<uint32_t>(olr::kTypePoint)    == static_cast<uint32_t>(TG_LIGHT_POINT),    "type drift");
+static_assert(static_cast<uint32_t>(olr::kTypeSpot)     == static_cast<uint32_t>(TG_LIGHT_SPOT),     "type drift");
+static_assert(static_cast<uint32_t>(olr::kTypeTerrain)  == static_cast<uint32_t>(TG_LIGHT_TERRAIN),  "type drift");
 
 // The policy the appearance class currently being updated has DECLARED. It is
 // published immediately alongside the legacy mutation and cleared after, so it
@@ -210,9 +210,9 @@ static thread_local PublishedPolicy s_publishedPolicy;
 // Flatten one TG_Light exactly as the legacy gather reads it.
 inline void flattenLight(const TG_LightPtr src, olr::LightInput& dst)
 {
-	dst.type   = (uint32_t)src->lightType;
+	dst.type   = static_cast<uint32_t>(src->lightType);
 	dst.active = (src->active != 0);
-	dst.aRGB   = (uint32_t)src->GetaRGB();
+	dst.aRGB   = static_cast<uint32_t>(src->GetaRGB());
 
 	// Same AMBIENT->Identity substitution as the legacy path.
 	glm::mat4 light2world;
@@ -221,7 +221,7 @@ inline void flattenLight(const TG_LightPtr src, olr::LightInput& dst)
 	else
 		light2world = glm::mat4(1.0f);
 
-	memcpy(dst.l2w, (const float*)glm::value_ptr(light2world), 12 * sizeof(float));
+	memcpy(dst.l2w, static_cast<const float*>(glm::value_ptr(light2world)), 12 * sizeof(float));
 
 	glm::vec3 uVec;
 	uVec = mc2::math::localForwardInWorld(light2world);
@@ -245,7 +245,7 @@ inline int32_t findFirstOfType(const olr::LightInput* lights, uint32_t n, uint32
 {
 	for (uint32_t i = 0; i < n; ++i)
 		if (lights[i].type == type)
-			return (int32_t)i;
+			return static_cast<int32_t>(i);
 	return -1;
 }
 
@@ -265,14 +265,14 @@ inline bool buildQueryFromGlobals(std::vector<olr::LightInput>& scratch, olr::Qu
 				flattenLight(listOfLights[i], li);
 			} else {
 				li.active = false;   // NULL entries are skipped by both packers
-				li.type   = (uint32_t)TG_LIGHT_NONE;
+				li.type   = static_cast<uint32_t>(TG_LIGHT_NONE);
 			}
 			scratch.push_back(li);
 		}
 	}
 
 	q.lights       = scratch.empty() ? nullptr : scratch.data();
-	q.numLights    = (uint32_t)scratch.size();
+	q.numLights    = static_cast<uint32_t>(scratch.size());
 	q.posColumnFix = s_lightPosColumnFix;
 	q.clampFixture = s_lightClampFixture;
 
@@ -345,7 +345,7 @@ void applyPureObjectLightRow(TG_HWLightsData* lights)
 			// lines are a sample and say so, so a truncated stream can never be
 			// mistaken for "only 8 rows ever diverged".
 			if (s_lightRowPureMismatch <= 8) {
-				mc2::fmt::print_err("[LIGHT_ROW_PURE] MISMATCH #{:d} (sample=first-8 of an uncapped count; see the periodic summary for the total) class={:d} legacyLights={:d} pureLights={:d} (declared policy does not reproduce the mutation)\n", mc2::fmt::as_u32(s_lightRowPureMismatch), mc2::fmt::as_u32((unsigned)q.policy), mc2::fmt::as_i32(lights->numLights_), mc2::fmt::as_i32(pure.numLights_));
+				mc2::fmt::print_err("[LIGHT_ROW_PURE] MISMATCH #{:d} (sample=first-8 of an uncapped count; see the periodic summary for the total) class={:d} legacyLights={:d} pureLights={:d} (declared policy does not reproduce the mutation)\n", mc2::fmt::as_u32(s_lightRowPureMismatch), mc2::fmt::as_u32(static_cast<unsigned>(q.policy)), mc2::fmt::as_i32(lights->numLights_), mc2::fmt::as_i32(pure.numLights_));
 				std::fflush(stderr);
 			}
 		}
@@ -481,7 +481,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 			// (msl.cpp) sources POINT position from TG_Light::direction and
 			// never reads this matrix. The rotation 3x3 left in [0..11] stays as
 			// shipped — no consumer reads it.
-			memcpy(lights->lightToWorld[num_lights], (const float*)glm::value_ptr(light2world), 12*sizeof(float));
+			memcpy(lights->lightToWorld[num_lights], static_cast<const float*>(glm::value_ptr(light2world)), 12*sizeof(float));
 			if (s_lightPosColumnFix)
 			{
 				lights->lightToWorld[num_lights][12] = lights->lightToWorld[num_lights][3];
@@ -500,7 +500,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 			lights->lightDir[num_lights][1] = uVec.y;
 			lights->lightDir[num_lights][2] = uVec.z;
 
-			lights->lightDir[num_lights][3] = (float)type;
+			lights->lightDir[num_lights][3] = static_cast<float>(type);
 
 			DWORD startLight = listOfLights[iLight]->GetaRGB();
 
@@ -539,7 +539,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 			}
 
 			if (doLightTrace) {
-				mc2::fmt::print_err("[PARITY_DIAG v2] GatherLightsParameters iLight={:d} type={:d} aRGB=0x{:08X} dir=({:.4f},{:.4f},{:.4f}) color=({:.4f},{:.4f},{:.4f})\n", mc2::fmt::as_u32(num_lights), mc2::fmt::as_u32((unsigned)type), mc2::fmt::as_u32((unsigned)listOfLights[iLight]->GetaRGB()), lights->lightDir[num_lights][0], lights->lightDir[num_lights][1], lights->lightDir[num_lights][2], lights->lightColor[num_lights][0], lights->lightColor[num_lights][1], lights->lightColor[num_lights][2]);
+				mc2::fmt::print_err("[PARITY_DIAG v2] GatherLightsParameters iLight={:d} type={:d} aRGB=0x{:08X} dir=({:.4f},{:.4f},{:.4f}) color=({:.4f},{:.4f},{:.4f})\n", mc2::fmt::as_u32(num_lights), mc2::fmt::as_u32(static_cast<unsigned>(type)), mc2::fmt::as_u32(static_cast<unsigned>(listOfLights[iLight]->GetaRGB())), lights->lightDir[num_lights][0], lights->lightDir[num_lights][1], lights->lightDir[num_lights][2], lights->lightColor[num_lights][0], lights->lightColor[num_lights][1], lights->lightColor[num_lights][2]);
 				std::fflush(stderr);
 			}
 
@@ -547,7 +547,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 			// Observation only; records what this row carried in and what it
 			// uploaded out. See the header comment near s_lightRowCensus.
 			if (s_lightRowCensus) {
-				const unsigned ti = ((unsigned)type) & 7u;
+				const unsigned ti = (static_cast<unsigned>(type)) & 7u;
 				LightRowCensusRec& rec = s_lightRowCensusTab[ti];
 				const float* row = lights->lightToWorld[num_lights];
 				rec.seen++;
@@ -613,7 +613,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 			lights->lightDir[s][0] = 0.0f;
 			lights->lightDir[s][1] = -1.0f;
 			lights->lightDir[s][2] = 0.0f;
-			lights->lightDir[s][3] = (float)TG_LIGHT_POINT;
+			lights->lightDir[s][3] = static_cast<float>(TG_LIGHT_POINT);
 
 			// Deterministic bright color that cycles by slot so the extra lights
 			// are visibly distinct when they contribute.
@@ -633,7 +633,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 
 		if (!s_lightClampFixtureYelled) {
 			s_lightClampFixtureYelled = true;
-			mc2::fmt::print_err("[LIGHT_CLAMP_FIXTURE] ON: injected {:d} synthetic point lights into object {:016X} slots {:d}..{:d} (ABI cap {:d}). This DELIBERATELY changes rendered lighting — gate MC2_LIGHT_CLAMP_FIXTURE.\n", mc2::fmt::as_u32(num_lights - injectStart), mc2::fmt::as_ptr((void*)lights), mc2::fmt::as_u32(injectStart), mc2::fmt::as_u32(num_lights - 1), mc2::fmt::as_i32(MAX_HW_LIGHTS_IN_WORLD));
+			mc2::fmt::print_err("[LIGHT_CLAMP_FIXTURE] ON: injected {:d} synthetic point lights into object {:016X} slots {:d}..{:d} (ABI cap {:d}). This DELIBERATELY changes rendered lighting — gate MC2_LIGHT_CLAMP_FIXTURE.\n", mc2::fmt::as_u32(num_lights - injectStart), mc2::fmt::as_ptr(static_cast<void*>(lights)), mc2::fmt::as_u32(injectStart), mc2::fmt::as_u32(num_lights - 1), mc2::fmt::as_i32(MAX_HW_LIGHTS_IN_WORLD));
 			std::fflush(stderr);
 		}
 	}
@@ -647,7 +647,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 		++s_lightClampProbeCalls;
 		if (num_lights > s_lightClampProbeHighWater) {
 			s_lightClampProbeHighWater = num_lights;
-			mc2::fmt::print_err("[LIGHT_CLAMP_PROBE] new high-water populated lights/object = {:d} (ABI cap {:d}, runtime clamp {:d}) after {:d} calls\n", mc2::fmt::as_u32(s_lightClampProbeHighWater), mc2::fmt::as_i32(MAX_HW_LIGHTS_IN_WORLD), mc2::fmt::as_u32((unsigned)max_num_lights), mc2::fmt::as_u32(s_lightClampProbeCalls));
+			mc2::fmt::print_err("[LIGHT_CLAMP_PROBE] new high-water populated lights/object = {:d} (ABI cap {:d}, runtime clamp {:d}) after {:d} calls\n", mc2::fmt::as_u32(s_lightClampProbeHighWater), mc2::fmt::as_i32(MAX_HW_LIGHTS_IN_WORLD), mc2::fmt::as_u32(static_cast<unsigned>(max_num_lights)), mc2::fmt::as_u32(s_lightClampProbeCalls));
 			std::fflush(stderr);
 		}
 		if ((s_lightClampProbeCalls % 2000) == 0) {
@@ -667,13 +667,13 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 		MC2_DIAGFE(stderr,
 			"[SPOT_DIAG v1] event=pack_first_shape shape=%p active_lights=%u "
 			"inactive_lights=%u point_lights_active=%u\n",
-			(void*)lights, diagActiveLights, diagInactiveLights, diagPointActive);
+			static_cast<void*>(lights), diagActiveLights, diagInactiveLights, diagPointActive);
 		std::fflush(stderr);
 	}
 	if (s_spotDiagPackEnabled && (s_spotDiagPackCalls % 600) == 0) {
-		double avgA = (double)s_spotDiagPackActiveSum / 600.0;
-		double avgI = (double)s_spotDiagPackInactSum  / 600.0;
-		double avgP = (double)s_spotDiagPackPointSum  / 600.0;
+		double avgA = static_cast<double>(s_spotDiagPackActiveSum) / 600.0;
+		double avgI = static_cast<double>(s_spotDiagPackInactSum)  / 600.0;
+		double avgP = static_cast<double>(s_spotDiagPackPointSum)  / 600.0;
 		mc2::fmt::print_err("[SPOT_DIAG v1] event=pack_summary calls={:d} avg_active_per_shape={:.3f} avg_inactive_per_shape={:.3f} avg_point_active_per_shape={:.3f}\n", mc2::fmt::as_u32(s_spotDiagPackCalls), avgA, avgI, avgP);
 		std::fflush(stderr);
 		s_spotDiagPackActiveSum = 0;
@@ -714,7 +714,7 @@ void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights,
 	// `listOfLights[iLight]` deref would otherwise run against a null base.
 	if (lights) {
 		TG_Shape::s_listOfLights = lights;
-		TG_Shape::s_numLights    = (DWORD)nLights;
+		TG_Shape::s_numLights    = static_cast<DWORD>(nLights);
 	} else {
 		TG_Shape::s_listOfLights = nullptr;
 		TG_Shape::s_numLights    = 0;

@@ -137,12 +137,12 @@ namespace {
 	{
 		if (!p || p->nullCountThisFrame == 0) return;
 		char _cbbuf[512];
-		mc2::fmt::to_buf(_cbbuf, "[TGL_POOL v1] frame={:d} pool={} nulls={:d} first_caller={} shape={:016X} req={:d} high_water={:d}/{:d} mono_total={:d}", mc2::fmt::as_u32((unsigned)g_mc2FrameCounter), mc2::fmt::safe(poolLabel), mc2::fmt::as_u32((unsigned)p->nullCountThisFrame), mc2::fmt::safe(p->firstNullSnapshot.caller ? p->firstNullSnapshot.caller : "?"), mc2::fmt::as_ptr(p->firstNullSnapshot.shape), mc2::fmt::as_u32((unsigned)p->firstNullSnapshot.numRequested), mc2::fmt::as_u32((unsigned)p->firstNullSnapshot.numUsed_at_failure), mc2::fmt::as_u32((unsigned)p->firstNullSnapshot.totalCapacity), mc2::fmt::as_u64((unsigned long long)p->nullCountMonotonic));
+		mc2::fmt::to_buf(_cbbuf, "[TGL_POOL v1] frame={:d} pool={} nulls={:d} first_caller={} shape={:016X} req={:d} high_water={:d}/{:d} mono_total={:d}", mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter)), mc2::fmt::safe(poolLabel), mc2::fmt::as_u32(static_cast<unsigned>(p->nullCountThisFrame)), mc2::fmt::safe(p->firstNullSnapshot.caller ? p->firstNullSnapshot.caller : "?"), mc2::fmt::as_ptr(p->firstNullSnapshot.shape), mc2::fmt::as_u32(static_cast<unsigned>(p->firstNullSnapshot.numRequested)), mc2::fmt::as_u32(static_cast<unsigned>(p->firstNullSnapshot.numUsed_at_failure)), mc2::fmt::as_u32(static_cast<unsigned>(p->firstNullSnapshot.totalCapacity)), mc2::fmt::as_u64(static_cast<unsigned long long>(p->nullCountMonotonic)));
 		puts(_cbbuf);
 		crashbundle_append(_cbbuf);
 	}
 	template<typename PoolT>
-	inline unsigned long long monoOf (PoolT* p) { return p ? (unsigned long long)p->nullCountMonotonic : 0ULL; }
+	inline unsigned long long monoOf (PoolT* p) { return p ? static_cast<unsigned long long>(p->nullCountMonotonic) : 0ULL; }
 	template<typename PoolT>
 	inline void resetOf (PoolT* p) { if (p) p->resetFrameCounters(); }
 }
@@ -246,12 +246,12 @@ void logTglPoolPeaks (const char* context)
 		char _cbbuf[256];
 		if (p.cap > 0)
 		{
-			unsigned pct = (unsigned)(((unsigned long long)p.peak * 100u) / p.cap);
-			mc2::fmt::to_buf(_cbbuf, "[TGL_POOL v1] event={} pool={:<8} peak={:d}/{:d} pct={:d}%", mc2::fmt::safe(context), mc2::fmt::safe(p.name), mc2::fmt::as_u32((unsigned)p.peak), mc2::fmt::as_u32((unsigned)p.cap), mc2::fmt::as_u32(pct));
+			unsigned pct = static_cast<unsigned>(((static_cast<unsigned long long>(p.peak) * 100u) / p.cap));
+			mc2::fmt::to_buf(_cbbuf, "[TGL_POOL v1] event={} pool={:<8} peak={:d}/{:d} pct={:d}%", mc2::fmt::safe(context), mc2::fmt::safe(p.name), mc2::fmt::as_u32(static_cast<unsigned>(p.peak)), mc2::fmt::as_u32(static_cast<unsigned>(p.cap)), mc2::fmt::as_u32(pct));
 		}
 		else
 		{
-			mc2::fmt::to_buf(_cbbuf, "[TGL_POOL v1] event={} pool={:<8} peak={:d}/? pct=?%", mc2::fmt::safe(context), mc2::fmt::safe(p.name), mc2::fmt::as_u32((unsigned)p.peak));
+			mc2::fmt::to_buf(_cbbuf, "[TGL_POOL v1] event={} pool={:<8} peak={:d}/? pct=?%", mc2::fmt::safe(context), mc2::fmt::safe(p.name), mc2::fmt::as_u32(static_cast<unsigned>(p.peak)));
 		}
 		puts(_cbbuf);
 		crashbundle_append(_cbbuf);

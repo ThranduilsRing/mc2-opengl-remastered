@@ -184,8 +184,8 @@ namespace {
         std::chrono::steady_clock::time_point t0;
         LbScope() : t0(std::chrono::steady_clock::now()) {}
         ~LbScope() {
-            s_lbFrameNs += (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
-                std::chrono::steady_clock::now() - t0).count();
+            s_lbFrameNs += static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - t0).count());
             ++s_lbFrameCalls;
         }
     };
@@ -197,7 +197,7 @@ namespace {
 
         if (s_lbEnabled && hadData) {
             char buf[512];
-            mc2::fmt::to_buf(buf, "[LIGHTBRIDGE v1] frame={:d} populate={{ns:{:d},calls:{:d},tmpl_hit:{:d},tmpl_miss:{:d},no_actor_light:{:d}}}", mc2::fmt::as_u32((unsigned)frame), mc2::fmt::as_u64((unsigned long long)s_lbFrameNs), mc2::fmt::as_u64((unsigned long long)s_lbFrameCalls), mc2::fmt::as_u64((unsigned long long)s_lbFrameHit), mc2::fmt::as_u64((unsigned long long)s_lbFrameMiss), mc2::fmt::as_u64((unsigned long long)s_lbFrameNo));
+            mc2::fmt::to_buf(buf, "[LIGHTBRIDGE v1] frame={:d} populate={{ns:{:d},calls:{:d},tmpl_hit:{:d},tmpl_miss:{:d},no_actor_light:{:d}}}", mc2::fmt::as_u32(static_cast<unsigned>(frame)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_lbFrameNs)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_lbFrameCalls)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_lbFrameHit)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_lbFrameMiss)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_lbFrameNo)));
             MC2_DIAG_PUTS(buf); crashbundle_append(buf); std::fflush(stdout);
         }
 
@@ -208,7 +208,7 @@ namespace {
 
         if (frame > 0 && (frame % 600) == 0 && s_lbMonoCalls != 0) {
             char buf[512];
-            mc2::fmt::to_buf(buf, "[LIGHTBRIDGE v1] summary={:d} populate={{ns:{:d},calls:{:d},tmpl_hit:{:d},tmpl_miss:{:d},no_actor_light:{:d}}} ns_per_call={:d} first_data_frame={:d}", mc2::fmt::as_u32((unsigned)frame), mc2::fmt::as_u64((unsigned long long)s_lbMonoNs), mc2::fmt::as_u64((unsigned long long)s_lbMonoCalls), mc2::fmt::as_u64((unsigned long long)s_lbMonoHit), mc2::fmt::as_u64((unsigned long long)s_lbMonoMiss), mc2::fmt::as_u64((unsigned long long)s_lbMonoNo), mc2::fmt::as_u64((unsigned long long)(s_lbMonoCalls ? s_lbMonoNs / s_lbMonoCalls : 0)), mc2::fmt::as_u32((unsigned)s_lbFirstDataFrame));
+            mc2::fmt::to_buf(buf, "[LIGHTBRIDGE v1] summary={:d} populate={{ns:{:d},calls:{:d},tmpl_hit:{:d},tmpl_miss:{:d},no_actor_light:{:d}}} ns_per_call={:d} first_data_frame={:d}", mc2::fmt::as_u32(static_cast<unsigned>(frame)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_lbMonoNs)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_lbMonoCalls)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_lbMonoHit)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_lbMonoMiss)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_lbMonoNo)), mc2::fmt::as_u64(static_cast<unsigned long long>((s_lbMonoCalls ? s_lbMonoNs / s_lbMonoCalls : 0))), mc2::fmt::as_u32(static_cast<unsigned>(s_lbFirstDataFrame)));
             MC2_DIAG_PUTS(buf); crashbundle_append(buf); std::fflush(stdout);
         }
     }
@@ -583,10 +583,10 @@ uint32_t MC_TextureManager::addLightDataStructureWithPerActorColor(TG_HWLightsDa
     if (!s_lbRepointInit) lbRepointInitFromEnv();
     if (s_lbRepointEnabled) {
         const uint32_t actorARGB = perActor
-            ? (uint32_t)TG_Shape::s_listOfLights[actorLightSource]->GetaRGB()
+            ? static_cast<uint32_t>(TG_Shape::s_listOfLights[actorLightSource]->GetaRGB())
             : 0u;
         const uint64_t combined =
-            key ^ ((uint64_t)actorARGB * 0x9E3779B97F4A7C15ULL);
+            key ^ (static_cast<uint64_t>(actorARGB) * 0x9E3779B97F4A7C15ULL);
         auto sit = s_lightSlotByActorKey.find(combined);
         if (sit != s_lightSlotByActorKey.end() &&
             sit->second.tmpl == key && sit->second.actorARGB == actorARGB) {
@@ -714,6 +714,6 @@ const void* MC_TextureManager::getLightDataPtr() const
 
 uint64_t MC_TextureManager::getLightDataBytes() const
 {
-    return (uint64_t)lightDataStructuresCount * sizeof(TG_HWLightsData);
+    return static_cast<uint64_t>(lightDataStructuresCount) * sizeof(TG_HWLightsData);
 }
 

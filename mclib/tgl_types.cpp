@@ -19,7 +19,7 @@ static bool tgNameContainsCI(const char* hay, const char* needle)
 	const size_t nlen = strlen(needle);
 	if (nlen == 0) return false;
 	for (const char* p = hay; *p; ++p)
-		if (S_strnicmp(p, needle, (int)nlen) == 0)
+		if (S_strnicmp(p, needle, static_cast<int>(nlen)) == 0)
 			return true;
 	return false;
 }
@@ -161,7 +161,7 @@ std::unique_ptr<TG_Shape> TG_TypeNode::CreateFrom (void)
 //
 long TG_TypeNode::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 {
-	char *nodeName = strstr((char *)aseBuffer,ASE_NODE_NAME);
+	char *nodeName = strstr(reinterpret_cast<char *>(aseBuffer),ASE_NODE_NAME);
 	gosASSERT(nodeName != nullptr);
 
 	char nodeString[1024];
@@ -199,7 +199,7 @@ long TG_TypeNode::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 
 	//----------------------------------------------------
 	// Store off NODE ABS position for heirarchy
-	nodeName = strstr((char *)aseBuffer,ASE_NODE_POS);
+	nodeName = strstr(reinterpret_cast<char *>(aseBuffer),ASE_NODE_POS);
 	gosASSERT(nodeName != nullptr);
 
 	nodeName += strlen(ASE_NODE_POS)+1;
@@ -207,15 +207,15 @@ long TG_TypeNode::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 	char numData[512];
 
 	GetNumberData(nodeName,numData);
-	nodeCenter.x = -(float)atof(numData);
+	nodeCenter.x = -static_cast<float>(atof(numData));
 	nodeName += strlen(numData)+1;
 
 	GetNumberData(nodeName,numData);
-	nodeCenter.z = (float)atof(numData);
+	nodeCenter.z = static_cast<float>(atof(numData));
 	nodeName += strlen(numData)+1;
 
 	GetNumberData(nodeName,numData);
-	nodeCenter.y = (float)atof(numData);
+	nodeCenter.y = static_cast<float>(atof(numData));
 
 	return(0);
 }	
@@ -231,8 +231,8 @@ bool TG_TypeNode::LoadBinaryCopy (File &binFile)
 	relativeNodeCenter.y = binFile.readFloat();
 	relativeNodeCenter.z = binFile.readFloat();
 	
-	binFile.read((MemoryPtr)nodeId,TG_NODE_ID);
-	binFile.read((MemoryPtr)parentId,TG_NODE_ID);
+	binFile.read(reinterpret_cast<MemoryPtr>(nodeId),TG_NODE_ID);
+	binFile.read(reinterpret_cast<MemoryPtr>(parentId),TG_NODE_ID);
 	return true;
 }
 
@@ -249,8 +249,8 @@ void TG_TypeNode::SaveBinaryCopy (File &binFile)
 	binFile.writeFloat(relativeNodeCenter.y);
 	binFile.writeFloat(relativeNodeCenter.z);
 	
-	binFile.write((MemoryPtr)nodeId,TG_NODE_ID);
-	binFile.write((MemoryPtr)parentId,TG_NODE_ID);
+	binFile.write(reinterpret_cast<MemoryPtr>(nodeId),TG_NODE_ID);
+	binFile.write(reinterpret_cast<MemoryPtr>(parentId),TG_NODE_ID);
 }
 
 //-------------------------------------------------------------------------------
@@ -390,7 +390,7 @@ bool TG_TypeShape::LoadBinaryCopy (File &binFile)
 		typeVertexStore.resize(numTypeVertices);
 		listOfTypeVertices = typeVertexStore.data();
 
-		binFile.read((MemoryPtr)listOfTypeVertices,sizeof(TG_TypeVertex) * numTypeVertices);
+		binFile.read(reinterpret_cast<MemoryPtr>(listOfTypeVertices),sizeof(TG_TypeVertex) * numTypeVertices);
 
 	}
 	else
@@ -411,7 +411,7 @@ bool TG_TypeShape::LoadBinaryCopy (File &binFile)
 		typeTriangleStore.resize(numTypeTriangles);
 		listOfTypeTriangles = typeTriangleStore.data();
 
-		binFile.read((MemoryPtr)listOfTypeTriangles,sizeof(TG_TypeTriangle) * numTypeTriangles);
+		binFile.read(reinterpret_cast<MemoryPtr>(listOfTypeTriangles),sizeof(TG_TypeTriangle) * numTypeTriangles);
 	}
 	else
 	{
@@ -431,7 +431,7 @@ bool TG_TypeShape::LoadBinaryCopy (File &binFile)
 		tinyTextureStore.resize(numTextures);
 		listOfTextures = tinyTextureStore.data();
 
-		binFile.read((MemoryPtr)listOfTextures,sizeof(TG_TinyTexture) * numTextures);
+		binFile.read(reinterpret_cast<MemoryPtr>(listOfTextures),sizeof(TG_TinyTexture) * numTextures);
 	}
 	else
 	{
@@ -464,7 +464,7 @@ bool TG_TypeShape::LoadBinaryCopy (File &binFile)
 				int vidx = triType.Vertices[j];
 				if (vidx < 0 || vidx >= numTypeVertices) {
 					if (s_mslBoundsWarnings++ < 8) {
-						mc2::fmt::print_out("[MSL] triangle {:d} vertex {:d} index {:d} out of range [0,{:d})\n", mc2::fmt::as_u32(i), mc2::fmt::as_u32(j), mc2::fmt::as_i32(vidx), mc2::fmt::as_i32((int)numTypeVertices)); fflush(stdout);
+						mc2::fmt::print_out("[MSL] triangle {:d} vertex {:d} index {:d} out of range [0,{:d})\n", mc2::fmt::as_u32(i), mc2::fmt::as_u32(j), mc2::fmt::as_i32(vidx), mc2::fmt::as_i32(static_cast<int>(numTypeVertices))); fflush(stdout);
 					}
 					vidx = 0;
 				}
@@ -504,8 +504,8 @@ bool TG_TypeShape::LoadBinaryCopy (File &binFile)
 	alphaTestOn = false;
 	filterOn = true;
 
-	binFile.read((MemoryPtr)nodeId,TG_NODE_ID);
-	binFile.read((MemoryPtr)parentId,TG_NODE_ID);
+	binFile.read(reinterpret_cast<MemoryPtr>(nodeId),TG_NODE_ID);
+	binFile.read(reinterpret_cast<MemoryPtr>(parentId),TG_NODE_ID);
 	return true;
 }
 
@@ -517,21 +517,21 @@ void TG_TypeShape::SaveBinaryCopy (File &binFile)
 	binFile.writeInt(numTypeVertices);
 	if (numTypeVertices)
 	{
-		binFile.write((MemoryPtr)listOfTypeVertices,sizeof(TG_TypeVertex) * numTypeVertices);
+		binFile.write(reinterpret_cast<MemoryPtr>(listOfTypeVertices),sizeof(TG_TypeVertex) * numTypeVertices);
 	}
 
 	//listOfTypeTriangles
 	binFile.writeInt(numTypeTriangles);
 	if (numTypeTriangles)
 	{
-		binFile.write((MemoryPtr)listOfTypeTriangles,sizeof(TG_TypeTriangle) * numTypeTriangles);
+		binFile.write(reinterpret_cast<MemoryPtr>(listOfTypeTriangles),sizeof(TG_TypeTriangle) * numTypeTriangles);
 	}
 
 	//listOfTextures
 	binFile.writeInt(numTextures);
 	if (numTextures)
 	{
-		binFile.write((MemoryPtr)listOfTextures,sizeof(TG_TinyTexture) * numTextures);
+		binFile.write(reinterpret_cast<MemoryPtr>(listOfTextures),sizeof(TG_TinyTexture) * numTextures);
 	}
 
 	//Other Data
@@ -543,8 +543,8 @@ void TG_TypeShape::SaveBinaryCopy (File &binFile)
 	binFile.writeFloat(relativeNodeCenter.y);
 	binFile.writeFloat(relativeNodeCenter.z);
 	
-	binFile.write((MemoryPtr)nodeId,TG_NODE_ID);
-	binFile.write((MemoryPtr)parentId,TG_NODE_ID);
+	binFile.write(reinterpret_cast<MemoryPtr>(nodeId),TG_NODE_ID);
+	binFile.write(reinterpret_cast<MemoryPtr>(parentId),TG_NODE_ID);
 }
 
 // TG_TypeShape::destroy is inline in tgl.h since B7o.6b (the unit tier tests the production body).
@@ -595,7 +595,7 @@ void TG_Shape::destroy (void)
 // Files will require user intervention to parse!!
 long TG_TypeShape::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 {
-	char *nodeName = strstr((char *)aseBuffer,ASE_NODE_NAME);
+	char *nodeName = strstr(reinterpret_cast<char *>(aseBuffer),ASE_NODE_NAME);
 	gosASSERT(nodeName != nullptr);
 
 	char nodeString[1024];
@@ -631,7 +631,7 @@ long TG_TypeShape::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 		strcpy(parentId,"None");
 	}
 
-	nodeName = strstr((char *)aseBuffer,ASE_NODE_POS);
+	nodeName = strstr(reinterpret_cast<char *>(aseBuffer),ASE_NODE_POS);
 	gosASSERT(nodeName != nullptr);
 
 	nodeName += strlen(ASE_NODE_POS)+1;
@@ -639,15 +639,15 @@ long TG_TypeShape::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 	char numData[512];
 
 	GetNumberData(nodeName,numData);
-	nodeCenter.x = -(float)atof(numData);
+	nodeCenter.x = -static_cast<float>(atof(numData));
 	nodeName += strlen(numData)+1;
 
 	GetNumberData(nodeName,numData);
-	nodeCenter.z = (float)atof(numData);
+	nodeCenter.z = static_cast<float>(atof(numData));
 	nodeName += strlen(numData)+1;
 
 	GetNumberData(nodeName,numData);
-	nodeCenter.y = (float)atof(numData);
+	nodeCenter.y = static_cast<float>(atof(numData));
 
 	numTypeVertices = 0;
 

@@ -194,7 +194,7 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 								s_cullLogged = true;
 								const size_t total = s_dynPropInsts.size();
 								const size_t kept  = s_culledDynPropInsts.size();
-								const float pct = total ? (100.0f * (float)(total - kept) / (float)total) : 0.0f;
+								const float pct = total ? (100.0f * static_cast<float>((total - kept)) / static_cast<float>(total)) : 0.0f;
 								mc2::fmt::print_err("[SHADOW_CULL] casters {:d} -> {:d} ({:.0f}% culled, margin={:.2f})\n", mc2::fmt::as_size(total), mc2::fmt::as_size(kept), pct, s_cullMargin);
 								fflush(stderr);
 							}
@@ -210,7 +210,7 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 							ppVk->getDynamicShadowMapSize(),
 							ppVk->getDynamicLightSpaceMatrix(),
 							dynShadowSet->data(),
-							(unsigned int)dynShadowSet->size(),
+							static_cast<unsigned int>(dynShadowSet->size()),
 							ppVk->getShadowBiasFactor(),
 							ppVk->getShadowBiasUnits());
 					}
@@ -232,25 +232,25 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 #ifdef MC2_VULKAN_ISLAND
 						if (ci < csmN - 1 && csmCasterSet && mc2_vk_shadow_island_enabled()) {
 							const float* mats = ppCsm->getDynamicCascadeMatrices();
-							const float* layerMat = mats ? (mats + (size_t)ci * 16u) : nullptr;
+							const float* layerMat = mats ? (mats + static_cast<size_t>(ci) * 16u) : nullptr;
 							mc2_vk_shadow_island_run_csm_array_layer(
 								ppCsm->getDynamicShadowMapSize(),
 								csmN - 1,
 								ci,
 								layerMat,
 								csmCasterSet->data(),
-								(unsigned int)csmCasterSet->size(),
+								static_cast<unsigned int>(csmCasterSet->size()),
 								ppCsm->getShadowBiasFactor(),
 								ppCsm->getShadowBiasUnits());
 						}
 						if (ci == csmN - 1 && csmCasterSet && mc2_vk_shadow_island_enabled()) {
 							const float* mats = ppCsm->getDynamicCascadeMatrices();
-							const float* lastMat = mats ? (mats + (size_t)ci * 16u) : nullptr;
+							const float* lastMat = mats ? (mats + static_cast<size_t>(ci) * 16u) : nullptr;
 							mc2_vk_shadow_island_run_csm_fullmap(
 								ppCsm->getDynamicFullMapSize(),
 								lastMat,
 								csmCasterSet->data(),
-								(unsigned int)csmCasterSet->size(),
+								static_cast<unsigned int>(csmCasterSet->size()),
 								ppCsm->getShadowBiasFactor(),
 								ppCsm->getShadowBiasUnits());
 						}
@@ -347,7 +347,7 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 				g_loadRaceTerrainResidentNow = fully;
 				if (fully && g_loadRaceTerrainFirstResidentFrame < 0)
 				{
-					g_loadRaceTerrainFirstResidentFrame = (long)g_mc2FrameCounter;
+					g_loadRaceTerrainFirstResidentFrame = static_cast<long>(g_mc2FrameCounter);
 					if (chunkPath)
 						mc2::fmt::print_out("[LOADRACE] terrain first fully-resident frame={:d} (chunk path: atlas_frame={:d} arm_frame={:d})\n", mc2::fmt::as_i32(g_loadRaceTerrainFirstResidentFrame), mc2::fmt::as_i32(g_loadRaceAtlasFirstFrame), mc2::fmt::as_i32(g_loadRaceArmFirstFrame));
 					else

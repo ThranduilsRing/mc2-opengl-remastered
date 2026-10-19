@@ -43,7 +43,7 @@ DWORD MCTiming_GetTimeZoneInforation(void *timeData)
 {
 	// Get Time Zone information for this machine to calculate
 	// Astronomy correctly.
-	DWORD daylightSavingsInfo = GetTimeZoneInformation((TIME_ZONE_INFORMATION *)timeData);
+	DWORD daylightSavingsInfo = GetTimeZoneInformation(static_cast<TIME_ZONE_INFORMATION *>(timeData));
 	return daylightSavingsInfo;
 }
 
@@ -56,7 +56,7 @@ DWORD MCTiming_GetTimeZoneInformationSize (void)
 //----------------------------------------------------------------------------------
 void MC_SYSTEMTIME::copyFromSystemTime (void *systemTime)
 {
-	SYSTEMTIME *sysTime = (SYSTEMTIME *)systemTime;
+	SYSTEMTIME *sysTime = static_cast<SYSTEMTIME *>(systemTime);
 	
 	dwYear		   =	sysTime->wYear;
 	dwMonth		   =	sysTime->wMonth;
@@ -71,7 +71,7 @@ void MC_SYSTEMTIME::copyFromSystemTime (void *systemTime)
 //----------------------------------------------------------------------------------
 void MCTiming_GetUTCSystemTimeFromInformation(DWORD daylightInfo, void *timeData, MC_SYSTEMTIME *systemTime)
 {
-	TIME_ZONE_INFORMATION *tzInfo = (TIME_ZONE_INFORMATION *)timeData;
+	TIME_ZONE_INFORMATION *tzInfo = static_cast<TIME_ZONE_INFORMATION *>(timeData);
 
 	SYSTEMTIME sysTime;
 	GetSystemTime(&sysTime);

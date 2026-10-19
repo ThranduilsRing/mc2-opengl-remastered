@@ -108,7 +108,7 @@ void TerrainColorMap::refractalizeBaseMesh (const char *fileName, long Threshold
 	MemoryPtr tmpOutput = sourceData;
 	for (long i=0;i<Terrain::realVerticesMapSide * Terrain::realVerticesMapSide;i++)
 	{
-		*tmpOutput = (BYTE)CLAMP(*tmpEdge,BLACK_PIXEL,WHITE_PIXEL);
+		*tmpOutput = static_cast<BYTE>(CLAMP(*tmpEdge,BLACK_PIXEL,WHITE_PIXEL));
 		tmpOutput++;
 		tmpEdge++;
 	}
@@ -135,9 +135,9 @@ void TerrainColorMap::refractalizeBaseMesh (const char *fileName, long Threshold
 	File OEMtgaFile;
 	long result = OEMtgaFile.create(OEMheightName);
 	if (result != NO_ERR)
-		STOP(("Couldnt create height map %s on refractalize.  Error: %d",(const char*)OEMheightName,result));
+		STOP(("Couldnt create height map %s on refractalize.  Error: %d",static_cast<const char*>(OEMheightName),result));
 	
-	OEMtgaFile.write((MemoryPtr)&tgaOutput,sizeof(TGAFileHeader));
+	OEMtgaFile.write(reinterpret_cast<MemoryPtr>(&tgaOutput),sizeof(TGAFileHeader));
 	OEMtgaFile.write(sourceData,Terrain::realVerticesMapSide * Terrain::realVerticesMapSide);
 	
 	OEMtgaFile.close();
@@ -168,7 +168,7 @@ void TerrainColorMap::refractalizeBaseMesh (const char *fileName, long Threshold
 	tmpOutput = outputData;
 	for (int i=0;i<edgeSize*edgeSize;i++)
 	{
-		*tmpOutput = (BYTE)CLAMP(*tmpEdge,BLACK_PIXEL,WHITE_PIXEL);
+		*tmpOutput = static_cast<BYTE>(CLAMP(*tmpEdge,BLACK_PIXEL,WHITE_PIXEL));
 		tmpOutput++;
 		tmpEdge++;
 	}
@@ -191,9 +191,9 @@ void TerrainColorMap::refractalizeBaseMesh (const char *fileName, long Threshold
 	File tgaFile;
 	result = tgaFile.create(heightName);
 	if (result != NO_ERR)
-		STOP(("Couldnt create height map %s on refractalize.  Error: %d",(const char*)heightName,result));
+		STOP(("Couldnt create height map %s on refractalize.  Error: %d",static_cast<const char*>(heightName),result));
 	
-	tgaFile.write((MemoryPtr)&tgaOutput,sizeof(TGAFileHeader));
+	tgaFile.write(reinterpret_cast<MemoryPtr>(&tgaOutput),sizeof(TGAFileHeader));
 
 	MemoryPtr outputByte = outputData;
 	std::vector<unsigned char> output24Store(static_cast<size_t>(edgeSize) * static_cast<size_t>(edgeSize) * 3);
@@ -334,7 +334,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 					MemoryPtr lMap = loadBuffer;
 					for (long i = 0;i<(heightMapInfo.width * heightMapInfo.width);i++)
 					{
-						float val = (float)(*lMap);
+						float val = static_cast<float>((*lMap));
 						lMap += 3;
 						float h = Terrain::userMin;
 						if (0.0 != mapMax)
@@ -356,7 +356,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 					MemoryPtr lMap = loadBuffer;
 					for (long i = 0;i<(heightMapInfo.width * heightMapInfo.width);i++)
 					{
-						float val = (float)(*lMap);
+						float val = static_cast<float>((*lMap));
 						lMap += 4;
 						float h = Terrain::userMin;
 						if (0.0 != mapMax)
@@ -379,7 +379,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 		
 				if (!top)
 				{
-					flipTopToBottom((MemoryPtr)heightMap,32,heightMapInfo.width,heightMapInfo.height);
+					flipTopToBottom(reinterpret_cast<MemoryPtr>(heightMap),32,heightMapInfo.width,heightMapInfo.height);
 				}
 			}
 		}
@@ -723,7 +723,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 	
 	// Shadow map is now done being calculated.
 	// Apply the shadows to the magical terrain.
-	DWORD *cMap = (DWORD *)ColorMap;
+	DWORD *cMap = reinterpret_cast<DWORD *>(ColorMap);
 	for (int i=0;i<(pixelWidth * pixelWidth);i++)
 	{
 		if (shadowMap[i] != 0.0f)
@@ -749,9 +749,9 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 			float currentGreen = (currentColor >> 8) & 0xff;
 			float currentRed = (currentColor >> 16) & 0xff;
 			
-			currentRed *= ((float)lightr / 255.0f);
-			currentBlue *= ((float)lightb / 255.0f);
-			currentGreen *= ((float)lightg / 255.0f);
+			currentRed *= (static_cast<float>(lightr) / 255.0f);
+			currentBlue *= (static_cast<float>(lightb) / 255.0f);
+			currentGreen *= (static_cast<float>(lightg) / 255.0f);
 			
 			lightr = currentRed;
 			lightg = currentGreen;
@@ -773,7 +773,7 @@ inline bool textureIsOKFormat (const char *fileName)
 	if (result == NO_ERR)
 	{
 		struct TGAFileHeader tgaHeader;
-		tgaFile.read((MemoryPtr)&tgaHeader,sizeof(TGAFileHeader));
+		tgaFile.read(reinterpret_cast<MemoryPtr>(&tgaHeader),sizeof(TGAFileHeader));
 		if (((tgaHeader.image_type == UNC_TRUE) || (tgaHeader.image_type == RLE_TRUE)) &&
 			(tgaHeader.width == tgaHeader.height) &&
 			((tgaHeader.width == 32) ||
@@ -923,7 +923,7 @@ void TerrainColorMap::recalcLight(const char *fileName)
 	long result = colorMapFile.open(colorMapName);
 	if (result != NO_ERR)
 	{
-		PAUSE(("Unable to open Terrain Color Map %s.  Cannot Re-light map.  Press Continue", (const char*)colorMapName));
+		PAUSE(("Unable to open Terrain Color Map %s.  Cannot Re-light map.  Press Continue", static_cast<const char*>(colorMapName)));
 		return;
 	}
 			
@@ -942,7 +942,7 @@ void TerrainColorMap::recalcLight(const char *fileName)
 			
 		//-----------------------------------------------------------------
 		// Check if 24 or 32 bit.  If 24, do the necessary stuff to it.
-		ownColorMap((size_t)colorMapInfo.width * (size_t)colorMapInfo.width * sizeof(DWORD));
+		ownColorMap(static_cast<size_t>(colorMapInfo.width) * static_cast<size_t>(colorMapInfo.width) * sizeof(DWORD));
 			
 		if (colorMapInfo.pixel_depth == 24)
 		{
@@ -996,7 +996,7 @@ void TerrainColorMap::recalcLight(const char *fileName)
 		saveTGAFile(ColorMap,fileName,colorMapInfo.width);
 
 		if (skipColormapTiles()) {
-			mc2::fmt::print_out("[COLORMAP] skip {:d}^2 tile GL upload ({:d}x{:d}) [COLORMAP-TILES-RETIRE-1]\n", mc2::fmt::as_i32((long)numTexturesAcross), mc2::fmt::as_i32(colorMapInfo.width), mc2::fmt::as_i32(colorMapInfo.width));
+			mc2::fmt::print_out("[COLORMAP] skip {:d}^2 tile GL upload ({:d}x{:d}) [COLORMAP-TILES-RETIRE-1]\n", mc2::fmt::as_i32(static_cast<long>(numTexturesAcross)), mc2::fmt::as_i32(colorMapInfo.width), mc2::fmt::as_i32(colorMapInfo.width));
 			numTextures = 0;
 		} else {
 			numTextures *= numTextures;
@@ -1013,7 +1013,7 @@ void TerrainColorMap::recalcLight(const char *fileName)
 
 				getColorMapData(txmRAM[i].ourRAM,i, colorMapInfo.width);
 
-				textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
+				textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemory(reinterpret_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
 			}
 		}
 	}
@@ -1059,8 +1059,8 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 			ColorMap = colorMapStore.data();
 			memset(&colorMapInfo, 0, sizeof(colorMapInfo));
 			colorMapInfo.image_type = UNC_TRUE;
-			colorMapInfo.width = (short)jpgW;
-			colorMapInfo.height = (short)jpgW;
+			colorMapInfo.width = static_cast<short>(jpgW);
+			colorMapInfo.height = static_cast<short>(jpgW);
 			colorMapInfo.pixel_depth = 32;
 			colorMapInfo.image_descriptor = 32; // top-down: no flip (decode already top-down)
 			burnedIn = true;
@@ -1076,7 +1076,7 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 		{
 			result = colorMapFile.open(colorMapName);
 			if (result != NO_ERR)
-				STOP(("Unable to open Terrain Color Map %s",(const char*)colorMapName));
+				STOP(("Unable to open Terrain Color Map %s",static_cast<const char*>(colorMapName)));
 		}
 		else
 		{
@@ -1106,7 +1106,7 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 
 			//-----------------------------------------------------------------
 			// Check if 24 or 32 bit.  If 24, do the necessary stuff to it.
-			ownColorMap((size_t)colorMapInfo.width * (size_t)colorMapInfo.width * sizeof(DWORD));
+			ownColorMap(static_cast<size_t>(colorMapInfo.width) * static_cast<size_t>(colorMapInfo.width) * sizeof(DWORD));
 
 			if (colorMapInfo.pixel_depth == 24)
 			{
@@ -1166,7 +1166,7 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 		}
 
 		if (skipColormapTiles()) {
-			mc2::fmt::print_out("[COLORMAP] skip {:d}^2 tile GL upload (reset, {:d}x{:d}) [COLORMAP-TILES-RETIRE-1]\n", mc2::fmt::as_i32((long)numTexturesAcross), mc2::fmt::as_i32(colorMapInfo.width), mc2::fmt::as_i32(colorMapInfo.width));
+			mc2::fmt::print_out("[COLORMAP] skip {:d}^2 tile GL upload (reset, {:d}x{:d}) [COLORMAP-TILES-RETIRE-1]\n", mc2::fmt::as_i32(static_cast<long>(numTexturesAcross)), mc2::fmt::as_i32(colorMapInfo.width), mc2::fmt::as_i32(colorMapInfo.width));
 			numTextures = 0;
 		} else {
 			numTextures *= numTextures;
@@ -1180,7 +1180,7 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 			{
 				getColorMapData(txmRAM[i].ourRAM,i, colorMapInfo.width);
 
-				textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
+				textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemory(reinterpret_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
 			}
 		}
 	}
@@ -1189,8 +1189,8 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 	// and as RGBA8 fallback for BuildColormapAtlas (required when BPTC absent).
 	{
 		if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
-		long pixels = (long)colorMapInfo.width * (long)colorMapInfo.width;
-		cpuColorMap = (unsigned char*)malloc(pixels * 4);
+		long pixels = static_cast<long>(colorMapInfo.width) * static_cast<long>(colorMapInfo.width);
+		cpuColorMap = static_cast<unsigned char*>(malloc(pixels * 4));
 		gosASSERT(cpuColorMap != nullptr);
 		cpuColorMapSize = colorMapInfo.width;
 		memcpy(cpuColorMap, ColorMap, pixels * 4);
@@ -1206,10 +1206,10 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 		mc2::fmt::to_buf(ktx2Name, "{}.burnin", mc2::fmt::safe(fileName));
 		FullPathFileName ktx2Path;
 		ktx2Path.init(texturePath, ktx2Name, ".ktx2");
-		FILE* probe = std::fopen((const char*)ktx2Path, "rb");
+		FILE* probe = std::fopen(static_cast<const char*>(ktx2Path), "rb");
 		if (probe) {
 			fclose(probe);
-			mc2::fmt::to_buf_n(ktx2ColormapPath, sizeof(ktx2ColormapPath), "{}", mc2::fmt::safe((const char*)ktx2Path));
+			mc2::fmt::to_buf_n(ktx2ColormapPath, sizeof(ktx2ColormapPath), "{}", mc2::fmt::safe(static_cast<const char*>(ktx2Path)));
 			mc2::fmt::print_out("[COLORMAP] COLORMAP-BC7-KTX2-1: found sidecar {}\n", mc2::fmt::safe(ktx2ColormapPath));
 		}
 	}

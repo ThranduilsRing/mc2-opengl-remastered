@@ -80,7 +80,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 		gos_SetRenderState( gos_State_Fog, 0);
 	}
 
-	TG_TypeShapePtr theShape = (TG_TypeShapePtr)myType;
+	TG_TypeShapePtr theShape = static_cast<TG_TypeShapePtr>(myType);
 
 	gos_SetRenderState( gos_State_AlphaTest, theShape->alphaTestOn);
 	gos_SetRenderState( gos_State_Filter, theShape->filterOn ? gos_FilterBiLinear : gos_FilterNone);
@@ -194,10 +194,10 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 						{
 							const char* nm = mcTextureManager ? mcTextureManager->getTextureName(nodeIdx) : nullptr;
 							fprintf(f,"[PREVIEW-TEX] local=%ld node=%lu gosHandle=%lu alpha=%d name=%s\n",
-								(long)triType.localTextureHandle,
-								(unsigned long)nodeIdx,
-								(unsigned long)theShape->listOfTextures[triType.localTextureHandle].gosTextureHandle,
-								(int)theShape->listOfTextures[triType.localTextureHandle].textureAlpha,
+								static_cast<long>(triType.localTextureHandle),
+								static_cast<unsigned long>(nodeIdx),
+								static_cast<unsigned long>(theShape->listOfTextures[triType.localTextureHandle].gosTextureHandle),
+								static_cast<int>(theShape->listOfTextures[triType.localTextureHandle].textureAlpha),
 								nm ? nm : "(null)");
 							fclose(f);
 						}
@@ -377,15 +377,15 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 				fprintf(stderr,
 					"[BUILDING_PBR_TRACE] TG_Shape::Render enqueue shape=%p texNode=%lu localTex=%lu visible=%ld\n",
 					this,
-					(unsigned long)texNode,
-					(unsigned long)triType.localTextureHandle,
+					static_cast<unsigned long>(texNode),
+					static_cast<unsigned long>(triType.localTextureHandle),
 					numVisibleFaces);
 				fflush(stderr);
 			}
 		}
 		else if (traceBuildingPbr) {
 			fprintf(stderr, "[BUILDING_PBR_TRACE] TG_Shape::Render no buffers shape=%p ib=%p vb=%p\n",
-				this, (void*)theShape->ib_, (void*)theShape->vb_);
+				this, static_cast<void*>(theShape->ib_), static_cast<void*>(theShape->vb_));
 			fflush(stderr);
 		}
 	}
@@ -393,9 +393,9 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 		TG_TypeTriangle triType = theShape->listOfTypeTriangles[0];
 		fprintf(stderr,
 			"[BUILDING_PBR_TRACE] TG_Shape::Render skip indexed shape=%p spot=%d window=%d alpha=%d alphaValue=%u localTex=%lu\n",
-			this, (int)isSpotlight, (int)isWindow,
-			(int)theShape->listOfTextures[triType.localTextureHandle].textureAlpha,
-			(unsigned)alphaValue, (unsigned long)triType.localTextureHandle);
+			this, static_cast<int>(isSpotlight), static_cast<int>(isWindow),
+			static_cast<int>(theShape->listOfTextures[triType.localTextureHandle].textureAlpha),
+			static_cast<unsigned>(alphaValue), static_cast<unsigned long>(triType.localTextureHandle));
 		fflush(stderr);
 	}
 
@@ -453,7 +453,7 @@ bool TG_Shape::PerPolySelect (float mouseX, float mouseY)
 			return false;
 	}
 
-	TG_TypeShapePtr theShape = (TG_TypeShapePtr)myType;
+	TG_TypeShapePtr theShape = static_cast<TG_TypeShapePtr>(myType);
  	for (long j=0;j<numVisibleFaces;j++)
 	{
 		if (listOfVisibleFaces[j] < numTriangles)

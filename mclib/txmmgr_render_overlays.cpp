@@ -146,7 +146,7 @@ void MC_TextureManager::renderListsOverlaysNonTerrainAlpha (void)
                     (masterVertexNodes[i].vertices))
             {
 #ifdef MC2_VULKAN_ISLAND
-                vkLegacySubmitNode(i, MC2_LEGACY_PASS_ALPHA, (uint32_t)states);
+                vkLegacySubmitNode(i, MC2_LEGACY_PASS_ALPHA, static_cast<uint32_t>(states));
 #endif
                 masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
             }
