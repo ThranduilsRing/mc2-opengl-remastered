@@ -52,12 +52,12 @@
    "LG03": 257,
    "LG04": 5,
    "LG05": 137,
-   "LG06": 437,
+   "LG06": 434,
    "LG07": 0,
    "LG08": 234,
    "LG09": 0,
    "LG10": 39,
-   "LG11": 88,
+   "LG11": 86,
    "LG12a": 88,
    "LG12b": 30,
    "LG13": 316,
@@ -591,7 +591,7 @@
    "LG10": 4
   },
   "GameOS/gameos/gos_rdoc_capture.cpp": {
-   "LG06": 2
+   "LG06": 1
   },
   "GameOS/gameos/gos_render.cpp": {
    "LG03": 4,
@@ -782,8 +782,8 @@
   },
   "GameOS/gameos/gos_visual_capture.cpp": {
    "LG05": 2,
-   "LG06": 7,
-   "LG11": 5,
+   "LG06": 5,
+   "LG11": 3,
    "LG17": 1,
    "LG19": 1
   },
@@ -3975,7 +3975,7 @@
    "LG20": 3
   }
  },
- "head": "614a61c83",
+ "head": "21646418e",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

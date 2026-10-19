@@ -55,6 +55,7 @@
 #include <cstring>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <algorithm>
 
@@ -216,7 +217,7 @@ bool write_png_rgb(const char* path, int w, int h,
 // ---------------------------------------------------------------------------
 // Capture tuple sidecar JSON.
 // ---------------------------------------------------------------------------
-void json_escape(const std::string& s, std::string& out) {
+void json_escape(std::string_view s, std::string& out) {
     for (char c : s) {
         if (c == '"' || c == '\\') { out.push_back('\\'); out.push_back(c); }
         else if (c == '\n') { out += "\\n"; }
@@ -258,8 +259,8 @@ constexpr unsigned kMaxCaptureHold = 600;
 VkCaptureReq g_vkReq;
 const char* g_readbackSource = "vk_present";   // VK-VISUAL-CAPTURE-1: sidecar "readback_source"
 
-void write_sidecar(const std::string& jsonPath, const std::string& mission,
-                   const std::string& label, unsigned int frame,
+void write_sidecar(const std::string& jsonPath, std::string_view mission,
+                   std::string_view label, unsigned int frame,
                    int w, int h, long triggerFrame, bool deterministic) {
     FILE* f = fopen(jsonPath.c_str(), "wb");
     if (!f) {
@@ -355,12 +356,12 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
 // ---------------------------------------------------------------------------
 // Shared capture op: PNG + sidecar with deterministic <dir>/<base>.{png,json}.
 // ---------------------------------------------------------------------------
-void capture_to(const std::string& dir, const std::string& base,
-                const std::string& mission, const std::string& label,
+void capture_to(std::string_view dir, std::string_view base,
+                std::string_view mission, std::string_view label,
                 unsigned int frame, int w, int h,
                 long triggerFrame, bool deterministic) {
-    std::string png = dir + "/" + base + ".png";
-    std::string js  = dir + "/" + base + ".json";
+    std::string png = std::string(dir).append("/").append(base).append(".png");
+    std::string js  = std::string(dir).append("/").append(base).append(".json");
     {
         // VK-VISUAL-CAPTURE-1: defer the PNG to this frame's VK present
         // readback (vkCaptureDeliver). Sidecar now: it snapshots per-frame
