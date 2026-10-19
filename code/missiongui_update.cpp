@@ -1004,8 +1004,8 @@ void MissionInterfaceManager::update (void)
 	}
 
 	if (s_mfOn)
-		mfFrameEnd(static_cast<unsigned long long>(std::chrono::duration_cast)<std::chrono::nanoseconds>(
-			std::chrono::steady_clock::now() - _mifT0).count());
+		mfFrameEnd(static_cast<unsigned long long>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+			std::chrono::steady_clock::now() - _mifT0).count()));
 }
 
 	
