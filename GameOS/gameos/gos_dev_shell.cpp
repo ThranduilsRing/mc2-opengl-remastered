@@ -15,6 +15,7 @@
 #include <cstring>
 #include <map>
 #include <string>
+#include <string_view>
 
 #include "utils/shader_builder.h"
 #include "utils/graphics.h"
@@ -64,9 +65,9 @@ bool shellEnabled()
 // --- tiny flat-JSON helpers -------------------------------------------
 // Requests are small flat objects from our own client; a full JSON parser
 // is not warranted for v0. Extracts `"key" : "value"` / bare tokens.
-std::string jsonGetString(const std::string& src, const char* key)
+std::string jsonGetString(std::string_view src, std::string_view key)
 {
-    const std::string pat = std::string("\"") + key + "\"";
+    const std::string pat = std::string("\"").append(key).append("\"");
     size_t p = src.find(pat);
     if (p == std::string::npos) return "";
     p = src.find(':', p + pat.size());
@@ -85,17 +86,17 @@ std::string jsonGetString(const std::string& src, const char* key)
     }
     // bare token (true/false/number)
     size_t e = src.find_first_of(",}\n\r ", p);
-    return src.substr(p, (e == std::string::npos ? src.size() : e) - p);
+    return std::string(src.substr(p, (e == std::string::npos ? src.size() : e) - p));
 }
 
-bool jsonGetBool(const std::string& src, const char* key, bool def)
+bool jsonGetBool(std::string_view src, std::string_view key, bool def)
 {
     const std::string v = jsonGetString(src, key);
     if (v.empty()) return def;
     return v == "true" || v == "1";
 }
 
-std::string jsonEscape(const std::string& s)
+std::string jsonEscape(std::string_view s)
 {
     std::string out;
     out.reserve(s.size() + 8);
@@ -116,7 +117,7 @@ std::string jsonEscape(const std::string& s)
 
 // Reply is ALWAYS {"ok":..,"error":..,"version":1,"data":{..}} — versioned
 // from day one so future MCP/editor clients do not rot.
-std::string makeReply(bool ok, const std::string& error, const std::string& dataJson)
+std::string makeReply(bool ok, std::string_view error, std::string_view dataJson)
 {
     std::string r = "{\"ok\":";
     r += ok ? "true" : "false";
@@ -196,7 +197,7 @@ std::string cmdPing(uint32_t frame)
 // everything, {"name":"..."} restricts to one program. Full compile/link
 // error text is returned in the reply; on failure the previous program stays
 // live (stated explicitly — no silent stale state).
-std::string cmdReloadShaders(const std::string& req)
+std::string cmdReloadShaders(std::string_view req)
 {
     const bool force = jsonGetBool(req, "force", false);
     const std::string only = jsonGetString(req, "name");
@@ -248,7 +249,7 @@ std::string sanitizeShotName(std::string name, uint32_t frame)
     return "dev_shell_out/" + base + ".tga";
 }
 
-std::string cmdScreenshot(const std::string& req, uint32_t frame)
+std::string cmdScreenshot(std::string_view req, uint32_t frame)
 {
     if (!s_pendingShotPath.empty())
         return makeReply(false, "screenshot already pending: " + s_pendingShotPath, "");
@@ -265,7 +266,7 @@ std::string cmdLastScreenshot()
         "{\"result\":\"" + jsonEscape(s_lastShotResult.empty() ? "none" : s_lastShotResult) + "\"}");
 }
 
-std::string cmdGetGate(const std::string& req)
+std::string cmdGetGate(std::string_view req)
 {
     const std::string name = jsonGetString(req, "name");
     if (name.empty()) return makeReply(false, "get_gate: missing name", "");
@@ -281,7 +282,7 @@ std::string cmdGetGate(const std::string& req)
 // init (`static const` reads — the majority) need a restart. We cannot
 // distinguish the two generically here, so the reply says exactly that
 // instead of pretending the set took effect.
-std::string cmdSetGate(const std::string& req)
+std::string cmdSetGate(std::string_view req)
 {
     const std::string name = jsonGetString(req, "name");
     const std::string value = jsonGetString(req, "value");
@@ -306,7 +307,7 @@ std::string cmdSetGate(const std::string& req)
 // so the next use re-uploads fresh pixels. Node indices stay stable (widgets
 // hold node ids). FST-only textures (no loose file) are skipped and counted.
 // Runs at the main-thread poll point = the GL thread, so destroy is safe.
-std::string cmdTextureRefresh(const std::string& req)
+std::string cmdTextureRefresh(std::string_view req)
 {
     const std::string name = jsonGetString(req, "name");
     if (name.empty()) return makeReply(false, "texture_refresh: missing name (substring of texture path)", "");
@@ -327,7 +328,7 @@ std::string cmdTextureRefresh(const std::string& req)
 // collectors' in-process flags (same mechanism as the editor Frame Inspector)
 // so live data flows without an env-var restart — call with collect:true,
 // wait a frame or two, call again to read populated rows.
-std::string cmdFramegraph(const std::string& req)
+std::string cmdFramegraph(std::string_view req)
 {
     using namespace RenderCore;
 

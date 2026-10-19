@@ -52,12 +52,12 @@
    "LG03": 257,
    "LG04": 5,
    "LG05": 137,
-   "LG06": 451,
+   "LG06": 441,
    "LG07": 0,
    "LG08": 234,
    "LG09": 0,
    "LG10": 39,
-   "LG11": 89,
+   "LG11": 88,
    "LG12a": 88,
    "LG12b": 30,
    "LG13": 316,
@@ -494,9 +494,9 @@
    "LG06": 1
   },
   "GameOS/gameos/gos_dev_shell.cpp": {
-   "LG06": 14,
+   "LG06": 4,
    "LG08": 4,
-   "LG11": 17
+   "LG11": 16
   },
   "GameOS/gameos/gos_dev_shell.h": {
    "LG02": 1,
@@ -3978,7 +3978,7 @@
    "LG20": 3
   }
  },
- "head": "e77f8bc6c",
+ "head": "f8a6dd33b",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
