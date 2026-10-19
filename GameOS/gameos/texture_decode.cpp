@@ -142,6 +142,28 @@ std::optional<DecodedTexture> decodeMemory(const uint8_t* bytes, size_t size, co
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected {}: no bytes", mc2::fmt::safe(nameForLog ? nameForLog : "NO NAME"));
         return std::nullopt;
     }
+    if (size >= 12 && bytes[0] == 0xab && bytes[1] == 'K' && bytes[2] == 'T' && bytes[3] == 'X') {
+        auto parsed = RenderCore::ktxParse(std::span<const uint8_t>(bytes, size));
+        if (!parsed.image) return std::nullopt;
+        const auto& img = *parsed.image;
+        DecodedTexture out;
+        out.isSrgb = img.isSrgb; out.sourceVkFormat = img.vkFormat; out.sourceAlpha = img.alpha;
+        out.wantMipmaps = wantsMipmaps(hints);
+        for (int level = 0; level < (out.wantMipmaps ? img.mipCount : 1); ++level) {
+            DecodedTexture mip;
+            mip.width = mipExtent(img.width, level); mip.height = mipExtent(img.height, level);
+            if (img.isCompressed) {
+                if (!RenderCore::ktxDecodeBlocksToRgba8(img, level, mip.pixels)) return std::nullopt;
+            } else {
+                const size_t at = img.mipByteOffsets[level], n = size_t(mip.width) * mip.height * 4;
+                mip.pixels.assign(img.pixels.begin() + at, img.pixels.begin() + at + n);
+            }
+            applyFormatPolicy(mip, requested, false);
+            if (level == 0) { out.width = mip.width; out.height = mip.height; out.format = mip.format; out.pixels = mip.pixels; }
+            out.mipLevels.push_back(std::move(mip.pixels));
+        }
+        return out;
+    }
     // The texture cache stores raw file bytes; the signature picks the decoder (UI pages reference .png art through this path).
     const bool png = hasPngSignature(bytes, size);
     if (!png && !tgaFits(bytes, size)) {

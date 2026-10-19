@@ -15,6 +15,8 @@
 #include <cstdint>
 #include <utility>
 #include <mutex>
+#include <memory>
+#include "KtxLoader.h"
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -30,11 +32,12 @@ constexpr uint32_t kNoTextureNode = 0xFFFFFFFFu;
 // a paint scheme hash); `format` and `hints` are the usage: colour space + alpha policy (the format) and mip policy (the hints).
 struct TextureKey {
     std::string source;
+    uint32_t    cookVersion = 1;
     uint32_t    variant = 0;
     uint32_t    format = 0;
     uint32_t    hints = 0;
     bool operator==(const TextureKey& o) const {
-        return variant == o.variant && format == o.format && hints == o.hints && source == o.source;
+        return cookVersion == o.cookVersion && variant == o.variant && format == o.format && hints == o.hints && source == o.source;
     }
 };
 
@@ -43,6 +46,7 @@ struct TextureKeyHash {
         uint64_t h = 1469598103934665603ull;
         auto mix = [&](uint64_t v) { h ^= v; h *= 1099511628211ull; };
         for (unsigned char c : k.source) mix(c);
+        mix(k.cookVersion);
         mix(k.variant);
         mix(k.format);
         mix(k.hints);
@@ -73,6 +77,16 @@ struct TextureDimensions {
     uint32_t width = 16, height = 16;
     uint32_t logicalWidth = 16, logicalHeight = 16;
 };
+
+// Choose provider before representation: a mod TGA beats base KTX even in prefer-cooked mode.
+inline bool preferCookedSource(bool sourceExists, int sourcePriority, int cookedPriority, bool preferCooked) {
+    return !sourceExists || cookedPriority < sourcePriority || (cookedPriority == sourcePriority && preferCooked);
+}
+inline uint64_t textureContentHash(const uint8_t* bytes, size_t size) {
+    uint64_t hash = 1469598103934665603ull;
+    for (size_t i = 0; i < size; ++i) { hash ^= bytes[i]; hash *= 1099511628211ull; }
+    return hash;
+}
 
 class TextureService {
 public:
@@ -124,6 +138,13 @@ public:
         return e ? e->dimensions : TextureDimensions{};
     }
 
+    std::shared_ptr<const KtxImage> cooked(const TextureKey& key) const {
+        std::lock_guard<std::mutex> lk(mu_);
+        auto it = cooked_.find(key); return it == cooked_.end() ? nullptr : it->second;
+    }
+    void cacheCooked(const TextureKey& key, std::shared_ptr<const KtxImage> image) {
+        std::lock_guard<std::mutex> lk(mu_); cooked_[key] = std::move(image);
+    }
     // One user of the node's texture let go (mirrors the manager's reference count). The entry stays until the node dies.
     void dropRef(uint32_t node) {
         std::lock_guard<std::mutex> lk(mu_);
@@ -192,6 +213,7 @@ public:
         for (uint32_t i = 0; i < entries_.size(); ++i)
             if (entries_[i].live) retire(i);
         byNode_.clear();
+        cooked_.clear();
     }
 
 private:
@@ -220,6 +242,7 @@ private:
         e.key = TextureKey{};
     }
 
+    std::unordered_map<TextureKey, std::shared_ptr<const KtxImage>, TextureKeyHash> cooked_;
     mutable std::mutex mu_;
     std::vector<Entry> entries_;
     std::vector<uint32_t> free_;

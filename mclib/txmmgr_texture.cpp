@@ -167,12 +167,43 @@ DWORD MC_TextureManager::textureInstanceExists (const char *textureFullPathName,
 	return 0;
 }
 
+// Synchronous VFS extraction: File/FastFile scratch is never used by a worker. P3 owns asynchronous readers.
+static bool txmLoadCooked(const char* source, const char* sidecar, bool prefer, RenderCore::KtxImage& out)
+{
+    File cooked;
+    if (cooked.open(sidecar) != NO_ERR) return false;
+    File original;
+    const bool exists = original.open(source) == NO_ERR;
+    const int sourceRank = LookupModPriority(source) + (exists && !original.isLoadedFromDisk() ? 1 : 0);
+    const int cookedRank = LookupModPriority(sidecar) + (!cooked.isLoadedFromDisk() ? 1 : 0);
+    if (!RenderCore::preferCookedSource(exists, sourceRank, cookedRank, prefer)) return false;
+    const long size = cooked.fileSize();
+    if (size <= 0 || size > 256 * 1024 * 1024) return false;
+    std::vector<uint8_t> bytes(size);
+    if (cooked.read(bytes.data(), size) != size) return false;
+    const char* mod = LookupModOwner(sidecar);
+    const std::string provider = mod ? std::string("mod:") + mod : cooked.isLoadedFromDisk() ? "base-loose" : "fst";
+    RenderCore::TextureKey key;
+    key.source = RenderCore::makeTextureSourceId(provider, sidecar, RenderCore::textureContentHash(bytes.data(), bytes.size()));
+    auto& service = RenderCore::textureService();
+    if (auto cached = service.cooked(key)) { out = *cached; return true; }
+    auto parsed = RenderCore::ktxParse(bytes);
+    if (!parsed.image) return false;
+    out = std::move(*parsed.image);
+    service.cacheCooked(key, std::make_shared<const RenderCore::KtxImage>(out));
+    return true;
+}
+
 // P4a: the named node is reported to the texture service (key <-> handle <-> node). The key is built from the node's own fields, so a cache hit with
 // different caller hints still resolves to the first load's identity, exactly as the manager dedupes. No behavior change.
 static void txmIdentityAcquire (const MC_TextureNode& n, long node)
 {
 	RenderCore::TextureKey k;
-	k.source = RenderCore::makeTextureSourceId("txmmgr", n.nodeName ? n.nodeName : "", 0);
+	auto& service = RenderCore::textureService();
+    if (auto existing = service.handleOfNode((uint32_t)node); existing.isValid()) { service.retain(existing); return; }
+    const char* mod = n.nodeName ? LookupModOwner(n.nodeName) : nullptr;
+    k.source = RenderCore::makeTextureSourceId(mod ? mod : "legacy-vfs", n.nodeName ? n.nodeName : "",
+        n.textureData ? RenderCore::textureContentHash((const uint8_t*)n.textureData, n.lzCompSize) : 0);
 	k.variant = (uint32_t)n.uniqueInstance;
 	k.format = (uint32_t)n.key;
 	k.hints = (uint32_t)n.hints;
@@ -279,7 +310,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	// tools/fst_repack_drop.py) the .ktx2 is decoded on demand. Set =0 to force
 	// the legacy "tga or bust" behavior.
 	static const int s_ktxPrimaryMode = mc2::gate::get<"MC2_TEXMGR_KTX_PRIMARY">();
-	if (s_ktxPrimaryMode == 2 || (s_ktxPrimaryMode == 1 && textureFileOpenResult != NO_ERR))
+	if (s_ktxPrimaryMode != 0)
 	{
 		{
 			char sidecar[1024];
@@ -292,9 +323,8 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 			RenderCore::KtxImage img;
 			std::vector<uint8_t> rgba;
 			int kw = 0, kh = 0;
-			if (RenderCore::ktxLoadRgba8(sidecar, img) && img.isCompressed &&
-				(img.vkFormat == 145 || img.vkFormat == 146) && img.width == img.height &&
-				RenderCore::ktxDecodeBc7ToRgba8(img, 0, rgba, &kw, &kh) && kw == kh && kw > 0)
+			if (txmLoadCooked(textureFullPathName, sidecar, s_ktxPrimaryMode == 2, img) && img.isCompressed && img.width == img.height &&
+				RenderCore::ktxDecodeBlocksToRgba8(img, 0, rgba, &kw, &kh) && kw == kh && kw > 0)
 			{
 				const DWORD txmSize = (DWORD)(kw * kh * 4);
 				masterTextureNodes[i].uvScale = 4;
@@ -821,15 +851,17 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 						if (haveRoom)
 						{
 							// Disk-only probe (std::fopen, NOT File/FastFile).
-							FILE* probe = std::fopen(sidecar, "rb");
+							File probeFile;
+                            const bool allowed = probeFile.open(sidecar) == NO_ERR;
+                            const bool probe = allowed;
 							if (!probe)
 							{
 							}
 							else
 							{
-								std::fclose(probe);
+								probeFile.close();
 								RenderCore::KtxImage img;
-								if (RenderCore::ktxLoadRgba8(sidecar, img) &&
+								if (txmLoadCooked(nodeName, sidecar, true, img) &&
 									img.isCompressed &&
 									(img.vkFormat == 145 || img.vkFormat == 146))
 								{

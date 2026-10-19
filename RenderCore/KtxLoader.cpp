@@ -6,6 +6,7 @@
 #include "../GameOS/gameos/utils/mc2log.h"
 #include "../GameOS/include/mc2fmt.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -61,11 +62,11 @@ static uint64_t readU64(const uint8_t* p)
 }
 
 // The byte length level `lvl` of a w x h image must have: 4x4 blocks of 16 bytes when block-compressed, else 4 bytes a pixel.
-static uint64_t levelBytes(uint32_t w, uint32_t h, uint32_t lvl, bool blockCompressed)
+static uint64_t levelBytes(uint32_t w, uint32_t h, uint32_t lvl, uint32_t blockSize)
 {
     const uint64_t lw = (w >> lvl) ? (w >> lvl) : 1u;
     const uint64_t lh = (h >> lvl) ? (h >> lvl) : 1u;
-    return blockCompressed ? ((lw + 3u) / 4u) * ((lh + 3u) / 4u) * 16u : lw * lh * 4u;
+    return blockSize ? ((lw + 3u) / 4u) * ((lh + 3u) / 4u) * blockSize : lw * lh * 4u;
 }
 
 KtxParseResult ktxParse(std::span<const uint8_t> file)
@@ -91,7 +92,11 @@ KtxParseResult ktxParse(std::span<const uint8_t> file)
     const bool isRgba8 = vkFormat == kVkFormatR8G8B8A8Unorm || vkFormat == kVkFormatR8G8B8A8Srgb;
     const bool isBc6h = vkFormat == kVkFormatBc6hUfloat || vkFormat == kVkFormatBc6hSfloat;
     const bool isBc7 = vkFormat == kVkFormatBc7UnormBlock || vkFormat == kVkFormatBc7SrgbBlock;
-    const bool blockCompressed = isBc6h || isBc7;   // both 4x4 blocks of 16 bytes
+    const bool isBc1 = vkFormat >= 131 && vkFormat <= 134;
+    const bool isBc3 = vkFormat == 137 || vkFormat == 138;
+    const bool isBc5 = vkFormat == 141;
+    const bool blockCompressed = isBc1 || isBc3 || isBc5 || isBc6h || isBc7;
+    const uint32_t blockSize = isBc1 ? 8u : blockCompressed ? 16u : 0u;   // both 4x4 blocks of 16 bytes
     if (!isRgba8 && !blockCompressed) { r.error = "unsupported vkFormat"; return r; }
     // typeSize is 1 for both the 8-bit RGBA formats and the block formats.
     if (typeSize != 1 || depth != 0 || layers > 1 || faces != 1 || supercompression != 0) {
@@ -111,8 +116,16 @@ KtxParseResult ktxParse(std::span<const uint8_t> file)
         const uint8_t* e = bytes + kLevelIndexOffset + std::size_t{lvl} * kLevelEntryBytes;
         const uint64_t offset = readU64(e);
         const uint64_t length = readU64(e + 8);
-        if (length != levelBytes(width, height, lvl, blockCompressed)) { r.error = "level byte length does not match the format"; return r; }
+        if (length != levelBytes(width, height, lvl, blockSize)) { r.error = "level byte length does not match the format"; return r; }
         if (offset > size || length > size - offset) { r.error = "level data runs past the end of the file"; return r; }
+        if (readU64(e + 16) != length || offset < kLevelIndexOffset + levels * kLevelEntryBytes) {
+            r.error = "invalid stored length or level overlaps header"; return r;
+        }
+        for (uint32_t prior = 0; prior < lvl; ++prior) {
+            const uint8_t* p = bytes + kLevelIndexOffset + prior * kLevelEntryBytes;
+            const uint64_t po = readU64(p), pl = readU64(p + 8);
+            if (offset < po + pl && po < offset + length) { r.error = "overlapping levels"; return r; }
+        }
         img.mipByteOffsets[lvl] = total;
         total += length;
     }
@@ -123,11 +136,13 @@ KtxParseResult ktxParse(std::span<const uint8_t> file)
     }
     img.width = static_cast<int>(width);
     img.height = static_cast<int>(height);
-    img.isSrgb = vkFormat == kVkFormatR8G8B8A8Srgb || vkFormat == kVkFormatBc7SrgbBlock;   // BC6H has no sRGB variant
+    img.isSrgb = vkFormat == 43 || vkFormat == 132 || vkFormat == 134 || vkFormat == 138 || vkFormat == 146;   // BC6H has no sRGB variant
     img.mipCount = static_cast<int>(levels);
     img.vkFormat = vkFormat;
     img.isCompressed = blockCompressed;
-    img.blockSizeBytes = blockCompressed ? 16u : 0u;
+    img.blockSizeBytes = blockSize;
+    img.alpha = (vkFormat == 131 || vkFormat == 132 || isBc5 || isBc6h) ? KtxAlpha::Opaque
+              : isBc1 ? KtxAlpha::Cutout : KtxAlpha::Straight;
     r.image = std::move(img);
     return r;
 }
@@ -156,32 +171,24 @@ bool ktxLoadRgba8(const char* path, KtxImage& out)
     return true;
 }
 
-bool ktxDecodeBc7ToRgba8(const KtxImage& img, int level,
+bool ktxDecodeBlocksToRgba8(const KtxImage& img, int level,
                          std::vector<uint8_t>& outRgba,
                          int* outW, int* outH)
 {
-    // ---- Preconditions ----
-    if (!img.isCompressed ||
-        (img.vkFormat != kVkFormatBc7UnormBlock && img.vkFormat != kVkFormatBc7SrgbBlock) ||
-        img.blockSizeBytes != 16u ||
-        level < 0 || level >= img.mipCount ||
-        static_cast<std::size_t>(level) >= img.mipByteOffsets.size()) {
-        return false;
-    }
-
-    // Level dimensions (same halving rule the header validation used).
-    const uint32_t w = (static_cast<uint32_t>(img.width)  >> level) ? (static_cast<uint32_t>(img.width)  >> level) : 1u;
-    const uint32_t h = (static_cast<uint32_t>(img.height) >> level) ? (static_cast<uint32_t>(img.height) >> level) : 1u;
-
-    const uint32_t blocksWide = (w + 3u) / 4u;
-    const uint32_t blocksHigh = (h + 3u) / 4u;
-    const uint64_t levelBytes = static_cast<uint64_t>(blocksWide) * blocksHigh * 16u;
-
-    // Bounds-check the stored block stream for this level.
-    const std::size_t levelOffset = static_cast<std::size_t>(img.mipByteOffsets[level]);
-    if (levelOffset + levelBytes > img.pixels.size()) {
-        return false;
-    }
+    const bool bc1 = img.vkFormat >= 131 && img.vkFormat <= 134;
+    const bool bc3 = img.vkFormat == 137 || img.vkFormat == 138;
+    const bool bc5 = img.vkFormat == 141;
+    const bool bc7 = img.vkFormat == 145 || img.vkFormat == 146;
+    const uint32_t bs = bc1 ? 8u : 16u;
+    if (!img.isCompressed || !(bc1 || bc3 || bc5 || bc7) || img.blockSizeBytes != bs ||
+        img.width <= 0 || img.height <= 0 || img.width > kKtxMaxEdge || img.height > kKtxMaxEdge ||
+        level < 0 || level >= 32 || level >= img.mipCount || static_cast<size_t>(level) >= img.mipByteOffsets.size()) return false;
+    const uint32_t w = std::max(1u, uint32_t(img.width) >> level);
+    const uint32_t h = std::max(1u, uint32_t(img.height) >> level);
+    const uint32_t blocksWide = (w + 3u) / 4u, blocksHigh = (h + 3u) / 4u;
+    const uint64_t levelBytes = uint64_t(blocksWide) * blocksHigh * bs;
+    const uint64_t levelOffset = img.mipByteOffsets[level];
+    if (levelOffset > img.pixels.size() || levelBytes > img.pixels.size() - levelOffset) return false;
     const uint8_t* src = img.pixels.data() + levelOffset;
 
     // ---- Decode block-by-block into the tightly-packed RGBA8 output ----
@@ -195,31 +202,37 @@ bool ktxDecodeBc7ToRgba8(const KtxImage& img, int level,
 
     for (uint32_t by = 0; by < blocksHigh; ++by) {
         for (uint32_t bx = 0; bx < blocksWide; ++bx) {
-            const uint8_t* block = src + (static_cast<std::size_t>(by) * blocksWide + bx) * 16u;
+            const uint8_t* block = src + (static_cast<std::size_t>(by) * blocksWide + bx) * bs;
             const uint32_t px = bx * 4u;
             const uint32_t py = by * 4u;
             const uint32_t bw = (px + 4u <= w) ? 4u : (w - px); // valid columns
             const uint32_t bh = (py + 4u <= h) ? 4u : (h - py); // valid rows
 
-            if (bw == 4u && bh == 4u) {
-                // Interior/aligned block: decode directly into the destination.
-                uint8_t* dst = outRgba.data() + static_cast<std::size_t>(py) * rowPitch + px * 4u;
-                bcdec_bc7(block, dst, static_cast<int>(rowPitch));
-            } else {
-                // Edge block: decode into scratch, copy the valid sub-rectangle.
-                bcdec_bc7(block, blockTmp, 4 * 4);
-                for (uint32_t r = 0; r < bh; ++r) {
-                    std::memcpy(outRgba.data() + static_cast<std::size_t>(py + r) * rowPitch + px * 4u,
-                                blockTmp + static_cast<std::size_t>(r) * (4 * 4),
-                                static_cast<std::size_t>(bw) * 4u);
+            if (bc1) bcdec_bc1(block, blockTmp, 16);
+            else if (bc3) bcdec_bc3(block, blockTmp, 16);
+            else if (bc7) bcdec_bc7(block, blockTmp, 16);
+            else {
+                uint8_t rg[32]; bcdec_bc5(block, rg, 8);
+                for (int p = 0; p < 16; ++p) {
+                    blockTmp[p*4] = rg[p*2]; blockTmp[p*4+1] = rg[p*2+1];
+                    blockTmp[p*4+2] = 0; blockTmp[p*4+3] = 255;
                 }
             }
+            if (img.vkFormat == 131 || img.vkFormat == 132)
+                for (int p = 0; p < 16; ++p) blockTmp[p*4+3] = 255;
+            for (uint32_t r = 0; r < bh; ++r)
+                std::memcpy(outRgba.data() + size_t(py + r) * rowPitch + px * 4u,
+                            blockTmp + r * 16, bw * 4u);
         }
     }
 
     if (outW) *outW = static_cast<int>(w);
     if (outH) *outH = static_cast<int>(h);
     return true;
+}
+
+bool ktxDecodeBc7ToRgba8(const KtxImage& img, int level, std::vector<uint8_t>& out, int* w, int* h) {
+    return (img.vkFormat == 145 || img.vkFormat == 146) && ktxDecodeBlocksToRgba8(img, level, out, w, h);
 }
 
 } // namespace RenderCore

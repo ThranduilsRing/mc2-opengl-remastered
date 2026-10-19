@@ -208,3 +208,17 @@ TEST_CASE("TextureService: adopt retain dimensions and generation exhaustion") {
     CHECK_FALSE(s.isLive(h));
     CHECK(fresh.index() != h.index());
 }
+
+TEST_CASE("TextureService: provider precedence and cooked cache versions") {
+    CHECK_FALSE(preferCookedSource(true, 0, 1000000, true)); // mod TGA beats base KTX
+    CHECK(preferCookedSource(false, 1000000, 1000001, false)); // FST KTX only
+    CHECK(preferCookedSource(true, 3, 0, false)); // active mod KTX beats dependency source
+    CHECK_FALSE(preferCookedSource(true, 0, 1, true)); // dependency KTX cannot outrank active TGA
+    TextureService s;
+    auto key = keyOf("mod:Exodus", "skin.ktx2", 5);
+    auto img = std::make_shared<KtxImage>(); img->width=8;
+    s.cacheCooked(key,img); CHECK(s.cooked(key)->width==8);
+    ++key.cookVersion; CHECK_FALSE(bool(s.cooked(key)));
+    key=keyOf("base", "skin.ktx2",5); CHECK_FALSE(bool(s.cooked(key)));
+    key=keyOf("mod:Exodus", "skin.ktx2",6); CHECK_FALSE(bool(s.cooked(key)));
+}

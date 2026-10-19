@@ -159,3 +159,33 @@ TEST_CASE("ktx2: a full BC7 chain packs the levels in order with their byte offs
     CHECK(r.image->pixels[80] == 0x12);
     CHECK(r.image->pixels[111] == 0x13);
 }
+
+TEST_CASE("ktx2: BC1 BC3 BC5 metadata and bounded CPU decode") {
+    for (uint32_t fmt : {131u,132u,133u,134u,137u,138u,141u}) {
+        auto bytes = makeKtx2(fmt, 3, 2, fmt <= 134 ? 8 : 16);
+        auto parsed = RenderCore::ktxParse(bytes);
+        REQUIRE(parsed.image);
+        CHECK(parsed.image->isSrgb == (fmt == 132 || fmt == 134 || fmt == 138));
+        std::vector<uint8_t> rgba;
+        REQUIRE(RenderCore::ktxDecodeBlocksToRgba8(*parsed.image, 0, rgba));
+        CHECK(rgba.size() == 24);
+        if (fmt == 141) { CHECK_FALSE(parsed.image->isSrgb); CHECK(rgba[2] == 0); CHECK(rgba[3] == 255); }
+        bytes.pop_back(); CHECK_FALSE(RenderCore::ktxParse(bytes).image);
+    }
+    auto bytes = makeKtx2(141,4,4,16);
+    putU64(bytes,96,15); CHECK_FALSE(RenderCore::ktxParse(bytes).image);
+    putU64(bytes,96,16); putU64(bytes,80,80); CHECK_FALSE(RenderCore::ktxParse(bytes).image);
+}
+TEST_CASE("ktx2: BC1 alpha and BC5 channel fixtures") {
+    auto bytes = makeKtx2(133,4,4,8);
+    std::fill(bytes.begin()+104,bytes.end(),0xff);
+    bytes[104]=bytes[105]=0; // colour0 < colour1, selector3 -> transparent
+    auto img=RenderCore::ktxParse(bytes); REQUIRE(img.image);
+    std::vector<uint8_t> rgba; REQUIRE(RenderCore::ktxDecodeBlocksToRgba8(*img.image,0,rgba));
+    CHECK(rgba[3]==0);
+    bytes=makeKtx2(141,4,4,16); std::fill(bytes.begin()+104,bytes.end(),0);
+    bytes[104]=255; bytes[112]=128;
+    img=RenderCore::ktxParse(bytes); REQUIRE(img.image);
+    REQUIRE(RenderCore::ktxDecodeBlocksToRgba8(*img.image,0,rgba));
+    CHECK(rgba[0]==255); CHECK(rgba[1]==128); CHECK(rgba[3]==255);
+}

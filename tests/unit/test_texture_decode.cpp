@@ -202,3 +202,18 @@ TEST_CASE("texture array level sizes: every layer per level, RGBA8 and BC7, unkn
     a.vkFormat = 0;
     CHECK(mc2tex::textureArrayLevelBytes(a, 0) == 0);
 }
+
+TEST_CASE("texture decode: stored KTX preserves mip colour and alpha policy") {
+    std::vector<uint8_t> b(128, 0);
+    const uint8_t magic[] = {0xab,0x4b,0x54,0x58,0x20,0x32,0x30,0xbb,0x0d,0x0a,0x1a,0x0a};
+    std::copy(std::begin(magic),std::end(magic),b.begin());
+    auto put=[&](int at,uint32_t v){ for(int j=0;j<4;++j)b[at+j]=uint8_t(v>>(j*8)); };
+    put(12,134); put(16,1); put(20,4); put(24,4); put(36,1); put(40,1);
+    put(80,104); put(88,8); put(96,8); b.resize(112);
+    std::fill(b.begin()+104,b.end(),255); b[104]=b[105]=0;
+    auto t=mc2tex::decodeMemory(b.data(),b.size(),"only.ktx2",gos_Texture_Detect,gosHint_MipmapFilter0);
+    REQUIRE(t); CHECK(t->isSrgb); CHECK(t->sourceAlpha==RenderCore::KtxAlpha::Cutout);
+    CHECK(t->format==gos_Texture_Alpha); CHECK(t->mipLevels.size()==1); CHECK(t->pixels[3]==0);
+    t=mc2tex::decodeMemory(b.data(),b.size(),"only.ktx2",gos_Texture_Solid,0);
+    REQUIRE(t); CHECK(t->pixels[3]==255);
+}
