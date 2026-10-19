@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 //***************************************************************************
 //
 //	artlry.cpp -- File contains the Artillery Strike Object code
@@ -87,7 +88,6 @@
 #define ARTILLERYCHUNK_SECONDS_MASK				0x0000003F
 
 extern MidLevelRenderer::MLRClipper * theClipper;
-extern bool useShadows;
 
 #define	AIRSTRIKE_NAME							"airstrikemarker"
 #define SENSOR_NAME								"sensormarker"

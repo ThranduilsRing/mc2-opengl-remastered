@@ -557,6 +557,7 @@ set(SOURCES
     "code/hudtabregistry.cpp"
     "code/hud_imgui_font.cpp"
     "code/prefs.cpp"
+    "code/prefs_io.cpp"
     "code/simplecamera.cpp"
     "code/componentlistbox.cpp"
     "code/loadscreen.cpp"

@@ -1,3 +1,4 @@
+#include "utils/mc2log.h"
 // LogisticsData: the front-end data load (components, pilots, variants, vehicles), the smart-load gate and the mission availability queries.
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include <memory>
@@ -320,28 +321,18 @@ void LogisticsData::initVariants()
 	strcat( variantPath, "buildings.csv" );
 
 	// ---- MC2_LOG_LOGISTICS diagnostics (instrumentation only, no behavior change) ----
-	static FILE* s_logFile = nullptr;
-	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() && !s_logFile ) {
-		s_logFile = fopen("logistics_debug.log", "a");
-	}
-#define LOG_LOGISTICS(fmt, ...) do { \
-	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() ) { \
-		printf("[LOGISTICS] " fmt "\n", ##__VA_ARGS__); fflush(stdout); \
-		if (s_logFile) { fprintf(s_logFile, "[LOGISTICS] " fmt "\n", ##__VA_ARGS__); fflush(s_logFile); } \
-	} } while(0)
 
-	LOG_LOGISTICS("initVariants: artPath='%s' objectPath='%s'", artPath, objectPath);
-	LOG_LOGISTICS("initVariants: buildings.csv path='%s'", variantPath);
+
+
+	do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: artPath='{}' objectPath='{}'", mc2::fmt::safe(artPath), mc2::fmt::safe(objectPath)); } while (0);
+	do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: buildings.csv path='{}'", mc2::fmt::safe(variantPath)); } while (0);
 
 	CSVFile variantFile;
 	long csvOpenResult = variantFile.open( variantPath );
 	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() ) {
 		const char* modOwner = LookupModOwner(variantPath);
 		unsigned long fsz = (csvOpenResult == NO_ERR) ? variantFile.fileSize() : 0;
-		LOG_LOGISTICS("initVariants: buildings.csv open=%s size=%lu tier=%s",
-			(csvOpenResult == NO_ERR) ? "OK" : "FAIL",
-			(unsigned long)fsz,
-			modOwner ? modOwner : "base-or-fastfile");
+		do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: buildings.csv open={} size={:d} tier={}", mc2::fmt::safe((csvOpenResult == NO_ERR) ? "OK" : "FAIL"), mc2::fmt::as_u32((unsigned long)fsz), mc2::fmt::safe(modOwner ? modOwner : "base-or-fastfile")); } while (0);
 	}
 
 	FullPathFileName pakPath;
@@ -429,10 +420,10 @@ void LogisticsData::initVariants()
 		// actually yield per mech row? (fresh-boot chassis scale observed 0.0)
 		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
-			if ( FILE* f = fopen("preview_debug.log","a") )
+			if ( bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info) )
 			{
-				mc2::fmt::print(f, "[ENCYCLO] initVariants row={:d} mech={} readResult={:d} scale={:.3f}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(variantFileName), mc2::fmt::as_i32(scaleReadResult), scale);
-				fclose(f);
+				MC2_LOG(Ui, Info, "[ENCYCLO] initVariants row={:d} mech={} readResult={:d} scale={:.3f}", mc2::fmt::as_i32(i), mc2::fmt::safe(variantFileName), mc2::fmt::as_i32(scaleReadResult), scale);
+
 			}
 		}
 
@@ -508,13 +499,12 @@ void LogisticsData::initVariants()
 			S_strlwr(fnLow);
 			if ( strstr(fnLow, "shadowhawk") ) shadowhawkFound = true;
 		}
-		LOG_LOGISTICS("initVariants: total variants loaded=%d", totalVariants);
+		do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: total variants loaded={:d}", mc2::fmt::as_i32(totalVariants)); } while (0);
 		if ( shadowhawkFound )
-			LOG_LOGISTICS("SHADOWHAWK VARIANT LOADED");
+			do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] SHADOWHAWK VARIANT LOADED"); } while (0);
 		else
-			LOG_LOGISTICS("SHADOWHAWK NOT IN VARIANTS");
+			do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] SHADOWHAWK NOT IN VARIANTS"); } while (0);
 	}
-#undef LOG_LOGISTICS
 }
 
 void LogisticsData::addVehicle( long fitID, PacketFile& objectFile, float scale, long nameID )

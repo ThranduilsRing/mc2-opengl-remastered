@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 /*************************************************************************************************\
 MissionBegin.cpp			: Implementation of the MissionBegin component.
 //---------------------------------------------------------------------------//
@@ -47,7 +48,6 @@ extern CPrefs prefs;
 
 class MechLabScreen;
 
-extern long renderer;
 
 void initABL (void);
 void closeABL (void);

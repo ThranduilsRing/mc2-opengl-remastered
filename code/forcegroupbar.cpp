@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 #define FORCEGROUPBAR_CPP
 /*************************************************************************************************\
 ForceGroupBar.cpp			: Implementation of the ForceGroupBar component.
@@ -435,7 +436,6 @@ int	  ForceGroupBar::iconsPerRow = 8;
 
 StaticInfo*  ForceGroupBar::s_coverIcon = nullptr;
 
-extern bool useLeftRightMouseProfile;
 extern char CDInstallPath[];
 void EnterWindowMode();
 void EnterFullScreenMode();

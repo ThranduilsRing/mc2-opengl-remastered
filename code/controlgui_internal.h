@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Shared surface of the controlgui.cpp translation units (controlgui.cpp, controlgui_{hudtabs,render,objectives,update,vehicle,init,chat}.cpp).
 //
 // controlgui.cpp keeps the construction, the ControlButton methods and the small accessors; the rest of ControlGui is split by
@@ -67,7 +68,6 @@ extern bool g_imguiInitialized;
 extern long helpTextHeaderID;
 extern long helpTextID;
 extern bool neverEndingStory;
-extern bool useLeftRightMouseProfile;
 extern bool drawGUIOn;
 extern bool paintingMyVtol;
 extern int __cdecl sortStats( const void* pPlayer1, const void* pPlayer2 );

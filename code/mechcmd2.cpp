@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 //--------------------------------------------------------------------------
 //
 // And away we go.  MechCommander 2 -- Electric Boogaloo
@@ -26,19 +27,12 @@
 
 // NS3: fastFiles/numFastFiles/maxFastFiles defined in mclib/fastfile.cpp (engine boundary).
 
-long GameDifficulty = 0;
-long gammaLevel = 0;
-long resolutionX = 0;
-long resolutionY = 0;
-long renderer = 0;
 long FilterState = gos_FilterNone;
 bool quitGame = FALSE;
 bool justStartMission = FALSE;
 bool gamePaused = FALSE;
 bool hasGuardBand = false;
 bool canMultiTextureDetail = false;
-bool useUnlimitedAmmo = true;
-bool useLeftRightMouseProfile = true; // if false, use old style commands
 bool gotBombData = false;
 
 TimerManagerPtr timerManager = nullptr;

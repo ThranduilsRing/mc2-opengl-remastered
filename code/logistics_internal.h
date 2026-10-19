@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Shared surface of the logistics.cpp translation units (logistics.cpp, logistics_begin.cpp).
 //
 // logistics.cpp keeps the Logistics start / stop / update / render; beginMission and the mission start helpers are split
@@ -77,8 +78,6 @@ extern CPrefs prefs;
 
 extern bool quitGame;
 extern bool justStartMission;
-extern long renderer;
-extern bool useUnlimitedAmmo;
 extern float loadProgress;
 
 extern bool aborted;

@@ -1,3 +1,4 @@
+#include "utils/mc2log.h"
 ﻿#define MECHLISTBOX_CPP
 /*************************************************************************************************\
 MechListBox.cpp			: Implementation of the MechListBox component.
@@ -203,11 +204,11 @@ MechListBoxItem::MechListBoxItem( LogisticsMech* pRefMech, long count )
 	if ( pMech && mc2::gate::get<"MC2_LOG_LOGISTICS">() ) {
 		char chassisBuf[256] = "";
 		cLoadString( pMech->getChassisName(), chassisBuf, sizeof(chassisBuf) );
-		FILE* mechListLog = fopen("logistics_debug.log", "a");
+		bool mechListLog = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
 		if ( mechListLog ) {
-			mc2::fmt::print(mechListLog, "[MECHLIST] item chassisNameID={:d} chassisText='{}' variantName='{}' cost={:d} weight={:.0f}\n", mc2::fmt::as_i32(pMech->getChassisName()), mc2::fmt::safe(chassisBuf), pMech->getName(), mc2::fmt::as_i32(pMech->getCost()), pMech->getMaxWeight());
-			fflush( mechListLog );
-			fclose( mechListLog );
+			MC2_LOG(Ui, Info, "[MECHLIST] item chassisNameID={:d} chassisText='{}' variantName='{}' cost={:d} weight={:.0f}", mc2::fmt::as_i32(pMech->getChassisName()), mc2::fmt::safe(chassisBuf), pMech->getName(), mc2::fmt::as_i32(pMech->getCost()), pMech->getMaxWeight());
+
+
 		}
 	}
 

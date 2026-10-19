@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 #include "../GameOS/gameos/ui_texture.h"
 #define INFOWINDOW_CPP
 /*************************************************************************************************\
@@ -93,7 +94,6 @@ extern float WeaponRanges[NUM_WEAPON_RANGE_TYPES][2];
 // initialize statics
 ButtonData InfoWindow::buttonData[2];;
 
-extern bool useUnlimitedAmmo;
 
 InfoWindow::InfoWindow()
 {
