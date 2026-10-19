@@ -122,6 +122,52 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 	std::string& note = c.note;
 	std::string& extra = c.extra;
 
+    if (line.rfind("paint ",0)==0) {
+        long id=0; unsigned r=0,g=0,b=0;
+        if (!mc2::gate::get<"MC2_TEST_SPAWN">()) { result="blocked";note="needs MC2_TEST_SPAWN=1"; }
+        else if (sscanf(line.c_str()+6,"%ld %x %x %x",&id,&r,&g,&b)!=4) note="paint <partId> <red> <green> <blue> (hex)";
+        else {
+            auto* obj=ObjectManager ? ObjectManager->findByPartId(id) : nullptr;
+            auto* app=obj ? obj->getAppearance() : nullptr;
+            if (!app) { result="blocked";note="no appearance"; }
+            else {
+                app->resetPaintScheme(r,g,b);
+                DWORD rr=0,gg=0,bb=0;app->getPaintScheme(rr,gg,bb);
+                result=(rr==r && gg==g && bb==b) ? "ok" : "blocked";
+                note="resetPaintScheme readback="+std::to_string(rr)+","+std::to_string(gg)+","+std::to_string(bb);
+            }
+        }
+        return true;
+    }
+    if (line.rfind("material_copy ",0)==0 || line.rfind("material_state ",0)==0) {
+        const bool copy=line.rfind("material_copy ",0)==0;
+        long id=0,sourceId=0;unsigned slot=0;
+        auto shapeOf=[](GameObjectPtr object)->TG_MultiShape* {
+            auto* app=object ? object->getAppearance() : nullptr;
+            if (auto* building=dynamic_cast<BldgAppearance*>(app)) return building->bldgShape;
+            if (auto* tree=dynamic_cast<TreeAppearance*>(app)) return tree->treeShape;
+            return nullptr;
+        };
+        if (!mc2::gate::get<"MC2_TEST_SPAWN">()) { result="blocked";note="needs MC2_TEST_SPAWN=1";return true; }
+        const int count=sscanf(line.c_str()+(copy?14:15),"%ld %ld %u",&id,&sourceId,&slot);
+        auto* obj=ObjectManager ? ObjectManager->findByPartId(id) : nullptr;
+        auto* shape=shapeOf(obj);
+        if (!shape || (copy && count<2) || slot>=unsigned(shape->GetNumTextures())) { result="blocked";note="material_copy <dstPartId> <srcPartId> [slot], material_state <partId>";return true; }
+        if (copy) {
+            auto* source=shapeOf(ObjectManager->findByPartId(sourceId));
+            if (!source || slot>=unsigned(source->GetNumTextures()) || !mcTextureManager) { result="blocked";note="source has no slot";return true; }
+            const DWORD node=source->GetTextureHandle(slot),old=shape->GetTextureHandle(slot);
+            if (node==0xffffffffu || node==old || !mcTextureManager->get_gosTextureHandle(node)) { result="blocked";note="source slot must name different resident art";return true; }
+            mcTextureManager->copyTexture(node); // adopts one manager/service reference for the destination
+            shape->SetTextureHandle(slot,node);
+            if (old!=0xffffffffu) mcTextureManager->releaseNode(old);
+            if (auto* building=dynamic_cast<BldgAppearance*>(obj->getAppearance())) building->needsFullBakeNextFrame=true;
+            if (auto* tree=dynamic_cast<TreeAppearance*>(obj->getAppearance())) tree->needsFullBakeNextFrame=true;
+        }
+        shape->BindMaterials();result="ok";
+        note="material_set="+std::to_string(shape->materialSet().base)+" node="+std::to_string(shape->GetTextureHandle(slot))+" type_defaults="+std::to_string(shape->usesTypeMaterials());
+        return true;
+    }
 	if (line.compare(0, 6, "spawn ") == 0 || line.compare(0, 9, "teleport ") == 0) {
 		// GAMEPLAY-DRIVER-1 test-only fixtures (gated MC2_TEST_SPAWN=1).
 		//   spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant]

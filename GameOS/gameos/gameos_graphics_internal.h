@@ -191,6 +191,7 @@ class gosTexture {
         TexType getTextureType() const { return tex_.type_; }
         const Texture& getTexture() const { return tex_; }
         uint32_t getContentSerial() const { return content_serial_; }
+        bool wantsMipmaps() const { return mc2tex::wantsMipmaps(hints_); }
         void markContentMutated() { ++content_serial_; }
         // VK-HUD-MIRRORCOPY-1: the mirror is held as a shared immutable vector so
         // VkHudDraw can reference it by refcount bump instead of deep-copying the

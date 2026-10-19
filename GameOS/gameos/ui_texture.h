@@ -3,6 +3,7 @@
 #include "../../RenderCore/TextureService.h"
 #include "gameos.hpp"
 uint64_t gos_GetUiTextureId(DWORD handle);
+uint64_t gos_GetMaterialTextureId(DWORD handle);
 namespace mc2vk {
 bool uiTextureServiceReady();
 bool hasUiImage(RenderCore::TextureHandle handle);
