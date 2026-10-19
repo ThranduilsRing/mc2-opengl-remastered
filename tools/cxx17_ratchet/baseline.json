@@ -144,12 +144,12 @@
    "LG03": 458,
    "LG04": 20,
    "LG05": 198,
-   "LG06": 445,
+   "LG06": 444,
    "LG07": 2,
    "LG08": 17,
    "LG09": 0,
    "LG10": 20,
-   "LG11": 103,
+   "LG11": 102,
    "LG12a": 100,
    "LG12b": 341,
    "LG13": 244,
@@ -1597,8 +1597,7 @@
   },
   "code/fitblockwriter.cpp": {
    "LG06": 4,
-   "LG10": 1,
-   "LG11": 1
+   "LG10": 1
   },
   "code/fitblockwriter.h": {
    "LG06": 4
@@ -2384,7 +2383,6 @@
    "LG14": 12
   },
   "code/tactical_order_queue.cpp": {
-   "LG06": 1,
    "LG08": 3
   },
   "code/tactical_order_queue.h": {
@@ -3978,7 +3976,7 @@
    "LG20": 3
   }
  },
- "head": "a83b93aa4",
+ "head": "162ba8d63",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

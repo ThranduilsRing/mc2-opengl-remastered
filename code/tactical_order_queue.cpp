@@ -110,7 +110,7 @@ std::expected<std::optional<AuthoredRoute>, std::string> readAuthoredRoute(
         return result;
     };
     struct Field { std::string type, value; };
-    std::map<std::string, Field> fields;
+    std::map<std::string, Field, std::less<>> fields;
     bool inPart = false, seenPart = false;
     const auto wanted = "part" + std::to_string(selected);
     while (!text.empty()) {
@@ -142,7 +142,7 @@ std::expected<std::optional<AuthoredRoute>, std::string> readAuthoredRoute(
             return std::unexpected("duplicate_key");
     }
     if (fields.empty()) return std::optional<AuthoredRoute>{};
-    const auto number = [&]<class T>(const std::string& key, std::string_view type, T& value) {
+    const auto number = [&]<class T>(std::string_view key, std::string_view type, T& value) {
         const auto it = fields.find(key);
         if (it == fields.end() || it->second.type != type) return false;
         const auto& s = it->second.value;

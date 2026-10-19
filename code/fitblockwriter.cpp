@@ -34,15 +34,15 @@ void FitBlockWriter::endBlock() {
 }
 
 void FitBlockWriter::writeInlineBlock(std::string_view name, std::string_view contents) {
-    appendLine(std::string(name) + " { " + std::string(contents) + " }");
+    appendLine(std::string(name).append(" { ").append(contents).append(" }"));
 }
 
 void FitBlockWriter::writeString(std::string_view key, std::string_view value) {
-    appendLine(std::string(key) + " = \"" + std::string(value) + "\"");
+    appendLine(std::string(key).append(" = \"").append(value).append("\""));
 }
 
 void FitBlockWriter::writeToken(std::string_view key, std::string_view token) {
-    appendLine(std::string(key) + " = " + std::string(token));
+    appendLine(std::string(key).append(" = ").append(token));
 }
 
 void FitBlockWriter::writeLong(std::string_view key, long v) {
@@ -64,7 +64,7 @@ void FitBlockWriter::writeBool(std::string_view key, bool v) {
 }
 
 void FitBlockWriter::writeComment(std::string_view text) {
-    appendLine(std::string("; ") + std::string(text));
+    appendLine(std::string("; ").append(text));
 }
 
 void FitBlockWriter::writeRaw(const std::string& lineText) {
