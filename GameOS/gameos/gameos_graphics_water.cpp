@@ -250,7 +250,7 @@ void gosRenderer::renderWaterFastPath(
     float maxMinUV)
 {
     ZoneScopedN("renderWaterFastPath");
-    TracyGpuZone("renderWaterFastPath");
+
     // The GL water draw (the MDI program, the GL cull/pack compute, the thin ring, the readback feed) is gone: the native Vulkan producers cull
     // and pack the thin records and the water island draws them. The handles and the detail / spray tuning went with the GL program.
     (void)waterGosHandle; (void)waterDetailGosHandle; (void)frameCosAlpha; (void)oneOverWaterTF; (void)sprayOffsetX; (void)sprayOffsetY;

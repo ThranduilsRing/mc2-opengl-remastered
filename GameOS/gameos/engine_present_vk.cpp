@@ -122,7 +122,7 @@ struct EnginePresentVk::Impl {
     mc2vk::OwnedSemaphore& curAcquireSem()    { return acquireSems[slot()]; }
     mc2vk::OwnedFence&     curInFlight()      { return inFlights[slot()]; }
     // VK-PRESENT-SINGLESUBMIT-1: the native composite records into its OWN command
-    // buffer at composite time (no submit, no drain) and presentGLFrame submits
+    // buffer at composite time (no submit, no drain) and presentFrame submits
     // {compositeCbuf, cbuf} in ONE vkQueueSubmit. compositePending marks a recorded-
     // but-not-yet-submitted composite; it is consumed by the single submit, dropped
     // on resize (the recording references the old shared image), and simply
@@ -155,7 +155,7 @@ struct EnginePresentVk::Impl {
     VkCommandBuffer readbackCbuf = VK_NULL_HANDLE;
 
     // Rung 8.6 native ImGui renderer backend. GuiRuntime builds ImDrawData;
-    // presentGLFrame records it here after GL->VK handoff and before copy-2.
+    // presentFrame records it here after GL->VK handoff and before copy-2.
     bool            imguiVkInited = false;
     bool            imguiVkFailed = false;
     mc2vk::OwnedRenderPass    imguiRenderPass;
@@ -1814,7 +1814,7 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
 
 }  // namespace
 
-bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w, uint32_t h) {
+bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, uint32_t h) {
     health_ = EnginePresentHealth{};
     health_.attempted = true;
     if (!ctx.valid()) {
@@ -1822,12 +1822,12 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
         plog("%s. fail-soft.", health_.fallback_reason.c_str());
         return false;
     }
-    if (!glWindow) {
+    if (!window) {
         health_.fallback_reason = "P13b: NULL GL game window handed to present init";
         plog("%s. fail-soft.", health_.fallback_reason.c_str());
         return false;
     }
-    glWindow_ = glWindow;   // BORROWED (g_sdl_window) -- never destroyed here.
+    window_ = window;   // BORROWED (g_sdl_window) -- never destroyed here.
     if (w == 0) w = 1;
     if (h == 0) h = 1;
 
@@ -1857,7 +1857,7 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
     // HWND (no conflict, since GL swap is suppressed in =vulkan mode). One window,
     // already visible, already owning focus + all input.
     SDL_SysWMinfo wm; SDL_VERSION(&wm.version);
-    if (SDL_GetWindowWMInfo(glWindow_, &wm) != SDL_TRUE) {
+    if (SDL_GetWindowWMInfo(window_, &wm) != SDL_TRUE) {
         return fail(std::string("P13b SDL_GetWindowWMInfo: ") + SDL_GetError());
     }
     if (wm.subsystem != SDL_SYSWM_WINDOWS) {
@@ -2014,7 +2014,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     // VK-PRESENT-SINGLESUBMIT-1: the ONLY CPU wait on the present path. Retire the
     // PREVIOUS frame's single submit (composite+tail+blit) before either of its two
     // command buffers is reset for re-recording. The fence is NOT reset here — it is
-    // reset immediately before the submit that will signal it (presentGLFrame), so a
+    // reset immediately before the submit that will signal it (presentFrame), so a
     // mid-frame present decline (DISARM-2b) can never leave it unsignaled and hang
     // this wait. Timer kept from VK-QWI-TO-FENCE-1 (same [QWI-WAIT] receipt tag):
     // it now measures the previous-frame retire wait instead of an inline drain.
@@ -2042,7 +2042,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
                  health_.composite_wait_samples);
     }
 
-    // Record into the composite's OWN cbuf; the submit happens in presentGLFrame as
+    // Record into the composite's OWN cbuf; the submit happens in presentFrame as
     // half of the single {compositeCbuf, cbuf} submission.
     ZoneNamedN(zCompRec, "VKIsl.Present.CompositeRecord", true);   // VK-ISLAND-TRACY-1 (to fn return)
     VkCommandBuffer cc = s.curCompositeCbuf();
@@ -2121,7 +2121,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     (void)fsScene; (void)fsObjectId;
 
     // VK-PRESENT-SINGLESUBMIT-1: NO submit and NO drain here. The recorded cbuf is
-    // submitted by presentGLFrame together with the tail (HUD/ImGui + swapchain
+    // submitted by presentFrame together with the tail (HUD/ImGui + swapchain
     // blit) in ONE vkQueueSubmit; GPU-side composite-before-tail ordering comes from
     // command-buffer order within the submit + the tail's entry barriers.
     s.compositePending = true;
@@ -2229,10 +2229,10 @@ void EnginePresentVk::shutdownImguiVulkanRenderer() {
 // shared -> swapchain) + present. Rebuild swapchain + shared image on resize.
 // VK-P14b: when endScene rendered straight into the shared image (directFbo_!=0),
 // copy-1 is SKIPPED here and the Y-flip is done in copy-2 instead.
-bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
+bool EnginePresentVk::presentFrame(uint32_t drawableW, uint32_t drawableH,
                                      bool verifyReadback) {
     mc2vk::VulkanContext* const ctx = (created_ && impl_) ? impl_->ctx : nullptr;
-    const bool ok = presentGLFrameBody(glDrawableW, glDrawableH, verifyReadback);
+    const bool ok = presentFrameBody(drawableW, drawableH, verifyReadback);
     // A recorded composite that this frame's submit did not consume (present declined, minimized, failed) is dropped here: it was recorded against this
     // frame's ring allocations and deferred-destroy epoch, which the boundary below moves past, so it must never be submitted later.
     if (impl_) impl_->compositePending = false;
@@ -2242,13 +2242,13 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     return ok;
 }
 
-bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawableH,
+bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
                                          bool verifyReadback) {
     if (!created_ || !impl_) {
         health_.fallback_reason = "present path not initialized";
         return false;
     }
-    ZoneScopedN("VKIsl.Present.Frame");   // VK-ISLAND-TRACY-1: presentGLFrame total (CPU)
+    ZoneScopedN("VKIsl.Present.Frame");   // VK-ISLAND-TRACY-1: presentFrame total (CPU)
     Impl& s = *impl_;
 
     // P13b: do NOT drain SDL events here. We present onto the SAME visible GL
@@ -2259,13 +2259,13 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
     // Minimized / zero-drawable: skip present this frame (fail-soft, no crash).
     // The game loop also throttles on MINIMIZED via g_sdl_window, but guard here
     // too so a zero extent never reaches the swapchain rebuild.
-    if (glDrawableW == 0 || glDrawableH == 0) {
+    if (drawableW == 0 || drawableH == 0) {
         return true;   // nothing to present; try again next frame
     }
 
     // Resize: if the GL drawable changed, rebuild the shared image + swapchain to
     // match the game window's new size (OS-driven resize / DPI change).
-    if (glDrawableW != s.imgW || glDrawableH != s.imgH) {
+    if (drawableW != s.imgW || drawableH != s.imgH) {
         const bool hadNativeComposite = (nativeCompositeArmed_);
         // VK-PRESENT-SINGLESUBMIT-1: (a) retire any in-flight prior submit before
         // buildSharedImage destroys the image it may still reference (the old
@@ -2284,10 +2284,10 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
         drainReadbackBeforeImageDestroy();   // a pending image->buffer copy reads the shared image buildSharedImage is about to destroy
         s.compositePending = false;
         std::string r;
-        if (!buildSharedImage(s, glDrawableW, glDrawableH, r)) {
+        if (!buildSharedImage(s, drawableW, drawableH, r)) {
             health_.fallback_reason = "resize: " + r; return false;
         }
-        if (!rebuildSwapchain(s, glDrawableW, glDrawableH, health_, r)) {
+        if (!rebuildSwapchain(s, drawableW, drawableH, health_, r)) {
             health_.fallback_reason = "resize: " + r; return false;
         }
         ++health_.resize_count;
@@ -2356,7 +2356,7 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
         // game window's current drawable. If it's zero (minimized), skip the
         // rebuild -- retry next frame, no crash. (No fence re-signal needed any
         // more: the fence was not reset on this path.)
-        int dw = 0, dh = 0; SDL_GL_GetDrawableSize(glWindow_, &dw, &dh);
+        int dw = 0, dh = 0; SDL_GetWindowSizeInPixels(window_, &dw, &dh);
         if (dw > 0 && dh > 0) {
             std::string rr;
             if (!rebuildSwapchain(s, (uint32_t)dw, (uint32_t)dh, health_, rr)) {
@@ -2540,7 +2540,7 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
         ++health_.present_frames;
     } else if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR) {
         ++health_.present_frames;
-        int dw = 0, dh = 0; SDL_GL_GetDrawableSize(glWindow_, &dw, &dh);
+        int dw = 0, dh = 0; SDL_GetWindowSizeInPixels(window_, &dw, &dh);
         if (dw > 0 && dh > 0) {
             std::string rr;
             if (!rebuildSwapchain(s, (uint32_t)dw, (uint32_t)dh, health_, rr)) {
@@ -2738,9 +2738,9 @@ void EnginePresentVk::destroy() {
         delete impl_;
         impl_ = nullptr;
     }
-    // P13b: glWindow_ is BORROWED (g_sdl_window, owned by gos_render). Never
+    // P13b: window_ is BORROWED (g_sdl_window, owned by gos_render). Never
     // destroy it here -- just drop our reference.
-    glWindow_ = nullptr;
+    window_ = nullptr;
     created_ = false;
 }
 

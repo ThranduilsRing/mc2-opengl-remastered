@@ -2,7 +2,7 @@
 #include "../../RenderCore/TextureService.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_render.h"
-#include "gos_render_context.h"        // InitializeRenderContextConventions (shared game/editor)
+#include "render_host_kind.h"
 #include "render_frame_driver.h"       // RenderFrameDriver_RenderWorld — Slice 6 shared render seam (gated)
 #include "render_snapshot.h"
 #include "draw_packet_emitter.h"       // DrawPacket v0
@@ -409,7 +409,7 @@ void process_events( void ) {
             case SDL_WINDOWEVENT_SIZE_CHANGED: {
                 float w = (float)event.window.data1;
                 float h = (float)event.window.data2;
-                glViewport(0, 0, (GLsizei)w, (GLsizei)h);
+
                 // FREE-RESIZE-1: refresh the physical drawable size — every
                 // per-frame consumer (postprocess FBO resize in draw_screen,
                 // UI canvas box, mouse normalize, camera aspect) keys off
@@ -420,7 +420,7 @@ void process_events( void ) {
                 {
                     extern SDL_Window* g_sdl_window;
                     if (g_sdl_window) {
-                        SDL_GL_GetDrawableSize(g_sdl_window,
+                        SDL_GetWindowSizeInPixels(g_sdl_window,
                             &Environment.drawableWidth, &Environment.drawableHeight);
 #ifdef MC2_IMGUI
                         GuiRuntime::NotifyResize(
@@ -584,7 +584,6 @@ static void draw_screen( void )
         if (vc.shadowsOverride >= 0) pp->shadowsEnabled_ = vc.shadowsOverride;
     }
 
-    glCullFace(GL_FRONT);
 
 	const int viewport_w = Environment.drawableWidth;
 	const int viewport_h = Environment.drawableHeight;
@@ -599,7 +598,6 @@ static void draw_screen( void )
         pp->beginScene();
     }
 
-    glViewport(0, 0, viewport_w, viewport_h);
 	/*
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
@@ -612,7 +610,7 @@ static void draw_screen( void )
 
 
     // TODO: reset all states to sane defaults!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    glDepthMask(GL_TRUE);
+
     // Blue-grey sky during gameplay, black for menus/loading/mech bay
     // Uses previous frame's terrain flag (set during rendering, cleared in beginScene)
     {
@@ -655,7 +653,6 @@ static void draw_screen( void )
         RenderWorld::frameBannerTick();  // M1 Task 14 (m2 fix: post-EndFrame)
     }
 
-    glUseProgram(0);
 
     // Composite post-processed scene to default framebuffer
     if (pp) {
@@ -701,9 +698,9 @@ static void draw_screen( void )
     // draw_screen().  Post-ImGui 3D camera renders (encyclopedia mech viewer) use
     // GL_GEQUAL (reverse-Z), so fragments at depth 0.x all fail "0.x >= 1.0".
     // Clear to 0.0 (reverse-Z far) once per frame so the depth test passes.
-    glDepthMask(GL_TRUE);
-    glClearDepth(0.0);
-    glClear(GL_DEPTH_BUFFER_BIT);
+
+
+
     GuiRuntime::Render();
 #endif
 }
@@ -966,82 +963,14 @@ int main(int argc, char** argv)
 
     startup_phase("window_created");
 
-    graphics::RenderContextHandle ctx = graphics::init_render_context(win);
-    if(!ctx)
-        return 1;
-
-    graphics::make_current_context(ctx);
-
-    // GLEW-CORE-PROFILE-1: we request a CORE-profile context (gos_render.cpp:190).
-    // In a core profile glGetString(GL_EXTENSIONS) returns NULL, and without
-    // glewExperimental GLEW falls back to that legacy string for glewIsSupported().
-    // NVIDIA strictly returns NULL there, so glewIsSupported("GL_ARB_*") reports
-    // FALSE for extensions that are actually present (AMD is lenient and still
-    // returns the string, which is why this only bit NVIDIA). That made
-    // glewIsSupported("GL_ARB_shader_draw_parameters") false on NVIDIA ->
-    // s_hasShaderDrawParams=false -> the static-prop coalesce COLOR path was
-    // disabled -> trees/buildings drew only into the shadow map and were invisible
-    // in the scene (root-caused from an RTX 3080 RenderDoc capture). Setting
-    // glewExperimental forces GLEW to use the core-correct glGetStringi() +
-    // GL_NUM_EXTENSIONS query, fixing glewIsSupported() for BOTH vendors.
-    glewExperimental = GL_TRUE;
-    GLenum err = glewInit();
-    if (GLEW_OK != err)
-    {
-        MC2_LOG(Gl, Debug, "Error: {}", mc2::fmt::safe(reinterpret_cast<const char*>(glewGetErrorString(err))));
-        return 1;
-    }
-    // glewExperimental can leave a spurious GL_INVALID_ENUM queued from its own
-    // probing; clear it so the first real frame's error checks start clean.
-    (void)glGetError();
-
     render_contract::initRenderPassTelemetry();   // [RENDER_PASS v1] (MC2_RENDER_PASS_TELEMETRY=1)
     render_contract::initRenderPassOrder();       // CONTRACT-3 (MC2_RENDER_PASS_ORDER=1)
     render_contract::initRenderPassScope();        // ENFORCEMENT-1 (MC2_RENDER_PASS_CONTRACT_TRACE/ASSERT=1)
 
-    if (GLEW_ARB_parallel_shader_compile) {
-        glMaxShaderCompilerThreadsARB(0xFFFFFFFF);
-        printf("[INSTR v1] parallel_shader_compile=enabled\n");
-    } else {
-        printf("[INSTR v1] parallel_shader_compile=unsupported\n");
-    }
-    fflush(stdout);
     initVulkanBackend(win, w, h);
 
-    // GAMEOS-RENDER-CONTEXT-PARITY-1: clip-control + reverse-Z depth baseline
-    // are established by the shared function so the game and the editor cannot
-    // diverge. The fail-closed contract (abort if glClipControl is unavailable)
-    // lives inside InitializeRenderContextConventions. The full clip-control
-    // rationale was moved there. See gos_render_context.{h,cpp}.
-    InitializeRenderContextConventions(RenderHostKind::Game);
-    MC2_LOG(Render, Debug, "Status: Using GLEW {}", mc2::fmt::safe(reinterpret_cast<const char*>(glewGetString(GLEW_VERSION))));
-    //if ((!GLEW_ARB_vertex_program || !GLEW_ARB_fragment_program))
-    //{
-     //   SPEW(("GRAPHICS", "No shader program support\n"));
-      //  return 1;
-    //}
-
-    if(!glewIsSupported("GL_VERSION_3_0")) {
-        MC2_LOG(Render, Debug, "Minimum required OpenGL version is 3.0");
-        return 1;
-    }
-
-    const char* glsl_version = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
-    MC2_LOG(Render, Debug, "GLSL version supported: {}", mc2::fmt::safe(glsl_version));
-
-    int glsl_maj = 0, glsl_min = 0;
-    sscanf(glsl_version, "%d.%d", &glsl_maj, &glsl_min);
-
-    if(glsl_maj < 3 || (glsl_maj==3 && glsl_min < 30) ) {
-        MC2_LOG(Render, Debug, "Minimum required OpenGL version is 330 ES, current: {:d}.{:d}", mc2::fmt::as_i32(glsl_maj), mc2::fmt::as_i32(glsl_min));
-        return 1;
-    }
-
-    char version[16] = {0};
-    snprintf(version, sizeof(version), "%d%d", glsl_maj, glsl_min);
-    MC2_LOG(Render, Debug, "Using {} shader version", mc2::fmt::safe(version));
-    startup_phase("gl_context_ready");
-    gos_CreateRenderer(ctx, win, w, h);
+    startup_phase("native_device_ready");
+    gos_CreateRenderer(win, w, h);
     startup_phase("renderer_created");
 #ifdef MC2_IMGUI
     GuiRuntime::Init();
@@ -1067,14 +996,14 @@ int main(int argc, char** argv)
     startup_phase("engine_init_done");
 
 	timing::init();
-    TracyGpuContext;
+
 
     // MC2_FPS_CAP: max FPS override. Applies to both menu and mission.
     //   unset → menu=90, mission=165 (defaults)
     //   0     → uncapped
     //   N     → N FPS in both states
     // timeBeginPeriod(1) brings Windows Sleep() to 1ms resolution.
-    // Cap is skipped entirely when vsync is active (SDL_GL_GetSwapInterval()==1).
+    // Cap is skipped entirely when vsync is active (native FIFO presentation).
     // A set value (even an empty or non-numeric one: atoi -> 0, uncapped) overrides both caps; the row's own
     // default (90) is the menu cap, the mission cap stays 165 when unset.
     const bool fpsCapIsSet = mc2::gate::isSet<"MC2_FPS_CAP">();
@@ -1082,7 +1011,11 @@ int main(int argc, char** argv)
         ? (mc2::gate::isNonEmpty<"MC2_FPS_CAP">() ? mc2::gate::get<"MC2_FPS_CAP">() : 0) : -1;
     static const int s_fps_cap_menu    = fpsCapIsSet ? fpsCapSet : 90;
     static const int s_fps_cap_mission = fpsCapIsSet ? fpsCapSet : 165;
-    const bool s_vsync_active = (SDL_GL_GetSwapInterval() == 1);
+    bool s_vsync_active = false;
+#ifdef MC2_VULKAN
+    const auto& nativePresent = mc2vk::getOrCreateEnginePresentVk();
+    s_vsync_active = nativePresent.created() && nativePresent.health().present_mode == VK_PRESENT_MODE_FIFO_KHR;
+#endif
     printf("[FRAMECAP] MC2_FPS_CAP=%s vsync=%s -- menu=%d FPS mission=%d FPS%s\n",
            fpsCapIsSet ? mc2::gate::raw<"MC2_FPS_CAP">() : "(unset)",   // echoed as typed
            s_vsync_active ? "ON" : "OFF",
@@ -1123,7 +1056,7 @@ int main(int argc, char** argv)
         {
             ZoneScopedN("DrawScreen");
             mc2_hitch::HitchScope _hitchRender(mc2_hitch::HitchSpanKind::PhaseRender);
-            graphics::make_current_context(ctx);
+
             draw_screen();
         }
 
@@ -1159,10 +1092,6 @@ int main(int argc, char** argv)
     frameSwapWindow(win);   // the shared host present also ends the Vulkan frame and advances the handle-slot clock
     frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
 
-        {
-            ZoneScopedN("Frame.TracyGpuCollect");
-            TracyGpuCollect;
-        }
         FrameMark;
         mc2::gpumem::tick(static_cast<unsigned long>(g_mc2FrameCounter));   // VRAM.Process.MB plot beside the frame marks
 
@@ -1229,7 +1158,6 @@ int main(int argc, char** argv)
     // Islands, then the present path, then the shared VulkanContext: one order, shared with the editor (gos_host_vk.cpp).
     gos::host::shutdownVulkanBackend();
 
-    graphics::release_render_context_at_exit(ctx);   // not deleted: wglDeleteContext stalls 1-5 s in the AMD driver (BUGS 87)
     graphics::destroy_window(win);
 
     gos_DestroyAudio();

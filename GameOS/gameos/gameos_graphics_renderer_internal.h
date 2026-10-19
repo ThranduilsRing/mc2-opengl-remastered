@@ -19,10 +19,9 @@ class gosRenderer {
 	static const std::string s_Foreground;
 
     public:
-        gosRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWindowHandle win_h, int w, int h) {
+        gosRenderer(graphics::RenderWindowHandle win_h, int w, int h) {
             width_ = w;
             height_ = h;
-            ctx_h_ = ctx_h;
             win_h_ = win_h;
             hudFlushed_ = false;
         }
@@ -256,7 +255,7 @@ class gosRenderer {
         bool getBreakOnDrawCall() { return break_on_draw_call_; }
         void setBreakDrawCall(uint32_t num) { break_draw_call_num_ = num; }
 
-        graphics::RenderContextHandle getRenderContextHandle() { return ctx_h_; }
+        graphics::RenderWindowHandle getRenderWindowHandle() { return win_h_; }
 
         uint32_t getRenderState(gos_RenderState render_state) { return curStates_[render_state]; }
 
@@ -508,7 +507,6 @@ class gosRenderer {
 
         int width_;
         int height_;
-        graphics::RenderContextHandle ctx_h_;
         graphics::RenderWindowHandle win_h_;
 
         // fits vertices into viewport

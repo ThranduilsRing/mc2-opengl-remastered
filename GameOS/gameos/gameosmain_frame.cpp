@@ -478,7 +478,7 @@ void frameLoadRaceProbes() {
                 extern bool  g_loadRaceTerrainResidentNow;
                 extern long  g_loadRaceMechDegradeReal;
                 extern float scenarioTime;
-                extern GLuint gos_terrain_indirect_getAtlasSide();
+                extern unsigned int gos_terrain_indirect_getAtlasSide();
                 // Frames to probe. Overridable via MC2_LOAD_RACE_PROBE_FRAMES
                 // (comma list) but defaults to the confirmed transient window.
                 static const std::vector<long> s_probeFrames = []{
@@ -496,7 +496,7 @@ void frameLoadRaceProbes() {
                     const long pf = s_probeFrames[s_nextProbe];
                     ++s_nextProbe;
 
-                    const GLuint atlasSide = gos_terrain_indirect_getAtlasSide();
+                    const unsigned int atlasSide = gos_terrain_indirect_getAtlasSide();
                     const char* pathStr = (g_loadRaceLastTerrainPath == 1) ? "gpu-indirect"
                                         : (g_loadRaceLastTerrainPath == 2) ? "cpu-thin" : "none";
 
@@ -602,14 +602,6 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
         {
             ZoneScopedN("SwapWindow");
             mc2_hitch::HitchScope _hitchPresent(mc2_hitch::HitchSpanKind::PhasePresent);
-            // SwapWindow split: env-gated glFinish probe attributes the present
-            // stall. If MC2_PRESWAP_FINISH=1 moves the ~45ms into PreFinish, the
-            // cost is GPU-completion backpressure (GPU draining terrain/shadows),
-            // not vsync/CPU. SwapWindow.SDL isolates the bare SDL_GL_SwapWindow.
-            {
-                static const bool s_preSwapFinish = mc2::gate::get<"MC2_PRESWAP_FINISH">();
-                if (s_preSwapFinish) { ZoneScopedN("SwapWindow.PreFinish"); glFinish(); }
-            }
             {
                 ZoneScopedN("SwapWindow.SDL");
                 // The shared host present (Vulkan composite + present, or the GL swap): also the editor's.

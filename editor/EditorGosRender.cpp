@@ -28,8 +28,6 @@
 extern bool g_imguiInitialized;
 #endif
 #include <SDL2/SDL_syswm.h>
-#include <GL/glew.h>
-#include <GL/gl.h>
 #include "utils/mc2log.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
@@ -308,18 +306,6 @@ struct RenderWindow {
     int height_;
 };
 
-struct RenderContext {
-   SDL_GLContext glcontext_;   // used on non-Windows / legacy path
-   RenderWindow* render_window_;
-#ifdef PLATFORM_WINDOWS
-   // On Windows the editor creates its GL context via WGL directly, because
-   // SDL_GL_CreateContext refuses to work on SDL_CreateWindowFrom windows
-   // (they lack the internal SDL_WINDOW_OPENGL flag).  Store the WGL handles
-   // here so make_current / destroy / swap can use them without SDL involvement.
-   HGLRC  wglContext_;   // the core-profile WGL context; NULL on non-editor builds
-   HDC    wglDC_;        // the DC for the GL child HWND; owned here, released on destroy
-#endif
-};
 
 static void PrintRenderer(SDL_RendererInfo * info);
 
@@ -393,24 +379,6 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         fprintf(stderr, "But we are linking against SDL version %d.%d.%d.\n",
            linked.major, linked.minor, linked.patch);
     }
-
-    SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8 );
-    SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
-    SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
-    SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 8);
-    SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 16 );
-    SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-
-    SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
-
-
-
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    // 4.3 required for core SSBO (GL_SHADER_STORAGE_BUFFER) + std430 layout,
-    // used by the GPU static-prop renderer. AMD RX 7900 XTX supports up to
-    // 4.6 core; 4.3 is the minimum feature level we need.
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 
     if (VERBOSE_MODES) {
         SDL_DisplayMode mode;
@@ -504,7 +472,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
 #ifdef PLATFORM_WINDOWS
     {
         //
-        // SDL_CreateWindow with SDL_WINDOW_OPENGL registers its own WNDCLASS and calls
+        // SDL_CreateWindow with SDL_WINDOW_VULKAN registers its own WNDCLASS and calls
         // CreateWindowEx, which triggers WGL pixel-format negotiation synchronously on
         // the calling thread.  That negotiation crashes on some AMD/NVIDIA drivers when
         // the window is top-level and subsequently reparented (SetParent invalidates the
@@ -534,7 +502,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         {
             WNDCLASSEXW wc = {};
             wc.cbSize        = sizeof(wc);
-            wc.style         = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
+            wc.style         = CS_HREDRAW | CS_VREDRAW;
             // by Methuselas: this child HWND is still render-only, but it must
             // forward mouse messages so MFC EditorInterface keeps ownership of
             // camera rotation, painting, selection, and capture behavior.
@@ -576,23 +544,8 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
 
         g_editor_child_hwnd = glHwnd;
 
-        // SDL_CreateWindowFrom wraps an existing HWND but does NOT call SDL_GL_LoadLibrary
-        // (which SDL_CreateWindow with SDL_WINDOW_OPENGL would do automatically).
-        // Without it, SDL's WGL function pointers (wglChoosePixelFormatARB etc.) are null,
-        // so SDL_GL_CreateContext fails silently with no error string.
-        // Call it explicitly before SDL_CreateWindowFrom so the WGL extension chain is
-        // bootstrapped. NULL = use the default OpenGL library (opengl32.dll).
-        if (SDL_GL_LoadLibrary(nullptr) < 0)
-        {
-            // Non-fatal: SDL may already have the library loaded; proceed anyway.
-        }
-        else
-        {
-        }
-
-        // Wrap our pre-built HWND in an SDL window.  SDL sees a valid Win32 window with
-        // CS_OWNDC; it will set the pixel format and create a GL context on it.
-
+        // The native Vulkan present owner creates its Win32 surface on this child.
+        SDL_SetHint(SDL_HINT_VIDEO_FOREIGN_WINDOW_VULKAN, "1");
         window = SDL_CreateWindowFrom((void*)glHwnd);
 
 
@@ -617,7 +570,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
     }
 #else
     {
-        Uint32 windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
+        Uint32 windowFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
         window = SDL_CreateWindow(pwinname ? pwinname : "--",
                 SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, windowFlags);
         if (!window) {
@@ -644,19 +597,14 @@ SDL_Window* getSDLWindow() noexcept
     return g_sdl_window;
 }
 
-SDL_GLContext getSDLGLContext() noexcept
-{
-    // Editor uses WGL (not SDL GL); the SDL2 ImGui backend accepts nullptr
-    // and skips SDL_GL_MakeCurrent — context management is done by EditorGosRender.
-    return nullptr;
-}
+
 
 //==============================================================================
 // Editor frame-rate limiter. The editor has no gameplay clock, so its render
 // loop runs as fast as the GPU allows (hundreds of fps) and spins the card for
 // no benefit. Cap to ~60fps. Override with MC2_EDITOR_FPS_CAP (0 = uncapped).
 // Called once per presented frame from swap_window (the single present site).
-static void editorFrameLimit()
+void limit_editor_frame()
 {
     static int   s_capFps = -2;   // -2 = uninitialized
     static DWORD s_lastMs = 0;
@@ -677,238 +625,17 @@ static void editorFrameLimit()
 }
 
 //==============================================================================
-void swap_window(RenderWindowHandle h)
-{
-    editorFrameLimit();
-    RenderWindow* rw = (RenderWindow*)h;
-    assert(rw && rw->window_);
-#ifdef PLATFORM_WINDOWS
-    if (g_editor_child_hwnd && ::IsWindow(g_editor_child_hwnd))
-    {
-        size_sdl_child_to_editor_client(g_editor_child_hwnd);
-        // On the WGL path the DC is owned by the RenderContext (rc->wglDC_).
-        // g_editor_child_hwnd has CS_OWNDC so GetDC returns the same persistent DC.
-        HDC dc = ::GetDC(g_editor_child_hwnd);
-        if (dc)
-        {
-            ::SwapBuffers(dc);
-            ::ReleaseDC(g_editor_child_hwnd, dc);
-        }
-        return;
-    }
-#endif
-    SDL_GL_SwapWindow(rw->window_);
-}
-
-//==============================================================================
-RenderContextHandle init_render_context(RenderWindowHandle render_window)
-{
-    RenderWindow* rw = (RenderWindow*)render_window;
-    assert(rw && rw->window_);
-
-#ifdef PLATFORM_WINDOWS
-    // SDL_GL_CreateContext checks for the internal SDL_WINDOW_OPENGL flag and refuses
-    // to create a context on SDL_CreateWindowFrom windows (which don't have it).
-    // Bypass SDL entirely: set the pixel format on our CS_OWNDC child HWND and create
-    // a WGL core-profile context directly.
-
-    if (!g_editor_child_hwnd || !::IsWindow(g_editor_child_hwnd))
-    {
-        return nullptr;
-    }
-
-    HDC hdc = ::GetDC(g_editor_child_hwnd);
-    if (!hdc)
-    {
-        return nullptr;
-    }
-
-    // pick and set a pixel format using the classic (non-ARB) path.
-    // This must happen before any wgl call.
-    PIXELFORMATDESCRIPTOR pfd = {};
-    pfd.nSize      = sizeof(pfd);
-    pfd.nVersion   = 1;
-    pfd.dwFlags    = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-    pfd.iPixelType = PFD_TYPE_RGBA;
-    pfd.cColorBits = 32;
-    pfd.cDepthBits = 24;
-    pfd.cStencilBits = 8;
-    pfd.iLayerType = PFD_MAIN_PLANE;
-
-    int fmt = ::ChoosePixelFormat(hdc, &pfd);
-    if (fmt == 0)
-    {
-        ::ReleaseDC(g_editor_child_hwnd, hdc);
-        return nullptr;
-    }
-
-    if (!::SetPixelFormat(hdc, fmt, &pfd))
-    {
-        ::ReleaseDC(g_editor_child_hwnd, hdc);
-        return nullptr;
-    }
-
-    // create a legacy GL 1.x context so we can query wglCreateContextAttribsARB.
-    HGLRC legacyCtx = ::wglCreateContext(hdc);
-    if (!legacyCtx)
-    {
-        ::ReleaseDC(g_editor_child_hwnd, hdc);
-        return nullptr;
-    }
-
-    if (!::wglMakeCurrent(hdc, legacyCtx))
-    {
-        ::wglDeleteContext(legacyCtx);
-        ::ReleaseDC(g_editor_child_hwnd, hdc);
-        return nullptr;
-    }
-
-    // load wglCreateContextAttribsARB and wglChoosePixelFormatARB through
-    // the legacy context, then upgrade to a core 4.3 context.
-    using PFNWGLCREATECONTEXTATTRIBSARBPROC = HGLRC (WINAPI*)(HDC, HGLRC, const int*);
-    PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB =
-        (PFNWGLCREATECONTEXTATTRIBSARBPROC)::wglGetProcAddress("wglCreateContextAttribsARB");
-
-
-    HGLRC coreCtx = nullptr;
-    if (wglCreateContextAttribsARB)
-    {
-        const int attribs[] = {
-            0x2091, 4,          // WGL_CONTEXT_MAJOR_VERSION_ARB = 4
-            0x2092, 3,          // WGL_CONTEXT_MINOR_VERSION_ARB = 3
-            0x9126, 0x00000001, // WGL_CONTEXT_PROFILE_MASK_ARB = WGL_CONTEXT_CORE_PROFILE_BIT_ARB
-            0x2094, 0,          // WGL_CONTEXT_FLAGS_ARB = 0 (set bit 1 for debug)
-            0
-        };
-        coreCtx = wglCreateContextAttribsARB(hdc, nullptr, attribs);
-    }
-
-    // Detach legacy context; we use coreCtx (or fall back to legacyCtx) from here.
-    ::wglMakeCurrent(nullptr, nullptr);
-    ::wglDeleteContext(legacyCtx);
-
-    HGLRC finalCtx = coreCtx ? coreCtx : nullptr;
-    if (!finalCtx)
-    {
-        ::ReleaseDC(g_editor_child_hwnd, hdc);
-        return nullptr;
-    }
-
-    if (!::wglMakeCurrent(hdc, finalCtx))
-    {
-        ::wglDeleteContext(finalCtx);
-        ::ReleaseDC(g_editor_child_hwnd, hdc);
-        return nullptr;
-    }
-
-    using PFNWGLSWAPINTERVALEXTPROC = BOOL (WINAPI*)(int);
-    PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT =
-        (PFNWGLSWAPINTERVALEXTPROC)::wglGetProcAddress("wglSwapIntervalEXT");
-    const bool vsync_on = mc2::gate::get<"MC2_VSYNC">();
-    if (wglSwapIntervalEXT)
-        wglSwapIntervalEXT(vsync_on ? 1 : 0);
-    printf("[VSYNC] MC2_VSYNC=%s -- vsync %s.\n",
-           mc2::gate::raw<"MC2_VSYNC">() ? mc2::gate::raw<"MC2_VSYNC">() : "(unset, default 0)",   // echoed as typed
-           vsync_on ? "ON" : "OFF");
-
-    // GPU identity — requires a current context.
-    printf("[GPU] Vendor   : %s\n", glGetString(GL_VENDOR));
-    printf("[GPU] Renderer : %s\n", glGetString(GL_RENDERER));
-    printf("[GPU] Version  : %s\n", glGetString(GL_VERSION));
-    {
-        GLint maxTex = 0, maxSSBO = 0, maxTexUnits = 0;
-        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTex);
-        glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &maxSSBO);
-        glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxTexUnits);
-        printf("[GL] max_texture_size=%d max_ssbo_block=%d max_combined_texture_units=%d\n",
-               maxTex, maxSSBO, maxTexUnits);
-    }
-    {
-        RECT rc2 = {};
-        ::GetClientRect(g_editor_child_hwnd, &rc2);
-        printf("[WINDOW] drawable=%dx%d logical=%dx%d\n",
-               (int)(rc2.right - rc2.left), (int)(rc2.bottom - rc2.top),
-               rw->width_, rw->height_);
-    }
-    printf("[MODE] vsync=%d tracy=on-demand\n", vsync_on ? 1 : 0);
-    printf("[TRACY] on-demand mode -- profiler listening on TCP 8086, no capture until a GUI attaches.\n");
-
-    RenderContext* rc = new RenderContext();
-    rc->glcontext_    = nullptr;   // not used on Windows editor path
-    rc->render_window_ = render_window;
-    rc->wglContext_   = finalCtx;
-    rc->wglDC_        = hdc;    // keep the DC alive; released in destroy_render_context
-    return rc;
-
-#else
-    // Non-Windows: use SDL as before.
-    SDL_GLContext glcontext = SDL_GL_CreateContext(rw->window_);
-    if (!glcontext) {
-        fprintf(stderr, "SDL_GL_CreateContext(): %s\n", SDL_GetError());
-        return nullptr;
-    }
-    if (SDL_GL_MakeCurrent(rw->window_, glcontext) < 0) {
-        SDL_GL_DeleteContext(glcontext);
-        return nullptr;
-    }
-    const bool vsync_on = mc2::gate::get<"MC2_VSYNC">();
-    SDL_GL_SetSwapInterval(vsync_on ? 1 : 0);
-    printf("[VSYNC] MC2_VSYNC=%s -- vsync %s.\n",
-           mc2::gate::raw<"MC2_VSYNC">() ? mc2::gate::raw<"MC2_VSYNC">() : "(unset, default 0)", vsync_on ? "ON" : "OFF");   // echoed as typed
-    printf("[GPU] Vendor   : %s\n", glGetString(GL_VENDOR));
-    printf("[GPU] Renderer : %s\n", glGetString(GL_RENDERER));
-    printf("[GPU] Version  : %s\n", glGetString(GL_VERSION));
-
-    RenderContext* rc = new RenderContext();
-    rc->glcontext_    = glcontext;
-    rc->render_window_ = render_window;
-    return rc;
-#endif
-}
 
 
 //==============================================================================
-void destroy_render_context(RenderContextHandle rc_handle)
-{
-    RenderContext* rc = (RenderContext*)rc_handle;
-    assert(rc);
 
-#ifdef PLATFORM_WINDOWS
-    if (rc->wglContext_)
-    {
-        ::wglMakeCurrent(nullptr, nullptr);
-        ::wglDeleteContext(rc->wglContext_);
-        rc->wglContext_ = nullptr;
-    }
-    if (rc->wglDC_ && g_editor_child_hwnd)
-    {
-        ::ReleaseDC(g_editor_child_hwnd, rc->wglDC_);
-        rc->wglDC_ = nullptr;
-    }
-#else
-    SDL_GL_DeleteContext(rc->glcontext_);
-#endif
-    delete rc;
-}
+
 
 //==============================================================================
-void make_current_context(RenderContextHandle ctx_h)
-{
-    RenderContext* rc = (RenderContext*)ctx_h;
-    assert(rc && rc->render_window_);
 
-    RenderWindow* rw = rc->render_window_;
-    assert(rw && rw->window_);
 
-#ifdef PLATFORM_WINDOWS
-    if (rc->wglContext_ && rc->wglDC_)
-    {
-        ::wglMakeCurrent(rc->wglDC_, rc->wglContext_);
-        return;
-    }
-#endif
-    SDL_GL_MakeCurrent(rw->window_, rc->glcontext_);
-}
+//==============================================================================
+
 
 //==============================================================================
 bool resize_window(RenderWindowHandle rw_handle, int width, int height)
@@ -977,14 +704,10 @@ bool is_mode_supported(int width, int height, int bpp) {
 }
 
 //==============================================================================
-int get_window_display_index(RenderContextHandle ctx_h)
+int get_window_display_index(RenderWindowHandle window)
 {
-    RenderContext* rc = (RenderContext*)ctx_h;
-    assert(rc);
-
-    RenderWindow* rw = rc->render_window_;
+    RenderWindow* rw = window;
     assert(rw && rw->window_);
-
     return SDL_GetWindowDisplayIndex(rw->window_);
 }
 
@@ -1042,7 +765,7 @@ void get_drawable_size(RenderWindowHandle rw_handle, int* width, int* height)
 {
     RenderWindow* rw = (RenderWindow*)rw_handle;
     assert(rw && width && height);
-	SDL_GL_GetDrawableSize(rw->window_, width, height);
+	SDL_GetWindowSizeInPixels(rw->window_, width, height);
 }
 
 //==============================================================================
@@ -1221,7 +944,3 @@ static void PrintRenderer(SDL_RendererInfo * info)
 
 
 }; // namespace graphics
-
-// Stub for mclib/bdactor.cpp vendor-aware default logic. The editor has no
-// GPU vendor detection at init; return false (non-Nvidia) to pick safe defaults.
-bool gos_IsNvidiaGPU() { return false; }

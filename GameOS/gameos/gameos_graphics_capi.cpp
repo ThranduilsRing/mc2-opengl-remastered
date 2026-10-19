@@ -508,7 +508,7 @@ int gos_GetWindowDisplayIndex()
 {   
     gosASSERT(g_gos_renderer);
     
-    return graphics::get_window_display_index(g_gos_renderer->getRenderContextHandle());
+    return graphics::get_window_display_index(g_gos_renderer->getRenderWindowHandle());
 }
 
 int gos_GetNumDisplayModes(int DisplayIndex)

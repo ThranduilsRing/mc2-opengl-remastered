@@ -6,7 +6,7 @@
 #include "gameos.hpp"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_render.h"
-#include "gos_render_context.h"        // InitializeRenderContextConventions (shared game/editor)
+#include "render_host_kind.h"
 #include "render_frame_driver.h"       // RenderFrameDriver_RenderWorld — Slice 6 shared render seam (gated)
 #include "render_snapshot.h"
 #include "draw_packet_emitter.h"       // DrawPacket v0
@@ -147,7 +147,7 @@ extern uint32_t g_mc2RenderFrame;
 extern void gos_GetTerrainCameraPos(float* x, float* y, float* z);
 extern void mc2_executor_own_begin_postprocess(gosPostProcess* pp);
 extern void mc2_executor_own_end_postprocess(gosPostProcess* pp);
-extern void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWindowHandle win_h, int w, int h);
+extern void gos_CreateRenderer(graphics::RenderWindowHandle win_h, int w, int h);
 extern void gos_DestroyRenderer();
 extern void gos_RendererBeginFrame();
 extern void gos_RendererEndFrame();

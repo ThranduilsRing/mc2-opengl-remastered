@@ -117,7 +117,6 @@ static inline void EditorRttClientToViewport(int& x, int& y)
 // SDL_PollEvent inside RunGameOSLogic fires before make_current_context;
 // any WM_LBUTTONUP that arrives between RunGameOSLogic iterations needs
 // the context made current before tryGameplayPick calls glReadPixels.
-extern graphics::RenderContextHandle EditorGameOS_GetRenderContext();
 #else
 // Non-ImGui editor build: no RTT viewport, pick offset is a no-op.
 static inline void EditorRttClientToViewport(int&, int&) {}

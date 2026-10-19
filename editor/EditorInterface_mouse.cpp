@@ -776,7 +776,7 @@ void EditorInterface::OnLButtonUp(UINT nFlags, CPoint point)
 		// Guarantee the WGL context is current before glReadPixels.
 		// SDL_PollEvent (inside RunGameOSLogic) fires before make_current_context;
 		// MFC pump can deliver WM_LBUTTONUP in that window, leaving no context bound.
-		graphics::make_current_context(EditorGameOS_GetRenderContext());
+
 
 		GameplayPickResult result = tryGameplayPick(req);
 

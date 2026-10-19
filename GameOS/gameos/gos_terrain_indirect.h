@@ -296,7 +296,6 @@ bool DrawMineStatic();
 //                                   face cache; for each alpha-cement quad,
 //                                   reproduces M2d's 4-corner + per-uvMode
 //                                   tri emit UNCONDITIONALLY (no pz cull).
-//   GetDecalStaticVBO_GL()        — GLuint name; 0 if unallocated.
 //   GetDecalVertCount()           — int; 0 if mission has no cement overlay.
 //
 // IsFrameOverlayArmed() (declared above) is the env gate, DEFAULT-ON
@@ -310,7 +309,6 @@ void  ResetDecalStaticVBO();
 void  MarkDecalDirty();
 void  RebuildDecalStaticVBOIfDirty();
 void  BuildDecalStaticVBO();
-unsigned int GetDecalStaticVBO_GL();
 int          GetDecalVertCount();
 bool  DrawDecalStatic();
 

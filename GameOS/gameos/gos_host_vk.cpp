@@ -15,6 +15,10 @@
 #include "../../RenderWorld/RenderWorld.h"   // advanceFrame: the handle-slot clock
 #include <SDL2/SDL.h>
 #include <string>
+#include <cstdio>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #ifdef MC2_VULKAN
 #include "vulkan_context.h"
 #include "engine_present_vk.h"
@@ -36,6 +40,25 @@ extern "C" void mc2_vk_legacy_shape_island_destroy();
 extern "C" void mc2_vk_sky_island_destroy();
 extern "C" void mc2_vk_shadow_island_destroy();
 #endif
+
+// Both hosts report the actual Vulkan adapter; no GL vendor-string fallback.
+bool gos_IsNvidiaGPU() {
+#ifdef MC2_VULKAN
+    if (!mc2vk::engineVulkanContextValid()) return false;
+    const VkPhysicalDevice device = mc2vk::getOrCreateEngineVulkanContext().physicalDevice();
+    static VkPhysicalDevice cached = VK_NULL_HANDLE;
+    static bool nvidia = false;
+    if (device != cached) {
+        VkPhysicalDeviceProperties properties{};
+        vkGetPhysicalDeviceProperties(device, &properties);
+        nvidia = properties.vendorID == 0x10de;
+        cached = device;
+    }
+    return nvidia;
+#else
+    return false;
+#endif
+}
 
 // VK-FAILSOFT-DISARM-1: present init hit a zero surface extent (window minimized at boot) and was DEFERRED instead of fail-softing
 // the session to GL. The frame loop retries EnginePresentVk::init once the drawable is non-zero.
@@ -72,6 +95,12 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
         mc2vk::VulkanContext& vkctx = mc2vk::getOrCreateEngineVulkanContext();
         const bool vkok = vkctx.init(/*wantPresent=*/true);
         vkctx.logHealth();
+#ifdef _WIN32
+        std::printf("[NO_GL_RUNTIME v1] context=none opengl32_loaded=%d glew32_loaded=%d\n",
+            GetModuleHandleW(L"opengl32.dll") != nullptr ? 1 : 0,
+            GetModuleHandleW(L"glew32.dll") != nullptr ? 1 : 0);
+        std::fflush(stdout);
+#endif
         if (!vkok || !vkctx.valid()) {
             // No GL fallback: show the reason and exit.
             mc2::fatalBackendFailure(vkctx.health().fallbackReason.empty()
@@ -168,7 +197,7 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
     // swapchain instead of SDL_GL_SwapWindow. Any hard error fail-softs
     // to GL for the rest of the session (never breaks the GL path).
     bool vkPresented = false;
-    bool vkPresentAttempted = false;   // presentGLFrame ran (it ends the Vulkan frame itself on every exit)
+    bool vkPresentAttempted = false;   // presentFrame ran (it ends the Vulkan frame itself on every exit)
     {
         mc2vk::EnginePresentVk& vkpres = mc2vk::getOrCreateEnginePresentVk();
         // VK-FAILSOFT-DISARM-1: present init was deferred on a zero
@@ -238,7 +267,7 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
                 gos::visual_capture::vkCapturePending() ||   // VK-VISUAL-CAPTURE-1
                 gos::screenshot::pending();
             vkPresentAttempted = true;
-            if (vkpres.presentGLFrame((uint32_t)pdw, (uint32_t)pdh, verify)) {
+            if (vkpres.presentFrame((uint32_t)pdw, (uint32_t)pdh, verify)) {
                 vkPresented = true;
                 static unsigned long s_vkHealthCadence = 0;
                 if ((s_vkHealthCadence++ % 300) == 0) vkpres.logHealth();
@@ -269,28 +298,10 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
             }
         }
     }
-    if (!vkPresented) {
-        // VK-FAILSOFT-DISARM-2b: NEVER GL-swap while VK present init
-        // is deferred. A GL SwapBuffers on the shared HWND claims the
-        // window's WSI binding, and every VK swapchain re-creation
-        // then fails NATIVE_WINDOW_IN_USE — observed 120/120 re-init
-        // failures over 60s with GL swapping between attempts (the
-        // deferral deadlock: GL swaps because VK isn't up; VK can't
-        // come up because GL swaps). Skipping the swap frees the HWND
-        // so the next retry succeeds; the window just holds its last
-        // frame for the sub-second gap (or stays blank while
-        // minimized, where nothing is visible anyway). If the
-        // retry budget runs out the process exits (fatalBackendFailure).
-        if (g_vkPresentInitDeferred) {
-            // hold the frame: no GL present while VK retries the HWND
-        } else {
-            graphics::swap_window(win);
-        }
-    }
     // No present ran (init deferred, present torn down, a retry frame): the Vulkan frame still ends, or the tracker and the ring would stop advancing.
     if (!vkPresentAttempted && mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().frameBoundary();
 #else
-    graphics::swap_window(win);
+    mc2::fatalBackendFailure("Vulkan support is required for presentation");
 #endif
     advanceHandleClock(frameCounter);
 }

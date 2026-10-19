@@ -269,10 +269,10 @@ static void mc2AuditDiagSink(const char* line) {
     mc2_diag::writeEvent("AUDIT", 1, 0, buf);
 }
 
-void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWindowHandle win_h, int w, int h) {
+void gos_CreateRenderer(graphics::RenderWindowHandle win_h, int w, int h) {
     ZoneScopedN("gos_CreateRenderer");
 
-    g_gos_renderer = new gosRenderer(ctx_h, win_h, w, h);
+    g_gos_renderer = new gosRenderer(win_h, w, h);
     g_gos_renderer->init();
 
     gosPostProcess* pp = new gosPostProcess();
@@ -303,16 +303,18 @@ void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWin
         mc2_diag::writeEvent("BUILD", 1, 0, buf);
     }
 
-    // DEVICE — one-shot GL device info; GL context is valid (g_gos_renderer->init() ran above).
+    // Report the actual native device selected by the shared owner.
     {
-        const char* vendor   = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
-        const char* renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
-        const char* version  = reinterpret_cast<const char*>(glGetString(GL_VERSION));
-        const char* glsl     = reinterpret_cast<const char*>(glGetString(GL_SHADING_LANGUAGE_VERSION));
-        char buf[1024];
-        mc2::fmt::to_buf(buf, "{{\"gl_vendor\":\"{}\",\"gl_renderer\":\"{}\",\"gl_version\":\"{}\",\"glsl_version\":\"{}\"}}", mc2::fmt::safe(vendor   ? vendor   : "<unavailable>"), mc2::fmt::safe(renderer ? renderer : "<unavailable>"), mc2::fmt::safe(version  ? version  : "<unavailable>"), mc2::fmt::safe(glsl     ? glsl     : "<unavailable>"));
-        mc2_diag::writeEvent("DEVICE", 1, 0, buf);
+        const char* name = "unavailable";
+#ifdef MC2_VULKAN_ISLAND
+        if (mc2vk::engineVulkanContextValid())
+            name = mc2vk::getOrCreateEngineVulkanContext().health().deviceName;
+#endif
+        char buf[512];
+        mc2::fmt::to_buf(buf, "{{\"backend\":\"vulkan\",\"device\":\"{}\"}}", mc2::fmt::safe(name));
+        mc2_diag::writeEvent("DEVICE", 2, 0, buf);
     }
+
 }
 
 void gos_DestroyRenderer() {
