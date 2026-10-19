@@ -277,7 +277,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
     if (s_geometryFinalized) {
         // Layer B: register-after-finalize is a bug in the map-load walk.
         if (!s_failedTypes[typeShape]) {
-            mc2::fmt::print_err("[GPUPROPS] late registerType for {:016X} -- CPU-fallback for this type\n", mc2::fmt::as_ptr((void*)typeShape));
+            mc2::fmt::print_err("[GPUPROPS] late registerType for {:016X} -- CPU-fallback for this type\n", mc2::fmt::as_ptr(static_cast<void*>(typeShape)));
             s_failedTypes[typeShape] = true;
         }
         if (s_gpuPropsTrace) ++g_regLateDrop[g_lightProbeSetupPath & 3];
@@ -422,7 +422,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
         static int s_seamRegLogged = 0;
         if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && s_seamRegLogged < 400) {
             ++s_seamRegLogged;
-            mc2::fmt::print_err("[SEAMPROBE] sample=first400 registerType src={:016X} typeID={:d} numTris={:d} numVerts={:d} finalized={:d}\n", mc2::fmt::as_ptr((void*)typeShape), mc2::fmt::as_u32(newTypeID), mc2::fmt::as_u32(numTris), mc2::fmt::as_u32(numVerts), mc2::fmt::as_i32((int)s_geometryFinalized));
+            mc2::fmt::print_err("[SEAMPROBE] sample=first400 registerType src={:016X} typeID={:d} numTris={:d} numVerts={:d} finalized={:d}\n", mc2::fmt::as_ptr(static_cast<void*>(typeShape)), mc2::fmt::as_u32(newTypeID), mc2::fmt::as_u32(numTris), mc2::fmt::as_u32(numVerts), mc2::fmt::as_i32(static_cast<int>(s_geometryFinalized)));
             fflush(stderr);
         }
     }

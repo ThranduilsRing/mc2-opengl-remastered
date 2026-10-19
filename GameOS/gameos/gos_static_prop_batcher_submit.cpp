@@ -20,7 +20,7 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
     auto it = s_typeIndex.find(typeShape);
     if (it == s_typeIndex.end()) {
         if (!s_failedTypes[typeShape]) {
-            mc2::fmt::print_err("[GPUPROPS] unregistered type {:016X} for shape {:016X} -- caller must CPU-fallback\n", mc2::fmt::as_ptr((void*)typeShape), mc2::fmt::as_ptr((void*)shape));
+            mc2::fmt::print_err("[GPUPROPS] unregistered type {:016X} for shape {:016X} -- caller must CPU-fallback\n", mc2::fmt::as_ptr(static_cast<void*>(typeShape)), mc2::fmt::as_ptr(static_cast<void*>(shape)));
             s_failedTypes[typeShape] = true;
         }
         return false;  // Layer B: caller calls shape->Render() on false.
@@ -101,7 +101,7 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
         if (s_treeDiagTrace && s_dynPrinted < kTreeDiagSample) {
             ++s_dynPrinted;
             TREE_DIAG("path=dyn sample=first%d n=%llu pop=%s typeID=%u flags=0x%x lightIdx=%u colOff=%u tx=%.2f ty=%.2f tz=%.2f fog=%.3f,%.3f,%.3f,%.3f hi=%.3f,%.3f,%.3f,%.3f bucketInsts=%zu",
-                kTreeDiagSample, (unsigned long long)s_dynSeen,
+                kTreeDiagSample, static_cast<unsigned long long>(s_dynSeen),
                 popShortName(s_currentSubmitPop),
                 inst.typeID, inst.flags, inst.lightDataIndex, inst.firstColorOffset,
                 // Stuff::Matrix4D translation lives at (3,0)/(3,1)/(3,2) which the
@@ -187,11 +187,11 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
             if (s_blkidxTrace) {
                 const float pwx = rec.worldCenter[0];
                 const float pwy = rec.worldCenter[1];
-                long mx = ((long)pwx >> 7) + Terrain::halfVerticesMapSide;
-                long bx = (long)(mx * Terrain::oneOverVerticesBlockSide);
+                long mx = (static_cast<long>(pwx) >> 7) + Terrain::halfVerticesMapSide;
+                long bx = static_cast<long>((mx * Terrain::oneOverVerticesBlockSide));
                 long my = Terrain::halfVerticesMapSide -
-                          (((long)pwy >> 7) + 1);
-                long by = (long)(my * Terrain::oneOverVerticesBlockSide);
+                          ((static_cast<long>(pwy) >> 7) + 1);
+                long by = static_cast<long>((my * Terrain::oneOverVerticesBlockSide));
                 long cpuBlk = bx + (by * Terrain::blocksMapSide);
                 long helperBlk = Terrain::worldToBlockIdx(pwx, pwy);
                 mc2::fmt::print_err("[BLKIDX v1] event=geom_check src=batcher wx={:.1f} wy={:.1f} wz={:.1f} helper={:d} cpu={:d} match={:d}\n", pwx, pwy, rec.worldCenter[2], mc2::fmt::as_i32(helperBlk), mc2::fmt::as_i32(cpuBlk), mc2::fmt::as_i32((helperBlk == cpuBlk) ? 1 : 0));
@@ -311,7 +311,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
             //   - the bare pointer (still useful for cross-referencing
             //     across log files / ts identity over a process lifetime)
             char addrBuf[32];
-            mc2::fmt::to_buf(addrBuf, "{:016X}", mc2::fmt::as_ptr((const void*)ts));
+            mc2::fmt::to_buf(addrBuf, "{:016X}", mc2::fmt::as_ptr(static_cast<const void*>(ts)));
             const std::string typeKey = addrBuf;  // dedup key — pointer-stable within one run
             auto& count = s_lateRegisterCounts[typeKey];
             // Stage 2.D.3: compute `allowed` for EVERY event so the per-event
@@ -373,7 +373,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
                         const TG_TypeShape* rt = s_types[k].source;
                         const char* rnode = nullptr;
                         if (rt) rnode = const_cast<TG_TypeShape*>(rt)->getNodeId();
-                        mc2::fmt::print_err("[GPUPROPS_REG] entry typeID={:d} ptr={:016X} nodeId={} vertexCount={:d}\n", mc2::fmt::as_size(k), mc2::fmt::as_ptr((const void*)rt), mc2::fmt::safe((rnode && rnode[0]) ? rnode : "<unnamed>"), mc2::fmt::as_u32(s_types[k].vertexCount));
+                        mc2::fmt::print_err("[GPUPROPS_REG] entry typeID={:d} ptr={:016X} nodeId={} vertexCount={:d}\n", mc2::fmt::as_size(k), mc2::fmt::as_ptr(static_cast<const void*>(rt)), mc2::fmt::safe((rnode && rnode[0]) ? rnode : "<unnamed>"), mc2::fmt::as_u32(s_types[k].vertexCount));
                     }
                     std::fflush(stderr);
                 }
@@ -492,7 +492,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
                     (callerName && callerName[0]) ? callerName : "<unknown>",
                     multi->cachedGpuLightIndex_, multi->cachedFrame_,
                     g_mc2FrameCounter,
-                    (unsigned long long)s_counters.mono_stale_light_row_regathered);
+                    static_cast<unsigned long long>(s_counters.mono_stale_light_row_regathered));
                 std::fflush(stderr);
             }
         }
@@ -699,8 +699,8 @@ bool uploadAllBucketsIfNeeded() {
     size_t instBytesNeeded = 0;
     size_t colBytesNeeded  = 0;
     for (auto& kv : s_bucketsByType) {
-        instBytesNeeded = alignUp(instBytesNeeded, (size_t)s_ssboAlignment);
-        colBytesNeeded  = alignUp(colBytesNeeded,  (size_t)s_ssboAlignment);
+        instBytesNeeded = alignUp(instBytesNeeded, static_cast<size_t>(s_ssboAlignment));
+        colBytesNeeded  = alignUp(colBytesNeeded,  static_cast<size_t>(s_ssboAlignment));
         instBytesNeeded += kv.second.instances.size() * sizeof(GpuStaticPropInstance);
         colBytesNeeded  += kv.second.colors.size() * sizeof(uint32_t);
     }
@@ -1107,11 +1107,11 @@ void executorApplyStaticPropOpaqueState() {
     gosPostProcess* pp = getGosPostProcess();
     if (desc && pp) {
         RenderCore::framegraph::applyTopLevelGenericAxes(
-            *desc, (unsigned)pp->getSceneFBO(), pp->getWidth(), pp->getHeight());
+            *desc, static_cast<unsigned>(pp->getSceneFBO()), pp->getWidth(), pp->getHeight());
     }
     pipeline_binder::applyPipeline(
         RenderCore::getPipelineDesc(RenderCore::PipelineId::StaticPropOpaque),
         "StaticPropOpaque");
-    mc2_framegraph_executor_bump_apply_state((unsigned)RenderCore::framegraph::ApplyPassId::StaticPropOpaque);
+    mc2_framegraph_executor_bump_apply_state(static_cast<unsigned>(RenderCore::framegraph::ApplyPassId::StaticPropOpaque));
     s_staticPropStateAppliedByExecutor = true;
 }

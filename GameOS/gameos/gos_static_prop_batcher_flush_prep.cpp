@@ -149,8 +149,8 @@ void GpuStaticPropBatcher::writeCoalesceInstances() {
                         MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=tex_evicted "
                                      "type=%u old_handle=%lu new_handle=%lu\n",
                                      typeID,
-                                     (unsigned long)type.lastSeenGosHandle,
-                                     (unsigned long)now);
+                                     static_cast<unsigned long>(type.lastSeenGosHandle),
+                                     static_cast<unsigned long>(now));
                         s_coalesceArmed = false;
                         break;
                     }
@@ -206,8 +206,8 @@ void GpuStaticPropBatcher::writeCoalesceInstances() {
                         MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=tex_evicted "
                                      "type=%u old_handle=%lu new_handle=%lu\n",
                                      typeID,
-                                     (unsigned long)type.lastSeenGosHandle,
-                                     (unsigned long)now);
+                                     static_cast<unsigned long>(type.lastSeenGosHandle),
+                                     static_cast<unsigned long>(now));
                         s_coalesceArmed = false;
                         break;
                     }
@@ -240,7 +240,7 @@ void GpuStaticPropBatcher::logInstDiagPath() {
         static bool s_pathLogged = false;
         if (s_instDiag && !s_pathLogged) {
             s_pathLogged = true;
-            mc2::fmt::print_err("[INSTDIAG] PATH coalesceEnabled={:d} globalPoolLegacy={:d} instanceCapacity={:d} frameSlot={:d} typeRanges={:d}\n", mc2::fmt::as_i32((int)IsCoalesceEnabled()), mc2::fmt::as_i32((int)s_globalPoolLegacy), mc2::fmt::as_u32((unsigned)s_instanceCapacity), mc2::fmt::as_u32((unsigned)s_frameSlot), mc2::fmt::as_size(s_typeRanges.size()));
+            mc2::fmt::print_err("[INSTDIAG] PATH coalesceEnabled={:d} globalPoolLegacy={:d} instanceCapacity={:d} frameSlot={:d} typeRanges={:d}\n", mc2::fmt::as_i32(static_cast<int>(IsCoalesceEnabled())), mc2::fmt::as_i32(static_cast<int>(s_globalPoolLegacy)), mc2::fmt::as_u32(static_cast<unsigned>(s_instanceCapacity)), mc2::fmt::as_u32(static_cast<unsigned>(s_frameSlot)), mc2::fmt::as_size(s_typeRanges.size()));
             fflush(stderr);
         }
     }
@@ -355,12 +355,12 @@ void GpuStaticPropBatcher::uploadCoalesceMvp() {
                 if (mvpPtr) {
                     MC2_DIAGFE(stderr,
                             "[MVP_DIAG v1] event=coalesce_upload frame=%ld loc=%d ptr=%p row0=[%g %g %g %g]\n",
-                            g_mvpDiagFrame, (int)s_locsCoalesce.terrainMVP,
-                            (void*)mvpPtr, mvpPtr[0], mvpPtr[1], mvpPtr[2], mvpPtr[3]);
+                            g_mvpDiagFrame, static_cast<int>(s_locsCoalesce.terrainMVP),
+                            static_cast<void*>(const_cast<float*>(mvpPtr)), mvpPtr[0], mvpPtr[1], mvpPtr[2], mvpPtr[3]);
                 } else {
                     MC2_DIAGFE(stderr,
                             "[MVP_DIAG v1] event=coalesce_upload frame=%ld loc=%d ptr=%p row0=null\n",
-                            g_mvpDiagFrame, (int)s_locsCoalesce.terrainMVP, (void*)mvpPtr);
+                            g_mvpDiagFrame, static_cast<int>(s_locsCoalesce.terrainMVP), static_cast<void*>(const_cast<float*>(mvpPtr)));
                 }
                 fflush(stderr);
             }

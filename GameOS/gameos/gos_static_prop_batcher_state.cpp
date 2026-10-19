@@ -442,14 +442,14 @@ static double iblSunRotateLift(const float (*C)[3]) {
     double worstDeficit = 0.0;
     const int kLat = 128, kLon = 256;
     for (int i = 0; i <= kLat; ++i) {
-        const double th = kPi * (double)i / (double)kLat;
+        const double th = kPi * static_cast<double>(i) / static_cast<double>(kLat);
         const double sth = std::sin(th), cth = std::cos(th);
         for (int j = 0; j < kLon; ++j) {
-            const double ph = 2.0 * kPi * (double)j / (double)kLon;
+            const double ph = 2.0 * kPi * static_cast<double>(j) / static_cast<double>(kLon);
             const double nx = sth * std::cos(ph), ny = cth, nz = sth * std::sin(ph);
             for (int ch = 0; ch < 3; ++ch) {
                 const double deficit =
-                    (double)iblSunRotateFloor() - iblEvalShL2Cpu(C, ch, nx, ny, nz);
+                    static_cast<double>(iblSunRotateFloor()) - iblEvalShL2Cpu(C, ch, nx, ny, nz);
                 if (deficit > worstDeficit) worstDeficit = deficit;
             }
         }
@@ -495,14 +495,14 @@ const float* iblShCoeffsForUpload() {
     // stuff.x = -mc2.x, stuff.y = mc2.z, stuff.z = mc2.y. Stuff is Y-up, so its
     // horizontal plane is x-z and azimuth = atan2(stuff.z, stuff.x)
     //                                     = atan2(mc2.y, -mc2.x).
-    const double sunHoriz2 = (double)sx * sx + (double)sy * sy;
+    const double sunHoriz2 = static_cast<double>(sx) * sx + static_cast<double>(sy) * sy;
     double t = 0.0;
     if (sunHoriz2 > 1e-12) {
-        const double sunAz = std::atan2((double)sy, -(double)sx);
+        const double sunAz = std::atan2(static_cast<double>(sy), -static_cast<double>(sx));
         // The baked probe's bright axis IS its L1 band. R channel: all three
         // agree to within 0.5 deg (harness F2), and one angle has to serve all
         // three or the channels would shear apart.
-        const double probeAz = std::atan2((double)src[2][0], (double)src[3][0]);
+        const double probeAz = std::atan2(static_cast<double>(src[2][0]), static_cast<double>(src[3][0]));
         t = sunAz - probeAz;
     }
 
@@ -512,14 +512,14 @@ const float* iblShCoeffsForUpload() {
         for (int i = 0; i < 9; ++i) s_iblShRotated[i][ch] = src[i][ch];
         // m=0 ([0] L00, [1] L1-1 pole term, [6] L20) are invariant -- copied above.
         const double a3 = src[3][ch], b2 = src[2][ch];   // m=1 (L11 ~x, L10 ~z)
-        s_iblShRotated[3][ch] = (float)(a3 * c1t - b2 * s1t);
-        s_iblShRotated[2][ch] = (float)(a3 * s1t + b2 * c1t);
+        s_iblShRotated[3][ch] = static_cast<float>((a3 * c1t - b2 * s1t));
+        s_iblShRotated[2][ch] = static_cast<float>((a3 * s1t + b2 * c1t));
         const double a4 = src[4][ch], b5 = src[5][ch];   // m=1 (L2-2 ~xy, L2-1 ~yz)
-        s_iblShRotated[4][ch] = (float)(a4 * c1t - b5 * s1t);
-        s_iblShRotated[5][ch] = (float)(a4 * s1t + b5 * c1t);
+        s_iblShRotated[4][ch] = static_cast<float>((a4 * c1t - b5 * s1t));
+        s_iblShRotated[5][ch] = static_cast<float>((a4 * s1t + b5 * c1t));
         const double a8 = src[8][ch], b7 = src[7][ch];   // m=2 (L22 ~x^2-z^2, L21 ~xz)
-        s_iblShRotated[8][ch] = (float)(a8 * c2t - b7 * s2t);
-        s_iblShRotated[7][ch] = (float)(a8 * s2t + b7 * c2t);
+        s_iblShRotated[8][ch] = static_cast<float>((a8 * c2t - b7 * s2t));
+        s_iblShRotated[7][ch] = static_cast<float>((a8 * s2t + b7 * c2t));
     }
 
     // The floor. Rotation-invariant, so it is searched once per source table
@@ -530,7 +530,7 @@ const float* iblShCoeffsForUpload() {
     if (s_liftValue > 0.0) {
         const double dL00 = s_liftValue / 0.886227;   // c4: L00's weight in evalShL2
         for (int ch = 0; ch < 3; ++ch)
-            s_iblShRotated[0][ch] = (float)((double)src[0][ch] + dL00);
+            s_iblShRotated[0][ch] = static_cast<float>((static_cast<double>(src[0][ch]) + dL00));
     }
 
     s_iblShRotatedSrc    = src;

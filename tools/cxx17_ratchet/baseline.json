@@ -55,7 +55,7 @@
    "LG06": 494,
    "LG07": 0,
    "LG08": 235,
-   "LG09": 1203,
+   "LG09": 886,
    "LG10": 39,
    "LG11": 89,
    "LG12a": 88,
@@ -531,12 +531,8 @@
   "GameOS/gameos/gos_hdri.h": {
    "LG06": 1
   },
-  "GameOS/gameos/gos_host_vk.cpp": {
-   "LG09": 4
-  },
   "GameOS/gameos/gos_input.cpp": {
-   "LG05": 1,
-   "LG09": 8
+   "LG05": 1
   },
   "GameOS/gameos/gos_input.h": {
    "LG14": 1
@@ -545,53 +541,39 @@
    "LG03": 3,
    "LG05": 3,
    "LG06": 1,
-   "LG09": 24,
    "LG11": 2
   },
   "GameOS/gameos/gos_materials.cpp": {
    "LG06": 3,
    "LG08": 1,
-   "LG09": 2,
    "LG20": 1
   },
   "GameOS/gameos/gos_materials.h": {
    "LG06": 1
-  },
-  "GameOS/gameos/gos_mech_batcher.cpp": {
-   "LG09": 4
   },
   "GameOS/gameos/gos_mech_batcher.h": {
    "LG05": 1
   },
   "GameOS/gameos/gos_mech_batcher_api.cpp": {
    "LG08": 1,
-   "LG09": 11,
    "LG10": 8
   },
   "GameOS/gameos/gos_mech_batcher_flush.cpp": {
    "LG05": 1,
-   "LG08": 7,
-   "LG09": 27
+   "LG08": 7
   },
   "GameOS/gameos/gos_mech_batcher_geometry.cpp": {
    "LG08": 2,
-   "LG09": 26,
    "LG10": 1
   },
   "GameOS/gameos/gos_object_recon_tracy.cpp": {
-   "LG06": 2,
-   "LG09": 1
-  },
-  "GameOS/gameos/gos_particle_bridge.cpp": {
-   "LG09": 3
+   "LG06": 2
   },
   "GameOS/gameos/gos_particle_bridge_tube.cpp": {
-   "LG08": 1,
-   "LG09": 9
+   "LG08": 1
   },
   "GameOS/gameos/gos_postprocess.cpp": {
    "LG06": 1,
-   "LG09": 7,
    "LG20": 4
   },
   "GameOS/gameos/gos_postprocess.h": {
@@ -601,22 +583,13 @@
    "LG03": 3,
    "LG05": 3,
    "LG06": 2,
-   "LG09": 20,
    "LG11": 2
   },
-  "GameOS/gameos/gos_postprocess_executor.cpp": {
-   "LG09": 4
-  },
   "GameOS/gameos/gos_postprocess_fbo.cpp": {
-   "LG06": 1,
-   "LG09": 17
+   "LG06": 1
   },
   "GameOS/gameos/gos_postprocess_shadow.cpp": {
-   "LG09": 2,
    "LG10": 4
-  },
-  "GameOS/gameos/gos_postprocess_skybox.cpp": {
-   "LG09": 1
   },
   "GameOS/gameos/gos_rdoc_capture.cpp": {
    "LG06": 2
@@ -624,22 +597,17 @@
   "GameOS/gameos/gos_render.cpp": {
    "LG03": 4,
    "LG06": 1,
-   "LG09": 13,
    "LG12a": 13,
    "LG20": 1
   },
   "GameOS/gameos/gos_render.h": {
    "LG06": 1
   },
-  "GameOS/gameos/gos_render_pass_timer.cpp": {
-   "LG09": 4
-  },
   "GameOS/gameos/gos_render_pass_timer.h": {
    "LG14": 1
   },
   "GameOS/gameos/gos_renderer_input_probe.cpp": {
-   "LG05": 1,
-   "LG09": 3
+   "LG05": 1
   },
   "GameOS/gameos/gos_renderer_input_probe.h": {
    "LG05": 1
@@ -654,8 +622,7 @@
    "LG06": 3
   },
   "GameOS/gameos/gos_smoke.cpp": {
-   "LG06": 3,
-   "LG09": 6
+   "LG06": 3
   },
   "GameOS/gameos/gos_smoke.h": {
    "LG06": 2
@@ -669,26 +636,21 @@
    "LG17": 1
   },
   "GameOS/gameos/gos_static_prop_batcher_finalize.cpp": {
-   "LG08": 3,
-   "LG09": 12
+   "LG08": 3
   },
   "GameOS/gameos/gos_static_prop_batcher_finalize_textures.cpp": {
-   "LG08": 13,
-   "LG09": 7
+   "LG08": 13
   },
   "GameOS/gameos/gos_static_prop_batcher_flush.cpp": {
    "LG08": 2,
-   "LG09": 19,
    "LG18": 2
   },
   "GameOS/gameos/gos_static_prop_batcher_flush_dispatch.cpp": {
    "LG08": 4,
-   "LG09": 5,
    "LG18": 2
   },
   "GameOS/gameos/gos_static_prop_batcher_flush_prep.cpp": {
-   "LG08": 3,
-   "LG09": 8
+   "LG08": 3
   },
   "GameOS/gameos/gos_static_prop_batcher_internal.h": {
    "LG06": 2,
@@ -698,29 +660,21 @@
   "GameOS/gameos/gos_static_prop_batcher_mapload.cpp": {
    "LG06": 1,
    "LG08": 2,
-   "LG09": 2,
    "LG10": 1
   },
   "GameOS/gameos/gos_static_prop_batcher_program.cpp": {
-   "LG08": 2,
-   "LG09": 25
+   "LG08": 2
   },
   "GameOS/gameos/gos_static_prop_batcher_seam.cpp": {
    "LG05": 6,
    "LG08": 20,
-   "LG09": 10,
    "LG18": 1
   },
   "GameOS/gameos/gos_static_prop_batcher_shadow.cpp": {
-   "LG08": 5,
-   "LG09": 9
-  },
-  "GameOS/gameos/gos_static_prop_batcher_state.cpp": {
-   "LG09": 13
+   "LG08": 5
   },
   "GameOS/gameos/gos_static_prop_batcher_submit.cpp": {
-   "LG08": 6,
-   "LG09": 11
+   "LG08": 6
   },
   "GameOS/gameos/gos_static_prop_registry.cpp": {
    "LG05": 14,
@@ -4136,7 +4090,7 @@
    "LG20": 3
   }
  },
- "head": "1571efe13",
+ "head": "58cf66814",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

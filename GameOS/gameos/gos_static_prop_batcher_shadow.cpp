@@ -31,7 +31,7 @@ extern "C" int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out) {
         for (size_t i = 0; i < s_packets.size(); ++i) {
             s_feedPackets[i].firstIndex = s_packets[i].firstIndex;
             s_feedPackets[i].indexCount = s_packets[i].indexCount;
-            s_feedPackets[i].baseVertex = (uint32_t)s_packets[i].baseVertex;
+            s_feedPackets[i].baseVertex = static_cast<uint32_t>(s_packets[i].baseVertex);
         }
         s_feedPacketGen = s_packets.size();
     }
@@ -47,12 +47,12 @@ extern "C" int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out) {
 
     out->vboBytes        = s_sharedVboBytes;
     out->iboBytes        = s_sharedIboBytes;
-    out->vertexStride    = (uint32_t)kVertexStride;
+    out->vertexStride    = static_cast<uint32_t>(kVertexStride);
     out->packets         = s_feedPackets.data();
-    out->packetCount     = (uint32_t)s_feedPackets.size();
+    out->packetCount     = static_cast<uint32_t>(s_feedPackets.size());
     out->typeFirstPacket = s_feedTypeFirstPacket.data();
     out->typePacketCount = s_feedTypePacketCount.data();
-    out->typeCount       = (uint32_t)s_types.size();
+    out->typeCount       = static_cast<uint32_t>(s_types.size());
     return 1;
 }
 
@@ -87,7 +87,7 @@ extern "C" int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out) {
 // feeding it directly gives the island the SAME prop set GL flush() draws — trees,
 // tents, misc props included — without the accumulation hazard. Read-only: does NOT
 // mutate any batcher state. Output is a reused static scratch vector.
-extern "C" uint32_t mc2_static_prop_vertex_stride(void) { return (uint32_t)kVertexStride; }
+extern "C" uint32_t mc2_static_prop_vertex_stride(void) { return static_cast<uint32_t>(kVertexStride); }
 
 // Called by txmmgr once per frame at the point where the GL flush() is skipped because
 // the VK color island handled the frame (flush() owns the clear on the GL path).
@@ -131,7 +131,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
         auto bt = s_bucketsByType.find(tid);
         if (bt != s_bucketsByType.end()) {
             const PerTypeBucket& b = bt->second;
-            const uint32_t n  = (uint32_t)b.instances.size();
+            const uint32_t n  = static_cast<uint32_t>(b.instances.size());
             const uint32_t rp = std::min(b.reinjPos, n);
             const uint32_t re = std::min(rp + b.reinjCount, n);
             s_colorFeedFlat.insert(s_colorFeedFlat.end(), b.instances.begin(), b.instances.begin() + rp);
@@ -141,7 +141,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     if (s_colorFeedFlat.empty()) return 0;
 
     out->instances112 = s_colorFeedFlat.data();
-    out->count        = (uint32_t)s_colorFeedFlat.size();
+    out->count        = static_cast<uint32_t>(s_colorFeedFlat.size());
     const float* mvp = gos_GetObjectFixBMVPMat4();
     if (mvp) std::memcpy(out->worldToClipGL, mvp, sizeof(out->worldToClipGL));
     else     std::memset(out->worldToClipGL, 0, sizeof(out->worldToClipGL));
@@ -202,13 +202,13 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
     out->bucketed        = s_bucketArrays.empty() ? 0u : 1u;
     out->typeAlbedoLayer = s_typeAlbedoLayer.data();
     out->typeAlphaClass  = s_typeAlphaClass.data();
-    out->typeCount       = (uint32_t)s_typeAlbedoLayer.size();
+    out->typeCount       = static_cast<uint32_t>(s_typeAlbedoLayer.size());
     // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: per-packet layer (see header comment).
     // s_packetTexArrayLayer is populated in finalizeGeometry() from the SAME
     // per-packet, group-relative layerForPacket[] GL's coalesce PerDrawEntry table
     // uses — it is the correct source, unlike the per-type "first-valid-wins" table.
     out->packetAlbedoLayer = s_packetTexArrayLayer.empty() ? nullptr : s_packetTexArrayLayer.data();
-    out->packetCount       = (uint32_t)s_packetTexArrayLayer.size();
+    out->packetCount       = static_cast<uint32_t>(s_packetTexArrayLayer.size());
     // FENCE-UVSCALE-1: same per-packet indexing as packetAlbedoLayer, populated
     // in finalizeGeometry() from uvScaleXByPacket/uvScaleYByPacket (the same
     // source PerDrawEntry.uvScaleX/Y draws from on the GL side). nullptr if the
