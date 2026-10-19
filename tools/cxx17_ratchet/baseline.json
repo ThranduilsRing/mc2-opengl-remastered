@@ -197,7 +197,7 @@
    "LG10": 33,
    "LG11": 67,
    "LG12a": 158,
-   "LG12b": 232,
+   "LG12b": 199,
    "LG13": 127,
    "LG14": 110,
    "LG15": 0,
@@ -2640,8 +2640,7 @@
    "LG13": 1
   },
   "mclib/camera_matrix.cpp": {
-   "LG12a": 3,
-   "LG12b": 1
+   "LG12a": 3
   },
   "mclib/camera_project.cpp": {
    "LG05": 2
@@ -2667,9 +2666,6 @@
    "LG14": 4,
    "LG17": 2
   },
-  "mclib/color.cpp": {
-   "LG12b": 2
-  },
   "mclib/cone_glow.cpp": {
    "LG05": 4,
    "LG06": 3,
@@ -2687,8 +2683,7 @@
   },
   "mclib/crater.cpp": {
    "LG03": 1,
-   "LG06": 1,
-   "LG12b": 1
+   "LG06": 1
   },
   "mclib/crater.h": {
    "LG06": 1,
@@ -2992,14 +2987,12 @@
   "mclib/mech3d_geometry.cpp": {
    "LG03": 2,
    "LG12a": 1,
-   "LG12b": 1,
    "LG13": 1
   },
   "mclib/mech3d_init.cpp": {
    "LG06": 1,
    "LG10": 1,
    "LG12a": 2,
-   "LG12b": 7,
    "LG13": 1
   },
   "mclib/mech3d_internal.h": {
@@ -3015,8 +3008,7 @@
    "LG03": 22,
    "LG05": 4,
    "LG06": 3,
-   "LG12a": 2,
-   "LG12b": 13
+   "LG12a": 2
   },
   "mclib/mech3d_update.cpp": {
    "LG08": 1
@@ -3402,8 +3394,7 @@
    "LG06": 1
   },
   "mclib/path_trace.h": {
-   "LG06": 1,
-   "LG12b": 3
+   "LG06": 1
   },
   "mclib/paths.cpp": {
    "LG13": 1
@@ -3453,7 +3444,6 @@
    "LG05": 5,
    "LG06": 3,
    "LG11": 1,
-   "LG12b": 4,
    "LG17": 2,
    "LG18": 4
   },
@@ -3741,7 +3731,7 @@
    "LG08": 1,
    "LG11": 1,
    "LG12a": 7,
-   "LG12b": 3
+   "LG12b": 2
   },
   "mclib/txmmgr.h": {
    "LG05": 2,
@@ -3843,7 +3833,7 @@
    "LG20": 3
   }
  },
- "head": "c57c5420d",
+ "head": "cb29dc68c",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
