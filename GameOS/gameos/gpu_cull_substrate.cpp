@@ -345,7 +345,7 @@ void substrate_appendStaticPropRecord(const GpuActorRecord& rec) {
     substrate_writeRecord(rec);
 
     // Update hdr->recordCount in-place so compute_dispatch's glCopyBufferSubData
-    // copies the updated count. Buffer is GL_MAP_COHERENT_BIT — no explicit flush.
+    // copies the updated count from CPU memory; there is no GPU mapping — no explicit flush.
     const size_t slotOffset = s_frameSlot * s_slotBytes;
     GpuActorRecordHeader* hdr =
         reinterpret_cast<GpuActorRecordHeader*>(
