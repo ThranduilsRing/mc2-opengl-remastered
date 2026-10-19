@@ -512,67 +512,6 @@ void gosRenderer::init() {
         fflush(stdout);
     }
 
-    // B4 Slice Stage 1b — load mask-SOLID program.
-    // Pairs the new mask-SOLID VS with the existing terrain frag, reusing all
-    // PBR/shadow/atlas logic from gos_terrain.frag.
-    {
-        ZoneScopedN("gosRenderer::init maskSolidProg");
-        std::string kMaskSolidPrefix = "#version 430\n";
-        if (terrainNormalArrayEnabled())
-            kMaskSolidPrefix += "#define TERRAIN_NORMAL_ARRAY\n";
-        if (mc2ShadowStaticBandFixEnabled())
-            kMaskSolidPrefix += "#define MC2_SHADOW_STATIC_BANDFIX 1\n";
-        if (mc2ShadowStaticBandFixV2Enabled())
-            kMaskSolidPrefix += "#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n";
-        kMaskSolidPrefix += mc2TerrainShadowSunDefine();   // TERRAIN-SHADOW-GUARD-1
-        mask_solid_prog_ = glsl_program::makeProgram(
-            "gos_terrain_mask_solid",
-            "shaders/gos_terrain_mask_solid.vert",
-            "shaders/gos_terrain.frag",
-            kMaskSolidPrefix.c_str());
-        if (!mask_solid_prog_ || !mask_solid_prog_->shp_)
-            mc2::fmt::print_err("[MASK_SOLID] WARNING: failed to compile mask-SOLID shader — MC2_TERRAIN_MASK_DISPATCH=1 SOLID draw disabled\n");
-        else
-            mc2::fmt::print_out("[MASK_SOLID] Mask-SOLID shader loaded: prog={:d}\n", mc2::fmt::as_u32((unsigned)mask_solid_prog_->shp_));
-        fflush(stdout);
-    }
-
-    // B4 Slice Stage 1c — load mask-water program.
-    // Pairs the mask-water VS (reads water mask + WaterRecipe) with
-    // gos_tex_vertex.frag (same frag as the water fast path).
-    {
-        ZoneScopedN("gosRenderer::init maskWaterProg");
-        static const char* kMaskWaterPrefix = "#version 430\n";
-        mask_water_prog_ = glsl_program::makeProgram(
-            "gos_terrain_mask_water",
-            "shaders/gos_terrain_mask_water.vert",
-            "shaders/gos_tex_vertex.frag",
-            kMaskWaterPrefix);
-        if (!mask_water_prog_ || !mask_water_prog_->shp_)
-            mc2::fmt::print_err("[MASK_WATER] WARNING: failed to compile mask-water shader — MC2_TERRAIN_MASK_DISPATCH=1 water draw disabled\n");
-        else
-            mc2::fmt::print_out("[MASK_WATER] Mask-water shader loaded: prog={:d}\n", mc2::fmt::as_u32((unsigned)mask_water_prog_->shp_));
-        fflush(stdout);
-    }
-
-    // Load water fast-path program (Stage 2 of renderWater architectural slice).
-    // Pairs the new VS that consumes WaterRecipe + WaterFrame SSBOs with the
-    // existing gos_tex_vertex.frag (preserves pixel-stable water visuals).
-    {
-        ZoneScopedN("gosRenderer::init waterFastProg");
-        static const char* kWaterFastPrefix = "#version 430\n";
-        water_fast_prog_ = glsl_program::makeProgram(
-            "gos_terrain_water_fast",
-            "shaders/gos_terrain_water_fast.vert",
-            "shaders/gos_tex_vertex.frag",
-            kWaterFastPrefix);
-        if (!water_fast_prog_ || !water_fast_prog_->shp_)
-            mc2::fmt::print_err("[WATER_FAST] WARNING: failed to compile water-fast shader — MC2_RENDER_WATER_FASTPATH=1 will fall back to legacy\n");
-        else
-            mc2::fmt::print_out("[WATER_FAST] Water-fast shader loaded: prog={:d}\n", mc2::fmt::as_u32((unsigned)water_fast_prog_->shp_));
-        fflush(stdout);
-    }
-
     // Load world-space overlay shaders and create VAOs/VBOs.
     // Both batches share terrain_overlay.vert; decal uses a different frag.
     // Use glsl_program::makeProgram directly (not gosRenderMaterial::load) because

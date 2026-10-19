@@ -680,16 +680,15 @@ bool gosPostProcess::vkPostScreenFxNativeEnabled()
 bool gosPostProcess::runVkPostScreenShadowStaticNative()
 {
     const bool dynamicCasterActive = mc2::gate::get<"MC2_SHADOW_ENABLE">();   // DEFAULT ON; =0 kill-switch
-    const bool csmActive = dynamicCasterActive && (dynShadowArrayTex_ != 0);
+    const bool csmActive = dynamicCasterActive && csmBuilt_;
     const bool csmDirectReady = csmActive
         && mc2_vk_shadow_island_csm_array_ready()
         && mc2_vk_shadow_island_csm_fullmap_ready()
         && mc2_vk_shadow_island_get_csm_array_view() != nullptr
         && mc2_vk_shadow_island_get_csm_fullmap_view() != nullptr;
-    const bool dynamicActive = dynamicCasterActive && (csmActive || dynShadowDepthTex_ != 0);
+    const bool dynamicActive = dynamicCasterActive && (csmActive || dynShadowBuilt_);
     const bool wantShadow = g_fx.shadowGate != 0
         && screenShadowEnabled_ && sceneHasTerrain_
-        && screenShadowProg_ && screenShadowProg_->is_valid()
         && shadowsEnabled_ && (!dynamicActive || csmDirectReady) && screenShadowDebug_ == 0;
     if (!wantShadow || width_ <= 0 || height_ <= 0) return false;
 
@@ -910,11 +909,9 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
 {
     // Per-pass parity guards — EXACT mirrors of the GL bodies' early-outs.
     const bool wantCloud = g_fx.cloudGate != 0
-        && enableCloudShadow_ && sceneHasTerrain_
-        && cloudProg_ && cloudProg_->is_valid();
+        && enableCloudShadow_ && sceneHasTerrain_;
     const bool wantShore = g_fx.shoreGate != 0
         && shorelineEnabled_ && sceneHasTerrain_
-        && shorelineProg_ && shorelineProg_->is_valid()
         && !shorelineSuppressedByTerrainMask_;
     if (!wantCloud && !wantShore) return 0;
     if (width_ <= 0 || height_ <= 0) return 0;

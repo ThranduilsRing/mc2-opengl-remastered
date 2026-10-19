@@ -74,7 +74,6 @@ set(SOURCES ${SOURCES}
     gos_terrain_indirect_compute.cpp
     gos_terrain_indirect_mine_decal.cpp
     gos_terrain_surface.cpp
-    gos_terrain_mask_dispatch.cpp
     gos_terrain_lighting.cpp
     gos_terrain_height_tex.cpp
     gos_terrain_lod_chunk.cpp

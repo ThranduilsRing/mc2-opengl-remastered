@@ -249,7 +249,6 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
             // gosRenderer type is private to that TU.
             extern uint32_t gos_getTerrainSurfaceProgramId();
             extern uint32_t gos_getThinTerrainProgramId();
-            extern uint32_t gos_getWaterFastProgramId();
             extern uint32_t gos_getTerrainOverlayProgramId();
             {
                 const RenderCore::EngineView& view = RenderCore::getCurrentView();
@@ -276,7 +275,6 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
                 EditorInspector::TerrainPassSnapshot ts;
                 ts.surfaceProgramId   = snap.terrainPass.legacyProgramId;
                 ts.thinProgramId      = gos_getThinTerrainProgramId();
-                ts.waterFastProgramId = gos_getWaterFastProgramId();
                 ts.overlayProgramId   = gos_getTerrainOverlayProgramId();
                 ts.bucketCount  = snap.terrainPass.drawCallCount;
                 ts.vertCount    = TerrainPatchStream::getLastFlushVertCount();

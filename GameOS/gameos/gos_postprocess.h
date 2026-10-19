@@ -39,40 +39,6 @@ public:
     bool executorSceneColorTexValid()    const;   // sceneColorTex_ != 0
     bool executorSceneHasTerrain()       const { return sceneHasTerrain_; }
 
-    // FRAME-GRAPH-EXECUTOR-ISLAND-2: sub-stage accessors (EdgeFog + FogOob).
-    // Each WillRun() mirrors the exact early-return gates of the matching run*().
-    bool executorEdgeFogWillRun()      const;   // edgeFogEnabled_+prog_+mapHalfExtent_+terrain
-    bool executorFogOobWillRun()       const;   // fogOobEnabled_+prog_+terrain
-    bool executorSceneDepthTexValid()  const;   // sceneDepthTex_ != 0
-
-    // FRAME-GRAPH-EXECUTOR-ISLAND-3: sub-stage accessors (Shoreline + CloudShadow).
-    bool executorShorelineWillRun()    const;   // shorelineEnabled_+prog_+terrain
-    bool executorCloudShadowWillRun()  const;   // enableCloudShadow_+prog_+terrain
-
-    // EXECUTOR-ISLAND-SCREENSHADOW-1: sub-stage accessor for ScreenShadow.
-    // WillRun() mirrors exact early-return gates of runScreenShadow() (lines 2033-2036):
-    //   screenShadowEnabled_ && sceneHasTerrain_ && screenShadowProg_ valid && shadowsEnabled_
-    // Unblocked by SCREENSHADOW-TEX-RESTORE-1 (a0b4189b); validate-only island.
-    bool executorScreenShadowWillRun() const;   // screenShadowEnabled_+prog_+terrain+shadowsEnabled_
-
-    // FRAMEGRAPH-APPLY-STATE-ISLAND-1: executor pre-apply for EdgeFog sub-stage.
-    // Performs the 4 GL state calls that runEdgeFog() makes at entry:
-    //   glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_)
-    //   setSceneDrawBuffers(SingleColor, false)
-    //   glViewport(0, 0, width_, height_)
-    //   pipeline_binder::applyPipeline(PostProcessEdgeFog, "PostProcessEdgeFog")
-    // This method touches GL; it lives in gos_postprocess.cpp (private member access).
-    // Only called when executorEnabled() && executorEdgeFogWillRun() (gate: MC2_FRAMEGRAPH_EXECUTOR).
-    void executorApplyEdgeFogState();
-    // FRAMEGRAPH-APPLY-STATE-ISLAND-2: pre-apply declared GL state for FogOob/Shoreline/CloudShadow.
-    // Mirrors executorApplyEdgeFogState(): FBO bind + setSceneDrawBuffers + glViewport + applyPipeline
-    // only; no tex binds, no uniforms. Idempotent (body makes identical calls at entry).
-    void executorApplyFogOobState();
-    void executorApplyShorelineState();
-    void executorApplyCloudShadowState();
-    // APPLY-STATE-SCREENSHADOW-1: pre-apply declared GL state for ScreenShadow.
-    void executorApplyScreenShadowState();
-
     float  getSkyYaw()    const { return skyYaw_; }    // WATER-HDRI-REFL-1: cached per-frame
 
     // HDRI-SKY-NUMBER-1: reload the HDRI texture to match theSkyNumber from the
@@ -150,15 +116,12 @@ public:
     // visible pixel either gets overwritten by an explicit rc_gbuffer1_*
     // writer or inherits this sentinel.
     void clearGBuffer1();
-    GLuint getShadowTexture() const { return shadowDepthTex_; }
     const float* getLightSpaceMatrix() const { return staticLightSpaceMatrix_; }
-    GLuint getShadowFBO() const { return shadowFBO_; }
     int getShadowMapSize() const { return shadowMapSize_; }
     bool shadowsEnabled_;
 
-    // Shadow debug overlay
+    // Shadow debug overlay: the Vulkan CSM near-cascade view (the GL shadow maps are gone).
     bool showShadowDebug_;        // master toggle for debug overlay
-    int shadowDebugMode_;         // 0=static, 1=dynamic
     void drawShadowDebugOverlay();
 
     // Shadow tuning — live-adjustable via ImGui; defaults match former hardcoded values.
@@ -198,26 +161,7 @@ public:
     void buildDynamicLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
                                  const float camFitCornersMC2[8][3],
                                  const float shadowCenterXYZ[3], bool shadowCenterValid);
-    // VK-P8a SHADOW-INTEROP: consumer-facing getter. When the VK shadow island
-    // produced the map this frame (dynShadowInteropTex_ != 0), the four forward
-    // shading consumers sample the VK-produced D32 in place of the GL texture. The
-    // WRITE pass (beginDynamicShadowPass/endDynamicShadowPass compare-mode flips +
-    // FBO bind) must use getDynamicShadowTextureRaw() so it never toggles compare-
-    // mode on the VK-owned texture. Gate OFF -> dynShadowInteropTex_ stays 0 ->
-    // byte-identical to returning dynShadowDepthTex_.
-    GLuint getDynamicShadowTexture() const {
-#ifdef MC2_VULKAN_ISLAND
-        if (dynShadowInteropTex_) return dynShadowInteropTex_;
-#endif
-        return dynShadowDepthTex_;
-    }
-    // Always the engine-owned GL texture (write-pass compare-mode + FBO ops).
-    GLuint getDynamicShadowTextureRaw() const { return dynShadowDepthTex_; }
-#ifdef MC2_VULKAN_ISLAND
-    void setDynamicShadowInteropTexture(GLuint tex) { dynShadowInteropTex_ = tex; }
-#endif
-    GLuint getDynamicShadowFBO() const { return dynShadowFBO_; }
-    // The dynamic shadow state exists (the single map; the cascades when ShadowCSM is on). What the Vulkan terrain feed asks instead of the GL handles.
+    // The dynamic shadow state exists (the sizes and light matrices; the cascades when ShadowCSM is on). The maps themselves are Vulkan images owned by the shadow island.
     bool dynShadowBuilt() const { return dynShadowBuilt_; }
     bool csmBuilt() const { return csmBuilt_; }
     // The single (legacy) dynamic light-space matrix; the cascade matrices are getDynamicCascadeMatrices().
@@ -233,9 +177,8 @@ public:
     // --- Item 1: Cascaded Shadow Maps (dynamic path) -----------------------
     // Option ShadowCSM (options.cfg, default on; off selects the legacy
     // single-map path above, byte-identical). When on
-    // (the default), the dynamic shadow is a GL_TEXTURE_2D_ARRAY of csmCount
-    // layers, each with its own light matrix.
-    GLuint getDynamicShadowArrayTexture() const { return dynShadowArrayTex_; }
+    // (the default), the dynamic shadow is an array of csmCount layers, each
+    // with its own light matrix.
     int    getDynamicShadowCascadeCount() const { return csmCount_; }
     // Flat float[csmCount_*16] of per-cascade light-space matrices (col-major).
     const float* getDynamicCascadeMatrices() const { return dynamicCascadeMatrices_; }
@@ -245,8 +188,7 @@ public:
     // (farP-nearP) of the shared CSM ortho z-row; must match the C++ z-row exactly.
     float getCsmDepthSpan() const { return csmDepthSpan_; }
     // Per-cascade shadow resolution: the LAST cascade lives in a separate 2D
-    // depth texture (dynamicFullMapTex_), the near cascades stay in the array.
-    GLuint getDynamicFullMapTexture() const { return dynamicFullMapTex_; }
+    // depth image, the near cascades stay in the array.
     int    getDynamicFullMapSize() const { return dynamicFullMapSize_; }
     // World-texel footprint of the last (full-map) cascade, computed with the
     // separate texture's resolution (NOT the array's). Used for the depth bias.
@@ -274,25 +216,12 @@ public:
     // POST-FX-TONEMAP-V2: 0 off (default), 1 AgX, 2 Hable, 3 Reinhard; options.cfg TonemapMode.
     int   tonemapMode_;
 
-    void runScreenShadow();
     bool screenShadowEnabled_;
-    // APPLY-STATE-SCREENSHADOW-1: per-island executor-applied flag (see
-    // cloudShadowStateAppliedByExecutor_). Set by executorApplyScreenShadowState();
-    // runScreenShadow() skips its own 4 setup calls when true, then resets (one-shot).
-    // Gate OFF → stays false → body sets state → byte-identical.
-    bool screenShadowStateAppliedByExecutor_ = false;
     int screenShadowDebug_;  // 0=normal, 1=visualize
 
     // Cloud shadows — single fullscreen multiplicative pass (replaces the four
     // inline cloud blocks). Default-ON to preserve legacy look; tunable live.
-    void runCloudShadow();
-    glsl_program* cloudProg_;
     bool  enableCloudShadow_;   // seeded from mc2CloudShadowEnabled()
-    // APPLY-STATE-REDUNDANT-BODY-REMOVE-2: set by executorApplyCloudShadowState()
-    // when MC2_FRAMEGRAPH_EXECUTOR is ON; runCloudShadow() skips its own 4 setup
-    // calls when true, then resets (one-shot). Gate OFF → stays false → body sets
-    // state → byte-identical. Per-island flag (siblings share sceneFBO_/viewport).
-    bool  cloudShadowStateAppliedByExecutor_ = false;
     float cloudStrength_;       // max darkening (factor floor = 1-strength)
     float cloudScale_;          // worldXY * scale (smaller = bigger clouds)
     float cloudScrollX_;
@@ -325,16 +254,11 @@ public:
 
     // Shoreline
     bool shorelineEnabled_;
-    // APPLY-STATE-REDUNDANT-BODY-REMOVE-2: per-island executor-applied flag (see
-    // cloudShadowStateAppliedByExecutor_). Set by executorApplyShorelineState().
-    bool shorelineStateAppliedByExecutor_ = false;
-    void runShoreline();
     // TERRAIN-SHORELINE-MASK-1 (recon landmine #6 "double-shore"): set every
     // frame by the terrain chunk driver (gos_terrain_lod_chunk.cpp) to true
     // when a terrain-side wet/foam shoreline mask is active (gate ON + sidecar
-    // loaded). runShoreline() yields when this is true so the screen-space
+    // loaded). The native shoreline pass yields when this is true so the screen-space
     // foam halo and the new terrain-side band never brighten the seam twice.
-    // Default false -> runShoreline() behaves exactly as before (byte-identical).
     bool shorelineSuppressedByTerrainMask_ = false;
     void setShorelineSuppressedByTerrainMask(bool b) { shorelineSuppressedByTerrainMask_ = b; }
 
@@ -371,14 +295,6 @@ public:
     // Fades terrain/props/mechs near the map boundary into the cloud color.
     // Default ON (MC2_EDGE_FOG=0 to disable).
     bool  edgeFogEnabled_  = false;
-    // APPLY-STATE-REDUNDANT-BODY-REMOVE-1: set by executorApplyEdgeFogState() when
-    // MC2_FRAMEGRAPH_EXECUTOR is ON and the executor pre-applies EdgeFog's 4 setup
-    // GL calls (FBO/drawBuffers/viewport/applyPipeline) before runEdgeFog() runs.
-    // runEdgeFog() checks this flag: if true, skips its own redundant 4 setup calls
-    // (executor is sole setter), then resets to false (one-shot per frame).
-    // Gate OFF (executor never called): flag stays false → body sets state as before
-    // → byte-identical to pre-slice behavior.
-    bool  edgeFogStateAppliedByExecutor_ = false;
     // FOG-EXPOSURE-HEADROOM-1: fog composites into sceneFBO_ BEFORE the composite
     // pass applies exposure_ + the unconditional warm grade (postprocess.frag:89,
     // 95-112). At the near-white {0.93,0.94,0.95} the graded missions (mc2_24
@@ -390,18 +306,11 @@ public:
     float edgeFogStart_    = 50.0f;    // world units inside boundary where fog begins
     float edgeFogHeight_   = 2000.0f;  // cloud bank top in world Z (MC2_EDGE_FOG_HEIGHT)
     float edgeFogMax_      = 0.92f;    // max opacity
-    glsl_program* edgeFogProg_ = nullptr;
-    void  runEdgeFog();
 
-    // BACKDROP-BLIT-ATTRIB-1: night dimming for the horizon cloud bank.
-    // edgeFogColor_/oobFogColor_ are hardcoded daytime greys never dimmed for the
-    // mission night lighting -> near-white horizon band at night (mc2_10). When the
-    // gate is on, effectiveFogColor() scales the source color toward the measured
-    // night-sky shade before upload. Gate OFF (default): pass-through, byte-identical.
+    // BACKDROP-BLIT-ATTRIB-1: night dimming for the horizon cloud bank. The knob has no reader since the GL fog passes went (the native fog
+    // does not apply it); MC2_NIGHT_FOG_DIM is a parsed no-op.
     bool  nightFogDimEnabled_ = false;
     float nightFogDimScale_   = 0.35f;   // measured mc2_10 night HDRI-sky ~0.28 / 0.80
-    // Copy `in` -> `out`, scaled by nightFogDimScale_ when nightFogDimEnabled_.
-    void  effectiveFogColor(const float in[3], float out[3]) const;
 
 
 #ifdef MC2_VULKAN_ISLAND
@@ -514,16 +423,12 @@ public:
     // Default ON (MC2_OOB_FOG=0 to disable). Reads only scene depth —
     // no sceneColorTex_ feedback loop; blends SRC_ALPHA over scene color.
     bool  fogOobEnabled_ = false;
-    // APPLY-STATE-REDUNDANT-BODY-REMOVE-2: per-island executor-applied flag (see
-    // cloudShadowStateAppliedByExecutor_). Set by executorApplyFogOobState().
-    bool  fogOobStateAppliedByExecutor_ = false;
     // FOG-EXPOSURE-HEADROOM-1: see edgeFogColor_ above. fog_oob.frag's noise
     // "sunlit tops" (col = fogColor*1.05, line 101) clip FIRST under exposure,
     // which is what read as bright *spots*. 0.80 base * 1.05(top) * 1.1(exp) *
     // 1.10(grade) ~= 1.01 -- tops stay bright, no saturated white blob.
     float oobFogColor_[3] = {0.80f, 0.81f, 0.83f}; // bright cloud bank (exposure-headroom)
     float oobFogOpacity_ = 1.0f;
-    void  runFogOob();
 
     // FOG-HORIZON-CLAMP-1: reshape the OOB/edge-fog elevation profile so fog is
     // FULL at/below the horizon (covers OOB terrain/water sideways + down) and
@@ -663,11 +568,7 @@ private:
 
     bool initialized_;
 
-    // Shadow map
-    GLuint shadowFBO_;
-    GLuint shadowDepthTex_;
-    GLuint shadowDummyColorTex_;  // AMD needs a color attachment for rasterization
-    glsl_program* shadowDepthProg_;
+    // Shadow map (size only: the maps are Vulkan images)
     int shadowMapSize_;
     int savedViewport_[4];
     float staticLightSpaceMatrix_[16]; // world-fixed ortho, built once at map load
@@ -676,31 +577,14 @@ private:
     float mapHalfExtent_;              // half the map size in world units
     float waterElevation_ = 0.0f;     // sea-level world Z (Terrain::waterElevation)
 
-    // Dynamic object shadow FBO (1024x1024, camera-centered, per-frame)
-    GLuint dynShadowFBO_;
-    GLuint dynShadowDepthTex_;
-    GLuint dynShadowDummyColorTex_;
-#ifdef MC2_VULKAN_ISLAND
-    // VK-P8a SHADOW-INTEROP: when MC2_VK_SHADOW_INTEROP is ON and the VK shadow
-    // island produced the dynamic shadow map this frame, this holds the GL-imported
-    // view of the VK-produced D32 (compare-mode already set). getDynamicShadowTexture()
-    // returns it in place of dynShadowDepthTex_ so the four forward-shading consumers
-    // (terrain ×2, LOD-chunk, static-prop helper) sample the VK map via the UNCHANGED
-    // hardware sampler2DShadow calcShadow() path. 0 -> legacy GL texture (gate OFF /
-    // island declined). Set per-frame by txmmgr after the shadow island run.
-    GLuint dynShadowInteropTex_ = 0;
-#endif
+    // Dynamic object shadows (camera-centered, per-frame): size and matrices only
     int dynShadowMapSize_;
     bool dynShadowBuilt_ = false;
     bool csmBuilt_ = false;
     float dynamicLightSpaceMatrix_[16];
-    glsl_program* shadowDebugProg_;
 
     // --- Item 1 CSM state (only used when the ShadowCSM option is on) --------
     static const int kMaxCsmCascades = 3;
-    GLuint dynShadowArrayFBO_;                 // FBO whose depth attach is one array layer
-    GLuint dynShadowArrayDummyColorTex_;       // 7900 XTX FBO-completeness dummy (array)
-    GLuint dynShadowArrayTex_;                 // GL_TEXTURE_2D_ARRAY depth (4096^2 x N)
     int    csmCount_;                          // clamp(MC2_SHADOW_CSM_COUNT,1,3)
     float  dynamicCascadeMatrices_[kMaxCsmCascades * 16]; // per-cascade col-major
     float  dynamicCascadeTexelWorld_[kMaxCsmCascades];    // 2*cRad/mapSize per cascade, world units
@@ -708,28 +592,15 @@ private:
     int    csmDebugLayer_;                     // which layer the debug blit shows
 
     // --- Per-cascade shadow resolution: separate full-map (last) cascade -----
-    // The near cascades (0..N-2) live in dynShadowArrayTex_ at dynShadowMapSize_.
-    // The LAST cascade (N-1, map-centered full-map catch-all) renders into this
-    // separate, lower-res 2D depth texture to save VRAM while keeping the near
-    // cascades razor sharp. Same sampler params as the array. When
-    // MC2_SHADOW_FULLMAP_SEPARATE=0, dynamicFullMapSize_ == dynShadowMapSize_ so
-    // the VRAM is equivalent to the old all-in-array layout (A/B fallback).
-    GLuint dynamicFullMapTex_;                  // GL_TEXTURE_2D depth (last cascade)
-    GLuint dynamicFullMapFbo_;                  // depth-only FBO for the full-map cascade
-    GLuint dynamicFullMapDummyColorTex_;        // 7900 XTX FBO-completeness dummy
+    // The near cascades (0..N-2) are array layers at dynShadowMapSize_. The LAST
+    // cascade (N-1, map-centered full-map catch-all) is a separate, lower-res 2D
+    // depth image to save VRAM while keeping the near cascades sharp. When
+    // MC2_SHADOW_FULLMAP_SEPARATE=0, dynamicFullMapSize_ == dynShadowMapSize_.
     int    dynamicFullMapSize_;                 // edge in texels (default 4096)
     float  dynamicFullMapTexelWorld_;           // 2*cRad/dynamicFullMapSize_ for last cascade
 
-    // Post-process screen shadow
-    glsl_program* screenShadowProg_;
     float inverseViewProj_[16];
     float viewProj_[16];
-
-    // Shoreline
-    glsl_program* shorelineProg_;
-
-    // OOB fog
-    glsl_program* fogOobProg_ = nullptr;
 
     // SSAO (half resolution)
     GLuint        ssaoFBO_      = 0;

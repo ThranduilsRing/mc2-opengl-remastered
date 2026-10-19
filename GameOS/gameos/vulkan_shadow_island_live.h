@@ -259,11 +259,10 @@ uint64_t mc2_vk_shadow_island_static_generation();
 // evidence for the GL-vs-VK shadow producer/consumer comparison. enabled() is a cached getenv.
 int  mc2_vk_shadow_matrix_diag_enabled();
 // Called once per frame after the dynamic+CSM caster passes (txmmgr.cpp). Logs
-// [VK_SHADOW_MATRIX v1] at tick 600 and 1200; dumps GL+VK depth PNGs at tick 600.
-void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSize, unsigned glDynTex,
+// [VK_SHADOW_MATRIX v1] at tick 200 and 1200; dumps the VK depth PNGs at tick 200.
+void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSize,
                                     const float* glCascMats, int csmN, int arrSize,
-                                    unsigned glArrTex, unsigned glFullTex, int fullSize,
-                                    float fullTexelWorld, unsigned glStaticTex, int staticSize);
+                                    int fullSize, float fullTexelWorld);
 // Terrain island: returns 1 exactly once after a tick armed a log (consumes the latch).
 int  mc2_vk_shadow_matrix_diag_take_terrain_arm();
 

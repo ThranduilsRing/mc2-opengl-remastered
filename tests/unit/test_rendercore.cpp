@@ -135,6 +135,7 @@ TEST_CASE("RenderResourceRegistry all ids have non-empty unique names") {
         const char* name = toString(RenderResourceId(i));
         REQUIRE(name != nullptr);
         CHECK(name[0] != '\0');
+        if (std::string(name) == "unknown") continue;   // retired ids (35, 44-47) keep their values unused
         // No duplicate names across distinct ids.
         CHECK(seen.insert(std::string(name)).second);
     }

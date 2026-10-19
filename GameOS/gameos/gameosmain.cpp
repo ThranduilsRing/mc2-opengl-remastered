@@ -217,17 +217,8 @@ static void handle_key_down( SDL_Keysym* keysym ) {
             if (alt_debug) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
-                    if (!pp->showShadowDebug_) {
-                        pp->showShadowDebug_ = true;
-                        pp->shadowDebugMode_ = 0;
-                        fprintf(stderr, "Shadow Debug: STATIC map\n");
-                    } else if (pp->shadowDebugMode_ == 0) {
-                        pp->shadowDebugMode_ = 1;
-                        fprintf(stderr, "Shadow Debug: DYNAMIC map\n");
-                    } else {
-                        pp->showShadowDebug_ = false;
-                        fprintf(stderr, "Shadow Debug: OFF\n");
-                    }
+                    pp->showShadowDebug_ = !pp->showShadowDebug_;
+                    fprintf(stderr, "Shadow Debug: %s\n", pp->showShadowDebug_ ? "CSM view" : "OFF");
                 }
             }
             break;

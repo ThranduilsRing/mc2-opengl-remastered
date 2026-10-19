@@ -557,26 +557,14 @@ TEST_CASE("dryrun (f): Option B knownEarlyDrawSite suppression proof") {
 }
 
 // Offline tests for the pure IslandContract table.
-// GL-free — tests only the constexpr descriptor, not the GL wrapper.
-// Rows: PostProcess, EdgeFog, FogOob, Shoreline, CloudShadow, ScreenShadow.
+// GL-free: tests only the constexpr descriptor, not the GL wrapper.
+// Rows: PostProcess only (the GL EdgeFog, FogOob, Shoreline, CloudShadow and ScreenShadow passes were deleted; those passes run as Vulkan native post passes).
 
-TEST_CASE("executor island (a): kExecutorIslands has PostProcess + EdgeFog + FogOob + Shoreline + CloudShadow + ScreenShadow rows") {
+TEST_CASE("executor island (a): kExecutorIslands has only the PostProcess row") {
     using namespace RenderCore::framegraph;
-    // Six rows: PostProcess(0), EdgeFog(1), FogOob(2), Shoreline(3), CloudShadow(4), ScreenShadow(5).
-    // ScreenShadow is the 6th validate-only island.
-    CHECK(kExecutorIslandCount == 6u);
+    CHECK(kExecutorIslandCount == 1u);
     CHECK(static_cast<unsigned>(kExecutorIslands[0].id) ==
           static_cast<unsigned>(ExecutorIslandId::PostProcess));
-    CHECK(static_cast<unsigned>(kExecutorIslands[1].id) ==
-          static_cast<unsigned>(ExecutorIslandId::EdgeFog));
-    CHECK(static_cast<unsigned>(kExecutorIslands[2].id) ==
-          static_cast<unsigned>(ExecutorIslandId::FogOob));
-    CHECK(static_cast<unsigned>(kExecutorIslands[3].id) ==
-          static_cast<unsigned>(ExecutorIslandId::Shoreline));
-    CHECK(static_cast<unsigned>(kExecutorIslands[4].id) ==
-          static_cast<unsigned>(ExecutorIslandId::CloudShadow));
-    CHECK(static_cast<unsigned>(kExecutorIslands[5].id) ==
-          static_cast<unsigned>(ExecutorIslandId::ScreenShadow));
 }
 
 TEST_CASE("executor island (b): findIslandContract(PostProcess) returns non-null with expected flags") {
@@ -594,84 +582,13 @@ TEST_CASE("executor island (b): findIslandContract(PostProcess) returns non-null
     }
 }
 
-TEST_CASE("executor island (c): findIslandContract(EdgeFog) returns non-null with expected flags") {
+TEST_CASE("executor island (c): the retired GL sub-stage islands have no contract row") {
     using namespace RenderCore::framegraph;
-    const IslandContract* c = findIslandContract(ExecutorIslandId::EdgeFog);
-    CHECK(c != nullptr);
-    if (c) {
-        CHECK(c->requiresProgramValid        == true);
-        CHECK(c->requiresSceneColorTex       == false);
-        CHECK(c->requiresSceneDepthTex       == true);
-        CHECK(c->warnIfNoTerrainLatch        == true);
-        CHECK(c->postRequiresDefaultFbo      == false);  // stays on sceneFBO_
-        CHECK(c->postRequiresBlendDisabled   == true);
-        CHECK(c->postRequiresActiveTexture0  == true);
-    }
-}
-
-TEST_CASE("executor island (d): findIslandContract(FogOob) returns non-null with expected flags") {
-    using namespace RenderCore::framegraph;
-    const IslandContract* c = findIslandContract(ExecutorIslandId::FogOob);
-    CHECK(c != nullptr);
-    if (c) {
-        CHECK(c->requiresProgramValid        == true);
-        CHECK(c->requiresSceneColorTex       == false);
-        CHECK(c->requiresSceneDepthTex       == true);
-        CHECK(c->warnIfNoTerrainLatch        == true);
-        CHECK(c->postRequiresDefaultFbo      == false);  // stays on sceneFBO_
-        CHECK(c->postRequiresBlendDisabled   == true);
-        CHECK(c->postRequiresActiveTexture0  == true);
-    }
-}
-
-TEST_CASE("executor island (e): findIslandContract(Shoreline) returns non-null with expected flags") {
-    using namespace RenderCore::framegraph;
-    const IslandContract* c = findIslandContract(ExecutorIslandId::Shoreline);
-    CHECK(c != nullptr);
-    if (c) {
-        CHECK(c->requiresProgramValid        == true);
-        CHECK(c->requiresSceneColorTex       == false);
-        CHECK(c->requiresSceneDepthTex       == true);   // reads sceneDepthTex_ + sceneNormalTex_
-        CHECK(c->warnIfNoTerrainLatch        == true);   // bails on !sceneHasTerrain_
-        CHECK(c->postRequiresDefaultFbo      == false);  // stays on sceneFBO_
-        CHECK(c->postRequiresBlendDisabled   == true);   // glDisable(GL_BLEND) on exit
-        CHECK(c->postRequiresActiveTexture0  == true);   // glActiveTexture(GL_TEXTURE0) on exit
-    }
-}
-
-TEST_CASE("executor island (f): findIslandContract(CloudShadow) returns non-null with expected flags") {
-    using namespace RenderCore::framegraph;
-    const IslandContract* c = findIslandContract(ExecutorIslandId::CloudShadow);
-    CHECK(c != nullptr);
-    if (c) {
-        CHECK(c->requiresProgramValid        == true);
-        CHECK(c->requiresSceneColorTex       == false);
-        CHECK(c->requiresSceneDepthTex       == true);   // reads sceneDepthTex_ (unit 0 only)
-        CHECK(c->warnIfNoTerrainLatch        == true);   // bails on !sceneHasTerrain_
-        CHECK(c->postRequiresDefaultFbo      == false);  // stays on sceneFBO_
-        CHECK(c->postRequiresBlendDisabled   == true);   // glDisable(GL_BLEND) on exit
-        CHECK(c->postRequiresActiveTexture0  == true);   // glActiveTexture(GL_TEXTURE0) on exit
-    }
-}
-
-// ScreenShadow contract test.
-// postconditions ground-truthed from runScreenShadow() exit (lines 2149-2160):
-//   postRequiresBlendDisabled=true  (glDisable(GL_BLEND) line 2150)
-//   postRequiresActiveTexture0=true (glActiveTexture(GL_TEXTURE0) line 2160)
-//   postRequiresDefaultFbo=false    (stays on sceneFBO_, no FBO 0 bind)
-TEST_CASE("executor island (g): findIslandContract(ScreenShadow) returns non-null with ground-truthed postconditions") {
-    using namespace RenderCore::framegraph;
-    const IslandContract* c = findIslandContract(ExecutorIslandId::ScreenShadow);
-    CHECK(c != nullptr);
-    if (c) {
-        CHECK(c->requiresProgramValid        == true);
-        CHECK(c->requiresSceneColorTex       == false);
-        CHECK(c->requiresSceneDepthTex       == true);   // reads sceneDepthTex_(unit0)+sceneNormalTex_(unit1)
-        CHECK(c->warnIfNoTerrainLatch        == true);   // bails on !sceneHasTerrain_
-        CHECK(c->postRequiresDefaultFbo      == false);  // stays on sceneFBO_, not FBO 0
-        CHECK(c->postRequiresBlendDisabled   == true);   // glDisable(GL_BLEND) at line 2150
-        CHECK(c->postRequiresActiveTexture0  == true);   // glActiveTexture(GL_TEXTURE0) at line 2160
-    }
+    CHECK(findIslandContract(ExecutorIslandId::EdgeFog)     == nullptr);
+    CHECK(findIslandContract(ExecutorIslandId::FogOob)      == nullptr);
+    CHECK(findIslandContract(ExecutorIslandId::Shoreline)   == nullptr);
+    CHECK(findIslandContract(ExecutorIslandId::CloudShadow) == nullptr);
+    CHECK(findIslandContract(ExecutorIslandId::ScreenShadow) == nullptr);
 }
 
 TEST_CASE("executor island (h): findIslandContract(Count) returns nullptr (out-of-range)") {
@@ -717,24 +634,18 @@ TEST_CASE("postprocess subgraph (c): validateShippedPostProcessSubgraph().ok == 
     CHECK(static_cast<unsigned>(r.missingResource)   == static_cast<unsigned>(RenderResourceId::Unknown));
 }
 
-TEST_CASE("postprocess subgraph (d): owned flags match spec (6 executor-owned; SUBGRAPH-2 non-ScreenShadow + ShadowDebugOverlay not owned)") {
+TEST_CASE("postprocess subgraph (d): owned flags match spec (only Composite is executor-owned)") {
     using namespace RenderCore::framegraph;
-    // ScreenShadow is owned (6th). CloudShadow/Shoreline/EdgeFog/FogOob/Composite unchanged.
-    const ExecutorIslandId ownedIds[] = {
+    const PostProcessSubpass* composite = findPostProcessSubpass(ExecutorIslandId::Composite);
+    REQUIRE(composite != nullptr);
+    CHECK(composite->ownedByExecutor == true);
+    // The five Vulkan native passes keep their model rows but no GL executor wraps them any more.
+    const ExecutorIslandId notOwnedIds[] = {
         ExecutorIslandId::CloudShadow,
         ExecutorIslandId::Shoreline,
         ExecutorIslandId::EdgeFog,
         ExecutorIslandId::FogOob,
-        ExecutorIslandId::Composite,
-        ExecutorIslandId::ScreenShadow,   // newly owned
-    };
-    for (int i = 0; i < 6; ++i) {
-        const PostProcessSubpass* sp = findPostProcessSubpass(ownedIds[i]);
-        REQUIRE(sp != nullptr);
-        CHECK(sp->ownedByExecutor == true);
-    }
-    // ShadowDebugOverlay + 7 remaining added rows (ScreenShadow is owned, not here).
-    const ExecutorIslandId notOwnedIds[] = {
+        ExecutorIslandId::ScreenShadow,
         ExecutorIslandId::ShadowDebugOverlay,
         ExecutorIslandId::HzbReduce,
         ExecutorIslandId::HzbProbe,
@@ -744,7 +655,7 @@ TEST_CASE("postprocess subgraph (d): owned flags match spec (6 executor-owned; S
         ExecutorIslandId::Ssao,
         ExecutorIslandId::BoxDecals,
     };
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < 13; ++i) {
         const PostProcessSubpass* sp = findPostProcessSubpass(notOwnedIds[i]);
         REQUIRE(sp != nullptr);
         CHECK(sp->ownedByExecutor == false);
@@ -1511,8 +1422,7 @@ TEST_CASE("top-level executor (h): kTopLevelDeferredPassCount == 0 (UI-SAME-ORDE
 
 // ---------------------------------------------------------------------------
 // Offline tests for the top-level apply-state table
-// (kTopLevelStateDesc / findTopLevelStateDesc). Pure/GL-free — mirrors the
-// findSubStageState coverage below. The pre-apply GL calls are not tested here
+// (kTopLevelStateDesc / findTopLevelStateDesc). Pure/GL-free. The pre-apply GL calls are not tested here
 // (GL context required); only the descriptor table shape is asserted.
 // ---------------------------------------------------------------------------
 
@@ -1707,109 +1617,13 @@ TEST_CASE("top-level apply-state (h): StaticPropOpaque lifted pipelineId matches
     CHECK(found);
 }
 
-// ---------------------------------------------------------------------------
-// Offline tests for SubStageStateDesc table.
-// Pure/GL-free — the pre-apply GL calls are not tested here (GL context required).
-// ---------------------------------------------------------------------------
-
-TEST_CASE("apply-state-island (a): kSubStageState has exactly 5 rows") {
-    using namespace RenderCore::framegraph;
-    // ScreenShadow is the 5th wired row.
-    CHECK(kSubStageStateCount == 5u);
-}
-
-TEST_CASE("apply-state-island (b): findSubStageState(EdgeFog) returns PostProcessEdgeFog + MainColor + MainScene") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-    const SubStageStateDesc* d = findSubStageState(ExecutorIslandId::EdgeFog);
-    REQUIRE(d != nullptr);
-    CHECK(static_cast<unsigned>(d->id)         == static_cast<unsigned>(ExecutorIslandId::EdgeFog));
-    CHECK(static_cast<unsigned>(d->pipelineId) == static_cast<unsigned>(PipelineId::PostProcessEdgeFog));
-    CHECK(static_cast<unsigned>(d->fboTarget)  == static_cast<unsigned>(RenderResourceId::MainColor));
-    CHECK(static_cast<unsigned>(d->viewport)   == static_cast<unsigned>(ViewportKind::MainScene));
-}
-
-TEST_CASE("apply-state-island (c): findSubStageState(Composite) returns nullptr — not an apply island") {
-    using namespace RenderCore::framegraph;
-    // Composite is a postprocess sub-stage but NOT in the SubStageStateDesc table.
-    const SubStageStateDesc* d = findSubStageState(ExecutorIslandId::Composite);
-    CHECK(d == nullptr);
-}
-
-TEST_CASE("apply-state-island (d): all table rows have valid PipelineId (not Invalid)") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-    for (unsigned i = 0; i < kSubStageStateCount; ++i) {
-        CHECK(static_cast<unsigned>(kSubStageState[i].pipelineId)
-              != static_cast<unsigned>(PipelineId::Invalid));
-    }
-}
-
-// FogOob/Shoreline/CloudShadow apply islands wired.
-// Pure/GL-free — tests confirm the descriptor table rows are correct.
-TEST_CASE("apply-state-island (e): findSubStageState(FogOob) returns PostProcessFogOob + MainColor + MainScene") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-    const SubStageStateDesc* d = findSubStageState(ExecutorIslandId::FogOob);
-    REQUIRE(d != nullptr);
-    CHECK(static_cast<unsigned>(d->id)         == static_cast<unsigned>(ExecutorIslandId::FogOob));
-    CHECK(static_cast<unsigned>(d->pipelineId) == static_cast<unsigned>(PipelineId::PostProcessFogOob));
-    CHECK(static_cast<unsigned>(d->fboTarget)  == static_cast<unsigned>(RenderResourceId::MainColor));
-    CHECK(static_cast<unsigned>(d->viewport)   == static_cast<unsigned>(ViewportKind::MainScene));
-}
-
-TEST_CASE("apply-state-island (f): findSubStageState(Shoreline) returns PostProcessShoreline + MainColor + MainScene") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-    const SubStageStateDesc* d = findSubStageState(ExecutorIslandId::Shoreline);
-    REQUIRE(d != nullptr);
-    CHECK(static_cast<unsigned>(d->id)         == static_cast<unsigned>(ExecutorIslandId::Shoreline));
-    CHECK(static_cast<unsigned>(d->pipelineId) == static_cast<unsigned>(PipelineId::PostProcessShoreline));
-    CHECK(static_cast<unsigned>(d->fboTarget)  == static_cast<unsigned>(RenderResourceId::MainColor));
-    CHECK(static_cast<unsigned>(d->viewport)   == static_cast<unsigned>(ViewportKind::MainScene));
-}
-
-TEST_CASE("apply-state-island (g): findSubStageState(CloudShadow) returns PostProcessCloudShadow + MainColor + MainScene") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-    const SubStageStateDesc* d = findSubStageState(ExecutorIslandId::CloudShadow);
-    REQUIRE(d != nullptr);
-    CHECK(static_cast<unsigned>(d->id)         == static_cast<unsigned>(ExecutorIslandId::CloudShadow));
-    CHECK(static_cast<unsigned>(d->pipelineId) == static_cast<unsigned>(PipelineId::PostProcessCloudShadow));
-    CHECK(static_cast<unsigned>(d->fboTarget)  == static_cast<unsigned>(RenderResourceId::MainColor));
-    CHECK(static_cast<unsigned>(d->viewport)   == static_cast<unsigned>(ViewportKind::MainScene));
-}
-
-// ScreenShadow apply island wired (6th apply-state island).
-TEST_CASE("apply-state-island (i): findSubStageState(ScreenShadow) returns PostProcessScreenShadow + MainColor + MainScene") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-    const SubStageStateDesc* d = findSubStageState(ExecutorIslandId::ScreenShadow);
-    REQUIRE(d != nullptr);
-    CHECK(static_cast<unsigned>(d->id)         == static_cast<unsigned>(ExecutorIslandId::ScreenShadow));
-    CHECK(static_cast<unsigned>(d->pipelineId) == static_cast<unsigned>(PipelineId::PostProcessScreenShadow));
-    CHECK(static_cast<unsigned>(d->fboTarget)  == static_cast<unsigned>(RenderResourceId::MainColor));
-    CHECK(static_cast<unsigned>(d->viewport)   == static_cast<unsigned>(ViewportKind::MainScene));
-}
-
-TEST_CASE("apply-state-island (h): all 5 apply-island descriptors present (EdgeFog/FogOob/Shoreline/CloudShadow/ScreenShadow)") {
-    using namespace RenderCore::framegraph;
-    // All 5 sub-stages must be in the table.
-    CHECK(findSubStageState(ExecutorIslandId::EdgeFog)      != nullptr);
-    CHECK(findSubStageState(ExecutorIslandId::FogOob)       != nullptr);
-    CHECK(findSubStageState(ExecutorIslandId::Shoreline)    != nullptr);
-    CHECK(findSubStageState(ExecutorIslandId::CloudShadow)  != nullptr);
-    CHECK(findSubStageState(ExecutorIslandId::ScreenShadow) != nullptr);
-}
-
 TEST_CASE("per-pass-apply-counters-1: ApplyPassId table is complete + names unique/non-Unknown") {
     using namespace RenderCore::framegraph;
-    // Exactly 10 apply paths: 5 PostProcess sub-stages + 5 top-level.
-    CHECK(static_cast<unsigned>(ApplyPassId::Count) == 10u);
+    // Exactly 4 apply paths, all top-level (the GL PostProcess sub-stage, Shadow and Water applies are gone).
+    CHECK(static_cast<unsigned>(ApplyPassId::Count) == 4u);
     // Spot-check representative mappings.
     CHECK(std::string(applyPassName(ApplyPassId::StaticPropOpaque)) == "StaticPropOpaque");
     CHECK(std::string(applyPassName(ApplyPassId::MechOpaque))       == "MechOpaque");
-    CHECK(std::string(applyPassName(ApplyPassId::Water))            == "Water");
     // All ids return a non-"Unknown", unique name.
     const char* seen[(int)ApplyPassId::Count] = {nullptr};
     for (int i = 0; i < (int)ApplyPassId::Count; ++i) {
@@ -1823,8 +1637,8 @@ TEST_CASE("per-pass-apply-counters-1: ApplyPassId table is complete + names uniq
     CHECK(std::string(applyPassName(ApplyPassId::Count)) == "Unknown");
 }
 
-// Each of the 5 TOP-LEVEL apply
-// passes (TerrainDecal / TerrainOverlay / StaticPropOpaque / MechOpaque / Water) maps to a RenderPassId
+// Each of the 4 TOP-LEVEL apply
+// passes (TerrainDecal / TerrainOverlay / StaticPropOpaque / MechOpaque) maps to a RenderPassId
 // whose kPassRenderState[] row declares a CONCRETE (non-Invalid) pipelineId. You
 // must not declare a top-level apply on a multi-pipeline / Invalid pass — the
 // executor cannot pre-apply a pipeline that doesn't statically exist.
@@ -1846,7 +1660,6 @@ TEST_CASE("apply-state-registration (top-level): each top-level ApplyPassId maps
         { ApplyPassId::TerrainOverlay,   RenderPassId::TerrainOverlay   },
         { ApplyPassId::StaticPropOpaque, RenderPassId::StaticPropOpaque },
         { ApplyPassId::MechOpaque,       RenderPassId::MechOpaque       },
-        { ApplyPassId::Water,            RenderPassId::Water            },
     };
     for (const Row& r : topLevel) {
         // The ApplyPassId name and the RenderPassId name must agree (no silent skew).
@@ -1859,35 +1672,6 @@ TEST_CASE("apply-state-registration (top-level): each top-level ApplyPassId maps
         const TopLevelStateDesc* tl = findTopLevelStateDesc(r.pass);
         REQUIRE(tl != nullptr);
         CHECK(static_cast<unsigned>(tl->pipelineId) == static_cast<unsigned>(desc->pipelineId));
-    }
-}
-
-// Each PostProcess ApplyPassId has a
-// matching kSubStageState[] row (by ExecutorIslandId), and every kSubStageState row's
-// island exists in kExecutorIslands[]. Confirms the PostProcess apply vocabulary is
-// internally closed (apply id -> sub-stage desc -> owned island contract).
-TEST_CASE("apply-state-registration (post-process): each PostProcess ApplyPassId has a closed sub-stage/island chain") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-
-    struct Row { ApplyPassId apply; ExecutorIslandId island; };
-    const Row pp[] = {
-        { ApplyPassId::PostProcessEdgeFog,      ExecutorIslandId::EdgeFog      },
-        { ApplyPassId::PostProcessFogOob,       ExecutorIslandId::FogOob       },
-        { ApplyPassId::PostProcessShoreline,    ExecutorIslandId::Shoreline    },
-        { ApplyPassId::PostProcessCloudShadow,  ExecutorIslandId::CloudShadow  },
-        { ApplyPassId::PostProcessScreenShadow, ExecutorIslandId::ScreenShadow },
-    };
-    for (const Row& r : pp) {
-        // apply id -> sub-stage descriptor must exist.
-        const SubStageStateDesc* sub = findSubStageState(r.island);
-        REQUIRE(sub != nullptr);
-        CHECK(static_cast<unsigned>(sub->id) == static_cast<unsigned>(r.island));
-    }
-    // Every kSubStageState row's island must be an owned island (closure check).
-    for (unsigned i = 0; i < kSubStageStateCount; ++i) {
-        const IslandContract* ic = findIslandContract(kSubStageState[i].id);
-        CHECK(ic != nullptr);
     }
 }
 

@@ -91,26 +91,6 @@ void gosPostProcess::destroy()
     hdriReady_ = false;
     hdriEnabled_ = false;
 
-    if (shadowDebugProg_) {
-        glsl_program::deleteProgram("shadow_debug");
-        shadowDebugProg_ = nullptr;
-    }
-
-    if (screenShadowProg_) {
-        glsl_program::deleteProgram("shadow_screen");
-        screenShadowProg_ = nullptr;
-    }
-
-    if (cloudProg_) {
-        glsl_program::deleteProgram("cloud");
-        cloudProg_ = nullptr;
-    }
-
-    if (shorelineProg_) {
-        glsl_program::deleteProgram("shoreline");
-        shorelineProg_ = nullptr;
-    }
-
     if (ssaoProg_) {
         glsl_program::deleteProgram("ssao");
         ssaoProg_ = nullptr;
@@ -122,14 +102,6 @@ void gosPostProcess::destroy()
     if (ssaoApplyProg_) {
         glsl_program::deleteProgram("ssao_apply");
         ssaoApplyProg_ = nullptr;
-    }
-    if (fogOobProg_) {
-        glsl_program::deleteProgram("fog_oob");
-        fogOobProg_ = nullptr;
-    }
-    if (edgeFogProg_) {
-        glsl_program::deleteProgram("edge_fog");
-        edgeFogProg_ = nullptr;
     }
 
     destroyShadows();

@@ -509,10 +509,6 @@ void Terrain::primeMissionTerrainCache (volatile float& progress, float progress
 	// PR-1 generates only -- the surface is NOT drawn/consumed yet (PR-2..4).
 	gos_terrain_surface::GenerateForMission();
 
-	// Slice B4 Stage 1a — mask-dispatch lifecycle. Same call site as
-	// BuildDenseRecipe (no-op when MC2_TERRAIN_MASK_DISPATCH unset).
-	gos_terrain_mask_dispatch::Init(realVerticesMapSide);
-
 	// PR2c Stage 1c — mine static-bake lifecycle.
 	// CPU-clear only; do NOT build here. Build is deferred to first
 	// MissionMap::setMine event (typically the per-cell init loop at
@@ -587,11 +583,6 @@ void Terrain::destroy (void)
 	// idempotent (no-op when nothing was generated / kill-switch OFF); emits
 	// the [TERRAIN_SURFACE v1] teardown lifecycle print when it had state.
 	gos_terrain_surface::ResetForMission();
-	// Unconditional — mirrors Init() placement (not gated on IsEnabled/IsParityCheck).
-	// Stage 1b/1c may add per-mission state inside Reset(); guarding it here would
-	// silently skip teardown when MC2_TERRAIN_MASK_DISPATCH=1 but MC2_TERRAIN_INDIRECT=0.
-	gos_terrain_mask_dispatch::Reset();
-
 	// Phase 1: terrain lighting GPU compute shutdown (per-mission teardown).
 	gos_terrain_lighting::mission_shutdown();
 

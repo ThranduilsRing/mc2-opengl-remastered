@@ -256,11 +256,8 @@ class gosRenderer {
         void terrainOverrideThinMVP(const float* mvp4x4);
         glsl_program* getThinTerrainProgram()      const { return thin_terrain_prog_;        }
         glsl_program* getTerrainSurfaceProgram()   const { return terrain_surface_prog_;     }
-        glsl_program* getWaterFastProgram()        const { return water_fast_prog_;           }
         glsl_program* getMineStaticProgram()       const { return mine_static_prog_;          }  // PR2c Stage 2c
         glsl_program* getTerrainOverlayProgram()   const { return overlayProg_;                }
-        glsl_program* getMaskSolidProgram()        const { return mask_solid_prog_;           }  // B4 Stage 1b — mask-SOLID draw
-        glsl_program* getMaskWaterProgram()        const { return mask_water_prog_;           }  // B4 Stage 1c — mask-water draw
         glsl_program* getShadowMechProg()          const { return shadow_mech_prog_;          }
         glsl_program* getShadowStaticPropProg()    const { return shadow_static_prop_prog_;   }
 
@@ -661,16 +658,6 @@ class gosRenderer {
         // then skips its own applyPipeline (one-shot). Gate OFF -> byte-identical.
         void executorApplyTerrainOverlayState();
         bool overlayStateAppliedByExecutor_ = false;
-        // APPLY-STATE-WATER-1: fifth top-level scene-pass apply-state. ★BODY-SITE apply
-        // (NOT a begin-seam pre-apply): renderWaterFastPath has a mid-body COMPUTE
-        // dispatch (WaterStream::ComputeDispatchAndBindThinRecords -> glUseProgram(compute))
-        // BETWEEN the begin seam and the applyPipeline(WaterArmed), so the executor apply is
-        // dispatched at the live draw site (immediately before the body's :3276 applyPipeline,
-        // AFTER the compute dispatch) and the body skips its own applyPipeline (one-shot).
-        // Pipeline-only lift (water inherits the scene/MainColor FBO + viewport from the
-        // caller). Gate OFF -> flag stays false -> body applies as before -> byte-identical.
-        void executorApplyWaterState();
-        bool waterStateAppliedByExecutor_ = false;
         // Slice A — draw the mission-static cement-overlay bake. Reproduces
         // drawTerrainOverlays()'s exact state/shader/uniforms/VAO but draws
         // the passed static VBO with per-overlayTexId ranges and does NOT
@@ -851,10 +838,7 @@ class gosRenderer {
         gosRenderMaterial* terrain_material_ = nullptr;
         glsl_program* thin_terrain_prog_ = nullptr;  // gos_terrain_thin.vert + gos_terrain.frag
         glsl_program* terrain_surface_prog_ = nullptr;  // [TERRAIN_SURFACE] PR-2 gos_terrain_surface.vert + gos_terrain.frag
-        glsl_program* water_fast_prog_   = nullptr;  // gos_terrain_water_fast.vert + gos_tex_vertex.frag
         glsl_program* mine_static_prog_  = nullptr;  // PR2c Stage 2c — gos_terrain_mine_static.vert + .frag
-        glsl_program* mask_solid_prog_   = nullptr;  // B4 Stage 1b — gos_terrain_mask_solid.vert + gos_terrain.frag
-        glsl_program* mask_water_prog_   = nullptr;  // B4 Stage 1c — gos_terrain_mask_water.vert + gos_tex_vertex.frag
 
         gosRenderMaterial* shadow_terrain_material_ = nullptr;
         gosRenderMaterial* shadow_object_material_ = nullptr;

@@ -43,7 +43,7 @@ enum class RenderResourceId : uint16_t {
     TerrainLightInputSsbo = 32,  // TERRAIN-LIGHTING-SSBO-OWNER-1: terrain-lighting compute per-light SSBO (s_lightInputSsbo, GL binding 1, gos_terrain_lighting.cpp); Mission lifetime. LIVE default-ON. GL binding 1 unrelated to id numbering.
     TerrainLightComputeOutputSsbo = 33,  // TERRAIN-LIGHTING-SSBO-OWNER-1: terrain-lighting compute output SSBO (s_computeOutputSsbo, GL binding 2, gos_terrain_lighting.cpp); Mission lifetime. LIVE default-ON; VRAM output the Terrain pass + water/mask consumers read. GL binding 2 unrelated to id numbering.
     LightDataSsbo        = 34,  // LIGHTDATA-SSBO-OWNER-1: per-frame light-data SSBO (s_lightDataSsbo, GL binding LIGHT_DATA_SSBO_BINDING, gameos_graphics.cpp); LIVE default-path, grow-once/realloc (handle recreated on grow → re-registered). Persistent lifetime (lazy-created on first upload, destroyed in txmmgr.cpp mcTextureManager teardown). GL binding unrelated to id numbering.
-    DynamicFullMapFbo    = 35,  // FBO-LEDGER-EXTEND-1: dynamic full-map render FBO (dynamicFullMapFbo_, gos_postprocess.cpp); registered observe-only in the FboLedger. No prior id (SsaoOcclusion=19/HzbPyramid=18 reused for the other two unaccounted FBOs).
+    // 35: retired (the GL dynamic full-map shadow FBO is gone with the GL shadow maps); the value is not reused.
     DynamicPropShadowSsbo = 36, // SCENE-SSBO-OWNER-SWEEP-1: dynamic prop-shadow caster instance SSBO (s_dynamicPropShadowSsbo, GL binding 0, gos_static_prop_batcher.cpp drawDynamicPropShadows); LIVE default-path (gate MC2_SHADOW_DYNAMIC_PROP_CASTERS default-ON, inside the always-on dynamic shadow pass). Mission lifetime: handle glGen'd once per map, per-frame orphan-on-write bufferData, freed on onMapUnload. GL binding 0 unrelated to id numbering. COMPLETENESS-SWEEP gap B#5. Siblings (s_staticBldgShadowSsbo, s_blockVisSsbo, particle s_ssbo/tube SSBOs) DEFERRED to exclusion ledger — created only under default-OFF gates.
     PostprocessSubgraphColor = 37, // POSTPROCESS-VK-IMAGE-OWNERSHIP-1: Layer-4 subgraph OWNED intermediate COLOR image (R16G16B16A16_SFLOAT). Copied-in from GL sceneColor, blended by BOTH fog passes (edge then oob) in ONE render pass, copied-out to GL. Layout chain UNDEFINED->TRANSFER_DST->COLOR_ATTACHMENT->TRANSFER_SRC. Runtime VkImage handle lives in the future subgraph .cpp, NOT here. Proof-only enum id.
     PostprocessSubgraphDepth = 38, // POSTPROCESS-VK-IMAGE-OWNERSHIP-1: Layer-4 subgraph OWNED intermediate DEPTH image (D32_SFLOAT). Copied-in from GL sceneDepth, SAMPLED (read-only) by both fog passes. Layout chain UNDEFINED->TRANSFER_DST->SHADER_READ_ONLY. Runtime VkImage handle lives in the future subgraph .cpp, NOT here. Proof-only enum id.
@@ -52,14 +52,9 @@ enum class RenderResourceId : uint16_t {
     MechBoneRingSsbo     = 41,  // VK-SHADOW-RING-OWNER-1: mech batcher per-frame bone ring SSBO (s_boneSsbo, GL binding 1, gos_mech_batcher.cpp); persistent-mapped ring, realloc-on-grow, freed on onMapUnload. Feeds GPU skinning for the shadow-caster draw. L7.2 Shadow prep. GL binding 1 unrelated to id numbering.
     StaticPropInstanceRingSsbo = 42,  // VK-SHADOW-RING-OWNER-1: static-prop batcher per-frame instance ring SSBO (s_instanceSsbo, GL binding 0, gos_static_prop_batcher.cpp); persistent-mapped ring, realloc-on-grow. Read by the static-prop opaque + shadow draw. L7.2 Shadow prep. GL binding 0 unrelated to id numbering.
     StaticPropColorRingSsbo    = 43,  // VK-SHADOW-RING-OWNER-1: static-prop batcher per-frame color ring SSBO (s_colorSsbo, GL binding 1, gos_static_prop_batcher.cpp); persistent-mapped ring, realloc-on-grow. Per-instance color feed for the prop draw. L7.2 Shadow prep. GL binding 1 unrelated to id numbering.
-    WaterThinBuf         = 44,  // WATER-REGISTRY-0: live MDI water per-frame thin-record ring SSBO (g_thinBuffer, gos_terrain_water_stream.cpp); Mission lifetime, fenced ring-3 (WATER-THINRING-FENCE-1), realloc-on-grow. Read by the water compute cull + MDI draw. L7.4 Water prep. Bound via gpuBindSsboRange wrapper (kWaterThinSsboBinding), not glBindBufferBase.
-    WaterRecipeBuf       = 45,  // WATER-REGISTRY-0: live MDI water static recipe SSBO (g_recipeBuffer, gos_terrain_water_stream.cpp); Mission lifetime, uploaded once per mission. Bound binding 0 for water compute. L7.4 Water prep.
-    WaterHeaderBuf       = 46,  // WATER-REGISTRY-0: live MDI water bucket-header SSBO (g_waterBucketHeaderSsbo, gos_terrain_water_stream.cpp); Mission lifetime, 16 B GpuDrivenBucketHeader (visibleCount). Bound binding 6 (setup) / 0 (cmd patch). L7.4 Water prep.
-    WaterIndirectCmdBuf  = 47,  // WATER-REGISTRY-0: live MDI water indirect-command buffer (g_waterIndirectCmdBuffer, gos_terrain_water_stream.cpp); Mission lifetime, 2x DrawArraysIndirectCommand (32 B). Source of glMultiDrawArraysIndirect (gameos_graphics.cpp:3706). Bound binding 1 (cmd patch) + GL_DRAW_INDIRECT_BUFFER. L7.4 Water prep.
+    // 44-47: retired (the GL water thin ring, recipe SSBO, bucket header and indirect-command buffer are gone with the GL water draw); the values are not reused.
     TerrainLightGridHeaderSsbo = 48,  // LIGHT-CLUSTER-PERF-1: per-cell {firstIndex,count} header of the world-space XY light grid (s_lightGridHeaderSsbo, GL binding 29, gos_terrain_lighting.cpp); Mission lifetime, rebuilt+streamed per frame by BuildAndUploadLightGrid, grow-only. LIVE default-ON (MC2_LIGHT_GRID). GL binding 29 unrelated to id numbering.
     TerrainLightGridIndexSsbo  = 49,  // LIGHT-CLUSTER-PERF-1: cell-major light index list of the world-space XY light grid (s_lightGridIndexSsbo, GL binding 30, gos_terrain_lighting.cpp); Mission lifetime, rebuilt+streamed per frame, grow-only. LIVE default-ON (MC2_LIGHT_GRID). GL binding 30 unrelated to id numbering.
-    ShadowCsmNearArray   = 50,  // SHADOW-VRAM-ACCOUNT-1: CSM NEAR-cascade depth 2D_ARRAY (dynShadowArrayTex_, gos_postprocess.cpp initDynamicShadows; layers = csmCount-1 at MC2_SHADOW_MAP_SIZE^2 default 8192, Depth24). Registered observe-only so the shadow VRAM split (per-cascade resolution, 13365011) is auditable from the dump.
-    ShadowCsmFullMap     = 51,  // SHADOW-VRAM-ACCOUNT-1: CSM FAR/full-map cascade depth 2D (dynamicFullMapTex_, gos_postprocess.cpp; MC2_SHADOW_FULLMAP_SIZE default 4096 when MC2_SHADOW_FULLMAP_SEPARATE=1 (default), == MC2_SHADOW_MAP_SIZE when =0). Observe-only VRAM accounting row.
     Count
 };
 
@@ -81,22 +76,18 @@ static_assert(static_cast<int>(RenderResourceId::PostprocessSubgraphColor)      
 static_assert(static_cast<int>(RenderResourceId::PostprocessSubgraphDepth)      < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 static_assert(static_cast<int>(RenderResourceId::TerrainVisualDampSsbo)         < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 static_assert(static_cast<int>(RenderResourceId::StaticPropColorRingSsbo)        < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
-static_assert(static_cast<int>(RenderResourceId::WaterIndirectCmdBuf)            < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 static_assert(static_cast<int>(RenderResourceId::TerrainLightGridHeaderSsbo)     < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 static_assert(static_cast<int>(RenderResourceId::TerrainLightGridIndexSsbo)      < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
-static_assert(static_cast<int>(RenderResourceId::ShadowCsmNearArray)            < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
-static_assert(static_cast<int>(RenderResourceId::ShadowCsmFullMap)              < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 
-// (b) The run is DENSE: Count == number-of-real-slots. LIGHT-CLUSTER-PERF-1 appended
-//     the two light-grid SSBOs (48/49); SHADOW-VRAM-ACCOUNT-1 (merged after, renumbered
-//     40/41 -> 50/51 at merge) appended the two CSM depth textures, so ShadowCsmFullMap
-//     is now last and Count must be 52. Both dense-index consumers size arrays by Count
-//     and index by int(id), so appended observe-only ids only grow the arrays.
-static_assert(static_cast<int>(RenderResourceId::ShadowCsmFullMap) + 1
+// (b) The run is DENSE above the last id: Count immediately follows it. LIGHT-CLUSTER-PERF-1
+//     appended the two light-grid SSBOs (48/49); the two CSM depth-texture rows (50/51) went
+//     with the GL shadow maps, so TerrainLightGridIndexSsbo is last and Count must be 50.
+//     Both dense-index consumers size arrays by Count and index by int(id).
+static_assert(static_cast<int>(RenderResourceId::TerrainLightGridIndexSsbo) + 1
                   == static_cast<int>(RenderResourceId::Count),
               "RenderResourceId is not a dense 0..Count-1 run (Count must immediately "
               "follow the last real id); dense-index consumers assume no holes above Count");
-static_assert(static_cast<int>(RenderResourceId::Count) == 52,
+static_assert(static_cast<int>(RenderResourceId::Count) == 50,
               "RenderResourceId::Count changed; update dense-index consumers "
               "(frame_graph_validate.h, postprocess_subgraph.h) and this guard");
 

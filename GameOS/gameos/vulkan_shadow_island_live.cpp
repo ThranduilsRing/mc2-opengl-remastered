@@ -931,18 +931,6 @@ void diagDumpDepth(const char* mapName, const char* side, const std::vector<floa
     std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] wrote %s ok=%d\n", path, rawOk ? 1 : 0);
     std::fflush(stderr);
 }
-// One-shot GL readback (DSA only, no binding changes). layer<0 => plain 2D.
-void diagGlRead(GLuint tex, int dim, int layer, std::vector<float>& out) {
-    out.clear(); if (!tex || dim <= 0 || !glGetTextureSubImage) return;
-    while (glGetError() != GL_NO_ERROR) {}
-    GLint pb = 0; glGetIntegerv(GL_PIXEL_PACK_BUFFER_BINDING, &pb);
-    if (pb) glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
-    out.resize((size_t)dim * dim);
-    glGetTextureSubImage(tex, 0, 0, 0, layer < 0 ? 0 : layer, dim, dim, 1, GL_DEPTH_COMPONENT, GL_FLOAT,
-                         (GLsizei)(out.size() * sizeof(float)), out.data());
-    if (glGetError() != GL_NO_ERROR) { out.clear(); }
-    if (pb) glBindBuffer(GL_PIXEL_PACK_BUFFER, (GLuint)pb);
-}
 // One-shot VK readback of a D32 image layer (layout READ_ONLY_OPTIMAL in/out).
 void diagVkRead(ShadowIsland* s, VkImage img, uint32_t layer, int dim, std::vector<float>& out) {
     out.clear(); if (!s || !img || dim <= 0 || !s->cpool) return;
@@ -1468,10 +1456,9 @@ extern "C" int mc2_vk_shadow_matrix_diag_take_terrain_arm() {
     if (!g_diagTerrainArm) return 0;
     g_diagTerrainArm = false; return 1;
 }
-extern "C" void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSize, unsigned glDynTex,
+extern "C" void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSize,
                                                const float* glCascMats, int csmN, int arrSize,
-                                               unsigned glArrTex, unsigned glFullTex, int fullSize,
-                                               float fullTexelWorld, unsigned glStaticTex, int staticSize) {
+                                               int fullSize, float fullTexelWorld) {
     if (!diagOn()) return;
     // The dump runs before a capture's frame (431 by default, after a 30-frame settle): the capture harness ends the process once it has its frame,
     // so a later dump never reached the log.
@@ -1492,14 +1479,6 @@ extern "C" void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSiz
         diagPrintMat(tg, g_diagArr[i].m);
     }
     g_diagTerrainArm = true;   // terrain island prints its UBO sampling matrices next
-    // The GL side dumps in a GL run (the GL passes render the maps); the VK side in a VK run, where the island exists. Compare the two runs' files.
-    if (dump && parkedIsland() == nullptr) {
-        std::vector<float> d;
-        diagGlRead(glDynTex, dynSize, -1, d);       diagDumpDepth("dyn", "gl", d, dynSize);
-        diagGlRead(glArrTex, arrSize, 0, d);        diagDumpDepth("csm0", "gl", d, arrSize);
-        diagGlRead(glFullTex, fullSize, -1, d);     diagDumpDepth("full", "gl", d, fullSize);
-        diagGlRead(glStaticTex, staticSize, -1, d); diagDumpDepth("static", "gl", d, staticSize);
-    }
     // The VK side is read after this frame's submit (mc2_vk_shadow_island_submit_frame): read here it would be the previous frame's maps, whose
     // camera-fitted cascades sit some texels away from this frame's GL ones.
     if (dump && parkedIsland()) g_diagVkDumpPending = true;

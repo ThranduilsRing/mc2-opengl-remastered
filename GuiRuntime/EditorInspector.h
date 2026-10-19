@@ -68,7 +68,6 @@ struct TerrainInspectorData {
 struct TerrainPassSnapshot {
     uint32_t surfaceProgramId       = 0;
     uint32_t thinProgramId          = 0;
-    uint32_t waterFastProgramId     = 0;
     uint32_t overlayProgramId       = 0;
     uint32_t bucketCount            = 0;
     uint32_t vertCount              = 0;

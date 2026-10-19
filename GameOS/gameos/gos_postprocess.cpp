@@ -201,28 +201,15 @@ gosPostProcess::gosPostProcess()
     , width_(0)
     , height_(0)
     , initialized_(false)
-    , shadowFBO_(0)
-    , shadowDepthTex_(0)
-    , shadowDummyColorTex_(0)
-    , shadowDepthProg_(nullptr)
     , shadowMapSize_(4096)
     , shadowsEnabled_(true)
     , staticLightMatrixBuilt_(false)
     , mapHalfExtent_(0.0f)
-    , dynShadowFBO_(0)
-    , dynShadowDepthTex_(0)
-    , dynShadowDummyColorTex_(0)
     , dynShadowMapSize_(2048)
-    , shadowDebugProg_(nullptr)
-    , dynShadowArrayFBO_(0)
-    , dynShadowArrayDummyColorTex_(0)
-    , dynShadowArrayTex_(0)
     , csmCount_(0)
     , csmDebugLayer_(0)
-    , screenShadowProg_(nullptr)
     , screenShadowEnabled_(true)
     , screenShadowDebug_(0)
-    , cloudProg_(nullptr)
     , enableCloudShadow_(mc2CloudShadowEnabled())
     , cloudStrength_(0.15f)
     , cloudScale_(0.0006f)
@@ -234,7 +221,6 @@ gosPostProcess::gosPostProcess()
     , sceneHasTerrain_(false)
     , prevFrameHadTerrain_(false)
     , shorelineEnabled_(true)
-    , shorelineProg_(nullptr)
     , ssaoEnabled_(false)
     , ssaoDebug_(0)
     // SSAO-BLUR-1: was 3.0, which is structurally dead. One map cell is 42.67 wu
@@ -263,9 +249,6 @@ gosPostProcess::gosPostProcess()
 {
     memset(staticLightSpaceMatrix_, 0, sizeof(staticLightSpaceMatrix_));
     memset(dynamicLightSpaceMatrix_, 0, sizeof(dynamicLightSpaceMatrix_));
-    dynamicFullMapTex_ = 0;
-    dynamicFullMapFbo_ = 0;
-    dynamicFullMapDummyColorTex_ = 0;
     dynamicFullMapSize_ = 4096;
     dynamicFullMapTexelWorld_ = 0.0f;
     memset(dynamicCascadeMatrices_, 0, sizeof(dynamicCascadeMatrices_));
@@ -275,7 +258,6 @@ gosPostProcess::gosPostProcess()
     memset(inverseViewProj_, 0, sizeof(inverseViewProj_));
     memset(viewProj_, 0, sizeof(viewProj_));
     showShadowDebug_ = false;
-    shadowDebugMode_ = 0;
 }
 
 gosPostProcess::~gosPostProcess()
@@ -366,45 +348,6 @@ void gosPostProcess::init(int w, int h)
         }
     }
 
-    // Item 1 P5: inject MC2_SHADOW_CSM so the debug blit can sample an array layer.
-    std::string shadowDebugPrefix = "#version 430\n";
-    if (mc2ShadowCsmEnabled())
-        shadowDebugPrefix += "#define MC2_SHADOW_CSM 1\n";
-    shadowDebugProg_ = glsl_program::makeProgram("shadow_debug",
-        "shaders/postprocess.vert", "shaders/shadow_debug.frag", shadowDebugPrefix.c_str());
-    if (!shadowDebugProg_ || !shadowDebugProg_->is_valid())
-        mc2::fmt::print_err("gosPostProcess: failed to compile shadow_debug shader\n");
-
-    // Item 1: shadow_screen.frag #includes shadow.hglsl -> inject MC2_SHADOW_CSM
-    // when ON so it compiles the array-sampler dynamic-shadow variant.
-    std::string screenShadowPrefix = "#version 430\n";
-    if (mc2ShadowCsmEnabled()) {
-        char csmDef[64];
-        mc2::fmt::to_buf(csmDef, "#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX {:d}\n", mc2::fmt::as_i32(mc2ShadowCsmCount()));
-        screenShadowPrefix += csmDef;
-    }
-    // SHADOW-DIST-FADE-1: object/prop receivers get the same distance-scaled
-    // dynamic-shadow penumbra + fade as the terrain paths (lockstep).
-    if (mc2ShadowDistFadeWu() > 0.0f) {
-        char fadeDef[240];
-        mc2::fmt::to_buf(fadeDef, "#define MC2_SHADOW_DIST_FADE_WU {:.1f}\n#define MC2_SHADOW_DIST_FADE_MAX_F {:.2f}\n#define MC2_SHADOW_FADE_CONT_F {:d}\n#define MC2_SHADOW_FADE_RAMP0_F {:d}\n#define MC2_SHADOW_ALT_SCALE_F {:d}\n", mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(), mc2::fmt::as_i32(mc2ShadowFadeCont() ? 1 : 0), mc2::fmt::as_i32(mc2ShadowFadeRamp0() ? 1 : 0), mc2::fmt::as_i32(mc2ShadowAltScale() ? 1 : 0));
-        screenShadowPrefix += fadeDef;
-    }
-    screenShadowProg_ = glsl_program::makeProgram("shadow_screen",
-        "shaders/postprocess.vert", "shaders/shadow_screen.frag", screenShadowPrefix.c_str());
-    if (!screenShadowProg_ || !screenShadowProg_->is_valid())
-        mc2::fmt::print_err("gosPostProcess: failed to compile shadow_screen shader\n");
-
-    cloudProg_ = glsl_program::makeProgram("cloud",
-        "shaders/postprocess.vert", "shaders/cloud.frag", kShaderPrefix);
-    if (!cloudProg_ || !cloudProg_->is_valid())
-        mc2::fmt::print_err("gosPostProcess: failed to compile cloud shader\n");
-
-    shorelineProg_ = glsl_program::makeProgram("shoreline",
-        "shaders/postprocess.vert", "shaders/shoreline.frag", kShaderPrefix);
-    if (!shorelineProg_ || !shorelineProg_->is_valid())
-        mc2::fmt::print_err("gosPostProcess: failed to compile shoreline shader\n");
-
     // SSAO-GTAO-LITE-MVP-1 (Track V) shaders.
     ssaoProg_ = glsl_program::makeProgram("ssao",
         "shaders/postprocess.vert", "shaders/ssao.frag", kShaderPrefix);
@@ -489,12 +432,7 @@ void gosPostProcess::init(int w, int h)
 
     // OOB-FOG-1: far-plane fog over the out-of-bounds region. Default ON.
     {
-        fogOobProg_ = glsl_program::makeProgram("fog_oob",
-            "shaders/postprocess.vert", "shaders/fog_oob.frag", kShaderPrefix);
-        if (!fogOobProg_ || !fogOobProg_->is_valid())
-            mc2::fmt::print_err("gosPostProcess: failed to compile fog_oob shader\n");
-        fogOobEnabled_ = mc2::gate::get<"MC2_OOB_FOG">()
-                      && fogOobProg_ && fogOobProg_->is_valid();
+        fogOobEnabled_ = mc2::gate::get<"MC2_OOB_FOG">();
         if (mc2::gate::isSet<"MC2_OOB_FOG_COLOR">()) {
             const std::string colorEnv = mc2::gate::str<"MC2_OOB_FOG_COLOR">();
             float r, g, b;
@@ -508,12 +446,7 @@ void gosPostProcess::init(int w, int h)
 
     // EDGE-FOG-1: world-space map-edge fog on geometry pixels. Default ON.
     {
-        edgeFogProg_ = glsl_program::makeProgram("edge_fog",
-            "shaders/postprocess.vert", "shaders/edge_fog.frag", kShaderPrefix);
-        if (!edgeFogProg_ || !edgeFogProg_->is_valid())
-            mc2::fmt::print_err("gosPostProcess: failed to compile edge_fog shader\n");
-        edgeFogEnabled_ = mc2::gate::get<"MC2_EDGE_FOG">()
-                       && edgeFogProg_ && edgeFogProg_->is_valid();
+        edgeFogEnabled_ = mc2::gate::get<"MC2_EDGE_FOG">();
         if (mc2::gate::isSet<"MC2_EDGE_FOG_START">())  edgeFogStart_  = mc2::gate::get<"MC2_EDGE_FOG_START">();
         if (mc2::gate::isSet<"MC2_EDGE_FOG_HEIGHT">()) edgeFogHeight_ = mc2::gate::get<"MC2_EDGE_FOG_HEIGHT">();
         if (mc2::gate::isSet<"MC2_EDGE_FOG_MAX">())    edgeFogMax_    = mc2::gate::get<"MC2_EDGE_FOG_MAX">();
@@ -573,22 +506,16 @@ void gosPostProcess::init(int w, int h)
                      hzbProbeEnabled_ ? 1 : 0, probeEnv ? probeEnv : "(unset)");
     }
 
-    // SHADOW-ENV-DEBUG-MODE-1: select shadow debug overlay from env var so
-    // automated capture can request it without ImGui interaction.
-    // Default unset/0/off -> showShadowDebug_ stays false (byte-identical).
-    // RAlt+F2 hotkey and ImGui checkbox still override at runtime.
+    // SHADOW-ENV-DEBUG-MODE-1: select the shadow debug overlay (the Vulkan CSM near-cascade view)
+    // from env var so automated capture can request it without ImGui interaction.
+    // Default unset/0/off -> showShadowDebug_ stays false. RAlt+F2 hotkey and ImGui checkbox still override at runtime.
     {
         const std::string sdText = mc2::gate::str<"MC2_SHADOW_DEBUG_MODE">();   // "" when unset or empty
         const char* sdEnv = sdText.c_str();
         if (sdEnv[0]) {
-            if (sdEnv[0] == '1' || (sdEnv[0] == 's' && sdEnv[1] == 't')) {
+            if (sdEnv[0] == '1' || sdEnv[0] == '2' || sdEnv[0] == 's' || sdEnv[0] == 'd') {
                 showShadowDebug_ = true;
-                shadowDebugMode_ = 0;
-                mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE=static (mode 0)\n");
-            } else if (sdEnv[0] == '2' || sdEnv[0] == 'd') {
-                showShadowDebug_ = true;
-                shadowDebugMode_ = 1;
-                mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE=dynamic (mode 1)\n");
+                mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE on (CSM view)\n");
             } else {
                 mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE={} (unrecognized, using OFF)\n", mc2::fmt::safe(sdEnv));
             }
@@ -731,10 +658,6 @@ void gosPostProcess::beginScene()
     }
 }
 
-// Forward declarations for ISLAND-2 sub-stage wrappers (defined below the executor section).
-void executorOwnBeginSub(gosPostProcess*, RenderCore::framegraph::ExecutorIslandId);
-void executorOwnEndSub(gosPostProcess*, RenderCore::framegraph::ExecutorIslandId);
-
 void gosPostProcess::endScene()
 {
     ZoneScopedN("Render.PostProcess");
@@ -797,44 +720,14 @@ void gosPostProcess::endScene()
     // pattern, independent of any consumer.
     postprocess_blur::Run(getSceneColorCopyTexture(), width_, height_);
 
-    // Post-process shadow pass: covers terrain, objects, and overlays in one
-    // pass, with reduced terrain darkening to avoid obvious double-shadowing.
-    // EXECUTOR-ISLAND-SCREENSHADOW-1: validate->call-unchanged->validate (default-OFF).
-    executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::ScreenShadow);
-    runScreenShadow();
-    executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::ScreenShadow);
-
-    // VK-POST-SCREENFX-NATIVE-1 (rung 8.3): HIGHEST precedence at the cloud +
-    // shoreline sites. When the VK umbrella is on (MC2_VK_POST_SCREENFX=0 turns it off) and the shared-GBuffer
-    // substrate is live, the armed subset of {cloud-shadow, shoreline} renders
-    // natively on the shared engine context (one submit, multiply into shared
-    // color0 in place) and EXACTLY those GL pass bodies are skipped (bitmask:
-    // bit0=cloud, bit1=shoreline). Any not-ready condition returns 0 -> the
-    // unchanged GL chain below runs (fail-soft). Screen-shadow above is NOT
-    // ported in this slice (no zero-copy CSM-array producer until rung 2).
-    unsigned vkScreenFxDone = 0;
 #ifdef MC2_VULKAN_ISLAND
-    if (vkPostScreenFxNativeEnabled())
-        vkScreenFxDone = runVkPostScreenFxNative();
+    // VK-POST-SCREENFX-NATIVE-1: the screen-space shadow receiver, the cloud shadow and the shoreline foam render natively on the shared engine
+    // context (one submit each, multiplied into the shared colour in place); the GL passes are gone, a decline leaves the pass out for the frame.
+    if (vkPostScreenFxNativeEnabled()) {
+        runVkPostScreenShadowStaticNative();
+        runVkPostScreenFxNative();
+    }
 #endif
-
-    // Procedural cloud shadows: single fullscreen multiplicative pass over all
-    // non-sky pixels (replaces the four inline cloud blocks). After the screen
-    // shadow so cloud darkens the already-shadowed scene color.
-    // FRAME-GRAPH-EXECUTOR-ISLAND-3: validate->call-unchanged->validate (default-OFF).
-    if (!(vkScreenFxDone & 1u)) {
-        executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::CloudShadow);
-        runCloudShadow();
-        executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::CloudShadow);
-    }
-
-    // Shoreline foam pass (brightens water pixels adjacent to terrain)
-    // FRAME-GRAPH-EXECUTOR-ISLAND-3: validate->call-unchanged->validate (default-OFF).
-    if (!(vkScreenFxDone & 2u)) {
-        executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::Shoreline);
-        runShoreline();
-        executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::Shoreline);
-    }
 
     // VK-POST-SSAO-NATIVE-1 (rung 8.2): HIGHEST precedence at the SSAO site. When
     // MC2_VK_POST_SSAO=1 and the shared-GBuffer substrate is live, SSAO gen+apply
@@ -855,42 +748,11 @@ void gosPostProcess::endScene()
     // scene color, before fog/tonemap. Default-OFF (MC2_BOX_DECAL); no-op when gate off.
     drawBoxDecals();
 
-    // Edge fog: fades geometry near the map boundary into the cloud color.
-    // After SSAO so AO-darkening is preserved under the fog.
-    // FRAME-GRAPH-EXECUTOR-ISLAND-2: validate->call-unchanged->validate (default-OFF).
-    executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::EdgeFog);
-    bool subgraphRanThisFrame = false;   // scope spans to the FogOob site below
-    (void)subgraphRanThisFrame;          // read only under MC2_VULKAN_ISLAND
-    {
 #ifdef MC2_VULKAN_ISLAND
-    // VK-POST-FOG-NATIVE-1 (rung 8.1): HIGHEST precedence at the fog site. When
-    // MC2_VK_POST_FOG_NATIVE=1 and the shared-GBuffer substrate is live, BOTH fog
-    // effects render natively on the shared engine context (zero copies, zero
-    // readbacks) and BOTH GL sites are skipped. runVkPostFogNative() returns false
-    // on ANY not-ready condition -> the unchanged GL chain below runs (fail-soft).
-    if (runVkPostFogNative()) {
-        subgraphRanThisFrame = true;    // -> OOB site is skipped below (no double-apply)
-    } else
+    // VK-POST-FOG-NATIVE-1: edge fog and OOB fog render natively on the shared engine context (the GL passes are gone; a decline leaves the
+    // fog out for the frame).
+    runVkPostFogNative();
 #endif
-    { runEdgeFog(); }
-    }
-    executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::EdgeFog);
-
-    // OOB fog: applies fog color to far-plane pixels pointing toward ground.
-    // After edge fog so the two cloud colors match seamlessly.
-    // FRAME-GRAPH-EXECUTOR-ISLAND-2: validate->call-unchanged->validate (default-OFF).
-    executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::FogOob);
-    {
-#ifdef MC2_VULKAN_ISLAND
-    // If native fog already ran this frame it ALSO did the oob fog, so this site
-    // is skipped entirely (no GL, no island).
-    if (subgraphRanThisFrame) {
-        // native fog did edge+oob; nothing to do here.
-    } else
-#endif
-    { runFogOob(); }
-    }
-    executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::FogOob);
 
     // Bind default framebuffer (the backbuffer) for the composite output edge.
     // VK-P14b (MC2_VK_PRESENT_DIRECT_FBO, copy-1 elimination): when the Vulkan

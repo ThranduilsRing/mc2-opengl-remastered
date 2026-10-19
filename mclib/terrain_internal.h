@@ -36,7 +36,6 @@
 #include"../GameOS/gameos/gpu_driven_common.h"
 #include"../GameOS/gameos/gos_terrain_indirect.h"
 #include"../GameOS/gameos/gos_terrain_surface.h"  // PR-1: continuous-surface mission-load generation
-#include"../GameOS/gameos/gos_terrain_mask_dispatch.h"
 #include"../GameOS/gameos/gos_terrain_bridge.h"
 #include"../GameOS/gameos/gos_terrain_lighting.h"
 #include"../GameOS/gameos/gos_terrain_height_tex.h"  // TERRAIN-NORMALS-FROM-HEIGHT-1

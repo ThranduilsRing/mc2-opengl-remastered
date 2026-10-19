@@ -7,177 +7,36 @@
 
 void gosPostProcess::drawShadowDebugOverlay()
 {
-    if (!showShadowDebug_ || !shadowDebugProg_ || !shadowDebugProg_->is_valid())
-        return;
-    if (!initialized_)
+    if (!showShadowDebug_ || !initialized_)
         return;
 
-    // Item 1 P5: when CSM is active AND we're inspecting the dynamic map
-    // (mode 1), the dynamic shadow is a GL_TEXTURE_2D_ARRAY -> sample a layer
-    // (csmDebugLayer_) via the array sampler. Static map (mode 0) stays 2D.
-    const bool csmDynamic = (mc2ShadowCsmEnabled() && dynShadowArrayTex_ != 0 && shadowDebugMode_ != 0);
 #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
-    if (csmDynamic && mc2_vk_shadow_island_csm_array_ready()) {
+    // The shadow maps are Vulkan images: the overlay shows one near-cascade layer (csmDebugLayer_) through the native present path.
+    if (csmBuilt_ && mc2_vk_shadow_island_csm_array_ready()) {
         int layer = csmDebugLayer_;
         if (layer < 0) layer = 0;
         if (layer >= csmCount_) layer = csmCount_ - 1;
         void* rawView = mc2_vk_shadow_island_get_csm_array_view();
-        if (rawView &&
-            mc2vk::getOrCreateEnginePresentVk().renderNativeCsmShadowDebugOverlay(rawView, layer)) {
-            return;
-        }
+        if (rawView)
+            mc2vk::getOrCreateEnginePresentVk().renderNativeCsmShadowDebugOverlay(rawView, layer);
     }
 #endif
-    const GLenum texTarget = csmDynamic ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D;
-    GLuint tex = csmDynamic ? dynShadowArrayTex_
-                            : ((shadowDebugMode_ == 0) ? shadowDepthTex_ : dynShadowDepthTex_);
-    if (!tex)
-        return;
-
-    GLint prevViewport[4];
-    glGetIntegerv(GL_VIEWPORT, prevViewport);
-
-    int quadSize = 256;
-    int margin = 16;
-    glViewport(margin, height_ - quadSize - margin, quadSize, quadSize);
-
-    glDisable(GL_DEPTH_TEST);
-    glDepthMask(GL_FALSE);
-
-    // Temporarily switch shadow texture from comparison mode to raw depth read
-    glBindTexture(texTarget, tex);
-    glTexParameteri(texTarget, GL_TEXTURE_COMPARE_MODE, GL_NONE);
-
-    shadowDebugProg_->setInt("shadowDebugMap", 0);
-    if (mc2ShadowCsmEnabled()) {
-        shadowDebugProg_->setInt("shadowDebugUseArray", csmDynamic ? 1 : 0);
-        if (csmDynamic) {
-            shadowDebugProg_->setInt("shadowDebugArray", 0);
-            int layer = csmDebugLayer_;
-            if (layer < 0) layer = 0;
-            if (layer >= csmCount_) layer = csmCount_ - 1;
-            shadowDebugProg_->setInt("shadowDebugLayer", layer);
-        }
-    }
-    shadowDebugProg_->apply();
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(texTarget, tex);
-
-    glBindVertexArray(quadVAO_);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
-
-    // CRITICAL: restore comparison mode so PCF sampling works next frame
-    glBindTexture(texTarget, tex);
-    glTexParameteri(texTarget, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-
-    // GLSTATE-SHADOWDEBUG-2DARRAY-1: unbind unit-0's 2D_ARRAY so it doesn't
-    // leak into the HUD/UI pass (or escape executorOwnEnd under broader ownership).
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(texTarget, 0);
-
-    glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
-    glDepthMask(GL_TRUE);
-    glEnable(GL_DEPTH_TEST);
 }
 
 void gosPostProcess::initShadows()
 {
-    // Static shadow map covers the whole playable map in one ortho frustum, so
-    // texel density is shadowMapSize²/(mapHalfExtent*2)². 4096² = 16M texels vs 2048² = 4M;
-    // quadruples per-texel density, directly reduces stair-step banding on cliffs.
+    // The static shadow map covers the whole playable map in one ortho frustum; the Vulkan shadow island owns the 4096^2 image.
+    // Only the size and the light matrix live here.
     shadowMapSize_ = 4096;
 
-    static const char* kShaderPrefix = "#version 430\n";
-    shadowDepthProg_ = glsl_program::makeProgram("shadow_depth",
-        "shaders/shadow_depth.vert", "shaders/shadow_depth.frag", kShaderPrefix);
-
-    glGenFramebuffers(1, &shadowFBO_);
-    RenderCore::framegraph::fboLedger().registerFbo(shadowFBO_, RenderCore::RenderResourceId::ShadowStaticMap);  // FBO-LEDGER-1
-    glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO_);
-
-    // TEX-CLASS: render-target -- STATIC shadow map depth (FBO attach)
-    // The static shadow map is always the plain-GL GL_DEPTH_COMPONENT24 allocation.
-    if (!shadowDepthTex_) {
-        glGenTextures(1, &shadowDepthTex_);
-    }
-    glBindTexture(GL_TEXTURE_2D, shadowDepthTex_);
-    {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24,
-            shadowMapSize_, shadowMapSize_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-    }
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-    float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
-    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowDepthTex_, 0);
-
-    // Dummy color attachment — AMD drivers skip rasterization on depth-only FBOs
-    // TEX-CLASS: render-target -- AMD dummy color for depth-only FBO
-    glGenTextures(1, &shadowDummyColorTex_);
-    glBindTexture(GL_TEXTURE_2D, shadowDummyColorTex_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8,
-        shadowMapSize_, shadowMapSize_, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, shadowDummyColorTex_, 0);
-    glDrawBuffer(GL_COLOR_ATTACHMENT0);
-    glReadBuffer(GL_NONE);
-
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        mc2::fmt::print_err("gosPostProcess: shadow FBO incomplete\n");
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    // Initialize with identity so shadow map reads white (no shadow)
+    // Initialize with identity so an early sample reads no shadow
     memset(staticLightSpaceMatrix_, 0, sizeof(staticLightSpaceMatrix_));
     staticLightSpaceMatrix_[0] = staticLightSpaceMatrix_[5] = staticLightSpaceMatrix_[10] = staticLightSpaceMatrix_[15] = 1.0f;
     staticLightMatrixBuilt_ = false;
-
-    // Clear shadow map to max depth (1.0) so everything is "lit".
-    // Reverse-Z (U2) state-safe partition: the scene sets glClearDepth(0);
-    // the shadow path stays forward-Z, so set glClearDepth(1.0f)
-    // explicitly here and restore the scene reverse-Z default after.
-    glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO_);
-    glClearDepth(1.0f);
-    glClear(GL_DEPTH_BUFFER_BIT);
-    glClearDepth(0.0f);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    {
-        RenderCore::RenderResourceDesc d;
-        d.id        = RenderCore::RenderResourceId::ShadowStaticMap;
-        d.kind      = RenderCore::RenderResourceKind::Texture2D;
-        d.lifetime  = RenderCore::RenderResourceLifetime::Persistent;  // built outside dynamic frame order, long-lived
-        d.format    = RenderCore::RenderResourceFormat::Depth24;
-        d.debugName = "ShadowStaticMap";
-        d.width     = static_cast<uint32_t>(shadowMapSize_);
-        d.height    = static_cast<uint32_t>(shadowMapSize_);
-        d.glName    = static_cast<uint32_t>(shadowDepthTex_);
-        d.sizeBytes = static_cast<uint64_t>(shadowMapSize_) * static_cast<uint64_t>(shadowMapSize_) * 4u;
-        d.valid     = true;
-        RenderCore::registerOrUpdateRenderResource(d);
-    }
 }
 
 void gosPostProcess::destroyShadows()
 {
-    if (shadowFBO_) { glDeleteFramebuffers(1, &shadowFBO_); shadowFBO_ = 0; }
-    if (shadowDepthTex_) { glDeleteTextures(1, &shadowDepthTex_); shadowDepthTex_ = 0; }
-    if (shadowDummyColorTex_) { glDeleteTextures(1, &shadowDummyColorTex_); shadowDummyColorTex_ = 0; }
-    if (shadowDepthProg_) {
-        glsl_program::deleteProgram("shadow_depth");
-        shadowDepthProg_ = nullptr;
-    }
-
-    RenderCore::RenderResourceDesc invalid;
-    invalid.id = RenderCore::RenderResourceId::ShadowStaticMap;
-    RenderCore::registerOrUpdateRenderResource(invalid);
 }
 
 // CP-1: per-mission reset of process-scoped static-shadow priming state.
@@ -289,7 +148,7 @@ static void mc2ComputeLightBasis(float fx, float fy, float fz,
 void gosPostProcess::buildStaticLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
                                              float mapHalfExtent)
 {
-    if (!shadowsEnabled_ || !shadowFBO_) return;
+    if (!shadowsEnabled_ || !initialized_) return;
     if (staticLightMatrixBuilt_) return;
 
     // Build world-fixed orthographic light-space matrix centered at map origin
@@ -396,228 +255,22 @@ void gosPostProcess::buildStaticLightMatrix(float sunDirX, float sunDirY, float 
 
 void gosPostProcess::initDynamicShadows()
 {
-    // Dynamic shadow covers radius=1200 around frustum center, so at 2048²
-    // each texel ≈ 1.17 world units — much bigger than a mech foot, hence blocky
-    // mech shadow edges. 4096² → ~0.59 world units/texel (half the step).
+    // The dynamic maps (single map, CSM near array, full-map cascade) are Vulkan images owned by the shadow island; this keeps the sizes and the
+    // matrices the island and the Vulkan terrain feed read.
     dynShadowMapSize_ = mc2ShadowMapSize();   // CSM-REDESIGN: env-tunable, default 8192
-
-    glGenFramebuffers(1, &dynShadowFBO_);
-    RenderCore::framegraph::fboLedger().registerFbo(dynShadowFBO_, RenderCore::RenderResourceId::ShadowDynamicMap);  // FBO-LEDGER-1
-    glBindFramebuffer(GL_FRAMEBUFFER, dynShadowFBO_);
-
-    // TEX-CLASS: render-target -- DYNAMIC shadow map depth (FBO attach)
-    glGenTextures(1, &dynShadowDepthTex_);
-    glBindTexture(GL_TEXTURE_2D, dynShadowDepthTex_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24,
-        dynShadowMapSize_, dynShadowMapSize_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-    float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
-    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, dynShadowDepthTex_, 0);
-
-    // AMD dummy color attachment
-    // TEX-CLASS: render-target -- AMD dummy color for depth-only FBO
-    glGenTextures(1, &dynShadowDummyColorTex_);
-    glBindTexture(GL_TEXTURE_2D, dynShadowDummyColorTex_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8,
-        dynShadowMapSize_, dynShadowMapSize_, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, dynShadowDummyColorTex_, 0);
-    glDrawBuffer(GL_COLOR_ATTACHMENT0);
-    glReadBuffer(GL_NONE);
-
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        mc2::fmt::print_err("gosPostProcess: dynamic shadow FBO incomplete\n");
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     memset(dynamicLightSpaceMatrix_, 0, sizeof(dynamicLightSpaceMatrix_));
     dynamicLightSpaceMatrix_[0] = dynamicLightSpaceMatrix_[5] = dynamicLightSpaceMatrix_[10] = dynamicLightSpaceMatrix_[15] = 1.0f;
 
-    // Clear to max depth (fully lit). Reverse-Z (U2) state-safe partition:
-    // dynamic shadow stays forward-Z; scene set glClearDepth(0), so force
-    // 1.0f here and restore the scene reverse-Z default after.
-    glBindFramebuffer(GL_FRAMEBUFFER, dynShadowFBO_);
-    glDepthMask(GL_TRUE);
-    glClearDepth(1.0f);
-    glClear(GL_DEPTH_BUFFER_BIT);
-    glClearDepth(0.0f);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    {
-        RenderCore::RenderResourceDesc d;
-        d.id        = RenderCore::RenderResourceId::ShadowDynamicMap;
-        d.kind      = RenderCore::RenderResourceKind::Texture2D;
-        d.lifetime  = RenderCore::RenderResourceLifetime::Persistent;  // long-lived dynamic shadow target, recreated on resize
-        d.format    = RenderCore::RenderResourceFormat::Depth24;
-        d.debugName = "ShadowDynamicMap";
-        d.width     = static_cast<uint32_t>(dynShadowMapSize_);
-        d.height    = static_cast<uint32_t>(dynShadowMapSize_);
-        d.glName    = static_cast<uint32_t>(dynShadowDepthTex_);
-        d.sizeBytes = static_cast<uint64_t>(dynShadowMapSize_) * static_cast<uint64_t>(dynShadowMapSize_) * 4u;
-        d.valid     = true;
-        RenderCore::registerOrUpdateRenderResource(d);
-    }
-
-    // === Item 1 P1: cascaded depth array (only when the ShadowCSM option is on) ===
-    // GL_DEPTH_COMPONENT24 GL_TEXTURE_2D_ARRAY (dynShadowMapSize_^2 x N) with the
-    // EXACT sampler param set the legacy single dynamic map uses:
-    // COMPARE_REF_TO_TEXTURE / GL_LEQUAL / CLAMP_TO_BORDER / border 1.0. The
-    // border is load-bearing: missing it yields garbage edge cascades.
     if (mc2ShadowCsmEnabled()) {
         csmCount_ = mc2ShadowCsmCount();
 
-        // Per-cascade shadow resolution: the array holds only the NEAR cascades
-        // (0..csmCount_-2). The LAST cascade (csmCount_-1, map-centered full-map)
-        // renders into the separate dynamicFullMapTex_ below. arrayLayers is the
-        // near-cascade count, floored at 1 so the GL array texture is always
-        // valid even when csmCount_==1 (no near cascades -> layer 0 unused).
+        // Per-cascade shadow resolution: the near cascades (0..csmCount_-2) are array layers; the LAST cascade (csmCount_-1, map-centered
+        // full-map) is a separate 2D image at its own size. With MC2_SHADOW_FULLMAP_SEPARATE=0 it matches the near size.
         const int nearCascades = (csmCount_ > 1) ? (csmCount_ - 1) : 0;
-        const int arrayLayers  = (nearCascades > 0) ? nearCascades : 1;
-
-        // TEX-CLASS: render-target -- CSM near-cascade 2D_ARRAY (layered FBO attach)
-        glGenTextures(1, &dynShadowArrayTex_);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, dynShadowArrayTex_);
-        glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT24,
-            dynShadowMapSize_, dynShadowMapSize_, arrayLayers,
-            0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-        float csmBorder[] = {1.0f, 1.0f, 1.0f, 1.0f};
-        glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, csmBorder);
-
-        // Dummy color array (7900 XTX FBO-completeness workaround, mirrors the
-        // legacy dummy at the single-map FBO above). One layer per cascade.
-        // TEX-CLASS: render-target -- AMD dummy color array
-        glGenTextures(1, &dynShadowArrayDummyColorTex_);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, dynShadowArrayDummyColorTex_);
-        glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_R8,
-            dynShadowMapSize_, dynShadowMapSize_, arrayLayers,
-            0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-
-        glGenFramebuffers(1, &dynShadowArrayFBO_);
-        RenderCore::framegraph::fboLedger().registerFbo(dynShadowArrayFBO_, RenderCore::RenderResourceId::ShadowDynamicMap);  // FBO-LEDGER-1
-        glBindFramebuffer(GL_FRAMEBUFFER, dynShadowArrayFBO_);
-        glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, dynShadowArrayTex_, 0, 0);
-        glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, dynShadowArrayDummyColorTex_, 0, 0);
-        glDrawBuffer(GL_COLOR_ATTACHMENT0);
-        glReadBuffer(GL_NONE);
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-            mc2::fmt::print_err("gosPostProcess: CSM dynamic shadow array FBO incomplete\n");
-
-        // Forward-Z clear all layers to 1.0 (fully lit). Reverse-Z partition:
-        // dynamic shadow stays forward-Z; restore scene clear-depth after.
-        glDepthMask(GL_TRUE);
-        glClearDepth(1.0f);
-        for (int i = 0; i < arrayLayers; ++i) {
-            glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, dynShadowArrayTex_, 0, i);
-            glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, dynShadowArrayDummyColorTex_, 0, i);
-            glClear(GL_DEPTH_BUFFER_BIT);
-        }
-        glClearDepth(0.0f);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-        // SHADOW-VRAM-ACCOUNT-1: register the near-cascade array (observe-only
-        // metadata; never read by the draw path). Makes the per-cascade shadow
-        // VRAM split (13365011) auditable from the debug-state dump: default =
-        // (csmCount-1) layers x 8192^2 x Depth24 here + the separate 4096^2
-        // full-map row below (dummy R8 color attachments not accounted).
-        {
-            RenderCore::RenderResourceDesc d;
-            d.id        = RenderCore::RenderResourceId::ShadowCsmNearArray;
-            d.kind      = RenderCore::RenderResourceKind::Texture2DArray;
-            d.lifetime  = RenderCore::RenderResourceLifetime::Persistent;
-            d.format    = RenderCore::RenderResourceFormat::Depth24;
-            d.debugName = "ShadowCsmNearArray";
-            d.width     = static_cast<uint32_t>(dynShadowMapSize_);
-            d.height    = static_cast<uint32_t>(dynShadowMapSize_);
-            d.layers    = static_cast<uint32_t>(arrayLayers);
-            d.glName    = static_cast<uint32_t>(dynShadowArrayTex_);
-            d.sizeBytes = static_cast<uint64_t>(dynShadowMapSize_) * static_cast<uint64_t>(dynShadowMapSize_)
-                          * 4u * static_cast<uint64_t>(arrayLayers);
-            d.valid     = true;
-            RenderCore::registerOrUpdateRenderResource(d);
-        }
-
-        // === Per-cascade shadow resolution: separate full-map (last) cascade ===
-        // The last cascade (csmCount_-1) renders into this lower-res 2D depth
-        // texture. Same sampler param set as the array (COMPARE_REF_TO_TEXTURE /
-        // GL_LEQUAL / CLAMP_TO_BORDER / border 1.0). When the SEPARATE env is OFF
-        // we force size == dynShadowMapSize_ (equivalent VRAM to old all-in-array).
         dynamicFullMapSize_ = mc2ShadowFullMapSeparate()
                               ? mc2ShadowFullMapSize()
                               : dynShadowMapSize_;
-
-        // TEX-CLASS: render-target -- CSM full-map cascade depth (FBO attach)
-        glGenTextures(1, &dynamicFullMapTex_);
-        glBindTexture(GL_TEXTURE_2D, dynamicFullMapTex_);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24,
-            dynamicFullMapSize_, dynamicFullMapSize_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-        float fmBorder[] = {1.0f, 1.0f, 1.0f, 1.0f};
-        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, fmBorder);
-
-        // 7900 XTX FBO-completeness dummy color (mirrors the array/single-map FBOs).
-        // TEX-CLASS: render-target -- AMD dummy color
-        glGenTextures(1, &dynamicFullMapDummyColorTex_);
-        glBindTexture(GL_TEXTURE_2D, dynamicFullMapDummyColorTex_);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_R8,
-            dynamicFullMapSize_, dynamicFullMapSize_, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-        glGenFramebuffers(1, &dynamicFullMapFbo_);
-        RenderCore::framegraph::fboLedger().registerFbo(dynamicFullMapFbo_, RenderCore::RenderResourceId::DynamicFullMapFbo);  // FBO-LEDGER-EXTEND-1
-        glBindFramebuffer(GL_FRAMEBUFFER, dynamicFullMapFbo_);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, dynamicFullMapTex_, 0);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, dynamicFullMapDummyColorTex_, 0);
-        glDrawBuffer(GL_COLOR_ATTACHMENT0);
-        glReadBuffer(GL_NONE);
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-            mc2::fmt::print_err("gosPostProcess: CSM dynamic full-map FBO incomplete\n");
-
-        // Forward-Z clear to 1.0 (fully lit), restore scene reverse-Z default.
-        glDepthMask(GL_TRUE);
-        glClearDepth(1.0f);
-        glClear(GL_DEPTH_BUFFER_BIT);
-        glClearDepth(0.0f);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glBindTexture(GL_TEXTURE_2D, 0);
-
-        // SHADOW-VRAM-ACCOUNT-1: register the far/full-map cascade (observe-only;
-        // 4096^2 default, == dynShadowMapSize_ when MC2_SHADOW_FULLMAP_SEPARATE=0).
-        {
-            RenderCore::RenderResourceDesc d;
-            d.id        = RenderCore::RenderResourceId::ShadowCsmFullMap;
-            d.kind      = RenderCore::RenderResourceKind::Texture2D;
-            d.lifetime  = RenderCore::RenderResourceLifetime::Persistent;
-            d.format    = RenderCore::RenderResourceFormat::Depth24;
-            d.debugName = "ShadowCsmFullMap";
-            d.width     = static_cast<uint32_t>(dynamicFullMapSize_);
-            d.height    = static_cast<uint32_t>(dynamicFullMapSize_);
-            d.glName    = static_cast<uint32_t>(dynamicFullMapTex_);
-            d.sizeBytes = static_cast<uint64_t>(dynamicFullMapSize_) * static_cast<uint64_t>(dynamicFullMapSize_) * 4u;
-            d.valid     = true;
-            RenderCore::registerOrUpdateRenderResource(d);
-        }
 
         // Cascade matrices start as identity so an early sample is a no-op.
         for (int i = 0; i < kMaxCsmCascades; ++i) {
@@ -628,41 +281,22 @@ void gosPostProcess::initDynamicShadows()
         }
 
         mc2::fmt::print_err("[CSM] init nearLayers={:d} arraySize={:d} fullMapSize={:d} separate={:d}\n", mc2::fmt::as_i32(nearCascades), mc2::fmt::as_i32(dynShadowMapSize_), mc2::fmt::as_i32(dynamicFullMapSize_), mc2::fmt::as_i32(mc2ShadowFullMapSeparate() ? 1 : 0));
-        csmBuilt_ = (dynShadowArrayTex_ != 0 && dynamicFullMapTex_ != 0);
+        csmBuilt_ = true;
     }
-    dynShadowBuilt_ = (dynShadowFBO_ != 0 && dynShadowDepthTex_ != 0);
+    dynShadowBuilt_ = true;
 }
 
 void gosPostProcess::destroyDynamicShadows()
 {
     dynShadowBuilt_ = false;
     csmBuilt_ = false;
-    if (dynShadowFBO_) { glDeleteFramebuffers(1, &dynShadowFBO_); dynShadowFBO_ = 0; }
-    if (dynShadowDepthTex_) { glDeleteTextures(1, &dynShadowDepthTex_); dynShadowDepthTex_ = 0; }
-    if (dynShadowDummyColorTex_) { glDeleteTextures(1, &dynShadowDummyColorTex_); dynShadowDummyColorTex_ = 0; }
-    if (dynShadowArrayFBO_) { glDeleteFramebuffers(1, &dynShadowArrayFBO_); dynShadowArrayFBO_ = 0; }
-    if (dynShadowArrayTex_) { glDeleteTextures(1, &dynShadowArrayTex_); dynShadowArrayTex_ = 0; }
-    if (dynShadowArrayDummyColorTex_) { glDeleteTextures(1, &dynShadowArrayDummyColorTex_); dynShadowArrayDummyColorTex_ = 0; }
-    if (dynamicFullMapFbo_) { glDeleteFramebuffers(1, &dynamicFullMapFbo_); dynamicFullMapFbo_ = 0; }
-    if (dynamicFullMapTex_) { glDeleteTextures(1, &dynamicFullMapTex_); dynamicFullMapTex_ = 0; }
-    if (dynamicFullMapDummyColorTex_) { glDeleteTextures(1, &dynamicFullMapDummyColorTex_); dynamicFullMapDummyColorTex_ = 0; }
-
-    RenderCore::RenderResourceDesc invalid;
-    invalid.id = RenderCore::RenderResourceId::ShadowDynamicMap;
-    RenderCore::registerOrUpdateRenderResource(invalid);
-
-    // SHADOW-VRAM-ACCOUNT-1: mark the two CSM accounting rows unavailable too.
-    invalid.id = RenderCore::RenderResourceId::ShadowCsmNearArray;
-    RenderCore::registerOrUpdateRenderResource(invalid);
-    invalid.id = RenderCore::RenderResourceId::ShadowCsmFullMap;
-    RenderCore::registerOrUpdateRenderResource(invalid);
 }
 
 void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
                                               const float camFitCornersMC2[8][3],
                                               const float shadowCenterXYZ[3], bool shadowCenterValid)
 {
-    if (!shadowsEnabled_ || !dynShadowFBO_) return;
+    if (!shadowsEnabled_ || !dynShadowBuilt_) return;
 
     ZoneScopedN("Shadow.DynMatrixBuild");
 
@@ -998,7 +632,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
     // Split: partition the camera frustum near->splitFar (~8000 WU light depth
     // along the view axis) into csmCount_ slices, blended log/uniform by lambda.
     // Beyond ~8000 the world-fixed STATIC map covers (min-combine in shaders).
-    if (mc2ShadowCsmEnabled() && dynShadowArrayTex_) {
+    if (mc2ShadowCsmEnabled() && csmBuilt_) {
         const int N = csmCount_;
 
         // CSM-REDESIGN: FIXED concentric cascade scheme. Near/mid cascades use

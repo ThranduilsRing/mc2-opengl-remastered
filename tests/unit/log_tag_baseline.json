@@ -3683,34 +3683,12 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "island"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "EXECUTOR",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
     "island",
     "check",
     "owned",
     "failures"
    ],
-   "count": 3
-  },
-  {
-   "tag": "EXECUTOR",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "island",
-    "postcond",
-    "activeUnit",
-    "owned",
-    "failures"
-   ],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "EXECUTOR",
@@ -3733,18 +3711,6 @@
     "island",
     "postcond",
     "err",
-    "owned",
-    "failures"
-   ],
-   "count": 2
-  },
-  {
-   "tag": "EXECUTOR",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "island",
-    "postcond",
     "owned",
     "failures"
    ],
@@ -4505,77 +4471,6 @@
    "stream": "stderr",
    "keys": [],
    "count": 5
-  },
-  {
-   "tag": "GPU_DRIVEN_WATER",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "msg"
-   ],
-   "count": 5
-  },
-  {
-   "tag": "GPU_DRIVEN_WATER",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "msg",
-    "frame"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPU_DRIVEN_WATER_PARITY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frame",
-    "recipe",
-    "cpu_only"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPU_DRIVEN_WATER_PARITY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frame",
-    "recipe",
-    "field",
-    "gpu",
-    "cpu"
-   ],
-   "count": 3
-  },
-  {
-   "tag": "GPU_DRIVEN_WATER_PARITY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frame",
-    "recipe",
-    "gpu_only"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPU_DRIVEN_WATER_PARITY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frames",
-    "quads_checked",
-    "total_mismatches"
-   ],
-   "count": 1
   },
   {
    "tag": "GPU_PARTICLES",
@@ -5961,54 +5856,6 @@
     "pzTri_old",
     "pzNeeded",
     "uvMode"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "MASK_DISPATCH",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "reason",
-    "mapSide",
-    "max"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "MASK_SOLID",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "MC2_TERRAIN_MASK_DISPATCH"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "MASK_SOLID",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "prog"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "MASK_WATER",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "MC2_TERRAIN_MASK_DISPATCH"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "MASK_WATER",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "prog"
    ],
    "count": 1
   },
@@ -9060,10 +8907,17 @@
    "tag": "SHADOW_DEBUG",
    "ver": -1,
    "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_DEBUG",
+   "ver": -1,
+   "stream": "stderr",
    "keys": [
     "MC2_SHADOW_DEBUG_MODE"
    ],
-   "count": 3
+   "count": 1
   },
   {
    "tag": "SHADOW_FRUSTUM_DIAG",
@@ -10329,17 +10183,6 @@
     "frames",
     "verts_checked",
     "total_mismatches"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_MASK_UPLOAD_STATS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "bytes",
-    "orphans",
-    "totalBytes"
    ],
    "count": 1
   },
@@ -12223,49 +12066,6 @@
    "count": 1
   },
   {
-   "tag": "VK_PRODUCER_PARITY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "gl_count",
-    "vk_visible",
-    "compared",
-    "same",
-    "differ",
-    "only_gl",
-    "only_vk",
-    "truncated",
-    "compared",
-    "light_mismatch",
-    "fog_mismatch",
-    "max_channel_delta"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_PRODUCER_PARITY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "gl",
-    "vk"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_PRODUCER_PARITY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "offset",
-    "count",
-    "lights",
-    "gl_read"
-   ],
-   "count": 1
-  },
-  {
    "tag": "VK_PROFILE",
    "ver": 1,
    "stream": "buffer",
@@ -12641,18 +12441,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
-    "thin_readback_us",
-    "thin"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_WATER_PERF",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
     "tier1",
-    "thin",
     "recipes",
     "stage_us",
     "record_us",
@@ -12782,56 +12571,6 @@
    "count": 1
   },
   {
-   "tag": "WATER_DEPTHPROBE",
-   "ver": 2,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "wframe",
-    "armed",
-    "wstream_ready",
-    "recipe_count",
-    "water_fp",
-    "terrain_solid_fp",
-    "livecam_fp",
-    "equal",
-    "w_eq_livecam",
-    "moved",
-    "terrain_solid_frameidx",
-    "w_mvp0"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_FAST",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "MC2_RENDER_WATER_FASTPATH"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_FAST",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "prog"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_FAST",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "err",
-    "verts"
-   ],
-   "count": 1
-  },
-  {
    "tag": "WATER_FAST",
    "ver": 1,
    "stream": "stderr",
@@ -12849,75 +12588,11 @@
    "stream": "stderr",
    "keys": [
     "event",
-    "frames",
-    "narrowed",
-    "full_walk",
-    "narrow_enabled"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_FAST",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "prog",
-    "recipeBuf",
-    "thin",
-    "baseGosH",
-    "baseGLTex",
-    "detailGosH",
-    "detailGLTex",
-    "VAO",
-    "FBO",
-    "viewport",
-    "depthTest",
-    "cullFace",
-    "depthFunc"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_FAST",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
     "waterElevation",
     "alphaDepth",
     "alphaEdgeByte",
     "alphaMiddleByte",
     "alphaDeepByte"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_FULL_RECIPE_PARITY",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "candCount",
-    "fullRecipeCount",
-    "shared",
-    "onlyCandidate",
-    "onlyFullRecipe",
-    "fieldMismatch",
-    "setMatch"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_FULL_RECIPE_SPIKE",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "recipeCount",
-    "candidateCount",
-    "candidateGpuUs",
-    "fullRecipeGpuUs",
-    "deltaUs",
-    "fullRecipeOut"
    ],
    "count": 1
   },
@@ -12963,77 +12638,6 @@
    "count": 1
   },
   {
-   "tag": "WATER_PARITY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frame",
-    "quad",
-    "layer",
-    "tri",
-    "vert",
-    "field",
-    "legacy",
-    "fast"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_PARITY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frame",
-    "quad",
-    "scope",
-    "corner",
-    "field",
-    "legacy",
-    "fast"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_PARITY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frames",
-    "quads_checked",
-    "total_mismatches"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_PARITY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frames",
-    "quads_checked",
-    "total_mismatches",
-    "reason"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_PARITY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "note",
-    "scope",
-    "print_budget",
-    "summary_every"
-   ],
-   "count": 1
-  },
-  {
    "tag": "WATER_REFL_RT",
    "ver": 1,
    "stream": "stderr",
@@ -13063,36 +12667,6 @@
     "max_luma",
     "avg_luma",
     "gl_err"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_RENDERPROBE",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "wframe",
-    "armed",
-    "prev_armed",
-    "water_fp",
-    "terrain_src_fp",
-    "equal",
-    "terrain_dispatch_frameidx"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_RENDERPROBE",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "wframe",
-    "water_fp",
-    "terrain_dispatch_fp",
-    "equal",
-    "terrain_dispatch_frameidx"
    ],
    "count": 1
   },
@@ -13158,18 +12732,6 @@
    "stream": "stderr",
    "keys": [
     "event",
-    "bytes",
-    "records",
-    "buf"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_STREAM",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
     "elev",
     "v0",
     "v3",
@@ -13200,35 +12762,6 @@
     "mapSide",
     "halfSide",
     "wupv"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_STREAM",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "records",
-    "pz_valid"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_STREAM",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "total_quads",
-    "water_handles",
-    "thin",
-    "pz_valid",
-    "recipe_miss",
-    "pz_drop",
-    "state",
-    "prev_water_handles",
-    "prev_thin"
    ],
    "count": 1
   },

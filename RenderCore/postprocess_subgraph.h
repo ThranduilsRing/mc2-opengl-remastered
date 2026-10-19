@@ -26,7 +26,7 @@
 //
 // INVARIANTS:
 //   - reads[]/writes[] are Unknown-terminated (RenderResourceId::Unknown = 0).
-//   - ownedByExecutor=true -> sub-stage is wrapped by executorOwnBeginSub/EndSub.
+//   - ownedByExecutor=true -> the island is wrapped by the GL executor (only Composite since the GL fog, screen-shadow, cloud and shoreline passes went in s62).
 //   - ownedByExecutor=false -> declared for documentation / offline validation only.
 //   - Composite must be the sole subpass with fboTarget==Backbuffer that precedes
 //     ShadowDebugOverlay; it is the subgraph's output edge (sceneFBO_->FBO0).
@@ -210,7 +210,7 @@ static constexpr PostProcessSubpass kPostProcessSubpasses[] = {
                              RenderResourceId::Unknown },
         /*fboTarget*/      RenderResourceId::MainColor,
         /*conditional*/    true,
-        /*ownedByExecutor*/true,
+        /*ownedByExecutor*/false,
         /*isCompute*/      false,
         /*note*/           "SUBGRAPH-2. EXECUTOR-ISLAND-SCREENSHADOW-1 (validate-only). "
                            "Screen-space shadow (draw, sceneFBO_ SingleColor). "
@@ -236,7 +236,7 @@ static constexpr PostProcessSubpass kPostProcessSubpasses[] = {
                              RenderResourceId::Unknown },
         /*fboTarget*/      RenderResourceId::MainColor,
         /*conditional*/    true,
-        /*ownedByExecutor*/true,
+        /*ownedByExecutor*/false,
         /*isCompute*/      false,
         /*note*/           "SUBGRAPH-1. ISLAND-3 owned. Procedural cloud darken over all non-sky pixels "
                            "(MC2_CLOUD_SHADOW default-OFF). Reads MainDepth (unit0). "
@@ -258,7 +258,7 @@ static constexpr PostProcessSubpass kPostProcessSubpasses[] = {
                              RenderResourceId::Unknown },
         /*fboTarget*/      RenderResourceId::MainColor,
         /*conditional*/    true,
-        /*ownedByExecutor*/true,
+        /*ownedByExecutor*/false,
         /*isCompute*/      false,
         /*note*/           "SUBGRAPH-1. ISLAND-3 owned. Shoreline foam brightening. "
                            "Reads MainDepth (unit0) + MainNormal/sceneNormalTex_ (unit1). "
@@ -336,7 +336,7 @@ static constexpr PostProcessSubpass kPostProcessSubpasses[] = {
                              RenderResourceId::Unknown },
         /*fboTarget*/      RenderResourceId::MainColor,
         /*conditional*/    true,
-        /*ownedByExecutor*/true,
+        /*ownedByExecutor*/false,
         /*isCompute*/      false,
         /*note*/           "SUBGRAPH-1. ISLAND-2 owned. Map-boundary edge fog (default ON in-mission). "
                            "Reads MainDepth (unit0). Writes MainColor via sceneFBO_.",
@@ -355,7 +355,7 @@ static constexpr PostProcessSubpass kPostProcessSubpasses[] = {
                              RenderResourceId::Unknown },
         /*fboTarget*/      RenderResourceId::MainColor,
         /*conditional*/    true,
-        /*ownedByExecutor*/true,
+        /*ownedByExecutor*/false,
         /*isCompute*/      false,
         /*note*/           "SUBGRAPH-1. ISLAND-2 owned. Out-of-bounds ground fog (default ON in-mission). "
                            "Reads MainDepth (unit0). Writes MainColor via sceneFBO_.",

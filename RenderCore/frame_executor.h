@@ -75,65 +75,6 @@ static constexpr IslandContract kExecutorIslands[] = {
         /*postRequiresBlendDisabled*/false, // PostProcess end-state not asserted (composite varies)
         /*postRequiresActiveTexture0*/false,
     },
-    {
-        /*id*/                      ExecutorIslandId::EdgeFog,
-        /*requiresProgramValid*/    true,
-        /*requiresSceneColorTex*/   false,
-        /*requiresSceneDepthTex*/   true,   // EdgeFog reads sceneDepthTex_, not sceneColorTex_
-        /*warnIfNoTerrainLatch*/    true,   // runEdgeFog() bails on !sceneHasTerrain_
-        /*postRequiresDefaultFbo*/  false,  // stays on sceneFBO_, not FBO 0
-        /*postRequiresBlendDisabled*/true,  // runEdgeFog() calls glDisable(GL_BLEND) on exit
-        /*postRequiresActiveTexture0*/true, // runEdgeFog() calls glActiveTexture(GL_TEXTURE0) on exit
-    },
-    {
-        /*id*/                      ExecutorIslandId::FogOob,
-        /*requiresProgramValid*/    true,
-        /*requiresSceneColorTex*/   false,
-        /*requiresSceneDepthTex*/   true,   // FogOob reads sceneDepthTex_
-        /*warnIfNoTerrainLatch*/    true,   // runFogOob() bails on !sceneHasTerrain_
-        /*postRequiresDefaultFbo*/  false,  // stays on sceneFBO_, not FBO 0
-        /*postRequiresBlendDisabled*/true,  // runFogOob() calls glDisable(GL_BLEND) on exit
-        /*postRequiresActiveTexture0*/true, // runFogOob() calls glActiveTexture(GL_TEXTURE0) on exit
-    },
-    // ISLAND-3: Shoreline foam pass (reads sceneDepthTex_ + sceneNormalTex_, stays sceneFBO_)
-    {
-        /*id*/                      ExecutorIslandId::Shoreline,
-        /*requiresProgramValid*/    true,
-        /*requiresSceneColorTex*/   false,
-        /*requiresSceneDepthTex*/   true,   // Shoreline reads sceneDepthTex_ (unit 0) + sceneNormalTex_ (unit 1)
-        /*warnIfNoTerrainLatch*/    true,   // runShoreline() bails on !sceneHasTerrain_
-        /*postRequiresDefaultFbo*/  false,  // stays on sceneFBO_, not FBO 0
-        /*postRequiresBlendDisabled*/true,  // runShoreline() calls glDisable(GL_BLEND) on exit
-        /*postRequiresActiveTexture0*/true, // runShoreline() calls glActiveTexture(GL_TEXTURE0) on exit
-    },
-    // ISLAND-3: CloudShadow pass (reads sceneDepthTex_ only, stays sceneFBO_)
-    {
-        /*id*/                      ExecutorIslandId::CloudShadow,
-        /*requiresProgramValid*/    true,
-        /*requiresSceneColorTex*/   false,
-        /*requiresSceneDepthTex*/   true,   // CloudShadow reads sceneDepthTex_ (unit 0 only)
-        /*warnIfNoTerrainLatch*/    true,   // runCloudShadow() bails on !sceneHasTerrain_
-        /*postRequiresDefaultFbo*/  false,  // stays on sceneFBO_, not FBO 0
-        /*postRequiresBlendDisabled*/true,  // runCloudShadow() calls glDisable(GL_BLEND) on exit
-        /*postRequiresActiveTexture0*/true, // runCloudShadow() calls glActiveTexture(GL_TEXTURE0) on exit
-    },
-    // EXECUTOR-ISLAND-SCREENSHADOW-1: ScreenShadow — validate-only (body unchanged).
-    // Unblocked by SCREENSHADOW-TEX-RESTORE-1 (a0b4189b): unit-3 2D_ARRAY now unbound at exit.
-    // Exit state (ground-truthed from runScreenShadow() lines 2149-2160):
-    //   glDisable(GL_BLEND)          at line 2150 — postRequiresBlendDisabled=true
-    //   glActiveTexture(GL_TEXTURE0) at line 2160 — postRequiresActiveTexture0=true
-    //   stays on sceneFBO_           — postRequiresDefaultFbo=false
-    // Gates: screenShadowEnabled_ && sceneHasTerrain_ && screenShadowProg_ valid && shadowsEnabled_
-    {
-        /*id*/                       ExecutorIslandId::ScreenShadow,
-        /*requiresProgramValid*/     true,
-        /*requiresSceneColorTex*/    false,
-        /*requiresSceneDepthTex*/    true,   // reads sceneDepthTex_(unit0)+sceneNormalTex_(unit1)
-        /*warnIfNoTerrainLatch*/     true,   // runScreenShadow() bails on !sceneHasTerrain_
-        /*postRequiresDefaultFbo*/   false,  // stays on sceneFBO_, not FBO 0
-        /*postRequiresBlendDisabled*/true,   // glDisable(GL_BLEND) at line 2150
-        /*postRequiresActiveTexture0*/true,  // glActiveTexture(GL_TEXTURE0) at line 2160
-    },
 };
 static constexpr unsigned kExecutorIslandCount =
     sizeof(kExecutorIslands) / sizeof(kExecutorIslands[0]);
@@ -148,111 +89,28 @@ inline const IslandContract* findIslandContract(ExecutorIslandId id) {
     return nullptr;
 }
 
-// ---------------------------------------------------------------------------
-// FRAMEGRAPH-APPLY-STATE-ISLAND-1: SubStageStateDesc — GL-free descriptor for
-// the executor's pre-apply of a sub-stage's declared GL state.
-//
-// The table is the vocabulary; only EdgeFog is WIRED in this slice (slice 2
-// removes the body's redundant apply once all 4 are wired).
-// Fields:
-//   id         — sub-stage island id
-//   pipelineId — PipelineId used at the top of the body (passed to applyPipeline)
-//   fboTarget  — logical resource the body binds as the draw FBO (MainColor=sceneFBO_)
-//   viewport   — viewport scope (MainScene = glViewport(0,0,width_,height_))
-// Pure, constexpr-compatible, no GL.
-// ---------------------------------------------------------------------------
-struct SubStageStateDesc {
-    ExecutorIslandId         id;
-    RenderCore::PipelineId       pipelineId;
-    RenderCore::RenderResourceId fboTarget;
-    ViewportKind                 viewport;    // RenderCore::framegraph::ViewportKind (same namespace)
-};
-
-static constexpr SubStageStateDesc kSubStageState[] = {
-    // EdgeFog — runEdgeFog(): bindFB(sceneFBO_) + SingleColor + viewport + applyPipeline(PostProcessEdgeFog)
-    {
-        /*id*/         ExecutorIslandId::EdgeFog,
-        /*pipelineId*/ RenderCore::PipelineId::PostProcessEdgeFog,
-        /*fboTarget*/  RenderCore::RenderResourceId::MainColor,
-        /*viewport*/   ViewportKind::MainScene,
-    },
-    // FogOob — same entry state as EdgeFog (validate-only this slice; not wired to apply yet)
-    {
-        /*id*/         ExecutorIslandId::FogOob,
-        /*pipelineId*/ RenderCore::PipelineId::PostProcessFogOob,
-        /*fboTarget*/  RenderCore::RenderResourceId::MainColor,
-        /*viewport*/   ViewportKind::MainScene,
-    },
-    // Shoreline (validate-only this slice)
-    {
-        /*id*/         ExecutorIslandId::Shoreline,
-        /*pipelineId*/ RenderCore::PipelineId::PostProcessShoreline,
-        /*fboTarget*/  RenderCore::RenderResourceId::MainColor,
-        /*viewport*/   ViewportKind::MainScene,
-    },
-    // CloudShadow (validate-only this slice)
-    {
-        /*id*/         ExecutorIslandId::CloudShadow,
-        /*pipelineId*/ RenderCore::PipelineId::PostProcessCloudShadow,
-        /*fboTarget*/  RenderCore::RenderResourceId::MainColor,
-        /*viewport*/   ViewportKind::MainScene,
-    },
-    // ScreenShadow — runScreenShadow(): bindFB(sceneFBO_) + SingleColor + viewport + applyPipeline(PostProcessScreenShadow)
-    // APPLY-STATE-SCREENSHADOW-1: 6th apply-state island (matches CloudShadow shape).
-    {
-        /*id*/         ExecutorIslandId::ScreenShadow,
-        /*pipelineId*/ RenderCore::PipelineId::PostProcessScreenShadow,
-        /*fboTarget*/  RenderCore::RenderResourceId::MainColor,
-        /*viewport*/   ViewportKind::MainScene,
-    },
-};
-static constexpr unsigned kSubStageStateCount =
-    sizeof(kSubStageState) / sizeof(kSubStageState[0]);
-
-// Find the SubStageStateDesc for the given island id, or nullptr if not in table.
-// Pure, constexpr-compatible, no GL.
-inline const SubStageStateDesc* findSubStageState(ExecutorIslandId id) {
-    for (unsigned i = 0; i < kSubStageStateCount; ++i) {
-        if (kSubStageState[i].id == id)
-            return &kSubStageState[i];
-    }
-    return nullptr;
-}
-
 // PER-PASS-APPLY-COUNTERS-1 — independent observability id per apply-state path.
 // Replaces the coarse aggregate g_applyStatePasses (which made decal "rise"
 // look like variance) with one counter slot per apply site, so each path is
 // observable on its own in the render-state dump. The aggregate is now derived
 // as the SUM over these ids (back-compat: the total is byte-stable).
-// 5 PostProcess sub-stage applies + 5 top-level applies (TerrainDecal,
-// TerrainOverlay, StaticPropOpaque, MechOpaque, Water). Shadow left with the GL dynamic shadow pass (s61).
+// 4 top-level applies (TerrainDecal, TerrainOverlay, StaticPropOpaque, MechOpaque); Water left with the GL water draw (s62). Shadow left with the GL dynamic shadow pass (s61); the
+// 5 PostProcess sub-stage applies (EdgeFog, FogOob, Shoreline, CloudShadow, ScreenShadow) left with the GL passes (s62).
 enum class ApplyPassId : uint8_t {
-    PostProcessEdgeFog = 0,
-    PostProcessFogOob,
-    PostProcessShoreline,
-    PostProcessCloudShadow,
-    PostProcessScreenShadow,
-    TerrainDecal,
+    TerrainDecal = 0,
     TerrainOverlay,
     StaticPropOpaque,
     MechOpaque,   // APPLY-STATE-MECHOPAQUE-1: top-level mech-opaque pipeline apply
-    Water,        // APPLY-STATE-WATER-1: top-level water pipeline apply (body-site post-compute-dispatch)
     Count,
 };
 
 // Exact stable string names for the dump keys (must match the dump map keys).
 inline const char* applyPassName(ApplyPassId id) {
     switch (id) {
-        case ApplyPassId::PostProcessEdgeFog:      return "PostProcessEdgeFog";
-        case ApplyPassId::PostProcessFogOob:       return "PostProcessFogOob";
-        case ApplyPassId::PostProcessShoreline:    return "PostProcessShoreline";
-        case ApplyPassId::PostProcessCloudShadow:  return "PostProcessCloudShadow";
-        case ApplyPassId::PostProcessScreenShadow: return "PostProcessScreenShadow";
         case ApplyPassId::TerrainDecal:            return "TerrainDecal";
         case ApplyPassId::TerrainOverlay:          return "TerrainOverlay";
         case ApplyPassId::StaticPropOpaque:        return "StaticPropOpaque";
         case ApplyPassId::MechOpaque:              return "MechOpaque";
-        case ApplyPassId::Water:                   return "Water";
         default:                                   return "Unknown";
     }
 }
