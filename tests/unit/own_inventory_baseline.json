@@ -367,24 +367,6 @@
    "delete": 1,
    "delete_array": 0,
    "files": {
-    "code/artlry.cpp": {
-     "new": 3
-    },
-    "code/bldng.cpp": {
-     "new": 1
-    },
-    "code/gate.cpp": {
-     "new": 1
-    },
-    "code/terrobj.cpp": {
-     "new": 1
-    },
-    "code/turret.cpp": {
-     "new": 1
-    },
-    "code/warrior_state.cpp": {
-     "new": 1
-    },
     "editor/EditorCamera.h": {
      "delete": 1,
      "new": 1
@@ -393,7 +375,7 @@
      "new": 1
     }
    },
-   "new": 10,
+   "new": 2,
    "new_array": 0,
    "owners": [
     ""
@@ -521,38 +503,30 @@
   },
   "ButtonData": {
    "delete": 0,
-   "delete_array": 4,
+   "delete_array": 2,
    "files": {
     "code/controlgui.cpp": {
      "delete_array": 2
     },
     "code/controlgui_init.cpp": {
      "new_array": 2
-    },
-    "code/pausewindow.cpp": {
-     "delete_array": 2,
-     "new_array": 1
     }
    },
    "new": 0,
-   "new_array": 3,
+   "new_array": 2,
    "owners": [
-    "ControlGui",
-    "PauseWindow"
+    "ControlGui"
    ]
   },
   "CBooleanFlagIsSet": {
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -560,14 +534,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -575,14 +546,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -590,14 +558,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -605,14 +570,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -620,14 +582,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -635,14 +594,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -662,14 +618,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -677,14 +630,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -692,14 +642,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -707,14 +654,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -722,14 +666,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -737,14 +678,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -752,14 +690,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -767,14 +702,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -782,14 +714,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -797,14 +726,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -812,14 +738,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -827,14 +750,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -842,14 +762,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -875,14 +792,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -890,14 +804,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -905,14 +816,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -920,25 +828,18 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 2
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 3,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
   "CObjective": {
-   "delete": 11,
+   "delete": 6,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "delete": 5,
-     "new": 3
-    },
     "editor/Objective.cpp": {
      "delete": 1,
      "new": 2
@@ -948,10 +849,9 @@
      "new": 3
     }
    },
-   "new": 8,
+   "new": 5,
    "new_array": 0,
    "owners": [
-    "",
     "CObjectives",
     "ObjectivesDlg"
    ]
@@ -960,14 +860,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -975,14 +872,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -990,31 +884,13 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objective.cpp": {
-     "new": 1
-    },
     "editor/Objective.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
-  },
-  "C_RemoveStructure": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/objective.cpp": {
-     "delete": 1,
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
   },
   "Carnage": {
    "delete": 1,
@@ -1374,28 +1250,6 @@
    "new_array": 0,
    "owners": [
     "Mover"
-   ]
-  },
-  "ControlButton": {
-   "delete": 0,
-   "delete_array": 4,
-   "files": {
-    "code/controlgui.cpp": {
-     "delete_array": 2
-    },
-    "code/controlgui_init.cpp": {
-     "new_array": 2
-    },
-    "code/pausewindow.cpp": {
-     "delete_array": 2,
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 3,
-   "owners": [
-    "ControlGui",
-    "PauseWindow"
    ]
   },
   "CounterTables": {
@@ -2147,14 +2001,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/gvehicl.cpp": {
-     "new": 1
-    },
     "editor/EditorObjectMgr_render.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -2512,21 +2363,6 @@
     "EnginePresentVk"
    ]
   },
-  "InfoWindow": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/controlgui.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "ControlGui"
-   ]
-  },
   "KeyboardRef": {
    "delete": 1,
    "delete_array": 0,
@@ -2858,7 +2694,7 @@
    "owners": []
   },
   "MC2Movie": {
-   "delete": 10,
+   "delete": 7,
    "delete_array": 0,
    "files": {
     "code/controlgui.cpp": {
@@ -2884,19 +2720,14 @@
     "code/mainmenu.cpp": {
      "delete": 2,
      "new": 1
-    },
-    "code/missionselectionscreen.cpp": {
-     "delete": 3,
-     "new": 1
     }
    },
-   "new": 6,
+   "new": 5,
    "new_array": 0,
    "owners": [
     "ControlGui",
     "Logistics",
-    "MainMenu",
-    "MissionSelectionScreen"
+    "MainMenu"
    ]
   },
   "MC_TextureManager": {
@@ -3569,14 +3400,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/mech_init.cpp": {
-     "new": 1
-    },
     "editor/EditorObjectMgr_render.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -4422,37 +4250,6 @@
    "new_array": 0,
    "owners": []
   },
-  "PauseWindow": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/controlgui.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "ControlGui"
-   ]
-  },
-  "PilotIcon": {
-   "delete": 3,
-   "delete_array": 0,
-   "files": {
-    "code/pilotreviewarea.cpp": {
-     "delete": 3,
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "ActivePilotListItem",
-    "DeadPilotListItem"
-   ]
-  },
   "PilotPromotionArea": {
    "delete": 1,
    "delete_array": 0,
@@ -4638,24 +4435,6 @@
    "new_array": 0,
    "owners": []
   },
-  "RectInfo": {
-   "delete": 0,
-   "delete_array": 2,
-   "files": {
-    "code/controlgui.cpp": {
-     "delete_array": 1
-    },
-    "code/controlgui_init.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 1,
-   "owners": [
-    "ControlGui"
-   ]
-  },
   "RenderContext": {
    "delete": 2,
    "delete_array": 0,
@@ -4794,21 +4573,6 @@
    "new_array": 0,
    "owners": [
     "SensorSystemManager"
-   ]
-  },
-  "SimpleCamera": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/mechbayscreen.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "MechBayScreen"
    ]
   },
   "SortAlpha": {
@@ -4984,15 +4748,8 @@
   },
   "StaticInfo": {
    "delete": 0,
-   "delete_array": 14,
+   "delete_array": 2,
    "files": {
-    "code/controlgui.cpp": {
-     "delete_array": 5
-    },
-    "code/controlgui_init.cpp": {
-     "delete_array": 5,
-     "new_array": 5
-    },
     "code/infowindow.cpp": {
      "delete_array": 1,
      "new_array": 1
@@ -5000,22 +4757,16 @@
     "code/mechicon.cpp": {
      "new": 1
     },
-    "code/pausewindow.cpp": {
-     "delete_array": 2,
-     "new_array": 1
-    },
     "mclib/userinput.cpp": {
      "delete_array": 1,
      "new_array": 1
     }
    },
    "new": 1,
-   "new_array": 8,
+   "new_array": 2,
    "owners": [
-    "ControlGui",
     "InfoWindow",
-    "MouseCursorData",
-    "PauseWindow"
+    "MouseCursorData"
    ]
   },
   "Stuff::MemoryStream": {
@@ -5516,14 +5267,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/terrobj.cpp": {
-     "new": 1
-    },
     "editor/EditorObjectMgr_render.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -5882,21 +5630,6 @@
    "new_array": 0,
    "owners": []
   },
-  "VideoSession": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/mc2video.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
   "VkPostFogNative": {
    "delete": 0,
    "delete_array": 0,
@@ -6217,7 +5950,7 @@
     },
     "code/pilotreviewarea.cpp": {
      "delete": 3,
-     "new": 5
+     "new": 4
     },
     "code/salvagemecharea.cpp": {
      "new": 4
@@ -6230,7 +5963,7 @@
      "new_array": 2
     }
    },
-   "new": 11,
+   "new": 10,
    "new_array": 4,
    "owners": [
     "ActivePilotListItem",
@@ -6307,7 +6040,7 @@
     },
     "code/pilotreviewarea.cpp": {
      "delete": 14,
-     "new": 16
+     "new": 15
     },
     "code/salvagemecharea.cpp": {
      "new": 8
@@ -6317,7 +6050,7 @@
      "new_array": 2
     }
    },
-   "new": 24,
+   "new": 23,
    "new_array": 4,
    "owners": [
     "ActivePilotListItem",
@@ -7242,7 +6975,6 @@
   "code/loadscreen.cpp": 7,
   "code/logistics.cpp": 1,
   "code/logisticscomponent.cpp": 4,
-  "code/logisticsdata_init.cpp": 1,
   "code/logisticsdata_modify.cpp": 3,
   "code/logisticspilotlistbox.cpp": 2,
   "code/logisticsvariant.cpp": 2,
@@ -7256,15 +6988,10 @@
   "code/mission.cpp": 4,
   "code/mission_init.cpp": 1,
   "code/missionbegin.cpp": 4,
-  "code/missionbriefingscreen.cpp": 3,
-  "code/missiongui.cpp": 2,
+  "code/missionbriefingscreen.cpp": 1,
   "code/mpparameterscreen.cpp": 1,
-  "code/mpprefs.cpp": 1,
-  "code/objective.cpp": 8,
   "code/objmgr.cpp": 1,
-  "code/objmgr_io.cpp": 2,
   "code/optionsarea.cpp": 3,
-  "code/pilotreviewarea.cpp": 2,
   "code/salvagemecharea.cpp": 10,
   "editor/Action.cpp": 5,
   "editor/BuildingBrush.cpp": 2,

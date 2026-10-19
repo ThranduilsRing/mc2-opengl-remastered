@@ -638,6 +638,23 @@ static bool TryModOpen(const char* fileName, int* outHandle, const char* req = n
 
 // Returns the owning mod id for a given data path (normalized), or nullptr if not in mod index.
 // Used for diagnostic logging only — O(1) lookup.
+std::vector<unsigned char> ReadArchiveBytes(const char* dataPath, size_t maxBytes) {
+    if (!dataPath) return {};
+    long handle = -1;
+    auto* archive = FastFileFind(dataPath, handle);
+    if (!archive) return {};
+    struct Member {
+        FastFile* archive;
+        long handle;
+        ~Member() { archive->closeFast(handle); }
+    } member{archive, handle};
+    const long count = archive->sizeFast(handle);
+    if (count <= 0 || static_cast<size_t>(count) >= maxBytes) return {};
+    std::vector<unsigned char> bytes(static_cast<size_t>(count));
+    if (archive->readFast(handle, bytes.data(), count) != count) return {};
+    return bytes;
+}
+
 int LookupModPriority(const char* dataPath) {
     const char* owner = LookupModOwner(dataPath);
     auto it = owner ? g_modPriority.find(owner) : g_modPriority.end();

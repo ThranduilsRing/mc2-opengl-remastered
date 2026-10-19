@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
 #include "mc2fmt.h"
-#include "fastfile.h"
 #include "../RenderCore/TextureService.h"
 #include <algorithm>
 #include "../GameOS/gameos/texture_decode.h"
@@ -69,20 +68,13 @@ static bool tryReadTgaLogicalSize(File& textureFile, const char* name, DWORD& uv
     // A loose stock atlas is not necessarily upscaled. Use the archive's authored
     // extent when available; this only reads metadata and never changes VFS precedence.
     if (textureFile.isLoadedFromDisk() && name && (strstr(name,"/art/") || strstr(name,"\\art\\"))) {
-        long member=-1;
-        if (auto* archive=FastFileFind(name,member)) {
-            const long count=archive->sizeFast(member);
-            if (count>=sizeof(TGAFileHeader) && count<MAX_LZ_BUFFER_SIZE) {
-                std::vector<uint8_t> bytes(static_cast<size_t>(count));
-                if (archive->readFast(member,bytes.data(),count)==count) {
-                    TGAFileHeader authored{}; memcpy(&authored,bytes.data(),sizeof(authored));
-                    if (authored.width>0 && authored.height>0) {
-                        const DWORD sx=header.width/authored.width, sy=header.height/authored.height;
-                        uvScale=(sx && sx==sy && header.width%authored.width==0 && header.height%authored.height==0) ? sx : 1;
-                    }
-                }
+        const auto bytes = ReadArchiveBytes(name, MAX_LZ_BUFFER_SIZE);
+        if (bytes.size() >= sizeof(TGAFileHeader)) {
+            TGAFileHeader authored{}; memcpy(&authored,bytes.data(),sizeof(authored));
+            if (authored.width>0 && authored.height>0) {
+                const DWORD sx=header.width/authored.width, sy=header.height/authored.height;
+                uvScale=(sx && sx==sy && header.width%authored.width==0 && header.height%authored.height==0) ? sx : 1;
             }
-            archive->closeFast(member);
         }
     }
 	const DWORD scale = uvScale ? uvScale : 1;
