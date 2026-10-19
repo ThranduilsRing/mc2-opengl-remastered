@@ -129,12 +129,12 @@ void Mech3DAppearance::updateGeometry (void)
 	// clip from this mech's movement (gesture + position/leg-heading deltas).
 	{
 		mc2mechanim::MechMotion _mm;
-		_mm.gestureId = (int)currentGestureId;
+		_mm.gestureId = static_cast<int>(currentGestureId);
 		_mm.px = position.x; _mm.py = position.y; _mm.pz = position.z;
 		_mm.legHeadingDeg = rotation;
 		// PER-ACTOR: actorKey = this instance shape; typeKey = the chassis type shape
 		// (== the batcher's rec.importedGpuType / desc.mechShape keying).
-		const void* _typeKey = (mechType ? (const void*)mechType->mechShape[currentLOD] : nullptr);
+		const void* _typeKey = (mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr);
 		// ASSIMP-MECH-PAUSE-GATE-1: stock mechs freeze their gait while paused (the
 		// if(animate) guard below at ~5000). Imported mechs advance through updateGeometry
 		// regardless, so they kept striding in place during pause. Freeze the imported clip
@@ -148,8 +148,8 @@ void Mech3DAppearance::updateGeometry (void)
 		// the render-path tick and jittered run-to-run). Capture-mode-only; byte-safe.
 		const bool _captureFroze = (mc2CaptureGaitFreezeActive() != 0);
 		const bool _advanceClock = (s_assimpPauseGate ? !gamePaused : true) && !_captureFroze;
-		mc2mechanim::TickImportedMechs(frameLength, (unsigned)g_mc2FrameCounter, _mm,
-		                               (const void*)mechShape, _typeKey, _advanceClock);
+		mc2mechanim::TickImportedMechs(frameLength, static_cast<unsigned>(g_mc2FrameCounter), _mm,
+		                               static_cast<const void*>(mechShape), _typeKey, _advanceClock);
 		// ANIM-FROZEN-WARNING-FIX-1: imported-mech GPU animation IS implemented and
 		// working at shipped defaults (per-actor model-delta palette; proven by
 		// IMPORTED-GPU-ANIM-READPATH-RECON-1). It is armed by MC2_MECH_IMPORT_GPU.
@@ -292,7 +292,7 @@ void Mech3DAppearance::updateGeometry (void)
 			glm::vec3 lightPos = getNodeIdPosition(lightCircleNodeIndex);
 			if (!mc2::math::closeEnough(lightPos, position))
 			{
-				pointLight = (TG_LightPtr)malloc(sizeof(TG_Light));
+				pointLight = static_cast<TG_LightPtr>(malloc(sizeof(TG_Light)));
 				pointLight->init(TG_LIGHT_SPOT);
 				lightId = eye->addWorldLight(pointLight);
 				// NIGHT-LIGHT-POOLS-2a: tag the anubis light as mover-owned so
@@ -381,7 +381,7 @@ void Mech3DAppearance::updateGeometry (void)
 					long nodeId = mechShape->GetNodeNameId(nodeName);
 					if (nodeId == -1) continue;
 
-					TG_LightPtr light = (TG_LightPtr)malloc(sizeof(TG_Light));
+					TG_LightPtr light = static_cast<TG_LightPtr>(malloc(sizeof(TG_Light)));
 					light->init(TG_LIGHT_POINT);              // v1 (OQ2/M6) — POINT
 					light->SetaRGB(mc2_spotlight_diag::mover_light_argb());
 					light->SetIntensity(0.15f);                // anubis default
@@ -397,8 +397,8 @@ void Mech3DAppearance::updateGeometry (void)
 				}
 				diagOverflow = diagSpotlightsFound - diagRegistered;
 				if (diagOverflow < 0) diagOverflow = 0;
-				s_spotDiagMechRegistered += (unsigned long)diagRegistered;
-				s_spotDiagMechOverflows  += (unsigned long)diagOverflow;
+				s_spotDiagMechRegistered += static_cast<unsigned long>(diagRegistered);
+				s_spotDiagMechOverflows  += static_cast<unsigned long>(diagOverflow);
 				++s_spotDiagMechActors;
 				if (s_spotDiagMechActors <= 8) {
 					MC2_DIAGFE(stderr,

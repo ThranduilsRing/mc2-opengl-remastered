@@ -181,7 +181,7 @@ void MapData::newInit (long numVertices)
 	// Since we no longer cache any aspect of the terrain, this is
 	// FAR more efficient and easier to understand.
 	MemoryPtr start = getHeapPtr();
-	blocks = (PostcompVertexPtr)start;
+	blocks = reinterpret_cast<PostcompVertexPtr>(start);
 
 	PostcompVertex* pTmp = blocks;
 
@@ -209,7 +209,7 @@ void MapData::newInit (PacketFile* newFile, long numVertices)
 {
 	newInit( numVertices );
 
-	newFile->readPacket(newFile->getCurrentPacket(), (MemoryPtr)blocks );
+	newFile->readPacket(newFile->getCurrentPacket(), reinterpret_cast<MemoryPtr>(blocks) );
 
 	calcTransitions();
 }
@@ -217,7 +217,7 @@ void MapData::newInit (PacketFile* newFile, long numVertices)
 //---------------------------------------------------------------------------
 long MapData::save( PacketFile* file, int whichPacket )
 {
-	return file->writePacket( whichPacket, (unsigned char*)blocks, 
+	return file->writePacket( whichPacket, reinterpret_cast<unsigned char*>(blocks),
 		Terrain::realVerticesMapSide * Terrain::realVerticesMapSide *sizeof(PostcompVertex ) );
 }
 
@@ -1073,7 +1073,7 @@ long MapData::update (void)
 				{
 					sprayFrame += sprayAdd;
 					SprayTextureNum = 0.0f;
-					if (((int)(sprayFrame + sprayAdd)) >= (int)Terrain::terrainTextures2->getWaterDetailNumFrames())/*carefull of the signed/unsigned mismatch*/
+					if ((static_cast<int>((sprayFrame + sprayAdd))) >= static_cast<int>(Terrain::terrainTextures2->getWaterDetailNumFrames()))/*carefull of the signed/unsigned mismatch*/
 					{
 						sprayAdd = -1;
 	  				}
@@ -1523,7 +1523,7 @@ float MapData::terrainAngle (const glm::vec3 &position, glm::vec3* normal)
 	upperLeft.x *= Terrain::worldUnitsPerVertex;
 
 	upperLeft.y = floor(position.y * Terrain::oneOverWorldUnitsPerVertex);
-	if (float(position.y * Terrain::oneOverWorldUnitsPerVertex) != (float)upperLeft.y)
+	if (float(position.y * Terrain::oneOverWorldUnitsPerVertex) != static_cast<float>(upperLeft.y))
 		upperLeft.y += 1.0;
 	upperLeft.y *= Terrain::worldUnitsPerVertex;
 
@@ -1831,7 +1831,7 @@ glm::vec3 MapData::terrainNormal (const glm::vec3& position)
 	upperLeft.x *= Terrain::worldUnitsPerVertex;
 
 	upperLeft.y = floor(position.y * Terrain::oneOverWorldUnitsPerVertex);
-	if (float(position.y * Terrain::oneOverWorldUnitsPerVertex) != (float)upperLeft.y)
+	if (float(position.y * Terrain::oneOverWorldUnitsPerVertex) != static_cast<float>(upperLeft.y))
 		upperLeft.y += 1.0;
 	upperLeft.y *= Terrain::worldUnitsPerVertex;
 
@@ -2057,12 +2057,12 @@ static float cpu_getDirtWeight(float r, float g, float b) {
 static float cpu_sampleAlpha(const unsigned char* data, int size, float u, float v) {
     u = u - floorf(u);
     v = v - floorf(v);
-    float fx = u * (float)size - 0.5f;
-    float fy = v * (float)size - 0.5f;
-    int x0 = (int)floorf(fx);
-    int y0 = (int)floorf(fy);
-    float dx = fx - (float)x0;
-    float dy = fy - (float)y0;
+    float fx = u * static_cast<float>(size) - 0.5f;
+    float fy = v * static_cast<float>(size) - 0.5f;
+    int x0 = static_cast<int>(floorf(fx));
+    int y0 = static_cast<int>(floorf(fy));
+    float dx = fx - static_cast<float>(x0);
+    float dy = fy - static_cast<float>(y0);
     x0 = ((x0 % size) + size) % size;
     y0 = ((y0 % size) + size) % size;
     int x1 = (x0 + 1) % size;
@@ -2081,8 +2081,8 @@ static void cpu_sampleColormap(const unsigned char* data, int size, float u, flo
                                float& r, float& g, float& b) {
     u = u - floorf(u);
     v = v - floorf(v);
-    int x = (int)(u * (float)size);
-    int y = (int)(v * (float)size);
+    int x = static_cast<int>((u * static_cast<float>(size)));
+    int y = static_cast<int>((v * static_cast<float>(size)));
     if (x >= size) x = size - 1;
     if (y >= size) y = size - 1;
     int idx = (y * size + x) * 4;
@@ -2117,7 +2117,7 @@ float MapData::terrainElevation (const glm::vec3 &position)
 	upperLeft.x *= Terrain::worldUnitsPerVertex;
 
 	upperLeft.y = floor(position.y * Terrain::oneOverWorldUnitsPerVertex);
-	if (float(position.y * Terrain::oneOverWorldUnitsPerVertex) != (float)upperLeft.y)
+	if (float(position.y * Terrain::oneOverWorldUnitsPerVertex) != static_cast<float>(upperLeft.y))
 		upperLeft.y += 1.0;
 	upperLeft.y *= Terrain::worldUnitsPerVertex;
 

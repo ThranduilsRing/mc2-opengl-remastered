@@ -30,9 +30,9 @@ void GVAppearance::setPaintScheme (void)
 			{
 				DWORD srcColor = *textureMemory;
 				DWORD srcA = (srcColor & 0xff000000);
-				int   srcR = (int)((srcColor >> 16) & 0xff);
-				int   srcG = (int)((srcColor >>  8) & 0xff);
-				int   srcB = (int)( srcColor        & 0xff);
+				int   srcR = static_cast<int>(((srcColor >> 16) & 0xff));
+				int   srcG = static_cast<int>(((srcColor >>  8) & 0xff));
+				int   srcB = static_cast<int>(( srcColor        & 0xff));
 
 				int   slot       = -1;
 				DWORD slotColor  = 0;
@@ -43,19 +43,19 @@ void GVAppearance::setPaintScheme (void)
 				const float kRatioMargin = 1.5f;
 
 				int domChan = 0, maxOther = 0;
-				if (srcR >= kMinDom && (float)srcR >= kRatio * (float)srcG && (float)srcR >= kRatio * (float)srcB)
+				if (srcR >= kMinDom && static_cast<float>(srcR) >= kRatio * static_cast<float>(srcG) && static_cast<float>(srcR) >= kRatio * static_cast<float>(srcB))
 				{
 					slot = 0; slotColor = psRed;
 					domChan = srcR;
 					maxOther = srcG > srcB ? srcG : srcB;
 				}
-				else if (srcG >= kMinDom && (float)srcG >= kRatio * (float)srcR && (float)srcG >= kRatio * (float)srcB)
+				else if (srcG >= kMinDom && static_cast<float>(srcG) >= kRatio * static_cast<float>(srcR) && static_cast<float>(srcG) >= kRatio * static_cast<float>(srcB))
 				{
 					slot = 1; slotColor = psGreen;
 					domChan = srcG;
 					maxOther = srcR > srcB ? srcR : srcB;
 				}
-				else if (srcB >= kMinDom && (float)srcB >= kRatio * (float)srcR && (float)srcB >= kRatio * (float)srcG)
+				else if (srcB >= kMinDom && static_cast<float>(srcB) >= kRatio * static_cast<float>(srcR) && static_cast<float>(srcB) >= kRatio * static_cast<float>(srcG))
 				{
 					slot = 2; slotColor = psBlue;
 					domChan = srcB;
@@ -64,10 +64,10 @@ void GVAppearance::setPaintScheme (void)
 
 				if (slot != -1)
 				{
-					float d = (float)domChan / 255.0f;
+					float d = static_cast<float>(domChan) / 255.0f;
 					shade = 1.0f - (1.0f - d) * (1.0f - d);
 
-					float ratio = (float)domChan / (float)(maxOther + 1);
+					float ratio = static_cast<float>(domChan) / static_cast<float>((maxOther + 1));
 					float margin = (ratio - kRatio) / (kRatio * (kRatioMargin - 1.0f));
 					if (margin > 1.0f) margin = 1.0f;
 					if (margin < 0.0f) margin = 0.0f;
@@ -77,19 +77,19 @@ void GVAppearance::setPaintScheme (void)
 				DWORD newColor = srcColor;
 				if (slot != -1 && mixFactor > 0.0f)
 				{
-					float tintR = (float)((slotColor >> 16) & 0xff) * shade;
-					float tintG = (float)((slotColor >>  8) & 0xff) * shade;
-					float tintB = (float)( slotColor        & 0xff) * shade;
+					float tintR = static_cast<float>(((slotColor >> 16) & 0xff)) * shade;
+					float tintG = static_cast<float>(((slotColor >>  8) & 0xff)) * shade;
+					float tintB = static_cast<float>(( slotColor        & 0xff)) * shade;
 
-					float outR = tintR * mixFactor + (float)srcR * (1.0f - mixFactor);
-					float outG = tintG * mixFactor + (float)srcG * (1.0f - mixFactor);
-					float outB = tintB * mixFactor + (float)srcB * (1.0f - mixFactor);
+					float outR = tintR * mixFactor + static_cast<float>(srcR) * (1.0f - mixFactor);
+					float outG = tintG * mixFactor + static_cast<float>(srcG) * (1.0f - mixFactor);
+					float outB = tintB * mixFactor + static_cast<float>(srcB) * (1.0f - mixFactor);
 
-					unsigned char r = (unsigned char)(outR < 0.0f ? 0.0f : outR > 255.0f ? 255.0f : outR);
-					unsigned char g = (unsigned char)(outG < 0.0f ? 0.0f : outG > 255.0f ? 255.0f : outG);
-					unsigned char b = (unsigned char)(outB < 0.0f ? 0.0f : outB > 255.0f ? 255.0f : outB);
+					unsigned char r = static_cast<unsigned char>((outR < 0.0f ? 0.0f : outR > 255.0f ? 255.0f : outR));
+					unsigned char g = static_cast<unsigned char>((outG < 0.0f ? 0.0f : outG > 255.0f ? 255.0f : outG));
+					unsigned char b = static_cast<unsigned char>((outB < 0.0f ? 0.0f : outB > 255.0f ? 255.0f : outB));
 
-					newColor = srcA | ((DWORD)r << 16) | ((DWORD)g << 8) | (DWORD)b;
+					newColor = srcA | (static_cast<DWORD>(r) << 16) | (static_cast<DWORD>(g) << 8) | static_cast<DWORD>(b);
 				}
 
 				*textureMemory = newColor;

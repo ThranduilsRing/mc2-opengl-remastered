@@ -387,7 +387,7 @@ void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 			std::fprintf(stderr,
 				"[MECHRESTORE v1] event=copyfrom type=%p restored_lod=%d "
 				"status_restored=0 status_now=%d\n",
-				(void*)mechType, (int)currentLOD, (int)status);
+				static_cast<void*>(mechType), static_cast<int>(currentLOD), static_cast<int>(status));
 	}
 }
 
@@ -425,10 +425,10 @@ glm::vec3 Mech3DAppearance::getHitNodeLeft (void)
 
 	// 1A: imported mech -> manifest-resolved hit node ("hit_left").
 	if (mechShape && mechShape->GetNumShapes() > 0) {
-		const void* tKey = mechType ? (const void*)mechType->mechShape[currentLOD] : nullptr;
+		const void* tKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr;
 		float wp[3];
-		if (mc2mechanim::GetImportedNodeWorld((const void*)mechShape, tKey, "hit_left",
-				(const float*)glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld), wp)) {
+		if (mc2mechanim::GetImportedNodeWorld(static_cast<const void*>(mechShape), tKey, "hit_left",
+				static_cast<const float*>(glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld)), wp)) {
 			result.x = wp[0]; result.y = wp[1]; result.z = wp[2];
 			return result;
 		}
@@ -469,10 +469,10 @@ glm::vec3 Mech3DAppearance::getHitNodeRight (void)
 
 	// 1A: imported mech -> manifest-resolved hit node ("hit_right").
 	if (mechShape && mechShape->GetNumShapes() > 0) {
-		const void* tKey = mechType ? (const void*)mechType->mechShape[currentLOD] : nullptr;
+		const void* tKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr;
 		float wp[3];
-		if (mc2mechanim::GetImportedNodeWorld((const void*)mechShape, tKey, "hit_right",
-				(const float*)glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld), wp)) {
+		if (mc2mechanim::GetImportedNodeWorld(static_cast<const void*>(mechShape), tKey, "hit_right",
+				static_cast<const float*>(glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld)), wp)) {
 			result.x = wp[0]; result.y = wp[1]; result.z = wp[2];
 			return result;
 		}

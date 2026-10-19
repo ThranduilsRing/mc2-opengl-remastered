@@ -38,11 +38,11 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	// The adapter's syncSpawn assert fires on a valid handle, making
 	// accidental double-registration visible in debug builds.
 	mechRenderHandle = RenderCore::RenderObjectHandle::invalid();
-	mechType = (Mech3DAppearanceType *)tree;
+	mechType = static_cast<Mech3DAppearanceType *>(tree);
 
 	// C3: cache owner handle for GPU-cull node-position early-outs.
 	actorHandle_ = (obj != nullptr) ? obj->getHandle() : -1;
-	LC3D_TRACE("event=init actorHandle=%ld lifecycle=%d", actorHandle_, (int)s_gpuCullLifecycle);
+	LC3D_TRACE("event=init actorHandle=%ld lifecycle=%d", actorHandle_, static_cast<int>(s_gpuCullLifecycle));
 
 	mechName[0] = 0;
 
@@ -378,7 +378,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			s_warnedMissingMechShape = true;
 			std::printf("[MECH_LOAD] WARN: mech appearance has no base shape "
 				"(missing/partial import) -- rendering nothing. mechType=%p\n",
-				(void*)mechType);
+				static_cast<void*>(mechType));
 			std::fflush(stdout);
 		}
 
@@ -398,9 +398,9 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 					"mechType=%p shape0=%p obj=%p actorHandle=%ld\n",
 					g_loadRaceMechDegrade,
 					(mechType && mechType->name) ? mechType->name : "<null>",
-					mechType ? mechType->appearanceNum : 0UL, (void*)mechType,
-					mechType ? (void*)mechType->mechShape[0] : nullptr,
-					(void*)obj, actorHandle_);
+					mechType ? mechType->appearanceNum : 0UL, static_cast<void*>(mechType),
+					mechType ? static_cast<void*>(mechType->mechShape[0]) : nullptr,
+					static_cast<void*>(obj), actorHandle_);
 				std::fflush(stdout);
 			}
 		}
@@ -691,8 +691,8 @@ void Mech3DAppearance::setPaintScheme (void)
 				const long long pixelCount = static_cast<long long>(textureData.Width) * static_cast<long long>(textureData.Height);
 				auto px = [&](long long idx) -> unsigned long { return (p && idx < pixelCount) ? static_cast<unsigned long>(p[idx]) : 0ul; };
 				fprintf(f,"[PREVIEW-PAINT] lock gosHandle=%lu %ldx%ld pitch=%ld px0=%08lX px1=%08lX pxMid=%08lX\n",
-					(unsigned long)gosHandle,
-					(long)textureData.Width,(long)textureData.Height,(long)textureData.Pitch,
+					static_cast<unsigned long>(gosHandle),
+					static_cast<long>(textureData.Width),static_cast<long>(textureData.Height),static_cast<long>(textureData.Pitch),
 					px(0),px(1),
 					px(static_cast<long long>(textureData.Height/2)*textureData.Width + textureData.Width/2));
 				fclose(f);
@@ -712,9 +712,9 @@ void Mech3DAppearance::setPaintScheme (void)
 			{
 				DWORD srcColor = *textureMemory;
 				DWORD srcA = (srcColor & 0xff000000);
-				int   srcR = (int)((srcColor >> 16) & 0xff);
-				int   srcG = (int)((srcColor >>  8) & 0xff);
-				int   srcB = (int)( srcColor        & 0xff);
+				int   srcR = static_cast<int>(((srcColor >> 16) & 0xff));
+				int   srcG = static_cast<int>(((srcColor >>  8) & 0xff));
+				int   srcB = static_cast<int>(( srcColor        & 0xff));
 
 				// `shade`     = tint brightness from dominant-channel magnitude
 				//                (preserves the original log-shade curve).
@@ -733,19 +733,19 @@ void Mech3DAppearance::setPaintScheme (void)
 				const float kRatioMargin = 1.5f; // mix saturates at ratio = kRatio * kRatioMargin
 
 				int domChan = 0, maxOther = 0;
-				if (srcR >= kMinDom && (float)srcR >= kRatio * (float)srcG && (float)srcR >= kRatio * (float)srcB)
+				if (srcR >= kMinDom && static_cast<float>(srcR) >= kRatio * static_cast<float>(srcG) && static_cast<float>(srcR) >= kRatio * static_cast<float>(srcB))
 				{
 					slot = 0; slotColor = psRed;
 					domChan = srcR;
 					maxOther = srcG > srcB ? srcG : srcB;
 				}
-				else if (srcG >= kMinDom && (float)srcG >= kRatio * (float)srcR && (float)srcG >= kRatio * (float)srcB)
+				else if (srcG >= kMinDom && static_cast<float>(srcG) >= kRatio * static_cast<float>(srcR) && static_cast<float>(srcG) >= kRatio * static_cast<float>(srcB))
 				{
 					slot = 1; slotColor = psGreen;
 					domChan = srcG;
 					maxOther = srcR > srcB ? srcR : srcB;
 				}
-				else if (srcB >= kMinDom && (float)srcB >= kRatio * (float)srcR && (float)srcB >= kRatio * (float)srcG)
+				else if (srcB >= kMinDom && static_cast<float>(srcB) >= kRatio * static_cast<float>(srcR) && static_cast<float>(srcB) >= kRatio * static_cast<float>(srcG))
 				{
 					slot = 2; slotColor = psBlue;
 					domChan = srcB;
@@ -754,14 +754,14 @@ void Mech3DAppearance::setPaintScheme (void)
 
 				if (slot != -1)
 				{
-					float d = (float)domChan / 255.0f;
+					float d = static_cast<float>(domChan) / 255.0f;
 					shade = 1.0f - (1.0f - d) * (1.0f - d);
 
 					// Confidence saturates once the dominance ratio is
 					// comfortably past threshold, so upscaled-texture
 					// interior pixels (ratio ~10-15) get full tint while
 					// near-threshold boundary pixels get a soft blend.
-					float ratio = (float)domChan / (float)(maxOther + 1);
+					float ratio = static_cast<float>(domChan) / static_cast<float>((maxOther + 1));
 					float margin = (ratio - kRatio) / (kRatio * (kRatioMargin - 1.0f));
 					if (margin > 1.0f) margin = 1.0f;
 					if (margin < 0.0f) margin = 0.0f;
@@ -771,19 +771,19 @@ void Mech3DAppearance::setPaintScheme (void)
 				DWORD newColor = srcColor;
 				if (slot != -1 && mix > 0.0f)
 				{
-					float tintR = (float)((slotColor >> 16) & 0xff) * shade;
-					float tintG = (float)((slotColor >>  8) & 0xff) * shade;
-					float tintB = (float)( slotColor        & 0xff) * shade;
+					float tintR = static_cast<float>(((slotColor >> 16) & 0xff)) * shade;
+					float tintG = static_cast<float>(((slotColor >>  8) & 0xff)) * shade;
+					float tintB = static_cast<float>(( slotColor        & 0xff)) * shade;
 
-					float outR = tintR * mix + (float)srcR * (1.0f - mix);
-					float outG = tintG * mix + (float)srcG * (1.0f - mix);
-					float outB = tintB * mix + (float)srcB * (1.0f - mix);
+					float outR = tintR * mix + static_cast<float>(srcR) * (1.0f - mix);
+					float outG = tintG * mix + static_cast<float>(srcG) * (1.0f - mix);
+					float outB = tintB * mix + static_cast<float>(srcB) * (1.0f - mix);
 
-					unsigned char r = (unsigned char)(outR < 0.0f ? 0.0f : outR > 255.0f ? 255.0f : outR);
-					unsigned char g = (unsigned char)(outG < 0.0f ? 0.0f : outG > 255.0f ? 255.0f : outG);
-					unsigned char b = (unsigned char)(outB < 0.0f ? 0.0f : outB > 255.0f ? 255.0f : outB);
+					unsigned char r = static_cast<unsigned char>((outR < 0.0f ? 0.0f : outR > 255.0f ? 255.0f : outR));
+					unsigned char g = static_cast<unsigned char>((outG < 0.0f ? 0.0f : outG > 255.0f ? 255.0f : outG));
+					unsigned char b = static_cast<unsigned char>((outB < 0.0f ? 0.0f : outB > 255.0f ? 255.0f : outB));
 
-					newColor = srcA | ((DWORD)r << 16) | ((DWORD)g << 8) | (DWORD)b;
+					newColor = srcA | (static_cast<DWORD>(r) << 16) | (static_cast<DWORD>(g) << 8) | static_cast<DWORD>(b);
 				}
 
 				*textureMemory = newColor;
@@ -862,13 +862,13 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	// returns) so it runs on every path. HAS_AO is asserted at submit ONLY if aoValid,
 	// so a missing/failed AO never darkens the mech (white/no-op fallback).
 	if (!aoValid && mechShape->GetNumShapes() > 0) {
-		const void* aoTypeKey = mechType ? (const void*)mechType->mechShape[currentLOD] : nullptr;
+		const void* aoTypeKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr;
 		const char* aoName = mc2mechanim::ImportedMechAoTexName(aoTypeKey);
 		if (aoName && aoName[0]) {
 			char aoPath[1024];
 			sprintf(aoPath, "%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
 			FullPathFileName aoFull;
-			aoFull.init(aoPath, (char*)aoName, "");
+			aoFull.init(aoPath, const_cast<char*>(aoName), "");
 			if (textureOrKtxSidecarExists(aoFull)) {
 				aoTextureHandle = mcTextureManager->loadTexture(aoFull, gos_Texture_Solid,
 					gosHint_DontShrink);
@@ -883,13 +883,13 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	// BC7, base-chassis, skin-independent). HAS_NORMAL is asserted at submit ONLY if
 	// normalValid, so a missing/failed normal never corrupts shading (v_normal fallback).
 	if (!normalValid && mechShape->GetNumShapes() > 0) {
-		const void* nrmTypeKey = mechType ? (const void*)mechType->mechShape[currentLOD] : nullptr;
+		const void* nrmTypeKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr;
 		const char* nrmName = mc2mechanim::ImportedMechNormalTexName(nrmTypeKey);
 		if (nrmName && nrmName[0]) {
 			char nrmPath[1024];
 			sprintf(nrmPath, "%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
 			FullPathFileName nrmFull;
-			nrmFull.init(nrmPath, (char*)nrmName, "");
+			nrmFull.init(nrmPath, const_cast<char*>(nrmName), "");
 			if (textureOrKtxSidecarExists(nrmFull)) {
 				normalTextureHandle = mcTextureManager->loadTexture(nrmFull, gos_Texture_Solid,
 					gosHint_DontShrink);

@@ -316,17 +316,17 @@ long Mech3DAppearance::update (bool animate)
 							static uint64_t s_ac_advances = 0, s_ac_doubles = 0;
 							++s_ac_advances;
 							const uint32_t _ac_frame = g_mc2FrameCounter;
-							auto _ac_it = s_lastAdvanceFrame.find((void*)this);
+							auto _ac_it = s_lastAdvanceFrame.find(static_cast<void*>(this));
 							const bool _ac_double = (_ac_it != s_lastAdvanceFrame.end() && _ac_it->second == _ac_frame);
-							s_lastAdvanceFrame[(void*)this] = _ac_frame;
+							s_lastAdvanceFrame[static_cast<void*>(this)] = _ac_frame;
 							if (_ac_double)
 							{
 								++s_ac_doubles;
 								if (mc2_diag::tagEnabled("ANIM_CADENCE"))
 								{
 									char _ac_buf[256];
-									mc2::fmt::to_buf(_ac_buf, "{{\"event\":\"advanced_twice_same_frame\",\"ptr\":\"{:016X}\",\"gesture\":{:d},\"frame\":{:d},\"frameInc\":{:.4f},\"doubles\":{:d},\"advances\":{:d}}}", mc2::fmt::as_ptr((void*)this), mc2::fmt::as_i32((int)currentGestureId), mc2::fmt::as_u32(_ac_frame), frameInc, mc2::fmt::as_u64((unsigned long long)s_ac_doubles), mc2::fmt::as_u64((unsigned long long)s_ac_advances));
-									mc2_diag::writeEvent("ANIM_CADENCE", 1, (uint64_t)_ac_frame, _ac_buf);
+									mc2::fmt::to_buf(_ac_buf, "{{\"event\":\"advanced_twice_same_frame\",\"ptr\":\"{:016X}\",\"gesture\":{:d},\"frame\":{:d},\"frameInc\":{:.4f},\"doubles\":{:d},\"advances\":{:d}}}", mc2::fmt::as_ptr(static_cast<void*>(this)), mc2::fmt::as_i32(static_cast<int>(currentGestureId)), mc2::fmt::as_u32(_ac_frame), frameInc, mc2::fmt::as_u64(static_cast<unsigned long long>(s_ac_doubles)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_ac_advances)));
+									mc2_diag::writeEvent("ANIM_CADENCE", 1, static_cast<uint64_t>(_ac_frame), _ac_buf);
 								}
 							}
 						}
@@ -405,7 +405,7 @@ long Mech3DAppearance::update (bool animate)
 		const mc2_vis::MoverVis vs_ = buildVisState();
 		const bool ownerOn =
 			(eye && eye->isNight && !InEditor && mc2_vis::emitsLight(vs_));
-		mc2_vis::trace("mech", (const void*)this, vs_);
+		mc2_vis::trace("mech", static_cast<const void*>(this), vs_);
 		if (pointLight)
 			// The legacy `sensorLevel > 4` here excluded every home mech whose
 			// BattleMech::render() had just reset sensorLevel to 0 (mech.cpp)

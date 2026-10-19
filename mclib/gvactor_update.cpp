@@ -210,7 +210,7 @@ void GVAppearance::updateGeometry (void)
 					long nodeId = gvShape->GetNodeNameId(nodeName);
 					if (nodeId == -1) continue;
 
-					TG_LightPtr light = (TG_LightPtr)malloc(sizeof(TG_Light));
+					TG_LightPtr light = static_cast<TG_LightPtr>(malloc(sizeof(TG_Light)));
 					light->init(TG_LIGHT_POINT);              // v1 (OQ2/M6) — POINT
 					// MOVER-LIGHT-HALOGEN-1: warm halogen, not legacy yellow.
 					light->SetaRGB(mc2_spotlight_diag::mover_light_argb());
@@ -237,8 +237,8 @@ void GVAppearance::updateGeometry (void)
 				}
 				diagOverflow = diagSpotlightsFound - diagRegistered;
 				if (diagOverflow < 0) diagOverflow = 0;
-				s_spotDiagGvRegistered += (unsigned long)diagRegistered;
-				s_spotDiagGvOverflows  += (unsigned long)diagOverflow;
+				s_spotDiagGvRegistered += static_cast<unsigned long>(diagRegistered);
+				s_spotDiagGvOverflows  += static_cast<unsigned long>(diagOverflow);
 				++s_spotDiagGvActors;
 				if (s_spotDiagGvActors <= 8) {
 					MC2_DIAGFE(stderr,
@@ -627,7 +627,7 @@ long GVAppearance::update (bool animate)
 		const mc2_vis::MoverVis vs_ = buildVisState();
 		const bool ownerOn =
 			(eye && eye->isNight && !InEditor && mc2_vis::emitsLight(vs_));
-		mc2_vis::trace("vehicle", (const void*)this, vs_);
+		mc2_vis::trace("vehicle", static_cast<const void*>(this), vs_);
 		if (ownerOn)
 		{
 			glm::vec3 lpos = position;

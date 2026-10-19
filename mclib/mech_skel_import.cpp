@@ -67,7 +67,7 @@ aiMatrix4x4 sampleChannel(const aiNodeAnim* ch, double t,
         while (i + 1 < n && keys[i + 1].mTime <= t) ++i;
         if (i + 1 >= n) return keys[n - 1].mValue;
         double t0 = keys[i].mTime, t1 = keys[i + 1].mTime;
-        float f = (t1 > t0) ? (float)((t - t0) / (t1 - t0)) : 0.0f;
+        float f = (t1 > t0) ? static_cast<float>(((t - t0) / (t1 - t0))) : 0.0f;
         return keys[i].mValue * (1.0f - f) + keys[i + 1].mValue * f;
     };
     aiVector3D pos = ch->mNumPositionKeys ? lerpVec(ch->mPositionKeys, ch->mNumPositionKeys) : aiVector3D(0, 0, 0);
@@ -84,7 +84,7 @@ aiMatrix4x4 sampleChannel(const aiNodeAnim* ch, double t,
             rot = ch->mRotationKeys[ch->mNumRotationKeys - 1].mValue;
         } else {
             double t0 = ch->mRotationKeys[i].mTime, t1 = ch->mRotationKeys[i + 1].mTime;
-            float f = (t1 > t0) ? (float)((t - t0) / (t1 - t0)) : 0.0f;
+            float f = (t1 > t0) ? static_cast<float>(((t - t0) / (t1 - t0))) : 0.0f;
             aiQuaternion::Interpolate(rot, ch->mRotationKeys[i].mValue, ch->mRotationKeys[i + 1].mValue, f);
             rot.Normalize();
         }
@@ -152,7 +152,7 @@ void BuildSkeleton(const aiScene* scene,
             const aiBone* bone = mesh->mBones[b];
             std::string nm = bone->mName.C_Str();
             if (!idx.count(nm)) {
-                idx[nm] = (int)boneNames.size();
+                idx[nm] = static_cast<int>(boneNames.size());
                 boneNames.push_back(nm);
                 std::array<float, 16> ib; rowMajor(bone->mOffsetMatrix, ib.data());
                 inverseBind.push_back(ib);
@@ -215,13 +215,13 @@ bool EvaluateClipGpuBones(const aiScene* scene,
     }
 
     double tps = anim->mTicksPerSecond != 0.0 ? anim->mTicksPerSecond : 1000.0;
-    double t = (double)frame / 30.0 * tps;
+    double t = static_cast<double>(frame) / 30.0 * tps;
     if (t > anim->mDuration) t = anim->mDuration;
     if (t < 0) t = 0;
     if (clipDiag) {
         static int hit = 0;
         if (hit++ < 12)
-            mc2::fmt::print_err("[CLIP-DIAG] FOUND clip='{}' frame={:.2f} t={:.2f} dur={:.2f} rotOnly={:d}\n", clip.c_str(), (double)frame, t, anim->mDuration, mc2::fmt::as_i32((int)rotationOnlyEnabled()));
+            mc2::fmt::print_err("[CLIP-DIAG] FOUND clip='{}' frame={:.2f} t={:.2f} dur={:.2f} rotOnly={:d}\n", clip.c_str(), static_cast<double>(frame), t, anim->mDuration, mc2::fmt::as_i32(static_cast<int>(rotationOnlyEnabled())));
     }
     if (outTimeTicks) *outTimeTicks = t;
     if (outDurTicks) *outDurTicks = anim->mDuration;

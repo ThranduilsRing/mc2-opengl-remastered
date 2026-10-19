@@ -28,7 +28,7 @@ long FitIniFile::readIdFloatArray (const char *varName, float *result, unsigned 
 	
 	do
 	{
-		readLine((MemoryPtr)line,254);
+		readLine(reinterpret_cast<MemoryPtr>(line),254);
 		
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
@@ -74,7 +74,7 @@ long FitIniFile::readIdFloatArray (const char *varName, float *result, unsigned 
 			long errorCode = getNextWord(equalSign,elementString,9);
 			if (errorCode == GET_NEXT_LINE)
 			{
-				readLine((MemoryPtr)line,254);
+				readLine(reinterpret_cast<MemoryPtr>(line),254);
 				equalSign = line;
 				continue;
 			}
@@ -124,7 +124,7 @@ long FitIniFile::readIdIntArray (const char *varName, int *result, unsigned int 
 	
 	do
 	{
-		readLine((MemoryPtr)line,254);
+		readLine(reinterpret_cast<MemoryPtr>(line),254);
 		
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
@@ -170,7 +170,7 @@ long FitIniFile::readIdIntArray (const char *varName, int *result, unsigned int 
 			long errorCode = getNextWord(equalSign,elementString,9);
 			if (errorCode == GET_NEXT_LINE)
 			{
-				readLine((MemoryPtr)line,254);
+				readLine(reinterpret_cast<MemoryPtr>(line),254);
 				equalSign = line;
 				continue;
 			}
@@ -219,7 +219,7 @@ long FitIniFile::readIdLongArray (const char *varName, long *result, unsigned lo
 	
 	do
 	{
-		readLine((MemoryPtr)line,254);
+		readLine(reinterpret_cast<MemoryPtr>(line),254);
 		
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
@@ -265,7 +265,7 @@ long FitIniFile::readIdLongArray (const char *varName, long *result, unsigned lo
 			long errorCode = getNextWord(equalSign,elementString,9);
 			if (errorCode == GET_NEXT_LINE)
 			{
-				readLine((MemoryPtr)line,254);
+				readLine(reinterpret_cast<MemoryPtr>(line),254);
 				equalSign = line;
 				continue;
 			}
@@ -314,7 +314,7 @@ long FitIniFile::readIdULongArray (const char *varName, unsigned long *result, u
 	
 	do
 	{
-		readLine((MemoryPtr)line,254);
+		readLine(reinterpret_cast<MemoryPtr>(line),254);
 		
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
@@ -360,7 +360,7 @@ long FitIniFile::readIdULongArray (const char *varName, unsigned long *result, u
 			long errorCode = getNextWord(equalSign,elementString,9);
 			if (errorCode == GET_NEXT_LINE)
 			{
-				readLine((MemoryPtr)line,254);
+				readLine(reinterpret_cast<MemoryPtr>(line),254);
 				equalSign = line;
 				continue;
 			}
@@ -409,7 +409,7 @@ long FitIniFile::readIdShortArray (const char *varName, short *result, unsigned 
 	
 	do
 	{
-		readLine((MemoryPtr)line,254);
+		readLine(reinterpret_cast<MemoryPtr>(line),254);
 		
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
@@ -455,7 +455,7 @@ long FitIniFile::readIdShortArray (const char *varName, short *result, unsigned 
 			long errorCode = getNextWord(equalSign,elementString,9);
 			if (errorCode == GET_NEXT_LINE)
 			{
-				readLine((MemoryPtr)line,254);
+				readLine(reinterpret_cast<MemoryPtr>(line),254);
 				equalSign = line;
 				continue;
 			}
@@ -504,7 +504,7 @@ long FitIniFile::readIdUShortArray (const char *varName, unsigned short *result,
 	
 	do
 	{
-		readLine((MemoryPtr)line,254);
+		readLine(reinterpret_cast<MemoryPtr>(line),254);
 		
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
@@ -550,7 +550,7 @@ long FitIniFile::readIdUShortArray (const char *varName, unsigned short *result,
 			long errorCode = getNextWord(equalSign,elementString,9);
 			if (errorCode == GET_NEXT_LINE)
 			{
-				readLine((MemoryPtr)line,254);
+				readLine(reinterpret_cast<MemoryPtr>(line),254);
 				equalSign = line;
 				continue;
 			}
@@ -599,7 +599,7 @@ long FitIniFile::readIdCharArray (const char *varName, char *result, unsigned lo
 	
 	do
 	{
-		readLine((MemoryPtr)line,254);
+		readLine(reinterpret_cast<MemoryPtr>(line),254);
 		
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
@@ -645,7 +645,7 @@ long FitIniFile::readIdCharArray (const char *varName, char *result, unsigned lo
 			long errorCode = getNextWord(equalSign,elementString,9);
 			if (errorCode == GET_NEXT_LINE)
 			{
-				readLine((MemoryPtr)line,254);
+				readLine(reinterpret_cast<MemoryPtr>(line),254);
 				equalSign = line;
 				continue;
 			}
@@ -694,7 +694,7 @@ long FitIniFile::readIdUCharArray (const char *varName, unsigned char *result, u
 	
 	do
 	{
-		readLine((MemoryPtr)line,254);
+		readLine(reinterpret_cast<MemoryPtr>(line),254);
 		
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
@@ -740,7 +740,7 @@ long FitIniFile::readIdUCharArray (const char *varName, unsigned char *result, u
 			long errorCode = getNextWord(equalSign,elementString,9);
 			if (errorCode == GET_NEXT_LINE)
 			{
-				readLine((MemoryPtr)line,254);
+				readLine(reinterpret_cast<MemoryPtr>(line),254);
 				equalSign = line;
 				continue;
 			}
@@ -789,7 +789,7 @@ unsigned long FitIniFile::getIdFloatArrayElements (const char *varName)
 	
 	do
 	{
-		readLine((MemoryPtr)line,254);
+		readLine(reinterpret_cast<MemoryPtr>(line),254);
 		
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
@@ -844,7 +844,7 @@ unsigned long FitIniFile::getIdLongArrayElements (const char *varName)
 	
 	do
 	{
-		readLine((MemoryPtr)line,254);
+		readLine(reinterpret_cast<MemoryPtr>(line),254);
 		
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
@@ -899,7 +899,7 @@ unsigned long FitIniFile::getIdULongArrayElements (const char *varName)
 	
 	do
 	{
-		readLine((MemoryPtr)line,254);
+		readLine(reinterpret_cast<MemoryPtr>(line),254);
 		
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
@@ -954,7 +954,7 @@ unsigned long FitIniFile::getIdShortArrayElements (const char *varName)
 	
 	do
 	{
-		readLine((MemoryPtr)line,254);
+		readLine(reinterpret_cast<MemoryPtr>(line),254);
 		
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
@@ -1009,7 +1009,7 @@ unsigned long FitIniFile::getIdUShortArrayElements (const char *varName)
 	
 	do
 	{
-		readLine((MemoryPtr)line,254);
+		readLine(reinterpret_cast<MemoryPtr>(line),254);
 		
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
@@ -1064,7 +1064,7 @@ unsigned long FitIniFile::getIdCharArrayElements (const char *varName)
 	
 	do
 	{
-		readLine((MemoryPtr)line,254);
+		readLine(reinterpret_cast<MemoryPtr>(line),254);
 		
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
@@ -1119,7 +1119,7 @@ unsigned long FitIniFile::getIdUCharArrayElements (const char *varName)
 	
 	do
 	{
-		readLine((MemoryPtr)line,254);
+		readLine(reinterpret_cast<MemoryPtr>(line),254);
 		
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);

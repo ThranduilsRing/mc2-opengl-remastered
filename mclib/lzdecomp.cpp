@@ -121,10 +121,10 @@ static size_t LZDecompClassicLZW_(MemoryPtr dest, MemoryPtr src, size_t srcLen, 
     auto readCode = [&](int bits) -> int {
         while (bitsInBuf < bits) {
             if (srcPos >= srcLen) return -1;
-            bitBuf |= ((unsigned int)src[srcPos++]) << bitsInBuf;
+            bitBuf |= (static_cast<unsigned int>(src[srcPos++])) << bitsInBuf;
             bitsInBuf += 8;
         }
-        int code = (int)(bitBuf & ((1u << bits) - 1u));
+        int code = static_cast<int>((bitBuf & ((1u << bits) - 1u)));
         bitBuf >>= bits;
         bitsInBuf -= bits;
         return code;
@@ -160,22 +160,22 @@ static size_t LZDecompClassicLZW_(MemoryPtr dest, MemoryPtr src, size_t srcLen, 
         if (c < freeIdx) {
             // In dictionary
             while (c >= HASH_FREE_C) {
-                if (sp >= (int)sizeof(stk)) return 0; // chain too deep, corrupt
+                if (sp >= static_cast<int>(sizeof(stk))) return 0; // chain too deep, corrupt
                 stk[sp++] = suffixTbl[c];
                 c = parentTbl[c];
             }
-            firstByte = (unsigned char)c;
+            firstByte = static_cast<unsigned char>(c);
             stk[sp++] = firstByte;
         } else if (c == freeIdx && prevCode >= 0) {
             // KwKwK special case: code == freeIdx means "previous string + its first char"
             stk[sp++] = prevFirstByte;
             int pc = prevCode;
             while (pc >= HASH_FREE_C) {
-                if (sp >= (int)sizeof(stk)) return 0;
+                if (sp >= static_cast<int>(sizeof(stk))) return 0;
                 stk[sp++] = suffixTbl[pc];
                 pc = parentTbl[pc];
             }
-            firstByte = (unsigned char)pc;
+            firstByte = static_cast<unsigned char>(pc);
             stk[sp++] = firstByte;
         } else {
             // Invalid code (> freeIdx or code==freeIdx without prev)
@@ -185,15 +185,15 @@ static size_t LZDecompClassicLZW_(MemoryPtr dest, MemoryPtr src, size_t srcLen, 
         // Emit in reverse (stack top-down) — bounds-checked against destMax to prevent
         // heap overflow when input is slightly corrupt or size-of-dest under-allocated.
         while (sp > 0) {
-            if ((size_t)(dest - destStart) >= destMax) {
-                return (size_t)(dest - destStart);  // truncate on overflow, don't corrupt heap
+            if (static_cast<size_t>((dest - destStart)) >= destMax) {
+                return static_cast<size_t>((dest - destStart));  // truncate on overflow, don't corrupt heap
             }
             *dest++ = stk[--sp];
         }
 
         // Add new entry: prevCode + firstByte-of-current-string
         if (prevCode >= 0 && freeIdx < (1 << MAX_BITS_C)) {
-            parentTbl[freeIdx] = (unsigned short)prevCode;
+            parentTbl[freeIdx] = static_cast<unsigned short>(prevCode);
             suffixTbl[freeIdx] = firstByte;
             ++freeIdx;
 
@@ -208,7 +208,7 @@ static size_t LZDecompClassicLZW_(MemoryPtr dest, MemoryPtr src, size_t srcLen, 
         prevFirstByte = firstByte;
     }
 
-    return (size_t)(dest - destStart);
+    return static_cast<size_t>((dest - destStart));
 }
 
 // LZ DeCompress: tries zlib first (covers FSTs we packed), falls back to classic LZW (covers original
@@ -220,7 +220,7 @@ size_t LZDecomp (MemoryPtr dest, MemoryPtr src, size_t srcLen, size_t destMax)
 
     bool looksZlib = (srcLen >= 2)
                      && ((src[0] & 0x0F) == 0x08)
-                     && (((unsigned int)src[0] * 256u + (unsigned int)src[1]) % 31u == 0u);
+                     && ((static_cast<unsigned int>(src[0]) * 256u + static_cast<unsigned int>(src[1])) % 31u == 0u);
     if (looksZlib) {
         size_t n = LZDecompZlib_(dest, src, srcLen, destMax);
         if (n > 0) return n;
