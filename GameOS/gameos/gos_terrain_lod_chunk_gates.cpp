@@ -2,17 +2,6 @@
 // Declared in the class headers; shared names in gos_terrain_lod_chunk_internal.h.
 #include "gos_terrain_lod_chunk_internal.h"
 
-
-// GlStateGuard slice 2 kill-switch. Default-ON: when set, the terrain chunk
-// draw owns its depth/blend/cull/mask/func via RAII guards (mc2gl::GlScoped*).
-// MC2_GLSTATEGUARD_TERRAIN=0 reverts to the legacy hand-rolled save/restore
-// (kept verbatim, nothing deleted) — the A/B used to prove the guards are
-// pixel-neutral. Sampled once at process start.
-bool glStateGuardTerrainEnabled() {
-    static const bool on = mc2::gate::get<"MC2_GLSTATEGUARD_TERRAIN">();
-    return on;
-}
-
 // REDUNDANT-PASS-HUNT-1 (re-compute class): the terrain-chunk per-frame uniform
 // setup in gos_TerrainLodChunk_SubmitDrawCommands used to call getenv() ~11 times
 // EVERY frame to resolve mission-constant debug/tuning gates (FORCE_COLOR, DIAG,
@@ -26,10 +15,7 @@ bool glStateGuardTerrainEnabled() {
 // instead of hitting getenv. Uniform VALUES uploaded are unchanged.
 // Resolved-once cached mirrors of the per-frame terrain-uniform env gates.
 extern const bool kTglcForceColor = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR">();
-// SHORELINE-GLOW-1: the two shoreline accessors are deliberately NOT in this
-// anonymous namespace -- mclib/terrain.cpp calls gos_TerrainShorelineGateOn()
-// too, so it needs external linkage. Defined at global scope further down,
-// next to gos_TerrainLodChunk_IsShorelineMaskActive(); declared in the header.
+
 extern const int kTglcDiag = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_DIAG">();
 extern const bool  kTglcCementDiagConnect = mc2::gate::get<"MC2_TERRAIN_CEMENT_DIAG_CONNECT">();
 // CEMENT-ATLAS-SEAM-1: default ON (killswitch MC2_CEMENT_ATLAS_SEAM_FIX=0).

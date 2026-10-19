@@ -123,3 +123,27 @@ TEST_CASE("terrain field store: the colormap atlas keeps RGBA8 or BC7 level 0 an
     CHECK(store.colormapAtlas().version == v2);
     CHECK(store.colormapAtlas().width == 5);
 }
+
+TEST_CASE("terrain fields: source sidecars own their bytes and survive caller reuse") {
+    mc2terrain::TerrainFieldStore store;
+    std::vector<uint8_t> rgba(16, 37);
+    float types[] = {1, 2, 3, 4};
+    REQUIRE(store.setControlMap(rgba.data(), 2));
+    REQUIRE(store.setOverlay(rgba.data(), 2, 2));
+    REQUIRE(store.setTerrainTypes(types, 2));
+    rgba.assign(16, 99); types[0] = 99;
+    CHECK(store.controlMap().texels[0] == 37);
+    CHECK(store.overlay().texels[15] == 37);
+    CHECK(store.terrainTypes().texels[0] == 1);
+    const auto version = store.overlay().version;
+    CHECK_FALSE(store.setOverlay(nullptr, 2, 2));
+    CHECK(store.overlay().version == version);
+    REQUIRE(store.setOverlay(rgba.data(), 2, 2));
+    CHECK(store.overlay().version != version);
+    CHECK(store.overlay().texels[0] == 99);
+    CHECK(store.controlMap().texels[0] == 37);
+    store = mc2terrain::TerrainFieldStore{};
+    CHECK(store.controlMap().texels.empty());
+    CHECK(store.overlay().texels.empty());
+    CHECK(store.terrainTypes().texels.empty());
+}

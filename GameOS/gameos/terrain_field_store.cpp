@@ -100,6 +100,16 @@ bool setImage(FieldImage<Texel>& image, const Texel* texels, int width, int heig
 
 }  // namespace
 
+bool TerrainFieldStore::setTerrainTypes(const float* types, int side) {
+    return setImage(terrainTypes_, types, side, side, 1);
+}
+bool TerrainFieldStore::setControlMap(const uint8_t* rgba, int side) {
+    return setImage(controlMap_, rgba, side, side, 4);
+}
+bool TerrainFieldStore::setOverlay(const uint8_t* rgba, int width, int height) {
+    return setImage(overlay_, rgba, width, height, 4);
+}
+
 bool TerrainFieldStore::setShorelineMask(const uint8_t* rgba, int width, int height) {
     return setImage(shorelineMask_, rgba, width, height, 4);
 }

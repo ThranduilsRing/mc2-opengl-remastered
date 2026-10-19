@@ -1,4 +1,4 @@
-// CPU terrain-lighting inputs for NativeProducers; shared light-pool uploads remain for their retained GL bindings.
+// CPU terrain-lighting inputs and light-grid ownership for native Vulkan consumers.
 #include "gos_terrain_lighting.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "utils/mc2log.h"       // LOGGING-FACADE-P2: MC2_EVENT for the structured [TAG vN] lines
@@ -6,7 +6,6 @@
 
 #include "gos_profiler.h"  // ZoneScopedN, TracyGpuZone
 
-#include <GL/glew.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -24,9 +23,6 @@
 #include "../../mclib/spotlight_diag.h"  // NIGHT-LIGHT-POOLS-2a: mover-light slot tags
 #include "../../mclib/quad.h"       // TerrainQuad, TerrainQuad::rainLightLevel, ::lighteningLevel
 #include "gameos.hpp"  // gosEnvironment Environment (Environment.Renderer)
-
-#include "../../RenderCore/RenderResourceRegistry.h"  // TERRAIN-LIGHTING-SSBO-OWNER-1: registry + ids
-#include "../../RenderCore/GpuBufferOwner.h"           // TERRAIN-LIGHTING-SSBO-OWNER-1: owner records
 
 // External globals needed for packing
 extern DWORD BaseVertexColor;  // defined in code/mechcmd2.cpp / code/logmain.cpp
@@ -54,7 +50,6 @@ bool IsEnabled() {
     return s_enabled;
 }
 
-
 } // namespace gos_terrain_lighting
 
 namespace {
@@ -69,13 +64,6 @@ static uint32_t s_numVertices  = 0;
 static gos_terrain_lighting::VkProducerSnapshot s_vkSnap{};
 static bool s_vkSnapValid = false;
 static uint32_t s_maxLights    = 0;
-
-// Shared GL light-pool binding; native consumers stage the CPU array directly.
-static RenderCore::GpuBufferOwner s_lightInputSsbo{    // GpuTerrainLight per light slot (binding 1)
-    RenderCore::RenderResourceId::TerrainLightInputSsbo,
-    RenderCore::RenderResourceLifetime::Mission,
-    "TerrainLightInputSsbo",
-    0u};
 
 static uint64_t s_frameIndex = 0;
 
@@ -117,22 +105,6 @@ static uint32_t s_lastNumLights = 0;
 // ---------------------------------------------------------------------------
 static constexpr uint32_t kLightGridMinLights = 8u;   // below this: linear loop
 
-// TERRAIN-LIGHTING-SSBO-OWNER-1 discipline: both grid SSBOs carry GpuBufferOwner
-// identity (logical id + lifetime + debug name), reached only via backendHandle.
-// Lifetime Mission: created lazily on the first frame that bins a pool, released
-// in mission_shutdown, rebuilt on demand.
-static RenderCore::GpuBufferOwner s_lightGridHeader{   // uvec2 {offset,count} per cell (binding 29)
-    RenderCore::RenderResourceId::TerrainLightGridHeaderSsbo,
-    RenderCore::RenderResourceLifetime::Mission,
-    "TerrainLightGridHeaderSsbo",
-    0u};
-static RenderCore::GpuBufferOwner s_lightGridIndex{    // uint light index list (binding 30)
-    RenderCore::RenderResourceId::TerrainLightGridIndexSsbo,
-    RenderCore::RenderResourceLifetime::Mission,
-    "TerrainLightGridIndexSsbo",
-    0u};
-static GLsizeiptr s_lightGridHeaderBytes = 0;
-static GLsizeiptr s_lightGridIndexBytes  = 0;
 static std::vector<uint32_t> s_gridHeader;   // 2 * dim * dim
 static std::vector<uint32_t> s_gridIndices;
 static std::vector<uint32_t> s_gridCounts;   // scratch: per-cell counter
@@ -157,10 +129,10 @@ static std::vector<gos_terrain_lighting::GpuTerrainVertexInput> s_packBuf;
 // Light pack buffer
 static std::vector<gos_terrain_lighting::GpuTerrainLight> s_lightBuf;
 
-// Build + upload the grid for s_lightBuf[0..numLights). Sets s_lightGridDim to 0
+// Build the CPU grid for s_lightBuf[0..numLights). Sets s_lightGridDim to 0
 // when the grid is not in play (gate off, too few lights, degenerate bbox), which
 // makes every consumer fall back to the exact linear loop.
-static void BuildAndUploadLightGrid(uint32_t numLights) {
+static void BuildLightGrid(uint32_t numLights) {
     s_lightGridDim = 0;
     if (!LightGridEnabled() || numLights < kLightGridMinLights) return;
 
@@ -237,53 +209,6 @@ static void BuildAndUploadLightGrid(uint32_t numLights) {
             }
     }
 
-    // --- upload (grow-only; orphan on resize) ---
-    if (s_lightGridHeader.backendHandle == 0) {
-        GLuint local = 0; glGenBuffers(1, &local);
-        s_lightGridHeader.backendHandle = static_cast<uint32_t>(local);
-    }
-    if (s_lightGridIndex.backendHandle == 0) {
-        GLuint local = 0; glGenBuffers(1, &local);
-        s_lightGridIndex.backendHandle = static_cast<uint32_t>(local);
-    }
-    const GLsizeiptr hdrBytes = static_cast<GLsizeiptr>(s_gridHeader.size()  * sizeof(uint32_t));
-    const GLsizeiptr idxBytes = static_cast<GLsizeiptr>(s_gridIndices.size() * sizeof(uint32_t));
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_lightGridHeader.backendHandle));
-    if (hdrBytes > s_lightGridHeaderBytes) {
-        glBufferData(GL_SHADER_STORAGE_BUFFER, hdrBytes, s_gridHeader.data(), GL_STREAM_DRAW);
-        s_lightGridHeaderBytes = hdrBytes;
-    } else {
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, hdrBytes, s_gridHeader.data());
-    }
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_lightGridIndex.backendHandle));
-    if (idxBytes > s_lightGridIndexBytes) {
-        glBufferData(GL_SHADER_STORAGE_BUFFER, idxBytes, s_gridIndices.data(), GL_STREAM_DRAW);
-        s_lightGridIndexBytes = idxBytes;
-    } else {
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, idxBytes, s_gridIndices.data());
-    }
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
-    // Keep the resource registry honest about the two grid buffers (observe-only
-    // metadata; never read by the draw path). Re-published each frame because the
-    // grow-only upload above can change sizeBytes.
-    {
-        auto publish = [](const RenderCore::GpuBufferOwner& o, GLsizeiptr bytes) {
-            RenderCore::RenderResourceDesc d;
-            d.id        = o.id;
-            d.kind      = RenderCore::RenderResourceKind::Buffer;
-            d.lifetime  = o.lifetime;
-            d.format    = RenderCore::RenderResourceFormat::BufferRaw;
-            d.debugName = o.debugName;
-            d.glName    = static_cast<GLuint>(o.backendHandle);
-            d.sizeBytes = static_cast<uint64_t>(bytes);
-            d.valid     = true;
-            RenderCore::registerOrUpdateRenderResource(d);
-        };
-        publish(s_lightGridHeader, s_lightGridHeaderBytes);
-        publish(s_lightGridIndex,  s_lightGridIndexBytes);
-    }
-
     s_lightGridMin[0]     = minX;
     s_lightGridMin[1]     = minY;
     s_lightGridInvCell[0] = invW;
@@ -308,7 +233,6 @@ static void BuildAndUploadLightGrid(uint32_t numLights) {
     }
 }
 
-
 } // anonymous namespace
 
 // ---------------------------------------------------------------------------
@@ -317,10 +241,6 @@ static void BuildAndUploadLightGrid(uint32_t numLights) {
 namespace gos_terrain_lighting {
 
 // NIGHT-LIGHT-POOLS-1: forward-consumer accessors for the per-frame light pool.
-GLuint GetLightPoolSsbo() {
-    if (!s_initialized) return 0;
-    return static_cast<GLuint>(s_lightInputSsbo.backendHandle);
-}
 
 uint32_t GetLightPoolLightCount() {
     return s_lastNumLights;
@@ -330,21 +250,8 @@ uint32_t GetLightPoolLightCount() {
 // grid is not in play (gate MC2_LIGHT_GRID=0, pool below kLightGridMinLights,
 // degenerate bbox, or nothing packed) — consumers then use the exact linear
 // full-pool loop, which is the killswitch contract.
-bool GetLightGridParams(LightGridParams& out) {
-    if (!s_initialized || s_lightGridDim == 0 ||
-        s_lightGridHeader.backendHandle == 0 || s_lightGridIndex.backendHandle == 0)
-        return false;
-    out.dim        = s_lightGridDim;
-    out.minXY[0]   = s_lightGridMin[0];
-    out.minXY[1]   = s_lightGridMin[1];
-    out.invCell[0] = s_lightGridInvCell[0];
-    out.invCell[1] = s_lightGridInvCell[1];
-    out.headerSsbo = static_cast<GLuint>(s_lightGridHeader.backendHandle);
-    out.indexSsbo  = static_cast<GLuint>(s_lightGridIndex.backendHandle);
-    return true;
-}
 
-// VK-PARITY-TERRAIN-2: CPU views of the arrays uploaded above (see header).
+// Native consumers borrow CPU views until the next pack or mission reset.
 const GpuTerrainLight* GetLightPoolCpu(uint32_t* outCount) {
     if (outCount) *outCount = s_initialized ? s_lastNumLights : 0u;
     if (!s_initialized || s_lightBuf.empty()) return nullptr;
@@ -353,7 +260,6 @@ const GpuTerrainLight* GetLightPoolCpu(uint32_t* outCount) {
 
 bool GetLightGridCpu(LightGridCpu& out) {
     if (!s_initialized || s_lightGridDim == 0 ||
-        s_lightGridHeader.backendHandle == 0 || s_lightGridIndex.backendHandle == 0 ||
         s_gridHeader.empty() || s_gridIndices.empty())
         return false;
     out.dim         = s_lightGridDim;
@@ -368,8 +274,7 @@ bool GetLightGridCpu(LightGridCpu& out) {
     return true;
 }
 
-// POOL-CONSUMERS-1 (batch-6 item 6): shared object-consumer upload. See header.
-// VK-PARITY-MECH-1: shared object-pool producer (GL upload + VK mech island).
+// Shared object-pool parameters for native mech and prop consumers.
 void GetObjectLightPoolParams(ObjectLightPoolParams* out) {
     if (!out) return;
     static const bool s_objects = mc2::gate::get<"MC2_LIGHT_POOL_OBJECTS">();   // default ON
@@ -397,41 +302,15 @@ void GetObjectLightPoolParams(ObjectLightPoolParams* out) {
     out->compress   = s_poolCompress ? 1 : 0;
     out->objScale   = s_objScale;
     if (s_objects && s_objScale > 0.0f) {
-        const GLuint   ssbo = GetLightPoolSsbo();
         const uint32_t n    = GetLightPoolLightCount();
-        if (ssbo != 0 && n > 0) {
+        if (s_initialized && n > 0) {
             out->count = static_cast<int>(n > 256u ? 256u : n);
             uint32_t cpuN = 0;
             out->pool = GetLightPoolCpu(&cpuN);
             if (!out->pool || cpuN < static_cast<uint32_t>(out->count))
-                out->pool = nullptr;   // GL still has its SSBO; VK declines pools
+                { out->pool = nullptr; out->count = 0; }
         }
     }
-}
-
-void UploadObjectLightPoolUniforms(unsigned int program) {
-    const GLint locN = glGetUniformLocation(program, "u_numPoolLights");
-    if (locN < 0) return;   // program has no pool block compiled in
-
-    ObjectLightPoolParams pp{};
-    GetObjectLightPoolParams(&pp);
-    const int poolCount = pp.count;
-    if (poolCount > 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 28u, GetLightPoolSsbo());
-    glUniform1i(locN, poolCount);
-    if (poolCount == 0) return;
-    const GLint locSoft     = glGetUniformLocation(program, "u_lightPoolSoft");
-    const GLint locDim      = glGetUniformLocation(program, "u_lightPoolMoverDim");
-    const GLint locScale    = glGetUniformLocation(program, "u_lightPoolMoverScale");
-    const GLint locMax      = glGetUniformLocation(program, "u_lightPoolMoverMax");
-    const GLint locCompress = glGetUniformLocation(program, "u_lightPoolCompress");
-    const GLint locObjScale = glGetUniformLocation(program, "u_lightPoolObjScale");
-    if (locSoft >= 0)     glUniform1i(locSoft, pp.soft);
-    if (locDim >= 0)      glUniform1f(locDim, pp.moverDim);
-    if (locScale >= 0)    glUniform1f(locScale, pp.moverScale);
-    if (locMax >= 0)      glUniform1i(locMax, pp.moverMax);
-    if (locCompress >= 0) glUniform1i(locCompress, pp.compress);
-    if (locObjScale >= 0) glUniform1f(locObjScale, pp.objScale);
 }
 
 // ---------------------------------------------------------------------------
@@ -440,7 +319,7 @@ void UploadObjectLightPoolUniforms(unsigned int program) {
 void mission_init(uint32_t numVertices, uint32_t maxLights) {
     if (!IsEnabled()) return;
 
-    // Teardown previous mission's SSBOs if they exist
+    // Reset the previous mission's CPU snapshots and grid readiness.
     mission_shutdown();
 
     s_numVertices = numVertices;
@@ -468,41 +347,9 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
         if (want > s_maxLights) s_maxLights = want;
     }
 
-    const GLsizeiptr lightInputBytes = static_cast<GLsizeiptr>(s_maxLights * sizeof(GpuTerrainLight));
-
     // Pre-size pack buffers
     s_packBuf.assign(numVertices, GpuTerrainVertexInput{});
     s_lightBuf.resize(s_maxLights);
-    // TERRAIN-LIGHTING-SSBO-OWNER-1: register a live owner in the resource registry
-    // (observe-only metadata; never read by the compute/draw path). Called at create
-    // (byte size known here) and invalidated in mission_shutdown.
-    auto registerLightingSsbo = [](RenderCore::RenderResourceId id, const char* name,
-                                   GLuint glName, GLsizeiptr bytes) {
-        RenderCore::RenderResourceDesc d;
-        d.id        = id;
-        d.kind      = RenderCore::RenderResourceKind::Buffer;
-        d.lifetime  = RenderCore::RenderResourceLifetime::Mission;
-        d.format    = RenderCore::RenderResourceFormat::BufferRaw;
-        d.debugName = name;
-        d.glName    = glName;
-        d.sizeBytes = static_cast<uint64_t>(bytes);
-        d.valid     = true;
-        RenderCore::registerOrUpdateRenderResource(d);
-    };
-
-    // --- Light input SSBO ---
-    {
-        GLuint local = 0;
-        glGenBuffers(1, &local);
-        s_lightInputSsbo.backendHandle = static_cast<uint32_t>(local);
-    }
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_lightInputSsbo.backendHandle));
-    glBufferStorage(GL_SHADER_STORAGE_BUFFER, lightInputBytes, nullptr,
-                    GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    registerLightingSsbo(s_lightInputSsbo.id, s_lightInputSsbo.debugName,
-                         static_cast<GLuint>(s_lightInputSsbo.backendHandle), lightInputBytes);
-
     s_frameIndex   = 0;
     s_initialized  = true;
 
@@ -517,39 +364,7 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
 void mission_shutdown() {
     if (!s_initialized) return;
 
-    // TERRAIN-LIGHTING-SSBO-OWNER-1: delete via owner.backendHandle + mark the registry slot
-    // unavailable (valid=false) on teardown. Same delete order as before.
-    auto invalidateLightingSsbo = [](RenderCore::RenderResourceId id) {
-        RenderCore::RenderResourceDesc invalid;
-        invalid.id = id;
-        RenderCore::registerOrUpdateRenderResource(invalid);
-    };
-    if (s_lightInputSsbo.backendHandle) {
-        GLuint buf = static_cast<GLuint>(s_lightInputSsbo.backendHandle);
-        glDeleteBuffers(1, &buf);
-        s_lightInputSsbo.backendHandle = 0;
-        invalidateLightingSsbo(s_lightInputSsbo.id);
-    }
-
-    // LIGHT-CLUSTER-PERF-1: release the light-grid SSBOs. Rebuilt lazily on the
-    // next frame that packs enough lights; dim=0 keeps consumers on the linear
-    // loop in the meantime.
-    if (s_lightGridHeader.backendHandle) {
-        GLuint buf = static_cast<GLuint>(s_lightGridHeader.backendHandle);
-        glDeleteBuffers(1, &buf);
-        s_lightGridHeader.backendHandle = 0;
-        invalidateLightingSsbo(s_lightGridHeader.id);
-    }
-    if (s_lightGridIndex.backendHandle) {
-        GLuint buf = static_cast<GLuint>(s_lightGridIndex.backendHandle);
-        glDeleteBuffers(1, &buf);
-        s_lightGridIndex.backendHandle = 0;
-        invalidateLightingSsbo(s_lightGridIndex.id);
-    }
-    s_lightGridHeaderBytes = 0;
-    s_lightGridIndexBytes  = 0;
     s_lightGridDim         = 0;
-
 
     s_numVertices     = 0;
     s_maxLights       = 0;
@@ -696,7 +511,6 @@ void PackAndDispatch() {
                 fflush(stdout);
             }
         }
-
 
     }
 
@@ -890,19 +704,13 @@ void PackAndDispatch() {
             }
         }
 
-        if (numLights > 0) {
-            const GLsizeiptr uploadBytes = static_cast<GLsizeiptr>(numLights * sizeof(GpuTerrainLight));
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_lightInputSsbo.backendHandle));
-            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, uploadBytes, s_lightBuf.data());
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-        }
     }
     // LIGHT-CLUSTER-PERF-1: bin this frame's pool into the world-space XY grid so
     // the forward consumers loop only over lights whose circle covers the
     // fragment. Must run AFTER the pack loop (reads s_lightBuf[0..numLights)) and
     // is a no-op that publishes dim=0 (= linear loop) when gated off or the pool
     // is too small to be worth binning.
-    BuildAndUploadLightGrid(numLights);
+    BuildLightGrid(numLights);
     // NIGHT-LIGHT-POOLS-1: publish this frame's packed count for the forward
     // consumer (LOD-chunk terrain per-fragment light loop).
     s_lastNumLights = numLights;

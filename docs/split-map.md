@@ -84,7 +84,7 @@ Split commit: `f0521b300`.
 
 | Piece | What it holds |
 |---|---|
-| `gos_terrain_lod_chunk.cpp` | keeps the program and uniform-location state, Init/Destroy and the SSBO state |
+| `gos_terrain_lod_chunk.cpp` | keeps what the pieces below did not take |
 | `gos_terrain_lod_chunk_draw.cpp` | Native terrain patch capture and submission; GL scene draws have no present consumer. |
 | `gos_terrain_lod_chunk_feed.cpp` | gos_terrain_lod_chunk: VK tier-1 terrain frame feed (mc2_terrain_tier1_get_frame_feed) and its version counters. |
 | `gos_terrain_lod_chunk_gates.cpp` | gos_terrain_lod_chunk: eager tuning caches (kTglc*) the draw path and the light-pool uploads read, and the GlStateGuard kill-switch. |
