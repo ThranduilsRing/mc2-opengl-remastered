@@ -11,7 +11,9 @@
 // Pure standard C++ (doctest-driven); the engine's instance is textureService().
 #pragma once
 
+#include <cassert>
 #include <cstdint>
+#include <utility>
 #include <mutex>
 #include <string>
 #include <string_view>
@@ -65,10 +67,17 @@ inline std::string makeTextureSourceId(std::string_view provider, std::string_vi
     return id;
 }
 
+// Descriptor zero is always a visible placeholder. Handles, legacy nodes and descriptor indices are distinct identities.
+inline constexpr uint32_t kPlaceholderDescriptor = 0;
+struct TextureDimensions {
+    uint32_t width = 16, height = 16;
+    uint32_t logicalWidth = 16, logicalHeight = 16;
+};
+
 class TextureService {
 public:
     // The handle of `key`: a new one bound to `node`, or the existing one (its user count rises; `node` is ignored, the first residency stays).
-    TextureHandle acquire(const TextureKey& key, uint32_t node) {
+    TextureHandle acquire(const TextureKey& key, uint32_t node = kNoTextureNode, TextureDimensions dimensions = {}) {
         std::lock_guard<std::mutex> lk(mu_);
         if (auto it = byKey_.find(key); it != byKey_.end()) {
             const auto& [k, idx] = *it;
@@ -78,16 +87,41 @@ public:
         }
         uint32_t idx;
         if (!free_.empty()) { idx = free_.back(); free_.pop_back(); }
-        else { idx = static_cast<uint32_t>(entries_.size()); entries_.emplace_back(); }
+        else {
+            if (entries_.size() >= 0x100000u) return TextureHandle::invalid();
+            idx = static_cast<uint32_t>(entries_.size()); entries_.emplace_back();
+        }
         Entry& e = entries_[idx];
         e.live = true;
         e.key = key;
         e.node = node;
         e.users = 1;
         e.contentVersion = 0;
+        e.dimensions = dimensions;
         byKey_.emplace(key, idx);
         if (node != kNoTextureNode) byNode_[node] = idx;
         return TextureHandle::make(idx, e.generation);
+    }
+
+    // acquire returns an already-counted reference (adopt it); sharing requires retain. Legacy nodes remain owned by txmmgr until P9.
+    bool retain(TextureHandle h) {
+        std::lock_guard<std::mutex> lk(mu_);
+        Entry* e = resolve(h);
+        if (!e || e->users == UINT32_MAX) return false;
+        ++e->users;
+        return true;
+    }
+    bool release(TextureHandle h) {
+        std::lock_guard<std::mutex> lk(mu_);
+        Entry* e = resolve(h);
+        if (!e || !e->users) return false;
+        if (--e->users == 0 && e->node == kNoTextureNode) retire(h.index());
+        return true;
+    }
+    TextureDimensions dimensions(TextureHandle h) const {
+        std::lock_guard<std::mutex> lk(mu_);
+        const Entry* e = resolve(h);
+        return e ? e->dimensions : TextureDimensions{};
     }
 
     // One user of the node's texture let go (mirrors the manager's reference count). The entry stays until the node dies.
@@ -168,6 +202,7 @@ private:
         uint32_t    users = 0;
         uint32_t    contentVersion = 0;
         TextureKey  key;
+        TextureDimensions dimensions;
     };
     const Entry* resolve(TextureHandle h) const {
         if (!h.isValid() || h.index() >= entries_.size()) return nullptr;
@@ -180,9 +215,9 @@ private:
         byKey_.erase(e.key);
         e.live = false;
         e.node = kNoTextureNode;
-        e.generation = e.generation >= 0xFFFu ? 1u : e.generation + 1u;
+        // Quarantine exhausted slots: wrapping would revive an old CPU handle.
+        if (e.generation < 0xFFFu) { ++e.generation; free_.push_back(idx); }
         e.key = TextureKey{};
-        free_.push_back(idx);
     }
 
     mutable std::mutex mu_;
@@ -192,10 +227,42 @@ private:
     std::unordered_map<uint32_t, uint32_t> byNode_;
 };
 
-// The process's texture service. Main thread for the engine hooks; the lock makes the lookups safe from a job.
+// GameOS main owns the session service on its stack, ahead of renderer init and through renderer shutdown.
+// This pointer borrows it; no static-duration texture/resource owner runs during process teardown.
+inline TextureService* activeTextureService = nullptr;
+class TextureServiceScope {
+public:
+    explicit TextureServiceScope(TextureService& service) { assert(!activeTextureService); activeTextureService = &service; }
+    ~TextureServiceScope() { activeTextureService = nullptr; }
+    TextureServiceScope(const TextureServiceScope&) = delete;
+    TextureServiceScope& operator=(const TextureServiceScope&) = delete;
+};
 inline TextureService& textureService() {
-    static TextureService s;
-    return s;
+    assert(activeTextureService);
+    return *activeTextureService;
 }
+
+// Move-only owner of one already-counted service reference. The session owner outlives all refs.
+class ServiceTextureRef {
+public:
+    ServiceTextureRef() = default;
+    static ServiceTextureRef adopt(TextureService& service, TextureHandle handle) { return ServiceTextureRef(service, handle); }
+    static ServiceTextureRef retain(TextureService& service, TextureHandle handle) {
+        return service.retain(handle) ? ServiceTextureRef(service, handle) : ServiceTextureRef{};
+    }
+    ~ServiceTextureRef() { if (service_) service_->release(handle_); }
+    ServiceTextureRef(const ServiceTextureRef&) = delete;
+    ServiceTextureRef& operator=(const ServiceTextureRef&) = delete;
+    ServiceTextureRef(ServiceTextureRef&& o) noexcept : service_(std::exchange(o.service_, nullptr)), handle_(o.handle_) {}
+    ServiceTextureRef& operator=(ServiceTextureRef&& o) noexcept {
+        if (this != &o) { if (service_) service_->release(handle_); service_ = std::exchange(o.service_, nullptr); handle_ = o.handle_; }
+        return *this;
+    }
+    TextureHandle get() const { return service_ ? handle_ : TextureHandle::invalid(); }
+private:
+    ServiceTextureRef(TextureService& s, TextureHandle h) : service_(&s), handle_(h) {}
+    TextureService* service_ = nullptr;
+    TextureHandle handle_;
+};
 
 }  // namespace RenderCore

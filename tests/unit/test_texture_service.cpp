@@ -187,3 +187,24 @@ TEST_CASE("handles and set refs the registry did not issue are refused") {
 }
 
 }  // TEST_SUITE
+
+TEST_CASE("TextureService: adopt retain dimensions and generation exhaustion") {
+    TextureService s;
+    const auto h = s.acquire(keyOf("base", "ui.tga", 1), kNoTextureNode, {256, 128, 64, 32});
+    {
+        auto a = ServiceTextureRef::adopt(s, h);
+        { auto b = ServiceTextureRef::retain(s, h); CHECK(s.users(h) == 2); }
+        CHECK(s.users(h) == 1);
+        CHECK(s.dimensions(h).logicalHeight == 32);
+    }
+    CHECK_FALSE(s.isLive(h));
+    CHECK_FALSE(s.retain(h));
+    CHECK(s.dimensions(h).logicalWidth == 16);
+    for (int i = 0; i < 4095; ++i) {
+        auto t = s.acquire(keyOf("base", "ui.tga", 1));
+        REQUIRE(s.release(t));
+    }
+    auto fresh = s.acquire(keyOf("base", "ui.tga", 1));
+    CHECK_FALSE(s.isLive(h));
+    CHECK(fresh.index() != h.index());
+}

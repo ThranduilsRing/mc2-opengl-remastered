@@ -135,7 +135,8 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 		masterTextureNodes[i].lzCompSize = txmCompressSize;
 	}
 	
-	return(i);
+	txmIdentityAcquire(masterTextureNodes[i], i);
+		return(i);
 }
 
 DWORD MC_TextureManager::textureInstanceExists (const char *textureFullPathName, gos_TextureFormat key, DWORD hints, DWORD uniqueInstance, DWORD nFlush)
@@ -151,7 +152,8 @@ DWORD MC_TextureManager::textureInstanceExists (const char *textureFullPathName,
 				if (uniqueInstance == masterTextureNodes[i].uniqueInstance)
 				{
 					masterTextureNodes[i].numUsers++;
-					return(i);							//Return the texture Node Id Now.
+					txmIdentityAcquire(masterTextureNodes[i], i);
+		return(i);							//Return the texture Node Id Now.
 				}
 				else
 				{
@@ -174,7 +176,9 @@ static void txmIdentityAcquire (const MC_TextureNode& n, long node)
 	k.variant = (uint32_t)n.uniqueInstance;
 	k.format = (uint32_t)n.key;
 	k.hints = (uint32_t)n.hints;
-	RenderCore::textureService().acquire(k, (uint32_t)node);
+	const uint32_t scale = n.uvScale ? n.uvScale : 1;
+	RenderCore::textureService().acquire(k, (uint32_t)node,
+		{n.logicalWidth * scale, n.logicalHeight * scale, n.logicalWidth, n.logicalHeight});
 }
 
 DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_TextureFormat key, DWORD hints, DWORD uniqueInstance, DWORD nFlush)
@@ -209,7 +213,8 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 					mc2::fmt::print_out("[MECHICON] loadTexture CACHE-HIT id={:d}: {}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(textureFullPathName));
 				masterTextureNodes[i].numUsers++;
 				txmIdentityAcquire(masterTextureNodes[i], i);
-				return(i);							//Return the texture Node Id Now.
+				txmIdentityAcquire(masterTextureNodes[i], i);
+		return(i);							//Return the texture Node Id Now.
 			}
 			else
 			{
@@ -251,7 +256,6 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	masterTextureNodes[i].hints = hints;
 	masterTextureNodes[i].uniqueInstance = uniqueInstance;
 	masterTextureNodes[i].neverFLUSH = nFlush;
-	txmIdentityAcquire(masterTextureNodes[i], i);
 	masterTextureNodes[i].logicalWidth = 0;
 	masterTextureNodes[i].logicalHeight = 0;
 
@@ -320,7 +324,8 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 				else
 					masterTextureNodes[i].gosTextureHandle = 0;
 				mc2::fmt::print_out("[TEXMGR_KTX_PRIMARY] {} -> RGBA8 {:d}x{:d} (ktx2 CPU decode)\n", mc2::fmt::safe(sidecar), mc2::fmt::as_i32(kw), mc2::fmt::as_i32(kh)); fflush(stdout);
-				return(i);
+				txmIdentityAcquire(masterTextureNodes[i], i);
+		return(i);
 			}
 		}
 	}
@@ -348,6 +353,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 			*masterTextureNodes[i].textureData = 0;
 		else
 			masterTextureNodes[i].gosTextureHandle = 0;
+		txmIdentityAcquire(masterTextureNodes[i], i);
 		return(i);
 	}
 
@@ -459,7 +465,8 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		masterTextureNodes[i].width = MC_TEXCACHE_FILE_LZ + txmSize;
 	}
 
-	return(i);
+	txmIdentityAcquire(masterTextureNodes[i], i);
+		return(i);
 }
 
 // DEV-SHELL texture_refresh (see txmmgr.h). Mirrors the loadTexture disk

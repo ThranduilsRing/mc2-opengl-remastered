@@ -24,6 +24,8 @@ namespace RenderCore {
 
 constexpr MaterialTextureSemantic kRegistryTextureSemantic = MaterialTextureSemantic::DescriptorIndex;
 
+// Joint TGL/TXM boundary: immutable mesh -> material slot -> per-instance MaterialSetRef.
+// Never snapshot a shared TG type's mutable gos handle; the registry stores generation refs, GPU rows store residency indices.
 struct MaterialKey {
     uint64_t      meshKey = 0;        // hash of the mesh asset key (cooked asset id, LOD, variant)
     uint32_t      slot = 0;           // material slot within the mesh

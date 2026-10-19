@@ -1,4 +1,5 @@
 #include "gameos.hpp"
+#include "../../RenderCore/TextureService.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_render.h"
 #include "gos_render_context.h"        // InitializeRenderContextConventions (shared game/editor)
@@ -822,6 +823,8 @@ namespace {
 // same points.
 int main(int argc, char** argv)
 {
+    RenderCore::TextureService textures;
+    RenderCore::TextureServiceScope textureScope(textures);
     // Gate reads resolved before this line are "pre-main" (static initialisers).
     mc2::gate::markMainEntered();
     initDpiAwareness();
