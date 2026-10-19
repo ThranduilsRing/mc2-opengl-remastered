@@ -82,6 +82,7 @@ struct World {
         objects.reset();
         for (auto* policy : ownedPolicies) delete policy;
         if (ownedTypes) {
+            std::free(ownedTypes->table);
             ownedTypes->table = nullptr;
             auto* oldFile = ObjectTypeManager::objectFile;
             ObjectTypeManager::objectFile = nullptr;
@@ -204,7 +205,7 @@ TEST_CASE("CombatRetirementProduction/native loader preserves absolute deadlines
     objects.objTypeManager = world.ownedTypes = new ObjectTypeManager;
     auto& types = *objects.objTypeManager;
     types.numObjectTypes = 64;
-    types.table = static_cast<ObjectTypePtr*>(world.heap.Malloc(64 * sizeof(ObjectTypePtr)));
+    types.table = static_cast<ObjectTypePtr*>(std::malloc(64 * sizeof(ObjectTypePtr)));
     std::memset(types.table, 0, 64 * sizeof(ObjectTypePtr));
     auto* normal = new WeaponBoltType;
     auto* beam = new WeaponBoltType;
