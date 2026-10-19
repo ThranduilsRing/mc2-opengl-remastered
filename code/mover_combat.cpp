@@ -37,7 +37,7 @@ long Mover::handleTacticalOrder (TacticalOrder tacOrder, long priority, bool que
 			if (_tg_stale) ++s_tg_stale;
 			if (_tg_far)   ++s_tg_far;
 			char _tg_buf[320];
-			mc2::fmt::to_buf(_tg_buf, "{{\"site\":\"handleTacticalOrder\",\"order\":{:d},\"targetWID\":{:d},\"stale_wid\":{:d},\"range\":{:.1f},\"far\":{:d},\"totals\":{{\"orders\":{:d},\"stale\":{:d},\"far\":{:d}}}}}", mc2::fmt::as_u64((unsigned long long)s_tg_orders), mc2::fmt::as_i32((int)tacOrder.targetWID), mc2::fmt::as_i32(_tg_stale?1:0), _tg_range, mc2::fmt::as_i32(_tg_far?1:0), mc2::fmt::as_u64((unsigned long long)s_tg_orders), mc2::fmt::as_u64((unsigned long long)s_tg_stale), mc2::fmt::as_u64((unsigned long long)s_tg_far));
+			mc2::fmt::to_buf(_tg_buf, "{{\"site\":\"handleTacticalOrder\",\"order\":{:d},\"targetWID\":{:d},\"stale_wid\":{:d},\"range\":{:.1f},\"far\":{:d},\"totals\":{{\"orders\":{:d},\"stale\":{:d},\"far\":{:d}}}}}", mc2::fmt::as_u64(static_cast<unsigned long long>(s_tg_orders)), mc2::fmt::as_i32(static_cast<int>(tacOrder.targetWID)), mc2::fmt::as_i32(_tg_stale?1:0), _tg_range, mc2::fmt::as_i32(_tg_far?1:0), mc2::fmt::as_u64(static_cast<unsigned long long>(s_tg_orders)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_tg_stale)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_tg_far)));
 			mc2_diag::writeEvent("TARGETING", 1, 0, _tg_buf);
 		}
 	}
@@ -206,7 +206,7 @@ void Mover::setPilotHandle (long _pilotHandle) {
 	pilotHandle = _pilotHandle;
 	if (pilotHandle > 0) {
 		pilot = MechWarrior::warriorList[pilotHandle];
-		pilot->setVehicle((GameObjectPtr)this);
+		pilot->setVehicle(static_cast<GameObjectPtr>(this));
 	}
 }
 
@@ -432,7 +432,7 @@ long Mover::updateWeaponFireChunks (long which) {
 
 		TargetRolo = chunk.targetType;
 		if (chunk.targetType == 0 /*WEAPONFIRECHUNK_TARGET_MOVER*/) {
-			GameObjectPtr target = (GameObjectPtr)MPlayer->moverRoster[chunk.targetId];
+			GameObjectPtr target = static_cast<GameObjectPtr>(MPlayer->moverRoster[chunk.targetId]);
 			// Mover targets could be NULL now, since we free them when they're destroyed.
 			if (target)
 				handleWeaponFire(weaponIndex,
@@ -473,8 +473,8 @@ long Mover::updateWeaponFireChunks (long which) {
 			}
 		else if (chunk.targetType == 3 /*WEAPONFIRECHUNK_TARGET_LOCATION*/) {
 			glm::vec3 targetPoint;
-			targetPoint.x = (float)chunk.targetCell[1] * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
-			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - ((float)chunk.targetCell[0] * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
+			targetPoint.x = static_cast<float>(chunk.targetCell[1]) * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
+			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - (static_cast<float>(chunk.targetCell[0]) * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
 			targetPoint.z = land->getTerrainElevation(targetPoint);
 			handleWeaponFire(weaponIndex, nullptr, &targetPoint, chunk.hit, 0.0, chunk.numMissiles, 0);
 			}
@@ -499,7 +499,7 @@ long Mover::addCriticalHitChunk (long which, long bodyLocation, long criticalSpa
 	if (numCriticalHitChunks[which] == MAX_CRITICALHIT_CHUNKS)
 		Fatal(0, " Mover::addCriticalHitChunk--Too many criticalhit chunks ");
 
-	unsigned char chunkData = (unsigned char)((bodyLocation << 4) + criticalSpace);
+	unsigned char chunkData = static_cast<unsigned char>(((bodyLocation << 4) + criticalSpace));
 	criticalHitChunks[which][numCriticalHitChunks[which]++] = chunkData;
 	return(numCriticalHitChunks[which]);
 }
@@ -562,7 +562,7 @@ long Mover::updateRadioChunks (long which) {
 
 	if (getCommander() == Commander::home)
 		for (long i = 0; i < numRadioChunks[which]; i++)
-			playMessage((RadioMessageType)radioChunks[which][i]);
+			playMessage(static_cast<RadioMessageType>(radioChunks[which][i]));
 
 	numRadioChunks[which] = 0;
 
@@ -586,7 +586,7 @@ void Mover::setThreatRating (short rating) {
 long Mover::getThreatRating (void) {
 
 	if ((scenarioTime - creationTime) < 5.0)
-		return((long)((float)threatRating * newThreatMultiplier));
+		return(static_cast<long>((static_cast<float>(threatRating) * newThreatMultiplier)));
 	return(threatRating);
 }
 
@@ -793,7 +793,7 @@ float Mover::getWeaponAmmoLevel (long weaponIndex) {
 	if (!isWeaponIndex(weaponIndex))
 		return(-1.0);
 
-	return((float)(ammoTypeTotal[inventory[weaponIndex].ammoIndex].curAmount) / (float)(ammoTypeTotal[inventory[weaponIndex].ammoIndex].maxAmount));
+	return(static_cast<float>((ammoTypeTotal[inventory[weaponIndex].ammoIndex].curAmount)) / static_cast<float>((ammoTypeTotal[inventory[weaponIndex].ammoIndex].maxAmount)));
 }
 
 bool Mover::getWeaponIsEnergy( long weaponIndex )
@@ -810,7 +810,7 @@ void Mover::calcWeaponEffectiveness (bool setMax) {
 	lastWeaponEffectivenessCalc = scenarioTime;
 		
 	if (pilot)
-		avgSkill = (float)pilot->getSkill(MWS_GUNNERY) / 50.0;
+		avgSkill = static_cast<float>(pilot->getSkill(MWS_GUNNERY)) / 50.0;
 	else
 		avgSkill = 1.0;
 
@@ -843,9 +843,9 @@ void Mover::calcAmmoTotals (void)
 		{
 			long weaponMasterId = inventory[i].masterID;
 			bool newAmmoType = true;
-			for (long curAmmo = 0; curAmmo < (long)numAmmoTypes; curAmmo++)
+			for (long curAmmo = 0; curAmmo < static_cast<long>(numAmmoTypes); curAmmo++)
 			{
-				if (totalList[curAmmo].masterId == (long)MasterComponent::masterList[weaponMasterId].getWeaponAmmoMasterId()) 
+				if (totalList[curAmmo].masterId == static_cast<long>(MasterComponent::masterList[weaponMasterId].getWeaponAmmoMasterId()))
 				{
 					newAmmoType = false;
 					break;

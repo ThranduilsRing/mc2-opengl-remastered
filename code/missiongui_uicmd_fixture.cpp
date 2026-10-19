@@ -58,7 +58,7 @@ extern uint32_t g_mc2FrameCounter;
 // Frames since Mission::init. THIS is what `freeze_movers on <frame>` counts.
 extern "C" long mc2FreezeMoversMissionFrame()
 {
-	return (long)g_mc2FrameCounter - s_freezeMoversBase;
+	return static_cast<long>(g_mc2FrameCounter) - s_freezeMoversBase;
 }
 
 // Called from Mission::init so a freeze is scoped to the mission that armed it
@@ -67,7 +67,7 @@ extern "C" long mc2FreezeMoversMissionFrame()
 // frozen, with no command in mission B's own session having asked for it.
 extern "C" void mc2FreezeMoversMissionReset()
 {
-	s_freezeMoversBase    = (long)g_mc2FrameCounter;
+	s_freezeMoversBase    = static_cast<long>(g_mc2FrameCounter);
 	s_freezeMoversOn      = false;
 	s_freezeMoversEngaged = -1;
 	s_freezeMoversAt      = -2;   // re-read env so the gate re-arms per mission
@@ -146,12 +146,12 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 				data.rosterIndex = 255;
 				data.gestureID = 2;
 				data.active = true; data.exists = true; data.capturable = false;
-				data.variant = (DWORD)variant;
+				data.variant = static_cast<DWORD>(variant);
 				data.baseColor = prefs.baseColor;
 				data.highlightColor1 = prefs.highlightColor;
 				data.highlightColor2 = prefs.highlightColor;
-				data.commanderID = (char)homeCmdr;
-				data.teamID = (char)((team >= 0) ? team : homeTeam);
+				data.commanderID = static_cast<char>(homeCmdr);
+				data.teamID = static_cast<char>(((team >= 0) ? team : homeTeam));
 				bool ok = true;
 				if (strcmp(kind, "infantry") == 0) {
 					strcpy(data.brainFileName, "infantry001");
@@ -167,7 +167,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 					Mover* tmpl = nullptr;
 					Team* pTeam = Team::home;
 					for (long i = 0; pTeam && i < pTeam->getRosterSize(); i++) {
-						Mover* m = (Mover*)pTeam->getMover(i);
+						Mover* m = static_cast<Mover*>(pTeam->getMover(i));
 						if (m && m->getCommander()->getId() == homeCmdr &&
 							m->getObjectClass() == wantCls) { tmpl = m; break; }
 					}
@@ -185,7 +185,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 					} else {
 						data.objNumber = tmpl->getTypeHandle();
 						data.variant = (wantCls == BATTLEMECH)
-							? (DWORD)((BattleMechPtr)tmpl)->variantID : 0;
+							? static_cast<DWORD>((static_cast<BattleMechPtr>(tmpl))->variantID) : 0;
 					}
 				} else {
 					char* end = nullptr; const long on = strtol(kind, &end, 10);
@@ -196,10 +196,10 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 					glm::vec3 pos; pos.x = x; pos.y = y; pos.z = 0.0f;
 					if (land) pos.z = land->getTerrainElevation(pos);
 					data.position = pos; data.rotation = 0;
-					data.controlType = (data.commanderID == (char)homeCmdr && !MPlayer)
+					data.controlType = (data.commanderID == static_cast<char>(homeCmdr) && !MPlayer)
 						? CONTROL_PLAYER : CONTROL_AI;
 					const long h = mission ? mission->addMover(&data) : -1;
-					MoverPtr nm = (h > 0) ? (MoverPtr)ObjectManager->get(h) : nullptr;
+					MoverPtr nm = (h > 0) ? static_cast<MoverPtr>(ObjectManager->get(h)) : nullptr;
 					if (!nm) { result = "blocked"; if (note.empty()) note = "addMover failed"; }
 					else {
 						// NOTE: do NOT call nm->setOnGUI(true) here. The
@@ -212,7 +212,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 						// prototype was written) correctly rejects: every
 						// setOnGUI(true) must be paired with the mission-
 						// interface registration that addMover performs.
-						if (!MPlayer && data.commanderID == (char)homeCmdr)
+						if (!MPlayer && data.commanderID == static_cast<char>(homeCmdr))
 							nm->setLocalMoverId(0);
 						result = "ok";
 						char b[192];
@@ -234,7 +234,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 						// the warning exists to catch slip through acking a
 						// clean "ok".
 						const float spawnHp = nm->getStatusRating();
-						mc2::fmt::to_buf(b, "spawned id={:d} obj={:d} team={:d} hp={:.3f}{}", mc2::fmt::as_i32(nm->getPartId()), mc2::fmt::as_i32((int)data.objNumber), mc2::fmt::as_i32((int)data.teamID), spawnHp, mc2::fmt::safe(!(spawnHp > 0.0f)
+						mc2::fmt::to_buf(b, "spawned id={:d} obj={:d} team={:d} hp={:.3f}{}", mc2::fmt::as_i32(nm->getPartId()), mc2::fmt::as_i32(static_cast<int>(data.objNumber)), mc2::fmt::as_i32(static_cast<int>(data.teamID)), spawnHp, mc2::fmt::safe(!(spawnHp > 0.0f)
 								? " WARNING:bad hp, spawned unit may be inert" : ""));
 						note = b;
 					}
@@ -251,7 +251,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 				else {
 					glm::vec3 pos; pos.x = x; pos.y = y; pos.z = 0.0f;
 					if (land) pos.z = land->getTerrainElevation(pos);
-					((Mover*)obj)->setTeleportPosition(pos);   // engine teleport hook
+					(static_cast<Mover*>(obj))->setTeleportPosition(pos);   // engine teleport hook
 					result = "ok";
 					char b[80]; mc2::fmt::to_buf(b, "teleport {:d} -> ({:.1f},{:.1f})", mc2::fmt::as_i32(pid), x, y); note = b;
 				}
@@ -290,7 +290,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 				mc2::fmt::to_buf(b, "frozen NOW at mission frame {:d} -- not cross-build reproducible; use `freeze_movers on <frame>` for that", mc2::fmt::as_i32(mc2FreezeMoversEngagedAt()));
 			note = b;
 		} else if (s == "status") {
-			mc2::fmt::to_buf(b, "active={:d} armedAt={:d} engagedAt={:d} missionFrame={:d} absFrame={:d}", mc2::fmt::as_i32(mc2FreezeMoversActive()), mc2::fmt::as_i32(mc2FreezeMoversArmedAt()), mc2::fmt::as_i32(mc2FreezeMoversEngagedAt()), mc2::fmt::as_i32(mc2FreezeMoversMissionFrame()), mc2::fmt::as_u32((unsigned long)g_mc2FrameCounter));
+			mc2::fmt::to_buf(b, "active={:d} armedAt={:d} engagedAt={:d} missionFrame={:d} absFrame={:d}", mc2::fmt::as_i32(mc2FreezeMoversActive()), mc2::fmt::as_i32(mc2FreezeMoversArmedAt()), mc2::fmt::as_i32(mc2FreezeMoversEngagedAt()), mc2::fmt::as_i32(mc2FreezeMoversMissionFrame()), mc2::fmt::as_u32(static_cast<unsigned long>(g_mc2FrameCounter)));
 			note = b;
 			result = "ok";
 		} else {
@@ -316,7 +316,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 			} else {
 				const float p = eye->setSunPitch(pitch, nf >= 2, yaw);
 				result = "ok";
-				mc2::fmt::to_buf(b, "sun altitude={:.1f}{} isNight={:d} (DIRECTION only -- ambient/sky/fog unchanged)", (double)p, mc2::fmt::safe(nf >= 2 ? " +yaw" : ""), mc2::fmt::as_i32(eye->getIsNight() ? 1 : 0));
+				mc2::fmt::to_buf(b, "sun altitude={:.1f}{} isNight={:d} (DIRECTION only -- ambient/sky/fog unchanged)", static_cast<double>(p), mc2::fmt::safe(nf >= 2 ? " +yaw" : ""), mc2::fmt::as_i32(eye->getIsNight() ? 1 : 0));
 				note = b;
 			}
 		} else {
@@ -345,7 +345,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 			} else {
 				const float pitch = eye->setDaylightFraction(f);
 				result = "ok";
-				mc2::fmt::to_buf(b, "{} -> fraction={:.3f} sunPitch={:.1f} isNight={:d} nightFactor={:.2f} (full sun+ambient+sky+fog recompute)", arg.c_str(), (double)f, (double)pitch, mc2::fmt::as_i32(eye->getIsNight() ? 1 : 0), (double)eye->getNightFactor());
+				mc2::fmt::to_buf(b, "{} -> fraction={:.3f} sunPitch={:.1f} isNight={:d} nightFactor={:.2f} (full sun+ambient+sky+fog recompute)", arg.c_str(), static_cast<double>(f), static_cast<double>(pitch), mc2::fmt::as_i32(eye->getIsNight() ? 1 : 0), static_cast<double>(eye->getNightFactor()));
 				note = b;
 			}
 		}
@@ -413,7 +413,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 					result = "blocked";
 					note = "already in that gesture (setGesture early-returns)";
 				} else {
-					ba->setGesture((unsigned long)g);
+					ba->setGesture(static_cast<unsigned long>(g));
 					// setGesture silently early-returns when the object is
 					// DESTROYED or DISABLED (mclib/bdactor.cpp), BEFORE
 					// touching bdAnimationState. Acking a bare "ok" there
@@ -433,7 +433,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 			}
 			if (!strcmp(result, "ok")) {
 				char b[352];
-				mc2::fmt::to_buf(b, "gesture {:d}->{:d} staticReg {:d}->{:d} staticNow={:d} eligible={:d} animStartInvalidated {:d}->{:d}{}", mc2::fmt::as_i32(before), mc2::fmt::as_i32(ba->getCurrentGestureId()), mc2::fmt::as_i32(regBefore), mc2::fmt::as_i32(ba->isStaticRegistered() ? 1 : 0), mc2::fmt::as_i32(ba->IsStaticNow() ? 1 : 0), mc2::fmt::as_i32(ba->isStaticEligible() ? 1 : 0), mc2::fmt::as_u32((unsigned long)invBefore), mc2::fmt::as_u32((unsigned long)g_bldgAnimGate_animStartInvalidated()), mc2::fmt::safe((ba->IsStaticNow() ? "  WARNING: still on the static path"
+				mc2::fmt::to_buf(b, "gesture {:d}->{:d} staticReg {:d}->{:d} staticNow={:d} eligible={:d} animStartInvalidated {:d}->{:d}{}", mc2::fmt::as_i32(before), mc2::fmt::as_i32(ba->getCurrentGestureId()), mc2::fmt::as_i32(regBefore), mc2::fmt::as_i32(ba->isStaticRegistered() ? 1 : 0), mc2::fmt::as_i32(ba->IsStaticNow() ? 1 : 0), mc2::fmt::as_i32(ba->isStaticEligible() ? 1 : 0), mc2::fmt::as_u32(static_cast<unsigned long>(invBefore)), mc2::fmt::as_u32(static_cast<unsigned long>(g_bldgAnimGate_animStartInvalidated())), mc2::fmt::safe((ba->IsStaticNow() ? "  WARNING: still on the static path"
 									   : "  (now on the animated path)")));
 				note = b;
 			}

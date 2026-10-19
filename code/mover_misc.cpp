@@ -41,7 +41,7 @@ bool Mover::getMoveDestination( glm::vec3& out )
 void Mover::getWeaponBandsPresent( bool present[3] )
 {
 	present[0] = present[1] = present[2] = false;	// short / medium / long
-	int total = (int)numOther + (int)numWeapons + (int)numAmmos;
+	int total = static_cast<int>(numOther) + static_cast<int>(numWeapons) + static_cast<int>(numAmmos);
 	if ( total > MAX_MOVER_INVENTORY_ITEMS ) total = MAX_MOVER_INVENTORY_ITEMS;
 	for ( int j = 0; j < total; j++ )
 	{
@@ -65,14 +65,14 @@ void Mover::updateDrawWaypointPath()
 void Mover::initOptimalCells (long numIncrements) {
 
 	numOptimalIncrements = numIncrements;
-	double degreesToRadians = (double)DEGREES_TO_RADS;
+	double degreesToRadians = static_cast<double>(DEGREES_TO_RADS);
 	double incrementDegrees = 360.0 / numOptimalIncrements;
 	double doptimalCells[MAX_ATTACK_CELLRANGE][MAX_ATTACK_INCREMENTS][2];
 	for (long r = 0; r < MAX_ATTACK_CELLRANGE; r++)
 		for (long i = 0; i < numIncrements; i++) {
-			double incrementRadians = incrementDegrees * (double)i * degreesToRadians;
-			doptimalCells[r][i][0] = sin(incrementRadians) * (double)r;
-			doptimalCells[r][i][1] = cos(incrementRadians) * (double)r;
+			double incrementRadians = incrementDegrees * static_cast<double>(i) * degreesToRadians;
+			doptimalCells[r][i][0] = sin(incrementRadians) * static_cast<double>(r);
+			doptimalCells[r][i][1] = cos(incrementRadians) * static_cast<double>(r);
 		}
 
 	// Due to double rounding errors, we munge the numbers a little before
@@ -87,13 +87,13 @@ void Mover::initOptimalCells (long numIncrements) {
 	for (int r = 0; r < MAX_ATTACK_CELLRANGE; r++)
 		for (long i = 0; i < numIncrements; i++) {
 			if (doptimalCells[r][i][0] < 0.00)
-				optimalCells[r][i][0] = (char)(doptimalCells[r][i][0] - 0.50);
+				optimalCells[r][i][0] = static_cast<char>((doptimalCells[r][i][0] - 0.50));
 			else
-				optimalCells[r][i][0] = (char)(doptimalCells[r][i][0] + 0.50);
+				optimalCells[r][i][0] = static_cast<char>((doptimalCells[r][i][0] + 0.50));
 			if (doptimalCells[r][i][1] < 0.00)
-				optimalCells[r][i][1] = (char)(doptimalCells[r][i][1] - 0.50);
+				optimalCells[r][i][1] = static_cast<char>((doptimalCells[r][i][1] - 0.50));
 			else
-				optimalCells[r][i][1] = (char)(doptimalCells[r][i][1] + 0.50);
+				optimalCells[r][i][1] = static_cast<char>((doptimalCells[r][i][1] + 0.50));
 		}
 
 	char rangedMap[MAX_ATTACK_CELLRANGE * 2 + 1][MAX_ATTACK_CELLRANGE * 2 + 1];
@@ -107,7 +107,7 @@ void Mover::initOptimalCells (long numIncrements) {
 			goal.y = MAX_ATTACK_CELLRANGE;
 			goal.z = 0.0;
 			double dist = distance_from(start, goal);
-			rangedMap[r][c] = (char)(dist + 0.5);
+			rangedMap[r][c] = static_cast<char>((dist + 0.5));
 		}
 	long index = 0;
 	for (long range = 0; range < MAX_ATTACK_CELLRANGE; range++) {
@@ -186,7 +186,7 @@ void PlaceMovers (void) {
 
 	long numMovers = ObjectManager->getNumMovers();
 	for (long i = 0; i < numMovers; i++) {
-		MoverPtr mover = (MoverPtr)ObjectManager->getMover(i);
+		MoverPtr mover = static_cast<MoverPtr>(ObjectManager->getMover(i));
 		if (mover->getUseMe()) {
 			int cellRow, cellCol;
 			mover->getCellPosition(cellRow, cellCol);
@@ -293,7 +293,7 @@ void Mover::Save (PacketFilePtr file, long packetNum)
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	file->writePacket(packetNum,(MemoryPtr)&data,sizeof(MoverData),STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(MoverData),STORAGE_TYPE_ZLIB);
 }
 
 void Mover::CopyTo (MoverData *data)

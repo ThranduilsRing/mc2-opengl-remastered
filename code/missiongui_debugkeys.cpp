@@ -52,7 +52,7 @@ int MissionInterfaceManager::pageGameObjectWindow1() {
 	static double lastTime = 0.0;
 	if ((lastTime + 0.5) < gos_GetElapsedTime()) {
 		if (DebugGameObject[0] && DebugGameObject[0]->isMover())
-			((MoverPtr)DebugGameObject[0])->debugPage++;
+			(static_cast<MoverPtr>(DebugGameObject[0]))->debugPage++;
 		lastTime = gos_GetElapsedTime();
 	}
 	#endif
@@ -65,7 +65,7 @@ int MissionInterfaceManager::pageGameObjectWindow2() {
 	static double lastTime = 0.0;
 	if ((lastTime + 0.5) < gos_GetElapsedTime()) {
 		if (DebugGameObject[1] && DebugGameObject[1]->isMover())
-			((MoverPtr)DebugGameObject[1])->debugPage++;
+			(static_cast<MoverPtr>(DebugGameObject[1]))->debugPage++;
 		lastTime = gos_GetElapsedTime();
 	}
 	#endif
@@ -78,7 +78,7 @@ int MissionInterfaceManager::pageGameObjectWindow3() {
 	static double lastTime = 0.0;
 	if ((lastTime + 0.5) < gos_GetElapsedTime()) {
 		if (DebugGameObject[2] && DebugGameObject[2]->isMover())
-			((MoverPtr)DebugGameObject[2])->debugPage++;
+			(static_cast<MoverPtr>(DebugGameObject[2]))->debugPage++;
 		lastTime = gos_GetElapsedTime();
 	}
 	#endif
@@ -218,9 +218,9 @@ int MissionInterfaceManager::teleport() {
 		MoverGroup::calcMoveGoals(wPos, numMovers, moveGoals);
 		numMovers = 0;
 		for (int i = 0; i < pTeam->getRosterSize(); i++) {
-			Mover* mover = (Mover*)pTeam->getMover( i );
+			Mover* mover = static_cast<Mover*>(pTeam->getMover( i ));
 			if (mover->isSelected() && mover->getCommander()->getId() == Commander::home->getId() )
-				((MoverPtr)mover)->setTeleportPosition(moveGoals[numMovers++]);
+				(static_cast<MoverPtr>(mover))->setTeleportPosition(moveGoals[numMovers++]);
 		}
 		lastTime = gos_GetElapsedTime();
 	}
@@ -273,10 +273,10 @@ int MissionInterfaceManager::goalPlan() {
 				numMovers++;
 		}
 		for (int i = 0; i < pTeam->getRosterSize(); i++) {
-			Mover* mover = (Mover*)pTeam->getMover( i );
+			Mover* mover = static_cast<Mover*>(pTeam->getMover( i ));
 			if (mover->isSelected() && mover ->getCommander()->getId() == Commander::home->getId()) {
-				((MoverPtr)mover)->getPilot()->setUseGoalPlan(!((MoverPtr)mover)->getPilot()->getUseGoalPlan());
-				((MoverPtr)mover)->getPilot()->setMainGoal(GOAL_ACTION_NONE, nullptr, nullptr, -1.0);
+				(static_cast<MoverPtr>(mover))->getPilot()->setUseGoalPlan(!(static_cast<MoverPtr>(mover))->getPilot()->getUseGoalPlan());
+				(static_cast<MoverPtr>(mover))->getPilot()->setMainGoal(GOAL_ACTION_NONE, nullptr, nullptr, -1.0);
 			}
 		}
 		lastTime = gos_GetElapsedTime();
@@ -294,8 +294,8 @@ int MissionInterfaceManager::enemyGoalPlan() {
 		for (long i = 0; i < ObjectManager->getNumMovers(); i++) {
 			Mover* mover = ObjectManager->getMover(i);
 			if (mover->getTeam() != Team::home) {
-				((MoverPtr)mover)->getPilot()->setUseGoalPlan(EnemiesGoalPlan);
-				((MoverPtr)mover)->getPilot()->setMainGoal(GOAL_ACTION_NONE, nullptr, nullptr, -1.0);
+				(static_cast<MoverPtr>(mover))->getPilot()->setUseGoalPlan(EnemiesGoalPlan);
+				(static_cast<MoverPtr>(mover))->getPilot()->setMainGoal(GOAL_ACTION_NONE, nullptr, nullptr, -1.0);
 			}
 		}
 		lastTime = gos_GetElapsedTime();
@@ -312,7 +312,7 @@ int MissionInterfaceManager::showVictim () {
 	{
 		if (DebugGameObject[0] && DebugGameObject[0]->isMover()) 
 		{
-			GameObjectPtr targetObj = ((MoverPtr)DebugGameObject[0])->getPilot()->getCurTacOrder()->getTarget();
+			GameObjectPtr targetObj = (static_cast<MoverPtr>(DebugGameObject[0]))->getPilot()->getCurTacOrder()->getTarget();
 			if (targetObj)
 				DEBUGWINS_setGameObject(-1, targetObj);
 		}
@@ -466,7 +466,7 @@ int MissionInterfaceManager::damageObject0 () {
 		if (target)
 		{
 			if (target->isMover())
-				((MoverPtr)target)->disable(0);
+				(static_cast<MoverPtr>(target))->disable(0);
 			else
 				damageObject(target, 100.0);
 		}
@@ -479,7 +479,7 @@ int MissionInterfaceManager::damageObject0 () {
 
 int MissionInterfaceManager::toggleCompass()
 {
-	((GameCamera*)eye)->toggleCompass();
+	(static_cast<GameCamera*>(eye))->toggleCompass();
 	return 0;
 }
 
@@ -488,7 +488,7 @@ bool MissionInterfaceManager::selectionIsHelicopters( )
 	Team* pTeam = Team::home;
    	for (long i=0;i<pTeam->getRosterSize();i++)
    	{
-   		Mover* pMover = (Mover*)pTeam->getMover( i );
+		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
    		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
    		{
 			if ( pMover->getMoveType() != MOVETYPE_AIR )
@@ -640,7 +640,7 @@ void MissionInterfaceManager::doEject( GameObject* who )
 	TacticalOrder tacOrder;
 	tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_EJECT, true);
 	tacOrder.pack(nullptr, nullptr);
-	MoverPtr pMover = (MoverPtr)who;
+	MoverPtr pMover = static_cast<MoverPtr>(who);
 	if (MPlayer && !MPlayer->isServer())
 		MPlayer->sendPlayerOrder(&tacOrder, false, 1, &pMover);
 	else

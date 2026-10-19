@@ -151,7 +151,7 @@ void MissionInterfaceManager::updateVTol()
 							if (MPlayer)
 								newPilotName = MPlayer->reinforcementPilot[vtolNum];
 							else
-								newPilotName = (char*)LogisticsData::instance->getBestPilot( mechToRecover[vtolNum]->tonnage );
+								newPilotName = const_cast<char*>(LogisticsData::instance->getBestPilot( mechToRecover[vtolNum]->tonnage ));
 
 							mission->tradeMover(mechToRecover[vtolNum], Commander::commanders[vtolNum]->getTeam()->getId(), vtolNum, newPilotName, "pbrain");
 							mechRecovered[vtolNum] = true;
@@ -266,7 +266,7 @@ void MissionInterfaceManager::drawWayPointPaths()
 	Team* pTeam = Team::home;
    	for (long i=0;i<pTeam->getRosterSize();i++)
    	{
-   		Mover* pMover = (Mover*)pTeam->getMover( i );
+		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
    		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
    		{
    			pMover->updateDrawWaypointPath();
@@ -371,7 +371,7 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 			// OR it doesn't matter because the canAddVehicle part of the beginVtol function doesn't reference it!
 			// Again, Its OK because we only use it for salvage craft.
 			// Need to pass this in so that Multiplayer can pass it in.
-			beginVtol(-1,commanderID,nullptr,(MoverPtr)target);	//In Single player, this should always be zero?
+			beginVtol(-1,commanderID,nullptr,static_cast<MoverPtr>(target));	//In Single player, this should always be zero?
 			return;
 		}
 		else if ( (controlGui.isAddingVehicle() && !paintingVtol[commanderID] && !canAddVehicle( wPos )) || 
@@ -422,10 +422,10 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 				//if the mouse cursor is some form of attack, attack the target.
 		{
 			if ( target->isMover() && ( target->getTeamId() == Team::home->getId() || 
-					CONTACT_VISUAL == ((Mover*)target)->getContactStatus(Team::home->getId(), true) 
+					CONTACT_VISUAL == (static_cast<Mover*>(target))->getContactStatus(Team::home->getId(), true)
 					|| target->isDisabled() ) )
 				{
-					controlGui.setInfoWndMover( (Mover*)target );
+					controlGui.setInfoWndMover( static_cast<Mover*>(target) );
 				}
 		
 			if ( controlGui.getSalvage() )
@@ -442,7 +442,7 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 					bool alreadyThere = false;
 					for (long i=0;i<pTeam->getRosterSize();i++)
 					{
-						Mover* pMover = (Mover*)pTeam->getMover( i );
+						Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 						if (pMover == target && pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId())
 							alreadyThere = true;
 					}
@@ -471,12 +471,12 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 				else if ( target->getTeam() && Team::home->isFriendly(target->getTeam()) && target->getFlag(OBJECT_FLAG_CANREFIT) && target->getFlag(OBJECT_FLAG_MECHBAY) && canRepairBay(target) )
 					doRepairBay(target);
 				else if ( controlGui.isSelectingInfoObject() && target->isMover() )
-					controlGui.setInfoWndMover( (Mover*)target );
+					controlGui.setInfoWndMover( static_cast<Mover*>(target) );
 				else if ( target->isMover() && !target->isDisabled() && target->getCommanderId() == Commander::home->getId() )
 				{
 					for (long i=0;i<pTeam->getRosterSize();i++)
 					{
-						Mover* pMover = (Mover*)pTeam->getMover( i );
+						Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 						if (pMover->getCommander()->getId() == Commander::home->getId())
 						{
 							// M1.6 Q6 RESOLVED: clear-others setSelected(false)
@@ -501,7 +501,7 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 					controlGui.toggleGuard();
 				else if ( userInput->getMouseCursor() == mState_INFO && 
 						target->isMover()  )
-							controlGui.setInfoWndMover( (Mover*)target );
+							controlGui.setInfoWndMover( static_cast<Mover*>(target) );
 				else if ( !target->isDisabled() && !bForcedShot && !bAimedShot)
 					doAttack();
 			
@@ -726,7 +726,7 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 			// OR it doesn't matter because the canAddVehicle part of the beginVtol function doesn't reference it!
 			// Again, Its OK because we only use it for salvage craft.
 			// Need to pass this in so that Multiplayer can pass it in.
-			beginVtol(-1,commanderID,nullptr,(MoverPtr)target);	//In Single player, this should always be zero?
+			beginVtol(-1,commanderID,nullptr,static_cast<MoverPtr>(target));	//In Single player, this should always be zero?
 			return;
 		}
 		else if ( (controlGui.isAddingVehicle() && !paintingVtol[commanderID] && !canAddVehicle( wPos )) || 
@@ -784,7 +784,7 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 		else if ( controlGui.getSalvage() && canSalvage( target ))
 			doSalvage();
 		else if ( controlGui.isSelectingInfoObject() && target->isMover() )
-			controlGui.setInfoWndMover( (Mover*)target );
+			controlGui.setInfoWndMover( static_cast<Mover*>(target) );
 		else if ( target->getTeam() != Team::home && !target->isDisabled() )
 			doAttack();
 		else if (!bForcedShot && !bAimedShot)
@@ -802,7 +802,7 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 			// OR it doesn't matter because the canAddVehicle part of the beginVtol function doesn't reference it!
 			// Again, Its OK because we only use it for salvage craft.
 			// Need to pass this in so that Multiplayer can pass it in.
-			beginVtol(-1,commanderID,nullptr,(MoverPtr)target);	//In Single player, this should always be zero?
+			beginVtol(-1,commanderID,nullptr,static_cast<MoverPtr>(target));	//In Single player, this should always be zero?
 			return;
 		}
 		else if ( (controlGui.isAddingVehicle() && !paintingVtol[commanderID] && !canAddVehicle( wPos )) || 
@@ -820,10 +820,10 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 		else if ( target )
 		{
 			if ( target->isMover() && ( target->getTeamId() == Team::home->getId() || 
-					CONTACT_VISUAL == ((Mover*)target)->getContactStatus(Team::home->getId(), true) 
+					CONTACT_VISUAL == (static_cast<Mover*>(target))->getContactStatus(Team::home->getId(), true)
 					|| target->isDisabled() ) )
 				{
-					controlGui.setInfoWndMover( (Mover*)target );
+					controlGui.setInfoWndMover( static_cast<Mover*>(target) );
 				}
 		
 			if (target->getCommanderId() == Commander::home->getId() && !target->isDisabled()  )
@@ -834,7 +834,7 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 					bool alreadyThere = false;
 					for (long i=0;i<pTeam->getRosterSize();i++)
 					{
-						Mover* pMover = (Mover*)pTeam->getMover( i );
+						Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 						if (pMover == target && pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
 							alreadyThere = true;
 					}
@@ -856,7 +856,7 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 				{
 					for (long i=0;i<pTeam->getRosterSize();i++)
 					{
-						Mover* pMover = (Mover*)pTeam->getMover( i );
+						Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 						if (pMover->getCommander()->getId() == Commander::home->getId())
 						{
 							// M1.6 Q6 RESOLVED: clear-others setSelected(false)
@@ -1016,7 +1016,7 @@ void MissionInterfaceManager::updateWaypoints (void)
    		Team* pTeam = Team::home;
    		for (long i=0;i<pTeam->getRosterSize();i++)
    		{
-   			Mover* pMover = (Mover*)pTeam->getMover( i );
+			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
    			if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
    			{
    				pMover->updateDrawWaypointPath();
@@ -1051,7 +1051,7 @@ int MissionInterfaceManager::update( bool leftClickedClick, bool rightClickedCli
 		Team* pTeam  = Team::home;
 		for (long i = 0; i < pTeam->getRosterSize(); i++)
 		{
-			Mover* pMover = (Mover*)pTeam->getMover( i );
+			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 			if ( pMover->isSelected() && !pMover->getPilot()->getExecutingTacOrderQueue() && pMover->getCommander()->getId() == Commander::home->getId() )
 			{
 				if (MPlayer && !MPlayer->isServer()) {

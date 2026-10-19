@@ -588,7 +588,7 @@ void MissionInterfaceManager::render (void)
 			Team* pTeam = Team::home;
 			for (long i=0;i<pTeam->getRosterSize();i++)
 			{
-				Mover* pMover = (Mover*)pTeam->getMover( i );
+				Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 				if ( pMover->isSelected()  && pMover->getCommander()->getId() == Commander::home->getId() )
 				{
 					pMover->drawWaypointPath();

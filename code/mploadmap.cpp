@@ -205,10 +205,10 @@ void MPLoadMap::addFile( const char* pFileName, bool bSeedSingle )
 			if ( (result == NO_ERR) && (bSingleResult == bSeedSingle) )
 			{
 
-				char* pExt = (char*)strstr( pFileName, ".fit" );
+				char* pExt = const_cast<char*>(strstr( pFileName, ".fit" ));
 				if ( !pExt  )
 				{
-					pExt = (char*)(strstr( pFileName, ".FIT" ) );
+					pExt = const_cast<char*>((strstr( pFileName, ".FIT" ) ));
 				}
 				if ( pExt )
 					*pExt = '\0';
@@ -476,12 +476,12 @@ void MPLoadMap::render(int, int )
 		yOffset = exitAnim.getYDelta();
 	}
 
-	LogisticsScreen::render( (int)xOffset, (int)yOffset );
+	LogisticsScreen::render( static_cast<int>(xOffset), static_cast<int>(yOffset) );
 
 	if ( mapListPage && mapListPage->isLoaded() )
 	{
 		syncMapListPage();
-		mapListPage->render( globalX() + (int)xOffset, globalY() + (int)yOffset );
+		mapListPage->render( globalX() + static_cast<int>(xOffset), globalY() + static_cast<int>(yOffset) );
 	}
 
 }
@@ -578,8 +578,8 @@ void MPLoadMap::updateMapInfo()
 
 		FitIniFile file;
 		FullPathFileName path;
-		const char* fileName = ((aTextListItem*)mapList.GetItem( sel ))->getText();
-		selMapName = mc2::str::from_c(((aLocalizedListItem*)mapList.GetItem(sel))->getHiddenText());
+		const char* fileName = (static_cast<aTextListItem*>(mapList.GetItem( sel )))->getText();
+		selMapName = mc2::str::from_c((static_cast<aLocalizedListItem*>(mapList.GetItem(sel)))->getHiddenText());
 		path.init( missionPath, selMapName.c_str(), ".fit" );
 
 		if ( NO_ERR == file.open( path ) )
@@ -695,7 +695,7 @@ void MPLoadMap::syncMapListPage()
 	}
 
 	mapListPage->setListItems( "game.mcl_mp_loadmap_list0.list.map", items );
-	mapListPage->setListSelection( "game.mcl_mp_loadmap_list0.list.map", (int)mapList.GetSelectedItem() );
+	mapListPage->setListSelection( "game.mcl_mp_loadmap_list0.list.map", static_cast<int>(mapList.GetSelectedItem()) );
 }
 
 void MPLoadMap::getMapNameFromFile( const char* pFileName, char* missionName, long bufferLength )
@@ -705,10 +705,10 @@ void MPLoadMap::getMapNameFromFile( const char* pFileName, char* missionName, lo
 
 	FitIniFile file;
 
-	if ( NO_ERR != file.open( (const char*)path ) )
+	if ( NO_ERR != file.open( static_cast<const char*>(path) ) )
 	{
 		char errorStr[256];
-		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe((const char*)path));
+		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)));
 		Assert( 0, 0, errorStr );
 	}
 

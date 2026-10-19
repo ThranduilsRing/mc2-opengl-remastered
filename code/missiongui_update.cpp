@@ -30,7 +30,7 @@ void MissionInterfaceManager::update (void)
 			// the swoop itself and the HUD (drawGUIOn) never arrives — the pause
 			// WINDOW only draws on the live HUD. Trigger at the first frame >= N
 			// that is NOT movie mode.
-			if (!s_done && (long)g_mc2FrameCounter >= s_bootPaused && !isPaused() &&
+			if (!s_done && static_cast<long>(g_mc2FrameCounter) >= s_bootPaused && !isPaused() &&
 				eye && !eye->inMovieMode) {
 				s_done = true;
 				togglePause();
@@ -48,7 +48,7 @@ void MissionInterfaceManager::update (void)
 			static bool s_dvDone = false;
 			if (!s_dvDone) {
 				s_dvDone = true;
-				gos_SetGlobalDebugView((int)s_bootView);
+				gos_SetGlobalDebugView(static_cast<int>(s_bootView));
 			}
 		}
 	}
@@ -70,7 +70,7 @@ void MissionInterfaceManager::update (void)
 		static const long s_qlAt = static_cast<long>(mc2::gate::get<"MC2_BOOT_QUICKLOAD_AT">());
 		if (s_qsAt > 0) {
 			static bool s_qsDone = false;
-			if (!s_qsDone && (long)g_mc2FrameCounter >= s_qsAt &&
+			if (!s_qsDone && static_cast<long>(g_mc2FrameCounter) >= s_qsAt &&
 				eye && !eye->inMovieMode) {
 				s_qsDone = true;
 				saveInMissionSave = true;
@@ -78,7 +78,7 @@ void MissionInterfaceManager::update (void)
 		}
 		if (s_qlAt > 0) {
 			static bool s_qlDone = false;
-			if (!s_qlDone && (long)g_mc2FrameCounter >= s_qlAt &&
+			if (!s_qlDone && static_cast<long>(g_mc2FrameCounter) >= s_qlAt &&
 				eye && !eye->inMovieMode) {
 				s_qlDone = true;
 				loadInMissionSave = true;
@@ -112,11 +112,11 @@ void MissionInterfaceManager::update (void)
 				if (sscanf(s_sw, "%ld,%ld", &a, &b) >= 1 && a > 0) s_start = a;
 				if (b >= 5) s_settle = b;
 			}
-			const long f = (long)g_mc2FrameCounter;
+			const long f = static_cast<long>(g_mc2FrameCounter);
 			if (s_stage < 12 && f >= s_start) {
 				const long per = s_settle + 2;
 				const long rel = f - s_start;
-				const int  idx = (int)(rel / per);        // 0..5 = view idx
+				const int  idx = static_cast<int>((rel / per));        // 0..5 = view idx
 				if (idx > 5) {
 					s_stage = 12;
 					gos_SetGlobalDebugView(0);
@@ -333,7 +333,7 @@ void MissionInterfaceManager::update (void)
 	if ( g_tacticalOverview.active() && userInput->isLeftClick() && !userInput->isLeftDrag() )
 	{
 		const TacticalOverview::CardHit* hit = g_tacticalOverview.cardHitAt(
-		             (float)userInput->getRawMouseX(), (float)userInput->getRawMouseY() );
+		             static_cast<float>(userInput->getRawMouseX()), static_cast<float>(userInput->getRawMouseY()) );
 		if ( hit )
 		{
 			if ( hit->forceGroup >= 0 )
@@ -346,11 +346,11 @@ void MissionInterfaceManager::update (void)
 				if ( pTeam )
 					for ( long i = 0; i < pTeam->getRosterSize(); i++ )
 					{
-						Mover* m = (Mover*)pTeam->getMover( i );
+						Mover* m = static_cast<Mover*>(pTeam->getMover( i ));
 						if ( m && m->isOnGUI() && m->getCommander()->getId() == Commander::home->getId() )
 							m->setSelected( 0 );
 					}
-				((Mover*)hit->unit)->setSelected( 1 );
+				(static_cast<Mover*>(hit->unit))->setSelected( 1 );
 			}
 			userInput->clearLeftClick();
 			g_tacticalOverview.armReleaseSuppression();	// stop the move on mouse-up
@@ -388,7 +388,7 @@ void MissionInterfaceManager::update (void)
 					Team* pTeam = Team::home;
 					for ( long i = 0; i < pTeam->getRosterSize() && nm < 32; i++ )
 					{
-						Mover* pMover = (Mover*)pTeam->getMover( i );
+						Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 						if ( pMover && pMover->isSelected()
 							&& pMover->getCommander()->getId() == Commander::home->getId()
 							&& pMover->getExists() && !pMover->isDestroyed() && !pMover->isDisabled() )
@@ -594,7 +594,7 @@ void MissionInterfaceManager::update (void)
 		Team* pTeam = Team::home;
 		for (long i = 0; i < pTeam->getRosterSize(); i++)
 		{
-			Mover* pMover = (Mover*)pTeam->getMover( i );
+			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 			if ( pMover->isSelected() && pMover->isMech())
 			{
 				pMover->handleWeaponHit(&cheatHit);
@@ -624,8 +624,8 @@ void MissionInterfaceManager::update (void)
 		{
 			s_pickProbeDone = true;
 			const char* be = mc2::gate::raw<"MC2_RENDER_BACKEND">();   // echoed as typed
-			const float logW = (float)Environment.screenWidth;
-			const float logH = (float)Environment.screenHeight;
+			const float logW = static_cast<float>(Environment.screenWidth);
+			const float logH = static_cast<float>(Environment.screenHeight);
 			const int savedDW = Environment.drawableWidth;
 			const int savedDH = Environment.drawableHeight;
 			// preserve the live raw mouse so injecting synthetic points does not
@@ -648,7 +648,7 @@ void MissionInterfaceManager::update (void)
 			{
 				for (long i = 0; i < Team::home->getRosterSize(); ++i)
 				{
-					Mover* m = (Mover*)Team::home->getMover(i);
+					Mover* m = static_cast<Mover*>(Team::home->getMover(i));
 					if (!m || !m->getExists()) continue;
 					AppearancePtr ap = m->getAppearance();
 					if (!ap || !ap->canBeSeen()) continue;
@@ -672,18 +672,18 @@ void MissionInterfaceManager::update (void)
 			bool allOK = true;
 			for (int ci = 0; ci < 2; ++ci)
 			{
-				Environment.drawableWidth  = (int)(logW * cfgs[ci].ratio + 0.5f);
-				Environment.drawableHeight = (int)(logH * cfgs[ci].ratio + 0.5f);
+				Environment.drawableWidth  = static_cast<int>((logW * cfgs[ci].ratio + 0.5f));
+				Environment.drawableHeight = static_cast<int>((logH * cfgs[ci].ratio + 0.5f));
 
 				// (A) identity: a cursor physically over on-canvas (cx,cy) arrives from
 				// SDL as window-points (cx,cy); getMouseX must return it unchanged.
 				const float cx = 0.75f * logW, cy = 0.5f * logH;
 				long px = 0, py = 0; readPick(cx, cy, px, py);
-				const long dxErr = (px > (long)cx) ? (px - (long)cx) : ((long)cx - px);
-				const long dyErr = (py > (long)cy) ? (py - (long)cy) : ((long)cy - py);
+				const long dxErr = (px > (long)cx) ? (px - static_cast<long>(cx)) : (static_cast<long>(cx) - px);
+				const long dyErr = (py > (long)cy) ? (py - static_cast<long>(cy)) : (static_cast<long>(cy) - py);
 				const bool idOK = (dxErr <= 2) && (dyErr <= 2);
 				// NEGATIVE CONTROL: what the OLD divide-by-drawable formula would give.
-				const long oldPx = (long)((cx / (logW * cfgs[ci].ratio)) * logW);
+				const long oldPx = static_cast<long>(((cx / (logW * cfgs[ci].ratio)) * logW));
 				mc2::fmt::print_out("[VK_PICK_PROBE] backend={} res={} canvas={:.0f}x{:.0f} drawable={:d}x{:d} identity raw=({:.0f},{:.0f}) pick=({:d},{:d}) err=({:d},{:d}) oldBugWouldGive={:d} -> {}\n", mc2::fmt::safe(be ? be : "gl"), mc2::fmt::safe(cfgs[ci].label), logW, logH, mc2::fmt::as_i32(Environment.drawableWidth), mc2::fmt::as_i32(Environment.drawableHeight), cx, cy, mc2::fmt::as_i32(px), mc2::fmt::as_i32(py), mc2::fmt::as_i32(dxErr), mc2::fmt::as_i32(dyErr), mc2::fmt::as_i32(oldPx), mc2::fmt::safe(idOK ? "PASS" : "FAIL"));
 
 				// (B) object: aim at the mover's screen-bbox centre; the full pick
@@ -694,7 +694,7 @@ void MissionInterfaceManager::update (void)
 					long ox = 0, oy = 0; readPick(tcx, tcy, ox, oy);
 					GameObjectPtr picked = ObjectManager->findObjectByMouse(ox, oy);
 					objOK = (picked == targetMover);
-					mc2::fmt::print_out("[VK_PICK_PROBE] backend={} res={} object aimCenter=({:.0f},{:.0f}) pick=({:d},{:d}) target={:016X} picked={:016X} -> {}\n", mc2::fmt::safe(be ? be : "gl"), mc2::fmt::safe(cfgs[ci].label), tcx, tcy, mc2::fmt::as_i32(ox), mc2::fmt::as_i32(oy), mc2::fmt::as_ptr((void*)targetMover), mc2::fmt::as_ptr((void*)picked), mc2::fmt::safe(objOK ? "PASS" : "FAIL"));
+					mc2::fmt::print_out("[VK_PICK_PROBE] backend={} res={} object aimCenter=({:.0f},{:.0f}) pick=({:d},{:d}) target={:016X} picked={:016X} -> {}\n", mc2::fmt::safe(be ? be : "gl"), mc2::fmt::safe(cfgs[ci].label), tcx, tcy, mc2::fmt::as_i32(ox), mc2::fmt::as_i32(oy), mc2::fmt::as_ptr(static_cast<void*>(targetMover)), mc2::fmt::as_ptr(static_cast<void*>(picked)), mc2::fmt::safe(objOK ? "PASS" : "FAIL"));
 				}
 				else
 				{
@@ -865,7 +865,7 @@ void MissionInterfaceManager::update (void)
 	
 	int row, col;
 	land->worldToCell(wPos, row, col);
-	mc2::fmt::to_buf(DebugStatusBarString, "TIME: {:06d}, MOUSE: [{:d}, {:d}] {:d},{:d},{:d} ({:.2f}, {:.2f}, {:.2f}), PATHMGR: {:02d}({:02d})", mc2::fmt::as_i32((long)scenarioTime), mc2::fmt::as_i32(row), mc2::fmt::as_i32(col), mc2::fmt::as_i32(GlobalMoveMap[0] ? GlobalMoveMap[0]->calcArea(row, col) : -1), mc2::fmt::as_i32(GlobalMoveMap[1] ? GlobalMoveMap[1]->calcArea(row, col) : -1), mc2::fmt::as_i32(GlobalMoveMap[2] ? GlobalMoveMap[2]->calcArea(row, col) : -1), wPos.x, wPos.y, wPos.z, mc2::fmt::as_i32(PathManager->numPaths), mc2::fmt::as_i32(PathManager->peakPaths));
+	mc2::fmt::to_buf(DebugStatusBarString, "TIME: {:06d}, MOUSE: [{:d}, {:d}] {:d},{:d},{:d} ({:.2f}, {:.2f}, {:.2f}), PATHMGR: {:02d}({:02d})", mc2::fmt::as_i32(static_cast<long>(scenarioTime)), mc2::fmt::as_i32(row), mc2::fmt::as_i32(col), mc2::fmt::as_i32(GlobalMoveMap[0] ? GlobalMoveMap[0]->calcArea(row, col) : -1), mc2::fmt::as_i32(GlobalMoveMap[1] ? GlobalMoveMap[1]->calcArea(row, col) : -1), mc2::fmt::as_i32(GlobalMoveMap[2] ? GlobalMoveMap[2]->calcArea(row, col) : -1), wPos.x, wPos.y, wPos.z, mc2::fmt::as_i32(PathManager->numPaths), mc2::fmt::as_i32(PathManager->peakPaths));
 	if (MPlayer) {
 		char mpStr[256];
 		if (MPlayer->isServer())
@@ -894,7 +894,7 @@ void MissionInterfaceManager::update (void)
 		int forceGroup = -1;
 		for ( int i = 0; i < 10; i++ )
 		{
-			if ( ((Mover*)target)->isInUnitGroup( i ) )
+			if ( (static_cast<Mover*>(target))->isInUnitGroup( i ) )
 			{
 				forceGroup = i;
 				break;
@@ -914,7 +914,7 @@ void MissionInterfaceManager::update (void)
 	int nonMoverCount = 0;
 	for (long i=0;i<pTeam->getRosterSize();i++)
 	{
-		Mover* pMover = (Mover*)pTeam->getMover( i );
+		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId()  )
 		{
 			if ( pMover->maxMoveSpeed )
@@ -977,7 +977,7 @@ void MissionInterfaceManager::update (void)
 		ZoneScopedN("MIF.DrawBars"); MifScope _mDB(MF_DRAWBARS);
 		for (int i = 0; i < Team::home->getRosterSize(); i++ )
 		{
-			Mover* pMover = (Mover*)Team::home->getMover( i );
+			Mover* pMover = static_cast<Mover*>(Team::home->getMover( i ));
 			MechWarrior* pilot = pMover->getPilot();
 			if ( pilot && pMover->getCommander()->getId() == Commander::home->getId())
 			{
@@ -1004,7 +1004,7 @@ void MissionInterfaceManager::update (void)
 	}
 
 	if (s_mfOn)
-		mfFrameEnd((unsigned long long)std::chrono::duration_cast<std::chrono::nanoseconds>(
+		mfFrameEnd(static_cast<unsigned long long>(std::chrono::duration_cast)<std::chrono::nanoseconds>(
 			std::chrono::steady_clock::now() - _mifT0).count());
 }
 
@@ -1111,7 +1111,7 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 			gos_GetViewport(&vMulX, &vMulY, &vAddX, &vAddY);
 			if (vMulX > 0.0f && vMulY > 0.0f &&
 			    mouseX >= 0 && mouseY >= 0 &&
-			    mouseX < (int)vMulX && mouseY < (int)vMulY) {
+			    mouseX < static_cast<int>(vMulX) && mouseY < static_cast<int>(vMulY)) {
 				RenderWorld::ScreenPickContext ctx;
 				ctx.mouseX = mouseX; ctx.mouseY = mouseY;
 				ctx.vMulX  = vMulX;  ctx.vMulY  = vMulY;
@@ -1126,7 +1126,7 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 					if (bm != nullptr) {
 						++s_mechHits;
 						if (s_hoverTrace) {
-							mc2::fmt::print_err("[GPU_PICK_HOVER v1] hit kind=Mech handle={:d} idx={:d} mech={:016X} screen=({:d},{:d}) gl=({:d},{:d})\n", mc2::fmt::as_u32(res.handle.bits), mc2::fmt::as_u32((unsigned)res.handle.index()), mc2::fmt::as_ptr((void*)bm), mc2::fmt::as_i32(mouseX), mc2::fmt::as_i32(mouseY), mc2::fmt::as_i32(ctx.glX), mc2::fmt::as_i32(ctx.glY));
+							mc2::fmt::print_err("[GPU_PICK_HOVER v1] hit kind=Mech handle={:d} idx={:d} mech={:016X} screen=({:d},{:d}) gl=({:d},{:d})\n", mc2::fmt::as_u32(res.handle.bits), mc2::fmt::as_u32(static_cast<unsigned>(res.handle.index())), mc2::fmt::as_ptr(static_cast<void*>(bm)), mc2::fmt::as_i32(mouseX), mc2::fmt::as_i32(mouseY), mc2::fmt::as_i32(ctx.glX), mc2::fmt::as_i32(ctx.glY));
 						}
 						s_hoverLastMouseX   = mouseX;
 						s_hoverLastMouseY   = mouseY;
@@ -1139,7 +1139,7 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 				} else if (res.isValid) {
 					++s_nonMech;
 					if (s_hoverTrace) {
-						mc2::fmt::print_err("[GPU_PICK_HOVER v1] non_mech kind={:d} screen=({:d},{:d}) falling through to CPU\n", mc2::fmt::as_i32((int)res.kind), mc2::fmt::as_i32(mouseX), mc2::fmt::as_i32(mouseY));
+						mc2::fmt::print_err("[GPU_PICK_HOVER v1] non_mech kind={:d} screen=({:d},{:d}) falling through to CPU\n", mc2::fmt::as_i32(static_cast<int>(res.kind)), mc2::fmt::as_i32(mouseX), mc2::fmt::as_i32(mouseY));
 					}
 				}
 			}
@@ -1171,7 +1171,7 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 		{
 			if ((target->getTeamId() != Team::home->getId()) && 
 				!target->isDisabled() && 
-				(((Mover *)target)->conStat < CONTACT_SENSOR_QUALITY_1))
+				((static_cast<Mover *>(target))->conStat < CONTACT_SENSOR_QUALITY_1))
 				target = nullptr;
 		}
 		
@@ -1236,13 +1236,13 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 			Stuff::Vector4D _ct_sp;
 			eye->projectForScreenXY( _ct_pos, _ct_sp );
 			bool  _ct_behind = (_ct_sp.w <= 1e-4f);
-			float _ct_dx = _ct_sp.x - (float)mouseX;
-			float _ct_dy = _ct_sp.y - (float)mouseY;
+			float _ct_dx = _ct_sp.x - static_cast<float>(mouseX);
+			float _ct_dy = _ct_sp.y - static_cast<float>(mouseY);
 			float _ct_distSq = _ct_dx*_ct_dx + _ct_dy*_ct_dy;
 			if ( _ct_behind || _ct_distSq > 90000.0f )   // behind camera, or >300px from cursor
 			{
 				char _ct_buf[320];
-				mc2::fmt::to_buf(_ct_buf, "{{\"site\":\"update_target\",\"mouse\":[{:d},{:d}],\"target_screen\":[{:.1f},{:.1f}],\"w\":{:.4f},\"behind\":{:d},\"dist_sq\":{:.0f},\"is_mover\":{:d},\"watch_id\":{:d}}}", mc2::fmt::as_i32((long)mouseX), mc2::fmt::as_i32((long)mouseY), _ct_sp.x, _ct_sp.y, _ct_sp.w, mc2::fmt::as_i32(_ct_behind?1:0), _ct_distSq, mc2::fmt::as_i32(target->isMover()?1:0), mc2::fmt::as_i32((int)s_targetWatchID));
+				mc2::fmt::to_buf(_ct_buf, "{{\"site\":\"update_target\",\"mouse\":[{:d},{:d}],\"target_screen\":[{:.1f},{:.1f}],\"w\":{:.4f},\"behind\":{:d},\"dist_sq\":{:.0f},\"is_mover\":{:d},\"watch_id\":{:d}}}", mc2::fmt::as_i32(static_cast<long>(mouseX)), mc2::fmt::as_i32(static_cast<long>(mouseY)), _ct_sp.x, _ct_sp.y, _ct_sp.w, mc2::fmt::as_i32(_ct_behind?1:0), _ct_distSq, mc2::fmt::as_i32(target->isMover()?1:0), mc2::fmt::as_i32(static_cast<int>(s_targetWatchID)));
 				mc2_diag::writeEvent("CURSOR_TARGET", 1, 0, _ct_buf);
 			}
 		}

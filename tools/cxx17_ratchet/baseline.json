@@ -147,7 +147,7 @@
    "LG06": 472,
    "LG07": 2,
    "LG08": 17,
-   "LG09": 977,
+   "LG09": 704,
    "LG10": 20,
    "LG11": 103,
    "LG12a": 100,
@@ -157,7 +157,7 @@
    "LG15": 0,
    "LG16": 6,
    "LG17": 48,
-   "LG18": 8,
+   "LG18": 10,
    "LG19": 0,
    "LG20": 1
   },
@@ -2257,11 +2257,11 @@
   "code/missionbriefingscreen.cpp": {
    "LG03": 5,
    "LG06": 4,
-   "LG09": 10,
    "LG11": 1,
    "LG12a": 2,
    "LG12b": 4,
-   "LG13": 3
+   "LG13": 3,
+   "LG18": 2
   },
   "code/missionbriefingscreen.h": {
    "LG06": 2,
@@ -2269,7 +2269,6 @@
   },
   "code/missiongui.cpp": {
    "LG06": 1,
-   "LG09": 1,
    "LG12a": 2,
    "LG12b": 2
   },
@@ -2280,47 +2279,22 @@
    "LG06": 2,
    "LG14": 1
   },
-  "code/missiongui_cursor.cpp": {
-   "LG09": 4
-  },
   "code/missiongui_debugkeys.cpp": {
    "LG05": 2,
-   "LG06": 1,
-   "LG09": 15
-  },
-  "code/missiongui_diag.cpp": {
-   "LG09": 16
-  },
-  "code/missiongui_input.cpp": {
-   "LG09": 4
-  },
-  "code/missiongui_orders.cpp": {
-   "LG09": 17
+   "LG06": 1
   },
   "code/missiongui_shared_internal.h": {
    "LG06": 1,
    "LG13": 4,
    "LG14": 1
   },
-  "code/missiongui_style.cpp": {
-   "LG09": 18
-  },
   "code/missiongui_support.cpp": {
-   "LG05": 2,
-   "LG09": 6
+   "LG05": 2
   },
   "code/missiongui_uicmd.cpp": {
-   "LG09": 32,
    "LG11": 2
   },
-  "code/missiongui_uicmd_fixture.cpp": {
-   "LG09": 17
-  },
-  "code/missiongui_uicmd_probe.cpp": {
-   "LG09": 13
-  },
   "code/missiongui_update.cpp": {
-   "LG09": 32,
    "LG11": 1,
    "LG13": 11,
    "LG20": 1
@@ -2333,7 +2307,6 @@
    "LG06": 1
   },
   "code/missionselectionscreen.cpp": {
-   "LG09": 1,
    "LG12b": 2
   },
   "code/modder_finding.h": {
@@ -2354,20 +2327,16 @@
    "LG17": 3
   },
   "code/mover_attack.cpp": {
-   "LG09": 10,
    "LG13": 5
   },
   "code/mover_chunks.cpp": {
-   "LG09": 4,
    "LG12b": 10
   },
   "code/mover_combat.cpp": {
    "LG06": 1,
-   "LG09": 12,
    "LG17": 3
   },
   "code/mover_diag.cpp": {
-   "LG09": 23,
    "LG11": 5
   },
   "code/mover_init.cpp": {
@@ -2375,22 +2344,16 @@
   },
   "code/mover_misc.cpp": {
    "LG05": 2,
-   "LG09": 12,
    "LG16": 2
-  },
-  "code/mover_path.cpp": {
-   "LG09": 9
   },
   "code/mpconnectiontype.cpp": {
    "LG05": 1,
-   "LG09": 1,
    "LG12b": 1,
    "LG13": 1
   },
   "code/mpgamebrowser.cpp": {
    "LG05": 2,
    "LG06": 2,
-   "LG09": 3,
    "LG12b": 3,
    "LG13": 1
   },
@@ -2400,7 +2363,6 @@
   "code/mphostgame.cpp": {
    "LG05": 1,
    "LG06": 1,
-   "LG09": 4,
    "LG13": 1
   },
   "code/mphostgame.h": {
@@ -2410,7 +2372,6 @@
    "LG03": 3,
    "LG05": 1,
    "LG06": 3,
-   "LG09": 9,
    "LG11": 4,
    "LG12b": 3,
    "LG13": 1,
@@ -4576,7 +4537,7 @@
    "LG20": 3
   }
  },
- "head": "1c43a4531",
+ "head": "a23d3430a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

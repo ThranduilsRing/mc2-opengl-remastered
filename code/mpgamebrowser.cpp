@@ -210,12 +210,12 @@ int	MPGameBrowser::handleMessage( unsigned long message, unsigned long who)
 				int index = gameList.GetSelectedItem();
 				if ( index != -1 )
 				{
-					aGameListItem* pItem = (aGameListItem*)gameList.GetItem( index );
+					aGameListItem* pItem = static_cast<aGameListItem*>(gameList.GetItem( index ));
 					if ( pItem )
 					{
 						if ( MPlayer )
 						{
-							long retVal = MPlayer->joinSession ( (MC2Session*)pItem->getSession(), &prefs.playerName[0][0] );
+							long retVal = MPlayer->joinSession ( static_cast<MC2Session*>(pItem->getSession()), &prefs.playerName[0][0] );
 							if ( retVal == MPLAYER_NO_ERR ) {
 								MPlayer->setMode(MULTIPLAYER_MODE_PARAMETERS);
 								status = NEXT;
@@ -369,7 +369,7 @@ void MPGameBrowser::update()
 			for ( int j = 0; j < gameList.GetItemCount(); j++ )
 			{
 
-				aGameListItem* pItem = (aGameListItem*)gameList.GetItem( j );
+				aGameListItem* pItem = static_cast<aGameListItem*>(gameList.GetItem( j ));
 				int res = S_stricmp( pItem->getText( sortOrder ), items[i].getText( sortOrder ) );
 				if ( (bSortUpward && res > 0) || (!bSortUpward && res < 0) )
 				{

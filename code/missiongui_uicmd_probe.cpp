@@ -60,7 +60,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 				const unsigned long cls = ap->getAppearanceClass();
 				const bool nullFeed = (cls == GENERIC_APPR_TYPE);
 				TG_LightPtr* srcList = nullFeed ? nullptr : eye->getWorldLights();
-				const unsigned long srcCount = nullFeed ? 0UL : (unsigned long)eye->getNumLights();
+				const unsigned long srcCount = nullFeed ? 0UL : static_cast<unsigned long>(eye->getNumLights());
 
 				static const char* kClsName[] = {
 					"building", "tree", "vehicle", "mech", "generic" };
@@ -88,7 +88,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 				long atOrigin = 0;
 				for (int li = 0; li < rows.numLights_ && li < MAX_HW_LIGHTS_IN_WORLD; ++li) {
 					const float* m = rows.lightToWorld[li];
-					const int ty = (int)rows.lightDir[li][3];
+					const int ty = static_cast<int>(rows.lightDir[li][3]);
 					const bool srcNonZero =
 						(m[3] != 0.0f || m[7] != 0.0f || m[11] != 0.0f);
 					const bool upZero =
@@ -111,13 +111,13 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 					mcTextureManager) {
 					TG_HWLightsData baked;
 					if (mcTextureManager->copyLightSlot(ldi, baked)) {
-						mc2::fmt::to_buf(b, "  baked: recipe={:d} lightDataIndex={:d} slots={:d} numLights={:d} firstType={:d} firstColor=({:.4f},{:.4f},{:.4f})\n", mc2::fmt::as_i32((int)recipe), mc2::fmt::as_u32(ldi), mc2::fmt::as_u32(mcTextureManager->getLightStructCount()), mc2::fmt::as_i32(baked.numLights_), mc2::fmt::as_i32(baked.numLights_ > 0 ? (int)baked.lightDir[0][3] : -1), baked.numLights_ > 0 ? baked.lightColor[0][0] : 0.0f, baked.numLights_ > 0 ? baked.lightColor[0][1] : 0.0f, baked.numLights_ > 0 ? baked.lightColor[0][2] : 0.0f);
+						mc2::fmt::to_buf(b, "  baked: recipe={:d} lightDataIndex={:d} slots={:d} numLights={:d} firstType={:d} firstColor=({:.4f},{:.4f},{:.4f})\n", mc2::fmt::as_i32(static_cast<int>(recipe)), mc2::fmt::as_u32(ldi), mc2::fmt::as_u32(mcTextureManager->getLightStructCount()), mc2::fmt::as_i32(baked.numLights_), mc2::fmt::as_i32(baked.numLights_ > 0 ? static_cast<int>(baked.lightDir[0][3]) : -1), baked.numLights_ > 0 ? baked.lightColor[0][0] : 0.0f, baked.numLights_ > 0 ? baked.lightColor[0][1] : 0.0f, baked.numLights_ > 0 ? baked.lightColor[0][2] : 0.0f);
 					} else {
-						mc2::fmt::to_buf(b, "  baked: recipe={:d} lightDataIndex={:d} UNREADABLE (index beyond allocated slot count {:d})\n", mc2::fmt::as_i32((int)recipe), mc2::fmt::as_u32(ldi), mc2::fmt::as_u32(mcTextureManager->getLightStructCount()));
+						mc2::fmt::to_buf(b, "  baked: recipe={:d} lightDataIndex={:d} UNREADABLE (index beyond allocated slot count {:d})\n", mc2::fmt::as_i32(static_cast<int>(recipe)), mc2::fmt::as_u32(ldi), mc2::fmt::as_u32(mcTextureManager->getLightStructCount()));
 					}
 					extra += b;
 				} else if (recipe >= 0) {
-					mc2::fmt::to_buf(b, "  baked: recipe={:d} lightDataIndex=<none> (registry off, or recipe tombstoned)\n", mc2::fmt::as_i32((int)recipe));
+					mc2::fmt::to_buf(b, "  baked: recipe={:d} lightDataIndex=<none> (registry off, or recipe tombstoned)\n", mc2::fmt::as_i32(static_cast<int>(recipe)));
 					extra += b;
 				} else {
 					extra += "  baked: <none> (object is not on the static recipe path)\n";
@@ -176,7 +176,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 									: (recipe >= 0)                  ? "dynamic_submit"
 									:                                  "legacy_cpu";
 
-				mc2::fmt::to_buf(b, "  path: verdict={} class=0x{:02x} type={} appearNum={:d} inView={:d} staticReg={:d} staticNow={:d} recipe={:d}\n", mc2::fmt::safe(verdict), mc2::fmt::as_u32(cls), mc2::fmt::safe((at && at->name) ? at->name : "?"), mc2::fmt::as_u32(at ? at->appearanceNum : 0UL), mc2::fmt::as_i32(ap->canBeSeen() ? 1 : 0), mc2::fmt::as_i32(reg ? 1 : 0), mc2::fmt::as_i32(statNow ? 1 : 0), mc2::fmt::as_i32((int)recipe));
+				mc2::fmt::to_buf(b, "  path: verdict={} class=0x{:02x} type={} appearNum={:d} inView={:d} staticReg={:d} staticNow={:d} recipe={:d}\n", mc2::fmt::safe(verdict), mc2::fmt::as_u32(cls), mc2::fmt::safe((at && at->name) ? at->name : "?"), mc2::fmt::as_u32(at ? at->appearanceNum : 0UL), mc2::fmt::as_i32(ap->canBeSeen() ? 1 : 0), mc2::fmt::as_i32(reg ? 1 : 0), mc2::fmt::as_i32(statNow ? 1 : 0), mc2::fmt::as_i32(static_cast<int>(recipe)));
 				extra += b;
 				mc2::fmt::to_buf(b, "  pose: obj=({:.3f},{:.3f},{:.3f}) screen=({:.1f},{:.1f},{:.3f},{:.3f})\n", p.x, p.y, p.z, sp.x, sp.y, sp.z, sp.w);
 				extra += b;
@@ -217,11 +217,11 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 					// hadCullRecord is the PREVIOUS frame's submit receipt
 					// (ExtractRenderSnapshot runs before flush), so a fresh
 					// 0 on frame N does not by itself mean "never drawn".
-					mc2::fmt::to_buf(b, "  submit: typeID={} flags=0x{:02x}(lightsOut={:d} window={:d} spotlight={:d}) cullRecordPrevFrame={}\n", mc2::fmt::safe(tidBuf), mc2::fmt::as_u32(okF ? flags : 0u), mc2::fmt::as_i32(okF ? (int)(flags & 1u) : -1), mc2::fmt::as_i32(okF ? (int)((flags >> 1) & 1u) : -1), mc2::fmt::as_i32(okF ? (int)((flags >> 2) & 1u) : -1), mc2::fmt::safe(okC ? (hadCull ? "1" : "0") : "?"));
+					mc2::fmt::to_buf(b, "  submit: typeID={} flags=0x{:02x}(lightsOut={:d} window={:d} spotlight={:d}) cullRecordPrevFrame={}\n", mc2::fmt::safe(tidBuf), mc2::fmt::as_u32(okF ? flags : 0u), mc2::fmt::as_i32(okF ? static_cast<int>((flags & 1u)) : -1), mc2::fmt::as_i32(okF ? static_cast<int>(((flags >> 1) & 1u)) : -1), mc2::fmt::as_i32(okF ? static_cast<int>(((flags >> 2) & 1u)) : -1), mc2::fmt::safe(okC ? (hadCull ? "1" : "0") : "?"));
 					extra += b;
 				}
 				result = "ok";
-				mc2::fmt::to_buf(b, "{} recipe={:d}", mc2::fmt::safe(verdict), mc2::fmt::as_i32((int)recipe));
+				mc2::fmt::to_buf(b, "{} recipe={:d}", mc2::fmt::safe(verdict), mc2::fmt::as_i32(static_cast<int>(recipe)));
 				note = b;
 			}
 		}
@@ -256,7 +256,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 				glm::vec3 p = obj->getPosition();
 				char b[448];
 
-				mc2::fmt::to_buf(b, "  feed: registryQueried={:d} recipe={:d} recipeResolved={:d} buildingFeed={:d} dynamicFeed={:d} modernShadowPath={:d}\n", mc2::fmt::as_i32(rep.registryQueried ? 1 : 0), mc2::fmt::as_i32((int)recipe), mc2::fmt::as_i32(rep.recipeResolved ? 1 : 0), mc2::fmt::as_i32(rep.buildingFeedTotal), mc2::fmt::as_i32(rep.dynamicFeedTotal), mc2::fmt::as_i32(rep.modernShadowPathActive ? 1 : 0));
+				mc2::fmt::to_buf(b, "  feed: registryQueried={:d} recipe={:d} recipeResolved={:d} buildingFeed={:d} dynamicFeed={:d} modernShadowPath={:d}\n", mc2::fmt::as_i32(rep.registryQueried ? 1 : 0), mc2::fmt::as_i32(static_cast<int>(recipe)), mc2::fmt::as_i32(rep.recipeResolved ? 1 : 0), mc2::fmt::as_i32(rep.buildingFeedTotal), mc2::fmt::as_i32(rep.dynamicFeedTotal), mc2::fmt::as_i32(rep.modernShadowPathActive ? 1 : 0));
 				extra += b;
 
 				// gos_GetStaticBuildingShadowCounts is documented zero
@@ -332,7 +332,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 				const float water = land->getWaterElevation();
 				const short ttype = land->getTerrainType(q);
 				glm::vec3 n = land->getTerrainNormal(q);
-				mc2::fmt::to_buf(b, "  at=({:.3f},{:.3f}) terrainZ={:.4f} waterZ={:.4f} terrainType={:d} normal=({:.4f},{:.4f},{:.4f}) terrainLight={:.4f}\n", q.x, q.y, terr, water, mc2::fmt::as_i32((int)ttype), n.x, n.y, n.z, land->getTerrainLight(q));
+				mc2::fmt::to_buf(b, "  at=({:.3f},{:.3f}) terrainZ={:.4f} waterZ={:.4f} terrainType={:d} normal=({:.4f},{:.4f},{:.4f}) terrainLight={:.4f}\n", q.x, q.y, terr, water, mc2::fmt::as_i32(static_cast<int>(ttype)), n.x, n.y, n.z, land->getTerrainLight(q));
 				extra += b;
 				if (obj) {
 					mc2::fmt::to_buf(b, "  obj: id={:d} z={:.4f} objAboveGround={:.4f}\n", mc2::fmt::as_i32(obj->getPartId()), q.z, q.z - terr);
@@ -344,7 +344,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 						GameAdapters::StaticProp::recipeModelMatrix(recipe, mm)) {
 						glm::vec3 rq; rq.x = mm[3]; rq.y = mm[7]; rq.z = mm[11];
 						const float rterr = land->getTerrainElevation(rq);
-						mc2::fmt::to_buf(b, "  recipe: idx={:d} baked=({:.3f},{:.3f},{:.3f}) recipeTerrainZ={:.4f} recipeAboveGround={:.4f} recipeVsObj={:.4f}\n", mc2::fmt::as_i32((int)recipe), mm[3], mm[7], mm[11], rterr, mm[11] - rterr, mm[11] - q.z);
+						mc2::fmt::to_buf(b, "  recipe: idx={:d} baked=({:.3f},{:.3f},{:.3f}) recipeTerrainZ={:.4f} recipeAboveGround={:.4f} recipeVsObj={:.4f}\n", mc2::fmt::as_i32(static_cast<int>(recipe)), mm[3], mm[7], mm[11], rterr, mm[11] - rterr, mm[11] - q.z);
 						extra += b;
 					}
 				}
@@ -426,8 +426,8 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 						sres.x > 0.0f && sres.y > 0.0f) {
 						const float nx = screen.x / sres.x;
 						const float ny = screen.y / sres.y;
-						wantPx = (int)(nx * (float)fw);
-						wantPy = fh - 1 - (int)(ny * (float)fh);
+						wantPx = static_cast<int>((nx * static_cast<float>(fw)));
+						wantPy = fh - 1 - static_cast<int>((ny * static_cast<float>(fh)));
 						haveTarget = true;
 					} else {
 						result = "blocked";
@@ -450,11 +450,11 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 		if (haveTarget) {
 			gos_render_probe::PixelProbe pp;
 			gos_render_probe::readScenePixel(wantPx, wantPy, pp);
-			mc2::fmt::to_buf(b, "  fbo={:d}x{:d} texelYUp=({:d},{:d}) inBounds={:d} rgba=({:d},{:d},{:d},{:d}) luma={:.3f} srcFrame={:d}\n", mc2::fmt::as_i32(pp.fboWidth), mc2::fmt::as_i32(pp.fboHeight), mc2::fmt::as_i32(pp.px), mc2::fmt::as_i32(pp.py), mc2::fmt::as_i32(pp.inBounds ? 1 : 0), mc2::fmt::as_u32((unsigned)pp.rgba[0]), mc2::fmt::as_u32((unsigned)pp.rgba[1]), mc2::fmt::as_u32((unsigned)pp.rgba[2]), mc2::fmt::as_u32((unsigned)pp.rgba[3]), (pp.rgba[0] + pp.rgba[1] + pp.rgba[2]) / 3.0, mc2::fmt::as_u32(pp.srcFrameHint));
+			mc2::fmt::to_buf(b, "  fbo={:d}x{:d} texelYUp=({:d},{:d}) inBounds={:d} rgba=({:d},{:d},{:d},{:d}) luma={:.3f} srcFrame={:d}\n", mc2::fmt::as_i32(pp.fboWidth), mc2::fmt::as_i32(pp.fboHeight), mc2::fmt::as_i32(pp.px), mc2::fmt::as_i32(pp.py), mc2::fmt::as_i32(pp.inBounds ? 1 : 0), mc2::fmt::as_u32(static_cast<unsigned>(pp.rgba[0])), mc2::fmt::as_u32(static_cast<unsigned>(pp.rgba[1])), mc2::fmt::as_u32(static_cast<unsigned>(pp.rgba[2])), mc2::fmt::as_u32(static_cast<unsigned>(pp.rgba[3])), (pp.rgba[0] + pp.rgba[1] + pp.rgba[2]) / 3.0, mc2::fmt::as_u32(pp.srcFrameHint));
 			extra += b;
 			if (pp.inBounds) {
 				result = "ok";
-				mc2::fmt::to_buf(b, "rgb={:d},{:d},{:d} srcFrame={:d}", mc2::fmt::as_u32((unsigned)pp.rgba[0]), mc2::fmt::as_u32((unsigned)pp.rgba[1]), mc2::fmt::as_u32((unsigned)pp.rgba[2]), mc2::fmt::as_u32(pp.srcFrameHint));
+				mc2::fmt::to_buf(b, "rgb={:d},{:d},{:d} srcFrame={:d}", mc2::fmt::as_u32(static_cast<unsigned>(pp.rgba[0])), mc2::fmt::as_u32(static_cast<unsigned>(pp.rgba[1])), mc2::fmt::as_u32(static_cast<unsigned>(pp.rgba[2])), mc2::fmt::as_u32(pp.srcFrameHint));
 				note = b;
 			} else {
 				result = "blocked";

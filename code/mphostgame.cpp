@@ -63,7 +63,7 @@ void MPHostGame::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe((const char*)path));
+		mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)));
 		Assert( 0, 0, error );
 		return;		
 	}
@@ -286,17 +286,17 @@ void aStyle5TextListItem::render()
 	float color;
 	if (aListItem::SELECTED == getState())
 	{
-		color = 0.33 * ((unsigned long)normalColor) + 0.67 * ((unsigned long)0xffffffff);
+		color = 0.33 * (static_cast<unsigned long>(normalColor)) + 0.67 * (static_cast<unsigned long>(0xffffffff));
 	}
 	else if (aListItem::HIGHLITE == getState())
 	{
-		color = 0.67 * ((unsigned long)normalColor) + 0.33 * ((unsigned long)0xffffffff);
+		color = 0.67 * (static_cast<unsigned long>(normalColor)) + 0.33 * (static_cast<unsigned long>(0xffffffff));
 	}
 	else
 	{
 		color = normalColor;
 	}
-	aTextListItem::setColor((unsigned long)color);
+	aTextListItem::setColor(static_cast<unsigned long>(color));
 
 	aTextListItem::render();
 }
