@@ -7,6 +7,7 @@
 #include "mech.h"
 #include "movemgr.h"
 #include "team.h"
+#include "Stuff/stuffheaders.hpp"
 
 #include <cstdlib>
 #include <algorithm>
@@ -971,4 +972,34 @@ TEST_CASE("AuthoredOrderProduction/parsed patrol and traverse reach real general
             }
         }
     }
+}
+
+TEST_CASE("StringOwnership/copies detach and outlive their source") {
+    Stuff::MString survivor;
+    {
+        Stuff::MString source("AbCd");
+        survivor = source;
+        source.ToUpper();
+        CHECK(std::strcmp(static_cast<const char*>(source), "ABCD") == 0);
+        CHECK(std::strcmp(static_cast<const char*>(survivor), "AbCd") == 0);
+    }
+    survivor.ToLower();
+    CHECK(std::strcmp(static_cast<const char*>(survivor), "abcd") == 0);
+    survivor = "replacement";
+    CHECK(std::strcmp(static_cast<const char*>(survivor), "replacement") == 0);
+}
+
+TEST_CASE("StringOwnership/serialized length and payload stay byte identical") {
+    std::array<unsigned char, 32> bytes{};
+    Stuff::MemoryStream stream(bytes.data(), static_cast<DWORD>(bytes.size()));
+    Stuff::MString source("AbCd");
+    MemoryStreamIO::Write(&stream, &source);
+    const std::array<unsigned char, 9> expected{4, 0, 0, 0, 'A', 'b', 'C', 'd', 0};
+    CHECK(std::equal(expected.begin(), expected.end(), bytes.begin()));
+    CHECK(stream.GetPointer() == bytes.data() + expected.size());
+    stream.Rewind();
+    Stuff::MString loaded("old value");
+    MemoryStreamIO::Read(&stream, &loaded);
+    CHECK(std::strcmp(static_cast<const char*>(loaded), "AbCd") == 0);
+    CHECK(stream.GetPointer() == bytes.data() + expected.size());
 }

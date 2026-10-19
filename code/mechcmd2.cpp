@@ -103,7 +103,7 @@ bool EULAShown = false;
 bool gNoDialogs = false;
 
 //DEBUG
-#define MAX_SHAPES	0
+constexpr auto MAX_SHAPES = 0;
 TG_MultiShape 	testShape[36];
 TG_AnimateShape	testAnim[36];
 
@@ -194,7 +194,7 @@ DWORD startTime;
 DWORD endTime;
 
 //---------------------------------------------------------------------------
-#define GAME_REG_KEY	 	"Software\\Microsoft\\Microsoft Games\\MechCommander2\\1.0"
+constexpr char GAME_REG_KEY[] = "Software\\Microsoft\\Microsoft Games\\MechCommander2\\1.0";
 using EBUPROC = DWORD (*) (LPCTSTR lpRegKeyLocation, LPCTSTR lpEULAFileName, LPCSTR lpWarrantyFileName, BOOL fCheckForFirstRun);
 
 bool FirstRunEula(void)

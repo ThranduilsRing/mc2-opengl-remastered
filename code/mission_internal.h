@@ -156,7 +156,6 @@
 
 inline constexpr int MAX_DISABLE_AT_START = 100;
 
-#define DEFAULT_SKY			1
 
 extern void visualTuning_applyProfile(const char*);
 extern void terrainMaterials_apply(const char*);

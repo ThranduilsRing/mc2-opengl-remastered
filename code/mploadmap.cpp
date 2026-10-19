@@ -21,7 +21,7 @@ MPLoadMap.cpp			: Implementation of the MPLoadMap component.
 #include"gamesound.h"
 #endif
 
-#define CHECK_BUTTON 200
+constexpr auto CHECK_BUTTON = 200;
 
 static int connectionType = 0;
 

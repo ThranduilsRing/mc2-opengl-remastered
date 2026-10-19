@@ -11,6 +11,9 @@ void Mission::diagnoseAuthoredRoute(std::uint32_t original, std::uint32_t select
     mc2::fmt::print_err("[AUTHORED_ORDER v1] level={} {}\n", status == "Suppressed" ? "info" : "error", diagnostic);
 }
 
+constexpr auto MAX_SQUADS = 256;
+constexpr auto MAX_ALTERNATIVES = 15;
+
 // Read the parts block header.
 void Mission::initPartsHeader(MissionInitFrame& f) {
 	auto& result = f.result;
@@ -39,8 +42,6 @@ void Mission::initPartsHeader(MissionInitFrame& f) {
 	// parts. AI routines, Brain keywords, etc. use PART ID 0 as an "object not found"
 	// error code. DO NOT USE PART 0!!!!!!! Start with Part 1...
 
-#define MAX_SQUADS			256
-#define	MAX_ALTERNATIVES	15
 #define	USE_ALTERNATES
 
 	loadProgress = 43.5f;

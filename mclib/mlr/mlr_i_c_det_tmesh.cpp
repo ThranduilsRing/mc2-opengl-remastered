@@ -3,6 +3,7 @@
 //===========================================================================//
 
 #include"mlrheaders.hpp"
+#include <memory>
 
 #if defined(TRACE_ENABLED) && defined(MLR_TRACE)
 	BitTrace *MLR_I_C_DeT_TMesh_Clip;
@@ -416,22 +417,28 @@ MLRShape*
 		nrTri = Limits::Max_Number_Vertices_Per_Mesh/3;
 	}
 
-	glm::vec3 *coords = new glm::vec3 [nrTri*3];
+	auto coordsOwner = std::make_unique_for_overwrite<glm::vec3[]>(nrTri*3);
+	glm::vec3* coords = coordsOwner.get();
 	Register_Pointer(coords);
 	
-	glm::vec3 *collapsedCoords = nullptr;
+	std::unique_ptr<glm::vec3[]> collapsedCoordsOwner;
+	glm::vec3* collapsedCoords = nullptr;
 	if(icoInfo.indexed==true)
 	{
-		collapsedCoords = new glm::vec3 [nrTri*3];
+		collapsedCoordsOwner = std::make_unique_for_overwrite<glm::vec3[]>(nrTri*3);
+		collapsedCoords = collapsedCoordsOwner.get();
 		Register_Pointer(collapsedCoords);
 	}
 
-	unsigned short	*index = new unsigned short [nrTri*3];
+	auto indexOwner = std::make_unique_for_overwrite<unsigned short[]>(nrTri*3);
+	unsigned short* index = indexOwner.get();
 	Register_Pointer(index);
-	Vector2DScalar *texCoords = new Vector2DScalar[nrTri*3];
+	auto texCoordsOwner = std::make_unique_for_overwrite<Vector2DScalar[]>(nrTri*3);
+	Vector2DScalar* texCoords = texCoordsOwner.get();
 	Register_Pointer(texCoords);
 
-	RGBAColor *colors = new RGBAColor[nrTri*3];
+	auto colorsOwner = std::make_unique_for_overwrite<RGBAColor[]>(nrTri*3);
+	RGBAColor* colors = colorsOwner.get();
 	Register_Pointer(colors);
 
 	int uniquePoints = 0;
@@ -583,22 +590,22 @@ MLRShape*
 	}
 
 	Unregister_Pointer(colors);
-	delete [] colors;
+	colorsOwner.reset();
 
 	Unregister_Pointer(texCoords);
-	delete [] texCoords;
+	texCoordsOwner.reset();
 
 	Unregister_Pointer(index);
-	delete [] index;
+	indexOwner.reset();
 
 	if(icoInfo.indexed==true)
 	{
 		Unregister_Pointer(collapsedCoords);
-		delete [] collapsedCoords;
+		collapsedCoordsOwner.reset();
 	}
 	
 	Unregister_Pointer(coords);
-	delete [] coords;
+	coordsOwner.reset();
 
 	gos_PopCurrentHeap();
 	return ret;

@@ -1,3 +1,4 @@
+#include <memory>
 #include "gameos.hpp"
 #include "../../RenderCore/TextureService.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
@@ -912,7 +913,8 @@ int main(int argc, char** argv)
         cmdline_len += strlen(argv[i]);
         cmdline_len += 1; // ' '
     }
-    char* cmdline = new char[cmdline_len + 1];
+    auto cmdlineOwner = std::make_unique_for_overwrite<char[]>(cmdline_len + 1);
+    char* cmdline = cmdlineOwner.get();
     size_t offset = 0;
     for(int i=0;i<argc;++i) {
         size_t arglen = strlen(argv[i]);
@@ -935,7 +937,7 @@ int main(int argc, char** argv)
     initRenderOptionsFromConfig();
     initResolutionFromConfig();
 
-    delete[] cmdline;
+    cmdlineOwner.reset();
     cmdline = NULL;
 
     // WINDOWED-8006-1: explicit windowed-mode override (launcher "Windowed

@@ -24,9 +24,9 @@
 #include"simplecamera.h"
 #endif
 
-#define MN_MSG_PLAY 80
-#define MN_MSG_STOP 82
-#define MN_MSG_PAUSE 81
+inline constexpr auto MN_MSG_PLAY = 80;
+inline constexpr auto MN_MSG_STOP = 82;
+inline constexpr auto MN_MSG_PAUSE = 81;
 
 
 //*************************************************************************************************

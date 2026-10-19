@@ -11,6 +11,8 @@
 #ifndef BLDNG_H
 #define BLDNG_H
 
+#include "object_shared_constants.h"
+
 #ifndef DBLDNG_H
 #include"dbldng.h"
 #endif
@@ -33,10 +35,6 @@
 
 //---------------------------------------------------------------------------
 
-#define NO_RAM_FOR_BUILDING				0xDCDC0006
-#define NO_APPEARANCE_TYPE_FOR_BLD		0xDCDC0007
-#define NO_APPEARANCE_FOR_BLD			0xDCDC0008
-#define APPEARANCE_NOT_VFX_APPEAR		0xDCDC0009
 
 inline constexpr int MAX_PRISONERS = 4;
 

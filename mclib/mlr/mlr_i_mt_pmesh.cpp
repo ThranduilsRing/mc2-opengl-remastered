@@ -3,6 +3,7 @@
 //===========================================================================//
 
 #include"mlrheaders.hpp"
+#include <memory>
 
 #if defined(TRACE_ENABLED) && defined(MLR_TRACE)
 	BitTrace *MLR_I_MT_PMesh_Clip;
@@ -380,7 +381,8 @@ MLRShape*
 		nrTri = Limits::Max_Number_Vertices_Per_Mesh/3;
 	}
 
-	unsigned char *lengths = new unsigned char [nrTri];
+	auto lengthsOwner = std::make_unique_for_overwrite<unsigned char[]>(nrTri);
+	unsigned char* lengths = lengthsOwner.get();
 	Register_Pointer(lengths);
 
 	for(i=0;i<nrTri;i++)
@@ -388,24 +390,28 @@ MLRShape*
 		lengths[i] = 3;
 	}
 
-	glm::vec3 *coords = new glm::vec3 [nrTri*3];
+	auto coordsOwner = std::make_unique_for_overwrite<glm::vec3[]>(nrTri*3);
+	glm::vec3* coords = coordsOwner.get();
 	Register_Pointer(coords);
 	
-	glm::vec3 *collapsedCoords = nullptr;
+	std::unique_ptr<glm::vec3[]> collapsedCoordsOwner;
+	glm::vec3* collapsedCoords = nullptr;
 	if(icoInfo.indexed==true)
 	{
-		collapsedCoords = new glm::vec3 [nrTri*3];
+		collapsedCoordsOwner = std::make_unique_for_overwrite<glm::vec3[]>(nrTri*3);
+		collapsedCoords = collapsedCoordsOwner.get();
 		Register_Pointer(collapsedCoords);
 	}
 
-	DynamicArrayOf<Vector2DScalar *> texCoords(nrOfPasses);
+	auto texCoords = std::make_unique<std::unique_ptr<Vector2DScalar[]>[]>(nrOfPasses);
 	for(i=0;i<nrOfPasses;i++)
 	{
-		texCoords[i] = new Vector2DScalar[nrTri*3];
-		Register_Pointer(texCoords[i]);
+		texCoords[i] = std::make_unique_for_overwrite<Vector2DScalar[]>(nrTri*3);
+		Register_Pointer(texCoords[i].get());
 	}
 
-	unsigned short	*index = new unsigned short [nrTri*3];
+	auto indexOwner = std::make_unique_for_overwrite<unsigned short[]>(nrTri*3);
+	unsigned short* index = indexOwner.get();
 	Register_Pointer(index);
 
 	int uniquePoints = 0;
@@ -498,7 +504,7 @@ MLRShape*
 						);
 				}
 			}
-			mesh->SetTexCoordData(texCoords[j], uniquePoints, j);
+			mesh->SetTexCoordData(texCoords[j].get(), uniquePoints, j);
 		}
 
 		for(i=0;i<nrOfPasses;i++)
@@ -512,24 +518,24 @@ MLRShape*
 
 	for(i=0;i<nrOfPasses;i++)
 	{
-		Unregister_Pointer(texCoords[i]);
-		delete [] texCoords[i];
+		Unregister_Pointer(texCoords[i].get());
+		texCoords[i].reset();
 	}
 
 	Unregister_Pointer(index);
-	delete [] index;
+	indexOwner.reset();
 
 	if(icoInfo.indexed==true)
 	{
 		Unregister_Pointer(collapsedCoords);
-		delete [] collapsedCoords;
+		collapsedCoordsOwner.reset();
 	}
 	
 	Unregister_Pointer(coords);
-	delete [] coords;
+	coordsOwner.reset();
 	
 	Unregister_Pointer(lengths);
-	delete [] lengths;
+	lengthsOwner.reset();
 
 	gos_PopCurrentHeap();
 	return ret;

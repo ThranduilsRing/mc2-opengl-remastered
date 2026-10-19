@@ -10,7 +10,7 @@
 
 
 constexpr double TURN_THRESHOLD = 20.0;
-#define BLIP_FRAME_RATE		0.067
+constexpr auto BLIP_FRAME_RATE = 0.067;
 
 long DefaultPilotId	= 653;
 char marineProfileName[80] = "PEM00001";

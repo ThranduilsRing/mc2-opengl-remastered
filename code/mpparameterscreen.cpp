@@ -32,7 +32,7 @@ constexpr int MP_PLAYER_PREFS = 120;
 constexpr int MAP_INFO = 121;
 
 
-#define CHECK_BUTTON 200
+constexpr auto CHECK_BUTTON = 200;
 constexpr int MP_INCREMENT_DROPWEIGHT = 198;
 constexpr int MP_DECREMENT_DROPWEIGHT = 199;
 constexpr int MP_INCREMENT_CBILLS = 200;

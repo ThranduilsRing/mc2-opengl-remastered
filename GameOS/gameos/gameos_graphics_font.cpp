@@ -5,6 +5,7 @@
 // functions defined in the main TU (gosRendererAddFontBmpTexture /
 // gosRendererDeleteTexture) so the gosRenderer class stays private there.
 
+#include <memory>
 #include "gameos_graphics_internal.h"
 
 #include "platform_str.h"
@@ -78,7 +79,8 @@ gosFont* gosFont::load(const char* fontFile) {
     {
         const char* d3f_ext = ".d3f";
         const size_t d3fNameSize = strlen(fname) + 1 + strlen(dir) + strlen(d3f_ext) + 1;
-        char* d3fName = new char[d3fNameSize];
+        auto d3fNameOwner = std::make_unique_for_overwrite<char[]>(d3fNameSize);
+        char* d3fName = d3fNameOwner.get();
         memset(d3fName, 0, d3fNameSize);
         uint32_t d3f_len = S_snprintf(d3fName, d3fNameSize, "%s/%s%s", dir, fname, d3f_ext);
         gosASSERT(d3f_len <= d3fNameSize - 1);
@@ -100,7 +102,8 @@ gosFont* gosFont::load(const char* fontFile) {
             {
                 const char* glyph_ext = ".glyph";
                 const size_t sidecarNameSize = strlen(fname) + 1 + strlen(dir) + strlen(glyph_ext) + 1;
-                char* sidecarName = new char[sidecarNameSize];
+                auto sidecarNameOwner = std::make_unique_for_overwrite<char[]>(sidecarNameSize);
+                char* sidecarName = sidecarNameOwner.get();
                 memset(sidecarName, 0, sidecarNameSize);
                 S_snprintf(sidecarName, sidecarNameSize, "%s/%s%s", dir, fname, glyph_ext);
 
@@ -113,7 +116,7 @@ gosFont* gosFont::load(const char* fontFile) {
                     }
                     fclose(sidecar);
                 }
-                delete[] sidecarName;
+                sidecarNameOwner.reset();
             }
 
             DWORD tex_id = gos_NewEmptyTexture(gos_Texture_Alpha, d3fName,
@@ -123,7 +126,8 @@ gosFont* gosFont::load(const char* fontFile) {
                 // gos_text shader's .xxxx sample. Other channels also
                 // populated so any future shader change still gets sane data.
                 const size_t pixel_count = static_cast<size_t>(atlas.width) * static_cast<size_t>(atlas.height);
-                DWORD* rgba = new DWORD[pixel_count];
+                auto rgbaOwner = std::make_unique_for_overwrite<DWORD[]>(pixel_count);
+                DWORD* rgba = rgbaOwner.get();
                 for(size_t i = 0; i < pixel_count; ++i) {
                     uint32_t a = atlas.pixels[i];
                     rgba[i] = (a) | (a << 8) | (a << 16) | (a << 24);
@@ -149,7 +153,7 @@ gosFont* gosFont::load(const char* fontFile) {
                     tex->setRgbaMirror(atlas.width, atlas.height, TF_RGBA8, rgba);
                     tex->markContentMutated();
                 }
-                delete[] rgba;
+                rgbaOwner.reset();
 
                 gosFont* font = new gosFont();
                 font->gi_ = gi;
@@ -159,7 +163,7 @@ gosFont* gosFont::load(const char* fontFile) {
                 strcpy(font->font_id_, fontFile);
                 font->tex_id_ = tex_id;
 
-                delete[] d3fName;
+                d3fNameOwner.reset();
                 return font;
             }
             // Texture allocation failed — release everything
@@ -172,7 +176,7 @@ gosFont* gosFont::load(const char* fontFile) {
             delete[] gi.ink_valid_;
             delete[] atlas.pixels;
         }
-        delete[] d3fName;
+        d3fNameOwner.reset();
     }
 
     const char* tex_ext = ".bmp";

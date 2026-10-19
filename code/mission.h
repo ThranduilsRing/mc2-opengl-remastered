@@ -173,12 +173,13 @@ private:
 
 //----------------------------------------------------------------------------------
 // Macro Definitions
-#define mis_PLAYING						0
+inline constexpr auto mis_PLAYING = 0;
 inline constexpr int mis_PLAYER_LOST_BIG = 1;
 inline constexpr int mis_PLAYER_LOST_SMALL = 2;
 inline constexpr int mis_PLAYER_DRAW = 3;
 inline constexpr int mis_PLAYER_WIN_SMALL = 4;
-#define mis_PLAYER_WIN_BIG	 			5
+inline constexpr auto mis_PLAYER_WIN_BIG = 5;
+inline constexpr auto DEFAULT_SKY = 1;
 
 extern unsigned long scenarioResult;
 
@@ -237,28 +238,28 @@ inline constexpr int BonusGoal = 3;
 inline constexpr int InvalidGoal = 9999;
 
 using ObjectiveStatus = unsigned long;
-#define					Incomplete		0
-#define					Success			1
-#define					Failed			2
+inline constexpr auto Incomplete = 0;
+inline constexpr auto Success = 1;
+inline constexpr auto Failed = 2;
 inline constexpr int InvalidStatus = 9999;
 
-#define					SCENARIO_TIMER_1		7
-#define					SCENARIO_TIMER_2		(SCENARIO_TIMER_1 + 1)
-#define					SCENARIO_TIMER_3		(SCENARIO_TIMER_1 + 2)
-#define					SCENARIO_TIMER_4		(SCENARIO_TIMER_1 + 3)
-#define					SCENARIO_TIMER_5		(SCENARIO_TIMER_1 + 4)
-#define					SCENARIO_TIMER_6		(SCENARIO_TIMER_1 + 5)
-#define					SCENARIO_TIMER_7		(SCENARIO_TIMER_1 + 6)
-#define					SCENARIO_TIMER_8		(SCENARIO_TIMER_1 + 7)
+inline constexpr auto SCENARIO_TIMER_1 = 7;
+inline constexpr auto SCENARIO_TIMER_2 = (SCENARIO_TIMER_1 + 1);
+inline constexpr auto SCENARIO_TIMER_3 = (SCENARIO_TIMER_1 + 2);
+inline constexpr auto SCENARIO_TIMER_4 = (SCENARIO_TIMER_1 + 3);
+inline constexpr auto SCENARIO_TIMER_5 = (SCENARIO_TIMER_1 + 4);
+inline constexpr auto SCENARIO_TIMER_6 = (SCENARIO_TIMER_1 + 5);
+inline constexpr auto SCENARIO_TIMER_7 = (SCENARIO_TIMER_1 + 6);
+inline constexpr auto SCENARIO_TIMER_8 = (SCENARIO_TIMER_1 + 7);
 
-#define					OBJECTIVE_1_TIMER		24
-#define					OBJECTIVE_2_TIMER		(OBJECTIVE_1_TIMER + 1)
-#define					OBJECTIVE_3_TIMER		(OBJECTIVE_1_TIMER + 2)
-#define					OBJECTIVE_4_TIMER		(OBJECTIVE_1_TIMER + 3)
-#define					OBJECTIVE_5_TIMER		(OBJECTIVE_1_TIMER + 4)
-#define					OBJECTIVE_6_TIMER		(OBJECTIVE_1_TIMER + 5)
-#define					OBJECTIVE_7_TIMER		(OBJECTIVE_1_TIMER + 6)
-#define					OBJECTIVE_8_TIMER		(OBJECTIVE_1_TIMER + 7)
+inline constexpr auto OBJECTIVE_1_TIMER = 24;
+inline constexpr auto OBJECTIVE_2_TIMER = (OBJECTIVE_1_TIMER + 1);
+inline constexpr auto OBJECTIVE_3_TIMER = (OBJECTIVE_1_TIMER + 2);
+inline constexpr auto OBJECTIVE_4_TIMER = (OBJECTIVE_1_TIMER + 3);
+inline constexpr auto OBJECTIVE_5_TIMER = (OBJECTIVE_1_TIMER + 4);
+inline constexpr auto OBJECTIVE_6_TIMER = (OBJECTIVE_1_TIMER + 5);
+inline constexpr auto OBJECTIVE_7_TIMER = (OBJECTIVE_1_TIMER + 6);
+inline constexpr auto OBJECTIVE_8_TIMER = (OBJECTIVE_1_TIMER + 7);
 
 inline constexpr int MAX_OBJECTIVES = 50;
 

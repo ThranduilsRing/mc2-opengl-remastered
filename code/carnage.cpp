@@ -58,7 +58,7 @@
 
 //---------------------------------------------------------------------------
 
-#define BLIP_FRAME_RATE			0.067
+constexpr auto BLIP_FRAME_RATE = 0.067;
 constexpr double EXPLOSION_TIME = 0.5;
 constexpr int EXPLOSION_DEPTH_FIXUP = -150;
 

@@ -24,9 +24,6 @@ constexpr int BUTTON_TEXT = 34;
 constexpr int VIDEO_SCREEN = 33;
 constexpr int RP_INDEX = 1;
 
-#define MN_MSG_PLAY 80
-#define MN_MSG_STOP 82
-#define MN_MSG_PAUSE 81
 
 namespace {
 // Legacy briefing strings embed font-control backslashes and use '/' as a hard line

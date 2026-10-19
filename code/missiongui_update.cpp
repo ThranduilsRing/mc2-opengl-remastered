@@ -501,17 +501,17 @@ void MissionInterfaceManager::update (void)
 	bool ctrlDn = userInput->ctrl();
 
 #ifndef FINAL
-	#define MC2_DAMAGE_HEAD			0
-	#define MC2_DAMAGE_LARM			1
-	#define MC2_DAMAGE_RARM			2
-	#define MC2_DAMAGE_LTORSO		3
-	#define MC2_DAMAGE_RTORSO		4
-	#define MC2_DAMAGE_CTORSO		5
-	#define MC2_DAMAGE_LLEG			6
-	#define MC2_DAMAGE_RLEG			7
-	#define MC2_DAMAGE_RLTORSO		8
-	#define MC2_DAMAGE_RRTORSO		9	
-	#define MC2_DAMAGE_RCTORSO		10	
+	constexpr auto MC2_DAMAGE_HEAD = 0;
+	constexpr auto MC2_DAMAGE_LARM = 1;
+	constexpr auto MC2_DAMAGE_RARM = 2;
+	constexpr auto MC2_DAMAGE_LTORSO = 3;
+	constexpr auto MC2_DAMAGE_RTORSO = 4;
+	constexpr auto MC2_DAMAGE_CTORSO = 5;
+	constexpr auto MC2_DAMAGE_LLEG = 6;
+	constexpr auto MC2_DAMAGE_RLEG = 7;
+	constexpr auto MC2_DAMAGE_RLTORSO = 8;
+	constexpr auto MC2_DAMAGE_RRTORSO = 9;
+	constexpr auto MC2_DAMAGE_RCTORSO = 10;
 			
 	DWORD CheatCommand = 0xffffffff;
 	if (userInput->getKeyDown(KEY_1) && shiftDn && ctrlDn && altDn)

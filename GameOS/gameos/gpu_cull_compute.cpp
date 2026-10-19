@@ -12,6 +12,7 @@
 // Default ON. Killswitch: MC2_GPU_CULL=0 disables compute cull.
 // Opt-out:    MC2_GPU_CULL=0 and/or MC2_GPU_CULL_SUBSTRATE=0
 
+#include <memory>
 #include "gpu_cull_compute.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gpu_cull_substrate.h"
@@ -135,20 +136,21 @@ static float compute_getFrustumDilation() {
 // Helpers: load + compile a compute shader from file
 // ---------------------------------------------------------------------------
 
-static char* load_text_file(const char* fname) {
+static std::unique_ptr<char[]> load_text_file(const char* fname) {
     FILE* f = fopen(fname, "rb");
     if (!f) return nullptr;
     fseek(f, 0, SEEK_END);
     long sz = ftell(f);
     fseek(f, 0, SEEK_SET);
     if (sz <= 0) { fclose(f); return nullptr; }
-    char* buf = new char[sz + 1];
+    auto bufOwner = std::make_unique_for_overwrite<char[]>(sz + 1);
+    char* buf = bufOwner.get();
     if (static_cast<long>(fread(buf, 1, sz, f)) != sz) {
-        fclose(f); delete[] buf; return nullptr;
+        fclose(f); bufOwner.reset(); return nullptr;
     }
     buf[sz] = '\0';
     fclose(f);
-    return buf;
+    return bufOwner;
 }
 
 static GLuint compile_compute_shader(const char** strings, int count) {
@@ -164,11 +166,12 @@ static GLuint compile_compute_shader(const char** strings, int count) {
         GLint logLen = 0;
         glGetShaderiv(sh, GL_INFO_LOG_LENGTH, &logLen);
         if (logLen > 0) {
-            char* log = new char[logLen];
+            auto logOwner = std::make_unique_for_overwrite<char[]>(logLen);
+            char* log = logOwner.get();
             glGetShaderInfoLog(sh, logLen, nullptr, log);
             MC2_DIAGF("[GPU_CULL v1] compute shader compile error:\n%s\n", log);
             fflush(stdout);
-            delete[] log;
+            logOwner.reset();
         }
         glDeleteShader(sh);
         return 0;
@@ -189,11 +192,12 @@ static GLuint link_compute_program(GLuint shader) {
         GLint logLen = 0;
         glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &logLen);
         if (logLen > 0) {
-            char* log = new char[logLen];
+            auto logOwner = std::make_unique_for_overwrite<char[]>(logLen);
+            char* log = logOwner.get();
             glGetProgramInfoLog(prog, logLen, nullptr, log);
             MC2_DIAGF("[GPU_CULL v1] compute program link error:\n%s\n", log);
             fflush(stdout);
-            delete[] log;
+            logOwner.reset();
         }
         glDeleteProgram(prog);
         return 0;
@@ -208,7 +212,8 @@ static GLuint build_compute_program_from_file(
         const std::string* preambles, int nPreambles,
         const char* debugName)
 {
-    char* fileSrc = load_text_file(fname);
+    auto fileSrcOwner = load_text_file(fname);
+    char* fileSrc = fileSrcOwner.get();
     if (!fileSrc) {
         MC2_DIAGF("[GPU_CULL v1] %s source not found: %s\n", debugName, fname);
         fflush(stdout);
@@ -224,7 +229,7 @@ static GLuint build_compute_program_from_file(
     srcStrs.push_back(fileSrc);
 
     GLuint sh = compile_compute_shader(srcStrs.data(), static_cast<int>(srcStrs.size()));
-    delete[] fileSrc;
+    fileSrcOwner.reset();
     if (!sh) {
         MC2_DIAGF("[GPU_CULL v1] %s compile failed\n", debugName);
         fflush(stdout);
@@ -247,16 +252,18 @@ static GLuint build_cull_program(const std::string* preambles, int nPreambles,
                                   const char* debugName)
 {
     const char* kPrefix = "#version 430\n";
-    char* predicateSrc  = load_text_file("shaders/gpu_cull_predicate.glsl");
-    char* computeSrc    = load_text_file("shaders/gpu_cull.comp");
+    auto predicateSrcOwner = load_text_file("shaders/gpu_cull_predicate.glsl");
+    char* predicateSrc = predicateSrcOwner.get();
+    auto computeSrcOwner = load_text_file("shaders/gpu_cull.comp");
+    char* computeSrc = computeSrcOwner.get();
     if (!predicateSrc || !computeSrc) {
         MC2_DIAGF("[GPU_CULL v1] %s source not found (predicate=%s, comp=%s)\n",
                debugName,
                predicateSrc ? "ok" : "MISSING",
                computeSrc   ? "ok" : "MISSING");
         fflush(stdout);
-        delete[] predicateSrc;
-        delete[] computeSrc;
+        predicateSrcOwner.reset();
+        computeSrcOwner.reset();
         return 0;
     }
 
@@ -274,8 +281,8 @@ static GLuint build_cull_program(const std::string* preambles, int nPreambles,
     } else {
         fullSrc = computeSrc;
     }
-    delete[] predicateSrc;
-    delete[] computeSrc;
+    predicateSrcOwner.reset();
+    computeSrcOwner.reset();
 
     // Inject binding constant so shader uses the same value as the C++ side.
     // Single source of truth: gpu_cull_readback.h::READBACK_SSBO_BINDING.

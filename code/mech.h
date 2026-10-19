@@ -121,23 +121,8 @@ inline constexpr int MECH_GESTURE_GETUP = 22;	//Get up from FallForward
 inline constexpr int MECH_GESTURE_FALLEN_F = 23;	//Fallen Forward (Single Frame, mech on ground)
 inline constexpr int MECH_GESTURE_FALLEN_B = 24;	//Fallen Backward (Single Frame, mech on ground)
 
-#define NO_APPEARANCE_FOR_MECH			0xFFFA0001
-#define	NO_RAM_FOR_DYNAMICS_TYPE		0xFFFA0002
-#define	INVALID_DYNAMICS_TYPE			0xFFFA0003
-#define	NO_RAM_FOR_CONTROL				0xFFFA0004
-#define	INVALID_CONTROL_TYPE			0xFFFA0005
-#define	NO_RAM_FOR_CONTROL_DATA			0xFFFA0006
-#define	INVALID_CONTROL_DATA_TYPE		0xFFFA0007
-#define	NO_RAM_FOR_DYNAMICS				0xFFFA0008
-#define	NO_APPEARANCE_TYPE_FOR_MECH		0xFFFA0009
-#define	APPEARANCE_NOT_SPRITE_TREE		0xFFFA000A
-#define NO_RAM_FOR_FOOT_HS				0xFFFA000B
-#define NO_RAM_FOR_WEAPON_HS			0xFFFA000C
-#define FOOT_HS_WRONG_SIZE				0xFFFA000D
-#define BAD_HS_PACKET					0xFFFA000E
-#define NO_RAM_FOR_XLAT_HS				0xFFFA000F
 
-#define	MAGIC_ROTATE_FORCE_NUMBER		(360.0 / (17.0))
+inline constexpr auto MAGIC_ROTATE_FORCE_NUMBER = (360.0 / (17.0));
 inline constexpr int MAX_MECH_SMOKES = 4;
 
 //------------------------------------------------------------------------------------------

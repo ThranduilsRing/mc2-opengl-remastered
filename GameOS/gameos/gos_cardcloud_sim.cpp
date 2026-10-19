@@ -20,6 +20,7 @@
 //   NOT here: rendering GPU-sim output, CPU-sim bypass, curve LUTs, IDs.     //
 //===========================================================================//
 
+#include <memory>
 #include "particles/cardcloud_sim.h"
 #include "particles/batcher.h"   // is_gpu_sim_cardcloud_enabled / is_gpu_sim_compare_enabled
 #include "gos_gpu_sync.h"
@@ -58,23 +59,25 @@ std::vector<mc2::particles::CardCloudSimParticle> s_frameRecords;
 unsigned s_frameInstances    = 0;
 unsigned s_frameCpuActiveSum = 0;
 
-char* loadTextFile(const char* path) {
+std::unique_ptr<char[]> loadTextFile(const char* path) {
     FILE* f = std::fopen(path, "rb");
     if (!f) return nullptr;
     std::fseek(f, 0, SEEK_END);
     long sz = std::ftell(f);
     std::fseek(f, 0, SEEK_SET);
     if (sz <= 0) { std::fclose(f); return nullptr; }
-    char* buf = new char[sz + 1];
+    auto bufOwner = std::make_unique_for_overwrite<char[]>(sz + 1);
+    char* buf = bufOwner.get();
     size_t rd = std::fread(buf, 1, static_cast<size_t>(sz), f);
     buf[rd] = '\0';
     std::fclose(f);
-    return buf;
+    return bufOwner;
 }
 
 void buildProgramIfNeeded() {
     if (s_program != 0 || s_progFailed) return;
-    char* src = loadTextFile("shaders/cardcloud_sim.comp");
+    auto srcOwner = loadTextFile("shaders/cardcloud_sim.comp");
+    char* src = srcOwner.get();
     if (!src) {
         s_progFailed = true;
         mc2::fmt::print_err("[VFX_GPU_SIM v2] event=shader_load_fail source_missing=shaders/cardcloud_sim.comp\n");
@@ -86,12 +89,12 @@ void buildProgramIfNeeded() {
     GLuint sh = glCreateShader(GL_COMPUTE_SHADER);
     glShaderSource(sh, 2, strings, nullptr);
     glCompileShader(sh);
-    delete[] src;
+    srcOwner.reset();
     GLint ok = 0; glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
     if (!ok) {
         GLint n = 0; glGetShaderiv(sh, GL_INFO_LOG_LENGTH, &n);
-        if (n > 0) { char* log = new char[n]; glGetShaderInfoLog(sh, n, nullptr, log);
-            mc2::fmt::print_err("[VFX_GPU_SIM v2] compute compile error:\n{}\n", mc2::fmt::safe(log)); delete[] log; }
+        if (n > 0) { auto logOwner = std::make_unique_for_overwrite<char[]>(n); char* log = logOwner.get(); glGetShaderInfoLog(sh, n, nullptr, log);
+            mc2::fmt::print_err("[VFX_GPU_SIM v2] compute compile error:\n{}\n", mc2::fmt::safe(log)); logOwner.reset(); }
         glDeleteShader(sh); s_progFailed = true; std::fflush(stderr); return;
     }
     GLuint prog = glCreateProgram();
@@ -101,8 +104,8 @@ void buildProgramIfNeeded() {
     GLint linked = 0; glGetProgramiv(prog, GL_LINK_STATUS, &linked);
     if (!linked) {
         GLint n = 0; glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &n);
-        if (n > 0) { char* log = new char[n]; glGetProgramInfoLog(prog, n, nullptr, log);
-            mc2::fmt::print_err("[VFX_GPU_SIM v2] compute link error:\n{}\n", mc2::fmt::safe(log)); delete[] log; }
+        if (n > 0) { auto logOwner = std::make_unique_for_overwrite<char[]>(n); char* log = logOwner.get(); glGetProgramInfoLog(prog, n, nullptr, log);
+            mc2::fmt::print_err("[VFX_GPU_SIM v2] compute link error:\n{}\n", mc2::fmt::safe(log)); logOwner.reset(); }
         glDeleteProgram(prog); s_progFailed = true; std::fflush(stderr); return;
     }
     s_program   = prog;

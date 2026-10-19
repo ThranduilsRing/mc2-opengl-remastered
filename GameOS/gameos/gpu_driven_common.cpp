@@ -13,6 +13,7 @@
 //   MC2_GPU_DRIVEN_TERRAIN_SOLID=0 -- disable terrain solid fast-path (default ON, gated by global)
 //   MC2_GPU_DRIVEN_OVERLAY=0   -- disable overlay fast-path (default ON, gated by global)
 
+#include <memory>
 #include "gpu_driven_common.h"
 
 #include <cstdio>
@@ -85,11 +86,12 @@ static GLuint gpu_driven_compile_compute_shader(const char** strings, int count)
         GLint logLen = 0;
         glGetShaderiv(sh, GL_INFO_LOG_LENGTH, &logLen);
         if (logLen > 0) {
-            char* log = new char[logLen];
+            auto logOwner = std::make_unique_for_overwrite<char[]>(logLen);
+            char* log = logOwner.get();
             glGetShaderInfoLog(sh, logLen, nullptr, log);
             mc2::fmt::print_err("[GPU_DRIVEN v1] compute shader compile error:\n{}\n", mc2::fmt::safe(log));
             fflush(stderr);
-            delete[] log;
+            logOwner.reset();
         }
         glDeleteShader(sh);
         return 0;
@@ -108,11 +110,12 @@ static GLuint gpu_driven_link_compute_program(GLuint shader) {
         GLint logLen = 0;
         glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &logLen);
         if (logLen > 0) {
-            char* log = new char[logLen];
+            auto logOwner = std::make_unique_for_overwrite<char[]>(logLen);
+            char* log = logOwner.get();
             glGetProgramInfoLog(prog, logLen, nullptr, log);
             mc2::fmt::print_err("[GPU_DRIVEN v1] compute program link error:\n{}\n", mc2::fmt::safe(log));
             fflush(stderr);
-            delete[] log;
+            logOwner.reset();
         }
         glDeleteProgram(prog);
         return 0;

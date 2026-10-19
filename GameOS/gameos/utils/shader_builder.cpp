@@ -1,3 +1,4 @@
+#include <memory>
 #include <string_view>
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>
@@ -113,10 +114,12 @@ bool get_shader_error_status(GLuint shader, GLenum status_type, std::string* out
 
     if(!status)
     {
+        std::unique_ptr<char[]> bufOwner;
         char* buf = 0;
         GLsizei len = 0, len2= 0;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
-        buf = new char[len];
+        bufOwner = std::make_unique_for_overwrite<char[]>(len);
+        buf = bufOwner.get();
 
         glGetShaderInfoLog(shader, len, &len2, buf);
         if(len2!=0) {
@@ -129,7 +132,7 @@ bool get_shader_error_status(GLuint shader, GLenum status_type, std::string* out
             mc2::fmt::print_out("[SHADER ERROR] CompileShader: driver reported FAIL with empty info log (GL id={:d})\n", mc2::fmt::as_u32(shader));
             fflush(stdout);
         }
-		delete[] buf;
+		bufOwner.reset();
 
         return true;
     }
@@ -144,10 +147,12 @@ bool get_program_error_status(GLuint program, GLenum status_type, std::string* o
 
     if(!status)
     {
+        std::unique_ptr<char[]> bufOwner;
         char* buf = 0;
         GLsizei len = 0, len2= 0;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
-        buf = new char[len];
+        bufOwner = std::make_unique_for_overwrite<char[]>(len);
+        buf = bufOwner.get();
 
         glGetProgramInfoLog(program, len, &len2, buf);
         if(len2!=0) {
@@ -157,7 +162,7 @@ bool get_program_error_status(GLuint program, GLenum status_type, std::string* o
             validateRecordShaderError(buf);
             if (out_log) *out_log = buf;
         }
-		delete[] buf;
+		bufOwner.reset();
         return true;
     }
 
@@ -194,14 +199,15 @@ glsl_shader::Shader_t get_shader_type(GLenum type)
 
 
 
-const char* glsl_load(const char* fname, size_t* out_size = nullptr)
+static std::unique_ptr<char[]> glsl_load(const char* fname, size_t* out_size = nullptr)
 {
     assert(fname);
-    stream* pstream = stream::makeFileStream();
+    std::unique_ptr<stream> pstreamOwner(stream::makeFileStream());
+    stream* pstream = pstreamOwner.get();
     if(0 != pstream->open(fname,"rb"))
     {
         SHADER_LOG_ERROR("Can't open {} ", mc2::fmt::safe(fname));
-        delete pstream;
+        pstreamOwner.reset();
         return 0;
     }
 
@@ -209,7 +215,8 @@ const char* glsl_load(const char* fname, size_t* out_size = nullptr)
     size_t size = pstream->tell();
     pstream->seek(0, stream::S_SET);
 
-    char* pdata = new char[size + 1];
+    auto pdataOwner = std::make_unique_for_overwrite<char[]>(size + 1);
+    char* pdata = pdataOwner.get();
     size_t rv = pstream->read(pdata, 1, size);
     assert(rv==size);
     pdata[size] = '\0';
@@ -234,9 +241,9 @@ const char* glsl_load(const char* fname, size_t* out_size = nullptr)
         *out_size = size;
 
     pstream->close();
-    delete pstream;
+    pstreamOwner.reset();
 
-    return pdata;
+    return pdataOwner;
 }
 
 bool parse_include(const char* str, const char*& include, size_t& size, const char*& ieol)
@@ -371,18 +378,19 @@ bool parse_includes(const char* fname, const char* psource, std::vector<std::str
 
 bool load_shader(const char* fname, std::string& shader_source, std::vector<std::string>& includes)
 {
-    const char* psource = glsl_load(fname);
+    auto psourceOwner = glsl_load(fname);
+    const char* psource = psourceOwner.get();
     if(!psource)
         return false;
 
     if(!parse_includes(fname, psource, includes, shader_source))
     {
 		SHADER_LOG_ERROR("Shader filename: {}: failed to parse includes", mc2::fmt::safe(fname));
-        delete[] psource;
+        psourceOwner.reset();
         return false;
     }
 
-    delete[] psource;
+    psourceOwner.reset();
 
     return true;
 }
@@ -707,14 +715,15 @@ glsl_shader* glsl_shader::makeShader(Shader_t stype, const char* fname, const ch
         GLsizei warnLen = 0;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &warnLen);
         if (warnLen > 1) {
-            char* warnBuf = new char[warnLen];
+            auto warnBufOwner = std::make_unique_for_overwrite<char[]>(warnLen);
+            char* warnBuf = warnBufOwner.get();
             GLsizei actualLen = 0;
             glGetShaderInfoLog(shader, warnLen, &actualLen, warnBuf);
             if (actualLen > 0) {
                 mc2::fmt::print_out("[SHADER WARN] compile {}:\n{}\n", mc2::fmt::safe(fname), mc2::fmt::safe(warnBuf));
                 fflush(stdout);
             }
-            delete[] warnBuf;
+            warnBufOwner.reset();
         }
     }
 
@@ -803,7 +812,8 @@ void parse_uniforms(GLuint pprogram, glsl_program::UniArr_t* puniforms, glsl_pro
     GLint num_uni, max_name_len;
     glGetProgramiv(pprogram, GL_ACTIVE_UNIFORMS, &num_uni);
     glGetProgramiv(pprogram, GL_ACTIVE_UNIFORM_MAX_LENGTH, &max_name_len);
-    char* buf = new char[max_name_len+1];
+    auto bufOwner = std::make_unique_for_overwrite<char[]>(max_name_len+1);
+    char* buf = bufOwner.get();
     GLsizei len;
     GLint size;
     GLenum type;
@@ -923,7 +933,7 @@ void parse_uniforms(GLuint pprogram, glsl_program::UniArr_t* puniforms, glsl_pro
         puniforms->insert( std::make_pair(puni->name_, puni) );
     }
 
-    delete[] buf;
+    bufOwner.reset();
 }
 
 void parse_uniform_blocks(GLuint pprogram, glsl_program::UniBlockArr_t* puniforms)
@@ -931,7 +941,8 @@ void parse_uniform_blocks(GLuint pprogram, glsl_program::UniBlockArr_t* puniform
 	GLint num_uni_blocks, max_name_len;
 	glGetProgramiv(pprogram, GL_ACTIVE_UNIFORM_BLOCKS, &num_uni_blocks);
 	glGetProgramiv(pprogram, GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH, &max_name_len);
-	char* buf = new char[max_name_len + 1];
+	auto bufOwner = std::make_unique_for_overwrite<char[]>(max_name_len + 1);
+	char* buf = bufOwner.get();
 	GLsizei len;
 
 	GLint binding;
@@ -961,7 +972,7 @@ void parse_uniform_blocks(GLuint pprogram, glsl_program::UniBlockArr_t* puniform
 		puniforms->insert(std::make_pair(buf, uni_block));
 	}
 
-	delete[] buf;
+	bufOwner.reset();
 }
 
 glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const char* hp, const char* dp, const char* gp, const char* fp, int count/* = 0*/, const char** xfb_variables/* = 0*/, const char* prefix/*=nullptr*/)
@@ -1101,14 +1112,15 @@ glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const
         GLsizei warnLen = 0;
         glGetProgramiv(shp, GL_INFO_LOG_LENGTH, &warnLen);
         if (warnLen > 1) {
-            char* warnBuf = new char[warnLen];
+            auto warnBufOwner = std::make_unique_for_overwrite<char[]>(warnLen);
+            char* warnBuf = warnBufOwner.get();
             GLsizei actualLen = 0;
             glGetProgramInfoLog(shp, warnLen, &actualLen, warnBuf);
             if (actualLen > 0) {
                 mc2::fmt::print_out("[SHADER WARN] link '{}':\n{}\n", mc2::fmt::safe(name), mc2::fmt::safe(warnBuf));
                 fflush(stdout);
             }
-            delete[] warnBuf;
+            warnBufOwner.reset();
         }
     }
 

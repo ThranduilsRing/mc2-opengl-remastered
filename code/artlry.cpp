@@ -77,23 +77,23 @@
 
 //long NumCameraDrones = 0;
 
-#define	ARTILLERYCHUNK_COMMANDERID_BITS			3
-#define	ARTILLERYCHUNK_STRIKETYPE_BITS			3
-#define	ARTILLERYCHUNK_CELLPOS_BITS				10
-#define ARTILLERYCHUNK_SECONDS_BITS				6
+constexpr auto ARTILLERYCHUNK_COMMANDERID_BITS = 3;
+constexpr auto ARTILLERYCHUNK_STRIKETYPE_BITS = 3;
+constexpr auto ARTILLERYCHUNK_CELLPOS_BITS = 10;
+constexpr auto ARTILLERYCHUNK_SECONDS_BITS = 6;
 
-#define	ARTILLERYCHUNK_COMMANDERID_MASK			0x00000007
-#define	ARTILLERYCHUNK_STRIKETYPE_MASK			0x00000007
-#define	ARTILLERYCHUNK_CELLPOS_MASK				0x000003FF
-#define ARTILLERYCHUNK_SECONDS_MASK				0x0000003F
+constexpr auto ARTILLERYCHUNK_COMMANDERID_MASK = 0x00000007;
+constexpr auto ARTILLERYCHUNK_STRIKETYPE_MASK = 0x00000007;
+constexpr auto ARTILLERYCHUNK_CELLPOS_MASK = 0x000003FF;
+constexpr auto ARTILLERYCHUNK_SECONDS_MASK = 0x0000003F;
 
 extern MidLevelRenderer::MLRClipper * theClipper;
 
-#define	AIRSTRIKE_NAME							"airstrikemarker"
-#define SENSOR_NAME								"sensormarker"
+constexpr char AIRSTRIKE_NAME[] = "airstrikemarker";
+constexpr char SENSOR_NAME[] = "sensormarker";
 
-#define GV_LEFT_DUST_ID		0
-#define GV_RIGHT_DUST_ID	1
+constexpr auto GV_LEFT_DUST_ID = 0;
+constexpr auto GV_RIGHT_DUST_ID = 1;
 
 extern bool MLRVertexLimitReached;
 //***************************************************************************

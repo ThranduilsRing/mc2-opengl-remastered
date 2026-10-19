@@ -1,5 +1,6 @@
 // POSTPROCESS-COMPUTE-BLUR-1 — see gos_postprocess_blur.h for intent.
 
+#include <memory>
 #include "gos_postprocess_blur.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_gpu_sync.h"
@@ -69,23 +70,25 @@ bool   s_verifyDone   = false;  // one-shot parity latch
 constexpr GLuint kDstImageUnit = 0;
 constexpr GLuint kSrcTexUnit   = 0;
 
-char* loadTextFile(const char* fname) {
+std::unique_ptr<char[]> loadTextFile(const char* fname) {
     FILE* f = fopen(fname, "rb");
     if (!f) return nullptr;
     fseek(f, 0, SEEK_END);
     long sz = ftell(f);
     fseek(f, 0, SEEK_SET);
     if (sz <= 0) { fclose(f); return nullptr; }
-    char* buf = new char[sz + 1];
-    if (static_cast<long>(fread(buf, 1, sz, f)) != sz) { fclose(f); delete[] buf; return nullptr; }
+    auto bufOwner = std::make_unique_for_overwrite<char[]>(sz + 1);
+    char* buf = bufOwner.get();
+    if (static_cast<long>(fread(buf, 1, sz, f)) != sz) { fclose(f); bufOwner.reset(); return nullptr; }
     buf[sz] = '\0';
     fclose(f);
-    return buf;
+    return bufOwner;
 }
 
 // Build one compute program from the shared .comp with the given MODE define.
 GLuint buildProgram(const char* modeDefine) {
-    char* fileSrc = loadTextFile("shaders/postprocess_blur.comp");
+    auto fileSrcOwner = loadTextFile("shaders/postprocess_blur.comp");
+    char* fileSrc = fileSrcOwner.get();
     if (!fileSrc) {
         MC2_DIAGFE(stderr, "[POSTPROCESS_BLUR v1] shader source not found: "
                         "shaders/postprocess_blur.comp\n");
@@ -104,7 +107,7 @@ GLuint buildProgram(const char* modeDefine) {
     GLuint sh = glCreateShader(GL_COMPUTE_SHADER);
     glShaderSource(sh, 4, strs, nullptr);
     glCompileShader(sh);
-    delete[] fileSrc;
+    fileSrcOwner.reset();
 
     GLint ok = 0;
     glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);

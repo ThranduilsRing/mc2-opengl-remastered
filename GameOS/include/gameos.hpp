@@ -3555,15 +3555,15 @@ bool gos_GetDisplayModeByIndex(int DisplayIndex, int ModeIndex, int* XRes, int* 
 //
 //
 inline constexpr int gos_ErrorNoContinue = 1;	// No CONTINUE is allowed from errors
-#define gos_ErrorNoRegisters	2	// Register are not valid (takes address from where called)
+inline constexpr auto gos_ErrorNoRegisters = 2;	// Register are not valid (takes address from where called)
 inline constexpr int gos_ErrorAssert = 4;	// Set to signify assert ( assumes gos_ErrorNoRegisters )
-#define gos_ErrorVerify			8	// Set to signify verify ( assumes gos_ErrorNoRegisters )
+inline constexpr auto gos_ErrorVerify = 8;	// Set to signify verify ( assumes gos_ErrorNoRegisters )
 inline constexpr int gos_ErrorException = 16;	// Set to signify exception handler
 inline constexpr int gos_ErrorDump = 32;	// ErrorTitle must be valid
 inline constexpr int gos_ErrorPop = 64;	// Pop one more level of stack
 inline constexpr int gos_ErrorPop2 = 128;	// Pop two more levels of stack
 inline constexpr int gos_ErrorStop = 256;	// Stop - display message
-#define gos_ErrorMessage		512	// Display message without a STOP: or Verify:
+inline constexpr auto gos_ErrorMessage = 512;	// Display message without a STOP: or Verify:
 inline constexpr int gos_ErrorFileLine = 1024;// Global variables gosErrorFile and gosErrorLine contain line to display (Pass a COMPLETE path\file name)
 inline constexpr int gos_ErrorRetry = 2048;// Retry instead of continue button
 inline constexpr int gos_ErrorGameInfoFirst = 4096;// Show the information from GetGameInformation routine immediately after File/Line information
