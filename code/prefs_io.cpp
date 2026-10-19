@@ -63,4 +63,3 @@ int CPrefs::save() {
 #endif
     return 0;
 }
-
