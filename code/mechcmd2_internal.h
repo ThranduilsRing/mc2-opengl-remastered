@@ -103,7 +103,6 @@ inline constexpr int MAX_HARDWARE_CARDS = 5;
 inline constexpr int NUM_DEBUG_WINDOWS = 4;
 
 // Globals defined in mechcmd2.cpp (or elsewhere in the engine) that the split pieces share.
-extern UserHeapPtr guiHeap;
 extern long GameDifficulty;
 extern long gammaLevel;
 extern long DigitalMasterVolume;

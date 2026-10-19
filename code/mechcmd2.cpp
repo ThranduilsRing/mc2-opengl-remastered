@@ -22,7 +22,6 @@
 //------------------------------------------------------------------------------------------------------------
 // MechCmdr2 Global Instances of Things
 // NS3: systemHeap defined in mclib/heap.cpp (engine boundary).
-UserHeapPtr guiHeap = nullptr;
 
 
 // NS3: fastFiles/numFastFiles/maxFastFiles defined in mclib/fastfile.cpp (engine boundary).
@@ -418,10 +417,7 @@ void __stdcall InitializeGameEngine()
 			ZoneScopedN("InitializeGameEngine heaps");
 		
 		
-			systemHeap = new UserHeap;
-			gosASSERT(systemHeap != nullptr);
 		
-			systemHeap->init(systemHeapSize,"SYSTEM");
 		}
 	
 		//Start finding the Leaks
@@ -1032,7 +1028,7 @@ void __stdcall InitializeGameEngine()
 			STOP(("Could not find MC2.fx"));
 			
 		long effectsSize = effectFile.fileSize();
-		MemoryPtr effectsData = (MemoryPtr)systemHeap->Malloc(effectsSize);
+		MemoryPtr effectsData = (MemoryPtr)std::malloc(effectsSize);
 		effectFile.read(effectsData,effectsSize);
 		effectFile.close();
 		
@@ -1053,17 +1049,14 @@ void __stdcall InitializeGameEngine()
 	
 		gos_PopCurrentHeap();
 	
-		systemHeap->Free(effectsData);
+		std::free(effectsData);
 		}
 		
 	
 		//--------------------------------------------------------------
 		// Start the GUI Heap.
 		{ ZoneScopedN("InitializeGameEngine guiHeap");
-		guiHeap = new UserHeap;
-		gosASSERT(guiHeap != nullptr);
 		
-		guiHeap->init(guiHeapSize,"GUI");
 		}
 		
 		//------------------------------------------------

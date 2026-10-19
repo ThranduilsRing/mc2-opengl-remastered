@@ -366,8 +366,6 @@ bool isPoolThread()   { return t_isPoolThread; }
 void* Arena::alloc(std::size_t bytes, std::size_t align) {
     if (align < 1) align = 1;
     if (!base_) {
-        base_ = static_cast<unsigned char*>(::malloc(kArenaBytes));  // CRT, never UserHeap
-        JOBS_FATAL_IF(base_ == nullptr);
         cap_  = kArenaBytes;
         used_ = 0;
     }

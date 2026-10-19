@@ -54,7 +54,6 @@ enum COMMAND_KEY_INDEX
 };
 //--------------------------------------------------------------------------------------
 // Externs
-extern UserHeapPtr guiHeap;
 void *gMalloc (long size);
 void gFree (void *me);
 

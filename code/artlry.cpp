@@ -364,19 +364,19 @@ void ArtilleryType::destroy (void)
 {
 	if (explosionOffsetX) 
 	{
-		systemHeap->Free(explosionOffsetX);
+		std::free(explosionOffsetX);
 		explosionOffsetX = nullptr;
 	}
 
 	if (explosionOffsetY) 
 	{
-		systemHeap->Free(explosionOffsetY);
+		std::free(explosionOffsetY);
 		explosionOffsetY = nullptr;
 	}
 
 	if (explosionDelay) 
 	{
-		systemHeap->Free(explosionDelay);
+		std::free(explosionDelay);
 		explosionDelay = nullptr;
 	}
 
@@ -475,13 +475,13 @@ long ArtilleryType::init (FilePtr objFile, unsigned long fileSize) {
 		if (result != NO_ERR)
 			return(result);
 			
-		explosionOffsetX = (float *)systemHeap->Malloc(sizeof(float)*numExplosions);
+		explosionOffsetX = (float *)std::malloc(sizeof(float)*numExplosions);
 		gosASSERT(explosionOffsetX != NULL);
 
-		explosionOffsetY = (float *)systemHeap->Malloc(sizeof(float)*numExplosions);
+		explosionOffsetY = (float *)std::malloc(sizeof(float)*numExplosions);
 		gosASSERT(explosionOffsetY != NULL);
 
-		explosionDelay   = (float *)systemHeap->Malloc(sizeof(float)*numExplosions);
+		explosionDelay   = (float *)std::malloc(sizeof(float)*numExplosions);
 		gosASSERT(explosionDelay != NULL);
 
 		for (long i=0;i<numExplosions;i++)

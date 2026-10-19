@@ -192,7 +192,6 @@ class CollisionSystem
 		float					warningDist;		//Distance to worry about short term collision avoidance (in World Units!!)
 		float					alertTime;			//Time to worry about short term collision avoidance.
 		
-		static UserHeapPtr		collisionHeap;
 	
 	//Member Functions
 	//-----------------

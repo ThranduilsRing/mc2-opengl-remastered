@@ -379,7 +379,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 	}
 
 	useMoverLineOfSightTable = true;
-	moverLineOfSightTable = (char*)systemHeap->Malloc(maxMovers * maxMovers);
+	moverLineOfSightTable = (char*)std::malloc(maxMovers * maxMovers);
 	if (!moverLineOfSightTable)
 		Fatal(numGates, " GameObjectManager.setNumObjects: cannot malloc moverLineOfSightTable ");
 
@@ -1077,7 +1077,7 @@ void GameObjectManager::destroy (void)
 	delete collisionSystem;
 	collisionSystem = nullptr;
 
-	systemHeap->Free(moverLineOfSightTable);
+	std::free(moverLineOfSightTable);
 	moverLineOfSightTable = nullptr;
 }
 

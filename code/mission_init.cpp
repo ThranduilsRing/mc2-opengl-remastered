@@ -157,10 +157,7 @@ void Mission::initCoreSystems() {
 	{ ZoneScopedN("Mission::init initTGLForMission"); initTGLForMission(); }
 	mission_phase_mark("setup_tgl_ready"); // LOAD-PHASE-FACTS-1
 	
-	missionHeap = new UserHeap;
-	gosASSERT(missionHeap != nullptr);
 	
-	missionHeap->init(missionHeapSize,"MISSION");
 }
 
 // Open gamesys.fit and read the weapon ranges and the general visual / sensor settings.
@@ -705,7 +702,7 @@ void Mission::initMissionSettings(MissionInitFrame& f) {
 		result = missionFile->readIdULong("NumRandomRPbuildings", MPlayer->numRandomResourceBuildings);
 	}
 
-	craterManager = (CraterManagerPtr)missionHeap->Malloc(sizeof(CraterManager));
+	craterManager = (CraterManagerPtr)std::malloc(sizeof(CraterManager));
 	gosASSERT(craterManager != NULL);
 	::new (craterManager) CraterManager;
 		

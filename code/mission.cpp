@@ -472,7 +472,6 @@ long globalEnemyWeapons[4];
 
 float globalMissionValues[MAX_GLOBAL_MISSION_VALUES];
 
-UserHeapPtr missionHeap = nullptr;
 
 unsigned int MultiPlayTeamId = 0xFFFFFFFF;
 unsigned int MultiPlayCommanderId = 0xFFFFFFFF;
@@ -1055,7 +1054,7 @@ void Mission::destroy (bool initLogistics)
 	if ( craterManager )
 	{
 		craterManager->~CraterManager();
-		missionHeap->Free( craterManager );
+		std::free( craterManager );
 		craterManager = nullptr;
 	}
 
@@ -1072,19 +1071,13 @@ void Mission::destroy (bool initLogistics)
 
 	if (MoverGroup::goalMap)
 	{
-		systemHeap->Free(MoverGroup::goalMap);
+		std::free(MoverGroup::goalMap);
 		MoverGroup::goalMap = nullptr;
 	}
 
 	closeABL();
 
-	if (missionHeap)
-	{
-		missionHeap->destroy();
 
-		delete missionHeap;
-		missionHeap = nullptr;
-	}
 
 	// The registry destructor releases the types, then the Sensor shapes.
 	appearanceTypes.reset();

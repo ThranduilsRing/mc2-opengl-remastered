@@ -935,7 +935,7 @@ void Mission::initInterface(MissionInitFrame& f) {
 	
 
 	if (tempSpecialAreaFootPrints) {
-		systemHeap->Free(tempSpecialAreaFootPrints);
+		std::free(tempSpecialAreaFootPrints);
 		tempSpecialAreaFootPrints = NULL;
 		tempNumSpecialAreas = 0;
 	}

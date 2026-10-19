@@ -65,7 +65,6 @@ void GameSoundSystem::purgeSoundSystem (void)
 		Radio::messagesFile[i] = nullptr; 
 	}
 
-	Radio::radioHeap.reset();
 		
 	radioNoiseFile.reset();
 	Radio::noiseFile = nullptr;

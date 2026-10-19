@@ -112,7 +112,7 @@ long MoverGroup::calcMoveGoals (glm::vec3 goal, long numMovers, glm::vec3* goalL
 		return 0;
 
 	if (!goalMap) {
-		goalMap = (GoalMapNode*)systemHeap->Malloc(sizeof(GoalMapNode) * GOALMAP_DIM * GOALMAP_DIM);
+		goalMap = (GoalMapNode*)std::malloc(sizeof(GoalMapNode) * GOALMAP_DIM * GOALMAP_DIM);
 		if (!goalMap)
 			Fatal(0, " MoverGroup.calcMoveGoals: unable to malloc goalMap ");
 	}

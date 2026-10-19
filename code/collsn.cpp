@@ -42,7 +42,6 @@ namespace mc2_collision_trace { Counters g_counters = {false,0,0,0,0,0,0}; }
 // Static globals
 //CollisionSystem *collisionSystem = NULL;
 GlobalCollisionAlert *globalCollisionAlert = nullptr;
-UserHeapPtr CollisionSystem::collisionHeap = nullptr;
 unsigned long CollisionSystem::maxObjects = 0;
 unsigned long CollisionSystem::gridRadius = 0;
 unsigned long CollisionSystem::xGridSize = 0;
@@ -404,10 +403,8 @@ long CollisionSystem::init (FitIniFile *scenarioFile)
 	warningDist = 250.0;                       //This is in world Units!!!
 	alertTime = 2.5;                                     //This is in seconds
 		
-	collisionHeap = new UserHeap;
-	gosASSERT(collisionHeap != nullptr);
 		
-	long result = collisionHeap->init(65535);
+	long result = NO_ERR;
 	gosASSERT(result == NO_ERR);
 	
 	collisionGrid = new CollisionGrid;
@@ -789,8 +786,6 @@ void CollisionSystem::destroy (void)
 	delete collisionGrid;
     collisionGrid = nullptr;
 
-	delete collisionHeap;
-    collisionHeap = nullptr;
 	
 	delete globalCollisionAlert;
 	globalCollisionAlert = nullptr;

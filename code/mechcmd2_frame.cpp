@@ -251,21 +251,9 @@ void __stdcall TerminateGameEngine()
 		delete globalFloatHelp;
 		globalFloatHelp = nullptr;
 
-		if (systemHeap)
-		{
-			systemHeap->destroy();
 
-			delete systemHeap;
-			systemHeap = nullptr;
-		}
 
-		if (guiHeap)
-		{
-			guiHeap->destroy();
 
-			delete guiHeap;
-			guiHeap = nullptr;
-		}
 
 
 

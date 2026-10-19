@@ -46,7 +46,7 @@ void GameObjectManager::countTerrainObjects (PacketFile* terrainFile, long first
 
 	if (totalObjCount)
 	{
-		objData = (ObjDataLoader *)systemHeap->Malloc(sizeof(ObjDataLoader) * totalObjCount);
+		objData = (ObjDataLoader *)std::malloc(sizeof(ObjDataLoader) * totalObjCount);
 		memset(objData,0,sizeof(ObjDataLoader) * totalObjCount);
 	}
 	else
@@ -212,7 +212,7 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 	handles.reset();
 	
 	//Done loading the objects, free the memory holding them!!
-	systemHeap->Free(objData);
+	std::free(objData);
 	objData = nullptr;
 
 	//---------------------------------------------------
@@ -811,7 +811,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	}
 
 	useMoverLineOfSightTable = true;
-	moverLineOfSightTable = (char*)systemHeap->Malloc(maxMovers * maxMovers);
+	moverLineOfSightTable = (char*)std::malloc(maxMovers * maxMovers);
 	if (!moverLineOfSightTable)
 		Fatal(numGates, " GameObjectManager.setNumObjects: cannot malloc moverLineOfSightTable ");
 

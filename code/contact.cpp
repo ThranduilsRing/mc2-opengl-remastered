@@ -63,7 +63,6 @@ bool						TeamSensorSystem::homeTeamInContact = false;
 bool						SensorSystemManager::enemyInLOS = true;
 
 extern float scenarioTime;
-extern UserHeapPtr missionHeap;
 
 constexpr int VISUAL_CONTACT_FLAG = 0x8000;
 
@@ -1123,7 +1122,7 @@ long SensorSystemManager::init (bool debug) {
 	if (MAX_SENSORS < 2)
 		Fatal(0, " Way too few sensors in Sensor System Manager! ");
 
-	sensorPool = (SensorSystemPtr*)missionHeap->Malloc(MAX_SENSORS * sizeof(SensorSystemPtr));
+	sensorPool = (SensorSystemPtr*)std::malloc(MAX_SENSORS * sizeof(SensorSystemPtr));
 	gosASSERT(sensorPool!=nullptr);
 
 	for (long i = 0; i < MAX_SENSORS; i++)
@@ -1241,8 +1240,7 @@ void SensorSystemManager::destroy (void) {
 		}
 		
 		// Exit-path containment: normal teardown destroys the sensors while the heap is alive; a null heap means the process is ending.
-		if (missionHeap)
-			missionHeap->Free(sensorPool);
+		std::free(sensorPool);
 		sensorPool = nullptr;
 	}
 
