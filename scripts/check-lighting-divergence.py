@@ -287,6 +287,8 @@ BASELINE = {
     "inline_light_floor": [
         ("shaders/building_pbr.frag", "add:ao", "0.18+0.22"),
         ("shaders/gos_vegetation_card.frag", "add:NdotL", "0.60+0.38"),
+        # INTENTIONAL: native vegetation preserves the authored GL card floor.
+        ("shaders/vulkan/vfx_particle.frag", "add:NdotL", "0.60+0.38"),
         ("shaders/include/shadow.hglsl", "mix:shadow", "0.4->1.0"),
         ("shaders/include/shadow.hglsl", "mix:shadow", "0.4->1.0"),
 

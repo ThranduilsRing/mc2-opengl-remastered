@@ -171,26 +171,6 @@ struct TopLevelStateDesc {
 // StaticProp also self-proofs explicit FBO/viewport) + Shadow (APPLY-STATE-SHADOW-1: first
 // render-target-MODE consumer — pipeline + DepthForwardZ clear; FBO/viewport deferred to SHADOW-2).
 static constexpr TopLevelStateDesc kTopLevelStateDesc[] = {
-    // TerrainDecal — drawDecals(): the sole entry render-state is
-    // applyPipeline(TerrainDecal). FBO/drawBuffers/viewport are inherited from
-    // the preceding Terrain pass and are deliberately NOT applied here.
-    {
-        /*id*/         RenderPassId::TerrainDecal,
-        /*pipelineId*/ RenderCore::PipelineId::TerrainDecal,
-        /*fboTarget*/  RenderResourceId::Unknown,   // inherit (not applied)
-        /*viewport*/   ViewportKind::Inherit,       // inherit (not applied)
-    },
-    // APPLY-STATE-TERRAINOVERLAY-1: TerrainOverlay — drawTerrainOverlays(): the
-    // sole entry render-state is applyPipeline(TerrainOverlay) (opaque, depth-write
-    // ON, vs decal's OFF). The preceding VBO upload touches no FF pipeline state.
-    // FBO/drawBuffers/viewport are inherited from the preceding Terrain pass and
-    // are deliberately NOT applied here (same honesty shape as decal).
-    {
-        /*id*/         RenderPassId::TerrainOverlay,
-        /*pipelineId*/ RenderCore::PipelineId::TerrainOverlay,
-        /*fboTarget*/  RenderResourceId::Unknown,   // inherit (not applied)
-        /*viewport*/   ViewportKind::Inherit,       // inherit (not applied)
-    },
     // APPLY-STATE-STATICPROP-1: StaticPropOpaque — GpuStaticPropBatcher::flush(): the
     // sole entry render-state of the COLOR pass is applyPipeline(StaticPropOpaque)
     // (~gos_static_prop_batcher.cpp:5503). Unlike decal/overlay (which do not run in

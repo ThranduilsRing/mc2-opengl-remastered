@@ -12,7 +12,7 @@
 //     caller passes the depth-compare sampler + light-space matrix as arguments, so
 //     the same body serves terrain today and props/mechs later against THEIR maps.
 //
-// PARITY CONTRACT: both functions reproduce the GL math VERBATIM. The ONLY VK-specific
+// Lighting and bias follow the GL reference; native receivers use dense tent PCF. The ONLY VK-specific
 // difference is that `sampler2DShadow` + its matrix are function ARGUMENTS instead of
 // file-scope `uniform`s (GL shadow.hglsl declares them global; VK descriptor sets bind
 // them and main() forwards them in). The numeric result is identical.
@@ -23,6 +23,7 @@
 // =============================================================================
 #ifndef LIGHTING_SHADOW_VK_GLSL
 #define LIGHTING_SHADOW_VK_GLSL
+#include "shadow_filter_vk.glsl"
 
 // 16-sample Poisson disk — BIT-IDENTICAL to shaders/include/shadow.hglsl:10-27.
 const vec2 lsvk_poissonDisk[16] = vec2[](
@@ -108,7 +109,7 @@ LsvkPbrOut computePBR(vec3 N, vec3 V, vec3 L, vec3 albedo,
 }
 
 // --- Baked static sun shadow (shadow.hglsl:33-78, calcShadow, 16-tap). -------
-// VERBATIM port. `shadowMap` is a sampler2DShadow bound to a depth-compare image
+// Native receiver filter; projection/bias retain the reference convention. `shadowMap` is a sampler2DShadow bound to a depth-compare image
 // (HW LINEAR PCF, compareOp=LESS_OR_EQUAL, CLAMP_TO_BORDER white=1.0). `lightSpaceMatrix`
 // is the STATIC light-space matrix (row-major GL_FALSE upload; z already [0,1]
 // ZERO_TO_ONE light ortho, so NO *0.5+0.5 on Z). Returns visibility in [0.4, 1.0].
@@ -135,8 +136,8 @@ float computeBakedShadow(vec3 worldPos, vec3 normal, vec3 lightDir,
     float bias = max(0.005 * (1.0 - NdotL), 0.002);
     float currentDepth = projCoords.z - bias;
 
-    // Per-pixel rotation to break banding (stratified sampling).
-    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    // A fixed receiver kernel avoids unfiltered per-pixel noise on thin palm shadows.
+    float angle = 0.0;
     float ca = cos(angle), sa = sin(angle);
     mat2 rot = mat2(ca, sa, -sa, ca);
 
@@ -147,13 +148,7 @@ float computeBakedShadow(vec3 worldPos, vec3 normal, vec3 lightDir,
 
     vec2 texelSize = 1.0 / vec2(textureSize(shadowMap, 0));
     float radius = max(shadowSoftness, 0.5) * adaptiveScale;
-    float shadow = 0.0;
-    int taps = clamp(numTaps, 1, 16);
-    for (int i = 0; i < taps; i++) {
-        vec2 offset = rot * lsvk_poissonDisk[i] * radius * texelSize;
-        shadow += texture(shadowMap, vec3(projCoords.xy + offset, currentDepth));
-    }
-    shadow /= float(taps);
+    float shadow = mc2ShadowTent(shadowMap, vec3(projCoords.xy, currentDepth), radius);
 
     return mix(0.4, 1.0, shadow);
 }
@@ -259,7 +254,8 @@ float lsvk_calcShadow(vec3 worldPos, vec3 normal, vec3 lightDir,
     if (NdotL < 0.05) return 1.0;
     float bias = max(0.005 * (1.0 - NdotL), 0.002);
     float currentDepth = projCoords.z - bias;
-    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    // A fixed receiver kernel avoids unfiltered per-pixel noise on thin palm shadows.
+    float angle = 0.0;
     float ca = cos(angle), sa = sin(angle);
     mat2 rot = mat2(ca, sa, -sa, ca);
     float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
@@ -267,13 +263,7 @@ float lsvk_calcShadow(vec3 worldPos, vec3 normal, vec3 lightDir,
     float adaptiveScale = mix(2.4, 0.8, hardness);
     vec2 texelSize = 1.0 / vec2(textureSize(shadowMap, 0));
     float radius = max(shadowSoftness, 0.5) * adaptiveScale;
-    float shadow = 0.0;
-    int taps = clamp(numTaps, 1, 16);
-    for (int i = 0; i < taps; i++) {
-        vec2 offset = rot * lsvk_poissonDisk[i] * radius * texelSize;
-        shadow += texture(shadowMap, vec3(projCoords.xy + offset, currentDepth));
-    }
-    shadow /= float(taps);
+    float shadow = mc2ShadowTent(shadowMap, vec3(projCoords.xy, currentDepth), radius);
     return mix(0.4, 1.0, shadow);
 }
 
@@ -293,7 +283,8 @@ float lsvk_calcDynamicShadowLegacy(vec3 worldPos, vec3 normal, vec3 lightDir,
     if (NdotL < 0.05) return 1.0;
     float bias = max(0.005 * (1.0 - NdotL), 0.002);
     float currentDepth = projCoords.z - bias;
-    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    // A fixed receiver kernel avoids unfiltered per-pixel noise on thin palm shadows.
+    float angle = 0.0;
     float ca = cos(angle), sa = sin(angle);
     mat2 rot = mat2(ca, sa, -sa, ca);
     float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
@@ -312,13 +303,7 @@ float lsvk_calcDynamicShadowLegacy(vec3 worldPos, vec3 normal, vec3 lightDir,
             lsvk_applyFadeModel(dNorm, clamp(lightDir.z, 0.0, 1.0), k, radius, distFade);
         }
     }
-    float shadow = 0.0;
-    int taps = clamp(numTaps, 1, 16);
-    for (int i = 0; i < taps; i++) {
-        vec2 offset = rot * lsvk_poissonDisk[i] * radius * texelSize;
-        shadow += texture(dynMap, vec3(projCoords.xy + offset, currentDepth));
-    }
-    shadow /= float(taps);
+    float shadow = mc2ShadowTent(dynMap, vec3(projCoords.xy, currentDepth), radius);
     shadow = mix(shadow, 1.0, distFade);
     return mix(0.4, 1.0, shadow);
 }
@@ -332,7 +317,8 @@ float lsvk_csmSampleLayer(vec3 projCoords, int layer, vec3 worldPos, float NdotL
     float texelBias = 1.5 * cascadeTexelWorld / max(depthSpan, 1.0);
     float bias = max(0.0012 * slope, 0.0004) + texelBias;
     float currentDepth = projCoords.z - bias;
-    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    // A fixed receiver kernel avoids unfiltered per-pixel noise on thin palm shadows.
+    float angle = 0.0;
     float ca = cos(angle), sa = sin(angle);
     mat2 rot = mat2(ca, sa, -sa, ca);
     float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
@@ -349,13 +335,7 @@ float lsvk_csmSampleLayer(vec3 projCoords, int layer, vec3 worldPos, float NdotL
                                              (k.flags & LSVK_KNOB_FADE_CONT) != 0);
         lsvk_applyFadeModel(dNorm, sunAltSin, k, radius, distFade);
     }
-    float shadow = 0.0;
-    int taps = clamp(numTaps, 1, 16);
-    for (int i = 0; i < taps; i++) {
-        vec2 offset = rot * lsvk_poissonDisk[i] * radius * texelSize;
-        shadow += texture(arr, vec4(projCoords.xy + offset, float(layer), currentDepth));
-    }
-    shadow /= float(taps);
+    float shadow = mc2ShadowTent(arr, vec4(projCoords.xy, float(layer), currentDepth), radius);
     return mix(shadow, 1.0, distFade);
 }
 
@@ -368,7 +348,8 @@ float lsvk_csmSampleFullMap(vec3 projCoords, vec3 worldPos, float NdotL, float s
     float texelBias = 1.5 * texelWorld / max(depthSpan, 1.0);
     float bias = max(0.0012 * slope, 0.0004) + texelBias;
     float currentDepth = projCoords.z - bias;
-    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    // A fixed receiver kernel avoids unfiltered per-pixel noise on thin palm shadows.
+    float angle = 0.0;
     float ca = cos(angle), sa = sin(angle);
     mat2 rot = mat2(ca, sa, -sa, ca);
     float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
@@ -384,13 +365,7 @@ float lsvk_csmSampleFullMap(vec3 projCoords, vec3 worldPos, float NdotL, float s
                                           fadeNdc, angle, (k.flags & LSVK_KNOB_FADE_CONT) != 0);
         lsvk_applyFadeModel(dNorm, sunAltSin, k, radius, distFade);
     }
-    float shadow = 0.0;
-    int taps = clamp(numTaps, 1, 16);
-    for (int i = 0; i < taps; i++) {
-        vec2 offset = rot * lsvk_poissonDisk[i] * radius * texelSize;
-        shadow += texture(fullMap, vec3(projCoords.xy + offset, currentDepth));
-    }
-    shadow /= float(taps);
+    float shadow = mc2ShadowTent(fullMap, vec3(projCoords.xy, currentDepth), radius);
     return mix(shadow, 1.0, distFade);
 }
 

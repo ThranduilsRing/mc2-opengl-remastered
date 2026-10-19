@@ -22,3 +22,14 @@ def test_tessellation_materials_follow_the_loader(condition, expected):
 def test_unknown_loader_shape_fails_instead_of_omitting_tessellation():
     with pytest.raises(extractor.ExtractError):
         extractor.material_tess_shaders("if (new_tess_policy(shader)) {")
+
+
+def test_retired_generic_pool_keeps_literal_terrain_materials(monkeypatch):
+    # The generic shader_list/combinations pool is gone; terrain readiness still
+    # loads a literal material and must stay in the offline compilation census.
+    records = []
+    world = extractor.World()
+    monkeypatch.setattr(extractor, "WORLD", world)
+    extractor.collect_materials(world, records)
+    assert records
+    assert all(r["id"].startswith("gos_terrain") for r in records)

@@ -1410,7 +1410,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_VFX_ORACLE_TUBE",
         "MC2_VFX_ORACLE_TUBE",
         EnvVarKind::Feature,
-        false,
+        true,
         "GOSFX-TUBE-RIBBON-1: route supported gosFX Tube trails (MissileSmoke alpha, PPC additive, polygon) through the swept-quad ribbon oracle submit path instead...",
     },
     {

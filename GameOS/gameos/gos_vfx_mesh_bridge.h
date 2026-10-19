@@ -1,19 +1,4 @@
-//==========================================================================//
-// File:    gos_vfx_mesh_bridge.h                                            //
-// Contents: GameOS-side GL bridge ABI for the VFX mesh substrate            //
-//           (MC2_VFX_ORACLE_SHAPE slice — gosFX::Shape only).               //
-//                                                                           //
-// Model: PERSISTENT mesh + per-instance transform (the GPU mech-batcher     //
-// shape, NOT the per-frame CPU-vertex-expansion billboard/tube model). Each //
-// distinct MLRShape's model-space vertices/UVs/indices are uploaded to a GL //
-// VBO/EBO ONCE, keyed by a stable 64-bit mesh id (the MLRShape pointer).    //
-// Per frame only the per-instance {modelToWorld matrix, scale, rgba, gos    //
-// texture handle, blendMode} changes and is issued as one indexed draw.     //
-//                                                                           //
-// One-way dependency: producers in mclib (gosfx/shape.cpp) call only        //
-// gos_vfx_mesh_flush; this file owns all GL. No object-ID writes.           //
-//==========================================================================//
-
+// CPU mesh-cache ABI for native Vulkan effect geometry.
 #pragma once
 
 #include <cstdint>
@@ -21,8 +6,8 @@
 extern "C" {
 
 // One mesh upload payload — only consumed by the bridge on a cache MISS for
-// meshId. On a cache HIT, all pointers/counts are ignored (mesh already on
-// GPU). Vertices are MODEL-SPACE Point3D (x,y,z floats, 3 per vertex packed
+// meshId. On a cache HIT, all pointers/counts are ignored (mesh already in
+// the CPU cache). Vertices are MODEL-SPACE Point3D (x,y,z floats, 3 per vertex packed
 // contiguously); uvs are 2 floats per vertex; indices are 16-bit, triangle
 // list. vertexCount == number of (x,y,z) triples == number of (u,v) pairs.
 struct GosVfxMeshUpload {
@@ -35,8 +20,8 @@ struct GosVfxMeshUpload {
 };
 
 // One draw instance. meshId must match a prior/accompanying upload. The bridge
-// composes worldpos = (modelVert * scale) transformed by modelToWorld in the
-// vertex shader; modelToWorld is the legacy shapeToWorld LinearMatrix4D laid
+// composes worldpos = (modelVert * scale) transformed by modelToWorld on the
+// CPU; modelToWorld is the legacy shapeToWorld LinearMatrix4D laid
 // out row-major as 16 floats (3x4 affine padded to 4x4; row 3 = 0,0,0,1).
 struct GosVfxMeshInstance {
     uint64_t meshId;
@@ -49,8 +34,8 @@ struct GosVfxMeshInstance {
 
 // Per-frame flush. uploads[] supplies geometry for any meshId not yet cached;
 // instances[] are drawn in submission order (effect-phase order — no global
-// translucency re-sort this slice). No-op when count==0. Owns SSBO/VBO/EBO,
-// shader, GL state save/restore. Safe to call every frame; uploads are skipped
+// translucency re-sort). No-op when count==0. Vulkan owns the upload ring,
+// descriptors and pipelines. Safe to call every frame; uploads are skipped
 // on cache hits.
 void gos_vfx_mesh_flush(const GosVfxMeshUpload*   uploads,
                         unsigned int              numUploads,

@@ -239,11 +239,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         "VFX",
         "mc2::particles::Batcher",
         /*viewUniformsBound*/        false,
-        /*pipelineDescRegistered*/   true,  // FRAMEGRAPH-STATEPACK-SKELETON-1: multiple sub-pipelines
-                                            // (VfxBillboard/Tube/MeshAlpha/Additive) all route through
-                                            // applyPipeline (gos_particle_bridge.cpp:847/1263,
-                                            // gos_vfx_mesh_bridge.cpp:315). Was false — stale.
-                                            // Note: no single PipelineId (StatePack uses Invalid).
+        /*pipelineDescRegistered*/   false, // native billboard/tube/mesh pipelines
         /*snapshotRowAuthoritative*/ false,
         "VFX Pass##vfx",
         nullptr,
@@ -316,8 +312,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         "TerrainDecal",
         "craterManager / quad.cpp",
         /*viewUniformsBound*/        false,
-        /*pipelineDescRegistered*/   true,  // FRAMEGRAPH-STATEPACK-SKELETON-1: routes applyPipeline(TerrainDecal)
-                                            // at gameos_graphics.cpp:10005. Was false — stale.
+        /*pipelineDescRegistered*/   false, // native pipeline, no GL apply
         /*snapshotRowAuthoritative*/ false,
         "TerrainDecal##td",
         nullptr,
@@ -331,9 +326,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         "TerrainOverlay",
         "quad.cpp M2d producer",
         /*viewUniformsBound*/        false,
-        /*pipelineDescRegistered*/   true,  // FRAMEGRAPH-STATEPACK-SKELETON-1: routes applyPipeline(TerrainOverlay)
-                                            // at gameos_graphics.cpp:9810 (and again at 9930 for the
-                                            // static-decal path within drawTerrainOverlays). Was false — stale.
+        /*pipelineDescRegistered*/   false, // native pipeline, no GL apply
         /*snapshotRowAuthoritative*/ false,
         "TerrainOverlay##to",
         nullptr,

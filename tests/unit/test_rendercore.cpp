@@ -426,15 +426,12 @@ TEST_CASE("RenderPassContract pipelineDescRegistered matches current shipped tru
     for (int i = 0; i < kRenderPassContractCount; ++i) {
         const RenderPassContract& c = kRenderPassContracts[i];
         const bool expected = (c.id == RenderPassId::StaticPropOpaque ||
-                               c.id == RenderPassId::MechOpaque ||
-                               c.id == RenderPassId::TerrainDecal ||
-                               c.id == RenderPassId::TerrainOverlay ||
-                               c.id == RenderPassId::VFX);
+                               c.id == RenderPassId::MechOpaque);
         CHECK(c.pipelineDescRegistered == expected);
         if (c.pipelineDescRegistered) ++trueCount;
     }
-    // Five surviving GL pass families retain their registrations.
-    CHECK(trueCount == 5);
+    // Static props and mechs retain GL registrations.
+    CHECK(trueCount == 2);
 }
 
 TEST_CASE("RenderPassContract: PipelineId-family passes back their flag with a real enumerator") {
@@ -511,8 +508,8 @@ TEST_CASE("RenderPassContract: 6 new lanes resolve to contract rows with current
         { RenderPassId::Water,           false },
         { RenderPassId::PostProcess,     false },
         { RenderPassId::VegetationCards, false },
-        { RenderPassId::TerrainDecal,    true  },
-        { RenderPassId::TerrainOverlay,  true  },
+        { RenderPassId::TerrainDecal,    false },
+        { RenderPassId::TerrainOverlay,  false },
         { RenderPassId::UI,              false },
     };
     for (const LaneExpect& want : newIds) {

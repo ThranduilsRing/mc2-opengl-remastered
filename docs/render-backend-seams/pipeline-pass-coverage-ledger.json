@@ -92,26 +92,24 @@
       "next": "none (GL model retired)"
     },
     "TerrainOverlay": {
-      "status": "ROUTED_BY_APPLYPIPELINE",
+      "status": "DESCRIPTIVE_REGISTERED",
       "proofStatus": "pass_not_exercised_in_smoke",
       "renderPassId": "TerrainOverlay",
       "pipelineId": "TerrainOverlay",
       "shaderBase": "terrain_overlay",
-      "stateOwner": "applyPipeline",
-      "evidence": "TERRAIN-OVERLAY-DECAL-APPLYPIPELINE-ROUTING-1: routed at gosRenderer::drawTerrainOverlays + drawDecalStaticBatch (gameos_graphics.cpp:9732/9850) via applyPipeline(TerrainOverlay). State byte-identical to old hand-set (opaque, depth test+write, GEQUAL, cull none; +no-op frontFace/blendFunc/offset). program(0)=skip keeps overlayProg_. Build green; tier1 5/5 PASS; no GL errors; mc2_24 capture == historical baseline (b11ff22a/e0fb9cc8/c6df715e).",
-      "proofNote": "VISUAL_PROVEN not claimed: the overlay pass is content-dependent (cement-perimeter tiles) and drew in ZERO tier1 missions (0 [PIPELINE_BIND] TerrainOverlay lines across all 5; the trace mechanism is proven live by Shadow* rows firing). Deterministic, so byte-hashable once exercised \u2014 upgrade on a cement-overlay mission A/B.",
-      "next": "TERRAIN-OVERLAY-VISUAL-GATE: capture on a cement-overlay mission, byte-hash A/B + [PIPELINE_BIND] TerrainOverlay trace -> VISUAL_PROVEN."
+      "stateOwner": "native Vulkan pipeline",
+      "evidence": "s66: source caller audit; native overlay/geometry submission owns the visible scene. The old GL draw and binder calls are deleted.",
+      "proofNote": "GL PipelineDesc retained as descriptive metadata; native runtime proof is recorded in the s66 lane journal."
     },
     "TerrainDecal": {
-      "status": "ROUTED_BY_APPLYPIPELINE",
+      "status": "DESCRIPTIVE_REGISTERED",
       "proofStatus": "pass_not_exercised_in_smoke",
       "renderPassId": "TerrainDecal",
       "pipelineId": "TerrainDecal",
       "shaderBase": "decal",
-      "stateOwner": "applyPipeline",
-      "evidence": "TERRAIN-OVERLAY-DECAL-APPLYPIPELINE-ROUTING-1: routed at gosRenderer::drawDecals (gameos_graphics.cpp:9924) via applyPipeline(TerrainDecal). State byte-identical to old hand-set (AlphaBlend SRC_ALPHA/1-SRC_ALPHA, depth-test no-write, GEQUAL, cull none). program(0)=skip keeps decalProg_. Build green; tier1 5/5 PASS; no GL errors.",
-      "proofNote": "VISUAL_PROVEN not claimed: decals are content-dependent (bomb craters + mech footprints from battle damage) and drew in ZERO tier1 missions. Deterministic, byte-hashable once exercised (e.g. combat / MC2_FX_FORCE_SPAWN impact mission).",
-      "next": "TERRAIN-DECAL-VISUAL-GATE: capture with battle-damage decals in-frame, byte-hash A/B + [PIPELINE_BIND] TerrainDecal trace -> VISUAL_PROVEN."
+      "stateOwner": "native Vulkan pipeline",
+      "evidence": "s66: source caller audit; native overlay/geometry submission owns the visible scene. The old GL draw and binder calls are deleted.",
+      "proofNote": "GL PipelineDesc retained as descriptive metadata; native runtime proof is recorded in the s66 lane journal."
     },
     "Water": {
       "status": "DO_NOT_MODEL",
@@ -126,7 +124,7 @@
       "reason": "Native Vulkan pass; its GL draw and PipelineDesc were deleted. Vulkan owns the images and pipeline state."
     },
     "VFX": {
-      "status": "ROUTED_BY_APPLYPIPELINE",
+      "status": "DESCRIPTIVE_REGISTERED",
       "proofStatus": "nondeterministic_visual_gate_pending",
       "renderPassId": "VFX",
       "pipelineIds": [
@@ -136,18 +134,18 @@
         "VfxMeshAdditive"
       ],
       "shaderBase": "tube_ribbon/vfx_mesh",
-      "stateOwner": "applyPipeline (per-item blend)",
-      "evidence": "VFX-VISUAL-GATE-1 (2026-06-23) built the full gate + proved TWO of three facts, but the pass is CONFIRMED pixel-nondeterministic so VISUAL_PROVEN is withheld (honest). PROVEN: (1) tube coverage \u2014 MC2_VFX_ORACLE_TUBE occlusion oracle samples=3325 into the scene FBO (fbo=1), the tube VFX pass rasterizes; (2) additive NOT collapsed \u2014 runtime [PIPELINE_BIND] blend= trace (new this slice) shows VfxTubeAdditive=AdditiveOneOne (ONE/ONE) vs VfxBillboardAdditive=AdditiveSrcAlphaOne (SRC_ALPHA/ONE); the static check-vfx-blend-distinction.py catches a collapse at check-time (proven: FAILs on a planted tube->billboard collapse). NOT PROVEN: 3-run pixel stability \u2014 captures DRIFT (max_abs_delta=241), particle output is not seeded by MC2_SMOKE_SEED (sim-freeze froze the clock but not the particle RNG). Per scope (no weakening the test for nondeterminism), the byte/perceptual gate honestly FAILS.",
-      "proofNote": "Routing + blend-distinction are GOVERNANCE-COMPLETE (checker + runtime trace catch the tube ONE/ONE vs billboard/mesh SRC_ALPHA/ONE collapse). VISUAL_PROVEN requires either (a) a deterministic particle seed so 3-run capture is stable (engine work, out of this slice's scope), or (b) operator acceptance that oracle_coverage + blend-non-collapse is sufficient proof for a deliberately-nondeterministic pass. Held at ROUTED/pending until that decision.",
-      "next": "Decide: seed particle RNG for pixel-determinism (engine slice) OR accept oracle_coverage+blend-non-collapse as the VFX proof."
+      "stateOwner": "native Vulkan pipeline",
+      "evidence": "s66: source caller audit; native overlay/geometry submission owns the visible scene. The old GL draw and binder calls are deleted.",
+      "proofNote": "GL PipelineDesc retained as descriptive metadata; native runtime proof is recorded in the s66 lane journal."
     },
     "VegetationCards": {
-      "status": "UNREGISTERED",
+      "status": "DO_NOT_MODEL",
       "renderPassId": "VegetationCards",
       "pipelineId": null,
       "shaderBase": "vegetation",
       "stateOwner": "legacy/ad-hoc",
-      "next": "recon later (instanced cards; alpha-test)"
+      "next": "recon later (instanced cards; alpha-test)",
+      "reason": "Native alpha-tested Vulkan crossed cards own color/normal/depth state. CPU placement and block visibility come from GameAdapters/VegetationAdapter.cpp; the GL buffers and draw are retired."
     },
     "PostProcess": {
       "status": "DO_NOT_MODEL",

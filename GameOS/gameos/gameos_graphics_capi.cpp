@@ -616,27 +616,15 @@ GLenum getGLBufferUsage(gosBUFFER_USAGE usage)
 
 gosBuffer* __stdcall gos_CreateBuffer(gosBUFFER_TYPE type, gosBUFFER_USAGE usage, int element_size, uint32_t count, void* buffer_data)
 {
-	GLenum gl_target = getGLBufferType(type);
-	GLenum gl_usage = getGLBufferUsage(usage);
-
-	size_t buffer_size = element_size * count;
-	GLuint buffer;
-	glGenBuffers(1, &buffer);
-	glBindBuffer(gl_target, buffer);
-	glBufferData(gl_target, buffer_size, buffer_data, gl_usage);
-	glBindBuffer(gl_target, 0);
-
-	gosBuffer* pbuffer = new gosBuffer();
-	pbuffer->buffer_ = buffer;
-	pbuffer->element_size_ = element_size;
-	pbuffer->count_ = count;
-	pbuffer->type_ = type;
-	pbuffer->usage_ = usage;
-
-    gosASSERT(g_gos_renderer);
-	g_gos_renderer->addBuffer(pbuffer);
-
-	return pbuffer;
+    if (element_size <= 0 || count > SIZE_MAX / static_cast<size_t>(element_size)) return nullptr;
+    auto* buffer = new gosBuffer;
+    buffer->element_size_ = element_size;
+    buffer->count_ = count;
+    buffer->type_ = type;
+    buffer->usage_ = usage;
+    buffer->bytes_.resize(static_cast<size_t>(element_size) * count);
+    if (buffer_data) std::memcpy(buffer->bytes_.data(), buffer_data, buffer->bytes_.size());
+    return buffer;
 }
 
 uint32_t gos_GetBufferSizeBytes(HGOSBUFFER buffer)
@@ -647,33 +635,18 @@ uint32_t gos_GetBufferSizeBytes(HGOSBUFFER buffer)
 
 void __stdcall gos_DestroyBuffer(gosBuffer* buffer)
 {
-	gosASSERT(buffer);
-    gosASSERT(g_gos_renderer);
-	bool rv = g_gos_renderer->deleteBuffer(buffer);
-    (void)rv;
-	delete buffer;
+    delete buffer;
 }
 
 void __stdcall gos_BindBufferBase(gosBuffer* buffer, uint32_t slot)
 {
-	gosASSERT(buffer);
-
-	GLenum gl_target = getGLBufferType(buffer->type_);
-	glBindBufferBase(gl_target, slot, buffer->buffer_);
+    // The retired hardware draw has no native buffer-binding consumer.
 }
 
 void __stdcall gos_UpdateBuffer(HGOSBUFFER buffer, void* data, size_t offset, size_t num_bytes)
 {
-	gosASSERT(buffer);
-    gosASSERT(buffer->element_size_ * buffer->count_ >= num_bytes);
-	GLenum gl_target = getGLBufferType(buffer->type_);
-    glBindBuffer(gl_target, buffer->buffer_);
-	// NOTE (unchanged behavior): this full glBufferData re-spec IGNORES the
-	// `offset` arg — it always orphans the whole buffer from byte 0. Left as-is
-	// by GPU-UPDATE-BUFFER-COUNTER-1 (measurement-only); the macro just tallies
-	// this orphan-on-write under owner GosUpdateBuffer when the gate is on.
-	MC2_GL_BufferData_Owner(gl_target, num_bytes, data, GL_DYNAMIC_DRAW, GosUpdateBuffer);
-    glBindBuffer(gl_target, 0);
+    if (!buffer || !data || offset > buffer->bytes_.size() || num_bytes > buffer->bytes_.size() - offset) return;
+    std::memcpy(buffer->bytes_.data() + offset, data, num_bytes);
 }
 
 HGOSVERTEXDECLARATION __stdcall gos_CreateVertexDeclaration(gosVERTEX_FORMAT_RECORD* records, int count)
@@ -694,91 +667,6 @@ void __stdcall gos_DestroyVertexDeclaration(HGOSVERTEXDECLARATION vdecl)
 	gosVertexDeclaration::destroy(vdecl);
 
 }
-
-HGOSRENDERMATERIAL __stdcall gos_getRenderMaterial(const char* material)
-{
-	gosASSERT(material);
-	gosASSERT(g_gos_renderer);
-	return g_gos_renderer->getRenderMaterial(material);
-}
-
-void __stdcall gos_ApplyRenderMaterial(HGOSRENDERMATERIAL material)
-{
-	gosASSERT(material);
-
-	gos_SetCommonMaterialParameters(material);
-
-	material->apply();
-	material->setSamplerUnit(gosMesh::s_tex1, 0);
-	material->setUniformBlock("lights_data", 0);
-}
-
-void __stdcall gos_SetRenderMaterialParameterFloat4(HGOSRENDERMATERIAL material, const char* name, const float* v)
-{
-	gosASSERT(material);
-	gosASSERT(v);
-	material->getShader()->setFloat4(name, v);
-}
-
-void __stdcall gos_SetRenderMaterialParameterMat4(HGOSRENDERMATERIAL material, const char* name, const float* m)
-{
-	gosASSERT(material);
-	gosASSERT(m);
-	material->getShader()->setMat4(name, m);
-}
-
-void __stdcall gos_SetRenderMaterialParameterInt(HGOSRENDERMATERIAL material, const char* name, int v)
-{
-	gosASSERT(material);
-	material->getShader()->setInt(name, v);
-}
-
-void __stdcall gos_SetRenderMaterialSamplerUnit(HGOSRENDERMATERIAL material, const char* name, uint32_t unit)
-{
-	gosASSERT(material);
-	gosASSERT(name);
-	material->setSamplerUnit(name, unit);
-}
-
-// GAMEOS-GRAPHICS-SPLIT-1 slice 4: the [LIGHTSSBO v1] LightsData SSBO
-// cluster (owner record, grow-once, prefix GPU-copy, upload/destroy) moved
-// to gameos_graphics_light_ssbo.cpp. gos_BindLightDataStorageBlock stays
-// here (needs gosRenderMaterial internals).
-
-
-// RF1: bind the LightsData SSBO block for a lit material's program.
-// Unconditional per-draw (idempotent, ~free, and immune to the CLAUDE.md
-// shader-hot-reload relink which resets program block bindings to 0 — a
-// cached guard would silently revert). Called from BOTH the legacy lit
-// paths (ShapeRenderer::render in txmmgr.cpp, gosRenderer::drawIndexedTris
-// here). Replaces the now-silent UBO-reflection
-// gos_SetRenderMaterialUniformBlockBindingPoint(mat,"LightsData",...).
-void __stdcall gos_BindLightDataStorageBlock(HGOSRENDERMATERIAL material)
-{
-	if (!material || !material->getShader() || !material->getShader()->shp_)
-		return;
-	GLuint shp = material->getShader()->shp_;
-	GLuint idx = glGetProgramResourceIndex(shp, GL_SHADER_STORAGE_BLOCK, "LightsData");
-	if (idx != GL_INVALID_INDEX)
-		glShaderStorageBlockBinding(shp, idx, LIGHT_DATA_SSBO_BINDING);
-}
-
-// VEHICLE-LIGHTING-PATH-1: expose the night light-pool bind/upload to callers
-// that only hold an HGOSRENDERMATERIAL (mclib's ShapeRenderer), mirroring
-// gos_BindLightDataStorageBlock above. The two GPU batchers call
-// UploadObjectLightPoolUniforms directly with a raw GL program id
-// (gos_mech_batcher.cpp:2519, gos_static_prop_batcher.cpp:6860/:8084); the
-// legacy lit path had no way to reach it, which is why vehicles were the only
-// object class receiving NO night pool light at all.
-// Safe when gated off: UploadObjectLightPoolUniforms force-uploads
-// u_numPoolLights=0, so calcLightPools returns exact vec3(0.0).
-void __stdcall gos_UploadObjectLightPools(HGOSRENDERMATERIAL material)
-{
-	if (!material || !material->getShader() || !material->getShader()->shp_)
-		return;
-	gos_terrain_lighting::UploadObjectLightPoolUniforms(material->getShader()->shp_);
-}
-
 
 void __stdcall gos_ForceApplyRenderStates() {
     // Force-apply by directly setting GL state to match the requested render states.

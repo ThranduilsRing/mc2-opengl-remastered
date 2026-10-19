@@ -663,7 +663,7 @@ L(Lead0Kill, "MC2_OVERLAY_CEMENT_ADOPT", Bool, true, "terrain", "", "OVERLAY-CEM
 // CEMENT-PATCHY-CAUSE-1: the concrete patchwork is a TWO-SHADER SEAM, not
 // an atlas-tone problem. Attribution receipt in .claude/CEMENT-PATCHY-CAUSE-1-STATUS.md.
 L(Presence, "MC2_OVERLAY_MAGENTA_TRACE", Bool, false, "gameos", "", "", verified),
-L(Presence, "MC2_OVERLAY_TEXTURE_TRACE", Bool, false, "gameos", "", "", passthrough | verified),
+L(Presence, "MC2_OVERLAY_TEXTURE_TRACE", Bool, false, "gameos", "", "", passthrough),
 // OVERLAY-TILE-HIRES-1: high-resolution terrain overlay tiles.
 // history: docs/gate-history.md#MC2_OVERLAY_TILE_HIRES
 G("MC2_OVERLAY_TILE_HIRES", String, "", "terrain", "", "OVERLAY-TILE-HIRES-1: honor the overlay tile TGA's actual dimensions instead of the legacy hard-assumed 64px (initOverlay header resync mirrors...", passthrough | registry(Feature, "MC2_OVERLAY_TILE_HIRES", -1, false) | verified),
@@ -1154,7 +1154,7 @@ G("MC2_UNIT_DEFINITION_SOURCE", Enum, "legacy", "code", "", "", passthrough | to
 L(Lead0, "MC2_UNIT_PROFILE_DATA", Bool, false, "unclassified", "", "UNIT-PROFILE-ARC: data-driven unit+equipment definition source (code/unitprofile.cpp).", passthrough | registry(Feature, "MC2_FEATURE_UNIT_PROFILE_DATA", -1, false) | verified),
 L(Presence, "MC2_VANISH_PROBE", Bool, false, "code", "", "", verified),
 G("MC2_VEGETATION_ATLAS", String, "", "gameos", "", "Allow env-var override at runtime too.", passthrough | verified),
-L(Lead0, "MC2_VEGETATION_CARDS", Bool, false, "gameos", "", "", passthrough | verified),
+L(DefOnLead0, "MC2_VEGETATION_CARDS", Bool, true, "gameos", "", "", passthrough | verified),
 P("MC2_VEGETATION_DENSITY", Int, 25, "code", "", "", verified),
 P("MC2_VEGETATION_MAX", Int, 5000000, "code", "", "", verified),
 L(Lead0, "MC2_VEG_DEBUG_FORCE_VISIBLE", Bool, false, "gameos", "", "", verified),
@@ -1182,15 +1182,15 @@ L(Lead1, "MC2_VFX_GPU_SIM_CARDCLOUD", Bool, false, "code", "", "VFX-GPU-SIM-CARD
 L(Lead1, "MC2_VFX_GPU_SIM_COMPARE", Bool, false, "code", "", "VFX-GPU-SIM-CARDCLOUD-BUFFER-1: emit the [VFX_GPU_SIM v1] integrity/compare logs (cpuActive vs submitted-live count, age/alpha ranges, world bounds, SSBO...", registry(Feature, "MC2_FEATURE_VFX_GPU_SIM_COMPARE", 17, false) | verified),
 // history: docs/gate-history.md#MC2_VFX_ORACLE_RENDER
 L(Lead1, "MC2_VFX_ORACLE_RENDER", Bool, false, "code", "", "VFX-ORIGINAL-RECORD-ABI-1 (Phase 1 of the originals-restoration arc; see docs/vfx-originals-restoration-design.md).", passthrough | registry(Feature, "MC2_FEATURE_VFX_ORACLE_RENDER", 15, false) | verified),
-L(Lead1, "MC2_VFX_ORACLE_SHAPE", Bool, false, "code", "", "", verified),
+L(DefOnLead0, "MC2_VFX_ORACLE_SHAPE", Bool, true, "code", "", "", verified),
 L(Lead1, "MC2_VFX_ORACLE_SHAPE_LOG", Bool, false, "unclassified", "", "", verified),
 // GOSFX-TUBE-RIBBON-1: gosFX Tube swept-quad ribbon oracle.
 // history: docs/gate-history.md#MC2_VFX_ORACLE_TUBE
-L(Lead1, "MC2_VFX_ORACLE_TUBE", Bool, false, "code", "", "GOSFX-TUBE-RIBBON-1: route supported gosFX Tube trails (MissileSmoke alpha, PPC additive, polygon) through the swept-quad ribbon oracle submit path instead...", registry(Feature, "MC2_VFX_ORACLE_TUBE", -1, false) | verified),
+L(DefOnLead0, "MC2_VFX_ORACLE_TUBE", Bool, true, "code", "", "GOSFX-TUBE-RIBBON-1: route supported gosFX Tube trails (MissileSmoke alpha, PPC additive, polygon) through the swept-quad ribbon oracle submit path instead...", registry(Feature, "MC2_VFX_ORACLE_TUBE", -1, true) | verified),
 // history: docs/gate-history.md#MC2_VFX_ORACLE_TUBE_COVERAGE
-L(Lead1, "MC2_VFX_ORACLE_TUBE_COVERAGE", Bool, false, "gameos", "", "GOSFX-TUBE-RIBBON-1: wrap the deferred ribbon draw in a GL_SAMPLES_PASSED occlusion query; logs [VFX_ORACLE_TUBE coverage] ribbons/samples/fbo/sceneDrawBufs...", registry(Trace, "MC2_VFX_ORACLE_TUBE_COVERAGE", -1, false) | verified),
+L(Lead1, "MC2_VFX_ORACLE_TUBE_COVERAGE", Bool, false, "gameos", "", "GOSFX-TUBE-RIBBON-1: wrap the deferred ribbon draw in a GL_SAMPLES_PASSED occlusion query; logs [VFX_ORACLE_TUBE coverage] ribbons/samples/fbo/sceneDrawBufs...", registry(Trace, "MC2_VFX_ORACLE_TUBE_COVERAGE", -1, false)),
 L(Lead1, "MC2_VFX_SCENECOLOR_GRAB", Bool, false, "gameos", "", "", verified),
-L(Lead0, "MC2_VFX_TUBE_UPLOAD_STATS", Bool, false, "gameos", "", "", verified),
+L(Lead0, "MC2_VFX_TUBE_UPLOAD_STATS", Bool, false, "gameos", "", ""),
 // history: docs/gate-history.md#MC2_VIEWMODE_FRAMEWORK
 L(Lead0, "MC2_VIEWMODE_FRAMEWORK", Bool, false, "post", "", "VIEWMODE-POSTPROCESS-PRESENTATION-1: enables the view-mode presentation framework that wires ViewMode::ObjectIdDebug (and future sensor modes) through the...", passthrough | registry(Feature, "MC2_FEATURE_VIEWMODE_FRAMEWORK", 18, false) | verified),
 // TRACKV-TACTICAL-PRESENTATION: ViewMode seed + LowLight tunables + tactical

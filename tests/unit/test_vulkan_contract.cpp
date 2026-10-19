@@ -9,6 +9,7 @@
 // run time, and add a deliberate-break-style negative check on the predicate.
 #include "doctest.h"
 #include "RenderCore/vulkan_contract.h"
+#include "GameAdapters/vegetation_budget.h"
 
 using namespace RenderCore;
 using namespace RenderCore::vulkan;
@@ -100,3 +101,22 @@ TEST_CASE("negative: the consistency predicate REJECTS a mismatched kind/class")
 }
 
 } // TEST_SUITE("VulkanContract")
+
+TEST_CASE("vegetation placement budget covers both map edges without exhausting its cap") {
+    // With the authored 14 WU spacing this cap fills the northern rows first.
+    // A worst-case all-vegetated map must still reach its southern/eastern edge.
+    for (const auto span : {1000.0f, 25000.0f}) {
+        constexpr int capacity=1000, maxClump=12;
+        const float step=mc2::vegetation::placementStep(span,14.0f,25,capacity);
+        int cells=0; float lastX=0.0f,lastY=0.0f;
+        for (float y=step*0.5f;y<span-step;y+=step)
+            for (float x=step*0.5f;x<span-step;x+=step) {
+                REQUIRE((cells+1)*maxClump<=capacity);
+                ++cells; lastX=x; lastY=y;
+            }
+        CHECK(cells>0);
+        CHECK(lastX>span*0.8f);
+        CHECK(lastY>span*0.8f);
+    }
+    CHECK(mc2::vegetation::placementStep(700.0f,14.0f,25,5000000)==14.0f);
+}

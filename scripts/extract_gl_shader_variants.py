@@ -736,7 +736,7 @@ def _merged_material_src(core: Src, hdr: Src) -> Src:
     s.t = hdr.t + chr(10) + core.t
     s.pairs = brace_pairs(s.t)
     s.rel = core.rel
-    s.anchor_line = line_of(core.t, core.t.index("shader_list"))
+    s.anchor_line = line_of(core.t, core.t.find("shader_list") if "shader_list" in core.t else core.t.index("gosRenderMaterial::load"))
     return s
 
 
@@ -756,11 +756,11 @@ def collect_materials(world: World, out: list):
     flags = [parse_string_literals(x.strip()) for x in split_top(m.group(1), ",") if x.strip()]
     # shader_list
     m = re.search(r"shader_list\s*\[\s*\]\s*=\s*\{(.*?)\};", s.t, re.S)
-    shader_list = [parse_string_literals(x.strip()) for x in split_top(m.group(1), ",") if x.strip()]
+    shader_list = [parse_string_literals(x.strip()) for x in split_top(m.group(1), ",") if x.strip()] if m else []
     # combinations
     m = re.search(r"combinations\s*\[\s*\]\s*=\s*\{(.*?)\};", s.t, re.S)
     combos = []
-    for item in split_top(m.group(1), ","):
+    for item in split_top(m.group(1), ",") if m else []:
         item = item.strip()
         if not item:
             continue

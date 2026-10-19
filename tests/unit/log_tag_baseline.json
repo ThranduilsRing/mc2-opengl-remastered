@@ -6849,35 +6849,6 @@
    "count": 1
   },
   {
-   "tag": "OVERLAY_TEXTURE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "batch",
-    "texHandle",
-    "fallback_bound",
-    "texture",
-    "reason"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "OVERLAY_TEXTURE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "tick",
-    "pushes",
-    "resolved",
-    "resolve_failed",
-    "bound_zero_prevented",
-    "fallback_bound"
-   ],
-   "count": 1
-  },
-  {
    "tag": "OVERLAY_TILE_HIRES",
    "ver": 1,
    "stream": "stdout",
@@ -9817,17 +9788,6 @@
    "stream": "stdout",
    "keys": [
     "event",
-    "reason",
-    "verts"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_OVERLAY",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
     "tile",
     "world",
     "type",
@@ -9856,29 +9816,6 @@
     "c2",
     "c3",
     "elev_raw"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_OVERLAY",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "tris"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_OVERLAY",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "tris",
-    "verts",
-    "ranges",
-    "vbo_gl"
    ],
    "count": 1
   },
@@ -10727,15 +10664,6 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "event"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VFX_MESH",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
     "event",
     "calls",
     "submitted",
@@ -10754,31 +10682,6 @@
    "stream": "stderr",
    "keys": [
     "event",
-    "flushCalls",
-    "instancesSubmitted",
-    "drawsIssued",
-    "missingTexture",
-    "meshesUploaded"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VFX_MESH",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "instances",
-    "uploads"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VFX_MESH",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
     "meshId",
     "prims",
     "verts",
@@ -10786,29 +10689,6 @@
     "tex",
     "blend",
     "scale"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VFX_MESH",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "meshId",
-    "verts",
-    "indices",
-    "cacheSize"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VFX_MESH",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "prog"
    ],
    "count": 1
   },
@@ -10912,20 +10792,6 @@
     "uvRect",
     "alpha",
     "ageRange"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VFX_TUBE_UPLOAD_STATS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "records",
-    "posVerts",
-    "uploadBytes",
-    "baselineBytes",
-    "savedBytes",
-    "heapAllocs"
    ],
    "count": 1
   },

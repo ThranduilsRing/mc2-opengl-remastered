@@ -123,6 +123,16 @@ BUILDING_PBR_PAYLOAD = [
 GAME_DATA_PAYLOAD = [
     "data/terrain_materials.json",
     "data/visual_tuning.json",
+    # Native vegetation packs these tracked cards into its 4x2 atlas at load.
+    "data/vegetation/cards/grass_01.png",
+    "data/vegetation/cards/grass_02.png",
+    "data/vegetation/cards/grass_03.png",
+    "data/vegetation/cards/grass_04.png",
+    "data/vegetation/cards/fern_01.png",
+    "data/vegetation/cards/fern_02.png",
+    "data/vegetation/cards/fern_03.png",
+    "data/vegetation/cards/fern_04.png",
+
 
 ]
 

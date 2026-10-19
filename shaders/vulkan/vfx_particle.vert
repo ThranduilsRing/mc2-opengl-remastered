@@ -59,7 +59,21 @@ layout(location = 0) out vec2 v_uv;
 layout(location = 1) out vec4 v_color;
 layout(location = 2) flat out uint v_flags;
 
+layout(location = 3) out vec4 v_vegData;
+layout(location = 4) out vec2 v_vegAux;
+#include "include/vegetation_vk.glsl"
 void main() {
+    v_vegData=vec4(0.0); v_vegAux=vec2(0.0);
+    if (G.atlasColumns == 0xfffffffeu) { mc2VegetationVertex(); return; }
+    // Native mesh/ribbon/vegetation vertices share the 64-byte frame-ring stride.
+    if (G.atlasColumns == 0xffffffffu) {
+        Particle p = particles[gl_VertexIndex];
+        gl_Position = U.worldToClipGL * vec4(mc2ToRender(p.position), 1.0);
+        v_uv = p.velocity.xy;
+        v_color = p.color;
+        v_flags = p.kind_flags;
+        return;
+    }
     uint particleId = uint(gl_VertexIndex) / 6u;
     int  cornerSlot = int(uint(gl_VertexIndex) % 6u);
     int  cornerIdx  = kCornerIdx[cornerSlot];
