@@ -20,6 +20,7 @@
  ***************************************************************/
 
 #include "MC2Strings.h"
+#include "utils/mc2log.h"
 
 #include <algorithm>
 #include <cctype>
@@ -112,17 +113,7 @@ namespace
 #endif
         va_end(args);
 
-        FILE* fp = nullptr;
-#ifdef _MSC_VER
-        fopen_s(&fp, "mc2-strings.log", "a");
-#else
-        fp = fopen("mc2-strings.log", "a");
-#endif
-        if (fp)
-        {
-            mc2::fmt::print(fp, "{}\n", mc2::fmt::safe(line));
-            std::fclose(fp);
-        }
+        MC2_LOG(Ui, Info, "strings: {}", line);
     }
 
     std::string Trim(const std::string& value)
@@ -826,17 +817,7 @@ namespace MC2Strings
 
         state.attempted = true;
 
-        FILE* fp = nullptr;
-#ifdef _MSC_VER
-        fopen_s(&fp, "mc2-strings.log", "w");
-#else
-        fp = fopen("mc2-strings.log", "w");
-#endif
-        if (fp)
-        {
-            mc2::fmt::print(fp, "MC2 data/defs string trace start\n");
-            std::fclose(fp);
-        }
+        Trace("MC2 data/defs string trace start");
 
         std::vector<std::string> dirs;
 
