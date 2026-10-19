@@ -3,6 +3,7 @@
 //===========================================================================//
 
 #include"mlrheaders.hpp"
+#include <memory>
 
 #if defined(TRACE_ENABLED) && defined(MLR_TRACE)
 	BitTrace *MLR_I_L_PMesh_Clip;
@@ -310,7 +311,8 @@ MLRShape*
 		nrTri = Limits::Max_Number_Vertices_Per_Mesh/3;
 	}
 
-	unsigned char *lengths = new unsigned char [nrTri];
+	auto lengthsOwner = std::make_unique_for_overwrite<unsigned char[]>(nrTri);
+	unsigned char* lengths = lengthsOwner.get();
 	Register_Pointer(lengths);
 
 	for(i=0;i<nrTri;i++)
@@ -318,23 +320,30 @@ MLRShape*
 		lengths[i] = 3;
 	}
 
-	glm::vec3 *coords = new glm::vec3 [nrTri*3];
+	auto coordsOwner = std::make_unique_for_overwrite<glm::vec3[]>(nrTri*3);
+	glm::vec3* coords = coordsOwner.get();
 	Register_Pointer(coords);
 	
-	glm::vec3 *collapsedCoords = nullptr;
+	std::unique_ptr<glm::vec3[]> collapsedCoordsOwner;
+	glm::vec3* collapsedCoords = nullptr;
 	if(icoInfo.indexed==true)
 	{
-		collapsedCoords = new glm::vec3 [nrTri*3];
+		collapsedCoordsOwner = std::make_unique_for_overwrite<glm::vec3[]>(nrTri*3);
+		collapsedCoords = collapsedCoordsOwner.get();
 		Register_Pointer(collapsedCoords);
 	}
 
-	unsigned short	*index = new unsigned short [nrTri*3];
+	auto indexOwner = std::make_unique_for_overwrite<unsigned short[]>(nrTri*3);
+	unsigned short* index = indexOwner.get();
 	Register_Pointer(index);
-	Vector2DScalar *texCoords = new Vector2DScalar[nrTri*3];
+	auto texCoordsOwner = std::make_unique_for_overwrite<Vector2DScalar[]>(nrTri*3);
+	Vector2DScalar* texCoords = texCoordsOwner.get();
 	Register_Pointer(texCoords);
-	RGBAColor *colors = new RGBAColor[nrTri*3];
+	auto colorsOwner = std::make_unique_for_overwrite<RGBAColor[]>(nrTri*3);
+	RGBAColor* colors = colorsOwner.get();
 	Register_Pointer(colors);
-	glm::vec3 *normals = new glm::vec3[nrTri*3];
+	auto normalsOwner = std::make_unique_for_overwrite<glm::vec3[]>(nrTri*3);
+	glm::vec3* normals = normalsOwner.get();
 	Register_Pointer(normals);
 
 	int uniquePoints = 0;
@@ -485,28 +494,28 @@ MLRShape*
 	}
 
 	Unregister_Pointer(normals);
-	delete [] normals;
+	normalsOwner.reset();
 
 	Unregister_Pointer(colors);
-	delete [] colors;
+	colorsOwner.reset();
 
 	Unregister_Pointer(texCoords);
-	delete [] texCoords;
+	texCoordsOwner.reset();
 
 	Unregister_Pointer(index);
-	delete [] index;
+	indexOwner.reset();
 
 	if(icoInfo.indexed==true)
 	{
 		Unregister_Pointer(collapsedCoords);
-		delete [] collapsedCoords;
+		collapsedCoordsOwner.reset();
 	}
 	
 	Unregister_Pointer(coords);
-	delete [] coords;
+	coordsOwner.reset();
 	
 	Unregister_Pointer(lengths);
-	delete [] lengths;
+	lengthsOwner.reset();
 
 	gos_PopCurrentHeap();
 	return ret;
@@ -526,7 +535,8 @@ MLR_I_L_PMesh*
 	MLR_I_L_PMesh *ret = new MLR_I_L_PMesh;
 	Register_Object(ret);
 
-	glm::vec3 *coords = new glm::vec3 [8];
+	auto coordsOwner = std::make_unique_for_overwrite<glm::vec3[]>(8);
+	glm::vec3* coords = coordsOwner.get();
 	Register_Object(coords);
 
 	coords[0] = glm::vec3( half, -half,  half);
@@ -538,7 +548,8 @@ MLR_I_L_PMesh*
 	coords[6] = glm::vec3( half,  half, -half);
 	coords[7] = glm::vec3(-half,  half, -half);
 
-	unsigned char *lengths = new unsigned char [6];
+	auto lengthsOwner = std::make_unique_for_overwrite<unsigned char[]>(6);
+	unsigned char* lengths = lengthsOwner.get();
 	Register_Pointer(lengths);
 
 	int i;
@@ -552,7 +563,8 @@ MLR_I_L_PMesh*
 
 	ret->SetCoordData(coords, 8);
 
-	unsigned short	*index = new unsigned short [6*4];
+	auto indexOwner = std::make_unique_for_overwrite<unsigned short[]>(6*4);
+	unsigned short* index = indexOwner.get();
 	Register_Pointer(index);
 
 	index[0] = 0;
@@ -592,7 +604,8 @@ MLR_I_L_PMesh*
 	if(eightColors!=NULL)
 	{
 #if COLOR_AS_DWORD
-		DWORD *dwColor = new DWORD [8];
+		auto dwColorOwner = std::make_unique_for_overwrite<DWORD[]>(8);
+		DWORD* dwColor = dwColorOwner.get();
 		Register_Pointer(dwColor);
 
 		for(i=0;i<8;i++)
@@ -603,7 +616,7 @@ MLR_I_L_PMesh*
 		ret->SetColorData(dwColor, 8);
 
 		Unregister_Pointer(dwColor);
-		delete [] dwColor;
+		dwColorOwner.reset();
 #else
 		ret->SetColorData(eightColors, 8);
 #endif
@@ -614,7 +627,8 @@ MLR_I_L_PMesh*
 		ret->SetNormalData(eightNormals, 8);
 	}
 
-	Vector2DScalar *texCoords = new Vector2DScalar[8];
+	auto texCoordsOwner = std::make_unique_for_overwrite<Vector2DScalar[]>(8);
+	Vector2DScalar* texCoords = texCoordsOwner.get();
 		Register_Object(texCoords);
 
 	texCoords[0] = Vector2DScalar(0.0f, 0.0f);
@@ -646,16 +660,16 @@ MLR_I_L_PMesh*
 	ret->SetTexCoordData(texCoords, 8);
 
 	Unregister_Object(texCoords);
-	delete [] texCoords;
+	texCoordsOwner.reset();
 
 	Unregister_Pointer(index);
-	delete [] index;
+	indexOwner.reset();
 
 	Unregister_Pointer(lengths);
-	delete [] lengths;
+	lengthsOwner.reset();
 
 	Unregister_Object(coords);
-	delete [] coords;
+	coordsOwner.reset();
 
 	gos_PopCurrentHeap();
 	return ret;
