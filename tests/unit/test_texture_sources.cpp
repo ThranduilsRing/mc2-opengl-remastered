@@ -8,8 +8,8 @@ struct Sources {
     RenderCore::TextureService service;
     RenderCore::TextureServiceScope scope{service};
     mc2::textures::TextureSources* index;
-    Sources() {
-        auto owner=std::make_unique<mc2::textures::TextureSources>();
+    explicit Sources(std::function<void(DWORD)> retired={}) {
+        auto owner=std::make_unique<mc2::textures::TextureSources>(std::move(retired));
         index=owner.get(); service.ownSources(std::move(owner));
     }
     DWORD add(const char* name, DWORD variant=0) {
@@ -111,6 +111,28 @@ TEST_CASE("registration pins retain payloads independently of mission roots") {
     CHECK(mc2::textures::pinCount(id)==1);
     mc2::textures::unpin(id);
     CHECK_FALSE(s.service.isLive(h));
+}
+
+TEST_CASE("CPU consumers retire after the service mutex is released") {
+    unsigned callbacks=0;
+    Sources s([&](DWORD cpu) {
+        CHECK(cpu==42);
+        // This re-enters the service: invoking the callback from retire() under
+        // its mutex would deadlock here, just as the real UI cleanup would.
+        CHECK(RenderCore::textureService().liveCount()==0);
+        ++callbacks;
+    });
+    const auto id=s.add("cpu-consumer"); const auto h=s.handle(id);
+    s.index->get(id)->cpuTexture=42;
+    auto retained=RenderCore::ServiceTextureRef::retain(s.service,h);
+    mc2::textures::release(id);
+    CHECK(callbacks==0);
+    retained={};
+    CHECK(callbacks==0);
+    s.service.collectSourceRetirements();
+    CHECK(callbacks==1);
+    s.service.collectSourceRetirements();
+    CHECK(callbacks==1);
 }
 
 TEST_CASE("variants share immutable input bytes but own separate source identities") {
