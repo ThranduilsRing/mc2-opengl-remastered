@@ -1,4 +1,6 @@
 #include "gameos.hpp"
+#include <memory>
+#include <utility>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
 #include <vector>
@@ -14,10 +16,10 @@ class gosAudio {
 
     public:
 
-        static gosAudio* makeAudio(SDL_AudioFormat fmt, int channels, int freq, uint8_t* pdata, uint32_t size) {
-            gosAudio* audio = new gosAudio(fmt, channels, freq, pdata, size);
+        static gosAudio* makeAudio(SDL_AudioFormat fmt, int channels, int freq, std::unique_ptr<uint8_t[]> pdata, uint32_t size) {
+            gosAudio* audio = new gosAudio(fmt, channels, freq, std::move(pdata), size);
             audio->mix_chunk_.allocated = 0;
-            audio->mix_chunk_.abuf = pdata;
+            audio->mix_chunk_.abuf = audio->pdata_.get();
             audio->mix_chunk_.alen = size;
             audio->mix_chunk_.volume = 50; // just something default 
             return audio;
@@ -29,23 +31,23 @@ class gosAudio {
 
     private:
 
-        gosAudio(SDL_AudioFormat fmt, int channels, int freq, uint8_t* pdata, uint32_t size):
+        gosAudio(SDL_AudioFormat fmt, int channels, int freq, std::unique_ptr<uint8_t[]> pdata, uint32_t size):
             fmt_(fmt),
             channels_(channels),
             freq_(freq),
-            pdata_(pdata),
+            pdata_(std::move(pdata)),
             len_(size)
             {
             }
 
         ~gosAudio() {
-            delete[] pdata_;
+            pdata_.reset();
         }
 
         SDL_AudioFormat fmt_;
         int channels_;
         int freq_;
-        uint8_t* pdata_;
+        std::unique_ptr<uint8_t[]> pdata_;
         uint32_t len_;
 
     public:
@@ -291,8 +293,10 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
     double mul_k = static_cast<double>(dst_freq) / static_cast<double>(src_freq);
     audio_data_size =static_cast<uint32_t>((audio_data_size * mul_k));
 
-    uint8_t* audio_data = new uint8_t[audio_data_size];
+    auto audioDataOwner = std::make_unique_for_overwrite<uint8_t[]>(audio_data_size);
+    uint8_t* audio_data = audioDataOwner.get();
     memset(audio_data, 0, audio_data_size);
+    std::unique_ptr<uint8_t[]> tmpReqBufOwner;
     uint8_t* tmp_req_buf = nullptr;
 
     const bool needs_conversion = g_sound_engine->needsConversion(src_fmt, src_channels, src_freq);
@@ -305,7 +309,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
                     dst_fmt, dst_channels, dst_freq)) {
 
             PAUSE(("SDL_BuildAudioCVT: Failed to build conversion structure : %s\n", SDL_GetError()));
-            delete[] audio_data;
+            audioDataOwner.reset();
             if(from_file)
                 SDL_FreeWAV(databuf);
             *hgosaudio = nullptr;
@@ -320,7 +324,8 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
         if(src_datasize >= tmp_req_buf_size) {
             cvt.buf = databuf;
         } else {
-            tmp_req_buf = new uint8_t[tmp_req_buf_size];
+            tmpReqBufOwner = std::make_unique_for_overwrite<uint8_t[]>(tmp_req_buf_size);
+            tmp_req_buf = tmpReqBufOwner.get();
             memcpy(tmp_req_buf, databuf, src_datasize);
             cvt.buf = tmp_req_buf;
         }
@@ -328,11 +333,11 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
         // conversion is in-place
         if(0 > SDL_ConvertAudio(&cvt)) {
             PAUSE(("Failed to convert audio: %s\n", SDL_GetError()));
-            delete[] audio_data;
+            audioDataOwner.reset();
             if(from_file)
                 SDL_FreeWAV(databuf);
             *hgosaudio = nullptr;
-            delete[] tmp_req_buf;
+            tmpReqBufOwner.reset();
             return;
         }
 
@@ -352,7 +357,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
         memcpy(audio_data, databuf, audio_data_size);
     }
 
-    delete[] tmp_req_buf;
+    tmpReqBufOwner.reset();
 
 #ifndef USE_MIX_LOAD
     if(from_file)
@@ -362,7 +367,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
         Mix_FreeChunk(chunk);
 #endif
 
-    gosAudio* paudio = gosAudio::makeAudio(dst_fmt, dst_channels, dst_freq, audio_data, audio_data_size);
+    gosAudio* paudio = gosAudio::makeAudio(dst_fmt, dst_channels, dst_freq, std::move(audioDataOwner), audio_data_size);
     if(!paudio) {
         PAUSE(("makeAudio: Failed to create audio resource\n"));
         return;
