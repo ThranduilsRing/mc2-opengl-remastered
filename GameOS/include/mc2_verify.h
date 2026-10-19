@@ -55,9 +55,9 @@ void MissionSummary(const char* label);
 
 // Bounds guard: 0 <= idx < count.
 #define MC2_VERIFY_BOUNDS(idx, count, what) \
-    MC2_VERIFY(((long)(idx) >= 0) && ((long)(idx) < (long)(count)), \
+    MC2_VERIFY((static_cast<long>((idx)) >= 0) && (static_cast<long>((idx)) < static_cast<long>((count))), \
                "%s index %ld out of bounds [0,%ld)", \
-               (what), (long)(idx), (long)(count))
+               (what), static_cast<long>((idx)), static_cast<long>((count)))
 
 // Null-pointer guard.
 #define MC2_VERIFY_NOTNULL(ptr, what) \

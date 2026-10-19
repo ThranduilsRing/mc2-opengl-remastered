@@ -55,7 +55,7 @@
    "LG06": 494,
    "LG07": 0,
    "LG08": 235,
-   "LG09": 54,
+   "LG09": 0,
    "LG10": 39,
    "LG11": 89,
    "LG12a": 88,
@@ -65,7 +65,7 @@
    "LG15": 0,
    "LG16": 6,
    "LG17": 80,
-   "LG18": 36,
+   "LG18": 44,
    "LG19": 1,
    "LG20": 8
   },
@@ -388,9 +388,9 @@
   "GameOS/gameos/gameos_graphics_internal.h": {
    "LG03": 9,
    "LG06": 5,
-   "LG09": 8,
    "LG16": 4,
-   "LG17": 1
+   "LG17": 1,
+   "LG18": 4
   },
   "GameOS/gameos/gameos_graphics_light_ssbo.cpp": {
    "LG13": 1
@@ -398,7 +398,6 @@
   "GameOS/gameos/gameos_graphics_material_internal.h": {
    "LG03": 18,
    "LG06": 4,
-   "LG09": 2,
    "LG12a": 2,
    "LG12b": 2,
    "LG13": 3,
@@ -420,10 +419,9 @@
    "LG03": 1,
    "LG05": 1,
    "LG06": 3,
-   "LG09": 9,
    "LG10": 1,
    "LG17": 7,
-   "LG18": 1
+   "LG18": 2
   },
   "GameOS/gameos/gameos_graphics_shadow.cpp": {
    "LG05": 1,
@@ -711,7 +709,6 @@
    "LG12a": 5
   },
   "GameOS/gameos/gos_terrain_indirect_internal.h": {
-   "LG09": 1,
    "LG10": 1,
    "LG12a": 2
   },
@@ -755,9 +752,6 @@
   },
   "GameOS/gameos/gos_terrain_patch_stream.cpp": {
    "LG08": 4
-  },
-  "GameOS/gameos/gos_terrain_patch_stream.h": {
-   "LG09": 1
   },
   "GameOS/gameos/gos_terrain_water_stream.cpp": {
    "LG05": 1,
@@ -825,9 +819,6 @@
   "GameOS/gameos/gpu_driven_common.cpp": {
    "LG03": 4
   },
-  "GameOS/gameos/mc2_hitch_trace.h": {
-   "LG09": 6
-  },
   "GameOS/gameos/mc2_verify.cpp": {
    "LG06": 6,
    "LG11": 1,
@@ -838,8 +829,7 @@
    "LG06": 1
   },
   "GameOS/gameos/particle_stall_probe.h": {
-   "LG06": 2,
-   "LG09": 1
+   "LG06": 2
   },
   "GameOS/gameos/pipeline_binder.cpp": {
    "LG06": 2
@@ -910,15 +900,13 @@
   "GameOS/gameos/utils/gl_utils.h": {
    "LG03": 8,
    "LG06": 4,
-   "LG09": 2,
    "LG12a": 3
   },
   "GameOS/gameos/utils/gpu_debug_labels.h": {
    "LG06": 1
   },
   "GameOS/gameos/utils/gpu_ring_buffer.h": {
-   "LG06": 2,
-   "LG09": 8
+   "LG06": 2
   },
   "GameOS/gameos/utils/mc2log.cpp": {
    "LG12a": 2
@@ -965,9 +953,9 @@
   },
   "GameOS/gameos/utils/vec.h": {
    "LG02": 4,
-   "LG09": 4,
    "LG10": 1,
-   "LG13": 1
+   "LG13": 1,
+   "LG18": 3
   },
   "GameOS/gameos/view_uniforms_gl.cpp": {
    "LG05": 2
@@ -985,9 +973,6 @@
   },
   "GameOS/gameos/vk_feed_dump.h": {
    "LG06": 1
-  },
-  "GameOS/gameos/vk_gpu_timestamps.h": {
-   "LG09": 2
   },
   "GameOS/gameos/vk_hdri_source.h": {
    "LG08": 2
@@ -1122,7 +1107,6 @@
    "LG02": 48,
    "LG04": 2,
    "LG06": 43,
-   "LG09": 1,
    "LG12a": 3,
    "LG13": 7,
    "LG14": 37,
@@ -1133,8 +1117,7 @@
    "LG06": 1
   },
   "GameOS/include/mc2_verify.h": {
-   "LG06": 2,
-   "LG09": 2
+   "LG06": 2
   },
   "GameOS/include/mc2fmt.h": {
    "LG06": 1,
@@ -1170,7 +1153,6 @@
   "GameOS/include/platform_windef.h": {
    "LG01": 1,
    "LG02": 42,
-   "LG09": 7,
    "LG13": 6
   },
   "GameOS/include/platform_winerror.h": {
@@ -4000,7 +3982,7 @@
    "LG20": 3
   }
  },
- "head": "47180d3c8",
+ "head": "79768312b",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

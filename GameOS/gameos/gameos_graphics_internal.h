@@ -208,7 +208,7 @@ class gosTexture {
                 mirror_h_ = 0;
                 return;
             }
-            const size_t pixelCount = (size_t)w * (size_t)h;
+            const size_t pixelCount = static_cast<size_t>(w) * static_cast<size_t>(h);
             auto fresh = std::make_shared<std::vector<uint8_t>>();
             fresh->resize(pixelCount * 4u);
             std::vector<uint8_t>& dst = *fresh;
@@ -217,7 +217,7 @@ class gosTexture {
             if(format == TF_RGBA8) {
                 std::memcpy(dst.data(), pixels, dst.size());
             } else if(format == TF_RGB8) {
-                const uint8_t* src = (const uint8_t*)pixels;
+                const uint8_t* src = static_cast<const uint8_t*>(pixels);
                 for(size_t i = 0; i < pixelCount; ++i) {
                     dst[i * 4u + 0u] = src[i * 3u + 0u];
                     dst[i * 4u + 1u] = src[i * 3u + 1u];
@@ -235,7 +235,7 @@ class gosTexture {
 
         // Publishes already-RGBA8 texels as the mirror without a copy (the decoded upload source).
         void adoptRgbaMirror(int w, int h, std::vector<uint8_t>&& rgba) {
-            if (w <= 0 || h <= 0 || rgba.size() != (size_t)w * (size_t)h * 4u) {
+            if (w <= 0 || h <= 0 || rgba.size() != static_cast<size_t>(w) * static_cast<size_t>(h) * 4u) {
                 setRgbaMirror(0, 0, TF_RGBA8, nullptr);
                 return;
             }
@@ -257,7 +257,7 @@ class gosTexture {
             if (!blocks_ || mirror_decode_serial_ == content_serial_ || tex_.w <= 0 || tex_.h <= 0)
                 return false;
             mirror_decode_serial_ = content_serial_;   // a failed decode is not retried per frame
-            std::vector<uint8_t> rgba = mc2tex::decodeBc7(*blocks_, (uint32_t)tex_.w, (uint32_t)tex_.h);
+            std::vector<uint8_t> rgba = mc2tex::decodeBc7(*blocks_, static_cast<uint32_t>(tex_.w), static_cast<uint32_t>(tex_.h));
             if (rgba.empty()) {
                 MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] {}: BC7 blocks do not decode at {:d}x{:d}; drawn untextured",
                         texname_ ? texname_ : "NO NAME", tex_.w, tex_.h);
@@ -300,13 +300,13 @@ class gosTexture {
             getTextureData(tex_, 0, plocked_area_, TF_RGBA8);
             for(int y=0;y<tex_.h;++y) {
                 for(int x=0;x<tex_.w;++x) {
-                    DWORD rgba = ((DWORD*)plocked_area_)[tex_.w*y + x];
+                    DWORD rgba = (reinterpret_cast<DWORD*>(plocked_area_))[tex_.w*y + x];
                     DWORD r = rgba&0xff;
                     DWORD g = (rgba&0xff00)>>8;
                     DWORD b = (rgba&0xff0000)>>16;
                     DWORD a = (rgba&0xff000000)>>24;
                     DWORD bgra = (a<<24) | (r<<16) | (g<<8) | b;
-                    ((DWORD*)plocked_area_)[tex_.w*y + x] = bgra;
+                    (reinterpret_cast<DWORD*>(plocked_area_))[tex_.w*y + x] = bgra;
                 }
             }
             return plocked_area_;
@@ -318,13 +318,13 @@ class gosTexture {
             if(!lock_type_read_only_) {
                 for(int y=0;y<tex_.h;++y) {
                     for(int x=0;x<tex_.w;++x) {
-                        DWORD bgra = ((DWORD*)plocked_area_)[tex_.w*y + x];
+                        DWORD bgra = (reinterpret_cast<DWORD*>(plocked_area_))[tex_.w*y + x];
                         DWORD b = bgra&0xff;
                         DWORD g = (bgra&0xff00)>>8;
                         DWORD r = (bgra&0xff0000)>>16;
                         DWORD a = (bgra&0xff000000)>>24;
                         DWORD argb = (a<<24) | (b<<16) | (g<<8) | r;
-                        ((DWORD*)plocked_area_)[tex_.w*y + x] = argb;
+                        (reinterpret_cast<DWORD*>(plocked_area_))[tex_.w*y + x] = argb;
                     }
                 }
                 // Same hazard as Lock's readback, upload side: glTexSubImage2D

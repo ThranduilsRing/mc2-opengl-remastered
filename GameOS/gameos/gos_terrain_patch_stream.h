@@ -217,7 +217,7 @@ public:
         uint32_t bx, by;
         memcpy(&bx, &wx0, 4);
         memcpy(&by, &wy0, 4);
-        return ((uint64_t)bx << 32) | (uint64_t)by;
+        return (static_cast<uint64_t>(bx) << 32) | static_cast<uint64_t>(by);
     }
 
     // Ensures recipe exists in SSBO (allocates on first encounter, no-op thereafter).

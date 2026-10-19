@@ -80,7 +80,7 @@ public:
         glGenBuffers(1, &vbBuf_);
         glBindBuffer(GL_ARRAY_BUFFER, vbBuf_);
         glBufferStorage(GL_ARRAY_BUFFER, vbBytes, nullptr, flags);
-        vbMap_ = (uint8_t*)glMapBufferRange(GL_ARRAY_BUFFER, 0, vbBytes, flags);
+        vbMap_ = static_cast<uint8_t*>(glMapBufferRange(GL_ARRAY_BUFFER, 0, vbBytes, flags));
         labelBuffer(vbBuf_, tag_, "vb");
 
         if (indexCapacity_ > 0) {
@@ -89,7 +89,7 @@ public:
             glGenBuffers(1, &ibBuf_);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibBuf_);
             glBufferStorage(GL_ELEMENT_ARRAY_BUFFER, ibBytes, nullptr, flags);
-            ibMap_ = (uint8_t*)glMapBufferRange(GL_ELEMENT_ARRAY_BUFFER, 0, ibBytes, flags);
+            ibMap_ = static_cast<uint8_t*>(glMapBufferRange(GL_ELEMENT_ARRAY_BUFFER, 0, ibBytes, flags));
             labelBuffer(ibBuf_, tag_, "ib");
         }
 
@@ -151,8 +151,8 @@ public:
     // (element offset) the draw must use.
     GLint writeVertices(const void* src, uint32_t count) {
         const uint32_t base = slot_ * vertexCapacity_;
-        std::memcpy(vbMap_ + (size_t)base * vertexStride_, src,
-                    (size_t)count * vertexStride_);
+        std::memcpy(vbMap_ + static_cast<size_t>(base) * vertexStride_, src,
+                    static_cast<size_t>(count) * vertexStride_);
         return (GLint)base;
     }
 
@@ -160,8 +160,8 @@ public:
     // draw must pass to glDrawElements*BaseVertex.
     GLsizeiptr writeIndices(const void* src, uint32_t count) {
         const uint32_t base = slot_ * indexCapacity_;
-        const size_t byteOff = (size_t)base * indexStride_;
-        std::memcpy(ibMap_ + byteOff, src, (size_t)count * indexStride_);
+        const size_t byteOff = static_cast<size_t>(base) * indexStride_;
+        std::memcpy(ibMap_ + byteOff, src, static_cast<size_t>(count) * indexStride_);
         return (GLsizeiptr)byteOff;
     }
 
@@ -200,9 +200,9 @@ public:
         uint32_t liveFences = 0;
         for (uint32_t i = 0; i < kHudRingFrames; ++i) if (fence_[i]) ++liveFences;
         const unsigned long long vbBytes =
-            (unsigned long long)kHudRingFrames * vertexCapacity_ * vertexStride_;
+            static_cast<unsigned long long>(kHudRingFrames) * vertexCapacity_ * vertexStride_;
         const unsigned long long ibBytes =
-            (unsigned long long)kHudRingFrames * indexCapacity_ * indexStride_;
+            static_cast<unsigned long long>(kHudRingFrames) * indexCapacity_ * indexStride_;
         std::fprintf(stderr,
             "[GPUBUF v1] residency tag=%s kind=meshring frames=%u vbBytes=%llu ibBytes=%llu liveFences=%u\n",
             tag_, kHudRingFrames, vbBytes, ibBytes, liveFences);

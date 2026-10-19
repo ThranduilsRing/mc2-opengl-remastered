@@ -7,7 +7,7 @@
 #include "utils/shader_builder.h"
 #include "utils/render_constants.h"
 
-#define BUFFER_OFFSET(bytes) ((GLubyte*) nullptr + (bytes))
+#define BUFFER_OFFSET(bytes) (static_cast<GLubyte*>(nullptr) + (bytes))
 
 uint32_t vec4_to_uint32(const vec4& v);
 vec4 uint32_to_vec4(uint32_t v);
@@ -41,7 +41,7 @@ uint32_t getTexFormatPixelSize(TexFormat fmt);
 template<typename T>
 const char* ogl_get_error_code_str(T input)
 {
-    int errorCode = (int)input;
+    int errorCode = static_cast<int>(input);
     switch(errorCode)
     {
 	case GL_NO_ERROR:

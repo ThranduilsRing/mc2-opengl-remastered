@@ -2759,7 +2759,7 @@ typedef enum
 //
 // Maximum distance for lights
 //
-#define LIGHT_RANGE_MAX	((float)sqrt(3.402823466e+38f))
+#define LIGHT_RANGE_MAX	(static_cast<float>(sqrt(3.402823466e+38f)))
 
 //
 // Light definition (Identical to D3DLIGHT7)

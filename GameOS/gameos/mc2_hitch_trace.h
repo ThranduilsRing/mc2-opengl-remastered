@@ -168,7 +168,7 @@ extern bool                        g_mc2GpuBufAccumOn;
     do {                                                                    \
         if (g_mc2HitchEnabled) {                                            \
             ++g_mc2HitchAccum.glBufferDataCalls;                            \
-            g_mc2HitchAccum.glBufferDataBytes += (uint64_t)(size);          \
+            g_mc2HitchAccum.glBufferDataBytes += static_cast<uint64_t>((size));          \
         }                                                                   \
         glBufferData(target, size, data, usage);                            \
     } while(0)
@@ -185,11 +185,11 @@ extern bool                        g_mc2GpuBufAccumOn;
     do {                                                                    \
         if (g_mc2GpuBufAccumOn) {                                           \
             ++g_mc2HitchAccum.glBufferDataCalls;                            \
-            g_mc2HitchAccum.glBufferDataBytes += (uint64_t)(size);          \
+            g_mc2HitchAccum.glBufferDataBytes += static_cast<uint64_t>((size));          \
             const unsigned _oi =                                            \
-                (unsigned)(::mc2_hitch::GpuBufOwner::owner);                \
+                static_cast<unsigned>((::mc2_hitch::GpuBufOwner::owner));                \
             ++g_mc2HitchAccum.gpuBufOrphanCalls[_oi];                       \
-            g_mc2HitchAccum.gpuBufOrphanBytes[_oi] += (uint64_t)(size);     \
+            g_mc2HitchAccum.gpuBufOrphanBytes[_oi] += static_cast<uint64_t>((size));     \
         }                                                                   \
         glBufferData(target, size, data, usage);                            \
     } while(0)
@@ -198,7 +198,7 @@ extern bool                        g_mc2GpuBufAccumOn;
     do {                                                                    \
         if (g_mc2HitchEnabled) {                                            \
             ++g_mc2HitchAccum.glBufferSubDataCalls;                         \
-            g_mc2HitchAccum.glBufferSubDataBytes += (uint64_t)(size);       \
+            g_mc2HitchAccum.glBufferSubDataBytes += static_cast<uint64_t>((size));       \
         }                                                                   \
         glBufferSubData(target, offset, size, data);                        \
     } while(0)
@@ -215,7 +215,7 @@ extern bool                        g_mc2GpuBufAccumOn;
             ++g_mc2HitchAccum.glTexImageCalls;                              \
             /* Estimate bytes: w*h*4 (RGBA8 approx; over-estimates for compressed formats) */ \
             g_mc2HitchAccum.glTexImageBytes +=                              \
-                (uint64_t)(w) * (uint64_t)(h) * 4u;                        \
+                static_cast<uint64_t>((w)) * static_cast<uint64_t>((h)) * 4u;                        \
         }                                                                   \
         glTexImage2D(target, level, ifmt, w, h, brd, fmt, type, px);       \
     } while(0)
@@ -225,7 +225,7 @@ extern bool                        g_mc2GpuBufAccumOn;
         if (g_mc2HitchEnabled) {                                            \
             ++g_mc2HitchAccum.glTexSubImageCalls;                           \
             g_mc2HitchAccum.glTexSubImageBytes +=                           \
-                (uint64_t)(w) * (uint64_t)(h) * 4u;                        \
+                static_cast<uint64_t>((w)) * static_cast<uint64_t>((h)) * 4u;                        \
         }                                                                   \
         glTexSubImage2D(target, level, xoff, yoff, w, h, fmt, type, px);   \
     } while(0)
