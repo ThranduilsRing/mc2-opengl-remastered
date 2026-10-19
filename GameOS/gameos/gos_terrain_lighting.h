@@ -1,12 +1,5 @@
 #pragma once
-// gos_terrain_lighting.h — Phase 1: terrain lighting GPU compute public API.
-//
-// Design doc: docs/superpowers/specs/2026-05-10-quadsetuptextures-gpu-compute-port-design.md
-// Plan:       docs/superpowers/plans/2026-05-10-quadsetuptextures-gpu-compute-port.md
-//
-// Stage 1: SSBO scaffold + 3-slot ring + dispatch. Output unused (no-op CopyResults).
-// Stage 2: parity gate (shader math iteration).
-// Stage 3: consumer switch (GPU authoritative, CPU block gated off).
+// CPU input contract for native Vulkan terrain lighting and shared light-pool bindings.
 
 #include <cstdint>
 #include <cstddef>   // offsetof (struct-layout static_asserts)
@@ -88,31 +81,7 @@ void BeginFrame();
 // issue memory barrier + glCopyBufferSubData → staging ring, place glFenceSync.
 void PackAndDispatch();
 
-// Per-frame: tryConsume ring (non-blocking T1/T2/T3), copy staging → vertices[i]->lightRGB.
-// Stage 3: wired. Under parity mode: returns early (CPU body remains authoritative).
-// Under authoritative mode: copies GPU output into vertex pool before setupTextures loop.
-void CopyResultsToVertexPool(TerrainQuad* quadList, int numberQuads);
-
 bool IsEnabled();
-bool IsParityCheckEnabled();
-
-// Parity API (design doc Q3) — Stage 2 implementation.
-// Comparator walks quadList, filters by calcThisFrame & 1, indexes outputs[vertexNum].
-void Parity_CompareFrame(TerrainQuad* quadList, int numberQuads,
-                         const GpuTerrainLightingOutput* mappedOutput);
-
-// Synchronously wait on current-frame fence and return mapped GPU output.
-// ONLY valid in parity mode (MC2_TERRAIN_LIGHTING_PARITY=1).
-// Never call this on the production hot path — GL_TIMEOUT_IGNORED blocks.
-const GpuTerrainLightingOutput* GetMappedOutputForParity();
-
-// Returns the GL buffer name of the per-vertex lighting output SSBO
-// (lightRGB/fogRGB) written by the per-frame compute dispatch. Phase C
-// compute shaders bind this at their input slot 1 to read lighting bytes
-// directly, eliminating the CPU-mirror bounce that legacy pack loops
-// require. Returns 0 if Phase 1 is disabled or not yet initialized;
-// glBindBufferBase with buffer 0 unbinds the slot (well-defined per GL spec).
-GLuint GetOutputSsbo();
 
 // NIGHT-LIGHT-POOLS-1: expose the per-frame packed terrain LIGHT POOL SSBO
 // (GpuTerrainLight[48B], lights [2..N-1] — sun/ambient excluded, uploaded every
@@ -217,9 +186,7 @@ struct VkProducerSnapshot {
     float    playArea[4];
     float    camPos[3];
 };
-// False when the GL producer did not run this frame (disabled / not initialized / shader bad): the native producer then has nothing to light.
+// False until this frame's CPU pack has published its inputs.
 bool GetVkProducerSnapshot(VkProducerSnapshot& out);
-// Parity frames only: blocking read of `count` outputs starting at vertex `first` from the GL output SSBO.
-bool ReadbackOutputForParity(uint32_t first, uint32_t count, GpuTerrainLightingOutput* dst);
 
 } // namespace gos_terrain_lighting

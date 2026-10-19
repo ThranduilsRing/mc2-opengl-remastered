@@ -1034,7 +1034,6 @@ TEST_CASE("statepack (f): routed passes have non-Invalid pipelineId; non-routed 
     using namespace RenderCore::framegraph;
     // Passes confirmed routed via applyPipeline with a single PipelineId:
     const RenderPassId routed[] = {
-        RenderPassId::StaticPropOpaque,
         RenderPassId::MechOpaque,
     };
     for (RenderPassId id : routed) {
@@ -1045,6 +1044,7 @@ TEST_CASE("statepack (f): routed passes have non-Invalid pipelineId; non-routed 
     }
     // Passes with no single PipelineId (multi-pipeline, descriptive-only, or no routing):
     const RenderPassId invalid[] = {
+        RenderPassId::StaticPropOpaque,
         RenderPassId::TerrainOverlay,
         RenderPassId::TerrainDecal,
         RenderPassId::Terrain,
@@ -1274,9 +1274,9 @@ TEST_CASE("top-level executor (h): kTopLevelDeferredPassCount == 0 (UI-SAME-ORDE
 // (GL context required); only the descriptor table shape is asserted.
 // ---------------------------------------------------------------------------
 
-TEST_CASE("top-level apply-state (a): kTopLevelStateDesc has exactly 6 rows (TerrainDecal, TerrainOverlay, StaticPropOpaque, MechOpaque, Water, Shadow)") {
+TEST_CASE("top-level apply-state (a): only MechOpaque retains a GL state descriptor") {
     using namespace RenderCore::framegraph;
-    CHECK(kTopLevelStateDescCount == 2u);  // native decal/overlay/shadow/water have no GL apply
+    CHECK(kTopLevelStateDescCount == 1u);  // native decal/overlay/shadow/water have no GL apply
 }
 
 TEST_CASE("top-level apply-state (i): findTopLevelStateDesc(MechOpaque) = MechOpaque pipeline, FBO/viewport inherit (not applied)") {
@@ -1345,19 +1345,9 @@ TEST_CASE("native TerrainOverlay has no GL apply-state descriptor (f)") {
 // SELF-PROOF: StaticPropOpaque is re-expressed to EXPLICITLY
 // apply MainColor/MainScene (the axes it already inherits + runs every tier1 frame) -> proves
 // the richer apply path is byte-identical to inheritance. clear stays None.
-TEST_CASE("top-level apply-state (g): findTopLevelStateDesc(StaticPropOpaque) = StaticPropOpaque pipeline, EXPLICIT MainColor/MainScene, clear None") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-    const TopLevelStateDesc* d = findTopLevelStateDesc(RenderPassId::StaticPropOpaque);
-    REQUIRE(d != nullptr);
-    CHECK(static_cast<unsigned>(d->id)         == static_cast<unsigned>(RenderPassId::StaticPropOpaque));
-    // pipelineId reused from the authoritative kPassRenderState[] row — not duplicated.
-    CHECK(static_cast<unsigned>(d->pipelineId) == static_cast<unsigned>(PipelineId::StaticPropOpaque));
-    // EXTEND self-proof: now EXPLICITLY applied (no longer Unknown/Inherit).
-    CHECK(static_cast<unsigned>(d->fboTarget)  == static_cast<unsigned>(RenderResourceId::MainColor));
-    CHECK(static_cast<unsigned>(d->viewport)   == static_cast<unsigned>(ViewportKind::MainScene));
-    // No depth clear for the opaque scene pass.
-    CHECK(static_cast<unsigned>(d->clear)      == static_cast<unsigned>(ClearSpec::None));
+TEST_CASE("native static props have no GL apply-state descriptor (g)") {
+    CHECK(findTopLevelStateDesc(RenderPassId::StaticPropOpaque) == nullptr);
+    CHECK_FALSE(passHasStaticPipeline(RenderPassId::StaticPropOpaque));
 }
 
 // The 4 non-self-proof consumers stay byte-identical —
@@ -1380,33 +1370,19 @@ TEST_CASE("top-level apply-state (k): EXTEND — 3 consumers unchanged (Unknown/
     }
     // Default-member-initializer leaves ClearSpec::None on the StaticProp row too (explicit here).
     const TopLevelStateDesc* sp = findTopLevelStateDesc(RenderPassId::StaticPropOpaque);
-    REQUIRE(sp != nullptr);
-    CHECK(static_cast<unsigned>(sp->clear) == static_cast<unsigned>(ClearSpec::None));
+    CHECK(sp == nullptr);
 }
 
-TEST_CASE("top-level apply-state (h): StaticPropOpaque lifted pipelineId matches the authoritative kPassRenderState row") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-    const TopLevelStateDesc* td = findTopLevelStateDesc(RenderPassId::StaticPropOpaque);
-    REQUIRE(td != nullptr);
-    REQUIRE(passHasStaticPipeline(RenderPassId::StaticPropOpaque));
-    bool found = false;
-    for (int i = 0; i < kPassRenderStateCount; ++i) {
-        if (kPassRenderState[i].id == RenderPassId::StaticPropOpaque) {
-            CHECK(static_cast<unsigned>(td->pipelineId) ==
-                  static_cast<unsigned>(kPassRenderState[i].pipelineId));
-            found = true;
-        }
-    }
-    CHECK(found);
+TEST_CASE("native static props have no GL apply-state descriptor (h)") {
+    CHECK(findTopLevelStateDesc(RenderPassId::StaticPropOpaque) == nullptr);
+    CHECK_FALSE(passHasStaticPipeline(RenderPassId::StaticPropOpaque));
 }
 
 TEST_CASE("per-pass-apply-counters-1: ApplyPassId table is complete + names unique/non-Unknown") {
     using namespace RenderCore::framegraph;
     // Two surviving top-level GL applies; native decal/overlay counters are retired.
-    CHECK(static_cast<unsigned>(ApplyPassId::Count) == 2u);
+    CHECK(static_cast<unsigned>(ApplyPassId::Count) == 1u);
     // Spot-check representative mappings.
-    CHECK(std::string(applyPassName(ApplyPassId::StaticPropOpaque)) == "StaticPropOpaque");
     CHECK(std::string(applyPassName(ApplyPassId::MechOpaque))       == "MechOpaque");
     // All ids return a non-"Unknown", unique name.
     const char* seen[(int)ApplyPassId::Count] = {nullptr};
@@ -1440,7 +1416,6 @@ TEST_CASE("apply-state-registration (top-level): each top-level ApplyPassId maps
     // in the body); it is asserted directly in test (l), not cross-checked here.
     struct Row { ApplyPassId apply; RenderPassId pass; };
     const Row topLevel[] = {
-        { ApplyPassId::StaticPropOpaque, RenderPassId::StaticPropOpaque },
         { ApplyPassId::MechOpaque,       RenderPassId::MechOpaque       },
     };
     for (const Row& r : topLevel) {

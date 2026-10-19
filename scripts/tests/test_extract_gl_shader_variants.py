@@ -33,3 +33,24 @@ def test_retired_generic_pool_keeps_literal_terrain_materials(monkeypatch):
     extractor.collect_materials(world, records)
     assert records
     assert all(r["id"].startswith("gos_terrain") for r in records)
+
+
+def test_retired_terrain_compute_has_no_gl_variant(monkeypatch):
+    from types import SimpleNamespace
+    world = extractor.World()
+    monkeypatch.setattr(world, "src", lambda _: SimpleNamespace(raw="", t="void PackAndDispatch() {}"))
+    records = []
+    extractor.collect_terrain_lighting(world, records)
+    assert records == []
+
+
+@pytest.mark.parametrize("source", [
+    "tl_build_terrain_lighting_program(new_path);",
+    'tl_build_terrain_lighting_program("shaders/light.comp", "shared.hglsl");',
+])
+def test_live_terrain_loader_still_rejects_unknown_splice(monkeypatch, source):
+    from types import SimpleNamespace
+    world = extractor.World()
+    monkeypatch.setattr(world, "src", lambda _: SimpleNamespace(raw=source, t=source))
+    with pytest.raises(extractor.ExtractError):
+        extractor.collect_terrain_lighting(world, [])

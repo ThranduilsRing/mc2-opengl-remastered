@@ -42,4 +42,8 @@ void gos_vfx_mesh_flush(const GosVfxMeshUpload*   uploads,
                         const GosVfxMeshInstance* instances,
                         unsigned int              numInstances);
 
+// Runtime witness, called only by MC2_FX_FORCE_SPAWN=9. Draws alpha and additive
+// untextured triangles through the same mesh cache and transform as gosFX shapes.
+void gos_vfx_mesh_fixture(const float origin[3]);
+
 }  // extern "C"

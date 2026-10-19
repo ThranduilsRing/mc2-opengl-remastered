@@ -59,9 +59,7 @@ Split commit: `f0521b300`.
 | `gos_static_prop_batcher.cpp` | keeps what the pieces below did not take |
 | `gos_static_prop_batcher_finalize.cpp` | GpuStaticPropBatcher: GpuStaticPropBatcher::finalizeGeometry -- the orchestrator and every phase except the texture arrays. |
 | `gos_static_prop_batcher_finalize_textures.cpp` | GpuStaticPropBatcher: the texture-array phase of finalizeGeometry -- per-group array build, the BC7 / ORM bucket arrays and the per-packet layer tables. The orchestrator is in gos_static_prop_batcher_finalize.cpp. |
-| `gos_static_prop_batcher_flush.cpp` | GpuStaticPropBatcher: GpuStaticPropBatcher::flush -- the orchestrator and the setup / coalesce-write helpers. |
-| `gos_static_prop_batcher_flush_dispatch.cpp` | GpuStaticPropBatcher: the flush gate arming, DrawPacket build, v5 / v6 dispatch, legacy setup and the fence / restore tail. The orchestrator is in gos_static_prop_batcher_flush.cpp. |
-| `gos_static_prop_batcher_flush_prep.cpp` | GpuStaticPropBatcher: the flush setup phases -- candidate log, GL guards, coalesce instance write, alpha flags and the coalesce program uniforms. The orchestrator is in gos_static_prop_batcher_flush.cpp. |
+| `gos_static_prop_batcher_flush.cpp` | Native static-prop color dispatch. CPU feeds and bucket lifetime remain shared. |
 | `gos_static_prop_batcher_mapload.cpp` | GpuStaticPropBatcher: StaticPropViewToShaderMode, onMapLoad, setMissionForIbl, onMapUnload, registerType and registerMultiShape. |
 | `gos_static_prop_batcher_program.cpp` | GpuStaticPropBatcher: loadProgramsIfNeeded, ring capacity, light-freshness gate and the late-register / submit telemetry. |
 | `gos_static_prop_batcher_seam.cpp` | GpuStaticPropBatcher: eligibility, persistent static instances, cached-instance submits, the batcher_* RenderCore seam accessors and the base-instance table. |
@@ -79,7 +77,7 @@ Split commit: `f0521b300`.
 | `gos_terrain_indirect_cement.cpp` | gos_terrain_indirect: cement and concrete classification, transition masks and PopulateRecipeCementWords. |
 | `gos_terrain_indirect_diag.cpp` | gos_terrain_indirect: parity printer, 600-frame summary and the recipe-versus-live parity comparison. |
 | `gos_terrain_indirect_dispatch.cpp` | Native terrain readiness and the shared CPU MVP snapshot; no GL indirect work. |
-| `gos_terrain_indirect_mine_decal.cpp` | gos_terrain_indirect: mine static VBO and texture array, decal static VBO and their dirty tracking. |
+| `gos_terrain_indirect_mine_decal.cpp` | Native mine bake and cement overlay producer. Texture data stays in the shared GOS cache. |
 | `gos_terrain_indirect_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `GameOS/gameos/gos_terrain_lod_chunk.cpp`

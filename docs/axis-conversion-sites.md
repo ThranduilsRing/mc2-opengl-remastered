@@ -9,7 +9,7 @@ The conversion is `(x, y, z) -> (-x, z, y)`; it is its own inverse, so the same 
 | Metric | Count |
 |---|---:|
 | Hand-written sites (ratcheted) | 5 |
-| Waived (`axis-swizzle: allow`) | 2 |
+| Waived (`axis-swizzle: allow`) | 1 |
 | Helper-call sites (centralized) | 210 |
 | Helper definitions | 7 |
 | Matrix-form references (`kAxisSwapMC2toGL`, `makeAxisSwapMC2toGL`) | 9 |
@@ -61,9 +61,10 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 - `GameOS/gameos/gameos_graphics_water.cpp`: 1
 - `RenderCore/axis_convert.h`: 3
+- `RenderCore/hzb_prop_bounds.h`: 1
 - `code/artlry.cpp`: 14
 - `code/carnage.cpp`: 4
-- `code/gamecam.cpp`: 2
+- `code/gamecam.cpp`: 3
 - `code/missiongui.cpp`: 3
 - `code/missiongui_input.cpp`: 1
 - `code/missiongui_style.cpp`: 3
@@ -115,7 +116,6 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `shaders/vulkan/shadow_mech.vert`: 1
 - `shaders/vulkan/shadow_prop.vert`: 1
 - `shaders/vulkan/terrain_tier1.frag`: 2
-- `shaders/vulkan/vfx_particle.vert`: 1
+- `shaders/vulkan/vfx_particle.vert`: 2
 - `tests/unit/test_class_light_band_harness.cpp`: 13
-- `tests/unit/test_glm_math_identity.cpp`: 3
 - `tests/unit/test_xform_convention.cpp`: 10

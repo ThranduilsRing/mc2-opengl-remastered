@@ -20,7 +20,6 @@ The table below is parsed: `| symbol | class | producer | sync | TU |` (one buff
 | `s_coalesceInstanceSsbo` | A | CPU-map | ring+coalesceFence | gos_static_prop_batcher.cpp |
 | `s_staticInstanceSsbo` | C | CPU-map | dirty-gated+staticDrawFence | gos_static_prop_batcher.cpp |
 | `s_staticIndirectCmdBuf` | C | CPU-glBufferData | dirty-gated | gos_static_prop_batcher.cpp |
-| `s_indirectCmdBuf` (cull) | B | GPU-patch | COMMAND barrier | gpu_cull_compute.cpp |
 | `s_bucketCountsBuf` | B | GPU-atomicAdd | SSBO barrier+clear | gpu_cull_compute.cpp |
 | `s_actorVisBuf` | B | GPU-atomicOr | SSBO barrier+clear | gpu_cull_compute.cpp |
 | `s_blockVisBuf` | E | GPU-atomicOr | mission-clear+SSBO barrier | gpu_cull_compute.cpp |

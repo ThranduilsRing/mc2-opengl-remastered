@@ -252,8 +252,7 @@ class gosRenderer {
         // (which caches the location) and while the thin program is bound.
         void terrainOverrideThinMVP(const float* mvp4x4);
         glsl_program* getThinTerrainProgram()      const { return thin_terrain_prog_;        }
-        glsl_program* getTerrainSurfaceProgram()   const { return terrain_surface_prog_;     }
-        glsl_program* getMineStaticProgram()       const { return mine_static_prog_;          }  // PR2c Stage 2c
+        glsl_program* getTerrainSurfaceProgram()   const { return nullptr;     }
         glsl_program* getTerrainOverlayProgram()   const { return nullptr; } // Native Vulkan overlay has no GL program.
 
         // Water fast path (Stage 2 of renderWater architectural slice).
@@ -816,8 +815,6 @@ class gosRenderer {
 
         gosRenderMaterial* terrain_material_ = nullptr;
         glsl_program* thin_terrain_prog_ = nullptr;  // gos_terrain_thin.vert + gos_terrain.frag
-        glsl_program* terrain_surface_prog_ = nullptr;  // [TERRAIN_SURFACE] PR-2 gos_terrain_surface.vert + gos_terrain.frag
-        glsl_program* mine_static_prog_  = nullptr;  // PR2c Stage 2c — gos_terrain_mine_static.vert + .frag
 
         // GPU-driven dynamic sun shadow -- depth-only instanced programs (Phase 1).
         // Registered at init; called by Tasks 3+ to draw GPU-batched mechs/buildings

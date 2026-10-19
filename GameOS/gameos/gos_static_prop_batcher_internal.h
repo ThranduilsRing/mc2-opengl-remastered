@@ -416,13 +416,6 @@ extern float g_terrainDecalColorBlend;
 extern float g_pbrV1Strength;
 extern bool  g_pbrV1RoughnessOverrideEnabled;
 extern float g_pbrV1RoughnessOverrideValue;
-uint32_t buildLiveV6Arrays( uint32_t totalCmds, const uint32_t* baseInstanceMap, std::vector<RenderCore::DrawPacket>& outPackets, std::vector<StaticPropDispatchMeta>& outMeta);
-bool objPolyOffsetEnabled();
-float objPolyOffsetFactor();
-float objPolyOffsetUnits();
-bool flushDepthPrepassV6( const std::vector<RenderCore::DrawPacket>&  dispatchPackets, const std::vector<StaticPropDispatchMeta>&  dispatchMeta, uint32_t                                    totalCmds, bool                                        bc7Buckets, int                                         debugAddrMode_);
-extern bool s_staticPropStateAppliedByExecutor;
-void executorApplyStaticPropOpaqueState();
 namespace gos_static_prop_batcher_detail {
 extern GLuint s_sharedVbo;
 extern GLuint s_sharedIbo;
@@ -580,7 +573,6 @@ void emitFinalSummaryAtExit();
 void loadLateRegisterAllowlistOnce();
 extern std::unordered_map<uint32_t, TypeRangeSsbo> s_typeRanges;
 extern uint32_t s_lastUploadedSlot;
-bool uploadAllBucketsIfNeeded();
 }  // namespace gos_static_prop_batcher_detail
 
 // --- Step 2.4: env-once helper (spec §7). ---

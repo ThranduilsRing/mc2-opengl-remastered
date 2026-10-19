@@ -1154,7 +1154,7 @@
           "line": 977,
           "evidence": "command",
           "reference": "scripts/check-mdi-submission-ownership.py",
-          "text": "run_check \"mdi_submission\"         \"py -3 scripts/check-mdi-submission-ownership.py --quiet\""
+          "text": "run_check \"mdi_submission\"         \"py -3 scripts/check-mdi-submission-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k mdi -q -p no:cacheprovider\""
         }
       ],
       "callers_by_stem": []
@@ -9540,7 +9540,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 460,
+          "line": 458,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""

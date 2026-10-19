@@ -464,17 +464,6 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 				trace(Phase::TerrainOpaque, "TerrainLegacyMLR", PathKind::MLR, -1, "None");                   // legacy master-node fall-through
 		}
 
-		// [TERRAIN_SURFACE] PR-2 (Wave 1, ADDITIVE / DEFAULT-OFF / DELETES
-		// NOTHING). Screen-agnostic continuous-surface VALIDATION draw: runs
-		// on EVERY frame regardless of arming (design Convergence C-1 --
-		// surface existence is decoupled from IsFrameSolidArmed). A no-op
-		// unless MC2_TERRAIN_SURFACE is set (gos_terrain_surface::IsEnabled,
-		// checked inside the bridge), so the default path is byte-for-byte
-		// behaviour-neutral. When ON, the surface draws ON TOP of the still-
-		// running legacy/indirect terrain above for visual validation of the
-		// V-ssbo VS + Fork D clip-space pre-divide reverse-Z bias. NO legacy
-		// kill site lands here -- the substitutive draw-kill is PR-4.
-		gos_terrain_surface_bridge_draw();
 
 		bool bSkip_DRAWSOLID = false;
 		for (long i=0;i<nextAvailableVertexNode && !bSkip_DRAWSOLID;i++)
@@ -595,31 +584,7 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 			if (g_useGpuStaticProps || g_useGpuObjects) {
 				ZoneScopedN("GpuSP.BatcherFlush");
 				TracyGpuZone("GpuSP.BatcherFlush");
-#ifdef MC2_VULKAN_ISLAND
-				// VK-P11 STATIC-PROP COLOR Tier-1 (gate MC2_VK_PROP_COLOR_TIER1):
-				// render visible static-prop color instances directly into the shared
-				// scene GBuffer in Vulkan instead of the GL flush() color draws. The
-				// island pulls its per-frame instance feed from the batcher
-				// (s_bucketsByType still populated here because we skip flush()). On
-				// success skip the GL flush; on any fail-soft (0) fall through to GL so
-				// props still draw. Gate OFF -> enabled()==0 -> GL flush() as before.
-				bool vkPropColorHandled = false;
-				if (mc2_vk_color_prop_island_enabled()) {
-					ZoneScopedN("GpuSP.VkColorPropInterop");
-					if (gosPostProcess* ppVkClr = getGosPostProcess()) {
-						vkPropColorHandled = (1 == mc2_vk_color_prop_island_run(
-							ppVkClr->getWidth(), ppVkClr->getHeight()));
-					}
-				}
-				if (vkPropColorHandled) {
-					// flush() (sole per-frame bucket clear) was skipped: clear here so
-					// dynamic submits do not accumulate across island frames.
-					mc2_color_prop_island_end_frame();
-				} else
-					GpuStaticPropBatcher::instance().flush(getLastRenderSnapshot());
-#else
 				GpuStaticPropBatcher::instance().flush(getLastRenderSnapshot());
-#endif
 			}
 		};
 

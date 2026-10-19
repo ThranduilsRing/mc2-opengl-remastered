@@ -62,7 +62,8 @@ extern "C" void mc2_note_particle_effect_pass();
 // Same extern "C" shim bridge as the note above (mc2/code TU can't include render_contract.h).
 extern "C" void mc2_vfx_pass_begin();
 extern "C" void mc2_vfx_pass_end();
-#include "../GameOS/gameos/gos_particle_bridge.h"  // B2 P1: camera basis bridge
+#include "../GameOS/gameos/gos_particle_bridge.h"
+#include "../GameOS/gameos/gos_vfx_mesh_bridge.h"  // B2 P1: camera basis bridge
 #include "../GameOS/gameos/debug_renderer.h"
 #include "../GuiRuntime/EditorInspector.h"  // IMG-INSPECT-3 flushDebugHighlight
 #include "../GameAdapters/SkyRenderAdapter.h"  // HDRI-SKY-1: firewall-clean sky rendering
@@ -982,6 +983,14 @@ void GameCamera::render (void)
 				// No-op when MC2_VFX_ORACLE_TUBE is unset (queue stays empty).
 				// Declared in gos_particle_bridge.h (already included above).
 				gos_tube_ribbon_flush_deferred();
+
+                // Headless mesh coverage uses the production upload/cache/instance boundary.
+                if (mc2::gate::is<"MC2_FX_FORCE_SPAWN", "9">()) {
+                    glm::vec3 center;
+                    mc2ToRender(center, getPosition());
+                    const float origin[3] = {center.x, center.y + 45.0f, center.z};
+                    gos_vfx_mesh_fixture(origin);
+                }
 				gos_ClearActiveCamera();
 			}
 		}

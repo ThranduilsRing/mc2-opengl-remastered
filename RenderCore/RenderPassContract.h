@@ -166,7 +166,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         "StaticPropOpaque",
         "GpuStaticPropBatcher",
         /*viewUniformsBound*/        true,
-        /*pipelineDescRegistered*/   true,
+        /*pipelineDescRegistered*/   false,
         /*snapshotRowAuthoritative*/ true,
         "StaticProp",
         nullptr,

@@ -974,7 +974,7 @@ run_check "frame_feedback"         "py -3 scripts/check-frame-resource-feedback.
 run_check "drawbuffer_ownership"   "py -3 scripts/check-drawbuffer-ownership.py --quiet"
 run_check "apply_pass_bumped"      "py -3 scripts/check-apply-pass-bumped.py --quiet"
 run_check "static_prop_family"     "py -3 scripts/check-static-prop-family.py --quiet"
-run_check "mdi_submission"         "py -3 scripts/check-mdi-submission-ownership.py --quiet"
+run_check "mdi_submission"         "py -3 scripts/check-mdi-submission-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k mdi -q -p no:cacheprovider"
 run_check "buffer_lifetime"        "py -3 scripts/check-buffer-lifetime-ownership.py --quiet"
 run_check "gpu_buffer_owners"      "py -3 scripts/check-gpu-buffer-owners.py --quiet"
 run_check "texture_owners"         "py -3 scripts/check-texture-owners.py --quiet"

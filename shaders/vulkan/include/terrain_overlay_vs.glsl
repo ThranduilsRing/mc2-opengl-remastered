@@ -42,6 +42,7 @@ void main() {
     Color    = a_color.bgra;                 // Color = colorIn.bgra (VBO bytes are B,G,R,A)
 
     vec4 clip4 = uT.worldToClipGL * vec4(a_worldPos, 1.0);
+    if (pc._pad0 == 2) { gl_Position = clip4; return; } // Mines have true terrain depth.
     if (pc.biasLegacy != 0)
         clip4.z += OVERLAY_DEPTH_BIAS * clip4.w;
     else

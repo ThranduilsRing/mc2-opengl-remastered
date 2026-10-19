@@ -171,27 +171,6 @@ struct TopLevelStateDesc {
 // StaticProp also self-proofs explicit FBO/viewport) + Shadow (APPLY-STATE-SHADOW-1: first
 // render-target-MODE consumer — pipeline + DepthForwardZ clear; FBO/viewport deferred to SHADOW-2).
 static constexpr TopLevelStateDesc kTopLevelStateDesc[] = {
-    // APPLY-STATE-STATICPROP-1: StaticPropOpaque — GpuStaticPropBatcher::flush(): the
-    // sole entry render-state of the COLOR pass is applyPipeline(StaticPropOpaque)
-    // (~gos_static_prop_batcher.cpp:5503). Unlike decal/overlay (which do not run in
-    // tier1 maps), StaticPropOpaque runs EVERY tier1 frame — so this is the first
-    // apply-state row whose ON-path body-skip is actually exercised at runtime. The
-    // preceding StaticPropDepth prepass is a SEPARATE helper and is NOT lifted here.
-    // objectId is an SSBO per-instance + shader #define, not a body drawBuffers call.
-    // FRAMEGRAPH-APPLY-STATE-EXTEND-1 SELF-PROOF: StaticPropOpaque is now re-expressed to
-    // EXPLICITLY apply fboTarget=MainColor + viewport=MainScene (no longer Unknown/Inherit).
-    // StaticProp already inherits exactly those (the scene FBO + full-scene viewport) and runs
-    // EVERY tier1 frame, so the explicit FBO/viewport bind is idempotent and MUST be byte-
-    // identical to inheritance — this proves the richer apply path at runtime before Shadow
-    // (which genuinely needs FBO/viewport/clear) is owned. clear stays None (no depth clear
-    // for the opaque scene pass — the scene depth is established upstream).
-    {
-        /*id*/         RenderPassId::StaticPropOpaque,
-        /*pipelineId*/ RenderCore::PipelineId::StaticPropOpaque,
-        /*fboTarget*/  RenderResourceId::MainColor,  // EXPLICIT apply (self-proof == inheritance)
-        /*viewport*/   ViewportKind::MainScene,       // EXPLICIT apply (self-proof == inheritance)
-        /*clear*/      ClearSpec::None,               // no depth clear for opaque scene pass
-    },
     // APPLY-STATE-MECHOPAQUE-1: MechOpaque — GpuMechBatcher::flush(): the SOLE entry
     // render-state is applyPipeline(getPipelineDesc(MechOpaque)) (~gos_mech_batcher.cpp:2152).
     // Like StaticPropOpaque, MechOpaque runs EVERY tier1 frame, so the ON-path body-skip is

@@ -404,15 +404,9 @@ void Terrain::geometry (void)
 		// On un-armed frames (recipe not ready, disabled, etc.) this returns
 		// false with zero side-effects; setupTextures runs as normal.
 		gos_terrain_indirect::ComputePreflight();
-		// Phase 1: terrain lighting GPU compute — per-frame trio (design doc Q5).
-		// BeginFrame advances ring slot; PackAndDispatch packs + dispatches;
-		// CopyResultsToVertexPool (Stage 3): T1/T2/T3 non-blocking tryConsume
-		// writes GPU lightRGB/fogRGB into vertices[i] BEFORE the setupTextures loop.
 		gos_terrain_lighting::BeginFrame();
 		{ GeoScope _gsLP(GP_LIGHTPACK); gos_terrain_lighting::PackAndDispatch(); }
-		{ GeoScope _gsLC(GP_LIGHTCOPY); gos_terrain_lighting::CopyResultsToVertexPool(quadList, numberQuads); }
-		// Phase C: SOLID compute dispatch. MUST be AFTER PackAndDispatch above
-		// so Phase 1's post-dispatch barrier has published the lighting SSBO.
+		// Capture native terrain inputs after the lighting CPU pack is current.
 		{ GeoScope _gsIC(GP_INDIRECT); gos_terrain_indirect::CaptureFrameInputs(); }
 		// S6 coarse cost A/B instrument: ONE QPC pair around the WHOLE
 		// per-frame setupTextures loop (NOT per-quad - the per-quad
@@ -582,15 +576,6 @@ void Terrain::geometry (void)
 		// Stage 1 cost-split: roll per-frame nanosecond accumulators (no-op
 		// when MC2_TERRAIN_COST_SPLIT unset). ParityFrameTick advances the
 		// summary cadence; Stage 2 passes the actual quads-checked count.
-		// Stage 2: terrain lighting parity check — AFTER the setupTextures loop
-		// so CPU has written all lightRGB/fogRGB for this frame.
-		// GetMappedOutputForParity() synchronously waits on current-frame fence
-		// (parity mode only — production path skips this entirely).
-		if (gos_terrain_lighting::IsParityCheckEnabled()) {
-			const gos_terrain_lighting::GpuTerrainLightingOutput* mappedOut =
-				gos_terrain_lighting::GetMappedOutputForParity();
-			gos_terrain_lighting::Parity_CompareFrame(quadList, numberQuads, mappedOut);
-		}
 		gos_terrain_indirect::CostSplit_RollFrame();
 		{
 			int quadsChecked = 0;

@@ -1,179 +1,29 @@
-// gos_terrain_indirect: mine static VBO and texture array, decal static VBO and their dirty tracking.
-// Declared in the class headers; shared names in gos_terrain_indirect_internal.h.
+// Native mine bake and cement overlay producer. Texture data stays in the shared GOS cache.
 #include "gos_terrain_indirect_internal.h"
 #include "mc2fmt.h"
 #include "texture_decode.h"
 
-
-// ---------------------------------------------------------------------------
-// PR2c Stage 1c — mine static-bake infrastructure.
-//
-// Builds a per-mission mine VBO + 2-layer mine/blown texture-array. Both are
-// populated lazily on first dirty event (i.e., first MissionMap::setMine
-// call after Reset, including the per-cell init-time setMine loop). Per spec
-// at 2026-05-08-pr2c-mine-static-bake-design.md.
-//
-// Stage 1c is build-and-invalidate scaffolding only — RebuildMineStaticVBOIfDirty
-// is callable but not yet wired into per-frame from the bridge. Stage 2c
-// adds the bridge + draw + legacy gate-off (single-PR per N2 partial-landing
-// rule).
-// ---------------------------------------------------------------------------
-
 namespace {
-
-GLuint g_mineStaticVBO_GL         = 0;
-int    g_mineVertCount            = 0;
-bool   g_mineVBODirty             = true;   // first build triggers via setMine init loop
-bool   g_mineVBOFirstBuildPending = true;   // gates lazy texture-array build (R7)
-GLuint g_mineTextureArrayGL       = 0;
-bool   g_mineTextureArrayReady    = false;
-
-// Vertex format: 3 float pos (world space) + 2 float uv (sprite 0..1) +
-// 1 uint layer (0=mine, 1=blown). 24 bytes/vert; 6 verts/cell (2 tris).
-struct MineVert {
-    float    pos[3];
-    float    uv[2];
-    uint32_t layer;
-};
-
-}  // namespace
-
+struct MineVert { float pos[3]; float uv[2]; uint32_t layer; };
+std::vector<MineVert> g_mineVerts;
+int g_mineVertCount = 0;
+bool g_mineVBODirty = true;
+bool g_mineTextureArrayReady = false;
+int fixtureRow = -1, fixtureCol = -1;
+unsigned long fixturePrevious[2]{};
+}
 namespace gos_terrain_indirect {
-
-void MarkMineDirty() {
-    g_mineVBODirty = true;
-}
-
-void ResetMineStaticVBO() {
-    g_mineVertCount            = 0;
-    g_mineVBODirty             = true;
-    g_mineVBOFirstBuildPending = true;
-    // Keep g_mineStaticVBO_GL allocation across missions; reused by next
-    // BuildMineStaticVBO via glBufferData (which orphans + reallocates the
-    // backing store).
-}
-
-void ResetMineTextureArray() {
-    g_mineTextureArrayReady = false;
-    // Keep g_mineTextureArrayGL allocation across missions. Source TGAs
-    // (defaults/mine_00.tga, defaults/minescorch_00.tga) are process-stable;
-    // first BuildMineTextureArray call after reset re-marks ready without
-    // re-allocating the GL texture.
-}
-
-// [TEMP MINE_GLPROBE] eager-drain probe — env MC2_DECAL_GLPROBE=1 (shared
-// gate with the decal probe). Removed once root cause is pinned.
-#define MINE_GLPROBE(tag) do { \
-    static const bool s_p = mc2::gate::get<"MC2_DECAL_GLPROBE">(); \
-    if (s_p) { GLenum e; while ((e = glGetError()) != GL_NO_ERROR) \
-        printf("[MINE_GLPROBE] at=%s err=0x%x\n", tag, (unsigned)e); \
-        fflush(stdout); } } while(0)
-
+void MarkMineDirty() { g_mineVBODirty = true; }
+void ResetMineStaticVBO() { g_mineVerts.clear(); g_mineVertCount = 0; g_mineVBODirty = true; fixtureRow = fixtureCol = -1; }
+void ResetMineTextureArray() { g_mineTextureArrayReady = false; }
 void BuildMineTextureArray() {
-    // Texture-array contents are process-stable; re-read only if first build
-    // or invalidated.
-    if (g_mineTextureArrayReady) return;
-    MINE_GLPROBE("atlas_entry");
-
-    // R7: handles must be loaded by setupTextures before this fires. If still
-    // 0xffffffff, bail — the next dirty event retries. (Stage 2c invokes
-    // RebuildMineStaticVBOIfDirty post first-paint via the bridge; setupTextures
-    // runs per-quad each frame and lazy-loads the handles at quad.cpp:520-531
-    // before any per-frame mine work happens.)
-    const DWORD mineSlot  = TerrainQuad::mineTextureHandle;
-    const DWORD blownSlot = TerrainQuad::blownTextureHandle;
-    if (mineSlot == 0xffffffffu || blownSlot == 0xffffffffu) {
-        if (IsTraceEnabled()) {
-            mc2::fmt::print_out("[TERRAIN_INDIRECT v1] event=mine_atlas_skip reason=handles_not_loaded mine={:d} blown={:d}\n", mc2::fmt::as_u32((unsigned)mineSlot), mc2::fmt::as_u32((unsigned)blownSlot));
-            fflush(stdout);
-        }
-        return;
-    }
-
-    const DWORD mineGosHandle  = tex_resolve(mineSlot);
-    const DWORD blownGosHandle = tex_resolve(blownSlot);
-    if (mineGosHandle == 0u || blownGosHandle == 0u) return;
-
-    // Mod mine sprites can exceed the stock 16x16. Read immutable published
-    // texels rather than letting an unbounded GL readback overwrite a stock-size buffer.
-    const auto mine = gos_GetTextureTexels(mineGosHandle);
-    const auto blown = gos_GetTextureTexels(blownGosHandle);
-    auto rgba = [](const GosTexels& source) -> std::vector<uint8_t> {
-        if (source.status != GosTexels::Status::Ready || !source.bytes ||
-            !source.width || !source.height || source.width > 16384 || source.height > 16384) return {};
-        if (source.vkFormat == mc2tex::kVkFormatRgba8Unorm) {
-            if (source.bytes->size() != size_t(source.width)*source.height*4) return {};
-            return *source.bytes;
-        }
-        if (source.vkFormat == mc2tex::kVkFormatBc7Unorm || source.vkFormat == mc2tex::kVkFormatBc7Srgb)
-            return mc2tex::decodeBc7(*source.bytes,source.width,source.height);
-        return {};
-    };
-    auto minePixels=rgba(mine), blownPixels=rgba(blown);
-    if (minePixels.empty() || blownPixels.empty()) return;
-    const int kW=int(std::max(mine.width,blown.width)), kH=int(std::max(mine.height,blown.height));
-    auto layer = [kW,kH](const GosTexels& source,const std::vector<uint8_t>& pixels) {
-        std::vector<uint8_t> result(size_t(kW)*kH*4);
-        for (int y=0;y<kH;++y) for (int x=0;x<kW;++x) {
-            const size_t src=(size_t(uint64_t(y)*source.height/kH)*source.width+uint64_t(x)*source.width/kW)*4;
-            std::copy_n(pixels.data()+src,4,result.data()+(size_t(y)*kW+x)*4);
-        }
-        return result;
-    };
-    const auto mineBuf=layer(mine,minePixels), blownBuf=layer(blown,blownPixels);
-    GLint savedActive=GL_TEXTURE0,savedArray=0,savedUnpackBuffer=0;
-    GLint savedUnpackAlign=4,savedRowLength=0,savedSkipRows=0,savedSkipPixels=0;
-    glGetIntegerv(GL_ACTIVE_TEXTURE,&savedActive); glActiveTexture(GL_TEXTURE0);
-    glGetIntegerv(GL_TEXTURE_BINDING_2D_ARRAY,&savedArray);
-    glGetIntegerv(GL_PIXEL_UNPACK_BUFFER_BINDING,&savedUnpackBuffer);
-    glGetIntegerv(GL_UNPACK_ALIGNMENT,&savedUnpackAlign);
-    glGetIntegerv(GL_UNPACK_ROW_LENGTH,&savedRowLength);
-    glGetIntegerv(GL_UNPACK_SKIP_ROWS,&savedSkipRows);
-    glGetIntegerv(GL_UNPACK_SKIP_PIXELS,&savedSkipPixels);
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER,0);
-    glPixelStorei(GL_UNPACK_ALIGNMENT,1); glPixelStorei(GL_UNPACK_ROW_LENGTH,0);
-    glPixelStorei(GL_UNPACK_SKIP_ROWS,0); glPixelStorei(GL_UNPACK_SKIP_PIXELS,0);
-
-    // TEX-CLASS: asset-pool -- minefield 2D_ARRAY (content)
-    if (g_mineTextureArrayGL == 0) glGenTextures(1, &g_mineTextureArrayGL);
-    MC2_GL_BindTexture(GL_TEXTURE_2D_ARRAY, g_mineTextureArrayGL);
-    // Allocate 2-layer storage. glTexImage3D with NULL data orphans / reserves.
-    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, kW, kH, 2,
-                 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, /*layer=*/0, kW, kH, 1,
-                    GL_RGBA, GL_UNSIGNED_BYTE, mineBuf.data());
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, /*layer=*/1, kW, kH, 1,
-                    GL_RGBA, GL_UNSIGNED_BYTE, blownBuf.data());
-    // NEAREST filter, no mips — matches gosHint_DisableMipmap | DontShrink at
-    // quad.cpp:524, :531. CLAMP_TO_EDGE: sprite UVs are 0..1, no edge-bleed risk.
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    MC2_GL_BindTexture(GL_TEXTURE_2D_ARRAY, 0);
-    MINE_GLPROBE("after_teximage3d");
-
-    glPixelStorei(GL_UNPACK_ALIGNMENT,savedUnpackAlign);
-    glPixelStorei(GL_UNPACK_ROW_LENGTH,savedRowLength);
-    glPixelStorei(GL_UNPACK_SKIP_ROWS,savedSkipRows);
-    glPixelStorei(GL_UNPACK_SKIP_PIXELS,savedSkipPixels);
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER,GLuint(savedUnpackBuffer));
-    MC2_GL_BindTexture(GL_TEXTURE_2D_ARRAY,GLuint(savedArray));
-    glActiveTexture(GLenum(savedActive));
-
-    g_mineTextureArrayReady = true;
-    MINE_GLPROBE("atlas_exit");
-
-    if (IsTraceEnabled()) {
-        mc2::fmt::print_out("[TERRAIN_INDIRECT v1] event=mine_atlas_built mineSlot={:d} blownSlot={:d} gltex={:d} dim={:d}x{:d}\n", mc2::fmt::as_u32((unsigned)mineSlot), mc2::fmt::as_u32((unsigned)blownSlot), mc2::fmt::as_u32((unsigned)g_mineTextureArrayGL), mc2::fmt::as_i32(kW), mc2::fmt::as_i32(kH));
-        fflush(stdout);
-    }
+    g_mineTextureArrayReady = TerrainQuad::mineTextureHandle != 0xffffffffu &&
+                              TerrainQuad::blownTextureHandle != 0xffffffffu;
 }
-
 void BuildMineStaticVBO() {
-    MINE_GLPROBE("vbo_entry");
     if (!GameMap || !land) {
         g_mineVertCount = 0;
+        g_mineVerts.clear();
         return;
     }
 
@@ -236,99 +86,68 @@ void BuildMineStaticVBO() {
     }
 
     g_mineVertCount = (int)verts.size();
+    g_mineVerts = std::move(verts);
 
-    if (g_mineStaticVBO_GL == 0) glGenBuffers(1, &g_mineStaticVBO_GL);
-    glBindBuffer(GL_ARRAY_BUFFER, g_mineStaticVBO_GL);
-    // glBufferData with size>0 always uploads even if vector is empty
-    // (verts.data() returns a non-null sentinel on empty MSVC vectors, but
-    // we pass nullptr-on-empty defensively to match Khronos expectations).
-    MC2_GL_BufferData(GL_ARRAY_BUFFER,
-                 (GLsizeiptr)(verts.size() * sizeof(MineVert)),
-                 verts.empty() ? nullptr : verts.data(),
-                 GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    MINE_GLPROBE("vbo_after_bufferdata");
 
-    if (IsTraceEnabled()) {
-        mc2::fmt::print_out("[TERRAIN_INDIRECT v1] event=mine_vbo_built cells={:d} verts={:d} vbo_gl={:d}\n", mc2::fmt::as_i32(g_mineVertCount / 6), mc2::fmt::as_i32(g_mineVertCount), mc2::fmt::as_u32((unsigned)g_mineStaticVBO_GL));
-        fflush(stdout);
-    }
 }
 
+
 void RebuildMineStaticVBOIfDirty() {
+    BuildMineTextureArray();
     if (!g_mineVBODirty) return;
-    if (g_mineVBOFirstBuildPending) {
-        BuildMineTextureArray();
-        // Mark first-build done regardless of texture-array ready state —
-        // BuildMineTextureArray handles its own retry via g_mineTextureArrayReady.
-        g_mineVBOFirstBuildPending = false;
-    }
     BuildMineStaticVBO();
     g_mineVBODirty = false;
 }
-
-unsigned int GetMineStaticVBO_GL()      { return g_mineStaticVBO_GL; }
-int          GetMineVertCount()         { return g_mineVertCount; }
-unsigned int GetMineTextureArrayGL()    { return g_mineTextureArrayGL; }
-bool         IsMineTextureArrayReady()  { return g_mineTextureArrayReady; }
-
-// PR2c Stage 2c — armed iff MC2_TERRAIN_INDIRECT_MINE=1 (env gate).
-//
-// We do NOT gate on g_mineTextureArrayReady here — that creates a bootstrap
-// circular dependency: the texture-array can only be built inside
-// BuildMineTextureArray, which is only called from RebuildMineStaticVBOIfDirty,
-// which is only called from DrawMineStatic, which is only called from the
-// Render.TerrainMines zone IF IsFrameMineArmed() returns true. Gating on
-// readiness here means the first build never happens.
-//
-// Instead: arming = env on. DrawMineStatic handles the texture-not-ready
-// case internally (returns true no-op until the next dirty event lazy-builds).
-// First paint cycle after mission load: gate-offs fire, legacy paths skipped,
-// DrawMineStatic invokes Rebuild* which lazy-builds the texture-array on
-// first call (handles loaded by setupTextures on the SAME frame's earlier
-// per-quad loop — R7 timing trap mitigated by paint-order: setupTextures
-// runs before Render.TerrainMines).
-bool IsFrameMineArmed() {
-    return IsMineEnabled();
-}
-
-// PR2c Stage 2c — invoked from txmmgr.cpp's Render.TerrainMines zone. Lazy-builds
-// VBO + texture-array on first dirty event; issues one glDrawArrays via the
-// bridge if there's anything to draw.
+unsigned int GetMineStaticVBO_GL() { return 0; }
+int GetMineVertCount() { return g_mineVertCount; }
+unsigned int GetMineTextureArrayGL() { return 0; }
+bool IsMineTextureArrayReady() { return g_mineTextureArrayReady; }
+bool IsFrameMineArmed() { return IsMineEnabled(); }
 bool DrawMineStatic() {
+    // The existing FX fixture also covers both mine states through the real dirty bake.
+    if (mc2::gate::is<"MC2_FX_FORCE_SPAWN", "9">() && eye && land && GameMap) {
+        int row = 0, col = 0;
+        land->worldToCell(eye->getPosition(), row, col);
+        if ((row != fixtureRow || col != fixtureCol) && GameMap->inBounds(row, col + 1)) {
+            if (fixtureRow >= 0 && GameMap->inBounds(fixtureRow, fixtureCol + 1)) {
+                GameMap->setMine(fixtureRow, fixtureCol, fixturePrevious[0]);
+                GameMap->setMine(fixtureRow, fixtureCol + 1, fixturePrevious[1]);
+            }
+            fixtureRow = row; fixtureCol = col;
+            fixturePrevious[0] = GameMap->getMine(row, col);
+            fixturePrevious[1] = GameMap->getMine(row, col + 1);
+            GameMap->setMine(row, col, 1);
+            GameMap->setMine(row, col + 1, 2);
+        }
+    }
     RebuildMineStaticVBOIfDirty();
-    if (g_mineVertCount <= 0) {
-        // Successful zero-emit frame (mission has no mines yet). Legacy paths
-        // are still gated off — that's the whole point.
-        return true;
+    if (g_mineVerts.empty()) return true;
+#ifdef MC2_VULKAN_ISLAND
+    if (!mc2_vk_overlay_enabled() || !g_mineTextureArrayReady) return false;
+    struct Vertex { float pos[3]; float uv[2]; float fog; uint32_t argb; };
+    static_assert(sizeof(Vertex) == 28);
+    std::vector<Vertex> vertices;
+    std::vector<Mc2VkOverlayDraw> draws;
+    for (const auto& mine : g_mineVerts) {
+        const auto slot = mine.layer ? TerrainQuad::blownTextureHandle : TerrainQuad::mineTextureHandle;
+        const uint32_t handle = tex_resolve(slot);
+        if (handle == 0 || handle == 0xffffffffu) return false;
+        if (draws.empty() || draws.back().texHandle != handle)
+            draws.push_back({handle, static_cast<uint32_t>(vertices.size()), 0});
+        ++draws.back().vertCount;
+        vertices.push_back({{mine.pos[0], mine.pos[1], mine.pos[2]}, {mine.uv[0], mine.uv[1]}, 1, 0xffffffffu});
     }
-    if (!g_mineTextureArrayReady) {
-        // Build retry pending; the texture-array build couldn't complete (e.g.,
-        // handles still 0xffffffff at first call). Treat as no-op until next
-        // dirty event re-attempts.
-        return true;
-    }
-    const bool ok = gos_terrain_bridge_drawMineStatic(
-        g_mineVertCount,
-        g_mineStaticVBO_GL,
-        g_mineTextureArrayGL);
-    if (ok) {
-        // 6 verts per cell (2 tris * 3 verts).
-        Counters_AddIndirectMineDrawnCells((long long)(g_mineVertCount / 6));
-    }
-    return ok;
+    // Dynamic stream keeps the cement bake's independent static-buffer lifetime intact.
+    mc2_vk_overlay_submit(2u, vertices.data(), static_cast<uint32_t>(vertices.size()),
+                          draws.data(), static_cast<uint32_t>(draws.size()), 0);
+    Counters_AddIndirectMineDrawnCells(g_mineVertCount / 6);
+    return true;
+#else
+    return false;
+#endif
 }
-
-}  // namespace gos_terrain_indirect
-
-// C-linkage forwarder for mclib/move.h's inline setMine — avoids pulling
-// the full gos_terrain_indirect.h into the widely-included move.h. The
-// symbol is forward-declared at the call site in move.h:
-//     extern void gos_terrain_indirect_MarkMineDirty();
-// and resolved at link time.
-void gos_terrain_indirect_MarkMineDirty() {
-    gos_terrain_indirect::MarkMineDirty();
 }
+void gos_terrain_indirect_MarkMineDirty() { gos_terrain_indirect::MarkMineDirty(); }
 
 //
 // STRUCTURAL MIRROR of the PR2c mine static-bake (BuildMineStaticVBO /
