@@ -193,7 +193,7 @@
    "LG06": 666,
    "LG07": 0,
    "LG08": 70,
-   "LG09": 817,
+   "LG09": 599,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 169,
@@ -203,7 +203,7 @@
    "LG15": 0,
    "LG16": 156,
    "LG17": 95,
-   "LG18": 19,
+   "LG18": 23,
    "LG19": 0,
    "LG20": 10
   },
@@ -3711,8 +3711,7 @@
   },
   "mclib/particles/batcher.cpp": {
    "LG03": 3,
-   "LG08": 4,
-   "LG09": 3
+   "LG08": 4
   },
   "mclib/particles/cardcloud_sim.h": {
    "LG14": 1
@@ -3723,27 +3722,15 @@
   "mclib/particles/light_manager.h": {
    "LG06": 1
   },
-  "mclib/particles/spawn.cpp": {
-   "LG09": 1
-  },
-  "mclib/particles/spawn_card.cpp": {
-   "LG09": 2
-  },
   "mclib/particles/spawn_cardcloud.cpp": {
    "LG08": 1,
-   "LG09": 2,
    "LG10": 1
   },
   "mclib/particles/spawn_point.cpp": {
-   "LG09": 1,
    "LG10": 1
   },
   "mclib/particles/spawn_shard.cpp": {
-   "LG09": 2,
    "LG10": 1
-  },
-  "mclib/particles/spawn_tube.cpp": {
-   "LG09": 2
   },
   "mclib/particles/spec_library.cpp": {
    "LG03": 3,
@@ -3764,22 +3751,15 @@
   "mclib/paths.h": {
    "LG13": 4
   },
-  "mclib/projectz_overlay.cpp": {
-   "LG09": 3
-  },
   "mclib/projectz_overlay.h": {
    "LG14": 1
   },
   "mclib/projectz_trace.cpp": {
    "LG06": 3,
-   "LG09": 3,
    "LG12a": 10
   },
   "mclib/quad.cpp": {
    "LG13": 1
-  },
-  "mclib/quad_draw.cpp": {
-   "LG09": 13
   },
   "mclib/quad_internal.h": {
    "LG13": 1
@@ -3788,16 +3768,11 @@
    "LG16": 1
   },
   "mclib/quad_setup.cpp": {
-   "LG09": 1,
    "LG12a": 2
-  },
-  "mclib/quad_water.cpp": {
-   "LG09": 1
   },
   "mclib/render_contract.cpp": {
    "LG05": 1,
-   "LG06": 8,
-   "LG09": 13
+   "LG06": 8
   },
   "mclib/render_contract.h": {
    "LG06": 6
@@ -3816,8 +3791,7 @@
    "LG17": 5
   },
   "mclib/sim_trace.cpp": {
-   "LG06": 2,
-   "LG09": 2
+   "LG06": 2
   },
   "mclib/sim_trace.h": {
    "LG06": 2
@@ -3825,10 +3799,10 @@
   "mclib/soundsys.cpp": {
    "LG05": 5,
    "LG06": 3,
-   "LG09": 13,
    "LG11": 1,
    "LG12b": 4,
-   "LG17": 2
+   "LG17": 2,
+   "LG18": 4
   },
   "mclib/soundsys.h": {
    "LG06": 3,
@@ -3871,12 +3845,10 @@
   },
   "mclib/stuff/filestreammanager.cpp": {
    "LG03": 1,
-   "LG09": 3,
    "LG11": 2
   },
   "mclib/stuff/hash.cpp": {
    "LG03": 6,
-   "LG09": 1,
    "LG16": 1
   },
   "mclib/stuff/hash.hpp": {
@@ -3888,11 +3860,9 @@
    "LG17": 6
   },
   "mclib/stuff/memoryblock.cpp": {
-   "LG09": 1,
    "LG12a": 7
   },
   "mclib/stuff/memorystream.cpp": {
-   "LG09": 6,
    "LG12a": 1
   },
   "mclib/stuff/memorystream.hpp": {
@@ -3902,7 +3872,6 @@
    "LG03": 19,
    "LG05": 1,
    "LG06": 3,
-   "LG09": 2,
    "LG13": 1
   },
   "mclib/stuff/mstring.hpp": {
@@ -3917,7 +3886,6 @@
   "mclib/stuff/notationfile.cpp": {
    "LG03": 6,
    "LG06": 6,
-   "LG09": 2,
    "LG11": 2,
    "LG13": 1
   },
@@ -3927,7 +3895,6 @@
    "LG14": 1
   },
   "mclib/stuff/note.cpp": {
-   "LG09": 8,
    "LG13": 1
   },
   "mclib/stuff/note.hpp": {
@@ -3936,7 +3903,6 @@
   "mclib/stuff/page.cpp": {
    "LG03": 4,
    "LG06": 4,
-   "LG09": 8,
    "LG13": 1
   },
   "mclib/stuff/page.hpp": {
@@ -3962,9 +3928,6 @@
   "mclib/stuff/safesocket.hpp": {
    "LG14": 1
   },
-  "mclib/stuff/scalar.cpp": {
-   "LG09": 9
-  },
   "mclib/stuff/scalar.hpp": {
    "LG06": 1,
    "LG09": 3,
@@ -3975,8 +3938,7 @@
    "LG03": 1
   },
   "mclib/stuff/sortedchain.cpp": {
-   "LG03": 3,
-   "LG09": 1
+   "LG03": 3
   },
   "mclib/stuff/sortedchain.hpp": {
    "LG03": 6,
@@ -3997,7 +3959,6 @@
   "mclib/stuff/trace.cpp": {
    "LG03": 8,
    "LG06": 2,
-   "LG09": 2,
    "LG12a": 13
   },
   "mclib/stuff/trace.hpp": {
@@ -4018,20 +3979,15 @@
   "mclib/stuff/vector4d.cpp": {
    "LG12a": 1
   },
-  "mclib/tacmap.cpp": {
-   "LG09": 4
-  },
   "mclib/terrain.cpp": {
    "LG03": 10,
-   "LG05": 1,
-   "LG09": 19
+   "LG05": 1
   },
   "mclib/terrain.h": {
    "LG13": 11,
    "LG14": 2
   },
   "mclib/terrain_geometry.cpp": {
-   "LG09": 15,
    "LG12a": 7,
    "LG14": 1
   },
@@ -4039,7 +3995,6 @@
    "LG03": 6,
    "LG05": 1,
    "LG06": 1,
-   "LG09": 75,
    "LG11": 9
   },
   "mclib/terrain_internal.h": {
@@ -4302,7 +4257,7 @@
    "LG20": 3
   }
  },
- "head": "24209c08b",
+ "head": "ba78b9343",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
