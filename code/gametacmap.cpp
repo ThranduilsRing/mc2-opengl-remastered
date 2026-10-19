@@ -1,3 +1,4 @@
+#include "../GameOS/gameos/ui_texture.h"
 /*************************************************************************************************\
 gameTacMap.cpp			: Implementation of the gameTacMap component.
 //---------------------------------------------------------------------------//
@@ -522,7 +523,7 @@ bool GameTacMap::renderImGui()
 
 	// ---- 1) map texture: same source + UV window as the legacy corner quads
 	//      (v0 uses bmpWidth exactly as legacy does)
-	const unsigned int mapTex = HudImGui::gosTextureGLName( textureHandle );
+	const uint64_t mapTex=gos_GetUiTextureId(textureHandle);
 	if ( mapTex )
 	{
 		const ImVec2 uv0( 2.f / (float)bmpWidth, 2.f / (float)bmpWidth );
@@ -598,7 +599,7 @@ bool GameTacMap::renderImGui()
 	}
 
 	const unsigned long blipGos = mcTextureManager->get_gosTextureHandle( blipHandle );
-	const unsigned int blipTex = HudImGui::gosTextureGLName( blipGos );
+	const uint64_t blipTex=gos_GetUiTextureId(blipGos);
 	bool bSel = 0;   // unselected first, selected on top (legacy order)
 	for ( int j = 0; j < 2; j++ )
 	{

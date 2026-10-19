@@ -84,6 +84,7 @@ const uint32_t kMaxTextures  = 192;      // descriptor-set budget (x2 parity)
 // The view is declared after the image so it is released first.
 struct TexEntry {
     mc2vk::ResidentTextureRef texture;
+    std::weak_ptr<const std::vector<uint8_t>> source;
     VkImageView bound[2] = {};
     VkDescriptorSet set[2] = {};   // allocated from the island's pool, freed with it
 };
@@ -91,7 +92,10 @@ struct TexEntry {
 // Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
 // parked island ahead of the device).
 struct Island : mc2vk::IslandState {
-    bool inited = false, disabled = false;
+    bool inited = false, disabled = false, preview = false, previewPublished = false;
+    mc2vk::ResidentTextureRef previewColor;
+    mc2vk::OwnedImage previewNormal, previewDepth;
+    mc2vk::OwnedImageView previewNormalView, previewDepthView;
     int  w = 0, h = 0;
     VkInstance instance = VK_NULL_HANDLE; VkPhysicalDevice phys = VK_NULL_HANDLE;
     VkDevice device = VK_NULL_HANDLE; uint32_t gfxFamily = UINT32_MAX;
@@ -121,9 +125,14 @@ struct Island : mc2vk::IslandState {
     mc2vk::OwnedPipeline pipes[MC2_LEGACY_PASS_COUNT];
 };
 
+bool g_previewDispatch=false, g_previewActive=false;
+int g_previewW=800,g_previewH=600;
+std::vector<Mc2LegacyMlrDraw> g_previewPending;
+std::vector<std::vector<uint8_t>> g_previewVertices;
+
 // The island lives in the engine context's slot: the context releases it ahead of the device whatever path ends the process.
 std::unique_ptr<mc2vk::IslandState>& islandSlot() {
-    return mc2vk::getOrCreateEngineVulkanContext().islandSlot(mc2vk::IslandSlot::LegacyShape);
+    return mc2vk::getOrCreateEngineVulkanContext().islandSlot(g_previewDispatch ? mc2vk::IslandSlot::Preview : mc2vk::IslandSlot::LegacyShape);
 }
 Island* parkedIsland() { return static_cast<Island*>(islandSlot().get()); }
 bool g_sessionDeclined = false;
@@ -166,7 +175,16 @@ bool alloc_tex_sets(Island* s, TexEntry& t) {
 TexEntry* get_tex(Island* s, uint32_t texNode, uint32_t gosHandle) {
     if (gosHandle == 0 || gosHandle == 0xffffffffu) return &s->dummyTex;
     auto it = s->texs.find(texNode);
-    if (it != s->texs.end()) return &it->second;
+    if (it != s->texs.end()) {
+        const auto current=gos_GetTextureTexels(gosHandle);
+        if (current.status==GosTexels::Status::Ready && current.bytes && it->second.source.lock()!=current.bytes) {
+            mc2vk::getOrCreateEngineVulkanContext().retire(std::move(it->second.texture));
+            if (!upload_image(s,it->second,current.width,current.height,mc2vk::texelFormat(current.vkFormat),
+                              current.bytes->data(),current.bytes->size())) return &s->dummyTex;
+            it->second.source=current.bytes;
+        }
+        return &it->second;
+    }
     if (s->untexturedNodes.contains(texNode)) return &s->dummyTex;
     if (s->texs.size() >= kMaxTextures) return &s->dummyTex;
     const GosTexels texels = gos_GetTextureTexels(gosHandle);
@@ -184,6 +202,7 @@ TexEntry* get_tex(Island* s, uint32_t texNode, uint32_t gosHandle) {
         !alloc_tex_sets(s, t)) {
         return &s->dummyTex;   // `t` releases whatever it created
     }
+    t.source=texels.bytes;
     ++g_health.texUploads;
     auto ins = s->texs.emplace(texNode, std::move(t));
     vlog("texture cached: node=%u handle=%u %ux%u format=%u (%zu/%u).", texNode, gosHandle, w, h, texels.vkFormat,
@@ -210,7 +229,22 @@ bool init_island(Island* s, int w, int h) {
     s->colorRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
     s->normalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
     s->depthRes  = mc2SharedSceneDepthGetResource();
-    if (!s->colorRes || !s->normalRes || !s->depthRes) { setFallback("shared_gbuffer_not_ready"); return false; }
+    if (!s->preview && (!s->colorRes || !s->normalRes || !s->depthRes)) { setFallback("shared_gbuffer_not_ready"); return false; }
+    if (s->preview) {
+        s->previewColor=ctx.textures().createRenderTarget(uint32_t(w),uint32_t(h));
+        if (!s->previewColor) return false;
+        if (!s->previewNormal.createSampled2D(ctx.allocator(),s->device,VK_FORMAT_R8G8B8A8_UNORM,w,h,1,
+                                              VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,"ui.preview.normal") ||
+            !s->previewDepth.createSampled2D(ctx.allocator(),s->device,VK_FORMAT_D32_SFLOAT,w,h,1,
+                                             VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,"ui.preview.depth")) return false;
+        auto view=[&](VkImage image,VkFormat format,VkImageAspectFlags aspect,mc2vk::OwnedImageView& out) {
+            VkImageViewCreateInfo vi{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO}; vi.image=image;
+            vi.viewType=VK_IMAGE_VIEW_TYPE_2D; vi.format=format; vi.subresourceRange={aspect,0,1,0,1};
+            return mc2vk::create(out,s->device,[&](VkImageView* v){return vkCreateImageView(s->device,&vi,nullptr,v);});
+        };
+        if (!view(s->previewNormal.get(),VK_FORMAT_R8G8B8A8_UNORM,VK_IMAGE_ASPECT_COLOR_BIT,s->previewNormalView) ||
+            !view(s->previewDepth.get(),VK_FORMAT_D32_SFLOAT,VK_IMAGE_ASPECT_DEPTH_BIT,s->previewDepthView)) return false;
+    }
     g_initReachedBuild = 1;   // readiness gates passed: failures past here are PERMANENT
 
     {   // command pool + per-parity command buffers
@@ -239,19 +273,23 @@ bool init_island(Island* s, int w, int h) {
         VkImageResource* normalRes = reinterpret_cast<VkImageResource*>(s->normalRes);
         VkImageResource* depthRes  = reinterpret_cast<VkImageResource*>(s->depthRes);
         VkAttachmentDescription att[3]{};
-        att[0].format = colorRes->format;  att[0].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[0].format = s->preview ? VK_FORMAT_R8G8B8A8_UNORM : colorRes->format;  att[0].samples = VK_SAMPLE_COUNT_1_BIT;
         att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         att[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; att[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[1].format = normalRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[1].format = s->preview ? VK_FORMAT_R8G8B8A8_UNORM : normalRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
         att[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         att[1].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; att[1].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[2].format = depthRes->format;  att[2].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[2].format = s->preview ? VK_FORMAT_D32_SFLOAT : depthRes->format;  att[2].samples = VK_SAMPLE_COUNT_1_BIT;
         att[2].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; att[2].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+        if (s->preview) {
+            for (auto& a : att) { a.loadOp=VK_ATTACHMENT_LOAD_OP_CLEAR; a.initialLayout=VK_IMAGE_LAYOUT_UNDEFINED; }
+            att[0].finalLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        }
         VkAttachmentReference colorRefs[2] = {
             {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}, {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL} };
         VkAttachmentReference depthRef{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
@@ -270,7 +308,8 @@ bool init_island(Island* s, int w, int h) {
         deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
         deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
         deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT; deps[1].dstAccessMask = 0;
+        deps[1].dstStageMask = s->preview ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT : VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        deps[1].dstAccessMask = s->preview ? VK_ACCESS_SHADER_READ_BIT : 0;
 
         VkRenderPassCreateInfo rpci{};
         rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -278,7 +317,9 @@ bool init_island(Island* s, int w, int h) {
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
         if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) { setFallback("renderpass_failed"); return false; }
-        VkImageView fbViews[3] = { colorRes->view.get(), normalRes->view.get(), depthRes->view.get() };
+        VkImageView fbViews[3] = {s->preview ? ctx.textures().view(s->previewColor.get()) : colorRes->view.get(),
+            s->preview ? s->previewNormalView.get() : normalRes->view.get(),
+            s->preview ? s->previewDepthView.get() : depthRes->view.get()};
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
@@ -432,19 +473,20 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     ZoneScopedN("VK-legacy-shape-island");
     // Always consume the queue (even on failure) so it can never grow across frames.
     std::vector<Mc2LegacyMlrDraw> draws;
-    draws.swap(g_pending);
-    if (g_sessionDeclined || !frame) return 0;
-    if (draws.empty() || w <= 0 || h <= 0) return 0;
+    draws.swap(g_previewDispatch ? g_previewPending : g_pending);
+    if ((!g_previewDispatch && g_sessionDeclined) || !frame) return 0;
+    if ((!g_previewDispatch && draws.empty()) || w <= 0 || h <= 0) return 0;
 
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
-    if (const Island* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::LegacyShape);
+    if (const Island* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(g_previewDispatch ? mc2vk::IslandSlot::Preview : mc2vk::IslandSlot::LegacyShape);
     if (!islandSlot()) {
         auto fresh = std::make_unique<Island>();
+        fresh->preview=g_previewDispatch;
         if (!init_island(fresh.get(), w, h)) {
             const bool permanent = (g_initReachedBuild != 0);
             slotCtx.waitIdle("legacy_shape_init_failure");   // objects made before the failure may have been submitted
             if (permanent) {
-                g_sessionDeclined = true;
+                if (!g_previewDispatch) g_sessionDeclined = true;
                 vlog("boot-level decline: permanent init failure (%s) -- legacy shapes will not draw under VK.",
                      g_health.fallbackReason);
             } else {
@@ -478,7 +520,12 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
 
     VkImageResource* colorRes = reinterpret_cast<VkImageResource*>(s->colorRes);
     VkFrameSync fsC{};
-    { ZoneScopedN("VKIsl.Legacy.FenceWait"); fsC = vkImageResourceBeginFrame(colorRes); }
+    if (s->preview) {
+        // The UI samples this target after the preview submit; wait the preceding sealed frame before overwriting it.
+        const auto frameNo=rctx.tracker().frameNo();
+        if (frameNo>1 && !rctx.wait(rctx.tracker().frameTicket(frameNo-1),5000000000ull,"preview target reuse")) return 0;
+        fsC.parity=rctx.frameContext().slot;
+    } else { ZoneScopedN("VKIsl.Legacy.FenceWait"); fsC=vkImageResourceBeginFrame(colorRes); }
     const uint32_t par = fsC.parity & 1u;
 
     {   // per-frame vertex stream + UBO
@@ -488,6 +535,8 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
         LegacyFrameUBO u{};
         const float* proj = gos_GetProj2ScreenMat4();
         if (proj) std::memcpy(u.proj, proj, sizeof(u.proj));
+        if (s->preview) { std::memset(u.proj,0,sizeof(u.proj)); u.proj[0]=2.0f/800; u.proj[3]=-1;
+            u.proj[5]=-2.0f/600; u.proj[7]=1; u.proj[10]=1; u.proj[15]=1; }
         for (int k = 0; k < 4; ++k) u.fogColor[k] = frame->fogColor[k];
         std::memcpy(base, &u, sizeof(u));
     }
@@ -520,6 +569,9 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
     rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    VkClearValue clears[3]{}; clears[0].color.float32[3]=1;
+    clears[1].color.float32[0]=0.5f; clears[1].color.float32[1]=0.5f; clears[1].color.float32[2]=1;
+    if (s->preview) { rbi.clearValueCount=3; rbi.pClearValues=clears; }
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
     VkRect2D scissor{{0, 0}, {(uint32_t)w, (uint32_t)h}};
@@ -559,6 +611,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     { ZoneScopedN("VKIsl.Legacy.Submit");
       if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
 
+    if (s->preview) s->previewPublished=true;
     g_health.nodesDrawn += drawn;
     g_health.vertsDrawn += verts;
     ++g_health.usedVulkan;
@@ -568,6 +621,27 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
         s_firstOk = true;
     }
     return 1;
+}
+
+extern "C" int mc2_vk_preview_active() { return g_previewActive ? 1 : 0; }
+extern "C" void mc2_vk_preview_begin(int width,int height) {
+    g_previewW=width; g_previewH=height; g_previewPending.clear(); g_previewVertices.clear(); g_previewActive=true;
+}
+extern "C" void mc2_vk_preview_capture(const Mc2LegacyMlrDraw* draw) {
+    if (!draw || !draw->vertices || draw->vertexCount<3) return;
+    auto& bytes=g_previewVertices.emplace_back(size_t(draw->vertexCount)*kVertexStride);
+    std::memcpy(bytes.data(),draw->vertices,bytes.size());
+    auto d=*draw; d.vertices=bytes.data(); g_previewPending.push_back(d);
+}
+extern "C" void mc2_vk_preview_end() {
+    g_previewActive=false; g_previewDispatch=true;
+    Mc2LegacyMlrFrame frame{};
+    mc2_vk_legacy_shape_island_run(g_previewW,g_previewH,&frame);
+    g_previewDispatch=false; g_previewVertices.clear();
+}
+extern "C" uint64_t mc2_vk_preview_texture() {
+    auto* island=static_cast<Island*>(mc2vk::getOrCreateEngineVulkanContext().islandSlot(mc2vk::IslandSlot::Preview).get());
+    return island && island->inited && island->previewPublished ? RenderCore::uiTextureId(island->previewColor.get()) : 0;
 }
 
 extern "C" void mc2_vk_legacy_shape_island_reset() {
@@ -590,7 +664,7 @@ extern "C" void mc2_vk_legacy_shape_island_destroy() {
     vlog("used_vulkan=%lu nodes_drawn=%lu verts_drawn=%lu tex_uploads=%lu fallback_reason=\"%s\"",
          g_health.usedVulkan, g_health.nodesDrawn, g_health.vertsDrawn, g_health.texUploads,
          g_health.fallbackReason);
-    mc2vk::getOrCreateEngineVulkanContext().retireIsland(mc2vk::IslandSlot::LegacyShape);
+    mc2vk::getOrCreateEngineVulkanContext().retireIsland(g_previewDispatch ? mc2vk::IslandSlot::Preview : mc2vk::IslandSlot::LegacyShape);
 }
 
 #endif // MC2_VULKAN_ISLAND

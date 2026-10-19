@@ -35,6 +35,10 @@ public:
     TextureResidency(VulkanContext& ctx, RenderCore::TextureService& service);
     ~TextureResidency();
     bool init();
+    ResidentTextureRef createRenderTarget(uint32_t width, uint32_t height);
+    uint64_t legacyUiId(uint32_t gosHandle, uint32_t width, uint32_t height, VkFormat format,
+                        std::shared_ptr<const std::vector<uint8_t>> bytes);
+    void forgetLegacyUi(uint32_t gosHandle) { legacyUi_.erase(gosHandle); }
     bool contains(RenderCore::TextureHandle handle) const { return residents_.contains(handle.raw()); }
     // A legacy node already owns this identity; attach its pixels without adding a second CPU reference.
     void attach(RenderCore::TextureHandle handle, std::shared_ptr<const RenderCore::KtxImage> image, bool useMips = false);
@@ -85,6 +89,9 @@ private:
     std::shared_ptr<Image> placeholder_;
     std::unordered_map<uint32_t, Resident> residents_;
     std::array<Flight, 2> flights_;
+    struct LegacyUi { std::weak_ptr<const std::vector<uint8_t>> source; ResidentTextureRef texture; };
+    std::unordered_map<uint32_t, LegacyUi> legacyUi_;
+    uint64_t targetSerial_ = 0;
     RenderCore::TextureStagingBudget budget_;
     std::deque<Pending> pending_;
     std::deque<Upload> uploading_;

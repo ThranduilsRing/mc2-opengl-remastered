@@ -1,3 +1,4 @@
+#include "../GameOS/gameos/ui_texture.h"
 // UiDefs: page scaling and per-element drawing.
 // Declared in UiDefs_internal.h.
 #include "UiDefs_internal.h"
@@ -240,7 +241,7 @@ bool drawUiImageElement(UiElement& e, int xOffset, int yOffset, const PageScale&
                                 unsigned int tint)
 {
     uint64_t glTexture=0;
-    if (e.gosTextureOverride) glTexture=gos_GetGLTextureName(e.gosTextureOverride);
+    if (e.gosTextureOverride) glTexture=gos_GetUiTextureId(e.gosTextureOverride);
     else { ensureTexture(e); if (e.textureNodeAssigned) glTexture=mcTextureManager->getUiTextureId(e.textureNode); }
     if (!glTexture) return false;
 

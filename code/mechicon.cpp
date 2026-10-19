@@ -1,3 +1,4 @@
+#include "../GameOS/gameos/ui_texture.h"
  #define MECHICON_CPP
 /*************************************************************************************************\
 MechIcon.cpp			: Implementation of the MechIcon component.
@@ -1307,7 +1308,7 @@ void ForceGroupIcon::renderPilotIcon( float left, float top, float right, float 
 // panel. The UV math below is a verbatim mirror of renderUnitIcon /
 // renderUnitIconBack (including the .1/256 texel nudge and the texIndex paging
 // on the front icon) — keep them in lockstep if either changes.
-bool ForceGroupIcon::getUnitIconTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, float& v1 ) const
+bool ForceGroupIcon::getUnitIconTexUV( uint64_t& glTex, float& u0, float& v0, float& u1, float& v1 ) const
 {
 	if ( !s_textureMemory )
 		return false;
@@ -1333,11 +1334,11 @@ bool ForceGroupIcon::getUnitIconTexUV( unsigned int& glTex, float& u0, float& v0
 	u1 = u0 + unitIconX/s_textureMemory->width + (.1f / 256.f );
 	v1 = v0 + unitIconY/s_textureMemory->height + (.1f / 256.f);
 
-	glTex = gos_GetGLTextureName( s_textureHandle[texIndex] );
+	glTex = gos_GetUiTextureId( s_textureHandle[texIndex] );
 	return glTex != 0;
 }
 
-bool ForceGroupIcon::getUnitIconBackTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, float& v1 ) const
+bool ForceGroupIcon::getUnitIconBackTexUV( uint64_t& glTex, float& u0, float& v0, float& u1, float& v1 ) const
 {
 	if ( !s_textureMemory || s_textureHandle[0] == 0xffffffff )
 		return false;
@@ -1353,11 +1354,11 @@ bool ForceGroupIcon::getUnitIconBackTexUV( unsigned int& glTex, float& u0, float
 	u1 = u0 + unitIconX/s_textureMemory->width + (.1f / 256.f );
 	v1 = v0 + unitIconY/s_textureMemory->height + (.1f / 256.f);
 
-	glTex = gos_GetGLTextureName( s_textureHandle[0] );
+	glTex = gos_GetUiTextureId( s_textureHandle[0] );
 	return glTex != 0;
 }
 
-bool ForceGroupIcon::getPilotIconTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, float& v1 ) const
+bool ForceGroupIcon::getPilotIconTexUV( uint64_t& glTex, float& u0, float& v0, float& u1, float& v1 ) const
 {
 	return pilotIcon.getTexUV( glTex, u0, v0, u1, v1 );
 }
@@ -1365,7 +1366,7 @@ bool ForceGroupIcon::getPilotIconTexUV( unsigned int& glTex, float& u0, float& v
 // INFO-IMGUI-SLICE-2: mirrors PilotIcon::render's UV math (note: the legacy
 // code divides BOTH u and v by s_pilotTextureWidth — the pilot atlas is square;
 // mirrored verbatim for pixel parity).
-bool PilotIcon::getTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, float& v1 ) const
+bool PilotIcon::getTexUV( uint64_t& glTex, float& u0, float& v0, float& u1, float& v1 ) const
 {
 	if ( !s_pilotTextureHandle || !s_pilotTextureWidth || pilotIconX <= 0.f )
 		return false;
@@ -1386,7 +1387,7 @@ bool PilotIcon::getTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, 
 	long gosID = mcTextureManager->get_gosTextureHandle( s_pilotTextureHandle );
 	if ( gosID <= 0 )   // 0 = none, -1 (0xffffffff) = invalid
 		return false;
-	glTex = gos_GetGLTextureName( (DWORD)gosID );
+	glTex = gos_GetUiTextureId( (DWORD)gosID );
 	return glTex != 0;
 }
 

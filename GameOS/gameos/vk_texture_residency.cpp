@@ -31,6 +31,31 @@ void TextureResidency::attach(RenderCore::TextureHandle handle, std::shared_ptr<
     if (image) pending_.push_back({handle,std::move(image)});
 }
 
+ResidentTextureRef TextureResidency::createRenderTarget(uint32_t width, uint32_t height) {
+    auto image=std::make_shared<Image>();
+    if (!image->image.createSampled2D(ctx_.allocator(),ctx_.device(),VK_FORMAT_R8G8B8A8_UNORM,width,height,1,
+                                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,"ui.preview")) return {};
+    VkImageViewCreateInfo vi{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO}; vi.image=image->image.get();
+    vi.viewType=VK_IMAGE_VIEW_TYPE_2D; vi.format=VK_FORMAT_R8G8B8A8_UNORM; vi.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+    if (!mc2vk::create(image->view,ctx_.device(),[&](VkImageView* v){return vkCreateImageView(ctx_.device(),&vi,nullptr,v);})) return {};
+    RenderCore::TextureKey key; key.source="ui-preview:"+std::to_string(++targetSerial_);
+    auto handle=service_.acquire(key,RenderCore::kNoTextureNode,{width,height,800,600});
+    if (!handle.isValid()) return {};
+    const auto slot=table_->insert(handle,image);
+    residents_.emplace(handle.raw(),Resident{std::move(image),slot,false});
+    return ResidentTextureRef(*this,handle);
+}
+uint64_t TextureResidency::legacyUiId(uint32_t gosHandle, uint32_t width, uint32_t height, VkFormat format,
+                                     std::shared_ptr<const std::vector<uint8_t>> bytes) {
+    if (!bytes) return 0;
+    auto& e=legacyUi_[gosHandle];
+    if (e.source.lock()!=bytes || !service_.isLive(e.texture.get())) {
+        if (format==VK_FORMAT_BC7_SRGB_BLOCK) format=VK_FORMAT_BC7_UNORM_BLOCK; // display-space UI
+        e.texture=acquireLegacy(width,height,format,bytes->data(),bytes->size()); e.source=bytes;
+    }
+    return RenderCore::uiTextureId(e.texture.get());
+}
+
 bool TextureResidency::init() {
     VkPhysicalDeviceProperties props{}; vkGetPhysicalDeviceProperties(ctx_.physicalDevice(), &props);
     const auto& l = props.limits;

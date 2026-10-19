@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
 #include "mc2fmt.h"
+#include "vulkan_legacy_shape_island.h"
 #include "utils/mc2log.h"
 
 
@@ -879,6 +880,14 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
 
     gosASSERT((count % 3) == 0);
 
+#ifdef MC2_VULKAN_ISLAND
+    if (mc2_vk_preview_active()) {
+        const uint32_t texture=uint32_t(renderStates_[gos_State_Texture]);
+        const uint32_t pass=renderStates_[gos_State_AlphaMode]==gos_Alpha_OneZero ? MC2_LEGACY_PASS_SOLID : MC2_LEGACY_PASS_ALPHA;
+        const Mc2LegacyMlrDraw draw{vertices,uint32_t(count),texture,texture,pass,uint32_t(renderStates_[gos_State_AlphaTest]!=0)};
+        mc2_vk_preview_capture(&draw); return;
+    }
+#endif
     if ( mc2::gate::get<"MC2_LOG_PREVIEW">() ) {
         GLint curFbo = 0; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &curFbo);
         FILE* f = fopen("preview_debug.log","a");
