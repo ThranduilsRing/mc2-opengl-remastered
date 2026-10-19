@@ -1336,7 +1336,7 @@ void Building::createBuildingMarines (void) {
 				{
 					//--------------------------------------------------------------------
 					// We must create the vehicle for the pilot and then lobotomize him!!
-					ElementalPtr vehiclePilot = static_cast<ElementalPtr>(createObject(DefaultPilotId));
+					ElementalPtr vehiclePilot = reinterpret_cast<ElementalPtr>(createObject(DefaultPilotId));
 					if (!vehiclePilot)
 						Fatal(-1," Couldnt create Marine for Building ");
 
@@ -1389,9 +1389,9 @@ void Building::createBuildingMarines (void) {
 						objAppr->setGesture(0);
 						
 						if (getAlignment() == CLANS)
-							(static_cast<ElementalActor *>(objAppr))->setPaintScheme(28);
+							(reinterpret_cast<ElementalActor *>(objAppr))->setPaintScheme(28);
 						else
-							(static_cast<ElementalActor *>(objAppr))->setPaintScheme(18);
+							(reinterpret_cast<ElementalActor *>(objAppr))->setPaintScheme(18);
 					}
 											
 					//-----------------------------------------------------------------

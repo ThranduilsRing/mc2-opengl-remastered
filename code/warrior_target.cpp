@@ -126,7 +126,7 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, glm::vec3 location
 					{
 						if (list[i].params[2] && obj->isMover() && (!obj->isMarine() || (obj->getTeam() != Team::home)))
 						{
-							if (pilot->getTeam()->isContact(pilot->getVehicle(), (MoverPtr)obj, list[i].params[2])) 
+							if (pilot->getTeam()->isContact(pilot->getVehicle(), static_cast<MoverPtr>(obj), list[i].params[2]))
 							{
 								action = calcAction(pilot, obj);
 								return(obj->getWatchID());
@@ -171,7 +171,7 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, glm::vec3 location
 				if (obj && obj->isMover()) {
 					if (pilot->getVehicle()->distanceFrom(obj->getPosition()) < list[i].params[1]) {
 						if (list[i].params[2]) {
-							if (pilot->getTeam()->isContact(pilot->getVehicle(), (MoverPtr)obj, list[i].params[2])) {
+							if (pilot->getTeam()->isContact(pilot->getVehicle(), static_cast<MoverPtr>(obj), list[i].params[2])) {
 								action = calcAction(pilot, obj);
 								return(obj->getWatchID());
 							}
@@ -247,7 +247,7 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, glm::vec3 location
 					float distanceToTarget = glm::length(delta) * metersPerWorldUnit;
 					if (distanceToTarget < list[i].params[1]) {
 						if (list[i].params[2] && target->isMover()) {
-							if (pilot->getTeam()->isContact(pilot->getVehicle(), (MoverPtr)target, list[i].params[2])) {
+							if (pilot->getTeam()->isContact(pilot->getVehicle(), static_cast<MoverPtr>(target), list[i].params[2])) {
 								action = calcAction(pilot, target);
 								return(target->getWatchID());
 							}
@@ -265,7 +265,7 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, glm::vec3 location
 				GameObjectPtr closestTurret = nullptr;
                 int i;
 				for (i = 0; i < ObjectManager->getNumTurrets(); i++) {
-					GameObjectPtr turret = (GameObjectPtr)ObjectManager->getTurret(i);
+					GameObjectPtr turret = static_cast<GameObjectPtr>(ObjectManager->getTurret(i));
 					if (!turret->getTeam()->isFriendly(pilot->getTeam())/* && turret->isCaptureable(pilot->getTeam()->getId())*/) {
 						float distance = pilot->getVehicle()->distanceFrom(turret->getPosition());
 						if (distance < shortestDistance) {
@@ -289,7 +289,7 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, glm::vec3 location
 				float shortestDistance = 999999.0;
 				GameObjectPtr closestControl = nullptr;
 				for (long i = 0; i < ObjectManager->getNumTurretControls(); i++) {
-					GameObjectPtr turretControl = (GameObjectPtr)ObjectManager->getTurretControl(i);
+					GameObjectPtr turretControl = static_cast<GameObjectPtr>(ObjectManager->getTurretControl(i));
 					if (!turretControl->getTeam()->isFriendly(pilot->getTeam()) && turretControl->isCaptureable(pilot->getTeam()->getId())) {
 						float distance = pilot->getVehicle()->distanceFrom(turretControl->getPosition());
 						if (distance < shortestDistance) {
@@ -312,7 +312,7 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, glm::vec3 location
 				float shortestDistance = 999999.0;
 				GameObjectPtr closestControl = nullptr;
 				for (long i = 0; i < ObjectManager->getNumGateControls(); i++) {
-					GameObjectPtr gateControl = (GameObjectPtr)ObjectManager->getGateControl(i);
+					GameObjectPtr gateControl = static_cast<GameObjectPtr>(ObjectManager->getGateControl(i));
 					if (!gateControl->getTeam()->isFriendly(pilot->getTeam()) && gateControl->isCaptureable(pilot->getTeam()->getId())) {
 						float distance = pilot->getVehicle()->distanceFrom(gateControl->getPosition());
 						if (distance < shortestDistance) {
@@ -425,7 +425,7 @@ GameObjectPtr MechWarrior::calcTurretThreats (float threatRange, long minThreat)
 		if (!turret->isDisabled() && (turret->targetWID == vehicleWID)) {
 			turretThreat[i] += turret->getThreatRating();
 			if (turret->parent)		//Pop-up turrets do NOT have parents!!
-				turretControlThreat[((BuildingPtr)ObjectManager->getByWatchID(turret->parent))->listID] += turret->getThreatRating();
+				turretControlThreat[(static_cast<BuildingPtr>(ObjectManager->getByWatchID(turret->parent)))->listID] += turret->getThreatRating();
 		}
 	}
 

@@ -182,7 +182,7 @@ void Weather::init (DWORD maxDrops, float startingRain, float brChance, float lt
 	
 	if (maxDrops)
 	{
-		rainDrops = (RainDrops *)systemHeap->Malloc(sizeof(RainDrops) * maxDrops);
+		rainDrops = static_cast<RainDrops *>(systemHeap->Malloc(sizeof(RainDrops) * maxDrops));
 		gosASSERT(rainDrops != nullptr);
 		
 		for (long i=0;i<totalRainDrops;i++)
@@ -566,7 +566,7 @@ void Weather::render (void)
 
 			// One draw call for all visible rain streaks.
 			if (!batchVerts.empty())
-				gos_DrawLines(batchVerts.data(), (int)batchVerts.size());
+				gos_DrawLines(batchVerts.data(), static_cast<int>(batchVerts.size()));
 		}
 		else {
 			// --- LEGACY PATH (default): one draw call per streak ---

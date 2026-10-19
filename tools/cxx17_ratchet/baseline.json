@@ -142,12 +142,12 @@
    "LG01": 76,
    "LG02": 8,
    "LG03": 458,
-   "LG04": 21,
+   "LG04": 20,
    "LG05": 198,
    "LG06": 472,
    "LG07": 2,
    "LG08": 17,
-   "LG09": 367,
+   "LG09": 60,
    "LG10": 20,
    "LG11": 103,
    "LG12a": 100,
@@ -2606,22 +2606,16 @@
   "code/tacticaloverview.h": {
    "LG17": 2
   },
-  "code/tacticaloverview_state.cpp": {
-   "LG09": 1
-  },
   "code/team.cpp": {
-   "LG03": 1,
-   "LG09": 10
+   "LG03": 1
   },
   "code/team_los.cpp": {
-   "LG03": 2,
-   "LG09": 3
+   "LG03": 2
   },
   "code/terrobj.cpp": {
    "LG01": 4,
    "LG03": 1,
-   "LG04": 5,
-   "LG09": 30,
+   "LG04": 4,
    "LG12a": 2,
    "LG12b": 9,
    "LG13": 1
@@ -2640,7 +2634,6 @@
   },
   "code/turret.cpp": {
    "LG03": 1,
-   "LG09": 46,
    "LG12b": 17,
    "LG17": 1
   },
@@ -2655,8 +2648,7 @@
   },
   "code/ui_profile_registry.cpp": {
    "LG06": 5,
-   "LG08": 1,
-   "LG09": 1
+   "LG08": 1
   },
   "code/ui_profile_registry.h": {
    "LG06": 1
@@ -2671,8 +2663,7 @@
    "LG13": 3
   },
   "code/unitprofile.cpp": {
-   "LG06": 4,
-   "LG09": 2
+   "LG06": 4
   },
   "code/unitprofile.h": {
    "LG06": 6,
@@ -2680,13 +2671,11 @@
    "LG17": 1
   },
   "code/unitprofile_fit.cpp": {
-   "LG06": 6,
-   "LG09": 1
+   "LG06": 6
   },
   "code/warrior.cpp": {
    "LG03": 15,
-   "LG06": 1,
-   "LG09": 24
+   "LG06": 1
   },
   "code/warrior.h": {
    "LG04": 1,
@@ -2697,36 +2686,18 @@
    "LG14": 19,
    "LG18": 1
   },
-  "code/warrior_alarms.cpp": {
-   "LG09": 2
-  },
-  "code/warrior_core_orders.cpp": {
-   "LG09": 5
-  },
   "code/warrior_draw.cpp": {
-   "LG05": 2,
-   "LG09": 1
+   "LG05": 2
   },
   "code/warrior_internal.h": {
    "LG14": 2
   },
-  "code/warrior_move.cpp": {
-   "LG09": 12
-  },
-  "code/warrior_orders.cpp": {
-   "LG09": 32
-  },
-  "code/warrior_queue.cpp": {
-   "LG09": 3
-  },
   "code/warrior_state.cpp": {
    "LG03": 3,
-   "LG06": 1,
-   "LG09": 14
+   "LG06": 1
   },
   "code/warrior_target.cpp": {
    "LG04": 1,
-   "LG09": 7,
    "LG12b": 5
   },
   "code/weapon_definition.h": {
@@ -2734,30 +2705,17 @@
    "LG09": 3,
    "LG14": 5
   },
-  "code/weapon_presentation_proof.cpp": {
-   "LG09": 2
-  },
   "code/weapon_presentation_resolve.h": {
    "LG05": 3,
    "LG09": 1
   },
   "code/weaponbolt.cpp": {
-   "LG03": 1,
-   "LG09": 11
+   "LG03": 1
   },
   "code/weaponbolt.h": {
    "LG01": 8,
    "LG02": 1,
    "LG09": 7
-  },
-  "code/weaponbolt_render.cpp": {
-   "LG09": 32
-  },
-  "code/weaponbolt_update.cpp": {
-   "LG09": 66
-  },
-  "code/weather.cpp": {
-   "LG09": 2
   },
   "editor/EditorGosRender.cpp": {
    "LG20": 2
@@ -4510,7 +4468,7 @@
    "LG20": 3
   }
  },
- "head": "60c1a1c58",
+ "head": "4990c3273",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

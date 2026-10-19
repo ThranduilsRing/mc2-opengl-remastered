@@ -276,7 +276,7 @@ long MechWarrior::handleAlarm (long alarmCode, unsigned long triggerId) {
 
 	if (brainAlarmCallback[alarmCode]) {
 		CurGroup = getGroup();
-		CurObject = (GameObjectPtr)getVehicle();
+		CurObject = static_cast<GameObjectPtr>(getVehicle());
 		CurObjectClass = getVehicle()->getObjectClass();
 		CurWarrior = this;
 		CurContact = nullptr;
@@ -332,7 +332,7 @@ long MechWarrior::checkAlarms (void) {
 
 	if (brain) {
 		CurGroup = getGroup();
-		CurObject = (GameObjectPtr)getVehicle();
+		CurObject = static_cast<GameObjectPtr>(getVehicle());
 		CurObjectClass = getVehicle()->getObjectClass();
 		CurWarrior = this;
 		CurContact = nullptr;

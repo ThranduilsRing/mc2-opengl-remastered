@@ -99,7 +99,7 @@ float MechWarrior::getMoveDistanceLeft (void) {
 			// Ultimately, we should have a pre-calced distanceToGoal field
 			// for each door-to-door link which we can use as an estimate.
 			// For now, we can just assume 100.0 meters per area...
-			distanceLeft += (float)(moveOrders.globalPath[curPath->globalStep].costToGoal); // ((moveOrders.numGlobalSteps - curPath->globalStep) * 50.0);
+			distanceLeft += static_cast<float>((moveOrders.globalPath[curPath->globalStep].costToGoal)); // ((moveOrders.numGlobalSteps - curPath->globalStep) * 50.0);
 		}
 	}
 	return(distanceLeft);
@@ -390,13 +390,13 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 				RamObjectWID = 0;
 			GameObjectPtr ramObject = ObjectManager->getByWatchID(RamObjectWID);
 			if (ramObject && ramObject->isMover())
-				((MoverPtr)ramObject)->updatePathLock(false);
+				(static_cast<MoverPtr>(ramObject))->updatePathLock(false);
 			if (myVehicle->getObjectClass() != ELEMENTAL)
 				moveParams |= MOVEPARAM_AVOID_PATHLOCKS;
 			glm::vec3 escapeGoal;
 			long numSteps = myVehicle->calcEscapePath(moveOrders.path[pathNum], start, goal, nullptr, moveParams | MOVEPARAM_STATIONARY_MOVERS, escapeGoal);
 			if (ramObject && ramObject->isMover())
-				((MoverPtr)ramObject)->updatePathLock(true);
+				(static_cast<MoverPtr>(ramObject))->updatePathLock(true);
 			myVehicle->updatePathLock(true);
 			RamObjectWID = 0;
 
@@ -472,12 +472,12 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 				RamObjectWID = 0;
 			GameObjectPtr ramObject = ObjectManager->getByWatchID(RamObjectWID);
 			if (ramObject && ramObject->isMover())
-				((MoverPtr)ramObject)->updatePathLock(false);
+				(static_cast<MoverPtr>(ramObject))->updatePathLock(false);
 			if (myVehicle->getObjectClass() != ELEMENTAL)
 				moveParams |= MOVEPARAM_AVOID_PATHLOCKS;
 			long numSteps = myVehicle->calcMovePath(moveOrders.path[pathNum], MOVEPATH_SIMPLE, start, goal, nullptr, moveParams | MOVEPARAM_STATIONARY_MOVERS);
 			if (ramObject && ramObject->isMover())
-				((MoverPtr)ramObject)->updatePathLock(true);
+				(static_cast<MoverPtr>(ramObject))->updatePathLock(true);
 			myVehicle->updatePathLock(true);
 			RamObjectWID = 0;
 
@@ -643,7 +643,7 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 				RamObjectWID = 0;
 			GameObjectPtr ramObject = ObjectManager->getByWatchID(RamObjectWID);
 			if (ramObject && ramObject->isMover())
-				((MoverPtr)ramObject)->updatePathLock(false);
+				(static_cast<MoverPtr>(ramObject))->updatePathLock(false);
 			if (myVehicle->getObjectClass() != ELEMENTAL)
 				moveParams |= MOVEPARAM_AVOID_PATHLOCKS;
 			startTime = GetCycles();
@@ -662,7 +662,7 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 			numSteps = myVehicle->calcMovePath(
                     moveOrders.path[pathNum], start, thruArea, goalDoor, moveOrders.globalGoalLocation, &goal, globalStep->goalCell, moveParams | MOVEPARAM_STATIONARY_MOVERS);
 			if (ramObject && ramObject->isMover())
-				((MoverPtr)ramObject)->updatePathLock(true);
+				(static_cast<MoverPtr>(ramObject))->updatePathLock(true);
 			myVehicle->updatePathLock(true);
 			RamObjectWID = 0;
 			}
@@ -676,12 +676,12 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 				RamObjectWID = 0;
 			GameObjectPtr ramObject = ObjectManager->getByWatchID(RamObjectWID);
 			if (ramObject && ramObject->isMover())
-				((MoverPtr)ramObject)->updatePathLock(false);
+				(static_cast<MoverPtr>(ramObject))->updatePathLock(false);
 			if (myVehicle->getObjectClass() != ELEMENTAL)
 				moveParams |= MOVEPARAM_AVOID_PATHLOCKS;
 			numSteps = myVehicle->calcMovePath(moveOrders.path[pathNum], MOVEPATH_COMPLEX, start, goal, globalStep->goalCell, moveParams | MOVEPARAM_STATIONARY_MOVERS);
 			if (ramObject && ramObject->isMover())
-				((MoverPtr)ramObject)->updatePathLock(true);
+				(static_cast<MoverPtr>(ramObject))->updatePathLock(true);
 			myVehicle->updatePathLock(true);
 			RamObjectWID = 0;
 			if (numSteps > 0) {
@@ -983,7 +983,7 @@ bool MechWarrior::movementDecisionTree (void) {
 				// to it. If it happens to be adjacent to blocked
 				// cells, this could be off...
 				if (moveTarget->isBuilding()) {
-					BuildingPtr building = (BuildingPtr)moveTarget;
+					BuildingPtr building = static_cast<BuildingPtr>(moveTarget);
 					long goalRow = 0, goalCol = 0;
 					bool foundGoal = building->calcAdjacentAreaCell(getVehicle()->moveLevel, -1, goalRow, goalCol);
 					if (foundGoal)
@@ -1033,7 +1033,7 @@ bool MechWarrior::movementDecisionTree (void) {
 				// We will want to re-evaluate optimal range if our optimal range
 				// has changed...
 				if (target && target->isMover())
-					if (((MoverPtr)target)->getLastWeaponEffectivenessCalc() > myVehicle->getLastOptimalRangeCalc())
+					if ((static_cast<MoverPtr>(target))->getLastWeaponEffectivenessCalc() > myVehicle->getLastOptimalRangeCalc())
 						if (myVehicle->calcFireRanges()) {
 							recalcPath = true;
 							moveParams = MOVEPARAM_SOMEWHERE_ELSE;
@@ -1198,7 +1198,7 @@ bool MechWarrior::movementDecisionTree (void) {
 					// We will want to re-evaluate optimal range if our optimal range
 					// has changed...
 					if (target->isMover()) {
-						if (((MoverPtr)target)->getLastWeaponEffectivenessCalc() > myVehicle->getLastOptimalRangeCalc())
+						if ((static_cast<MoverPtr>(target))->getLastWeaponEffectivenessCalc() > myVehicle->getLastOptimalRangeCalc())
 							if (myVehicle->calcFireRanges()) {
 								recalcPath = true;
 								moveParams = MOVEPARAM_SOMEWHERE_ELSE;

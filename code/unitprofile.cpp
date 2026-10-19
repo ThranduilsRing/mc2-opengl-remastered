@@ -24,10 +24,10 @@ const char* mc2GeneratedVariantSlug(const char* variantName, int index,
     bool lastUnderscore = true;   // true so a leading separator run is dropped
     if (variantName) {
         for (const char* p = variantName; *p && n + 1 < cap; ++p) {
-            unsigned char c = (unsigned char)*p;
+            unsigned char c = static_cast<unsigned char>(*p);
             if (c == '\'')           // apostrophes dropped outright (not turned to '_')
                 continue;
-            const char lc = (char)std::tolower(c);
+            const char lc = static_cast<char>(std::tolower(c));
             if ((lc >= 'a' && lc <= 'z') || (lc >= '0' && lc <= '9')) {
                 out[n++] = lc;
                 lastUnderscore = false;

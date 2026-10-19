@@ -16,7 +16,7 @@ namespace {
 // stored lowercased by LogisticsChassis::init).
 std::string lowerKey(const char* s) {
     std::string k;
-    if (s) for (const char* p = s; *p; ++p) k += (char)std::tolower((unsigned char)*p);
+    if (s) for (const char* p = s; *p; ++p) k += static_cast<char>(std::tolower(static_cast<unsigned char>(*p)));
     return k;
 }
 

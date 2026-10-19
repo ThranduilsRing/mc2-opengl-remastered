@@ -1023,7 +1023,7 @@ void execAddPrisoner (void) {
 			}
 			if (prison->getObjectClass() == TREEBUILDING)
 			{
-			TreeBuildingPtr tPrison = static_cast<TreeBuildingPtr>(prison);
+			TreeBuildingPtr tPrison = reinterpret_cast<TreeBuildingPtr>(prison);
 				
 				for (i=0; i<MAX_PRISONERS; i++)
 					if (tPrison->prisoners[i] == nullptr)

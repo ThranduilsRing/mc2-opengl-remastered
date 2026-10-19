@@ -46,8 +46,8 @@ long WeaponBolt::update (void)
 			position = myOwner->getPositionFromHS(hotSpotNumber);
 		}
 
-		if (((WeaponBoltTypePtr)getObjectType())->fireSoundFX != 0)
-			soundSystem->playDigitalSample(((WeaponBoltTypePtr)getObjectType())->fireSoundFX, position, true);
+		if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->fireSoundFX != 0)
+			soundSystem->playDigitalSample((static_cast<WeaponBoltTypePtr>(getObjectType()))->fireSoundFX, position, true);
 			
 		laserPosition = position;
 		
@@ -73,7 +73,7 @@ long WeaponBolt::update (void)
 			// so lead the aim ONCE here by the target's velocity over the bolt's
 			// estimated flight time. getVelocity()==0 for non-movers -> no lead
 			// (straight shot at the fire-time position). Env-gated, default-off.
-			WeaponBoltTypePtr bt = (WeaponBoltTypePtr)getObjectType();
+			WeaponBoltTypePtr bt = static_cast<WeaponBoltTypePtr>(getObjectType());
 			if (directFireStraightEnabled() && !bt->arcEffect && !bt->isBeam)
 			{
 				glm::vec3 toTgt;
@@ -104,11 +104,11 @@ long WeaponBolt::update (void)
 		if (glm::length(laserDirection) != 0.0)
 			laserDirection = glm::normalize(laserDirection);
 
-		laserDirection *= ((WeaponBoltTypePtr)getObjectType())->projLength;
+		laserDirection *= (static_cast<WeaponBoltTypePtr>(getObjectType()))->projLength;
 		
-		if (((WeaponBoltTypePtr)getObjectType())->isBeam)
+		if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->isBeam)
 		{
-			timeLeft = ((WeaponBoltTypePtr)getObjectType())->beamDuration;
+			timeLeft = (static_cast<WeaponBoltTypePtr>(getObjectType()))->beamDuration;
 			actualPosition.x = -(*targetPosition).x;	//Play the beam hitting effect at the hit location
 			actualPosition.y = (*targetPosition).z;
 			actualPosition.z = (*targetPosition).y;
@@ -167,7 +167,7 @@ long WeaponBolt::update (void)
 		distanceToTarget = distance;
 		halfDistanceToTarget = distance / 2.0f;
 		
-		goalHeight = ((WeaponBoltTypePtr)getObjectType())->arcHeight;
+		goalHeight = (static_cast<WeaponBoltTypePtr>(getObjectType()))->arcHeight;
 		goalHeight *= 10.0f;
 	}
 
@@ -178,7 +178,7 @@ long WeaponBolt::update (void)
 	
 	bool inView = TRUE;
 
-	if (((WeaponBoltTypePtr)getObjectType())->isBeam)
+	if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->isBeam)
 	{
 		timeLeft -= frameLength;
 		if (timeLeft >= 0.0f)
@@ -190,9 +190,9 @@ long WeaponBolt::update (void)
    			mcTextureManager->addTriangle(mcTextureHandle,MC2_ISEFFECTS|MC2_DRAWONEIN); 
 		}
 
-		startUV += ((WeaponBoltTypePtr)getObjectType())->uvAnimRate * frameLength;
+		startUV += (static_cast<WeaponBoltTypePtr>(getObjectType()))->uvAnimRate * frameLength;
 	}
-	else if (!gosEffect && !((WeaponBoltTypePtr)getObjectType())->isBeam)
+	else if (!gosEffect && !(static_cast<WeaponBoltTypePtr>(getObjectType()))->isBeam)
 	{
 		mcTextureManager->addTriangle(0xffffffff,MC2_DRAWALPHA);
 		mcTextureManager->addTriangle(0xffffffff,MC2_DRAWALPHA);
@@ -207,7 +207,7 @@ long WeaponBolt::update (void)
 	targetPos = glm::vec3(0.0f);
 	// PPC de-curve: direct-fire (non-arc, non-beam) bolts do NOT re-track -- they
 	// fly straight to the lead-aim locked at spawn. LRM/arc + beams keep tracking.
-	WeaponBoltTypePtr boltType = (WeaponBoltTypePtr)getObjectType();
+	WeaponBoltTypePtr boltType = static_cast<WeaponBoltTypePtr>(getObjectType());
 	const bool directStraight =
 		directFireStraightEnabled() && !boltType->arcEffect && !boltType->isBeam;
 	if (target && (!hitTarget || boltType->isBeam) && !directStraight)
@@ -231,23 +231,23 @@ long WeaponBolt::update (void)
 	}
 				
 	glm::vec3 laserVelocity;
-	float velMag = ((WeaponBoltTypePtr)getObjectType())->velocity;
+	float velMag = (static_cast<WeaponBoltTypePtr>(getObjectType()))->velocity;
 	velMag *= frameLength;
 
 	// Direct-fire travel speed preserves the pre-rolled hit/miss outcome.
-	if (!((WeaponBoltTypePtr)getObjectType())->arcEffect)
+	if (!(static_cast<WeaponBoltTypePtr>(getObjectType()))->arcEffect)
 		velMag *= directFireSpeedMult();
 
 	laserVelocity = targetPos - ownerPosition;
 	float distance = laserVelocity.x * laserVelocity.x + laserVelocity.y * laserVelocity.y;
 	
 	bool isArcing = false;
-	if (((WeaponBoltTypePtr)getObjectType())->arcEffect)
+	if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->arcEffect)
 	{
 		//GoalHeight is actually the velocity
 		if ( goalHeight > 0.0f )
 		{
-			float accel = -((WeaponBoltTypePtr)getObjectType())->arcHeight * 10.0f;
+			float accel = -(static_cast<WeaponBoltTypePtr>(getObjectType()))->arcHeight * 10.0f;
 			goalHeight += accel * frameLength;
 			if (goalHeight >= 0.0f)
 			{
@@ -259,14 +259,14 @@ long WeaponBolt::update (void)
 
 	if (!hitTarget)
 	{
-		if (!((WeaponBoltTypePtr)getObjectType())->isBeam)
+		if (!(static_cast<WeaponBoltTypePtr>(getObjectType()))->isBeam)
 		{
 			float lastDistanceMoved = distanceToTarget - distance;
 #if MC2_SIM_TRACE
 			if (target && target->isMech()) {
 				const glm::vec3 tp = target->getPosition();
 				MC2_SIM_TRACE_LINE("BOLT id=%ld tgt=%ld dist=%.4f last=%.4f tpos=%.4f,%.4f,%.4f mpos=%.4f,%.4f,%.4f", static_cast<long>(getPartId()), static_cast<long>(target->getPartId()), static_cast<double>(distance), static_cast<double>(lastDistanceMoved),
-				                   (double)targetPos.x, (double)targetPos.y, (double)targetPos.z, (double)tp.x, (double)tp.y, (double)tp.z);
+				                   static_cast<double>(targetPos.x), static_cast<double>(targetPos.y), static_cast<double>(targetPos.z), static_cast<double>(tp.x), static_cast<double>(tp.y), static_cast<double>(tp.z));
 			}
 #endif
 			distanceToTarget = distance;
@@ -275,7 +275,7 @@ long WeaponBolt::update (void)
 			{
 				hitTarget = TRUE;
 				if (target) traceCombat("impact", "hit");
-				hitLeft = ((WeaponBoltTypePtr)getObjectType())->afterHitTime;
+				hitLeft = (static_cast<WeaponBoltTypePtr>(getObjectType()))->afterHitTime;
 
 				// Only the impact effect remains visible after arrival.
 				if (gosEffect) {
@@ -418,9 +418,9 @@ long WeaponBolt::update (void)
 						}
 					}
 					
-					if (((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum &&
-						(((WeaponBoltTypePtr)getObjectType())->areaEffectDmg > 0.0f) &&
-						(((WeaponBoltTypePtr)getObjectType())->areaEffectRad > 0.0f))
+					if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum &&
+						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg > 0.0f) &&
+						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad > 0.0f))
 					{
 						if (hitEffect)
 						{
@@ -441,10 +441,10 @@ long WeaponBolt::update (void)
 						}
 						
 						// The explosion owns area damage for both hits and misses.
-						ObjectManager->createExplosion(((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum,
+						ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
 														nullptr,*targetPosition,
-														((WeaponBoltTypePtr)getObjectType())->areaEffectDmg,
-														((WeaponBoltTypePtr)getObjectType())->areaEffectRad);
+														(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg,
+														(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad);
 					}
 					else
 					{
@@ -475,9 +475,9 @@ long WeaponBolt::update (void)
 						}
 					}
 
-					if (((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum &&
-						(((WeaponBoltTypePtr)getObjectType())->areaEffectDmg > 0.0f) &&
-						(((WeaponBoltTypePtr)getObjectType())->areaEffectRad > 0.0f))
+					if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum &&
+						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg > 0.0f) &&
+						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad > 0.0f))
 					{
 						if (hitEffect)
 						{
@@ -498,15 +498,15 @@ long WeaponBolt::update (void)
 						}
 
 						// Located aimed damage leaves the explosion cosmetic to avoid duplicate damage.
-						float areaDmg = ((WeaponBoltTypePtr)getObjectType())->areaEffectDmg;
+						float areaDmg = (static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg;
 						if (deliverAimedAreaHit())
 							areaDmg = 0.0f;
 
 						// The explosion owns area damage for both hits and misses.
-						ObjectManager->createExplosion(((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum,
+						ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
 														nullptr,*targetPosition,
 														areaDmg,
-														((WeaponBoltTypePtr)getObjectType())->areaEffectRad);
+														(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad);
 					}
 				}
 				armRetireDeadline();
@@ -653,9 +653,9 @@ long WeaponBolt::update (void)
 						}
 					}
 					
-					if (((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum &&
-						(((WeaponBoltTypePtr)getObjectType())->areaEffectDmg > 0.0f) &&
-						(((WeaponBoltTypePtr)getObjectType())->areaEffectRad > 0.0f))
+					if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum &&
+						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg > 0.0f) &&
+						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad > 0.0f))
 					{
 						if (hitEffect)
 						{
@@ -676,10 +676,10 @@ long WeaponBolt::update (void)
 						}
 						
 						// The explosion owns area damage for both hits and misses.
-						ObjectManager->createExplosion(((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum,
+						ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
 														nullptr,*targetPosition,
-														((WeaponBoltTypePtr)getObjectType())->areaEffectDmg,
-														((WeaponBoltTypePtr)getObjectType())->areaEffectRad);
+														(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg,
+														(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad);
 					}
 					else
 					{
@@ -710,9 +710,9 @@ long WeaponBolt::update (void)
 						}
 					}
 					
-					if (((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum &&
-						(((WeaponBoltTypePtr)getObjectType())->areaEffectDmg > 0.0f) &&
-						(((WeaponBoltTypePtr)getObjectType())->areaEffectRad > 0.0f))
+					if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum &&
+						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg > 0.0f) &&
+						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad > 0.0f))
 					{
 						if (hitEffect)
 						{
@@ -733,10 +733,10 @@ long WeaponBolt::update (void)
 						}
 						
 						// The explosion owns area damage for both hits and misses.
-						ObjectManager->createExplosion(((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum,
+						ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
 														nullptr,*targetPosition,
-														((WeaponBoltTypePtr)getObjectType())->areaEffectDmg,
-														((WeaponBoltTypePtr)getObjectType())->areaEffectRad);
+														(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg,
+														(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad);
 					}
 				}
 				armRetireDeadline();
@@ -776,7 +776,7 @@ long WeaponBolt::update (void)
    	if (gosEffect && gosEffect->IsExecuted())
    	{
 		glm::vec3 actualPosition;
-		if (((WeaponBoltTypePtr)getObjectType())->isBeam)
+		if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->isBeam)
 		{
 			actualPosition.x = -(*targetPosition).x;	//Play the beam hitting effect at the hit location
 			actualPosition.y = (*targetPosition).z;
@@ -845,30 +845,30 @@ long WeaponBolt::update (void)
 
    	}
 
-	if (!hitTarget && !((WeaponBoltTypePtr)getObjectType())->isBeam)
+	if (!hitTarget && !(static_cast<WeaponBoltTypePtr>(getObjectType()))->isBeam)
 	{
 		//--------------------------------------------------------------------------------------
 		// LaserPosition is front of projectile, laserVertices[0] is top vertex of bulge.
 		// LaserVertices[1] is bottom vertex of bulge, laservertices[2] is back of projectile,
 		// and laservertices[3] is the middle of the bulge.	
 		glm::vec3 lDir(laserDirection);
-		lDir *= ((WeaponBoltTypePtr)getObjectType())->bulgeLength;
+		lDir *= (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeLength;
 		laserVertices[0] = laserPosition + lDir;
 		laserVertices[1] = laserVertices[0];
 		laserVertices[3] = laserVertices[0];
 		
-		laserVertices[1].x += laserDirection.y * ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
-		laserVertices[1].y -= laserDirection.x * ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
+		laserVertices[1].x += laserDirection.y * (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
+		laserVertices[1].y -= laserDirection.x * (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
 		
-		laserVertices[0].x -= laserDirection.y * ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
-		laserVertices[0].y += laserDirection.x * ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
+		laserVertices[0].x -= laserDirection.y * (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
+		laserVertices[0].y += laserDirection.x * (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
 	
-		laserDirection *= ((WeaponBoltTypePtr)getObjectType())->projLength;
+		laserDirection *= (static_cast<WeaponBoltTypePtr>(getObjectType()))->projLength;
 		laserVertices[2] = laserPosition + laserDirection;
 	
-		if (((WeaponBoltTypePtr)getObjectType())->lightSource && !pointLight && (lightId != -1))
+		if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->lightSource && !pointLight && (lightId != -1))
 		{
-			pointLight = ((WeaponBoltTypePtr)getObjectType())->getLight();
+			pointLight = (static_cast<WeaponBoltTypePtr>(getObjectType()))->getLight();
 			lightId = eye->addWorldLight(pointLight);
 			if (lightId == -1)
 			{
@@ -879,21 +879,21 @@ long WeaponBolt::update (void)
 			}
 		}
 	}
-	else if (!hitTarget && ((WeaponBoltTypePtr)getObjectType())->isBeam)
+	else if (!hitTarget && (static_cast<WeaponBoltTypePtr>(getObjectType()))->isBeam)
 	{
 		laserVertices[0] = position;
 		laserVertices[1] = position;
 		laserSide[0] = position;
 		laserSide[1] = position;
 		
-		laserVertices[0].x -= laserDirection.y * ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
-		laserVertices[0].y += laserDirection.x * ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
+		laserVertices[0].x -= laserDirection.y * (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
+		laserVertices[0].y += laserDirection.x * (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
  		
-		laserVertices[1].x += laserDirection.y * ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
-		laserVertices[1].y -= laserDirection.x * ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
+		laserVertices[1].x += laserDirection.y * (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
+		laserVertices[1].y -= laserDirection.x * (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
 
-		laserSide[0].z += ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
-		laserSide[1].z -= ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
+		laserSide[0].z += (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
+		laserSide[1].z -= (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
 
    		hsPos = *targetPosition;
    		if (target)
@@ -911,7 +911,7 @@ long WeaponBolt::update (void)
 			}
 		}
 
-		float beamWiggle = ((WeaponBoltTypePtr)getObjectType())->beamWiggle;
+		float beamWiggle = (static_cast<WeaponBoltTypePtr>(getObjectType()))->beamWiggle;
 		glm::vec3 offset(beamWiggle,beamWiggle,beamWiggle);
 		offset.x = mc2_appearance_rng::randomNumber(offset.x * 2) - offset.x;
 		offset.y = mc2_appearance_rng::randomNumber(offset.y * 2) - offset.y;
@@ -924,14 +924,14 @@ long WeaponBolt::update (void)
 		laserSide[2] = hsPos;
 		laserSide[3] = hsPos;
 		
-		laserVertices[2].x -= laserDirection.y * ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
-		laserVertices[2].y += laserDirection.x * ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
+		laserVertices[2].x -= laserDirection.y * (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
+		laserVertices[2].y += laserDirection.x * (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
  		
-		laserVertices[3].x += laserDirection.y * ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
-		laserVertices[3].y -= laserDirection.x * ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
+		laserVertices[3].x += laserDirection.y * (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
+		laserVertices[3].y -= laserDirection.x * (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
 		
-		laserSide[2].z += ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
-		laserSide[3].z -= ((WeaponBoltTypePtr)getObjectType())->bulgeWidth;
+		laserSide[2].z += (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
+		laserSide[3].z -= (static_cast<WeaponBoltTypePtr>(getObjectType()))->bulgeWidth;
  	}
 
 	if (pointLight)

@@ -48,8 +48,8 @@ static bool isTargetWeaponMasterId(long masterID) {
     static const char* kName = "PPC";
     const char* a = nm; const char* b = kName;
     for (; *a && *b; ++a, ++b) {
-        char ca = *a; if (ca >= 'a' && ca <= 'z') ca = (char)(ca - 32);
-        char cb = *b; if (cb >= 'a' && cb <= 'z') cb = (char)(cb - 32);
+        char ca = *a; if (ca >= 'a' && ca <= 'z') ca = static_cast<char>((ca - 32));
+        char cb = *b; if (cb >= 'a' && cb <= 'z') cb = static_cast<char>((cb - 32));
         if (ca != cb) return false;
     }
     return *a == '\0' && *b == '\0';
