@@ -566,23 +566,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_image_resource.h:50`
-- Class: `VkImageResource`  (data-member)
-- Member: `mc2vk::OwnedSemaphore glToVkSem[2];`
-- Consuming targets: gameos
-- Reached by define: gameos[gameos(PUBLIC)]
-
-## PASS  (`MC2_VULKAN_ISLAND`)
-
-- Header: `GameOS/gameos/vk_image_resource.h:51`
-- Class: `VkImageResource`  (data-member)
-- Member: `mc2vk::OwnedSemaphore vkToGlSem[2];`
-- Consuming targets: gameos
-- Reached by define: gameos[gameos(PUBLIC)]
-
-## PASS  (`MC2_VULKAN_ISLAND`)
-
-- Header: `GameOS/gameos/vk_image_resource.h:52`
+- Header: `GameOS/gameos/vk_image_resource.h:38`
 - Class: `VkImageResource`  (data-member)
 - Member: `mc2vk::OwnedFence     frameFence[2];`
 - Consuming targets: gameos
@@ -590,7 +574,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_image_resource.h:57`
+- Header: `GameOS/gameos/vk_image_resource.h:43`
 - Class: `VkImageResource`  (data-member)
 - Member: `VkDevice          device = VK_NULL_HANDLE;`
 - Consuming targets: gameos
@@ -1814,4 +1798,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 226 guard(s) analyzed, 0 violation(s).
+Result: 224 guard(s) analyzed, 0 violation(s).
