@@ -40,7 +40,8 @@ set(SOURCES ${SOURCES}
     txmmgr_render_phases.cpp
     txmmgr_render_passes.cpp
     txmmgr_render_overlays.cpp
-    txmmgr_texture.cpp
+    texture_sources.cpp
+    texture_assets.cpp
     tex_resolve_table.cpp
     userinput.cpp
     vk_umbrella_gate.cpp

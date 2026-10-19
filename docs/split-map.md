@@ -596,7 +596,6 @@ Split commit: `16460b02e`.
 | `txmmgr_render_overlays.cpp` | MC_TextureManager::renderLists phase 12: the legacy overlay pass (water loops, no-underlayer, shadow blobs, non-terrain alpha, vfx / hud submit). |
 | `txmmgr_render_passes.cpp` | MC_TextureManager::renderLists phases 8-11 (dynamic shadow pass, solid terrain, GPU static props and mechs, terrain overlay / decal batches). |
 | `txmmgr_render_phases.cpp` | MC_TextureManager::renderLists phases 1-7 (state setup, light and scene-data upload, 3D objects, static-shadow build, static-prop registry flush); see txmmgr_render.cpp for the order they run in. |
-| `txmmgr_texture.cpp` | MC_TextureManager: texture load/save/copy and MC_TextureNode (KTX route-2 and compressed upload). |
 | `txmmgr_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 | `txmmgr_render_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 

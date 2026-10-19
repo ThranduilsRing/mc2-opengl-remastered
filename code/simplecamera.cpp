@@ -508,7 +508,6 @@ long SimpleCamera::update()
 		trianglePool->reset();
 
 		mcTextureManager->clearArrays();
-		mcTextureManager->update();
 
 		Camera::update();
 		//--------------------------------------------------------

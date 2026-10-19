@@ -196,15 +196,6 @@ void drainTglPoolStatsOnShutdown (void)
 	// reaches mission_unload, so this is the only path that fires on process exit).
 	logTglPoolPeaks("process_exit");
 
-	// Texture manager peak (same reason: flush() won't fire in smoke mode).
-	if (mcTextureManager)
-	{
-		char _txmbuf[128];
-		mc2::fmt::to_buf(_txmbuf, "[TXM v1] event=process_exit peak_textures={:d}/{:d}", mc2::fmt::as_i32(mcTextureManager->getPeakUsedTextures()), mc2::fmt::as_i32(MAX_MC2_GOS_TEXTURES));
-		MC2_DIAG_PUTS(_txmbuf);
-		crashbundle_append(_txmbuf);
-	}
-
 	{
 		char _cbbuf[384];
 		mc2::fmt::to_buf(_cbbuf, "[TGL_POOL v1] summary mono_total={{vertex:{:d}, color:{:d}, face:{:d}, shadow:{:d}, triangle:{:d}}} since=process_start (shutdown)", mc2::fmt::as_u64(monoOf(vertexPool)), mc2::fmt::as_u64(monoOf(colorPool)), mc2::fmt::as_u64(monoOf(facePool)), mc2::fmt::as_u64(monoOf(shadowPool)), mc2::fmt::as_u64(monoOf(trianglePool)));

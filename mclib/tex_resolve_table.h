@@ -9,14 +9,17 @@
 //===========================================================================
 #pragma once
 
-#include "txmmgr.h"   // for MC_MAXTEXTURES, mcTextureManager
+#include "txmmgr.h"   // frame/render integration
 #include "texture_assets.h"
 #include "dstd.h"     // DWORD
+#include <vector>
 
 struct TexResolveTable {
     static constexpr DWORD kSentinel = 0xFFFFFFFFu;
 
-    DWORD       handles[MC_MAXTEXTURES];
+    std::vector<DWORD> handles;
+    std::vector<uint64_t> stamps;
+    uint64_t memoGeneration;
     uint64_t    buildGeneration;
     uint32_t    resolvedThisFrame;
     bool        enabled;        // MC2_MODERN_TEX_RESOLVE on, OR validate on (validate implies enabled)
@@ -27,10 +30,6 @@ struct TexResolveTable {
 
 extern TexResolveTable g_texResolveTable;
 extern uint64_t        g_currentFrameId;
-
-// Bounds-checked at compile time.
-static_assert(sizeof(((TexResolveTable*)0)->handles) / sizeof(DWORD) >= MC_MAXTEXTURES,
-              "g_texResolveTable.handles too small for MC_MAXTEXTURES");
 
 // Reset table to all-sentinel + bump generation + set frameActive=true.
 // Called once per frame as the FIRST statement of Terrain::geometry
@@ -58,51 +57,27 @@ void shutdownTexResolveTable(void);
 void texResolveLogMismatch(DWORD nodeId, DWORD table_h, DWORD legacy_h);
 void texResolveLogOOB(DWORD nodeId);
 
-// Lazy first-touch resolve. The hot path.
-inline DWORD tex_resolve(DWORD nodeId)
+// Dense, generation-stamped memoization. Capacity grows on the main thread at
+// frame begin; a worker never resizes a vector from a submitted asset number.
+inline DWORD tex_resolve(DWORD asset)
 {
-    // Killswitch OFF, or table not yet initialized this run, or out-of-frame
-    // (mission-load / UI / non-terrain inline-accessor caller). Fall through
-    // to legacy with bit-exact semantics.
-    if (!g_texResolveTable.enabled || !g_texResolveTable.frameActive) {
-        return mc2::textures::sourceId(nodeId);
+    auto& table=g_texResolveTable;
+    if (!table.enabled || !table.frameActive) return mc2::textures::sourceId(asset);
+    if (asset==0xffffffffu) return asset;
+    if (asset>=table.handles.size()) {
+        texResolveLogOOB(asset);
+        return mc2::textures::sourceId(asset);
     }
-    if (nodeId == 0xFFFFFFFFu) {
-        return nodeId;   // matches MC_TextureManager::get_gosTextureHandle wrapper at txmmgr.h:528–531
+    const bool cached=table.stamps[asset]==table.memoGeneration;
+    if (table.validate) {
+        const DWORD live=mc2::textures::sourceId(asset);
+        if (!cached) {
+            table.handles[asset]=live; table.stamps[asset]=table.memoGeneration; ++table.resolvedThisFrame;
+        } else if (table.handles[asset]!=live) texResolveLogMismatch(asset,table.handles[asset],live);
+        return live;
     }
-    // OOB guard. MC_MAXTEXTURES is the table cap; any nodeId beyond it would
-    // index off the end of handles[]. Fall through to legacy and log once.
-    if (nodeId >= MC_MAXTEXTURES) {
-        texResolveLogOOB(nodeId);
-        return mc2::textures::sourceId(nodeId);
-    }
-
-    if (g_texResolveTable.validate) {
-        // Validate mode: run both paths on EVERY call (not only first-touch),
-        // compare, fall through to legacy result. This catches within-frame
-        // stale-memoization caused by §7.2 out-of-scope legacy callsites
-        // triggering CACHED_OUT_HANDLE eviction on a node we already memoized.
-        // Performance does not matter in validate mode.
-        DWORD legacy = mc2::textures::sourceId(nodeId);
-        DWORD memo   = g_texResolveTable.handles[nodeId];
-        if (memo == TexResolveTable::kSentinel) {
-            // First touch this frame — store and continue.
-            g_texResolveTable.handles[nodeId] = legacy;
-            g_texResolveTable.resolvedThisFrame++;
-        } else if (memo != legacy) {
-            texResolveLogMismatch(nodeId, memo, legacy);
-            g_texResolveTable.handles[nodeId] = legacy;  // self-heal so subsequent reads converge
-        }
-        return legacy;
-    }
-
-    // Production hot path: lazy first-touch memoization.
-    DWORD h = g_texResolveTable.handles[nodeId];
-    if (h != TexResolveTable::kSentinel) {
-        return h;   // memoized hit
-    }
-    h = mc2::textures::sourceId(nodeId);
-    g_texResolveTable.handles[nodeId] = h;
-    g_texResolveTable.resolvedThisFrame++;
-    return h;
+    if (cached) return table.handles[asset];
+    const auto live=mc2::textures::sourceId(asset);
+    table.handles[asset]=live; table.stamps[asset]=table.memoGeneration; ++table.resolvedThisFrame;
+    return live;
 }

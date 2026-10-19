@@ -31,10 +31,6 @@
 #include"camera.h"
 #endif
 
-#ifndef LZ_H
-#include"lz.h"
-#endif
-
 #ifndef CIDENT_H
 #include"cident.h"
 #endif
@@ -94,17 +90,6 @@ extern bool MLRVertexLimitReached;
 extern bool useFog;
 extern DWORD BaseVertexColor;
 extern uint32_t g_mc2FrameCounter;
-extern long s_txmAllocThisMission;
-
-// Eager gate caches and counters defined in txmmgr.cpp / txmmgr_diag.cpp and read by several pieces.
-extern const bool s_txmLeakTrace;
-
-// Bump on every fresh node-slot creation (the three creation paths).
-inline void txmLeakNoteAlloc()
-{
-    if (s_txmLeakTrace) s_txmAllocThisMission++;
-}
-
 // Free functions defined in the split pieces.
 bool mc2LightBridgeRepointEnabled();
 bool mc2LightBakeEnabled();
