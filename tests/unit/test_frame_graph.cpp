@@ -1077,7 +1077,7 @@ TEST_CASE("statepack (g): consistency validator catches a deliberately-wrong Ren
     // and verify the validator (reimplementing its inner loop for the synthetic case).
     RenderStateDesc synthetic;
     synthetic.id        = RenderPassId::Terrain;
-    synthetic.pipelineId = RenderCore::PipelineId::TerrainSolid;
+    synthetic.pipelineId = RenderCore::PipelineId::Invalid;
     synthetic.colorMask = ColorMaskState::AllOff;   // WRONG (ambient says AllOn)
     synthetic.depthWrite = DepthWriteState::On;
     synthetic.depthFunc  = DepthFuncState::SceneGEqual;

@@ -182,9 +182,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         "Terrain",
         "TerrainPatchStream",
         /*viewUniformsBound*/        false,
-        /*pipelineDescRegistered*/   true,  // FRAMEGRAPH-STATEPACK-SKELETON-1: routed via applyPipeline(TerrainSolid)
-                                            // in gos_terrain_lod_chunk.cpp:717 (LODChunk) and
-                                            // gameos_graphics.cpp:4041 (PatchStreamThin). Was false — stale.
+        /*pipelineDescRegistered*/   false, // native Vulkan pass; GL pipelines retired
         /*snapshotRowAuthoritative*/ false,
         "Terrain Pass##tp",
         nullptr,
@@ -282,13 +280,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         "PostProcess",
         "gos_postprocess",
         /*viewUniformsBound*/        false,
-        /*pipelineDescRegistered*/   true,  // FRAMEGRAPH-STATEPACK-SKELETON-1: multiple sub-pipelines
-                                            // all route applyPipeline (PostProcessComposite at :2542,
-                                            // PostProcessScreenShadow :2050, PostProcessCloudShadow :2192,
-                                            // PostProcessShoreline :2248,
-                                            // PostProcessEdgeFog :2302, PostProcessFogOob :2358 in
-                                            // gos_postprocess.cpp). Was false — stale.
-                                            // Note: no single PipelineId (StatePack uses Invalid).
+        /*pipelineDescRegistered*/   false, // native Vulkan pass; GL pipelines retired
         /*snapshotRowAuthoritative*/ false,
         "PostProcess##pp",
         nullptr,

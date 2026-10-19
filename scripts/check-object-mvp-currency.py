@@ -29,7 +29,6 @@ ROOT = Path(__file__).resolve().parent.parent
 # Every raw snapshot read in these files is same-phase-as-publish (currency is
 # structural) or is the definition/accessor itself. Basenames.
 FULL_ALLOW = {
-    "gos_terrain_indirect_pack.cpp",      # defines the snapshot
     "gos_terrain_indirect_dispatch.cpp",  # defines the getter
     "gos_terrain_indirect.h",
     "gos_object_draw_mvp.h",       # the currency-checked accessor (only sanctioned reader)

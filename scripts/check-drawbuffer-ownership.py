@@ -44,7 +44,6 @@ NAME_MAP = {
     "VfxMeshAlpha": "VfxMesh", "VfxMeshAdditive": "VfxMesh",
     "PostProcessCloudShadow": "CloudShadow", "PostProcessShoreline": "Shoreline",
     "PostProcessEdgeFog": "EdgeFog", "PostProcessFogOob": "FogOob",
-    "PostProcessComposite": "Composite",
 }
 
 

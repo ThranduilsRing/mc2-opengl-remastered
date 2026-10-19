@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 935
 registry_entry_count: 188
-verified_count: 896
+verified_count: 887
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -615,7 +615,6 @@ flags:
     rule: Presence
     owner: terrain
     doc: "Step 2b: bucket-header SSBO demoted behind MC2_BUCKET_HEADER_TRACE."
-    verified: true
   - name: MC2_BUILDING_FOOTPRINT_SHADOW
     kind: Bool
     default: true
@@ -3859,7 +3858,6 @@ flags:
     rule: Lead0
     owner: gameos
     doc: ""
-    verified: true
   - name: MC2_PLAYTEST_EXE
     kind: String
     default: ""
@@ -4270,7 +4268,6 @@ flags:
     owner: terrain
     doc: "?? Probe 7 (MC2_RING_FORCE_FINISH) - directed barrier-hypothesis test ?? Forces full GPU pipeline drain after the compute dispatches."
     smoke_passthrough: true
-    verified: true
   - name: MC2_RING_TRACE
     kind: Bool
     default: false
@@ -4278,7 +4275,6 @@ flags:
     owner: terrain
     doc: "?? Probe 8: compare draw-time MVP fingerprint vs compute-time fingerprint."
     smoke_passthrough: true
-    verified: true
   - name: MC2_RNG_SEED
     kind: String
     default: ""
@@ -5272,7 +5268,6 @@ flags:
     owner: terrain
     doc: "SLICE 3: near-field cliff tessellation on the LOD-chunk terrain path."
     smoke_passthrough: true
-    verified: true
     registry: {feature_id: MC2_FEATURE_TERRAIN_CLIFF_DISPLACE, kind: Feature, order: -1, default_on: false}
   - name: MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS
     kind: Float
@@ -5281,7 +5276,6 @@ flags:
     owner: terrain
     doc: "SLICE 3 knob: max tessellation factor (float; C++ default 4.0, clamped to GL_MAX_TESS_GEN_LEVEL at program build)."
     smoke_passthrough: true
-    verified: true
     registry: {feature_id: MC2_TUNE_TERRAIN_CLIFF_MAXTESS, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_CLIFF_SHADOW_FLOOR
     kind: Bool
@@ -5419,7 +5413,6 @@ flags:
     rule: Presence
     owner: terrain
     doc: "VPL retirement step 1 (2026-05-14): CPU thin-record pack demoted behind MC2_TERRAIN_INDIRECT_CPU_FALLBACK."
-    verified: true
   - name: MC2_TERRAIN_INDIRECT_MINE
     kind: Bool
     default: true
@@ -5997,7 +5990,6 @@ flags:
     rule: Lead1
     owner: terrain
     doc: "TRACKV: gates Probe-6 thin-record canary readback (per-frame ~80KB glGetBufferSubData x2 + CPU recipeIdx/flags compare, diagnostic for the corrupt-recipeIdx..."
-    verified: true
     registry: {feature_id: MC2_TRACE_THIN_CANARY, kind: Trace, order: -1, default_on: false}
   - name: MC2_THIN_DEBUG
     kind: Bool
@@ -7058,7 +7050,6 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_WATER_RENDERPROBE
     kind: Bool
     default: false

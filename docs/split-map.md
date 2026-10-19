@@ -77,11 +77,9 @@ Split commit: `f0521b300`.
 | `gos_terrain_indirect.cpp` | keeps the gate readers, N1 counters and cost-split roll-ups |
 | `gos_terrain_indirect_atlas.cpp` | gos_terrain_indirect: dense recipe storage, recipe slot build/flush, colormap atlas and cement catalog atlas upload. |
 | `gos_terrain_indirect_cement.cpp` | gos_terrain_indirect: cement and concrete classification, transition masks and PopulateRecipeCementWords. |
-| `gos_terrain_indirect_compute.cpp` | gos_terrain_indirect: the ComputeDispatch phases -- program build, ring fence wait and tripwires, counter clears, compute bindings and uniforms, the depth-transition probe and the post-dispatch probes. The orchestrator is in |
 | `gos_terrain_indirect_diag.cpp` | gos_terrain_indirect: parity printer, 600-frame summary and the recipe-versus-live parity comparison. |
-| `gos_terrain_indirect_dispatch.cpp` | gos_terrain_indirect: preflight arming, ComputeDispatch, DrawIndirect, the water reflection pass and the ring/MVP bridge accessors. |
+| `gos_terrain_indirect_dispatch.cpp` | Native terrain readiness and the shared CPU MVP snapshot; no GL indirect work. |
 | `gos_terrain_indirect_mine_decal.cpp` | gos_terrain_indirect: mine static VBO and texture array, decal static VBO and their dirty tracking. |
-| `gos_terrain_indirect_pack.cpp` | gos_terrain_indirect: thin-record packer, indirect-command builder, handle LUT and solid quad window SSBO. |
 | `gos_terrain_indirect_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `GameOS/gameos/gos_terrain_lod_chunk.cpp`
@@ -93,7 +91,6 @@ Split commit: `f0521b300`.
 | `gos_terrain_lod_chunk_feed.cpp` | gos_terrain_lod_chunk: VK tier-1 terrain frame feed (mc2_terrain_tier1_get_frame_feed) and its version counters. |
 | `gos_terrain_lod_chunk_gates.cpp` | gos_terrain_lod_chunk: eager tuning caches (kTglc*) the draw path and the light-pool uploads read, and the GlStateGuard kill-switch. |
 | `gos_terrain_lod_chunk_matalbedo.cpp` | gos_terrain_lod_chunk: terrain material albedo texture array: setters from terrain_material_lib.cpp and the lazy BC7 array load. |
-| `gos_terrain_lod_chunk_patch.cpp` | gos_terrain_lod_chunk: per-LOD patch shape cache: sample positions, patch key and getOrBuildPatch. |
 | `gos_terrain_lod_chunk_upload.cpp` | gos_terrain_lod_chunk: heightfield, visual-damp, control-map, overlay/shoreline sidecar and cement-word uploads, and the terrain light/ambient accessors. |
 | `gos_terrain_lod_chunk_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
