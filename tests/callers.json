@@ -2368,6 +2368,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "scripts/check-no-gl-compiler.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "scripts/check-sampler-bindings-selftest.py",
           "line": 33,
           "evidence": "import",
@@ -9204,6 +9211,13 @@
           "evidence": "import",
           "reference": "lane_model",
           "text": "import lane_model  # noqa: E402"
+        },
+        {
+          "path": "scripts/run_editor_smoke.py",
+          "line": 1634,
+          "evidence": "import",
+          "reference": "tools.repo_intel.lane_model",
+          "text": "from tools.repo_intel.lane_model import lane_for"
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
