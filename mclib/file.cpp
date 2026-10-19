@@ -507,14 +507,14 @@ static void IndexModDataCached(
     IndexModData(layer, layerShadowed, dataDir, relBase, modId, &skippedDot);
 
     // Merge layer shadowed into global shadowed.
-    for (auto& kv : layerShadowed)
-        for (auto& s : kv.second)
-            shadowed[kv.first].push_back(s);
+    for (auto& [key, entries] : layerShadowed)
+        for (auto& s : entries)
+            shadowed[key].push_back(s);
 
     // Merge into idx (first-wins).
-    for (auto& kv : layer)
-        if (idx.find(kv.first) == idx.end())
-            idx[kv.first] = kv.second;
+    for (auto& [key, entry] : layer)
+        if (idx.find(key) == idx.end())
+            idx[key] = entry;
 
     // Collect layer entries for cache (all entries this mod owns in the layer map).
     std::vector<std::pair<std::string,ModFileEntry>> fresh(layer.begin(), layer.end());
@@ -683,14 +683,13 @@ void EnumerateModCampaignFiles(ModCampaignCallback cb, void* userData) {
     static const std::string prefix  = "data/campaign/";
     static const std::string ext     = ".fit";
     static const std::string exclude = "data/campaign/campaign.fit";
-    for (auto& kv : g_modIndex) {
-        const std::string& key = kv.first;
+    for (auto& [key, entry] : g_modIndex) {
         if (key == exclude) continue;
         if (key.compare(0, prefix.size(), prefix) != 0) continue;
         if (key.size() <= prefix.size() + ext.size()) continue;
         if (key.compare(key.size() - ext.size(), ext.size(), ext) != 0) continue;
         std::string fname = key.substr(prefix.size(), key.size() - prefix.size() - ext.size());
-        cb(fname.c_str(), kv.second.path.c_str(), userData);
+        cb(fname.c_str(), entry.path.c_str(), userData);
     }
 }
 
@@ -700,13 +699,12 @@ void EnumerateModFitFiles(const char* keyPrefix, ModFitCallback cb, void* userDa
     static const std::string ext = ".fit";
     // Collect matching absolute paths, keyed by filename for sort stability.
     std::vector<std::pair<std::string, std::string>> hits; // (filename, absPath)
-    for (auto& kv : g_modIndex) {
-        const std::string& key = kv.first;
+    for (auto& [key, entry] : g_modIndex) {
         if (key.compare(0, prefix.size(), prefix) != 0) continue;
         if (key.size() < ext.size()) continue;
         if (key.compare(key.size() - ext.size(), ext.size(), ext) != 0) continue;
         std::string fname = key.substr(prefix.size());
-        hits.push_back({ fname, kv.second.path });
+        hits.push_back({ fname, entry.path });
     }
     std::sort(hits.begin(), hits.end()); // sort by filename
     for (auto& h : hits)
@@ -915,14 +913,14 @@ void InitModSearchPaths(const char* modsRoot) {
     {
         std::vector<ModIndexedEntry> entries;
         entries.reserve(g_modIndex.size());
-        for (const auto& kv : g_modIndex) {
+        for (const auto& [key, entry] : g_modIndex) {
             ModIndexedEntry e;
-            e.key = kv.first;
-            e.winnerModId = kv.second.modId;
-            auto sit = g_shadowedBy.find(kv.first);
+            e.key = key;
+            e.winnerModId = entry.modId;
+            auto sit = g_shadowedBy.find(key);
             if (sit != g_shadowedBy.end()) e.shadowedModIds = sit->second;
-            if (kv.first.rfind("data/defs/", 0) == 0)
-                e.stockExists = (GetFileAttributesA(kv.first.c_str()) != INVALID_FILE_ATTRIBUTES);
+            if (key.rfind("data/defs/", 0) == 0)
+                e.stockExists = (GetFileAttributesA(key.c_str()) != INVALID_FILE_ATTRIBUTES);
             // Skip clean non-def entries early — only entries that can produce a
             // finding are classified (keeps the vector small on big mods).
             if (e.shadowedModIds.empty() && !e.stockExists &&

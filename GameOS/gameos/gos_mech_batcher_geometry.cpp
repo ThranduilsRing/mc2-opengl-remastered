@@ -1,5 +1,6 @@
 // GpuMechBatcher: mech type / LOD registration, the shared vertex buffer upload, normal recomputation and geometry finalise.
 // Declared in the class headers; shared names in gos_mech_batcher_internal.h.
+#include <algorithm>
 #include "gos_mech_batcher_internal.h"
 #include "mc2fmt.h"
 
@@ -81,8 +82,7 @@ void recomputeMechNodeNormals(std::vector<uint8_t>& vbo,
         groups[kkey].push_back(i);
     }
     std::vector<std::array<float,3>> out(n);
-    for (auto& kv : groups) {
-        const std::vector<uint32_t>& g = kv.second;
+    for (auto& [key, g] : groups) {
         for (uint32_t i : g) {
             const size_t ti = i / 3;
             float acc[3] = {0,0,0};
@@ -284,8 +284,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
                             }
                             auto packS = [](float v) -> int16_t {
                                 float s = v * 32767.0f;
-                                if (s >  32767.0f) s =  32767.0f;
-                                if (s < -32767.0f) s = -32767.0f;
+                                s = std::clamp(s, -32767.0f, 32767.0f);
                                 return static_cast<int16_t>(std::lrintf(s));
                             };
                             faceTanOct[0] = packS(ox);

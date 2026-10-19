@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "Gates/preferences_legacy.h"
 #include "../GameOS/gameos/ui_texture.h"
 /*************************************************************************************************\
@@ -644,10 +645,8 @@ bool GameTacMap::renderImGui()
 		Stuff::Vector2DOf<long> screen;
 		screen.x = static_cast<long>(( ( m.x - p0.x ) / kx ));
 		screen.y = static_cast<long>(( ( m.y - p0.y ) / ky ));
-		if ( screen.x < 0 ) screen.x = 0;
-		if ( screen.y < 0 ) screen.y = 0;
-		if ( screen.x > (long)hudW ) screen.x = static_cast<long>(hudW);
-		if ( screen.y > (long)hudH ) screen.y = static_cast<long>(hudH);
+		screen.x = std::clamp(screen.x, 0L, static_cast<long>(hudW));
+		screen.y = std::clamp(screen.y, 0L, static_cast<long>(hudH));
 
 		glm::vec3 world;
 		tacMapToWorld( screen, static_cast<int>(hudW), static_cast<int>(hudH), world );

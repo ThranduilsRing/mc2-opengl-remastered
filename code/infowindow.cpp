@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "Gates/preferences_legacy.h"
 #include "../GameOS/gameos/ui_texture.h"
 #define INFOWINDOW_CPP
@@ -481,8 +482,7 @@ void InfoWindow::renderImGui()
 	if ( pUnit )
 	{
 		float barStatus = pUnit->getAppearance()->barStatus;
-		if ( barStatus > 1.0f ) barStatus = 1.0f;
-		if ( barStatus < 0.0f ) barStatus = 0.0f;
+		barStatus = std::clamp(barStatus, 0.0f, 1.0f);
 
 		DWORD color;
 		if ( barStatus >= 0.5 )      color = SB_GREEN;

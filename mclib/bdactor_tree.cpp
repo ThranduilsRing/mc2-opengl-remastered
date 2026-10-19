@@ -1,5 +1,6 @@
 // BldgAppearance / TreeAppearance: TreeAppearance init, status, bounds, update, terrain marking, LOD select and destroy.
 // Declared in the class headers; shared names in bdactor_internal.h.
+#include <algorithm>
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
@@ -746,8 +747,7 @@ void TreeAppearance::selectActiveLOD()
 		if (activeLOD < _maxAvailLOD && _dist > _far)  _wantLOD = _maxAvailLOD; // far->impostor
 		else if (activeLOD > 0       && _dist < _near) _wantLOD = 0;            // near->LOD0
 	}
-	if (_wantLOD < 0) _wantLOD = 0;
-	if (_wantLOD > _maxAvailLOD) _wantLOD = _maxAvailLOD;
+	_wantLOD = std::clamp(_wantLOD, 0, _maxAvailLOD);
 	if (_wantLOD != activeLOD) {
 		activeLOD = _wantLOD;
 		// Only force a full re-bake if the target LOD isn't already registered+baked.

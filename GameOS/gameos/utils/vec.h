@@ -550,11 +550,11 @@ mat4 scale4(const float x, const float y, const float z);
 //typedef vec3 float3;
 //typedef vec4 float4;
 
-typedef ivec4 int4;
+using int4 = ivec4;
 
-typedef mat2 float2x2;
-typedef mat3 float3x3;
-typedef mat4 float4x4;
+using float2x2 = mat2;
+using float3x3 = mat3;
+using float4x4 = mat4;
 //@}
 
 

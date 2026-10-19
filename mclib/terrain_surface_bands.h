@@ -27,6 +27,7 @@
 // is swapped for a later SSE/meshlet stage. These constants ARE the
 // band-select stage's only tunables.
 
+#include <algorithm>
 #include <cstdint>
 
 namespace mc2_terrain_surface_bands {
@@ -60,8 +61,7 @@ constexpr int32_t kBandCount = 4;    // bands 0..3 ; band 3 == coarsest/unarmed
 //   band 2 -> stride 4
 //   band 3 -> stride 8  (== kBlockCells: 2 tris/block, the >=1 floor)
 inline int32_t StrideForBand(int32_t band) {
-    if (band < 0)            band = 0;
-    if (band >= kBandCount)  band = kBandCount - 1;
+    band = std::clamp(band, int32_t{0}, kBandCount - 1);
     int32_t s = 1 << band;
     return (s > kBlockCells) ? kBlockCells : s;
 }

@@ -3,6 +3,7 @@ hudimguipanel.cpp : ImGui HUD panel helper (IN-MISSION-HUD-IMGUI-SCOPE-1 slice B
 See hudimguipanel.h for the coordinate / exemption-bracket / pin-to-legacy contract.
 \*************************************************************************************************/
 
+#include <algorithm>
 #include "hudimguipanel.h"
 
 #include <gameos.hpp>
@@ -133,8 +134,7 @@ bool beginPanel( const char* id, float hudLeft, float hudTop,
 		hudToDisplay( 0.f, 100.f, bx2, by2 );
 		const float k = ( by2 - ay ) / 100.f;   // ImGui px per HUD px
 		float scale = ( 16.f * k ) / 13.f;
-		if ( scale < 0.5f ) scale = 0.5f;
-		if ( scale > 4.f ) scale = 4.f;
+		scale = std::clamp(scale, 0.5f, 4.f);
 		*fontScaleOut = scale;
 	}
 

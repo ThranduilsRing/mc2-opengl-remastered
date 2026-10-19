@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "tacticaloverview.h"
 #include <cstdlib>
 #include <cstdio>
@@ -62,8 +63,7 @@ void TacticalOverview::onHotkey() {
 }
 
 void TacticalOverview::setCardHits(const CardHit* hits, int n) {
-    if (n < 0) n = 0;
-    if (n > kMaxCardHits) n = kMaxCardHits;
+    n = std::clamp(n, 0, kMaxCardHits);
     for (int i = 0; i < n; ++i) cardHit_[i] = hits[i];
     cardHitCount_ = n;
 }
@@ -179,8 +179,7 @@ void TacticalOverview::flOnRelease()
 
 void TacticalOverview::flSetMovers( Mover* const* movers, int n )
 {
-    if ( n < 0 ) n = 0;
-    if ( n > kFlMaxMovers ) n = kFlMaxMovers;
+    n = std::clamp(n, 0, kFlMaxMovers);
     for ( int i = 0; i < n; i++ )
         flMovers_[i] = movers[i];
     flMoverCount_ = n;
@@ -192,8 +191,7 @@ void TacticalOverview::flAdjustSpacing( long wheelDelta )
         return;
     const float kStep = 0.15f, kMin = 0.30f, kMax = 2.50f;
     flSpacing_ += ( wheelDelta > 0 ) ? kStep : -kStep;
-    if ( flSpacing_ < kMin ) flSpacing_ = kMin;
-    if ( flSpacing_ > kMax ) flSpacing_ = kMax;
+    flSpacing_ = std::clamp(flSpacing_, kMin, kMax);
 }
 
 int TacticalOverview::flComputeSlots( glm::vec3* outSlots, int maxSlots ) const

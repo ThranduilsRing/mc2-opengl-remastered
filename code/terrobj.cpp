@@ -1154,11 +1154,11 @@ void TerrainObject::init (bool create, ObjectTypePtr objType) {
 			// LOAD a dummy appearance until real ones are available
 			// for this building!
 			terrainObjectAppearanceType = appearanceTypeList->getAppearance(appearanceType,"TREE");
-			gosASSERT(terrainObjectAppearanceType != NULL);
+			gosASSERT(terrainObjectAppearanceType != nullptr);
 		}
 		  
 		adoptAppearance(std::make_unique_for_overwrite<TreeAppearance>());
-		gosASSERT(appearance != NULL);
+		gosASSERT(appearance != nullptr);
 
 		appearance->init(static_cast<TreeAppearanceType*>(terrainObjectAppearanceType), static_cast<GameObjectPtr>(this));
 	}
@@ -1186,7 +1186,7 @@ void TerrainObject::init (bool create, ObjectTypePtr objType) {
 		}
 	  
 		adoptAppearance(std::make_unique_for_overwrite<BldgAppearance>());
-		gosASSERT(appearance != NULL);
+		gosASSERT(appearance != nullptr);
 
 		//--------------------------------------------------------------
 		// The only appearance type for buildings is MLR_APPEARANCE.
@@ -1285,7 +1285,7 @@ long TerrainObject::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 							if (gosEffectSpec)
 							{
 								bldgDustPoofEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-								gosASSERT(bldgDustPoofEffect != NULL);
+								gosASSERT(bldgDustPoofEffect != nullptr);
 							}
 								
 							MidLevelRenderer::MLRTexturePool::Instance->LoadImages();

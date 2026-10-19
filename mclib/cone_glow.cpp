@@ -10,6 +10,7 @@
 // Screen-transform math mirrors MultiTransformShape (tgl.cpp:1918-1950) and the
 // z-range triangle rejection mirrors TG_Shape::Render (tgl.cpp:3303-3308).
 
+#include <algorithm>
 #include "cone_glow.h"
 #include "vis_semantics.h"   // VISIBILITY-SEMANTICS-1 supersession
 
@@ -605,8 +606,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
                           + verts[j].position.y * axisLocal.y
                           + verts[j].position.z * axisLocal.z;
             t = p / lenLocal;
-            if (t < 0.0f) t = 0.0f;
-            if (t > 1.0f) t = 1.0f;
+            t = std::clamp(t, 0.0f, 1.0f);
         }
         // LIGHT-REALISM-1: smoother axial decay (squared) instead of the
         // linear ramp — bright near the emitter, gently dying out along the

@@ -12,7 +12,7 @@ extern "C" {
 
 #define INVALID_HANDLE_VALUE (HANDLE)-1
 
-typedef struct _SYSTEMTIME {
+struct _SYSTEMTIME {
 	WORD wYear;
 	WORD wMonth;
 	WORD wDayOfWeek;
@@ -21,9 +21,11 @@ typedef struct _SYSTEMTIME {
 	WORD wMinute;
 	WORD wSecond;
 	WORD wMilliseconds;
-} SYSTEMTIME,*LPSYSTEMTIME;
+};
+using SYSTEMTIME = _SYSTEMTIME;
+using LPSYSTEMTIME = _SYSTEMTIME*;
 
-typedef struct _TIME_ZONE_INFORMATION {
+struct _TIME_ZONE_INFORMATION {
 	LONG Bias;
 	WCHAR StandardName[32];
 	SYSTEMTIME StandardDate;
@@ -31,14 +33,19 @@ typedef struct _TIME_ZONE_INFORMATION {
 	WCHAR DaylightName[32];
 	SYSTEMTIME DaylightDate;
 	LONG DaylightBias;
-} TIME_ZONE_INFORMATION,*LPTIME_ZONE_INFORMATION;
+};
+using TIME_ZONE_INFORMATION = _TIME_ZONE_INFORMATION;
+using LPTIME_ZONE_INFORMATION = _TIME_ZONE_INFORMATION*;
 
-typedef struct _FILETIME {
+struct _FILETIME {
 	DWORD dwLowDateTime;
 	DWORD dwHighDateTime;
-} FILETIME,*PFILETIME,*LPFILETIME;
+};
+using FILETIME = _FILETIME;
+using PFILETIME = _FILETIME*;
+using LPFILETIME = _FILETIME*;
 
-typedef struct _WIN32_FIND_DATAA {
+struct _WIN32_FIND_DATAA {
 	DWORD dwFileAttributes;
 	FILETIME ftCreationTime;
 	FILETIME ftLastAccessTime;
@@ -59,7 +66,10 @@ typedef struct _WIN32_FIND_DATAA {
 	CHAR cAlternateFileName[14];
 #endif
 
-} WIN32_FIND_DATAA,*PWIN32_FIND_DATAA,*LPWIN32_FIND_DATAA;
+};
+using WIN32_FIND_DATAA = _WIN32_FIND_DATAA;
+using PWIN32_FIND_DATAA = _WIN32_FIND_DATAA*;
+using LPWIN32_FIND_DATAA = _WIN32_FIND_DATAA*;
 
 #define WIN32_FIND_DATA WIN32_FIND_DATAA
 

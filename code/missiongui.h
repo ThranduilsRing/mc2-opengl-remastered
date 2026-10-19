@@ -82,7 +82,7 @@ class MissionInterfaceManager
 
 public:
 
-	typedef int (MissionInterfaceManager::*COMMAND)( void );
+	using COMMAND = int (MissionInterfaceManager::*)(void);
 
 	struct Command
 		{
@@ -335,7 +335,7 @@ public:
 		void	doMove(const glm::vec3& pos);
 		void	doGuard(GameObject* pObj);
 		int toggleHotKeys();
-		void	beginVtol(long supportID, long commanderID = 0, glm::vec3* reinforcePos = NULL, MoverPtr salvageTarget = NULL);
+		void	beginVtol(long supportID, long commanderID = 0, glm::vec3* reinforcePos = nullptr, MoverPtr salvageTarget = nullptr);
 
 		//Tutorial Stuff goes here.
 		bool startAnimation(long buttonId,bool isButton,bool isPressed,float timeToScroll,long numFlashes);
@@ -555,7 +555,7 @@ public:
 		MoverPtr		reinforcement;
 };
 
-typedef MissionInterfaceManager *MissionInterfaceManagerPtr;
+using MissionInterfaceManagerPtr = MissionInterfaceManager*;
 
 //--------------------------------------------------------------------------------------
 #endif

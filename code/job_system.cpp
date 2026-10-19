@@ -107,7 +107,7 @@ void frameJobsInit() {
     if (mc2::gate::isSet<"MC2_FRAME_JOBS_WORKERS">())
         nw = mc2::gate::get<"MC2_FRAME_JOBS_WORKERS">();
     const int hwMax = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
-    nw = std::max(1, std::min(hwMax, nw));
+    nw = std::clamp(nw, 1, hwMax);
 
     if (nw <= 1) { g_enabled = false; return; } // serial fallback
 

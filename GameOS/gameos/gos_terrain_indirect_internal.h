@@ -107,7 +107,7 @@ static inline uint32_t RunwayToneScale(float v, float gain) {
         const float head = 255.f - knee;
         y = 255.f - head * expf(-(y - knee) / head);
     }
-    return static_cast<uint32_t>(std::min(255.f, std::max(0.f, y)));
+    return static_cast<uint32_t>(std::clamp(y, 0.f, 255.f));
 }
 
 static const float kConcreteToneGainLo = 0.80f;  // Arm A gain clamp -- NARROW on purpose

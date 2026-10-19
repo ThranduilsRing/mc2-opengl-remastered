@@ -35,16 +35,21 @@ extern "C" {
 #define VOID void
 #endif
 
-typedef char CHAR;
-typedef short SHORT;
-typedef long LONG;
-typedef char CCHAR, *PCCHAR;
-typedef unsigned char UCHAR,*PUCHAR;
-typedef unsigned short USHORT,*PUSHORT;
-typedef unsigned long ULONG,*PULONG;
-typedef char *PSZ;
+using CHAR = char;
+using SHORT = short;
+using LONG = long;
+using CCHAR = char;
+using PCCHAR = char*;
+using UCHAR = unsigned char;
+using PUCHAR = unsigned char*;
+using USHORT = unsigned short;
+using PUSHORT = unsigned short*;
+using ULONG = unsigned long;
+using PULONG = unsigned long*;
+using PSZ = char*;
 
-typedef void *PVOID,*LPVOID;
+using PVOID = void*;
+using LPVOID = void*;
 
 typedef void *HANDLE;
 
@@ -52,7 +57,7 @@ typedef void *HANDLE;
 #ifndef  __ptr64
 #define __ptr64
 #endif
-typedef void* __ptr64 PVOID64;
+using PVOID64 = void* __ptr64;
 /*
 #ifndef _WCHAR_T_DEFINED
 #define _WCHAR_T_DEFINED
@@ -66,11 +71,26 @@ typedef unsigned short wchar_t;
 #endif
 */
 
-typedef wchar_t WCHAR;
-typedef WCHAR *PWCHAR,*LPWCH,*PWCH,*NWPSTR,*LPWSTR,*PWSTR;
-typedef CONST WCHAR *LPCWCH,*PCWCH,*LPCWSTR,*PCWSTR;
-typedef CHAR *PCHAR,*LPCH,*PCH,*NPSTR,*LPSTR,*PSTR;
-typedef CONST CHAR *LPCCH,*PCSTR,*LPCSTR;
+using WCHAR = wchar_t;
+using PWCHAR = WCHAR*;
+using LPWCH = WCHAR*;
+using PWCH = WCHAR*;
+using NWPSTR = WCHAR*;
+using LPWSTR = WCHAR*;
+using PWSTR = WCHAR*;
+using LPCWCH = CONST WCHAR*;
+using PCWCH = CONST WCHAR*;
+using LPCWSTR = CONST WCHAR*;
+using PCWSTR = CONST WCHAR*;
+using PCHAR = CHAR*;
+using LPCH = CHAR*;
+using PCH = CHAR*;
+using NPSTR = CHAR*;
+using LPSTR = CHAR*;
+using PSTR = CHAR*;
+using LPCCH = CONST CHAR*;
+using PCSTR = CONST CHAR*;
+using LPCSTR = CONST CHAR*;
 
 #ifndef _TCHAR_DEFINED
 #define _TCHAR_DEFINED
@@ -81,8 +101,8 @@ typedef CONST CHAR *LPCCH,*PCSTR,*LPCSTR;
  * NOTE: This tests UNICODE, which is different from the _UNICODE define
  *       used to differentiate standard C runtime calls.
  */
-typedef WCHAR TCHAR;
-typedef WCHAR _TCHAR;
+using TCHAR = WCHAR;
+using _TCHAR = WCHAR;
 /*
  * __TEXT is a private macro whose specific use is to force the expansion of a
  * macro passed as an argument to the macro TEXT.  DO NOT use this
@@ -91,16 +111,22 @@ typedef WCHAR _TCHAR;
  */
 #define __TEXT(q) L##q
 #else
-typedef CHAR TCHAR;
-typedef CHAR _TCHAR;
+using TCHAR = CHAR;
+using _TCHAR = CHAR;
 #define __TEXT(q) q
 #endif
 
 #endif
 
-typedef TCHAR TBYTE,*PTCH,*PTBYTE;
-typedef TCHAR *LPTCH,*PTSTR,*LPTSTR,*LP,*PTCHAR;
-typedef const TCHAR *LPCTSTR;
+using TBYTE = TCHAR;
+using PTCH = TCHAR*;
+using PTBYTE = TCHAR*;
+using LPTCH = TCHAR*;
+using PTSTR = TCHAR*;
+using LPTSTR = TCHAR*;
+using LP = TCHAR*;
+using PTCHAR = TCHAR*;
+using LPCTSTR = const TCHAR*;
 
 /*
  * UNICODE a constant string when UNICODE is defined, else returns the string
@@ -110,8 +136,8 @@ typedef const TCHAR *LPCTSTR;
  */
 #define TEXT(q) __TEXT(q)    
 #define _TEXT(q) __TEXT(q) // sebi
-typedef SHORT *PSHORT;
-typedef LONG *PLONG;
+using PSHORT = SHORT*;
+using PLONG = LONG*;
 
 #ifdef STRICT
 typedef void *HANDLE;
@@ -122,25 +148,27 @@ typedef PVOID HANDLE;
 #define DECLARE_HANDLE(n) typedef HANDLE n
 #endif
 
-typedef HANDLE *PHANDLE,*LPHANDLE;
-typedef DWORD LCID;
-typedef PDWORD PLCID;
-typedef WORD LANGID;
+using PHANDLE = HANDLE*;
+using LPHANDLE = HANDLE*;
+using LCID = DWORD;
+using PLCID = PDWORD;
+using LANGID = WORD;
 
 #define _HAVE_INT64
 #define _INTEGRAL_MAX_BITS 64
 #undef __int64
 #define __int64 long long
 
-typedef __int64 _int64; //sebi
+using _int64 = __int64; //sebi
 
-typedef __int64 LONGLONG;
-typedef unsigned __int64 DWORDLONG;
+using LONGLONG = __int64;
+using DWORDLONG = unsigned __int64;
 
-typedef LONGLONG *PLONGLONG;
-typedef DWORDLONG *PDWORDLONG;
-typedef DWORDLONG ULONGLONG,*PULONGLONG;
-typedef LONGLONG USN;
+using PLONGLONG = LONGLONG*;
+using PDWORDLONG = DWORDLONG*;
+using ULONGLONG = DWORDLONG;
+using PULONGLONG = DWORDLONG*;
+using USN = LONGLONG;
 
 #define Int32x32To64(a,b) ((LONGLONG)(a)*(LONGLONG)(b))
 #define UInt32x32To64(a,b) ((DWORDLONG)(a)*(DWORDLONG)(b))
@@ -150,11 +178,12 @@ typedef LONGLONG USN;
 
 #define ANSI_NULL '\0'
 #define UNICODE_NULL L'\0'
-typedef BYTE BOOLEAN,*PBOOLEAN;
+using BOOLEAN = BYTE;
+using PBOOLEAN = BYTE*;
 #endif
-typedef BYTE FCHAR;
-typedef WORD FSHORT;
-typedef DWORD FLONG;
+using FCHAR = BYTE;
+using FSHORT = WORD;
+using FLONG = DWORD;
 
 #define NTAPI __stdcall
 #include "platform_basetsd.h"
@@ -201,11 +230,14 @@ typedef DWORD FLONG;
 #define MEM_PHYSICAL	   0x400000
 #define MEM_4MB_PAGES    0x80000000
 
-typedef struct _SECURITY_ATTRIBUTES {
+struct _SECURITY_ATTRIBUTES {
 	DWORD nLength;
 	LPVOID lpSecurityDescriptor;
 	BOOL bInheritHandle;
-} SECURITY_ATTRIBUTES,*PSECURITY_ATTRIBUTES,*LPSECURITY_ATTRIBUTES;
+};
+using SECURITY_ATTRIBUTES = _SECURITY_ATTRIBUTES;
+using PSECURITY_ATTRIBUTES = _SECURITY_ATTRIBUTES*;
+using LPSECURITY_ATTRIBUTES = _SECURITY_ATTRIBUTES*;
 
 
 #ifdef __cplusplus

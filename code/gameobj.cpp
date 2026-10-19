@@ -719,31 +719,31 @@ void WeaponFireChunk::pack (GameObjectPtr attacker) {
 	//-------------------------
 	// Lots'a error checking...
 	if ((targetType < 0) || (targetType > 3)) {
-		DebugWeaponFireChunk(this, NULL, attacker);
+		DebugWeaponFireChunk(this, nullptr, attacker);
 		char errMsg[1024];
 		sprintf(errMsg, " WeaponFireChunk.pack: bad targetType %d (save wfchunk.dbg file) ", targetType);
 		Assert(false, targetType, errMsg);
 	}
 	if ((weaponIndex < 0) || (weaponIndex > 31)) {
-		DebugWeaponFireChunk(this, NULL, attacker);
+		DebugWeaponFireChunk(this, nullptr, attacker);
 		char errMsg[1024];
 		sprintf(errMsg, " WeaponFireChunk.pack: bad weaponIndex %d (save wfchunk.dbg file) ", weaponIndex);
 		Assert(false, weaponIndex, errMsg);
 	}
 	if ((hitLocation < -1) || (hitLocation >= 12)) {
-		DebugWeaponFireChunk(this, NULL, attacker);
+		DebugWeaponFireChunk(this, nullptr, attacker);
 		char errMsg[1024];
 		sprintf(errMsg, " WeaponFireChunk.pack: bad hitLocation %d (save wfchunk.dbg file) ", hitLocation);
 		Assert(false, hitLocation, errMsg);
 	}
 	if ((entryAngle < 0) || (entryAngle > 3)) {
-		DebugWeaponFireChunk(this, NULL, attacker);
+		DebugWeaponFireChunk(this, nullptr, attacker);
 		char errMsg[1024];
 		sprintf(errMsg, " WeaponFireChunk.pack: bad entryAngle %d (save wfchunk.dbg file) ", entryAngle);
 		Assert(false, entryAngle, errMsg);
 	}
 	if ((numMissiles < 0) || (numMissiles > 15)) {
-		DebugWeaponFireChunk(this, NULL, attacker);
+		DebugWeaponFireChunk(this, nullptr, attacker);
 		char errMsg[1024];
 		sprintf(errMsg, " WeaponFireChunk.pack: bad numMissiles %d (save wfchunk.dbg file) ", numMissiles);
 		Assert(false, numMissiles, errMsg);
@@ -850,31 +850,31 @@ void WeaponFireChunk::unpack (GameObjectPtr attacker) {
 	//-------------------------
 	// Lots'a error checking...
 	if ((targetType < 0) || (targetType > 3)) {
-		DebugWeaponFireChunk(this, NULL, attacker);
+		DebugWeaponFireChunk(this, nullptr, attacker);
 		char errMsg[1024];
 		sprintf(errMsg, " WeaponFireChunk.unpack: bad targetType %d (save wfchunk.dbg file) ", targetType);
 		Assert(false, targetType, errMsg);
 	}
 	if ((weaponIndex < 0) || (weaponIndex > 31)) {
-		DebugWeaponFireChunk(this, NULL, attacker);
+		DebugWeaponFireChunk(this, nullptr, attacker);
 		char errMsg[1024];
 		sprintf(errMsg, " WeaponFireChunk.unpack: bad weaponIndex %d (save wfchunk.dbg file) ", weaponIndex);
 		Assert(false, weaponIndex, errMsg);
 	}
 	if ((hitLocation < -1) || (hitLocation >= 12)) {
-		DebugWeaponFireChunk(this, NULL, attacker);
+		DebugWeaponFireChunk(this, nullptr, attacker);
 		char errMsg[1024];
 		sprintf(errMsg, " WeaponFireChunk.unpack: bad hitLocation %d (save wfchunk.dbg file) ", hitLocation);
 		Assert(false, hitLocation, errMsg);
 	}
 	if ((entryAngle < 0) || (entryAngle > 3)) {
-		DebugWeaponFireChunk(this, NULL, attacker);
+		DebugWeaponFireChunk(this, nullptr, attacker);
 		char errMsg[1024];
 		sprintf(errMsg, " WeaponFireChunk.unpack: bad entryAngle %d (save wfchunk.dbg file) ", entryAngle);
 		Assert(false, entryAngle, errMsg);
 	}
 	if ((numMissiles < 0) || (numMissiles > 15)) {
-		DebugWeaponFireChunk(this, NULL, attacker);
+		DebugWeaponFireChunk(this, nullptr, attacker);
 		char errMsg[1024];
 		sprintf(errMsg, " WeaponFireChunk.unpack: bad numMissiles %d (save wfchunk.dbg file) ", numMissiles);
 		Assert(false, numMissiles, errMsg);
@@ -891,11 +891,11 @@ void WeaponFireChunk::unpack (GameObjectPtr attacker) {
 			isStreakMissile = (static_cast<TurretPtr>(attacker))->isWeaponStreak(weaponIndex);
 		}
 		if (isStreakMissile) {
-			DebugWeaponFireChunk(this, NULL, attacker);
+			DebugWeaponFireChunk(this, nullptr, attacker);
 			Assert(false, 0, " WeaponFireChunk.unpack: streak missile missed (save wfchunk.dbg file) ");
 		}
 	}
-	GameObjectPtr target = NULL;
+	GameObjectPtr target = nullptr;
 	if (targetType == 0 /*WEAPONFIRECHUNK_TARGET_MOVER*/) {
 		target = static_cast<GameObjectPtr>(MPlayer->moverRoster[targetId]);
 		//----------------------------------------------------------------------------
@@ -907,15 +907,15 @@ void WeaponFireChunk::unpack (GameObjectPtr attacker) {
 		}
 	else if (targetType == 1 /*WEAPONFIRECHUNK_TARGET_TERRAIN*/) {
 		target = ObjectManager->findByPartId(targetId);
-		if (target == NULL) {
-			DebugWeaponFireChunk (this, NULL, attacker);
+		if (target == nullptr) {
+			DebugWeaponFireChunk (this, nullptr, attacker);
 			Assert(false, 0, " WeaponFireChunk.unpack: NULL Terrain Target (save wfchunk.dbg file) ");
 		}
 		}
 	else if (targetType == 2 /*WEAPONFIRECHUNK_TARGET_TRAIN*/) {
 		target = ObjectManager->findByPartId(targetId);
-		if (target == NULL) {
-			DebugWeaponFireChunk (this, NULL, attacker);
+		if (target == nullptr) {
+			DebugWeaponFireChunk (this, nullptr, attacker);
 			Assert(false, 0, " WeaponFireChunk.unpack: NULL Special Target (save wfchunk.dbg file) ");
 		}
 		}

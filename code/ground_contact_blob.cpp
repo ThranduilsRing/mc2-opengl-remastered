@@ -14,6 +14,7 @@
 //	Copyright (C) Microsoft Corporation. All rights reserved.
 //===========================================================================//
 
+#include <algorithm>
 #include "ground_contact_blob.h"
 
 #ifndef GAMECAM_H
@@ -91,11 +92,9 @@ float ambientCoupledAlpha()
     // must be visible without pure-black crush); high ambient (bright map)
     // -> alpha near kAlphaMin (contact hint only, avoid stage-spotlight look).
     float t = 1.0f - ambientLum;
-    if (t < 0.0f) t = 0.0f;
-    if (t > 1.0f) t = 1.0f;
+    t = std::clamp(t, 0.0f, 1.0f);
     float a = kAlphaMin + (kAlphaMax - kAlphaMin) * t;
-    if (a < kAlphaMin) a = kAlphaMin;
-    if (a > kAlphaMax) a = kAlphaMax;
+    a = std::clamp(a, kAlphaMin, kAlphaMax);
     return a;
 }
 

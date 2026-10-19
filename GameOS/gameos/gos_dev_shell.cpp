@@ -205,10 +205,9 @@ std::string cmdReloadShaders(std::string_view req)
     int reloaded = 0, failed = 0, skipped = 0;
     std::string results = "[";
     std::string firstError;
-    for (auto& kv : glsl_program::s_programs) {
-        glsl_program* prog = kv.second;
+    for (auto& [name, prog] : glsl_program::s_programs) {
         if (!prog) continue;
-        if (!only.empty() && kv.first != only) continue;
+        if (!only.empty() && name != only) continue;
         const char* action;
         std::string err;
         if (force || prog->needsReload()) {
@@ -217,12 +216,12 @@ std::string cmdReloadShaders(std::string_view req)
                 action = "failed_stale_program_preserved";
                 err = prog->reload_log_;
                 if (firstError.empty())
-                    firstError = kv.first + ": " + (err.empty() ? "see console" : err);
+                    firstError = name + ": " + (err.empty() ? "see console" : err);
                 ++failed;
             }
         } else { action = "unchanged"; ++skipped; }
         if (results.size() > 1) results += ',';
-        results += "{\"program\":\"" + jsonEscape(kv.first) + "\",\"action\":\"" + action + "\"";
+        results += "{\"program\":\"" + jsonEscape(name) + "\",\"action\":\"" + action + "\"";
         if (!err.empty()) results += ",\"error\":\"" + jsonEscape(err) + "\"";
         results += "}";
     }

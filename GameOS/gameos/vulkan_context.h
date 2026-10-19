@@ -46,7 +46,7 @@
 // VMA allocator handle (forward-declared to keep vk_mem_alloc.h out of this
 // header; the .cpp includes it). VmaAllocator is a pointer typedef.
 struct VmaAllocator_T;
-typedef struct VmaAllocator_T* VmaAllocator;
+using VmaAllocator = struct VmaAllocator_T*;
 
 namespace RenderCore { class TextureService; }
 

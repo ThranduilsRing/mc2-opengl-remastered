@@ -31,9 +31,7 @@ void capturePendingScreenshot(uint32_t frame);
 // success, false + errorOut on failure. Registering an existing name
 // replaces it. Registration is cheap and safe when the shell gate is OFF
 // (handlers just never fire).
-typedef bool (*CommandHandler)(const char* paramsJson,
-                               std::string& dataJsonOut,
-                               std::string& errorOut);
+using CommandHandler = bool (*)(const char* paramsJson, std::string& dataJsonOut, std::string& errorOut);
 void registerCommand(const char* name, CommandHandler fn);
 
 // RESULTS-CAPTURE-1: engine-side screenshot scheduling — game code (e.g.

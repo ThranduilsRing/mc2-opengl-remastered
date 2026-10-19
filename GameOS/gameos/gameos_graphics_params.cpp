@@ -4,6 +4,7 @@
 // gameos_graphics_internal.h for flushHUDBatch and the HUD record sites).
 // Renderer size reached via gosRendererLogicalWidth/Height shims.
 
+#include <algorithm>
 #include "gameos_graphics_internal.h"
 
 #include <cstdlib>
@@ -111,8 +112,7 @@ bool __stdcall gos_ComputeHudCanvasBox(int w, int h, int* ox, int* oy, int* obw,
 // s_hud_scale itself is defined near the top of this file so flushHUDBatch()
 // can reference it directly without a forward declaration dance.
 void gos_SetHudScale(float s) {
-    if (s < 0.5f) s = 0.5f;
-    if (s > 1.0f) s = 1.0f;
+    s = std::clamp(s, 0.5f, 1.0f);
     s_hud_scale = s;
 }
 float gos_GetHudScale() { return s_hud_scale; }

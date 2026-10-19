@@ -1,5 +1,6 @@
 // gameos_graphics: the terrain shadow uniform uploads, gos_SetupObjectShadows and the shadow wrappers (the GL shadow passes are gone).
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
+#include <algorithm>
 #include "gameos_graphics_material_internal.h"
 #include "mc2fmt.h"
 #include "static_shadow_spec.h"
@@ -39,8 +40,7 @@ void bindTerrainHeightTexUniforms(GLint heightTexLoc, GLint paramsLoc,
     float effectiveCliffFloor = 0.0f;
     if (mc2::gate::get<"MC2_TERRAIN_CLIFF_SHADOW_FLOOR">()) {
         effectiveCliffFloor = cliffShadowFloor;
-        if (effectiveCliffFloor < 0.0f) effectiveCliffFloor = 0.0f;
-        if (effectiveCliffFloor > 1.0f) effectiveCliffFloor = 1.0f;
+        effectiveCliffFloor = std::clamp(effectiveCliffFloor, 0.0f, 1.0f);
     }
     if (cliffShadowFloorLoc >= 0) {
         glUniform1f(cliffShadowFloorLoc, effectiveCliffFloor);

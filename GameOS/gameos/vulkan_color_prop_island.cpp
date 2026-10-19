@@ -415,8 +415,7 @@ void prop_light_vertex_probe(const uint8_t* base, VkDeviceSize lbytes,
         float sunColor[3] = {0, 0, 0};
         bool sunFound = false;
         int n = ld->numLights_;
-        if (n > 32) n = 32;
-        if (n < 0) n = 0;
+        n = std::clamp(n, 0, 32);
         for (int i = 0; i < n; ++i) {
             int lt = static_cast<int>(ld->lightDir[i][3]);
             if (lt == 0) { // TG_LIGHT_AMBIENT

@@ -37,7 +37,7 @@
 
 //---------------------------------------------------------------------------
 
-typedef enum {
+enum TerrainObjectSubType {
 	TERROBJ_NONE,
 	TERROBJ_TREE,
 	TERROBJ_BRIDGE,
@@ -46,7 +46,7 @@ typedef enum {
 	TERROBJ_WALL_MEDIUM,
 	TERROBJ_WALL_LIGHT,
 	NUM_TERROBJ_SUBTYPES
-} TerrainObjectSubType;
+};
 
 class TerrainObjectType : public ObjectType {
 
@@ -104,7 +104,7 @@ class TerrainObjectType : public ObjectType {
 };
 
 //---------------------------------------------------------------------------
-typedef struct _TerrainObjectData : public GameObjectData
+struct _TerrainObjectData : public GameObjectData
 {
 	float						damage;
 	int32_t						vertexNumber;
@@ -122,7 +122,8 @@ typedef struct _TerrainObjectData : public GameObjectData
 
 	unsigned char				numCellsCovered;
 	short						cellsCovered[81];
-} TerrainObjectData;
+};
+using TerrainObjectData = _TerrainObjectData;
 
 inline constexpr int MAXLEN_TERRAINOBJECT_NAME = 35;
 
@@ -155,7 +156,7 @@ class TerrainObject : public GameObject {
 		virtual void init (bool create) {
 			objectClass = TERRAINOBJECT;
 			setFlag(OBJECT_FLAG_JUSTCREATED, true);
-			adoptAppearance(NULL);
+			adoptAppearance(nullptr);
 			vertexNumber = 0;
 			blockNumber = 0;
 			damage = 0.0;
@@ -168,13 +169,13 @@ class TerrainObject : public GameObject {
 			cellFootprint[3] = -1;
 			numSubAreas0 = 0;
 			numSubAreas1 = 0;
-			subAreas0 = NULL;
-			subAreas1 = NULL;
+			subAreas0 = nullptr;
+			subAreas1 = nullptr;
 			listID = 255;
 			numCellsCovered = 0;
-			cellsCovered = NULL;
+			cellsCovered = nullptr;
 
-			bldgDustPoofEffect = NULL;
+			bldgDustPoofEffect = nullptr;
 		}
 
 	   	TerrainObject (void) : GameObject() {

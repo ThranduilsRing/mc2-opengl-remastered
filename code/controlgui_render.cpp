@@ -1,5 +1,6 @@
 // ControlGui: the sensor / overview / weapon-view overlays and ControlGui::render.
 // Declared in the class headers; shared names in controlgui_internal.h.
+#include <algorithm>
 #include "controlgui_internal.h"
 #include "mc2fmt.h"
 
@@ -203,9 +204,9 @@ static void renderOverviewCoverageTint( Camera* eye, float alpha )
 				float feather = cov[k].r * 0.18f + 1.0f;
 				float c = ( cov[k].r - dist ) / feather;	// soft edge
 				if ( c > coverage ) coverage = c;
-				if ( coverage >= 1.0f ) { coverage = 1.0f; break; }
+				if ( coverage >= 1.0f ) break;
 			}
-			if ( coverage < 0.0f ) coverage = 0.0f;
+			coverage = std::clamp(coverage, 0.0f, 1.0f);
 
 			float a = D * ( 1.0f - coverage );
 			if ( a <= 0.003f ) continue;	// fully sighted: full brightness

@@ -183,9 +183,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         GLint maxLevel = 0;
         { GLint w = bw, h = bh; while (w > 1 || h > 1) { ++maxLevel; if (w>1) w>>=1; if (h>1) h>>=1; } }
         if (s_materialKtxEnabled && !ktxMipLayers.empty()) {
-            for (const auto& lm : ktxMipLayers) {
-                const size_t layerK = lm.first;
-                const RenderCore::KtxImage& img = lm.second;
+            for (const auto& [layerK, img] : ktxMipLayers) {
                 const int lastLvl = (img.mipCount - 1 < maxLevel) ? (img.mipCount - 1) : maxLevel;
                 for (int lvl = 1; lvl <= lastLvl; ++lvl) {
                     int lw = img.width  >> lvl; if (lw < 1) lw = 1;
@@ -325,9 +323,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
         GLint maxLevel = 0;
         { GLint w = bw, h = bh; while (w > 1 || h > 1) { ++maxLevel; if (w>1) w>>=1; if (h>1) h>>=1; } }
-        for (const auto& lm : ormMipLayers) {
-            const size_t layerK = lm.first;
-            const RenderCore::KtxImage& img = lm.second;
+        for (const auto& [layerK, img] : ormMipLayers) {
             const int lastLvl = (img.mipCount - 1 < maxLevel) ? (img.mipCount - 1) : maxLevel;
             for (int lvl = 1; lvl <= lastLvl; ++lvl) {
                 int lw = img.width  >> lvl; if (lw < 1) lw = 1;
@@ -592,9 +588,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
 
             // Reassign layerForPacket -> bucket-relative layer, tag each packet
             // with its global bucket index, and set uvScale = 1.0 (uniform-dim).
-            for (const auto& kv : packetsInGroup) {
-                const uint32_t globalPktIdx = kv.first;
-                const int32_t  grpLayer     = kv.second;   // group-relative layer
+            for (const auto& [globalPktIdx, grpLayer] : packetsInGroup) {
                 if (grpLayer < 0) continue;
                 const int32_t localB   = layerToBucketLocal[static_cast<size_t>(grpLayer)];
                 const int32_t relLayer = layerToBucketRelLayer[static_cast<size_t>(grpLayer)];
@@ -730,9 +724,8 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                 glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 
-                for (const auto& kv : packetsInGroup) {
-                    const uint32_t globalPktIdx = kv.first;
-                    if (kv.second < 0) continue;
+                for (const auto& [globalPktIdx, grpLayer] : packetsInGroup) {
+                    if (grpLayer < 0) continue;
                     uvScaleXByPacket[globalPktIdx] = 1.0f;
                     uvScaleYByPacket[globalPktIdx] = 1.0f;
                 }
@@ -876,9 +869,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         // each packet's unique texture dimensions vs the array max dims.
         const float invMaxW = 1.0f / static_cast<float>(maxW);
         const float invMaxH = 1.0f / static_cast<float>(maxH);
-        for (const auto& kv : packetsInGroup) {
-            const uint32_t globalPktIdx = kv.first;
-            const int32_t layer = kv.second;
+        for (const auto& [globalPktIdx, layer] : packetsInGroup) {
             if (layer < 0) continue;
             const auto& u = uniques[static_cast<size_t>(layer)];
             uvScaleXByPacket[globalPktIdx] = static_cast<float>(u.w) * invMaxW;

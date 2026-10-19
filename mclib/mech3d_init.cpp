@@ -1,4 +1,5 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include <algorithm>
 #include "mc2fmt.h"
 #include "utils/mc2log.h"
 // Mech3DAppearance: Mech3DAppearance::init, initFX, hit reactions, paint schemata and paint scheme.
@@ -761,8 +762,7 @@ void Mech3DAppearance::setPaintScheme (void)
 					// near-threshold boundary pixels get a soft blend.
 					float ratio = static_cast<float>(domChan) / static_cast<float>((maxOther + 1));
 					float margin = (ratio - kRatio) / (kRatio * (kRatioMargin - 1.0f));
-					if (margin > 1.0f) margin = 1.0f;
-					if (margin < 0.0f) margin = 0.0f;
+					margin = std::clamp(margin, 0.0f, 1.0f);
 					mix = margin;
 				}
 

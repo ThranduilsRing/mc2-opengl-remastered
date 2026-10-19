@@ -145,8 +145,7 @@ bool gos_ProbeStaticInstanceWorld(uint32_t idx, float outXYZ[3]) {
     // mutation), which is all the probe needs. modelMatrix is row-major data
     // uploaded GL_FALSE -> the prop vertex shader reads it column-major, so the
     // instance origin (modelMatrix * vec4(0,0,0,1)) is column 3 = m[12..14].
-    for (auto& kv : s_persistentStaticStore) {
-        const auto& v = kv.second;
+    for (auto& [typeID, v] : s_persistentStaticStore) {
         if (idx < v.size()) {
             const float* m = v[idx].modelMatrix;
             outXYZ[0] = m[12]; outXYZ[1] = m[13]; outXYZ[2] = m[14];
@@ -199,10 +198,9 @@ void GpuStaticPropBatcher::reinjectPersistentStatic() {
       if (s_reinjectedThisFrame && !s_warned) { s_warned = true;
           mc2::fmt::print_err("[PROP_REINJECT] WARNING reinjectPersistentStatic called twice in one frame; reinjPos/reinjCount guard invalid\n"); }
       s_reinjectedThisFrame = true; }
-    for (auto& kv : s_persistentStaticStore) {
-        const auto& block = kv.second;
+    for (auto& [typeID, block] : s_persistentStaticStore) {
         if (block.empty()) continue;
-        PerTypeBucket& bucket = s_bucketsByType[kv.first];
+        PerTypeBucket& bucket = s_bucketsByType[typeID];
         bucket.reinjPos   = static_cast<uint32_t>(bucket.instances.size());
         bucket.reinjCount = static_cast<uint32_t>(block.size());
         bucket.instances.insert(bucket.instances.end(), block.begin(), block.end());  // bulk
@@ -489,11 +487,9 @@ static void fillStaticInstanceBufferIfDirty() {
         s_staticDrawFence = nullptr;
     }
     auto* dst = static_cast<GpuStaticPropInstance*>(s_staticInstanceMap);
-    for (auto& kv : s_persistentStaticStore) {
-        const uint32_t typeID = kv.first;
+    for (auto& [typeID, vec] : s_persistentStaticStore) {
         if (typeID >= s_staticBaseInstanceForType.size()) continue;
         const uint32_t base = s_staticBaseInstanceForType[typeID];
-        const auto& vec = kv.second;
         for (uint32_t r = 0; r < vec.size(); ++r) dst[base + r] = vec[r];
     }
     s_staticInstanceFillGen = s_persistentStaticGen;
@@ -942,9 +938,9 @@ void batcher_prepareBaseInstanceTable() {
         }
         // Stash this frame's CPU bucket sizes for comparison RING_FRAMES frames from now.
         s_priorFrameCpuCount.assign(s_types.size(), 0u);
-        for (auto& kv : s_bucketsByType) {
-            if (kv.first < s_priorFrameCpuCount.size())
-                s_priorFrameCpuCount[kv.first] = static_cast<uint32_t>(kv.second.instances.size());
+        for (auto& [typeID, bucket] : s_bucketsByType) {
+            if (typeID < s_priorFrameCpuCount.size())
+                s_priorFrameCpuCount[typeID] = static_cast<uint32_t>(bucket.instances.size());
         }
     }
 

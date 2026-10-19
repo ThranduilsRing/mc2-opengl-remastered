@@ -65,24 +65,34 @@ extern "C" {
 
 // !NB sebi, DWORD on Windows is always 32bit!!!    
 //typedef unsigned long DWORD;
-typedef unsigned int DWORD;
-typedef int WINBOOL,*PWINBOOL,*LPWINBOOL;
+using DWORD = unsigned int;
+using WINBOOL = int;
+using PWINBOOL = int*;
+using LPWINBOOL = int*;
 /* FIXME: Is there a good solution to this? */
 #define BOOL WINBOOL
-typedef unsigned char BYTE;
-typedef BOOL *PBOOL,*LPBOOL;
-typedef unsigned short WORD;
-typedef float FLOAT;
-typedef FLOAT *PFLOAT;
-typedef BYTE *PBYTE,*LPBYTE;
-typedef int *PINT,*LPINT;
-typedef WORD *PWORD,*LPWORD;
-typedef long *LPLONG;
-typedef DWORD *PDWORD,*LPDWORD;
-typedef CONST void *PCVOID,*LPCVOID;
-typedef int INT;
-typedef unsigned int UINT,*PUINT,*LPUINT;
-typedef double DOUBLE; // sebi, actually in wtypes.h
+using BYTE = unsigned char;
+using PBOOL = BOOL*;
+using LPBOOL = BOOL*;
+using WORD = unsigned short;
+using FLOAT = float;
+using PFLOAT = FLOAT*;
+using PBYTE = BYTE*;
+using LPBYTE = BYTE*;
+using PINT = int*;
+using LPINT = int*;
+using PWORD = WORD*;
+using LPWORD = WORD*;
+using LPLONG = long*;
+using PDWORD = DWORD*;
+using LPDWORD = DWORD*;
+using PCVOID = CONST void*;
+using LPCVOID = CONST void*;
+using INT = int;
+using UINT = unsigned int;
+using PUINT = unsigned int*;
+using LPUINT = unsigned int*;
+using DOUBLE = double; // sebi, actually in wtypes.h
 
 #ifndef NOMINMAX
 
@@ -98,22 +108,22 @@ typedef double DOUBLE; // sebi, actually in wtypes.h
 
 #include "platform_winnt.h"
 
-typedef UINT_PTR WPARAM;
-typedef LONG_PTR LPARAM;
-typedef LONG_PTR LRESULT;
+using WPARAM = UINT_PTR;
+using LPARAM = LONG_PTR;
+using LRESULT = LONG_PTR;
 
 #ifndef _HRESULT_DEFINED
-typedef LONG HRESULT;
+using HRESULT = LONG;
 #define _HRESULT_DEFINED
 #endif
 
-typedef WORD ATOM;
-typedef HANDLE HHOOK;
-typedef HANDLE HGLOBAL;
-typedef HANDLE HLOCAL;
-typedef HANDLE GLOBALHANDLE;
-typedef HANDLE LOCALHANDLE;
-typedef void *HGDIOBJ;
+using ATOM = WORD;
+using HHOOK = HANDLE;
+using HGLOBAL = HANDLE;
+using HLOCAL = HANDLE;
+using GLOBALHANDLE = HANDLE;
+using LOCALHANDLE = HANDLE;
+using HGDIOBJ = void*;
 DECLARE_HANDLE(HACCEL);
 DECLARE_HANDLE(HBITMAP);
 DECLARE_HANDLE(HBRUSH);
@@ -131,11 +141,11 @@ DECLARE_HANDLE(HMONITOR);
 DECLARE_HANDLE(HTERMINAL);
 DECLARE_HANDLE(HWINEVENTHOOK);
 
-typedef HKEY *PHKEY;
+using PHKEY = HKEY*;
 DECLARE_HANDLE(HMENU);
 DECLARE_HANDLE(HMETAFILE);
 DECLARE_HANDLE(HINSTANCE);
-typedef HINSTANCE HMODULE;
+using HMODULE = HINSTANCE;
 DECLARE_HANDLE(HPALETTE);
 DECLARE_HANDLE(HPEN);
 DECLARE_HANDLE(HRGN);
@@ -145,38 +155,59 @@ DECLARE_HANDLE(HTASK);
 DECLARE_HANDLE(HWND);
 DECLARE_HANDLE(HWINSTA);
 DECLARE_HANDLE(HKL);
-typedef int HFILE;
-typedef HICON HCURSOR;
-typedef DWORD COLORREF;
-typedef int (WINAPI *FARPROC)();
-typedef int (WINAPI *NEARPROC)();
-typedef int (WINAPI *PROC)();
-typedef struct tagRECT {
+using HFILE = int;
+using HCURSOR = HICON;
+using COLORREF = DWORD;
+using FARPROC = int (WINAPI*)();
+using NEARPROC = int (WINAPI*)();
+using PROC = int (WINAPI*)();
+struct tagRECT {
 	LONG left;
 	LONG top;
 	LONG right;
 	LONG bottom;
-} RECT,*PRECT,*LPRECT;
-typedef const RECT *LPCRECT;
-typedef struct tagRECTL {
+};
+using RECT = tagRECT;
+using PRECT = tagRECT*;
+using LPRECT = tagRECT*;
+using LPCRECT = const RECT*;
+struct tagRECTL {
 	LONG left;
 	LONG top;
 	LONG right;
 	LONG bottom;
-} RECTL,*PRECTL,*LPRECTL;
-typedef const RECTL *LPCRECTL;
-typedef struct tagPOINT {
+};
+using RECTL = tagRECTL;
+using PRECTL = tagRECTL*;
+using LPRECTL = tagRECTL*;
+using LPCRECTL = const RECTL*;
+struct tagPOINT {
 	LONG x;
 	LONG y;
-} POINT,POINTL,*PPOINT,*LPPOINT,*PPOINTL,*LPPOINTL;
-typedef struct tagSIZE {
+};
+using POINT = tagPOINT;
+using POINTL = tagPOINT;
+using PPOINT = tagPOINT*;
+using LPPOINT = tagPOINT*;
+using PPOINTL = tagPOINT*;
+using LPPOINTL = tagPOINT*;
+struct tagSIZE {
 	LONG cx;
 	LONG cy;
-} SIZE,SIZEL,*PSIZE,*LPSIZE,*PSIZEL,*LPSIZEL;
-typedef struct tagPOINTS {
+};
+using SIZE = tagSIZE;
+using SIZEL = tagSIZE;
+using PSIZE = tagSIZE*;
+using LPSIZE = tagSIZE*;
+using PSIZEL = tagSIZE*;
+using LPSIZEL = tagSIZE*;
+struct tagPOINTS {
 	SHORT x;
 	SHORT y;
-} POINTS,*PPOINTS,*LPPOINTS;
+};
+using POINTS = tagPOINTS;
+using PPOINTS = tagPOINTS*;
+using LPPOINTS = tagPOINTS*;
 
 #ifdef __cplusplus
 }

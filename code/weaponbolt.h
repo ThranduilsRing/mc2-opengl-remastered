@@ -156,7 +156,7 @@ class WeaponBoltType : public ObjectType
 };
 
 //---------------------------------------------------------------------------
-typedef struct _WeaponBoltData : public GameObjectData
+struct _WeaponBoltData : public GameObjectData
 {
 	GameObjectWatchID	ownerWID;
 	int32_t				hotSpotNumber;
@@ -186,7 +186,8 @@ typedef struct _WeaponBoltData : public GameObjectData
 	float				goalHeight;
 	std::uint64_t retireDeadlineTick;
 	mc2::combat::SavedDeadlineState retireDeadlineState;
-} WeaponBoltData;
+};
+using WeaponBoltData = _WeaponBoltData;
 
 class WeaponBolt : public GameObject
 {
@@ -267,14 +268,14 @@ class WeaponBolt : public GameObject
 			ownerWID = targetWID = 0;
 			aimedTargetWID = 0;
 
-			pointLight = NULL;
+			pointLight = nullptr;
 			lightId = 0xffffffff;
 			
-			gosEffect = NULL;
-			muzzleEffect = NULL;
-			hitEffect = NULL;
-			missEffect = NULL;
-			waterMissEffect = NULL;
+			gosEffect = nullptr;
+			muzzleEffect = nullptr;
+			hitEffect = nullptr;
+			missEffect = nullptr;
+			waterMissEffect = nullptr;
 			
 			effectId = -1;
 			
@@ -335,7 +336,7 @@ class WeaponBolt : public GameObject
 		void setTarget (GameObjectPtr who);
 		void setTargetPosition (glm::vec3 pos);
 
-		void connect (GameObjectPtr source, GameObjectPtr dest, WeaponShotInfo* shotInfo = NULL, long sourceHS = 0, long targetHS = 0)
+		void connect (GameObjectPtr source, GameObjectPtr dest, WeaponShotInfo* shotInfo = nullptr, long sourceHS = 0, long targetHS = 0)
 		{
 			ownerWID = source->getWatchID();
 			targetWID = dest->getWatchID();
@@ -377,7 +378,7 @@ class WeaponBolt : public GameObject
 				myOwner->appearance->setWeaponNodeRecycle(sourceHS,BASE_NODE_RECYCLE_TIME);
 		}
 		
-		void connect (GameObjectPtr source, glm::vec3 targetLoc, WeaponShotInfo* shotInfo = NULL, long sourceHS = 0)
+		void connect (GameObjectPtr source, glm::vec3 targetLoc, WeaponShotInfo* shotInfo = nullptr, long sourceHS = 0)
 		{
 			ownerWID = source->getWatchID();
 			targetWID = 0;

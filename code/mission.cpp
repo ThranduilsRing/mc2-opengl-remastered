@@ -416,8 +416,7 @@ bool Mission::runOrderIngressFixture() {
 
 static float simSpeedClamp(float v)
 {
-	if (v < 0.25f) v = 0.25f;
-	if (v > 4.0f) v = 4.0f;
+	v = std::clamp(v, 0.25f, 4.0f);
 	return v;
 }
 

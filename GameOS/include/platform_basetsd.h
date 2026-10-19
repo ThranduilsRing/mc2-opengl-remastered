@@ -8,32 +8,51 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef signed char INT8;
-typedef signed short INT16;
-typedef int LONG32, *PLONG32;
-typedef int INT32, *PINT32;
-typedef unsigned char UINT8;
-typedef unsigned short UINT16;
-typedef unsigned int ULONG32, *PULONG32;
-typedef unsigned int DWORD32, *PDWORD32;
-typedef unsigned int UINT32, *PUINT32;
+using INT8 = signed char;
+using INT16 = signed short;
+using LONG32 = int;
+using PLONG32 = int*;
+using INT32 = int;
+using PINT32 = int*;
+using UINT8 = unsigned char;
+using UINT16 = unsigned short;
+using ULONG32 = unsigned int;
+using PULONG32 = unsigned int*;
+using DWORD32 = unsigned int;
+using PDWORD32 = unsigned int*;
+using UINT32 = unsigned int;
+using PUINT32 = unsigned int*;
 
-typedef  int INT_PTR, *PINT_PTR;
-typedef  unsigned int UINT_PTR, *PUINT_PTR;
-typedef  long LONG_PTR, *PLONG_PTR;
-typedef  unsigned long ULONG_PTR, *PULONG_PTR;
-typedef unsigned short UHALF_PTR, *PUHALF_PTR;
-typedef short HALF_PTR, *PHALF_PTR;
-typedef unsigned long HANDLE_PTR;
+using INT_PTR = int;
+using PINT_PTR = int*;
+using UINT_PTR = unsigned int;
+using PUINT_PTR = unsigned int*;
+using LONG_PTR = long;
+using PLONG_PTR = long*;
+using ULONG_PTR = unsigned long;
+using PULONG_PTR = unsigned long*;
+using UHALF_PTR = unsigned short;
+using PUHALF_PTR = unsigned short*;
+using HALF_PTR = short;
+using PHALF_PTR = short*;
+using HANDLE_PTR = unsigned long;
 
-typedef ULONG_PTR SIZE_T, *PSIZE_T;
-typedef LONG_PTR SSIZE_T, *PSSIZE_T;
-typedef ULONG_PTR DWORD_PTR, *PDWORD_PTR;
-typedef __int64 LONG64, *PLONG64;
-typedef __int64 INT64,  *PINT64;
-typedef unsigned __int64 ULONG64, *PULONG64;
-typedef unsigned __int64 DWORD64, *PDWORD64;
-typedef unsigned __int64 UINT64,  *PUINT64;
+using SIZE_T = ULONG_PTR;
+using PSIZE_T = ULONG_PTR*;
+using SSIZE_T = LONG_PTR;
+using PSSIZE_T = LONG_PTR*;
+using DWORD_PTR = ULONG_PTR;
+using PDWORD_PTR = ULONG_PTR*;
+using LONG64 = __int64;
+using PLONG64 = __int64*;
+using INT64 = __int64;
+using PINT64 = __int64*;
+using ULONG64 = unsigned __int64;
+using PULONG64 = unsigned __int64*;
+using DWORD64 = unsigned __int64;
+using PDWORD64 = unsigned __int64*;
+using UINT64 = unsigned __int64;
+using PUINT64 = unsigned __int64*;
 #ifdef __cplusplus
 }
 #endif

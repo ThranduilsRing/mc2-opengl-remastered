@@ -18,7 +18,7 @@ void initDpiAwareness() {
     // legacy virtualized behavior.
     {
         if (!mc2::gate::get<"MC2_DPI_UNAWARE">()) {
-            typedef BOOL (WINAPI *SetDpiCtxFn)(void*);
+            using SetDpiCtxFn = BOOL (WINAPI*)(void*);
             HMODULE u32 = LoadLibraryA("user32.dll");
             SetDpiCtxFn setCtx = u32
                 ? reinterpret_cast<SetDpiCtxFn>(GetProcAddress(u32, "SetProcessDpiAwarenessContext")) : nullptr;
